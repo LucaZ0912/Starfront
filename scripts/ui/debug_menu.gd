@@ -196,7 +196,7 @@ func _build_ship() -> void:
 
 func _build_items() -> void:
 	_section("Module → station storage")
-	var mids: Array = GameData.modules.keys()
+	var mids: Array = GameData.modules.keys().filter(func(x): return String(GameData.modules[x]["quality"]) == "C")
 	mids.sort_custom(func(a, b): return String(GameData.modules[a]["slot"]) + GameData.module_name(a) < String(GameData.modules[b]["slot"]) + GameData.module_name(b))
 	var mlabels: Array = []
 	for mid in mids:

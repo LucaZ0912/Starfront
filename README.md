@@ -68,6 +68,29 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## Modules: family + size + quality (phase 0.5 package 19)
+Every module is a **family** (Pulse Laser, Ion Drive, Shield Generator …), a **size** and a **quality**,
+e.g. *Pulse Laser 2 · C* (id `w_pulse:2:C`). `data/modules.gd` defines 53 families; `build_all()`
+generates every allowed size and quality – about 1,700 modules (`GameData.modules`).
+- **Sizes:** weapons and tools 1–4, optional 1–8 (cargo and ore hold 10), core slots 1–10 (sensors 1–8,
+  hyperdrive 1–6). Each family has its own range (e.g. Photon Lance 3–4). Values follow curves from an
+  anchor (the old S/M/L module): performance ∝ size^1.3, mass ^1.2, power ^1.1, price ^1.6; ranges grow
+  slowly. Hyperdrive size sets the jump class (1–2 → 1, 3–4 → 2, 5–6 → 3).
+- **Quality F–A** (S/S+ later in the endgame): performance ×0.80 … ×1.16, power ×0.94 … ×1.08, price
+  ×0.55 … ×2.0. Mass: **D is the lightest, F the heaviest, B as heavy as A** (A performs better).
+- **Slots:** every hull lists the maximum size of every single slot (`slot_sizes` in `data/hulls.gd`) –
+  core slots too. **Smaller modules fit bigger slots**, bigger never. The Modules tab shows each slot's
+  maximum ("≤4") and every module's size and quality.
+- **Where to get them:** outfitters stock their speciality in the sizes their tier allows (weapons/tools
+  2/3/4, optional 3/6/8, core 4/7/10 for tier 1/2/3), each size in a few qualities – F–C everywhere,
+  B from tier 2, A at tier 3 or military outposts. Manufacturing builds quality C blueprints; the result's
+  quality is rolled (mostly C, sometimes better or worse). Loot comes in any quality.
+- **Hulls (Earthworks + NPC):** Dragonfly, Hornet, Mule, Drillhead, Warden, Bastion, Skiff, Longhaul
+  (Earthworks) and the pirates' Carrion Crow. Skiff and Longhaul are now sold at shipyards, the Carrion
+  Crow in Pirate Havens.
+- **Saves:** save version 2 – saves of an older alpha are refused with a note and never offered by
+  Continue (alpha rule: no migrations that would hold back reworks).
+
 ## Codex (phase 0.5 package 18)
 An in-game encyclopedia – ship menu → **Codex** tab, and **Codex** in the main menu (there: everything
 discovered in any of your games, collected in `user://codex.cfg`). 45 entries in six categories: Basics,
@@ -482,7 +505,8 @@ shaders/           planet, star, colossus, background, hyperspace, scanlines
 - **New station service**: add an entry to `data/station_services.gd` and a panel script extending
   `StationServicePanel` (implement `build()`). The tile appears automatically.
 - **New corporation**: `data/corporations.gd`.
-- **New module**: entry in `data/modules.gd` (icon is picked by slot/type automatically).
+- **New module**: a new family in `data/modules.gd` (anchor values + reference size + size range); every
+  size and quality is generated, the icon is picked by slot/type automatically.
 - **New hull**: `data/hulls.gd` + pixel art in `data/pixel_art.gd` (+ optional `std_<id>` preset).
 - **Points of interest / dungeons**: new entries in `Universe.warp_targets()`.
 

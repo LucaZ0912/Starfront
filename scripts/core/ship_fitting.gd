@@ -48,12 +48,20 @@ static func slot_type(key: String) -> String:
 
 
 func slot_keys() -> Array:
-	var keys: Array = GameData.CORE_SLOTS.duplicate()
+	var keys: Array = []
+	for c in GameData.CORE_SLOTS:
+		if GameData.slot_max_of(hull(), c) > 0:
+			keys.append(c)
 	var slots: Dictionary = hull()["slots"]
 	for t in ["weapon", "tool", "optional"]:
 		for i in int(slots.get(t, 0)):
 			keys.append("%s_%d" % [t, i])
 	return keys
+
+
+## Maximum module size of a slot of this hull (package 19).
+func slot_max(key: String) -> int:
+	return GameData.slot_max_of(hull(), key)
 
 
 func get_module(key: String) -> String:
@@ -69,8 +77,11 @@ func can_fit(key: String, module_id: String) -> String:
 	var m: Dictionary = GameData.modules[module_id]
 	if m["slot"] != slot_type(key):
 		return "Wrong slot type"
-	if int(m["size"]) > int(hull()["size"]):
-		return "Module too large for this hull"
+	var mx := slot_max(key)
+	if mx <= 0:
+		return "This hull has no such slot"
+	if int(m["size"]) > mx:
+		return "Too large – this slot takes modules up to size %d" % mx
 	if m.get("notorious_only", false):
 		return "Only notorious pirate captains can use this"
 	return ""

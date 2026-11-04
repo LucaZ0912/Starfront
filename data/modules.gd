@@ -1,21 +1,229 @@
 extends RefCounted
-## All equipment modules.
-## Common fields: name, slot, size (1-3), price, mass, power (power draw in MW)
-## Slot-specific fields:
+## Equipment modules (phase 0.5 package 19): every module is a FAMILY + SIZE + QUALITY.
+## Module id "<family>:<size>:<quality>", e.g. "w_pulse:2:C" (shown as "Pulse Laser 2 · C").
+##
+## A family fixes what a module is (slot, damage type, tool, special effects) and its size range;
+## its numbers come from an ANCHOR (a module of the earlier S/M/L system) at a reference size.
+## Size scales the values along curves, quality shifts performance, mass, power and price.
+## build_all() generates every family in every allowed size and quality (GameData.modules).
+##
+## Common fields of a generated module: name, family, base_name, size, quality, slot, price, mass, power
+## Slot-specific fields as in the anchors below:
 ##   hull:        armor, res {optical/kinetic/explosive: 0..1}
 ##   engine:      thrust (kN), turn (rad/s)
 ##   distributor: capacitor, recharge (/s), efficiency (multiplier on reactor output)
 ##   reactor:     output (MW)
 ##   tank:        fuel
-##   hyperdrive:  drive_class (max. route class), jump_fuel, spool (s)
+##   hyperdrive:  drive_class (max. route class from the size: 1–2 → 1, 3–4 → 2, 5–6 → 3), jump_fuel, spool (s)
 ##   sensors:     range, resolution (target lock), scan_strength
 ##   weapon:      damage_type, damage, cooldown, range, energy, projectile_speed (0 = beam), splash, homing
-##   tool:        tool (scanner/analyzer/mining/harvester/salvage/repair/survey/prospect/warrant), strength/rate, range, energy, scan_time, accuracy
+##   tool:        tool (scanner/analyzer/mining/harvester/salvage/repair/survey/prospect/warrant/interdict), strength/rate, range, energy, scan_time, accuracy
 ##   optional:    cargo, ore_cargo, shield, shield_regen, armor, fuel, speed_mult, range_mult, res_bonus, cap_bonus,
 ##                mining_bonus {class: +x}, survey_range_mult; active modules: active (afterburner/shield_boost/
 ##                armor_repair), boost / rate, energy_rate (capacitor per second while on)
 
-const MODULES := {
+const QUALITIES := ["F", "E", "D", "C", "B", "A"]          # S and S+ follow in the endgame
+## perf = performance, mass, power draw and price factors per quality (D is the lightest, F the
+## heaviest, B as heavy as A – A is better)
+const QUALITY := {
+	"F": {"perf": 0.80, "mass": 1.25, "power": 0.94, "price": 0.55},
+	"E": {"perf": 0.88, "mass": 1.10, "power": 0.96, "price": 0.70},
+	"D": {"perf": 0.95, "mass": 0.90, "power": 0.98, "price": 0.85},
+	"C": {"perf": 1.00, "mass": 1.00, "power": 1.00, "price": 1.00},
+	"B": {"perf": 1.08, "mass": 1.08, "power": 1.04, "price": 1.40},
+	"A": {"perf": 1.16, "mass": 1.08, "power": 1.08, "price": 2.00},
+}
+const QUALITY_COLORS := {"F": Color(0.55, 0.5, 0.48), "E": Color(0.7, 0.68, 0.62), "D": Color(0.72, 0.85, 0.72),
+	"C": Color(0.85, 0.9, 1.0), "B": Color(0.45, 0.8, 1.0), "A": Color(1.0, 0.75, 0.3)}
+## Size curves: value ∝ (size / reference size) ^ exponent
+const EXP_MASS := 1.2
+const EXP_POWER := 1.1
+const EXP_PRICE := 1.6
+## Exponent per field (fields not listed stay constant); quality scales every listed field except energy
+const FIELD_EXP := {
+	"damage": 1.3, "armor": 1.3, "shield": 1.3, "shield_regen": 1.3, "thrust": 1.3, "output": 1.3,
+	"capacitor": 1.3, "recharge": 1.3, "fuel": 1.3, "cargo": 1.3, "ore_cargo": 1.3, "rate": 1.3,
+	"cap_bonus": 1.3, "cap_drain": 1.3, "strength": 1.0, "jump_fuel": 1.0,
+	"range": 0.35, "resolution": 0.2, "scan_strength": 0.6, "splash": 0.5, "res_bonus": 0.5,
+	"energy": 1.1, "energy_rate": 1.1,
+}
+## Multipliers: only the part above 1 grows (with the square root of the size ratio)
+const MULT_FIELDS := ["boost", "range_mult", "survey_range_mult", "speed_mult", "efficiency"]
+## Size ranges per slot type (family ranges lie inside)
+const SIZE_RANGE := {"weapon": [1, 4], "tool": [1, 4], "optional": [1, 8], "hull": [1, 10], "engine": [1, 10],
+	"reactor": [1, 10], "distributor": [1, 10], "tank": [1, 10], "hyperdrive": [1, 6], "sensors": [1, 8]}
+
+## Families: name, anchor module, reference size of the anchor, allowed sizes [min, max],
+## optional field exponent overrides ("exp").
+const FAMILIES := {
+	# hull plating (core)
+	"pl_standard": {"name": "Standard Plating", "anchor": "hull_std_s", "ref": 2, "sizes": [1, 10]},
+	"pl_reflective": {"name": "Reflective Plating", "anchor": "hull_reflect_s", "ref": 2, "sizes": [1, 10]},
+	"pl_ablative": {"name": "Ablative Plating", "anchor": "hull_ablative_s", "ref": 2, "sizes": [1, 10]},
+	# engines
+	"eng_chemical": {"name": "Chemical Thruster", "anchor": "eng_chem_s", "ref": 2, "sizes": [1, 8]},
+	"eng_ion": {"name": "Ion Drive", "anchor": "eng_ion_s", "ref": 2, "sizes": [1, 10]},
+	"eng_plasma": {"name": "Plasma Drive", "anchor": "eng_plasma_m", "ref": 5, "sizes": [3, 10]},
+	# power
+	"dist_basic": {"name": "Power Distributor", "anchor": "dist_basic_s", "ref": 2, "sizes": [1, 8]},
+	"dist_precision": {"name": "Precision Power Distributor", "anchor": "dist_adv_s", "ref": 2, "sizes": [1, 10]},
+	"rea_fission": {"name": "Fission Reactor", "anchor": "rea_fission_s", "ref": 2, "sizes": [1, 8]},
+	"rea_fusion": {"name": "Fusion Reactor", "anchor": "rea_fusion_s", "ref": 2, "sizes": [1, 10]},
+	"tank": {"name": "Fuel Tank", "anchor": "tank_s", "ref": 2, "sizes": [1, 10]},
+	"hyperdrive": {"name": "Jump Drive", "anchor": "hyp_c1_s", "ref": 2, "sizes": [1, 6]},
+	# sensors
+	"sen_basic": {"name": "Basic Sensor Suite", "anchor": "sen_basic_s", "ref": 2, "sizes": [1, 6]},
+	"sen_radar": {"name": "Radar Array", "anchor": "sen_radar_s", "ref": 2, "sizes": [1, 8]},
+	"sen_grav": {"name": "Gravimetric Array", "anchor": "sen_grav_m", "ref": 5, "sizes": [2, 8]},
+	"sen_tactical": {"name": "Tactical Sensor System", "anchor": "sen_tactical_m", "ref": 5, "sizes": [2, 8]},
+	# weapons (1–4)
+	"w_pulse": {"name": "Pulse Laser", "anchor": "w_pulse_s", "ref": 1, "sizes": [1, 3]},
+	"w_beam": {"name": "Beam Laser", "anchor": "w_beam_m", "ref": 2, "sizes": [2, 4]},
+	"w_lance": {"name": "Photon Lance", "anchor": "w_lance_l", "ref": 3, "sizes": [3, 4]},
+	"w_autocannon": {"name": "Autocannon", "anchor": "w_autocannon_s", "ref": 1, "sizes": [1, 3]},
+	"w_railgun": {"name": "Railgun", "anchor": "w_railgun_m", "ref": 2, "sizes": [2, 4]},
+	"w_massdriver": {"name": "Mass Driver", "anchor": "w_massdriver_l", "ref": 3, "sizes": [3, 4]},
+	"w_rocket": {"name": "Rocket Launcher", "anchor": "w_rocket_s", "ref": 1, "sizes": [1, 3]},
+	"w_torpedo": {"name": "Torpedo Bay", "anchor": "w_torpedo_m", "ref": 2, "sizes": [2, 4]},
+	"w_cruise": {"name": "Cruise Missile Silo", "anchor": "w_cruise_l", "ref": 3, "sizes": [3, 4]},
+	"w_ion": {"name": "Ion Disruptor", "anchor": "w_ion_s", "ref": 1, "sizes": [1, 2]},
+	"w_ionsiphon": {"name": "Ion Siphon", "anchor": "w_ion_m", "ref": 2, "sizes": [2, 3]},
+	"w_iontorpedo": {"name": "Ion Torpedo", "anchor": "w_ion_torpedo", "ref": 1, "sizes": [1, 1]},
+	# tools (1–4)
+	"t_scanner": {"name": "Signature Scanner", "anchor": "t_scanner_s", "ref": 1, "sizes": [1, 3], "exp": {"range": 0.6}},
+	"t_analyzer": {"name": "Analyzer", "anchor": "t_analyzer_s", "ref": 1, "sizes": [1, 3]},
+	"t_mining": {"name": "Mining Laser", "anchor": "t_mining_s", "ref": 1, "sizes": [1, 3]},
+	"t_stripminer": {"name": "Strip Miner", "anchor": "t_stripminer_l", "ref": 3, "sizes": [3, 4]},
+	"t_harvester": {"name": "Ice Harvester", "anchor": "t_harvester_s", "ref": 1, "sizes": [1, 3]},
+	"t_salvage": {"name": "Salvager", "anchor": "t_salvage_s", "ref": 1, "sizes": [1, 3]},
+	"t_repair": {"name": "Repair Beam", "anchor": "t_repair_s", "ref": 1, "sizes": [1, 3]},
+	"t_survey": {"name": "Long-Range Survey Scanner", "anchor": "t_survey_s", "ref": 1, "sizes": [1, 4], "exp": {"range": 0.9}},
+	"t_prospector": {"name": "Prospector Scanner", "anchor": "t_prospector_s", "ref": 1, "sizes": [1, 3]},
+	"t_warrant": {"name": "Warrant Scanner", "anchor": "t_warrant_s", "ref": 1, "sizes": [1, 2]},
+	"t_interdictor": {"name": "Warp Interdictor", "anchor": "t_interdictor_s", "ref": 1, "sizes": [1, 2], "exp": {"range": 1.1}},
+	# optional (1–8, cargo and ore hold up to 10)
+	"o_cargo": {"name": "Cargo Rack", "anchor": "o_cargo_s", "ref": 1, "sizes": [1, 10]},
+	"o_shield": {"name": "Shield Generator", "anchor": "o_shield_s", "ref": 1, "sizes": [1, 8]},
+	"o_armor": {"name": "Armor Plates", "anchor": "o_armor_s", "ref": 1, "sizes": [1, 8]},
+	"o_afterburner": {"name": "Afterburner", "anchor": "o_afterburner_m", "ref": 3, "sizes": [1, 6]},
+	"o_shieldboost": {"name": "Shield Booster", "anchor": "o_shieldboost_s", "ref": 1, "sizes": [1, 8]},
+	"o_armorrep": {"name": "Armor Repairer", "anchor": "o_armorrep_s", "ref": 1, "sizes": [1, 8]},
+	"o_orehold": {"name": "Ore Hold", "anchor": "o_orehold_s", "ref": 1, "sizes": [1, 10]},
+	"o_mining_metal": {"name": "Metallic Mining Upgrade", "anchor": "o_mining_metal_s", "ref": 1, "sizes": [1, 4]},
+	"o_mining_stone": {"name": "Silicate Mining Upgrade", "anchor": "o_mining_stone_s", "ref": 1, "sizes": [1, 4]},
+	"o_mining_ice": {"name": "Cryo Mining Upgrade", "anchor": "o_mining_ice_s", "ref": 1, "sizes": [1, 4]},
+	"o_survey_amp": {"name": "Survey Range Amplifier", "anchor": "o_survey_amp_s", "ref": 1, "sizes": [1, 3]},
+	"o_targeting": {"name": "Targeting Computer", "anchor": "o_targeting_s", "ref": 1, "sizes": [1, 4]},
+	"o_fuel": {"name": "Auxiliary Tank", "anchor": "o_fuel_s", "ref": 1, "sizes": [1, 6]},
+	"o_capacitor": {"name": "Capacitor Bank", "anchor": "o_capacitor_s", "ref": 1, "sizes": [1, 6]},
+}
+
+## Modules of the earlier S/M/L system (presets, start storage, tests): old id -> [family, size].
+const LEGACY := {
+	"hull_std_s": ["pl_standard", 2], "hull_reflect_s": ["pl_reflective", 2], "hull_ablative_s": ["pl_ablative", 2],
+	"hull_composite_m": ["pl_standard", 5], "hull_reflect_m": ["pl_reflective", 5], "hull_heavy_l": ["pl_standard", 8],
+	"eng_chem_s": ["eng_chemical", 2], "eng_ion_s": ["eng_ion", 2], "eng_plasma_m": ["eng_plasma", 5], "eng_ion_m": ["eng_ion", 5], "eng_fusion_l": ["eng_plasma", 8],
+	"dist_basic_s": ["dist_basic", 2], "dist_adv_s": ["dist_precision", 2], "dist_m": ["dist_basic", 5], "dist_l": ["dist_precision", 8],
+	"rea_fission_s": ["rea_fission", 2], "rea_fusion_s": ["rea_fusion", 2], "rea_fusion_m": ["rea_fusion", 5], "rea_antimatter_l": ["rea_fusion", 8],
+	"tank_s": ["tank", 2], "tank_m": ["tank", 5], "tank_l": ["tank", 8],
+	"hyp_c1_s": ["hyperdrive", 2], "hyp_c2_s": ["hyperdrive", 3], "hyp_c2_m": ["hyperdrive", 4], "hyp_c3_m": ["hyperdrive", 5], "hyp_c3_l": ["hyperdrive", 6],
+	"sen_basic_s": ["sen_basic", 2], "sen_radar_s": ["sen_radar", 2], "sen_grav_m": ["sen_grav", 5], "sen_tactical_m": ["sen_tactical", 5], "sen_deep_l": ["sen_grav", 8],
+	"w_pulse_s": ["w_pulse", 1], "w_beam_m": ["w_beam", 2], "w_lance_l": ["w_lance", 3],
+	"w_autocannon_s": ["w_autocannon", 1], "w_railgun_m": ["w_railgun", 2], "w_massdriver_l": ["w_massdriver", 3],
+	"w_rocket_s": ["w_rocket", 1], "w_torpedo_m": ["w_torpedo", 2], "w_cruise_l": ["w_cruise", 3],
+	"w_ion_s": ["w_ion", 1], "w_ion_m": ["w_ionsiphon", 2], "w_ion_torpedo": ["w_iontorpedo", 1],
+	"t_scanner_s": ["t_scanner", 1], "t_scanner_m": ["t_scanner", 2], "t_analyzer_s": ["t_analyzer", 1], "t_analyzer_m": ["t_analyzer", 2],
+	"t_mining_s": ["t_mining", 1], "t_mining_m": ["t_mining", 2], "t_stripminer_l": ["t_stripminer", 3],
+	"t_harvester_s": ["t_harvester", 1], "t_harvester_m": ["t_harvester", 2], "t_salvage_s": ["t_salvage", 1],
+	"t_repair_s": ["t_repair", 1], "t_repair_m": ["t_repair", 2],
+	"t_survey_s": ["t_survey", 1], "t_survey_m": ["t_survey", 2], "t_survey_l": ["t_survey", 3],
+	"t_prospector_s": ["t_prospector", 1], "t_prospector_m": ["t_prospector", 2], "t_warrant_s": ["t_warrant", 1],
+	"t_interdictor_s": ["t_interdictor", 1], "t_interdictor_m": ["t_interdictor", 2],
+	"o_cargo_s": ["o_cargo", 1], "o_cargo_m": ["o_cargo", 3], "o_cargo_l": ["o_cargo", 5],
+	"o_shield_s": ["o_shield", 1], "o_shield_m": ["o_shield", 3], "o_shield_l": ["o_shield", 5],
+	"o_armor_s": ["o_armor", 1], "o_armor_m": ["o_armor", 3],
+	"o_afterburner_s": ["o_afterburner", 1], "o_afterburner_m": ["o_afterburner", 3], "o_afterburner_l": ["o_afterburner", 5],
+	"o_shieldboost_s": ["o_shieldboost", 1], "o_shieldboost_m": ["o_shieldboost", 3], "o_shieldboost_l": ["o_shieldboost", 5],
+	"o_armorrep_s": ["o_armorrep", 1], "o_armorrep_m": ["o_armorrep", 3], "o_armorrep_l": ["o_armorrep", 5],
+	"o_orehold_s": ["o_orehold", 1], "o_orehold_m": ["o_orehold", 3], "o_orehold_l": ["o_orehold", 5],
+	"o_mining_metal_s": ["o_mining_metal", 1], "o_mining_stone_s": ["o_mining_stone", 1], "o_mining_ice_s": ["o_mining_ice", 1],
+	"o_mining_metal_m": ["o_mining_metal", 3], "o_mining_stone_m": ["o_mining_stone", 3], "o_mining_ice_m": ["o_mining_ice", 3],
+	"o_survey_amp_s": ["o_survey_amp", 1], "o_survey_amp_m": ["o_survey_amp", 2],
+	"o_targeting_s": ["o_targeting", 1], "o_fuel_s": ["o_fuel", 1], "o_capacitor_s": ["o_capacitor", 1],
+}
+
+
+static func id_of(family: String, size: int, quality: String = "C") -> String:
+	return "%s:%d:%s" % [family, size, quality]
+
+
+## New id for a module of the earlier system, its size clamped to the family and to `max_size`.
+static func legacy(old_id: String, max_size: int = 99, quality: String = "C") -> String:
+	if not LEGACY.has(old_id):
+		return old_id
+	var fam: String = LEGACY[old_id][0]
+	var sz: int = clampi(mini(int(LEGACY[old_id][1]), max_size), int(FAMILIES[fam]["sizes"][0]), int(FAMILIES[fam]["sizes"][1]))
+	return id_of(fam, sz, quality)
+
+
+## One module: family `fam` in size `size` and quality `q`.
+static func make(fam: String, size: int, q: String) -> Dictionary:
+	var f: Dictionary = FAMILIES[fam]
+	var a: Dictionary = ANCHORS[f["anchor"]]
+	var k := float(size) / float(f["ref"])
+	var qf: Dictionary = QUALITY[q]
+	var exps: Dictionary = f.get("exp", {})
+	var m := {}
+	for key in a:
+		var v = a[key]
+		if key in ["name", "size"]:
+			continue
+		if key == "mass":
+			m[key] = int(round(float(v) * pow(k, EXP_MASS) * float(qf["mass"])))
+		elif key == "power":
+			m[key] = snappedf(float(v) * pow(k, EXP_POWER) * float(qf["power"]), 0.1)
+		elif key == "price":
+			m[key] = int(round(float(v) * pow(k, EXP_PRICE) * float(qf["price"]) / 10.0)) * 10
+		elif key == "accuracy":
+			m[key] = snappedf(float(v) / (sqrt(k) * float(qf["perf"])), 0.001)
+		elif key == "mining_bonus":
+			var mb := {}
+			for cls in v:
+				mb[cls] = snappedf(float(v[cls]) * sqrt(k) * float(qf["perf"]), 0.01)
+			m[key] = mb
+		elif key in MULT_FIELDS:
+			m[key] = snappedf(1.0 + (float(v) - 1.0) * sqrt(k) * float(qf["perf"]), 0.01)
+		elif FIELD_EXP.has(key) or exps.has(key):
+			var e := float(exps.get(key, FIELD_EXP.get(key, 0.0)))
+			var val := float(v) * pow(k, e)
+			if not key in ["energy", "energy_rate"]:
+				val *= float(qf["perf"])
+			m[key] = snappedf(val, 0.01) if val < 50.0 else round(val)
+		else:
+			m[key] = v
+	if m["slot"] == "hyperdrive":
+		m["drive_class"] = clampi(int(ceil(size / 2.0)), 1, 3)
+	m["family"] = fam
+	m["size"] = size
+	m["quality"] = q
+	m["base_name"] = f["name"]
+	m["name"] = "%s %d · %s" % [f["name"], size, q]
+	return m
+
+
+## Every family in every allowed size and quality.
+static func build_all() -> Dictionary:
+	var out := {}
+	for fam in FAMILIES:
+		var r: Array = FAMILIES[fam]["sizes"]
+		for size in range(int(r[0]), int(r[1]) + 1):
+			for q in QUALITIES:
+				out[id_of(fam, size, q)] = make(fam, size, q)
+	return out
+
+
+## Reference values: the modules of the earlier S/M/L system. Families take their numbers from these.
+const ANCHORS := {
 	# ---------------- Hull plating ----------------
 	"hull_std_s": {"name": "Standard Plating", "slot": "hull", "size": 1, "price": 1500, "mass": 200, "power": 0, "armor": 300, "res": {"kinetic": 0.10}},
 	"hull_reflect_s": {"name": "Reflective Plating", "slot": "hull", "size": 1, "price": 4500, "mass": 180, "power": 2, "armor": 260, "res": {"optical": 0.35}},

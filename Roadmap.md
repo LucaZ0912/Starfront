@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.12. Stand 4. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.13. Stand 4. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -36,6 +36,7 @@ Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und
 | Berüchtigte | Fünf benannte Piratenkapitäne (1–5 Sterne) mit eigener Lackierung, Eigenschaft und wachsender Eskorte ziehen durch den Cluster (nie in die Heimatsysteme); Kopfgeld steigt mit der Zeit, 5-Stern-Kapitäne überfallen Stationen; Steckbriefe am Bond Office, ☠ auf der Galaxiekarte, besondere Beute, Nachfolger. |
 | Welt & News | Notrufe, fliehender Verkehr, Eskalation (Patrouille → Verstärkung → Einsatzgruppe), Wracks für alle Schiffe; Nachrichten-Ticker im Schiffs-Panel, Archiv in jeder Station, Kopfgeld-Kampagnen. |
 | Fraktionsaufträge | Am Schwarzen Brett jeder Regierungsstation: Konvoi-Eskorte, Patrouille begleiten, Schmuggler abfangen (ab Neutral), Jagd auf Berüchtigte (ab Friendly); +4 Ruf. |
+| Module | Neues Modulsystem: Familie + Größe (1–10, Waffen 1–4) + Qualität (F–A); jeder Schiffsplatz mit eigener Maximalgröße; ca. 1.700 Module aus 53 Familien. Skiff, Longhaul und Carrion Crow kaufbar. |
 | Codex | Nachschlagewerk mit 45 Einträgen in sechs Kategorien; Grundlagen offen, der Rest wird beim Entdecken freigeschaltet („New Codex entry“ im HUD); im Schiffsmenü und im Hauptmenü. |
 | Fehlt | Teile 4–8, Netzwerk, Endgame-Inhalte |
 
@@ -118,7 +119,7 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | 1 | More More | ✅ erledigt |
 | 2 | World Design Update | ✅ erledigt |
 | 3 | NPCs and Factions | ✅ erledigt (Pakete 10–18) |
-| 4 | Module and Internal Ship Parts Rework | geplant (Pakete 19–27) |
+| 4 | Module and Internal Ship Parts Rework | in Arbeit (Paket 19 fertig) |
 | 5 | Character Update | geplant |
 | 6 | New Worlds Discovery Update | geplant |
 | 7 | Intro and First Part of the Story | geplant |
@@ -530,7 +531,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 
 | # | Arbeitspaket | Inhalt | Abhängig von |
 | --- | --- | --- | --- |
-| 19 | Größen- & Qualitätssystem | Modulgrößen 1–10, Qualität F–A, Rumpfplätze mit Maximalgröße je Schiff | – |
+| 19 | Größen- & Qualitätssystem – ✅ erledigt | Modulgrößen 1–10, Qualität F–A, Rumpfplätze mit Maximalgröße je Schiff | – |
 | 20 | Neue Modultypen & Waffen | Schild-Varianten (Kapazität vs. Ladegeschwindigkeit) und weitere Modultypen und Waffen | 19 |
 | 21 | Energie-Management | im Schiff festlegen, welche Module bei Strommangel zuerst abgeschaltet werden | 19 |
 | 22 | Multi-Fokus | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
@@ -587,6 +588,17 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
   - **Skiff:** **kaufbar** – günstig, schnell, wendig, unbewaffnet, kleiner Laderaum; später Grundlage für Passagier-Aufträge.
   - **Longhaul:** **kaufbar**, teuer und träge – spätes Handelsschiff mit riesigem Laderaum, kaum Waffen, braucht selbst Begleitschutz.
   - **Patrouillen:** sobald die staatlichen Manufakturen da sind (Paket 24/25), fliegen sie die **Schiffe ihrer eigenen Fraktion**; bis dahin Earthworks-Rümpfe in Fraktionslackierung.
+**Umgesetzt (4. Nov 2026, alpha 0.4.19.13)** – `data/modules.gd` (Familien, Kurven, Qualität), `slot_sizes` in `data/hulls.gd`, 14 neue automatische Prüfungen, alle 379 bestanden:
+
+- [x] 53 Familien, alle Größen und Qualitäten erzeugt (ca. 1.700 Module, Anzeige „Pulse Laser 2 · C“); Werte über Größenkurven aus den alten Modulen als Ankerpunkten.
+- [x] Qualität F–A mit Leistungs-, Strom-, Preis- und Massefaktoren (D leichteste, F schwerste, B = A an Masse).
+- [x] Plätze aller neun Rümpfe einzeln nach der Tabelle; kleinere Module passen in größere Plätze; Hyperantrieb-Größe bestimmt die Sprungklasse.
+- [x] Ausrüster nach Stationsstufe (Größen-Obergrenzen, B ab Stufe 2, A ab Stufe 3/Militär), Fertigung mit gewürfelter Qualität, Beute in allen Qualitäten, Militär-Ausrüstung (größte Module) ab Friendly.
+- [x] Standardfits, NPC- und Piraten-Loadouts sowie das Startlager auf das neue System umgestellt.
+- [x] Skiff und Longhaul an Werften kaufbar, Carrion Crow in Pirate Havens.
+- [x] Modul-Reiter zeigt Maximalgröße je Platz und Größe/Qualität je Modul; Ausrüster gruppiert nach Familie mit Größe·Qualität-Knöpfen (Feinschliff in Paket 27).
+- [x] Spielstand-Version 2: ältere Spielstände werden mit Hinweis abgelehnt und nicht mehr bei „Continue“ angeboten.
+
 - **Umfang Paket 19:** neues Datenmodell, Plätze der Earthworks- und NPC-Rümpfe, Ausrüster/Fertigung/Beute/NPC-Loadouts/Startschiff umgestellt, neue Spielstand-Version (alte Stände mit Hinweis abgelehnt). Neue Modultypen erst in Paket 20.
 
 ### Neue Modultypen und Waffen (Paket 20)

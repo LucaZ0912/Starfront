@@ -355,7 +355,10 @@ func _module_details(left: VBoxContainer, mid: String, where: String) -> void:
 	var nv := UI.vbox(2)
 	head.add_child(nv)
 	nv.add_child(UI.label(m["name"], 18, UI.NEON_CYAN))
-	nv.add_child(UI.label("%s  •  size %s" % [GameData.SLOT_NAMES[m["slot"]], GameData.SIZE_NAMES[int(m["size"])]], 13, PixelArt.SIZE_COLORS[int(m["size"])]))
+	var sq := UI.hbox(8)
+	nv.add_child(sq)
+	sq.add_child(UI.label("%s  •  size %d" % [GameData.SLOT_NAMES[m["slot"]], int(m["size"])], 13, GameData.size_color(int(m["size"]))))
+	sq.add_child(UI.label("quality %s" % m["quality"], 13, GameData.quality_color(String(m["quality"]))))
 	nv.add_child(UI.label(where, 12, UI.TEXT_DIM))
 	left.add_child(HSeparator.new())
 	var lines := GameData.module_summary(mid).split("\n")
@@ -385,12 +388,13 @@ func _build_module_tiles(right: VBoxContainer) -> void:
 		for k in slot_keys:
 			var key: String = k
 			var mid := fit.get_module(key)
-			var caption: String = GameData.slot_label(key) if cat[1] == "core" else (GameData.modules[mid]["name"] if mid != "" else "empty")
+			var mx: int = fit.slot_max(key)
+			var caption: String = ("%s (≤%d)" % [GameData.slot_label(key), mx]) if cat[1] == "core" else (GameData.modules[mid]["name"] if mid != "" else "empty (≤%d)" % mx)
 			var on_slot := func():
 				selected_slot = key
 				selected_store = ""
 				rebuild()
-			var tip := GameData.slot_label(key) + ("" if mid == "" else "\n" + GameData.module_name(mid))
+			var tip := "%s – takes modules up to size %d" % [GameData.slot_label(key), mx] + ("" if mid == "" else "\n" + GameData.module_name(mid))
 			flow.add_child(_tile(mid, caption, key == selected_slot and selected_store == "", on_slot, tip))
 		right.add_child(HSeparator.new())
 	if _docked():
@@ -433,7 +437,7 @@ func _tile(mid: String, caption: String, selected: bool, cb: Callable, tooltip: 
 	b.tooltip_text = tooltip
 	var border := Color(0.25, 0.3, 0.4)
 	if mid != "":
-		border = PixelArt.SIZE_COLORS[int(GameData.modules[mid]["size"])]
+		border = GameData.quality_color(String(GameData.modules[mid]["quality"]))
 	var normal := UI.panel_style(Color(0.08, 0.1, 0.16), border)
 	normal.set_border_width_all(2)
 	var hover := UI.panel_style(Color(0.12, 0.16, 0.24), border.lightened(0.3))
@@ -447,9 +451,13 @@ func _tile(mid: String, caption: String, selected: bool, cb: Callable, tooltip: 
 	b.pressed.connect(cb)
 	box.add_child(b)
 	if mid != "":
-		var sz := UI.label(GameData.SIZE_NAMES[int(GameData.modules[mid]["size"])], 11, PixelArt.SIZE_COLORS[int(GameData.modules[mid]["size"])])
+		var mm: Dictionary = GameData.modules[mid]
+		var sz := UI.label(str(int(mm["size"])), 12, GameData.size_color(int(mm["size"])))
 		sz.position = Vector2(6, 2)
 		b.add_child(sz)
+		var ql := UI.label(String(mm["quality"]), 12, GameData.quality_color(String(mm["quality"])))
+		ql.position = Vector2(60, 2)
+		b.add_child(ql)
 	var l := UI.label(caption, 11, Color(0.8, 0.85, 0.95))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

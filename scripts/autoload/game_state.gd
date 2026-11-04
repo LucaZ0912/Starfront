@@ -115,7 +115,9 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	a.position = (home_station["pos"] as Vector2) + Vector2(400.0, 150.0)
 	add_ship(a)
 	active_uid = a.uid
-	storage[home_station["id"]] = {"t_mining_s": 2, "o_cargo_s": 2, "w_autocannon_s": 1, "t_salvage_s": 1, "t_survey_s": 1, "t_prospector_s": 1, "t_interdictor_s": 1}
+	storage[home_station["id"]] = {}
+	for old in {"t_mining_s": 2, "o_cargo_s": 2, "w_autocannon_s": 1, "t_salvage_s": 1, "t_survey_s": 1, "t_prospector_s": 1, "t_interdictor_s": 1}.keys():
+		storage[home_station["id"]][GameData.legacy_id(old)] = {"t_mining_s": 2, "o_cargo_s": 2}.get(old, 1)
 	if test_system:
 		# test pilot: plenty of credits and a Bastion in the hangar
 		credits = 10000000

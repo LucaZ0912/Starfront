@@ -149,7 +149,17 @@ func _process(delta: float) -> void:
 					both = true
 			check(not both, "no body drawn twice (sky + map)")
 			# System level: a ship parked on an asteroid field must not steal the click
+			# a field well away from other map objects (the layout depends on the seed)
 			var fld: Dictionary = Universe.get_layout(view.system_id)["fields"][0]
+			var best_gap := -1.0
+			for f9 in Universe.get_layout(view.system_id)["fields"]:
+				var gap := INF
+				for t9 in Universe.warp_targets(view.system_id):
+					if t9["id"] != f9["id"]:
+						gap = minf(gap, (t9["pos"] as Vector2).distance_to(f9["pos"]) - float(t9["data"].get("radius", 0.0)))
+				if gap > best_gap:
+					best_gap = gap
+					fld = f9
 			var decoy := view.spawn_npc("pirate_raider_laser", fld["pos"])
 			var near: Vector2 = fld["pos"] + Vector2(4.0, 0.0) / view.camera.zoom.x
 			var pk := view.pick(near)
@@ -344,12 +354,12 @@ func _process(delta: float) -> void:
 			# Package 7: scanners, harvester, ore hold, mining upgrade, active equipment (test ship)
 			if timer > 0.3:
 				var tf := GameState.create_from_preset("std_bastion", "player")
-				tf.modules["tool_0"] = "t_prospector_s"
-				tf.modules["tool_1"] = "t_survey_s"
-				tf.modules["optional_0"] = "o_afterburner_s"
-				tf.modules["optional_1"] = "o_armorrep_s"
-				tf.modules["optional_2"] = "o_orehold_s"
-				tf.modules["optional_3"] = "o_mining_metal_s"
+				tf.modules["tool_0"] = GameData.legacy_id("t_prospector_s")
+				tf.modules["tool_1"] = GameData.legacy_id("t_survey_s")
+				tf.modules["optional_0"] = GameData.legacy_id("o_afterburner_s")
+				tf.modules["optional_1"] = GameData.legacy_id("o_armorrep_s")
+				tf.modules["optional_2"] = GameData.legacy_id("o_orehold_s")
+				tf.modules["optional_3"] = GameData.legacy_id("o_mining_metal_s")
 				tf.mark_dirty()
 				tf.refill()
 				tf.uid = -9001
@@ -405,7 +415,7 @@ func _process(delta: float) -> void:
 				check(Ship.mining_mult({"tool": "harvester"}, "water_ice") == 1.0 and Ship.mining_mult({"tool": "harvester"}, "iron_ore") == 0.0, "ice harvester: full rate on ice, nothing on rock")
 				# warrant scanner on a pirate
 				p7_ship.module_on.clear()
-				p7_ship.fit.modules["tool_1"] = "t_warrant_s"
+				p7_ship.fit.modules["tool_1"] = GameData.legacy_id("t_warrant_s")
 				p7_ship.fit.mark_dirty()
 				p7_pirate = view.spawn_npc("pirate_raider_laser", p7_ship.position + Vector2(400, 0))
 				p7_pirate.fit.stance = "passive"
@@ -496,6 +506,7 @@ func _process(delta: float) -> void:
 				_test_faction_jobs(view)
 				_test_jump_warning(view)
 				_test_codex(view)
+				_test_modules(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -511,9 +522,9 @@ func _process(delta: float) -> void:
 				Commands.execute({"type": "debug_credits", "amount": 1000000})
 				check(GameState.credits == c0 + 1000000, "debug: credits")
 				var home_st: String = Universe.get_layout(Universe.home_system)["stations"][0]["id"]
-				var n0 := int(GameState.storage_of(home_st).get("w_autocannon_s", 0))
-				Commands.execute({"type": "debug_give_module", "module": "w_autocannon_s", "count": 3})
-				check(int(GameState.storage_of(home_st).get("w_autocannon_s", 0)) == n0 + 3, "debug: modules into storage")
+				var n0 := int(GameState.storage_of(home_st).get(GameData.legacy_id("w_autocannon_s"), 0))
+				Commands.execute({"type": "debug_give_module", "module": GameData.legacy_id("w_autocannon_s"), "count": 3})
+				check(int(GameState.storage_of(home_st).get(GameData.legacy_id("w_autocannon_s"), 0)) == n0 + 3, "debug: modules into storage")
 				var ships := GameState.fleet.size()
 				Commands.execute({"type": "debug_give_ship", "hull": "bastion", "fitted": true, "board": false})
 				check(GameState.fleet.size() == ships + 1, "debug: bastion delivered")
@@ -600,6 +611,15 @@ func _process(delta: float) -> void:
 				check(all_home and GameState.current_system == Universe.home_system, "old save: ships moved to the home Trade Hub")
 				check(GameState.storage.size() == 1 and int(GameState.storage[hs_id].get("food", 0)) == 7 and int(GameState.storage[hs_id].get("salvage", 0)) == 4, "old save: station storage merged at home")
 				check(GameState.load_note != "", "old save: player is told about the move")
+				# package 19: saves of an older alpha (save version 1) are refused, Continue skips them
+				var older: Dictionary = SaveGame.read_save("smoketest")
+				older["version"] = 1
+				var fo2 := FileAccess.open(SaveGame.slot_path("smoke_alpha_old"), FileAccess.WRITE)
+				fo2.store_string(var_to_str(older))
+				fo2.close()
+				check(SaveGame.apply_save("smoke_alpha_old").contains("older alpha"), "saves of an older alpha are refused with a note")
+				check(SaveGame.latest_slot() != "smoke_alpha_old", "Continue never offers an older-alpha save")
+				SaveGame.delete_save("smoke_alpha_old")
 				SaveGame.delete_save("smoke_old")
 				SaveGame.delete_save("smoketest")
 				print("[SMOKE] DONE – failures: %d %s" % [failures.size(), str(failures)])
@@ -676,9 +696,11 @@ func _test_station(sp: StationUI) -> void:
 		var rec := Industry.recipe(station, mid)
 		for k in rec["materials"]:
 			hornet.cargo[k] = float(hornet.cargo.get(k, 0.0)) + float(rec["materials"][k])
-		var before := int(GameState.storage_of(sid).get(mid, 0))
+		var store0: Dictionary = GameState.storage_of(sid).duplicate()
 		var err2 := Commands.execute({"type": "build", "module": mid})
-		check(err2 == "" and int(GameState.storage_of(sid).get(mid, 0)) == before + 1, "manufactured %s (%s)" % [mid, err2])
+		var made := Industry.last_built
+		var fam_ok: bool = made.begins_with(mid.left(mid.rfind(":") + 1))
+		check(err2 == "" and fam_ok and int(GameState.storage_of(sid).get(made, 0)) == int(store0.get(made, 0)) + 1, "manufactured %s – quality rolled: %s (%s)" % [mid, made, err2])
 	# Bulletin board (empty hold so courier cargo fits)
 	hornet.cargo.clear()
 	var offers := GameState.offers_for(GameState.current_system, station)
@@ -1062,16 +1084,20 @@ func _test_traffic(view: SystemView) -> void:
 	check(main.hud._contact_rows.size() >= 5, "Contacts tab lists the ships in the system (%d)" % main.hud._contact_rows.size())
 	main.hud._set_ov_tab("overview")
 	var pl: Ship = view.player
-	var old_tool = pl.fit.modules.get("tool_2")
+	var tkey := ""
+	for k8 in pl.fit.slot_keys():
+		if String(k8).begins_with("tool_"):
+			tkey = k8
+	var old_tool = pl.fit.modules.get(tkey)
 	var old_pos: Vector2 = pl.position
-	pl.fit.modules["tool_2"] = "t_interdictor_s"
+	pl.fit.modules[tkey] = GameData.legacy_id("t_interdictor_s")
 	pl.fit.mark_dirty()
 	var runner := view.spawn_npc("civ_shuttle", pl.position + Vector2(60000, 0), "civilian", "assembly")
 	runner.warp = {"from": runner.position, "to": runner.position + Vector2(900000, 0), "t": 0.0, "T": 80.0, "then": {}, "name": "Testpoint"}
 	runner.order = {"type": "warping"}
 	view.select("ship:%d" % runner.fit.uid)
-	var ierr: String = pl.set_module_active("tool_2", true)
-	check(ierr == "" and runner.warp_frozen and view.interdict_running(), "warp interdictor freezes a ship in warp %s" % ierr)
+	var ierr: String = pl.set_module_active(tkey, true)
+	check(ierr == "" and runner.warp_frozen and view.interdict_running(), "warp interdictor freezes a ship in warp %s (%s %s)" % [ierr, pl.fit.hull_id, str(pl.fit.slot_keys())])
 	check(pl.in_warp() and pl.warp.get("hold", false), "the pilot warps straight after the frozen target")
 	pl.warp["t"] = float(pl.warp["T"]) - 1.0
 	var t_before := float(pl.warp["t"])
@@ -1085,9 +1111,9 @@ func _test_traffic(view: SystemView) -> void:
 	pl.velocity = Vector2.ZERO
 	view.on_warp_finished(pl)
 	if old_tool == null:
-		pl.fit.modules.erase("tool_2")
+		pl.fit.modules.erase(tkey)
 	else:
-		pl.fit.modules["tool_2"] = old_tool
+		pl.fit.modules[tkey] = old_tool
 	pl.fit.mark_dirty()
 	runner.queue_free()
 
@@ -1206,7 +1232,7 @@ func _test_reputation(view: SystemView) -> void:
 	check(r.contracts_error("covenant") != "" and r.contracts_error("assembly") == "", "no contracts for hostile pilots")
 	var big := ""
 	for mid in GameData.modules:
-		if int(GameData.modules[mid]["size"]) >= 3:
+		if GameData.is_military_grade(mid):
 			big = mid
 			break
 	var mil := {"type": "military", "faction": "covenant"}
@@ -1243,7 +1269,24 @@ func _shoot_standing(view: SystemView) -> void:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/codex.png")
 	print("[SMOKE] screenshot: Claude outputs/codex.png")
+	sm.open(view, 1)
+	for i in 6:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/modules.png")
 	sm.close()
+	# outfitter of the biggest station here (package 19: families with size · quality buttons)
+	var big_st: Dictionary = view.layout["stations"][0]
+	for st9 in view.layout["stations"]:
+		if int(st9["tier"]) > int(big_st["tier"]):
+			big_st = st9
+	var sp: StationUI = main.station_panel
+	sp.open(big_st, view)
+	sp.open_service("outfitter")
+	for i in 20:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/outfitter.png")
+	print("[SMOKE] screenshot: Claude outputs/modules.png, outfitter.png")
+	sp.close()
 	_shooting = false
 
 
@@ -1397,8 +1440,8 @@ func _test_archetypes(view: SystemView) -> void:
 	victim.fit.refill()
 	var cap0: float = victim.fit.capacitor
 	var sh0: float = victim.fit.shield
-	view.fire_weapon(lc, victim, GameData.modules["w_ion_s"])
-	check(victim.fit.capacitor < cap0 and sh0 - victim.fit.shield > float(GameData.modules["w_ion_s"]["damage"]) * 1.5, "ion disruptor drains capacitor and shields (%.0f → %.0f cap)" % [cap0, victim.fit.capacitor])
+	view.fire_weapon(lc, victim, GameData.modules[GameData.legacy_id("w_ion_s")])
+	check(victim.fit.capacitor < cap0 and sh0 - victim.fit.shield > float(GameData.modules[GameData.legacy_id("w_ion_s")]["damage"]) * 1.5, "ion disruptor drains capacitor and shields (%.0f → %.0f cap)" % [cap0, victim.fit.capacitor])
 	# coward: runs when hurt and calls for help
 	var cw: Ship = by["coward"]
 	var helper: Ship = by["brawler"]
@@ -1533,7 +1576,7 @@ func _test_notorious(view: SystemView) -> void:
 	check(String(rc["raid"]["state"]) == "active", "the raid begins on time")
 	view.notorious_ships.erase(rc["id"])
 	var rl: Ship = view._spawn_captain(rc, false)
-	check(rl.raiding and view.zone_station(rl.position) != null and not rl._protected(view.player) and rl.fit.modules.values().has("w_ion_torpedo"), "5-star captain raids %s right under its guns, armed with an ion torpedo" % raid_target["name"])
+	check(rl.raiding and view.zone_station(rl.position) != null and not rl._protected(view.player) and rl.fit.modules.values().has(GameData.legacy_id("w_ion_torpedo")), "5-star captain raids %s right under its guns, armed with an ion torpedo" % raid_target["name"])
 	view._update_raid(0.05)
 	check(not view.raid_live.is_empty() and is_equal_approx(float(view.raid_live["hp"]), float(view.raid_live["hp_max"])), "the raided station gets a hull bar (%.0f)" % float(view.raid_live.get("hp_max", 0.0)))
 	var rst = view.raid_live["st"]
@@ -2103,3 +2146,67 @@ func _test_codex(view: SystemView) -> void:
 	v.setup(false)
 	check(v._list.get_child_count() > 6, "codex view for the main menu builds")
 	v.queue_free()
+
+
+## Phase 0.5 package 19: modules = family + size + quality, per-slot sizes.
+func _test_modules(view: SystemView) -> void:
+	var MD = preload("res://data/modules.gd")
+	var M: Dictionary = GameData.modules
+	check(M.size() > 1000 and M.has("w_pulse:2:C") and String(M["w_pulse:2:C"]["name"]) == "Pulse Laser 2 · C", "%d modules from %d families (e.g. %s)" % [M.size(), MD.FAMILIES.size(), M["w_pulse:2:C"]["name"]])
+	var wmax := 0
+	for id in M:
+		if M[id]["slot"] == "weapon":
+			wmax = maxi(wmax, int(M[id]["size"]))
+	check(wmax == 4, "weapons only go up to size 4")
+	# size curve and quality factors
+	var d1 := float(M["w_pulse:1:C"]["damage"])
+	var d2 := float(M["w_pulse:2:C"]["damage"])
+	check(absf(d2 / d1 - pow(2.0, 1.3)) < 0.1, "bigger is stronger along the curve (×%.2f)" % (d2 / d1))
+	var m := {}
+	for q in ["F", "E", "D", "C", "B", "A"]:
+		m[q] = M["o_shield:3:" + q]
+	check(float(m["A"]["shield"]) > float(m["B"]["shield"]) and float(m["C"]["shield"]) > float(m["F"]["shield"]), "quality raises performance (F < C < B < A)")
+	var lightest := "C"
+	var heaviest := "C"
+	for q in m:
+		if int(m[q]["mass"]) < int(m[lightest]["mass"]):
+			lightest = q
+		if int(m[q]["mass"]) > int(m[heaviest]["mass"]):
+			heaviest = q
+	check(lightest == "D" and heaviest == "F" and int(m["A"]["mass"]) == int(m["B"]["mass"]), "mass: D lightest, F heaviest, B as heavy as A")
+	check(int(m["A"]["price"]) > int(m["C"]["price"]) and int(m["F"]["price"]) < int(m["C"]["price"]) and float(m["A"]["power"]) > float(m["C"]["power"]), "quality also raises power draw and price")
+	check(int(M["hyperdrive:2:C"]["drive_class"]) == 1 and int(M["hyperdrive:4:C"]["drive_class"]) == 2 and int(M["hyperdrive:6:C"]["drive_class"]) == 3, "hyperdrive size sets the jump class (1–2 / 3–4 / 5–6)")
+	# per-slot sizes, smaller modules fit bigger slots
+	var dfly := GameState.create_from_preset("std_dragonfly", "player")
+	var bas := GameState.create_from_preset("std_bastion", "player")
+	check(dfly.slot_max("weapon_0") == 1 and dfly.slot_max("engine") == 4 and bas.slot_max("weapon_0") == 4 and bas.slot_max("optional_0") == 8, "every slot has its own maximum size")
+	check(dfly.can_fit("weapon_0", "w_pulse:2:C") != "" and dfly.can_fit("weapon_0", "w_pulse:1:A") == "" and bas.can_fit("weapon_0", "w_pulse:1:C") == "", "too large is refused, smaller modules fit bigger slots")
+	var presets_ok := true
+	for pid in GameData.presets:
+		var f := GameState.create_from_preset(pid, "player")
+		for k in f.modules:
+			presets_ok = presets_ok and f.can_fit(k, f.modules[k]) == ""
+	check(presets_ok, "every standard fit and NPC loadout fits its hull")
+	# outfitters: sizes by tier, B from tier 2, A from tier 3 / military, no pirate gear
+	var shop_ok := true
+	var why := ""
+	for s2 in Universe.systems:
+		for st in Universe.get_layout(int(s2["id"]))["stations"]:
+			var tier := int(st["tier"])
+			for id in st["shop"]:
+				var mm: Dictionary = M[id]
+				if int(mm["size"]) > GameData.size_cap(String(mm["slot"]), tier) or (mm["quality"] == "B" and tier < 2) or (mm["quality"] == "A" and tier < 3 and st["type"] != "military") or mm.get("pirate_only", false):
+					shop_ok = false
+					why = "%s at %s" % [id, st["name"]]
+	check(shop_ok, "outfitters stock sizes and qualities by station tier %s" % why)
+	# the former NPC-only hulls: Skiff and Longhaul at shipyards, Carrion Crow only in havens
+	var yards := {}
+	var haven_crow := false
+	for s3 in Universe.systems:
+		var L := Universe.get_layout(int(s3["id"]))
+		for st in L["stations"]:
+			for h in st["shipyard"]:
+				yards[h] = true
+		for hv in L.get("havens", []):
+			haven_crow = haven_crow or "crow" in hv["shipyard"]
+	check(yards.has("shuttle") and yards.has("freighter") and not yards.has("crow") and haven_crow, "Skiff and Longhaul at shipyards, Carrion Crow only in Pirate Havens")

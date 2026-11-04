@@ -11,7 +11,7 @@ extends Node
 
 const SAVE_DIR := "user://saves/"
 const SETTINGS_PATH := "user://settings.cfg"
-const VERSION := 1
+const VERSION := 2               # 2: module system of package 19 – older saves cannot be loaded
 const AUTOSAVE := "autosave"
 const QUICKSAVE := "quicksave"
 
@@ -98,6 +98,9 @@ func apply_save(slot: String) -> String:
 	var data := read_save(slot)
 	if data.is_empty():
 		return "Save '%s' not found or damaged." % slot
+	if int(data.get("version", 1)) < VERSION:
+		# alpha rule: no migrations that would hold back reworks (see Roadmap → Arbeitsweise)
+		return "'%s' was saved by an older alpha (before the module rework) and can no longer be loaded – please start a new game." % slot
 	if int(data["world"].get("version", 1)) < Universe.GALAXY_VERSION:
 		# made with an older (smaller) star cluster: build the current one and move the pilot there
 		Universe.generate(int(data["world"]["seed"]))
@@ -122,14 +125,16 @@ func list_saves() -> Array:
 		var data := read_save(slot)
 		if data.is_empty():
 			continue
-		out.append({"slot": slot, "meta": data["meta"]})
+		out.append({"slot": slot, "meta": data["meta"], "old": int(data.get("version", 1)) < VERSION})
 	out.sort_custom(func(a, b): return float(a["meta"]["unix"]) > float(b["meta"]["unix"]))
 	return out
 
 
 func latest_slot() -> String:
-	var all := list_saves()
-	return "" if all.is_empty() else String(all[0]["slot"])
+	for e in list_saves():
+		if not e.get("old", false):
+			return String(e["slot"])
+	return ""                        # saves of an older alpha cannot be continued
 
 
 func delete_save(slot: String) -> void:

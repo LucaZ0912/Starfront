@@ -67,6 +67,8 @@ func refresh() -> void:
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(info)
 		info.add_child(UI.label(String(m["label"]), 16, UI.NEON_CYAN))
+		if s.get("old", false):
+			info.add_child(UI.label("Older alpha – cannot be loaded any more (module rework of package 19)", 12, UI.BAD))
 		info.add_child(UI.label("%s  •  %s  •  %s" % [m["pilot"], GameData.fmt_credits(int(m["credits"])), m["ship"]], 13))
 		info.add_child(UI.label("%s  •  played %s  •  saved %s" % [m["location"], SaveGame.fmt_time(float(m["play_time"])), String(m["saved_at"]).replace("T", " ").substr(0, 16)], 12, UI.TEXT_DIM))
 		if mode == "load":

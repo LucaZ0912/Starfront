@@ -440,7 +440,7 @@ func _update_raid(delta: float) -> void:
 			spawn_fx(Fx.explosion(aim, 18.0, Color(1.0, 0.55, 0.25)))
 	# ion torpedoes knock turrets offline
 	raid_live["ion_t"] = float(raid_live["ion_t"]) - delta
-	if float(raid_live["ion_t"]) <= 0.0 and lead.fit.modules.values().has("w_ion_torpedo") and not lead.in_warp():
+	if float(raid_live["ion_t"]) <= 0.0 and lead.fit.modules.values().has(GameData.legacy_id("w_ion_torpedo")) and not lead.in_warp():
 		raid_live["ion_t"] = ION_EVERY
 		ion_strike()
 	if float(raid_live["hp"]) <= 0.0:
@@ -594,7 +594,7 @@ func _spawn_captain(c: Dictionary, arriving: bool) -> Ship:
 	lead.toughness = NotoriousData.toughness(c)
 	lead.raiding = raid_st != null
 	if int(c["stars"]) >= 5:
-		lead.fit.modules["weapon_0"] = "w_ion_torpedo"
+		lead.fit.modules["weapon_0"] = GameData.legacy_id("w_ion_torpedo")
 		lead.fit.mark_dirty()
 	lead.fit.ship_name = NotoriousData.title(c)
 	lead.paint = "notorious_%d" % int(c["paint"])

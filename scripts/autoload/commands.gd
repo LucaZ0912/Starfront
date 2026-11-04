@@ -488,7 +488,7 @@ func _c_build(c: Dictionary) -> String:
 	var mid: String = c["module"]
 	var err := Industry.build(_fit(), docked_station(), mid)
 	if err == "":
-		GameState.log_msg("Molten Lotus fabricated: %s (in station storage)." % GameData.module_name(mid), GameState.COL_GOOD)
+		GameState.log_msg("Molten Lotus fabricated: %s (in station storage)." % GameData.module_name(Industry.last_built), GameState.COL_GOOD)
 	return err
 
 

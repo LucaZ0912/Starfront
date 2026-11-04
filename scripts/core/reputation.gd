@@ -193,10 +193,11 @@ func contract_bonus(f: String) -> float:
 	return float(CONTRACT_BONUS.get(tier_id(f), 0.0)) if f != "" else 0.0
 
 
-## Military gear: large (L) modules at Military Outposts are sold only to Friendly pilots.
+## Military gear: the biggest modules (weapons 4, optional 6+, core 8+) at Military Outposts are sold
+## only to Friendly pilots.
 func module_error(st: Dictionary, mid: String) -> String:
 	var f := String(st.get("faction", ""))
-	if f == "" or String(st.get("type", "")) != "military" or int(GameData.modules[mid]["size"]) < 3:
+	if f == "" or String(st.get("type", "")) != "military" or not GameData.is_military_grade(mid):
 		return ""
 	if at_least(f, "friendly"):
 		return ""

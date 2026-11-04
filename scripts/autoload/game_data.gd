@@ -38,14 +38,90 @@ const TOOL_NAMES := {
 const MODULE_ITEM_VOLUME := 5.0
 
 var hulls: Dictionary = HullData.HULLS
-var modules: Dictionary = ModuleData.MODULES
+## Every module family in every size and quality (phase 0.5 package 19, data/modules.gd).
+var modules: Dictionary = ModuleData.build_all()
 var commodities: Dictionary = CommodityData.COMMODITIES
 const CLASS_NAMES := CommodityData.CLASS_NAMES
 ## station types incl. the Pirate Haven (dockable with pirate standing, package 12)
 var station_types: Dictionary = CommodityData.STATION_TYPES.merged({"pirate_haven": CommodityData.HAVEN_TYPE})
-var presets: Dictionary = PresetData.PRESETS
+## Presets with their modules converted to the family/size/quality system (sizes fit the hull's slots).
+var presets: Dictionary = _convert_presets()
 var corps: Dictionary = CorpData.CORPS
 var services: Array = ServiceData.SERVICES
+
+
+static func _convert_presets() -> Dictionary:
+	var out: Dictionary = PresetData.PRESETS.duplicate(true)
+	for pid in out:
+		var p: Dictionary = out[pid]
+		var h: Dictionary = HullData.HULLS[p["hull"]]
+		var conv := {}
+		for key in p["modules"]:
+			conv[key] = ModuleData.legacy(String(p["modules"][key]), slot_max_of(h, key))
+		p["modules"] = conv
+	return out
+
+
+## Maximum module size of slot `key` ("engine", "weapon_1" …) on hull `h` (0 = no such slot).
+static func slot_max_of(h: Dictionary, key: String) -> int:
+	var ss: Dictionary = h.get("slot_sizes", {})
+	var idx := key.find("_")
+	if idx < 0:
+		return int(ss.get(key, 0))
+	var t := key.substr(0, idx)
+	var n := int(key.substr(idx + 1))
+	var lst: Array = ss.get(t, [])
+	return int(lst[n]) if n < lst.size() else 0
+
+
+## Module id of an old S/M/L module (presets, start storage, tests).
+func legacy_id(old_id: String, max_size: int = 99, quality: String = "C") -> String:
+	return ModuleData.legacy(old_id, max_size, quality)
+
+
+## Largest module size a station of `tier` sells or builds for a slot type.
+static func size_cap(slot: String, tier: int) -> int:
+	var t := clampi(tier, 1, 3) - 1
+	match slot:
+		"weapon", "tool":
+			return [2, 3, 4][t]
+		"optional":
+			return [3, 6, 8][t]
+	return [4, 7, 10][t]
+
+
+## "Large" modules need exotic materials to build (weapons/tools 3+, optional 5+, core 7+).
+func is_large(id: String) -> bool:
+	var m: Dictionary = modules[id]
+	match String(m["slot"]):
+		"weapon", "tool":
+			return int(m["size"]) >= 3
+		"optional":
+			return int(m["size"]) >= 5
+	return int(m["size"]) >= 7
+
+
+## Military-grade gear (package 12: Friendly standing needed at Military Outposts).
+func is_military_grade(id: String) -> bool:
+	var m: Dictionary = modules[id]
+	match String(m["slot"]):
+		"weapon":
+			return int(m["size"]) >= 4
+		"tool":
+			return false
+		"optional":
+			return int(m["size"]) >= 6
+	return int(m["size"]) >= 8
+
+
+## Colour for a module size 1–10 (tiles, labels).
+static func size_color(size: int) -> Color:
+	var t := clampf((size - 1) / 9.0, 0.0, 1.0)
+	return Color(0.55, 0.65, 0.75).lerp(Color(0.4, 0.75, 1.0), minf(t * 2.0, 1.0)).lerp(Color(1.0, 0.7, 0.3), maxf(t * 2.0 - 1.0, 0.0))
+
+
+static func quality_color(q: String) -> Color:
+	return ModuleData.QUALITY_COLORS.get(q, Color.WHITE)
 
 
 func slot_label(key: String) -> String:
@@ -60,8 +136,7 @@ func slot_label(key: String) -> String:
 func module_name(id: String) -> String:
 	if not modules.has(id):
 		return "?"
-	var m: Dictionary = modules[id]
-	return "%s [%s]" % [m["name"], SIZE_NAMES[int(m["size"])]]
+	return String(modules[id]["name"])
 
 
 ## Cargo items: commodity ids or "mod:<module_id>" for found modules.
@@ -110,7 +185,7 @@ func corp(corp_id: String) -> Dictionary:
 func module_summary(id: String) -> String:
 	var m: Dictionary = modules[id]
 	var parts: Array = []
-	parts.append("%s – %s (size %s)" % [m["name"], SLOT_NAMES[m["slot"]], SIZE_NAMES[int(m["size"])]])
+	parts.append("%s – %s, size %d, quality %s" % [m["base_name"], SLOT_NAMES[m["slot"]], int(m["size"]), m["quality"]])
 	if m.has("damage_type"):
 		parts.append("Damage type: " + DAMAGE_NAMES[m["damage_type"]])
 	if m.has("tool"):

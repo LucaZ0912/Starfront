@@ -1,4 +1,5 @@
 extends Node
+const ModuleData = preload("res://data/modules.gd")
 ## The galaxy: star systems, hyperspace routes and system layouts.
 ## Every system is one big continuous space (SYSTEM_RADIUS) at a "realistic" scale.
 ## Systems are only connected via hyperspace routes (gates). Every route has a class (1-3) –
@@ -1007,7 +1008,7 @@ func _haven_services(hv: Dictionary, id: int) -> void:
 	hv["zone"] = 0.0
 	hv["market"] = _make_market("pirate_haven", rng)
 	hv["shop"] = _make_shop("pirate_haven", int(hv["tier"]), rng)
-	hv["shipyard"] = []
+	hv["shipyard"] = ["crow"]       # the pirates' own patched-together raider (package 19)
 
 
 ## Colossal asteroids (phase 0.5 package 5): rocks up to ~2,800 km long in the foreground of
@@ -1282,19 +1283,37 @@ func _make_market(type: String, rng: RandomNumberGenerator) -> Dictionary:
 	return market
 
 
+## Outfitter stock (package 19): module families of the station's speciality (others rarely), in
+## the sizes the station tier allows, each size in a few qualities – F–C everywhere, B from tier 2,
+## A from tier 3 or at military outposts. Pirate gear only in havens; ion torpedoes never.
 func _make_shop(type: String, tier: int, rng: RandomNumberGenerator) -> Array:
 	var t: Dictionary = GameData.station_types[type]
 	var shop: Array = []
-	var mods: Dictionary = GameData.modules
-	for mid in mods:
-		var m: Dictionary = mods[mid]
-		if int(m["size"]) > tier:
+	for fam in ModuleData.FAMILIES:
+		var a: Dictionary = ModuleData.ANCHORS[ModuleData.FAMILIES[fam]["anchor"]]
+		if a.get("notorious_only", false) or (a.get("pirate_only", false) and type != "pirate_haven"):
 			continue
-		if m.get("notorious_only", false) or (m.get("pirate_only", false) and type != "pirate_haven"):
-			continue             # ion weapons etc.: pirate gear (package 14)
-		var chance := 0.9 if m["slot"] in t["shop"] else 0.12
-		if rng.randf() < chance:
-			shop.append(mid)
+		var chance := 0.9 if a["slot"] in t["shop"] else 0.12
+		if rng.randf() > chance:
+			continue
+		var r: Array = ModuleData.FAMILIES[fam]["sizes"]
+		var cap := GameData.size_cap(String(a["slot"]), tier)
+		for size in range(int(r[0]), mini(int(r[1]), cap) + 1):
+			if rng.randf() > 0.75:
+				continue          # not every size is in stock
+			var qs: Array = ["C"]
+			if rng.randf() < 0.5:
+				qs.append("D")
+			if rng.randf() < 0.3:
+				qs.append("E")
+			if rng.randf() < 0.2:
+				qs.append("F")
+			if tier >= 2 and rng.randf() < 0.4:
+				qs.append("B")
+			if (tier >= 3 or type == "military") and rng.randf() < 0.3:
+				qs.append("A")
+			for q in qs:
+				shop.append(ModuleData.id_of(fam, size, q))
 	return shop
 
 
@@ -1305,6 +1324,6 @@ func _make_shipyard(type: String, tier: int) -> Array:
 	var yard: Array = []
 	for hid in GameData.hulls:
 		var h: Dictionary = GameData.hulls[hid]
-		if h["buyable"] and int(h["size"]) <= tier:
+		if h["buyable"] and int(h["size"]) <= tier and not h.get("haven_only", false):
 			yard.append(hid)
 	return yard

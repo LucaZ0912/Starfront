@@ -100,16 +100,33 @@ static func refine(fit: ShipFitting, station: Dictionary, ore: String) -> String
 
 # ---------------------------------------------------------------- Manufacturing
 
+## Fabrication quality is never quite certain: mostly C, sometimes better or worse.
+const BUILD_QUALITY := [["F", 0.03], ["E", 0.07], ["D", 0.18], ["C", 0.45], ["B", 0.20], ["A", 0.07]]
+static var last_built := ""
+
+
+static func roll_quality(module_id: String) -> String:
+	var m: Dictionary = GameData.modules[module_id]
+	var r := randf()
+	for e in BUILD_QUALITY:
+		r -= float(e[1])
+		if r <= 0.0:
+			return "%s:%d:%s" % [m["family"], int(m["size"]), e[0]]
+	return module_id
+
+
 static func can_build_here(station: Dictionary, module_id: String) -> bool:
 	var m: Dictionary = GameData.modules[module_id]
 	var slots: Array = station_type(station).get("manufacturing", [])
-	return m["slot"] in slots and int(m["size"]) <= int(station["tier"])
+	return m["slot"] in slots and int(m["size"]) <= GameData.size_cap(String(m["slot"]), int(station["tier"])) \
+		and not m.get("pirate_only", false) and not m.get("notorious_only", false)
 
 
 static func buildable(station: Dictionary) -> Array:
 	var out: Array = []
 	for mid in GameData.modules:
-		if can_build_here(station, mid) and not GameData.modules[mid].get("pirate_only", false):
+		# the list shows quality C; the finished module's quality is rolled (see build)
+		if String(GameData.modules[mid]["quality"]) == "C" and can_build_here(station, mid):
 			out.append(mid)
 	return out
 
@@ -126,7 +143,7 @@ static func recipe(station: Dictionary, module_id: String) -> Dictionary:
 	for k in mix:
 		mats[k] = maxi(1, int(ceil(units * float(mix[k]) / total_w)))
 	# Large modules need exotic material
-	if int(m["size"]) >= 3:
+	if GameData.is_large(module_id):
 		mats["xeno_lattice"] = int(mats.get("xeno_lattice", 0)) + 2
 		var extra: Dictionary = LARGE_EXTRA.get(m["slot"], {})
 		for k in extra:
@@ -162,6 +179,8 @@ static func build(fit: ShipFitting, station: Dictionary, module_id: String) -> S
 		return "Not enough credits."
 	for k in rec["materials"]:
 		fit.remove_cargo(k, float(rec["materials"][k]))
-	GameState.storage_add(station["id"], module_id)
+	var made := roll_quality(module_id)
+	GameState.storage_add(station["id"], made)
+	last_built = made
 	GameState.stats["built"] = int(GameState.stats.get("built", 0)) + 1
 	return ""

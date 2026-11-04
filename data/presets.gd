@@ -141,4 +141,17 @@ const PRESETS := {
 		"weapon_0": "w_lance_l", "weapon_1": "w_massdriver_l", "weapon_2": "w_beam_m", "weapon_3": "w_railgun_m",
 		"weapon_4": "w_autocannon_s", "weapon_5": "w_autocannon_s",
 		"optional_0": "o_shield_l", "optional_1": "o_armor_m", "optional_2": "o_targeting_s"}},
+
+	# standard fits of the hulls that became buyable in package 19
+	"std_shuttle": {"hull": "shuttle", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_basic_s", "reactor": "rea_fission_s",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s", "optional_0": "o_shield_s"}},
+	"std_freighter": {"hull": "freighter", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c2_m", "sensors": "sen_basic_s",
+		"weapon_0": "w_autocannon_s", "optional_0": "o_cargo_l", "optional_1": "o_shield_l", "optional_2": "o_armor_m"}},
+	"std_crow": {"hull": "crow", "modules": {
+		"hull": "hull_std_s", "engine": "eng_chem_s", "distributor": "dist_basic_s", "reactor": "rea_fission_s",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse_s", "weapon_1": "w_pulse_s", "optional_0": "o_shield_s"}},
 }

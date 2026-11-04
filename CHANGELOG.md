@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.19.13 – 2026-11-04
+
+**Package 19 – module size & quality system** (first package of Teil 4). 379 smoke-test checks pass.
+**Old saves cannot be loaded any more** (save version 2) – please start a new game.
+- Modules are family + size + quality ("Pulse Laser 2 · C"): 53 families, about 1,700 modules generated
+  from size curves and quality factors (D lightest, F heaviest, B as heavy as A).
+- Every hull slot has its own maximum size; smaller modules fit bigger slots; hyperdrive size sets the
+  jump class.
+- Outfitters stock sizes and qualities by station tier, manufacturing rolls the quality, military-grade
+  gear is the biggest modules.
+- Skiff and Longhaul are sold at shipyards, the Carrion Crow in Pirate Havens.
+- Modules tab shows slot maxima and module size/quality; outfitter grouped by family.
+
 ## alpha 0.3.18.12 – 2026-11-04
 
 Planning only: slot layouts of all nine current hulls agreed (per-slot sizes, core slots), hyperdrive
