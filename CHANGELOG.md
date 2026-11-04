@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.3.18.12 – 2026-11-04
+
+Planning only: slot layouts of all nine current hulls agreed (per-slot sizes, core slots), hyperdrive
+size ↔ jump class, Earthworks membership; the NPC-only hulls become buyable (Carrion Crow in Pirate
+Havens, Skiff, Longhaul); patrols will fly their own faction's ships once the state manufacturers exist.
+
 ## alpha 0.3.18.11 – 2026-11-04
 
 Planning only: the module system design for package 19 is agreed and recorded in the roadmap –

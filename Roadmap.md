@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.11. Stand 4. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.12. Stand 4. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -566,6 +566,27 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 - **Bezug:** F–A kaufbar – Ausrüster führen F–C überall, B ab Stationsstufe 2, A ab Stufe 3 oder an Militärposten; Beute und Fertigung liefern zufällige Qualitäten; S/S+ nur im Endgame.
 - **Masse** wirkt auf Unterlicht- und Warpgeschwindigkeit (heute schon über Schub ÷ Masse; Ausbau beim Schiffsumbau).
 - **Schiffsplätze:** jedes Schiff hat eine Liste einzelner Plätze mit Typ und Maximalgröße – auch die Kernplätze (z. B. Triebwerk 4 bei der Dragonfly, 5 bei der Hornet). Die Plätze der Earthworks-Rümpfe werden Schiff für Schiff gemeinsam festgelegt.
+- **Plätze der heutigen Rümpfe (abgestimmt, Feinschliff im Balancing):** W = Waffe, T = Werkzeug, O = Optional, Zahl = Maximalgröße; Kern = Panzerung / Triebwerk / Reaktor / Verteiler / Tank / Hyperantrieb / Sensoren.
+
+| Schiff | Rolle | Waffen | Werkzeuge | Optional | Kern | Profil |
+| --- | --- | --- | --- | --- | --- | --- |
+| Dragonfly (S) | Scout | W1 W1 | T2 T2 T1 | O2 O2 O1 | 2/4/3/3/3/2/4 | schwache Waffen, starke Sensoren, viel Werkzeug |
+| Hornet (S) | Jäger | W2 W2 W1 | T1 | O2 O2 O1 | 3/5/4/4/2/2/3 | bester S-Kämpfer, starkes Triebwerk, kleiner Tank |
+| Mule (M) | Frachter | W2 W1 | T2 T1 | O6 O5 O5 O4 O3 O3 | 5/5/4/4/6/4/3 | große Optional-Plätze für Fracht |
+| Drillhead (M) | Bergbau | W2 W1 | T3 T3 T2 T2 | O4 O4 O3 O3 | 4/4/5/4/4/3/5 | viele große Werkzeuge, gute Sensoren |
+| Warden (M) | Kampffregatte | W3 W3 W2 W2 | T2 T1 | O5 O4 O4 O3 O2 | 6/6/6/6/4/4/5 | ausgewogener Kämpfer |
+| Bastion (L) | Schwerer Kreuzer | W4 W4 W3 W3 W2 W2 | T3 T3 T2 T2 | O8 O7 O6 O6 O5 O4 | 9/8/9/9/7/6/7 | einziger Platz für 4er-Waffen |
+| Carrion Crow (S) | Piraten-Raider | W2 W1 | T1 | O2 O1 | 3/4/3/3/2/2/2 | billig zusammengeflickt |
+| Skiff (S) | Shuttle | – | – | O2 | 1/3/2/2/2/1/1 | schnell, wendig, unbewaffnet |
+| Longhaul (L) | Massenfrachter | W2 | – | O9 O8 O8 O7 | 7/8/6/5/9/5/3 | riesige Fracht, träge |
+
+- **Hyperantrieb ↔ Sprungklasse:** Größe 1–2 = Klasse 1, 3–4 = Klasse 2, 5–6 = Klasse 3.
+- **Manufaktur:** Dragonfly, Hornet, Mule, Drillhead, Warden, Bastion, Skiff und Longhaul gehören zu **Earthworks** (alte Erd-Designs); der **Carrion Crow** wird Teil der Piraten-Werften („Flickwerk“).
+- **Bisher nur von NPCs geflogene Schiffe (entschieden):**
+  - **Carrion Crow:** bleibt das Standardschiff der Piraten; **kaufbar in Pirate Havens** mit Piraten-Ruf (Friendly).
+  - **Skiff:** **kaufbar** – günstig, schnell, wendig, unbewaffnet, kleiner Laderaum; später Grundlage für Passagier-Aufträge.
+  - **Longhaul:** **kaufbar**, teuer und träge – spätes Handelsschiff mit riesigem Laderaum, kaum Waffen, braucht selbst Begleitschutz.
+  - **Patrouillen:** sobald die staatlichen Manufakturen da sind (Paket 24/25), fliegen sie die **Schiffe ihrer eigenen Fraktion**; bis dahin Earthworks-Rümpfe in Fraktionslackierung.
 - **Umfang Paket 19:** neues Datenmodell, Plätze der Earthworks- und NPC-Rümpfe, Ausrüster/Fertigung/Beute/NPC-Loadouts/Startschiff umgestellt, neue Spielstand-Version (alte Stände mit Hinweis abgelehnt). Neue Modultypen erst in Paket 20.
 
 ### Neue Modultypen und Waffen (Paket 20)
