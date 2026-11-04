@@ -594,8 +594,14 @@ func _update_patrols(dt: float) -> void:
 		if alive.is_empty():
 			patrols.erase(g)
 			_patrol_wait[g["gov"]] = PATROL_RESPAWN
+			if g.has("mission"):
+				for m9 in GameState.missions.duplicate():
+					if m9["id"] == g["mission"]:
+						GameState.fail_mission(m9, "the patrol was destroyed")
 			continue
 		var leader: Ship = alive[0]
+		if g.has("mission"):
+			_mark_group(g, alive, leader)
 		# reinforcements and task forces leave again after a while
 		if g.has("leave_at") and GameState.play_time >= float(g["leave_at"]):
 			for s9 in alive:
@@ -640,6 +646,12 @@ func _update_patrols(dt: float) -> void:
 				continue
 			g.erase("respond")
 			g["on_beat"] = false
+		# a mission patrol first waits at its meeting point for the pilot (package 17)
+		if g.get("gather", false):
+			if leader.is_docked() or (_idle(leader) and leader.position.distance_to(g["gather_pos"]) > 300.0):
+				leader.set_order({"type": "move", "pos": g["gather_pos"]})
+			_check_patrol_gather(g, leader)
+			continue
 		# the leader tours the waypoints. At each one it flies a slow beat – round stations and
 		# gates (never across them), through asteroid fields – then warps on. Reinforcements
 		# start docked and leave at once.
@@ -1153,20 +1165,25 @@ func _update_faction_jobs(dt: float) -> void:
 			continue
 		match String(m["type"]):
 			"patrol":
-				if pl == null or not is_instance_valid(pl) or pl.is_docked():
+				var mg: Dictionary = {}
+				for g0 in patrols:
+					if g0.get("mission", "") == m["id"]:
+						mg = g0
+				if mg.is_empty():
+					spawn_mission_patrol(m)  # contract groups ignore the NPC limit
+					continue
+				if pl == null or not is_instance_valid(pl) or pl.is_docked() or mg.get("gather", false):
 					continue
 				var near := false
-				for g in patrols:
-					if g["gov"] != m["faction"]:
-						continue
-					for ps in g["ships"]:
-						near = near or (_alive(ps) and ps.position.distance_to(pl.position) <= Missions.PATROL_RANGE)
+				for ps in mg["ships"]:
+					near = near or (_alive(ps) and ps.position.distance_to(pl.position) <= Missions.PATROL_RANGE)
 				if near:
 					m["progress_t"] = float(m["progress_t"]) + dt
 					if float(m["progress_t"]) >= float(m["amount"]):
 						m["progress"] = 1
 						GameState.log_msg("Patrol flown with the %s – report back to the issuing station." % FactionData.short_of(String(m["faction"])), GameState.COL_GOOD)
 						GameState.missions_changed.emit()
+						release_mission_patrol(mg)
 			"smuggler":
 				var have := false
 				for e2 in smugglers:
@@ -1360,3 +1377,91 @@ func _announce_warp(e: Dictionary, leader: Ship) -> void:
 		return
 	e["warp_said"] = where
 	GameState.news.radio("Convoy aligning for warp to %s – stay close!" % where, sid)
+
+
+# ---------------------------------------------------------------- Mission patrols (package 17)
+# A patrol contract gets its own patrol group: it starts at the station (rolling out of its bays)
+# or at a named place, waits there for the pilot – following it, or 3 s within 1,000 km – and then
+# flies its rounds. Marked green with a PATROL LEAD; the pilot may follow it, also in warp.
+
+func spawn_mission_patrol(m: Dictionary) -> Dictionary:
+	var gov := String(m["faction"])
+	var meet: Dictionary = m.get("meet", {})
+	var mid := String(meet.get("id", ""))
+	var st = view.stations.get(mid)
+	var gp := Vector2.ZERO
+	var g := {"gov": gov, "ships": [], "wps": _waypoints(), "wp": 0, "dwell": 0.0, "target": {}, "mission": m["id"],
+		"gather": true, "gather_t": 0.0}
+	var presets := _patrol_presets()
+	if presets.size() < 2:
+		presets.append("patrol_light")
+	if st != null and is_instance_valid(st):
+		var dir: Vector2 = (-st.position).normalized() if st.position.length() > 1.0 else Vector2.RIGHT
+		gp = st.position + dir * (float(st.radius) + 2500.0)
+	else:
+		var wt := Universe.warp_target(sid, mid)
+		gp = (wt.get("pos", Vector2.ZERO) as Vector2) + Vector2.from_angle(randf() * TAU) * 2500.0
+	g["gather_pos"] = gp
+	for i in presets.size():
+		var hull_name: String = GameData.hulls[GameData.presets[presets[i]]["hull"]]["name"]
+		var nm := "%s %s %s" % [FactionData.FACTIONS[gov]["pilot"] if FactionData.FACTIONS.has(gov) else "Patrol", hull_name, _reg()]
+		var s9: Ship
+		if st != null and is_instance_valid(st):
+			s9 = _spawn_docked(presets[i], mid, "patrol", gov, nm, true)
+		else:
+			s9 = _spawn(presets[i], gp + Vector2.from_angle(i * 2.1) * (300.0 + i * 250.0), "patrol", gov, nm)
+			view.spawn_fx(Fx.flash(s9.position, Color(0.75, 0.45, 1.0), s9.radius * 4.0))
+		g["ships"].append(s9)
+	patrols.append(g)
+	_mark_group(g, g["ships"], g["ships"][0])
+	return g
+
+
+func _mark_group(g: Dictionary, ships: Array, leader) -> void:
+	for s9 in ships:
+		if _alive(s9):
+			s9.escort_mark = g.has("mission")
+			s9.escort_kind = "patrol"
+			s9.convoy_lead = s9 == leader
+
+
+func _check_patrol_gather(g: Dictionary, leader: Ship) -> void:
+	var pl = view.player
+	if pl == null or not is_instance_valid(pl) or pl.is_docked() or leader.is_docked():
+		g["gather_t"] = 0.0
+		return
+	var with_it: bool = pl.position.distance_to(leader.position) <= GATHER_RANGE
+	if String(pl.order.get("type", "")) == "follow" and pl.order.get("node") in g["ships"] and pl.position.distance_to(leader.position) <= GATHER_FOLLOW_RANGE:
+		with_it = true
+	if not with_it:
+		g["gather_t"] = 0.0
+		return
+	g["gather_t"] = float(g["gather_t"]) + 0.5
+	if float(g["gather_t"]) < GATHER_TIME:
+		return
+	g["gather"] = false
+	g["on_beat"] = false
+	GameState.news.radio("Patrol departing – stay close!", sid)
+	GameState.log_msg("The %s patrol sets off on its rounds – stay with it." % FactionData.short_of(String(g["gov"])), GameState.COL_GOOD)
+	_next_waypoint(g, leader)
+
+
+## The contract is done: the group drops its markers and leaves after a while.
+func release_mission_patrol(g: Dictionary) -> void:
+	g.erase("mission")
+	g["leave_at"] = GameState.play_time + 120.0
+	for s9 in g["ships"]:
+		if _alive(s9):
+			s9.escort_mark = false
+			s9.convoy_lead = false
+
+
+## Lead ship of the group (live convoy or mission patrol) that `s` belongs to (null = none).
+func group_leader(s):
+	var c = convoy_leader(s)
+	if c != null:
+		return c
+	for g in patrols:
+		if g.has("mission") and s in g["ships"] and not (g["ships"] as Array).is_empty() and _alive(g["ships"][0]):
+			return g["ships"][0]
+	return null

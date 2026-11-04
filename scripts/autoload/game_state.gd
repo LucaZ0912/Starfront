@@ -566,6 +566,8 @@ func accept_mission(m: Dictionary) -> String:
 			log_msg("The convoy gathers outside %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km) – it sets off once you are with it." % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station"), COL_INFO)
 		"smuggler":
 			m["expires"] = play_time + Missions.SMUGGLER_TIME
+		"patrol":
+			log_msg("The %s patrol waits for you at %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km) – it sets off once you are with it." % [FactionData.short_of(String(m["faction"])), m.get("meet", {}).get("name", "the station")], COL_INFO)
 	var fkey: String = String(m["giver"]) + "#f"
 	if offers.has(fkey):
 		offers[fkey].erase(m)

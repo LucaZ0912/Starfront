@@ -1477,7 +1477,18 @@ func _test_notorious(view: SystemView) -> void:
 	var visited_safe := false
 	var saved_caps: Array = N.captains
 	N.captains = [probe]
-	for k in 200:
+	# start next to a safer system that is not a home system, so the walk can reach one
+	for s7 in Universe.systems:
+		var sid7 := int(s7["id"])
+		if NotoriousData.is_home(sid7) or not NotoriousData.lawless(sid7):
+			continue
+		var ok7 := false
+		for nb7 in s7["links"]:
+			ok7 = ok7 or (not NotoriousData.lawless(int(nb7)) and not NotoriousData.is_home(int(nb7)))
+		if ok7:
+			probe["system"] = sid7
+			break
+	for k in 1000:
 		probe["next_move"] = 0.0
 		N.update(-1)
 		never_home = never_home and not NotoriousData.is_home(int(probe["system"]))
@@ -1903,23 +1914,60 @@ func _test_faction_jobs(view: SystemView) -> void:
 			var p0: int = view.pirate_count()
 			tr.ambush(e9)
 			check(view.pirate_count() >= p0 + 2, "pirates ambush the escorted convoy")
-	# patrol: flying close to a patrol of the faction
+	# patrol: its own patrol group meets the pilot (station or named place), waits, then flies its rounds
 	if by.has("patrol"):
 		var mp: Dictionary = by["patrol"]
+		mp["meet"] = {"id": String(st["id"]), "name": String(st["name"])}
 		GameState.accept_mission(mp)
 		var tr2 = view.traffic
-		var ps = null
+		tr2._update_faction_jobs(0.5)
+		var mg: Dictionary = {}
 		for g in tr2.patrols:
-			if g["gov"] == f and not (g["ships"] as Array).is_empty() and is_instance_valid(g["ships"][0]):
-				ps = g["ships"][0]
-		if ps != null:
-			var old: Vector2 = view.player.position
-			view.player.position = ps.position + Vector2(2000, 0)
+			if g.get("mission", "") == mp["id"]:
+				mg = g
+		check(not mg.is_empty() and mg.get("gather", false), "patrol contract: its own patrol group waits at the meeting point")
+		if not mg.is_empty():
+			var plead: Ship = mg["ships"][0]
+			var marked := true
+			var from_st := true
+			var stn = view.stations.get(String(st["id"]))
+			for s8 in mg["ships"]:
+				marked = marked and s8.escort_mark and s8.escort_kind == "patrol"
+				from_st = from_st and (s8.is_docked() or String(s8.order.get("type", "")) == "undocking" or s8.position.distance_to(stn.position) < 5000.0)
+			check(marked and plead.convoy_lead, "the patrol is marked green, with a PATROL LEAD")
+			check(from_st, "a patrol meeting at the station leaves from it")
+			var wing = mg["ships"][mg["ships"].size() - 1]
+			var oldp: Vector2 = view.player.position
+			view.player.warp = {}
+			view.player.warp_disrupted = 0.0
+			Commands.execute({"type": "follow", "id": "ship:%d" % wing.fit.uid})
+			check(String(view.player.order.get("type", "")) == "follow" and view.player.order.get("node") == plead, "Follow works for the patrol (any ship → its lead)")
+			plead.fit.docked_at = ""
+			plead.position = mg["gather_pos"]
+			view.player.position = plead.position + Vector2(4000, 0)
+			mp["progress_t"] = 0.0
+			tr2._update_faction_jobs(10.0)
+			check(is_zero_approx(float(mp["progress_t"])), "waiting at the meeting point does not count yet")
+			for k8 in 7:
+				tr2._check_patrol_gather(mg, plead)
+			check(not mg["gather"] and NW_last_text().contains("Patrol departing"), "the patrol sets off once the pilot follows it")
+			view.player.position = plead.position + Vector2(2000, 0)
 			tr2._update_faction_jobs(Missions.PATROL_TIME + 1.0)
-			check(int(mp["progress"]) == 1, "patrol: flying with a %s patrol completes it" % FactionData.short_of(f))
-			view.player.position = old
-		else:
-			check(true, "patrol: no %s patrol in this system right now (skipped)" % FactionData.short_of(f))
+			check(int(mp["progress"]) == 1 and not plead.escort_mark and mg.has("leave_at"), "flying its rounds completes the contract – the patrol is released")
+			view.player.position = oldp
+			view.player.order = {"type": "idle"}
+		# a patrol meeting at a named place appears there
+		var mp2: Dictionary = Missions.generate_faction(sys, st, rng)
+		while mp2["type"] != "patrol":
+			mp2 = Missions.generate_faction(sys, st, rng)
+		var gate0: Dictionary = view.layout["gates"][0] if not view.layout["gates"].is_empty() else {}
+		if not gate0.is_empty():
+			mp2["meet"] = {"id": String(gate0["id"]), "name": String(gate0["name"])}
+			var g2: Dictionary = tr2.spawn_mission_patrol(mp2)
+			check((g2["gather_pos"] as Vector2).distance_to(gate0["pos"]) < 4000.0 and (g2["ships"][0] as Ship).position.distance_to(gate0["pos"]) < 6000.0, "a patrol meeting at %s waits there" % gate0["name"])
+			for s9 in g2["ships"]:
+				s9.queue_free()
+			tr2.patrols.erase(g2)
 		GameState.missions.erase(mp)
 	# intercept: the smuggler appears and runs; destroying it completes the contract
 	if by.has("smuggler"):

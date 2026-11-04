@@ -161,11 +161,21 @@ static func generate_faction(system_id: int, station: Dictionary, rng: RandomNum
 			"title": "Intercept: smuggler in %s" % Universe.systems[tsys]["name"],
 			"desc": "A Hollow Crown runner is expected in %s within %d minutes. Find the unregistered hauler and destroy it before it reaches a gate – a Warp Interdictor helps." % [Universe.systems[tsys]["name"], int(SMUGGLER_TIME / 60.0)]}, true)
 		return m
-	# patrol
-	m.merge({"type": "patrol", "amount": int(PATROL_TIME), "progress_t": 0.0,
+	# patrol: its own patrol group meets the pilot at this station or at a named place in the system
+	var meet := {"id": String(station["id"]), "name": String(station["name"])}
+	if rng.randf() < 0.4:
+		var places: Array = []
+		var L := Universe.get_layout(system_id)
+		for g in L["gates"]:
+			places.append({"id": String(g["id"]), "name": String(g["name"])})
+		for fl in L["fields"]:
+			places.append({"id": String(fl["id"]), "name": String(fl["name"])})
+		if not places.is_empty():
+			meet = places[rng.randi() % places.size()]
+	m.merge({"type": "patrol", "amount": int(PATROL_TIME), "progress_t": 0.0, "meet": meet,
 		"reward": 4500 + int((1.0 - float(Universe.systems[system_id]["security"])) * 6000),
 		"title": "Patrol: fly with the %s" % FactionData.short_of(f),
-		"desc": "Join a %s patrol in %s and fly with it for %d minutes (stay within %s). Help it if it gets into a fight." % [FactionData.short_of(f), Universe.systems[system_id]["name"], int(PATROL_TIME / 60.0), "10,000 km"]}, true)
+		"desc": "A %s patrol waits for you at %s (%s). Join it – follow its lead ship – and fly its rounds for %d minutes (stay within %s). Help it if it gets into a fight." % [FactionData.short_of(f), meet["name"], Universe.systems[system_id]["name"], int(PATROL_TIME / 60.0), "10,000 km"]}, true)
 	return m
 
 
@@ -234,7 +244,9 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 		"patrol":
 			if int(m["progress"]) >= 1:
 				return "Patrol flown – report back"
-			return "Fly with a %s patrol: %d:%02d / %d:00" % [FactionData.short_of(String(m["faction"])), int(m["progress_t"]) / 60, int(m["progress_t"]) % 60, int(m["amount"]) / 60]
+			if float(m["progress_t"]) <= 0.0 and m.has("meet"):
+				return "Meet the %s patrol at %s, then fly with it (%d:00)" % [FactionData.short_of(String(m["faction"])), m["meet"]["name"], int(m["amount"]) / 60]
+			return "Fly with the %s patrol: %d:%02d / %d:00" % [FactionData.short_of(String(m["faction"])), int(m["progress_t"]) / 60, int(m["progress_t"]) % 60, int(m["amount"]) / 60]
 		"hunt":
 			if int(m["progress"]) >= 1:
 				return "Target destroyed – report back"

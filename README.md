@@ -132,7 +132,12 @@ failing one costs 2. Contracts aimed at a pirate faction pull its standing down.
   arrives.
   **Trade hubs** also post escort contracts on BlackLedger's board (about 30 % of their offers): an
   independent trader's convoy of 2–4 freighters *without* an escort ship – same rules, no faction needed.
-- **Patrol** (Neutral): fly within 10,000 km of a patrol of that power for 3 minutes, then report back.
+- **Patrol** (Neutral): the contract gets its **own patrol group**. It meets you at the issuing station
+  (rolling out of its bays) or at a named place in the system (a gate or field), marked green with a
+  *PATROL LEAD*, and waits until you follow it (within 8,000 km) or have been within 1,000 km for 3 s –
+  then "Patrol departing" and it flies its rounds. **Follow** works as with convoys (also in warp).
+  Fly within 10,000 km of the group for 3 minutes, then report back; the patrol is released and leaves.
+  If the group is destroyed, the contract fails.
 - **Intercept** (Neutral): an unregistered Hollow Crown hauler appears in a system up to two jumps away
   and runs for the gate farthest from it. Destroy it before it jumps or the 20 minutes run out (a Warp
   Interdictor helps). If someone else kills it, it counts only if you had hit it.

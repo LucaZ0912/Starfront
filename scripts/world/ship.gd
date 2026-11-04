@@ -41,7 +41,8 @@ var raiding := false             # raiding a station: ignores no-fire zones (5-s
 var _distress_t := -1000.0       # last distress call (package 16)
 var smuggler_mission := ""       # smuggler of an intercept contract (package 17)
 var escort_mark := false         # part of the convoy the pilot is escorting – drawn green
-var convoy_lead := false         # the convoy's lead ship (the one everybody follows)
+var convoy_lead := false         # the lead ship of a convoy / mission patrol (the one everybody follows)
+var escort_kind := "convoy"      # "convoy" | "patrol" – for the green markers and labels
 var _raid_t := 0.0               # raider: time in the current attack / break-off phase
 var _raid_break := false
 var _ambush_t := -1.0            # ambusher: seconds since it sprang its ambush (-1 = lying in wait)
@@ -1871,9 +1872,9 @@ func info_text() -> String:
 	if faction != "player" and hostile_to_player():
 		who += " – HOSTILE"
 	if convoy_lead and escort_mark:
-		who += " – CONVOY LEAD (the others follow it)"
+		who += " – %s LEAD (the others follow it)" % escort_kind.to_upper()
 	elif escort_mark:
-		who += " – your convoy"
+		who += " – your %s" % escort_kind
 	if warrant_known and archetype != "":
 		who += " – %s" % ArchData.name_of(archetype)
 	if fleeing:

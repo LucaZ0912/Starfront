@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.19.14 – 2026-11-05
+
+Patrol contracts work like convoy escorts now. 386 smoke-test checks pass.
+- The contract gets its own patrol group: it starts at the issuing station (rolling out of its bays) or
+  at a named gate/field, waits for the pilot (Follow or 3 s within 1,000 km), then flies its rounds.
+- Marked green with a PATROL LEAD on combat view, radar and system map; Follow works (also in warp).
+- Only flying with that group counts; it is released afterwards; if it is destroyed, the contract fails.
+- Test fix: the notorious roaming test starts next to a safer system (was random).
+
 ## alpha 0.4.19.13 – 2026-11-04
 
 **Package 19 – module size & quality system** (first package of Teil 4). 379 smoke-test checks pass.

@@ -1055,12 +1055,15 @@ func order_follow(id: String) -> String:
 	if not n.escort_mark:
 		return "You can only follow ships under your protection (marked green)."
 	if traffic != null:
-		var lead = traffic.convoy_leader(n)
+		var lead = traffic.group_leader(n)
 		if lead != null:
 			n = lead                 # the convoy goes where its lead ship goes
 	player.set_order({"type": "follow", "node": n, "r": 800.0})
 	if traffic != null:
 		GameState.follow_convoy = traffic.convoy_of(n)
+	if n.escort_kind == "patrol":
+		GameState.log_msg("Following the %s – you stay with the patrol, in warp too." % n.display_name(), GameState.COL_INFO)
+		return ""
 	GameState.log_msg("Following %s – you stay with it, in warp too." % n.display_name(), GameState.COL_INFO)
 	return ""
 
@@ -1430,7 +1433,7 @@ func _draw_overlay() -> void:
 			if not lead_done and n.convoy_lead:
 				lead_done = true
 				o.draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 20, Color(gc, mark_a), 1.5)
-				o.draw_string(font, Vector2(14, 4), "YOUR CONVOY (lead)", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(gc, mark_a))
+				o.draw_string(font, Vector2(14, 4), "YOUR %s (lead)" % n.escort_kind.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(gc, mark_a))
 			o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if 1.0 - mark_a > 0.01:
 			var ca := 0.75 * (1.0 - mark_a)
@@ -1438,7 +1441,7 @@ func _draw_overlay() -> void:
 			if n.convoy_lead:
 				o.draw_arc(n.position, n.radius + 26.0 * px, 0.0, TAU, 32, Color(gc, ca), 2.0 * px)
 				o.draw_set_transform(n.position + Vector2(0.0, -(n.radius + 32.0 * px)), 0.0, Vector2(px, px))
-				o.draw_string(font, Vector2(-40, -4), "CONVOY LEAD", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(gc, ca + 0.2))
+				o.draw_string(font, Vector2(-40, -4), "%s LEAD" % n.escort_kind.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(gc, ca + 0.2))
 				o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# Radar in recon view
 	var radar_a := mark_a * sky_alpha()

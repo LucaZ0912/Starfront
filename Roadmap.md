@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.13. Stand 4. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.14. Stand 4. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -475,7 +475,7 @@ Normale Piraten bleiben Einzelgänger wie bisher, bekommen aber eine KI-Rolle mi
 - [x] **Warp-Ansage:** leitet der Konvoi den nächsten Warp ein, meldet er das im Ticker („Convoy aligning for warp to … – stay close!“).
 - [x] **Abfangen durch Piraten:** der eskortierte Konvoi kann mitten im Warp herausgezogen werden – Konvoi und alle Folgenden fallen direkt beim Führungsschiff aus dem Warp, Antriebe 15 s gestört, 3–4 Piraten greifen an – oder Piraten lauern am Ankunftstor (beides in unsicheren Systemen häufiger).
 - [x] **Eskorte auch ohne Fraktion:** Handelsstationen (Trade Hubs) bieten am BlackLedger-Brett Eskorten für unabhängige Händler-Konvois mit 2–4 Frachtern ohne eigenes Begleitschiff an (ca. 30 % ihrer Angebote).
-- [x] **Patrouille begleiten** (ab Neutral): 3 Minuten innerhalb von 10.000 km einer Patrouille der Fraktion fliegen.
+- [x] **Patrouille begleiten** (ab Neutral): eigene Auftrags-Patrouille – startet an der Station (rollt aus den Hangarbuchten) oder an einem genannten Ort (Tor, Feld), grün markiert mit „PATROL LEAD“, wartet auf den Spieler (Follow oder 3 s innerhalb von 1.000 km), dann „Patrol departing“ und ihre Runden; „Follow“ wie beim Konvoi (auch im Warp). 3 Minuten innerhalb von 10.000 km mitfliegen; wird die Gruppe zerstört, scheitert der Auftrag.
 - [x] **Schmuggler abfangen** (ab Neutral): ein nicht registrierter Hollow-Crown-Frachter taucht im Zielsystem (bis 2 Sprünge) auf und flieht zum entferntesten Tor; vor dem Sprung oder binnen 20 min vernichten. Erledigt ihn jemand anderes, zählt es nur, wenn man ihn getroffen hatte.
 - [x] **Jagd auf Berüchtigte** (ab Friendly): benannter Kapitän; 20.000 cr + halbes Kopfgeld + 10.000 je Stern, zusätzlich zum SWX-Bond. Scheitert, wenn jemand anderes ihn erwischt.
 
