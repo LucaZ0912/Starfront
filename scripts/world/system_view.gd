@@ -110,12 +110,24 @@ func build(p_system: int) -> void:
 	_spawn_celestials()
 	sync_player()
 	_spawn_pirates()
+	_codex_discover()
 	traffic = TrafficScript.new()
 	traffic.name = "Traffic"
 	traffic.view = self
 	add_child(traffic)
 	if player != null:
 		camera.position = player.position
+
+
+## Codex (package 18): what this system shows the pilot.
+func _codex_discover() -> void:
+	for f in [Universe.controller(system_id)] + Universe.claimants(system_id):
+		if String(f) != "":
+			GameState.codex.event("faction:" + String(f))
+	if not colossi.is_empty():
+		GameState.codex.event("colossus")
+	if not havens.is_empty():
+		GameState.codex.event("haven")
 
 
 # ---------------------------------------------------------------- Setup
@@ -213,6 +225,8 @@ func spawn_npc(preset_id: String, pos: Vector2, faction: String = "pirate", gov:
 	if gov == "" and faction == "pirate":
 		gov = Universe.pirate_faction(system_id)
 	f.gov = gov
+	if gov != "":
+		GameState.codex.event("faction:" + gov)
 	var prefix := "Pirate " if faction == "pirate" else ""
 	if FactionData.FACTIONS.has(gov):
 		prefix = String(FactionData.FACTIONS[gov]["pilot"]) + " "
@@ -600,6 +614,7 @@ func _spawn_captain(c: Dictionary, arriving: bool) -> Ship:
 		i += 1
 	notorious_ships[c["id"]] = {"leader": lead, "escorts": esc, "spawned": esc.size()}
 	GameState.news.radio("Pirate captain %s sighted near %s with %d escorts." % [NotoriousData.title(c), landmark(pos), esc.size()], system_id)
+	GameState.codex.event("notorious")
 	if player != null and is_instance_valid(player):
 		GameState.log_msg("Sensors: notorious pirate %s (%s) is in the system with %d escorts!" % [NotoriousData.title(c), NotoriousData.stars_text(c), esc.size()], GameState.COL_BAD)
 		if raid_st != null:
@@ -1673,6 +1688,7 @@ func _dashed(o: Node2D, a: Vector2, b: Vector2, col: Color, px: float) -> void:
 
 func on_warp_started(ship: Ship) -> void:
 	if ship == player:
+		GameState.codex.event("warp")
 		_warp_saved_zoom = level_zoom(level)
 		_warp_auto = true
 		follow = true
@@ -1695,6 +1711,8 @@ func fire_weapon(shooter: Ship, target: Ship, w: Dictionary) -> void:
 	var col: Color = GameData.DAMAGE_COLORS[dtype]
 	if w.has("cap_drain"):
 		col = ION_COLOR
+		if shooter == player or target == player:
+			GameState.codex.event("ion")
 	if float(w.get("projectile_speed", 0)) <= 0.0:
 		var co = blocker(shooter.position, target.position)
 		if co != null:
@@ -2137,6 +2155,7 @@ func on_ship_docked(ship: Ship, st_node: Celestial) -> void:
 			ship.fit.cargo.erase(item)
 			GameState.log_msg("%s unloaded into station storage." % GameData.item_name(item))
 	if ship == player:
+		GameState.codex.event("dock")
 		GameState.log_msg("%s docked at %s." % [ship.display_name(), st_node.title()])
 		var here := GameState.bonds_redeemable_at(st_node.data, system_id)
 		if not here.is_empty():

@@ -85,6 +85,7 @@ func _build_menu() -> void:
 		var tb := UI.menu_button("Test System (Debug)", func(): SaveGame.start_test(), UI.GOLD)
 		tb.tooltip_text = "One system with every station, planet and asteroid type – no gates, no saving.\nThe normal game is not affected."
 		menu_box.add_child(tb)
+	menu_box.add_child(UI.menu_button("Codex", _show_codex))
 	menu_box.add_child(UI.menu_button("Settings", _show_settings))
 	menu_box.add_child(UI.menu_button("Quit", func(): get_tree().quit(), UI.NEON_PINK))
 
@@ -108,6 +109,24 @@ func _show_load() -> void:
 	b.closed.connect(_hide_overlay)
 	b.slot_chosen.connect(func(slot): SaveGame.start_load(slot))
 	_show_overlay(b)
+
+
+## Codex from the main menu: everything discovered in any game so far (package 18).
+func _show_codex() -> void:
+	var p := UI.neon_panel(UI.NEON_CYAN, Color(0.03, 0.04, 0.08, 0.97))
+	p.custom_minimum_size = Vector2(1300, 760)
+	var v := UI.vbox(10)
+	p.add_child(v)
+	var head := UI.hbox(10)
+	v.add_child(head)
+	head.add_child(UI.label("CODEX", 26, UI.NEON_CYAN))
+	head.add_child(UI.label("everything discovered in any of your games", 13, UI.TEXT_DIM))
+	head.add_child(UI.spacer())
+	head.add_child(UI.button("Close", _hide_overlay))
+	var cv := preload("res://scripts/ui/codex_view.gd").new()
+	v.add_child(cv)
+	cv.setup(false)
+	_show_overlay(p)
 
 
 func _show_settings() -> void:

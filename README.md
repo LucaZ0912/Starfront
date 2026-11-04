@@ -68,6 +68,19 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## Codex (phase 0.5 package 18)
+An in-game encyclopedia – ship menu → **Codex** tab, and **Codex** in the main menu (there: everything
+discovered in any of your games, collected in `user://codex.cfg`). 45 entries in six categories: Basics,
+History, Factions, Corporations, The Cluster, Technology – with crest, ship or icon pictures and
+"see also" links (`data/codex.gd`; faction and corporation entries are generated from their data).
+- **Basics** are known from the start; everything else unlocks on discovery (`GameState.codex`, saved):
+  the history from the station archives (first dock), a faction on first meeting its ships or space,
+  a corporation when you use its service, colossi, pirate havens, notorious pirates, station raids,
+  ion weapons, warp, gates and mining when you first encounter them.
+- New entries: "📖 New Codex entry" at the top of the HUD and in the log; unread entries are marked gold
+  in the list. Undiscovered ones show as "???".
+- Later packages add their entries to `data/codex.gd` (unlock = "start", an event or "faction:/corp:<id>").
+
 ## Faction contracts (phase 0.5 package 17)
 Below BlackLedger's offers, the Bulletin Board of every government station lists three **faction
 contracts** issued by the station's power (`Missions.generate_faction`, accepted with the usual
@@ -353,7 +366,7 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | F5 / F9 | quicksave / quickload |
 | 1 – 9 / click a module tile | switch an active module on/off (bottom centre) |
 
-## Ship menu (I) – six tabs
+## Ship menu (I) – seven tabs
 1. **Info** – pilot name (renamable), credits, net worth, ship/fleet/storage value, location,
    career statistics (kills, jumps, ore mined, anomalies analysed, contracts, refined, built, earned,
    play time), active contracts and your fleet.
@@ -364,6 +377,7 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 5. **Transactions** – *Contracts*: every accepted contract with client, progress, where to hand it in,
    course buttons and abandon; *Bonds*: the bond wallet for bounty bonds (filled from package 9 on).
 6. **Standing** – reputation with every faction (crest, tier, value, effects; package 12).
+7. **Codex** – the in-game encyclopedia (package 18).
 
 Mining lasers and ice harvesters fire an animated beam (pulsing core, travelling energy packets,
 sparks at the impact); the mined amount rises from the asteroid as a small "+x Ore" number.

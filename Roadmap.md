@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 und 2 sind abgeschlossen, Teil 3 läuft (Pakete 10 bis 17 fertig); Netzwerk fehlt noch. Stand 4. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.9. Stand 4. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -36,7 +36,8 @@ Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und
 | Berüchtigte | Fünf benannte Piratenkapitäne (1–5 Sterne) mit eigener Lackierung, Eigenschaft und wachsender Eskorte ziehen durch den Cluster (nie in die Heimatsysteme); Kopfgeld steigt mit der Zeit, 5-Stern-Kapitäne überfallen Stationen; Steckbriefe am Bond Office, ☠ auf der Galaxiekarte, besondere Beute, Nachfolger. |
 | Welt & News | Notrufe, fliehender Verkehr, Eskalation (Patrouille → Verstärkung → Einsatzgruppe), Wracks für alle Schiffe; Nachrichten-Ticker im Schiffs-Panel, Archiv in jeder Station, Kopfgeld-Kampagnen. |
 | Fraktionsaufträge | Am Schwarzen Brett jeder Regierungsstation: Konvoi-Eskorte, Patrouille begleiten, Schmuggler abfangen (ab Neutral), Jagd auf Berüchtigte (ab Friendly); +4 Ruf. |
-| Fehlt | Rest von Teil 3 (Codex), Teile 4–8, Netzwerk, Endgame-Inhalte |
+| Codex | Nachschlagewerk mit 45 Einträgen in sechs Kategorien; Grundlagen offen, der Rest wird beim Entdecken freigeschaltet („New Codex entry“ im HUD); im Schiffsmenü und im Hauptmenü. |
+| Fehlt | Teile 4–8, Netzwerk, Endgame-Inhalte |
 
 Die Spiellogik für Bewegung und Kampf steckt noch in den Schiff-Objekten der Darstellung; die Trennung erfolgt in Phase 1.
 
@@ -47,13 +48,13 @@ Ab jetzt wird direkt im Projektordner mit Claude Code gearbeitet. Hinweise für 
 - **Projekt:** `C:\Users\Luca\OneDrive\Dokumente\My Games\Sternfeld5.0` – Godot 4.3, GDScript, UI komplett im Code gebaut. Spieltexte englisch, Systemnamen deutsch, Antworten an Luz auf Deutsch.
 - **Roadmap:** liegt als `Roadmap.md` im Projektordner und wird dort gepflegt.
 - **Godot:** `C:\Users\Luca\Desktop\Godot_v4.3-stable_mono_win64\Godot_v4.3-stable_mono_win64_console.exe` (nicht im PATH).
-- **Test:** Smoke-Test mit `godot --headless --path . -- --smoketest` (gut 330 Prüfungen, Ziel: „DONE – failures: 0“). Neue Pakete bekommen eigene Prüfungen in `scripts/debug/smoke_test.gd`. Ohne `--headless` und mit `-- --smoketest --shots` speichert der Test Screenshots neuer Oberflächen nach `Claude outputs/`.
+- **Test:** Smoke-Test mit `godot --headless --path . -- --smoketest` (gut 360 Prüfungen, Ziel: „DONE – failures: 0“). Neue Pakete bekommen eigene Prüfungen in `scripts/debug/smoke_test.gd`. Ohne `--headless` und mit `-- --smoketest --shots` speichert der Test Screenshots neuer Oberflächen nach `Claude outputs/`.
 - **Neue Skripte:** in Autoloads und SystemView per `preload("res://…")` einbinden statt über `class_name` – sonst schwarzer Bildschirm, solange der Editor die Klassen nicht neu eingelesen hat.
 - **Godot-Editor:** Vor dem Starten geänderte Dateien neu laden („Discard local changes and reload“), sonst schreibt der Editor alte Fassungen zurück.
 - **Saves:** Galaxie wird aus dem Seed erzeugt, gespeichert werden nur Änderungen (`Universe.GALAXY_VERSION` = 3; ältere Saves werden umgezogen). Konvois werden nicht gespeichert.
 - **Kompatibilität alter Spielstände (Grundsatz für Phase 0.5):** Wir sind in einer frühen Alpha – alte Spielstände müssen **nicht** ladbar bleiben, ein Neuanfang ist in Ordnung. Neue Mechaniken und Umbauten werden **nie** dadurch eingeschränkt, dass alte Spielstände nicht mehr passen. Ein Spielstand-Umzug wird nur gebaut, wenn er nebenbei und ohne Kompromisse geht; sonst erhöhen wir die Version und alte Stände werden mit einem klaren Hinweis abgelehnt.
 - **Dokument:** Fertige Pakete hier abhaken, „Aktueller Stand“ nachziehen; die README im Projekt beschreibt alle Systeme.
-- **Versionierung (Git):** Version **alpha Phase.Teil.Paket.laufende Nummer** – z. B. `0.3.18.8` = Phase 0(.5), Teil 3, Paket 18, achtes Update darin. Steht in `project.godot` (`config/version`), im Hauptmenü unten links und in `CHANGELOG.md`. **Jedes Update** bekommt: neue Nummer (laufende Nummer +1; beginnt ein neues Paket, steigt die Paketnummer), Changelog-Eintrag, einen Commit „alpha <Version> – <Kurzbeschreibung>“ und einen Tag `v<Version>`. `.godot/` wird nicht versioniert.
+- **Versionierung (Git):** Version **alpha Phase.Teil.Paket.laufende Nummer** – z. B. `0.3.18.8` = Phase 0(.5), Teil 3, Paket 18, achtes Update darin. Steht in `project.godot` (`config/version`), im Hauptmenü unten links und in `CHANGELOG.md`. **Jedes Update** bekommt: neue Nummer (laufende Nummer +1; beginnt ein neues Paket, steigt die Paketnummer), Changelog-Eintrag, einen Commit „alpha <Version> – <Kurzbeschreibung>“ und einen Tag `v<Version>` und wird nach GitHub hochgeladen (`git push --follow-tags`, Repository [LucaZ0912/Starfront](https://github.com/LucaZ0912/Starfront), privat). `.godot/` wird nicht versioniert.
 
 ## Roadmap
 
@@ -116,7 +117,7 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | --- | --- | --- |
 | 1 | More More | ✅ erledigt |
 | 2 | World Design Update | ✅ erledigt |
-| 3 | NPCs and Factions | in Arbeit (Pakete 10 bis 17 fertig) |
+| 3 | NPCs and Factions | ✅ erledigt (Pakete 10–18) |
 | 4 | Module and Internal Ship Parts Rework | geplant (Pakete 19–27) |
 | 5 | Character Update | geplant |
 | 6 | New Worlds Discovery Update | geplant |
@@ -290,7 +291,7 @@ Teil 3 macht die Systeme lebendig: Regierungen, die Systeme kontrollieren, Verke
 | 15 | Berüchtigte Piraten – ✅ erledigt | benannte Piraten mit Eskorte, Steckbrief, wandern durch den Cluster | 13, 14 |
 | 16 | Weltreaktionen & Nachrichten-Ticker – ✅ erledigt | Eskalation der Patrouillen, Flucht, Notrufe, Wracks, Funk- und Nachrichten-Ticker | 11, 12 |
 | 17 | NPC-Missionen – ✅ erledigt | Konvoi-Eskorte, Patrouille begleiten, Jagd auf Berüchtigte, Schmuggler abfangen | 15, 16 |
-| 18 | Codex (Glossar) | Nachschlagewerk im Spiel: Geschichte, Fraktionen, Konzerne, Orte, Technik, Spielgrundlagen; Einträge werden beim Entdecken freigeschaltet | 10 (wächst mit jedem Paket) |
+| 18 | Codex (Glossar) – ✅ erledigt | Nachschlagewerk im Spiel: Geschichte, Fraktionen, Konzerne, Orte, Technik, Spielgrundlagen; Einträge werden beim Entdecken freigeschaltet | 10 (wächst mit jedem Paket) |
 | 8 | Großes Balancing | Analyse-Werkzeug, Preise, Kopfgelder, Kampfstärken (Abschluss von Phase 0.5) | alle |
 
 ### Welt & Hintergrund (Entwurf)
@@ -484,6 +485,13 @@ Normale Piraten bleiben Einzelgänger wie bisher, bekommen aber eine KI-Rolle mi
 - **Freischaltung:** Grundlagen von Anfang an; weitere Einträge beim Entdecken – erste Begegnung mit einer Fraktion, erster Colossus, erster Pirate Haven, erster berüchtigter Pirat. Hinweis „New Codex entry“ im HUD.
 - **Darstellung:** englische Texte, Wappen und kleine Pixel-Art-Bilder; Querverweise zwischen Einträgen.
 - **Technik:** Einträge als Daten in `data/codex.gd`; jedes spätere Paket ergänzt seine Einträge gleich mit.
+
+**Umgesetzt (4. Nov 2026, alpha 0.3.18.9)** – Daten in `data/codex.gd`, Zustand in `scripts/core/codex.gd` (`GameState.codex`), Ansicht `scripts/ui/codex_view.gd`, 10 neue automatische Prüfungen, alle 365 bestanden:
+
+- [x] 45 Einträge in sechs Kategorien (Basics, History, Factions, Corporations, The Cluster, Technology); Fraktions- und Konzerneinträge werden aus deren Daten erzeugt.
+- [x] Reiter „Codex“ im Schiffsmenü; „Codex“ im Hauptmenü zeigt alles, was in irgendeinem Spiel entdeckt wurde (`user://codex.cfg`).
+- [x] Freischaltung: Grundlagen von Anfang an; Geschichte beim ersten Andocken (Stationsarchive), Fraktionen bei der ersten Begegnung, Konzerne beim Nutzen ihres Dienstes, außerdem Colossi, Pirate Havens, Berüchtigte, Überfälle, Ionenwaffen, Warp, Tore, Bergbau.
+- [x] Hinweis „📖 New Codex entry“ oben im HUD und im Log; ungelesene Einträge gelb, unentdeckte als „???“; Wappen-, Schiffs- oder Icon-Bild und „See also“-Querverweise.
 
 ### Ideen für später (zurückgestellt)
 

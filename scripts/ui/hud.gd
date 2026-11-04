@@ -18,6 +18,8 @@ var station_btn: Button
 var ship_box: VBoxContainer
 var ticker_label: Label
 var _ticker_clip: Control
+var codex_label: Label             # "New Codex entry" notice (package 18)
+var _codex_until := 0.0
 var _warn_text := ""                # big warning in the bottom banner (GameState.warn)
 var _warn_until := 0.0
 var _ticker_queue: Array = []      # news not shown yet – each item runs through the ticker once
@@ -187,6 +189,20 @@ func _ready() -> void:
 	lock_bar = UI.hbox(8)
 	lock_bar.position = Vector2(360, 54)
 	root.add_child(lock_bar)
+
+	# --- "New Codex entry" (top centre, package 18)
+	codex_label = UI.label("", 15, UI.GOLD)
+	codex_label.anchor_left = 0.5
+	codex_label.anchor_right = 0.5
+	codex_label.offset_left = -400
+	codex_label.offset_right = 400
+	codex_label.offset_top = 96
+	codex_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	codex_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	codex_label.add_theme_constant_override("shadow_offset_x", 2)
+	codex_label.add_theme_constant_override("shadow_offset_y", 2)
+	root.add_child(codex_label)
+	GameState.codex_unlocked.connect(_on_codex_unlocked)
 
 	# --- No-fire zone / hostile guns banner (bottom centre, above the module bar)
 	zone_label = UI.label("", 14, UI.GOLD)
@@ -532,6 +548,8 @@ func _process(delta: float) -> void:
 	station_btn.visible = f != null and f.docked_at != ""
 	_update_zone_label()
 	_update_ticker(delta)
+	if codex_label != null and codex_label.text != "" and GameState.play_time >= _codex_until:
+		codex_label.text = ""
 	_ov_timer -= delta
 	if _ov_timer <= 0.0:
 		_ov_timer = 0.5
@@ -582,6 +600,16 @@ func show_survey(r: Dictionary) -> void:
 	t += "[color=#8090a0][font_size=11]Snapshot – it goes out of date after %d minutes. Also shown in the selection panel of the place.[/font_size][/color]" % int(Ship.SURVEY_STALE / 60.0)
 	survey_text.text = t
 	survey_panel.visible = true
+
+
+func _on_codex_unlocked(id: String) -> void:
+	var title := String(GameState.codex.all[id]["title"])
+	if GameState.play_time < _codex_until and codex_label.text != "":
+		codex_label.text = "📖 New Codex entries – open Ship [%s] → Codex" % Keybinds.key_text("ship_menu")
+	else:
+		codex_label.text = "📖 New Codex entry: %s  –  Ship [%s] → Codex" % [title, Keybinds.key_text("ship_menu")]
+	_codex_until = GameState.play_time + 6.0
+	GameState.log_msg("New Codex entry: %s" % title, UI.GOLD)
 
 
 ## Scrolls the news ticker: every new item runs through once, then the ticker hides until the next one.

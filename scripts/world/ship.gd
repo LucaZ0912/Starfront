@@ -1210,6 +1210,7 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 	node.data["amount"] = float(node.data["amount"]) - added
 	if faction == "player":
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
+		GameState.codex.event("mining")
 	var beam_col := Color(0.45, 0.9, 1.0) if t.get("tool", "") == "harvester" else Color(1.0, 0.62, 0.25)
 	tool_beams.append([node.position, beam_col, "mining", float(node.radius)])
 	# floating "+x Ore" numbers over the asteroid, about once per second

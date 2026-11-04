@@ -315,6 +315,7 @@ func open_service(svc_id: String) -> void:
 			svc = s
 	if svc.is_empty() or service_available(svc) != "":
 		return
+	GameState.codex.event("corp:" + String(svc["corp"]))
 	current_service = svc_id
 	var c: Dictionary = GameData.corp(svc["corp"])
 	var col: Color = c["color"]

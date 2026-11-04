@@ -289,6 +289,7 @@ func start_raid(c: Dictionary, st: Dictionary, now: float, warning: float = -1.0
 	c["next_move"] = maxf(float(c["next_move"]), now + w + dur + 60.0)
 	var sys: String = Universe.systems[int(c["system"])]["name"]
 	var when := ("in %d minutes" % int(round(w / 60.0))) if w >= 60.0 else "now"
+	GameState.codex.event("raid")
 	_news("RAID ALERT: %s is preparing to raid %s in %s – the attack begins %s!" % [title(c), st["name"], sys, when], "alert", int(c["system"]))
 	GameState.log_msg("SWX ALERT: %s (%s) is gathering for a raid on %s in %s – the attack begins %s!" % [title(c), stars_text(c), st["name"], sys, when], GameState.COL_BAD)
 

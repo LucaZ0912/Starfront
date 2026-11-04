@@ -15,6 +15,7 @@ signal survey_done(result: Dictionary)     # long-range survey finished (package
 signal reputation_changed(faction: String, value: float, delta: float)   # package 12
 signal wanted_changed(faction: String, level: int)                       # package 13
 signal news_added(item: Dictionary)                                     # package 16
+signal codex_unlocked(id: String)     # package 18
 signal warning(text: String)          # important problem shown big in the HUD for a few seconds
 
 const FactionData = preload("res://data/factions.gd")
@@ -63,6 +64,9 @@ var stations = StationStatusScript.new()
 ## News ticker and archive, bounty campaigns (phase 0.5 package 16) – see scripts/core/news.gd.
 const NewsScript = preload("res://scripts/core/news.gd")
 var news = NewsScript.new()
+## Codex unlocks (phase 0.5 package 18) – see scripts/core/codex.gd and data/codex.gd.
+const CodexStateScript = preload("res://scripts/core/codex.gd")
+var codex = CodexStateScript.new()
 
 
 func _ready() -> void:
@@ -98,6 +102,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	law.reset()
 	stations.reset()
 	news.reset()
+	codex.reset()
 	if test_system:
 		notorious.reset()
 	else:
@@ -135,7 +140,7 @@ func to_dict() -> Dictionary:
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
-		"mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(),
+		"mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 	}
 
 
@@ -161,6 +166,7 @@ func from_dict(d: Dictionary) -> void:
 	rep.from_dict(d.get("reputation", {}))   # older saves: start standings
 	law.from_dict(d.get("wanted", {}))
 	stations.from_dict(d.get("stations_down", {}))
+	codex.from_dict(d.get("codex", {}))
 	if d.has("news"):
 		news.from_dict(d["news"])
 	else:
@@ -721,6 +727,7 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	f.transit = JUMP_TIME
 	f.docked_at = ""
 	stats["jumps"] = int(stats["jumps"]) + 1
+	codex.event("jump")
 	log_msg("%s enters hyperspace → %s." % [f.ship_name, Universe.systems[to_id]["name"]])
 	ship_jumped_out.emit(f)
 	return true

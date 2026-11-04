@@ -8,13 +8,15 @@ extends CanvasLayer
 ##   Inventory – cargo hold (+ station storage when docked)
 ##   Transactions – sub-tabs: accepted contracts, bond wallet (bounty bonds, phase 0.5 package 9)
 ##   Standing  – reputation with every faction, with crest, tier and effects (phase 0.5 package 12)
+##   Codex     – the in-game encyclopedia (phase 0.5 package 18)
 
 signal closed
 
 const CATEGORIES := [
 	["Core", "core"], ["Weapons", "weapon"], ["Tools", "tool"], ["Optional", "optional"],
 ]
-const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing"]
+const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing", "Codex"]
+const CodexView = preload("res://scripts/ui/codex_view.gd")
 const FactionData = preload("res://data/factions.gd")
 
 var view: SystemView
@@ -140,6 +142,10 @@ func rebuild() -> void:
 			_build_transactions()
 		5:
 			_build_standing()
+		6:
+			var cv := CodexView.new()
+			content.add_child(cv)
+			cv.setup(true)
 
 
 # ================================================================ helpers

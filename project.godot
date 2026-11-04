@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Sternenfront"
-config/version="0.3.18.8"
+config/version="0.3.18.9"
 config/description="2D space game: star systems, hyperspace routes, modular ships, auto-battle"
 run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")

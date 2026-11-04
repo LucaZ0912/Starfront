@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.3.18.9 – 2026-11-04
+
+**Package 18 – Codex.** Teil 3 (NPCs and Factions) is complete. 365 smoke-test checks pass.
+- In-game encyclopedia with 45 entries in six categories (Basics, History, Factions, Corporations,
+  The Cluster, Technology); faction and corporation entries generated from their data.
+- Ship menu tab "Codex"; "Codex" in the main menu shows everything discovered in any game.
+- Basics known from the start, the rest unlocks on discovery (first dock, factions met, services used,
+  colossi, havens, notorious pirates, raids, ion weapons, warp, gates, mining); "New Codex entry" notice.
+- Roadmap: GitHub repository noted in the versioning rules.
+
 ## alpha 0.3.18.8 – 2026-11-04
 
 First versioned state (git introduced). Phase 0.5, Teil 3 (NPCs and Factions): packages 10–17 done,

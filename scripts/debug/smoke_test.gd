@@ -48,6 +48,7 @@ func _ready() -> void:
 	print("[SMOKE] Sternenfront alpha %s" % ProjectSettings.get_setting("application/config/version", "?"))
 	SaveGame.settings["autosave"] = false   # don't touch the player's autosave slot
 	Keybinds.persist = false                 # don't touch the player's key bindings
+	GameState.codex.persist = false          # don't touch the player's cross-game codex
 	if SaveGame.has_meta("smoke_expect"):
 		step = 100   # second run: verify the loaded save
 		print("[SMOKE] verifying loaded save")
@@ -494,6 +495,7 @@ func _process(delta: float) -> void:
 				_test_world(view)
 				_test_faction_jobs(view)
 				_test_jump_warning(view)
+				_test_codex(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -544,7 +546,7 @@ func _process(delta: float) -> void:
 					"active": f.ship_name, "system": f.system_id, "pos": f.position, "modules": f.modules.duplicate(),
 					"storage": GameState.storage.duplicate(true), "seed": Universe.seed_value,
 					"jumps": int(GameState.stats["jumps"]), "failures": failures.duplicate(),
-					"rep": GameState.rep.to_dict(), "wanted": GameState.law.to_dict(), "notorious": GameState.notorious.to_dict(), "news_n": GameState.news.items.size(),
+					"rep": GameState.rep.to_dict(), "wanted": GameState.law.to_dict(), "notorious": GameState.notorious.to_dict(), "news_n": GameState.news.items.size(), "codex": GameState.codex.unlocked.keys(),
 				})
 				SaveGame.start_load("smoketest")
 				step = 99
@@ -574,6 +576,11 @@ func _process(delta: float) -> void:
 					nt_ok = nt_ok and a9["id"] == b9["id"] and a9["name"] == b9["name"] and a9["alive"] == b9["alive"] and int(a9["bounty"]) == int(b9["bounty"])
 				check(nt_ok, "notorious pirates restored")
 				check(GameState.news.items.size() == int(e["news_n"]) and int(e["news_n"]) > 0, "news archive restored (%d items)" % int(e["news_n"]))
+				var ck: Array = GameState.codex.unlocked.keys()
+				ck.sort()
+				var ce: Array = e["codex"]
+				ce.sort()
+				check(ck == ce, "codex unlocks restored (%d entries)" % ck.size())
 				check(main.view.player != null and main.view.player.fit == f, "ship node rebuilt from save")
 				# A save from the old, smaller cluster is moved into the current one
 				var old: Dictionary = SaveGame.read_save("smoketest")
@@ -1229,6 +1236,13 @@ func _shoot_standing(view: SystemView) -> void:
 	var img := get_viewport().get_texture().get_image()
 	img.save_png("res://Claude outputs/standing.png")
 	print("[SMOKE] screenshot: Claude outputs/standing.png")
+	GameState.codex.event("faction:hollow_crown")
+	GameState.codex.event("colossus")
+	sm.open(view, 6)
+	for i in 6:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/codex.png")
+	print("[SMOKE] screenshot: Claude outputs/codex.png")
 	sm.close()
 	_shooting = false
 
@@ -2044,3 +2058,48 @@ func _test_jump_warning(view: SystemView) -> void:
 	pl.order = {"type": "idle"}
 	pl.warp = {}
 	main.hud._warn_until = 0.0
+
+
+## Phase 0.5 package 18: the Codex.
+func _test_codex(view: SystemView) -> void:
+	var CS = preload("res://scripts/core/codex.gd")
+	var cdx = CS.new()
+	cdx.persist = false
+	var all: Dictionary = cdx.all
+	var cats := {}
+	var refs_ok := true
+	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond"]
+	var unlock_ok := true
+	for id in all:
+		cats[all[id]["cat"]] = true
+		for r in all[id].get("see", []):
+			refs_ok = refs_ok and all.has(r)
+		var u := String(all[id]["unlock"])
+		unlock_ok = unlock_ok and (u in events or u.begins_with("faction:") or u.begins_with("corp:"))
+	check(all.size() >= 40 and cats.size() == 6, "codex: %d entries in %d categories" % [all.size(), cats.size()])
+	check(refs_ok and unlock_ok, "codex: every cross reference and unlock event is valid")
+	var start_n := 0
+	for id in all:
+		start_n += 1 if all[id]["unlock"] == "start" else 0
+	check(cdx.unlocked.size() == start_n and cdx.is_unlocked("basics_bonds") and not cdx.is_unlocked("cluster_colossi"), "codex: basics are known from the start, the rest is locked")
+	var got: Array = cdx.event("haven")
+	check(got == ["cluster_havens"] and cdx.unread.has("cluster_havens") and cdx.event("haven").is_empty(), "codex: discovering a haven unlocks its entry once")
+	check(cdx.event("faction:severed").has("fac_severed") and String(all["fac_severed"]["text"]).contains("Earth forgot us"), "codex: faction entries come from the faction data")
+	check(all.has("corp_kvx") and String(all["corp_kvx"]["unlock"]) == "corp:kvx", "codex: one entry per corporation, unlocked by using its service")
+	# in this game: discoveries so far, HUD notice
+	var gc = GameState.codex
+	check(gc.is_unlocked("tech_warp") and gc.is_unlocked("hist_leap") and gc.is_unlocked("tech_gates"), "codex: warping, docking and jumping unlocked their entries")
+	var probe := ""
+	for id in gc.all:
+		if not gc.is_unlocked(id):
+			probe = id
+			break
+	if probe != "":
+		main.hud.codex_label.text = ""
+		gc.unlock(probe)
+		check(main.hud.codex_label.text.contains("New Codex entry"), "HUD shows \"New Codex entry\"")
+	var v := preload("res://scripts/ui/codex_view.gd").new()
+	main.add_child(v)
+	v.setup(false)
+	check(v._list.get_child_count() > 6, "codex view for the main menu builds")
+	v.queue_free()
