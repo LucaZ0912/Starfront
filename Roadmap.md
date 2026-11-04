@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.10. Stand 4. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.11. Stand 4. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -546,6 +546,27 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 - **Qualitätsklassen F, E, D, C, B, A** – später im Endgame zusätzlich **S** und **S+**.
 - **Schiffsmodulplätze ohne feste Größe S/M/L:** jeder Platz hat eine **Maximalgröße**, die je Schiff verschieden ist. Ein S-Schiff kann z. B. Engines 5 haben, ein anderes S-Schiff Engines 6, weil es eher darauf ausgelegt ist – so bekommt jeder Rumpf ein eigenes Profil.
 - **Schiffsgröße S, M, L bleibt** als grobe Größenklasse, aber ohne direkten Einfluss aufs Gameplay – außer dass L-Schiffe nicht in Stationen vom Typ 0 landen können.
+
+**Entwurf – abgestimmt am 4. Nov 2026:**
+
+- **Modul = Familie + Größe + Qualität**, angezeigt z. B. „Pulse Laser 2 · C“. Die Familie legt die Art fest (Schadensart, Reichweite, Wirkung) und einen Größenbereich; Größe und Qualität skalieren die Werte über Kurven statt über feste Einzelmodule.
+- **Größenbereiche:** Waffen 1–4 · Werkzeuge 1–4 (Strip Miner nur 3–4) · Hüllenpanzerung, Triebwerk, Reaktor, Verteiler, Tank 1–10 · Hyperantrieb 1–6 (Sprungklasse steigt mit der Größe) · Sensoren 1–8 · Optional 1–8 (Fracht bis 10).
+- **Familien (aus den heutigen Modulen):** Waffen – Pulse Laser, Beam Laser, Photon Lance, Autocannon, Railgun, Mass Driver, Rockets, Torpedoes, Cruise Missiles, Ion (Piraten); Werkzeuge – Mining Laser, Ice Harvester, Strip Miner, Salvager, Repair Beam, Scanner, Analyzer, Survey, Prospector, Warrant, Interdictor; Kern – Panzerung Standard/Reflective/Ablative, Triebwerk Chemical/Ion/Plasma, Reaktor Fission/Fusion, Distributor, Tank, Hyperdrive, Sensoren Radar/Gravimetric/Tactical; Optional – Shield, Armor Plates, Cargo, Ore Hold, Afterburner, Shield Booster, Armor Repairer, Mining Upgrades, Survey Amplifier, Targeting, Fuel, Capacitor.
+- **Größenkurven (Startwerte):** Leistung ∝ Größe^1,3 · Masse ∝ Größe^1,2 · Strom ∝ Größe^1,1 · Preis ∝ Größe^1,6.
+- **Kleinere Module passen in größere Plätze**, größere nie in kleinere.
+- **Qualität:**
+
+| Qualität | F | E | D | C | B | A | S (Endgame) | S+ (Endgame) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Leistung | ×0,80 | ×0,88 | ×0,95 | ×1,00 | ×1,08 | ×1,16 | ×1,28 | ×1,40 |
+| Masse | ×1,25 (schwerste) | ×1,10 | ×0,90 (leichteste) | ×1,00 | ×1,08 | ×1,08 (wie B) | offen | offen |
+| Strom | ×0,94 | ×0,96 | ×0,98 | ×1,00 | ×1,04 | ×1,08 | ×1,12 | ×1,15 |
+| Preis | ×0,55 | ×0,70 | ×0,85 | ×1,00 | ×1,40 | ×2,00 | – | – |
+
+- **Bezug:** F–A kaufbar – Ausrüster führen F–C überall, B ab Stationsstufe 2, A ab Stufe 3 oder an Militärposten; Beute und Fertigung liefern zufällige Qualitäten; S/S+ nur im Endgame.
+- **Masse** wirkt auf Unterlicht- und Warpgeschwindigkeit (heute schon über Schub ÷ Masse; Ausbau beim Schiffsumbau).
+- **Schiffsplätze:** jedes Schiff hat eine Liste einzelner Plätze mit Typ und Maximalgröße – auch die Kernplätze (z. B. Triebwerk 4 bei der Dragonfly, 5 bei der Hornet). Die Plätze der Earthworks-Rümpfe werden Schiff für Schiff gemeinsam festgelegt.
+- **Umfang Paket 19:** neues Datenmodell, Plätze der Earthworks- und NPC-Rümpfe, Ausrüster/Fertigung/Beute/NPC-Loadouts/Startschiff umgestellt, neue Spielstand-Version (alte Stände mit Hinweis abgelehnt). Neue Modultypen erst in Paket 20.
 
 ### Neue Modultypen und Waffen (Paket 20)
 

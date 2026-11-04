@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.3.18.11 – 2026-11-04
+
+Planning only: the module system design for package 19 is agreed and recorded in the roadmap –
+module = family + size + quality, size curves, smaller modules fit bigger slots, quality factors with
+mass rules (D lightest, F heaviest, B as heavy as A), per-slot sizes for every ship.
+
 ## alpha 0.3.18.10 – 2026-11-04
 
 Planning only (no gameplay change): all open questions of Teil 4 decided and recorded in the roadmap –
