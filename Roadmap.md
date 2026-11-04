@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.14. Stand 4. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.15. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -472,6 +472,10 @@ Normale Piraten bleiben Einzelgänger wie bisher, bekommen aber eine KI-Rolle mi
 - [x] **Konvoi-Eskorte** (ab Neutral): ein echter Konvoi (2–4 Frachter + Begleitschiff) startet an der Station zu einem Ziel 1–2 Sprünge entfernt. Mindestens 60 % der Reise im selben System dabei sein (nicht angedockt); Hinterhalte durch Piraten (in unsicheren Systemen häufiger). Abgabe an der Zielstation. **Bezahlung anteilig:** jeder verlorene Frachter kostet seinen Anteil; alle verloren = gescheitert.
 - [x] **Sammeln & Markierung:** der Konvoi sammelt sich vor der Station und startet erst, wenn man 3 s innerhalb von 1.000 km war („Convoy departing“ im Ticker unten links); die Wartezeit zählt nicht gegen einen. Eigener Konvoi grün markiert: Ring in der Kampfansicht, grüne Rauten mit „YOUR CONVOY“ im Radar und auf der Systemkarte.
 - [x] **Folgen:** Knopf „Follow“ für grün markierte Schiffe (jedes Konvoischiff = dessen Führungsschiff; Führungsschiff mit doppeltem Ring und „CONVOY LEAD“) – Folgen genügt auch zum Losfliegen des Konvois; man bleibt beim Schiff, geht sofort mit in den Warp (ohne Ausrichten) und springt ihm durch Tore hinterher; die Konvoi-Schiffe selbst nutzen dasselbe Verhalten und bleiben zusammen.
+- [x] **Verbund-Warp:** wer einem Schiff folgt (auch über eine Kette), warpt mit ihm – das Führungsschiff richtet seine Warpzeit nach dem langsamsten Warpantrieb aller Folgenden (alpha 0.4.19.15).
+- [x] **Nach einem Angriff:** Konvoischiffe fliehen nicht mehr; der Konvoi hält die Position, solange ein Pirat in der Recon-(Sensor-)Reichweite seiner Schiffe ist, und fliegt weiter, sobald alles frei ist **und** der Spieler dabei ist (Follow innerhalb 8.000 km oder direkt daneben, 2.000 km); ohne Spieler nach 2 Minuten Ruhe (alpha 0.4.19.15).
+- [x] **Verbund-Kacheln:** Konvoi, Patrouille, das verfolgte Schiff und wer dem Spieler folgt erscheinen oben links als kleine grüne Kacheln (Name, LEAD, Entfernung, Schild/Panzer/Struktur; Klick wählt aus, Rechtsklick folgt) (alpha 0.4.19.15).
+- [x] **Befehls-Hotkeys** (umbelegbar, Einstellungen → Steuerung): R Lock (nochmal: Unlock; ohne Auswahl: nächster Feind), Q Approach, X Warp, J Jump, G Dock, F Follow (alpha 0.4.19.15).
 - [x] **Warp-Ansage:** leitet der Konvoi den nächsten Warp ein, meldet er das im Ticker („Convoy aligning for warp to … – stay close!“).
 - [x] **Abfangen durch Piraten:** der eskortierte Konvoi kann mitten im Warp herausgezogen werden – Konvoi und alle Folgenden fallen direkt beim Führungsschiff aus dem Warp, Antriebe 15 s gestört, 3–4 Piraten greifen an – oder Piraten lauern am Ankunftstor (beides in unsicheren Systemen häufiger).
 - [x] **Eskorte auch ohne Fraktion:** Handelsstationen (Trade Hubs) bieten am BlackLedger-Brett Eskorten für unabhängige Händler-Konvois mit 2–4 Frachtern ohne eigenes Begleitschiff an (ca. 30 % ihrer Angebote).

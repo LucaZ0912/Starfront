@@ -244,3 +244,8 @@ func handle_input(event: InputEvent) -> void:
 			if event.is_action_pressed("module_%d" % (i + 1), false, true):
 				hud.activate_index(i)
 				return
+		for a in HUD.HOTKEY_COMMANDS:
+			if event.is_action_pressed(a, false, true):
+				if view != null and not in_hyperspace:
+					hud.hotkey_command(a)
+				return

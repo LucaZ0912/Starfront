@@ -934,7 +934,7 @@ func _warp_align(delta: float, s: Dictionary):
 	activity = "Aligning: warp → %s  %d%%" % [t["name"], int(minf(spool / at, 1.0) * 100.0)]
 	if spool >= at and absf(wrapf(heading - dir.angle(), -PI, PI)) < 0.3:
 		spool = -1.0
-		var T := (4.0 + dist / float(s["warp_speed"])) * float(t.get("slow", 1.0))
+		var T := (4.0 + dist / group_warp_speed(float(s["warp_speed"]))) * float(t.get("slow", 1.0))
 		warp = {"from": position, "to": dest, "t": 0.0, "T": T, "then": order.get("then", {}), "name": t["name"]}
 		target = null
 		clear_locks()
@@ -943,6 +943,22 @@ func _warp_align(delta: float, s: Dictionary):
 		view.on_warp_started(self)
 		return null
 	return position + dir * 5000.0
+
+
+## Warp speed of the group: everyone following this ship (directly or along a chain) warps with
+## it, so the slowest ship of the group sets the pace.
+func group_warp_speed(own: float) -> float:
+	var v := own
+	var seen := {self: true}
+	var todo: Array = [self]
+	while not todo.is_empty():
+		var lead = todo.pop_back()
+		for n in view.ship_layer.get_children():
+			if n is Ship and not seen.has(n) and not n.dying and not n.is_docked() and String(n.order.get("type", "")) == "follow" and n.order.get("node") == lead:
+				seen[n] = true
+				todo.append(n)
+				v = minf(v, float(n.fit.stats()["warp_speed"]))
+	return maxf(v, 1.0)
 
 
 ## Follow (package 17): jump straight into warp with the ship we follow – no aligning – so that both

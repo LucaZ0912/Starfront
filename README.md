@@ -125,6 +125,13 @@ failing one costs 2. Contracts aimed at a pirate faction pull its standing down.
   through a gate you jump after it and follow it again in the next system. The convoy's own ships use
   the same behaviour, so the convoy stays together. Whenever the convoy starts aligning for its next
   warp it says so in the ticker ("Convoy aligning for warp to … – stay close!").
+  **Group warp speed:** whoever follows a ship (directly or along a chain) warps with it – the lead ship
+  sets its warp time by the **slowest** warp drive of everyone following it.
+  **Your group** (convoy, patrol, the ship you follow, anyone following you) shows as small green tiles at
+  the **top left** – name, LEAD tag, distance, shield/armor/structure; click selects, right-click follows.
+  **After an attack** the convoy never scatters: it **holds position** while any pirate is within its
+  recon (sensor) range and sets off again once it is clear **and** you are with it – following it within
+  8,000 km or right next to it (2,000 km). If you never come back it moves on after 2 minutes of quiet.
   **Pirate interceptions:** in each system the escorted convoy may be **pulled out of warp** halfway
   (more likely in unsafe space) – the convoy and everyone following it drop out right next to the lead
   ship, the drives are
@@ -393,6 +400,9 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | Esc | close window / pause menu |
 | F5 / F9 | quicksave / quickload |
 | 1 – 9 / click a module tile | switch an active module on/off (bottom centre) |
+| R | lock the selected target (again: unlock; nothing selected: the nearest hostile ship) |
+| Q / X / J / G / F | approach / warp to / jump / dock / follow the selected object |
+| Click an ally tile (top left) | select it · right-click: follow |
 
 ## Ship menu (I) – seven tabs
 1. **Info** – pilot name (renamable), credits, net worth, ship/fleet/storage value, location,

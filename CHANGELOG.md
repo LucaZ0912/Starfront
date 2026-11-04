@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.19.15 – 2026-11-05
+
+Convoy and group follow-ups, command hotkeys. 397 smoke-test checks pass.
+- Group warp: the ship being followed warps at the speed of the slowest ship following it.
+- After a pirate attack convoy ships no longer scatter; the convoy holds until no pirate is within its
+  recon range and the pilot follows (≤ 8,000 km) or is right next to it (≤ 2,000 km); 2 min timeout.
+- Your group (convoy, patrol, followed ship, followers) shows as green tiles at the top left.
+- New rebindable hotkeys: R lock/unlock (nearest hostile if nothing selected), Q approach, X warp,
+  J jump, G dock, F follow. Buttons show their key in the tooltip.
+
 ## alpha 0.4.19.14 – 2026-11-05
 
 Patrol contracts work like convoy escorts now. 386 smoke-test checks pass.

@@ -945,6 +945,9 @@ func _order_convoy(e: Dictionary) -> void:
 	for s0 in e["ships"]:
 		if _alive(s0):
 			s0.convoy_lead = s0 == leader
+	if e.get("held", false):
+		leader.set_order({"type": "idle"})
+		return
 	if e.get("gather", false):
 		# assembling outside the station until the escort arrives
 		if (e["gather_pos"] as Vector2).distance_to(leader.position) > 200.0 or leader.is_docked():
@@ -991,6 +994,8 @@ func _update_convoys() -> void:
 			_order_convoy(e)
 		if e.get("gather", false) and _alive(leader):
 			_check_gather(e, leader)
+		if e["c"].has("mission") and _alive(leader) and not e.get("gather", false):
+			_convoy_hold(e, leader)
 		if e["c"].has("mission") and _alive(leader):
 			_check_interception(e, leader)
 			_announce_warp(e, leader)
@@ -1136,8 +1141,8 @@ func _scatter(pos: Vector2, attacker: Ship) -> void:
 	for n in view.ship_layer.get_children():
 		if not (n is Ship) or n.faction != "civilian" or n.dying or n.in_warp() or n.is_docked():
 			continue
-		if n.position.distance_to(pos) > FLEE_RADIUS:
-			continue
+		if n.position.distance_to(pos) > FLEE_RADIUS or n.escort_mark or convoy_of(n) >= 0:
+			continue                 # convoys keep together (and hold, see _convoy_hold)
 		var away: Vector2 = n.position - (attacker.position if is_instance_valid(attacker) else pos)
 		if away.length() < 1.0:
 			away = Vector2.from_angle(randf() * TAU)
@@ -1364,6 +1369,70 @@ func convoy_leader(s):
 		if s in e["ships"] and _alive(e.get("leader")):
 			return e["leader"]
 	return null
+
+
+const HOLD_NEAR := 2000.0        # "right next to it": the pilot need not follow
+const HOLD_TIMEOUT := 120.0      # all clear but no pilot around: the convoy moves on after this
+
+
+## Threat radius of a convoy: the best recon (sensor) range among its ships.
+func convoy_recon(e: Dictionary) -> float:
+	var r := 3000.0
+	for s in e["ships"]:
+		if _alive(s):
+			r = maxf(r, float(s.fit.stats()["sensor_range"]))
+	return r
+
+
+## Live pirates within the convoy's recon range.
+func convoy_threat(e: Dictionary) -> bool:
+	var r := convoy_recon(e)
+	for n in view.ship_layer.get_children():
+		if not (n is Ship) or n.faction != "pirate" or n.dying or n.in_warp():
+			continue
+		for s in e["ships"]:
+			if _alive(s) and s.position.distance_to(n.position) <= r:
+				return true
+	return false
+
+
+## True when the pilot is with the convoy: following it (within the gather follow range) or right
+## next to it.
+func pilot_with(e: Dictionary, leader: Ship) -> bool:
+	var pl = view.player
+	if pl == null or not is_instance_valid(pl) or pl.is_docked() or pl.in_warp():
+		return false
+	var d: float = pl.position.distance_to(leader.position)
+	if d <= HOLD_NEAR:
+		return true
+	return String(pl.order.get("type", "")) == "follow" and pl.order.get("node") in e["ships"] and d <= GATHER_FOLLOW_RANGE
+
+
+## An escorted convoy under attack holds where it is – no fleeing, no warp – until no pirate is left
+## within its recon range and the pilot is with it again (following or right next to it).
+func _convoy_hold(e: Dictionary, leader: Ship) -> void:
+	if leader.in_warp() or leader.is_docked():
+		return
+	var threat := convoy_threat(e)
+	if not e.get("held", false):
+		if not threat:
+			return
+		e["held"] = true
+		e["held_t"] = 0.0
+		leader.set_order({"type": "idle"})
+		GameState.news.radio("Convoy holding position – pirates nearby!", sid, leader.position)
+		return
+	if threat:
+		e["held_t"] = 0.0
+		if String(leader.order.get("type", "")) in ["travel", "warp", "move"]:
+			leader.set_order({"type": "idle"})
+		return
+	e["held_t"] = float(e.get("held_t", 0.0)) + 0.5
+	if not pilot_with(e, leader) and float(e["held_t"]) < HOLD_TIMEOUT:
+		return
+	e["held"] = false
+	GameState.news.radio("All clear – convoy resuming its course.", sid, leader.position)
+	_order_convoy(e)
 
 
 ## The escorted convoy reports in the ticker when it starts aligning for its next warp.

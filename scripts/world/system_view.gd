@@ -1068,6 +1068,24 @@ func order_follow(id: String) -> String:
 	return ""
 
 
+## Allied ships travelling with the pilot: convoys and patrols under the pilot's protection (marked
+## green), the ship the pilot follows and anyone following the pilot. Lead ships first.
+func player_group() -> Array:
+	var out: Array = []
+	if player == null or not is_instance_valid(player):
+		return out
+	var fn = player.order.get("node") if String(player.order.get("type", "")) == "follow" else null
+	if fn == null and player.in_warp():
+		fn = player.warp.get("follow")
+	for n in ship_layer.get_children():
+		if not (n is Ship) or n == player or n.dying:
+			continue
+		if n.escort_mark or n == fn or (String(n.order.get("type", "")) == "follow" and n.order.get("node") == player):
+			out.append(n)
+	out.sort_custom(func(a, b): return a.convoy_lead and not b.convoy_lead)
+	return out
+
+
 func order_warp(id: String) -> String:
 	var d := describe(id)
 	if d.is_empty():

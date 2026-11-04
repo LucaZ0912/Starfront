@@ -2092,6 +2092,42 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 		if s7 != lead and is_instance_valid(s7) and not s7.is_docked() and String(s7.order.get("type", "")) not in ["undocking", "follow"]:
 			ai_follow = false
 	check(ai_follow, "the convoy's own ships use Follow too")
+	# the slowest ship of the group sets the warp pace
+	var own_ws: float = float(pl.fit.stats()["warp_speed"])
+	var gws: float = lead.group_warp_speed(own_ws * 10.0)
+	check(gws <= own_ws + 0.01, "in warp the group flies at its slowest ship's speed (%.0f ≤ %.0f)" % [gws, own_ws])
+	# allied ships appear as tiles at the top left
+	main.hud.survey_panel.visible = false
+	main.hud._update_allies()
+	var grp: Array = view.player_group()
+	check(grp.has(lead) and main.hud.ally_bar.visible and main.hud._ally_cards.size() == mini(grp.size(), main.hud.MAX_ALLY_TILES) and grp[0].convoy_lead, "the pilot's group shows as tiles at the top left (%d ships, lead first)" % grp.size())
+	# command hotkeys act on the selected object
+	var pos_keep: Vector2 = pl.position
+	var dup := {}
+	var dup_ok := true
+	for a in Keybinds.ACTIONS:
+		if String(a["id"]) in ["interdict_hit", "map_territory"]:
+			continue
+		for b in a["def"]:
+			var kk := str(b)
+			dup_ok = dup_ok and not dup.has(kk)
+			dup[kk] = true
+	check(InputMap.has_action("cmd_lock") and Keybinds.key_text("cmd_lock") == "R" and dup_ok, "command hotkeys exist (Lock = %s) and no default key is used twice" % Keybinds.key_text("cmd_lock"))
+	pl.order = {"type": "idle"}
+	pl.position = lead.position + Vector2(400, 0)
+	pl.clear_locks()
+	main.hud.show_selected("ship:%d" % (other.fit.uid if other != null else lead.fit.uid))
+	main.hud.hotkey_command("cmd_follow")
+	check(String(pl.order.get("type", "")) == "follow" and pl.order.get("node") == lead, "Follow hotkey follows the selected ship")
+	main.hud.show_selected("ship:%d" % lead.fit.uid)
+	main.hud.hotkey_command("cmd_lock")
+	var locked_ok: bool = pl.lock_index("ship:%d" % lead.fit.uid) >= 0
+	main.hud.hotkey_command("cmd_lock")
+	check(locked_ok and pl.lock_index("ship:%d" % lead.fit.uid) < 0, "Lock hotkey locks the selected target – pressed again it unlocks")
+	check(main.hud.hotkey_command("cmd_jump") != "" and main.hud.hotkey_command("cmd_dock") != "", "Jump / Dock hotkeys refuse a ship as target")
+	main.hud.show_selected("")
+	pl.position = pos_keep
+	pl.set_order({"type": "follow", "node": lead, "r": 800.0})
 	# the convoy announces its warp in the ticker
 	lead.order = {"type": "warp", "target": {"name": "Test gate", "pos": lead.position + Vector2(600000, 0), "land": 2000.0}, "then": {}}
 	tr._announce_warp(e, lead)
@@ -2110,6 +2146,31 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 	check(not lead.in_warp() and not pl.in_warp() and pl.warp_disrupted > 0.0 and view.pirate_count() >= p0 + 3, "pirates pull the convoy – and its follower – out of warp")
 	check(pl.position.distance_to(lead.position) < 2000.0, "the follower drops out right next to the lead ship (%.0f km)" % pl.position.distance_to(lead.position))
 	check(String(pl.order.get("type", "")) == "follow", "after the drop the pilot keeps following")
+	# after the attack: no fleeing, the convoy holds until it is clear and the pilot is with it
+	var raider = null
+	for n9 in view.ship_layer.get_children():
+		if n9 is Ship and n9.faction == "pirate" and not n9.dying and n9.position.distance_to(lead.position) < 8000.0:
+			raider = n9
+	if raider != null:
+		tr._scatter(lead.position, raider)
+	check(String(lead.order.get("type", "")) != "move" or lead.activity != "Fleeing the fight", "convoy ships do not scatter when attacked")
+	tr._convoy_hold(e, lead)
+	check(e.get("held", false) and String(lead.order.get("type", "")) == "idle", "pirates within recon range: the convoy holds position")
+	tr._update_convoys()
+	check(String(lead.order.get("type", "")) == "idle", "… and does not set off again while they are around")
+	for n10 in view.ship_layer.get_children():
+		if n10 is Ship and n10.faction == "pirate" and n10.position.distance_to(lead.position) < 100000.0:
+			n10.position += Vector2(0, 900000)
+	var pkeep: Vector2 = pl.position
+	pl.position = lead.position + Vector2(60000, 0)
+	pl.order = {"type": "idle"}
+	tr._convoy_hold(e, lead)
+	check(e.get("held", false), "all clear but the pilot is far away: the convoy keeps waiting")
+	pl.position = lead.position + Vector2(5000, 0)
+	pl.set_order({"type": "follow", "node": lead, "r": 800.0})
+	tr._convoy_hold(e, lead)
+	check(not e.get("held", false) and String(lead.order.get("type", "")) in ["travel", "dock", "docking", "warp"] and NW_last_text().contains("resuming"), "all clear and the pilot follows: the convoy resumes its course")
+	pl.position = pkeep
 	# gate ambush
 	var p1: int = view.pirate_count()
 	e["c"]["force_ambush"] = true

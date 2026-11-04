@@ -47,6 +47,9 @@ var module_slots: Array = []      # slot keys in bar order (hotkeys 1–9)
 var _module_tiles := {}           # slot -> {panel, bar, style}
 var _module_sig := ""
 var lock_bar: HBoxContainer
+var ally_bar: VBoxContainer       # allied ships of the pilot's group (top left)
+var _ally_cards := {}             # ship -> {style, info, bars}
+var _ally_sig := ""
 var _lock_cards := {}             # key -> {panel, style, info, bars}
 var _lock_sig := ""
 var sel_panel: PanelContainer
@@ -184,6 +187,11 @@ func _ready() -> void:
 	sel_box = UI.vbox(5)
 	sel_panel.add_child(sel_box)
 	_build_selected()
+
+	# --- Allied ships travelling with the pilot (top left)
+	ally_bar = UI.vbox(4)
+	ally_bar.position = Vector2(10, 54)
+	root.add_child(ally_bar)
 
 	# --- Locked targets (top centre)
 	lock_bar = UI.hbox(8)
@@ -569,6 +577,7 @@ func _process(delta: float) -> void:
 	_w["act"].text = act
 	_update_modules()
 	_update_locks()
+	_update_allies()
 	_update_selected()
 	var ore_txt := ""
 	if float(s["ore_cargo_max"]) > 0.0:
@@ -688,6 +697,84 @@ func show_selected(id: String) -> void:
 	_build_selected()
 
 
+# ================================================================ Command hotkeys
+
+const HOTKEY_COMMANDS := ["cmd_lock", "cmd_approach", "cmd_warp", "cmd_jump", "cmd_dock", "cmd_follow"]
+
+
+## Runs a ship command on the selected object (Settings → Controls, "Ship commands").
+## Returns the error text ("" = done).
+func hotkey_command(action: String) -> String:
+	var p = view.player if view != null else null
+	if p == null or not is_instance_valid(p):
+		return "No ship."
+	var id := selected_id
+	if action == "cmd_lock" and id == "":
+		var near = _nearest_hostile(p)
+		if near == null:
+			GameState.log_msg("Nothing selected and no hostile ship in sensor range.", GameState.COL_WARN)
+			return "nothing"
+		id = "ship:%d" % near.fit.uid
+		view.select(id)
+	if id == "":
+		var e0 := "Select something first (%s)." % Keybinds.key_text(action)
+		GameState.log_msg(e0, GameState.COL_WARN)
+		return e0
+	var d: Dictionary = view.describe(id)
+	if d.is_empty():
+		return "Unknown object."
+	var kind: String = d["kind"]
+	var err := ""
+	match action:
+		"cmd_lock":
+			if not (d.has("node") and kind in ["ship", "asteroid", "wreck", "anomaly"]):
+				err = "Only ships, asteroids, wrecks and anomalies can be locked."
+				GameState.log_msg(err, GameState.COL_WARN)
+			elif p.lock_index(id) >= 0:
+				err = Commands.execute({"type": "unlock", "id": id})
+			else:
+				err = Commands.execute({"type": "lock", "id": id})
+		"cmd_approach":
+			err = Commands.execute({"type": "approach", "id": id})
+		"cmd_warp":
+			err = Commands.execute({"type": "warp_to", "id": id})
+		"cmd_jump":
+			if kind != "gate":
+				err = "Select a jump gate to jump."
+				GameState.log_msg(err, GameState.COL_WARN)
+			else:
+				err = Commands.execute({"type": "jump", "id": id})
+		"cmd_dock":
+			if not kind in ["station", "haven"]:
+				err = "Select a station to dock."
+				GameState.log_msg(err, GameState.COL_WARN)
+			else:
+				err = Commands.execute({"type": "dock", "id": id})
+		"cmd_follow":
+			err = Commands.execute({"type": "follow", "id": id})
+	if selected_id != "":
+		_build_selected()
+	return err
+
+
+func _nearest_hostile(p):
+	var sr := float(p.fit.stats()["sensor_range"])
+	var best = null
+	var bd := sr
+	for n in view.ship_layer.get_children():
+		if n is Ship and n != p and not n.dying and not n.in_warp() and n.hostile_to_player():
+			var dd: float = p.position.distance_to(n.position)
+			if dd <= bd:
+				bd = dd
+				best = n
+	return best
+
+
+func _hk(action: String) -> String:
+	var k := Keybinds.key_text(action)
+	return "" if k == "" else "Key: %s" % k
+
+
 func _cmd(c: Dictionary) -> void:
 	Commands.execute(c)
 	_build_selected()
@@ -718,15 +805,15 @@ func _build_selected() -> void:
 	var r1 := UI.hbox(4)
 	sel_box.add_child(r1)
 	if far or kind in ["planet", "star", "field"]:
-		r1.add_child(UI.button("Warp to", func(): _cmd({"type": "warp_to", "id": id})))
-	r1.add_child(UI.button("Approach", func(): _cmd({"type": "approach", "id": id})))
+		r1.add_child(UI.button("Warp to", func(): _cmd({"type": "warp_to", "id": id}), _hk("cmd_warp")))
+	r1.add_child(UI.button("Approach", func(): _cmd({"type": "approach", "id": id}), _hk("cmd_approach")))
 	if kind in ["station", "haven"]:
-		r1.add_child(UI.button("Dock", func(): _cmd({"type": "dock", "id": id})))
+		r1.add_child(UI.button("Dock", func(): _cmd({"type": "dock", "id": id}), _hk("cmd_dock")))
 	if kind == "gate":
 		var jerr := ""
 		if view.player != null and is_instance_valid(view.player) and d.has("node"):
 			jerr = GameState.can_jump(view.player.fit, int(d["node"].data["to"]))
-		var jb := UI.button("Jump", func(): _cmd({"type": "jump", "id": id}), jerr)
+		var jb := UI.button("Jump", func(): _cmd({"type": "jump", "id": id}), jerr if jerr != "" else _hk("cmd_jump"))
 		r1.add_child(jb)
 		if jerr != "":
 			jb.disabled = true
@@ -748,15 +835,15 @@ func _build_selected() -> void:
 			ri.add_child(UI.label("In warp – a Warp Interdictor could stop it.", 12, UI.TEXT_DIM))
 	if has_node and kind == "ship" and d["node"].escort_mark:
 		var fol: bool = view.player != null and is_instance_valid(view.player) and String(view.player.order.get("type", "")) == "follow" and view.player.order.get("node") == d["node"]
-		var fb := UI.button("Following" if fol else "Follow", func(): _cmd({"type": "follow", "id": id}), "Stay with this ship – also in warp and through gates")
+		var fb := UI.button("Following" if fol else "Follow", func(): _cmd({"type": "follow", "id": id}), "Stay with this ship – also in warp and through gates\n" + _hk("cmd_follow"))
 		fb.disabled = fol
 		r1.add_child(fb)
 	if has_node and kind in ["ship", "asteroid", "wreck", "anomaly"]:
 		var locked: bool = view.player != null and is_instance_valid(view.player) and view.player.lock_index(id) >= 0
 		if locked:
-			r1.add_child(UI.button("Unlock", func(): _cmd({"type": "unlock", "id": id})))
+			r1.add_child(UI.button("Unlock", func(): _cmd({"type": "unlock", "id": id}), _hk("cmd_lock")))
 		else:
-			r1.add_child(UI.button("Lock target", func(): _cmd({"type": "lock", "id": id})))
+			r1.add_child(UI.button("Lock target", func(): _cmd({"type": "lock", "id": id}), _hk("cmd_lock")))
 	if has_node and not warping:
 		var r2 := UI.hbox(4)
 		sel_box.add_child(r2)
@@ -903,6 +990,92 @@ func _lock_card_input(ev: InputEvent, key: String) -> void:
 			Commands.execute({"type": "target", "id": key})
 			if view != null:
 				view.select(key)
+
+
+# ================================================================ Allied group (top left)
+
+const MAX_ALLY_TILES := 8
+
+
+func _update_allies() -> void:
+	var ships: Array = view.player_group() if view != null else []
+	if ships.size() > MAX_ALLY_TILES:
+		ships = ships.slice(0, MAX_ALLY_TILES)
+	ally_bar.visible = not ships.is_empty() and not survey_panel.visible
+	var sig := ""
+	for n in ships:
+		sig += "%d%s;" % [n.get_instance_id(), "L" if n.convoy_lead else ""]
+	if sig != _ally_sig:
+		_ally_sig = sig
+		UI.clear(ally_bar)
+		_ally_cards.clear()
+		if not ships.is_empty():
+			ally_bar.add_child(UI.label("YOUR GROUP", 11, Color(0.45, 1.0, 0.55)))
+		for n in ships:
+			_make_ally_card(n)
+	var p = view.player if view != null else null
+	for n in ships:
+		var c: Dictionary = _ally_cards.get(n, {})
+		if c.is_empty() or not is_instance_valid(n):
+			continue
+		var info := ""
+		if n.is_docked():
+			info = "Docked"
+		elif n.in_warp():
+			info = "In warp"
+		elif p != null and is_instance_valid(p):
+			info = SystemView.fmt_dist(p.position.distance_to(n.position))
+		if n.convoy_lead:
+			info = "LEAD  •  " + info
+		c["info"].text = info
+		var sel: bool = selected_id == "ship:%d" % n.fit.uid
+		var sb: StyleBoxFlat = c["style"]
+		sb.border_color = Color(0.45, 1.0, 0.55) if sel else Color(0.45, 1.0, 0.55, 0.35)
+		sb.set_border_width_all(2 if sel else 1)
+		var ns: Dictionary = n.fit.stats()
+		_set_bar(c["bars"][0], n.fit.shield, ns["shield_max"])
+		_set_bar(c["bars"][1], n.fit.armor, ns["armor_max"])
+		_set_bar(c["bars"][2], n.fit.structure, ns["structure_max"])
+
+
+func _make_ally_card(n: Ship) -> void:
+	var panel := PanelContainer.new()
+	var sb := UI.panel_style(Color(0.03, 0.06, 0.05, 0.88), Color(0.45, 1.0, 0.55, 0.35))
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.custom_minimum_size = Vector2(150, 0)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.tooltip_text = "Click: select  •  Right-click: follow"
+	var id := "ship:%d" % n.fit.uid
+	panel.gui_input.connect(func(ev): _ally_card_input(ev, id))
+	ally_bar.add_child(panel)
+	var v := UI.vbox(2)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(v)
+	var nm := UI.label(n.display_name(), 12, Color(0.75, 1.0, 0.8))
+	nm.clip_text = true
+	nm.custom_minimum_size = Vector2(130, 0)
+	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(nm)
+	var info := UI.label("", 11, UI.TEXT_DIM)
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(info)
+	var bars: Array = []
+	for col in [Color(0.35, 0.65, 1.0), Color(1.0, 0.8, 0.3), Color(0.9, 0.3, 0.3)]:
+		var b := UI.bar(col, 130)
+		b.custom_minimum_size = Vector2(130, 3)
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(b)
+		bars.append(b)
+	_ally_cards[n] = {"style": sb, "info": info, "bars": bars}
+
+
+func _ally_card_input(ev: InputEvent, id: String) -> void:
+	if ev is InputEventMouseButton and ev.pressed:
+		if (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
+			Commands.execute({"type": "follow", "id": id})
+		else:
+			if view != null:
+				view.select(id)
 
 
 # ================================================================ Module bar (bottom centre)
