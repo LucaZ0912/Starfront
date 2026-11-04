@@ -1,0 +1,167 @@
+class_name Industry
+extends RefCounted
+## Local industry: ore refining and module manufacturing.
+## What a station can do depends on its type (data/commodities.gd -> STATION_TYPES):
+##   refinery       – refining yield (0 = no refinery)
+##   manufacturing  – which module slots the fabricators can build
+## Fees get cheaper when the station itself produces the input materials (local economy).
+
+## Refining data lives in data/commodities.gd ("refines_to", "yield", "class").
+const REFINE_FEE_PER_UNIT := 3.0
+
+## Material mix per module slot (relative weights). Multiplied by module price / VALUE_PER_UNIT.
+const BLUEPRINT_MIX := {
+	"hull": {"iron_ingot": 3.0, "nickel_ingot": 1.0, "titanium_ingot": 1.0, "alloys": 1.0},
+	"engine": {"alloys": 2.0, "titanium_ingot": 1.0, "cobalt_ingot": 1.0, "electronics": 1.0},
+	"distributor": {"electronics": 2.0, "silicon": 1.0, "alloys": 1.0},
+	"reactor": {"titanium_ingot": 2.0, "cobalt_ingot": 1.0, "electronics": 1.0, "deuterium": 1.0},
+	"tank": {"aluminium": 2.0, "iron_ingot": 1.0, "alloys": 1.0},
+	"hyperdrive": {"electronics": 2.0, "titanium_ingot": 1.0, "deuterium": 1.0, "xeno_lattice": 0.5},
+	"sensors": {"electronics": 2.0, "silicon": 1.0, "rare_earths": 1.0},
+	"weapon": {"weapon_parts": 2.0, "alloys": 1.0, "electronics": 1.0, "magnesium": 0.5},
+	"tool": {"electronics": 2.0, "alloys": 1.0, "iron_ingot": 1.0, "silicon": 1.0},
+	"optional": {"alloys": 2.0, "aluminium": 1.0, "electronics": 1.0},
+}
+## Extra exotic materials for large (size L) modules, per slot.
+const LARGE_EXTRA := {
+	"reactor": {"cryo_coolant": 2}, "weapon": {"cryo_coolant": 2}, "hull": {"iridium_ingot": 2},
+	"hyperdrive": {"helium3": 1}, "sensors": {"neodymium": 1}, "distributor": {"platinum_ingot": 1},
+}
+## Rough material value per unit used to scale recipes
+const VALUE_PER_UNIT := 260.0
+const BUILD_FEE_FACTOR := 0.18
+
+
+static func station_type(station: Dictionary) -> Dictionary:
+	return GameData.station_types[station["type"]]
+
+
+# ---------------------------------------------------------------- Refining
+
+static func is_ore(item: String) -> bool:
+	return GameData.commodities.has(item) and GameData.commodities[item].has("refines_to")
+
+
+## All refinable ores in data order.
+static func ores() -> Array:
+	var out: Array = []
+	for cid in GameData.commodities:
+		if is_ore(cid):
+			out.append(cid)
+	return out
+
+
+## Station refining efficiency for one asteroid class ("metallic" / "stony" / "icy"),
+## or the best class if none is given (0 = no refinery at all).
+static func refinery_yield(station: Dictionary, cls: String = "") -> float:
+	var r = station_type(station).get("refinery", {})
+	if not (r is Dictionary):
+		return float(r)
+	if cls != "":
+		return float(r.get(cls, 0.0))
+	var best := 0.0
+	for k in r:
+		best = maxf(best, float(r[k]))
+	return best
+
+
+static func ore_yield(station: Dictionary, ore: String) -> float:
+	var c: Dictionary = GameData.commodities[ore]
+	return float(c["yield"]) * refinery_yield(station, c["class"])
+
+
+## Preview: how much would refining `amount` units of `ore` yield, and what would it cost?
+static func refine_quote(station: Dictionary, ore: String, amount: float) -> Dictionary:
+	var c: Dictionary = GameData.commodities[ore]
+	var out := floorf(amount * ore_yield(station, ore))
+	var fee := int(ceil(amount * REFINE_FEE_PER_UNIT * (4 - int(station["tier"])) / 2.0))
+	return {"out_id": c["refines_to"], "out": out, "fee": fee}
+
+
+## Refines ore from the ship's cargo into refined material (also into the cargo).
+static func refine(fit: ShipFitting, station: Dictionary, ore: String) -> String:
+	if not is_ore(ore):
+		return "%s cannot be refined." % GameData.item_name(ore)
+	if refinery_yield(station, GameData.commodities[ore]["class"]) <= 0.0:
+		return "This refinery cannot process %s ore." % GameData.CLASS_NAMES[GameData.commodities[ore]["class"]]
+	var have := floorf(float(fit.cargo.get(ore, 0.0)))
+	if have < 1.0:
+		return "No %s in the cargo hold." % GameData.item_name(ore)
+	var q := refine_quote(station, ore, have)
+	if q["out"] < 1.0:
+		return "Not enough ore for a single batch."
+	if not GameState.spend(int(q["fee"])):
+		return "Not enough credits."
+	fit.remove_cargo(ore, have)
+	fit.cargo[q["out_id"]] = float(fit.cargo.get(q["out_id"], 0.0)) + float(q["out"])
+	GameState.stats["refined"] = int(GameState.stats.get("refined", 0)) + int(have)
+	return ""
+
+
+# ---------------------------------------------------------------- Manufacturing
+
+static func can_build_here(station: Dictionary, module_id: String) -> bool:
+	var m: Dictionary = GameData.modules[module_id]
+	var slots: Array = station_type(station).get("manufacturing", [])
+	return m["slot"] in slots and int(m["size"]) <= int(station["tier"])
+
+
+static func buildable(station: Dictionary) -> Array:
+	var out: Array = []
+	for mid in GameData.modules:
+		if can_build_here(station, mid) and not GameData.modules[mid].get("pirate_only", false):
+			out.append(mid)
+	return out
+
+
+## Bill of materials + fabrication fee for a module at a station.
+static func recipe(station: Dictionary, module_id: String) -> Dictionary:
+	var m: Dictionary = GameData.modules[module_id]
+	var mix: Dictionary = BLUEPRINT_MIX.get(m["slot"], BLUEPRINT_MIX["optional"])
+	var total_w := 0.0
+	for k in mix:
+		total_w += float(mix[k])
+	var units := float(m["price"]) / VALUE_PER_UNIT
+	var mats := {}
+	for k in mix:
+		mats[k] = maxi(1, int(ceil(units * float(mix[k]) / total_w)))
+	# Large modules need exotic material
+	if int(m["size"]) >= 3:
+		mats["xeno_lattice"] = int(mats.get("xeno_lattice", 0)) + 2
+		var extra: Dictionary = LARGE_EXTRA.get(m["slot"], {})
+		for k in extra:
+			mats[k] = int(mats.get(k, 0)) + int(extra[k])
+	# Local economy: inputs the station produces itself make the job cheaper
+	var produces: Array = station_type(station)["produces"]
+	var local := 0
+	for k in mats:
+		if k in produces:
+			local += 1
+	var fee_mult := 1.0 - 0.15 * local
+	return {"materials": mats, "fee": int(float(m["price"]) * BUILD_FEE_FACTOR * fee_mult)}
+
+
+static func missing_materials(fit: ShipFitting, rec: Dictionary) -> Dictionary:
+	var missing := {}
+	for k in rec["materials"]:
+		var need := float(rec["materials"][k])
+		var have := float(fit.cargo.get(k, 0.0))
+		if have + 0.001 < need:
+			missing[k] = need - have
+	return missing
+
+
+## Builds a module from materials in the ship's cargo. Result goes to station storage.
+static func build(fit: ShipFitting, station: Dictionary, module_id: String) -> String:
+	if not can_build_here(station, module_id):
+		return "The fabricators here cannot build this module."
+	var rec := recipe(station, module_id)
+	if not missing_materials(fit, rec).is_empty():
+		return "Missing materials."
+	if not GameState.spend(int(rec["fee"])):
+		return "Not enough credits."
+	for k in rec["materials"]:
+		fit.remove_cargo(k, float(rec["materials"][k]))
+	GameState.storage_add(station["id"], module_id)
+	GameState.stats["built"] = int(GameState.stats.get("built", 0)) + 1
+	return ""

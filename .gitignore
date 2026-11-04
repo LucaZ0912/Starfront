@@ -1,0 +1,12 @@
+# Godot 4 – editor cache and imported data are rebuilt from the sources
+.godot/
+*.tmp
+# exports / builds
+export/
+build/
+*.exe
+*.pck
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store

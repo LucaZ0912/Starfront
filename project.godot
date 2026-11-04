@@ -1,0 +1,45 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Sternenfront"
+config/version="0.3.18.8"
+config/description="2D space game: star systems, hyperspace routes, modular ships, auto-battle"
+run/main_scene="res://scenes/menu.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameData="*res://scripts/autoload/game_data.gd"
+Universe="*res://scripts/autoload/universe.gd"
+GameState="*res://scripts/autoload/game_state.gd"
+Keybinds="*res://scripts/autoload/keybinds.gd"
+Commands="*res://scripts/autoload/commands.gd"
+SaveGame="*res://scripts/autoload/save_game.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/aspect="expand"
+
+[dotnet]
+
+project/assembly_name="Sternenfront"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.015, 0.018, 0.04, 1)
+anti_aliasing/quality/msaa_2d=1
