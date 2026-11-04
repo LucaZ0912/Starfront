@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.9. Stand 4. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; als Nächstes kommt Teil 4 (Module and Internal Ship Parts Rework). Netzwerk fehlt noch. Version alpha 0.3.18.10. Stand 4. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -542,7 +542,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 
 ### Module: Größe und Qualität (Paket 19)
 
-- **Größenklassen 1 bis 10** statt S/M/L.
+- **Größenklassen 1 bis 10** statt S/M/L – Waffen nur **1 bis 4**. Das Modulsystem wird neu entworfen, alte Module werden nicht umgerechnet.
 - **Qualitätsklassen F, E, D, C, B, A** – später im Endgame zusätzlich **S** und **S+**.
 - **Schiffsmodulplätze ohne feste Größe S/M/L:** jeder Platz hat eine **Maximalgröße**, die je Schiff verschieden ist. Ein S-Schiff kann z. B. Engines 5 haben, ein anderes S-Schiff Engines 6, weil es eher darauf ausgelegt ist – so bekommt jeder Rumpf ein eigenes Profil.
 - **Schiffsgröße S, M, L bleibt** als grobe Größenklasse, aber ohne direkten Einfluss aufs Gameplay – außer dass L-Schiffe nicht in Stationen vom Typ 0 landen können.
@@ -555,7 +555,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
   - **Radarstörer-Minen** – stören das Radar in ihrem Umkreis.
   - **Zeitauslöser** – explodieren nach einer eingestellten Zeit.
   - **EMP-Minen** – legen Schilde, Energie und Module kurzzeitig lahm.
-- **Radarstörer (Modul):** schaltet die Radaransicht aus, sodass nicht mehr angezeigt wird, wo sich Feinde befinden.
+- **Radarstörer (Modul):** schaltet die Radaransicht aus, sodass nicht mehr angezeigt wird, wo sich Feinde befinden. Wirkt auf Gegner im Umkreis – und Gegner setzen ihn auch gegen den Spieler ein.
 - Weitere neue Modultypen und Waffen (Liste folgt).
 
 ### Energie-Management (Paket 21)
@@ -573,6 +573,8 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 
 ### Schiffsmanufakturen (Paket 24)
 
+- **Earthworks:** die bisherigen Schiffe (Dragonfly, Hornet, Mule, Drillhead, Warden, Bastion …) – noch auf der Erde entwickelt, gemeinsame Designsprache.
+- **Spezialisierung:** jede Manufaktur hat einen Schwerpunkt (Bergbau, Kampf …), aber nicht strikt – z. B. hat die Bergbaufirma auch ein Schiff, das gut als Frachter taugt.
 - **Verschiedene Firmen stellen verschiedene Schiffe her** – jede Manufaktur mit eigener Designsprache und eigenem Schwerpunkt.
 - **Fraktionsschiffe kommen über die Manufakturen ins Spiel:** jede große Fraktion (Assembly, Covenant, Directorate) hat eine eigene, staatlich geführte Schiffsmanufaktur mit mehreren Schiffen.
 - Zu klären, bevor gebaut wird (siehe offene Fragen):
@@ -596,25 +598,31 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 - **Kurzbeschreibung** zu jedem Modul in der Modulübersicht.
 - **Derzeitige Geschwindigkeit** am linken Rand in der Schiffsinfo anzeigen.
 
-### Offene Fragen zu Teil 4
+### Entscheidungen zu Teil 4
+
+Alle Fragen am 4. Nov 2026 geklärt. Folgen für die Pakete:
+- **Paket 19** baut das Modulsystem neu (keine Umrechnung der alten Module), Waffen in Größe 1–4, Modulplätze je Schiff einzeln festgelegt – vorher gehen wir die Schiffe einzeln durch.
+- **Paket 22 (Multi-Fokus)** = mehrere aktive Ziele, jede Waffe behält ihr Ziel vom Einschalten.
+- **Paket 24 (Manufakturen)** beginnt mit „Earthworks“ (die heutigen Rümpfe); jede weitere Manufaktur wird vor dem Bau im Design besprochen.
+
 
 | Frage | Optionen | Vorschlag | Entscheidung |
 | --- | --- | --- | --- |
-| Umrechnung der heutigen Größen | S/M/L → feste Werte (z. B. 2 / 5 / 8) · je Modultyp eigene Tabelle | Feste Werte als Start, je Modultyp nachjustieren (gilt für die Daten, nicht für alte Spielstände) | offen |
-| Wirkung der Qualität | nur Werte · Werte + Masse/Strom · Werte + Preis | Werte, Strom und Preis steigen mit der Qualität | offen |
-| Woher kommt Qualität | nur Fertigung · auch Beute · auch Markt | F–C im Handel, B–A aus Fertigung und Beute, S erst im Endgame | offen |
-| Maximalgröße pro Platz | pro Slottyp (alle Engines gleich) · pro einzelnem Platz | pro Slottyp und Schiff, einzelne Ausnahmen möglich | offen |
-| Multi-Fokus-Mechanik | mehrere aktive Ziele · Waffengruppen je Ziel · automatische Zielverteilung | Waffengruppen, die je ein eigenes Ziel haben; Anzahl hängt von Schiff/Sensoren ab | offen |
-| Drohnen-Begrenzung | Anzahl im Hangar · Bandbreite · beides | Hangar fasst Drohnen, Bandbreite begrenzt, wie viele gleichzeitig fliegen | offen |
-| Fraktionsschiffe kaufen | ab Friendly · ab Allied · Missionen | ab Friendly mit der Fraktion, Spitzenmodelle ab Allied | offen |
-| Minen | Anzahl begrenzt (Munition als Ware) · unbegrenzt mit Abklingzeit | Minen als Ware, begrenzte Zahl gleichzeitig ausgelegter Minen je Werfer; Minen verschwinden nach einiger Zeit | offen |
-| Radarstörer – auf wen wirkt er | auf Gegner im Umkreis · auf ein anvisiertes Ziel · auf das eigene Schiff (Tarnung) | wirkt auf Gegner im Umkreis: ihr Radar (Recon-Ansicht) fällt aus bzw. zeigt keine Kontakte; NPCs verlieren die Zielerfassung auf Entfernung | offen |
-| Dienste in Stationen Typ 0 | wenige feste · zufällig | Markt, Treibstoff, Reparatur, Hangar – keine Werft | offen |
-| Anzahl Manufakturen | 3 staatliche + 2–3 private · 3 + 5 oder mehr | 3 staatliche (je Macht) + 3 private (neutral, überall), dazu die Piraten-Werften als Flickwerk ohne Verkauf | offen |
-| Anzahl Schiffe | ca. 20 · 30–40 · mehr | Start mit ca. 24 (je Manufaktur 3–5 über S/M/L verteilt), später erweitern | offen |
-| Wo werden Fraktionsschiffe verkauft | nur Werften der Fraktion · auch neutral | nur an Werften der Fraktion, abhängig vom Ruf | offen |
-| Unterscheidung im Aussehen | nur Farben · eigene Bausteine je Manufaktur · handgezeichnete Vorlagen | eigene Baustein-Sets je Manufaktur im Pixel-Art-Generator + Palette + Markenzeichen | offen |
-| Unterscheidung im Spielgefühl | nur Werte · Werte + Fahrverhalten · + eigene Besonderheit je Manufaktur | Werte + Fahrverhalten + eine Markenbesonderheit je Manufaktur | offen |
+| Umrechnung der heutigen Größen | S/M/L → feste Werte (z. B. 2 / 5 / 8) · je Modultyp eigene Tabelle | Feste Werte als Start, je Modultyp nachjustieren (gilt für die Daten, nicht für alte Spielstände) | **Keine Umrechnung** – das Modulsystem wird grundlegend neu entworfen. Größenbereich je Modultyp; **Waffen nur Größe 1–4** |
+| Wirkung der Qualität | nur Werte · Werte + Masse/Strom · Werte + Preis | Werte, Strom und Preis steigen mit der Qualität | Werte, Strom und Preis steigen mit der Qualität |
+| Woher kommt Qualität | nur Fertigung · auch Beute · auch Markt | F–C im Handel, B–A aus Fertigung und Beute, S erst im Endgame | **F bis A** sind zu kaufen; **S** (und S+) gibt es nur im Endgame |
+| Maximalgröße pro Platz | pro Slottyp (alle Engines gleich) · pro einzelnem Platz | pro Slottyp und Schiff, einzelne Ausnahmen möglich | **Pro einzelnem Platz**, nicht uniform – z. B. Dragonfly zwei 1er-Waffenplätze, andere Schiffe einen 4er und zwei 3er usw. Wir gehen **Schiff für Schiff** durch, was Sinn ergibt |
+| Multi-Fokus-Mechanik | mehrere aktive Ziele · Waffengruppen je Ziel · automatische Zielverteilung | Waffengruppen, die je ein eigenes Ziel haben; Anzahl hängt von Schiff/Sensoren ab | **Mehrere aktive Ziele**: jede Waffe feuert auf das Ziel, das beim Einschalten aktiv war |
+| Drohnen-Begrenzung | Anzahl im Hangar · Bandbreite · beides | Hangar fasst Drohnen, Bandbreite begrenzt, wie viele gleichzeitig fliegen | Hangar fasst Drohnen (Vorrat), Bandbreite begrenzt, wie viele gleichzeitig fliegen |
+| Fraktionsschiffe kaufen | ab Friendly · ab Allied · Missionen | ab Friendly mit der Fraktion, Spitzenmodelle ab Allied | Normale Modelle **ab Neutral**, Spitzenmodelle ab Allied |
+| Minen | Anzahl begrenzt (Munition als Ware) · unbegrenzt mit Abklingzeit | Minen als Ware, begrenzte Zahl gleichzeitig ausgelegter Minen je Werfer; Minen verschwinden nach einiger Zeit | Minen als Ware, begrenzte Zahl gleichzeitig ausgelegter Minen je Werfer; Minen verschwinden nach einiger Zeit |
+| Radarstörer – auf wen wirkt er | auf Gegner im Umkreis · auf ein anvisiertes Ziel · auf das eigene Schiff (Tarnung) | wirkt auf Gegner im Umkreis: ihr Radar (Recon-Ansicht) fällt aus bzw. zeigt keine Kontakte; NPCs verlieren die Zielerfassung auf Entfernung | Auf **Gegner im Umkreis** – und **Gegner setzen ihn auch gegen den Spieler ein** |
+| Dienste in Stationen Typ 0 | wenige feste · zufällig | Markt, Treibstoff, Reparatur, Hangar – keine Werft | Feste kleine Auswahl: Markt, Treibstoff, Reparatur, Hangar – keine Werft |
+| Anzahl Manufakturen | 3 staatliche + 2–3 private · 3 + 5 oder mehr | 3 staatliche (je Macht) + 3 private (neutral, überall), dazu die Piraten-Werften als Flickwerk ohne Verkauf | **Spezialisierte Manufakturen** (z. B. Bergbau, Kampf …), nicht strikt – die Bergbaufirma hat auch ein Schiff, das gut als Frachter taugt. Die **bisherigen Schiffe** bilden die Manufaktur **„Earthworks“** (noch auf der Erde entwickelt, einheitliches Design). Jede Manufaktur hat eine einheitliche Designsprache; Anzahl ergibt sich beim Entwurf |
+| Anzahl Schiffe | ca. 20 · 30–40 · mehr | Start mit ca. 24 (je Manufaktur 3–5 über S/M/L verteilt), später erweitern | Ca. 24 zum Start, später erweitern |
+| Wo werden Fraktionsschiffe verkauft | nur Werften der Fraktion · auch neutral | nur an Werften der Fraktion, abhängig vom Ruf | Nur an Werften der jeweiligen Fraktion |
+| Unterscheidung im Aussehen | nur Farben · eigene Bausteine je Manufaktur · handgezeichnete Vorlagen | eigene Baustein-Sets je Manufaktur im Pixel-Art-Generator + Palette + Markenzeichen | **Pro Manufaktur gemeinsam besprechen**, wie das Design wirken soll (Formen, Farben, Markenzeichen); umgesetzt als eigene Baustein-Sets im Pixel-Art-Generator |
+| Unterscheidung im Spielgefühl | nur Werte · Werte + Fahrverhalten · + eigene Besonderheit je Manufaktur | Werte + Fahrverhalten + eine Markenbesonderheit je Manufaktur | Werte + Fahrverhalten + eine Markenbesonderheit je Manufaktur |
 
 ## Phase 0.5 Teil 5 – Character Update
 

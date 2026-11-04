@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.3.18.10 – 2026-11-04
+
+Planning only (no gameplay change): all open questions of Teil 4 decided and recorded in the roadmap –
+module system rebuilt from scratch (weapons size 1–4, slots defined per ship), quality F–A buyable and
+S in the endgame, multi-focus as several active targets, drones limited by hangar + bandwidth, mines as
+goods, radar jammer used by and against the player, type-0 station services, faction ships from
+Neutral (top models Allied) at their own yards, specialised manufacturers starting with "Earthworks"
+(today's hulls), about 24 ships, design discussed per manufacturer.
+
 ## alpha 0.3.18.9 – 2026-11-04
 
 **Package 18 – Codex.** Teil 3 (NPCs and Factions) is complete. 365 smoke-test checks pass.
