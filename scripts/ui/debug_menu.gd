@@ -5,6 +5,7 @@ extends CanvasLayer
 ## Only available when Commands.cheats_enabled (debug builds / running from the editor).
 
 const FactionData = preload("res://data/factions.gd")
+const MakerData = preload("res://data/manufacturers.gd")
 const COL := Color(0.55, 1.0, 0.35)   # terminal green
 const TABS := ["Pilot", "Ship", "Items", "World"]
 
@@ -284,6 +285,26 @@ func _build_world() -> void:
 	var r4 := _row()
 	r4.add_child(gsel)
 	content.add_child(UI.wrap_label("Government factions spawn neutral ships in their paint (patrol AI comes with package 11).", 12, UI.TEXT_DIM, 440))
+	# package 25d: any loadout as a sparring partner (e.g. a Hadrian ship to test the reflective hull)
+	_section("Spawn any ship next to you")
+	var aids: Array = GameData.presets.keys()
+	aids.sort()
+	var alabels: Array = []
+	for aid in aids:
+		var hh: Dictionary = GameData.hulls[GameData.presets[aid]["hull"]]
+		alabels.append("%s – %s (%s)" % [aid, hh["name"], MakerData.MAKERS.get(String(hh.get("maker", "")), {}).get("tag", "PIR")])
+	var anyp := _option(aids, alabels, 440)
+	content.add_child(anyp)
+	var r5 := _row()
+	var hostile := CheckBox.new()
+	hostile.text = "Hostile (pirate)"
+	hostile.button_pressed = true
+	r5.add_child(hostile)
+	var an := _spin(1, 10, 1)
+	r5.add_child(an)
+	r5.add_child(UI.button("Spawn", func(): _cmd({"type": "debug_spawn", "preset": anyp.get_selected_metadata(), "count": int(an.value),
+		"gov": "", "side": "pirate" if hostile.button_pressed else "neutral"})))
+	content.add_child(UI.wrap_label("Neutral ships just fly about; hostile ones attack you. Hadrian ships reflect part of the damage to their armour.", 12, UI.TEXT_DIM, 440))
 
 
 func _process(_delta: float) -> void:

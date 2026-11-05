@@ -551,6 +551,20 @@ func _update_miners(dt: float) -> void:
 
 # ---------------------------------------------------------------- Patrols
 
+## The Directorate flies Earthworks and Hadrian Dynamics ships (package 25d): half of its patrol
+## ships are Talons, Mauls and Goliaths.
+const HDY_PATROL := {"patrol_light": "patrol_hdy_light", "patrol_medium": "patrol_hdy_medium", "patrol_heavy": "patrol_hdy_heavy"}
+
+
+func _gov_presets(gov: String, presets: Array) -> Array:
+	if gov != "directorate":
+		return presets
+	var out: Array = []
+	for p in presets:
+		out.append(HDY_PATROL[p] if HDY_PATROL.has(p) and randf() < 0.5 else p)
+	return out
+
+
 func _patrol_presets() -> Array:
 	var q := int(profile["patrol_quality"])
 	var n := maxi(1, int(profile["patrol_size"]))
@@ -597,7 +611,7 @@ func _spawn_patrol(gov: String, arriving: bool, presets_override: Array = []) ->
 			if String(st.get("faction", "")) == gov:
 				from_st = st["id"]
 				break
-	var presets := _patrol_presets() if presets_override.is_empty() else presets_override
+	var presets := _gov_presets(gov, _patrol_presets()) if presets_override.is_empty() else presets_override
 	for i in presets.size():
 		var hull_name: String = GameData.hulls[GameData.presets[presets[i]]["hull"]]["name"]
 		var nm := "%s %s %s" % [FactionData.FACTIONS[gov]["pilot"], hull_name, _reg()]

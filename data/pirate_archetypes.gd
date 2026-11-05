@@ -49,6 +49,11 @@ const COWARD_FLEE := 0.55       # cowards run below this share of armour + struc
 const HELP_RANGE := 45000.0     # pirates that hear a coward's call
 
 
+## Pirates fly worn-out copies of Hadrian Dynamics ships (never the Goliath), by size class.
+const HDY_PIRATES := ["pirate_hdy_talon", "pirate_hdy_maul", "pirate_hdy_citadel"]
+const HDY_SHARE := 0.2
+
+
 ## Random archetype + loadout for a system of security `sec`: [archetype, preset].
 static func pick(sec: float) -> Array:
 	var total := 0.0
@@ -66,6 +71,8 @@ static func pick(sec: float) -> Array:
 		tier = 1
 	if sec < 0.3 and randf() < 0.35:
 		tier = 2
+	if randf() < HDY_SHARE:
+		return [arch, HDY_PIRATES[tier]]           # a worn-out Hadrian copy (package 25d)
 	return [arch, ARCHETYPES[arch]["presets"][tier]]
 
 

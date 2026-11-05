@@ -25,6 +25,9 @@ const PALETTE := {
 	# Maison Aurelle ivory and gold (package 25c) – stays ivory whoever owns the ship
 	"J": Color(1.0, 0.99, 0.95), "I": Color(0.92, 0.9, 0.84), "j": Color(0.74, 0.71, 0.64),
 	"U": Color(0.84, 0.63, 0.22), "u": Color(1.0, 0.86, 0.52), "v": Color(0.16, 0.19, 0.28), "V": Color(1.0, 0.92, 0.66),
+	# Hadrian Dynamics steel (package 25d): edge, gunmetal, dark steel, black seams, red lights
+	"B": Color(0.5, 0.52, 0.56), "M": Color(0.31, 0.32, 0.35), "N": Color(0.2, 0.21, 0.23), "X": Color(0.1, 0.1, 0.12),
+	"R": Color(0.95, 0.2, 0.14),
 	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
 	"n": Color(0.4, 0.66, 0.46), "T": Color(0.15, 0.42, 0.3), "t": Color(0.3, 0.6, 0.36),
 	"P": Color(0.2, 0.62, 0.92), "p": Color(0.72, 0.94, 1.0), "q": Color(0.66, 0.84, 0.92),
@@ -41,7 +44,10 @@ const FACTION := {
 	"neutral": {"h": Color(0.66, 0.64, 0.56), "H": Color(0.86, 0.84, 0.74), "d": Color(0.45, 0.43, 0.37), "D": Color(0.3, 0.29, 0.25),
 		"a": Color(1.0, 0.85, 0.3), "f": Color(1.0, 0.85, 0.5)},
 }
-const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U"}
+const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N"}
+## Pirate copies of Hadrian ships are worn out: rusty steel, a dim orange light (package 25d)
+const HDY_WORN := {"B": Color(0.56, 0.44, 0.34), "M": Color(0.38, 0.3, 0.24), "N": Color(0.26, 0.2, 0.17),
+	"X": Color(0.13, 0.1, 0.09), "R": Color(1.0, 0.5, 0.18)}
 
 
 # ---------------------------------------------------------------- Basics
@@ -167,8 +173,18 @@ static func ship_texture(hull_id: String, faction: String, frame: int = -1) -> T
 		var rows := _pad(art) if ShipArt.FULL.has(hull_id) else _mirror_v(_pad(art))
 		if frame >= 0:
 			rows = _animate(rows, frame, anim_frames(hull_id))
-		_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, _colors(faction)))
+		var cols := _colors(faction)
+		if String(GameData.hulls.get(hull_id, {}).get("maker", "")) == "hadrian" and is_pirate_paint(faction):
+			cols.merge(HDY_WORN, true)
+		_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, cols))
 	return _cache[key]
+
+
+## Pirate paints: plain pirates, the pirate factions and notorious captains.
+static func is_pirate_paint(faction: String) -> bool:
+	if faction == "pirate" or faction.begins_with("notorious_"):
+		return true
+	return FactionData.FACTIONS.has(faction) and String(FactionData.FACTIONS[faction].get("kind", "")) == "pirate"
 
 
 ## Number of animation frames of a hull (0 = not animated).
@@ -471,7 +487,7 @@ const SIZE_COLORS := {1: Color(0.55, 0.65, 0.75), 2: Color(0.4, 0.75, 1.0), 3: C
 static func module_icon_key(module_id: String) -> String:
 	if module_id.begins_with("builtin:"):
 		return {"builtin:refinery": "refinery", "builtin:prospect": "t_prospect", "builtin:factory": "factory", "builtin:market": "market",
-			"builtin:afterburner": "o_afterburner"}.get(module_id, "empty")
+			"builtin:afterburner": "o_afterburner", "builtin:pd": "w_pointdef"}.get(module_id, "empty")
 	if not GameData.modules.has(module_id):
 		return "empty"
 	var m: Dictionary = GameData.modules[module_id]

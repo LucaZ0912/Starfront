@@ -1334,6 +1334,9 @@ func _make_shipyard(type: String, tier: int, rich: bool = false) -> Array:
 		var mk: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
 		if mk.has("rich_only") and not rich:
 			continue
+		# package 25d: big warships only at military stations, shipyard complexes and tier-3 stations
+		if String(h.get("yard_rule", "")) == "military" and not (type in ["military", "shipyard"] or tier >= 3):
+			continue
 		var yards = mk.get("yards", "all")
 		var at_yard: bool = t["shipyard"] and (typeof(yards) == TYPE_STRING or type in yards)
 		if at_yard and int(h["size"]) <= tier:

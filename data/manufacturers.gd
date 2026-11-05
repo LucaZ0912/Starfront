@@ -46,6 +46,8 @@ const MAKERS := {
 		"crest": {"shape": "octagon", "field": Color(0.15, 0.16, 0.18), "symbol": Color(0.72, 0.74, 0.78), "rim": Color(0.75, 0.25, 0.18), "symbol_id": "rampart"},
 		"text": "The most controversial manufacturer in the Cluster. After the Severance the Cluster sank into chaos, and arms makers such as Hadrian Ordnance grew immensely rich. Its owner, Erik Martin, also brought the Dark Decades to an end: he rediscovered how to build nuclear weapons and, around 12748 HE, forced the first ceasefire between the young, warring Assembly and Covenant by nuclear deterrence.\n\nAround 12790 HE Hadrian Ordnance merged with the hull maker Castellan Hullworks into Hadrian Dynamics and began to build its own ships – brutal, dangerous warships with reflective hulls, made for combat and little else. Today Erik Martin Jr. runs the company; he is said to be the richest man in the Cluster. Pirates fly worn-out copies of its ships.",
 		"ships": ["Talon", "Maul", "Goliath", "Citadel"],
+		"yards": "all",                      # Goliath and Citadel: hull yard_rule "military"
+		"pirate_copies": ["hdy_talon", "hdy_maul", "hdy_citadel"],
 		"see": ["hist_dark_decades", "fac_assembly", "fac_covenant"]},
 	"concord": {
 		"name": "Concord Fleetworks", "tag": "CFW", "kind": "state", "faction": "assembly", "founded": 12755, "unlock": "faction:assembly",

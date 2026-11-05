@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru) und 25c (Maison Aurelle) fertig, als Nächstes 25d (Hadrian Dynamics). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.16. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle) und 25d (Hadrian Dynamics) fertig, als Nächstes 25e (Concord Fleetworks). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.17. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -892,6 +892,17 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] Verkauf nur an Werften der Handelsstationen in reichen, sicheren Systemen (Sicherheit ≥ 0,65) der Assembly und des Covenant – im Directorate keine.
 - [x] In diesen Systemen fliegen Boulevards als NPC-Linienschiffe zwischen den Stationen (gut ein Drittel der Shuttles).
 - [x] Empress neu gezeichnet (0.4.25.13): schmalere Fensterseiten, dazwischen zwischen den beiden Goldstreifen ein langes Parkdeck unter einer Glaskuppel mit Streben – Rasen, Bäume, Blumen, Promenade und ein Pool mit Sonnenliegen. Animiert: Wellen auf dem Pool (ab 0.4.25.16 halb so schnell), ein Lichtreflex läuft über die Kuppel. Als erste Art in voller Höhe gezeichnet (nicht gespiegelt).
+
+**Umgesetzt 25d (6. Nov 2026, alpha 0.4.25.17)** – Hadrian Dynamics, 14 neue automatische Prüfungen:
+
+- [x] **Talon** (S, Dropship, 34.000 cr): vier Waffenplätze, kein Werkzeugplatz, kein Hangar, +15 % Tempo, Schild +40 %, Raketen und Torpedos feuern 30 % schneller. **Maul** (M, Kanonenboot, 115.000 cr): fünf Waffenplätze, 1 Werkzeugplatz, Hangar 2 (1 Drohne), +15 % Tempo. **Goliath** (M, Zerstörer, 280.000 cr): sechs Waffenplätze bis Größe 4 wie ein L-Kampfschiff auf zwei Waffenarmen, Hangar 5 (4 Drohnen), eingebaute Punktverteidigung. **Citadel** (L, kleiner Flottenträger, 560.000 cr): fünf Waffenplätze, Hangar 9 (9 Drohnen), eingebaute Punktverteidigung; für Teil 5 als Träger eines S-Schiffs vorgemerkt.
+- [x] **Reflektierende Hülle:** S 10 %, M 15 %, L 20 % des Schadens, der die Panzerung trifft, gehen an den Angreifer zurück (Schilde reflektieren nicht; zurückgeworfener Schaden prallt nicht erneut ab und zählt nicht als Angriff); rotes Aufblitzen beim Angreifer. M und L dazu +20 % Explosivresistenz.
+- [x] **Schwach außerhalb des Kampfs:** Werkzeugplätze S 0, M/L 1, kleiner Frachtraum, kein Erzlager, −50 % auf Abbau, Eisernte, Bergung und Analyse, hohe Signatur. Langstrecken- und Nuklearraketen sind für Maul, Goliath und Citadel vorgemerkt (`heavy_missiles`).
+- [x] Pixel-Art: brutalistische, kantige Panzerblöcke in dunklem Stahl mit Plattenfugen, wenigen roten Lichtern und gut sichtbaren Geschützen; Talon als Panzerkeil mit Raketenkapsel, Maul mit Panzerschürze und langem Zwillingsgeschütz auf dem Rücken, Goliath mit zwei wuchtigen Waffenarmen an breiten Schultergelenken, Citadel als Festung mit Zinnen, Hangarbuchten mit roten Leitlichtern und Punktverteidigungstürmen.
+- [x] Verkauf überall; Goliath und Citadel nur an Militärstationen, Shipyard Complexes und Stationen der Stufe 3.
+- [x] **Piraten** fliegen heruntergekommene Kopien (rostiger Stahl, orange Lichter, Ausrüstung der Qualität E/F) – Talon, Maul und Citadel, nie die Goliath (20 % der Piraten).
+- [x] **Directorate-Patrouillen** fliegen zur Hälfte Talon, Maul und Goliath statt Earthworks-Schiffen.
+- [x] **Debug-Funktion** (Debug-Menü → World): „Spawn any ship next to you“ – jede Ausrüstung als Gegner oder neutral (z. B. um die reflektierende Hülle zu testen).
 
 ### Stationstyp 0 (Paket 26)
 

@@ -520,6 +520,7 @@ func _process(delta: float) -> void:
 				_test_khi(view)
 				_test_kanayama(view)
 				_test_aurelle(view)
+				_test_hadrian(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -1382,6 +1383,26 @@ func _shoot_standing(view: SystemView) -> void:
 		eim.resize(eim.get_width() * 6, eim.get_height() * 6, Image.INTERPOLATE_NEAREST)
 		ef.blend_rect(eim, Rect2i(0, 0, eim.get_width(), eim.get_height()), Vector2i(20, 20 + fi2 * (eim.get_height() + 20)))
 	ef.save_png("res://Claude outputs/empress.png")
+	# package 25d: the Hadrian Dynamics ships – factory paint, then the worn pirate copies (no Goliath)
+	var hdy := ["hdy_talon", "hdy_maul", "hdy_goliath", "hdy_citadel"]
+	var hsh := Image.create(1100, 900, false, Image.FORMAT_RGBA8)
+	hsh.fill(Color(0.07, 0.08, 0.11))
+	var hy := 20
+	for hh9 in hdy:
+		var hx := 20
+		for prow in 2:
+			if prow == 1 and hh9 == "hdy_goliath":
+				break
+			var him := PixelArt.ship_texture(hh9, "player" if prow == 0 else "pirate").get_image()
+			var hsc := 4 if hh9 != "hdy_citadel" else 4
+			him.resize(him.get_width() * hsc, him.get_height() * hsc, Image.INTERPOLATE_NEAREST)
+			if hx + him.get_width() > 1100:
+				hy += him.get_height() + 20
+				hx = 20
+			hsh.blend_rect(him, Rect2i(0, 0, him.get_width(), him.get_height()), Vector2i(hx, hy))
+			hx += him.get_width() + 40
+		hy += PixelArt.ship_texture(hh9, "player").get_height() * 4 + 24
+	hsh.save_png("res://Claude outputs/hadrian_ships.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -3045,10 +3066,10 @@ func _test_drones(view: SystemView) -> void:
 	var hull_ok := true
 	for hid in GameData.hulls:
 		var h: Dictionary = GameData.hulls[hid]
-		if h.get("drone_only", false) or (h.get("maker", "") == "aurelle" and int(h.get("drones", 0)) == 0):
-			continue                 # Pearl and Opal (package 25c) carry no drones
+		if h.get("drone_only", false) or (h.get("maker", "") in ["aurelle", "hadrian"] and int(h.get("drones", 0)) == 0):
+			continue                 # Pearl, Opal (25c) and Talon (25d) carry no drones
 		hull_ok = hull_ok and GameData.slot_max_of(h, "hangar") > 0 and int(h.get("drones", 0)) >= 1
-	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot (except Pearl and Opal); drones out at once: S 1 … L 9")
+	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot (except Pearl, Opal and Talon); drones out at once: S 1 … L 9")
 	check(int(M["hangar:3:A"]["drone_storage"]) > int(M["hangar:3:C"]["drone_storage"]) and int(M["hangar:3:C"]["drone_storage"]) > int(M["hangar:3:F"]["drone_storage"]), "hangar quality gives more room (%d / %d / %d)" % [int(M["hangar:3:F"]["drone_storage"]), int(M["hangar:3:C"]["drone_storage"]), int(M["hangar:3:A"]["drone_storage"])])
 	var f := GameState.create_from_preset("std_bastion", "player")
 	check(f.can_fit("dweapon_0", "w_pulse:1:C") == "" and f.can_fit("dweapon_0", "w_beam:2:C") != "" and f.can_fit("dweapon_0", "w_pointdef:1:C") != "" and f.can_fit("dtool_0", "t_mining:1:C") == "" and f.can_fit("dtool_0", "t_salvage:1:C") != "" and f.can_fit("dbonus_0", "dr_range:2:C") == "" and f.can_fit("optional_0", "dr_range:1:C") != "", "drone slots: weapon size 1, mining laser size 1, drone modules only in the bonus slot")
@@ -3743,3 +3764,120 @@ func _test_aurelle(view: SystemView) -> void:
 		view.layout["stations"].erase(fake)
 	if liner != null:
 		tr._despawn(liner)
+
+
+## Phase 0.5 package 25d: Hadrian Dynamics – warships with a reflective hull.
+func _test_hadrian(view: SystemView) -> void:
+	var hdy := ["hdy_talon", "hdy_maul", "hdy_goliath", "hdy_citadel"]
+	var ok := true
+	var bad_mods: Array = []
+	for hid in hdy:
+		ok = ok and GameData.hulls.has(hid) and GameData.hulls[hid]["maker"] == "hadrian" and GameData.presets.has("std_" + hid)
+	for pid in GameData.presets:
+		if String(pid).contains("hdy"):
+			for k in GameData.presets[pid]["modules"]:
+				var mid: String = GameData.presets[pid]["modules"][k]
+				if not GameData.modules.has(mid) and not preload("res://data/modules.gd").LEGACY.has(mid):
+					bad_mods.append(mid)
+	check(ok and bad_mods.is_empty(), "Hadrian Dynamics: Talon, Maul, Goliath, Citadel with loadouts %s" % str(bad_mods))
+	var tal := GameState.create_from_preset("std_hdy_talon", "player")
+	var mau := GameState.create_from_preset("std_hdy_maul", "player")
+	var gol := GameState.create_from_preset("std_hdy_goliath", "player")
+	var cit := GameState.create_from_preset("std_hdy_citadel", "player")
+	check(int(tal.hull()["slots"]["tool"]) == 0 and int(mau.hull()["slots"]["tool"]) == 1 and int(cit.hull()["slots"]["tool"]) == 1 and float(cit.stats()["ore_cargo_max"]) == 0.0, "weak outside combat: tool slots S 0, M/L 1, no ore hold")
+	check(is_equal_approx(float(tal.stats()["reflect"]), 0.10) and is_equal_approx(float(mau.stats()["reflect"]), 0.15) and is_equal_approx(float(cit.stats()["reflect"]), 0.20), "reflective hull: S 10 %, M 15 %, L 20 %")
+	var war := GameState.create_from_preset("std_warden", "player")
+	var res_gain := float(mau.stats()["res"]["explosive"]) - float(GameState.create_fit("warden", {"hull": mau.get_module("hull")}, "player").stats()["res"]["explosive"])
+	check(res_gain > 0.19, "M and L: +20 %% explosive resistance (%+.0f %%)" % (res_gain * 100.0))
+	var drill := GameState.create_from_preset("std_drillhead", "player")
+	mau.set_module("tool_0", "t_mining:1:C")
+	drill.set_module("tool_0", "t_mining:1:C")
+	var r_m := 0.0
+	var r_d := 0.0
+	for t in mau.stats()["tools"]:
+		if t["slot"] == "tool_0":
+			r_m = float(t["rate"])
+	for t2 in drill.stats()["tools"]:
+		if t2["slot"] == "tool_0":
+			r_d = float(t2["rate"])
+	check(r_m > 0.0 and absf(r_m - r_d * 0.5) < 0.01, "−50 %% on mining, salvage and analysis (%.2f vs %.2f)" % [r_m, r_d])
+	var hor := GameState.create_from_preset("std_hornet", "player")
+	tal.set_module("weapon_0", "w_rocket:1:C")
+	hor.set_module("weapon_0", "w_rocket:1:C")
+	var cd_t := 0.0
+	var cd_h := 0.0
+	for w in tal.stats()["weapons"]:
+		if w["slot"] == "weapon_0":
+			cd_t = float(w["cooldown"])
+	for w2 in hor.stats()["weapons"]:
+		if w2["slot"] == "weapon_0":
+			cd_h = float(w2["cooldown"])
+	check(cd_t > 0.0 and cd_t < cd_h / 1.25, "Talon: rockets and torpedoes fire faster (%.2f s vs %.2f s)" % [cd_t, cd_h])
+	var pd_g := false
+	for pd in gol.stats()["pd"]:
+		pd_g = pd_g or String(pd["id"]) == "builtin:pd"
+	var pd_c := false
+	for pd2 in cit.stats()["pd"]:
+		pd_c = pd_c or String(pd2["id"]) == "builtin:pd"
+	check(pd_g and pd_c and tal.stats()["pd"].is_empty() and PixelArt.module_icon_key("builtin:pd") == "w_pointdef", "Goliath and Citadel: built-in point defence")
+	check(int(gol.hull()["slots"]["weapon"]) == 6 and int(gol.hull()["slot_sizes"]["weapon"][0]) == 4 and int(gol.hull()["size"]) == 2, "Goliath: the guns of a cruiser on an M hull")
+	# reflection in combat
+	var vf := GameState.create_from_preset("std_hdy_maul", "pirate")
+	vf.position = view.player.position + Vector2(0, 80000)
+	vf.uid = 99903
+	var victim := Ship.new()
+	victim.setup(vf, view)
+	view.ship_layer.add_child(victim)
+	var af := GameState.create_from_preset("std_warden", "pirate")
+	af.position = vf.position + Vector2(600, 0)
+	af.uid = 99904
+	var att := Ship.new()
+	att.setup(af, view)
+	view.ship_layer.add_child(att)
+	vf.shield = 0.0
+	var a_hp0 := af.shield + af.armor + af.structure
+	var v_arm0 := vf.armor
+	victim.take_damage(200.0, "kinetic", att)
+	var dealt := v_arm0 - vf.armor
+	var back := a_hp0 - (af.shield + af.armor + af.structure)
+	check(dealt > 0.0 and back > 0.0 and absf(victim.last_reflected - dealt * 0.15) < 0.5 and att.last_reflected == 0.0, "the reflective hull sends 15 %% of the armour damage back (%.0f of %.0f)" % [victim.last_reflected, dealt])
+	vf.shield = 500.0
+	victim.last_reflected = 0.0
+	victim.take_damage(50.0, "kinetic", att)
+	check(victim.last_reflected == 0.0, "… shields do not reflect")
+	victim.queue_free()
+	att.queue_free()
+	# yards
+	var y1: Array = Universe._make_shipyard("trade", 1)
+	var y2: Array = Universe._make_shipyard("trade", 2)
+	var ym: Array = Universe._make_shipyard("military", 2)
+	var y3: Array = Universe._make_shipyard("trade", 3)
+	check("hdy_talon" in y1 and "hdy_maul" in y2 and not "hdy_goliath" in y2 and "hdy_goliath" in ym and "hdy_goliath" in y3 and "hdy_citadel" in Universe._make_shipyard("military", 3), "sold everywhere; Goliath and Citadel only at military stations and the biggest yards")
+	# pirates and the Directorate
+	var arch_ok := true
+	for pp in ArchData.HDY_PIRATES:
+		arch_ok = arch_ok and GameData.presets.has(pp) and GameData.hulls[GameData.presets[pp]["hull"]]["maker"] == "hadrian" and GameData.presets[pp]["hull"] != "hdy_goliath"
+	var worn := PixelArt.ship_texture("hdy_maul", "pirate").get_image().get_data() != PixelArt.ship_texture("hdy_maul", "player").get_image().get_data()
+	check(arch_ok and worn and ArchData.HDY_SHARE > 0.0, "pirates fly worn-out, rusty Hadrian copies (never the Goliath)")
+	var many: Array = []
+	for i in 40:
+		many.append("patrol_light")
+	var dir_p: Array = view.traffic._gov_presets("directorate", many)
+	var asm_p: Array = view.traffic._gov_presets("assembly", many)
+	check(dir_p.has("patrol_hdy_light") and dir_p.has("patrol_light") and not asm_p.has("patrol_hdy_light"), "Directorate patrols fly Earthworks and Hadrian ships")
+	# debug: spawn any ship
+	var n0 := 0
+	for n in view.ship_layer.get_children():
+		if n is Ship and n.fit.hull_id == "hdy_goliath":
+			n0 += 1
+	var cheats: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	var err: String = Commands.execute({"type": "debug_spawn", "preset": "std_hdy_goliath", "count": 1, "gov": "", "side": "neutral"})
+	Commands.cheats_enabled = cheats
+	var spawned = null
+	for n2 in view.ship_layer.get_children():
+		if n2 is Ship and n2.fit.hull_id == "hdy_goliath" and n2.faction == "neutral":
+			spawned = n2
+	check(err == "" and spawned != null, "debug menu: spawn any ship (here a neutral Goliath)")
+	if spawned != null:
+		spawned.queue_free()

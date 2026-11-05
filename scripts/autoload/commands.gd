@@ -1032,6 +1032,8 @@ func _c_debug_spawn(c: Dictionary) -> String:
 	var side := "pirate"
 	if gov in FactionData.POWERS:
 		side = "neutral"
+	if c.has("side"):
+		side = String(c["side"])        # package 25d: debug "spawn any ship"
 	for i in clampi(int(c.get("count", 1)), 1, 20):
 		var off := Vector2.from_angle(randf() * TAU) * randf_range(700.0, 1100.0)
 		world.spawn_npc(preset, world.player.position + off, side, gov)

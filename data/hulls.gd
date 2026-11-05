@@ -14,6 +14,12 @@ extends RefCounted
 ## shield_mult (shield capacity ×), cargo_mod_mult (cargo racks give only this share), luxury_pay
 ## (pay × on luxury passenger contracts), afterburner {boost, energy_rate, power} with "afterburner" in
 ## builtin; drone_bonus {shield, shield_regen, shield_mult (× the drone shield module)}.
+## Hull traits (package 25d, Hadrian Dynamics): reflect (share of the damage to the armour that goes back
+## to the attacker), res_bonus {damage type: +resistance}, work_mult (× mining, harvesting, salvage and
+## analysis), missile_rof (× fire rate of rockets and torpedoes), "pd" in builtin (point defence),
+## yard_rule "military" (only at military stations, shipyard complexes and tier-3 stations),
+## heavy_missiles (can carry long-range and nuclear missiles later), small_ship_bay (Teil 5: a bay on
+## top for an S ship).
 ## drones (package 23): how many drones the ship can have out at once (S 1 … L 9). Every hull has
 ## a drone hangar slot ("hangar", size = storage, quality = more room) and the three drone
 ## equipment slots dweapon (weapon size 1), dtool (mining laser size 1) and dbonus (drone module).
@@ -127,6 +133,45 @@ const HULLS := {
 		"drone_bonus": {"mining": 0.25, "cargo": 5.0}, "drone_paint": "khi_drone",
 		"drone_deck": [44, 90],
 		"desc": "KHI's heavy industry ship: a drone carrier for nine mining drones, a refinery as good as a station's, a factory and an on-board market.",
+	},
+	# ---------------- Hadrian Dynamics (package 25d) ----------------
+	"hdy_talon": {
+		"maker": "hadrian", "name": "Talon", "class": "Dropship", "size": 1, "price": 34000, "buyable": true,
+		"structure": 620, "mass": 900, "signature": 52, "cargo": 8,
+		"slots": {"weapon": 4, "tool": 0, "optional": 3, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [2, 2, 2, 1], "tool": [], "optional": [2, 2, 1], "hull": 4, "engine": 5, "reactor": 4, "distributor": 4, "tank": 2, "hyperdrive": 2, "sensors": 3, "hangar": 0},
+		"drones": 0, "shape": "hdy_talon", "length": 36,
+		"speed_mult": 1.15, "shield_mult": 1.4, "reflect": 0.10, "work_mult": 0.5, "missile_rof": 1.3,
+		"desc": "Hadrian's dropship: fast, heavily armed, strong shields, rockets and torpedoes fire faster. A reflective hull sends 10 % of the damage to its armour back. Useless for anything but war.",
+	},
+	"hdy_maul": {
+		"maker": "hadrian", "name": "Maul", "class": "Gunboat", "size": 2, "price": 115000, "buyable": true,
+		"structure": 1900, "mass": 2400, "signature": 120, "cargo": 30,
+		"slots": {"weapon": 5, "tool": 1, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [3, 3, 2, 2, 2], "tool": [1], "optional": [5, 4, 3, 3], "hull": 6, "engine": 6, "reactor": 6, "distributor": 6, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
+		"drones": 1, "shape": "hdy_maul", "length": 54,
+		"speed_mult": 1.15, "reflect": 0.15, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true,
+		"desc": "A fast gunboat with five hardpoints and a small drone hangar. Its reflective hull sends 15 % of the armour damage back; +20 % explosive resistance.",
+	},
+	"hdy_goliath": {
+		"maker": "hadrian", "name": "Goliath", "class": "Destroyer", "size": 2, "price": 280000, "buyable": true,
+		"structure": 2600, "mass": 3400, "signature": 150, "cargo": 35,
+		"slots": {"weapon": 6, "tool": 1, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [4, 4, 3, 3, 2, 2], "tool": [1], "optional": [5, 5, 4, 3], "hull": 7, "engine": 7, "reactor": 8, "distributor": 7, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [2]},
+		"drones": 4, "shape": "hdy_goliath", "length": 64,
+		"speed_mult": 1.1, "reflect": 0.15, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true,
+		"builtin": ["pd"], "yard_rule": "military",
+		"desc": "A destroyer with the guns of a cruiser on two mighty weapon arms, fast for its punch, built-in point defence. Sold only at military stations and the biggest yards.",
+	},
+	"hdy_citadel": {
+		"maker": "hadrian", "name": "Citadel", "class": "Fleet Carrier", "size": 3, "price": 560000, "buyable": true,
+		"structure": 5600, "mass": 8600, "signature": 280, "cargo": 140,
+		"slots": {"weapon": 5, "tool": 1, "optional": 5, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [3, 3, 3, 2, 2], "tool": [1], "optional": [8, 7, 6, 5, 4], "hull": 9, "engine": 8, "reactor": 9, "distributor": 9, "tank": 7, "hyperdrive": 6, "sensors": 6, "hangar": 9, "dweapon": [1], "dtool": [1], "dbonus": [3]},
+		"drones": 9, "shape": "hdy_citadel", "length": 100,
+		"reflect": 0.20, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true, "small_ship_bay": true,
+		"builtin": ["pd"], "yard_rule": "military",
+		"desc": "A small fleet carrier – a fortress with nine drones, built-in point defence and a reflective hull (20 %). Sold only at military stations and the biggest yards.",
 	},
 	# ---------------- Maison Aurelle (package 25c) ----------------
 	"aur_pearl": {

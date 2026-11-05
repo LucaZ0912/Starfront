@@ -139,6 +139,59 @@ const PRESETS := {
 		"optional_0": "o_shield_s", "optional_1": "o_afterburner_s"}},
 
 	# ---------------- Civilians & patrols (phase 0.5 package 11) ----------------
+	# Hadrian Dynamics (package 25d)
+	"std_hdy_talon": {"hull": "hdy_talon", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_radar_s",
+		"weapon_0": "w_rocket_s", "weapon_1": "w_rocket_s", "weapon_2": "w_autocannon_s", "weapon_3": "w_autocannon_s",
+		"optional_0": "o_shield:2:C", "optional_1": "o_shield:2:C", "optional_2": "o_armor_s"}},
+	"std_hdy_maul": {"hull": "hdy_maul", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion:6:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_railgun_m", "weapon_1": "w_railgun_m", "weapon_2": "w_rocket_s", "weapon_3": "w_autocannon_s", "weapon_4": "w_autocannon_s",
+		"tool_0": "t_repair_s", "optional_0": "o_shield_m", "optional_1": "o_armor_m", "optional_2": "o_targeting_s"}},
+	"std_hdy_goliath": {"hull": "hdy_goliath", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion:8:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_massdriver_l", "weapon_1": "w_lance_l", "weapon_2": "w_railgun_m", "weapon_3": "w_torpedo_m", "weapon_4": "w_autocannon_s", "weapon_5": "w_autocannon_s",
+		"tool_0": "t_repair_s", "optional_0": "o_shield_m", "optional_1": "o_shield_m", "optional_2": "o_armor_m", "optional_3": "o_targeting_s"}},
+	"std_hdy_citadel": {"hull": "hdy_citadel", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
+		"weapon_0": "w_lance_l", "weapon_1": "w_massdriver_l", "weapon_2": "w_torpedo_m", "weapon_3": "w_autocannon_s", "weapon_4": "w_autocannon_s",
+		"tool_0": "t_repair_m", "optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_armor_m", "optional_3": "o_targeting_s"}},
+	# worn-out pirate copies (never the Goliath): cheap, low-quality equipment
+	"pirate_hdy_talon": {"hull": "hdy_talon", "archetype": "brawler", "modules": {
+		"hull": "pl_standard:3:E", "engine": "eng_chemical:3:E", "distributor": "dist_basic:3:E", "reactor": "rea_fission:4:E",
+		"tank": "tank:2:E", "hyperdrive": "hyperdrive:1:E", "sensors": "sen_basic:2:E",
+		"weapon_0": "w_rocket:1:E", "weapon_1": "w_rocket:1:E", "weapon_2": "w_autocannon:1:E", "weapon_3": "w_autocannon:1:F",
+		"optional_0": "o_shield:2:E", "optional_1": "o_armor:1:F"}},
+	"pirate_hdy_maul": {"hull": "hdy_maul", "archetype": "brawler", "modules": {
+		"hull": "pl_standard:5:E", "engine": "eng_chemical:5:E", "distributor": "dist_basic:5:E", "reactor": "rea_fission:6:E",
+		"tank": "tank:4:E", "hyperdrive": "hyperdrive:3:E", "sensors": "sen_basic:3:E",
+		"weapon_0": "w_railgun:2:E", "weapon_1": "w_autocannon:2:E", "weapon_2": "w_rocket:1:E", "weapon_3": "w_autocannon:1:F", "weapon_4": "w_rocket:1:F",
+		"optional_0": "o_shield:3:E", "optional_1": "o_armor:3:F"}},
+	"pirate_hdy_citadel": {"hull": "hdy_citadel", "archetype": "brawler", "modules": {
+		"hull": "pl_standard:8:E", "engine": "eng_plasma:8:E", "distributor": "dist_basic:8:E", "reactor": "rea_fusion:9:E",
+		"tank": "tank:6:E", "hyperdrive": "hyperdrive:4:E", "sensors": "sen_basic:4:E",
+		"weapon_0": "w_massdriver:3:E", "weapon_1": "w_railgun:2:E", "weapon_2": "w_torpedo:2:E", "weapon_3": "w_autocannon:1:E", "weapon_4": "w_autocannon:1:F",
+		"optional_0": "o_shield:6:E", "optional_1": "o_armor:4:E"}},
+	# Directorate patrols fly Hadrian ships too (Axiom builds research ships, not warships)
+	"patrol_hdy_light": {"hull": "hdy_talon", "modules": {
+		"hull": "hull_reflect_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c2_s", "sensors": "sen_radar_s",
+		"weapon_0": "w_pulse_s", "weapon_1": "w_rocket_s", "weapon_2": "w_autocannon_s", "weapon_3": "w_autocannon_s",
+		"optional_0": "o_shield:2:C", "optional_1": "o_armor_s"}},
+	"patrol_hdy_medium": {"hull": "hdy_maul", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion:6:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_beam_m", "weapon_1": "w_railgun_m", "weapon_2": "w_rocket_s", "weapon_3": "w_autocannon_s", "weapon_4": "w_autocannon_s",
+		"optional_0": "o_shield_m", "optional_1": "o_armor_s", "optional_2": "o_targeting_s"}},
+	"patrol_hdy_heavy": {"hull": "hdy_goliath", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion:8:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_massdriver_l", "weapon_1": "w_lance_l", "weapon_2": "w_beam_m", "weapon_3": "w_railgun_m", "weapon_4": "w_autocannon_s", "weapon_5": "w_autocannon_s",
+		"optional_0": "o_shield_m", "optional_1": "o_shield_m", "optional_2": "o_armor_m", "optional_3": "o_targeting_s"}},
 	# Maison Aurelle (package 25c)
 	"std_aur_pearl": {"hull": "aur_pearl", "modules": {
 		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_basic_s", "reactor": "rea_fusion:3:C",

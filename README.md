@@ -89,6 +89,16 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Hadrian Dynamics – warships (phase 0.5 package 25d)
+- **Talon** (S dropship), **Maul** (M gunboat), **Goliath** (M destroyer with the guns of a cruiser) and
+  **Citadel** (L fleet carrier): strong in combat, weak at everything else (few tool slots, small cargo,
+  no ore hold, −50 % mining, salvage and analysis, high signature).
+- **Reflective hull:** 10 / 15 / 20 % (S / M / L) of the damage to the armour goes back to the attacker;
+  M and L +20 % explosive resistance. Talon: rockets and torpedoes fire 30 % faster. Goliath and Citadel:
+  built-in point defence, sold only at military stations, shipyard complexes and tier-3 stations.
+- Pirates fly worn-out, rusty copies (never the Goliath); Directorate patrols fly Hadrian ships too.
+- Debug menu → World: spawn any ship next to you (hostile or neutral).
+
 ## Maison Aurelle – passenger transport (phase 0.5 package 25c)
 - **Passenger cabins** (optional modules, size 1–10): bulk, business and luxury suites; more seats with
   size and quality. Luxury suites fit only into Maison Aurelle ships. Occupied cabins cannot be removed.

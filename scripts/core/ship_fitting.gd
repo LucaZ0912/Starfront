@@ -180,7 +180,7 @@ func _compute() -> Dictionary:
 		"speed_mult": 1.0, "range_mult": 1.0, "ore_cargo_max": 0.0, "survey_range_mult": 1.0,
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
-		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0, "cabins": [],
+		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0, "cabins": [], "reflect": 0.0,
 		"power_passive": 0.0, "power_active_max": 0.0, "offline": [], "max_locks": 3,
 		"drone_storage": 0, "drones_max": int(h.get("drones", 0)),
 		"align_mult": float(h.get("align_mult", 1.0)),
@@ -288,6 +288,11 @@ func _compute() -> Dictionary:
 	s["ore_cargo_max"] += float(h.get("ore_cargo", 0.0))
 	# package 25c (Maison Aurelle): fast hulls, strong shields
 	s["speed_mult"] *= float(h.get("speed_mult", 1.0))
+	# package 25d (Hadrian Dynamics): reflective hull, explosive resistance
+	s["reflect"] = float(h.get("reflect", 0.0))
+	var rb: Dictionary = h.get("res_bonus", {})
+	for dt0 in rb:
+		s["res"][dt0] = float(s["res"][dt0]) + float(rb[dt0])
 	s["shield_max"] *= float(h.get("shield_mult", 1.0))
 	s["shield_regen"] *= float(h.get("shield_mult", 1.0))
 	for cls in s["mining_bonus"]:
@@ -305,8 +310,16 @@ func _compute() -> Dictionary:
 		bd["powered"] = not (bpw > 0.0 and power_off.has(bgrp))
 		if bd.has("tool"):
 			s["tools"].append(bd)
+		elif bd.get("pd", false):
+			s["pd"].append(bd)            # built-in point defence (package 25d)
 		else:
 			s["actives"].append(bd)
+	# package 25d: warships are poor at civilian work
+	var wm := float(h.get("work_mult", 1.0))
+	if wm != 1.0:
+		for tw in s["tools"]:
+			if String(tw.get("tool", "")) in ["mining", "harvester", "analyzer", "salvage"]:
+				tw["rate"] = float(tw["rate"]) * wm
 	# Power budget (package 21): the output is a hard limit. Passive modules always draw, active
 	# ones only while in use; on an overload priority groups 4, 3, 2 shut down (see power_plan()).
 	# Only if group 1 alone is too much, everything is throttled.
@@ -339,6 +352,8 @@ func _compute() -> Dictionary:
 	for w in s["weapons"]:
 		w["range"] = float(w["range"]) * s["range_mult"]
 		w["cooldown"] = float(w["cooldown"]) / ratio
+		if w["damage_type"] == "explosive":
+			w["cooldown"] = float(w["cooldown"]) / float(h.get("missile_rof", 1.0))   # Talon (package 25d)
 		dps[w["damage_type"]] += float(w["damage"]) / float(w["cooldown"])
 		min_range = minf(min_range, w["range"])
 	for t2 in s["tools"]:
@@ -369,6 +384,13 @@ func builtin_modules() -> Array:
 				m["id"] = "builtin:prospect"
 				m["builtin"] = true
 				_builtin_cache.append({"key": "builtin_prospect", "data": m})
+			"pd":
+				var pdm: Dictionary = GameData.modules.get("w_pointdef:%d:C" % clampi(int(h.get("size", 1)), 1, 3), {}).duplicate()
+				pdm["name"] = "Point Defence (built-in)"
+				pdm["base_name"] = "Point Defence"
+				pdm["id"] = "builtin:pd"
+				pdm["builtin"] = true
+				_builtin_cache.append({"key": "builtin_pd", "data": pdm})
 			"afterburner":
 				var ab: Dictionary = h.get("afterburner", {})
 				_builtin_cache.append({"key": "builtin_afterburner", "data": {

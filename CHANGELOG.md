@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.17 – 2026-11-06
+
+**Package 25d – Hadrian Dynamics.**
+- Talon, Maul, Goliath and Citadel: brutalist warships in dark steel with red lights.
+- Reflective hull (10/15/20 % of armour damage back to the attacker), +20 % explosive resistance on M/L.
+- Weak outside combat: few tool slots, no ore hold, −50 % mining/salvage/analysis, high signature.
+- Talon fires rockets and torpedoes faster; Goliath and Citadel with built-in point defence.
+- Goliath and Citadel only at military stations and the biggest yards.
+- Pirates fly worn, rusty Hadrian copies; Directorate patrols fly Hadrian ships.
+- Debug menu: spawn any ship next to you.
+
 ## alpha 0.4.25.16 – 2026-11-05
 
 - Empress: the ripples on the pool move at half speed (the glint on the glass dome is unchanged).

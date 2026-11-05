@@ -93,6 +93,7 @@ var _focus: Array = []           # NPC: extra targets for its weapons (bigger sh
 var _relock := {}                # lock key -> {node, until}: lost out of range – re-locked when back
 const RELOCK_TIME := 60.0        # how long modules wait for a target that left the sensor range
 var module_on := {}              # slot -> bool
+var last_reflected := 0.0        # damage the reflective hull last sent back (package 25d)
 var module_timers := {}          # slot -> remaining cycle time (weapons)
 var module_state := {}           # slot -> "off" | "on" | "range" | "energy"
 
@@ -1302,6 +1303,7 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 			fit.shield = 0.0
 	if sh0 > 0.0 and fit.shield <= 0.0:
 		shield_collapse()
+	var armor0 := fit.armor
 	if raw > 0.0 and fit.armor > 0.0:
 		var res: float = fit.stats()["res"][dtype]
 		var m2: float = float(GameData.LAYER_MULT["armor"][dtype]) * (1.0 - res)
@@ -1314,6 +1316,7 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 			fit.armor = 0.0
 	if raw > 0.0:
 		fit.structure -= raw * float(GameData.LAYER_MULT["structure"][dtype])
+	_reflect(armor0 - fit.armor, dtype, attacker)
 	hit_flash = 0.12
 	_show_damage(sh0 - fit.shield, hull0 - (fit.armor + maxf(fit.structure, 0.0)))
 	if fit.structure <= 0.0:
@@ -1323,6 +1326,19 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 		var st := fit.stats()
 		if fit.armor + fit.structure < (float(st["armor_max"]) + float(st["structure_max"])) * ArchData.COWARD_FLEE:
 			_start_fleeing(attacker)
+
+
+## Package 25d (Hadrian Dynamics): the reflective hull sends a share of the damage that hit the
+## armour back to the attacker (shields do not reflect). Reflected damage has no attacker of its own,
+## so it never bounces back again and never counts as an attack.
+func _reflect(armor_dmg: float, dtype: String, attacker) -> void:
+	var share := float(fit.stats().get("reflect", 0.0))
+	if share <= 0.0 or armor_dmg <= 0.0 or attacker == null or not is_instance_valid(attacker) or not attacker is Ship or attacker == self:
+		return
+	attacker.take_damage(armor_dmg * share, dtype, null)
+	last_reflected = armor_dmg * share
+	if view != null and view.sky_alpha() >= 0.5:
+		view.spawn_fx(Fx.flash(attacker.position, Color(1.0, 0.35, 0.25), attacker.radius * 0.5))
 
 
 ## The pilot opened fire on this NPC: it (and its faction, for a while) fights back; shooting a
