@@ -90,7 +90,8 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   priority; they cannot be removed.
 
 ## Kanayama-maru – heavy industry ship (phase 0.5 package 25b)
-- KHI's L-class industry ship (950,000 cr, KHI yards of tier 3): nine drones (+25 % mining, +5 m³ cargo,
+- KHI's L-class industry ship (950,000 cr, KHI yards of tier 3), built like a carrier: a tall rear block
+  with the bridge, in front of it a flat flight deck – the drones launch from it and land on it. Nine drones (+25 % mining, +5 m³ cargo,
   KHI yellow), a 1,200 m³ ore hold, a refinery as good as a station's, a prospector, very slow to turn and
   to align for warp.
 - **Building takes time everywhere:** 15 s × size^1.2 per module, 40 s per drone. Station jobs keep

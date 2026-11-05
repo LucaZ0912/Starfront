@@ -3439,6 +3439,10 @@ func _test_kanayama(view: SystemView) -> void:
 	view.launch_drones(c, 1)
 	var dr: Array = view.drones_of(c)
 	check(not dr.is_empty() and dr[0].paint == "khi_drone", "its drones fly in KHI yellow")
+	var dk0: Vector2 = c.deck_point(0.0).rotated(-c.heading) - c.position.rotated(-c.heading)
+	var dk1: Vector2 = c.deck_point(1.0).rotated(-c.heading) - c.position.rotated(-c.heading)
+	var launched_fwd: bool = not dr.is_empty() and (dr[0].velocity - c.velocity).dot(Vector2.from_angle(c.heading)) > 0.0
+	check(dk1.x > dk0.x and dk0.x > -c.radius * 0.5 and launched_fwd and c.has_deck(), "drones launch forwards off the flight deck (deck from %.0f to %.0f)" % [dk0.x, dk1.x])
 	for d0 in dr:
 		view.stow_drone(d0)
 	# the market: traders buy at fair prices, large offers attract pirates

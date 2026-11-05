@@ -8,7 +8,8 @@ extends RefCounted
 ## maker (package 25): manufacturer (data/manufacturers.gd); "pirate" = pirate-built.
 ## Hull traits (package 25a, KHI): ore_cargo (built-in ore hold m³), mining_bonus (+ on every asteroid class),
 ## turn_mult, align_mult (warp alignment time ×), refinery {rate ore/s, eff yield ×, power MW},
-## builtin (built-in modules: "prospect", "refinery").
+## builtin (built-in modules: "prospect", "refinery", "factory", "market"); drone_deck [from, to] =
+## pixel-art columns of a flight deck – drones launch from it and land on it (package 25b).
 ## drones (package 23): how many drones the ship can have out at once (S 1 … L 9). Every hull has
 ## a drone hangar slot ("hangar", size = storage, quality = more room) and the three drone
 ## equipment slots dweapon (weapon size 1), dtool (mining laser size 1) and dbonus (drone module).
@@ -120,6 +121,7 @@ const HULLS := {
 		"refinery": {"rate": 3.0, "eff": 1.0, "power": 60}, "factory": {"power": 30}, "market": {"power": 6},
 		"builtin": ["refinery", "prospect", "factory", "market"],
 		"drone_bonus": {"mining": 0.25, "cargo": 5.0}, "drone_paint": "khi_drone",
+		"drone_deck": [44, 90],
 		"desc": "KHI's heavy industry ship: a drone carrier for nine mining drones, a refinery as good as a station's, a factory and an on-board market.",
 	},
 	# ---------------- Civilian NPC hulls (phase 0.5 package 11) ----------------

@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.8 – 2026-11-05
+
+- Kanayama-maru redesigned as a carrier: tall rear block with the bridge flush at its front, a flat flight
+  deck in front of it (lights, centre line, drone lifts). Drones launch forwards off the deck and land on it.
+
 ## alpha 0.4.25.7 – 2026-11-05
 
 **Package 25b – Kanayama-maru, the heavy industry ship.**

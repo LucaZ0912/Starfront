@@ -45,6 +45,12 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 	is_drone = true
 	manual = false
 	velocity = Vector2.from_angle(carrier.heading + PI + randf_range(-0.6, 0.6)) * 120.0 + carrier.velocity
+	if carrier.has_deck():
+		# carriers with a flight deck: off the deck, forwards
+		position = carrier.deck_point(randf_range(0.2, 0.9))
+		velocity = Vector2.from_angle(carrier.heading + randf_range(-0.25, 0.25)) * 220.0 + carrier.velocity
+		heading = carrier.heading
+		fit.position = position
 
 
 func hull_max() -> float:
@@ -82,8 +88,9 @@ func _physics_process(delta: float) -> void:
 	if recalled or view.drones_must_return(carrier):
 		_burn = "work"
 		work = null
-		dest = carrier.position
-		if home_d < float(carrier.radius) + 40.0:
+		dest = carrier.deck_point(0.5)
+		var land := 40.0 if carrier.has_deck() else float(carrier.radius) + 40.0
+		if position.distance_to(dest) < land:
 			view.stow_drone(self)
 			return
 	elif home_d > float(dstats["range"]) or in_shadow():

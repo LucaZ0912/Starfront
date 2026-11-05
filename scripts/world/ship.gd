@@ -2166,6 +2166,24 @@ func smoke(delta: float) -> void:
 	view.spawn_fx(Fx.smoke(position + local.rotated(heading), out * randf_range(55.0, 80.0) + velocity * 0.9, 6.0 + radius * 0.08))
 
 
+## Carriers with a flight deck (Kanayama-maru): drones launch from it and land on it.
+func has_deck() -> bool:
+	return fit.hull().has("drone_deck")
+
+
+## Point on the flight deck (0 = rear end, 1 = front end); the ship's centre without a deck.
+func deck_point(frac: float = 0.5) -> Vector2:
+	var deck: Array = fit.hull().get("drone_deck", [])
+	if deck.is_empty():
+		return position
+	var art: Array = PixelArt.ShipArt.SHIPS.get(fit.hull_id, [])
+	var w := 0
+	for r in art:
+		w = maxi(w, String(r).length())
+	var col := lerpf(float(deck[0]), float(deck[1]), clampf(frac, 0.0, 1.0))
+	return position + Vector2((col + 1.0 - (w + 2) / 2.0) * PixelArt.SCALE, 0.0).rotated(heading)
+
+
 var _stacks_cache: Array = []
 var _stacks_hull := ""
 
