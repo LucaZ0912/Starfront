@@ -82,7 +82,7 @@ func _build() -> void:
 	for i in 3:
 		var lp := AudioStreamPlayer.new()
 		lp.stream = LASER
-		lp.volume_db = -6.0
+		lp.volume_db = -14.0
 		add_child(lp)
 		laser_players.append(lp)
 	hammer_player = AudioStreamPlayer.new()

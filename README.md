@@ -71,7 +71,7 @@ lists every archetype loadout.
 ## Studio intro
 The game starts with the **dlirius games** intro (`scenes/intro.tscn`, `scripts/ui/studio_intro.gd`): the
 animated d from `dlirius/games.gif` (converted to `assets/intro/dlirius_sheet.png`, white → black
-background, the black outline → silver) with a laser shot (`laser.wav`) for each of the 14 colour bars,
+background, the black outline → silver) with a soft zap (`laser.wav`) for each of the 14 colour bars,
 then "dlirius games" in silver with two brackets above it as wide as the lettering. A mouse click slams
 the brackets together around the d (`hammer.wav`); a second click or any key skips to the main menu.
 The sounds are synthesised. With `--smoketest` (or headless) the intro is skipped.

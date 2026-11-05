@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.6 – 2026-11-05
+
+- Intro: the laser shot is now a short, soft zap and quieter (less tiring).
+
 ## alpha 0.4.25.5 – 2026-11-05
 
 - New studio intro "dlirius games": the animated d on black with a laser shot per colour bar, the title in
