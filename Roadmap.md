@@ -804,6 +804,16 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
     - **Anti-Drohnen-Puls** (eingebaut, aktivierbar): alle 30 s ein Puls im Umkreis von 5.000 km, der **alle** Drohnen lahmlegt – auch die von Verbündeten; sie treiben 15 s reglos, verbrauchen aber weiter Treibstoff. Sehr hoher Energiebedarf.
     - **Automodus:** feuert die Fokuskristall-Laser selbstständig auf bis zu 6 Ziele im Umkreis – nur auf feindliche Ziele oder auf die beim Einschalten gesperrten Ziele.
 
+**„D“ – staatliche Manufaktur des Meridian Directorate** (Name offen; Vorschläge: **Axiom Astronautics**, **Meridian Advanced Systems**, **Bridgeworks Institute**)
+- **Aufbau:** wie das Directorate selbst geführt von einem Expertenrat aus Komitees für jeden Belang.
+- **Geschichte:** besteht seit der Gründung des Directorate und entwickelt sich ständig weiter.
+- **Rolle:** Anders als bei den anderen Fraktionen fliegen die Patrouillen und Flaggschiffe des Directorate **Earthworks- und Hadrian-Dynamics-Schiffe**. Die Schiffe der eigenen Manufaktur sind trotzdem häufig in Directorate-Systemen unterwegs – als Forschungs- und Erkundungsschiffe.
+- **Design:** äußerst futuristisch (genauer wird es beim Entwurf).
+- **Schiffe (Arbeitsnamen offen):**
+  - **Kleines Forschungsschiff** (S): durchschnittlich in allen Belangen. **Besonderheit:** zeigt Anomalien auf der Galaxiekarte an (wird mit dem Discovery Update in Teil 6 erweitert).
+  - **Großes Sprungschiff** (L, Prototyp): durchschnittlich für ein L-Schiff in Bewaffnung, Schutz, Geschwindigkeit und Lagerraum. **Besonderheit:** springt ohne Sprungtor – mit einer neuen Ressource aus bestimmten Anomalien, die keinen Lagerplatz braucht. Man setzt auf der Galaxiekarte Kurs; die Zahl der normalen Sprünge bis dorthin ist die Entfernung und bestimmt, wie viel der Ressource nötig ist. Dann springt das Schiff durch ein kleines Wurmloch direkt ins Zielsystem.
+- **Offene Fragen:** siehe Gespräch vom 5. Nov 2026 (Name, Ressource, Reichweite der Anomalie-Anzeige, Grenzen des Wurmlochsprungs, Ruf).
+
 **Recon-Reichweite und Drohnen:** Das Recon-Radar zeigt bisher einen Kreis, dessen Größe vom Bildschirm abhängt (etwa 7.900 km bei 1600×900, 9.500 km bei Full HD). Vorschlag: die Recon-Reichweite auf feste **10.000 km** setzen (das Radar passt sich an) – das ist dann die Höchstgrenze für jede Drohnen-Steuerreichweite (Relay-Modul, CFW-Verdopplung). Drohnen meiden den Radarschatten von Kolossen (umgesetzt in alpha 0.4.24.1).
 
 **Für alle Manufakturen:** eingebaute Module (Nachbrenner, Bordraffinerie, Prospektor-Scanner, Fertigung, Markt …) bekommen in der Modulleiste und im Schiffsmenü eine **farbige Umrandung**, damit man sie als fest eingebaut erkennt.
