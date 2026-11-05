@@ -25,6 +25,9 @@ const PALETTE := {
 	# Maison Aurelle ivory and gold (package 25c) – stays ivory whoever owns the ship
 	"J": Color(1.0, 0.99, 0.95), "I": Color(0.92, 0.9, 0.84), "j": Color(0.74, 0.71, 0.64),
 	"U": Color(0.84, 0.63, 0.22), "u": Color(1.0, 0.86, 0.52), "v": Color(0.16, 0.19, 0.28), "V": Color(1.0, 0.92, 0.66),
+	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
+	"n": Color(0.4, 0.66, 0.46), "T": Color(0.15, 0.42, 0.3), "t": Color(0.3, 0.6, 0.36),
+	"P": Color(0.2, 0.62, 0.92), "p": Color(0.72, 0.94, 1.0), "q": Color(0.66, 0.84, 0.92),
 }
 const FACTION := {
 	"player": {"h": Color(0.62, 0.68, 0.77), "H": Color(0.85, 0.89, 0.95), "d": Color(0.42, 0.47, 0.57), "D": Color(0.27, 0.3, 0.38),
@@ -156,13 +159,52 @@ static func white() -> Texture2D:
 
 # ---------------------------------------------------------------- Ships
 
-static func ship_texture(hull_id: String, faction: String) -> Texture2D:
-	var key := "ship_%s_%s" % [hull_id, faction]
+## frame >= 0: animation frame of an animated hull (see anim_frames()).
+static func ship_texture(hull_id: String, faction: String, frame: int = -1) -> Texture2D:
+	var key := "ship_%s_%s_%d" % [hull_id, faction, frame]
 	if not _cache.has(key):
 		var art: Array = ShipArt.SHIPS.get(hull_id, ShipArt.SHIPS["dragonfly"])
-		var rows := _mirror_v(_pad(art))
+		var rows := _pad(art) if ShipArt.FULL.has(hull_id) else _mirror_v(_pad(art))
+		if frame >= 0:
+			rows = _animate(rows, frame, anim_frames(hull_id))
 		_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, _colors(faction)))
 	return _cache[key]
+
+
+## Number of animation frames of a hull (0 = not animated).
+static func anim_frames(hull_id: String) -> int:
+	return int(ShipArt.ANIM.get(hull_id, 0))
+
+
+## Current animation frame of a hull (-1 = not animated), about 7 frames per second.
+static func anim_frame(hull_id: String) -> int:
+	var n := anim_frames(hull_id)
+	return -1 if n <= 0 else int(Time.get_ticks_msec() / 140) % n
+
+
+## Package 25c (Empress): ripples move over the pool water; in the first half of the cycle a glint
+## runs along the glass dome from stern to bow.
+static func _animate(rows: Array, f: int, n: int) -> Array:
+	var w := String(rows[0]).length()
+	var h := rows.size()
+	var half := maxi(n / 2, 1)
+	var gx := -14.0 + float(f) / float(half) * float(w + 28) if f < half else -1000.0
+	var out: Array = []
+	for y in h:
+		var src: String = rows[y]
+		var row := ""
+		for x in src.length():
+			var ch := src[x]
+			var gd := absf(float(x) - gx - float(y - h / 2) * 0.6)
+			if (ch == "c" or ch == "q") and gd < 1.6:
+				ch = "C"                 # the glint on the dome's frame
+			elif gd < 0.9 and ch in "nTtryP":
+				ch = "q"                 # … and as a pale streak on the glass over the deck
+			elif ch == "P" and ((x + 2 * y + f) % 6 == 0 or (x - y + f * 2) % 11 == 0):
+				ch = "p"
+			row += ch
+		out.append(row)
+	return out
 
 
 # ---------------------------------------------------------------- Station

@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.13 – 2026-11-05
+
+- Empress redesigned: narrower window sides and a long park deck under a glass dome between the gold
+  stripes – lawn, trees, flowers and a pool with sun loungers; animated pool water and a glint on the dome.
+
 ## alpha 0.4.25.12 – 2026-11-05
 
 **Package 25c – Maison Aurelle and passenger transport.**

@@ -1375,6 +1375,13 @@ func _shoot_standing(view: SystemView) -> void:
 		ash.blend_rect(iim, Rect2i(0, 0, iim.get_width(), iim.get_height()), Vector2i(icx, ay + 10))
 		icx += iim.get_width() + 20
 	ash.save_png("res://Claude outputs/aurelle_ships.png")
+	var ef := Image.create(PixelArt.ship_texture("aur_empress", "player").get_width() * 6 + 40, PixelArt.ship_texture("aur_empress", "player").get_height() * 12 + 60, false, Image.FORMAT_RGBA8)
+	ef.fill(Color(0.05, 0.06, 0.09))
+	for fi2 in 2:
+		var eim := PixelArt.ship_texture("aur_empress", "player", [2, 6][fi2]).get_image()
+		eim.resize(eim.get_width() * 6, eim.get_height() * 6, Image.INTERPOLATE_NEAREST)
+		ef.blend_rect(eim, Rect2i(0, 0, eim.get_width(), eim.get_height()), Vector2i(20, 20 + fi2 * (eim.get_height() + 20)))
+	ef.save_png("res://Claude outputs/empress.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -3592,6 +3599,9 @@ func _test_aurelle(view: SystemView) -> void:
 	var keys := []
 	for bm in opal.builtin_modules():
 		keys.append(bm["key"])
+	var fa := PixelArt.ship_texture("aur_empress", "player", 2).get_image()
+	var fb := PixelArt.ship_texture("aur_empress", "player", 6).get_image()
+	check(PixelArt.anim_frames("aur_empress") > 0 and fa.get_size() == fb.get_size() and fa.get_data() != fb.get_data() and PixelArt.anim_frames("aur_opal") == 0, "Empress: animated park deck (pool water, glint on the glass dome)")
 	check(keys.has("builtin_afterburner") and PixelArt.module_icon_key("builtin:afterburner") == "o_afterburner", "built-in afterburner (no slot used)")
 	var c := Ship.new()
 	opal.system_id = view.system_id

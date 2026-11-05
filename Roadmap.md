@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru) und 25c (Maison Aurelle) fertig, als Nächstes 25d (Hadrian Dynamics). Netzwerk fehlt noch. Version alpha 0.4.25.12. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru) und 25c (Maison Aurelle) fertig, als Nächstes 25d (Hadrian Dynamics). Netzwerk fehlt noch. Version alpha 0.4.25.13. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -870,6 +870,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] Pixel-Art: lange, glatte Elfenbein-Rümpfe mit Perlweiß-Kante, Goldlinien, Fensterreihen und Glasbrücke; Opal mit geschwungener Goldlinie und Glas-Lounge, Empress mit gestuften Decks und Glaskuppel. Bleibt elfenbein, egal wem das Schiff gehört.
 - [x] Verkauf nur an Werften der Handelsstationen in reichen, sicheren Systemen (Sicherheit ≥ 0,65) der Assembly und des Covenant – im Directorate keine.
 - [x] In diesen Systemen fliegen Boulevards als NPC-Linienschiffe zwischen den Stationen (gut ein Drittel der Shuttles).
+- [x] Empress neu gezeichnet (0.4.25.13): schmalere Fensterseiten, dazwischen zwischen den beiden Goldstreifen ein langes Parkdeck unter einer Glaskuppel mit Streben – Rasen, Bäume, Blumen, Promenade und ein Pool mit Sonnenliegen. Animiert: Wellen auf dem Pool, ein Lichtreflex läuft über die Kuppel. Als erste Art in voller Höhe gezeichnet (nicht gespiegelt).
 
 ### Stationstyp 0 (Paket 26)
 

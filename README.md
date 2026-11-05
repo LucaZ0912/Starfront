@@ -98,7 +98,8 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   arrival or losing the ship with the passengers aboard costs standing with the issuing faction.
 - **Pearl** (S), **Boulevard** (M), **Opal** (M) and **Empress** (L): fast, luxurious, expensive; built-in
   afterburner (Pearl, Boulevard, Opal), Empress with fast warp, strong shields, +25 % on luxury contracts,
-  half-size cargo racks and white drones with their own shield. Sold at trade hubs of rich, safe
+  half-size cargo racks and white drones with their own shield. The Empress carries a park with trees and a
+  pool under a glass dome (animated). Sold at trade hubs of rich, safe
   Assembly and Covenant systems; Boulevard liners fly between the stations there.
 
 ## Kanayama-maru – heavy industry ship (phase 0.5 package 25b)

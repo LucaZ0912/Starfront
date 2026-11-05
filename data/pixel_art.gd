@@ -10,6 +10,12 @@ extends RefCounted
 ##         Y/L/Q KHI yellow (normal / light / dark)   x black hazard stripe   z orange
 ##         J/I/j Maison Aurelle pearl / ivory / ivory shadow   U/u gold / champagne
 ##         v window band   V lit window
+##         n lawn   T/t tree (dark / light)   P/p pool water (p = ripple)   q glass rib (Empress park deck)
+##
+## FULL: arts drawn at full height (not mirrored). ANIM: number of animation frames (PixelArt animates
+## pool water and a glint running along the glass dome, package 25c).
+const FULL := {"aur_empress": true}
+const ANIM := {"aur_empress": 24}
 
 const SHIPS := {
 	# Scout corvette – slim, swept wings
@@ -149,22 +155,39 @@ const SHIPS := {
 		"feIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
 	],
 	"aur_empress": [
-		"...................................................CccCccCccCc",
-		"........................................JJJJJJJJJJccCccCccCccCcJJJJJJJJ",
-		"............................JJJJJJJJJJJJvVVVvVVVvVVVvVVVvVVVvVVVvVVVvVVJJJJJJJJJJ",
-		"................JJJJJJJJJJJJvVVVvVVVvVVVvVVVvVVVvVVVvVVVvVVVvVVVvVVVvVVVvVVVvVVVvJJJJJJJJJJ",
-		".............JJJVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvJJJ",
-		"......JJJJJJJUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUJ",
-		"..JJJJIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIJJ",
-		"JJIIIVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvJJJJ",
-		"ddIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIcccJ",
-		"fejIIVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvVvICcccJ",
-		"fejIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIJJJ",
-		"fejuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuIIu",
-		"ddIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUIu",
-		"fejIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIuuu",
-		"fejIIIaaaaaIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIu",
-		"fejIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
+		"",
+		"............JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ",
+		".......JJJJJIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIJJJ",
+		".....JJIIIIIvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVIIIJJJJ",
+		"..JJJIIVVvVVuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuVvVIIIIJ",
+		"..IIIVvuuuuuUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUuuuVvVVIJ",
+		"JJVvVuuUUUUUIIIIIIcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccIIIIUUUuuuuvIJ",
+		"ddIuuUUIIIIIIIIIccnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnntnnnnqnnnnnnccIIIIIUUUUuVIJJJ",
+		"ddIIUIIIIIIIIIIcnnnnnnnnqnnnnnnnntqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnynnnnqnnnTTtnttqtnnnnnnncIIIIIIIIUuVIIIJ",
+		"fejIIIIIIIIIIIcnnnTtttnnqnnnnnnnTTqnnnnnnnynqnnnnynnnnqnnnnnnnnnqnnnnnnnnnqnnnTTTTTtqttnnnnnnncIIIIIIIIUuvVVI",
+		"fejIIIIIIIIIIIqnnTTTttnnqnnnnnrnTTqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqynnnnnTTTqttnnnnnnnqIIIIIIIIIUuuuvJ",
+		"fejIIIIIIIIIIIqnnnTTTtnnqnnnnnnnnTqnnnnnnnnnqnnIIuIIuIquIIuIIuIIqIIuIIIInnqtttnnnTTTqttnnnnnnnqIIIIIIIIIIUUUuIJJu",
+		"ddIIIIIIIIIIIIqnnnTTTtnnqnnnnnnnttqnnnnnnnnnqnnIIIIIIIqIIIIIIIIIqIIIIIIInTqtttnnnnTTqTnnnnnnnnqIIIIIIIIIIIIIUVIIIu",
+		"fejIIIIIIIIIIIqnnnnnTTnnqnnnnnnTTtqtnnnnnnnnqnnIIIIPPPqPPPPPPPPPqPPPIIIInTqTttnnnnnnqnnynnnnnnqIIIIccCcccCcccuVvVI",
+		"fejIIIIIIIIIIIqnnnntttnnqtnntttTTTqtnrnnnnnnqnnIIIPPPPqPPPPPPPPPqPPPPIIInTqTTtnnnnnnqnnnnnnnnnqIIIIcccCcccCcccuuuVuu",
+		"fejIIaaaaIIIIIqnnnTTtttTqtnTTtttTTqTtnnnnnnnqnnIIIPPPPqPPPPPPPPPqPPPPIIInnqTttnnnnnnqnTtttttnnqIIIICcccCcccCcccCcuII",
+		"ddIIIaaaaIIIIIqIIITTTttIqTITTTttTtqttIIIIIIIqIIIIIPPPPqPPPPPPPPPqPPPPIIIITqtTtttttIIqtTTtttttIqIIIIcCcccCcccCcccCcvV",
+		"fejjjaaaajjjjjqnnnTTTTnnqnnnTTTnTtqTtnnnnnnnqnnIIIPPPPqPPPPPPPPPqPPPPIIInTqTTTTTtttTqTTTTttTtnqjjjjCcccCcccCcccCcUjj",
+		"fejjjjjjjjjjjjqnnnTTTnnnqnnnnnnnTTqTnnnnnnnnqnnIIIPPPPqPPPPPPPPPqPPPPIIInnqTnTTTTttnqnTTTTtnnnqjjjjcccCcccCcccUUUVUU",
+		"fejjjjjjjjjjjjqnnnnnnnnnqnnnnnnnTTqnnnnnnnnnqnnIIIIPPPqPPPPPPPPPqPPPIIIInnqnnnTTtttnqTttTnnnnnqjjjjccCcccCcccUVvVj",
+		"ddjjjjjjjjjjjjqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnIIIIIIIqIIIIIIIIIqIIIIIIIrnqnnrTTTtttqTTttnnynnqjjjjjjjjjjjjjUVjjjU",
+		"fejjjjjjjjjjjjqnnnnnnnnnqnTtnnnnnnqnnnTtttnnqrnIIuIIuIquIIuIIuIIqIIuIIIInnqnnnnTTTtTqTTTtnnttnqjjjjjjjjjjUUUUjIIU",
+		"fejjjjjjjjjjjjqnnnnnnnnnqTTTnnnynnqnnnTTttnnqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnnnnTTqtTTnnTtttqjjjjjjjjjUUUUvI",
+		"fejjjjjjjjjjjjcnnnnrnnnnqnnnnnnnnnqnnnTTTtnnqnnnnnnnnnqrnnnnnnnnqnnnnnnnnnqnnnnrnnTTqnnnnnTTttcjjjjjjjjUUvVVj",
+		"ddjjUjjjjjjjjjjcnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnrnnnnqnnnnnnnnnqnnnnnnynnqnnnnnTTTcjjjjjjjjUUVjjjI",
+		"ddjUUUUjjjjjjjjjccnnnnnnqnnnnnnnnnqnnnnnnnnnqynnnnnnrnqnnnnnnnnnqnnnnnnnnnqnnnnnnnnnqnnnnnnccjjjjjUUUUUVjIII",
+		"IIVvVUUUUUUUjjjjjjcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccjjjjUUUUUUUvjI",
+		"..jjjVvUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUVvVVjI",
+		"..IIIjjVVvVVUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUVvVjjjjI",
+		".....IIjjjjjvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVVvVjjjIIII",
+		".......IIIIIjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjIII",
+		"............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
+		"",
 	],
 	# AURELLE_END
 	"shuttle": [

@@ -2573,8 +2573,8 @@ func _draw() -> void:
 		var tp: Vector2 = target.position - position
 		draw_line(Vector2.ZERO, tp, Color(1.0, 0.3, 0.3, 0.25 + 0.35 * lock_progress), 1.0)
 
-	# Hull (pixel art)
-	var tex := PixelArt.ship_texture(fit.hull_id, paint)
+	# Hull (pixel art; the Empress' pool and glass dome are animated, package 25c)
+	var tex := PixelArt.ship_texture(fit.hull_id, paint, PixelArt.anim_frame(fit.hull_id))
 	var size := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE
 	draw_set_transform(Vector2.ZERO, heading, Vector2.ONE)
 	if velocity.length() > 20.0:
