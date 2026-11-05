@@ -189,6 +189,7 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 	var h := rows.size()
 	var half := maxi(n / 2, 1)
 	var gx := -14.0 + float(f) / float(half) * float(w + 28) if f < half else -1000.0
+	var fw := f / 2                  # the water ripples move at half speed (0.4.25.16)
 	var out: Array = []
 	for y in h:
 		var src: String = rows[y]
@@ -200,7 +201,7 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 				ch = "C"                 # the glint on the dome's frame
 			elif gd < 0.9 and ch in "nTtryP":
 				ch = "q"                 # … and as a pale streak on the glass over the deck
-			elif ch == "P" and ((x + 2 * y + f) % 6 == 0 or (x - y + f * 2) % 11 == 0):
+			elif ch == "P" and ((x + 2 * y + fw) % 6 == 0 or (x - y + fw * 2) % 12 == 0):
 				ch = "p"
 			row += ch
 		out.append(row)
