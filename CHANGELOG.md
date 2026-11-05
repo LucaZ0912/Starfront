@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.19.19 – 2026-11-05
+
+- Debug menu (Pilot → Contracts): "Escort convoy" with adjustable freighters (1–6) and jumps (1–8) –
+  an escort contract from the docked (or nearest) station to a random station exactly that many
+  jumps away, accepted at once; the convoy rolls out and waits for you.
+
 ## alpha 0.4.19.18 – 2026-11-05
 
 - Formation fix: the pilot's ship no longer lags behind in warp. Followers use the lead's position of

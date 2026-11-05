@@ -124,6 +124,25 @@ const SMUGGLER_TIME := 1200.0      # the smuggler is expected within 20 minutes
 const TIER_NAMES := {"neutral": "Neutral", "friendly": "Friendly"}
 
 
+## Debug (menu → Pilot): an escort contract from `station` with `n` freighters to a random station
+## exactly `jumps` jumps away. {} = no such destination.
+static func debug_escort(system_id: int, station: Dictionary, n: int, jumps: int, rng: RandomNumberGenerator) -> Dictionary:
+	var dests: Array = []
+	for sid in _systems_within(system_id, jumps):
+		if sid == system_id or Universe.find_path(system_id, sid, 1).size() != jumps:
+			continue
+		for st in Universe.get_layout(sid)["stations"]:
+			dests.append([sid, st])
+	if dests.is_empty():
+		return {}
+	var f := String(station.get("faction", ""))
+	var gov := f if f in FactionData.POWERS else ""
+	var m := {"id": _new_id(), "giver": station["id"], "giver_system": system_id,
+		"client": FactionData.name_of(f) if gov != "" else "BlackLedger", "progress": 0, "item": "", "amount": 1,
+		"target_system": system_id, "target_station": "", "faction": gov, "against": "", "faction_job": false, "rep": 0.0}
+	return escort_fill(m, system_id, dests[rng.randi() % dests.size()], n, gov)
+
+
 static func generate_faction(system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var f := String(station.get("faction", ""))
 	var m := {"id": _new_id(), "giver": station["id"], "giver_system": system_id, "client": FactionData.name_of(f),
@@ -195,13 +214,17 @@ static func _escort_offer(m: Dictionary, system_id: int, station: Dictionary, rn
 	if dests.is_empty():
 		return {}
 	var d: Array = dests[rng.randi() % dests.size()]
+	return escort_fill(m, system_id, d, rng.randi_range(2, 4), gov)
+
+
+## Fills `m` as an escort of `n` freighters to `d` = [system id, station] (also used by the debug menu).
+static func escort_fill(m: Dictionary, system_id: int, d: Array, n: int, gov: String) -> Dictionary:
 	var path := Universe.find_path(system_id, d[0], 1)
 	var jumps := path.size()
 	var danger := 0.0
 	for sid2 in path:
 		danger = maxf(danger, 1.0 - float(Universe.systems[sid2]["security"]))
-	var n := rng.randi_range(2, 4)
-	var size_word: String = {2: "small", 3: "medium", 4: "large"}[n]
+	var size_word: String = "small" if n <= 2 else ("medium" if n == 3 else "large")
 	var who := ("%s convoy" % FactionData.short_of(gov)) if gov != "" else "trade convoy chartered by %s" % m["client"]
 	m.merge({"type": "escort", "target_system": d[0], "target_station": d[1]["id"], "convoy": -1, "with_t": 0.0, "total_t": 0.0,
 		"freighters": n, "arrived": -1, "convoy_gov": gov,

@@ -885,6 +885,38 @@ func _c_debug_complete_missions(_c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_convoy", "freighters": n, "jumps": j} – an escort contract from the docked (or the
+## nearest) station: n freighters to a random station exactly j jumps away; accepted at once, the
+## convoy rolls out and gathers outside the station.
+func _c_debug_convoy(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null or f.in_transit():
+		return "No ship in a system."
+	var st := docked_station()
+	if st.is_empty():
+		var best := INF
+		var pos: Vector2 = world.player.position if _need_world() == "" else f.position
+		for s0 in Universe.get_layout(f.system_id)["stations"]:
+			var d0: float = (s0["pos"] as Vector2).distance_to(pos)
+			if d0 < best:
+				best = d0
+				st = s0
+	if st.is_empty():
+		return "No station in this system."
+	var n := clampi(int(c.get("freighters", 3)), 1, 6)
+	var jumps := clampi(int(c.get("jumps", 2)), 1, 8)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var m := Missions.debug_escort(f.system_id, st, n, jumps, rng)
+	if m.is_empty():
+		return "No station exactly %d jump%s away (class-1 routes)." % [jumps, "" if jumps == 1 else "s"]
+	var err := GameState.accept_mission(m)
+	if err != "":
+		return err
+	GameState.log_msg("Debug convoy: %s" % m["title"], GameState.COL_GOOD)
+	return ""
+
+
 ## {"type":"debug_new_contracts"} – reroll the bulletin board here (BlackLedger and faction contracts).
 func _c_debug_new_contracts(_c: Dictionary) -> String:
 	var e := _need_dock()

@@ -507,6 +507,7 @@ func _process(delta: float) -> void:
 				_test_jump_warning(view)
 				_test_codex(view)
 				_test_modules(view)
+				_test_debug_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -2367,3 +2368,28 @@ func _test_modules(view: SystemView) -> void:
 		for hv in L.get("havens", []):
 			haven_crow = haven_crow or "crow" in hv["shipyard"]
 	check(yards.has("shuttle") and yards.has("freighter") and not yards.has("crow") and haven_crow, "Skiff and Longhaul at shipyards, Carrion Crow only in Pirate Havens")
+
+
+## Debug menu: an escort convoy of a chosen size to a station exactly N jumps away.
+func _test_debug_convoy(view: SystemView) -> void:
+	var n0: int = GameState.missions.size()
+	var err := Commands.execute({"type": "debug_convoy", "freighters": 5, "jumps": 2})
+	if err.begins_with("No station exactly"):
+		check(true, "debug convoy: no station 2 jumps away here (%s)" % err)
+		return
+	check(err == "" and GameState.missions.size() == n0 + 1, "debug convoy: contract created and accepted %s" % err)
+	if GameState.missions.size() != n0 + 1:
+		return
+	var m: Dictionary = GameState.missions.back()
+	var cv: Dictionary = GameState.convoys.find(int(m["convoy"]))
+	var jumps: int = Universe.find_path(view.system_id, int(m["target_system"]), 1).size()
+	check(m["type"] == "escort" and int(m["freighters"]) == 5 and jumps == 2 and not cv.is_empty() and int(cv["freighters"]) == 5, "debug convoy: 5 freighters to %s, 2 jumps away" % Universe.systems[int(m["target_system"])]["name"])
+	# clean up: the contract and its convoy
+	GameState.missions.erase(m)
+	GameState.convoys.convoys.erase(cv)
+	var tr = view.traffic
+	if tr != null and tr.convoys.has(int(cv["id"])):
+		for s0 in tr.convoys[int(cv["id"])]["ships"]:
+			if is_instance_valid(s0):
+				s0.queue_free()
+		tr.convoys.erase(int(cv["id"]))

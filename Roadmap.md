@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.18. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.19. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
