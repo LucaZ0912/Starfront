@@ -79,7 +79,7 @@ lists every archetype loadout.
   effect (e.g. no shield from a shut-down generator), shut-down active modules stay switched on but idle
   (red tile) until there is power again. The chat reports every shutdown and restart.
 - **Ship menu → Modules → POWER MANAGEMENT:** a bar of the output with one segment per group
-  (solid = passive, light = active at most, white line = output), a forecast (idle / everything on)
+  (passive + active at most as one block, white line = output); modules that need no power are in group 0, a forecast (idle / everything on)
   and the list of all modules (icon, name, size · quality, active/passive, MW) with the priority buttons
   1–4. The HUD shows "Power x / y MW (passive + active)" and the groups that are off. Priorities are
   saved with the ship (command `set_priority`).

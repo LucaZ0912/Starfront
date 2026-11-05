@@ -227,8 +227,7 @@ func _c_set_priority(c: Dictionary) -> String:
 	var key := String(c["slot"])
 	if f.get_module(key) == "":
 		return "No module in that slot."
-	f.set_priority(key, int(c["group"]))
-	return ""
+	return f.set_priority(key, int(c["group"]))
 
 
 ## {"type":"mine_config", "slot": s, "mine"?: mine id, "fuse"?: seconds} – mine launcher settings.

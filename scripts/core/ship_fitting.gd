@@ -170,7 +170,8 @@ func _compute() -> Dictionary:
 		var act := is_active_module(m)
 		var grp := priority_of(key)
 		s["power_draw"] += pw
-		s["power_groups"][grp]["active" if act else "passive"] += pw
+		if pw > 0.0:
+			s["power_groups"][grp]["active" if act else "passive"] += pw
 		s["power_active_max" if act else "power_passive"] += pw
 		var offline := pw > 0.0 and power_off.has(grp)
 		if offline and not act:
@@ -320,13 +321,19 @@ func default_priority(key: String) -> int:
 	return 4
 
 
+## Priority group of a slot: 1–4, or 0 for modules that need no power.
 func priority_of(key: String) -> int:
+	if float(GameData.modules.get(modules.get(key, ""), {}).get("power", 0)) <= 0.0:
+		return 0
 	return clampi(int(priorities.get(key, default_priority(key))), 1, POWER_GROUPS)
 
 
-func set_priority(key: String, group: int) -> void:
+func set_priority(key: String, group: int) -> String:
+	if priority_of(key) == 0:
+		return "This module needs no power (group 0)."
 	priorities[key] = clampi(group, 1, POWER_GROUPS)
 	mark_dirty()
+	return ""
 
 
 ## Which groups must shut down for the demand of `in_use` (slot -> true: active modules in use)?

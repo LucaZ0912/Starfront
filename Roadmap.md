@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 21 fertig. Netzwerk fehlt noch. Version alpha 0.4.21.1. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 21 fertig. Netzwerk fehlt noch. Version alpha 0.4.21.2. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -642,6 +642,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 - [x] Passiv (Kern, passive optionale Module, Scanner) zieht immer; aktiv (Waffen, Punktverteidigung, Minenwerfer, Werkzeuge, aktive optionale Module) nur in Benutzung. NPCs: Waffen im Kampf, Strahlen immer, Störsender beim Stören.
 - [x] Prioritätsgruppen 1–4 (Vorgabe: Kern 1, Waffen/Schilde 2, Werkzeuge/aktive 3, Rest 4); bei Überlast schaltet Gruppe 4 ab, dann 3, dann 2; Gruppe 1 bleibt an (nur wenn sie allein zu viel ist, wird gedrosselt). Abgeschaltete passive Module wirken nicht, abgeschaltete aktive bleiben an, aber ohne Wirkung (rote Kachel), bis wieder Strom da ist; Meldungen im Chat.
 - [x] Schiffsmenü → Modules → POWER MANAGEMENT: Balken je Gruppe (passiv kräftig, aktiv hell, weiße Linie = Output), Vorschau „ohne aktive Module“ / „alles an“, Modulliste mit Icon, Name, Größe · Qualität, aktiv/passiv, MW und Prioritätsknöpfen 1–4. HUD-Zeile „Power x / y MW (passive + active)“ mit abgeschalteten Gruppen.
+- [x] Module ohne Stromverbrauch stehen in Gruppe 0 (keine Knöpfe); der Balken zeigt je Gruppe einen zusammenhängenden Block (alpha 0.4.21.2).
 - [x] Prioritäten werden mit dem Schiff gespeichert; alle Standard- und NPC-Ausrüstungen laufen auch mit allem eingeschaltet unter der Grenze.
 
 ### Multi-Fokus (Paket 22)

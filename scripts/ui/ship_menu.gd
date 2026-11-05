@@ -343,17 +343,16 @@ class PowerBar extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.06, 0.1))
 		var x := 0.0
 		for g in [1, 2, 3, 4]:
-			var col: Color = colors[g]
-			for part in ["passive", "active"]:
-				var mw := float(groups[g][part])
-				if mw <= 0.0:
-					continue
-				var pw := mw / scale_mw * w
-				draw_rect(Rect2(x, 0, pw, h), col if part == "passive" else Color(col, 0.35))
-				draw_rect(Rect2(x, 0, pw, h), Color(0, 0, 0, 0.6), false, 1.0)
-				if pw > 30.0:
-					draw_string(ThemeDB.fallback_font, Vector2(x + 4, h * 0.5 + 5), "%d" % g, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.85))
-				x += pw
+			# one block per group (passive + active at most)
+			var mw := float(groups[g]["passive"]) + float(groups[g]["active"])
+			if mw <= 0.0:
+				continue
+			var pw := mw / scale_mw * w
+			draw_rect(Rect2(x, 0, pw, h), colors[g])
+			draw_rect(Rect2(x, 0, pw, h), Color(0, 0, 0, 0.6), false, 1.0)
+			if pw > 18.0:
+				draw_string(ThemeDB.fallback_font, Vector2(x + 4, h * 0.5 + 5), "%d" % g, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.85))
+			x += pw
 		var ax := available / scale_mw * w
 		if total > available:
 			draw_rect(Rect2(ax, 0, w - ax, h), Color(1.0, 0.2, 0.2, 0.22))
@@ -378,7 +377,7 @@ func _build_power() -> void:
 	for g in [1, 2, 3, 4]:
 		var gd: Dictionary = s["power_groups"][g]
 		leg.add_child(UI.label("■ Group %d: %.0f passive + %.0f active MW%s" % [g, float(gd["passive"]), float(gd["active"]), "  (OFF)" if fit.power_off.has(g) else ""], 12, GROUP_COLORS[g]))
-	box.add_child(UI.label("Output %.0f MW  •  passive %.0f MW  •  active up to %.0f MW  •  solid = always, light = while in use, white line = output" % [avail, float(s["power_passive"]), float(s["power_active_max"])], 12, Color(0.85, 0.9, 1.0)))
+	box.add_child(UI.label("Output %.0f MW  •  passive %.0f MW  •  active up to %.0f MW  •  white line = output" % [avail, float(s["power_passive"]), float(s["power_active_max"])], 12, Color(0.85, 0.9, 1.0)))
 	var idle := fit.power_plan({})
 	var all_on := {}
 	for key in fit.slot_keys():
@@ -414,14 +413,15 @@ func _build_power() -> void:
 		grid.add_child(UI.label("Active" if act else "Passive", 13, UI.GOLD if act else Color(0.75, 0.8, 0.9)))
 		grid.add_child(UI.label("%.0f MW" % pw if pw > 0.0 else "–", 13))
 		var pr := UI.hbox(2)
-		for g in [1, 2, 3, 4]:
+		if grp == 0:
+			pr.add_child(UI.label("0", 13, UI.TEXT_DIM))
+		for g in ([] if grp == 0 else [1, 2, 3, 4]):
 			var gg: int = g
 			var k2: String = key
 			var b := UI.button(str(g), func(): Commands.execute({"type": "set_priority", "slot": k2, "group": gg}); rebuild())
 			b.toggle_mode = true
 			b.button_pressed = grp == g
 			b.custom_minimum_size = Vector2(30, 24)
-			b.disabled = pw <= 0.0
 			b.add_theme_color_override("font_color", GROUP_COLORS[g])
 			b.add_theme_color_override("font_pressed_color", Color(0, 0, 0))
 			if grp == g:
@@ -429,12 +429,7 @@ func _build_power() -> void:
 				b.add_theme_stylebox_override("pressed", sbp)
 			pr.add_child(b)
 		grid.add_child(pr)
-		var st := ""
-		if pw > 0.0 and fit.power_off.has(grp):
-			st = "OFF (overload)"
-		elif pw <= 0.0:
-			st = "needs no power"
-		grid.add_child(UI.label(st, 12, UI.BAD if st.begins_with("OFF") else UI.TEXT_DIM))
+		grid.add_child(UI.label("OFF (overload)" if grp > 0 and fit.power_off.has(grp) else "", 12, UI.BAD))
 
 
 func _plan_text(plan: Dictionary) -> String:

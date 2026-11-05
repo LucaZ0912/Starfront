@@ -2694,6 +2694,7 @@ func _test_power(view: SystemView) -> void:
 		if n is Button and n.text in ["1", "2", "3", "4"]:
 			rows += 1
 	check(bar_ok and rows >= 4 * 5, "ship menu → Modules → POWER MANAGEMENT: output bar and priority list (%d buttons)" % rows)
+	check(pf.priority_of("hull") == 0 and pf.set_priority("hull", 3) != "" and pf.priority_of("hull") == 0, "modules that need no power are in group 0")
 	sm.mod_view = "fitting"
 	sm.close()
 	main.hud._update_power_line(pf, pf.stats())

@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.21.2 – 2026-11-05
+
+- Power bar: one block per priority group (passive and active no longer split).
+- Modules that need no power are in group 0 (no priority buttons, no extra text).
+
 ## alpha 0.4.21.1 – 2026-11-05
 
 **Package 21 – power management.** 446 smoke-test checks pass.
