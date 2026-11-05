@@ -88,7 +88,8 @@ lists every archetype loadout.
   - Mining: *Auto* (find asteroids, mine, deliver to the ship), *Work on target* (your locked asteroid), *Rest*.
   - Repair (built-in beam): *Auto* (you, allies and neutral ships), *Work on target*, *Allies only*,
     *Self only*, *Rest*.
-  - **Recall** brings them all home. Keys: **K** launch, **P** recall.
+  - **Recall** brings them all home. Keys: **K** launches one drone per press (up to the maximum),
+    **P** recalls; "Launch all drones" has no key by default – set one in Settings → Controls.
 - **Warp, jumps, docking:** while the ship aligns for a warp or spools the jump drive, the drones fly into
   the hangar and come straight out again after the warp / jump; drones too far away are left behind.
   Docking takes them in.
@@ -491,7 +492,7 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | Tab | cycle through everything within sensor range – ships first (nearest first), then asteroids, wrecks and anomalies; with nothing selected it starts with the ships again |
 | V / C | cycle hostile / friendly ships (sensor range, otherwise up to 50,000 km) |
 | B | select the nearest station within 5,000 km |
-| K / P | launch / recall drones |
+| K / P | launch one drone / recall all drones |
 | I | ship menu |
 | L, M, H | station, galaxy map & route planning, help |
 | Esc | close window / pause menu |

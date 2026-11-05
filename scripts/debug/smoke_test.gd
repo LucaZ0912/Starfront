@@ -2944,7 +2944,9 @@ func _test_drones(view: SystemView) -> void:
 	c.manual = true
 	c.setup(f, view)
 	view.ship_layer.add_child(c)
-	check(view.launch_drones(c) == "" and view.drones_of(c).size() == 5 and f.drones_in_hangar() == 0, "launching: all drones the hangar holds, up to the ship's limit")
+	check(view.launch_drones(c, 1) == "" and view.drones_of(c).size() == 1 and view.launch_drones(c, 1) == "" and view.drones_of(c).size() == 2, "one drone per press, up to the limit")
+	check(view.launch_drones(c) == "" and view.drones_of(c).size() == 5 and f.drones_in_hangar() == 0, "launch all: every drone the hangar holds, up to the ship's limit")
+	check(InputMap.has_action("drone_launch_all") and Keybinds.key_text("drone_launch_all") == "", "\"launch all\" has no key by default – one can be set in the settings")
 	check(view.launch_drones(c) != "", "no drones left in the hangar – nothing to launch")
 	var ds: Array = view.drones_of(c)
 	var d = ds[0]
@@ -3068,8 +3070,9 @@ func _test_drones(view: SystemView) -> void:
 	pf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 0.5, "hp": 0.5, "out": false}]
 	main.hud._update_drones()
 	var folded: bool = main.hud.drone_panel.visible and main.hud._drone_rows.is_empty()
-	Commands.execute({"type": "drone_launch"})
+	Commands.execute({"type": "drone_launch", "count": 1})
 	main.hud._update_drones()
+	check(view.drones_of(pl).size() == 1, "K launches one drone")
 	check(folded and view.drones_of(pl).size() == int(pf.stats()["drones_max"]) and main.hud._drone_rows.size() == view.drones_of(pl).size(), "drone window: folded until a drone is launched, then the controls (%s)" % Keybinds.key_text("drone_launch"))
 	Commands.execute({"type": "drone_role", "role": "mining"})
 	Commands.execute({"type": "drone_mode", "mode": "target"})

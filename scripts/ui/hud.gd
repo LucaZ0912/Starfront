@@ -342,7 +342,7 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 [color=#7fd8ff]Multi-focus[/color]: every weapon and tool keeps the target that was active when you switched it on (T1, T2 … on its tile).
    Make another lock active and switch more modules on – press a running module's key to move it to the active target.
 {cmd_approach} approach • {cmd_warp} warp • {cmd_jump} jump • {cmd_dock} dock • {cmd_follow} follow (the selected object)
-[color=#7fd8ff]Drones[/color]: {drone_launch} launch, {drone_recall} recall – role and behaviour in the drone window (top left). They fly into the hangar for warps and jumps and out again afterwards.
+[color=#7fd8ff]Drones[/color]: {drone_launch} launch one, {drone_recall} recall (a key for "launch all" can be set in Settings → Controls) – role and behaviour in the drone window (top left). They fly into the hangar for warps and jumps and out again afterwards.
 {ship_menu}: ship menu • {station}: station • {galaxy_map}: galaxy map • {menu_back}: close / pause menu
 {quicksave} / {quickload}: quicksave / quickload • {debug_menu}: debug menu • All keys: Settings → Controls
 
@@ -1195,7 +1195,7 @@ func _build_drone_panel(p, out: Array) -> void:
 	head.add_child(UI.label("%d / %d out  •  %d in hangar" % [out.size(), int(st["drones_max"]), f.drones_in_hangar()], 11, UI.TEXT_DIM))
 	if out.is_empty():
 		# folded: one line and the launch button
-		var lb := UI.button("Launch [%s]" % Keybinds.key_text("drone_launch"), func(): Commands.execute({"type": "drone_launch"}))
+		var lb := UI.button("Launch [%s]" % Keybinds.key_text("drone_launch"), func(): Commands.execute({"type": "drone_launch", "count": 1}))
 		lb.disabled = f.drones_in_hangar() == 0
 		lb.tooltip_text = "Launch drones – the window opens with their controls" if f.drones_in_hangar() > 0 else "No drones in the hangar – the Drone Bay at stations sells them"
 		_drone_box.add_child(lb)
@@ -1250,7 +1250,7 @@ func _build_drone_panel(p, out: Array) -> void:
 		_drone_rows.append({"drone": d, "fuel": fb, "hull": hb})
 	var bt := UI.hbox(4)
 	_drone_box.add_child(bt)
-	var l2 := UI.button("Launch [%s]" % Keybinds.key_text("drone_launch"), func(): Commands.execute({"type": "drone_launch"}))
+	var l2 := UI.button("Launch [%s]" % Keybinds.key_text("drone_launch"), func(): Commands.execute({"type": "drone_launch", "count": 1}))
 	l2.disabled = f.drones_in_hangar() == 0 or out.size() >= int(st["drones_max"])
 	bt.add_child(l2)
 	bt.add_child(UI.button("Recall [%s]" % Keybinds.key_text("drone_recall"), func(): Commands.execute({"type": "drone_recall"})))

@@ -245,6 +245,9 @@ func handle_input(event: InputEvent) -> void:
 				hud.activate_index(i)
 				return
 		if event.is_action_pressed("drone_launch", false, true) and view != null and not in_hyperspace:
+			Commands.execute({"type": "drone_launch", "count": 1})
+			return
+		if event.is_action_pressed("drone_launch_all", false, true) and view != null and not in_hyperspace:
 			Commands.execute({"type": "drone_launch"})
 			return
 		if event.is_action_pressed("drone_recall", false, true) and view != null and not in_hyperspace:
