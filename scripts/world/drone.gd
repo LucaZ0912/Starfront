@@ -85,8 +85,8 @@ func _physics_process(delta: float) -> void:
 		if home_d < float(carrier.radius) + 40.0:
 			view.stow_drone(self)
 			return
-	elif home_d > float(dstats["range"]):
-		# out of the control range: back towards the carrier, nothing else until it is in range
+	elif home_d > float(dstats["range"]) or in_shadow():
+		# out of the control range or in a radar shadow: back towards the carrier, nothing else until then
 		_burn = "work"
 		work = null
 		dest = carrier.position
@@ -133,8 +133,15 @@ static func formation_slot(i: int, n: int, r: float) -> Vector2:
 	return Vector2(-(r * 0.3 + 45.0 * k), side * (r + 55.0 + 35.0 * k))
 
 
+## Within the control range and visible from the carrier (not in the radar shadow of a colossus).
 func _in_reach(n) -> bool:
-	return n != null and is_instance_valid(n) and n.position.distance_to(carrier.position) <= float(dstats["range"])
+	return n != null and is_instance_valid(n) and n.position.distance_to(carrier.position) <= float(dstats["range"]) \
+		and view.line_of_sight(carrier.position, n.position)
+
+
+## The drone itself is cut off from its carrier by a colossus.
+func in_shadow() -> bool:
+	return not view.line_of_sight(carrier.position, position)
 
 
 # ---- combat
@@ -366,8 +373,10 @@ func _fly(delta: float, dest: Vector2) -> void:
 		var brake := spd * spd / (2.0 * spd * 2.0)
 		var s2 := spd if dist > brake else spd * dist / brake
 		desired += to / dist * s2
+	desired = _avoid_colossi(desired)
 	velocity = velocity.move_toward(desired, spd * 2.0 * delta)
 	position += velocity * delta
+	_push_out_of_colossi()
 	if _idle and dist < 40.0:
 		heading = _rotate_toward(heading, carrier.heading, 6.0 * delta)   # in formation: same heading
 	elif (velocity - carrier.velocity).length() > 8.0:

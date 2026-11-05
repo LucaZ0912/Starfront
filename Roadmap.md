@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 23 fertig. Netzwerk fehlt noch. Version alpha 0.4.23.4. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 23 fertig, Paket 24 (Planung der Manufakturen) läuft. Netzwerk fehlt noch. Version alpha 0.4.24.1. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -772,18 +772,23 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 
 #### Staatliche Manufakturen (Fraktionsschiffe: normale Modelle ab Neutral, Spitzenmodelle ab Allied, nur an Werften der Fraktion)
 
-**„A“ – staatliche Manufaktur der Cluster Assembly** (Name offen; Vorschläge: **Hearthguard Cooperative**, **Concord Fleetworks**, **Commons Shipworks**)
-- **Geschichte:** Als sich der Krieg legte, mussten nach Jahrzehnten des Bürgerkriegs viele alte Earthworks-Schiffe der Assembly ausgemustert oder modernisiert werden. Die Regierung wollte Earthworks zuerst verstaatlichen; nach langen, feindseligen Debatten bot sie stattdessen eine Kooperation bei der Entwicklung neuer Schiffe an. Zusammen mit **Hivewright Drone Works** entstand daraus „A“ – ein Gemeinschaftsunternehmen von Assembly, Earthworks und Hivewright.
-- **Grundsätze:** Die Assembly will das Leben ihrer Bürger schützen – darum **gute Schilde und Drohnen**. A-Schiffe sind im Endeffekt Drohnenträger: die Drohnen kämpfen, die Pilotin bleibt hinter starken Schilden.
+**Concord Fleetworks (CFW)** – staatliche Manufaktur der Cluster Assembly
+- **Name:** „concord“ = Eintracht – der Kompromiss nach den feindseligen Debatten. Schiffsnamen nach griechischen und römischen Gestalten, die für das Volk stehen.
+- **Geschichte:** Als sich der Krieg legte, mussten nach Jahrzehnten des Bürgerkriegs viele alte Earthworks-Schiffe der Assembly ausgemustert oder modernisiert werden. Die Regierung wollte Earthworks zuerst verstaatlichen; nach langen, feindseligen Debatten bot sie stattdessen eine Kooperation bei der Entwicklung neuer Schiffe an. Zusammen mit **Hivewright Drone Works** entstand **12755 HE** Concord Fleetworks – ein Gemeinschaftsunternehmen von Assembly, Earthworks und Hivewright.
+- **Grundsätze:** Die Assembly will das Leben ihrer Bürger schützen – darum **gute Schilde und Drohnen**. CFW-Schiffe sind im Endeffekt Drohnenträger: die Drohnen kämpfen, die Pilotin bleibt hinter starken Schilden.
 - **Design:** nah an Earthworks, aber moderner, mit deutlich sichtbaren Drohnenhangars (Hangartore, Startbuchten). Flaggschiff als langer Träger mit vielen Hangaröffnungen – eigene Gestaltung, kein Nachbau fremder Schiffe.
-- **Markenzeichen aller A-Schiffe:**
-  - **Alle Drohnenwerte verdoppelt, alle Waffenwerte des Schiffs selbst halbiert.**
-  - **Schilde:** starker Kapazitätsbonus, aber dreifache Downtime nach einem Zusammenbruch.
-- **Schiffe (Arbeitsnamen offen):**
-  - **Milizschiff** (S): kleiner Drohnenträger, leichte Bewaffnung, mittlerer Hangar (3 Drohnen), gute Schilde, wenig Panzerung, sonst durchschnittlich.
-  - **Patrouillenschiff** (M): Weiterentwicklung des Milizschiffs, 7 Drohnen, gute Schilde, sonst durchschnittlich.
-  - **Flaggschiff** (L, Spitzenmodell): großer Drohnenträger mit einem großen Waffenplatz, guten Sensoren, besonders großem Hangar – **11 Drohnen, als einziges Schiff** – und starken Schilden. Seine Drohnen tragen eine besondere blaue Färbung im Assembly-Stil.
-- **Offene Fragen:** siehe Gespräch vom 5. Nov 2026 (Name, was „alle Drohnenwerte“ umfasst, Schildwerte, Schiffsnamen, Gründungsjahr).
+- **Markenzeichen aller CFW-Schiffe:**
+  - **Drohnen:** Hülle, Schaden, Abbau, Reparatur, Lagerplatz und Treibstoff verdoppelt; Steuerreichweite verdoppelt, aber höchstens bis zur **Recon-Reichweite** (siehe unten).
+  - **Waffen des Schiffs selbst:** halber Schaden (Reichweite und Feuerrate unverändert).
+  - **Schilde:** +60 % Kapazität, aber dreifache Downtime nach einem Zusammenbruch.
+- **Schiffe (Namen nach Gestalten des Volkes – Vorschlag):**
+  - **Demos** (griech. „das Volk“) – Milizschiff (S): kleiner Drohnenträger, leichte Bewaffnung, mittlerer Hangar (3 Drohnen), gute Schilde, wenig Panzerung, sonst durchschnittlich. Ab **Neutral**.
+  - **Quirinus** (röm. Gott der Bürgerschaft) – Patrouillenschiff (M): Weiterentwicklung des Milizschiffs, 7 Drohnen, gute Schilde, sonst durchschnittlich. Ab **Friendly**.
+  - **Concordia** (röm. Göttin der Eintracht) – Flaggschiff (L, Spitzenmodell): großer Drohnenträger mit einem großen Waffenplatz, guten Sensoren, besonders großem Hangar – **11 Drohnen, als einziges Schiff** – und starken Schilden; seine Drohnen in besonderer Assembly-Blau-Färbung. Ab **Allied**.
+- **Patrouillen:** In Fraktionssystemen bestehen die Patrouillen ausschließlich aus Schiffen der Fraktionsmanufaktur – mit Ausnahme einzelner Goliath in Fraktionsfarben. In umkämpften Systemen fliegen Earthworks-Schiffe. (Gilt für alle drei Fraktionen.)
+- **Später:** Ränge bei den Fraktionen aufsteigen – dann könnten Schiffe auch an Ränge gebunden werden.
+
+**Recon-Reichweite und Drohnen:** Das Recon-Radar zeigt bisher einen Kreis, dessen Größe vom Bildschirm abhängt (etwa 7.900 km bei 1600×900, 9.500 km bei Full HD). Vorschlag: die Recon-Reichweite auf feste **10.000 km** setzen (das Radar passt sich an) – das ist dann die Höchstgrenze für jede Drohnen-Steuerreichweite (Relay-Modul, CFW-Verdopplung). Drohnen meiden den Radarschatten von Kolossen (umgesetzt in alpha 0.4.24.1).
 
 **Für alle Manufakturen:** eingebaute Module (Nachbrenner, Bordraffinerie, Prospektor-Scanner, Fertigung, Markt …) bekommen in der Modulleiste und im Schiffsmenü eine **farbige Umrandung**, damit man sie als fest eingebaut erkennt.
 

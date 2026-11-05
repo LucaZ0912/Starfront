@@ -2998,6 +2998,21 @@ func _test_drones(view: SystemView) -> void:
 	d.velocity = Vector2.ZERO
 	d._physics_process(0.05)
 	check(d.work == null and d.velocity.dot(c.position - d.position) > 0.0, "outside the control range a drone heads back first")
+	# radar shadow: no targets behind a colossus, a drone in the shadow comes back
+	if not view.colossi.is_empty():
+		var co = view.colossi[0]
+		var keep_c: Vector2 = c.position
+		c.position = co.position + Vector2(float(co.radius) + 2500.0, 0)
+		var behind: Vector2 = co.position - Vector2(float(co.radius) + 1500.0, 0)
+		civ.position = behind
+		d.position = c.position + Vector2(0, 300)
+		var tgt_ok: bool = d._pick_combat_target("fire_at_will") != civ
+		d.position = behind + Vector2(0, 50)
+		d.work = null
+		d.velocity = Vector2.ZERO
+		d._physics_process(0.05)
+		check(tgt_ok and d.in_shadow() and d.work == null, "drones ignore targets in a radar shadow and leave the shadow")
+		c.position = keep_c
 	# mining: auto – mine, fill the cargo, deliver
 	f.drone_role = "mining"
 	f.drone_modes["mining"] = "auto"
@@ -3095,7 +3110,7 @@ func _test_drones(view: SystemView) -> void:
 	var sp: StationUI = main.station_panel
 	sp.open(big_st, view)
 	sp.open_service("drones")
-	check(sp.visible, "the Drone Bay (Hivewright Drone Works) opens at every station")
+	check(sp.visible and String(GameData.corps["hwd"]["tag"]) == "HWD", "the Drone Bay (Hivewright Drone Works, HWD) opens at every station")
 	check(PixelArt.module_icon_key("hangar:2:C") == "hangar" and PixelArt.module_icon_key("dr_range:1:C") == "drone" and PixelArt.IconArt.ICONS.has("hangar") and PixelArt.IconArt.ICONS.has("drone"), "drone hangar and drone modules have icons")
 	var smn = main.ship_menu
 	smn.mod_view = "fitting"

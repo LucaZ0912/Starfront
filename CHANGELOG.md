@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.24.1 – 2026-11-05
+
+Package 24 (planning of the manufacturers) is running – this update carries two small changes:
+- Hivewright Drone Works now goes by the tag HWD.
+- Drones keep out of the radar shadow of colossi: they ignore targets behind one, fly back when they end
+  up in a shadow, and steer around colossi.
+
 ## alpha 0.4.23.4 – 2026-11-05
 
 - K launches one drone per press (up to the maximum); new action "Launch all drones" without a default key (Settings → Controls).

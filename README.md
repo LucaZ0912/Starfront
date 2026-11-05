@@ -93,7 +93,8 @@ lists every archetype loadout.
 - **Warp, jumps, docking:** while the ship aligns for a warp or spools the jump drive, the drones fly into
   the hangar and come straight out again after the warp / jump; drones too far away are left behind.
   Docking takes them in.
-- **Drone Bay** (Hivewright Drone Works, every station): buy drones (2,400 cr), sell used ones (worth
+- Drones keep out of the radar shadow of colossi: no targets behind them; a drone in a shadow flies back.
+- **Drone Bay** (Hivewright Drone Works, HWD, every station): buy drones (2,400 cr), sell used ones (worth
   less with less fuel), repair their hulls – fuel cannot be refilled.
 
 ## Multi-focus (phase 0.5 package 22)
