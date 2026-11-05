@@ -3280,6 +3280,9 @@ func _test_khi(view: SystemView) -> void:
 	var ingots := float(f.cargo.get("iron_ingot", 0.0))
 	check(ingots > 0.0 and float(f.cargo.get("iron_ore", 0.0)) < 20.0 and view.fx_layer.get_child_count() > fx0, "the refinery turns ore into %s bit by bit (%.1f) – with black smoke" % [GameData.item_name("iron_ingot"), ingots])
 	check(sh.power_in_use().has(rslot), "the running refinery draws power")
+	f.set_priority("builtin_refinery", 4)
+	f.set_priority("builtin_prospect", 2)
+	check(f.priority_of("builtin_refinery") == 4 and f.priority_of("builtin_prospect") == 2 and is_equal_approx(float(f.module_data("builtin_refinery")["power"]), 8.0), "built-in refinery and prospector get a power priority like any module (refinery %.0f MW)" % float(f.module_data("builtin_refinery")["power"]))
 	var stk: Array = sh.smoke_stacks()
 	check(stk.size() == 2 and stk[0].y < 0.0 and absf(stk[0].y) > sh.radius * 0.3, "smoke comes out of the exhaust pipes on the flanks (%d pipes)" % stk.size())
 	# the plumes blow outwards, away from the hull

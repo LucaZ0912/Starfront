@@ -74,7 +74,7 @@ lists every archetype loadout.
   KHI: industrial complexes and shipyard complexes; mining colonies have a small yard with the Mogura,
   the Anaguma and the Earthworks Drillhead. The shipyard shows crest and motto of the maker.
 - **Mogura** (S), **Anaguma** (M), **Iwakudaki** (L): yellow, bulky mining ships. Built in: ore hold
-  (60 / 300 / 900 m³), **refinery** (0.15 / 0.4 / 1.0 ore per second at 70 / 80 / 90 % yield, 4 / 8 / 16 MW
+  (60 / 300 / 900 m³), **refinery** (0.15 / 0.4 / 1.0 ore per second at 70 / 80 / 90 % yield, 8 / 16 / 32 MW
   while on – switch it off in the module bar to keep raw ore; while working it sprays thin plumes of smoke
   sideways out of the exhaust pipes on its flanks) and a
   prospector. +10 % mining, but −25 % turn rate and +40 % warp alignment time.

@@ -331,7 +331,7 @@ func _c_set_priority(c: Dictionary) -> String:
 	if f == null:
 		return "No active ship."
 	var key := String(c["slot"])
-	if f.get_module(key) == "":
+	if f.module_data(key).is_empty():
 		return "No module in that slot."
 	return f.set_priority(key, int(c["group"]))
 

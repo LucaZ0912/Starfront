@@ -87,7 +87,7 @@ const HULLS := {
 		"slot_sizes": {"weapon": [1], "tool": [2, 1, 1], "optional": [2, 2, 1, 1], "hull": 3, "engine": 4, "reactor": 4, "distributor": 3, "tank": 3, "hyperdrive": 2, "sensors": 3, "hangar": 1, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "mogura", "length": 30,
 		"ore_cargo": 60, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
-		"refinery": {"rate": 0.15, "eff": 0.7, "power": 4}, "builtin": ["refinery", "prospect"],
+		"refinery": {"rate": 0.15, "eff": 0.7, "power": 8}, "builtin": ["refinery", "prospect"],
 		"desc": "\"Mole\" – KHI's small miner with its own refinery, ore hold and prospector. Tough and slow.",
 	},
 	"anaguma": {
@@ -97,7 +97,7 @@ const HULLS := {
 		"slot_sizes": {"weapon": [2, 1], "tool": [3, 3, 2], "optional": [5, 4, 3, 3], "hull": 6, "engine": 5, "reactor": 6, "distributor": 5, "tank": 5, "hyperdrive": 4, "sensors": 4, "hangar": 3, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 2, "shape": "anaguma", "length": 50,
 		"ore_cargo": 300, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
-		"refinery": {"rate": 0.4, "eff": 0.8, "power": 8}, "builtin": ["refinery", "prospect"],
+		"refinery": {"rate": 0.4, "eff": 0.8, "power": 16}, "builtin": ["refinery", "prospect"],
 		"desc": "\"Badger\" – takes strip miners and ice harvesters, a big ore hold and a better refinery.",
 	},
 	"iwakudaki": {
@@ -107,7 +107,7 @@ const HULLS := {
 		"slot_sizes": {"weapon": [2, 2], "tool": [4, 4, 3, 3], "optional": [7, 6, 5, 4], "hull": 9, "engine": 8, "reactor": 8, "distributor": 7, "tank": 8, "hyperdrive": 5, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 4, "shape": "iwakudaki", "length": 84,
 		"ore_cargo": 900, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
-		"refinery": {"rate": 1.0, "eff": 0.9, "power": 16}, "builtin": ["refinery", "prospect"],
+		"refinery": {"rate": 1.0, "eff": 0.9, "power": 32}, "builtin": ["refinery", "prospect"],
 		"desc": "\"Rock breaker\" – KHI's heavy mining barge: four big tool slots, a huge ore hold, a strong refinery.",
 	},
 	# ---------------- Civilian NPC hulls (phase 0.5 package 11) ----------------

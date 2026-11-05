@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.4 – 2026-11-05
+
+- Fix: the power priority of built-in modules (refinery, prospector) can be set in power management.
+- Balancing: the KHI refineries draw twice the power (8 / 16 / 32 MW while on).
+
 ## alpha 0.4.25.3 – 2026-11-05
 
 - Fix: the KHI smoke plumes blew inwards across the hull – they now blow outwards from the flank pipes.
