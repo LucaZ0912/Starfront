@@ -322,7 +322,10 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
    Tile border: green = working, amber = out of range, purple = not enough energy.
 [color=#7fd8ff]Click empty space[/color]: sublight flight (slow – the system is huge)
 
+{ship_up}{ship_left}{ship_down}{ship_right}: fly the ship in that direction (release: stop)
 {cam_up}{cam_left}{cam_down}{cam_right} / drag middle mouse: pan camera • {cam_center}: back to ship
+{sel_hostile}: select nearest hostile (again: next) • {sel_station}: select nearby station • {cmd_lock}: lock / unlock
+{cmd_approach} approach • {cmd_warp} warp • {cmd_jump} jump • {cmd_dock} dock • {cmd_follow} follow (the selected object)
 {ship_menu}: ship menu • {station}: station • {galaxy_map}: galaxy map • {menu_back}: close / pause menu
 {quicksave} / {quickload}: quicksave / quickload • {debug_menu}: debug menu • All keys: Settings → Controls
 
@@ -699,7 +702,7 @@ func show_selected(id: String) -> void:
 
 # ================================================================ Command hotkeys
 
-const HOTKEY_COMMANDS := ["cmd_lock", "cmd_approach", "cmd_warp", "cmd_jump", "cmd_dock", "cmd_follow"]
+const HOTKEY_COMMANDS := ["sel_hostile", "sel_station", "cmd_lock", "cmd_approach", "cmd_warp", "cmd_jump", "cmd_dock", "cmd_follow"]
 
 
 ## Runs a ship command on the selected object (Settings → Controls, "Ship commands").
@@ -708,6 +711,10 @@ func hotkey_command(action: String) -> String:
 	var p = view.player if view != null else null
 	if p == null or not is_instance_valid(p):
 		return "No ship."
+	if action == "sel_hostile":
+		return select_next_hostile()
+	if action == "sel_station":
+		return select_near_station()
 	var id := selected_id
 	if action == "cmd_lock" and id == "":
 		var near = _nearest_hostile(p)
@@ -755,6 +762,50 @@ func hotkey_command(action: String) -> String:
 	if selected_id != "":
 		_build_selected()
 	return err
+
+
+const HOSTILE_SELECT_RANGE := 50000.0
+const STATION_SELECT_RANGE := 5000.0
+
+
+## Selects the nearest hostile ship; pressed again, the next one further out (wraps around).
+func select_next_hostile() -> String:
+	var p = view.player
+	var list: Array = []
+	for n in view.ship_layer.get_children():
+		if n is Ship and n != p and not n.dying and not n.in_warp() and n.hostile_to_player() and p.position.distance_to(n.position) <= HOSTILE_SELECT_RANGE:
+			list.append(n)
+	if list.is_empty():
+		var e := "No hostile ship within %s." % SystemView.fmt_dist(HOSTILE_SELECT_RANGE)
+		GameState.log_msg(e, GameState.COL_WARN)
+		return e
+	list.sort_custom(func(a, b): return p.position.distance_to(a.position) < p.position.distance_to(b.position))
+	var cur = view.find_object(selected_id) if selected_id.begins_with("ship:") else null
+	var i := list.find(cur)
+	var nxt: Ship = list[(i + 1) % list.size()]
+	view.select("ship:%d" % nxt.fit.uid)
+	return ""
+
+
+## Selects the nearest station (or pirate haven) – only when it is within a few thousand km.
+func select_near_station() -> String:
+	var p = view.player
+	var best = null
+	var bd := INF
+	var all: Array = view.stations.values() + view.havens
+	for c in all:
+		if c == null or not is_instance_valid(c):
+			continue
+		var d := maxf(p.position.distance_to(c.position) - float(c.radius), 0.0)
+		if d < bd:
+			bd = d
+			best = c
+	if best == null or bd > STATION_SELECT_RANGE:
+		var e := "No station within %s." % SystemView.fmt_dist(STATION_SELECT_RANGE)
+		GameState.log_msg(e, GameState.COL_WARN)
+		return e
+	view.select(String(best.data["id"]))
+	return ""
 
 
 func _nearest_hostile(p):

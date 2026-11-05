@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.19.16 – 2026-11-05
+
+Formation flight and keyboard controls. 403 smoke-test checks pass.
+- Followers fly a fixed V formation behind the lead and keep their slot for the whole warp.
+- The lead of your group announces each warp and gate jump in the chat.
+- WASD flies the ship (release: stop), the arrow keys pan the camera. Saved camera bindings from older
+  versions are reset once.
+- Tab selects the nearest hostile ship (again: the next one), B the nearest station within 5,000 km.
+
 ## alpha 0.4.19.15 – 2026-11-05
 
 Convoy and group follow-ups, command hotkeys. 397 smoke-test checks pass.

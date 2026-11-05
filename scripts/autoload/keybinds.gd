@@ -12,10 +12,14 @@ const PATH := "user://keybinds.cfg"
 
 ## Binding descriptor: {"k": keycode} for keys, {"m": mouse button index} for mouse buttons.
 const ACTIONS := [
-	{"id": "cam_up", "label": "Pan camera up", "group": "Camera", "def": [{"k": KEY_W}, {"k": KEY_UP}]},
-	{"id": "cam_down", "label": "Pan camera down", "group": "Camera", "def": [{"k": KEY_S}, {"k": KEY_DOWN}]},
-	{"id": "cam_left", "label": "Pan camera left", "group": "Camera", "def": [{"k": KEY_A}, {"k": KEY_LEFT}]},
-	{"id": "cam_right", "label": "Pan camera right", "group": "Camera", "def": [{"k": KEY_D}, {"k": KEY_RIGHT}]},
+	{"id": "ship_up", "label": "Fly up (north)", "group": "Flight", "def": [{"k": KEY_W}]},
+	{"id": "ship_down", "label": "Fly down (south)", "group": "Flight", "def": [{"k": KEY_S}]},
+	{"id": "ship_left", "label": "Fly left (west)", "group": "Flight", "def": [{"k": KEY_A}]},
+	{"id": "ship_right", "label": "Fly right (east)", "group": "Flight", "def": [{"k": KEY_D}]},
+	{"id": "cam_up", "label": "Pan camera up", "group": "Camera", "def": [{"k": KEY_UP}]},
+	{"id": "cam_down", "label": "Pan camera down", "group": "Camera", "def": [{"k": KEY_DOWN}]},
+	{"id": "cam_left", "label": "Pan camera left", "group": "Camera", "def": [{"k": KEY_LEFT}]},
+	{"id": "cam_right", "label": "Pan camera right", "group": "Camera", "def": [{"k": KEY_RIGHT}]},
 	{"id": "cam_center", "label": "Centre camera on ship", "group": "Camera", "def": [{"k": KEY_SPACE}, {"m": MOUSE_BUTTON_MIDDLE}]},
 	{"id": "zoom_combat", "label": "Zoom: Combat", "group": "Camera", "def": [{"k": KEY_F1}]},
 	{"id": "zoom_recon", "label": "Zoom: Recon", "group": "Camera", "def": [{"k": KEY_F2}]},
@@ -29,6 +33,8 @@ const ACTIONS := [
 	{"id": "module_7", "label": "Module 7", "group": "Modules", "def": [{"k": KEY_7}]},
 	{"id": "module_8", "label": "Module 8", "group": "Modules", "def": [{"k": KEY_8}]},
 	{"id": "module_9", "label": "Module 9", "group": "Modules", "def": [{"k": KEY_9}]},
+	{"id": "sel_hostile", "label": "Select nearest hostile (again: the next one)", "group": "Ship commands", "def": [{"k": KEY_TAB}]},
+	{"id": "sel_station", "label": "Select the nearest station (within 5,000 km)", "group": "Ship commands", "def": [{"k": KEY_B}]},
 	{"id": "cmd_lock", "label": "Lock selected target (again: unlock; nothing selected: nearest hostile)", "group": "Ship commands", "def": [{"k": KEY_R}]},
 	{"id": "cmd_approach", "label": "Approach selected", "group": "Ship commands", "def": [{"k": KEY_Q}]},
 	{"id": "cmd_warp", "label": "Warp to selected", "group": "Ship commands", "def": [{"k": KEY_X}]},
@@ -47,6 +53,7 @@ const ACTIONS := [
 	{"id": "debug_menu", "label": "Debug menu", "group": "Game", "def": [{"k": KEY_F12}]},
 ]
 const SLOTS := 2
+const LAYOUT := 2   # default layout version (2: WASD = flight, arrows = camera)
 
 var binds := {}   # action id -> Array of descriptors (size SLOTS, {} = empty)
 
@@ -55,7 +62,10 @@ func _ready() -> void:
 	reset_to_defaults(false)
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
+		var old_layout := int(cfg.get_value("meta", "layout", 1)) < LAYOUT
 		for a in ACTIONS:
+			if old_layout and String(a["id"]).begins_with("cam_"):
+				continue                 # layout 2: WASD flies the ship, the arrows pan the camera
 			if cfg.has_section_key("keys", a["id"]):
 				var v = cfg.get_value("keys", a["id"])
 				if v is Array:
@@ -88,6 +98,7 @@ func save() -> void:
 	var cfg := ConfigFile.new()
 	for id in binds:
 		cfg.set_value("keys", id, binds[id])
+	cfg.set_value("meta", "layout", LAYOUT)
 	cfg.save(PATH)
 
 

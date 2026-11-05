@@ -125,6 +125,10 @@ failing one costs 2. Contracts aimed at a pirate faction pull its standing down.
   through a gate you jump after it and follow it again in the next system. The convoy's own ships use
   the same behaviour, so the convoy stays together. Whenever the convoy starts aligning for its next
   warp it says so in the ticker ("Convoy aligning for warp to … – stay close!").
+  **Formation:** followers fly a fixed **V formation** behind the ship they follow (the pilot takes the
+  first slot) and keep their slot for the **whole warp** – they slide into it during the first 1.5 s
+  and drop out together with the lead. The lead of your group announces every warp and jump in the chat
+  ("Aligning for warp to … – hold formation", "Spooling jump drive – jumping to …").
   **Group warp speed:** whoever follows a ship (directly or along a chain) warps with it – the lead ship
   sets its warp time by the **slowest** warp drive of everyone following it.
   **Your group** (convoy, patrol, the ship you follow, anyone following you) shows as small green tiles at
@@ -394,7 +398,9 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | Click object / overview entry | select it – the panel top right lists its actions (Warp to, Approach, Orbit, Keep at range, Lock target, Dock, Jump) |
 | Click a locked target (top centre) | make it the active target · right-click: unlock |
 | Mouse wheel / F1–F3 | zoom level: Combat → Recon → System |
-| WASD / middle mouse, Space | pan camera, recentre on ship |
+| WASD | fly the ship in that direction (screen up = north); release: it stops |
+| Arrow keys / middle mouse, Space | pan camera, recentre on ship |
+| Tab / B | select the nearest hostile ship (again: the next one) / the nearest station within 5,000 km |
 | I | ship menu |
 | L, M, H | station, galaxy map & route planning, help |
 | Esc | close window / pause menu |

@@ -766,6 +766,7 @@ func _update_camera(delta: float) -> void:
 		if move != Vector2.ZERO:
 			follow = false
 			camera.position += move.normalized() * 900.0 * delta / camera.zoom.x
+		_key_flight()
 	# Automatic zoom during warp: out, watch, back in
 	if player != null and is_instance_valid(player) and player.in_warp() and _warp_auto:
 		var p := player.warp_progress()
@@ -781,6 +782,43 @@ func _update_camera(delta: float) -> void:
 	if follow and player != null and is_instance_valid(player):
 		camera.position = player.position
 	camera.position = camera.position.limit_length(Universe.SYSTEM_RADIUS * 1.05)
+
+
+## Keyboard / gamepad flight: the ship flies in the pressed direction (screen up = north) as long as
+## a key is held and stops when it is released.
+var _key_flying := false
+
+
+func key_direction() -> Vector2:
+	var d := Vector2.ZERO
+	if Input.is_action_pressed("ship_up"):
+		d.y -= 1
+	if Input.is_action_pressed("ship_down"):
+		d.y += 1
+	if Input.is_action_pressed("ship_left"):
+		d.x -= 1
+	if Input.is_action_pressed("ship_right"):
+		d.x += 1
+	return d
+
+
+func _key_flight() -> void:
+	steer(key_direction())
+
+
+## Flies the pilot's ship in direction `d` (zero = release: brake).
+func steer(d: Vector2) -> void:
+	if player == null or not is_instance_valid(player) or player.in_warp() or player.is_docked() or player.dying:
+		_key_flying = false
+		return
+	if d != Vector2.ZERO:
+		_key_flying = true
+		follow = true
+		player.set_order({"type": "move", "pos": player.position + d.normalized() * 6000.0, "keys": true})
+	elif _key_flying:
+		_key_flying = false
+		if player.order.get("keys", false):
+			player.set_order({"type": "idle"})
 
 
 func center_on_player() -> void:
@@ -1066,6 +1104,46 @@ func order_follow(id: String) -> String:
 		return ""
 	GameState.log_msg("Following %s – you stay with it, in warp too." % n.display_name(), GameState.COL_INFO)
 	return ""
+
+
+## Ships following `fn` (also in warp with it): the pilot first, then a fixed order. Cached per frame.
+var _fol_cache := {}
+var _fol_frame := -1
+
+
+func followers_of(fn) -> Array:
+	var fr := Engine.get_process_frames()
+	if fr != _fol_frame:
+		_fol_frame = fr
+		_fol_cache.clear()
+	if _fol_cache.has(fn):
+		return _fol_cache[fn]
+	var out: Array = []
+	for n in ship_layer.get_children():
+		if not (n is Ship) or n == fn or n.dying:
+			continue
+		if (String(n.order.get("type", "")) == "follow" and n.order.get("node") == fn) or (n.in_warp() and n.warp.get("follow") == fn):
+			out.append(n)
+	out.sort_custom(func(a, b):
+		if (a == player) != (b == player):
+			return a == player
+		return a.get_instance_id() < b.get_instance_id())
+	_fol_cache[fn] = out
+	return out
+
+
+## The lead of the pilot's group says in the chat when it starts aligning for a warp or spooling its
+## jump drive.
+func announce_lead(ship: Ship, kind: String, where: String) -> void:
+	if ship == player or player == null or not is_instance_valid(player):
+		return
+	var led: bool = (String(player.order.get("type", "")) == "follow" and player.order.get("node") == ship) or (ship.escort_mark and ship.convoy_lead)
+	if not led:
+		return
+	if kind == "jump":
+		GameState.log_msg("%s: Spooling jump drive – jumping to %s. Stay with me." % [ship.display_name(), where], GameState.COL_INFO)
+	else:
+		GameState.log_msg("%s: Aligning for warp to %s – hold formation." % [ship.display_name(), where], GameState.COL_INFO)
 
 
 ## Allied ships travelling with the pilot: convoys and patrols under the pilot's protection (marked

@@ -1136,13 +1136,13 @@ func _test_controls(view: SystemView) -> void:
 	view._unhandled_input(mr)
 	check(view.follow and view.camera.position.distance_to(view.player.position) < 1.0, "middle mouse click re-centres the camera")
 	# Rebinding
-	Keybinds.set_binding("module_1", 0, {"k": KEY_Q})
+	Keybinds.set_binding("module_1", 0, {"k": KEY_K})
 	var kq := InputEventKey.new()
-	kq.keycode = KEY_Q
+	kq.keycode = KEY_K
 	kq.pressed = true
-	check(InputMap.event_is_action(kq, "module_1", true) and not InputMap.event_is_action(k1, "module_1", true), "rebinding module 1 to Q")
-	check(Keybinds.binds["cam_up"][0].get("k", 0) == KEY_W, "Q was not stolen from another action")
-	Keybinds.set_binding("module_2", 0, {"k": KEY_Q})
+	check(InputMap.event_is_action(kq, "module_1", true) and not InputMap.event_is_action(k1, "module_1", true), "rebinding module 1 to K")
+	check(Keybinds.binds["ship_up"][0].get("k", 0) == KEY_W and Keybinds.binds["cam_up"][0].get("k", 0) == KEY_UP, "K was not stolen from another action (W flies, arrows pan the camera)")
+	Keybinds.set_binding("module_2", 0, {"k": KEY_K})
 	check(not InputMap.event_is_action(kq, "module_1", true) and InputMap.event_is_action(kq, "module_2", true), "a key bound twice moves to the new action")
 	Keybinds.reset_to_defaults()
 	check(InputMap.event_is_action(k1, "module_1", true), "reset to defaults")
@@ -2125,9 +2125,50 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 	main.hud.hotkey_command("cmd_lock")
 	check(locked_ok and pl.lock_index("ship:%d" % lead.fit.uid) < 0, "Lock hotkey locks the selected target – pressed again it unlocks")
 	check(main.hud.hotkey_command("cmd_jump") != "" and main.hud.hotkey_command("cmd_dock") != "", "Jump / Dock hotkeys refuse a ship as target")
+	# Tab: nearest hostile, again: the next one; B: the nearest station within 5,000 km
+	var h1: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(1500, 0))
+	var h2: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(0, 2500))
+	main.hud.show_selected("")
+	main.hud.hotkey_command("sel_hostile")
+	var first: String = main.hud.selected_id
+	main.hud.hotkey_command("sel_hostile")
+	check(first == "ship:%d" % h1.fit.uid and main.hud.selected_id == "ship:%d" % h2.fit.uid, "Tab selects the nearest hostile, again the next one")
+	h1.queue_free()
+	h2.queue_free()
+	var stn0 = view.stations.values()[0]
+	pl.position = stn0.position + Vector2(float(stn0.radius) + 1000.0, 0)
+	main.hud.hotkey_command("sel_station")
+	check(main.hud.selected_id == String(stn0.data["id"]), "B selects the station a few thousand km away")
+	# WASD flies the ship, releasing the keys brakes
+	pl.order = {"type": "idle"}
+	view.steer(Vector2(1, 0))
+	var flies: bool = String(pl.order.get("type", "")) == "move" and (pl.order["pos"] as Vector2).x > pl.position.x
+	view.steer(Vector2.ZERO)
+	check(flies and String(pl.order.get("type", "")) == "idle", "WASD flies the ship in that direction, releasing stops it")
 	main.hud.show_selected("")
 	pl.position = pos_keep
 	pl.set_order({"type": "follow", "node": lead, "r": 800.0})
+	# a fixed formation: the pilot takes the first slot, the others their own slots
+	var wing2: Ship = view.spawn_npc("civ_shuttle", lead.position + Vector2(-900, 300), "civilian", "")
+	wing2.set_order({"type": "follow", "node": lead, "r": 800.0})
+	view._fol_frame = -1
+	var mates: Array = view.followers_of(lead)
+	var slots_ok: bool = mates.size() >= 2 and mates[0] == pl
+	var seen_slots := {}
+	for mt in mates:
+		var off: Vector2 = mt.formation_offset(lead)
+		slots_ok = slots_ok and off.x < 0.0 and not seen_slots.has(off)
+		seen_slots[off] = true
+	check(slots_ok, "followers fly a fixed V formation behind the lead (%d slots)" % mates.size())
+	wing2.queue_free()
+	# the lead announces warps and jumps in the chat
+	var said := []
+	var grab := func(t, _c): said.append(t)
+	GameState.message.connect(grab)
+	view.announce_lead(lead, "warp", "Test gate")
+	view.announce_lead(lead, "jump", "Testheim")
+	GameState.message.disconnect(grab)
+	check(said.size() == 2 and String(said[0]).contains("Aligning for warp to Test gate") and String(said[1]).contains("jumping to Testheim"), "the lead announces its warp and jump in the chat")
 	# the convoy announces its warp in the ticker
 	lead.order = {"type": "warp", "target": {"name": "Test gate", "pos": lead.position + Vector2(600000, 0), "land": 2000.0}, "then": {}}
 	tr._announce_warp(e, lead)
@@ -2138,6 +2179,10 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 	lead.order = {"type": "warping"}
 	pl._update_movement(0.016, pl.fit.stats())
 	check(pl.in_warp() and pl.warp.get("follow") == lead and absf(float(pl.warp["T"]) - 30.5) < 0.6, "following into warp – no aligning, arriving together")
+	lead.warp["t"] = 8.0
+	pl._update_warp(2.0)
+	var slot_pos: Vector2 = lead.position + pl.formation_offset(lead).rotated(lead.heading)
+	check(pl.in_warp() and pl.position.distance_to(slot_pos) < 5.0, "in warp the follower keeps its formation slot next to the lead")
 	# interception: convoy and followers drop out of warp, pirates close in
 	var p0: int = view.pirate_count()
 	lead.warp["t"] = 15.0

@@ -628,13 +628,11 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 					# fell far behind: catch up by warp
 					_follow_warp(fn, 4.0 + gap / maxf(float(s["warp_speed"]), 1.0), fn.position, fn.display_name())
 					return
-				var fa: Vector2 = position - fn.position
-				if fa.length() < 1.0:
-					fa = Vector2.RIGHT
-				dest = fn.position + fa.normalized() * (fr + float(fn.radius))
+				# fixed formation: a V behind the ship we follow (package 17 follow-up)
+				dest = fn.position + formation_offset(fn).rotated(fn.heading)
 				if gap > fr * 3.0:
 					speed_factor = 1.0
-				activity = "Following %s" % fn.display_name()
+				activity = "In formation with %s" % fn.display_name()
 		"travel":
 			dest = _travel(delta, s)
 		"warp":
@@ -869,6 +867,8 @@ func _travel(delta: float, s: Dictionary):
 			order = {"type": "idle"}
 			return null
 		spool = 0.0
+	if spool == 0.0:
+		view.announce_lead(self, "jump", String(Universe.systems[next]["name"]))
 	spool += delta
 	activity = "Jump drive spooling … %d%%" % int(spool / maxf(float(s["spool"]), 0.1) * 100.0)
 	if spool >= float(s["spool"]):
@@ -929,6 +929,7 @@ func _warp_align(delta: float, s: Dictionary):
 	var dir := (dest - position).normalized()
 	if spool < 0.0:
 		spool = 0.0
+		view.announce_lead(self, "warp", String(t["name"]))
 	spool += delta
 	var at := align_time()
 	activity = "Aligning: warp → %s  %d%%" % [t["name"], int(minf(spool / at, 1.0) * 100.0)]
@@ -965,9 +966,10 @@ func group_warp_speed(own: float) -> float:
 ## arrive together. Arrival continues following.
 func _follow_warp(fn, remaining: float, to: Vector2, wname: String) -> void:
 	var r := float(order.get("r", 800.0))
-	var land: Vector2 = to + Vector2.from_angle(randf() * TAU) * (r * 0.6 + 300.0)
+	var wdir: float = (to - fn.position).angle() if fn.position.distance_to(to) > 1.0 else fn.heading
+	var land: Vector2 = to + formation_offset(fn).rotated(wdir)
 	warp = {"from": position, "to": land, "t": 0.0, "T": maxf(remaining, 2.0) + 0.5, "then": {"type": "follow", "node": fn, "r": r},
-		"name": wname, "follow": fn}
+		"name": wname, "follow": fn, "formation": fn.in_warp(), "off0": position - fn.position}
 	target = null
 	if faction == "player":
 		clear_locks()
@@ -1013,6 +1015,9 @@ func _update_warp(delta: float) -> void:
 		and float(warp["T"]) - float(warp["t"]) - delta <= 2.0
 	if not held:
 		warp["t"] = float(warp["t"]) + delta
+	if warp.get("formation", false):
+		_formation_warp(delta)
+		return
 	var p := warp_progress()
 	var from: Vector2 = warp["from"]
 	var to: Vector2 = warp["to"]
@@ -1030,6 +1035,51 @@ func _update_warp(delta: float) -> void:
 		view.on_warp_finished(self)
 		if not then.is_empty():
 			set_order(view.resolve_order(then))
+
+
+const FORMATION_GAP := 380.0
+
+
+## Slot of this ship in the V formation behind the ship it follows (x = forward). The pilot takes
+## the first slot, the others follow in a fixed order, alternating left and right.
+func formation_offset(fn) -> Vector2:
+	var mates: Array = view.followers_of(fn) if view != null and view.has_method("followers_of") else []
+	var i := maxi(mates.find(self), 0)
+	var row := i / 2 + 1
+	var side := -1.0 if i % 2 == 0 else 1.0
+	var gap := FORMATION_GAP + float(fn.radius) + radius
+	return Vector2(-row * gap * 0.8, side * row * gap * 0.7)
+
+
+## Warp in formation: glued to the slot next to the lead for the whole warp (blending in over the
+## first 1.5 s); it ends when the lead's warp ends.
+func _formation_warp(delta: float) -> void:
+	var fn = warp.get("follow")
+	if fn == null or not is_instance_valid(fn) or fn.dying:
+		# lead lost: finish the warp on our own from here
+		warp["formation"] = false
+		warp["from"] = position
+		warp["T"] = maxf(float(warp["T"]) - float(warp["t"]), 2.0)
+		warp["t"] = 0.0
+		return
+	if not fn.in_warp():
+		var then: Dictionary = warp["then"]
+		var vel: Vector2 = fn.velocity
+		warp = {}
+		velocity = vel
+		order = {"type": "idle"}
+		view.spawn_fx(Fx.flash(position, Color(0.6, 0.85, 1.0), radius * 3.0))
+		view.on_warp_finished(self)
+		if not then.is_empty():
+			set_order(view.resolve_order(then))
+		return
+	var slot: Vector2 = formation_offset(fn).rotated(fn.heading)
+	var k := smoothstep(0.0, 1.5, float(warp["t"]))
+	var np: Vector2 = fn.position + (warp["off0"] as Vector2).lerp(slot, k)
+	velocity = (np - position) / maxf(delta, 0.0001)
+	position = np
+	heading = fn.heading
+	activity = "In warp, in formation → %s  (%d s)" % [warp["name"], int(ceil(float(fn.warp["T"]) - float(fn.warp["t"])))]
 
 
 # ---------------------------------------------------------------- Weapons
