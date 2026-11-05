@@ -754,18 +754,21 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - **Verkauf:** Werften der Handelsstationen in reichen, sicheren Systemen – im Gebiet der Assembly und des Covenant; im Directorate keine.
 - **Eingebauter Nachbrenner:** wirkt wie das Nachbrenner-Modul, belegt aber keinen Platz; eigene Kachel in der Modulleiste, verbraucht Energie, solange er an ist.
 
-**„D“ … Dynamics – Kampfschiff-Manufaktur** (Name offen; Vorschlag: **Hadrian Dynamics** (HDY), hervorgegangen aus der Waffenschmiede „F“ = *Hadrian Ordnance* und dem Rumpfbauer „E“ = *Castellan Hullworks*; Motto *„Deterrence is a product.“*)
-- **Geschichte:** die umstrittenste Manufaktur im Cluster. Nach der Severance versank der Cluster im Chaos, lange bürgerkriegsähnliche Zustände folgten – Waffenmanufakturen wie „F“, der Vorgänger von D, wurden steinreich. Der Chef von F läutete zugleich das Ende der Dark Decades ein: Er entdeckte die Möglichkeit wieder, Nuklearwaffen zu bauen, und erzwang so den ersten Waffenstillstand zwischen den gerade entstandenen, miteinander im Krieg liegenden Fraktionen Assembly und Covenant. Später fusionierte F mit dem Schiffsrumpfhersteller „E“; der Chef von F wurde Chef von D, und D begann, eigene Schiffe zu entwickeln.
+**Hadrian Dynamics (HDY)** – Kampfschiff-Manufaktur
+- **Name & Motto:** *„Deterrence is a product.“* Hervorgegangen aus der Waffenschmiede **Hadrian Ordnance** und dem Rumpfbauer **Castellan Hullworks**. Gründer: **Erik Martin**; heute führt sein Sohn **Erik Martin Jr.** die Firma – er gilt als der reichste Mann des Clusters (Figuren für Teil 5).
+- **Geschichte:** die umstrittenste Manufaktur im Cluster. Nach der Severance (12713 HE) versank der Cluster im Chaos, lange bürgerkriegsähnliche Zustände folgten – Waffenmanufakturen wie Hadrian Ordnance wurden steinreich. Erik Martin läutete zugleich das Ende der Dark Decades ein: Er entdeckte die Möglichkeit wieder, Nuklearwaffen zu bauen, und erzwang um **12748 HE** durch nukleare Abschreckung den ersten Waffenstillstand zwischen den gerade entstandenen, miteinander im Krieg liegenden Fraktionen Assembly und Covenant. Um **12790 HE** fusionierte Hadrian Ordnance mit Castellan Hullworks zu Hadrian Dynamics, Erik Martin wurde ihr Chef, und die Firma begann, eigene Schiffe zu entwickeln.
 - **Schwerpunkt:** Kampfschiffe – stark im Kampf, schwach in allem anderen.
 - **Design:** brutalistisch und gefährlich: massive, kantige Panzerblöcke, dunkle Metalle, wenige Lichter, Waffen gut sichtbar. Eigene Interpretation – kein Nachbau fremder Schiffe.
-- **Markenzeichen aller D-Schiffe:** **reflektierende Schiffshülle** (wirft einen Teil des erlittenen Schadens auf den Angreifer zurück), ab M besonders gut gegen Explosivschaden. Schwach bei allem außer Kampf.
-- **Schiffsideen (Arbeitsnamen):**
-  - **Dropship** (S): schnell, gut bewaffnet, starke Schilde, kein Drohnenhangar; erhöhte Feuerrate für Torpedos und Raketen.
-  - **Kanonenboot** (M): schnell, gut bewaffnet, kleiner Drohnenhangar (2); als einziges M-Schiff später Langstreckenraketen (Recon-Reichweite) und Nuklearraketen.
-  - **Goliath Destroyer** (M): schnell, Bewaffnung eines L-Kampfschiffs, Drohnenhangar 5; eingebaute Punktverteidigung; später Langstrecken- und Nuklearraketen. Design-Idee: zwei große Waffenarme.
-  - **Kleiner Flottenträger** (L): durchschnittliche Bewaffnung, großer Drohnenhangar (9); eingebaute Punktverteidigung; später Langstrecken- und Nuklearraketen. **Für das Crew-/Piloten-Update (Teil 5) vormerken:** ein Hangar auf der Oberseite für ein S-Schiff, das später wie Drohnen gestartet werden kann.
-- **Später:** Langstreckenraketen (Recon-Reichweite) und Nuklearraketen als eigene Waffenmechanik.
-- **Offene Fragen:** siehe Gespräch vom 5. Nov 2026 (Name, Reflexion, Schwächen, Verkauf, Jahreszahlen).
+- **Markenzeichen aller HDY-Schiffe:**
+  - **Reflektierende Schiffshülle:** ein Teil des Schadens, der auf die Panzerung trifft, geht an den Angreifer zurück – S 10 %, M 15 %, L 20 % (Schilde reflektieren nicht). M und L dazu +20 % Explosivresistenz.
+  - **Schwach außerhalb des Kampfs:** kaum Werkzeugplätze (S 0, M/L 1), kleiner Frachtraum, kein Erzlager, −50 % auf Abbau, Bergung und Analyse, hohe Signatur (leicht zu erfassen und zu scannen).
+- **Schiffe (Namen freigegeben):**
+  - **Talon** – Dropship (S): schnell, gut bewaffnet, starke Schilde, kein Drohnenhangar; erhöhte Feuerrate für Torpedos und Raketen.
+  - **Maul** – Kanonenboot (M): schnell, gut bewaffnet, kleiner Drohnenhangar (2); als einziges M-Schiff später Langstrecken- und Nuklearraketen.
+  - **Goliath** – Destroyer (M): schnell, Bewaffnung eines L-Kampfschiffs, Drohnenhangar 5; eingebaute Punktverteidigung; später Langstrecken- und Nuklearraketen. Design: zwei mächtige Waffenarme.
+  - **Citadel** – kleiner Flottenträger (L): durchschnittliche Bewaffnung, großer Drohnenhangar (9); eingebaute Punktverteidigung; später Langstrecken- und Nuklearraketen. **Für Teil 5 vormerken:** Hangar auf der Oberseite für ein S-Schiff, das später wie Drohnen gestartet werden kann.
+- **Verkauf:** überall; die größeren Schiffe (Goliath, Citadel) nur an Militärstationen und in Hightech-Wirtschaften. **Piraten** fliegen heruntergekommene Varianten der HDY-Schiffe – aber nie die Goliath.
+- **Später:** Langstreckenraketen (Recon-Reichweite) und Nuklearraketen sind eigentlich für künftige XL- und XXL-Schiffsklassen geplant (viel später) – dass HDY-Schiffe sie tragen können, ist ihre Besonderheit. Nuklearwaffen: schweres Verbrechen in allen Fraktionsgebieten, nur über den Schwarzmarkt, großer Flächenschaden.
 
 **Für alle Manufakturen:** eingebaute Module (Nachbrenner, Bordraffinerie, Prospektor-Scanner, Fertigung, Markt …) bekommen in der Modulleiste und im Schiffsmenü eine **farbige Umrandung**, damit man sie als fest eingebaut erkennt.
 
