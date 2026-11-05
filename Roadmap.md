@@ -700,9 +700,10 @@ Vorgehen (5. Nov 2026 vereinbart): die Manufakturen werden einzeln durchgegangen
 - **Geschichte:** gegründet 12450 HE auf der Erde – die erste große nicht staatliche Sternschiffmanufaktur. Ihre Schiffe ermöglichten die Erkundung der Galaxie und später die Besiedlung des Clusters. Bis kurz vor der Severance die einzige Sternschiffmanufaktur, mit nur einem Shipyard Complex im Orbit von Luna (Sol). 12696 HE entstand eine zweite Werft im Cluster; 12701 HE erlaubte die Erdregierung weitere Sternschiffmanufakturen (zwölf Jahre vor der Severance 12713 HE).
 - **Design:** schlicht und praktisch – „das Basic-Erddesign“. Technisch weiterentwickelt, im Großen aber seit den 12450er Jahren unverändert: zeitloses Design, großartige Ingenieurskunst.
 - **Schwerpunkt:** etwas für jeden – grundlegend Allrounder, dazu speziellere Schiffe wie Mule und Longhaul.
-- **Schiffe:** Dragonfly, Hornet, Mule, Drillhead, Warden, Bastion, Skiff, Longhaul (die Carrion Crow ist Piratenbau, keine Earthworks).
+- **Schiffe:** alle bisherigen Schiffe im Spiel außer den speziellen Piratenschiffen – Dragonfly, Hornet, Mule, Drillhead, Warden, Bastion, Skiff, Longhaul (die Carrion Crow ist Piratenbau). Das bisherige, einheitliche Design ist genau die Earthworks-Designsprache.
+- **Heute:** unabhängige Megacorp. Earthworks-Schiffe gibt es an den allermeisten Werften.
 - **Codex (später):** eigener Eintrag „Earthworks“ mit der Geschichte oben, Querverweise auf „The Expansion“ und „The Severance“; freigeschaltet beim ersten Besuch einer Werft.
-- **Noch offen:** Wer führt Earthworks heute (Cluster-Werft seit der Severance vom Hauptsitz abgeschnitten)? In welchem System liegt die Cluster-Werft von 12696? Verkauft Earthworks an allen Werften oder nur an bestimmten?
+- **Später:** Führungspersonen kommen mit Teil 5 (Character Update), der feste Standort der Cluster-Werft von 12696 mit Teil 6 (feste Sternensysteme – auch für Fraktionshauptsitze und weitere Orte).
 
 ### Neue Schiffe (Paket 25)
 
