@@ -1755,7 +1755,7 @@ func set_module_active(slot: String, on: bool) -> String:
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
 		var what := {"refinery": "running – ore from the hold is refined bit by bit", "factory": "running – works through its queue (Ship menu → Industry)",
-			"market": "open – traders in the system come to buy (Ship menu → Industry)"}
+			"market": "open – traders in the system come to buy (Ship menu → Market)"}
 		_mlog("%s %s." % [d["name"], what[d["active"]] if on else "switched off"])
 		return ""
 	if on and e["kind"] == "self":

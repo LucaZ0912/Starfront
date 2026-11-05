@@ -16,7 +16,9 @@ const CATEGORIES := [
 	["Core", "core"], ["Weapons", "weapon"], ["Tools", "tool"], ["Optional", "optional"],
 	["Drone hangar – equipment for all drones", "drone"],
 ]
-const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing", "Codex", "Industry"]
+const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing", "Codex", "Industry", "Market"]
+const TAB_INDUSTRY := 7
+const TAB_MARKET := 8
 const CodexView = preload("res://scripts/ui/codex_view.gd")
 const FactionData = preload("res://data/factions.gd")
 
@@ -140,6 +142,11 @@ func rebuild() -> void:
 	title_label.text = fit.ship_name
 	sub_label.text = "%s %s  •  %s  •  size %s  •  %s" % [h["class"], h["name"], _maker_name(h), GameData.SIZE_NAMES[int(h["size"])], fit.location_text()]
 	status_label.text = "Docked – modules can be swapped with station storage." if _docked() else "In space – fitting can only be changed while docked."
+	# Industry and Market only for ships that have a factory / an on-board market (package 25b)
+	tab_buttons[TAB_INDUSTRY].visible = h.has("factory")
+	tab_buttons[TAB_MARKET].visible = h.has("market")
+	if not tab_buttons[tab].visible:
+		tab = 0
 	for i in tab_buttons.size():
 		tab_buttons[i].button_pressed = i == tab
 	UI.clear(content)
@@ -162,6 +169,8 @@ func rebuild() -> void:
 			cv.setup(true)
 		7:
 			_build_industry()
+		8:
+			_build_market(_scroll())
 
 
 # ================================================================ Industry (package 25b)
@@ -172,15 +181,7 @@ const FACTORY_FILTERS := [["drone", "Drones"], ["weapon", "Weapons"], ["optional
 
 
 func _build_industry() -> void:
-	var box := _scroll()
-	var h := fit.hull()
-	if not h.has("factory") and not h.has("market"):
-		box.add_child(UI.label("This ship has no factory and no on-board market – the Kanayama-maru of Kanayama Heavy Industries has both.", 14, UI.TEXT_DIM))
-		return
-	if h.has("factory"):
-		_build_factory(box)
-	if h.has("market"):
-		_build_market(box)
+	_build_factory(_scroll())
 
 
 func _build_factory(box: VBoxContainer) -> void:
@@ -230,7 +231,6 @@ func _build_factory(box: VBoxContainer) -> void:
 
 
 func _build_market(box: VBoxContainer) -> void:
-	box.add_child(HSeparator.new())
 	box.add_child(UI.label("ON-BOARD MARKET", 18, UI.NEON_CYAN))
 	box.add_child(UI.wrap_label("Offer goods from your hold at your own price. While the market is open (module bar) and the ship stands still in space, traders of the system fly over and buy – if your price is fair. Large offers attract pirates.", 12, UI.TEXT_DIM, 900))
 	var total := 0

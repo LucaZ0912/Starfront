@@ -3527,8 +3527,19 @@ func _test_kanayama(view: SystemView) -> void:
 	view.market_buyers.clear()
 	c.queue_free()
 	GameState.jobs = GameState.jobs.filter(func(j): return int(j.get("uid", 0)) != 99901)
-	# ship menu: Industry tab
+	# ship menu: Industry and Market tabs only for ships that have them
 	var sm = main.ship_menu
 	sm.open(view, 7)
-	check(sm.content.get_child_count() > 0, "ship menu → Industry tab")
+	var hidden_ok: bool = not sm.tab_buttons[sm.TAB_INDUSTRY].visible and not sm.tab_buttons[sm.TAB_MARKET].visible and sm.tab == 0
 	sm.close()
+	var keep_uid: int = GameState.active_uid
+	var kf2 := GameState.create_from_preset("std_kanayama", "player")
+	kf2.system_id = view.system_id
+	GameState.add_ship(kf2)
+	GameState.active_uid = kf2.uid
+	sm.open(view, 8)
+	var shown_ok: bool = sm.tab_buttons[sm.TAB_INDUSTRY].visible and sm.tab_buttons[sm.TAB_MARKET].visible and sm.tab == 8 and sm.content.get_child_count() > 0
+	sm.close()
+	GameState.active_uid = keep_uid
+	GameState.fleet.erase(kf2)
+	check(hidden_ok and shown_ok, "ship menu: Industry and Market tabs only on ships with a factory / a market")

@@ -99,8 +99,9 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   running and end up in station storage (queue in the manufacturing panel; jobs are saved).
 - **On-board factory** (built in, 30 MW while on): builds what an industrial complex builds (up to size 7)
   and drones from your cargo; only while switched on and in space. Modules go into the cargo hold,
-  drones into the hangar. Ship menu → **Industry**.
-- **On-board market** (built in, 6 MW while open): set goods and prices in Ship menu → Industry. While it
+  drones into the hangar. Ship menu → **Industry** (the tab only shows on ships with a factory).
+- **On-board market** (built in, 6 MW while open): set goods and prices in Ship menu → **Market** (only on ships
+  with a market). While it
   is open and the ship stands still, traders of the system come over every 25–50 s and buy if the price is
   fair (up to about 0.9–1.5 × the base price). Offers worth more than 60,000 cr attract pirates.
 

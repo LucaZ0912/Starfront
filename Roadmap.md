@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe) und 25b (Kanayama-maru) fertig, als Nächstes 25c (Maison Aurelle). Netzwerk fehlt noch. Version alpha 0.4.25.10. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe) und 25b (Kanayama-maru) fertig, als Nächstes 25c (Maison Aurelle). Netzwerk fehlt noch. Version alpha 0.4.25.11. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -856,6 +856,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Fabrik an Bord** (eingebaut, 30 MW, abschaltbar): baut wie ein Industriekomplex (bis Größe 7) und Drohnen aus den Materialien im Laderaum; arbeitet nur eingeschaltet und im All; Module landen im Laderaum, Drohnen im Hangar (wartet bei Platzmangel); schwarzer Rauch beim Arbeiten.
 - [x] **Bordmarkt** (eingebaut, 6 MW, abschaltbar): Waren und Preise im neuen Schiffsmenü-Reiter „Industry“; solange er offen ist und das Schiff stillsteht, fliegen alle 25–50 s Händler herüber und kaufen, wenn der Preis fair ist (bis etwa 0,9–1,5 × Grundpreis); Angebote über 60.000 cr locken mit wachsender Wahrscheinlichkeit 2–4 Piraten an.
 - [x] Neue Icons für Fabrik und Markt.
+- [x] Eigene Schiffsmenü-Reiter „Industry“ (Fabrik) und „Market“ (Bordmarkt) – nur bei Schiffen, die sie haben (0.4.25.11).
 
 ### Stationstyp 0 (Paket 26)
 

@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.11 – 2026-11-05
+
+- Ship menu: the on-board market has its own tab "Market"; "Industry" and "Market" only show on ships that have a factory / a market.
+
 ## alpha 0.4.25.10 – 2026-11-05
 
 - Fix: the warp alignment ring on the ship shows the real time until the warp starts (alignment time plus
