@@ -66,6 +66,7 @@ var survey_text: RichTextLabel
 
 ## on = working on the active target, other = working on another locked target (multi-focus),
 ## range = target out of reach, energy = capacitor too low, power = its priority group is shut down
+const BUILTIN_COLOR := Color(1.0, 0.72, 0.2)   # frame of modules built into the hull (package 25a)
 const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "other": Color(1.0, 0.92, 0.25), "range": Color(1.0, 0.55, 0.2), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
 const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven"}
 
@@ -1437,6 +1438,22 @@ func _make_module_tile(e: Dictionary, idx: int) -> void:
 	bar.custom_minimum_size = Vector2(62, 4)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(bar)
+	if d.get("builtin", false):
+		# built into the hull (package 25a): an inner gold frame
+		var fr := Panel.new()
+		var fs := StyleBoxFlat.new()
+		fs.draw_center = false
+		fs.border_color = BUILTIN_COLOR
+		fs.set_border_width_all(2)
+		fr.add_theme_stylebox_override("panel", fs)
+		fr.set_anchors_preset(Control.PRESET_FULL_RECT)
+		fr.offset_left = 3
+		fr.offset_top = 3
+		fr.offset_right = -3
+		fr.offset_bottom = -3
+		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(fr)
+		b.tooltip_text += "\nBuilt into the hull"
 	_module_tiles[slot] = {"button": b, "style": sb, "bar": bar, "tgt": tl}
 
 

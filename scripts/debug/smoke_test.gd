@@ -517,6 +517,7 @@ func _process(delta: float) -> void:
 				_test_multifocus(view)
 				_test_drones(view)
 				_test_manufacturers(view)
+				_test_khi(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -1305,6 +1306,19 @@ func _shoot_standing(view: SystemView) -> void:
 		sheet.blit_rect(im2, Rect2i(0, 0, 34 * 5, 38 * 5), Vector2i(10 + (fi + 4) * 34 * 5, 20 + 38 * 5))
 		fi += 1
 	sheet.save_png("res://Claude outputs/crests.png")
+	# package 25a: the KHI ships (and the Earthworks Drillhead for comparison), player and NPC paint
+	var hulls9 := ["mogura", "anaguma", "iwakudaki", "drillhead"]
+	var ship_sheet := Image.create(1500, 520, false, Image.FORMAT_RGBA8)
+	ship_sheet.fill(Color(0.05, 0.06, 0.09))
+	var sx := 20
+	for hid9 in hulls9:
+		for row9 in 2:
+			var tex9: Texture2D = PixelArt.ship_texture(hid9, "player" if row9 == 0 else "assembly")
+			var im9 := tex9.get_image()
+			im9.resize(im9.get_width() * 4, im9.get_height() * 4, Image.INTERPOLATE_NEAREST)
+			ship_sheet.blend_rect(im9, Rect2i(0, 0, im9.get_width(), im9.get_height()), Vector2i(sx, 20 + row9 * 250))
+		sx += PixelArt.ship_texture(hid9, "player").get_width() * 4 + 30
+	ship_sheet.save_png("res://Claude outputs/khi_ships.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -1364,6 +1378,23 @@ func _shoot_standing(view: SystemView) -> void:
 		for i6 in 240:
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/drone_formation.png")
+		# package 25a: a KHI Anaguma with its refinery running (black smoke)
+		var kf := GameState.create_from_preset("std_anaguma", "player")
+		kf.system_id = view.system_id
+		kf.position = bc.position + Vector2(400, 250)
+		kf.cargo["iron_ore"] = 200.0
+		kf.refinery_on = true
+		var ks := Ship.new()
+		ks.manual = true
+		ks.setup(kf, view)
+		view.ship_layer.add_child(ks)
+		ks.heading = 0.4
+		ks.velocity = Vector2.from_angle(0.4) * 60.0
+		view.camera.position = ks.position
+		for i7 in 200:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/khi_smoke.png")
+		ks.queue_free()
 		for dd5 in view.drones_of(bc):
 			view.stow_drone(dd5)
 		bc.queue_free()
@@ -2672,13 +2703,17 @@ func _test_package20(view: SystemView) -> void:
 ## Phase 0.5 package 21: hard power limit, priority groups, active modules draw only in use.
 func _test_power(view: SystemView) -> void:
 	var fits_ok := true
+	var over: Array = []
 	for pid in GameData.presets:
 		var f0 := GameState.create_from_preset(pid, "player")
 		var all0 := {}
 		for k0 in f0.slot_keys():
 			all0[k0] = true
-		fits_ok = fits_ok and f0.power_plan(all0)["off"].is_empty() and is_equal_approx(float(f0.power_plan(all0)["throttle"]), 1.0)
-	check(fits_ok, "every standard fit and NPC loadout runs everything at once")
+		var pp0 := f0.power_plan(all0)
+		if not (pp0["off"].is_empty() and is_equal_approx(float(pp0["throttle"]), 1.0)):
+			fits_ok = false
+			over.append("%s %.0f/%.0f" % [pid, float(pp0["requested"]), float(pp0["available"])])
+	check(fits_ok, "every standard fit and NPC loadout runs everything at once %s" % str(over))
 	# passive always, active only in use
 	var f := GameState.create_from_preset("std_hornet", "player")
 	var st := f.stats()
@@ -3190,3 +3225,90 @@ func _test_manufacturers(view: SystemView) -> void:
 	check(codex_ok and all["maker_earthworks"]["unlock"] == "start" and all["maker_concord"]["unlock"] == "faction:assembly", "codex: one entry per manufacturer (Earthworks known from the start, state ones with their power)")
 	check(String(all["maker_hadrian"]["text"]).contains("Erik Martin") and String(all["maker_aurelle"]["text"]).contains("Ivoire Maison"), "codex: the manufacturers' histories")
 	check(CrestArt.maker_texture("khi") != null and CrestArt.maker_texture("khi").get_width() == CrestArt.W, "crest textures for the codex")
+
+
+## Phase 0.5 package 25a: Kanayama Heavy Industries mining ships, manufacturer framework.
+func _test_khi(view: SystemView) -> void:
+	var MK = preload("res://data/manufacturers.gd")
+	var maker_ok := true
+	for hid in GameData.hulls:
+		var h: Dictionary = GameData.hulls[hid]
+		if not h.get("drone_only", false):
+			maker_ok = maker_ok and (MK.MAKERS.has(String(h.get("maker", ""))) or h.get("maker", "") == "pirate")
+	check(maker_ok and GameData.hulls["dragonfly"]["maker"] == "earthworks" and GameData.hulls["mogura"]["maker"] == "khi" and GameData.hulls["crow"]["maker"] == "pirate", "every hull belongs to a manufacturer")
+	# yards: KHI at industry and shipyard complexes, mining colonies a small yard (KHI S/M + Drillhead)
+	var khi_at := {}
+	var colony_yard := []
+	var trade_has_khi := false
+	for s2 in Universe.systems:
+		for st in Universe.get_layout(int(s2["id"]))["stations"]:
+			for hid2 in st["shipyard"]:
+				if GameData.hulls[hid2]["maker"] == "khi":
+					khi_at[st["type"]] = true
+					if st["type"] == "trade":
+						trade_has_khi = true
+			if st["type"] == "mining_colony" and colony_yard.is_empty():
+				colony_yard = st["shipyard"].duplicate()
+	colony_yard.sort()
+	check(khi_at.has("industry") and not trade_has_khi, "KHI ships at industrial complexes and shipyard complexes, not at trade hubs")
+	check(colony_yard == ["anaguma", "drillhead", "mogura"], "mining colonies: a small yard with Mogura, Anaguma and the Drillhead %s" % str(colony_yard))
+	# traits
+	var f := GameState.create_from_preset("std_mogura", "player")
+	var st0 := f.stats()
+	var ref := GameState.create_from_preset("std_dragonfly", "player")
+	check(float(st0["ore_cargo_max"]) >= 60.0 and float(st0["mining_bonus"]["metallic"]) >= 0.1 and is_equal_approx(float(st0["align_mult"]), 1.4), "KHI: built-in ore hold (%.0f m³), +10 %% mining, slow to align for warp" % float(st0["ore_cargo_max"]))
+	var kinds := {}
+	for e in f.active_modules():
+		if e["data"].get("builtin", false):
+			kinds[String(e["data"].get("active", e["data"].get("tool", "")))] = e["slot"]
+	check(kinds.has("refinery") and kinds.has("prospect") and f.priority_of("builtin_refinery") > 0, "built-in refinery and prospector in the module bar, with a power priority")
+	check(f.get_module("builtin_refinery") == "" and not "builtin_refinery" in f.slot_keys(), "built-in modules cannot be removed (no slot)")
+	# the refinery: ore from the hold → refined goods, power while on, smoke
+	var sh := Ship.new()
+	f.system_id = view.system_id
+	f.position = view.player.position + Vector2(0, 50000)
+	sh.manual = true
+	sh.setup(f, view)
+	view.ship_layer.add_child(sh)
+	f.cargo.clear()
+	f.cargo["iron_ore"] = 20.0
+	f.refinery_on = true
+	var rslot: String = kinds.get("refinery", "")
+	var fx0 := view.fx_layer.get_child_count()
+	for i in 40:
+		sh._update_modules(0.5, f.stats())
+	var ingots := float(f.cargo.get("iron_ingot", 0.0))
+	check(ingots > 0.0 and float(f.cargo.get("iron_ore", 0.0)) < 20.0 and view.fx_layer.get_child_count() > fx0, "the refinery turns ore into %s bit by bit (%.1f) – with black smoke" % [GameData.item_name("iron_ingot"), ingots])
+	check(sh.power_in_use().has(rslot), "the running refinery draws power")
+	sh.set_module_active(rslot, false)
+	var ore_left := float(f.cargo.get("iron_ore", 0.0))
+	for i2 in 10:
+		sh._update_modules(0.5, f.stats())
+	check(not f.refinery_on and is_equal_approx(float(f.cargo.get("iron_ore", 0.0)), ore_left) and not sh.power_in_use().has(rslot), "switched off it stops (and draws no power)")
+	sh.clear_locks()
+	sh._update_modules(0.1, f.stats())
+	check(not sh.module_on.get(rslot, false), "the on/off state of the refinery survives clearing the modules (off stays off)")
+	f.refinery_on = true
+	sh.clear_locks()
+	sh._update_modules(0.1, f.stats())
+	check(sh.module_on.get(rslot, false), "… and on stays on after a warp")
+	sh.queue_free()
+	# slower to turn than an Earthworks ship with the same engine family
+	var fa := GameState.create_from_preset("std_anaguma", "player")
+	var fd := GameState.create_from_preset("std_drillhead", "player")
+	check(float(fa.stats()["turn"]) < float(fd.stats()["turn"]), "KHI ships turn slower (%.2f vs %.2f)" % [float(fa.stats()["turn"]), float(fd.stats()["turn"])])
+	# shipyard shows the manufacturer
+	var big_st: Dictionary = {}
+	for st3 in view.layout["stations"]:
+		if not st3["shipyard"].is_empty():
+			big_st = st3
+	if not big_st.is_empty():
+		var sp: StationUI = main.station_panel
+		sp.open(big_st, view)
+		sp.open_service("shipyard")
+		var found := false
+		for n in sp.find_children("*", "Label", true, false):
+			if String(n.text).begins_with("Earthworks") or String(n.text).begins_with("Kanayama"):
+				found = true
+		sp.close()
+		check(found, "the shipyard names the manufacturer of every hull")

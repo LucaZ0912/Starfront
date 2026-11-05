@@ -85,6 +85,19 @@ static func damage_number(pos: Vector2, amount: float, col: Color) -> Fx:
 
 
 ## Floating text (e.g. "+2.4 Iron Ore" over a mined asteroid), rises and fades like damage numbers.
+## A puff of black smoke drifting away (KHI refineries, package 25a).
+static func smoke(pos: Vector2, drift: Vector2, radius: float) -> Fx:
+	var f := Fx.new()
+	f.kind = "smoke"
+	f.position = pos
+	f.a = drift
+	f.size = maxf(radius, 6.0)
+	f.color = Color(0.2, 0.19, 0.18)
+	f.life = 2.6
+	f.max_life = 2.6
+	return f
+
+
 static func float_text(pos: Vector2, txt: String, col: Color) -> Fx:
 	var f := Fx.new()
 	f.kind = "number"
@@ -100,6 +113,8 @@ static func float_text(pos: Vector2, txt: String, col: Color) -> Fx:
 
 func _process(delta: float) -> void:
 	life -= delta
+	if kind == "smoke":
+		position += a * delta
 	if life <= 0.0:
 		queue_free()
 		return
@@ -126,6 +141,11 @@ func _draw() -> void:
 				var off := a.orthogonal() * (i - 2) * 10.0
 				draw_line(off, off + a * slen, Color(color, t * (1.0 - absf(i - 2) * 0.3)), 3.0 - absf(i - 2) * 0.8)
 			draw_circle(a * slen, 25.0 * t, Color(1, 1, 1, t))
+		"smoke":
+			var g := 1.0 - t
+			draw_circle(Vector2.ZERO, size * (0.6 + g * 1.6), Color(color, 0.7 * t))
+			draw_circle(Vector2(size * 0.4, -size * 0.3) * g, size * (0.4 + g * 1.1), Color(color.lightened(0.18), 0.55 * t))
+			draw_circle(Vector2(-size * 0.3, size * 0.2) * g, size * (0.3 + g * 0.9), Color(color.darkened(0.4), 0.6 * t))
 		"marker":
 			draw_arc(Vector2.ZERO, 8.0 + 30.0 * t, 0.0, TAU, 24, Color(color, t), 2.0)
 		"number":

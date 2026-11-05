@@ -7,6 +7,8 @@ extends RefCounted
 ##   crest    like the faction crests (scripts/core/crest_art.gd): shape, field, symbol, rim, symbol_id,
 ##            optional pattern ("hazard" = yellow-black warning stripes at the foot)
 ##   ships    planned models (shown in the codex as "known models")
+##   yards    station types whose shipyards sell its hulls ("all" = every shipyard); "small_yards":
+##            station types without a full shipyard that still sell some of its hulls (package 25a)
 
 const MAKERS := {
 	"earthworks": {
@@ -16,6 +18,7 @@ const MAKERS := {
 		"crest": {"shape": "round", "field": Color(0.24, 0.31, 0.4), "symbol": Color(0.62, 0.84, 1.0), "rim": Color(0.82, 0.86, 0.9), "symbol_id": "globe"},
 		"text": "Founded on Earth in 12450 HE – the first great starship manufacturer not run by a state. Its ships carried the exploration of the galaxy and the settlement of the Cluster. Until shortly before the Severance it was the only starship manufacturer at all, with a single Shipyard Complex in orbit of Luna, Earth's moon. A second yard was built in the Cluster in 12696 HE; in 12701 HE the government of Earth finally allowed other manufacturers.\n\nIts design is plain and practical – the basic Earth design. Technically improved, it has hardly changed since the 12450s: proof of timeless design and great engineering. Earthworks builds something for everyone, mostly all-rounders, but also specialists such as the Mule and the Longhaul. Today it is an independent megacorp, and its ships are sold at nearly every shipyard.",
 		"ships": ["Dragonfly", "Hornet", "Mule", "Drillhead", "Warden", "Bastion", "Skiff", "Longhaul"],
+		"yards": "all", "small_yards": {"mining_colony": ["drillhead"]},
 		"see": ["hist_expansion", "hist_severance", "maker_khi"]},
 	"khi": {
 		"name": "Kanayama Heavy Industries", "tag": "KHI", "kind": "private", "founded": 12701, "unlock": "corp:hoy",
@@ -24,6 +27,7 @@ const MAKERS := {
 		"crest": {"shape": "plate", "field": Color(0.96, 0.74, 0.1), "symbol": Color(0.08, 0.08, 0.09), "rim": Color(0.1, 0.1, 0.11), "symbol_id": "mountain_pick", "pattern": "hazard"},
 		"text": "Named after Kanayama-hiko, in old Shinto the god of mines and metalwork. Founded in the Cluster in 12701 HE, the year other manufacturers were allowed, when the mining boom drove up the demand for heavy machinery: the stations could no longer keep up with refining, and new solutions were needed.\n\nKHI builds mining and industrial ships – bulky, practical rather than pretty, painted in the yellow of construction machines. Every KHI ship carries its own refinery and ore hold, and when the refinery runs it belches black smoke. They mine better than anyone, but they are slow to turn and slow to warp.",
 		"ships": ["Mogura", "Anaguma", "Iwakudaki", "Kanayama-maru"],
+		"yards": ["industry", "shipyard"], "small_yards": {"mining_colony": ["mogura", "anaguma"]},
 		"see": ["maker_earthworks", "cluster_asteroids"]},
 	"aurelle": {
 		"name": "Maison Aurelle", "tag": "AUR", "kind": "private", "founded": 12895, "unlock": "corp:hoy",

@@ -7,6 +7,7 @@ extends RefCounted
 ##         a faction colour   c/C cockpit   e nozzle   f engine glow
 ##         w weapon   g gun barrel   y light yellow   r light red   m mining gear
 ##         k/K cargo container   s/S solar panel
+##         Y/L/Q KHI yellow (normal / light / dark)   x black hazard stripe   z orange
 
 const SHIPS := {
 	# Scout corvette – slim, swept wings
@@ -47,6 +48,51 @@ const SHIPS := {
 		"..aa...",
 		"edhhhc.",
 		"edhhhCc",
+	],
+	# ---------------- Kanayama Heavy Industries (package 25a): bulky, yellow, hazard stripes
+	"mogura": [
+		"....DD..DD.........................",
+		"....Dd..Dd.........................",
+		"....Dd..Dd.........................",
+		"..QQQQQQQQQQQ......................",
+		"..QxYYxYYxYYQ......................",
+		"..QYxYYxYYxYQQQQQQQQ...............",
+		"eeQYYYYYYYYYYYYYYYYQ.......mm......",
+		"feQYYLLLLLYYYYaaYYYYQQcC..mmm......",
+		"feQYYYYYYYYYYYYYYYYYYYccCdmmmm.....",
+		"feQYYYYYYYYYYYYYYYYYYYYccCdmmmmmgy.",
+	],
+	"anaguma": [
+		".......DD....DD.....................................",
+		".......Dd....Dd.....................................",
+		".......Dd....Dd.....................................",
+		"....QQQQQQQQQQQQQQQ.................................",
+		"....QxYYxYYxYYxYYxQ.................................",
+		"....QYxYYxYYxYYxYYQQQQQQQQQQQQQQ....................",
+		"eeeeQYYYYYYYYYYYYYYYYYYYYYYYYYYQ........wwg.........",
+		"ffeeQYYLLLLLLLLYYYYxYYxYYxYYxYYQQQQ....wg...........",
+		"ffeeQYYYYYaaaaYYYYYYYYYYYYYYYYYYYYQ.................",
+		"ffeeQYYYYYYYYYYYYYkkkkkkkYYYYYYYYYYQQcC.....mm......",
+		"ffeeQYYYYYYYYYYYYYkKKKKKkYYYYYYYYYYYYccCzz.mmmm.....",
+		"ffeeQYYYYYYYYYYYYYkkkkkkkYYYYYYYYYYYYYccCzzdmmmmm...",
+		"ffeeQYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYccCzdmmmmmmgy",
+	],
+	"iwakudaki": [
+		"..........DD....DD.......DD......................................................",
+		"..........Dd....Dd.......Dd......................................................",
+		"..........Dd....Dd.......Dd...................zz.................................",
+		"........QQQQQQQQQQQQQQQQQQQQQQ...............QzzQ................................",
+		"........QxYYxYYxYYxYYxYYxYYxYQ..............QYYYYQ...............................",
+		"........QYxYYxYYxYYxYYxYYxYYxQQQQQQQQQQQQQQQQYYYYQQQQQQQQ.........................",
+		"eeeeeeeeQYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYQ..............wwg.......",
+		"fffeeeeeQYYLLLLLLLLLLLYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYQQQQ.........wwg.........",
+		"fffeeeeeQYYYYYYYYYYYYYYYYxYYxYYxYYxYYxYYxYYxYYxYYxYYxYYYYYYYYQ.......wg...........",
+		"fffeeeeeQYYYYYaaaaaaaYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYQQ.................",
+		"fffeeeeeQYYYYYYYYYYYYYYYYYkkkkkkkkYYYYkkkkkkkkYYYYkkkkkkkkYYYYYYQQcC.......mm.....",
+		"fffeeeeeQYYYYYYYYYYYYYYYYYkKKKKKKkYYYYkKKKKKKkYYYYkKKKKKKkYYYYYYYYccCzz...mmmm....",
+		"fffeeeeeQYYYYYYYYYYYYYYYYYkkkkkkkkYYYYkkkkkkkkYYYYkkkkkkkkYYYYYYYYYccCzzdmmmmmm...",
+		"fffeeeeeQYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYccCzdmmmmmmm..",
+		"fffeeeeeQYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYccCzdmmmmmmmgy",
 	],
 	"shuttle": [
 		"....aa........",

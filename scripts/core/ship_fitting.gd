@@ -18,6 +18,9 @@ var throttle := 1.0        # runtime: < 1 only if group 1 alone exceeds the outp
 var drones: Array = []
 var drone_role := "combat"                 # combat | mining | repair (all launched drones)
 var drone_relaunch := 0                    # runtime: drones to launch again after a warp / jump
+var refinery_on := true                    # package 25a: built-in refinery switched on (KHI hulls)
+var _builtin_hull := ""
+var _builtin_cache: Array = []
 var drone_modes := {"combat": "defend", "mining": "auto", "repair": "auto"}
 const DRONE_BASE := {"hull": 60.0, "speed": 520.0, "range": 9000.0, "cargo": 5.0, "fuel": 300.0,
 	"repair": 10.0, "repair_range": 350.0, "shield": 0.0, "shield_regen": 0.0}
@@ -126,7 +129,7 @@ func set_module(key: String, module_id: String) -> String:
 const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "cargo", "structure", "armor",
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
 	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities",
-	"drones", "drone_role", "drone_modes"]
+	"drones", "drone_role", "drone_modes", "refinery_on"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -175,6 +178,7 @@ func _compute() -> Dictionary:
 		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0,
 		"power_passive": 0.0, "power_active_max": 0.0, "offline": [], "max_locks": 3,
 		"drone_storage": 0, "drones_max": int(h.get("drones", 0)),
+		"align_mult": float(h.get("align_mult", 1.0)),
 		"power_groups": {1: {"passive": 0.0, "active": 0.0}, 2: {"passive": 0.0, "active": 0.0}, 3: {"passive": 0.0, "active": 0.0}, 4: {"passive": 0.0, "active": 0.0}},
 	}
 	var down_w := 0.0                # shield downtime: capacity-weighted factor of the shield modules
@@ -273,6 +277,25 @@ func _compute() -> Dictionary:
 					a["powered"] = not (pw > 0.0 and power_off.has(grp))
 					s["actives"].append(a)
 
+	# Hull traits (package 25a): built-in ore hold, mining bonus, built-in modules
+	s["ore_cargo_max"] += float(h.get("ore_cargo", 0.0))
+	for cls in s["mining_bonus"]:
+		s["mining_bonus"][cls] = float(s["mining_bonus"][cls]) + float(h.get("mining_bonus", 0.0))
+	for b in builtin_modules():
+		var bd: Dictionary = b["data"].duplicate()
+		var bkey: String = b["key"]
+		bd["slot"] = bkey
+		var bpw := float(bd.get("power", 0.0))
+		var bgrp := priority_of(bkey)
+		s["power_draw"] += bpw
+		if bpw > 0.0:
+			s["power_groups"][bgrp]["active"] += bpw
+		s["power_active_max"] += bpw
+		bd["powered"] = not (bpw > 0.0 and power_off.has(bgrp))
+		if bd.has("tool"):
+			s["tools"].append(bd)
+		else:
+			s["actives"].append(bd)
 	# Power budget (package 21): the output is a hard limit. Passive modules always draw, active
 	# ones only while in use; on an overload priority groups 4, 3, 2 shut down (see power_plan()).
 	# Only if group 1 alone is too much, everything is throttled.
@@ -284,7 +307,7 @@ func _compute() -> Dictionary:
 	s["accel"] = s["speed"] * 1.3
 	s["warp_mult"] = clampf(s["speed"] / 300.0, 0.6, 1.6)
 	s["warp_speed"] = 150000.0 * s["warp_mult"]
-	s["turn"] = s["turn"] * (0.5 + 0.5 * ratio)
+	s["turn"] = s["turn"] * (0.5 + 0.5 * ratio) * float(h.get("turn_mult", 1.0))
 	s["cap_recharge"] *= ratio
 	s["shield_regen"] *= ratio
 	s["sensor_range"] *= (0.5 + 0.5 * ratio)
@@ -315,6 +338,45 @@ func _compute() -> Dictionary:
 	s["dps_total"] = dps["optical"] + dps["kinetic"] + dps["explosive"]
 	s["optimal_range"] = min_range * 0.8 if min_range < INF else s["sensor_range"] * 0.5
 	return s
+
+
+# ---------------------------------------------------------------- Built-in modules (package 25a)
+
+## Modules that are part of the hull (KHI: refinery, prospector): [{key, data}]. They have no slot,
+## cannot be removed and are marked in the module bar and the ship menu.
+func builtin_modules() -> Array:
+	if _builtin_hull == hull_id:
+		return _builtin_cache
+	_builtin_hull = hull_id
+	_builtin_cache = []
+	var h := hull()
+	for b in h.get("builtin", []):
+		match String(b):
+			"prospect":
+				var m: Dictionary = GameData.modules.get("t_prospector:2:C", {}).duplicate()
+				m["name"] = "Prospector (built-in)"
+				m["id"] = "builtin:prospect"
+				m["builtin"] = true
+				_builtin_cache.append({"key": "builtin_prospect", "data": m})
+			"refinery":
+				var r: Dictionary = h.get("refinery", {})
+				_builtin_cache.append({"key": "builtin_refinery", "data": {
+					"name": "Ore Refinery (built-in)", "base_name": "Ore Refinery", "slot": "optional", "active": "refinery",
+					"energy_rate": 0.0, "power": float(r.get("power", 4.0)), "rate": float(r.get("rate", 0.1)),
+					"eff": float(r.get("eff", 0.7)), "builtin": true, "id": "builtin:refinery",
+					"size": int(h.get("size", 1)), "quality": "C", "mass": 0, "price": 0}})
+	return _builtin_cache
+
+
+## Module data of a slot key or a built-in module key ({} = empty).
+func module_data(key: String) -> Dictionary:
+	var mid: String = modules.get(key, "")
+	if mid != "":
+		return GameData.modules.get(mid, {})
+	for b in builtin_modules():
+		if b["key"] == key:
+			return b["data"]
+	return {}
 
 
 # ---------------------------------------------------------------- Drones (package 23)
@@ -379,7 +441,7 @@ static func is_active_module(m: Dictionary) -> bool:
 func default_priority(key: String) -> int:
 	if key in GameData.CORE_SLOTS:
 		return 1
-	var m: Dictionary = GameData.modules.get(modules.get(key, ""), {})
+	var m: Dictionary = module_data(key)
 	if m.is_empty():
 		return 4
 	if m["slot"] == "weapon" or m.has("shield"):
@@ -391,7 +453,7 @@ func default_priority(key: String) -> int:
 
 ## Priority group of a slot: 1–4, or 0 for modules that need no power.
 func priority_of(key: String) -> int:
-	if slot_type(key) in GameData.DRONE_SLOTS or float(GameData.modules.get(modules.get(key, ""), {}).get("power", 0)) <= 0.0:
+	if slot_type(key) in GameData.DRONE_SLOTS or float(module_data(key).get("power", 0)) <= 0.0:
 		return 0
 	return clampi(int(priorities.get(key, default_priority(key))), 1, POWER_GROUPS)
 
@@ -411,8 +473,11 @@ func power_plan(in_use: Dictionary) -> Dictionary:
 	var s := stats()
 	var avail := float(s["power_available"])
 	var demand := {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
-	for key in slot_keys():
-		var m: Dictionary = GameData.modules.get(modules.get(key, ""), {})
+	var keys := slot_keys()
+	for b in builtin_modules():
+		keys.append(b["key"])
+	for key in keys:
+		var m: Dictionary = module_data(key)
 		if m.is_empty():
 			continue
 		var pw := float(m.get("power", 0))
@@ -449,7 +514,7 @@ func apply_power(plan: Dictionary) -> bool:
 
 
 func is_powered(key: String) -> bool:
-	var m: Dictionary = GameData.modules.get(modules.get(key, ""), {})
+	var m: Dictionary = module_data(key)
 	return m.is_empty() or float(m.get("power", 0)) <= 0.0 or not power_off.has(priority_of(key))
 
 

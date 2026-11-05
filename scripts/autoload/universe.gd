@@ -1,4 +1,5 @@
 extends Node
+const MakerData = preload("res://data/manufacturers.gd")
 const ModuleData = preload("res://data/modules.gd")
 ## The galaxy: star systems, hyperspace routes and system layouts.
 ## Every system is one big continuous space (SYSTEM_RADIUS) at a "realistic" scale.
@@ -1319,13 +1320,21 @@ func _make_shop(type: String, tier: int, rng: RandomNumberGenerator) -> Array:
 	return shop
 
 
+## Shipyard stock by manufacturer (package 25a, data/manufacturers.gd): a maker's hulls at the
+## station types in its "yards" (size up to the tier), plus "small_yards" (e.g. KHI and the
+## Earthworks Drillhead at mining colonies).
 func _make_shipyard(type: String, tier: int) -> Array:
 	var t: Dictionary = GameData.station_types[type]
-	if not t["shipyard"]:
-		return []
 	var yard: Array = []
 	for hid in GameData.hulls:
 		var h: Dictionary = GameData.hulls[hid]
-		if h["buyable"] and int(h["size"]) <= tier and not h.get("haven_only", false):
+		if not h["buyable"] or h.get("haven_only", false) or h.get("drone_only", false):
+			continue
+		var mk: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
+		var yards = mk.get("yards", "all")
+		var at_yard: bool = t["shipyard"] and (typeof(yards) == TYPE_STRING or type in yards)
+		if at_yard and int(h["size"]) <= tier:
+			yard.append(hid)
+		elif hid in mk.get("small_yards", {}).get(type, []):
 			yard.append(hid)
 	return yard

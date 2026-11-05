@@ -442,7 +442,7 @@ func _spawn_miner(at_work: bool) -> void:
 		icy = not icy
 	if field.is_empty():
 		return
-	var preset := "civ_ice_miner" if icy else "civ_miner"
+	var preset := ("civ_ice_miner" if icy else "civ_miner") + ("_khi" if randf() < 0.5 else "")   # package 25a
 	var gov := String(st.get("faction", ""))
 	var name := "%s %s" % ["Iceboat" if icy else "Prospector", _reg()]
 	var s: Ship

@@ -19,6 +19,9 @@ const PALETTE := {
 	"y": Color(1.0, 0.9, 0.4), "r": Color(1.0, 0.28, 0.22), "G": Color(0.3, 1.0, 0.45),
 	"m": Color(0.95, 0.6, 0.15), "k": Color(0.48, 0.4, 0.28), "K": Color(0.68, 0.58, 0.4),
 	"s": Color(0.12, 0.22, 0.5), "S": Color(0.3, 0.5, 0.88),
+	# KHI construction yellow (package 25a) – stays yellow whoever owns the ship
+	"Y": Color(0.95, 0.74, 0.12), "L": Color(1.0, 0.87, 0.38), "Q": Color(0.7, 0.48, 0.08),
+	"x": Color(0.11, 0.11, 0.12), "z": Color(1.0, 0.5, 0.12),
 }
 const FACTION := {
 	"player": {"h": Color(0.62, 0.68, 0.77), "H": Color(0.85, 0.89, 0.95), "d": Color(0.42, 0.47, 0.57), "D": Color(0.27, 0.3, 0.38),
@@ -28,7 +31,7 @@ const FACTION := {
 	"neutral": {"h": Color(0.66, 0.64, 0.56), "H": Color(0.86, 0.84, 0.74), "d": Color(0.45, 0.43, 0.37), "D": Color(0.3, 0.29, 0.25),
 		"a": Color(1.0, 0.85, 0.3), "f": Color(1.0, 0.85, 0.5)},
 }
-const SHADE_DOWN := {"H": "h", "h": "d", "d": "D"}
+const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q"}
 
 
 # ---------------------------------------------------------------- Basics
@@ -416,6 +419,8 @@ const SIZE_COLORS := {1: Color(0.55, 0.65, 0.75), 2: Color(0.4, 0.75, 1.0), 3: C
 
 
 static func module_icon_key(module_id: String) -> String:
+	if module_id.begins_with("builtin:"):
+		return {"builtin:refinery": "refinery", "builtin:prospect": "t_prospect"}.get(module_id, "empty")
 	if not GameData.modules.has(module_id):
 		return "empty"
 	var m: Dictionary = GameData.modules[module_id]

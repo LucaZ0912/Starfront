@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.1 – 2026-11-05
+
+**Package 25a – Kanayama Heavy Industries mining ships.**
+- Manufacturer framework: every hull has a maker; shipyards stock hulls by the maker's rules; mining
+  colonies get a small yard (Mogura, Anaguma, Drillhead); the shipyard shows the maker.
+- Mogura (S), Anaguma (M), Iwakudaki (L) with built-in ore hold, refinery (switchable, power while on,
+  black smoke) and prospector; +10 % mining, slow to turn and to warp. Half the NPC miners fly them.
+- Built-in modules are framed in gold and listed in the ship menu and power management.
+
 ## alpha 0.4.24.2 – 2026-11-05
 
 **Package 24 – ship manufacturers (planning finished).**

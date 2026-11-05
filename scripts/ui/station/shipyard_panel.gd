@@ -3,6 +3,9 @@ extends StationServicePanel
 ## New ships are delivered to the hangar of this station.
 
 
+const MakerData = preload("res://data/manufacturers.gd")
+
+
 func build() -> void:
 	UI.clear(self)
 	standing_line()
@@ -19,6 +22,15 @@ func build() -> void:
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(info)
 		info.add_child(UI.label("%s – %s (size %s)" % [h["name"], h["class"], GameData.SIZE_NAMES[int(h["size"])]], 17, corp_color()))
+		# manufacturer (package 25a)
+		var mk := String(h.get("maker", ""))
+		if MakerData.MAKERS.has(mk):
+			var mrow := UI.hbox(6)
+			info.add_child(mrow)
+			mrow.add_child(UI.icon(CrestArt.maker_texture(mk), 20))
+			mrow.add_child(UI.label("%s  –  \"%s\"" % [MakerData.MAKERS[mk]["name"], MakerData.MAKERS[mk]["motto"]], 12, MakerData.MAKERS[mk]["color"]))
+			if mk == "khi":
+				info.add_child(UI.label("Built-in refinery, ore hold %d m³, prospector  •  +10 %% mining  •  slow to turn and to warp" % int(h.get("ore_cargo", 0)), 12, Color(1.0, 0.8, 0.35)))
 		info.add_child(UI.label(h["desc"], 12, UI.TEXT_DIM))
 		var sl: Dictionary = h["slots"]
 		info.add_child(UI.label("Structure %d  •  Mass %d t  •  Cargo %d m³  •  Slots: %d weapons, %d tools, %d optional" % [

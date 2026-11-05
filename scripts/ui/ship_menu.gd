@@ -114,6 +114,17 @@ func _set_tab(i: int) -> void:
 	rebuild()
 
 
+const MakerData = preload("res://data/manufacturers.gd")
+
+
+## Manufacturer of a hull ("pirate-built" for pirate hulls).
+static func _maker_name(h: Dictionary) -> String:
+	var mk := String(h.get("maker", ""))
+	if mk == "pirate":
+		return "pirate-built"
+	return String(MakerData.MAKERS.get(mk, {}).get("name", "unknown yard"))
+
+
 func _docked() -> bool:
 	return fit != null and fit.docked_at != ""
 
@@ -127,7 +138,7 @@ func rebuild() -> void:
 	var h := fit.hull()
 	ship_icon.texture = PixelArt.ship_texture(fit.hull_id, "player")
 	title_label.text = fit.ship_name
-	sub_label.text = "%s %s  •  size %s  •  %s" % [h["class"], h["name"], GameData.SIZE_NAMES[int(h["size"])], fit.location_text()]
+	sub_label.text = "%s %s  •  %s  •  size %s  •  %s" % [h["class"], h["name"], _maker_name(h), GameData.SIZE_NAMES[int(h["size"])], fit.location_text()]
 	status_label.text = "Docked – modules can be swapped with station storage." if _docked() else "In space – fitting can only be changed while docked."
 	for i in tab_buttons.size():
 		tab_buttons[i].button_pressed = i == tab
@@ -398,16 +409,19 @@ func _build_power() -> void:
 	box.add_child(grid)
 	for h in ["", "Module", "Quality", "Use", "Power", "Priority", ""]:
 		grid.add_child(UI.label(h, 13, UI.NEON_CYAN))
-	for key in fit.slot_keys():
-		var mid := fit.get_module(key)
-		if mid == "":
+	var pkeys := fit.slot_keys()
+	for bm in fit.builtin_modules():
+		pkeys.append(bm["key"])
+	for key in pkeys:
+		var m: Dictionary = fit.module_data(key)
+		if m.is_empty():
 			continue
-		var m: Dictionary = GameData.modules[mid]
+		var mid := fit.get_module(key) if fit.get_module(key) != "" else String(m.get("id", ""))
 		var pw := float(m.get("power", 0))
-		var act := ShipFitting.is_active_module(m)
+		var act: bool = ShipFitting.is_active_module(m) or m.get("builtin", false)
 		var grp := fit.priority_of(key)
 		grid.add_child(UI.icon(PixelArt.module_icon(mid), 26))
-		var nm := UI.label("%s  (%s)" % [String(m["base_name"]), GameData.slot_label(key)], 13)
+		var nm := UI.label("%s  (%s)" % [String(m["base_name"]), "built-in" if m.get("builtin", false) else GameData.slot_label(key)], 13, Color(1.0, 0.85, 0.5) if m.get("builtin", false) else Color(0.9, 0.93, 1.0))
 		nm.custom_minimum_size = Vector2(330, 0)
 		grid.add_child(nm)
 		grid.add_child(UI.label("%d · %s" % [int(m["size"]), String(m["quality"])], 13, GameData.quality_color(String(m["quality"]))))
@@ -531,6 +545,15 @@ func _build_module_tiles(right: VBoxContainer) -> void:
 			var tip := "%s – takes modules up to size %d" % [GameData.slot_label(key), mx] + ("" if mid == "" else "\n" + GameData.module_name(mid))
 			flow.add_child(_tile(mid, caption, key == selected_slot and selected_store == "", on_slot, tip))
 		right.add_child(HSeparator.new())
+	var builtins := fit.builtin_modules()
+	if not builtins.is_empty():
+		right.add_child(UI.label("Built into the hull   (%d)" % builtins.size(), 17, Color(1.0, 0.72, 0.2)))
+		var bflow := HFlowContainer.new()
+		bflow.add_theme_constant_override("h_separation", 8)
+		right.add_child(bflow)
+		for bm in builtins:
+			bflow.add_child(_builtin_tile(bm["data"]))
+		right.add_child(HSeparator.new())
 	if _docked():
 		var store := GameState.storage_of(fit.docked_at)
 		var title := "Station storage"
@@ -553,6 +576,30 @@ func _build_module_tiles(right: VBoxContainer) -> void:
 			flow.add_child(_tile(mid2, "%s ×%d" % [GameData.modules[mid2]["name"], int(store[mid2])], mid2 == selected_store, on_store, GameData.module_name(mid2)))
 		if not any:
 			right.add_child(UI.label("  No matching modules. Buy some at the outfitter or build them in manufacturing.", 12, UI.TEXT_DIM))
+
+
+## A module built into the hull: gold frame, cannot be removed (package 25a).
+func _builtin_tile(d: Dictionary) -> Control:
+	var box := UI.vbox(2)
+	box.custom_minimum_size = Vector2(92, 0)
+	var p := PanelContainer.new()
+	var st := UI.panel_style(Color(0.1, 0.09, 0.05), Color(1.0, 0.72, 0.2))
+	st.set_border_width_all(3)
+	p.add_theme_stylebox_override("panel", st)
+	p.custom_minimum_size = Vector2(76, 76)
+	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var tip := "%s – built into the hull, cannot be removed" % d["name"]
+	if String(d.get("active", "")) == "refinery":
+		tip += "\nRefines ore from the hold: %.2f units/s at %d %% yield, %.0f MW while switched on (module bar)" % [float(d["rate"]), int(float(d["eff"]) * 100.0), float(d["power"])]
+	p.tooltip_text = tip
+	p.add_child(UI.icon(PixelArt.module_icon(String(d["id"])), 64))
+	box.add_child(p)
+	var l := UI.label(String(d["name"]).replace(" (built-in)", ""), 11, Color(1.0, 0.85, 0.5))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(92, 0)
+	box.add_child(l)
+	return box
 
 
 func _tile(mid: String, caption: String, selected: bool, cb: Callable, tooltip: String) -> Control:

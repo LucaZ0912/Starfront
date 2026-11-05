@@ -17,6 +17,32 @@ const PRESETS := {
 		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_basic_s",
 		"weapon_0": "w_pulse_s", "tool_0": "t_salvage_s",
 		"optional_0": "o_cargo_m", "optional_1": "o_cargo_m", "optional_2": "o_shield_s", "optional_3": "o_cargo_s"}},
+	# Kanayama Heavy Industries (package 25a)
+	"std_mogura": {"hull": "mogura", "modules": {
+		"hull": "hull_std_s", "engine": "eng_chem_s", "distributor": "dist_basic_s", "reactor": "rea_fusion_s",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse_s", "tool_0": "t_mining_m", "tool_1": "t_mining_s",
+		"optional_0": "o_shield_m", "optional_1": "o_orehold_s"}},
+	"std_anaguma": {"hull": "anaguma", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion_m",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_basic_s",
+		"weapon_0": "w_autocannon_s", "tool_0": "t_stripminer_l", "tool_1": "t_mining_m", "tool_2": "t_harvester_m",
+		"optional_0": "o_shield_l", "optional_1": "o_orehold_m"}},
+	"std_iwakudaki": {"hull": "iwakudaki", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_m", "sensors": "sen_radar_s",
+		"weapon_0": "w_autocannon_s", "weapon_1": "w_rocket_s", "tool_0": "t_stripminer_l", "tool_1": "t_stripminer_l", "tool_2": "t_harvester_m", "tool_3": "t_mining_m",
+		"optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_orehold_l"}},
+	"civ_miner_khi": {"hull": "anaguma", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion_m",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_autocannon_s", "tool_0": "t_mining_m", "tool_1": "t_mining_m",
+		"optional_0": "o_shield_m"}},
+	"civ_ice_miner_khi": {"hull": "mogura", "modules": {
+		"hull": "hull_std_s", "engine": "eng_chem_s", "distributor": "dist_basic_s", "reactor": "rea_fusion_s",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse_s", "tool_0": "t_harvester_m", "tool_1": "t_harvester_s",
+		"optional_0": "o_shield_s"}},
 	"std_drillhead": {"hull": "drillhead", "modules": {
 		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_basic_s", "reactor": "rea_fusion_s",
 		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s",

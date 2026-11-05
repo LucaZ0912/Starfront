@@ -997,7 +997,7 @@ func _travel(delta: float, s: Dictionary):
 
 
 func align_time() -> float:
-	var t := clampf(float(fit.stats()["mass"]) / 1200.0, 1.5, 6.0)
+	var t := clampf(float(fit.stats()["mass"]) / 1200.0, 1.5, 6.0) * float(fit.stats().get("align_mult", 1.0))
 	if is_traffic():
 		t = maxf(t * 2.5, 6.0)       # civilians and patrols take their time before warping
 	return t
@@ -1373,6 +1373,8 @@ func _update_tools(delta: float, s: Dictionary) -> void:
 			"mining", "harvester":
 				if order.get("type") == "mine" and not _mine(delta, t, order.get("node")):
 					order = {"type": "idle"}
+				elif order.get("type") == "mine" and fit.hull().has("refinery"):
+					smoke(delta)
 			"analyzer":
 				if order.get("type") == "analyze" and not _progress_tool(delta, t, "analysis", Color(0.8, 0.5, 1.0), order.get("node")):
 					order = {"type": "idle"}
@@ -1743,6 +1745,12 @@ func set_module_active(slot: String, on: bool) -> String:
 		module_state[slot] = "on" if on else "off"
 		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
 		return ""
+	if e["kind"] == "self" and String(d.get("active", "")) == "refinery":
+		fit.refinery_on = on
+		module_on[slot] = on
+		module_state[slot] = "on" if on else "off"
+		_mlog("%s %s." % [d["name"], "running – ore from the hold is refined bit by bit" if on else "switched off"])
+		return ""
 	if on and e["kind"] == "self":
 		if fit.capacitor < float(d["energy_rate"]):
 			return "%s: not enough energy (needs %.0f per second, capacitor %.0f)." % [d["name"], float(d["energy_rate"]), fit.capacitor]
@@ -1819,6 +1827,8 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 		var slot: String = e["slot"]
 		var d: Dictionary = e["data"]
 		module_timers[slot] = maxf(0.0, float(module_timers.get(slot, 0.0)) - delta)
+		if e["kind"] == "self" and String(d.get("active", "")) == "refinery":
+			module_on[slot] = fit.refinery_on       # survives warps and docking (package 25a)
 		if not module_on.get(slot, false):
 			module_state[slot] = "off"
 			continue
@@ -2011,6 +2021,8 @@ func _run_active(delta: float, slot: String, d: Dictionary) -> void:
 	module_state[slot] = "on"
 	var st := fit.stats()
 	match String(d["active"]):
+		"refinery":
+			_refine(delta, slot, d)
 		"shield_boost":
 			if shield_down <= 0.0:   # a collapsed shield cannot be boosted back (package 20)
 				fit.shield = minf(float(st["shield_max"]), fit.shield + float(d["rate"]) * delta)
@@ -2050,6 +2062,47 @@ func _repair_one(delta: float, t: Dictionary, ship) -> bool:
 	if ship != self:
 		tool_beams.append([ship.position, Color(0.4, 1.0, 0.5)])
 	return true
+
+
+# ---------------------------------------------------------------- Package 25a: built-in refinery
+
+var _smoke_t := 0.0
+
+
+## Built-in refinery (KHI): turns ore from the hold into refined goods, slowly, while switched on –
+## and belches black smoke while it works.
+func _refine(delta: float, slot: String, d: Dictionary) -> void:
+	var ore := ""
+	for item in fit.cargo:
+		if ShipFitting.is_ore(item) and float(fit.cargo[item]) > 0.0001 and GameData.commodities[item].has("refines_to"):
+			ore = item
+			break
+	if ore == "":
+		module_state[slot] = "on"
+		return
+	var c: Dictionary = GameData.commodities[ore]
+	var prod: String = c["refines_to"]
+	var amount := minf(float(d["rate"]) * delta, float(fit.cargo[ore]))
+	var out := amount * float(c["yield"]) * float(d["eff"])
+	if fit.free_for(prod) < out * GameData.item_volume(prod):
+		module_state[slot] = "range"      # no room for the product – waiting
+		return
+	module_state[slot] = "on"
+	fit.remove_cargo(ore, amount)
+	fit.add_cargo(prod, out)
+	GameState.stats["refined"] = float(GameState.stats.get("refined", 0)) + out
+	smoke(delta)
+
+
+## Black smoke from the stacks (KHI ships while refining / mining).
+func smoke(delta: float) -> void:
+	_smoke_t -= delta
+	if _smoke_t > 0.0 or view == null or view.sky_alpha() < 0.5:
+		return
+	_smoke_t = 0.3
+	var back := Vector2.from_angle(heading + PI)
+	var side := Vector2.from_angle(heading + PI * 0.5) * randf_range(-0.25, 0.25) * radius
+	view.spawn_fx(Fx.smoke(position + back * radius * 0.95 + side, back * 40.0 + velocity * 0.5, radius * 0.25))
 
 
 # ---------------------------------------------------------------- Package 22: multi-focus (NPCs)
