@@ -2107,7 +2107,7 @@ func smoke(delta: float) -> void:
 	var st: Vector2 = stacks[randi() % stacks.size()]
 	var flank := 1.0 if randf() < 0.5 else -1.0
 	var local := Vector2(st.x, st.y * flank)
-	var out := Vector2(0.0, flank).rotated(heading)
+	var out := Vector2(0.0, signf(local.y)).rotated(heading)     # away from the hull, outwards
 	view.spawn_fx(Fx.smoke(position + local.rotated(heading), out * randf_range(55.0, 80.0) + velocity * 0.9, 6.0 + radius * 0.08))
 
 

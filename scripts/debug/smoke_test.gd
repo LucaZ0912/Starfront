@@ -3282,6 +3282,23 @@ func _test_khi(view: SystemView) -> void:
 	check(sh.power_in_use().has(rslot), "the running refinery draws power")
 	var stk: Array = sh.smoke_stacks()
 	check(stk.size() == 2 and stk[0].y < 0.0 and absf(stk[0].y) > sh.radius * 0.3, "smoke comes out of the exhaust pipes on the flanks (%d pipes)" % stk.size())
+	# the plumes blow outwards, away from the hull
+	sh.heading = 0.7
+	sh.velocity = Vector2.ZERO
+	sh._smoke_t = 0.0
+	var before_fx: Array = view.fx_layer.get_children()
+	var out_ok := true
+	var n_sm := 0
+	for i5 in 30:
+		sh._smoke_t = 0.0
+		sh.smoke(0.1)
+	for fxn in view.fx_layer.get_children():
+		if fxn is Fx and fxn.kind == "smoke" and not fxn in before_fx:
+			var rel: Vector2 = (fxn.position - sh.position).rotated(-sh.heading)
+			var dr: Vector2 = fxn.a.rotated(-sh.heading)
+			out_ok = out_ok and signf(rel.y) == signf(dr.y)
+			n_sm += 1
+	check(out_ok and n_sm > 0, "smoke plumes blow outwards, away from the hull (%d puffs)" % n_sm)
 	sh.set_module_active(rslot, false)
 	var ore_left := float(f.cargo.get("iron_ore", 0.0))
 	for i2 in 10:

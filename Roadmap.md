@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Paket 25a (KHI-Bergbauschiffe) fertig, als Nächstes 25b (Heavy Industry Ship). Netzwerk fehlt noch. Version alpha 0.4.25.2. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Paket 25a (KHI-Bergbauschiffe) fertig, als Nächstes 25b (Heavy Industry Ship). Netzwerk fehlt noch. Version alpha 0.4.25.3. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -842,7 +842,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] Jeder Rumpf gehört einer Manufaktur (`maker`): die bisherigen Earthworks, die Carrion Crow Piratenbau. Werften führen Schiffe nach den Regeln der Manufaktur (`yards`, `small_yards` in `data/manufacturers.gd`): Earthworks an allen Werften, KHI an Industriekomplexen und Shipyard Complexes; Mining Colonies haben jetzt eine kleine Werft mit Mogura, Anaguma und dem Earthworks Drillhead.
 - [x] Mogura (S), Anaguma (M), Iwakudaki (L) mit Plätzen laut Bauplan, Standardausrüstung, bulliger Pixel-Art in KHI-Gelb mit Warnstreifen, Schornsteinen, Führerhaus und Bohrkopf (bleibt gelb, egal wem das Schiff gehört).
 - [x] Markenzeichen: eingebautes Erzlager (60/300/900 m³), +10 % Abbau, −25 % Drehgeschwindigkeit, +40 % Ausrichtzeit für den Warp; eingebaute Raffinerie (0,15/0,4/1,0 Erz pro s, 70/80/90 % Ausbeute, 4/8/16 MW nur wenn an, abschaltbar, Zustand bleibt über Warps erhalten) – schwarzer Rauch, solange sie arbeitet (auch NPC-KHI-Schiffe beim Abbauen); eingebauter Prospektor-Scanner.
-- [x] Rauch tritt in dünnen Fahnen seitlich aus den Rohrstutzen an den Flanken aus (statt hinten raus, wo er wie ein brennender Antrieb wirkte) (0.4.25.2).
+- [x] Rauch tritt in dünnen Fahnen seitlich aus den Rohrstutzen an den Flanken aus (statt hinten raus, wo er wie ein brennender Antrieb wirkte) (0.4.25.2); Richtung korrigiert – nach außen, weg vom Rumpf (0.4.25.3).
 - [x] Eingebaute Module: goldener Rahmen in der Modulleiste, eigene Kategorie „Built into the hull“ im Schiffsmenü, in der Energieverwaltung mit Priorität; können nicht ausgebaut werden. Neues Raffinerie-Icon.
 - [x] Werft zeigt Manufaktur mit Wappen und Motto, das Schiffsmenü den Hersteller. Die Hälfte der NPC-Bergleute fliegt KHI-Schiffe.
 
