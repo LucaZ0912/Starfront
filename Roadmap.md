@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe) und 25b (Kanayama-maru) fertig, als Nächstes 25c (Maison Aurelle). Netzwerk fehlt noch. Version alpha 0.4.25.8. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe) und 25b (Kanayama-maru) fertig, als Nächstes 25c (Maison Aurelle). Netzwerk fehlt noch. Version alpha 0.4.25.9. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -849,7 +849,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 
 **Umgesetzt 25b (5. Nov 2026, alpha 0.4.25.7)** – Kanayama-maru, 15 neue automatische Prüfungen:
 
-- [x] Kanayama-maru (L, 950.000 cr, an KHI-Werften der Stufe 3): Drohnenträger für 9 Drohnen, Erzlager 1.200 m³, Raffinerie wie eine Station (3 Erz/s, 100 % Ausbeute, 60 MW), Prospektor, sehr träge (−40 % Drehen, +70 % Ausrichtzeit). Pixel-Art (ab 0.4.25.8 als Träger): hinten ein hoher gelber Block mit Triebwerken, drei Schornsteinen und der Brücke bündig an seiner Vorderkante, davor ein flaches Flugdeck (dunkel, Warnstreifen-Kante, grüne Positionslichter, gelbe Mittellinie, drei Drohnenaufzüge), vorn der Bohrkopf. Die Drohnen starten vom Deck nach vorn und landen dort wieder.
+- [x] Kanayama-maru (L, 950.000 cr, an KHI-Werften der Stufe 3): Drohnenträger für 9 Drohnen, Erzlager 1.200 m³, Raffinerie wie eine Station (3 Erz/s, 100 % Ausbeute, 60 MW), Prospektor, sehr träge (−40 % Drehen, +70 % Ausrichtzeit). Pixel-Art (ab 0.4.25.8 als Träger): hinten ein hoher gelber Block mit Triebwerken, drei Schornsteinen und der Brücke als abgeschrägte, abgerundete Glasfront an seiner Vorderkante (wie die Kanzel des ersten Entwurfs, 0.4.25.9), davor ein flaches Flugdeck (dunkel, Warnstreifen-Kante, grüne Positionslichter, gelbe Mittellinie, drei Drohnenaufzüge), vorn der Bohrkopf. Die Drohnen starten vom Deck nach vorn und landen dort wieder.
 - [x] Ihre Drohnen: +25 % Abbau, +5 m³ Laderaum, KHI-Gelb.
 - [x] **Fertigung braucht Zeit** – überall: 15 s × Größe^1,2 je Modul (Drohne 40 s). Stationen: Auftrag läuft weiter, das Modul landet danach im Stationslager; Warteschlange im Manufacturing-Panel; Aufträge werden gespeichert.
 - [x] **Fabrik an Bord** (eingebaut, 30 MW, abschaltbar): baut wie ein Industriekomplex (bis Größe 7) und Drohnen aus den Materialien im Laderaum; arbeitet nur eingeschaltet und im All; Module landen im Laderaum, Drohnen im Hangar (wartet bei Platzmangel); schwarzer Rauch beim Arbeiten.

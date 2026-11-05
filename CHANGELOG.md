@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.9 – 2026-11-05
+
+- Kanayama-maru: the bridge is now the rounded, sloping glass front of the first design, at the front of the rear block.
+
 ## alpha 0.4.25.8 – 2026-11-05
 
 - Kanayama-maru redesigned as a carrier: tall rear block with the bridge flush at its front, a flat flight
