@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.10 – 2026-11-05
+
+- Fix: the warp alignment ring on the ship shows the real time until the warp starts (alignment time plus
+  the turn still needed) – it used the jump drive spool time and was full too early on slow KHI ships.
+- Kanayama-maru: drones roll down the whole runway one after the other and only break away past the bow.
+- Roadmap_Entwurf.md (draft worked on in Claude Chat) is kept out of the repository (.gitignore); the
+  screenshot folder is ignored by Godot's importer.
+
 ## alpha 0.4.25.9 – 2026-11-05
 
 - Kanayama-maru: the bridge is now the rounded, sloping glass front of the first design, at the front of the rear block.

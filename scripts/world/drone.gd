@@ -21,6 +21,9 @@ var _wcd := 0.0
 var _burn := "idle"
 var _think := 0.0
 var _idle := false                # flying in formation this frame
+var runway := false               # still taking off along the carrier's flight deck
+var _hold := 0.0                  # waiting for its turn at the start of the runway
+const RUNWAY_GAP := 0.45          # seconds between two drones on the runway
 
 
 func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: int) -> void:
@@ -46,11 +49,14 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 	manual = false
 	velocity = Vector2.from_angle(carrier.heading + PI + randf_range(-0.6, 0.6)) * 120.0 + carrier.velocity
 	if carrier.has_deck():
-		# carriers with a flight deck: off the deck, forwards
-		position = carrier.deck_point(randf_range(0.2, 0.9))
-		velocity = Vector2.from_angle(carrier.heading + randf_range(-0.25, 0.25)) * 220.0 + carrier.velocity
+		# carriers with a flight deck: one after the other down the whole runway, then off they go
+		position = carrier.deck_point(0.0)
+		velocity = carrier.velocity
 		heading = carrier.heading
 		fit.position = position
+		runway = true
+		_hold = RUNWAY_GAP * carrier.deck_queue
+		carrier.deck_queue += 1
 
 
 func hull_max() -> float:
@@ -70,6 +76,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if carrier == null or not is_instance_valid(carrier) or carrier.dying:
 		_lost("its carrier is gone")
+		return
+	if runway:
+		_take_off(delta)
 		return
 	_wcd = maxf(0.0, _wcd - delta)
 	hit_flash = maxf(0.0, hit_flash - delta)
@@ -368,6 +377,37 @@ func _pick_repair_target(mode: String):
 			worst = dmg
 			best = c
 	return best
+
+
+# ---------------------------------------------------------------- take-off along the flight deck
+
+## Along the whole deck, on its centre line, accelerating – only past the bow does it break away.
+func _take_off(delta: float) -> void:
+	var fwd := Vector2.from_angle(carrier.heading)
+	var start: Vector2 = carrier.deck_point(0.0)
+	if _hold > 0.0:
+		_hold -= delta
+		position = start
+		velocity = carrier.velocity
+		heading = carrier.heading
+		visible = false
+		fit.position = position
+		return
+	visible = true
+	var deck_len: float = carrier.deck_point(1.0).distance_to(start)
+	var along: float = (position - start).dot(fwd)
+	var side: float = (position - start).dot(fwd.orthogonal())
+	var rel := velocity - carrier.velocity
+	var spd := rel.dot(fwd)
+	spd = minf(spd + float(dstats["speed"]) * 1.4 * delta, float(dstats["speed"]))
+	velocity = carrier.velocity + fwd * spd - fwd.orthogonal() * side * 4.0
+	position += velocity * delta
+	heading = carrier.heading
+	fit.position = position
+	queue_redraw()
+	if along >= deck_len + 60.0:
+		runway = false
+		carrier.deck_queue = maxi(carrier.deck_queue - 1, 0)
 
 
 # ---------------------------------------------------------------- movement, loss

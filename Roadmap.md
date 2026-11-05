@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe) und 25b (Kanayama-maru) fertig, als Nächstes 25c (Maison Aurelle). Netzwerk fehlt noch. Version alpha 0.4.25.9. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe) und 25b (Kanayama-maru) fertig, als Nächstes 25c (Maison Aurelle). Netzwerk fehlt noch. Version alpha 0.4.25.10. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -842,6 +842,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 
 - [x] Jeder Rumpf gehört einer Manufaktur (`maker`): die bisherigen Earthworks, die Carrion Crow Piratenbau. Werften führen Schiffe nach den Regeln der Manufaktur (`yards`, `small_yards` in `data/manufacturers.gd`): Earthworks an allen Werften, KHI an Industriekomplexen und Shipyard Complexes; Mining Colonies haben jetzt eine kleine Werft mit Mogura, Anaguma und dem Earthworks Drillhead.
 - [x] Mogura (S), Anaguma (M), Iwakudaki (L) mit Plätzen laut Bauplan, Standardausrüstung, bulliger Pixel-Art in KHI-Gelb mit Warnstreifen, Schornsteinen, Führerhaus und Bohrkopf (bleibt gelb, egal wem das Schiff gehört).
+- [x] Der Ladekreis beim Warp-Ausrichten zeigt die echte Zeit (Ausrichtzeit und nötige Drehung) – vorher lief er nach der Sprungantrieb-Ladezeit und war bei den trägen KHI-Schiffen zu früh voll (0.4.25.10).
 - [x] Markenzeichen: eingebautes Erzlager (60/300/900 m³), +10 % Abbau, −25 % Drehgeschwindigkeit, +40 % Ausrichtzeit für den Warp; eingebaute Raffinerie (0,15/0,4/1,0 Erz pro s, 70/80/90 % Ausbeute, 8/16/32 MW nur wenn an (ab 0.4.25.4 verdoppelt), abschaltbar, Zustand bleibt über Warps erhalten) – schwarzer Rauch, solange sie arbeitet (auch NPC-KHI-Schiffe beim Abbauen); eingebauter Prospektor-Scanner.
 - [x] Rauch tritt in dünnen Fahnen seitlich aus den Rohrstutzen an den Flanken aus (statt hinten raus, wo er wie ein brennender Antrieb wirkte) (0.4.25.2); Richtung korrigiert – nach außen, weg vom Rumpf (0.4.25.3).
 - [x] Eingebaute Module: goldener Rahmen in der Modulleiste, eigene Kategorie „Built into the hull“ im Schiffsmenü, in der Energieverwaltung mit einstellbarer Priorität (Fehler behoben in 0.4.25.4); können nicht ausgebaut werden. Neues Raffinerie-Icon.
@@ -849,7 +850,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 
 **Umgesetzt 25b (5. Nov 2026, alpha 0.4.25.7)** – Kanayama-maru, 15 neue automatische Prüfungen:
 
-- [x] Kanayama-maru (L, 950.000 cr, an KHI-Werften der Stufe 3): Drohnenträger für 9 Drohnen, Erzlager 1.200 m³, Raffinerie wie eine Station (3 Erz/s, 100 % Ausbeute, 60 MW), Prospektor, sehr träge (−40 % Drehen, +70 % Ausrichtzeit). Pixel-Art (ab 0.4.25.8 als Träger): hinten ein hoher gelber Block mit Triebwerken, drei Schornsteinen und der Brücke als abgeschrägte, abgerundete Glasfront an seiner Vorderkante (wie die Kanzel des ersten Entwurfs, 0.4.25.9), davor ein flaches Flugdeck (dunkel, Warnstreifen-Kante, grüne Positionslichter, gelbe Mittellinie, drei Drohnenaufzüge), vorn der Bohrkopf. Die Drohnen starten vom Deck nach vorn und landen dort wieder.
+- [x] Kanayama-maru (L, 950.000 cr, an KHI-Werften der Stufe 3): Drohnenträger für 9 Drohnen, Erzlager 1.200 m³, Raffinerie wie eine Station (3 Erz/s, 100 % Ausbeute, 60 MW), Prospektor, sehr träge (−40 % Drehen, +70 % Ausrichtzeit). Pixel-Art (ab 0.4.25.8 als Träger): hinten ein hoher gelber Block mit Triebwerken, drei Schornsteinen und der Brücke als abgeschrägte, abgerundete Glasfront an seiner Vorderkante (wie die Kanzel des ersten Entwurfs, 0.4.25.9), davor ein flaches Flugdeck (dunkel, Warnstreifen-Kante, grüne Positionslichter, gelbe Mittellinie, drei Drohnenaufzüge), vorn der Bohrkopf. Die Drohnen rollen nacheinander die ganze Startbahn entlang, drehen erst hinter dem Bug ab und landen auf dem Deck wieder (0.4.25.10).
 - [x] Ihre Drohnen: +25 % Abbau, +5 m³ Laderaum, KHI-Gelb.
 - [x] **Fertigung braucht Zeit** – überall: 15 s × Größe^1,2 je Modul (Drohne 40 s). Stationen: Auftrag läuft weiter, das Modul landet danach im Stationslager; Warteschlange im Manufacturing-Panel; Aufträge werden gespeichert.
 - [x] **Fabrik an Bord** (eingebaut, 30 MW, abschaltbar): baut wie ein Industriekomplex (bis Größe 7) und Drohnen aus den Materialien im Laderaum; arbeitet nur eingeschaltet und im All; Module landen im Laderaum, Drohnen im Hangar (wartet bei Platzmangel); schwarzer Rauch beim Arbeiten.

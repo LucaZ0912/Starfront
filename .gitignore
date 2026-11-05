@@ -10,3 +10,5 @@ build/
 Thumbs.db
 desktop.ini
 .DS_Store
+# working drafts kept out of the repository (Roadmap_Entwurf.md is edited in parallel in Claude Chat)
+Roadmap_Entwurf*.md

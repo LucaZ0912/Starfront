@@ -19,6 +19,7 @@ var last_attacker = null
 var lock_progress := 0.0
 var weapon_timers: Array = []
 var spool := -1.0               # >= 0: jump drive spooling
+var spool_need := 1.0            # warp alignment: total time it will take (ring on the ship)
 var activity := ""
 var radius := 20.0
 var dying := false
@@ -1046,8 +1047,12 @@ func _warp_align(delta: float, s: Dictionary):
 		view.announce_lead(self, "warp", String(t["name"]))
 	spool += delta
 	var at := align_time()
-	activity = "Aligning: warp → %s  %d%%" % [t["name"], int(minf(spool / at, 1.0) * 100.0)]
-	if spool >= at and absf(wrapf(heading - dir.angle(), -PI, PI)) < 0.3:
+	# the ring and the percentage show the real time left: alignment time and the turn still needed
+	var err := absf(wrapf(heading - dir.angle(), -PI, PI))
+	var turn_left := maxf(err - 0.3, 0.0) / maxf(float(s["turn"]), 0.01)
+	spool_need = maxf(at, spool + turn_left)
+	activity = "Aligning: warp → %s  %d%%" % [t["name"], int(minf(spool / spool_need, 1.0) * 100.0)]
+	if spool >= at and err < 0.3:
 		spool = -1.0
 		var T := (4.0 + dist / group_warp_speed(float(s["warp_speed"]))) * float(t.get("slow", 1.0))
 		warp = {"from": position, "to": dest, "t": 0.0, "T": T, "then": order.get("then", {}), "name": t["name"]}
@@ -2166,6 +2171,9 @@ func smoke(delta: float) -> void:
 	view.spawn_fx(Fx.smoke(position + local.rotated(heading), out * randf_range(55.0, 80.0) + velocity * 0.9, 6.0 + radius * 0.08))
 
 
+var deck_queue := 0              # drones waiting for / rolling down the flight deck
+
+
 ## Carriers with a flight deck (Kanayama-maru): drones launch from it and land on it.
 func has_deck() -> bool:
 	return fit.hull().has("drone_deck")
@@ -2593,7 +2601,8 @@ func _draw() -> void:
 	_bar(Vector2(-w / 2.0, y + 8.0), w, fit.structure, s["structure_max"], Color(0.9, 0.3, 0.3))
 
 	if spool >= 0.0:
-		var frac := spool / maxf(float(s["spool"]), 0.1)
+		var need := spool_need if String(order.get("type", "")) == "warp" else float(s["spool"])
+		var frac := minf(spool / maxf(need, 0.1), 1.0)
 		draw_arc(Vector2.ZERO, radius + 18.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 40, Color(0.6, 0.5, 1.0), 3.0)
 
 

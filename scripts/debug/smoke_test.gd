@@ -3348,6 +3348,24 @@ func _test_khi(view: SystemView) -> void:
 	var fa := GameState.create_from_preset("std_anaguma", "player")
 	var fd := GameState.create_from_preset("std_drillhead", "player")
 	check(float(fa.stats()["turn"]) < float(fd.stats()["turn"]), "KHI ships turn slower (%.2f vs %.2f)" % [float(fa.stats()["turn"]), float(fd.stats()["turn"])])
+	# the alignment ring fills up exactly when the warp starts (alignment time and turning included)
+	var ws := Ship.new()
+	fa.system_id = view.system_id
+	fa.position = view.player.position + Vector2(0, 90000)
+	fa.rotation = PI
+	ws.manual = true
+	ws.setup(fa, view)
+	view.ship_layer.add_child(ws)
+	ws.set_order({"type": "warp", "target": {"name": "Test", "pos": ws.position + Vector2(400000, 0), "land": 1000.0}, "then": {}})
+	var ring_full_early := false
+	var steps := 0
+	while not ws.in_warp() and steps < 2000:
+		ws._update_movement(0.05, fa.stats())
+		steps += 1
+		if not ws.in_warp() and ws.spool >= 0.0 and ws.spool / ws.spool_need >= 0.999 and ws.spool < ws.align_time() - 0.01:
+			ring_full_early = true
+	check(ws.in_warp() and not ring_full_early, "the warp alignment ring is only full when the warp starts (%.1f s, turning included)" % (steps * 0.05))
+	ws.queue_free()
 	# shipyard shows the manufacturer
 	var big_st: Dictionary = {}
 	for st3 in view.layout["stations"]:
@@ -3442,7 +3460,27 @@ func _test_kanayama(view: SystemView) -> void:
 	var dk0: Vector2 = c.deck_point(0.0).rotated(-c.heading) - c.position.rotated(-c.heading)
 	var dk1: Vector2 = c.deck_point(1.0).rotated(-c.heading) - c.position.rotated(-c.heading)
 	var launched_fwd: bool = not dr.is_empty() and (dr[0].velocity - c.velocity).dot(Vector2.from_angle(c.heading)) > 0.0
-	check(dk1.x > dk0.x and dk0.x > -c.radius * 0.5 and launched_fwd and c.has_deck(), "drones launch forwards off the flight deck (deck from %.0f to %.0f)" % [dk0.x, dk1.x])
+	check(dk1.x > dk0.x and dk0.x > -c.radius * 0.5 and c.has_deck() and not dr.is_empty() and dr[0].runway, "drones launch from the flight deck (deck from %.0f to %.0f)" % [dk0.x, dk1.x])
+	for d1 in view.drones_of(c):
+		view.stow_drone(d1)
+	c.deck_queue = 0
+	f.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
+	view.launch_drones(c)
+	var rw: Array = view.drones_of(c)
+	var staggered: bool = rw.size() == 2 and rw[1]._hold > rw[0]._hold
+	var max_side := 0.0
+	var front_x: float = (c.deck_point(1.0) - c.position).rotated(-c.heading).x
+	var passed := true
+	for st6 in 200:
+		for d2 in rw:
+			if d2.runway:
+				d2._physics_process(0.05)
+				max_side = maxf(max_side, absf((d2.position - c.position).rotated(-c.heading).y))
+	for d3 in rw:
+		passed = passed and not d3.runway and (d3.position - c.position).rotated(-c.heading).x > front_x
+	check(staggered and passed and max_side < 30.0, "drones roll down the whole runway one after the other and break away past the bow")
+	for d4 in view.drones_of(c):
+		view.stow_drone(d4)
 	for d0 in dr:
 		view.stow_drone(d0)
 	# the market: traders buy at fair prices, large offers attract pirates
