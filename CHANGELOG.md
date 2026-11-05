@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.19.18 – 2026-11-05
+
+- Formation fix: the pilot's ship no longer lags behind in warp. Followers use the lead's position of
+  the current frame (the pilot's ship was updated before the lead), and the lead takes the whole
+  formation into warp in the same instant.
+
 ## alpha 0.4.19.17 – 2026-11-05
 
 - Debug menu: "Reroll board here" also rerolls the station's faction contracts.

@@ -942,6 +942,11 @@ func _warp_align(delta: float, s: Dictionary):
 		order = {"type": "warping"}
 		view.spawn_fx(Fx.flash(position, Color(0.6, 0.85, 1.0), radius * 3.0))
 		view.on_warp_started(self)
+		# the whole formation goes into warp in the same instant
+		if view.has_method("followers_of"):
+			for f in view.followers_of(self).duplicate():
+				if is_instance_valid(f) and not f.in_warp() and f.warp_disrupted <= 0.0 and String(f.order.get("type", "")) == "follow":
+					f._follow_warp(self, T, dest, String(t["name"]))
 		return null
 	return position + dir * 5000.0
 
@@ -1015,6 +1020,7 @@ func _update_warp(delta: float) -> void:
 		and float(warp["T"]) - float(warp["t"]) - delta <= 2.0
 	if not held:
 		warp["t"] = float(warp["t"]) + delta
+	_warp_frame = Engine.get_physics_frames()
 	if warp.get("formation", false):
 		_formation_warp(delta)
 		return
@@ -1038,6 +1044,7 @@ func _update_warp(delta: float) -> void:
 
 
 const FORMATION_GAP := 380.0
+var _warp_frame := -1            # physics frame of the last warp step (formation followers sync to it)
 
 
 ## Slot of this ship in the V formation behind the ship it follows (x = forward). The pilot takes
@@ -1075,7 +1082,12 @@ func _formation_warp(delta: float) -> void:
 		return
 	var slot: Vector2 = formation_offset(fn).rotated(fn.heading)
 	var k := smoothstep(0.0, 1.5, float(warp["t"]))
-	var np: Vector2 = fn.position + (warp["off0"] as Vector2).lerp(slot, k)
+	# the lead may not have moved yet this frame (e.g. the pilot's ship is updated first): use where
+	# it will be, so the slot stays exact for the whole warp
+	var lead_pos: Vector2 = fn.position
+	if fn._warp_frame != Engine.get_physics_frames():
+		lead_pos += fn.velocity * delta
+	var np: Vector2 = lead_pos + (warp["off0"] as Vector2).lerp(slot, k)
 	velocity = (np - position) / maxf(delta, 0.0001)
 	position = np
 	heading = fn.heading

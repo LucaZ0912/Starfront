@@ -2180,9 +2180,12 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 	pl._update_movement(0.016, pl.fit.stats())
 	check(pl.in_warp() and pl.warp.get("follow") == lead and absf(float(pl.warp["T"]) - 30.5) < 0.6, "following into warp – no aligning, arriving together")
 	lead.warp["t"] = 8.0
+	lead.velocity = Vector2(20000, 0)
+	lead._warp_frame = -1          # the lead has not moved yet this frame (pilot updated first)
 	pl._update_warp(2.0)
-	var slot_pos: Vector2 = lead.position + pl.formation_offset(lead).rotated(lead.heading)
-	check(pl.in_warp() and pl.position.distance_to(slot_pos) < 5.0, "in warp the follower keeps its formation slot next to the lead")
+	var slot_pos: Vector2 = lead.position + lead.velocity * 2.0 + pl.formation_offset(lead).rotated(lead.heading)
+	check(pl.in_warp() and pl.position.distance_to(slot_pos) < 5.0, "in warp the follower keeps its exact formation slot – even when updated before the lead")
+	lead.velocity = Vector2.ZERO
 	# interception: convoy and followers drop out of warp, pirates close in
 	var p0: int = view.pirate_count()
 	lead.warp["t"] = 15.0
