@@ -5,6 +5,7 @@ extends RefCounted
 ## to stations, in menus and later in the codex.
 
 const FactionData = preload("res://data/factions.gd")
+const MakerData = preload("res://data/manufacturers.gd")
 const W := 34          # incl. 1 px outline margin
 const H := 38
 
@@ -46,11 +47,25 @@ static func texture(fid: String) -> Texture2D:
 
 
 static func image(fid: String) -> Image:
+	if not FactionData.FACTIONS.has(fid):
+		var empty := Image.create(W, H, false, Image.FORMAT_RGBA8)
+		empty.fill(Color(0, 0, 0, 0))
+		return empty
+	return image_of(FactionData.FACTIONS[fid]["crest"])
+
+
+## Crest of a ship manufacturer (package 24, data/manufacturers.gd).
+static func maker_texture(mid: String) -> Texture2D:
+	var key := "maker_" + mid
+	if not _cache.has(key):
+		_cache[key] = ImageTexture.create_from_image(image_of(MakerData.MAKERS[mid]["crest"]) if MakerData.MAKERS.has(mid) else image("-"))
+	return _cache[key]
+
+
+## Builds a crest from its description (shape, field, rim, symbol, symbol_id, optional pattern).
+static func image_of(cd: Dictionary) -> Image:
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	if not FactionData.FACTIONS.has(fid):
-		return img
-	var cd: Dictionary = FactionData.FACTIONS[fid]["crest"]
 	var shape: String = cd["shape"]
 	var field: Color = cd["field"]
 	var rim: Color = cd["rim"]
@@ -71,6 +86,9 @@ static func image(fid: String) -> Image:
 		var v := float(p.y) / H
 		var u := float(p.x) / W
 		var col := field.lightened(0.18 * (1.0 - v)).darkened(0.15 * u)
+		if String(cd.get("pattern", "")) == "hazard" and p.y >= H - 11:
+			# warning stripes along the foot (KHI)
+			col = Color(0.1, 0.1, 0.11) if posmod(p.x + p.y, 6) < 3 else Color(0.98, 0.78, 0.1)
 		if edge:
 			col = rim
 		elif edge2:
@@ -125,6 +143,17 @@ static func _in_shape(shape: String, x: int, y: int) -> bool:
 					return false
 				return absf(u) <= w
 			return not (dx < -11.0 and absf(dy + 4.0) < 2.0)
+		"plate":
+			# heavy industrial plate with cut corners
+			if absf(dx) > 15.5 or absf(dy) > 17.5:
+				return false
+			return absf(dx) + absf(dy) <= 29.0
+		"oval":
+			return (dx * dx) / (15.0 * 15.0) + (dy * dy) / (17.6 * 17.6) <= 1.0
+		"octagon":
+			if absf(dx) > 15.5 or absf(dy) > 17.5:
+				return false
+			return absf(dx) + absf(dy) <= 25.0
 		"pennant":
 			if absf(dx) > 15.0 or y < 2:
 				return false
@@ -174,10 +203,163 @@ static func _line(pts: Array, a: Vector2, b: Vector2, thick: float) -> void:
 					pts.append(Vector2i(xx, yy))
 
 
+static func _ring(pts: Array, c: Vector2, r_in: float, r_out: float) -> void:
+	for yy in range(int(c.y - r_out) - 1, int(c.y + r_out) + 2):
+		for xx in range(int(c.x - r_out) - 1, int(c.x + r_out) + 2):
+			var d := Vector2(xx + 0.5, yy + 0.5).distance_to(c)
+			if d >= r_in and d <= r_out:
+				pts.append(Vector2i(xx, yy))
+
+
+static func _disc(pts: Array, c: Vector2, r: float) -> void:
+	_ring(pts, c, -1.0, r)
+
+
 static func _symbol(img: Image, inside: Dictionary, sid: String, col: Color) -> void:
 	var pts: Array = []
 	var C := Vector2(17.0, 19.0)      # centre incl. margin
 	match sid:
+		# ---- package 24: manufacturers
+		"globe":
+			# Earth (blue disc, darker meridians), an orbit in front and Luna
+			var gc := Vector2(15.5, 20.0)
+			_disc(pts, gc, 8.6)
+			_plot(img, inside, pts, col)
+			pts = []
+			var dark := col.darkened(0.55)
+			_line(pts, gc + Vector2(0, -8.4), gc + Vector2(0, 8.4), 0.7)
+			_line(pts, gc + Vector2(-8.4, 0), gc + Vector2(8.4, 0), 0.7)
+			for k in 2:
+				var sx := 4.2 if k == 0 else -4.2
+				var prev := Vector2.ZERO
+				for i in 13:
+					var a := -PI * 0.5 + i * PI / 12.0
+					var mp := gc + Vector2(cos(a) * sx, sin(a) * 8.4)
+					if i > 0:
+						_line(pts, prev, mp, 0.7)
+					prev = mp
+			_plot(img, inside, pts, dark)
+			pts = []
+			var prev2 := Vector2.ZERO
+			for i2 in 33:
+				var b := i2 * TAU / 32.0
+				var op := gc + Vector2(cos(b) * 13.5, sin(b) * 4.0).rotated(-0.3)
+				var behind := sin(b) < 0.0 and Vector2(op - gc).length() < 9.2
+				if i2 > 0 and not behind:
+					_line(pts, prev2, op, 0.9)
+				prev2 = op
+			_plot(img, inside, pts, col.lightened(0.5))
+			pts = []
+			_disc(pts, gc + Vector2(9.0, -10.0), 2.2)
+			_plot(img, inside, pts, Color(0.88, 0.9, 0.92))
+			return
+		"mountain_pick":
+			# a mountain (Kanayama) above the hazard stripes, crossed by a pickaxe
+			for yy in range(8, 24):
+				var hw := (yy - 8) * 0.75
+				for xx in range(int(17.0 - hw), int(17.0 + hw) + 1):
+					pts.append(Vector2i(xx, yy))
+			_plot(img, inside, pts, col)
+			pts = []
+			var snow := Color(0.98, 0.78, 0.1).lightened(0.35)
+			for yy2 in range(8, 12):
+				var hw2 := (yy2 - 8) * 0.75
+				for xx2 in range(int(17.0 - hw2), int(17.0 + hw2) + 1):
+					pts.append(Vector2i(xx2, yy2))
+			_plot(img, inside, pts, snow)
+			pts = []
+			_line(pts, Vector2(7.0, 25.0), Vector2(26.0, 6.0), 1.6)
+			_line(pts, Vector2(21.0, 3.5), Vector2(29.0, 10.0), 1.4)
+			_plot(img, inside, pts, Color(0.55, 0.55, 0.58))
+			return
+		"star_a":
+			# an elegant A beneath a small four-pointed star
+			_line(pts, Vector2(17.0, 13.0), Vector2(9.5, 31.0), 1.6)
+			_line(pts, Vector2(17.0, 13.0), Vector2(24.5, 31.0), 1.6)
+			_line(pts, Vector2(11.8, 25.0), Vector2(22.2, 25.0), 1.1)
+			_line(pts, Vector2(8.0, 31.0), Vector2(11.5, 31.0), 1.0)
+			_line(pts, Vector2(22.5, 31.0), Vector2(26.0, 31.0), 1.0)
+			var sc := Vector2(17.0, 7.0)
+			for r4 in 4:
+				var dir4 := Vector2.from_angle(r4 * PI * 0.5)
+				for t in 5:
+					var w4 := 1.4 * (1.0 - t / 5.0)
+					var c4 := sc + dir4 * (t * 0.9)
+					_disc(pts, c4, w4)
+		"rampart":
+			# a fortified wall with merlons and a gate – Hadrian's wall
+			for yy3 in range(14, 30):
+				for xx3 in range(6, 29):
+					var gate := absf(xx3 + 0.5 - 17.0) < 3.0 and yy3 > 21
+					if not gate:
+						pts.append(Vector2i(xx3, yy3))
+			for m in 5:
+				var mx := 6 + m * 5
+				for yy4 in range(10, 14):
+					for xx4 in range(mx, mx + 3):
+						pts.append(Vector2i(xx4, yy4))
+			_plot(img, inside, pts, col)
+			pts = []
+			for k in 4:
+				_line(pts, Vector2(6.0, 17.5 + k * 3.0), Vector2(28.5, 17.5 + k * 3.0), 0.6)
+			_plot(img, inside, pts, col.darkened(0.45))
+			return
+		"rings":
+			# two interlocked rings (concord) with three drones
+			_ring(pts, C + Vector2(-4.0, 1.0), 5.2, 6.6)
+			_ring(pts, C + Vector2(4.0, 1.0), 5.2, 6.6)
+			for i2 in 3:
+				var dp := C + Vector2.from_angle(-PI * 0.5 + (i2 - 1) * 0.75) * 13.0
+				for d in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					pts.append(Vector2i(int(dp.x), int(dp.y)) + d)
+		"anvil_flame":
+			# an anvil (face, horn, waist, foot) with a flame above
+			for xx5 in range(10, 26):
+				for yy5 in range(18, 21):
+					pts.append(Vector2i(xx5, yy5))
+			for hx in range(4, 10):
+				var th := 1 + int((hx - 4) / 3.0)
+				for hy in range(18, 18 + th + 1):
+					pts.append(Vector2i(hx, hy))
+			for xx6 in range(12, 24):
+				pts.append(Vector2i(xx6, 21))
+			for yy7 in range(22, 27):
+				for xx7 in range(14, 21):
+					pts.append(Vector2i(xx7, yy7))
+			for yy8 in range(27, 30):
+				var w8 := 4 + (yy8 - 27) * 2
+				for xx8 in range(17 - w8, 18 + w8):
+					pts.append(Vector2i(xx8, yy8))
+			_plot(img, inside, pts, col)
+			pts = []
+			for yy9 in range(4, 17):
+				var t9 := float(yy9 - 4) / 12.0
+				var hw9 := 3.6 * sin(t9 * PI * 0.92) * (0.35 + 0.65 * t9) + 0.4
+				var cx9 := 17.5 + sin(t9 * 4.5) * 1.0
+				for xx9 in range(int(cx9 - hw9), int(cx9 + hw9) + 1):
+					pts.append(Vector2i(xx9, yy9))
+			_plot(img, inside, pts, Color(1.0, 0.55, 0.15))
+			pts = []
+			for yy10 in range(9, 16):
+				var t10 := float(yy10 - 9) / 6.0
+				var hw10 := 1.6 * sin(t10 * PI * 0.9) + 0.2
+				for xx10 in range(int(17.5 - hw10), int(17.5 + hw10) + 1):
+					pts.append(Vector2i(xx10, yy10))
+			_plot(img, inside, pts, col.lightened(0.4))
+			return
+		"delta_orbit":
+			# a delta with a singularity, crossed by an orbit
+			_line(pts, Vector2(17.0, 6.0), Vector2(6.5, 28.0), 1.2)
+			_line(pts, Vector2(17.0, 6.0), Vector2(27.5, 28.0), 1.2)
+			_line(pts, Vector2(6.5, 28.0), Vector2(27.5, 28.0), 1.2)
+			_disc(pts, Vector2(17.0, 20.0), 2.2)
+			var prev3 := Vector2.ZERO
+			for j3 in 37:
+				var b3 := j3 * TAU / 36.0
+				var op3 := Vector2(17.0, 20.0) + Vector2(cos(b3) * 13.5, sin(b3) * 3.4).rotated(-0.3)
+				if j3 > 0:
+					_line(pts, prev3, op3, 0.8)
+				prev3 = op3
 		"hand":
 			# ring of eight stars around an open hand
 			for i in 8:

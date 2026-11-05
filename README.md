@@ -68,6 +68,15 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## Ship manufacturers (phase 0.5 package 24)
+Seven manufacturers are planned (`data/manufacturers.gd`) – their ships follow in package 25:
+**Earthworks** (EWK, all ships so far), **Kanayama Heavy Industries** (KHI, mining & industry),
+**Maison Aurelle** (AUR, luxury & passengers), **Hadrian Dynamics** (HDY, warships) and the state
+manufacturers **Concord Fleetworks** (CFW, Assembly – drone carriers), **Forge of Return** (FOR,
+Covenant – weapon platforms) and **Axiom Astronautics** (AXA, Directorate – research). Each has a crest
+(scripts/core/crest_art.gd, `CrestArt.maker_texture`) and a codex entry with its history.
+The recon radar now always shows **10,000 km** – also the limit of every drone control range.
+
 ## Drones (phase 0.5 package 23)
 - **Drone hangar** – a new core slot on every ship (module *Drone Hangar 1–9*, quality = more room:
   size × 3 drones at C, ×0.6 at F … ×1.5 at A). How many drones fly at once is set by the hull:

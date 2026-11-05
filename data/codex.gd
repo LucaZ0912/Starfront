@@ -6,13 +6,15 @@ extends RefCounted
 ##   text    English text; paragraphs separated by "\n\n"
 ##   unlock  "start" or an event id: "dock", "jump", "warp", "mining", "colossus", "haven", "notorious",
 ##           "raid", "ion", "contract", "bond", "faction:<id>", "corp:<id>"
-##   image   {"crest": faction} | {"ship": hull} | {"icon": module icon key}  (optional)
+##   image   {"crest": faction} | {"maker": manufacturer} | {"ship": hull} | {"icon": module icon key}  (optional)
 ##   see     related entry ids (cross references)
-## Faction and corporation entries are generated from data/factions.gd and data/corporations.gd.
+## Faction, corporation and manufacturer entries are generated from data/factions.gd,
+## data/corporations.gd and data/manufacturers.gd.
 
 const FactionData = preload("res://data/factions.gd")
 const CorpData = preload("res://data/corporations.gd")
 const ServiceData = preload("res://data/station_services.gd")
+const MakerData = preload("res://data/manufacturers.gd")
 
 const CATEGORIES := [
 	["basics", "Basics"], ["history", "History"], ["factions", "Factions"],
@@ -139,4 +141,12 @@ static func entries() -> Dictionary:
 			"image": {"icon": icon},
 			"text": "\"%s\"\n\n%s\n\n%s" % [c["slogan"], c["desc"], ("Monopoly on the station service: %s. Like every charter house it predates the Severance and serves all three powers alike." % service) if service != "" else "A charter house older than the Severance, trusted – or at least tolerated – by all three powers."],
 			"see": ["hist_expansion", "cluster_stations"]}
+	# ship manufacturers (package 24)
+	for mid in MakerData.MAKERS:
+		var m: Dictionary = MakerData.MAKERS[mid]
+		var who := "State manufacturer of the %s" % FactionData.FACTIONS[m["faction"]]["name"] if m["kind"] == "state" else "Independent megacorp"
+		out["maker_" + mid] = {"cat": "corporations", "title": "%s [%s]" % [m["name"], m["tag"]], "unlock": m["unlock"],
+			"image": {"maker": mid},
+			"text": "\"%s\"\n\n%s – shipbuilder since %d HE.\n\n%s\n\nKnown models: %s." % [m["motto"], who, int(m["founded"]), m["text"], ", ".join(PackedStringArray(m["ships"]))],
+			"see": m["see"]}
 	return out

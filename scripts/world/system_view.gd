@@ -21,6 +21,7 @@ const MAX_ZOOM := 2.0
 ## 2 = System (everything flat on one plane). The "System" value adapts to the window size.
 const LEVEL_NAMES := ["Combat", "Recon", "System"]
 const LEVEL_ZOOMS := [0.6, 0.05, 0.0]
+const RADAR_SCREEN := 0.44       # radar radius as a share of the smaller screen side
 
 var system_id := -1
 var layout: Dictionary
@@ -779,6 +780,10 @@ func _process(delta: float) -> void:
 
 
 func level_zoom(l: int) -> float:
+	if l == 1:
+		# recon: the radar shows exactly the recon range, whatever the window size
+		var vs := get_viewport_rect().size
+		return minf(vs.x, vs.y) * RADAR_SCREEN / GameData.RECON_RANGE
 	return _min_zoom if l >= 2 else float(LEVEL_ZOOMS[l])
 
 
@@ -1828,7 +1833,7 @@ func _draw_player_icon(o: Node2D, pos: Vector2, heading: float, px: float, a: fl
 ## contacts light up when the sweep passes over them.
 func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 	var vs := get_viewport_rect().size
-	var r := minf(vs.x, vs.y) * 0.44 * px
+	var r := minf(vs.x, vs.y) * RADAR_SCREEN * px
 	var sweep := fmod(_t / RADAR_PERIOD, 1.0) * TAU
 	var font := ThemeDB.fallback_font
 	# Base disc and rings

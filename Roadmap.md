@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 23 fertig, Paket 24 (Planung der Manufakturen) läuft. Netzwerk fehlt noch. Version alpha 0.4.24.1. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, als Nächstes Paket 25a (KHI-Bergbauschiffe). Netzwerk fehlt noch. Version alpha 0.4.24.2. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -119,7 +119,7 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | 1 | More More | ✅ erledigt |
 | 2 | World Design Update | ✅ erledigt |
 | 3 | NPCs and Factions | ✅ erledigt (Pakete 10–18) |
-| 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–23 fertig) |
+| 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–24 fertig) |
 | 5 | Character Update | geplant |
 | 6 | New Worlds Discovery Update | geplant |
 | 7 | Intro and First Part of the Story | geplant |
@@ -542,7 +542,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 | 21 | Energie-Management – ✅ erledigt | im Schiff festlegen, welche Module bei Strommangel zuerst abgeschaltet werden | 19 |
 | 22 | Multi-Fokus – ✅ erledigt | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
 | 23 | Drohnen (vorgezogen aus Phase 2) – ✅ erledigt | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
-| 24 | Schiffsmanufakturen – in Planung | alle Manufakturen und ihre Schiffe besprechen; am Ende: Codex-Einträge und ein Wappen/Icon je Manufaktur | 19 |
+| 24 | Schiffsmanufakturen – ✅ erledigt | alle Manufakturen und ihre Schiffe besprechen; am Ende: Codex-Einträge und ein Wappen/Icon je Manufaktur | 19 |
 | 25 | Neue Schiffe | in kleinen Schritten gebaut: 25a KHI-Bergbauschiffe (+ Grundgerüst), 25b Heavy Industry Ship mit Fertigungszeit und Bordmarkt, 25c ff. die weiteren Manufakturen; auch für NPCs und Piraten, fraktionsexklusive Schiffe | 19, 23, 24 |
 | 26 | Stationstyp 0 | kleine Außenposten nur für S- und M-Schiffe, zusätzlich in allen Systemen | 25 |
 | 27 | Ausrüster & Modulübersicht | Ausrüster neu gestaltet, Kurzbeschreibungen in der Modulübersicht, aktuelle Geschwindigkeit in der Schiffsinfo | 19, 20 |
@@ -781,7 +781,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
   - **Drohnen:** Hülle, Schaden, Abbau, Reparatur, Lagerplatz und Treibstoff verdoppelt; Steuerreichweite verdoppelt, aber höchstens bis zur **Recon-Reichweite** (siehe unten).
   - **Waffen des Schiffs selbst:** halber Schaden (Reichweite und Feuerrate unverändert).
   - **Schilde:** +60 % Kapazität, aber dreifache Downtime nach einem Zusammenbruch.
-- **Schiffe (Namen nach Gestalten des Volkes – Vorschlag):**
+- **Schiffe (Namen nach Gestalten des Volkes – freigegeben):**
   - **Demos** (griech. „das Volk“) – Milizschiff (S): kleiner Drohnenträger, leichte Bewaffnung, mittlerer Hangar (3 Drohnen), gute Schilde, wenig Panzerung, sonst durchschnittlich. Ab **Neutral**.
   - **Quirinus** (röm. Gott der Bürgerschaft) – Patrouillenschiff (M): Weiterentwicklung des Milizschiffs, 7 Drohnen, gute Schilde, sonst durchschnittlich. Ab **Friendly**.
   - **Concordia** (röm. Göttin der Eintracht) – Flaggschiff (L, Spitzenmodell): großer Drohnenträger mit einem großen Waffenplatz, guten Sensoren, besonders großem Hangar – **11 Drohnen, als einziges Schiff** – und starken Schilden; seine Drohnen in besonderer Assembly-Blau-Färbung. Ab **Allied**.
@@ -797,7 +797,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
   - **Kraftwerk stark verstärkt:** +80 % Reaktorleistung (Cathedral +120 %); dafür −30 % Strukturpunkte und kleinere Panzerungsplätze (die Cathedral hat normale Hüllenwerte). **Keine Drohnenhangars.**
   - **Synthetische rote Fokuskristall-Laser:** eigene optische Strahlwaffe (Größe 1–4) mit hohem Schaden, großer Reichweite und sehr hohem Strombedarf; nur an Covenant-Ausrüstern erhältlich und **nur in Covenant-Schiffe einbaubar**.
   - **Strahlbündelung (S und M):** Sind **alle Waffenplätze** mit Fokuskristall-Lasern belegt, bündeln sich ihre roten Strahlen vor dem Schiff und feuern gemeinsam auf das Ziel – **+30 % Schaden**.
-- **Schiffe (Arbeitsnamen):**
+- **Schiffe (Namen freigegeben):**
   - **Acolyte** – Milizschiff (S): kleines Kampfschiff, wenig Hülle, sehr starkes Kraftwerk, Fokuskristall-Laser, kein Hangar. Ab **Neutral**.
   - **Templar** – Patrouillenschiff (M): Weiterentwicklung mit mehr Waffenplätzen und mehr Energie, sonst dieselben Schwächen. Ab **Friendly**.
   - **Cathedral** – Flaggschiff (L): eher mobile Waffenplattform als Schiff – sehr viele Waffenplätze, riesiges Kraftwerk, stärkere Hülle als die anderen FOR-Schiffe, keine Drohnen. Ab **Allied**.
@@ -816,12 +816,20 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - **Schiffe:**
   - **Parallax** – Forschungsschiff (S): durchschnittlich in allen Belangen. Markiert auf der Galaxiekarte alle Systeme im Umkreis von **4 Sprüngen** mit unentdeckten Anomalien samt Anzahl (wird mit dem Discovery Update in Teil 6 erweitert). Ab **Neutral**.
   - **Threshold** – Sprungschiff (L, Prototyp): durchschnittlich für ein L-Schiff in Bewaffnung, Schutz, Geschwindigkeit und Lagerraum. Springt **ohne Sprungtor** durch ein kleines Wurmloch: Kurs auf der Galaxiekarte setzen, Entfernung = Zahl der normalen Sprünge, Verbrauch **1 Einheit Exotic Matter pro Sprung Entfernung**. Ab **Allied**. Nur an Directorate-Werften.
-    - **Exotic Matter:** neue Ressource ohne Lagerplatzbedarf, gewonnen beim Analysieren bestimmter (seltener) Anomalien.
+    - **Exotic Matter:** neue Ressource ohne Lagerplatzbedarf, gewonnen beim Analysieren bestimmter (seltener) Anomalien. Kein zusätzlicher Treibstoff nötig.
     - **Grenzen:** kein Weg durch den Veil (bleibt Project Bridge vorbehalten), höchstens 8 Sprünge Entfernung, Abklingzeit nach jedem Sprung, und der Sprung kann schiefgehen – dann endet er an einem zufälligen Ort im Zielsystem (z. B. mitten in einem Asteroidenfeld).
 
-**Recon-Reichweite und Drohnen:** Das Recon-Radar zeigt bisher einen Kreis, dessen Größe vom Bildschirm abhängt (etwa 7.900 km bei 1600×900, 9.500 km bei Full HD). Vorschlag: die Recon-Reichweite auf feste **10.000 km** setzen (das Radar passt sich an) – das ist dann die Höchstgrenze für jede Drohnen-Steuerreichweite (Relay-Modul, CFW-Verdopplung). Drohnen meiden den Radarschatten von Kolossen (umgesetzt in alpha 0.4.24.1).
+**Recon-Reichweite und Drohnen:** Die Recon-Reichweite ist fest **10.000 km** (das Radar zeigt sie unabhängig von der Fenstergröße) – das ist die Höchstgrenze für jede Drohnen-Steuerreichweite (Relay-Modul, CFW-Verdopplung). Drohnen meiden den Radarschatten von Kolossen. (Umgesetzt in alpha 0.4.24.1/0.4.24.2.)
 
 **Für alle Manufakturen:** eingebaute Module (Nachbrenner, Bordraffinerie, Prospektor-Scanner, Fertigung, Markt …) bekommen in der Modulleiste und im Schiffsmenü eine **farbige Umrandung**, damit man sie als fest eingebaut erkennt.
+
+**Abschluss Paket 24 (5. Nov 2026, alpha 0.4.24.2)** – `data/manufacturers.gd`, Wappen in `scripts/core/crest_art.gd`, 6 neue automatische Prüfungen:
+
+- [x] Alle sieben Manufakturen als Daten: Name, Kürzel, Art (privat/staatlich), Fraktion, Gründungsjahr, Motto, Farbe, Wappen, Geschichte, geplante Modelle.
+- [x] Ein Wappen je Manufaktur im Stil der Fraktionswappen, mit drei neuen Schildformen (Platte, Oval, Achteck) und Warnstreifen-Muster: Earthworks (Erdkugel mit Umlaufbahn und Luna, Stahlblau), KHI (Berg und Spitzhacke über Warnstreifen, Gelb-Schwarz), Maison Aurelle (A unter Vierzackstern, Elfenbein-Gold), Hadrian Dynamics (Wehrmauer mit Tor, dunkles Metall mit rotem Rand), Concord Fleetworks (verschlungene Ringe mit Drohnen, Assembly-Blau), Forge of Return (Amboss mit Flamme, Rot-Gold), Axiom Astronautics (Delta mit Singularität und Orbit, kühles Cyan).
+- [x] Codex: ein Eintrag je Manufaktur (Kategorie Corporations) mit Motto, Art, Gründungsjahr, Geschichte und bekannten Modellen; Earthworks ab Spielbeginn, die privaten beim ersten Werftbesuch, die staatlichen zusammen mit ihrer Fraktion.
+- [x] Recon-Reichweite fest 10.000 km (Radar unabhängig von der Fenstergröße), Obergrenze der Drohnen-Steuerreichweite.
+- [x] Annahme: Axiom Astronautics gegründet 12740 HE (mit dem Directorate in den Dark Decades) – bei Bedarf anpassen.
 
 ### Neue Schiffe (Paket 25)
 

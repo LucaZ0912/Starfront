@@ -324,7 +324,7 @@ func _compute() -> Dictionary:
 func _drone_stats(s: Dictionary, mods: Dictionary) -> void:
 	var d := DRONE_BASE.duplicate()
 	var b: Dictionary = mods.get("dbonus", {})
-	d["range"] *= float(b.get("d_range", 1.0))
+	d["range"] = minf(float(d["range"]) * float(b.get("d_range", 1.0)), GameData.RECON_RANGE)   # never beyond the recon range
 	d["speed"] *= float(b.get("d_speed", 1.0))
 	d["fuel"] *= float(b.get("d_fuel", 1.0))
 	d["cargo"] += float(b.get("d_cargo", 0.0))

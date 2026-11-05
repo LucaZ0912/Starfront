@@ -56,6 +56,8 @@ const MINES := {
 const MINE_LIFE := 300.0            # mines disappear after 5 minutes
 const MINE_TIMERS := [5, 10, 20, 30, 60]
 const MODULE_ITEM_VOLUME := 5.0
+## Recon range (package 24): radius of the recon radar – and the limit of every drone control range
+const RECON_RANGE := 10000.0
 
 var hulls: Dictionary = HullData.HULLS
 ## Every module family in every size and quality (phase 0.5 package 19, data/modules.gd).

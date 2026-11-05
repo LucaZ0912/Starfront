@@ -123,6 +123,8 @@ func _build_page() -> void:
 	var img: Dictionary = e.get("image", {})
 	if img.has("crest"):
 		tex = CrestArt.texture(String(img["crest"]))
+	elif img.has("maker"):
+		tex = CrestArt.maker_texture(String(img["maker"]))
 	elif img.has("ship"):
 		tex = PixelArt.ship_texture(String(img["ship"]), "neutral")
 	elif img.has("icon"):

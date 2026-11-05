@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.24.2 – 2026-11-05
+
+**Package 24 – ship manufacturers (planning finished).**
+- Seven manufacturers in data/manufacturers.gd, each with its own crest (three new crest shapes, warning
+  stripes) and a codex entry with motto, history and planned models.
+- The recon radar always shows 10,000 km, independent of the window size; drone control ranges never
+  exceed it.
+
 ## alpha 0.4.24.1 – 2026-11-05
 
 Package 24 (planning of the manufacturers) is running – this update carries two small changes:

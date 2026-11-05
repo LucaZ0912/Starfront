@@ -516,6 +516,7 @@ func _process(delta: float) -> void:
 				_test_power(view)
 				_test_multifocus(view)
 				_test_drones(view)
+				_test_manufacturers(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -1287,6 +1288,36 @@ func _shoot_standing(view: SystemView) -> void:
 	for i in 6:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/power.png")
+	# package 24: all manufacturer crests side by side (factions for comparison), and a codex page
+	var MK = preload("res://data/manufacturers.gd")
+	var sheet := Image.create(8 * 34 * 5 + 40, 2 * 38 * 5 + 30, false, Image.FORMAT_RGBA8)
+	sheet.fill(Color(0.06, 0.07, 0.1))
+	var ci := 0
+	for mk in MK.MAKERS:
+		var im: Image = CrestArt.image_of(MK.MAKERS[mk]["crest"])
+		im.resize(34 * 5, 38 * 5, Image.INTERPOLATE_NEAREST)
+		sheet.blit_rect(im, Rect2i(0, 0, 34 * 5, 38 * 5), Vector2i(10 + ci * 34 * 5, 10))
+		ci += 1
+	var fi := 0
+	for fk in ["assembly", "covenant", "directorate"]:
+		var im2: Image = CrestArt.image(fk)
+		im2.resize(34 * 5, 38 * 5, Image.INTERPOLATE_NEAREST)
+		sheet.blit_rect(im2, Rect2i(0, 0, 34 * 5, 38 * 5), Vector2i(10 + (fi + 4) * 34 * 5, 20 + 38 * 5))
+		fi += 1
+	sheet.save_png("res://Claude outputs/crests.png")
+	GameState.codex.unlock("maker_khi")
+	sm.mod_view = "fitting"
+	sm.open(view, 6)
+	var cv = null
+	for n7 in sm.content.find_children("*", "", true, false):
+		if n7.has_method("_build_page"):
+			cv = n7
+	if cv != null:
+		cv.selected = "maker_khi"
+		cv._build_page()
+	for i in 6:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/codex_maker.png")
 	sm.mod_view = "fitting"
 	sm.close()
 	# outfitter of the biggest station here (package 19: families with size · quality buttons)
@@ -2926,7 +2957,9 @@ func _test_drones(view: SystemView) -> void:
 	var base_r := float(f.stats()["drone"]["range"])
 	var base_dmg := float(f.stats()["drone_weapon"]["damage"])
 	f.set_module("dbonus_0", "dr_range:2:C")
-	check(is_equal_approx(base_r, 9000.0) and float(f.stats()["drone"]["range"]) > base_r, "a drone relay extends the control range (%.0f → %.0f km)" % [base_r, float(f.stats()["drone"]["range"])])
+	check(is_equal_approx(base_r, 9000.0) and float(f.stats()["drone"]["range"]) > base_r and float(f.stats()["drone"]["range"]) <= GameData.RECON_RANGE, "a drone relay extends the control range – at most to the recon range (%.0f → %.0f km)" % [base_r, float(f.stats()["drone"]["range"])])
+	var vsz := view.get_viewport_rect().size
+	check(is_equal_approx(minf(vsz.x, vsz.y) * view.RADAR_SCREEN / view.level_zoom(1), GameData.RECON_RANGE), "the recon radar shows exactly %s, whatever the window size" % SystemView.fmt_dist(GameData.RECON_RANGE))
 	f.set_module("dbonus_0", "dr_damage:1:C")
 	var ship_weps_ok := true
 	for w in f.stats()["weapons"]:
@@ -3125,3 +3158,35 @@ func _test_drones(view: SystemView) -> void:
 	for n in [pir, civ, ally, c]:
 		if is_instance_valid(n):
 			n.queue_free()
+
+
+## Phase 0.5 package 24: the ship manufacturers – data, crests, codex entries.
+func _test_manufacturers(view: SystemView) -> void:
+	var MK = preload("res://data/manufacturers.gd")
+	var CD = preload("res://data/codex.gd")
+	check(MK.MAKERS.size() == 7, "seven ship manufacturers: four private, three state (%d)" % MK.MAKERS.size())
+	var states := 0
+	var imgs := {}
+	var crest_ok := true
+	for mid in MK.MAKERS:
+		var m: Dictionary = MK.MAKERS[mid]
+		if m["kind"] == "state":
+			states += 1
+			crest_ok = crest_ok and FactionData.FACTIONS.has(String(m["faction"]))
+		var im: Image = CrestArt.image_of(m["crest"])
+		var opaque := 0
+		for y in im.get_height():
+			for x in im.get_width():
+				if im.get_pixel(x, y).a > 0.5:
+					opaque += 1
+		crest_ok = crest_ok and opaque > 500
+		imgs[im.get_data()] = true
+	check(states == 3 and crest_ok and imgs.size() == MK.MAKERS.size(), "every manufacturer has its own crest")
+	var all: Dictionary = CD.entries()
+	var codex_ok := true
+	for mid2 in MK.MAKERS:
+		var e: Dictionary = all.get("maker_" + mid2, {})
+		codex_ok = codex_ok and not e.is_empty() and String(e["text"]).contains(String(MK.MAKERS[mid2]["motto"]))
+	check(codex_ok and all["maker_earthworks"]["unlock"] == "start" and all["maker_concord"]["unlock"] == "faction:assembly", "codex: one entry per manufacturer (Earthworks known from the start, state ones with their power)")
+	check(String(all["maker_hadrian"]["text"]).contains("Erik Martin") and String(all["maker_aurelle"]["text"]).contains("Ivoire Maison"), "codex: the manufacturers' histories")
+	check(CrestArt.maker_texture("khi") != null and CrestArt.maker_texture("khi").get_width() == CrestArt.W, "crest textures for the codex")
