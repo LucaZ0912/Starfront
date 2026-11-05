@@ -79,7 +79,8 @@ lists every archetype loadout.
 - **Drones:** small and weak (60 hull, no shield without an emitter, 5 m³ cargo), one sealed fuel load
   of 5 minutes (idle 0.8×, working 1×, fighting 1.2×; none used in the hangar) – empty or shot down
   means lost. They act within **9,000 km** of the ship; further out they fly back and drop their target.
-  They fire their real weapon, mine with the same beam as the ship and show an engine glow.
+  At rest they fly a symmetric formation (mirrored pairs left and right, an odd one right behind on
+  the centre line). They fire their real weapon, mine with the same beam as the ship and show an engine glow.
 - **Drone window** (top left edge): folded until drones are out. Role tiles **Combat / Mining / Repair**
   (any time, for all drones) and the behaviour:
   - Combat: *Defend* (ships that attacked you or that you attacked), *Attack target* (your active

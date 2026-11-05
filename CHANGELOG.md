@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.23.3 – 2026-11-05
+
+- Idle drones fly a symmetric formation: mirrored pairs left and right, an odd one exactly behind on the centre line, same heading as the ship.
+
 ## alpha 0.4.23.2 – 2026-11-05
 
 - Ship menu → Modules: new category for the drone hangar equipment (weapon, mining laser, drone module).

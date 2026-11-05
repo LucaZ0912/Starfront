@@ -1315,6 +1315,28 @@ func _shoot_standing(view: SystemView) -> void:
 		print("[SMOKE] screenshot: Claude outputs/drones.png")
 		for dd in view.drones_of(dpl):
 			view.stow_drone(dd)
+		# symmetric idle formation: a Bastion with 5 drones at rest
+		var bf := GameState.create_from_preset("std_bastion", "player")
+		bf.system_id = view.system_id
+		bf.position = dpl.position + Vector2(0, -3000)
+		bf.drones = []
+		for i5 in 5:
+			bf.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+		bf.drone_modes["combat"] = "rest"
+		var bc := Ship.new()
+		bc.setup(bf, view)
+		view.ship_layer.add_child(bc)
+		bc.heading = -0.6
+		view.launch_drones(bc)
+		view.follow = false
+		view.camera.position = bc.position
+		for i6 in 240:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/drone_formation.png")
+		for dd5 in view.drones_of(bc):
+			view.stow_drone(dd5)
+		bc.queue_free()
+		view.follow = true
 	_shooting = false
 
 
@@ -2932,6 +2954,16 @@ func _test_drones(view: SystemView) -> void:
 	f.drone_modes["combat"] = "rest"
 	var fp: Vector2 = d._formation()
 	check(fp.distance_to(c.position) < c.radius + 200.0, "resting drones fly in formation around the ship")
+	var sym_ok := true
+	for nn in [1, 2, 3, 4, 5, 9]:
+		for kk in nn / 2:
+			var a1: Vector2 = d.formation_slot(kk * 2, nn, 30.0)
+			var a2: Vector2 = d.formation_slot(kk * 2 + 1, nn, 30.0)
+			sym_ok = sym_ok and is_equal_approx(a1.x, a2.x) and is_equal_approx(a1.y, -a2.y) and a1.y != 0.0
+		if nn % 2 == 1:
+			var mid: Vector2 = d.formation_slot(nn - 1, nn, 30.0)
+			sym_ok = sym_ok and is_zero_approx(mid.y) and mid.x < 0.0
+	check(sym_ok, "idle formation is symmetric: mirrored pairs, an odd drone on the centre line behind")
 	# defend: a pirate attacking the carrier
 	var pir: Ship = view.spawn_npc("pirate_raider_rocket", c.position + Vector2(600, 0))
 	pir.archetype = ""

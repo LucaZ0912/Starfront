@@ -20,6 +20,7 @@ var recalled := false
 var _wcd := 0.0
 var _burn := "idle"
 var _think := 0.0
+var _idle := false                # flying in formation this frame
 
 
 func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: int) -> void:
@@ -74,6 +75,7 @@ func _physics_process(delta: float) -> void:
 		return
 	tool_beams.clear()
 	_burn = "idle"
+	_idle = false
 	var home_d := position.distance_to(carrier.position)
 	var dest: Vector2
 	if recalled or view.drones_must_return(carrier):
@@ -116,9 +118,19 @@ func _behave(delta: float) -> Vector2:
 func _formation() -> Vector2:
 	var mates: Array = view.drones_of(carrier)
 	var i := maxi(mates.find(self), 0)
-	var n := maxi(mates.size(), 1)
-	var ang := float(carrier.heading) + PI + (i - (n - 1) / 2.0) * 0.55
-	return carrier.position + Vector2.from_angle(ang) * (float(carrier.radius) + 70.0 + 28.0 * (i % 3))
+	_idle = true
+	return carrier.position + formation_slot(i, maxi(mates.size(), 1), float(carrier.radius)).rotated(carrier.heading)
+
+
+## Symmetric formation (local: x = forward, y = right): drones in mirrored pairs left and right of
+## the ship, row by row further back; an odd one flies exactly on the centre line behind.
+static func formation_slot(i: int, n: int, r: float) -> Vector2:
+	var pairs := n / 2
+	if i >= pairs * 2:
+		return Vector2(-(r + 70.0 + 40.0 * pairs), 0.0)          # the odd one: right behind
+	var k := i / 2
+	var side := -1.0 if i % 2 == 0 else 1.0
+	return Vector2(-(r * 0.3 + 45.0 * k), side * (r + 55.0 + 35.0 * k))
 
 
 func _in_reach(n) -> bool:
@@ -349,16 +361,16 @@ func _fly(delta: float, dest: Vector2) -> void:
 	var spd := maxf(float(dstats["speed"]), carrier.velocity.length() * 1.3)
 	var to := dest - position
 	var dist := to.length()
-	var desired := Vector2.ZERO
-	if dist > 4.0:
+	var desired := carrier.velocity if dist < 300.0 else Vector2.ZERO   # keep pace with the ship
+	if dist > 2.0:
 		var brake := spd * spd / (2.0 * spd * 2.0)
 		var s2 := spd if dist > brake else spd * dist / brake
-		desired = to / dist * s2
-		if dist < 300.0:
-			desired += carrier.velocity
+		desired += to / dist * s2
 	velocity = velocity.move_toward(desired, spd * 2.0 * delta)
 	position += velocity * delta
-	if velocity.length() > 8.0:
+	if _idle and dist < 40.0:
+		heading = _rotate_toward(heading, carrier.heading, 6.0 * delta)   # in formation: same heading
+	elif (velocity - carrier.velocity).length() > 8.0:
 		heading = _rotate_toward(heading, velocity.angle(), 8.0 * delta)
 
 

@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 23 fertig. Netzwerk fehlt noch. Version alpha 0.4.23.2. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 23 fertig. Netzwerk fehlt noch. Version alpha 0.4.23.3. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -674,6 +674,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 - [x] Warp-Ausrichten/Sprungantrieb: Drohnen fliegen in den Hangar und kommen danach sofort wieder heraus; zu weit entfernte bleiben zurück. Andocken nimmt sie auf.
 - [x] Drone Bay der Hivewright Drone Works in jeder Station: kaufen, gebrauchte verkaufen, Hüllen reparieren (Treibstoff nicht nachfüllbar). Hangars und Drohnenmodule beim Ausrüster.
 - [x] Schiffsmenü → Modules: eigene Kategorie „Drone hangar – equipment for all drones“ mit den drei Ausstattungsplätzen; Icons für Drohnenhangar und Drohnenmodule (0.4.23.2).
+- [x] Ruhende Drohnen fliegen symmetrisch: gespiegelte Paare links und rechts, Reihe für Reihe weiter hinten, eine ungerade Drohne exakt auf der Mittelachse dahinter; in Position mit demselben Kurs wie das Schiff (0.4.23.3).
 - [x] Test-Stabilität: der Kampftest wartet nur noch auf den eigenen Piraten und nimmt ihm den Radarstörer.
 
 - **Drohnenhangar** wird dem Schiff zugewiesen – als **Extramodul in der Basisklasse**; Größe und ob überhaupt vorhanden hängen vom Schiff ab.
