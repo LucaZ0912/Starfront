@@ -88,6 +88,8 @@ var locks: Array = []            # [{key, node, progress}]
 var active_lock := ""            # key of the lock that newly switched-on modules act on
 var module_target := {}          # package 22 (multi-focus): slot -> lock key the module works on
 var _focus: Array = []           # NPC: extra targets for its weapons (bigger ships split their fire)
+var _relock := {}                # lock key -> {node, until}: lost out of range – re-locked when back
+const RELOCK_TIME := 60.0        # how long modules wait for a target that left the sensor range
 var module_on := {}              # slot -> bool
 var module_timers := {}          # slot -> remaining cycle time (weapons)
 var module_state := {}           # slot -> "off" | "on" | "range" | "energy"
@@ -308,6 +310,7 @@ func clear_locks() -> void:
 	locks.clear()
 	active_lock = ""
 	module_on.clear()
+	_relock.clear()
 
 
 func _dock(st_node) -> void:
@@ -1515,8 +1518,8 @@ func add_lock(node) -> String:
 	if bl != null:
 		return "No line of sight – %s is in the radar shadow of %s." % [node_name(node), bl.title()]
 	locks.append({"key": key, "node": node, "progress": 0.0})
-	if active_lock == "" or locked_node() == null:
-		active_lock = key
+	active_lock = key                  # a new lock becomes the active target
+	_relock.erase(key)
 	_mlog("Locking %s … (%.1f s)" % [node_name(node), _lock_duration(node, fit.stats())])
 	return ""
 
@@ -1557,6 +1560,49 @@ func retarget(slot: String) -> String:
 	return ""
 
 
+## A target that left the sensor range (or went into a radar shadow): its modules stay on and wait;
+## it is locked again automatically when it comes back (within RELOCK_TIME).
+func _remember_lock(key: String, n) -> void:
+	var was_active := active_lock == key
+	remove_lock(key)
+	if modules_on(key) > 0:
+		_relock[key] = {"node": n, "until": GameState.play_time + RELOCK_TIME, "active": was_active}
+
+
+func _relock_note(key: String) -> String:
+	var m := modules_on(key)
+	return (" – %d module%s wait and resume when it is back" % [m, "" if m == 1 else "s"]) if m > 0 else ""
+
+
+func _update_relock(sr: float) -> void:
+	for key in _relock.keys():
+		var r: Dictionary = _relock[key]
+		var n = r["node"]
+		if GameState.play_time > float(r["until"]) or not lockable(n) or modules_on(key) == 0:
+			_relock.erase(key)
+			continue
+		if lock_index(key) >= 0 or locks.size() >= max_locks() or position.distance_to(n.position) > sr:
+			continue
+		if view.blocker(position, n.position) if "colossi" in view else null:
+			continue
+		var keep := active_lock
+		locks.append({"key": key, "node": n, "progress": 0.0})
+		if not r.get("active", false) and keep != "":
+			active_lock = keep
+		elif r.get("active", false) or active_lock == "":
+			active_lock = key
+		_relock.erase(key)
+		_mlog("%s back in sensor range – locking it again." % node_name(n), GameState.COL_INFO)
+
+
+## Modules on `key` that wait for it: lost out of range (re-lock pending) or still locking.
+func waiting_for(key: String) -> bool:
+	if _relock.has(key):
+		return true
+	var i := lock_index(key)
+	return i >= 0 and float(locks[i]["progress"]) < 1.0
+
+
 func remove_lock(key: String) -> void:
 	var i := lock_index(key)
 	if i >= 0:
@@ -1581,8 +1627,8 @@ func _update_locks(delta: float, s: Dictionary) -> void:
 		var n = l["node"]
 		var shadow = view.blocker(position, n.position) if (lockable(n) and "colossi" in view) else null
 		if shadow != null:
-			_mlog("Lock on %s lost – hidden behind %s (radar shadow)." % [node_name(n), shadow.title()], GameState.COL_WARN)
-			remove_lock(l["key"])
+			_mlog("Lock on %s lost – hidden behind %s (radar shadow)%s." % [node_name(n), shadow.title(), _relock_note(l["key"])], GameState.COL_WARN)
+			_remember_lock(l["key"], n)
 			continue
 		if not lockable(n) or position.distance_to(n.position) > sr * 1.25:
 			if n == null or not is_instance_valid(n) or (n is Ship and n.dying):
@@ -1590,13 +1636,16 @@ func _update_locks(delta: float, s: Dictionary) -> void:
 			elif not lockable(n):
 				_mlog("Lock on %s released (nothing left to target)." % node_name(n))
 			else:
-				_mlog("Lock on %s broken – out of sensor range (%s)." % [node_name(n), SystemView.fmt_dist(sr * 1.25)], GameState.COL_WARN)
+				_mlog("Lock on %s broken – out of sensor range (%s)%s." % [node_name(n), SystemView.fmt_dist(sr * 1.25), _relock_note(l["key"])], GameState.COL_WARN)
+				_remember_lock(l["key"], n)
+				continue
 			remove_lock(l["key"])
 			continue
 		var was := float(l["progress"])
 		l["progress"] = minf(1.0, was + delta / _lock_duration(n, s))
 		if was < 1.0 and float(l["progress"]) >= 1.0:
 			_mlog("Target locked: %s%s" % [node_name(n), "  (active target)" if l["key"] == active_lock else ""], GameState.COL_GOOD)
+	_update_relock(sr)
 	# legacy fields for drawing / HUD: the active lock if it is a ship
 	var i := lock_index(active_lock)
 	target = null
@@ -1781,7 +1830,11 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 			continue
 		if e["kind"] == "tool" and d["tool"] == "interdict":
 			continue             # run by SystemView (timing game)
-		node = locked_node(String(module_target.get(slot, active_lock)))
+		var mkey := String(module_target.get(slot, active_lock))
+		node = locked_node(mkey)
+		if node == null and waiting_for(mkey):
+			module_state[slot] = "range"     # target out of sensor range / being locked again: wait
+			continue
 		var err := module_target_error(e, node)
 		if err != "":
 			_switch_off(slot, d, "no valid target (target lost or changed)" if node == null else err.trim_suffix("."))

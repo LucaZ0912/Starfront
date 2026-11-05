@@ -2768,6 +2768,34 @@ func _test_multifocus(view: SystemView) -> void:
 		pl.remove_lock(k2)
 		pl._update_modules(0.05, pl.fit.stats())
 		check(not pl.module_on[beam] and pl.module_on[other], "a lost target switches off only the modules on it")
+		# a new lock becomes the active target – the module on the old one turns yellow
+		pl.module_on.clear()
+		pl.module_target.clear()
+		pl.clear_locks()
+		t2.position = pl.position + Vector2(-250, 0)
+		pl.add_lock(t1)
+		pl.locks[0]["progress"] = 1.0
+		pl.set_module_active(beam, true)
+		pl.add_lock(t2)
+		main.hud._update_modules()
+		check(pl.active_lock == k2 and (main.hud._module_tiles[beam]["style"] as StyleBoxFlat).border_color == main.hud.STATE_COLORS["other"], "locking another target makes it the active one – the running weapon turns yellow")
+		# target leaves the sensor range: the weapon waits (orange) and resumes after an automatic re-lock
+		var far: Vector2 = t1.position
+		t1.position = pl.position + Vector2(float(pl.fit.stats()["sensor_range"]) * 2.0, 0)
+		var st5: Dictionary = pl.fit.stats()
+		pl._update_locks(0.05, st5)
+		pl._update_modules(0.05, st5)
+		var waited: bool = pl.module_on[beam] and pl.module_state[beam] == "range" and pl.lock_index(k1) < 0
+		t1.position = far
+		pl._update_locks(0.05, st5)
+		var relocked: bool = pl.lock_index(k1) >= 0
+		for i7 in 100:
+			pl._update_locks(0.1, st5)
+		pl.fit.capacitor = 500.0
+		pl.module_timers.clear()
+		var hp1: float = t1.fit.shield + t1.fit.armor + t1.fit.structure
+		pl._update_modules(0.05, st5)
+		check(waited and relocked and pl.module_on[beam] and pl.module_state[beam] == "on" and t1.fit.shield + t1.fit.armor + t1.fit.structure < hp1, "a target out of sensor range is locked again when it is back – the weapon fires again")
 	pl.module_on.clear()
 	pl.module_target.clear()
 	pl.clear_locks()

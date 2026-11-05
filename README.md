@@ -74,6 +74,9 @@ lists every archetype loadout.
   different ships at once. Pressing the key of a running module whose target is not the active one
   moves it to the active target; pressed again it switches off. A lost lock only switches off the
   modules that worked on it.
+- A **new lock becomes the active target**. If a target leaves the sensor range (or hides in a radar
+  shadow), the modules on it stay on and wait (orange); it is **locked again automatically** when it is
+  back within 60 s and they resume.
 - **Lock slots** grow with the sensor suite: 3 (size 1–2), 4 (3–4), 5 (5–6), 6 (7–8).
 - Module tile borders: green = working on the active target, yellow = on another target, orange = out
   of range, purple = not enough energy, red = no power.
