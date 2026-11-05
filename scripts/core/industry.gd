@@ -168,7 +168,43 @@ static func missing_materials(fit: ShipFitting, rec: Dictionary) -> Dictionary:
 	return missing
 
 
-## Builds a module from materials in the ship's cargo. Result goes to station storage.
+# ---------------------------------------------------------------- Build time (package 25b)
+
+const BUILD_TIME_BASE := 15.0      # seconds for a size-1 module; grows with size^1.2
+const DRONE_BUILD_TIME := 40.0
+## A drone from the factory of a Kanayama-maru
+const DRONE_RECIPE := {"materials": {"electronics": 3, "alloys": 2, "aluminium": 2}, "fee": 0}
+
+
+static func build_time(item: String) -> float:
+	if item == "drone":
+		return DRONE_BUILD_TIME
+	return BUILD_TIME_BASE * pow(float(GameData.modules[item]["size"]), 1.2)
+
+
+## What a ship factory can build (Kanayama-maru): what an industrial complex builds, up to size 7.
+const SHIP_FACTORY := {"id": "ship_factory", "type": "industry", "tier": 2}
+
+
+## Takes the materials for `item` (a module or "drone") from the ship's cargo and queues it in the
+## ship's own factory. "" = queued.
+static func ship_build(fit: ShipFitting, item: String) -> String:
+	var rec: Dictionary = DRONE_RECIPE if item == "drone" else recipe(SHIP_FACTORY, item)
+	if item != "drone" and not can_build_here(SHIP_FACTORY, item):
+		return "The ship's factory cannot build this module."
+	if not missing_materials(fit, rec).is_empty():
+		return "Missing materials."
+	for k in rec["materials"]:
+		fit.remove_cargo(k, float(rec["materials"][k]))
+	var made := item if item == "drone" else roll_quality(item)
+	var t := build_time(item)
+	GameState.jobs.append({"kind": "ship", "uid": fit.uid, "item": made, "total": t, "left": t})
+	last_built = made
+	return ""
+
+
+## Builds a module from materials in the ship's cargo. It takes time (build_time); the result goes
+## to station storage when it is finished (GameState.jobs).
 static func build(fit: ShipFitting, station: Dictionary, module_id: String) -> String:
 	if not can_build_here(station, module_id):
 		return "The fabricators here cannot build this module."
@@ -180,7 +216,7 @@ static func build(fit: ShipFitting, station: Dictionary, module_id: String) -> S
 	for k in rec["materials"]:
 		fit.remove_cargo(k, float(rec["materials"][k]))
 	var made := roll_quality(module_id)
-	GameState.storage_add(station["id"], made)
+	var t := build_time(module_id)
+	GameState.jobs.append({"kind": "station", "station": String(station["id"]), "station_name": String(station.get("name", "")), "item": made, "total": t, "left": t})
 	last_built = made
-	GameState.stats["built"] = int(GameState.stats.get("built", 0)) + 1
 	return ""

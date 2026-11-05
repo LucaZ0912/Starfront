@@ -110,6 +110,18 @@ const HULLS := {
 		"refinery": {"rate": 1.0, "eff": 0.9, "power": 32}, "builtin": ["refinery", "prospect"],
 		"desc": "\"Rock breaker\" – KHI's heavy mining barge: four big tool slots, a huge ore hold, a strong refinery.",
 	},
+	"kanayama": {
+		"maker": "khi", "name": "Kanayama-maru", "class": "Heavy Industry Ship", "size": 3, "price": 950000, "buyable": true,
+		"structure": 6200, "mass": 11500, "signature": 260, "cargo": 400,
+		"slots": {"weapon": 2, "tool": 2, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [2, 2], "tool": [3, 3], "optional": [8, 7, 6, 5], "hull": 9, "engine": 9, "reactor": 10, "distributor": 9, "tank": 9, "hyperdrive": 5, "sensors": 5, "hangar": 9, "dweapon": [1], "dtool": [1], "dbonus": [3]},
+		"drones": 9, "shape": "kanayama", "length": 96,
+		"ore_cargo": 1200, "mining_bonus": 0.10, "turn_mult": 0.6, "align_mult": 1.7,
+		"refinery": {"rate": 3.0, "eff": 1.0, "power": 60}, "factory": {"power": 30}, "market": {"power": 6},
+		"builtin": ["refinery", "prospect", "factory", "market"],
+		"drone_bonus": {"mining": 0.25, "cargo": 5.0}, "drone_paint": "khi_drone",
+		"desc": "KHI's heavy industry ship: a drone carrier for nine mining drones, a refinery as good as a station's, a factory and an on-board market.",
+	},
 	# ---------------- Civilian NPC hulls (phase 0.5 package 11) ----------------
 	"shuttle": {
 		"maker": "earthworks", "name": "Skiff", "class": "Passenger Shuttle", "size": 1, "price": 6000, "buyable": true,

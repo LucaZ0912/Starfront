@@ -83,7 +83,7 @@ static func _convert_presets() -> Dictionary:
 		# package 23: every ship has a drone hangar; the pilot's standard fits come with drone gear
 		if slot_max_of(h, "hangar") > 0 and not conv.has("hangar"):
 			conv["hangar"] = ModuleData.id_of("hangar", slot_max_of(h, "hangar"), "C")
-		if String(pid).begins_with("std_") and slot_max_of(h, "dweapon_0") > 0:
+		if String(pid).begins_with("std_") and slot_max_of(h, "dweapon_0") > 0 and not conv.has("dweapon_0"):
 			conv["dweapon_0"] = ModuleData.id_of("w_pulse", 1, "C")
 			conv["dtool_0"] = ModuleData.id_of("t_mining", 1, "C")
 		p["modules"] = conv

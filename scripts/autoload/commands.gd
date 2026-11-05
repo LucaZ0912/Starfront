@@ -629,8 +629,37 @@ func _c_build(c: Dictionary) -> String:
 	var mid: String = c["module"]
 	var err := Industry.build(_fit(), docked_station(), mid)
 	if err == "":
-		GameState.log_msg("Molten Lotus fabricated: %s (in station storage)." % GameData.module_name(Industry.last_built), GameState.COL_GOOD)
+		GameState.log_msg("Molten Lotus started: %s – ready in %d s (then in station storage)." % [GameData.module_name(Industry.last_built), int(Industry.build_time(mid))], GameState.COL_GOOD)
 	return err
+
+
+## {"type":"ship_build", "item": module id | "drone"} – queue a job in the ship's own factory.
+func _c_ship_build(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null or not f.hull().has("factory"):
+		return "This ship has no factory."
+	var item := String(c["item"])
+	var err := Industry.ship_build(f, item)
+	if err == "":
+		GameState.log_msg("Factory: %s queued (%d s while the factory runs)." % ["Drone" if item == "drone" else GameData.module_name(item), int(Industry.build_time(item))], GameState.COL_GOOD)
+	return err
+
+
+## {"type":"market_offer", "item": id, "amount": n, "price": cr} – on-board market (0 = withdraw).
+func _c_market_offer(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null or not f.hull().has("market"):
+		return "This ship has no market."
+	var item := String(c["item"])
+	var amount := int(c.get("amount", 0))
+	if amount <= 0:
+		f.market_offers.erase(item)
+		return ""
+	amount = mini(amount, int(floor(float(f.cargo.get(item, 0.0)))))
+	if amount <= 0:
+		return "Nothing of that in the hold."
+	f.market_offers[item] = {"amount": amount, "price": maxi(1, int(c.get("price", 1)))}
+	return ""
 
 
 # ---------------------------------------------------------------- Contracts

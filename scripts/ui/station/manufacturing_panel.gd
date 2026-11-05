@@ -16,6 +16,12 @@ func build() -> void:
 	add_child(UI.label("Fabricators here build: %s (up to size %s). Materials come from your cargo hold, the module goes to station storage." % [
 		", ".join(PackedStringArray(names)), GameData.SIZE_NAMES[int(station["tier"])]], 13, UI.TEXT_DIM))
 	cargo_line()
+	# package 25b: every job takes time – the queue of this station
+	var q := GameState.jobs_at(String(station["id"]))
+	if not q.is_empty():
+		section("IN PRODUCTION")
+		for j in q:
+			add_child(UI.label("%s – %d s left" % [GameData.module_name(String(j["item"])), int(ceil(float(j["left"])))], 13, UI.GOLD))
 	var list := Industry.buildable(station)
 	if list.is_empty():
 		add_child(UI.label("Nothing can be built here.", 13, UI.TEXT_DIM))
@@ -40,7 +46,7 @@ func build() -> void:
 			var need := int(rec["materials"][k])
 			var have := int(f.cargo.get(k, 0.0))
 			mats.add_child(UI.label("%s %d/%d" % [GameData.item_name(k), mini(have, need), need], 13, UI.GOOD if have >= need else UI.BAD))
-		row.add_child(UI.label("Fee %s" % GameData.fmt_credits(int(rec["fee"])), 13, UI.GOLD))
+		row.add_child(UI.label("Fee %s  •  %d s" % [GameData.fmt_credits(int(rec["fee"])), int(Industry.build_time(mid))], 13, UI.GOLD))
 		var id: String = mid
 		var b := UI.button("Build", func(): _build(id))
 		b.disabled = not missing.is_empty()

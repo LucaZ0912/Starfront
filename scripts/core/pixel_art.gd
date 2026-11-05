@@ -26,6 +26,8 @@ const PALETTE := {
 const FACTION := {
 	"player": {"h": Color(0.62, 0.68, 0.77), "H": Color(0.85, 0.89, 0.95), "d": Color(0.42, 0.47, 0.57), "D": Color(0.27, 0.3, 0.38),
 		"a": Color(0.25, 0.78, 1.0), "f": Color(0.55, 0.88, 1.0)},
+	"khi_drone": {"h": Color(0.95, 0.74, 0.12), "H": Color(1.0, 0.87, 0.38), "d": Color(0.7, 0.48, 0.08), "D": Color(0.35, 0.24, 0.05),
+		"a": Color(0.12, 0.12, 0.13), "f": Color(1.0, 0.7, 0.3)},
 	"pirate": {"h": Color(0.56, 0.42, 0.35), "H": Color(0.74, 0.58, 0.46), "d": Color(0.38, 0.27, 0.23), "D": Color(0.24, 0.17, 0.15),
 		"a": Color(0.95, 0.22, 0.18), "f": Color(1.0, 0.55, 0.2)},
 	"neutral": {"h": Color(0.66, 0.64, 0.56), "H": Color(0.86, 0.84, 0.74), "d": Color(0.45, 0.43, 0.37), "D": Color(0.3, 0.29, 0.25),
@@ -420,7 +422,7 @@ const SIZE_COLORS := {1: Color(0.55, 0.65, 0.75), 2: Color(0.4, 0.75, 1.0), 3: C
 
 static func module_icon_key(module_id: String) -> String:
 	if module_id.begins_with("builtin:"):
-		return {"builtin:refinery": "refinery", "builtin:prospect": "t_prospect"}.get(module_id, "empty")
+		return {"builtin:refinery": "refinery", "builtin:prospect": "t_prospect", "builtin:factory": "factory", "builtin:market": "market"}.get(module_id, "empty")
 	if not GameData.modules.has(module_id):
 		return "empty"
 	var m: Dictionary = GameData.modules[module_id]

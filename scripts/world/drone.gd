@@ -41,6 +41,7 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 	f.armor = 0.0
 	f.shield = float(dstats["shield"])
 	setup(f, p_view)
+	paint = String(carrier.fit.hull().get("drone_paint", carrier.paint if carrier.faction == "player" else "player"))
 	is_drone = true
 	manual = false
 	velocity = Vector2.from_angle(carrier.heading + PI + randf_range(-0.6, 0.6)) * 120.0 + carrier.velocity

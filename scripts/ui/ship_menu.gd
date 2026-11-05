@@ -16,7 +16,7 @@ const CATEGORIES := [
 	["Core", "core"], ["Weapons", "weapon"], ["Tools", "tool"], ["Optional", "optional"],
 	["Drone hangar – equipment for all drones", "drone"],
 ]
-const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing", "Codex"]
+const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing", "Codex", "Industry"]
 const CodexView = preload("res://scripts/ui/codex_view.gd")
 const FactionData = preload("res://data/factions.gd")
 
@@ -160,6 +160,110 @@ func rebuild() -> void:
 			var cv := CodexView.new()
 			content.add_child(cv)
 			cv.setup(true)
+		7:
+			_build_industry()
+
+
+# ================================================================ Industry (package 25b)
+
+static var factory_filter := "drone"
+const FACTORY_FILTERS := [["drone", "Drones"], ["weapon", "Weapons"], ["optional", "Optional"], ["hull", "Hull"], ["engine", "Engines"],
+	["reactor", "Reactors"], ["distributor", "Distributors"], ["tank", "Tanks"]]
+
+
+func _build_industry() -> void:
+	var box := _scroll()
+	var h := fit.hull()
+	if not h.has("factory") and not h.has("market"):
+		box.add_child(UI.label("This ship has no factory and no on-board market – the Kanayama-maru of Kanayama Heavy Industries has both.", 14, UI.TEXT_DIM))
+		return
+	if h.has("factory"):
+		_build_factory(box)
+	if h.has("market"):
+		_build_market(box)
+
+
+func _build_factory(box: VBoxContainer) -> void:
+	box.add_child(UI.label("FACTORY", 18, UI.NEON_CYAN))
+	box.add_child(UI.wrap_label("Builds modules (like an industrial complex, up to size 7) and drones from the materials in your cargo hold. Every job takes time and only progresses while the factory is switched on (module bar) and the ship is in space. Finished modules go into the cargo hold, drones into the hangar.", 12, UI.TEXT_DIM, 900))
+	var q: Array = GameState.ship_jobs(fit.uid)
+	box.add_child(UI.label("Factory %s  •  %d job%s queued" % ["running" if fit.factory_on else "switched off", q.size(), "" if q.size() == 1 else "s"], 13, UI.GOOD if fit.factory_on else UI.GOLD))
+	for j in q:
+		var nm := "Drone" if j["item"] == "drone" else GameData.module_name(String(j["item"]))
+		box.add_child(UI.label("  • %s – %d s left" % [nm, int(ceil(maxf(float(j["left"]), 0.0)))], 12, Color(1.0, 0.85, 0.5)))
+	var tabs := UI.hbox(4)
+	box.add_child(tabs)
+	for fspec in FACTORY_FILTERS:
+		var key: String = fspec[0]
+		var b := UI.button(fspec[1], func(): factory_filter = key; rebuild())
+		b.toggle_mode = true
+		b.button_pressed = factory_filter == key
+		tabs.add_child(b)
+	var items: Array = []
+	if factory_filter == "drone":
+		items = ["drone"]
+	else:
+		for mid in Industry.buildable(Industry.SHIP_FACTORY):
+			if String(GameData.modules[mid]["slot"]) == factory_filter:
+				items.append(mid)
+	for item in items:
+		var rec: Dictionary = Industry.DRONE_RECIPE if item == "drone" else Industry.recipe(Industry.SHIP_FACTORY, item)
+		var missing := Industry.missing_materials(fit, rec)
+		var row := UI.hbox(12)
+		box.add_child(row)
+		row.add_child(UI.icon(PixelArt.icon_texture("drone") if item == "drone" else PixelArt.module_icon(item), 32))
+		var nm2 := UI.label("Drone" if item == "drone" else GameData.module_name(item), 13, UI.NEON_CYAN)
+		nm2.custom_minimum_size = Vector2(240, 0)
+		row.add_child(nm2)
+		var mats := UI.hbox(8)
+		mats.custom_minimum_size = Vector2(460, 0)
+		row.add_child(mats)
+		for k in rec["materials"]:
+			var need := int(rec["materials"][k])
+			var have := int(fit.cargo.get(k, 0.0))
+			mats.add_child(UI.label("%s %d/%d" % [GameData.item_name(k), mini(have, need), need], 12, UI.GOOD if have >= need else UI.BAD))
+		row.add_child(UI.label("%d s" % int(Industry.build_time(item)), 12, UI.GOLD))
+		var it: String = item
+		var bb := UI.button("Build", func(): Commands.execute({"type": "ship_build", "item": it}); rebuild())
+		bb.disabled = not missing.is_empty()
+		row.add_child(bb)
+
+
+func _build_market(box: VBoxContainer) -> void:
+	box.add_child(HSeparator.new())
+	box.add_child(UI.label("ON-BOARD MARKET", 18, UI.NEON_CYAN))
+	box.add_child(UI.wrap_label("Offer goods from your hold at your own price. While the market is open (module bar) and the ship stands still in space, traders of the system fly over and buy – if your price is fair. Large offers attract pirates.", 12, UI.TEXT_DIM, 900))
+	var total := 0
+	for k in fit.market_offers:
+		total += int(fit.market_offers[k]["amount"]) * int(fit.market_offers[k]["price"])
+	box.add_child(UI.label("Market %s  •  on offer: %s%s" % ["OPEN" if fit.market_open else "closed", GameData.fmt_credits(total), "  •  pirates will notice" if total > SystemView.MARKET_PIRATE_VALUE else ""], 13, UI.GOOD if fit.market_open else UI.GOLD))
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 14)
+	box.add_child(grid)
+	for hd in ["Item", "In hold", "Offer", "Price each", "Base price", ""]:
+		grid.add_child(UI.label(hd, 13, UI.NEON_CYAN))
+	for item in fit.cargo:
+		var have := int(floor(float(fit.cargo[item])))
+		if have <= 0 or (not String(item).begins_with("mod:") and not GameData.is_tradeable(String(item))):
+			continue
+		var off: Dictionary = fit.market_offers.get(item, {})
+		var base := SystemView.market_base_price(String(item))
+		grid.add_child(UI.label(GameData.item_name(String(item)), 13))
+		grid.add_child(UI.label(str(have), 13))
+		var amt := SpinBox.new()
+		amt.min_value = 0
+		amt.max_value = have
+		amt.value = int(off.get("amount", 0))
+		grid.add_child(amt)
+		var pr := SpinBox.new()
+		pr.min_value = 1
+		pr.max_value = base * 10
+		pr.value = int(off.get("price", base))
+		grid.add_child(pr)
+		grid.add_child(UI.label(GameData.fmt_credits(base), 12, UI.TEXT_DIM))
+		var it2: String = item
+		grid.add_child(UI.button("Set", func(): Commands.execute({"type": "market_offer", "item": it2, "amount": int(amt.value), "price": int(pr.value)}); rebuild()))
 
 
 # ================================================================ helpers

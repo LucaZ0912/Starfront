@@ -19,6 +19,9 @@ var drones: Array = []
 var drone_role := "combat"                 # combat | mining | repair (all launched drones)
 var drone_relaunch := 0                    # runtime: drones to launch again after a warp / jump
 var refinery_on := true                    # package 25a: built-in refinery switched on (KHI hulls)
+var factory_on := true                     # package 25b: built-in factory runs its queue
+var market_open := false                   # package 25b: on-board market open for traders
+var market_offers := {}                    # item -> {amount, price}
 var _builtin_hull := ""
 var _builtin_cache: Array = []
 var drone_modes := {"combat": "defend", "mining": "auto", "repair": "auto"}
@@ -129,7 +132,7 @@ func set_module(key: String, module_id: String) -> String:
 const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "cargo", "structure", "armor",
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
 	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities",
-	"drones", "drone_role", "drone_modes", "refinery_on"]
+	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -358,6 +361,16 @@ func builtin_modules() -> Array:
 				m["id"] = "builtin:prospect"
 				m["builtin"] = true
 				_builtin_cache.append({"key": "builtin_prospect", "data": m})
+			"factory":
+				_builtin_cache.append({"key": "builtin_factory", "data": {
+					"name": "Factory (built-in)", "base_name": "Factory", "slot": "optional", "active": "factory",
+					"energy_rate": 0.0, "power": float(h.get("factory", {}).get("power", 30.0)), "builtin": true,
+					"id": "builtin:factory", "size": int(h.get("size", 1)), "quality": "C", "mass": 0, "price": 0}})
+			"market":
+				_builtin_cache.append({"key": "builtin_market", "data": {
+					"name": "On-board Market (built-in)", "base_name": "On-board Market", "slot": "optional", "active": "market",
+					"energy_rate": 0.0, "power": float(h.get("market", {}).get("power", 6.0)), "builtin": true,
+					"id": "builtin:market", "size": int(h.get("size", 1)), "quality": "C", "mass": 0, "price": 0}})
 			"refinery":
 				var r: Dictionary = h.get("refinery", {})
 				_builtin_cache.append({"key": "builtin_refinery", "data": {
@@ -393,6 +406,10 @@ func _drone_stats(s: Dictionary, mods: Dictionary) -> void:
 	d["hull"] += float(b.get("d_hull", 0.0))
 	d["shield"] += float(b.get("d_shield", 0.0))
 	d["shield_regen"] += float(b.get("d_shield_regen", 0.0))
+	# carrier hull bonus (package 25b: Kanayama-maru – more mining, more cargo)
+	var hb: Dictionary = hull().get("drone_bonus", {})
+	d["cargo"] += float(hb.get("cargo", 0.0))
+	d["mining_mult"] = 1.0 + float(hb.get("mining", 0.0))
 	s["drone"] = d
 	var w: Dictionary = mods.get("dweapon", {}).duplicate()
 	if not w.is_empty():
@@ -404,6 +421,7 @@ func _drone_stats(s: Dictionary, mods: Dictionary) -> void:
 	var t: Dictionary = mods.get("dtool", {}).duplicate()
 	if not t.is_empty():
 		t["id"] = modules.get("dtool_0", "")
+		t["rate"] = float(t["rate"]) * float(d["mining_mult"])
 	s["drone_tool"] = t
 
 

@@ -95,6 +95,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	credits = START_CREDITS
 	fleet.clear()
 	storage.clear()
+	jobs.clear()
 	missions.clear()
 	offers.clear()
 	bonds.clear()
@@ -143,7 +144,7 @@ func to_dict() -> Dictionary:
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
-		"mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
+		"jobs": jobs.duplicate(true), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 	}
 
 
@@ -164,6 +165,7 @@ func from_dict(d: Dictionary) -> void:
 	offers = d["offers"].duplicate(true)
 	stats.merge(d["stats"], true)
 	play_time = float(d["play_time"])
+	jobs = d.get("jobs", []).duplicate(true)
 	_next_uid = int(d["next_uid"])
 	Missions._counter = int(d.get("mission_counter", 1000))
 	rep.from_dict(d.get("reputation", {}))   # older saves: start standings
@@ -755,10 +757,38 @@ func _arrive(f: ShipFitting) -> void:
 	ship_arrived_system.emit(f)
 
 
+## Manufacturing jobs (package 25b): {kind "station"|"ship", station | uid, item, total, left}.
+## Station jobs run all the time; ship jobs only while the ship's factory runs (Ship._run_active).
+var jobs: Array = []
+
+
+func _advance_station_jobs(delta: float) -> void:
+	for j in jobs.duplicate():
+		if j["kind"] != "station":
+			continue
+		j["left"] = float(j["left"]) - delta
+		if float(j["left"]) <= 0.0:
+			jobs.erase(j)
+			storage_add(String(j["station"]), String(j["item"]))
+			stats["built"] = int(stats.get("built", 0)) + 1
+			log_msg("Manufacturing finished: %s – in storage at %s." % [GameData.module_name(String(j["item"])), String(j.get("station_name", "the station"))], COL_GOOD)
+
+
+## Station jobs at `station_id` (for the manufacturing panel).
+func jobs_at(station_id: String) -> Array:
+	return jobs.filter(func(j): return j["kind"] == "station" and String(j["station"]) == station_id)
+
+
+## Factory jobs of ship `uid`, in order.
+func ship_jobs(uid: int) -> Array:
+	return jobs.filter(func(j): return j["kind"] == "ship" and int(j["uid"]) == uid)
+
+
 func _process(delta: float) -> void:
 	if not running:
 		return
 	play_time += delta
+	_advance_station_jobs(delta)
 	notorious.update(current_system)
 	news.update()
 	_update_faction_jobs(delta)

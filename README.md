@@ -89,6 +89,19 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Kanayama-maru – heavy industry ship (phase 0.5 package 25b)
+- KHI's L-class industry ship (950,000 cr, KHI yards of tier 3): nine drones (+25 % mining, +5 m³ cargo,
+  KHI yellow), a 1,200 m³ ore hold, a refinery as good as a station's, a prospector, very slow to turn and
+  to align for warp.
+- **Building takes time everywhere:** 15 s × size^1.2 per module, 40 s per drone. Station jobs keep
+  running and end up in station storage (queue in the manufacturing panel; jobs are saved).
+- **On-board factory** (built in, 30 MW while on): builds what an industrial complex builds (up to size 7)
+  and drones from your cargo; only while switched on and in space. Modules go into the cargo hold,
+  drones into the hangar. Ship menu → **Industry**.
+- **On-board market** (built in, 6 MW while open): set goods and prices in Ship menu → Industry. While it
+  is open and the ship stands still, traders of the system come over every 25–50 s and buy if the price is
+  fair (up to about 0.9–1.5 × the base price). Offers worth more than 60,000 cr attract pirates.
+
 ## Ship manufacturers (phase 0.5 package 24)
 Seven manufacturers are planned (`data/manufacturers.gd`) – their ships follow in package 25:
 **Earthworks** (EWK, all ships so far), **Kanayama Heavy Industries** (KHI, mining & industry),

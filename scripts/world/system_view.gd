@@ -741,6 +741,7 @@ func _process(delta: float) -> void:
 	if _jam_tick <= 0.0:
 		_jam_tick = 0.5
 		_apply_jamming()
+		_market_tick(0.5)
 	_update_camera(delta)
 	_update_bodies()
 	background.follow(camera)
@@ -1207,6 +1208,109 @@ func _apply_jamming() -> void:
 		for n2 in ship_layer.get_children():
 			if n2 is Ship and n2 != j[0] and not n2.dying and Ship.hostile(j[0], n2) and n2.position.distance_to(j[0].position) <= float(j[1]):
 				n2.jam(1.0)
+
+
+# ---------------------------------------------------------------- Package 25b: on-board market
+
+const MARKET_TRADER_EVERY := Vector2(25.0, 50.0)   # seconds between two traders
+const MARKET_PIRATE_VALUE := 60000                  # offers worth more than this attract pirates
+const MARKET_PIRATE_CHECK := 45.0
+var _market_t := 20.0
+var _market_pirate_t := MARKET_PIRATE_CHECK
+var market_buyers: Array = []                       # [{ship, done, leave_t}]
+
+
+## What traders are used to paying for `item` (commodity base price, modules at 60 % of their price).
+static func market_base_price(item: String) -> int:
+	if item.begins_with("mod:"):
+		return int(float(GameData.modules.get(item.substr(4), {}).get("price", 100)) * 0.6)
+	return int(GameData.commodities.get(item, {}).get("price", 10))
+
+
+## The pilot's market is open: ship with an open market, standing still in space.
+func market_active() -> bool:
+	if player == null or not is_instance_valid(player) or player.is_docked() or player.in_warp():
+		return false
+	var f: ShipFitting = player.fit
+	return f.hull().has("market") and f.market_open and not f.market_offers.is_empty() and player.velocity.length() < 15.0
+
+
+func _market_tick(dt: float) -> void:
+	for b in market_buyers.duplicate():
+		var sh = b["ship"]
+		if sh == null or not is_instance_valid(sh) or sh.dying:
+			market_buyers.erase(b)
+			continue
+		if not b["done"] and player != null and is_instance_valid(player) and sh.position.distance_to(player.position) < 800.0:
+			b["done"] = true
+			market_trade(sh)
+			sh.set_order({"type": "move", "pos": sh.position + Vector2.from_angle(randf() * TAU) * 30000.0})
+			b["leave_t"] = 25.0
+		elif b["done"]:
+			b["leave_t"] = float(b["leave_t"]) - dt
+			if float(b["leave_t"]) <= 0.0:
+				spawn_fx(Fx.flash(sh.position, Color(0.6, 0.85, 1.0), sh.radius * 3.0))
+				sh.queue_free()
+				market_buyers.erase(b)
+	if not market_active():
+		return
+	_market_t -= dt
+	if _market_t <= 0.0:
+		_market_t = randf_range(MARKET_TRADER_EVERY.x, MARKET_TRADER_EVERY.y)
+		var tr: Ship = spawn_npc("civ_freighter" if randf() < 0.4 else "civ_shuttle", player.position + Vector2.from_angle(randf() * TAU) * 7000.0, "civilian", Universe.controller(system_id) if Universe.controller(system_id) in FactionData.POWERS else "")
+		tr.set_order({"type": "move", "pos": player.position + Vector2.from_angle(randf() * TAU) * 450.0})
+		tr.activity = "Coming to trade"
+		market_buyers.append({"ship": tr, "done": false, "leave_t": 0.0})
+		GameState.news.radio("%s is coming over to your market." % tr.display_name(), system_id, player.position)
+	_market_pirate_t -= dt
+	if _market_pirate_t <= 0.0:
+		_market_pirate_t = MARKET_PIRATE_CHECK
+		var value := market_value()
+		if value > MARKET_PIRATE_VALUE and randf() < clampf(float(value) / 500000.0, 0.08, 0.5):
+			var n := randi_range(2, 4)
+			for i in n:
+				var p: Ship = spawn_npc(_pirate_preset(), player.position + Vector2.from_angle(randf() * TAU) * randf_range(6000.0, 9000.0))
+				p.set_order({"type": "attack", "target": player})
+			GameState.log_msg("Your market's wares (%s) have attracted %d pirates!" % [GameData.fmt_credits(value), n], GameState.COL_BAD)
+
+
+## Total value of everything on offer.
+func market_value() -> int:
+	var v := 0
+	if player == null or not is_instance_valid(player):
+		return v
+	for k in player.fit.market_offers:
+		v += int(player.fit.market_offers[k]["amount"]) * int(player.fit.market_offers[k]["price"])
+	return v
+
+
+## A trader at the market buys something it finds fairly priced. Returns the credits earned.
+func market_trade(buyer) -> int:
+	var f: ShipFitting = player.fit
+	var keys: Array = f.market_offers.keys()
+	keys.shuffle()
+	for item in keys:
+		var off: Dictionary = f.market_offers[item]
+		var have := int(floor(float(f.cargo.get(item, 0.0))))
+		var amount := mini(int(off["amount"]), have)
+		if amount <= 0:
+			f.market_offers.erase(item)
+			continue
+		var price := int(off["price"])
+		var max_price := float(market_base_price(String(item))) * randf_range(0.9, 1.5)
+		if price > max_price:
+			continue
+		var budget := randf_range(3000.0, 25000.0)
+		var n := clampi(int(budget / float(price)), 1, amount)
+		f.remove_cargo(String(item), float(n))
+		off["amount"] = int(off["amount"]) - n
+		if int(off["amount"]) <= 0:
+			f.market_offers.erase(item)
+		GameState.add_credits(n * price)
+		GameState.log_msg("Market: %s bought %d × %s for %s." % [buyer.display_name(), n, GameData.item_name(String(item)), GameData.fmt_credits(n * price)], GameState.COL_GOOD)
+		return n * price
+	GameState.log_msg("Market: %s found your prices too high and left." % buyer.display_name(), GameState.COL_WARN)
+	return 0
 
 
 # ---------------------------------------------------------------- Package 23: drones

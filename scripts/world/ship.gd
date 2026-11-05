@@ -1745,11 +1745,13 @@ func set_module_active(slot: String, on: bool) -> String:
 		module_state[slot] = "on" if on else "off"
 		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
 		return ""
-	if e["kind"] == "self" and String(d.get("active", "")) == "refinery":
-		fit.refinery_on = on
+	if e["kind"] == "self" and String(d.get("active", "")) in ["refinery", "factory", "market"]:
+		_set_builtin_on(String(d["active"]), on)
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
-		_mlog("%s %s." % [d["name"], "running – ore from the hold is refined bit by bit" if on else "switched off"])
+		var what := {"refinery": "running – ore from the hold is refined bit by bit", "factory": "running – works through its queue (Ship menu → Industry)",
+			"market": "open – traders in the system come to buy (Ship menu → Industry)"}
+		_mlog("%s %s." % [d["name"], what[d["active"]] if on else "switched off"])
 		return ""
 	if on and e["kind"] == "self":
 		if fit.capacitor < float(d["energy_rate"]):
@@ -1827,8 +1829,8 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 		var slot: String = e["slot"]
 		var d: Dictionary = e["data"]
 		module_timers[slot] = maxf(0.0, float(module_timers.get(slot, 0.0)) - delta)
-		if e["kind"] == "self" and String(d.get("active", "")) == "refinery":
-			module_on[slot] = fit.refinery_on       # survives warps and docking (package 25a)
+		if e["kind"] == "self" and String(d.get("active", "")) in ["refinery", "factory", "market"]:
+			module_on[slot] = builtin_on(String(d["active"]))      # survives warps and docking (package 25a/b)
 		if not module_on.get(slot, false):
 			module_state[slot] = "off"
 			continue
@@ -2023,6 +2025,8 @@ func _run_active(delta: float, slot: String, d: Dictionary) -> void:
 	match String(d["active"]):
 		"refinery":
 			_refine(delta, slot, d)
+		"factory":
+			_run_factory(delta, slot)
 		"shield_boost":
 			if shield_down <= 0.0:   # a collapsed shield cannot be boosted back (package 20)
 				fit.shield = minf(float(st["shield_max"]), fit.shield + float(d["rate"]) * delta)
@@ -2062,6 +2066,57 @@ func _repair_one(delta: float, t: Dictionary, ship) -> bool:
 	if ship != self:
 		tool_beams.append([ship.position, Color(0.4, 1.0, 0.5)])
 	return true
+
+
+# ---------------------------------------------------------------- Package 25b: factory, market
+
+func builtin_on(kind: String) -> bool:
+	match kind:
+		"refinery":
+			return fit.refinery_on
+		"factory":
+			return fit.factory_on
+		"market":
+			return fit.market_open
+	return false
+
+
+func _set_builtin_on(kind: String, on: bool) -> void:
+	match kind:
+		"refinery":
+			fit.refinery_on = on
+		"factory":
+			fit.factory_on = on
+		"market":
+			fit.market_open = on
+
+
+## The on-board factory works on the first job of its queue; a finished module goes into the cargo
+## hold (as a module item), a drone into the drone hangar – it waits if there is no room.
+func _run_factory(delta: float, slot: String) -> void:
+	var q: Array = GameState.ship_jobs(fit.uid)
+	if q.is_empty():
+		module_state[slot] = "on"
+		return
+	var j: Dictionary = q[0]
+	if float(j["left"]) > 0.0:
+		j["left"] = float(j["left"]) - delta
+		module_state[slot] = "on"
+		smoke(delta)
+		return
+	var item := String(j["item"])
+	if item == "drone":
+		if fit.drones.size() >= int(fit.stats()["drone_storage"]):
+			module_state[slot] = "range"     # hangar full – waiting
+			return
+		fit.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+	else:
+		if fit.add_cargo("mod:" + item, 1.0) < 1.0:
+			module_state[slot] = "range"     # cargo hold full – waiting
+			return
+	GameState.jobs.erase(j)
+	GameState.stats["built"] = int(GameState.stats.get("built", 0)) + 1
+	_mlog("Factory finished: %s." % ("a drone (in the hangar)" if item == "drone" else GameData.module_name(item) + " (in the cargo hold)"), GameState.COL_GOOD)
 
 
 # ---------------------------------------------------------------- Package 25a: built-in refinery

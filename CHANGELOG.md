@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.7 – 2026-11-05
+
+**Package 25b – Kanayama-maru, the heavy industry ship.**
+- Drone carrier for nine yellow mining drones (+25 % mining, +5 m³), station-grade refinery, prospector.
+- Manufacturing takes time everywhere (stations too); jobs are queued and saved.
+- On-board factory: modules and drones from the cargo hold.
+- On-board market: traders come over and buy at fair prices; big offers attract pirates.
+- New ship menu tab "Industry"; icons for factory and market.
+
 ## alpha 0.4.25.6 – 2026-11-05
 
 - Intro: the laser shot is now a short, soft zap and quieter (less tiring).

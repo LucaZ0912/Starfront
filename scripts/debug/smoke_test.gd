@@ -518,6 +518,7 @@ func _process(delta: float) -> void:
 				_test_drones(view)
 				_test_manufacturers(view)
 				_test_khi(view)
+				_test_kanayama(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -710,6 +711,7 @@ func _test_station(sp: StationUI) -> void:
 			hornet.cargo[k] = float(hornet.cargo.get(k, 0.0)) + float(rec["materials"][k])
 		var store0: Dictionary = GameState.storage_of(sid).duplicate()
 		var err2 := Commands.execute({"type": "build", "module": mid})
+		GameState._advance_station_jobs(9999.0)   # package 25b: building takes time
 		var made := Industry.last_built
 		var fam_ok: bool = made.begins_with(mid.left(mid.rfind(":") + 1))
 		check(err2 == "" and fam_ok and int(GameState.storage_of(sid).get(made, 0)) == int(store0.get(made, 0)) + 1, "manufactured %s – quality rolled: %s (%s)" % [mid, made, err2])
@@ -1336,6 +1338,16 @@ func _shoot_standing(view: SystemView) -> void:
 			ship_sheet.blend_rect(im9, Rect2i(0, 0, im9.get_width(), im9.get_height()), Vector2i(sx, 20 + row9 * 250))
 		sx += PixelArt.ship_texture(hid9, "player").get_width() * 4 + 30
 	ship_sheet.save_png("res://Claude outputs/khi_ships.png")
+	var kt: Texture2D = PixelArt.ship_texture("kanayama", "player")
+	var kim := kt.get_image()
+	kim.resize(kim.get_width() * 4, kim.get_height() * 4, Image.INTERPOLATE_NEAREST)
+	var dim := PixelArt.ship_texture("drone", "khi_drone").get_image()
+	dim.resize(dim.get_width() * 8, dim.get_height() * 8, Image.INTERPOLATE_NEAREST)
+	var ksheet := Image.create(kim.get_width() + 140, kim.get_height() + 40, false, Image.FORMAT_RGBA8)
+	ksheet.fill(Color(0.05, 0.06, 0.09))
+	ksheet.blend_rect(kim, Rect2i(0, 0, kim.get_width(), kim.get_height()), Vector2i(20, 20))
+	ksheet.blend_rect(dim, Rect2i(0, 0, dim.get_width(), dim.get_height()), Vector2i(kim.get_width() + 40, 40))
+	ksheet.save_png("res://Claude outputs/kanayama.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -3371,3 +3383,110 @@ func _test_intro() -> void:
 	check(intro.closed and intro.phase == "closing", "intro: click closes the brackets")
 	intro.queue_free()
 	check(ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/intro.tscn", "the game starts with the studio intro")
+
+
+## Phase 0.5 package 25b: Kanayama-maru – factory with build time, yellow mining drones, market.
+func _test_kanayama(view: SystemView) -> void:
+	check(GameData.hulls.has("kanayama") and GameData.hulls["kanayama"]["maker"] == "khi" and int(GameData.hulls["kanayama"]["drones"]) == 9, "Kanayama-maru: KHI's heavy industry ship, nine drones")
+	var f := GameState.create_from_preset("std_kanayama", "player")
+	var keys := []
+	for b in f.builtin_modules():
+		keys.append(b["key"])
+	check(keys.has("builtin_refinery") and keys.has("builtin_factory") and keys.has("builtin_market") and keys.has("builtin_prospect"), "built in: refinery, prospector, factory, market")
+	var fb := GameState.create_from_preset("std_bastion", "player")
+	var dk: Dictionary = f.stats()["drone"]
+	check(float(dk["cargo"]) >= float(fb.stats()["drone"]["cargo"]) + 5.0 and float(f.stats()["drone_tool"]["rate"]) > float(fb.stats()["drone_tool"]["rate"]) * 1.2, "its drones mine 25 %% better and carry 5 m³ more (%.0f m³)" % float(dk["cargo"]))
+	# station manufacturing takes time
+	var jn := GameState.jobs.size()
+	GameState.jobs.append({"kind": "station", "station": "st_test", "station_name": "Test", "item": "o_cargo:1:C", "total": 15.0, "left": 15.0})
+	GameState._advance_station_jobs(5.0)
+	var waiting: bool = GameState.storage_of("st_test").get("o_cargo:1:C", 0) == 0 and GameState.jobs_at("st_test").size() == 1
+	GameState._advance_station_jobs(11.0)
+	check(waiting and int(GameState.storage_of("st_test").get("o_cargo:1:C", 0)) == 1 and GameState.jobs.size() == jn, "station manufacturing takes time (%d s for size 1) – then the module is in storage" % int(Industry.build_time("o_cargo:1:C")))
+	GameState.storage.erase("st_test")
+	# the ship's factory: a drone and a module
+	var c := Ship.new()
+	f.system_id = view.system_id
+	f.position = view.player.position + Vector2(0, 70000)
+	f.uid = 99901
+	c.manual = true
+	c.setup(f, view)
+	view.ship_layer.add_child(c)
+	for k in Industry.DRONE_RECIPE["materials"]:
+		f.cargo[k] = float(Industry.DRONE_RECIPE["materials"][k])
+	f.drones.clear()
+	check(Industry.ship_build(f, "drone") == "" and GameState.ship_jobs(f.uid).size() == 1 and float(f.cargo.get("electronics", 0.0)) < 1.0, "factory: a drone is queued, the materials are used")
+	f.factory_on = false
+	for i in 50:
+		c._update_modules(1.0, f.stats())
+	var paused: bool = f.drones.is_empty()
+	f.factory_on = true
+	c._update_modules(1.0, f.stats())
+	check(c.power_in_use().has("builtin_factory"), "the running factory draws power")
+	for i2 in 49:
+		c._update_modules(1.0, f.stats())
+	check(paused and f.drones.size() == 1 and GameState.ship_jobs(f.uid).is_empty(), "the factory only works while switched on – the drone is in the hangar after %d s" % int(Industry.DRONE_BUILD_TIME))
+	var mid := "o_cargo:1:C"
+	var rec := Industry.recipe(Industry.SHIP_FACTORY, mid)
+	for k2 in rec["materials"]:
+		f.cargo[k2] = float(f.cargo.get(k2, 0.0)) + float(rec["materials"][k2])
+	Industry.ship_build(f, mid)
+	var made: String = Industry.last_built
+	for i3 in 40:
+		c._update_modules(1.0, f.stats())
+	check(int(f.cargo.get("mod:" + made, 0.0)) == 1, "factory: a module (%s) ends up in the cargo hold" % GameData.module_name(made))
+	# drones of the Kanayama-maru are yellow
+	view.launch_drones(c, 1)
+	var dr: Array = view.drones_of(c)
+	check(not dr.is_empty() and dr[0].paint == "khi_drone", "its drones fly in KHI yellow")
+	for d0 in dr:
+		view.stow_drone(d0)
+	# the market: traders buy at fair prices, large offers attract pirates
+	var keep_player = view.player
+	view.player = c
+	c.velocity = Vector2.ZERO
+	f.cargo["iron_ingot"] = 400.0
+	var base := SystemView.market_base_price("iron_ingot")
+	f.market_offers = {"iron_ingot": {"amount": 400, "price": int(base * 0.8)}}
+	f.market_open = false
+	var closed_ok: bool = not view.market_active()
+	f.market_open = true
+	check(closed_ok and view.market_active(), "the market is only open when switched on (and the ship stands still)")
+	var cr0: int = GameState.credits
+	var got: int = view.market_trade(c)
+	check(got > 0 and GameState.credits == cr0 + got and float(f.cargo.get("iron_ingot", 0.0)) < 400.0, "a trader buys at a fair price (%s)" % GameData.fmt_credits(got))
+	f.cargo["iron_ingot"] = 400.0
+	f.market_offers = {"iron_ingot": {"amount": 400, "price": base * 10}}
+	check(view.market_trade(c) == 0, "… but not at ten times the price")
+	f.market_offers = {"iron_ingot": {"amount": 400, "price": int(base * 0.8)}}
+	view._market_t = 0.0
+	view._market_tick(0.5)
+	check(view.market_buyers.size() >= 1, "traders of the system fly over to the market")
+	var buyer = view.market_buyers.back()["ship"]
+	buyer.position = c.position + Vector2(300, 0)
+	view._market_tick(0.5)
+	check(view.market_buyers.back()["done"], "… and trade when they arrive")
+	f.cargo["platinum_ingot"] = 500.0
+	f.market_offers["platinum_ingot"] = {"amount": 500, "price": 600}
+	var p0: int = view.pirate_count()
+	for i4 in 60:
+		view._market_pirate_t = 0.0
+		view._market_tick(0.5)
+		if view.pirate_count() > p0:
+			break
+	check(view.market_value() > view.MARKET_PIRATE_VALUE and view.pirate_count() > p0, "a large offer (%s) attracts pirates" % GameData.fmt_credits(view.market_value()))
+	view.player = keep_player
+	for n in view.ship_layer.get_children():
+		if n is Ship and n.faction == "pirate" and n.position.distance_to(c.position) < 12000.0:
+			n.queue_free()
+	for bb in view.market_buyers:
+		if is_instance_valid(bb["ship"]):
+			bb["ship"].queue_free()
+	view.market_buyers.clear()
+	c.queue_free()
+	GameState.jobs = GameState.jobs.filter(func(j): return int(j.get("uid", 0)) != 99901)
+	# ship menu: Industry tab
+	var sm = main.ship_menu
+	sm.open(view, 7)
+	check(sm.content.get_child_count() > 0, "ship menu → Industry tab")
+	sm.close()
