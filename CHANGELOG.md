@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.14 – 2026-11-05
+
+- Roadmap: plans for parts 5 (Character Update), 6 (New Worlds Discovery Update) and the new part 7
+  (The Sky Is Not Enough) taken over from the draft; story moves to part 8, balancing to part 9;
+  phases 1 and 2 swapped (story & endgame first, co-op last); new working principles (debug functions
+  per package, single player first but co-op-ready, alpha until the end of phase 2).
+
 ## alpha 0.4.25.13 – 2026-11-05
 
 - Empress redesigned: narrower window sides and a long park deck under a glass dome between the gold

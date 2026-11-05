@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru) und 25c (Maison Aurelle) fertig, als Nächstes 25d (Hadrian Dynamics). Netzwerk fehlt noch. Version alpha 0.4.25.13. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru) und 25c (Maison Aurelle) fertig, als Nächstes 25d (Hadrian Dynamics). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.14. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -39,9 +39,9 @@ Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und
 | Module | Neues Modulsystem: Familie + Größe (1–10, Waffen 1–4) + Qualität (F–A); jeder Schiffsplatz mit eigener Maximalgröße; ca. 1.900 Module aus 61 Familien. Skiff, Longhaul und Carrion Crow kaufbar. Paket 20: Schild-Varianten mit Downtime nach dem Zusammenbruch, Punktverteidigung, Schildtransfer, Frachtscanner, Sonnen-Sammler, Minenwerfer mit vier Minenarten (Ware), Radarstörer (auch bei Piraten). |
 | Studio-Intro | Beim Start: das animierte „d“ von dlirius games auf Schwarz (aus `dlirius/games.gif`), ein leises „Zapp“ je Farbbalken (ab 0.4.25.6, vorher ein lauterer Laser), danach „dlirius games“ in Silber mit zwei Klammern darüber; ein Mausklick lässt die Klammern mit einem Hammerschlag um das d zusammenfahren, eine Taste überspringt das Intro (alpha 0.4.25.5). |
 | Codex | Nachschlagewerk mit 45 Einträgen in sechs Kategorien; Grundlagen offen, der Rest wird beim Entdecken freigeschaltet („New Codex entry“ im HUD); im Schiffsmenü und im Hauptmenü. |
-| Fehlt | Teile 4–8, Netzwerk, Endgame-Inhalte |
+| Fehlt | Teile 4–9, Story und Endgame-Inhalte (Phase 1), Netzwerk (Phase 2) |
 
-Die Spiellogik für Bewegung und Kampf steckt noch in den Schiff-Objekten der Darstellung; die Trennung erfolgt in Phase 1.
+Die Spiellogik für Bewegung und Kampf steckt noch in den Schiff-Objekten der Darstellung; die Trennung erfolgt mit dem Netzwerk-Umbau in Phase 2.
 
 ## Arbeitsweise & Übergabe (Claude Code)
 
@@ -56,19 +56,37 @@ Ab jetzt wird direkt im Projektordner mit Claude Code gearbeitet. Hinweise für 
 - **Saves:** Galaxie wird aus dem Seed erzeugt, gespeichert werden nur Änderungen (`Universe.GALAXY_VERSION` = 3; ältere Saves werden umgezogen). Konvois werden nicht gespeichert.
 - **Kompatibilität alter Spielstände (Grundsatz für Phase 0.5):** Wir sind in einer frühen Alpha – alte Spielstände müssen **nicht** ladbar bleiben, ein Neuanfang ist in Ordnung. Neue Mechaniken und Umbauten werden **nie** dadurch eingeschränkt, dass alte Spielstände nicht mehr passen. Ein Spielstand-Umzug wird nur gebaut, wenn er nebenbei und ohne Kompromisse geht; sonst erhöhen wir die Version und alte Stände werden mit einem klaren Hinweis abgelehnt.
 - **Dokument:** Fertige Pakete hier abhaken, „Aktueller Stand“ nachziehen; die README im Projekt beschreibt alle Systeme.
+- **Debug-Funktionen (Grundsatz):** Jedes Paket bringt passende Debug-Funktionen mit (Debug-Menü F12, nur bei aktivem Debug-Modus), damit Luz jede neue Mechanik ohne langes Spielen gezielt testen kann: Zustände direkt setzen, Fortschritt überspringen, Inhalte spawnen, Werte einsehen. **Ein Paket gilt erst als fertig, wenn seine Debug-Funktionen da sind.**
+- **Erst ein fertiges Einzelspielerspiel, Koop zum Schluss (Grundsatz):** Ziel ist zuerst ein vollständiges, gut funktionierendes Einzelspielerspiel; Koop ist die Kirsche auf der Torte und kommt am Ende (Phase 2). Trotzdem wird alles von Anfang an koop-tauglich gebaut, damit es später ohne Neubau mehrspielerfähig wird:
+  - Spielzustand (Positionen, Werte, Inventar, Fortschritt) liegt in Daten, nicht nur in Darstellungs-Objekten.
+  - Alles, was den Zustand verändert, läuft über die Befehlsschicht (`Commands.execute`) – so kann später ein Host Befehle von Gästen annehmen.
+  - Alles gehört klar einem Besitzer: Spieler (Pilot, Crew, Söldner, Schiffe, Bonds, Ruf) oder Welt (Systeme, NPCs, Märkte).
+  - Zufall und Simulation so, dass ein Host sie allein entscheidet und an Gäste weitergibt.
+  - Die Benutzeroberfläche zeigt nur an und schickt Befehle – sie ändert selbst keinen Spielzustand.
+- **Alpha bis zum Ende von Phase 2:** Mechaniken werden gebaut, wenn sie ins Projekt passen – auch wenn die Story sie erst später einsetzt (z. B. Veil-Erkundung vor dem Story-Intro). Ob etwas vor der Story „verraten“ wird, spielt in der Alpha keine Rolle.
+- **Roadmap-Entwurf:** `Roadmap_Entwurf.md` pflegen Luz und Claude (Chat) für kommende Teile; Claude Code ändert sie nicht (steht in `.gitignore`) und übernimmt Abschnitte nur auf Zuruf in diese Roadmap.
 - **Versionierung (Git):** Version **alpha Phase.Teil.Paket.laufende Nummer** – z. B. `0.3.18.8` = Phase 0(.5), Teil 3, Paket 18, achtes Update darin. Steht in `project.godot` (`config/version`), im Hauptmenü unten links und in `CHANGELOG.md`. **Jedes Update** bekommt: neue Nummer (laufende Nummer +1; **die laufende Nummer gilt pro Paket**: beginnt ein neues Paket, steigt die Paketnummer und die laufende Nummer startet wieder bei 1 – z. B. Paket 20 beginnt mit `0.4.20.1`; Änderungen und Fehlerbehebungen, auch an älteren Mechaniken, zählen die laufende Nummer des aktuellen Pakets hoch, bis das nächste Paket beginnt), Changelog-Eintrag, einen Commit „alpha <Version> – <Kurzbeschreibung>“ und einen Tag `v<Version>` und wird nach GitHub hochgeladen (`git push --follow-tags`, Repository [LucaZ0912/Starfront](https://github.com/LucaZ0912/Starfront), privat). `.godot/` wird nicht versioniert.
 
 ## Roadmap
 
 &#91;embedded content: Roadmap · 8 Phasen mit Abnahmekriterium\]
 
-Ab Phase 1 ist das Solospiel ein lokaler Host ohne Gäste – deshalb bleibt das Spiel in jeder Phase allein spielbar, und Koop ist nur ein Schalter im Pausenmenü.
+**Neue Reihenfolge der Phasen (entschieden, 5. Nov 2026):** Weil zuerst ein vollständiges Einzelspielerspiel entstehen soll und Koop zum Schluss kommt, **tauschen Phase 1 und Phase 2**:
+
+| Phase | Inhalt |
+| --- | --- |
+| 0 | Fundament (✅ erledigt) |
+| 0.5 | Content & Design (Teile 1–9, siehe unten) |
+| **1** | **Story-Ausbau und vollständiger Endgame-Aufbau** (bisher Phase 2) |
+| **2** | **Netzwerk-Architektur / Koop** (bisher Phase 1) |
+
+Bis zum Netzwerk-Umbau wird jede Mechanik nach dem Grundsatz „koop-tauglich bauen“ entworfen (siehe Arbeitsweise), damit Phase 2 möglichst wenig umbauen muss. Ab Phase 2 ist das Solospiel ein lokaler Host ohne Gäste – deshalb bleibt das Spiel in jeder Phase allein spielbar, und Koop ist nur ein Schalter im Pausenmenü.
 
 ## Phase 0 im Detail
 
 Phase 0 bringt Startmenü, Speichern/Laden und eine Befehlsschicht – alles sofort im Einzelspieler nützlich und die Grundlage für den Server.
 
-**Stand 3. Nov 2026: umgesetzt und getestet** – 75 automatische Prüfungen bestanden (inkl. Debug-Menü), inklusive Speichern → Neustart → Laden. Offen bleibt nur die vollständige Trennung von Simulation und Darstellung; sie wandert in Phase 1.
+**Stand 3. Nov 2026: umgesetzt und getestet** – 75 automatische Prüfungen bestanden (inkl. Debug-Menü), inklusive Speichern → Neustart → Laden. Offen bleibt nur die vollständige Trennung von Simulation und Darstellung; sie wandert in Phase 2 (Netzwerk).
 
 ### Startmenü
 
@@ -93,8 +111,8 @@ Phase 0 bringt Startmenü, Speichern/Laden und eine Befehlsschicht – alles sof
 
 - [x] Jede Spieleraktion ist ein Befehl – 24 Stück, u. a. `move`, `goto`, `attack`, `course`, `undock`, `market_buy`, `fit_module`, `refine`, `build`, `mission_accept`
 - [x] Der Befehlsbus `Commands` prüft und führt Befehle aus; Befehle enthalten nur IDs, Zahlen und Texte, UI und Klicks schicken nur noch Befehle
-- [ ] Spiellogik und Darstellung trennen – teilweise: die Simulation steckt noch in den Schiff-Nodes → Teil von Phase 1
-- [x] Im Einzelspieler läuft der Bus lokal; in Phase 1 geht derselbe Befehl übers Netz
+- [ ] Spiellogik und Darstellung trennen – teilweise: die Simulation steckt noch in den Schiff-Nodes → Teil von Phase 2 (Netzwerk)
+- [x] Im Einzelspieler läuft der Bus lokal; in Phase 2 geht derselbe Befehl übers Netz
 
 ### Debug-Menü (F12)
 
@@ -111,7 +129,7 @@ Phase 0 bringt Startmenü, Speichern/Laden und eine Befehlsschicht – alles sof
 
 ## Phase 0.5 – Content & Design
 
-Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechaniken fest, bevor Phase 1 die Architektur baut. Datenlastiger Content (Schiffe, Module, Waren, Aufträge) kommt jetzt; Mechaniken mit vielen bewegten Objekten werden nur entworfen und in Phase 2 gebaut.
+Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechaniken fest, bevor Phase 1 Story und Endgame ausbaut und Phase 2 die Netzwerk-Architektur baut. Datenlastiger Content (Schiffe, Module, Waren, Aufträge) kommt jetzt; Mechaniken mit vielen bewegten Objekten werden nur entworfen und in Phase 1 gebaut.
 
 **Die Teile von Phase 0.5:**
 
@@ -121,10 +139,13 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | 2 | World Design Update | ✅ erledigt |
 | 3 | NPCs and Factions | ✅ erledigt (Pakete 10–18) |
 | 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–24 fertig) |
-| 5 | Character Update | geplant |
-| 6 | New Worlds Discovery Update | geplant |
-| 7 | Intro and First Part of the Story | geplant |
-| 8 | Feeling and Balancing | geplant – enthält Paket 8 (großes Balancing) |
+| 5 | Character Update – Pakete 28–34 | Entwurf |
+| 6 | New Worlds Discovery Update (Galaxy Rework + Into the Darkness) – Pakete 35–48 | grober Plan |
+| 7 | The Sky Is Not Enough (Landen, Planeten, Boden) – Pakete 49–54 | grober Plan |
+| 8 | Intro and First Part of the Story | geplant (vorher Teil 7) |
+| 9 | Feeling and Balancing | geplant (vorher Teil 8) – enthält Paket 8 (großes Balancing) |
+
+Landen und Bodengameplay waren als Part B von Teil 6 geplant und sind jetzt ein eigener Teil 7 (fast ein eigenes Spiel im Spiel); die späteren Teile rücken um eins nach.
 
 ### Aktive Steuerung (jetzt)
 
@@ -144,7 +165,7 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 - [x] Ausführliches Log: Zielerfassung, Aktivierung, Gründe für Fehlschläge und Abschalten
 - [ ] Idee: Detail-Langstreckenscanner – aktivierbares Modul, auf einen Ort (Feld, Anomalie, Planet) angewendet; zeigt danach eine Liste der Objekte dort (Asteroiden mit Erzart und Menge, NPCs mit Schiffsklasse)
 
-### Endgame-Entwürfe (Bau in Phase 2)
+### Endgame-Entwürfe (Bau in Phase 1)
 
 | Mechanik | Idee | Was die Architektur können muss |
 | --- | --- | --- |
@@ -172,7 +193,7 @@ Teil 2 macht die Systeme lebendiger: drei Asteroidenklassen mit eigenen Rohstoff
 | 9 | Kopfgeld-Bonds – ✅ erledigt | Bonds statt Sofortauszahlung, Bond Office als Stations-Kachel, Warrant Scanner | 7 |
 | + | Zusätze – ✅ erledigt | Testsystem im Debug-Hauptmenü; Cluster auf 48 Systeme erweitert, jeder Stationstyp in jeder Stufe; Wirtschaften auf der Sternenkarte; mehr Slots für alle Schiffe; Mining-Laser-Animation mit Abbauzahlen; Schiffsmenü-Reiter Transactions (Aufträge, Bonds) | – |
 
-Teil 2 ist inhaltlich abgeschlossen. Weitere Reihenfolge: Teil 3 (NPCs) → Teil 4 (Module & Schiffsinnenleben) → Teile 5–7 → Teil 8 mit Paket 8 (großes Balancing) als Abschluss von Phase 0.5 → Phase 1 (Netzwerk). Jedes Paket endet mit einem lauffähigen Stand, Screenshots und erweiterten automatischen Tests.
+Teil 2 ist inhaltlich abgeschlossen. Weitere Reihenfolge: Teil 3 (NPCs) → Teil 4 (Module & Schiffsinnenleben) → Teile 5–8 → Teil 9 mit Paket 8 (großes Balancing) als Abschluss von Phase 0.5 → Phase 1 (Story & Endgame) → Phase 2 (Netzwerk). Jedes Paket endet mit einem lauffähigen Stand, Screenshots und erweiterten automatischen Tests.
 
 ### Asteroidenfelder & Rohstoffe
 
@@ -232,7 +253,7 @@ Stationen werden aus Bauteilen zusammengesetzt; Typ und Stufe bestimmen, welche 
 | Research Station | Antennenschirme, Labormodule, Sensoren | besteht, neue Grafik |
 | Military Outpost | Panzerung, Geschütztürme, Hangartore | besteht, neue Grafik |
 | Ice Refinery | Tanks, Kühltürme, Dampfwolken; nahe Icy-Feldern | neu |
-| Shipyard Complex | Riesige Baudocks, Schiffsrumpf im Bau | neu (große Werft, Träger in Phase 2) |
+| Shipyard Complex | Riesige Baudocks, Schiffsrumpf im Bau | neu (große Werft, Träger in Phase 1) |
 | Pirate Haven | Zusammengeflickte Wracks, rote Lichter; nur Sicherheit < 0.3, feindlich | neu, Docking erst mit Ruf (später) |
 
 ### Neue Module
@@ -542,7 +563,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 | 20 | Neue Modultypen & Waffen – ✅ erledigt | Schild-Varianten + Schild-Downtime, Punktverteidigung, Schildtransfer, Frachtscanner, Sonnen-Sammler, Minenwerfer (4 Minen), Radarstörer | 19 |
 | 21 | Energie-Management – ✅ erledigt | im Schiff festlegen, welche Module bei Strommangel zuerst abgeschaltet werden | 19 |
 | 22 | Multi-Fokus – ✅ erledigt | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
-| 23 | Drohnen (vorgezogen aus Phase 2) – ✅ erledigt | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
+| 23 | Drohnen (vorgezogen aus dem Endgame) – ✅ erledigt | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
 | 24 | Schiffsmanufakturen – ✅ erledigt | alle Manufakturen und ihre Schiffe besprechen; am Ende: Codex-Einträge und ein Wappen/Icon je Manufaktur | 19 |
 | 25 | Neue Schiffe | in kleinen Schritten gebaut: 25a KHI-Bergbauschiffe (+ Grundgerüst), 25b Heavy Industry Ship mit Fertigungszeit und Bordmarkt, 25c ff. die weiteren Manufakturen; auch für NPCs und Piraten, fraktionsexklusive Schiffe | 19, 23, 24 |
 | 26 | Stationstyp 0 | kleine Außenposten nur für S- und M-Schiffe, zusätzlich in allen Systemen | 25 |
@@ -661,7 +682,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 - [x] NPCs: größere Schiffe (Rumpf M+, ab drei Waffen) verteilen ihre Waffen auf mehrere Feinde in der Nähe ihres Ziels.
 - [x] Zieltasten: Tab = alle Ziele in Sensorreichweite – erst die Schiffe, dann Asteroiden, Wracks, Anomalien; ohne Auswahl beginnt es wieder bei den Schiffen (0.4.22.2) – V = feindliche, C = verbündete Schiffe (in Sensorreichweite, sonst bis 50.000 km), jeweils nächstes zuerst; gespeicherte alte Belegungen dieser Tasten werden einmalig auf die neuen Vorgaben gesetzt.
 
-### Drohnen (Paket 23, vorgezogen aus Phase 2)
+### Drohnen (Paket 23, vorgezogen aus dem Endgame)
 
 **Festgelegt (5. Nov 2026):** Drohnenhangar als neues Kernmodul (Größe 1–9, Qualität = mehr Lagerplatz); wie viele Drohnen gleichzeitig fliegen, legt das Schiff fest (S 1 … L 9). Drei Ausstattungsplätze für alle Drohnen: Waffe (Größe 1), Bergbaulaser (Größe 1), Bonusplatz für Drohnenmodule. Eine Drohnensorte, Rolle (Kampf/Bergbau/Reparatur) jederzeit per Kachel umschaltbar, je Rolle Verhalten (Kampf: verteidigen, Ziel angreifen, Fire at will, ruhen; Bergbau: auto, Ziel, ruhen; Reparatur: auto, Ziel, nur Verbündete, nur selbst, ruhen) und „Zurückrufen“. Drohnen: schwach, 5 Lagerplatz, feste Treibstoffmenge (ca. 5 min, Leerlauf 0,8×, im Hangar kein Verbrauch, nicht auftankbar), 9.000 km Steuerreichweite. Beim Warp-Laden/Sprung in den Hangar, danach sofort wieder raus. Neue Firma verkauft Drohnen als eigenen Service in allen Stationen. Schlichtes Design mit Antriebsspur, Waffen feuern wirklich, Bergbaulaser wie beim Schiff.
 
@@ -910,19 +931,240 @@ Alle Fragen am 4. Nov 2026 geklärt. Folgen für die Pakete:
 
 ## Phase 0.5 Teil 5 – Character Update
 
-Beschreibung folgt. Details besprechen wir, wenn wir dran sind.
+Mit Teil 5 bekommt das Spiel eine neue Ebene: **den Piloten**. Bisher ist der Spieler nur sein
+Schiff – ab jetzt gibt es eine Person mit Aussehen, Werten und Fähigkeiten, die mit der Zeit
+besser wird. Dazu kommt die **erste echte Fortschrittsmechanik** (Skilltree) und ein neuer
+Umgang mit größeren Schiffen: **Crews und Söldner**.
 
-## Phase 0.5 Teil 6 – New Worlds Discovery Update
+Teil 5 hat zwei Hälften:
 
-Beschreibung folgt. Details besprechen wir, wenn wir dran sind.
+1. **Der Pilot** – Charaktererstellung, Attribute, Fähigkeiten, Skilltree
+2. **Crews und Söldner** – Besatzung für Schiffe ab M, anheuerbare Wingmen
 
-## Phase 0.5 Teil 7 – Intro and First Part of the Story
+Spieltexte englisch (Attribut- und Fähigkeitsnamen im Spiel daher englisch, hier mit deutscher Erklärung).
 
-Beschreibung folgt. Details besprechen wir, wenn wir dran sind.
+### Arbeitspakete (Vorschlag)
 
-## Phase 0.5 Teil 8 – Feeling and Balancing
+Nummerierung schließt an Teil 4 an (dort bis Paket 27).
 
-Beschreibung folgt. Hierher wandert Paket 8 (großes Balancing mit Analyse-Werkzeug) als Abschluss von Phase 0.5.
+| # | Arbeitspaket | Inhalt | Abhängig von |
+| --- | --- | --- | --- |
+| 28 | Pilot & Charaktererstellung | Pilot als eigene Ebene im Spielstand; Sprite-Baukasten (Pixel-Art), Porträt aus dem Sprite; Name/Rufzeichen; Attribute verteilen; neuer Ablauf „Neues Spiel“ | – |
+| 29 | Fähigkeiten | Fähigkeiten aus Attributen abgeleitet, steigen durch Tun; kleine Prozent-Boni im Spiel; Charakter-Reiter im Schiffsmenü | 28 |
+| 30 | Skilltree & Baupläne | erste Fortschrittsmechanik: Module, Größen, Qualitäten und Schiffsklassen werden durch Tun freigeschaltet (nicht zeitbasiert wie EVE); dazu **Baupläne** für die Herstellung | 29, Teil 4 |
+| 31 | Crew-System | Rollen, Mindest- und Höchstcrew für Schiffe ab M, Wirkung der Crew-Werte, Lohn, Erfahrung | 29 |
+| 32 | Anheuern | neuer Stations-Service zum Anheuern (mit Monopolfirma), Crew-Verwaltung im Schiffsmenü, Crew aus Aufträgen | 31 |
+| 33 | Söldner & Wingmen | anheuerbare Piloten mit eigenem Schiff fliegen im Verbund; einfache Befehle; Free Captains als Söldner | 31, 32 |
+| 34 | Codex, Tutorial-Hinweise, Feinschliff | Codex-Einträge, Hinweise beim ersten Kontakt, Smoke-Tests, Balancing der Boni | alle |
+
+**Debug-Funktionen je Paket** (Debug-Menü, neuer Reiter „Character“):
+
+| Paket | Debug-Funktionen |
+| --- | --- |
+| 28 | Charaktererstellung jederzeit neu öffnen; Zufalls-Pilot erzeugen; Attribute frei setzen (auch über die Startgrenzen hinaus) |
+| 29 | Jede Fähigkeit auf eine Stufe setzen bzw. Erfahrung hinzufügen; Anzeige der aktuell wirkenden Boni (vorher/nachher) |
+| 30 | **„Alles freischalten“**-Schalter; einzelne Knoten/Zweige freischalten oder zurücksetzen; Lernpunkte geben; alle Baupläne geben |
+| 31 | Crew sofort an Bord setzen (Rolle, Stufe, Werte wählbar); Mindestcrew-Prüfung abschaltbar; Löhne sofort abrechnen; Schiffsverlust samt Rettungskapsel auslösen, Kapsel-Timer verkürzen |
+| 32 | Anheuer-Angebot an der aktuellen Station neu würfeln; Crew-Auftrag direkt erzeugen |
+| 33 | Söldner sofort anheuern und neben sich spawnen; Leadership-Grenze ignorieren; Befehle testen |
+
+---
+
+### Teil A – Der Pilot
+
+#### Charaktererstellung (Paket 28)
+
+- Vorerst nur beim **Spielstart**: Name, Sprite, Attribute.
+- Danach: **Aussehen** an Stationen gegen Geld änderbar, **Werte nicht**.
+- **Sprite-Baukasten** in Pixel-Art: Körperform, Kopf/Frisur, Hautton, Kleidung/Anzug, Farben. Das **Porträt wird aus denselben Teilen erzeugt** (Brustbild), damit beides immer zusammenpasst.
+- Der Sprite ist die **Vorbereitung auf Teil 7** (dort ist der Pilot am Boden selbst unterwegs) – in Teil 5 erscheint er nur in Menüs, Porträts, Funk- und Nachrichtenmeldungen.
+- Die Crew und Söldner bekommen Porträts aus **demselben Baukasten** (zufällig erzeugt).
+
+#### Attribute
+
+Fünf Grundwerte, alle schon in Teil 5 beim Start verteilt: **alle starten bei 3, dazu 8 freie Punkte, maximal 8 pro Attribut.** Die Attribute **wachsen danach nicht** – ganz vielleicht später über Story-Ereignisse oder Endgame-Mechaniken.
+
+| Attribut (im Spiel) | Deutsch | Wofür grob |
+| --- | --- | --- |
+| Strength | Kraft | Belastbarkeit, Nahkampf/Athletik (v. a. Teil 7), Bergbau-Handwerk |
+| Dexterity | Geschick | Feinmotorik: Steuerung, Reparatur, Waffen von Hand |
+| Intelligence | Intelligenz | Technik, Wissenschaft, Navigation, Elektronik |
+| Charisma | Charisma | Handel, Verhandeln, Führung von Crew und Söldnern |
+| Reflexes | Reaktionszeit | Ausweichen, Zielen unter Druck, Timing (z. B. Interdictor-Minispiel) |
+
+#### Fähigkeiten (Paket 29)
+
+Jede Fähigkeit hat einen **Grundwert aus zwei Attributen** und steigt durch **Tun** (Erfahrung pro Fähigkeit). Wirkung: wenige Prozent, spürbar aber nicht entscheidend (Richtwert: bis etwa +10 % auf höchster Stufe).
+
+| Fähigkeit (im Spiel) | Attribute | Wirkung im Spiel (Vorschlag) | Steigt durch |
+| --- | --- | --- | --- |
+| Piloting | Reflexes + Dexterity | Höchstgeschwindigkeit, Beschleunigung, kürzeres Ausrichten für den Warp | Fliegen, Warpen, Andocken |
+| Gunnery | Reflexes + Intelligence | Trefferwirkung/Reichweite der Schiffswaffen, schnelleres Aufschalten | Treffer im Kampf |
+| Engineering | Intelligence + Dexterity | mehr Energie, schnellere Reparatur, weniger Schild-Downtime | Reparieren, Energie-Management, Fertigung |
+| Science | Intelligence | Scanner-Reichweite und -Tempo, Anomalie-Analyse, Prospektor-Genauigkeit | Scannen, Analysieren, Survey |
+| Navigation | Intelligence + Reflexes | Warp-Tempo, weniger Sprungtreibstoff | Sprünge, lange Warps |
+| Mining | Strength + Intelligence | Abbaurate, Raffinerie-Ausbeute | Abbauen, Raffinieren |
+| Trading | Charisma + Intelligence | bessere Kauf-/Verkaufspreise | Handeln |
+| Leadership | Charisma | Crew-Wirkung, geringere Löhne, mehr Wingmen | Mit Crew/Söldnern fliegen |
+| Negotiation | Charisma + Reflexes | mehr Ruf aus Aufträgen, höhere Belohnungen, kleinere Strafen | Aufträge abschließen |
+| Electronics | Intelligence + Reflexes | Radarstörer, Interdictor (breiteres Zeitfenster), Warrant/Frachtscanner | E-War-Module benutzen |
+| Athletics | Strength + Dexterity | in Teil 5: weniger Ausfall bei Treffern/Andruck; Hauptnutzen ab Teil 7 | (ab Teil 7: zu Fuß) |
+| Firearms | Dexterity + Reflexes | Hauptnutzen ab Teil 7 (Handwaffen) | (ab Teil 7) |
+
+Athletics und Firearms haben in Teil 5 kaum Nutzen – bewusst so entschieden, sie zahlen sich ab Teil 7 aus.
+
+#### Skilltree (Paket 30) – die erste Fortschrittsmechanik
+
+- **Status:** Die genaue Mechanik (wie Fähigkeiten und Skilltree zusammenhängen, woher die Punkte kommen) ist **noch offen** und wird vor Paket 30 gesondert besprochen. Die Punkte unten sind nur Material dafür.
+- Wie in EVE muss man **lernen, wie Module funktionieren und wie Schiffe zu fliegen sind** – aber **nicht über Echtzeit**, sondern über das, was man tut.
+- **Trennung zu den Fähigkeiten:** Fähigkeiten = *wie gut* (Prozent-Boni). Skilltree = *was man darf und kann* (Freischaltungen).
+- **Beim Spielstart ist sehr wenig frei:** nur das Startschiff und wenige Grundmodule. Die Grundlagen lernt man später im **Story-Intro (Teil 8)**, das auch schon erste Knoten freischaltet.
+- **Was freigeschaltet wird (Vorschlag):**
+  - **Schiffsklassen:** das Startschiff von Anfang an; weitere S-, M- und L-Schiffe über Knoten (z. B. „Frigate Operations“, „Cruiser Command“), Spezialschiffe (Bergbau, Industrie, Fracht) über eigene Zweige.
+  - **Modulfamilien und -größen:** wenige Grundmodule von Anfang an; weitere Familien, größere Größen und höhere Qualitäten über Knoten der jeweiligen Familie.
+  - **Spezial-Ausrüstung:** Drohnen, Minenwerfer, E-War, Interdictor über eigene Knoten.
+  - **Baupläne:** Was man in der Fertigung herstellen kann (Module, Waren, Gegenstände), lernt man als Bauplan – wahrscheinlich im Skilltree, im Zweig Industry. Ohne Bauplan keine Herstellung des Gegenstands.
+- **Woher die Punkte kommen (Vorschlag):** Jede Fähigkeit sammelt Erfahrung; Erfahrung füllt **Lernpunkte im passenden Zweig** (Kampf, Industrie, Handel, Wissenschaft, Steuerung). Wer viel kämpft, kommt im Kampfzweig schnell voran.
+- **Zweige:** Flight (Steuerung/Schiffsklassen), Combat, Industry (Bergbau, Raffinerie, Fertigung), Science (Scanner, Anomalien), Commerce (Handel, Ruf), Command (Crew, Söldner).
+
+---
+
+### Teil B – Crews und Söldner
+
+#### Crew-System (Paket 31)
+
+- **Schiffe ab M** haben eine **Mindest- und Höchstcrew**. S-Schiffe fliegt der Pilot allein.
+- **Unter der Mindestcrew fliegt das Schiff nicht** (kein Abdocken, kein Aktivieren im Hangar).
+- **Schiffsverlust:** Für jedes Crewmitglied wird einzeln ausgewürfelt, ob es überlebt. Die Überlebenden sitzen in einer **Rettungskapsel** im Weltraum, die eine Zeit lang auf Rettung wartet (Zeitlimit) – holt man sie rechtzeitig ab, ist die Crew zurück, sonst ist sie verloren.
+- Ein Schiff braucht **verschiedene Rollen** – welche, hängt vom Schiff ab:
+
+| Rolle (im Spiel) | Wirkt auf | Wichtigster Wert |
+| --- | --- | --- |
+| Co-Pilot | Fahrverhalten, Ausrichten, Warp | Piloting |
+| Gunner | Waffen, Multi-Fokus (zusätzliche Ziele bei großen Schiffen) | Gunnery |
+| Engineer | Energie, Reparatur, Schild-Downtime | Engineering |
+| Science Officer | Scanner, Analyse, Survey | Science |
+| Mining Foreman | Abbaurate, Drohnen-Bergbau | Mining |
+| Quartermaster | Frachtraum, Preise, Löhne der übrigen Crew | Trading |
+| Drone Operator | Drohnen-Bandbreite und -Wirkung | Electronics |
+
+- **Crew-Werte** wie beim Piloten, aber auf ihre Rolle spezialisiert; sie **verbessern sich langsam** durch Einsatz. So wird das Schiff mit der Zeit besser.
+- **Kosten:** fester Lohn pro **Spielstunde** (Spielzeit, nicht Echtzeit) je nach Stufe und Erfahrung, plus ein **sehr kleiner Gewinnanteil** (0,5–2 % auf Verkäufe, Kopfgelder und Auftragsbelohnungen).
+
+#### Anheuern (Paket 32)
+
+- Vorerst **an Stationen**: neuer Service im Concourse (Monopolfirma, z. B. eine Agentur für Raumfahrtpersonal); Angebot hängt vom Stationstyp ab (Militärstation: Gunner, Forschungsstation: Science Officer, Bergbaukolonie: Mining Foreman …).
+- Außerdem **über Aufträge**: gerettete Piloten, Überläufer, Belohnungen.
+- **Crew-Verwaltung** im Schiffsmenü: Besatzung je Schiff, Werte, Lohn, umsetzen zwischen Schiffen im Hangar.
+
+#### Söldner & Wingmen (Paket 33)
+
+- **Anheuerbare Piloten und Söldner** fliegen **im Verbund** mit dem Spieler (eigenes Schiff, Befehle wie „folgen“, „angreifen“, „bergen/abbauen“).
+- Sie können bei manchen Schiffen die **mitgetragenen Schiffe** fliegen. Bis dahin gibt es **ein Schiff, das ein kleines Schiff tragen kann** – es wird in wenigen Schritten integriert; die großen Trägerschiffe bleiben Endgame.
+- **Anzahl:** 1 Wingman zu Beginn, mit der Fähigkeit Leadership bis zu 3.
+- Die **Free Captains** aus Teil 3 sind die naheliegende Quelle: „später anheuerbar als Begleitschiffe“ war schon notiert.
+
+---
+
+### Anmerkungen von Claude (noch offen)
+
+- **Skilltree-Mechanik** ist bewusst aufgeschoben – vor Paket 30 eigene Runde.
+- **Strenger Einstieg:** „sehr wenig frei“ und „ohne Mindestcrew kein Abflug“ machen den Start hart, und das Story-Intro kommt erst mit Teil 8. Zum **Testen** lösen das die Debug-Funktionen („Alles freischalten“, Crew sofort an Bord, Mindestcrew-Prüfung abschaltbar). Für normales Spielen zwischen Teil 5 und 8 bleibt die Frage, ob es zusätzlich ein paar vorab freigeschaltete Startknoten gibt.
+- **Anheuern muss verlässlich sein:** Wenn M-Schiffe ohne Crew nicht fliegen, sollte an jeder Station mit Werft wenigstens einfache Crew zu bekommen sein.
+- **Rettungskapseln** brauchen ein Ziel im Weltraum (Kapsel als Objekt mit Notrufsignal) und eine Antwort darauf, wie man sie birgt (z. B. heranfliegen und aufnehmen wie beim Bergen) – das gehört ins Crew-Paket 31.
+
+### Entscheidungen zu Teil 5
+
+| Frage | Optionen | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| Attribute und Teil 7 | alle fünf jetzt · Kraft erst mit Teil 7 · jetzt verteilen, später Umverteilung | Alle fünf jetzt, Kraft wirkt schon in Teil 5; mit Teil 7 kostenlose Umverteilung | **Alle fünf jetzt**, ohne Sonderregel |
+| Startpunkte | wenige · mittel · viele | Alle bei 3, 8 freie Punkte, max. 8 | **Alle bei 3, 8 freie Punkte, max. 8** |
+| Wachsen die Attribute selbst? | nein · über Skilltree-Meilensteine · durch Tun | Nur über einzelne Skilltree-Knoten (+1) | **Nein** – vielleicht später über Story-Ereignisse oder Endgame-Mechaniken |
+| Fähigkeit vs. Skilltree | getrennte Erfahrung · Skilltree-Punkte aus Fähigkeits-Erfahrung · Aufgaben | Skilltree-Punkte aus Fähigkeits-Erfahrung | **Aufgeschoben** – vor Paket 30 gesondert besprechen |
+| Was ist beim Start frei? | sehr wenig · alles Kleine | Alle S-Schiffe, Module bis Größe 3, Qualität F–D | **Sehr wenig**: Startschiff und wenige Module; Grundlagen und erste Freischaltungen im Story-Intro (Teil 8) |
+| Unter der Mindestcrew | fliegt nicht · fliegt mit Abzügen · namenlose Grundbesatzung | Abzüge + günstige Grundbesatzung | **Schiff fliegt nicht** |
+| Crew bei Schiffsverlust | stirbt · rettet sich · Zufall | Rettet sich meist, kleine Verlustchance | **Überleben je Mitglied ausgewürfelt**; Überlebende in einer Rettungskapsel mit Zeitlimit zur Rettung |
+| Lohn | fest · fest + Anteil · nur Anteil | Fest pro Spielstunde + 0,5–2 % | **Fest pro Spielstunde + kleiner Gewinnanteil** |
+| Söldner und Trägerschiffe | Wingmen jetzt, Träger später · kleine Träger vorziehen · alles vorziehen | Wingmen jetzt, Träger später | **Ein Schiff, das ein kleines Schiff tragen kann**, kommt vorher und wird in wenigen Schritten integriert |
+| Wingmen-Anzahl | fest · abhängig von Leadership · nur durch Geld | 1, mit Leadership bis 3 | **1 zu Beginn, mit Leadership bis 3** |
+| Charakter ändern | nie · Aussehen ja, Werte nein · beides gegen Geld | Aussehen ja, Werte nein | **Aussehen ja (an Stationen), Werte nein** |
+| Koop (Phase 2, Netzwerk) | dem Spieler · Crew gehört dem Schiff · später | Dem Spieler | **Dem Spieler** – reisen mit dem Gast-Piloten |
+
+## Phase 0.5 Teil 6 – New Worlds Discovery Update (grober Plan)
+
+Teil 6 hat **zwei Parts** mit eigenen Paketen. Nummerierung schließt an Teil 5 an (dort bis Paket 34). Details je Part besprechen wir, wenn wir dran sind.
+
+| Part | Thema | Kern |
+| --- | --- | --- |
+| A | Galaxy Rework | größere, abwechslungsreichere Systeme, neue Sterne und Planeten, Monde, Spezialsysteme, Cluster auf ca. 100 Systeme, neue Wirtschaft |
+| B | Into the Darkness | Vorstöße ins Veil, Gegnerwellen, zwei Alienspezies, Beginn der Endgame-Mechaniken |
+
+Die Veil-Mechanik entsteht bewusst schon hier, damit die Story (Teil 8) sie später nutzen kann, ohne sie neu zu bauen.
+
+### Part A – Galaxy Rework
+
+| # | Arbeitspaket | Inhalt |
+| --- | --- | --- |
+| 35 | System-Maßstab & Aufbau | deutlich größere Systeme; in den meisten Systemen ein dekorativer Asteroidengürtel und ein dekorativer Kuipergürtel (überwiegend Hintergrund); darin die bekannten Asteroidenfelder, dichter als heute |
+| 36 | Monde | Planeten bekommen Monde, Gasriesen 2–3 |
+| 37 | Neue Sterntypen | animierte Neutronensterne, Schwarze Löcher mit Akkretionsscheibe, Rote Überriesen (Beteigeuze-artig) |
+| 38 | Neue Planetentypen | Eisriesen, Eisplaneten, Zwergplaneten |
+| 39 | Spezialsysteme | die drei Fraktions-Heimatsysteme fest gestaltet; Systeme der Manufakturen |
+| 40 | Cluster ca. 100 Systeme | weiterhin ca. 50 bewohnte Systeme im Kern, darum ein Gürtel unbewohnter Systeme: eine Mischung aus reichen Rohstoffen, Anomalien und Wracks, Piratenverstecken und Gefahren; dazu teilweise **unabhängige Systemregierungen mit Außenposten** |
+| 41 | Bergbau-Erweiterung | starke Erweiterung des Bergbaus: viele neue abbaubare Elemente und daraus herstellbare Waren |
+| 42 | Wirtschaft 2.0 | Systeme bekommen eine Wirtschaft und ein Wohlstandslevel; daraus Materialausstoß, Bedürfnisse, Angebot und Nachfrage. Handelskonvois haben **zum System passende Waren** an Bord – die Wirtschaft bestimmt die Konvois, nicht umgekehrt (echte Warenströme erst in einem späteren „Wirtschaft 3.0“) |
+| 43 | Tourismus | Tourismus-Stationen als neuer Stationstyp und eine Tourismus-Wirtschaft |
+
+### Part B – Into the Darkness
+
+| # | Arbeitspaket | Inhalt |
+| --- | --- | --- |
+| 44 | Veil-Erkundung | Vorstöße ins Veil im Stil eines **Dungeon-Crawlers**: Abfolge von Veil-Systemen, die man sich erkämpft |
+| 45 | Veil-Einsätze | Systeme im Veil erkunden, Gegnerwellen bekämpfen; am Ende ein **Bossgegner** und ein **Wurmloch zurück in den Cluster** |
+| 46 | Der Schwarm | erste Alienspezies |
+| 47 | Die Vergenz | zweite Alienspezies (KI) |
+| 48 | Endgame-Beute | Beginn der Endgame-Mechaniken: S+-Ausrüstung und S+-Crewmitglieder sammeln |
+
+Jedes Paket mit eigenen Debug-Funktionen (z. B. zu jedem Systemtyp springen, Stern-/Planetentyp erzwingen, Veil-System öffnen, Alienwelle spawnen, S+-Beute geben).
+
+### Entscheidungen zu Teil 6
+
+| Frage | Optionen | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| Unbewohnte Systeme | leer · Rohstoffe/Anomalien · Piraten und Gefahren | Rohstoffe, Anomalien, Piratenverstecke – Lohn für Erkundung | **Mischung aus allen drei**, dazu teilweise unabhängige Systemregierungen mit Außenposten |
+| Wirtschaft 2.0 und Konvois | Konvois weiter nur Kulisse · Konvois liefern echt | Konvois verändern Angebot und Nachfrage tatsächlich | **Konvois haben zum System passende Waren**; die Wirtschaft beeinflusst die Konvois, nicht umgekehrt. Echte Warenströme ggf. in einem späteren **Wirtschaft 3.0** |
+| Veil-Einsätze | offene Erkundung · abgeschlossene Einsätze mit Rückkehr · beides | Einsätze: hinein, Ziel erfüllen, Rückweg | **Dungeon-Crawler**: Abfolge von Veil-Systemen, am Ende evtl. Bossgegner und Wurmloch zurück in den Cluster |
+
+## Phase 0.5 Teil 7 – The Sky Is Not Enough (grober Plan)
+
+Landen auf Planeten und Gameplay am Boden – aus Teil 6 herausgelöst, weil es fast ein eigenes Spiel innerhalb des Spiels ist (eigene Ansicht, Steuerung, Kollision, KI).
+
+| # | Arbeitspaket | Inhalt |
+| --- | --- | --- |
+| 49 | Landung | Landeanimation beim Absinken; bei Planeten mit Atmosphäre eine glühende Scheibe um das Schiff (Eintritt) |
+| 50 | Planetenkarten | Karten der Planeten mit Städten und Points of Interest; prozedural aus dem Seed, Schlüsselorte von Hand gebaut; landbar sind alle festen Planeten |
+| 51 | Bodengameplay & Bodenmissionen | was man am Boden tut, Missionen am Boden |
+| 52 | Kampf zu Fuß | Kampf mit dem Piloten ohne Schiff (nutzt Athletics/Firearms aus Teil 5) |
+| 53 | Wolkenstädte | Gasriesen bekommen Wolkenstädte |
+| 54 | Personentransport & Sehenswürdigkeiten | Personentransport-Aufträge ausgebaut: Touristen zu Touristengebieten und Sehenswürdigkeiten (auf Planeten, in Wolkenstädten, an besonderen Orten im All) – baut auf der Tourismus-Wirtschaft aus Paket 43 auf |
+
+Jedes Paket mit eigenen Debug-Funktionen (z. B. sofort landen, zu einem POI springen, Bodenmission starten, Gegner am Boden spawnen).
+
+### Entscheidungen zu Teil 7
+
+| Frage | Optionen | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| Bodenansicht | Draufsicht wie im Weltraum · Seitenansicht · eigene Szenen | Draufsicht in Pixel-Art | **Draufsicht wie im All** |
+| Planetenkarten | prozedural · handgebaut · gemischt | prozedural, wichtige Orte handgebaut | **Prozedural, Schlüsselorte** (Hauptstädte, Fraktions-Heimatwelten, Story-Orte) **von Hand** |
+| Landbare Welten | feste Planeten + Wolkenstädte · nur ausgewählte · alle inkl. Monde | feste Planeten und Monde, Gasriesen über Wolkenstädte | **Alle festen Planeten** (und Monde); bei Gasriesen nur die **Wolkenstädte** |
+
+## Phase 0.5 Teil 8 – Intro and First Part of the Story
+
+(Vorher Teil 7.) Beschreibung folgt. Details besprechen wir, wenn wir dran sind. Das Story-Intro bringt auch die Grundlagen des Skilltrees und erste Freischaltungen (siehe Teil 5) und nutzt die Veil-Mechanik aus Teil 6.
+
+## Phase 0.5 Teil 9 – Feeling and Balancing
+
+(Vorher Teil 8.) Beschreibung folgt. Hierher wandert Paket 8 (großes Balancing mit Analyse-Werkzeug) als Abschluss von Phase 0.5.
 
 ## Offene Entscheidungen
 
