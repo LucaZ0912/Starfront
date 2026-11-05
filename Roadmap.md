@@ -770,6 +770,21 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - **Verkauf:** überall; die größeren Schiffe (Goliath, Citadel) nur an Militärstationen und in Hightech-Wirtschaften (bis Teil 6: Shipyard Complexes und Stationen der Stufe 3; „Hightech-Wirtschaft“ wird mit der Wirtschafts-Überarbeitung in Teil 6 neu festgelegt). **Piraten** fliegen heruntergekommene Varianten der HDY-Schiffe – aber nie die Goliath.
 - **Später:** Langstreckenraketen (Recon-Reichweite) und Nuklearraketen sind eigentlich für künftige XL- und XXL-Schiffsklassen geplant (viel später) – dass HDY-Schiffe sie tragen können, ist ihre Besonderheit. Nuklearwaffen: schweres Verbrechen in allen Fraktionsgebieten, nur über den Schwarzmarkt, großer Flächenschaden.
 
+#### Staatliche Manufakturen (Fraktionsschiffe: normale Modelle ab Neutral, Spitzenmodelle ab Allied, nur an Werften der Fraktion)
+
+**„A“ – staatliche Manufaktur der Cluster Assembly** (Name offen; Vorschläge: **Hearthguard Cooperative**, **Concord Fleetworks**, **Commons Shipworks**)
+- **Geschichte:** Als sich der Krieg legte, mussten nach Jahrzehnten des Bürgerkriegs viele alte Earthworks-Schiffe der Assembly ausgemustert oder modernisiert werden. Die Regierung wollte Earthworks zuerst verstaatlichen; nach langen, feindseligen Debatten bot sie stattdessen eine Kooperation bei der Entwicklung neuer Schiffe an. Zusammen mit **Hivewright Drone Works** entstand daraus „A“ – ein Gemeinschaftsunternehmen von Assembly, Earthworks und Hivewright.
+- **Grundsätze:** Die Assembly will das Leben ihrer Bürger schützen – darum **gute Schilde und Drohnen**. A-Schiffe sind im Endeffekt Drohnenträger: die Drohnen kämpfen, die Pilotin bleibt hinter starken Schilden.
+- **Design:** nah an Earthworks, aber moderner, mit deutlich sichtbaren Drohnenhangars (Hangartore, Startbuchten). Flaggschiff als langer Träger mit vielen Hangaröffnungen – eigene Gestaltung, kein Nachbau fremder Schiffe.
+- **Markenzeichen aller A-Schiffe:**
+  - **Alle Drohnenwerte verdoppelt, alle Waffenwerte des Schiffs selbst halbiert.**
+  - **Schilde:** starker Kapazitätsbonus, aber dreifache Downtime nach einem Zusammenbruch.
+- **Schiffe (Arbeitsnamen offen):**
+  - **Milizschiff** (S): kleiner Drohnenträger, leichte Bewaffnung, mittlerer Hangar (3 Drohnen), gute Schilde, wenig Panzerung, sonst durchschnittlich.
+  - **Patrouillenschiff** (M): Weiterentwicklung des Milizschiffs, 7 Drohnen, gute Schilde, sonst durchschnittlich.
+  - **Flaggschiff** (L, Spitzenmodell): großer Drohnenträger mit einem großen Waffenplatz, guten Sensoren, besonders großem Hangar – **11 Drohnen, als einziges Schiff** – und starken Schilden. Seine Drohnen tragen eine besondere blaue Färbung im Assembly-Stil.
+- **Offene Fragen:** siehe Gespräch vom 5. Nov 2026 (Name, was „alle Drohnenwerte“ umfasst, Schildwerte, Schiffsnamen, Gründungsjahr).
+
 **Für alle Manufakturen:** eingebaute Module (Nachbrenner, Bordraffinerie, Prospektor-Scanner, Fertigung, Markt …) bekommen in der Modulleiste und im Schiffsmenü eine **farbige Umrandung**, damit man sie als fest eingebaut erkennt.
 
 ### Neue Schiffe (Paket 25)
