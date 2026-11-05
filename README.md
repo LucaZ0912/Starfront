@@ -75,7 +75,8 @@ lists every archetype loadout.
   the Anaguma and the Earthworks Drillhead. The shipyard shows crest and motto of the maker.
 - **Mogura** (S), **Anaguma** (M), **Iwakudaki** (L): yellow, bulky mining ships. Built in: ore hold
   (60 / 300 / 900 m³), **refinery** (0.15 / 0.4 / 1.0 ore per second at 70 / 80 / 90 % yield, 4 / 8 / 16 MW
-  while on – switch it off in the module bar to keep raw ore; it belches black smoke while working) and a
+  while on – switch it off in the module bar to keep raw ore; while working it sprays thin plumes of smoke
+  sideways out of the exhaust pipes on its flanks) and a
   prospector. +10 % mining, but −25 % turn rate and +40 % warp alignment time.
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.

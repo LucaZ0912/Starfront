@@ -91,10 +91,10 @@ static func smoke(pos: Vector2, drift: Vector2, radius: float) -> Fx:
 	f.kind = "smoke"
 	f.position = pos
 	f.a = drift
-	f.size = maxf(radius, 6.0)
+	f.size = maxf(radius, 2.5)
 	f.color = Color(0.2, 0.19, 0.18)
-	f.life = 2.6
-	f.max_life = 2.6
+	f.life = 2.4
+	f.max_life = 2.4
 	return f
 
 

@@ -2099,10 +2099,46 @@ func smoke(delta: float) -> void:
 	_smoke_t -= delta
 	if _smoke_t > 0.0 or view == null or view.sky_alpha() < 0.5:
 		return
-	_smoke_t = 0.3
-	var back := Vector2.from_angle(heading + PI)
-	var side := Vector2.from_angle(heading + PI * 0.5) * randf_range(-0.25, 0.25) * radius
-	view.spawn_fx(Fx.smoke(position + back * radius * 0.95 + side, back * 40.0 + velocity * 0.5, radius * 0.25))
+	_smoke_t = 0.08
+	var stacks := smoke_stacks()
+	if stacks.is_empty():
+		return
+	# thin plumes sprayed sideways out of the exhaust pipes on both flanks
+	var st: Vector2 = stacks[randi() % stacks.size()]
+	var flank := 1.0 if randf() < 0.5 else -1.0
+	var local := Vector2(st.x, st.y * flank)
+	var out := Vector2(0.0, flank).rotated(heading)
+	view.spawn_fx(Fx.smoke(position + local.rotated(heading), out * randf_range(55.0, 80.0) + velocity * 0.9, 6.0 + radius * 0.08))
+
+
+var _stacks_cache: Array = []
+var _stacks_hull := ""
+
+
+## Local positions (x forward, y = top flank) of the exhaust pipes: the "D" pairs in the first
+## row of the hull's pixel art (KHI ships).
+func smoke_stacks() -> Array:
+	if _stacks_hull == fit.hull_id:
+		return _stacks_cache
+	_stacks_hull = fit.hull_id
+	_stacks_cache = []
+	var art: Array = PixelArt.ShipArt.SHIPS.get(fit.hull_id, [])
+	if art.is_empty():
+		return _stacks_cache
+	var w := 0
+	for r in art:
+		w = maxi(w, String(r).length())
+	var tex_w := float(w + 2)
+	var tex_h := float(art.size() * 2 - 1 + 2)
+	var row0: String = art[0]
+	var i := 0
+	while i < row0.length():
+		if row0[i] == "D":
+			_stacks_cache.append(Vector2((i + 2 - tex_w / 2.0) * PixelArt.SCALE, (1.0 - tex_h / 2.0) * PixelArt.SCALE))
+			i += 2
+		else:
+			i += 1
+	return _stacks_cache
 
 
 # ---------------------------------------------------------------- Package 22: multi-focus (NPCs)

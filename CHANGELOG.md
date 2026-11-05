@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.2 – 2026-11-05
+
+- KHI refinery smoke now sprays in thin plumes sideways out of the exhaust pipes on the flanks instead of out of the stern (looked like a burning engine).
+
 ## alpha 0.4.25.1 – 2026-11-05
 
 **Package 25a – Kanayama Heavy Industries mining ships.**
