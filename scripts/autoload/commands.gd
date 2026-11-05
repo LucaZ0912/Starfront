@@ -885,10 +885,12 @@ func _c_debug_complete_missions(_c: Dictionary) -> String:
 	return ""
 
 
-## {"type":"debug_new_contracts"} – reroll the bulletin board here.
+## {"type":"debug_new_contracts"} – reroll the bulletin board here (BlackLedger and faction contracts).
 func _c_debug_new_contracts(_c: Dictionary) -> String:
 	var e := _need_dock()
 	if e != "":
 		return e
-	GameState.offers.erase(docked_station()["id"])
+	var sid := String(docked_station()["id"])
+	GameState.offers.erase(sid)
+	GameState.offers.erase(sid + "#f")
 	return ""

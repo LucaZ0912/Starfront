@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.19.17 – 2026-11-05
+
+- Debug menu: "Reroll board here" also rerolls the station's faction contracts.
+
 ## alpha 0.4.19.16 – 2026-11-05
 
 Formation flight and keyboard controls. 403 smoke-test checks pass.
