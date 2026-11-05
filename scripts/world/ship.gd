@@ -64,6 +64,19 @@ var scanned_player := false      # patrol: has already scanned the pilot's ship
 var warp: Dictionary = {}
 var warp_frozen := false         # held in place by an interdictor (phase 0.5 package 11)
 var warp_disrupted := 0.0        # seconds the warp drive stays offline after an interdiction
+# Phase 0.5 package 20
+var shield_down := 0.0           # seconds until a collapsed shield restarts (at 50 %)
+var emp_t := 0.0                 # EMP: capacitor, shield and modules dead for this long
+var jammed_t := 0.0              # radar jammed (radar picture gone, locks only at short range)
+var _xfer_t := 0.0               # receiving a shield transfer: the downtime runs out faster
+var jamming := false             # NPC: its radar jammer is running
+var manifest_done := false       # cargo manifest generated (cargo scanner, wreck loot)
+var cargo_known := false         # the pilot's cargo scanner has read the manifest
+var unregistered := false        # smuggler: cargo without a registered manifest
+var mine_choice := {}            # mine launcher slot -> {"type": mine id, "fuse": seconds}
+var pd_timers := {}              # point defense slot -> cooldown left
+const JAM_SENSOR := 0.5          # jammed: lock / engage range factor
+const XFER_DOWN_MULT := 3.0      # shield downtime runs this much faster while a transfer beam is on it
 
 ## Manual control (the player's ship): no auto-battle. The pilot locks targets and
 ## activates modules (module bar / keys 1–9). NPCs keep fighting automatically.
@@ -317,11 +330,16 @@ func _physics_process(delta: float) -> void:
 		var sd := fit.stats()
 		fit.shield = sd["shield_max"]
 		fit.capacitor = sd["cap_max"]
+		shield_down = 0.0
+		emp_t = 0.0
 		return
 	visible = true
 	var s := fit.stats()
 	hit_flash = maxf(0.0, hit_flash - delta)
 	warp_disrupted = maxf(0.0, warp_disrupted - delta)
+	emp_t = maxf(0.0, emp_t - delta)
+	jammed_t = maxf(0.0, jammed_t - delta)
+	_xfer_t = maxf(0.0, _xfer_t - delta)
 	_regen(delta, s)
 	if in_warp():
 		_update_warp(delta)
@@ -333,6 +351,8 @@ func _physics_process(delta: float) -> void:
 	_update_movement(delta, s)
 	_update_weapons(delta, s)
 	_update_tools(delta, s)
+	_update_pd(delta, s)
+	_update_npc_jammer(delta, s)
 	fit.position = position
 	fit.rotation = heading
 	queue_redraw()
@@ -340,10 +360,90 @@ func _physics_process(delta: float) -> void:
 
 func _regen(delta: float, s: Dictionary) -> void:
 	if special == "regenerator":
-		fit.shield = minf(float(s["shield_max"]), fit.shield + float(s["shield_regen"]) * 2.0 * delta)
 		fit.armor = minf(float(s["armor_max"]), fit.armor + float(s["armor_max"]) * 0.01 * delta)
-	fit.capacitor = minf(float(s["cap_max"]), fit.capacitor + float(s["cap_recharge"]) * delta)
-	fit.shield = minf(float(s["shield_max"]), fit.shield + float(s["shield_regen"]) * delta)
+	if emp_t > 0.0:
+		fit.capacitor = 0.0
+	else:
+		fit.capacitor = minf(float(s["cap_max"]), fit.capacitor + float(s["cap_recharge"]) * delta)
+	_solar(delta, s)
+	var smax := float(s["shield_max"])
+	if shield_down > 0.0:
+		# package 20: a collapsed shield stays down, then restarts at 50 %
+		fit.shield = 0.0
+		if emp_t <= 0.0:
+			shield_down -= delta * (XFER_DOWN_MULT if _xfer_t > 0.0 else 1.0)
+		if shield_down <= 0.0:
+			shield_down = 0.0
+			fit.shield = smax * 0.5
+			_mlog("Shields back online (50 %).", GameState.COL_GOOD)
+		return
+	var regen := float(s["shield_regen"]) * (3.0 if special == "regenerator" else 1.0)
+	fit.shield = minf(smax, fit.shield + regen * delta)
+
+
+## The shield collapsed (shot down or EMP): it stays down for `t` seconds (default: the downtime of
+## the fitted shields – size, type and quality) and comes back at 50 %.
+func shield_collapse(t: float = -1.0) -> void:
+	var s := fit.stats()
+	if float(s["shield_max"]) <= 0.0:
+		return
+	fit.shield = 0.0
+	var dt := t if t >= 0.0 else float(s["shield_downtime"])
+	if dt > shield_down:
+		shield_down = dt
+	_mlog("Shields collapsed – back online in %d s (at 50 %%)." % int(ceil(shield_down)), GameState.COL_BAD)
+
+
+## EMP (mine): capacitor drained, shield down, modules dead for `t` seconds.
+func apply_emp(t: float, src = null) -> void:
+	if dying or is_docked():
+		return
+	if faction == "player" and Commands.god_mode:
+		return
+	if src != null and is_instance_valid(src):
+		last_attacker = src
+		if src is Ship and src.faction == "player" and faction != "player":
+			_hit_by_player()
+	emp_t = maxf(emp_t, t)
+	fit.capacitor = 0.0
+	if float(fit.stats()["shield_max"]) > 0.0:
+		shield_collapse(maxf(t, shield_down))
+	for k in module_on.keys():
+		if module_on[k]:
+			module_on[k] = false
+			module_state[k] = "off"
+	hit_flash = 0.3
+	_mlog("EMP! Capacitor drained, shields down, all modules dead for %d s." % int(ceil(t)), GameState.COL_BAD)
+	if view != null:
+		view.spawn_fx(Fx.flash(position, Color(0.4, 0.85, 1.0), radius * 4.0))
+
+
+## Radar jammed for `t` seconds (radar jammer module or jammer mine nearby).
+func jam(t: float) -> void:
+	if jammed_t <= 0.0 and faction == "player" and manual:
+		GameState.log_msg("Radar jammed! Contacts lost, locks only at short range.", GameState.COL_BAD)
+	jammed_t = maxf(jammed_t, t)
+
+
+## Sensor range for locks and engagements (halved while jammed).
+func lock_range(s: Dictionary) -> float:
+	return float(s["sensor_range"]) * (JAM_SENSOR if jammed_t > 0.0 else 1.0)
+
+
+## Solar collector (package 20): fuel per second – full close to the star, dropping with distance².
+func solar_rate(s: Dictionary) -> float:
+	var rate := float(s.get("solar", 0.0))
+	if rate <= 0.0 or view == null or not ("layout" in view) or view.layout.is_empty():
+		return 0.0
+	var star_r := float(view.layout["star"]["radius"])
+	var d := maxf(position.length(), star_r)
+	return rate * clampf(pow(star_r * 4.0 / d, 2.0), 0.0, 1.0)
+
+
+func _solar(delta: float, s: Dictionary) -> void:
+	if fit.fuel >= float(s["fuel_max"]) or float(s.get("solar", 0.0)) <= 0.0:
+		return
+	fit.fuel = minf(float(s["fuel_max"]), fit.fuel + solar_rate(s) * delta)
 
 
 # ---------------------------------------------------------------- Targeting (auto-battle)
@@ -408,7 +508,7 @@ func _update_targeting(delta: float, s: Dictionary) -> void:
 		_retarget = 0.5
 		if faction == "patrol" and not scanned_player:
 			_scan_player()
-		var sensor: float = s["sensor_range"]
+		var sensor: float = lock_range(s)
 		var keep: bool = target != null and fit.stance != "passive" and position.distance_to(target.position) <= sensor * 1.3 and not (_protected(target) and target != last_attacker)
 		if not keep:
 			var want = null
@@ -1113,7 +1213,11 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 		return
 	if not can_see(target):
 		return
+	if emp_t > 0.0:
+		return
 	var dist := position.distance_to(target.position)
+	if jammed_t > 0.0 and dist > lock_range(s):
+		return
 	for i in weapons.size():
 		var w: Dictionary = weapons[i]
 		if weapon_timers[i] > 0.0 or dist > float(w["range"]):
@@ -1165,6 +1269,8 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 		else:
 			raw = (d - fit.shield) / m
 			fit.shield = 0.0
+	if sh0 > 0.0 and fit.shield <= 0.0:
+		shield_collapse()
 	if raw > 0.0 and fit.armor > 0.0:
 		var res: float = fit.stats()["res"][dtype]
 		var m2: float = float(GameData.LAYER_MULT["armor"][dtype]) * (1.0 - res)
@@ -1225,6 +1331,8 @@ func _die(killer) -> void:
 
 func _update_tools(delta: float, s: Dictionary) -> void:
 	tool_beams.clear()
+	if emp_t > 0.0:
+		return
 	if manual:
 		_update_modules(delta, s)
 		return
@@ -1232,6 +1340,8 @@ func _update_tools(delta: float, s: Dictionary) -> void:
 		match t["tool"]:
 			"repair":
 				_repair(delta, t)
+			"shield_transfer":
+				_npc_transfer(delta, t)
 			"mining", "harvester":
 				if order.get("type") == "mine" and not _mine(delta, t, order.get("node")):
 					order = {"type": "idle"}
@@ -1377,9 +1487,9 @@ func add_lock(node) -> String:
 		return ""
 	if locks.size() >= MAX_LOCKS:
 		return "Maximum of %d targets locked." % MAX_LOCKS
-	var sr := float(fit.stats()["sensor_range"])
+	var sr := lock_range(fit.stats())
 	if position.distance_to(node.position) > sr:
-		return "Out of sensor range (%s)." % SystemView.fmt_dist(sr)
+		return ("Out of sensor range (%s)." % SystemView.fmt_dist(sr)) + (" Your radar is jammed." if jammed_t > 0.0 else "")
 	var bl = view.blocker(position, node.position) if "colossi" in view else null
 	if bl != null:
 		return "No line of sight – %s is in the radar shadow of %s." % [node_name(node), bl.title()]
@@ -1409,7 +1519,7 @@ func _lock_duration(node, s: Dictionary) -> float:
 
 
 func _update_locks(delta: float, s: Dictionary) -> void:
-	var sr := float(s["sensor_range"])
+	var sr := lock_range(s)
 	for l in locks.duplicate():
 		var n = l["node"]
 		var shadow = view.blocker(position, n.position) if (lockable(n) and "colossi" in view) else null
@@ -1450,11 +1560,17 @@ func module_target_error(e: Dictionary, node) -> String:
 		if not (node is Ship) or node.faction == "player":
 			return "%s needs a ship as target." % d["name"]
 		return ""
-	if e["kind"] == "self":
+	if e["kind"] in ["self", "pd", "mine"]:
 		return ""
 	match String(d["tool"]):
 		"repair":
 			return ""   # repairs the locked friendly ship, otherwise your own
+		"shield_transfer":
+			if node == null or not (node is Ship) or node == self or hostile(self, node):
+				return "%s needs a locked friendly ship." % d["name"]
+		"cargo_scan":
+			if node == null or not (node is Ship) or node.faction == "player":
+				return "%s needs a locked ship." % d["name"]
 		"survey", "interdict":
 			return ""   # aimed at the selection, checked when switched on
 		"mining", "prospect":
@@ -1507,6 +1623,15 @@ func set_module_active(slot: String, on: bool) -> String:
 	if e.is_empty():
 		return "No activatable module in that slot."
 	var d: Dictionary = e["data"]
+	if on and emp_t > 0.0:
+		return "EMP – all modules are dead for another %d s." % int(ceil(emp_t))
+	if on and e["kind"] == "mine":
+		return lay_mine(slot, d)
+	if e["kind"] == "pd":
+		module_on[slot] = on
+		module_state[slot] = "on" if on else "off"
+		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
+		return ""
 	if on and e["kind"] == "self":
 		if fit.capacitor < float(d["energy_rate"]):
 			return "%s: not enough energy (needs %.0f per second, capacitor %.0f)." % [d["name"], float(d["energy_rate"]), fit.capacitor]
@@ -1530,7 +1655,7 @@ func set_module_active(slot: String, on: bool) -> String:
 			if node == null:
 				return "%s: no target locked – click an object and choose \"Lock target\"." % d["name"]
 			return "%s: %s is not a valid target – %s" % [d["name"], node_name(node), err]
-		if e["kind"] == "tool" and d["tool"] in ["prospect", "warrant"]:
+		if e["kind"] == "tool" and d["tool"] in ["prospect", "warrant", "cargo_scan"]:
 			if fit.capacitor < float(d.get("energy", 0)):
 				return "%s: not enough energy (needs %s, capacitor %.0f)." % [d["name"], str(d["energy"]), fit.capacitor]
 			fit.capacitor -= float(d.get("energy", 0))
@@ -1565,6 +1690,9 @@ func cycle_progress(slot: String) -> float:
 	if scan_jobs.has(slot):
 		return clampf(float(scan_jobs[slot]["t"]) / maxf(float(scan_jobs[slot]["total"]), 0.01), 0.0, 1.0)
 	var e := find_module(slot)
+	if not e.is_empty() and e["kind"] == "mine":
+		var cdm := maxf(float(e["data"]["cooldown"]), 0.01)
+		return 1.0 - clampf(float(module_timers.get(slot, 0.0)) / cdm, 0.0, 1.0)
 	if e.is_empty() or e["kind"] != "weapon":
 		return 1.0 if module_on.get(slot, false) else 0.0
 	var cd := maxf(float(e["data"]["cooldown"]), 0.01)
@@ -1580,6 +1708,8 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 		if not module_on.get(slot, false):
 			module_state[slot] = "off"
 			continue
+		if e["kind"] in ["pd", "mine"]:
+			continue             # point defense runs in _update_pd, mines are one-shot
 		if e["kind"] == "self":
 			_run_active(delta, slot, d)
 			continue
@@ -1621,7 +1751,7 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 			continue
 		if order.get("type", "idle") == "idle":
 			var tn: String = tgt.display_name() if tgt is Ship else tgt.title()
-			activity = "%s %s" % [{"mining": "Mining", "analyzer": "Analysing", "salvage": "Salvaging", "repair": "Repairing"}.get(String(d["tool"]), "Using"), tn]
+			activity = "%s %s" % [{"mining": "Mining", "analyzer": "Analysing", "salvage": "Salvaging", "repair": "Repairing", "shield_transfer": "Charging the shield of", "cargo_scan": "Scanning the cargo of"}.get(String(d["tool"]), "Using"), tn]
 		var keep := true
 		var why := ""
 		match String(d["tool"]):
@@ -1637,10 +1767,13 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 			"repair":
 				keep = _repair_one(delta, d, tgt)
 				why = "%s fully repaired" % ("your ship" if tgt == self else node_name(tgt))
+			"shield_transfer":
+				keep = _transfer_shield(delta, d, tgt)
+				why = "target lost"
 			"harvester":
 				keep = _mine(delta, d, tgt)
 				why = "asteroid depleted" if (is_instance_valid(tgt) and tgt.is_depleted()) else "cargo hold full"
-			"prospect", "warrant":
+			"prospect", "warrant", "cargo_scan":
 				keep = _run_scan(delta, slot, d, tgt)
 				why = "scan complete"
 		if not keep:
@@ -1728,7 +1861,7 @@ func _run_scan(delta: float, slot: String, d: Dictionary, tgt) -> bool:
 		job = {"t": 0.0, "total": float(d["scan_time"]), "node": tgt}
 		scan_jobs[slot] = job
 	job["t"] = float(job["t"]) + delta
-	tool_beams.append([tgt.position, Color(0.5, 0.9, 1.0) if d["tool"] == "prospect" else Color(1.0, 0.8, 0.3)])
+	tool_beams.append([tgt.position, {"prospect": Color(0.5, 0.9, 1.0), "cargo_scan": Color(0.6, 1.0, 0.8)}.get(String(d["tool"]), Color(1.0, 0.8, 0.3))])
 	if float(job["t"]) < float(job["total"]):
 		return true
 	scan_jobs.erase(slot)
@@ -1736,6 +1869,10 @@ func _run_scan(delta: float, slot: String, d: Dictionary, tgt) -> bool:
 		tgt.data["prospected"] = minf(float(tgt.data.get("prospected", 1.0)), float(d["accuracy"]))
 		tgt.queue_redraw()
 		_mlog("Prospector: %s – %s" % [tgt.title(), tgt.composition_text()], GameState.COL_GOOD)
+	elif d["tool"] == "cargo_scan":
+		tgt.ensure_manifest()
+		tgt.cargo_known = true
+		_mlog("Cargo scan: %s" % tgt.manifest_text(), GameState.COL_BAD if tgt.unregistered else GameState.COL_GOOD)
 	else:
 		tgt.warrant_known = true
 		_mlog(tgt.warrant_text(), GameState.COL_GOOD if tgt.bounty > 0 else GameState.COL_INFO)
@@ -1753,7 +1890,8 @@ func _run_active(delta: float, slot: String, d: Dictionary) -> void:
 	var st := fit.stats()
 	match String(d["active"]):
 		"shield_boost":
-			fit.shield = minf(float(st["shield_max"]), fit.shield + float(d["rate"]) * delta)
+			if shield_down <= 0.0:   # a collapsed shield cannot be boosted back (package 20)
+				fit.shield = minf(float(st["shield_max"]), fit.shield + float(d["rate"]) * delta)
 		"armor_repair":
 			fit.armor = minf(float(st["armor_max"]), fit.armor + float(d["rate"]) * delta)
 
@@ -1790,6 +1928,212 @@ func _repair_one(delta: float, t: Dictionary, ship) -> bool:
 	if ship != self:
 		tool_beams.append([ship.position, Color(0.4, 1.0, 0.5)])
 	return true
+
+
+# ---------------------------------------------------------------- Package 20: new modules
+
+## Shield transfer beam: own capacitor → the target's shield. Uses energy only while it actually
+## transfers; on a collapsed shield it shortens the downtime instead. Stays on (returns true).
+func _transfer_shield(delta: float, t: Dictionary, ship) -> bool:
+	if ship == null or not is_instance_valid(ship) or ship == self or not (ship is Ship):
+		return false
+	var bs: Dictionary = ship.fit.stats()
+	if float(bs["shield_max"]) <= 0.0:
+		return true
+	if ship.shield_down <= 0.0 and ship.fit.shield >= float(bs["shield_max"]) - 0.5:
+		return true              # full: idle, no energy used
+	var cost := float(t.get("energy_rate", 0.0)) * delta
+	if fit.capacitor < cost:
+		return true
+	fit.capacitor -= cost
+	if ship.shield_down > 0.0:
+		ship._xfer_t = 0.3
+	else:
+		ship.fit.shield = minf(float(bs["shield_max"]), ship.fit.shield + float(t["rate"]) * delta)
+	tool_beams.append([ship.position, Color(0.45, 0.7, 1.0)])
+	return true
+
+
+## NPC shield transfer: the friendly ship in range that needs it most.
+func _npc_transfer(delta: float, t: Dictionary) -> void:
+	var best = null
+	var need := 0.5
+	for n in get_tree().get_nodes_in_group("ships"):
+		if n == self or n.faction != faction or not n.is_targetable() or position.distance_to(n.position) > float(t["range"]):
+			continue
+		var ns: Dictionary = n.fit.stats()
+		var miss: float = float(ns["shield_max"]) - n.fit.shield + (float(ns["shield_max"]) if n.shield_down > 0.0 else 0.0)
+		if miss > need:
+			need = miss
+			best = n
+	if best != null:
+		_transfer_shield(delta, t, best)
+
+
+## Point defense (package 20): shoots down hostile missiles, torpedoes and mines in range. NPCs
+## always use it; the pilot switches it on in the module bar.
+func _update_pd(delta: float, s: Dictionary) -> void:
+	for pd in s["pd"]:
+		var slot: String = pd["slot"]
+		pd_timers[slot] = maxf(0.0, float(pd_timers.get(slot, 0.0)) - delta)
+		if manual and not module_on.get(slot, false):
+			continue
+		if emp_t > 0.0 or float(pd_timers[slot]) > 0.0:
+			continue
+		if fit.capacitor < float(pd["energy"]):
+			if manual:
+				module_state[slot] = "energy"
+			continue
+		if manual:
+			module_state[slot] = "on"
+		var threat = pd_target(float(pd["range"]))
+		if threat == null:
+			continue
+		fit.capacitor -= float(pd["energy"])
+		pd_timers[slot] = float(pd["cooldown"])
+		if view != null:
+			view.spawn_fx(Fx.beam(position, threat.position, Color(1.0, 0.95, 0.6), 1.5))
+		if randf() < minf(float(pd["intercept"]), 0.95):
+			threat.intercept()
+
+
+## Nearest hostile missile or mine within `rng` (null = none).
+func pd_target(rng: float):
+	var best = null
+	var bd := rng
+	for m in get_tree().get_nodes_in_group("missiles"):
+		if is_instance_valid(m) and not m.is_queued_for_deletion() and m.shooter != self and m._hits(self):
+			var d: float = position.distance_to(m.position)
+			if d <= bd:
+				bd = d
+				best = m
+	for m2 in get_tree().get_nodes_in_group("mines"):
+		if is_instance_valid(m2) and not m2.is_queued_for_deletion() and m2.threatens(self):
+			var d2: float = position.distance_to(m2.position)
+			if d2 <= bd:
+				bd = d2
+				best = m2
+	return best
+
+
+## Radar jammer: the pilot switches it on; NPCs run theirs while they fight. Jamming itself is
+## applied by SystemView (jam_radius()).
+func _update_npc_jammer(delta: float, s: Dictionary) -> void:
+	if manual:
+		return
+	var j := _jammer_module(s)
+	if j.is_empty():
+		jamming = false
+		return
+	var want: bool = emp_t <= 0.0 and _valid(target) and position.distance_to(target.position) < 30000.0
+	var cost := float(j["energy_rate"]) * delta
+	if want and fit.capacitor >= cost:
+		fit.capacitor -= cost
+		jamming = true
+	else:
+		jamming = false
+
+
+func _jammer_module(s: Dictionary) -> Dictionary:
+	for a in s["actives"]:
+		if a["active"] == "jammer":
+			return a
+	return {}
+
+
+## Radius this ship jams right now (0 = not jamming).
+func jam_radius() -> float:
+	if dying or is_docked() or in_warp() or emp_t > 0.0:
+		return 0.0
+	var s := fit.stats()
+	if manual:
+		var r := 0.0
+		for a in s["actives"]:
+			if a["active"] == "jammer" and module_on.get(a["slot"], false):
+				r = maxf(r, float(a["jam_range"]))
+		return r
+	return float(_jammer_module(s).get("jam_range", 0.0)) if jamming else 0.0
+
+
+## Mine launcher (package 20): lays one mine of the type chosen for this launcher (right-click its
+## tile) from the cargo hold. At most `max_mines` per launcher at once.
+func lay_mine(slot: String, d: Dictionary) -> String:
+	if view == null or not view.has_method("lay_mine"):
+		return "No system."
+	var ch: Dictionary = mine_choice.get(slot, {})
+	var mtype := String(ch.get("type", ""))
+	if mtype == "" or float(fit.cargo.get(mtype, 0.0)) < 1.0:
+		mtype = ""
+		for k in GameData.MINES:
+			if float(fit.cargo.get(k, 0.0)) >= 1.0:
+				mtype = k
+				break
+	if mtype == "":
+		return "%s: no mines in your cargo hold – military outposts, shipyards and pirate havens sell them." % d["name"]
+	if float(module_timers.get(slot, 0.0)) > 0.0:
+		return "%s: reloading (%.1f s)." % [d["name"], float(module_timers[slot])]
+	var cap := maxi(int(round(float(d["max_mines"]))), 1)
+	if view.mines_of(self, slot) >= cap:
+		return "%s: %d mines already out (maximum %d) – they go off or disappear after %d min." % [d["name"], cap, cap, int(GameData.MINE_LIFE / 60.0)]
+	if fit.capacitor < float(d["energy"]):
+		return "%s: not enough energy (needs %s)." % [d["name"], str(d["energy"])]
+	fit.capacitor -= float(d["energy"])
+	module_timers[slot] = float(d["cooldown"])
+	fit.remove_cargo(mtype, 1.0)
+	var fuse := float(ch.get("fuse", 10.0))
+	view.lay_mine(self, mtype, slot, fuse, 1.0 + 0.25 * (int(d["size"]) - 1))
+	_mlog("%s: %s laid%s (%d left in the hold)." % [d["name"], GameData.MINES[mtype]["name"], (" – goes off in %d s" % int(fuse)) if mtype == "mine_timer" else "", int(fit.cargo.get(mtype, 0.0))])
+	return ""
+
+
+## Cargo manifest (package 20): generated once – for the cargo scanner and the wreck loot.
+func ensure_manifest() -> void:
+	if manifest_done:
+		return
+	manifest_done = true
+	if not fit.cargo.is_empty():
+		return
+	var room := maxf(float(fit.stats()["cargo_max"]), 10.0)
+	var goods: Array = []
+	if smuggler_mission != "":
+		unregistered = true
+		goods = ["electronics", "weapon_parts", "medicine", "mine_emp"]
+	elif faction == "pirate":
+		goods = ["salvage", "weapon_parts", "electronics", "food"]
+	elif faction == "patrol":
+		goods = ["weapon_parts", "mine_proximity", "food"]
+	else:
+		var cv := -1
+		if view != null and "traffic" in view and view.traffic != null:
+			cv = view.traffic.convoy_of(self)
+		if cv >= 0:
+			goods = [String(GameState.convoys.find(cv).get("cargo", "food"))]
+		else:
+			goods = ["food", "medicine", "alloys", "electronics", "water", "iron_ingot", "aluminium", "silicon"]
+			goods.shuffle()
+			goods = goods.slice(0, 2)
+	goods.shuffle()
+	var n := mini(goods.size(), randi_range(1, 3))
+	var left := room * randf_range(0.4, 0.9)
+	for i in n:
+		var cid: String = goods[i]
+		var vol := maxf(GameData.item_volume(cid), 0.1)
+		var amount := floorf(left / float(n - i) / vol)
+		if amount >= 1.0:
+			fit.cargo[cid] = float(fit.cargo.get(cid, 0.0)) + amount
+			left -= amount * vol
+
+
+func manifest_text() -> String:
+	ensure_manifest()
+	var parts: Array = []
+	for cid in fit.cargo:
+		if float(fit.cargo[cid]) >= 1.0:
+			parts.append("%d × %s" % [int(fit.cargo[cid]), GameData.item_name(cid)])
+	var t := ", ".join(PackedStringArray(parts)) if not parts.is_empty() else "empty hold"
+	if unregistered:
+		return "%s carries UNREGISTERED cargo – no manifest: %s." % [display_name(), t]
+	return "%s – manifest: %s." % [display_name(), t]
 
 
 func _repair(delta: float, t: Dictionary) -> void:
@@ -1960,6 +2304,10 @@ func info_text() -> String:
 	var t := "%s\n%s %s – %s\n" % [display_name(), fit.hull()["class"], fit.hull()["name"], who]
 	t += "Shield %.0f/%.0f  Armor %.0f/%.0f  Structure %.0f/%.0f\n" % [fit.shield, s["shield_max"], fit.armor, s["armor_max"], fit.structure, s["structure_max"]]
 	t += "DPS: opt %.0f / kin %.0f / exp %.0f" % [s["dps"]["optical"], s["dps"]["kinetic"], s["dps"]["explosive"]]
+	if shield_down > 0.0:
+		t += "\nShield down – back in %d s" % int(ceil(shield_down))
+	if cargo_known:
+		t += "\n" + manifest_text()
 	if activity != "":
 		t += "\n" + activity
 	return t

@@ -233,6 +233,18 @@ func spawn_npc(preset_id: String, pos: Vector2, faction: String = "pirate", gov:
 	f.ship_name = prefix + String(GameData.hulls[f.hull_id]["name"])
 	f.position = pos
 	f.rotation = randf() * TAU
+	# package 20: some NPCs carry the new equipment – pirates a radar jammer (they use it against
+	# you), patrols point defense and shield transfer beams
+	var extra := false
+	if faction == "pirate" and randf() < PIRATE_JAMMER_CHANCE:
+		extra = npc_extra(f, "o_jammer", true) or extra
+	elif faction == "patrol":
+		if randf() < 0.4:
+			extra = npc_extra(f, "w_pointdef", false) or extra
+		if randf() < 0.3:
+			extra = npc_extra(f, "t_shieldxfer", false) or extra
+	if extra:
+		f.refill()
 	var s := Ship.new()
 	s.setup(f, self)
 	if faction == "pirate":
@@ -246,6 +258,38 @@ func spawn_npc(preset_id: String, pos: Vector2, faction: String = "pirate", gov:
 			s.bounty = int(float(GameData.hulls[f.hull_id]["price"]) * 0.12 * lerpf(0.8, 1.6, 1.0 - sec) * gen / 10.0) * 10
 	ship_layer.add_child(s)
 	return s
+
+
+const ModuleFamilies = preload("res://data/modules.gd")
+const PIRATE_JAMMER_CHANCE := 0.22
+
+
+## Puts a module of family `fam` (quality C, as big as the slot allows) into a free slot of its type –
+## or, with `replace_last`, into the last one. False = no room.
+func npc_extra(f: ShipFitting, fam: String, replace_last: bool) -> bool:
+	var famd: Dictionary = ModuleFamilies.FAMILIES[fam]
+	var stype := String(ModuleFamilies.ANCHORS[famd["anchor"]]["slot"])
+	var keys: Array = []
+	for k in f.slot_keys():
+		if String(k).begins_with(stype + "_"):
+			keys.append(k)
+	var key := ""
+	for k2 in keys:
+		if String(f.modules.get(k2, "")) == "":
+			key = k2
+			break
+	if key == "" and replace_last and not keys.is_empty():
+		key = keys.back()
+	if key == "":
+		return false
+	var size := mini(f.slot_max(key), int(famd["sizes"][1]))
+	if size < int(famd["sizes"][0]):
+		return false
+	var mid := ModuleFamilies.id_of(fam, size, "C")
+	if f.can_fit(key, mid) != "":
+		return false
+	f.set_module(key, mid)
+	return true
 
 
 ## Loadout of a new pirate: an archetype (package 14) and its light / medium / heavy preset by security.
@@ -681,6 +725,10 @@ func pirate_count() -> int:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_jam_tick -= delta
+	if _jam_tick <= 0.0:
+		_jam_tick = 0.5
+		_apply_jamming()
 	_update_camera(delta)
 	_update_bodies()
 	background.follow(camera)
@@ -1106,6 +1154,57 @@ func order_follow(id: String) -> String:
 	return ""
 
 
+# ---------------------------------------------------------------- Package 20: mines & jamming
+
+const MineScript = preload("res://scripts/world/mine.gd")
+const JAM_VISIBLE := 3000.0      # jammed pilot: ships closer than this still show up
+var _jam_tick := 0.0
+
+
+## Lays a mine behind `ship` (mine launcher).
+func lay_mine(ship: Ship, kind: String, slot: String, fuse: float, power: float):
+	var m = MineScript.new()
+	m.setup(ship, kind, slot, fuse, power, self)
+	fx_layer.add_child(m)
+	spawn_fx(Fx.flash(m.position, Color(GameData.MINES[kind]["color"]), 30.0))
+	return m
+
+
+## Mines of `ship` from launcher `slot` still out there.
+func mines_of(ship: Ship, slot: String) -> int:
+	var n := 0
+	for m in get_tree().get_nodes_in_group("mines"):
+		if is_instance_valid(m) and not m.is_queued_for_deletion() and m.layer == ship and m.slot == slot:
+			n += 1
+	return n
+
+
+## Radar jammers that are running jam every hostile ship within their radius.
+func _apply_jamming() -> void:
+	var jammers: Array = []
+	for n in ship_layer.get_children():
+		if n is Ship and not n.dying:
+			var r: float = n.jam_radius()
+			if r > 0.0:
+				jammers.append([n, r])
+	for j in jammers:
+		for n2 in ship_layer.get_children():
+			if n2 is Ship and n2 != j[0] and not n2.dying and Ship.hostile(j[0], n2) and n2.position.distance_to(j[0].position) <= float(j[1]):
+				n2.jam(1.0)
+
+
+## The pilot's radar is jammed.
+func player_jammed() -> bool:
+	return player != null and is_instance_valid(player) and player.jammed_t > 0.0
+
+
+## Can the pilot see ship `n` on radar, map and contact list? (Not while jammed, unless close.)
+func contact_visible(n) -> bool:
+	if not player_jammed():
+		return true
+	return player.position.distance_to(n.position) <= JAM_VISIBLE
+
+
 ## Ships following `fn` (also in warp with it): the pilot first, then a fixed order. Cached per frame.
 var _fol_cache := {}
 var _fol_frame := -1
@@ -1511,7 +1610,7 @@ func _draw_overlay() -> void:
 	var mark_a := clampf((0.2 - z) / 0.1, 0.0, 1.0)
 	if mark_a > 0.01 and player != null and is_instance_valid(player):
 		for n in ship_layer.get_children():
-			if n is Ship and n != player and n.faction == "pirate" and not n.dying and n.position.distance_to(player.position) < 250000.0 and line_of_sight(player.position, n.position):
+			if n is Ship and n != player and n.faction == "pirate" and not n.dying and n.position.distance_to(player.position) < 250000.0 and line_of_sight(player.position, n.position) and contact_visible(n):
 				var pc := Color(1.0, 0.3, 0.3, mark_a)
 				o.draw_set_transform(n.position, 0.0, Vector2(px, px))
 				o.draw_colored_polygon(PackedVector2Array([Vector2(0, -6), Vector2(6, 5), Vector2(-6, 5)]), pc)
@@ -1647,8 +1746,18 @@ func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 			_draw_radar_shadow(o, c, co, r, px, a)
 	# Contacts (only with line of sight)
 	for n in ship_layer.get_children():
-		if n is Ship and n != player and not n.dying and not n.is_docked() and line_of_sight(c, n.position):
+		if n is Ship and n != player and not n.dying and not n.is_docked() and line_of_sight(c, n.position) and contact_visible(n):
 			_blip(o, c, n.position, r, sweep, px, a, Color(1.0, 0.3, 0.3) if n.faction == "pirate" else Color(0.9, 0.9, 0.5), 4.0)
+	if player_jammed():
+		# jammed (package 20): static over the radar, no contacts beyond close range
+		var rnd := RandomNumberGenerator.new()
+		rnd.seed = int(_t * 12.0)
+		for k2 in 160:
+			var pp := c + Vector2.from_angle(rnd.randf() * TAU) * sqrt(rnd.randf()) * r
+			o.draw_rect(Rect2(pp, Vector2(3.0, 1.5) * px * rnd.randf_range(1.0, 3.0)), Color(0.6, 1.0, 0.7, 0.35 * a))
+		o.draw_set_transform(c + Vector2(-60.0, -r * 0.55) * Vector2(px, 1.0), 0.0, Vector2(px, px))
+		o.draw_string(font, Vector2.ZERO, "RADAR JAMMED", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.4, 0.4, 0.9 * a))
+		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	for cel in celestials:
 		if not is_instance_valid(cel) or not cel.is_pickable() or cel.kind == "colossus":
 			continue
@@ -2174,6 +2283,12 @@ func on_ship_destroyed(ship: Ship, _killer) -> void:
 	var loot := {"salvage": randi_range(3, 10)}
 	if randf() < 0.35:
 		loot["weapon_parts"] = randi_range(1, 4)
+	# package 20: part of its cargo survives
+	ship.ensure_manifest()
+	for cid in ship.fit.cargo:
+		var keep := int(float(ship.fit.cargo[cid]) * randf_range(0.3, 0.6))
+		if keep > 0 and GameData.commodities.has(cid):
+			loot[cid] = int(loot.get(cid, 0)) + keep
 	if randf() < 0.25:
 		var mods: Array = ship.fit.modules.values()
 		if not mods.is_empty():

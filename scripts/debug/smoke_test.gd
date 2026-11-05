@@ -508,6 +508,7 @@ func _process(delta: float) -> void:
 				_test_codex(view)
 				_test_modules(view)
 				_test_debug_convoy(view)
+				_test_package20(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -2393,3 +2394,196 @@ func _test_debug_convoy(view: SystemView) -> void:
 			if is_instance_valid(s0):
 				s0.queue_free()
 		tr.convoys.erase(int(cv["id"]))
+
+
+## Phase 0.5 package 20: shield variants & downtime, point defense, shield transfer, cargo scanner,
+## solar collector, mines, radar jammer.
+func _test_package20(view: SystemView) -> void:
+	var M: Dictionary = GameData.modules
+	var pl: Ship = view.player
+	var base := pl.position + Vector2(0, 30000)
+	# shield variants
+	var sb: Dictionary = M["o_shield:3:C"]
+	var sc: Dictionary = M["o_shield_cap:3:C"]
+	var sf: Dictionary = M["o_shield_fast:3:C"]
+	check(float(sc["shield"]) > float(sb["shield"]) and float(sb["shield"]) > float(sf["shield"]) and float(sf["shield_regen"]) > float(sb["shield_regen"]) and float(sb["shield_regen"]) > float(sc["shield_regen"]), "shield variants: capacity vs regeneration")
+	# downtime by size, type and quality
+	var f1 := GameState.create_from_preset("std_hornet", "player")
+	var okey := ""
+	for k in f1.slot_keys():
+		if String(k).begins_with("optional_") and f1.slot_max(k) >= 2:
+			okey = k
+	var downs := {}
+	for mid in ["o_shield:2:C", "o_shield_cap:2:C", "o_shield_fast:2:C", "o_shield:2:A", "o_shield:2:F", "o_shield:1:C"]:
+		for k2 in f1.slot_keys():
+			if String(f1.modules.get(k2, "")).begins_with("o_shield"):
+				f1.set_module(k2, "")
+		f1.set_module(okey, mid)
+		downs[mid] = float(f1.stats()["shield_downtime"])
+	check(downs["o_shield_cap:2:C"] > downs["o_shield:2:C"] and downs["o_shield:2:C"] > downs["o_shield_fast:2:C"], "shield downtime: high capacity longest, fast-cycle shortest (%.0f / %.0f / %.0f s)" % [downs["o_shield_cap:2:C"], downs["o_shield:2:C"], downs["o_shield_fast:2:C"]])
+	check(downs["o_shield:2:F"] > downs["o_shield:2:C"] and downs["o_shield:2:C"] > downs["o_shield:2:A"] and downs["o_shield:2:C"] > downs["o_shield:1:C"], "shield downtime: longer for low quality and bigger shields")
+	# collapse → downtime → back at 50 %
+	var v: Ship = view.spawn_npc("patrol_medium", base, "patrol", "")
+	var vs: Dictionary = v.fit.stats()
+	if float(vs["shield_max"]) <= 0.0:
+		view.npc_extra(v.fit, "o_shield", true)
+		v.fit.refill()
+		vs = v.fit.stats()
+	v.fit.shield = 10.0
+	v.take_damage(50.0, "optical", null)
+	check(is_zero_approx(v.fit.shield) and absf(v.shield_down - float(vs["shield_downtime"])) < 0.01, "a shot-down shield goes offline for its downtime (%.0f s)" % v.shield_down)
+	v._regen(1.0, vs)
+	check(is_zero_approx(v.fit.shield), "no regeneration while the shield is down")
+	var before := v.shield_down
+	v._xfer_t = 0.3
+	v._regen(1.0, vs)
+	check(absf((before - v.shield_down) - Ship.XFER_DOWN_MULT) < 0.01, "a shield transfer beam shortens the downtime (×%.0f)" % Ship.XFER_DOWN_MULT)
+	v._regen(v.shield_down + 0.1, vs)
+	check(absf(v.fit.shield - float(vs["shield_max"]) * 0.5) < 1.0 and is_zero_approx(v.shield_down), "after the downtime the shield restarts at 50 %")
+	# shield transfer: from the capacitor, never from the own shield, energy only while transferring
+	var giver: Ship = view.spawn_npc("patrol_medium", base + Vector2(300, 0), "patrol", "")
+	var xfer: Dictionary = M["t_shieldxfer:2:C"].duplicate()
+	giver.fit.capacitor = 500.0
+	var gsh := giver.fit.shield
+	v.fit.shield = 0.0
+	v.shield_down = 0.0
+	giver._transfer_shield(1.0, xfer, v)
+	check(v.fit.shield > 0.0 and giver.fit.capacitor < 500.0 and is_equal_approx(giver.fit.shield, gsh), "shield transfer: capacitor → target shield, own shield untouched")
+	v.fit.shield = float(vs["shield_max"])
+	var cap0 := giver.fit.capacitor
+	giver._transfer_shield(1.0, xfer, v)
+	check(is_equal_approx(giver.fit.capacitor, cap0), "shield transfer uses no energy while the target is full")
+	# point defense shoots down a torpedo
+	var pir: Ship = view.spawn_npc(view._pirate_preset(), base + Vector2(1500, 0))
+	pir.fit.shield = 0.0
+	check(view.npc_extra(v.fit, "w_pointdef", true), "point defense fits a weapon slot")
+	var vs2: Dictionary = v.fit.stats()
+	check(vs2["pd"].size() >= 1 and not vs2["weapons"].any(func(w): return w.get("pd", false)), "point defense is not counted as a gun")
+	var torp := Projectile.new()
+	torp.setup(pir, v, M["w_torpedo:2:C"], view)
+	view.fx_layer.add_child(torp)
+	torp.position = v.position + Vector2(200, 0)
+	v.fit.capacitor = 500.0
+	for i in 30:
+		v.pd_timers.clear()
+		v._update_pd(0.1, vs2)
+		if torp.is_queued_for_deletion():
+			break
+	check(torp.is_queued_for_deletion(), "point defense shoots down an incoming torpedo")
+	# the pilot switches point defense on and off in the module bar (tested on a manual ship)
+	var pd_slot := String(vs2["pd"][0]["slot"])
+	v.manual = true
+	var pd_on: bool = v.set_module_active(pd_slot, true) == "" and v.module_on.get(pd_slot, false)
+	v.set_module_active(pd_slot, false)
+	check(pd_on and not v.module_on.get(pd_slot, false), "point defense is switched on and off like an active module")
+	v.manual = false
+	# mines
+	var civ: Ship = view.spawn_npc("civ_shuttle", base + Vector2(-3000, 0), "civilian", "")
+	var m1 = view.lay_mine(pl, "mine_proximity", "test", 10.0, 1.0)
+	m1.position = civ.position + Vector2(100, 0)
+	m1.age = 5.0
+	m1._physics_process(0.016)
+	check(not m1.is_queued_for_deletion(), "mines ignore ships that are not hostile")
+	var hp0: float = pir.fit.armor + pir.fit.structure
+	m1.position = pir.position + Vector2(100, 0)
+	m1._physics_process(0.016)
+	check(m1.is_queued_for_deletion() and pir.fit.armor + pir.fit.structure < hp0, "a proximity mine explodes next to a hostile ship")
+	var m2 = view.lay_mine(pl, "mine_timer", "test", 5.0, 1.0)
+	m2.position = pir.position + Vector2(5000, 0)
+	m2._physics_process(4.0)
+	var waited: bool = not m2.is_queued_for_deletion()
+	m2._physics_process(1.5)
+	check(waited and m2.is_queued_for_deletion(), "a timed mine goes off after its timer")
+	var m3 = view.lay_mine(pl, "mine_emp", "test", 10.0, 1.0)
+	m3.position = pir.position + Vector2(80, 0)
+	m3.age = 5.0
+	pir.fit.capacitor = 100.0
+	m3._physics_process(0.016)
+	check(pir.emp_t > 0.0 and is_zero_approx(pir.fit.capacitor), "an EMP mine knocks out capacitor and modules")
+	pir.emp_t = 0.0
+	var m4 = view.lay_mine(pl, "mine_jammer", "test", 10.0, 1.0)
+	m4.position = pir.position + Vector2(3000, 0)
+	m4.age = 1.5
+	m4._physics_process(0.016)
+	check(pir.jammed_t > 0.0 and civ.jammed_t <= 0.0, "a jammer mine jams hostile radar around it")
+	m4.queue_free()
+	# the mine launcher uses mines from the hold and keeps a limit
+	view.npc_extra(giver.fit, "w_minelayer", true)
+	var ml: Dictionary = {}
+	for e in giver.fit.active_modules():
+		if e["kind"] == "mine":
+			ml = e
+	check(not ml.is_empty(), "the mine launcher is an activatable module")
+	if not ml.is_empty():
+		giver.fit.cargo.clear()
+		check(giver.lay_mine(ml["slot"], ml["data"]).contains("no mines"), "no mines in the hold – nothing to lay")
+		giver.fit.cargo["mine_proximity"] = 10.0
+		var laid := 0
+		for i2 in 8:
+			giver.module_timers.clear()
+			giver.fit.capacitor = 500.0
+			if giver.lay_mine(ml["slot"], ml["data"]) == "":
+				laid += 1
+		check(laid == maxi(int(round(float(ml["data"]["max_mines"]))), 1) and is_equal_approx(float(giver.fit.cargo["mine_proximity"]), 10.0 - laid), "launcher: %d mines out at most, taken from the hold" % laid)
+		for mm in get_tree().get_nodes_in_group("mines"):
+			mm.queue_free()
+	# radar jammer used by a pirate against the pilot
+	var jp: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(2000, 0))
+	check(view.npc_extra(jp.fit, "o_jammer", true), "a radar jammer fits an optional slot")
+	jp.fit.capacitor = 500.0
+	jp.target = pl
+	jp._update_npc_jammer(0.1, jp.fit.stats())
+	pl.jammed_t = 0.0
+	view._apply_jamming()
+	var far_ship: Ship = view.spawn_npc("civ_shuttle", pl.position + Vector2(20000, 0), "civilian", "")
+	check(jp.jamming and pl.jammed_t > 0.0 and view.player_jammed(), "pirates jam the pilot's radar")
+	check(is_equal_approx(pl.lock_range(pl.fit.stats()), float(pl.fit.stats()["sensor_range"]) * Ship.JAM_SENSOR) and not view.contact_visible(far_ship) and view.contact_visible(jp), "jammed: shorter lock range, distant contacts gone")
+	pl.jammed_t = 0.0
+	# cargo scanner
+	civ.ensure_manifest()
+	check(not civ.fit.cargo.is_empty() and civ.manifest_text().contains("manifest"), "cargo scanner: %s" % civ.manifest_text())
+	var smug: Ship = view.spawn_npc("civ_shuttle", base + Vector2(-6000, 0), "civilian", "")
+	smug.smuggler_mission = "test"
+	check(smug.manifest_text().contains("UNREGISTERED"), "a smuggler's cargo shows up as unregistered")
+	# solar collector: the closer to the star, the more fuel
+	view.npc_extra(giver.fit, "o_solar", true)
+	var gst: Dictionary = giver.fit.stats()
+	var star_r := float(view.layout["star"]["radius"])
+	giver.position = Vector2(star_r * 3.0, 0)
+	var near := giver.solar_rate(gst)
+	giver.position = Vector2(star_r * 20.0, 0)
+	var far := giver.solar_rate(gst)
+	giver.fit.fuel = 0.0
+	giver._solar(10.0, gst)
+	check(near > far and far > 0.0 and giver.fit.fuel > 0.0, "solar collector: %.2f fuel/s near the star, %.3f far out" % [near, far])
+	# mines on sale; summaries and icons
+	var mine_market := false
+	for s2 in Universe.systems:
+		for st in Universe.get_layout(int(s2["id"]))["stations"]:
+			if int(st["market"].get("mine_emp", {"buy": -1})["buy"]) > 0:
+				mine_market = true
+	check(mine_market, "mines are sold as goods (military outposts, havens)")
+	var fams_sold := {}
+	for s3 in Universe.systems:
+		for st3 in Universe.get_layout(int(s3["id"]))["stations"]:
+			for mid3 in st3["shop"]:
+				fams_sold[String(M[mid3]["family"])] = true
+	check(fams_sold.has("w_pointdef") and fams_sold.has("o_jammer") and fams_sold.has("t_shieldxfer") and fams_sold.has("o_solar") and fams_sold.has("w_minelayer"), "outfitters sell the new modules")
+	Commands.execute({"type": "mine_config", "slot": "weapon_0", "mine": "mine_emp", "fuse": 20})
+	check(String(pl.mine_choice["weapon_0"]["type"]) == "mine_emp" and int(pl.mine_choice["weapon_0"]["fuse"]) == 20, "mine launcher settings: type and timer")
+	main.hud._mine_menu(main.hud.module_bar, "weapon_0")
+	var pm_ok := false
+	for ch in main.hud.get_children():
+		if ch is PopupMenu:
+			pm_ok = ch.item_count >= GameData.MINES.size() + GameData.MINE_TIMERS.size()
+			ch.queue_free()
+	check(pm_ok, "right-click menu of the mine launcher lists mine types and timers")
+	pl.mine_choice.clear()
+	var sum_ok := true
+	for fam in ["o_shield_cap", "o_shield_fast", "w_pointdef", "w_minelayer", "t_shieldxfer", "t_cargoscan", "o_solar", "o_jammer"]:
+		var id: String = M.keys().filter(func(x): return String(x).begins_with(fam + ":"))[0]
+		sum_ok = sum_ok and GameData.module_summary(id).length() > 40 and PixelArt.module_icon_key(id) != "empty"
+	check(sum_ok, "every new module has a description and an icon")
+	for n in [v, giver, pir, civ, jp, far_ship, smug]:
+		if is_instance_valid(n):
+			n.queue_free()

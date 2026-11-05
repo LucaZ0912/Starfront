@@ -488,17 +488,19 @@ func _update_contacts() -> void:
 	var pp: Vector2 = view._player_pos()
 	var ships: Array = []
 	for n in view.ship_layer.get_children():
-		if n is Ship and n != view.player and not n.dying and not n.is_docked():
+		if n is Ship and n != view.player and not n.dying and not n.is_docked() and view.contact_visible(n):
 			ships.append(n)
 	ships.sort_custom(func(a, b): return pp.distance_squared_to(a.position) < pp.distance_squared_to(b.position))
 	_tab_btns["contacts"].text = "Contacts (%d)" % ships.size()
-	var sig := ""
+	var sig := "J" if view.player_jammed() else ""
 	for n2 in ships:
 		sig += str(n2.fit.uid) + ","
 	if sig != _contact_sig:
 		_contact_sig = sig
 		UI.clear(contacts_box)
 		_contact_rows.clear()
+		if view.player_jammed():
+			contacts_box.add_child(UI.label("RADAR JAMMED – only ships within %s show up." % SystemView.fmt_dist(view.JAM_VISIBLE), 12, Color(1.0, 0.45, 0.4)))
 		if ships.is_empty():
 			contacts_box.add_child(UI.label("No other ships in this system.", 12, UI.TEXT_DIM))
 		for n3 in ships:
@@ -577,6 +579,9 @@ func _process(delta: float) -> void:
 		var tgt = view.player.target
 		if tgt != null and is_instance_valid(tgt) and view.player.lock_progress < 1.0:
 			act += "  (target lock %d%%)" % int(view.player.lock_progress * 100.0)
+		var flags := status_flags(view.player)
+		if flags != "":
+			act = flags + "   " + act
 	_w["act"].text = act
 	_update_modules()
 	_update_locks()
@@ -922,6 +927,10 @@ func _update_selected() -> void:
 	var n = d.get("node")
 	if n is Ship:
 		t += "\nShield %.0f  •  Armor %.0f  •  Structure %.0f" % [n.fit.shield, n.fit.armor, n.fit.structure]
+		if status_flags(n) != "":
+			t += "\n" + status_flags(n)
+		if n.cargo_known:
+			t += "\n" + n.manifest_text()
 		if n.in_warp():
 			t += "\nIn warp → %s%s" % [n.warp.get("name", "?"), "  (frozen by an interdictor)" if n.warp_frozen else ""]
 		if n.faction != "player":
@@ -981,6 +990,8 @@ func _update_locks() -> void:
 		sb.set_border_width_all(2 if act else 1)
 		var prog := float(l["progress"])
 		var info := SystemView.fmt_dist(p.position.distance_to(n.position))
+		if n is Ship and status_flags(n) != "":
+			info += "  •  " + status_flags(n)
 		if prog < 1.0:
 			info = "Locking %d%%  •  %s" % [int(prog * 100.0), info]
 		c["info"].text = info
@@ -1043,6 +1054,18 @@ func _lock_card_input(ev: InputEvent, key: String) -> void:
 				view.select(key)
 
 
+## Package 20: shield downtime, EMP and jamming as a short text ("" = none).
+static func status_flags(n) -> String:
+	var parts: Array = []
+	if n.shield_down > 0.0:
+		parts.append("SHIELD DOWN %ds" % int(ceil(n.shield_down)))
+	if n.emp_t > 0.0:
+		parts.append("EMP %ds" % int(ceil(n.emp_t)))
+	if n.jammed_t > 0.0:
+		parts.append("JAMMED")
+	return "  ".join(PackedStringArray(parts))
+
+
 # ================================================================ Allied group (top left)
 
 const MAX_ALLY_TILES := 8
@@ -1078,6 +1101,8 @@ func _update_allies() -> void:
 			info = SystemView.fmt_dist(p.position.distance_to(n.position))
 		if n.convoy_lead:
 			info = "LEAD  •  " + info
+		if status_flags(n) != "":
+			info += "  •  " + status_flags(n)
 		c["info"].text = info
 		var sel: bool = selected_id == "ship:%d" % n.fit.uid
 		var sb: StyleBoxFlat = c["style"]
@@ -1176,8 +1201,16 @@ func _make_module_tile(e: Dictionary, idx: int) -> void:
 	var info := "%s\nRange %s" % [d["name"], SystemView.fmt_dist(float(d.get("range", 0.0)))]
 	if e["kind"] == "weapon":
 		info += "  •  %.0f dmg / %.2f s  •  %s energy" % [float(d["damage"]), float(d["cooldown"]), str(d["energy"])]
+	elif e["kind"] == "pd":
+		info += "  •  point defense: switch on – shoots down hostile missiles and mines (%d %%)" % int(minf(float(d["intercept"]), 0.95) * 100.0)
+	elif e["kind"] == "mine":
+		info = "%s\nClick: lay a mine  •  Right-click: mine type and timer" % d["name"]
 	b.tooltip_text = info + ("\nKey: %s" % Keybinds.key_text("module_%d" % (idx + 1)) if idx < 9 else "")
 	b.pressed.connect(func(): Commands.execute({"type": "toggle_module", "slot": slot}))
+	if e["kind"] == "mine":
+		b.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT:
+				_mine_menu(b, slot))
 	module_bar.add_child(b)
 	var v := UI.vbox(1)
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1207,6 +1240,36 @@ func _make_module_tile(e: Dictionary, idx: int) -> void:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(bar)
 	_module_tiles[slot] = {"button": b, "style": sb, "bar": bar}
+
+
+## Mine launcher (package 20): pick the mine type (with the number in the hold) and the timer.
+func _mine_menu(anchor: Control, slot: String) -> void:
+	var p = view.player if view != null else null
+	if p == null or not is_instance_valid(p):
+		return
+	var f: ShipFitting = p.fit
+	var ch: Dictionary = p.mine_choice.get(slot, {})
+	var pm := PopupMenu.new()
+	var kinds: Array = GameData.MINES.keys()
+	for i in kinds.size():
+		var k: String = kinds[i]
+		pm.add_radio_check_item("%s  (%d)" % [GameData.MINES[k]["name"], int(f.cargo.get(k, 0.0))], i)
+		pm.set_item_checked(i, String(ch.get("type", "")) == k)
+		pm.set_item_tooltip(i, String(GameData.MINES[k]["text"]))
+	pm.add_separator("Timed mine")
+	for j in GameData.MINE_TIMERS.size():
+		var sec: int = GameData.MINE_TIMERS[j]
+		pm.add_radio_check_item("Timer %d s" % sec, 100 + j)
+		pm.set_item_checked(pm.get_item_index(100 + j), int(ch.get("fuse", 10)) == sec)
+	pm.id_pressed.connect(func(id):
+		if id >= 100:
+			Commands.execute({"type": "mine_config", "slot": slot, "fuse": GameData.MINE_TIMERS[id - 100]})
+		else:
+			Commands.execute({"type": "mine_config", "slot": slot, "mine": kinds[id]}))
+	pm.popup_hide.connect(pm.queue_free)
+	add_child(pm)
+	pm.position = Vector2i(anchor.global_position + Vector2(0, -10)) - Vector2i(0, 200)
+	pm.popup()
 
 
 ## Hotkeys 1–9

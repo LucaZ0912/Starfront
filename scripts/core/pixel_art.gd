@@ -421,11 +421,19 @@ static func module_icon_key(module_id: String) -> String:
 	var m: Dictionary = GameData.modules[module_id]
 	match String(m["slot"]):
 		"weapon":
+			if m.get("pd", false):
+				return "w_pointdef"
+			if m.get("mines", false):
+				return "w_mines"
 			return "w_" + String(m.get("damage_type", "kinetic"))
 		"tool":
 			return "t_" + String(m.get("tool", "scanner"))
 		"optional":
+			if m.has("solar"):
+				return "o_solar"
 			match String(m.get("active", "")):
+				"jammer":
+					return "o_jammer"
 				"afterburner":
 					return "o_afterburner"
 				"shield_boost":

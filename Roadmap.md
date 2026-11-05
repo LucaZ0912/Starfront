@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Paket 19 fertig. Netzwerk fehlt noch. Version alpha 0.4.19.19. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 und 20 fertig. Netzwerk fehlt noch. Version alpha 0.4.20.1. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -36,7 +36,7 @@ Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und
 | Berüchtigte | Fünf benannte Piratenkapitäne (1–5 Sterne) mit eigener Lackierung, Eigenschaft und wachsender Eskorte ziehen durch den Cluster (nie in die Heimatsysteme); Kopfgeld steigt mit der Zeit, 5-Stern-Kapitäne überfallen Stationen; Steckbriefe am Bond Office, ☠ auf der Galaxiekarte, besondere Beute, Nachfolger. |
 | Welt & News | Notrufe, fliehender Verkehr, Eskalation (Patrouille → Verstärkung → Einsatzgruppe), Wracks für alle Schiffe; Nachrichten-Ticker im Schiffs-Panel, Archiv in jeder Station, Kopfgeld-Kampagnen. |
 | Fraktionsaufträge | Am Schwarzen Brett jeder Regierungsstation: Konvoi-Eskorte, Patrouille begleiten, Schmuggler abfangen (ab Neutral), Jagd auf Berüchtigte (ab Friendly); +4 Ruf. |
-| Module | Neues Modulsystem: Familie + Größe (1–10, Waffen 1–4) + Qualität (F–A); jeder Schiffsplatz mit eigener Maximalgröße; ca. 1.700 Module aus 53 Familien. Skiff, Longhaul und Carrion Crow kaufbar. |
+| Module | Neues Modulsystem: Familie + Größe (1–10, Waffen 1–4) + Qualität (F–A); jeder Schiffsplatz mit eigener Maximalgröße; ca. 1.900 Module aus 61 Familien. Skiff, Longhaul und Carrion Crow kaufbar. Paket 20: Schild-Varianten mit Downtime nach dem Zusammenbruch, Punktverteidigung, Schildtransfer, Frachtscanner, Sonnen-Sammler, Minenwerfer mit vier Minenarten (Ware), Radarstörer (auch bei Piraten). |
 | Codex | Nachschlagewerk mit 45 Einträgen in sechs Kategorien; Grundlagen offen, der Rest wird beim Entdecken freigeschaltet („New Codex entry“ im HUD); im Schiffsmenü und im Hauptmenü. |
 | Fehlt | Teile 4–8, Netzwerk, Endgame-Inhalte |
 
@@ -119,7 +119,7 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | 1 | More More | ✅ erledigt |
 | 2 | World Design Update | ✅ erledigt |
 | 3 | NPCs and Factions | ✅ erledigt (Pakete 10–18) |
-| 4 | Module and Internal Ship Parts Rework | in Arbeit (Paket 19 fertig) |
+| 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–20 fertig) |
 | 5 | Character Update | geplant |
 | 6 | New Worlds Discovery Update | geplant |
 | 7 | Intro and First Part of the Story | geplant |
@@ -538,7 +538,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 | # | Arbeitspaket | Inhalt | Abhängig von |
 | --- | --- | --- | --- |
 | 19 | Größen- & Qualitätssystem – ✅ erledigt | Modulgrößen 1–10, Qualität F–A, Rumpfplätze mit Maximalgröße je Schiff | – |
-| 20 | Neue Modultypen & Waffen | Schild-Varianten (Kapazität vs. Ladegeschwindigkeit) und weitere Modultypen und Waffen | 19 |
+| 20 | Neue Modultypen & Waffen – ✅ erledigt | Schild-Varianten + Schild-Downtime, Punktverteidigung, Schildtransfer, Frachtscanner, Sonnen-Sammler, Minenwerfer (4 Minen), Radarstörer | 19 |
 | 21 | Energie-Management | im Schiff festlegen, welche Module bei Strommangel zuerst abgeschaltet werden | 19 |
 | 22 | Multi-Fokus | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
 | 23 | Drohnen (vorgezogen aus Phase 2) | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
@@ -616,7 +616,20 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
   - **Zeitauslöser** – explodieren nach einer eingestellten Zeit.
   - **EMP-Minen** – legen Schilde, Energie und Module kurzzeitig lahm.
 - **Radarstörer (Modul):** schaltet die Radaransicht aus, sodass nicht mehr angezeigt wird, wo sich Feinde befinden. Wirkt auf Gegner im Umkreis – und Gegner setzen ihn auch gegen den Spieler ein.
-- Weitere neue Modultypen und Waffen (Liste folgt).
+- **Zusätzlich (5. Nov 2026 festgelegt):** Punktverteidigung, Schildtransferstrahl (überträgt Energie aus dem eigenen Energiespeicher – nicht aus dem eigenen Schild – und verbraucht nur Energie, solange er aktiv überträgt), Frachtscanner, Sonnen-Sammler. Fern-Reparatur kommt als Reparatur-Drohnen in Paket 23.
+- **Schild-Downtime:** wird ein Schild komplett abgeschossen, bleibt er eine Zeit lang aus – abhängig von maximaler Schildmenge, Schildart und Qualität – und startet danach mit 50 %. Gilt für alle Schiffe (auch NPCs und Gegner); der Schildtransferstrahl verkürzt die Downtime.
+
+**Umgesetzt (5. Nov 2026, alpha 0.4.20.1)** – 8 neue Familien in `data/modules.gd`, Minen in `scripts/world/mine.gd`, 31 neue automatische Prüfungen, alle 436 bestanden:
+
+- [x] Schild-Varianten: Shield Generator (ausgewogen), Capacitive Shield (mehr Kapazität, langsame Ladung), Fast-Cycle Shield (weniger Kapazität, schnelle Ladung).
+- [x] Schild-Downtime für alle Schiffe: Artfaktor (1,0 / 1,35 / 0,6) ÷ Qualität × (4 + √max. Schild / 3) s, 3–60 s; danach 50 %; Schild-Booster helfen nicht, Schildtransfer lässt sie 3× so schnell ablaufen. Anzeige „SHIELD DOWN“ im Schiffspanel, auf Ziel- und Verbund-Kacheln und in der Auswahl; Downtime in der Schiffsinfo.
+- [x] Punktverteidigung (Waffenplatz, 1–3): eingeschaltet schießt sie feindliche Raketen, Torpedos (auch Ionen-Torpedos) und Minen in Reichweite selbst ab; zählt nicht als Kanone; Patrouillen haben sie teils dabei.
+- [x] Schildtransferstrahl (Werkzeug, 1–3): auf ein anvisiertes befreundetes Schiff, Energie aus dem eigenen Speicher, nur während er überträgt; NPC-Patrouillen nutzen ihn untereinander.
+- [x] Frachtscanner (Werkzeug, 1–2): liest die Ladung eines anvisierten Schiffs; Schmuggler zeigen „unregistrierte Ladung“; ein Teil der Piratenladung bleibt im Wrack.
+- [x] Sonnen-Sammler (optional, 1–4, passiv): tankt im All nach – voll bis 4 Sternradien, danach mit dem Quadrat der Entfernung schwächer.
+- [x] Minenwerfer (Waffenplatz, 1–3): legt Minen aus dem Frachtraum hinter das Schiff; Rechtsklick auf die Kachel wählt Art und Zeitzünder (5–60 s); 3/6/9 Minen gleichzeitig, verschwinden nach 5 min, treffen nur Feinde. Minen als Ware bei Militär, Werften und Piratenbasen: Annäherung, Zeitauslöser, Radarstörer (6.000 km, 45 s), EMP (Schild bricht zusammen, Energie und Module 8 s tot).
+- [x] Radarstörer (optional, 1–4, aktiv): Feinde im Umkreis verlieren das Radarbild und erfassen/feuern nur noch auf halbe Sensorreichweite; etwa jeder fünfte Pirat setzt ihn gegen den Spieler ein (Rauschen und „RADAR JAMMED“ im Radar, Kontaktliste nur bis 3.000 km, Locks halb so weit).
+- [x] Ausrüster führen die neuen Module automatisch; Beschreibungen und Icons für alle neuen Module.
 
 ### Energie-Management (Paket 21)
 

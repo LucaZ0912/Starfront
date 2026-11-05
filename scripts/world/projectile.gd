@@ -42,6 +42,15 @@ func setup(p_shooter, p_target, w: Dictionary, p_view: Node) -> void:
 	vel = dir * speed
 	life = float(w["range"]) / speed * 1.5 + 0.3
 	rotation = vel.angle()
+	if homing:
+		add_to_group("missiles")      # point defense can shoot these down (package 20)
+
+
+## Shot down by point defense (package 20): a small puff, no damage.
+func intercept() -> void:
+	if view != null:
+		view.spawn_fx(Fx.explosion(position, 14.0, Color(0.9, 0.9, 0.7)))
+	queue_free()
 
 
 func _physics_process(delta: float) -> void:

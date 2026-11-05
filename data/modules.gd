@@ -17,10 +17,15 @@ extends RefCounted
 ##   hyperdrive:  drive_class (max. route class from the size: 1–2 → 1, 3–4 → 2, 5–6 → 3), jump_fuel, spool (s)
 ##   sensors:     range, resolution (target lock), scan_strength
 ##   weapon:      damage_type, damage, cooldown, range, energy, projectile_speed (0 = beam), splash, homing
-##   tool:        tool (scanner/analyzer/mining/harvester/salvage/repair/survey/prospect/warrant/interdict), strength/rate, range, energy, scan_time, accuracy
+##   tool:        tool (scanner/analyzer/mining/harvester/salvage/repair/survey/prospect/warrant/interdict/
+##                shield_transfer/cargo_scan), strength/rate, range, energy, energy_rate, scan_time, accuracy
+##   weapon extras (package 20): pd = point defense (intercept chance, shoots missiles and mines),
+##                mines = mine launcher (max_mines laid at once, uses mines from the cargo hold)
 ##   optional:    cargo, ore_cargo, shield, shield_regen, armor, fuel, speed_mult, range_mult, res_bonus, cap_bonus,
 ##                mining_bonus {class: +x}, survey_range_mult; active modules: active (afterburner/shield_boost/
-##                armor_repair), boost / rate, energy_rate (capacitor per second while on)
+##                armor_repair/jammer), boost / rate, energy_rate (capacitor per second while on)
+##                shield_kind (balanced/capacity/regen – sets the downtime after a shield collapse),
+##                solar (fuel per second next to the star), jam_range (radar jammer radius)
 
 const QUALITIES := ["F", "E", "D", "C", "B", "A"]          # S and S+ follow in the endgame
 ## perf = performance, mass, power draw and price factors per quality (D is the lightest, F the
@@ -46,6 +51,7 @@ const FIELD_EXP := {
 	"cap_bonus": 1.3, "cap_drain": 1.3, "strength": 1.0, "jump_fuel": 1.0,
 	"range": 0.35, "resolution": 0.2, "scan_strength": 0.6, "splash": 0.5, "res_bonus": 0.5,
 	"energy": 1.1, "energy_rate": 1.1,
+	"intercept": 0.15, "solar": 1.3, "jam_range": 0.5, "max_mines": 1.0,
 }
 ## Multipliers: only the part above 1 grows (with the square root of the size ratio)
 const MULT_FIELDS := ["boost", "range_mult", "survey_range_mult", "speed_mult", "efficiency"]
@@ -89,6 +95,9 @@ const FAMILIES := {
 	"w_ion": {"name": "Ion Disruptor", "anchor": "w_ion_s", "ref": 1, "sizes": [1, 2]},
 	"w_ionsiphon": {"name": "Ion Siphon", "anchor": "w_ion_m", "ref": 2, "sizes": [2, 3]},
 	"w_iontorpedo": {"name": "Ion Torpedo", "anchor": "w_ion_torpedo", "ref": 1, "sizes": [1, 1]},
+	# package 20: point defense and mine launcher
+	"w_pointdef": {"name": "Point Defense Turret", "anchor": "w_pointdef_s", "ref": 1, "sizes": [1, 3]},
+	"w_minelayer": {"name": "Mine Launcher", "anchor": "w_minelayer_s", "ref": 1, "sizes": [1, 3]},
 	# tools (1–4)
 	"t_scanner": {"name": "Signature Scanner", "anchor": "t_scanner_s", "ref": 1, "sizes": [1, 3], "exp": {"range": 0.6}},
 	"t_analyzer": {"name": "Analyzer", "anchor": "t_analyzer_s", "ref": 1, "sizes": [1, 3]},
@@ -101,9 +110,15 @@ const FAMILIES := {
 	"t_prospector": {"name": "Prospector Scanner", "anchor": "t_prospector_s", "ref": 1, "sizes": [1, 3]},
 	"t_warrant": {"name": "Warrant Scanner", "anchor": "t_warrant_s", "ref": 1, "sizes": [1, 2]},
 	"t_interdictor": {"name": "Warp Interdictor", "anchor": "t_interdictor_s", "ref": 1, "sizes": [1, 2], "exp": {"range": 1.1}},
+	"t_shieldxfer": {"name": "Shield Transfer Beam", "anchor": "t_shieldxfer_s", "ref": 1, "sizes": [1, 3]},
+	"t_cargoscan": {"name": "Cargo Scanner", "anchor": "t_cargoscan_s", "ref": 1, "sizes": [1, 2]},
 	# optional (1–8, cargo and ore hold up to 10)
 	"o_cargo": {"name": "Cargo Rack", "anchor": "o_cargo_s", "ref": 1, "sizes": [1, 10]},
 	"o_shield": {"name": "Shield Generator", "anchor": "o_shield_s", "ref": 1, "sizes": [1, 8]},
+	"o_shield_cap": {"name": "Capacitive Shield", "anchor": "o_shield_cap_s", "ref": 1, "sizes": [1, 8]},
+	"o_shield_fast": {"name": "Fast-Cycle Shield", "anchor": "o_shield_fast_s", "ref": 1, "sizes": [1, 8]},
+	"o_jammer": {"name": "Radar Jammer", "anchor": "o_jammer_s", "ref": 1, "sizes": [1, 4]},
+	"o_solar": {"name": "Solar Collector", "anchor": "o_solar_s", "ref": 1, "sizes": [1, 4]},
 	"o_armor": {"name": "Armor Plates", "anchor": "o_armor_s", "ref": 1, "sizes": [1, 8]},
 	"o_afterburner": {"name": "Afterburner", "anchor": "o_afterburner_m", "ref": 3, "sizes": [1, 6]},
 	"o_shieldboost": {"name": "Shield Booster", "anchor": "o_shieldboost_s", "ref": 1, "sizes": [1, 8]},
@@ -288,6 +303,11 @@ const ANCHORS := {
 	"w_ion_s": {"name": "Ion Disruptor", "slot": "weapon", "size": 1, "price": 5000, "mass": 70, "power": 6, "damage_type": "optical", "damage": 7, "cooldown": 0.8, "range": 600, "energy": 3, "projectile_speed": 0, "cap_drain": 9.0, "shield_mult": 1.6, "pirate_only": true},
 	# Ion torpedo: fitted only to 5-star notorious captains – knocks station turrets offline in raids
 	"w_ion_torpedo": {"name": "Ion Torpedo", "slot": "weapon", "size": 1, "price": 60000, "mass": 150, "power": 6, "damage_type": "explosive", "damage": 60, "cooldown": 10.0, "range": 1400, "energy": 10, "projectile_speed": 380, "splash": 40, "homing": true, "cap_drain": 80.0, "pirate_only": true, "notorious_only": true},
+	# ---------------- Package 20: point defense and mines ----------------
+	# point defense: switched on, it shoots down hostile missiles, torpedoes and mines in range by itself
+	"w_pointdef_s": {"name": "Point Defense Turret", "slot": "weapon", "size": 1, "price": 4500, "mass": 70, "power": 5, "pd": true, "damage_type": "kinetic", "damage": 0, "cooldown": 0.7, "range": 420, "energy": 2, "intercept": 0.6, "projectile_speed": 0},
+	# mine launcher: lays the mine type chosen on its tile (right-click); mines come from the cargo hold
+	"w_minelayer_s": {"name": "Mine Launcher", "slot": "weapon", "size": 1, "price": 6000, "mass": 120, "power": 3, "mines": true, "damage_type": "explosive", "damage": 0, "cooldown": 3.0, "range": 0, "energy": 4, "max_mines": 3, "projectile_speed": 0},
 	"w_ion_m": {"name": "Ion Siphon", "slot": "weapon", "size": 2, "price": 21000, "mass": 220, "power": 14, "damage_type": "optical", "damage": 20, "cooldown": 1.3, "range": 800, "energy": 8, "projectile_speed": 0, "cap_drain": 28.0, "shield_mult": 1.6, "pirate_only": true},
 
 	# ---------------- Tools ----------------
@@ -319,7 +339,14 @@ const ANCHORS := {
 	"o_cargo_s": {"name": "Cargo Rack", "slot": "optional", "size": 1, "price": 1500, "mass": 100, "power": 0, "cargo": 40},
 	"o_cargo_m": {"name": "Expanded Cargo Hold", "slot": "optional", "size": 2, "price": 8000, "mass": 320, "power": 0, "cargo": 160},
 	"o_cargo_l": {"name": "Container Frame", "slot": "optional", "size": 3, "price": 25000, "mass": 800, "power": 0, "cargo": 450},
-	"o_shield_s": {"name": "Shield Generator", "slot": "optional", "size": 1, "price": 5000, "mass": 70, "power": 10, "shield": 260, "shield_regen": 7},
+	"o_shield_s": {"name": "Shield Generator", "slot": "optional", "size": 1, "price": 5000, "mass": 70, "power": 10, "shield": 260, "shield_regen": 7, "shield_kind": "balanced"},
+	# package 20: shield variants – more capacity (slow to come back) or fast regeneration (back quickly)
+	"o_shield_cap_s": {"name": "Capacitive Shield", "slot": "optional", "size": 1, "price": 6000, "mass": 90, "power": 11, "shield": 360, "shield_regen": 4.2, "shield_kind": "capacity"},
+	"o_shield_fast_s": {"name": "Fast-Cycle Shield", "slot": "optional", "size": 1, "price": 6000, "mass": 60, "power": 11, "shield": 180, "shield_regen": 12.5, "shield_kind": "regen"},
+	# radar jammer: while on, hostile ships within jam_range lose their radar and long-range locks
+	"o_jammer_s": {"name": "Radar Jammer", "slot": "optional", "size": 1, "price": 9000, "mass": 60, "power": 9, "active": "jammer", "jam_range": 6000, "energy_rate": 7},
+	# solar collector: passive, refuels slowly – the closer to the star, the faster
+	"o_solar_s": {"name": "Solar Collector", "slot": "optional", "size": 1, "price": 4500, "mass": 70, "power": 0, "solar": 0.35},
 	"o_shield_m": {"name": "Shield Generator", "slot": "optional", "size": 2, "price": 20000, "mass": 200, "power": 24, "shield": 850, "shield_regen": 20},
 	"o_shield_l": {"name": "Shield Generator", "slot": "optional", "size": 3, "price": 70000, "mass": 500, "power": 50, "shield": 2400, "shield_regen": 50},
 	"o_armor_s": {"name": "Armor Plates", "slot": "optional", "size": 1, "price": 2000, "mass": 250, "power": 0, "armor": 250},
@@ -352,5 +379,9 @@ const ANCHORS := {
 	"o_capacitor_s": {"name": "Capacitor Bank", "slot": "optional", "size": 1, "price": 3000, "mass": 60, "power": 0, "cap_bonus": 120},
 	# warp interdictor (phase 0.5 package 11): select a ship in warp, activate, win the timing game
 	"t_interdictor_s": {"name": "Warp Interdictor", "slot": "tool", "size": 1, "price": 18000, "mass": 70, "power": 7, "tool": "interdict", "range": 400000, "energy": 30, "zone_bonus": 0.0},
+	# package 20: shield transfer (own capacitor → the locked friendly ship's shield; speeds up its
+	# shield downtime) and the cargo scanner (reads the manifest of a locked ship)
+	"t_shieldxfer_s": {"name": "Shield Transfer Beam", "slot": "tool", "size": 1, "price": 7000, "mass": 80, "power": 7, "tool": "shield_transfer", "rate": 16, "range": 520, "energy_rate": 9},
+	"t_cargoscan_s": {"name": "Cargo Scanner", "slot": "tool", "size": 1, "price": 4000, "mass": 40, "power": 3, "tool": "cargo_scan", "range": 750, "scan_time": 3.0, "energy": 6},
 	"t_interdictor_m": {"name": "Warp Interdictor", "slot": "tool", "size": 2, "price": 46000, "mass": 160, "power": 12, "tool": "interdict", "range": 900000, "energy": 45, "zone_bonus": 0.04},
 }

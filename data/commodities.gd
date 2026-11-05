@@ -57,6 +57,11 @@ const COMMODITIES := {
 	"weapon_parts": {"name": "Weapon Parts", "price": 190, "volume": 1.0, "category": "goods"},
 	"salvage": {"name": "Salvage", "price": 30, "volume": 1.0, "category": "loot"},
 	"research_data": {"name": "Research Data", "price": 260, "volume": 0.1, "category": "data"},
+	# --- Munitions (package 20): mines for mine launchers
+	"mine_proximity": {"name": "Proximity Mine", "price": 320, "volume": 0.5, "category": "munitions"},
+	"mine_jammer": {"name": "Jammer Mine", "price": 420, "volume": 0.5, "category": "munitions"},
+	"mine_timer": {"name": "Timed Mine", "price": 280, "volume": 0.5, "category": "munitions"},
+	"mine_emp": {"name": "EMP Mine", "price": 650, "volume": 0.5, "category": "munitions"},
 	"sealed_cargo": {"name": "Sealed Cargo", "price": 0, "volume": 1.0, "category": "mission", "tradeable": false},
 }
 
@@ -89,7 +94,7 @@ const STATION_TYPES := {
 		"consumes": ["research_data", "xeno_crystal", "xeno_lattice", "rare_earths", "cryo_coolant", "helium3"],
 		"shop": ["tool", "sensors", "hyperdrive"], "shipyard": false,
 		"refinery": {}, "manufacturing": ["tool", "sensors", "hyperdrive"]},
-	"military": {"name": "Military Outpost", "produces": ["weapon_parts"], "consumes": ["food", "salvage", "medicine", "deuterium", "cryo_coolant", "neodymium"],
+	"military": {"name": "Military Outpost", "produces": ["weapon_parts", "mine_proximity", "mine_jammer", "mine_timer", "mine_emp"], "consumes": ["food", "salvage", "medicine", "deuterium", "cryo_coolant", "neodymium"],
 		"shop": ["weapon", "hull", "optional", "sensors", "distributor"], "shipyard": true,
 		"refinery": {}, "manufacturing": ["weapon", "hull"]},
 	# Phase 0.5 package 6: special stations (converted from the six base types during generation)
@@ -97,14 +102,14 @@ const STATION_TYPES := {
 		"consumes": ["water_ice", "ammonia_ice", "methane_ice", "deuterium_ice", "helium3_ice", "cryo_crystal", "food", "electronics"],
 		"shop": ["tool", "tank", "optional", "reactor"], "shipyard": false,
 		"refinery": {"icy": 1.25, "stony": 0.5}, "manufacturing": ["tank", "reactor"]},
-	"shipyard": {"name": "Shipyard Complex", "produces": ["weapon_parts", "alloys"],
+	"shipyard": {"name": "Shipyard Complex", "produces": ["weapon_parts", "alloys", "mine_proximity", "mine_timer"],
 		"consumes": ["iron_ingot", "titanium_ingot", "cobalt_ingot", "aluminium", "electronics", "alloys", "neodymium"],
 		"shop": ["hull", "engine", "reactor", "distributor", "tank", "hyperdrive", "weapon", "optional"], "shipyard": true,
 		"refinery": {"metallic": 0.8}, "manufacturing": ["hull", "engine", "reactor", "distributor", "tank", "hyperdrive"]},
 }
 ## Phase 0.5 package 12: Pirate Havens are dockable with pirate standing – black market for
 ## scarce goods, an outfitter with weapons, no shipyard. Not part of the station plan.
-const HAVEN_TYPE := {"name": "Pirate Haven", "produces": ["weapon_parts", "salvage"],
+const HAVEN_TYPE := {"name": "Pirate Haven", "produces": ["weapon_parts", "salvage", "mine_proximity", "mine_jammer", "mine_timer", "mine_emp"],
 	"consumes": ["food", "medicine", "electronics", "alloys", "water", "xeno_lattice", "helium3"],
 	"shop": ["weapon", "optional", "tool"], "shipyard": false,
 	"refinery": {"metallic": 0.6, "stony": 0.6}, "manufacturing": []}

@@ -503,6 +503,7 @@ func _build_ship() -> void:
 		"Armor: %.0f / %.0f" % [fit.armor, s["armor_max"]],
 		"Shield: %.0f / %.0f" % [fit.shield, s["shield_max"]],
 		"Shield regen: %.1f /s" % s["shield_regen"],
+		"Shield downtime: %.0f s (then 50 %%)" % float(s["shield_downtime"]),
 		"Optical resistance: %d%%" % int(res["optical"] * 100),
 		"Kinetic resistance: %d%%" % int(res["kinetic"] * 100),
 		"Explosive resistance: %d%%" % int(res["explosive"] * 100),

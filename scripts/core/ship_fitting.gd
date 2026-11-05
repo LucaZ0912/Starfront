@@ -1,5 +1,6 @@
 class_name ShipFitting
 extends RefCounted
+const ModuleData = preload("res://data/modules.gd")
 ## A ship's data: hull + fitted modules + current state.
 ## Effective values (stats) are derived from hull base values + modules.
 ## This class is the "source of truth" – Ship nodes in the system view read/write here.
@@ -149,7 +150,9 @@ func _compute() -> Dictionary:
 		"speed_mult": 1.0, "range_mult": 1.0, "ore_cargo_max": 0.0, "survey_range_mult": 1.0,
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
+		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0,
 	}
+	var down_w := 0.0                # shield downtime: capacity-weighted factor of the shield modules
 	for key in slot_keys():
 		var mid: String = modules.get(key, "")
 		if mid == "" or not GameData.modules.has(mid):
@@ -188,7 +191,12 @@ func _compute() -> Dictionary:
 				var w: Dictionary = m.duplicate()
 				w["id"] = mid
 				w["slot"] = key
-				s["weapons"].append(w)
+				if w.get("pd", false):
+					s["pd"].append(w)          # point defense: not a gun for ships (package 20)
+				elif w.get("mines", false):
+					s["minelayers"].append(w)
+				else:
+					s["weapons"].append(w)
 			"tool":
 				var t: Dictionary = m.duplicate()
 				t["id"] = mid
@@ -197,6 +205,11 @@ func _compute() -> Dictionary:
 			"optional":
 				s["cargo_max"] += float(m.get("cargo", 0))
 				s["shield_max"] += float(m.get("shield", 0))
+				if m.has("shield"):
+					var kind_f := float(GameData.SHIELD_KINDS.get(String(m.get("shield_kind", "balanced")), {}).get("down", 1.0))
+					var perf := float(ModuleData.QUALITY.get(String(m.get("quality", "C")), {}).get("perf", 1.0))
+					down_w += float(m["shield"]) * kind_f / perf
+				s["solar"] += float(m.get("solar", 0.0))
 				s["shield_regen"] += float(m.get("shield_regen", 0))
 				s["armor_max"] += float(m.get("armor", 0))
 				s["fuel_max"] += float(m.get("fuel", 0))
@@ -234,6 +247,13 @@ func _compute() -> Dictionary:
 	s["signature"] += s["mass"] * 0.004
 	for dt in s["res"]:
 		s["res"][dt] = clampf(s["res"][dt], 0.0, 0.8)
+	# package 20: a collapsed shield stays down for a while – longer for big shields, high-capacity
+	# variants and low quality – and comes back at 50 %
+	if s["shield_max"] > 0.0:
+		s["shield_downtime"] = clampf(down_w / s["shield_max"] * (4.0 + sqrt(s["shield_max"]) / 3.0), 3.0, 60.0)
+	for pd in s["pd"]:
+		pd["range"] = float(pd["range"]) * s["range_mult"]
+		pd["cooldown"] = float(pd["cooldown"]) / ratio
 
 	var dps := {"optical": 0.0, "kinetic": 0.0, "explosive": 0.0}
 	var min_range := INF
@@ -276,6 +296,10 @@ func active_modules() -> Array:
 	var s := stats()
 	for w in s["weapons"]:
 		out.append({"slot": w["slot"], "kind": "weapon", "data": w})
+	for pd in s["pd"]:
+		out.append({"slot": pd["slot"], "kind": "pd", "data": pd})
+	for ml in s["minelayers"]:
+		out.append({"slot": ml["slot"], "kind": "mine", "data": ml})
 	for t in s["tools"]:
 		if not t["tool"] in PASSIVE_TOOLS:
 			out.append({"slot": t["slot"], "kind": "tool", "data": t})

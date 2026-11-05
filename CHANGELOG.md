@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.20.1 – 2026-11-05
+
+**Package 20 – new module types.** 436 smoke-test checks pass. (From here on the last number counts
+the updates within the current package.)
+- Shield variants (balanced / capacitive / fast-cycle) and shield downtime for every ship: a shot-down
+  shield stays offline (by size, type, quality) and restarts at 50 %.
+- Point Defense Turret: shoots down hostile missiles, torpedoes and mines.
+- Shield Transfer Beam: charges a friendly ship's shield from your capacitor, shortens its downtime.
+- Cargo Scanner (manifests, smugglers' unregistered cargo) and Solar Collector (refuels near the star).
+- Mine Launcher with four mine types sold as goods: proximity, timed, jammer, EMP.
+- Radar Jammer – also used by pirates against you (radar static, short contact list, shorter locks).
+
 ## alpha 0.4.19.19 – 2026-11-05
 
 - Debug menu (Pilot → Contracts): "Escort convoy" with adjustable freighters (1–6) and jumps (1–8) –

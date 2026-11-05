@@ -219,6 +219,24 @@ func _c_deactivate(c: Dictionary) -> String:
 	return e if e != "" else world.player.set_module_active(String(c["slot"]), false)
 
 
+## {"type":"mine_config", "slot": s, "mine"?: mine id, "fuse"?: seconds} – mine launcher settings.
+func _c_mine_config(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var slot := String(c["slot"])
+	var ch: Dictionary = world.player.mine_choice.get(slot, {"type": "", "fuse": 10})
+	if c.has("mine"):
+		if not GameData.MINES.has(String(c["mine"])):
+			return "Unknown mine type."
+		ch["type"] = String(c["mine"])
+	if c.has("fuse"):
+		ch["fuse"] = clampi(int(c["fuse"]), 1, 300)
+	world.player.mine_choice[slot] = ch
+	GameState.log_msg("Mine launcher: %s%s." % [GameData.MINES.get(String(ch["type"]), {}).get("name", "first mine in the hold"), (", timer %d s" % int(ch["fuse"]))], GameState.COL_INFO)
+	return ""
+
+
 func _c_toggle_module(c: Dictionary) -> String:
 	var e := _need_world()
 	if e != "":

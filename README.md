@@ -68,6 +68,34 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## New module types (phase 0.5 package 20)
+- **Shield variants:** *Shield Generator* (balanced), *Capacitive Shield* (≈ +40 % capacity, slow
+  regeneration) and *Fast-Cycle Shield* (≈ −30 % capacity, almost twice the regeneration).
+- **Shield downtime** (every ship, NPCs too): a shield that is shot down stays **offline** for a while,
+  then restarts at **50 %**. Downtime = type factor (balanced 1.0, capacitive 1.35, fast-cycle 0.6) ÷
+  quality × (4 + √max shield / 3) s, 3–60 s (ship info shows it). Shield boosters cannot bring a collapsed
+  shield back; a shield transfer beam on the ship makes the downtime run out 3× as fast.
+- **Point Defense Turret** (weapon slot, size 1–3): switch it on in the module bar – it shoots down
+  hostile rockets, torpedoes (also ion torpedoes) and mines in range by itself (intercept chance ~60–80 %,
+  a little energy per shot). Not a gun against ships. Patrols sometimes carry it.
+- **Shield Transfer Beam** (tool, 1–3): on a locked friendly ship it charges that ship's shield from
+  **your capacitor** (never from your shield); it only uses energy while it actually transfers.
+- **Cargo Scanner** (tool, 1–2): reads the manifest of a locked ship; smugglers show **unregistered
+  cargo**. Part of a pirate's cargo survives in its wreck.
+- **Solar Collector** (optional, 1–4, passive): refuels in space – full rate within 4 star radii,
+  dropping with the square of the distance.
+- **Mine Launcher** (weapon slot, 1–3): lays mines from the **cargo hold** behind the ship – click its tile
+  to lay one, **right-click** to pick the type and the timer. At most 3/6/9 mines per launcher at once;
+  mines vanish after 5 minutes and only threaten ships hostile to you. Mines are goods (military outposts,
+  shipyards, pirate havens): **Proximity** (armed after 3 s, explodes near a hostile ship), **Timed**
+  (5–60 s), **Jammer** (jams hostile radar within 6,000 km for 45 s), **EMP** (shields collapse,
+  capacitor and modules dead for 8 s).
+- **Radar Jammer** (optional, 1–4, active): hostile ships in its radius lose their radar picture and can
+  lock/engage only at half sensor range. **Pirates use it against you** (about one in five): your radar
+  shows static and "RADAR JAMMED", the contact list only shows ships within 3,000 km and your locks
+  reach half as far. Status flags (SHIELD DOWN, EMP, JAMMED) show in the ship panel, on lock and group
+  tiles and in the selection panel.
+
 ## Modules: family + size + quality (phase 0.5 package 19)
 Every module is a **family** (Pulse Laser, Ion Drive, Shield Generator …), a **size** and a **quality**,
 e.g. *Pulse Laser 2 · C* (id `w_pulse:2:C`). `data/modules.gd` defines 53 families; `build_all()`

@@ -34,7 +34,24 @@ const TOOL_NAMES := {
 	"scanner": "Scanner", "analyzer": "Analyzer", "mining": "Mining Laser",
 	"salvage": "Salvager", "repair": "Repair Beam", "harvester": "Ice Harvester",
 	"survey": "Long-Range Survey", "prospect": "Prospector", "warrant": "Warrant Scanner", "interdict": "Warp Interdictor",
+	"shield_transfer": "Shield Transfer", "cargo_scan": "Cargo Scanner",
 }
+## Package 20: shield variants – downtime factor after a collapse (capacity: long, regen: short)
+const SHIELD_KINDS := {"balanced": {"name": "Balanced", "down": 1.0}, "capacity": {"name": "High capacity", "down": 1.35},
+	"regen": {"name": "Fast regeneration", "down": 0.6}}
+## Package 20: mines (commodities) – what they do when they go off
+const MINES := {
+	"mine_proximity": {"name": "Proximity Mine", "trigger": 280.0, "damage": 210.0, "splash": 170.0, "color": Color(1.0, 0.45, 0.25),
+		"text": "explodes when a hostile ship comes within 280 km (armed after 3 s)"},
+	"mine_timer": {"name": "Timed Mine", "damage": 360.0, "splash": 240.0, "color": Color(1.0, 0.8, 0.3),
+		"text": "explodes after the time set on the launcher – hits everything hostile in its blast"},
+	"mine_jammer": {"name": "Jammer Mine", "trigger": 6000.0, "jam_time": 45.0, "color": Color(0.7, 0.5, 1.0),
+		"text": "jams the radar of hostile ships within 6,000 km for 45 s"},
+	"mine_emp": {"name": "EMP Mine", "trigger": 320.0, "splash": 650.0, "emp_time": 8.0, "color": Color(0.4, 0.85, 1.0),
+		"text": "goes off near a hostile ship: shields collapse, capacitor and modules are dead for 8 s"},
+}
+const MINE_LIFE := 300.0            # mines disappear after 5 minutes
+const MINE_TIMERS := [5, 10, 20, 30, 60]
 const MODULE_ITEM_VOLUME := 5.0
 
 var hulls: Dictionary = HullData.HULLS
@@ -202,6 +219,8 @@ func module_summary(id: String) -> String:
 		"res_bonus": "Resolution +", "cap_bonus": "Capacitor +", "ore_cargo": "Ore hold (ore & ice only)",
 		"scan_time": "Scan time (s)", "accuracy": "Estimate error ±", "boost": "Speed × while on",
 		"energy_rate": "Energy/s while on", "survey_range_mult": "Survey range ×",
+		"intercept": "Intercept chance", "max_mines": "Mines out at once", "jam_range": "Jamming radius",
+		"solar": "Fuel/s next to the star",
 	}
 	for k in labels:
 		if m.has(k):
@@ -216,9 +235,23 @@ func module_summary(id: String) -> String:
 			parts.append("Mining rate +%d%% on %s asteroids" % [int(float(m["mining_bonus"][cls]) * 100.0), String(cls)])
 	if m.has("active"):
 		parts.append("Active module – switch it on in the module bar (uses energy while on)")
+	if m.has("shield_kind"):
+		parts.append("Shield type: %s – after a collapse it stays down for a while (longer for big, high-capacity and low-quality shields), then restarts at 50 %%" % SHIELD_KINDS[m["shield_kind"]]["name"])
+	if m.get("pd", false):
+		parts.append("Point defense – switched on, it shoots down hostile missiles, torpedoes and mines by itself")
+	if m.get("mines", false):
+		parts.append("Lays mines from your cargo hold – right-click its tile to pick the mine type and the timer")
+	if m.get("active", "") == "jammer":
+		parts.append("Hostile ships in range lose their radar picture and cannot lock you from afar")
+	if m.has("solar"):
+		parts.append("Refuels while you are in space – fastest close to the star, little in the outer system")
+	if m.get("tool", "") == "shield_transfer":
+		parts.append("Charges the shield of a locked friendly ship from your capacitor (not from your shield); shortens its shield downtime")
+	if m.get("tool", "") == "cargo_scan":
+		parts.append("Reads the cargo manifest of a locked ship (smugglers carry unregistered cargo)")
 	if m.get("tool", "") == "survey":
 		parts.append("Aimed at the place in the selection panel (field, planet, anomaly, gate …)")
-	if m.has("damage") and m.has("cooldown"):
+	if m.has("damage") and m.has("cooldown") and float(m["damage"]) > 0.0:
 		parts.append("DPS: %.1f" % (float(m["damage"]) / float(m["cooldown"])))
 	if m.has("res"):
 		var r: Dictionary = m["res"]
