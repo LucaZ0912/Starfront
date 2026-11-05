@@ -113,6 +113,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	a.ship_name = "Dragonfly »Pathfinder«"
 	a.system_id = current_system
 	a.position = (home_station["pos"] as Vector2) + Vector2(400.0, 150.0)
+	a.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
 	add_ship(a)
 	active_uid = a.uid
 	storage[home_station["id"]] = {}

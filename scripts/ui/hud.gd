@@ -48,6 +48,10 @@ var _module_tiles := {}           # slot -> {panel, bar, style}
 var _module_sig := ""
 var lock_bar: HBoxContainer
 var ally_bar: VBoxContainer       # allied ships of the pilot's group (top left)
+var drone_panel: PanelContainer   # package 23: drone control (top left edge)
+var _drone_box: VBoxContainer
+var _drone_sig := ""
+var _drone_rows: Array = []       # [{drone, fuel bar, hull bar}]
 var _ally_cards := {}             # ship -> {style, info, bars}
 var _ally_sig := ""
 var _lock_cards := {}             # key -> {panel, style, info, bars}
@@ -190,6 +194,14 @@ func _ready() -> void:
 	sel_panel.add_child(sel_box)
 	_build_selected()
 
+	# --- Drone control (top left edge, package 23): folded while no drone is out
+	drone_panel = UI.panel(Color(0.03, 0.06, 0.05, 0.9))
+	drone_panel.position = Vector2(0, 50)
+	drone_panel.custom_minimum_size = Vector2(250, 0)
+	root.add_child(drone_panel)
+	_drone_box = UI.vbox(4)
+	drone_panel.add_child(_drone_box)
+
 	# --- Allied ships travelling with the pilot (top left)
 	ally_bar = UI.vbox(4)
 	ally_bar.position = Vector2(10, 54)
@@ -330,6 +342,7 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 [color=#7fd8ff]Multi-focus[/color]: every weapon and tool keeps the target that was active when you switched it on (T1, T2 … on its tile).
    Make another lock active and switch more modules on – press a running module's key to move it to the active target.
 {cmd_approach} approach • {cmd_warp} warp • {cmd_jump} jump • {cmd_dock} dock • {cmd_follow} follow (the selected object)
+[color=#7fd8ff]Drones[/color]: {drone_launch} launch, {drone_recall} recall – role and behaviour in the drone window (top left). They fly into the hangar for warps and jumps and out again afterwards.
 {ship_menu}: ship menu • {station}: station • {galaxy_map}: galaxy map • {menu_back}: close / pause menu
 {quicksave} / {quickload}: quicksave / quickload • {debug_menu}: debug menu • All keys: Settings → Controls
 
@@ -487,14 +500,14 @@ func _update_contacts() -> void:
 		if _tab_btns.has("contacts") and view != null and view.ship_layer != null:
 			var cnt := 0
 			for n0 in view.ship_layer.get_children():
-				if n0 is Ship and n0 != view.player and not n0.dying and not n0.is_docked():
+				if n0 is Ship and n0 != view.player and not n0.dying and not n0.is_docked() and not n0.is_drone:
 					cnt += 1
 			_tab_btns["contacts"].text = "Contacts (%d)" % cnt
 		return
 	var pp: Vector2 = view._player_pos()
 	var ships: Array = []
 	for n in view.ship_layer.get_children():
-		if n is Ship and n != view.player and not n.dying and not n.is_docked() and view.contact_visible(n):
+		if n is Ship and n != view.player and not n.dying and not n.is_docked() and not n.is_drone and view.contact_visible(n):
 			ships.append(n)
 	ships.sort_custom(func(a, b): return pp.distance_squared_to(a.position) < pp.distance_squared_to(b.position))
 	_tab_btns["contacts"].text = "Contacts (%d)" % ships.size()
@@ -591,6 +604,7 @@ func _process(delta: float) -> void:
 	_w["act"].text = act
 	_update_modules()
 	_update_locks()
+	_update_drones()
 	_update_allies()
 	_update_selected()
 	var ore_txt := ""
@@ -833,7 +847,7 @@ func select_next(kind: String) -> String:
 func _target_candidates(p, kind: String, rng: float) -> Array:
 	var out: Array = []
 	for n in view.ship_layer.get_children():
-		if not (n is Ship) or n == p or n.dying or n.in_warp() or n.is_docked() or p.position.distance_to(n.position) > rng or not view.contact_visible(n):
+		if not (n is Ship) or n == p or n.dying or n.is_drone or n.in_warp() or n.is_docked() or p.position.distance_to(n.position) > rng or not view.contact_visible(n):
 			continue
 		var hos: bool = n.hostile_to_player()
 		if kind == "all" or (kind == "hostile" and hos) or (kind == "friend" and not hos):
@@ -1125,6 +1139,121 @@ static func status_flags(n) -> String:
 	if n.jammed_t > 0.0:
 		parts.append("JAMMED")
 	return "  ".join(PackedStringArray(parts))
+
+
+# ================================================================ Drone control (top left edge)
+
+const DRONE_ROLE_UI := [["combat", "Combat", "w_kinetic"], ["mining", "Mining", "t_mining"], ["repair", "Repair", "t_repair"]]
+const DRONE_MODE_NAMES := {"defend": "Defend", "attack": "Attack target", "fire_at_will": "Fire at will", "rest": "Rest",
+	"auto": "Auto", "target": "Work on target", "allies": "Allies only", "self": "Self only"}
+const DRONE_MODE_TIPS := {
+	"defend": "Attack ships that attacked you or that you attacked – they pick the target themselves",
+	"attack": "Attack your active locked target (idle in formation without one)",
+	"fire_at_will": "Attack every ship nearby – hostiles AND civilians (allies spared). Attacking the innocent is a crime!",
+	"rest": "Stay in formation, even during a fight",
+	"auto": "Mining: find asteroids, mine and deliver the ore (5 m³ per trip). Repair: you, allies and neutral ships in range",
+	"target": "Work only on your active locked target",
+	"allies": "Repair only allied ships (and you)",
+	"self": "Repair only your own ship when it needs it",
+}
+
+
+func _update_drones() -> void:
+	var p = view.player if view != null else null
+	if p == null or not is_instance_valid(p) or GameState.active() == null:
+		drone_panel.visible = false
+		return
+	var f: ShipFitting = p.fit
+	var st := f.stats()
+	drone_panel.visible = int(st["drone_storage"]) > 0
+	var out: Array = view.drones_of(p)
+	var mode := String(f.drone_modes.get(f.drone_role, ""))
+	var sig := "%d|%d|%s|%s|%d" % [out.size(), f.drones.size(), f.drone_role, mode, int(st["drones_max"])]
+	for d0 in out:
+		sig += ",%d" % d0.get_instance_id()
+	if sig != _drone_sig:
+		_drone_sig = sig
+		_build_drone_panel(p, out)
+	for r in _drone_rows:
+		var d = r["drone"]
+		if is_instance_valid(d) and not d.dying:
+			_set_bar(r["fuel"], d.fuel_left(), 1.0)
+			_set_bar(r["hull"], d.fit.structure, d.hull_max())
+	ally_bar.position.y = (drone_panel.position.y + drone_panel.size.y + 8.0) if drone_panel.visible else 54.0
+	# the survey results move next to the drone window instead of covering it
+	survey_panel.position.x = (drone_panel.size.x + 10.0) if drone_panel.visible else 14.0
+
+
+func _build_drone_panel(p, out: Array) -> void:
+	UI.clear(_drone_box)
+	_drone_rows.clear()
+	var f: ShipFitting = p.fit
+	var st := f.stats()
+	var head := UI.hbox(6)
+	_drone_box.add_child(head)
+	head.add_child(UI.label("DRONES", 13, Color(0.45, 1.0, 0.55)))
+	head.add_child(UI.label("%d / %d out  •  %d in hangar" % [out.size(), int(st["drones_max"]), f.drones_in_hangar()], 11, UI.TEXT_DIM))
+	if out.is_empty():
+		# folded: one line and the launch button
+		var lb := UI.button("Launch [%s]" % Keybinds.key_text("drone_launch"), func(): Commands.execute({"type": "drone_launch"}))
+		lb.disabled = f.drones_in_hangar() == 0
+		lb.tooltip_text = "Launch drones – the window opens with their controls" if f.drones_in_hangar() > 0 else "No drones in the hangar – the Drone Bay at stations sells them"
+		_drone_box.add_child(lb)
+		return
+	var roles := UI.hbox(3)
+	_drone_box.add_child(roles)
+	for spec in DRONE_ROLE_UI:
+		var rid: String = spec[0]
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_pressed = f.drone_role == rid
+		b.focus_mode = Control.FOCUS_NONE
+		b.text = spec[1]
+		b.icon = PixelArt.icon_texture(spec[2])
+		b.expand_icon = false
+		b.add_theme_font_size_override("font_size", 11)
+		b.custom_minimum_size = Vector2(78, 30)
+		b.pressed.connect(func(): Commands.execute({"type": "drone_role", "role": rid}))
+		roles.add_child(b)
+	var modes: Array = Commands.DRONE_ROLES[f.drone_role]
+	var cur := String(f.drone_modes.get(f.drone_role, ""))
+	var mg := GridContainer.new()
+	mg.columns = 2
+	_drone_box.add_child(mg)
+	for m in modes:
+		var mid: String = m
+		var mb := UI.button(DRONE_MODE_NAMES.get(mid, mid), func(): Commands.execute({"type": "drone_mode", "mode": mid}), DRONE_MODE_TIPS.get(mid, ""))
+		mb.toggle_mode = true
+		mb.button_pressed = cur == mid
+		mb.custom_minimum_size = Vector2(118, 24)
+		mb.add_theme_font_size_override("font_size", 11)
+		mg.add_child(mb)
+	if f.drone_role == "combat" and st["drone_weapon"].is_empty():
+		_drone_box.add_child(UI.wrap_label("No drone weapon fitted (hangar → weapon slot).", 11, UI.BAD, 240))
+	if f.drone_role == "mining" and st["drone_tool"].is_empty():
+		_drone_box.add_child(UI.wrap_label("No drone mining laser fitted (hangar → tool slot).", 11, UI.BAD, 240))
+	for d in out:
+		var row := UI.hbox(4)
+		_drone_box.add_child(row)
+		var nm := UI.label(String(d.display_name()), 11, Color(0.75, 1.0, 0.8))
+		nm.custom_minimum_size = Vector2(60, 0)
+		row.add_child(nm)
+		var fb := UI.bar(Color(0.4, 0.9, 0.5), 80)
+		fb.custom_minimum_size = Vector2(80, 5)
+		fb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		fb.tooltip_text = "Fuel"
+		row.add_child(fb)
+		var hb := UI.bar(Color(0.9, 0.3, 0.3), 80)
+		hb.custom_minimum_size = Vector2(80, 5)
+		hb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(hb)
+		_drone_rows.append({"drone": d, "fuel": fb, "hull": hb})
+	var bt := UI.hbox(4)
+	_drone_box.add_child(bt)
+	var l2 := UI.button("Launch [%s]" % Keybinds.key_text("drone_launch"), func(): Commands.execute({"type": "drone_launch"}))
+	l2.disabled = f.drones_in_hangar() == 0 or out.size() >= int(st["drones_max"])
+	bt.add_child(l2)
+	bt.add_child(UI.button("Recall [%s]" % Keybinds.key_text("drone_recall"), func(): Commands.execute({"type": "drone_recall"})))
 
 
 # ================================================================ Allied group (top left)

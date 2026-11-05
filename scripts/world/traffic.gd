@@ -65,7 +65,7 @@ func _exit_tree() -> void:
 func npc_count() -> int:
 	var n := 0
 	for s in view.ship_layer.get_children():
-		if s is Ship and s != view.player and not s.dying:
+		if s is Ship and s != view.player and not s.dying and not s.is_drone:
 			n += 1
 	return n
 

@@ -23,11 +23,14 @@ const LAYER_MULT := {
 	"armor": {"optical": 0.8, "kinetic": 1.25, "explosive": 1.0},
 	"structure": {"optical": 0.9, "kinetic": 1.0, "explosive": 1.4},
 }
-const CORE_SLOTS := ["hull", "engine", "distributor", "reactor", "tank", "hyperdrive", "sensors"]
+const CORE_SLOTS := ["hull", "engine", "distributor", "reactor", "tank", "hyperdrive", "sensors", "hangar"]
+## Drone equipment slots of the hangar (package 23) – they equip every drone, not the ship
+const DRONE_SLOTS := ["dweapon", "dtool", "dbonus"]
 const SLOT_NAMES := {
 	"hull": "Hull Plating", "engine": "Engine", "distributor": "Power Distributor", "reactor": "Reactor",
 	"tank": "Fuel Tank", "hyperdrive": "Hyperdrive", "sensors": "Sensors",
 	"weapon": "Weapon", "tool": "Tool", "optional": "Optional",
+	"hangar": "Drone Hangar", "drone": "Drone Module", "dweapon": "Drone Weapon", "dtool": "Drone Mining Laser", "dbonus": "Drone Module",
 }
 const SIZE_NAMES := {1: "S", 2: "M", 3: "L"}
 const TOOL_NAMES := {
@@ -75,6 +78,12 @@ static func _convert_presets() -> Dictionary:
 		var conv := {}
 		for key in p["modules"]:
 			conv[key] = ModuleData.legacy(String(p["modules"][key]), slot_max_of(h, key))
+		# package 23: every ship has a drone hangar; the pilot's standard fits come with drone gear
+		if slot_max_of(h, "hangar") > 0 and not conv.has("hangar"):
+			conv["hangar"] = ModuleData.id_of("hangar", slot_max_of(h, "hangar"), "C")
+		if String(pid).begins_with("std_") and slot_max_of(h, "dweapon_0") > 0:
+			conv["dweapon_0"] = ModuleData.id_of("w_pulse", 1, "C")
+			conv["dtool_0"] = ModuleData.id_of("t_mining", 1, "C")
 		p["modules"] = conv
 	return out
 
@@ -100,6 +109,10 @@ func legacy_id(old_id: String, max_size: int = 99, quality: String = "C") -> Str
 static func size_cap(slot: String, tier: int) -> int:
 	var t := clampi(tier, 1, 3) - 1
 	match slot:
+		"drone":
+			return [1, 2, 3][t]
+		"hangar":
+			return [3, 6, 9][t]
 		"weapon", "tool":
 			return [2, 3, 4][t]
 		"optional":
@@ -220,7 +233,10 @@ func module_summary(id: String) -> String:
 		"scan_time": "Scan time (s)", "accuracy": "Estimate error ±", "boost": "Speed × while on",
 		"energy_rate": "Energy/s while on", "survey_range_mult": "Survey range ×",
 		"intercept": "Intercept chance", "max_mines": "Mines out at once", "jam_range": "Jamming radius",
-		"solar": "Fuel/s next to the star",
+		"solar": "Fuel/s next to the star", "drone_storage": "Drones in the hangar",
+		"d_range": "Drone control range ×", "d_cargo": "Drone cargo +", "d_hull": "Drone hull +", "d_shield": "Drone shield +",
+		"d_shield_regen": "Drone shield regen/s", "d_damage": "Drone damage ×", "d_wrange": "Drone weapon range ×",
+		"d_fuel": "Drone fuel ×", "d_speed": "Drone speed ×",
 	}
 	for k in labels:
 		if m.has(k):
@@ -235,6 +251,10 @@ func module_summary(id: String) -> String:
 			parts.append("Mining rate +%d%% on %s asteroids" % [int(float(m["mining_bonus"][cls]) * 100.0), String(cls)])
 	if m.has("active"):
 		parts.append("Active module – switch it on in the module bar (uses energy while on)")
+	if m["slot"] == "hangar":
+		parts.append("Holds your drones – the quality gives more room; how many fly at once depends on the ship")
+	if m["slot"] == "drone":
+		parts.append("Fits the bonus slot of the drone hangar – works for all your drones")
 	if m.has("shield_kind"):
 		parts.append("Shield type: %s – after a collapse it stays down for a while (longer for big, high-capacity and low-quality shields), then restarts at 50 %%" % SHIELD_KINDS[m["shield_kind"]]["name"])
 	if m.get("pd", false):

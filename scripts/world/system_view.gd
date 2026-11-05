@@ -206,6 +206,17 @@ func sync_player() -> void:
 		player.manual = true
 		player.setup(f, self)
 		ship_layer.add_child(player)
+		# package 23: no drone is out after a (re)start; after a jump they fly out again
+		for r in f.drones:
+			r["out"] = false
+		if f.drone_relaunch > 0 and f.docked_at == "":
+			var n := f.drone_relaunch
+			f.drone_relaunch = 0
+			get_tree().create_timer(1.2).timeout.connect(func():
+				if player != null and is_instance_valid(player) and not player.is_docked():
+					launch_drones(player, n))
+		else:
+			f.drone_relaunch = 0
 		if f.docked_at == "":
 			spawn_fx(Fx.flash(player.position, Color(0.6, 0.85, 1.0), player.radius * 3.0))
 
@@ -1193,6 +1204,120 @@ func _apply_jamming() -> void:
 				n2.jam(1.0)
 
 
+# ---------------------------------------------------------------- Package 23: drones
+
+const DroneScript = preload("res://scripts/world/drone.gd")
+
+
+## Drones of carrier `c` that are out (launch order).
+func drones_of(c) -> Array:
+	var out: Array = []
+	for n in ship_layer.get_children():
+		if n is Ship and n.is_drone and not n.dying and n.carrier == c:
+			out.append(n)
+	return out
+
+
+## Drones head home: carrier docking / docked, aligning for warp, in warp or spooling the jump drive.
+func drones_must_return(c) -> bool:
+	if c.is_docked() or c.in_warp():
+		return true
+	var ot := String(c.order.get("type", ""))
+	return ot == "docking" or (ot in ["warp", "travel"] and c.spool >= 0.0)
+
+
+## Launches up to `n` drones (default: as many as the ship can control). "" = done.
+func launch_drones(c, n: int = -1) -> String:
+	if c == null or not is_instance_valid(c) or c.dying:
+		return "No ship."
+	if c.is_docked():
+		return "Undock first."
+	if c.in_warp():
+		return "Not in warp."
+	var f: ShipFitting = c.fit
+	var s := f.stats()
+	if int(s["drone_storage"]) <= 0:
+		return "No drone hangar fitted."
+	var free := int(s["drones_max"]) - drones_of(c).size()
+	if free <= 0:
+		return "All %d drone slots of this ship are in use." % int(s["drones_max"])
+	var cands: Array = []
+	for r in f.drones:
+		if not r.get("out", false) and float(r.get("fuel", 0.0)) > 0.0:
+			cands.append(r)
+	if cands.is_empty():
+		return "No drones in the hangar – the drone service at stations sells them."
+	cands.sort_custom(func(a, b): return float(a["fuel"]) > float(b["fuel"]))
+	var count := mini(free, cands.size())
+	if n > 0:
+		count = mini(count, n)
+	for i in count:
+		var r2: Dictionary = cands[i]
+		r2["out"] = true
+		_npc_counter += 1
+		var d = DroneScript.new()
+		d.setup_drone(c, r2, self, -_npc_counter, f.drones.find(r2) + 1)
+		ship_layer.add_child(d)
+	if c == player:
+		GameState.log_msg("%d drone%s launched – %s." % [count, "" if count == 1 else "s", ROLE_NAMES.get(f.drone_role, f.drone_role)], GameState.COL_INFO)
+	return ""
+
+
+const ROLE_NAMES := {"combat": "combat", "mining": "mining", "repair": "repair"}
+
+
+## All drones come back into the hangar.
+func recall_drones(c) -> String:
+	var ds := drones_of(c)
+	if ds.is_empty():
+		return "No drones out."
+	for d in ds:
+		d.recalled = true
+	if c == player:
+		GameState.log_msg("Drones recalled (%d)." % ds.size(), GameState.COL_INFO)
+	return ""
+
+
+## A drone reached the hangar: ore unloaded, back in storage.
+func stow_drone(d) -> void:
+	if d.dying:
+		return
+	var c = d.carrier
+	d.unload()
+	d.rec["out"] = false
+	if not d.recalled and is_instance_valid(c) and drones_must_return(c) and not c.is_docked() and not String(c.order.get("type", "")) == "docking":
+		c.fit.drone_relaunch += 1         # back out after the warp / jump
+	d.dying = true
+	d.queue_free()
+
+
+## Warp, jump or docking: drones within their control range go into the hangar at once (with
+## `relaunch` they fly out again afterwards); drones further out are left behind and lost.
+func stow_all_drones(c, relaunch: bool) -> void:
+	for d in drones_of(c):
+		if d.position.distance_to(c.position) <= float(d.dstats["range"]):
+			d.unload()
+			d.rec["out"] = false
+			if relaunch and not d.recalled:
+				c.fit.drone_relaunch += 1
+			d.dying = true
+			d.queue_free()
+		else:
+			d._lost("left behind out of control range")
+
+
+## Friendly for drones (fire at will spares them, "allies only" repairs them): the pilot and the
+## drones, the escorted group, and ships of factions you are Friendly or better with.
+func is_ally(n) -> bool:
+	if not (n is Ship):
+		return false
+	if n.faction == "player" or n.is_drone or n.escort_mark:
+		return true
+	if player_group().has(n):
+		return true
+	return n.fit.gov != "" and not n.hostile_to_player() and GameState.rep.at_least(n.fit.gov, "friendly")
+
+
 ## The pilot's radar is jammed.
 func player_jammed() -> bool:
 	return player != null and is_instance_valid(player) and player.jammed_t > 0.0
@@ -1255,7 +1380,7 @@ func player_group() -> Array:
 	if fn == null and player.in_warp():
 		fn = player.warp.get("follow")
 	for n in ship_layer.get_children():
-		if not (n is Ship) or n == player or n.dying:
+		if not (n is Ship) or n == player or n.dying or n.is_drone:
 			continue
 		if n.escort_mark or n == fn or (String(n.order.get("type", "")) == "follow" and n.order.get("node") == player):
 			out.append(n)
@@ -1752,6 +1877,9 @@ func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 	# Contacts (only with line of sight)
 	for n in ship_layer.get_children():
 		if n is Ship and n != player and not n.dying and not n.is_docked() and line_of_sight(c, n.position) and contact_visible(n):
+			if n.is_drone:
+				_blip(o, c, n.position, r, sweep, px, a, Color(0.4, 1.0, 0.5), 2.0)
+				continue
 			_blip(o, c, n.position, r, sweep, px, a, Color(1.0, 0.3, 0.3) if n.faction == "pirate" else Color(0.9, 0.9, 0.5), 4.0)
 	if player_jammed():
 		# jammed (package 20): static over the radar, no contacts beyond close range
@@ -1901,6 +2029,7 @@ func _dashed(o: Node2D, a: Vector2, b: Vector2, col: Color, px: float) -> void:
 
 func on_warp_started(ship: Ship) -> void:
 	if ship == player:
+		stow_all_drones(ship, true)
 		GameState.codex.event("warp")
 		_warp_saved_zoom = level_zoom(level)
 		_warp_auto = true
@@ -1912,6 +2041,11 @@ func on_warp_finished(ship: Ship) -> void:
 	if ship == player and _warp_auto:
 		_warp_auto = false
 		_set_zoom(_warp_saved_zoom)
+	# package 23: the drones that went into the hangar for the warp fly out again
+	if ship == player and ship.fit.drone_relaunch > 0:
+		var n := ship.fit.drone_relaunch
+		ship.fit.drone_relaunch = 0
+		launch_drones(ship, n)
 
 
 func spawn_fx(f: Node2D) -> void:

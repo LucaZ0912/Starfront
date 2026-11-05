@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.23.1 – 2026-11-05
+
+**Package 23 – drones.** 498 smoke-test checks pass.
+- New core slot: Drone Hangar (size 1–9, quality = room); drones out at once by hull (S 1 … L 9).
+- Hangar equipment for all drones: weapon (size 1), mining laser (size 1), bonus slot for 8 new drone
+  module families.
+- Drones with combat / mining / repair roles and behaviours, sealed fuel (about 5 min), 9,000 km
+  control range; they really fire and mine; lost when empty or destroyed.
+- Drone window at the top left edge, keys K (launch) and P (recall); into the hangar for warps and
+  jumps and out again afterwards.
+- Drone Bay (Hivewright Drone Works) at every station.
+- Test fix: the manual-weapons test no longer fails when its pirate carries a radar jammer.
+
 ## alpha 0.4.22.4 – 2026-11-05
 
 - Fix: a newly locked target becomes the active one (modules on the old target turn yellow).

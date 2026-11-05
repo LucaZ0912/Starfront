@@ -42,6 +42,12 @@ const SHIPS := {
 		"fedhhhhhhaahhhhhcw",
 	],
 	# Passenger shuttle – small, round-nosed, a stripe of windows (phase 0.5 package 11)
+	# Drone – a tiny disc with a sensor eye
+	"drone": [
+		"..aa...",
+		"edhhhc.",
+		"edhhhCc",
+	],
 	"shuttle": [
 		"....aa........",
 		"...dhhhH......",

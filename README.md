@@ -68,6 +68,32 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## Drones (phase 0.5 package 23)
+- **Drone hangar** – a new core slot on every ship (module *Drone Hangar 1–9*, quality = more room:
+  size × 3 drones at C, ×0.6 at F … ×1.5 at A). How many drones fly at once is set by the hull:
+  S 1, Mule 3, Drillhead/Warden 4, Longhaul 5, Bastion 9. The hangar has three equipment slots for all
+  drones: a **weapon** (size 1), a **mining laser / ice harvester** (size 1) and a **bonus slot** for
+  drone modules (Relay +range, Cargo Pod, Armor, Shield Emitter, Weapon Booster, Targeting Array,
+  Fuel Cell, Thrusters). Standard fits come with a pulse laser and a mining laser; the start ship has
+  two drones.
+- **Drones:** small and weak (60 hull, no shield without an emitter, 5 m³ cargo), one sealed fuel load
+  of 5 minutes (idle 0.8×, working 1×, fighting 1.2×; none used in the hangar) – empty or shot down
+  means lost. They act within **9,000 km** of the ship; further out they fly back and drop their target.
+  They fire their real weapon, mine with the same beam as the ship and show an engine glow.
+- **Drone window** (top left edge): folded until drones are out. Role tiles **Combat / Mining / Repair**
+  (any time, for all drones) and the behaviour:
+  - Combat: *Defend* (ships that attacked you or that you attacked), *Attack target* (your active
+    lock), *Fire at will* (everything nearby except allies – civilians too, which is a crime), *Rest*.
+  - Mining: *Auto* (find asteroids, mine, deliver to the ship), *Work on target* (your locked asteroid), *Rest*.
+  - Repair (built-in beam): *Auto* (you, allies and neutral ships), *Work on target*, *Allies only*,
+    *Self only*, *Rest*.
+  - **Recall** brings them all home. Keys: **K** launch, **P** recall.
+- **Warp, jumps, docking:** while the ship aligns for a warp or spools the jump drive, the drones fly into
+  the hangar and come straight out again after the warp / jump; drones too far away are left behind.
+  Docking takes them in.
+- **Drone Bay** (Hivewright Drone Works, every station): buy drones (2,400 cr), sell used ones (worth
+  less with less fuel), repair their hulls – fuel cannot be refilled.
+
 ## Multi-focus (phase 0.5 package 22)
 - **Every weapon and tool keeps the target that was active when it was switched on.** Lock several
   targets, make one active, switch weapons on, make the next one active, switch more on – they fight
@@ -464,6 +490,7 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | Tab | cycle through everything within sensor range – ships first (nearest first), then asteroids, wrecks and anomalies; with nothing selected it starts with the ships again |
 | V / C | cycle hostile / friendly ships (sensor range, otherwise up to 50,000 km) |
 | B | select the nearest station within 5,000 km |
+| K / P | launch / recall drones |
 | I | ship menu |
 | L, M, H | station, galaxy map & route planning, help |
 | Esc | close window / pause menu |

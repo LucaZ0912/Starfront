@@ -107,6 +107,9 @@ func _process(delta: float) -> void:
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
 				check(view.zone_station(view.player.position) == null, "outside the no-fire zone")
 				pirate = view.spawn_npc("pirate_raider_laser", view.player.position + Vector2(700, 0))
+				for jk in pirate.fit.modules.keys():
+					if String(pirate.fit.modules[jk]).begins_with("o_jammer"):
+						pirate.fit.set_module(jk, "")   # this test is about weapons, not radar jamming
 				pirate.archetype = ""      # plain behaviour: this test is about the weapons, not the raider's hit-and-run
 				var pid := "ship:%d" % pirate.fit.uid
 				check(pirate.fit.gov in ["hollow_crown", "severed", "free_captains"] and pirate.paint == pirate.fit.gov, "pirates belong to a pirate faction and wear its paint (%s)" % pirate.fit.gov)
@@ -125,8 +128,9 @@ func _process(delta: float) -> void:
 					ok = ok and Commands.execute({"type": "activate", "slot": slot}) == ""
 				check(ok, "weapons activated after lock (%.1fs)" % timer)
 				weapons_on = true
-			if view.pirate_count() == 0 or (view._spots.is_empty() and timer > 60.0):
-				check(view.pirate_count() == 0, "pirate destroyed with manual weapons (%.1fs)" % timer)
+			var gone: bool = pirate == null or not is_instance_valid(pirate) or pirate.dying
+			if gone or (view._spots.is_empty() and timer > 60.0):
+				check(gone, "pirate destroyed with manual weapons (%.1fs)" % timer)
 				_next()
 			elif timer > 60.0:
 				check(false, "pirate not destroyed")
@@ -511,6 +515,7 @@ func _process(delta: float) -> void:
 				_test_package20(view)
 				_test_power(view)
 				_test_multifocus(view)
+				_test_drones(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -1297,6 +1302,19 @@ func _shoot_standing(view: SystemView) -> void:
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/outfitter.png")
 	print("[SMOKE] screenshot: Claude outputs/modules.png, outfitter.png")
 	sp.close()
+	# package 23: drones out, drone window open
+	var dpl: Ship = view.player
+	if dpl != null and not dpl.is_docked():
+		if dpl.fit.drones.is_empty():
+			dpl.fit.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}]
+		view.set_level(0)
+		Commands.execute({"type": "drone_launch"})
+		for i in 90:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/drones.png")
+		print("[SMOKE] screenshot: Claude outputs/drones.png")
+		for dd in view.drones_of(dpl):
+			view.stow_drone(dd)
 	_shooting = false
 
 
@@ -2860,3 +2878,190 @@ func _test_multifocus(view: SystemView) -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	pl.position = keep_pos
+
+
+func _wrecks(view: SystemView) -> int:
+	var n := 0
+	for c in view.celestials:
+		if is_instance_valid(c) and c.kind == "wreck":
+			n += 1
+	return n
+
+
+## Phase 0.5 package 23: drone hangar, drones and their behaviours.
+func _test_drones(view: SystemView) -> void:
+	var M: Dictionary = GameData.modules
+	var hull_ok := true
+	for hid in GameData.hulls:
+		var h: Dictionary = GameData.hulls[hid]
+		if h.get("drone_only", false):
+			continue
+		hull_ok = hull_ok and GameData.slot_max_of(h, "hangar") > 0 and int(h.get("drones", 0)) >= 1
+	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot; drones out at once: S 1 … L 9")
+	check(int(M["hangar:3:A"]["drone_storage"]) > int(M["hangar:3:C"]["drone_storage"]) and int(M["hangar:3:C"]["drone_storage"]) > int(M["hangar:3:F"]["drone_storage"]), "hangar quality gives more room (%d / %d / %d)" % [int(M["hangar:3:F"]["drone_storage"]), int(M["hangar:3:C"]["drone_storage"]), int(M["hangar:3:A"]["drone_storage"])])
+	var f := GameState.create_from_preset("std_bastion", "player")
+	check(f.can_fit("dweapon_0", "w_pulse:1:C") == "" and f.can_fit("dweapon_0", "w_beam:2:C") != "" and f.can_fit("dweapon_0", "w_pointdef:1:C") != "" and f.can_fit("dtool_0", "t_mining:1:C") == "" and f.can_fit("dtool_0", "t_salvage:1:C") != "" and f.can_fit("dbonus_0", "dr_range:2:C") == "" and f.can_fit("optional_0", "dr_range:1:C") != "", "drone slots: weapon size 1, mining laser size 1, drone modules only in the bonus slot")
+	var base_r := float(f.stats()["drone"]["range"])
+	var base_dmg := float(f.stats()["drone_weapon"]["damage"])
+	f.set_module("dbonus_0", "dr_range:2:C")
+	check(is_equal_approx(base_r, 9000.0) and float(f.stats()["drone"]["range"]) > base_r, "a drone relay extends the control range (%.0f → %.0f km)" % [base_r, float(f.stats()["drone"]["range"])])
+	f.set_module("dbonus_0", "dr_damage:1:C")
+	var ship_weps_ok := true
+	for w in f.stats()["weapons"]:
+		ship_weps_ok = ship_weps_ok and not String(w["slot"]).begins_with("d")
+	check(float(f.stats()["drone_weapon"]["damage"]) > base_dmg and f.priority_of("dweapon_0") == 0 and ship_weps_ok, "drone gear works for the drones only – no ship weapon, no ship power")
+	f.set_module("dbonus_0", "")
+	# a test carrier (Bastion, 9 drones out at once)
+	var pl: Ship = view.player
+	var c := Ship.new()
+	f.system_id = view.system_id
+	f.position = pl.position + Vector2(0, -60000)
+	f.drones = []
+	for i in 5:
+		f.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+	c.manual = true
+	c.setup(f, view)
+	view.ship_layer.add_child(c)
+	check(view.launch_drones(c) == "" and view.drones_of(c).size() == 5 and f.drones_in_hangar() == 0, "launching: all drones the hangar holds, up to the ship's limit")
+	check(view.launch_drones(c) != "", "no drones left in the hangar – nothing to launch")
+	var ds: Array = view.drones_of(c)
+	var d = ds[0]
+	check(d.is_drone and d.faction == "player" and not d.hostile_to_player(), "drones are small player ships")
+	# rest: formation around the carrier
+	f.drone_role = "combat"
+	f.drone_modes["combat"] = "rest"
+	var fp: Vector2 = d._formation()
+	check(fp.distance_to(c.position) < c.radius + 200.0, "resting drones fly in formation around the ship")
+	# defend: a pirate attacking the carrier
+	var pir: Ship = view.spawn_npc("pirate_raider_rocket", c.position + Vector2(600, 0))
+	pir.archetype = ""
+	pir.target = c
+	f.drone_modes["combat"] = "defend"
+	var hp0: float = pir.fit.shield + pir.fit.armor + pir.fit.structure
+	for i2 in 10:
+		d.position = pir.position + Vector2(200, 0)
+		d._think = 0.0
+		d._wcd = 0.0
+		d._physics_process(0.05)
+	check(d.work == pir and pir.fit.shield + pir.fit.armor + pir.fit.structure < hp0, "defend: drones attack whoever attacks you – and really fire")
+	# fire at will takes civilians too, not allies
+	var civ: Ship = view.spawn_npc("civ_shuttle", c.position + Vector2(-500, 0), "civilian", "")
+	var ally: Ship = view.spawn_npc("civ_shuttle", c.position + Vector2(-450, 0), "civilian", "")
+	ally.escort_mark = true
+	pir.position += Vector2(80000, 0)
+	d.position = c.position + Vector2(-480, 0)
+	check(d._pick_combat_target("fire_at_will") == civ, "fire at will: civilians too – allies are spared")
+	check(d._pick_combat_target("defend") == null, "defend leaves the innocent alone")
+	# attack: the carrier's active lock
+	c.locks = [{"key": Ship.object_key(civ), "node": civ, "progress": 1.0}]
+	c.active_lock = Ship.object_key(civ)
+	check(d._pick_combat_target("attack") == civ, "attack: the locked target")
+	c.clear_locks()
+	# control range
+	civ.position = c.position + Vector2(float(d.dstats["range"]) + 3000.0, 0)
+	check(d._pick_combat_target("fire_at_will") != civ, "nothing outside the control range is chased")
+	d.position = c.position + Vector2(float(d.dstats["range"]) + 2000.0, 0)
+	d.velocity = Vector2.ZERO
+	d._physics_process(0.05)
+	check(d.work == null and d.velocity.dot(c.position - d.position) > 0.0, "outside the control range a drone heads back first")
+	# mining: auto – mine, fill the cargo, deliver
+	f.drone_role = "mining"
+	f.drone_modes["mining"] = "auto"
+	var ast = null
+	for a0 in view.asteroid_nodes:
+		if is_instance_valid(a0) and not a0.is_depleted() and Ship.mining_mult(d.dtool, String(a0.data["ore"])) >= 1.0 and float(a0.data["amount"]) > 20.0:
+			ast = a0
+			break
+	if ast != null:
+		c.position = ast.position + Vector2(3000, 0)
+		d.work = null
+		for i3 in 600:
+			d.position = ast.position + Vector2(float(ast.radius) + 40.0, 0)
+			d._physics_process(0.1)
+			if d._cargo_used() >= float(d.dstats["cargo"]) - 0.01:
+				break
+		check(absf(d._cargo_used() - float(d.dstats["cargo"])) < 0.05, "mining drones fill their %.0f m³ – with the ship's mining beam" % float(d.dstats["cargo"]))
+		var cargo0 := c.fit.cargo_used() + c.fit.ore_hold_used()
+		d.position = c.position + Vector2(20, 0)
+		d._physics_process(0.05)
+		check(d._cargo_used() == 0.0 and c.fit.cargo_used() + c.fit.ore_hold_used() > cargo0, "… and deliver the ore to the ship")
+	# repair: the carrier's damage
+	f.drone_role = "repair"
+	f.drone_modes["repair"] = "self"
+	c.fit.armor = maxf(c.fit.armor - 200.0, 0.0)
+	var arm0 := c.fit.armor
+	for i4 in 5:
+		d.position = c.position + Vector2(100, 0)
+		d._think = 0.0
+		d._physics_process(0.2)
+	check(c.fit.armor > arm0, "repair drones repair the ship")
+	# fuel empty → lost; destroyed → lost, no wreck
+	var d2 = ds[1]
+	d2.rec["fuel"] = 0.0001
+	d2._physics_process(0.5)
+	var w0 := _wrecks(view)
+	var d3 = ds[2]
+	d3.take_damage(9999.0, "kinetic", pir)
+	check(d2.dying and d3.dying and f.drones.size() == 3 and _wrecks(view) == w0, "drones without fuel or hull are lost (no wreck)")
+	# recall: back into the hangar
+	view.recall_drones(c)
+	var d4 = ds[3]
+	d4.position = c.position + Vector2(10, 0)
+	d4._physics_process(0.05)
+	check(d4.dying and f.drones_in_hangar() >= 1, "recalled drones fly back into the hangar")
+	# warp: into the hangar while aligning, out again afterwards
+	for dd in view.drones_of(c):
+		view.stow_drone(dd)
+	for r in f.drones:
+		r["out"] = false
+	f.drone_relaunch = 0
+	view.launch_drones(c)
+	c.order = {"type": "warp", "target": {"name": "x", "pos": c.position + Vector2(500000, 0)}}
+	c.spool = 0.5
+	check(view.drones_must_return(c), "aligning for warp: drones head back into the hangar")
+	var n_out := view.drones_of(c).size()
+	view.stow_all_drones(c, true)
+	check(f.drone_relaunch == n_out and f.drones_in_hangar() == f.drones.size(), "in warp they ride in the hangar (%d)" % n_out)
+	c.order = {"type": "idle"}
+	c.spool = -1.0
+	var relaunch := f.drone_relaunch
+	f.drone_relaunch = 0
+	view.launch_drones(c, relaunch)
+	check(view.drones_of(c).size() == n_out, "… and fly out again after the warp")
+	for dd2 in view.drones_of(c):
+		view.stow_drone(dd2)
+	# the pilot: drone window and keys
+	var pf: ShipFitting = pl.fit
+	var keep_drones: Array = pf.drones.duplicate(true)
+	pf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 0.5, "hp": 0.5, "out": false}]
+	main.hud._update_drones()
+	var folded: bool = main.hud.drone_panel.visible and main.hud._drone_rows.is_empty()
+	Commands.execute({"type": "drone_launch"})
+	main.hud._update_drones()
+	check(folded and view.drones_of(pl).size() == int(pf.stats()["drones_max"]) and main.hud._drone_rows.size() == view.drones_of(pl).size(), "drone window: folded until a drone is launched, then the controls (%s)" % Keybinds.key_text("drone_launch"))
+	Commands.execute({"type": "drone_role", "role": "mining"})
+	Commands.execute({"type": "drone_mode", "mode": "target"})
+	check(pf.drone_role == "mining" and pf.drone_modes["mining"] == "target" and Commands.execute({"type": "drone_mode", "mode": "fire_at_will"}) != "", "role tiles and behaviour buttons (modes per role)")
+	Commands.execute({"type": "drone_recall"})
+	var all_rec := true
+	for x in view.drones_of(pl):
+		all_rec = all_rec and x.recalled
+	check(all_rec, "recall button / key brings them home")
+	for dd3 in view.drones_of(pl):
+		view.stow_drone(dd3)
+	pf.drone_role = "combat"
+	check(Keybinds.key_text("drone_launch") == "K" and Keybinds.key_text("drone_recall") == "P", "keys: K launch, P recall")
+	# drone bay values, saving
+	check(Commands.drone_value({"fuel": 1.0, "hp": 1.0}) > Commands.drone_value({"fuel": 0.3, "hp": 1.0}) and Commands.drone_repair_cost(pf) > 0, "drone bay: used drones are worth less, hulls can be repaired (fuel cannot)")
+	var back := ShipFitting.from_dict(pf.to_dict())
+	check(back.drones.size() == 2 and back.drone_role == "combat", "drones are saved with the ship")
+	pf.drones = keep_drones
+	var big_st: Dictionary = view.layout["stations"][0]
+	var sp: StationUI = main.station_panel
+	sp.open(big_st, view)
+	sp.open_service("drones")
+	check(sp.visible, "the Drone Bay (Hivewright Drone Works) opens at every station")
+	sp.close()
+	for n in [pir, civ, ally, c]:
+		if is_instance_valid(n):
+			n.queue_free()

@@ -14,6 +14,13 @@ var modules := {}          # slot_key -> module_id  (slot_key: "engine", "weapon
 var priorities := {}       # slot_key -> power priority group 1–4 (package 21; missing = default)
 var power_off := {}        # runtime: priority groups shut down by an overload (group -> true)
 var throttle := 1.0        # runtime: < 1 only if group 1 alone exceeds the output
+# Package 23: drones. Every drone in the hangar is a record {fuel: 0..1, hp: 0..1, out: bool}
+var drones: Array = []
+var drone_role := "combat"                 # combat | mining | repair (all launched drones)
+var drone_relaunch := 0                    # runtime: drones to launch again after a warp / jump
+var drone_modes := {"combat": "defend", "mining": "auto", "repair": "auto"}
+const DRONE_BASE := {"hull": 60.0, "speed": 520.0, "range": 9000.0, "cargo": 5.0, "fuel": 300.0,
+	"repair": 10.0, "repair_range": 350.0, "shield": 0.0, "shield_regen": 0.0}
 var cargo := {}            # item_id -> amount (float)
 var structure := -1.0
 var armor := -1.0
@@ -57,7 +64,7 @@ func slot_keys() -> Array:
 		if GameData.slot_max_of(hull(), c) > 0:
 			keys.append(c)
 	var slots: Dictionary = hull()["slots"]
-	for t in ["weapon", "tool", "optional"]:
+	for t in ["weapon", "tool", "optional", "dweapon", "dtool", "dbonus"]:
 		for i in int(slots.get(t, 0)):
 			keys.append("%s_%d" % [t, i])
 	return keys
@@ -79,8 +86,19 @@ func can_fit(key: String, module_id: String) -> String:
 	if not GameData.modules.has(module_id):
 		return "Unknown module"
 	var m: Dictionary = GameData.modules[module_id]
-	if m["slot"] != slot_type(key):
-		return "Wrong slot type"
+	match slot_type(key):
+		"dweapon":
+			if m["slot"] != "weapon" or m.get("pd", false) or m.get("mines", false):
+				return "The drone weapon slot takes a weapon of size 1"
+		"dtool":
+			if m["slot"] != "tool" or not String(m.get("tool", "")) in ["mining", "harvester"]:
+				return "The drone tool slot takes a mining laser or ice harvester of size 1"
+		"dbonus":
+			if m["slot"] != "drone":
+				return "The drone bonus slot takes drone modules"
+		_:
+			if m["slot"] != slot_type(key):
+				return "Wrong slot type"
 	var mx := slot_max(key)
 	if mx <= 0:
 		return "This hull has no such slot"
@@ -107,7 +125,8 @@ func set_module(key: String, module_id: String) -> String:
 
 const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "cargo", "structure", "armor",
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
-	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities"]
+	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities",
+	"drones", "drone_role", "drone_modes"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -155,9 +174,11 @@ func _compute() -> Dictionary:
 		"weapons": [], "tools": [], "actives": [], "missing": [],
 		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0,
 		"power_passive": 0.0, "power_active_max": 0.0, "offline": [], "max_locks": 3,
+		"drone_storage": 0, "drones_max": int(h.get("drones", 0)),
 		"power_groups": {1: {"passive": 0.0, "active": 0.0}, 2: {"passive": 0.0, "active": 0.0}, 3: {"passive": 0.0, "active": 0.0}, 4: {"passive": 0.0, "active": 0.0}},
 	}
 	var down_w := 0.0                # shield downtime: capacity-weighted factor of the shield modules
+	var drone_mods := {}
 	for key in slot_keys():
 		var mid: String = modules.get(key, "")
 		if mid == "" or not GameData.modules.has(mid):
@@ -166,6 +187,11 @@ func _compute() -> Dictionary:
 			continue
 		var m: Dictionary = GameData.modules[mid]
 		s["mass"] += float(m.get("mass", 0))
+		if slot_type(key) in GameData.DRONE_SLOTS:
+			drone_mods[slot_type(key)] = m          # equips the drones, not the ship (package 23)
+			continue
+		if m["slot"] == "hangar":
+			s["drone_storage"] = int(m.get("drone_storage", 0))
 		var pw := float(m.get("power", 0))
 		var act := is_active_module(m)
 		var grp := priority_of(key)
@@ -285,9 +311,50 @@ func _compute() -> Dictionary:
 		if t2["tool"] == "survey":
 			t2["range"] = float(t2["range"]) * s["survey_range_mult"]
 	s["dps"] = dps
+	_drone_stats(s, drone_mods)
 	s["dps_total"] = dps["optical"] + dps["kinetic"] + dps["explosive"]
 	s["optimal_range"] = min_range * 0.8 if min_range < INF else s["sensor_range"] * 0.5
 	return s
+
+
+# ---------------------------------------------------------------- Drones (package 23)
+
+## Values of every drone of this ship: base values + the hangar's bonus module; the drone weapon and
+## mining laser come from the hangar's equipment slots.
+func _drone_stats(s: Dictionary, mods: Dictionary) -> void:
+	var d := DRONE_BASE.duplicate()
+	var b: Dictionary = mods.get("dbonus", {})
+	d["range"] *= float(b.get("d_range", 1.0))
+	d["speed"] *= float(b.get("d_speed", 1.0))
+	d["fuel"] *= float(b.get("d_fuel", 1.0))
+	d["cargo"] += float(b.get("d_cargo", 0.0))
+	d["hull"] += float(b.get("d_hull", 0.0))
+	d["shield"] += float(b.get("d_shield", 0.0))
+	d["shield_regen"] += float(b.get("d_shield_regen", 0.0))
+	s["drone"] = d
+	var w: Dictionary = mods.get("dweapon", {}).duplicate()
+	if not w.is_empty():
+		w["damage"] = float(w["damage"]) * float(b.get("d_damage", 1.0))
+		w["range"] = float(w["range"]) * float(b.get("d_wrange", 1.0))
+		w["id"] = modules.get("dweapon_0", "")
+		w["slot"] = "dweapon_0"
+	s["drone_weapon"] = w
+	var t: Dictionary = mods.get("dtool", {}).duplicate()
+	if not t.is_empty():
+		t["id"] = modules.get("dtool_0", "")
+	s["drone_tool"] = t
+
+
+func drones_in_hangar() -> int:
+	var n := 0
+	for r in drones:
+		if not r.get("out", false):
+			n += 1
+	return n
+
+
+func drones_out() -> int:
+	return drones.size() - drones_in_hangar()
 
 
 # ---------------------------------------------------------------- Power management (package 21)
@@ -324,7 +391,7 @@ func default_priority(key: String) -> int:
 
 ## Priority group of a slot: 1–4, or 0 for modules that need no power.
 func priority_of(key: String) -> int:
-	if float(GameData.modules.get(modules.get(key, ""), {}).get("power", 0)) <= 0.0:
+	if slot_type(key) in GameData.DRONE_SLOTS or float(GameData.modules.get(modules.get(key, ""), {}).get("power", 0)) <= 0.0:
 		return 0
 	return clampi(int(priorities.get(key, default_priority(key))), 1, POWER_GROUPS)
 
@@ -349,7 +416,7 @@ func power_plan(in_use: Dictionary) -> Dictionary:
 		if m.is_empty():
 			continue
 		var pw := float(m.get("power", 0))
-		if pw <= 0.0:
+		if pw <= 0.0 or slot_type(key) in GameData.DRONE_SLOTS:
 			continue
 		if not is_active_module(m) or in_use.get(key, false):
 			demand[priority_of(key)] += pw

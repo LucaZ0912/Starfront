@@ -4,6 +4,11 @@ extends RefCounted
 ## price modifiers per station, rival factions, missions, etc.
 
 const CORPS := {
+	"hiv": {
+		"name": "Hivewright Drone Works", "tag": "HIV", "color": Color(0.55, 1.0, 0.6),
+		"slogan": "Many hands, one mind.",
+		"desc": "Builds the autonomous drones of the Cluster and services them at every station. Their fuel cells are sealed – a drone flies until it is empty.",
+	},
 	"kvx": {
 		"name": "Kessler-Vance Exchange", "tag": "KVX", "color": Color(1.0, 0.78, 0.25),
 		"slogan": "Every price has a buyer.",

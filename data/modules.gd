@@ -52,14 +52,19 @@ const FIELD_EXP := {
 	"range": 0.35, "resolution": 0.2, "scan_strength": 0.6, "splash": 0.5, "res_bonus": 0.5,
 	"energy": 1.1, "energy_rate": 1.1,
 	"intercept": 0.15, "solar": 1.3, "jam_range": 0.5, "max_mines": 1.0,
+	"d_cargo": 1.0, "d_hull": 1.3, "d_shield": 1.3, "d_shield_regen": 1.3,
 }
 ## Balancing on top of the anchors (alpha 0.4.22.3)
 const RANGE_BUFF := {"weapon": 1.10, "sensors": 1.15}
 ## Multipliers: only the part above 1 grows (with the square root of the size ratio)
-const MULT_FIELDS := ["boost", "range_mult", "survey_range_mult", "speed_mult", "efficiency"]
+const MULT_FIELDS := ["boost", "range_mult", "survey_range_mult", "speed_mult", "efficiency",
+	"d_range", "d_damage", "d_wrange", "d_fuel", "d_speed"]
+## Drone hangar (package 23): room for drones per size, by quality
+const HANGAR_ROOM := {"F": 0.6, "E": 0.75, "D": 0.9, "C": 1.0, "B": 1.25, "A": 1.5}
 ## Size ranges per slot type (family ranges lie inside)
 const SIZE_RANGE := {"weapon": [1, 4], "tool": [1, 4], "optional": [1, 8], "hull": [1, 10], "engine": [1, 10],
-	"reactor": [1, 10], "distributor": [1, 10], "tank": [1, 10], "hyperdrive": [1, 6], "sensors": [1, 8]}
+	"reactor": [1, 10], "distributor": [1, 10], "tank": [1, 10], "hyperdrive": [1, 6], "sensors": [1, 8],
+	"hangar": [1, 9], "drone": [1, 3]}
 
 ## Families: name, anchor module, reference size of the anchor, allowed sizes [min, max],
 ## optional field exponent overrides ("exp").
@@ -114,6 +119,16 @@ const FAMILIES := {
 	"t_interdictor": {"name": "Warp Interdictor", "anchor": "t_interdictor_s", "ref": 1, "sizes": [1, 2], "exp": {"range": 1.1}},
 	"t_shieldxfer": {"name": "Shield Transfer Beam", "anchor": "t_shieldxfer_s", "ref": 1, "sizes": [1, 3]},
 	"t_cargoscan": {"name": "Cargo Scanner", "anchor": "t_cargoscan_s", "ref": 1, "sizes": [1, 2]},
+	# package 23: drone hangar (core) and drone modules (the hangar's bonus slot – for all drones)
+	"hangar": {"name": "Drone Hangar", "anchor": "hangar_s", "ref": 1, "sizes": [1, 9]},
+	"dr_range": {"name": "Drone Relay", "anchor": "dr_range_s", "ref": 1, "sizes": [1, 3]},
+	"dr_cargo": {"name": "Drone Cargo Pod", "anchor": "dr_cargo_s", "ref": 1, "sizes": [1, 3]},
+	"dr_hull": {"name": "Drone Armor", "anchor": "dr_hull_s", "ref": 1, "sizes": [1, 3]},
+	"dr_shield": {"name": "Drone Shield Emitter", "anchor": "dr_shield_s", "ref": 1, "sizes": [1, 3]},
+	"dr_damage": {"name": "Drone Weapon Booster", "anchor": "dr_damage_s", "ref": 1, "sizes": [1, 3]},
+	"dr_wrange": {"name": "Drone Targeting Array", "anchor": "dr_wrange_s", "ref": 1, "sizes": [1, 3]},
+	"dr_fuel": {"name": "Drone Fuel Cell", "anchor": "dr_fuel_s", "ref": 1, "sizes": [1, 3]},
+	"dr_speed": {"name": "Drone Thrusters", "anchor": "dr_speed_s", "ref": 1, "sizes": [1, 3]},
 	# optional (1–8, cargo and ore hold up to 10)
 	"o_cargo": {"name": "Cargo Rack", "anchor": "o_cargo_s", "ref": 1, "sizes": [1, 10]},
 	"o_shield": {"name": "Shield Generator", "anchor": "o_shield_s", "ref": 1, "sizes": [1, 8]},
@@ -220,6 +235,8 @@ static func make(fam: String, size: int, q: String) -> Dictionary:
 			m[key] = v
 	if m["slot"] == "hyperdrive":
 		m["drive_class"] = clampi(int(ceil(size / 2.0)), 1, 3)
+	if m["slot"] == "hangar":
+		m["drone_storage"] = maxi(1, int(round(size * 3.0 * float(HANGAR_ROOM[q]))))
 	# balancing 0.4.22.3: weapon ranges +10 %, sensor ranges +15 %
 	if m.has("range") and m["slot"] in RANGE_BUFF:
 		m["range"] = round(float(m["range"]) * float(RANGE_BUFF[m["slot"]]))
@@ -251,6 +268,17 @@ const ANCHORS := {
 	"hull_composite_m": {"name": "Composite Plating", "slot": "hull", "size": 2, "price": 14000, "mass": 650, "power": 0, "armor": 950, "res": {"kinetic": 0.25, "explosive": 0.15}},
 	"hull_reflect_m": {"name": "Reflective Plating", "slot": "hull", "size": 2, "price": 16000, "mass": 600, "power": 4, "armor": 850, "res": {"optical": 0.40}},
 	"hull_heavy_l": {"name": "Heavy Battle Plating", "slot": "hull", "size": 3, "price": 60000, "mass": 1800, "power": 0, "armor": 2600, "res": {"optical": 0.2, "kinetic": 0.2, "explosive": 0.2}},
+
+	# ---------------- Drone hangar & drone modules (package 23) ----------------
+	"hangar_s": {"name": "Drone Hangar", "slot": "hangar", "size": 1, "price": 2500, "mass": 60, "power": 0.5},
+	"dr_range_s": {"name": "Drone Relay", "slot": "drone", "size": 1, "price": 6000, "mass": 10, "power": 0, "d_range": 1.35},
+	"dr_cargo_s": {"name": "Drone Cargo Pod", "slot": "drone", "size": 1, "price": 4000, "mass": 10, "power": 0, "d_cargo": 4},
+	"dr_hull_s": {"name": "Drone Armor", "slot": "drone", "size": 1, "price": 5000, "mass": 10, "power": 0, "d_hull": 45},
+	"dr_shield_s": {"name": "Drone Shield Emitter", "slot": "drone", "size": 1, "price": 7000, "mass": 10, "power": 0, "d_shield": 35, "d_shield_regen": 3},
+	"dr_damage_s": {"name": "Drone Weapon Booster", "slot": "drone", "size": 1, "price": 7000, "mass": 10, "power": 0, "d_damage": 1.3},
+	"dr_wrange_s": {"name": "Drone Targeting Array", "slot": "drone", "size": 1, "price": 6000, "mass": 10, "power": 0, "d_wrange": 1.3},
+	"dr_fuel_s": {"name": "Drone Fuel Cell", "slot": "drone", "size": 1, "price": 5000, "mass": 10, "power": 0, "d_fuel": 1.4},
+	"dr_speed_s": {"name": "Drone Thrusters", "slot": "drone", "size": 1, "price": 5000, "mass": 10, "power": 0, "d_speed": 1.3},
 
 	# ---------------- Engines ----------------
 	"eng_chem_s": {"name": "Chemical Thruster", "slot": "engine", "size": 1, "price": 1200, "mass": 120, "power": 3, "thrust": 420, "turn": 3.5},

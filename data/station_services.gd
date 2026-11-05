@@ -28,6 +28,8 @@ const SERVICES := [
 		"panel": "res://scripts/ui/station/hangar_panel.gd", "requires": ""},
 	{"id": "fuel", "title": "Fuel Depot", "corp": "pyre", "icon": "o_fuel",
 		"panel": "res://scripts/ui/station/service_panel.gd", "requires": "", "mode": "fuel"},
+	{"id": "drones", "title": "Drone Bay", "corp": "hiv", "icon": "w_kinetic",
+		"panel": "res://scripts/ui/station/drone_panel.gd", "requires": ""},
 	{"id": "repair", "title": "Repair Bay", "corp": "mdx", "icon": "t_repair",
 		"panel": "res://scripts/ui/station/service_panel.gd", "requires": "", "mode": "repair"},
 ]

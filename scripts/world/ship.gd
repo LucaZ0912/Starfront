@@ -84,6 +84,7 @@ const FactionData = preload("res://data/factions.gd")
 const ArchData = preload("res://data/pirate_archetypes.gd")
 const MAX_LOCKS := 3              # minimum; bigger sensor suites hold more (package 22: stats max_locks)
 var manual := false
+var is_drone := false            # package 23: a drone of the pilot (scripts/world/drone.gd)
 var locks: Array = []            # [{key, node, progress}]
 var active_lock := ""            # key of the lock that newly switched-on modules act on
 var module_target := {}          # package 22 (multi-focus): slot -> lock key the module works on
@@ -314,6 +315,8 @@ func clear_locks() -> void:
 
 
 func _dock(st_node) -> void:
+	if faction == "player" and view != null and view.has_method("stow_all_drones"):
+		view.stow_all_drones(self, false)      # drones go back into the hangar (package 23)
 	clear_locks()
 	fit.docked_at = st_node.data["id"]
 	velocity = Vector2.ZERO
@@ -987,6 +990,8 @@ func _travel(delta: float, s: Dictionary):
 			view.npc_jump(self, next)
 			return position
 		view.spawn_fx(Fx.flash(position, Color(0.75, 0.45, 1.0), radius * 4.0))
+		if faction == "player" and view.has_method("stow_all_drones"):
+			view.stow_all_drones(self, true)   # drones come along and fly out again after the jump
 		GameState.begin_jump(fit, next)
 	return position
 

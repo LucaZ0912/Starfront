@@ -219,6 +219,112 @@ func _c_deactivate(c: Dictionary) -> String:
 	return e if e != "" else world.player.set_module_active(String(c["slot"]), false)
 
 
+# ---------------------------------------------------------------- Drones (package 23)
+
+const DRONE_PRICE := 2400
+const DRONE_ROLES := {"combat": ["defend", "attack", "fire_at_will", "rest"], "mining": ["auto", "target", "rest"],
+	"repair": ["auto", "target", "allies", "self", "rest"]}
+
+
+## {"type":"drone_launch", "count"?: n} – launch drones (as many as the ship controls).
+func _c_drone_launch(c: Dictionary) -> String:
+	var e := _need_world()
+	return e if e != "" else world.launch_drones(world.player, int(c.get("count", -1)))
+
+
+## {"type":"drone_recall"} – all drones back into the hangar.
+func _c_drone_recall(_c: Dictionary) -> String:
+	var e := _need_world()
+	return e if e != "" else world.recall_drones(world.player)
+
+
+## {"type":"drone_role", "role": combat|mining|repair}
+func _c_drone_role(c: Dictionary) -> String:
+	var f := _fit()
+	var r := String(c.get("role", ""))
+	if f == null or not DRONE_ROLES.has(r):
+		return "Unknown drone role."
+	f.drone_role = r
+	return ""
+
+
+## {"type":"drone_mode", "mode": …} – behaviour for the current role.
+func _c_drone_mode(c: Dictionary) -> String:
+	var f := _fit()
+	var m := String(c.get("mode", ""))
+	if f == null or not m in DRONE_ROLES[f.drone_role]:
+		return "Unknown behaviour for %s drones." % f.drone_role
+	f.drone_modes[f.drone_role] = m
+	return ""
+
+
+## Price of a new drone here (standing with the station's faction).
+func drone_price() -> int:
+	return GameState.rep.buy_price(DRONE_PRICE, docked_faction())
+
+
+## What the drone service pays for a used drone (by its fuel and hull).
+func drone_value(r: Dictionary) -> int:
+	return int(DRONE_PRICE * 0.5 * float(r.get("fuel", 0.0)) * (0.5 + 0.5 * float(r.get("hp", 1.0))))
+
+
+## {"type":"drone_buy", "amount": n} – new drones into the hangar (drone service).
+func _c_drone_buy(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var f := _fit()
+	var room := int(f.stats()["drone_storage"]) - f.drones.size()
+	if room <= 0:
+		return "The drone hangar is full (%d)." % int(f.stats()["drone_storage"])
+	var n := mini(int(c.get("amount", 1)), room)
+	var price := drone_price()
+	n = mini(n, int(floor(float(GameState.credits) / float(price))))
+	if n <= 0:
+		return "Not enough credits."
+	GameState.spend(n * price)
+	for i in n:
+		f.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+	return ""
+
+
+## {"type":"drone_sell", "index": i} – sell a drone from the hangar.
+func _c_drone_sell(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var f := _fit()
+	var i := int(c.get("index", -1))
+	if i < 0 or i >= f.drones.size():
+		return "No such drone."
+	GameState.add_credits(drone_value(f.drones[i]))
+	f.drones.remove_at(i)
+	return ""
+
+
+## {"type":"drone_repair"} – repairs the hulls of all drones in the hangar (fuel cannot be refilled).
+func _c_drone_repair(_c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var f := _fit()
+	var cost := drone_repair_cost(f)
+	if cost <= 0:
+		return "All drones are intact."
+	if not GameState.spend(cost):
+		return "Not enough credits."
+	for r in f.drones:
+		r["hp"] = 1.0
+	return ""
+
+
+func drone_repair_cost(f: ShipFitting) -> int:
+	var c := 0.0
+	for r in f.drones:
+		c += (1.0 - float(r.get("hp", 1.0))) * DRONE_PRICE * 0.3
+	return int(ceil(c / 10.0)) * 10
+
+
 ## {"type":"set_priority", "slot": key, "group": 1–4} – power priority of a module (package 21).
 func _c_set_priority(c: Dictionary) -> String:
 	var f := _fit()

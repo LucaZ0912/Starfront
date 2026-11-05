@@ -1294,6 +1294,8 @@ func _make_shop(type: String, tier: int, rng: RandomNumberGenerator) -> Array:
 		if a.get("notorious_only", false) or (a.get("pirate_only", false) and type != "pirate_haven"):
 			continue
 		var chance := 0.9 if a["slot"] in t["shop"] else 0.12
+		if a["slot"] in ["hangar", "drone"]:
+			chance = 0.6              # drone hangars and drone modules: at many stations (package 23)
 		if rng.randf() > chance:
 			continue
 		var r: Array = ModuleData.FAMILIES[fam]["sizes"]

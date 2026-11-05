@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 22 fertig. Netzwerk fehlt noch. Version alpha 0.4.22.4. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 23 fertig. Netzwerk fehlt noch. Version alpha 0.4.23.1. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -119,7 +119,7 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | 1 | More More | ✅ erledigt |
 | 2 | World Design Update | ✅ erledigt |
 | 3 | NPCs and Factions | ✅ erledigt (Pakete 10–18) |
-| 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–22 fertig) |
+| 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–23 fertig) |
 | 5 | Character Update | geplant |
 | 6 | New Worlds Discovery Update | geplant |
 | 7 | Intro and First Part of the Story | geplant |
@@ -541,7 +541,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 | 20 | Neue Modultypen & Waffen – ✅ erledigt | Schild-Varianten + Schild-Downtime, Punktverteidigung, Schildtransfer, Frachtscanner, Sonnen-Sammler, Minenwerfer (4 Minen), Radarstörer | 19 |
 | 21 | Energie-Management – ✅ erledigt | im Schiff festlegen, welche Module bei Strommangel zuerst abgeschaltet werden | 19 |
 | 22 | Multi-Fokus – ✅ erledigt | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
-| 23 | Drohnen (vorgezogen aus Phase 2) | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
+| 23 | Drohnen (vorgezogen aus Phase 2) – ✅ erledigt | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
 | 24 | Schiffsmanufakturen | Firmen, die Schiffe herstellen, mit eigenem Stil; staatliche Manufaktur je großer Fraktion für die Fraktionsschiffe | 19 |
 | 25 | Neue Schiffe | mehr Rümpfe aus den Manufakturen, auch für NPCs und Piraten, fraktionsexklusive Schiffe | 19, 23, 24 |
 | 26 | Stationstyp 0 | kleine Außenposten nur für S- und M-Schiffe, zusätzlich in allen Systemen | 25 |
@@ -661,6 +661,19 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 - [x] Zieltasten: Tab = alle Ziele in Sensorreichweite – erst die Schiffe, dann Asteroiden, Wracks, Anomalien; ohne Auswahl beginnt es wieder bei den Schiffen (0.4.22.2) – V = feindliche, C = verbündete Schiffe (in Sensorreichweite, sonst bis 50.000 km), jeweils nächstes zuerst; gespeicherte alte Belegungen dieser Tasten werden einmalig auf die neuen Vorgaben gesetzt.
 
 ### Drohnen (Paket 23, vorgezogen aus Phase 2)
+
+**Festgelegt (5. Nov 2026):** Drohnenhangar als neues Kernmodul (Größe 1–9, Qualität = mehr Lagerplatz); wie viele Drohnen gleichzeitig fliegen, legt das Schiff fest (S 1 … L 9). Drei Ausstattungsplätze für alle Drohnen: Waffe (Größe 1), Bergbaulaser (Größe 1), Bonusplatz für Drohnenmodule. Eine Drohnensorte, Rolle (Kampf/Bergbau/Reparatur) jederzeit per Kachel umschaltbar, je Rolle Verhalten (Kampf: verteidigen, Ziel angreifen, Fire at will, ruhen; Bergbau: auto, Ziel, ruhen; Reparatur: auto, Ziel, nur Verbündete, nur selbst, ruhen) und „Zurückrufen“. Drohnen: schwach, 5 Lagerplatz, feste Treibstoffmenge (ca. 5 min, Leerlauf 0,8×, im Hangar kein Verbrauch, nicht auftankbar), 9.000 km Steuerreichweite. Beim Warp-Laden/Sprung in den Hangar, danach sofort wieder raus. Neue Firma verkauft Drohnen als eigenen Service in allen Stationen. Schlichtes Design mit Antriebsspur, Waffen feuern wirklich, Bergbaulaser wie beim Schiff.
+
+**Umgesetzt (5. Nov 2026, alpha 0.4.23.1)** – `scripts/world/drone.gd`, Drohnenfenster im HUD, Drone Bay (`drone_panel.gd`), 31 neue automatische Prüfungen, alle 498 bestanden:
+
+- [x] Kernplatz „Drone Hangar“ (Größe 1–9 je Rumpf, Lagerplatz = Größe × 3 × Qualitätsfaktor 0,6–1,5); Drohnen gleichzeitig: Dragonfly/Hornet/Crow/Skiff 1, Mule 3, Drillhead/Warden 4, Longhaul 5, Bastion 9.
+- [x] Ausstattungsplätze Waffe (Größe 1), Bergbaulaser/Eisernter (Größe 1), Bonus (Drohnenmodule: Relay, Cargo Pod, Armor, Shield Emitter, Weapon Booster, Targeting Array, Fuel Cell, Thrusters – Größe 1–3, Qualität F–A); keine Schiffswaffe, kein Schiffsstrom. Standardausrüstungen mit Pulse Laser und Bergbaulaser, Startschiff mit zwei Drohnen.
+- [x] Drohne: 60 Hülle, 5 m³, 520 km/s, 5 min Treibstoff (Leerlauf 0,8×, Arbeit 1×, Kampf 1,2×), 9.000 km Steuerreichweite; außerhalb: zurück, Ziel fallen lassen; leer oder zerstört = verloren (kein Wrack). Feuert ihre echte Waffe, Bergbau mit demselben Strahl wie das Schiff, Antriebsleuchten.
+- [x] Alle Rollen und Verhalten wie festgelegt; Reparatur mit eingebautem Strahl; „Fire at will“ greift auch Zivilisten an (Straftat), Verbündete bleiben verschont.
+- [x] Drohnenfenster oben links am Rand: eingeklappt ohne gestartete Drohnen, sonst Rollen-Kacheln, Verhaltensknöpfe, Treibstoff/Hülle je Drohne, Starten/Zurückrufen. Tasten K (starten) und P (zurückrufen).
+- [x] Warp-Ausrichten/Sprungantrieb: Drohnen fliegen in den Hangar und kommen danach sofort wieder heraus; zu weit entfernte bleiben zurück. Andocken nimmt sie auf.
+- [x] Drone Bay der Hivewright Drone Works in jeder Station: kaufen, gebrauchte verkaufen, Hüllen reparieren (Treibstoff nicht nachfüllbar). Hangars und Drohnenmodule beim Ausrüster.
+- [x] Test-Stabilität: der Kampftest wartet nur noch auf den eigenen Piraten und nimmt ihm den Radarstörer.
 
 - **Drohnenhangar** wird dem Schiff zugewiesen – als **Extramodul in der Basisklasse**; Größe und ob überhaupt vorhanden hängen vom Schiff ab.
 - **Bergbaudrohnen** und **Kampfdrohnen**.
