@@ -542,8 +542,8 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 | 21 | Energie-Management – ✅ erledigt | im Schiff festlegen, welche Module bei Strommangel zuerst abgeschaltet werden | 19 |
 | 22 | Multi-Fokus – ✅ erledigt | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
 | 23 | Drohnen (vorgezogen aus Phase 2) – ✅ erledigt | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
-| 24 | Schiffsmanufakturen | Firmen, die Schiffe herstellen, mit eigenem Stil; staatliche Manufaktur je großer Fraktion für die Fraktionsschiffe | 19 |
-| 25 | Neue Schiffe | mehr Rümpfe aus den Manufakturen, auch für NPCs und Piraten, fraktionsexklusive Schiffe | 19, 23, 24 |
+| 24 | Schiffsmanufakturen – in Planung | alle Manufakturen und ihre Schiffe besprechen; am Ende: Codex-Einträge und ein Wappen/Icon je Manufaktur | 19 |
+| 25 | Neue Schiffe | in kleinen Schritten gebaut: 25a KHI-Bergbauschiffe (+ Grundgerüst), 25b Heavy Industry Ship mit Fertigungszeit und Bordmarkt, 25c ff. die weiteren Manufakturen; auch für NPCs und Piraten, fraktionsexklusive Schiffe | 19, 23, 24 |
 | 26 | Stationstyp 0 | kleine Außenposten nur für S- und M-Schiffe, zusätzlich in allen Systemen | 25 |
 | 27 | Ausrüster & Modulübersicht | Ausrüster neu gestaltet, Kurzbeschreibungen in der Modulübersicht, aktuelle Geschwindigkeit in der Schiffsinfo | 19, 20 |
 
@@ -694,7 +694,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 
 #### Steckbriefe der Manufakturen (für Pakete 24/25 und den Codex)
 
-Vorgehen (5. Nov 2026 vereinbart): die Manufakturen werden einzeln durchgegangen – Idee → Steckbrief hier → Freigabe → Einbau (mit Screenshots der Schiffe). Paket 24 baut mit der ersten Manufaktur das gemeinsame Grundgerüst (Rumpf gehört zu einer Manufaktur, Werften verkaufen deren Schiffe, eigene Pixel-Art-Bausteine und Palette je Manufaktur); die Schiffe selbst laufen unter Paket 25.
+Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und ihre Schiffe werden nacheinander besprochen (Idee → Steckbrief hier → Freigabe). Zum Abschluss von Paket 24 werden die Manufakturen in den Codex eingebaut und jede bekommt ein Wappen/Icon. **Paket 25 = Bau in kleinen Schritten:** 25a KHI-Bergbauschiffe samt Grundgerüst (Rumpf gehört zu einer Manufaktur, Werften nach Manufaktur-Regeln, Pixel-Art-Bausteine und Palette je Manufaktur), 25b Heavy Industry Ship mit Fertigungszeit und Bordmarkt, 25c ff. die weiteren Manufakturen. Versionen laufen als 0.4.25.N weiter, der Teilschritt steht im Changelog.
 
 **Earthworks** (bestehende Schiffe)
 - **Geschichte:** gegründet 12450 HE auf der Erde – die erste große nicht staatliche Sternschiffmanufaktur. Ihre Schiffe ermöglichten die Erkundung der Galaxie und später die Besiedlung des Clusters. Bis kurz vor der Severance die einzige Sternschiffmanufaktur, mit nur einem Shipyard Complex im Orbit von Luna (Sol). 12696 HE entstand eine zweite Werft im Cluster; 12701 HE erlaubte die Erdregierung weitere Sternschiffmanufakturen (zwölf Jahre vor der Severance 12713 HE).
