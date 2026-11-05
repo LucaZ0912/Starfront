@@ -729,6 +729,26 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - **Heavy Industry Ship:** seine Drohnen bekommen +25 % Abbau-Effizienz und +5 m³ Lagerplatz und tragen einen gelben Anstrich. **Fertigung an Bord** wie der Manufacturing-Dienst der Stationen, dazu Drohnen als neues Rezept; zieht Strom, solange sie läuft. **Neu für alle Fertigungen (auch Stationen): jeder Bauplan braucht Zeit.** **Markt:** man stellt Waren und Preise ein; solange das Schiff stillsteht, fliegen zivile NPC-Händler aus dem System es an und kaufen; große Angebote locken mit höherer Wahrscheinlichkeit Piraten an.
 - **Grundgerüst (Paket 24, mit KHI gebaut):** jeder Rumpf gehört einer Manufaktur (bisherige = Earthworks, Carrion Crow = Piratenbau); Manufaktur-Daten (Name, Kürzel, Farbe, Palette, Motto, Geschichte); Werften führen Schiffe nach Manufaktur-Regeln; Pixel-Art-Bausteine und Palette je Manufaktur; Werft-Anzeige mit Manufaktur; Codex-Einträge je Manufaktur.
 
+**„I“ – Luxus- und Passagiermanufaktur** (Name offen; Vorschlag: **Ivoire Starliners** – gegründet von Isadora Ivoire, Kürzel IVR, Motto *„Arrive in style.“*)
+- **Geschichte:** die jüngste Manufaktur im Cluster, gegründet 12895 HE – möglich geworden durch den Wirtschaftsboom der Cluster Assembly der letzten Jahre. Eng mit der Assembly verbunden, aber eine unabhängige Megacorp. Profitiert stark vom Export an reiche Oligarchen im Covenant, wo ihre Schiffe als Statussymbol gelten – dort wird gern verschwiegen, dass die Gründerin und Betreiberin der Assembly angehört.
+- **Schwerpunkt:** Luxusliner und Personentransport, später auch Rennschiffe (eigene Mechanik, späteres Update).
+- **Design:** äußerst schick und geleckt, besonders die teuren Liner – Vorbild Luxus-Kreuzfahrtschiffe: lange, glatte, helle Rümpfe (Weiß/Elfenbein mit Gold- oder Champagner-Akzenten), Fensterreihen, elegante Linien. Die Schiffe sollen sich luxuriös anfühlen und sind besonders teuer.
+- **Neue Mechanik – Personentransport:**
+  - Neue Module (optional): **Passagierkabinen** in den Klassen **Bulk**, **Business** und **Luxus**. Kapazität hängt von der Modulgröße ab und wird durch die Qualität erhöht. Bulk und Business passen in alle Schiffe, **Luxus nur in Schiffe dieser Manufaktur**.
+  - Neuer Reiter **Transportaufträge** am Missionsbrett: **Bulk** (viele Leute von Station zu Station) sowie **Business** und **Luxus**, die die passende Klasse verlangen.
+  - Bulk-Aufträge nimmt man an, bis die Gesamtkapazität aller Bulk-Kabinen voll ist. Business- und Luxus-Aufträge verlangen jeweils eine eigene Kabine dieser Klasse, in die die ganze Gruppe passt (Auslegung, zur Bestätigung).
+  - Später: Touristen-Aktionen, im Character Update VIP-Transporte in den höheren Klassen.
+- **Schiffe (Vorschlag mit Arbeitsnamen):**
+
+| Schiff | Größe | Waffen | Werkzeuge | Optional | Drohnen | Fluggefühl & Besonderheiten |
+|---|---|---|---|---|---|---|
+| **Boulevard** – Linienschiff | M | [2, 2, 1] (mittel) | [1] | [5, 4, 4, 3] | 1 (Hangar 2) | viel Triebwerksleistung, kurze Warp-Ausrichtzeit; eingebauter Nachbrenner (ohne Platz); Luxuskabinen möglich, aber −20 % Bezahlung. Fliegt in wohlhabenden Systemen auch als NPC-Shuttle zwischen Stationen |
+| **Pearl** – kleiner Luxusliner | S | [1, 1] | – | [3, 2] | – | äußerst schnell; Luxuskabinen, eingebauter Nachbrenner |
+| **Opal** – mittlerer Luxusliner | M | [2, 1] | [1] | [5, 5, 4, 4, 3] | – | äußerst schnell für seine Größe; Luxuskabinen, Nachbrenner |
+| **Empress** – Megaliner (Kreuzfahrtschiff) | L | [3, 3, 2] (mittel) | [1] | [9, 9, 8, 8, 7, 6] | 4 (Hangar 5) | wenig wendig, aber kurze Warp-Ausrichtzeit und hohe Warpgeschwindigkeit; hohe Schildkapazität; Luxuskabinen mit Bonus (+25 %) auf Luxus-Aufträge; Frachterweiterungen nur mit 50 % Kapazität. Drohnen im weißen Ivoire-Stil mit eigenem Schild, den das Schild-Bonusmodul verstärkt |
+
+- **Preise:** deutlich über Earthworks-Schiffen gleicher Größe (Vorschlag: etwa das 2,5-Fache).
+
 ### Neue Schiffe (Paket 25)
 
 - **Mehr und neue Schiffe** aus den Manufakturen, mit unterschiedlichen Profilen (Maximalgrößen je Platz, Drohnenhangar).
