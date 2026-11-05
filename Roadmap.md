@@ -705,6 +705,18 @@ Vorgehen (5. Nov 2026 vereinbart): die Manufakturen werden einzeln durchgegangen
 - **Codex (später):** eigener Eintrag „Earthworks“ mit der Geschichte oben, Querverweise auf „The Expansion“ und „The Severance“; freigeschaltet beim ersten Besuch einer Werft.
 - **Später:** Führungspersonen kommen mit Teil 5 (Character Update), der feste Standort der Cluster-Werft von 12696 mit Teil 6 (feste Sternensysteme – auch für Fraktionshauptsitze und weitere Orte).
 
+**„J“ – Bergbau- und Industriemanufaktur** (Name noch offen, japanisch klingend; Vorschläge: Kanayama Heavy Industries, Tsuruhashi Kōgyō, Kōzan Heavy Machinery, Daichi Heavy Industries)
+- **Geschichte:** gegründet 12701 HE im Cluster (im Jahr der Freigabe weiterer Manufakturen), als der Bergbau-Boom die Nachfrage nach schwerer Maschinerie hochtrieb – die Stationen kamen mit dem Raffinieren nicht mehr hinterher, neue Lösungen mussten her.
+- **Schwerpunkt:** Bergbau- und Industrieschiffe.
+- **Design:** erinnert an schwere Maschinen – bullig, praktisch statt schön. Farben hauptsächlich Gelb und die anderen Farben von Baustellenfahrzeugen. Läuft die Bordraffinerie, stößt das Schiff schwarze Rauchwolken aus.
+- **Markenzeichen aller J-Schiffe:** eingebaute Raffinerie (verarbeitet nebenbei langsam automatisch Erze), eingebautes Erzlager, kleiner Bonus auf die Abbau-Effizienz. Dafür langsamer und träge im Fluggefühl: drehen langsamer, brauchen länger, um den Warp zu starten usw.
+- **Schiffsideen (Details in Paket 25):**
+  - **S-Bergbauschiff:** 1 Waffenplatz, kleiner Drohnenhangar (1 Drohne), 2 kleine + 1 größerer Werkzeugplatz, mehrere optionale Plätze; eingebauter Prospektor-Scanner.
+  - **M-Bergbauschiff:** Weiterentwicklung des S-Schiffs, weiterhin kleine Drohnenkapazität (2), viel Platz für Erz, Plätze für Strip Miner und Eisernter, etwas effizientere Raffinerie; gleiche Besonderheiten.
+  - **L-Bergbauschiff:** die nächste Stufe der Reihe.
+  - **Heavy Industry Ship (L):** Drohnenträger für 9 Drohnen mit Bonus auf Abbau-Effizienz und Lagerplatz (diese Drohnen mit gelbem Touch); super effiziente Raffinerie, Fertigungsanlage an Bord (Module und sogar Drohnen aus den richtigen Materialien – wird mit dem späteren Crafting wichtiger) und eine Marktfunktion: es bietet Inventar zum Kauf an, NPCs kaufen dort ein.
+- **Offene Fragen:** siehe Gespräch vom 5. Nov 2026 (Name, Werte, Verkaufsorte, Umfang von Fertigung und Markt).
+
 ### Neue Schiffe (Paket 25)
 
 - **Mehr und neue Schiffe** aus den Manufakturen, mit unterschiedlichen Profilen (Maximalgrößen je Platz, Drohnenhangar).
