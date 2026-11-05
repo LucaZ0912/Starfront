@@ -3433,6 +3433,9 @@ func _test_intro() -> void:
 	check(intro._left_shut > intro._left_open and intro._right_shut < intro._right_open, "intro: a click slams them together around the d")
 	intro.close_brackets()
 	check(intro.closed and intro.phase == "closing", "intro: click closes the brackets")
+	var vs: Vector2 = intro.root.get_viewport_rect().size
+	var mid: float = intro.anim.position.x + intro.anim.size.x * 0.5
+	check(intro.get_viewport().size_changed.is_connected(intro._layout) and absf(mid - vs.x * 0.5) < 1.0, "intro: the d is centred and re-centred when the window size changes")
 	intro.queue_free()
 	check(ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/intro.tscn", "the game starts with the studio intro")
 

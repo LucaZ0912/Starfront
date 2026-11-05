@@ -89,6 +89,7 @@ func _build() -> void:
 	hammer_player.stream = HAMMER
 	add_child(hammer_player)
 	_layout.call_deferred()
+	get_viewport().size_changed.connect(_layout)      # stays centred when the window is resized
 
 
 func _label(text: String, size: int) -> Label:
@@ -123,8 +124,9 @@ func _layout() -> void:
 	_right_open = title.position.x + title_size.x - right_b.size.x * 0.5
 	_left_shut = d_left - bsize.x * 0.95
 	_right_shut = d_right - right_b.size.x * 0.05
-	left_b.position = Vector2(_left_open, by)
-	right_b.position = Vector2(_right_open, by)
+	var shut := phase == "closed" or phase == "out"
+	left_b.position = Vector2(_left_shut if shut else _left_open, by)
+	right_b.position = Vector2(_right_shut if shut else _right_open, by)
 
 
 func _process(delta: float) -> void:

@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.15 – 2026-11-05
+
+- Studio intro: the d, the title and the brackets stay centred when the window is resized or maximised.
+
 ## alpha 0.4.25.14 – 2026-11-05
 
 - Roadmap: plans for parts 5 (Character Update), 6 (New Worlds Discovery Update) and the new part 7
