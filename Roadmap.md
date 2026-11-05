@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 22 fertig. Netzwerk fehlt noch. Version alpha 0.4.22.2. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 22 fertig. Netzwerk fehlt noch. Version alpha 0.4.22.3. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -654,6 +654,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 
 - [x] Jede Waffe und jedes Werkzeug behält das Ziel, das beim Einschalten aktiv war; mehrere aktive Ziele gleichzeitig. Taste eines laufenden Moduls mit anderem Ziel → wechselt auf das aktive Ziel, nochmal → aus. Verlorener Lock schaltet nur die Module darauf ab.
 - [x] Lock-Plätze nach Sensorgröße: 3 (Größe 1–2), 4 (3–4), 5 (5–6), 6 (7–8).
+- [x] Modulkacheln eingefärbt: grün = aktiv auf dem aktuellen Ziel, gelb = aktiv auf einem anderen Ziel, orange = außer Reichweite (0.4.22.3). Balancing: alle Waffenreichweiten +10 %, Sensorreichweiten +15 % (0.4.22.3).
 - [x] Anzeige: Modulkacheln zeigen ihr Ziel (T1, T2 …), Lock-Karten und Zielklammern im All Lock-Nummer und Zahl der Module darauf.
 - [x] NPCs: größere Schiffe (Rumpf M+, ab drei Waffen) verteilen ihre Waffen auf mehrere Feinde in der Nähe ihres Ziels.
 - [x] Zieltasten: Tab = alle Ziele in Sensorreichweite – erst die Schiffe, dann Asteroiden, Wracks, Anomalien; ohne Auswahl beginnt es wieder bei den Schiffen (0.4.22.2) – V = feindliche, C = verbündete Schiffe (in Sensorreichweite, sonst bis 50.000 km), jeweils nächstes zuerst; gespeicherte alte Belegungen dieser Tasten werden einmalig auf die neuen Vorgaben gesetzt.

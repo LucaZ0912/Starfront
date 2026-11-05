@@ -53,6 +53,8 @@ const FIELD_EXP := {
 	"energy": 1.1, "energy_rate": 1.1,
 	"intercept": 0.15, "solar": 1.3, "jam_range": 0.5, "max_mines": 1.0,
 }
+## Balancing on top of the anchors (alpha 0.4.22.3)
+const RANGE_BUFF := {"weapon": 1.10, "sensors": 1.15}
 ## Multipliers: only the part above 1 grows (with the square root of the size ratio)
 const MULT_FIELDS := ["boost", "range_mult", "survey_range_mult", "speed_mult", "efficiency"]
 ## Size ranges per slot type (family ranges lie inside)
@@ -218,6 +220,9 @@ static func make(fam: String, size: int, q: String) -> Dictionary:
 			m[key] = v
 	if m["slot"] == "hyperdrive":
 		m["drive_class"] = clampi(int(ceil(size / 2.0)), 1, 3)
+	# balancing 0.4.22.3: weapon ranges +10 %, sensor ranges +15 %
+	if m.has("range") and m["slot"] in RANGE_BUFF:
+		m["range"] = round(float(m["range"]) * float(RANGE_BUFF[m["slot"]]))
 	m["family"] = fam
 	m["size"] = size
 	m["quality"] = q

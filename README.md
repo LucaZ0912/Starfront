@@ -75,6 +75,8 @@ lists every archetype loadout.
   moves it to the active target; pressed again it switches off. A lost lock only switches off the
   modules that worked on it.
 - **Lock slots** grow with the sensor suite: 3 (size 1–2), 4 (3–4), 5 (5–6), 6 (7–8).
+- Module tile borders: green = working on the active target, yellow = on another target, orange = out
+  of range, purple = not enough energy, red = no power.
 - Module tiles show their target (T1, T2 …), lock cards and the brackets in space show the lock number
   and how many modules work on it.
 - **NPCs:** bigger ships (hull M and up, three weapons or more) share their weapons out over several

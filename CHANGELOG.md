@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.22.3 – 2026-11-05
+
+- Module tiles: green = active on the current target, yellow = active on another target (out of range is now orange).
+- Balancing: all weapon ranges +10 %, sensor ranges +15 %.
+
 ## alpha 0.4.22.2 – 2026-11-05
 
 - Tab: ships first, then asteroids, wrecks and anomalies; with nothing selected it starts with the ships again.

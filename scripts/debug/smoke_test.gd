@@ -2325,6 +2325,7 @@ func _test_modules(view: SystemView) -> void:
 		if M[id]["slot"] == "weapon":
 			wmax = maxi(wmax, int(M[id]["size"]))
 	check(wmax == 4, "weapons only go up to size 4")
+	check(is_equal_approx(float(M["w_pulse:1:C"]["range"]), round(650.0 * 1.1)) and is_equal_approx(float(M["sen_basic:2:C"]["range"]), round(900.0 * 1.15)), "balancing: weapon ranges +10 %, sensor ranges +15 %")
 	# size curve and quality factors
 	var d1 := float(M["w_pulse:1:C"]["damage"])
 	var d2 := float(M["w_pulse:2:C"]["damage"])
@@ -2751,6 +2752,9 @@ func _test_multifocus(view: SystemView) -> void:
 		check(t2.fit.shield + t2.fit.armor + t2.fit.structure < hp2 and pl.module_on[other] and pl.module_target[other] == k1, "the beam fires at T2 while the other weapon stays on T1")
 		main.hud._update_modules()
 		check(main.hud._module_tiles[beam]["tgt"].text.contains("T2") and main.hud._module_tiles[other]["tgt"].text.contains("T1") and pl.modules_on(k1) == 1, "module tiles show their target (T1 / T2)")
+		var sb_on: StyleBoxFlat = main.hud._module_tiles[beam]["style"]
+		var sb_other: StyleBoxFlat = main.hud._module_tiles[other]["style"]
+		check(sb_on.border_color == main.hud.STATE_COLORS["on"] and sb_other.border_color == main.hud.STATE_COLORS["other"], "tiles: green = active target, yellow = another target")
 		# a running module moves to the active target with its key
 		pl.active_lock = k1
 		Commands.execute({"type": "toggle_module", "slot": beam})
@@ -2798,12 +2802,22 @@ func _test_multifocus(view: SystemView) -> void:
 		hs.position = pl.position + Vector2(0, -500)
 		main.hud.show_selected("")
 		var seq: Array = []
-		for i9 in 3:
+		for i9 in 40:
 			main.hud.hotkey_command("sel_target")
-			seq.append(view.find_object(main.hud.selected_id))
+			var o9 = view.find_object(main.hud.selected_id)
+			if seq.has(o9):
+				break
+			seq.append(o9)
+		var order_ok := not seq.is_empty() and seq[0] is Ship
+		var seen_other := false
+		for o in seq:
+			if not (o is Ship):
+				seen_other = true
+			elif seen_other:
+				order_ok = false
 		main.hud.show_selected("")
 		main.hud.hotkey_command("sel_target")
-		check(seq[0] is Ship and seq[1] is Ship and not (seq[2] is Ship) and view.find_object(main.hud.selected_id) is Ship, "Tab: ships first, then asteroids and the rest; with nothing selected it starts with ships again")
+		check(order_ok and seen_other and view.find_object(main.hud.selected_id) is Ship, "Tab: ships first, then asteroids and the rest; with nothing selected it starts with ships again (%d targets)" % seq.size())
 		pl.position = keep_p
 	main.hud.show_selected("")
 	main.hud.hotkey_command("sel_hostile")

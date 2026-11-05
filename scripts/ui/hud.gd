@@ -60,7 +60,9 @@ var zone_label: Label
 var survey_panel: PanelContainer
 var survey_text: RichTextLabel
 
-const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "range": Color(1.0, 0.75, 0.25), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
+## on = working on the active target, other = working on another locked target (multi-focus),
+## range = target out of reach, energy = capacitor too low, power = its priority group is shut down
+const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "other": Color(1.0, 0.92, 0.25), "range": Color(1.0, 0.55, 0.2), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
 const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven"}
 
 
@@ -319,7 +321,7 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 [color=#7fd8ff]Lock targets[/color]: locked targets appear top centre – click one to make it the active target
 [color=#7fd8ff]Module bar[/color] (bottom centre): click a tile or press [b]{module_1} … {module_9}[/b] to switch a module on/off.
    Weapons need a locked hostile ship, mining lasers an asteroid, analysers an anomaly, salvagers a wreck.
-   Tile border: green = working, amber = out of range, purple = not enough energy.
+   Tile border: green = working on the active target, yellow = working on another target, orange = out of range, purple = not enough energy, red = no power.
 [color=#7fd8ff]Click empty space[/color]: sublight flight (slow – the system is huge)
 
 {ship_up}{ship_left}{ship_down}{ship_right}: fly the ship in that direction (release: stop)
@@ -1238,6 +1240,8 @@ func _update_modules() -> void:
 		var on: bool = p.module_on.get(e["slot"], false)
 		if not on:
 			state = "off"
+		elif state == "on" and e["kind"] in ["weapon", "tool"] and p.module_target.has(e["slot"]) and String(p.module_target[e["slot"]]) != p.active_lock:
+			state = "other"      # multi-focus: running on a target that is not the active one
 		var sb: StyleBoxFlat = t["style"]
 		sb.border_color = STATE_COLORS[state]
 		sb.set_border_width_all(2 if on else 1)
