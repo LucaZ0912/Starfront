@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.22.2 – 2026-11-05
+
+- Tab: ships first, then asteroids, wrecks and anomalies; with nothing selected it starts with the ships again.
+
 ## alpha 0.4.22.1 – 2026-11-05
 
 **Package 22 – multi-focus.** 462 smoke-test checks pass.

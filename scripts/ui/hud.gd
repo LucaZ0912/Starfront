@@ -815,7 +815,12 @@ func select_next(kind: String) -> String:
 		var e := "%s within %s." % [what, SystemView.fmt_dist(sr if kind == "all" else HOSTILE_SELECT_RANGE)]
 		GameState.log_msg(e, GameState.COL_WARN)
 		return e
-	list.sort_custom(func(a, b): return p.position.distance_squared_to(a.position) < p.position.distance_squared_to(b.position))
+	# ships first (nearest first), then asteroids, wrecks and anomalies; with nothing selected it
+	# starts again with the nearest ship
+	list.sort_custom(func(a, b):
+		if (a is Ship) != (b is Ship):
+			return a is Ship
+		return p.position.distance_squared_to(a.position) < p.position.distance_squared_to(b.position))
 	var cur = view.find_object(selected_id) if selected_id != "" else null
 	var i := list.find(cur)
 	var nxt = list[(i + 1) % list.size()]

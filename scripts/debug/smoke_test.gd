@@ -2785,6 +2785,26 @@ func _test_multifocus(view: SystemView) -> void:
 	var first: String = main.hud.selected_id
 	main.hud.hotkey_command("sel_target")
 	check(first == Ship.object_key(fr) and main.hud.selected_id == Ship.object_key(hs), "Tab cycles through everything in sensor range, nearest first")
+	# ships before asteroids & co., even when an asteroid is nearer; nothing selected → ships again
+	var ast = null
+	for c in view.celestials:
+		if is_instance_valid(c) and Ship.lockable(c) and not (c is Ship):
+			ast = c
+			break
+	if ast != null:
+		var keep_p := pl.position
+		pl.position = ast.position + Vector2(float(ast.radius) + 20.0, 0)
+		fr.position = pl.position + Vector2(0, 400)
+		hs.position = pl.position + Vector2(0, -500)
+		main.hud.show_selected("")
+		var seq: Array = []
+		for i9 in 3:
+			main.hud.hotkey_command("sel_target")
+			seq.append(view.find_object(main.hud.selected_id))
+		main.hud.show_selected("")
+		main.hud.hotkey_command("sel_target")
+		check(seq[0] is Ship and seq[1] is Ship and not (seq[2] is Ship) and view.find_object(main.hud.selected_id) is Ship, "Tab: ships first, then asteroids and the rest; with nothing selected it starts with ships again")
+		pl.position = keep_p
 	main.hud.show_selected("")
 	main.hud.hotkey_command("sel_hostile")
 	var h_ok: bool = (view.find_object(main.hud.selected_id) as Ship).hostile_to_player()
