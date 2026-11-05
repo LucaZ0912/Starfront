@@ -14,6 +14,7 @@ signal closed
 
 const CATEGORIES := [
 	["Core", "core"], ["Weapons", "weapon"], ["Tools", "tool"], ["Optional", "optional"],
+	["Drone hangar – equipment for all drones", "drone"],
 ]
 const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing", "Codex"]
 const CodexView = preload("res://scripts/ui/codex_view.gd")
@@ -506,7 +507,7 @@ func _build_module_tiles(right: VBoxContainer) -> void:
 		for k in keys:
 			var t := ShipFitting.slot_type(k)
 			var is_core: bool = k in GameData.CORE_SLOTS
-			if (cat[1] == "core" and is_core) or (not is_core and t == cat[1]):
+			if (cat[1] == "core" and is_core) or (cat[1] == "drone" and t in GameData.DRONE_SLOTS) or (not is_core and t == cat[1]):
 				slot_keys.append(k)
 				if fit.get_module(k) != "":
 					filled += 1

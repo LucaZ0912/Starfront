@@ -74,7 +74,7 @@ lists every archetype loadout.
   S 1, Mule 3, Drillhead/Warden 4, Longhaul 5, Bastion 9. The hangar has three equipment slots for all
   drones: a **weapon** (size 1), a **mining laser / ice harvester** (size 1) and a **bonus slot** for
   drone modules (Relay +range, Cargo Pod, Armor, Shield Emitter, Weapon Booster, Targeting Array,
-  Fuel Cell, Thrusters). Standard fits come with a pulse laser and a mining laser; the start ship has
+  Fuel Cell, Thrusters) – fitted in the ship menu (Modules → *Drone hangar*, below Optional). Standard fits come with a pulse laser and a mining laser; the start ship has
   two drones.
 - **Drones:** small and weak (60 hull, no shield without an emitter, 5 m³ cargo), one sealed fuel load
   of 5 minutes (idle 0.8×, working 1×, fighting 1.2×; none used in the hangar) – empty or shot down

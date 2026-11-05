@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.23.2 – 2026-11-05
+
+- Ship menu → Modules: new category for the drone hangar equipment (weapon, mining laser, drone module).
+- Icons for the drone hangar and the drone modules (also on the Drone Bay tile).
+
 ## alpha 0.4.23.1 – 2026-11-05
 
 **Package 23 – drones.** 498 smoke-test checks pass.

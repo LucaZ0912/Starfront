@@ -3061,6 +3061,16 @@ func _test_drones(view: SystemView) -> void:
 	sp.open(big_st, view)
 	sp.open_service("drones")
 	check(sp.visible, "the Drone Bay (Hivewright Drone Works) opens at every station")
+	check(PixelArt.module_icon_key("hangar:2:C") == "hangar" and PixelArt.module_icon_key("dr_range:1:C") == "drone" and PixelArt.IconArt.ICONS.has("hangar") and PixelArt.IconArt.ICONS.has("drone"), "drone hangar and drone modules have icons")
+	var smn = main.ship_menu
+	smn.mod_view = "fitting"
+	smn.open(view, 1)
+	var found_drone_cat := false
+	for n9 in smn.content.find_children("*", "Label", true, false):
+		if String(n9.text).begins_with("Drone hangar"):
+			found_drone_cat = true
+	smn.close()
+	check(found_drone_cat, "ship menu → Modules shows the drone hangar equipment slots")
 	sp.close()
 	for n in [pir, civ, ally, c]:
 		if is_instance_valid(n):
