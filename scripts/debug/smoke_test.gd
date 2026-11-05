@@ -518,6 +518,7 @@ func _process(delta: float) -> void:
 				_test_drones(view)
 				_test_manufacturers(view)
 				_test_khi(view)
+				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -1305,6 +1306,22 @@ func _shoot_standing(view: SystemView) -> void:
 		im2.resize(34 * 5, 38 * 5, Image.INTERPOLATE_NEAREST)
 		sheet.blit_rect(im2, Rect2i(0, 0, 34 * 5, 38 * 5), Vector2i(10 + (fi + 4) * 34 * 5, 20 + 38 * 5))
 		fi += 1
+	# studio intro (dlirius games): title with open brackets, then slammed shut
+	var intro = preload("res://scripts/ui/studio_intro.gd").new()
+	intro.auto_skip = false
+	main.add_child(intro)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for i in 70:
+		intro._process(0.1)
+	for i in 30:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/intro_title.png")
+	intro.close_brackets()
+	for i in 45:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/intro_closed.png")
+	intro.queue_free()
 	sheet.save_png("res://Claude outputs/crests.png")
 	# package 25a: the KHI ships (and the Earthworks Drillhead for comparison), player and NPC paint
 	var hulls9 := ["mogura", "anaguma", "iwakudaki", "drillhead"]
@@ -3334,3 +3351,23 @@ func _test_khi(view: SystemView) -> void:
 				found = true
 		sp.close()
 		check(found, "the shipyard names the manufacturer of every hull")
+
+
+## The studio intro: the dlirius animation with laser shots, title, brackets that slam shut.
+func _test_intro() -> void:
+	var intro = preload("res://scripts/ui/studio_intro.gd").new()
+	intro.auto_skip = false
+	main.add_child(intro)
+	intro._layout()
+	check(intro.SHEET != null and intro.LASER != null and intro.HAMMER != null, "intro: animation sheet and sounds load")
+	for i in 70:
+		intro._process(0.1)
+	check(intro.frame == intro.FRAMES - 1 and intro.shots_fired == intro.SHOTS.size() and intro.phase == "title", "intro: the d is animated, one laser shot per colour bar (%d)" % intro.shots_fired)
+	var tl: float = intro.title.position.x
+	var tr: float = tl + intro.title.size.x
+	check(absf(intro.left_b.position.x + intro.left_b.size.x * 0.5 - tl) < 2.0 and absf(intro.right_b.position.x + intro.right_b.size.x * 0.5 - tr) < 2.0, "intro: the brackets start at the ends of \"dlirius games\"")
+	check(intro._left_shut > intro._left_open and intro._right_shut < intro._right_open, "intro: a click slams them together around the d")
+	intro.close_brackets()
+	check(intro.closed and intro.phase == "closing", "intro: click closes the brackets")
+	intro.queue_free()
+	check(ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/intro.tscn", "the game starts with the studio intro")

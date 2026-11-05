@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Paket 25a (KHI-Bergbauschiffe) fertig, als Nächstes 25b (Heavy Industry Ship). Netzwerk fehlt noch. Version alpha 0.4.25.4. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Paket 25a (KHI-Bergbauschiffe) fertig, als Nächstes 25b (Heavy Industry Ship). Netzwerk fehlt noch. Version alpha 0.4.25.5. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -37,6 +37,7 @@ Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und
 | Welt & News | Notrufe, fliehender Verkehr, Eskalation (Patrouille → Verstärkung → Einsatzgruppe), Wracks für alle Schiffe; Nachrichten-Ticker im Schiffs-Panel, Archiv in jeder Station, Kopfgeld-Kampagnen. |
 | Fraktionsaufträge | Am Schwarzen Brett jeder Regierungsstation: Konvoi-Eskorte, Patrouille begleiten, Schmuggler abfangen (ab Neutral), Jagd auf Berüchtigte (ab Friendly); +4 Ruf. |
 | Module | Neues Modulsystem: Familie + Größe (1–10, Waffen 1–4) + Qualität (F–A); jeder Schiffsplatz mit eigener Maximalgröße; ca. 1.900 Module aus 61 Familien. Skiff, Longhaul und Carrion Crow kaufbar. Paket 20: Schild-Varianten mit Downtime nach dem Zusammenbruch, Punktverteidigung, Schildtransfer, Frachtscanner, Sonnen-Sammler, Minenwerfer mit vier Minenarten (Ware), Radarstörer (auch bei Piraten). |
+| Studio-Intro | Beim Start: das animierte „d“ von dlirius games auf Schwarz (aus `dlirius/games.gif`), ein Laserschuss je Farbbalken, danach „dlirius games“ in Silber mit zwei Klammern darüber; ein Mausklick lässt die Klammern mit einem Hammerschlag um das d zusammenfahren, eine Taste überspringt das Intro (alpha 0.4.25.5). |
 | Codex | Nachschlagewerk mit 45 Einträgen in sechs Kategorien; Grundlagen offen, der Rest wird beim Entdecken freigeschaltet („New Codex entry“ im HUD); im Schiffsmenü und im Hauptmenü. |
 | Fehlt | Teile 4–8, Netzwerk, Endgame-Inhalte |
 

@@ -68,6 +68,14 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## Studio intro
+The game starts with the **dlirius games** intro (`scenes/intro.tscn`, `scripts/ui/studio_intro.gd`): the
+animated d from `dlirius/games.gif` (converted to `assets/intro/dlirius_sheet.png`, white → black
+background, the black outline → silver) with a laser shot (`laser.wav`) for each of the 14 colour bars,
+then "dlirius games" in silver with two brackets above it as wide as the lettering. A mouse click slams
+the brackets together around the d (`hammer.wav`); a second click or any key skips to the main menu.
+The sounds are synthesised. With `--smoketest` (or headless) the intro is skipped.
+
 ## Kanayama Heavy Industries ships (phase 0.5 package 25a)
 - Every hull belongs to a manufacturer (`maker` in data/hulls.gd); shipyards stock hulls by the
   manufacturer's rules (`yards` / `small_yards` in data/manufacturers.gd). Earthworks: every shipyard.

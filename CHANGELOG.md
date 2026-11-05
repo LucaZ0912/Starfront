@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.5 – 2026-11-05
+
+- New studio intro "dlirius games": the animated d on black with a laser shot per colour bar, the title in
+  silver with two brackets; a click slams them together around the d with a hammer-on-iron sound, any key
+  skips. The game now starts with scenes/intro.tscn.
+
 ## alpha 0.4.25.4 – 2026-11-05
 
 - Fix: the power priority of built-in modules (refinery, prospector) can be set in power management.
