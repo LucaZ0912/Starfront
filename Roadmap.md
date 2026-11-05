@@ -692,6 +692,18 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
   - **Wie sie unterschiedlich aussehen:** Ideen – eigene Silhouetten-Bausteine je Manufaktur im Pixel-Art-Generator (Rumpfform, Flügel, Triebwerke, Cockpit), eigene Farbpaletten und Muster, Markenzeichen (z. B. Leuchtstreifen, Panzerrippen, Antennen), Firmenlogo auf dem Rumpf.
   - **Wie sie sich unterschiedlich anfühlen:** Ideen – feste Stärken je Manufaktur (z. B. mehr Platz für Triebwerke, große Schildgeneratoren, viele Waffenplätze, Drohnenhangar), Fahrverhalten (Beschleunigung, Wendigkeit, Trägheit), Energiehaushalt, Signatur; dazu eigene Triebwerksspuren und Sounds.
 
+#### Steckbriefe der Manufakturen (für Pakete 24/25 und den Codex)
+
+Vorgehen (5. Nov 2026 vereinbart): die Manufakturen werden einzeln durchgegangen – Idee → Steckbrief hier → Freigabe → Einbau (mit Screenshots der Schiffe). Paket 24 baut mit der ersten Manufaktur das gemeinsame Grundgerüst (Rumpf gehört zu einer Manufaktur, Werften verkaufen deren Schiffe, eigene Pixel-Art-Bausteine und Palette je Manufaktur); die Schiffe selbst laufen unter Paket 25.
+
+**Earthworks** (bestehende Schiffe)
+- **Geschichte:** gegründet 12450 HE auf der Erde – die erste große nicht staatliche Sternschiffmanufaktur. Ihre Schiffe ermöglichten die Erkundung der Galaxie und später die Besiedlung des Clusters. Bis kurz vor der Severance die einzige Sternschiffmanufaktur, mit nur einem Shipyard Complex im Orbit von Luna (Sol). 12696 HE entstand eine zweite Werft im Cluster; 12701 HE erlaubte die Erdregierung weitere Sternschiffmanufakturen (zwölf Jahre vor der Severance 12713 HE).
+- **Design:** schlicht und praktisch – „das Basic-Erddesign“. Technisch weiterentwickelt, im Großen aber seit den 12450er Jahren unverändert: zeitloses Design, großartige Ingenieurskunst.
+- **Schwerpunkt:** etwas für jeden – grundlegend Allrounder, dazu speziellere Schiffe wie Mule und Longhaul.
+- **Schiffe:** Dragonfly, Hornet, Mule, Drillhead, Warden, Bastion, Skiff, Longhaul (die Carrion Crow ist Piratenbau, keine Earthworks).
+- **Codex (später):** eigener Eintrag „Earthworks“ mit der Geschichte oben, Querverweise auf „The Expansion“ und „The Severance“; freigeschaltet beim ersten Besuch einer Werft.
+- **Noch offen:** Wer führt Earthworks heute (Cluster-Werft seit der Severance vom Hauptsitz abgeschnitten)? In welchem System liegt die Cluster-Werft von 12696? Verkauft Earthworks an allen Werften oder nur an bestimmten?
+
 ### Neue Schiffe (Paket 25)
 
 - **Mehr und neue Schiffe** aus den Manufakturen, mit unterschiedlichen Profilen (Maximalgrößen je Platz, Drohnenhangar).
