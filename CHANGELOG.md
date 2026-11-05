@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.12 – 2026-11-05
+
+**Package 25c – Maison Aurelle and passenger transport.**
+- Passenger cabins: bulk, business and luxury suites (luxury only in Aurelle ships), with new icons.
+- Bulletin board tab "Passengers": transport contracts, paid per passenger and jump, with deadlines;
+  failure (late, or ship lost) costs a little standing.
+- Four Maison Aurelle ships: Pearl, Boulevard, Opal, Empress – ivory and gold, rows of windows.
+- Built-in afterburner (Pearl, Boulevard, Opal); Empress with fast warp, strong shields, half-size cargo
+  racks, +25 % luxury pay and white drones with their own shield.
+- Aurelle yards only at trade hubs of rich, safe Assembly/Covenant systems; Boulevard liners as NPC traffic.
+
 ## alpha 0.4.25.11 – 2026-11-05
 
 - Ship menu: the on-board market has its own tab "Market"; "Industry" and "Market" only show on ships that have a factory / a market.

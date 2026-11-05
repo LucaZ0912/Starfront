@@ -369,7 +369,7 @@ func _build_info() -> void:
 		"Credits earned: %s" % GameData.fmt_credits(int(st["earned"])),
 	])
 	# Contracts
-	var con := _card(box, "ACTIVE CONTRACTS  (%d / %d)" % [GameState.missions.size(), GameState.MAX_ACTIVE_MISSIONS])
+	var con := _card(box, "ACTIVE CONTRACTS  (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS])
 	if GameState.missions.is_empty():
 		con.add_child(UI.label("No contracts. Visit a BlackLedger bulletin board at any station.", 13, UI.TEXT_DIM))
 	for m in GameState.missions:
@@ -938,7 +938,7 @@ const MISSION_LABELS := {"courier": "COURIER", "bounty": "BOUNTY", "mining": "SU
 func _build_transactions() -> void:
 	var bar := UI.hbox(4)
 	content.add_child(bar)
-	var subs := ["Contracts (%d / %d)" % [GameState.missions.size(), GameState.MAX_ACTIVE_MISSIONS], "Bonds (%d)" % GameState.bonds.size()]
+	var subs := ["Contracts (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS], "Bonds (%d)" % GameState.bonds.size()]
 	for i in subs.size():
 		var idx := i
 		var b := UI.button(subs[i], func():

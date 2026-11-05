@@ -112,6 +112,8 @@ func can_fit(key: String, module_id: String) -> String:
 		return "Too large – this slot takes modules up to size %d" % mx
 	if m.get("notorious_only", false):
 		return "Only notorious pirate captains can use this"
+	if m.get("aurelle_only", false) and String(hull().get("maker", "")) != "aurelle":
+		return "Luxury suites fit only into Maison Aurelle ships"
 	return ""
 
 
@@ -178,7 +180,7 @@ func _compute() -> Dictionary:
 		"speed_mult": 1.0, "range_mult": 1.0, "ore_cargo_max": 0.0, "survey_range_mult": 1.0,
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
-		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0,
+		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0, "cabins": [],
 		"power_passive": 0.0, "power_active_max": 0.0, "offline": [], "max_locks": 3,
 		"drone_storage": 0, "drones_max": int(h.get("drones", 0)),
 		"align_mult": float(h.get("align_mult", 1.0)),
@@ -254,7 +256,9 @@ func _compute() -> Dictionary:
 				t["powered"] = not (pw > 0.0 and power_off.has(grp))
 				s["tools"].append(t)
 			"optional":
-				s["cargo_max"] += float(m.get("cargo", 0))
+				s["cargo_max"] += float(m.get("cargo", 0)) * float(h.get("cargo_mod_mult", 1.0))
+				if m.has("cabin"):
+					s["cabins"].append({"slot": key, "cabin": String(m["cabin"]), "seats": int(m.get("passengers", 1))})
 				s["shield_max"] += float(m.get("shield", 0))
 				if m.has("shield"):
 					var kind_f := float(GameData.SHIELD_KINDS.get(String(m.get("shield_kind", "balanced")), {}).get("down", 1.0))
@@ -282,6 +286,10 @@ func _compute() -> Dictionary:
 
 	# Hull traits (package 25a): built-in ore hold, mining bonus, built-in modules
 	s["ore_cargo_max"] += float(h.get("ore_cargo", 0.0))
+	# package 25c (Maison Aurelle): fast hulls, strong shields
+	s["speed_mult"] *= float(h.get("speed_mult", 1.0))
+	s["shield_max"] *= float(h.get("shield_mult", 1.0))
+	s["shield_regen"] *= float(h.get("shield_mult", 1.0))
 	for cls in s["mining_bonus"]:
 		s["mining_bonus"][cls] = float(s["mining_bonus"][cls]) + float(h.get("mining_bonus", 0.0))
 	for b in builtin_modules():
@@ -309,7 +317,7 @@ func _compute() -> Dictionary:
 	s["speed"] = s["thrust"] * 1000.0 / maxf(s["mass"], 1.0) * s["speed_mult"] * ratio
 	s["accel"] = s["speed"] * 1.3
 	s["warp_mult"] = clampf(s["speed"] / 300.0, 0.6, 1.6)
-	s["warp_speed"] = 150000.0 * s["warp_mult"]
+	s["warp_speed"] = 150000.0 * s["warp_mult"] * float(h.get("warp_mult", 1.0))
 	s["turn"] = s["turn"] * (0.5 + 0.5 * ratio) * float(h.get("turn_mult", 1.0))
 	s["cap_recharge"] *= ratio
 	s["shield_regen"] *= ratio
@@ -361,6 +369,12 @@ func builtin_modules() -> Array:
 				m["id"] = "builtin:prospect"
 				m["builtin"] = true
 				_builtin_cache.append({"key": "builtin_prospect", "data": m})
+			"afterburner":
+				var ab: Dictionary = h.get("afterburner", {})
+				_builtin_cache.append({"key": "builtin_afterburner", "data": {
+					"name": "Afterburner (built-in)", "base_name": "Afterburner", "slot": "optional", "active": "afterburner",
+					"boost": float(ab.get("boost", 1.5)), "energy_rate": float(ab.get("energy_rate", 8.0)), "power": float(ab.get("power", 8.0)),
+					"builtin": true, "id": "builtin:afterburner", "size": int(h.get("size", 1)), "quality": "C", "mass": 0, "price": 0}})
 			"factory":
 				_builtin_cache.append({"key": "builtin_factory", "data": {
 					"name": "Factory (built-in)", "base_name": "Factory", "slot": "optional", "active": "factory",
@@ -409,6 +423,9 @@ func _drone_stats(s: Dictionary, mods: Dictionary) -> void:
 	# carrier hull bonus (package 25b: Kanayama-maru – more mining, more cargo)
 	var hb: Dictionary = hull().get("drone_bonus", {})
 	d["cargo"] += float(hb.get("cargo", 0.0))
+	# package 25c (Empress): white drones with their own shield – the drone shield module counts more
+	d["shield"] += float(hb.get("shield", 0.0)) + float(b.get("d_shield", 0.0)) * (float(hb.get("shield_mult", 1.0)) - 1.0)
+	d["shield_regen"] += float(hb.get("shield_regen", 0.0)) + float(b.get("d_shield_regen", 0.0)) * (float(hb.get("shield_mult", 1.0)) - 1.0)
 	d["mining_mult"] = 1.0 + float(hb.get("mining", 0.0))
 	s["drone"] = d
 	var w: Dictionary = mods.get("dweapon", {}).duplicate()
@@ -705,6 +722,8 @@ func describe() -> String:
 	t += "Cargo: %.0f / %.0f\n" % [cargo_used(), s["cargo_max"]]
 	if float(s["ore_cargo_max"]) > 0.0:
 		t += "Ore hold: %.0f / %.0f (ore and ice only)\n" % [ore_hold_used(), s["ore_cargo_max"]]
+	if not s["cabins"].is_empty():
+		t += "Passenger cabins: %s\n" % Missions.cabins_text(self)
 	var mbs: Array = []
 	for cls in s["mining_bonus"]:
 		if float(s["mining_bonus"][cls]) > 0.0:

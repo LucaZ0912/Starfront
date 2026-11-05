@@ -488,6 +488,8 @@ func _c_fit_module(c: Dictionary) -> String:
 	var why := f.can_fit(slot, mid)
 	if why != "":
 		return why
+	if Missions.cabin_in_use(f, slot):
+		return "Passengers are using this cabin – deliver them first."
 	if not GameState.storage_remove(f.docked_at, mid):
 		return "%s is not in station storage." % GameData.module_name(mid)
 	var prev := f.set_module(slot, mid)
@@ -504,6 +506,8 @@ func _c_unfit_module(c: Dictionary) -> String:
 	if e != "":
 		return e
 	var f := _fit()
+	if Missions.cabin_in_use(f, String(c["slot"])):
+		return "Passengers are using this cabin – deliver them first."
 	var prev := f.set_module(String(c["slot"]), "")
 	if prev == "":
 		return "That slot is empty."
@@ -676,6 +680,8 @@ func _c_mission_accept(c: Dictionary) -> String:
 	var m := _find_mission(GameState.offers_for(GameState.current_system, st), String(c["id"]))
 	if m.is_empty():
 		m = _find_mission(GameState.faction_offers_for(GameState.current_system, st), String(c["id"]))
+	if m.is_empty():
+		m = _find_mission(GameState.passenger_offers_for(GameState.current_system, st), String(c["id"]))
 	if m.is_empty():
 		return "That contract is no longer on the board."
 	return GameState.accept_mission(m)

@@ -26,6 +26,8 @@ extends RefCounted
 ##                armor_repair/jammer), boost / rate, energy_rate (capacitor per second while on)
 ##                shield_kind (balanced/capacity/regen – sets the downtime after a shield collapse),
 ##                solar (fuel per second next to the star), jam_range (radar jammer radius)
+##                cabin (package 25c: "bulk"/"business"/"luxury") + passengers (seats, whole numbers);
+##                aurelle_only = only fits into Maison Aurelle hulls (luxury suites)
 
 const QUALITIES := ["F", "E", "D", "C", "B", "A"]          # S and S+ follow in the endgame
 ## perf = performance, mass, power draw and price factors per quality (D is the lightest, F the
@@ -53,6 +55,7 @@ const FIELD_EXP := {
 	"energy": 1.1, "energy_rate": 1.1,
 	"intercept": 0.15, "solar": 1.3, "jam_range": 0.5, "max_mines": 1.0,
 	"d_cargo": 1.0, "d_hull": 1.3, "d_shield": 1.3, "d_shield_regen": 1.3,
+	"passengers": 1.3,
 }
 ## Balancing on top of the anchors (alpha 0.4.22.3)
 const RANGE_BUFF := {"weapon": 1.10, "sensors": 1.15}
@@ -148,6 +151,10 @@ const FAMILIES := {
 	"o_targeting": {"name": "Targeting Computer", "anchor": "o_targeting_s", "ref": 1, "sizes": [1, 4]},
 	"o_fuel": {"name": "Auxiliary Tank", "anchor": "o_fuel_s", "ref": 1, "sizes": [1, 6]},
 	"o_capacitor": {"name": "Capacitor Bank", "anchor": "o_capacitor_s", "ref": 1, "sizes": [1, 6]},
+	# passenger cabins (package 25c, Maison Aurelle): seats by size, more with quality
+	"o_cabin_bulk": {"name": "Bulk Cabin", "anchor": "o_cabin_bulk_s", "ref": 1, "sizes": [1, 10]},
+	"o_cabin_business": {"name": "Business Cabin", "anchor": "o_cabin_business_s", "ref": 1, "sizes": [1, 10]},
+	"o_cabin_luxury": {"name": "Luxury Suite", "anchor": "o_cabin_luxury_s", "ref": 1, "sizes": [1, 10]},
 }
 
 ## Modules of the earlier S/M/L system (presets, start storage, tests): old id -> [family, size].
@@ -240,6 +247,8 @@ static func make(fam: String, size: int, q: String) -> Dictionary:
 	# balancing 0.4.22.3: weapon ranges +10 %, sensor ranges +15 %
 	if m.has("range") and m["slot"] in RANGE_BUFF:
 		m["range"] = round(float(m["range"]) * float(RANGE_BUFF[m["slot"]]))
+	if m.has("passengers"):
+		m["passengers"] = maxi(1, int(round(float(m["passengers"]))))
 	m["family"] = fam
 	m["size"] = size
 	m["quality"] = q
@@ -410,6 +419,11 @@ const ANCHORS := {
 	"o_targeting_s": {"name": "Targeting Computer", "slot": "optional", "size": 1, "price": 5000, "mass": 30, "power": 5, "range_mult": 1.15, "res_bonus": 0.3},
 	"o_fuel_s": {"name": "Auxiliary Tank", "slot": "optional", "size": 1, "price": 1200, "mass": 80, "power": 0, "fuel": 90},
 	"o_capacitor_s": {"name": "Capacitor Bank", "slot": "optional", "size": 1, "price": 3000, "mass": 60, "power": 0, "cap_bonus": 120},
+	# passenger cabins (package 25c): bulk seats in every ship, business cabins in every ship,
+	# luxury suites only in Maison Aurelle ships
+	"o_cabin_bulk_s": {"name": "Bulk Cabin", "slot": "optional", "size": 1, "price": 2500, "mass": 90, "power": 1, "cabin": "bulk", "passengers": 8},
+	"o_cabin_business_s": {"name": "Business Cabin", "slot": "optional", "size": 1, "price": 8000, "mass": 110, "power": 2, "cabin": "business", "passengers": 3},
+	"o_cabin_luxury_s": {"name": "Luxury Suite", "slot": "optional", "size": 1, "price": 26000, "mass": 140, "power": 4, "cabin": "luxury", "passengers": 1.2, "aurelle_only": true},
 	# warp interdictor (phase 0.5 package 11): select a ship in warp, activate, win the timing game
 	"t_interdictor_s": {"name": "Warp Interdictor", "slot": "tool", "size": 1, "price": 18000, "mass": 70, "power": 7, "tool": "interdict", "range": 400000, "energy": 30, "zone_bonus": 0.0},
 	# package 20: shield transfer (own capacitor → the locked friendly ship's shield; speeds up its

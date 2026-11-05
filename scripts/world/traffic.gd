@@ -356,6 +356,10 @@ func _spawn_shuttle(midway: bool) -> void:
 			bd = d
 			st = s2
 	var gov := String(st.get("faction", ""))
+	# package 25c: in rich systems Maison Aurelle Boulevards ply between the stations
+	if L["stations"].size() >= 2 and Missions.wealthy(sid) and randf() < BOULEVARD_SHARE:
+		_spawn_liner(midway)
+		return
 	var name := "Skiff %s" % _reg()
 	var inbound := randf() < 0.5
 	var ppos: Vector2 = planet["pos"]
@@ -381,6 +385,31 @@ func _spawn_shuttle(midway: bool) -> void:
 	else:
 		go(s, planet["id"])
 	shuttles.append({"ship": s, "mode": "in" if inbound else "out", "planet": pidx, "station": st["id"]})
+
+
+const BOULEVARD_SHARE := 0.35
+
+
+## A Boulevard liner from one station to another (package 25c); counts as a shuttle.
+func _spawn_liner(midway: bool) -> void:
+	var L: Dictionary = view.layout
+	var a: Dictionary = L["stations"][randi() % L["stations"].size()]
+	var b: Dictionary = a
+	while b["id"] == a["id"]:
+		b = L["stations"][randi() % L["stations"].size()]
+	var gov := String(b.get("faction", ""))
+	var name := "Boulevard %s" % _reg()
+	var s: Ship
+	if midway:
+		var pos := (a["pos"] as Vector2).lerp(b["pos"], randf_range(0.2, 0.8))
+		if _near_player(pos):
+			return
+		s = _spawn("civ_boulevard", pos, "civilian", gov, name)
+	else:
+		s = _spawn_docked("civ_boulevard", a["id"], "civilian", gov, name)
+	s.heading = ((b["pos"] as Vector2) - (a["pos"] as Vector2)).angle()
+	go(s, b["id"], {"type": "dock", "id": b["id"]})
+	shuttles.append({"ship": s, "mode": "in", "planet": int(b.get("planet", 0)), "station": b["id"]})
 
 
 func _update_shuttles() -> void:

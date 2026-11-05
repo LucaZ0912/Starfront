@@ -519,6 +519,7 @@ func _process(delta: float) -> void:
 				_test_manufacturers(view)
 				_test_khi(view)
 				_test_kanayama(view)
+				_test_aurelle(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -1348,6 +1349,32 @@ func _shoot_standing(view: SystemView) -> void:
 	ksheet.blend_rect(kim, Rect2i(0, 0, kim.get_width(), kim.get_height()), Vector2i(20, 20))
 	ksheet.blend_rect(dim, Rect2i(0, 0, dim.get_width(), dim.get_height()), Vector2i(kim.get_width() + 40, 40))
 	ksheet.save_png("res://Claude outputs/kanayama.png")
+	# package 25c: the four Maison Aurelle ships (player paint, then NPC paint) and the white drone
+	var aur := ["aur_pearl", "aur_boulevard", "aur_opal", "aur_empress"]
+	var ash := Image.create(1100, 980, false, Image.FORMAT_RGBA8)
+	ash.fill(Color(0.05, 0.06, 0.09))
+	var ay := 20
+	for ah in aur:
+		var ax := 20
+		for arow in 2:
+			var aim := PixelArt.ship_texture(ah, "player" if arow == 0 else "covenant").get_image()
+			var sc := 4 if ah != "aur_empress" else 4
+			aim.resize(aim.get_width() * sc, aim.get_height() * sc, Image.INTERPOLATE_NEAREST)
+			if ah == "aur_empress" and arow == 1:
+				break
+			ash.blend_rect(aim, Rect2i(0, 0, aim.get_width(), aim.get_height()), Vector2i(ax, ay))
+			ax += aim.get_width() + 40
+		ay += PixelArt.ship_texture(ah, "player").get_height() * 4 + 30
+	var adr := PixelArt.ship_texture("drone", "aurelle_drone").get_image()
+	adr.resize(adr.get_width() * 8, adr.get_height() * 8, Image.INTERPOLATE_NEAREST)
+	ash.blend_rect(adr, Rect2i(0, 0, adr.get_width(), adr.get_height()), Vector2i(980, 40))
+	var icx := 20
+	for ik in ["o_cabin_bulk", "o_cabin_business", "o_cabin_luxury"]:
+		var iim := PixelArt.icon_texture(ik).get_image()
+		iim.resize(iim.get_width() * 4, iim.get_height() * 4, Image.INTERPOLATE_NEAREST)
+		ash.blend_rect(iim, Rect2i(0, 0, iim.get_width(), iim.get_height()), Vector2i(icx, ay + 10))
+		icx += iim.get_width() + 20
+	ash.save_png("res://Claude outputs/aurelle_ships.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -3011,10 +3038,10 @@ func _test_drones(view: SystemView) -> void:
 	var hull_ok := true
 	for hid in GameData.hulls:
 		var h: Dictionary = GameData.hulls[hid]
-		if h.get("drone_only", false):
-			continue
+		if h.get("drone_only", false) or (h.get("maker", "") == "aurelle" and int(h.get("drones", 0)) == 0):
+			continue                 # Pearl and Opal (package 25c) carry no drones
 		hull_ok = hull_ok and GameData.slot_max_of(h, "hangar") > 0 and int(h.get("drones", 0)) >= 1
-	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot; drones out at once: S 1 … L 9")
+	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot (except Pearl and Opal); drones out at once: S 1 … L 9")
 	check(int(M["hangar:3:A"]["drone_storage"]) > int(M["hangar:3:C"]["drone_storage"]) and int(M["hangar:3:C"]["drone_storage"]) > int(M["hangar:3:F"]["drone_storage"]), "hangar quality gives more room (%d / %d / %d)" % [int(M["hangar:3:F"]["drone_storage"]), int(M["hangar:3:C"]["drone_storage"]), int(M["hangar:3:A"]["drone_storage"])])
 	var f := GameState.create_from_preset("std_bastion", "player")
 	check(f.can_fit("dweapon_0", "w_pulse:1:C") == "" and f.can_fit("dweapon_0", "w_beam:2:C") != "" and f.can_fit("dweapon_0", "w_pointdef:1:C") != "" and f.can_fit("dtool_0", "t_mining:1:C") == "" and f.can_fit("dtool_0", "t_salvage:1:C") != "" and f.can_fit("dbonus_0", "dr_range:2:C") == "" and f.can_fit("optional_0", "dr_range:1:C") != "", "drone slots: weapon size 1, mining laser size 1, drone modules only in the bonus slot")
@@ -3543,3 +3570,163 @@ func _test_kanayama(view: SystemView) -> void:
 	GameState.active_uid = keep_uid
 	GameState.fleet.erase(kf2)
 	check(hidden_ok and shown_ok, "ship menu: Industry and Market tabs only on ships with a factory / a market")
+
+
+## Phase 0.5 package 25c: Maison Aurelle – passenger cabins and transport contracts, four liners.
+func _test_aurelle(view: SystemView) -> void:
+	var aur := ["aur_pearl", "aur_boulevard", "aur_opal", "aur_empress"]
+	var all_ok := true
+	for ah in aur:
+		all_ok = all_ok and GameData.hulls.has(ah) and GameData.hulls[ah]["maker"] == "aurelle" and GameData.presets.has("std_" + ah)
+	check(all_ok, "Maison Aurelle: Pearl, Boulevard, Opal and Empress")
+	check(int(GameData.hulls["aur_boulevard"]["price"]) >= int(GameData.hulls["warden"]["price"]) * 1.5 and int(GameData.hulls["aur_empress"]["price"]) >= int(GameData.hulls["bastion"]["price"]) * 2.5, "… and they are expensive")
+	# cabins: seats by size and quality, luxury only in Aurelle hulls
+	var b5c := int(GameData.modules["o_cabin_bulk:5:C"]["passengers"])
+	check(b5c > int(GameData.modules["o_cabin_bulk:3:C"]["passengers"]) and int(GameData.modules["o_cabin_bulk:5:A"]["passengers"]) > b5c, "cabins: more seats with size and quality (bulk 5 · C: %d seats)" % b5c)
+	var mule := GameState.create_from_preset("std_mule", "player")
+	var opal := GameState.create_from_preset("std_aur_opal", "player")
+	check(mule.can_fit("optional_0", "o_cabin_luxury:3:C") != "" and mule.can_fit("optional_0", "o_cabin_business:3:C") == "" and opal.can_fit("optional_0", "o_cabin_luxury:3:C") == "", "luxury suites fit only into Aurelle ships, bulk and business cabins everywhere")
+	# fast hulls, built-in afterburner
+	var war := GameState.create_from_preset("std_warden", "player")
+	check(float(opal.stats()["speed_mult"]) > 1.3 and float(opal.stats()["align_mult"]) < 1.0, "Opal: extremely fast, quick to align")
+	var keys := []
+	for bm in opal.builtin_modules():
+		keys.append(bm["key"])
+	check(keys.has("builtin_afterburner") and PixelArt.module_icon_key("builtin:afterburner") == "o_afterburner", "built-in afterburner (no slot used)")
+	var c := Ship.new()
+	opal.system_id = view.system_id
+	opal.position = view.player.position + Vector2(0, -70000)
+	opal.uid = 99902
+	c.manual = true
+	c.setup(opal, view)
+	view.ship_layer.add_child(c)
+	opal.capacitor = float(opal.stats()["cap_max"])
+	var err: String = c.set_module_active("builtin_afterburner", true)
+	var cap0 := opal.capacitor
+	c._update_modules(1.0, opal.stats())
+	check(err == "" and c.afterburner_mult() > 1.4 and opal.capacitor < cap0 and c.power_in_use().has("builtin_afterburner"), "… boosts the speed, uses energy and power while on")
+	c.set_module_active("builtin_afterburner", false)
+	c.queue_free()
+	# Empress: cargo racks at half, fast warp, strong shields, white shielded drones
+	var emp := GameState.create_from_preset("std_aur_empress", "player")
+	var bas := GameState.create_from_preset("std_bastion", "player")
+	var rack := float(GameData.modules["o_cargo:5:C"]["cargo"])
+	var c0 := float(emp.stats()["cargo_max"])
+	emp.set_module("optional_5", "o_cargo:5:C")
+	var half_ok := absf(float(emp.stats()["cargo_max"]) - c0 - rack * 0.5) < 0.5
+	emp.set_module("optional_5", "o_shield_l")
+	check(half_ok, "Empress: cargo racks give only half their room")
+	check(float(emp.stats()["warp_speed"]) > float(bas.stats()["warp_speed"]) and float(emp.stats()["align_mult"]) < 0.7 and float(emp.stats()["shield_max"]) > float(bas.stats()["shield_max"]), "Empress: fast warp, short alignment, strong shields")
+	var d_plain := float(emp.stats()["drone"]["shield"])
+	emp.set_module("dbonus_0", "dr_shield:1:C")
+	bas.set_module("dbonus_0", "dr_shield:1:C")
+	var gain_e := float(emp.stats()["drone"]["shield"]) - d_plain
+	var gain_b := float(bas.stats()["drone"]["shield"])
+	check(d_plain > 0.0 and gain_e > gain_b * 1.3 and String(emp.hull()["drone_paint"]) == "aurelle_drone", "its white drones have their own shield; the shield module adds 50 %% more (%.0f)" % float(emp.stats()["drone"]["shield"]))
+	# passenger contracts
+	var st: Dictionary = view.layout["stations"][0]
+	var offers: Array = GameState.passenger_offers_for(view.system_id, st)
+	check(offers.size() == Missions.PASSENGER_OFFERS and String(offers[0]["type"]) == "passenger", "bulletin board: passenger contracts (%d)" % offers.size())
+	var boul := GameState.create_from_preset("std_aur_boulevard", "player")
+	boul.system_id = view.system_id
+	GameState.add_ship(boul)
+	var keep_uid: int = GameState.active_uid
+	var keep_missions: Array = GameState.missions.duplicate()
+	GameState.missions.clear()
+	GameState.active_uid = boul.uid
+	var m: Dictionary = offers[0].duplicate()
+	m["cabin"] = "bulk"
+	var free0 := Missions.bulk_free(boul)
+	m["amount"] = free0 + 1
+	var too_many: bool = GameState.accept_mission(m) != ""
+	m["amount"] = 20
+	check(too_many and GameState.accept_mission(m) == "" and Missions.bulk_free(boul) == free0 - 20 and int(m["ship_uid"]) == boul.uid, "bulk passengers fill the bulk seats (%d seats)" % free0)
+	var biz: Array = []
+	for i in 3:
+		var mb: Dictionary = offers[1].duplicate()
+		mb["id"] = "biz%d" % i
+		mb["cabin"] = "business"
+		mb["amount"] = 4
+		biz.append(mb)
+	var e0: String = GameState.accept_mission(biz[0])
+	var e1: String = GameState.accept_mission(biz[1])
+	var e2: String = GameState.accept_mission(biz[2])
+	check(e0 == "" and e1 == "" and e2 != "" and biz[0]["cabin_slot"] != biz[1]["cabin_slot"], "each business group needs a cabin of its own (third group: %s)" % e2)
+	var ml: Dictionary = offers[2].duplicate()
+	ml["cabin"] = "luxury"
+	ml["amount"] = 1
+	check(Missions.cabin_error(boul, ml).contains("luxury") and Missions.cabin_error(opal, ml) == "", "luxury passengers need a luxury suite")
+	check(is_equal_approx(Missions.pay_mult(boul, ml), 0.8) and is_equal_approx(Missions.pay_mult(emp, ml), 1.25) and is_equal_approx(Missions.pay_mult(opal, ml), 1.0), "luxury pay: Boulevard −20 %, Empress +25 %")
+	check(Missions.cabin_in_use(boul, String(biz[0]["cabin_slot"])), "an occupied cabin cannot be removed")
+	var cr0: int = GameState.credits
+	var tgt := String(m["target_station"])
+	var can: bool = Missions.can_turn_in(m, boul, tgt) and not Missions.can_turn_in(m, mule, tgt)
+	var pay_m := int(m["reward"])
+	GameState.turn_in_mission(m, tgt)
+	check(can and GameState.credits == cr0 + pay_m and not m in GameState.missions, "passengers disembark at their destination – paid per passenger and jump (%s, %d → %d, pay %d)" % [str(can), cr0, GameState.credits, pay_m])
+	var fac := String(biz[0]["faction"])
+	var rep0: float = GameState.rep.get_rep(fac) if fac != "" else 0.0
+	biz[0]["expires"] = GameState.play_time - 1.0
+	GameState._update_passengers()
+	var late_ok: bool = not biz[0] in GameState.missions and (fac == "" or GameState.rep.get_rep(fac) < rep0)
+	check(late_ok, "missed deadline: the contract fails and costs standing")
+	var other := GameState.create_from_preset("std_aur_pearl", "player")
+	GameState.add_ship(other)
+	var mx: Dictionary = biz[1]
+	mx["ship_uid"] = other.uid
+	GameState.on_player_ship_lost(other)
+	check(not mx in GameState.missions, "ship destroyed with passengers aboard: the contract fails")
+	# the board's passenger tab builds
+	var sp: StationUI = main.station_panel
+	sp.open(st, view)
+	sp.open_service("bulletin")
+	sp._panel._set_tab(1)
+	var lbl_ok := false
+	for n in sp._panel.find_children("*", "Label", true, false):
+		if String(n.text).begins_with("TRANSPORT CONTRACTS"):
+			lbl_ok = true
+	sp._panel._set_tab(0)
+	sp.close()
+	check(lbl_ok, "bulletin board: own Passengers tab")
+	GameState.missions = keep_missions
+	GameState.active_uid = keep_uid
+	GameState.fleet.erase(boul)
+	GameState.fleet_changed.emit()
+	# Maison Aurelle yards only in rich, safe Assembly/Covenant systems
+	var rich_has := -1
+	var poor_has := -1
+	for sid in Universe.systems.size():
+		if rich_has >= 0 and poor_has >= 0:
+			break
+		var w := Missions.wealthy(sid)
+		if (w and rich_has >= 0) or (not w and poor_has >= 0):
+			continue
+		for st2 in Universe.get_layout(sid)["stations"]:
+			if st2["type"] == "trade":
+				var has: bool = "aur_pearl" in st2["shipyard"]
+				if w:
+					rich_has = 1 if has else 0
+				else:
+					poor_has = 1 if has else 0
+				break
+	check(rich_has == 1 and poor_has == 0, "Aurelle ships are sold at trade hubs of rich, safe systems only")
+	var tr = view.traffic
+	var liner = null
+	var fake := {}
+	if view.layout["stations"].size() < 2:      # a second (pretend) station for the liner to fly to
+		fake = view.layout["stations"][0].duplicate()
+		fake["id"] = "st_fake_liner"
+		fake["pos"] = (fake["pos"] as Vector2) + Vector2(300000, 0)
+		view.layout["stations"].append(fake)
+	if view.layout["stations"].size() >= 2:
+		for i2 in 8:
+			tr._spawn_liner(false)
+			var last: Dictionary = tr.shuttles.back() if not tr.shuttles.is_empty() else {}
+			if not last.is_empty() and is_instance_valid(last["ship"]) and last["ship"].fit.hull_id == "aur_boulevard":
+				liner = last["ship"]
+				break
+	check(liner != null and String(tr.shuttles.back()["station"]) != "", "Boulevard liners fly between the stations of rich systems")
+	if not fake.is_empty():
+		view.layout["stations"].erase(fake)
+	if liner != null:
+		tr._despawn(liner)

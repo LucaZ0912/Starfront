@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe) und 25b (Kanayama-maru) fertig, als Nächstes 25c (Maison Aurelle). Netzwerk fehlt noch. Version alpha 0.4.25.11. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru) und 25c (Maison Aurelle) fertig, als Nächstes 25d (Hadrian Dynamics). Netzwerk fehlt noch. Version alpha 0.4.25.12. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -857,6 +857,19 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Bordmarkt** (eingebaut, 6 MW, abschaltbar): Waren und Preise im neuen Schiffsmenü-Reiter „Industry“; solange er offen ist und das Schiff stillsteht, fliegen alle 25–50 s Händler herüber und kaufen, wenn der Preis fair ist (bis etwa 0,9–1,5 × Grundpreis); Angebote über 60.000 cr locken mit wachsender Wahrscheinlichkeit 2–4 Piraten an.
 - [x] Neue Icons für Fabrik und Markt.
 - [x] Eigene Schiffsmenü-Reiter „Industry“ (Fabrik) und „Market“ (Bordmarkt) – nur bei Schiffen, die sie haben (0.4.25.11).
+
+**Umgesetzt 25c (5. Nov 2026, alpha 0.4.25.12)** – Maison Aurelle und Personentransport, 22 neue automatische Prüfungen:
+
+- [x] **Passagierkabinen** (optionale Module, Größe 1–10): Bulk (8 Plätze bei Größe 1, 65 bei Größe 5), Business (3 / 24), Luxus-Suite (1 / 10); mehr Plätze mit Größe und Qualität. Bulk und Business passen überall, Luxus-Suiten nur in Aurelle-Schiffe. Neue Icons (Sitzreihen, Business-Sessel, Bett mit Krone). Belegte Kabinen lassen sich nicht ausbauen.
+- [x] **Reiter „Passengers“ am Missionsbrett** (neben „Contracts“): eigene Transportaufträge (5 je Station), eigenes Limit (8 Gruppen gleichzeitig, zählen nicht zu den 5 normalen Aufträgen). Bulk-Gruppen füllen die Bulk-Plätze aller Kabinen zusammen; jede Business-/Luxus-Gruppe bekommt eine eigene freie Kabine ihrer Klasse, in die alle passen (die kleinste passende). Anzeige der eigenen Kabinen und ihrer Belegung.
+- [x] Bezahlung pro Passagier und Sprung (Ziel bis 4 Sprünge, im selben System zählt wie 1 Sprung): Bulk 60, Business 220, Luxus 700 cr; Boulevard −20 %, Empress +25 % auf Luxus; Ruf-Bonus wie bei anderen Aufträgen. Luxusreisende häufiger in reichen Systemen.
+- [x] Frist: 3 min + 2,5 min je Sprung ab Annahme. Verpasste Frist oder Schiff mit Passagieren zerstört → Auftrag gescheitert, −1,5 Ruf bei der Fraktion der Startstation. Abgeben („Disembark“) nur am Ziel und mit dem Schiff, auf dem sie sind.
+- [x] **Pearl** (S, 45.000 cr): Luxusyacht, +35 % Tempo, kurze Ausrichtzeit, kein Hangar. **Boulevard** (M, 120.000 cr): Linienschiff, +25 % Tempo, sehr kurze Ausrichtzeit (−30 %), Luxus −20 %, Hangar 2 / 1 Drohne. **Opal** (M, 170.000 cr): Luxusliner mit Glas-Lounge, +45 % Tempo, kein Hangar. **Empress** (L, 650.000 cr): Megaliner, träge (−30 % Drehen), Ausrichtzeit −40 %, Warp +35 %, Schild +60 %, Frachtmodule nur 50 %, Luxus +25 %, 4 Drohnen (Hangar 5). Pearl/Boulevard/Opal mit Schild +20–25 %.
+- [x] **Eingebauter Nachbrenner** (Pearl, Boulevard, Opal): wie das Modul, ohne Platz; goldene Kachel in der Modulleiste, verbraucht Energie und Strom nur, solange er an ist.
+- [x] Empress-Drohnen: weiß-gold, mit eigenem Schild (60, +5/s); das Schild-Bonusmodul der Drohnen wirkt bei ihr 50 % stärker.
+- [x] Pixel-Art: lange, glatte Elfenbein-Rümpfe mit Perlweiß-Kante, Goldlinien, Fensterreihen und Glasbrücke; Opal mit geschwungener Goldlinie und Glas-Lounge, Empress mit gestuften Decks und Glaskuppel. Bleibt elfenbein, egal wem das Schiff gehört.
+- [x] Verkauf nur an Werften der Handelsstationen in reichen, sicheren Systemen (Sicherheit ≥ 0,65) der Assembly und des Covenant – im Directorate keine.
+- [x] In diesen Systemen fliegen Boulevards als NPC-Linienschiffe zwischen den Stationen (gut ein Drittel der Shuttles).
 
 ### Stationstyp 0 (Paket 26)
 

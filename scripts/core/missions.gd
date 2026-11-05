@@ -6,6 +6,8 @@ extends RefCounted
 ##   bounty  – destroy N pirates in a system
 ##   mining  – deliver N units of ore to the issuing station
 ##   survey  – analyse an anomaly in a system
+##   passenger – take passengers to another station (package 25c, own board tab): cabin class
+##             bulk/business/luxury, amount = passengers, deadline, ship_uid = the ship carrying them
 ## A mission is a Dictionary: {id, type, title, desc, reward, giver (station id), giver_system,
 ##   target_system, target_station, item, amount, progress, faction (giver station's faction),
 ##   against (faction the contract is aimed at – standing pull effect, package 12)}
@@ -254,6 +256,8 @@ static func can_turn_in(m: Dictionary, fit: ShipFitting, station_id: String) -> 
 			return station_id == m["giver"] and float(fit.cargo.get(m["item"], 0.0)) >= float(m["amount"]) - 0.01
 		"bounty", "survey":
 			return station_id == m["giver"] and int(m["progress"]) >= int(m["amount"])
+		"passenger":
+			return station_id == m["target_station"] and fit != null and fit.uid == int(m.get("ship_uid", -1))
 	return false
 
 
@@ -290,4 +294,167 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 			return "%d / %d pirates destroyed" % [int(m["progress"]), int(m["amount"])]
 		"survey":
 			return "Anomaly analysed" if int(m["progress"]) >= 1 else "Analyse an anomaly in %s" % Universe.systems[int(m["target_system"])]["name"]
+		"passenger":
+			var where: String = Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?")
+			if float(m.get("expires", -1.0)) < 0.0:
+				return "To %s (%s) – %d:%02d to get there" % [where, Universe.systems[int(m["target_system"])]["name"], int(m["time_limit"]) / 60, int(m["time_limit"]) % 60]
+			var left := maxf(0.0, float(m["expires"]) - GameState.play_time)
+			var aboard := GameState.get_fit(int(m.get("ship_uid", -1)))
+			return "Take them to %s (%s) – %d:%02d left%s" % [where, Universe.systems[int(m["target_system"])]["name"], int(left) / 60, int(left) % 60,
+				("   •   aboard %s" % aboard.ship_name) if aboard != null and fit != null and aboard.uid != fit.uid else ""]
 	return ""
+
+
+# ---------------------------------------------------------------- Passenger transport (package 25c)
+# Own tab on the board. Bulk contracts fill the seats of all bulk cabins together; a business or
+# luxury group needs a cabin of its class of its own that seats the whole group. Pay per passenger
+# and jump; a deadline; failed (late, or the ship destroyed with them aboard) costs a little standing
+# with the faction of the issuing station.
+
+const CABIN_CLASSES := {
+	"bulk": {"name": "Bulk", "pay": 60, "min": 6, "max": 45, "color": Color(0.7, 0.8, 0.9)},
+	"business": {"name": "Business", "pay": 220, "min": 2, "max": 12, "color": Color(0.45, 0.75, 1.0)},
+	"luxury": {"name": "Luxury", "pay": 700, "min": 1, "max": 8, "color": Color(1.0, 0.82, 0.4)},
+}
+const PASSENGER_OFFERS := 5
+const MAX_PASSENGER_JOBS := 8       # passenger contracts at once (on top of the other contracts)
+const PASSENGER_TIME := 180.0       # deadline: 3 minutes + PASSENGER_TIME_JUMP per jump
+const PASSENGER_TIME_JUMP := 150.0
+const PASSENGER_REP := 1.5          # standing lost when a passenger contract fails
+
+
+## Rich, safe systems of the Assembly or the Covenant (luxury travellers, Maison Aurelle yards,
+## Boulevard shuttles).
+static func wealthy(sid: int) -> bool:
+	if sid < 0 or sid >= Universe.systems.size():
+		return false
+	return float(Universe.systems[sid]["security"]) >= 0.65 and Universe.controller(sid) in ["assembly", "covenant"]
+
+
+static func generate_passenger(system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var dests: Array = []
+	for sid in _systems_within(system_id, 4):
+		if Universe.find_path(system_id, sid, 3).is_empty() and sid != system_id:
+			continue
+		for st in Universe.get_layout(sid)["stations"]:
+			if st["id"] != station["id"]:
+				dests.append([sid, st])
+	if dests.is_empty():
+		return {}
+	var d: Array = dests[rng.randi() % dests.size()]
+	var lux := 0.18 + (0.14 if wealthy(system_id) else 0.0)
+	var roll := rng.randf()
+	var cls := "luxury" if roll < lux else ("business" if roll < lux + 0.32 else "bulk")
+	var c: Dictionary = CABIN_CLASSES[cls]
+	var amount := rng.randi_range(int(c["min"]), int(c["max"]))
+	var jumps := Universe.find_path(system_id, d[0], 3).size()
+	var m := {"id": _new_id(), "type": "passenger", "giver": station["id"], "giver_system": system_id,
+		"client": "%s passengers" % c["name"], "progress": 0, "item": "", "amount": amount, "cabin": cls,
+		"target_system": d[0], "target_station": d[1]["id"], "jumps": jumps,
+		"faction": String(station.get("faction", "")), "against": "", "ship_uid": -1, "expires": -1.0, "cabin_slot": "",
+		"time_limit": PASSENGER_TIME + PASSENGER_TIME_JUMP * jumps,
+		"reward": int(c["pay"]) * amount * maxi(jumps, 1)}
+	var who := "%d %s passenger%s" % [amount, String(c["name"]).to_lower(), "" if amount == 1 else "s"]
+	m["title"] = "%s: %d× %s to %s" % ["Passengers", amount, c["name"], Universe.systems[d[0]]["name"]]
+	m["desc"] = "Take %s to %s (%s, %d jump%s). %s" % [who, d[1]["name"], Universe.systems[d[0]]["name"], jumps, "" if jumps == 1 else "s",
+		"They fill bulk seats." if cls == "bulk" else "The group needs a %s cabin of its own that seats all of them." % String(c["name"]).to_lower()]
+	return m
+
+
+## Passengers aboard a ship: {bulk: n, business: n, luxury: n} and the cabins taken.
+static func _aboard(fit: ShipFitting) -> Dictionary:
+	var out := {"bulk": 0, "business": 0, "luxury": 0, "taken": {}}
+	for m in GameState.missions:
+		if String(m["type"]) == "passenger" and int(m.get("ship_uid", -1)) == fit.uid:
+			out[String(m["cabin"])] = int(out[String(m["cabin"])]) + int(m["amount"])
+			if String(m.get("cabin_slot", "")) != "":
+				out["taken"][String(m["cabin_slot"])] = true
+	return out
+
+
+## Free bulk seats of a ship.
+static func bulk_free(fit: ShipFitting) -> int:
+	var seats := 0
+	for c in fit.stats()["cabins"]:
+		if c["cabin"] == "bulk":
+			seats += int(c["seats"])
+	return seats - int(_aboard(fit)["bulk"])
+
+
+## The cabin a business/luxury group would get: the smallest free one that seats them ("" = none).
+static func pick_cabin(fit: ShipFitting, cls: String, amount: int) -> String:
+	var taken: Dictionary = _aboard(fit)["taken"]
+	var best := ""
+	var best_seats := 1 << 30
+	for c in fit.stats()["cabins"]:
+		if c["cabin"] == cls and not taken.has(c["slot"]) and int(c["seats"]) >= amount and int(c["seats"]) < best_seats:
+			best = c["slot"]
+			best_seats = int(c["seats"])
+	return best
+
+
+## Why this ship cannot take the passengers ("" = it can).
+static func cabin_error(fit: ShipFitting, m: Dictionary) -> String:
+	if fit == null:
+		return "No ship."
+	var cls := String(m["cabin"])
+	var n := int(m["amount"])
+	if cls == "bulk":
+		var free := bulk_free(fit)
+		if free < n:
+			return "Not enough bulk seats (%d free, %d needed)." % [maxi(free, 0), n]
+		return ""
+	if pick_cabin(fit, cls, n) == "":
+		var has_any := false
+		for c in fit.stats()["cabins"]:
+			if c["cabin"] == cls:
+				has_any = true
+		if not has_any:
+			return "Needs a %s cabin%s." % [String(CABIN_CLASSES[cls]["name"]).to_lower(), " (Maison Aurelle ships only)" if cls == "luxury" else ""]
+		return "No free %s cabin for %d passengers." % [String(CABIN_CLASSES[cls]["name"]).to_lower(), n]
+	return ""
+
+
+## True if passengers use this cabin slot – it cannot be removed then.
+static func cabin_in_use(fit: ShipFitting, slot: String) -> bool:
+	var d: Dictionary = fit.module_data(slot)
+	if not d.has("cabin"):
+		return false
+	var ab := _aboard(fit)
+	if String(d["cabin"]) == "bulk":
+		return bulk_free(fit) - int(d.get("passengers", 0)) < 0
+	return ab["taken"].has(slot)
+
+
+## Pay factor of the hull on luxury contracts (Boulevard −20 %, Empress +25 %).
+static func pay_mult(fit: ShipFitting, m: Dictionary) -> float:
+	if fit == null or String(m.get("cabin", "")) != "luxury":
+		return 1.0
+	return float(fit.hull().get("luxury_pay", 1.0))
+
+
+## "bulk 40 seats (12 taken) · 2 business cabins (1 free) · …"
+static func cabins_text(fit: ShipFitting) -> String:
+	var ab := _aboard(fit)
+	var parts: Array = []
+	var seats := 0
+	var cab := {"business": [], "luxury": []}
+	for c in fit.stats()["cabins"]:
+		if c["cabin"] == "bulk":
+			seats += int(c["seats"])
+		else:
+			cab[c["cabin"]].append(c)
+	if seats > 0:
+		parts.append("bulk %d seats (%d taken)" % [seats, int(ab["bulk"])])
+	for cls in ["business", "luxury"]:
+		var list: Array = cab[cls]
+		if list.is_empty():
+			continue
+		var sizes: Array = []
+		var free := 0
+		for c2 in list:
+			sizes.append(str(int(c2["seats"])))
+			if not ab["taken"].has(c2["slot"]):
+				free += 1
+		parts.append("%d %s cabin%s of %s seats (%d free)" % [list.size(), cls, "" if list.size() == 1 else "s", "/".join(PackedStringArray(sizes)), free])
+	return "none" if parts.is_empty() else "  •  ".join(PackedStringArray(parts))

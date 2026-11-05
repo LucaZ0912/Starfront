@@ -658,7 +658,7 @@ func build_test_layout() -> Dictionary:
 				"id": "st_0_%d" % L["stations"].size(), "planet": 0,
 				"name": "Testfeld – %s (T%d)" % [CommodityData.STATION_TYPES[type]["name"], tier],
 				"type": type, "tier": tier, "pos": pos2,
-				"market": _make_market(type, rng), "shop": _make_shop(type, tier, rng), "shipyard": _make_shipyard(type, tier),
+				"market": _make_market(type, rng), "shop": _make_shop(type, tier, rng), "shipyard": _make_shipyard(type, tier, true),
 				"seed": 1000 + i * 37, "zone": NO_FIRE_ZONE[tier - 1],
 				"faction": FactionData.POWERS[(i + tier) % 3],
 			})
@@ -911,7 +911,7 @@ func _generate_layout(id: int) -> Dictionary:
 			"type": type, "tier": tier, "pos": (planet["pos"] as Vector2) + off,
 			"market": _make_market(type, rng),
 			"shop": _make_shop(type, tier, rng),
-			"shipyard": _make_shipyard(type, tier),
+			"shipyard": _make_shipyard(type, tier, Missions.wealthy(id)),
 		})
 	# Hyperspace gates – direction matches the neighbour's position on the galaxy map
 	for nb in sys["links"]:
@@ -1322,8 +1322,9 @@ func _make_shop(type: String, tier: int, rng: RandomNumberGenerator) -> Array:
 
 ## Shipyard stock by manufacturer (package 25a, data/manufacturers.gd): a maker's hulls at the
 ## station types in its "yards" (size up to the tier), plus "small_yards" (e.g. KHI and the
-## Earthworks Drillhead at mining colonies).
-func _make_shipyard(type: String, tier: int) -> Array:
+## Earthworks Drillhead at mining colonies). `rich`: a rich, safe system – makers with "rich_only"
+## (Maison Aurelle, package 25c) sell only there.
+func _make_shipyard(type: String, tier: int, rich: bool = false) -> Array:
 	var t: Dictionary = GameData.station_types[type]
 	var yard: Array = []
 	for hid in GameData.hulls:
@@ -1331,6 +1332,8 @@ func _make_shipyard(type: String, tier: int) -> Array:
 		if not h["buyable"] or h.get("haven_only", false) or h.get("drone_only", false):
 			continue
 		var mk: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
+		if mk.has("rich_only") and not rich:
+			continue
 		var yards = mk.get("yards", "all")
 		var at_yard: bool = t["shipyard"] and (typeof(yards) == TYPE_STRING or type in yards)
 		if at_yard and int(h["size"]) <= tier:

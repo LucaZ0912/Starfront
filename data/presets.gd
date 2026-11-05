@@ -139,6 +139,31 @@ const PRESETS := {
 		"optional_0": "o_shield_s", "optional_1": "o_afterburner_s"}},
 
 	# ---------------- Civilians & patrols (phase 0.5 package 11) ----------------
+	# Maison Aurelle (package 25c)
+	"std_aur_pearl": {"hull": "aur_pearl", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_basic_s", "reactor": "rea_fusion:3:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c2_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse_s", "optional_0": "o_cabin_luxury:3:C", "optional_1": "o_shield:2:C"}},
+	"std_aur_boulevard": {"hull": "aur_boulevard", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_ion_m", "distributor": "dist_m", "reactor": "rea_fusion_m",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse_s", "weapon_1": "w_pulse_s",
+		"optional_0": "o_cabin_bulk:5:C", "optional_1": "o_cabin_business:4:C", "optional_2": "o_shield_m", "optional_3": "o_cabin_business:3:C"}},
+	"std_aur_opal": {"hull": "aur_opal", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_ion_m", "distributor": "dist_m", "reactor": "rea_fusion_m",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_basic_s",
+		"weapon_0": "w_beam_m", "weapon_1": "w_pulse_s", "tool_0": "t_scanner_s",
+		"optional_0": "o_cabin_luxury:5:C", "optional_1": "o_cabin_luxury:5:C", "optional_2": "o_shield_m", "optional_3": "o_cabin_business:4:C", "optional_4": "o_shield:3:C"}},
+	"std_aur_empress": {"hull": "aur_empress", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_radar_s",
+		"weapon_0": "w_beam_m", "weapon_1": "w_beam_m", "weapon_2": "w_pulse_s", "tool_0": "t_repair_s",
+		"optional_0": "o_cabin_luxury:9:C", "optional_1": "o_cabin_luxury:9:C", "optional_2": "o_cabin_business:8:C",
+		"optional_3": "o_cabin_bulk:8:C", "optional_4": "o_shield_l", "optional_5": "o_shield_l"}},
+	"civ_boulevard": {"hull": "aur_boulevard", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_ion_m", "distributor": "dist_m", "reactor": "rea_fusion_m",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_basic_s",
+		"optional_0": "o_cabin_bulk:5:C", "optional_1": "o_cabin_business:4:C", "optional_2": "o_shield_m"}},
 	"civ_shuttle": {"hull": "shuttle", "modules": {
 		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_basic_s", "reactor": "rea_fission_s",
 		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s", "optional_0": "o_shield_s"}},

@@ -10,6 +10,10 @@ extends RefCounted
 ## turn_mult, align_mult (warp alignment time ×), refinery {rate ore/s, eff yield ×, power MW},
 ## builtin (built-in modules: "prospect", "refinery", "factory", "market"); drone_deck [from, to] =
 ## pixel-art columns of a flight deck – drones launch from it and land on it (package 25b).
+## Hull traits (package 25c, Maison Aurelle): speed_mult (sub-light speed ×), warp_mult (warp speed ×),
+## shield_mult (shield capacity ×), cargo_mod_mult (cargo racks give only this share), luxury_pay
+## (pay × on luxury passenger contracts), afterburner {boost, energy_rate, power} with "afterburner" in
+## builtin; drone_bonus {shield, shield_regen, shield_mult (× the drone shield module)}.
 ## drones (package 23): how many drones the ship can have out at once (S 1 … L 9). Every hull has
 ## a drone hangar slot ("hangar", size = storage, quality = more room) and the three drone
 ## equipment slots dweapon (weapon size 1), dtool (mining laser size 1) and dbonus (drone module).
@@ -123,6 +127,47 @@ const HULLS := {
 		"drone_bonus": {"mining": 0.25, "cargo": 5.0}, "drone_paint": "khi_drone",
 		"drone_deck": [44, 90],
 		"desc": "KHI's heavy industry ship: a drone carrier for nine mining drones, a refinery as good as a station's, a factory and an on-board market.",
+	},
+	# ---------------- Maison Aurelle (package 25c) ----------------
+	"aur_pearl": {
+		"maker": "aurelle", "name": "Pearl", "class": "Luxury Yacht", "size": 1, "price": 45000, "buyable": true,
+		"structure": 380, "mass": 480, "signature": 24, "cargo": 10,
+		"slots": {"weapon": 2, "tool": 0, "optional": 2, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [1, 1], "tool": [], "optional": [3, 2], "hull": 2, "engine": 5, "reactor": 3, "distributor": 3, "tank": 3, "hyperdrive": 3, "sensors": 2, "hangar": 0},
+		"drones": 0, "shape": "aur_pearl", "length": 34,
+		"speed_mult": 1.35, "align_mult": 0.8, "shield_mult": 1.2,
+		"afterburner": {"boost": 1.5, "energy_rate": 6, "power": 6}, "builtin": ["afterburner"],
+		"desc": "Maison Aurelle's small luxury yacht – extremely fast, takes luxury suites, a built-in afterburner.",
+	},
+	"aur_boulevard": {
+		"maker": "aurelle", "name": "Boulevard", "class": "Passenger Liner", "size": 2, "price": 120000, "buyable": true,
+		"structure": 1300, "mass": 1700, "signature": 70, "cargo": 60,
+		"slots": {"weapon": 3, "tool": 1, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [2, 2, 1], "tool": [1], "optional": [5, 4, 4, 3], "hull": 5, "engine": 7, "reactor": 5, "distributor": 5, "tank": 5, "hyperdrive": 4, "sensors": 3, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
+		"drones": 1, "shape": "aur_boulevard", "length": 54,
+		"speed_mult": 1.25, "align_mult": 0.7, "shield_mult": 1.2, "luxury_pay": 0.8,
+		"afterburner": {"boost": 1.45, "energy_rate": 12, "power": 12}, "builtin": ["afterburner"],
+		"desc": "The liner of the rich systems: strong engines, quick to align for warp, a built-in afterburner. Luxury suites fit, but pay 20 % less.",
+	},
+	"aur_opal": {
+		"maker": "aurelle", "name": "Opal", "class": "Luxury Liner", "size": 2, "price": 170000, "buyable": true,
+		"structure": 1200, "mass": 1600, "signature": 66, "cargo": 40,
+		"slots": {"weapon": 2, "tool": 1, "optional": 5, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [2, 1], "tool": [1], "optional": [5, 5, 4, 4, 3], "hull": 5, "engine": 7, "reactor": 5, "distributor": 5, "tank": 5, "hyperdrive": 4, "sensors": 3, "hangar": 0},
+		"drones": 0, "shape": "aur_opal", "length": 58,
+		"speed_mult": 1.45, "align_mult": 0.8, "shield_mult": 1.25,
+		"afterburner": {"boost": 1.45, "energy_rate": 12, "power": 12}, "builtin": ["afterburner"],
+		"desc": "A medium luxury liner with a glass lounge – extremely fast for its size, luxury suites, a built-in afterburner.",
+	},
+	"aur_empress": {
+		"maker": "aurelle", "name": "Empress", "class": "Megaliner", "size": 3, "price": 650000, "buyable": true,
+		"structure": 4400, "mass": 7800, "signature": 230, "cargo": 160,
+		"slots": {"weapon": 3, "tool": 1, "optional": 6, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [3, 3, 2], "tool": [1], "optional": [9, 9, 8, 8, 7, 6], "hull": 8, "engine": 9, "reactor": 9, "distributor": 9, "tank": 8, "hyperdrive": 6, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [3]},
+		"drones": 4, "shape": "aur_empress", "length": 112,
+		"turn_mult": 0.7, "align_mult": 0.6, "warp_mult": 1.35, "shield_mult": 1.6, "cargo_mod_mult": 0.5, "luxury_pay": 1.25,
+		"drone_paint": "aurelle_drone", "drone_bonus": {"shield": 60.0, "shield_regen": 5.0, "shield_mult": 1.5},
+		"desc": "Maison Aurelle's cruise megaliner: slow to turn, but quick to align and fast in warp, with strong shields. Luxury contracts pay 25 % more; cargo racks give only half their room. Its white drones carry their own shield.",
 	},
 	# ---------------- Civilian NPC hulls (phase 0.5 package 11) ----------------
 	"shuttle": {

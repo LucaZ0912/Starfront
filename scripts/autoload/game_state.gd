@@ -443,6 +443,9 @@ func net_worth() -> int:
 func on_player_ship_lost(f: ShipFitting) -> void:
 	fleet.erase(f)
 	log_msg("%s was destroyed!" % f.ship_name, COL_BAD)
+	for m in missions.duplicate():           # package 25c: passengers aboard die with the ship
+		if String(m["type"]) == "passenger" and int(m.get("ship_uid", -1)) == f.uid:
+			fail_mission(m, "your ship was destroyed with the passengers aboard", Missions.PASSENGER_REP)
 	if f.uid == active_uid:
 		# Escape pod: to the nearest owned ship, otherwise insurance
 		var next: ShipFitting = null
@@ -514,6 +517,34 @@ func storage_remove(station_id: String, module_id: String, n: int = 1) -> bool:
 
 # ---------------------------------------------------------------- Contracts (BlackLedger)
 
+## Passenger contracts of a station (package 25c) – own tab on the board.
+func passenger_offers_for(system_id: int, station: Dictionary) -> Array:
+	var key: String = String(station["id"]) + "#p"
+	if not offers.has(key):
+		offers[key] = []
+	var list: Array = offers[key]
+	var tries := 0
+	while list.size() < Missions.PASSENGER_OFFERS and tries < 10:
+		tries += 1
+		var m := Missions.generate_passenger(system_id, station, _rng)
+		if not m.is_empty():
+			list.append(m)
+	return list
+
+
+## Contracts that count against MAX_ACTIVE_MISSIONS (passengers have their own limit).
+func contract_count() -> int:
+	var n := 0
+	for m in missions:
+		if String(m["type"]) != "passenger":
+			n += 1
+	return n
+
+
+func passenger_count() -> int:
+	return missions.size() - contract_count()
+
+
 func offers_for(system_id: int, station: Dictionary) -> Array:
 	var sid: String = station["id"]
 	if not offers.has(sid):
@@ -554,7 +585,9 @@ func faction_job_error(m: Dictionary) -> String:
 
 
 func accept_mission(m: Dictionary) -> String:
-	if missions.size() >= MAX_ACTIVE_MISSIONS:
+	if String(m["type"]) == "passenger":
+		return _accept_passengers(m)
+	if contract_count() >= MAX_ACTIVE_MISSIONS:
 		return "You can hold at most %d contracts." % MAX_ACTIVE_MISSIONS
 	var why := faction_job_error(m)
 	if why != "":
@@ -587,6 +620,36 @@ func accept_mission(m: Dictionary) -> String:
 		m["bonus"] = bonus
 	missions.append(m)
 	log_msg("Contract accepted: %s" % m["title"], COL_GOOD)
+	missions_changed.emit()
+	return ""
+
+
+## Passenger contract (package 25c): the passengers board the active ship – bulk seats, or a free
+## cabin of their class for the whole group; the deadline starts now.
+func _accept_passengers(m: Dictionary) -> String:
+	if passenger_count() >= Missions.MAX_PASSENGER_JOBS:
+		return "You can carry at most %d passenger groups at once." % Missions.MAX_PASSENGER_JOBS
+	var f := active()
+	var why := Missions.cabin_error(f, m)
+	if why != "":
+		return why
+	if String(m["cabin"]) != "bulk":
+		m["cabin_slot"] = Missions.pick_cabin(f, String(m["cabin"]), int(m["amount"]))
+	m["ship_uid"] = f.uid
+	m["expires"] = play_time + float(m["time_limit"])
+	var mult := Missions.pay_mult(f, m)
+	var bonus := rep.contract_bonus(String(m.get("faction", "")))
+	m["reward"] = int(round(float(m["reward"]) * mult * (1.0 + bonus)))
+	if bonus > 0.0:
+		m["bonus"] = bonus
+	var key: String = String(m["giver"]) + "#p"
+	if offers.has(key):
+		offers[key].erase(m)
+	missions.append(m)
+	var note := ""
+	if mult != 1.0:
+		note = "  (%s: luxury pay %+d %%)" % [f.hull()["name"], int(round((mult - 1.0) * 100.0))]
+	log_msg("%d passengers boarded the %s: %s%s" % [int(m["amount"]), f.ship_name, m["title"], note], COL_GOOD)
 	missions_changed.emit()
 	return ""
 
@@ -631,12 +694,12 @@ func notify_target(captain_id: String, smuggler_mission: String) -> void:
 
 
 ## A faction contract failed (convoy lost, smuggler escaped, target died elsewhere …).
-func fail_mission(m: Dictionary, why: String) -> void:
+func fail_mission(m: Dictionary, why: String, rep_loss: float = 2.0) -> void:
 	if not m in missions:
 		return
 	missions.erase(m)
 	log_msg("Contract failed: %s – %s" % [m["title"], why], COL_BAD)
-	rep.change(String(m.get("faction", "")), -2.0, "contract failed")
+	rep.change(String(m.get("faction", "")), -rep_loss, "contract failed")
 	missions_changed.emit()
 
 
@@ -792,6 +855,7 @@ func _process(delta: float) -> void:
 	notorious.update(current_system)
 	news.update()
 	_update_faction_jobs(delta)
+	_update_passengers()
 	var f := active()
 	if f == null:
 		return
@@ -804,6 +868,13 @@ func _process(delta: float) -> void:
 
 
 ## Scanners sweep the whole system: hidden anomalies are revealed over time.
+## Passenger deadlines (package 25c).
+func _update_passengers() -> void:
+	for m in missions.duplicate():
+		if String(m["type"]) == "passenger" and float(m.get("expires", -1.0)) > 0.0 and play_time > float(m["expires"]):
+			fail_mission(m, "the passengers did not arrive in time", Missions.PASSENGER_REP)
+
+
 func _scan_system(f: ShipFitting, delta: float) -> void:
 	var tool := f.get_tool("scanner")
 	if tool.is_empty():

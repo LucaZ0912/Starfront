@@ -89,6 +89,18 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Maison Aurelle – passenger transport (phase 0.5 package 25c)
+- **Passenger cabins** (optional modules, size 1–10): bulk, business and luxury suites; more seats with
+  size and quality. Luxury suites fit only into Maison Aurelle ships. Occupied cabins cannot be removed.
+- **Bulletin board → Passengers:** transport contracts (own limit of 8 groups). Bulk groups fill the bulk
+  seats of all cabins together; every business or luxury group needs a free cabin of its class that seats
+  all of them. Pay per passenger and jump: 60 / 220 / 700 cr. Each contract has a deadline; a late
+  arrival or losing the ship with the passengers aboard costs standing with the issuing faction.
+- **Pearl** (S), **Boulevard** (M), **Opal** (M) and **Empress** (L): fast, luxurious, expensive; built-in
+  afterburner (Pearl, Boulevard, Opal), Empress with fast warp, strong shields, +25 % on luxury contracts,
+  half-size cargo racks and white drones with their own shield. Sold at trade hubs of rich, safe
+  Assembly and Covenant systems; Boulevard liners fly between the stations there.
+
 ## Kanayama-maru – heavy industry ship (phase 0.5 package 25b)
 - KHI's L-class industry ship (950,000 cr, KHI yards of tier 3), built like a carrier: a tall rear block
   with the bridge, in front of it a flat flight deck – the drones roll down the whole runway one after the

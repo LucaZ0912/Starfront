@@ -9,6 +9,7 @@ extends RefCounted
 ##   ships    planned models (shown in the codex as "known models")
 ##   yards    station types whose shipyards sell its hulls ("all" = every shipyard); "small_yards":
 ##            station types without a full shipyard that still sell some of its hulls (package 25a)
+##   rich_only only in rich, safe systems of these powers (package 25c, Maison Aurelle)
 
 const MAKERS := {
 	"earthworks": {
@@ -36,6 +37,7 @@ const MAKERS := {
 		"crest": {"shape": "oval", "field": Color(0.94, 0.91, 0.84), "symbol": Color(0.8, 0.6, 0.2), "rim": Color(0.85, 0.66, 0.25), "symbol_id": "star_a"},
 		"text": "The youngest manufacturer in the Cluster, founded in 12895 HE by Ivoire Maison and made possible by the economic boom of the Cluster Assembly in recent years. Close to the Assembly, but an independent megacorp.\n\nMaison Aurelle builds luxury liners and passenger ships – sleek, polished and very expensive. Its best customers are the rich oligarchs of the Covenant, where an Aurelle liner is a prized status symbol; that the founder is a citizen of the Assembly is politely left unsaid there.",
 		"ships": ["Pearl", "Boulevard", "Opal", "Empress"],
+		"yards": ["trade"], "rich_only": ["assembly", "covenant"],
 		"see": ["fac_assembly", "fac_covenant"]},
 	"hadrian": {
 		"name": "Hadrian Dynamics", "tag": "HDY", "kind": "private", "founded": 12790, "unlock": "corp:hoy",
