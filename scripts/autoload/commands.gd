@@ -253,7 +253,13 @@ func _c_toggle_module(c: Dictionary) -> String:
 	if e != "":
 		return e
 	var slot := String(c["slot"])
-	return world.player.set_module_active(slot, not bool(world.player.module_on.get(slot, false)))
+	var p: Ship = world.player
+	# multi-focus (package 22): a running module with another target switches to the active one
+	if p.module_on.get(slot, false) and p.locked_node() != null and String(p.module_target.get(slot, "")) != p.active_lock:
+		var e2 := p.find_module(slot)
+		if not e2.is_empty() and e2["kind"] in ["weapon", "tool"] and p.module_target_error(e2, p.locked_node()) == "":
+			return p.retarget(slot)
+	return p.set_module_active(slot, not bool(p.module_on.get(slot, false)))
 
 
 ## {"type":"course", "to": <system id>} – plot a hyperspace route and start travelling.

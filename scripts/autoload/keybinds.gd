@@ -33,7 +33,9 @@ const ACTIONS := [
 	{"id": "module_7", "label": "Module 7", "group": "Modules", "def": [{"k": KEY_7}]},
 	{"id": "module_8", "label": "Module 8", "group": "Modules", "def": [{"k": KEY_8}]},
 	{"id": "module_9", "label": "Module 9", "group": "Modules", "def": [{"k": KEY_9}]},
-	{"id": "sel_hostile", "label": "Select nearest hostile (again: the next one)", "group": "Ship commands", "def": [{"k": KEY_TAB}]},
+	{"id": "sel_target", "label": "Cycle targets in sensor range (ships, asteroids, wrecks, anomalies)", "group": "Ship commands", "def": [{"k": KEY_TAB}]},
+	{"id": "sel_hostile", "label": "Cycle hostile ships (nearest first)", "group": "Ship commands", "def": [{"k": KEY_V}]},
+	{"id": "sel_friend", "label": "Cycle friendly ships (nearest first)", "group": "Ship commands", "def": [{"k": KEY_C}]},
 	{"id": "sel_station", "label": "Select the nearest station (within 5,000 km)", "group": "Ship commands", "def": [{"k": KEY_B}]},
 	{"id": "cmd_lock", "label": "Lock selected target (again: unlock; nothing selected: nearest hostile)", "group": "Ship commands", "def": [{"k": KEY_R}]},
 	{"id": "cmd_approach", "label": "Approach selected", "group": "Ship commands", "def": [{"k": KEY_Q}]},
@@ -53,7 +55,9 @@ const ACTIONS := [
 	{"id": "debug_menu", "label": "Debug menu", "group": "Game", "def": [{"k": KEY_F12}]},
 ]
 const SLOTS := 2
-const LAYOUT := 2   # default layout version (2: WASD = flight, arrows = camera)
+const LAYOUT := 3   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets)
+## Bindings reset once when a saved file is older than this layout (prefix -> layout that changed it)
+const LAYOUT_RESETS := {"cam_": 2, "sel_": 3}
 
 var binds := {}   # action id -> Array of descriptors (size SLOTS, {} = empty)
 
@@ -62,10 +66,14 @@ func _ready() -> void:
 	reset_to_defaults(false)
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
-		var old_layout := int(cfg.get_value("meta", "layout", 1)) < LAYOUT
+		var saved_layout := int(cfg.get_value("meta", "layout", 1))
 		for a in ACTIONS:
-			if old_layout and String(a["id"]).begins_with("cam_"):
-				continue                 # layout 2: WASD flies the ship, the arrows pan the camera
+			var reset := false
+			for pre in LAYOUT_RESETS:
+				if String(a["id"]).begins_with(pre) and saved_layout < int(LAYOUT_RESETS[pre]):
+					reset = true         # the default layout changed for these keys: take the new defaults
+			if reset:
+				continue
 			if cfg.has_section_key("keys", a["id"]):
 				var v = cfg.get_value("keys", a["id"])
 				if v is Array:

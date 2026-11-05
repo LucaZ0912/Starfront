@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.22.1 – 2026-11-05
+
+**Package 22 – multi-focus.** 462 smoke-test checks pass.
+- Every weapon and tool keeps the target it was switched on against; pressing a running module's key
+  moves it to the active target. Lock slots 3–6 by sensor size; T1/T2 labels on tiles, locks, brackets.
+- Bigger NPC ships split their fire over several targets.
+- Targeting keys: Tab cycles everything in sensor range, V hostile ships, C friendly ships.
+
 ## alpha 0.4.21.2 – 2026-11-05
 
 - Power bar: one block per priority group (passive and active no longer split).

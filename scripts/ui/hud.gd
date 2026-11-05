@@ -324,7 +324,9 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 
 {ship_up}{ship_left}{ship_down}{ship_right}: fly the ship in that direction (release: stop)
 {cam_up}{cam_left}{cam_down}{cam_right} / drag middle mouse: pan camera • {cam_center}: back to ship
-{sel_hostile}: select nearest hostile (again: next) • {sel_station}: select nearby station • {cmd_lock}: lock / unlock
+{sel_target}: cycle targets in sensor range • {sel_hostile} / {sel_friend}: cycle hostile / friendly ships • {sel_station}: nearby station • {cmd_lock}: lock / unlock
+[color=#7fd8ff]Multi-focus[/color]: every weapon and tool keeps the target that was active when you switched it on (T1, T2 … on its tile).
+   Make another lock active and switch more modules on – press a running module's key to move it to the active target.
 {cmd_approach} approach • {cmd_warp} warp • {cmd_jump} jump • {cmd_dock} dock • {cmd_follow} follow (the selected object)
 {ship_menu}: ship menu • {station}: station • {galaxy_map}: galaxy map • {menu_back}: close / pause menu
 {quicksave} / {quickload}: quicksave / quickload • {debug_menu}: debug menu • All keys: Settings → Controls
@@ -729,7 +731,7 @@ func show_selected(id: String) -> void:
 
 # ================================================================ Command hotkeys
 
-const HOTKEY_COMMANDS := ["sel_hostile", "sel_station", "cmd_lock", "cmd_approach", "cmd_warp", "cmd_jump", "cmd_dock", "cmd_follow"]
+const HOTKEY_COMMANDS := ["sel_target", "sel_hostile", "sel_friend", "sel_station", "cmd_lock", "cmd_approach", "cmd_warp", "cmd_jump", "cmd_dock", "cmd_follow"]
 
 
 ## Runs a ship command on the selected object (Settings → Controls, "Ship commands").
@@ -738,8 +740,12 @@ func hotkey_command(action: String) -> String:
 	var p = view.player if view != null else null
 	if p == null or not is_instance_valid(p):
 		return "No ship."
+	if action == "sel_target":
+		return select_next("all")
 	if action == "sel_hostile":
-		return select_next_hostile()
+		return select_next("hostile")
+	if action == "sel_friend":
+		return select_next("friend")
 	if action == "sel_station":
 		return select_near_station()
 	var id := selected_id
@@ -795,23 +801,46 @@ const HOSTILE_SELECT_RANGE := 50000.0
 const STATION_SELECT_RANGE := 5000.0
 
 
-## Selects the nearest hostile ship; pressed again, the next one further out (wraps around).
-func select_next_hostile() -> String:
+## Targeting keys (package 22): cycles through what is within sensor range, nearest first –
+## "all" (anything lockable: ships, asteroids, wrecks, anomalies), "hostile" or "friend" (ships that
+## are not hostile). Hostile / friendly ships further out (up to 50,000 km) when none is in range.
+func select_next(kind: String) -> String:
 	var p = view.player
-	var list: Array = []
-	for n in view.ship_layer.get_children():
-		if n is Ship and n != p and not n.dying and not n.in_warp() and n.hostile_to_player() and p.position.distance_to(n.position) <= HOSTILE_SELECT_RANGE:
-			list.append(n)
+	var sr: float = p.lock_range(p.fit.stats())
+	var list := _target_candidates(p, kind, sr)
+	if list.is_empty() and kind != "all":
+		list = _target_candidates(p, kind, HOSTILE_SELECT_RANGE)
 	if list.is_empty():
-		var e := "No hostile ship within %s." % SystemView.fmt_dist(HOSTILE_SELECT_RANGE)
+		var what: String = {"all": "Nothing to target", "hostile": "No hostile ship", "friend": "No friendly ship"}[kind]
+		var e := "%s within %s." % [what, SystemView.fmt_dist(sr if kind == "all" else HOSTILE_SELECT_RANGE)]
 		GameState.log_msg(e, GameState.COL_WARN)
 		return e
-	list.sort_custom(func(a, b): return p.position.distance_to(a.position) < p.position.distance_to(b.position))
-	var cur = view.find_object(selected_id) if selected_id.begins_with("ship:") else null
+	list.sort_custom(func(a, b): return p.position.distance_squared_to(a.position) < p.position.distance_squared_to(b.position))
+	var cur = view.find_object(selected_id) if selected_id != "" else null
 	var i := list.find(cur)
-	var nxt: Ship = list[(i + 1) % list.size()]
-	view.select("ship:%d" % nxt.fit.uid)
+	var nxt = list[(i + 1) % list.size()]
+	view.select(Ship.object_key(nxt))
 	return ""
+
+
+func _target_candidates(p, kind: String, rng: float) -> Array:
+	var out: Array = []
+	for n in view.ship_layer.get_children():
+		if not (n is Ship) or n == p or n.dying or n.in_warp() or n.is_docked() or p.position.distance_to(n.position) > rng or not view.contact_visible(n):
+			continue
+		var hos: bool = n.hostile_to_player()
+		if kind == "all" or (kind == "hostile" and hos) or (kind == "friend" and not hos):
+			out.append(n)
+	if kind == "all":
+		for c in view.celestials:
+			if is_instance_valid(c) and Ship.lockable(c) and p.position.distance_to(c.position) <= rng:
+				out.append(c)
+	return out
+
+
+## Former Tab behaviour (kept for callers): the next hostile ship.
+func select_next_hostile() -> String:
+	return select_next("hostile")
 
 
 ## Selects the nearest station (or pirate haven) – only when it is within a few thousand km.
@@ -1011,7 +1040,10 @@ func _update_locks() -> void:
 		sb.border_color = col if act else Color(col, 0.35)
 		sb.set_border_width_all(2 if act else 1)
 		var prog := float(l["progress"])
-		var info := SystemView.fmt_dist(p.position.distance_to(n.position))
+		var info := "T%d  •  %s" % [p.lock_number(l["key"]), SystemView.fmt_dist(p.position.distance_to(n.position))]
+		var mods := p.modules_on(l["key"])
+		if mods > 0:
+			info += "  •  %d module%s" % [mods, "" if mods == 1 else "s"]
 		if n is Ship and status_flags(n) != "":
 			info += "  •  " + status_flags(n)
 		if prog < 1.0:
@@ -1035,7 +1067,7 @@ func _make_lock_card(l: Dictionary) -> void:
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.custom_minimum_size = Vector2(150, 0)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.tooltip_text = "Click: make active target"
+	panel.tooltip_text = "Click: make active target – modules switched on now work on it; press a running module's key to move it here"
 	panel.gui_input.connect(func(ev): _lock_card_input(ev, key))
 	lock_bar.add_child(panel)
 	var v := UI.vbox(2)
@@ -1208,6 +1240,9 @@ func _update_modules() -> void:
 		var bar: ProgressBar = t["bar"]
 		bar.max_value = 1.0
 		bar.value = p.cycle_progress(e["slot"]) if on else 0.0
+		# multi-focus (package 22): which lock this module works on
+		var tn := p.lock_number(String(p.module_target.get(e["slot"], ""))) if on and e["kind"] in ["weapon", "tool"] else 0
+		t["tgt"].text = (" T%d" % tn) if tn > 0 else ""
 
 
 func _make_module_tile(e: Dictionary, idx: int) -> void:
@@ -1248,6 +1283,9 @@ func _make_module_tile(e: Dictionary, idx: int) -> void:
 	var key := UI.label(Keybinds.key_text("module_%d" % (idx + 1)) if idx < 9 else "", 11, Color(0.8, 0.85, 1.0))
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(key)
+	var tl := UI.label("", 11, Color(1.0, 0.8, 0.3))
+	tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(tl)
 	top.add_child(UI.spacer())
 	var ic := UI.icon(PixelArt.module_icon(d["id"]), 30)
 	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1261,7 +1299,7 @@ func _make_module_tile(e: Dictionary, idx: int) -> void:
 	bar.custom_minimum_size = Vector2(62, 4)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(bar)
-	_module_tiles[slot] = {"button": b, "style": sb, "bar": bar}
+	_module_tiles[slot] = {"button": b, "style": sb, "bar": bar, "tgt": tl}
 
 
 ## Mine launcher (package 20): pick the mine type (with the number in the hold) and the timer.

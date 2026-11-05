@@ -82,10 +82,12 @@ const XFER_DOWN_MULT := 3.0      # shield downtime runs this much faster while a
 ## activates modules (module bar / keys 1–9). NPCs keep fighting automatically.
 const FactionData = preload("res://data/factions.gd")
 const ArchData = preload("res://data/pirate_archetypes.gd")
-const MAX_LOCKS := 3
+const MAX_LOCKS := 3              # minimum; bigger sensor suites hold more (package 22: stats max_locks)
 var manual := false
 var locks: Array = []            # [{key, node, progress}]
-var active_lock := ""            # key of the lock that modules act on
+var active_lock := ""            # key of the lock that newly switched-on modules act on
+var module_target := {}          # package 22 (multi-focus): slot -> lock key the module works on
+var _focus: Array = []           # NPC: extra targets for its weapons (bigger ships split their fire)
 var module_on := {}              # slot -> bool
 var module_timers := {}          # slot -> remaining cycle time (weapons)
 var module_state := {}           # slot -> "off" | "on" | "range" | "energy"
@@ -512,6 +514,7 @@ func _update_targeting(delta: float, s: Dictionary) -> void:
 		if faction == "patrol" and not scanned_player:
 			_scan_player()
 		var sensor: float = lock_range(s)
+		_update_focus(sensor)
 		var keep: bool = target != null and fit.stance != "passive" and position.distance_to(target.position) <= sensor * 1.3 and not (_protected(target) and target != last_attacker)
 		if not keep:
 			var want = null
@@ -1221,9 +1224,21 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 	var dist := position.distance_to(target.position)
 	if jammed_t > 0.0 and dist > lock_range(s):
 		return
+	var tlist: Array = [target]
+	for f2 in _focus:
+		if _valid(f2) and f2 != target and can_see(f2):
+			tlist.append(f2)
 	for i in weapons.size():
 		var w: Dictionary = weapons[i]
-		if weapon_timers[i] > 0.0 or dist > float(w["range"]) or not w.get("powered", true):
+		if weapon_timers[i] > 0.0 or not w.get("powered", true):
+			continue
+		# multi-focus (package 22): weapons are shared out over the targets; out of reach → primary
+		var tg = tlist[i % tlist.size()]
+		var td: float = position.distance_to(tg.position)
+		if td > float(w["range"]) or (jammed_t > 0.0 and td > lock_range(s)):
+			tg = target
+			td = dist
+		if td > float(w["range"]):
 			continue
 		if fit.capacitor < float(w["energy"]):
 			continue
@@ -1234,10 +1249,10 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 			w["damage"] = float(w["damage"]) * ArchData.AMBUSH_BONUS
 		if special == "overcharged":
 			weapon_timers[i] = float(weapon_timers[i]) * 0.6
-		if special == "shield_breaker" and target.fit.shield > 0.0:
+		if special == "shield_breaker" and tg.fit.shield > 0.0:
 			w = w.duplicate()
 			w["damage"] = float(w["damage"]) * 1.6
-		view.fire_weapon(self, target, w)
+		view.fire_weapon(self, tg, w)
 		if not _valid(target):
 			target = null
 			return
@@ -1490,8 +1505,9 @@ func add_lock(node) -> String:
 	if lock_index(key) >= 0:
 		active_lock = key
 		return ""
-	if locks.size() >= MAX_LOCKS:
-		return "Maximum of %d targets locked." % MAX_LOCKS
+	var maxl := max_locks()
+	if locks.size() >= maxl:
+		return "Maximum of %d targets locked (bigger sensor suites hold more)." % maxl
 	var sr := lock_range(fit.stats())
 	if position.distance_to(node.position) > sr:
 		return ("Out of sensor range (%s)." % SystemView.fmt_dist(sr)) + (" Your radar is jammed." if jammed_t > 0.0 else "")
@@ -1502,6 +1518,42 @@ func add_lock(node) -> String:
 	if active_lock == "" or locked_node() == null:
 		active_lock = key
 	_mlog("Locking %s … (%.1f s)" % [node_name(node), _lock_duration(node, fit.stats())])
+	return ""
+
+
+## How many targets can be locked at once (package 22: by the size of the sensor suite, 3–6).
+func max_locks() -> int:
+	return maxi(int(fit.stats().get("max_locks", MAX_LOCKS)), MAX_LOCKS)
+
+
+## Lock number (1, 2, …) of `key`, 0 = not locked.
+func lock_number(key: String) -> int:
+	return lock_index(key) + 1
+
+
+## Multi-focus: modules switched on and working on lock `key`.
+func modules_on(key: String) -> int:
+	var n := 0
+	for slot in module_on:
+		if module_on[slot] and String(module_target.get(slot, "")) == key:
+			n += 1
+	return n
+
+
+## A running module switches to the active target (package 22). "" = done.
+func retarget(slot: String) -> String:
+	var e := find_module(slot)
+	if e.is_empty() or not e["kind"] in ["weapon", "tool"]:
+		return "That module has no target."
+	var node = locked_node()
+	if node == null:
+		return "No complete lock to switch to."
+	var err := module_target_error(e, node)
+	if err != "":
+		return "%s: %s is not a valid target – %s" % [e["data"]["name"], node_name(node), err]
+	module_target[slot] = active_lock
+	scan_jobs.erase(slot)
+	_mlog("%s → %s" % [e["data"]["name"], node_name(node)])
 	return ""
 
 
@@ -1667,6 +1719,7 @@ func set_module_active(slot: String, on: bool) -> String:
 			scan_jobs.erase(slot)
 		module_on[slot] = true
 		module_state[slot] = "on"
+		module_target[slot] = active_lock      # multi-focus: it keeps this target (package 22)
 		if not fit.is_powered(slot):
 			_mlog("%s: priority group %d is shut down (power overload) – it starts once there is power." % [d["name"], fit.priority_of(slot)], GameState.COL_WARN)
 		var tgt = node
@@ -1707,7 +1760,7 @@ func cycle_progress(slot: String) -> float:
 
 
 func _update_modules(delta: float, s: Dictionary) -> void:
-	var node = locked_node()
+	var node = null
 	for e in fit.active_modules():
 		var slot: String = e["slot"]
 		var d: Dictionary = e["data"]
@@ -1728,6 +1781,7 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 			continue
 		if e["kind"] == "tool" and d["tool"] == "interdict":
 			continue             # run by SystemView (timing game)
+		node = locked_node(String(module_target.get(slot, active_lock)))
 		var err := module_target_error(e, node)
 		if err != "":
 			_switch_off(slot, d, "no valid target (target lost or changed)" if node == null else err.trim_suffix("."))
@@ -1938,6 +1992,22 @@ func _repair_one(delta: float, t: Dictionary, ship) -> bool:
 	if ship != self:
 		tool_beams.append([ship.position, Color(0.4, 1.0, 0.5)])
 	return true
+
+
+# ---------------------------------------------------------------- Package 22: multi-focus (NPCs)
+
+## Bigger NPC ships (hull size M and up, three weapons or more) split their fire over up to
+## max_locks hostile ships near their primary target.
+func _update_focus(sensor: float) -> void:
+	_focus.clear()
+	if manual or not _valid(target) or int(fit.hull().get("size", 1)) < 2 or fit.stats()["weapons"].size() < 3:
+		return
+	var cands: Array = []
+	for n in get_tree().get_nodes_in_group("ships"):
+		if n != self and n != target and _valid(n) and hostile(self, n) and not _protected(n) and position.distance_to(n.position) <= sensor:
+			cands.append(n)
+	cands.sort_custom(func(a, b): return position.distance_squared_to(a.position) < position.distance_squared_to(b.position))
+	_focus = cands.slice(0, max_locks() - 1)
 
 
 # ---------------------------------------------------------------- Package 21: power management

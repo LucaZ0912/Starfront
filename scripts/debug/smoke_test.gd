@@ -510,6 +510,7 @@ func _process(delta: float) -> void:
 				_test_debug_convoy(view)
 				_test_package20(view)
 				_test_power(view)
+				_test_multifocus(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -2141,7 +2142,7 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 	main.hud.hotkey_command("sel_hostile")
 	var first: String = main.hud.selected_id
 	main.hud.hotkey_command("sel_hostile")
-	check(first == "ship:%d" % h1.fit.uid and main.hud.selected_id == "ship:%d" % h2.fit.uid, "Tab selects the nearest hostile, again the next one")
+	check(first == "ship:%d" % h1.fit.uid and main.hud.selected_id == "ship:%d" % h2.fit.uid, "the hostile key selects the nearest hostile, again the next one")
 	h1.queue_free()
 	h2.queue_free()
 	var stn0 = view.stations.values()[0]
@@ -2699,3 +2700,101 @@ func _test_power(view: SystemView) -> void:
 	sm.close()
 	main.hud._update_power_line(pf, pf.stats())
 	check(main.hud._w["power"].text.begins_with("Power ") and main.hud._w["power"].text.contains("passive"), "HUD shows passive and active power: %s" % main.hud._w["power"].text)
+
+
+## Phase 0.5 package 22: multi-focus – every module keeps its target; targeting keys.
+func _test_multifocus(view: SystemView) -> void:
+	var fa := GameState.create_from_preset("std_hornet", "player")
+	fa.set_module("sensors", "sen_basic:1:C")
+	var small := int(fa.stats()["max_locks"])
+	var fb := GameState.create_from_preset("std_bastion", "player")
+	fb.set_module("sensors", "sen_grav:8:C")
+	check(small == 3 and int(fb.stats()["max_locks"]) == 6, "lock slots grow with the sensor suite (%d … %d)" % [small, int(fb.stats()["max_locks"])])
+	var pl: Ship = view.player
+	var keep_pos := pl.position
+	pl.position = pl.position + Vector2(0, -40000)
+	pl.clear_locks()
+	pl.module_on.clear()
+	pl.module_target.clear()
+	var t1: Ship = view.spawn_npc("pirate_raider_rocket", pl.position + Vector2(250, 0))
+	var t2: Ship = view.spawn_npc("pirate_raider_rocket", pl.position + Vector2(-250, 0))
+	for t in [t1, t2]:
+		t.toughness = 0.01
+		t.archetype = ""
+	var k1 := Ship.object_key(t1)
+	var k2 := Ship.object_key(t2)
+	pl.add_lock(t1)
+	pl.add_lock(t2)
+	for l in pl.locks:
+		l["progress"] = 1.0
+	var weps: Array = []
+	for e in pl.fit.active_modules():
+		if e["kind"] == "weapon":
+			weps.append(e)
+	var beam := ""
+	var other := ""
+	for e2 in weps:
+		if float(e2["data"].get("projectile_speed", 1)) <= 0.0:
+			beam = e2["slot"]
+		elif other == "":
+			other = e2["slot"]
+	if beam != "" and other != "":
+		pl.active_lock = k1
+		check(pl.set_module_active(other, true) == "", "weapon switched on against T1")
+		pl.active_lock = k2
+		check(pl.set_module_active(beam, true) == "", "another weapon switched on against T2")
+		check(pl.module_target[other] == k1 and pl.module_target[beam] == k2, "multi-focus: each weapon keeps the target it was switched on against")
+		var hp2: float = t2.fit.shield + t2.fit.armor + t2.fit.structure
+		pl.fit.capacitor = 500.0
+		pl.module_timers.clear()
+		pl._update_modules(0.05, pl.fit.stats())
+		check(t2.fit.shield + t2.fit.armor + t2.fit.structure < hp2 and pl.module_on[other] and pl.module_target[other] == k1, "the beam fires at T2 while the other weapon stays on T1")
+		main.hud._update_modules()
+		check(main.hud._module_tiles[beam]["tgt"].text.contains("T2") and main.hud._module_tiles[other]["tgt"].text.contains("T1") and pl.modules_on(k1) == 1, "module tiles show their target (T1 / T2)")
+		# a running module moves to the active target with its key
+		pl.active_lock = k1
+		Commands.execute({"type": "toggle_module", "slot": beam})
+		check(pl.module_on[beam] and pl.module_target[beam] == k1, "pressing a running module's key moves it to the active target")
+		Commands.execute({"type": "toggle_module", "slot": beam})
+		check(not pl.module_on[beam], "pressed again it switches off")
+		# losing one lock switches off only what worked on it
+		pl.set_module_active(beam, true)
+		pl.active_lock = k2
+		pl.retarget(beam)
+		pl.remove_lock(k2)
+		pl._update_modules(0.05, pl.fit.stats())
+		check(not pl.module_on[beam] and pl.module_on[other], "a lost target switches off only the modules on it")
+	pl.module_on.clear()
+	pl.module_target.clear()
+	pl.clear_locks()
+	t1.position += Vector2(200000, 0)
+	t2.position += Vector2(200000, 0)
+	# NPC multi-focus: a bigger pirate splits its fire
+	var big: Ship = view.spawn_npc("pirate_warden", pl.position + Vector2(0, 5000))
+	var p1: Ship = view.spawn_npc("patrol_light", big.position + Vector2(400, 0), "patrol", "")
+	var p2: Ship = view.spawn_npc("patrol_light", big.position + Vector2(-400, 0), "patrol", "")
+	big.target = p1
+	big._update_focus(float(big.fit.stats()["sensor_range"]))
+	check(big.fit.stats()["weapons"].size() < 3 or big._focus.has(p2), "bigger NPC ships split their weapons over several targets")
+	# targeting keys: Tab = everything in sensor range, V = hostile, C = friendly
+	var fr: Ship = view.spawn_npc("civ_shuttle", pl.position + Vector2(0, 300), "civilian", "")
+	var hs: Ship = view.spawn_npc("pirate_raider_rocket", pl.position + Vector2(0, -350))
+	hs.archetype = ""
+	main.hud.show_selected("")
+	main.hud.hotkey_command("sel_target")
+	var first: String = main.hud.selected_id
+	main.hud.hotkey_command("sel_target")
+	check(first == Ship.object_key(fr) and main.hud.selected_id == Ship.object_key(hs), "Tab cycles through everything in sensor range, nearest first")
+	main.hud.show_selected("")
+	main.hud.hotkey_command("sel_hostile")
+	var h_ok: bool = (view.find_object(main.hud.selected_id) as Ship).hostile_to_player()
+	main.hud.show_selected("")
+	main.hud.hotkey_command("sel_friend")
+	var f_sel = view.find_object(main.hud.selected_id)
+	check(h_ok and f_sel is Ship and not f_sel.hostile_to_player(), "V selects hostile ships, C friendly ones")
+	check(Keybinds.key_text("sel_target") == "Tab" and Keybinds.key_text("sel_hostile") == "V" and Keybinds.key_text("sel_friend") == "C", "keys: Tab all targets, V hostile, C friendly")
+	main.hud.show_selected("")
+	for n in [t1, t2, big, p1, p2, fr, hs]:
+		if is_instance_valid(n):
+			n.queue_free()
+	pl.position = keep_pos

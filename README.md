@@ -68,6 +68,18 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## Multi-focus (phase 0.5 package 22)
+- **Every weapon and tool keeps the target that was active when it was switched on.** Lock several
+  targets, make one active, switch weapons on, make the next one active, switch more on – they fight
+  different ships at once. Pressing the key of a running module whose target is not the active one
+  moves it to the active target; pressed again it switches off. A lost lock only switches off the
+  modules that worked on it.
+- **Lock slots** grow with the sensor suite: 3 (size 1–2), 4 (3–4), 5 (5–6), 6 (7–8).
+- Module tiles show their target (T1, T2 …), lock cards and the brackets in space show the lock number
+  and how many modules work on it.
+- **NPCs:** bigger ships (hull M and up, three weapons or more) share their weapons out over several
+  hostile ships near their target.
+
 ## Power management (phase 0.5 package 21)
 - **Hard limit:** the usable reactor output (output × distributor efficiency) can never be exceeded.
 - **Passive vs. active:** core equipment, passive optional modules and scanners always draw power;
@@ -444,7 +456,9 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | Mouse wheel / F1–F3 | zoom level: Combat → Recon → System |
 | WASD | fly the ship in that direction (screen up = north); release: it stops |
 | Arrow keys / middle mouse, Space | pan camera, recentre on ship |
-| Tab / B | select the nearest hostile ship (again: the next one) / the nearest station within 5,000 km |
+| Tab | cycle through everything within sensor range (ships, asteroids, wrecks, anomalies), nearest first |
+| V / C | cycle hostile / friendly ships (sensor range, otherwise up to 50,000 km) |
+| B | select the nearest station within 5,000 km |
 | I | ship menu |
 | L, M, H | station, galaxy map & route planning, help |
 | Esc | close window / pause menu |

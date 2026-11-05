@@ -154,7 +154,7 @@ func _compute() -> Dictionary:
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
 		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0,
-		"power_passive": 0.0, "power_active_max": 0.0, "offline": [],
+		"power_passive": 0.0, "power_active_max": 0.0, "offline": [], "max_locks": 3,
 		"power_groups": {1: {"passive": 0.0, "active": 0.0}, 2: {"passive": 0.0, "active": 0.0}, 3: {"passive": 0.0, "active": 0.0}, 4: {"passive": 0.0, "active": 0.0}},
 	}
 	var down_w := 0.0                # shield downtime: capacity-weighted factor of the shield modules
@@ -200,6 +200,7 @@ func _compute() -> Dictionary:
 				s["spool"] = float(m.get("spool", 3.0))
 			"sensors":
 				s["sensor_range"] = float(m.get("range", 300))
+				s["max_locks"] = clampi(2 + int(ceil(int(m.get("size", 1)) / 2.0)), 3, 6)
 				s["resolution"] = float(m.get("resolution", 0.5))
 				s["scan_strength"] = float(m.get("scan_strength", 0.5))
 			"weapon":

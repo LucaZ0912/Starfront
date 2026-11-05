@@ -1540,6 +1540,11 @@ func _draw_locks(o: Node2D, px: float) -> void:
 		var prog := float(l["progress"])
 		if prog < 1.0:
 			o.draw_arc(n.position, r + 6.0 * px, -PI / 2.0, -PI / 2.0 + TAU * prog, 32, c, 2.0 * px)
+		# multi-focus (package 22): lock number and how many modules work on it
+		var mods: int = player.modules_on(l["key"])
+		o.draw_set_transform(n.position + Vector2(r + 4.0 * px, -r - 4.0 * px), 0.0, Vector2(px, px))
+		o.draw_string(ThemeDB.fallback_font, Vector2.ZERO, "T%d%s" % [player.lock_number(l["key"]), (" ×%d" % mods) if mods > 0 else ""], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, c)
+		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_overlay() -> void:
 	var o := overlay

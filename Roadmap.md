@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 21 fertig. Netzwerk fehlt noch. Version alpha 0.4.21.2. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 22 fertig. Netzwerk fehlt noch. Version alpha 0.4.22.1. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -119,7 +119,7 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | 1 | More More | ✅ erledigt |
 | 2 | World Design Update | ✅ erledigt |
 | 3 | NPCs and Factions | ✅ erledigt (Pakete 10–18) |
-| 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–21 fertig) |
+| 4 | Module and Internal Ship Parts Rework | in Arbeit (Pakete 19–22 fertig) |
 | 5 | Character Update | geplant |
 | 6 | New Worlds Discovery Update | geplant |
 | 7 | Intro and First Part of the Story | geplant |
@@ -540,7 +540,7 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 | 19 | Größen- & Qualitätssystem – ✅ erledigt | Modulgrößen 1–10, Qualität F–A, Rumpfplätze mit Maximalgröße je Schiff | – |
 | 20 | Neue Modultypen & Waffen – ✅ erledigt | Schild-Varianten + Schild-Downtime, Punktverteidigung, Schildtransfer, Frachtscanner, Sonnen-Sammler, Minenwerfer (4 Minen), Radarstörer | 19 |
 | 21 | Energie-Management – ✅ erledigt | im Schiff festlegen, welche Module bei Strommangel zuerst abgeschaltet werden | 19 |
-| 22 | Multi-Fokus | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
+| 22 | Multi-Fokus – ✅ erledigt | größere Schiffe kämpfen gleichzeitig gegen mehrere kleine Ziele | 19 |
 | 23 | Drohnen (vorgezogen aus Phase 2) | Drohnenhangar als Extraplatz der Basisklasse, Bergbau- und Kampfdrohnen | 19, 22 |
 | 24 | Schiffsmanufakturen | Firmen, die Schiffe herstellen, mit eigenem Stil; staatliche Manufaktur je großer Fraktion für die Fraktionsschiffe | 19 |
 | 25 | Neue Schiffe | mehr Rümpfe aus den Manufakturen, auch für NPCs und Piraten, fraktionsexklusive Schiffe | 19, 23, 24 |
@@ -648,6 +648,15 @@ Teil 4 baut das Ausrüstungssystem um: feinere Modulgrößen, Qualitätsstufen, 
 ### Multi-Fokus (Paket 22)
 
 - **Multi-Fokus-Möglichkeit**, damit größere Schiffe gleichzeitig gegen mehrere kleine Schiffe kämpfen können.
+- **Zieltasten (5. Nov 2026 festgelegt):** Tab schaltet durch alle Ziele in Sensorreichweite, eine eigene Taste durch feindliche, eine durch verbündete Ziele.
+
+**Umgesetzt (5. Nov 2026, alpha 0.4.22.1)** – 15 neue automatische Prüfungen, alle 462 bestanden:
+
+- [x] Jede Waffe und jedes Werkzeug behält das Ziel, das beim Einschalten aktiv war; mehrere aktive Ziele gleichzeitig. Taste eines laufenden Moduls mit anderem Ziel → wechselt auf das aktive Ziel, nochmal → aus. Verlorener Lock schaltet nur die Module darauf ab.
+- [x] Lock-Plätze nach Sensorgröße: 3 (Größe 1–2), 4 (3–4), 5 (5–6), 6 (7–8).
+- [x] Anzeige: Modulkacheln zeigen ihr Ziel (T1, T2 …), Lock-Karten und Zielklammern im All Lock-Nummer und Zahl der Module darauf.
+- [x] NPCs: größere Schiffe (Rumpf M+, ab drei Waffen) verteilen ihre Waffen auf mehrere Feinde in der Nähe ihres Ziels.
+- [x] Zieltasten: Tab = alle Ziele in Sensorreichweite (Schiffe, Asteroiden, Wracks, Anomalien), V = feindliche, C = verbündete Schiffe (in Sensorreichweite, sonst bis 50.000 km), jeweils nächstes zuerst; gespeicherte alte Belegungen dieser Tasten werden einmalig auf die neuen Vorgaben gesetzt.
 
 ### Drohnen (Paket 23, vorgezogen aus Phase 2)
 
