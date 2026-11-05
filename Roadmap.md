@@ -788,6 +788,22 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - **Patrouillen:** In Fraktionssystemen bestehen die Patrouillen ausschließlich aus Schiffen der Fraktionsmanufaktur – mit Ausnahme einzelner Goliath in Fraktionsfarben. In umkämpften Systemen fliegen Earthworks-Schiffe. (Gilt für alle drei Fraktionen.)
 - **Später:** Ränge bei den Fraktionen aufsteigen – dann könnten Schiffe auch an Ränge gebunden werden.
 
+**„C“ – staatliche Manufaktur des Covenant of Return** (Name offen; Vorschläge: **Martyrs' Forge**, **Forge of Return**, **Ardent Arsenal**)
+- **Geschichte:** vom Covenant aus dem Nichts aufgebaut – durch Versuch und Irrtum und um den Preis vieler toter Piloten, Besatzungen und Ingenieure. Der blutige Weg ist weithin bekannt, aber im Covenant wagt niemand, darüber zu sprechen – und: es hat funktioniert. Covenant-Schiffe müssen sich hinter traditionellen Schiffen nicht verstecken und übertreffen sie in einigen Punkten.
+- **Haltung:** die exakte Antithese zu Concord Fleetworks. Covenant-Piloten lehnen Drohnen ab – Drohnen sind eine Erfindung des Clusters.
+- **Design:** prunkvoll und brutal; Rot und Gold wie das Wappen des Covenant.
+- **Markenzeichen aller C-Schiffe:**
+  - **Kraftwerk stark verstärkt**, dafür wenig Hülle und Panzerung (Flaggschiff stärker), **keine Drohnenhangars**.
+  - **Synthetische rote Fokuskristall-Laser:** eigene Waffenfamilie, nur in C-Schiffe einbaubar.
+  - **Strahlbündelung (S und M):** Sind ausschließlich Fokuskristall-Laser verbaut, bündeln sich ihre roten Strahlen vor dem Schiff und feuern gemeinsam auf das Ziel – **+30 % Schaden**.
+- **Schiffe (Arbeitsnamen):**
+  - **Milizschiff** (S): kleines Kampfschiff, wenig Hülle, sehr starkes Kraftwerk, Fokuskristall-Laser, kein Hangar.
+  - **Patrouillenschiff** (M): Weiterentwicklung mit mehr Waffenplätzen und mehr Energie, sonst dieselben Schwächen.
+  - **Die Kathedrale** – Flaggschiff (L): eher mobile Waffenplattform als Schiff – sehr viele Waffenplätze, riesiges Kraftwerk, stärkere Hülle als die anderen C-Schiffe, keine Drohnen.
+    - **Anti-Drohnen-Puls** (eingebaut, aktivierbar): gibt in festem Takt einen Puls ab, der alle Drohnen im Umkreis lahmlegt – sie treiben eine Zeit lang reglos, verbrauchen aber weiter Treibstoff; sehr hoher Energiebedarf.
+    - **Automodus:** feuert die Fokuskristall-Laser selbstständig auf bis zu 6 Ziele im Umkreis – ohne Steuerung.
+- **Offene Fragen:** siehe Gespräch vom 5. Nov 2026 (Name, Werte, Regeln für Automodus und Puls, Ruf, Drohnen im Covenant-Gebiet).
+
 **Recon-Reichweite und Drohnen:** Das Recon-Radar zeigt bisher einen Kreis, dessen Größe vom Bildschirm abhängt (etwa 7.900 km bei 1600×900, 9.500 km bei Full HD). Vorschlag: die Recon-Reichweite auf feste **10.000 km** setzen (das Radar passt sich an) – das ist dann die Höchstgrenze für jede Drohnen-Steuerreichweite (Relay-Modul, CFW-Verdopplung). Drohnen meiden den Radarschatten von Kolossen (umgesetzt in alpha 0.4.24.1).
 
 **Für alle Manufakturen:** eingebaute Module (Nachbrenner, Bordraffinerie, Prospektor-Scanner, Fertigung, Markt …) bekommen in der Modulleiste und im Schiffsmenü eine **farbige Umrandung**, damit man sie als fest eingebaut erkennt.
