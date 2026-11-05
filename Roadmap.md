@@ -705,17 +705,29 @@ Vorgehen (5. Nov 2026 vereinbart): die Manufakturen werden einzeln durchgegangen
 - **Codex (später):** eigener Eintrag „Earthworks“ mit der Geschichte oben, Querverweise auf „The Expansion“ und „The Severance“; freigeschaltet beim ersten Besuch einer Werft.
 - **Später:** Führungspersonen kommen mit Teil 5 (Character Update), der feste Standort der Cluster-Werft von 12696 mit Teil 6 (feste Sternensysteme – auch für Fraktionshauptsitze und weitere Orte).
 
-**„J“ – Bergbau- und Industriemanufaktur** (Name noch offen, japanisch klingend; Vorschläge: Kanayama Heavy Industries, Tsuruhashi Kōgyō, Kōzan Heavy Machinery, Daichi Heavy Industries)
+**Kanayama Heavy Industries (KHI)** – Bergbau- und Industriemanufaktur
+- **Name & Motto:** benannt nach Kanayama-hiko, im Shinto der Gott der Bergwerke und der Metallverarbeitung. Motto: *„We dig deeper.“*
 - **Geschichte:** gegründet 12701 HE im Cluster (im Jahr der Freigabe weiterer Manufakturen), als der Bergbau-Boom die Nachfrage nach schwerer Maschinerie hochtrieb – die Stationen kamen mit dem Raffinieren nicht mehr hinterher, neue Lösungen mussten her.
 - **Schwerpunkt:** Bergbau- und Industrieschiffe.
-- **Design:** erinnert an schwere Maschinen – bullig, praktisch statt schön. Farben hauptsächlich Gelb und die anderen Farben von Baustellenfahrzeugen. Läuft die Bordraffinerie, stößt das Schiff schwarze Rauchwolken aus.
-- **Markenzeichen aller J-Schiffe:** eingebaute Raffinerie (verarbeitet nebenbei langsam automatisch Erze), eingebautes Erzlager, kleiner Bonus auf die Abbau-Effizienz. Dafür langsamer und träge im Fluggefühl: drehen langsamer, brauchen länger, um den Warp zu starten usw.
-- **Schiffsideen (Details in Paket 25):**
-  - **S-Bergbauschiff:** 1 Waffenplatz, kleiner Drohnenhangar (1 Drohne), 2 kleine + 1 größerer Werkzeugplatz, mehrere optionale Plätze; eingebauter Prospektor-Scanner.
-  - **M-Bergbauschiff:** Weiterentwicklung des S-Schiffs, weiterhin kleine Drohnenkapazität (2), viel Platz für Erz, Plätze für Strip Miner und Eisernter, etwas effizientere Raffinerie; gleiche Besonderheiten.
-  - **L-Bergbauschiff:** die nächste Stufe der Reihe.
-  - **Heavy Industry Ship (L):** Drohnenträger für 9 Drohnen mit Bonus auf Abbau-Effizienz und Lagerplatz (diese Drohnen mit gelbem Touch); super effiziente Raffinerie, Fertigungsanlage an Bord (Module und sogar Drohnen aus den richtigen Materialien – wird mit dem späteren Crafting wichtiger) und eine Marktfunktion: es bietet Inventar zum Kauf an, NPCs kaufen dort ein.
-- **Offene Fragen:** siehe Gespräch vom 5. Nov 2026 (Name, Werte, Verkaufsorte, Umfang von Fertigung und Markt).
+- **Design:** erinnert an schwere Maschinen – bullig, praktisch statt schön. Farben hauptsächlich Gelb und die anderen Farben von Baustellenfahrzeugen (Warnstreifen Schwarz-Gelb, Orange, Grau). Läuft die Bordraffinerie, stößt das Schiff schwarze Rauchwolken aus.
+- **Markenzeichen aller KHI-Schiffe:**
+  - **Bordraffinerie** (fest im Rumpf): verarbeitet nebenbei langsam Erz aus dem Erzlager zu Raffinat im Frachtraum; zieht Strom, solange sie läuft, und lässt sich abschalten (z. B. um Erz roh zu verkaufen). Tempo: S ≈ 1/10, M ≈ 1/6, L ≈ 1/4 einer Stationsraffinerie, Heavy Industry Ship ≈ wie eine Station.
+  - **Eingebautes Erzlager** und **+10 % Abbau-Effizienz**.
+  - **Träge:** −25 % Drehgeschwindigkeit, +40 % Ausrichtzeit für den Warp (Heavy Industry Ship noch etwas mehr).
+  - **Harte Hülle, große Schilde, wenig Bewaffnung.**
+- **Verkauf:** KHI-Werften an Industriekomplexen und Shipyard Complexes. Mining Colonies bekommen eine kleine Werft: nur KHI S und M, dazu als günstigere Variante der Earthworks Drillhead.
+
+**Bauplan KHI (Vorschlag 5. Nov 2026, zur Freigabe)**
+
+| Schiff (Arbeitsname) | Größe | Waffen | Werkzeuge | Optional | Drohnen (Hangar max.) | Eingebaut |
+|---|---|---|---|---|---|---|
+| **Mogura** („Maulwurf“) – S-Bergbauschiff | S | [1] | [2, 1, 1] | [2, 2, 1, 1] | 1 (Hangar 1) | Raffinerie 1/10, Erzlager 60 m³, Prospektor-Scanner |
+| **Anaguma** („Dachs“) – M-Bergbauschiff | M | [2, 1] | [3, 3, 2] (Strip Miner, Eisernter) | [5, 4, 3, 3] | 2 (Hangar 3) | Raffinerie 1/6, Erzlager 300 m³, Prospektor |
+| **Iwakudaki** („Felsbrecher“) – L-Bergbauschiff | L | [2, 2] | [4, 4, 3, 3] | [7, 6, 5, 4] | 4 (Hangar 5) | Raffinerie 1/4, Erzlager 900 m³, Prospektor |
+| **Kanayama-maru** – Heavy Industry Ship | L | [2, 2] | [3, 3] | [8, 7, 6, 5] | 9 (Hangar 9) | Raffinerie ≈ Station, Erzlager 1.200 m³, Fertigungsanlage, Markt |
+
+- **Heavy Industry Ship:** seine Drohnen bekommen +25 % Abbau-Effizienz und +5 m³ Lagerplatz und tragen einen gelben Anstrich. **Fertigung an Bord** wie der Manufacturing-Dienst der Stationen, dazu Drohnen als neues Rezept; zieht Strom, solange sie läuft. **Neu für alle Fertigungen (auch Stationen): jeder Bauplan braucht Zeit.** **Markt:** man stellt Waren und Preise ein; solange das Schiff stillsteht, fliegen zivile NPC-Händler aus dem System es an und kaufen; große Angebote locken mit höherer Wahrscheinlichkeit Piraten an.
+- **Grundgerüst (Paket 24, mit KHI gebaut):** jeder Rumpf gehört einer Manufaktur (bisherige = Earthworks, Carrion Crow = Piratenbau); Manufaktur-Daten (Name, Kürzel, Farbe, Palette, Motto, Geschichte); Werften führen Schiffe nach Manufaktur-Regeln; Pixel-Art-Bausteine und Palette je Manufaktur; Werft-Anzeige mit Manufaktur; Codex-Einträge je Manufaktur.
 
 ### Neue Schiffe (Paket 25)
 
