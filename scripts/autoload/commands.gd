@@ -219,6 +219,18 @@ func _c_deactivate(c: Dictionary) -> String:
 	return e if e != "" else world.player.set_module_active(String(c["slot"]), false)
 
 
+## {"type":"set_priority", "slot": key, "group": 1–4} – power priority of a module (package 21).
+func _c_set_priority(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No active ship."
+	var key := String(c["slot"])
+	if f.get_module(key) == "":
+		return "No module in that slot."
+	f.set_priority(key, int(c["group"]))
+	return ""
+
+
 ## {"type":"mine_config", "slot": s, "mine"?: mine id, "fuse"?: seconds} – mine launcher settings.
 func _c_mine_config(c: Dictionary) -> String:
 	var e := _need_world()

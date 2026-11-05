@@ -332,8 +332,11 @@ func _physics_process(delta: float) -> void:
 		fit.capacitor = sd["cap_max"]
 		shield_down = 0.0
 		emp_t = 0.0
+		if not fit.power_off.is_empty() or fit.throttle < 1.0:
+			fit.apply_power({"off": {}, "throttle": 1.0})
 		return
 	visible = true
+	_update_power()
 	var s := fit.stats()
 	hit_flash = maxf(0.0, hit_flash - delta)
 	warp_disrupted = maxf(0.0, warp_disrupted - delta)
@@ -1220,7 +1223,7 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 		return
 	for i in weapons.size():
 		var w: Dictionary = weapons[i]
-		if weapon_timers[i] > 0.0 or dist > float(w["range"]):
+		if weapon_timers[i] > 0.0 or dist > float(w["range"]) or not w.get("powered", true):
 			continue
 		if fit.capacitor < float(w["energy"]):
 			continue
@@ -1337,6 +1340,8 @@ func _update_tools(delta: float, s: Dictionary) -> void:
 		_update_modules(delta, s)
 		return
 	for t in s["tools"]:
+		if not t.get("powered", true):
+			continue
 		match t["tool"]:
 			"repair":
 				_repair(delta, t)
@@ -1662,6 +1667,8 @@ func set_module_active(slot: String, on: bool) -> String:
 			scan_jobs.erase(slot)
 		module_on[slot] = true
 		module_state[slot] = "on"
+		if not fit.is_powered(slot):
+			_mlog("%s: priority group %d is shut down (power overload) – it starts once there is power." % [d["name"], fit.priority_of(slot)], GameState.COL_WARN)
 		var tgt = node
 		if e["kind"] == "tool" and d["tool"] == "repair" and (tgt == null or not (tgt is Ship) or hostile(self, tgt)):
 			tgt = self
@@ -1707,6 +1714,9 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 		module_timers[slot] = maxf(0.0, float(module_timers.get(slot, 0.0)) - delta)
 		if not module_on.get(slot, false):
 			module_state[slot] = "off"
+			continue
+		if not fit.is_powered(slot):
+			module_state[slot] = "power"      # its priority group is shut down (package 21)
 			continue
 		if e["kind"] in ["pd", "mine"]:
 			continue             # point defense runs in _update_pd, mines are one-shot
@@ -1930,6 +1940,58 @@ func _repair_one(delta: float, t: Dictionary, ship) -> bool:
 	return true
 
 
+# ---------------------------------------------------------------- Package 21: power management
+
+## Active modules in use right now (slot -> true). Pilot: switched on (mine launchers while
+## reloading). NPCs: weapons and point defense while fighting, beams always, the jammer while on.
+func power_in_use() -> Dictionary:
+	var u := {}
+	if manual:
+		for k in module_on:
+			if module_on[k]:
+				u[k] = true
+		for k2 in module_timers:
+			if float(module_timers[k2]) > 0.0 and String(GameData.modules.get(fit.modules.get(k2, ""), {}).get("slot", "")) == "weapon":
+				u[k2] = true
+		return u
+	var fighting := _valid(target)
+	for key in fit.modules:
+		var m: Dictionary = GameData.modules.get(fit.modules[key], {})
+		if m.is_empty() or not ShipFitting.is_active_module(m):
+			continue
+		match String(m["slot"]):
+			"weapon":
+				if fighting and not m.get("mines", false):
+					u[key] = true
+			"tool":
+				if String(m.get("tool", "")) in ["repair", "shield_transfer", "mining", "harvester", "analyzer", "salvage"]:
+					u[key] = true
+			"optional":
+				if String(m.get("active", "")) == "jammer" and jamming:
+					u[key] = true
+	return u
+
+
+## Hard power limit (package 21): on an overload priority groups 4, 3, 2 shut down in turn.
+## Returns true if the power state changed.
+func _update_power() -> bool:
+	var before: Dictionary = fit.power_off.duplicate()
+	var thr0 := fit.throttle
+	var plan := fit.power_plan(power_in_use())
+	if not fit.apply_power(plan):
+		return false
+	if manual and faction == "player":
+		for g in plan["off"]:
+			if not before.has(g):
+				GameState.log_msg("Power overload: priority group %d shut down (demand %.0f MW, reactor %.0f MW)." % [int(g), float(plan["requested"]), float(plan["available"])], GameState.COL_BAD)
+		for g2 in before:
+			if not plan["off"].has(g2):
+				GameState.log_msg("Power restored: priority group %d back online." % int(g2), GameState.COL_GOOD)
+		if fit.throttle < 1.0 and thr0 >= 1.0:
+			GameState.log_msg("Group 1 alone exceeds the reactor – all systems at %d %%." % int(fit.throttle * 100.0), GameState.COL_BAD)
+	return true
+
+
 # ---------------------------------------------------------------- Package 20: new modules
 
 ## Shield transfer beam: own capacitor → the target's shield. Uses energy only while it actually
@@ -1977,6 +2039,8 @@ func _update_pd(delta: float, s: Dictionary) -> void:
 		var slot: String = pd["slot"]
 		pd_timers[slot] = maxf(0.0, float(pd_timers.get(slot, 0.0)) - delta)
 		if manual and not module_on.get(slot, false):
+			continue
+		if not pd.get("powered", true):
 			continue
 		if emp_t > 0.0 or float(pd_timers[slot]) > 0.0:
 			continue
@@ -2049,10 +2113,11 @@ func jam_radius() -> float:
 	if manual:
 		var r := 0.0
 		for a in s["actives"]:
-			if a["active"] == "jammer" and module_on.get(a["slot"], false):
+			if a["active"] == "jammer" and module_on.get(a["slot"], false) and a.get("powered", true):
 				r = maxf(r, float(a["jam_range"]))
 		return r
-	return float(_jammer_module(s).get("jam_range", 0.0)) if jamming else 0.0
+	var jm := _jammer_module(s)
+	return float(jm.get("jam_range", 0.0)) if jamming and jm.get("powered", true) else 0.0
 
 
 ## Mine launcher (package 20): lays one mine of the type chosen for this launcher (right-click its
@@ -2060,6 +2125,8 @@ func jam_radius() -> float:
 func lay_mine(slot: String, d: Dictionary) -> String:
 	if view == null or not view.has_method("lay_mine"):
 		return "No system."
+	if not fit.is_powered(slot):
+		return "%s: no power – priority group %d is shut down (overload)." % [d["name"], fit.priority_of(slot)]
 	var ch: Dictionary = mine_choice.get(slot, {})
 	var mtype := String(ch.get("type", ""))
 	if mtype == "" or float(fit.cargo.get(mtype, 0.0)) < 1.0:

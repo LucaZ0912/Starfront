@@ -509,6 +509,7 @@ func _process(delta: float) -> void:
 				_test_modules(view)
 				_test_debug_convoy(view)
 				_test_package20(view)
+				_test_power(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
@@ -1275,6 +1276,12 @@ func _shoot_standing(view: SystemView) -> void:
 	for i in 6:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/modules.png")
+	sm.mod_view = "power"
+	sm.rebuild()
+	for i in 6:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/power.png")
+	sm.mod_view = "fitting"
 	sm.close()
 	# outfitter of the biggest station here (package 19: families with size · quality buttons)
 	var big_st: Dictionary = view.layout["stations"][0]
@@ -2587,3 +2594,107 @@ func _test_package20(view: SystemView) -> void:
 	for n in [v, giver, pir, civ, jp, far_ship, smug]:
 		if is_instance_valid(n):
 			n.queue_free()
+
+
+## Phase 0.5 package 21: hard power limit, priority groups, active modules draw only in use.
+func _test_power(view: SystemView) -> void:
+	var fits_ok := true
+	for pid in GameData.presets:
+		var f0 := GameState.create_from_preset(pid, "player")
+		var all0 := {}
+		for k0 in f0.slot_keys():
+			all0[k0] = true
+		fits_ok = fits_ok and f0.power_plan(all0)["off"].is_empty() and is_equal_approx(float(f0.power_plan(all0)["throttle"]), 1.0)
+	check(fits_ok, "every standard fit and NPC loadout runs everything at once")
+	# passive always, active only in use
+	var f := GameState.create_from_preset("std_hornet", "player")
+	var st := f.stats()
+	var all := {}
+	for k in f.slot_keys():
+		all[k] = true
+	check(is_equal_approx(float(f.power_plan({})["total"]), float(st["power_passive"])) and is_equal_approx(float(f.power_plan(all)["total"]), float(st["power_passive"]) + float(st["power_active_max"])) and float(st["power_active_max"]) > 0.0, "passive modules always draw, active ones only while in use (%.0f + %.0f MW)" % [float(st["power_passive"]), float(st["power_active_max"])])
+	check(f.priority_of("engine") == 1 and f.priority_of("weapon_0") == 2, "default priorities: core 1, weapons 2, tools/active 3, the rest 4")
+	# overload: a weak reactor – group 4 shuts down first, then 3, then 2
+	f.set_module("reactor", "rea_fission:1:F")
+	var keys: Array = []
+	for k2 in f.slot_keys():
+		if f.get_module(k2) != "" and float(GameData.modules[f.get_module(k2)].get("power", 0)) > 0.0 and not (k2 in GameData.CORE_SLOTS):
+			keys.append(k2)
+	for j in keys.size():
+		f.set_priority(keys[j], 4 - (j % 3))     # spread over groups 4, 3, 2
+	var plan := f.power_plan(all)
+	var off: Dictionary = plan["off"]
+	var order_ok: bool = not off.is_empty() and (not off.has(3) or off.has(4)) and (not off.has(2) or off.has(3)) and not off.has(1)
+	check(order_ok and float(plan["total"]) <= float(plan["available"]) + 0.01 or float(plan["throttle"]) < 1.0, "overload: groups shut down from 4 upwards, the output is never exceeded (%s off)" % str(off.keys()))
+	# a passive module in a shut-down group has no effect, an active one is unpowered
+	var f2 := GameState.create_from_preset("std_hornet", "player")
+	var sh_key := ""
+	var w_key := "weapon_0"
+	for k3 in f2.slot_keys():
+		if GameData.modules.get(f2.get_module(k3), {}).has("shield"):
+			sh_key = k3
+	if sh_key != "":
+		f2.set_priority(sh_key, 4)
+		f2.set_priority(w_key, 4)
+		var shield0 := float(f2.stats()["shield_max"])
+		f2.apply_power({"off": {4: true}, "throttle": 1.0})
+		var s2 := f2.stats()
+		check(float(s2["shield_max"]) < shield0 and s2["offline"].has(sh_key), "a shut-down shield generator gives no shield")
+		check(not s2["weapons"][0]["powered"] and not f2.is_powered(w_key), "a weapon in a shut-down group has no power")
+		f2.apply_power({"off": {}, "throttle": 1.0})
+	# the pilot's ship at runtime: switching on a heavy weapon shuts down group 4
+	var pl: Ship = view.player
+	var pf: ShipFitting = pl.fit
+	var keep_mods: Dictionary = pf.modules.duplicate()
+	var keep_pri: Dictionary = pf.priorities.duplicate()
+	var opt := ""
+	for k4 in pf.slot_keys():
+		if String(k4).begins_with("optional_"):
+			opt = k4
+	if opt != "":
+		pf.set_module("reactor", "rea_fission:1:F")
+		pf.set_module(opt, "o_survey_amp:1:C")
+		pf.set_priority(opt, 4)
+		pl.module_on.clear()
+		pl._update_power()
+		var idle_off: bool = pf.power_off.has(4)
+		var wkey := ""
+		for e in pf.active_modules():
+			if e["kind"] == "weapon":
+				wkey = e["slot"]
+		pf.set_priority(wkey, 2)
+		pl.module_on[wkey] = true
+		var avail := float(pf.stats()["power_available"])
+		var need := float(pf.power_plan(pl.power_in_use())["requested"])
+		pl._update_power()
+		check(need <= avail or pf.power_off.has(4), "switching on a weapon over the limit shuts down group 4 (%.0f of %.0f MW)" % [need, avail])
+		check(idle_off == (float(pf.power_plan({})["requested"]) > avail), "idle: only an overloaded passive draw shuts groups down")
+		pl.module_on.clear()
+		pf.modules = keep_mods
+		pf.priorities = keep_pri
+		pf.mark_dirty()
+		pf.apply_power({"off": {}, "throttle": 1.0})
+		pl._update_power()
+	# priorities: command and save
+	Commands.execute({"type": "set_priority", "slot": "weapon_0", "group": 3})
+	var d := pf.to_dict()
+	var back := ShipFitting.from_dict(d)
+	check(pf.priority_of("weapon_0") == 3 and back.priority_of("weapon_0") == 3, "priorities are set by command and saved with the ship")
+	pf.priorities = keep_pri
+	pf.mark_dirty()
+	# ship menu: POWER MANAGEMENT
+	var sm = main.ship_menu
+	sm.mod_view = "power"
+	sm.open(view, 1)
+	var bar_ok := false
+	var rows := 0
+	for n in sm.content.find_children("*", "", true, false):
+		if "groups" in n and "available" in n and "colors" in n:
+			bar_ok = true
+		if n is Button and n.text in ["1", "2", "3", "4"]:
+			rows += 1
+	check(bar_ok and rows >= 4 * 5, "ship menu → Modules → POWER MANAGEMENT: output bar and priority list (%d buttons)" % rows)
+	sm.mod_view = "fitting"
+	sm.close()
+	main.hud._update_power_line(pf, pf.stats())
+	check(main.hud._w["power"].text.begins_with("Power ") and main.hud._w["power"].text.contains("passive"), "HUD shows passive and active power: %s" % main.hud._w["power"].text)

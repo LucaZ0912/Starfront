@@ -25,6 +25,8 @@ var tab := 0
 var selected_slot := ""
 var selected_store := ""
 var sub_tab := 0                  # Transactions: 0 = contracts, 1 = bonds
+var mod_view := "fitting"         # Modules tab: "fitting" | "power" (package 21)
+const GROUP_COLORS := {1: Color(0.35, 0.85, 1.0), 2: Color(0.4, 1.0, 0.5), 3: Color(1.0, 0.8, 0.3), 4: Color(1.0, 0.5, 0.35)}
 var _abandon_armed := ""
 
 var title_label: Label
@@ -287,6 +289,18 @@ func _news_card(box: Control) -> void:
 # ================================================================ Modules
 
 func _build_modules() -> void:
+	var sw := UI.hbox(4)
+	content.add_child(sw)
+	for v in [["fitting", "FITTING"], ["power", "POWER MANAGEMENT"]]:
+		var key: String = v[0]
+		var b := UI.button(v[1], func(): mod_view = key; rebuild())
+		b.toggle_mode = true
+		b.button_pressed = mod_view == key
+		b.custom_minimum_size = Vector2(200, 30)
+		sw.add_child(b)
+	if mod_view == "power":
+		_build_power()
+		return
 	var body := UI.hbox(16)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(body)
@@ -308,6 +322,130 @@ func _build_modules() -> void:
 	rs.add_child(right)
 	_build_module_details(left)
 	_build_module_tiles(right)
+
+
+# ---------------------------------------------------------------- Power management (package 21)
+
+## The output bar: one segment per priority group (solid = passive, light = active at most), the
+## reactor output as a line.
+class PowerBar extends Control:
+	var groups := {}
+	var available := 0.0
+	var colors := {}
+
+	func _draw() -> void:
+		var total := 0.0
+		for g in groups:
+			total += float(groups[g]["passive"]) + float(groups[g]["active"])
+		var scale_mw := maxf(maxf(total, available), 1.0)
+		var w := size.x
+		var h := size.y
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.06, 0.1))
+		var x := 0.0
+		for g in [1, 2, 3, 4]:
+			var col: Color = colors[g]
+			for part in ["passive", "active"]:
+				var mw := float(groups[g][part])
+				if mw <= 0.0:
+					continue
+				var pw := mw / scale_mw * w
+				draw_rect(Rect2(x, 0, pw, h), col if part == "passive" else Color(col, 0.35))
+				draw_rect(Rect2(x, 0, pw, h), Color(0, 0, 0, 0.6), false, 1.0)
+				if pw > 30.0:
+					draw_string(ThemeDB.fallback_font, Vector2(x + 4, h * 0.5 + 5), "%d" % g, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.85))
+				x += pw
+		var ax := available / scale_mw * w
+		if total > available:
+			draw_rect(Rect2(ax, 0, w - ax, h), Color(1.0, 0.2, 0.2, 0.22))
+		draw_line(Vector2(ax, -4), Vector2(ax, h + 4), Color(1, 1, 1), 2.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, 0.3), false, 1.0)
+
+
+func _build_power() -> void:
+	var box := _scroll()
+	var s := fit.stats()
+	var avail := float(s["power_available"])
+	box.add_child(UI.label("POWER MANAGEMENT", 18, UI.NEON_CYAN))
+	box.add_child(UI.wrap_label("The reactor output is a hard limit. Passive modules (core equipment, passive optional modules, scanners) always draw power; weapons and active modules only while they are in use. If the demand exceeds the output, priority group 4 shuts down first, then group 3, then group 2 – group 1 stays on (if it alone is too much, everything is throttled).", 12, UI.TEXT_DIM, 900))
+	var bar := PowerBar.new()
+	bar.groups = s["power_groups"]
+	bar.available = avail
+	bar.colors = GROUP_COLORS
+	bar.custom_minimum_size = Vector2(900, 30)
+	box.add_child(bar)
+	var leg := UI.hbox(18)
+	box.add_child(leg)
+	for g in [1, 2, 3, 4]:
+		var gd: Dictionary = s["power_groups"][g]
+		leg.add_child(UI.label("■ Group %d: %.0f passive + %.0f active MW%s" % [g, float(gd["passive"]), float(gd["active"]), "  (OFF)" if fit.power_off.has(g) else ""], 12, GROUP_COLORS[g]))
+	box.add_child(UI.label("Output %.0f MW  •  passive %.0f MW  •  active up to %.0f MW  •  solid = always, light = while in use, white line = output" % [avail, float(s["power_passive"]), float(s["power_active_max"])], 12, Color(0.85, 0.9, 1.0)))
+	var idle := fit.power_plan({})
+	var all_on := {}
+	for key in fit.slot_keys():
+		all_on[key] = true
+	var full := fit.power_plan(all_on)
+	if not idle["off"].is_empty() or float(idle["throttle"]) < 1.0:
+		box.add_child(UI.label("Even without active modules the passive draw is too high: %s." % _plan_text(idle), 13, UI.BAD))
+	elif not full["off"].is_empty() or float(full["throttle"]) < 1.0:
+		box.add_child(UI.label("With everything switched on: %s." % _plan_text(full), 13, UI.GOLD))
+	else:
+		box.add_child(UI.label("Everything can run at the same time.", 13, UI.GOOD))
+	# module list
+	var grid := GridContainer.new()
+	grid.columns = 7
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 4)
+	box.add_child(grid)
+	for h in ["", "Module", "Quality", "Use", "Power", "Priority", ""]:
+		grid.add_child(UI.label(h, 13, UI.NEON_CYAN))
+	for key in fit.slot_keys():
+		var mid := fit.get_module(key)
+		if mid == "":
+			continue
+		var m: Dictionary = GameData.modules[mid]
+		var pw := float(m.get("power", 0))
+		var act := ShipFitting.is_active_module(m)
+		var grp := fit.priority_of(key)
+		grid.add_child(UI.icon(PixelArt.module_icon(mid), 26))
+		var nm := UI.label("%s  (%s)" % [String(m["base_name"]), GameData.slot_label(key)], 13)
+		nm.custom_minimum_size = Vector2(330, 0)
+		grid.add_child(nm)
+		grid.add_child(UI.label("%d · %s" % [int(m["size"]), String(m["quality"])], 13, GameData.quality_color(String(m["quality"]))))
+		grid.add_child(UI.label("Active" if act else "Passive", 13, UI.GOLD if act else Color(0.75, 0.8, 0.9)))
+		grid.add_child(UI.label("%.0f MW" % pw if pw > 0.0 else "–", 13))
+		var pr := UI.hbox(2)
+		for g in [1, 2, 3, 4]:
+			var gg: int = g
+			var k2: String = key
+			var b := UI.button(str(g), func(): Commands.execute({"type": "set_priority", "slot": k2, "group": gg}); rebuild())
+			b.toggle_mode = true
+			b.button_pressed = grp == g
+			b.custom_minimum_size = Vector2(30, 24)
+			b.disabled = pw <= 0.0
+			b.add_theme_color_override("font_color", GROUP_COLORS[g])
+			b.add_theme_color_override("font_pressed_color", Color(0, 0, 0))
+			if grp == g:
+				var sbp := UI.panel_style(GROUP_COLORS[g], GROUP_COLORS[g])
+				b.add_theme_stylebox_override("pressed", sbp)
+			pr.add_child(b)
+		grid.add_child(pr)
+		var st := ""
+		if pw > 0.0 and fit.power_off.has(grp):
+			st = "OFF (overload)"
+		elif pw <= 0.0:
+			st = "needs no power"
+		grid.add_child(UI.label(st, 12, UI.BAD if st.begins_with("OFF") else UI.TEXT_DIM))
+
+
+func _plan_text(plan: Dictionary) -> String:
+	var gs: Array = plan["off"].keys()
+	gs.sort()
+	var t := ""
+	if not gs.is_empty():
+		t = "group %s shut down%s" % [", ".join(PackedStringArray(gs.map(func(x): return str(x)))), " (demand %.0f of %.0f MW)" % [float(plan["requested"]), float(plan["available"])]]
+	if float(plan["throttle"]) < 1.0:
+		t += ("; " if t != "" else "") + "group 1 alone exceeds the output – all systems at %d %%" % int(float(plan["throttle"]) * 100.0)
+	return t
 
 
 func _build_module_details(left: VBoxContainer) -> void:
@@ -338,13 +476,13 @@ func _build_module_details(left: VBoxContainer) -> void:
 	left.add_child(UI.wrap_label("Click a tile to see its properties. The full ship statistics are on the SHIP tab.", 13, UI.TEXT_DIM, 380))
 	var s := fit.stats()
 	_kv(left, [
-		"Power: %.0f / %.0f MW" % [s["power_draw"], float(s["power_output"]) * float(s["efficiency"])],
+		"Power: passive %.0f + active up to %.0f / %.0f MW" % [float(s["power_passive"]), float(s["power_active_max"]), float(s["power_available"])],
 		"Mass: %.0f t" % s["mass"],
 		"Speed: %.0f km/s" % s["speed"],
 		"DPS: %.1f" % s["dps_total"],
 	])
-	if s["power_ratio"] < 1.0:
-		left.add_child(UI.label("Power overload – all systems at %d%%" % int(s["power_ratio"] * 100.0), 12, UI.BAD))
+	if float(s["power_passive"]) + float(s["power_active_max"]) > float(s["power_available"]):
+		left.add_child(UI.label("More power than the reactor gives – see POWER MANAGEMENT for what shuts down.", 12, UI.GOLD))
 
 
 func _module_details(left: VBoxContainer, mid: String, where: String) -> void:
@@ -491,8 +629,8 @@ func _build_ship() -> void:
 		for k in s["missing"]:
 			names.append(GameData.SLOT_NAMES[k])
 		box.add_child(UI.label("Missing core equipment: %s" % ", ".join(PackedStringArray(names)), 13, UI.BAD))
-	if s["power_ratio"] < 1.0:
-		box.add_child(UI.label("Power overload – all systems at %d%%" % int(s["power_ratio"] * 100.0), 13, UI.BAD))
+	if not fit.power_off.is_empty():
+		box.add_child(UI.label("Power overload – priority groups shut down: %s" % str(fit.power_off.keys()), 13, UI.BAD))
 	var res: Dictionary = s["res"]
 	var dps: Dictionary = s["dps"]
 	var h := fit.hull()
@@ -532,7 +670,9 @@ func _build_ship() -> void:
 	_kv(_card(row2, "POWER"), [
 		"Reactor output: %.0f MW" % s["power_output"],
 		"Distributor efficiency: %d%%" % int(float(s["efficiency"]) * 100.0),
-		"Power draw: %.0f MW" % s["power_draw"],
+		"Usable output: %.0f MW (hard limit)" % float(s["power_available"]),
+		"Passive draw: %.0f MW (always)" % float(s["power_passive"]),
+		"Active draw: up to %.0f MW (while in use)" % float(s["power_active_max"]),
 		"Systems at: %d%%" % int(s["power_ratio"] * 100.0),
 		"Capacitor: %.0f / %.0f" % [fit.capacitor, s["cap_max"]],
 		"Recharge: %.1f /s" % s["cap_recharge"],

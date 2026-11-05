@@ -11,6 +11,9 @@ var hull_id := ""
 var faction := "player"
 var gov := ""              # government / pirate faction of an NPC (paint, name) – not saved
 var modules := {}          # slot_key -> module_id  (slot_key: "engine", "weapon_0", "tool_1", ...)
+var priorities := {}       # slot_key -> power priority group 1–4 (package 21; missing = default)
+var power_off := {}        # runtime: priority groups shut down by an overload (group -> true)
+var throttle := 1.0        # runtime: < 1 only if group 1 alone exceeds the output
 var cargo := {}            # item_id -> amount (float)
 var structure := -1.0
 var armor := -1.0
@@ -104,7 +107,7 @@ func set_module(key: String, module_id: String) -> String:
 
 const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "cargo", "structure", "armor",
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
-	"transit_kind", "transit_to", "transit_from", "transit", "transit_total"]
+	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -151,6 +154,8 @@ func _compute() -> Dictionary:
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
 		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0,
+		"power_passive": 0.0, "power_active_max": 0.0, "offline": [],
+		"power_groups": {1: {"passive": 0.0, "active": 0.0}, 2: {"passive": 0.0, "active": 0.0}, 3: {"passive": 0.0, "active": 0.0}, 4: {"passive": 0.0, "active": 0.0}},
 	}
 	var down_w := 0.0                # shield downtime: capacity-weighted factor of the shield modules
 	for key in slot_keys():
@@ -161,7 +166,16 @@ func _compute() -> Dictionary:
 			continue
 		var m: Dictionary = GameData.modules[mid]
 		s["mass"] += float(m.get("mass", 0))
-		s["power_draw"] += float(m.get("power", 0))
+		var pw := float(m.get("power", 0))
+		var act := is_active_module(m)
+		var grp := priority_of(key)
+		s["power_draw"] += pw
+		s["power_groups"][grp]["active" if act else "passive"] += pw
+		s["power_active_max" if act else "power_passive"] += pw
+		var offline := pw > 0.0 and power_off.has(grp)
+		if offline and not act:
+			s["offline"].append(key)
+			continue                     # shut down by an overload: no effect (package 21)
 		match m["slot"]:
 			"hull":
 				s["armor_max"] += float(m.get("armor", 0))
@@ -191,6 +205,7 @@ func _compute() -> Dictionary:
 				var w: Dictionary = m.duplicate()
 				w["id"] = mid
 				w["slot"] = key
+				w["powered"] = not (pw > 0.0 and power_off.has(grp))
 				if w.get("pd", false):
 					s["pd"].append(w)          # point defense: not a gun for ships (package 20)
 				elif w.get("mines", false):
@@ -201,6 +216,7 @@ func _compute() -> Dictionary:
 				var t: Dictionary = m.duplicate()
 				t["id"] = mid
 				t["slot"] = key
+				t["powered"] = not (pw > 0.0 and power_off.has(grp))
 				s["tools"].append(t)
 			"optional":
 				s["cargo_max"] += float(m.get("cargo", 0))
@@ -226,13 +242,14 @@ func _compute() -> Dictionary:
 					var a: Dictionary = m.duplicate()
 					a["id"] = mid
 					a["slot"] = key
+					a["powered"] = not (pw > 0.0 and power_off.has(grp))
 					s["actives"].append(a)
 
-	# Power budget: overload throttles all systems proportionally.
-	var available: float = s["power_output"] * s["efficiency"]
-	var ratio := 1.0
-	if s["power_draw"] > available:
-		ratio = maxf(0.25, available / maxf(s["power_draw"], 0.001))
+	# Power budget (package 21): the output is a hard limit. Passive modules always draw, active
+	# ones only while in use; on an overload priority groups 4, 3, 2 shut down (see power_plan()).
+	# Only if group 1 alone is too much, everything is throttled.
+	s["power_available"] = s["power_output"] * s["efficiency"]
+	var ratio := throttle
 	s["power_ratio"] = ratio
 
 	s["speed"] = s["thrust"] * 1000.0 / maxf(s["mass"], 1.0) * s["speed_mult"] * ratio
@@ -269,6 +286,96 @@ func _compute() -> Dictionary:
 	s["dps_total"] = dps["optical"] + dps["kinetic"] + dps["explosive"]
 	s["optimal_range"] = min_range * 0.8 if min_range < INF else s["sensor_range"] * 0.5
 	return s
+
+
+# ---------------------------------------------------------------- Power management (package 21)
+
+const POWER_GROUPS := 4
+
+
+## Active modules draw power only while in use (weapons, tools except the scanner, active optional
+## equipment); core slots, passive optional modules and scanners always draw.
+static func is_active_module(m: Dictionary) -> bool:
+	match String(m.get("slot", "")):
+		"weapon":
+			return true
+		"tool":
+			return String(m.get("tool", "")) != "scanner"
+		"optional":
+			return m.has("active")
+	return false
+
+
+## Default priority: core 1, weapons / point defense / shields 2, tools and active equipment 3, the rest 4.
+func default_priority(key: String) -> int:
+	if key in GameData.CORE_SLOTS:
+		return 1
+	var m: Dictionary = GameData.modules.get(modules.get(key, ""), {})
+	if m.is_empty():
+		return 4
+	if m["slot"] == "weapon" or m.has("shield"):
+		return 2
+	if m["slot"] == "tool" or m.has("active"):
+		return 3
+	return 4
+
+
+func priority_of(key: String) -> int:
+	return clampi(int(priorities.get(key, default_priority(key))), 1, POWER_GROUPS)
+
+
+func set_priority(key: String, group: int) -> void:
+	priorities[key] = clampi(group, 1, POWER_GROUPS)
+	mark_dirty()
+
+
+## Which groups must shut down for the demand of `in_use` (slot -> true: active modules in use)?
+## {"off": {group: true}, "throttle": float, "demand": {group: MW}, "total": MW after shutting down,
+##  "requested": MW before, "available": MW}
+func power_plan(in_use: Dictionary) -> Dictionary:
+	var s := stats()
+	var avail := float(s["power_available"])
+	var demand := {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
+	for key in slot_keys():
+		var m: Dictionary = GameData.modules.get(modules.get(key, ""), {})
+		if m.is_empty():
+			continue
+		var pw := float(m.get("power", 0))
+		if pw <= 0.0:
+			continue
+		if not is_active_module(m) or in_use.get(key, false):
+			demand[priority_of(key)] += pw
+	var total := 0.0
+	for g in demand:
+		total += float(demand[g])
+	var requested := total
+	var off := {}
+	for g2 in [4, 3, 2]:
+		if total <= avail + 0.001:
+			break
+		if float(demand[g2]) > 0.0:
+			off[g2] = true
+			total -= float(demand[g2])
+	var thr := 1.0
+	if total > avail + 0.001:
+		thr = maxf(0.25, avail / maxf(total, 0.001))
+	return {"off": off, "throttle": thr, "demand": demand, "total": total, "requested": requested, "available": avail}
+
+
+## Applies a plan; returns true if something changed (stats are recomputed).
+func apply_power(plan: Dictionary) -> bool:
+	var off: Dictionary = plan["off"]
+	if off == power_off and is_equal_approx(float(plan["throttle"]), throttle):
+		return false
+	power_off = off.duplicate()
+	throttle = float(plan["throttle"])
+	mark_dirty()
+	return true
+
+
+func is_powered(key: String) -> bool:
+	var m: Dictionary = GameData.modules.get(modules.get(key, ""), {})
+	return m.is_empty() or float(m.get("power", 0)) <= 0.0 or not power_off.has(priority_of(key))
 
 
 func in_transit() -> bool:

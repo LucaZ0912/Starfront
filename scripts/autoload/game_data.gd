@@ -258,7 +258,8 @@ func module_summary(id: String) -> String:
 		for dt in r:
 			parts.append("%s resistance: %d%%" % [DAMAGE_NAMES[dt], int(float(r[dt]) * 100.0)])
 	parts.append("Mass: %d t" % int(m["mass"]))
-	parts.append("Power draw: %d MW" % int(m["power"]))
+	var act_mod := ShipFitting.is_active_module(m)
+	parts.append("Power draw: %d MW%s" % [int(m["power"]), " (only while in use)" if act_mod and float(m["power"]) > 0.0 else (" (always)" if float(m["power"]) > 0.0 else "")])
 	parts.append("Price: %s" % fmt_credits(int(m["price"])))
 	return "\n".join(PackedStringArray(parts))
 

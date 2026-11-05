@@ -68,6 +68,22 @@ All pirates now also answer whoever shoots at them. The **Warrant Scanner** reve
 shown in the selection panel afterwards); paint follows the pirate faction. Debug menu → World → Spawn
 lists every archetype loadout.
 
+## Power management (phase 0.5 package 21)
+- **Hard limit:** the usable reactor output (output × distributor efficiency) can never be exceeded.
+- **Passive vs. active:** core equipment, passive optional modules and scanners always draw power;
+  weapons, point defense, mine launchers, tools and active optional modules only **while in use**
+  (switched on; NPCs: weapons while fighting, beams always, the jammer while jamming).
+- **Priority groups 1–4** per module (default: core 1, weapons and shields 2, tools and active
+  equipment 3, the rest 4). On an overload **group 4 shuts down first, then 3, then 2**; group 1 stays
+  on (only if group 1 alone is too much, everything is throttled). Shut-down passive modules have no
+  effect (e.g. no shield from a shut-down generator), shut-down active modules stay switched on but idle
+  (red tile) until there is power again. The chat reports every shutdown and restart.
+- **Ship menu → Modules → POWER MANAGEMENT:** a bar of the output with one segment per group
+  (solid = passive, light = active at most, white line = output), a forecast (idle / everything on)
+  and the list of all modules (icon, name, size · quality, active/passive, MW) with the priority buttons
+  1–4. The HUD shows "Power x / y MW (passive + active)" and the groups that are off. Priorities are
+  saved with the ship (command `set_priority`).
+
 ## New module types (phase 0.5 package 20)
 - **Shield variants:** *Shield Generator* (balanced), *Capacitive Shield* (≈ +40 % capacity, slow
   regeneration) and *Fast-Cycle Shield* (≈ −30 % capacity, almost twice the regeneration).

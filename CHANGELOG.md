@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.21.1 – 2026-11-05
+
+**Package 21 – power management.** 446 smoke-test checks pass.
+- The reactor output is a hard limit; passive modules always draw, weapons and active modules only
+  while in use.
+- Priority groups 1–4 per module: on an overload group 4 shuts down first, then 3, then 2.
+- Ship menu → Modules → POWER MANAGEMENT: output bar per group and the module list with priorities.
+- HUD power line (passive + active, groups off); chat messages on shutdown and restart.
+
 ## alpha 0.4.20.1 – 2026-11-05
 
 **Package 20 – new module types.** 436 smoke-test checks pass. (From here on the last number counts

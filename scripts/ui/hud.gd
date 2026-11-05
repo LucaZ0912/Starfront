@@ -60,7 +60,7 @@ var zone_label: Label
 var survey_panel: PanelContainer
 var survey_text: RichTextLabel
 
-const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "range": Color(1.0, 0.75, 0.25), "energy": Color(0.7, 0.45, 1.0)}
+const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "range": Color(1.0, 0.75, 0.25), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
 const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven"}
 
 
@@ -334,7 +334,7 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 • Scanners sweep the whole system passively and reveal hidden anomalies.
 • Optical → strong vs shields, kinetic → armor, explosive → structure.
 • Hyperspace routes have classes 1–3 – your jump drive must be at least that class.
-• If power draw exceeds reactor output, all systems are throttled.
+• The reactor output is a hard limit: passive modules always draw power, weapons and active modules only while in use. On an overload priority group 4 shuts down first, then 3, then 2 (Ship menu → Modules → Power).
 """
 
 
@@ -438,6 +438,8 @@ func rebuild_ship_panel() -> void:
 		row.add_child(b)
 		ship_box.add_child(row)
 		_w[spec[0]] = b
+	_w["power"] = UI.label("", 12, Color(0.8, 0.85, 0.95))
+	ship_box.add_child(_w["power"])
 	_w["cargo"] = UI.label("", 12, Color(0.8, 0.85, 0.95))
 	ship_box.add_child(_w["cargo"])
 	_module_sig = ""
@@ -596,6 +598,26 @@ func _process(delta: float) -> void:
 	_set_bar(_w["structure"], f.structure, s["structure_max"])
 	_set_bar(_w["cap"], f.capacitor, s["cap_max"])
 	_set_bar(_w["fuel"], f.fuel, s["fuel_max"])
+	_update_power_line(f, s)
+
+
+## Package 21: "Power 42 / 60 MW (passive 30 + active 12)" and shut-down groups.
+func _update_power_line(f: ShipFitting, s: Dictionary) -> void:
+	if not _w.has("power"):
+		return
+	var p = view.player if view != null else null
+	var use: Dictionary = p.power_in_use() if (p != null and is_instance_valid(p) and p.fit == f) else {}
+	var plan := f.power_plan(use)
+	var act := float(plan["total"]) - float(s["power_passive"])
+	var t := "Power %.0f / %.0f MW  (passive %.0f + active %.0f)" % [float(plan["total"]), float(plan["available"]), float(s["power_passive"]), maxf(act, 0.0)]
+	var col := Color(0.8, 0.85, 0.95)
+	if not f.power_off.is_empty():
+		var gs: Array = f.power_off.keys()
+		gs.sort()
+		t += "  –  OVERLOAD: group %s off" % ", ".join(PackedStringArray(gs.map(func(x): return str(x))))
+		col = Color(1.0, 0.45, 0.4)
+	_w["power"].text = t
+	_w["power"].add_theme_color_override("font_color", col)
 
 
 func show_survey(r: Dictionary) -> void:
