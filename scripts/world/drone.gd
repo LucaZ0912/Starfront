@@ -512,3 +512,26 @@ func _lost(why: String) -> void:
 ## Shot down (overrides Ship._die: no wreck, no bounty).
 func _die(_killer) -> void:
 	_lost("destroyed")
+
+
+## Knocked out by an anti-drone pulse (0.4.25.32): small red lightning sparks crackle around the drone.
+func _draw() -> void:
+	super()
+	if stunned_t <= 0.0:
+		return
+	var r := maxf(float(radius), 12.0)
+	for k in 4:
+		if randf() < 0.35:
+			continue
+		var a := randf() * TAU
+		var p := Vector2.from_angle(a) * r * randf_range(0.4, 0.9)
+		var pts: Array = [p]
+		for j in 4:
+			p += Vector2.from_angle(a + randf_range(-1.1, 1.1)) * r * 0.6
+			pts.append(p)
+		for j2 in pts.size() - 1:
+			draw_line(pts[j2], pts[j2 + 1], Color(1.0, 0.2, 0.1, 0.5), 5.0)
+			draw_line(pts[j2], pts[j2 + 1], Color(1.0, 0.3, 0.2, 1.0), 2.4)
+			draw_line(pts[j2], pts[j2 + 1], Color(1.0, 0.9, 0.8, 0.9), 0.9)
+	if randf() < 0.3:
+		draw_circle(Vector2.ZERO, r * 0.7, Color(1.0, 0.25, 0.15, 0.25))

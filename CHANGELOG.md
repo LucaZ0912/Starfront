@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.32 – 2026-11-07
+
+- Focus lance: the crystal beams meet between ship and target, charge for a moment, then a thick beam
+  burns into the target for about a second.
+- Templar and Cathedral: golden spikes slide out and back in now and then.
+- Anti-drone pulse: a bar in its module tile shows the next pulse; knocked-out drones crackle with red
+  lightning.
+- Debug: a hostile pirate drone carrier (debug only).
+
 ## alpha 0.4.25.31 – 2026-11-07
 
 **Package 25f – Forge of Return, the Covenant's flying temples.**

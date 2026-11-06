@@ -274,7 +274,7 @@ func _build_world() -> void:
 	var plabels: Array = []
 	for pid in pids:
 		var pp: Dictionary = GameData.presets[pid]
-		plabels.append("%s (%s)" % [String(pp.get("archetype", "pirate")).capitalize(), GameData.hulls[pp["hull"]]["name"]])
+		plabels.append("%s (%s)" % ["DEBUG drone carrier" if pp.get("debug_only", false) else String(pp.get("archetype", "pirate")).capitalize(), GameData.hulls[pp["hull"]]["name"]])
 	var pre := _option(pids, plabels, 220)
 	var r3 := _row()
 	r3.add_child(pre)

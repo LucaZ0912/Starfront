@@ -368,6 +368,29 @@ static func stripe_segments(hull_id: String) -> Array:
 	return out
 
 
+## The outermost spike tips of a ship (gold or crimson pixels in the top row of its art, mirrored to the
+## bottom row): [[column, row, -1 up / +1 down], …] – the Forge's golden spikes slide out there (0.4.25.32).
+static func spike_tips(hull_id: String) -> Array:
+	var ck := "spikes_" + hull_id
+	if _cache.has(ck):
+		return _cache[ck]
+	var rows := _mirror_v(_pad(ShipArt.SHIPS.get(hull_id, [])))
+	var out: Array = []
+	if rows.is_empty():
+		_cache[ck] = out
+		return out
+	var top: String = rows[0]
+	var bottom: String = rows[rows.size() - 1]
+	for x in top.length():
+		if top[x] in ["U", "A", "u"]:
+			out.append([x, 0, -1.0])
+	for x2 in bottom.length():
+		if bottom[x2] in ["U", "F", "u", "A"]:
+			out.append([x2, rows.size() - 1, 1.0])
+	_cache[ck] = out
+	return out
+
+
 ## Pirate paints: plain pirates, the pirate factions and notorious captains.
 static func is_pirate_paint(faction: String) -> bool:
 	if faction == "pirate" or faction.begins_with("notorious_"):

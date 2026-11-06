@@ -1,5 +1,6 @@
 class_name SystemView
 extends Node2D
+const FocusLanceScript = preload("res://scripts/world/focus_lance.gd")
 ## A complete star system as ONE continuous space (1 unit = 1 km).
 ## Zoom levels from the ship up to the whole system:
 ##   close: star and planets appear as celestial bodies in the background (direction + apparent size)
@@ -2174,9 +2175,13 @@ func fire_weapon(shooter: Ship, target: Ship, w: Dictionary) -> void:
 	if w.get("focus", false):
 		col = Color(1.0, 0.18, 0.12)                     # the Covenant's red focus crystals (package 25f)
 	if float(w.get("projectile_speed", 0)) <= 0.0:
-		if int(w.get("bundle", 0)) > 1:
-			_bundle_beams(shooter, target, int(w["bundle"]), col)
 		var co = blocker(shooter.position, target.position)
+		if int(w.get("bundle", 0)) > 1 and co == null:
+			# the focus lance (0.4.25.32): beams meet between ship and target, charge, burn for a second
+			var fl = FocusLanceScript.new()
+			fl.setup(shooter, target, w, self)
+			fx_layer.add_child(fl)
+			return
 		if co != null:
 			# the beam hits the colossus instead (cover)
 			var hp := hit_point(shooter.position, target.position, co)
@@ -2197,19 +2202,6 @@ func fire_weapon(shooter: Ship, target: Ship, w: Dictionary) -> void:
 		var p := Projectile.new()
 		p.setup(shooter, target, w, self)
 		fx_layer.add_child(p)
-
-
-## Bundled focus crystals (package 25f): thin red beams from the hardpoints meet in front of the bow;
-## from there one thick lance goes to the target (drawn by fire_weapon).
-func _bundle_beams(shooter: Ship, target: Ship, n: int, col: Color) -> void:
-	var fwd := Vector2.from_angle(shooter.heading)
-	var side := fwd.orthogonal()
-	var meet := shooter.position + fwd * float(shooter.radius) * 1.25
-	for k in n:
-		var t := (float(k) / maxf(float(n - 1), 1.0)) * 2.0 - 1.0
-		var from := shooter.position + side * t * float(shooter.radius) * 0.55 - fwd * float(shooter.radius) * 0.1
-		spawn_fx(Fx.beam(from, meet, col, 2.5))
-	spawn_fx(Fx.flash(meet, col, float(shooter.radius) * 0.35))
 
 
 ## The Cathedral's anti-drone pulse (package 25f): every drone within `radius` – friend or foe – drifts

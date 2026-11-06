@@ -187,6 +187,13 @@ const PRESETS := {
 		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
 		"weapon_0": "w_lance_l", "tool_0": "t_repair_m", "tool_1": "t_scanner_s",
 		"optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_shieldboost_m", "optional_3": "o_shield_m", "optional_4": "o_targeting_s"}},
+	# debug only (0.4.25.32): a hostile carrier with drones to test fighting drones and the anti-drone
+	# pulse – real pirates never fly Concord ships (not in the archetypes' lists)
+	"pirate_debug_carrier": {"hull": "cfw_quirinus", "archetype": "brawler", "debug_only": true, "modules": {
+		"hull": "hull_composite_m", "engine": "eng_ion_m", "distributor": "dist_m", "reactor": "rea_fusion:6:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_beam_m", "weapon_1": "w_pulse_s", "weapon_2": "w_pulse_s",
+		"optional_0": "o_shield_m", "optional_1": "o_shield_m", "dweapon_0": "w_pulse:1:C"}},
 	# Assembly patrols fly Concord carriers (package 25e) – they launch their drones in a fight
 	"patrol_cfw_light": {"hull": "cfw_demos", "modules": {
 		"hull": "hull_reflect_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",

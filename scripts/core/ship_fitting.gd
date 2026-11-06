@@ -400,7 +400,7 @@ func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
 		rng = minf(rng, float(w2["range"]))
 	lance["damage"] = dmg * 1.3
 	lance["energy"] = energy
-	lance["cooldown"] = cd
+	lance["cooldown"] = maxf(cd, 2.4)            # charge 0.55 s + burn 1 s, then a short pause
 	lance["range"] = rng
 	lance["bundle"] = n
 	lance["size"] = 4
@@ -408,7 +408,7 @@ func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
 	lance["base_name"] = "Focus Lance"
 	s["weapons"] = [lance]
 	s["focus_bundle"] = n
-	s["dps"][String(lance["damage_type"])] = dmg * 1.3 / maxf(cd, 0.01)
+	s["dps"][String(lance["damage_type"])] = dmg * 1.3 / maxf(cd, 2.4)
 
 
 # ---------------------------------------------------------------- Built-in modules (package 25a)

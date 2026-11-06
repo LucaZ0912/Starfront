@@ -1877,6 +1877,9 @@ func cycle_progress(slot: String) -> float:
 	if not e.is_empty() and e["kind"] == "mine":
 		var cdm := maxf(float(e["data"]["cooldown"]), 0.01)
 		return 1.0 - clampf(float(module_timers.get(slot, 0.0)) / cdm, 0.0, 1.0)
+	if not e.is_empty() and String(e["data"].get("active", "")) == "drone_pulse" and module_on.get(slot, false):
+		# the anti-drone pulse (0.4.25.32): the bar fills up until the next pulse
+		return 1.0 - clampf(float(module_timers.get(slot, 0.0)) / maxf(float(e["data"]["interval"]), 0.01), 0.0, 1.0)
 	if e.is_empty() or e["kind"] != "weapon":
 		return 1.0 if module_on.get(slot, false) else 0.0
 	var cd := maxf(float(e["data"]["cooldown"]), 0.01)
@@ -2502,6 +2505,35 @@ func _update_npc_pulse(delta: float) -> void:
 	_npc_pulse_t = 1.0
 
 
+# ---------------------------------------------------------------- Golden spikes (Forge of Return, 0.4.25.32)
+
+## Now and then the golden spikes on the rim of a Templar or Cathedral slowly slide out and back in –
+## each spike at its own time.
+func _draw_spikes(size: Vector2) -> void:
+	var tips: Array = PixelArt.spike_tips(fit.hull_id)
+	if tips.is_empty():
+		return
+	var t := float(Time.get_ticks_msec()) / 1000.0
+	var px := PixelArt.SCALE
+	var half := size * 0.5
+	var gold := Color(0.84, 0.63, 0.22)
+	var light := Color(1.0, 0.86, 0.52)
+	for i in tips.size():
+		var tp: Array = tips[i]
+		var w := sin(t * 0.45 + float(i) * 2.399)              # a slow wave, every spike its own phase
+		var ext := clampf((w - 0.55) / 0.45, 0.0, 1.0)         # out only near the top of the wave
+		if ext <= 0.0:
+			continue
+		var length := ext * px * 3.0
+		var base := Vector2(float(tp[0]) + 1.0, float(tp[1]) + 1.0) * px - half
+		var dir := float(tp[2])                                 # -1 up (outwards on top), +1 down
+		var r := Rect2(Vector2(base.x + px * 0.25, base.y + px if dir > 0.0 else base.y - length), Vector2(px * 0.5, length))
+		draw_rect(r, gold)
+		draw_rect(Rect2(r.position, Vector2(px * 0.25, r.size.y)), light)
+		var tip := Vector2(r.get_center().x, r.position.y if dir < 0.0 else r.end.y)
+		draw_circle(tip, px * 0.35, Color(1.0, 0.95, 0.75, 0.6 * ext))
+
+
 # ---------------------------------------------------------------- Light effects (package 25e, Concord)
 
 ## The owner-colour stripes pulse gently; in a fight a bright spot runs along each from bow to stern;
@@ -3020,6 +3052,8 @@ func _draw() -> void:
 	_draw_hatches()                      # after the arms/wings: the Concordia's doors sit on its wings
 	if fit.hull().get("stripe_fx", false):
 		_draw_stripes(size)
+	if fit.hull().get("spike_fx", false):
+		_draw_spikes(size)
 	for mf in multi_flames:
 		var mp: Vector2 = mf[0] - Vector2(PixelArt.SCALE * 1.5, 0.0)
 		draw_circle(mp - Vector2(float(mf[1]) * 0.4, 0.0), float(mf[1]), Color(mf[2], 0.35))

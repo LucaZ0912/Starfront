@@ -1620,9 +1620,12 @@ func _shoot_standing(view: SystemView) -> void:
 		tps.heading = (tgt9.position - tps.position).angle()
 		var lw: Dictionary = tpf.stats()["weapons"][0]
 		view.camera.position = tps.position + Vector2(160, 0)
-		for i22 in 4:
-			view.fire_weapon(tps, tgt9, lw)
-			await get_tree().physics_frame
+		view.fire_weapon(tps, tgt9, lw)
+		for i22 in 22:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/templar_charge.png")
+		for i22b in 30:
+			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/templar_lance.png")
 		tps.queue_free()
 		tgt9.queue_free()
@@ -1654,6 +1657,10 @@ func _shoot_standing(view: SystemView) -> void:
 		for i24 in 4:
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/cathedral_pulse.png")
+		view.camera.position = cas.position
+		for i25 in 50:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/drones_stunned.png")
 		for d12 in view.drones_of(cas):
 			view.stow_drone(d12)
 		cas.queue_free()
@@ -4416,6 +4423,35 @@ func _test_forge(view: SystemView) -> void:
 	check(ws.size() == 1 and int(ws[0]["bundle"]) == 3 and absf(float(ws[0]["damage"]) - sum * 1.3) < 0.5, "Acolyte: all three crystals join into one lance – +30 %% (%.0f)" % float(ws[0]["damage"]))
 	ac.set_module("weapon_2", "w_pulse:1:C")
 	check(ac.stats()["weapons"].size() == 3 and int(ac.stats()["focus_bundle"]) == 0, "… only when every hardpoint carries a focus crystal")
+	# the lance: the beams meet between ship and target, charge, then burn for a second
+	var tf := GameState.create_from_preset("std_for_templar", "player")
+	tf.position = view.player.position + Vector2(0, -115000)
+	tf.uid = 99913
+	var tsh := Ship.new()
+	tsh.setup(tf, view)
+	view.ship_layer.add_child(tsh)
+	var foe: Ship = view.spawn_npc("pirate_hdy_maul", tsh.position + Vector2(700, 0))
+	foe.set_physics_process(false)
+	var lw: Dictionary = tf.stats()["weapons"][0]
+	var hpf: float = foe.fit.shield + foe.fit.armor + foe.fit.structure
+	view.fire_weapon(tsh, foe, lw)
+	var lance = null
+	for n0 in view.fx_layer.get_children():
+		if n0.get_script() == SystemView.FocusLanceScript:
+			lance = n0
+	var during_charge := 0.0
+	var mid_burn := 0.0
+	if lance != null:
+		lance._process(0.4)
+		during_charge = hpf - (foe.fit.shield + foe.fit.armor + foe.fit.structure)
+		lance._process(0.6)
+		mid_burn = hpf - (foe.fit.shield + foe.fit.armor + foe.fit.structure)
+		lance._process(1.0)
+	var total: float = hpf - (foe.fit.shield + foe.fit.armor + foe.fit.structure)
+	check(lance != null and during_charge == 0.0 and mid_burn > 0.0 and total > mid_burn and lance.is_queued_for_deletion() and float(lw["cooldown"]) >= 2.4, "focus lance: the beams meet between ship and target, charge, then burn for a second (%.0f damage)" % total)
+	foe.queue_free()
+	tsh.queue_free()
+	check(not PixelArt.spike_tips("for_templar").is_empty() and not PixelArt.spike_tips("for_cathedral").is_empty() and GameData.hulls["for_cathedral"].get("spike_fx", false) and not GameData.hulls["for_acolyte"].get("spike_fx", false), "Templar and Cathedral: golden spikes slide out and back in now and then")
 	var cf := GameState.create_from_preset("std_for_cathedral", "player")
 	check(cf.stats()["weapons"].size() == 8 and int(cf.stats()["focus_bundle"]) == 0, "the Cathedral does not bundle – eight separate batteries")
 	# the anti-drone pulse: every drone in range, friend or foe, drifts for 15 s
@@ -4448,6 +4484,11 @@ func _test_forge(view: SystemView) -> void:
 	var p0: Vector2 = ds[0].position
 	ds[0]._physics_process(0.5)
 	var drifted: bool = ds[0].position.distance_to(p0 + Vector2(25, 0)) < 2.0
+	var bar0: float = cs.cycle_progress("builtin_drone_pulse")
+	cs.module_timers["builtin_drone_pulse"] = 15.0
+	var bar_half: float = cs.cycle_progress("builtin_drone_pulse")
+	cs.module_timers["builtin_drone_pulse"] = 30.0
+	check(bar0 < 0.1 and absf(bar_half - 0.5) < 0.01, "the pulse tile shows a bar that fills up until the next pulse")
 	check(e1 == "" and stunned and drifted and float(cs.module_timers.get("builtin_drone_pulse", 0.0)) > 25.0, "Cathedral: the anti-drone pulse knocks out every drone within 5,000 km (also allied ones) – they drift for 15 s")
 	for d3 in ds:
 		view.stow_drone(d3)
@@ -4495,6 +4536,30 @@ func _test_forge(view: SystemView) -> void:
 	var launched: int = view.drones_of(fs).size()
 	Commands.cheats_enabled = cheats
 	check(e3 == "" and launched > 0, "debug menu: nearby NPC carriers launch their drones (%d)" % launched)
+	# debug: a hostile drone carrier – never flown by real pirates
+	var real := false
+	for a9 in ArchData.ARCHETYPES:
+		real = real or "pirate_debug_carrier" in ArchData.ARCHETYPES[a9]["presets"]
+	real = real or "pirate_debug_carrier" in ArchData.HDY_PIRATES
+	Commands.cheats_enabled = true
+	var e4: String = Commands.execute({"type": "debug_spawn", "preset": "pirate_debug_carrier", "count": 1, "gov": ""})
+	Commands.cheats_enabled = cheats
+	var dc = null
+	for n11 in view.ship_layer.get_children():
+		if n11 is Ship and n11.fit.hull_id == "cfw_quirinus" and n11.faction == "pirate":
+			dc = n11
+	var hostile_drones := false
+	if dc != null:
+		dc.target = view.player
+		dc._npc_drone_t = 0.0
+		dc._update_npc_drones(1.0)
+		for d13 in view.drones_of(dc):
+			hostile_drones = hostile_drones or (d13.hostile_to_player() or d13.faction == "pirate")
+	check(e4 == "" and dc != null and hostile_drones and not real, "debug menu: a hostile pirate drone carrier (debug only – real pirates never fly it)")
+	if dc != null:
+		for d14 in view.drones_of(dc):
+			view.stow_drone(d14)
+		dc.queue_free()
 	for d4 in view.drones_of(fs):
 		view.stow_drone(d4)
 	fs.queue_free()
