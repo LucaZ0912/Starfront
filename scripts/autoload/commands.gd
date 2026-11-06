@@ -449,6 +449,9 @@ func _c_ship_buy(c: Dictionary) -> String:
 	var hid: String = c["hull"]
 	if not hid in st["shipyard"]:
 		return "This shipyard does not sell that hull."
+	var why := GameState.hull_standing_error(hid)
+	if why != "":
+		return why
 	var with_fit := bool(c.get("fitted", false))
 	var preset := "std_" + hid
 	if with_fit and not GameData.presets.has(preset):
@@ -1037,6 +1040,23 @@ func _c_debug_spawn(c: Dictionary) -> String:
 	for i in clampi(int(c.get("count", 1)), 1, 20):
 		var off := Vector2.from_angle(randf() * TAU) * randf_range(700.0, 1100.0)
 		world.spawn_npc(preset, world.player.position + off, side, gov)
+	return ""
+
+
+## {"type":"debug_fill_drones"} – fills the active ship's drone hangar (package 25e).
+func _c_debug_fill_drones(_c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No ship."
+	var room := int(f.stats()["drone_storage"])
+	if room <= 0:
+		return "No drone hangar fitted."
+	while f.drones.size() < room:
+		f.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+	for r in f.drones:
+		r["fuel"] = 1.0
+		r["hp"] = 1.0
+	GameState.log_msg("Drone hangar filled: %d drones." % f.drones.size(), GameState.COL_GOOD)
 	return ""
 
 

@@ -32,14 +32,21 @@ func build() -> void:
 			if mk == "khi":
 				info.add_child(UI.label("Built-in refinery, ore hold %d m³, prospector  •  +10 %% mining  •  slow to turn and to warp" % int(h.get("ore_cargo", 0)), 12, Color(1.0, 0.8, 0.35)))
 		info.add_child(UI.label(h["desc"], 12, UI.TEXT_DIM))
+		var why_t: String = GameState.hull_standing_error(hid)       # faction ships need standing (package 25e)
+		if String(h.get("min_tier", "")) != "":
+			info.add_child(UI.label("Faction ship – needs %s standing" % String(h["min_tier"]).capitalize() + (("  •  " + why_t) if why_t != "" else "  ✓"), 12, UI.BAD if why_t != "" else UI.GOOD))
 		var sl: Dictionary = h["slots"]
 		info.add_child(UI.label("Structure %d  •  Mass %d t  •  Cargo %d m³  •  Slots: %d weapons, %d tools, %d optional" % [
 			int(h["structure"]), int(h["mass"]), int(h["cargo"]), int(sl.get("weapon", 0)), int(sl.get("tool", 0)), int(sl.get("optional", 0))], 12))
 		var id: String = hid
-		row.add_child(UI.button("Bare hull\n%s" % GameData.fmt_credits(buy_price(int(h["price"]))), func(): _buy(id, false)))
+		var b1 := UI.button("Bare hull\n%s" % GameData.fmt_credits(buy_price(int(h["price"]))), func(): _buy(id, false))
+		b1.disabled = why_t != ""
+		row.add_child(b1)
 		var preset: String = "std_" + hid
 		if GameData.presets.has(preset):
-			row.add_child(UI.button("Standard fit\n%s" % GameData.fmt_credits(buy_price(GameData.preset_price(preset))), func(): _buy(id, true)))
+			var b2 := UI.button("Standard fit\n%s" % GameData.fmt_credits(buy_price(GameData.preset_price(preset))), func(): _buy(id, true))
+			b2.disabled = why_t != ""
+			row.add_child(b2)
 
 
 func _buy(hid: String, with_fit: bool) -> void:

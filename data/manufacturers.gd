@@ -10,6 +10,8 @@ extends RefCounted
 ##   yards    station types whose shipyards sell its hulls ("all" = every shipyard); "small_yards":
 ##            station types without a full shipyard that still sell some of its hulls (package 25a)
 ##   rich_only only in rich, safe systems of these powers (package 25c, Maison Aurelle)
+## State manufacturers (kind "state") sell only at shipyards of their faction's stations, each hull
+## from its standing tier (hull min_tier) – package 25e.
 
 const MAKERS := {
 	"earthworks": {

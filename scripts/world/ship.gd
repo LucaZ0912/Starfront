@@ -365,6 +365,7 @@ func _physics_process(delta: float) -> void:
 	_regen(delta, s)
 	_update_hatches(delta)
 	_update_arms(delta)
+	_update_npc_drones(delta)
 	if in_warp():
 		_update_warp(delta)
 		fit.position = position
@@ -2207,6 +2208,28 @@ func has_hatch(n: String) -> bool:
 	return fit.hull().get("hatches", {}).has(n)
 
 
+## The hangar doors drones use: "drones", "drones_2" … (package 25e – Concord carriers have several).
+func drone_hatches() -> Array:
+	var out: Array = []
+	for n in fit.hull().get("hatches", {}):
+		if String(n).begins_with("drones"):
+			out.append(n)
+	out.sort()
+	return out
+
+
+## The drone hatch nearest to a point (where a returning drone lands).
+func nearest_drone_hatch(p: Vector2) -> String:
+	var best := ""
+	var bd := INF
+	for n in drone_hatches():
+		var d := hatch_point(n).distance_to(p)
+		if d < bd:
+			bd = d
+			best = n
+	return best
+
+
 ## Keeps a hatch open for `hold` seconds (it slides open first, and shut again afterwards).
 func open_hatch(n: String, hold: float) -> void:
 	if has_hatch(n):
@@ -2265,7 +2288,7 @@ func _draw_hatches() -> void:
 	var cm: Color = cols["M"]
 	var cn: Color = cols["N"]
 	var cb: Color = cols["B"]
-	if overlay:
+	if overlay or String(h.get("maker", "")) != "hadrian":
 		var hc: Array = PixelArt.HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"])
 		cm = cols[hc[0]]
 		cn = cols[hc[1]]
@@ -2321,6 +2344,39 @@ func _draw_platform_ship(r: Rect2) -> void:
 	if t >= 1.6:
 		draw_rect(Rect2(c - size * 0.5 + Vector2(6, 6), size), Color(0, 0, 0, 0.25 * alpha))   # its shadow on the deck
 	draw_texture_rect(tex, Rect2(c - size * 0.5, size), false, Color(lit, lit, lit, alpha))
+
+
+# ---------------------------------------------------------------- NPC carriers (package 25e)
+
+var _npc_drone_t := 0.0
+var _npc_calm_t := 0.0
+const NPC_DRONE_CALM := 18.0     # seconds without a fight before an NPC carrier calls its drones back
+
+
+## Concord carriers flown by NPCs launch their drones when they fight and call them back afterwards.
+func _update_npc_drones(delta: float) -> void:
+	if manual or faction == "player" or is_drone or view == null or not fit.hull().get("npc_drones", false):
+		return
+	_npc_drone_t -= delta
+	if _npc_drone_t > 0.0:
+		return
+	_npc_drone_t = 1.0
+	var fighting: bool = target != null and is_instance_valid(target) and target is Ship and not target.dying and Ship.hostile(self, target) \
+		and position.distance_to(target.position) < float(fit.stats()["sensor_range"]) * 3.0
+	var out: Array = view.drones_of(self)
+	if fighting:
+		_npc_calm_t = 0.0
+		if out.is_empty() and not view.drones_must_return(self):
+			if fit.drones.is_empty():
+				for i in int(fit.stats()["drones_max"]):
+					fit.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+			fit.drone_role = "combat"
+			fit.drone_modes["combat"] = "defend"
+			view.launch_drones(self)
+	elif not out.is_empty():
+		_npc_calm_t += 1.0
+		if _npc_calm_t >= NPC_DRONE_CALM:
+			view.recall_drones(self)
 
 
 # ---------------------------------------------------------------- Swinging arms (package 25d, Goliath)

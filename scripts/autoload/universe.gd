@@ -662,6 +662,8 @@ func build_test_layout() -> Dictionary:
 				"seed": 1000 + i * 37, "zone": NO_FIRE_ZONE[tier - 1],
 				"faction": FactionData.POWERS[(i + tier) % 3],
 			})
+	for stf in L["stations"]:
+		_add_faction_yard(stf)
 	# move the tier-3 Trade Hub to the front: the pilot starts there
 	var start: Dictionary = L["stations"][2 * n_types]
 	L["stations"].remove_at(2 * n_types)
@@ -973,6 +975,7 @@ func _special_stations(L: Dictionary, id: int, sec: float) -> void:
 		st["seed"] = rng.randi()
 		st["zone"] = NO_FIRE_ZONE[clampi(int(st["tier"]), 1, 3) - 1]
 		st["faction"] = station_faction(id, si)
+		_add_faction_yard(st)
 		si += 1
 	# Pirate Haven (planned for lawless systems): hostile scenery, docking needs reputation – later
 	var htier := int(systems[id].get("haven_tier", 0))
@@ -1320,6 +1323,20 @@ func _make_shop(type: String, tier: int, rng: RandomNumberGenerator) -> Array:
 	return shop
 
 
+## Faction ships (package 25e): a shipyard of a power's station also sells the hulls of the power's
+## state manufacturer (size up to the tier); buying them needs standing (hull min_tier).
+func _add_faction_yard(st: Dictionary) -> void:
+	var t: Dictionary = GameData.station_types.get(String(st["type"]), {})
+	if not t.get("shipyard", false):
+		return
+	var f := String(st.get("faction", ""))
+	for hid in GameData.hulls:
+		var h: Dictionary = GameData.hulls[hid]
+		var mk: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
+		if String(mk.get("kind", "")) == "state" and String(mk.get("faction", "")) == f and h["buyable"] and int(h["size"]) <= int(st["tier"]) and not hid in st["shipyard"]:
+			st["shipyard"].append(hid)
+
+
 ## Shipyard stock by manufacturer (package 25a, data/manufacturers.gd): a maker's hulls at the
 ## station types in its "yards" (size up to the tier), plus "small_yards" (e.g. KHI and the
 ## Earthworks Drillhead at mining colonies). `rich`: a rich, safe system – makers with "rich_only"
@@ -1334,6 +1351,8 @@ func _make_shipyard(type: String, tier: int, rich: bool = false) -> Array:
 		var mk: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
 		if mk.has("rich_only") and not rich:
 			continue
+		if String(mk.get("kind", "")) == "state":
+			continue                     # faction ships: see _add_faction_yard (package 25e)
 		# package 25d: big warships only at military stations, shipyard complexes and tier-3 stations
 		if String(h.get("yard_rule", "")) == "military" and not (type in ["military", "shipyard"] or tier >= 3):
 			continue

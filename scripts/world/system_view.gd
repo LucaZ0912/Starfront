@@ -1420,6 +1420,8 @@ func stow_all_drones(c, relaunch: bool) -> void:
 func is_ally(n) -> bool:
 	if not (n is Ship):
 		return false
+	if n.is_drone and n.carrier != null and is_instance_valid(n.carrier) and n.carrier.faction != "player":
+		return is_ally(n.carrier)            # an NPC carrier's drone (package 25e)
 	if n.faction == "player" or n.is_drone or n.escort_mark:
 		return true
 	if player_group().has(n):

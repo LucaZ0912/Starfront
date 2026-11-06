@@ -556,12 +556,27 @@ func _update_miners(dt: float) -> void:
 const HDY_PATROL := {"patrol_light": "patrol_hdy_light", "patrol_medium": "patrol_hdy_medium", "patrol_heavy": "patrol_hdy_heavy"}
 
 
+## Package 25e: in its own systems a power's patrols fly its state manufacturer's ships – the Assembly
+## Concord carriers (now and then a Goliath in its colours); in contested systems Earthworks ships.
+const CFW_PATROL := {"patrol_light": "patrol_cfw_light", "patrol_medium": "patrol_cfw_medium", "patrol_heavy": "patrol_cfw_heavy"}
+const GOLIATH_SHARE := 0.15
+
+
 func _gov_presets(gov: String, presets: Array) -> Array:
-	if gov != "directorate":
-		return presets
+	if Universe.controller(sid) != gov:
+		return presets                   # contested / foreign system: Earthworks ships
 	var out: Array = []
 	for p in presets:
-		out.append(HDY_PATROL[p] if HDY_PATROL.has(p) and randf() < 0.5 else p)
+		match gov:
+			"assembly":
+				if p in ["patrol_medium", "patrol_heavy"] and randf() < GOLIATH_SHARE:
+					out.append("patrol_hdy_heavy")
+				else:
+					out.append(CFW_PATROL.get(p, p))
+			"directorate":
+				out.append(HDY_PATROL[p] if HDY_PATROL.has(p) and randf() < 0.5 else p)
+			_:
+				out.append(p)
 	return out
 
 

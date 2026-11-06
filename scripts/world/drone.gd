@@ -23,6 +23,7 @@ var _think := 0.0
 var _idle := false                # flying in formation this frame
 var runway := false               # still taking off along the carrier's flight deck
 var hatch_launch := false         # waiting below the carrier's drone hatch (package 25d, Citadel)
+var hatch_name := "drones"        # the hangar door it uses (Concord carriers have several, package 25e)
 var _hold := 0.0                  # waiting for its turn at the start of the runway
 const RUNWAY_GAP := 0.45          # seconds between two drones on the runway
 const HATCH_WAIT := 0.5           # the drone hatch needs this long to slide open
@@ -35,7 +36,8 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 	dstats = cs["drone"]
 	weapon = cs["drone_weapon"]
 	dtool = cs["drone_tool"]
-	var f := ShipFitting.new("drone", "player")
+	var f := ShipFitting.new("drone", carrier.faction)    # NPC carriers fly drones too (package 25e)
+	f.gov = carrier.fit.gov
 	f.uid = uid
 	f.ship_name = "Drone %d" % n
 	f.system_id = carrier.fit.system_id
@@ -46,7 +48,7 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 	f.armor = 0.0
 	f.shield = float(dstats["shield"])
 	setup(f, p_view)
-	paint = String(carrier.fit.hull().get("drone_paint", carrier.paint if carrier.faction == "player" else "player"))
+	paint = String(carrier.fit.hull().get("drone_paint", carrier.paint))
 	is_drone = true
 	manual = false
 	velocity = Vector2.from_angle(carrier.heading + PI + randf_range(-0.6, 0.6)) * 120.0 + carrier.velocity
@@ -59,13 +61,16 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 		runway = true
 		_hold = RUNWAY_GAP * carrier.deck_queue
 		carrier.deck_queue += 1
-	elif carrier.has_hatch("drones"):
-		# the Citadel: the drone hatch slides open, the drones rise out of it one by one
+	elif not carrier.drone_hatches().is_empty():
+		# hangar doors slide open, the drones rise out of them – one after another per door, with
+		# several doors (Concord carriers) side by side at the same time
+		var hs: Array = carrier.drone_hatches()
 		hatch_launch = true
-		_hold = HATCH_WAIT + RUNWAY_GAP * carrier.hatch_queue
+		hatch_name = hs[carrier.hatch_queue % hs.size()]
+		_hold = HATCH_WAIT + RUNWAY_GAP * float(carrier.hatch_queue / hs.size())
 		carrier.hatch_queue += 1
-		carrier.open_hatch("drones", _hold + 0.4)
-		position = carrier.hatch_point("drones")
+		carrier.open_hatch(hatch_name, _hold + 0.4)
+		position = carrier.hatch_point(hatch_name)
 		velocity = carrier.velocity
 		heading = carrier.heading
 		visible = false
@@ -80,6 +85,8 @@ func fuel_left() -> float:
 
 
 func hostile_to_player() -> bool:
+	if carrier != null and is_instance_valid(carrier) and carrier.faction != "player":
+		return carrier.hostile_to_player()     # an NPC carrier's drone sides with its carrier (25e)
 	return false
 
 
@@ -114,11 +121,12 @@ func _physics_process(delta: float) -> void:
 		work = null
 		dest = carrier.deck_point(0.5)
 		var land := 40.0 if carrier.has_deck() else float(carrier.radius) + 40.0
-		if carrier.has_hatch("drones"):
-			dest = carrier.hatch_point("drones")      # back in through the drone hatch
+		if not carrier.drone_hatches().is_empty():
+			var hn: String = carrier.nearest_drone_hatch(position)
+			dest = carrier.hatch_point(hn)             # back in through the nearest hangar door
 			land = 40.0
 			if position.distance_to(dest) < 350.0:
-				carrier.open_hatch("drones", 0.6)
+				carrier.open_hatch(hn, 0.6)
 		if position.distance_to(dest) < land:
 			view.stow_drone(self)
 			return
@@ -217,7 +225,8 @@ func _pick_combat_target(mode: String):
 			var t = carrier.locked_node()
 			return t if (t is Ship and t != carrier and not t.is_drone and _valid_target(t)) else null
 		"defend":
-			return _nearest(func(n): return Ship.hostile(carrier, n) and (n.provoked or n.target == carrier or (n.target != null and is_instance_valid(n.target) and n.target is Ship and n.target.is_drone) or carrier.last_attacker == n))
+			return _nearest(func(n): return Ship.hostile(carrier, n) and (n.provoked or n.target == carrier or (n.target != null and is_instance_valid(n.target) and n.target is Ship and n.target.is_drone) or carrier.last_attacker == n
+				or (carrier.faction != "player" and n == carrier.target)))
 		"fire_at_will":
 			return _nearest(func(n): return not view.is_ally(n))
 	return null
@@ -433,16 +442,19 @@ func _take_off(delta: float) -> void:
 ## Waits in the dark below the drone hatch until it is open and its turn has come, then rises out.
 func _rise_from_hatch(delta: float) -> void:
 	_hold -= delta
-	position = carrier.hatch_point("drones")
+	position = carrier.hatch_point(hatch_name)
 	velocity = carrier.velocity
 	heading = carrier.heading
 	fit.position = position
-	visible = _hold < 0.3 and float(carrier.hatch_open.get("drones", 0.0)) > 0.7
+	visible = _hold < 0.3 and float(carrier.hatch_open.get(hatch_name, 0.0)) > 0.7
 	if _hold <= 0.0:
 		hatch_launch = false
 		visible = true
 		carrier.hatch_queue = maxi(carrier.hatch_queue - 1, 0)
-		velocity = carrier.velocity + Vector2.from_angle(carrier.heading + PI * (0.5 if randf() < 0.5 else -0.5)) * 160.0
+		var side := signf((position - carrier.position).dot(Vector2.from_angle(carrier.heading).orthogonal()))
+		if side == 0.0:
+			side = 1.0 if randf() < 0.5 else -1.0
+		velocity = carrier.velocity + Vector2.from_angle(carrier.heading + PI * 0.5 * side) * 160.0   # out to its own side
 	queue_redraw()
 
 

@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.26 – 2026-11-07
+
+**Package 25e – Concord Fleetworks, the first faction ships.**
+- Demos, Quirinus, Concordia: Assembly drone carriers with visible hangar doors (2 / 4 / 6).
+- Drones doubled in every way, control range up to the recon range; own guns half damage; shields +60 %
+  with three times the downtime. Concordia: eleven drones in Assembly blue.
+- Drones launch from several hangar doors at once and land in the nearest.
+- NPC carriers launch their drones in a fight and recall them afterwards.
+- Faction ships only at the faction's shipyards and only with standing (Neutral / Friendly / Allied).
+- Assembly patrols fly Concord carriers in their own systems (now and then a Goliath).
+- Debug: fill the drone hangar. Fix: a hull's shield bonus no longer shortens the shield downtime.
+
 ## alpha 0.4.25.25 – 2026-11-07
 
 - Mogura and Iwakudaki: drone hatch moved 3 pixels towards the stern (cleaner fit).

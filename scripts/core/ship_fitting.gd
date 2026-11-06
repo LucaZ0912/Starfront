@@ -294,6 +294,7 @@ func _compute() -> Dictionary:
 	for dt0 in rb:
 		s["res"][dt0] = float(s["res"][dt0]) + float(rb[dt0])
 	s["shield_max"] *= float(h.get("shield_mult", 1.0))
+	down_w *= float(h.get("shield_mult", 1.0))        # a hull's shield bonus does not shorten the downtime
 	s["shield_regen"] *= float(h.get("shield_mult", 1.0))
 	for cls in s["mining_bonus"]:
 		s["mining_bonus"][cls] = float(s["mining_bonus"][cls]) + float(h.get("mining_bonus", 0.0))
@@ -342,7 +343,7 @@ func _compute() -> Dictionary:
 	# package 20: a collapsed shield stays down for a while – longer for big shields, high-capacity
 	# variants and low quality – and comes back at 50 %
 	if s["shield_max"] > 0.0:
-		s["shield_downtime"] = clampf(down_w / s["shield_max"] * (4.0 + sqrt(s["shield_max"]) / 3.0), 3.0, 60.0)
+		s["shield_downtime"] = clampf(down_w / s["shield_max"] * (4.0 + sqrt(s["shield_max"]) / 3.0), 3.0, 60.0) * float(h.get("shield_down_mult", 1.0))
 	for pd in s["pd"]:
 		pd["range"] = float(pd["range"]) * s["range_mult"]
 		pd["cooldown"] = float(pd["cooldown"]) / ratio
@@ -354,6 +355,7 @@ func _compute() -> Dictionary:
 		w["cooldown"] = float(w["cooldown"]) / ratio
 		if w["damage_type"] == "explosive":
 			w["cooldown"] = float(w["cooldown"]) / float(h.get("missile_rof", 1.0))   # Talon (package 25d)
+		w["damage"] = float(w["damage"]) * float(h.get("weapon_dmg_mult", 1.0))      # Concord: weak guns (25e)
 		dps[w["damage_type"]] += float(w["damage"]) / float(w["cooldown"])
 		min_range = minf(min_range, w["range"])
 	for t2 in s["tools"]:
@@ -449,10 +451,17 @@ func _drone_stats(s: Dictionary, mods: Dictionary) -> void:
 	d["shield"] += float(hb.get("shield", 0.0)) + float(b.get("d_shield", 0.0)) * (float(hb.get("shield_mult", 1.0)) - 1.0)
 	d["shield_regen"] += float(hb.get("shield_regen", 0.0)) + float(b.get("d_shield_regen", 0.0)) * (float(hb.get("shield_mult", 1.0)) - 1.0)
 	d["mining_mult"] = 1.0 + float(hb.get("mining", 0.0))
+	# package 25e (Concord Fleetworks): everything about the drones doubled, the range up to the recon range
+	var dm := float(hull().get("drone_mult", 1.0))
+	if dm != 1.0:
+		for k in ["hull", "cargo", "fuel", "repair", "shield", "shield_regen"]:
+			d[k] = float(d[k]) * dm
+		d["range"] = minf(float(d["range"]) * dm, GameData.RECON_RANGE)
+		d["mining_mult"] = float(d["mining_mult"]) * dm
 	s["drone"] = d
 	var w: Dictionary = mods.get("dweapon", {}).duplicate()
 	if not w.is_empty():
-		w["damage"] = float(w["damage"]) * float(b.get("d_damage", 1.0))
+		w["damage"] = float(w["damage"]) * float(b.get("d_damage", 1.0)) * float(hull().get("drone_mult", 1.0))
 		w["range"] = float(w["range"]) * float(b.get("d_wrange", 1.0))
 		w["id"] = modules.get("dweapon_0", "")
 		w["slot"] = "dweapon_0"

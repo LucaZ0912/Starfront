@@ -139,6 +139,39 @@ const PRESETS := {
 		"optional_0": "o_shield_s", "optional_1": "o_afterburner_s"}},
 
 	# ---------------- Civilians & patrols (phase 0.5 package 11) ----------------
+	# Concord Fleetworks (package 25e)
+	"std_cfw_demos": {"hull": "cfw_demos", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_radar_s",
+		"weapon_0": "w_pulse_s", "weapon_1": "w_pulse_s", "tool_0": "t_repair_s",
+		"optional_0": "o_shield:2:C", "optional_1": "o_shield:2:C", "optional_2": "o_capacitor_s"}},
+	"std_cfw_quirinus": {"hull": "cfw_quirinus", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_ion_m", "distributor": "dist_m", "reactor": "rea_fusion:6:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_beam_m", "weapon_1": "w_pulse_s", "weapon_2": "w_pulse_s", "tool_0": "t_repair_s", "tool_1": "t_scanner_s",
+		"optional_0": "o_shield_m", "optional_1": "o_shield_m", "optional_2": "o_shieldboost_s", "optional_3": "o_capacitor_s"}},
+	"std_cfw_concordia": {"hull": "cfw_concordia", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
+		"weapon_0": "w_lance_l", "tool_0": "t_repair_m", "tool_1": "t_scanner_s",
+		"optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_shieldboost_m", "optional_3": "o_shield_m", "optional_4": "o_targeting_s"}},
+	# Assembly patrols fly Concord carriers (package 25e) – they launch their drones in a fight
+	"patrol_cfw_light": {"hull": "cfw_demos", "modules": {
+		"hull": "hull_reflect_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c2_s", "sensors": "sen_radar_s",
+		"weapon_0": "w_pulse_s", "weapon_1": "w_autocannon_s", "optional_0": "o_shield:2:C", "optional_1": "o_shield:2:C",
+		"dweapon_0": "w_pulse:1:C"}},
+	"patrol_cfw_medium": {"hull": "cfw_quirinus", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_ion_m", "distributor": "dist_m", "reactor": "rea_fusion:6:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_beam_m", "weapon_1": "w_railgun_m", "weapon_2": "w_pulse_s",
+		"optional_0": "o_shield_m", "optional_1": "o_shield_m", "optional_2": "o_targeting_s",
+		"dweapon_0": "w_pulse:1:C"}},
+	"patrol_cfw_heavy": {"hull": "cfw_concordia", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
+		"weapon_0": "w_lance_l", "optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_shield_m",
+		"dweapon_0": "w_pulse:1:C"}},
 	# Hadrian Dynamics (package 25d)
 	"std_hdy_talon": {"hull": "hdy_talon", "modules": {
 		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",

@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle) und 25d (Hadrian Dynamics) fertig, als Nächstes 25e (Concord Fleetworks). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.25. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics) und 25e (Concord Fleetworks) fertig, als Nächstes 25f (Forge of Return). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.26. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -910,6 +910,17 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Goliath-Arme beweglich** (0.4.25.20): fester Kontaktpunkt am Heck – die Triebwerkspartie bleibt gerade, an ihrem Ende sitzt ein Gelenk. Im All öffnen sich die Arme zu einem runden, kreisförmigen Bogen, der die Scheren weit vom Rumpf wegschiebt; beim An- und Abdocken falten sie sich in acht Stufen wieder eng an den Rumpf (passt so in die Hangarbuchten). In Menüs zeigt das Bild die geschlossene Form.
 - [x] Triebwerksflammen sitzen dort, wo die Triebwerke wirklich sind (aus der Pixel-Art abgeleitet): die Goliath hat zwei Flammen an den Arm-Triebwerken statt einer in der Mitte; Schiffe mit mittigem Antrieb bleiben wie bisher (0.4.25.21).
 - [x] **Drohnenklappe für jedes Drohnenschiff** (0.4.25.22): alle Schiffe mit Drohnen (außer der Kanayama-maru mit ihrer Startbahn) haben eine sichtbare Schiebeklappe auf der Mittellinie – Größe nach Schiffsklasse, in den Farben des Herstellers (Rumpffarbe, KHI-Gelb, Aurelle-Elfenbein mit Gold, Hadrian-Stahl), bei der Empress am Heck vor dem Park. Die Drohnen steigen daraus auf und landen wieder darin. Die Stellen sucht `tools/art/drone_hatches.py` auf glatter Hülle (ohne Cockpit, Waffen, Abzeichen). Ab 0.4.25.23 ist die geschlossene Klappe Teil des Schiffsbilds und damit auch in Hangar, Werft und Schiffsmenü zu sehen; ab 0.4.25.24 liegt ihre untere Hälfte wie der Rumpf im Schatten (der Knick in der Mitte läuft über die Klappe).
+
+**Umgesetzt 25e (7. Nov 2026, alpha 0.4.25.26)** – Concord Fleetworks, die ersten Fraktionsschiffe, 11 neue automatische Prüfungen:
+
+- [x] **Demos** (S, Milizträger, 32.000 cr, ab Neutral): 3 Drohnen, zwei Hangartore in Seitenkapseln, leichte Waffen, wenig Panzerung. **Quirinus** (M, Patrouillenträger, 150.000 cr, ab Friendly): 7 Drohnen, vier Hangartore. **Concordia** (L, Flottenträger, 720.000 cr, ab Allied): als einziges Schiff **11 Drohnen** in Assembly-Blau, sechs Hangartore an breiten Flugdecks, ein großer Waffenplatz, sehr gute Sensoren, Sensorfeld, sehr starke Schilde.
+- [x] **Drohnen-Markenzeichen:** Hülle, Schaden, Abbau, Reparatur, Laderaum und Treibstoff der Drohnen verdoppelt; Steuerreichweite verdoppelt, höchstens bis zur Recon-Reichweite. **Eigene Waffen:** halber Schaden. **Schilde:** +60 % (Concordia +90 %), dafür dreifache Ausfallzeit nach einem Zusammenbruch (Schildbonus eines Rumpfs verkürzt die Ausfallzeit nicht mehr).
+- [x] **Mehrere Hangartore:** Schiffe können mehrere Drohnentore haben (`drones`, `drones_2` …); die Drohnen steigen gleichzeitig aus allen Toren auf, jedes Tor öffnet und schließt sich einzeln, zurückkehrende Drohnen landen im nächstgelegenen. Tore in den Farben des Besitzers.
+- [x] **NPC-Träger kämpfen mit Drohnen:** Concord-Schiffe von NPCs starten im Kampf alle Drohnen (Modus Verteidigen, greifen auch das Ziel des Trägers an) und holen sie 18 s nach dem Kampf zurück. Drohnen von NPC-Trägern gehören zur Fraktion ihres Trägers (Farbe, Feindschaft, Verbündete).
+- [x] **Fraktionswerften:** Concord-Schiffe gibt es nur an Werften von Assembly-Stationen (Größe bis zur Stationsstufe); Kauf nur mit dem nötigen Ruf – die Werft zeigt die Bedingung, die Kaufknöpfe sind sonst gesperrt.
+- [x] **Patrouillen:** In Assembly-Systemen fliegen die Patrouillen Demos, Quirinus und Concordia (gelegentlich eine Goliath in Assembly-Farben); in umkämpften Systemen Earthworks-Schiffe. Directorate wie bisher halb Hadrian (nur in eigenen Systemen).
+- [x] **Debug-Funktionen:** Debug-Menü → Ship: „Fill drone hangar“; „Spawn any ship next to you“ kann jetzt auch Assembly-Patrouillen (patrol_cfw_*) als Gegner oder neutral setzen.
+- [x] Nebenbei: der zufällig scheiternde Test „asteroid lock“ wählt nur noch nicht abgebaute Asteroiden.
 
 ### Stationstyp 0 (Paket 26)
 

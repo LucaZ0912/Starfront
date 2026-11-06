@@ -1,4 +1,5 @@
 extends Node
+const MakerData = preload("res://data/manufacturers.gd")
 ## Player state: pilot, credits, ships (hangars), active ship, storage, contracts, hyperspace jumps.
 ## A pilot always flies exactly ONE ship (active_uid). Other ships are parked docked in
 ## station hangars and can only be switched there.
@@ -516,6 +517,19 @@ func storage_remove(station_id: String, module_id: String, n: int = 1) -> bool:
 
 
 # ---------------------------------------------------------------- Contracts (BlackLedger)
+
+## Faction ships (package 25e): "" = may buy, otherwise why not (standing with the maker's faction).
+func hull_standing_error(hid: String) -> String:
+	var h: Dictionary = GameData.hulls.get(hid, {})
+	var tier := String(h.get("min_tier", ""))
+	if tier == "":
+		return ""
+	var mk: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
+	var f := String(mk.get("faction", ""))
+	if f == "" or rep.at_least(f, tier):
+		return ""
+	return "%s sells the %s only to %s pilots (yours: %s)." % [mk.get("name", "?"), h["name"], tier.capitalize(), rep.tier_name(f)]
+
 
 ## Passenger contracts of a station (package 25c) – own tab on the board.
 func passenger_offers_for(system_id: int, station: Dictionary) -> Array:

@@ -197,7 +197,7 @@ func _process(delta: float) -> void:
 				# Lock an asteroid: weapons refuse it, the panel and lock work
 				var best: Celestial = null
 				for c in view.celestials:
-					if is_instance_valid(c) and c.kind == "asteroid" and (best == null or c.position.distance_to(view.player.position) < best.position.distance_to(view.player.position)):
+					if is_instance_valid(c) and c.kind == "asteroid" and not c.is_depleted() and (best == null or c.position.distance_to(view.player.position) < best.position.distance_to(view.player.position)):
 						best = c
 				var aid: String = best.data["id"]
 				view.player.position = best.position + Vector2(200, 0)
@@ -522,6 +522,7 @@ func _process(delta: float) -> void:
 				_test_kanayama(view)
 				_test_aurelle(view)
 				_test_hadrian(view)
+				_test_concord(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -1404,6 +1405,26 @@ func _shoot_standing(view: SystemView) -> void:
 			hx += him.get_width() + 40
 		hy += PixelArt.ship_texture(hh9, "player").get_height() * 4 + 24
 	hsh.save_png("res://Claude outputs/hadrian_ships.png")
+	# package 25e: the Concord carriers in the pilot's paint and in Assembly colours, the blue drone
+	var cfw := ["cfw_demos", "cfw_quirinus", "cfw_concordia"]
+	var csh := Image.create(1100, 760, false, Image.FORMAT_RGBA8)
+	csh.fill(Color(0.06, 0.07, 0.1))
+	var cyy := 20
+	for ch9 in cfw:
+		var cxx := 20
+		for crow in 2:
+			var cim := PixelArt.ship_texture(ch9, "player" if crow == 0 else "assembly").get_image()
+			cim.resize(cim.get_width() * 4, cim.get_height() * 4, Image.INTERPOLATE_NEAREST)
+			if cxx + cim.get_width() > 1100:
+				cyy += cim.get_height() + 16
+				cxx = 20
+			csh.blend_rect(cim, Rect2i(0, 0, cim.get_width(), cim.get_height()), Vector2i(cxx, cyy))
+			cxx += cim.get_width() + 40
+		cyy += PixelArt.ship_texture(ch9, "player").get_height() * 4 + 24
+	var bdr := PixelArt.ship_texture("drone", "assembly_drone").get_image()
+	bdr.resize(bdr.get_width() * 8, bdr.get_height() * 8, Image.INTERPOLATE_NEAREST)
+	csh.blend_rect(bdr, Rect2i(0, 0, bdr.get_width(), bdr.get_height()), Vector2i(980, 30))
+	csh.save_png("res://Claude outputs/concord_ships.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -1525,6 +1546,30 @@ func _shoot_standing(view: SystemView) -> void:
 			view.stow_drone(dd9)
 		cs9.queue_free()
 		gs9.queue_free()
+		# package 25e: a Concordia launches its eleven drones from six hangar doors at once
+		var ccf := GameState.create_from_preset("std_cfw_concordia", "player")
+		ccf.system_id = view.system_id
+		ccf.position = bc.position + Vector2(0, 16000)
+		ccf.drones = []
+		for i15 in 11:
+			ccf.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+		ccf.drone_modes["combat"] = "rest"
+		var ccs := Ship.new()
+		ccs.manual = true
+		ccs.setup(ccf, view)
+		view.ship_layer.add_child(ccs)
+		ccs.heading = -0.2
+		view.camera.position = ccs.position
+		view.launch_drones(ccs)
+		for i16 in 45:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_launch.png")
+		for i17 in 200:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_swarm.png")
+		for dd10 in view.drones_of(ccs):
+			view.stow_drone(dd10)
+		ccs.queue_free()
 		# 0.4.25.22: every ship with drones has a drone hatch – top row shut, bottom row open
 		for set_i in 2:
 			var hset: Array = [["std_hornet", "std_warden", "std_bastion", "std_anaguma"], ["std_mule", "std_aur_boulevard", "std_hdy_maul", "std_aur_empress"]][set_i]
@@ -3936,9 +3981,11 @@ func _test_hadrian(view: SystemView) -> void:
 	var many: Array = []
 	for i in 40:
 		many.append("patrol_light")
+	var keep_sid: int = view.traffic.sid
+	view.traffic.sid = _system_of("directorate")
 	var dir_p: Array = view.traffic._gov_presets("directorate", many)
-	var asm_p: Array = view.traffic._gov_presets("assembly", many)
-	check(dir_p.has("patrol_hdy_light") and dir_p.has("patrol_light") and not asm_p.has("patrol_hdy_light"), "Directorate patrols fly Earthworks and Hadrian ships")
+	view.traffic.sid = keep_sid
+	check(dir_p.has("patrol_hdy_light") and dir_p.has("patrol_light"), "Directorate patrols fly Earthworks and Hadrian ships")
 	# package 25d (design): the Goliath's two drives sit on its arms – no main engine on the centre line
 	var ga: Array = PixelArt.ShipArt.SHIPS["hdy_goliath"]
 	var centre: String = ga[ga.size() - 1]
@@ -4044,3 +4091,148 @@ func _test_hadrian(view: SystemView) -> void:
 	check(err == "" and spawned != null, "debug menu: spawn any ship (here a neutral Goliath)")
 	if spawned != null:
 		spawned.queue_free()
+
+
+## A system controlled by faction `f` (-1 if none).
+func _system_of(f: String) -> int:
+	for sy in Universe.systems:
+		if Universe.controller(int(sy["id"])) == f:
+			return int(sy["id"])
+	return -1
+
+
+## Phase 0.5 package 25e: Concord Fleetworks – the Assembly's drone carriers.
+func _test_concord(view: SystemView) -> void:
+	var cfw := ["cfw_demos", "cfw_quirinus", "cfw_concordia"]
+	var ok := true
+	var max_other := 0
+	for hid in GameData.hulls:
+		if hid != "cfw_concordia" and not GameData.hulls[hid].get("drone_only", false):
+			max_other = maxi(max_other, int(GameData.hulls[hid].get("drones", 0)))
+	for hid2 in cfw:
+		ok = ok and GameData.hulls.has(hid2) and GameData.hulls[hid2]["maker"] == "concord" and GameData.presets.has("std_" + hid2)
+	check(ok and [GameData.hulls["cfw_demos"]["min_tier"], GameData.hulls["cfw_quirinus"]["min_tier"], GameData.hulls["cfw_concordia"]["min_tier"]] == ["neutral", "friendly", "allied"], "Concord Fleetworks: Demos (Neutral), Quirinus (Friendly), Concordia (Allied)")
+	check(int(GameData.hulls["cfw_demos"]["drones"]) == 3 and int(GameData.hulls["cfw_quirinus"]["drones"]) == 7 and int(GameData.hulls["cfw_concordia"]["drones"]) == 11 and max_other < 11, "drones out at once: 3 / 7 / 11 – the Concordia is the only ship with eleven")
+	# drones doubled, guns halved, shields +60 % with triple downtime
+	var q := GameState.create_fit("cfw_quirinus", {}, "player")
+	var w := GameState.create_fit("warden", {}, "player")
+	for f9 in [q, w]:
+		f9.set_module("hangar", "hangar:2:C")
+		f9.set_module("dweapon_0", "w_pulse:1:C")
+		f9.set_module("dtool_0", "t_mining:1:C")
+		f9.set_module("weapon_0", "w_beam:2:C")
+		f9.set_module("optional_0", "o_shield:3:C")
+	var dq: Dictionary = q.stats()["drone"]
+	var dw: Dictionary = w.stats()["drone"]
+	var both := func(k): return absf(float(dq[k]) - float(dw[k]) * 2.0) < 0.01
+	check(both.call("hull") and both.call("cargo") and both.call("fuel") and both.call("repair") and absf(float(q.stats()["drone_weapon"]["damage"]) - float(w.stats()["drone_weapon"]["damage"]) * 2.0) < 0.01 and absf(float(q.stats()["drone_tool"]["rate"]) - float(w.stats()["drone_tool"]["rate"]) * 2.0) < 0.01, "Concord drones: hull, damage, mining, repair, cargo and fuel doubled")
+	check(absf(float(dq["range"]) - minf(float(dw["range"]) * 2.0, GameData.RECON_RANGE)) < 0.5 and float(dq["range"]) <= GameData.RECON_RANGE, "… the control range doubled, but never beyond the recon range (%.0f km)" % float(dq["range"]))
+	var gq := 0.0
+	var gw := 0.0
+	for w1 in q.stats()["weapons"]:
+		gq = float(w1["damage"])
+	for w2 in w.stats()["weapons"]:
+		gw = float(w2["damage"])
+	check(gq > 0.0 and absf(gq - gw * 0.5) < 0.01, "the ship's own guns: half damage")
+	check(absf(float(q.stats()["shield_max"]) - float(w.stats()["shield_max"]) * 1.6) < 1.0 and float(q.stats()["shield_downtime"]) > float(w.stats()["shield_downtime"]) * 2.9, "shields +60 %%, but three times the downtime after a collapse (%.0f/%.0f, %.1f/%.1f s)" % [float(q.stats()["shield_max"]), float(w.stats()["shield_max"]), float(q.stats()["shield_downtime"]), float(w.stats()["shield_downtime"])])
+	# six hangar doors: the drones launch side by side
+	var cf := GameState.create_from_preset("std_cfw_concordia", "player")
+	cf.position = view.player.position + Vector2(0, -99000)
+	cf.uid = 99908
+	cf.drones = []
+	for i in 6:
+		cf.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+	var cs := Ship.new()
+	cs.manual = true
+	cs.setup(cf, view)
+	view.ship_layer.add_child(cs)
+	view.launch_drones(cs)
+	var ds: Array = view.drones_of(cs)
+	var doors := {}
+	var same_t := true
+	for d in ds:
+		doors[d.hatch_name] = true
+		same_t = same_t and absf(float(d._hold) - float(ds[0]._hold)) < 0.01
+	check(cs.drone_hatches().size() == 6 and doors.size() == 6 and same_t and ds[0].paint == "assembly_drone", "Concordia: six hangar doors – six drones rise at the same time, in Assembly blue")
+	for d2 in ds:
+		view.stow_drone(d2)
+	cs.queue_free()
+	# faction ships only at the faction's yards, and only with standing
+	var asm_t3 := {}
+	var other_t3 := {}
+	for sy in Universe.systems:
+		if not asm_t3.is_empty() and not other_t3.is_empty():
+			break
+		for st in Universe.get_layout(int(sy["id"]))["stations"]:
+			if not GameData.station_types[st["type"]]["shipyard"] or int(st["tier"]) < 3:
+				continue
+			if String(st.get("faction", "")) == "assembly" and asm_t3.is_empty():
+				asm_t3 = st
+			elif String(st.get("faction", "")) in ["covenant", "directorate"] and other_t3.is_empty():
+				other_t3 = st
+	check(not asm_t3.is_empty() and "cfw_concordia" in asm_t3["shipyard"] and "cfw_demos" in asm_t3["shipyard"] and (other_t3.is_empty() or not "cfw_demos" in other_t3["shipyard"]), "Concord ships are sold only at Assembly shipyards")
+	var r = GameState.rep
+	var keep: float = r.get_rep("assembly")
+	r.values["assembly"] = 0.0
+	var neutral_err: String = GameState.hull_standing_error("cfw_concordia")
+	var demos_ok: String = GameState.hull_standing_error("cfw_demos")
+	r.values["assembly"] = 70.0
+	var allied_err: String = GameState.hull_standing_error("cfw_concordia")
+	r.values["assembly"] = keep
+	check(neutral_err != "" and demos_ok == "" and allied_err == "", "the Concordia needs Allied standing, the Demos Neutral")
+	# NPC carriers fight with their drones and call them back afterwards
+	var pf := GameState.create_from_preset("patrol_cfw_medium", "patrol")
+	pf.gov = "assembly"
+	pf.position = view.player.position + Vector2(0, -105000)
+	pf.uid = 99909
+	var pc := Ship.new()
+	pc.setup(pf, view)
+	view.ship_layer.add_child(pc)
+	var pir: Ship = view.spawn_npc("pirate_raider_rocket", pc.position + Vector2(900, 0))
+	pc.target = pir
+	pc._npc_drone_t = 0.0
+	pc._update_npc_drones(1.1)
+	var nd: Array = view.drones_of(pc)
+	var npc_ok: bool = nd.size() == 7 and nd[0].faction == "patrol" and not nd[0].hostile_to_player() and Ship.hostile(nd[0], pir)
+	pc.target = null
+	for i2 in 20:
+		pc._npc_drone_t = 0.0
+		pc._update_npc_drones(1.0)
+	var recalled := true
+	for d3 in nd:
+		recalled = recalled and d3.recalled
+	check(npc_ok and recalled, "Assembly patrols launch their drones in a fight (%d) and call them back afterwards" % nd.size())
+	for d4 in nd:
+		view.stow_drone(d4)
+	pir.queue_free()
+	pc.queue_free()
+	# patrols: Concord carriers in Assembly systems (now and then a Goliath), Earthworks elsewhere
+	var tr = view.traffic
+	var keep_sid: int = tr.sid
+	var many: Array = []
+	for i3 in 60:
+		many.append("patrol_medium")
+	tr.sid = _system_of("assembly")
+	var own: Array = tr._gov_presets("assembly", many)
+	var contested := -1
+	for sy2 in Universe.systems:
+		if Universe.controller(int(sy2["id"])) == "" and "assembly" in Universe.claimants(int(sy2["id"])):
+			contested = int(sy2["id"])
+			break
+	var away: Array = many
+	if contested >= 0:
+		tr.sid = contested
+		away = tr._gov_presets("assembly", many)
+	tr.sid = keep_sid
+	check(own.has("patrol_cfw_medium") and own.has("patrol_hdy_heavy") and not own.has("patrol_medium") and away == many, "Assembly patrols fly Concord carriers (now and then a Goliath) – in contested systems Earthworks ships")
+	# debug: fill the drone hangar
+	var cheats: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	var af := GameState.active()
+	var keep_d: Array = af.drones.duplicate(true)
+	af.drones = []
+	var e1: String = Commands.execute({"type": "debug_fill_drones"})
+	var filled: int = af.drones.size()
+	af.drones = keep_d
+	Commands.cheats_enabled = cheats
+	check(e1 == "" and filled == int(af.stats()["drone_storage"]), "debug menu: fill the drone hangar (%d)" % filled)

@@ -89,6 +89,16 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Concord Fleetworks – the Assembly's drone carriers (phase 0.5 package 25e)
+- **Demos** (S, from Neutral), **Quirinus** (M, from Friendly), **Concordia** (L, from Allied – the only ship
+  with eleven drones, in Assembly blue). Sold only at Assembly shipyards, and only with the standing.
+- Drones: hull, damage, mining, repair, cargo and fuel doubled, control range doubled (up to the recon
+  range). The ships' own guns do half damage; shields +60 % but three times the downtime.
+- Several hangar doors: drones rise from all of them at once and land in the nearest one.
+- NPC carriers fight with their drones: Assembly patrols (Concord ships in Assembly systems, now and then
+  a Goliath) launch them in a fight and call them back afterwards.
+- Debug menu → Ship: fill the drone hangar.
+
 ## Hadrian Dynamics – warships (phase 0.5 package 25d)
 - **Talon** (S dropship), **Maul** (M gunboat), **Goliath** (M destroyer with the guns of a cruiser) and
   **Citadel** (L fleet carrier): strong in combat, weak at everything else (few tool slots, small cargo,
