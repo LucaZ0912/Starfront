@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.25 – 2026-11-07
+
+- Mogura and Iwakudaki: drone hatch moved 3 pixels towards the stern (cleaner fit).
+
 ## alpha 0.4.25.24 – 2026-11-07
 
 - Drone hatches: the lower half lies in shadow like the hull, so the crease along the centre line runs
