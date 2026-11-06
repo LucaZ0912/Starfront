@@ -2886,11 +2886,22 @@ func _draw() -> void:
 		tex = PixelArt.ship_texture(String(arms["body"]), paint, PixelArt.anim_frame(String(arms["body"])))
 	var size := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE
 	draw_set_transform(Vector2.ZERO, heading, Vector2.ONE)
+	var multi_flames: Array = []
 	if velocity.length() > 20.0:
 		var glow: Color = PixelArt.engine_glow(paint)
 		var flick := randf_range(0.8, 1.2)
 		var ep: Array = PixelArt.engine_points(String(arms["body"]) if not arms.is_empty() else fit.hull_id)
-		if ep.is_empty():
+		if arms.has("shift"):
+			# drives on the hull and on the moving wings (Concordia): a flame for each, moving with the
+			# wings – drawn after the wings (they would cover them), at the rear edge of each drive
+			ep = []
+			for g in PixelArt.engine_groups(String(arms["body"])):
+				multi_flames.append([g[0], maxf(float(g[1]), 12.0) * flick, glow])
+			var n := int(arms.get("frames", 1))
+			var idx := clampi(int(round(smoothstep(0.0, 1.0, arm_open) * float(n - 1))), 0, n - 1)
+			for g2 in PixelArt.engine_groups("%s_%d" % [String(arms["art"]), idx]):
+				multi_flames.append([g2[0], maxf(float(g2[1]), 10.0) * flick, glow])
+		elif ep.is_empty():
 			var ex := -size.x * 0.5
 			draw_circle(Vector2(ex - 2.0, 0.0), size.y * 0.16 * flick, Color(glow, 0.35))
 			draw_circle(Vector2(ex, 0.0), size.y * 0.09 * flick, Color(1, 1, 1, 0.8))
@@ -2907,6 +2918,10 @@ func _draw() -> void:
 	_draw_hatches()                      # after the arms/wings: the Concordia's doors sit on its wings
 	if fit.hull().get("stripe_fx", false):
 		_draw_stripes(size)
+	for mf in multi_flames:
+		var mp: Vector2 = mf[0] - Vector2(PixelArt.SCALE * 1.5, 0.0)
+		draw_circle(mp - Vector2(float(mf[1]) * 0.4, 0.0), float(mf[1]), Color(mf[2], 0.35))
+		draw_circle(mp, float(mf[1]) * 0.5, Color(1, 1, 1, 0.8))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if selected:

@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.29 – 2026-11-07
+
+- Concordia: three engine flames – the spine and both flight wings (they move with the wings).
+
 ## alpha 0.4.25.28 – 2026-11-07
 
 - Concord stripes pulse much more visibly; the combat light is bigger.

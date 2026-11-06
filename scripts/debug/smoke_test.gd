@@ -1588,6 +1588,11 @@ func _shoot_standing(view: SystemView) -> void:
 				break
 		for dd10 in view.drones_of(ccs):
 			view.stow_drone(dd10)
+		ccs.set_order({"type": "move", "pos": ccs.position + Vector2.from_angle(ccs.heading) * 40000.0})   # under thrust
+		for i21 in 60:
+			view.camera.position = ccs.position - Vector2.from_angle(ccs.heading) * 350.0   # the stern in view
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_flames.png")
 		ccs.queue_free()
 		# 0.4.25.22: every ship with drones has a drone hatch – top row shut, bottom row open
 		for set_i in 2:
@@ -4225,6 +4230,9 @@ func _test_concord(view: SystemView) -> void:
 		on_wing = on_wing or sg[3]
 	cs.combat_t = 0.0
 	cs.take_damage(1.0, "kinetic", null)
+	var wing_eng: Array = PixelArt.engine_groups("cfw_concordia_wing_5")
+	var body_eng: Array = PixelArt.engine_groups("cfw_concordia_body")
+	check(wing_eng.size() == 2 and body_eng.size() == 1 and absf(float(wing_eng[0][0].y)) > 20.0, "Concordia: a flame at each of its three drives – the spine and both flight wings")
 	check(segs.size() >= 4 and on_wing and not PixelArt.stripe_segments("cfw_demos").is_empty() and cs.combat_t > 0.0 and GameData.hulls["cfw_concordia"].get("launch_glow", false), "Concord stripes: pulsing, a running light in a fight, yellow while drones launch (Concordia)")
 	cs.queue_free()
 	# faction ships only at the faction's yards, and only with standing

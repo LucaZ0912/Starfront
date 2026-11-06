@@ -176,6 +176,43 @@ static func engine_points(key: String) -> Array:
 	return out
 
 
+## Every drive group of a picture, centred ones included: [[local position, radius, on the centre line], …]
+## – for ships whose drives sit on several parts (the Concordia's spine and flight wings, 0.4.25.29).
+static func engine_groups(key: String) -> Array:
+	var ck := "engroups_" + key
+	if _cache.has(ck):
+		return _cache[ck]
+	var art: Array = ShipArt.SHIPS.get(key, [])
+	var out: Array = []
+	if art.is_empty():
+		_cache[ck] = out
+		return out
+	var rows := _pad(art) if ShipArt.FULL.has(key) else _mirror_v(_pad(art))
+	var h := rows.size()
+	var w := String(rows[0]).length()
+	var first := {}
+	var min_x := 1 << 20
+	for y in h:
+		var fx := String(rows[y]).find("f")
+		if fx >= 0:
+			first[y] = fx
+			min_x = mini(min_x, fx)
+	var cur: Array = []
+	var mid := (h - 1) / 2
+	for y2 in h + 2:
+		if y2 < h and first.has(y2) and int(first[y2]) <= min_x + 3:
+			cur.append(y2)
+		elif not cur.is_empty() and y2 - int(cur[cur.size() - 1]) <= 2 and y2 < h:
+			pass                         # a one-row gap between nozzles: still the same drive
+		elif not cur.is_empty():
+			var gy := (float(cur[0]) + float(cur[cur.size() - 1])) * 0.5
+			var pos := (Vector2(float(first[cur[0]]) + 1.5, gy + 1.5) - Vector2(w + 2, h + 2) * 0.5) * SCALE
+			out.append([pos, clampf(float(cur.size()) * SCALE * 0.55, 6.0, 18.0), mid in cur])
+			cur = []
+	_cache[ck] = out
+	return out
+
+
 static func engine_glow(key: String) -> Color:
 	if key.begins_with("notorious_"):
 		return notorious_paint(int(key.trim_prefix("notorious_")))["f"]
