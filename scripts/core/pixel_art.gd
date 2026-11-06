@@ -294,6 +294,41 @@ const HATCH_SHADE := {"d": "D", "D": "o", "Q": "O", "x": "x", "j": "Z", "U": "U"
 const HATCH_CHARS := {"khi": ["Q", "x"], "aurelle": ["j", "U"], "hadrian": ["M", "X"]}
 
 
+## The owner-colour stripes ("a" runs of 3+ pixels) of a ship's picture: [[row, first column, last column,
+## on a moving part (arms/wings)], …] in pixels of the full image (package 25e, Concord light effects).
+static func stripe_segments(hull_id: String) -> Array:
+	var ck := "stripes_" + hull_id
+	if _cache.has(ck):
+		return _cache[ck]
+	var rows := _mirror_v(_pad(ShipArt.SHIPS.get(hull_id, [])))
+	var part_rows: Array = []
+	var extra := 0
+	var arms: Dictionary = GameData.hulls.get(hull_id, {}).get("arms", {})
+	if not arms.is_empty() and ShipArt.SHIPS.has(String(arms["art"]) + "_0"):
+		part_rows = _mirror_v(_pad(ShipArt.SHIPS[String(arms["art"]) + "_0"]))
+		extra = (part_rows.size() - rows.size()) / 2
+	var out: Array = []
+	for y in rows.size():
+		var row: String = rows[y]
+		var x := 0
+		while x < row.length():
+			if row[x] == "a":
+				var x1 := x
+				while x1 + 1 < row.length() and row[x1 + 1] == "a":
+					x1 += 1
+				if x1 - x >= 2:
+					var on_part := false
+					if not part_rows.is_empty():
+						var pr: String = part_rows[y + extra]
+						on_part = x < pr.length() and pr[x] != "."
+					out.append([y, x, x1, on_part])
+				x = x1 + 1
+			else:
+				x += 1
+	_cache[ck] = out
+	return out
+
+
 ## Pirate paints: plain pirates, the pirate factions and notorious captains.
 static func is_pirate_paint(faction: String) -> bool:
 	if faction == "pirate" or faction.begins_with("notorious_"):

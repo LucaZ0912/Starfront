@@ -66,7 +66,8 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 		# several doors (Concord carriers) side by side at the same time
 		var hs: Array = carrier.drone_hatches()
 		hatch_launch = true
-		hatch_name = hs[carrier.hatch_queue % hs.size()]
+		hatch_name = hs[carrier.next_hatch % hs.size()]     # the doors in turn – also for single launches
+		carrier.next_hatch += 1
 		_hold = HATCH_WAIT + RUNWAY_GAP * float(carrier.hatch_queue / hs.size())
 		carrier.hatch_queue += 1
 		carrier.open_hatch(hatch_name, _hold + 0.4)

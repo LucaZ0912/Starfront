@@ -99,6 +99,8 @@ var _hatch_hold := {}            # hatch name -> seconds it stays open
 var hatch_queue := 0             # drones waiting below the drone hatch
 var platform_t := -1.0           # launch animation of the S-ship platform (-1 = idle)
 var arm_open := 1.0              # Goliath: 0 = arms folded in (docking), 1 = swung open (package 25d)
+var combat_t := 0.0              # seconds of "in a fight" left: firing, being hit, a hostile target (25e)
+var next_hatch := 0              # the next drone door in turn (drones use the doors one after another)
 const ARM_TIME := 1.6            # seconds to swing the arms fully open or shut
 const HATCH_TIME := 0.45         # seconds to slide a hatch open or shut
 const PLATFORM_ANIM := 3.4       # hatch opens, the small ship rises, lifts off, the hatch closes
@@ -366,6 +368,7 @@ func _physics_process(delta: float) -> void:
 	_update_hatches(delta)
 	_update_arms(delta)
 	_update_npc_drones(delta)
+	combat_t = maxf(0.0, combat_t - delta)
 	if in_warp():
 		_update_warp(delta)
 		fit.position = position
@@ -1279,6 +1282,7 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 			w = w.duplicate()
 			w["damage"] = float(w["damage"]) * 1.6
 		view.fire_weapon(self, tg, w)
+		combat_t = 5.0
 		if not _valid(target):
 			target = null
 			return
@@ -1302,6 +1306,7 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 			_distress_t = GameState.play_time
 			view.on_ship_attacked(self, attacker)
 	var raw := amount
+	combat_t = 5.0
 	var sh0 := fit.shield
 	var hull0 := fit.armor + fit.structure
 	if fit.shield > 0.0:
@@ -1915,6 +1920,7 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 			fit.capacitor -= float(d["energy"])
 			module_timers[slot] = float(d["cooldown"]) * randf_range(0.97, 1.03)
 			view.fire_weapon(self, tgt, d)
+			combat_t = 5.0
 			continue
 		if order.get("type", "idle") == "idle":
 			var tn: String = tgt.display_name() if tgt is Ship else tgt.title()
@@ -2241,7 +2247,21 @@ func hatch_local(n: String) -> Rect2:
 	var r: Array = fit.hull()["hatches"][n]
 	var tex := PixelArt.ship_texture(fit.hull_id, paint)
 	var half := Vector2(tex.get_width(), tex.get_height()) * 0.5
-	return Rect2((Vector2(float(r[0]) + 1.0, float(r[1]) + 1.0) - half) * PixelArt.SCALE, Vector2(float(r[2]), float(r[3])) * PixelArt.SCALE)
+	var rect := Rect2((Vector2(float(r[0]) + 1.0, float(r[1]) + 1.0) - half) * PixelArt.SCALE, Vector2(float(r[2]), float(r[3])) * PixelArt.SCALE)
+	return Rect2(rect.position + part_shift(rect.get_center().y), rect.size)
+
+
+## How far a moving part (Concordia's flight wings) has moved at local height y (package 25e) – exactly
+## the pixels of the wing picture in use, so doors and stripes stay on the wing.
+func part_shift(y: float) -> Vector2:
+	var arms: Dictionary = fit.hull().get("arms", {})
+	if not arms.has("shift"):
+		return Vector2.ZERO
+	var n := int(arms.get("frames", 1))
+	var idx := clampi(int(round(smoothstep(0.0, 1.0, arm_open) * float(n - 1))), 0, n - 1)
+	var t := float(idx) / float(maxi(n - 1, 1))
+	var sh: Array = arms["shift"]
+	return Vector2(-round(float(sh[0]) * t), round(float(sh[1]) * t) * signf(y)) * PixelArt.SCALE
 
 
 func hatch_point(n: String) -> Vector2:
@@ -2366,6 +2386,7 @@ func _update_npc_drones(delta: float) -> void:
 	var out: Array = view.drones_of(self)
 	if fighting:
 		_npc_calm_t = 0.0
+		combat_t = maxf(combat_t, 2.0)
 		if out.is_empty() and not view.drones_must_return(self):
 			if fit.drones.is_empty():
 				for i in int(fit.stats()["drones_max"]):
@@ -2377,6 +2398,38 @@ func _update_npc_drones(delta: float) -> void:
 		_npc_calm_t += 1.0
 		if _npc_calm_t >= NPC_DRONE_CALM:
 			view.recall_drones(self)
+
+
+# ---------------------------------------------------------------- Light effects (package 25e, Concord)
+
+## The owner-colour stripes pulse gently; in a fight a bright spot runs along each from bow to stern;
+## launch_glow ships light them up yellow while their drone doors are open.
+func _draw_stripes(size: Vector2) -> void:
+	var segs: Array = PixelArt.stripe_segments(fit.hull_id)
+	if segs.is_empty():
+		return
+	var t := float(Time.get_ticks_msec()) / 1000.0
+	var half := size * 0.5
+	var px := PixelArt.SCALE
+	var glow := 0.0
+	if fit.hull().get("launch_glow", false):
+		for n in drone_hatches():
+			glow = maxf(glow, float(hatch_open.get(n, 0.0)))
+	var pulse := 0.09 + 0.09 * sin(t * 2.4)
+	for i in segs.size():
+		var sg: Array = segs[i]
+		var pos := Vector2(float(sg[1]) + 1.0, float(sg[0]) + 1.0) * px - half
+		if sg[3]:
+			pos += part_shift(pos.y)
+		var r := Rect2(pos, Vector2(float(sg[2]) - float(sg[1]) + 1.0, 1.0) * px)
+		draw_rect(r, Color(1, 1, 1, pulse))
+		if glow > 0.0:
+			draw_rect(r, Color(1.0, 0.82, 0.2, 0.85 * glow))
+		if combat_t > 0.0:
+			var p := fmod(t * 0.8 + float(i) * 0.37, 1.0)
+			var x := r.end.x - px - p * (r.size.x - px)
+			draw_rect(Rect2(Vector2(x - px, r.position.y), Vector2(px * 3.0, px)), Color(0.75, 0.92, 1.0, 0.35))
+			draw_rect(Rect2(Vector2(x, r.position.y), Vector2(px, px)), Color(1, 1, 1, 0.95))
 
 
 # ---------------------------------------------------------------- Swinging arms (package 25d, Goliath)
@@ -2824,6 +2877,8 @@ func _draw() -> void:
 	_draw_hatches()
 	if not arms.is_empty():
 		_draw_arms(arms, size, mod)
+	if fit.hull().get("stripe_fx", false):
+		_draw_stripes(size)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if selected:

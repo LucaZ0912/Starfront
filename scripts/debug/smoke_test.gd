@@ -1567,6 +1567,11 @@ func _shoot_standing(view: SystemView) -> void:
 		for i17 in 200:
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_swarm.png")
+		ccs.combat_t = 30.0
+		ccs.arm_open = 1.0
+		for i18 in 20:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_combat.png")
 		for dd10 in view.drones_of(ccs):
 			view.stow_drone(dd10)
 		ccs.queue_free()
@@ -4156,6 +4161,32 @@ func _test_concord(view: SystemView) -> void:
 	check(cs.drone_hatches().size() == 6 and doors.size() == 6 and same_t and ds[0].paint == "assembly_drone", "Concordia: six hangar doors – six drones rise at the same time, in Assembly blue")
 	for d2 in ds:
 		view.stow_drone(d2)
+	# the drones use the doors one after another, also when launched one by one
+	cs.next_hatch = 0
+	var singles := {}
+	for i4 in 3:
+		cf.drones[i4]["out"] = false
+		view.launch_drones(cs, 1)
+	for d5 in view.drones_of(cs):
+		singles[d5.hatch_name] = true
+	check(singles.size() == 3, "single launches use the hangar doors in turn (%d doors)" % singles.size())
+	for d6 in view.drones_of(cs):
+		view.stow_drone(d6)
+	# the flight wings move back and out in space, fold in to dock – the doors move along
+	cs.arm_open = 1.0
+	var open_p: Vector2 = cs.hatch_local("drones").position
+	cs.arm_open = 0.0
+	var shut_p: Vector2 = cs.hatch_local("drones").position
+	cs.arm_open = 1.0
+	check(open_p.x < shut_p.x and open_p.y < shut_p.y and PixelArt.ShipArt.SHIPS.has("cfw_concordia_wing_5"), "Concordia: the flight wings move back and out in space (doors move along), fold in to dock %s %s" % [str(open_p), str(shut_p)])
+	# light effects: stripes pulse, a spot runs along them in a fight, yellow while the doors are open
+	var segs: Array = PixelArt.stripe_segments("cfw_concordia")
+	var on_wing := false
+	for sg in segs:
+		on_wing = on_wing or sg[3]
+	cs.combat_t = 0.0
+	cs.take_damage(1.0, "kinetic", null)
+	check(segs.size() >= 4 and on_wing and not PixelArt.stripe_segments("cfw_demos").is_empty() and cs.combat_t > 0.0 and GameData.hulls["cfw_concordia"].get("launch_glow", false), "Concord stripes: pulsing, a running light in a fight, yellow while drones launch (Concordia)")
 	cs.queue_free()
 	# faction ships only at the faction's yards, and only with standing
 	var asm_t3 := {}

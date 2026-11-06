@@ -28,6 +28,9 @@ extends RefCounted
 ## range – the range never beyond the recon range); weapon_dmg_mult (× damage of the ship's own guns);
 ## shield_down_mult (× downtime after a shield collapse); npc_drones (NPCs of this hull fight with drones).
 ## Several hatches "drones", "drones_2" … = several hangar doors; drones launch from all of them at once.
+## stripe_fx: the owner-colour stripes ("a") pulse, and in a fight a bright spot runs along them from bow to
+## stern; launch_glow: they light up yellow while the drone doors are open (Concordia). arms.shift [back,
+## out]: the parts move by this many pixels when open (Concordia's flight wings) – their hatches move along.
 ## arms {body, art, frames} (Goliath): the hull is drawn from `body`, the two arms from `art`_0 … _(frames-1)
 ## (top half, the lower arm mirrored): stage 0 folded in, the last stage open in a round arc. They open
 ## from their hinges at the stern in space and fold in while docking and undocking (the hangar bays are narrow).
@@ -162,7 +165,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 1, "optional": 3, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [1, 1], "tool": [1], "optional": [2, 2, 1], "hull": 2, "engine": 4, "reactor": 4, "distributor": 4, "tank": 3, "hyperdrive": 2, "sensors": 3, "hangar": 4, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 3, "shape": "cfw_demos", "length": 37,
-		"shield_mult": 1.6, "shield_down_mult": 3.0, "weapon_dmg_mult": 0.5, "drone_mult": 2.0, "npc_drones": true,
+		"shield_mult": 1.6, "shield_down_mult": 3.0, "weapon_dmg_mult": 0.5, "drone_mult": 2.0, "npc_drones": true, "stripe_fx": true,
 		"hatches": {"drones": [12, 1, 6, 2], "drones_2": [12, 12, 6, 2]},
 		"desc": "\"The people\" – the Assembly's small militia carrier: three drones with double strength and range from two hangar doors, good shields, light guns, little armour.",
 	},
@@ -172,7 +175,7 @@ const HULLS := {
 		"slots": {"weapon": 3, "tool": 2, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 2, 1], "tool": [1, 1], "optional": [5, 4, 3, 3], "hull": 4, "engine": 5, "reactor": 6, "distributor": 6, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 7, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 7, "shape": "cfw_quirinus", "length": 58,
-		"shield_mult": 1.6, "shield_down_mult": 3.0, "weapon_dmg_mult": 0.5, "drone_mult": 2.0, "npc_drones": true,
+		"shield_mult": 1.6, "shield_down_mult": 3.0, "weapon_dmg_mult": 0.5, "drone_mult": 2.0, "npc_drones": true, "stripe_fx": true,
 		"hatches": {"drones": [13, 1, 7, 2], "drones_2": [13, 18, 7, 2], "drones_3": [25, 1, 7, 2], "drones_4": [25, 18, 7, 2]},
 		"desc": "The Assembly's patrol carrier: seven drones of double strength from four hangar doors, good shields.",
 	},
@@ -183,7 +186,8 @@ const HULLS := {
 		"slot_sizes": {"weapon": [4], "tool": [2, 1], "optional": [8, 7, 6, 5, 4], "hull": 7, "engine": 7, "reactor": 9, "distributor": 9, "tank": 7, "hyperdrive": 6, "sensors": 8, "hangar": 9, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 11, "shape": "cfw_concordia", "length": 114,
 		"shield_mult": 1.9, "shield_down_mult": 3.0, "weapon_dmg_mult": 0.5, "drone_mult": 2.0, "npc_drones": true,
-		"drone_paint": "assembly_drone",
+		"drone_paint": "assembly_drone", "stripe_fx": true, "launch_glow": true,
+		"arms": {"body": "cfw_concordia_body", "art": "cfw_concordia_wing", "frames": 6, "shift": [4, 4]},
 		"hatches": {"drones": [20, 4, 10, 3], "drones_2": [20, 24, 10, 3], "drones_3": [40, 4, 10, 3], "drones_4": [40, 24, 10, 3], "drones_5": [60, 4, 10, 3], "drones_6": [60, 24, 10, 3]},
 		"desc": "The Assembly's flagship: a long fleet carrier – the only ship that controls eleven drones, in Assembly blue, launched from six hangar doors at once. One big gun, keen sensors, very strong shields.",
 	},

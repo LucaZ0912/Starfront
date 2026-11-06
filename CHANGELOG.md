@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.27 – 2026-11-07
+
+- Concord light effects: the blue stripes pulse; in a fight a bright spot runs along them from bow to
+  stern; the Concordia's stripes light up yellow while its drone doors are open.
+- Concordia: the flight wings move out and back in space and fold in to dock (the doors move along).
+- Drones use the hangar doors in turn, also when launched one by one.
+
 ## alpha 0.4.25.26 – 2026-11-07
 
 **Package 25e – Concord Fleetworks, the first faction ships.**
