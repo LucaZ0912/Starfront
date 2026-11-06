@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle) und 25d (Hadrian Dynamics) fertig, als Nächstes 25e (Concord Fleetworks). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.19. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle) und 25d (Hadrian Dynamics) fertig, als Nächstes 25e (Concord Fleetworks). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.20. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -907,6 +907,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Citadel mit Startplattform:** große Plattform mittschiffs (Stahlrahmen, rote Eckleuchten) mit Schiebeklappe – für das S-Schiff aus Teil 5. Animation: die Klappe fährt weg, das kleine Schiff taucht darunter auf, hebt ab, die Klappe schließt wieder (vorerst nur als Animation; Debug-Menü → Ship: „Citadel: launch from the platform“). Dahinter eine kleine **Drohnenklappe** mit derselben Animation: die Drohnen steigen nacheinander daraus auf und landen wieder darin.
 - [x] Citadel-Brücke: vier Vorschläge (Keep mit Zinnen und Schießscharten, Kommandoturm mit rotem Visier, Panzerkuppel mit Schlitzring, Bug-Brücke mit rotem Fensterwinkel) – gewählt: die **Panzerkuppel** (0.4.25.19). Alle vier bleiben als Varianten erhalten (`VARIANTS` in `data/pixel_art.gd`, Zeichenskripte in `tools/art/`).
 - [x] **Goliath als Skorpion** (0.4.25.19) – das Flaggschiff, das Angst einflößen soll: Heck wie zuvor (zwei Triebwerke an den Armen), die gegliederten Arme holen weit aus und schließen vorn wie Scheren – zwei gebogene Zangenbacken mit glühenden Spitzen um je eine lange Kanone, Punktverteidigungstürme auf den Armen; der Rumpf läuft vorn in einen langen Stachel aus; die Brücke sind zwei lange, schräge rote Augenschlitze unter dunklen Brauen, die langsam aufglühen und verblassen; die Platte auf dem Rücken ist jetzt die Drohnenklappe (Drohnen steigen daraus auf).
+- [x] **Goliath-Arme beweglich** (0.4.25.20): fester Kontaktpunkt am Heck – die Triebwerkspartie bleibt gerade, an ihrem Ende sitzt ein Gelenk. Im All öffnen sich die Arme zu einem runden, kreisförmigen Bogen, der die Scheren weit vom Rumpf wegschiebt; beim An- und Abdocken falten sie sich in acht Stufen wieder eng an den Rumpf (passt so in die Hangarbuchten). In Menüs zeigt das Bild die geschlossene Form.
 
 ### Stationstyp 0 (Paket 26)
 

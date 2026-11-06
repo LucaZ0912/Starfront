@@ -180,6 +180,27 @@ static func ship_texture(hull_id: String, faction: String, frame: int = -1) -> T
 	return _cache[key]
 
 
+## The two arms of a ship with swinging arms (Goliath, package 25d): [upper, lower] – the same size as
+## the ship's picture, everything else transparent.
+static func arm_textures(key: String, faction: String) -> Array:
+	var ck := "arms_%s_%s" % [key, faction]
+	if not _cache.has(ck):
+		var rows := _mirror_v(_pad(ShipArt.SHIPS[key]))
+		var n := rows.size()
+		var mid := (n - 1) / 2
+		var blank := ".".repeat(String(rows[0]).length())
+		var up: Array = []
+		var lo: Array = []
+		for i in n:
+			up.append(rows[i] if i < mid else blank)
+			lo.append(rows[i] if i > mid else blank)
+		var cols := _colors(faction)
+		if is_pirate_paint(faction):
+			cols.merge(HDY_WORN, true)
+		_cache[ck] = [ImageTexture.create_from_image(grid_to_image(up, cols)), ImageTexture.create_from_image(grid_to_image(lo, cols))]
+	return _cache[ck]
+
+
 ## Pirate paints: plain pirates, the pirate factions and notorious captains.
 static func is_pirate_paint(faction: String) -> bool:
 	if faction == "pirate" or faction.begins_with("notorious_"):

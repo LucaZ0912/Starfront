@@ -116,50 +116,79 @@ def maul():
 
 
 # ---------------- Goliath (M destroyer): two mighty arms that start far back and arch around the hull
-def goliath():
-    """The scorpion: the stern stays, the arms sweep far out and close in again like pincers that hold a
-    long cannon each; the hull ends in a long spike; slanted red eye-slits as the bridge; the plate on the
-    spine is the drone hatch."""
-    W, H = 86, 21
-    c = Canvas(W, H)
-    cy = H - 1
-    # the hull: rounded stern (as before), the middle unchanged, the front a long spike
-    c.pod(8, 14, 60, cy + 4, "M", "B", "M")
+GOL_W, GOL_H = 86, 21
+GOL_PIVOT = (12, 12)            # the hinge of the arms (column, row of the top half): fixed contact at the stern
+
+
+def goliath_body(c):
+    """Hull, stern, the straight drive sections of the arms with their hinges, drone hatch, eye-slits."""
+    cy = GOL_H - 1
+    c.pod(8, 14, 60, cy + 4, "M", "B", "M")              # the hull: rounded stern, unchanged middle …
     for y, x1 in [(14, 61), (15, 64), (16, 67), (17, 70), (18, 73), (19, 76), (20, 79)]:
-        c.hline(58, x1, y, "M")
+        c.hline(58, x1, y, "M")                          # … and a long spike at the front
         c.put(x1, y, "B")
-    c.hline(62, 79, cy, "N")                             # keel line of the spike
+    c.hline(62, 79, cy, "N")
     for x in (20, 40, 50):
         c.vline(x, 15, cy, "N")
     c.hline(14, 17, cy, "a")
-    # drone hatch on the spine (the plate of the old turret)
-    hx0, hy0, hx1 = GOL_HATCH
+    hx0, hy0, hx1 = GOL_HATCH                            # drone hatch on the spine
     c.rect(hx0 - 1, hy0 - 1, hx1 + 1, cy, "B")
     c.rect(hx0, hy0, hx1, cy, "M")
     for y in range(hy0 + 1, cy + 1, 2):
         c.hline(hx0, hx1, y, "N")
     c.vline(hx1, hy0, cy, "X")
-    # the bridge: two long red slits, slanted like narrowed eyes, under a dark brow
-    for k in range(15):
+    for k in range(15):                                  # the bridge: slanted red eye-slits under a brow
         x = 44 + k
         y = 15 + k // 5
         c.put(x, y - 1, "X")
         c.put(x, y, "R")
     c.put(59, 18, "R")
-    # the arms: from the stern far out, then forwards and back in like pincers
+    # the straight drive section of each arm along the stern, fixed to the hull, ending in the hinge
+    px, py = GOL_PIVOT
+    for x in range(0, px + 1):
+        for y in range(py - 2, py + 3):
+            c.put(x, y, "B" if y == py - 2 else ("N" if y == py + 2 else "M"))
+    for y in range(py - 1, py + 2):
+        c.put(0, y, "f")
+        c.put(1, y, "e")
+    c.put(5, py, "X")
+    c.put(8, py, "X")
+    c.pod(px - 2, py - 3, px + 2, py + 3, "X", "B", "N")   # the hinge
+    c.put(px, py, "B")
+
+
+GOL_ARM_FRAMES = 8              # 0 = folded in (hangar bays), 7 = swung open in a round arc
+GOL_OPEN_ROWS = 9               # extra rows above the hull canvas that the open arms reach into
+
+
+def goliath_arm(c, s=0.0, dy=0):
+    """The arm, morphed by s (0 closed … 1 open): from the hinge at the stern it rises – closed in a flat
+    curve, open steeply and round like a circle – and carries the pincers further out the more it opens."""
+    px, py = GOL_PIVOT
+    peak = 3.5 - 8.0 * s                                 # how far out the arm reaches
+    end_y = 9.5 - 5.5 * s                                # where the pincers sit
+    xp = 30.0 - 4.0 * s                                  # where the arc tops out …
+    xq = 44.0 - 10.0 * s                                 # … and starts to close in again
+
     def yc(x):
-        if x < 26:
-            t = (26 - x) / 24.0
-            return 3.5 + 10.5 * t * t
-        if x <= 44:
-            return 3.5
-        t = (x - 44) / 22.0
-        return 3.5 + 6.0 * t * t
-    for x in range(2, 67):
-        half = 3.0 if 8 <= x <= 58 else (1.8 + 0.2 * (x - 2) if x < 8 else 3.0 - 0.12 * (x - 58))
+        if x < xp:
+            t = (xp - x) / (xp - px)
+            k = (1.0 - s) * t * t + s * (1.0 - (max(0.0, 1.0 - t * t)) ** 0.5)
+            return peak + (py - peak) * k
+        if x <= xq:
+            return peak
+        u = (x - xq) / (66.0 - xq)
+        k2 = (1.0 - s) * u * u + s * (1.0 - (max(0.0, 1.0 - u * u)) ** 0.5)
+        return peak + (end_y - peak) * k2
+    for x in range(px + 1, 67):
+        half = 3.0 if x >= px + 4 else 2.2 + 0.2 * (x - px)
+        if x > 58:
+            half = 3.0 - 0.12 * (x - 58)
         y0 = int(round(yc(x) - half))
         y1 = int(round(yc(x) + half))
-        seg = (x - 8) % 7 == 0 and 8 < x < 60
+        if x < px + 5:
+            y1 = max(y1, py + 2)                         # stays joined to the hinge while it rises
+        seg = (x - 8) % 7 == 0 and 14 < x < 60
         for y in range(y0, y1 + 1):
             ch = "M"
             if y == y0:
@@ -167,40 +196,58 @@ def goliath():
             elif y == y1:
                 ch = "N"
             elif seg:
-                ch = "X"                                 # armour segments like a scorpion's
-            c.put(x, y, ch)
-        if (x - 8) % 7 == 3 and 8 < x < 60:
-            c.put(x, y0 + 1, "B")                        # segment highlights
-    for x in (18, 52):
-        c.put(x, int(round(yc(x))), "R")
-    # point-defence turrets on the arms
-    for x in (30, 40):
-        y = int(round(yc(x)))
+                ch = "X"
+            c.put(x, y + dy, ch)
+        if (x - 8) % 7 == 3 and 14 < x < 60:
+            c.put(x, y0 + 1 + dy, "B")
+    for x in (20, 52):
+        c.put(x, int(round(yc(x))) + dy, "R")
+    for x in (30, 40):                                   # point-defence turrets on the arms
+        y = int(round(yc(x))) + dy
         c.rect(x - 1, y - 1, x + 2, y + 1, "w", "B")
         c.hline(x + 3, x + 5, y - 1, "g")
-    # the pincers: a claw base and two curved jaws, the tips almost closing around a long cannon
-    gy = int(round(yc(62)))
+    gy = int(round(yc(62))) + dy                         # the pincers around a long cannon
     c.pod(57, gy - 4, 64, gy + 4, "M", "B", "N")
     c.rect(60, gy - 1, 64, gy + 1, "w")
     for k in range(12):
         t = k / 11.0
-        yo = int(round(gy - 4 + 2.6 * t * t))            # outer jaw (away from the hull)
-        yi = int(round(gy + 4 - 2.6 * t * t))            # inner jaw
+        yo = int(round(gy - 4 + 2.6 * t * t))
+        yi = int(round(gy + 4 - 2.6 * t * t))
         x = 65 + k
         c.put(x, yo - 1, "B")
         c.put(x, yo, "M" if k < 10 else "B")
         c.put(x, yi, "M" if k < 10 else "N")
         c.put(x, yi + 1, "N")
-    c.put(77, gy - 2, "R")                               # glowing tips
+    c.put(77, gy - 2, "R")
     c.put(77, gy + 2, "R")
-    c.hline(65, 85, gy, "g")                             # the cannon between the jaws
+    c.hline(65, 85, gy, "g")
     c.put(85, gy, "w")
-    # the two drives at the rear end of each arm (as before)
-    ey = int(round(yc(2)))
-    for y in range(ey - 2, ey + 3):
-        c.put(0, y, "f" if abs(y - ey) <= 1 else "N")
-        c.put(1, y, "e" if abs(y - ey) <= 1 else "N")
-    return c.rows()
+
+
+def full_rows(c):
+    """All rows at full width, none stripped – parts of one ship must line up exactly."""
+    return ["".join(r) for r in c.g]
+
+
+def goliath():
+    """The scorpion (closed, as in menus and in the hangar bays): body + arms in one picture."""
+    c = Canvas(GOL_W, GOL_H)
+    goliath_body(c)
+    goliath_arm(c)
+    return full_rows(c)
+
+
+def goliath_parts():
+    """The hull alone and the arm in GOL_ARM_FRAMES stages from folded to open (on a taller canvas –
+    the pictures are centred, so the extra rows only reach further out)."""
+    b = Canvas(GOL_W, GOL_H)
+    goliath_body(b)
+    frames = []
+    for i in range(GOL_ARM_FRAMES):
+        a = Canvas(GOL_W, GOL_H + GOL_OPEN_ROWS)
+        goliath_arm(a, i / (GOL_ARM_FRAMES - 1.0), GOL_OPEN_ROWS)
+        frames.append(full_rows(a))
+    return full_rows(b), frames
 
 
 GOL_HATCH = (28, 16, 37)        # x0, top row, x1 of the Goliath's drone hatch
@@ -296,7 +343,11 @@ def citadel(bv="keep"):
 BRIDGE = "dome"                 # chosen by Luz (0.4.25.19); the other bridges are kept as variants
 if "--bridge" in sys.argv:
     BRIDGE = sys.argv[sys.argv.index("--bridge") + 1]
-ARTS = {"hdy_talon": talon(), "hdy_maul": maul(), "hdy_goliath": goliath(), "hdy_citadel": citadel(BRIDGE)}
+_gb, _ga = goliath_parts()
+ARTS = {"hdy_talon": talon(), "hdy_maul": maul(), "hdy_goliath": goliath(), "hdy_goliath_body": _gb,
+        "hdy_citadel": citadel(BRIDGE)}
+for _i, _f in enumerate(_ga):
+    ARTS["hdy_goliath_arm_%d" % _i] = _f
 VARIANTS = {"hdy_citadel": {v: citadel(v) for v in ["keep", "tower", "dome", "prow"]}}
 if "--show" in sys.argv:
     for k, a in ARTS.items():

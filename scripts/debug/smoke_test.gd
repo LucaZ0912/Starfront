@@ -1514,6 +1514,12 @@ func _shoot_standing(view: SystemView) -> void:
 		for i12 in 30:
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/goliath.png")
+		gs9.set_physics_process(false)                   # arms folded in as for a hangar bay
+		gs9.arm_open = 0.0
+		gs9.queue_redraw()
+		for i13 in 10:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/goliath_closed.png")
 		for dd9 in view.drones_of(cs9):
 			view.stow_drone(dd9)
 		cs9.queue_free()
@@ -3911,6 +3917,28 @@ func _test_hadrian(view: SystemView) -> void:
 	for row in ga:
 		arm_drive = arm_drive or String(row).begins_with("f")
 	check(not centre.contains("f") and arm_drive, "Goliath: two drives on the arms, none on the hull")
+	# swinging arms: open in space, folded in while docking; the parts line up with the closed picture
+	var gfa := GameState.create_from_preset("std_hdy_goliath", "player")
+	gfa.position = view.player.position + Vector2(0, -95000)
+	gfa.uid = 99906
+	var gsa := Ship.new()
+	gsa.manual = true
+	gsa.setup(gfa, view)
+	view.ship_layer.add_child(gsa)
+	var open0 := gsa.arm_open
+	gsa.order = {"type": "docking"}
+	for i in 60:
+		gsa._update_arms(1.0 / 30.0)
+	var shut := gsa.arm_open
+	gsa.order = {"type": "idle"}
+	for i2 in 60:
+		gsa._update_arms(1.0 / 30.0)
+	var at: Array = PixelArt.arm_textures("hdy_goliath_arm_7", "player")
+	var at0: Array = PixelArt.arm_textures("hdy_goliath_arm_0", "player")
+	var full_t := PixelArt.ship_texture("hdy_goliath", "player")
+	var body_t := PixelArt.ship_texture("hdy_goliath_body", "player")
+	check(open0 == 1.0 and shut == 0.0 and gsa.arm_open == 1.0 and at[0].get_width() == full_t.get_width() and at[0].get_height() > full_t.get_height() and at0[0].get_image().get_used_rect().position.y > at[0].get_image().get_used_rect().position.y and body_t.get_size() == full_t.get_size(), "Goliath: the arms open into a round arc in space and fold in to dock (hinges at the stern)")
+	gsa.queue_free()
 	var g0 := PixelArt.ship_texture("hdy_goliath", "player", 0).get_image().get_data()
 	var g8 := PixelArt.ship_texture("hdy_goliath", "player", 8).get_image().get_data()
 	check(g0 != g8 and GameData.hulls["hdy_goliath"].get("hatches", {}).has("drones") and PixelArt.ShipArt.VARIANTS["hdy_citadel"].size() == 4, "Goliath: glowing eye-slits and a drone hatch on the spine; all Citadel bridges kept as variants")

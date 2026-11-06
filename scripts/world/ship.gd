@@ -98,6 +98,8 @@ var hatch_open := {}             # hatch name -> 0 (shut) … 1 (open) (package 
 var _hatch_hold := {}            # hatch name -> seconds it stays open
 var hatch_queue := 0             # drones waiting below the drone hatch
 var platform_t := -1.0           # launch animation of the S-ship platform (-1 = idle)
+var arm_open := 1.0              # Goliath: 0 = arms folded in (docking), 1 = swung open (package 25d)
+const ARM_TIME := 1.6            # seconds to swing the arms fully open or shut
 const HATCH_TIME := 0.45         # seconds to slide a hatch open or shut
 const PLATFORM_ANIM := 3.4       # hatch opens, the small ship rises, lifts off, the hatch closes
 var module_timers := {}          # slot -> remaining cycle time (weapons)
@@ -350,6 +352,7 @@ func _physics_process(delta: float) -> void:
 		emp_t = 0.0
 		if not fit.power_off.is_empty() or fit.throttle < 1.0:
 			fit.apply_power({"off": {}, "throttle": 1.0})
+		arm_open = 0.0
 		return
 	visible = true
 	_update_power()
@@ -361,6 +364,7 @@ func _physics_process(delta: float) -> void:
 	_xfer_t = maxf(0.0, _xfer_t - delta)
 	_regen(delta, s)
 	_update_hatches(delta)
+	_update_arms(delta)
 	if in_warp():
 		_update_warp(delta)
 		fit.position = position
@@ -2305,6 +2309,26 @@ func _draw_platform_ship(r: Rect2) -> void:
 	draw_texture_rect(tex, Rect2(c - size * 0.5, size), false, Color(lit, lit, lit, alpha))
 
 
+# ---------------------------------------------------------------- Swinging arms (package 25d, Goliath)
+
+## The arms fold in while the ship docks or undocks (the hangar bays are narrow) and swing open in space.
+func _update_arms(delta: float) -> void:
+	if not fit.hull().has("arms"):
+		return
+	var t := 0.0 if String(order.get("type", "")) in ["docking", "undocking"] else 1.0
+	arm_open = move_toward(arm_open, t, delta / ARM_TIME)
+
+
+## The arms in the stage that matches arm_open (folded … open), both centred on the ship.
+func _draw_arms(arms: Dictionary, _size: Vector2, mod: Color) -> void:
+	var n := int(arms.get("frames", 1))
+	var idx := clampi(int(round(smoothstep(0.0, 1.0, arm_open) * float(n - 1))), 0, n - 1)
+	var at: Array = PixelArt.arm_textures("%s_%d" % [String(arms["art"]), idx], paint)
+	for t in at:
+		var asz := Vector2(t.get_width(), t.get_height()) * PixelArt.SCALE
+		draw_texture_rect(t, Rect2(-asz * 0.5, asz), false, mod)
+
+
 ## Carriers with a flight deck (Kanayama-maru): drones launch from it and land on it.
 func has_deck() -> bool:
 	return fit.hull().has("drone_deck")
@@ -2706,6 +2730,9 @@ func _draw() -> void:
 
 	# Hull (pixel art; the Empress' pool and glass dome are animated, package 25c)
 	var tex := PixelArt.ship_texture(fit.hull_id, paint, PixelArt.anim_frame(fit.hull_id))
+	var arms: Dictionary = fit.hull().get("arms", {})
+	if not arms.is_empty():
+		tex = PixelArt.ship_texture(String(arms["body"]), paint, PixelArt.anim_frame(String(arms["body"])))
 	var size := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE
 	draw_set_transform(Vector2.ZERO, heading, Vector2.ONE)
 	if velocity.length() > 20.0:
@@ -2717,6 +2744,8 @@ func _draw() -> void:
 	var mod := Color(1.8, 1.8, 1.8) if hit_flash > 0.0 else Color.WHITE
 	draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
 	_draw_hatches()
+	if not arms.is_empty():
+		_draw_arms(arms, size, mod)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if selected:

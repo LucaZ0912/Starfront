@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.20 – 2026-11-06
+
+- Goliath: the arms are hinged at the stern (straight drive sections) and open in space into a round
+  arc that carries the pincers far out; they fold in to dock and undock (eight stages).
+
 ## alpha 0.4.25.19 – 2026-11-06
 
 - Goliath redesigned as a scorpion: wide-sweeping segmented arms ending in pincers around long cannons,

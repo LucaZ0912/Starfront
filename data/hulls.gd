@@ -21,6 +21,9 @@ extends RefCounted
 ## heavy_missiles (can carry long-range and nuclear missiles later), small_ship_bay (Teil 5: a bay on
 ## top for an S ship). hatches {name: [x, y, w, h]} = sliding hatches in pixel-art columns/rows of the
 ## full (mirrored) ship image: "drones" (drones launch and land through it), "platform" (the S-ship bay).
+## arms {body, art, frames} (Goliath): the hull is drawn from `body`, the two arms from `art`_0 … _(frames-1)
+## (top half, the lower arm mirrored): stage 0 folded in, the last stage open in a round arc. They open
+## from their hinges at the stern in space and fold in while docking and undocking (the hangar bays are narrow).
 ## drones (package 23): how many drones the ship can have out at once (S 1 … L 9). Every hull has
 ## a drone hangar slot ("hangar", size = storage, quality = more room) and the three drone
 ## equipment slots dweapon (weapon size 1), dtool (mining laser size 1) and dbonus (drone module).
@@ -161,6 +164,7 @@ const HULLS := {
 		"slot_sizes": {"weapon": [4, 4, 3, 3, 2, 2], "tool": [1], "optional": [5, 5, 4, 3], "hull": 7, "engine": 7, "reactor": 8, "distributor": 7, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 4, "shape": "hdy_goliath", "length": 86,
 		"hatches": {"drones": [28, 16, 10, 9]},
+		"arms": {"body": "hdy_goliath_body", "art": "hdy_goliath_arm", "frames": 8},
 		"speed_mult": 1.1, "reflect": 0.15, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true,
 		"builtin": ["pd"], "yard_rule": "military",
 		"desc": "Hadrian's scorpion: a destroyer with the guns of a cruiser on two mighty arms that end in pincers, fast for its punch, built-in point defence; its drones rise from a hatch on the spine. Sold only at military stations and the biggest yards.",
