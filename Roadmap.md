@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics) und 25e (Concord Fleetworks) fertig, als Nächstes 25f (Forge of Return). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.29. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics) und 25e (Concord Fleetworks) fertig, als Nächstes 25f (Forge of Return). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.30. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -64,6 +64,7 @@ Ab jetzt wird direkt im Projektordner mit Claude Code gearbeitet. Hinweise für 
   - Zufall und Simulation so, dass ein Host sie allein entscheidet und an Gäste weitergibt.
   - Die Benutzeroberfläche zeigt nur an und schickt Befehle – sie ändert selbst keinen Spielzustand.
 - **Alpha bis zum Ende von Phase 2:** Mechaniken werden gebaut, wenn sie ins Projekt passen – auch wenn die Story sie erst später einsetzt (z. B. Veil-Erkundung vor dem Story-Intro). Ob etwas vor der Story „verraten“ wird, spielt in der Alpha keine Rolle.
+- **Code-Review am Ende jedes Teils (Grundsatz):** Am Ende jedes Teils gibt es ein kleines Code-Review (Aufräumen, tote Stellen, offensichtliche Fehler). Funde zuerst als Liste, Änderungen nach Freigabe durch Luz. Das große, vollständige Review folgt in Teil 9 (Paket 66).
 - **Roadmap-Entwurf:** `Roadmap_Entwurf.md` pflegen Luz und Claude (Chat) für kommende Teile; Claude Code ändert sie nicht (steht in `.gitignore`) und übernimmt Abschnitte nur auf Zuruf in diese Roadmap.
 - **Versionierung (Git):** Version **alpha Phase.Teil.Paket.laufende Nummer** – z. B. `0.3.18.8` = Phase 0(.5), Teil 3, Paket 18, achtes Update darin. Steht in `project.godot` (`config/version`), im Hauptmenü unten links und in `CHANGELOG.md`. **Jedes Update** bekommt: neue Nummer (laufende Nummer +1; **die laufende Nummer gilt pro Paket**: beginnt ein neues Paket, steigt die Paketnummer und die laufende Nummer startet wieder bei 1 – z. B. Paket 20 beginnt mit `0.4.20.1`; Änderungen und Fehlerbehebungen, auch an älteren Mechaniken, zählen die laufende Nummer des aktuellen Pakets hoch, bis das nächste Paket beginnt), Changelog-Eintrag, einen Commit „alpha <Version> – <Kurzbeschreibung>“ und einen Tag `v<Version>` und wird nach GitHub hochgeladen (`git push --follow-tags`, Repository [LucaZ0912/Starfront](https://github.com/LucaZ0912/Starfront), privat). `.godot/` wird nicht versioniert.
 
@@ -142,8 +143,8 @@ Phase 0.5 macht den Kampf aktiver wie in EVE Online und legt die Endgame-Mechani
 | 5 | Character Update – Pakete 28–34 | Entwurf |
 | 6 | New Worlds Discovery Update (Galaxy Rework + Into the Darkness) – Pakete 35–48 | grober Plan |
 | 7 | The Sky Is Not Enough (Landen, Planeten, Boden) – Pakete 49–54 | grober Plan |
-| 8 | Intro and First Part of the Story | geplant (vorher Teil 7) |
-| 9 | Feeling and Balancing | geplant (vorher Teil 8) – enthält Paket 8 (großes Balancing) |
+| 8 | Intro and First Part of the Story – Pakete 55–65 | grober Plan (vorher Teil 7) |
+| 9 | Feeling and Balancing – Pakete 66–74 | grober Plan (vorher Teil 8) – Paket 8 (großes Balancing) geht in den Paketen 72–74 auf |
 
 Landen und Bodengameplay waren als Part B von Teil 6 geplant und sind jetzt ein eigener Teil 7 (fast ein eigenes Spiel im Spiel); die späteren Teile rücken um eins nach.
 
@@ -983,6 +984,7 @@ Nummerierung schließt an Teil 4 an (dort bis Paket 27).
 
 | # | Arbeitspaket | Inhalt | Abhängig von |
 | --- | --- | --- | --- |
+| 28a | Audio-Grundgerüst | Spielereignisse (Andocken, Warp, Sprung, Treffer, Explosion, Modul an/aus, UI) lösen Sounds aus – zunächst mit Platzhaltern; Lautstärke-Regler für Gesamt, Musik, Atmosphäre und Effekte. Ab da bringt **jedes Paket seine Sounds gleich mit**; Musik, Atmosphäre und Feinschliff folgen in Teil 9 (Paket 69) | – |
 | 28 | Pilot & Charaktererstellung | Pilot als eigene Ebene im Spielstand; Sprite-Baukasten (Pixel-Art), Porträt aus dem Sprite; Name/Rufzeichen; Attribute verteilen; neuer Ablauf „Neues Spiel“ | – |
 | 29 | Fähigkeiten | Fähigkeiten aus Attributen abgeleitet, steigen durch Tun; kleine Prozent-Boni im Spiel; Charakter-Reiter im Schiffsmenü | 28 |
 | 30 | Skilltree & Baupläne | erste Fortschrittsmechanik: Module, Größen, Qualitäten und Schiffsklassen werden durch Tun freigeschaltet (nicht zeitbasiert wie EVE); dazu **Baupläne** für die Herstellung | 29, Teil 4 |
@@ -995,6 +997,7 @@ Nummerierung schließt an Teil 4 an (dort bis Paket 27).
 
 | Paket | Debug-Funktionen |
 | --- | --- |
+| 28a | Jeden Sound einzeln abspielen; Lautstärke je Kanal live anzeigen; Ereignis-Mitschrift (welches Ereignis welchen Sound ausgelöst hat) |
 | 28 | Charaktererstellung jederzeit neu öffnen; Zufalls-Pilot erzeugen; Attribute frei setzen (auch über die Startgrenzen hinaus) |
 | 29 | Jede Fähigkeit auf eine Stufe setzen bzw. Erfahrung hinzufügen; Anzeige der aktuell wirkenden Boni (vorher/nachher) |
 | 30 | **„Alles freischalten“**-Schalter; einzelne Knoten/Zweige freischalten oder zurücksetzen; Lernpunkte geben; alle Baupläne geben |
@@ -1139,7 +1142,7 @@ Die Veil-Mechanik entsteht bewusst schon hier, damit die Story (Teil 8) sie spä
 
 | # | Arbeitspaket | Inhalt |
 | --- | --- | --- |
-| 35 | System-Maßstab & Aufbau | deutlich größere Systeme; in den meisten Systemen ein dekorativer Asteroidengürtel und ein dekorativer Kuipergürtel (überwiegend Hintergrund); darin die bekannten Asteroidenfelder, dichter als heute |
+| 35 | System-Maßstab & Aufbau | deutlich größere Systeme; in den meisten Systemen ein dekorativer Asteroidengürtel und ein dekorativer Kuipergürtel (überwiegend Hintergrund); darin die bekannten Asteroidenfelder, dichter als heute. Dazu die **Grundlagen fürs Laden**: Vorladen von Assets und Loading Gates (Sprung und Hyperraum als Übergänge, die die Ladezeit verdecken); Ladebildschirme mit Lore-Bildern und Feinschliff in Teil 9 (Paket 67) |
 | 36 | Monde | Planeten bekommen Monde, Gasriesen 2–3 |
 | 37 | Neue Sterntypen | animierte Neutronensterne, Schwarze Löcher mit Akkretionsscheibe, Rote Überriesen (Beteigeuze-artig) |
 | 38 | Neue Planetentypen | Eisriesen, Eisplaneten, Zwergplaneten |
@@ -1192,13 +1195,101 @@ Jedes Paket mit eigenen Debug-Funktionen (z. B. sofort landen, zu einem POI spri
 | Planetenkarten | prozedural · handgebaut · gemischt | prozedural, wichtige Orte handgebaut | **Prozedural, Schlüsselorte** (Hauptstädte, Fraktions-Heimatwelten, Story-Orte) **von Hand** |
 | Landbare Welten | feste Planeten + Wolkenstädte · nur ausgewählte · alle inkl. Monde | feste Planeten und Monde, Gasriesen über Wolkenstädte | **Alle festen Planeten** (und Monde); bei Gasriesen nur die **Wolkenstädte** |
 
-## Phase 0.5 Teil 8 – Intro and First Part of the Story
+## Phase 0.5 Teil 8 – Intro and First Part of the Story (grober Plan)
 
-(Vorher Teil 7.) Beschreibung folgt. Details besprechen wir, wenn wir dran sind. Das Story-Intro bringt auch die Grundlagen des Skilltrees und erste Freischaltungen (siehe Teil 5) und nutzt die Veil-Mechanik aus Teil 6.
+### Die Geschichte des Einstiegs
 
-## Phase 0.5 Teil 9 – Feeling and Balancing
+- **Der Pilot** ist ein **Charter-Pilot aus der Zeit um 12600 HE** – also aus der Expansion, noch vor der Severance. Bei einer Erkundungsreise gerät er in eine seltsame Raumanomalie und wird **rund 300 Jahre in die Zukunft** geschleudert.
+- **Ankunft:** Er wird in einem völlig zerstörten Schiff aus einem **Wurmloch** gejagt – im System **Beyond**.
+- **Beyond** liegt, wie der Name sagt, **außerhalb des Clusters**: keine Sprungtorverbindung, aber noch nicht im Veil. Die Severance hat Beyond schwer getroffen: Die **große Goldflotte der Erde** war gerade auf dem Weg durch das System und wurde vollständig zerstört. Beyond ist voller **Wracks übergroßer Schiffe** – die Schiffe, die die Reise zur Erde ohne das Long Gate schaffen konnten, waren beinahe planetengroß.
+- **Dan** (Arbeitsname) leitet die **einzige Station in Beyond**, im Orbit um den erdähnlichen Planeten, mit einem **Abwrack- und Bergbauunternehmen**. Er rettet den Piloten, eröffnet ihm, dass sein Schiff vollkommen zerstört ist – und dass er ihm etwas schuldet. Er bietet **Geleit ins Cluster** an, wenn der Pilot eine Weile für ihn arbeitet.
+- **Charaktererstellung bei der Rettung:** Auf Dans Station wird der Pilot untersucht (medizinischer Scan / Identitätsabgleich) – dabei werden Aussehen und Werte aus Teil 5 festgelegt.
+- **Das alte Schiff:** Das Schiff des Piloten ist ein **Earthworks-Modell, das heute nicht mehr gebaut wird**. Dan nimmt es ihm ab – angeblich ist es Schrott. Irgendwann später liest man in den Nachrichten, dass ein Oldtimer-Sammler ein verloren geglaubtes Earthworks-Modell für **100 Millionen Credits** gekauft hat.
+- **Zwei Wege bei Dan:**
+  - **Mit Tutorial:** Man arbeitet Dans Aufträge der Reihe nach ab und lernt dabei Schiffssteuerung, Missionen und Grundwissen über die Welt. Die Schuld ist hier erzählerisch – sie ist mit den Tutorial-Aufträgen abgearbeitet.
+  - **Ohne Tutorial:** Man muss trotzdem für Dan arbeiten, ist dabei aber **freier** und bekommt von Dan ein paar **KHI-Schiffe** gestellt. Die Schuld ist dann ein **echter Geldbetrag**; ist sie abbezahlt, geht es ins Cluster.
+- **Abschluss:** Dan stellt einen **Freund aus dem Meridian Directorate** vor, der mit seinem **Prototyp-Sprungschiff** einen Weg nach Beyond gefunden hat. Er handelt mit Dan um **seltene alte Erdrelikte**, um daraus das **Tor zurück zur Erde** zu bauen (Project Bridge). Bei ihm wählt der Spieler, ob er im Gebiet der **Assembly** oder des **Covenant** startet. Das **Directorate** steht bewusst nicht zur Wahl: Es ist später für die Story wichtig und führt selten bis nie Krieg.
+- **Zurück nach Beyond:** Wer im Directorate später aufsteigt, bekommt ein **Sprungschiff**, mit dem Beyond wieder erreichbar ist.
+- **Erzählweise:** Dialoge mit Porträts an Stationen, Funksprüche im Flug, wenige kurze Zwischensequenzen (Wurmloch, Ankunft im Cluster).
 
-(Vorher Teil 8.) Beschreibung folgt. Hierher wandert Paket 8 (großes Balancing mit Analyse-Werkzeug) als Abschluss von Phase 0.5.
+### Arbeitspakete (Vorschlag)
+
+Nummerierung schließt an Teil 7 an (dort bis Paket 54).
+
+| # | Arbeitspaket | Inhalt |
+| --- | --- | --- |
+| 55 | Story-Grundgerüst | wiederverwendbares System für die Story: Story-Missionen und -Schritte, Dialoge mit Porträts, Story-Flags im Spielstand, Tutorial-Hinweise; Grundlage für alle späteren Story-Teile (Phase 1) |
+| 56 | Intro-Sequenz | Anomalie und Ausstoß aus dem Wurmloch im zerstörten Schiff, Rettung durch Dan; Charaktererstellung als Scan auf Dans Station |
+| 57 | Spezialsystem Beyond | System außerhalb des Clusters ohne Tor; Wrackfelder der Goldflotte mit (beinahe) planetengroßen Wracks; Dans Station am erdähnlichen Planeten |
+| 58 | Arbeit für Dan | zwei Wege: **Tutorial** (geführte Aufträge für Steuerung, Andocken, Bergbau, Bergen, Kampf, Aufträge; erste Skilltree-Knoten) oder **freie Arbeit** mit gestellten KHI-Schiffen und echter Geldschuld; danach geht es ins Cluster |
+| 59 | Weg ins Cluster | Directorate-Kontakt mit Prototyp-Sprungschiff, Erdrelikte, Wahl des Startgebiets (Assembly oder Covenant), Überfahrt |
+| 60 | Fenster „Acquaintances“ | Personen, die man kennengelernt hat (Dan, der Directorate-Kontakt …), mit Porträt, Ort und Beziehung; der bestehende Schiffs-Reiter „Contacts“ bleibt |
+| 61 | Spezialsystem Fern | Casino-System: ein einziger Planet um einen orangen Riesen, mit einer besonderen Casino-Station |
+| 62 | Casino-Minispiele | neue Minispiele in der Casino-Station |
+| 63 | Neue Schiffe | das alte Earthworks-Schiff des Piloten (nicht mehr hergestellt; taucht später als 100-Millionen-Sammlerstück in den Nachrichten auf), besondere Casino-Schiffe, ein Rennschiff von Maison Aurelle |
+| 64 | Neue Missionsarten | _(Details offen)_ |
+| 65 | Neue Touristenziele | _(Details offen)_ – baut auf Tourismus (Paket 43) und Sehenswürdigkeiten (Paket 54) auf |
+
+Wie immer: **jedes Paket mit eigenen Debug-Funktionen** – z. B. zu jedem Story-Schritt springen, Story-Flags setzen, Intro überspringen, direkt nach Beyond oder Fern teleportieren, Casino-Spiele mit festem Ausgang testen.
+
+### Anmerkungen von Claude
+
+- **Die Zeitreise passt sehr gut in die Lore.** 12600 liegt mitten in der Expansion, 12713 ist die Severance – der Pilot kennt die Welt noch *vor* dem Bruch und ist damit der ideale Blick von außen. Und die Anomalie, die ihn 300 Jahre versetzt, ist ein natürlicher Faden zum Rätsel der Severance.
+- **Sie erklärt den Skilltree:** Ein Pilot von vor 300 Jahren kennt die heutigen Schiffe und Module nicht – deshalb muss er sie neu lernen. Das passt genau zu „beim Start ist sehr wenig frei“ aus Teil 5.
+- **Der freie Weg bei Dan** ist eine gute Lösung für erneutes Spielen: kein reines Überspringen, sondern ein schnellerer, offener Einstieg mit echter Schuld.
+
+### Entscheidungen zu Teil 8
+
+| Frage | Optionen | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| Wann wird der Charakter erstellt? | vor dem Intro · bei der Rettung · nach dem Tutorial | Bei der Rettung durch Dan | **Bei der Rettung durch Dan** (Scan / Identitätsabgleich) |
+| Wie wird erzählt? | Dialoge · Funk · Zwischensequenzen · Mischung | Mischung | **Mischung**: Dialoge mit Porträts an Stationen, Funk im Flug, wenige kurze Zwischensequenzen |
+| Startgebiet auch beim Directorate? | nur Assembly/Covenant · auch Directorate | – | **Nein** – das Directorate ist später für die Story wichtig und führt selten bis nie Krieg |
+| Kann man nach Beyond zurück? | nein · später über die Story · über den Directorate-Kontakt | Später über die Story | **Mit Aufstieg im Directorate**: man bekommt ein Sprungschiff, mit dem Beyond erreichbar ist |
+| Name des Personen-Fensters | Schiffs-Reiter umbenennen · Personen-Fenster anders nennen | Schiffs-Reiter „Ships“, Personen „Contacts“ | **„Acquaintances“** für Personen; der Schiffs-Reiter bleibt „Contacts“ |
+| Intro überspringen | nie · ab dem zweiten Spiel · immer wählbar | Beim Spielstart wählbar | **Nicht ganz überspringbar**: Wer das Tutorial ablehnt, arbeitet trotzdem für Dan, aber freier und mit gestellten KHI-Schiffen; nach Abzahlung der Schuld geht es ins Cluster |
+| Was ist das alte Schiff von der Erde? | das eigene · ein Goldflotten-Schiff · beides | Das eigene Charter-Schiff | **Ein Earthworks-Modell, das nicht mehr gebaut wird** – Dan nimmt es dem Piloten als „Schrott“ ab; später liest man, dass ein Sammler ein verloren geglaubtes Earthworks-Modell für 100 Mio. Credits gekauft hat |
+| Dans Schulden | reine Story · echter Betrag | Echter Betrag | **Abhängig vom Weg**: mit Tutorial erzählerisch (Aufträge abarbeiten), ohne Tutorial ein echter Geldbetrag |
+
+## Phase 0.5 Teil 9 – Feeling and Balancing (grober Plan)
+
+Abschluss von Phase 0.5: Das Spiel wird aufgeräumt, schneller, klingt nach etwas und wird ausbalanciert. **Paket 8 (großes Balancing mit Analyse-Werkzeug) geht in den Balancing-Paketen 72–74 auf.** Nummerierung schließt an Teil 8 an (dort bis Paket 65).
+
+### Part A – Feeling
+
+| # | Arbeitspaket | Inhalt |
+| --- | --- | --- |
+| 66 | Großes Code-Review & Aufräumen | den gesamten Code System für System durchgehen (z. B. mit Claude Fable): aufräumen, optimieren, Fehler und Lücken suchen; Funde zuerst als Liste, Änderungen nach Freigabe (kleine Reviews gab es schon am Ende jedes Teils) |
+| 67 | Performance & Laden (Feinschliff) | Ladebildschirme **mit Lore-Bildern**, Feinschliff am Vorladen und an den Loading Gates (Grundlagen dafür kommen schon in Teil 6) |
+| 68 | Neues Hauptmenü | Hauptmenü neu gestaltet |
+| 69 | Sound Design | **BGM** (Musik je Situation – Menü, System, Kampf, Station, Hyperraum – mit Variationen je Fraktionsgebiet), **BGS** (Atmosphäre) und **SFX** (Effekte); Feinschliff und Mischung auf Basis des Audio-Grundgerüsts aus Teil 5. Quellen: selbst gemacht, freie Lizenzen (CC0 u. ä.) und KI-erzeugt – alle Lizenzen und Quellen in einer Datei im Projekt festgehalten |
+| 70 | Asset-Review-Tool | neues Werkzeug als **eigene Szene**, erreichbar über das Debug-Menü: alle Assets einzeln durchgehen (über die Erzeuger mit festen Schlüsseln, z. B. Schiff + Lackierung), Animationen ansehen, **Notizen pro Asset** hinterlassen; Notizen in einer Projektdatei (z. B. `asset_notes.json`) mit Status „offen / umgesetzt“, damit Claude Code sie gezielt anwenden kann |
+| 71 | Mehr Einstellungen | **Grafik** (Auflösung, VSync, FPS-Grenze, UI-Skalierung, Effektqualität), **Audio** (Gesamt, Musik, Atmosphäre, Effekte), **HUD** (Größe, sichtbare Elemente, Schadenszahlen), **Spiel** (Autosave-Intervall, Sicherheitsabfragen, Tutorial-Hinweise) |
+
+### Part B – Balancing
+
+| # | Arbeitspaket | Inhalt |
+| --- | --- | --- |
+| 72 | Balancing-Tool | Werkzeug zur Analyse: Werte von Schiffen und Modulen vergleichen, Einnahmen pro Stunde je Tätigkeit, Preise, Kampfstärken (aus Paket 8) |
+| 73 | Balancing | Durchgang über alle Systeme mit dem Werkzeug |
+| 74 | Playtests | Luz spielt, dazu **automatische Testläufe mit Mitschrift** (Credits pro Stunde, Abschüsse, Zeit je Tätigkeit); Erkenntnisse zurück ins Balancing; externe Tester später |
+
+Wie immer: jedes Paket mit eigenen Debug-Funktionen (z. B. Lautstärke/Spur je Situation erzwingen, Ladezeiten messen und anzeigen, Balancing-Werte live ändern).
+
+### Entscheidungen zu Teil 9
+
+| Frage | Optionen | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| Code-Review | nur in Teil 9 · zusätzlich klein am Ende jedes Teils | Klein am Ende jedes Teils + großes Review in Teil 9 | **Klein am Ende jedes Teils**, großes Review in Teil 9; Funde zuerst als Liste, Änderungen nach Freigabe |
+| Audio-Grundgerüst | alles in Teil 9 · Grundgerüst früher | Grundgerüst mit Teil 5 | **Grundgerüst mit Teil 5**; Musik, Atmosphäre und Feinschliff in Teil 9 |
+| Laden | alles in Teil 9 · Grundlagen in Teil 6 | Grundlagen in Teil 6 | **Grundlagen in Teil 6** (Vorladen, Loading Gates); Ladebildschirme und Feinschliff in Teil 9 |
+| Soundeffekte (SFX) | in Paket 69 · eigenes Paket · später | In Paket 69 | **In Paket 69** (BGM, BGS und SFX) |
+| Herkunft von Musik und Sounds | selbst gemacht · freie Lizenzen · KI-erzeugt · gekauft/beauftragt | – | **Selbst gemacht, freie Lizenzen (CC0 u. ä.) und KI-erzeugt**; Lizenzen und Quellen werden im Projekt festgehalten |
+| Musik je Situation | eine Spur · je Situation · zusätzlich je Fraktionsgebiet | Je Situation + Fraktions-Variation | **Je Situation, mit Variationen je Fraktionsgebiet** |
+| Asset-Review-Tool: wo? | im Debug-Menü · eigene Szene · eigenes Programm | Eigene Szene, über das Debug-Menü | **Eigene Szene**, erreichbar über das Debug-Menü |
+| Welche Einstellungen? | Grafik · Audio · HUD · Spiel | alle vier | **Grafik, Audio, HUD und Spiel** |
+| Ladebildschirme | einfach · mit Tipps/Codex · mit Lore-Bildern | Mit Tipps und Codex-Auszügen | **Mit Lore-Bildern** |
+| Playtests | nur Luz · Luz + automatische Testläufe · auch externe | Luz + automatische Testläufe | **Luz + automatische Testläufe** mit Mitschrift; externe Tester später |
 
 ## Offene Entscheidungen
 

@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.30 – 2026-11-07
+
+- Roadmap: parts 8 (story start in Beyond, packages 55–65) and 9 (feeling and balancing, packages 66–74)
+  planned; new package 28a (audio framework) at the start of part 5; loading basics in package 35;
+  new principle: a small code review at the end of every part.
+
 ## alpha 0.4.25.29 – 2026-11-07
 
 - Concordia: three engine flames – the spine and both flight wings (they move with the wings).
