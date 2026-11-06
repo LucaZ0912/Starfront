@@ -139,6 +139,38 @@ const PRESETS := {
 		"optional_0": "o_shield_s", "optional_1": "o_afterburner_s"}},
 
 	# ---------------- Civilians & patrols (phase 0.5 package 11) ----------------
+	# Forge of Return (package 25f)
+	"std_for_acolyte": {"hull": "for_acolyte", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:5:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_radar_s",
+		"weapon_0": "w_focus:2:C", "weapon_1": "w_focus:2:C", "weapon_2": "w_focus:1:C",
+		"optional_0": "o_shield:2:C", "optional_1": "o_capacitor_s"}},
+	"std_for_templar": {"hull": "for_templar", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion:7:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_focus:3:C", "weapon_1": "w_focus:3:C", "weapon_2": "w_focus:2:C", "weapon_3": "w_focus:2:C", "weapon_4": "w_focus:2:C",
+		"tool_0": "t_repair_s", "optional_0": "o_shield_m", "optional_1": "o_capacitor:3:C", "optional_2": "o_targeting_s"}},
+	"std_for_cathedral": {"hull": "for_cathedral", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
+		"weapon_0": "w_focus:4:C", "weapon_1": "w_focus:4:C", "weapon_2": "w_focus:4:C", "weapon_3": "w_focus:3:C",
+		"weapon_4": "w_focus:3:C", "weapon_5": "w_focus:3:C", "weapon_6": "w_focus:2:C", "weapon_7": "w_focus:2:C",
+		"tool_0": "t_repair_m", "optional_0": "o_shield_l", "optional_1": "o_capacitor:6:C", "optional_2": "o_shield_m", "optional_3": "o_targeting_s"}},
+	"patrol_for_light": {"hull": "for_acolyte", "modules": {
+		"hull": "hull_reflect_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:5:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c2_s", "sensors": "sen_radar_s",
+		"weapon_0": "w_focus:2:C", "weapon_1": "w_focus:2:C", "weapon_2": "w_focus:1:C", "optional_0": "o_shield:2:C"}},
+	"patrol_for_medium": {"hull": "for_templar", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion:7:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_tactical_m",
+		"weapon_0": "w_focus:3:C", "weapon_1": "w_focus:3:C", "weapon_2": "w_focus:2:C", "weapon_3": "w_focus:2:C", "weapon_4": "w_focus:2:C",
+		"optional_0": "o_shield_m", "optional_1": "o_capacitor:3:C"}},
+	"patrol_for_heavy": {"hull": "for_cathedral", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
+		"weapon_0": "w_focus:4:C", "weapon_1": "w_focus:4:C", "weapon_2": "w_focus:4:C", "weapon_3": "w_focus:3:C",
+		"weapon_4": "w_focus:3:C", "weapon_5": "w_focus:3:C", "weapon_6": "w_focus:2:C", "weapon_7": "w_focus:2:C",
+		"optional_0": "o_shield_l", "optional_1": "o_capacitor:6:C", "optional_2": "o_shield_m"}},
 	# Concord Fleetworks (package 25e)
 	"std_cfw_demos": {"hull": "cfw_demos", "modules": {
 		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",

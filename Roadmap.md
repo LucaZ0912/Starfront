@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics) und 25e (Concord Fleetworks) fertig, als Nächstes 25f (Forge of Return). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.30. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks) und 25f (Forge of Return) fertig, als Nächstes 25g (Axiom Astronautics). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.31. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -927,6 +927,18 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] Die Drohnen nutzen die Hangartore der Reihe nach – auch wenn man sie einzeln startet (0.4.25.27).
 - [x] Überarbeitung (0.4.25.28): Pulsieren deutlich stärker (leuchtender Saum, langsames Atmen), Kampf-Lichtpunkt größer; das Gelb beim Drohnenstart ist jetzt ein Baustellen-Warnlicht – bernsteinfarben blinkend mit Lauflicht, dazu blitzende Warnleuchten an den Ecken der offenen Tore; die Tore der Concordia sind beim Starten und Zurückrufen sichtbar offen (sie lagen unter den Flugdecks) – die Drohnen fliegen hinein; sichtbare Hydraulikstreben mit Gelenken zwischen Rumpf und ausgefahrenen Flugdecks.
 - [x] Concordia: drei Triebwerksflammen – am Rumpf und an beiden Flugdecks (wandern beim Ausfahren mit); Düsen mit nur einer Reihe Abstand zählen als ein Triebwerk (0.4.25.29).
+
+**Umgesetzt 25f (7. Nov 2026, alpha 0.4.25.31)** – Forge of Return, die fliegenden Tempel des Covenant, 11 neue automatische Prüfungen:
+
+- [x] **Acolyte** (S, Milizschiff, 36.000 cr, ab Neutral), **Templar** (M, Patrouillenschiff, 175.000 cr, ab Friendly), **Cathedral** (L, Flaggschiff, 850.000 cr, ab Allied) – nur an Covenant-Werften, keine Drohnenhangars.
+- [x] **Design – die Dualität der Macht:** außen dunkelrote, gezackte Wehrgänge mit goldenen Spitzen und glühenden roten Kristallgeschützen (Bedrohung für den Feind), innen ein strahlendes Kirchenschiff aus Elfenbein und Gold mit Buntglasfenstern, getragen von goldenen Strebebögen (Vorbild für die eigene Fraktion). Am stärksten bei der Cathedral: Wehrgänge mit Zinnen, Kristallbatterien, große Rosette am Bug, zwei Glockentürme mit goldenen Spitzen, goldener Heiligenschein über dem Allerheiligsten am Heck. Feste Farben Rot und Gold, egal wem das Schiff gehört.
+- [x] **Kraftwerk:** +80 % Reaktorleistung (Cathedral +120 %); dafür weniger Struktur und kleinere Panzerungsplätze (Cathedral mit normalen Hüllenwerten).
+- [x] **Fokuskristall-Laser** (neue Waffe, Größe 1–4): rote Strahlen, hoher Schaden, große Reichweite, sehr hoher Strombedarf; nur an Covenant-Ausrüstern (Qualität nach Stationsstufe), nur in Covenant-Schiffe einbaubar; eigenes Icon (roter Kristall).
+- [x] **Strahlbündelung (Acolyte, Templar):** sind alle Waffenplätze mit Fokuskristallen belegt, werden sie zu einer **Fokus-Lanze**: dünne rote Strahlen laufen vor dem Bug zusammen, von dort feuert ein dicker Strahl – +30 % Schaden, eine Kachel in der Modulleiste.
+- [x] **Cathedral – Anti-Drohnen-Puls** (eingebaut, aktivierbar): eingeschaltet alle 30 s eine rote Schockwelle (420 Energie), die **alle** Drohnen im Umkreis von 5.000 km lahmlegt – auch die von Verbündeten; sie treiben 15 s flackernd und reglos, verbrauchen weiter Treibstoff. NPC-Cathedrals setzen ihn gegen feindliche Drohnen ein.
+- [x] **Cathedral – Automodus** (eingebaut): die Fokuslaser, die nicht von Hand eingeschaltet sind, feuern selbstständig auf bis zu 6 Ziele – nur feindliche oder die beim Einschalten aufgeschalteten; nie auf Unbeteiligte.
+- [x] **Patrouillen:** in Covenant-Systemen Acolyte, Templar und Cathedral (gelegentlich eine Goliath in Covenant-Farben), in umkämpften Systemen Earthworks-Schiffe.
+- [x] **Debug-Funktion:** Debug-Menü → Ship: „NPC carriers launch drones“ (Träger in der Nähe starten ihre Drohnen – zum Testen des Pulses); dazu wie gehabt „Spawn any ship“.
 
 ### Stationstyp 0 (Paket 26)
 

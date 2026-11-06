@@ -2171,7 +2171,11 @@ func fire_weapon(shooter: Ship, target: Ship, w: Dictionary) -> void:
 		col = ION_COLOR
 		if shooter == player or target == player:
 			GameState.codex.event("ion")
+	if w.get("focus", false):
+		col = Color(1.0, 0.18, 0.12)                     # the Covenant's red focus crystals (package 25f)
 	if float(w.get("projectile_speed", 0)) <= 0.0:
+		if int(w.get("bundle", 0)) > 1:
+			_bundle_beams(shooter, target, int(w["bundle"]), col)
 		var co = blocker(shooter.position, target.position)
 		if co != null:
 			# the beam hits the colossus instead (cover)
@@ -2193,6 +2197,33 @@ func fire_weapon(shooter: Ship, target: Ship, w: Dictionary) -> void:
 		var p := Projectile.new()
 		p.setup(shooter, target, w, self)
 		fx_layer.add_child(p)
+
+
+## Bundled focus crystals (package 25f): thin red beams from the hardpoints meet in front of the bow;
+## from there one thick lance goes to the target (drawn by fire_weapon).
+func _bundle_beams(shooter: Ship, target: Ship, n: int, col: Color) -> void:
+	var fwd := Vector2.from_angle(shooter.heading)
+	var side := fwd.orthogonal()
+	var meet := shooter.position + fwd * float(shooter.radius) * 1.25
+	for k in n:
+		var t := (float(k) / maxf(float(n - 1), 1.0)) * 2.0 - 1.0
+		var from := shooter.position + side * t * float(shooter.radius) * 0.55 - fwd * float(shooter.radius) * 0.1
+		spawn_fx(Fx.beam(from, meet, col, 2.5))
+	spawn_fx(Fx.flash(meet, col, float(shooter.radius) * 0.35))
+
+
+## The Cathedral's anti-drone pulse (package 25f): every drone within `radius` – friend or foe – drifts
+## helplessly for `stun` seconds (it still burns fuel).
+func drone_pulse(src: Ship, radius: float, stun: float) -> int:
+	spawn_fx(Fx.pulse(src.position, radius, Color(1.0, 0.22, 0.15)))
+	var n := 0
+	for d in ship_layer.get_children():
+		if d is Ship and d.is_drone and not d.dying and d.position.distance_to(src.position) <= radius:
+			d.stunned_t = maxf(float(d.stunned_t), stun)
+			n += 1
+	if src == player or (player != null and is_instance_valid(player) and player.position.distance_to(src.position) < radius * 1.5):
+		GameState.log_msg("%s: anti-drone pulse – %d drone%s knocked out for %d s." % [src.display_name(), n, "" if n == 1 else "s", int(stun)], GameState.COL_WARN)
+	return n
 
 
 # ---------------------------------------------------------------- No-fire zones & station defence

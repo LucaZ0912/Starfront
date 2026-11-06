@@ -114,6 +114,8 @@ func can_fit(key: String, module_id: String) -> String:
 		return "Only notorious pirate captains can use this"
 	if m.get("aurelle_only", false) and String(hull().get("maker", "")) != "aurelle":
 		return "Luxury suites fit only into Maison Aurelle ships"
+	if m.get("covenant_only", false) and String(hull().get("maker", "")) != "forge":
+		return "Focus crystal lasers fit only into Covenant ships (Forge of Return)"
 	return ""
 
 
@@ -286,6 +288,8 @@ func _compute() -> Dictionary:
 
 	# Hull traits (package 25a): built-in ore hold, mining bonus, built-in modules
 	s["ore_cargo_max"] += float(h.get("ore_cargo", 0.0))
+	# package 25f (Forge of Return): a hugely reinforced reactor
+	s["power_output"] *= float(h.get("reactor_mult", 1.0))
 	# package 25c (Maison Aurelle): fast hulls, strong shields
 	s["speed_mult"] *= float(h.get("speed_mult", 1.0))
 	# package 25d (Hadrian Dynamics): reflective hull, explosive resistance
@@ -362,10 +366,49 @@ func _compute() -> Dictionary:
 		if t2["tool"] == "survey":
 			t2["range"] = float(t2["range"]) * s["survey_range_mult"]
 	s["dps"] = dps
+	_bundle_focus(s, h)
 	_drone_stats(s, drone_mods)
 	s["dps_total"] = dps["optical"] + dps["kinetic"] + dps["explosive"]
 	s["optimal_range"] = min_range * 0.8 if min_range < INF else s["sensor_range"] * 0.5
 	return s
+
+
+# ---------------------------------------------------------------- Beam bundling (package 25f)
+
+## Forge of Return S and M ships: with focus crystals in every hardpoint the beams join in front of the
+## ship and fire together as one lance – +30 % damage. The lance replaces the single weapons (one tile).
+func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
+	s["focus_bundle"] = 0
+	if String(h.get("maker", "")) != "forge" or int(h.get("size", 1)) > 2:
+		return
+	var n := int(h["slots"].get("weapon", 0))
+	var ws: Array = s["weapons"]
+	if n < 2 or ws.size() != n:
+		return
+	for w in ws:
+		if not w.get("focus", false):
+			return
+	var lance: Dictionary = ws[0].duplicate()
+	var dmg := 0.0
+	var energy := 0.0
+	var cd := 0.0
+	var rng := INF
+	for w2 in ws:
+		dmg += float(w2["damage"])
+		energy += float(w2["energy"])
+		cd = maxf(cd, float(w2["cooldown"]))
+		rng = minf(rng, float(w2["range"]))
+	lance["damage"] = dmg * 1.3
+	lance["energy"] = energy
+	lance["cooldown"] = cd
+	lance["range"] = rng
+	lance["bundle"] = n
+	lance["size"] = 4
+	lance["name"] = "Focus Lance (%d crystals)" % n
+	lance["base_name"] = "Focus Lance"
+	s["weapons"] = [lance]
+	s["focus_bundle"] = n
+	s["dps"][String(lance["damage_type"])] = dmg * 1.3 / maxf(cd, 0.01)
 
 
 # ---------------------------------------------------------------- Built-in modules (package 25a)
@@ -386,6 +429,18 @@ func builtin_modules() -> Array:
 				m["id"] = "builtin:prospect"
 				m["builtin"] = true
 				_builtin_cache.append({"key": "builtin_prospect", "data": m})
+			"drone_pulse":
+				var dp: Dictionary = h.get("drone_pulse", {})
+				_builtin_cache.append({"key": "builtin_drone_pulse", "data": {
+					"name": "Anti-Drone Pulse (built-in)", "base_name": "Anti-Drone Pulse", "slot": "optional", "active": "drone_pulse",
+					"energy_rate": 0.0, "energy": float(dp.get("energy", 400.0)), "power": float(dp.get("power", 40.0)),
+					"range": float(dp.get("range", 5000.0)), "interval": float(dp.get("interval", 30.0)), "stun": float(dp.get("stun", 15.0)),
+					"builtin": true, "id": "builtin:drone_pulse", "size": int(h.get("size", 1)), "quality": "C", "mass": 0, "price": 0}})
+			"auto_fire":
+				_builtin_cache.append({"key": "builtin_auto_fire", "data": {
+					"name": "Auto Mode (built-in)", "base_name": "Auto Mode", "slot": "optional", "active": "auto_fire",
+					"energy_rate": 0.0, "power": 10.0, "targets": 6, "builtin": true, "id": "builtin:auto_fire",
+					"size": int(h.get("size", 1)), "quality": "C", "mass": 0, "price": 0}})
 			"pd":
 				var pdm: Dictionary = GameData.modules.get("w_pointdef:%d:C" % clampi(int(h.get("size", 1)), 1, 3), {}).duplicate()
 				pdm["name"] = "Point Defence (built-in)"

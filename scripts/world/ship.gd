@@ -101,6 +101,9 @@ var platform_t := -1.0           # launch animation of the S-ship platform (-1 =
 var arm_open := 1.0              # Goliath: 0 = arms folded in (docking), 1 = swung open (package 25d)
 var combat_t := 0.0              # seconds of "in a fight" left: firing, being hit, a hostile target (25e)
 var next_hatch := 0              # the next drone door in turn (drones use the doors one after another)
+var auto_targets: Array = []     # Cathedral auto mode: the targets locked when it was switched on (25f)
+var _auto_t := 0.0
+var _npc_pulse_t := 0.0
 const ARM_TIME := 1.6            # seconds to swing the arms fully open or shut
 const HATCH_TIME := 0.45         # seconds to slide a hatch open or shut
 const PLATFORM_ANIM := 3.4       # hatch opens, the small ship rises, lifts off, the hatch closes
@@ -368,6 +371,8 @@ func _physics_process(delta: float) -> void:
 	_update_hatches(delta)
 	_update_arms(delta)
 	_update_npc_drones(delta)
+	_update_npc_pulse(delta)
+	_update_auto_fire(delta, s)
 	combat_t = maxf(0.0, combat_t - delta)
 	if in_warp():
 		_update_warp(delta)
@@ -1783,6 +1788,23 @@ func set_module_active(slot: String, on: bool) -> String:
 		module_state[slot] = "on" if on else "off"
 		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
 		return ""
+	if e["kind"] == "self" and String(d.get("active", "")) == "auto_fire":
+		# package 25f: the Cathedral's focus lasers fire on their own – at enemies and at the targets
+		# locked right now
+		module_on[slot] = on
+		module_state[slot] = "on" if on else "off"
+		auto_targets = []
+		if on:
+			for l in locks:
+				if l.get("node") != null and is_instance_valid(l["node"]) and l["node"] is Ship:
+					auto_targets.append(l["node"])
+		_mlog("%s %s." % [d["name"], ("on – the focus lasers fire at up to %d enemies%s" % [int(d.get("targets", 6)), (" and the %d locked targets" % auto_targets.size()) if not auto_targets.is_empty() else ""]) if on else "off"])
+		return ""
+	if e["kind"] == "self" and String(d.get("active", "")) == "drone_pulse":
+		module_on[slot] = on
+		module_state[slot] = "on" if on else "off"
+		_mlog("%s %s." % [d["name"], ("on – a pulse every %d s knocks out every drone within %s, friend or foe" % [int(d["interval"]), SystemView.fmt_dist(float(d["range"]))]) if on else "off"])
+		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) in ["refinery", "factory", "market"]:
 		_set_builtin_on(String(d["active"]), on)
 		module_on[slot] = on
@@ -2054,6 +2076,12 @@ func _run_scan(delta: float, slot: String, d: Dictionary, tgt) -> bool:
 
 ## Active optional equipment (afterburner, shield booster, armor repairer): drains energy while on.
 func _run_active(delta: float, slot: String, d: Dictionary) -> void:
+	if String(d.get("active", "")) == "drone_pulse":
+		_pulse_tick(slot, d)
+		return
+	if String(d.get("active", "")) == "auto_fire":
+		module_state[slot] = "on"
+		return
 	var cost := float(d["energy_rate"]) * delta
 	if fit.capacitor < cost:
 		_switch_off(slot, d, "capacitor empty")
@@ -2398,6 +2426,80 @@ func _update_npc_drones(delta: float) -> void:
 		_npc_calm_t += 1.0
 		if _npc_calm_t >= NPC_DRONE_CALM:
 			view.recall_drones(self)
+
+
+# ---------------------------------------------------------------- Cathedral (package 25f)
+
+## While switched on, the anti-drone pulse fires every `interval` seconds (when the capacitor has the energy).
+func _pulse_tick(slot: String, d: Dictionary) -> void:
+	if float(module_timers.get(slot, 0.0)) > 0.0:
+		module_state[slot] = "on"
+		return
+	if fit.capacitor < float(d["energy"]):
+		module_state[slot] = "energy"
+		return
+	fit.capacitor -= float(d["energy"])
+	module_timers[slot] = float(d["interval"])
+	module_state[slot] = "on"
+	view.drone_pulse(self, float(d["range"]), float(d["stun"]))
+	combat_t = 5.0
+
+
+## Auto mode: every focus laser that is not switched on by hand fires on its own – at up to `targets`
+## enemies in range and at the targets that were locked when the mode was switched on.
+func _update_auto_fire(delta: float, s: Dictionary) -> void:
+	if not module_on.get("builtin_auto_fire", false) or emp_t > 0.0 or view == null or in_warp() or is_docked():
+		return
+	_auto_t -= delta
+	var cands: Array = []
+	for t0 in auto_targets:
+		if is_instance_valid(t0) and t0 is Ship and not t0.dying and t0.is_targetable():
+			cands.append(t0)
+	var maxr := 0.0
+	for w in s["weapons"]:
+		if w.get("focus", false):
+			maxr = maxf(maxr, float(w["range"]))
+	for n in view.ship_layer.get_children():
+		if cands.size() >= 6:
+			break
+		if n is Ship and n != self and not n.dying and n.is_targetable() and not n in cands and Ship.hostile(self, n) and position.distance_to(n.position) <= maxr and can_see(n):
+			cands.append(n)
+	if cands.is_empty():
+		return
+	cands = cands.slice(0, 6)
+	var k := 0
+	for w2 in s["weapons"]:
+		if not w2.get("focus", false):
+			continue
+		var slot: String = w2["slot"]
+		if module_on.get(slot, false) or not w2.get("powered", true):
+			continue                     # a laser switched on by hand keeps its own target
+		var tg = cands[k % cands.size()]
+		k += 1
+		if float(module_timers.get(slot, 0.0)) > 0.0 or position.distance_to(tg.position) > float(w2["range"]):
+			continue
+		if fit.capacitor < float(w2["energy"]):
+			continue
+		fit.capacitor -= float(w2["energy"])
+		module_timers[slot] = float(w2["cooldown"]) * randf_range(0.97, 1.03)
+		view.fire_weapon(self, tg, w2)
+		combat_t = 5.0
+
+
+## NPC Cathedrals use the pulse against hostile drones near them.
+func _update_npc_pulse(delta: float) -> void:
+	if manual or faction == "player" or view == null or not "drone_pulse" in fit.hull().get("builtin", []):
+		return
+	_npc_pulse_t -= delta
+	if _npc_pulse_t > 0.0:
+		return
+	var dp: Dictionary = fit.hull()["drone_pulse"]
+	for n in view.ship_layer.get_children():
+		if n is Ship and n.is_drone and not n.dying and n.position.distance_to(position) <= float(dp["range"]) and Ship.hostile(self, n):
+			view.drone_pulse(self, float(dp["range"]), float(dp["stun"]))
+			_npc_pulse_t = float(dp["interval"])
+			return
+	_npc_pulse_t = 1.0
 
 
 # ---------------------------------------------------------------- Light effects (package 25e, Concord)

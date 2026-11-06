@@ -1060,6 +1060,23 @@ func _c_debug_fill_drones(_c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_npc_drones"} – every NPC carrier near you launches its drones (to test the
+## Cathedral's anti-drone pulse, package 25f).
+func _c_debug_npc_drones(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var n := 0
+	for s in world.ship_layer.get_children():
+		if s is Ship and s != world.player and not s.is_drone and not s.dying and s.position.distance_to(world.player.position) < 20000.0 and int(s.fit.stats()["drones_max"]) > 0 and int(s.fit.stats()["drone_storage"]) > 0:
+			if s.fit.drones.is_empty():
+				for i in int(s.fit.stats()["drones_max"]):
+					s.fit.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+			if world.launch_drones(s) == "":
+				n += 1
+	return "" if n > 0 else "No NPC carrier with drones nearby (spawn one: World → Spawn any ship)."
+
+
 ## {"type":"debug_platform_launch"} – the Citadel's S-ship platform: hatch, rising ship, lift-off
 ## (animation only; the S ship itself comes with Teil 5) – package 25d.
 func _c_debug_platform_launch(_c: Dictionary) -> String:

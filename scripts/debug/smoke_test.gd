@@ -523,6 +523,7 @@ func _process(delta: float) -> void:
 				_test_aurelle(view)
 				_test_hadrian(view)
 				_test_concord(view)
+				_test_forge(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -1425,6 +1426,19 @@ func _shoot_standing(view: SystemView) -> void:
 	bdr.resize(bdr.get_width() * 8, bdr.get_height() * 8, Image.INTERPOLATE_NEAREST)
 	csh.blend_rect(bdr, Rect2i(0, 0, bdr.get_width(), bdr.get_height()), Vector2i(980, 30))
 	csh.save_png("res://Claude outputs/concord_ships.png")
+	# package 25f: the Forge of Return's flying temples (fixed red and gold)
+	var fsh := Image.create(1100, 600, false, Image.FORMAT_RGBA8)
+	fsh.fill(Color(0.06, 0.06, 0.09))
+	var fy := 20
+	for fh9 in ["for_acolyte", "for_templar", "for_cathedral"]:
+		var fim := PixelArt.ship_texture(fh9, "player").get_image()
+		fim.resize(fim.get_width() * 4, fim.get_height() * 4, Image.INTERPOLATE_NEAREST)
+		fsh.blend_rect(fim, Rect2i(0, 0, fim.get_width(), fim.get_height()), Vector2i(20, fy))
+		fy += fim.get_height() + 20
+	var fic := PixelArt.icon_texture("w_focus").get_image()
+	fic.resize(fic.get_width() * 4, fic.get_height() * 4, Image.INTERPOLATE_NEAREST)
+	fsh.blend_rect(fic, Rect2i(0, 0, fic.get_width(), fic.get_height()), Vector2i(1000, 30))
+	fsh.save_png("res://Claude outputs/forge_ships.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -1594,6 +1608,56 @@ func _shoot_standing(view: SystemView) -> void:
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_flames.png")
 		ccs.queue_free()
+		# package 25f: a Templar fires its bundled focus lance; a Cathedral pulses an Assembly drone swarm
+		var tpf := GameState.create_from_preset("std_for_templar", "player")
+		tpf.system_id = view.system_id
+		tpf.position = bc.position + Vector2(-6000, 22000)
+		var tps := Ship.new()
+		tps.setup(tpf, view)
+		view.ship_layer.add_child(tps)
+		var tgt9: Ship = view.spawn_npc("pirate_hdy_maul", tps.position + Vector2(650, -150))
+		tgt9.set_physics_process(false)
+		tps.heading = (tgt9.position - tps.position).angle()
+		var lw: Dictionary = tpf.stats()["weapons"][0]
+		view.camera.position = tps.position + Vector2(160, 0)
+		for i22 in 4:
+			view.fire_weapon(tps, tgt9, lw)
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/templar_lance.png")
+		tps.queue_free()
+		tgt9.queue_free()
+		var caf := GameState.create_from_preset("patrol_cfw_medium", "patrol")
+		caf.gov = "assembly"
+		caf.system_id = view.system_id
+		caf.position = bc.position + Vector2(3000, 26000)
+		var cas := Ship.new()
+		cas.setup(caf, view)
+		view.ship_layer.add_child(cas)
+		caf.drones = []
+		for i23 in 7:
+			caf.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+		view.launch_drones(cas)
+		for d11 in view.drones_of(cas):
+			d11.hatch_launch = false
+			d11.visible = true
+			d11.position = cas.position + Vector2.from_angle(randf() * TAU) * randf_range(300.0, 900.0)
+		var cdf := GameState.create_from_preset("std_for_cathedral", "player")
+		cdf.system_id = view.system_id
+		cdf.position = cas.position + Vector2(-1400, 600)
+		var cds := Ship.new()
+		cds.manual = true
+		cds.setup(cdf, view)
+		view.ship_layer.add_child(cds)
+		cds.heading = 0.15
+		view.camera.position = cds.position + Vector2(-120, 0)
+		view.drone_pulse(cds, 5000.0, 15.0)
+		for i24 in 4:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/cathedral_pulse.png")
+		for d12 in view.drones_of(cas):
+			view.stow_drone(d12)
+		cas.queue_free()
+		cds.queue_free()
 		# 0.4.25.22: every ship with drones has a drone hatch – top row shut, bottom row open
 		for set_i in 2:
 			var hset: Array = [["std_hornet", "std_warden", "std_bastion", "std_anaguma"], ["std_mule", "std_aur_boulevard", "std_hdy_maul", "std_aur_empress"]][set_i]
@@ -3205,10 +3269,10 @@ func _test_drones(view: SystemView) -> void:
 	var hull_ok := true
 	for hid in GameData.hulls:
 		var h: Dictionary = GameData.hulls[hid]
-		if h.get("drone_only", false) or (h.get("maker", "") in ["aurelle", "hadrian"] and int(h.get("drones", 0)) == 0):
-			continue                 # Pearl, Opal (25c) and Talon (25d) carry no drones
+		if h.get("drone_only", false) or (h.get("maker", "") in ["aurelle", "hadrian", "forge"] and int(h.get("drones", 0)) == 0):
+			continue                 # Pearl, Opal (25c), Talon (25d) and the Covenant's ships (25f) carry no drones
 		hull_ok = hull_ok and GameData.slot_max_of(h, "hangar") > 0 and int(h.get("drones", 0)) >= 1
-	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot (except Pearl, Opal and Talon); drones out at once: S 1 … L 9")
+	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot (except Pearl, Opal, Talon and the Covenant ships); drones out at once: S 1 … L 9")
 	check(int(M["hangar:3:A"]["drone_storage"]) > int(M["hangar:3:C"]["drone_storage"]) and int(M["hangar:3:C"]["drone_storage"]) > int(M["hangar:3:F"]["drone_storage"]), "hangar quality gives more room (%d / %d / %d)" % [int(M["hangar:3:F"]["drone_storage"]), int(M["hangar:3:C"]["drone_storage"]), int(M["hangar:3:A"]["drone_storage"])])
 	var f := GameState.create_from_preset("std_bastion", "player")
 	check(f.can_fit("dweapon_0", "w_pulse:1:C") == "" and f.can_fit("dweapon_0", "w_beam:2:C") != "" and f.can_fit("dweapon_0", "w_pointdef:1:C") != "" and f.can_fit("dtool_0", "t_mining:1:C") == "" and f.can_fit("dtool_0", "t_salvage:1:C") != "" and f.can_fit("dbonus_0", "dr_range:2:C") == "" and f.can_fit("optional_0", "dr_range:1:C") != "", "drone slots: weapon size 1, mining laser size 1, drone modules only in the bonus slot")
@@ -4314,3 +4378,123 @@ func _test_concord(view: SystemView) -> void:
 	af.drones = keep_d
 	Commands.cheats_enabled = cheats
 	check(e1 == "" and filled == int(af.stats()["drone_storage"]), "debug menu: fill the drone hangar (%d)" % filled)
+
+
+## Phase 0.5 package 25f: Forge of Return – the Covenant's flying temples.
+func _test_forge(view: SystemView) -> void:
+	var fr := ["for_acolyte", "for_templar", "for_cathedral"]
+	var ok := true
+	for hid in fr:
+		var h: Dictionary = GameData.hulls[hid]
+		ok = ok and h["maker"] == "forge" and int(h.get("drones", 0)) == 0 and GameData.slot_max_of(h, "hangar") == 0 and GameData.presets.has("std_" + hid)
+	check(ok and [GameData.hulls["for_acolyte"]["min_tier"], GameData.hulls["for_templar"]["min_tier"], GameData.hulls["for_cathedral"]["min_tier"]] == ["neutral", "friendly", "allied"], "Forge of Return: Acolyte (Neutral), Templar (Friendly), Cathedral (Allied) – no drone hangars")
+	var t := GameState.create_fit("for_templar", {"reactor": "rea_fusion:6:C"}, "player")
+	var w := GameState.create_fit("warden", {"reactor": "rea_fusion:6:C"}, "player")
+	var cat := GameState.create_fit("for_cathedral", {"reactor": "rea_fusion:6:C"}, "player")
+	check(absf(float(t.stats()["power_output"]) - float(w.stats()["power_output"]) * 1.8) < 1.0 and absf(float(cat.stats()["power_output"]) - float(w.stats()["power_output"]) * 2.2) < 1.0, "reactor output +80 % (Cathedral +120 %)")
+	check(int(GameData.hulls["for_templar"]["structure"]) < int(GameData.hulls["warden"]["structure"]) * 0.75 and int(GameData.hulls["for_templar"]["slot_sizes"]["hull"]) < int(GameData.hulls["warden"]["slot_sizes"]["hull"]), "weak hulls: less structure, smaller armour slots")
+	check(w.can_fit("weapon_0", "w_focus:2:C") != "" and t.can_fit("weapon_0", "w_focus:2:C") == "" and PixelArt.module_icon_key("w_focus:2:C") == "w_focus", "focus-crystal lasers fit only into Covenant ships")
+	var cov_has := false
+	var other_has := false
+	for sy in Universe.systems:
+		for st in Universe.get_layout(int(sy["id"]))["stations"]:
+			var has := false
+			for mid in st["shop"]:
+				has = has or String(mid).begins_with("w_focus:")
+			if String(st.get("faction", "")) == "covenant":
+				cov_has = cov_has or has
+			else:
+				other_has = other_has or has
+	check(cov_has and not other_has, "focus-crystal lasers are sold only at Covenant outfitters")
+	# beam bundling
+	var ac := GameState.create_from_preset("std_for_acolyte", "player")
+	var ws: Array = ac.stats()["weapons"]
+	var sum := 0.0
+	for k in ac.slot_keys():
+		if String(k).begins_with("weapon_"):
+			sum += float(GameData.modules[ac.get_module(k)]["damage"])
+	check(ws.size() == 1 and int(ws[0]["bundle"]) == 3 and absf(float(ws[0]["damage"]) - sum * 1.3) < 0.5, "Acolyte: all three crystals join into one lance – +30 %% (%.0f)" % float(ws[0]["damage"]))
+	ac.set_module("weapon_2", "w_pulse:1:C")
+	check(ac.stats()["weapons"].size() == 3 and int(ac.stats()["focus_bundle"]) == 0, "… only when every hardpoint carries a focus crystal")
+	var cf := GameState.create_from_preset("std_for_cathedral", "player")
+	check(cf.stats()["weapons"].size() == 8 and int(cf.stats()["focus_bundle"]) == 0, "the Cathedral does not bundle – eight separate batteries")
+	# the anti-drone pulse: every drone in range, friend or foe, drifts for 15 s
+	var caf := GameState.create_from_preset("patrol_cfw_light", "patrol")
+	caf.gov = "assembly"
+	caf.position = view.player.position + Vector2(0, -111000)
+	caf.uid = 99910
+	var cas := Ship.new()
+	cas.setup(caf, view)
+	view.ship_layer.add_child(cas)
+	caf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
+	view.launch_drones(cas)
+	var ds: Array = view.drones_of(cas)
+	for d in ds:
+		d.hatch_launch = false
+		d.position = cas.position + Vector2(400, 0)
+		d.velocity = Vector2(50, 0)
+	cf.position = cas.position + Vector2(-2000, 0)
+	cf.uid = 99911
+	var cs := Ship.new()
+	cs.manual = true
+	cs.setup(cf, view)
+	view.ship_layer.add_child(cs)
+	cf.capacitor = float(cf.stats()["cap_max"])
+	var e1: String = cs.set_module_active("builtin_drone_pulse", true)
+	cs._update_modules(0.1, cf.stats())
+	var stunned := ds.size() == 2
+	for d2 in ds:
+		stunned = stunned and float(d2.stunned_t) > 14.0
+	var p0: Vector2 = ds[0].position
+	ds[0]._physics_process(0.5)
+	var drifted: bool = ds[0].position.distance_to(p0 + Vector2(25, 0)) < 2.0
+	check(e1 == "" and stunned and drifted and float(cs.module_timers.get("builtin_drone_pulse", 0.0)) > 25.0, "Cathedral: the anti-drone pulse knocks out every drone within 5,000 km (also allied ones) – they drift for 15 s")
+	for d3 in ds:
+		view.stow_drone(d3)
+	cas.queue_free()
+	# auto mode: fires on its own at hostile ships, never at the innocent
+	var p1: Ship = view.spawn_npc("pirate_hdy_talon", cs.position + Vector2(700, 0))
+	var p2: Ship = view.spawn_npc("pirate_hdy_talon", cs.position + Vector2(0, 800))
+	var civ: Ship = view.spawn_npc("civ_shuttle", cs.position + Vector2(-700, 0), "civilian", "")
+	for n9 in [p1, p2, civ]:
+		n9.set_physics_process(false)
+	var hp1: float = p1.fit.shield + p1.fit.armor + p1.fit.structure
+	var hp2: float = p2.fit.shield + p2.fit.armor + p2.fit.structure
+	var hpc: float = civ.fit.shield + civ.fit.armor + civ.fit.structure
+	cf.capacitor = float(cf.stats()["cap_max"])
+	var e2: String = cs.set_module_active("builtin_auto_fire", true)
+	cs._update_auto_fire(0.1, cf.stats())
+	var hit1: bool = p1.fit.shield + p1.fit.armor + p1.fit.structure < hp1
+	var hit2: bool = p2.fit.shield + p2.fit.armor + p2.fit.structure < hp2
+	check(e2 == "" and hit1 and hit2 and civ.fit.shield + civ.fit.armor + civ.fit.structure == hpc, "Cathedral auto mode: the focus lasers fire on their own at several enemies – never at the innocent")
+	cs.set_module_active("builtin_auto_fire", false)
+	for n10 in [p1, p2, civ]:
+		n10.queue_free()
+	cs.queue_free()
+	# Covenant patrols fly Forge ships (now and then a Goliath)
+	var tr = view.traffic
+	var keep_sid: int = tr.sid
+	var many: Array = []
+	for i in 60:
+		many.append("patrol_medium")
+	tr.sid = _system_of("covenant")
+	var own: Array = tr._gov_presets("covenant", many)
+	tr.sid = keep_sid
+	check(own.has("patrol_for_medium") and own.has("patrol_hdy_heavy") and not own.has("patrol_medium"), "Covenant patrols fly Forge of Return ships (now and then a Goliath)")
+	# debug: NPC carriers launch their drones (to test the pulse)
+	var far := GameState.create_from_preset("patrol_cfw_light", "patrol")
+	far.gov = "assembly"
+	far.position = view.player.position + Vector2(3000, 0)
+	far.uid = 99912
+	var fs := Ship.new()
+	fs.setup(far, view)
+	view.ship_layer.add_child(fs)
+	var cheats: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	var e3: String = Commands.execute({"type": "debug_npc_drones"})
+	var launched: int = view.drones_of(fs).size()
+	Commands.cheats_enabled = cheats
+	check(e3 == "" and launched > 0, "debug menu: nearby NPC carriers launch their drones (%d)" % launched)
+	for d4 in view.drones_of(fs):
+		view.stow_drone(d4)
+	fs.queue_free()

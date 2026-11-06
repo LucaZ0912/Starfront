@@ -24,6 +24,7 @@ var _idle := false                # flying in formation this frame
 var runway := false               # still taking off along the carrier's flight deck
 var hatch_launch := false         # waiting below the carrier's drone hatch (package 25d, Citadel)
 var hatch_name := "drones"        # the hangar door it uses (Concord carriers have several, package 25e)
+var stunned_t := 0.0              # knocked out by an anti-drone pulse: drifts, does nothing (package 25f)
 var _hold := 0.0                  # waiting for its turn at the start of the runway
 const RUNWAY_GAP := 0.45          # seconds between two drones on the runway
 const HATCH_WAIT := 0.5           # the drone hatch needs this long to slide open
@@ -103,6 +104,22 @@ func _physics_process(delta: float) -> void:
 	if hatch_launch:
 		_rise_from_hatch(delta)
 		return
+	if stunned_t > 0.0:
+		# knocked out (package 25f): drifts helplessly, flickers, still burns fuel
+		stunned_t -= delta
+		rec["fuel"] = float(rec["fuel"]) - delta * float(BURN["idle"]) / maxf(float(dstats["fuel"]), 1.0)
+		if float(rec["fuel"]) <= 0.0:
+			_lost("out of fuel")
+			return
+		position += velocity * delta
+		velocity *= 0.995
+		heading += delta * 1.5
+		fit.position = position
+		modulate.a = 0.45 + 0.4 * absf(sin(stunned_t * 9.0))
+		tool_beams.clear()
+		queue_redraw()
+		return
+	modulate.a = 1.0
 	_wcd = maxf(0.0, _wcd - delta)
 	hit_flash = maxf(0.0, hit_flash - delta)
 	if float(dstats["shield"]) > 0.0:

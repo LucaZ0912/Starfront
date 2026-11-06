@@ -560,6 +560,7 @@ const HDY_PATROL := {"patrol_light": "patrol_hdy_light", "patrol_medium": "patro
 ## Concord carriers (now and then a Goliath in its colours); in contested systems Earthworks ships.
 const CFW_PATROL := {"patrol_light": "patrol_cfw_light", "patrol_medium": "patrol_cfw_medium", "patrol_heavy": "patrol_cfw_heavy"}
 const GOLIATH_SHARE := 0.15
+const FOR_PATROL := {"patrol_light": "patrol_for_light", "patrol_medium": "patrol_for_medium", "patrol_heavy": "patrol_for_heavy"}
 
 
 func _gov_presets(gov: String, presets: Array) -> Array:
@@ -573,6 +574,11 @@ func _gov_presets(gov: String, presets: Array) -> Array:
 					out.append("patrol_hdy_heavy")
 				else:
 					out.append(CFW_PATROL.get(p, p))
+			"covenant":
+				if p in ["patrol_medium", "patrol_heavy"] and randf() < GOLIATH_SHARE:
+					out.append("patrol_hdy_heavy")
+				else:
+					out.append(FOR_PATROL.get(p, p))
 			"directorate":
 				out.append(HDY_PATROL[p] if HDY_PATROL.has(p) and randf() < 0.5 else p)
 			_:

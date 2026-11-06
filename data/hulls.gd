@@ -31,6 +31,8 @@ extends RefCounted
 ## stripe_fx: the owner-colour stripes ("a") pulse, and in a fight a bright spot runs along them from bow to
 ## stern; launch_glow: they light up yellow while the drone doors are open (Concordia). arms.shift [back,
 ## out]: the parts move by this many pixels when open (Concordia's flight wings) – their hatches move along.
+## Forge of Return (package 25f): reactor_mult (× reactor output), structure already lowered in the
+## numbers; builtin "drone_pulse" (anti-drone pulse) and "auto_fire" (focus lasers fire on their own).
 ## arms {body, art, frames} (Goliath): the hull is drawn from `body`, the two arms from `art`_0 … _(frames-1)
 ## (top half, the lower arm mirrored): stage 0 folded in, the last stage open in a round arc. They open
 ## from their hinges at the stern in space and fold in while docking and undocking (the hangar bays are narrow).
@@ -157,6 +159,33 @@ const HULLS := {
 		"drone_bonus": {"mining": 0.25, "cargo": 5.0}, "drone_paint": "khi_drone",
 		"drone_deck": [44, 90],
 		"desc": "KHI's heavy industry ship: a drone carrier for nine mining drones, a refinery as good as a station's, a factory and an on-board market.",
+	},
+	# ---------------- Forge of Return (package 25f, Covenant of Return) ----------------
+	"for_acolyte": {
+		"maker": "forge", "name": "Acolyte", "class": "Militia Ship", "size": 1, "price": 36000, "buyable": true, "min_tier": "neutral",
+		"structure": 300, "mass": 640, "signature": 34, "cargo": 10,
+		"slots": {"weapon": 3, "tool": 1, "optional": 2, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [2, 2, 1], "tool": [1], "optional": [2, 1], "hull": 2, "engine": 4, "reactor": 5, "distributor": 5, "tank": 2, "hyperdrive": 2, "sensors": 3, "hangar": 0},
+		"drones": 0, "shape": "for_acolyte", "length": 38, "reactor_mult": 1.8,
+		"desc": "A crimson reliquary blade around a golden chapel: little hull, a very strong reactor, focus-crystal lasers. With crystals in every hardpoint their beams join into one lance (+30 %).",
+	},
+	"for_templar": {
+		"maker": "forge", "name": "Templar", "class": "Patrol Ship", "size": 2, "price": 175000, "buyable": true, "min_tier": "friendly",
+		"structure": 1150, "mass": 2100, "signature": 90, "cargo": 35,
+		"slots": {"weapon": 5, "tool": 1, "optional": 3, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [3, 3, 2, 2, 2], "tool": [1], "optional": [4, 3, 3], "hull": 4, "engine": 6, "reactor": 7, "distributor": 7, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 0},
+		"drones": 0, "shape": "for_templar", "length": 62, "reactor_mult": 1.8,
+		"desc": "A flying chapel with crimson flanks and golden buttresses: five hardpoints, an even bigger reactor, the same weak hull. Crystal beams join into one lance (+30 %).",
+	},
+	"for_cathedral": {
+		"maker": "forge", "name": "Cathedral", "class": "Flagship", "size": 3, "price": 850000, "buyable": true, "min_tier": "allied",
+		"structure": 5400, "mass": 9000, "signature": 260, "cargo": 120,
+		"slots": {"weapon": 8, "tool": 1, "optional": 4, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [4, 4, 4, 3, 3, 3, 2, 2], "tool": [1], "optional": [8, 6, 5, 4], "hull": 9, "engine": 7, "reactor": 10, "distributor": 10, "tank": 7, "hyperdrive": 6, "sensors": 7, "hangar": 0},
+		"drones": 0, "shape": "for_cathedral", "length": 124, "reactor_mult": 2.2,
+		"builtin": ["drone_pulse", "auto_fire"],
+		"drone_pulse": {"range": 5000.0, "interval": 30.0, "stun": 15.0, "energy": 420.0, "power": 45.0},
+		"desc": "A fortress of faith: crimson battlements full of crystal batteries around a radiant nave with stained glass, a rose window at the bow, a golden halo over the sanctuary. Eight hardpoints, a huge reactor, an anti-drone pulse and an auto mode for its lasers.",
 	},
 	# ---------------- Concord Fleetworks (package 25e, Cluster Assembly) ----------------
 	"cfw_demos": {

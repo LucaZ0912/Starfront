@@ -28,6 +28,8 @@ const PALETTE := {
 	# Hadrian Dynamics steel (package 25d): edge, gunmetal, dark steel, black seams, red lights
 	"B": Color(0.5, 0.52, 0.56), "M": Color(0.31, 0.32, 0.35), "N": Color(0.2, 0.21, 0.23), "X": Color(0.1, 0.1, 0.12),
 	"R": Color(0.95, 0.2, 0.14), "E": Color(1.0, 0.55, 0.42),
+	# Forge of Return crimson (package 25f): crimson, bright crimson, dark crimson; stained-glass blue
+	"F": Color(0.58, 0.08, 0.11), "A": Color(0.82, 0.18, 0.16), "l": Color(0.3, 0.03, 0.06), "b": Color(0.25, 0.4, 0.95),
 	# shaded lower halves of painted-on drone hatches (0.4.25.24): dark KHI yellow, Aurelle ivory in shadow
 	"O": Color(0.5, 0.33, 0.06), "Z": Color(0.6, 0.57, 0.5),
 	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
@@ -48,7 +50,7 @@ const FACTION := {
 	"neutral": {"h": Color(0.66, 0.64, 0.56), "H": Color(0.86, 0.84, 0.74), "d": Color(0.45, 0.43, 0.37), "D": Color(0.3, 0.29, 0.25),
 		"a": Color(1.0, 0.85, 0.3), "f": Color(1.0, 0.85, 0.5)},
 }
-const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N"}
+const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N", "A": "F", "F": "l"}
 ## Pirate copies of Hadrian ships are worn out: rusty steel, a dim orange light (package 25d)
 const HDY_WORN := {"B": Color(0.56, 0.44, 0.34), "M": Color(0.38, 0.3, 0.24), "N": Color(0.26, 0.2, 0.17),
 	"X": Color(0.13, 0.1, 0.09), "R": Color(1.0, 0.5, 0.18)}
@@ -676,7 +678,8 @@ const SIZE_COLORS := {1: Color(0.55, 0.65, 0.75), 2: Color(0.4, 0.75, 1.0), 3: C
 static func module_icon_key(module_id: String) -> String:
 	if module_id.begins_with("builtin:"):
 		return {"builtin:refinery": "refinery", "builtin:prospect": "t_prospect", "builtin:factory": "factory", "builtin:market": "market",
-			"builtin:afterburner": "o_afterburner", "builtin:pd": "w_pointdef"}.get(module_id, "empty")
+			"builtin:afterburner": "o_afterburner", "builtin:pd": "w_pointdef", "builtin:drone_pulse": "o_jammer",
+			"builtin:auto_fire": "w_focus"}.get(module_id, "empty")
 	if not GameData.modules.has(module_id):
 		return "empty"
 	var m: Dictionary = GameData.modules[module_id]
@@ -686,6 +689,8 @@ static func module_icon_key(module_id: String) -> String:
 				return "w_pointdef"
 			if m.get("mines", false):
 				return "w_mines"
+			if m.get("focus", false):
+				return "w_focus"
 			return "w_" + String(m.get("damage_type", "kinetic"))
 		"tool":
 			return "t_" + String(m.get("tool", "scanner"))

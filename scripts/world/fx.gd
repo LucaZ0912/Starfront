@@ -98,6 +98,18 @@ static func smoke(pos: Vector2, drift: Vector2, radius: float) -> Fx:
 	return f
 
 
+## Package 25f: the Cathedral's anti-drone pulse – a red ring racing out to `radius`.
+static func pulse(pos: Vector2, radius: float, col: Color) -> Fx:
+	var f := Fx.new()
+	f.kind = "pulse"
+	f.position = pos
+	f.color = col
+	f.size = radius
+	f.life = 1.1
+	f.max_life = 1.1
+	return f
+
+
 static func float_text(pos: Vector2, txt: String, col: Color) -> Fx:
 	var f := Fx.new()
 	f.kind = "number"
@@ -148,6 +160,11 @@ func _draw() -> void:
 			draw_circle(Vector2(-size * 0.3, size * 0.2) * g, size * (0.3 + g * 0.9), Color(color.darkened(0.4), 0.6 * t))
 		"marker":
 			draw_arc(Vector2.ZERO, 8.0 + 30.0 * t, 0.0, TAU, 24, Color(color, t), 2.0)
+		"pulse":
+			var rr := size * (1.0 - t * t)
+			draw_arc(Vector2.ZERO, rr, 0.0, TAU, 96, Color(color, t), 14.0 + 30.0 * t)
+			draw_arc(Vector2.ZERO, rr * 0.96, 0.0, TAU, 96, Color(1.0, 0.85, 0.6, t * 0.7), 4.0)
+			draw_circle(Vector2.ZERO, rr, Color(color, 0.08 * t))
 		"number":
 			var z := get_viewport().get_canvas_transform().get_scale().x
 			var rise := (1.0 - t) * 34.0

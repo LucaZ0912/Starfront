@@ -89,6 +89,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Forge of Return – the Covenant's flying temples (phase 0.5 package 25f)
+- **Acolyte** (S, from Neutral), **Templar** (M, from Friendly), **Cathedral** (L, from Allied): crimson
+  battlements with crystal batteries around a radiant ivory-and-gold nave with stained glass. Sold only at
+  Covenant shipyards; no drone hangars; reactor +80 % (Cathedral +120 %), weak hulls.
+- **Focus-crystal lasers** (size 1–4): red beams, high damage, long range, very power-hungry; only at
+  Covenant outfitters, only for Covenant ships. With crystals in every hardpoint the Acolyte and Templar
+  join their beams into one **focus lance** (+30 %).
+- **Cathedral:** anti-drone pulse (every 30 s, 5,000 km, every drone drifts for 15 s – friend or foe) and
+  an auto mode (the lasers fire on their own at up to six enemies or the targets locked when switched on).
+- Covenant patrols fly Forge ships in their systems. Debug menu → Ship: nearby NPC carriers launch drones.
+
 ## Concord Fleetworks – the Assembly's drone carriers (phase 0.5 package 25e)
 - **Demos** (S, from Neutral), **Quirinus** (M, from Friendly), **Concordia** (L, from Allied – the only ship
   with eleven drones, in Assembly blue). Sold only at Assembly shipyards, and only with the standing.

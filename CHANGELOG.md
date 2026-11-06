@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.31 – 2026-11-07
+
+**Package 25f – Forge of Return, the Covenant's flying temples.**
+- Acolyte, Templar, Cathedral: crimson battlements and crystal batteries around a radiant nave; the
+  Cathedral with a rose window, bell towers and a golden halo.
+- Focus-crystal lasers (Covenant outfitters and ships only); beam bundling into a focus lance (+30 %).
+- Reactor +80 % (Cathedral +120 %), weak hulls, no drone hangars.
+- Cathedral: anti-drone pulse (drones drift for 15 s, friend or foe) and auto mode for its lasers.
+- Covenant patrols fly Forge ships. Debug: nearby NPC carriers launch their drones.
+
 ## alpha 0.4.25.30 – 2026-11-07
 
 - Roadmap: parts 8 (story start in Beyond, packages 55–65) and 9 (feeling and balancing, packages 66–74)

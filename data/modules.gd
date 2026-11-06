@@ -103,6 +103,8 @@ const FAMILIES := {
 	"w_torpedo": {"name": "Torpedo Bay", "anchor": "w_torpedo_m", "ref": 2, "sizes": [2, 4]},
 	"w_cruise": {"name": "Cruise Missile Silo", "anchor": "w_cruise_l", "ref": 3, "sizes": [3, 4]},
 	"w_ion": {"name": "Ion Disruptor", "anchor": "w_ion_s", "ref": 1, "sizes": [1, 2]},
+	# package 25f: the Covenant's synthetic red focus crystals – only at Covenant outfitters, only for Covenant ships
+	"w_focus": {"name": "Focus Crystal Laser", "anchor": "w_focus_s", "ref": 1, "sizes": [1, 4]},
 	"w_ionsiphon": {"name": "Ion Siphon", "anchor": "w_ion_m", "ref": 2, "sizes": [2, 3]},
 	"w_iontorpedo": {"name": "Ion Torpedo", "anchor": "w_ion_torpedo", "ref": 1, "sizes": [1, 1]},
 	# package 20: point defense and mine launcher
@@ -328,6 +330,7 @@ const ANCHORS := {
 	"sen_deep_l": {"name": "Deep Space Sensors", "slot": "sensors", "size": 3, "price": 60000, "mass": 400, "power": 18, "range": 2400, "resolution": 1.3, "scan_strength": 2.6},
 
 	# ---------------- Weapons: optical ----------------
+	"w_focus_s": {"name": "Focus Crystal Laser", "slot": "weapon", "size": 1, "price": 9000, "mass": 70, "power": 16, "damage_type": "optical", "damage": 26, "cooldown": 1.0, "range": 900, "energy": 10, "projectile_speed": 0, "focus": true, "covenant_only": true},
 	"w_pulse_s": {"name": "Pulse Laser", "slot": "weapon", "size": 1, "price": 2500, "mass": 60, "power": 5, "damage_type": "optical", "damage": 14, "cooldown": 0.6, "range": 650, "energy": 4, "projectile_speed": 0},
 	"w_beam_m": {"name": "Beam Laser", "slot": "weapon", "size": 2, "price": 16000, "mass": 200, "power": 12, "damage_type": "optical", "damage": 42, "cooldown": 1.2, "range": 850, "energy": 12, "projectile_speed": 0},
 	"w_lance_l": {"name": "Photon Lance", "slot": "weapon", "size": 3, "price": 65000, "mass": 600, "power": 28, "damage_type": "optical", "damage": 150, "cooldown": 2.5, "range": 1150, "energy": 45, "projectile_speed": 0},
