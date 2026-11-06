@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.22 – 2026-11-07
+
+- Every ship that carries drones has a visible sliding drone hatch (Kanayama-maru: its runway): drones
+  rise out of it and land in it; drawn in the maker's colours, sized by ship class.
+
 ## alpha 0.4.25.21 – 2026-11-06
 
 - Engine flames sit at the actual drives: the Goliath shows two flames at its arm drives instead of

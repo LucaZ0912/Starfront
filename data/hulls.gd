@@ -21,6 +21,8 @@ extends RefCounted
 ## heavy_missiles (can carry long-range and nuclear missiles later), small_ship_bay (Teil 5: a bay on
 ## top for an S ship). hatches {name: [x, y, w, h]} = sliding hatches in pixel-art columns/rows of the
 ## full (mirrored) ship image: "drones" (drones launch and land through it), "platform" (the S-ship bay).
+## hatch_overlay: the hatch is not part of the pixel art – the game draws the closed hatch on top
+## (every ship with drones has one since 0.4.25.22; positions from tools/art/drone_hatches.py).
 ## arms {body, art, frames} (Goliath): the hull is drawn from `body`, the two arms from `art`_0 … _(frames-1)
 ## (top half, the lower arm mirrored): stage 0 folded in, the last stage open in a round arc. They open
 ## from their hinges at the stern in space and fold in while docking and undocking (the hangar bays are narrow).
@@ -44,6 +46,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 3, "optional": 3, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [1, 1], "tool": [2, 2, 1], "optional": [2, 2, 1], "hull": 2, "engine": 4, "reactor": 3, "distributor": 3, "tank": 3, "hyperdrive": 2, "sensors": 4, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "scout", "length": 26,
+		"hatches": {"drones": [4, 6, 3, 3]}, "hatch_overlay": true,
 		"desc": "Fast, nimble scout. Ideal for scanning and analysing anomalies.",
 	},
 	"hornet": {
@@ -52,6 +55,7 @@ const HULLS := {
 		"slots": {"weapon": 3, "tool": 1, "optional": 3, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 2, 1], "tool": [1], "optional": [2, 2, 1], "hull": 3, "engine": 5, "reactor": 4, "distributor": 4, "tank": 2, "hyperdrive": 2, "sensors": 3, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "fighter", "length": 30,
+		"hatches": {"drones": [9, 6, 4, 3]}, "hatch_overlay": true,
 		"desc": "Agile fighter with three weapon hardpoints.",
 	},
 	"crow": {
@@ -60,6 +64,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 1, "optional": 2, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 1], "tool": [1], "optional": [2, 1], "hull": 3, "engine": 4, "reactor": 3, "distributor": 3, "tank": 2, "hyperdrive": 2, "sensors": 2, "hangar": 1, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "raider", "length": 28,
+		"hatches": {"drones": [6, 5, 3, 3]}, "hatch_overlay": true,
 		"desc": "Patched-together raider of the pirate clans.",
 	},
 	"mule": {
@@ -68,6 +73,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 2, "optional": 6, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 1], "tool": [2, 1], "optional": [6, 5, 5, 4, 3, 3], "hull": 5, "engine": 5, "reactor": 4, "distributor": 4, "tank": 6, "hyperdrive": 4, "sensors": 3, "hangar": 4, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 3, "shape": "hauler", "length": 48,
+		"hatches": {"drones": [12, 7, 6, 5]}, "hatch_overlay": true,
 		"desc": "Sturdy freighter with plenty of optional slots for cargo racks.",
 	},
 	"drillhead": {
@@ -76,6 +82,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 4, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 1], "tool": [3, 3, 2, 2], "optional": [4, 4, 3, 3], "hull": 4, "engine": 4, "reactor": 5, "distributor": 4, "tank": 4, "hyperdrive": 3, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 4, "shape": "miner", "length": 44,
+		"hatches": {"drones": [7, 7, 6, 5]}, "hatch_overlay": true,
 		"desc": "Mining vessel with three tool slots.",
 	},
 	"warden": {
@@ -84,6 +91,7 @@ const HULLS := {
 		"slots": {"weapon": 4, "tool": 2, "optional": 5, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [3, 3, 2, 2], "tool": [2, 1], "optional": [5, 4, 4, 3, 2], "hull": 6, "engine": 6, "reactor": 6, "distributor": 6, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 4, "shape": "frigate", "length": 50,
+		"hatches": {"drones": [6, 9, 4, 3]}, "hatch_overlay": true,
 		"desc": "Versatile combat frigate.",
 	},
 	"bastion": {
@@ -92,6 +100,7 @@ const HULLS := {
 		"slots": {"weapon": 6, "tool": 4, "optional": 6, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [4, 4, 3, 3, 2, 2], "tool": [3, 3, 2, 2], "optional": [8, 7, 6, 6, 5, 4], "hull": 9, "engine": 8, "reactor": 9, "distributor": 9, "tank": 7, "hyperdrive": 6, "sensors": 7, "hangar": 9, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 9, "shape": "cruiser", "length": 80,
+		"hatches": {"drones": [12, 12, 6, 5]}, "hatch_overlay": true,
 		"desc": "Flagship class. Slow, but incredibly durable.",
 	},
 	# ---------------- Kanayama Heavy Industries (package 25a) ----------------
@@ -101,6 +110,7 @@ const HULLS := {
 		"slots": {"weapon": 1, "tool": 3, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [1], "tool": [2, 1, 1], "optional": [2, 2, 1, 1], "hull": 3, "engine": 4, "reactor": 4, "distributor": 3, "tank": 3, "hyperdrive": 2, "sensors": 3, "hangar": 1, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "mogura", "length": 30,
+		"hatches": {"drones": [9, 8, 4, 3]}, "hatch_overlay": true,
 		"ore_cargo": 60, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
 		"refinery": {"rate": 0.15, "eff": 0.7, "power": 8}, "builtin": ["refinery", "prospect"],
 		"desc": "\"Mole\" – KHI's small miner with its own refinery, ore hold and prospector. Tough and slow.",
@@ -111,6 +121,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 3, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 1], "tool": [3, 3, 2], "optional": [5, 4, 3, 3], "hull": 6, "engine": 5, "reactor": 6, "distributor": 5, "tank": 5, "hyperdrive": 4, "sensors": 4, "hangar": 3, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 2, "shape": "anaguma", "length": 50,
+		"hatches": {"drones": [18, 10, 6, 5]}, "hatch_overlay": true,
 		"ore_cargo": 300, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
 		"refinery": {"rate": 0.4, "eff": 0.8, "power": 16}, "builtin": ["refinery", "prospect"],
 		"desc": "\"Badger\" – takes strip miners and ice harvesters, a big ore hold and a better refinery.",
@@ -121,6 +132,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 4, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 2], "tool": [4, 4, 3, 3], "optional": [7, 6, 5, 4], "hull": 9, "engine": 8, "reactor": 8, "distributor": 7, "tank": 8, "hyperdrive": 5, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 4, "shape": "iwakudaki", "length": 84,
+		"hatches": {"drones": [29, 11, 8, 7]}, "hatch_overlay": true,
 		"ore_cargo": 900, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
 		"refinery": {"rate": 1.0, "eff": 0.9, "power": 32}, "builtin": ["refinery", "prospect"],
 		"desc": "\"Rock breaker\" – KHI's heavy mining barge: four big tool slots, a huge ore hold, a strong refinery.",
@@ -154,6 +166,7 @@ const HULLS := {
 		"slots": {"weapon": 5, "tool": 1, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [3, 3, 2, 2, 2], "tool": [1], "optional": [5, 4, 3, 3], "hull": 6, "engine": 6, "reactor": 6, "distributor": 6, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "hdy_maul", "length": 54,
+		"hatches": {"drones": [7, 9, 6, 5]}, "hatch_overlay": true,
 		"speed_mult": 1.15, "reflect": 0.15, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true,
 		"desc": "A fast gunboat with five hardpoints and a small drone hangar. Its reflective hull sends 15 % of the armour damage back; +20 % explosive resistance.",
 	},
@@ -197,6 +210,7 @@ const HULLS := {
 		"slots": {"weapon": 3, "tool": 1, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 2, 1], "tool": [1], "optional": [5, 4, 4, 3], "hull": 5, "engine": 7, "reactor": 5, "distributor": 5, "tank": 5, "hyperdrive": 4, "sensors": 3, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "aur_boulevard", "length": 54,
+		"hatches": {"drones": [20, 8, 4, 3]}, "hatch_overlay": true,
 		"speed_mult": 1.25, "align_mult": 0.7, "shield_mult": 1.2, "luxury_pay": 0.8,
 		"afterburner": {"boost": 1.45, "energy_rate": 12, "power": 12}, "builtin": ["afterburner"],
 		"desc": "The liner of the rich systems: strong engines, quick to align for warp, a built-in afterburner. Luxury suites fit, but pay 20 % less.",
@@ -217,6 +231,7 @@ const HULLS := {
 		"slots": {"weapon": 3, "tool": 1, "optional": 6, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [3, 3, 2], "tool": [1], "optional": [9, 9, 8, 8, 7, 6], "hull": 8, "engine": 9, "reactor": 9, "distributor": 9, "tank": 8, "hyperdrive": 6, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 4, "shape": "aur_empress", "length": 112,
+		"hatches": {"drones": [9, 14, 4, 5]}, "hatch_overlay": true,
 		"turn_mult": 0.7, "align_mult": 0.6, "warp_mult": 1.35, "shield_mult": 1.6, "cargo_mod_mult": 0.5, "luxury_pay": 1.25,
 		"drone_paint": "aurelle_drone", "drone_bonus": {"shield": 60.0, "shield_regen": 5.0, "shield_mult": 1.5},
 		"desc": "Maison Aurelle's cruise megaliner: slow to turn, but quick to align and fast in warp, with strong shields. Luxury contracts pay 25 % more; cargo racks give only half their room. Its white drones carry their own shield.",
@@ -228,6 +243,7 @@ const HULLS := {
 		"slots": {"weapon": 0, "tool": 0, "optional": 1, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [], "tool": [], "optional": [2], "hull": 1, "engine": 3, "reactor": 2, "distributor": 2, "tank": 2, "hyperdrive": 1, "sensors": 1, "hangar": 1, "dweapon": [1], "dtool": [1], "dbonus": [1]},
 		"drones": 1, "shape": "shuttle", "length": 20,
+		"hatches": {"drones": [2, 3, 3, 3]}, "hatch_overlay": true,
 		"desc": "Planet-to-orbit shuttle carrying passengers and light freight.",
 	},
 	"freighter": {
@@ -236,6 +252,7 @@ const HULLS := {
 		"slots": {"weapon": 1, "tool": 0, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2], "tool": [], "optional": [9, 8, 8, 7], "hull": 7, "engine": 8, "reactor": 6, "distributor": 5, "tank": 9, "hyperdrive": 5, "sensors": 3, "hangar": 6, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 5, "shape": "freighter", "length": 92,
+		"hatches": {"drones": [15, 6, 8, 7]}, "hatch_overlay": true,
 		"desc": "Container freighter of the trade convoys. Slow, huge and a tempting prize.",
 	},
 }

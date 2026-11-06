@@ -2254,29 +2254,42 @@ func _update_hatches(delta: float) -> void:
 			platform_t = -1.0
 
 
-## Draws open hatches (a dark shaft, the panel slid towards the stern) and the platform launch.
+## Draws the hatches: a dark shaft while open, the panel slid towards the stern; hatches that are not
+## part of the pixel art (hatch_overlay – every other ship with drones) are drawn shut as well.
 func _draw_hatches() -> void:
-	if hatch_open.is_empty() and platform_t < 0.0:
+	var h := fit.hull()
+	var overlay: bool = h.get("hatch_overlay", false)
+	if hatch_open.is_empty() and platform_t < 0.0 and not overlay:
 		return
-	var worn := PixelArt.is_pirate_paint(paint)
-	var cm: Color = PixelArt.HDY_WORN["M"] if worn else PixelArt.PALETTE["M"]
-	var cn: Color = PixelArt.HDY_WORN["N"] if worn else PixelArt.PALETTE["N"]
-	var cb: Color = PixelArt.HDY_WORN["B"] if worn else PixelArt.PALETTE["B"]
-	for n in hatch_open:
-		var o := float(hatch_open[n])
+	var cols := PixelArt.paint_colors(fit.hull_id, paint)
+	var cm: Color = cols["M"]
+	var cn: Color = cols["N"]
+	var cb: Color = cols["B"]
+	if overlay:
+		var hc: Array = PixelArt.HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"])
+		cm = cols[hc[0]]
+		cn = cols[hc[1]]
+		cb = cols[hc[1]]
+	for n in h.get("hatches", {}):
+		var o := float(hatch_open.get(n, 0.0))
+		if o <= 0.0 and not overlay:
+			continue
 		var r := hatch_local(n)
-		draw_rect(r, Color(0.03, 0.03, 0.045))
-		draw_rect(Rect2(r.position + Vector2(0, r.size.y * 0.45), Vector2(r.size.x, r.size.y * 0.1)), Color(0.9, 0.2, 0.12, 0.35 * o))
+		if overlay:
+			draw_rect(r.grow(PixelArt.SCALE * 0.5), cn)                     # the frame of the hatch
+		if o > 0.0:
+			draw_rect(r, Color(0.03, 0.03, 0.045))
+			draw_rect(Rect2(r.position + Vector2(0, r.size.y * 0.45), Vector2(r.size.x, r.size.y * 0.1)), Color(0.9, 0.2, 0.12, 0.35 * o))
 		if n == "platform" and platform_t >= 0.0:
 			_draw_platform_ship(r)
 		var pw := r.size.x * (1.0 - o)
 		if pw > 0.5:
 			draw_rect(Rect2(r.position, Vector2(pw, r.size.y)), cm)
 			var yy := r.position.y + PixelArt.SCALE
-			while yy < r.end.y:
-				draw_rect(Rect2(Vector2(r.position.x, yy), Vector2(pw, PixelArt.SCALE)), cn)
+			while yy < r.end.y - 0.5:
+				draw_rect(Rect2(Vector2(r.position.x, yy), Vector2(pw, PixelArt.SCALE * 0.5)), cn)
 				yy += PixelArt.SCALE * 2.0
-			draw_rect(Rect2(Vector2(r.position.x + pw - PixelArt.SCALE, r.position.y), Vector2(PixelArt.SCALE, r.size.y)), cb)
+			draw_rect(Rect2(Vector2(r.position.x + pw - PixelArt.SCALE * 0.5, r.position.y), Vector2(PixelArt.SCALE * 0.5, r.size.y)), cb)
 	if platform_t >= 0.0 and not hatch_open.has("platform"):
 		_draw_platform_ship(hatch_local("platform"))
 

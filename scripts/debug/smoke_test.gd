@@ -1525,6 +1525,30 @@ func _shoot_standing(view: SystemView) -> void:
 			view.stow_drone(dd9)
 		cs9.queue_free()
 		gs9.queue_free()
+		# 0.4.25.22: every ship with drones has a drone hatch – top row shut, bottom row open
+		for set_i in 2:
+			var hset: Array = [["std_hornet", "std_warden", "std_bastion", "std_anaguma"], ["std_mule", "std_aur_boulevard", "std_hdy_maul", "std_aur_empress"]][set_i]
+			var made: Array = []
+			var base_p: Vector2 = bc.position + Vector2(0, 9000 + set_i * 3000)
+			for hi in hset.size():
+				for row in 2:
+					var hf := GameState.create_from_preset(hset[hi], "player")
+					hf.system_id = view.system_id
+					hf.position = base_p + Vector2(-700 + hi * 470, -170 + row * 340)
+					var hsp := Ship.new()
+					hsp.manual = true
+					hsp.setup(hf, view)
+					view.ship_layer.add_child(hsp)
+					hsp.heading = 0.0
+					if row == 1:
+						hsp.open_hatch("drones", 30.0)
+					made.append(hsp)
+			view.camera.position = base_p + Vector2(0, 0)
+			for i14 in 40:
+				await get_tree().physics_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/drone_hatches_%d.png" % (set_i + 1))
+			for m9 in made:
+				m9.queue_free()
 		for dd5 in view.drones_of(bc):
 			view.stow_drone(dd5)
 		bc.queue_free()
@@ -3147,6 +3171,10 @@ func _test_drones(view: SystemView) -> void:
 	check(InputMap.has_action("drone_launch_all") and Keybinds.key_text("drone_launch_all") == "", "\"launch all\" has no key by default – one can be set in the settings")
 	check(view.launch_drones(c) != "", "no drones left in the hangar – nothing to launch")
 	var ds: Array = view.drones_of(c)
+	for dh in ds:                    # skip the rise out of the drone hatch (0.4.25.22) – tested elsewhere
+		dh.hatch_launch = false
+		dh.visible = true
+	c.hatch_queue = 0
 	var d = ds[0]
 	check(d.is_drone and d.faction == "player" and not d.hostile_to_player(), "drones are small player ships")
 	# rest: formation around the carrier
@@ -3253,7 +3281,7 @@ func _test_drones(view: SystemView) -> void:
 	# recall: back into the hangar
 	view.recall_drones(c)
 	var d4 = ds[3]
-	d4.position = c.position + Vector2(10, 0)
+	d4.position = c.hatch_point("drones") + Vector2(10, 0)     # lands through the drone hatch
 	d4._physics_process(0.05)
 	check(d4.dying and f.drones_in_hangar() >= 1, "recalled drones fly back into the hangar")
 	# warp: into the hangar while aligning, out again afterwards
@@ -3945,6 +3973,26 @@ func _test_hadrian(view: SystemView) -> void:
 	var g0 := PixelArt.ship_texture("hdy_goliath", "player", 0).get_image().get_data()
 	var g8 := PixelArt.ship_texture("hdy_goliath", "player", 8).get_image().get_data()
 	check(g0 != g8 and GameData.hulls["hdy_goliath"].get("hatches", {}).has("drones") and PixelArt.ShipArt.VARIANTS["hdy_citadel"].size() == 4, "Goliath: glowing eye-slits and a drone hatch on the spine; all Citadel bridges kept as variants")
+	# 0.4.25.22: every ship that carries drones launches them from a hatch (or the Kanayama's runway)
+	var no_hatch: Array = []
+	for hid in GameData.hulls:
+		var hh: Dictionary = GameData.hulls[hid]
+		if int(hh.get("drones", 0)) > 0 and not hh.get("drone_only", false) and not hh.has("drone_deck") and not hh.get("hatches", {}).has("drones"):
+			no_hatch.append(hid)
+	var wf := GameState.create_from_preset("std_warden", "player")
+	wf.position = view.player.position + Vector2(0, -97000)
+	wf.uid = 99907
+	wf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}]
+	var wsh := Ship.new()
+	wsh.manual = true
+	wsh.setup(wf, view)
+	view.ship_layer.add_child(wsh)
+	view.launch_drones(wsh)
+	var wd: Array = view.drones_of(wsh)
+	check(no_hatch.is_empty() and wd.size() == 1 and wd[0].hatch_launch and wd[0].position.distance_to(wsh.hatch_point("drones")) < 1.0, "every ship with drones launches them from its own hatch %s" % str(no_hatch))
+	for d9 in wd:
+		view.stow_drone(d9)
+	wsh.queue_free()
 	# the Citadel: drones rise out of the drone hatch, the platform plays its launch
 	var cf := GameState.create_from_preset("std_hdy_citadel", "player")
 	cf.position = view.player.position + Vector2(0, -90000)

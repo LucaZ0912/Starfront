@@ -215,10 +215,7 @@ static func ship_texture(hull_id: String, faction: String, frame: int = -1) -> T
 		var rows := _pad(art) if ShipArt.FULL.has(hull_id) else _mirror_v(_pad(art))
 		if frame >= 0:
 			rows = _animate(rows, frame, anim_frames(hull_id))
-		var cols := _colors(faction)
-		if String(GameData.hulls.get(hull_id, {}).get("maker", "")) == "hadrian" and is_pirate_paint(faction):
-			cols.merge(HDY_WORN, true)
-		_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, cols))
+		_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, paint_colors(hull_id, faction)))
 	return _cache[key]
 
 
@@ -241,6 +238,18 @@ static func arm_textures(key: String, faction: String) -> Array:
 			cols.merge(HDY_WORN, true)
 		_cache[ck] = [ImageTexture.create_from_image(grid_to_image(up, cols)), ImageTexture.create_from_image(grid_to_image(lo, cols))]
 	return _cache[ck]
+
+
+## The colours a hull is painted in for an owner (worn-out Hadrian copies for pirates).
+static func paint_colors(hull_id: String, faction: String) -> Dictionary:
+	var cols := _colors(faction)
+	if String(GameData.hulls.get(hull_id, {}).get("maker", "")) == "hadrian" and is_pirate_paint(faction):
+		cols.merge(HDY_WORN, true)
+	return cols
+
+
+## Colours of a drawn-on drone hatch by manufacturer: [panel, seams and frame] (palette chars).
+const HATCH_CHARS := {"khi": ["Q", "x"], "aurelle": ["j", "U"], "hadrian": ["M", "X"]}
 
 
 ## Pirate paints: plain pirates, the pirate factions and notorious captains.
