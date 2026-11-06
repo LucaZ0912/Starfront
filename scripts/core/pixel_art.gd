@@ -283,6 +283,20 @@ static func black_hole_texture(stage: int = -1, frame: int = -1) -> Texture2D:
 	return _cache[key]
 
 
+## A ship's shape in plain white (0.4.25.38): for the cloak's scan line and the black hole's flash lighting
+## up the hull – tinted by the draw call's colour.
+static func silhouette_texture(hull_id: String) -> Texture2D:
+	var key := "sil_" + hull_id
+	if not _cache.has(key):
+		var img: Image = ship_texture(hull_id, "player").get_image().duplicate()
+		for y in img.get_height():
+			for x in img.get_width():
+				if img.get_pixel(x, y).a > 0.0:
+					img.set_pixel(x, y, Color.WHITE)
+		_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
+
 ## The two arms of a ship with swinging arms (Goliath, package 25d): [upper, lower] – the same size as
 ## the ship's picture, everything else transparent.
 static func arm_textures(key: String, faction: String) -> Array:

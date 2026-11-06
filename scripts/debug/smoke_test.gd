@@ -4625,6 +4625,10 @@ func _test_axiom(view: SystemView) -> void:
 	cs.add_lock(foe)
 	cf.capacitor = float(cf.stats()["cap_max"])
 	var e1: String = cs.set_module_active("builtin_cloak", true)
+	cs._update_cloak_fx(0.4)
+	var sweeping: bool = cs.cloak_k > 0.0 and cs.cloak_k < 1.0
+	cs._update_cloak_fx(3.0)
+	check(sweeping and cs.cloak_k >= 1.0 and cs._cloak_alpha_at(0.0, 40) < 0.5 and PixelArt.silhouette_texture("axa_parallax").get_width() > 0, "cloak: takes hold from the stern to the bow, not all at once")
 	var no_target: bool = not cs.is_targetable() and cs.locks.is_empty() and cs.add_lock(foe) != "" and cs.set_module_active("weapon_0", true) != ""
 	var cap0 := cf.capacitor
 	cs._update_modules(1.0, cf.stats())

@@ -168,7 +168,7 @@ func _process(delta: float) -> void:
 
 ## Draws the black hole over the core – turned back against the ship's heading, so it always shows the
 ## same face to the camera.
-func _draw_black_hole(hull_tex: Texture2D) -> void:
+func _draw_black_hole(hull_tex: Texture2D, alpha: float = 1.0) -> void:
 	if bh_t < 0.0 and bh_out < 0.0:
 		return
 	var core: Array = fit.hull()["black_hole"]["core"]
@@ -182,19 +182,34 @@ func _draw_black_hole(hull_tex: Texture2D) -> void:
 	if bh_t >= 0.0:
 		if bh_t > 0.15 and bh_t < BH_DISC:
 			var k := clampi(int((bh_t - 0.15) / (BH_HOLE - 0.15) * 5.0), 0, 4)
-			draw_texture_rect(PixelArt.black_hole_texture(k), rect, false)
+			draw_texture_rect(PixelArt.black_hole_texture(k), rect, false, Color(1, 1, 1, alpha))
 		if bh_t >= BH_HOLE:
-			draw_texture_rect(full, rect, false, Color(1, 1, 1, clampf((bh_t - BH_HOLE) / (BH_DISC - BH_HOLE), 0.0, 1.0)))
+			draw_texture_rect(full, rect, false, Color(1, 1, 1, alpha * clampf((bh_t - BH_HOLE) / (BH_DISC - BH_HOLE), 0.0, 1.0)))
 		flash = bh_t / BH_FLASH
 	elif bh_out >= 0.0:
 		if bh_out < 0.15:
-			draw_texture_rect(full, rect, false, Color(1, 1, 1, 1.0 - bh_out / 0.15))
+			draw_texture_rect(full, rect, false, Color(1, 1, 1, alpha * (1.0 - bh_out / 0.15)))
 		flash = bh_out / BH_FLASH
+	var glow := 0.0
 	if flash >= 0.0 and flash < 1.0:
-		var r := big * (0.25 + 0.95 * flash)
-		draw_circle(Vector2.ZERO, r, Color(1.0, 0.95, 0.85, 0.75 * (1.0 - flash)))
-		draw_circle(Vector2.ZERO, r * 0.45, Color(1, 1, 1, 1.0 - flash))
+		# a real flare (0.4.25.38): flashes up at once, then fades – a wide halo, a white-hot centre and
+		# four rays, and the whole hull lights up with it
+		glow = (flash / 0.08 if flash < 0.08 else pow(1.0 - (flash - 0.08) / 0.92, 1.6)) * alpha
+		var r := big * (0.5 + 1.1 * flash)
+		draw_circle(Vector2.ZERO, r * 2.6, Color(1.0, 0.85, 0.6, 0.35 * glow))
+		draw_circle(Vector2.ZERO, r * 1.6, Color(1.0, 0.92, 0.75, 0.65 * glow))
+		draw_circle(Vector2.ZERO, r, Color(1.0, 0.97, 0.9, 0.95 * glow))
+		draw_circle(Vector2.ZERO, r * 0.5, Color(1, 1, 1, glow))
+		for i in 4:
+			var d := Vector2.from_angle(PI * 0.25 + i * PI * 0.5) * big * (2.5 + 2.0 * flash)
+			draw_line(-d * 0.1, d, Color(1.0, 0.97, 0.88, 0.85 * glow), PixelArt.SCALE * 1.5)
+			draw_line(-d * 0.1, d * 0.6, Color(1, 1, 1, glow), PixelArt.SCALE * 0.6)
+		var h := Vector2.from_angle(0.0) * big * (4.0 + 3.0 * flash)
+		draw_line(-h, h, Color(1.0, 0.95, 0.85, 0.6 * glow), PixelArt.SCALE)
 	draw_set_transform(Vector2.ZERO, heading, Vector2.ONE)
+	if glow > 0.0:
+		var hs := Vector2(hull_tex.get_width(), hull_tex.get_height()) * PixelArt.SCALE
+		draw_texture_rect(PixelArt.silhouette_texture(fit.hull_id), Rect2(-hs * 0.5, hs), false, Color(1.0, 0.93, 0.8, 0.7 * glow))
 
 
 func display_name() -> String:
@@ -432,6 +447,7 @@ func _physics_process(delta: float) -> void:
 			fit.apply_power({"off": {}, "throttle": 1.0})
 		arm_open = 0.0
 		module_on.erase("builtin_cloak")       # no cloaking in a hangar
+		cloak_k = 0.0
 		return
 	visible = true
 	_update_power()
@@ -447,12 +463,8 @@ func _physics_process(delta: float) -> void:
 	_update_npc_drones(delta)
 	_update_npc_pulse(delta)
 	_update_npc_cloak(delta)
-	if is_drone:
-		pass
-	elif cloaked():
-		modulate.a = 0.35 if faction == "player" else 0.0     # invisible to everybody else
-	else:
-		modulate.a = 1.0
+	if not is_drone:
+		_update_cloak_fx(delta)
 	_update_auto_fire(delta, s)
 	combat_t = maxf(0.0, combat_t - delta)
 	if in_warp():
@@ -2598,6 +2610,54 @@ func _update_auto_fire(delta: float, s: Dictionary) -> void:
 		_auto_k = k                      # next time the next target (the bundled lance takes turns)
 
 
+## The cloak takes hold from the stern to the bow (0.4.25.38): a cyan scan line runs over the hull and the ship
+## fades behind it – its own pilot still sees it faintly, everybody else not at all; it shows again bow first.
+var cloak_k := 0.0               # 0 = fully visible … 1 = fully cloaked
+
+
+func _update_cloak_fx(delta: float) -> void:
+	var dur := 0.7 + 0.3 * float(fit.hull().get("size", 1))
+	cloak_k = move_toward(cloak_k, 1.0 if cloaked() else 0.0, delta / dur)
+	modulate.a = 0.0 if cloak_k >= 1.0 and faction != "player" else 1.0
+
+
+func _cloak_hidden_alpha() -> float:
+	return 0.35 if faction == "player" else 0.0
+
+
+## The hull while the cloak sweeps over it (or holds): the columns behind the scan line faded, a glowing line
+## on the hull's shape where it runs, a faint shimmer over the cloaked ship for its own pilot.
+func _draw_cloaked_hull(tex: Texture2D, size: Vector2, mod: Color) -> void:
+	var w := tex.get_width()
+	var h := tex.get_height()
+	var sc := PixelArt.SCALE
+	var cut := clampi(int(round(cloak_k * float(w))), 0, w)
+	var ha := _cloak_hidden_alpha()
+	var o := -size * 0.5
+	if cut > 0 and ha > 0.0:
+		draw_texture_rect_region(tex, Rect2(o, Vector2(cut * sc, size.y)), Rect2(0, 0, cut, h), Color(mod, ha))
+	if cut < w:
+		draw_texture_rect_region(tex, Rect2(o + Vector2(cut * sc, 0.0), Vector2((w - cut) * sc, size.y)), Rect2(cut, 0, w - cut, h), mod)
+	var sil := PixelArt.silhouette_texture(fit.hull_id)
+	if cut > 0 and ha > 0.0:
+		var t2 := float(Time.get_ticks_msec()) / 1000.0
+		draw_texture_rect_region(sil, Rect2(o, Vector2(cut * sc, size.y)), Rect2(0, 0, cut, h), Color(0.4, 0.95, 1.0, 0.1 + 0.06 * sin(t2 * 3.0)))
+	if cloak_k > 0.0 and cloak_k < 1.0:
+		for band in [[6, 2, 0.3], [2, 1, 0.95]]:      # a soft glow and the bright scan line itself
+			var a0 := clampi(cut - int(band[0]), 0, w)
+			var a1 := clampi(cut + int(band[1]), 0, w)
+			if a1 > a0:
+				draw_texture_rect_region(sil, Rect2(o + Vector2(a0 * sc, 0.0), Vector2((a1 - a0) * sc, size.y)), Rect2(a0, 0, a1 - a0, h), Color(0.55, 1.0, 1.0, float(band[2])))
+
+
+## How visible a point of the hull is (texture column x) while cloaking – for the parts drawn on top.
+func _cloak_alpha_at(col: float, tex_w: int) -> float:
+	if cloak_k <= 0.0:
+		return 1.0
+	var cut := cloak_k * float(tex_w)
+	return lerpf(1.0, _cloak_hidden_alpha(), clampf((cut - col + 4.0) / 8.0, 0.0, 1.0))
+
+
 ## Axiom research ships flown by NPCs cloak when they come under fire and show again after a while.
 var _cloak_calm := 0.0
 
@@ -3150,6 +3210,7 @@ func _draw() -> void:
 	if velocity.length() > 20.0:
 		var glow: Color = PixelArt.engine_glow(paint)
 		var flick := randf_range(0.8, 1.2)
+		var fa := _cloak_alpha_at(0.0, tex.get_width())     # the stern goes first under the cloak
 		var ep: Array = PixelArt.engine_points(String(arms["body"]) if not arms.is_empty() else fit.hull_id)
 		if arms.has("shift"):
 			# drives on the hull and on the moving wings (Concordia): a flame for each, moving with the
@@ -3163,18 +3224,21 @@ func _draw() -> void:
 				multi_flames.append([g2[0], maxf(float(g2[1]), 10.0) * flick, glow])
 		elif ep.is_empty():
 			var ex := -size.x * 0.5
-			draw_circle(Vector2(ex - 2.0, 0.0), size.y * 0.16 * flick, Color(glow, 0.35))
-			draw_circle(Vector2(ex, 0.0), size.y * 0.09 * flick, Color(1, 1, 1, 0.8))
+			draw_circle(Vector2(ex - 2.0, 0.0), size.y * 0.16 * flick, Color(glow, 0.35 * fa))
+			draw_circle(Vector2(ex, 0.0), size.y * 0.09 * flick, Color(1, 1, 1, 0.8 * fa))
 		else:
 			for e in ep:                      # one flame per drive (package 25d: the Goliath's arm drives)
 				var p: Vector2 = e[0]
 				var r := float(e[1]) * flick
-				draw_circle(p - Vector2(2.0, 0.0), r, Color(glow, 0.35))
-				draw_circle(p, r * 0.55, Color(1, 1, 1, 0.8))
+				draw_circle(p - Vector2(2.0, 0.0), r, Color(glow, 0.35 * fa))
+				draw_circle(p, r * 0.55, Color(1, 1, 1, 0.8 * fa))
 	var mod := Color(1.8, 1.8, 1.8) if hit_flash > 0.0 else Color.WHITE
-	draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
+	if cloak_k > 0.0:
+		_draw_cloaked_hull(tex, size, mod)
+	else:
+		draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
 	if fit.hull().has("black_hole"):
-		_draw_black_hole(tex)
+		_draw_black_hole(tex, _cloak_alpha_at(float(fit.hull()["black_hole"]["core"][0]) + 1.0, tex.get_width()))
 	if not arms.is_empty():
 		_draw_arms(arms, size, mod)
 	_draw_hatches()                      # after the arms/wings: the Concordia's doors sit on its wings
@@ -3182,10 +3246,6 @@ func _draw() -> void:
 		_draw_stripes(size)
 	if fit.hull().get("spike_fx", false):
 		_draw_spikes(size)
-	if cloaked():
-		# a shimmer over the ship: its own pilot still sees it (others do not – see _physics_process)
-		var t2 := float(Time.get_ticks_msec()) / 1000.0
-		draw_rect(Rect2(-size * 0.5, size), Color(0.4, 0.95, 1.0, 0.08 + 0.06 * sin(t2 * 3.0)))
 	for mf in multi_flames:
 		var mp: Vector2 = mf[0] - Vector2(PixelArt.SCALE * 1.5, 0.0)
 		draw_circle(mp - Vector2(float(mf[1]) * 0.4, 0.0), float(mf[1]), Color(mf[2], 0.35))
