@@ -159,10 +159,11 @@ const HULLS := {
 		"structure": 2600, "mass": 3400, "signature": 150, "cargo": 35,
 		"slots": {"weapon": 6, "tool": 1, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [4, 4, 3, 3, 2, 2], "tool": [1], "optional": [5, 5, 4, 3], "hull": 7, "engine": 7, "reactor": 8, "distributor": 7, "tank": 4, "hyperdrive": 4, "sensors": 5, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [2]},
-		"drones": 4, "shape": "hdy_goliath", "length": 64,
+		"drones": 4, "shape": "hdy_goliath", "length": 86,
+		"hatches": {"drones": [28, 16, 10, 9]},
 		"speed_mult": 1.1, "reflect": 0.15, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true,
 		"builtin": ["pd"], "yard_rule": "military",
-		"desc": "A destroyer with the guns of a cruiser on two mighty weapon arms, fast for its punch, built-in point defence. Sold only at military stations and the biggest yards.",
+		"desc": "Hadrian's scorpion: a destroyer with the guns of a cruiser on two mighty arms that end in pincers, fast for its punch, built-in point defence; its drones rise from a hatch on the spine. Sold only at military stations and the biggest yards.",
 	},
 	"hdy_citadel": {
 		"maker": "hadrian", "name": "Citadel", "class": "Fleet Carrier", "size": 3, "price": 560000, "buyable": true,

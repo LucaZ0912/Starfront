@@ -27,7 +27,7 @@ const PALETTE := {
 	"U": Color(0.84, 0.63, 0.22), "u": Color(1.0, 0.86, 0.52), "v": Color(0.16, 0.19, 0.28), "V": Color(1.0, 0.92, 0.66),
 	# Hadrian Dynamics steel (package 25d): edge, gunmetal, dark steel, black seams, red lights
 	"B": Color(0.5, 0.52, 0.56), "M": Color(0.31, 0.32, 0.35), "N": Color(0.2, 0.21, 0.23), "X": Color(0.1, 0.1, 0.12),
-	"R": Color(0.95, 0.2, 0.14),
+	"R": Color(0.95, 0.2, 0.14), "E": Color(1.0, 0.55, 0.42),
 	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
 	"n": Color(0.4, 0.66, 0.46), "T": Color(0.15, 0.42, 0.3), "t": Color(0.3, 0.6, 0.36),
 	"P": Color(0.2, 0.62, 0.92), "p": Color(0.72, 0.94, 1.0), "q": Color(0.66, 0.84, 0.92),
@@ -206,6 +206,7 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 	var half := maxi(n / 2, 1)
 	var gx := -14.0 + float(f) / float(half) * float(w + 28) if f < half else -1000.0
 	var fw := f / 2                  # the water ripples move at half speed (0.4.25.16)
+	var glow := absf(float(f) - float(n) * 0.5) / (float(n) * 0.5)     # 1 → 0 → 1 over the cycle
 	var out: Array = []
 	for y in h:
 		var src: String = rows[y]
@@ -219,6 +220,8 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 				ch = "q"                 # … and as a pale streak on the glass over the deck
 			elif ch == "P" and ((x + 2 * y + fw) % 6 == 0 or (x - y + fw * 2) % 12 == 0):
 				ch = "p"
+			elif ch == "R" and glow > 0.55:
+				ch = "E"                 # Goliath: the red slits glow up (package 25d)
 			row += ch
 		out.append(row)
 	return out

@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.19 – 2026-11-06
+
+- Goliath redesigned as a scorpion: wide-sweeping segmented arms ending in pincers around long cannons,
+  a long spiked bow, two slanted red eye-slits as the bridge that glow up and fade, a drone hatch on the spine.
+- Citadel gets the armoured-dome bridge; all four bridge designs are kept as variants.
+- Ship art scripts are now kept in `tools/art/`.
+
 ## alpha 0.4.25.18 – 2026-11-06
 
 - Hadrian design pass: rounded side parts; the Goliath's arms start far aft and arch around the hull,

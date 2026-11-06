@@ -3911,6 +3911,9 @@ func _test_hadrian(view: SystemView) -> void:
 	for row in ga:
 		arm_drive = arm_drive or String(row).begins_with("f")
 	check(not centre.contains("f") and arm_drive, "Goliath: two drives on the arms, none on the hull")
+	var g0 := PixelArt.ship_texture("hdy_goliath", "player", 0).get_image().get_data()
+	var g8 := PixelArt.ship_texture("hdy_goliath", "player", 8).get_image().get_data()
+	check(g0 != g8 and GameData.hulls["hdy_goliath"].get("hatches", {}).has("drones") and PixelArt.ShipArt.VARIANTS["hdy_citadel"].size() == 4, "Goliath: glowing eye-slits and a drone hatch on the spine; all Citadel bridges kept as variants")
 	# the Citadel: drones rise out of the drone hatch, the platform plays its launch
 	var cf := GameState.create_from_preset("std_hdy_citadel", "player")
 	cf.position = view.player.position + Vector2(0, -90000)
