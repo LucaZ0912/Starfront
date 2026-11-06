@@ -2254,12 +2254,12 @@ func _update_hatches(delta: float) -> void:
 			platform_t = -1.0
 
 
-## Draws the hatches: a dark shaft while open, the panel slid towards the stern; hatches that are not
-## part of the pixel art (hatch_overlay – every other ship with drones) are drawn shut as well.
+## Draws open hatches: a dark shaft, the panel slid towards the stern (shut hatches are part of the
+## ship's picture – hatch_overlay hulls get theirs painted in by PixelArt._paint_hatches).
 func _draw_hatches() -> void:
 	var h := fit.hull()
 	var overlay: bool = h.get("hatch_overlay", false)
-	if hatch_open.is_empty() and platform_t < 0.0 and not overlay:
+	if hatch_open.is_empty() and platform_t < 0.0:
 		return
 	var cols := PixelArt.paint_colors(fit.hull_id, paint)
 	var cm: Color = cols["M"]
@@ -2272,11 +2272,9 @@ func _draw_hatches() -> void:
 		cb = cols[hc[1]]
 	for n in h.get("hatches", {}):
 		var o := float(hatch_open.get(n, 0.0))
-		if o <= 0.0 and not overlay:
-			continue
+		if o <= 0.0:
+			continue                     # shut: part of the ship's picture (also shown in menus)
 		var r := hatch_local(n)
-		if overlay:
-			draw_rect(r.grow(PixelArt.SCALE * 0.5), cn)                     # the frame of the hatch
 		if o > 0.0:
 			draw_rect(r, Color(0.03, 0.03, 0.045))
 			draw_rect(Rect2(r.position + Vector2(0, r.size.y * 0.45), Vector2(r.size.x, r.size.y * 0.1)), Color(0.9, 0.2, 0.12, 0.35 * o))

@@ -215,6 +215,7 @@ static func ship_texture(hull_id: String, faction: String, frame: int = -1) -> T
 		var rows := _pad(art) if ShipArt.FULL.has(hull_id) else _mirror_v(_pad(art))
 		if frame >= 0:
 			rows = _animate(rows, frame, anim_frames(hull_id))
+		rows = _paint_hatches(hull_id, rows)
 		_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, paint_colors(hull_id, faction)))
 	return _cache[key]
 
@@ -246,6 +247,36 @@ static func paint_colors(hull_id: String, faction: String) -> Dictionary:
 	if String(GameData.hulls.get(hull_id, {}).get("maker", "")) == "hadrian" and is_pirate_paint(faction):
 		cols.merge(HDY_WORN, true)
 	return cols
+
+
+## Paints the shut drone hatch into the picture of hulls whose art has none (hatch_overlay) – so it
+## also shows in the hangar, the shipyard and the ship menu (0.4.25.23). Opening is drawn by the ship.
+static func _paint_hatches(hull_id: String, rows: Array) -> Array:
+	var h: Dictionary = GameData.hulls.get(hull_id, {})
+	if not h.get("hatch_overlay", false):
+		return rows
+	var hc: Array = HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"])
+	var out: Array = rows.duplicate()
+	for n in h.get("hatches", {}):
+		var r: Array = h["hatches"][n]
+		var x0 := int(r[0])
+		var y0 := int(r[1])
+		var w := int(r[2])
+		var hh := int(r[3])
+		for y in range(y0 - 1, y0 + hh + 1):
+			if y < 0 or y >= out.size():
+				continue
+			var row: String = out[y]
+			for x in range(x0 - 1, x0 + w + 1):
+				if x < 0 or x >= row.length():
+					continue
+				var inside := x >= x0 and x < x0 + w and y >= y0 and y < y0 + hh
+				var ch: String = hc[1]
+				if inside and (y - y0) % 2 == 0:
+					ch = hc[0]                   # plates …
+				row = row.substr(0, x) + ch + row.substr(x + 1)   # … with seams and a frame
+			out[y] = row
+	return out
 
 
 ## Colours of a drawn-on drone hatch by manufacturer: [panel, seams and frame] (palette chars).

@@ -3989,6 +3989,8 @@ func _test_hadrian(view: SystemView) -> void:
 	view.ship_layer.add_child(wsh)
 	view.launch_drones(wsh)
 	var wd: Array = view.drones_of(wsh)
+	var plain := PixelArt.grid_to_image(PixelArt._mirror_v(PixelArt._pad(PixelArt.ShipArt.SHIPS["warden"])), PixelArt._colors("player")).get_data()
+	check(PixelArt.ship_texture("warden", "player").get_image().get_data() != plain, "the shut drone hatch is part of the ship's picture (hangar, shipyard, ship menu)")
 	check(no_hatch.is_empty() and wd.size() == 1 and wd[0].hatch_launch and wd[0].position.distance_to(wsh.hatch_point("drones")) < 1.0, "every ship with drones launches them from its own hatch %s" % str(no_hatch))
 	for d9 in wd:
 		view.stow_drone(d9)

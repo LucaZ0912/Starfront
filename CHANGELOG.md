@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.23 – 2026-11-07
+
+- The shut drone hatch is now part of the ship's picture, so it also shows in the hangar, the shipyard
+  and the ship menu.
+
 ## alpha 0.4.25.22 – 2026-11-07
 
 - Every ship that carries drones has a visible sliding drone hatch (Kanayama-maru: its runway): drones
