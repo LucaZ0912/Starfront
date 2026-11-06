@@ -4702,7 +4702,31 @@ func _test_axiom(view: SystemView) -> void:
 		off_station = off_station and tf.position.distance_to(st3["pos"]) > 6500.0
 	check(off_station, "… a failed wormhole throws the ship out somewhere at random in the target system")
 	GameState.exotic_matter = keep_em
-	check(PixelArt.ship_texture("axa_threshold", "player", 0).get_image().get_data() != PixelArt.ship_texture("axa_threshold", "player", 6).get_image().get_data(), "Threshold: the accretion disc turns round its black hole (animated)")
+	check(PixelArt.black_hole_texture(-1, 0).get_image().get_data() != PixelArt.black_hole_texture(-1, 6).get_image().get_data() and PixelArt.black_hole_texture(0).get_width() == PixelArt.black_hole_texture().get_width(), "Threshold: the accretion disc turns round its black hole (animated)")
+	# 0.4.25.37: the black hole ignites a few seconds after undocking and goes out on the way into the hangar
+	var bf := GameState.create_from_preset("std_axa_threshold", "player")
+	bf.position = view.player.position + Vector2(0, -126000)
+	bf.uid = 99923
+	var bs := Ship.new()
+	bs.setup(bf, view)
+	view.ship_layer.add_child(bs)
+	var lit_in_space: bool = bs.bh_t > 0.0
+	bs.bh_t = -1.0
+	bs.order = {"type": "undocking"}
+	bs._process(5.0)
+	var off_undocking: bool = bs.bh_t < 0.0
+	bs.order = {"type": "idle"}
+	bs._process(1.0)
+	var waits: bool = bs.bh_t < 0.0
+	bs._process(2.0)
+	bs._process(1.0)
+	var burns: bool = bs.bh_t > 0.0
+	bs.order = {"type": "docking"}
+	bs._process(0.1)
+	var flash_out: bool = bs.bh_t < 0.0 and bs.bh_out > 0.0
+	bs._process(1.0)
+	check(lit_in_space and off_undocking and waits and burns and flash_out and bs.bh_out < 0.0, "Threshold: the black hole ignites with a flash a few seconds after undocking and goes out with one when docking")
+	bs.queue_free()
 	# research ships fly in Directorate systems
 	var tr = view.traffic
 	var keep_sid: int = tr.sid

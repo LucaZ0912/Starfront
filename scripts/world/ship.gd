@@ -121,6 +121,8 @@ func setup(p_fit: ShipFitting, p_view: Node) -> void:
 	heading = fit.rotation
 	var tex := PixelArt.ship_texture(fit.hull_id, paint)
 	radius = maxf(tex.get_width(), tex.get_height()) * PixelArt.SCALE * 0.42
+	if fit.hull().has("black_hole"):
+		bh_t = -1.0 if is_docked() else 99.0          # a Threshold met in space already burns
 	if fit.capacitor < 0.0:
 		fit.refill()
 	_orbit_sign = 1.0 if randf() < 0.5 else -1.0
@@ -128,6 +130,71 @@ func setup(p_fit: ShipFitting, p_view: Node) -> void:
 	home = position
 	if not fit.route.is_empty():
 		order = {"type": "travel"}
+
+
+## The Threshold's artificial black hole (0.4.25.37): a few seconds after undocking it ignites with a flash of
+## light, the hole grows and then its accretion disc forms; on the way into the hangar it goes out with a flash.
+const BH_DELAY := 2.5            # seconds after undocking until the core ignites
+const BH_FLASH := 0.7            # how long the flash of light lasts
+const BH_HOLE := 1.4             # the hole has grown by then …
+const BH_DISC := 3.2             # … and the disc has formed by then
+var bh_t := -1.0                 # time since ignition; -1 = out
+var bh_wait := 0.0
+var bh_out := -1.0               # time since it went out (the closing flash); -1 = none
+
+
+func _process(delta: float) -> void:
+	if fit == null or not fit.hull().has("black_hole"):
+		set_process(false)
+		return
+	var want := not dying and not is_docked() and not String(order.get("type", "")) in ["docking", "undocking"]
+	if want:
+		if bh_t < 0.0:
+			bh_wait += delta
+			if bh_wait >= BH_DELAY:
+				bh_t = 0.0
+		else:
+			bh_t += delta
+	elif bh_t >= 0.0:
+		bh_t = -1.0
+		bh_out = 0.0
+	if not want:
+		bh_wait = 0.0
+	if bh_out >= 0.0:
+		bh_out += delta
+		if bh_out > BH_FLASH:
+			bh_out = -1.0
+
+
+## Draws the black hole over the core – turned back against the ship's heading, so it always shows the
+## same face to the camera.
+func _draw_black_hole(hull_tex: Texture2D) -> void:
+	if bh_t < 0.0 and bh_out < 0.0:
+		return
+	var core: Array = fit.hull()["black_hole"]["core"]
+	var c := (Vector2(float(core[0]) + 1.5, float(core[1]) + 1.5) - Vector2(hull_tex.get_width(), hull_tex.get_height()) * 0.5) * PixelArt.SCALE
+	draw_set_transform(c.rotated(heading), 0.0, Vector2.ONE)
+	var full := PixelArt.black_hole_texture()
+	var sz := Vector2(full.get_width(), full.get_height()) * PixelArt.SCALE
+	var rect := Rect2(-sz * 0.5, sz)
+	var big := sz.x * 0.5
+	var flash := -1.0
+	if bh_t >= 0.0:
+		if bh_t > 0.15 and bh_t < BH_DISC:
+			var k := clampi(int((bh_t - 0.15) / (BH_HOLE - 0.15) * 5.0), 0, 4)
+			draw_texture_rect(PixelArt.black_hole_texture(k), rect, false)
+		if bh_t >= BH_HOLE:
+			draw_texture_rect(full, rect, false, Color(1, 1, 1, clampf((bh_t - BH_HOLE) / (BH_DISC - BH_HOLE), 0.0, 1.0)))
+		flash = bh_t / BH_FLASH
+	elif bh_out >= 0.0:
+		if bh_out < 0.15:
+			draw_texture_rect(full, rect, false, Color(1, 1, 1, 1.0 - bh_out / 0.15))
+		flash = bh_out / BH_FLASH
+	if flash >= 0.0 and flash < 1.0:
+		var r := big * (0.25 + 0.95 * flash)
+		draw_circle(Vector2.ZERO, r, Color(1.0, 0.95, 0.85, 0.75 * (1.0 - flash)))
+		draw_circle(Vector2.ZERO, r * 0.45, Color(1, 1, 1, 1.0 - flash))
+	draw_set_transform(Vector2.ZERO, heading, Vector2.ONE)
 
 
 func display_name() -> String:
@@ -3106,6 +3173,8 @@ func _draw() -> void:
 				draw_circle(p, r * 0.55, Color(1, 1, 1, 0.8))
 	var mod := Color(1.8, 1.8, 1.8) if hit_flash > 0.0 else Color.WHITE
 	draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
+	if fit.hull().has("black_hole"):
+		_draw_black_hole(tex)
 	if not arms.is_empty():
 		_draw_arms(arms, size, mod)
 	_draw_hatches()                      # after the arms/wings: the Concordia's doors sit on its wings

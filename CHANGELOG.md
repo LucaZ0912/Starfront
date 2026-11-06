@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.37 – 2026-11-07
+
+- Threshold: the black hole ignites 2.5 s after undocking – a flash of light, the hole grows, then the accretion
+  disc forms; it goes out with a flash when docking. It keeps the same orientation whichever way the ship turns.
+
 ## alpha 0.4.25.36 – 2026-11-07
 
 - Threshold: a raised bridge at the stern – three stepped decks casting shadows, the cabin on top looking forward

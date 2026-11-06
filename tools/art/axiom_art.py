@@ -76,7 +76,7 @@ FLAT = 0.28                                              # how flat the tilted d
 
 
 def disc_coords(dx, dy):
-    """Screen offset from the hole (x already scaled by 1/1.1) -> (u, v) in the plane of the disc."""
+    """Screen offset from the hole -> (u, v) in the plane of the disc."""
     u = dx * math.cos(TILT) + dy * math.sin(TILT)
     v = -dx * math.sin(TILT) + dy * math.cos(TILT)
     return u, v / FLAT
@@ -130,7 +130,6 @@ def threshold():
         full[cy - 4][x] = "a"                              # owner colour on the middle tier
         full[cy + 4][x] = "a"
     # the round core, drawn over the full image
-    RH, R_IN, R_OUT = 5.4, 8.0, 15.0                     # hole radius, disc inner and outer radius
     for y in range(HH):
         for x in range(cx - R - 2, cx + R + 3):
             dx, dy = (x - cx) / 1.1, y - cy
@@ -146,9 +145,34 @@ def threshold():
             if d > R - 4.0:
                 full[y][x] = "5"
                 continue
-            ch = "5" if d > R - 5.2 else "1"             # the field inside: a faint cyan glow at the edge
+            ch = "5" if d > R - 5.2 else "1"             # the empty field: the black hole is drawn over it in
+                                                         # flight, always facing the camera (0.4.25.37)
+            full[y][x] = ch
+    out = ["".join(r).rstrip(".") for r in full]
+    return out
+
+
+# ---------------- the Threshold's artificial black hole (0.4.25.37): its own picture, drawn by the ship over
+# the empty core while in flight – it keeps the same orientation whatever way the ship turns. "axa_bh" is the
+# burning hole (animated by PixelArt), "axa_bh_0" … "axa_bh_4" the growing hole while it ignites.
+BH = 15                                                  # half size: a 31 x 31 picture centred on the hole
+RH, R_IN, R_OUT = 5.4, 8.0, 14.4                         # hole radius, disc inner and outer radius
+
+
+def black_hole(rh=None):
+    g = [["."] * (2 * BH + 1) for _ in range(2 * BH + 1)]
+    grow = rh is not None
+    rh = RH if rh is None else rh
+    for y in range(2 * BH + 1):
+        for x in range(2 * BH + 1):
+            dx, dy = x - BH, y - BH
+            d = math.hypot(dx, dy)
+            if d > BH - 0.5:
+                continue
+            ch = "."
             u, v = disc_coords(dx, dy)
             r = math.hypot(u, v)
+
             def disc(r, u):
                 # brightest at the inner edge; the side turning towards us (left) shines brighter
                 if r < R_IN + 1.2 or (u < -2 and r < R_IN + 3.5):
@@ -156,24 +180,26 @@ def threshold():
                 if (r > R_OUT - 1.5 and u > -6) or (u > 6 and r > R_IN + 3.0):
                     return "0"
                 return "8"
-            if R_IN <= r <= R_OUT and v < 0:
-                ch = disc(r, u)                          # the far half of the disc …
-            if dy < 0.5 and RH + 0.6 < d < RH + 3.4:
-                ch = "8" if d > RH + 2.2 else "9"        # … lensed into an arc over the hole
-            elif dy > 0 and RH + 0.6 < d < RH + 1.5:
-                ch = "0"                                 # … and a thin one beneath it
-            if RH - 0.1 < d <= RH + 0.6:
+            if not grow:
+                if R_IN <= r <= R_OUT and v < 0:
+                    ch = disc(r, u)                      # the far half of the disc …
+                if dy < 0.5 and rh + 0.6 < d < rh + 3.4:
+                    ch = "8" if d > rh + 2.2 else "9"    # … lensed into an arc over the hole
+                elif dy > 0 and rh + 0.6 < d < rh + 1.5:
+                    ch = "0"                             # … and a thin one beneath it
+            if rh - 0.1 < d <= rh + 0.6:
                 ch = "9"                                 # the photon ring
-            if d <= RH - 0.1:
+            if d <= rh - 0.1:
                 ch = "7"                                 # the black hole itself
-            if R_IN <= r <= R_OUT and v >= 0:
+            if not grow and R_IN <= r <= R_OUT and v >= 0:
                 ch = disc(r, u)                          # the near half runs in front of the hole
-            full[y][x] = ch
-    out = ["".join(r).rstrip(".") for r in full]
-    return out
+            g[y][x] = ch
+    return ["".join(r) for r in g]
 
 
-ARTS = {"axa_parallax": parallax(), "axa_threshold": threshold()}
+ARTS = {"axa_parallax": parallax(), "axa_threshold": threshold(), "axa_bh": black_hole()}
+for k, rr in enumerate([1.0, 2.1, 3.2, 4.3, 5.4]):
+    ARTS["axa_bh_%d" % k] = black_hole(rr)
 if "--show" in sys.argv:
     for k, a in ARTS.items():
         print(k)

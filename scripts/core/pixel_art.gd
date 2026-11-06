@@ -268,6 +268,21 @@ static func ship_texture(hull_id: String, faction: String, frame: int = -1) -> T
 	return _cache[key]
 
 
+## The Threshold's artificial black hole (0.4.25.37), drawn by the ship over its core: stage -1 = burning, with
+## its turning accretion disc (frame -1 = the current one); stage 0 … 4 = the hole growing while it ignites.
+static func black_hole_texture(stage: int = -1, frame: int = -1) -> Texture2D:
+	var art_key := "axa_bh" if stage < 0 else "axa_bh_%d" % clampi(stage, 0, 4)
+	if stage < 0 and frame < 0:
+		frame = anim_frame("axa_bh")
+	var key := "bh_%s_%d" % [art_key, frame if stage < 0 else -1]
+	if not _cache.has(key):
+		var rows := _pad(ShipArt.SHIPS[art_key])
+		if stage < 0 and frame >= 0:
+			rows = _animate(rows, frame, anim_frames("axa_bh"))
+		_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, PALETTE, false))
+	return _cache[key]
+
+
 ## The two arms of a ship with swinging arms (Goliath, package 25d): [upper, lower] – the same size as
 ## the ship's picture, everything else transparent.
 static func arm_textures(key: String, faction: String) -> Array:
@@ -430,10 +445,9 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 		var rb: String = rows[yb]
 		for xb in rb.length():
 			if rb[xb] == "7":
-				bh.x += float(xb)
 				bhn += 1
 	if bhn > 0:
-		bh = Vector2(bh.x / float(bhn), float(h / 2))      # the hole sits on the centre line
+		bh = Vector2(float(w - 1) * 0.5, float(h - 1) * 0.5)   # the hole sits in the middle of its picture
 	var out: Array = []
 	for y in h:
 		var src: String = rows[y]
@@ -442,7 +456,7 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 			var ch := src[x]
 			if (ch == "8" or ch == "0") and bhn > 0:
 				# into the plane of the tilted disc (0.4.25.35: turned by -10°, seen flattened to 0.28)
-				var rel := Vector2((float(x) - bh.x) / 1.1, float(y) - bh.y).rotated(deg_to_rad(10.0))
+				var rel := Vector2(float(x) - bh.x, float(y) - bh.y).rotated(deg_to_rad(10.0))
 				rel.y /= 0.28
 				var ang := rad_to_deg(atan2(rel.y, rel.x)) + rel.length() * 22.0 - float(f) * (360.0 / float(n))
 				if fposmod(ang, 60.0) < 16.0:

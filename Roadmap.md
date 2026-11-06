@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; als Nächstes Paket 26 (Stationstyp 0). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.36. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; als Nächstes Paket 26 (Stationstyp 0). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.37. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -955,6 +955,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] Drohnenklappen für Parallax und Threshold.
 - [x] **Nachtrag 0.4.25.35:** Das schwarze Loch der Threshold plastischer (Wunsch Luz) – die Akkretionsscheibe liegt schräg zur Kamera: das vordere Band läuft vor dem Loch entlang, die hintere Hälfte verschwindet dahinter und wird als heller Bogen über das Loch gelinst; dünner Photonenring, die auf uns zu drehende Seite leuchtet heller, die abgewandte glimmt dunkelrot. Die Threshold ist dafür als volles (nicht gespiegeltes) Bild gezeichnet.
 - [x] **Nachtrag 0.4.25.36:** Erhöhte Brücke am Heck der Threshold (Wunsch Luz) – drei abgestufte Decks, die ihren Schatten nach rechts unten werfen, oben die Brückenkabine mit cyanfarbenem Fensterband nach vorn und Sensorkuppel; die Drohnenklappe sitzt jetzt auf dem vorderen Rumpf.
+- [x] **Nachtrag 0.4.25.37:** Das schwarze Loch wird gezündet (Wunsch Luz): im Hangar und beim Ab- und Andocken ist der Kern leer; 2,5 s nach dem Abdocken ein Lichtblitz, dann wächst das schwarze Loch, danach bildet sich die Akkretionsscheibe (gut 3 s); beim Andocken ein Lichtblitz und es verschwindet. Das schwarze Loch ist eine eigene Ebene und behält immer dieselbe Ausrichtung, egal wohin das Schiff dreht (der gelinste Bogen liegt immer oben). Ein im All angetroffenes Schiff brennt schon.
 - [x] **Debug-Funktion:** Debug-Menü → Ship: „+10 exotic matter (Threshold)“ (setzt auch die Abklingzeit zurück).
 
 ### Stationstyp 0 (Paket 26)
