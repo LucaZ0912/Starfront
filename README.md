@@ -89,6 +89,12 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Outfitter (phase 0.5 package 27)
+- Category tiles (weapons, tools, core, optional, drone hangar, storage) → the ship's slots → the module
+  families in stock as tiles → size · quality tiles → a short description and how the ship's values change.
+  **Buy & fit** puts the module straight into the slot. A footer shows the ship's key values and power.
+- Every module family has a short description; the ship info shows the current speed.
+
 ## Station concourse (phase 0.5 package 27)
 - After docking the concourse shows three columns: the **commander** (portrait and career are placeholders for
   now) and the **news** on the left, the **docked ship** with hull, armor, fuel, cargo and drones and the ship

@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 läuft (neue Stationsübersicht fertig, als Nächstes der Ausrüster). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.43. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt, als Nächstes das Code-Review von Teil 4. Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.44. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -983,9 +983,15 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
   - **links unten – News:** die neuesten 6 Meldungen als Karten (NEWS / RAID / RADIO farbig), darunter die Kachel zum Nachrichtenarchiv.
   - **Mitte – Schiffsanalyse:** Schiffsbild, Name, Rumpf, Klasse, Größe; Balken für Hülle, Panzerung, Tank, Fracht, Drohnen; darunter die **Schiffsdienste**: Tanken und Reparieren direkt per Klick (mit Preis, „full“ / „No damage“), Drone Bay, Ausrüster, Hangar.
   - **rechts – Station:** Wappen, Name, Typ, Stufe, System, Sicherheit, Fraktion mit eigenem Ansehen, Wirtschaft (erzeugt / braucht), **Kontostand**; darunter die **Stationsdienste** als längliche Kacheln mit Icons (Markt, Werft, Raffinerie, Fertigung, Bond Office, Bulletin Board) – nicht verfügbare gedimmt mit Grund. Hilfslieferungen nach einem Überfall erscheinen hier.
-- **Überarbeitung des Ausrüsters:** besseres Design für mehr Übersicht.
-- **Kurzbeschreibung** zu jedem Modul in der Modulübersicht.
-- **Derzeitige Geschwindigkeit** am linken Rand in der Schiffsinfo anzeigen.
+- [x] **Überarbeitung des Ausrüsters** (nach Referenzbild von Luz, alpha 0.4.25.44):
+  - **links** Kategorie-Kacheln: Waffen, Werkzeuge, Kern, Optionales, Drohnenhangar, Lager.
+  - **daneben** die Plätze des angedockten Schiffs in dieser Kategorie (Platz, Maximalgröße, eingebautes Modul in Qualitätsfarbe).
+  - **rechts** für den gewählten Platz die vorrätigen **Modulfamilien als Kacheln** (Icon, Anzahl, wie viele passen, Schadensart; Tooltip mit Kurzbeschreibung), dann **Größe · Qualität als Kacheln** mit Preis („too big“ / gesperrt gedimmt). Bei **Kern-Plätzen** entfällt die Familienwahl – direkt Größe · Qualität, je Familie eine Reihe. Module aus dem eigenen Lager erscheinen oben.
+  - **Auswahl:** Name, **Kurzbeschreibung**, Werte und **wie sich das Schiff ändert** (grün besser, rot schlechter; Warnung bei Stromüberlast); **„Buy & fit“** baut direkt ein (das alte Modul geht ins Lager), „Buy to storage“, „Fit from storage“, „Remove → storage“.
+  - **Fußzeile:** wichtigste Schiffswerte (Geschwindigkeit, Wendigkeit, Masse, Kondensator, Schild, Panzerung, Hülle, DPS, Fracht, Treibstoff, Sensoren, Signatur) und **Stromverteilung** als Balken – mit der Änderung der aktuellen Auswahl.
+  - Neuer Befehl `module_buy_fit`.
+- [x] **Kurzbeschreibung** zu jeder der 75 Modulfamilien (data/module_desc.gd) – im Ausrüster und in jeder Modul-Zusammenfassung (auch in den Tooltips der Modulübersicht im Schiffsmenü).
+- [x] **Derzeitige Geschwindigkeit** in der Schiffsinfo am linken Rand (Balken und „aktuell / Höchst“, im Warp „WARP“).
 
 ### Entscheidungen zu Teil 4
 

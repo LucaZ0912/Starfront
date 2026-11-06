@@ -4,6 +4,7 @@ extends Node
 
 const HullData = preload("res://data/hulls.gd")
 const ModuleData = preload("res://data/modules.gd")
+const ModuleDesc = preload("res://data/module_desc.gd")
 const CommodityData = preload("res://data/commodities.gd")
 const PresetData = preload("res://data/presets.gd")
 const CorpData = preload("res://data/corporations.gd")
@@ -218,6 +219,9 @@ func module_summary(id: String) -> String:
 	var m: Dictionary = modules[id]
 	var parts: Array = []
 	parts.append("%s – %s, size %d, quality %s" % [m["base_name"], SLOT_NAMES[m["slot"]], int(m["size"]), m["quality"]])
+	var desc := ModuleDesc.of(String(m.get("family", "")))      # package 27: a short description
+	if desc != "":
+		parts.append(desc)
 	if m.has("damage_type"):
 		parts.append("Damage type: " + DAMAGE_NAMES[m["damage_type"]])
 	if m.has("tool"):

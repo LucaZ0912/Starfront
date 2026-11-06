@@ -596,6 +596,24 @@ func _c_module_buy(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"module_buy_fit", "slot": String, "module": String} – package 27: buy at the outfitter and fit it
+## straight into the slot of the docked ship; the module that was there goes into station storage.
+func _c_module_buy_fit(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var f := _fit()
+	var why := f.can_fit(String(c["slot"]), String(c["module"]))
+	if why != "":
+		return why
+	if Missions.cabin_in_use(f, String(c["slot"])):
+		return "Passengers are using this cabin – deliver them first."
+	var e2 := _c_module_buy({"module": c["module"]})
+	if e2 != "":
+		return e2
+	return _c_fit_module({"slot": c["slot"], "module": c["module"]})
+
+
 ## {"type":"module_sell", "module": String} – from station storage.
 func _c_module_sell(c: Dictionary) -> String:
 	var e := _need_service()

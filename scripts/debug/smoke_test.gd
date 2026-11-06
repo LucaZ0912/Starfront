@@ -1,5 +1,7 @@
 extends Node
 const MarketDroneScriptT = preload("res://scripts/world/market_drone.gd")
+const ModuleDescT = preload("res://data/module_desc.gd")
+const ModuleData = preload("res://data/modules.gd")
 ## Automated functional test. Run:  godot --path . -- --smoketest
 ## Docking animation, station concourse + all service panels (shipyard, refinery,
 ## manufacturing, bulletin board, fuel/repair), hangar ship swap, ship menu tabs
@@ -667,6 +669,40 @@ func _test_station(sp: StationUI) -> void:
 		if why == "":
 			sp.open_service(svc["id"])
 			check(sp._panel != null and sp._panel.get_child_count() > 0, "service panel '%s' builds" % svc["id"])
+	# package 27: the outfitter – categories, the ship's slots, families, size · quality, the pick, buy & fit
+	sp.open_service("outfitter")
+	var op = sp._panel
+	op._set_cat("weapon")
+	var wslot := ""
+	for k8 in GameState.active().slot_keys():
+		if k8.begins_with("weapon_"):
+			wslot = k8
+			break
+	op._set_slot(wslot)
+	var fam8 := ""
+	var mid8 := ""
+	for m8 in station["shop"]:
+		var md8: Dictionary = GameData.modules[m8]
+		if String(md8["slot"]) == "weapon" and GameState.active().can_fit(wslot, m8) == "" and GameState.rep.module_error(station, m8) == "":
+			fam8 = String(md8["family"])
+			mid8 = m8
+			break
+	var o_ok := wslot != "" and mid8 != ""
+	if o_ok:
+		op._set_fam(fam8)
+		op._set_pick(mid8, false)
+		var cr8 := GameState.credits
+		var prev8: String = GameState.active().get_module(wslot)
+		op._run({"type": "module_buy_fit", "slot": wslot, "module": mid8})
+		o_ok = GameState.active().get_module(wslot) == mid8 and GameState.credits < cr8 and (prev8 == "" or int(GameState.storage_of(sid).get(prev8, 0)) > 0)
+		if prev8 != "":
+			Commands.execute({"type": "fit_module", "slot": wslot, "module": prev8})      # back as it was
+	for c8 in op.CATS:
+		op._set_cat(c8[0])
+	op._set_cat("core")
+	op._set_slot("reactor")
+	check(main.hud._w.has("speed") and GameData.module_summary(String(station["shop"][0])).contains(ModuleDescT.of(String(GameData.modules[station["shop"][0]]["family"]))), "ship info shows the current speed; module summaries carry the short description")
+	check(o_ok and op.get_child_count() >= 2 and ModuleDescT.DESC.size() >= ModuleData.FAMILIES.size(), "outfitter: category tiles, the ship's slots, families, size · quality tiles, short description – buy & fit straight into the slot")
 	sp.open_service("market")
 	var mp = sp._panel
 	for spec in mp.FILTERS:
@@ -1492,12 +1528,30 @@ func _shoot_standing(view: SystemView) -> void:
 	for i8 in 30:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/concourse.png")
-	f9.docked_at = keep_dock
-	sp.open(big_st, view)
 	sp.open_service("outfitter")
+	# package 27: a weapon slot, a family, a size · quality picked – description, changes and footer
+	var op9 = sp._panel
+	op9._set_cat("weapon")
+	var ws9 := ""
+	for k9 in f9.slot_keys():
+		if k9.begins_with("weapon_"):
+			ws9 = k9
+			break
+	op9._set_slot(ws9)
+	for m9 in big_st["shop"]:
+		if String(GameData.modules[m9]["slot"]) == "weapon" and f9.can_fit(ws9, m9) == "":
+			op9._set_fam(String(GameData.modules[m9]["family"]))
+			op9._set_pick(m9, false)
+			break
 	for i in 20:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/outfitter.png")
+	op9._set_pick("", false)
+	op9._set_fam("")
+	for i7 in 10:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/outfitter_families.png")
+	f9.docked_at = keep_dock
 	print("[SMOKE] screenshot: Claude outputs/modules.png, outfitter.png")
 	sp.close()
 	# package 23: drones out, drone window open

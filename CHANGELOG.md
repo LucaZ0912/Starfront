@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.44 – 2026-11-07
+
+**Package 27 (part 2) – the outfitter rework.**
+- Categories → the ship's slots → module families → size · quality tiles → description and value changes;
+  buy & fit straight into the slot; a footer with the ship's key values and power.
+- A short description for every module family (also in all module tooltips); current speed in the ship info.
+
 ## alpha 0.4.25.43 – 2026-11-07
 
 **Package 27 (part 1) – new station concourse.**

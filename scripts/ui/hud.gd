@@ -446,6 +446,18 @@ func rebuild_ship_panel() -> void:
 	names.add_child(UI.label("%s %s" % [f.hull()["class"], f.hull()["name"]], 11, Color(0.7, 0.75, 0.85)))
 	_w["act"] = UI.label("", 12, Color(0.8, 0.85, 0.95))
 	ship_box.add_child(_w["act"])
+	# package 27: the current speed
+	var sr := UI.hbox(6)
+	var sl := UI.label("Speed", 11, Color(0.65, 0.7, 0.8))
+	sl.custom_minimum_size = Vector2(64, 0)
+	sr.add_child(sl)
+	var sb := UI.bar(Color(0.55, 0.85, 1.0), 150)
+	sb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sr.add_child(sb)
+	_w["speed"] = sb
+	_w["speed_txt"] = UI.label("", 11, Color(0.8, 0.85, 0.95))
+	sr.add_child(_w["speed_txt"])
+	ship_box.add_child(sr)
 	for spec in [["shield", "Shield", Color(0.35, 0.65, 1.0)], ["armor", "Armor", Color(1.0, 0.8, 0.3)], ["structure", "Structure", Color(0.9, 0.3, 0.3)], ["cap", "Energy", Color(0.6, 0.5, 1.0)], ["fuel", "Fuel", Color(0.4, 0.9, 0.5)]]:
 		var row := UI.hbox(6)
 		var l := UI.label(spec[1], 11, Color(0.65, 0.7, 0.8))
@@ -603,6 +615,16 @@ func _process(delta: float) -> void:
 		if flags != "":
 			act = flags + "   " + act
 	_w["act"].text = act
+	if _w.has("speed"):
+		var top := float(s.get("speed", 0.0))
+		var cur := 0.0
+		var warping := false
+		if view != null and view.player != null and is_instance_valid(view.player):
+			cur = view.player.velocity.length()
+			warping = view.player.in_warp()
+		_w["speed"].max_value = maxf(top, 1.0)
+		_w["speed"].value = top if warping else minf(cur, top)
+		_w["speed_txt"].text = "WARP" if warping else "%.0f / %.0f" % [cur, top]
 	_update_modules()
 	_update_locks()
 	_update_drones()
