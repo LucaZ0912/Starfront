@@ -3,7 +3,7 @@ hulls, white leading edges, thin cyan light lines; the Threshold carries an arti
 round core (user's design), its accretion disc animated by PixelArt.
 
 Chars (fixed colours): 1 graphite, 2 slate, 3 light panel, 4 cyan glow, 5 deep cyan, 6 white edge,
-7 black hole, 8 accretion orange, 9 accretion white-hot; e/f engines, a owner colour.
+7 black hole, 8 accretion orange, 9 accretion white-hot, 0 accretion dark red; e/f engines, a owner colour.
 Run: python tools/art/axiom_art.py [--show]
 """
 import os, sys, math
@@ -68,13 +68,26 @@ def parallax():
 
 
 # ---------------- Threshold (L jump ship prototype): a long spine through a round core with an artificial
-# black hole – accretion disc, lensing halo, spokes; a sensor needle at the bow
+# black hole seen at a slant (0.4.25.35): the accretion disc is tilted towards the camera – its near half
+# runs in front of the hole, its far half behind it and is lensed into a bright arc over the top
+SHADE_DOWN = {"6": "3", "3": "2", "2": "1"}
+TILT = math.radians(-10.0)                               # the disc's long axis, slightly turned
+FLAT = 0.28                                              # how flat the tilted disc appears (cos of the inclination)
+
+
+def disc_coords(dx, dy):
+    """Screen offset from the hole (x already scaled by 1/1.1) -> (u, v) in the plane of the disc."""
+    u = dx * math.cos(TILT) + dy * math.sin(TILT)
+    v = -dx * math.sin(TILT) + dy * math.cos(TILT)
+    return u, v / FLAT
+
+
 def threshold():
     W, H = 124, 21
     c = Canvas(W, H)
     cy = H - 1
     cx, R = 60, 19                                       # the core: centre on the centre line, radius in rows
-    # the spine
+    # the spine (upper half, mirrored below with shading)
     for y in range(cy - 5, cy + 1):
         c.hline(4, 116 - (cy - y) * 2, y, "1")
     c.hline(4, 106, cy - 5, "6")
@@ -84,38 +97,58 @@ def threshold():
     c.hline(108, 123, cy, "3")                           # the sensor needle
     c.put(123, cy, "4")
     c.put(122, cy, "6")
-    # fins near the stern
-    for k in range(6):
+    for k in range(6):                                   # fins near the stern
         c.hline(8 + k, 22 - k, cy - 6 - k, "2")
         c.put(22 - k, cy - 6 - k, "6")
-    # the round core
-    for y in range(cy - R, cy + 1):
-        for x in range(cx - R - 2, cx + R + 3):
-            dx = (x - cx) / 1.1
-            d = math.hypot(dx, y - cy)
-            if d > R + 0.4:
-                continue
-            ch = None
-            if d > R - 1.0:
-                ch = "6"                                 # white rim
-            elif d > R - 3.0:
-                ch = "2"                                 # the housing
-            elif d > R - 4.0:
-                ch = "5"
-            elif d > R - 6.5:
-                ch = "4"                                 # lensing halo
-            elif d > R - 11.0:
-                ch = "8"                                 # the accretion disc …
-            elif d > R - 12.5:
-                ch = "9"                                 # … with its hot inner edge
-            else:
-                ch = "7"                                 # the black hole itself
-            c.put(x, y, ch)
     engines(c, 1, [cy - 5, cy - 4, cy - 2, cy - 1, cy])
     c.hline(2, 3, cy - 3, "1")
     c.put(30, cy - 1, "a")
     c.put(31, cy - 1, "a")
-    return c.rows()
+    top = [list(r) for r in c.g]
+    full = top + [[SHADE_DOWN.get(ch, ch) for ch in r] for r in reversed(top[:-1])]
+    HH = len(full)
+    # the round core, drawn over the full image
+    RH, R_IN, R_OUT = 5.4, 8.0, 15.0                     # hole radius, disc inner and outer radius
+    for y in range(HH):
+        for x in range(cx - R - 2, cx + R + 3):
+            dx, dy = (x - cx) / 1.1, y - cy
+            d = math.hypot(dx, dy)
+            if d > R + 0.4:
+                continue
+            if d > R - 1.0:
+                full[y][x] = "6" if dy <= 0 else "3"     # white rim, in shadow underneath
+                continue
+            if d > R - 3.0:
+                full[y][x] = "2" if dy <= 0 else "1"     # the housing
+                continue
+            if d > R - 4.0:
+                full[y][x] = "5"
+                continue
+            ch = "5" if d > R - 5.2 else "1"             # the field inside: a faint cyan glow at the edge
+            u, v = disc_coords(dx, dy)
+            r = math.hypot(u, v)
+            def disc(r, u):
+                # brightest at the inner edge; the side turning towards us (left) shines brighter
+                if r < R_IN + 1.2 or (u < -2 and r < R_IN + 3.5):
+                    return "9"
+                if (r > R_OUT - 1.5 and u > -6) or (u > 6 and r > R_IN + 3.0):
+                    return "0"
+                return "8"
+            if R_IN <= r <= R_OUT and v < 0:
+                ch = disc(r, u)                          # the far half of the disc …
+            if dy < 0.5 and RH + 0.6 < d < RH + 3.4:
+                ch = "8" if d > RH + 2.2 else "9"        # … lensed into an arc over the hole
+            elif dy > 0 and RH + 0.6 < d < RH + 1.5:
+                ch = "0"                                 # … and a thin one beneath it
+            if RH - 0.1 < d <= RH + 0.6:
+                ch = "9"                                 # the photon ring
+            if d <= RH - 0.1:
+                ch = "7"                                 # the black hole itself
+            if R_IN <= r <= R_OUT and v >= 0:
+                ch = disc(r, u)                          # the near half runs in front of the hole
+            full[y][x] = ch
+    out = ["".join(r).rstrip(".") for r in full]
+    return out
 
 
 ARTS = {"axa_parallax": parallax(), "axa_threshold": threshold()}

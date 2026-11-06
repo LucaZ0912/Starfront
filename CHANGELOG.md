@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.35 – 2026-11-07
+
+- Threshold: the black hole now looks three-dimensional – the accretion disc is tilted towards the camera, its near
+  band crosses in front of the hole and its far half is lensed into a bright arc over the top; one side glows hotter.
+
 ## alpha 0.4.25.34 – 2026-11-07
 
 **Package 25g – Axiom Astronautics: research and jump ships.**

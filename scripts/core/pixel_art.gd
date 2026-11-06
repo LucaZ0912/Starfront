@@ -34,7 +34,7 @@ const PALETTE := {
 	# the Threshold's black hole and its accretion disc
 	"1": Color(0.12, 0.14, 0.18), "2": Color(0.24, 0.28, 0.34), "3": Color(0.62, 0.7, 0.78), "4": Color(0.4, 0.95, 1.0),
 	"5": Color(0.08, 0.45, 0.55), "6": Color(0.92, 0.97, 1.0), "7": Color(0.0, 0.0, 0.0), "8": Color(1.0, 0.55, 0.15),
-	"9": Color(1.0, 0.92, 0.7),
+	"9": Color(1.0, 0.92, 0.7), "0": Color(0.62, 0.2, 0.07),
 	# shaded lower halves of painted-on drone hatches (0.4.25.24): dark KHI yellow, Aurelle ivory in shadow
 	"O": Color(0.5, 0.33, 0.06), "Z": Color(0.6, 0.57, 0.5),
 	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
@@ -430,18 +430,20 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 		var rb: String = rows[yb]
 		for xb in rb.length():
 			if rb[xb] == "7":
-				bh += Vector2(xb, yb)
+				bh.x += float(xb)
 				bhn += 1
 	if bhn > 0:
-		bh /= float(bhn)
+		bh = Vector2(bh.x / float(bhn), float(h / 2))      # the hole sits on the centre line
 	var out: Array = []
 	for y in h:
 		var src: String = rows[y]
 		var row := ""
 		for x in src.length():
 			var ch := src[x]
-			if ch == "8" and bhn > 0:
-				var rel := Vector2((float(x) - bh.x) / 1.1, float(y) - bh.y)
+			if (ch == "8" or ch == "0") and bhn > 0:
+				# into the plane of the tilted disc (0.4.25.35: turned by -10°, seen flattened to 0.28)
+				var rel := Vector2((float(x) - bh.x) / 1.1, float(y) - bh.y).rotated(deg_to_rad(10.0))
+				rel.y /= 0.28
 				var ang := rad_to_deg(atan2(rel.y, rel.x)) + rel.length() * 22.0 - float(f) * (360.0 / float(n))
 				if fposmod(ang, 60.0) < 16.0:
 					ch = "9"                 # a hot streak spiralling round the black hole
