@@ -1301,7 +1301,7 @@ func _make_shop(type: String, tier: int, rng: RandomNumberGenerator) -> Array:
 	var shop: Array = []
 	for fam in ModuleData.FAMILIES:
 		var a: Dictionary = ModuleData.ANCHORS[ModuleData.FAMILIES[fam]["anchor"]]
-		if a.get("notorious_only", false) or (a.get("pirate_only", false) and type != "pirate_haven") or a.get("covenant_only", false):
+		if a.get("notorious_only", false) or (a.get("pirate_only", false) and type != "pirate_haven") or a.get("covenant_only", false) or a.get("directorate_only", false):
 			continue
 		var chance := 0.9 if a["slot"] in t["shop"] else 0.12
 		if a["slot"] in ["hangar", "drone"]:
@@ -1346,6 +1346,17 @@ func _add_faction_yard(st: Dictionary) -> void:
 				var mid := ModuleData.id_of("w_focus", size, q)
 				if not mid in st["shop"]:
 					st["shop"].append(mid)
+	# 0.4.25.40: the Directorate's outfitters sell Axiom's drone cloak emitter
+	if String(st.get("faction", "")) == "directorate" and not st.get("shop", []).is_empty():
+		var qs2: Array = ["C", "D"]
+		if int(st["tier"]) >= 2:
+			qs2.append("B")
+		if int(st["tier"]) >= 3 or String(st["type"]) == "military":
+			qs2.append("A")
+		for q2 in qs2:
+			var mid2 := ModuleData.id_of("dr_cloak", 1, q2)
+			if not mid2 in st["shop"]:
+				st["shop"].append(mid2)
 	if not t.get("shipyard", false):
 		return
 	var f := String(st.get("faction", ""))

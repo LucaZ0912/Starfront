@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.40 – 2026-11-07
+
+- Cloak: using a weapon, tool or module ends it (a refused one does not); target locks are allowed while cloaked
+  and kept when cloaking.
+- New drone module Drone Cloak Emitter (only for ships with a cloaking device, sold by Directorate outfitters):
+  the drones become Axiom cloak drones with their own look and cloak together with their ship.
+
 ## alpha 0.4.25.39 – 2026-11-07
 
 - Threshold: the black hole goes out under the cloak and ignites again once the ship is fully visible.

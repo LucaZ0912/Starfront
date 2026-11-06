@@ -59,6 +59,12 @@ const SHIPS := {
 		"edhhhc.",
 		"edhhhCc",
 	],
+	# 0.4.25.40: Axiom's cloak drone – graphite with a cyan light line and a white leading edge
+	"drone_cloak": [
+		"...56..",
+		"e11226.",
+		"e124446",
+	],
 	# ---------------- Kanayama Heavy Industries (package 25a): bulky, yellow, hazard stripes
 	"mogura": [
 		"....DD..DD.........................",

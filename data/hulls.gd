@@ -54,6 +54,15 @@ const HULLS := {
 		"shape": "drone", "length": 8,
 		"desc": "Small autonomous drone.",
 	},
+	# 0.4.25.40: Axiom's cloak drone – launched instead of the plain drone when the hangar carries a drone
+	# cloak emitter; it cloaks together with its ship
+	"drone_cloak": {
+		"name": "Cloak Drone", "class": "Drone", "size": 1, "price": 0, "buyable": false, "drone_only": true,
+		"structure": 60, "mass": 12, "signature": 5, "cargo": 5,
+		"slots": {}, "slot_sizes": {}, "drones": 0,
+		"shape": "drone", "length": 8,
+		"desc": "Axiom drone that cloaks together with its ship.",
+	},
 	"dragonfly": {
 		"maker": "earthworks", "name": "Dragonfly", "class": "Scout Corvette", "size": 1, "price": 9000, "buyable": true,
 		"structure": 350, "mass": 600, "signature": 25, "cargo": 15,

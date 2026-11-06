@@ -257,6 +257,8 @@ func module_summary(id: String) -> String:
 		parts.append("Holds your drones – the quality gives more room; how many fly at once depends on the ship")
 	if m["slot"] == "drone":
 		parts.append("Fits the bonus slot of the drone hangar – works for all your drones")
+	if m.get("d_cloak", false):
+		parts.append("Your drones become Axiom cloak drones: they cloak together with the ship (only ships with a cloaking device)")
 	if m.has("shield_kind"):
 		parts.append("Shield type: %s – after a collapse it stays down for a while (longer for big, high-capacity and low-quality shields), then restarts at 50 %%" % SHIELD_KINDS[m["shield_kind"]]["name"])
 	if m.get("pd", false):

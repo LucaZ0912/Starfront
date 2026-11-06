@@ -759,6 +759,8 @@ static func module_icon_key(module_id: String) -> String:
 	if not GameData.modules.has(module_id):
 		return "empty"
 	var m: Dictionary = GameData.modules[module_id]
+	if m.get("d_cloak", false):
+		return "o_cloak"
 	match String(m["slot"]):
 		"weapon":
 			if m.get("pd", false):

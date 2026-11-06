@@ -115,6 +115,8 @@ func can_fit(key: String, module_id: String) -> String:
 		return "Only notorious pirate captains can use this"
 	if m.get("aurelle_only", false) and String(hull().get("maker", "")) != "aurelle":
 		return "Luxury suites fit only into Maison Aurelle ships"
+	if m.get("d_cloak", false) and not "cloak" in hull().get("builtin", []):
+		return "The drone cloak emitter works only on ships with a cloaking device (Axiom Astronautics)"
 	if m.get("covenant_only", false) and String(hull().get("maker", "")) != "forge":
 		return "Focus crystal lasers fit only into Covenant ships (Forge of Return)"
 	return ""
@@ -513,6 +515,7 @@ func _drone_stats(s: Dictionary, mods: Dictionary) -> void:
 	d["hull"] += float(b.get("d_hull", 0.0))
 	d["shield"] += float(b.get("d_shield", 0.0))
 	d["shield_regen"] += float(b.get("d_shield_regen", 0.0))
+	d["cloak"] = bool(b.get("d_cloak", false)) and "cloak" in hull().get("builtin", [])   # 0.4.25.40
 	# carrier hull bonus (package 25b: Kanayama-maru – more mining, more cargo)
 	var hb: Dictionary = hull().get("drone_bonus", {})
 	d["cargo"] += float(hb.get("cargo", 0.0))

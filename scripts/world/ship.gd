@@ -231,9 +231,18 @@ func is_targetable() -> bool:
 	return not dying and not is_docked() and is_inside_tree() and warp.is_empty() and not cloaked()
 
 
-## Axiom cloaking device (package 25g): nobody sees or targets a cloaked ship; it can only fly and warp.
+## Axiom cloaking device (package 25g): nobody sees or targets a cloaked ship; it can fly, warp and lock
+## targets – using a weapon, tool or module switches the cloak off (0.4.25.40).
 func cloaked() -> bool:
 	return module_on.get("builtin_cloak", false)
+
+
+func decloak(why: String) -> void:
+	if not module_on.get("builtin_cloak", false):
+		return
+	module_on["builtin_cloak"] = false
+	module_state["builtin_cloak"] = "off"
+	_mlog("Cloak off – %s used: you are visible again." % why, GameState.COL_WARN)
 
 
 func in_warp() -> bool:
@@ -1654,8 +1663,6 @@ static func lockable(node) -> bool:
 
 
 func add_lock(node) -> String:
-	if cloaked():
-		return "Cloaked – no target locks."
 	if not lockable(node):
 		return "That cannot be targeted."
 	var key := object_key(node)
@@ -1896,15 +1903,23 @@ func set_module_active(slot: String, on: bool) -> String:
 		if on and fit.capacitor < float(d["energy_rate"]):
 			return "%s: not enough energy." % d["name"]
 		if on:
-			clear_locks()                       # locks and every other module go quiet (clears module_on)
+			module_on.clear()                   # every other module goes quiet – the target locks stay
 			for k in module_state.keys():
 				module_state[k] = "off"
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
-		_mlog("%s %s." % [d["name"], "on – you are invisible; only flying and warping" if on else "off – you are visible again"])
+		_mlog("%s %s." % [d["name"], "on – you are invisible; using a weapon, tool or module ends it" if on else "off – you are visible again"])
 		return ""
 	if on and cloaked():
-		return "Cloaked – only flying and warping. Switch the cloak off first."
+		# 0.4.25.40: a weapon, tool or module that really switches on ends the cloak (one that is refused –
+		# a lock still running, too little energy – leaves the ship cloaked)
+		module_on["builtin_cloak"] = false
+		var err := set_module_active(slot, on)
+		module_on["builtin_cloak"] = true
+		if err != "":
+			return err
+		decloak(String(d["name"]))
+		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) == "auto_fire":
 		# package 25f: the Cathedral's focus lasers fire on their own – at enemies and at the targets
 		# locked right now

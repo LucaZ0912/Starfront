@@ -134,6 +134,8 @@ const FAMILIES := {
 	"dr_wrange": {"name": "Drone Targeting Array", "anchor": "dr_wrange_s", "ref": 1, "sizes": [1, 3]},
 	"dr_fuel": {"name": "Drone Fuel Cell", "anchor": "dr_fuel_s", "ref": 1, "sizes": [1, 3]},
 	"dr_speed": {"name": "Drone Thrusters", "anchor": "dr_speed_s", "ref": 1, "sizes": [1, 3]},
+	# 0.4.25.40: Axiom's cloak drones – only for ships with a cloaking device, sold by the Directorate
+	"dr_cloak": {"name": "Drone Cloak Emitter", "anchor": "dr_cloak_s", "ref": 1, "sizes": [1, 1]},
 	# optional (1–8, cargo and ore hold up to 10)
 	"o_cargo": {"name": "Cargo Rack", "anchor": "o_cargo_s", "ref": 1, "sizes": [1, 10]},
 	"o_shield": {"name": "Shield Generator", "anchor": "o_shield_s", "ref": 1, "sizes": [1, 8]},
@@ -289,6 +291,7 @@ const ANCHORS := {
 	"dr_damage_s": {"name": "Drone Weapon Booster", "slot": "drone", "size": 1, "price": 7000, "mass": 10, "power": 0, "d_damage": 1.3},
 	"dr_wrange_s": {"name": "Drone Targeting Array", "slot": "drone", "size": 1, "price": 6000, "mass": 10, "power": 0, "d_wrange": 1.3},
 	"dr_fuel_s": {"name": "Drone Fuel Cell", "slot": "drone", "size": 1, "price": 5000, "mass": 10, "power": 0, "d_fuel": 1.4},
+	"dr_cloak_s": {"name": "Drone Cloak Emitter", "slot": "drone", "size": 1, "price": 14000, "mass": 10, "power": 0, "d_cloak": true, "directorate_only": true},
 	"dr_speed_s": {"name": "Drone Thrusters", "slot": "drone", "size": 1, "price": 5000, "mass": 10, "power": 0, "d_speed": 1.3},
 
 	# ---------------- Engines ----------------

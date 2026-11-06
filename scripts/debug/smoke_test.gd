@@ -4629,7 +4629,7 @@ func _test_axiom(view: SystemView) -> void:
 	var sweeping: bool = cs.cloak_k > 0.0 and cs.cloak_k < 1.0
 	cs._update_cloak_fx(3.0)
 	check(sweeping and cs.cloak_k >= 1.0 and cs._cloak_alpha_at(0.0, 40) < 0.5 and PixelArt.silhouette_texture("axa_parallax").get_width() > 0, "cloak: takes hold from the stern to the bow, not all at once")
-	var no_target: bool = not cs.is_targetable() and cs.locks.is_empty() and cs.add_lock(foe) != "" and cs.set_module_active("weapon_0", true) != ""
+	var no_target: bool = not cs.is_targetable() and cs.locks.size() == 1
 	var cap0 := cf.capacitor
 	cs._update_modules(1.0, cf.stats())
 	var drains: bool = cf.capacitor < cap0
@@ -4637,7 +4637,71 @@ func _test_axiom(view: SystemView) -> void:
 	var foe_lost: bool = not foe._valid(foe.target)
 	cf.capacitor = 0.0
 	cs._update_modules(1.0, cf.stats())
-	check(e1 == "" and no_target and drains and foe_lost and not cs.cloaked(), "cloaking device: invisible and untargetable, no locks or weapons, uses energy – off when the capacitor runs dry")
+	check(e1 == "" and no_target and drains and foe_lost and not cs.cloaked(), "cloaking device: invisible and untargetable (locks stay), uses energy – off when the capacitor runs dry")
+	# 0.4.25.40: firing a weapon or using a tool ends the cloak
+	cf.capacitor = float(cf.stats()["cap_max"])
+	cs.set_module_active("builtin_cloak", true)
+	var re_cloaked: bool = cs.cloaked()
+	var ew0: String = cs.set_module_active("weapon_0", true)      # the lock is still running: refused, still cloaked
+	var refused_stays: bool = ew0 != "" and cs.cloaked()
+	for l7 in cs.locks:
+		l7["progress"] = 1.0
+	var ew1: String = cs.set_module_active("weapon_0", true)
+	var by_weapon: bool = refused_stays and not cs.cloaked() and bool(cs.module_on.get("weapon_0", false))
+	var by_tool := false
+	var tools_fair := true
+	var keep_sel: String = view.selected_id
+	var keep_pos: Vector2 = cs.position
+	for wt2 in Universe.warp_targets(view.system_id):
+		if wt2["kind"] in ["field", "planet"]:
+			view.selected_id = wt2["id"]
+			cs.position = (wt2["pos"] as Vector2) + Vector2(3000, 0)
+			break
+	for tslot in ["tool_1", "tool_2"]:
+		cs.module_on.clear()
+		cs.set_module_active("builtin_cloak", true)
+		var et: String = cs.set_module_active(tslot, true)
+		by_tool = by_tool or (et == "" and not cs.cloaked())
+		tools_fair = tools_fair and ((et == "") == (not cs.cloaked()))   # a refused tool leaves it on
+	view.selected_id = keep_sel
+	cs.position = keep_pos
+	check(re_cloaked and by_weapon and by_tool and tools_fair, "cloak: firing a weapon or using a tool switches it off (a refused one does not)")
+	# 0.4.25.40: Axiom's cloak drones – the drone cloak emitter, sold only by the Directorate
+	var emid := "dr_cloak:1:C"
+	var cdf := GameState.create_from_preset("std_axa_parallax", "player")
+	var fit_err: String = cdf.can_fit("dbonus_0", emid)
+	cdf.set_module("dbonus_0", emid)
+	cdf.set_module("hangar", "hangar:1:C")
+	var dcf := GameState.create_fit("dragonfly", {"dbonus_0": emid}, "player")
+	var fit_err2: String = dcf.can_fit("dbonus_0", emid)
+	var dr_cloak_ok: bool = bool(cdf.stats()["drone"].get("cloak", false)) and not bool(dcf.stats()["drone"].get("cloak", false))
+	var sold_dir := false
+	var sold_else := false
+	for sy5 in Universe.systems:
+		for st5 in Universe.get_layout(int(sy5["id"]))["stations"]:
+			if emid in st5.get("shop", []):
+				if String(st5.get("faction", "")) == "directorate":
+					sold_dir = true
+				else:
+					sold_else = true
+	check(fit_err == "" and fit_err2 != "" and dr_cloak_ok and sold_dir and not sold_else, "drone cloak emitter: Axiom ships fly cloak drones; only Directorate outfitters sell it")
+	cdf.position = view.player.position + Vector2(0, -129000)
+	cdf.uid = 99924
+	cdf.drones = [{"out": false, "fuel": 1.0, "hp": 1.0}]
+	var cds := Ship.new()
+	cds.setup(cdf, view)
+	view.ship_layer.add_child(cds)
+	view.launch_drones(cds, 1)
+	var cdr: Array = view.drones_of(cds)
+	var dok: bool = cdr.size() == 1 and cdr[0].fit.hull_id == "drone_cloak" and not cdr[0].cloaked()
+	cdf.capacitor = float(cdf.stats()["cap_max"])
+	cds.set_module_active("builtin_cloak", true)
+	var hid: bool = dok and cdr[0].cloaked() and not cdr[0].is_targetable() and not view.contact_visible(cdr[0])
+	cds.set_module_active("builtin_cloak", false)
+	check(hid and not cdr[0].cloaked(), "cloak drones cloak together with their ship – and show again with it")
+	for d7 in cdr:
+		view.stow_drone(d7)
+	cds.queue_free()
 	foe.queue_free()
 	cs.queue_free()
 	# NPC research ships cloak when they come under fire; enemies cannot see cloaked ships on the radar

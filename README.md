@@ -92,7 +92,8 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 ## Axiom Astronautics – the Directorate's research and jump ships (phase 0.5 package 25g)
 - **Parallax** (S, from Neutral) and **Threshold** (L, from Allied), sold only at Directorate shipyards:
   sensors +25 %, signature −25 %, power use −15 %, a built-in **cloaking device** (invisible and
-  untargetable; only flying and warping while cloaked; uses energy).
+  untargetable; using a weapon, tool or module ends it; uses energy). With a Drone Cloak Emitter the
+  drones cloak too.
 - **Parallax:** the galaxy map marks every system within four jumps with undiscovered anomalies.
 - **Threshold:** an artificial black hole in its round core opens a **wormhole** – jump without a gate up to
   eight jumps far for one unit of **exotic matter** per jump (from rare "Exotic Matter Signature"

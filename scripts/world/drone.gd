@@ -37,7 +37,7 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 	dstats = cs["drone"]
 	weapon = cs["drone_weapon"]
 	dtool = cs["drone_tool"]
-	var f := ShipFitting.new("drone", carrier.faction)    # NPC carriers fly drones too (package 25e)
+	var f := ShipFitting.new("drone_cloak" if dstats.get("cloak", false) else "drone", carrier.faction)    # NPC carriers fly drones too (package 25e)
 	f.gov = carrier.fit.gov
 	f.uid = uid
 	f.ship_name = "Drone %d" % n
@@ -120,6 +120,7 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 		return
 	modulate.a = 1.0
+	_update_cloak_fx(delta)                     # 0.4.25.40: cloak drones fade with their ship
 	_wcd = maxf(0.0, _wcd - delta)
 	hit_flash = maxf(0.0, hit_flash - delta)
 	if float(dstats["shield"]) > 0.0:
@@ -148,6 +149,11 @@ func _physics_process(delta: float) -> void:
 		if position.distance_to(dest) < land:
 			view.stow_drone(self)
 			return
+	elif cloaked():
+		# cloaked with the ship: no shooting, no mining – they keep station near the carrier
+		_burn = "idle"
+		work = null
+		dest = carrier.position if home_d > 900.0 else position + carrier.velocity * 0.5
 	elif home_d > float(dstats["range"]) or in_shadow():
 		# out of the control range or in a radar shadow: back towards the carrier, nothing else until then
 		_burn = "work"
@@ -507,6 +513,11 @@ func _lost(why: String) -> void:
 			GameState.log_msg("Drone lost – %s." % why, GameState.COL_WARN)
 	view.spawn_fx(Fx.explosion(position, 25.0, Color(1.0, 0.7, 0.3)))
 	queue_free()
+
+
+## A cloak drone (0.4.25.40) is cloaked while its ship is.
+func cloaked() -> bool:
+	return bool(dstats.get("cloak", false)) and carrier != null and is_instance_valid(carrier) and carrier.cloaked()
 
 
 ## Shot down (overrides Ship._die: no wreck, no bounty).
