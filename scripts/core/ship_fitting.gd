@@ -40,7 +40,8 @@ var docked_at := ""        # station id while docked
 var route: Array = []      # remaining systems of the hyperspace route
 var stance := "aggressive" # aggressive / defensive / passive
 # Hyperspace jump between systems
-var transit_kind := ""     # "" / "jump"
+var transit_kind := ""     # "" / "jump" / "wormhole" (package 25g)
+var wormhole_ready := 0.0  # play time from which the Threshold may open its next wormhole
 var transit_to = null      # destination system
 var transit_from = null    # origin system
 var transit := 0.0         # remaining seconds
@@ -135,7 +136,7 @@ func set_module(key: String, module_id: String) -> String:
 
 const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "cargo", "structure", "armor",
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
-	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities",
+	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities", "wormhole_ready",
 	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers"]
 
 
@@ -203,7 +204,7 @@ func _compute() -> Dictionary:
 			continue
 		if m["slot"] == "hangar":
 			s["drone_storage"] = int(m.get("drone_storage", 0))
-		var pw := float(m.get("power", 0))
+		var pw := float(m.get("power", 0)) * float(h.get("power_mult", 1.0))
 		var act := is_active_module(m)
 		var grp := priority_of(key)
 		s["power_draw"] += pw
@@ -306,7 +307,7 @@ func _compute() -> Dictionary:
 		var bd: Dictionary = b["data"].duplicate()
 		var bkey: String = b["key"]
 		bd["slot"] = bkey
-		var bpw := float(bd.get("power", 0.0))
+		var bpw := float(bd.get("power", 0.0)) * float(h.get("power_mult", 1.0))
 		var bgrp := priority_of(bkey)
 		s["power_draw"] += bpw
 		if bpw > 0.0:
@@ -339,9 +340,11 @@ func _compute() -> Dictionary:
 	s["turn"] = s["turn"] * (0.5 + 0.5 * ratio) * float(h.get("turn_mult", 1.0))
 	s["cap_recharge"] *= ratio
 	s["shield_regen"] *= ratio
-	s["sensor_range"] *= (0.5 + 0.5 * ratio)
+	s["sensor_range"] *= (0.5 + 0.5 * ratio) * float(h.get("sensor_mult", 1.0))
+	s["scan_strength"] *= float(h.get("sensor_mult", 1.0))         # Axiom (package 25g)
 	s["jump_fuel"] = s["jump_fuel_base"] * sqrt(s["mass"] / 1500.0)
 	s["signature"] += s["mass"] * 0.004
+	s["signature"] *= float(h.get("signature_mult", 1.0))
 	for dt in s["res"]:
 		s["res"][dt] = clampf(s["res"][dt], 0.0, 0.8)
 	# package 20: a collapsed shield stays down for a while – longer for big shields, high-capacity
@@ -434,6 +437,12 @@ func builtin_modules() -> Array:
 				m["id"] = "builtin:prospect"
 				m["builtin"] = true
 				_builtin_cache.append({"key": "builtin_prospect", "data": m})
+			"cloak":
+				var ck: Dictionary = h.get("cloak", {})
+				_builtin_cache.append({"key": "builtin_cloak", "data": {
+					"name": "Cloaking Device (built-in)", "base_name": "Cloaking Device", "slot": "optional", "active": "cloak",
+					"energy_rate": float(ck.get("energy_rate", 6.0)), "power": float(ck.get("power", 10.0)),
+					"builtin": true, "id": "builtin:cloak", "size": int(h.get("size", 1)), "quality": "C", "mass": 0, "price": 0}})
 			"drone_pulse":
 				var dp: Dictionary = h.get("drone_pulse", {})
 				_builtin_cache.append({"key": "builtin_drone_pulse", "data": {
@@ -606,7 +615,7 @@ func power_plan(in_use: Dictionary) -> Dictionary:
 		var m: Dictionary = module_data(key)
 		if m.is_empty():
 			continue
-		var pw := float(m.get("power", 0))
+		var pw := float(m.get("power", 0)) * float(hull().get("power_mult", 1.0))
 		if pw <= 0.0 or slot_type(key) in GameData.DRONE_SLOTS:
 			continue
 		if not is_active_module(m) or in_use.get(key, false):

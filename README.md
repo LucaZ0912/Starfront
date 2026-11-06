@@ -89,6 +89,16 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Axiom Astronautics – the Directorate's research and jump ships (phase 0.5 package 25g)
+- **Parallax** (S, from Neutral) and **Threshold** (L, from Allied), sold only at Directorate shipyards:
+  sensors +25 %, signature −25 %, power use −15 %, a built-in **cloaking device** (invisible and
+  untargetable; only flying and warping while cloaked; uses energy).
+- **Parallax:** the galaxy map marks every system within four jumps with undiscovered anomalies.
+- **Threshold:** an artificial black hole in its round core opens a **wormhole** – jump without a gate up to
+  eight jumps far for one unit of **exotic matter** per jump (from rare "Exotic Matter Signature"
+  anomalies); 120 s cooldown; sometimes the wormhole collapses early and drops you anywhere in the system.
+- Axiom research ships fly in Directorate systems and cloak when attacked. Debug: +10 exotic matter.
+
 ## Forge of Return – the Covenant's flying temples (phase 0.5 package 25f)
 - **Acolyte** (S, from Neutral), **Templar** (M, from Friendly), **Cathedral** (L, from Allied): crimson
   battlements with crystal batteries around a radiant ivory-and-gold nave with stained glass. Sold only at

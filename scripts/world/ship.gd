@@ -139,7 +139,12 @@ func is_docked() -> bool:
 
 
 func is_targetable() -> bool:
-	return not dying and not is_docked() and is_inside_tree() and warp.is_empty()
+	return not dying and not is_docked() and is_inside_tree() and warp.is_empty() and not cloaked()
+
+
+## Axiom cloaking device (package 25g): nobody sees or targets a cloaked ship; it can only fly and warp.
+func cloaked() -> bool:
+	return module_on.get("builtin_cloak", false)
 
 
 func in_warp() -> bool:
@@ -359,6 +364,7 @@ func _physics_process(delta: float) -> void:
 		if not fit.power_off.is_empty() or fit.throttle < 1.0:
 			fit.apply_power({"off": {}, "throttle": 1.0})
 		arm_open = 0.0
+		module_on.erase("builtin_cloak")       # no cloaking in a hangar
 		return
 	visible = true
 	_update_power()
@@ -373,6 +379,13 @@ func _physics_process(delta: float) -> void:
 	_update_arms(delta)
 	_update_npc_drones(delta)
 	_update_npc_pulse(delta)
+	_update_npc_cloak(delta)
+	if is_drone:
+		pass
+	elif cloaked():
+		modulate.a = 0.35 if faction == "player" else 0.0     # invisible to everybody else
+	else:
+		modulate.a = 1.0
 	_update_auto_fire(delta, s)
 	combat_t = maxf(0.0, combat_t - delta)
 	if in_warp():
@@ -1239,6 +1252,8 @@ func _formation_warp(delta: float) -> void:
 
 func _update_weapons(delta: float, s: Dictionary) -> void:
 	var weapons: Array = s["weapons"]
+	if cloaked():
+		return
 	if weapon_timers.size() != weapons.size():
 		weapon_timers.resize(weapons.size())
 		weapon_timers.fill(0.0)
@@ -1553,6 +1568,8 @@ static func lockable(node) -> bool:
 
 
 func add_lock(node) -> String:
+	if cloaked():
+		return "Cloaked – no target locks."
 	if not lockable(node):
 		return "That cannot be targeted."
 	var key := object_key(node)
@@ -1789,6 +1806,19 @@ func set_module_active(slot: String, on: bool) -> String:
 		module_state[slot] = "on" if on else "off"
 		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
 		return ""
+	if e["kind"] == "self" and String(d.get("active", "")) == "cloak":
+		if on and fit.capacitor < float(d["energy_rate"]):
+			return "%s: not enough energy." % d["name"]
+		if on:
+			clear_locks()                       # locks and every other module go quiet (clears module_on)
+			for k in module_state.keys():
+				module_state[k] = "off"
+		module_on[slot] = on
+		module_state[slot] = "on" if on else "off"
+		_mlog("%s %s." % [d["name"], "on – you are invisible; only flying and warping" if on else "off – you are visible again"])
+		return ""
+	if on and cloaked():
+		return "Cloaked – only flying and warping. Switch the cloak off first."
 	if e["kind"] == "self" and String(d.get("active", "")) == "auto_fire":
 		# package 25f: the Cathedral's focus lasers fire on their own – at enemies and at the targets
 		# locked right now
@@ -2084,6 +2114,16 @@ func _run_active(delta: float, slot: String, d: Dictionary) -> void:
 		_pulse_tick(slot, d)
 		return
 	if String(d.get("active", "")) == "auto_fire":
+		module_state[slot] = "on"
+		return
+	if String(d.get("active", "")) == "cloak":
+		var cc := float(d["energy_rate"]) * delta
+		if fit.capacitor < cc:
+			module_on[slot] = false
+			module_state[slot] = "off"
+			_mlog("%s: capacitor empty – you are visible again." % d["name"], GameState.COL_WARN)
+			return
+		fit.capacitor -= cc
 		module_state[slot] = "on"
 		return
 	var cost := float(d["energy_rate"]) * delta
@@ -2489,6 +2529,23 @@ func _update_auto_fire(delta: float, s: Dictionary) -> void:
 		view.fire_weapon(self, tg, w2)
 		combat_t = 5.0
 		_auto_k = k                      # next time the next target (the bundled lance takes turns)
+
+
+## Axiom research ships flown by NPCs cloak when they come under fire and show again after a while.
+var _cloak_calm := 0.0
+
+
+func _update_npc_cloak(delta: float) -> void:
+	if manual or faction == "player" or view == null or not "cloak" in fit.hull().get("builtin", []):
+		return
+	if cloaked():
+		_cloak_calm += delta
+		if _cloak_calm > 25.0:
+			module_on["builtin_cloak"] = false
+	elif combat_t > 4.0 and last_attacker != null and is_instance_valid(last_attacker) and Ship.hostile(self, last_attacker):
+		module_on["builtin_cloak"] = true
+		_cloak_calm = 0.0
+		target = null
 
 
 ## NPC Cathedrals use the pulse against hostile drones near them.
@@ -3056,6 +3113,10 @@ func _draw() -> void:
 		_draw_stripes(size)
 	if fit.hull().get("spike_fx", false):
 		_draw_spikes(size)
+	if cloaked():
+		# a shimmer over the ship: its own pilot still sees it (others do not – see _physics_process)
+		var t2 := float(Time.get_ticks_msec()) / 1000.0
+		draw_rect(Rect2(-size * 0.5, size), Color(0.4, 0.95, 1.0, 0.08 + 0.06 * sin(t2 * 3.0)))
 	for mf in multi_flames:
 		var mp: Vector2 = mf[0] - Vector2(PixelArt.SCALE * 1.5, 0.0)
 		draw_circle(mp - Vector2(float(mf[1]) * 0.4, 0.0), float(mf[1]), Color(mf[2], 0.35))

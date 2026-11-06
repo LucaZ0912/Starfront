@@ -1060,6 +1060,24 @@ func _c_debug_fill_drones(_c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"wormhole_jump", "to": int} – Axiom Threshold: through a wormhole without a gate (package 25g).
+func _c_wormhole_jump(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	return GameState.begin_wormhole(GameState.active(), int(c["to"]))
+
+
+## {"type":"debug_exotic", "amount": int} – exotic matter for the Threshold; also resets its wormhole cooldown.
+func _c_debug_exotic(c: Dictionary) -> String:
+	GameState.exotic_matter += int(c.get("amount", 10))
+	var f := GameState.active()
+	if f != null:
+		f.wormhole_ready = 0.0
+	GameState.log_msg("Exotic matter: %d (wormhole cooldown reset)." % GameState.exotic_matter, GameState.COL_GOOD)
+	return ""
+
+
 ## {"type":"debug_npc_drones"} – every NPC carrier near you launches its drones (to test the
 ## Cathedral's anti-drone pulse, package 25f).
 func _c_debug_npc_drones(_c: Dictionary) -> String:

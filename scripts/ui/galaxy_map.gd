@@ -95,6 +95,9 @@ func _ready() -> void:
 	sv.add_child(info)
 	course_btn = UI.button("Set course", _set_course)
 	sv.add_child(course_btn)
+	wormhole_btn = UI.button("Wormhole jump", _wormhole)
+	wormhole_btn.visible = false
+	sv.add_child(wormhole_btn)
 	view_btn = UI.button("View system", _view_selected)
 	view_btn.visible = false
 	sv.add_child(HSeparator.new())
@@ -353,6 +356,7 @@ func _draw_map() -> void:
 				continue
 			var cls := int(s["links"][nb])
 			map.draw_line(_to_screen(s["pos"]), _to_screen(Universe.systems[nb]["pos"]), cls_cols[cls - 1], 1.0 + cls * 0.7)
+	_draw_anomaly_finder(font)
 	# Planned route
 	if not planned_path.is_empty() and _from_system >= 0:
 		var prev: Vector2 = _to_screen(Universe.systems[_from_system]["pos"])
@@ -461,6 +465,35 @@ func _draw_convoys() -> void:
 		map.draw_polyline(pts, Color(0, 0, 0, 0.7), 1.0)
 
 
+## Axiom Parallax (package 25g): every system within its range that still hides undiscovered anomalies,
+## with their number.
+func _draw_anomaly_finder(font: Font) -> void:
+	var f := GameState.active()
+	if f == null or not f.hull().has("anomaly_finder"):
+		return
+	for sid in anomaly_targets(f):
+		var p := _to_screen(Universe.systems[sid]["pos"])
+		var n: int = anomaly_targets(f)[sid]
+		map.draw_arc(p, 13.0, 0.0, TAU, 24, Color(0.4, 0.95, 1.0, 0.9), 2.0)
+		map.draw_string(font, p + Vector2(10, -10), "%d?" % n, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.4, 0.95, 1.0))
+
+
+## {system id: undiscovered anomalies} within the Parallax's range of the ship's system.
+static func anomaly_targets(f: ShipFitting) -> Dictionary:
+	var out := {}
+	var rng := int(f.hull().get("anomaly_finder", 0))
+	if rng <= 0:
+		return out
+	for sid in Missions._systems_within(f.system_id, rng):
+		var n := 0
+		for an in Universe.get_layout(sid)["anomalies"]:
+			if not an.get("revealed", false) and not an.get("done", false):
+				n += 1
+		if n > 0:
+			out[sid] = n
+	return out
+
+
 func _dashed(a: Vector2, b: Vector2, col: Color) -> void:
 	var length := a.distance_to(b)
 	var dir := (b - a) / maxf(length, 0.01)
@@ -508,6 +541,13 @@ func _plan() -> void:
 
 
 func _update_info() -> void:
+	var af := GameState.active()
+	if wormhole_btn != null:
+		wormhole_btn.visible = af != null and af.hull().has("wormhole") and selected_system >= 0
+		if wormhole_btn.visible:
+			var why: String = GameState.wormhole_error(af, selected_system)
+			wormhole_btn.disabled = why != ""
+			wormhole_btn.text = "Wormhole jump (%d exotic matter)" % GameState.wormhole_distance(af, selected_system) if why == "" else "Wormhole: %s" % why
 	if selected_system < 0:
 		info.text = ""
 		return
@@ -586,6 +626,17 @@ static func _goods(list: Array) -> String:
 	for i in mini(list.size(), 4):
 		names.append(GameData.item_name(list[i]))
 	return ", ".join(names) + (" …" if list.size() > 4 else "")
+
+
+var wormhole_btn: Button
+
+
+## Axiom Threshold (package 25g): jump straight to the selected system through a wormhole.
+func _wormhole() -> void:
+	if selected_system < 0:
+		return
+	if Commands.execute({"type": "wormhole_jump", "to": selected_system}) == "":
+		close()
 
 
 func _set_course() -> void:

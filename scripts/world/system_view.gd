@@ -1437,6 +1437,8 @@ func player_jammed() -> bool:
 
 ## Can the pilot see ship `n` on radar, map and contact list? (Not while jammed, unless close.)
 func contact_visible(n) -> bool:
+	if n is Ship and n != player and n.cloaked():
+		return false                     # an Axiom cloak (package 25g)
 	if not player_jammed():
 		return true
 	return player.position.distance_to(n.position) <= JAM_VISIBLE
@@ -2671,6 +2673,10 @@ func complete_anomaly(node: Celestial, ship: Ship) -> void:
 		var found: String = candidates[randi() % candidates.size()]
 		if ship.fit.add_cargo("mod:" + found, 1) > 0.0:
 			text += ", found: %s" % GameData.module_name(found)
+	if node.data.get("exotic", false) and ship.faction == "player":
+		var em := randi_range(2, 4)
+		GameState.exotic_matter += em
+		text += " – and %d units of exotic matter (now %d)" % [em, GameState.exotic_matter]
 	GameState.log_msg(text, GameState.COL_GOOD)
 	var sec: float = Universe.systems[system_id]["security"]
 	if randf() < 0.2 + (1.0 - sec) * 0.35:

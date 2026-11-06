@@ -139,6 +139,22 @@ const PRESETS := {
 		"optional_0": "o_shield_s", "optional_1": "o_afterburner_s"}},
 
 	# ---------------- Civilians & patrols (phase 0.5 package 11) ----------------
+	# Axiom Astronautics (package 25g)
+	"std_axa_parallax": {"hull": "axa_parallax", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank:4:C", "hyperdrive": "hyp_c2_s", "sensors": "sen_grav_m",
+		"weapon_0": "w_pulse_s", "tool_0": "t_scanner_s", "tool_1": "t_analyzer_m", "tool_2": "t_survey_s",
+		"optional_0": "o_shield:3:C", "optional_1": "o_survey_amp_s", "optional_2": "o_capacitor_s"}},
+	"std_axa_threshold": {"hull": "axa_threshold", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
+		"weapon_0": "w_beam_m", "weapon_1": "w_railgun_m", "weapon_2": "w_pulse_s", "weapon_3": "w_pulse_s",
+		"tool_0": "t_analyzer_m", "tool_1": "t_scanner_s",
+		"optional_0": "o_shield_l", "optional_1": "o_shield_m", "optional_2": "o_capacitor:5:C", "optional_3": "o_targeting_s"}},
+	"civ_parallax": {"hull": "axa_parallax", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank:4:C", "hyperdrive": "hyp_c2_s", "sensors": "sen_grav_m",
+		"weapon_0": "w_pulse_s", "tool_0": "t_scanner_s", "optional_0": "o_shield:3:C", "optional_1": "o_capacitor_s"}},
 	# Forge of Return (package 25f)
 	"std_for_acolyte": {"hull": "for_acolyte", "modules": {
 		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_adv_s", "reactor": "rea_fusion:5:C",

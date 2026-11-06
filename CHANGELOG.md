@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.34 – 2026-11-07
+
+**Package 25g – Axiom Astronautics: research and jump ships.**
+- Parallax and Threshold: futuristic graphite hulls with cyan light lines; the Threshold's round core holds an
+  artificial black hole with a turning accretion disc.
+- Sensors +25 %, signature −25 %, power use −15 %, built-in cloaking device.
+- Parallax marks systems with undiscovered anomalies on the galaxy map.
+- Threshold: wormhole jumps without a gate for exotic matter (new resource from rare anomalies).
+- Axiom research ships in Directorate systems. Debug: +10 exotic matter.
+
 ## alpha 0.4.25.33 – 2026-11-07
 
 - The Cathedral bundles its crystals too: one lance, one tile; in auto mode the lance takes turns

@@ -33,6 +33,10 @@ extends RefCounted
 ## out]: the parts move by this many pixels when open (Concordia's flight wings) – their hatches move along.
 ## Forge of Return (package 25f): reactor_mult (× reactor output), structure already lowered in the
 ## numbers; builtin "drone_pulse" (anti-drone pulse) and "auto_fire" (focus lasers fire on their own).
+## Axiom Astronautics (package 25g): sensor_mult (× sensor range and scan strength), signature_mult,
+## power_mult (× power draw – more efficient), builtin "cloak" (cloaking device); anomaly_finder (galaxy
+## map: systems within N jumps with undiscovered anomalies); wormhole {max jumps, cooldown s, fail chance}
+## (jumps without a gate, 1 exotic matter per jump of distance).
 ## arms {body, art, frames} (Goliath): the hull is drawn from `body`, the two arms from `art`_0 … _(frames-1)
 ## (top half, the lower arm mirrored): stage 0 folded in, the last stage open in a round arc. They open
 ## from their hinges at the stern in space and fold in while docking and undocking (the hangar bays are narrow).
@@ -159,6 +163,30 @@ const HULLS := {
 		"drone_bonus": {"mining": 0.25, "cargo": 5.0}, "drone_paint": "khi_drone",
 		"drone_deck": [44, 90],
 		"desc": "KHI's heavy industry ship: a drone carrier for nine mining drones, a refinery as good as a station's, a factory and an on-board market.",
+	},
+	# ---------------- Axiom Astronautics (package 25g, Meridian Directorate) ----------------
+	"axa_parallax": {
+		"maker": "axiom", "name": "Parallax", "class": "Research Ship", "size": 1, "price": 42000, "buyable": true, "min_tier": "neutral",
+		"structure": 420, "mass": 600, "signature": 26, "cargo": 18,
+		"slots": {"weapon": 2, "tool": 3, "optional": 3, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [2, 1], "tool": [2, 2, 1], "optional": [3, 2, 2], "hull": 3, "engine": 4, "reactor": 4, "distributor": 4, "tank": 4, "hyperdrive": 3, "sensors": 5, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
+		"drones": 1, "shape": "axa_parallax", "length": 36,
+		"hatches": {"drones": [21, 5, 4, 3]}, "hatch_overlay": true,
+		"sensor_mult": 1.25, "signature_mult": 0.75, "power_mult": 0.85, "builtin": ["cloak"], "anomaly_finder": 4,
+		"cloak": {"energy_rate": 5.0, "power": 8.0},
+		"desc": "Axiom's research ship: keen sensors, a low signature, a cloaking device – and it marks every system within four jumps that still hides undiscovered anomalies.",
+	},
+	"axa_threshold": {
+		"maker": "axiom", "name": "Threshold", "class": "Jump Ship (Prototype)", "size": 3, "price": 980000, "buyable": true, "min_tier": "allied",
+		"structure": 4300, "mass": 7600, "signature": 200, "cargo": 140,
+		"slots": {"weapon": 4, "tool": 2, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [3, 3, 2, 2], "tool": [2, 1], "optional": [7, 6, 5, 4], "hull": 8, "engine": 8, "reactor": 9, "distributor": 8, "tank": 7, "hyperdrive": 6, "sensors": 7, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [3]},
+		"drones": 4, "shape": "axa_threshold", "length": 124,
+		"hatches": {"drones": [33, 17, 6, 5]}, "hatch_overlay": true,
+		"sensor_mult": 1.25, "signature_mult": 0.75, "power_mult": 0.85, "builtin": ["cloak"],
+		"cloak": {"energy_rate": 18.0, "power": 30.0},
+		"wormhole": {"max": 8, "cooldown": 120.0, "fail": 0.12},
+		"desc": "Axiom's prototype jump ship: an artificial black hole in its round core opens a small wormhole – it jumps without a gate, up to eight jumps far, for one unit of exotic matter per jump. Not through the Veil.",
 	},
 	# ---------------- Forge of Return (package 25f, Covenant of Return) ----------------
 	"for_acolyte": {

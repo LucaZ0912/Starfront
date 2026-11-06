@@ -953,11 +953,17 @@ func _generate_layout(id: int) -> Dictionary:
 	# Hidden anomalies (must be scanned down)
 	for k in rng.randi_range(2, 4):
 		var diff := lerpf(8.0, 40.0, 1.0 - sec) + rng.randf_range(0.0, 10.0)
-		L["anomalies"].append({
+		var an := {
 			"id": "an_%d" % k, "name": ANOMALY_NAMES[rng.randi() % ANOMALY_NAMES.size()],
 			"pos": _free_spot(rng, used, 300000.0, 1800000.0),
 			"difficulty": diff, "scan": 0.0, "revealed": false, "analysis": 0.0, "done": false,
-		})
+		}
+		# package 25g: a few rare anomalies hold exotic matter (decided by a hash – the layout stays as it was)
+		if posmod(seed_value * 31 + id * 1013 + k * 7919, 100) < 14:
+			an["exotic"] = true
+			an["name"] = "Exotic Matter Signature"
+			an["difficulty"] = diff + 10.0
+		L["anomalies"].append(an)
 	_special_stations(L, id, sec)
 	_scatter_loose(L, id, sec)
 	_place_colossi(L, id, sec)

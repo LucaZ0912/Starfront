@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks) und 25f (Forge of Return) fertig, als Nächstes 25g (Axiom Astronautics). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.33. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; als Nächstes Paket 26 (Stationstyp 0). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.34. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -941,6 +941,19 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] Überarbeitung (0.4.25.32): **Fokus-Lanze** neu – alle Kristallstrahlen bündeln sich an einem Punkt zwischen Schiff und Ziel, laden ihn kurz auf (0,55 s) und geben dann etwa 1 s lang einen dicken Strahl auf das Ziel ab (Schaden über diese Sekunde verteilt, Abklingzeit mindestens 2,4 s); weiter nur ein Waffenmodul in der Leiste. **Goldene Zacken** an Templar und Cathedral schieben sich ab und zu langsam nach außen und wieder ein (jede zu ihrer Zeit). **Puls-Kachel** mit Balken bis zum nächsten Puls; gelähmte Drohnen sprühen rote Blitze. **Debug-Gegner:** ein Piraten-Quirinus mit Drohnen („DEBUG drone carrier“ in der Piratenliste) – echte Piraten fliegen ihn nie.
 - [x] Überarbeitung (0.4.25.33): die **Cathedral bündelt jetzt auch** – mit Kristallen in allen acht Plätzen eine einzige Lanze und eine Kachel; im Automodus feuert die Lanze selbstständig und wechselt dabei der Reihe nach zwischen bis zu 6 Zielen. Lanzen-Ausgleich: eine Lanze trägt den Schaden ihres ganzen Zyklus (2 s), sodass die Bündelung wirklich +30 % Schaden pro Sekunde bringt.
 - [x] **Debug-Funktion:** Debug-Menü → Ship: „NPC carriers launch drones“ (Träger in der Nähe starten ihre Drohnen – zum Testen des Pulses); dazu wie gehabt „Spawn any ship“.
+
+**Umgesetzt 25g (7. Nov 2026, alpha 0.4.25.34)** – Axiom Astronautics, die Forschungs- und Sprungschiffe des Directorate, 15 neue automatische Prüfungen:
+
+- [x] **Parallax** (S, Forschungsschiff, 42.000 cr, ab Neutral) und **Threshold** (L, Sprungschiff-Prototyp, 980.000 cr, ab Allied) – nur an Directorate-Werften.
+- [x] **Design:** äußerst futuristisch – dunkler Graphit und Schiefer, weiße Vorderkanten, feine cyanfarbene Lichtlinien. Parallax als schmales Delta mit Sensorring. **Threshold** (Entwurf Luz): ein langer Rumpf durch einen runden Kern mit einem **künstlichen schwarzen Loch** – weißer Rand, Gehäuse, cyanfarbener Licht-Saum, eine orange Akkretionsscheibe mit heißem Innenrand; die Scheibe dreht sich (helle Spiralstreifen wandern um das schwarze Loch). Vorn eine Sensornadel.
+- [x] **Markenzeichen:** Sensoren +25 % Reichweite und Scan-Stärke, Signatur −25 %, Stromverbrauch −15 %.
+- [x] **Tarnvorrichtung** (eingebaut, eigenes Icon): unsichtbar und nicht anvisierbar – Gegner verlieren das Ziel, auf Radar und Kontaktliste verschwindet das Schiff; getarnt nur fliegen und warpen (keine Locks, Waffen, Werkzeuge, andere Module); verbraucht Energie (Parallax 5/s, Threshold 18/s) und fällt bei leerem Kondensator aus; im Hangar aus. Der eigene Pilot sieht sein Schiff halb durchsichtig mit cyanfarbenem Schimmer.
+- [x] **Parallax:** markiert auf der Galaxiekarte alle Systeme im Umkreis von 4 Sprüngen mit unentdeckten Anomalien samt Anzahl (cyanfarbener Ring, „n?“).
+- [x] **Threshold – Wurmloch-Sprung:** auf der Galaxiekarte Ziel wählen → „Wormhole jump“: ohne Sprungtor, Entfernung = Zahl der normalen Sprünge, **1 Exotic Matter pro Sprung**, höchstens 8 Sprünge, kein Weg durch den Veil (Systeme mit `veil`-Kennung), 120 s Abklingzeit des Kerns; Ankunft neben einer Station – oder bei einem Fehlschlag (12 %) irgendwo im Zielsystem, gern in einem Asteroidenfeld.
+- [x] **Exotic Matter:** neue Ressource ohne Laderaum (im Spielstand), aus seltenen Anomalien „Exotic Matter Signature“ (etwa jede siebte, etwas schwerer zu analysieren): 2–4 Einheiten je Analyse.
+- [x] **NPCs:** In Directorate-Systemen fliegen zwei Axiom-Forschungsschiffe (Parallax) durchs System; unter Beschuss tarnen sie sich und tauchen nach 25 s wieder auf. Die Patrouillen des Directorate bleiben Earthworks und Hadrian.
+- [x] Drohnenklappen für Parallax und Threshold.
+- [x] **Debug-Funktion:** Debug-Menü → Ship: „+10 exotic matter (Threshold)“ (setzt auch die Abklingzeit zurück).
 
 ### Stationstyp 0 (Paket 26)
 

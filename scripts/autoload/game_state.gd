@@ -94,6 +94,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
+	exotic_matter = 0
 	fleet.clear()
 	storage.clear()
 	jobs.clear()
@@ -145,7 +146,7 @@ func to_dict() -> Dictionary:
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
-		"jobs": jobs.duplicate(true), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
+		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 	}
 
 
@@ -167,6 +168,7 @@ func from_dict(d: Dictionary) -> void:
 	stats.merge(d["stats"], true)
 	play_time = float(d["play_time"])
 	jobs = d.get("jobs", []).duplicate(true)
+	exotic_matter = int(d.get("exotic_matter", 0))
 	_next_uid = int(d["next_uid"])
 	Missions._counter = int(d.get("mission_counter", 1000))
 	rep.from_dict(d.get("reputation", {}))   # older saves: start standings
@@ -782,6 +784,63 @@ func jump_fuel(f: ShipFitting, cls: int) -> float:
 
 
 ## Empty string = jump possible, otherwise the reason.
+## Axiom Threshold (package 25g): exotic matter – a pilot resource without cargo space.
+var exotic_matter := 0
+
+
+## Why the Threshold cannot open a wormhole to `to_id` ("" = it can). Distance = normal jumps.
+func wormhole_error(f: ShipFitting, to_id: int) -> String:
+	if f == null:
+		return "No ship."
+	var wh: Dictionary = f.hull().get("wormhole", {})
+	if wh.is_empty():
+		return "Only Axiom's Threshold can open a wormhole."
+	if to_id == f.system_id:
+		return "You are already there."
+	if f.docked_at != "" or f.in_transit():
+		return "Undock first."
+	if bool(Universe.systems[to_id].get("veil", false)):
+		return "The Veil cannot be reached by wormhole – that is left to Project Bridge."
+	var dist := Universe.find_path(f.system_id, to_id, 3).size()
+	if dist <= 0:
+		return "No way there."
+	if dist > int(wh.get("max", 8)):
+		return "Too far: %d jumps (at most %d)." % [dist, int(wh.get("max", 8))]
+	if exotic_matter < dist:
+		return "Not enough exotic matter: %d needed, %d in stock." % [dist, exotic_matter]
+	if play_time < f.wormhole_ready:
+		return "The core is still recovering – %d s." % int(ceil(f.wormhole_ready - play_time))
+	return ""
+
+
+func wormhole_distance(f: ShipFitting, to_id: int) -> int:
+	return Universe.find_path(f.system_id, to_id, 3).size()
+
+
+## Opens the wormhole: costs exotic matter, the ship is gone for a few seconds, then arrives – near a
+## station, or (if the jump goes wrong) somewhere at random in the target system.
+func begin_wormhole(f: ShipFitting, to_id: int) -> String:
+	var err := wormhole_error(f, to_id)
+	if err != "":
+		return err
+	var dist := wormhole_distance(f, to_id)
+	exotic_matter -= dist
+	f.transit_kind = "wormhole"
+	f.transit_from = f.system_id
+	f.transit_to = to_id
+	f.transit_total = WORMHOLE_TIME
+	f.transit = WORMHOLE_TIME
+	f.route.clear()
+	f.wormhole_ready = play_time + WORMHOLE_TIME + float(f.hull()["wormhole"].get("cooldown", 120.0))
+	stats["jumps"] = int(stats["jumps"]) + 1
+	log_msg("%s opens a wormhole → %s (%d jump%s, %d exotic matter)." % [f.ship_name, Universe.systems[to_id]["name"], dist, "" if dist == 1 else "s", dist])
+	ship_jumped_out.emit(f)
+	return ""
+
+
+const WORMHOLE_TIME := 3.0
+
+
 func can_jump(f: ShipFitting, to_id: int) -> String:
 	var sys: Dictionary = Universe.systems[f.system_id]
 	if not sys["links"].has(to_id):
@@ -820,9 +879,12 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 func _arrive(f: ShipFitting) -> void:
 	var from_id := int(f.transit_from)
 	f.system_id = int(f.transit_to)
-	var gate := Universe.get_gate_pos(f.system_id, from_id)
-	f.position = gate + (-gate).normalized() * 2500.0 + Vector2(randf_range(-600, 600), randf_range(-600, 600))
-	f.rotation = (-gate).angle()
+	if f.transit_kind == "wormhole":
+		_arrive_wormhole(f)
+	else:
+		var gate := Universe.get_gate_pos(f.system_id, from_id)
+		f.position = gate + (-gate).normalized() * 2500.0 + Vector2(randf_range(-600, 600), randf_range(-600, 600))
+		f.rotation = (-gate).angle()
 	if not f.route.is_empty() and int(f.route[0]) == f.system_id:
 		f.route.pop_front()
 	f.transit_kind = ""
@@ -832,6 +894,26 @@ func _arrive(f: ShipFitting) -> void:
 	if f.route.is_empty():
 		log_msg("%s arrived in %s." % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_GOOD)
 	ship_arrived_system.emit(f)
+
+
+## The end of a wormhole: next to a station – or, if it goes wrong, somewhere at random (maybe right in
+## an asteroid field).
+func _arrive_wormhole(f: ShipFitting, force_fail: int = -1) -> void:
+	var L := Universe.get_layout(f.system_id)
+	var fail := randf() < float(f.hull().get("wormhole", {}).get("fail", 0.1)) if force_fail < 0 else force_fail == 1
+	if fail:
+		var spots: Array = []
+		for fl in L["fields"]:
+			spots.append(fl["pos"])
+		spots.append(Vector2.from_angle(randf() * TAU) * randf_range(400000.0, 1600000.0))
+		f.position = spots[randi() % spots.size()] + Vector2.from_angle(randf() * TAU) * randf_range(0.0, 3000.0)
+		log_msg("The wormhole collapsed early – %s is thrown out somewhere in %s!" % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_WARN)
+	elif not L["stations"].is_empty():
+		var st: Dictionary = L["stations"][randi() % L["stations"].size()]
+		f.position = (st["pos"] as Vector2) + Vector2.from_angle(randf() * TAU) * 6000.0
+	else:
+		f.position = Vector2.from_angle(randf() * TAU) * 500000.0
+	f.rotation = randf() * TAU
 
 
 ## Manufacturing jobs (package 25b): {kind "station"|"ship", station | uid, item, total, left}.

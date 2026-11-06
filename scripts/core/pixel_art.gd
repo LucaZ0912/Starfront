@@ -30,6 +30,11 @@ const PALETTE := {
 	"R": Color(0.95, 0.2, 0.14), "E": Color(1.0, 0.55, 0.42),
 	# Forge of Return crimson (package 25f): crimson, bright crimson, dark crimson; stained-glass blue
 	"F": Color(0.58, 0.08, 0.11), "A": Color(0.82, 0.18, 0.16), "l": Color(0.3, 0.03, 0.06), "b": Color(0.25, 0.4, 0.95),
+	# Axiom Astronautics (package 25g): graphite, slate, light panel, cyan glow, deep cyan, white edge;
+	# the Threshold's black hole and its accretion disc
+	"1": Color(0.12, 0.14, 0.18), "2": Color(0.24, 0.28, 0.34), "3": Color(0.62, 0.7, 0.78), "4": Color(0.4, 0.95, 1.0),
+	"5": Color(0.08, 0.45, 0.55), "6": Color(0.92, 0.97, 1.0), "7": Color(0.0, 0.0, 0.0), "8": Color(1.0, 0.55, 0.15),
+	"9": Color(1.0, 0.92, 0.7),
 	# shaded lower halves of painted-on drone hatches (0.4.25.24): dark KHI yellow, Aurelle ivory in shadow
 	"O": Color(0.5, 0.33, 0.06), "Z": Color(0.6, 0.57, 0.5),
 	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
@@ -50,7 +55,7 @@ const FACTION := {
 	"neutral": {"h": Color(0.66, 0.64, 0.56), "H": Color(0.86, 0.84, 0.74), "d": Color(0.45, 0.43, 0.37), "D": Color(0.3, 0.29, 0.25),
 		"a": Color(1.0, 0.85, 0.3), "f": Color(1.0, 0.85, 0.5)},
 }
-const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N", "A": "F", "F": "l"}
+const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N", "A": "F", "F": "l", "6": "3", "3": "2", "2": "1"}
 ## Pirate copies of Hadrian ships are worn out: rusty steel, a dim orange light (package 25d)
 const HDY_WORN := {"B": Color(0.56, 0.44, 0.34), "M": Color(0.38, 0.3, 0.24), "N": Color(0.26, 0.2, 0.17),
 	"X": Color(0.13, 0.1, 0.09), "R": Color(1.0, 0.5, 0.18)}
@@ -326,11 +331,11 @@ static func _paint_hatches(hull_id: String, rows: Array) -> Array:
 
 
 ## The lower half of a ship lies in shadow – so does the lower half of its drone hatch (0.4.25.24).
-const HATCH_SHADE := {"d": "D", "D": "o", "Q": "O", "x": "x", "j": "Z", "U": "U", "M": "N", "X": "X"}
+const HATCH_SHADE := {"d": "D", "D": "o", "Q": "O", "x": "x", "j": "Z", "U": "U", "M": "N", "X": "X", "2": "1", "5": "5"}
 
 
 ## Colours of a drawn-on drone hatch by manufacturer: [panel, seams and frame] (palette chars).
-const HATCH_CHARS := {"khi": ["Q", "x"], "aurelle": ["j", "U"], "hadrian": ["M", "X"]}
+const HATCH_CHARS := {"khi": ["Q", "x"], "aurelle": ["j", "U"], "hadrian": ["M", "X"], "axiom": ["2", "5"]}
 
 
 ## The owner-colour stripes ("a" runs of 3+ pixels) of a ship's picture: [[row, first column, last column,
@@ -418,12 +423,30 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 	var gx := -14.0 + float(f) / float(half) * float(w + 28) if f < half else -1000.0
 	var fw := f / 2                  # the water ripples move at half speed (0.4.25.16)
 	var glow := absf(float(f) - float(n) * 0.5) / (float(n) * 0.5)     # 1 → 0 → 1 over the cycle
+	# package 25g: the Threshold's accretion disc turns round its black hole (spiral streaks)
+	var bh := Vector2.ZERO
+	var bhn := 0
+	for yb in h:
+		var rb: String = rows[yb]
+		for xb in rb.length():
+			if rb[xb] == "7":
+				bh += Vector2(xb, yb)
+				bhn += 1
+	if bhn > 0:
+		bh /= float(bhn)
 	var out: Array = []
 	for y in h:
 		var src: String = rows[y]
 		var row := ""
 		for x in src.length():
 			var ch := src[x]
+			if ch == "8" and bhn > 0:
+				var rel := Vector2((float(x) - bh.x) / 1.1, float(y) - bh.y)
+				var ang := rad_to_deg(atan2(rel.y, rel.x)) + rel.length() * 22.0 - float(f) * (360.0 / float(n))
+				if fposmod(ang, 60.0) < 16.0:
+					ch = "9"                 # a hot streak spiralling round the black hole
+				row += ch
+				continue
 			var gd := absf(float(x) - gx - float(y - h / 2) * 0.6)
 			if (ch == "c" or ch == "q") and gd < 1.6:
 				ch = "C"                 # the glint on the dome's frame
@@ -702,7 +725,7 @@ static func module_icon_key(module_id: String) -> String:
 	if module_id.begins_with("builtin:"):
 		return {"builtin:refinery": "refinery", "builtin:prospect": "t_prospect", "builtin:factory": "factory", "builtin:market": "market",
 			"builtin:afterburner": "o_afterburner", "builtin:pd": "w_pointdef", "builtin:drone_pulse": "o_jammer",
-			"builtin:auto_fire": "w_focus"}.get(module_id, "empty")
+			"builtin:auto_fire": "w_focus", "builtin:cloak": "o_cloak"}.get(module_id, "empty")
 	if not GameData.modules.has(module_id):
 		return "empty"
 	var m: Dictionary = GameData.modules[module_id]

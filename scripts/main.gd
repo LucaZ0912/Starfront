@@ -124,7 +124,10 @@ func _on_jumped_out(f: ShipFitting) -> void:
 	view.remove_player()
 	station_panel.close()
 	ship_menu.close()
-	transit_fx.play("jump", "Hyperspace jump → %s" % Universe.systems[int(f.transit_to)]["name"], 1.8)
+	if f.transit_kind == "wormhole":
+		transit_fx.play("jump", "Wormhole → %s" % Universe.systems[int(f.transit_to)]["name"], 2.4)
+	else:
+		transit_fx.play("jump", "Hyperspace jump → %s" % Universe.systems[int(f.transit_to)]["name"], 1.8)
 	galaxy.open(true)
 	_update_input()
 

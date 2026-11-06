@@ -183,10 +183,17 @@ func _initial() -> void:
 		if not _room():
 			break
 		_spawn_miner(true)
-	for kind in ["holding", "field_patrols", "pickets"]:
-		for i in int(ceil(int(profile.get(kind, 0)) * 0.5)):
+	for kind in ["holding", "field_patrols", "pickets", "research"]:
+		for i in int(ceil(_wanted(kind) * 0.5)):
 			if _room(2):
 				_spawn_loiterer(kind, false)
+
+
+## How many loiterers of a kind the system wants; Axiom research ships only in Directorate systems.
+func _wanted(kind: String) -> int:
+	if kind == "research":
+		return 2 if Universe.controller(sid) == "directorate" else 0
+	return int(profile.get(kind, 0))
 
 
 func _patrol_govs() -> Array:
@@ -229,12 +236,12 @@ func _top_up() -> void:
 		todo.append("shuttle")
 	if int(profile["miners"]) > miners.size():
 		todo.append("miner")
-	for kind in ["holding", "field_patrols", "pickets"]:
+	for kind in ["holding", "field_patrols", "pickets", "research"]:
 		var have_k := 0
 		for l in loiterers:
 			if l["kind"] == kind:
 				have_k += 1
-		if int(profile.get(kind, 0)) > have_k:
+		if _wanted(kind) > have_k:
 			todo.append(kind)
 	if not todo.is_empty() and _room(2):
 		var pick: String = todo[randi() % todo.size()]
@@ -814,6 +821,16 @@ func _spawn_loiterer(kind: String, arriving: bool) -> void:
 			presets = ["patrol_light", "patrol_light"]
 			role = "patrol"
 			rmax = float(anchor.get("radius", 12000.0)) * 0.9
+		"research":
+			# package 25g: Axiom research ships survey the Directorate's systems
+			var places: Array = L["fields"] + L["planets"]
+			if places.is_empty():
+				return
+			anchor = places[randi() % places.size()]
+			gov = "directorate"
+			presets = ["civ_parallax"]
+			rmin = 4000.0
+			rmax = 14000.0
 		"pickets":
 			if L["gates"].is_empty():
 				return

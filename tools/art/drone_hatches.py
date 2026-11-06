@@ -8,7 +8,7 @@ Run: python tools/art/drone_hatches.py   (--apply writes the entries into data/h
 import os, re, sys
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 SIZES = {1: (4, 3), 2: (6, 5), 3: (8, 7)}           # hatch width, height by hull size
-PLAIN = set("hHdDYLQIJjuMNkK")                      # plain plating a hatch may cover
+PLAIN = set("hHdDYLQIJjuMNkK123")                      # plain plating a hatch may cover
 SHADE = {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N"}
 
 

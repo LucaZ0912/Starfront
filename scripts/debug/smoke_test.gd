@@ -524,6 +524,7 @@ func _process(delta: float) -> void:
 				_test_hadrian(view)
 				_test_concord(view)
 				_test_forge(view)
+				_test_axiom(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -1439,6 +1440,19 @@ func _shoot_standing(view: SystemView) -> void:
 	fic.resize(fic.get_width() * 4, fic.get_height() * 4, Image.INTERPOLATE_NEAREST)
 	fsh.blend_rect(fic, Rect2i(0, 0, fic.get_width(), fic.get_height()), Vector2i(1000, 30))
 	fsh.save_png("res://Claude outputs/forge_ships.png")
+	# package 25g: Axiom's research ships; the Threshold in two frames of its turning accretion disc
+	var xsh := Image.create(1100, 520, false, Image.FORMAT_RGBA8)
+	xsh.fill(Color(0.05, 0.06, 0.09))
+	var xim := PixelArt.ship_texture("axa_parallax", "player").get_image()
+	xim.resize(xim.get_width() * 4, xim.get_height() * 4, Image.INTERPOLATE_NEAREST)
+	xsh.blend_rect(xim, Rect2i(0, 0, xim.get_width(), xim.get_height()), Vector2i(20, 20))
+	var xy := 40 + xim.get_height()
+	for xf in [0, 6]:
+		var tim := PixelArt.ship_texture("axa_threshold", "player", xf).get_image()
+		tim.resize(tim.get_width() * 4, tim.get_height() * 4, Image.INTERPOLATE_NEAREST)
+		xsh.blend_rect(tim, Rect2i(0, 0, tim.get_width(), tim.get_height()), Vector2i(20, xy))
+		xy += tim.get_height() + 10
+	xsh.save_png("res://Claude outputs/axiom_ships.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
 	sm.open(view, 6)
@@ -4571,3 +4585,146 @@ func _test_forge(view: SystemView) -> void:
 	for d4 in view.drones_of(fs):
 		view.stow_drone(d4)
 	fs.queue_free()
+
+
+## Phase 0.5 package 25g: Axiom Astronautics – research ships, cloaking, the wormhole jump ship.
+func _test_axiom(view: SystemView) -> void:
+	check(GameData.hulls["axa_parallax"]["maker"] == "axiom" and GameData.hulls["axa_parallax"]["min_tier"] == "neutral" and GameData.hulls["axa_threshold"]["min_tier"] == "allied" and GameData.presets.has("std_axa_threshold"), "Axiom Astronautics: Parallax (Neutral), Threshold (Allied)")
+	var dir_t3 := {}
+	var asm_t3 := {}
+	for sy in Universe.systems:
+		for st in Universe.get_layout(int(sy["id"]))["stations"]:
+			if not GameData.station_types[st["type"]]["shipyard"] or int(st["tier"]) < 3:
+				continue
+			if String(st.get("faction", "")) == "directorate" and dir_t3.is_empty():
+				dir_t3 = st
+			elif String(st.get("faction", "")) == "assembly" and asm_t3.is_empty():
+				asm_t3 = st
+		if not dir_t3.is_empty() and not asm_t3.is_empty():
+			break
+	check(not dir_t3.is_empty() and "axa_threshold" in dir_t3["shipyard"] and not "axa_threshold" in asm_t3.get("shipyard", []), "the Threshold is sold only at Directorate shipyards")
+	# sensors +25 %, lower signature, more efficient power use
+	var mods := {"sensors": "sen_basic:2:C", "reactor": "rea_fusion:4:C", "weapon_0": "w_pulse:1:C"}
+	var px := GameState.create_fit("axa_parallax", mods, "player")
+	var dr := GameState.create_fit("dragonfly", mods, "player")
+	var sp: Dictionary = px.stats()
+	var sd: Dictionary = dr.stats()
+	check(absf(float(sp["sensor_range"]) - float(sd["sensor_range"]) * 1.25) < 1.0 and absf(float(sp["scan_strength"]) - float(sd["scan_strength"]) * 1.25) < 0.01, "Axiom: sensors +25 % range and scan strength")
+	check(absf(float(sp["signature"]) - (float(px.hull()["signature"]) + float(sp["mass"]) * 0.004) * 0.75) < 0.5, "… a lower signature")
+	check(absf(float(sp["power_draw"]) - (float(sd["power_draw"]) + 8.0) * 0.85) < 0.5, "… and a more efficient use of power (−15 %%: %.1f MW incl. the cloak)" % float(sp["power_draw"]))
+	# the cloaking device
+	var cf := GameState.create_from_preset("std_axa_parallax", "player")
+	cf.position = view.player.position + Vector2(0, -121000)
+	cf.uid = 99920
+	var cs := Ship.new()
+	cs.manual = true
+	cs.setup(cf, view)
+	view.ship_layer.add_child(cs)
+	var foe: Ship = view.spawn_npc("pirate_hdy_talon", cs.position + Vector2(800, 0))
+	foe.set_physics_process(false)
+	cs.add_lock(foe)
+	cf.capacitor = float(cf.stats()["cap_max"])
+	var e1: String = cs.set_module_active("builtin_cloak", true)
+	var no_target: bool = not cs.is_targetable() and cs.locks.is_empty() and cs.add_lock(foe) != "" and cs.set_module_active("weapon_0", true) != ""
+	var cap0 := cf.capacitor
+	cs._update_modules(1.0, cf.stats())
+	var drains: bool = cf.capacitor < cap0
+	foe.target = cs
+	var foe_lost: bool = not foe._valid(foe.target)
+	cf.capacitor = 0.0
+	cs._update_modules(1.0, cf.stats())
+	check(e1 == "" and no_target and drains and foe_lost and not cs.cloaked(), "cloaking device: invisible and untargetable, no locks or weapons, uses energy – off when the capacitor runs dry")
+	foe.queue_free()
+	cs.queue_free()
+	# NPC research ships cloak when they come under fire; enemies cannot see cloaked ships on the radar
+	var nf := GameState.create_from_preset("civ_parallax", "civilian")
+	nf.gov = "directorate"
+	nf.position = view.player.position + Vector2(2000, -123000)
+	nf.uid = 99921
+	var ns := Ship.new()
+	ns.setup(nf, view)
+	view.ship_layer.add_child(ns)
+	var shooter: Ship = view.spawn_npc("pirate_hdy_talon", ns.position + Vector2(600, 0))
+	shooter.set_physics_process(false)
+	ns.take_damage(5.0, "kinetic", shooter)
+	ns._update_npc_cloak(0.1)
+	check(ns.cloaked() and not view.contact_visible(ns), "Axiom research ships cloak when attacked – and vanish from the radar")
+	shooter.queue_free()
+	ns.queue_free()
+	# Parallax: systems with undiscovered anomalies within four jumps
+	var targets: Dictionary = GalaxyMap.anomaly_targets(GameState.create_from_preset("std_axa_parallax", "player"))
+	check(not targets.is_empty() and GalaxyMap.anomaly_targets(dr).is_empty(), "Parallax: marks %d systems with undiscovered anomalies within 4 jumps" % targets.size())
+	# exotic matter in rare anomalies
+	var ex := 0
+	var all := 0
+	for sy2 in Universe.systems:
+		for an in Universe.get_layout(int(sy2["id"]))["anomalies"]:
+			all += 1
+			if an.get("exotic", false):
+				ex += 1
+	check(ex > 0 and ex < all / 3, "rare anomalies hold exotic matter (%d of %d)" % [ex, all])
+	# the Threshold's wormhole
+	var tf := GameState.create_from_preset("std_axa_threshold", "player")
+	tf.system_id = view.system_id
+	tf.uid = 99922
+	var near := -1
+	var far := -1
+	for sy3 in Universe.systems:
+		var dd := Universe.find_path(tf.system_id, int(sy3["id"]), 3).size()
+		if dd == 2 and near < 0:
+			near = int(sy3["id"])
+		if dd > 8 and far < 0:
+			far = int(sy3["id"])
+	var keep_em: int = GameState.exotic_matter
+	GameState.exotic_matter = 1
+	var e_em: String = GameState.wormhole_error(tf, near)
+	GameState.exotic_matter = 20
+	var e_far: String = GameState.wormhole_error(tf, far) if far >= 0 else "too far"
+	var e_ok: String = GameState.wormhole_error(tf, near)
+	var e_ew: String = GameState.wormhole_error(GameState.create_from_preset("std_bastion", "player"), near)
+	GameState.ship_jumped_out.disconnect(main._on_jumped_out)
+	var e_go: String = GameState.begin_wormhole(tf, near)
+	GameState.ship_jumped_out.connect(main._on_jumped_out)
+	var paid: bool = GameState.exotic_matter == 18 and tf.transit_kind == "wormhole"
+	var cooling: bool = GameState.wormhole_error(tf, near) != ""
+	tf.transit = 0.0
+	tf.system_id = int(tf.transit_to)          # arrive without loading the system (the test stays here)
+	GameState._arrive_wormhole(tf, 0)
+	tf.transit_kind = ""
+	check(e_em != "" and e_far != "" and e_ok == "" and e_ew != "" and e_go == "" and paid and cooling and tf.system_id == near, "Threshold: wormhole jump without a gate – 1 exotic matter per jump, at most 8 jumps, a cooldown after each jump")
+	var L := Universe.get_layout(near)
+	var by_station := false
+	for st2 in L["stations"]:
+		by_station = by_station or tf.position.distance_to(st2["pos"]) < 7000.0
+	GameState._arrive_wormhole(tf, 1)
+	var off_station := true
+	for st3 in L["stations"]:
+		off_station = off_station and tf.position.distance_to(st3["pos"]) > 6500.0
+	check(off_station, "… a failed wormhole throws the ship out somewhere at random in the target system")
+	GameState.exotic_matter = keep_em
+	check(PixelArt.ship_texture("axa_threshold", "player", 0).get_image().get_data() != PixelArt.ship_texture("axa_threshold", "player", 6).get_image().get_data(), "Threshold: the accretion disc turns round its black hole (animated)")
+	# research ships fly in Directorate systems
+	var tr = view.traffic
+	var keep_sid: int = tr.sid
+	tr.sid = _system_of("directorate")
+	var want_dir: int = tr._wanted("research")
+	tr.sid = _system_of("assembly")
+	var want_asm: int = tr._wanted("research")
+	tr.sid = keep_sid
+	var n0: int = tr.loiterers.size()
+	tr._spawn_loiterer("research", true)
+	var spawned := false
+	for l in tr.loiterers:
+		if l["kind"] == "research":
+			spawned = true
+			if is_instance_valid(l["ship"]):
+				l["ship"].queue_free()
+	check(want_dir == 2 and want_asm == 0 and spawned, "Axiom research ships survey the Directorate's systems")
+	# debug: exotic matter
+	var cheats: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	var em0: int = GameState.exotic_matter
+	var e5: String = Commands.execute({"type": "debug_exotic", "amount": 10})
+	Commands.cheats_enabled = cheats
+	check(e5 == "" and GameState.exotic_matter == em0 + 10, "debug menu: +10 exotic matter (and the wormhole cooldown reset)")
+	GameState.exotic_matter = em0
