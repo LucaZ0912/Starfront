@@ -28,6 +28,8 @@ const PALETTE := {
 	# Hadrian Dynamics steel (package 25d): edge, gunmetal, dark steel, black seams, red lights
 	"B": Color(0.5, 0.52, 0.56), "M": Color(0.31, 0.32, 0.35), "N": Color(0.2, 0.21, 0.23), "X": Color(0.1, 0.1, 0.12),
 	"R": Color(0.95, 0.2, 0.14), "E": Color(1.0, 0.55, 0.42),
+	# shaded lower halves of painted-on drone hatches (0.4.25.24): dark KHI yellow, Aurelle ivory in shadow
+	"O": Color(0.5, 0.33, 0.06), "Z": Color(0.6, 0.57, 0.5),
 	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
 	"n": Color(0.4, 0.66, 0.46), "T": Color(0.15, 0.42, 0.3), "t": Color(0.3, 0.6, 0.36),
 	"P": Color(0.2, 0.62, 0.92), "p": Color(0.72, 0.94, 1.0), "q": Color(0.66, 0.84, 0.92),
@@ -257,6 +259,7 @@ static func _paint_hatches(hull_id: String, rows: Array) -> Array:
 		return rows
 	var hc: Array = HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"])
 	var out: Array = rows.duplicate()
+	var mid := (rows.size() - 1) / 2
 	for n in h.get("hatches", {}):
 		var r: Array = h["hatches"][n]
 		var x0 := int(r[0])
@@ -274,9 +277,15 @@ static func _paint_hatches(hull_id: String, rows: Array) -> Array:
 				var ch: String = hc[1]
 				if inside and (y - y0) % 2 == 0:
 					ch = hc[0]                   # plates …
+				if y > mid:
+					ch = HATCH_SHADE.get(ch, ch)   # the lower half in shadow, like the hull
 				row = row.substr(0, x) + ch + row.substr(x + 1)   # … with seams and a frame
 			out[y] = row
 	return out
+
+
+## The lower half of a ship lies in shadow – so does the lower half of its drone hatch (0.4.25.24).
+const HATCH_SHADE := {"d": "D", "D": "o", "Q": "O", "x": "x", "j": "Z", "U": "U", "M": "N", "X": "X"}
 
 
 ## Colours of a drawn-on drone hatch by manufacturer: [panel, seams and frame] (palette chars).

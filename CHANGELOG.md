@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.24 – 2026-11-07
+
+- Drone hatches: the lower half lies in shadow like the hull, so the crease along the centre line runs
+  across the hatch too (also on the sliding panel while it opens).
+
 ## alpha 0.4.25.23 – 2026-11-07
 
 - The shut drone hatch is now part of the ship's picture, so it also shows in the hangar, the shipyard

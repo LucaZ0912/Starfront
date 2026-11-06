@@ -2288,6 +2288,9 @@ func _draw_hatches() -> void:
 				draw_rect(Rect2(Vector2(r.position.x, yy), Vector2(pw, PixelArt.SCALE * 0.5)), cn)
 				yy += PixelArt.SCALE * 2.0
 			draw_rect(Rect2(Vector2(r.position.x + pw - PixelArt.SCALE * 0.5, r.position.y), Vector2(PixelArt.SCALE * 0.5, r.size.y)), cb)
+			var shade_y := maxf(r.position.y, PixelArt.SCALE * 0.5)      # the lower half lies in shadow
+			if r.end.y > shade_y:
+				draw_rect(Rect2(Vector2(r.position.x, shade_y), Vector2(pw, r.end.y - shade_y)), Color(0, 0, 0, 0.3))
 	if platform_t >= 0.0 and not hatch_open.has("platform"):
 		_draw_platform_ship(hatch_local("platform"))
 
