@@ -1236,6 +1236,7 @@ Landen auf Planeten und Gameplay am Boden – aus Teil 6 herausgelöst, weil es 
 | 49 | Landung | Landeanimation beim Absinken; bei Planeten mit Atmosphäre eine glühende Scheibe um das Schiff (Eintritt) |
 | 50 | Planetenkarten | Karten der Planeten mit Städten und Points of Interest; prozedural aus dem Seed, Schlüsselorte von Hand gebaut; landbar sind alle festen Planeten |
 | 51 | Bodengameplay & Bodenmissionen | was man am Boden tut, Missionen am Boden |
+| 51a | Persönliche Ausrüstung | Ausrüstung des Piloten für den Boden und außerhalb des Schiffs: **Raumanzüge**, **Handwaffen**, **Tools** und weiteres Zubehör. Details besprechen wir, wenn wir dran sind (Idee Luz, 7. Nov 2026) |
 | 52 | Kampf zu Fuß | Kampf mit dem Piloten ohne Schiff (nutzt Athletics/Firearms aus Teil 5) |
 | 53 | Wolkenstädte | Gasriesen bekommen Wolkenstädte |
 | 54 | Personentransport & Sehenswürdigkeiten | Personentransport-Aufträge ausgebaut: Touristen zu Touristengebieten und Sehenswürdigkeiten (auf Planeten, in Wolkenstädten, an besonderen Orten im All) – baut auf der Tourismus-Wirtschaft aus Paket 43 auf |
