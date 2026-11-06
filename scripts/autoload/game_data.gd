@@ -216,6 +216,12 @@ func corp(corp_id: String) -> Dictionary:
 
 
 func module_summary(id: String) -> String:
+	return "\n".join(PackedStringArray(module_summary_lines(id)))
+
+
+## The lines of a module's summary: [0] name, slot, size and quality, [1] the short description (if any),
+## then its values (review: the outfitter takes them apart without guessing).
+func module_summary_lines(id: String) -> Array:
 	var m: Dictionary = modules[id]
 	var parts: Array = []
 	parts.append("%s – %s, size %d, quality %s" % [m["base_name"], SLOT_NAMES[m["slot"]], int(m["size"]), m["quality"]])
@@ -289,7 +295,7 @@ func module_summary(id: String) -> String:
 	var act_mod := ShipFitting.is_active_module(m)
 	parts.append("Power draw: %d MW%s" % [int(m["power"]), " (only while in use)" if act_mod and float(m["power"]) > 0.0 else (" (always)" if float(m["power"]) > 0.0 else "")])
 	parts.append("Price: %s" % fmt_credits(int(m["price"])))
-	return "\n".join(PackedStringArray(parts))
+	return parts
 
 
 func fmt_credits(v: float) -> String:

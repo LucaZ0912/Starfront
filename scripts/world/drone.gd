@@ -49,6 +49,8 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 	f.armor = 0.0
 	f.shield = float(dstats["shield"])
 	setup(f, p_view)
+	if p_view != null and "_drones_frame" in p_view:
+		p_view._drones_frame = -1                  # review P2: the carrier's drone list includes this one now
 	paint = String(carrier.fit.hull().get("drone_paint", carrier.paint))
 	is_drone = true
 	manual = false
@@ -95,7 +97,12 @@ func hostile_to_player() -> bool:
 func _physics_process(delta: float) -> void:
 	if dying:
 		return
-	if carrier == null or not is_instance_valid(carrier) or carrier.dying:
+	if carrier == null or not is_instance_valid(carrier):
+		# review W7: the carrier left the system (jump, docking, despawn) – its drones go with it, quietly
+		dying = true
+		queue_free()
+		return
+	if carrier.dying:
 		_lost("its carrier is gone")
 		return
 	if runway:
@@ -349,6 +356,7 @@ func _deliver_or(other: Vector2) -> Vector2:
 
 
 ## Hands the ore over to the carrier (what does not fit is lost).
+## Simulation – in co-op this runs on the host only: it writes to GameState / the fitting directly.
 func unload() -> void:
 	var got := 0.0
 	for o in dcargo:

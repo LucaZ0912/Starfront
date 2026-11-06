@@ -877,14 +877,14 @@ func steer(d: Vector2) -> void:
 	if player == null or not is_instance_valid(player) or player.in_warp() or player.is_docked() or player.dying:
 		_key_flying = false
 		return
+	# review (co-op): keyboard flight goes through the command bus like every other player order
 	if d != Vector2.ZERO:
 		_key_flying = true
 		follow = true
-		player.set_order({"type": "move", "pos": player.position + d.normalized() * 6000.0, "keys": true})
+		Commands.execute({"type": "key_steer", "x": d.x, "y": d.y})
 	elif _key_flying:
 		_key_flying = false
-		if player.order.get("keys", false):
-			player.set_order({"type": "idle"})
+		Commands.execute({"type": "key_steer", "x": 0.0, "y": 0.0})
 
 
 func center_on_player() -> void:
@@ -1316,6 +1316,7 @@ func market_value() -> int:
 
 
 ## A trader at the market buys something it finds fairly priced. Returns the credits earned.
+## Simulation – in co-op this runs on the host only: it writes to GameState / the fitting directly.
 func market_trade(buyer) -> int:
 	var f: ShipFitting = player.fit
 	var keys: Array = f.market_offers.keys()
@@ -1350,11 +1351,29 @@ const DroneScript = preload("res://scripts/world/drone.gd")
 
 
 ## Drones of carrier `c` that are out (launch order).
+var _drones_by := {}
+var _drones_frame := -1
+
+
+## Review P2 (0.4.25.47): one pass over the ships per physics frame instead of one per call; launching drones
+## refreshes it (see launch_drones).
 func drones_of(c) -> Array:
+	if c == null or not is_instance_valid(c):
+		return []
+	var fr := Engine.get_physics_frames()
+	if fr != _drones_frame:
+		_drones_frame = fr
+		_drones_by.clear()
+		for n in ship_layer.get_children():
+			if n is Ship and n.is_drone and not n.dying and n.carrier != null and is_instance_valid(n.carrier):
+				var k: int = n.carrier.get_instance_id()
+				if not _drones_by.has(k):
+					_drones_by[k] = []
+				_drones_by[k].append(n)
 	var out: Array = []
-	for n in ship_layer.get_children():
-		if n is Ship and n.is_drone and not n.dying and n.carrier == c:
-			out.append(n)
+	for d in _drones_by.get(c.get_instance_id(), []):
+		if is_instance_valid(d) and not d.dying:
+			out.append(d)
 	return out
 
 
@@ -1368,6 +1387,7 @@ func drones_must_return(c) -> bool:
 
 ## Launches up to `n` drones (default: as many as the ship can control). "" = done.
 func launch_drones(c, n: int = -1) -> String:
+	_drones_frame = -1                 # review P2: new drones join the gathered lists
 	if c == null or not is_instance_valid(c) or c.dying:
 		return "No ship."
 	if c.is_docked():

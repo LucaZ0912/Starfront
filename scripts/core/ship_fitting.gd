@@ -668,8 +668,8 @@ func in_transit() -> bool:
 
 
 func location_text() -> String:
-	if transit_kind == "jump":
-		return "Hyperspace → %s" % Universe.systems[int(transit_to)]["name"]
+	if transit_kind != "" and transit_to != null:
+		return "%s → %s" % ["Wormhole" if transit_kind == "wormhole" else "Hyperspace", Universe.systems[int(transit_to)]["name"]]
 	var sys: String = Universe.systems[system_id]["name"]
 	if docked_at != "":
 		var st := Universe.find_station(system_id, docked_at)
@@ -804,61 +804,3 @@ func remove_cargo(item: String, amount: float) -> float:
 	else:
 		cargo[item] = have - removed
 	return removed
-
-
-# ---------------------------------------------------------------- Display
-
-func describe() -> String:
-	var s := stats()
-	var h := hull()
-	var t := "[b]%s[/b]  –  %s %s (size %s)\n" % [ship_name, h["class"], h["name"], GameData.SIZE_NAMES[int(h["size"])]]
-	if not s["missing"].is_empty():
-		var names: Array = []
-		for k in s["missing"]:
-			names.append(GameData.SLOT_NAMES[k])
-		t += "[color=#ff6060]Missing core equipment: %s[/color]\n" % ", ".join(PackedStringArray(names))
-	var avail: float = s["power_output"] * s["efficiency"]
-	var over := ""
-	if s["power_ratio"] < 1.0:
-		over = "  [color=#ff6060]OVERLOADED – all systems at %d%%[/color]" % int(s["power_ratio"] * 100.0)
-	t += "Power: %.0f / %.0f MW%s\n" % [s["power_draw"], avail, over]
-	t += "Mass: %.0f t   Signature: %.0f\n" % [s["mass"], s["signature"]]
-	t += "Speed: %.0f   Agility: %.1f\n" % [s["speed"], s["turn"]]
-	t += "Shield: %.0f (+%.1f/s)   Armor: %.0f   Structure: %.0f\n" % [s["shield_max"], s["shield_regen"], s["armor_max"], s["structure_max"]]
-	t += "Armor resistance: opt %d%% / kin %d%% / exp %d%%\n" % [int(s["res"]["optical"] * 100), int(s["res"]["kinetic"] * 100), int(s["res"]["explosive"] * 100)]
-	t += "Capacitor: %.0f (+%.1f/s)\n" % [s["cap_max"], s["cap_recharge"]]
-	t += "Fuel: %.0f   Hyperdrive: cl. %d, %.0f/jump, %.1f s\n" % [s["fuel_max"], s["drive_class"], s["jump_fuel"], s["spool"]]
-	t += "Sensors: %.0f, resolution %.2f, scan strength %.2f\n" % [s["sensor_range"], s["resolution"], s["scan_strength"]]
-	t += "Cargo: %.0f / %.0f\n" % [cargo_used(), s["cargo_max"]]
-	if float(s["ore_cargo_max"]) > 0.0:
-		t += "Ore hold: %.0f / %.0f (ore and ice only)\n" % [ore_hold_used(), s["ore_cargo_max"]]
-	if not s["cabins"].is_empty():
-		t += "Passenger cabins: %s\n" % Missions.cabins_text(self)
-	var mbs: Array = []
-	for cls in s["mining_bonus"]:
-		if float(s["mining_bonus"][cls]) > 0.0:
-			mbs.append("%s +%d%%" % [String(cls), int(float(s["mining_bonus"][cls]) * 100.0)])
-	if not mbs.is_empty():
-		t += "Mining upgrades: %s\n" % ", ".join(PackedStringArray(mbs))
-	t += "\n[b]Weapons[/b]\n"
-	if s["weapons"].is_empty():
-		t += "  –\n"
-	for w in s["weapons"]:
-		var col: Color = GameData.DAMAGE_COLORS[w["damage_type"]]
-		t += "  [color=#%s]%s[/color] – %s, %.0f damage, range %.0f, %.1f DPS\n" % [
-			col.to_html(false), w["name"], GameData.DAMAGE_NAMES[w["damage_type"]],
-			float(w["damage"]), float(w["range"]), float(w["damage"]) / float(w["cooldown"])]
-	t += "  DPS: opt %.0f / kin %.0f / exp %.0f  (Σ %.0f)\n" % [s["dps"]["optical"], s["dps"]["kinetic"], s["dps"]["explosive"], s["dps_total"]]
-	t += "\n[b]Tools[/b]\n"
-	if s["tools"].is_empty():
-		t += "  –\n"
-	for tool in s["tools"]:
-		var extra := ""
-		if tool["tool"] == "survey":
-			extra = ", range %s" % SystemView.fmt_dist(float(tool["range"]))
-		t += "  %s (%s%s)\n" % [tool["name"], GameData.TOOL_NAMES[tool["tool"]], extra]
-	if not s["actives"].is_empty():
-		t += "\n[b]Active equipment[/b]\n"
-		for a in s["actives"]:
-			t += "  %s – %.0f energy/s while on\n" % [a["name"], float(a["energy_rate"])]
-	return t

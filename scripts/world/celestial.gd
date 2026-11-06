@@ -22,13 +22,14 @@ var _tex: Texture2D
 var view = null            # SystemView (set by _add_celestial)
 var _col_sprite: Sprite2D
 var poly: PackedVector2Array   # colossus outline (local km), see ColossusShape
-var radar_hidden := false
+var radar_hidden := false      # colossus completely inside another one's radar shadow (Recon view)
 var art: Dictionary = {}          # station / haven: StationArt.build() result
 var turret_aim: Array = []        # current barrel angle per turret (station defence)
 var turret_flash: Array = []      # muzzle flash timer per turret
 var pad_ship := {}                # package 26: pad index -> the ship landing on / lifting off it
 var pad_open := {}                # pad index -> hatch 0 (shut) … 1 (open)
-var pad_want := {}      # colossus completely inside another one's radar shadow (Recon view)
+var pad_want := {}                # pad index -> where its hatch is heading (0 shut, 1 open)
+var _pad_check := 0.5
 
 
 func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0.7, -0.5)) -> void:
@@ -304,6 +305,11 @@ func _process(delta: float) -> void:
 			turret_flash[i] = maxf(0.0, float(turret_flash[i]) - delta)
 		for pi in pad_want:
 			pad_open[pi] = move_toward(float(pad_open.get(pi, 0.0)), float(pad_want[pi]), delta * 1.6)
+		if not pad_ship.is_empty():
+			_pad_check -= delta
+			if _pad_check <= 0.0:
+				_pad_check = 0.5
+				_free_dead_pads()
 		if visible:
 			queue_redraw()
 		return
@@ -544,11 +550,7 @@ func claim_pad(ship, near: Vector2) -> int:
 	var own := pad_of(ship)
 	if own >= 0:
 		return own
-	for i in pad_ship.keys():
-		var s = pad_ship[i]
-		if s == null or not is_instance_valid(s) or s.dying or not String(s.order.get("type", "")) in ["dock", "docking", "undocking"]:
-			pad_ship.erase(i)
-			pad_want[i] = 0.0
+	_free_dead_pads()
 	var best := -1
 	var bd := INF
 	for i2 in art["pads"].size():
@@ -561,6 +563,15 @@ func claim_pad(ship, near: Vector2) -> int:
 	if best >= 0:
 		pad_ship[best] = ship
 	return best
+
+
+## Review K11: frees the pads whose ship is gone or no longer landing / lifting off.
+func _free_dead_pads() -> void:
+	for i in pad_ship.keys():
+		var s = pad_ship[i]
+		if s == null or not is_instance_valid(s) or s.dying or not String(s.order.get("type", "")) in ["dock", "docking", "undocking"]:
+			pad_ship.erase(i)
+			pad_want[i] = 0.0
 
 
 func release_pad(ship) -> void:

@@ -111,6 +111,21 @@ func _c_move(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"key_steer", "x": float, "y": float} – keyboard flight (WASD): fly that way; (0, 0) stops a
+## keyboard flight (an order given otherwise is left alone).
+func _c_key_steer(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var p = world.player
+	var d := Vector2(float(c.get("x", 0.0)), float(c.get("y", 0.0)))
+	if d != Vector2.ZERO:
+		p.set_order({"type": "move", "pos": p.position + d.normalized() * 6000.0, "keys": true})
+	elif p.order.get("keys", false):
+		p.set_order({"type": "idle"})
+	return ""
+
+
 ## {"type":"attack", "target": <ship uid>}
 func _c_attack(c: Dictionary) -> String:
 	var e := _need_world()
@@ -997,6 +1012,14 @@ func _c_debug_time_scale(c: Dictionary) -> String:
 
 ## {"type":"debug_teleport", "system": int} – docks at the system's first station
 ## (or appears near a gate if it has none).
+## The first station of a list the ship may dock at – never an L ship at a waystation (review K10). {} = none.
+func dock_target(f: ShipFitting, stations: Array) -> Dictionary:
+	for st in stations:
+		if int(f.hull().get("size", 1)) <= int(GameData.station_types.get(String(st["type"]), {}).get("max_size", 3)):
+			return st
+	return {}
+
+
 func _c_debug_teleport(c: Dictionary) -> String:
 	var f := _fit()
 	var to := int(c["system"])
@@ -1012,8 +1035,8 @@ func _c_debug_teleport(c: Dictionary) -> String:
 	f.route.clear()
 	f.system_id = to
 	var docked := false
-	if not L["stations"].is_empty():
-		var st: Dictionary = L["stations"][0]
+	var st: Dictionary = dock_target(f, L["stations"])
+	if not st.is_empty():
 		f.docked_at = st["id"]
 		f.position = st["pos"]
 		docked = true

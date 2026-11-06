@@ -20,6 +20,7 @@ var t := 0.0
 var traded := -1                   # credits of the trade (-1 = not yet)
 var loaded := false
 var fade := 1.0
+var _deck_held := false            # review K6: it counts in the carrier's deck queue while on the runway
 
 
 func setup(p_view, p_trader: Ship, p_host: Ship) -> void:
@@ -42,12 +43,16 @@ func _host_ok() -> bool:
 
 
 func _runway_free() -> bool:
-	return (view.market_runway == null or view.market_runway == self) and int(host.deck_queue) == 0
+	return (view.market_runway == null or view.market_runway == self) and int(host.deck_queue) == (1 if _deck_held else 0)
 
 
 func _release() -> void:
 	if view != null and view.market_runway == self:
 		view.market_runway = null
+	if _deck_held:
+		_deck_held = false
+		if host != null and is_instance_valid(host):
+			host.deck_queue = maxi(host.deck_queue - 1, 0)
 
 
 func _physics_process(delta: float) -> void:
@@ -66,6 +71,8 @@ func step(delta: float) -> void:
 			if position.distance_to(ap) < 40.0:
 				if _runway_free():
 					view.market_runway = self
+					host.deck_queue += 1             # own drones wait while it uses the runway
+					_deck_held = true
 					state = "final"
 				else:
 					state = "wait"                     # circles at the approach point until the runway is free

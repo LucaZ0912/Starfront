@@ -5114,3 +5114,64 @@ func _test_review4(view: SystemView) -> void:
 		"review W5: point defence stays on and the mine settings stay set across a new ship node and a save")
 	p2.free()
 	p1.queue_free()
+	# T6 / review W7: a carrier that leaves takes its drones along quietly
+	var nf := GameState.create_from_preset("std_dragonfly", "civilian") if GameData.presets.has("std_dragonfly") else GameState.create_fit("dragonfly", {"hangar": "hangar:1:C"}, "civilian")
+	nf.set_module("hangar", "hangar:1:C")
+	nf.uid = 99942
+	nf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}]
+	nf.position = view.player.position + Vector2(0, -131000)
+	var nc := Ship.new()
+	nc.setup(nf, view)
+	view.ship_layer.add_child(nc)
+	nc.set_physics_process(false)
+	view.launch_drones(nc, 1)
+	var nd: Array = view.drones_of(nc)
+	nc.free()
+	var quiet := nd.size() == 1
+	if quiet:
+		nd[0]._physics_process(0.05)
+		quiet = nd[0].dying and nd[0].is_queued_for_deletion()
+	check(quiet, "review W7: a carrier that leaves takes its drones along quietly (no explosions at the gate)")
+	# T8 / review K1: the location of a ship in a wormhole transit
+	var tf := GameState.create_from_preset("std_axa_threshold", "player")
+	tf.transit_kind = "wormhole"
+	tf.transit_to = 1
+	check(tf.location_text().begins_with("Wormhole → "), "review K1: a ship in a wormhole transit shows where it is going (%s)" % tf.location_text())
+	# T9 / review K12: every family has a description and every description a family; rockets are homing
+	var desc_ok := true
+	for fm in ModuleData.FAMILIES:
+		desc_ok = desc_ok and ModuleDescT.DESC.has(fm)
+	for fm2 in ModuleDescT.DESC:
+		desc_ok = desc_ok and ModuleData.FAMILIES.has(fm2)
+	var rocket: Dictionary = GameData.modules["w_rocket:1:C"]
+	check(desc_ok and (not rocket.get("homing", false) or not ModuleDescT.of("w_rocket").contains("Unguided")), "review K12: a short description for every module family, matching the data")
+	# review K8: reading the storage of a station creates no entry
+	var before: int = GameState.storage.size()
+	GameState.storage_of("st_nowhere")
+	check(GameState.storage.size() == before, "review K8: looking into an empty storage does not create one")
+	# review K5: drones count towards a ship's value
+	var vf := GameState.create_fit("dragonfly", {}, "player")
+	var v0: int = GameState.ship_value(vf)
+	vf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}]
+	check(GameState.ship_value(vf) == v0 + Commands.DRONE_PRICE, "review K5: drones count towards a ship's value")
+	# review K2: a hit shakes the cloak off
+	var kf := GameState.create_from_preset("std_axa_parallax", "player")
+	kf.uid = 99943
+	kf.position = view.player.position + Vector2(0, -133000)
+	var ks := Ship.new()
+	ks.manual = true
+	ks.setup(kf, view)
+	view.ship_layer.add_child(ks)
+	ks.set_physics_process(false)
+	kf.capacitor = float(kf.stats()["cap_max"])
+	ks.set_module_active("builtin_cloak", true)
+	var was: bool = ks.cloaked()
+	ks.take_damage(1.0, "explosive", null)
+	check(was and not ks.cloaked(), "review K2: a hit (mine, blast) ends the cloak")
+	ks.queue_free()
+	# review K10: the debug teleport never parks an L ship at a waystation
+	var two: Array = [{"id": "w", "type": "waystation"}, {"id": "t", "type": "trade"}]
+	var lfit := GameState.create_from_preset("std_axa_threshold", "player")
+	var sfit := GameState.create_fit("dragonfly", {}, "player")
+	check(String(Commands.dock_target(lfit, two).get("id", "")) == "t" and String(Commands.dock_target(sfit, two).get("id", "")) == "w" and Commands.dock_target(lfit, [two[0]]).is_empty(),
+		"review K10: the debug teleport docks an L ship only where it may land (never at a waystation)")

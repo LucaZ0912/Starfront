@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.47 – 2026-11-07
+
+**The rest of the part 4 code review.**
+- Leaving NPC carriers take their drones along quietly; a hit ends the cloak, which also costs energy in warp
+  and for NPCs; the focus lance breaks off when its target warps or cloaks; the trader drone holds the runway.
+- Smaller fixes: wormhole location text, factory jobs of lost ships, drones in the ship value, empty storage
+  entries, real reasons in the outfitter, debug teleport never to a waystation with an L ship, "wait" state.
+- Performance: power plan only on changes, drone lists once per frame, cached hull data.
+- Keyboard flight through the command bus; clean-ups; 8 new checks.
+
 ## alpha 0.4.25.46 – 2026-11-07
 
 **Fixes from the part 4 code review (the top 5, report in reviews/teil4_review.md).**

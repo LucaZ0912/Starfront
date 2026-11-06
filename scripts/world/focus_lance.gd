@@ -17,6 +17,7 @@ var width := 10.0
 var col := Color(1.0, 0.18, 0.12)
 var t := 0.0
 var _dealt := 0.0
+var reach := 900.0
 
 
 func setup(p_shooter, p_target, w: Dictionary, p_view) -> void:
@@ -27,6 +28,7 @@ func setup(p_shooter, p_target, w: Dictionary, p_view) -> void:
 	dtype = String(w["damage_type"])
 	n = maxi(int(w.get("bundle", 3)), 2)
 	width = 6.0 + float(n) * 2.0
+	reach = float(w.get("range", 900.0))
 	z_index = 5
 
 
@@ -38,8 +40,15 @@ func _meet() -> Vector2:
 	return shooter.position.lerp(target.position, MEET)
 
 
+## Review K7: the lance breaks off when its target warps away, cloaks or gets far out of reach.
+func _gone() -> bool:
+	if target is Ship and (target.in_warp() or not target.is_targetable()):
+		return true
+	return shooter.position.distance_to(target.position) > reach * 1.5
+
+
 func _process(delta: float) -> void:
-	if not _valid(shooter) or not _valid(target):
+	if not _valid(shooter) or not _valid(target) or _gone():
 		queue_free()
 		return
 	t += delta

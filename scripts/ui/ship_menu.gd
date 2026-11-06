@@ -186,7 +186,7 @@ func _build_industry() -> void:
 
 func _build_factory(box: VBoxContainer) -> void:
 	box.add_child(UI.label("FACTORY", 18, UI.NEON_CYAN))
-	box.add_child(UI.wrap_label("Builds modules (like an industrial complex, up to size 7) and drones from the materials in your cargo hold. Every job takes time and only progresses while the factory is switched on (module bar) and the ship is in space. Finished modules go into the cargo hold, drones into the hangar.", 12, UI.TEXT_DIM, 900))
+	box.add_child(UI.wrap_label("Builds modules (like an industrial complex, up to size 7) and drones from the materials in your cargo hold. Every job takes time and only progresses while the factory is switched on (module bar) and this is your active ship, out in space – not while docked or parked. Finished modules go into the cargo hold, drones into the hangar.", 12, UI.TEXT_DIM, 900))
 	var q: Array = GameState.ship_jobs(fit.uid)
 	box.add_child(UI.label("Factory %s  •  %d job%s queued" % ["running" if fit.factory_on else "switched off", q.size(), "" if q.size() == 1 else "s"], 13, UI.GOOD if fit.factory_on else UI.GOLD))
 	for j in q:

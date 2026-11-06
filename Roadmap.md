@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt. Code-Review von Teil 4 gemacht (Bericht `reviews/teil4_review.md`), die Top 5 sind behoben; die übrigen Befunde sind offen. Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.46. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt. Code-Review von Teil 4 gemacht (Bericht `reviews/teil4_review.md`), alle Befunde sind abgearbeitet (0.4.25.46 und 0.4.25.47). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.47. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -1005,7 +1005,16 @@ Read-only-Review in eigener Session (7. Nov 2026), Bericht in `reviews/teil4_rev
 - [x] **W5** Punktverteidigung, Automodus, Antidrohnenpuls und die Minenwerfer-Einstellungen liegen im Fitting (gespeichert) und überstehen Sprünge, Laden und Andocken.
 - [x] **W4** Wer in der Raststation auf eine freie Plattform wartet (oder noch nicht aufgestiegen ist), ist weder anvisierbar noch verwundbar.
 - [x] **W6** Wurmloch-Sprung: nicht aus dem Warp oder beim Andocken; die Drohnen werden vorher eingeholt und starten nach der Ankunft wieder.
-- [ ] Offen: W7 und die kleineren, Performance-, Koop- und Aufräum-Befunde sowie die übrigen Test-Lücken laut Bericht.
+
+**Behoben in alpha 0.4.25.47 (der Rest), 8 neue automatische Prüfungen:**
+
+- [x] **W7** Ein NPC-Träger, der springt, andockt oder abzieht, nimmt seine Drohnen still mit – keine Explosionen mehr am Tor; nur bei Zerstörung des Trägers gehen sie hoch.
+- [x] **K1** Ortsanzeige auch im Wurmloch-Transit („Wormhole → Ziel“). **K2** Ein Treffer (Mine, Explosion) beendet die Tarnung; die Tarnung kostet auch im Warp Energie; getarnte NPCs benutzen keine Werkzeuge. **K3** Hinweis im Fabrik-Reiter: läuft nur auf dem aktiven Schiff im All. **K4** Fabrikaufträge eines zerstörten Schiffs verschwinden mit ihm. **K5** Drohnen zählen zum Schiffswert. **K6** Die Händlerdrohne belegt die Startbahn, solange sie landet, lädt und startet – eigene Drohnen warten. **K7** Die Fokuslanze bricht ab, wenn das Ziel warpt, sich tarnt oder weit aus der Reichweite gerät. **K8** Ein Blick ins leere Lager legt keinen Eintrag mehr an. **K9** Der Ausrüster nennt den echten Grund („too big“ oder „not for this ship“). **K10** Der Debug-Teleport parkt L-Schiffe nie an einer Raststation. **K11** Plattformen werden alle 0,5 s von verschwundenen Schiffen befreit. **K12** Kurzbeschreibungen an die Daten angepasst (Raketen lenkbar, Taktik-Sensoren, Ionentorpedo, Zielcomputer). **K13** Fabrik/Raffinerie, die auf Platz warten, zeigen den eigenen Zustand „wait“ statt „außer Reichweite“. **K14** NPC-Tarnung kostet Energie.
+- [x] **Performance:** Strom-Plan nur noch bei Änderungen (P1), Drohnenlisten einmal pro Frame (P2), Drohnenklappen, Art-Breite und Texturgröße je Rumpf zwischengespeichert (P3–P5).
+- [x] **Koop:** Tastaturflug (WASD) läuft über den Befehlsbus (`key_steer`); die Simulationsfunktionen, die direkt in den Spielstand schreiben, sind als „nur auf dem Host“ markiert.
+- [x] **Aufräumen:** `ShipFitting.describe()` entfernt, Abdunkel-Formel als `_hangar_shade`, verrutschter Kommentar korrigiert, `module_summary_lines()` statt Zerlegen von Text.
+- [x] **Test-Lücken** T1, T2, T4–T9 geschlossen.
+- Bewusst nicht gemacht: P6 (Stationen zeichnen jeden Frame neu – schon vor Teil 4 so), Umbau von `builtin_modules()` in eine Tabelle (wenig Nutzen, Risiko), zentrales Drohnen-Einholen (Warp und Sprung sind zwei verschiedene Ereignisse), Test T3 (Wurmloch mit ausgeflogenen Drohnen – bräuchte einen Threshold als Spielerschiff im laufenden System).
 
 ### Entscheidungen zu Teil 4
 

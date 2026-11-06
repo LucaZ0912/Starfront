@@ -253,7 +253,7 @@ func _family_tile(parent: Control, f: ShipFitting, fm: String, ids: Array) -> vo
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	r.add_child(info)
 	info.add_child(_lbl("%d in stock" % ids.size(), 11, UI.TEXT_DIM))
-	info.add_child(_lbl("%d fit this slot" % fits if fits > 0 else "too big for this slot", 11, UI.GOOD if fits > 0 else UI.BAD))
+	info.add_child(_lbl("%d fit this slot" % fits if fits > 0 else _short_reason(f.can_fit(slot, String(ids[0]))), 11, UI.GOOD if fits > 0 else UI.BAD))
 	var m: Dictionary = GameData.modules[ids[0]]
 	if m.has("damage_type"):
 		info.add_child(_lbl(String(m["damage_type"]).to_upper(), 11, {"optical": Color(0.5, 0.85, 1.0), "kinetic": Color(1.0, 0.8, 0.4), "explosive": Color(1.0, 0.45, 0.35)}.get(String(m["damage_type"]), UI.TEXT_DIM)))
@@ -283,7 +283,7 @@ func _variant_tile(parent: Control, f: ShipFitting, mid: String, from_store: boo
 		v.add_child(_lbl("stored ×%d" % int(GameState.storage_of(station["id"]).get(mid, 0)), 11, UI.GOOD))
 	else:
 		v.add_child(_lbl(GameData.fmt_credits(buy_price(int(m["price"]))), 12, UI.GOLD if reason == "" else UI.TEXT_DIM))
-		v.add_child(_lbl("too big" if why != "" else ("locked" if locked != "" else ""), 10, UI.BAD))
+		v.add_child(_lbl(_short_reason(why) if why != "" else ("locked" if locked != "" else ""), 10, UI.BAD))
 
 
 func _set_pick(mid: String, from_store: bool) -> void:
@@ -308,13 +308,8 @@ func _detail(parent: Control, f: ShipFitting) -> void:
 	tv.add_child(UI.label(GameData.module_name(pick), 16, GameData.quality_color(String(m["quality"]))))
 	tv.add_child(UI.wrap_label(ModuleDesc.of(String(m["family"])), 13, Color(0.9, 0.92, 1.0), 560))
 	# the module's values in one compact block (the first line repeats the name)
-	var lines := GameData.module_summary(pick).split("
-", false)
-	if lines.size() > 1:
-		lines.remove_at(0)
-	if lines.size() > 1 and lines[0] == ModuleDesc.of(String(m["family"])):
-		lines.remove_at(0)                 # the description stands above already
-	v.add_child(UI.wrap_label("   •   ".join(lines), 11, UI.TEXT_DIM, 980))
+	var lines: Array = GameData.module_summary_lines(pick).slice(2 if ModuleDesc.of(String(m["family"])) != "" else 1)
+	v.add_child(UI.wrap_label("   •   ".join(PackedStringArray(lines)), 11, UI.TEXT_DIM, 980))
 	# what changes on the ship
 	var after := _preview(f)
 	var s0 := f.stats()
@@ -426,6 +421,15 @@ func _footer(f: ShipFitting) -> void:
 
 
 # ---- small helpers
+
+## A short label for why a module does not fit (review K9): too big, or not for this ship.
+func _short_reason(why: String) -> String:
+	if why == "":
+		return ""
+	if why.begins_with("Too large"):
+		return "too big"
+	return "not for this ship"
+
 
 func _frame(parent: Control, width: float, expand: bool) -> VBoxContainer:
 	var p := UI.neon_panel(Color(corp_color(), 0.4), Color(0.035, 0.02, 0.07, 0.9), 1)

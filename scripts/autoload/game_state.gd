@@ -418,6 +418,7 @@ func ship_value(f: ShipFitting) -> int:
 	for k in f.modules:
 		if GameData.modules.has(f.modules[k]):
 			v += int(GameData.modules[f.modules[k]]["price"])
+	v += f.drones.size() * Commands.DRONE_PRICE        # review K5
 	return v
 
 
@@ -445,6 +446,7 @@ func net_worth() -> int:
 
 func on_player_ship_lost(f: ShipFitting) -> void:
 	fleet.erase(f)
+	jobs = jobs.filter(func(j): return String(j.get("kind", "")) != "ship" or int(j.get("uid", 0)) != f.uid)   # review K4
 	log_msg("%s was destroyed!" % f.ship_name, COL_BAD)
 	for m in missions.duplicate():           # package 25c: passengers aboard die with the ship
 		if String(m["type"]) == "passenger" and int(m.get("ship_uid", -1)) == f.uid:
@@ -497,14 +499,19 @@ func spend(v: int) -> bool:
 	return true
 
 
+## What is stored at a station (read only – an empty dictionary if nothing; review K8).
 func storage_of(station_id: String) -> Dictionary:
+	return storage.get(station_id, {})
+
+
+func _storage_w(station_id: String) -> Dictionary:
 	if not storage.has(station_id):
 		storage[station_id] = {}
 	return storage[station_id]
 
 
 func storage_add(station_id: String, module_id: String, n: int = 1) -> void:
-	var s := storage_of(station_id)
+	var s := _storage_w(station_id)
 	s[module_id] = int(s.get(module_id, 0)) + n
 
 
@@ -515,6 +522,8 @@ func storage_remove(station_id: String, module_id: String, n: int = 1) -> bool:
 	s[module_id] = int(s[module_id]) - n
 	if s[module_id] <= 0:
 		s.erase(module_id)
+	if s.is_empty():
+		storage.erase(station_id)
 	return true
 
 

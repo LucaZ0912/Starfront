@@ -418,7 +418,7 @@ func _update_docking(delta: float) -> void:
 		heading = (-bdir).angle()
 		# into the hangar's shadow, then out of sight
 		var dark := clampf((position - mouth).dot(-bdir) / maxf(float(bay["depth"]) * 0.5, 1.0), 0.0, 1.0)
-		modulate = Color(lerpf(1.0, 0.45, dark), lerpf(1.0, 0.45, dark), lerpf(1.0, 0.5, dark), 1.0 - smoothstep(0.82, 1.0, k))
+		modulate = _hangar_shade(dark, 1.0 - smoothstep(0.82, 1.0, k))
 	activity = "Docking: entering the hangar bay …"
 	if k >= 1.0:
 		modulate = Color.WHITE
@@ -441,7 +441,7 @@ func _update_undocking(delta: float) -> void:
 	position = inner.lerp(out, e)
 	heading = bdir.angle()
 	var dark := clampf((position - mouth).dot(-bdir) / maxf(float(bay["depth"]) * 0.5, 1.0), 0.0, 1.0)
-	modulate = Color(lerpf(1.0, 0.45, dark), lerpf(1.0, 0.45, dark), lerpf(1.0, 0.5, dark), smoothstep(0.0, 0.15, k))
+	modulate = _hangar_shade(dark, smoothstep(0.0, 0.15, k))
 	velocity = Vector2.ZERO
 	activity = "Leaving the hangar bay …"
 	if k >= 1.0:
@@ -536,7 +536,7 @@ func _dock_pad(stn) -> void:
 		var e2 := smoothstep(0.5, 1.0, k)
 		scale = Vector2.ONE * lerpf(0.88, PAD_SINK, e2)                           # down through the hatch
 		var dark := e2
-		modulate = Color(lerpf(1.0, 0.4, dark), lerpf(1.0, 0.4, dark), lerpf(1.0, 0.45, dark), 1.0 - smoothstep(0.75, 1.0, k))
+		modulate = _hangar_shade(dark, 1.0 - smoothstep(0.75, 1.0, k), true)
 	activity = "Landing on pad %d …" % (pi + 1)
 	if k >= 1.0:
 		scale = Vector2.ONE
@@ -582,7 +582,7 @@ func _undock_pad(delta: float) -> void:
 		position = pad
 		scale = Vector2.ONE * lerpf(PAD_SINK, 1.0, e)
 		var dark := 1.0 - e
-		modulate = Color(lerpf(1.0, 0.4, dark), lerpf(1.0, 0.4, dark), lerpf(1.0, 0.45, dark), clampf(e * 1.6, 0.0, 1.0))
+		modulate = _hangar_shade(dark, clampf(e * 1.6, 0.0, 1.0), true)
 	elif t < 2.4:
 		stn.set_pad_open(pi, false)
 		position = pad
@@ -598,6 +598,12 @@ func _undock_pad(delta: float) -> void:
 			order = {"type": "idle"}
 			if then.get("type", "idle") != "idle":
 				set_order(then)
+
+
+## The ship darkening as it goes into the shadow of a hangar bay (or down a pad's hatch: `deep`).
+func _hangar_shade(dark: float, alpha: float, deep: bool = false) -> Color:
+	var lo := 0.4 if deep else 0.45
+	return Color(lerpf(1.0, lo, dark), lerpf(1.0, lo, dark), lerpf(1.0, lo + 0.05, dark), alpha)
 
 
 ## Fallback without bays: the ship spirals into the station hub.
@@ -681,6 +687,7 @@ func _physics_process(delta: float) -> void:
 	combat_t = maxf(0.0, combat_t - delta)
 	if in_warp():
 		_update_warp(delta)
+		_cloak_drain(delta)                    # review K2: the cloak costs energy in warp too
 		fit.position = position
 		fit.rotation = heading
 		queue_redraw()
@@ -1607,6 +1614,11 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 func take_damage(amount: float, dtype: String, attacker) -> void:
 	if dying or is_docked() or in_station():
 		return
+	if module_on.get("builtin_cloak", false):
+		# review K2: a hit (mine, blast) shakes the cloak off
+		module_on["builtin_cloak"] = false
+		module_state["builtin_cloak"] = "off"
+		_mlog("Cloak off – hit: you are visible again.", GameState.COL_WARN)
 	if faction == "player" and Commands.god_mode:
 		return
 	amount *= toughness               # captains are tougher than ordinary pirates (by stars)
@@ -1716,6 +1728,8 @@ func _update_tools(delta: float, s: Dictionary) -> void:
 	if manual:
 		_update_modules(delta, s)
 		return
+	if cloaked():
+		return                                 # review K2: cloaked NPCs use no tools
 	for t in s["tools"]:
 		if not t.get("powered", true):
 			continue
@@ -2509,6 +2523,7 @@ func _set_builtin_on(kind: String, on: bool) -> void:
 
 ## The on-board factory works on the first job of its queue; a finished module goes into the cargo
 ## hold (as a module item), a drone into the drone hangar – it waits if there is no room.
+## Simulation – in co-op this runs on the host only: it writes to GameState / the fitting directly.
 func _run_factory(delta: float, slot: String) -> void:
 	var q: Array = GameState.ship_jobs(fit.uid)
 	if q.is_empty():
@@ -2523,12 +2538,12 @@ func _run_factory(delta: float, slot: String) -> void:
 	var item := String(j["item"])
 	if item == "drone":
 		if fit.drones.size() >= int(fit.stats()["drone_storage"]):
-			module_state[slot] = "range"     # hangar full – waiting
+			module_state[slot] = "wait"     # hangar full – waiting
 			return
 		fit.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
 	else:
 		if fit.add_cargo("mod:" + item, 1.0) < 1.0:
-			module_state[slot] = "range"     # cargo hold full – waiting
+			module_state[slot] = "wait"     # cargo hold full – waiting
 			return
 	GameState.jobs.erase(j)
 	GameState.stats["built"] = int(GameState.stats.get("built", 0)) + 1
@@ -2542,6 +2557,7 @@ var _smoke_t := 0.0
 
 ## Built-in refinery (KHI): turns ore from the hold into refined goods, slowly, while switched on –
 ## and belches black smoke while it works.
+## Simulation – in co-op this runs on the host only: it writes to GameState / the fitting directly.
 func _refine(delta: float, slot: String, d: Dictionary) -> void:
 	var ore := ""
 	for item in fit.cargo:
@@ -2556,7 +2572,7 @@ func _refine(delta: float, slot: String, d: Dictionary) -> void:
 	var amount := minf(float(d["rate"]) * delta, float(fit.cargo[ore]))
 	var out := amount * float(c["yield"]) * float(d["eff"])
 	if fit.free_for(prod) < out * GameData.item_volume(prod):
-		module_state[slot] = "range"      # no room for the product – waiting
+		module_state[slot] = "wait"      # no room for the product – waiting
 		return
 	module_state[slot] = "on"
 	fit.remove_cargo(ore, amount)
@@ -2592,12 +2608,27 @@ func has_hatch(n: String) -> bool:
 
 
 ## The hangar doors drones use: "drones", "drones_2" … (package 25e – Concord carriers have several).
+static var _hatch_cache := {}
+static var _tex_cache := {}
+
+
+## The size of the hull's picture in art pixels (review P5: looked up once per hull).
+func _tex_size() -> Vector2:
+	if not _tex_cache.has(fit.hull_id):
+		var tex := PixelArt.ship_texture(fit.hull_id, paint)
+		_tex_cache[fit.hull_id] = Vector2(tex.get_width(), tex.get_height())
+	return _tex_cache[fit.hull_id]
+
+
 func drone_hatches() -> Array:
+	if _hatch_cache.has(fit.hull_id):
+		return _hatch_cache[fit.hull_id]       # review P3: hatches never change – sorted once per hull
 	var out: Array = []
 	for n in fit.hull().get("hatches", {}):
 		if String(n).begins_with("drones"):
 			out.append(n)
 	out.sort()
+	_hatch_cache[fit.hull_id] = out
 	return out
 
 
@@ -2622,8 +2653,7 @@ func open_hatch(n: String, hold: float) -> void:
 ## The hatch in the ship's own frame (x forward), in world units.
 func hatch_local(n: String) -> Rect2:
 	var r: Array = fit.hull()["hatches"][n]
-	var tex := PixelArt.ship_texture(fit.hull_id, paint)
-	var half := Vector2(tex.get_width(), tex.get_height()) * 0.5
+	var half := _tex_size() * 0.5
 	var rect := Rect2((Vector2(float(r[0]) + 1.0, float(r[1]) + 1.0) - half) * PixelArt.SCALE, Vector2(float(r[2]), float(r[3])) * PixelArt.SCALE)
 	return Rect2(rect.position + part_shift(rect.get_center().y), rect.size)
 
@@ -2884,6 +2914,20 @@ func _cloak_alpha_at(col: float, tex_w: int) -> float:
 	return lerpf(1.0, _cloak_hidden_alpha(), clampf((cut - col + 4.0) / 8.0, 0.0, 1.0))
 
 
+## The cloak's energy outside the module loop: NPCs (review K14) and every ship in warp (review K2).
+func _cloak_drain(delta: float) -> void:
+	if not cloaked():
+		return
+	var d := fit.module_data("builtin_cloak")
+	var cc := float(d.get("energy_rate", 0.0)) * delta
+	if fit.capacitor < cc:
+		module_on["builtin_cloak"] = false
+		module_state["builtin_cloak"] = "off"
+		_mlog("%s: capacitor empty – you are visible again." % String(d.get("name", "Cloak")), GameState.COL_WARN)
+		return
+	fit.capacitor -= cc
+
+
 ## Axiom research ships flown by NPCs cloak when they come under fire and show again after a while.
 var _cloak_calm := 0.0
 
@@ -2893,6 +2937,7 @@ func _update_npc_cloak(delta: float) -> void:
 		return
 	if cloaked():
 		_cloak_calm += delta
+		_cloak_drain(delta)
 		if _cloak_calm > 25.0:
 			module_on["builtin_cloak"] = false
 	elif combat_t > 4.0 and last_attacker != null and is_instance_valid(last_attacker) and Ship.hostile(self, last_attacker):
@@ -3031,15 +3076,25 @@ func has_deck() -> bool:
 	return fit.hull().has("drone_deck")
 
 
+static var _width_cache := {}
+
+
+## The width of the hull's pixel art (review P4: counted once per hull).
+func _art_width() -> int:
+	if not _width_cache.has(fit.hull_id):
+		var w := 0
+		for r in PixelArt.ShipArt.SHIPS.get(fit.hull_id, []):
+			w = maxi(w, String(r).length())
+		_width_cache[fit.hull_id] = w
+	return int(_width_cache[fit.hull_id])
+
+
 ## Point on the flight deck (0 = rear end, 1 = front end); the ship's centre without a deck.
 func deck_point(frac: float = 0.5) -> Vector2:
 	var deck: Array = fit.hull().get("drone_deck", [])
 	if deck.is_empty():
 		return position
-	var art: Array = PixelArt.ShipArt.SHIPS.get(fit.hull_id, [])
-	var w := 0
-	for r in art:
-		w = maxi(w, String(r).length())
+	var w := _art_width()
 	var col := lerpf(float(deck[0]), float(deck[1]), clampf(frac, 0.0, 1.0))
 	return position + Vector2((col + 1.0 - (w + 2) / 2.0) * PixelArt.SCALE, 0.0).rotated(heading)
 
@@ -3134,10 +3189,20 @@ func _power_in_use_raw() -> Dictionary:
 
 ## Hard power limit (package 21): on an overload priority groups 4, 3, 2 shut down in turn.
 ## Returns true if the power state changed.
+var _pw_sig := ""
+
+
 func _update_power() -> bool:
+	var u := power_in_use()
+	# review P1 (0.4.25.47): the plan only changes with the modules in use, the fitting, the priorities and the
+	# groups shut down – skip the work while none of them changed
+	var sig := "%s|%d|%d|%d" % [str(u.keys()), fit.modules.hash(), fit.priorities.hash(), fit.power_off.hash()]
+	if sig == _pw_sig:
+		return false
+	_pw_sig = sig
 	var before: Dictionary = fit.power_off.duplicate()
 	var thr0 := fit.throttle
-	var plan := fit.power_plan(power_in_use())
+	var plan := fit.power_plan(u)
 	if not fit.apply_power(plan):
 		return false
 	if manual and faction == "player":

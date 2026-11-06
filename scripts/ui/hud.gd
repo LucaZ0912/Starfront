@@ -67,7 +67,7 @@ var survey_text: RichTextLabel
 ## on = working on the active target, other = working on another locked target (multi-focus),
 ## range = target out of reach, energy = capacitor too low, power = its priority group is shut down
 const BUILTIN_COLOR := Color(1.0, 0.72, 0.2)   # frame of modules built into the hull (package 25a)
-const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "other": Color(1.0, 0.92, 0.25), "range": Color(1.0, 0.55, 0.2), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
+const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "other": Color(1.0, 0.92, 0.25), "range": Color(1.0, 0.55, 0.2), "wait": Color(0.95, 0.85, 0.55), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
 const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven"}
 
 
