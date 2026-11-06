@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig, als Nächstes Paket 27 (Ausrüster & Übersicht). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.42. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 läuft (neue Stationsübersicht fertig, als Nächstes der Ausrüster). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.43. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -974,10 +974,15 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Immer nur ein Schiff pro Plattform** beim Landen oder Starten – wer keine freie Plattform bekommt, wartet außerhalb (bzw. beim Start im Inneren). Statuslampe je Plattform: grün frei, gelb blinkend belegt.
 - [x] **Nur S- und M-Schiffe** (`max_size` 2): L-Schiffe des Piloten werden abgewiesen; zu großer NPC-Verkehr endet seine Fahrt dort ohne Plattform.
 - [x] **Verbreitung:** in rund drei Vierteln aller Systeme eine Raststation (zusätzlich zum Stationsplan), draußen auf dem Weg zu einem Sprungtor; Stufe 1 (55 %), 2 (33 %), 3 (12 %). Im Testfeld eine je Stufe.
-- [x] **Angebot:** kleiner Markt (erzeugt Wasser und Nahrung, braucht Elektronik, Medizin, Deuterium), Ausrüster für Werkzeuge, Optionales und Tanks; keine Werft, keine Raffinerie.
+- [x] **Angebot** (laut Entscheidung zu Teil 4): feste kleine Auswahl – **Markt, Treibstoff, Reparatur, Hangar**; keine Werft, kein Ausrüster, keine weiteren Dienste (seit 0.4.25.43; in 0.4.25.42 versehentlich mehr). Der Markt erzeugt Wasser und Nahrung und braucht Elektronik, Medizin, Deuterium.
 
 ### Ausrüster & Übersicht (Paket 27)
 
+- [x] **Erweitert (Wunsch Luz, 7. Nov 2026): neue Stationsübersicht** (Concourse) in drei Spalten statt des 3×4-Kachelrasters, angelehnt an ein Fan-Referenzbild:
+  - **links oben – Commander** (Platzhalter): Pixel-Silhouette als Porträt, CMDR-Name, Rang (noch „—“), Schiffe, laufende Aufträge, Flugzeit; Porträt und Karriere-Statistik folgen später.
+  - **links unten – News:** die neuesten 6 Meldungen als Karten (NEWS / RAID / RADIO farbig), darunter die Kachel zum Nachrichtenarchiv.
+  - **Mitte – Schiffsanalyse:** Schiffsbild, Name, Rumpf, Klasse, Größe; Balken für Hülle, Panzerung, Tank, Fracht, Drohnen; darunter die **Schiffsdienste**: Tanken und Reparieren direkt per Klick (mit Preis, „full“ / „No damage“), Drone Bay, Ausrüster, Hangar.
+  - **rechts – Station:** Wappen, Name, Typ, Stufe, System, Sicherheit, Fraktion mit eigenem Ansehen, Wirtschaft (erzeugt / braucht), **Kontostand**; darunter die **Stationsdienste** als längliche Kacheln mit Icons (Markt, Werft, Raffinerie, Fertigung, Bond Office, Bulletin Board) – nicht verfügbare gedimmt mit Grund. Hilfslieferungen nach einem Überfall erscheinen hier.
 - **Überarbeitung des Ausrüsters:** besseres Design für mehr Übersicht.
 - **Kurzbeschreibung** zu jedem Modul in der Modulübersicht.
 - **Derzeitige Geschwindigkeit** am linken Rand in der Schiffsinfo anzeigen.

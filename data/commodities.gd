@@ -109,8 +109,10 @@ const STATION_TYPES := {
 	# Phase 0.5 package 26: station type 0 – a small waystation with landing pads instead of hangar bays,
 	# only for S and M ships (max_size), an extra station in most systems (not part of the station plan)
 	"waystation": {"name": "Waystation", "produces": ["water", "food"], "consumes": ["electronics", "medicine", "deuterium"],
-		"shop": ["tool", "optional", "tank"], "shipyard": false,
-		"refinery": {}, "manufacturing": [], "max_size": 2},
+		"shop": [], "shipyard": false,
+		"refinery": {}, "manufacturing": [], "max_size": 2,
+		# decision for part 4: a fixed small set of services – no shipyard, no outfitter
+		"services": ["market", "fuel", "repair", "hangar"]},
 }
 ## Phase 0.5 package 12: Pirate Havens are dockable with pirate standing – black market for
 ## scarce goods, an outfitter with weapons, no shipyard. Not part of the station plan.

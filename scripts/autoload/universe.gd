@@ -676,7 +676,7 @@ func build_test_layout() -> Dictionary:
 			"id": "st_0_%d" % L["stations"].size(), "planet": 0,
 			"name": "Testfeld – Waystation (T%d)" % wt, "type": "waystation", "tier": wt,
 			"pos": Vector2.from_angle(-PI * 0.5 + 0.25 * wt) * 1300000.0,
-			"market": _make_market("waystation", rng), "shop": _make_shop("waystation", wt, rng), "shipyard": [],
+			"market": _make_market("waystation", rng), "shop": [], "shipyard": [],
 			"seed": 2000 + wt, "zone": NO_FIRE_ZONE[wt - 1], "faction": FactionData.POWERS[wt % 3],
 		})
 	# Pirate Havens of all tiers on the edge (between the asteroid fields)
@@ -1006,7 +1006,7 @@ func _add_waystation(L: Dictionary, id: int) -> void:
 		"name": "%s Waystation" % systems[id]["name"],
 		"type": "waystation", "tier": tier, "pos": pos,
 		"market": _make_market("waystation", rng),
-		"shop": _make_shop("waystation", tier, rng),
+		"shop": [],
 		"shipyard": [],
 	})
 

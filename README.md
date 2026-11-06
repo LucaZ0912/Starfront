@@ -89,11 +89,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Station concourse (phase 0.5 package 27)
+- After docking the concourse shows three columns: the **commander** (portrait and career are placeholders for
+  now) and the **news** on the left, the **docked ship** with hull, armor, fuel, cargo and drones and the ship
+  services (refuel and repair with one click, drone bay, outfitter, hangar) in the middle, the **station** –
+  faction, standing, economy, your balance – and its services as long tiles on the right.
+
 ## Waystations – station type 0 (phase 0.5 package 26)
 - Small stations in most systems, out on the way to a gate: round **landing pads** instead of hangar bays,
   only for S and M ships. Ships land on a pad and sink through its hatch, and rise through it when they leave –
   one ship per pad at a time, the others wait.
-- A small market and an outfitter for tools, optional modules and tanks.
+- A fixed small set of services: market, fuel, repair and hangar – no shipyard, no outfitter.
 
 ## Axiom Astronautics – the Directorate's research and jump ships (phase 0.5 package 25g)
 - **Parallax** (S, from Neutral) and **Threshold** (L, from Allied), sold only at Directorate shipyards:

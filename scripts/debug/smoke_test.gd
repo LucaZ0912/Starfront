@@ -679,6 +679,7 @@ func _test_station(sp: StationUI) -> void:
 	check(Commands.execute({"type": "refine", "ore": "water_ice"}) == "" and float(hf.cargo.get("water", 0.0)) > 0.0, "ice refines into purified water")
 	hf.cargo.erase("water")
 	sp.show_concourse(false)
+	check(sp.concourse_tiles == GameData.services.size() and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
 	# Market via commands
 	var c0 := GameState.credits
 	var item := ""
@@ -1483,6 +1484,15 @@ func _shoot_standing(view: SystemView) -> void:
 		if int(st9["tier"]) > int(big_st["tier"]):
 			big_st = st9
 	var sp: StationUI = main.station_panel
+	# package 27: the concourse in three columns, with the pilot's ship docked for the picture
+	var f9 := GameState.active()
+	var keep_dock: String = f9.docked_at
+	f9.docked_at = String(big_st["id"])
+	sp.open(big_st, view)
+	for i8 in 30:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/concourse.png")
+	f9.docked_at = keep_dock
 	sp.open(big_st, view)
 	sp.open_service("outfitter")
 	for i in 20:
@@ -4979,6 +4989,16 @@ func _test_waystation(view: SystemView) -> void:
 	ls.set_order({"type": "dock", "node": wn})
 	ls._physics_process(0.05)
 	check(String(ls.order.get("type", "")) == "idle" and not ls.fits_pads(wn) and us.fits_pads(wn), "only S and M ships may land on a waystation – an L ship is turned away")
+	# a fixed small set of services: market, fuel, repair, hangar
+	var wsp := StationUI.new()
+	wsp.station = wd
+	var offered: Array = []
+	for svc in GameData.services:
+		if wsp.service_available(svc) == "":
+			offered.append(String(svc["id"]))
+	offered.sort()
+	wsp.free()
+	check(offered == ["fuel", "hangar", "market", "repair"], "waystation services: market, fuel, repair and hangar only (%s)" % ", ".join(offered))
 	for n9 in ships + [us, ls]:
 		if is_instance_valid(n9):
 			n9.queue_free()

@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.43 – 2026-11-07
+
+**Package 27 (part 1) – new station concourse.**
+- Three columns instead of the tile grid: commander (placeholder) and news; the docked ship with its state and
+  the ship services (refuel / repair in one click); the station with faction, economy, balance and its services.
+- Waystations offer only market, fuel, repair and hangar (as decided for part 4).
+
 ## alpha 0.4.25.42 – 2026-11-07
 
 **Package 26 – station type 0: waystations with landing pads.**
