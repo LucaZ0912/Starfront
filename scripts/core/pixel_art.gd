@@ -494,6 +494,7 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 # ---------------------------------------------------------------- Station
 
 const STATION_ACCENT := {
+	"waystation": Color(1.0, 0.72, 0.25),
 	"trade": Color(0.3, 0.85, 1.0), "industry": Color(1.0, 0.6, 0.2), "mining_colony": Color(0.9, 0.75, 0.3),
 	"agri": Color(0.45, 1.0, 0.4), "research": Color(0.75, 0.45, 1.0), "military": Color(1.0, 0.3, 0.3),
 	"ice_refinery": Color(0.85, 0.95, 1.0), "shipyard": Color(1.0, 0.5, 0.85), "pirate_haven": Color(1.0, 0.15, 0.2),

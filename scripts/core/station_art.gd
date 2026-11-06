@@ -34,6 +34,7 @@ var lights: Array = []    # {pos, col, rate, phase, strobe}
 var turrets: Array = []   # Vector2
 var neons: Array = []     # {pos, ang, len, wid}
 var vents: Array = []     # {pos, kind ("steam" / "smoke" / "spark" / "glow"), size}
+var pads: Array = []      # package 26: landing pads {pos, radius, dir, hatch}
 
 
 ## Texture + live points for a station / haven dictionary (cached per type, tier and seed).
@@ -65,13 +66,17 @@ static func build(data: Dictionary) -> Dictionary:
 			a._shipyard()
 		"pirate_haven":
 			a._haven()
+		"waystation":
+			a._waystation()
 		_:
 			a._trade()
 	var img := a._render()
 	var out := {
 		"texture": ImageTexture.create_from_image(img), "size": a.n * PX, "radius": a.n * PX * 0.45,
-		"bays": [], "lights": [], "turrets": [], "neons": [], "vents": [],
+		"bays": [], "lights": [], "turrets": [], "neons": [], "vents": [], "pads": [],
 	}
+	for pd in a.pads:
+		out["pads"].append({"pos": (pd["pos"] as Vector2) * PX, "radius": float(pd["radius"]) * PX, "dir": pd["dir"], "hatch": float(pd["hatch"]) * PX})
 	for b in a.bays:
 		out["bays"].append({"pos": (b["pos"] as Vector2) * PX, "dir": b["dir"], "width": float(b["width"]) * PX, "depth": float(b["depth"]) * PX})
 	for l in a.lights:
@@ -104,6 +109,8 @@ func _setup(t: String, tr: int, sd: int) -> void:
 		n = 320 + 60 * (tier - 1)
 	elif t == "pirate_haven":
 		n = 260 + 40 * (tier - 1)
+	elif t == "waystation":
+		n = 200 + 30 * (tier - 1)
 	c = n * 0.5
 	mat.resize(n * n)
 	mat.fill(NONE)
@@ -704,6 +711,46 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 	# engine nozzles at the dock end
 	for s in [-1.0, 1.0]:
 		disc(mid + Vector2(s * hw * 0.45, -sgn * hl * 0.98), hw * 0.28, DARK, 16.0, D_DISH)
+
+
+## Package 26: a waystation – a small hub on struts with round landing pads (2 / 3 / 4 by tier) for S and M
+## ships: hazard rim, a landing circle, a hatch in the middle the ships sink through, lights around it.
+const PAD_R := 19.0
+
+
+func _waystation() -> void:
+	var center := Vector2(c, c)
+	var count := tier + 1
+	var rp := n * 0.33
+	var hub := n * 0.12
+	var off := rng.randf() * TAU
+	# struts to the pads (lowest), then the hub
+	for k in count:
+		var ang := off + k * TAU / count
+		seg(P(hub * 0.8, ang), P(rp - PAD_R, ang), 5.0, HULL, 9.0, P_PLATES)
+		seg(P(hub * 0.8, ang + 0.18), P(rp - PAD_R * 0.6, ang + 0.35), 1.6, TRUSS, 8.0)
+	ring(center, hub * 1.05, hub * 1.4, PANEL, 10.0, true, 12)
+	disc(center, hub, HULL, 15.0, D_HUB)
+	disc(center, hub * 0.45, ACC, 18.0, D_DOME)
+	if tier >= 2:
+		# a small solar array between two struts
+		solar_wing(P(hub * 1.4, off + PI / count), P(n * 0.46, off + PI / count), 10.0)
+	for k in count:
+		var ang2 := off + k * TAU / count
+		var pc := P(rp, ang2)
+		var dir := Vector2.from_angle(ang2)
+		disc(pc, PAD_R + 2.0, DARK, 10.0, D_FLAT)
+		disc(pc, PAD_R, PANEL, 11.0, D_FLAT)
+		ring(pc, PAD_R * 0.58, PAD_R * 0.66, MARK, 11.4, false, 24)        # the landing circle
+		for j in 12:
+			var a3 := j * TAU / 12.0
+			if j % 2 == 0:
+				box(pc + Vector2.from_angle(a3) * (PAD_R - 1.8), a3, 1.4, 2.6, ACC, 11.6, P_HAZARD)
+		box(pc, ang2, 7.0, 7.0, DARK, 11.2)                                # the hatch (doors drawn live)
+		for j2 in 4:
+			light(pc + Vector2.from_angle(ang2 + PI * 0.25 + j2 * PI * 0.5) * (PAD_R + 1.0), Color(1.0, 0.72, 0.25), 1.2)
+		pads.append({"pos": pc - Vector2(c, c), "radius": PAD_R, "dir": dir, "hatch": 7.0})
+	light(center, Color(1, 1, 1), 1.0, true)
 
 
 func _haven() -> void:

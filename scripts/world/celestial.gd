@@ -25,7 +25,10 @@ var poly: PackedVector2Array   # colossus outline (local km), see ColossusShape
 var radar_hidden := false
 var art: Dictionary = {}          # station / haven: StationArt.build() result
 var turret_aim: Array = []        # current barrel angle per turret (station defence)
-var turret_flash: Array = []      # muzzle flash timer per turret      # colossus completely inside another one's radar shadow (Recon view)
+var turret_flash: Array = []      # muzzle flash timer per turret
+var pad_ship := {}                # package 26: pad index -> the ship landing on / lifting off it
+var pad_open := {}                # pad index -> hatch 0 (shut) … 1 (open)
+var pad_want := {}      # colossus completely inside another one's radar shadow (Recon view)
 
 
 func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0.7, -0.5)) -> void:
@@ -299,6 +302,8 @@ func _process(delta: float) -> void:
 	if kind in ["station", "haven"]:
 		for i in turret_flash.size():
 			turret_flash[i] = maxf(0.0, float(turret_flash[i]) - delta)
+		for pi in pad_want:
+			pad_open[pi] = move_toward(float(pad_open.get(pi, 0.0)), float(pad_want[pi]), delta * 1.6)
 		if visible:
 			queue_redraw()
 		return
@@ -312,6 +317,8 @@ func _draw() -> void:
 			var size := Vector2.ONE * float(art["size"])
 			draw_texture_rect(_tex, Rect2(-size * 0.5, size), false)
 			_draw_station_live()
+			if has_pads():
+				_draw_pads()
 			if String(data.get("faction", "")) != "":
 				_draw_holo_banner(String(data["faction"]), size.x)
 		"gate":
@@ -508,6 +515,91 @@ func _draw_station_live() -> void:
 		draw_rect(Rect2(lp2 - Vector2.ONE * px, Vector2.ONE * px * 2.0), Color(lc, a2))
 		if a2 > 0.5:
 			draw_circle(lp2, px * 4.0, Color(lc, 0.2 * a2))
+
+
+# ---------------------------------------------------------------- Package 26: landing pads
+
+func has_pads() -> bool:
+	return not art.get("pads", []).is_empty()
+
+
+func pad_world(i: int) -> Vector2:
+	return position + (art["pads"][i]["pos"] as Vector2)
+
+
+func pad_dir(i: int) -> Vector2:
+	return art["pads"][i]["dir"]
+
+
+func pad_of(ship) -> int:
+	for i in pad_ship:
+		if pad_ship[i] == ship:
+			return int(i)
+	return -1
+
+
+## A pad for `ship` (the one it already holds, else the free one nearest to `near`); -1 = all taken.
+## Only one ship lands on or lifts off a pad at a time.
+func claim_pad(ship, near: Vector2) -> int:
+	var own := pad_of(ship)
+	if own >= 0:
+		return own
+	for i in pad_ship.keys():
+		var s = pad_ship[i]
+		if s == null or not is_instance_valid(s) or s.dying or not String(s.order.get("type", "")) in ["dock", "docking", "undocking"]:
+			pad_ship.erase(i)
+			pad_want[i] = 0.0
+	var best := -1
+	var bd := INF
+	for i2 in art["pads"].size():
+		if pad_ship.has(i2):
+			continue
+		var d := pad_world(i2).distance_to(near)
+		if d < bd:
+			bd = d
+			best = i2
+	if best >= 0:
+		pad_ship[best] = ship
+	return best
+
+
+func release_pad(ship) -> void:
+	var i := pad_of(ship)
+	if i >= 0:
+		pad_ship.erase(i)
+		pad_want[i] = 0.0
+
+
+func set_pad_open(i: int, open: bool) -> void:
+	pad_want[i] = 1.0 if open else 0.0
+
+
+## The pads' live parts: the sliding hatch doors and a status lamp (green = free, amber blinking = in use).
+func _draw_pads() -> void:
+	var px := StationArt.PX
+	for i in art["pads"].size():
+		var pd: Dictionary = art["pads"][i]
+		var pc: Vector2 = pd["pos"]
+		var dir: Vector2 = pd["dir"]
+		var h: float = pd["hatch"]
+		var k := float(pad_open.get(i, 0.0))
+		draw_set_transform(pc, dir.angle(), Vector2.ONE)
+		draw_rect(Rect2(Vector2(-h, -h), Vector2(h, h) * 2.0), Color(0.02, 0.02, 0.03))
+		var door := h * (1.0 - k)
+		if door > 0.5:
+			draw_rect(Rect2(Vector2(-h, -h), Vector2(door, h * 2.0)), Color(0.3, 0.3, 0.33))
+			draw_rect(Rect2(Vector2(h - door, -h), Vector2(door, h * 2.0)), Color(0.27, 0.27, 0.3))
+			draw_rect(Rect2(Vector2(-h + door - px * 0.5, -h), Vector2(px * 0.5, h * 2.0)), Color(0.12, 0.12, 0.14))
+			for st in [-1.0, 1.0]:
+				draw_rect(Rect2(Vector2(-h, st * h * 0.5 - px * 0.5), Vector2(door, px)), Color(0.75, 0.6, 0.2, 0.8))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var busy := pad_ship.has(i)
+		var lamp := pc + dir * (float(pd["radius"]) + px * 3.0)
+		var on := not busy or fposmod(_t * 2.5, 1.0) < 0.5
+		var lc := Color(1.0, 0.7, 0.2) if busy else Color(0.3, 1.0, 0.45)
+		draw_rect(Rect2(lamp - Vector2.ONE * px, Vector2.ONE * px * 2.0), Color(lc, 1.0 if on else 0.25))
+		if on:
+			draw_circle(lamp, px * 4.0, Color(lc, 0.25))
 
 
 ## Docking bay closest to a point (world coordinates): {mouth, dir, width, depth} in world space.

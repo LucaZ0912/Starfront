@@ -670,6 +670,15 @@ func build_test_layout() -> Dictionary:
 	L["stations"].insert(0, start)
 	for k in L["stations"].size():
 		L["stations"][k]["id"] = "st_0_%d" % k
+	# package 26: a waystation of every tier
+	for wt in [1, 2, 3]:
+		L["stations"].append({
+			"id": "st_0_%d" % L["stations"].size(), "planet": 0,
+			"name": "Testfeld – Waystation (T%d)" % wt, "type": "waystation", "tier": wt,
+			"pos": Vector2.from_angle(-PI * 0.5 + 0.25 * wt) * 1300000.0,
+			"market": _make_market("waystation", rng), "shop": _make_shop("waystation", wt, rng), "shipyard": [],
+			"seed": 2000 + wt, "zone": NO_FIRE_ZONE[wt - 1], "faction": FactionData.POWERS[wt % 3],
+		})
 	# Pirate Havens of all tiers on the edge (between the asteroid fields)
 	for tier2 in [1, 2, 3]:
 		L["havens"].append({"id": "ph_0_%d" % tier2, "name": "Rustmaw T%d (Test)" % tier2, "type": "pirate_haven", "tier": tier2,
@@ -970,12 +979,45 @@ func _generate_layout(id: int) -> Dictionary:
 	return L
 
 
+## Package 26: a waystation (station type 0: landing pads for S and M ships) in most systems – out on the
+## way to one of the gates. Own RNG.
+const WAYSTATION_SHARE := 0.75
+
+
+func _add_waystation(L: Dictionary, id: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 52711 + id * 3301 + 11
+	if L["gates"].is_empty() or L["planets"].is_empty() or rng.randf() > WAYSTATION_SHARE:
+		return
+	var g: Dictionary = L["gates"][rng.randi() % L["gates"].size()]
+	var gp: Vector2 = g["pos"]
+	var pos := gp * rng.randf_range(0.5, 0.75) + gp.normalized().orthogonal() * rng.randf_range(-60000.0, 60000.0)
+	var pidx := 0
+	var bd := INF
+	for i in L["planets"].size():
+		var d := (L["planets"][i]["pos"] as Vector2).distance_to(pos)
+		if d < bd:
+			bd = d
+			pidx = i
+	var r := rng.randf()
+	var tier := 1 if r < 0.55 else (2 if r < 0.88 else 3)
+	L["stations"].append({
+		"id": "st_%d_%d" % [id, L["stations"].size()], "planet": pidx,
+		"name": "%s Waystation" % systems[id]["name"],
+		"type": "waystation", "tier": tier, "pos": pos,
+		"market": _make_market("waystation", rng),
+		"shop": _make_shop("waystation", tier, rng),
+		"shipyard": [],
+	})
+
+
 ## Phase 0.5 package 6: art seed + no-fire zone for every station, Ice Refineries next to icy
 ## fields, Shipyard Complexes in safe systems, Pirate Havens in lawless ones. Own RNG keeps the
 ## base layout (and saves) stable.
 func _special_stations(L: Dictionary, id: int, sec: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value * 70001 + id * 9173 + 3
+	_add_waystation(L, id)
 	var si := 0
 	for st in L["stations"]:
 		st["seed"] = rng.randi()

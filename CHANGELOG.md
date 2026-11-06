@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.42 – 2026-11-07
+
+**Package 26 – station type 0: waystations with landing pads.**
+- New small station type in most systems with 2–4 round landing pads instead of hangar bays (S and M ships only).
+- Landing and lifting off through an animated hatch; one ship per pad at a time, the others wait.
+
 ## alpha 0.4.25.41 – 2026-11-07
 
 - Kanayama-maru market: traders park nearby and send a cargo drone that lands on the runway over the stern,

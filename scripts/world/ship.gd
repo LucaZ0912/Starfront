@@ -321,6 +321,14 @@ func undock() -> void:
 	visible = true
 	if st_node == null:
 		return
+	if st_node.has_method("has_pads") and st_node.has_pads() and fits_pads(st_node):
+		# package 26: up through the hatch of a free landing pad (it waits inside while all are in use)
+		position = st_node.position
+		velocity = Vector2.ZERO
+		modulate.a = 0.0
+		order = {"type": "undocking", "node": st_node, "t": 0.0, "pad": -1}
+		activity = "Waiting for a free landing pad"
+		return
 	var bay: Dictionary = st_node.nearest_bay(st_node.position + Vector2.from_angle(randf() * TAU) * 5000.0)
 	if bay.is_empty():
 		var dir := Vector2.from_angle(randf() * TAU)
@@ -355,6 +363,9 @@ func _update_docking(delta: float) -> void:
 	order["t"] = float(order["t"]) + delta
 	var bay: Dictionary = order.get("bay", {})
 	velocity = Vector2.ZERO
+	if order.has("pad"):
+		_dock_pad(stn)
+		return
 	if bay.is_empty():
 		_dock_spiral(stn)
 		return
@@ -383,6 +394,9 @@ func _update_docking(delta: float) -> void:
 
 
 func _update_undocking(delta: float) -> void:
+	if order.has("pad"):
+		_undock_pad(delta)
+		return
 	order["t"] = float(order["t"]) + delta
 	var bay: Dictionary = order["bay"]
 	var k := clampf(float(order["t"]) / UNDOCK_TIME, 0.0, 1.0)
@@ -404,6 +418,136 @@ func _update_undocking(delta: float) -> void:
 		order = {"type": "idle"}
 		if then.get("type", "idle") != "idle":
 			set_order(then)
+
+
+# ---------------------------------------------------------------- Package 26: landing pads
+
+const PAD_DOCK_TIME := 4.4
+const PAD_SINK := 0.62            # the ship's scale when it has sunk through the hatch
+
+
+## A waystation's pads take only S and M ships.
+func fits_pads(st_node) -> bool:
+	var tdef: Dictionary = GameData.station_types.get(String(st_node.data.get("type", "")), {})
+	return int(fit.hull().get("size", 1)) <= int(tdef.get("max_size", 3))
+
+
+## Flying in to a landing pad: claims a free pad when close (one ship per pad), waits outside while all are
+## taken, then lines up over its pad. Returns where to fly, or null once the landing has begun.
+func _pad_approach(st_node):
+	if not fits_pads(st_node):
+		if faction == "player":
+			GameState.log_msg("%s: the landing pads take only S and M ships." % st_node.data.get("name", "The waystation"), GameState.COL_WARN)
+			order = {"type": "idle"}
+			return null
+		# traffic that is too big for the pads ends its trip at the station
+		if position.distance_to(st_node.position) < st_node.radius + 900.0:
+			view.spawn_fx(Fx.flash(position, Color(0.4, 0.9, 1.0), radius * 2.5))
+			_dock(st_node)
+			return null
+		return st_node.position
+	var near_d := position.distance_to(st_node.position)
+	var pi: int = st_node.claim_pad(self, position) if near_d < st_node.radius + 8000.0 else -1
+	if pi < 0:
+		var out: Vector2 = (position - st_node.position).normalized()
+		if out == Vector2.ZERO:
+			out = Vector2.RIGHT
+		activity = "Waiting for a free landing pad" if near_d < st_node.radius + 8000.0 else "Approaching for landing"
+		return st_node.position + out * (st_node.radius + 1800.0)
+	var pad: Vector2 = st_node.pad_world(pi)
+	var line_up: Vector2 = pad + st_node.pad_dir(pi) * (radius + 300.0)
+	activity = "Approaching landing pad %d" % (pi + 1)
+	if position.distance_to(line_up) < 160.0:
+		order = {"type": "docking", "node": st_node, "t": 0.0, "from": position, "pad": pi, "h0": heading}
+		return null
+	return line_up
+
+
+## Landing: glides over the pad and turns to face the station, settles, the hatch opens and the ship sinks
+## through it into the station.
+func _dock_pad(stn) -> void:
+	var pi := int(order["pad"])
+	var pad: Vector2 = stn.pad_world(pi)
+	var dir: Vector2 = stn.pad_dir(pi)
+	var k := clampf(float(order["t"]) / PAD_DOCK_TIME, 0.0, 1.0)
+	if k < 0.35:
+		var e := smoothstep(0.0, 1.0, k / 0.35)
+		position = (order["from"] as Vector2).lerp(pad, e)
+		heading = lerp_angle(float(order.get("h0", heading)), (-dir).angle(), e)
+		scale = Vector2.ONE
+	elif k < 0.5:
+		position = pad
+		heading = (-dir).angle()
+		scale = Vector2.ONE * lerpf(1.0, 0.88, smoothstep(0.35, 0.5, k))          # touch-down
+		if k > 0.42:
+			stn.set_pad_open(pi, true)
+	else:
+		position = pad
+		var e2 := smoothstep(0.5, 1.0, k)
+		scale = Vector2.ONE * lerpf(0.88, PAD_SINK, e2)                           # down through the hatch
+		var dark := e2
+		modulate = Color(lerpf(1.0, 0.4, dark), lerpf(1.0, 0.4, dark), lerpf(1.0, 0.45, dark), 1.0 - smoothstep(0.75, 1.0, k))
+	activity = "Landing on pad %d …" % (pi + 1)
+	if k >= 1.0:
+		scale = Vector2.ONE
+		modulate = Color.WHITE
+		stn.set_pad_open(pi, false)
+		stn.release_pad(self)
+		_dock(stn)
+
+
+## Lifting off: waits inside for a free pad, the hatch opens, the ship rises through it, the hatch shuts,
+## then it lifts off away from the station.
+func _undock_pad(delta: float) -> void:
+	var stn = order.get("node")
+	if stn == null or not is_instance_valid(stn):
+		order = {"type": "idle"}
+		scale = Vector2.ONE
+		modulate = Color.WHITE
+		return
+	velocity = Vector2.ZERO
+	var pi := int(order["pad"])
+	if pi < 0:
+		pi = stn.claim_pad(self, stn.position + Vector2.from_angle(randf() * TAU) * 100.0)
+		if pi < 0:
+			position = stn.position
+			modulate.a = 0.0
+			activity = "Waiting for a free landing pad"
+			return
+		order["pad"] = pi
+		order["t"] = 0.0
+	order["t"] = float(order["t"]) + delta
+	var t := float(order["t"])
+	var pad: Vector2 = stn.pad_world(pi)
+	var dir: Vector2 = stn.pad_dir(pi)
+	heading = dir.angle()
+	activity = "Lifting off from pad %d …" % (pi + 1)
+	if t < 0.5:
+		stn.set_pad_open(pi, true)
+		position = pad
+		scale = Vector2.ONE * PAD_SINK
+		modulate.a = 0.0
+	elif t < 1.9:
+		var e := smoothstep(0.0, 1.0, (t - 0.5) / 1.4)
+		position = pad
+		scale = Vector2.ONE * lerpf(PAD_SINK, 1.0, e)
+		var dark := 1.0 - e
+		modulate = Color(lerpf(1.0, 0.4, dark), lerpf(1.0, 0.4, dark), lerpf(1.0, 0.45, dark), clampf(e * 1.6, 0.0, 1.0))
+	elif t < 2.4:
+		stn.set_pad_open(pi, false)
+		position = pad
+		scale = Vector2.ONE
+		modulate = Color.WHITE
+	else:
+		var k2 := clampf((t - 2.4) / 1.4, 0.0, 1.0)
+		position = pad + dir * k2 * k2 * (radius * 2.0 + 700.0)
+		if k2 >= 1.0:
+			stn.release_pad(self)
+			velocity = dir * 160.0
+			var then: Dictionary = order.get("then", {"type": "idle"})
+			order = {"type": "idle"}
+			if then.get("type", "idle") != "idle":
+				set_order(then)
 
 
 ## Fallback without bays: the ship spirals into the station hub.
@@ -811,7 +955,11 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 				GameState.log_msg(GameState.rep.dock_error(st_node.data), GameState.COL_WARN)
 				order = {"type": "idle"}
 				return
-			if st_node != null and is_instance_valid(st_node):
+			if st_node != null and is_instance_valid(st_node) and st_node.has_method("has_pads") and st_node.has_pads():
+				dest = _pad_approach(st_node)          # package 26: a waystation's landing pads
+				if dest == null:
+					return
+			elif st_node != null and is_instance_valid(st_node):
 				var bay: Dictionary = st_node.nearest_bay(position) if st_node.has_method("nearest_bay") else {}
 				if bay.is_empty():
 					dest = st_node.position

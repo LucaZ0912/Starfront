@@ -106,6 +106,11 @@ const STATION_TYPES := {
 		"consumes": ["iron_ingot", "titanium_ingot", "cobalt_ingot", "aluminium", "electronics", "alloys", "neodymium"],
 		"shop": ["hull", "engine", "reactor", "distributor", "tank", "hyperdrive", "weapon", "optional"], "shipyard": true,
 		"refinery": {"metallic": 0.8}, "manufacturing": ["hull", "engine", "reactor", "distributor", "tank", "hyperdrive"]},
+	# Phase 0.5 package 26: station type 0 – a small waystation with landing pads instead of hangar bays,
+	# only for S and M ships (max_size), an extra station in most systems (not part of the station plan)
+	"waystation": {"name": "Waystation", "produces": ["water", "food"], "consumes": ["electronics", "medicine", "deuterium"],
+		"shop": ["tool", "optional", "tank"], "shipyard": false,
+		"refinery": {}, "manufacturing": [], "max_size": 2},
 }
 ## Phase 0.5 package 12: Pirate Havens are dockable with pirate standing – black market for
 ## scarce goods, an outfitter with weapons, no shipyard. Not part of the station plan.

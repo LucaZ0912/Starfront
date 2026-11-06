@@ -89,6 +89,12 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Waystations – station type 0 (phase 0.5 package 26)
+- Small stations in most systems, out on the way to a gate: round **landing pads** instead of hangar bays,
+  only for S and M ships. Ships land on a pad and sink through its hatch, and rise through it when they leave –
+  one ship per pad at a time, the others wait.
+- A small market and an outfitter for tools, optional modules and tanks.
+
 ## Axiom Astronautics – the Directorate's research and jump ships (phase 0.5 package 25g)
 - **Parallax** (S, from Neutral) and **Threshold** (L, from Allied), sold only at Directorate shipyards:
   sensors +25 %, signature −25 %, power use −15 %, a built-in **cloaking device** (invisible and

@@ -526,6 +526,7 @@ func _process(delta: float) -> void:
 				_test_concord(view)
 				_test_forge(view)
 				_test_axiom(view)
+				_test_waystation(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -926,12 +927,14 @@ func _test_resources() -> void:
 	for sid3 in Universe.systems.size():
 		var lay3 := Universe.get_layout(sid3)
 		var plan3: Array = Universe.systems[sid3]["stations_plan"]
-		plan_ok = plan_ok and plan3.size() == lay3["stations"].size()
+		# package 26: waystations come on top of the station plan
+		var sts3: Array = lay3["stations"].filter(func(x): return x["type"] != "waystation")
+		plan_ok = plan_ok and plan3.size() == sts3.size()
 		var icy := false
 		for f3 in lay3["fields"]:
 			icy = icy or f3["class"] == "icy"
-		for k3 in lay3["stations"].size():
-			var st3: Dictionary = lay3["stations"][k3]
+		for k3 in sts3.size():
+			var st3: Dictionary = sts3[k3]
 			combos["%s_%d" % [st3["type"], int(st3["tier"])]] = true
 			plan_ok = plan_ok and st3["type"] == plan3[k3][0] and int(st3["tier"]) == int(plan3[k3][1])
 			ice_ok = ice_ok and (st3["type"] != "ice_refinery" or icy)
@@ -954,7 +957,11 @@ func _test_resources() -> void:
 	var sys_before := Universe.systems.size()
 	var TL := Universe.build_test_layout()
 	var t_types := {}
+	var t_ways := {}
 	for st8 in TL["stations"]:
+		if st8["type"] == "waystation":
+			t_ways[int(st8["tier"])] = true
+			continue
 		t_types[st8["type"]] = true
 	var t_planets := {}
 	for p8 in TL["planets"]:
@@ -975,8 +982,9 @@ func _test_resources() -> void:
 			all_ores += 1
 	var t_combos := {}
 	for st7 in TL["stations"]:
-		t_combos["%s_%d" % [st7["type"], int(st7["tier"])]] = true
-	check(t_types.size() == Universe.ALL_STATION_TYPES.size() and t_combos.size() == 24 and TL["havens"].size() == 3, "test system: every station type in every tier + havens (%d types, %d combos)" % [t_types.size(), t_combos.size()])
+		if st7["type"] != "waystation":
+			t_combos["%s_%d" % [st7["type"], int(st7["tier"])]] = true
+	check(t_types.size() == Universe.ALL_STATION_TYPES.size() and t_combos.size() == 24 and TL["havens"].size() == 3 and t_ways.size() == 3, "test system: every station type in every tier + havens + waystations (%d types, %d combos)" % [t_types.size(), t_combos.size()])
 	check(TL["stations"][0]["type"] == "trade" and int(TL["stations"][0]["tier"]) == 3, "test system: start at the tier-3 Trade Hub")
 	check(t_planets.size() == Universe.PLANET_TYPES.size(), "test system: every planet type")
 	check(t_ores.size() == all_ores and t_sizes.size() == 3, "test system: every ore (%d/%d) and asteroid size" % [t_ores.size(), all_ores])
@@ -2547,8 +2555,8 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 	check(locked_ok and pl.lock_index("ship:%d" % lead.fit.uid) < 0, "Lock hotkey locks the selected target – pressed again it unlocks")
 	check(main.hud.hotkey_command("cmd_jump") != "" and main.hud.hotkey_command("cmd_dock") != "", "Jump / Dock hotkeys refuse a ship as target")
 	# Tab: nearest hostile, again: the next one; B: the nearest station within 5,000 km
-	var h1: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(1500, 0))
-	var h2: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(0, 2500))
+	var h1: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(300, 0))
+	var h2: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(0, 600))
 	main.hud.show_selected("")
 	main.hud.hotkey_command("sel_hostile")
 	var first: String = main.hud.selected_id
@@ -4888,3 +4896,93 @@ func _test_axiom(view: SystemView) -> void:
 	Commands.cheats_enabled = cheats
 	check(e5 == "" and GameState.exotic_matter == em0 + 10, "debug menu: +10 exotic matter (and the wormhole cooldown reset)")
 	GameState.exotic_matter = em0
+
+
+## Phase 0.5 package 26: station type 0 – waystations with landing pads for S and M ships.
+func _test_waystation(view: SystemView) -> void:
+	var a1: Dictionary = StationArt.build({"type": "waystation", "tier": 1, "seed": 11})
+	var a3: Dictionary = StationArt.build({"type": "waystation", "tier": 3, "seed": 12})
+	check(a1["pads"].size() == 2 and a3["pads"].size() == 4 and a1["bays"].is_empty(), "waystation: landing pads instead of hangar bays (2 at tier 1 … 4 at tier 3)")
+	var with_ws := 0
+	for sy in Universe.systems:
+		for st in Universe.get_layout(int(sy["id"]))["stations"]:
+			if st["type"] == "waystation":
+				with_ws += 1
+	check(with_ws > Universe.systems.size() / 2 and with_ws <= Universe.systems.size(), "a waystation in most systems (%d of %d)" % [with_ws, Universe.systems.size()])
+	var wd := {"id": "st_ws_test", "name": "Test Waystation", "type": "waystation", "tier": 1, "pos": view.player.position + Vector2(0, -160000),
+		"seed": 11, "zone": 0.0, "faction": "", "market": {}, "shop": [], "shipyard": []}
+	var wn: Celestial = view._add_celestial("station", wd)
+	view.stations[wd["id"]] = wn
+	# three shuttles want to land on two pads
+	var ships: Array = []
+	for k in 3:
+		var sh: Ship = view.spawn_npc("civ_shuttle", wn.position + Vector2.from_angle(k * 2.0) * (wn.radius + 2500.0), "civilian", "")
+		sh.set_physics_process(false)
+		sh.set_order({"type": "dock", "node": wn})
+		ships.append(sh)
+	var max_on_pad := 0
+	var waited := false
+	var sank := false
+	var hatch_opened := false
+	for step in 2400:
+		var per_pad := {}
+		for sh2 in ships:
+			if not is_instance_valid(sh2) or sh2.is_queued_for_deletion() or sh2.is_docked():
+				continue
+			sh2._physics_process(0.05)
+			if not is_instance_valid(sh2) or sh2.is_queued_for_deletion():
+				continue
+			if String(sh2.order.get("type", "")) == "docking" and sh2.order.has("pad"):
+				var pk := int(sh2.order["pad"])
+				per_pad[pk] = int(per_pad.get(pk, 0)) + 1
+				sank = sank or sh2.scale.x < 0.8
+			if sh2.activity == "Waiting for a free landing pad":
+				waited = true
+		wn._process(0.05)
+		for v in wn.pad_open.values():
+			hatch_opened = hatch_opened or float(v) > 0.9
+		for v2 in per_pad.values():
+			max_on_pad = maxi(max_on_pad, int(v2))
+	var docked := 0
+	for sh3 in ships:
+		if not is_instance_valid(sh3) or sh3.is_queued_for_deletion() or sh3.is_docked():
+			docked += 1
+	check(docked == 3 and waited and sank and hatch_opened and max_on_pad == 1, "ships land on the pads one at a time per pad and sink through the opening hatch – the third waits for a free pad")
+	# lifting off: up through the hatch, then away
+	var uf := GameState.create_from_preset("std_axa_parallax", "player")
+	uf.uid = 99930
+	uf.docked_at = wd["id"]
+	uf.position = wn.position
+	var us := Ship.new()
+	us.setup(uf, view)
+	view.ship_layer.add_child(us)
+	us.set_physics_process(false)
+	us.undock()
+	var rose := false
+	var on_pad := false
+	for st2 in 200:
+		if String(us.order.get("type", "")) != "undocking":
+			break
+		us._update_undocking(0.05)
+		on_pad = on_pad or wn.pad_of(us) >= 0
+		rose = rose or (us.scale.x > Ship.PAD_SINK + 0.1 and us.scale.x < 0.99 and us.modulate.a > 0.2)
+	var away: bool = String(us.order.get("type", "")) != "undocking" and wn.pad_of(us) < 0 and us.position.distance_to(wn.position) > wn.radius * 0.4
+	check(on_pad and rose and away, "lifting off: the ship rises through the hatch of a free pad and flies off")
+	# only S and M ships
+	var lf := GameState.create_from_preset("std_axa_threshold", "player")
+	lf.uid = 99931
+	lf.position = wn.position + Vector2(3000, 0)
+	var ls := Ship.new()
+	ls.setup(lf, view)
+	view.ship_layer.add_child(ls)
+	ls.set_physics_process(false)
+	ls.set_order({"type": "dock", "node": wn})
+	ls._physics_process(0.05)
+	check(String(ls.order.get("type", "")) == "idle" and not ls.fits_pads(wn) and us.fits_pads(wn), "only S and M ships may land on a waystation – an L ship is turned away")
+	for n9 in ships + [us, ls]:
+		if is_instance_valid(n9):
+			n9.queue_free()
+	view.stations.erase(wd["id"])
+	view.celestials.erase(wn)
+	view.by_id.erase(wd["id"])
+	wn.queue_free()

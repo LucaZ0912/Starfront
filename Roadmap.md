@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; als Nächstes Paket 26 (Stationstyp 0). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.41. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig, als Nächstes Paket 27 (Ausrüster & Übersicht). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.42. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -965,7 +965,16 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 
 ### Stationstyp 0 (Paket 26)
 
-- **Neuer Stationstyp 0:** lässt nur S- und M-Schiffe landen und kann als **zusätzliche Station in allen Systemen** vorkommen.
+- [x] **Neuer Stationstyp 0:** lässt nur S- und M-Schiffe landen und kann als **zusätzliche Station in allen Systemen** vorkommen.
+
+**Umgesetzt 26 (7. Nov 2026, alpha 0.4.25.42)** – „Waystation“ (Raststation) mit Landeplattformen statt Hangarbuchten (Vorschlag Luz), 5 neue automatische Prüfungen:
+
+- [x] **Aussehen:** kleiner Kern mit Ring und Kuppel, auf Streben runde **Landeplattformen** (2 / 3 / 4 nach Stufe) – Warnstreifen-Rand, gelber Landekreis, Lichter, in der Mitte eine **Luke**; ab Stufe 2 ein Solarsegel. Bernsteinfarbener Akzent.
+- [x] **Landen:** Anflug über die Plattform, Ausrichten zur Station, Aufsetzen, die Lukentüren gleiten auf und das Schiff sinkt hindurch (wird kleiner und dunkler). **Starten:** Luke auf, das Schiff steigt auf, Luke zu, dann hebt es nach außen ab.
+- [x] **Immer nur ein Schiff pro Plattform** beim Landen oder Starten – wer keine freie Plattform bekommt, wartet außerhalb (bzw. beim Start im Inneren). Statuslampe je Plattform: grün frei, gelb blinkend belegt.
+- [x] **Nur S- und M-Schiffe** (`max_size` 2): L-Schiffe des Piloten werden abgewiesen; zu großer NPC-Verkehr endet seine Fahrt dort ohne Plattform.
+- [x] **Verbreitung:** in rund drei Vierteln aller Systeme eine Raststation (zusätzlich zum Stationsplan), draußen auf dem Weg zu einem Sprungtor; Stufe 1 (55 %), 2 (33 %), 3 (12 %). Im Testfeld eine je Stufe.
+- [x] **Angebot:** kleiner Markt (erzeugt Wasser und Nahrung, braucht Elektronik, Medizin, Deuterium), Ausrüster für Werkzeuge, Optionales und Tanks; keine Werft, keine Raffinerie.
 
 ### Ausrüster & Übersicht (Paket 27)
 
