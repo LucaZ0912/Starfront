@@ -183,6 +183,9 @@ func _build_ship() -> void:
 	var r := _row()
 	r.add_child(UI.button("Refill everything", func(): _cmd({"type": "debug_refill"})))
 	r.add_child(UI.button("Empty cargo hold", func(): _cmd({"type": "debug_clear_cargo"})))
+	var rp := _row()
+	rp.add_child(UI.button("Citadel: launch from the platform", func(): _cmd({"type": "debug_platform_launch"})))
+	content.add_child(UI.wrap_label("Plays the S-ship launch of the Citadel's platform (animation only – the ship itself comes with part 5). Drones always use the small drone hatch behind it.", 12, UI.TEXT_DIM, 440))
 	_section("New ship (into the hangar)")
 	var ids: Array = GameData.hulls.keys()
 	var labels: Array = []

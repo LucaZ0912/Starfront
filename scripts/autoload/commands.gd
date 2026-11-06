@@ -1040,6 +1040,15 @@ func _c_debug_spawn(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_platform_launch"} – the Citadel's S-ship platform: hatch, rising ship, lift-off
+## (animation only; the S ship itself comes with Teil 5) – package 25d.
+func _c_debug_platform_launch(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	return world.player.launch_platform()
+
+
 ## {"type":"debug_kill_hostiles"} – destroys all pirates in the system (counts as kills).
 func _c_debug_kill_hostiles(_c: Dictionary) -> String:
 	var e := _need_world()

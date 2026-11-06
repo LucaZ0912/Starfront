@@ -19,7 +19,8 @@ extends RefCounted
 ## analysis), missile_rof (× fire rate of rockets and torpedoes), "pd" in builtin (point defence),
 ## yard_rule "military" (only at military stations, shipyard complexes and tier-3 stations),
 ## heavy_missiles (can carry long-range and nuclear missiles later), small_ship_bay (Teil 5: a bay on
-## top for an S ship).
+## top for an S ship). hatches {name: [x, y, w, h]} = sliding hatches in pixel-art columns/rows of the
+## full (mirrored) ship image: "drones" (drones launch and land through it), "platform" (the S-ship bay).
 ## drones (package 23): how many drones the ship can have out at once (S 1 … L 9). Every hull has
 ## a drone hangar slot ("hangar", size = storage, quality = more room) and the three drone
 ## equipment slots dweapon (weapon size 1), dtool (mining laser size 1) and dbonus (drone module).
@@ -170,6 +171,7 @@ const HULLS := {
 		"slot_sizes": {"weapon": [3, 3, 3, 2, 2], "tool": [1], "optional": [8, 7, 6, 5, 4], "hull": 9, "engine": 8, "reactor": 9, "distributor": 9, "tank": 7, "hyperdrive": 6, "sensors": 6, "hangar": 9, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 9, "shape": "hdy_citadel", "length": 100,
 		"reflect": 0.20, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true, "small_ship_bay": true,
+		"hatches": {"platform": [43, 12, 15, 13], "drones": [20, 14, 8, 9]},
 		"builtin": ["pd"], "yard_rule": "military",
 		"desc": "A small fleet carrier – a fortress with nine drones, built-in point defence and a reflective hull (20 %). Sold only at military stations and the biggest yards.",
 	},

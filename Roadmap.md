@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle) und 25d (Hadrian Dynamics) fertig, als Nächstes 25e (Concord Fleetworks). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.17. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle) und 25d (Hadrian Dynamics) fertig, als Nächstes 25e (Concord Fleetworks). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.18. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -903,6 +903,9 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Piraten** fliegen heruntergekommene Kopien (rostiger Stahl, orange Lichter, Ausrüstung der Qualität E/F) – Talon, Maul und Citadel, nie die Goliath (20 % der Piraten).
 - [x] **Directorate-Patrouillen** fliegen zur Hälfte Talon, Maul und Goliath statt Earthworks-Schiffen.
 - [x] **Debug-Funktion** (Debug-Menü → World): „Spawn any ship next to you“ – jede Ausrüstung als Gegner oder neutral (z. B. um die reflektierende Hülle zu testen).
+- [x] Design-Überarbeitung (0.4.25.18): Seitenteile abgerundet (Raketenkapsel der Talon, Panzerschürze der Maul). Goliath: die Waffenarme setzen ganz hinten an und bilden einen Bogen um den Rumpf; statt eines großen Haupttriebwerks sitzen zwei kleinere hinten an den Armen.
+- [x] **Citadel mit Startplattform:** große Plattform mittschiffs (Stahlrahmen, rote Eckleuchten) mit Schiebeklappe – für das S-Schiff aus Teil 5. Animation: die Klappe fährt weg, das kleine Schiff taucht darunter auf, hebt ab, die Klappe schließt wieder (vorerst nur als Animation; Debug-Menü → Ship: „Citadel: launch from the platform“). Dahinter eine kleine **Drohnenklappe** mit derselben Animation: die Drohnen steigen nacheinander daraus auf und landen wieder darin.
+- [ ] Citadel-Brücke: vier Vorschläge (Keep mit Zinnen und Schießscharten, Kommandoturm mit rotem Visier, Panzerkuppel mit Schlitzring, Bug-Brücke mit rotem Fensterwinkel) – Auswahl durch Luz, vorläufig der Keep.
 
 ### Stationstyp 0 (Paket 26)
 

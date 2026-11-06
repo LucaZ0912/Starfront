@@ -22,8 +22,10 @@ var _burn := "idle"
 var _think := 0.0
 var _idle := false                # flying in formation this frame
 var runway := false               # still taking off along the carrier's flight deck
+var hatch_launch := false         # waiting below the carrier's drone hatch (package 25d, Citadel)
 var _hold := 0.0                  # waiting for its turn at the start of the runway
 const RUNWAY_GAP := 0.45          # seconds between two drones on the runway
+const HATCH_WAIT := 0.5           # the drone hatch needs this long to slide open
 
 
 func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: int) -> void:
@@ -57,6 +59,16 @@ func setup_drone(p_carrier: Ship, p_rec: Dictionary, p_view: Node, uid: int, n: 
 		runway = true
 		_hold = RUNWAY_GAP * carrier.deck_queue
 		carrier.deck_queue += 1
+	elif carrier.has_hatch("drones"):
+		# the Citadel: the drone hatch slides open, the drones rise out of it one by one
+		hatch_launch = true
+		_hold = HATCH_WAIT + RUNWAY_GAP * carrier.hatch_queue
+		carrier.hatch_queue += 1
+		carrier.open_hatch("drones", _hold + 0.4)
+		position = carrier.hatch_point("drones")
+		velocity = carrier.velocity
+		heading = carrier.heading
+		visible = false
 
 
 func hull_max() -> float:
@@ -80,6 +92,9 @@ func _physics_process(delta: float) -> void:
 	if runway:
 		_take_off(delta)
 		return
+	if hatch_launch:
+		_rise_from_hatch(delta)
+		return
 	_wcd = maxf(0.0, _wcd - delta)
 	hit_flash = maxf(0.0, hit_flash - delta)
 	if float(dstats["shield"]) > 0.0:
@@ -99,6 +114,11 @@ func _physics_process(delta: float) -> void:
 		work = null
 		dest = carrier.deck_point(0.5)
 		var land := 40.0 if carrier.has_deck() else float(carrier.radius) + 40.0
+		if carrier.has_hatch("drones"):
+			dest = carrier.hatch_point("drones")      # back in through the drone hatch
+			land = 40.0
+			if position.distance_to(dest) < 350.0:
+				carrier.open_hatch("drones", 0.6)
 		if position.distance_to(dest) < land:
 			view.stow_drone(self)
 			return
@@ -408,6 +428,22 @@ func _take_off(delta: float) -> void:
 	if along >= deck_len + 60.0:
 		runway = false
 		carrier.deck_queue = maxi(carrier.deck_queue - 1, 0)
+
+
+## Waits in the dark below the drone hatch until it is open and its turn has come, then rises out.
+func _rise_from_hatch(delta: float) -> void:
+	_hold -= delta
+	position = carrier.hatch_point("drones")
+	velocity = carrier.velocity
+	heading = carrier.heading
+	fit.position = position
+	visible = _hold < 0.3 and float(carrier.hatch_open.get("drones", 0.0)) > 0.7
+	if _hold <= 0.0:
+		hatch_launch = false
+		visible = true
+		carrier.hatch_queue = maxi(carrier.hatch_queue - 1, 0)
+		velocity = carrier.velocity + Vector2.from_angle(carrier.heading + PI * (0.5 if randf() < 0.5 else -0.5)) * 160.0
+	queue_redraw()
 
 
 # ---------------------------------------------------------------- movement, loss

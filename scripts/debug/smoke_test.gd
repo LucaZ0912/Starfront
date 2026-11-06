@@ -201,7 +201,8 @@ func _process(delta: float) -> void:
 						best = c
 				var aid: String = best.data["id"]
 				view.player.position = best.position + Vector2(200, 0)
-				check(Commands.execute({"type": "lock", "id": aid}) == "", "asteroid lock")
+				var lerr: String = Commands.execute({"type": "lock", "id": aid})
+				check(lerr == "", "asteroid lock %s" % lerr)
 				view.player.locks[0]["progress"] = 1.0
 				check(Commands.execute({"type": "activate", "slot": main.hud.module_slots[0]}).contains("needs a ship"), "weapons refuse an asteroid")
 				Commands.execute({"type": "unlock", "id": aid})
@@ -1479,6 +1480,44 @@ func _shoot_standing(view: SystemView) -> void:
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/khi_smoke.png")
 		ks.queue_free()
+		# package 25d: the Citadel opens its platform hatch (S ship rises) and its drone hatch
+		var cf9 := GameState.create_from_preset("std_hdy_citadel", "player")
+		cf9.system_id = view.system_id
+		cf9.position = bc.position + Vector2(0, 3500)
+		cf9.drones = []
+		for i9 in 4:
+			cf9.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+		var cs9 := Ship.new()
+		cs9.manual = true
+		cs9.setup(cf9, view)
+		view.ship_layer.add_child(cs9)
+		cs9.heading = -0.25
+		view.camera.position = cs9.position
+		cs9.launch_platform()
+		view.launch_drones(cs9)
+		for i10 in 70:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/citadel_hatches.png")
+		for i11 in 50:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/citadel_liftoff.png")
+		var gf9 := GameState.create_from_preset("std_hdy_goliath", "player")
+		gf9.system_id = view.system_id
+		gf9.position = cs9.position + Vector2(0, 2200)
+		var gs9 := Ship.new()
+		gs9.manual = true
+		gs9.setup(gf9, view)
+		view.ship_layer.add_child(gs9)
+		gs9.heading = 0.3
+		gs9.velocity = Vector2.from_angle(0.3) * 80.0
+		view.camera.position = gs9.position
+		for i12 in 30:
+			await get_tree().physics_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/goliath.png")
+		for dd9 in view.drones_of(cs9):
+			view.stow_drone(dd9)
+		cs9.queue_free()
+		gs9.queue_free()
 		for dd5 in view.drones_of(bc):
 			view.stow_drone(dd5)
 		bc.queue_free()
@@ -3865,6 +3904,46 @@ func _test_hadrian(view: SystemView) -> void:
 	var dir_p: Array = view.traffic._gov_presets("directorate", many)
 	var asm_p: Array = view.traffic._gov_presets("assembly", many)
 	check(dir_p.has("patrol_hdy_light") and dir_p.has("patrol_light") and not asm_p.has("patrol_hdy_light"), "Directorate patrols fly Earthworks and Hadrian ships")
+	# package 25d (design): the Goliath's two drives sit on its arms – no main engine on the centre line
+	var ga: Array = PixelArt.ShipArt.SHIPS["hdy_goliath"]
+	var centre: String = ga[ga.size() - 1]
+	var arm_drive := false
+	for row in ga:
+		arm_drive = arm_drive or String(row).begins_with("f")
+	check(not centre.contains("f") and arm_drive, "Goliath: two drives on the arms, none on the hull")
+	# the Citadel: drones rise out of the drone hatch, the platform plays its launch
+	var cf := GameState.create_from_preset("std_hdy_citadel", "player")
+	cf.position = view.player.position + Vector2(0, -90000)
+	cf.uid = 99905
+	cf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
+	var cship := Ship.new()
+	cship.manual = true
+	cship.setup(cf, view)
+	view.ship_layer.add_child(cship)
+	view.launch_drones(cship)
+	var ds: Array = view.drones_of(cship)
+	var below: bool = ds.size() == 2 and ds[0].hatch_launch and ds[0].position.distance_to(cship.hatch_point("drones")) < 1.0 and not ds[0].visible
+	for i in 30:
+		cship._update_hatches(1.0 / 30.0)
+	var opened := float(cship.hatch_open.get("drones", 0.0)) > 0.99
+	for i2 in 60:
+		cship._update_hatches(1.0 / 30.0)
+		for d in ds:
+			d._physics_process(1.0 / 30.0)
+	var out_all: bool = not ds[0].hatch_launch and not ds[1].hatch_launch and ds[0].visible
+	for i3 in 60:
+		cship._update_hatches(1.0 / 30.0)
+	check(below and opened and out_all and not cship.hatch_open.has("drones"), "Citadel: the drone hatch slides open, the drones rise out one by one, the hatch shuts")
+	var pe: String = cship.launch_platform()
+	for i4 in 30:
+		cship._update_hatches(1.0 / 30.0)
+	var p_open := float(cship.hatch_open.get("platform", 0.0)) > 0.99 and cship.platform_t > 0.9
+	for i5 in 120:
+		cship._update_hatches(1.0 / 30.0)
+	check(pe == "" and p_open and cship.platform_t < 0.0 and not cship.hatch_open.has("platform") and GameState.create_from_preset("std_hdy_maul", "player") != null and Ship.new().has_method("launch_platform"), "Citadel: launch platform – hatch opens, the small ship rises and lifts off, the hatch closes")
+	for d2 in ds:
+		view.stow_drone(d2)
+	cship.queue_free()
 	# debug: spawn any ship
 	var n0 := 0
 	for n in view.ship_layer.get_children():

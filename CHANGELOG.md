@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.18 – 2026-11-06
+
+- Hadrian design pass: rounded side parts; the Goliath's arms start far aft and arch around the hull,
+  with one drive on each arm instead of a main engine.
+- Citadel: a big launch platform with a sliding hatch (the S ship rises and lifts off – animation for
+  now, the ship comes with part 5) and a small drone hatch – drones rise out of it and land in it.
+- Debug menu → Ship: "Citadel: launch from the platform".
+
 ## alpha 0.4.25.17 – 2026-11-06
 
 **Package 25d – Hadrian Dynamics.**

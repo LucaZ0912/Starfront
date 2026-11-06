@@ -94,6 +94,12 @@ var _relock := {}                # lock key -> {node, until}: lost out of range 
 const RELOCK_TIME := 60.0        # how long modules wait for a target that left the sensor range
 var module_on := {}              # slot -> bool
 var last_reflected := 0.0        # damage the reflective hull last sent back (package 25d)
+var hatch_open := {}             # hatch name -> 0 (shut) … 1 (open) (package 25d, Citadel)
+var _hatch_hold := {}            # hatch name -> seconds it stays open
+var hatch_queue := 0             # drones waiting below the drone hatch
+var platform_t := -1.0           # launch animation of the S-ship platform (-1 = idle)
+const HATCH_TIME := 0.45         # seconds to slide a hatch open or shut
+const PLATFORM_ANIM := 3.4       # hatch opens, the small ship rises, lifts off, the hatch closes
 var module_timers := {}          # slot -> remaining cycle time (weapons)
 var module_state := {}           # slot -> "off" | "on" | "range" | "energy"
 
@@ -354,6 +360,7 @@ func _physics_process(delta: float) -> void:
 	jammed_t = maxf(0.0, jammed_t - delta)
 	_xfer_t = maxf(0.0, _xfer_t - delta)
 	_regen(delta, s)
+	_update_hatches(delta)
 	if in_warp():
 		_update_warp(delta)
 		fit.position = position
@@ -2190,6 +2197,114 @@ func smoke(delta: float) -> void:
 var deck_queue := 0              # drones waiting for / rolling down the flight deck
 
 
+# ---------------------------------------------------------------- Hatches (package 25d, Citadel)
+
+func has_hatch(n: String) -> bool:
+	return fit.hull().get("hatches", {}).has(n)
+
+
+## Keeps a hatch open for `hold` seconds (it slides open first, and shut again afterwards).
+func open_hatch(n: String, hold: float) -> void:
+	if has_hatch(n):
+		_hatch_hold[n] = maxf(float(_hatch_hold.get(n, 0.0)), hold)
+
+
+## The hatch in the ship's own frame (x forward), in world units.
+func hatch_local(n: String) -> Rect2:
+	var r: Array = fit.hull()["hatches"][n]
+	var tex := PixelArt.ship_texture(fit.hull_id, paint)
+	var half := Vector2(tex.get_width(), tex.get_height()) * 0.5
+	return Rect2((Vector2(float(r[0]) + 1.0, float(r[1]) + 1.0) - half) * PixelArt.SCALE, Vector2(float(r[2]), float(r[3])) * PixelArt.SCALE)
+
+
+func hatch_point(n: String) -> Vector2:
+	if not has_hatch(n):
+		return position
+	return position + hatch_local(n).get_center().rotated(heading)
+
+
+## Demo of the S-ship platform (the ship itself comes with Teil 5): the hatch slides open, a small
+## ship rises from the bay and lifts off, the hatch closes behind it.
+func launch_platform() -> String:
+	if not has_hatch("platform"):
+		return "This ship has no launch platform."
+	platform_t = 0.0
+	open_hatch("platform", 2.3)
+	return ""
+
+
+func _update_hatches(delta: float) -> void:
+	if _hatch_hold.is_empty() and hatch_open.is_empty() and platform_t < 0.0:
+		return
+	for n in fit.hull().get("hatches", {}):
+		var hold := float(_hatch_hold.get(n, 0.0)) - delta
+		_hatch_hold[n] = maxf(hold, 0.0)
+		var target := 1.0 if hold > 0.0 else 0.0
+		hatch_open[n] = move_toward(float(hatch_open.get(n, 0.0)), target, delta / HATCH_TIME)
+		if float(hatch_open[n]) <= 0.0 and hold <= 0.0:
+			hatch_open.erase(n)
+			_hatch_hold.erase(n)
+	if platform_t >= 0.0:
+		platform_t += delta
+		if platform_t > PLATFORM_ANIM:
+			platform_t = -1.0
+
+
+## Draws open hatches (a dark shaft, the panel slid towards the stern) and the platform launch.
+func _draw_hatches() -> void:
+	if hatch_open.is_empty() and platform_t < 0.0:
+		return
+	var worn := PixelArt.is_pirate_paint(paint)
+	var cm: Color = PixelArt.HDY_WORN["M"] if worn else PixelArt.PALETTE["M"]
+	var cn: Color = PixelArt.HDY_WORN["N"] if worn else PixelArt.PALETTE["N"]
+	var cb: Color = PixelArt.HDY_WORN["B"] if worn else PixelArt.PALETTE["B"]
+	for n in hatch_open:
+		var o := float(hatch_open[n])
+		var r := hatch_local(n)
+		draw_rect(r, Color(0.03, 0.03, 0.045))
+		draw_rect(Rect2(r.position + Vector2(0, r.size.y * 0.45), Vector2(r.size.x, r.size.y * 0.1)), Color(0.9, 0.2, 0.12, 0.35 * o))
+		if n == "platform" and platform_t >= 0.0:
+			_draw_platform_ship(r)
+		var pw := r.size.x * (1.0 - o)
+		if pw > 0.5:
+			draw_rect(Rect2(r.position, Vector2(pw, r.size.y)), cm)
+			var yy := r.position.y + PixelArt.SCALE
+			while yy < r.end.y:
+				draw_rect(Rect2(Vector2(r.position.x, yy), Vector2(pw, PixelArt.SCALE)), cn)
+				yy += PixelArt.SCALE * 2.0
+			draw_rect(Rect2(Vector2(r.position.x + pw - PixelArt.SCALE, r.position.y), Vector2(PixelArt.SCALE, r.size.y)), cb)
+	if platform_t >= 0.0 and not hatch_open.has("platform"):
+		_draw_platform_ship(hatch_local("platform"))
+
+
+## The small ship on the platform: rises out of the bay (dark → lit, small → full size), then lifts
+## off forwards and fades out (in Teil 5 it becomes a real ship at that moment).
+func _draw_platform_ship(r: Rect2) -> void:
+	var t := platform_t
+	if t < 0.5 or t > PLATFORM_ANIM - 0.2:
+		return
+	var tex := PixelArt.ship_texture("hdy_talon", paint)
+	var sc := 0.55
+	var lit := 0.3
+	var off := Vector2.ZERO
+	var alpha := 1.0
+	if t < 1.6:
+		var k := (t - 0.5) / 1.1
+		sc = lerpf(0.55, 0.85, k)
+		lit = lerpf(0.3, 1.0, k)
+	else:
+		var k2 := clampf((t - 1.6) / (PLATFORM_ANIM - 1.8), 0.0, 1.0)
+		sc = lerpf(0.85, 1.15, k2)
+		lit = 1.0
+		off = Vector2(k2 * k2 * r.size.x * 3.0, 0.0)
+		alpha = 1.0 - clampf((k2 - 0.6) / 0.4, 0.0, 1.0)
+	var size := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE * sc
+	var c := r.get_center() + off
+	if t >= 1.6:
+		draw_rect(Rect2(c - size * 0.5 + Vector2(6, 6), size), Color(0, 0, 0, 0.25 * alpha))   # its shadow on the deck
+	draw_texture_rect(tex, Rect2(c - size * 0.5, size), false, Color(lit, lit, lit, alpha))
+
+
 ## Carriers with a flight deck (Kanayama-maru): drones launch from it and land on it.
 func has_deck() -> bool:
 	return fit.hull().has("drone_deck")
@@ -2601,6 +2716,7 @@ func _draw() -> void:
 		draw_circle(Vector2(ex, 0.0), size.y * 0.09 * flick, Color(1, 1, 1, 0.8))
 	var mod := Color(1.8, 1.8, 1.8) if hit_flash > 0.0 else Color.WHITE
 	draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
+	_draw_hatches()
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if selected:
