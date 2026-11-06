@@ -1218,7 +1218,10 @@ const MARKET_PIRATE_VALUE := 60000                  # offers worth more than thi
 const MARKET_PIRATE_CHECK := 45.0
 var _market_t := 20.0
 var _market_pirate_t := MARKET_PIRATE_CHECK
-var market_buyers: Array = []                       # [{ship, done, leave_t}]
+var market_buyers: Array = []                       # [{ship, done, leave_t, drone}]
+var market_runway = null                            # the trader drone using the market ship's runway (0.4.25.41)
+const MarketDroneScript = preload("res://scripts/world/market_drone.gd")
+const MARKET_PARK := 1600.0                         # traders park this far away and send a cargo drone
 
 
 ## What traders are used to paying for `item` (commodity base price, modules at 60 % of their price).
@@ -1242,11 +1245,20 @@ func _market_tick(dt: float) -> void:
 		if sh == null or not is_instance_valid(sh) or sh.dying:
 			market_buyers.erase(b)
 			continue
-		if not b["done"] and player != null and is_instance_valid(player) and sh.position.distance_to(player.position) < 800.0:
+		var near: bool = player != null and is_instance_valid(player) and sh.position.distance_to(player.position) < MARKET_PARK + 700.0
+		if not b["done"] and b.get("drone") == null and near and player.has_deck():
+			# 0.4.25.41: a ship with a flight deck – the trader sends a cargo drone that lands on the runway
+			var md = MarketDroneScript.new()
+			md.setup(self, sh, player)
+			ship_layer.add_child(md)
+			b["drone"] = md
+			sh.set_order({"type": "idle"})
+			sh.velocity = Vector2.ZERO
+			sh.activity = "Cargo drone at your market"
+		elif not b["done"] and b.get("drone") == null and near and sh.position.distance_to(player.position) < 800.0:
 			b["done"] = true
 			market_trade(sh)
-			sh.set_order({"type": "move", "pos": sh.position + Vector2.from_angle(randf() * TAU) * 30000.0})
-			b["leave_t"] = 25.0
+			_market_leave(b)
 		elif b["done"]:
 			b["leave_t"] = float(b["leave_t"]) - dt
 			if float(b["leave_t"]) <= 0.0:
@@ -1259,7 +1271,8 @@ func _market_tick(dt: float) -> void:
 	if _market_t <= 0.0:
 		_market_t = randf_range(MARKET_TRADER_EVERY.x, MARKET_TRADER_EVERY.y)
 		var tr: Ship = spawn_npc("civ_freighter" if randf() < 0.4 else "civ_shuttle", player.position + Vector2.from_angle(randf() * TAU) * 7000.0, "civilian", Universe.controller(system_id) if Universe.controller(system_id) in FactionData.POWERS else "")
-		tr.set_order({"type": "move", "pos": player.position + Vector2.from_angle(randf() * TAU) * 450.0})
+		var park := 450.0 if not player.has_deck() else MARKET_PARK
+		tr.set_order({"type": "move", "pos": player.position + Vector2.from_angle(randf() * TAU) * park})
 		tr.activity = "Coming to trade"
 		market_buyers.append({"ship": tr, "done": false, "leave_t": 0.0})
 		GameState.news.radio("%s is coming over to your market." % tr.display_name(), system_id, player.position)
@@ -1273,6 +1286,23 @@ func _market_tick(dt: float) -> void:
 				var p: Ship = spawn_npc(_pirate_preset(), player.position + Vector2.from_angle(randf() * TAU) * randf_range(6000.0, 9000.0))
 				p.set_order({"type": "attack", "target": player})
 			GameState.log_msg("Your market's wares (%s) have attracted %d pirates!" % [GameData.fmt_credits(value), n], GameState.COL_BAD)
+
+
+## A trader drone is back aboard its trader: the trader leaves.
+func market_drone_back(md) -> void:
+	for b in market_buyers:
+		if b.get("drone") == md:
+			b["done"] = true
+			b["drone"] = null
+			if is_instance_valid(b["ship"]) and not b["ship"].dying:
+				_market_leave(b)
+
+
+func _market_leave(b: Dictionary) -> void:
+	var sh: Ship = b["ship"]
+	sh.set_order({"type": "move", "pos": sh.position + Vector2.from_angle(randf() * TAU) * 30000.0})
+	sh.activity = "Leaving"
+	b["leave_t"] = 25.0
 
 
 ## Total value of everything on offer.

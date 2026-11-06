@@ -1,4 +1,5 @@
 extends Node
+const MarketDroneScriptT = preload("res://scripts/world/market_drone.gd")
 ## Automated functional test. Run:  godot --path . -- --smoketest
 ## Docking animation, station concourse + all service panels (shipyard, refinery,
 ## manufacturing, bulletin board, fuel/repair), hangar ship swap, ship menu tabs
@@ -3790,10 +3791,62 @@ func _test_kanayama(view: SystemView) -> void:
 	view._market_t = 0.0
 	view._market_tick(0.5)
 	check(view.market_buyers.size() >= 1, "traders of the system fly over to the market")
-	var buyer = view.market_buyers.back()["ship"]
-	buyer.position = c.position + Vector2(300, 0)
+	var bb0: Dictionary = view.market_buyers.back()
+	var buyer = bb0["ship"]
+	buyer.position = c.position + Vector2(1600, 0)
+	buyer.set_physics_process(false)
 	view._market_tick(0.5)
-	check(view.market_buyers.back()["done"], "… and trade when they arrive")
+	var md = bb0.get("drone")
+	var sent: bool = md != null and is_instance_valid(md)
+	# 0.4.25.41: the trader's cargo drone comes in over the stern, lands on the runway, loads, takes off past the bow
+	var cr1: int = GameState.credits
+	var over_stern := false
+	var landed := false
+	var on_line := true
+	var took_off := false
+	var states := {}
+	if sent:
+		md.set_physics_process(false)
+		for i5 in 1200:
+			if not is_instance_valid(md) or md.is_queued_for_deletion():
+				break
+			md.step(0.05)
+			states[md.state] = true
+			var rel: Vector2 = (md.position - c.position).rotated(-c.heading)
+			if md.state == "final" and rel.x < (c.deck_point(0.0) - c.position).rotated(-c.heading).x:
+				over_stern = true
+			if md.state in ["final", "loading", "takeoff"]:
+				on_line = on_line and absf(rel.y) < 30.0
+			if md.state == "loading":
+				landed = true
+			if md.state == "fly_out" and landed:
+				took_off = rel.x > (c.deck_point(1.0) - c.position).rotated(-c.heading).x
+			if md.state == "fly_out":
+				md.trader.position = md.position + Vector2(30, 0)
+	check(sent and over_stern and landed and on_line and took_off and GameState.credits > cr1, "a trader parks and sends a cargo drone: it lands on the runway over the stern, the trade happens on deck, it takes off past the bow")
+	check(bb0["done"] and (not is_instance_valid(md) or md.is_queued_for_deletion()) and view.market_runway == null, "… flies back to its trader, which then leaves")
+	# only one drone on the runway at a time
+	var mdA = MarketDroneScriptT.new()
+	var mdB = MarketDroneScriptT.new()
+	mdA.setup(view, buyer, c)
+	mdB.setup(view, buyer, c)
+	view.ship_layer.add_child(mdA)
+	view.ship_layer.add_child(mdB)
+	mdA.set_physics_process(false)
+	mdB.set_physics_process(false)
+	var both := false
+	for i6 in 400:
+		mdA.step(0.05)
+		mdB.step(0.05)
+		var on_deck := 0
+		for m6 in [mdA, mdB]:
+			if m6.state in ["final", "loading", "takeoff"]:
+				on_deck += 1
+		both = both or on_deck > 1
+	check(not both and (mdA.state == "wait" or mdB.state == "wait" or mdA.state == "fly_out" or mdB.state == "fly_out"), "only one cargo drone uses the runway at a time – the other circles and waits")
+	mdA.queue_free()
+	mdB.queue_free()
+	view.market_runway = null
 	f.cargo["platinum_ingot"] = 500.0
 	f.market_offers["platinum_ingot"] = {"amount": 500, "price": 600}
 	var p0: int = view.pirate_count()

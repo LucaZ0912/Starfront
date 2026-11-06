@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.41 – 2026-11-07
+
+- Kanayama-maru market: traders park nearby and send a cargo drone that lands on the runway over the stern,
+  picks up the wares, takes off past the bow and flies back; one drone on the runway at a time.
+
 ## alpha 0.4.25.40 – 2026-11-07
 
 - Cloak: using a weapon, tool or module ends it (a refused one does not); target locks are allowed while cloaked
