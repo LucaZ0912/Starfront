@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt, als Nächstes das Code-Review von Teil 4. Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.44. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt, als Nächstes das Code-Review von Teil 4. Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.45. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -991,7 +991,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
   - **Fußzeile:** wichtigste Schiffswerte (Geschwindigkeit, Wendigkeit, Masse, Kondensator, Schild, Panzerung, Hülle, DPS, Fracht, Treibstoff, Sensoren, Signatur) und **Stromverteilung** als Balken – mit der Änderung der aktuellen Auswahl.
   - Neuer Befehl `module_buy_fit`.
 - [x] **Kurzbeschreibung** zu jeder der 75 Modulfamilien (data/module_desc.gd) – im Ausrüster und in jeder Modul-Zusammenfassung (auch in den Tooltips der Modulübersicht im Schiffsmenü).
-- [x] **Derzeitige Geschwindigkeit** in der Schiffsinfo am linken Rand (Balken und „aktuell / Höchst“, im Warp „WARP“).
+- [x] **Derzeitige Geschwindigkeit** in der Schiffsinfo am linken Rand – als Zahl mit Einheit („Speed 123 km/s“, im Warp „WARP“; seit 0.4.25.45 ohne Balken, Wunsch Luz).
 
 ### Entscheidungen zu Teil 4
 

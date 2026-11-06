@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.45 – 2026-11-07
+
+- Ship info: the current speed is shown as a number with its unit (km/s) instead of a bar.
+
 ## alpha 0.4.25.44 – 2026-11-07
 
 **Package 27 (part 2) – the outfitter rework.**
