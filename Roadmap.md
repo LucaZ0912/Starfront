@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics) und 25e (Concord Fleetworks) fertig, als Nächstes 25f (Forge of Return). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.27. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics) und 25e (Concord Fleetworks) fertig, als Nächstes 25f (Forge of Return). Netzwerk fehlt noch. Teile 5–7 sind geplant (aus dem Roadmap-Entwurf übernommen), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.28. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -924,6 +924,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Lichteffekte** (0.4.25.27): die blauen Streifen der Concord-Schiffe pulsieren leicht; im Kampf (feuern, getroffen werden, feindliches Ziel) läuft auf jedem Streifen ein heller Lichtpunkt vom Bug zum Heck; bei der Concordia leuchten die Streifen gelb, solange die Hangartore zum Drohnenstart offen sind.
 - [x] **Concordia-Flugdecks beweglich** (0.4.25.27): im All fahren die Flugdecks ein Stück nach außen und nach hinten, beim An- und Abdocken wieder ein; die Hangartore wandern mit.
 - [x] Die Drohnen nutzen die Hangartore der Reihe nach – auch wenn man sie einzeln startet (0.4.25.27).
+- [x] Überarbeitung (0.4.25.28): Pulsieren deutlich stärker (leuchtender Saum, langsames Atmen), Kampf-Lichtpunkt größer; das Gelb beim Drohnenstart ist jetzt ein Baustellen-Warnlicht – bernsteinfarben blinkend mit Lauflicht, dazu blitzende Warnleuchten an den Ecken der offenen Tore; die Tore der Concordia sind beim Starten und Zurückrufen sichtbar offen (sie lagen unter den Flugdecks) – die Drohnen fliegen hinein; sichtbare Hydraulikstreben mit Gelenken zwischen Rumpf und ausgefahrenen Flugdecks.
 
 ### Stationstyp 0 (Paket 26)
 

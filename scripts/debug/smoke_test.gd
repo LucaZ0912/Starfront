@@ -1572,6 +1572,20 @@ func _shoot_standing(view: SystemView) -> void:
 		for i18 in 20:
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_combat.png")
+		ccs.combat_t = 0.0
+		view.recall_drones(ccs)
+		var shot_done := false
+		for i19 in 400:
+			await get_tree().physics_frame
+			var any_open := false
+			for hn10 in ccs.hatch_open:
+				any_open = any_open or float(ccs.hatch_open[hn10]) > 0.8
+			if any_open and not shot_done:
+				for i20 in 6:
+					await get_tree().physics_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/concordia_recall.png")
+				shot_done = true
+				break
 		for dd10 in view.drones_of(ccs):
 			view.stow_drone(dd10)
 		ccs.queue_free()
@@ -4172,6 +4186,31 @@ func _test_concord(view: SystemView) -> void:
 	check(singles.size() == 3, "single launches use the hangar doors in turn (%d doors)" % singles.size())
 	for d6 in view.drones_of(cs):
 		view.stow_drone(d6)
+	# recall: the drones fly to the hangar doors, the doors open, they land inside
+	cf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
+	cs.hatch_queue = 0
+	view.launch_drones(cs)
+	var rd: Array = view.drones_of(cs)
+	for d7 in rd:
+		d7.hatch_launch = false
+		d7.visible = true
+		d7.position = cs.position + Vector2(0, 1800)
+	view.recall_drones(cs)
+	var door_opened := false
+	var near_door := INF
+	for i5 in 400:
+		for d8 in rd:
+			if is_instance_valid(d8) and not d8.dying:
+				var hn9: String = cs.nearest_drone_hatch(d8.position)
+				near_door = minf(near_door, d8.position.distance_to(cs.hatch_point(hn9)))
+				d8._physics_process(1.0 / 30.0)
+		cs._update_hatches(1.0 / 30.0)
+		for hn8 in cs.hatch_open:
+			door_opened = door_opened or float(cs.hatch_open[hn8]) > 0.5
+	var landed := true
+	for d10 in rd:
+		landed = landed and (not is_instance_valid(d10) or d10.dying)
+	check(landed and door_opened and near_door < 45.0, "recalled drones fly to a hangar door, it opens, they land inside (closest %.0f)" % near_door)
 	# the flight wings move back and out in space, fold in to dock – the doors move along
 	cs.arm_open = 1.0
 	var open_p: Vector2 = cs.hatch_local("drones").position

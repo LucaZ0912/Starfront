@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.28 – 2026-11-07
+
+- Concord stripes pulse much more visibly; the combat light is bigger.
+- Drone launch light: a construction-site amber warning light – flashing, with a chase, and beacons at
+  the corners of open doors.
+- Fix: the Concordia's open doors were hidden under its flight wings – now drones visibly launch from
+  and return into open doors.
+- Hydraulic struts with joints connect the hull and the deployed flight wings.
+
 ## alpha 0.4.25.27 – 2026-11-07
 
 - Concord light effects: the blue stripes pulse; in a fight a bright spot runs along them from bow to

@@ -160,6 +160,16 @@ def concordia_body(c):
     c.hline(22, 50, 14, "a")
     c.rect(2, 9, 5, cy, "d")
     engines(c, 2, [9, 10, 12, 13, 15])
+    # hydraulic struts from the spine to the flight wing (hidden under the folded wing, visible once it
+    # moves out and back): a joint on the spine, a slanted piston, a joint at the wing
+    for xs in (26, 46, 66, 80):
+        c.rect(xs - 1, 8, xs + 1, 9, "D")                # spine joint
+        c.put(xs, 8, "H")
+        for k in range(1, 5):
+            c.put(xs - k, 8 - k, "H")                    # piston (light side) …
+            c.put(xs - k + 1, 8 - k, "D")                # … and its shadow
+        c.rect(xs - 6, 2, xs - 4, 4, "D")                # wing joint
+        c.put(xs - 5, 3, "a")
 
 
 def concordia_wing(c, doors):

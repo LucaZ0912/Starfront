@@ -2415,21 +2415,49 @@ func _draw_stripes(size: Vector2) -> void:
 	if fit.hull().get("launch_glow", false):
 		for n in drone_hatches():
 			glow = maxf(glow, float(hatch_open.get(n, 0.0)))
-	var pulse := 0.09 + 0.09 * sin(t * 2.4)
+	# a clearly visible breathing glow (0.4.25.28: stronger)
+	var pulse := 0.5 + 0.5 * sin(t * 1.8)
+	var flash := fmod(t * 2.6, 1.0) < 0.5               # warning beacon: on – off
 	for i in segs.size():
 		var sg: Array = segs[i]
 		var pos := Vector2(float(sg[1]) + 1.0, float(sg[0]) + 1.0) * px - half
 		if sg[3]:
 			pos += part_shift(pos.y)
 		var r := Rect2(pos, Vector2(float(sg[2]) - float(sg[1]) + 1.0, 1.0) * px)
-		draw_rect(r, Color(1, 1, 1, pulse))
 		if glow > 0.0:
-			draw_rect(r, Color(1.0, 0.82, 0.2, 0.85 * glow))
+			# construction-site warning light: amber, flashing, with a chase of bright blocks
+			draw_rect(r, Color(0.35, 0.18, 0.0, 0.9 * glow))
+			var step := px * 4.0
+			var off := fmod(t * 60.0, step)
+			var x0 := r.position.x - step + off
+			while x0 < r.end.x:
+				var a0 := maxf(x0, r.position.x)
+				var a1 := minf(x0 + px * 2.0, r.end.x)
+				if a1 > a0:
+					draw_rect(Rect2(Vector2(a0, r.position.y), Vector2(a1 - a0, px)), Color(1.0, 0.68, 0.05, glow * (1.0 if flash else 0.55)))
+				x0 += step
+			if flash:
+				draw_rect(r.grow(px * 0.8), Color(1.0, 0.6, 0.0, 0.25 * glow))
+			continue
+		draw_rect(r.grow(px * 0.6), Color(0.55, 0.85, 1.0, 0.18 * pulse))      # glowing halo …
+		draw_rect(r, Color(0.85, 0.96, 1.0, 0.12 + 0.5 * pulse))                # … and the lit stripe
 		if combat_t > 0.0:
 			var p := fmod(t * 0.8 + float(i) * 0.37, 1.0)
 			var x := r.end.x - px - p * (r.size.x - px)
-			draw_rect(Rect2(Vector2(x - px, r.position.y), Vector2(px * 3.0, px)), Color(0.75, 0.92, 1.0, 0.35))
-			draw_rect(Rect2(Vector2(x, r.position.y), Vector2(px, px)), Color(1, 1, 1, 0.95))
+			draw_rect(Rect2(Vector2(x - px * 2.0, r.position.y - px * 0.5), Vector2(px * 5.0, px * 2.0)), Color(0.75, 0.92, 1.0, 0.4))
+			draw_rect(Rect2(Vector2(x, r.position.y), Vector2(px, px)), Color(1, 1, 1, 1))
+	# warning beacons at the corners of open drone doors
+	if glow > 0.0:
+		for n2 in drone_hatches():
+			var o := float(hatch_open.get(n2, 0.0))
+			if o <= 0.0:
+				continue
+			var hr := hatch_local(n2)
+			var on := fmod(t * 2.6 + (0.5 if hr.position.x > 0.0 else 0.0), 1.0) < 0.5
+			for cpos in [hr.position - Vector2(px, px), Vector2(hr.end.x, hr.position.y - px), Vector2(hr.position.x - px, hr.end.y), hr.end]:
+				draw_rect(Rect2(cpos, Vector2(px, px)), Color(1.0, 0.7, 0.05, o if on else 0.25 * o))
+				if on:
+					draw_circle(cpos + Vector2(px, px) * 0.5, px * 2.2, Color(1.0, 0.6, 0.0, 0.3 * o))
 
 
 # ---------------------------------------------------------------- Swinging arms (package 25d, Goliath)
@@ -2874,9 +2902,9 @@ func _draw() -> void:
 				draw_circle(p, r * 0.55, Color(1, 1, 1, 0.8))
 	var mod := Color(1.8, 1.8, 1.8) if hit_flash > 0.0 else Color.WHITE
 	draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
-	_draw_hatches()
 	if not arms.is_empty():
 		_draw_arms(arms, size, mod)
+	_draw_hatches()                      # after the arms/wings: the Concordia's doors sit on its wings
 	if fit.hull().get("stripe_fx", false):
 		_draw_stripes(size)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
