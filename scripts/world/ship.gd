@@ -122,7 +122,7 @@ func setup(p_fit: ShipFitting, p_view: Node) -> void:
 	var tex := PixelArt.ship_texture(fit.hull_id, paint)
 	radius = maxf(tex.get_width(), tex.get_height()) * PixelArt.SCALE * 0.42
 	if fit.hull().has("black_hole"):
-		bh_t = -1.0 if is_docked() else 99.0          # a Threshold met in space already burns
+		bh_t = -1.0 if is_docked() or cloaked() else 99.0      # a Threshold met in space already burns
 	if fit.capacitor < 0.0:
 		fit.refill()
 	_orbit_sign = 1.0 if randf() < 0.5 else -1.0
@@ -141,18 +141,25 @@ const BH_DISC := 3.2             # … and the disc has formed by then
 var bh_t := -1.0                 # time since ignition; -1 = out
 var bh_wait := 0.0
 var bh_out := -1.0               # time since it went out (the closing flash); -1 = none
+var bh_cloaked := false          # went out for the cloak: ignites again quickly once the ship shows (0.4.25.39)
 
 
 func _process(delta: float) -> void:
 	if fit == null or not fit.hull().has("black_hole"):
 		set_process(false)
 		return
-	var want := not dying and not is_docked() and not String(order.get("type", "")) in ["docking", "undocking"]
+	# out while docking and in the hangar – and under the cloak: it goes out as the cloak takes hold and
+	# ignites again once the ship is fully visible
+	var hidden := cloaked() or cloak_k > 0.0
+	var want := not dying and not is_docked() and not hidden and not String(order.get("type", "")) in ["docking", "undocking"]
+	if hidden and bh_t >= 0.0:
+		bh_cloaked = true
 	if want:
 		if bh_t < 0.0:
 			bh_wait += delta
-			if bh_wait >= BH_DELAY:
+			if bh_wait >= (0.3 if bh_cloaked else BH_DELAY):
 				bh_t = 0.0
+				bh_cloaked = false
 		else:
 			bh_t += delta
 	elif bh_t >= 0.0:

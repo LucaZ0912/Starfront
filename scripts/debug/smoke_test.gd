@@ -4729,7 +4729,22 @@ func _test_axiom(view: SystemView) -> void:
 	bs._process(0.1)
 	var flash_out: bool = bs.bh_t < 0.0 and bs.bh_out > 0.0
 	bs._process(1.0)
-	check(lit_in_space and off_undocking and waits and burns and flash_out and bs.bh_out < 0.0, "Threshold: the black hole ignites with a flash a few seconds after undocking and goes out with one when docking")
+	var flash_done: bool = bs.bh_out < 0.0
+	# 0.4.25.39: out under the cloak, ignites again quickly once the ship shows
+	bs.order = {"type": "idle"}
+	bs.bh_t = 99.0
+	bs.module_on["builtin_cloak"] = true
+	bs._process(0.1)
+	var cloak_out: bool = bs.bh_t < 0.0
+	bs.module_on["builtin_cloak"] = false
+	bs.cloak_k = 0.4
+	bs._process(1.0)
+	var still_out: bool = bs.bh_t < 0.0
+	bs.cloak_k = 0.0
+	bs._process(0.2)
+	bs._process(0.2)
+	check(lit_in_space and off_undocking and waits and burns and flash_out and flash_done, "Threshold: the black hole ignites with a flash a few seconds after undocking and goes out with one when docking")
+	check(cloak_out and still_out and bs.bh_t >= 0.0, "Threshold: the black hole goes out under the cloak and ignites again once the ship shows")
 	bs.queue_free()
 	# research ships fly in Directorate systems
 	var tr = view.traffic

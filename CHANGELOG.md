@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.39 – 2026-11-07
+
+- Threshold: the black hole goes out under the cloak and ignites again once the ship is fully visible.
+
 ## alpha 0.4.25.38 – 2026-11-07
 
 - Threshold: the black hole's ignition flash now really flares up – halo, white-hot centre, rays, the hull lights up.
