@@ -1083,6 +1083,17 @@ func _c_wormhole_jump(c: Dictionary) -> String:
 	var e := _need_world()
 	if e != "":
 		return e
+	# review W6 (0.4.25.46): like a gate jump – not out of warp or a docking manoeuvre, and the drones come home
+	# first (they launch again after the arrival)
+	var p = world.player
+	if p.in_warp():
+		return "Not while in warp."
+	if String(p.order.get("type", "")) in ["docking", "undocking"]:
+		return "Not while docking or undocking."
+	var err := GameState.wormhole_error(GameState.active(), int(c["to"]))
+	if err != "":
+		return err
+	world.stow_all_drones(p, true)
 	return GameState.begin_wormhole(GameState.active(), int(c["to"]))
 
 

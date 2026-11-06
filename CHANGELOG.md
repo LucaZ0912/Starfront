@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.46 – 2026-11-07
+
+**Fixes from the part 4 code review (the top 5, report in reviews/teil4_review.md).**
+- Drones removed before take-off give their place in the deck / hatch queue back (trader drones no longer wait for ever).
+- A new order during an approach or landing breaks it off cleanly (pad freed, hatch shut, ship full size).
+- The bundled focus lance draws the power of all its crystals.
+- Point defence, auto mode, anti-drone pulse and mine settings are kept with the ship (jumps, saves, docking).
+- Ships waiting inside a waystation cannot be targeted; wormhole jumps stow the drones first and refuse in warp.
+
 ## alpha 0.4.25.45 – 2026-11-07
 
 - Ship info: the current speed is shown as a number with its unit (km/s) instead of a bar.

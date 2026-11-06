@@ -1423,6 +1423,7 @@ func stow_drone(d) -> void:
 	if d.dying:
 		return
 	var c = d.carrier
+	d.release_launch()
 	d.unload()
 	d.rec["out"] = false
 	if not d.recalled and is_instance_valid(c) and drones_must_return(c) and not c.is_docked() and not String(c.order.get("type", "")) == "docking":
@@ -1435,6 +1436,7 @@ func stow_drone(d) -> void:
 ## `relaunch` they fly out again afterwards); drones further out are left behind and lost.
 func stow_all_drones(c, relaunch: bool) -> void:
 	for d in drones_of(c):
+		d.release_launch()
 		if d.position.distance_to(c.position) <= float(d.dstats["range"]):
 			d.unload()
 			d.rec["out"] = false

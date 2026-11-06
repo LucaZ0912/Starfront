@@ -503,7 +503,25 @@ func _fly(delta: float, dest: Vector2) -> void:
 		heading = _rotate_toward(heading, velocity.angle(), 8.0 * delta)
 
 
+## Review W2 (0.4.25.46): a drone removed while it still waits for / rolls down the flight deck or rises out of
+## the hatch gives its place in the queue back – otherwise later launches (and trader drones) would wait for ever.
+func _exit_tree() -> void:
+	release_launch()
+
+
+func release_launch() -> void:
+	if carrier == null or not is_instance_valid(carrier):
+		return
+	if runway:
+		runway = false
+		carrier.deck_queue = maxi(carrier.deck_queue - 1, 0)
+	if hatch_launch:
+		hatch_launch = false
+		carrier.hatch_queue = maxi(carrier.hatch_queue - 1, 0)
+
+
 func _lost(why: String) -> void:
+	release_launch()
 	if dying:
 		return
 	dying = true

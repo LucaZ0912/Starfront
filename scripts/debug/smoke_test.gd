@@ -529,6 +529,7 @@ func _process(delta: float) -> void:
 				_test_forge(view)
 				_test_axiom(view)
 				_test_waystation(view)
+				_test_review4(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -3399,9 +3400,8 @@ func _test_drones(view: SystemView) -> void:
 	check(view.launch_drones(c) != "", "no drones left in the hangar – nothing to launch")
 	var ds: Array = view.drones_of(c)
 	for dh in ds:                    # skip the rise out of the drone hatch (0.4.25.22) – tested elsewhere
-		dh.hatch_launch = false
+		dh.release_launch()
 		dh.visible = true
-	c.hatch_queue = 0
 	var d = ds[0]
 	check(d.is_drone and d.faction == "player" and not d.hostile_to_player(), "drones are small player ships")
 	# rest: formation around the carrier
@@ -3822,7 +3822,7 @@ func _test_kanayama(view: SystemView) -> void:
 	check(dk1.x > dk0.x and dk0.x > -c.radius * 0.5 and c.has_deck() and not dr.is_empty() and dr[0].runway, "drones launch from the flight deck (deck from %.0f to %.0f)" % [dk0.x, dk1.x])
 	for d1 in view.drones_of(c):
 		view.stow_drone(d1)
-	c.deck_queue = 0
+	check(c.deck_queue == 0, "review W2: drones stowed while still on the flight deck give their place back (deck queue %d)" % c.deck_queue)
 	f.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
 	view.launch_drones(c)
 	var rw: Array = view.drones_of(c)
@@ -4403,7 +4403,7 @@ func _test_concord(view: SystemView) -> void:
 		view.stow_drone(d6)
 	# recall: the drones fly to the hangar doors, the doors open, they land inside
 	cf.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
-	cs.hatch_queue = 0
+	check(cs.hatch_queue == 0, "review W2: drones stowed while still below the hatch give their place back (hatch queue %d)" % cs.hatch_queue)
 	view.launch_drones(cs)
 	var rd: Array = view.drones_of(cs)
 	for d7 in rd:
@@ -5022,6 +5022,7 @@ func _test_waystation(view: SystemView) -> void:
 	view.ship_layer.add_child(us)
 	us.set_physics_process(false)
 	us.undock()
+	check(not us.is_targetable() and us.in_station(), "review W4: a ship waiting inside the waystation for a pad cannot be targeted")
 	var rose := false
 	var on_pad := false
 	for st2 in 200:
@@ -5032,6 +5033,22 @@ func _test_waystation(view: SystemView) -> void:
 		rose = rose or (us.scale.x > Ship.PAD_SINK + 0.1 and us.scale.x < 0.99 and us.modulate.a > 0.2)
 	var away: bool = String(us.order.get("type", "")) != "undocking" and wn.pad_of(us) < 0 and us.position.distance_to(wn.position) > wn.radius * 0.4
 	check(on_pad and rose and away, "lifting off: the ship rises through the hatch of a free pad and flies off")
+	# review W1: a new order during the approach or the landing frees the pad and restores the ship
+	var ab: Ship = view.spawn_npc("civ_shuttle", wn.position + Vector2(wn.radius + 1500.0, 0), "civilian", "")
+	ab.set_physics_process(false)
+	ab.set_order({"type": "dock", "node": wn})
+	ab._physics_process(0.05)
+	var claimed: bool = wn.pad_of(ab) >= 0
+	ab.set_order({"type": "move", "pos": ab.position + Vector2(5000, 0)})
+	var freed_approach: bool = wn.pad_of(ab) < 0
+	var pk2: int = wn.claim_pad(ab, ab.position)
+	ab.order = {"type": "docking", "node": wn, "t": Ship.PAD_DOCK_TIME * 0.8, "from": ab.position, "pad": pk2, "h0": 0.0}
+	ab._update_docking(0.05)
+	var shrunk: bool = ab.scale.x < 0.9
+	ab.set_order({"type": "move", "pos": ab.position + Vector2(5000, 0)})
+	check(claimed and freed_approach and shrunk and wn.pad_of(ab) < 0 and ab.scale == Vector2.ONE and ab.modulate == Color.WHITE and float(wn.pad_want.get(pk2, 0.0)) == 0.0,
+		"review W1: a new order breaks off the approach or landing – pad free, hatch shut, ship full size again")
+	ab.queue_free()
 	# only S and M ships
 	var lf := GameState.create_from_preset("std_axa_threshold", "player")
 	lf.uid = 99931
@@ -5060,3 +5077,40 @@ func _test_waystation(view: SystemView) -> void:
 	view.celestials.erase(wn)
 	view.by_id.erase(wd["id"])
 	wn.queue_free()
+
+
+## Fixes from the part 4 code review (0.4.25.46).
+func _test_review4(view: SystemView) -> void:
+	# W3: a bundled focus lance draws the power of every crystal
+	var cf := GameState.create_from_preset("std_for_cathedral", "player")
+	cf.uid = 99940
+	var cs := Ship.new()
+	cs.manual = true
+	cs.setup(cf, view)
+	view.ship_layer.add_child(cs)
+	cs.set_physics_process(false)
+	cs.module_timers["weapon_0"] = 1.0
+	var u: Dictionary = cs.power_in_use()
+	var crystals := 0
+	for k in u:
+		if String(k).begins_with("weapon_"):
+			crystals += 1
+	check(int(cf.stats()["focus_bundle"]) > 1 and crystals == int(cf.stats()["focus_bundle"]), "review W3: the firing focus lance draws the power of all %d crystals" % crystals)
+	cs.queue_free()
+	# W5: point defence and mine settings live in the fitting – they survive a new ship node and a save
+	var pf := GameState.create_fit("dragonfly", {"weapon_0": "w_pointdef:1:C", "reactor": "rea_fusion:4:C"}, "player")
+	pf.uid = 99941
+	var p1 := Ship.new()
+	p1.manual = true
+	p1.setup(pf, view)
+	view.ship_layer.add_child(p1)
+	p1.set_physics_process(false)
+	var e1: String = p1.set_module_active("weapon_0", true)
+	p1.mine_choice["weapon_1"] = {"type": "mine_emp", "fuse": 20}
+	var pf2 := ShipFitting.from_dict(pf.to_dict())
+	var p2 := Ship.new()
+	p2.setup(pf2, view)
+	check(e1 == "" and bool(p2.module_on.get("weapon_0", false)) and String(p2.mine_choice.get("weapon_1", {}).get("type", "")) == "mine_emp",
+		"review W5: point defence stays on and the mine settings stay set across a new ship node and a save")
+	p2.free()
+	p1.queue_free()

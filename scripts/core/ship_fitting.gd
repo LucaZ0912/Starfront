@@ -20,6 +20,8 @@ var drone_role := "combat"                 # combat | mining | repair (all launc
 var drone_relaunch := 0                    # runtime: drones to launch again after a warp / jump
 var refinery_on := true                    # package 25a: built-in refinery switched on (KHI hulls)
 var factory_on := true                     # package 25b: built-in factory runs its queue
+var mine_choice := {}                      # review W5: mine launcher slot -> {"type": mine id, "fuse": seconds}
+var held_on := {}                          # review W5: modules that stay switched on (point defence, auto mode, pulse)
 var market_open := false                   # package 25b: on-board market open for traders
 var market_offers := {}                    # item -> {amount, price}
 var _builtin_hull := ""
@@ -139,7 +141,8 @@ func set_module(key: String, module_id: String) -> String:
 const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "cargo", "structure", "armor",
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
 	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities", "wormhole_ready",
-	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers"]
+	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers",
+	"mine_choice", "held_on"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -398,6 +401,10 @@ func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
 		if not w.get("focus", false):
 			return
 	var lance: Dictionary = ws[0].duplicate()
+	var all_powered := true
+	for wp in ws:
+		all_powered = all_powered and bool(wp.get("powered", true))
+	lance["powered"] = all_powered          # review W3: it only fires while every crystal has power
 	var dmg := 0.0
 	var energy := 0.0
 	var cd := 0.0

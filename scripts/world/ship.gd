@@ -74,7 +74,13 @@ var jamming := false             # NPC: its radar jammer is running
 var manifest_done := false       # cargo manifest generated (cargo scanner, wreck loot)
 var cargo_known := false         # the pilot's cargo scanner has read the manifest
 var unregistered := false        # smuggler: cargo without a registered manifest
-var mine_choice := {}            # mine launcher slot -> {"type": mine id, "fuse": seconds}
+## Mine launcher settings (slot -> {"type", "fuse"}) – kept in the fitting, so they survive jumps and saves (review W5)
+var mine_choice: Dictionary:
+	get:
+		return fit.mine_choice if fit != null else {}
+	set(v):
+		if fit != null:
+			fit.mine_choice = v
 var pd_timers := {}              # point defense slot -> cooldown left
 const JAM_SENSOR := 0.5          # jammed: lock / engage range factor
 const XFER_DOWN_MULT := 3.0      # shield downtime runs this much faster while a transfer beam is on it
@@ -123,6 +129,8 @@ func setup(p_fit: ShipFitting, p_view: Node) -> void:
 	radius = maxf(tex.get_width(), tex.get_height()) * PixelArt.SCALE * 0.42
 	if fit.hull().has("black_hole"):
 		bh_t = -1.0 if is_docked() or cloaked() else 99.0      # a Threshold met in space already burns
+	if not is_docked():
+		_restore_held()
 	if fit.capacitor < 0.0:
 		fit.refill()
 	_orbit_sign = 1.0 if randf() < 0.5 else -1.0
@@ -219,6 +227,24 @@ func _draw_black_hole(hull_tex: Texture2D, alpha: float = 1.0) -> void:
 		draw_texture_rect(PixelArt.silhouette_texture(fit.hull_id), Rect2(-hs * 0.5, hs), false, Color(1.0, 0.93, 0.8, 0.7 * glow))
 
 
+## Review W5 (0.4.25.46): point defence, the auto mode and the anti-drone pulse stay switched on across jumps,
+## saves and docking – they are kept in the fitting and switched on again when the ship is set up or undocks.
+func _keep_on(slot: String, on: bool) -> void:
+	if on:
+		fit.held_on[slot] = true
+	else:
+		fit.held_on.erase(slot)
+
+
+func _restore_held() -> void:
+	for slot in fit.held_on.keys():
+		if fit.module_data(String(slot)).is_empty():
+			fit.held_on.erase(slot)              # the module is gone
+			continue
+		module_on[slot] = true
+		module_state[slot] = "on"
+
+
 func display_name() -> String:
 	return fit.ship_name
 
@@ -228,7 +254,12 @@ func is_docked() -> bool:
 
 
 func is_targetable() -> bool:
-	return not dying and not is_docked() and is_inside_tree() and warp.is_empty() and not cloaked()
+	return not dying and not is_docked() and is_inside_tree() and warp.is_empty() and not cloaked() and not in_station()
+
+
+## Review W4 (0.4.25.46): still inside a waystation – waiting for a free pad or not yet risen through the hatch.
+func in_station() -> bool:
+	return String(order.get("type", "")) == "undocking" and order.has("pad") and (int(order["pad"]) < 0 or float(order.get("t", 0.0)) < 0.5)
 
 
 ## Axiom cloaking device (package 25g): nobody sees or targets a cloaked ship; it can fly, warp and lock
@@ -304,6 +335,7 @@ func set_order(o: Dictionary) -> void:
 		if o.get("type", "") == "attack":
 			_set_target(o.get("target"))
 		return
+	_abort_landing()
 	order = o
 	spool = -1.0
 	var t: String = o.get("type", "")
@@ -316,6 +348,7 @@ func set_order(o: Dictionary) -> void:
 func undock() -> void:
 	var st_node = view.stations.get(fit.docked_at)
 	fit.docked_at = ""
+	_restore_held()
 	scale = Vector2.ONE
 	modulate = Color.WHITE
 	visible = true
@@ -424,6 +457,23 @@ func _update_undocking(delta: float) -> void:
 
 const PAD_DOCK_TIME := 4.4
 const PAD_SINK := 0.62            # the ship's scale when it has sunk through the hatch
+
+
+## Review W1 (0.4.25.46): a new order during the approach or the landing breaks it off cleanly – the pad is
+## free again, its hatch shuts, the ship gets its size and colour back.
+func _abort_landing() -> void:
+	var ot := String(order.get("type", ""))
+	if not ot in ["dock", "docking"]:
+		return
+	var stn = order.get("node")
+	if stn != null and is_instance_valid(stn) and stn.has_method("release_pad"):
+		var pi: int = stn.pad_of(self)
+		if pi >= 0:
+			stn.set_pad_open(pi, false)
+		stn.release_pad(self)
+	if ot == "docking":
+		scale = Vector2.ONE
+		modulate = Color.WHITE
 
 
 ## A waystation's pads take only S and M ships.
@@ -582,6 +632,8 @@ func _dock(st_node) -> void:
 		view.stow_all_drones(self, false)      # drones go back into the hangar (package 23)
 	clear_locks()
 	fit.docked_at = st_node.data["id"]
+	deck_queue = 0                              # review W2: nothing waits on the deck or below the hatch any more
+	hatch_queue = 0
 	velocity = Vector2.ZERO
 	order = {"type": "idle"}
 	target = null
@@ -1553,7 +1605,7 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 
 
 func take_damage(amount: float, dtype: String, attacker) -> void:
-	if dying or is_docked():
+	if dying or is_docked() or in_station():
 		return
 	if faction == "player" and Commands.god_mode:
 		return
@@ -2045,6 +2097,7 @@ func set_module_active(slot: String, on: bool) -> String:
 	if e["kind"] == "pd":
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
+		_keep_on(slot, on)
 		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
 		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) == "cloak":
@@ -2052,6 +2105,7 @@ func set_module_active(slot: String, on: bool) -> String:
 			return "%s: not enough energy." % d["name"]
 		if on:
 			module_on.clear()                   # every other module goes quiet – the target locks stay
+			fit.held_on.clear()
 			for k in module_state.keys():
 				module_state[k] = "off"
 		module_on[slot] = on
@@ -2073,6 +2127,7 @@ func set_module_active(slot: String, on: bool) -> String:
 		# locked right now
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
+		_keep_on(slot, on)
 		auto_targets = []
 		if on:
 			for l in locks:
@@ -2083,6 +2138,7 @@ func set_module_active(slot: String, on: bool) -> String:
 	if e["kind"] == "self" and String(d.get("active", "")) == "drone_pulse":
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
+		_keep_on(slot, on)
 		_mlog("%s %s." % [d["name"], ("on – a pulse every %d s knocks out every drone within %s, friend or foe" % [int(d["interval"]), SystemView.fmt_dist(float(d["range"]))]) if on else "off"])
 		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) in ["refinery", "factory", "market"]:
@@ -3039,6 +3095,16 @@ func _update_focus(sensor: float) -> void:
 ## Active modules in use right now (slot -> true). Pilot: switched on (mine launchers while
 ## reloading). NPCs: weapons and point defense while fighting, beams always, the jammer while on.
 func power_in_use() -> Dictionary:
+	var u := _power_in_use_raw()
+	# review W3 (0.4.25.46): a bundled focus lance draws the power of every crystal, not just the first one
+	if int(fit.stats().get("focus_bundle", 0)) > 0 and u.has("weapon_0"):
+		for k in fit.slot_keys():
+			if String(k).begins_with("weapon_"):
+				u[k] = true
+	return u
+
+
+func _power_in_use_raw() -> Dictionary:
 	var u := {}
 	if manual:
 		for k in module_on:

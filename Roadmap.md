@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt, als Nächstes das Code-Review von Teil 4. Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.45. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt. Code-Review von Teil 4 gemacht (Bericht `reviews/teil4_review.md`), die Top 5 sind behoben; die übrigen Befunde sind offen. Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.46. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -992,6 +992,20 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
   - Neuer Befehl `module_buy_fit`.
 - [x] **Kurzbeschreibung** zu jeder der 75 Modulfamilien (data/module_desc.gd) – im Ausrüster und in jeder Modul-Zusammenfassung (auch in den Tooltips der Modulübersicht im Schiffsmenü).
 - [x] **Derzeitige Geschwindigkeit** in der Schiffsinfo am linken Rand – als Zahl mit Einheit („Speed 123 km/s“, im Warp „WARP“; seit 0.4.25.45 ohne Balken, Wunsch Luz).
+
+### Code-Review Teil 4
+
+Read-only-Review in eigener Session (7. Nov 2026), Bericht in `reviews/teil4_review.md`: keine kritischen, 7 wichtige und 14 kleinere Befunde, 6 Performance-Punkte, Koop-Hinweise, Aufräumliste, 9 Smoke-Test-Lücken.
+
+**Behoben in alpha 0.4.25.46 (die Top 5), 6 neue automatische Prüfungen:**
+
+- [x] **W2** Start-Warteschlangen von Flugdeck und Drohnenluke liefen nicht zurück – Drohnen, die vor dem Abheben eingeholt oder zerstört werden, geben ihren Platz frei; Andocken setzt beide auf 0 (sonst warteten spätere Starts und Händlerdrohnen ewig). Die manuellen Zähler-Resets im Smoke-Test sind entfernt.
+- [x] **W1** Ein neuer Befehl während Anflug oder Landung bricht sauber ab: Plattform frei, Luke zu, Schiff wieder in voller Größe und Farbe.
+- [x] **W3** Die gebündelte Fokuslanze zieht den Strom aller Kristalle und feuert nur, wenn alle Strom haben.
+- [x] **W5** Punktverteidigung, Automodus, Antidrohnenpuls und die Minenwerfer-Einstellungen liegen im Fitting (gespeichert) und überstehen Sprünge, Laden und Andocken.
+- [x] **W4** Wer in der Raststation auf eine freie Plattform wartet (oder noch nicht aufgestiegen ist), ist weder anvisierbar noch verwundbar.
+- [x] **W6** Wurmloch-Sprung: nicht aus dem Warp oder beim Andocken; die Drohnen werden vorher eingeholt und starten nach der Ankunft wieder.
+- [ ] Offen: W7 und die kleineren, Performance-, Koop- und Aufräum-Befunde sowie die übrigen Test-Lücken laut Bericht.
 
 ### Entscheidungen zu Teil 4
 
