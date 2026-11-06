@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.33 – 2026-11-07
+
+- The Cathedral bundles its crystals too: one lance, one tile; in auto mode the lance takes turns
+  between up to six targets.
+- Lance balance: each lance carries the damage of its whole 2 s cycle – bundling really gives +30 %
+  damage per second.
+
 ## alpha 0.4.25.32 – 2026-11-07
 
 - Focus lance: the crystal beams meet between ship and target, charge for a moment, then a thick beam

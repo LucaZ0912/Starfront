@@ -185,7 +185,7 @@ const HULLS := {
 		"drones": 0, "shape": "for_cathedral", "length": 124, "reactor_mult": 2.2, "spike_fx": true,
 		"builtin": ["drone_pulse", "auto_fire"],
 		"drone_pulse": {"range": 5000.0, "interval": 30.0, "stun": 15.0, "energy": 420.0, "power": 45.0},
-		"desc": "A fortress of faith: crimson battlements full of crystal batteries around a radiant nave with stained glass, a rose window at the bow, a golden halo over the sanctuary. Eight hardpoints, a huge reactor, an anti-drone pulse and an auto mode for its lasers.",
+		"desc": "A fortress of faith: crimson battlements full of crystal batteries around a radiant nave with stained glass, a rose window at the bow, a golden halo over the sanctuary. Eight hardpoints – with crystals in all of them one mighty lance –, a huge reactor, an anti-drone pulse and an auto mode for its lasers.",
 	},
 	# ---------------- Concord Fleetworks (package 25e, Cluster Assembly) ----------------
 	"cfw_demos": {

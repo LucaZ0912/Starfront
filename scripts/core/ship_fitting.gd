@@ -375,11 +375,15 @@ func _compute() -> Dictionary:
 
 # ---------------------------------------------------------------- Beam bundling (package 25f)
 
-## Forge of Return S and M ships: with focus crystals in every hardpoint the beams join in front of the
-## ship and fire together as one lance – +30 % damage. The lance replaces the single weapons (one tile).
+const LANCE_CYCLE := 2.0          # a lance: charge 0.55 s + burn 1 s, then a short pause
+
+## Forge of Return ships (all of them since 0.4.25.33, the Cathedral too): with focus crystals in every
+## hardpoint the beams join and fire together as one lance – +30 % damage per second. The lance replaces
+## the single weapons (one tile). It charges and burns for a while, so it fires less often but each lance
+## carries the damage of that whole time.
 func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
 	s["focus_bundle"] = 0
-	if String(h.get("maker", "")) != "forge" or int(h.get("size", 1)) > 2:
+	if String(h.get("maker", "")) != "forge":
 		return
 	var n := int(h["slots"].get("weapon", 0))
 	var ws: Array = s["weapons"]
@@ -398,9 +402,10 @@ func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
 		energy += float(w2["energy"])
 		cd = maxf(cd, float(w2["cooldown"]))
 		rng = minf(rng, float(w2["range"]))
-	lance["damage"] = dmg * 1.3
-	lance["energy"] = energy
-	lance["cooldown"] = maxf(cd, 2.4)            # charge 0.55 s + burn 1 s, then a short pause
+	var lcd := maxf(cd, LANCE_CYCLE)
+	lance["damage"] = dmg * 1.3 * lcd / maxf(cd, 0.01)   # +30 % damage per second over the lance's cycle
+	lance["energy"] = energy * lcd / maxf(cd, 0.01)
+	lance["cooldown"] = lcd
 	lance["range"] = rng
 	lance["bundle"] = n
 	lance["size"] = 4
@@ -408,7 +413,7 @@ func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
 	lance["base_name"] = "Focus Lance"
 	s["weapons"] = [lance]
 	s["focus_bundle"] = n
-	s["dps"][String(lance["damage_type"])] = dmg * 1.3 / maxf(cd, 2.4)
+	s["dps"][String(lance["damage_type"])] = dmg * 1.3 / maxf(cd, 0.01)
 
 
 # ---------------------------------------------------------------- Built-in modules (package 25a)

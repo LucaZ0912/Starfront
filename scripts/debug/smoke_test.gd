@@ -4420,7 +4420,8 @@ func _test_forge(view: SystemView) -> void:
 	for k in ac.slot_keys():
 		if String(k).begins_with("weapon_"):
 			sum += float(GameData.modules[ac.get_module(k)]["damage"])
-	check(ws.size() == 1 and int(ws[0]["bundle"]) == 3 and absf(float(ws[0]["damage"]) - sum * 1.3) < 0.5, "Acolyte: all three crystals join into one lance – +30 %% (%.0f)" % float(ws[0]["damage"]))
+	var dps_lance: float = float(ws[0]["damage"]) / float(ws[0]["cooldown"])
+	check(ws.size() == 1 and int(ws[0]["bundle"]) == 3 and absf(dps_lance - sum * 1.3) < 0.5, "Acolyte: all three crystals join into one lance – +30 %% damage per second (%.0f per lance)" % float(ws[0]["damage"]))
 	ac.set_module("weapon_2", "w_pulse:1:C")
 	check(ac.stats()["weapons"].size() == 3 and int(ac.stats()["focus_bundle"]) == 0, "… only when every hardpoint carries a focus crystal")
 	# the lance: the beams meet between ship and target, charge, then burn for a second
@@ -4448,12 +4449,12 @@ func _test_forge(view: SystemView) -> void:
 		mid_burn = hpf - (foe.fit.shield + foe.fit.armor + foe.fit.structure)
 		lance._process(1.0)
 	var total: float = hpf - (foe.fit.shield + foe.fit.armor + foe.fit.structure)
-	check(lance != null and during_charge == 0.0 and mid_burn > 0.0 and total > mid_burn and lance.is_queued_for_deletion() and float(lw["cooldown"]) >= 2.4, "focus lance: the beams meet between ship and target, charge, then burn for a second (%.0f damage)" % total)
+	check(lance != null and during_charge == 0.0 and mid_burn > 0.0 and total > mid_burn and lance.is_queued_for_deletion() and float(lw["cooldown"]) >= 2.0, "focus lance: the beams meet between ship and target, charge, then burn for a second (%.0f damage)" % total)
 	foe.queue_free()
 	tsh.queue_free()
 	check(not PixelArt.spike_tips("for_templar").is_empty() and not PixelArt.spike_tips("for_cathedral").is_empty() and GameData.hulls["for_cathedral"].get("spike_fx", false) and not GameData.hulls["for_acolyte"].get("spike_fx", false), "Templar and Cathedral: golden spikes slide out and back in now and then")
 	var cf := GameState.create_from_preset("std_for_cathedral", "player")
-	check(cf.stats()["weapons"].size() == 8 and int(cf.stats()["focus_bundle"]) == 0, "the Cathedral does not bundle – eight separate batteries")
+	check(cf.stats()["weapons"].size() == 1 and int(cf.stats()["focus_bundle"]) == 8, "the Cathedral bundles too: eight crystals, one lance, one tile")
 	# the anti-drone pulse: every drone in range, friend or foe, drifts for 15 s
 	var caf := GameState.create_from_preset("patrol_cfw_light", "patrol")
 	caf.gov = "assembly"
@@ -4504,10 +4505,17 @@ func _test_forge(view: SystemView) -> void:
 	var hpc: float = civ.fit.shield + civ.fit.armor + civ.fit.structure
 	cf.capacitor = float(cf.stats()["cap_max"])
 	var e2: String = cs.set_module_active("builtin_auto_fire", true)
+	var lslot: String = cf.stats()["weapons"][0]["slot"]
 	cs._update_auto_fire(0.1, cf.stats())
+	cs.module_timers[lslot] = 0.0
+	cf.capacitor = float(cf.stats()["cap_max"])
+	cs._update_auto_fire(0.1, cf.stats())
+	for n12 in view.fx_layer.get_children():
+		if n12.get_script() == SystemView.FocusLanceScript:
+			n12._process(2.0)
 	var hit1: bool = p1.fit.shield + p1.fit.armor + p1.fit.structure < hp1
 	var hit2: bool = p2.fit.shield + p2.fit.armor + p2.fit.structure < hp2
-	check(e2 == "" and hit1 and hit2 and civ.fit.shield + civ.fit.armor + civ.fit.structure == hpc, "Cathedral auto mode: the focus lasers fire on their own at several enemies – never at the innocent")
+	check(e2 == "" and hit1 and hit2 and civ.fit.shield + civ.fit.armor + civ.fit.structure == hpc, "Cathedral auto mode: the lance fires on its own, taking turns between several enemies – never at the innocent")
 	cs.set_module_active("builtin_auto_fire", false)
 	for n10 in [p1, p2, civ]:
 		n10.queue_free()

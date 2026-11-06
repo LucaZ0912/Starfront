@@ -103,6 +103,7 @@ var combat_t := 0.0              # seconds of "in a fight" left: firing, being h
 var next_hatch := 0              # the next drone door in turn (drones use the doors one after another)
 var auto_targets: Array = []     # Cathedral auto mode: the targets locked when it was switched on (25f)
 var _auto_t := 0.0
+var _auto_k := 0                 # auto mode: whose turn it is among the targets (the lance takes turns)
 var _npc_pulse_t := 0.0
 const ARM_TIME := 1.6            # seconds to swing the arms fully open or shut
 const HATCH_TIME := 0.45         # seconds to slide a hatch open or shut
@@ -2470,7 +2471,7 @@ func _update_auto_fire(delta: float, s: Dictionary) -> void:
 	if cands.is_empty():
 		return
 	cands = cands.slice(0, 6)
-	var k := 0
+	var k := _auto_k
 	for w2 in s["weapons"]:
 		if not w2.get("focus", false):
 			continue
@@ -2487,6 +2488,7 @@ func _update_auto_fire(delta: float, s: Dictionary) -> void:
 		module_timers[slot] = float(w2["cooldown"]) * randf_range(0.97, 1.03)
 		view.fire_weapon(self, tg, w2)
 		combat_t = 5.0
+		_auto_k = k                      # next time the next target (the bundled lance takes turns)
 
 
 ## NPC Cathedrals use the pulse against hostile drones near them.

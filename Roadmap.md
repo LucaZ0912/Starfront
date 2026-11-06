@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks) und 25f (Forge of Return) fertig, als Nächstes 25g (Axiom Astronautics). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.32. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks) und 25f (Forge of Return) fertig, als Nächstes 25g (Axiom Astronautics). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.4.25.33. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -819,7 +819,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - **Markenzeichen aller FOR-Schiffe:**
   - **Kraftwerk stark verstärkt:** +80 % Reaktorleistung (Cathedral +120 %); dafür −30 % Strukturpunkte und kleinere Panzerungsplätze (die Cathedral hat normale Hüllenwerte). **Keine Drohnenhangars.**
   - **Synthetische rote Fokuskristall-Laser:** eigene optische Strahlwaffe (Größe 1–4) mit hohem Schaden, großer Reichweite und sehr hohem Strombedarf; nur an Covenant-Ausrüstern erhältlich und **nur in Covenant-Schiffe einbaubar**.
-  - **Strahlbündelung (S und M):** Sind **alle Waffenplätze** mit Fokuskristall-Lasern belegt, bündeln sich ihre roten Strahlen vor dem Schiff und feuern gemeinsam auf das Ziel – **+30 % Schaden**.
+  - **Strahlbündelung (alle FOR-Schiffe, ab 0.4.25.33 auch die Cathedral – Entscheidung Luz):** Sind **alle Waffenplätze** mit Fokuskristall-Lasern belegt, bündeln sich ihre roten Strahlen vor dem Schiff und feuern gemeinsam auf das Ziel – **+30 % Schaden**.
 - **Schiffe (Namen freigegeben):**
   - **Acolyte** – Milizschiff (S): kleines Kampfschiff, wenig Hülle, sehr starkes Kraftwerk, Fokuskristall-Laser, kein Hangar. Ab **Neutral**.
   - **Templar** – Patrouillenschiff (M): Weiterentwicklung mit mehr Waffenplätzen und mehr Energie, sonst dieselben Schwächen. Ab **Friendly**.
@@ -939,6 +939,7 @@ Vorgehen (5. Nov 2026 vereinbart): **Paket 24 = Planung.** Alle Manufakturen und
 - [x] **Cathedral – Automodus** (eingebaut): die Fokuslaser, die nicht von Hand eingeschaltet sind, feuern selbstständig auf bis zu 6 Ziele – nur feindliche oder die beim Einschalten aufgeschalteten; nie auf Unbeteiligte.
 - [x] **Patrouillen:** in Covenant-Systemen Acolyte, Templar und Cathedral (gelegentlich eine Goliath in Covenant-Farben), in umkämpften Systemen Earthworks-Schiffe.
 - [x] Überarbeitung (0.4.25.32): **Fokus-Lanze** neu – alle Kristallstrahlen bündeln sich an einem Punkt zwischen Schiff und Ziel, laden ihn kurz auf (0,55 s) und geben dann etwa 1 s lang einen dicken Strahl auf das Ziel ab (Schaden über diese Sekunde verteilt, Abklingzeit mindestens 2,4 s); weiter nur ein Waffenmodul in der Leiste. **Goldene Zacken** an Templar und Cathedral schieben sich ab und zu langsam nach außen und wieder ein (jede zu ihrer Zeit). **Puls-Kachel** mit Balken bis zum nächsten Puls; gelähmte Drohnen sprühen rote Blitze. **Debug-Gegner:** ein Piraten-Quirinus mit Drohnen („DEBUG drone carrier“ in der Piratenliste) – echte Piraten fliegen ihn nie.
+- [x] Überarbeitung (0.4.25.33): die **Cathedral bündelt jetzt auch** – mit Kristallen in allen acht Plätzen eine einzige Lanze und eine Kachel; im Automodus feuert die Lanze selbstständig und wechselt dabei der Reihe nach zwischen bis zu 6 Zielen. Lanzen-Ausgleich: eine Lanze trägt den Schaden ihres ganzen Zyklus (2 s), sodass die Bündelung wirklich +30 % Schaden pro Sekunde bringt.
 - [x] **Debug-Funktion:** Debug-Menü → Ship: „NPC carriers launch drones“ (Träger in der Nähe starten ihre Drohnen – zum Testen des Pulses); dazu wie gehabt „Spawn any ship“.
 
 ### Stationstyp 0 (Paket 26)
