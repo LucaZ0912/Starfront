@@ -1510,8 +1510,9 @@ func _shoot_standing(view: SystemView) -> void:
 		view.ship_layer.add_child(gs9)
 		gs9.heading = 0.3
 		gs9.velocity = Vector2.from_angle(0.3) * 80.0
-		view.camera.position = gs9.position
+		gs9.set_order({"type": "move", "pos": gs9.position + Vector2.from_angle(0.3) * 30000.0})   # under thrust: flames on
 		for i12 in 30:
+			view.camera.position = gs9.position
 			await get_tree().physics_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/goliath.png")
 		gs9.set_physics_process(false)                   # arms folded in as for a hangar bay
@@ -3939,6 +3940,8 @@ func _test_hadrian(view: SystemView) -> void:
 	var body_t := PixelArt.ship_texture("hdy_goliath_body", "player")
 	check(open0 == 1.0 and shut == 0.0 and gsa.arm_open == 1.0 and at[0].get_width() == full_t.get_width() and at[0].get_height() > full_t.get_height() and at0[0].get_image().get_used_rect().position.y > at[0].get_image().get_used_rect().position.y and body_t.get_size() == full_t.get_size(), "Goliath: the arms open into a round arc in space and fold in to dock (hinges at the stern)")
 	gsa.queue_free()
+	var gep: Array = PixelArt.engine_points("hdy_goliath_body")
+	check(gep.size() == 2 and absf(float(gep[0][0].y) + float(gep[1][0].y)) < 0.5 and absf(float(gep[0][0].y)) > 20.0 and PixelArt.engine_points("hornet").is_empty(), "engine flames sit at the drives: two for the Goliath's arm drives, one centred for ordinary ships")
 	var g0 := PixelArt.ship_texture("hdy_goliath", "player", 0).get_image().get_data()
 	var g8 := PixelArt.ship_texture("hdy_goliath", "player", 8).get_image().get_data()
 	check(g0 != g8 and GameData.hulls["hdy_goliath"].get("hatches", {}).has("drones") and PixelArt.ShipArt.VARIANTS["hdy_citadel"].size() == 4, "Goliath: glowing eye-slits and a drone hatch on the spine; all Citadel bridges kept as variants")

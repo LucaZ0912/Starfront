@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.21 – 2026-11-06
+
+- Engine flames sit at the actual drives: the Goliath shows two flames at its arm drives instead of
+  one in the middle (ships with a centred drive look as before).
+
 ## alpha 0.4.25.20 – 2026-11-06
 
 - Goliath: the arms are hinged at the stern (straight drive sections) and open in space into a round

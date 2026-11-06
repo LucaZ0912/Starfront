@@ -2738,9 +2738,17 @@ func _draw() -> void:
 	if velocity.length() > 20.0:
 		var glow: Color = PixelArt.engine_glow(paint)
 		var flick := randf_range(0.8, 1.2)
-		var ex := -size.x * 0.5
-		draw_circle(Vector2(ex - 2.0, 0.0), size.y * 0.16 * flick, Color(glow, 0.35))
-		draw_circle(Vector2(ex, 0.0), size.y * 0.09 * flick, Color(1, 1, 1, 0.8))
+		var ep: Array = PixelArt.engine_points(String(arms["body"]) if not arms.is_empty() else fit.hull_id)
+		if ep.is_empty():
+			var ex := -size.x * 0.5
+			draw_circle(Vector2(ex - 2.0, 0.0), size.y * 0.16 * flick, Color(glow, 0.35))
+			draw_circle(Vector2(ex, 0.0), size.y * 0.09 * flick, Color(1, 1, 1, 0.8))
+		else:
+			for e in ep:                      # one flame per drive (package 25d: the Goliath's arm drives)
+				var p: Vector2 = e[0]
+				var r := float(e[1]) * flick
+				draw_circle(p - Vector2(2.0, 0.0), r, Color(glow, 0.35))
+				draw_circle(p, r * 0.55, Color(1, 1, 1, 0.8))
 	var mod := Color(1.8, 1.8, 1.8) if hit_flash > 0.0 else Color.WHITE
 	draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
 	_draw_hatches()

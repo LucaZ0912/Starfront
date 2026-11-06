@@ -130,6 +130,48 @@ static func notorious_paint(i: int) -> Dictionary:
 	return out
 
 
+## Engine flames where the drives really are (package 25d): groups of rows with engine-glow pixels ("f")
+## at the stern of the art. [] = one flame on the centre line as before (a group covers the centre row);
+## otherwise [[local position (world units, x forward), radius], …] – e.g. the Goliath's two arm drives.
+static func engine_points(key: String) -> Array:
+	var ck := "engines_" + key
+	if _cache.has(ck):
+		return _cache[ck]
+	var art: Array = ShipArt.SHIPS.get(key, [])
+	var rows := _pad(art) if ShipArt.FULL.has(key) else _mirror_v(_pad(art))
+	var h := rows.size()
+	var w := String(rows[0]).length() if h > 0 else 0
+	var first := {}
+	var min_x := 1 << 20
+	for y in h:
+		var fx := String(rows[y]).find("f")
+		if fx >= 0:
+			first[y] = fx
+			min_x = mini(min_x, fx)
+	var groups: Array = []
+	var cur: Array = []
+	for y2 in h:
+		if first.has(y2) and int(first[y2]) <= min_x + 3:
+			cur.append(y2)
+		elif not cur.is_empty():
+			groups.append(cur)
+			cur = []
+	if not cur.is_empty():
+		groups.append(cur)
+	var out: Array = []
+	var mid := (h - 1) / 2
+	for g in groups:
+		if mid in g:
+			out = []
+			break
+		var gy := (float(g[0]) + float(g[g.size() - 1])) * 0.5
+		var gx := float(first[g[0]])
+		var pos := (Vector2(gx + 1.5, gy + 1.5) - Vector2(w + 2, h + 2) * 0.5) * SCALE
+		out.append([pos, clampf(float(g.size()) * SCALE * 0.9, 6.0, 40.0)])
+	_cache[ck] = out
+	return out
+
+
 static func engine_glow(key: String) -> Color:
 	if key.begins_with("notorious_"):
 		return notorious_paint(int(key.trim_prefix("notorious_")))["f"]
