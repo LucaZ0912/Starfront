@@ -182,7 +182,7 @@ const HULLS := {
 		"slots": {"weapon": 4, "tool": 2, "optional": 4, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [3, 3, 2, 2], "tool": [2, 1], "optional": [7, 6, 5, 4], "hull": 8, "engine": 8, "reactor": 9, "distributor": 8, "tank": 7, "hyperdrive": 6, "sensors": 7, "hangar": 5, "dweapon": [1], "dtool": [1], "dbonus": [3]},
 		"drones": 4, "shape": "axa_threshold", "length": 124,
-		"hatches": {"drones": [33, 17, 6, 5]}, "hatch_overlay": true,
+		"hatches": {"drones": [88, 18, 6, 5]}, "hatch_overlay": true,
 		"sensor_mult": 1.25, "signature_mult": 0.75, "power_mult": 0.85, "builtin": ["cloak"],
 		"cloak": {"energy_rate": 18.0, "power": 30.0},
 		"wormhole": {"max": 8, "cooldown": 120.0, "fail": 0.12},

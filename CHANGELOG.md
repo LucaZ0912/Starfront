@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.4.25.36 – 2026-11-07
+
+- Threshold: a raised bridge at the stern – three stepped decks casting shadows, the cabin on top looking forward
+  through a cyan window band; the drone hatch moves to the forward hull.
+
 ## alpha 0.4.25.35 – 2026-11-07
 
 - Threshold: the black hole now looks three-dimensional – the accretion disc is tilted towards the camera, its near

@@ -102,11 +102,33 @@ def threshold():
         c.put(22 - k, cy - 6 - k, "6")
     engines(c, 1, [cy - 5, cy - 4, cy - 2, cy - 1, cy])
     c.hline(2, 3, cy - 3, "1")
-    c.put(30, cy - 1, "a")
-    c.put(31, cy - 1, "a")
     top = [list(r) for r in c.g]
     full = top + [[SHADE_DOWN.get(ch, ch) for ch in r] for r in reversed(top[:-1])]
     HH = len(full)
+    # the raised bridge at the stern (0.4.25.36): three stepped tiers on the centre line, lit from the upper
+    # left – each tier casts a shadow onto the one below; the cabin on top looks forward through a cyan band
+    def tier(x0, x1, h, body, edge, lit, corner=1):
+        cells = [(x, cy + dy) for x in range(x0, x1 + 1) for dy in range(-h, h + 1)
+                 if not (corner and (x - x0 < corner or x1 - x < corner) and abs(dy) == h)]
+        for x, y in cells:                                  # the shadow cast down and to the right
+            if full[y + 1][x + 1] not in (".",) and (x + 1, y + 1) not in cells:
+                full[y + 1][x + 1] = {"6": "3", "3": "2", "2": "1", "1": "1"}.get(full[y + 1][x + 1], full[y + 1][x + 1])
+        for x, y in cells:
+            dy = y - cy
+            top_left = dy == -h or x == x0 or (corner and abs(dy) == h - 1 and (x - x0 < corner))
+            bottom_right = dy == h or x == x1
+            full[y][x] = lit if top_left else (edge if bottom_right else body)
+    tier(23, 38, 7, "2", "1", "6", 2)                      # the base deck, a little wider than the spine
+    tier(26, 37, 5, "3", "2", "6", 1)                      # the middle tier
+    tier(29, 36, 3, "3", "2", "6", 1)                      # the bridge cabin on top
+    for dy in range(-2, 3):
+        full[cy + dy][35] = "4"                            # the forward-looking window band
+        full[cy + dy][36] = "5"
+    full[cy][32] = "5"                                     # a sensor dome on the roof
+    full[cy][31] = "4"
+    for x in (27, 28):
+        full[cy - 4][x] = "a"                              # owner colour on the middle tier
+        full[cy + 4][x] = "a"
     # the round core, drawn over the full image
     RH, R_IN, R_OUT = 5.4, 8.0, 15.0                     # hole radius, disc inner and outer radius
     for y in range(HH):
