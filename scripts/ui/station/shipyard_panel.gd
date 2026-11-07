@@ -35,6 +35,9 @@ func build() -> void:
 		var why_t: String = GameState.hull_standing_error(hid)       # faction ships need standing (package 25e)
 		if String(h.get("min_tier", "")) != "":
 			info.add_child(UI.label("Faction ship – needs %s standing" % String(h["min_tier"]).capitalize() + (("  •  " + why_t) if why_t != "" else "  ✓"), 12, UI.BAD if why_t != "" else UI.GOOD))
+		var tree_e: String = GameState.hull_tree_error(hid)        # 0.5.30.2: buy freely, fly with the tile
+		if tree_e != "":
+			info.add_child(UI.label(tree_e.replace(" first (Pilot window).", "") + " to fly it – until then it stays docked.", 12, Color(1.0, 0.7, 0.3)))
 		var sl: Dictionary = h["slots"]
 		info.add_child(UI.label("Structure %d  •  Mass %d t  •  Cargo %d m³  •  Slots: %d weapons, %d tools, %d optional" % [
 			int(h["structure"]), int(h["mass"]), int(h["cargo"]), int(sl.get("weapon", 0)), int(sl.get("tool", 0)), int(sl.get("optional", 0))], 12))

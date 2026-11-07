@@ -1,12 +1,12 @@
 extends RefCounted
-## Package 30: the skill tree and the perks (decisions of Luz, 7 Nov 2026).
+## Package 30 (reworked 0.5.30.2 after the sketch of Luz): the skill tree – a real tree that opens upwards from
+## its trunk, the PILOT LICENCE (later what the story intro of part 8 grants). Above it SHIELDS, and from there it
+## branches by ACTIVITY (not by manufacturer): defence, combat, mining, industry, flight, exploration, security,
+## trade & transport, drones; mastery grows beside the trunk.
 ##
-## The tree is made of tiles that lead on from tile to tile. A tile opens once its predecessors are open and its
-## achievements are met (e.g. "5,000 ore mined"); then it glows and is confirmed in the Pilot window. No points.
-## Free tiles are open from the start (the "medium" start scope: Earthworks S ships, modules up to quality C in the
-## small sizes). Ships and modules the pilot already owns stay usable – the tree only gates buying and building.
-##
-## Perks: every pilot level brings a perk point, spent freely in one of six groups; some need a skill level.
+## A tile opens once its predecessors are open and its achievements are met; then it glows and is confirmed in the
+## Pilot window. Everything can be bought – but only USED with the tile: a locked ship cannot undock, a locked module
+## stays offline (core modules fitted in a ship always work, but a locked one cannot be fitted).
 
 ## Achievement metrics (GameState.stats keys) and how they read in the game
 const METRICS := {
@@ -14,91 +14,107 @@ const METRICS := {
 	"built": "modules built", "markets": "markets traded at", "turnover": "credits traded", "kills": "pirates destroyed",
 	"bounty_jobs": "bounty contracts", "jobs_covenant": "contracts for the Covenant", "jobs_assembly": "contracts for the Assembly",
 	"passengers": "passengers delivered", "analysed": "anomalies analysed", "exotic": "exotic matter collected", "scans": "ships scanned",
-	"bounties": "bounties redeemed", "pilot_level": "pilot level",
+	"bounties": "bounties redeemed", "pilot_level": "pilot level", "damage_taken": "damage taken", "missions_done": "contracts completed",
 }
 
-const BRANCHES := ["Flight", "Industry", "Blueprints", "Combat", "Commerce", "Science", "Equipment", "Mastery"]
-
-## id: branch, name, what it opens (text), prerequisites, achievements [[metric, amount], …], any (one achievement is
-## enough), unlocks {"hulls": […], "families": […], "weapon_size": n, "size": n, "quality": "B", "fab_size": n}
+## id: branch, name, prerequisites (the first one is the parent in the drawing), achievements [[metric, amount], …],
+## any (one achievement is enough), unlocks {"hulls", "families", "weapon_size", "size", "quality", "fab_size"}
 const TILES := {
-	# ---- Flight
-	"small_craft": {"branch": "Flight", "name": "Small Craft", "opens": "Earthworks S ships: Dragonfly, Hornet, Skiff", "pre": [], "req": [],
-		"unlocks": {"hulls": ["dragonfly", "hornet", "shuttle"]}},
-	"frigate_ops": {"branch": "Flight", "name": "Frigate Operations", "opens": "Earthworks M ships: Mule, Warden", "pre": ["small_craft"],
-		"req": [["warps", 25], ["jumps", 10]], "unlocks": {"hulls": ["mule", "warden"]}},
-	"cruiser_cmd": {"branch": "Flight", "name": "Cruiser Command", "opens": "Earthworks L: Bastion", "pre": ["frigate_ops"],
-		"req": [["warps", 100], ["jumps", 40], ["systems", 10]], "unlocks": {"hulls": ["bastion"]}},
-	# ---- Industry
-	"mining_basics": {"branch": "Industry", "name": "Mining Basics", "opens": "Mining lasers, scanners", "pre": [], "req": [], "unlocks": {}},
-	"khi_mogura": {"branch": "Industry", "name": "Prospector Licence", "opens": "Drillhead, KHI Mogura", "pre": ["mining_basics"],
-		"req": [["mined", 500]], "unlocks": {"hulls": ["drillhead", "mogura"]}},
-	"khi_anaguma": {"branch": "Industry", "name": "KHI Frigates", "opens": "KHI Anaguma", "pre": ["khi_mogura"],
-		"req": [["mined", 5000], ["refined_station", 2000]], "unlocks": {"hulls": ["anaguma"]}},
-	"khi_iwakudaki": {"branch": "Industry", "name": "KHI Barges", "opens": "KHI Iwakudaki", "pre": ["khi_anaguma"],
-		"req": [["mined", 30000], ["refined_station", 10000]], "unlocks": {"hulls": ["iwakudaki"]}},
-	"kanayama": {"branch": "Industry", "name": "Heavy Industry", "opens": "Kanayama-maru", "pre": ["khi_iwakudaki"],
-		"req": [["markets", 10], ["built", 20]], "unlocks": {"hulls": ["kanayama"]}},
-	# ---- Blueprints (what can be manufactured)
-	"workshop": {"branch": "Blueprints", "name": "Workshop", "opens": "Manufacturing modules of size 1–2", "pre": [], "req": [], "unlocks": {"fab_size": 2}},
-	"fabrication_2": {"branch": "Blueprints", "name": "Fabrication II", "opens": "Manufacturing modules of size 3–5", "pre": ["workshop"],
-		"req": [["built", 20]], "unlocks": {"fab_size": 5}},
-	"fabrication_3": {"branch": "Blueprints", "name": "Fabrication III", "opens": "Manufacturing modules of size 6 and up", "pre": ["fabrication_2"],
-		"req": [["built", 100]], "unlocks": {"fab_size": 99}},
-	# ---- Combat
-	"small_arms": {"branch": "Combat", "name": "Small Arms", "opens": "Weapons of size 1–2", "pre": [], "req": [], "unlocks": {}},
-	"heavy_weapons": {"branch": "Combat", "name": "Heavy Weapons", "opens": "Weapons of size 3", "pre": ["small_arms"],
-		"req": [["kills", 10]], "unlocks": {"weapon_size": 3}},
-	"capital_weapons": {"branch": "Combat", "name": "Capital Weapons", "opens": "Weapons of size 4", "pre": ["heavy_weapons"],
-		"req": [["kills", 50]], "unlocks": {"weapon_size": 4}},
-	"hdy_talon": {"branch": "Combat", "name": "Hadrian Dropships", "opens": "Hadrian Talon", "pre": ["small_arms"],
-		"req": [["kills", 5]], "unlocks": {"hulls": ["hdy_talon"]}},
-	"hdy_maul": {"branch": "Combat", "name": "Hadrian Gunboats", "opens": "Hadrian Maul", "pre": ["hdy_talon"],
-		"req": [["kills", 25], ["bounty_jobs", 5]], "unlocks": {"hulls": ["hdy_maul"]}},
-	"hdy_goliath": {"branch": "Combat", "name": "Hadrian Destroyers", "opens": "Hadrian Goliath", "pre": ["hdy_maul"],
-		"req": [["kills", 75]], "unlocks": {"hulls": ["hdy_goliath"]}},
-	"hdy_citadel": {"branch": "Combat", "name": "Hadrian Carriers", "opens": "Hadrian Citadel", "pre": ["hdy_goliath"],
-		"req": [["kills", 150]], "unlocks": {"hulls": ["hdy_citadel"]}},
-	"for_acolyte": {"branch": "Combat", "name": "Covenant Militia", "opens": "Forge Acolyte", "pre": ["small_arms"],
-		"req": [["kills", 5], ["jobs_covenant", 5]], "unlocks": {"hulls": ["for_acolyte"]}},
-	"for_templar": {"branch": "Combat", "name": "Covenant Patrols", "opens": "Forge Templar", "pre": ["for_acolyte"],
-		"req": [["kills", 25], ["jobs_covenant", 15]], "unlocks": {"hulls": ["for_templar"]}},
-	"for_cathedral": {"branch": "Combat", "name": "Covenant Flagships", "opens": "Forge Cathedral", "pre": ["for_templar"],
-		"req": [["kills", 75], ["jobs_covenant", 40]], "unlocks": {"hulls": ["for_cathedral"]}},
-	"cfw_demos": {"branch": "Combat", "name": "Assembly Militia", "opens": "Concord Demos", "pre": ["small_arms"],
-		"req": [["kills", 5], ["jobs_assembly", 5]], "unlocks": {"hulls": ["cfw_demos"]}},
-	"cfw_quirinus": {"branch": "Combat", "name": "Assembly Patrols", "opens": "Concord Quirinus", "pre": ["cfw_demos"],
-		"req": [["kills", 25], ["jobs_assembly", 15]], "unlocks": {"hulls": ["cfw_quirinus"]}},
-	"cfw_concordia": {"branch": "Combat", "name": "Assembly Carriers", "opens": "Concord Concordia", "pre": ["cfw_quirinus"],
-		"req": [["kills", 75], ["jobs_assembly", 40]], "unlocks": {"hulls": ["cfw_concordia"]}},
-	# ---- Commerce
-	"longhaul": {"branch": "Commerce", "name": "Bulk Freight", "opens": "Longhaul", "pre": [],
-		"req": [["markets", 5], ["turnover", 250000]], "unlocks": {"hulls": ["freighter"]}},
-	"aur_pearl": {"branch": "Commerce", "name": "Passenger Service", "opens": "Aurelle Pearl", "pre": ["longhaul"],
-		"req": [["passengers", 20]], "unlocks": {"hulls": ["aur_pearl"]}},
-	"aur_liners": {"branch": "Commerce", "name": "Liner Service", "opens": "Aurelle Boulevard, Opal", "pre": ["aur_pearl"],
-		"req": [["passengers", 100]], "unlocks": {"hulls": ["aur_boulevard", "aur_opal"]}},
-	"aur_empress": {"branch": "Commerce", "name": "Megaliner Command", "opens": "Aurelle Empress", "pre": ["aur_liners"],
-		"req": [["passengers", 400], ["turnover", 1000000]], "unlocks": {"hulls": ["aur_empress"]}},
-	# ---- Science
-	"scanning": {"branch": "Science", "name": "Scanning", "opens": "Scanners, analysers, surveys", "pre": [], "req": [], "unlocks": {}},
-	"axa_parallax": {"branch": "Science", "name": "Research Licence", "opens": "Axiom Parallax", "pre": ["scanning"],
-		"req": [["analysed", 10]], "unlocks": {"hulls": ["axa_parallax"]}},
-	"axa_threshold": {"branch": "Science", "name": "Wormhole Research", "opens": "Axiom Threshold", "pre": ["axa_parallax"],
-		"req": [["analysed", 40], ["exotic", 3], ["jumps", 100]], "unlocks": {"hulls": ["axa_threshold"]}},
-	# ---- special equipment
-	"drones": {"branch": "Equipment", "name": "Drone Operations", "opens": "Drone hangars and drone modules", "pre": [],
-		"req": [["mined", 2000], ["kills", 25]], "any": true, "unlocks": {"families": ["hangar", "dr_range", "dr_cargo", "dr_hull", "dr_shield", "dr_damage", "dr_wrange", "dr_fuel", "dr_speed", "dr_cloak"]}},
-	"mines": {"branch": "Equipment", "name": "Mine Warfare", "opens": "Mine launchers", "pre": [], "req": [["kills", 20]], "unlocks": {"families": ["w_minelayer"]}},
-	"ewar": {"branch": "Equipment", "name": "Electronic Warfare", "opens": "Radar jammers", "pre": [], "req": [["scans", 30]], "unlocks": {"families": ["o_jammer"]}},
-	"interdictor": {"branch": "Equipment", "name": "Interdiction", "opens": "Warp interdictors", "pre": [], "req": [["bounties", 10]], "unlocks": {"families": ["t_interdictor"]}},
-	# ---- sizes and qualities
-	"size_3": {"branch": "Mastery", "name": "Larger Modules", "opens": "Modules of size 3–4 (not weapons)", "pre": [], "req": [["pilot_level", 5]], "unlocks": {"size": 4}},
-	"size_5": {"branch": "Mastery", "name": "Heavy Modules", "opens": "Modules of size 5–7", "pre": ["size_3"], "req": [["pilot_level", 12]], "unlocks": {"size": 7}},
-	"size_8": {"branch": "Mastery", "name": "Capital Modules", "opens": "Modules of size 8–10", "pre": ["size_5"], "req": [["pilot_level", 20]], "unlocks": {"size": 99}},
-	"quality_b": {"branch": "Mastery", "name": "Quality B", "opens": "Modules of quality B", "pre": [], "req": [["pilot_level", 8]], "unlocks": {"quality": "B"}},
-	"quality_a": {"branch": "Mastery", "name": "Quality A", "opens": "Modules of quality A", "pre": ["quality_b"], "req": [["pilot_level", 18]], "unlocks": {"quality": "A"}},
+	"licence": {"branch": "Trunk", "name": "Pilot Licence", "pre": [], "req": [], "unlocks": {
+		"hulls": ["dragonfly", "shuttle"],
+		"families": ["pl_standard", "eng_chemical", "eng_ion", "dist_basic", "rea_fission", "tank", "hyperdrive", "sen_basic",
+			"w_pulse", "t_mining", "t_scanner", "t_analyzer", "t_salvage", "o_cargo", "o_fuel"]}},
+	"shields": {"branch": "Trunk", "name": "Shields", "pre": ["licence"], "req": [["warps", 1]], "unlocks": {"families": ["o_shield"]}},
+	# ---- defence
+	"adv_shields": {"branch": "Defence", "name": "Advanced Shields", "pre": ["shields"], "req": [["damage_taken", 5000]],
+		"unlocks": {"families": ["o_shield_cap", "o_shield_fast"]}},
+	"shield_support": {"branch": "Defence", "name": "Shield Support", "pre": ["adv_shields"], "req": [["damage_taken", 20000]],
+		"unlocks": {"families": ["o_shieldboost", "t_shieldxfer"]}},
+	"armour": {"branch": "Defence", "name": "Armour", "pre": ["shields"], "req": [["damage_taken", 5000]],
+		"unlocks": {"families": ["o_armor", "pl_reflective", "pl_ablative", "o_armorrep", "t_repair"]}},
+	# ---- combat
+	"light_weapons": {"branch": "Combat", "name": "Light Weapons", "pre": ["shields"], "req": [["kills", 3]],
+		"unlocks": {"families": ["w_autocannon", "w_rocket", "w_beam"]}},
+	"fighters": {"branch": "Combat", "name": "Fighters", "pre": ["light_weapons"], "req": [["kills", 5]],
+		"unlocks": {"hulls": ["hornet", "hdy_talon", "for_acolyte", "cfw_demos"]}},
+	"gunships": {"branch": "Combat", "name": "Gunships", "pre": ["fighters"], "req": [["kills", 25], ["bounty_jobs", 3]],
+		"unlocks": {"hulls": ["warden", "hdy_maul", "for_templar", "cfw_quirinus"]}},
+	"capital_ships": {"branch": "Combat", "name": "Capital Ships", "pre": ["gunships"], "req": [["kills", 100], ["bounty_jobs", 10]],
+		"unlocks": {"hulls": ["bastion", "hdy_goliath", "hdy_citadel", "for_cathedral", "cfw_concordia"]}},
+	"heavy_weapons": {"branch": "Combat", "name": "Heavy Weapons", "pre": ["light_weapons"], "req": [["kills", 25]],
+		"unlocks": {"weapon_size": 3, "families": ["w_railgun", "w_massdriver", "w_lance", "w_torpedo"]}},
+	"capital_weapons": {"branch": "Combat", "name": "Capital Weapons", "pre": ["heavy_weapons"], "req": [["kills", 75]],
+		"unlocks": {"weapon_size": 4, "families": ["w_cruise"]}},
+	"pd_mines": {"branch": "Combat", "name": "Point Defence & Mines", "pre": ["light_weapons"], "req": [["kills", 20]],
+		"unlocks": {"families": ["w_pointdef", "w_minelayer"]}},
+	"focus": {"branch": "Combat", "name": "Focus Crystals", "pre": ["light_weapons"], "req": [["jobs_covenant", 10]],
+		"unlocks": {"families": ["w_focus"]}},
+	# ---- mining
+	"mining_ops": {"branch": "Mining", "name": "Mining Operations", "pre": ["shields"], "req": [["mined", 300]],
+		"unlocks": {"families": ["o_orehold", "t_prospector", "o_mining_metal", "o_mining_stone", "o_mining_ice"]}},
+	"mining_ships": {"branch": "Mining", "name": "Mining Ships", "pre": ["mining_ops"], "req": [["mined", 1000]],
+		"unlocks": {"hulls": ["drillhead", "mogura"]}},
+	"ice": {"branch": "Mining", "name": "Ice Harvesting", "pre": ["mining_ships"], "req": [["mined", 2000]],
+		"unlocks": {"families": ["t_harvester"]}},
+	"mining_frigates": {"branch": "Mining", "name": "Mining Frigates", "pre": ["mining_ships"], "req": [["mined", 5000], ["refined_station", 2000]],
+		"unlocks": {"hulls": ["anaguma"], "families": ["t_stripminer"]}},
+	"mining_barges": {"branch": "Mining", "name": "Mining Barges", "pre": ["mining_frigates"], "req": [["mined", 30000], ["refined_station", 10000]],
+		"unlocks": {"hulls": ["iwakudaki"]}},
+	"heavy_industry": {"branch": "Mining", "name": "Heavy Industry", "pre": ["mining_barges", "blueprints_2"], "req": [["markets", 10], ["built", 20]],
+		"unlocks": {"hulls": ["kanayama"]}},
+	# ---- industry
+	"station_mfg": {"branch": "Industry", "name": "Station Manufacturing", "pre": ["shields"], "req": [["refined_station", 1000]],
+		"unlocks": {"fab_size": 2}},
+	"blueprints_2": {"branch": "Industry", "name": "Blueprints II", "pre": ["station_mfg"], "req": [["built", 20]], "unlocks": {"fab_size": 5}},
+	"blueprints_3": {"branch": "Industry", "name": "Blueprints III", "pre": ["blueprints_2"], "req": [["built", 100]], "unlocks": {"fab_size": 99}},
+	# ---- flight
+	"navigation": {"branch": "Flight", "name": "Navigation", "pre": ["shields"], "req": [["warps", 25], ["jumps", 10]],
+		"unlocks": {"families": ["o_afterburner", "sen_radar"]}},
+	"adv_propulsion": {"branch": "Flight", "name": "Advanced Propulsion", "pre": ["navigation"], "req": [["warps", 100], ["jumps", 40]],
+		"unlocks": {"families": ["eng_plasma", "rea_fusion", "dist_precision", "o_capacitor", "o_solar"]}},
+	# ---- exploration
+	"survey": {"branch": "Exploration", "name": "Survey", "pre": ["shields"], "req": [["analysed", 3]],
+		"unlocks": {"families": ["t_survey", "o_survey_amp", "sen_grav"]}},
+	"research_ships": {"branch": "Exploration", "name": "Research Ships", "pre": ["survey"], "req": [["analysed", 10]],
+		"unlocks": {"hulls": ["axa_parallax"]}},
+	"wormhole": {"branch": "Exploration", "name": "Wormhole Research", "pre": ["research_ships"], "req": [["analysed", 40], ["exotic", 3], ["jumps", 100]],
+		"unlocks": {"hulls": ["axa_threshold"]}},
+	# ---- security
+	"scanning": {"branch": "Security", "name": "Scanning", "pre": ["shields"], "req": [["kills", 5]],
+		"unlocks": {"families": ["t_warrant", "t_cargoscan", "sen_tactical", "o_targeting"]}},
+	"ewar": {"branch": "Security", "name": "Electronic Warfare", "pre": ["scanning"], "req": [["scans", 30]],
+		"unlocks": {"families": ["o_jammer"]}},
+	"interdiction": {"branch": "Security", "name": "Interdiction", "pre": ["ewar"], "req": [["bounties", 10]],
+		"unlocks": {"families": ["t_interdictor"]}},
+	# ---- trade & transport
+	"freight": {"branch": "Trade", "name": "Freight", "pre": ["shields"], "req": [["markets", 3], ["turnover", 50000]],
+		"unlocks": {"hulls": ["mule"]}},
+	"bulk_freight": {"branch": "Trade", "name": "Bulk Freight", "pre": ["freight"], "req": [["markets", 5], ["turnover", 250000]],
+		"unlocks": {"hulls": ["freighter"]}},
+	"passengers": {"branch": "Trade", "name": "Passengers", "pre": ["freight"], "req": [["missions_done", 3]],
+		"unlocks": {"families": ["o_cabin_bulk", "o_cabin_business"]}},
+	"liners": {"branch": "Trade", "name": "Liners", "pre": ["passengers"], "req": [["passengers", 50]],
+		"unlocks": {"hulls": ["aur_pearl", "aur_boulevard", "aur_opal"]}},
+	"megaliner": {"branch": "Trade", "name": "Megaliner", "pre": ["liners"], "req": [["passengers", 400], ["turnover", 1000000]],
+		"unlocks": {"hulls": ["aur_empress"], "families": ["o_cabin_luxury"]}},
+	# ---- drones
+	"drones": {"branch": "Drones", "name": "Drone Operations", "pre": ["shields"], "req": [["mined", 2000], ["kills", 25]], "any": true,
+		"unlocks": {"families": ["hangar", "dr_range", "dr_cargo", "dr_hull", "dr_fuel", "dr_speed"]}},
+	"adv_drones": {"branch": "Drones", "name": "Advanced Drones", "pre": ["drones"], "req": [["mined", 10000], ["kills", 75]], "any": true,
+		"unlocks": {"families": ["dr_shield", "dr_damage", "dr_wrange", "dr_cloak"]}},
+	# ---- mastery (beside the trunk)
+	"quality_b": {"branch": "Mastery", "name": "Quality B", "pre": ["licence"], "roots": -1, "req": [["pilot_level", 8]], "unlocks": {"quality": "B"}},
+	"quality_a": {"branch": "Mastery", "name": "Quality A", "pre": ["quality_b"], "req": [["pilot_level", 18]], "unlocks": {"quality": "A"}},
+	"size_3": {"branch": "Mastery", "name": "Larger Modules", "pre": ["licence"], "roots": 1, "req": [["pilot_level", 5]], "unlocks": {"size": 4}},
+	"size_5": {"branch": "Mastery", "name": "Heavy Modules", "pre": ["size_3"], "req": [["pilot_level", 12]], "unlocks": {"size": 7}},
+	"size_8": {"branch": "Mastery", "name": "Capital Modules", "pre": ["size_5"], "req": [["pilot_level", 20]], "unlocks": {"size": 99}},
 }
+
+const ROOT := "licence"
+const TRUNK := "shields"
+const BRANCH_COLORS := {"Trunk": Color(1.0, 0.85, 0.4), "Defence": Color(0.45, 0.75, 1.0), "Combat": Color(1.0, 0.45, 0.4),
+	"Mining": Color(1.0, 0.75, 0.3), "Industry": Color(0.85, 0.6, 1.0), "Flight": Color(0.4, 0.95, 1.0), "Exploration": Color(0.55, 1.0, 0.6),
+	"Security": Color(1.0, 0.55, 0.85), "Trade": Color(1.0, 0.92, 0.5), "Drones": Color(0.6, 1.0, 0.85), "Mastery": Color(0.95, 0.95, 0.95)}
 
 ## Perks: id → group, name, effect, skill and level needed ("" = none), "later": package it takes effect with
 const GROUPS := ["Combat", "Flight", "Industry", "Science", "Commerce", "Command"]
@@ -131,14 +147,10 @@ const PERKS := {
 
 
 static func free_tiles() -> Array:
-	var out: Array = []
-	for id in TILES:
-		if (TILES[id]["req"] as Array).is_empty() and (TILES[id]["pre"] as Array).is_empty():
-			out.append(id)
-	return out
+	return [ROOT]
 
 
-## The tile that opens a hull for buying ("" = free from the start, or not part of the tree).
+## The tile a hull needs ("" = free – e.g. pirate hulls).
 static func tile_of_hull(hid: String) -> String:
 	for id in TILES:
 		if hid in TILES[id]["unlocks"].get("hulls", []):
@@ -153,25 +165,84 @@ static func tile_of_family(fam: String) -> String:
 	return ""
 
 
-## The tiles of a branch in tree order (predecessors first).
-static func branch_tiles(branch: String) -> Array:
+## The children of a tile in the drawing (tiles whose first prerequisite it is).
+static func children(id: String) -> Array:
 	var out: Array = []
-	var left: Array = []
-	for id in TILES:
-		if TILES[id]["branch"] == branch:
-			left.append(id)
-	while not left.is_empty():
-		var moved := false
-		for id in left.duplicate():
-			var ok := true
-			for p in TILES[id]["pre"]:
-				if p in left:
-					ok = false
-			if ok:
-				out.append(id)
-				left.erase(id)
-				moved = true
-		if not moved:
-			out.append_array(left)
-			break
+	for t in TILES:
+		var pre: Array = TILES[t]["pre"]
+		if not pre.is_empty() and pre[0] == id:
+			out.append(t)
 	return out
+
+
+## Positions for the drawing: x in leaf columns (centred over their children), y = depth (0 = the trunk at the
+## bottom, -1 = the roots in the earth: mastery). Returns {id: Vector2(column, depth)} and the column count in "_cols".
+static func layout() -> Dictionary:
+	var pos := {}
+	var next := [0.0]
+	_place(ROOT, 0, pos, next)
+	# mastery grows as the roots: in the earth beside the trunk, outwards to the left and the right
+	var tx: float = pos[ROOT].x
+	for k in children(ROOT):
+		var side := int(TILES[k].get("roots", 0))
+		if side == 0:
+			continue
+		var id: String = k
+		var i := 1
+		while id != "":
+			pos[id] = Vector2(tx + float(side) * (1.15 * float(i) + 0.1), -1)
+			var kids := children(id)
+			id = String(kids[0]) if not kids.is_empty() else ""
+			i += 1
+	var lo := 0.0
+	var hi := 0.0
+	for id2 in pos:
+		lo = minf(lo, pos[id2].x)
+		hi = maxf(hi, pos[id2].x)
+	for id3 in pos.keys():
+		pos[id3] = Vector2(pos[id3].x - lo, pos[id3].y)      # nothing left of column 0
+	pos["_cols"] = hi - lo + 1.0
+	return pos
+
+
+static func _place(id: String, depth: int, pos: Dictionary, next: Array) -> float:
+	var kids: Array = []
+	for k0 in children(id):
+		if int(TILES[k0].get("roots", 0)) == 0:
+			kids.append(k0)
+	var x := 0.0
+	if kids.is_empty():
+		x = next[0]
+		next[0] = next[0] + 1.0
+	else:
+		var xs: Array = []
+		for k in kids:
+			xs.append(_place(String(k), depth + 1, pos, next))
+		x = (float(xs[0]) + float(xs[xs.size() - 1])) * 0.5
+		var trunk := kids.find(TRUNK)
+		if id == ROOT and trunk >= 0:
+			x = float(xs[trunk])             # the trunk grows straight up; mastery stands beside it
+	pos[id] = Vector2(x, depth)
+	return x
+
+
+## What a tile opens, as a readable line.
+static func opens_text(id: String) -> String:
+	var u: Dictionary = TILES[id]["unlocks"]
+	var parts: Array = []
+	for h in u.get("hulls", []):
+		parts.append(String(GameData.hulls[h]["name"]) if GameData.hulls.has(h) else String(h))
+	var fams: Array = u.get("families", [])
+	var MD = preload("res://data/modules.gd")
+	for f in fams:
+		if MD.FAMILIES.has(f):
+			parts.append(String(MD.FAMILIES[f]["name"]))
+	if u.has("weapon_size"):
+		parts.append("weapons of size %d" % int(u["weapon_size"]))
+	if u.has("size"):
+		parts.append("optional modules and tools up to size %d" % int(u["size"]) if int(u["size"]) < 99 else "optional modules and tools of any size")
+	if u.has("quality"):
+		parts.append("modules of quality %s" % u["quality"])
+	if u.has("fab_size"):
+		parts.append("blueprints up to size %d" % int(u["fab_size"]) if int(u["fab_size"]) < 99 else "blueprints of any size")
+	return ", ".join(PackedStringArray(parts))

@@ -1649,6 +1649,8 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 			_distress_t = GameState.play_time
 			view.on_ship_attacked(self, attacker)
 	var raw := amount
+	if faction == "player" and fit != null and GameState.fleet.has(fit):
+		GameState.count_stat("damage_taken", raw)      # 0.5.30.2: the skill tree (Defence)
 	combat_t = 5.0
 	var sh0 := fit.shield
 	var hull0 := fit.armor + fit.structure

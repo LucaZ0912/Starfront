@@ -270,7 +270,9 @@ func tree_unlock(id: String) -> String:
 	if not tile_ready(id):
 		return "%s: the achievements are not met yet." % TreeData.TILES[id]["name"]
 	pilot["tree"].append(id)
-	log_msg("Skill tree: %s – %s now open." % [TreeData.TILES[id]["name"], TreeData.TILES[id]["opens"]], COL_GOOD)
+	log_msg("Skill tree: %s – %s now usable." % [TreeData.TILES[id]["name"], TreeData.opens_text(id)], COL_GOOD)
+	for f in fleet:
+		f.mark_dirty()                               # locked modules come online
 	skills_changed.emit()
 	return ""
 
@@ -285,7 +287,7 @@ func _tree_best(key: String, base: int) -> int:
 	return best
 
 
-## "" = the pilot may buy this hull (the skill tree; ships owned stay usable).
+## "" = the pilot may fly this hull (0.5.30.2: everything can be bought – a locked ship cannot undock).
 func hull_tree_error(hid: String) -> String:
 	var t := TreeData.tile_of_hull(hid)
 	if t == "" or tile_open(t):
@@ -293,7 +295,8 @@ func hull_tree_error(hid: String) -> String:
 	return "Skill tree: open \"%s\" first (Pilot window)." % TreeData.TILES[t]["name"]
 
 
-## "" = the pilot may buy this module. Core modules follow the ship one may fly; weapons have their own sizes.
+## "" = the pilot may use this module (0.5.30.2: bought freely; locked ones stay offline, locked core modules
+## cannot be fitted – fitted ones keep working). Weapons have their own sizes.
 func module_tree_error(mid: String) -> String:
 	var m: Dictionary = GameData.modules.get(mid, {})
 	if m.is_empty():
@@ -320,7 +323,7 @@ func fab_tree_error(mid: String) -> String:
 		return ""
 	var sz := int(GameData.modules[mid]["size"])
 	if sz > _tree_best("fab_size", 2):
-		return "Skill tree: no blueprint for size %d yet (\"%s\")." % [sz, "Fabrication II" if sz <= 5 else "Fabrication III"]
+		return "Skill tree: no blueprint for size %d yet (\"%s\")." % [sz, "Station Manufacturing" if sz <= 2 else ("Blueprints II" if sz <= 5 else "Blueprints III")]
 	return ""
 
 
@@ -801,9 +804,6 @@ func storage_remove(station_id: String, module_id: String, n: int = 1) -> bool:
 
 ## Faction ships (package 25e): "" = may buy, otherwise why not (standing with the maker's faction).
 func hull_standing_error(hid: String) -> String:
-	var tree_e := hull_tree_error(hid)
-	if tree_e != "":
-		return tree_e
 	var h: Dictionary = GameData.hulls.get(hid, {})
 	var tier := String(h.get("min_tier", ""))
 	if tier == "":

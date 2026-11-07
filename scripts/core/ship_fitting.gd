@@ -88,12 +88,21 @@ func get_module(key: String) -> String:
 	return modules.get(key, "")
 
 
+## 0.5.30.2: a module of the player's own ships the pilot may not use yet (the skill tree).
+func _tree_locked(mid: String) -> bool:
+	if faction != "player" or GameState.pilot.is_empty() or not GameState.fleet.has(self):
+		return false
+	return GameState.module_tree_error(mid) != ""
+
+
 ## Empty string = fits, otherwise the reason.
 func can_fit(key: String, module_id: String) -> String:
 	if module_id == "":
 		return ""
 	if not GameData.modules.has(module_id):
 		return "Unknown module"
+	if key in GameData.CORE_SLOTS and _tree_locked(module_id):
+		return GameState.module_tree_error(module_id)     # 0.5.30.2: core modules fitted already keep working
 	var m: Dictionary = GameData.modules[module_id]
 	match slot_type(key):
 		"dweapon":
@@ -189,7 +198,7 @@ func _compute() -> Dictionary:
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
 		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0, "cabins": [], "reflect": 0.0,
-		"power_passive": 0.0, "power_active_max": 0.0, "offline": [], "max_locks": 3,
+		"power_passive": 0.0, "power_active_max": 0.0, "offline": [], "locked": [], "max_locks": 3,
 		"drone_storage": 0, "drones_max": int(h.get("drones", 0)),
 		"align_mult": float(h.get("align_mult", 1.0)),
 		"power_groups": {1: {"passive": 0.0, "active": 0.0}, 2: {"passive": 0.0, "active": 0.0}, 3: {"passive": 0.0, "active": 0.0}, 4: {"passive": 0.0, "active": 0.0}},
@@ -204,6 +213,9 @@ func _compute() -> Dictionary:
 			continue
 		var m: Dictionary = GameData.modules[mid]
 		s["mass"] += float(m.get("mass", 0))
+		if not (key in GameData.CORE_SLOTS) and _tree_locked(mid):
+			s["locked"].append(key)
+			continue                     # 0.5.30.2: the skill tree – bought, fitted, but offline
 		if slot_type(key) in GameData.DRONE_SLOTS:
 			drone_mods[slot_type(key)] = m          # equips the drones, not the ship (package 23)
 			continue

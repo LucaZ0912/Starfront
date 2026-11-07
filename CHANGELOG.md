@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.30.2 – 2026-11-07
+
+**The skill tree as a real tree** – a new game is needed.
+- Drawn as a tree: the Pilot Licence is the trunk, Shields above it, then branches by activity (defence, combat,
+  mining, industry, flight, exploration, security, trade, drones); mastery are the roots. Drag it, walk it with
+  W/A/S/D, the detail of a tile on the right.
+- Everything can be bought; using needs the tile: a locked ship stays docked, a locked module stays offline, a
+  locked core module cannot be fitted (fitted ones keep working). Station manufacturing has its own tile.
+- New achievement: damage taken (defence branch).
+
 ## alpha 0.5.30.1 – 2026-11-07
 
 **Package 30 – perks and the skill tree.**

@@ -276,13 +276,14 @@ func _variant_tile(parent: Control, f: ShipFitting, mid: String, from_store: boo
 	var qc := GameData.quality_color(q)
 	var why := f.can_fit(slot, mid)
 	var locked: String = "" if from_store else GameState.rep.module_error(station, mid)
-	if locked == "" and not from_store:
-		locked = GameState.module_tree_error(mid)            # package 30: the skill tree
+	var tree_e := GameState.module_tree_error(mid)           # 0.5.30.2: may be bought – stays offline until the tile is open
 	var reason := why if why != "" else locked
 	var on := pick == mid and pick_store == from_store
 	var b := _tile(parent, Vector2(118, 70), qc, on, func(): _set_pick(mid, from_store))
 	b.disabled = reason != ""
-	b.tooltip_text = reason if reason != "" else GameData.module_summary(mid)
+	b.tooltip_text = reason if reason != "" else (tree_e + " Until then it stays offline.
+
+" if tree_e != "" else "") + GameData.module_summary(mid)
 	var v := UI.vbox(0)
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 8
@@ -295,7 +296,9 @@ func _variant_tile(parent: Control, f: ShipFitting, mid: String, from_store: boo
 		v.add_child(_lbl("stored ×%d" % int(GameState.storage_of(station["id"]).get(mid, 0)), 11, UI.GOOD))
 	else:
 		v.add_child(_lbl(GameData.fmt_credits(buy_price(int(m["price"]))), 12, UI.GOLD if reason == "" else UI.TEXT_DIM))
-		v.add_child(_lbl(_short_reason(why) if why != "" else (("skill tree" if locked.begins_with("Skill tree") else "locked") if locked != "" else ""), 10, UI.BAD))
+		v.add_child(_lbl(_short_reason(why) if why != "" else ("locked" if locked != "" else ""), 10, UI.BAD))
+	if reason == "" and tree_e != "":
+		v.add_child(_lbl("offline: skill tree", 10, Color(1.0, 0.7, 0.3)))
 
 
 func _set_pick(mid: String, from_store: bool) -> void:
@@ -440,6 +443,8 @@ func _short_reason(why: String) -> String:
 		return ""
 	if why.begins_with("Too large"):
 		return "too big"
+	if why.begins_with("Skill tree"):
+		return "skill tree"
 	return "not for this ship"
 
 

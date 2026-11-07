@@ -440,6 +440,9 @@ func _c_undock(_c: Dictionary) -> String:
 	var e := _need_dock()
 	if e != "":
 		return e
+	var te := GameState.hull_tree_error(String(_fit().hull_id))   # 0.5.30.2: bought freely, flown with the tile
+	if te != "":
+		return "The %s cannot undock yet – %s" % [_fit().hull()["name"], te]
 	if world != null and is_instance_valid(world) and world.player != null and is_instance_valid(world.player):
 		world.player.undock()
 	else:
@@ -726,8 +729,6 @@ func _c_module_buy(c: Dictionary) -> String:
 	if not mid in st["shop"]:
 		return "The outfitter does not stock that module."
 	var locked: String = GameState.rep.module_error(st, mid)
-	if locked == "":
-		locked = GameState.module_tree_error(mid)            # package 30
 	if locked != "":
 		return locked
 	if not GameState.spend(GameState.rep.buy_price(int(GameData.modules[mid]["price"]), docked_faction())):
@@ -793,6 +794,8 @@ func _c_build(c: Dictionary) -> String:
 	if e != "":
 		return e
 	var mid: String = c["module"]
+	if not GameState.tile_open("station_mfg"):                   # 0.5.30.2: the skill tree
+		return "Skill tree: open \"Station Manufacturing\" first (Pilot window)."
 	var fe := GameState.fab_tree_error(mid)                      # package 30: blueprints
 	if fe != "":
 		return fe

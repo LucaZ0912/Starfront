@@ -1577,7 +1577,8 @@ func _shoot_standing(view: SystemView) -> void:
 	# package 30: some progress for the picture – tiles ready and half way, perk points, a perk taken
 	var keep_s: Dictionary = GameState.stats.duplicate(true)
 	GameState.pilot["tree_all"] = false
-	GameState.pilot["tree"] = ["frigate_ops"]
+	GameState.pilot["tree"] = ["shields", "light_weapons", "mining_ops", "fighters", "survey"]
+	GameState.stats["damage_taken"] = 2400.0
 	GameState.pilot["perk_points"] = 2
 	GameState.pilot["perks"] = ["bounty_hunter"]
 	GameState.stats["warps"] = 61
@@ -5380,33 +5381,85 @@ func _test_tree() -> void:
 	var keep_stats: Dictionary = GameState.stats.duplicate(true)
 	GameState.pilot["tree_all"] = false
 	GameState.pilot["tree"] = []
-	# the start scope: Earthworks S free, M not; modules small and up to quality C
-	var e_s: String = GameState.hull_standing_error("hornet")
-	var e_m: String = GameState.hull_standing_error("mule")
+	# the start scope: the Pilot Licence – Dragonfly and Skiff, the basic modules; everything else waits
+	var e_free: String = GameState.hull_tree_error("dragonfly") + GameState.hull_tree_error("shuttle")
+	var e_hornet: String = GameState.hull_tree_error("hornet")
 	var e_khi: String = GameState.hull_tree_error("anaguma")
-	var e_q: String = GameState.module_tree_error("o_shield:1:B")
+	var e_sh: String = GameState.module_tree_error("o_shield:1:C")
+	var e_q: String = GameState.module_tree_error("o_cargo:1:B")
 	var e_w3: String = GameState.module_tree_error("w_pulse:3:C")
 	var e_core: String = GameState.module_tree_error("rea_fusion:4:C")
 	var e_drone: String = GameState.module_tree_error("hangar:1:C")
 	var e_fab: String = GameState.fab_tree_error("o_cargo:4:C")
-	check(e_s == "" and e_m != "" and e_khi != "" and e_q != "" and e_w3 != "" and e_core == "" and e_drone != "" and e_fab != "" and GameState.fab_tree_error("o_cargo:2:C") == "",
-		"skill tree start scope: Earthworks S and small modules up to quality C free – M ships, quality B, size-3 weapons, drones, larger blueprints closed (core modules follow the ship)")
-	# achievements: Frigate Operations needs 25 warps and 10 jumps – then it glows and is confirmed
+	var buy_ok: bool = GameState.hull_standing_error("hornet") == "" and GameState.hull_standing_error("mule") == ""
+	check(e_free == "" and e_hornet != "" and e_khi != "" and e_sh != "" and e_q != "" and e_w3 != "" and e_core != "" and e_drone != "" and e_fab != ""
+		and GameState.module_tree_error("w_pulse:1:C") == "" and GameState.fab_tree_error("o_cargo:2:C") == "" and buy_ok,
+		"skill tree start scope: the Pilot Licence flies Dragonfly and Skiff with basic modules – shields, fighters, KHI, quality B, size-3 weapons, fusion cores, drones closed; all of it may be bought")
+	# achievements: Shields needs a warp; Navigation (after it) 25 warps and 10 jumps – then it glows and is confirmed
 	GameState.stats["warps"] = 24
 	GameState.stats["jumps"] = 10
-	var not_yet: bool = not GameState.tile_ready("frigate_ops") and Commands.execute({"type": "tree_unlock", "tile": "frigate_ops"}) != ""
+	var not_yet: bool = GameState.tile_ready("shields") and not GameState.tile_ready("navigation") and Commands.execute({"type": "tree_unlock", "tile": "navigation"}) != ""
+	Commands.execute({"type": "tree_unlock", "tile": "shields"})
+	var still: bool = not GameState.tile_ready("navigation")
 	GameState.count_stat("warps")
-	var ready: bool = GameState.tile_ready("frigate_ops") and "frigate_ops" in GameState.tiles_ready()
-	var eu: String = Commands.execute({"type": "tree_unlock", "tile": "frigate_ops"})
-	check(not_yet and ready and eu == "" and GameState.hull_tree_error("mule") == "" and GameState.tile_open("frigate_ops"),
-		"a tile opens once its achievements are met and it is confirmed – Frigate Operations: the Mule may be bought")
-	# a chain: KHI Anaguma needs the Mogura tile first; "any" tiles need one achievement
+	var ready: bool = GameState.tile_ready("navigation") and "navigation" in GameState.tiles_ready()
+	var eu: String = Commands.execute({"type": "tree_unlock", "tile": "navigation"})
+	check(not_yet and still and ready and eu == "" and GameState.tile_open("navigation") and GameState.module_tree_error("o_shield:1:C") == "",
+		"a tile opens once the tile below is open and its achievements are met, then it is confirmed – Shields, then Navigation")
+	# a branch: Mining Operations → Mining Ships → Mining Frigates; Drones needs one of two; Heavy Industry grows from two tiles
 	GameState.stats["mined"] = 6000.0
 	GameState.stats["refined_station"] = 2500.0
-	var chain: bool = GameState.tile_ready("khi_mogura") and not GameState.tile_ready("khi_anaguma")
-	GameState.tree_unlock("khi_mogura")
-	chain = chain and GameState.tile_ready("khi_anaguma") and GameState.tile_ready("drones")
-	check(chain and TD.TILES.size() >= 35, "tiles lead on from tile to tile (Mogura before Anaguma); one achievement opens a tile marked \"any\" (%d tiles)" % TD.TILES.size())
+	var chain: bool = GameState.tile_ready("mining_ops") and not GameState.tile_ready("mining_ships")
+	GameState.tree_unlock("mining_ops")
+	chain = chain and GameState.tile_ready("mining_ships") and not GameState.tile_ready("mining_frigates") and GameState.tile_ready("drones")
+	GameState.tree_unlock("mining_ships")
+	chain = chain and GameState.tile_ready("mining_frigates") and GameState.hull_tree_error("mogura") == ""
+	var lay: Dictionary = TD.layout()
+	var drawn := true
+	for tid in TD.TILES:
+		drawn = drawn and lay.has(tid)
+	check(chain and drawn and (TD.TILES["heavy_industry"]["pre"] as Array).size() == 2 and int(lay["licence"].y) == 0 and int(lay["quality_b"].y) < 0 and TD.TILES.size() >= 40,
+		"the tree grows by activity: Mining Operations → Mining Ships → Frigates; \"any\" tiles need one achievement; mastery are the roots (%d tiles drawn)" % TD.TILES.size())
+	# using: a module without its tile stays offline, a locked core module cannot be fitted, a locked ship stays docked
+	var f0 := GameState.active()
+	var opt_key := ""
+	var opt_mod := ""
+	for k in f0.slot_keys():
+		if ShipFitting.slot_type(k) == "optional" and opt_key == "":
+			for cand in ["o_armor:1:C", "o_armor:2:C", "o_armor:3:C"]:
+				if GameData.modules.has(cand) and f0.can_fit(k, cand) == "":
+					opt_key = k
+					opt_mod = cand
+					break
+	var off_ok := true
+	if opt_key != "":
+		var prev0: String = f0.set_module(opt_key, opt_mod)
+		f0.mark_dirty()
+		off_ok = opt_key in f0.stats()["locked"]
+		GameState.pilot["tree"].append("armour")
+		f0.mark_dirty()
+		off_ok = off_ok and not (opt_key in f0.stats()["locked"])
+		GameState.pilot["tree"].erase("armour")
+		f0.set_module(opt_key, prev0)
+		f0.mark_dirty()
+	var core_ok := false
+	GameState.pilot["tree_all"] = true
+	var core_mod := ""
+	for mid0 in GameData.modules:
+		if String(GameData.modules[mid0]["family"]) == "rea_fusion" and f0.can_fit("reactor", String(mid0)) == "":
+			core_mod = String(mid0)
+			break
+	GameState.pilot["tree_all"] = false
+	core_ok = core_mod == "" or f0.can_fit("reactor", core_mod).begins_with("Skill tree")
+	var undock_ok: bool = GameState.hull_tree_error("hornet") != ""
+	if f0.docked_at != "":
+		var keep_h: String = f0.hull_id
+		f0.hull_id = "hornet"
+		undock_ok = undock_ok and Commands.execute({"type": "undock"}).contains("cannot undock") and f0.docked_at != ""
+		f0.hull_id = keep_h
+		f0.mark_dirty()
+	check(off_ok and opt_key != "" and core_ok and undock_ok,
+		"using needs the tile: %s without Armour stays offline, fusion reactors cannot be fitted without Advanced Propulsion, a locked ship stays docked" % GameData.module_name(opt_mod))
 	# perks: a point per pilot level, some need a skill level
 	GameState.pilot["perk_points"] = 1
 	GameState.pilot["perks"] = []

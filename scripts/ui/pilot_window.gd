@@ -2,7 +2,9 @@ extends CanvasLayer
 ## Package 29: the Pilot window (U). Three tabs:
 ##   Skills     – the twelve skills: level (10 pips), experience to the next level, the effect now, what makes it
 ##                grow; a ready advance is confirmed here ("Advance")
-##   Skill tree – the six branches; the tree itself comes with package 30
+##   Perks      – a perk point per pilot level
+##   Skill tree – drawn as a tree (0.5.30.2): the trunk (Pilot Licence) at the bottom, branches by activity;
+##                drag it, walk it with W/A/S/D, the detail of a tile on the right
 ##   Pilot      – portrait, name, call sign, attributes and a short career
 ## Mouse and keyboard (W/A/S/D, Enter, Q/E for the tabs, Escape).
 
@@ -18,6 +20,13 @@ const TreeData = preload("res://data/skilltree.gd")
 var tab := 0
 var tab_buttons: Array = []
 var body: VBoxContainer
+var _sc: ScrollContainer
+var _tsc: ScrollContainer                 # 0.5.30.2: the drawn tree
+var _canvas: Control
+var _detail_box: VBoxContainer
+var _tiles := {}
+var _sel := ""
+var _tscroll := Vector2(-1, -1)
 
 
 func _ready() -> void:
@@ -49,13 +58,14 @@ func _ready() -> void:
 		tab_buttons.append(b)
 	head.add_child(UI.spacer())
 	head.add_child(UI.button("Close [%s]" % Keybinds.key_text("menu_back"), close))
-	var sc := ScrollContainer.new()
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	v.add_child(sc)
+	_sc = ScrollContainer.new()
+	_sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(_sc)
 	body = UI.vbox(6)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(body)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_sc.add_child(body)
 	GameState.skills_changed.connect(func(): if visible: rebuild())
 
 
@@ -87,6 +97,12 @@ func _set_tab(i: int) -> void:
 func rebuild() -> void:
 	for k in tab_buttons.size():
 		tab_buttons[k].button_pressed = k == tab
+	if is_instance_valid(_tsc) and _tsc.is_inside_tree():
+		_tscroll = Vector2(_tsc.scroll_horizontal, _tsc.scroll_vertical)
+	_tsc = null
+	_canvas = null
+	_detail_box = null
+	_sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if tab == 2 else ScrollContainer.SCROLL_MODE_AUTO
 	UI.clear(body)
 	match tab:
 		0: _skills()
@@ -225,55 +241,263 @@ func _take(id: String) -> void:
 	rebuild()
 
 
-# ---- the skill tree (package 30)
+# ---- the skill tree (package 30, drawn as a tree since 0.5.30.2)
+
+const TILE := Vector2(160, 56)
+const ROOT_TILE := Vector2(196, 64)
+const COL_W := 180.0
+const ROW_H := 108.0
+const MARGIN := 40.0
+const GROUND := 150.0          # the earth under the licence: the roots (mastery)
+const TOP := 46.0
+const TRUNK_H := 150.0         # licence -> shields
+const CROWN_H := 250.0         # shields -> the branches: room for the crown to fan out
+
 
 func _tree() -> void:
 	var nt := GameState.tiles_ready().size()
-	body.add_child(UI.label("Tiles open by doing: meet a tile's achievements (and open the tiles before it), then confirm it here. Ships and modules you already own stay usable.", 13, UI.TEXT_DIM))
+	var top := UI.hbox(14)
+	body.add_child(top)
+	top.add_child(UI.label("Tiles open by doing – meet the achievements, then confirm. Everything can be bought; with the tile it can be used.", 12, UI.TEXT_DIM))
+	top.add_child(UI.spacer())
 	if nt > 0:
-		body.add_child(UI.label("%d tile%s ready to open" % [nt, "" if nt == 1 else "s"], 14, UI.GOOD))
-	for br in TreeData.BRANCHES:
-		body.add_child(UI.label(String(br).to_upper(), 15, COL))
-		var flow := HFlowContainer.new()
-		flow.add_theme_constant_override("h_separation", 6)
-		flow.add_theme_constant_override("v_separation", 6)
-		body.add_child(flow)
-		var first := true
-		for id in TreeData.branch_tiles(br):
-			if not first and (TreeData.TILES[id]["pre"] as Array).size() > 0:
-				flow.add_child(UI.label("→", 18, Color(COL, 0.6)))
-			first = false
-			flow.add_child(_tile_card(String(id)))
+		top.add_child(UI.label("%d tile%s ready to open" % [nt, "" if nt == 1 else "s"], 13, UI.GOOD))
+	var row := UI.hbox(10)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(row)
+	_tsc = ScrollContainer.new()
+	_tsc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	row.add_child(_tsc)
+	var lay := TreeData.layout()
+	var cols := float(lay["_cols"])
+	var depth := 0
+	for id in TreeData.TILES:
+		depth = maxi(depth, int(lay[id].y))
+	var cv := TreeCanvas.new()
+	cv.custom_minimum_size = Vector2(cols * COL_W + MARGIN * 2.0, TOP + _rise(depth) + ROOT_TILE.y + GROUND)
+	cv.scroll = _tsc
+	_tsc.add_child(cv)
+	_canvas = cv
+	_tiles.clear()
+	var centre := {}
+	for id in TreeData.TILES:
+		var p: Vector2 = lay[id]
+		centre[id] = Vector2(MARGIN + p.x * COL_W + COL_W * 0.5, cv.custom_minimum_size.y - GROUND - ROOT_TILE.y * 0.5 - _rise(int(p.y)))
+	# the branches: from the top of a tile to the bottom of each tile that grows from it
+	for id in TreeData.TILES:
+		var t: Dictionary = TreeData.TILES[id]
+		var pre: Array = t["pre"]
+		for i in pre.size():
+			var par := String(pre[i])
+			var from: Vector2 = centre[par] - Vector2(0, _size_of(par).y * 0.5)
+			var to: Vector2 = centre[id] + Vector2(0, _size_of(id).y * 0.5)
+			var d := int(lay[par].y)
+			var sideways: bool = int(lay[id].y) < 0                 # a root: out of the side of the tile before it
+			if sideways:
+				var sx := signf(centre[id].x - centre[par].x)
+				from = centre[par] + Vector2(sx * _size_of(par).x * 0.5, 10.0 if par == TreeData.ROOT else 0.0)
+				to = centre[id] - Vector2(sx * _size_of(id).x * 0.5, 0)
+			cv.links.append({"from": from, "to": to, "width": (5.0 if par == TreeData.ROOT else 3.5) if sideways else (maxf(2.0, 10.0 - float(d) * 2.6) if i == 0 else 2.0), "sideways": sideways,
+				"state": "open" if GameState.tile_open(id) else ("ready" if GameState.tile_ready(id) else ("near" if GameState.tile_open(par) else "far")),
+				"second": i > 0})
+	cv.root_bottom = centre[TreeData.ROOT] + Vector2(0, ROOT_TILE.y * 0.5)
+	for id in TreeData.TILES:
+		var pr0: Array = TreeData.TILES[id]["pre"]
+		if (not pr0.is_empty() and String(pr0[0]) == TreeData.TRUNK):
+			cv.captions.append([centre[id] + Vector2(-_size_of(id).x * 0.5, -_size_of(id).y * 0.5 - 6.0), String(TreeData.TILES[id]["branch"]).to_upper(), TreeData.BRANCH_COLORS.get(TreeData.TILES[id]["branch"], COL)])
+	for id in TreeData.TILES:
+		var b := _tree_tile(String(id))
+		b.position = centre[id] - _size_of(id) * 0.5
+		cv.add_child(b)
+		_tiles[id] = b
+	# the detail of the tile in view
+	var dp := UI.neon_panel(Color(COL, 0.5), Color(0.04, 0.03, 0.02, 0.97), 1)
+	dp.custom_minimum_size = Vector2(310, 0)
+	row.add_child(dp)
+	_detail_box = UI.vbox(6)
+	dp.add_child(_detail_box)
+	if _sel == "" or not TreeData.TILES.has(_sel):
+		_sel = TreeData.ROOT
+	_fill_detail()
+	_place_view()
 
 
-func _tile_card(id: String) -> Control:
+## How high above the licence a depth sits (the trunk and the crown are taller than the rows above them).
+func _rise(d: int) -> float:
+	if d < 0:
+		return -(ROOT_TILE.y * 0.5 + 62.0)
+	if d == 0:
+		return 0.0
+	if d == 1:
+		return TRUNK_H
+	return TRUNK_H + CROWN_H + float(d - 2) * ROW_H
+
+
+func _size_of(id: String) -> Vector2:
+	return ROOT_TILE if id == TreeData.ROOT else TILE
+
+
+func _tree_tile(id: String) -> Button:
 	var t: Dictionary = TreeData.TILES[id]
 	var open := GameState.tile_open(id)
 	var ready := GameState.tile_ready(id)
 	var pre_ok := true
 	for p in t["pre"]:
 		pre_ok = pre_ok and GameState.tile_open(String(p))
-	var col := UI.GOOD if ready else (COL if open else (Color(0.6, 0.55, 0.45) if pre_ok else Color(0.35, 0.32, 0.28)))
-	var card := UI.neon_panel(Color(col, 0.9 if ready or open else 0.45), Color(0.05, 0.04, 0.03, 0.95) if not open else Color(0.12, 0.09, 0.03, 0.95), 2 if ready else 1)
-	card.custom_minimum_size = Vector2(220, 0)
-	var v := UI.vbox(2)
-	card.add_child(v)
-	v.add_child(UI.label(("✓ " if open else "") + String(t["name"]), 13, col))
-	v.add_child(UI.wrap_label(String(t["opens"]), 10, Color(0.85, 0.85, 0.8), 205))
-	if not open:
-		if not pre_ok:
-			var names: Array = []
-			for p2 in t["pre"]:
-				names.append(TreeData.TILES[p2]["name"])
-			v.add_child(UI.wrap_label("after: " + ", ".join(PackedStringArray(names)), 10, UI.TEXT_DIM, 205))
-		for r in GameState.tile_progress(id):
+	var bc: Color = TreeData.BRANCH_COLORS.get(t["branch"], COL)
+	var edge := UI.GOOD if ready else (COL if open else (Color(bc, 0.55) if pre_ok else Color(0.3, 0.27, 0.22)))
+	var b := Button.new()
+	b.custom_minimum_size = _size_of(id)
+	b.size = _size_of(id)
+	b.focus_mode = Control.FOCUS_ALL
+	var styles := {"normal": 0.0, "hover": 0.12, "pressed": 0.2, "disabled": 0.0}
+	for k in styles:
+		var sb := StyleBoxFlat.new()
+		var base := Color(0.17, 0.12, 0.03) if open else (Color(0.03, 0.12, 0.05) if ready else Color(0.05, 0.04, 0.035))
+		sb.bg_color = base.lightened(float(styles[k]))
+		sb.border_color = edge
+		sb.set_border_width_all(3 if ready else (2 if open else 1))
+		sb.set_corner_radius_all(6)
+		b.add_theme_stylebox_override(k, sb)
+	var fs := StyleBoxFlat.new()
+	fs.bg_color = Color(0, 0, 0, 0)
+	fs.border_color = Color(1.0, 0.97, 0.6)
+	fs.set_border_width_all(3)
+	fs.set_corner_radius_all(7)
+	fs.expand_margin_left = 4
+	fs.expand_margin_right = 4
+	fs.expand_margin_top = 4
+	fs.expand_margin_bottom = 4
+	b.add_theme_stylebox_override("focus", fs)
+	var stripe := ColorRect.new()
+	stripe.color = Color(bc, 0.9 if open or ready else 0.35)
+	stripe.position = Vector2(5, 8)
+	stripe.size = Vector2(3, _size_of(id).y - 16)
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(stripe)
+	var v := UI.vbox(0)
+	v.position = Vector2(14, 6)
+	v.size = _size_of(id) - Vector2(20, 10)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var root := id == TreeData.ROOT
+	var nm := UI.label(("PILOT LICENCE" if root else String(t["name"])), 15 if root else (13 if String(t["name"]).length() <= 18 else 12), COL if open else (UI.GOOD if ready else (Color(0.85, 0.82, 0.75) if pre_ok else Color(0.5, 0.47, 0.42))))
+	nm.clip_text = true
+	v.add_child(nm)
+	var st := ""
+	var sc := UI.TEXT_DIM
+	if open:
+		st = "✓ open" if not root else "✓ the trunk of every career"
+		sc = Color(COL, 0.75)
+	elif ready:
+		st = "READY – open it"
+		sc = UI.GOOD
+	elif not pre_ok:
+		st = "locked"
+		sc = Color(0.45, 0.42, 0.38)
+	else:
+		st = "%d %%" % int(_progress(id) * 100.0)
+	v.add_child(UI.label(st, 10, sc))
+	if pre_ok and not open and not ready:
+		var pb := UI.bar(Color(bc, 0.8), _size_of(id).x - 28)
+		pb.custom_minimum_size.y = 4
+		pb.max_value = 1.0
+		pb.step = 0.001
+		pb.value = _progress(id)
+		pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(pb)
+	b.tooltip_text = String(t["name"])
+	b.focus_entered.connect(func(): _select(id))
+	b.mouse_entered.connect(func(): _select(id))
+	b.pressed.connect(func():
+		_select(id)
+		if GameState.tile_ready(id):
+			_open_tile(id))
+	return b
+
+
+## How far a tile's achievements are (0…1; "any" tiles: the best one).
+func _progress(id: String) -> float:
+	var pr := GameState.tile_progress(id)
+	if pr.is_empty():
+		return 1.0
+	var sum := 0.0
+	var best := 0.0
+	for r in pr:
+		var f := clampf(float(r[1]) / maxf(float(r[2]), 0.001), 0.0, 1.0)
+		sum += f
+		best = maxf(best, f)
+	return best if bool(TreeData.TILES[id].get("any", false)) else sum / float(pr.size())
+
+
+func _select(id: String) -> void:
+	if _sel == id:
+		return
+	_sel = id
+	_fill_detail()
+
+
+func _fill_detail() -> void:
+	if not is_instance_valid(_detail_box):
+		return
+	UI.clear(_detail_box)
+	var id := _sel
+	var t: Dictionary = TreeData.TILES[id]
+	var bc: Color = TreeData.BRANCH_COLORS.get(t["branch"], COL)
+	var open := GameState.tile_open(id)
+	var ready := GameState.tile_ready(id)
+	_detail_box.add_child(UI.label(String(t["branch"]).to_upper(), 11, bc))
+	_detail_box.add_child(UI.wrap_label(String(t["name"]), 19, COL if open else (UI.GOOD if ready else Color(0.92, 0.9, 0.85)), 290))
+	_detail_box.add_child(UI.label("✓ OPEN" if open else ("READY TO OPEN" if ready else "NOT YET OPEN"), 12, COL if open else (UI.GOOD if ready else UI.TEXT_DIM)))
+	_detail_box.add_child(UI.label("USE", 12, COL))
+	var txt := TreeData.opens_text(id)
+	_detail_box.add_child(UI.wrap_label(txt if txt != "" else "–", 12, Color(0.88, 0.88, 0.82), 290))
+	var pre: Array = t["pre"]
+	if not pre.is_empty():
+		_detail_box.add_child(UI.label("GROWS FROM", 12, COL))
+		for p in pre:
+			var po := GameState.tile_open(String(p))
+			_detail_box.add_child(UI.label("%s %s" % ["✓" if po else "•", TreeData.TILES[p]["name"]], 12, UI.GOOD if po else UI.BAD))
+	var pr := GameState.tile_progress(id)
+	if not pr.is_empty():
+		_detail_box.add_child(UI.label("ACHIEVEMENTS" + ("  (one is enough)" if bool(t.get("any", false)) else ""), 12, COL))
+		for r in pr:
 			var done := float(r[1]) >= float(r[2])
-			v.add_child(UI.label("%s %s / %s %s" % ["✓" if done else "•", _num(float(r[1])), _num(float(r[2])), TreeData.METRICS.get(r[0], r[0])], 10, UI.GOOD if done else UI.TEXT_DIM))
-		if bool(t.get("any", false)):
-			v.add_child(UI.label("(one of them is enough)", 10, UI.TEXT_DIM))
-		if ready:
-			v.add_child(UI.button("Open", func(): _open_tile(id)))
-	return card
+			_detail_box.add_child(UI.label("%s %s / %s %s" % ["✓" if done else "•", _num(minf(float(r[1]), float(r[2])) if done else float(r[1])), _num(float(r[2])), TreeData.METRICS.get(r[0], r[0])], 12, UI.GOOD if done else UI.TEXT_DIM))
+			var pb := UI.bar(UI.GOOD if done else bc, 280)
+			pb.max_value = float(r[2])
+			pb.value = minf(float(r[1]), float(r[2]))
+			_detail_box.add_child(pb)
+	if ready:
+		var ob := UI.button("Open %s" % t["name"], func(): _open_tile(id))
+		ob.add_theme_color_override("font_color", UI.GOOD)
+		_detail_box.add_child(ob)
+	_detail_box.add_child(UI.spacer())
+	_detail_box.add_child(UI.wrap_label("Drag to move the tree • %s %s %s %s walk from tile to tile • Enter opens a ready tile.\nA ship without its tile stays docked; a module without it stays offline (core modules fitted already keep working)." % [
+		Keybinds.key_text("menu_up"), Keybinds.key_text("menu_left"), Keybinds.key_text("menu_down"), Keybinds.key_text("menu_right")], 10, UI.TEXT_DIM, 290))
+
+
+## The view: where it was before, at first the trunk at the bottom; the selected tile takes the highlight.
+func _place_view() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(_tsc) or not is_instance_valid(_canvas):
+		return
+	if _tscroll.x < 0.0:
+		var rb: Vector2 = _canvas.root_bottom
+		_tsc.scroll_horizontal = int(rb.x - _tsc.size.x * 0.5)
+		_tsc.scroll_vertical = int(_canvas.size.y)
+	else:
+		_tsc.scroll_horizontal = int(_tscroll.x)
+		_tsc.scroll_vertical = int(_tscroll.y)
+	if visible and _tiles.has(_sel) and is_instance_valid(_tiles[_sel]):
+		var keep := _sel
+		_tiles[_sel].grab_focus()
+		_sel = keep
+		if _tscroll.x < 0.0:
+			_tsc.scroll_horizontal = int(_canvas.root_bottom.x - _tsc.size.x * 0.5)
+			_tsc.scroll_vertical = int(_canvas.size.y)
 
 
 func _num(x: float) -> String:
@@ -284,6 +508,89 @@ func _open_tile(id: String) -> void:
 	if Commands.execute({"type": "tree_unlock", "tile": id}) == "":
 		Audio.play("mission_complete", "tile opened")
 	rebuild()
+
+
+## The tree itself: earth, roots, the trunk and the branches; drag it with the mouse.
+class TreeCanvas extends Control:
+	var links: Array = []
+	var captions: Array = []
+	var root_bottom := Vector2.ZERO
+	var scroll: ScrollContainer
+	var _drag := false
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_default_cursor_shape = Control.CURSOR_DRAG
+
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
+			_drag = e.pressed
+			accept_event()
+		elif e is InputEventMouseMotion and _drag and scroll != null:
+			scroll.scroll_horizontal -= int(e.relative.x)
+			scroll.scroll_vertical -= int(e.relative.y)
+			accept_event()
+
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.025, 0.018, 0.012))
+		# a few faint stars above, the earth below
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 30
+		for i in 220:
+			var p := Vector2(rng.randf() * w, rng.randf() * (h - 120.0))
+			draw_rect(Rect2(p, Vector2(2, 2)), Color(1.0, 0.9, 0.7, rng.randf_range(0.05, 0.25)))
+		var gy := root_bottom.y + 8.0
+		draw_rect(Rect2(0, gy, w, h - gy), Color(0.07, 0.045, 0.02))
+		draw_line(Vector2(0, gy), Vector2(w, gy), Color(1.0, 0.8, 0.35, 0.35), 2.0)
+		var trunk := Color(0.62, 0.43, 0.16)
+		# small roots under the licence (the mastery roots are links)
+		for k in [-1.0, 1.0]:
+			for j in 3:
+				var a := root_bottom + Vector2(k * (6.0 + j * 5.0), 8.0)
+				var b := a + Vector2(k * (24.0 + j * 22.0), 40.0 + j * 18.0)
+				_curve(a, b, Vector2(0, 20), Vector2(k * -10.0, -14), 4.0 - j * 1.0, Color(trunk, 0.6))
+		var font0 := get_theme_default_font()
+		draw_string(font0, Vector2(root_bottom.x - 100.0, h - 14.0), "MASTERY  -  THE ROOTS", HORIZONTAL_ALIGNMENT_CENTER, 200, 11, Color(0.95, 0.95, 0.95, 0.55))
+		# the branches – the far ones first, the open ones on top
+		for pass_state in [["far"], ["near"], ["ready"], ["open"]]:
+			for l in links:
+				if not String(l["state"]) in pass_state:
+					continue
+				var col: Color
+				match String(l["state"]):
+					"open": col = Color(1.0, 0.8, 0.3)
+					"ready": col = Color(0.45, 1.0, 0.6)
+					"near": col = Color(0.72, 0.55, 0.28, 0.75)
+					_: col = Color(0.42, 0.33, 0.2, 0.55)
+				var a: Vector2 = l["from"]
+				var b: Vector2 = l["to"]
+				var ta := Vector2(0, -(a.y - b.y) * 0.55)
+				var tb := -ta
+				if bool(l.get("sideways", false)):
+					ta = Vector2((b.x - a.x) * 0.5, 0)
+					tb = -ta
+				var wd := float(l["width"])
+				if String(l["state"]) == "open" and not bool(l["second"]):
+					_curve(a, b, ta, tb, wd + 4.0, Color(1.0, 0.75, 0.25, 0.18))
+				_curve(a, b, ta, tb, wd, col, bool(l["second"]))
+		var font := get_theme_default_font()
+		for c in captions:
+			draw_string(font, c[0], String(c[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(c[2], 0.85))
+
+	func _curve(a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, wd: float, col: Color, dashed := false) -> void:
+		var pts := PackedVector2Array()
+		var n := 28
+		for i in n + 1:
+			var t := float(i) / float(n)
+			var u := 1.0 - t
+			pts.append(a * u * u * u + (a + ta) * 3.0 * u * u * t + (b + tb) * 3.0 * u * t * t + b * t * t * t)
+		if dashed:
+			for i in range(0, n, 2):
+				draw_line(pts[i], pts[i + 1], col, wd, true)
+		else:
+			draw_polyline(pts, col, wd, true)
 
 
 # ---- the pilot

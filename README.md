@@ -90,10 +90,14 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   priority; they cannot be removed.
 
 ## Perks and the skill tree (phase 0.5 package 30)
-- **Skill tree:** 40 tiles in eight branches open by doing – e.g. 25 warps and 10 jumps open the Earthworks
-  frigates, 5,000 ore mined and 2,000 refined open the KHI Anaguma. A tile glows when its achievements are met and
-  is confirmed in the Pilot window. It gates buying ships and modules and manufacturing (blueprints); what you
-  already own stays usable. New pilots start with the Earthworks S ships and small modules up to quality C.
+- **Skill tree:** a real tree in the Pilot window – the Pilot Licence is the trunk, Shields grow above it, then the
+  branches by activity: Defence, Combat, Mining, Industry, Flight, Exploration, Security, Trade and Drones; mastery
+  (qualities, module sizes by pilot level) are the roots. Tiles open by doing – e.g. 1,000 ore mined opens the
+  mining ships, 5,000 mined and 2,000 refined the KHI Anaguma. A tile glows when its achievements are met and is
+  confirmed. Drag the tree with the mouse or walk it with W/A/S/D.
+- **Everything can be bought, but used only with its tile:** a ship without it stays docked, a module without it
+  stays offline, a core module without it cannot be fitted (fitted ones keep working). Station manufacturing and
+  larger blueprints come through the Industry branch.
 - **Perks:** 24 special abilities in six groups, one perk point per pilot level (e.g. Prospector's Eye: rare
   ore as a bonus while mining; Market Insider: the best price next door).
 
@@ -102,8 +106,7 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   Electronics, Athletics, Firearms) grow by doing and rise by themselves; every level gives +1 % on the skill's
   effect on your own ships (up to +10 %). All experience also feeds the **pilot level** – every level a perk point
   (perks come with package 30). See it all in the **Pilot window [U]**.
-- The window also shows the skill tree's six branches (coming with package 30) and the pilot with portrait,
-  attributes and career.
+- The window also shows the perks, the skill tree and the pilot with portrait, attributes and career.
 
 ## The pilot (phase 0.5 package 28)
 - A new game starts with creating the pilot: a pixel construction kit (body, skin, nine hair styles and colours,
