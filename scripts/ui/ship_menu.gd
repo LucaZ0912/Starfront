@@ -94,6 +94,7 @@ func _ready() -> void:
 
 
 func open(p_view: SystemView, p_tab: int = -1) -> void:
+	Audio.play("ui_open", "ship menu")                   # package 28a
 	view = p_view
 	fit = GameState.active()
 	if fit == null:
@@ -105,6 +106,8 @@ func open(p_view: SystemView, p_tab: int = -1) -> void:
 
 
 func close() -> void:
+	if visible:
+		Audio.play("ui_close", "ship menu")
 	if not visible:
 		return
 	visible = false

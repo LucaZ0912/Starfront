@@ -348,6 +348,8 @@ func set_order(o: Dictionary) -> void:
 func undock() -> void:
 	var st_node = view.stations.get(fit.docked_at)
 	fit.docked_at = ""
+	if view.player == self:
+		Audio.play("undock_release", "undock")            # package 28a
 	_restore_held()
 	scale = Vector2.ONE
 	modulate = Color.WHITE
@@ -729,6 +731,7 @@ func _regen(delta: float, s: Dictionary) -> void:
 ## The shield collapsed (shot down or EMP): it stays down for `t` seconds (default: the downtime of
 ## the fitted shields – size, type and quality) and comes back at 50 %.
 func shield_collapse(t: float = -1.0) -> void:
+	Audio.play_at("shield_down", position, "shield down")      # package 28a
 	var s := fit.stats()
 	if float(s["shield_max"]) <= 0.0:
 		return
@@ -1317,6 +1320,8 @@ func _travel(delta: float, s: Dictionary):
 			order = {"type": "idle"}
 			return null
 		spool = 0.0
+		if view.player == self:
+			Audio.play("gate_activate", "jump spool")       # package 28a
 	if spool == 0.0:
 		view.announce_lead(self, "jump", String(Universe.systems[next]["name"]))
 	spool += delta
@@ -1330,6 +1335,8 @@ func _travel(delta: float, s: Dictionary):
 		view.spawn_fx(Fx.flash(position, Color(0.75, 0.45, 1.0), radius * 4.0))
 		if faction == "player" and view.has_method("stow_all_drones"):
 			view.stow_all_drones(self, true)   # drones come along and fly out again after the jump
+		if view.player == self:
+			Audio.play("jump_hyperspace", "jump")           # package 28a
 		GameState.begin_jump(fit, next)
 	return position
 
@@ -1382,6 +1389,8 @@ func _warp_align(delta: float, s: Dictionary):
 	if spool < 0.0:
 		spool = 0.0
 		view.announce_lead(self, "warp", String(t["name"]))
+		if view.player == self:
+			Audio.play("warp_spool", "warp spool")          # package 28a
 	spool += delta
 	var at := align_time()
 	# the ring and the percentage show the real time left: alignment time and the turn still needed
@@ -1449,6 +1458,8 @@ func drop_out_of_warp(disrupt: float = 15.0) -> void:
 	velocity = Vector2.ZERO
 	order = {"type": "idle"}
 	warp_disrupted = maxf(warp_disrupted, disrupt)
+	if view.player == self:
+		Audio.play("warp_exit", "pulled out of warp")       # package 28a
 	view.spawn_fx(Fx.flash(position, Color(1.0, 0.4, 0.3), radius * 4.0))
 	view.on_warp_finished(self)
 	if String(then.get("type", "")) == "follow":
@@ -1662,6 +1673,13 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 	if raw > 0.0:
 		fit.structure -= raw * float(GameData.LAYER_MULT["structure"][dtype])
 	_reflect(armor0 - fit.armor, dtype, attacker)
+	# package 28a: the sound of the hit – the deepest layer it reached
+	if raw > 0.0:
+		Audio.play_at("hit_hull", position, "hit hull")
+	elif armor0 > fit.armor:
+		Audio.play_at("hit_armor", position, "hit armor")
+	elif sh0 > fit.shield:
+		Audio.play_at("hit_shield", position, "hit shield")
 	hit_flash = 0.12
 	_show_damage(sh0 - fit.shield, hull0 - (fit.armor + maxf(fit.structure, 0.0)))
 	if fit.structure <= 0.0:
@@ -2019,6 +2037,8 @@ func _update_locks(delta: float, s: Dictionary) -> void:
 		var was := float(l["progress"])
 		l["progress"] = minf(1.0, was + delta / _lock_duration(n, s))
 		if was < 1.0 and float(l["progress"]) >= 1.0:
+			if view != null and view.player == self:
+				Audio.play("lock_acquired", "target locked")    # package 28a
 			_mlog("Target locked: %s%s" % [node_name(n), "  (active target)" if l["key"] == active_lock else ""], GameState.COL_GOOD)
 	_update_relock(sr)
 	# legacy fields for drawing / HUD: the active lock if it is a ship
@@ -2100,6 +2120,13 @@ func find_module(slot: String) -> Dictionary:
 
 
 func set_module_active(slot: String, on: bool) -> String:
+	var err := _set_module_active(slot, on)
+	if view != null and view.player == self and manual:
+		Audio.play("module_denied" if err != "" else ("module_on" if on else "module_off"), "module %s %s" % [slot, "refused" if err != "" else ("on" if on else "off")])
+	return err
+
+
+func _set_module_active(slot: String, on: bool) -> String:
 	var e := find_module(slot)
 	if e.is_empty():
 		return "No activatable module in that slot."
@@ -2130,7 +2157,7 @@ func set_module_active(slot: String, on: bool) -> String:
 		# 0.4.25.40: a weapon, tool or module that really switches on ends the cloak (one that is refused –
 		# a lock still running, too little energy – leaves the ship cloaked)
 		module_on["builtin_cloak"] = false
-		var err := set_module_active(slot, on)
+		var err := _set_module_active(slot, on)
 		module_on["builtin_cloak"] = true
 		if err != "":
 			return err
@@ -2379,6 +2406,8 @@ func _start_survey(slot: String, d: Dictionary) -> String:
 		"kind": kind, "radius": view.survey_radius(sel, kind)}
 	module_on[slot] = true
 	module_state[slot] = "on"
+	if view.player == self:
+		Audio.play("scan_ping", "survey")                 # package 28a
 	_mlog("%s: surveying %s (%s away) – %.0f s …" % [d["name"], info["name"], SystemView.fmt_dist(dist), float(d["scan_time"])])
 	return ""
 

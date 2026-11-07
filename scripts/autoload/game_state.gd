@@ -702,6 +702,7 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 	add_credits(pay)
 	stats["missions_done"] = int(stats["missions_done"]) + 1
 	log_msg("Contract complete: %s  (+%s)" % [m["title"], GameData.fmt_credits(pay)], COL_GOOD)
+	Audio.play("mission_complete", "contract complete")   # package 28a
 	rep.on_contract(m)
 	missions_changed.emit()
 	return ""
@@ -1009,5 +1010,13 @@ func warn(text: String) -> void:
 	warning.emit(text)
 
 
+var _msg_sound_t := -10.0
+
+
 func log_msg(text: String, color: Color = COL_INFO) -> void:
 	message.emit(text, color)
+	# package 28a: a soft chime for good news, a sharper one for warnings – at most one per second
+	var now := Time.get_ticks_msec() / 1000.0
+	if (color == COL_WARN or color == COL_BAD or color == COL_GOOD) and now - _msg_sound_t > 1.0:
+		_msg_sound_t = now
+		Audio.play("notify" if color == COL_GOOD else "warn", "message", -6.0, 0.0)

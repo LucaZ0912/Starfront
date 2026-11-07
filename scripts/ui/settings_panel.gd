@@ -33,18 +33,26 @@ func _ready() -> void:
 	au.toggled.connect(func(on): _change("autosave", on))
 	v.add_child(au)
 
-	var vol_row := UI.hbox(12)
-	v.add_child(vol_row)
-	vol_row.add_child(UI.label("Master volume", 14))
-	var vol := HSlider.new()
-	vol.min_value = 0.0
-	vol.max_value = 1.0
-	vol.step = 0.05
-	vol.value = float(SaveGame.settings["volume"])
-	vol.custom_minimum_size = Vector2(240, 0)
-	vol.value_changed.connect(func(x): _change("volume", x))
-	vol_row.add_child(vol)
-	v.add_child(UI.label("(No sound in the game yet – the setting is ready for it.)", 12, UI.TEXT_DIM))
+	# package 28a: one volume slider per channel
+	for spec in [["Master volume", "volume"], ["Music", "vol_music"], ["Atmosphere", "vol_ambience"], ["Effects", "vol_sfx"]]:
+		var key: String = spec[1]
+		var vol_row := UI.hbox(12)
+		v.add_child(vol_row)
+		var vl := UI.label(spec[0], 14)
+		vl.custom_minimum_size = Vector2(140, 0)
+		vol_row.add_child(vl)
+		var vol := HSlider.new()
+		vol.min_value = 0.0
+		vol.max_value = 1.0
+		vol.step = 0.05
+		vol.value = float(SaveGame.settings[key])
+		vol.custom_minimum_size = Vector2(240, 0)
+		vol.value_changed.connect(func(x): _change(key, x))
+		vol_row.add_child(vol)
+		var pct := UI.label("%d %%" % int(round(vol.value * 100.0)), 13, UI.TEXT_DIM)
+		vol.value_changed.connect(func(x): pct.text = "%d %%" % int(round(x * 100.0)))
+		vol_row.add_child(pct)
+	v.add_child(UI.label("Interface sounds follow the effects volume.", 12, UI.TEXT_DIM))
 	v.add_child(UI.menu_button("Controls …", func(): controls_requested.emit(), UI.NEON_CYAN, 480))
 
 

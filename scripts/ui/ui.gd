@@ -65,7 +65,13 @@ static func button(text: String, cb: Callable, tooltip: String = "") -> Button:
 	b.tooltip_text = tooltip
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(cb)
+	click_sound(b)
 	return b
+
+
+## Package 28a: a click for a button built outside UI.button (tiles).
+static func click_sound(b: BaseButton) -> void:
+	b.pressed.connect(func(): Audio.play("ui_click", "click", -4.0, 0.02))
 
 
 static func bar(color: Color, width: float = 200.0) -> ProgressBar:

@@ -19,7 +19,8 @@ const MENU_SCENE := "res://scenes/menu.tscn"
 const GAME_SCENE := "res://scenes/main.tscn"
 
 var pending: Dictionary = {}     # {"mode": "new", "pilot", "seed"} or {"mode": "load", "slot"}
-var settings := {"fullscreen": false, "volume": 0.8, "autosave": true, "map_territory": true, "map_traffic": true}
+var settings := {"fullscreen": false, "volume": 0.8, "autosave": true, "map_territory": true, "map_traffic": true,
+	"vol_music": 0.6, "vol_ambience": 0.7, "vol_sfx": 0.8}           # package 28a: volume per channel
 
 
 func _ready() -> void:
@@ -216,6 +217,10 @@ func apply_settings() -> void:
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if settings["fullscreen"] else DisplayServer.WINDOW_MODE_WINDOWED)
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(settings["volume"]), 0.0001)))
+	# package 28a: the channels (created here if the audio framework has not started yet)
+	preload("res://scripts/autoload/audio.gd").ensure_buses()
+	for spec in [["Music", "vol_music"], ["Ambience", "vol_ambience"], ["SFX", "vol_sfx"]]:
+		AudioServer.set_bus_volume_db(AudioServer.get_bus_index(spec[0]), linear_to_db(maxf(float(settings[spec[1]]), 0.0001)))
 
 
 static func fmt_time(sec: float) -> String:

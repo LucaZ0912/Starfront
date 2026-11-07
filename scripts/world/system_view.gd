@@ -564,6 +564,7 @@ func _end_raid(outcome: String) -> void:
 
 
 func _exit_tree() -> void:
+	Audio.stop_all_loops()                     # package 28a
 	# leaving the system during a live raid: the cluster simulation takes over again
 	if not raid_live.is_empty():
 		var cap: Dictionary = GameState.notorious.get_captain(String(raid_live["cap"]))
@@ -738,6 +739,7 @@ func pirate_count() -> int:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_update_audio()
 	_jam_tick -= delta
 	if _jam_tick <= 0.0:
 		_jam_tick = 0.5
@@ -1420,6 +1422,8 @@ func launch_drones(c, n: int = -1) -> String:
 		ship_layer.add_child(d)
 	if c == player:
 		GameState.log_msg("%d drone%s launched – %s." % [count, "" if count == 1 else "s", ROLE_NAMES.get(f.drone_role, f.drone_role)], GameState.COL_INFO)
+	if c == player:
+		Audio.play("drone_launch", "drones launched")      # package 28a
 	return ""
 
 
@@ -2193,8 +2197,31 @@ func _dashed(o: Node2D, a: Vector2, b: Vector2, col: Color, px: float) -> void:
 
 # ---------------------------------------------------------------- Events from ships
 
+## Package 28a: the looping sounds – the engine follows the speed, the mining laser its beam, an alarm while the
+## hull is critical, and the quiet hum of space.
+func _update_audio() -> void:
+	var p_ok: bool = player != null and is_instance_valid(player) and not player.dying
+	var flying: bool = p_ok and not player.is_docked() and not player.in_warp()
+	var spd := 0.0
+	if flying:
+		spd = clampf(player.velocity.length() / maxf(float(player.fit.stats()["speed"]), 1.0), 0.0, 1.5)
+	Audio.loop("engine", "engine_loop", flying and spd > 0.03, 0.25 + 0.55 * minf(spd, 1.0), 0.8 + 0.4 * spd)
+	var mining := false
+	if flying:
+		for b in player.tool_beams:
+			mining = mining or (b.size() > 2 and b[2] == "mining")
+	Audio.loop("mining", "mining_loop", mining, 0.7)
+	var hull_low := false
+	if p_ok and not player.is_docked():
+		var st: Dictionary = player.fit.stats()
+		hull_low = player.fit.structure < float(st["structure_max"]) * 0.25
+	Audio.loop("alarm", "alarm_hull", hull_low, 0.6)
+	Audio.loop("space", "amb_space", true, 0.5)
+
+
 func on_warp_started(ship: Ship) -> void:
 	if ship == player:
+		Audio.play("warp_enter", "warp")                  # package 28a
 		stow_all_drones(ship, true)
 		GameState.codex.event("warp")
 		_warp_saved_zoom = level_zoom(level)
@@ -2204,6 +2231,8 @@ func on_warp_started(ship: Ship) -> void:
 
 
 func on_warp_finished(ship: Ship) -> void:
+	if ship == player:
+		Audio.play("warp_exit", "warp end")               # package 28a
 	if ship == player and _warp_auto:
 		_warp_auto = false
 		_set_zoom(_warp_saved_zoom)
@@ -2218,8 +2247,22 @@ func spawn_fx(f: Node2D) -> void:
 	fx_layer.add_child(f)
 
 
+## Package 28a: the sound of a weapon – by its family (placeholders: one per kind of weapon).
+static func weapon_sound(w: Dictionary) -> String:
+	var fam := String(w.get("family", ""))
+	if fam in ["w_beam", "w_lance"]:
+		return "w_beam_loop"
+	match String(w.get("damage_type", "optical")):
+		"kinetic":
+			return "w_autocannon"
+		"explosive":
+			return "w_rocket"
+	return "w_pulse"
+
+
 func fire_weapon(shooter: Ship, target: Ship, w: Dictionary) -> void:
 	_check_zone_fire(shooter, target)
+	Audio.play_at(weapon_sound(w), shooter.position, "weapon fired", -2.0 if shooter != player else 0.0)
 	var dtype: String = w["damage_type"]
 	var col: Color = GameData.DAMAGE_COLORS[dtype]
 	if w.has("cap_drain"):
@@ -2570,6 +2613,7 @@ func npc_jump(ship: Ship, next: int) -> void:
 
 
 func on_ship_destroyed(ship: Ship, _killer) -> void:
+	Audio.play_at("explosion_large" if int(ship.fit.hull().get("size", 1)) >= 2 else "explosion_small", ship.position, "ship destroyed")
 	spawn_fx(Fx.explosion(ship.position, ship.radius * 3.0, Color(1.0, 0.6, 0.2)))
 	spawn_fx(Fx.flash(ship.position, Color(1.0, 0.8, 0.4), ship.radius * 2.0))
 	if ship == player:
@@ -2683,6 +2727,8 @@ func _lawful_wreck(ship: Ship, killer) -> void:
 
 
 func on_ship_docked(ship: Ship, st_node: Celestial) -> void:
+	if ship == player:
+		Audio.play("dock_clamp", "docked")                # package 28a
 	if ship != player and ship.fit.uid < 0:
 		if traffic != null:
 			traffic.on_docked(ship, st_node)

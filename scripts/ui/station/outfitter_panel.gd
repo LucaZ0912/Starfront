@@ -69,6 +69,7 @@ func _rail(parent: Control) -> void:
 			sb.set_border_width_all(2 if on else 1)
 			b.add_theme_stylebox_override(st, sb)
 		b.pressed.connect(func(): _set_cat(id))
+		UI.click_sound(b)
 		var bv := UI.vbox(2)
 		bv.set_anchors_preset(Control.PRESET_FULL_RECT)
 		bv.offset_top = 6
@@ -455,6 +456,7 @@ func _tile(parent: Control, size: Vector2, col: Color, on: bool, cb: Callable) -
 		sb.border_width_left = 4 if on else 2
 		b.add_theme_stylebox_override(st, sb)
 	b.pressed.connect(cb)
+	UI.click_sound(b)
 	parent.add_child(b)
 	return b
 

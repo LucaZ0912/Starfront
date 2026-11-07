@@ -83,6 +83,7 @@ func open(p_station: Dictionary, p_view: SystemView) -> void:
 	station = p_station
 	view = p_view
 	visible = true
+	Audio.play("ui_open", "station menu")
 	current_service = ""
 	_update_header()
 	show_concourse(true)
@@ -101,6 +102,7 @@ func close() -> void:
 	if not visible:
 		return
 	visible = false
+	Audio.play("ui_close", "station menu")
 	closed.emit()
 
 
@@ -270,6 +272,7 @@ func _long_tile(v: Control, icon: String, title: String, sub: String, col: Color
 			sb.shadow_size = 8
 		b.add_theme_stylebox_override(st, sb)
 	b.pressed.connect(cb)
+	UI.click_sound(b)
 	var row := UI.hbox(12)
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.offset_left = 12

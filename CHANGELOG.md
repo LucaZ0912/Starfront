@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.28.1 – 2026-11-07
+
+**Package 28a – the audio framework (part 5 begins).**
+- Audio autoload with channels (music, atmosphere, effects, interface), volume sliders per channel in the settings.
+- 36 synthesised placeholder sounds (priority A of docs/audio/sound_list.md) wired to game events: engine, warp,
+  jumps, docking, weapons, hits, explosions, modules, drones, interface, purchases, contracts, messages, alarms, space.
+- Debug menu → Audio: play every sound, live channel levels, event log.
+
 ## alpha 0.4.25.47 – 2026-11-07
 
 **The rest of the part 4 code review.**

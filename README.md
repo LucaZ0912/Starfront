@@ -89,6 +89,13 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Audio (phase 0.5 package 28a)
+- Game events play sounds: engine, warp, jumps, docking, weapons, hits, explosions, modules, drones, interface,
+  alarms and the hum of space – 36 synthesised placeholders for now (`tools/audio/make_placeholders.py`), listed with
+  the planned sound in `docs/audio/sound_list.md`; a real sound with the same name replaces a placeholder.
+- Volume sliders for master, music, atmosphere and effects in the settings. Debug menu → Audio: play every sound,
+  live channel levels, event log.
+
 ## Outfitter (phase 0.5 package 27)
 - Category tiles (weapons, tools, core, optional, drone hangar, storage) → the ship's slots → the module
   families in stock as tiles → size · quality tiles → a short description and how the ship's values change.

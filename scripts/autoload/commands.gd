@@ -28,6 +28,23 @@ var history: Array = []       # last commands (debugging / replay)
 
 
 ## Executes a command. Returns "" on success, otherwise the reason (also logged).
+## Package 28a: purchases ring, sales too, a refused order of the interface buzzes.
+const BUY_CMDS := ["market_buy", "module_buy", "module_buy_fit", "ship_buy", "drone_buy", "refuel", "repair"]
+const SELL_CMDS := ["market_sell", "module_sell", "ship_sell", "drone_sell"]
+const QUIET_CMDS := ["key_steer", "move", "orbit", "keep_range", "approach"]
+
+
+func _command_sound(t: String, err: String) -> void:
+	if t.begins_with("debug_") or t in QUIET_CMDS:
+		return
+	if err != "":
+		Audio.play("ui_error", "refused: " + t)
+	elif t in BUY_CMDS:
+		Audio.play("buy", t)
+	elif t in SELL_CMDS:
+		Audio.play("sell", t)
+
+
 func execute(cmd: Dictionary) -> String:
 	var t: String = cmd.get("type", "")
 	var handler := "_c_" + t
@@ -38,6 +55,7 @@ func execute(cmd: Dictionary) -> String:
 		err = "Debug commands are disabled."
 	else:
 		err = call(handler, cmd)
+	_command_sound(t, err)
 	history.append(cmd)
 	if history.size() > 50:
 		history.pop_front()

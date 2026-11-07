@@ -530,6 +530,7 @@ func _process(delta: float) -> void:
 				_test_axiom(view)
 				_test_waystation(view)
 				_test_review4(view)
+				_test_audio()
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -5175,3 +5176,35 @@ func _test_review4(view: SystemView) -> void:
 	var sfit := GameState.create_fit("dragonfly", {}, "player")
 	check(String(Commands.dock_target(lfit, two).get("id", "")) == "t" and String(Commands.dock_target(sfit, two).get("id", "")) == "w" and Commands.dock_target(lfit, [two[0]]).is_empty(),
 		"review K10: the debug teleport docks an L ship only where it may land (never at a waystation)")
+
+
+## Package 28a: the audio framework – placeholder sounds, channels, volumes, events, loops.
+func _test_audio() -> void:
+	var ids: Array = Audio.ids()
+	var all_load := true
+	for id in ids:
+		all_load = all_load and Audio.stream(String(id)) != null
+	check(ids.size() >= 36 and all_load, "audio: %d placeholder sounds load (priority A of docs/audio/sound_list.md)" % ids.size())
+	var buses_ok := true
+	for b in ["Music", "Ambience", "SFX", "UI"]:
+		buses_ok = buses_ok and AudioServer.get_bus_index(b) >= 0
+	var keep: float = float(SaveGame.settings["vol_sfx"])
+	SaveGame.settings["vol_sfx"] = 0.5
+	SaveGame.apply_settings()
+	var db_half := AudioServer.get_bus_volume_db(AudioServer.get_bus_index("SFX"))
+	SaveGame.settings["vol_sfx"] = keep
+	SaveGame.apply_settings()
+	check(buses_ok and absf(db_half - linear_to_db(0.5)) < 0.1, "audio: channels Music, Atmosphere, Effects (+ UI) with their own volume in the settings")
+	var n0: int = Audio.played
+	Audio.play("ui_click", "smoke test")
+	Commands.execute({"type": "market_buy", "item": "no_such_item", "amount": 1})
+	var refused := false
+	for e in Audio.events:
+		refused = refused or String(e["id"]) == "ui_error"
+	check(Audio.played > n0 and String(Audio.events.back()["event"]).begins_with("refused") and refused, "audio: events play their sounds and land in the event log (a refused order buzzes)")
+	Audio.loop("smoke", "engine_loop", true, 0.5, 1.2)
+	var looping: bool = Audio.loop_playing("smoke") and (Audio.stream("engine_loop") as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_FORWARD
+	Audio.loop("smoke", "engine_loop", false)
+	check(looping and not Audio.loop_playing("smoke"), "audio: looping sounds (engine, beam, mining, alarm, space) start and stop")
+	check(SystemView.weapon_sound({"family": "w_railgun", "damage_type": "kinetic"}) == "w_autocannon" and SystemView.weapon_sound({"family": "w_beam", "damage_type": "optical"}) == "w_beam_loop",
+		"audio: every weapon has its sound by kind (optical, beam, kinetic, explosive)")

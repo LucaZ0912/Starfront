@@ -7,7 +7,7 @@ extends CanvasLayer
 const FactionData = preload("res://data/factions.gd")
 const MakerData = preload("res://data/manufacturers.gd")
 const COL := Color(0.55, 1.0, 0.35)   # terminal green
-const TABS := ["Pilot", "Ship", "Items", "World"]
+const TABS := ["Pilot", "Ship", "Items", "World", "Audio"]
 
 var panel: PanelContainer
 var tab := 0
@@ -81,6 +81,7 @@ func _set_tab(i: int) -> void:
 		1: _build_ship()
 		2: _build_items()
 		3: _build_world()
+		4: _build_audio()
 
 
 func _cmd(c: Dictionary) -> void:
@@ -314,9 +315,58 @@ func _build_world() -> void:
 	content.add_child(UI.wrap_label("Neutral ships just fly about; hostile ones attack you. Hadrian ships reflect part of the damage to their armour.", 12, UI.TEXT_DIM, 440))
 
 
+# ---------------------------------------------------------------- Package 28a: audio
+
+var _meters := {}
+var _audio_log: Label
+
+
+## Every sound to play by itself, the level of each channel live, and which event played which sound.
+func _build_audio() -> void:
+	_section("Channels (live level)")
+	_meters.clear()
+	for bus in ["Master", "Music", "Ambience", "SFX", "UI"]:
+		var r := _row()
+		var l := UI.label(bus, 12)
+		l.custom_minimum_size = Vector2(80, 0)
+		r.add_child(l)
+		var bar := UI.bar(COL, 280)
+		bar.min_value = -60.0
+		bar.max_value = 0.0
+		r.add_child(bar)
+		_meters[bus] = bar
+	_section("Sounds (click to play)")
+	var flow := HFlowContainer.new()
+	flow.custom_minimum_size = Vector2(440, 0)
+	flow.add_theme_constant_override("h_separation", 4)
+	flow.add_theme_constant_override("v_separation", 4)
+	content.add_child(flow)
+	for id in Audio.ids():
+		var sid: String = id
+		flow.add_child(UI.button(sid, func(): Audio.play(sid, "debug")))
+	content.add_child(UI.button("Stop all loops", func(): Audio.stop_all_loops()))
+	_section("Event log (newest first)")
+	_audio_log = UI.label("", 11, UI.TEXT_DIM)
+	content.add_child(_audio_log)
+
+
+func _update_audio_debug() -> void:
+	if tab != 4 or _audio_log == null or not is_instance_valid(_audio_log):
+		return
+	for bus in _meters:
+		_meters[bus].value = clampf(Audio.level_db(bus), -60.0, 0.0)
+	var lines: Array = []
+	var now := Time.get_ticks_msec() / 1000.0
+	for k in range(Audio.events.size() - 1, maxi(Audio.events.size() - 16, 0) - 1, -1):
+		var e: Dictionary = Audio.events[k]
+		lines.append("%5.1f s ago   %-24s → %s  (%s)" % [now - float(e["t"]), String(e["event"]), String(e["id"]), String(e["bus"])])
+	_audio_log.text = "\n".join(PackedStringArray(lines)) if not lines.is_empty() else "nothing played yet"
+
+
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	_update_audio_debug()
 	var f := GameState.active()
 	var where := "–"
 	if f != null:
