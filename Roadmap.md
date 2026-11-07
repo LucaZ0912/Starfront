@@ -1438,8 +1438,18 @@ Abschluss von Phase 0.5: Das Spiel wird aufgeräumt, schneller, klingt nach etwa
 | # | Arbeitspaket | Inhalt |
 | --- | --- | --- |
 | 72 | Balancing-Tool | Werkzeug zur Analyse: Werte von Schiffen und Modulen vergleichen, Einnahmen pro Stunde je Tätigkeit, Preise, Kampfstärken (aus Paket 8) |
+| 72a | Skilltree-Revision | gemeinsamer Detail-Durchgang mit Luz über den **ganzen Fortschritt**: Aufbau des Baums (Äste, Reihenfolge, was wo hängt, fehlende oder überflüssige Kacheln), **jede Kachel** mit ihren Leistungen und Freischaltungen, die **Perks** (Werte, Voraussetzungen), die **Fähigkeiten** (+1 % je Stufe, Erfahrungskurven) und die **Pilotenlevel-Kurve** – fürs Balancing, mit den Zahlen aus dem Balancing-Tool (siehe unten) |
 | 73 | Balancing | Durchgang über alle Systeme mit dem Werkzeug |
 | 74 | Playtests | Luz spielt, dazu **automatische Testläufe mit Mitschrift** (Credits pro Stunde, Abschüsse, Zeit je Tätigkeit); Erkenntnisse zurück ins Balancing; externe Tester später |
+
+**Skilltree-Revision (72a) – festgehalten 7. Nov 2026 (Wunsch Luz):** Der Baum aus 0.5.30.2 ist ein erster Wurf, die Zahlen sind Schätzungen. Für den Durchgang mitnehmen:
+
+- **Aufbau:** Stamm (Pilot Licence) und Startumfang passend zum Story-Intro aus Teil 8 (welche Kacheln das Intro schon öffnet); Äste nach Tätigkeit prüfen; ob Meisterschaft als Wurzeln bleibt; Heavy Industry mit zwei Vorgängern als Vorbild für weitere Querverbindungen.
+- **Neue Inhalte einhängen**, die bis dahin dazukommen: Crew und Söldner (Teil 5 B), Ausrüstung wie Raumanzüge, Handwaffen und Werkzeuge (Teil 7), neue Schiffe und Module aus Teil 6–8.
+- **Leistungen:** Höhe je Kachel gegen die gemessene Spielzeit je Tätigkeit (Balancing-Tool, Playtest-Mitschrift aus Paket 74) – wie lange dauert es bis Fighters, Mining Frigates, Capital Ships …?
+- **Nutzungssperre:** ob gesperrte Kernmodule, offline-Module und angedockte Schiffe so bleiben oder feiner werden.
+- **Perks** (24, Werte und Fähigkeitsstufen), **Fähigkeiten** (Boni je Stufe, Erfahrung je Tätigkeit) und **Pilotenlevel** (Kurve, Perkpunkte, Level 50 als Ende?).
+- Debug: Fortschritt eines Testpiloten über Zeit simulieren und als Liste ausgeben (wann welche Kachel aufgeht).
 
 Wie immer: jedes Paket mit eigenen Debug-Funktionen (z. B. Lautstärke/Spur je Situation erzwingen, Ladezeiten messen und anzeigen, Balancing-Werte live ändern).
 
