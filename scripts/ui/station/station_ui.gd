@@ -197,6 +197,7 @@ func service_available(svc: Dictionary) -> String:
 ## Services shown in the ship column (the rest sit as tiles in the station column; the news archive opens
 ## from the news column).
 const SHIP_SERVICES := ["fuel", "repair", "drones", "outfitter", "hangar"]
+const PERSONAL_SERVICES := ["bar", "look"]       # 0.5.31.1: in the commander column
 var concourse_tiles := 0          # tiles built in the last concourse (smoke test)
 
 
@@ -220,8 +221,8 @@ func show_concourse(animate: bool = false) -> void:
 	left.size_flags_stretch_ratio = 0.95
 	cols.add_child(left)
 	var tiles: Array = []
-	_cmdr_column(_column(left, UI.NEON_PINK, 1.0))
-	_news_column(_column(left, Color(1.0, 0.8, 0.4), 1.25), tiles)
+	_cmdr_column(_column(left, UI.NEON_PINK, 1.35), tiles)
+	_news_column(_column(left, Color(1.0, 0.8, 0.4), 0.9), tiles)
 	_ship_column(_column(cols, UI.NEON_CYAN, 1.1), tiles)
 	_station_column(_column(cols, Color(0.7, 0.55, 1.0), 1.15), tiles)
 	concourse_tiles = tiles.size()
@@ -323,7 +324,7 @@ func _service_tile(v: Control, svc: Dictionary, tiles: Array) -> void:
 
 # ---- left: the commander (placeholder for portrait and career) and the news
 
-func _cmdr_column(v: VBoxContainer) -> void:
+func _cmdr_column(v: VBoxContainer, tiles: Array) -> void:
 	var col: Color = v.get_meta("col")
 	_head(v, "COMMANDER", col)
 	var row := UI.hbox(14)
@@ -349,6 +350,10 @@ func _cmdr_column(v: VBoxContainer) -> void:
 	st.add_child(UI.label("Contracts running: %d" % GameState.missions.size(), 13))
 	st.add_child(UI.label("Flight time: %s" % SaveGame.fmt_time(GameState.play_time), 13))
 	v.add_child(UI.wrap_label("Skills, perks and the skill tree: Pilot window [%s]." % Keybinds.key_text("pilot_window"), 11, UI.TEXT_DIM, 330))
+	# 0.5.31.1: the personal services sit with the commander – the bar (crew) and the image studio
+	for svc in GameData.services:
+		if String(svc["id"]) in PERSONAL_SERVICES:
+			_service_tile(v, svc, tiles)
 
 
 func _news_column(v: VBoxContainer, tiles: Array) -> void:
@@ -486,7 +491,7 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	bh.add_child(UI.label(GameData.fmt_credits(GameState.credits), 20, UI.GOLD))
 	_head(v, "STATION SERVICES", col)
 	for svc in GameData.services:
-		if String(svc["id"]) in SHIP_SERVICES or svc["id"] == "news":
+		if String(svc["id"]) in SHIP_SERVICES or String(svc["id"]) in PERSONAL_SERVICES or svc["id"] == "news":
 			continue
 		_service_tile(v, svc, tiles)
 

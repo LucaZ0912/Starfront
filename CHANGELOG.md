@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.31.1 – 2026-11-07
+
+**Package 31 – the crew and The Bar** (packages 31 and 32 together).
+- Ships from M up have crew posts (2–10), some required: without them the ship cannot undock; a bought ship comes
+  with rookies (quality F) on the required posts.
+- Random crew: name, portrait, profession (7), quality F–A, one rolled bonus, very rarely a perk (e.g. Second
+  Profession). They learn from the right work and step up with a rolled improvement. The crew of the active ship
+  takes a small share of sales, bounties and contract rewards.
+- Ship menu → Modules → CREW; The Bar on the concourse to hire; crew quarters at every station; skill tree: hull
+  tiles bring their professions, new tile Science Officers; debug functions.
+
 ## alpha 0.5.30.5 – 2026-11-07
 
 **Pilot window:** the Pilot tab comes first and U always opens it. It has three sub-tabs: Info (portrait, name,

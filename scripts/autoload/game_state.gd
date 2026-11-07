@@ -47,6 +47,13 @@ var offers := {}                 # station_id -> [mission offers]
 var stats := {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0}
 var play_time := 0.0
 var _next_uid := 1
+## Package 31: crew waiting in station quarters (station_id -> [members]) and the bars' offers
+## (station_id -> {"t": play time made, "offers": [{"m": member, "price": cr}]}).
+var crew_quarters := {}
+var bar := {}
+var _crew_seq := 1
+const CrewData = preload("res://data/crew.gd")
+const CrewCore = preload("res://scripts/core/crew.gd")
 var _rng := RandomNumberGenerator.new()
 
 
@@ -103,6 +110,9 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 		"jobs_assembly": 0, "passengers": 0, "exotic": 0, "scans": 0, "bounties": 0}
 	if test_system:
 		pilot["tree_all"] = true                 # the test system: everything open
+	crew_quarters.clear()
+	bar.clear()
+	_crew_seq = 1
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -143,6 +153,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 		bas.docked_at = home_station["id"]
 		bas.position = home_station["pos"]
 		add_ship(bas)
+		crew_fill_required(bas)
 	credits_changed.emit(credits)
 
 
@@ -163,7 +174,8 @@ func make_pilot(p_name: String, data: Dictionary = {}) -> Dictionary:
 	return {"name": nm if nm != "" else p_name, "callsign": String(data.get("callsign", "")).strip_edges().left(16),
 		"look": PilotArt.clean(data.get("look", PilotArt.default_look())), "attrs": attrs.duplicate(), "skills": skills,
 		"level": maxi(int(data.get("level", 1)), 1), "xp": float(data.get("xp", 0.0)), "perk_points": int(data.get("perk_points", 0)),
-		"tree": (data.get("tree", []) as Array).duplicate(), "perks": (data.get("perks", []) as Array).duplicate(), "tree_all": bool(data.get("tree_all", false))}
+		"tree": (data.get("tree", []) as Array).duplicate(), "perks": (data.get("perks", []) as Array).duplicate(), "tree_all": bool(data.get("tree_all", false)),
+		"crew_free": bool(data.get("crew_free", false))}
 
 
 # ---------------------------------------------------------------- Package 29: skills
@@ -215,6 +227,7 @@ func metric(m: String) -> float:
 
 func count_stat(m: String, n: float = 1.0) -> void:
 	stats[m] = float(stats.get(m, 0)) + n
+	crew_learn(m, n)                         # package 31: the crew learns from the same work
 
 
 ## Adds a distinct entry (a system visited, a market traded at).
@@ -414,6 +427,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
+		"crew_quarters": crew_quarters.duplicate(true), "bar": bar.duplicate(true), "crew_seq": _crew_seq,
 	}
 
 
@@ -439,6 +453,9 @@ func from_dict(d: Dictionary) -> void:
 	jobs = d.get("jobs", []).duplicate(true)
 	exotic_matter = int(d.get("exotic_matter", 0))
 	_next_uid = int(d["next_uid"])
+	crew_quarters = d.get("crew_quarters", {}).duplicate(true)
+	bar = d.get("bar", {}).duplicate(true)
+	_crew_seq = int(d.get("crew_seq", 1))
 	Missions._counter = int(d.get("mission_counter", 1000))
 	rep.from_dict(d.get("reputation", {}))   # older saves: start standings
 	law.from_dict(d.get("wanted", {}))
@@ -613,6 +630,7 @@ func redeem_bonds(st: Dictionary, sid: int, id: String = "") -> int:
 		if has_perk("bounty_hunter"):
 			paid = int(round(paid * 1.15))        # package 30
 		add_credits(paid)
+		crew_cut(paid)                            # package 31
 	for f in by_faction:
 		rep.on_bond(f, int(by_faction[f]))
 	return paid
@@ -752,6 +770,122 @@ func _insurance_ship() -> ShipFitting:
 	add_ship(f)
 	log_msg("Aegis Mutual provides you with a new Dragonfly in %s." % Universe.systems[home]["name"], COL_WARN)
 	return f
+
+
+# ---------------------------------------------------------------- Crew (package 31)
+
+## A new crew member with a fresh id.
+func new_crew(role: String, quality: String, perk: String = "?") -> Dictionary:
+	var m := CrewCore.make(_rng, _crew_seq, role, quality, perk)
+	_crew_seq += 1
+	return m
+
+
+## A newly bought ship comes with its required posts filled by rookies (quality F, never a perk).
+func crew_fill_required(f: ShipFitting) -> void:
+	var sl := f.crew_slots()
+	for i in sl.size():
+		if bool(sl[i][1]) and f.crew_at(i).is_empty():
+			f.set_crew(i, new_crew(String(sl[i][0]), "F", ""))
+
+
+## "" = the ship may undock as far as the crew goes.
+func crew_error(f: ShipFitting) -> String:
+	if f == null or bool(pilot.get("crew_free", false)):
+		return ""
+	var miss := f.crew_missing()
+	return "" if miss == "" else "Crew missing: %s – hire at a bar (The Bar) or move crew in the ship menu (Modules → Crew)." % miss
+
+
+## The crew of the active ship takes its share of an income; returns what it took.
+func crew_cut(amount: int) -> int:
+	var f := active()
+	if f == null or amount <= 0:
+		return 0
+	var cut := int(round(float(amount) * f.crew_share()))
+	if cut <= 0:
+		return 0
+	credits -= cut
+	stats["crew_paid"] = int(stats.get("crew_paid", 0)) + cut
+	credits_changed.emit(credits)
+	log_msg("Crew share: −%s." % GameData.fmt_credits(cut), COL_INFO)
+	return cut
+
+
+## Experience for the crew of the active ship from a metric (count_stat); steps up are announced.
+func crew_learn(metric_id: String, n: float) -> void:
+	var rates: Array = CrewData.LEARN.get(metric_id, [])
+	var f := active()
+	if rates.is_empty() or f == null or n <= 0.0:
+		return
+	var sl := f.crew_slots()
+	var drones_out := false
+	for d in f.drones:
+		drones_out = drones_out or bool(d.get("out", false))
+	for i in sl.size():
+		var m: Dictionary = f.crew_at(i)
+		if m.is_empty():
+			continue
+		var role := String(sl[i][0])
+		for r in rates:
+			if String(r[0]) != role or (r.size() > 2 and r[2] == "drones" and not drones_out):
+				continue
+			var nq := CrewCore.learn(m, n * float(r[1]), _rng)
+			if nq != "":
+				f.mark_dirty()
+				log_msg("%s (%s) rises to quality %s – %s." % [m["name"], CrewData.role_name(role), nq, CrewCore.line(m)], COL_GOOD)
+				Audio.play("mission_complete", "crew step up")
+
+
+## The posts of a profession the pilot may fill (skill tree, 0.5.30.2 rule 10 of package 31).
+func crew_role_error(role: String) -> String:
+	if bool(pilot.get("tree_all", false)):
+		return ""
+	for id in TreeData.TILES:
+		var u: Dictionary = TreeData.TILES[id]["unlocks"]
+		var ok: bool = role in u.get("crew", [])
+		for h in u.get("hulls", []):
+			ok = ok or role in CrewData.roles_required_by(String(h))
+		if ok and tile_open(id):
+			return ""
+	var where := TreeData.tile_of_crew(role)
+	return "Skill tree: %s needs \"%s\" first." % [CrewData.role_name(role), TreeData.TILES[where]["name"] if where != "" else "?"]
+
+
+## The bar of a station: offers made anew every BAR_REFRESH seconds.
+func bar_offers(st: Dictionary) -> Array:
+	var sid := String(st["id"])
+	var e: Dictionary = bar.get(sid, {})
+	if e.is_empty() or play_time - float(e.get("t", 0.0)) >= CrewData.BAR_REFRESH:
+		e = {"t": play_time, "offers": []}
+		var n := _rng.randi_range(int(CrewData.BAR_SIZE[0]), int(CrewData.BAR_SIZE[1]))
+		var bias: Array = CrewData.BAR_BIAS.get(String(st.get("type", "")), [])
+		var roles: Array = CrewData.ROLES.keys()
+		for i in n:
+			var role: String = String(bias[_rng.randi() % bias.size()]) if not bias.is_empty() and _rng.randf() < 0.5 else String(roles[_rng.randi() % roles.size()])
+			var q := _weighted_quality()
+			var m := new_crew(role, q, "" if q == "F" else "?")
+			e["offers"].append({"m": m, "price": CrewCore.price(m, _rng)})
+		bar[sid] = e
+	return e["offers"]
+
+
+func _weighted_quality() -> String:
+	var total := 0.0
+	for q in CrewData.BAR_WEIGHTS:
+		total += float(CrewData.BAR_WEIGHTS[q])
+	var x := _rng.randf() * total
+	for q in CrewData.BAR_WEIGHTS:
+		x -= float(CrewData.BAR_WEIGHTS[q])
+		if x <= 0.0:
+			return String(q)
+	return "D"
+
+
+func quarters_of(station_id: String) -> Array:
+	if not crew_quarters.has(station_id):
+		crew_quarters[station_id] = []
+	return crew_quarters[station_id]
 
 
 # ---------------------------------------------------------------- Credits & storage
@@ -984,6 +1118,7 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 	if has_perk("diplomat"):
 		m["rep"] = float(m.get("rep", rep.GAIN["contract"])) * 1.25
 	add_credits(pay)
+	crew_cut(pay)                                 # package 31
 	stats["missions_done"] = int(stats["missions_done"]) + 1
 	skill_xp("negotiation", 12.0)
 	log_msg("Contract complete: %s  (+%s)" % [m["title"], GameData.fmt_credits(pay)], COL_GOOD)
@@ -1060,8 +1195,10 @@ func notify(event: String, system_id: int) -> void:
 	match event:
 		"kill":
 			stats["kills"] = int(stats["kills"]) + 1
+			crew_learn("kills", 1.0)                 # package 31
 		"analyse":
 			stats["analysed"] = int(stats["analysed"]) + 1
+			crew_learn("analysed", 1.0)
 			skill_xp("science", 20.0)
 	var changed := false
 	for m in missions:
@@ -1131,6 +1268,7 @@ func begin_wormhole(f: ShipFitting, to_id: int) -> String:
 	f.route.clear()
 	f.wormhole_ready = play_time + WORMHOLE_TIME + float(f.hull()["wormhole"].get("cooldown", 120.0))
 	stats["jumps"] = int(stats["jumps"]) + 1
+	crew_learn("jumps", 1.0)
 	skill_xp("navigation", 15.0)
 	log_msg("%s opens a wormhole → %s (%d jump%s, %d exotic matter)." % [f.ship_name, Universe.systems[to_id]["name"], dist, "" if dist == 1 else "s", dist])
 	ship_jumped_out.emit(f)
@@ -1169,6 +1307,7 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	f.transit = JUMP_TIME
 	f.docked_at = ""
 	stats["jumps"] = int(stats["jumps"]) + 1
+	crew_learn("jumps", 1.0)
 	skill_xp("navigation", 8.0)
 	codex.event("jump")
 	log_msg("%s enters hyperspace → %s." % [f.ship_name, Universe.systems[to_id]["name"]])

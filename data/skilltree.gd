@@ -77,6 +77,8 @@ const TILES := {
 		"unlocks": {"families": ["t_survey", "o_survey_amp", "sen_grav"]}},
 	"research_ships": {"branch": "Exploration", "name": "Research Ships", "pre": ["survey"], "req": [["analysed", 10]],
 		"unlocks": {"hulls": ["axa_parallax"]}},
+	"science_officers": {"branch": "Exploration", "name": "Science Officers", "pre": ["research_ships"], "req": [["analysed", 15]],
+		"unlocks": {"crew": ["science"]}},
 	"wormhole": {"branch": "Exploration", "name": "Wormhole Research", "pre": ["research_ships"], "req": [["analysed", 40], ["exotic", 3], ["jumps", 100]],
 		"unlocks": {"hulls": ["axa_threshold"]}},
 	# ---- security
@@ -165,6 +167,19 @@ static func tile_of_family(fam: String) -> String:
 	return ""
 
 
+## Package 31: the tile that lets a profession serve (the first hull tile that needs it, or its own tile).
+static func tile_of_crew(role: String) -> String:
+	var CD = load("res://data/crew.gd")
+	for id in TILES:
+		var u: Dictionary = TILES[id]["unlocks"]
+		if role in u.get("crew", []):
+			return id
+		for h in u.get("hulls", []):
+			if role in CD.roles_required_by(String(h)):
+				return id
+	return ""
+
+
 ## The children of a tile in the drawing (tiles whose first prerequisite it is).
 static func children(id: String) -> Array:
 	var out: Array = []
@@ -237,6 +252,14 @@ static func opens_text(id: String) -> String:
 	for f in fams:
 		if MD.FAMILIES.has(f):
 			parts.append(String(MD.FAMILIES[f]["name"]))
+	var CD2 = load("res://data/crew.gd")
+	var roles: Array = (u.get("crew", []) as Array).duplicate()
+	for h2 in u.get("hulls", []):
+		for r in CD2.roles_required_by(String(h2)):
+			if not r in roles:
+				roles.append(r)
+	for r2 in roles:
+		parts.append("crew: %s" % CD2.role_name(String(r2)))
 	if u.has("weapon_size"):
 		parts.append("weapons of size %d" % int(u["weapon_size"]))
 	if u.has("size"):

@@ -1844,6 +1844,7 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 				GameState.log_msg("Prospector's Eye: 1 × %s found." % GameData.item_name(rare), GameState.COL_GOOD)
 	if faction == "player":
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
+		GameState.crew_learn("mined", added)    # package 31
 		GameState.skill_xp("mining", 0.25 * added)
 		GameState.codex.event("mining")
 	var beam_col := Color(0.45, 0.9, 1.0) if t.get("tool", "") == "harvester" else Color(1.0, 0.62, 0.25)
@@ -2644,6 +2645,7 @@ func _refine(delta: float, slot: String, d: Dictionary) -> void:
 		return
 	module_state[slot] = "on"
 	fit.remove_cargo(ore, amount)
+	out *= 1.0 + fit.crew_bonus("refine")               # package 31: the mining foreman
 	fit.add_cargo(prod, out)
 	if GameState.has_perk("efficient_refining"):
 		out *= 1.1                                       # package 30 (the ship's refinery)

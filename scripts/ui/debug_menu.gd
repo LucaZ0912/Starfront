@@ -222,6 +222,33 @@ func _build_ship() -> void:
 	var give := func(): _cmd({"type": "debug_give_ship", "hull": hull.get_selected_metadata(), "fitted": fitted.button_pressed, "board": board.button_pressed})
 	r2.add_child(UI.button("Give ship", give))
 	content.add_child(UI.wrap_label("Goes to the hangar of the station you are docked at (otherwise the home station). The pirate hull Carrion Crow is included.", 12, UI.TEXT_DIM, 440))
+	# package 31: crew
+	_section("Crew (package 31)")
+	var cfree := CheckButton.new()
+	cfree.text = "Ignore the required crew (undock without it)"
+	cfree.button_pressed = bool(GameState.pilot.get("crew_free", false))
+	cfree.toggled.connect(func(on): _cmd({"type": "debug_crew", "free": on}))
+	content.add_child(cfree)
+	var CD = preload("res://data/crew.gd")
+	var rc := _row()
+	var roles: Array = CD.ROLES.keys()
+	var rnames: Array = roles.map(func(r): return CD.role_name(String(r)))
+	var ro := _option(roles, rnames, 200)
+	rc.add_child(ro)
+	var qo := _option(CD.QUALITIES, CD.QUALITIES, 70)
+	qo.select(2)
+	rc.add_child(qo)
+	var pk: Array = ["?", ""] + CD.PERKS.keys()
+	var pkn: Array = ["perk: rolled", "no perk"] + CD.PERKS.keys().map(func(p): return CD.PERKS[p]["name"])
+	var po := _option(pk, pkn, 200)
+	rc.add_child(po)
+	var rc2 := _row()
+	rc2.add_child(UI.button("Into the active ship", func(): _cmd({"type": "debug_crew", "role": ro.get_selected_metadata(), "quality": qo.get_selected_metadata(), "perk": po.get_selected_metadata(), "ship": true})))
+	rc2.add_child(UI.button("Into the crew quarters", func(): _cmd({"type": "debug_crew", "role": ro.get_selected_metadata(), "quality": qo.get_selected_metadata(), "perk": po.get_selected_metadata()})))
+	rc2.add_child(UI.button("Fill every post", func(): _cmd({"type": "debug_crew", "fill": true, "quality": qo.get_selected_metadata(), "perk": po.get_selected_metadata()})))
+	var rc3 := _row()
+	rc3.add_child(UI.button("Crew aboard +250 xp", func(): _cmd({"type": "debug_crew", "xp": 250})))
+	rc3.add_child(UI.button("New faces at the bar", func(): _cmd({"type": "debug_crew", "bar": true})))
 
 
 func _build_items() -> void:

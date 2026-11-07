@@ -363,6 +363,7 @@ func unload() -> void:
 		got += carrier.fit.add_cargo(o, float(dcargo[o]))
 	if got > 0.0:
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + got
+		GameState.crew_learn("mined", got)      # package 31
 		GameState.skill_xp("mining", 0.2 * got)
 		if view.sky_alpha() >= 0.5:
 			view.spawn_fx(Fx.float_text(carrier.position + Vector2(0, -float(carrier.radius) - 10.0), "+%.1f ore (drone)" % got, Color(1.0, 0.8, 0.4)))

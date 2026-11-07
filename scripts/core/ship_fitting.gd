@@ -1,6 +1,8 @@
 class_name ShipFitting
 extends RefCounted
 const ModuleData = preload("res://data/modules.gd")
+const CrewData = preload("res://data/crew.gd")
+const CrewCore = preload("res://scripts/core/crew.gd")
 ## A ship's data: hull + fitted modules + current state.
 ## Effective values (stats) are derived from hull base values + modules.
 ## This class is the "source of truth" – Ship nodes in the system view read/write here.
@@ -24,6 +26,7 @@ var mine_choice := {}                      # review W5: mine launcher slot -> {"
 var held_on := {}                          # review W5: modules that stay switched on (point defence, auto mode, pulse)
 var market_open := false                   # package 25b: on-board market open for traders
 var market_offers := {}                    # item -> {amount, price}
+var crew: Array = []                       # package 31: one entry per crew slot of the hull ({} = empty), see data/crew.gd
 var _builtin_hull := ""
 var _builtin_cache: Array = []
 var drone_modes := {"combat": "defend", "mining": "auto", "repair": "auto"}
@@ -133,6 +136,128 @@ func can_fit(key: String, module_id: String) -> String:
 	return ""
 
 
+# ---------------------------------------------------------------- Crew (package 31)
+
+## The crew slots of the hull: [[role, required], …]
+func crew_slots() -> Array:
+	return CrewData.slots_of(hull_id)
+
+
+func crew_at(i: int) -> Dictionary:
+	_crew_size()
+	return crew[i] if i >= 0 and i < crew.size() else {}
+
+
+## Puts a member into slot i ({} = empty it) and returns who was there.
+func set_crew(i: int, m: Dictionary) -> Dictionary:
+	_crew_size()
+	var prev: Dictionary = crew[i]
+	crew[i] = m
+	mark_dirty()
+	return prev
+
+
+func _crew_size() -> void:
+	var n := crew_slots().size()
+	while crew.size() < n:
+		crew.append({})
+	if crew.size() > n:
+		crew.resize(n)
+
+
+func crew_members() -> Array:
+	_crew_size()
+	return crew.filter(func(m): return not (m as Dictionary).is_empty())
+
+
+## "" = every required post is filled, otherwise the missing roles as text.
+func crew_missing() -> String:
+	_crew_size()
+	var miss: Array = []
+	var sl := crew_slots()
+	for i in sl.size():
+		if bool(sl[i][1]) and crew[i].is_empty():
+			miss.append(CrewData.role_name(String(sl[i][0])))
+	return ", ".join(PackedStringArray(miss))
+
+
+## Sum of one bonus over the crew aboard, as a fraction (0.05 = +5 %).
+func crew_bonus(bonus: String) -> float:
+	_crew_size()
+	var sl := crew_slots()
+	var sec := float(Universe.systems[system_id].get("security", 1.0)) if Universe.systems.size() > system_id else 1.0
+	var sum := 0.0
+	for i in sl.size():
+		if crew[i].is_empty():
+			continue
+		var e: Array = CrewCore.effect(crew[i], String(sl[i][0]), sec)
+		if not e.is_empty() and String(e[0]) == bonus:
+			sum += float(e[1])
+	return sum / 100.0
+
+
+## The share of income the crew of this ship takes (fraction).
+func crew_share() -> float:
+	var sum := 0.0
+	var thrifty := false
+	for m in crew_members():
+		sum += CrewCore.share_of(m)
+		thrifty = thrifty or String(m.get("perk", "")) == "thrifty"
+	if thrifty:
+		sum *= 0.5
+	return maxf(0.0, sum * (1.0 - crew_bonus("share")))
+
+
+func _crew_effects(s: Dictionary) -> void:
+	if faction != "player" or crew.is_empty():
+		return
+	var b := {}
+	for k in ["speed", "turn", "align", "warp", "accel", "dmg_optical", "dmg_kinetic", "dmg_explosive", "w_range", "rof", "power", "cap",
+			"shield_regen", "downtime", "armor", "scan_range", "survey", "sensor", "scan_speed", "mining", "ore_hold", "drone_mining",
+			"cargo", "fuel", "drone_damage", "drone_range", "drone_speed", "drone_hull"]:
+		var v := crew_bonus(k)
+		if v != 0.0:
+			b[k] = v
+	if b.is_empty():
+		return
+	var g := func(k: String) -> float: return float(b.get(k, 0.0))
+	for k2 in [["speed", "speed"], ["accel", "accel"], ["turn", "turn"], ["warp_speed", "warp"], ["power_output", "power"], ["power_available", "power"],
+			["cap_recharge", "cap"], ["shield_regen", "shield_regen"], ["armor_max", "armor"], ["sensor_range", "sensor"],
+			["survey_range_mult", "survey"], ["ore_cargo_max", "ore_hold"], ["cargo_max", "cargo"]]:
+		if s.has(k2[0]):
+			s[k2[0]] = float(s[k2[0]]) * (1.0 + g.call(k2[1]))
+	s["align_mult"] = float(s["align_mult"]) * (1.0 - g.call("align"))
+	s["shield_downtime"] = float(s["shield_downtime"]) * (1.0 - g.call("downtime"))
+	if s.has("jump_fuel"):
+		s["jump_fuel"] = float(s["jump_fuel"]) * (1.0 - g.call("fuel"))
+	for w in s["weapons"]:
+		var dt := String(w.get("damage_type", ""))
+		var dm: float = 1.0 + g.call("dmg_" + dt)
+		w["damage"] = float(w["damage"]) * dm
+		w["range"] = float(w["range"]) * (1.0 + g.call("w_range"))
+		w["cooldown"] = float(w["cooldown"]) / (1.0 + g.call("rof"))
+	for k3 in s["dps"]:
+		s["dps"][k3] = float(s["dps"][k3]) * (1.0 + g.call("dmg_" + String(k3))) * (1.0 + g.call("rof"))
+	for t in s["tools"]:
+		var tool := String(t.get("tool", ""))
+		if tool in ["scanner", "analyzer", "prospect", "warrant", "cargo_scan"] and t.has("range"):
+			t["range"] = float(t["range"]) * (1.0 + g.call("scan_range"))
+		if tool in ["warrant", "cargo_scan"] and t.has("scan_time"):
+			t["scan_time"] = float(t["scan_time"]) / (1.0 + g.call("scan_speed"))
+		if tool == "analyzer" and t.has("rate"):
+			t["rate"] = float(t["rate"]) * (1.0 + g.call("scan_speed"))
+		if tool in ["mining", "harvester"] and t.has("rate"):
+			t["rate"] = float(t["rate"]) * (1.0 + g.call("mining"))
+	if s.has("drone"):
+		var d: Dictionary = s["drone"]
+		d["range"] = minf(float(d["range"]) * (1.0 + g.call("drone_range")), GameData.RECON_RANGE)
+		d["speed"] = float(d["speed"]) * (1.0 + g.call("drone_speed"))
+		d["hull"] = float(d["hull"]) * (1.0 + g.call("drone_hull"))
+		d["mining_mult"] = float(d.get("mining_mult", 1.0)) * (1.0 + g.call("drone_mining"))
+	if s.get("drone_weapon", {}) is Dictionary and not (s.get("drone_weapon", {}) as Dictionary).is_empty():
+		s["drone_weapon"]["damage"] = float(s["drone_weapon"]["damage"]) * (1.0 + g.call("drone_damage"))
+
+
 ## Sets a module (or "" to unfit) and returns the previous one.
 func set_module(key: String, module_id: String) -> String:
 	var prev: String = modules.get(key, "")
@@ -151,7 +276,7 @@ const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "carg
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
 	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities", "wormhole_ready",
 	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers",
-	"mine_choice", "held_on"]
+	"mine_choice", "held_on", "crew"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -389,6 +514,7 @@ func _compute() -> Dictionary:
 	_bundle_focus(s, h)
 	_drone_stats(s, drone_mods)
 	_skill_effects(s)
+	_crew_effects(s)
 	s["dps_total"] = s["dps"]["optical"] + s["dps"]["kinetic"] + s["dps"]["explosive"]
 	s["optimal_range"] = min_range * 0.8 if min_range < INF else s["sensor_range"] * 0.5
 	return s

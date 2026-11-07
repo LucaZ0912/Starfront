@@ -89,6 +89,20 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Crew and The Bar (phase 0.5 package 31)
+- Ships from **M** up have **crew posts** (2–10); some are **required** – without them the ship cannot undock.
+  A newly bought ship comes with rookies (quality F) on the required posts.
+- Every crew member is random: **name**, **portrait**, **profession** (Co-Pilot, Gunner, Engineer, Science Officer,
+  Mining Foreman, Quartermaster, Drone Operator), **quality F–A** and **one rolled bonus** of the profession inside the
+  frame of the quality (e.g. a Gunner: +7 % kinetic damage). Very rarely a **perk** (Second Profession, Lucky, Quick
+  Learner, Loyal, Old Hand, Medic, Thrifty, Night Owl).
+- They learn slowly from the right work (Co-Pilots from warps and jumps, Gunners from kills …) and step up a quality
+  with a rolled improvement on top. The crew of the active ship takes a small **share** of sales, bounties and
+  contract rewards (F 0.02 % … A 0.25 % each).
+- **Ship menu → Modules → CREW:** the posts, the crew quarters of the station, assign and dismiss. **The Bar** on the
+  concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
+- Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
+
 ## Perks and the skill tree (phase 0.5 package 30)
 - **Skill tree:** a real tree in the Pilot window – the Pilot Licence is the trunk, Shields grow above it, then the
   branches by activity: Defence, Combat, Mining, Industry, Flight, Exploration, Security, Trade and Drones; mastery

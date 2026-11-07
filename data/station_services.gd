@@ -34,4 +34,7 @@ const SERVICES := [
 		"panel": "res://scripts/ui/station/service_panel.gd", "requires": "", "mode": "repair"},
 	{"id": "look", "title": "Image Studio", "corp": "vsg", "icon": "face",
 		"panel": "res://scripts/ui/station/look_panel.gd", "requires": ""},
+	# package 31: hiring crew (part 7 makes the bar much more)
+	{"id": "bar", "title": "The Bar", "corp": "dwt", "icon": "bar",
+		"panel": "res://scripts/ui/station/bar_panel.gd", "requires": ""},
 ]

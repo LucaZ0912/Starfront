@@ -3,7 +3,7 @@ extends CanvasLayer
 ## Ship menu (key I) with four tabs:
 ##   Info      – news, the active ship, contracts, the fleet (pilot, finances and career: Pilot window since 0.5.30.5)
 ##   Modules   – equipment as tiles by category (Core / Weapons / Tools / Optional), properties on the left;
-##               when docked, modules can be swapped with station storage
+##               when docked, modules can be swapped with station storage; POWER MANAGEMENT; CREW (package 31)
 ##   Ship      – complete ship statistics
 ##   Inventory – cargo hold (+ station storage when docked)
 ##   Transactions – sub-tabs: accepted contracts, bond wallet (bounty bonds, phase 0.5 package 9)
@@ -382,7 +382,12 @@ func _news_card(box: Control) -> void:
 func _build_modules() -> void:
 	var sw := UI.hbox(4)
 	content.add_child(sw)
-	for v in [["fitting", "FITTING"], ["power", "POWER MANAGEMENT"]]:
+	var views: Array = [["fitting", "FITTING"], ["power", "POWER MANAGEMENT"]]
+	if not fit.crew_slots().is_empty():
+		views.append(["crew", "CREW  %d / %d" % [fit.crew_members().size(), fit.crew_slots().size()]])     # package 31
+	elif mod_view == "crew":
+		mod_view = "fitting"
+	for v in views:
 		var key: String = v[0]
 		var b := UI.button(v[1], func(): mod_view = key; rebuild())
 		b.toggle_mode = true
@@ -391,6 +396,9 @@ func _build_modules() -> void:
 		sw.add_child(b)
 	if mod_view == "power":
 		_build_power()
+		return
+	if mod_view == "crew":
+		_build_crew()
 		return
 	var body := UI.hbox(16)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -413,6 +421,84 @@ func _build_modules() -> void:
 	rs.add_child(right)
 	_build_module_details(left)
 	_build_module_tiles(right)
+
+
+# ---------------------------------------------------------------- Crew (package 31)
+
+const CrewCard = preload("res://scripts/ui/crew_card.gd")
+const CrewData = preload("res://data/crew.gd")
+const CrewCore = preload("res://scripts/core/crew.gd")
+var crew_sel := -1                 # the post picked for the next assignment
+
+
+func _build_crew() -> void:
+	var body := UI.hbox(16)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(body)
+	# the posts of this ship
+	var ls := ScrollContainer.new()
+	ls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ls.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(ls)
+	var left := UI.vbox(6)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ls.add_child(left)
+	var miss := fit.crew_missing()
+	left.add_child(UI.label("CREW OF THE %s" % fit.ship_name.to_upper(), 15, UI.NEON_CYAN))
+	left.add_child(UI.label("Required posts missing: %s – the ship cannot undock." % miss if miss != "" else "Every required post is filled.", 13, UI.BAD if miss != "" else UI.GOOD))
+	left.add_child(UI.label("Share of income (sales, bounties, contract rewards): %.2f %%  •  paid so far %s" % [fit.crew_share() * 100.0, GameData.fmt_credits(int(GameState.stats.get("crew_paid", 0)))], 12, UI.TEXT_DIM))
+	var sl := fit.crew_slots()
+	var dock := _docked()
+	for i in sl.size():
+		var idx := i
+		var role := String(sl[i][0])
+		var req := bool(sl[i][1])
+		var m: Dictionary = fit.crew_at(i)
+		var picked := crew_sel == i
+		var pick_b := ["◉ Picked" if picked else "Pick post", func(): crew_sel = -1 if crew_sel == idx else idx; rebuild(), not dock]
+		var te := GameState.crew_role_error(role)
+		if m.is_empty():
+			var ep := CrewCard.empty_post(role, req, [pick_b])
+			if te != "":
+				ep.get_child(0).get_child(1).add_child(UI.label(te, 11, Color(1.0, 0.7, 0.3)))
+			left.add_child(ep)
+		else:
+			left.add_child(CrewCard.card(m, [pick_b, ["To quarters", func(): _crew_cmd({"type": "crew_unassign", "ship": fit.uid, "slot": idx}), not dock]],
+				"%s%s%s" % [CrewData.role_name(role), "  •  REQUIRED" if req else "", "  •  picked" if picked else ""], UI.GOLD if picked else UI.TEXT_DIM))
+	# the crew quarters of the station
+	var rp := UI.neon_panel(Color(UI.NEON_CYAN, 0.3), Color(0.05, 0.07, 0.12, 0.95), 1)
+	rp.custom_minimum_size = Vector2(560, 0)
+	body.add_child(rp)
+	var rs := ScrollContainer.new()
+	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rp.add_child(rs)
+	var right := UI.vbox(6)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rs.add_child(right)
+	if not dock:
+		right.add_child(UI.label("CREW QUARTERS", 15, UI.NEON_CYAN))
+		right.add_child(UI.wrap_label("Crew can be moved while docked: every station keeps quarters for crew waiting for a post. Hire new crew at The Bar.", 13, UI.TEXT_DIM, 520))
+		return
+	var q: Array = GameState.quarters_of(fit.docked_at)
+	right.add_child(UI.label("CREW QUARTERS OF THIS STATION  (%d)" % q.size(), 15, UI.NEON_CYAN))
+	right.add_child(UI.wrap_label("Pick a post on the left to put someone exactly there; otherwise \"Assign\" takes the first free post that fits. New crew: The Bar on the concourse.", 12, UI.TEXT_DIM, 520))
+	if q.is_empty():
+		right.add_child(UI.label("Nobody waiting.", 13, UI.TEXT_DIM))
+	for m2 in q:
+		var mid := int(m2["id"])
+		var target := crew_sel
+		var ok := false
+		for k in sl.size():
+			if (target < 0 or k == target) and CrewCore.fits(m2, String(sl[k][0])) and (target >= 0 or fit.crew_at(k).is_empty()):
+				ok = true
+		right.add_child(CrewCard.card(m2, [["Assign", func(): _crew_cmd({"type": "crew_assign", "member": mid, "ship": fit.uid, "slot": target}), not ok],
+			["Dismiss", func(): _crew_cmd({"type": "crew_dismiss", "member": mid})]]))
+
+
+func _crew_cmd(c: Dictionary) -> void:
+	Commands.execute(c)
+	crew_sel = -1
+	rebuild()
 
 
 # ---------------------------------------------------------------- Power management (package 21)

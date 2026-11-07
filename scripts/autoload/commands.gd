@@ -32,7 +32,9 @@ var history: Array = []       # last commands (debugging / replay)
 
 ## Executes a command. Returns "" on success, otherwise the reason (also logged).
 ## Package 28a: purchases ring, sales too, a refused order of the interface buzzes.
-const BUY_CMDS := ["market_buy", "module_buy", "module_buy_fit", "ship_buy", "drone_buy", "refuel", "repair"]
+const CrewData = preload("res://data/crew.gd")
+const CrewCore = preload("res://scripts/core/crew.gd")
+const BUY_CMDS := ["market_buy", "module_buy", "module_buy_fit", "ship_buy", "drone_buy", "refuel", "repair", "crew_hire"]
 const SELL_CMDS := ["market_sell", "module_sell", "ship_sell", "drone_sell"]
 const QUIET_CMDS := ["key_steer", "move", "orbit", "keep_range", "approach"]
 
@@ -443,6 +445,9 @@ func _c_undock(_c: Dictionary) -> String:
 	var te := GameState.hull_tree_error(String(_fit().hull_id))   # 0.5.30.2: bought freely, flown with the tile
 	if te != "":
 		return "The %s cannot undock yet – %s" % [_fit().hull()["name"], te]
+	var ce := GameState.crew_error(_fit())                           # package 31: the required crew
+	if ce != "":
+		return ce
 	if world != null and is_instance_valid(world) and world.player != null and is_instance_valid(world.player):
 		world.player.undock()
 	else:
@@ -608,6 +613,7 @@ func _c_ship_buy(c: Dictionary) -> String:
 	f.docked_at = st["id"]
 	f.position = st["pos"]
 	GameState.add_ship(f)
+	GameState.crew_fill_required(f)                        # package 31: the required posts come with rookies
 	GameState.log_msg("%s purchased – waiting in the hangar (Hangar → Board)." % f.ship_name, GameState.COL_GOOD)
 	return ""
 
@@ -713,9 +719,180 @@ func _c_market_sell(c: Dictionary) -> String:
 		earn = int(round(earn * 1.05))                                  # package 30
 	GameState.skill_xp("trading", float(earn) / 500.0)      # package 29
 	GameState.note_stat("markets", String(st["id"]))
+	earn = int(round(earn * (1.0 + f.crew_bonus("sell"))))             # package 31: quartermaster
 	GameState.count_stat("turnover", float(earn))
 	GameState.add_credits(earn)
 	GameState.log_msg("Sold %.1f %s for %s." % [amount, GameData.item_name(cid), GameData.fmt_credits(earn)], GameState.COL_GOOD)
+	GameState.crew_cut(earn)
+	return ""
+
+
+# ---------------------------------------------------------------- Crew (package 31)
+
+## Where a member is: ["quarters", station_id, index] / ["ship", ShipFitting, slot] / [] – only at the docked station
+## (its quarters and the ships in its hangar, the active ship included).
+func _crew_find(mid: int) -> Array:
+	var st := docked_station()
+	if st.is_empty():
+		return []
+	var q: Array = GameState.quarters_of(String(st["id"]))
+	for i in q.size():
+		if int(q[i]["id"]) == mid:
+			return ["quarters", String(st["id"]), i]
+	for f in GameState.fleet:
+		if f.docked_at == String(st["id"]) and f.system_id == _fit().system_id:
+			for k in f.crew.size():
+				if not (f.crew[k] as Dictionary).is_empty() and int(f.crew[k]["id"]) == mid:
+					return ["ship", f, k]
+	return []
+
+
+func _crew_take(where: Array) -> Dictionary:
+	if where[0] == "quarters":
+		var q: Array = GameState.quarters_of(String(where[1]))
+		var m: Dictionary = q[int(where[2])]
+		q.remove_at(int(where[2]))
+		return m
+	return (where[1] as ShipFitting).set_crew(int(where[2]), {})
+
+
+func _fleet_ship(uid: int) -> ShipFitting:
+	for f in GameState.fleet:
+		if f.uid == uid:
+			return f
+	return null
+
+
+## {"type":"crew_hire", "index": n, "ship": uid (optional), "slot": n (optional)} – at the bar of the docked station;
+## into the slot of a ship here, or into the station's crew quarters.
+func _c_crew_hire(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var st := docked_station()
+	var offers: Array = GameState.bar_offers(st)
+	var i := int(c.get("index", -1))
+	if i < 0 or i >= offers.size():
+		return "Nobody by that name at the bar."
+	var o: Dictionary = offers[i]
+	if not GameState.spend(int(o["price"])):
+		return "Not enough credits."
+	offers.remove_at(i)
+	var m: Dictionary = o["m"]
+	GameState.quarters_of(String(st["id"])).append(m)
+	GameState.log_msg("%s (%s, quality %s) hired for %s." % [m["name"], CrewData.role_name(String(m["role"])), m["quality"], GameData.fmt_credits(int(o["price"]))], GameState.COL_GOOD)
+	if c.has("ship"):
+		var e2 := _c_crew_assign({"member": int(m["id"]), "ship": int(c["ship"]), "slot": int(c.get("slot", -1))})
+		if e2 != "":
+			GameState.log_msg("%s waits in the crew quarters: %s" % [m["name"], e2], GameState.COL_WARN)
+	return ""
+
+
+## {"type":"crew_assign", "member": id, "ship": uid, "slot": n (-1 = the first free post that fits)}
+func _c_crew_assign(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var where := _crew_find(int(c["member"]))
+	if where.is_empty():
+		return "That crew member is not at this station."
+	var f := _fleet_ship(int(c["ship"]))
+	if f == null or f.docked_at != String(docked_station()["id"]):
+		return "That ship is not in this hangar."
+	var m: Dictionary = GameState.quarters_of(String(where[1]))[int(where[2])] if where[0] == "quarters" else (where[1] as ShipFitting).crew_at(int(where[2]))
+	var sl := f.crew_slots()
+	var slot := int(c.get("slot", -1))
+	if slot < 0:
+		for k in sl.size():
+			if f.crew_at(k).is_empty() and CrewCore.fits(m, String(sl[k][0])):
+				slot = k
+				break
+		if slot < 0:
+			return "No free %s post on the %s." % [CrewData.role_name(String(m["role"])), f.ship_name]
+	if slot >= sl.size():
+		return "No such post."
+	var role := String(sl[slot][0])
+	if not CrewCore.fits(m, role):
+		return "%s is no %s." % [m["name"], CrewData.role_name(role)]
+	var te := GameState.crew_role_error(role)
+	if te != "":
+		return te
+	m = _crew_take(where)
+	var prev := f.set_crew(slot, m)
+	if not prev.is_empty():
+		GameState.quarters_of(String(docked_station()["id"])).append(prev)
+	GameState.log_msg("%s now serves as %s on the %s." % [m["name"], CrewData.role_name(role), f.ship_name], GameState.COL_GOOD)
+	return ""
+
+
+## {"type":"crew_unassign", "ship": uid, "slot": n} – into the crew quarters of the station
+func _c_crew_unassign(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var f := _fleet_ship(int(c["ship"]))
+	if f == null or f.docked_at != String(docked_station()["id"]):
+		return "That ship is not in this hangar."
+	var m := f.set_crew(int(c["slot"]), {})
+	if m.is_empty():
+		return "That post is empty."
+	GameState.quarters_of(f.docked_at).append(m)
+	return ""
+
+
+## {"type":"crew_dismiss", "member": id} – leaves for good, no money back
+func _c_crew_dismiss(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var where := _crew_find(int(c["member"]))
+	if where.is_empty():
+		return "That crew member is not at this station."
+	var m := _crew_take(where)
+	GameState.log_msg("%s has left your service." % m["name"], GameState.COL_INFO)
+	return ""
+
+
+## {"type":"debug_crew", "role": r, "quality": q, "perk": p ("?" rolled), "ship": true (into the active ship) |
+##  "fill": true (every post of the active ship) | "xp": n (all crew of the active ship) | "free": bool | "bar": true (new offers)}
+func _c_debug_crew(c: Dictionary) -> String:
+	var f := _fit()
+	if c.has("free"):
+		GameState.pilot["crew_free"] = bool(c["free"])
+		return ""
+	if c.has("bar"):
+		var st := docked_station()
+		if st.is_empty():
+			return "Dock first."
+		GameState.bar.erase(String(st["id"]))
+		GameState.bar_offers(st)
+		return ""
+	if c.has("xp"):
+		for i in f.crew_slots().size():
+			var m: Dictionary = f.crew_at(i)
+			if not m.is_empty():
+				var nq := CrewCore.learn(m, float(c["xp"]), RandomNumberGenerator.new())
+				if nq != "":
+					GameState.log_msg("[Debug] %s rises to %s." % [m["name"], nq], GameState.COL_GOOD)
+		f.mark_dirty()
+		return ""
+	var sl := f.crew_slots()
+	if bool(c.get("fill", false)):
+		for i2 in sl.size():
+			if f.crew_at(i2).is_empty():
+				f.set_crew(i2, GameState.new_crew(String(sl[i2][0]), String(c.get("quality", "C")), String(c.get("perk", "?"))))
+		return ""
+	var role := String(c.get("role", "gunner"))
+	var m2 := GameState.new_crew(role, String(c.get("quality", "C")), String(c.get("perk", "?")))
+	if bool(c.get("ship", false)):
+		for i3 in sl.size():
+			if f.crew_at(i3).is_empty() and CrewCore.fits(m2, String(sl[i3][0])):
+				f.set_crew(i3, m2)
+				GameState.log_msg("[Debug] %s joins the %s." % [m2["name"], f.ship_name], GameState.COL_GOOD)
+				return ""
+	var sid := f.docked_at if f.docked_at != "" else _debug_station_id()
+	GameState.quarters_of(sid).append(m2)
+	GameState.log_msg("[Debug] %s waits in the crew quarters." % m2["name"], GameState.COL_GOOD)
 	return ""
 
 
@@ -1083,6 +1260,9 @@ func _c_debug_give_ship(c: Dictionary) -> String:
 	else:
 		f = GameState.create_fit(hid, {}, "player")
 	f.ship_name = "%s »Debug«" % GameData.hulls[hid]["name"]
+	f.crew = []
+	for i0 in f.crew_slots().size():
+		f.crew.append({})
 	var sid := _debug_station_id()
 	var sys := int(sid.split("_")[1])
 	var st := Universe.find_station(sys, sid)
@@ -1090,6 +1270,7 @@ func _c_debug_give_ship(c: Dictionary) -> String:
 	f.docked_at = sid
 	f.position = st["pos"]
 	GameState.add_ship(f)
+	GameState.crew_fill_required(f)
 	GameState.log_msg("[Debug] %s delivered to the hangar of %s." % [f.ship_name, st["name"]], GameState.COL_GOOD)
 	if bool(c.get("board", false)):
 		var cur := _fit()

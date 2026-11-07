@@ -6,6 +6,24 @@ extends RefCounted
 
 const ICONS := {
 	# 0.5.30.3: the HUD buttons (ship, pilot, map)
+	"bar": [
+		"................",
+		"...nnnnnnnnnn...",
+		"...gWWWWWWWWg...",
+		"...gyyyyyyyyg...",
+		"...gyyyyyyyyg...",
+		"...gyyWyyyyyg..d",
+		"...gyyyyyyyygddd",
+		"...gyyyyyyWyg..d",
+		"...gyyyyyyyyg..d",
+		"...gyyyyyyyygddd",
+		"...gyyyyyyyyg...",
+		"...gyyyyyyyyg...",
+		"...ggggggggggg..",
+		"..dddddddddddd..",
+		"................",
+		"................",
+	],
 	"hud_ship": [
 		"................",
 		".......cc.......",

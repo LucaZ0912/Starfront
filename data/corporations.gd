@@ -4,6 +4,12 @@ extends RefCounted
 ## price modifiers per station, rival factions, missions, etc.
 
 const CORPS := {
+	# package 31: the bars – where captains find their crews
+	"dwt": {
+		"name": "Driftwood Taverns", "tag": "DWT", "color": Color(1.0, 0.62, 0.3),
+		"slogan": "Every crew starts with a round.",
+		"desc": "A bar on every station that matters, older than most of them. Spacers between posts drink, talk and wait here – and captains who need hands know where to look.",
+	},
 	# package 28: the image studios – new looks for pilots
 	"vsg": {
 		"name": "Visage Clinics", "tag": "VSG", "color": Color(1.0, 0.55, 0.85),

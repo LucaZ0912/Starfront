@@ -1343,6 +1343,7 @@ func market_trade(buyer) -> int:
 		if int(off["amount"]) <= 0:
 			f.market_offers.erase(item)
 		GameState.add_credits(n * price)
+		GameState.crew_cut(n * price)               # package 31
 		GameState.log_msg("Market: %s bought %d × %s for %s." % [buyer.display_name(), n, GameData.item_name(String(item)), GameData.fmt_credits(n * price)], GameState.COL_GOOD)
 		return n * price
 	GameState.log_msg("Market: %s found your prices too high and left." % buyer.display_name(), GameState.COL_WARN)

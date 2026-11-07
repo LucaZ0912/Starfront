@@ -99,6 +99,7 @@ func _process(delta: float) -> void:
 	if not _tree_set and not GameState.pilot.is_empty():
 		_tree_set = true
 		GameState.pilot["tree_all"] = true     # package 30: the older checks buy any ship and module (the tree is tested on its own)
+		GameState.pilot["crew_free"] = true    # package 31: the older checks fly any ship (the crew is tested on its own)
 	if _shooting:
 		return
 	timer += delta
@@ -1638,6 +1639,32 @@ func _shoot_standing(view: SystemView) -> void:
 	pw9.close()
 	GameState.set_pilot(keep_p)
 	GameState.stats = keep_s
+	# package 31: The Bar and the crew of a Bastion
+	sp.open_service("bar")
+	for i8 in 10:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/bar.png")
+	var bas8 := GameState.create_from_preset("std_bastion", "player")
+	bas8.system_id = GameState.active().system_id
+	bas8.docked_at = GameState.active().docked_at
+	GameState.add_ship(bas8)
+	GameState.crew_fill_required(bas8)
+	bas8.set_crew(2, GameState.new_crew("copilot", "B", "night_owl"))
+	bas8.set_crew(4, GameState.new_crew("science", "A", "second_profession"))
+	GameState.quarters_of(bas8.docked_at).append(GameState.new_crew("engineer", "C", ""))
+	var keep_uid8 := GameState.active_uid
+	GameState.active_uid = bas8.uid
+	var sm8: ShipMenu = main.ship_menu
+	sm8.mod_view = "crew"
+	sm8.open(main.view, 1)
+	for i9 in 10:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/crew.png")
+	sm8.mod_view = "fitting"
+	sm8.close()
+	GameState.active_uid = keep_uid8
+	GameState.fleet.erase(bas8)
+	GameState.quarters_of(bas8.docked_at).clear()
 	sp.open_service("outfitter")
 	# package 27: a weapon slot, a family, a size · quality picked – description, changes and footer
 	var op9 = sp._panel
@@ -5430,6 +5457,7 @@ func _test_skills() -> void:
 	GameState.set_pilot(keep)
 	f.mark_dirty()
 	_test_tree()
+	_test_crew()
 
 
 ## Package 30: the skill tree opens by achievements and gates buying and building; perks.
@@ -5539,3 +5567,120 @@ func _test_tree() -> void:
 	GameState.set_pilot(keep)
 	GameState.stats = keep_stats
 	f.mark_dirty()
+
+
+## Package 31: the crew – slots of the hulls, random members, bonuses, share, learning, the bar, the skill tree.
+func _test_crew() -> void:
+	var CD = load("res://data/crew.gd")
+	var CC = load("res://scripts/core/crew.gd")
+	var TD = load("res://data/skilltree.gd")
+	var keep: Dictionary = GameState.pilot.duplicate(true)
+	var keep_credits := GameState.credits
+	# every hull from M up has posts, one of them required; S hulls none
+	var slots_ok := true
+	for hid in GameData.hulls:
+		var h: Dictionary = GameData.hulls[hid]
+		if int(h["size"]) >= 2 and String(h.get("maker", "")) != "pirate":
+			slots_ok = slots_ok and not CD.slots_of(hid).is_empty() and not CD.roles_required_by(hid).is_empty()
+		elif int(h["size"]) == 1:
+			slots_ok = slots_ok and CD.slots_of(hid).is_empty()
+	# random members: names from big lists, bonuses inside the frame, perks very rare, rookies of new ships never
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 31
+	var names := {}
+	var frame_ok := true
+	var perks := 0
+	for i in 400:
+		var q: String = CD.QUALITIES[i % 5]
+		var m: Dictionary = CC.make(rng, 9000 + i, CD.ROLES.keys()[i % CD.ROLES.size()], q)
+		names[m["name"]] = true
+		var fr: Array = CD.FRAME[q]
+		frame_ok = frame_ok and float(m["value"]) >= float(fr[0]) - 0.05 and float(m["value"]) <= float(fr[1]) + 0.05 and not (m["look"] as Dictionary).is_empty()
+		if String(m["perk"]) != "":
+			perks += 1
+	var rookie: Dictionary = CC.make(rng, 1, "gunner", "F", "")
+	check(slots_ok and CD.FIRST_NAMES.size() >= 200 and CD.LAST_NAMES.size() >= 200 and names.size() > 380 and frame_ok and perks < 40 and String(rookie["perk"]) == "",
+		"crew: posts on every hull from M up (one required at least), %d of 400 random members with different names, bonus in the frame of the quality, %d with a perk" % [names.size(), perks])
+	# a bought ship: rookies on the required posts; a missing post blocks undocking
+	var mule := GameState.create_from_preset("std_mule", "player")
+	var fa := GameState.active()
+	mule.system_id = fa.system_id
+	mule.docked_at = fa.docked_at
+	GameState.add_ship(mule)
+	var missing_before: String = mule.crew_missing()
+	GameState.crew_fill_required(mule)
+	var rook: Dictionary = mule.crew_at(0)
+	GameState.pilot["crew_free"] = false
+	var cerr0: String = GameState.crew_error(mule)
+	var cp: Dictionary = mule.set_crew(0, {})
+	var cerr1: String = GameState.crew_error(mule)
+	var undock_ok := true
+	if fa.docked_at != "":
+		var keep_uid := GameState.active_uid
+		GameState.active_uid = mule.uid
+		undock_ok = Commands.execute({"type": "undock"}).begins_with("Crew missing") and mule.docked_at != ""
+		GameState.active_uid = keep_uid
+	mule.set_crew(0, cp)
+	check(missing_before != "" and String(rook["quality"]) == "F" and String(rook["perk"]) == "" and cerr0 == "" and cerr1 != "" and undock_ok,
+		"crew: a bought Mule comes with a rookie Co-Pilot (quality F, no perk); without the required post it cannot undock")
+	# bonuses and the share: a Co-Pilot with +10 % speed, a Quartermaster A
+	mule.set_crew(0, {})
+	var sp0 := float(mule.stats()["speed"])
+	var co: Dictionary = GameState.new_crew("copilot", "C", "")
+	co["bonus"] = "speed"
+	co["value"] = 10.0
+	mule.set_crew(0, co)
+	var sp1 := float(mule.stats()["speed"])
+	var qm: Dictionary = GameState.new_crew("quartermaster", "A", "")
+	qm["bonus"] = "cargo"
+	mule.set_crew(1, qm)
+	var share: float = mule.crew_share()
+	check(absf(sp1 / maxf(sp0, 0.01) - 1.1) < 0.01 and absf(share - 0.0035) < 0.00001,
+		"crew: a Co-Pilot with +10 %% speed makes the Mule 10 %% faster; C + A crew take %.2f %% of the income" % (share * 100.0))
+	# learning: the right work only, a step up rolls an improvement on top (beyond the frame is fine)
+	var g: Dictionary = GameState.new_crew("gunner", "F", "")
+	g["value"] = 2.0
+	g["xp"] = 199.0
+	var nq: String = CC.learn(g, 5.0, rng)
+	var val_ok: bool = float(g["value"]) >= 3.0 - 0.05 and float(g["value"]) <= 4.0 + 0.05
+	var keep_uid2 := GameState.active_uid
+	GameState.active_uid = mule.uid
+	var xp0 := float(mule.crew_at(0)["xp"])
+	GameState.count_stat("warps")
+	var xp1 := float(mule.crew_at(0)["xp"])
+	var qm_xp := float(mule.crew_at(1)["xp"])
+	GameState.crew_learn("kills", 1.0)
+	var cut: int = GameState.crew_cut(100000)
+	GameState.active_uid = keep_uid2
+	check(nq == "D" and val_ok and xp1 > xp0 and float(mule.crew_at(1)["xp"]) == qm_xp and cut == 350,
+		"crew: experience from the right work (warps teach the Co-Pilot, not the Quartermaster), F→D adds +1–2 points (%.1f %%); the share of 100,000 cr is %d cr" % [float(g["value"]), cut])
+	# the skill tree: a hull tile brings its required professions, the science officers have their own tile
+	GameState.pilot["tree_all"] = false
+	GameState.pilot["tree"] = ["shields", "survey", "research_ships"]
+	var sci_locked: bool = GameState.crew_role_error("science") != ""
+	GameState.pilot["tree"].append("science_officers")
+	var sci_open: bool = GameState.crew_role_error("science") == ""
+	GameState.pilot["tree"].append("light_weapons")
+	GameState.pilot["tree"].append("fighters")
+	GameState.pilot["tree"].append("gunships")
+	check(sci_locked and sci_open and GameState.crew_role_error("gunner") == "" and GameState.crew_role_error("foreman") != "" and TD.opens_text("gunships").contains("crew: Gunner"),
+		"crew in the skill tree: Gunships bring the Gunner, the Science Officer has a tile of its own, the Mining Foreman waits for Mining Ships")
+	GameState.pilot["tree_all"] = true
+	# the bar: offers, hire into the quarters, onto a post, dismiss
+	var bar_ok := true
+	var st := Commands.docked_station()
+	if not st.is_empty():
+		GameState.credits = 10000000
+		var offers: Array = GameState.bar_offers(st)
+		var n0 := offers.size()
+		var q0: int = GameState.quarters_of(String(st["id"])).size()
+		var e1 := Commands.execute({"type": "crew_hire", "index": 0})
+		var hired: Dictionary = GameState.quarters_of(String(st["id"])).back() if GameState.quarters_of(String(st["id"])).size() > q0 else {}
+		var e2 := Commands.execute({"type": "crew_dismiss", "member": int(hired.get("id", -1))})
+		bar_ok = n0 >= 4 and n0 <= 8 and e1 == "" and not hired.is_empty() and e2 == "" and GameState.quarters_of(String(st["id"])).size() == q0 and GameState.bar_offers(st).size() == n0 - 1
+	check(bar_ok, "The Bar: 4–8 people looking for work, hire into the crew quarters, dismiss")
+	GameState.fleet.erase(mule)
+	GameState.set_pilot(keep)
+	GameState.credits = keep_credits
+	GameState.pilot["crew_free"] = true
+	fa.mark_dirty()

@@ -73,7 +73,8 @@ static func ore_yield(station: Dictionary, ore: String) -> float:
 ## Preview: how much would refining `amount` units of `ore` yield, and what would it cost?
 static func refine_quote(station: Dictionary, ore: String, amount: float) -> Dictionary:
 	var c: Dictionary = GameData.commodities[ore]
-	var out := floorf(amount * ore_yield(station, ore) * (1.1 if GameState.has_perk("efficient_refining") else 1.0))     # package 30
+	var out := floorf(amount * ore_yield(station, ore) * (1.1 if GameState.has_perk("efficient_refining") else 1.0)
+		* (1.0 + (GameState.active().crew_bonus("refine") if GameState.active() != null else 0.0)))     # package 30, crew: package 31
 	var fee := int(ceil(amount * REFINE_FEE_PER_UNIT * (4 - int(station["tier"])) / 2.0))
 	return {"out_id": c["refines_to"], "out": out, "fee": fee}
 
