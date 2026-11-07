@@ -1066,8 +1066,9 @@ Nummerierung schließt an Teil 4 an (dort bis Paket 27).
 | 28 ✓ | Pilot & Charaktererstellung | Pilot als eigene Ebene im Spielstand; Sprite-Baukasten (Pixel-Art), Porträt aus dem Sprite; Name/Rufzeichen; Attribute verteilen; neuer Ablauf „Neues Spiel“ | – |
 | 29 ✓ | Fähigkeiten | Fähigkeiten aus Attributen abgeleitet, steigen durch Tun; kleine Prozent-Boni im Spiel; Charakter-Reiter im Schiffsmenü | 28 |
 | 30 ✓ | Skilltree & Baupläne | erste Fortschrittsmechanik: Module, Größen, Qualitäten und Schiffsklassen werden durch Tun freigeschaltet (nicht zeitbasiert wie EVE); dazu **Baupläne** für die Herstellung | 29, Teil 4 |
-| 31 | Crew-System | Rollen, Mindest- und Höchstcrew für Schiffe ab M, Wirkung der Crew-Werte, Lohn, Erfahrung | 29 |
-| 32 | Anheuern | neuer Stations-Service zum Anheuern (mit Monopolfirma), Crew-Verwaltung im Schiffsmenü, Crew aus Aufträgen | 31 |
+| 31 | Crew-System & The Bar | (mit 32 zusammengelegt, 7. Nov 2026) Crew-Slots je Schiff mit Pflicht-Rollen, zufällige Crewmitglieder (Name, Porträt, Profession, Qualität F–A, gewürfelter Bonus, seltene Perks), prozentuale Abgabe, Aufstieg durch Tätigkeit, Crew-Reiter im Schiffsmenü, neuer Service **The Bar** zum Anheuern, Skilltree-Anbindung | 29, 30 |
+| 31a | Game Over überarbeiten | gewichtete Überlebenswürfe der Crew, Rettungskapsel mit Zeitlimit, Fenster „Schiff zurückkaufen“ (~10 % des Werts mit Modulen) oder Anfängerschiff, Respawn an der letzten Station | 31 |
+| 32 | _(in 31 aufgegangen)_ | Crew aus Aufträgen folgt mit Teil 7 (Ausbau der Bar) | – |
 | 33 | Söldner & Wingmen | anheuerbare Piloten mit eigenem Schiff fliegen im Verbund; einfache Befehle; Free Captains als Söldner | 31, 32 |
 | 34 | Codex, Tutorial-Hinweise, Feinschliff | Codex-Einträge, Hinweise beim ersten Kontakt, Smoke-Tests, Balancing der Boni | alle |
 
@@ -1240,6 +1241,67 @@ Athletics und Firearms haben in Teil 5 kaum Nutzen – bewusst so entschieden, s
 ### Teil B – Crews und Söldner
 
 #### Crew-System (Paket 31)
+
+**Vorgaben Luz (7. Nov 2026)** – gehen den älteren Notizen darunter vor; offene Fragen in der Antwort an Luz:
+
+- **Crew-Slots** ab **M** (später evtl. besondere S-Schiffe), sichtbar als **neuer Reiter bei den Schiffsmodulen**. Jedes Schiff legt fest: **Höchstzahl**, **Mindestzahl** (darunter funktioniert es nicht) und **welche Arten** von Slots (Kampfschiff ≠ Bergbauschiff).
+- **Crewmitglieder sind zufälliger als Module:** Name (aus einer **sehr großen Liste von Vor- und Nachnamen**, kombiniert), **zufälliges Porträt**, eine **Profession** (= Slot-Art), manche zusätzlich eine **Nebenprofession** (auch auf einem zweiten Posten einsetzbar), eine **Qualitätsstufe D bis A** (später S und S+).
+- **Boni** gehören zur Profession (z. B. Co-Pilot: Geschwindigkeit, bestimmte Waffengruppen, Reichweite, Schaden …). **Welche** Boni und **wie hoch** wird je Mitglied **ausgewürfelt** – im Rahmen seiner Qualitätsstufe.
+- Die Qualitätsstufe legt auch die **kleine prozentuale Abgabe** fest, die besetzte Crew kostet.
+- **Aufstieg:** im Einsatz sammeln sie **sehr langsam Erfahrung** und steigen eine Qualitätsstufe auf – Bonus und Abgabe steigen.
+
+**Antworten Luz (7. Nov 2026):**
+
+1. **Nur die prozentuale Abgabe** – deutlich unter 1 % je Mitglied (große Schiffe haben bis zu 10).
+2. Die **sieben Rollen** passen erst mal (Co-Pilot, Gunner, Engineer, Science Officer, Mining Foreman, Quartermaster, Drone Operator), erweiterbar.
+3. **Mindestbesatzung = Slot-Arten, die zwingend besetzt sein müssen** (z. B. Bergbauschiff: Mining Foreman).
+4. Der **Grundwert wird gewürfelt**, im Rahmen der Qualitätsstufe – das soll zum **Sammeln** anregen.
+5. **Nebenprofession** ist ein **superseltener Perk**: das Mitglied kann auch auf einen anderen Slot und hat dort einen anderen Bonus. Dazu weitere **superseltene Perks** – fest, auch ein F-Mitglied kann einen haben, er verbessert sich beim Aufstieg nicht.
+6. Erfahrung durch **passende Tätigkeiten**.
+7. **Nur aktiv genutzte Crews** kosten.
+8. Pakete 31 und 32 **zusammen**: neuer Service **„The Bar“** – vorerst nur der Laden für Crewmitglieder (wird in Teil 7 stark ausgebaut); Anheuern kostet **vorab** etwas. **Neu gekaufte Schiffe** haben die Mindestcrew in **Klasse F** (ohne Perk).
+9. **Neues Paket 31a – Game Over überarbeiten:** gewichtete Würfel je Crewmitglied (höhere Qualität = höhere Überlebenschance und längere Zeit, bis die **Rettungskapsel** verschwindet). Nach dem Tod ein **Fenster: Schiff zurückkaufen** für ca. **10 % des Gesamtwerts mit allen Modulen** (ohne Crew). Wer ablehnt oder es sich nicht leisten kann, bekommt das **Anfängerschiff**. **Respawn** an der **letzten Station, an der man angedockt war**.
+10. **Skilltree:** schaltet eine Kachel ein Schiff frei, das eine Crew-Art zwingend braucht, wird diese Crew-Art mit freigeschaltet; Crew-Arten, die auf keinem Schiff Pflicht sind, bekommen **eigene Kacheln**.
+
+**Vorschlag Claude (zur Freigabe):**
+
+- **Qualitätsstufen:** **F** (Rookie, nur Standardcrew neuer Schiffe und Bar-Ausschuss, nie mit Perk), D, C, B, A (später S, S+).
+- **Abgabe** (Anteil an Verkäufen, Kopfgeldern und Auftragsbelohnungen, nur Crew des aktiven Schiffs): F 0,02 % · D 0,05 % · C 0,1 % · B 0,15 % · A 0,25 % – zehn A-Mitglieder = 2,5 %. Im Log und im Crew-Reiter sichtbar.
+- **Bonus:** jedes Mitglied hat **einen** gewürfelten Bonus aus der Liste seiner Profession, Höhe gewürfelt im Rahmen: F 1–2 % · D 2–4 % · C 4–6 % · B 6–9 % · A 9–12 %. Beim Aufstieg wird **neu im höheren Rahmen gewürfelt** (nie schlechter als vorher). Die Boni gelten nur auf dem Schiff, auf dem das Mitglied sitzt.
+
+| Rolle | mögliche Boni (einer wird gewürfelt) | Erfahrung durch |
+| --- | --- | --- |
+| Co-Pilot | Geschwindigkeit · Wendigkeit · Ausrichten zum Warp · Warp-Tempo · Nachbrenner-Energie | Warps, Flugstrecke |
+| Gunner | Schaden optisch / kinetisch / explosiv · Waffenreichweite · Feuerrate | Schaden an Gegnern |
+| Engineer | Energie-Ausbeute · Kondensator-Aufladung · Schild-Regeneration · Schild-Downtime · Panzerung | Zeit im Kampf, Reparaturen |
+| Science Officer | Scan-Reichweite · Analyse-Tempo · Survey-Reichweite · Warrant-/Frachtscan-Tempo | Analysen, Scans |
+| Mining Foreman | Abbaurate · Erzlager · Raffinerie-Ausbeute · Drohnen-Bergbau | Erz abgebaut |
+| Quartermaster | Frachtraum · Verkaufspreise · Treibstoffverbrauch · Abgabe der übrigen Crew | Umsatz am Markt |
+| Drone Operator | Drohnen-Schaden · -Reichweite · -Tempo · -Haltbarkeit | Drohnen im Einsatz |
+
+- **Aufstieg:** sehr langsam – grob F→D nach ca. 2 Std. passender Tätigkeit, D→C 5 Std., C→B 12 Std., B→A 30 Std.
+- **Perks** (fest, unabhängig von der Qualität; Chance ca. 4 % pro Mitglied, die Nebenprofession ca. 1 %): **Second Profession** (zweiter Slot mit eigenem gewürfelten Bonus) · **Lucky** (überlebt fast immer) · **Quick Learner** (doppelte Erfahrung) · **Loyal** (keine Abgabe) · **Old Hand** (Bonus +50 %) · **Medic** (bessere Überlebenschance der übrigen Crew) · **Haggler** (die ganze Crew kostet die Hälfte) · **Night Owl** (+Bonus ausschließlich in Systemen mit niedriger Sicherheit).
+- **Slots je Schiff** (Pflicht fett), S-Schiffe vorerst ohne Crew:
+
+| Schiffe | Slots |
+| --- | --- |
+| Mule, Longhaul | **Co-Pilot**, Quartermaster (Longhaul: + Engineer, Quartermaster) – 2 / 4 |
+| Drillhead, Anaguma | **Mining Foreman**, Co-Pilot, Engineer – 3 |
+| Warden, Templar, Maul, Goliath | **Gunner**, Co-Pilot, Engineer (Goliath + Gunner) – 3 / 4 |
+| Quirinus | **Drone Operator**, Gunner, Engineer – 3 |
+| Boulevard, Opal | **Co-Pilot**, Quartermaster, Engineer – 3 |
+| Bastion | **Gunner**, **Engineer**, Co-Pilot, Gunner, Science Officer, Quartermaster – 6 |
+| Iwakudaki | **Mining Foreman**, **Engineer**, Mining Foreman, Co-Pilot, Quartermaster, Drone Operator – 6 |
+| Kanayama-maru | **Mining Foreman**, **Engineer**, **Quartermaster**, + 7 weitere gemischt – 10 |
+| Threshold | **Science Officer**, **Engineer**, Co-Pilot, Science Officer, Gunner, Quartermaster – 6 |
+| Cathedral | **Gunner**, **Engineer**, + 6 weitere – 8 |
+| Concordia, Citadel | **Drone Operator**, **Gunner**, **Engineer**, + 7 weitere – 10 |
+| Empress | **Co-Pilot**, **Quartermaster**, **Engineer**, + 7 weitere – 10 |
+
+- **Skilltree** nach Regel 10: Co-Pilot (Freight), Mining Foreman (Mining Ships), Gunner + Engineer (Gunships), Drone Operator (Gunships über den Quirinus), Quartermaster (Bulk Freight bzw. Heavy Industry). **Science Officer** ist erst beim Threshold Pflicht → eigene Kachel **„Science Officers“** im Ast Exploration (nach Research Ships). Pflicht-Rollen stehen im Detailfeld der Kachel.
+- **The Bar** (Concourse-Service an Stationen mit Werft und an Militär-, Forschungs- und Bergbaustationen): 4–8 Bewerber mit Porträt, Profession, Qualität, Bonus, ggf. Perk; das Angebot wechselt alle ~20 Minuten Spielzeit, der Stationstyp bestimmt die häufigsten Professionen. **Anheuer-Preis vorab:** D ≈ 5.000 · C ≈ 20.000 · B ≈ 75.000 · A ≈ 250.000 cr (gewürfelt ±30 %, Perk teurer). Angeheuerte gehen auf ein Schiff im Hangar oder ins **Crew-Quartier** der Station (wie das Modullager). Entlassen ohne Erstattung.
+- **Crew-Reiter** im Schiffsmenü bei den Modulen: Slots mit Rolle und Pflicht-Markierung, Mitglied mit Porträt, Qualität, Bonus, Perk, Erfahrung; tauschen mit dem Crew-Quartier beim Andocken. **Ohne Pflichtcrew kein Abdocken.**
+- **Debug:** Crew würfeln (Rolle, Qualität, Perk), Erfahrung geben, Pflichtcrew-Prüfung abschalten, Bar neu würfeln.
 
 - **Schiffe ab M** haben eine **Mindest- und Höchstcrew**. S-Schiffe fliegt der Pilot allein.
 - **Unter der Mindestcrew fliegt das Schiff nicht** (kein Abdocken, kein Aktivieren im Hangar).
