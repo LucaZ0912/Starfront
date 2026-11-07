@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.31.3 – 2026-11-07
+
+**Station concourse:** the station service tiles grow with the window (the icon too); when space runs short only the services scroll, not the whole column.
+
 ## alpha 0.5.31.2 – 2026-11-07
 
 **Station concourse:** the station services are squarer tiles, two in a row (The Bar and the Image Studio among them).

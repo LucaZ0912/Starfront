@@ -223,7 +223,7 @@ func show_concourse(animate: bool = false) -> void:
 	_cmdr_column(_column(left, UI.NEON_PINK, 1.0), tiles)
 	_news_column(_column(left, Color(1.0, 0.8, 0.4), 1.25), tiles)
 	_ship_column(_column(cols, UI.NEON_CYAN, 1.1), tiles)
-	_station_column(_column(cols, Color(0.7, 0.55, 1.0), 1.15), tiles)
+	_station_column(_column(cols, Color(0.7, 0.55, 1.0), 1.15, false), tiles)
 	concourse_tiles = tiles.size()
 	if animate:
 		var k := 0
@@ -237,7 +237,7 @@ func show_concourse(animate: bool = false) -> void:
 
 
 ## A framed column (or column part) that scrolls if it runs long; returns its content box.
-func _column(parent: Control, col: Color, ratio: float) -> VBoxContainer:
+func _column(parent: Control, col: Color, ratio: float, scroll: bool = true) -> VBoxContainer:
 	var box := UI.neon_panel(Color(col, 0.55), Color(0.035, 0.02, 0.07, 0.9), 1)
 	if parent is HBoxContainer:
 		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -245,13 +245,17 @@ func _column(parent: Control, col: Color, ratio: float) -> VBoxContainer:
 		box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.size_flags_stretch_ratio = ratio
 	parent.add_child(box)
+	var v := UI.vbox(6)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.set_meta("col", col)
+	if not scroll:
+		v.size_flags_vertical = Control.SIZE_EXPAND_FILL      # 0.5.31.3: the column scrolls a part of itself
+		box.add_child(v)
+		return v
 	var sc := ScrollContainer.new()
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.add_child(sc)
-	var v := UI.vbox(6)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(v)
-	v.set_meta("col", col)
 	return v
 
 
@@ -331,6 +335,7 @@ func _square_tile(v: Control, icon: String, title: String, sub: String, col: Col
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(0, 76)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_vertical = Control.SIZE_EXPAND_FILL           # 0.5.31.3: grows with the window
 	b.disabled = not ok
 	b.tooltip_text = reason
 	for st in ["normal", "hover", "pressed", "disabled"]:
@@ -359,6 +364,9 @@ func _square_tile(v: Control, icon: String, title: String, sub: String, col: Col
 	if not ok:
 		ic.modulate = Color(0.4, 0.4, 0.45)
 	cv.add_child(ic)
+	b.resized.connect(func():
+		var px := floorf(clampf(b.size.y * 0.4, 30.0, 80.0) / 16.0) * 16.0     # the icon grows with the tile, in whole pixels
+		ic.custom_minimum_size = Vector2(maxf(px, 30.0), maxf(px, 30.0)))
 	var tl := UI.label(title.to_upper(), 15, col if ok else UI.TEXT_DIM)
 	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tl.clip_text = true
@@ -539,13 +547,19 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	bh.add_child(UI.spacer())
 	bh.add_child(UI.label(GameData.fmt_credits(GameState.credits), 20, UI.GOLD))
 	_head(v, "STATION SERVICES", col)
-	# 0.5.31.2: square tiles, two in a row
+	# 0.5.31.2: square tiles, two in a row; 0.5.31.3: they grow with the window, and only this part scrolls
+	var ssc := ScrollContainer.new()
+	ssc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	ssc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ssc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_child(ssc)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	v.add_child(grid)
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ssc.add_child(grid)
 	for svc in GameData.services:
 		if String(svc["id"]) in SHIP_SERVICES or svc["id"] == "news":
 			continue
