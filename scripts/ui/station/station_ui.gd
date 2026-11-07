@@ -197,7 +197,6 @@ func service_available(svc: Dictionary) -> String:
 ## Services shown in the ship column (the rest sit as tiles in the station column; the news archive opens
 ## from the news column).
 const SHIP_SERVICES := ["fuel", "repair", "drones", "outfitter", "hangar"]
-const PERSONAL_SERVICES := ["bar", "look"]       # 0.5.31.1: in the commander column
 var concourse_tiles := 0          # tiles built in the last concourse (smoke test)
 
 
@@ -221,8 +220,8 @@ func show_concourse(animate: bool = false) -> void:
 	left.size_flags_stretch_ratio = 0.95
 	cols.add_child(left)
 	var tiles: Array = []
-	_cmdr_column(_column(left, UI.NEON_PINK, 1.35), tiles)
-	_news_column(_column(left, Color(1.0, 0.8, 0.4), 0.9), tiles)
+	_cmdr_column(_column(left, UI.NEON_PINK, 1.0), tiles)
+	_news_column(_column(left, Color(1.0, 0.8, 0.4), 1.25), tiles)
 	_ship_column(_column(cols, UI.NEON_CYAN, 1.1), tiles)
 	_station_column(_column(cols, Color(0.7, 0.55, 1.0), 1.15), tiles)
 	concourse_tiles = tiles.size()
@@ -316,10 +315,64 @@ func _svc(id: String) -> Dictionary:
 
 
 ## A service tile (opens its panel), run by its corporation.
-func _service_tile(v: Control, svc: Dictionary, tiles: Array) -> void:
+func _service_tile(v: Control, svc: Dictionary, tiles: Array, square: bool = false) -> void:
 	var c: Dictionary = GameData.corp(svc["corp"])
 	var sid: String = svc["id"]
+	if square:
+		_square_tile(v, String(svc["icon"]), String(svc["title"]), "%s  [%s]" % [c["name"], c["tag"]], c["color"], func(): open_service(sid), service_available(svc), tiles)
+		return
 	_long_tile(v, String(svc["icon"]), String(svc["title"]), "%s  [%s]" % [c["name"], c["tag"]], c["color"], func(): open_service(sid), service_available(svc), tiles)
+
+
+## 0.5.31.2: a squarer tile for the station services – a big icon above, title and corporation below.
+func _square_tile(v: Control, icon: String, title: String, sub: String, col: Color, cb: Callable, reason: String = "", tiles: Array = []) -> Button:
+	var ok := reason == ""
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(0, 76)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.disabled = not ok
+	b.tooltip_text = reason
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		var sb := UI.panel_style(Color(0.05, 0.03, 0.1, 0.95), Color(col, 0.9 if st == "hover" else (0.2 if not ok else 0.45)))
+		sb.set_border_width_all(1)
+		sb.border_width_top = 4
+		if st == "hover":
+			sb.bg_color = Color(col.darkened(0.8), 0.95)
+			sb.shadow_color = Color(col, 0.35)
+			sb.shadow_size = 8
+		b.add_theme_stylebox_override(st, sb)
+	b.pressed.connect(cb)
+	UI.click_sound(b)
+	var cv := UI.vbox(0)
+	cv.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cv.offset_left = 8
+	cv.offset_right = -8
+	cv.offset_top = 6
+	cv.offset_bottom = -4
+	cv.alignment = BoxContainer.ALIGNMENT_CENTER
+	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(cv)
+	var ic := UI.icon(PixelArt.icon_texture(icon), 30)
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	if not ok:
+		ic.modulate = Color(0.4, 0.4, 0.45)
+	cv.add_child(ic)
+	var tl := UI.label(title.to_upper(), 15, col if ok else UI.TEXT_DIM)
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tl.clip_text = true
+	cv.add_child(tl)
+	var sl := UI.label(sub if ok else reason, 11, UI.TEXT_DIM if ok else UI.BAD)
+	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sl.clip_text = true
+	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	cv.add_child(sl)
+	for ch in cv.get_children():
+		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(b)
+	tiles.append(b)
+	return b
 
 
 # ---- left: the commander (placeholder for portrait and career) and the news
@@ -350,10 +403,6 @@ func _cmdr_column(v: VBoxContainer, tiles: Array) -> void:
 	st.add_child(UI.label("Contracts running: %d" % GameState.missions.size(), 13))
 	st.add_child(UI.label("Flight time: %s" % SaveGame.fmt_time(GameState.play_time), 13))
 	v.add_child(UI.wrap_label("Skills, perks and the skill tree: Pilot window [%s]." % Keybinds.key_text("pilot_window"), 11, UI.TEXT_DIM, 330))
-	# 0.5.31.1: the personal services sit with the commander – the bar (crew) and the image studio
-	for svc in GameData.services:
-		if String(svc["id"]) in PERSONAL_SERVICES:
-			_service_tile(v, svc, tiles)
 
 
 func _news_column(v: VBoxContainer, tiles: Array) -> void:
@@ -490,10 +539,17 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	bh.add_child(UI.spacer())
 	bh.add_child(UI.label(GameData.fmt_credits(GameState.credits), 20, UI.GOLD))
 	_head(v, "STATION SERVICES", col)
+	# 0.5.31.2: square tiles, two in a row
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_child(grid)
 	for svc in GameData.services:
-		if String(svc["id"]) in SHIP_SERVICES or String(svc["id"]) in PERSONAL_SERVICES or svc["id"] == "news":
+		if String(svc["id"]) in SHIP_SERVICES or svc["id"] == "news":
 			continue
-		_service_tile(v, svc, tiles)
+		_service_tile(grid, svc, tiles, true)
 
 
 ## Relief deliveries for a station knocked out by a raid (package 15): any portion, 2x base price.
