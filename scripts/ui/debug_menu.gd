@@ -359,7 +359,7 @@ func _build_character() -> void:
 	for s in SkillDataX.SKILLS:
 		var sid: String = s[0]
 		var r3 := _row()
-		var l3 := UI.label("%s  L%d  %s" % [String(s[1]), GameState.skill_level(sid), "READY" if GameState.skill_ready(sid) else ""], 12)
+		var l3 := UI.label("%s  L%d" % [String(s[1]), GameState.skill_level(sid)], 12)
 		l3.custom_minimum_size = Vector2(190, 0)
 		r3.add_child(l3)
 		var lv := _spin(0, SkillDataX.MAX_LEVEL, GameState.skill_level(sid))

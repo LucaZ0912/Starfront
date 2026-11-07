@@ -480,11 +480,6 @@ func look_price() -> int:
 	return GameState.rep.buy_price(PilotDataX.LOOK_PRICE, docked_faction())
 
 
-## {"type":"skill_advance", "skill": id} – package 29: confirms a ready advance of a skill.
-func _c_skill_advance(c: Dictionary) -> String:
-	return GameState.skill_advance(String(c.get("skill", "")))
-
-
 ## {"type":"debug_skill", "skill": id, "level"?: int, "xp"?: float} – set a level or add experience.
 func _c_debug_skill(c: Dictionary) -> String:
 	var id := String(c.get("skill", ""))

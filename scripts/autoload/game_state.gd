@@ -155,7 +155,8 @@ func make_pilot(p_name: String, data: Dictionary = {}) -> Dictionary:
 		if skills.has(id):
 			skills[id] = {"lvl": int(old[id].get("lvl", 0)), "xp": float(old[id].get("xp", 0.0))}
 	return {"name": nm if nm != "" else p_name, "callsign": String(data.get("callsign", "")).strip_edges().left(16),
-		"look": PilotArt.clean(data.get("look", PilotArt.default_look())), "attrs": attrs.duplicate(), "skills": skills}
+		"look": PilotArt.clean(data.get("look", PilotArt.default_look())), "attrs": attrs.duplicate(), "skills": skills,
+		"level": maxi(int(data.get("level", 1)), 1), "xp": float(data.get("xp", 0.0)), "perk_points": int(data.get("perk_points", 0))}
 
 
 # ---------------------------------------------------------------- Package 29: skills
@@ -169,43 +170,47 @@ func skill_bonus(id: String) -> float:
 	return float(skill_level(id)) * SkillData.BONUS_PER_LEVEL
 
 
-func skill_ready(id: String) -> bool:
-	var sk: Dictionary = pilot.get("skills", {}).get(id, {})
-	return not sk.is_empty() and int(sk["lvl"]) < SkillData.MAX_LEVEL and float(sk["xp"]) >= SkillData.need(int(sk["lvl"]))
-
-
-func skills_ready() -> Array:
-	var out: Array = []
-	for id in SkillData.ids():
-		if skill_ready(id):
-			out.append(id)
-	return out
-
-
-## Experience for a skill by doing (scaled by how fast it learns); tells the pilot once an advance is ready.
+## Experience for a skill by doing (scaled by how fast it learns). The skill rises by itself once enough is there
+## (0.5.29.2); all experience also feeds the pilot level, and every pilot level brings a perk point (perks: package 30).
 func skill_xp(id: String, amount: float) -> void:
 	var sk: Dictionary = pilot.get("skills", {}).get(id, {})
-	if sk.is_empty() or amount <= 0.0 or int(sk["lvl"]) >= SkillData.MAX_LEVEL:
+	if sk.is_empty() or amount <= 0.0:
 		return
-	var was := skill_ready(id)
-	sk["xp"] = float(sk["xp"]) + amount * SkillData.learn_rate(id, pilot.get("attrs", {}))
-	if not was and skill_ready(id):
-		log_msg("%s can advance to level %d – open the Pilot window [%s]." % [SkillData.info(id)[1], int(sk["lvl"]) + 1, Keybinds.key_text("pilot_window")], COL_GOOD)
+	var gain := amount * SkillData.learn_rate(id, pilot.get("attrs", {}))
+	_pilot_xp(gain)
+	if int(sk["lvl"]) >= SkillData.MAX_LEVEL:
+		return
+	sk["xp"] = float(sk["xp"]) + gain
+	var rose := false
+	while int(sk["lvl"]) < SkillData.MAX_LEVEL and float(sk["xp"]) >= SkillData.need(int(sk["lvl"])):
+		sk["xp"] = float(sk["xp"]) - SkillData.need(int(sk["lvl"]))
+		sk["lvl"] = int(sk["lvl"]) + 1
+		rose = true
+	if rose:
+		for f in fleet:
+			f.mark_dirty()                # the bonuses change the ships' values
+		log_msg("%s rises to level %d (+%d %%)." % [SkillData.info(id)[1], int(sk["lvl"]), int(sk["lvl"])], COL_GOOD)
+		Audio.play("mission_complete", "skill up")
 		skills_changed.emit()
 
 
-## Confirms a ready advance: one level up, the experience beyond it carries over.
-func skill_advance(id: String) -> String:
-	if not skill_ready(id):
-		return "%s is not ready to advance." % String(SkillData.info(id)[1]) if not SkillData.info(id).is_empty() else "Unknown skill."
-	var sk: Dictionary = pilot["skills"][id]
-	sk["xp"] = float(sk["xp"]) - SkillData.need(int(sk["lvl"]))
-	sk["lvl"] = int(sk["lvl"]) + 1
-	for f in fleet:
-		f.mark_dirty()                    # the bonuses change the ships' values
-	log_msg("%s is now level %d (+%d %%)." % [SkillData.info(id)[1], int(sk["lvl"]), int(sk["lvl"])], COL_GOOD)
-	skills_changed.emit()
-	return ""
+func pilot_level() -> int:
+	return int(pilot.get("level", 1))
+
+
+func _pilot_xp(gain: float) -> void:
+	if pilot.is_empty():
+		return
+	pilot["xp"] = float(pilot.get("xp", 0.0)) + gain
+	var rose := false
+	while int(pilot["level"]) < SkillData.PILOT_MAX and float(pilot["xp"]) >= SkillData.pilot_need(int(pilot["level"])):
+		pilot["xp"] = float(pilot["xp"]) - SkillData.pilot_need(int(pilot["level"]))
+		pilot["level"] = int(pilot["level"]) + 1
+		pilot["perk_points"] = int(pilot.get("perk_points", 0)) + 1
+		rose = true
+	if rose:
+		log_msg("Pilot level %d! A perk point to spend (perks come with package 30)." % int(pilot["level"]), COL_GOOD)
+		skills_changed.emit()
 
 
 func set_pilot(p: Dictionary) -> void:
@@ -456,6 +461,7 @@ func add_ship(f: ShipFitting) -> void:
 		f.uid = _next_uid
 		_next_uid += 1
 	fleet.append(f)
+	f.mark_dirty()                      # package 29: the pilot's skills now count for this ship
 	fleet_changed.emit()
 
 

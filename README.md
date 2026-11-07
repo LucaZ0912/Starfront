@@ -91,8 +91,9 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 
 ## Skills and the Pilot window (phase 0.5 package 29)
 - Twelve skills (Piloting, Gunnery, Engineering, Science, Navigation, Mining, Trading, Leadership, Negotiation,
-  Electronics, Athletics, Firearms) grow by doing; when enough experience is gathered you confirm the advance in
-  the **Pilot window [U]**. Every level gives +1 % on the skill's effect on your ships (up to +10 %).
+  Electronics, Athletics, Firearms) grow by doing and rise by themselves; every level gives +1 % on the skill's
+  effect on your own ships (up to +10 %). All experience also feeds the **pilot level** – every level a perk point
+  (perks come with package 30). See it all in the **Pilot window [U]**.
 - The window also shows the skill tree's six branches (coming with package 30) and the pilot with portrait,
   attributes and career.
 

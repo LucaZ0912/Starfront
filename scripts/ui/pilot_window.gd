@@ -98,8 +98,8 @@ func rebuild() -> void:
 # ---- skills
 
 func _skills() -> void:
-	var ready: Array = GameState.skills_ready()
-	body.add_child(UI.label(("%d skill%s ready to advance" % [ready.size(), "" if ready.size() == 1 else "s"]) if not ready.is_empty() else "Skills grow by doing: every activity gives experience to the skill behind it. When enough is gathered, the advance is confirmed here.", 13, UI.GOOD if not ready.is_empty() else UI.TEXT_DIM))
+	_level_bar(body)
+	body.add_child(UI.label("Skills grow by doing: every activity gives experience to the skill behind it, and the skill rises by itself. All of it feeds the pilot level.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 12)
@@ -114,9 +114,8 @@ func _skill_card(s: Array) -> Control:
 	var id: String = s[0]
 	var sk: Dictionary = GameState.pilot.get("skills", {}).get(id, {"lvl": 0, "xp": 0.0})
 	var lvl := int(sk["lvl"])
-	var ready := GameState.skill_ready(id)
 	var later := id in ["athletics", "firearms", "leadership"]
-	var card := UI.neon_panel(Color(UI.GOOD if ready else COL, 0.75 if ready else 0.35), Color(0.05, 0.04, 0.03, 0.95), 2 if ready else 1)
+	var card := UI.neon_panel(Color(COL, 0.35), Color(0.05, 0.04, 0.03, 0.95), 1)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.custom_minimum_size = Vector2(560, 0)
 	var v := UI.vbox(3)
@@ -136,13 +135,13 @@ func _skill_card(s: Array) -> Control:
 	for i in SkillData.MAX_LEVEL:
 		var p := ColorRect.new()
 		p.custom_minimum_size = Vector2(26, 8)
-		p.color = COL if i < lvl else (UI.GOOD if ready and i == lvl else Color(0.2, 0.18, 0.14))
+		p.color = COL if i < lvl else Color(0.2, 0.18, 0.14)
 		pips.add_child(p)
 	var row := UI.hbox(8)
 	v.add_child(row)
 	if lvl < SkillData.MAX_LEVEL:
 		var need := SkillData.need(lvl)
-		var bar := UI.bar(UI.GOOD if ready else Color(0.75, 0.6, 0.3), 240)
+		var bar := UI.bar(Color(0.75, 0.6, 0.3), 240)
 		bar.max_value = need
 		bar.value = minf(float(sk["xp"]), need)
 		row.add_child(bar)
@@ -152,16 +151,23 @@ func _skill_card(s: Array) -> Control:
 		row.add_child(UI.label("Mastered", 12, UI.GOOD))
 	v.add_child(UI.wrap_label("%s  –  now +%d %%" % [s[3], lvl], 12, Color(0.9, 0.9, 0.85), 540))
 	v.add_child(UI.wrap_label("Grows by: %s" % s[4], 11, UI.TEXT_DIM, 540))
-	if ready:
-		v.add_child(UI.menu_button("Advance to level %d" % (lvl + 1), func(): _advance(id), UI.GOOD, 240))
 	return card
 
 
-func _advance(id: String) -> void:
-	var err := Commands.execute({"type": "skill_advance", "skill": id})
-	if err == "":
-		Audio.play("mission_complete", "skill advance")
-	rebuild()
+## The pilot level with its experience bar and the perk points (0.5.29.2).
+func _level_bar(parent: Control) -> void:
+	var row := UI.hbox(10)
+	parent.add_child(row)
+	var lvl := GameState.pilot_level()
+	row.add_child(UI.label("PILOT LEVEL %d" % lvl, 18, COL))
+	var need := SkillData.pilot_need(lvl)
+	var bar := UI.bar(COL, 360)
+	bar.max_value = need
+	bar.value = minf(float(GameState.pilot.get("xp", 0.0)), need)
+	row.add_child(bar)
+	row.add_child(UI.label("%d / %d XP" % [int(bar.value), int(need)], 12, UI.TEXT_DIM))
+	var pp := int(GameState.pilot.get("perk_points", 0))
+	row.add_child(UI.label("%d perk point%s (perks: package 30)" % [pp, "" if pp == 1 else "s"], 12, UI.GOOD if pp > 0 else UI.TEXT_DIM))
 
 
 # ---- the skill tree (package 30)
@@ -202,6 +208,7 @@ func _pilot() -> void:
 	var v := UI.vbox(6)
 	row.add_child(v)
 	v.add_child(UI.label("CMDR %s" % GameState.pilot_title(), 22, UI.NEON_CYAN))
+	_level_bar(v)
 	v.add_child(UI.label("ATTRIBUTES", 14, COL))
 	for at in PilotData.ATTRS:
 		var r := UI.hbox(8)

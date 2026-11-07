@@ -603,9 +603,7 @@ func _process(delta: float) -> void:
 		_update_overview()
 		_update_contacts()
 		if _w.has("skills"):
-			var n := GameState.skills_ready().size()
-			_w["skills"].visible = n > 0
-			_w["skills"].text = "▲ %d skill%s ready to advance [%s]" % [n, "" if n == 1 else "s", Keybinds.key_text("pilot_window")]
+			_w["skills"].visible = false          # 0.5.29.2: skills rise by themselves; ready skill tree tiles later (package 30)
 	if f == null or not _w.has("act"):
 		return
 	var s := f.stats()

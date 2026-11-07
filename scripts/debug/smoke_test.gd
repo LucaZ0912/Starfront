@@ -1566,7 +1566,7 @@ func _shoot_standing(view: SystemView) -> void:
 	var keep_p: Dictionary = GameState.pilot.duplicate(true)
 	GameState.pilot["skills"]["gunnery"]["lvl"] = 3
 	GameState.pilot["skills"]["mining"]["lvl"] = 1
-	GameState.skill_xp("gunnery", 900.0)
+	GameState.skill_xp("gunnery", 500.0)
 	GameState.skill_xp("piloting", 60.0)
 	var pw9 = main.pilot_window
 	for t9 in 3:
@@ -5312,16 +5312,17 @@ func _test_skills() -> void:
 	check(SD.SKILLS.size() == 12 and GameState.pilot.get("skills", {}).size() == 12 and SD.start_level("piloting", top) == 2 and SD.start_level("piloting", low) == 0
 		and SD.learn_rate("gunnery", top) > SD.learn_rate("gunnery", low) and SD.need(5) > SD.need(1),
 		"skills: twelve, the attributes set the starting level and how fast they learn")
-	# by doing: an analysed anomaly feeds Science; enough experience makes an advance ready – confirmed by command
+	# by doing: an analysed anomaly feeds Science; the skill rises by itself (0.5.29.2) and feeds the pilot level
 	GameState.pilot["skills"]["science"] = {"lvl": 0, "xp": 0.0}
+	GameState.pilot["level"] = 1
+	GameState.pilot["xp"] = 0.0
+	GameState.pilot["perk_points"] = 0
 	GameState.notify("analyse", GameState.current_system)
 	var got: float = float(GameState.pilot["skills"]["science"]["xp"])
-	var e0: String = Commands.execute({"type": "skill_advance", "skill": "science"})
-	GameState.skill_xp("science", 500.0)
-	var ready: bool = GameState.skill_ready("science") and "science" in GameState.skills_ready()
-	var e1: String = Commands.execute({"type": "skill_advance", "skill": "science"})
-	check(got > 0.0 and e0 != "" and ready and e1 == "" and GameState.skill_level("science") == 1 and float(GameState.pilot["skills"]["science"]["xp"]) > 0.0,
-		"skills grow by doing (an analysis feeds Science); the advance is confirmed – the rest of the experience carries over")
+	GameState.skill_xp("science", 400.0)
+	check(got > 0.0 and GameState.skill_level("science") == 2 and float(GameState.pilot["skills"]["science"]["xp"]) > 0.0,
+		"skills grow by doing (an analysis feeds Science) and rise by themselves – the rest of the experience carries over")
+	check(GameState.pilot_level() == 2 and int(GameState.pilot["perk_points"]) == 1, "all skill experience feeds the pilot level – every level a perk point")
 	# the bonuses: Gunnery and Piloting on the player's ship
 	var f := GameState.active()
 	var plain := ShipFitting.from_dict(f.to_dict())
@@ -5344,7 +5345,7 @@ func _test_skills() -> void:
 	pw.menu_tab(1)
 	var n2: int = pw.body.get_child_count()
 	pw.close()
-	check(n0 > 1 and n1 > 1 and n2 > 0 and pw.tab == 2 and main.hud._w.has("skills") and Keybinds.key_text("pilot_window") == "U",
-		"Pilot window [U]: skills, skill tree (package 30), pilot – the HUD shows when a skill is ready")
+	check(n0 > 1 and n1 > 1 and n2 > 0 and pw.tab == 2 and Keybinds.key_text("pilot_window") == "U",
+		"Pilot window [U]: pilot level, skills, skill tree (package 30), pilot")
 	GameState.set_pilot(keep)
 	f.mark_dirty()

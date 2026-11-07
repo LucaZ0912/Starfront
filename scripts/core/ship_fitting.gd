@@ -392,8 +392,8 @@ const LANCE_CYCLE := 2.0          # a lance: charge 0.55 s + burn 1 s, then a sh
 ## carries the damage of that whole time.
 ## Package 29: the pilot's skills on the player's own ships – a few per cent each.
 func _skill_effects(s: Dictionary) -> void:
-	if faction != "player" or GameState.pilot.is_empty():
-		return
+	if faction != "player" or GameState.pilot.is_empty() or not GameState.fleet.has(self):
+		return                                  # only the ships the pilot owns
 	var pil := GameState.skill_bonus("piloting")
 	var gun := GameState.skill_bonus("gunnery")
 	var eng := GameState.skill_bonus("engineering")

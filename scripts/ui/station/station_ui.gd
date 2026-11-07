@@ -344,11 +344,11 @@ func _cmdr_column(v: VBoxContainer) -> void:
 	for at in PilotDataX.ATTRS:
 		attr_txt.append("%s %d" % [String(at[1]).left(3).to_upper(), GameState.pilot_attr(String(at[0]))])
 	st.add_child(UI.label("  ".join(PackedStringArray(attr_txt)), 12, UI.GOLD))
-	st.add_child(UI.label("Rank: —", 13, UI.TEXT_DIM))
+	st.add_child(UI.label("Pilot level %d" % GameState.pilot_level(), 13, UI.GOLD))
 	st.add_child(UI.label("Ships owned: %d" % GameState.fleet.size(), 13))
 	st.add_child(UI.label("Contracts running: %d" % GameState.missions.size(), 13))
 	st.add_child(UI.label("Flight time: %s" % SaveGame.fmt_time(GameState.play_time), 13))
-	v.add_child(UI.wrap_label("Career statistics and the skills follow with the next packages.", 11, UI.TEXT_DIM, 330))
+	v.add_child(UI.wrap_label("Skills, perks and the skill tree: Pilot window [%s]." % Keybinds.key_text("pilot_window"), 11, UI.TEXT_DIM, 330))
 
 
 func _news_column(v: VBoxContainer, tiles: Array) -> void:

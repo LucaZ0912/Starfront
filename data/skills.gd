@@ -1,7 +1,7 @@
 extends RefCounted
 ## Package 29: the pilot's skills. Each one rests on one or two attributes and grows by doing: it gathers
-## experience from the matching activity; once enough is there an advance is ready, which the pilot confirms in
-## the Pilot window (U). Levels 0–10, every level +1 % on its effect (about +10 % at the top – noticeable, never
+## experience from the matching activity and rises a level by itself once enough is there (0.5.29.2, decision of
+## Luz – confirming moved to the skill tree's tiles). All the experience also feeds the pilot level. Levels 0–10, every level +1 % on its effect (about +10 % at the top – noticeable, never
 ## decisive). The attributes set the starting level and how fast a skill learns.
 
 const MAX_LEVEL := 10
@@ -60,6 +60,14 @@ static func learn_rate(id: String, attrs: Dictionary) -> float:
 ## Experience needed from `level` to the next one.
 static func need(level: int) -> float:
 	return round(100.0 * pow(float(level + 1), 1.5))
+
+
+## The pilot level (0.5.29.2): every bit of skill experience counts towards it. Experience from level L to L+1.
+const PILOT_MAX := 50
+
+
+static func pilot_need(level: int) -> float:
+	return round(250.0 * pow(float(level), 1.4))
 
 
 ## The skills of a new pilot.

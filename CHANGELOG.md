@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.29.2 – 2026-11-07
+
+- Skills rise by themselves (no more confirming); a new pilot level fed by all experience, every level a perk point.
+- Skill bonuses only on the ships the pilot owns. Roadmap: the new progress design and a proposal for perks and the
+  skill tree tiles (package 30).
+
 ## alpha 0.5.29.1 – 2026-11-07
 
 **Package 29 – skills and the Pilot window.**
