@@ -87,9 +87,8 @@ func _ready() -> void:
 	root.add_child(top)
 	var hb := UI.hbox(18)
 	top.add_child(hb)
-	# 0.5.30.3: three icon buttons top left – ship, pilot, map (zoom, station and help stay on their keys)
+	# 0.5.30.3: three icon buttons top right – ship, pilot, map (zoom, station and help stay on their keys)
 	var nav := UI.hbox(4)
-	hb.add_child(nav)
 	for nb in [["ship_menu", "Ship", "hud_ship", "Ship info, modules, stats and inventory"],
 			["pilot_window", "Pilot", "hud_pilot", "Pilot: skills, perks, skill tree"],
 			["galaxy_map", "Map", "hud_map", "Galaxy map"]]:
@@ -108,6 +107,7 @@ func _ready() -> void:
 	system_label = UI.label("", 17, UI.ACCENT)
 	hb.add_child(system_label)
 	hb.add_child(UI.spacer())
+	hb.add_child(nav)                  # top right, where the old buttons were
 
 	# --- Ship panel (bottom left)
 	var sp := UI.panel()

@@ -627,8 +627,8 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 - **Warp** to objects (star, planets, stations, gates, asteroid fields, discovered anomalies) happens
   live in the same view: the ship aligns, accelerates, the camera zooms out, you watch the ship cross
   the system, and the camera zooms back in on arrival.
-- **HUD top bar:** three icon buttons top left – **Ship** [I], **Pilot** [U] (glows green when skill tree tiles
-  or perk points wait) and **Map** [M]; credits and the system beside them.
+- **HUD top bar:** three icon buttons top right – **Ship** [I], **Pilot** [U] (glows green when skill tree tiles
+  or perk points wait) and **Map** [M]; credits and the system on the left.
 - **Three fixed zoom levels** (mouse wheel or F1–F3):
   - *Combat* and *Recon* (local): star and planets are sky bodies in the background; the background
     stays identical between both levels. Recon shows the ship as a navigation arrow plus a radar sweep.

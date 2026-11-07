@@ -3,9 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.30.4 – 2026-11-07
+
+**HUD:** the Ship, Pilot and Map buttons moved to the top right, where the old buttons were.
+
 ## alpha 0.5.30.3 – 2026-11-07
 
-**HUD top bar:** three icon buttons top left – Ship [I], Pilot [U], Map [M]; the Pilot button glows green when
+**HUD top bar:** three icon buttons top right – Ship [I], Pilot [U], Map [M]; the Pilot button glows green when
 skill tree tiles or perk points wait. The zoom, station and help buttons are gone (F1–F3, L and H still work).
 
 ## alpha 0.5.30.2 – 2026-11-07
