@@ -32,6 +32,7 @@ var hover_label: Label
 var help_panel: PanelContainer
 var overview_box: VBoxContainer
 var level_btns: Array = []
+var nav_btns := {}                 # 0.5.30.3: ship / pilot / map icon buttons
 var top_btns := {}           # action id -> [Button, caption]
 var help_text: RichTextLabel
 var _w := {}
@@ -86,31 +87,27 @@ func _ready() -> void:
 	root.add_child(top)
 	var hb := UI.hbox(18)
 	top.add_child(hb)
+	# 0.5.30.3: three icon buttons top left – ship, pilot, map (zoom, station and help stay on their keys)
+	var nav := UI.hbox(4)
+	hb.add_child(nav)
+	for nb in [["ship_menu", "Ship", "hud_ship", "Ship info, modules, stats and inventory"],
+			["pilot_window", "Pilot", "hud_pilot", "Pilot: skills, perks, skill tree"],
+			["galaxy_map", "Map", "hud_map", "Galaxy map"]]:
+		var act: String = nb[0]
+		var b := UI.button(String(nb[1]), func(): _nav_pressed(act), String(nb[3]))
+		var ic: Image = PixelArt.icon_texture(String(nb[2])).get_image()
+		ic.resize(ic.get_width() * 2, ic.get_height() * 2, Image.INTERPOLATE_NEAREST)
+		b.icon = ImageTexture.create_from_image(ic)
+		b.custom_minimum_size = Vector2(0, 38)
+		b.add_theme_font_size_override("font_size", 14)
+		nav.add_child(b)
+		top_btns[act] = [b, String(nb[1])]
+		nav_btns[act] = b
 	credits_label = UI.label("", 17, Color(1.0, 0.85, 0.4))
 	hb.add_child(credits_label)
 	system_label = UI.label("", 17, UI.ACCENT)
 	hb.add_child(system_label)
 	hb.add_child(UI.spacer())
-	hb.add_child(UI.label("Zoom:", 13, Color(0.6, 0.7, 0.85)))
-	for i in 3:
-		var idx := i
-		var lb := UI.button(SystemView.LEVEL_NAMES[i], func(): _level_btn(idx))
-		top_btns[["zoom_combat", "zoom_recon", "zoom_system"][i]] = [lb, SystemView.LEVEL_NAMES[i]]
-		lb.toggle_mode = true
-		hb.add_child(lb)
-		level_btns.append(lb)
-	station_btn = UI.button("Station", func(): station_requested.emit())
-	hb.add_child(station_btn)
-	top_btns["station"] = [station_btn, "Station"]
-	var ship_b := UI.button("Ship", func(): ship_menu_requested.emit(), "Ship info, modules, stats and inventory")
-	hb.add_child(ship_b)
-	top_btns["ship_menu"] = [ship_b, "Ship"]
-	var gal_b := UI.button("Galaxy", func(): galaxy_requested.emit())
-	hb.add_child(gal_b)
-	top_btns["galaxy_map"] = [gal_b, "Galaxy"]
-	var help_b := UI.button("Help", toggle_help)
-	hb.add_child(help_b)
-	top_btns["help"] = [help_b, "Help"]
 
 	# --- Ship panel (bottom left)
 	var sp := UI.panel()
@@ -379,6 +376,13 @@ func _level_btn(i: int) -> void:
 	_on_level_changed(view.level if view != null else 0)
 
 
+func _nav_pressed(act: String) -> void:
+	match act:
+		"ship_menu": ship_menu_requested.emit()
+		"pilot_window": pilot_window_requested.emit()
+		"galaxy_map": galaxy_requested.emit()
+
+
 func _on_level_changed(l: int) -> void:
 	for i in level_btns.size():
 		level_btns[i].button_pressed = i == l
@@ -592,7 +596,6 @@ func _process(delta: float) -> void:
 		if hover_panel.position.y + hover_panel.size.y > vs.y:
 			hover_panel.position.y = mp.y - hover_panel.size.y - 10
 	var f := GameState.active()
-	station_btn.visible = f != null and f.docked_at != ""
 	_update_zone_label()
 	_update_ticker(delta)
 	if codex_label != null and codex_label.text != "" and GameState.play_time >= _codex_until:
@@ -612,6 +615,11 @@ func _process(delta: float) -> void:
 			if pp > 0:
 				parts.append("%d perk point%s" % [pp, "" if pp == 1 else "s"])
 			_w["skills"].visible = not parts.is_empty()
+			if nav_btns.has("pilot_window"):
+				var pb: Button = nav_btns["pilot_window"]
+				var glow := not parts.is_empty()
+				pb.add_theme_color_override("font_color", UI.GOOD if glow else Color(0.9, 0.93, 1.0))
+				pb.add_theme_color_override("icon_normal_color", UI.GOOD if glow else Color(1, 1, 1))
 			_w["skills"].text = "▲ %s [%s]" % [" • ".join(PackedStringArray(parts)), Keybinds.key_text("pilot_window")]
 	if f == null or not _w.has("act"):
 		return
