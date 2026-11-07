@@ -1267,7 +1267,7 @@ Athletics und Firearms haben in Teil 5 kaum Nutzen – bewusst so entschieden, s
 
 - **Qualitätsstufen:** **F** (Rookie, nur Standardcrew neuer Schiffe und Bar-Ausschuss, nie mit Perk), D, C, B, A (später S, S+).
 - **Abgabe** (Anteil an Verkäufen, Kopfgeldern und Auftragsbelohnungen, nur Crew des aktiven Schiffs): F 0,02 % · D 0,05 % · C 0,1 % · B 0,15 % · A 0,25 % – zehn A-Mitglieder = 2,5 %. Im Log und im Crew-Reiter sichtbar.
-- **Bonus:** jedes Mitglied hat **einen** gewürfelten Bonus aus der Liste seiner Profession, Höhe gewürfelt im Rahmen: F 1–2 % · D 2–4 % · C 4–6 % · B 6–9 % · A 9–12 %. Beim Aufstieg wird **neu im höheren Rahmen gewürfelt** (nie schlechter als vorher). Die Boni gelten nur auf dem Schiff, auf dem das Mitglied sitzt.
+- **Bonus:** jedes Mitglied hat **einen** gewürfelten Bonus aus der Liste seiner Profession, Höhe gewürfelt im Rahmen: F 1–2 % · D 2–4 % · C 4–6 % · B 6–9 % · A 9–12 %. Beim Aufstieg wird **die Verbesserung gewürfelt**, nicht der Wert neu (Änderung Luz, 7. Nov 2026): der Bonus steigt um → D +1–2 · → C +1,5–3 · → B +2–3,5 · → A +2,5–4 Prozentpunkte und **darf über dem Höchstwert der neuen Stufe liegen** – ein gut gewürfeltes F-Mitglied kann so als A besser sein als ein frisch angeheuertes A. Die Boni gelten nur auf dem Schiff, auf dem das Mitglied sitzt.
 
 | Rolle | mögliche Boni (einer wird gewürfelt) | Erfahrung durch |
 | --- | --- | --- |
