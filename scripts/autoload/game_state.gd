@@ -18,6 +18,8 @@ signal wanted_changed(faction: String, level: int)                       # packa
 signal news_added(item: Dictionary)                                     # package 16
 signal codex_unlocked(id: String)     # package 18
 signal warning(text: String)          # important problem shown big in the HUD for a few seconds
+signal ship_lost(offer: Dictionary)   # package 31a: the active ship was destroyed – the buy-back window
+signal pods_changed                   # package 31a: escape pods appeared, were picked up or faded
 
 const FactionData = preload("res://data/factions.gd")
 const COL_INFO := Color(0.8, 0.9, 1.0)
@@ -52,6 +54,15 @@ var _next_uid := 1
 var crew_quarters := {}
 var bar := {}
 var _crew_seq := 1
+## Package 31a: where the pilot comes back ({"system", "id"} of the last station docked at), escape pods drifting
+## in space ([{"id", "system", "pos", "crew": [{"m", "until"}]}]), the open buy-back offer, crew rescued from pods
+## and waiting aboard for the next station.
+var last_station := {}
+var pods: Array = []
+var loss_offer := {}
+var rescued: Array = []
+var _pod_seq := 1
+var _pod_tick_t := 0.0
 const CrewData = preload("res://data/crew.gd")
 const CrewCore = preload("res://scripts/core/crew.gd")
 var _rng := RandomNumberGenerator.new()
@@ -113,6 +124,10 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	crew_quarters.clear()
 	bar.clear()
 	_crew_seq = 1
+	pods.clear()
+	loss_offer = {}
+	rescued.clear()
+	_pod_seq = 1
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -141,6 +156,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	a.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
 	add_ship(a)
 	active_uid = a.uid
+	last_station = {"system": current_system, "id": String(home_station["id"])}
 	storage[home_station["id"]] = {}
 	for old in {"t_mining_s": 2, "o_cargo_s": 2, "w_autocannon_s": 1, "t_salvage_s": 1, "t_survey_s": 1, "t_prospector_s": 1, "t_interdictor_s": 1}.keys():
 		storage[home_station["id"]][GameData.legacy_id(old)] = {"t_mining_s": 2, "o_cargo_s": 2}.get(old, 1)
@@ -428,6 +444,8 @@ func to_dict() -> Dictionary:
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 		"crew_quarters": crew_quarters.duplicate(true), "bar": bar.duplicate(true), "crew_seq": _crew_seq,
+		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
+		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq,
 	}
 
 
@@ -456,6 +474,13 @@ func from_dict(d: Dictionary) -> void:
 	crew_quarters = d.get("crew_quarters", {}).duplicate(true)
 	bar = d.get("bar", {}).duplicate(true)
 	_crew_seq = int(d.get("crew_seq", 1))
+	last_station = d.get("last_station", {}).duplicate()
+	pods = d.get("pods", []).duplicate(true)
+	loss_offer = d.get("loss_offer", {}).duplicate(true)
+	rescued = d.get("rescued", []).duplicate(true)
+	_pod_seq = int(d.get("pod_seq", 1))
+	if not loss_offer.is_empty():
+		ship_lost.emit.call_deferred(loss_offer)        # saved before deciding: ask again
 	Missions._counter = int(d.get("mission_counter", 1000))
 	rep.from_dict(d.get("reputation", {}))   # older saves: start standings
 	law.from_dict(d.get("wanted", {}))
@@ -743,20 +768,172 @@ func on_player_ship_lost(f: ShipFitting) -> void:
 		if String(m["type"]) == "passenger" and int(m.get("ship_uid", -1)) == f.uid:
 			fail_mission(m, "your ship was destroyed with the passengers aboard", Missions.PASSENGER_REP)
 	if f.uid == active_uid:
-		# Escape pod: to the nearest owned ship, otherwise insurance
-		var next: ShipFitting = null
-		for o in fleet:
-			if o.system_id == f.system_id:
-				next = o
-				break
-		if next == null and not fleet.is_empty():
-			next = fleet[0]
-		if next == null:
-			next = _insurance_ship()
-		active_uid = next.uid
-		log_msg("Your escape pod reaches %s. You take command of the %s." % [next.location_text(), next.ship_name], COL_WARN)
-		active_changed.emit()
+		_lose_active(f)                       # package 31a
+	else:
+		for m0 in f.crew_members():
+			log_msg("%s went down with the %s." % [m0["name"], f.ship_name], COL_BAD)
 	fleet_changed.emit()
+
+
+# ---------------------------------------------------------------- Losing the ship (package 31a)
+
+## The active ship is gone: every crew member rolls to survive (escape pod), the pilot comes back at the last
+## station in a beginner ship and is offered to buy the lost ship back for 10 % of its value.
+func _lose_active(f: ShipFitting) -> void:
+	var members := f.crew_members()
+	var medic := false
+	var agent := false
+	var insured := false
+	for m in members:
+		medic = medic or String(m.get("perk", "")) == "medic"
+		agent = agent or String(m.get("perk", "")) == "insurance_agent"
+		insured = insured or String(m.get("perk", "")) == "cargo_insurance"
+	var alive: Array = []
+	var dead: Array = []
+	for m2 in members:
+		var p := float(CrewData.SURVIVE.get(String(m2["quality"]), 0.4))
+		if String(m2.get("perk", "")) == "lucky":
+			p = CrewData.SURVIVE_LUCKY
+		elif medic and String(m2.get("perk", "")) != "medic":
+			p = minf(p + CrewData.MEDIC_BONUS, 0.95)
+		if _rng.randf() < p:
+			alive.append({"m": m2, "until": play_time + float(CrewData.POD_TIME.get(String(m2["quality"]), 300.0))})
+		else:
+			dead.append(m2)
+	for m3 in dead:
+		log_msg("%s (%s) did not make it out." % [m3["name"], CrewData.role_name(String(m3["role"]))], COL_BAD)
+	if not alive.is_empty():
+		var pod := {"id": "pod%d" % _pod_seq, "system": f.system_id, "pos": f.position, "crew": alive}
+		_pod_seq += 1
+		pods.append(pod)
+		log_msg("%d crew member%s reached an escape pod – pick them up before the signal fades (%s)." % [alive.size(), "" if alive.size() == 1 else "s", ", ".join(PackedStringArray(alive.map(func(e): return String(e["m"]["name"]))))], COL_WARN)
+		pods_changed.emit()
+	# the offer: buy the ship back (hull, modules, drones – the crew is handled by the pods)
+	var snap := f.to_dict()
+	var value := ship_value(f)
+	var price := int(round(float(value) * CrewData.BUYBACK * (0.95 if agent else 1.0)))
+	loss_offer = {"ship": snap, "name": f.ship_name, "hull": f.hull_id, "value": value, "price": price, "agent": agent,
+		"insured": insured, "cargo_value": cargo_value(f), "alive": alive.map(func(e): return e["m"]["name"]), "dead": dead.map(func(e): return e["name"]),
+		"system": f.system_id, "where": f.location_text()}
+	# back at the last station, for now in a beginner ship
+	var next := _beginner_ship()
+	active_uid = next.uid
+	log_msg("Your own escape pod reaches %s. Aegis Mutual offers to rebuild the %s for %s." % [next.location_text(), f.ship_name, GameData.fmt_credits(price)], COL_WARN)
+	active_changed.emit()
+	ship_lost.emit(loss_offer)
+
+
+## The last station docked at (the home station if it is gone).
+func _respawn_station() -> Dictionary:
+	if not last_station.is_empty():
+		var st := Universe.find_station(int(last_station["system"]), String(last_station["id"]))
+		if not st.is_empty():
+			return st
+	return Universe.get_layout(Universe.home_system)["stations"][0]
+
+
+func _beginner_ship() -> ShipFitting:
+	var st := _respawn_station()
+	var f := create_from_preset("std_dragonfly", "player")
+	f.ship_name = "Dragonfly »Second Chance«"
+	f.system_id = int(st.get("system", int(last_station.get("system", Universe.home_system))))
+	f.docked_at = String(st["id"])
+	f.position = st["pos"]
+	add_ship(f)
+	return f
+
+
+## Decides the buy-back offer: accept = rebuild the lost ship at the last station (instead of the beginner ship).
+func loss_decide(accept: bool) -> String:
+	if loss_offer.is_empty():
+		return "There is nothing to decide."
+	var o := loss_offer
+	if not accept:
+		loss_offer = {}
+		log_msg("You decline the offer and keep the %s." % active().ship_name, COL_INFO)
+		return ""
+	if not spend(int(o["price"])):
+		return "Not enough credits to buy the ship back."
+	var beginner := active()
+	var f := ShipFitting.from_dict(o["ship"])
+	f.uid = 0
+	f.route = []
+	f.transit = 0.0
+	f.transit_kind = ""
+	f.crew = []
+	if not bool(o.get("insured", false)):
+		f.cargo = {}
+	for d in f.drones:
+		d["out"] = false
+		d["hp"] = 1.0
+		d["fuel"] = 1.0
+	f.system_id = beginner.system_id
+	f.docked_at = beginner.docked_at
+	f.position = beginner.position
+	add_ship(f)
+	crew_fill_required(f)                     # rookies until the survivors are back
+	f.refill()
+	active_uid = f.uid
+	fleet.erase(beginner)
+	loss_offer = {}
+	log_msg("Aegis Mutual hands you the rebuilt %s for %s%s." % [f.ship_name, GameData.fmt_credits(int(o["price"])), " – the cargo insurance brought the whole hold back" if bool(o.get("insured", false)) else ""], COL_GOOD)
+	active_changed.emit()
+	fleet_changed.emit()
+	return ""
+
+
+## Escape pods: crew whose signal faded is lost. Called every second or so.
+func pods_tick() -> void:
+	var changed := false
+	for pod in pods.duplicate():
+		for e in (pod["crew"] as Array).duplicate():
+			if play_time >= float(e["until"]):
+				pod["crew"].erase(e)
+				log_msg("The signal of %s's escape pod has faded – lost." % e["m"]["name"], COL_BAD)
+				changed = true
+		if (pod["crew"] as Array).is_empty():
+			pods.erase(pod)
+			changed = true
+	if changed:
+		pods_changed.emit()
+
+
+## A ship takes a pod aboard: the survivors fill free posts of their profession, the rest ride along to the next
+## station (crew quarters). Returns how many were rescued.
+func pod_pickup(pod_id: String, f: ShipFitting) -> int:
+	for pod in pods:
+		if String(pod["id"]) != pod_id:
+			continue
+		var n := 0
+		var sl := f.crew_slots()
+		for e in pod["crew"]:
+			var m: Dictionary = e["m"]
+			var placed := false
+			for i in sl.size():
+				if f.crew_at(i).is_empty() and CrewCore.fits(m, String(sl[i][0])):
+					f.set_crew(i, m)
+					placed = true
+					break
+			if not placed:
+				rescued.append(m)
+			n += 1
+			log_msg("%s rescued%s." % [m["name"], " – back at the post" if placed else " – rides along to the next station"], COL_GOOD)
+		pods.erase(pod)
+		pods_changed.emit()
+		Audio.play("mission_complete", "pod rescued")
+		return n
+	return 0
+
+
+## Docked: rescued crew without a post move into the station's crew quarters.
+func note_docked(system_id: int, station_id: String) -> void:
+	last_station = {"system": system_id, "id": station_id}
+	if not rescued.is_empty():
+		var q := quarters_of(station_id)
+		for m in rescued:
+			q.append(m)
+		log_msg("%d rescued crew member%s moved into the crew quarters." % [rescued.size(), "" if rescued.size() == 1 else "s"], COL_GOOD)
+		rescued.clear()
 
 
 func _insurance_ship() -> ShipFitting:
@@ -1389,6 +1566,10 @@ func _process(delta: float) -> void:
 		return
 	play_time += delta
 	_advance_station_jobs(delta)
+	_pod_tick_t -= delta
+	if _pod_tick_t <= 0.0 and not pods.is_empty():
+		_pod_tick_t = 1.0
+		pods_tick()                              # package 31a
 	notorious.update(current_system)
 	news.update()
 	_update_faction_jobs(delta)

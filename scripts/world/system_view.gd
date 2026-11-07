@@ -1,5 +1,6 @@
 class_name SystemView
 extends Node2D
+const CrewDataX = preload("res://data/crew.gd")       # package 31a
 const FocusLanceScript = preload("res://scripts/world/focus_lance.gd")
 ## A complete star system as ONE continuous space (1 unit = 1 km).
 ## Zoom levels from the ship up to the whole system:
@@ -193,6 +194,32 @@ func _spawn_celestials() -> void:
 		var hv := _add_celestial("haven", ph)
 		havens.append(hv)
 		stations[ph["id"]] = hv      # dockable with pirate standing (package 12); zone 0 = no no-fire zone
+	_sync_pods()
+
+
+## Package 31a: escape pods of this system as objects in space (GameState.pods is the truth).
+func _sync_pods() -> void:
+	var want := {}
+	for pod in GameState.pods:
+		if int(pod["system"]) == system_id:
+			want[String(pod["id"])] = pod
+	for c in celestials.duplicate():
+		if is_instance_valid(c) and c.kind == "pod" and not want.has(String(c.data["id"])):
+			celestials.erase(c)
+			by_id.erase(String(c.data["id"]))
+			c.queue_free()
+	for pid in want:
+		if not by_id.has(pid) or not is_instance_valid(by_id[pid]):
+			_add_celestial("pod", {"id": pid, "name": "Escape pod", "pos": want[pid]["pos"]})
+
+
+## A ship of the pilot close to a pod takes it aboard.
+func _pod_pickup_check() -> void:
+	if player == null or not is_instance_valid(player) or GameState.pods.is_empty():
+		return
+	for pod in GameState.pods.duplicate():
+		if int(pod["system"]) == system_id and player.position.distance_to(pod["pos"]) < CrewDataX.POD_PICKUP:
+			GameState.pod_pickup(String(pod["id"]), player.fit)
 
 
 ## Makes sure exactly the active ship exists as a node.
@@ -745,6 +772,8 @@ func _process(delta: float) -> void:
 		_jam_tick = 0.5
 		_apply_jamming()
 		_market_tick(0.5)
+		_sync_pods()                         # package 31a
+		_pod_pickup_check()
 	_update_camera(delta)
 	_update_bodies()
 	background.follow(camera)
@@ -2078,6 +2107,9 @@ func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 				size = 2.0
 			"wreck":
 				bc = Color(0.5, 1.0, 0.5)
+			"pod":
+				bc = Color(1.0, 0.45, 0.3)
+				size = 4.5
 			"anomaly":
 				bc = Color(0.85, 0.5, 1.0)
 		_blip(o, c, cel.position, r, sweep, px, a, bc, size)
@@ -2735,6 +2767,7 @@ func _lawful_wreck(ship: Ship, killer) -> void:
 func on_ship_docked(ship: Ship, st_node: Celestial) -> void:
 	if ship == player:
 		Audio.play("dock_clamp", "docked")                # package 28a
+		GameState.note_docked(system_id, String(st_node.data["id"]))     # package 31a: the respawn station
 		GameState.skill_xp("piloting", 3.0)       # package 29
 	if ship != player and ship.fit.uid < 0:
 		if traffic != null:

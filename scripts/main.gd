@@ -12,6 +12,8 @@ var station_panel: StationUI
 var ship_menu: ShipMenu
 var pilot_window                       # package 29: skills, skill tree, the pilot (U)
 const PilotWindowScript = preload("res://scripts/ui/pilot_window.gd")
+var loss_window                        # package 31a: the ship is lost – buy it back?
+const LossWindowScript = preload("res://scripts/ui/loss_window.gd")
 var transit_fx: TransitOverlay
 var pause_menu: PauseMenu
 var debug_menu: DebugMenu
@@ -32,6 +34,15 @@ func _ready() -> void:
 	add_child(ship_menu)
 	pilot_window = PilotWindowScript.new()
 	add_child(pilot_window)
+	loss_window = LossWindowScript.new()
+	add_child(loss_window)
+	GameState.ship_lost.connect(func(o):
+		galaxy.close()
+		ship_menu.close()
+		pilot_window.close()
+		loss_window.open(o)
+		_update_input())
+	loss_window.closed.connect(_update_input)
 	transit_fx = TransitOverlay.new()
 	add_child(transit_fx)
 	pause_menu = PauseMenu.new()
@@ -90,7 +101,7 @@ func load_system(sys: int) -> void:
 
 func _update_input() -> void:
 	if view != null and is_instance_valid(view):
-		view.input_enabled = not (galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or in_hyperspace)
+		view.input_enabled = not (galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace)
 
 
 func toggle_galaxy() -> void:

@@ -249,6 +249,9 @@ func _build_ship() -> void:
 	var rc3 := _row()
 	rc3.add_child(UI.button("Crew aboard +250 xp", func(): _cmd({"type": "debug_crew", "xp": 250})))
 	rc3.add_child(UI.button("New faces at the bar", func(): _cmd({"type": "debug_crew", "bar": true})))
+	var rc4 := _row()
+	rc4.add_child(UI.button("Lose the active ship (31a)", func(): _cmd({"type": "debug_lose_ship"})))
+	rc4.add_child(UI.button("Pod signals fade in 10 s", func(): _cmd({"type": "debug_pods", "seconds": 10})))
 
 
 func _build_items() -> void:

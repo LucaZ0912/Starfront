@@ -11,7 +11,7 @@ signal pilot_window_requested          # package 29
 signal pilot_tab_requested(tab: int)   # 0.5.30.5: the hint opens the skill tree or the perks
 
 const FactionData = preload("res://data/factions.gd")
-const KIND_ICONS := {"star": "☀", "planet": "●", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖"}
+const KIND_ICONS := {"star": "☀", "planet": "●", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖", "pod": "✚"}
 
 var view: SystemView
 var credits_label: Label
@@ -71,7 +71,7 @@ var survey_text: RichTextLabel
 ## range = target out of reach, energy = capacitor too low, power = its priority group is shut down
 const BUILTIN_COLOR := Color(1.0, 0.72, 0.2)   # frame of modules built into the hull (package 25a)
 const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "other": Color(1.0, 0.92, 0.25), "range": Color(1.0, 0.55, 0.2), "wait": Color(0.95, 0.85, 0.55), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
-const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven"}
+const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven", "pod": "Escape pod"}
 
 
 func _ready() -> void:
@@ -225,6 +225,7 @@ func _ready() -> void:
 	codex_label.add_theme_constant_override("shadow_offset_y", 2)
 	root.add_child(codex_label)
 	GameState.codex_unlocked.connect(_on_codex_unlocked)
+	GameState.pods_changed.connect(refresh_overview)         # package 31a: escape pods in the overview
 
 	# --- No-fire zone / hostile guns banner (bottom centre, above the module bar)
 	zone_label = UI.label("", 14, UI.GOLD)

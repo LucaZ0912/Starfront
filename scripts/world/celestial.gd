@@ -73,6 +73,8 @@ func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0
 		"wreck":
 			_tex = PixelArt.wreck_texture(int(data.get("seed", 3)))
 			radius = 40.0
+		"pod":
+			radius = 30.0                        # package 31a: an escape pod
 		"beacon":
 			radius = 45.0
 	if kind in ["planet", "star_far", "colossus"]:
@@ -215,6 +217,17 @@ func composition_text() -> String:
 	return "%s  •  deposit %s" % [", ".join(parts), deposit_text()]
 
 
+## Package 31a: who is in the pod and how long the signal lasts.
+func pod_text() -> String:
+	for pod in GameState.pods:
+		if String(pod["id"]) == String(data.get("id", "")):
+			var parts: Array = []
+			for e in pod["crew"]:
+				parts.append("%s (%s, %d:%02d)" % [e["m"]["name"], e["m"]["quality"], int(maxf(0.0, float(e["until"]) - GameState.play_time)) / 60, int(maxf(0.0, float(e["until"]) - GameState.play_time)) % 60])
+			return ", ".join(PackedStringArray(parts))
+	return "empty"
+
+
 func is_depleted() -> bool:
 	match kind:
 		"asteroid":
@@ -264,6 +277,8 @@ func info_text() -> String:
 			if data["done"]:
 				return "%s\nAlready analysed" % data["name"]
 			return "%s\nAnalysis: %d%%\nClick with analyzer: analyse" % [data["name"], int(data["analysis"])]
+		"pod":
+			return "%s\n%s\nFly close to take it aboard" % [data["name"], pod_text()]
 		"wreck":
 			var items: Array = []
 			for k in data["loot"]:
@@ -313,7 +328,7 @@ func _process(delta: float) -> void:
 		if visible:
 			queue_redraw()
 		return
-	if kind in ["gate", "anomaly", "wreck", "beacon"]:
+	if kind in ["gate", "anomaly", "wreck", "beacon", "pod"]:
 		queue_redraw()
 
 
@@ -355,6 +370,16 @@ func _draw() -> void:
 			draw_circle(Vector2.ZERO, radius * 0.25, Color(c.lightened(0.4), 0.5 + 0.3 * sin(_t * 4.0)))
 			if not data["done"] and float(data["analysis"]) > 0.0:
 				draw_arc(Vector2.ZERO, radius + 20.0, -PI / 2.0, -PI / 2.0 + TAU * float(data["analysis"]) / 100.0, 40, Color(0.9, 0.7, 1.0), 6.0)
+		"pod":
+			# a small white capsule with a red beacon and a pulsing distress ring
+			var s2 := PixelArt.SCALE
+			draw_rect(Rect2(Vector2(-4, -7) * s2, Vector2(8, 14) * s2), Color(0.82, 0.84, 0.88))
+			draw_rect(Rect2(Vector2(-3, -6) * s2, Vector2(6, 3) * s2), Color(0.35, 0.75, 1.0))
+			draw_rect(Rect2(Vector2(-4, 4) * s2, Vector2(8, 3) * s2), Color(0.45, 0.47, 0.52))
+			if fmod(_t, 1.0) < 0.5:
+				draw_rect(Rect2(Vector2(-1, -9) * s2, Vector2(2, 2) * s2), Color(1.0, 0.25, 0.2))
+			var pr := radius + 30.0 * fmod(_t, 2.0)
+			draw_arc(Vector2.ZERO, pr, 0.0, TAU, 32, Color(1.0, 0.45, 0.3, 0.6 * (1.0 - fmod(_t, 2.0) / 2.0)), 3.0)
 		"wreck":
 			var size := Vector2(_tex.get_width(), _tex.get_height()) * PixelArt.SCALE
 			draw_texture_rect(_tex, Rect2(-size * 0.5, size), false)

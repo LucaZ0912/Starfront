@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.31.4 – 2026-11-07
+
+**Package 31a – losing the ship.**
+- Every crew member rolls to survive (better quality, better odds; Lucky, Medic); survivors drift in an escape pod
+  at the wreck – visible in space, on the radar and in the overview – until the signal fades (5–22 minutes by
+  quality). Fly within 2,500 km to take them aboard.
+- The pilot comes back at the last station docked at in a Dragonfly; the SHIP LOST window offers to rebuild the
+  lost ship for 10 % of its value (hull, modules, drones).
+- New crew perks: Cargo Insurance (the hold comes back with a rebuilt ship), Insurance Agent (rebuild 5 % cheaper).
+
 ## alpha 0.5.31.3 – 2026-11-07
 
 **Station concourse:** the station service tiles grow with the window (the icon too); when space runs short only the services scroll, not the whole column.

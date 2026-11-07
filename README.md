@@ -103,6 +103,14 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## Losing the ship (phase 0.5 package 31a)
+- Every crew member rolls to survive – better quality, better odds (perks Lucky and Medic help). The survivors wait
+  in an **escape pod** at the wreck (in the overview, on the radar) until its signal fades, 5–22 minutes by quality.
+  Fly within 2,500 km and the pod comes aboard.
+- You come back at the **last station you docked at**, in a Dragonfly. **Aegis Mutual** offers to rebuild the lost
+  ship for **10 %** of its value (hull, modules, drones); otherwise you keep the Dragonfly. Crew perks: **Cargo
+  Insurance** (the hold comes back too), **Insurance Agent** (5 % cheaper).
+
 ## Perks and the skill tree (phase 0.5 package 30)
 - **Skill tree:** a real tree in the Pilot window – the Pilot Licence is the trunk, Shields grow above it, then the
   branches by activity: Defence, Combat, Mining, Industry, Flight, Exploration, Security, Trade and Drones; mastery

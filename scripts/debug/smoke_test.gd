@@ -1665,6 +1665,13 @@ func _shoot_standing(view: SystemView) -> void:
 	GameState.active_uid = keep_uid8
 	GameState.fleet.erase(bas8)
 	GameState.quarters_of(bas8.docked_at).clear()
+	# package 31a: the window after losing a ship
+	main.loss_window.open({"name": "Bastion »Testbed«", "where": "Nordlicht – near Nordlicht IV", "value": 877140, "price": 83328, "agent": true,
+		"insured": true, "cargo_value": 12400, "alive": ["Sol Navarro", "Hedda Amundsen"], "dead": ["Nyx Keller"]})
+	for i10 in 8:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/ship_lost.png")
+	main.loss_window.visible = false
 	sp.open_service("outfitter")
 	# package 27: a weapon slot, a family, a size · quality picked – description, changes and footer
 	var op9 = sp._panel
@@ -5458,6 +5465,7 @@ func _test_skills() -> void:
 	f.mark_dirty()
 	_test_tree()
 	_test_crew()
+	_test_gameover()
 
 
 ## Package 30: the skill tree opens by achievements and gates buying and building; perks.
@@ -5683,4 +5691,70 @@ func _test_crew() -> void:
 	GameState.set_pilot(keep)
 	GameState.credits = keep_credits
 	GameState.pilot["crew_free"] = true
+	fa.mark_dirty()
+
+
+## Package 31a: losing the ship – the crew rolls to survive, escape pods, the rebuild offer, the last station.
+func _test_gameover() -> void:
+	var CD = load("res://data/crew.gd")
+	var keep_uid := GameState.active_uid
+	var keep_credits := GameState.credits
+	var keep_last: Dictionary = GameState.last_station.duplicate()
+	var fa := GameState.active()
+	var st: Dictionary = Universe.get_layout(GameState.current_system)["stations"][0]
+	GameState.last_station = {"system": GameState.current_system, "id": String(st["id"])}
+	var mule := GameState.create_from_preset("std_mule", "player")
+	mule.ship_name = "Mule »Test Loss«"
+	mule.system_id = GameState.current_system
+	mule.position = (st["pos"] as Vector2) + Vector2(30000, 0)
+	GameState.add_ship(mule)
+	mule.set_crew(0, GameState.new_crew("copilot", "A", "insurance_agent"))
+	mule.set_crew(1, GameState.new_crew("quartermaster", "F", "cargo_insurance"))
+	mule.cargo = {"food": 4.0}
+	var value: int = GameState.ship_value(mule)
+	GameState.active_uid = mule.uid
+	GameState.credits = 10000000
+	var pods0 := GameState.pods.size()
+	GameState.on_player_ship_lost(mule)
+	var o: Dictionary = GameState.loss_offer
+	var beginner := GameState.active()
+	var n_crew: int = (o.get("alive", []) as Array).size() + (o.get("dead", []) as Array).size()
+	var price_ok: bool = int(o.get("price", -1)) == int(round(value * 0.1 * 0.95))
+	var respawn_ok: bool = beginner != null and beginner.hull_id == "dragonfly" and beginner.docked_at == String(st["id"]) and not GameState.fleet.has(mule)
+	var pod_ok: bool = (o["alive"] as Array).is_empty() or (GameState.pods.size() == pods0 + 1 and int(GameState.pods.back()["system"]) == GameState.current_system)
+	check(n_crew == 2 and price_ok and respawn_ok and pod_ok and bool(o.get("insured", false)),
+		"ship lost: both crew rolled (%d in the pod), back at the last station in a Dragonfly, rebuild for 10 %% (−5 %% Insurance Agent): %s" % [(o["alive"] as Array).size(), GameData.fmt_credits(int(o.get("price", 0)))])
+	# rebuild: the same ship with its modules, the insured cargo, rookies on the required post
+	var c0 := GameState.credits
+	var e := Commands.execute({"type": "loss_decide", "accept": true})
+	var reb := GameState.active()
+	check(e == "" and reb.ship_name == "Mule »Test Loss«" and reb.hull_id == "mule" and float(reb.cargo.get("food", 0.0)) == 4.0 and GameState.credits == c0 - int(o["price"])
+		and reb.crew_missing() == "" and not GameState.fleet.has(beginner) and GameState.loss_offer.is_empty() and reb.docked_at == String(st["id"]),
+		"rebuild: the Mule comes back with its modules and – Cargo Insurance – its hold; rookies hold the required post; the Dragonfly goes back")
+	# the pod: picked up – survivors go to free posts or ride along to the next station; faded signals are lost
+	var rescued_ok := true
+	if not GameState.pods.is_empty() and int(GameState.pods.back()["system"]) == GameState.current_system:
+		var pid := String(GameState.pods.back()["id"])
+		var n := GameState.pod_pickup(pid, reb)
+		var waiting := GameState.rescued.size()
+		GameState.note_docked(GameState.current_system, String(st["id"]))
+		rescued_ok = n >= 1 and waiting >= 1 and GameState.rescued.is_empty() and GameState.quarters_of(String(st["id"])).size() >= waiting
+	var fade := {"id": "pod_test", "system": GameState.current_system, "pos": Vector2.ZERO, "crew": [{"m": GameState.new_crew("gunner", "C", ""), "until": GameState.play_time - 1.0}]}
+	GameState.pods.append(fade)
+	GameState.pods_tick()
+	var targets_ok := true
+	GameState.pods.append({"id": "pod_test2", "system": GameState.current_system, "pos": Vector2(1000, 0), "crew": [{"m": GameState.new_crew("gunner", "C", ""), "until": GameState.play_time + 60.0}]})
+	targets_ok = not Universe.warp_target(GameState.current_system, "pod_test2").is_empty()
+	GameState.pods = GameState.pods.filter(func(p): return String(p["id"]) != "pod_test2")
+	check(rescued_ok and not GameState.pods.has(fade) and targets_ok and float(CD.SURVIVE["A"]) > float(CD.SURVIVE["F"]) and float(CD.POD_TIME["A"]) > float(CD.POD_TIME["F"]),
+		"escape pod: shows in the overview, picked up the crew rides to the next station's quarters; a faded signal loses it; higher quality survives more often and longer")
+	# clean up
+	GameState.fleet.erase(reb)
+	GameState.quarters_of(String(st["id"])).clear()
+	GameState.active_uid = keep_uid
+	GameState.credits = keep_credits
+	GameState.last_station = keep_last
+	main.loss_window.visible = false
+	main._update_input()
+	GameState.active_changed.emit()
 	fa.mark_dirty()

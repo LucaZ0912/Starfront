@@ -54,7 +54,19 @@ const PERKS := {
 	"medic": {"name": "Medic", "text": "The rest of the crew survives a ship loss more often (package 31a).", "weight": 0.4},
 	"thrifty": {"name": "Thrifty", "text": "The whole crew of the ship takes half the share.", "weight": 0.35},
 	"night_owl": {"name": "Night Owl", "text": "Bonus doubled in systems with low security (below 0.5).", "weight": 0.35},
+	# package 31a (ideas of Luz)
+	"cargo_insurance": {"name": "Cargo Insurance", "text": "If the ship is lost and bought back, the whole cargo comes back with it.", "weight": 0.35},
+	"insurance_agent": {"name": "Insurance Agent", "text": "Buying the ship back after a loss costs 5 % less.", "weight": 0.35},
 }
+
+## Package 31a: losing the ship – survival chance and how long the escape pod's signal lasts (seconds of play),
+## by quality; Lucky survives almost always, a Medic aboard helps everyone else
+const SURVIVE := {"F": 0.4, "D": 0.5, "C": 0.6, "B": 0.7, "A": 0.85}
+const SURVIVE_LUCKY := 0.97
+const MEDIC_BONUS := 0.15
+const POD_TIME := {"F": 300.0, "D": 480.0, "C": 720.0, "B": 960.0, "A": 1320.0}
+const POD_PICKUP := 2500.0          # km: a ship this close takes the pod aboard
+const BUYBACK := 0.10               # share of the ship's value (hull, modules, drones) to buy it back
 const PERK_CHANCE := 0.04            # all perks together (second profession about 1 %)
 
 ## Crew slots of the hulls: [role, required]. S hulls carry no crew for now.

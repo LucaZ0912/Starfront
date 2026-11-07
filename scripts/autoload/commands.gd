@@ -763,6 +763,31 @@ func _fleet_ship(uid: int) -> ShipFitting:
 	return null
 
 
+## {"type":"loss_decide", "accept": bool} – package 31a: rebuild the lost ship or keep the beginner ship
+func _c_loss_decide(c: Dictionary) -> String:
+	return GameState.loss_decide(bool(c.get("accept", false)))
+
+
+## {"type":"debug_lose_ship"} – the active ship is destroyed (escape pods, the rebuild offer)
+## {"type":"debug_pods", "seconds": n} – every pod signal fades in n seconds
+func _c_debug_lose_ship(_c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No ship."
+	if world != null and is_instance_valid(world) and world.player != null and is_instance_valid(world.player) and world.player.fit == f and f.docked_at == "":
+		world.player.take_damage(1e9, "kinetic", null)
+		return ""
+	GameState.on_player_ship_lost(f)
+	return ""
+
+
+func _c_debug_pods(c: Dictionary) -> String:
+	for pod in GameState.pods:
+		for e in pod["crew"]:
+			e["until"] = GameState.play_time + float(c.get("seconds", 10.0))
+	return ""
+
+
 ## {"type":"crew_hire", "index": n, "ship": uid (optional), "slot": n (optional)} – at the bar of the docked station;
 ## into the slot of a ship here, or into the station's crew quarters.
 func _c_crew_hire(c: Dictionary) -> String:

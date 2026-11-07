@@ -1242,6 +1242,9 @@ func warp_targets(system_id: int) -> Array:
 	for an in L["anomalies"]:
 		if an["revealed"]:
 			out.append({"id": an["id"], "kind": "anomaly", "name": an["name"], "pos": an["pos"], "land": 2200.0, "data": an})
+	for pod in GameState.pods:                     # package 31a: escape pods with crew waiting for rescue
+		if int(pod["system"]) == system_id:
+			out.append({"id": pod["id"], "kind": "pod", "name": "Escape pod – %d crew" % (pod["crew"] as Array).size(), "pos": pod["pos"], "land": 900.0, "data": pod})
 	return out
 
 
