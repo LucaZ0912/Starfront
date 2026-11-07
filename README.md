@@ -89,6 +89,14 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Perks and the skill tree (phase 0.5 package 30)
+- **Skill tree:** 40 tiles in eight branches open by doing – e.g. 25 warps and 10 jumps open the Earthworks
+  frigates, 5,000 ore mined and 2,000 refined open the KHI Anaguma. A tile glows when its achievements are met and
+  is confirmed in the Pilot window. It gates buying ships and modules and manufacturing (blueprints); what you
+  already own stays usable. New pilots start with the Earthworks S ships and small modules up to quality C.
+- **Perks:** 24 special abilities in six groups, one perk point per pilot level (e.g. Prospector's Eye: rare
+  ore as a bonus while mining; Market Insider: the best price next door).
+
 ## Skills and the Pilot window (phase 0.5 package 29)
 - Twelve skills (Piloting, Gunnery, Engineering, Science, Navigation, Mining, Trading, Leadership, Negotiation,
   Electronics, Athletics, Firearms) grow by doing and rise by themselves; every level gives +1 % on the skill's

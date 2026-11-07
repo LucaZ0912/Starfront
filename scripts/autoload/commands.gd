@@ -480,6 +480,33 @@ func look_price() -> int:
 	return GameState.rep.buy_price(PilotDataX.LOOK_PRICE, docked_faction())
 
 
+## {"type":"tree_unlock", "tile": id} – package 30: opens a skill tree tile whose achievements are met.
+func _c_tree_unlock(c: Dictionary) -> String:
+	return GameState.tree_unlock(String(c.get("tile", "")))
+
+
+## {"type":"perk_take", "perk": id} – package 30: spends a perk point.
+func _c_perk_take(c: Dictionary) -> String:
+	return GameState.perk_take(String(c.get("perk", "")))
+
+
+## {"type":"debug_tree", "all"?: bool, "tile"?: id, "reset"?: bool, "perk_points"?: int}
+func _c_debug_tree(c: Dictionary) -> String:
+	if c.has("all"):
+		GameState.pilot["tree_all"] = bool(c["all"])
+	if c.has("tile"):
+		var t := String(c["tile"])
+		if not t in GameState.pilot["tree"]:
+			GameState.pilot["tree"].append(t)
+	if c.get("reset", false):
+		GameState.pilot["tree"] = []
+		GameState.pilot["tree_all"] = false
+	if c.has("perk_points"):
+		GameState.pilot["perk_points"] = int(GameState.pilot.get("perk_points", 0)) + int(c["perk_points"])
+	GameState.skills_changed.emit()
+	return ""
+
+
 ## {"type":"debug_skill", "skill": id, "level"?: int, "xp"?: float} – set a level or add experience.
 func _c_debug_skill(c: Dictionary) -> String:
 	var id := String(c.get("skill", ""))
@@ -657,6 +684,8 @@ func _c_market_buy(c: Dictionary) -> String:
 	GameState.spend(amount * price)
 	f.add_cargo(cid, amount)
 	GameState.skill_xp("trading", float(amount * price) / 500.0)      # package 29
+	GameState.note_stat("markets", String(st["id"]))                    # package 30
+	GameState.count_stat("turnover", float(amount * price))
 	return ""
 
 
@@ -677,7 +706,11 @@ func _c_market_sell(c: Dictionary) -> String:
 		return "Nothing to sell."
 	f.remove_cargo(cid, amount)
 	var earn := int(round(amount * GameState.rep.sell_price(float(st["market"][cid]["sell"]), docked_faction()) * (1.0 + GameState.skill_bonus("trading") * 0.5)))
+	if GameState.has_perk("haggler") and String(GameData.commodities.get(cid, {}).get("category", "")) in ["ore", "refined"]:
+		earn = int(round(earn * 1.05))                                  # package 30
 	GameState.skill_xp("trading", float(earn) / 500.0)      # package 29
+	GameState.note_stat("markets", String(st["id"]))
+	GameState.count_stat("turnover", float(earn))
 	GameState.add_credits(earn)
 	GameState.log_msg("Sold %.1f %s for %s." % [amount, GameData.item_name(cid), GameData.fmt_credits(earn)], GameState.COL_GOOD)
 	return ""
@@ -693,6 +726,8 @@ func _c_module_buy(c: Dictionary) -> String:
 	if not mid in st["shop"]:
 		return "The outfitter does not stock that module."
 	var locked: String = GameState.rep.module_error(st, mid)
+	if locked == "":
+		locked = GameState.module_tree_error(mid)            # package 30
 	if locked != "":
 		return locked
 	if not GameState.spend(GameState.rep.buy_price(int(GameData.modules[mid]["price"]), docked_faction())):
@@ -758,6 +793,9 @@ func _c_build(c: Dictionary) -> String:
 	if e != "":
 		return e
 	var mid: String = c["module"]
+	var fe := GameState.fab_tree_error(mid)                      # package 30: blueprints
+	if fe != "":
+		return fe
 	var err := Industry.build(_fit(), docked_station(), mid)
 	if err == "":
 		GameState.log_msg("Molten Lotus started: %s – ready in %d s (then in station storage)." % [GameData.module_name(Industry.last_built), int(Industry.build_time(mid))], GameState.COL_GOOD)
@@ -770,6 +808,9 @@ func _c_ship_build(c: Dictionary) -> String:
 	if f == null or not f.hull().has("factory"):
 		return "This ship has no factory."
 	var item := String(c["item"])
+	var fe := GameState.fab_tree_error(item)                     # package 30: blueprints
+	if fe != "":
+		return fe
 	var err := Industry.ship_build(f, item)
 	if err == "":
 		GameState.log_msg("Factory: %s queued (%d s while the factory runs)." % ["Drone" if item == "drone" else GameData.module_name(item), int(Industry.build_time(item))], GameState.COL_GOOD)

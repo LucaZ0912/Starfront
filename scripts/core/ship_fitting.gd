@@ -420,6 +420,29 @@ func _skill_effects(s: Dictionary) -> void:
 			w["damage"] = float(w["damage"]) * (1.0 + gun)
 		for k in s["dps"]:
 			s["dps"][k] = float(s["dps"][k]) * (1.0 + gun)
+	# package 30: perks
+	if GameState.has_perk("sharpshooter"):
+		for w2 in s["weapons"]:
+			w2["range"] = float(w2["range"]) * 1.1
+	if GameState.has_perk("quick_lock"):
+		s["max_locks"] = int(s["max_locks"]) + 1
+	if GameState.has_perk("fuel_saver") and s.has("jump_fuel"):
+		s["jump_fuel"] = float(s["jump_fuel"]) * 0.85
+	if GameState.has_perk("gate_runner"):
+		s["spool"] = float(s["spool"]) * 0.75
+	if GameState.has_perk("long_survey"):
+		s["survey_range_mult"] = float(s["survey_range_mult"]) * 1.3
+	if GameState.has_perk("drone_wrangler") and int(s["drones_max"]) > 0:
+		s["drones_max"] = int(s["drones_max"]) + 1
+	for t2 in s["tools"]:
+		if GameState.has_perk("signal_reader") and String(t2.get("tool", "")) in ["warrant", "cargo_scan"] and t2.has("scan_time"):
+			t2["scan_time"] = float(t2["scan_time"]) * 0.5
+		if GameState.has_perk("anomaly_hunter") and String(t2.get("tool", "")) == "analyzer" and t2.has("rate"):
+			t2["rate"] = float(t2["rate"]) * 1.25
+	if GameState.has_perk("ab_discipline"):
+		for a in s["actives"]:
+			if String(a.get("active", "")) == "afterburner":
+				a["energy_rate"] = float(a["energy_rate"]) * 0.75
 
 
 func _bundle_focus(s: Dictionary, h: Dictionary) -> void:

@@ -73,7 +73,7 @@ static func ore_yield(station: Dictionary, ore: String) -> float:
 ## Preview: how much would refining `amount` units of `ore` yield, and what would it cost?
 static func refine_quote(station: Dictionary, ore: String, amount: float) -> Dictionary:
 	var c: Dictionary = GameData.commodities[ore]
-	var out := floorf(amount * ore_yield(station, ore))
+	var out := floorf(amount * ore_yield(station, ore) * (1.1 if GameState.has_perk("efficient_refining") else 1.0))     # package 30
 	var fee := int(ceil(amount * REFINE_FEE_PER_UNIT * (4 - int(station["tier"])) / 2.0))
 	return {"out_id": c["refines_to"], "out": out, "fee": fee}
 
@@ -95,6 +95,7 @@ static func refine(fit: ShipFitting, station: Dictionary, ore: String) -> String
 	fit.remove_cargo(ore, have)
 	fit.cargo[q["out_id"]] = float(fit.cargo.get(q["out_id"], 0.0)) + float(q["out"])
 	GameState.stats["refined"] = int(GameState.stats.get("refined", 0)) + int(have)
+	GameState.count_stat("refined_station", float(have))             # package 30
 	GameState.skill_xp("mining", 0.15 * float(have))
 	return ""
 
@@ -109,6 +110,8 @@ static var last_built := ""
 static func roll_quality(module_id: String) -> String:
 	var m: Dictionary = GameData.modules[module_id]
 	var r := randf()
+	if GameState.has_perk("master_builder"):
+		r = maxf(r, randf())                     # package 30: the better of two rolls
 	for e in BUILD_QUALITY:
 		r -= float(e[1])
 		if r <= 0.0:
@@ -180,7 +183,7 @@ const DRONE_RECIPE := {"materials": {"electronics": 3, "alloys": 2, "aluminium":
 static func build_time(item: String) -> float:
 	if item == "drone":
 		return DRONE_BUILD_TIME
-	return BUILD_TIME_BASE * pow(float(GameData.modules[item]["size"]), 1.2)
+	return BUILD_TIME_BASE * pow(float(GameData.modules[item]["size"]), 1.2) * (0.75 if GameState.has_perk("master_builder") else 1.0)
 
 
 ## What a ship factory can build (Kanayama-maru): what an industrial complex builds, up to size 7.

@@ -34,6 +34,7 @@ var pilot := {}
 const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const PilotData = preload("res://data/pilot.gd")
 const SkillData = preload("res://data/skills.gd")
+const TreeData = preload("res://data/skilltree.gd")
 signal skills_changed
 var credits := START_CREDITS
 var fleet: Array = []            # all owned ships (ShipFitting)
@@ -96,7 +97,12 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 		Universe.generate(p_seed)
 	set_pilot(make_pilot(p_pilot, p_data))
 	surveys.clear()
-	stats = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0}
+	stats = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0,
+		# package 30: achievements for the skill tree
+		"warps": 0, "systems": [], "refined_station": 0, "markets": [], "turnover": 0, "bounty_jobs": 0, "jobs_covenant": 0,
+		"jobs_assembly": 0, "passengers": 0, "exotic": 0, "scans": 0, "bounties": 0}
+	if test_system:
+		pilot["tree_all"] = true                 # the test system: everything open
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -156,7 +162,8 @@ func make_pilot(p_name: String, data: Dictionary = {}) -> Dictionary:
 			skills[id] = {"lvl": int(old[id].get("lvl", 0)), "xp": float(old[id].get("xp", 0.0))}
 	return {"name": nm if nm != "" else p_name, "callsign": String(data.get("callsign", "")).strip_edges().left(16),
 		"look": PilotArt.clean(data.get("look", PilotArt.default_look())), "attrs": attrs.duplicate(), "skills": skills,
-		"level": maxi(int(data.get("level", 1)), 1), "xp": float(data.get("xp", 0.0)), "perk_points": int(data.get("perk_points", 0))}
+		"level": maxi(int(data.get("level", 1)), 1), "xp": float(data.get("xp", 0.0)), "perk_points": int(data.get("perk_points", 0)),
+		"tree": (data.get("tree", []) as Array).duplicate(), "perks": (data.get("perks", []) as Array).duplicate(), "tree_all": bool(data.get("tree_all", false))}
 
 
 # ---------------------------------------------------------------- Package 29: skills
@@ -194,6 +201,172 @@ func skill_xp(id: String, amount: float) -> void:
 		skills_changed.emit()
 
 
+# ---------------------------------------------------------------- Package 30: achievements, skill tree, perks
+
+## An achievement for the skill tree (lists count their distinct entries).
+func metric(m: String) -> float:
+	if m == "pilot_level":
+		return float(pilot_level())
+	var v = stats.get(m, 0)
+	if v is Array:
+		return float((v as Array).size())
+	return float(v)
+
+
+func count_stat(m: String, n: float = 1.0) -> void:
+	stats[m] = float(stats.get(m, 0)) + n
+
+
+## Adds a distinct entry (a system visited, a market traded at).
+func note_stat(m: String, entry) -> void:
+	if not stats.get(m, null) is Array:
+		stats[m] = []
+	if not entry in stats[m]:
+		stats[m].append(entry)
+
+
+func tile_open(id: String) -> bool:
+	if bool(pilot.get("tree_all", false)) or id in TreeData.free_tiles():
+		return true
+	return id in pilot.get("tree", [])
+
+
+## [[metric, have, need], …] of a tile.
+func tile_progress(id: String) -> Array:
+	var out: Array = []
+	for r in TreeData.TILES[id]["req"]:
+		out.append([r[0], metric(String(r[0])), float(r[1])])
+	return out
+
+
+func tile_ready(id: String) -> bool:
+	if tile_open(id):
+		return false
+	var t: Dictionary = TreeData.TILES[id]
+	for p in t["pre"]:
+		if not tile_open(String(p)):
+			return false
+	var met := 0
+	for r in tile_progress(id):
+		if float(r[1]) >= float(r[2]):
+			met += 1
+	return met > 0 if bool(t.get("any", false)) else met == (t["req"] as Array).size()
+
+
+func tiles_ready() -> Array:
+	var out: Array = []
+	for id in TreeData.TILES:
+		if tile_ready(id):
+			out.append(id)
+	return out
+
+
+## Confirms a tile whose achievements are met.
+func tree_unlock(id: String) -> String:
+	if not TreeData.TILES.has(id):
+		return "Unknown tile."
+	if tile_open(id):
+		return "%s is already open." % TreeData.TILES[id]["name"]
+	if not tile_ready(id):
+		return "%s: the achievements are not met yet." % TreeData.TILES[id]["name"]
+	pilot["tree"].append(id)
+	log_msg("Skill tree: %s – %s now open." % [TreeData.TILES[id]["name"], TreeData.TILES[id]["opens"]], COL_GOOD)
+	skills_changed.emit()
+	return ""
+
+
+## The best value of a tile's unlocks the pilot has (weapon_size, size, fab_size; quality "B"/"A").
+func _tree_best(key: String, base: int) -> int:
+	var best := base
+	for id in TreeData.TILES:
+		var u: Dictionary = TreeData.TILES[id]["unlocks"]
+		if u.has(key) and tile_open(id):
+			best = maxi(best, int(u[key]))
+	return best
+
+
+## "" = the pilot may buy this hull (the skill tree; ships owned stay usable).
+func hull_tree_error(hid: String) -> String:
+	var t := TreeData.tile_of_hull(hid)
+	if t == "" or tile_open(t):
+		return ""
+	return "Skill tree: open \"%s\" first (Pilot window)." % TreeData.TILES[t]["name"]
+
+
+## "" = the pilot may buy this module. Core modules follow the ship one may fly; weapons have their own sizes.
+func module_tree_error(mid: String) -> String:
+	var m: Dictionary = GameData.modules.get(mid, {})
+	if m.is_empty():
+		return ""
+	var fam := String(m.get("family", ""))
+	var ft := TreeData.tile_of_family(fam)
+	if ft != "" and not tile_open(ft):
+		return "Skill tree: open \"%s\" first." % TreeData.TILES[ft]["name"]
+	var q := String(m.get("quality", "C"))
+	if q == "B" and not tile_open("quality_b") or q == "A" and not tile_open("quality_a"):
+		return "Skill tree: quality %s needs \"Quality %s\"." % [q, q]
+	var sz := int(m.get("size", 1))
+	var slot := String(m.get("slot", ""))
+	if slot == "weapon" and sz > _tree_best("weapon_size", 2):
+		return "Skill tree: weapons of size %d need \"%s\"." % [sz, "Heavy Weapons" if sz == 3 else "Capital Weapons"]
+	if slot in ["optional", "tool", "drone"] and sz > _tree_best("size", 2):
+		return "Skill tree: modules of size %d need \"%s\"." % [sz, "Larger Modules" if sz <= 4 else ("Heavy Modules" if sz <= 7 else "Capital Modules")]
+	return ""
+
+
+## "" = the pilot holds the blueprint to manufacture this module (size).
+func fab_tree_error(mid: String) -> String:
+	if mid == "drone" or not GameData.modules.has(mid):
+		return ""
+	var sz := int(GameData.modules[mid]["size"])
+	if sz > _tree_best("fab_size", 2):
+		return "Skill tree: no blueprint for size %d yet (\"%s\")." % [sz, "Fabrication II" if sz <= 5 else "Fabrication III"]
+	return ""
+
+
+func has_perk(id: String) -> bool:
+	return id in pilot.get("perks", [])
+
+
+func perk_error(id: String) -> String:
+	if not TreeData.PERKS.has(id):
+		return "Unknown perk."
+	var p: Dictionary = TreeData.PERKS[id]
+	if has_perk(id):
+		return "Already taken."
+	if p.has("later"):
+		return "Takes effect with %s." % p["later"]
+	if String(p["skill"]) != "" and skill_level(String(p["skill"])) < int(p["lvl"]):
+		return "Needs %s %d." % [SkillData.info(String(p["skill"]))[1], int(p["lvl"])]
+	if int(pilot.get("perk_points", 0)) <= 0:
+		return "No perk point left – every pilot level brings one."
+	return ""
+
+
+func perk_take(id: String) -> String:
+	var e := perk_error(id)
+	if e != "":
+		return e
+	pilot["perks"].append(id)
+	pilot["perk_points"] = int(pilot["perk_points"]) - 1
+	for f in fleet:
+		f.mark_dirty()
+	log_msg("Perk taken: %s – %s." % [TreeData.PERKS[id]["name"], TreeData.PERKS[id]["effect"]], COL_GOOD)
+	skills_changed.emit()
+	return ""
+
+
+## Market Insider: where an item sells best in the neighbouring systems – [price, station, system] or [].
+func best_nearby_sell(cid: String) -> Array:
+	var best: Array = []
+	for nb in Universe.systems[current_system]["links"]:
+		for st in Universe.get_layout(int(nb))["stations"]:
+			var mk: Dictionary = st.get("market", {})
+			if mk.has(cid) and (best.is_empty() or float(mk[cid]["sell"]) > float(best[0])):
+				best = [float(mk[cid]["sell"]), String(st["name"]), String(Universe.systems[int(nb)]["name"])]
+	return best
+
+
 func pilot_level() -> int:
 	return int(pilot.get("level", 1))
 
@@ -209,7 +382,7 @@ func _pilot_xp(gain: float) -> void:
 		pilot["perk_points"] = int(pilot.get("perk_points", 0)) + 1
 		rose = true
 	if rose:
-		log_msg("Pilot level %d! A perk point to spend (perks come with package 30)." % int(pilot["level"]), COL_GOOD)
+		log_msg("Pilot level %d! A perk point to spend – Pilot window [%s] → Perks." % [int(pilot["level"]), Keybinds.key_text("pilot_window")], COL_GOOD)
 		skills_changed.emit()
 
 
@@ -433,6 +606,9 @@ func redeem_bonds(st: Dictionary, sid: int, id: String = "") -> int:
 				f = String(st.get("faction", ""))
 			by_faction[f] = int(by_faction.get(f, 0)) + int(b["amount"])
 	if paid > 0:
+		count_stat("bounties", float(by_faction.size()))
+		if has_perk("bounty_hunter"):
+			paid = int(round(paid * 1.15))        # package 30
 		add_credits(paid)
 	for f in by_faction:
 		rep.on_bond(f, int(by_faction[f]))
@@ -625,6 +801,9 @@ func storage_remove(station_id: String, module_id: String, n: int = 1) -> bool:
 
 ## Faction ships (package 25e): "" = may buy, otherwise why not (standing with the maker's faction).
 func hull_standing_error(hid: String) -> String:
+	var tree_e := hull_tree_error(hid)
+	if tree_e != "":
+		return tree_e
 	var h: Dictionary = GameData.hulls.get(hid, {})
 	var tier := String(h.get("min_tier", ""))
 	if tier == "":
@@ -793,6 +972,17 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 			f.remove_cargo(m["item"], float(m["amount"]))
 	missions.erase(m)
 	var pay := int(round(Missions.payout(m) * (1.0 + skill_bonus("negotiation"))))      # package 29
+	# package 30: achievements and perks
+	if String(m["type"]) == "bounty":
+		count_stat("bounty_jobs")
+	if String(m.get("faction", "")) in ["covenant", "assembly"]:
+		count_stat("jobs_" + String(m["faction"]))
+	if String(m["type"]) == "passenger":
+		count_stat("passengers", float(m.get("amount", 1)))
+	if String(m["type"]) == "escort" and has_perk("convoy_shepherd"):
+		pay = int(round(pay * 1.2))
+	if has_perk("diplomat"):
+		m["rep"] = float(m.get("rep", rep.GAIN["contract"])) * 1.25
 	add_credits(pay)
 	stats["missions_done"] = int(stats["missions_done"]) + 1
 	skill_xp("negotiation", 12.0)
@@ -820,6 +1010,8 @@ func fail_mission(m: Dictionary, why: String, rep_loss: float = 2.0) -> void:
 		return
 	missions.erase(m)
 	log_msg("Contract failed: %s – %s" % [m["title"], why], COL_BAD)
+	if has_perk("fine_print"):
+		rep_loss *= 0.5                          # package 30
 	rep.change(String(m.get("faction", "")), -rep_loss, "contract failed")
 	missions_changed.emit()
 
@@ -987,6 +1179,7 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 func _arrive(f: ShipFitting) -> void:
 	var from_id := int(f.transit_from)
 	f.system_id = int(f.transit_to)
+	note_stat("systems", f.system_id)            # package 30
 	if f.transit_kind == "wormhole":
 		_arrive_wormhole(f)
 	else:

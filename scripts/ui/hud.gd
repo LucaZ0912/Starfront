@@ -603,7 +603,16 @@ func _process(delta: float) -> void:
 		_update_overview()
 		_update_contacts()
 		if _w.has("skills"):
-			_w["skills"].visible = false          # 0.5.29.2: skills rise by themselves; ready skill tree tiles later (package 30)
+			# package 30: skill tree tiles ready to open, perk points to spend
+			var nt := GameState.tiles_ready().size()
+			var pp := int(GameState.pilot.get("perk_points", 0))
+			var parts: Array = []
+			if nt > 0:
+				parts.append("%d tile%s to open" % [nt, "" if nt == 1 else "s"])
+			if pp > 0:
+				parts.append("%d perk point%s" % [pp, "" if pp == 1 else "s"])
+			_w["skills"].visible = not parts.is_empty()
+			_w["skills"].text = "▲ %s [%s]" % [" • ".join(PackedStringArray(parts)), Keybinds.key_text("pilot_window")]
 	if f == null or not _w.has("act"):
 		return
 	var s := f.stats()

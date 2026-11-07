@@ -1345,6 +1345,8 @@ func align_time() -> float:
 	var t := clampf(float(fit.stats()["mass"]) / 1200.0, 1.5, 6.0) * float(fit.stats().get("align_mult", 1.0))
 	if faction == "player":
 		t *= 1.0 - GameState.skill_bonus("piloting")        # package 29
+		if combat_t > 0.0 and GameState.has_perk("emergency_warp"):
+			t *= 0.7                                         # package 30
 	if is_traffic():
 		t = maxf(t * 2.5, 6.0)       # civilians and patrols take their time before warping
 	return t
@@ -1673,7 +1675,8 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 			raw = (d2 - fit.armor) / maxf(m2, 0.01)
 			fit.armor = 0.0
 	if raw > 0.0:
-		fit.structure -= raw * float(GameData.LAYER_MULT["structure"][dtype])
+		var hb := 1.15 if attacker != null and attacker is Ship and attacker.faction == "player" and GameState.has_perk("hull_breaker") else 1.0     # package 30
+		fit.structure -= raw * float(GameData.LAYER_MULT["structure"][dtype]) * hb
 	_reflect(armor0 - fit.armor, dtype, attacker)
 	if attacker != null and view != null and attacker == view.player and Ship.hostile(attacker, self):
 		GameState.skill_xp("gunnery", 1.0)        # package 29
@@ -1777,6 +1780,16 @@ func _update_tools(delta: float, s: Dictionary) -> void:
 const ICE_LASER_MULT := 0.25
 
 
+## A rare ore of an asteroid class (Prospector's Eye, package 30).
+static func _rare_ore_of(cls: String) -> String:
+	var out: Array = []
+	for cid in GameData.commodities:
+		var c: Dictionary = GameData.commodities[cid]
+		if String(c.get("category", "")) == "ore" and String(c.get("class", "")) == cls and String(c.get("rarity", "")) == "rare":
+			out.append(cid)
+	return "" if out.is_empty() else String(out[randi() % out.size()])
+
+
 static func mining_mult(t: Dictionary, ore: String) -> float:
 	var cls: String = GameData.commodities.get(ore, {}).get("class", "")
 	if t.get("tool", "") == "harvester":
@@ -1818,6 +1831,15 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 			GameState.log_msg("%s: cargo hold full." % display_name(), GameState.COL_WARN)
 		return false
 	node.data["amount"] = float(node.data["amount"]) - added
+	if faction == "player" and fit.uid == GameState.active_uid:
+		# package 30: Deep Core – more from every asteroid; Prospector's Eye – now and then a rare ore as a bonus
+		if GameState.has_perk("deep_core"):
+			for o2 in mix:
+				fit.add_cargo(o2, added * 0.2 * float(mix[o2]))
+		if GameState.has_perk("prospectors_eye") and randf() < 0.12 * delta:
+			var rare := _rare_ore_of(String(GameData.commodities.get(ore, {}).get("class", "")))
+			if rare != "" and fit.add_cargo(rare, 1.0) > 0.0:
+				GameState.log_msg("Prospector's Eye: 1 × %s found." % GameData.item_name(rare), GameState.COL_GOOD)
 	if faction == "player":
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
 		GameState.skill_xp("mining", 0.25 * added)
@@ -2457,10 +2479,14 @@ func _run_scan(delta: float, slot: String, d: Dictionary, tgt) -> bool:
 		tgt.queue_redraw()
 		_mlog("Prospector: %s – %s" % [tgt.title(), tgt.composition_text()], GameState.COL_GOOD)
 	elif d["tool"] == "cargo_scan":
+		if faction == "player":
+			GameState.count_stat("scans")          # package 30
 		tgt.ensure_manifest()
 		tgt.cargo_known = true
 		_mlog("Cargo scan: %s" % tgt.manifest_text(), GameState.COL_BAD if tgt.unregistered else GameState.COL_GOOD)
 	else:
+		if faction == "player":
+			GameState.count_stat("scans")          # package 30
 		tgt.warrant_known = true
 		_mlog(tgt.warrant_text(), GameState.COL_GOOD if tgt.bounty > 0 else GameState.COL_INFO)
 	return false
@@ -2617,6 +2643,8 @@ func _refine(delta: float, slot: String, d: Dictionary) -> void:
 	module_state[slot] = "on"
 	fit.remove_cargo(ore, amount)
 	fit.add_cargo(prod, out)
+	if GameState.has_perk("efficient_refining"):
+		out *= 1.1                                       # package 30 (the ship's refinery)
 	GameState.stats["refined"] = float(GameState.stats.get("refined", 0)) + out
 	GameState.skill_xp("mining", 0.15 * out)
 	smoke(delta)
@@ -2916,6 +2944,9 @@ func _update_cloak_fx(delta: float) -> void:
 	var dur := 0.7 + 0.3 * float(fit.hull().get("size", 1))
 	cloak_k = move_toward(cloak_k, 1.0 if cloaked() else 0.0, delta / dur)
 	modulate.a = 0.0 if cloak_k >= 1.0 and faction != "player" else 1.0
+	if modulate.a == 0.0 and view != null and view.player != null and is_instance_valid(view.player) and GameState.has_perk("ghost_hunter") \
+			and view.player.position.distance_to(position) < 2000.0:
+		modulate.a = 0.3                           # package 30: Ghost Hunter
 
 
 func _cloak_hidden_alpha() -> float:

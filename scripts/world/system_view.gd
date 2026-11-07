@@ -1496,7 +1496,8 @@ func player_jammed() -> bool:
 ## Can the pilot see ship `n` on radar, map and contact list? (Not while jammed, unless close.)
 func contact_visible(n) -> bool:
 	if n is Ship and n != player and n.cloaked():
-		return false                     # an Axiom cloak (package 25g)
+		# an Axiom cloak (package 25g) – the Ghost Hunter perk sees it close by (package 30)
+		return GameState.has_perk("ghost_hunter") and player != null and is_instance_valid(player) and player.position.distance_to(n.position) < 2000.0
 	if not player_jammed():
 		return true
 	return player.position.distance_to(n.position) <= JAM_VISIBLE
@@ -2235,6 +2236,7 @@ func on_warp_started(ship: Ship) -> void:
 func on_warp_finished(ship: Ship) -> void:
 	if ship == player:
 		GameState.skill_xp("piloting", 5.0)       # package 29
+		GameState.count_stat("warps")             # package 30
 		Audio.play("warp_exit", "warp end")               # package 28a
 	if ship == player and _warp_auto:
 		_warp_auto = false
@@ -2778,6 +2780,7 @@ func complete_anomaly(node: Celestial, ship: Ship) -> void:
 	if node.data.get("exotic", false) and ship.faction == "player":
 		var em := randi_range(2, 4)
 		GameState.exotic_matter += em
+		GameState.count_stat("exotic", float(em))        # package 30
 		text += " – and %d units of exotic matter (now %d)" % [em, GameState.exotic_matter]
 	GameState.log_msg(text, GameState.COL_GOOD)
 	var sec: float = Universe.systems[system_id]["security"]

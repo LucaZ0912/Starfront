@@ -276,6 +276,8 @@ func _variant_tile(parent: Control, f: ShipFitting, mid: String, from_store: boo
 	var qc := GameData.quality_color(q)
 	var why := f.can_fit(slot, mid)
 	var locked: String = "" if from_store else GameState.rep.module_error(station, mid)
+	if locked == "" and not from_store:
+		locked = GameState.module_tree_error(mid)            # package 30: the skill tree
 	var reason := why if why != "" else locked
 	var on := pick == mid and pick_store == from_store
 	var b := _tile(parent, Vector2(118, 70), qc, on, func(): _set_pick(mid, from_store))
@@ -293,7 +295,7 @@ func _variant_tile(parent: Control, f: ShipFitting, mid: String, from_store: boo
 		v.add_child(_lbl("stored ×%d" % int(GameState.storage_of(station["id"]).get(mid, 0)), 11, UI.GOOD))
 	else:
 		v.add_child(_lbl(GameData.fmt_credits(buy_price(int(m["price"]))), 12, UI.GOLD if reason == "" else UI.TEXT_DIM))
-		v.add_child(_lbl(_short_reason(why) if why != "" else ("locked" if locked != "" else ""), 10, UI.BAD))
+		v.add_child(_lbl(_short_reason(why) if why != "" else (("skill tree" if locked.begins_with("Skill tree") else "locked") if locked != "" else ""), 10, UI.BAD))
 
 
 func _set_pick(mid: String, from_store: bool) -> void:

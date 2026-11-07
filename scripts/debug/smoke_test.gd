@@ -46,6 +46,9 @@ var _shooting := false             # waiting for a screenshot (optional, --shots
 var _shot_done := false
 
 
+var _tree_set := false
+
+
 func _ready() -> void:
 	main = get_parent()
 	print("[SMOKE] Sternenfront alpha %s" % ProjectSettings.get_setting("application/config/version", "?"))
@@ -66,6 +69,9 @@ func check(cond: bool, what: String) -> void:
 
 
 func _process(delta: float) -> void:
+	if not _tree_set and not GameState.pilot.is_empty():
+		_tree_set = true
+		GameState.pilot["tree_all"] = true     # package 30: the older checks buy any ship and module (the tree is tested on its own)
 	if _shooting:
 		return
 	timer += delta
@@ -1568,14 +1574,26 @@ func _shoot_standing(view: SystemView) -> void:
 	GameState.pilot["skills"]["mining"]["lvl"] = 1
 	GameState.skill_xp("gunnery", 500.0)
 	GameState.skill_xp("piloting", 60.0)
+	# package 30: some progress for the picture – tiles ready and half way, perk points, a perk taken
+	var keep_s: Dictionary = GameState.stats.duplicate(true)
+	GameState.pilot["tree_all"] = false
+	GameState.pilot["tree"] = ["frigate_ops"]
+	GameState.pilot["perk_points"] = 2
+	GameState.pilot["perks"] = ["bounty_hunter"]
+	GameState.stats["warps"] = 61
+	GameState.stats["jumps"] = 23
+	GameState.stats["mined"] = 820.0
+	GameState.stats["kills"] = 7
+	GameState.stats["analysed"] = 4
 	var pw9 = main.pilot_window
-	for t9 in 3:
+	for t9 in 4:
 		pw9.open(t9)
 		for i5 in 10:
 			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("res://Claude outputs/pilot_window_%d.png" % t9)
 	pw9.close()
 	GameState.set_pilot(keep_p)
+	GameState.stats = keep_s
 	sp.open_service("outfitter")
 	# package 27: a weapon slot, a family, a size · quality picked – description, changes and footer
 	var op9 = sp._panel
@@ -5345,7 +5363,68 @@ func _test_skills() -> void:
 	pw.menu_tab(1)
 	var n2: int = pw.body.get_child_count()
 	pw.close()
-	check(n0 > 1 and n1 > 1 and n2 > 0 and pw.tab == 2 and Keybinds.key_text("pilot_window") == "U",
-		"Pilot window [U]: pilot level, skills, skill tree (package 30), pilot")
+	pw.open(3)
+	var n3: int = pw.body.get_child_count()
+	pw.close()
+	check(n0 > 1 and n1 > 1 and n2 > 1 and n3 > 0 and Keybinds.key_text("pilot_window") == "U",
+		"Pilot window [U]: skills, perks, skill tree, pilot")
 	GameState.set_pilot(keep)
+	f.mark_dirty()
+	_test_tree()
+
+
+## Package 30: the skill tree opens by achievements and gates buying and building; perks.
+func _test_tree() -> void:
+	var TD = load("res://data/skilltree.gd")
+	var keep: Dictionary = GameState.pilot.duplicate(true)
+	var keep_stats: Dictionary = GameState.stats.duplicate(true)
+	GameState.pilot["tree_all"] = false
+	GameState.pilot["tree"] = []
+	# the start scope: Earthworks S free, M not; modules small and up to quality C
+	var e_s: String = GameState.hull_standing_error("hornet")
+	var e_m: String = GameState.hull_standing_error("mule")
+	var e_khi: String = GameState.hull_tree_error("anaguma")
+	var e_q: String = GameState.module_tree_error("o_shield:1:B")
+	var e_w3: String = GameState.module_tree_error("w_pulse:3:C")
+	var e_core: String = GameState.module_tree_error("rea_fusion:4:C")
+	var e_drone: String = GameState.module_tree_error("hangar:1:C")
+	var e_fab: String = GameState.fab_tree_error("o_cargo:4:C")
+	check(e_s == "" and e_m != "" and e_khi != "" and e_q != "" and e_w3 != "" and e_core == "" and e_drone != "" and e_fab != "" and GameState.fab_tree_error("o_cargo:2:C") == "",
+		"skill tree start scope: Earthworks S and small modules up to quality C free – M ships, quality B, size-3 weapons, drones, larger blueprints closed (core modules follow the ship)")
+	# achievements: Frigate Operations needs 25 warps and 10 jumps – then it glows and is confirmed
+	GameState.stats["warps"] = 24
+	GameState.stats["jumps"] = 10
+	var not_yet: bool = not GameState.tile_ready("frigate_ops") and Commands.execute({"type": "tree_unlock", "tile": "frigate_ops"}) != ""
+	GameState.count_stat("warps")
+	var ready: bool = GameState.tile_ready("frigate_ops") and "frigate_ops" in GameState.tiles_ready()
+	var eu: String = Commands.execute({"type": "tree_unlock", "tile": "frigate_ops"})
+	check(not_yet and ready and eu == "" and GameState.hull_tree_error("mule") == "" and GameState.tile_open("frigate_ops"),
+		"a tile opens once its achievements are met and it is confirmed – Frigate Operations: the Mule may be bought")
+	# a chain: KHI Anaguma needs the Mogura tile first; "any" tiles need one achievement
+	GameState.stats["mined"] = 6000.0
+	GameState.stats["refined_station"] = 2500.0
+	var chain: bool = GameState.tile_ready("khi_mogura") and not GameState.tile_ready("khi_anaguma")
+	GameState.tree_unlock("khi_mogura")
+	chain = chain and GameState.tile_ready("khi_anaguma") and GameState.tile_ready("drones")
+	check(chain and TD.TILES.size() >= 35, "tiles lead on from tile to tile (Mogura before Anaguma); one achievement opens a tile marked \"any\" (%d tiles)" % TD.TILES.size())
+	# perks: a point per pilot level, some need a skill level
+	GameState.pilot["perk_points"] = 1
+	GameState.pilot["perks"] = []
+	GameState.pilot["skills"]["gunnery"]["lvl"] = 1
+	var e_need: String = GameState.perk_error("sharpshooter")
+	var e_take: String = Commands.execute({"type": "perk_take", "perk": "bounty_hunter"})
+	var e_none: String = GameState.perk_error("convoy_shepherd")
+	var e_later: String = GameState.perk_error("crew_morale")
+	GameState.pilot["perk_points"] = 1
+	GameState.pilot["skills"]["gunnery"]["lvl"] = 3
+	var f := GameState.active()
+	f.mark_dirty()
+	var r0: float = float(f.stats()["weapons"][0]["range"]) if not f.stats()["weapons"].is_empty() else 0.0
+	Commands.execute({"type": "perk_take", "perk": "sharpshooter"})
+	var r1: float = float(f.stats()["weapons"][0]["range"]) if not f.stats()["weapons"].is_empty() else 0.0
+	check(TD.PERKS.size() == 24 and e_need != "" and e_take == "" and GameState.has_perk("bounty_hunter") and e_none != "" and e_later != ""
+		and GameState.has_perk("sharpshooter") and (r0 <= 0.0 or absf(r1 / r0 - 1.1 * (1.03 / 1.01) / (1.03 / 1.01)) < 0.02),
+		"perks: 24 in six groups – a perk point each, some need a skill level, crew perks wait for their package (Sharpshooter: range +10 %)")
+	GameState.set_pilot(keep)
+	GameState.stats = keep_stats
 	f.mark_dirty()

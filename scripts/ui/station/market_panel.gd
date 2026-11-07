@@ -46,7 +46,15 @@ func build() -> void:
 		grid.add_child(UI.label(c["name"], 14, name_col))
 		grid.add_child(UI.label("%.1f m³" % float(c["volume"])))
 		grid.add_child(UI.label(GameData.fmt_credits(buy) if buy >= 0 else "–", 14, Color(1.0, 0.8, 0.5)))
-		grid.add_child(UI.label(GameData.fmt_credits(sell), 14, UI.GOOD))
+		var sl := UI.label(GameData.fmt_credits(sell), 14, UI.GOOD)
+		if GameState.has_perk("market_insider"):
+			# package 30: where it sells best next door
+			var nb: Array = GameState.best_nearby_sell(cid)
+			if not nb.is_empty() and float(nb[0]) > float(sell):
+				sl.text += "  ↗ %s" % GameData.fmt_credits(int(nb[0]))
+				sl.tooltip_text = "Market Insider: %s at %s (%s)" % [GameData.fmt_credits(int(nb[0])), nb[1], nb[2]]
+				sl.mouse_filter = Control.MOUSE_FILTER_STOP
+		grid.add_child(sl)
 		grid.add_child(UI.label("%.1f" % have))
 		var bb := UI.hbox(2)
 		if buy >= 0:

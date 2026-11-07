@@ -12,9 +12,8 @@ const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const PilotData = preload("res://data/pilot.gd")
 const SkillData = preload("res://data/skills.gd")
 const COL := Color(1.0, 0.82, 0.35)
-const TABS := ["Skills", "Skill tree", "Pilot"]
-const BRANCHES := [["Flight", "Ship classes, steering"], ["Combat", "Weapons, special equipment"], ["Industry", "Mining, refining, manufacturing, blueprints"],
-	["Science", "Scanners, anomalies"], ["Commerce", "Trade, standing"], ["Command", "Crews, mercenaries"]]
+const TABS := ["Skills", "Perks", "Skill tree", "Pilot"]
+const TreeData = preload("res://data/skilltree.gd")
 
 var tab := 0
 var tab_buttons: Array = []
@@ -91,8 +90,9 @@ func rebuild() -> void:
 	UI.clear(body)
 	match tab:
 		0: _skills()
-		1: _tree()
-		2: _pilot()
+		1: _perks()
+		2: _tree()
+		3: _pilot()
 
 
 # ---- skills
@@ -167,28 +167,123 @@ func _level_bar(parent: Control) -> void:
 	row.add_child(bar)
 	row.add_child(UI.label("%d / %d XP" % [int(bar.value), int(need)], 12, UI.TEXT_DIM))
 	var pp := int(GameState.pilot.get("perk_points", 0))
-	row.add_child(UI.label("%d perk point%s (perks: package 30)" % [pp, "" if pp == 1 else "s"], 12, UI.GOOD if pp > 0 else UI.TEXT_DIM))
+	row.add_child(UI.label("%d perk point%s to spend" % [pp, "" if pp == 1 else "s"], 12, UI.GOOD if pp > 0 else UI.TEXT_DIM))
 
 
-# ---- the skill tree (package 30)
+# ---- perks (package 30)
 
-func _tree() -> void:
-	body.add_child(UI.label("SKILL TREE", 16, COL))
-	body.add_child(UI.wrap_label("What you may fly and fit is unlocked here by doing – ship classes, module families, sizes and qualities, special equipment and blueprints. The tree comes with package 30; its six branches:", 13, UI.TEXT_DIM, 1100))
+func _perks() -> void:
+	_level_bar(body)
+	body.add_child(UI.label("Every pilot level brings a perk point. Spend it on any perk below – some need a skill level first.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	body.add_child(grid)
-	for b in BRANCHES:
-		var p := UI.neon_panel(Color(COL, 0.25), Color(0.04, 0.03, 0.02, 0.9), 1)
-		p.custom_minimum_size = Vector2(360, 110)
-		var v := UI.vbox(4)
+	for g in TreeData.GROUPS:
+		var p := UI.neon_panel(Color(COL, 0.35), Color(0.05, 0.04, 0.03, 0.95), 1)
+		p.custom_minimum_size = Vector2(370, 0)
+		var v := UI.vbox(5)
 		p.add_child(v)
-		v.add_child(UI.label(String(b[0]).to_upper(), 16, Color(COL, 0.6)))
-		v.add_child(UI.wrap_label(String(b[1]), 12, UI.TEXT_DIM, 330))
-		v.add_child(UI.label("locked – package 30", 11, Color(0.6, 0.5, 0.4)))
+		v.add_child(UI.label(String(g).to_upper(), 16, COL))
+		for id in TreeData.PERKS:
+			var pk: Dictionary = TreeData.PERKS[id]
+			if pk["group"] != g:
+				continue
+			v.add_child(_perk_row(String(id), pk))
 		grid.add_child(p)
+
+
+func _perk_row(id: String, pk: Dictionary) -> Control:
+	var taken := GameState.has_perk(id)
+	var err := GameState.perk_error(id)
+	var box := UI.vbox(1)
+	var top := UI.hbox(6)
+	box.add_child(top)
+	var nl := UI.label(("✓ " if taken else "") + String(pk["name"]), 14, UI.GOOD if taken else (Color(0.95, 0.92, 0.85) if err == "" else UI.TEXT_DIM))
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(nl)
+	if not taken:
+		var b := UI.button("Take", func(): _take(id))
+		b.disabled = err != ""
+		b.tooltip_text = err
+		top.add_child(b)
+	box.add_child(UI.wrap_label(String(pk["effect"]), 11, Color(0.85, 0.85, 0.8), 340))
+	var need := ""
+	if String(pk["skill"]) != "":
+		need = "Needs %s %d" % [SkillData.info(String(pk["skill"]))[1], int(pk["lvl"])]
+	if pk.has("later"):
+		need += ("  •  " if need != "" else "") + "takes effect with %s" % pk["later"]
+	if need != "" and not taken:
+		box.add_child(UI.label(need, 10, UI.TEXT_DIM))
+	return box
+
+
+func _take(id: String) -> void:
+	if Commands.execute({"type": "perk_take", "perk": id}) == "":
+		Audio.play("mission_complete", "perk")
+	rebuild()
+
+
+# ---- the skill tree (package 30)
+
+func _tree() -> void:
+	var nt := GameState.tiles_ready().size()
+	body.add_child(UI.label("Tiles open by doing: meet a tile's achievements (and open the tiles before it), then confirm it here. Ships and modules you already own stay usable.", 13, UI.TEXT_DIM))
+	if nt > 0:
+		body.add_child(UI.label("%d tile%s ready to open" % [nt, "" if nt == 1 else "s"], 14, UI.GOOD))
+	for br in TreeData.BRANCHES:
+		body.add_child(UI.label(String(br).to_upper(), 15, COL))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 6)
+		flow.add_theme_constant_override("v_separation", 6)
+		body.add_child(flow)
+		var first := true
+		for id in TreeData.branch_tiles(br):
+			if not first and (TreeData.TILES[id]["pre"] as Array).size() > 0:
+				flow.add_child(UI.label("→", 18, Color(COL, 0.6)))
+			first = false
+			flow.add_child(_tile_card(String(id)))
+
+
+func _tile_card(id: String) -> Control:
+	var t: Dictionary = TreeData.TILES[id]
+	var open := GameState.tile_open(id)
+	var ready := GameState.tile_ready(id)
+	var pre_ok := true
+	for p in t["pre"]:
+		pre_ok = pre_ok and GameState.tile_open(String(p))
+	var col := UI.GOOD if ready else (COL if open else (Color(0.6, 0.55, 0.45) if pre_ok else Color(0.35, 0.32, 0.28)))
+	var card := UI.neon_panel(Color(col, 0.9 if ready or open else 0.45), Color(0.05, 0.04, 0.03, 0.95) if not open else Color(0.12, 0.09, 0.03, 0.95), 2 if ready else 1)
+	card.custom_minimum_size = Vector2(220, 0)
+	var v := UI.vbox(2)
+	card.add_child(v)
+	v.add_child(UI.label(("✓ " if open else "") + String(t["name"]), 13, col))
+	v.add_child(UI.wrap_label(String(t["opens"]), 10, Color(0.85, 0.85, 0.8), 205))
+	if not open:
+		if not pre_ok:
+			var names: Array = []
+			for p2 in t["pre"]:
+				names.append(TreeData.TILES[p2]["name"])
+			v.add_child(UI.wrap_label("after: " + ", ".join(PackedStringArray(names)), 10, UI.TEXT_DIM, 205))
+		for r in GameState.tile_progress(id):
+			var done := float(r[1]) >= float(r[2])
+			v.add_child(UI.label("%s %s / %s %s" % ["✓" if done else "•", _num(float(r[1])), _num(float(r[2])), TreeData.METRICS.get(r[0], r[0])], 10, UI.GOOD if done else UI.TEXT_DIM))
+		if bool(t.get("any", false)):
+			v.add_child(UI.label("(one of them is enough)", 10, UI.TEXT_DIM))
+		if ready:
+			v.add_child(UI.button("Open", func(): _open_tile(id)))
+	return card
+
+
+func _num(x: float) -> String:
+	return GameData.fmt_credits(int(x)).trim_suffix(" cr") if x >= 1000.0 else str(int(x))
+
+
+func _open_tile(id: String) -> void:
+	if Commands.execute({"type": "tree_unlock", "tile": id}) == "":
+		Audio.play("mission_complete", "tile opened")
+	rebuild()
 
 
 # ---- the pilot

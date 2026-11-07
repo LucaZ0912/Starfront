@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.30.1 – 2026-11-07
+
+**Package 30 – perks and the skill tree.**
+- 40 skill tree tiles in eight branches open by achievements and are confirmed; they gate buying ships and modules
+  and manufacturing (blueprints) – owned ships and modules stay usable.
+- 24 perks in six groups, one point per pilot level; their effects work (crew perks with packages 31 and 33).
+- Pilot window: Skills, Perks, Skill tree, Pilot; HUD hint for tiles to open and perk points; debug: unlock all.
+
 ## alpha 0.5.29.2 – 2026-11-07
 
 - Skills rise by themselves (no more confirming); a new pilot level fed by all experience, every level a perk point.

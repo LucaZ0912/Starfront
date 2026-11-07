@@ -3,6 +3,7 @@ extends CanvasLayer
 const PilotArtX = preload("res://scripts/core/pilot_art.gd")
 const PilotDataX = preload("res://data/pilot.gd")
 const SkillDataX = preload("res://data/skills.gd")
+const TreeDataX = preload("res://data/skilltree.gd")
 ## Debug menu (F12): try everything quickly, including endgame content.
 ## Every button sends a "debug_*" command through the command bus.
 ## Only available when Commands.cheats_enabled (debug builds / running from the editor).
@@ -370,6 +371,34 @@ func _build_character() -> void:
 		r3.add_child(UI.button("+100 XP", func():
 			_cmd({"type": "debug_skill", "skill": sid, "xp": 100.0})
 			_set_tab(5)))
+	# package 30: the skill tree and perks
+	_section("Skill tree & perks")
+	var all_cb := CheckButton.new()
+	all_cb.text = "Unlock everything (all tiles and blueprints)"
+	all_cb.button_pressed = bool(GameState.pilot.get("tree_all", false))
+	all_cb.toggled.connect(func(on): _cmd({"type": "debug_tree", "all": on}))
+	content.add_child(all_cb)
+	var rt := _row()
+	var tids: Array = TreeDataX.TILES.keys()
+	var tnames: Array = []
+	for t in tids:
+		tnames.append("%s (%s)" % [TreeDataX.TILES[t]["name"], TreeDataX.TILES[t]["branch"]])
+	var topt := _option(tids, tnames, 280)
+	rt.add_child(topt)
+	rt.add_child(UI.button("Open tile", func():
+		_cmd({"type": "debug_tree", "tile": topt.get_selected_metadata()})
+		_set_tab(5)))
+	rt.add_child(UI.button("Reset tree", func():
+		_cmd({"type": "debug_tree", "reset": true})
+		_set_tab(5)))
+	var rp := _row()
+	rp.add_child(UI.label("Perk points: %d" % int(GameState.pilot.get("perk_points", 0)), 12))
+	rp.add_child(UI.button("+1", func():
+		_cmd({"type": "debug_tree", "perk_points": 1})
+		_set_tab(5)))
+	rp.add_child(UI.button("+5", func():
+		_cmd({"type": "debug_tree", "perk_points": 5})
+		_set_tab(5)))
 	var f := GameState.active()
 	if f != null:
 		_section("Bonuses at work on %s (without → with skills)" % f.ship_name)
