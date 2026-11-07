@@ -1562,6 +1562,20 @@ func _shoot_standing(view: SystemView) -> void:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/character_creator.png")
 	cc9.queue_free()
+	# package 29: the Pilot window – a skill ready to advance, the skill tree, the pilot
+	var keep_p: Dictionary = GameState.pilot.duplicate(true)
+	GameState.pilot["skills"]["gunnery"]["lvl"] = 3
+	GameState.pilot["skills"]["mining"]["lvl"] = 1
+	GameState.skill_xp("gunnery", 900.0)
+	GameState.skill_xp("piloting", 60.0)
+	var pw9 = main.pilot_window
+	for t9 in 3:
+		pw9.open(t9)
+		for i5 in 10:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/pilot_window_%d.png" % t9)
+	pw9.close()
+	GameState.set_pilot(keep_p)
 	sp.open_service("outfitter")
 	# package 27: a weapon slot, a family, a size · quality picked – description, changes and footer
 	var op9 = sp._panel
@@ -5286,3 +5300,51 @@ func _test_pilot() -> void:
 	Commands.cheats_enabled = cheats
 	check(e1 == "" and e2 == "" and GameState.pilot_attr("strength") == 15, "debug: a random pilot and attributes beyond the starting limits")
 	GameState.set_pilot(keep)
+	_test_skills()
+
+
+## Package 29: skills grow by doing, an advance is confirmed in the Pilot window; their bonuses work on the ship.
+func _test_skills() -> void:
+	var SD = load("res://data/skills.gd")
+	var keep: Dictionary = GameState.pilot.duplicate(true)
+	var top: Dictionary = {"strength": 8, "dexterity": 8, "intelligence": 8, "charisma": 8, "reflexes": 8}
+	var low: Dictionary = {"strength": 3, "dexterity": 3, "intelligence": 3, "charisma": 3, "reflexes": 3}
+	check(SD.SKILLS.size() == 12 and GameState.pilot.get("skills", {}).size() == 12 and SD.start_level("piloting", top) == 2 and SD.start_level("piloting", low) == 0
+		and SD.learn_rate("gunnery", top) > SD.learn_rate("gunnery", low) and SD.need(5) > SD.need(1),
+		"skills: twelve, the attributes set the starting level and how fast they learn")
+	# by doing: an analysed anomaly feeds Science; enough experience makes an advance ready – confirmed by command
+	GameState.pilot["skills"]["science"] = {"lvl": 0, "xp": 0.0}
+	GameState.notify("analyse", GameState.current_system)
+	var got: float = float(GameState.pilot["skills"]["science"]["xp"])
+	var e0: String = Commands.execute({"type": "skill_advance", "skill": "science"})
+	GameState.skill_xp("science", 500.0)
+	var ready: bool = GameState.skill_ready("science") and "science" in GameState.skills_ready()
+	var e1: String = Commands.execute({"type": "skill_advance", "skill": "science"})
+	check(got > 0.0 and e0 != "" and ready and e1 == "" and GameState.skill_level("science") == 1 and float(GameState.pilot["skills"]["science"]["xp"]) > 0.0,
+		"skills grow by doing (an analysis feeds Science); the advance is confirmed – the rest of the experience carries over")
+	# the bonuses: Gunnery and Piloting on the player's ship
+	var f := GameState.active()
+	var plain := ShipFitting.from_dict(f.to_dict())
+	plain.faction = "civilian"
+	plain.mark_dirty()
+	GameState.pilot["skills"]["gunnery"]["lvl"] = 5
+	GameState.pilot["skills"]["piloting"]["lvl"] = 5
+	f.mark_dirty()
+	var s1: Dictionary = f.stats()
+	var s0: Dictionary = plain.stats()
+	var ok_dps: bool = float(s0["dps_total"]) <= 0.0 or absf(float(s1["dps_total"]) / float(s0["dps_total"]) - 1.05) < 0.01
+	var ok_spd: bool = absf(float(s1["speed"]) / maxf(float(s0["speed"]), 0.01) - 1.05) < 0.01
+	check(ok_dps and ok_spd and is_equal_approx(GameState.skill_bonus("gunnery"), 0.05), "skill bonuses: +1 % per level on the pilot's ships (Gunnery 5: damage +5 %, Piloting 5: speed +5 %)")
+	# the Pilot window: three tabs; the HUD shows a ready advance
+	var pw = main.pilot_window
+	pw.open(0)
+	var n0: int = pw.body.get_child_count()
+	pw.menu_tab(1)
+	var n1: int = pw.body.get_child_count()
+	pw.menu_tab(1)
+	var n2: int = pw.body.get_child_count()
+	pw.close()
+	check(n0 > 1 and n1 > 1 and n2 > 0 and pw.tab == 2 and main.hud._w.has("skills") and Keybinds.key_text("pilot_window") == "U",
+		"Pilot window [U]: skills, skill tree (package 30), pilot – the HUD shows when a skill is ready")
+	GameState.set_pilot(keep)
+	f.mark_dirty()

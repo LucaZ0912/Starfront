@@ -1,6 +1,7 @@
 extends Node
 const PilotArtX = preload("res://scripts/core/pilot_art.gd")
 const PilotDataX = preload("res://data/pilot.gd")
+const SkillDataX = preload("res://data/skills.gd")
 ## Command bus: the ONLY way player input changes the game state.
 ##
 ## Every player action is a plain Dictionary {"type": ..., args...} that contains only
@@ -479,6 +480,28 @@ func look_price() -> int:
 	return GameState.rep.buy_price(PilotDataX.LOOK_PRICE, docked_faction())
 
 
+## {"type":"skill_advance", "skill": id} – package 29: confirms a ready advance of a skill.
+func _c_skill_advance(c: Dictionary) -> String:
+	return GameState.skill_advance(String(c.get("skill", "")))
+
+
+## {"type":"debug_skill", "skill": id, "level"?: int, "xp"?: float} – set a level or add experience.
+func _c_debug_skill(c: Dictionary) -> String:
+	var id := String(c.get("skill", ""))
+	if not GameState.pilot.get("skills", {}).has(id):
+		return "Unknown skill."
+	var sk: Dictionary = GameState.pilot["skills"][id]
+	if c.has("level"):
+		sk["lvl"] = clampi(int(c["level"]), 0, SkillDataX.MAX_LEVEL)
+		sk["xp"] = 0.0
+		for f in GameState.fleet:
+			f.mark_dirty()
+	if c.has("xp"):
+		GameState.skill_xp(id, float(c["xp"]))
+	GameState.skills_changed.emit()
+	return ""
+
+
 ## {"type":"debug_pilot", "name"?, "callsign"?, "look"?, "attrs"?, "random"?} – package 28: set anything about
 ## the pilot, attributes even beyond the starting limits (1–20).
 func _c_debug_pilot(c: Dictionary) -> String:
@@ -630,7 +653,7 @@ func _c_market_buy(c: Dictionary) -> String:
 	var cid: String = c["item"]
 	if not st["market"].has(cid) or int(st["market"][cid]["buy"]) < 0:
 		return "Not on offer here."
-	var price := maxi(GameState.rep.buy_price(int(st["market"][cid]["buy"]), docked_faction()), 1)
+	var price := maxi(int(round(GameState.rep.buy_price(int(st["market"][cid]["buy"]), docked_faction()) * (1.0 - GameState.skill_bonus("trading") * 0.5))), 1)
 	var max_space := int(floor(f.free_for(cid) / GameData.item_volume(cid)))
 	var max_money := int(floor(float(GameState.credits) / float(price)))
 	var amount := mini(int(c.get("amount", 1)), mini(max_space, max_money))
@@ -638,6 +661,7 @@ func _c_market_buy(c: Dictionary) -> String:
 		return "Purchase not possible (cargo space or credits)."
 	GameState.spend(amount * price)
 	f.add_cargo(cid, amount)
+	GameState.skill_xp("trading", float(amount * price) / 500.0)      # package 29
 	return ""
 
 
@@ -657,7 +681,8 @@ func _c_market_sell(c: Dictionary) -> String:
 	if amount <= 0.0:
 		return "Nothing to sell."
 	f.remove_cargo(cid, amount)
-	var earn := int(round(amount * GameState.rep.sell_price(float(st["market"][cid]["sell"]), docked_faction())))
+	var earn := int(round(amount * GameState.rep.sell_price(float(st["market"][cid]["sell"]), docked_faction()) * (1.0 + GameState.skill_bonus("trading") * 0.5)))
+	GameState.skill_xp("trading", float(earn) / 500.0)      # package 29
 	GameState.add_credits(earn)
 	GameState.log_msg("Sold %.1f %s for %s." % [amount, GameData.item_name(cid), GameData.fmt_credits(earn)], GameState.COL_GOOD)
 	return ""

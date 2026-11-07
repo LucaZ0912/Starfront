@@ -7,6 +7,7 @@ extends CanvasLayer
 signal galaxy_requested
 signal station_requested
 signal ship_menu_requested
+signal pilot_window_requested          # package 29
 
 const FactionData = preload("res://data/factions.gd")
 const KIND_ICONS := {"star": "☀", "planet": "●", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖"}
@@ -446,6 +447,11 @@ func rebuild_ship_panel() -> void:
 	names.add_child(UI.label("%s %s" % [f.hull()["class"], f.hull()["name"]], 11, Color(0.7, 0.75, 0.85)))
 	_w["act"] = UI.label("", 12, Color(0.8, 0.85, 0.95))
 	ship_box.add_child(_w["act"])
+	# package 29: a skill is ready to advance
+	_w["skills"] = UI.button("", func(): pilot_window_requested.emit())
+	_w["skills"].add_theme_color_override("font_color", UI.GOOD)
+	_w["skills"].visible = false
+	ship_box.add_child(_w["skills"])
 	# package 27: the current speed
 	var sr := UI.hbox(6)
 	var sl := UI.label("Speed", 11, Color(0.65, 0.7, 0.8))
@@ -596,6 +602,10 @@ func _process(delta: float) -> void:
 		_ov_timer = 0.5
 		_update_overview()
 		_update_contacts()
+		if _w.has("skills"):
+			var n := GameState.skills_ready().size()
+			_w["skills"].visible = n > 0
+			_w["skills"].text = "▲ %d skill%s ready to advance [%s]" % [n, "" if n == 1 else "s", Keybinds.key_text("pilot_window")]
 	if f == null or not _w.has("act"):
 		return
 	var s := f.stats()

@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt. Code-Review von Teil 4 gemacht (Bericht `reviews/teil4_review.md`), alle Befunde sind abgearbeitet (0.4.25.46 und 0.4.25.47) – Teil 4 abgeschlossen. **Teil 5 läuft:** Paket 28a (Audio-Grundgerüst), die Menüsteuerung per Tastatur und Paket 28 (Pilot & Charaktererstellung) fertig, als Nächstes Paket 29 (Fähigkeiten). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.5.28.3. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt. Code-Review von Teil 4 gemacht (Bericht `reviews/teil4_review.md`), alle Befunde sind abgearbeitet (0.4.25.46 und 0.4.25.47) – Teil 4 abgeschlossen. **Teil 5 läuft:** Paket 28a (Audio-Grundgerüst), die Menüsteuerung per Tastatur und Paket 28 (Pilot & Charaktererstellung) und Paket 29 (Fähigkeiten + Pilot-Fenster) fertig, als Nächstes Paket 30 (Skilltree & Baupläne – Mechanik vorher besprechen). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.5.29.1. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -1064,7 +1064,7 @@ Nummerierung schließt an Teil 4 an (dort bis Paket 27).
 | --- | --- | --- | --- |
 | 28a ✓ | Audio-Grundgerüst | Spielereignisse (Andocken, Warp, Sprung, Treffer, Explosion, Modul an/aus, UI) lösen Sounds aus – zunächst mit Platzhaltern; Lautstärke-Regler für Gesamt, Musik, Atmosphäre und Effekte. Ab da bringt **jedes Paket seine Sounds gleich mit**; Musik, Atmosphäre und Feinschliff folgen in Teil 9 (Paket 69) | – |
 | 28 ✓ | Pilot & Charaktererstellung | Pilot als eigene Ebene im Spielstand; Sprite-Baukasten (Pixel-Art), Porträt aus dem Sprite; Name/Rufzeichen; Attribute verteilen; neuer Ablauf „Neues Spiel“ | – |
-| 29 | Fähigkeiten | Fähigkeiten aus Attributen abgeleitet, steigen durch Tun; kleine Prozent-Boni im Spiel; Charakter-Reiter im Schiffsmenü | 28 |
+| 29 ✓ | Fähigkeiten | Fähigkeiten aus Attributen abgeleitet, steigen durch Tun; kleine Prozent-Boni im Spiel; Charakter-Reiter im Schiffsmenü | 28 |
 | 30 | Skilltree & Baupläne | erste Fortschrittsmechanik: Module, Größen, Qualitäten und Schiffsklassen werden durch Tun freigeschaltet (nicht zeitbasiert wie EVE); dazu **Baupläne** für die Herstellung | 29, Teil 4 |
 | 31 | Crew-System | Rollen, Mindest- und Höchstcrew für Schiffe ab M, Wirkung der Crew-Werte, Lohn, Erfahrung | 29 |
 | 32 | Anheuern | neuer Stations-Service zum Anheuern (mit Monopolfirma), Crew-Verwaltung im Schiffsmenü, Crew aus Aufträgen | 31 |
@@ -1155,6 +1155,14 @@ Jede Fähigkeit hat einen **Grundwert aus zwei Attributen** und steigt durch **T
 | Firearms | Dexterity + Reflexes | Hauptnutzen ab Teil 7 (Handwaffen) | (ab Teil 7) |
 
 Athletics und Firearms haben in Teil 5 kaum Nutzen – bewusst so entschieden, sie zahlen sich ab Teil 7 aus.
+
+**Umgesetzt 29 (7. Nov 2026, alpha 0.5.29.1)** – nach den Entscheidungen von Luz (Aufstieg durch Tun + Bestätigen, eigenes Fenster), 4 neue automatische Prüfungen:
+
+- [x] **Zwölf Fähigkeiten** (`data/skills.gd`) wie in der Tabelle, Stufe 0–10, **+1 % je Stufe** auf ihre Wirkung. Die Attribute bestimmen die **Startstufe** (0 bei Mittelwert 3, 1 ab 5,5, 2 bei 8) und das **Lerntempo** (×0,9 bei 3 bis ×1,4 bei 8). Erfahrung für die nächste Stufe: 100 × (Stufe+1)^1,5.
+- [x] **Aufstieg durch Tun + Bestätigen:** Jede Fähigkeit sammelt Erfahrung aus ihrer Tätigkeit – Piloting (Warps, Andocken), Gunnery (Treffer auf Feinde), Engineering (Fertigung), Science (Analysen, Surveys), Navigation (Sprünge, Wurmlöcher), Mining (Abbau, Raffinieren), Trading (Handel am Markt), Negotiation (Aufträge), Electronics (Radarstörer). Ist genug da, meldet das Log den Aufstieg und im HUD erscheint „▲ n skills ready to advance [U]“; bestätigt wird im Pilot-Fenster, überschüssige Erfahrung bleibt erhalten. Leadership wächst erst mit den Crews (Paket 31), Athletics und Firearms ab Teil 7.
+- [x] **Wirkung** (nur auf den eigenen Schiffen): Piloting – Geschwindigkeit, Beschleunigung, schnelleres Ausrichten; Gunnery – Waffenschaden, schnellere Zielerfassung; Engineering – Reaktorleistung, kürzere Schild-Ausfallzeit; Science – Reichweite von Scannern und Survey; Navigation – Warp-Tempo, weniger Sprung-Treibstoff; Mining – Abbaurate; Trading – Kauf- und Verkaufspreise (je die Hälfte); Negotiation – Auftragsbelohnung; Electronics – Reichweite des Radarstörers.
+- [x] **Pilot-Fenster** (eigene Taste **U**, auch über der Station, mit Tastatur bedienbar): Reiter **Skills** (Karten mit Stufen-Balken, Erfahrung, Lerntempo, Wirkung jetzt, „Grows by“, Knopf „Advance“), **Skill tree** (die sechs Zweige als Vorschau – Inhalt mit Paket 30), **Pilot** (Porträt groß, Attribute, Werdegang).
+- [x] **Debug-Funktion** (Debug-Menü → Character): jede Fähigkeit auf eine Stufe setzen oder Erfahrung geben; die wirkenden Boni des aktiven Schiffs ohne → mit Fähigkeiten.
 
 #### Skilltree (Paket 30) – die erste Fortschrittsmechanik
 

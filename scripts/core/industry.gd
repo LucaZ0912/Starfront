@@ -95,6 +95,7 @@ static func refine(fit: ShipFitting, station: Dictionary, ore: String) -> String
 	fit.remove_cargo(ore, have)
 	fit.cargo[q["out_id"]] = float(fit.cargo.get(q["out_id"], 0.0)) + float(q["out"])
 	GameState.stats["refined"] = int(GameState.stats.get("refined", 0)) + int(have)
+	GameState.skill_xp("mining", 0.15 * float(have))
 	return ""
 
 

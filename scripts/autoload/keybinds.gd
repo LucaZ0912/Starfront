@@ -48,6 +48,7 @@ const ACTIONS := [
 	{"id": "cmd_follow", "label": "Follow selected ship", "group": "Ship commands", "def": [{"k": KEY_F}]},
 	{"id": "interdict_hit", "label": "Warp interdictor: hit the timing window", "group": "Modules", "def": [{"k": KEY_E}]},
 	{"id": "ship_menu", "label": "Ship menu", "group": "Windows", "def": [{"k": KEY_I}]},
+	{"id": "pilot_window", "label": "Pilot window (skills, skill tree)", "group": "Windows", "def": [{"k": KEY_U}]},
 	{"id": "station", "label": "Station window", "group": "Windows", "def": [{"k": KEY_L}]},
 	{"id": "galaxy_map", "label": "Galaxy map", "group": "Windows", "def": [{"k": KEY_M}]},
 	{"id": "map_territory", "label": "Galaxy map: territory overlay on/off", "group": "Windows", "def": [{"k": KEY_T}]},

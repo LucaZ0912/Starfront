@@ -376,7 +376,8 @@ func _compute() -> Dictionary:
 	s["dps"] = dps
 	_bundle_focus(s, h)
 	_drone_stats(s, drone_mods)
-	s["dps_total"] = dps["optical"] + dps["kinetic"] + dps["explosive"]
+	_skill_effects(s)
+	s["dps_total"] = s["dps"]["optical"] + s["dps"]["kinetic"] + s["dps"]["explosive"]
 	s["optimal_range"] = min_range * 0.8 if min_range < INF else s["sensor_range"] * 0.5
 	return s
 
@@ -389,6 +390,38 @@ const LANCE_CYCLE := 2.0          # a lance: charge 0.55 s + burn 1 s, then a sh
 ## hardpoint the beams join and fire together as one lance – +30 % damage per second. The lance replaces
 ## the single weapons (one tile). It charges and burns for a while, so it fires less often but each lance
 ## carries the damage of that whole time.
+## Package 29: the pilot's skills on the player's own ships – a few per cent each.
+func _skill_effects(s: Dictionary) -> void:
+	if faction != "player" or GameState.pilot.is_empty():
+		return
+	var pil := GameState.skill_bonus("piloting")
+	var gun := GameState.skill_bonus("gunnery")
+	var eng := GameState.skill_bonus("engineering")
+	var sci := GameState.skill_bonus("science")
+	var nav := GameState.skill_bonus("navigation")
+	if s.has("speed"):
+		s["speed"] = float(s["speed"]) * (1.0 + pil)
+	if s.has("accel"):
+		s["accel"] = float(s["accel"]) * (1.0 + pil)
+	s["power_output"] = float(s["power_output"]) * (1.0 + eng)
+	if s.has("power_available"):
+		s["power_available"] = float(s["power_available"]) * (1.0 + eng)
+	s["shield_downtime"] = float(s["shield_downtime"]) * (1.0 - eng)
+	s["survey_range_mult"] = float(s["survey_range_mult"]) * (1.0 + sci)
+	for t in s["tools"]:
+		if String(t.get("tool", "")) in ["scanner", "analyzer", "prospect", "survey", "warrant", "cargo_scan"] and t.has("range"):
+			t["range"] = float(t["range"]) * (1.0 + sci)
+	if s.has("warp_speed"):
+		s["warp_speed"] = float(s["warp_speed"]) * (1.0 + nav)
+	if s.has("jump_fuel"):
+		s["jump_fuel"] = float(s["jump_fuel"]) * (1.0 - nav)
+	if gun > 0.0:
+		for w in s["weapons"]:
+			w["damage"] = float(w["damage"]) * (1.0 + gun)
+		for k in s["dps"]:
+			s["dps"][k] = float(s["dps"][k]) * (1.0 + gun)
+
+
 func _bundle_focus(s: Dictionary, h: Dictionary) -> void:
 	s["focus_bundle"] = 0
 	if String(h.get("maker", "")) != "forge":

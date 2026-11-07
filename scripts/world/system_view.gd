@@ -2234,6 +2234,7 @@ func on_warp_started(ship: Ship) -> void:
 
 func on_warp_finished(ship: Ship) -> void:
 	if ship == player:
+		GameState.skill_xp("piloting", 5.0)       # package 29
 		Audio.play("warp_exit", "warp end")               # package 28a
 	if ship == player and _warp_auto:
 		_warp_auto = false
@@ -2731,6 +2732,7 @@ func _lawful_wreck(ship: Ship, killer) -> void:
 func on_ship_docked(ship: Ship, st_node: Celestial) -> void:
 	if ship == player:
 		Audio.play("dock_clamp", "docked")                # package 28a
+		GameState.skill_xp("piloting", 3.0)       # package 29
 	if ship != player and ship.fit.uid < 0:
 		if traffic != null:
 			traffic.on_docked(ship, st_node)

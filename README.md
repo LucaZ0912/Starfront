@@ -89,6 +89,13 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## Skills and the Pilot window (phase 0.5 package 29)
+- Twelve skills (Piloting, Gunnery, Engineering, Science, Navigation, Mining, Trading, Leadership, Negotiation,
+  Electronics, Athletics, Firearms) grow by doing; when enough experience is gathered you confirm the advance in
+  the **Pilot window [U]**. Every level gives +1 % on the skill's effect on your ships (up to +10 %).
+- The window also shows the skill tree's six branches (coming with package 30) and the pilot with portrait,
+  attributes and career.
+
 ## The pilot (phase 0.5 package 28)
 - A new game starts with creating the pilot: a pixel construction kit (body, skin, nine hair styles and colours,
   eyes, brows, beard, scars, freckles, outfit and colours, implants, tattoos, headgear) makes a 48 × 48 portrait

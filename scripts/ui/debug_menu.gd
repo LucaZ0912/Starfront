@@ -2,6 +2,7 @@ class_name DebugMenu
 extends CanvasLayer
 const PilotArtX = preload("res://scripts/core/pilot_art.gd")
 const PilotDataX = preload("res://data/pilot.gd")
+const SkillDataX = preload("res://data/skills.gd")
 ## Debug menu (F12): try everything quickly, including endgame content.
 ## Every button sends a "debug_*" command through the command bus.
 ## Only available when Commands.cheats_enabled (debug builds / running from the editor).
@@ -353,6 +354,35 @@ func _build_character() -> void:
 			a[id] = int(spins[id].value)
 		_cmd({"type": "debug_pilot", "attrs": a})
 		_set_tab(5)))
+	# package 29: skills – a level or experience; the bonuses at work, with and without the skills
+	_section("Skills (set a level / add experience)")
+	for s in SkillDataX.SKILLS:
+		var sid: String = s[0]
+		var r3 := _row()
+		var l3 := UI.label("%s  L%d  %s" % [String(s[1]), GameState.skill_level(sid), "READY" if GameState.skill_ready(sid) else ""], 12)
+		l3.custom_minimum_size = Vector2(190, 0)
+		r3.add_child(l3)
+		var lv := _spin(0, SkillDataX.MAX_LEVEL, GameState.skill_level(sid))
+		r3.add_child(lv)
+		r3.add_child(UI.button("Set", func():
+			_cmd({"type": "debug_skill", "skill": sid, "level": int(lv.value)})
+			_set_tab(5)))
+		r3.add_child(UI.button("+100 XP", func():
+			_cmd({"type": "debug_skill", "skill": sid, "xp": 100.0})
+			_set_tab(5)))
+	var f := GameState.active()
+	if f != null:
+		_section("Bonuses at work on %s (without → with skills)" % f.ship_name)
+		var plain := ShipFitting.from_dict(f.to_dict())
+		plain.faction = "civilian"
+		plain.mark_dirty()
+		var a0: Dictionary = plain.stats()
+		var a1: Dictionary = f.stats()
+		for k in [["Speed", "speed"], ["Power output", "power_output"], ["DPS", "dps_total"], ["Warp speed", "warp_speed"], ["Fuel per jump", "jump_fuel"], ["Shield downtime", "shield_downtime"]]:
+			if a1.has(k[1]):
+				content.add_child(UI.label("%s: %.1f → %.1f" % [k[0], float(a0.get(k[1], 0.0)), float(a1[k[1]])], 12, UI.TEXT_DIM))
+		content.add_child(UI.label("Prices: buy −%.1f %%, sell +%.1f %%  •  contract rewards +%d %%  •  mining +%d %%  •  target locks −%d %%" % [
+			GameState.skill_bonus("trading") * 50.0, GameState.skill_bonus("trading") * 50.0, GameState.skill_level("negotiation"), GameState.skill_level("mining"), GameState.skill_level("gunnery")], 12, UI.TEXT_DIM))
 
 
 func _open_creator() -> void:

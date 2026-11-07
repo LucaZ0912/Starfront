@@ -1343,6 +1343,8 @@ func _travel(delta: float, s: Dictionary):
 
 func align_time() -> float:
 	var t := clampf(float(fit.stats()["mass"]) / 1200.0, 1.5, 6.0) * float(fit.stats().get("align_mult", 1.0))
+	if faction == "player":
+		t *= 1.0 - GameState.skill_bonus("piloting")        # package 29
 	if is_traffic():
 		t = maxf(t * 2.5, 6.0)       # civilians and patrols take their time before warping
 	return t
@@ -1673,6 +1675,8 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 	if raw > 0.0:
 		fit.structure -= raw * float(GameData.LAYER_MULT["structure"][dtype])
 	_reflect(armor0 - fit.armor, dtype, attacker)
+	if attacker != null and view != null and attacker == view.player and Ship.hostile(attacker, self):
+		GameState.skill_xp("gunnery", 1.0)        # package 29
 	# package 28a: the sound of the hit – the deepest layer it reached
 	if raw > 0.0:
 		Audio.play_at("hit_hull", position, "hit hull")
@@ -1802,7 +1806,8 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 	var ore: String = node.data["ore"]
 	var cls: String = GameData.commodities.get(ore, {}).get("class", "")
 	var bonus := 1.0 + float(fit.stats()["mining_bonus"].get(cls, 0.0))
-	var amount := minf(float(t["rate"]) * mining_mult(t, ore) * bonus * float(fit.stats()["power_ratio"]) * delta, float(node.data["amount"]))
+	var skill := 1.0 + (GameState.skill_bonus("mining") if faction == "player" else 0.0)       # package 29
+	var amount := minf(float(t["rate"]) * mining_mult(t, ore) * bonus * skill * float(fit.stats()["power_ratio"]) * delta, float(node.data["amount"]))
 	# Mixed asteroids yield their ores in proportion ("mix": ore -> share)
 	var mix: Dictionary = node.data.get("mix", {ore: 1.0})
 	var added := 0.0
@@ -1815,6 +1820,7 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 	node.data["amount"] = float(node.data["amount"]) - added
 	if faction == "player":
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
+		GameState.skill_xp("mining", 0.25 * added)
 		GameState.codex.event("mining")
 	var beam_col := Color(0.45, 0.9, 1.0) if t.get("tool", "") == "harvester" else Color(1.0, 0.62, 0.25)
 	tool_beams.append([node.position, beam_col, "mining", float(node.radius)])
@@ -2011,6 +2017,8 @@ func _lock_duration(node, s: Dictionary) -> float:
 	var t := clampf(1.6 * sqrt(60.0 / maxf(sig, 5.0)) / maxf(float(s["resolution"]), 0.1), 0.3, 8.0)
 	if node is Ship and node.special == "ghost":
 		t *= 2.5
+	if faction == "player":
+		t *= 1.0 - GameState.skill_bonus("gunnery")      # package 29
 	return t
 
 
@@ -2428,6 +2436,8 @@ func _run_survey(delta: float, slot: String, d: Dictionary) -> void:
 		module_on[slot] = false
 		module_state[slot] = "off"
 		view.complete_survey(job)
+		if view.player == self:
+			GameState.skill_xp("science", 6.0)
 		_mlog("%s: survey of %s complete – results are in the survey window." % [d["name"], job["name"]], GameState.COL_GOOD)
 
 
@@ -2576,6 +2586,7 @@ func _run_factory(delta: float, slot: String) -> void:
 			return
 	GameState.jobs.erase(j)
 	GameState.stats["built"] = int(GameState.stats.get("built", 0)) + 1
+	GameState.skill_xp("engineering", 10.0)
 	_mlog("Factory finished: %s." % ("a drone (in the hangar)" if item == "drone" else GameData.module_name(item) + " (in the cargo hold)"), GameState.COL_GOOD)
 
 
@@ -2607,6 +2618,7 @@ func _refine(delta: float, slot: String, d: Dictionary) -> void:
 	fit.remove_cargo(ore, amount)
 	fit.add_cargo(prod, out)
 	GameState.stats["refined"] = float(GameState.stats.get("refined", 0)) + out
+	GameState.skill_xp("mining", 0.15 * out)
 	smoke(delta)
 
 
@@ -3371,7 +3383,10 @@ func jam_radius() -> float:
 				r = maxf(r, float(a["jam_range"]))
 		return r
 	var jm := _jammer_module(s)
-	return float(jm.get("jam_range", 0.0)) if jamming and jm.get("powered", true) else 0.0
+	var el := 1.0 + (GameState.skill_bonus("electronics") if faction == "player" else 0.0)        # package 29
+	if jamming and jm.get("powered", true) and faction == "player" and manual:
+		GameState.skill_xp("electronics", 0.02)
+	return float(jm.get("jam_range", 0.0)) * el if jamming and jm.get("powered", true) else 0.0
 
 
 ## Mine launcher (package 20): lays one mine of the type chosen for this launcher (right-click its

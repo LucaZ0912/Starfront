@@ -33,6 +33,8 @@ var pilot_name := "Lefty"
 var pilot := {}
 const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const PilotData = preload("res://data/pilot.gd")
+const SkillData = preload("res://data/skills.gd")
+signal skills_changed
 var credits := START_CREDITS
 var fleet: Array = []            # all owned ships (ShipFitting)
 var active_uid := -1             # the ship the pilot is flying
@@ -147,8 +149,63 @@ func make_pilot(p_name: String, data: Dictionary = {}) -> Dictionary:
 	if PilotData.attrs_error(attrs) != "":
 		attrs = PilotData.default_attrs()
 	var nm := String(data.get("name", p_name)).strip_edges()
+	var skills: Dictionary = SkillData.new_skills(attrs)
+	var old: Dictionary = data.get("skills", {})
+	for id in old:                         # a loaded pilot keeps its skills
+		if skills.has(id):
+			skills[id] = {"lvl": int(old[id].get("lvl", 0)), "xp": float(old[id].get("xp", 0.0))}
 	return {"name": nm if nm != "" else p_name, "callsign": String(data.get("callsign", "")).strip_edges().left(16),
-		"look": PilotArt.clean(data.get("look", PilotArt.default_look())), "attrs": attrs.duplicate()}
+		"look": PilotArt.clean(data.get("look", PilotArt.default_look())), "attrs": attrs.duplicate(), "skills": skills}
+
+
+# ---------------------------------------------------------------- Package 29: skills
+
+func skill_level(id: String) -> int:
+	return int(pilot.get("skills", {}).get(id, {}).get("lvl", 0))
+
+
+## The skill's effect as a fraction: +1 % per level.
+func skill_bonus(id: String) -> float:
+	return float(skill_level(id)) * SkillData.BONUS_PER_LEVEL
+
+
+func skill_ready(id: String) -> bool:
+	var sk: Dictionary = pilot.get("skills", {}).get(id, {})
+	return not sk.is_empty() and int(sk["lvl"]) < SkillData.MAX_LEVEL and float(sk["xp"]) >= SkillData.need(int(sk["lvl"]))
+
+
+func skills_ready() -> Array:
+	var out: Array = []
+	for id in SkillData.ids():
+		if skill_ready(id):
+			out.append(id)
+	return out
+
+
+## Experience for a skill by doing (scaled by how fast it learns); tells the pilot once an advance is ready.
+func skill_xp(id: String, amount: float) -> void:
+	var sk: Dictionary = pilot.get("skills", {}).get(id, {})
+	if sk.is_empty() or amount <= 0.0 or int(sk["lvl"]) >= SkillData.MAX_LEVEL:
+		return
+	var was := skill_ready(id)
+	sk["xp"] = float(sk["xp"]) + amount * SkillData.learn_rate(id, pilot.get("attrs", {}))
+	if not was and skill_ready(id):
+		log_msg("%s can advance to level %d – open the Pilot window [%s]." % [SkillData.info(id)[1], int(sk["lvl"]) + 1, Keybinds.key_text("pilot_window")], COL_GOOD)
+		skills_changed.emit()
+
+
+## Confirms a ready advance: one level up, the experience beyond it carries over.
+func skill_advance(id: String) -> String:
+	if not skill_ready(id):
+		return "%s is not ready to advance." % String(SkillData.info(id)[1]) if not SkillData.info(id).is_empty() else "Unknown skill."
+	var sk: Dictionary = pilot["skills"][id]
+	sk["xp"] = float(sk["xp"]) - SkillData.need(int(sk["lvl"]))
+	sk["lvl"] = int(sk["lvl"]) + 1
+	for f in fleet:
+		f.mark_dirty()                    # the bonuses change the ships' values
+	log_msg("%s is now level %d (+%d %%)." % [SkillData.info(id)[1], int(sk["lvl"]), int(sk["lvl"])], COL_GOOD)
+	skills_changed.emit()
+	return ""
 
 
 func set_pilot(p: Dictionary) -> void:
@@ -729,9 +786,10 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 		"mining":
 			f.remove_cargo(m["item"], float(m["amount"]))
 	missions.erase(m)
-	var pay := Missions.payout(m)
+	var pay := int(round(Missions.payout(m) * (1.0 + skill_bonus("negotiation"))))      # package 29
 	add_credits(pay)
 	stats["missions_done"] = int(stats["missions_done"]) + 1
+	skill_xp("negotiation", 12.0)
 	log_msg("Contract complete: %s  (+%s)" % [m["title"], GameData.fmt_credits(pay)], COL_GOOD)
 	Audio.play("mission_complete", "contract complete")   # package 28a
 	rep.on_contract(m)
@@ -806,6 +864,7 @@ func notify(event: String, system_id: int) -> void:
 			stats["kills"] = int(stats["kills"]) + 1
 		"analyse":
 			stats["analysed"] = int(stats["analysed"]) + 1
+			skill_xp("science", 20.0)
 	var changed := false
 	for m in missions:
 		if (event == "kill" and m["type"] == "bounty") or (event == "analyse" and m["type"] == "survey"):
@@ -874,6 +933,7 @@ func begin_wormhole(f: ShipFitting, to_id: int) -> String:
 	f.route.clear()
 	f.wormhole_ready = play_time + WORMHOLE_TIME + float(f.hull()["wormhole"].get("cooldown", 120.0))
 	stats["jumps"] = int(stats["jumps"]) + 1
+	skill_xp("navigation", 15.0)
 	log_msg("%s opens a wormhole → %s (%d jump%s, %d exotic matter)." % [f.ship_name, Universe.systems[to_id]["name"], dist, "" if dist == 1 else "s", dist])
 	ship_jumped_out.emit(f)
 	return ""
@@ -911,6 +971,7 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	f.transit = JUMP_TIME
 	f.docked_at = ""
 	stats["jumps"] = int(stats["jumps"]) + 1
+	skill_xp("navigation", 8.0)
 	codex.event("jump")
 	log_msg("%s enters hyperspace → %s." % [f.ship_name, Universe.systems[to_id]["name"]])
 	ship_jumped_out.emit(f)
@@ -971,6 +1032,7 @@ func _advance_station_jobs(delta: float) -> void:
 			jobs.erase(j)
 			storage_add(String(j["station"]), String(j["item"]))
 			stats["built"] = int(stats.get("built", 0)) + 1
+			skill_xp("engineering", 10.0)
 			log_msg("Manufacturing finished: %s – in storage at %s." % [GameData.module_name(String(j["item"])), String(j.get("station_name", "the station"))], COL_GOOD)
 
 

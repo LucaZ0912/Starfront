@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.29.1 – 2026-11-07
+
+**Package 29 – skills and the Pilot window.**
+- Twelve skills from the attributes, levels 0–10 (+1 % each), experience by doing; an advance is confirmed.
+- Their bonuses work on the pilot's own ships (speed, damage, power, scanners, warp, mining, prices, rewards …).
+- Pilot window [U]: skills, skill tree preview (package 30), the pilot; the HUD shows a ready advance.
+- Debug menu → Character: skill levels, experience, the bonuses at work.
+
 ## alpha 0.5.28.3 – 2026-11-07
 
 **Package 28 – the pilot and character creation.**

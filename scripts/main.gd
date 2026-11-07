@@ -10,6 +10,8 @@ var hud: HUD
 var galaxy: GalaxyMap
 var station_panel: StationUI
 var ship_menu: ShipMenu
+var pilot_window                       # package 29: skills, skill tree, the pilot (U)
+const PilotWindowScript = preload("res://scripts/ui/pilot_window.gd")
 var transit_fx: TransitOverlay
 var pause_menu: PauseMenu
 var debug_menu: DebugMenu
@@ -28,6 +30,8 @@ func _ready() -> void:
 	add_child(station_panel)
 	ship_menu = ShipMenu.new()
 	add_child(ship_menu)
+	pilot_window = PilotWindowScript.new()
+	add_child(pilot_window)
 	transit_fx = TransitOverlay.new()
 	add_child(transit_fx)
 	pause_menu = PauseMenu.new()
@@ -38,12 +42,14 @@ func _ready() -> void:
 	hud.galaxy_requested.connect(toggle_galaxy)
 	hud.station_requested.connect(open_station)
 	hud.ship_menu_requested.connect(toggle_ship_menu)
+	hud.pilot_window_requested.connect(toggle_pilot_window)
 	galaxy.routes_changed.connect(_on_routes_changed)
 	galaxy.closed.connect(_update_input)
 	station_panel.closed.connect(_update_input)
 	ship_menu.closed.connect(func(): station_panel.rebuild())
 	station_panel.ship_menu_requested.connect(open_ship_menu)
 	ship_menu.closed.connect(_update_input)
+	pilot_window.closed.connect(_update_input)
 	GameState.ship_jumped_out.connect(_on_jumped_out)
 	GameState.ship_arrived_system.connect(_on_arrived_system)
 	GameState.active_changed.connect(_on_active_changed)
@@ -83,7 +89,7 @@ func load_system(sys: int) -> void:
 
 func _update_input() -> void:
 	if view != null and is_instance_valid(view):
-		view.input_enabled = not (galaxy.visible or station_panel.visible or ship_menu.visible or in_hyperspace)
+		view.input_enabled = not (galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or in_hyperspace)
 
 
 func toggle_galaxy() -> void:
@@ -102,6 +108,17 @@ func toggle_ship_menu() -> void:
 		ship_menu.close()
 	else:
 		open_ship_menu()
+
+
+## Package 29: the Pilot window – also over the station.
+func toggle_pilot_window() -> void:
+	if pilot_window.visible:
+		pilot_window.close()
+	elif not in_hyperspace:
+		galaxy.close()
+		ship_menu.close()
+		pilot_window.open()
+	_update_input()
 
 
 func open_ship_menu() -> void:
@@ -207,6 +224,8 @@ func handle_input(event: InputEvent) -> void:
 		toggle_galaxy()
 	elif event.is_action_pressed("ship_menu", false, true):
 		toggle_ship_menu()
+	elif event.is_action_pressed("pilot_window", false, true):
+		toggle_pilot_window()
 	elif event.is_action_pressed("station", false, true):
 		if station_panel.visible:
 			station_panel.close()
@@ -215,7 +234,9 @@ func handle_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("help", false, true):
 		hud.toggle_help()
 	elif event.is_action_pressed("menu_back", false, true):
-		if ship_menu.visible:
+		if pilot_window.visible:
+			pilot_window.close()
+		elif ship_menu.visible:
 			ship_menu.close()
 		elif station_panel.visible:
 			station_panel.close()
