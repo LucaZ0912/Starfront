@@ -8,6 +8,7 @@ signal galaxy_requested
 signal station_requested
 signal ship_menu_requested
 signal pilot_window_requested          # package 29
+signal pilot_tab_requested(tab: int)   # 0.5.30.5: the hint opens the skill tree or the perks
 
 const FactionData = preload("res://data/factions.gd")
 const KIND_ICONS := {"star": "☀", "planet": "●", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖"}
@@ -452,7 +453,7 @@ func rebuild_ship_panel() -> void:
 	_w["act"] = UI.label("", 12, Color(0.8, 0.85, 0.95))
 	ship_box.add_child(_w["act"])
 	# package 29: a skill is ready to advance
-	_w["skills"] = UI.button("", func(): pilot_window_requested.emit())
+	_w["skills"] = UI.button("", func(): pilot_tab_requested.emit(3 if not GameState.tiles_ready().is_empty() else 2))
 	_w["skills"].add_theme_color_override("font_color", UI.GOOD)
 	_w["skills"].visible = false
 	ship_box.add_child(_w["skills"])

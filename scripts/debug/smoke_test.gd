@@ -62,6 +62,33 @@ func _ready() -> void:
 		print("[SMOKE] started")
 
 
+## 0.5.30.5: a quick run of single test groups –  -- --smoketest --only=pilot,codex  runs _test_pilot and
+## _test_codex right after the start and quits (the full run stays the rule for every big package).
+func _only_tests() -> Array:
+	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("--only="):
+			return Array(String(a).trim_prefix("--only=").split(",", false))
+	return []
+
+
+func _run_only(view: SystemView) -> void:
+	step = -1
+	for n in _only_tests():
+		var fn := "_test_" + String(n)
+		var argc := -1
+		for m in get_method_list():
+			if m["name"] == fn:
+				argc = (m["args"] as Array).size()
+		if argc < 0:
+			check(false, "no test group %s" % fn)
+		elif argc == 0:
+			await call(fn)
+		else:
+			await call(fn, view)
+	print("[SMOKE] DONE – failures: %d %s" % [failures.size(), str(failures)])
+	get_tree().quit(1 if failures.size() > 0 else 0)
+
+
 func check(cond: bool, what: String) -> void:
 	print("[SMOKE] %s %s" % ["OK  " if cond else "FAIL", what])
 	if not cond:
@@ -78,6 +105,9 @@ func _process(delta: float) -> void:
 	var view: SystemView = main.view
 	match step:
 		0:
+			if timer > 0.5 and _only_tests().size() > 0:
+				_run_only(view)
+				return
 			if timer > 0.5:
 				check(view.player != null, "active ship in system")
 				check(GameState.fleet.size() == 1, "start with exactly one ship")
@@ -1337,9 +1367,13 @@ func _test_reputation(view: SystemView) -> void:
 	Commands.execute({"type": "debug_rep", "faction": "covenant", "value": 25})
 	check(big != "" and locked_neutral != "" and r.module_error(mil, big) == "" and r.contract_bonus("covenant") > 0.0, "military L gear and contract bonus need Friendly standing")
 	var sm: ShipMenu = main.ship_menu
-	sm.open(view, 5)
-	check(sm.visible and sm.content.get_child_count() > 0 and sm.TABS[5] == "Standing", "ship menu: Standing tab")
-	sm.close()
+	var pws = main.pilot_window
+	pws.sub = 1
+	pws.open(0)
+	check(pws.visible and pws.body.get_child_count() > 3 and pws.SUBS[1] == "Standings" and not ("Standing" in sm.TABS),
+		"Pilot window → Pilot → Standings (moved from the ship menu)")
+	pws.sub = 0
+	pws.close()
 	for n in [pat, pir, dpat]:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -1353,7 +1387,9 @@ func _shoot_standing(view: SystemView) -> void:
 	for kv in [["assembly", 45], ["covenant", -35], ["directorate", 8], ["hollow_crown", 25], ["severed", -70], ["free_captains", -10]]:
 		Commands.execute({"type": "debug_rep", "faction": kv[0], "value": kv[1]})
 	var sm: ShipMenu = main.ship_menu
-	sm.open(view, 5)
+	var pws = main.pilot_window
+	pws.sub = 1
+	pws.open(0)
 	for i in 6:
 		await get_tree().process_frame
 	var img := get_viewport().get_texture().get_image()
@@ -1361,10 +1397,13 @@ func _shoot_standing(view: SystemView) -> void:
 	print("[SMOKE] screenshot: Claude outputs/standing.png")
 	GameState.codex.event("faction:hollow_crown")
 	GameState.codex.event("colossus")
-	sm.open(view, 6)
+	pws.sub = 2
+	pws.rebuild()
 	for i in 6:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/codex.png")
+	pws.sub = 0
+	pws.close()
 	print("[SMOKE] screenshot: Claude outputs/codex.png")
 	sm.open(view, 1)
 	for i in 6:
@@ -1532,9 +1571,11 @@ func _shoot_standing(view: SystemView) -> void:
 	xsh.save_png("res://Claude outputs/axiom_ships.png")
 	GameState.codex.unlock("maker_khi")
 	sm.mod_view = "fitting"
-	sm.open(view, 6)
+	var pwc = main.pilot_window
+	pwc.sub = 2
+	pwc.open(0)
 	var cv = null
-	for n7 in sm.content.find_children("*", "", true, false):
+	for n7 in pwc.body.find_children("*", "", true, false):
 		if n7.has_method("_build_page"):
 			cv = n7
 	if cv != null:
@@ -1543,6 +1584,8 @@ func _shoot_standing(view: SystemView) -> void:
 	for i in 6:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/codex_maker.png")
+	pwc.sub = 0
+	pwc.close()
 	sm.mod_view = "fitting"
 	sm.close()
 	# outfitter of the biggest station here (package 19: families with size · quality buttons)
@@ -4006,7 +4049,7 @@ func _test_kanayama(view: SystemView) -> void:
 	GameState.jobs = GameState.jobs.filter(func(j): return int(j.get("uid", 0)) != 99901)
 	# ship menu: Industry and Market tabs only for ships that have them
 	var sm = main.ship_menu
-	sm.open(view, 7)
+	sm.open(view, sm.TAB_INDUSTRY)
 	var hidden_ok: bool = not sm.tab_buttons[sm.TAB_INDUSTRY].visible and not sm.tab_buttons[sm.TAB_MARKET].visible and sm.tab == 0
 	sm.close()
 	var keep_uid: int = GameState.active_uid
@@ -4014,8 +4057,8 @@ func _test_kanayama(view: SystemView) -> void:
 	kf2.system_id = view.system_id
 	GameState.add_ship(kf2)
 	GameState.active_uid = kf2.uid
-	sm.open(view, 8)
-	var shown_ok: bool = sm.tab_buttons[sm.TAB_INDUSTRY].visible and sm.tab_buttons[sm.TAB_MARKET].visible and sm.tab == 8 and sm.content.get_child_count() > 0
+	sm.open(view, sm.TAB_MARKET)
+	var shown_ok: bool = sm.tab_buttons[sm.TAB_INDUSTRY].visible and sm.tab_buttons[sm.TAB_MARKET].visible and sm.tab == sm.TAB_MARKET and sm.content.get_child_count() > 0
 	sm.close()
 	GameState.active_uid = keep_uid
 	GameState.fleet.erase(kf2)
@@ -5367,6 +5410,21 @@ func _test_skills() -> void:
 	pw.open(3)
 	var n3: int = pw.body.get_child_count()
 	pw.close()
+	main.toggle_pilot_window()
+	var u_ok: bool = pw.visible and pw.tab == 0 and pw.sub == 0 and pw.TABS[0] == "Pilot"
+	var stats_ok := false
+	for lb in pw.body.find_children("*", "Label", true, false):
+		if (lb as Label).text == "Net worth":
+			stats_ok = true
+	var subs_ok := true
+	for si in 3:
+		pw._set_sub(si)
+		subs_ok = subs_ok and pw.body.get_child_count() > 2
+	pw.sub = 0
+	main.toggle_pilot_window()
+	var sm_info := main.ship_menu as ShipMenu
+	check(u_ok and stats_ok and subs_ok and not pw.visible and not ("Codex" in sm_info.TABS),
+		"U opens the Pilot tab first: Info with finances and statistics, Standings, Codex (moved from the ship menu)")
 	check(n0 > 1 and n1 > 1 and n2 > 1 and n3 > 0 and Keybinds.key_text("pilot_window") == "U",
 		"Pilot window [U]: skills, perks, skill tree, pilot")
 	GameState.set_pilot(keep)

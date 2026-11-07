@@ -106,7 +106,8 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   Electronics, Athletics, Firearms) grow by doing and rise by themselves; every level gives +1 % on the skill's
   effect on your own ships (up to +10 %). All experience also feeds the **pilot level** – every level a perk point
   (perks come with package 30). See it all in the **Pilot window [U]**.
-- The window also shows the perks, the skill tree and the pilot with portrait, attributes and career.
+- The window opens on the **Pilot** tab: Info (portrait, name, level, attributes and all statistics – finances,
+  flight & combat, work, contracts), **Standings** and **Codex**; then Skills, Perks and the Skill tree.
 
 ## The pilot (phase 0.5 package 28)
 - A new game starts with creating the pilot: a pixel construction kit (body, skin, nine hair styles and colours,
@@ -336,7 +337,7 @@ generates every allowed size and quality – about 1,700 modules (`GameData.modu
   Continue (alpha rule: no migrations that would hold back reworks).
 
 ## Codex (phase 0.5 package 18)
-An in-game encyclopedia – ship menu → **Codex** tab, and **Codex** in the main menu (there: everything
+An in-game encyclopedia – Pilot window [U] → Pilot → **Codex**, and **Codex** in the main menu (there: everything
 discovered in any of your games, collected in `user://codex.cfg`). 45 entries in six categories: Basics,
 History, Factions, Corporations, The Cluster, Technology – with crest, ship or icon pictures and
 "see also" links (`data/codex.gd`; faction and corporation entries are generated from their data).
@@ -482,7 +483,7 @@ faster) or *Regenerator* (fast shields, self-repairing armour).
   **Suspect** (1–2 points): its patrols attack you, even inside no-fire zones. **Wanted** (3–5): also no
   contracts at its stations. **Most Wanted** (6+): its stations refuse docking. One point fades every
   5 min without a new crime; the fine (2,000 cr per point) clears the record at a Bond Office of that
-  faction (command `fine_pay`). Status in ship menu → Standing and at the Bond Office; debug menu
+  faction (command `fine_pay`). Status in Pilot window → Pilot → Standings and at the Bond Office; debug menu
   (Pilot tab) sets records (`debug_wanted`).
 
 ## Factions & territory (phase 0.5 package 10)
@@ -560,7 +561,7 @@ slightly negative (−10) with the pirate factions.
   hangar; no shipyard, bond office or bulletin board. Free Captains own no havens.
 - **Attacking anyone:** weapons now work on every ship, not only hostile ones – the log warns before you fire
   on a ship that is not hostile. That ship and (for 90 s) its faction fight back.
-- **Ship menu → Standing** shows crest, tier, value bar and the current effects for every faction; the
+- **Pilot window → Pilot → Standings** shows crest, tier, value bar and the current effects for every faction; the
   station header shows your standing with its owner, the selection panel your standing with a ship's
   faction (and HOSTILE if it would attack you).
 - Debug menu (Pilot tab): ±25 or set a value for one or all factions – command `{"type": "debug_rep",

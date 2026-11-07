@@ -1,11 +1,12 @@
 extends CanvasLayer
-## Package 29: the Pilot window (U). Three tabs:
+## Package 29: the Pilot window (U). Four tabs (0.5.30.5: Pilot first, U always opens it):
+##   Pilot      – sub-tabs Info (portrait, name, attributes, finances and all statistics), Standings (every
+##                faction, moved here from the ship menu) and Codex (moved here from the ship menu)
 ##   Skills     – the twelve skills: level (10 pips), experience to the next level, the effect now, what makes it
 ##                grow; a ready advance is confirmed here ("Advance")
 ##   Perks      – a perk point per pilot level
 ##   Skill tree – drawn as a tree (0.5.30.2): the trunk (Pilot Licence) at the bottom, branches by activity;
 ##                drag it, walk it with W/A/S/D, the detail of a tile on the right
-##   Pilot      – portrait, name, call sign, attributes and a short career
 ## Mouse and keyboard (W/A/S/D, Enter, Q/E for the tabs, Escape).
 
 signal closed
@@ -14,10 +15,18 @@ const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const PilotData = preload("res://data/pilot.gd")
 const SkillData = preload("res://data/skills.gd")
 const COL := Color(1.0, 0.82, 0.35)
-const TABS := ["Skills", "Perks", "Skill tree", "Pilot"]
+const TABS := ["Pilot", "Skills", "Perks", "Skill tree"]
+const TAB_PILOT := 0
+const TAB_SKILLS := 1
+const TAB_PERKS := 2
+const TAB_TREE := 3
+const SUBS := ["Info", "Standings", "Codex"]
+const StandingView = preload("res://scripts/ui/standing_view.gd")
+const CodexView = preload("res://scripts/ui/codex_view.gd")
 const TreeData = preload("res://data/skilltree.gd")
 
 var tab := 0
+var sub := 0                              # Pilot tab: 0 Info, 1 Standings, 2 Codex
 var tab_buttons: Array = []
 var body: VBoxContainer
 var _sc: ScrollContainer
@@ -102,13 +111,15 @@ func rebuild() -> void:
 	_tsc = null
 	_canvas = null
 	_detail_box = null
-	_sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if tab == 2 else ScrollContainer.SCROLL_MODE_AUTO
+	var fixed := tab == TAB_TREE or (tab == TAB_PILOT and sub == 2)     # the tree and the codex scroll by themselves
+	_sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if fixed else ScrollContainer.SCROLL_MODE_AUTO
+	_sc.scroll_vertical = 0
 	UI.clear(body)
 	match tab:
-		0: _skills()
-		1: _perks()
-		2: _tree()
-		3: _pilot()
+		TAB_PILOT: _pilot()
+		TAB_SKILLS: _skills()
+		TAB_PERKS: _perks()
+		TAB_TREE: _tree()
 
 
 # ---- skills
@@ -596,26 +607,65 @@ class TreeCanvas extends Control:
 # ---- the pilot
 
 func _pilot() -> void:
+	var subs := UI.hbox(4)
+	body.add_child(subs)
+	for i in SUBS.size():
+		var idx := i
+		var b := UI.button(SUBS[i], func(): _set_sub(idx))
+		b.toggle_mode = true
+		b.button_pressed = i == sub
+		b.custom_minimum_size = Vector2(130, 30)
+		subs.add_child(b)
+	var line := ColorRect.new()
+	line.color = Color(COL, 0.4)
+	line.custom_minimum_size = Vector2(0, 2)
+	body.add_child(line)
+	match sub:
+		0: _pilot_info()
+		1: StandingView.build(body)
+		2:
+			var cv := CodexView.new()
+			body.add_child(cv)
+			cv.setup(true)
+
+
+func _set_sub(i: int) -> void:
+	sub = i
+	rebuild()
+
+
+## Info: who the pilot is, and every number the career has gathered.
+func _pilot_info() -> void:
 	var row := UI.hbox(18)
 	body.add_child(row)
 	var frame := UI.neon_panel(Color(COL, 0.5), Color(0.02, 0.01, 0.05, 1.0), 1)
 	row.add_child(frame)
 	var por := TextureRect.new()
 	por.texture = PilotArt.portrait(GameState.pilot.get("look", {}))
-	por.custom_minimum_size = Vector2(240, 240)
+	por.custom_minimum_size = Vector2(220, 220)
 	por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	por.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	frame.add_child(por)
 	var v := UI.vbox(6)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(v)
 	v.add_child(UI.label("CMDR %s" % GameState.pilot_title(), 22, UI.NEON_CYAN))
+	var nrow := UI.hbox(6)
+	v.add_child(nrow)
+	var le := LineEdit.new()
+	le.text = GameState.pilot_name
+	le.custom_minimum_size = Vector2(220, 0)
+	nrow.add_child(le)
+	nrow.add_child(UI.button("Rename", func():
+		Commands.execute({"type": "rename_pilot", "name": le.text})
+		rebuild()))
 	_level_bar(v)
 	v.add_child(UI.label("ATTRIBUTES", 14, COL))
 	for at in PilotData.ATTRS:
 		var r := UI.hbox(8)
 		v.add_child(r)
-		var l := UI.label(String(at[1]), 14)
+		var l := UI.label(String(at[1]), 13)
 		l.custom_minimum_size = Vector2(120, 0)
 		r.add_child(l)
 		var val := GameState.pilot_attr(String(at[0]))
@@ -623,14 +673,75 @@ func _pilot() -> void:
 		r.add_child(pips)
 		for i in PilotData.MAX:
 			var p := ColorRect.new()
-			p.custom_minimum_size = Vector2(14, 10)
+			p.custom_minimum_size = Vector2(14, 9)
 			p.color = COL if i < val else Color(0.2, 0.18, 0.14)
 			pips.add_child(p)
-		r.add_child(UI.label(str(val), 14, UI.GOOD))
+		r.add_child(UI.label(str(val), 13, UI.GOOD))
 		r.add_child(UI.label(String(at[2]), 11, UI.TEXT_DIM))
-	v.add_child(UI.label("CAREER", 14, COL))
-	var st: Dictionary = GameState.stats
-	v.add_child(UI.label("Flight time %s  •  jumps %d  •  ships destroyed %d  •  contracts %d  •  anomalies analysed %d  •  ore mined %.0f" % [
-		SaveGame.fmt_time(GameState.play_time), int(st.get("jumps", 0)), int(st.get("kills", 0)), int(st.get("missions_done", 0)),
-		int(st.get("analysed", 0)), float(st.get("mined", 0.0))], 13, UI.TEXT_DIM))
 	v.add_child(UI.label("The attributes stay as they were set at the start; the looks can be changed at an Image Studio.", 11, UI.TEXT_DIM))
+	# the statistics
+	var st: Dictionary = GameState.stats
+	var ships_total := 0
+	for f in GameState.fleet:
+		ships_total += GameState.ship_value(f)
+	var cards := UI.hbox(12)
+	body.add_child(cards)
+	_stat_card(cards, "FINANCES", [
+		["Credits", GameData.fmt_credits(GameState.credits)],
+		["Net worth", GameData.fmt_credits(GameState.net_worth())],
+		["Ships owned", "%d  (%s)" % [GameState.fleet.size(), GameData.fmt_credits(ships_total)]],
+		["Stored modules", GameData.fmt_credits(GameState.storage_value())],
+		["Credits earned", GameData.fmt_credits(int(st.get("earned", 0)))],
+		["Traded at markets", GameData.fmt_credits(int(GameState.metric("turnover")))],
+		["Markets traded at", _n(GameState.metric("markets"))],
+	])
+	_stat_card(cards, "FLIGHT & COMBAT", [
+		["Play time", SaveGame.fmt_time(GameState.play_time)],
+		["Warps", _n(GameState.metric("warps"))],
+		["Hyperspace jumps", _n(GameState.metric("jumps"))],
+		["Systems visited", _n(GameState.metric("systems"))],
+		["Pirates destroyed", _n(GameState.metric("kills"))],
+		["Bounties redeemed", _n(GameState.metric("bounties"))],
+		["Damage taken", _n(GameState.metric("damage_taken"))],
+		["Ships scanned", _n(GameState.metric("scans"))],
+	])
+	_stat_card(cards, "WORK", [
+		["Ore mined", _n(GameState.metric("mined"))],
+		["Ore refined", _n(float(st.get("refined", 0)))],
+		["… of it at stations", _n(GameState.metric("refined_station"))],
+		["Modules built", _n(GameState.metric("built"))],
+		["Anomalies analysed", _n(GameState.metric("analysed"))],
+		["Exotic matter", _n(GameState.metric("exotic"))],
+	])
+	_stat_card(cards, "CONTRACTS", [
+		["Completed", _n(GameState.metric("missions_done"))],
+		["Bounty contracts", _n(GameState.metric("bounty_jobs"))],
+		["For the Covenant", _n(GameState.metric("jobs_covenant"))],
+		["For the Assembly", _n(GameState.metric("jobs_assembly"))],
+		["Passengers delivered", _n(GameState.metric("passengers"))],
+		["Active now", "%d / %d" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS]],
+	])
+
+
+func _stat_card(parent: Control, title: String, rows: Array) -> void:
+	var p := UI.neon_panel(Color(COL, 0.35), Color(0.05, 0.035, 0.02, 0.95), 1)
+	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(p)
+	var v := UI.vbox(3)
+	p.add_child(v)
+	v.add_child(UI.label(title, 14, COL))
+	var g := GridContainer.new()
+	g.columns = 2
+	g.add_theme_constant_override("h_separation", 14)
+	v.add_child(g)
+	for r in rows:
+		var k := UI.label(String(r[0]), 13, UI.TEXT_DIM)
+		k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		g.add_child(k)
+		var val := UI.label(String(r[1]), 13, Color(0.95, 0.93, 0.85))
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		g.add_child(val)
+
+
+func _n(x: float) -> String:
+	return GameData.fmt_credits(int(x)).trim_suffix(" cr") if absf(x) >= 1000.0 else str(int(x))

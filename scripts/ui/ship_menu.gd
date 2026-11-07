@@ -1,14 +1,13 @@
 class_name ShipMenu
 extends CanvasLayer
 ## Ship menu (key I) with four tabs:
-##   Info      – pilot, credits, ship & fleet value, location, contracts, career stats
+##   Info      – news, the active ship, contracts, the fleet (pilot, finances and career: Pilot window since 0.5.30.5)
 ##   Modules   – equipment as tiles by category (Core / Weapons / Tools / Optional), properties on the left;
 ##               when docked, modules can be swapped with station storage
 ##   Ship      – complete ship statistics
 ##   Inventory – cargo hold (+ station storage when docked)
 ##   Transactions – sub-tabs: accepted contracts, bond wallet (bounty bonds, phase 0.5 package 9)
-##   Standing  – reputation with every faction, with crest, tier and effects (phase 0.5 package 12)
-##   Codex     – the in-game encyclopedia (phase 0.5 package 18)
+##   (Standing and Codex moved to the Pilot window in 0.5.30.5)
 
 signal closed
 
@@ -16,9 +15,9 @@ const CATEGORIES := [
 	["Core", "core"], ["Weapons", "weapon"], ["Tools", "tool"], ["Optional", "optional"],
 	["Drone hangar – equipment for all drones", "drone"],
 ]
-const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Standing", "Codex", "Industry", "Market"]
-const TAB_INDUSTRY := 7
-const TAB_MARKET := 8
+const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Industry", "Market"]
+const TAB_INDUSTRY := 5
+const TAB_MARKET := 6
 const CodexView = preload("res://scripts/ui/codex_view.gd")
 const FactionData = preload("res://data/factions.gd")
 
@@ -177,14 +176,8 @@ func rebuild() -> void:
 		4:
 			_build_transactions()
 		5:
-			_build_standing()
-		6:
-			var cv := CodexView.new()
-			content.add_child(cv)
-			cv.setup(true)
-		7:
 			_build_industry()
-		8:
+		6:
 			_build_market(_scroll())
 
 
@@ -334,28 +327,6 @@ func _build_info() -> void:
 	_news_card(box)
 	var row := UI.hbox(14)
 	box.add_child(row)
-	# Pilot
-	var pilot := _card(row, "PILOT")
-	var nrow := UI.hbox(6)
-	pilot.add_child(nrow)
-	var le := LineEdit.new()
-	le.text = GameState.pilot_name
-	le.custom_minimum_size = Vector2(220, 0)
-	nrow.add_child(le)
-	var on_rename := func():
-		Commands.execute({"type": "rename_pilot", "name": le.text})
-		rebuild()
-	nrow.add_child(UI.button("Rename", on_rename))
-	var ships_total := 0
-	for f in GameState.fleet:
-		ships_total += GameState.ship_value(f)
-	_kv(pilot, [
-		"Credits: %s" % GameData.fmt_credits(GameState.credits),
-		"Net worth: %s" % GameData.fmt_credits(GameState.net_worth()),
-		"Ships owned: %d  (%s)" % [GameState.fleet.size(), GameData.fmt_credits(ships_total)],
-		"Stored modules: %s" % GameData.fmt_credits(GameState.storage_value()),
-		"Play time: %s" % _fmt_time(GameState.play_time),
-	])
 	# Active ship
 	var shipc := _card(row, "ACTIVE SHIP")
 	var sys: Dictionary = Universe.systems[fit.system_id]
@@ -370,19 +341,8 @@ func _build_info() -> void:
 		"Active modules: %d (keys 1–9)" % fit.active_modules().size(),
 		"Scan of this system: %d%%" % int(GameState.scan_progress(fit.system_id) * 100.0),
 	])
-	# Career
-	var st: Dictionary = GameState.stats
-	var career := _card(row, "CAREER")
-	_kv(career, [
-		"Pirates destroyed: %d" % int(st["kills"]),
-		"Hyperspace jumps: %d" % int(st["jumps"]),
-		"Ore mined: %d units" % int(st["mined"]),
-		"Anomalies analysed: %d" % int(st["analysed"]),
-		"Contracts completed: %d" % int(st["missions_done"]),
-		"Ore refined: %d units" % int(st["refined"]),
-		"Modules built: %d" % int(st["built"]),
-		"Credits earned: %s" % GameData.fmt_credits(int(st["earned"])),
-	])
+	var hint := _card(row, "PILOT")
+	hint.add_child(UI.wrap_label("Name, finances, career statistics, standings and the codex are in the Pilot window [%s]." % Keybinds.key_text("pilot_window"), 13, UI.TEXT_DIM, 360))
 	# Contracts
 	var con := _card(box, "ACTIVE CONTRACTS  (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS])
 	if GameState.missions.is_empty():
@@ -1087,85 +1047,3 @@ func _build_bonds() -> void:
 			r.add_child(UI.button("Course", func(): _course(tgt_sys)))
 
 
-# ================================================================ Standing (phase 0.5 package 12)
-
-func _build_standing() -> void:
-	var box := _scroll()
-	box.add_child(UI.wrap_label("Every faction keeps a standing towards you from −100 to +100. Bounty bonds and contracts raise it; attacking its ships lowers it. Contracts aimed at another faction cost standing with that faction. Prices, docking, patrols, contracts and military gear depend on it.", 13, UI.TEXT_DIM, 1100))
-	box.add_child(UI.wrap_label("The powers also keep a criminal record: firing in no-fire zones, attacking or interdicting civilians and patrols in their space make you a Suspect (patrols attack), Wanted (no contracts) or Most Wanted (no docking). Points fade over time or are cleared by paying the fine at a Bond Office.", 13, UI.TEXT_DIM, 1100))
-	var tiers := UI.hbox(14)
-	box.add_child(tiers)
-	for t in GameState.rep.tiers():
-		tiers.add_child(UI.label("%s ≥ %+d" % [t["name"], int(t["min"])] if int(t["min"]) > -100 else "%s" % t["name"], 12, t["color"]))
-	for group in [["THE POWERS", FactionData.POWERS], ["PIRATE FACTIONS", FactionData.PIRATES]]:
-		box.add_child(UI.label(group[0], 15, UI.NEON_CYAN))
-		for fid in group[1]:
-			_standing_row(box, fid)
-
-
-func _standing_row(parent: Control, fid: String) -> void:
-	var fd: Dictionary = FactionData.FACTIONS[fid]
-	var v: float = GameState.rep.get_rep(fid)
-	var t: Dictionary = GameState.rep.tier(fid)
-	var p := UI.neon_panel(Color(fd["color"], 0.45), Color(0.05, 0.06, 0.1, 0.95), 1)
-	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(p)
-	var row := UI.hbox(14)
-	p.add_child(row)
-	var crest := UI.icon(CrestArt.texture(fid), 48)
-	crest.custom_minimum_size = Vector2(46, 52)
-	row.add_child(crest)
-	var info := UI.vbox(2)
-	info.custom_minimum_size = Vector2(330, 0)
-	row.add_child(info)
-	info.add_child(UI.label(fd["name"], 16, fd["color"]))
-	info.add_child(UI.label("%s  •  \"%s\"" % [fd["gov"], fd["motto"]], 12, UI.TEXT_DIM))
-	var mid := UI.vbox(2)
-	mid.custom_minimum_size = Vector2(300, 0)
-	row.add_child(mid)
-	var head := UI.hbox(8)
-	mid.add_child(head)
-	head.add_child(UI.label(String(t["name"]).to_upper(), 15, t["color"]))
-	head.add_child(UI.label("%+.0f" % v, 15, Color(0.95, 0.97, 1.0)))
-	if GameState.rep.is_provoked(fid):
-		head.add_child(UI.label("• engaging you", 12, UI.BAD))
-	if fid in FactionData.POWERS:
-		var lw = GameState.law
-		var li: Dictionary = lw.level_info(fid)
-		var rec := UI.hbox(6)
-		mid.add_child(rec)
-		rec.add_child(UI.label("Record:", 12, UI.TEXT_DIM))
-		rec.add_child(UI.label(String(li["name"]).to_upper() + ((" (%d)" % lw.points(fid)) if lw.points(fid) > 0 else ""), 12, li["color"]))
-		if lw.points(fid) > 0:
-			rec.add_child(UI.label("fine %s at its Bond Offices  •  −1 in %d s" % [GameData.fmt_credits(lw.fine(fid)), int(lw.decay_left(fid))], 12, UI.TEXT_DIM))
-	var bar := UI.bar(t["color"], 290)
-	bar.min_value = -100.0
-	bar.max_value = 100.0
-	bar.value = v
-	mid.add_child(bar)
-	row.add_child(UI.wrap_label(_standing_effects(fid), 12, Color(0.8, 0.85, 0.95), 420))
-
-
-func _standing_effects(fid: String) -> String:
-	var r = GameState.rep
-	var pirate: bool = FactionData.FACTIONS[fid]["kind"] == "pirate"
-	var lines: Array = []
-	var b := int(round((r.price_factor(fid, "buy") - 1.0) * 100.0))
-	var s := int(round((r.price_factor(fid, "sell") - 1.0) * 100.0))
-	if pirate:
-		lines.append("Its pirates %s." % ("leave you alone" if not r.pirates_hostile(fid) else "attack you"))
-		if FactionData.FACTIONS[fid]["territory"]:
-			lines.append("Its Pirate Havens %s." % ("let you dock" if r.at_least(fid, "friendly") else "refuse docking and shoot (needs Friendly)"))
-		else:
-			lines.append("Owns no havens – roams as pirates and mercenaries.")
-	else:
-		lines.append({"attack": "Its patrols attack you.", "scan": "Its patrols scan your ship.", "ignore": "Its patrols ignore you."}[r.patrol_attitude(fid)])
-		lines.append("Docking refused." if (r.tier_id(fid) == "nemesis" or GameState.law.level(fid) >= 3) else "Docking allowed.")
-		if r.contracts_error(fid) != "":
-			lines.append("No contracts at its stations.")
-		elif r.contract_bonus(fid) > 0.0:
-			lines.append("Contracts pay +%d %%." % int(round(r.contract_bonus(fid) * 100.0)))
-		lines.append("Military-grade (L) gear: %s." % ("available" if r.at_least(fid, "friendly") else "locked (needs Friendly)"))
-	if b != 0 or s != 0:
-		lines.append("Prices: purchases %+d %%, sales %+d %%." % [b, s])
-	return " ".join(PackedStringArray(lines))

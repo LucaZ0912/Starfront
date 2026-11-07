@@ -43,6 +43,7 @@ func _ready() -> void:
 	hud.station_requested.connect(open_station)
 	hud.ship_menu_requested.connect(toggle_ship_menu)
 	hud.pilot_window_requested.connect(toggle_pilot_window)
+	hud.pilot_tab_requested.connect(toggle_pilot_window)
 	galaxy.routes_changed.connect(_on_routes_changed)
 	galaxy.closed.connect(_update_input)
 	station_panel.closed.connect(_update_input)
@@ -110,14 +111,17 @@ func toggle_ship_menu() -> void:
 		open_ship_menu()
 
 
-## Package 29: the Pilot window – also over the station.
-func toggle_pilot_window() -> void:
+## Package 29: the Pilot window – also over the station. 0.5.30.5: U always opens the Pilot tab (Info);
+## the HUD hint for tiles / perk points opens the tab it is about.
+func toggle_pilot_window(p_tab: int = 0) -> void:
 	if pilot_window.visible:
 		pilot_window.close()
 	elif not in_hyperspace:
 		galaxy.close()
 		ship_menu.close()
-		pilot_window.open()
+		if p_tab == 0:
+			pilot_window.sub = 0
+		pilot_window.open(p_tab)
 	_update_input()
 
 

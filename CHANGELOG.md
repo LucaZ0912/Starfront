@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.30.5 – 2026-11-07
+
+**Pilot window:** the Pilot tab comes first and U always opens it. It has three sub-tabs: Info (portrait, name,
+level, attributes and all statistics – finances, flight & combat, work, contracts), Standings and Codex (both moved
+from the ship menu). The ship menu keeps Info (news, active ship, contracts, fleet), Modules, Ship, Inventory,
+Transactions, Industry and Market. The HUD hint opens the skill tree or the perks.
+Smoke test: `-- --smoketest --only=pilot,codex` runs single test groups.
+
 ## alpha 0.5.30.4 – 2026-11-07
 
 **HUD:** the Ship, Pilot and Map buttons moved to the top right, where the old buttons were.
