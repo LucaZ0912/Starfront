@@ -34,7 +34,8 @@ var history: Array = []       # last commands (debugging / replay)
 ## Package 28a: purchases ring, sales too, a refused order of the interface buzzes.
 const CrewData = preload("res://data/crew.gd")
 const CrewCore = preload("res://scripts/core/crew.gd")
-const BUY_CMDS := ["market_buy", "module_buy", "module_buy_fit", "ship_buy", "drone_buy", "refuel", "repair", "crew_hire"]
+const WingData = preload("res://data/wingmen.gd")
+const BUY_CMDS := ["market_buy", "module_buy", "module_buy_fit", "ship_buy", "drone_buy", "refuel", "repair", "crew_hire", "wing_hire", "wing_extend", "platform_rebuy"]
 const SELL_CMDS := ["market_sell", "module_sell", "ship_sell", "drone_sell"]
 const QUIET_CMDS := ["key_steer", "move", "orbit", "keep_range", "approach"]
 
@@ -763,6 +764,211 @@ func _fleet_ship(uid: int) -> ShipFitting:
 	return null
 
 
+# ---------------------------------------------------------------- Wingmen (package 33)
+
+## {"type":"wing_hire", "index": n, "minutes": 30|60|120} – a pilot from the bar of the docked station
+func _c_wing_hire(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var he := GameState.wing_hire_error()
+	if he != "":
+		return he
+	var pilots: Array = GameState.bar_pilots(docked_station())
+	var i := int(c.get("index", -1))
+	if i < 0 or i >= pilots.size():
+		return "Nobody by that name at the bar."
+	var minutes := int(c.get("minutes", 30))
+	var w: Dictionary = pilots[i]
+	if not GameState.spend(GameState.wing_price(w, minutes)):
+		return "Not enough credits."
+	pilots.remove_at(i)
+	GameState.wing_hire(w, minutes)
+	return ""
+
+
+## {"type":"wing_extend", "id": n, "minutes": m} – at any bar
+func _c_wing_extend(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var ct := GameState.wing_contract(int(c["id"]))
+	if ct.is_empty():
+		return "No such wingman."
+	var minutes := int(c.get("minutes", 30))
+	if not GameState.spend(GameState.wing_price(ct["w"], minutes)):
+		return "Not enough credits."
+	ct["until"] = float(ct["until"]) + float(minutes) * 60.0
+	GameState.log_msg("%s's contract extended by %d minutes." % [ct["w"]["name"], minutes], GameState.COL_GOOD)
+	GameState.wingmen_changed.emit()
+	return ""
+
+
+## {"type":"wing_dismiss", "id": n} – ends the contract now (no money back)
+func _c_wing_dismiss(c: Dictionary) -> String:
+	var ct := GameState.wing_contract(int(c["id"]))
+	if ct.is_empty():
+		return "No such wingman."
+	ct["until"] = GameState.play_time
+	GameState.wing_tick()
+	return ""
+
+
+## {"type":"wing_stance", "id": n (-1 = all), "stance": "aggressive"|"defensive"|"passive"}
+func _c_wing_stance(c: Dictionary) -> String:
+	var st := String(c.get("stance", "defensive"))
+	if not WingData.STANCES.has(st):
+		return "Unknown order."
+	var n := 0
+	for ct in GameState.wingmen:
+		if int(c.get("id", -1)) < 0 or int(ct["w"]["id"]) == int(c["id"]):
+			ct["stance"] = st
+			n += 1
+			if world != null and is_instance_valid(world) and world.wing_nodes.has(int(ct["w"]["id"])):
+				var node = world.wing_nodes[int(ct["w"]["id"])]
+				if is_instance_valid(node):
+					node.fit.stance = st
+					node.wing_focus = null
+					if st == "passive":
+						node.target = null
+	var cit := _fit()
+	if cit != null and int(c.get("id", -1)) in [-1, 0] and not cit.platform_ship.is_empty():
+		cit.platform_stance = st
+		n += 1
+		if world != null and is_instance_valid(world) and world.wing_nodes.has(0) and is_instance_valid(world.wing_nodes[0]):
+			world.wing_nodes[0].fit.stance = st
+			world.wing_nodes[0].wing_focus = null
+	if n == 0:
+		return "No wingmen."
+	GameState.wingmen_changed.emit()
+	return ""
+
+
+## {"type":"wing_attack"} – every wingman goes for the pilot's active locked target
+func _c_wing_attack(_c: Dictionary) -> String:
+	if GameState.wingmen.is_empty() and (world == null or not is_instance_valid(world) or not world.wing_nodes.has(0)):
+		return "No wingmen."
+	var e := _need_world()
+	if e != "":
+		return e
+	var t = world.player.locked_node()
+	if t == null or not is_instance_valid(t) or not (t is Ship) or t == world.player:
+		return "Lock a ship first – the wingmen attack your active target."
+	for ct in GameState.wingmen:
+		if ct["stance"] == "passive":
+			ct["stance"] = "defensive"
+		var node = world.wing_nodes.get(int(ct["w"]["id"]))
+		if node != null and is_instance_valid(node):
+			node.fit.stance = ct["stance"]
+			node.wing_focus = t
+			node._retarget = 0.0
+	if world.wing_nodes.has(0) and is_instance_valid(world.wing_nodes[0]):
+		world.wing_nodes[0].wing_focus = t                # the platform ship too
+	GameState.log_msg("Wingmen: attacking %s." % t.display_name(), GameState.COL_GOOD)
+	GameState.wingmen_changed.emit()
+	return ""
+
+
+## {"type":"platform_load", "uid": n} – put a Hadrian S ship from this hangar onto the active Citadel's platform
+func _c_platform_load(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var cit := _fit()
+	if not cit.hull().get("hatches", {}).has("platform"):
+		return "The active ship has no launch platform."
+	if not cit.platform_ship.is_empty():
+		return "The platform is taken – unload it first."
+	var s := _fleet_ship(int(c["uid"]))
+	if s == null or s == cit or s.docked_at != cit.docked_at:
+		return "That ship is not in this hangar."
+	var he := GameState.platform_hull_error(s.hull_id)
+	if he != "":
+		return he
+	GameState.fleet.erase(s)
+	s.docked_at = ""
+	cit.platform_ship = s.to_dict()
+	cit.platform_out = false
+	GameState.log_msg("%s now stands on the platform of the %s." % [s.ship_name, cit.ship_name], GameState.COL_GOOD)
+	GameState.fleet_changed.emit()
+	return ""
+
+
+## {"type":"platform_unload"} – the platform ship goes back into the hangar (to fit it, sell it …)
+func _c_platform_unload(_c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var cit := _fit()
+	if cit.platform_ship.is_empty():
+		return "Nothing on the platform."
+	var s := ShipFitting.from_dict(cit.platform_ship)
+	s.uid = 0
+	s.system_id = cit.system_id
+	s.docked_at = cit.docked_at
+	s.position = cit.position
+	cit.platform_ship = {}
+	cit.platform_out = false
+	GameState.add_ship(s)
+	GameState.log_msg("%s is back in the hangar." % s.ship_name, GameState.COL_INFO)
+	return ""
+
+
+## {"type":"platform_launch"} / {"type":"platform_recall"} – in space
+func _c_platform_launch(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var cit := _fit()
+	if cit.platform_ship.is_empty():
+		return "Nothing on the platform – put a Hadrian S ship on it in the hangar." if cit.platform_lost.is_empty() else "The platform ship was destroyed – recall it at a station's hangar."
+	if cit.platform_out:
+		return "The platform ship is already out."
+	if GameState.platform_pilot(cit).is_empty():
+		return "No platform pilot aboard – a Co-Pilot with the perk Wingman flies it."
+	cit.platform_out = true
+	world.player.launch_platform()
+	world.launch_platform_ship()
+	return ""
+
+
+func _c_platform_recall(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var cit := _fit()
+	if not cit.platform_out:
+		return "The platform ship is aboard."
+	world.recall_platform_ship()
+	return ""
+
+
+## {"type":"platform_rebuy"} – a destroyed platform ship comes back for 10 % of its value (docked)
+func _c_platform_rebuy(_c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var cit := _fit()
+	if cit.platform_lost.is_empty():
+		return "No platform ship to recall."
+	var price := GameState.platform_recall_price(cit)
+	if not GameState.spend(price):
+		return "Not enough credits."
+	var s := ShipFitting.from_dict(cit.platform_lost)
+	s.refill()
+	cit.platform_ship = s.to_dict()
+	cit.platform_lost = {}
+	GameState.log_msg("Aegis Mutual delivered a new %s to the platform for %s." % [s.ship_name, GameData.fmt_credits(price)], GameState.COL_GOOD)
+	return ""
+
+
+## {"type":"debug_wing", "level": "C", "minutes": 30} – a wingman joins at once (no bar, no price, no tile)
+func _c_debug_wing(c: Dictionary) -> String:
+	var w := GameState.new_wingman(String(c.get("level", "C")))
+	GameState.wing_hire(w, int(c.get("minutes", 30)))
+	return ""
+
+
 ## {"type":"loss_decide", "accept": bool} – package 31a: rebuild the lost ship or keep the beginner ship
 func _c_loss_decide(c: Dictionary) -> String:
 	return GameState.loss_decide(bool(c.get("accept", false)))
@@ -905,7 +1111,10 @@ func _c_debug_crew(c: Dictionary) -> String:
 	if bool(c.get("fill", false)):
 		for i2 in sl.size():
 			if f.crew_at(i2).is_empty():
-				f.set_crew(i2, GameState.new_crew(String(sl[i2][0]), String(c.get("quality", "C")), String(c.get("perk", "?"))))
+				if String(sl[i2][0]) == "wing_pilot":
+					f.set_crew(i2, GameState.new_crew("copilot", String(c.get("quality", "C")), "wingman"))
+				else:
+					f.set_crew(i2, GameState.new_crew(String(sl[i2][0]), String(c.get("quality", "C")), String(c.get("perk", "?"))))
 		return ""
 	var role := String(c.get("role", "gunner"))
 	var m2 := GameState.new_crew(role, String(c.get("quality", "C")), String(c.get("perk", "?")))

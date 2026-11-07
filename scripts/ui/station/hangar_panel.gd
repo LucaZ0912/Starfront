@@ -35,5 +35,38 @@ func build() -> void:
 			var uid: int = fit_.uid
 			var board := func(): run({"type": "board", "uid": uid})
 			row.add_child(UI.button("Board", board))
+	_platform()
 	if GameState.hangar(station["id"]).size() <= 1:
 		add_child(UI.label("Buy more ships at a shipyard – Hadal Orbital Yards delivers them here.", 12, UI.TEXT_DIM))
+
+
+## Package 33: the Citadel's launch platform – which Hadrian S ship stands on it, put one on, take it off, recall a lost one.
+func _platform() -> void:
+	var cit := fit()
+	if cit == null or not cit.hull().get("hatches", {}).has("platform"):
+		return
+	section("LAUNCH PLATFORM OF THE %s" % cit.ship_name.to_upper())
+	var pp := GameState.platform_pilot(cit)
+	add_child(UI.label(("Platform pilot: %s (%s)" % [pp["name"], pp["quality"]]) if not pp.is_empty() else "No platform pilot – a Co-Pilot with the perk Wingman flies the platform ship (crew post in Modules → Crew).", 13, UI.GOOD if not pp.is_empty() else UI.BAD))
+	if not cit.platform_ship.is_empty():
+		var r := UI.hbox(12)
+		add_child(r)
+		r.add_child(UI.icon(PixelArt.ship_texture(String(cit.platform_ship["hull_id"]), "player"), 48))
+		r.add_child(UI.label("On the platform: %s" % cit.platform_ship["ship_name"], 14))
+		r.add_child(UI.button("Take it into the hangar (to fit it)", func(): run({"type": "platform_unload"})))
+		return
+	if not cit.platform_lost.is_empty():
+		var price := GameState.platform_recall_price(cit)
+		var b := UI.button("Recall the destroyed %s – %s (10 %%)" % [cit.platform_lost["ship_name"], GameData.fmt_credits(price)], func(): run({"type": "platform_rebuy"}))
+		b.disabled = GameState.credits < price
+		add_child(b)
+	var any := false
+	for f in GameState.hangar(station["id"]):
+		var s: ShipFitting = f
+		if s == cit or GameState.platform_hull_error(s.hull_id) != "":
+			continue
+		any = true
+		var uid := s.uid
+		add_child(UI.button("Put the %s on the platform" % s.ship_name, func(): run({"type": "platform_load", "uid": uid})))
+	if not any and cit.platform_lost.is_empty():
+		add_child(UI.label("Any Hadrian Dynamics S ship in this hangar can stand on the platform – fit it as you like first.", 12, UI.TEXT_DIM))

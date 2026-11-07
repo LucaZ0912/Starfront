@@ -63,6 +63,12 @@ var loss_offer := {}
 var rescued: Array = []
 var _pod_seq := 1
 var _pod_tick_t := 0.0
+## Package 33: wingmen under contract ([{"w": wingman, "until", "stance", "minutes"}]); the wingman carries its ship
+## as plain data in w["ship"]. Their ships fly as nodes only while the pilot is in space (SystemView).
+var wingmen: Array = []
+var _wing_tick_t := 0.0
+signal wingmen_changed
+const WingData = preload("res://data/wingmen.gd")
 const CrewData = preload("res://data/crew.gd")
 const CrewCore = preload("res://scripts/core/crew.gd")
 var _rng := RandomNumberGenerator.new()
@@ -128,6 +134,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	loss_offer = {}
 	rescued.clear()
 	_pod_seq = 1
+	wingmen.clear()
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -445,7 +452,7 @@ func to_dict() -> Dictionary:
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 		"crew_quarters": crew_quarters.duplicate(true), "bar": bar.duplicate(true), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
-		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq,
+		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 	}
 
 
@@ -479,6 +486,7 @@ func from_dict(d: Dictionary) -> void:
 	loss_offer = d.get("loss_offer", {}).duplicate(true)
 	rescued = d.get("rescued", []).duplicate(true)
 	_pod_seq = int(d.get("pod_seq", 1))
+	wingmen = d.get("wingmen", []).duplicate(true)
 	if not loss_offer.is_empty():
 		ship_lost.emit.call_deferred(loss_offer)        # saved before deciding: ask again
 	Missions._counter = int(d.get("mission_counter", 1000))
@@ -966,12 +974,66 @@ func new_crew(role: String, quality: String, perk: String = "?") -> Dictionary:
 	return m
 
 
-## A newly bought ship comes with its required posts filled by rookies (quality F, never a perk).
+## A newly bought ship comes with its required posts filled by rookies (quality F, never a perk); a Citadel also with
+## a rookie platform pilot (package 33).
 func crew_fill_required(f: ShipFitting) -> void:
 	var sl := f.crew_slots()
 	for i in sl.size():
 		if bool(sl[i][1]) and f.crew_at(i).is_empty():
 			f.set_crew(i, new_crew(String(sl[i][0]), "F", ""))
+		elif String(sl[i][0]) == "wing_pilot" and f.crew_at(i).is_empty():
+			f.set_crew(i, new_crew("copilot", "F", "wingman"))
+
+
+# ---------------------------------------------------------------- The Citadel's platform ship (package 33)
+
+## The platform pilot aboard ({} = none).
+func platform_pilot(f: ShipFitting) -> Dictionary:
+	var sl := f.crew_slots()
+	for i in sl.size():
+		if String(sl[i][0]) == "wing_pilot":
+			return f.crew_at(i)
+	return {}
+
+
+## "" = this hull may stand on the Citadel's platform: Hadrian Dynamics ships of size S.
+func platform_hull_error(hid: String) -> String:
+	var h: Dictionary = GameData.hulls.get(hid, {})
+	if String(h.get("maker", "")) != "hadrian" or int(h.get("size", 0)) != 1:
+		return "Only Hadrian Dynamics S ships fit the Citadel's platform."
+	return ""
+
+
+## The platform ship was destroyed: the pilot rolls for the pod, the ship can be recalled at a station for 10 %.
+func platform_lost(citadel: ShipFitting, pos: Vector2) -> void:
+	if citadel.platform_ship.is_empty():
+		return
+	citadel.platform_lost = citadel.platform_ship.duplicate(true)
+	citadel.platform_ship = {}
+	citadel.platform_out = false
+	var sl := citadel.crew_slots()
+	for i in sl.size():
+		if String(sl[i][0]) == "wing_pilot" and not citadel.crew_at(i).is_empty():
+			var m: Dictionary = citadel.set_crew(i, {})
+			var p := float(CrewData.SURVIVE.get(String(m["quality"]), 0.4))
+			if String(m.get("perk", "")) == "lucky":
+				p = CrewData.SURVIVE_LUCKY
+			if _rng.randf() < p:
+				pods.append({"id": "pod%d" % _pod_seq, "system": citadel.system_id, "pos": pos, "crew": [{"m": m, "until": play_time + float(CrewData.POD_TIME.get(String(m["quality"]), 300.0))}]})
+				_pod_seq += 1
+				log_msg("%s got out of the %s – the escape pod waits for pick-up." % [m["name"], citadel.platform_lost["ship_name"]], COL_WARN)
+				pods_changed.emit()
+			else:
+				log_msg("%s went down with the %s." % [m["name"], citadel.platform_lost["ship_name"]], COL_BAD)
+	log_msg("The platform ship %s was destroyed – at a station it can be recalled for 10 %% of its value." % citadel.platform_lost["ship_name"], COL_BAD)
+	citadel.mark_dirty()
+
+
+func platform_recall_price(citadel: ShipFitting) -> int:
+	if citadel.platform_lost.is_empty():
+		return 0
+	var f := ShipFitting.from_dict(citadel.platform_lost)
+	return int(round(float(ship_value(f)) * CrewData.BUYBACK))
 
 
 ## "" = the ship may undock as far as the crew goes.
@@ -987,13 +1049,13 @@ func crew_cut(amount: int) -> int:
 	var f := active()
 	if f == null or amount <= 0:
 		return 0
-	var cut := int(round(float(amount) * f.crew_share()))
+	var cut := int(round(float(amount) * (f.crew_share() + wing_share())))
 	if cut <= 0:
 		return 0
 	credits -= cut
 	stats["crew_paid"] = int(stats.get("crew_paid", 0)) + cut
 	credits_changed.emit(credits)
-	log_msg("Crew share: −%s." % GameData.fmt_credits(cut), COL_INFO)
+	log_msg("%s share: −%s." % ["Crew and wingmen" if not wingmen.is_empty() else "Crew", GameData.fmt_credits(cut)], COL_INFO)
 	return cut
 
 
@@ -1022,6 +1084,127 @@ func crew_learn(metric_id: String, n: float) -> void:
 				Audio.play("mission_complete", "crew step up")
 
 
+# ---------------------------------------------------------------- Wingmen (package 33)
+
+## A wingman: name, portrait, level, Piloting and Gunnery, two traits, a ship with its standard fit.
+func new_wingman(level: String = "") -> Dictionary:
+	if level == "":
+		level = _weighted(WingData.BAR_WEIGHTS)
+	var fn: String = CrewData.FIRST_NAMES[_rng.randi() % CrewData.FIRST_NAMES.size()]
+	var ln: String = CrewData.LAST_NAMES[_rng.randi() % CrewData.LAST_NAMES.size()]
+	var sk: Array = WingData.SKILLS[level]
+	var traits: Array = []
+	var keys: Array = WingData.TRAITS.keys()
+	while traits.size() < 2:
+		var t: String = keys[_rng.randi() % keys.size()]
+		var bad := t in traits
+		for pair in WingData.TRAIT_PAIRS_FORBIDDEN:
+			if t in pair and not traits.is_empty() and traits[0] in pair:
+				bad = true
+		if not bad:
+			traits.append(t)
+	var ships: Array = WingData.SHIPS[level]
+	var hid: String = ships[_rng.randi() % ships.size()]
+	var f := create_from_preset("std_" + hid, "player")
+	f.ship_name = "%s »%s«" % [GameData.hulls[hid]["name"], ln]
+	var w := {"id": _crew_seq, "name": "%s %s" % [fn, ln], "look": PilotArt.random_look(_rng), "level": level,
+		"skills": {"piloting": _rng.randi_range(int(sk[0]), int(sk[1])), "gunnery": _rng.randi_range(int(sk[0]), int(sk[1]))},
+		"traits": traits, "ship": f.to_dict()}
+	_crew_seq += 1
+	return w
+
+
+func _weighted(weights: Dictionary) -> String:
+	var total := 0.0
+	for q in weights:
+		total += float(weights[q])
+	var x := _rng.randf() * total
+	for q in weights:
+		x -= float(weights[q])
+		if x <= 0.0:
+			return String(q)
+	return String(weights.keys()[0])
+
+
+## Leadership: a few per cent better wingmen, cheaper too.
+func wing_leadership() -> float:
+	return skill_bonus("leadership")
+
+
+func wing_price(w: Dictionary, minutes: int) -> int:
+	var f := 1.0
+	for d in WingData.DURATIONS:
+		if int(d[0]) == minutes:
+			f = float(d[1])
+	return int(round(float(WingData.PRICE[String(w["level"])]) * f * (1.0 - wing_leadership()) / 100.0)) * 100
+
+
+func wing_max() -> int:
+	return WingData.MAX if skill_level("leadership") >= WingData.LEADERSHIP_FOR_TWO else WingData.MAX_BASE
+
+
+## The share of income all wingmen under contract take.
+func wing_share() -> float:
+	var s := 0.0
+	for c in wingmen:
+		s += float(WingData.SHARE[String(c["w"]["level"])])
+	return s * (1.0 - wing_leadership())
+
+
+## "" = the pilot may hire one more wingman.
+func wing_hire_error() -> String:
+	if not bool(pilot.get("tree_all", false)) and not tile_open("wing_command"):
+		return "Skill tree: open \"Wing Command\" first (Pilot window)."
+	if wingmen.size() >= wing_max():
+		return "No room for another wingman (%d at once%s)." % [wing_max(), "" if wing_max() >= WingData.MAX else " – Leadership %d allows %d" % [WingData.LEADERSHIP_FOR_TWO, WingData.MAX]]
+	return ""
+
+
+func wing_hire(w: Dictionary, minutes: int) -> void:
+	wingmen.append({"w": w, "until": play_time + float(minutes) * 60.0, "stance": "defensive", "minutes": minutes})
+	skill_xp("leadership", 10.0)
+	log_msg("%s (%s, %s) flies with you for %d minutes – share %d %% of the income." % [w["name"], w["level"], String(w["ship"]["ship_name"]),
+		minutes, int(round(float(WingData.SHARE[String(w["level"])]) * 100.0))], COL_GOOD)
+	wingmen_changed.emit()
+
+
+func wing_contract(id: int) -> Dictionary:
+	for c in wingmen:
+		if int(c["w"]["id"]) == id:
+			return c
+	return {}
+
+
+## Contracts run out; the wingman says goodbye.
+func wing_tick() -> void:
+	for c in wingmen.duplicate():
+		if play_time >= float(c["until"]):
+			wingmen.erase(c)
+			log_msg("%s: \"Contract's up – good flying with you, CMDR.\" The %s leaves the formation." % [c["w"]["name"], c["w"]["ship"]["ship_name"]], COL_INFO)
+			wingmen_changed.emit()
+
+
+## A wingman's ship was destroyed: the wingman is dead, the contract over.
+func wing_lost(id: int) -> void:
+	var c := wing_contract(id)
+	if c.is_empty():
+		return
+	wingmen.erase(c)
+	log_msg("%s was killed – the %s is gone, the contract ends." % [c["w"]["name"], c["w"]["ship"]["ship_name"]], COL_BAD)
+	wingmen_changed.emit()
+
+
+## Bar offers of pilots (they change with the crew offers).
+func bar_pilots(st: Dictionary) -> Array:
+	bar_offers(st)                               # makes / refreshes the bar entry
+	var e: Dictionary = bar[String(st["id"])]
+	if not e.has("pilots"):
+		e["pilots"] = []
+		for i in _rng.randi_range(int(WingData.BAR_PILOTS[0]), int(WingData.BAR_PILOTS[1])):
+			e["pilots"].append(new_wingman())
+	return e["pilots"]
+
+
 ## The posts of a profession the pilot may fill (skill tree, 0.5.30.2 rule 10 of package 31).
 func crew_role_error(role: String) -> String:
 	if bool(pilot.get("tree_all", false)):
@@ -1045,7 +1228,7 @@ func bar_offers(st: Dictionary) -> Array:
 		e = {"t": play_time, "offers": []}
 		var n := _rng.randi_range(int(CrewData.BAR_SIZE[0]), int(CrewData.BAR_SIZE[1]))
 		var bias: Array = CrewData.BAR_BIAS.get(String(st.get("type", "")), [])
-		var roles: Array = CrewData.ROLES.keys()
+		var roles: Array = CrewData.hire_roles()
 		for i in n:
 			var role: String = String(bias[_rng.randi() % bias.size()]) if not bias.is_empty() and _rng.randf() < 0.5 else String(roles[_rng.randi() % roles.size()])
 			var q := _weighted_quality()
@@ -1578,6 +1761,10 @@ func _process(delta: float) -> void:
 	if _pod_tick_t <= 0.0 and not pods.is_empty():
 		_pod_tick_t = 1.0
 		pods_tick()                              # package 31a
+	_wing_tick_t -= delta
+	if _wing_tick_t <= 0.0 and not wingmen.is_empty():
+		_wing_tick_t = 1.0
+		wing_tick()                              # package 33
 	notorious.update(current_system)
 	news.update()
 	_update_faction_jobs(delta)

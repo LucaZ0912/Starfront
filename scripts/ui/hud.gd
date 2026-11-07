@@ -53,6 +53,11 @@ var lock_bar: HBoxContainer
 var ally_bar: VBoxContainer       # allied ships of the pilot's group (top left)
 var drone_panel: PanelContainer   # package 23: drone control (top left edge)
 var _drone_box: VBoxContainer
+var wing_panel: PanelContainer           # package 33
+var _wing_box: VBoxContainer
+var _wing_sig := "-"
+var _wing_rows: Array = []
+const WingDataH = preload("res://data/wingmen.gd")
 var _drone_sig := ""
 var _drone_rows: Array = []       # [{drone, fuel bar, hull bar}]
 var _ally_cards := {}             # ship -> {style, info, bars}
@@ -201,6 +206,15 @@ func _ready() -> void:
 	root.add_child(drone_panel)
 	_drone_box = UI.vbox(4)
 	drone_panel.add_child(_drone_box)
+
+	# --- Wingmen (package 33): below the drones
+	wing_panel = UI.panel(Color(0.03, 0.05, 0.08, 0.9))
+	wing_panel.position = Vector2(0, 50)
+	wing_panel.custom_minimum_size = Vector2(250, 0)
+	wing_panel.visible = false
+	root.add_child(wing_panel)
+	_wing_box = UI.vbox(3)
+	wing_panel.add_child(_wing_box)
 
 	# --- Allied ships travelling with the pilot (top left)
 	ally_bar = UI.vbox(4)
@@ -1222,9 +1236,110 @@ func _update_drones() -> void:
 		if is_instance_valid(d) and not d.dying:
 			_set_bar(r["fuel"], d.fuel_left(), 1.0)
 			_set_bar(r["hull"], d.fit.structure, d.hull_max())
-	ally_bar.position.y = (drone_panel.position.y + drone_panel.size.y + 8.0) if drone_panel.visible else 54.0
+	var y0: float = (drone_panel.position.y + drone_panel.size.y + 8.0) if drone_panel.visible else 54.0
+	_update_wingmen()
+	wing_panel.position.y = y0
+	ally_bar.position.y = (y0 + wing_panel.size.y + 8.0) if wing_panel.visible else y0
 	# the survey results move next to the drone window instead of covering it
 	survey_panel.position.x = (drone_panel.size.x + 10.0) if drone_panel.visible else 14.0
+
+
+## Package 33: the wingmen – who flies with you, their ship, the order, the time left on the contract.
+func _update_wingmen() -> void:
+	var cit := GameState.active()
+	var plat: bool = cit != null and (not cit.platform_ship.is_empty() or not cit.platform_lost.is_empty())
+	wing_panel.visible = (not GameState.wingmen.is_empty() or plat) and view != null
+	if not wing_panel.visible:
+		_wing_sig = "-"
+		return
+	var sig := ""
+	for c in GameState.wingmen:
+		sig += "%d:%s:%s," % [int(c["w"]["id"]), c["stance"], str(view.wing_nodes.has(int(c["w"]["id"])))]
+	if plat:
+		sig += "P:%s:%s:%s:%s" % [cit.platform_out, cit.platform_stance, cit.platform_ship.get("ship_name", ""), not cit.platform_lost.is_empty()]
+	if sig != _wing_sig:
+		_wing_sig = sig
+		_build_wing_panel()
+	for r in _wing_rows:
+		var c2: Dictionary = r["c"]
+		var left := maxf(0.0, float(c2["until"]) - GameState.play_time)
+		r["time"].text = "%d:%02d" % [int(left) / 60, int(left) % 60]
+		var n = view.wing_nodes.get(int(c2["w"]["id"]))
+		if n != null and is_instance_valid(n):
+			var s: Dictionary = n.fit.stats()
+			_set_bar(r["shield"], n.fit.shield, float(s["shield_max"]))
+			_set_bar(r["hull"], n.fit.armor + n.fit.structure, float(s["armor_max"]) + float(s["structure_max"]))
+			r["act"].text = n.activity
+
+
+func _build_wing_panel() -> void:
+	UI.clear(_wing_box)
+	_wing_rows.clear()
+	var head := UI.hbox(4)
+	_wing_box.add_child(head)
+	head.add_child(UI.label("WINGMEN", 13, Color(0.45, 0.75, 1.0)))
+	head.add_child(UI.label("%d / %d" % [GameState.wingmen.size(), GameState.wing_max()], 11, UI.TEXT_DIM))
+	var cit := GameState.active()
+	head.add_child(UI.spacer())
+	for st in [["aggressive", "A"], ["defensive", "D"], ["passive", "P"]]:
+		var stance: String = st[0]
+		var b := UI.button(st[1], func(): Commands.execute({"type": "wing_stance", "id": -1, "stance": stance}), "All wingmen: %s%s" % [WingDataH.STANCES[stance], (" [%s]" % Keybinds.key_text("wing_" + stance)) if Keybinds.key_text("wing_" + stance) != "" else ""])
+		b.add_theme_font_size_override("font_size", 11)
+		head.add_child(b)
+	var ab := UI.button("Attack my target [%s]" % Keybinds.key_text("wing_attack"), func(): Commands.execute({"type": "wing_attack"}))
+	ab.add_theme_font_size_override("font_size", 11)
+	_wing_box.add_child(ab)
+	for c in GameState.wingmen:
+		var w: Dictionary = c["w"]
+		var id := int(w["id"])
+		var row := UI.vbox(1)
+		_wing_box.add_child(row)
+		var top := UI.hbox(4)
+		row.add_child(top)
+		top.add_child(UI.label("%s (%s)" % [w["name"], w["level"]], 12, WingDataH.level_color(String(w["level"]))))
+		top.add_child(UI.spacer())
+		var tl := UI.label("", 11, UI.TEXT_DIM)
+		top.add_child(tl)
+		row.add_child(UI.label(String(w["ship"]["ship_name"]), 10, UI.TEXT_DIM))
+		var sb := UI.bar(Color(0.35, 0.65, 1.0), 220)
+		row.add_child(sb)
+		var hb := UI.bar(Color(0.9, 0.45, 0.3), 220)
+		row.add_child(hb)
+		var orow := UI.hbox(3)
+		row.add_child(orow)
+		for st2 in ["aggressive", "defensive", "passive"]:
+			var stance2: String = st2
+			var ob := UI.button(String(WingDataH.STANCES[st2]).left(3), func(): Commands.execute({"type": "wing_stance", "id": id, "stance": stance2}), WingDataH.STANCES[st2])
+			ob.toggle_mode = true
+			ob.button_pressed = String(c["stance"]) == st2
+			ob.add_theme_font_size_override("font_size", 10)
+			orow.add_child(ob)
+		var act := UI.label("", 10, Color(0.7, 0.8, 0.9))
+		act.clip_text = true
+		act.custom_minimum_size = Vector2(110, 0)
+		orow.add_child(act)
+		_wing_rows.append({"c": c, "time": tl, "shield": sb, "hull": hb, "act": act})
+	# the Citadel's platform ship
+	if cit != null and (not cit.platform_ship.is_empty() or not cit.platform_lost.is_empty()):
+		var prow := UI.vbox(1)
+		_wing_box.add_child(prow)
+		if cit.platform_ship.is_empty():
+			prow.add_child(UI.label("PLATFORM: %s destroyed – recall at a hangar" % cit.platform_lost["ship_name"], 11, UI.BAD))
+			return
+		var pt := UI.hbox(4)
+		prow.add_child(pt)
+		pt.add_child(UI.label("PLATFORM  %s" % cit.platform_ship["ship_name"], 11, Color(1.0, 0.75, 0.35)))
+		pt.add_child(UI.spacer())
+		pt.add_child(UI.button("Recall" if cit.platform_out else "Launch", func(): Commands.execute({"type": "platform_recall" if cit.platform_out else "platform_launch"})))
+		var porow := UI.hbox(3)
+		prow.add_child(porow)
+		for st3 in ["aggressive", "defensive", "passive"]:
+			var stance3: String = st3
+			var pb := UI.button(String(WingDataH.STANCES[st3]).left(3), func(): Commands.execute({"type": "wing_stance", "id": 0, "stance": stance3}), WingDataH.STANCES[st3])
+			pb.toggle_mode = true
+			pb.button_pressed = cit.platform_stance == st3
+			pb.add_theme_font_size_override("font_size", 10)
+			porow.add_child(pb)
 
 
 func _build_drone_panel(p, out: Array) -> void:

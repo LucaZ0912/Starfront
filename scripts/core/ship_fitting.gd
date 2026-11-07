@@ -27,6 +27,11 @@ var held_on := {}                          # review W5: modules that stay switch
 var market_open := false                   # package 25b: on-board market open for traders
 var market_offers := {}                    # item -> {amount, price}
 var crew: Array = []                       # package 31: one entry per crew slot of the hull ({} = empty), see data/crew.gd
+var wing_mult := {}                        # package 33: a wingman's ship – {"speed": +x, "damage": +x} (not saved)
+var platform_ship := {}                    # package 33: the Citadel's platform ship (ShipFitting data; {} = none)
+var platform_lost := {}                    # package 33: destroyed platform ship – recall at a station for 10 %
+var platform_out := false                  # package 33: launched (runtime; saved so a load in space keeps it out)
+var platform_stance := "defensive"
 var _builtin_hull := ""
 var _builtin_cache: Array = []
 var drone_modes := {"combat": "defend", "mining": "auto", "repair": "auto"}
@@ -276,7 +281,7 @@ const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "carg
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
 	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities", "wormhole_ready",
 	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers",
-	"mine_choice", "held_on", "crew"]
+	"mine_choice", "held_on", "crew", "platform_ship", "platform_lost", "platform_out", "platform_stance"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -515,6 +520,16 @@ func _compute() -> Dictionary:
 	_drone_stats(s, drone_mods)
 	_skill_effects(s)
 	_crew_effects(s)
+	if not wing_mult.is_empty():
+		var wd := float(wing_mult.get("damage", 0.0))
+		var ws := float(wing_mult.get("speed", 0.0))
+		for w in s["weapons"]:
+			w["damage"] = float(w["damage"]) * (1.0 + wd)
+		for k in s["dps"]:
+			s["dps"][k] = float(s["dps"][k]) * (1.0 + wd)
+		for k2 in ["speed", "accel"]:
+			if s.has(k2):
+				s[k2] = float(s[k2]) * (1.0 + ws)
 	s["dps_total"] = s["dps"]["optical"] + s["dps"]["kinetic"] + s["dps"]["explosive"]
 	s["optimal_range"] = min_range * 0.8 if min_range < INF else s["sensor_range"] * 0.5
 	return s

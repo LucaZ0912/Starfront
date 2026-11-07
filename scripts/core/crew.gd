@@ -43,8 +43,10 @@ static func make(rng: RandomNumberGenerator, id: int, role: String, quality: Str
 		"bonus": _pick_bonus(rng, role), "value": _roll(rng, quality),
 		"perk": _pick_perk(rng) if perk == "?" else perk, "role2": "", "bonus2": "", "value2": 0.0,
 	}
+	if m["perk"] == "wingman" and role != "copilot":
+		m["perk"] = ""                                # package 33: the perk Wingman only comes with Co-Pilots
 	if m["perk"] == "second_profession":
-		var others: Array = CrewData.ROLES.keys().filter(func(r): return r != role)
+		var others: Array = CrewData.hire_roles().filter(func(r): return r != role)
 		m["role2"] = others[rng.randi() % others.size()]
 		m["bonus2"] = _pick_bonus(rng, String(m["role2"]))
 		m["value2"] = _roll(rng, quality)
@@ -53,6 +55,8 @@ static func make(rng: RandomNumberGenerator, id: int, role: String, quality: Str
 
 ## May this member serve in a slot of this role?
 static func fits(m: Dictionary, role: String) -> bool:
+	if role == "wing_pilot":
+		return String(m.get("role", "")) == "copilot" and String(m.get("perk", "")) == "wingman"
 	return String(m.get("role", "")) == role or String(m.get("role2", "")) == role
 
 

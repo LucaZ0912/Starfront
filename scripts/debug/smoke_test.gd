@@ -569,11 +569,15 @@ func _process(delta: float) -> void:
 				_test_review4(view)
 				_test_audio()
 				_test_pilot()
+				_test_wingmen(view)
+				_test_platform()
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_raid(view)
+				if "--shots" in OS.get_cmdline_user_args():
+					await _shoot_wingmen(view)
 				# Debug menu + cheat commands
 				var dm: DebugMenu = main.debug_menu
 				dm.toggle()
@@ -5760,3 +5764,131 @@ func _test_gameover() -> void:
 	main._update_input()
 	GameState.active_changed.emit()
 	fa.mark_dirty()
+
+
+## Package 33: wingmen – the bar, the contract, flying in formation, orders, the share, losing one.
+func _test_wingmen(view: SystemView) -> void:
+	var WD = load("res://data/wingmen.gd")
+	var TD = load("res://data/skilltree.gd")
+	var keep_credits := GameState.credits
+	var keep_tree: bool = bool(GameState.pilot.get("tree_all", false))
+	GameState.wingmen.clear()
+	# a wingman: real character with two traits that go together, a ship with a standard fit
+	var ok_gen := true
+	for i in 40:
+		var w0: Dictionary = GameState.new_wingman(WD.LEVELS[i % 5])
+		var t: Array = w0["traits"]
+		ok_gen = ok_gen and t.size() == 2 and t[0] != t[1] and not ("brave" in t and "cautious" in t) and not ("disciplined" in t and "hothead" in t)
+		ok_gen = ok_gen and String(w0["ship"]["hull_id"]) in WD.SHIPS[String(w0["level"])] and not (w0["ship"]["modules"] as Dictionary).is_empty()
+	# the skill tree gates hiring; Leadership 3 allows a second wingman
+	GameState.pilot["tree_all"] = false
+	var gate: String = GameState.wing_hire_error()
+	GameState.pilot["tree_all"] = true
+	var lead_keep := GameState.skill_level("leadership")
+	var one: int = GameState.wing_max()
+	GameState.pilot["skills"]["leadership"]["lvl"] = 3
+	var two: int = GameState.wing_max()
+	check(ok_gen and gate.contains("Wing Command") and one == 1 and two == 2 and TD.TILES["wing_command"]["pre"][0] == "fighters",
+		"wingmen: two fitting traits and a ship with its loadout each; hiring needs the tile Wing Command (after Fighters); Leadership 3 allows a second")
+	# hire one: price for the time up front, the share runs with the contract
+	var w := GameState.new_wingman("A")
+	var p60: int = GameState.wing_price(w, 60)
+	GameState.wing_hire(w, 30)
+	var share: float = GameState.wing_share()
+	var f := GameState.active()
+	var cut := 0
+	if f != null:
+		cut = GameState.crew_cut(100000)
+	check(p60 > GameState.wing_price(w, 30) and absf(share - 0.20 * (1.0 - GameState.wing_leadership())) < 0.0001 and cut >= int(round(100000.0 * share)) - 1,
+		"wingman A: 30 min up front, %d %% of the income (%d cr of 100,000)" % [int(round(share * 100.0)), cut])
+	# in space they fly as a ship in formation; orders; losing the ship ends the contract
+	var fly_ok := true
+	if view.player != null and is_instance_valid(view.player) and not view.player.is_docked():
+		view._sync_wingmen()
+		var n = view.wing_nodes.get(int(w["id"]))
+		fly_ok = n != null and is_instance_valid(n) and n.faction == "player" and String(n.order.get("type", "")) == "follow" and n.order.get("node") == view.player
+		Commands.execute({"type": "wing_stance", "id": -1, "stance": "aggressive"})
+		fly_ok = fly_ok and n.fit.stance == "aggressive" and GameState.wingmen[0]["stance"] == "aggressive"
+		Commands.execute({"type": "wing_stance", "id": int(w["id"]), "stance": "passive"})
+		fly_ok = fly_ok and n.fit.stance == "passive"
+		var dps_ok: bool = float(n.fit.stats()["dps_total"]) >= 0.0
+		view.on_ship_destroyed(n, null)
+		fly_ok = fly_ok and dps_ok and GameState.wingmen.is_empty() and not view.wing_nodes.has(int(w["id"]))
+		n.queue_free()
+	check(fly_ok, "wingman in space: a ship following you, orders aggressive / defensive / passive, killed – the contract ends")
+	# the contract runs out
+	var w2 := GameState.new_wingman("F")
+	GameState.wing_hire(w2, 30)
+	GameState.wingmen[0]["until"] = GameState.play_time - 1.0
+	GameState.wing_tick()
+	var keys_ok: bool = Keybinds.key_text("wing_attack") != "" and Keybinds.key_text("wing_passive") != "" and Keybinds.key_text("wing_aggressive") == "" and Keybinds.key_text("wing_defensive") == ""
+	check(GameState.wingmen.is_empty() and keys_ok, "a contract runs out and the wingman leaves; hotkeys: attack my target and passive set, aggressive and defensive free to bind")
+	view._sync_wingmen()
+	GameState.pilot["skills"]["leadership"]["lvl"] = lead_keep
+	GameState.pilot["tree_all"] = keep_tree
+	GameState.credits = keep_credits
+
+
+## Package 33: the Citadel's launch platform – a Hadrian S ship on it, the platform pilot, losing and recalling it.
+func _test_platform() -> void:
+	var CD = load("res://data/crew.gd")
+	var CC = load("res://scripts/core/crew.gd")
+	var keep_uid := GameState.active_uid
+	var keep_credits := GameState.credits
+	var st: Dictionary = Universe.get_layout(GameState.current_system)["stations"][0]
+	var cit := GameState.create_from_preset("std_hdy_citadel", "player")
+	var talon := GameState.create_from_preset("std_hdy_talon", "player")
+	var hornet := GameState.create_from_preset("std_hornet", "player")
+	for s in [cit, talon, hornet]:
+		s.system_id = GameState.current_system
+		s.docked_at = String(st["id"])
+		s.position = st["pos"]
+		GameState.add_ship(s)
+	GameState.crew_fill_required(cit)
+	var pp: Dictionary = GameState.platform_pilot(cit)
+	var rookie_ok: bool = not pp.is_empty() and String(pp["quality"]) == "F" and String(pp["role"]) == "copilot" and String(pp["perk"]) == "wingman"
+	var fits_ok: bool = CC.fits(pp, "wing_pilot") and not CC.fits(GameState.new_crew("copilot", "C", ""), "wing_pilot") and not ("wing_pilot" in CD.hire_roles())
+	GameState.active_uid = cit.uid
+	GameState.credits = 10000000
+	var e_h := Commands.execute({"type": "platform_load", "uid": hornet.uid})
+	var e_t := Commands.execute({"type": "platform_load", "uid": talon.uid})
+	var loaded: bool = e_h != "" and e_t == "" and String(cit.platform_ship.get("hull_id", "")) == "hdy_talon" and not GameState.fleet.has(talon)
+	check(rookie_ok and fits_ok and loaded, "Citadel: comes with a rookie platform pilot (Co-Pilot with the perk Wingman); only Hadrian S ships go on the platform (Talon yes, Hornet no)")
+	GameState.platform_lost(cit, Vector2(1000, 0))
+	var lost_ok: bool = cit.platform_ship.is_empty() and not cit.platform_lost.is_empty() and GameState.platform_pilot(cit).is_empty()
+	var price: int = GameState.platform_recall_price(cit)
+	var c0 := GameState.credits
+	var e_r := Commands.execute({"type": "platform_rebuy"})
+	var back: bool = e_r == "" and not cit.platform_ship.is_empty() and cit.platform_lost.is_empty() and GameState.credits == c0 - price
+	var e_u := Commands.execute({"type": "platform_unload"})
+	var unloaded: bool = e_u == "" and cit.platform_ship.is_empty() and GameState.hangar(String(st["id"])).any(func(x): return x.hull_id == "hdy_talon")
+	check(lost_ok and back and unloaded and price > 0, "platform ship destroyed: the pilot rolls for a pod, recall for 10 %% (%s); back into the hangar to fit it" % GameData.fmt_credits(price))
+	# clean up
+	for s2 in GameState.fleet.duplicate():
+		if s2 == cit or s2 == hornet or s2.hull_id == "hdy_talon":
+			GameState.fleet.erase(s2)
+	GameState.pods = GameState.pods.filter(func(p): return (p["pos"] as Vector2) != Vector2(1000, 0))
+	GameState.active_uid = keep_uid
+	GameState.credits = keep_credits
+
+
+## Package 33: two wingmen in formation with the HUD panel (screenshot).
+func _shoot_wingmen(view: SystemView) -> void:
+	if view.player == null or not is_instance_valid(view.player) or view.player.is_docked():
+		return
+	_shooting = true
+	var lead_keep := GameState.skill_level("leadership")
+	GameState.pilot["skills"]["leadership"]["lvl"] = 3
+	Commands.execute({"type": "debug_wing", "level": "B", "minutes": 30})
+	Commands.execute({"type": "debug_wing", "level": "D", "minutes": 60})
+	view._sync_wingmen()
+	view.set_level(0)
+	for i in 120:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/wingmen.png")
+	print("[SMOKE] screenshot: Claude outputs/wingmen.png")
+	for c in GameState.wingmen.duplicate():
+		Commands.execute({"type": "wing_dismiss", "id": int(c["w"]["id"])})
+	view._sync_wingmen()
+	GameState.pilot["skills"]["leadership"]["lvl"] = lead_keep
+	_shooting = false

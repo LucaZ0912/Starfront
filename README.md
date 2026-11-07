@@ -103,6 +103,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## Wingmen (phase 0.5 package 33)
+- **The Bar → Pilots for hire:** wingmen with their own ship (loadout shown), two skills and two traits (Daredevil,
+  Cautious, Disciplined, Hothead, Sharpshooter, Loyal, Greedy). A contract runs 30, 60 or 120 minutes: paid up front,
+  plus a share of your income (F 2 % … A 20 %). At most two – the second with Leadership 3; Leadership also makes them
+  better and cheaper. Needs the skill tree tile **Wing Command**.
+- They fly in formation, warp and jump with you, follow whom you follow and dock with you. Orders in the **WINGMEN**
+  panel: aggressive, defensive, passive, **attack my target [N]**, passive **[Y]**. If a wingman dies, the ship is
+  gone and the contract ends.
+- **Citadel:** put a Hadrian S ship (Talon) on its launch platform in the hangar; a Co-Pilot with the perk Wingman
+  flies it – launch and recall it in space. Destroyed, it can be recalled at a hangar for 10 %.
+
 ## Losing the ship (phase 0.5 package 31a)
 - Every crew member rolls to survive – better quality, better odds (perks Lucky and Medic help). The survivors wait
   in an **escape pod** at the wreck (in the overview, on the radar) until its signal fades, 5–22 minutes by quality.

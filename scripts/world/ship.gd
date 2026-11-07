@@ -92,6 +92,13 @@ const ArchData = preload("res://data/pirate_archetypes.gd")
 const MAX_LOCKS := 3              # minimum; bigger sensor suites hold more (package 22: stats max_locks)
 var manual := false
 var is_drone := false            # package 23: a drone of the pilot (scripts/world/drone.gd)
+# Package 33: a wingman flying with the pilot
+var wingman_id := -1
+var wing_traits: Array = []
+var wing_focus = null            # "attack my target": the node it goes for
+var wing_lead = null             # the ship it flies with (the pilot, or whom the pilot follows)
+var _wing_back := 0.0            # cautious: seconds it stays back in formation
+const WingDataS = preload("res://data/wingmen.gd")
 var locks: Array = []            # [{key, node, progress}]
 var active_lock := ""            # key of the lock that newly switched-on modules act on
 var module_target := {}          # package 22 (multi-focus): slot -> lock key the module works on
@@ -839,6 +846,9 @@ func _update_targeting(delta: float, s: Dictionary) -> void:
 	if manual:
 		_update_locks(delta, s)
 		return
+	if wingman_id >= 0:
+		_wing_targeting(delta, s)
+		return
 	if not _valid(target) or not can_see(target):
 		target = null
 	if fleeing:
@@ -873,6 +883,51 @@ func _update_targeting(delta: float, s: Dictionary) -> void:
 			_set_target(want)
 	if target != null:
 		lock_progress = minf(1.0, lock_progress + delta / _lock_time(s))
+
+
+## Package 33: whom a wingman fights – the order (stance, "attack my target") coloured by its traits.
+func _wing_targeting(delta: float, s: Dictionary) -> void:
+	if not _valid(target) or not can_see(target):
+		target = null
+	_wing_back = maxf(0.0, _wing_back - delta)
+	if "cautious" in wing_traits and target != null and fit.shield < 0.5 * float(s["shield_max"]) and float(s["shield_max"]) > 0.0:
+		_wing_back = 8.0                     # falls back into formation for a while
+	_retarget -= delta
+	if _retarget <= 0.0:
+		_retarget = 0.5
+		var sensor: float = lock_range(s) * (1.3 if "brave" in wing_traits else 1.0)
+		var want = null
+		var pl = view.player if view != null else null
+		var pa = null
+		if pl != null and is_instance_valid(pl) and _valid(pl.last_attacker) and hostile(self, pl.last_attacker) and position.distance_to(pl.last_attacker.position) <= sensor * 1.3:
+			pa = pl.last_attacker
+		var own = last_attacker if _valid(last_attacker) and hostile(self, last_attacker) and position.distance_to(last_attacker.position) <= sensor * 1.3 else null
+		if _wing_back > 0.0:
+			want = null
+		elif _valid(wing_focus):
+			want = wing_focus
+			if not ("disciplined" in wing_traits) and own != null and own != wing_focus and randf() < 0.1:
+				want = own                       # answers whoever shoots at it now and then
+		elif fit.stance == "passive":
+			want = null
+		elif "loyal" in wing_traits and pa != null:
+			want = pa
+		elif fit.stance == "aggressive":
+			want = _nearest_hostile(sensor)
+		else:
+			want = pa if pa != null else own
+			if want == null and _valid(target) and hostile(self, target):
+				want = target                    # finishes the fight it is in
+			if want == null and "hothead" in wing_traits and randf() < 0.08:
+				want = _nearest_hostile(sensor * 0.7)
+		_set_target(want)
+	if target != null:
+		lock_progress = minf(1.0, lock_progress + delta / _lock_time(s))
+
+
+## How far from the ship it flies with a wingman chases an enemy.
+func wing_leash() -> float:
+	return WingDataS.LEASH * (1.6 if "brave" in wing_traits else 1.0)
 
 
 const PATROL_SCAN_RANGE := 15000.0
@@ -1086,6 +1141,9 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 				if gap > fr * 3.0:
 					speed_factor = 1.0
 				activity = "In formation with %s" % fn.display_name()
+				if wingman_id >= 0 and target != null and fit.stance != "passive" and not s["weapons"].is_empty() and fn.position.distance_to(target.position) < wing_leash():
+					dest = _combat_point(s)          # package 33: the wingman fights near the ship it flies with
+					activity = "Engaging: %s" % target.display_name()
 		"travel":
 			dest = _travel(delta, s)
 		"warp":
@@ -1270,6 +1328,8 @@ static func _rotate_toward(from: float, to: float, step: float) -> float:
 
 func _combat_point(s: Dictionary) -> Vector2:
 	var opt: float = s["optimal_range"]
+	if "sharpshooter" in wing_traits:
+		opt *= 1.5                               # package 33: keeps its distance
 	var away: Vector2 = position - target.position
 	if away.length() < 1.0:
 		away = Vector2.RIGHT

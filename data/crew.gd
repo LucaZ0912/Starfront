@@ -41,7 +41,14 @@ const ROLES := {
 		"bonuses": [["cargo", "Cargo hold"], ["sell", "Sale prices"], ["fuel", "Fuel per jump"], ["share", "Lower crew share"]]},
 	"drone_op": {"name": "Drone Operator", "icon": "drone", "learns": "drones at work",
 		"bonuses": [["drone_damage", "Drone damage"], ["drone_range", "Drone range"], ["drone_speed", "Drone speed"], ["drone_hull", "Drone hull"]]},
+	# package 33: the post of the Citadel's platform pilot – only a Co-Pilot with the perk Wingman takes it
+	"wing_pilot": {"name": "Platform Pilot", "icon": "hull", "learns": "flying the platform ship", "hidden": true,
+		"bonuses": [["speed", "Speed"]]},
 }
+
+## The professions a bar offers and a second profession may be (not the platform pilot)
+static func hire_roles() -> Array:
+	return ROLES.keys().filter(func(r): return not bool(ROLES[r].get("hidden", false)))
 
 ## Very rare perks (fixed for life, any quality except F crew that come with a new ship).
 ## second_profession: also fits a second role, with a bonus of its own there.
@@ -57,6 +64,8 @@ const PERKS := {
 	# package 31a (ideas of Luz)
 	"cargo_insurance": {"name": "Cargo Insurance", "text": "If the ship is lost and bought back, the whole cargo comes back with it.", "weight": 0.35},
 	"insurance_agent": {"name": "Insurance Agent", "text": "Buying the ship back after a loss costs 5 % less.", "weight": 0.35},
+	# package 33: only Co-Pilots
+	"wingman": {"name": "Wingman", "text": "Flies the platform ship of a Citadel (Co-Pilots only).", "weight": 0.5},
 }
 
 ## Package 31a: losing the ship – survival chance and how long the escape pod's signal lasts (seconds of play),
@@ -92,7 +101,7 @@ const SHIP_CREW := {
 	"cfw_concordia": [["drone_op", true], ["gunner", true], ["engineer", true], ["drone_op", false], ["drone_op", false], ["gunner", false],
 		["copilot", false], ["engineer", false], ["science", false], ["quartermaster", false]],
 	"hdy_citadel": [["drone_op", true], ["gunner", true], ["engineer", true], ["drone_op", false], ["gunner", false], ["gunner", false],
-		["copilot", false], ["engineer", false], ["science", false], ["quartermaster", false]],
+		["copilot", false], ["engineer", false], ["science", false], ["quartermaster", false], ["wing_pilot", false]],
 	"aur_empress": [["copilot", true], ["quartermaster", true], ["engineer", true], ["quartermaster", false], ["engineer", false],
 		["copilot", false], ["science", false], ["drone_op", false], ["gunner", false], ["quartermaster", false]],
 }

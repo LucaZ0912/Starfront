@@ -40,7 +40,7 @@ const TILES := {
 	"gunships": {"branch": "Combat", "name": "Gunships", "pre": ["fighters"], "req": [["kills", 25], ["bounty_jobs", 3]],
 		"unlocks": {"hulls": ["warden", "hdy_maul", "for_templar", "cfw_quirinus"]}},
 	"capital_ships": {"branch": "Combat", "name": "Capital Ships", "pre": ["gunships"], "req": [["kills", 100], ["bounty_jobs", 10]],
-		"unlocks": {"hulls": ["bastion", "hdy_goliath", "hdy_citadel", "for_cathedral", "cfw_concordia"]}},
+		"unlocks": {"hulls": ["bastion", "hdy_goliath", "hdy_citadel", "for_cathedral", "cfw_concordia"], "crew": ["wing_pilot"]}},
 	"heavy_weapons": {"branch": "Combat", "name": "Heavy Weapons", "pre": ["light_weapons"], "req": [["kills", 25]],
 		"unlocks": {"weapon_size": 3, "families": ["w_railgun", "w_massdriver", "w_lance", "w_torpedo"]}},
 	"capital_weapons": {"branch": "Combat", "name": "Capital Weapons", "pre": ["heavy_weapons"], "req": [["kills", 75]],
@@ -49,6 +49,8 @@ const TILES := {
 		"unlocks": {"families": ["w_pointdef", "w_minelayer"]}},
 	"focus": {"branch": "Combat", "name": "Focus Crystals", "pre": ["light_weapons"], "req": [["jobs_covenant", 10]],
 		"unlocks": {"families": ["w_focus"]}},
+	"wing_command": {"branch": "Combat", "name": "Wing Command", "pre": ["fighters"], "req": [["kills", 10], ["bounty_jobs", 2]],
+		"unlocks": {"wingmen": 1}},
 	# ---- mining
 	"mining_ops": {"branch": "Mining", "name": "Mining Operations", "pre": ["shields"], "req": [["mined", 300]],
 		"unlocks": {"families": ["o_orehold", "t_prospector", "o_mining_metal", "o_mining_stone", "o_mining_ice"]}},
@@ -260,6 +262,8 @@ static func opens_text(id: String) -> String:
 				roles.append(r)
 	for r2 in roles:
 		parts.append("crew: %s" % CD2.role_name(String(r2)))
+	if u.has("wingmen"):
+		parts.append("wingmen – pilots for hire at The Bar")
 	if u.has("weapon_size"):
 		parts.append("weapons of size %d" % int(u["weapon_size"]))
 	if u.has("size"):

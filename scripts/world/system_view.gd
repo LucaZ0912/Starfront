@@ -213,6 +213,191 @@ func _sync_pods() -> void:
 			_add_celestial("pod", {"id": pid, "name": "Escape pod", "pos": want[pid]["pos"]})
 
 
+# ---------------------------------------------------------------- Wingmen (package 33)
+
+var wing_nodes := {}             # wingman id -> Ship
+
+
+## The wingmen under contract fly as ships while the pilot is in space; docked (or after the contract) they are gone.
+func _sync_wingmen() -> void:
+	var want := {}
+	for c in GameState.wingmen:
+		want[int(c["w"]["id"])] = c
+	var can_fly: bool = player != null and is_instance_valid(player) and not player.dying and not player.is_docked() and not player.in_station()
+	for id in wing_nodes.keys():
+		if int(id) == 0:
+			continue                                         # the Citadel's platform ship: _sync_platform
+		var n = wing_nodes[id]
+		if not is_instance_valid(n) or n.dying:
+			wing_nodes.erase(id)
+			continue
+		if not want.has(id) or not can_fly:
+			if want.has(id):
+				want[id]["w"]["ship"] = n.fit.to_dict()       # keeps the damage
+			spawn_fx(Fx.flash(n.position, Color(0.5, 0.8, 1.0), n.radius * 1.5))
+			n.queue_free()
+			wing_nodes.erase(id)
+	if not can_fly:
+		return
+	var lead = player
+	if String(player.order.get("type", "")) == "follow" and is_instance_valid(player.order.get("node")) and not player.order.get("node") in wing_nodes.values():
+		lead = player.order["node"]                         # the pilot follows someone: so do they
+	var k := 0
+	for id2 in want:
+		var c2: Dictionary = want[id2]
+		if not wing_nodes.has(id2):
+			wing_nodes[id2] = _spawn_wingman(c2, k)
+		var n2: Ship = wing_nodes[id2]
+		n2.fit.stance = String(c2.get("stance", "defensive"))
+		n2.wing_lead = lead
+		if not _valid_node(n2.wing_focus):
+			n2.wing_focus = null
+		k += 1
+		if n2.in_warp():
+			continue
+		if "greedy" in n2.wing_traits and _wing_salvage(n2, lead):
+			continue
+		if String(n2.order.get("type", "")) != "follow" or n2.order.get("node") != lead:
+			n2.set_order({"type": "follow", "node": lead, "r": 700.0})
+
+
+## The Citadel's platform ship (wing node 0): out while launched and the pilot flies in space; it lands again when
+## recalled, when the Citadel docks – and is gone for good when destroyed (recall at a station for 10 %).
+func _sync_platform() -> void:
+	var cit := GameState.active()
+	var node = wing_nodes.get(0)
+	var in_space: bool = player != null and is_instance_valid(player) and not player.dying and not player.is_docked() and not player.in_station()
+	if cit != null and not in_space and player != null and is_instance_valid(player) and player.is_docked():
+		cit.platform_out = false
+	var want: bool = cit != null and in_space and cit.platform_out and not cit.platform_ship.is_empty() and not GameState.platform_pilot(cit).is_empty()
+	if node != null and (not is_instance_valid(node) or node.dying):
+		wing_nodes.erase(0)
+		node = null
+	if node != null and not want:
+		if cit != null and not cit.platform_ship.is_empty():
+			cit.platform_ship = node.fit.to_dict()
+		node.queue_free()
+		wing_nodes.erase(0)
+		return
+	if not want:
+		return
+	if node == null:
+		node = _spawn_platform_ship(cit)
+	node.fit.stance = cit.platform_stance
+	node.wing_lead = player
+	if not _valid_node(node.wing_focus):
+		node.wing_focus = null
+	if node.in_warp():
+		return
+	if node.has_meta("recall"):
+		if node.position.distance_to(player.position) < player.radius + 250.0:
+			cit.platform_ship = node.fit.to_dict()
+			cit.platform_out = false
+			player.launch_platform()                       # the bay opens for the landing
+			node.queue_free()
+			wing_nodes.erase(0)
+			GameState.log_msg("%s landed on the platform." % node.display_name(), GameState.COL_INFO)
+		elif String(node.order.get("type", "")) != "approach":
+			node.set_order({"type": "approach", "node": player})
+		return
+	if String(node.order.get("type", "")) != "follow" or node.order.get("node") != player:
+		node.set_order({"type": "follow", "node": player, "r": 600.0})
+
+
+func _spawn_platform_ship(cit: ShipFitting) -> Ship:
+	var f := ShipFitting.from_dict(cit.platform_ship)
+	f.faction = "player"
+	f.system_id = system_id
+	f.docked_at = ""
+	f.uid = -99999
+	var pq := String(GameState.platform_pilot(cit).get("quality", "F"))
+	f.wing_mult = {"speed": 0.02 * float(["F", "D", "C", "B", "A"].find(pq)), "damage": 0.02 * float(["F", "D", "C", "B", "A"].find(pq)) + GameState.wing_leadership()}
+	f.mark_dirty()
+	f.position = player.position + Vector2.from_angle(player.heading + PI) * (player.radius + 60.0)
+	f.rotation = player.heading
+	var sh := Ship.new()
+	sh.manual = false
+	sh.wingman_id = 0
+	sh.setup(f, self)
+	ship_layer.add_child(sh)
+	sh.velocity = Vector2.from_angle(player.heading + PI) * 120.0
+	sh.set_order({"type": "follow", "node": player, "r": 600.0})
+	wing_nodes[0] = sh
+	return sh
+
+
+func launch_platform_ship() -> void:
+	_sync_platform()
+
+
+func recall_platform_ship() -> void:
+	var node = wing_nodes.get(0)
+	if node != null and is_instance_valid(node):
+		node.set_meta("recall", true)
+		node.wing_focus = null
+		node.target = null
+
+
+func _valid_node(n) -> bool:
+	return n != null and is_instance_valid(n) and not n.dying
+
+
+func _spawn_wingman(c: Dictionary, k: int) -> Ship:
+	var w: Dictionary = c["w"]
+	var f := ShipFitting.from_dict(w["ship"])
+	f.faction = "player"
+	f.system_id = system_id
+	f.docked_at = ""
+	f.route = []
+	f.uid = -100000 - int(w["id"])
+	var lead_b := GameState.wing_leadership()
+	f.wing_mult = {"speed": float(w["skills"]["piloting"]) * 0.01 + lead_b, "damage": float(w["skills"]["gunnery"]) * 0.01 + lead_b}
+	f.mark_dirty()
+	var sh := Ship.new()
+	sh.manual = false
+	sh.wingman_id = int(w["id"])
+	sh.wing_traits = (w["traits"] as Array).duplicate()
+	f.position = player.position + Vector2.from_angle(player.heading + PI + (0.5 if k % 2 == 0 else -0.5)) * (500.0 + 250.0 * k)
+	f.rotation = player.heading
+	sh.setup(f, self)
+	ship_layer.add_child(sh)
+	sh.set_order({"type": "follow", "node": player, "r": 700.0})
+	return sh
+
+
+## Greedy wingmen salvage wrecks near the ship they fly with when nothing is to be fought; the loot goes into the
+## pilot's hold.
+func _wing_salvage(n: Ship, lead) -> bool:
+	if n.target != null or n.fit.stance == "passive":
+		return false
+	var best = null
+	var bd := 3000.0
+	for c in celestials:
+		if is_instance_valid(c) and c.kind == "wreck" and not c.is_depleted() and (c.position as Vector2).distance_to(lead.position) < 3000.0:
+			var d: float = (c.position as Vector2).distance_to(n.position)
+			if d < bd + 3000.0:
+				bd = d
+				best = c
+	if best == null:
+		return false
+	if n.position.distance_to(best.position) < 300.0:
+		var f := GameState.active()
+		var got: Array = []
+		for item in best.data["loot"].keys():
+			var amt := float(best.data["loot"][item])
+			var put := f.add_cargo(String(item), amt) if f != null else 0.0
+			if put > 0.0:
+				got.append("%s ×%d" % [GameData.item_name(String(item)), int(put)])
+		best.data["salvage"] = 100.0
+		best.data["loot"] = {}
+		GameState.log_msg("%s salvaged %s%s." % [n.display_name(), best.data["name"], (" – into your hold: " + ", ".join(PackedStringArray(got))) if not got.is_empty() else " – your hold had no room"], GameState.COL_GOOD)
+		n.set_order({"type": "follow", "node": lead, "r": 700.0})
+		return true
+	if String(n.order.get("type", "")) != "approach" or n.order.get("node") != best:
+		n.set_order({"type": "approach", "node": best})
+	return true
+
+
 ## A ship of the pilot close to a pod takes it aboard.
 func _pod_pickup_check() -> void:
 	if player == null or not is_instance_valid(player) or GameState.pods.is_empty():
@@ -774,6 +959,8 @@ func _process(delta: float) -> void:
 		_market_tick(0.5)
 		_sync_pods()                         # package 31a
 		_pod_pickup_check()
+		_sync_wingmen()                      # package 33
+		_sync_platform()
 	_update_camera(delta)
 	_update_bodies()
 	background.follow(camera)
@@ -2658,6 +2845,16 @@ func on_ship_destroyed(ship: Ship, _killer) -> void:
 		player = null
 		GameState.on_player_ship_lost(ship.fit)
 		return
+	if ship.wingman_id >= 0:                     # package 33: a wingman died
+		wing_nodes.erase(ship.wingman_id)
+		if ship.wingman_id == 0:
+			if GameState.active() != null:
+				GameState.platform_lost(GameState.active(), ship.position)
+		else:
+			GameState.wing_lost(ship.wingman_id)
+		return
+	if _killer is Ship and is_instance_valid(_killer) and _killer.wingman_id >= 0:
+		GameState.skill_xp("leadership", 4.0)
 	_aggro.erase(ship.get_instance_id())
 	if _killer is Ship and is_instance_valid(_killer) and _killer.faction == "player":
 		GameState.notify_target(ship.notorious_id, ship.smuggler_mission)

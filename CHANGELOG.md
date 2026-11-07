@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.33.1 – 2026-11-07
+
+**Package 33 – wingmen** (mercenaries for ground combat follow in part 7).
+- Pilots for hire at The Bar: real characters with Piloting and Gunnery, two traits and their own ship with a
+  standard fit; contracts of 30, 60 or 120 minutes, paid up front, plus a share of the income (F 2 % … A 20 %).
+- They fly in formation, warp and jump with you (and follow whom you follow), dock with you; orders aggressive,
+  defensive, passive and "attack my target" in the WINGMEN panel (keys N and Y; the others can be bound).
+- At most two (the second with Leadership 3); Leadership makes them better and cheaper. Skill tree: Wing Command.
+- Citadel: a Hadrian S ship on the launch platform, flown by a Co-Pilot with the new perk Wingman; launch and recall
+  in space; destroyed, it can be recalled at a hangar for 10 %.
+
 ## alpha 0.5.31.5 – 2026-11-07
 
 **The rebuild summary as tiles:** the lost ship, the respawn station, the crew (in the pod with its signal time / lost), cargo and losses; on the right the costs (hull, modules and drones), the total, the remaining balance, REBUILD and the starter ship – which asks once more.

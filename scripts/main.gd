@@ -292,6 +292,14 @@ func handle_input(event: InputEvent) -> void:
 		if event.is_action_pressed("drone_recall", false, true) and view != null and not in_hyperspace:
 			Commands.execute({"type": "drone_recall"})
 			return
+		# package 33: wingmen
+		if event.is_action_pressed("wing_attack", false, true) and view != null and not in_hyperspace:
+			Commands.execute({"type": "wing_attack"})
+			return
+		for ws in ["passive", "defensive", "aggressive"]:
+			if event.is_action_pressed("wing_" + ws, false, true) and view != null:
+				Commands.execute({"type": "wing_stance", "id": -1, "stance": ws})
+				return
 		for a in HUD.HOTKEY_COMMANDS:
 			if event.is_action_pressed(a, false, true):
 				if view != null and not in_hyperspace:

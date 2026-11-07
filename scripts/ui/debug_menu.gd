@@ -231,7 +231,7 @@ func _build_ship() -> void:
 	content.add_child(cfree)
 	var CD = preload("res://data/crew.gd")
 	var rc := _row()
-	var roles: Array = CD.ROLES.keys()
+	var roles: Array = CD.hire_roles()
 	var rnames: Array = roles.map(func(r): return CD.role_name(String(r)))
 	var ro := _option(roles, rnames, 200)
 	rc.add_child(ro)
@@ -252,6 +252,17 @@ func _build_ship() -> void:
 	var rc4 := _row()
 	rc4.add_child(UI.button("Lose the active ship (31a)", func(): _cmd({"type": "debug_lose_ship"})))
 	rc4.add_child(UI.button("Pod signals fade in 10 s", func(): _cmd({"type": "debug_pods", "seconds": 10})))
+	# package 33: wingmen
+	_section("Wingmen (package 33)")
+	var WD = preload("res://data/wingmen.gd")
+	var rw := _row()
+	var lo := _option(WD.LEVELS, WD.LEVELS, 70)
+	lo.select(2)
+	rw.add_child(lo)
+	rw.add_child(UI.button("A wingman joins (30 min, free)", func(): _cmd({"type": "debug_wing", "level": lo.get_selected_metadata(), "minutes": 30})))
+	rw.add_child(UI.button("End all contracts", func():
+		for c in GameState.wingmen.duplicate():
+			_cmd({"type": "wing_dismiss", "id": int(c["w"]["id"])})))
 
 
 func _build_items() -> void:
