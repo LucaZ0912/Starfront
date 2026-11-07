@@ -1352,6 +1352,14 @@ Athletics und Firearms haben in Teil 5 kaum Nutzen – bewusst so entschieden, s
 
 #### Söldner & Wingmen (Paket 33)
 
+**Vorgaben Luz (7. Nov 2026)** – gehen den älteren Notizen darunter vor:
+
+- Paket 33 sind **erst mal nur Wingmen**. Söldner kommen als gleiche Mechanik für den **Bodenkampf in Teil 7**.
+- Wingmen werden **in der Bar** angeheuert, mit **zeitlich festgelegtem Vertrag**: Anheuersumme plus **Anteil** (deutlich höher als bei Crew, je nach Level).
+- Wingmen sind **richtige Charaktere** wie der Pilot: Fähigkeiten und ein **Schiff mit echtem Loadout** (beim Anheuern einsehbar). Sie fliegen **im Verbund**, bis der Vertrag abläuft.
+- **Befehle** ähnlich wie bei Drohnen, aber rudimentär: **Aggressiv, Defensiv, Passiv**. Das Verhalten hängt auch von den **Eigenschaften** des Wingman ab.
+- **Citadel:** ihr mitgetragenes Schiff **stattet man selbst aus**; geflogen wird es von einem **besonderen Crewmitglied**, das nur auf der Citadel dient – ein **Co-Pilot mit dem neuen Perk „Wingman“**. Wer die Citadel kauft, bekommt dafür einen **F-Charakter** dazu.
+
 - **Anheuerbare Piloten und Söldner** fliegen **im Verbund** mit dem Spieler (eigenes Schiff, Befehle wie „folgen“, „angreifen“, „bergen/abbauen“).
 - Sie können bei manchen Schiffen die **mitgetragenen Schiffe** fliegen. Bis dahin gibt es **ein Schiff, das ein kleines Schiff tragen kann** – es wird in wenigen Schritten integriert; die großen Trägerschiffe bleiben Endgame.
 - **Anzahl:** 1 Wingman zu Beginn, mit der Fähigkeit Leadership bis zu 3.
