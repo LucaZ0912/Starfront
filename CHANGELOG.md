@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.31.5 – 2026-11-07
+
+**The rebuild summary as tiles:** the lost ship, the respawn station, the crew (in the pod with its signal time / lost), cargo and losses; on the right the costs (hull, modules and drones), the total, the remaining balance, REBUILD and the starter ship – which asks once more.
+
 ## alpha 0.5.31.4 – 2026-11-07
 
 **Package 31a – losing the ship.**

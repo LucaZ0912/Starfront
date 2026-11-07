@@ -1666,8 +1666,10 @@ func _shoot_standing(view: SystemView) -> void:
 	GameState.fleet.erase(bas8)
 	GameState.quarters_of(bas8.docked_at).clear()
 	# package 31a: the window after losing a ship
-	main.loss_window.open({"name": "Bastion »Testbed«", "where": "Nordlicht – near Nordlicht IV", "value": 877140, "price": 83328, "agent": true,
-		"insured": true, "cargo_value": 12400, "alive": ["Sol Navarro", "Hedda Amundsen"], "dead": ["Nyx Keller"]})
+	main.loss_window.open({"name": "Bastion »Testbed«", "hull": "bastion", "where": "Nordlicht – near Nordlicht IV", "value": 877140, "price": 83328, "agent": true,
+		"hull_cost": 22800, "modules_cost": 60528, "modules_n": 22, "drones_n": 2, "station": GameState.active().docked_at, "station_system": GameState.current_system,
+		"insured": true, "cargo_value": 12400, "cargo": {"food": 12.0, "electronics": 4.0}, "alive": ["Sol Navarro", "Hedda Amundsen"], "dead": ["Nyx Keller"],
+		"alive_info": [["Sol Navarro", "B", "Co-Pilot", 912.0], ["Hedda Amundsen", "A", "Science Officer", 1290.0]], "dead_info": [["Nyx Keller", "F", "Gunner"]]})
 	for i10 in 8:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/ship_lost.png")

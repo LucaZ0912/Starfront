@@ -811,8 +811,16 @@ func _lose_active(f: ShipFitting) -> void:
 	# the offer: buy the ship back (hull, modules, drones – the crew is handled by the pods)
 	var snap := f.to_dict()
 	var value := ship_value(f)
-	var price := int(round(float(value) * CrewData.BUYBACK * (0.95 if agent else 1.0)))
+	var factor := CrewData.BUYBACK * (0.95 if agent else 1.0)
+	var price := int(round(float(value) * factor))
+	var hull_cost := int(round(float(f.hull()["price"]) * factor))
+	var st0 := _respawn_station()
 	loss_offer = {"ship": snap, "name": f.ship_name, "hull": f.hull_id, "value": value, "price": price, "agent": agent,
+		"hull_cost": hull_cost, "modules_cost": price - hull_cost, "modules_n": f.modules.size(), "drones_n": f.drones.size(),
+		"cargo": f.cargo.duplicate(),
+		"alive_info": alive.map(func(e): return [e["m"]["name"], e["m"]["quality"], CrewData.role_name(String(e["m"]["role"])), float(e["until"]) - play_time]),
+		"dead_info": dead.map(func(e): return [e["name"], e["quality"], CrewData.role_name(String(e["role"]))]),
+		"station": String(st0["id"]), "station_system": int(last_station.get("system", Universe.home_system)),
 		"insured": insured, "cargo_value": cargo_value(f), "alive": alive.map(func(e): return e["m"]["name"]), "dead": dead.map(func(e): return e["name"]),
 		"system": f.system_id, "where": f.location_text()}
 	# back at the last station, for now in a beginner ship
