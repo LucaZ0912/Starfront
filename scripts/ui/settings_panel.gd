@@ -8,6 +8,7 @@ signal controls_requested
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	var sb := UI.panel_style(UI.NEON_BG, UI.NEON_PINK)
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(18)

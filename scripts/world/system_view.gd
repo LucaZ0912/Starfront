@@ -859,6 +859,8 @@ var _key_flying := false
 
 func key_direction() -> Vector2:
 	var d := Vector2.ZERO
+	if MenuNav.menu_open():
+		return d                                # 0.5.28.2: the keys belong to the open menu
 	if Input.is_action_pressed("ship_up"):
 		d.y -= 1
 	if Input.is_action_pressed("ship_down"):

@@ -18,6 +18,7 @@ var _god: CheckButton
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	layer = 45
 	visible = false
 	var root := Control.new()
@@ -82,6 +83,11 @@ func _set_tab(i: int) -> void:
 		2: _build_items()
 		3: _build_world()
 		4: _build_audio()
+
+
+## Q / E (0.5.28.2): the previous / next tab.
+func menu_tab(step: int) -> void:
+	_set_tab(posmod(tab + step, TABS.size()))
 
 
 func _cmd(c: Dictionary) -> void:

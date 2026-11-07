@@ -12,6 +12,7 @@ var _buttons := {}            # "id:slot" -> Button
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	var sb := UI.panel_style(UI.NEON_BG, UI.NEON_PINK)
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(18)
@@ -70,6 +71,10 @@ func _refresh() -> void:
 			b.text = Keybinds.desc_text(d)
 			if _capture.size() == 2 and _capture[0] == a["id"] and _capture[1] == slot:
 				b.text = "Press a key …"
+
+
+func menu_nav_blocked() -> bool:
+	return _capture.size() == 2
 
 
 func _start_capture(id: String, slot: int) -> void:

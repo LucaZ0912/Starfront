@@ -41,6 +41,7 @@ var content: VBoxContainer
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	layer = 25
 	visible = false
 	var bg := ColorRect.new()
@@ -117,6 +118,17 @@ func close() -> void:
 func _set_tab(i: int) -> void:
 	tab = i
 	rebuild()
+
+
+## Q / E (0.5.28.2): the previous / next tab this ship has.
+func menu_tab(step: int) -> void:
+	var n := tab_buttons.size()
+	var i := tab
+	for k in n:
+		i = posmod(i + step, n)
+		if tab_buttons[i].visible:
+			_set_tab(i)
+			return
 
 
 const MakerData = preload("res://data/manufacturers.gd")

@@ -28,6 +28,7 @@ var _tile_tweens: Array = []
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	layer = 20
 	visible = false
 	bg = ColorRect.new()
@@ -96,6 +97,12 @@ func open(p_station: Dictionary, p_view: SystemView) -> void:
 	_tween.tween_property(win, "modulate:a", 1.0, 0.35)
 	_tween.tween_property(win, "position:y", win.position.y - 30, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_report_turn_ins()
+
+
+## Q / E (0.5.28.2): handed to the service shown, if it has tabs (outfitter categories, market filters).
+func menu_tab(step: int) -> void:
+	if _panel != null and is_instance_valid(_panel) and _panel.has_method("menu_tab"):
+		_panel.menu_tab(step)
 
 
 func close() -> void:

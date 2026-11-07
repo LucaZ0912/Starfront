@@ -15,6 +15,8 @@ var _page: VBoxContainer
 
 
 func setup(p_in_game: bool) -> void:
+	if not is_in_group("kbd_menu"):
+		add_to_group("kbd_menu")          # 0.5.28.2: keyboard control
 	in_game = p_in_game
 	add_theme_constant_override("separation", 14)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL

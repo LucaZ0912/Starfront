@@ -56,6 +56,13 @@ const ACTIONS := [
 	{"id": "quicksave", "label": "Quicksave", "group": "Game", "def": [{"k": KEY_F5}]},
 	{"id": "quickload", "label": "Quickload", "group": "Game", "def": [{"k": KEY_F9}]},
 	{"id": "debug_menu", "label": "Debug menu", "group": "Game", "def": [{"k": KEY_F12}]},
+	# 0.5.28.2: keyboard control of the menus – only while a menu is open, so the keys may repeat flight keys
+	{"id": "menu_up", "label": "Menu: up", "group": "Menus", "def": [{"k": KEY_W}]},
+	{"id": "menu_down", "label": "Menu: down", "group": "Menus", "def": [{"k": KEY_S}]},
+	{"id": "menu_left", "label": "Menu: left", "group": "Menus", "def": [{"k": KEY_A}]},
+	{"id": "menu_right", "label": "Menu: right", "group": "Menus", "def": [{"k": KEY_D}]},
+	{"id": "menu_prev_tab", "label": "Menu: previous tab", "group": "Menus", "def": [{"k": KEY_Q}]},
+	{"id": "menu_next_tab", "label": "Menu: next tab", "group": "Menus", "def": [{"k": KEY_E}]},
 ]
 const SLOTS := 2
 const LAYOUT := 3   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets)
@@ -127,10 +134,19 @@ func _apply_all() -> void:
 
 ## Assigns a binding. A binding used by another action is removed there first.
 ## Returns the label of the action that lost the binding ("" if none).
+func _is_menu(id: String) -> bool:
+	for a in ACTIONS:
+		if a["id"] == id:
+			return String(a["group"]) == "Menus"
+	return false
+
+
 func set_binding(id: String, slot: int, d: Dictionary) -> String:
 	var taken_from := ""
 	if not d.is_empty():
 		for other in binds:
+			if _is_menu(other) != _is_menu(id):
+				continue                          # menu keys and game keys may share a key (0.5.28.2)
 			var list: Array = binds[other]
 			for i in list.size():
 				if same(list[i], d) and not (other == id and i == slot):

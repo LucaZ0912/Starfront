@@ -10,6 +10,7 @@ var _leave_armed := ""   # "menu" / "quit" after the first click (confirmation)
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	layer = 40
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false

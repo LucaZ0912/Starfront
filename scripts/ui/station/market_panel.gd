@@ -67,6 +67,15 @@ const FILTERS := [["local", "Local economy"], ["hold", "In hold"], ["goods", "Go
 static var filter := "local"
 
 
+## Q / E (0.5.28.2): the previous / next filter.
+func menu_tab(step: int) -> void:
+	var i := 0
+	for k in FILTERS.size():
+		if FILTERS[k][0] == filter:
+			i = k
+	_set_filter(String(FILTERS[posmod(i + step, FILTERS.size())][0]))
+
+
 func _set_filter(key: String) -> void:
 	filter = key
 	build()

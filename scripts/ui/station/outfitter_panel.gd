@@ -87,6 +87,15 @@ func _rail(parent: Control) -> void:
 		v.add_child(b)
 
 
+## Q / E (0.5.28.2): the previous / next category.
+func menu_tab(step: int) -> void:
+	var i := 0
+	for k in CATS.size():
+		if CATS[k][0] == cat:
+			i = k
+	_set_cat(String(CATS[posmod(i + step, CATS.size())][0]))
+
+
 func _set_cat(id: String) -> void:
 	cat = id
 	slot = ""

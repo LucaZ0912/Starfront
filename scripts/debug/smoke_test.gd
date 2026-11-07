@@ -705,6 +705,18 @@ func _test_station(sp: StationUI) -> void:
 	op._set_slot("reactor")
 	check(main.hud._w.has("speed") and GameData.module_summary(String(station["shop"][0])).contains(ModuleDescT.of(String(GameData.modules[station["shop"][0]]["family"]))), "ship info shows the current speed; module summaries carry the short description")
 	check(o_ok and op.get_child_count() >= 2 and ModuleDescT.DESC.size() >= ModuleData.FAMILIES.size(), "outfitter: category tiles, the ship's slots, families, size · quality tiles, short description – buy & fit straight into the slot")
+	# 0.5.28.2: keyboard control of the menus – W/A/S/D move the highlight, Q/E switch tabs, no flying meanwhile
+	var nav_menu: Node = MenuNav.active_menu()
+	MenuNav.step(sp, Vector2.DOWN)
+	var nf1: Control = get_viewport().gui_get_focus_owner()
+	MenuNav.step(sp, Vector2.DOWN)
+	var nf2: Control = get_viewport().gui_get_focus_owner()
+	var cat0: String = op.cat
+	sp.menu_tab(1)
+	var tabbed: bool = sp._panel.cat != cat0
+	check(nav_menu == sp and nf1 != null and sp.is_ancestor_of(nf1) and nf2 != nf1 and tabbed and MenuNav.menu_open()
+		and Keybinds.key_text("menu_up") == "W" and Keybinds.key_text("menu_next_tab") == "E" and Keybinds.key_text("ship_up") == "W",
+		"menus by keyboard: W/A/S/D move the highlight, Q/E switch tabs (the flight keys stay as they are)")
 	sp.open_service("market")
 	var mp = sp._panel
 	for spec in mp.FILTERS:
@@ -2601,7 +2613,7 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 	var dup := {}
 	var dup_ok := true
 	for a in Keybinds.ACTIONS:
-		if String(a["id"]) in ["interdict_hit", "map_territory"]:
+		if String(a["id"]) in ["interdict_hit", "map_territory"] or String(a["group"]) == "Menus":
 			continue
 		for b in a["def"]:
 			var kk := str(b)

@@ -14,6 +14,7 @@ var _t := 0.0
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	GameState.running = false
 	var bg := SpaceBackground.new()
 	bg.setup(37.0, 0.78, 1.15)

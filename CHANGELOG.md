@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.28.2 – 2026-11-07
+
+- Menus by keyboard: W/A/S/D (and the arrow keys) move the highlight, Enter/Space press, Q/E switch tabs, Escape
+  goes back; while a menu is open the ship does not fly. A key group "Menus" of its own in the key bindings.
+
 ## alpha 0.5.28.1 – 2026-11-07
 
 **Package 28a – the audio framework (part 5 begins).**
