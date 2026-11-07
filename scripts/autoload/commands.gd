@@ -1,4 +1,6 @@
 extends Node
+const PilotArtX = preload("res://scripts/core/pilot_art.gd")
+const PilotDataX = preload("res://data/pilot.gd")
 ## Command bus: the ONLY way player input changes the game state.
 ##
 ## Every player action is a plain Dictionary {"type": ..., args...} that contains only
@@ -452,6 +454,57 @@ func _c_rename_pilot(c: Dictionary) -> String:
 	if n == "" or n.length() > 24:
 		return "Pilot names need 1–24 characters."
 	GameState.pilot_name = n
+	GameState.pilot["name"] = n
+	return ""
+
+
+## {"type":"pilot_look", "look": Dictionary} – package 28: new looks at a station's image studio (the price
+## follows the standing); the attributes cannot be changed.
+func _c_pilot_look(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var only: Array = GameData.station_types.get(String(docked_station().get("type", "")), {}).get("services", [])
+	if not only.is_empty() and not "look" in only:
+		return "There is no image studio here."
+	var price := look_price()
+	if not GameState.spend(price):
+		return "Not enough credits (%s)." % GameData.fmt_credits(price)
+	GameState.pilot["look"] = PilotArtX.clean(c.get("look", {}))
+	GameState.log_msg("New looks – %s paid to the image studio." % GameData.fmt_credits(price), GameState.COL_GOOD)
+	return ""
+
+
+func look_price() -> int:
+	return GameState.rep.buy_price(PilotDataX.LOOK_PRICE, docked_faction())
+
+
+## {"type":"debug_pilot", "name"?, "callsign"?, "look"?, "attrs"?, "random"?} – package 28: set anything about
+## the pilot, attributes even beyond the starting limits (1–20).
+func _c_debug_pilot(c: Dictionary) -> String:
+	var p: Dictionary = GameState.pilot.duplicate(true)
+	if c.get("random", false):
+		p["look"] = PilotArtX.random_look()
+		var names := ["Vega", "Orin", "Kesh", "Maru", "Tavi", "Ilka", "Doran", "Sable", "Juno", "Rhett"]
+		p["name"] = names[randi() % names.size()]
+		var a: Dictionary = PilotDataX.base_attrs()
+		var ids: Array = a.keys()
+		for k in PilotDataX.FREE:
+			var id: String = ids[randi() % ids.size()]
+			if int(a[id]) < PilotDataX.MAX:
+				a[id] = int(a[id]) + 1
+		p["attrs"] = a
+	if c.has("name") and String(c["name"]).strip_edges() != "":
+		p["name"] = String(c["name"]).strip_edges().left(24)
+	if c.has("callsign"):
+		p["callsign"] = String(c["callsign"]).strip_edges().left(16)
+	if c.has("look"):
+		p["look"] = PilotArtX.clean(c["look"])
+	if c.has("attrs"):
+		for id in c["attrs"]:
+			p["attrs"][id] = clampi(int(c["attrs"][id]), 1, 20)
+	GameState.set_pilot(p)
+	GameState.log_msg("Debug: pilot %s updated." % GameState.pilot_title(), GameState.COL_GOOD)
 	return ""
 
 

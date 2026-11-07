@@ -29,6 +29,10 @@ const START_CREDITS := 30000
 const MAX_ACTIVE_MISSIONS := 5
 
 var pilot_name := "Lefty"
+## Package 28: the pilot – {"name", "callsign", "look" (PilotArt), "attrs" (data/pilot.gd)}; pilot_name mirrors the name
+var pilot := {}
+const PilotArt = preload("res://scripts/core/pilot_art.gd")
+const PilotData = preload("res://data/pilot.gd")
 var credits := START_CREDITS
 var fleet: Array = []            # all owned ships (ShipFitting)
 var active_uid := -1             # the ship the pilot is flying
@@ -78,7 +82,7 @@ func _ready() -> void:
 	convoys.convoy_lost.connect(_on_convoy_done.bind(false))
 
 
-func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = false) -> void:
+func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = false, p_data: Dictionary = {}) -> void:
 	if convoys != null:
 		convoys.reset()
 	_rng.randomize()
@@ -88,7 +92,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 		Universe.generate_test()
 	else:
 		Universe.generate(p_seed)
-	pilot_name = p_pilot
+	set_pilot(make_pilot(p_pilot, p_data))
 	surveys.clear()
 	stats = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0}
 	play_time = 0.0
@@ -137,12 +141,37 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 # ---------------------------------------------------------------- Save / load
 
 ## Complete pilot state as plain data (see SaveGame).
+## A pilot from the character creator's data (missing parts get sensible defaults; invalid attributes too).
+func make_pilot(p_name: String, data: Dictionary = {}) -> Dictionary:
+	var attrs: Dictionary = data.get("attrs", {})
+	if PilotData.attrs_error(attrs) != "":
+		attrs = PilotData.default_attrs()
+	var nm := String(data.get("name", p_name)).strip_edges()
+	return {"name": nm if nm != "" else p_name, "callsign": String(data.get("callsign", "")).strip_edges().left(16),
+		"look": PilotArt.clean(data.get("look", PilotArt.default_look())), "attrs": attrs.duplicate()}
+
+
+func set_pilot(p: Dictionary) -> void:
+	pilot = p
+	pilot_name = String(p["name"])
+
+
+func pilot_attr(id: String) -> int:
+	return int(pilot.get("attrs", {}).get(id, PilotData.START))
+
+
+## "CMDR Name 'Callsign'" for the interface.
+func pilot_title() -> String:
+	var cs := String(pilot.get("callsign", ""))
+	return pilot_name + (" »%s«" % cs if cs != "" else "")
+
+
 func to_dict() -> Dictionary:
 	var ships: Array = []
 	for f in fleet:
 		ships.append(f.to_dict())
 	return {
-		"pilot_name": pilot_name, "credits": credits, "fleet": ships, "active_uid": active_uid,
+		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "fleet": ships, "active_uid": active_uid,
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
@@ -154,6 +183,8 @@ func from_dict(d: Dictionary) -> void:
 	if convoys != null:
 		convoys.reset()
 	pilot_name = d["pilot_name"]
+	var pd: Dictionary = d.get("pilot_data", {})
+	set_pilot(make_pilot(pilot_name, pd))     # package 28 (older saves: default looks and attributes)
 	surveys.clear()
 	credits = int(d["credits"])
 	fleet.clear()

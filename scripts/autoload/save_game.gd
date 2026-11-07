@@ -150,8 +150,8 @@ func autosave() -> void:
 
 # ---------------------------------------------------------------- Scene flow
 
-func start_new(pilot: String, seed_v: int) -> void:
-	pending = {"mode": "new", "pilot": pilot, "seed": seed_v}
+func start_new(pilot: String, seed_v: int, pilot_data: Dictionary = {}) -> void:
+	pending = {"mode": "new", "pilot": pilot, "seed": seed_v, "pilot_data": pilot_data}
 	get_tree().paused = false
 	get_tree().change_scene_to_file(GAME_SCENE)
 
@@ -181,7 +181,7 @@ func start_pending() -> void:
 	if p.get("mode", "") == "test":
 		GameState.new_game("Tester", -1, true)
 	elif p.get("mode", "") != "load" or err != "":
-		GameState.new_game(String(p.get("pilot", "Lefty")), int(p.get("seed", -1)))
+		GameState.new_game(String(p.get("pilot", "Lefty")), int(p.get("seed", -1)), false, p.get("pilot_data", {}))
 	GameState.running = true
 	if err != "":
 		GameState.log_msg(err, GameState.COL_BAD)

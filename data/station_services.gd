@@ -32,4 +32,6 @@ const SERVICES := [
 		"panel": "res://scripts/ui/station/drone_panel.gd", "requires": ""},
 	{"id": "repair", "title": "Repair Bay", "corp": "mdx", "icon": "t_repair",
 		"panel": "res://scripts/ui/station/service_panel.gd", "requires": "", "mode": "repair"},
+	{"id": "look", "title": "Image Studio", "corp": "vsg", "icon": "face",
+		"panel": "res://scripts/ui/station/look_panel.gd", "requires": ""},
 ]

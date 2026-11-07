@@ -1,5 +1,7 @@
 class_name StationUI
 extends CanvasLayer
+const PilotArtX = preload("res://scripts/core/pilot_art.gd")
+const PilotDataX = preload("res://data/pilot.gd")
 ## Station interface. After docking the "concourse" opens: one tile per service, each run by
 ## the corporation holding the monopoly on it (data/station_services.gd + data/corporations.gd).
 ## Clicking a tile opens the matching service panel (scripts/ui/station/*_panel.gd).
@@ -266,7 +268,7 @@ func _long_tile(v: Control, icon: String, title: String, sub: String, col: Color
 	var ok := reason == ""
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 50)
+	b.custom_minimum_size = Vector2(0, 45)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.disabled = not ok
 	for st in ["normal", "hover", "pressed", "disabled"]:
@@ -284,11 +286,11 @@ func _long_tile(v: Control, icon: String, title: String, sub: String, col: Color
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.offset_left = 12
 	row.offset_right = -8
-	row.offset_top = 4
-	row.offset_bottom = -4
+	row.offset_top = 2
+	row.offset_bottom = -2
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(row)
-	var ic := UI.icon(PixelArt.icon_texture(icon), 34)
+	var ic := UI.icon(PixelArt.icon_texture(icon), 30)
 	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not ok:
 		ic.modulate = Color(0.4, 0.4, 0.45)
@@ -329,7 +331,7 @@ func _cmdr_column(v: VBoxContainer) -> void:
 	var frame := UI.neon_panel(Color(col, 0.5), Color(0.02, 0.01, 0.05, 1.0), 1)
 	row.add_child(frame)
 	var por := TextureRect.new()
-	por.texture = _portrait_placeholder()
+	por.texture = PilotArtX.portrait(GameState.pilot.get("look", {}))      # package 28
 	por.custom_minimum_size = Vector2(96, 112)
 	por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -337,36 +339,16 @@ func _cmdr_column(v: VBoxContainer) -> void:
 	frame.add_child(por)
 	var st := UI.vbox(3)
 	row.add_child(st)
-	st.add_child(UI.label("CMDR %s" % GameState.pilot_name, 18, UI.NEON_CYAN))
+	st.add_child(UI.label("CMDR %s" % GameState.pilot_title(), 18, UI.NEON_CYAN))
+	var attr_txt: Array = []
+	for at in PilotDataX.ATTRS:
+		attr_txt.append("%s %d" % [String(at[1]).left(3).to_upper(), GameState.pilot_attr(String(at[0]))])
+	st.add_child(UI.label("  ".join(PackedStringArray(attr_txt)), 12, UI.GOLD))
 	st.add_child(UI.label("Rank: —", 13, UI.TEXT_DIM))
 	st.add_child(UI.label("Ships owned: %d" % GameState.fleet.size(), 13))
 	st.add_child(UI.label("Contracts running: %d" % GameState.missions.size(), 13))
 	st.add_child(UI.label("Flight time: %s" % SaveGame.fmt_time(GameState.play_time), 13))
-	v.add_child(UI.wrap_label("Portrait and career statistics follow in a later package.", 11, UI.TEXT_DIM, 330))
-
-
-static var _portrait: Texture2D
-
-
-## A pixel silhouette standing in for the commander's portrait (placeholder).
-static func _portrait_placeholder() -> Texture2D:
-	if _portrait != null:
-		return _portrait
-	var w := 24
-	var h := 28
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0.06, 0.04, 0.12))
-	for y in h:
-		for x in w:
-			var dx := float(x) - 11.5
-			var head := Vector2(dx, float(y) - 10.0).length() < 5.6
-			var body := y >= 18 and absf(dx) < 4.0 + float(y - 18) * 0.9
-			if head or body:
-				img.set_pixel(x, y, Color(0.32, 0.2, 0.42) if (head and dx < -1.0) or (body and dx < -2.0) else Color(0.42, 0.28, 0.55))
-			if y % 3 == 0 and not (head or body):
-				img.set_pixel(x, y, Color(0.09, 0.06, 0.16))
-	_portrait = ImageTexture.create_from_image(img)
-	return _portrait
+	v.add_child(UI.wrap_label("Career statistics and the skills follow with the next packages.", 11, UI.TEXT_DIM, 330))
 
 
 func _news_column(v: VBoxContainer, tiles: Array) -> void:

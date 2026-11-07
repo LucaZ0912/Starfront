@@ -1,5 +1,7 @@
 class_name DebugMenu
 extends CanvasLayer
+const PilotArtX = preload("res://scripts/core/pilot_art.gd")
+const PilotDataX = preload("res://data/pilot.gd")
 ## Debug menu (F12): try everything quickly, including endgame content.
 ## Every button sends a "debug_*" command through the command bus.
 ## Only available when Commands.cheats_enabled (debug builds / running from the editor).
@@ -7,7 +9,7 @@ extends CanvasLayer
 const FactionData = preload("res://data/factions.gd")
 const MakerData = preload("res://data/manufacturers.gd")
 const COL := Color(0.55, 1.0, 0.35)   # terminal green
-const TABS := ["Pilot", "Ship", "Items", "World", "Audio"]
+const TABS := ["Pilot", "Ship", "Items", "World", "Audio", "Character"]
 
 var panel: PanelContainer
 var tab := 0
@@ -83,6 +85,7 @@ func _set_tab(i: int) -> void:
 		2: _build_items()
 		3: _build_world()
 		4: _build_audio()
+		5: _build_character()
 
 
 ## Q / E (0.5.28.2): the previous / next tab.
@@ -319,6 +322,53 @@ func _build_world() -> void:
 	r5.add_child(UI.button("Spawn", func(): _cmd({"type": "debug_spawn", "preset": anyp.get_selected_metadata(), "count": int(an.value),
 		"gov": "", "side": "pirate" if hostile.button_pressed else "neutral"})))
 	content.add_child(UI.wrap_label("Neutral ships just fly about; hostile ones attack you. Hadrian ships reflect part of the damage to their armour.", 12, UI.TEXT_DIM, 440))
+
+
+# ---------------------------------------------------------------- Package 28: the pilot
+
+const CharacterCreatorScript = preload("res://scripts/ui/character_creator.gd")
+
+
+## Open the character creation at any time, a random pilot, attributes set freely (also beyond the limits).
+func _build_character() -> void:
+	_section("Pilot: %s" % GameState.pilot_title())
+	var r := _row()
+	r.add_child(UI.button("Open character creation", _open_creator))
+	r.add_child(UI.button("Random pilot", func():
+		_cmd({"type": "debug_pilot", "random": true})
+		_set_tab(5)))
+	_section("Attributes (free – 1 to 20, beyond the starting limits)")
+	var spins := {}
+	for at in PilotDataX.ATTRS:
+		var r2 := _row()
+		var l := UI.label(String(at[1]), 12)
+		l.custom_minimum_size = Vector2(110, 0)
+		r2.add_child(l)
+		var sp := _spin(1, 20, GameState.pilot_attr(String(at[0])))
+		r2.add_child(sp)
+		spins[at[0]] = sp
+	content.add_child(UI.button("Set attributes", func():
+		var a := {}
+		for id in spins:
+			a[id] = int(spins[id].value)
+		_cmd({"type": "debug_pilot", "attrs": a})
+		_set_tab(5)))
+
+
+func _open_creator() -> void:
+	var cc = CharacterCreatorScript.new()
+	cc.setup("debug", GameState.pilot.get("look", {}), GameState.pilot.get("attrs", {}), GameState.pilot_name)
+	cc.callsign = String(GameState.pilot.get("callsign", ""))
+	cc.set_anchors_preset(Control.PRESET_CENTER)
+	cc.add_to_group("kbd_menu")
+	get_parent().add_child(cc)
+	cc.position = (get_viewport().get_visible_rect().size - Vector2(1080, 640)) * 0.5
+	cc.cancelled.connect(cc.queue_free)
+	cc.done.connect(func(d: Dictionary):
+		_cmd({"type": "debug_pilot", "name": d["name"], "callsign": d["callsign"], "look": d["look"], "attrs": d["attrs"]})
+		cc.queue_free()
+		_set_tab(5))
+	close()
 
 
 # ---------------------------------------------------------------- Package 28a: audio

@@ -4,6 +4,12 @@ extends RefCounted
 ## price modifiers per station, rival factions, missions, etc.
 
 const CORPS := {
+	# package 28: the image studios – new looks for pilots
+	"vsg": {
+		"name": "Visage Clinics", "tag": "VSG", "color": Color(1.0, 0.55, 0.85),
+		"slogan": "Be who you look like.",
+		"desc": "Hair, skin, implants, tattoos, clothes – the Visage studios redo a pilot's whole look in an afternoon. What is under the skin stays yours.",
+	},
 	"hwd": {
 		"name": "Hivewright Drone Works", "tag": "HWD", "color": Color(0.55, 1.0, 0.6),
 		"slogan": "Many hands, one mind.",

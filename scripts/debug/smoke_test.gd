@@ -531,6 +531,7 @@ func _process(delta: float) -> void:
 				_test_waystation(view)
 				_test_review4(view)
 				_test_audio()
+				_test_pilot()
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -728,6 +729,16 @@ func _test_station(sp: StationUI) -> void:
 	hf.cargo["water_ice"] = 10.0
 	check(Commands.execute({"type": "refine", "ore": "water_ice"}) == "" and float(hf.cargo.get("water", 0.0)) > 0.0, "ice refines into purified water")
 	hf.cargo.erase("water")
+	sp.show_concourse(false)
+	# package 28: new looks at the image studio – the price is paid, the attributes stay
+	var look0: Dictionary = GameState.pilot["look"].duplicate()
+	var attrs0: Dictionary = GameState.pilot["attrs"].duplicate()
+	var nl: Dictionary = look0.duplicate()
+	nl["hair"] = (int(look0["hair"]) + 1) % 9
+	var cr_l := GameState.credits
+	var el: String = Commands.execute({"type": "pilot_look", "look": nl})
+	check(el == "" and int(GameState.pilot["look"]["hair"]) == int(nl["hair"]) and GameState.credits == cr_l - Commands.look_price() and GameState.pilot["attrs"] == attrs0,
+		"image studio: new looks for %s – the attributes stay as they are" % GameData.fmt_credits(Commands.look_price()))
 	sp.show_concourse(false)
 	check(sp.concourse_tiles == GameData.services.size() and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
 	# Market via commands
@@ -1542,6 +1553,15 @@ func _shoot_standing(view: SystemView) -> void:
 	for i8 in 30:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/concourse.png")
+	# package 28: the character creation
+	var cc9 = load("res://scripts/ui/character_creator.gd").new()
+	cc9.setup("new", GameState.pilot["look"], {}, GameState.pilot_name)
+	sp.add_child(cc9)
+	cc9.position = Vector2(150, 70)
+	for i6 in 12:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/character_creator.png")
+	cc9.queue_free()
 	sp.open_service("outfitter")
 	# package 27: a weapon slot, a family, a size · quality picked – description, changes and footer
 	var op9 = sp._panel
@@ -5220,3 +5240,49 @@ func _test_audio() -> void:
 	check(looping and not Audio.loop_playing("smoke"), "audio: looping sounds (engine, beam, mining, alarm, space) start and stop")
 	check(SystemView.weapon_sound({"family": "w_railgun", "damage_type": "kinetic"}) == "w_autocannon" and SystemView.weapon_sound({"family": "w_beam", "damage_type": "optical"}) == "w_beam_loop",
 		"audio: every weapon has its sound by kind (optical, beam, kinetic, explosive)")
+
+
+## Package 28: the pilot – attributes, the construction kit, the creator, the save, debug.
+func _test_pilot() -> void:
+	var PD = load("res://data/pilot.gd")
+	var PA = load("res://scripts/core/pilot_art.gd")
+	var bad: Dictionary = PD.base_attrs()
+	var over: Dictionary = PD.default_attrs()
+	over["strength"] = 9
+	check(PD.attrs_error(bad) != "" and PD.attrs_error(PD.default_attrs()) == "" and PD.attrs_error(over) != "",
+		"attributes: all start at 3, exactly 8 points to hand out, at most 8 each")
+	var la: Dictionary = PA.default_look()
+	var lb: Dictionary = la.duplicate()
+	lb["hair"] = 6
+	lb["implant"] = 1
+	var ia: Image = PA.portrait_image(PA.clean(la))
+	var ib: Image = PA.portrait_image(PA.clean(lb))
+	var sa: Image = PA.sprite_image(PA.clean(la))
+	var opts := 0
+	for o in PA.OPTIONS:
+		opts += (o[2] as Array).size()
+	check(ia.get_width() == 48 and ia.get_height() == 48 and ia.get_data() != ib.get_data() and sa.get_width() == 16 and PA.OPTIONS.size() == 15,
+		"construction kit: a 48 x 48 portrait and a 16 x 16 figure from the same %d options (%d choices)" % [PA.OPTIONS.size(), opts])
+	check(String(GameState.pilot.get("name", "")) == GameState.pilot_name and PD.attrs_error(GameState.pilot["attrs"]) == "" and GameState.to_dict().has("pilot_data"),
+		"the pilot is part of the game and the save (%s)" % GameState.pilot_title())
+	# the creator: launch only with every point handed out
+	var cc = load("res://scripts/ui/character_creator.gd").new()
+	cc.setup("new", la, {}, "Testa")
+	add_child(cc)
+	var e0: String = cc.error()
+	for id in ["intelligence", "intelligence", "reflexes", "reflexes", "dexterity", "dexterity", "charisma", "strength", "strength"]:
+		cc._attr(id, 1)
+	cc._step("hair", 1)
+	var res: Dictionary = cc.result()
+	check(e0 != "" and cc.error() == "" and PD.spent(res["attrs"]) == 8 and int(res["look"]["hair"]) == (int(la["hair"]) + 1) % 9 and String(res["name"]) == "Testa",
+		"character creation: looks, name and attributes – launch only with all 8 points handed out")
+	cc.queue_free()
+	# debug: a random pilot, attributes beyond the limits
+	var keep: Dictionary = GameState.pilot.duplicate(true)
+	var cheats: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	var e1: String = Commands.execute({"type": "debug_pilot", "random": true})
+	var e2: String = Commands.execute({"type": "debug_pilot", "attrs": {"strength": 15}})
+	Commands.cheats_enabled = cheats
+	check(e1 == "" and e2 == "" and GameState.pilot_attr("strength") == 15, "debug: a random pilot and attributes beyond the starting limits")
+	GameState.set_pilot(keep)

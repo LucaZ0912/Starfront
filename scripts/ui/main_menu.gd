@@ -1,4 +1,5 @@
 extends Node
+const CharacterCreatorScript = preload("res://scripts/ui/character_creator.gd")
 ## Start menu: Continue, New Game, Load Game, Settings, Quit.
 ## Background: nebula shader, a slowly turning pixel planet and ships drifting past.
 
@@ -143,35 +144,13 @@ func _show_controls() -> void:
 	_show_overlay(k)
 
 
+## Package 28: a new game starts with creating the pilot (looks, name, call sign, attributes, galaxy seed).
 func _show_new_game() -> void:
-	var p := UI.neon_panel(UI.NEON_CYAN)
-	p.custom_minimum_size = Vector2(560, 0)
-	var v := UI.vbox(12)
-	p.add_child(v)
-	var head := UI.hbox(10)
-	v.add_child(head)
-	head.add_child(UI.label("NEW GAME", 22, UI.NEON_CYAN))
-	head.add_child(UI.spacer())
-	head.add_child(UI.button("Back", _hide_overlay))
-	v.add_child(UI.label("Pilot name", 14))
-	var name_edit := LineEdit.new()
-	name_edit.text = "Lefty"
-	name_edit.max_length = 24
-	v.add_child(name_edit)
-	v.add_child(UI.label("Galaxy seed – the same seed always creates the same galaxy", 14))
-	var seed_row := UI.hbox(8)
-	v.add_child(seed_row)
-	var seed_edit := LineEdit.new()
-	seed_edit.text = str(randi() % 1000000)
-	seed_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	seed_row.add_child(seed_edit)
-	seed_row.add_child(UI.button("Random", func(): seed_edit.text = str(randi() % 1000000)))
-	v.add_child(UI.wrap_label("You start in the core system with a Dragonfly scout, 30,000 credits and a few spare modules in station storage.", 13, UI.TEXT_DIM, 520))
-	var start := func():
-		var pilot := name_edit.text.strip_edges()
-		SaveGame.start_new(pilot if pilot != "" else "Lefty", absi(seed_edit.text.to_int()))
-	v.add_child(UI.menu_button("Launch", start, UI.GOOD, 520))
-	_show_overlay(p)
+	var cc = CharacterCreatorScript.new()
+	cc.setup("new")
+	cc.cancelled.connect(_hide_overlay)
+	cc.done.connect(func(d: Dictionary): SaveGame.start_new(String(d["name"]), int(d["seed"]), d))
+	_show_overlay(cc)
 
 
 # ---------------------------------------------------------------- Background animation

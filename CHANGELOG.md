@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.28.3 – 2026-11-07
+
+**Package 28 – the pilot and character creation.**
+- The pilot is part of the save: name, call sign, looks, five attributes.
+- Pixel construction kit: one look makes the 48 × 48 portrait and the 16 × 16 top-down figure (15 options, 94 choices).
+- Character creation at the start of a new game; the Image Studio (Visage Clinics) changes the looks at stations.
+- The concourse shows the portrait and the attributes; debug menu → Character.
+
 ## alpha 0.5.28.2 – 2026-11-07
 
 - Menus by keyboard: W/A/S/D (and the arrow keys) move the highlight, Enter/Space press, Q/E switch tabs, Escape

@@ -89,6 +89,15 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Built-in modules have a gold frame in the module bar, their own row in the ship menu and a power
   priority; they cannot be removed.
 
+## The pilot (phase 0.5 package 28)
+- A new game starts with creating the pilot: a pixel construction kit (body, skin, nine hair styles and colours,
+  eyes, brows, beard, scars, freckles, outfit and colours, implants, tattoos, headgear) makes a 48 × 48 portrait
+  and a small top-down figure; name, call sign and five attributes (Strength, Dexterity, Intelligence, Charisma,
+  Reflexes – all from 3, 8 points to hand out, at most 8).
+- The **Image Studio** (Visage Clinics) at stations changes the looks for a fee; the attributes stay. The concourse
+  shows the portrait. Debug menu → Character.
+- Menus work with the keyboard: W/A/S/D move, Enter presses, Q/E switch tabs.
+
 ## Audio (phase 0.5 package 28a)
 - Game events play sounds: engine, warp, jumps, docking, weapons, hits, explosions, modules, drones, interface,
   alarms and the hum of space – 36 synthesised placeholders for now (`tools/audio/make_placeholders.py`), listed with

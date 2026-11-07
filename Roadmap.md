@@ -17,7 +17,7 @@ Sternenfront ist ein Einzelspieler-Spiel mit zuschaltbarem Koop – wie Valheim 
 
 ## Aktueller Stand
 
-Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt. Code-Review von Teil 4 gemacht (Bericht `reviews/teil4_review.md`), alle Befunde sind abgearbeitet (0.4.25.46 und 0.4.25.47) – Teil 4 abgeschlossen. **Teil 5 läuft:** Paket 28a (Audio-Grundgerüst) und die Menüsteuerung per Tastatur fertig, als Nächstes Paket 28 (Pilot & Charaktererstellung). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.5.28.2. Stand 5. November 2026.
+Das Spiel ist ein umfangreicher Einzelspieler-Prototyp in Godot 4.3. Phase 0 und Phase 0.5 Teil 1 bis 3 sind abgeschlossen; Teil 4 (Module and Internal Ship Parts Rework) läuft – Pakete 19 bis 24 fertig, Pakete 25a (KHI-Bergbauschiffe), 25b (Kanayama-maru), 25c (Maison Aurelle), 25d (Hadrian Dynamics), 25e (Concord Fleetworks), 25f (Forge of Return) und 25g (Axiom Astronautics) fertig – damit sind alle Manufakturen gebaut; Paket 26 (Stationstyp 0: Raststationen mit Landeplattformen) fertig; Paket 27 (Stationsübersicht, Ausrüster, Kurzbeschreibungen, Geschwindigkeit) fertig – damit sind alle Pakete von Teil 4 umgesetzt. Code-Review von Teil 4 gemacht (Bericht `reviews/teil4_review.md`), alle Befunde sind abgearbeitet (0.4.25.46 und 0.4.25.47) – Teil 4 abgeschlossen. **Teil 5 läuft:** Paket 28a (Audio-Grundgerüst), die Menüsteuerung per Tastatur und Paket 28 (Pilot & Charaktererstellung) fertig, als Nächstes Paket 29 (Fähigkeiten). Netzwerk fehlt noch. Teile 5–9 sind geplant (aus dem Roadmap-Entwurf übernommen, zuletzt am 7. Nov 2026: Teile 8 und 9, Audio-Grundgerüst 28a, Lade-Grundlagen in Paket 35, Code-Review am Ende jedes Teils), Phase 1 und 2 getauscht (erst Story & Endgame, dann Koop). Version alpha 0.5.28.3. Stand 5. November 2026.
 
 | Bereich | Stand |
 | --- | --- |
@@ -1063,7 +1063,7 @@ Nummerierung schließt an Teil 4 an (dort bis Paket 27).
 | # | Arbeitspaket | Inhalt | Abhängig von |
 | --- | --- | --- | --- |
 | 28a ✓ | Audio-Grundgerüst | Spielereignisse (Andocken, Warp, Sprung, Treffer, Explosion, Modul an/aus, UI) lösen Sounds aus – zunächst mit Platzhaltern; Lautstärke-Regler für Gesamt, Musik, Atmosphäre und Effekte. Ab da bringt **jedes Paket seine Sounds gleich mit**; Musik, Atmosphäre und Feinschliff folgen in Teil 9 (Paket 69) | – |
-| 28 | Pilot & Charaktererstellung | Pilot als eigene Ebene im Spielstand; Sprite-Baukasten (Pixel-Art), Porträt aus dem Sprite; Name/Rufzeichen; Attribute verteilen; neuer Ablauf „Neues Spiel“ | – |
+| 28 ✓ | Pilot & Charaktererstellung | Pilot als eigene Ebene im Spielstand; Sprite-Baukasten (Pixel-Art), Porträt aus dem Sprite; Name/Rufzeichen; Attribute verteilen; neuer Ablauf „Neues Spiel“ | – |
 | 29 | Fähigkeiten | Fähigkeiten aus Attributen abgeleitet, steigen durch Tun; kleine Prozent-Boni im Spiel; Charakter-Reiter im Schiffsmenü | 28 |
 | 30 | Skilltree & Baupläne | erste Fortschrittsmechanik: Module, Größen, Qualitäten und Schiffsklassen werden durch Tun freigeschaltet (nicht zeitbasiert wie EVE); dazu **Baupläne** für die Herstellung | 29, Teil 4 |
 | 31 | Crew-System | Rollen, Mindest- und Höchstcrew für Schiffe ab M, Wirkung der Crew-Werte, Lohn, Erfahrung | 29 |
@@ -1113,6 +1113,15 @@ Nummerierung schließt an Teil 4 an (dort bis Paket 27).
 - **Sprite-Baukasten** in Pixel-Art: Körperform, Kopf/Frisur, Hautton, Kleidung/Anzug, Farben. Das **Porträt wird aus denselben Teilen erzeugt** (Brustbild), damit beides immer zusammenpasst.
 - Der Sprite ist die **Vorbereitung auf Teil 7** (dort ist der Pilot am Boden selbst unterwegs) – in Teil 5 erscheint er nur in Menüs, Porträts, Funk- und Nachrichtenmeldungen.
 - Die Crew und Söldner bekommen Porträts aus **demselben Baukasten** (zufällig erzeugt).
+
+**Umgesetzt 28 (7. Nov 2026, alpha 0.5.28.3)** – nach den Entscheidungen von Luz (Porträt 48×48, Grundausstattung + Gesichtsdetails + Sci-Fi-Extras, Aussehen-Dienst an Stationen, „Neues Spiel“ nur mit Name, Aussehen und Attributen), 6 neue automatische Prüfungen:
+
+- [x] **Pilot als eigene Ebene im Spielstand:** Name, Rufzeichen (optional), Aussehen, Attribute; alte Spielstände bekommen ein Standard-Aussehen und verteilte Standardwerte.
+- [x] **Pixel-Baukasten** (`scripts/core/pilot_art.gd`): ein „Look“ erzeugt das **Porträt (Brustbild 48×48)** und den **Draufsicht-Sprite (16×16, für Teil 7)** aus denselben Teilen. 15 Optionen mit 94 Wahlmöglichkeiten – **Grundausstattung:** Körperform (3), Hautton (8), Frisur (9: Glatze, Buzz Cut, Kurz, Seitenscheitel, Lang, Pferdeschwanz, Irokese, Locken, Dutt), Haarfarbe (10, auch Neonpink und Cyan), Augenfarbe (6), Kleidung (4: Fliegeranzug, Jacke, Panzeranzug, Mantel) mit Haupt- und Akzentfarbe (je 14). **Gesichtsdetails:** Augenbrauen, Bart (5), Narbe (4), Sommersprossen. **Sci-Fi-Extras:** Implantat (Cyber-Auge, Kieferplatte, Schläfen-Schaltkreise), Tattoo (Wangenlinien, Stirnzeichen, Halslinien), Kopfteil (Headset, Visier, Brille). Zufalls-Look (Extras seltener) – später auch für Crew und Söldner.
+- [x] **Charaktererstellung beim neuen Spiel:** links Porträt groß und Draufsicht, Mitte der Baukasten (jede Option mit ‹ ›, „Random look“), rechts Name, Rufzeichen und die fünf Attribute (alle ab 3, 8 freie Punkte, höchstens 8; Start erst, wenn alle Punkte verteilt sind) und der Galaxie-Seed. Mit Maus und Tastatur bedienbar.
+- [x] **Image Studio** (neuer Stationsdienst, Monopol **Visage Clinics** [VSG], neues Icon): Aussehen ändern für 2.500 cr (nach Ansehen), Attribute bleiben fest. Nicht an Raststationen (feste Dienste).
+- [x] **Concourse:** echtes Porträt, „CMDR Name »Rufzeichen«“ und die fünf Attribute statt des Platzhalters.
+- [x] **Debug-Funktion** (Debug-Menü → Character): Charaktererstellung jederzeit öffnen, Zufalls-Pilot, Attribute frei setzen (1–20, auch über die Startgrenzen hinaus).
 
 #### Attribute
 
