@@ -27,7 +27,7 @@ void fragment() {
 		float h = hash21(cell + fi * 31.7 + seed);
 		if (h > 0.9965 - fi * 0.001) {
 			float br = 0.35 + 0.65 * hash21(cell * 1.7 + fi);
-			br *= 0.6 + 0.4 * sin(TIME * (1.0 + h * 3.0) + h * 50.0);
+			br *= 0.88 + 0.12 * sin(TIME * (0.35 + h * 0.9) + h * 50.0);     // 0.6.39.3: a gentle, slow twinkle
 			vec3 sc = mix(vec3(0.7, 0.8, 1.0), vec3(1.0, 0.9, 0.7), hash21(cell + 3.0));
 			col += sc * br * (1.0 - fi * 0.25);
 		}

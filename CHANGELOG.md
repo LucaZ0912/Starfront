@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.3 – 2026-11-08
+
+- The background stars twinkle much less – a gentle, slow shimmer instead of blinking.
+
 ## alpha 0.6.39.2 – 2026-11-08
 
 - Agora's city lights have structure: bright metropolises, a glittering band along the coasts and highways between
