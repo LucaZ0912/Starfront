@@ -9,7 +9,7 @@ extends RefCounted
 
 const SHAPES := ["potato", "binary", "shard"]
 const SHAPE_NAMES := {"potato": "elongated", "binary": "contact binary", "shard": "angular fragment",
-	"slab": "blocky slab", "spindle": "spindle", "rubble": "rubble pile", "kidney": "kidney", "teardrop": "teardrop", "spiky": "spiked crystal"}
+	"slab": "blocky slab", "spindle": "spindle", "rubble": "rubble pile", "kidney": "kidney", "teardrop": "teardrop", "spiky": "ice ball"}
 ## 0.6.35.5: two more shapes for each kind of rock (metal, stone, ice)
 const SHAPES_BY_CLASS := {
 	"metallic": ["potato", "binary", "shard", "slab", "spindle"],
@@ -17,7 +17,7 @@ const SHAPES_BY_CLASS := {
 	"icy": ["potato", "binary", "shard", "teardrop", "spiky"],
 }
 ## how the shader lights a shape: 0 round body, 1 two lobes, 2 flat facets
-const SHADER_SHAPE := {"potato": 0, "binary": 1, "shard": 2, "slab": 2, "spindle": 0, "rubble": 1, "kidney": 0, "teardrop": 0, "spiky": 2}
+const SHADER_SHAPE := {"potato": 0, "binary": 1, "shard": 2, "slab": 2, "spindle": 0, "rubble": 1, "kidney": 0, "teardrop": 0, "spiky": 0}
 
 
 static func shapes_for(cls: String) -> Array:
@@ -111,14 +111,15 @@ static func generate(shape: String, R: float, rng: RandomNumberGenerator) -> Pac
 				var r := 0.42 + 0.58 * pow((1.0 + cos(a)) * 0.5, 3.0) + 0.03 * sin(5.0 * a) + rng.randf_range(-0.015, 0.015)
 				pts.append(Vector2(cos(a), sin(a)) * r)
 		"spiky":
-			# an ice crystal: a core with sharp spikes
-			var k2 := rng.randi_range(6, 9)
+			# 0.6.35.6: a rounded ice ball with a few soft bulges (the star shape was too much)
+			var k2 := rng.randi_range(4, 6)
 			var off := rng.randf() * TAU
-			var n8 := 72
+			var q5 := rng.randf() * TAU
+			var n8 := 60
 			for i in n8:
 				var a := TAU * i / n8
-				var r := 0.55 + 0.45 * pow(absf(cos(k2 * (a + off) * 0.5)), 8.0) + rng.randf_range(-0.02, 0.02)
-				pts.append(Vector2(cos(a), sin(a)) * r)
+				var r := 0.86 + 0.1 * pow(absf(cos(k2 * (a + off) * 0.5)), 2.0) + 0.03 * sin(3.0 * a + q5) + rng.randf_range(-0.012, 0.012)
+				pts.append(Vector2(cos(a), sin(a) * 0.92) * r)
 		_:
 			# potato: lumpy ellipse
 			var e := rng.randf_range(0.52, 0.7)

@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.6 – 2026-11-08
+
+**Ice colossus:** the spiked crystal is now a rounded ice ball with soft bulges.
+
 ## alpha 0.6.35.5 – 2026-11-08
 
 - Radar shadows end at the radar range.
