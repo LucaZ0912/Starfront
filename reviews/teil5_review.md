@@ -77,3 +77,19 @@ Steckbriefe (auch für ältere Kapitäne ohne Gesicht).
 ## Vorschlag Reihenfolge
 
 W1, W2, W3 zusammen in einem Fix-Update (0.5.34.4), die kleinen Punkte K1–K6 gleich mit – danach ein voller Smoke-Test.
+
+---
+
+## Umgesetzt (8. Nov 2026, alpha 0.5.34.4 – Freigabe Luz: „Ja, alle beheben")
+
+- **W1** – Wingmen und Plattform-Schiff halten sich an die No-Fire-Zonen wie NPCs; Notwehr (Ziel schießt auf sie oder
+  auf den Piloten) bleibt erlaubt.
+- **W2** – Angedockt werden sie kostenlos repariert und getankt; vor einem Sprung / Laden wird ihr Zustand gesichert.
+- **W3** – Solange „SHIP LOST" offen ist, gehen keine Spieltasten mehr durch.
+- **K1 / K6** – Gespeichert werden nur noch aktuelle Bar-Angebote und Crew-Quartiere, in denen jemand wartet.
+- **K2** – Das WINGMEN-Panel verschwindet im Hyperraum.
+- **K3** – Beim Nachsehen harmlos: der Bordmarkt handelt nur über das aktive Schiff. `crew_cut()` nimmt jetzt trotzdem
+  das verdienende Schiff mit.
+- **K4** – `_insurance_ship()` entfernt.
+- **K5** – „Lose the active ship" wirkt auch im Gott-Modus.
+- 1 neue automatische Prüfung (W1–W3).

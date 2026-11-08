@@ -572,6 +572,7 @@ func _process(delta: float) -> void:
 				_test_wingmen(view)
 				_test_platform()
 				_test_collection()
+				_test_review5(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -5949,3 +5950,41 @@ func _test_collection() -> void:
 	pw.close()
 	check(perk_ok and rec_ok and tiles == load("res://data/crew.gd").PERKS.size() and (c.is_empty() or posters == 1), "collection: categories on the left – crew perks (one tile each) and the destroyed notorious pirates with their posters (Pilot → Collection)")
 	GameState.collection = keep
+
+
+## Review of part 5: wingmen keep to the no-fire zones, are repaired when docked; the SHIP LOST window takes the keys.
+func _test_review5(view: SystemView) -> void:
+	# W1: a wingman node next to a station leaves a target inside the zone alone (no self-defence case)
+	var st_node = view.stations.values()[0] if not view.stations.is_empty() else null
+	var w1_ok := true
+	if st_node != null and view.player != null and is_instance_valid(view.player):
+		var w := GameState.new_wingman("C")
+		var f := ShipFitting.from_dict(w["ship"])
+		var wn := Ship.new()
+		wn.manual = false
+		wn.wingman_id = 424242
+		f.position = st_node.position + Vector2(800, 0)
+		wn.setup(f, view)
+		view.ship_layer.add_child(wn)
+		var pir := view.spawn_npc("std_hornet", st_node.position + Vector2(1500, 0), "pirate", "hollow_crown")
+		w1_ok = wn._protected(pir) and not view.player._protected(pir)
+		wn.queue_free()
+		pir.queue_free()
+	# W2: docked, a wingman's ship is repaired
+	var w2 := GameState.new_wingman("D")
+	var g := ShipFitting.from_dict(w2["ship"])
+	g.refill()
+	g.structure = 1.0
+	var docked: Dictionary = view._wing_state(g, true)
+	var in_space: Dictionary = view._wing_state(g, false)
+	var w2_ok: bool = float(docked["structure"]) > 1.0 and float(in_space["structure"]) == 1.0
+	# W3: while SHIP LOST is open, the game keys do nothing
+	main.loss_window.visible = true
+	var ev := InputEventAction.new()
+	ev.action = "pilot_window"
+	ev.pressed = true
+	main.handle_input(ev)
+	var w3_ok: bool = not main.pilot_window.visible
+	main.loss_window.visible = false
+	main.pilot_window.close()
+	check(w1_ok and w2_ok and w3_ok, "review 5: wingmen keep to no-fire zones, are repaired when docked; the SHIP LOST window takes the keys")

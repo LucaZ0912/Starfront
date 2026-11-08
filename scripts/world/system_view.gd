@@ -233,7 +233,7 @@ func _sync_wingmen() -> void:
 			continue
 		if not want.has(id) or not can_fly:
 			if want.has(id):
-				want[id]["w"]["ship"] = n.fit.to_dict()       # keeps the damage
+				want[id]["w"]["ship"] = _wing_state(n.fit, player != null and is_instance_valid(player) and player.is_docked())
 			spawn_fx(Fx.flash(n.position, Color(0.5, 0.8, 1.0), n.radius * 1.5))
 			n.queue_free()
 			wing_nodes.erase(id)
@@ -275,7 +275,7 @@ func _sync_platform() -> void:
 		node = null
 	if node != null and not want:
 		if cit != null and not cit.platform_ship.is_empty():
-			cit.platform_ship = node.fit.to_dict()
+			cit.platform_ship = _wing_state(node.fit, player != null and is_instance_valid(player) and player.is_docked())
 		node.queue_free()
 		wing_nodes.erase(0)
 		return
@@ -336,6 +336,33 @@ func recall_platform_ship() -> void:
 		node.set_meta("recall", true)
 		node.wing_focus = null
 		node.target = null
+
+
+## A wingman's / the platform ship's state as data: docked at a station it is repaired and refuelled for free
+## (review W2); otherwise the damage stays.
+func _wing_state(f: ShipFitting, docked: bool) -> Dictionary:
+	var d := f.to_dict()
+	if docked:
+		var g := ShipFitting.from_dict(d)
+		g.refill()
+		d = g.to_dict()
+	return d
+
+
+## Before the view goes (jump, load): keep the wingmen's and the platform ship's damage (review W2).
+func _save_wing_states() -> void:
+	for id in wing_nodes:
+		var n = wing_nodes[id]
+		if not is_instance_valid(n) or n.dying:
+			continue
+		if int(id) == 0:
+			var cit := GameState.active()
+			if cit != null and not cit.platform_ship.is_empty():
+				cit.platform_ship = n.fit.to_dict()
+			continue
+		var c := GameState.wing_contract(int(id))
+		if not c.is_empty():
+			c["w"]["ship"] = n.fit.to_dict()
 
 
 func _valid_node(n) -> bool:
@@ -1562,7 +1589,7 @@ func market_trade(buyer) -> int:
 		if int(off["amount"]) <= 0:
 			f.market_offers.erase(item)
 		GameState.add_credits(n * price)
-		GameState.crew_cut(n * price)               # package 31
+		GameState.crew_cut(n * price, f)            # package 31; review K3: the market ship's crew
 		GameState.log_msg("Market: %s bought %d × %s for %s." % [buyer.display_name(), n, GameData.item_name(String(item)), GameData.fmt_credits(n * price)], GameState.COL_GOOD)
 		return n * price
 	GameState.log_msg("Market: %s found your prices too high and left." % buyer.display_name(), GameState.COL_WARN)
@@ -3041,6 +3068,7 @@ func complete_salvage(node: Celestial, ship: Ship) -> void:
 
 
 func sync_to_fits() -> void:
+	_save_wing_states()                                   # review W2
 	if player != null and is_instance_valid(player):
 		player.fit.position = player.position
 		player.fit.rotation = player.heading

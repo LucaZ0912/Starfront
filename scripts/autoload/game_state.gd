@@ -454,7 +454,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"crew_quarters": crew_quarters.duplicate(true), "bar": bar.duplicate(true), "crew_seq": _crew_seq,
+		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 		"collection": collection.duplicate(true),
@@ -960,19 +960,6 @@ func note_docked(system_id: int, station_id: String) -> void:
 		rescued.clear()
 
 
-func _insurance_ship() -> ShipFitting:
-	var home := Universe.home_system
-	var st: Dictionary = Universe.get_layout(home)["stations"][0]
-	var f := create_from_preset("std_dragonfly", "player")
-	f.ship_name = "Dragonfly »Second Chance«"
-	f.system_id = home
-	f.docked_at = st["id"]
-	f.position = st["pos"]
-	add_ship(f)
-	log_msg("Aegis Mutual provides you with a new Dragonfly in %s." % Universe.systems[home]["name"], COL_WARN)
-	return f
-
-
 # ---------------------------------------------------------------- Crew (package 31)
 
 ## A new crew member with a fresh id.
@@ -1054,9 +1041,10 @@ func crew_error(f: ShipFitting) -> String:
 	return "" if miss == "" else "Crew missing: %s – hire at a bar (The Bar) or move crew in the ship menu (Modules → Crew)." % miss
 
 
-## The crew of the active ship takes its share of an income; returns what it took.
-func crew_cut(amount: int) -> int:
-	var f := active()
+## The crew of the active ship (or of the ship that earned it – review K3) takes its share of an income; returns
+## what it took.
+func crew_cut(amount: int, earner: ShipFitting = null) -> int:
+	var f := earner if earner != null else active()
 	if f == null or amount <= 0:
 		return 0
 	var cut := int(round(float(amount) * (f.crew_share() + wing_share())))
@@ -1290,6 +1278,23 @@ func _weighted_quality() -> String:
 		if x <= 0.0:
 			return String(q)
 	return "D"
+
+
+## Review K1 / K6: only bars whose offers are still current and quarters with someone in them go into the save.
+func _saved_bars() -> Dictionary:
+	var out := {}
+	for sid in bar:
+		if play_time - float(bar[sid].get("t", 0.0)) < CrewData.BAR_REFRESH:
+			out[sid] = bar[sid].duplicate(true)
+	return out
+
+
+func _saved_quarters() -> Dictionary:
+	var out := {}
+	for sid in crew_quarters:
+		if not (crew_quarters[sid] as Array).is_empty():
+			out[sid] = crew_quarters[sid].duplicate(true)
+	return out
 
 
 func quarters_of(station_id: String) -> Array:

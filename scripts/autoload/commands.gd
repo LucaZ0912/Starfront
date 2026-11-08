@@ -982,7 +982,10 @@ func _c_debug_lose_ship(_c: Dictionary) -> String:
 	if f == null:
 		return "No ship."
 	if world != null and is_instance_valid(world) and world.player != null and is_instance_valid(world.player) and world.player.fit == f and f.docked_at == "":
+		var god := god_mode
+		god_mode = false                                  # review K5: works in god mode too
 		world.player.take_damage(1e9, "kinetic", null)
+		god_mode = god
 		return ""
 	GameState.on_player_ship_lost(f)
 	return ""

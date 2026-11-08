@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.34.4 – 2026-11-08
+
+**Part 5 review fixes** (reviews/teil5_review.md): wingmen and the platform ship keep to no-fire zones (self-defence
+allowed) and are repaired when docked, their damage survives jumps; the SHIP LOST window takes every key; leaner saves
+(only current bar offers and crew quarters with someone in them); the wingmen panel hides in hyperspace; debug
+"Lose the active ship" works in god mode; dead code removed.
+
 ## alpha 0.5.34.3 – 2026-11-08
 
 **Collection:** the categories as a list of buttons on the left, the chosen one on the right.

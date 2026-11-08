@@ -233,6 +233,8 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Game hotkeys via rebindable actions (see Keybinds / Settings → Controls).
 ## Also called by SystemView for a clean middle-mouse click (no drag).
 func handle_input(event: InputEvent) -> void:
+	if loss_window != null and loss_window.visible:
+		return                                            # review W3: a decision is needed first
 	if not event.is_pressed() or event.is_echo():
 		return
 	if event.is_action_pressed("galaxy_map", false, true):

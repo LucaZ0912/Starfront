@@ -1219,6 +1219,8 @@ func _update_drones() -> void:
 	var p = view.player if view != null else null
 	if p == null or not is_instance_valid(p) or GameState.active() == null:
 		drone_panel.visible = false
+		wing_panel.visible = false                        # review K2: not in hyperspace
+		_wing_sig = "-"
 		return
 	var f: ShipFitting = p.fit
 	var st := f.stats()

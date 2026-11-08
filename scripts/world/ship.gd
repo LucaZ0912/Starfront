@@ -806,8 +806,8 @@ func _solar(delta: float, s: Dictionary) -> void:
 ## NPCs do not start fights with ships under a station's protection (inside a no-fire zone,
 ## unless that ship is an aggressor itself).
 func _protected(n) -> bool:
-	if faction == "player" or view == null or not view.has_method("zone_station"):
-		return false
+	if (faction == "player" and wingman_id < 0) or view == null or not view.has_method("zone_station"):
+		return false                 # the pilot decides for itself; wingmen keep to the zones (review W1)
 	if raiding:
 		return false             # raiders attack right under the station's guns
 	if faction == "patrol" and n.faction == "player" and n.fit != null and hostile_to_player() and GameState.law.points(fit.gov) > 0:
@@ -920,6 +920,9 @@ func _wing_targeting(delta: float, s: Dictionary) -> void:
 				want = target                    # finishes the fight it is in
 			if want == null and "hothead" in wing_traits and randf() < 0.08:
 				want = _nearest_hostile(sensor * 0.7)
+		# review W1: no fire inside a no-fire zone – unless it is self-defence (it shoots at us or at the pilot)
+		if want != null and _protected(want) and want != last_attacker and want != pa:
+			want = null
 		_set_target(want)
 	if target != null:
 		lock_progress = minf(1.0, lock_progress + delta / _lock_time(s))
