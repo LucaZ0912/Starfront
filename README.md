@@ -698,7 +698,7 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | Click a locked target (top centre) | make it the active target · right-click: unlock |
 | Mouse wheel / F1–F4 | zoom level: Combat → Recon → Orbit (a planet and its moons; not in warp) → System |
 | WASD | fly the ship in that direction (screen up = north); release: it stops |
-| Arrow keys / middle mouse, Space | pan camera, recentre on ship; in warp Space twice within 5 s = emergency shutdown |
+| Arrow keys / middle mouse, Space | pan camera, recentre on ship |
 | Tab | cycle through everything within sensor range – ships first (nearest first), then asteroids, wrecks and anomalies; with nothing selected it starts with the ships again |
 | V / C | cycle hostile / friendly ships (sensor range, otherwise up to 50,000 km) |
 | B | select the nearest station within 5,000 km |
@@ -709,7 +709,7 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | F5 / F9 | quicksave / quickload |
 | 1 – 9 / click a module tile | switch an active module on/off (bottom centre) |
 | R | lock the selected target (again: unlock; nothing selected: the nearest hostile ship) |
-| Q / X / J / G / F | approach / warp to / jump / dock / follow the selected object |
+| Q / X / J / G / F | approach / warp to / jump / dock / follow the selected object; in warp X twice within 5 s = emergency shutdown |
 | Click an ally tile (top left) | select it · right-click: follow |
 
 ## Ship menu (I) – seven tabs

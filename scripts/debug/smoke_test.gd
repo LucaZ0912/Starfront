@@ -6176,9 +6176,10 @@ func _test_warp36(view: SystemView) -> void:
 	var fast_ok: bool = float(pl.fit.stats()["warp_speed"]) >= 360000.0 * 0.5
 	var idle_ok: bool = not view.emergency_key()                 # not in warp: Space centres the camera
 	pl.warp = {"from": pl.position, "to": pl.position + Vector2(900000, 0), "t": 1.0, "T": 10.0, "then": {}, "name": "Test"}
-	var ask_ok: bool = view.emergency_key() and pl.in_warp()       # first press only asks
+	# 0.6.36.4: on the warp key – in warp it only does the shutdown
+	var ask_ok: bool = main.hud.hotkey_command("cmd_warp") == "" and pl.in_warp()       # first press only asks
 	var h0 := pl.heading
-	var drop_ok: bool = view.emergency_key() and not pl.in_warp() and pl.tumble_t > 0.0 and pl.warp_disrupted > 0.0 and pl.velocity.x > 0.0
+	var drop_ok: bool = main.hud.hotkey_command("cmd_warp") == "" and not pl.in_warp() and pl.tumble_t > 0.0 and pl.warp_disrupted > 0.0 and pl.velocity.x > 0.0
 	pl._tumble(0.2)
 	var spin_ok: bool = absf(wrapf(pl.heading - h0, -PI, PI)) > 0.5
 	pl.tumble_t = 0.0
@@ -6191,6 +6192,20 @@ func _test_warp36(view: SystemView) -> void:
 	var expire_ok: bool = view.emergency_key() and pl.in_warp()
 	pl.warp = {}
 	view._emergency_until = -1.0
+	# a real key press on the warp key reaches the shutdown (Space never did – buttons took it)
+	pl.warp = {"from": pl.position, "to": pl.position + Vector2(900000, 0), "t": 1.0, "T": 10.0, "then": {}, "name": "Test"}
+	var ev := InputEventKey.new()
+	ev.keycode = KEY_X
+	ev.physical_keycode = KEY_X
+	ev.pressed = true
+	get_viewport().push_input(ev)
+	var ev2 := ev.duplicate()
+	ev2.pressed = false
+	get_viewport().push_input(ev2)
+	var key_ok: bool = view._emergency_until > view._t and pl.in_warp()
+	pl.warp = {}
+	view._emergency_until = -1.0
+	expire_ok = expire_ok and key_ok
 	# sky bodies: no hard cap any more – the closer, the bigger, smoothly
 	var r := 10000.0
 	var vmin := 1080.0
@@ -6210,5 +6225,5 @@ func _test_warp36(view: SystemView) -> void:
 	if not (fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok):
 		print("[SMOKE] warp36 parts: ", [fast_ok, idle_ok, ask_ok, drop_ok, spin_ok, expire_ok, smooth_ok])
 	check(fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok and peak > old * 1.3,
-		"0.6.36.3: warp 50 %% faster; emergency shutdown – Space asks, Space again within 5 s throws the ship out of warp, tumbling; sky bodies come closer (right above a planet %.0f px radius instead of %.0f), growing smoothly" % [peak, old])
+		"0.6.36.3: warp 50 %% faster; emergency shutdown – the warp key asks in warp, again within 5 s throws the ship out of warp, tumbling; sky bodies come closer (right above a planet %.0f px radius instead of %.0f), growing smoothly" % [peak, old])
 

@@ -2689,12 +2689,13 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 	o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-## 0.6.36.3: emergency shutdown – the first Space in warp asks in the log, a second one within 5 s drops out.
+## 0.6.36.3: emergency shutdown – the first press of the warp key in warp (0.6.36.4; before: Space) asks in the log,
+## a second one within 5 s drops out.
 const EMERGENCY_WINDOW := 5.0
 var _emergency_until := -1.0
 
 
-## Space in warp. True if it was used for the emergency shutdown (then it does not centre the camera).
+## The warp key in warp. True if it was used for the emergency shutdown.
 func emergency_key() -> bool:
 	if player == null or not is_instance_valid(player) or not player.in_warp():
 		_emergency_until = -1.0
@@ -2705,7 +2706,7 @@ func emergency_key() -> bool:
 		player.emergency_drop()
 		return true
 	_emergency_until = _t + EMERGENCY_WINDOW
-	GameState.log_msg("Emergency shutdown of the warp drive? Press %s again within %d s to confirm." % [Keybinds.key_text("cam_center"), int(EMERGENCY_WINDOW)], GameState.COL_WARN)
+	GameState.log_msg("Emergency shutdown of the warp drive? Press %s again within %d s to confirm." % [Keybinds.key_text("cmd_warp"), int(EMERGENCY_WINDOW)], GameState.COL_WARN)
 	return true
 
 

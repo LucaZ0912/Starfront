@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.36.4 – 2026-11-08
+
+**Emergency shutdown** on the warp key (X): in warp it only does the shutdown – once asks, again within 5 s drops out.
+Space did not get through (it also presses focused buttons) and centres the camera again.
+
 ## alpha 0.6.36.3 – 2026-11-08
 
 - **Warp** half again as fast.

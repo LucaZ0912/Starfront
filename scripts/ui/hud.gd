@@ -357,11 +357,11 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 [color=#7fd8ff]Click empty space[/color]: sublight flight (slow – the system is huge)
 
 {ship_up}{ship_left}{ship_down}{ship_right}: fly the ship in that direction (release: stop)
-{cam_up}{cam_left}{cam_down}{cam_right} / drag middle mouse: pan camera • {cam_center}: back to ship (in warp: twice within 5 s = emergency shutdown)
+{cam_up}{cam_left}{cam_down}{cam_right} / drag middle mouse: pan camera • {cam_center}: back to ship
 {sel_target}: cycle targets in sensor range • {sel_hostile} / {sel_friend}: cycle hostile / friendly ships • {sel_station}: nearby station • {cmd_lock}: lock / unlock
 [color=#7fd8ff]Multi-focus[/color]: every weapon and tool keeps the target that was active when you switched it on (T1, T2 … on its tile).
    Make another lock active and switch more modules on – press a running module's key to move it to the active target.
-{cmd_approach} approach • {cmd_warp} warp • {cmd_jump} jump • {cmd_dock} dock • {cmd_follow} follow (the selected object)
+{cmd_approach} approach • {cmd_warp} warp (in warp: twice within 5 s = emergency shutdown) • {cmd_jump} jump • {cmd_dock} dock • {cmd_follow} follow (the selected object)
 [color=#7fd8ff]Drones[/color]: {drone_launch} launch one, {drone_recall} recall (a key for "launch all" can be set in Settings → Controls) – role and behaviour in the drone window (top left). They fly into the hangar for warps and jumps and out again afterwards.
 {ship_menu}: ship menu • {station}: station • {galaxy_map}: galaxy map • {menu_back}: close / pause menu
 {quicksave} / {quickload}: quicksave / quickload • {debug_menu}: debug menu • All keys: Settings → Controls
@@ -851,6 +851,10 @@ func hotkey_command(action: String) -> String:
 		return select_next("friend")
 	if action == "sel_station":
 		return select_near_station()
+	# 0.6.36.4: in warp the warp key only does the emergency shutdown (press twice within 5 s)
+	if action == "cmd_warp" and p.in_warp():
+		view.emergency_key()
+		return ""
 	var id := selected_id
 	if action == "cmd_lock" and id == "":
 		var near = _nearest_hostile(p)
