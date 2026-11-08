@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.36.3 – 2026-11-08
+
+- **Warp** half again as fast.
+- **Emergency shutdown:** Space in warp asks in the log; Space again within 5 s throws the ship out of warp – flash,
+  glittering trail, and it tumbles three times round itself before it answers the helm (the drive needs 6 s).
+- **Planets, moons and stars** come much closer (right above a planet about 650 instead of 450 px radius at 1080p) and
+  grow and shrink smoothly – no hard limits, a fixed pixel grid instead of one that jumped with every change of size.
+
 ## alpha 0.6.36.2 – 2026-11-08
 
 **Orbit view:** a new zoom level between Recon and System (F3; System is now F4) – a flat map 260,000 km round the ship,

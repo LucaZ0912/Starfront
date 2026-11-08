@@ -701,6 +701,9 @@ func _physics_process(delta: float) -> void:
 		fit.rotation = heading
 		queue_redraw()
 		return
+	if tumble_t > 0.0:
+		_tumble(delta)
+		return
 	_update_targeting(delta, s)
 	_update_movement(delta, s)
 	_update_weapons(delta, s)
@@ -1550,6 +1553,45 @@ func _warp_trail(vel: Vector2) -> void:
 
 
 ## Pulled out of warp (pirate interdiction): stops right here, the drive needs a moment.
+## 0.6.36.3: emergency shutdown of the warp drive (the pilot: Space twice). The ship is thrown out at speed and
+## tumbles a few times round itself before it answers the helm again; the drive needs a moment.
+const TUMBLE_TIME := 3.0
+const TUMBLE_TURNS := 3.0
+var tumble_t := 0.0
+
+
+func emergency_drop() -> void:
+	if warp.is_empty():
+		return
+	var from: Vector2 = warp["from"]
+	var to: Vector2 = warp["to"]
+	var dir := (to - from).normalized() if from.distance_to(to) > 1.0 else Vector2.from_angle(heading)
+	warp = {}
+	order = {"type": "idle"}
+	target = null
+	warp_disrupted = maxf(warp_disrupted, 6.0)
+	velocity = dir * maxf(float(fit.stats()["speed"]) * 4.0, 900.0)
+	tumble_t = TUMBLE_TIME
+	if view != null:
+		if view.player == self:
+			Audio.play("warp_exit", "emergency shutdown")
+		_warp_flash()
+		_warp_trail(velocity)
+		view.on_warp_finished(self)
+
+
+func _tumble(delta: float) -> void:
+	var k := tumble_t / TUMBLE_TIME                       # 1 → 0: the spin dies away
+	heading = wrapf(heading + TUMBLE_TURNS * TAU * 2.0 / TUMBLE_TIME * k * delta, -PI, PI)
+	velocity *= exp(-0.7 * delta)
+	position += velocity * delta
+	tumble_t = maxf(0.0, tumble_t - delta)
+	activity = "Emergency shutdown – tumbling"
+	fit.position = position
+	fit.rotation = heading
+	queue_redraw()
+
+
 func drop_out_of_warp(disrupt: float = 15.0) -> void:
 	if warp.is_empty():
 		return

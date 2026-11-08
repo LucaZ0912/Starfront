@@ -580,6 +580,7 @@ func _process(delta: float) -> void:
 				_test_scale()
 				_test_rocks(view)
 				_test_moons(view)
+				_test_warp36(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -6166,4 +6167,48 @@ func _test_moons(view: SystemView) -> void:
 	view._set_zoom(view.level_zoom(lv0))
 	check(fit_ok and orbit_ok and map_ok and skip_ok and Keybinds.ACTIONS.any(func(x): return x["id"] == "zoom_orbit"),
 		"0.6.36.2: Orbit level between Recon and System (%s from the ship to the screen edge, flat map) – skipped during a warp" % SystemView.fmt_dist(view.ORBIT_VIEW))
+
+
+## 0.6.36.3: warp half again as fast; emergency shutdown (Space, Space within 5 s): thrown out, tumbling;
+## sky bodies grow smoothly and come much closer.
+func _test_warp36(view: SystemView) -> void:
+	var pl: Ship = view.player
+	var fast_ok: bool = float(pl.fit.stats()["warp_speed"]) >= 360000.0 * 0.5
+	var idle_ok: bool = not view.emergency_key()                 # not in warp: Space centres the camera
+	pl.warp = {"from": pl.position, "to": pl.position + Vector2(900000, 0), "t": 1.0, "T": 10.0, "then": {}, "name": "Test"}
+	var ask_ok: bool = view.emergency_key() and pl.in_warp()       # first press only asks
+	var h0 := pl.heading
+	var drop_ok: bool = view.emergency_key() and not pl.in_warp() and pl.tumble_t > 0.0 and pl.warp_disrupted > 0.0 and pl.velocity.x > 0.0
+	pl._tumble(0.2)
+	var spin_ok: bool = absf(wrapf(pl.heading - h0, -PI, PI)) > 0.5
+	pl.tumble_t = 0.0
+	pl.velocity = Vector2.ZERO
+	pl.warp_disrupted = 0.0
+	# the confirmation runs out after 5 s
+	pl.warp = {"from": pl.position, "to": pl.position + Vector2(900000, 0), "t": 1.0, "T": 10.0, "then": {}, "name": "Test"}
+	view.emergency_key()
+	view._emergency_until = view._t - 0.1
+	var expire_ok: bool = view.emergency_key() and pl.in_warp()
+	pl.warp = {}
+	view._emergency_until = -1.0
+	# sky bodies: no hard cap any more – the closer, the bigger, smoothly
+	var r := 10000.0
+	var vmin := 1080.0
+	var prev := 0.0
+	var smooth_ok := true
+	for i in 60:
+		var dist := r * 30.0 / (1.0 + i * 0.5)
+		var de := sqrt(dist * dist + pow(r * 1.1, 2.0))
+		var raw := r * view.SKY_SIZE / de
+		var app := raw / (1.0 + raw / (vmin * view.SKY_CAP))
+		smooth_ok = smooth_ok and app > prev
+		prev = app
+	# right above the planet: before 0.6.36.3 capped at 42 % of the smaller screen side
+	var raw0: float = view.SKY_SIZE / 1.1
+	var peak := raw0 / (1.0 + raw0 / (vmin * view.SKY_CAP))
+	var old := vmin * 0.42
+	if not (fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok):
+		print("[SMOKE] warp36 parts: ", [fast_ok, idle_ok, ask_ok, drop_ok, spin_ok, expire_ok, smooth_ok])
+	check(fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok and peak > old * 1.3,
+		"0.6.36.3: warp 50 %% faster; emergency shutdown – Space asks, Space again within 5 s throws the ship out of warp, tumbling; sky bodies come closer (right above a planet %.0f px radius instead of %.0f), growing smoothly" % [peak, old])
 

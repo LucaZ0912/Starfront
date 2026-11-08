@@ -483,7 +483,7 @@ func _compute() -> Dictionary:
 	s["speed"] = s["thrust"] * 1000.0 / maxf(s["mass"], 1.0) * s["speed_mult"] * ratio
 	s["accel"] = s["speed"] * 1.3
 	s["warp_mult"] = clampf(s["speed"] / 300.0, 0.6, 1.6)
-	s["warp_speed"] = 240000.0 * s["warp_mult"] * float(h.get("warp_mult", 1.0))   # package 35: bigger systems, faster warp
+	s["warp_speed"] = 360000.0 * s["warp_mult"] * float(h.get("warp_mult", 1.0))   # package 35: bigger systems, faster warp; 0.6.36.3: +50 %
 	s["turn"] = s["turn"] * (0.5 + 0.5 * ratio) * float(h.get("turn_mult", 1.0))
 	s["cap_recharge"] *= ratio
 	s["shield_regen"] *= ratio

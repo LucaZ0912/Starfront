@@ -1174,6 +1174,13 @@ func center_on_player() -> void:
 		camera.position = player.position
 
 
+## 0.6.36.3: background bodies – apparent radius ≈ radius × SKY_SIZE / distance, easing towards SKY_CAP × the
+## smaller screen side; SKY_PIXELS = pixel rows across a planet's disc.
+const SKY_SIZE := 900.0
+const SKY_CAP := 3.0
+const SKY_PIXELS := 160.0
+
+
 ## Star and planets: background bodies when close, flat on the map when far.
 func _update_bodies() -> void:
 	var z := camera.zoom.x
@@ -1192,20 +1199,24 @@ func _update_bodies() -> void:
 		# Background representation
 		var d := bpos - camera.position
 		var dist := maxf(d.length(), 1.0)
-		# Don't hide during a fly-over (camera inside/near the planet):
-		# size is capped and the planet glides under the ship instead of flipping sides.
-		var dist_eff := maxf(dist, r * 1.1)
-		var app_r := minf(r * 420.0 / dist_eff, vmin * 0.42)
+		# 0.6.36.3: closer and smoother. Don't hide during a fly-over (camera inside/near the planet): the distance
+		# eases off softly towards the surface, the size grows smoothly towards a big cap (no hard limits), and the
+		# planet glides under the ship instead of flipping sides.
+		var dist_eff := sqrt(dist * dist + pow(r * 1.1, 2.0))
+		var raw := r * SKY_SIZE / dist_eff
+		var cap := vmin * SKY_CAP
+		var app_r := raw / (1.0 + raw / cap)
 		if sky_a > 0.01 and app_r >= 2.0:
 			sky_spr.visible = true
 			# close bodies move towards the edge ("oblique" view of the planet), far ones towards the centre
-			var side := clampf((dist - r) / (r * 2.0), 0.0, 1.0)   # 0 = directly above, 1 = to the side
-			var off := minf(dist * 0.00035 + app_r * 0.9 * side, vmin * 0.5 + app_r * 0.4)
+			var side := smoothstep(0.0, 1.0, (dist - r) / (r * 2.0))   # 0 = directly above, 1 = to the side
+			var lim := vmin * 0.5 + app_r * 0.4
+			var off := lim * tanh((dist * 0.00035 + app_r * 0.9 * side) / lim)
 			sky_spr.position = center + d / dist * off
 			sky_spr.scale = Vector2.ONE * app_r * quad / 64.0
 			sky_spr.modulate.a = sky_a
 			sky_spr.z_index = -clampi(int(dist / 1000.0), 0, 4000)
-			_set_pixels(sky_spr, app_r * quad / 3.0)
+			_set_pixels(sky_spr, SKY_PIXELS * quad * 0.43)          # 0.6.36.3: a fixed pixel grid – no flicker while it grows
 		else:
 			sky_spr.visible = false
 		# Map representation (true position, minimum on-screen size)
@@ -2676,6 +2687,26 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 		if sx > ex:
 			o.draw_line(Vector2(sx, y), Vector2(ex, y), Color(0.85, 0.95, 1.0, 0.28 * k * (absf(y) / rt)), 1.5 * px)
 	o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## 0.6.36.3: emergency shutdown – the first Space in warp asks in the log, a second one within 5 s drops out.
+const EMERGENCY_WINDOW := 5.0
+var _emergency_until := -1.0
+
+
+## Space in warp. True if it was used for the emergency shutdown (then it does not centre the camera).
+func emergency_key() -> bool:
+	if player == null or not is_instance_valid(player) or not player.in_warp():
+		_emergency_until = -1.0
+		return false
+	if _t <= _emergency_until:
+		_emergency_until = -1.0
+		GameState.log_msg("Emergency shutdown – dropping out of warp!", GameState.COL_BAD)
+		player.emergency_drop()
+		return true
+	_emergency_until = _t + EMERGENCY_WINDOW
+	GameState.log_msg("Emergency shutdown of the warp drive? Press %s again within %d s to confirm." % [Keybinds.key_text("cam_center"), int(EMERGENCY_WINDOW)], GameState.COL_WARN)
+	return true
 
 
 func on_warp_started(ship: Ship) -> void:

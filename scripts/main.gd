@@ -289,7 +289,7 @@ func handle_input(event: InputEvent) -> void:
 		if Commands.cheats_enabled:
 			debug_menu.toggle()
 	elif event.is_action_pressed("cam_center", false, true):
-		if view != null:
+		if view != null and not view.emergency_key():      # 0.6.36.3: in warp it is the emergency shutdown
 			view.center_on_player()
 	else:
 		for i in 4:

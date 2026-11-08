@@ -357,7 +357,7 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 [color=#7fd8ff]Click empty space[/color]: sublight flight (slow – the system is huge)
 
 {ship_up}{ship_left}{ship_down}{ship_right}: fly the ship in that direction (release: stop)
-{cam_up}{cam_left}{cam_down}{cam_right} / drag middle mouse: pan camera • {cam_center}: back to ship
+{cam_up}{cam_left}{cam_down}{cam_right} / drag middle mouse: pan camera • {cam_center}: back to ship (in warp: twice within 5 s = emergency shutdown)
 {sel_target}: cycle targets in sensor range • {sel_hostile} / {sel_friend}: cycle hostile / friendly ships • {sel_station}: nearby station • {cmd_lock}: lock / unlock
 [color=#7fd8ff]Multi-focus[/color]: every weapon and tool keeps the target that was active when you switched it on (T1, T2 … on its tile).
    Make another lock active and switch more modules on – press a running module's key to move it to the active target.
