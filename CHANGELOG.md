@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.3 – 2026-11-08
+
+**System map centred on your ship again** (as before); the camera-limit fix from 0.6.35.2 stays.
+
 ## alpha 0.6.35.2 – 2026-11-08
 
 **System map centred again:** the map is centred on the star (Godot's default camera limits had pushed the map of the bigger systems aside); the camera glides between map and close view.
