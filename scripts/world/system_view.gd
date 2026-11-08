@@ -2284,6 +2284,8 @@ func _draw_overlay() -> void:
 	# Own ship as an icon (recon + system)
 	if player != null and is_instance_valid(player) and not player.is_docked():
 		var pp := player.position
+		if player.in_warp():
+			_draw_warp_tunnel(o, player, px)            # 0.6.35.7
 		if mark_a > 0.01:
 			_draw_player_icon(o, pp, player.heading, px, mark_a)
 		if player.in_warp():
@@ -2561,13 +2563,66 @@ func _update_audio() -> void:
 	Audio.loop("space", "amb_space", true, 0.5)
 
 
+## 0.6.35.7: in warp a pale blue tunnel forms round the ship – walls along the course, rings and streaks that rush
+## past backwards; it builds up at the start and fades before arrival.
+func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
+	if s.warp.is_empty() or s.warp.get("formation", false):
+		return
+	var p := s.warp_progress()
+	var k := smoothstep(0.0, 0.06, p) * (1.0 - smoothstep(0.9, 1.0, p))
+	if k <= 0.01:
+		return
+	var d: Vector2 = ((s.warp["to"] as Vector2) - (s.warp["from"] as Vector2)).normalized()
+	var n := d.orthogonal()
+	var c: Vector2 = s.position
+	var rt := maxf(s.radius * 2.4, 70.0 * px)                     # tunnel radius: about two ship lengths
+	var L := get_viewport_rect().size.length() * 0.6 * px          # reaches past the screen
+	var col := Color(0.45, 0.75, 1.0)
+	var speed := Ship.warp_ease(minf(p + 0.02, 1.0)) - Ship.warp_ease(p)
+	var flow := float(s.warp["t"]) * (900.0 + 60000.0 * clampf(speed * 20.0, 0.0, 1.0))
+	o.draw_set_transform(c, d.angle(), Vector2.ONE)
+	# a faint blue veil inside the tube
+	o.draw_rect(Rect2(-L, -rt, 2.0 * L, 2.0 * rt), Color(col, 0.07 * k))
+	# the walls: soft bands, brighter at the edge
+	for side in [-1.0, 1.0]:
+		var inner: float = side * rt * 0.62
+		var outer: float = side * rt
+		var poly := PackedVector2Array([Vector2(-L, inner), Vector2(L, inner), Vector2(L, outer), Vector2(-L, outer)])
+		var cols := PackedColorArray([Color(col, 0.0), Color(col, 0.0), Color(col, 0.26 * k), Color(col, 0.26 * k)])
+		o.draw_polygon(poly, cols)
+		o.draw_line(Vector2(-L, outer), Vector2(L, outer), Color(col.lightened(0.3), 0.55 * k), 2.0 * px)
+	# rings rushing past backwards (ellipses: the tunnel seen from above at a slant)
+	var gap := rt * 1.6
+	var off := fposmod(flow, gap)
+	var x := -L - off + gap
+	while x < L:
+		var fade := 1.0 - absf(x) / L
+		var pts := PackedVector2Array()
+		for i in 25:
+			var a := PI * 0.5 + PI * i / 24.0
+			pts.append(Vector2(x + cos(a) * rt * 0.22, sin(a) * rt))
+		o.draw_polyline(pts, Color(col.lightened(0.2), 0.35 * k * fade), 2.0 * px)
+		x += gap
+	# streaks along the walls
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	for i in 26:
+		var y := rng.randf_range(-rt * 0.95, rt * 0.95)
+		var len := rng.randf_range(0.08, 0.25) * L
+		var sx := L - fposmod(flow * rng.randf_range(0.8, 1.6) + rng.randf() * 2.0 * L, 2.0 * L)
+		o.draw_line(Vector2(sx, y), Vector2(sx - len, y), Color(0.85, 0.95, 1.0, 0.28 * k * (absf(y) / rt)), 1.5 * px)
+	# a faint bow glow in front of the ship
+	o.draw_arc(Vector2(s.radius * 0.6, 0.0), s.radius * 1.4, -PI * 0.45, PI * 0.45, 20, Color(col.lightened(0.4), 0.4 * k), 3.0 * px)
+	o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func on_warp_started(ship: Ship) -> void:
 	if ship == player:
 		Audio.play("warp_enter", "warp")                  # package 28a
 		stow_all_drones(ship, true)
 		GameState.codex.event("warp")
-		_warp_saved_zoom = level_zoom(level)
-		_warp_auto = true
+		# 0.6.35.7: the camera stays where it is (combat range) – the pilot may zoom out by hand; no automatic zoom
+		_warp_auto = false
 		follow = true
 		GameState.log_msg("Warp drive active → %s" % ship.warp["name"])
 

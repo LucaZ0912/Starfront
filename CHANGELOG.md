@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.7 – 2026-11-08
+
+**Warp:** the camera stays at close range (zoom out by hand whenever you like – the radar now shows in recon during
+a warp too); a new warp animation: a pale blue tunnel forms round the ship, rings and streaks rush past.
+
 ## alpha 0.6.35.6 – 2026-11-08
 
 **Ice colossus:** the spiked crystal is now a rounded ice ball with soft bulges.

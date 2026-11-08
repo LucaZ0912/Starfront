@@ -230,7 +230,7 @@ func _process(delta: float) -> void:
 			min_zoom_seen = minf(min_zoom_seen, view.camera.zoom.x)
 			if saw_warp and not view.player.in_warp():
 				check(true, "live warp completed (%.1fs)" % timer)
-				check(min_zoom_seen < view.switch_zoom(), "camera zoomed out to system level during warp (%.5f)" % min_zoom_seen)
+				check(min_zoom_seen > view.switch_zoom(), "camera stays at close range during the warp – zooming out is up to the pilot (0.6.35.7, min %.3f)" % min_zoom_seen)
 				var d := view.player.position.distance_to(field["pos"])
 				check(d < float(field["radius"]) * 1.2, "arrived at asteroid field (%.0f km)" % d)
 				check(view.camera.zoom.x > 0.1, "zoom restored after arrival (%.2f)" % view.camera.zoom.x)
