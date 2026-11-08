@@ -112,6 +112,14 @@ var curia = CuriaScript.new()
 ## Package 39: entry permits to the capitals (faction -> true). Given from Friendly on, taken away only at Arch-enemy.
 var permits := {}
 var _permit_t := 0.0
+## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
+var research_data := 0
+const DATA_PRICE := 5000           # per unit of data …
+const DATA_REP := 0.5              # … and standing with the Directorate
+const EM_SELL := 12000             # exotic matter: what the exchange pays …
+const EM_SELL_REP := 1.0
+const EM_BUY := 30000              # … and what it asks (Allied only)
+const PROBE_TIME := 120.0          # a measurement probe needs two minutes in the target system
 
 
 func _ready() -> void:
@@ -167,6 +175,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	senate.reset()
 	curia.reset()
 	permits.clear()
+	research_data = 0
 	if test_system:
 		notorious.reset()
 	else:
@@ -467,7 +476,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data,
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
@@ -526,6 +535,7 @@ func from_dict(d: Dictionary) -> void:
 	else:
 		curia.reset()
 	permits = d.get("permits", {}).duplicate()
+	research_data = int(d.get("research_data", 0))
 	if d.has("news"):
 		news.from_dict(d["news"])
 	else:
@@ -1578,6 +1588,8 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 			f.remove_cargo(m["item"], float(m["amount"]))
 		"relic":
 			f.remove_cargo("earth_relic", 1.0)               # package 39b
+		"exotic":
+			exotic_matter -= int(m["amount"])                # package 39c
 	missions.erase(m)
 	var pay := int(round(Missions.payout(m) * (1.0 + skill_bonus("negotiation"))))      # package 29
 	# package 30: achievements and perks
@@ -1657,6 +1669,15 @@ func _update_faction_jobs(delta: float) -> void:
 			"smuggler":
 				if int(m["progress"]) < 1 and float(m["expires"]) > 0.0 and play_time >= float(m["expires"]):
 					fail_mission(m, "the smuggler got through")
+			"probe":
+				# package 39c: the probe measures while the pilot stays in the target system, out in space
+				var pf := active()
+				if int(m["progress"]) < 1 and pf != null and not pf.in_transit() and pf.system_id == int(m["target_system"]) and pf.docked_at == "":
+					m["progress_t"] = float(m.get("progress_t", 0.0)) + delta
+					if float(m["progress_t"]) >= PROBE_TIME:
+						m["progress"] = 1
+						log_msg("Measurements complete – return to the issuing station.", COL_GOOD)
+						missions_changed.emit()
 			"courier":
 				if m.get("ballot", false) and play_time >= float(m.get("expires", INF)):     # package 39a
 					var cf := active()
@@ -1668,6 +1689,34 @@ func _update_faction_jobs(delta: float) -> void:
 					var cap: Dictionary = notorious.get_captain(String(m["captain"]))
 					if cap.is_empty() or not cap["alive"]:
 						fail_mission(m, "someone else got the target")
+
+
+## Package 39c: the Research Exchange – sell research data and exotic matter, buy exotic matter (Allied).
+func exchange(what: String, n: int = 1) -> String:
+	match what:
+		"data":
+			if research_data <= 0:
+				return "You have no research data – analyse anomalies."
+			var k := research_data
+			research_data = 0
+			add_credits(k * DATA_PRICE)
+			rep.change("directorate", minf(k * DATA_REP, 10.0), "research data")
+			log_msg("Research Exchange: %d data set%s sold for %s." % [k, "" if k == 1 else "s", GameData.fmt_credits(k * DATA_PRICE)], COL_GOOD)
+		"sell_em":
+			if exotic_matter < n:
+				return "Not enough exotic matter."
+			exotic_matter -= n
+			add_credits(n * EM_SELL)
+			rep.change("directorate", n * EM_SELL_REP, "exotic matter")
+			log_msg("Research Exchange: %d exotic matter sold for %s." % [n, GameData.fmt_credits(n * EM_SELL)], COL_GOOD)
+		"buy_em":
+			if not rep.at_least("directorate", "allied"):
+				return "The Directorate sells exotic matter only to Allied pilots."
+			if not spend(n * EM_BUY):
+				return "Not enough credits."
+			exotic_matter += n
+			log_msg("Research Exchange: %d exotic matter bought for %s." % [n, GameData.fmt_credits(n * EM_BUY)], COL_GOOD)
+	return ""
 
 
 ## Package 39b: an analysed anomaly may hold a relic of Earth (always, for a relic contract in its system).
@@ -1712,6 +1761,7 @@ func notify(event: String, system_id: int) -> void:
 			crew_learn("analysed", 1.0)
 			skill_xp("science", 20.0)
 			_find_relic(system_id)                   # package 39b
+			research_data += 1                        # package 39c: data for the Research Exchange
 	var changed := false
 	for m in missions:
 		if (event == "kill" and m["type"] == "bounty") or (event == "analyse" and m["type"] == "survey"):

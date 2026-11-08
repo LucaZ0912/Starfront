@@ -29,6 +29,10 @@ uniform float storms = 0.0;                 // vortices and a big storm on a gia
 uniform float faint = 0.0;                  // 1 = faint bands (ice giant)
 uniform float city = 0.0;                   // lights of cities on the night side
 uniform float city_style = 0.0;             // package 39: 1 = a capital world (structured: coasts, metropolises, highways)
+uniform float terraform = 0.0;              // 39c: 1 = half terraformed – green with seas on one side, desert on the other
+uniform vec4 dry_a : source_color = vec4(0.62, 0.38, 0.22, 1.0);
+uniform vec4 dry_b : source_color = vec4(0.85, 0.62, 0.36, 1.0);
+uniform vec4 dry_c : source_color = vec4(0.95, 0.85, 0.6, 1.0);
 uniform float ring_in = 1.3;                // ring inner / outer edge (planet radii), tilt (flattening)
 uniform float ring_out = 1.85;
 uniform float ring_tilt = 3.2;
@@ -93,6 +97,16 @@ void fragment() {
 					base = mix(col_a.rgb, col_b.rgb, smoothstep(0.32, 0.5, hd));
 					base = mix(base, col_c.rgb, smoothstep(0.55, 0.72, hd));
 				}
+			}
+			// 39c: terraforming – beyond a ragged front the world is still desert (no seas, no green)
+			if (terraform > 0.5) {
+				float front = st.x + 0.22 * (fbm(st * 3.0 + seed * 1.7) - 0.5) + 0.06 * (fbm(st * 11.0 + seed) - 0.5);
+				float dry = smoothstep(-0.02, 0.06, front);
+				vec3 desert = mix(dry_a.rgb, dry_b.rgb, smoothstep(0.32, 0.5, hd));
+				desert = mix(desert, dry_c.rgb, smoothstep(0.58, 0.74, hd));
+				// along the front: first green patches in the sand
+				float patches = step(0.55, fbm(st * 14.0 + seed * 3.0)) * (1.0 - smoothstep(0.06, 0.2, front));
+				base = mix(base, desert, dry * (1.0 - patches * 0.8));
 			}
 			// polar caps with ragged edges
 			if (caps > 0.0) {

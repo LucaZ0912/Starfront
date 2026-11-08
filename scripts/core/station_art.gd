@@ -84,6 +84,14 @@ static func build(data: Dictionary) -> Dictionary:
 			a._forge()
 		"lux_aeterna":
 			a._lux_aeterna()
+		"dyson_hub":
+			a._dyson_hub()
+		"mirror":
+			a._mirror()
+		"gate_frame":
+			a._gate_frame()
+		"axiom_yards":
+			a._axiom_yards()
 		_:
 			a._trade()
 	var img := a._render()
@@ -139,6 +147,8 @@ func _setup(t: String, tr: int, sd: int) -> void:
 		acc = Color(0.35, 0.62, 1.0)                  # Assembly blue
 	if COVENANT_ARTS.has(t):
 		acc = Color(1.0, 0.78, 0.3)                   # Covenant gold
+	if DIRECTORATE_ARTS.has(t):
+		acc = Color(0.3, 0.95, 0.6)                   # Directorate green
 
 
 # ================================================================ Primitives
@@ -738,8 +748,10 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 # ================================================================ Package 39: landmarks of Landfall
 
 const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 560,
-	"cathedral": 520, "pilgrim_gate": 300, "forge": 460, "lux_aeterna": 600}
+	"cathedral": 520, "pilgrim_gate": 300, "forge": 460, "lux_aeterna": 600,
+	"dyson_hub": 480, "mirror": 170, "gate_frame": 190, "axiom_yards": 440}
 const COVENANT_ARTS := {"cathedral": true, "pilgrim_gate": true, "forge": true, "lux_aeterna": true}
+const DIRECTORATE_ARTS := {"dyson_hub": true, "mirror": true, "gate_frame": true, "axiom_yards": true}
 const ASSEMBLY_ARTS := {"vote": true, "vote_relay": true, "concord_yards": true, "res_publica": true}
 const VOTE_RELAY_ANGLE := 0.4                       # where the first relay lies (Universe._special_structures)
 
@@ -1201,6 +1213,123 @@ func _lux_aeterna() -> void:
 		light(Vector2(_rx(0.12 + k5 * 0.11), _ry(0.075 * (1.0 if k5 % 2 == 0 else -1.0))), Color(1.0, 0.8, 0.4), 0.6)
 	light(Vector2(_rx(0.06), c), Color(1.0, 0.3, 0.35), 0.9, true)
 
+# ================================================================ 39c: landmarks of Durchbruch
+
+## A hexagonal collector tile (green photovoltaic glass in a silver frame).
+func collector(p: Vector2, r: float, h: float) -> void:
+	poly(regular(p, r, 6, PI / 6.0), HULL, h, 1.5, 0)
+	poly(regular(p, r - 2.5, 6, PI / 6.0), SOLAR, h + 3.0, 0.0, 0)
+	_put(int(p.x), int(p.y), ACC, h + 3.0, true)
+
+
+## The Meridian Sphere: the hub of the Dyson sphere, built into its shell – a hexagonal core of silver, a honeycomb
+## of collector tiles round it, an energy conduit glowing green at its heart, three docking arms, dishes and radiators.
+func _dyson_hub() -> void:
+	var center := Vector2(c, c)
+	# radiators (lowest), on the diagonals
+	for k in 6:
+		var a := k * TAU / 6.0 + PI / 6.0
+		box(P(n * 0.38, a), a, n * 0.1, 3.0, PANEL, 7.0, P_RIBS)
+	# the honeycomb of collectors
+	var hx := n * 0.045
+	for q in range(-5, 6):
+		for r in range(-5, 6):
+			var hp := center + Vector2(hx * 1.75 * (q + r * 0.5), hx * 1.52 * r)
+			var d := hp.distance_to(center)
+			if d < n * 0.17 or d > n * 0.36:
+				continue
+			collector(hp, hx * 0.95, 9.0)
+	# three docking arms
+	for k2 in 3:
+		dock_arm(k2 * TAU / 3.0 - PI * 0.5, n * 0.14, n * 0.47, 46.0, 12.0)
+	# the core
+	poly(regular(center, n * 0.17, 6, 0.0), HULL, 14.0, 4.0, 10)
+	poly(regular(center, n * 0.11, 6, 0.0), PANEL, 18.0, 3.0, 0)
+	disc(center, n * 0.07, ACC, 22.0, D_HUB)
+	disc(center, n * 0.03, GLASS, 26.0, D_DOME)
+	for k3 in 6:
+		var a3 := k3 * TAU / 6.0
+		seg(P(n * 0.07, a3), P(n * 0.16, a3), 1.2, ACC, 19.0, P_FLAT, true)
+		disc(P(n * 0.135, a3 + PI / 6.0), 7.0, DARK, 20.0, D_DISH)
+		light(P(n * 0.17, a3), Color(0.4, 1.0, 0.65), 1.0)
+	for k4 in 4:
+		turret(P(n * 0.2, k4 * PI * 0.5 + 0.4), 5.0)
+	light(center, Color(0.6, 1.0, 0.8), 0.6, true)
+
+
+## A solar mirror over Curie: a dish of hexagonal mirror facets in a truss frame, steering light onto the land.
+func _mirror() -> void:
+	var center := Vector2(c, c)
+	for k in 3:
+		var a := k * TAU / 3.0
+		seg(P(n * 0.1, a), P(n * 0.46, a), 1.6, TRUSS, 6.0)
+	var hx := n * 0.07
+	for q in range(-3, 4):
+		for r in range(-3, 4):
+			var hp := center + Vector2(hx * 1.75 * (q + r * 0.5), hx * 1.52 * r)
+			if hp.distance_to(center) > n * 0.4:
+				continue
+			poly(regular(hp, hx * 0.92, 6, PI / 6.0), ICE, 10.0 + hp.distance_to(center) * 0.06, 1.0, 0)
+	disc(center, n * 0.07, HULL, 16.0, D_HUB)
+	light(center, Color(0.6, 1.0, 0.8), 1.2, true)
+
+
+## A small jump gate being built by the Axiom Yards: a ring partly closed, partly still bare frame under scaffolding,
+## welders at work. How far it has got comes from its seed.
+func _gate_frame() -> void:
+	var center := Vector2(c, c)
+	var done := 0.35 + 0.6 * fposmod(float(rng.seed) * 0.618, 1.0)
+	var start := rng.randf() * TAU
+	var segs := 24
+	for k in segs:
+		var a := start + k * TAU / segs
+		var p := center + Vector2.from_angle(a + PI / segs) * n * 0.36
+		if float(k) / segs < done:
+			box(p, a + PI * 0.5 + PI / segs, n * 0.05, n * 0.06, HULL, 12.0, P_ARMOR)
+			box(p - Vector2.from_angle(a + PI / segs) * n * 0.04, a + PI * 0.5 + PI / segs, n * 0.045, 2.0, ACC, 15.0)
+		else:
+			box(p, a + PI * 0.5 + PI / segs, n * 0.05, n * 0.06, HULL, 10.0, P_TRUSS, true)
+			if k % 2 == 0:
+				vent(p, "spark", 2.0)
+	for k2 in 4:
+		var a2 := start + k2 * TAU / 4.0
+		box(center + Vector2.from_angle(a2) * n * 0.44, a2, 6.0, 5.0, PANEL, 14.0)
+		light(center + Vector2.from_angle(a2) * n * 0.46, Color(0.4, 1.0, 0.6), 1.2, true)
+
+
+## The Axiom Yards at Meitner: a slender spine with swept sensor fins, berths with sleek Axiom hulls being built,
+## docking at both ends. (The live drawing adds ships that cloak and uncloak; the small gates being built lie round it.)
+func _axiom_yards() -> void:
+	var center := Vector2(c, c)
+	# swept fins
+	for sd in [-1.0, 1.0]:
+		poly(PackedVector2Array([Vector2(c - n * 0.05, c), Vector2(c - n * 0.3, c + sd * n * 0.42), Vector2(c - n * 0.2, c + sd * n * 0.44), Vector2(c + n * 0.08, c + sd * 0.04 * n)]), PANEL, 8.0, 2.0, 0)
+		seg(Vector2(c - n * 0.02, c + sd * n * 0.02), Vector2(c - n * 0.25, c + sd * n * 0.43), 0.8, ACC, 10.0, P_FLAT, true)
+	# the spine
+	box(center, 0.0, n * 0.46, 13.0, HULL, 11.0, P_WINDOWS)
+	box(center, 0.0, n * 0.44, 1.5, ACC, 13.0)
+	# berths along the spine with sleek hulls
+	for j in 3:
+		var x := c + n * (0.06 + j * 0.13)
+		for sd2 in [-1.0, 1.0]:
+			var base := Vector2(x, c + sd2 * 15.0)
+			var tip := Vector2(x, c + sd2 * n * 0.3)
+			seg(base + Vector2(-n * 0.045, 0), tip + Vector2(-n * 0.045, 0), 2.0, HULL, 12.0, P_GIRDER)
+			seg(base + Vector2(n * 0.045, 0), tip + Vector2(n * 0.045, 0), 2.0, HULL, 12.0, P_GIRDER)
+			var mid := (base + tip) * 0.5
+			poly(PackedVector2Array([mid + Vector2(0, -sd2 * n * 0.11), mid + Vector2(-n * 0.028, sd2 * n * 0.07), mid + Vector2(n * 0.028, sd2 * n * 0.07)]), PANEL, 13.0, 2.0, 0)
+			seg(mid + Vector2(0, -sd2 * n * 0.1), mid + Vector2(0, sd2 * n * 0.06), 0.8, ACC, 15.0, P_FLAT, true)
+			vent(mid, "spark", 2.0)
+			light(tip, Color(0.4, 1.0, 0.6), 1.3, true)
+	# sensor dishes and a hub at the left end
+	disc(Vector2(c - n * 0.36, c), n * 0.06, HULL, 16.0, D_HUB)
+	disc(Vector2(c - n * 0.36, c - n * 0.1), 9.0, DARK, 18.0, D_DISH)
+	disc(Vector2(c - n * 0.36, c + n * 0.1), 9.0, DARK, 18.0, D_DISH)
+	add_bay(0.0, n * 0.47, 12.0)
+	add_bay(PI, n * 0.47, 12.0)
+	for k in 4:
+		turret(Vector2(c - n * 0.1 + k * n * 0.12, c + (1.0 if k % 2 == 0 else -1.0) * 20.0), 4.5)
+
 ## Package 26: a waystation – a small hub on struts with round landing pads (2 / 3 / 4 by tier) for S and M
 ## ships: hazard rim, a landing circle, a hatch in the middle the ships sink through, lights around it.
 const PAD_R := 19.0
@@ -1352,6 +1481,9 @@ func _palettes() -> Dictionary:
 	if ASSEMBLY_ARTS.has(type):
 		hull = [Color(0.4, 0.45, 0.56), Color(0.66, 0.72, 0.82), Color(0.88, 0.92, 0.98)]     # Assembly white and blue
 	var panel := [Color(0.33, 0.31, 0.3), Color(0.5, 0.48, 0.45), Color(0.68, 0.65, 0.6)]
+	if DIRECTORATE_ARTS.has(type):
+		hull = [Color(0.36, 0.4, 0.42), Color(0.6, 0.66, 0.68), Color(0.84, 0.9, 0.9)]          # 39c: Directorate silver
+		panel = [Color(0.12, 0.14, 0.15), Color(0.2, 0.23, 0.24), Color(0.32, 0.36, 0.37)]      # graphite
 	if type == "cathedral":
 		hull = [Color(0.34, 0.05, 0.07), Color(0.58, 0.1, 0.12), Color(0.8, 0.22, 0.19)]       # 0.6.39.5: crimson …
 		panel = [Color(0.55, 0.38, 0.1), Color(0.84, 0.64, 0.22), Color(1.0, 0.86, 0.45)]      # … and gold

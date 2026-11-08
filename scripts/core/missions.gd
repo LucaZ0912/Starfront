@@ -156,6 +156,8 @@ static func generate_faction(system_id: int, station: Dictionary, rng: RandomNum
 	var sp := _assembly_special(m, system_id, station, rng)
 	if sp.is_empty():
 		sp = _covenant_special(m, system_id, station, rng)        # package 39b
+	if sp.is_empty():
+		sp = _directorate_special(m, system_id, station, rng)     # package 39c
 	if not sp.is_empty():
 		return sp
 	if kind == "hunt":
@@ -214,6 +216,56 @@ const BALLOT_TIME_JUMP := 150.0
 const BALLOT_AMBUSH := 0.55          # chance per system on the way that thieves try to grab them
 const TRIAL_CHANCE := 0.6            # at the Concord Yards: drone field trials
 const TRIAL_KILLS := Vector2i(3, 6)
+
+
+const DIRECTORATE_CHANCE := 0.3     # package 39c: Directorate stations elsewhere send out measurement probes
+const DURCHBRUCH_CHANCE := 0.6      # at the Meridian Sphere and the Axiom Yards: exotic matter, test flights
+
+
+## Package 39c: the Directorate's contracts – measurement probes (elsewhere), exotic matter for the Meridian Sphere,
+## test flights from the Axiom Yards.
+static func _directorate_special(m: Dictionary, system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	if String(station.get("faction", "")) != "directorate":
+		return {}
+	if station.get("exchange", false):
+		if rng.randf() >= DURCHBRUCH_CHANCE:
+			return {}
+		var n := rng.randi_range(2, 4)
+		m.merge({"type": "exotic", "min_tier": "friendly", "amount": n, "reward": n * 16000,
+			"title": "Exotic matter: %d units for the Meridian Sphere" % n,
+			"desc": "The Sphere's engineers need %d units of exotic matter. It is found in rare anomalies – analyse them – and brought here." % n}, true)
+		return m
+	if String(station.get("art", "")) == "axiom_yards":
+		if rng.randf() >= DURCHBRUCH_CHANCE:
+			return {}
+		var dests: Array = []
+		for sid in _systems_within(system_id, 2):
+			if sid == system_id or Universe.find_path(system_id, sid, 1).is_empty():
+				continue
+			for st in Universe.get_layout(sid)["stations"]:
+				dests.append([sid, st])
+		if dests.is_empty():
+			return {}
+		escort_fill(m, system_id, dests[rng.randi() % dests.size()], 1, "directorate")
+		m["min_tier"] = "friendly"
+		m["title"] = "Test flight: escort an Axiom prototype to %s" % Universe.systems[int(m["target_system"])]["name"]
+		m["desc"] = "A prototype from the Axiom Yards makes its first long flight. Stay with it – at least %d %% of the way – and see that it arrives. Pirates would love to take it apart." % int(ESCORT_SHARE * 100.0)
+		return m
+	if rng.randf() >= DIRECTORATE_CHANCE:
+		return {}
+	var best := -1
+	var low := INF
+	for sid2 in _systems_within(system_id, 4):
+		if sid2 != system_id and float(Universe.systems[sid2]["security"]) < low and not Universe.find_path(system_id, sid2, 3).is_empty():
+			low = float(Universe.systems[sid2]["security"])
+			best = sid2
+	if best < 0:
+		return {}
+	m.merge({"type": "probe", "target_system": best, "amount": 1, "progress_t": 0.0,
+		"reward": 6000 + int((1.0 - low) * 12000),
+		"title": "Measurement probe in %s" % Universe.systems[best]["name"],
+		"desc": "Fly to %s and let the probe measure – stay in the system, out in space, for %d minutes. Then bring the data back here." % [Universe.systems[best]["name"], int(GameState.PROBE_TIME / 60.0)]}, true)
+	return m
 
 
 const COVENANT_CHANCE := 0.3        # package 39b: Covenant stations elsewhere: pilgrims and crystals for Heimkehr
@@ -357,6 +409,10 @@ static func can_turn_in(m: Dictionary, fit: ShipFitting, station_id: String) -> 
 			return station_id == m["giver"] and int(m["progress"]) >= int(m["amount"])
 		"relic":
 			return station_id == m["giver"] and int(m["progress"]) >= 1 and fit != null and float(fit.cargo.get("earth_relic", 0.0)) >= 0.99
+		"probe":
+			return station_id == m["giver"] and int(m["progress"]) >= 1
+		"exotic":
+			return station_id == m["giver"] and GameState.exotic_matter >= int(m["amount"])
 		"passenger":
 			return station_id == m["target_station"] and fit != null and fit.uid == int(m.get("ship_uid", -1))
 	return false
@@ -396,6 +452,12 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 			return "%d / %d pirates destroyed by your drones in Assembly space" % [int(m["progress"]), int(m["amount"])]
 		"relic":
 			return "Relic found – bring it to the Cathedral of Return" if int(m["progress"]) >= 1 else "Analyse an anomaly in %s" % Universe.systems[int(m["target_system"])]["name"]
+		"probe":
+			if int(m["progress"]) >= 1:
+				return "Measurements complete – report back"
+			return "Measure in %s: %d:%02d / %d:00" % [Universe.systems[int(m["target_system"])]["name"], int(m.get("progress_t", 0.0)) / 60, int(m.get("progress_t", 0.0)) % 60, int(GameState.PROBE_TIME / 60.0)]
+		"exotic":
+			return "%d / %d exotic matter in stock" % [mini(GameState.exotic_matter, int(m["amount"])), int(m["amount"])]
 		"mining":
 			return "%d / %d %s in cargo" % [int(fit.cargo.get(m["item"], 0.0)) if fit != null else 0, int(m["amount"]), GameData.item_name(m["item"])]
 		"bounty":

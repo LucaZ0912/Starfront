@@ -1725,6 +1725,25 @@ func _c_curia_relics(_c: Dictionary) -> String:
 	return GameState.curia.give_relics(_fit())
 
 
+## {"type":"exchange", "what": "data"|"sell_em"|"buy_em", "n": 1} – package 39c, the Research Exchange
+func _c_exchange(c: Dictionary) -> String:
+	return GameState.exchange(String(c.get("what", "data")), int(c.get("n", 1)))
+
+
+## {"type":"debug_durchbruch"} – to Durchbruch (docked at the Meridian Sphere)
+func _c_debug_durchbruch(_c: Dictionary) -> String:
+	var sid := Universe.special_system("durchbruch")
+	if sid < 0:
+		return "No Durchbruch in this cluster."
+	return _c_debug_teleport({"system": sid})
+
+
+## {"type":"debug_research", "n": 5} – research data
+func _c_debug_research(c: Dictionary) -> String:
+	GameState.research_data += int(c.get("n", 5))
+	return ""
+
+
 ## {"type":"debug_heimkehr"} – to Heimkehr (docked at the Cathedral of Return)
 func _c_debug_heimkehr(_c: Dictionary) -> String:
 	var sid := Universe.special_system("heimkehr")

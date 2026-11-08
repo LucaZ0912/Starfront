@@ -114,6 +114,13 @@ Landfall is closed: its gates let in only pilots holding the Assembly's entry pe
 
 With an entry permit you vote too. A party donation sways the vote a little. A bribe settles it – unless it comes out, and then the money is gone and the Assembly's trust with it.",
 		"see": ["cluster_landfall", "fac_assembly"]},
+	# package 39c: Durchbruch
+	"cluster_durchbruch": {"cat": "cluster", "title": "Durchbruch", "unlock": "jump", "image": {"icon": "t_analyzer"},
+		"text": "The capital of the Meridian Directorate, round a blue-white star – and round that star the Directorate is building a Dyson sphere. Frame rings of the shell circle it already, closed with silver collector plates where they are finished, still bare scaffolding where they are not. At its hub, the Meridian Sphere, the Research Exchange buys what pilots learn out there. It is the only station in the Cluster built round a star itself.\n\nCurie, the showcase world, is half terraformed: green with seas on one side, still desert on the other, three solar mirrors steering light onto the new land. At Meitner the Axiom Yards build sleek research ships – the Threshold only there – and small jump gates, a ring of them in every stage of construction round the yard.\n\nDurchbruch is closed: its gates let in only pilots with the Directorate's entry permit, given from Friendly standing on.",
+		"see": ["fac_directorate", "cluster_exchange"]},
+	"cluster_exchange": {"cat": "cluster", "title": "The Research Exchange", "unlock": "permit", "image": {"icon": "t_analyzer"},
+		"text": "Every anomaly you analyse leaves you with data the Directorate wants – the Research Exchange in the Meridian Sphere pays for it in credits and standing. It also buys exotic matter, and sells it back to pilots it trusts most (Allied).",
+		"see": ["cluster_durchbruch", "fac_directorate"]},
 	# package 39b: Heimkehr
 	"cluster_heimkehr": {"cat": "cluster", "title": "Heimkehr", "unlock": "jump", "image": {"icon": "curia"},
 		"text": "The capital of the Covenant of Return, under a red supergiant whose eruptions the faithful take for trials sent to them. Its heart is Vesper, a desert moon of the red gas giant Compline, crowded with pilgrim cities; above it rises the Cathedral of Return – pale stone, stained glass and a rose window ringed in gold, the sun over the road.

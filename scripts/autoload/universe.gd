@@ -212,11 +212,12 @@ func generate(p_seed: int) -> void:
 # still up to the generator – the capital of a power always becomes its special system.
 
 ## faction -> special system id (its capital)
-const SPECIAL_CAPITALS := {"assembly": "landfall", "covenant": "heimkehr"}
-const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr"}
-const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG"}
+const SPECIAL_CAPITALS := {"assembly": "landfall", "covenant": "heimkehr", "directorate": "durchbruch"}
+const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr", "durchbruch": "Durchbruch"}
+const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG", "durchbruch": "A"}
 ## The fixed stations of a special system (type, tier) – their place and look come from SPECIAL_STATIONS.
-const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]], "heimkehr": [["trade", 3], ["shipyard", 3]]}
+const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]], "heimkehr": [["trade", 3], ["shipyard", 3]],
+	"durchbruch": [["research", 3], ["shipyard", 3]]}
 ## Fixed planets: type, orbit (km, before the scale), radius (km), ring, city lights; moons per planet: [name, type, radius].
 const SPECIAL_BODIES := {
 	"landfall": [
@@ -233,6 +234,14 @@ const SPECIAL_BODIES := {
 			"moons": [["Vesper", "desert", 8500.0, {"city": 0.85, "city_style": 1.0}], ["Nones", "moon_rock", 3800.0]]},
 		{"name": "Matins", "type": "ice", "orbit": 1620000.0, "radius": 7000.0, "seed": 34.0},
 	],
+	# 39c: physicists – Curie, half terraformed, is the showcase of the Directorate
+	"durchbruch": [
+		{"name": "Noether", "type": "barren", "orbit": 300000.0, "radius": 6000.0, "seed": 19.0},
+		{"name": "Curie", "type": "terran", "orbit": 620000.0, "radius": 11000.0, "seed": 52.0, "city": 0.6, "city_style": 1.0, "terraform": true},
+		{"name": "Planck", "type": "gas", "orbit": 1050000.0, "radius": 30000.0, "seed": 64.0,
+			"moons": [["Meitner", "moon_ice", 5000.0], ["Bohr", "moon_rock", 3600.0]]},
+		{"name": "Kepler", "type": "ice_giant", "orbit": 1500000.0, "radius": 24000.0, "seed": 81.0, "ring": true},
+	],
 }
 ## Fixed stations: name, art (landmark look), the body they orbit ("p1" / "m3_0"), distance, extra keys.
 const SPECIAL_STATIONS := {
@@ -244,9 +253,18 @@ const SPECIAL_STATIONS := {
 		{"name": "Cathedral of Return", "art": "cathedral", "body": "Vesper", "dist": 26000.0, "curia": true},
 		{"name": "Forge of Return", "art": "forge", "body": "Lauds", "dist": 22000.0, "capital_yard": true},
 	],
+	"durchbruch": [
+		{"name": "Meridian Sphere", "art": "dyson_hub", "body": "STAR", "dist": DYSON_R, "exchange": true},
+		{"name": "Axiom Yards", "art": "axiom_yards", "body": "Meitner", "dist": 15000.0, "capital_yard": true},
+	],
 }
+## 39c: the Dyson sphere round Durchbruch's star – its radius (km) and the frame rings of the shell:
+## [rotation, flattening (seen from above), share already built, where the built arc begins (0–1)]
+const DYSON_R := 175000.0
+const DYSON_RINGS := [[0.0, 1.0, 0.72, 0.9], [0.6, 0.36, 0.5, 0.2], [-0.95, 0.52, 0.42, 0.55], [1.75, 0.2, 0.62, 0.05], [2.6, 0.7, 0.3, 0.7]]
+const DYSON_HUB_ANGLE := 0.25           # the hub sits on the first (equator) ring – inside its built arc
 ## Hulls sold only at the yard of their faction's capital (package 39: the flagships of the state manufacturers).
-const CAPITAL_ONLY := {"cfw_concordia": "assembly", "for_cathedral": "covenant"}
+const CAPITAL_ONLY := {"cfw_concordia": "assembly", "for_cathedral": "covenant", "axa_threshold": "directorate"}
 
 
 ## Names the capitals with a special system after it, makes them very safe.
@@ -304,6 +322,8 @@ func _special_planets(L: Dictionary, id: int, sp: String) -> void:
 			L["planets"].back()["hue"] = float(d["hue"])            # 39b: the red gas giant Compline
 		if d.has("city_style"):
 			L["planets"].back()["city_style"] = float(d["city_style"])
+		if d.get("terraform", false):
+			L["planets"].back()["terraform"] = true            # 39c: Curie, half green, half desert
 		i += 1
 
 
@@ -333,6 +353,18 @@ func _special_station(L: Dictionary, sp: String, i: int, base: Dictionary) -> Di
 	if i >= specs.size():
 		return base
 	var d: Dictionary = specs[i]
+	if String(d["body"]) == "STAR":
+		# 39c: the hub of the Dyson sphere – on the shell itself, round the star (no orbit of its own)
+		base["pos"] = Vector2.from_angle(DYSON_HUB_ANGLE) * float(d["dist"])
+		base.erase("anchor")
+		base.erase("orbit")
+		base["name"] = String(d["name"])
+		base["art"] = String(d["art"])
+		base["planet"] = 0
+		for key0 in d:
+			if not key0 in ["name", "art", "body", "dist"]:
+				base[key0] = d[key0]
+		return base
 	var parent := {}
 	for b in L["planets"] + L.get("moons", []):
 		if String(b["name"]) == String(d["body"]):
@@ -359,6 +391,9 @@ func _special_structures(L: Dictionary, sp: String) -> void:
 	if sp == "heimkehr":
 		_heimkehr_structures(L)
 		return
+	if sp == "durchbruch":
+		_durchbruch_structures(L)
+		return
 	if sp != "landfall":
 		return
 	var vote := {}
@@ -383,6 +418,27 @@ func _special_structures(L: Dictionary, sp: String) -> void:
 
 
 const VOTE_RELAYS := 4
+
+
+## 39c: the Dyson sphere's shell (drawn round the star), the orbital mirrors over Curie, and small jump gates being
+## built round the Axiom Yards.
+func _durchbruch_structures(L: Dictionary) -> void:
+	L["structures"].append({"id": "dyson_shell", "name": "", "art": "dyson_shell", "type": "dyson_shell", "pos": Vector2.ZERO, "seed": 39})
+	var curie := {}
+	for p in L["planets"]:
+		if String(p["name"]) == "Curie":
+			curie = p
+	if not curie.is_empty():
+		for k in 3:
+			var off := Vector2.from_angle(k * TAU / 3.0 + 0.5) * float(curie["radius"]) * 1.6
+			L["structures"].append({"id": "mirror_%d" % k, "name": "Solar Mirror %s" % ROMAN[k], "art": "mirror", "type": "mirror", "tier": 1,
+				"seed": 600 + k, "anchor": curie["id"], "pos": (curie["pos"] as Vector2) + off, "beam_to": curie["id"]})
+	for st in L["stations"]:
+		if String(st.get("art", "")) == "axiom_yards":
+			for k2 in 6:
+				var off2 := Vector2.from_angle(k2 * TAU / 6.0 + 0.3) * (2600.0 + 500.0 * (k2 % 2))
+				L["structures"].append({"id": "gate_frame_%d" % k2, "name": "", "art": "gate_frame", "type": "gate_frame", "tier": 1,
+					"seed": 700 + k2, "anchor": st["id"], "pos": (st["pos"] as Vector2) + off2})
 
 
 ## 39b: the Pilgrim Gate off the Cathedral of Return (it points home, away from the star) and the Lux Aeterna in her

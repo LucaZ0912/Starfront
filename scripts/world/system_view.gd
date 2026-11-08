@@ -503,6 +503,12 @@ func _spawn_celestials() -> void:
 		havens.append(hv)
 		stations[ph["id"]] = hv      # dockable with pirate standing (package 12); zone 0 = no no-fire zone
 	for sx in layout.get("structures", []):
+		if String(sx.get("art", "")) == "dyson_shell":
+			var ds := DysonShell.new()                     # 39c: the shell round the star
+			ds.view = self
+			ds.z_index = -3
+			celestial_layer.add_child(ds)
+			continue
 		var sc := _add_celestial("structure", sx)          # package 39: landmarks
 		if String(sx.get("art", "")) == "pilgrim_gate":
 			var pb := PilgrimBeam.new()                    # 0.6.39.5: its light, across the whole system
@@ -3188,6 +3194,140 @@ func fire_vote_beam() -> Node2D:
 	spawn_fx(beam)
 	Audio.play_at("gate_activate", r["pos"], "ballot drone")
 	return beam
+
+
+## 39c: the Dyson sphere round Durchbruch's star – frame rings of the shell seen from above (ellipses), closed with
+## silver panels where it is built (green collector strips glowing), bare scaffolding at the ends of each built arc.
+## Only what is on screen is drawn; zoomed out it is a fine lattice round the star.
+class DysonShell extends Node2D:
+	const PANELS := 600
+	const WIDTH := 1800.0
+	static var _tex: ImageTexture
+	var view
+	var t := 0.0
+	var _tick := 0.0
+
+	func _process(delta: float) -> void:
+		t += delta
+		_tick -= delta
+		if _tick <= 0.0:
+			_tick = 0.1
+			queue_redraw()
+
+	func _pt(th: float, ring: Array) -> Vector2:
+		return Vector2(cos(th), sin(th) * float(ring[1])).rotated(float(ring[0])) * Universe.DYSON_R
+
+	## The pixel art of one shell plate (256 × 256, about 7 km a pixel): silver plates in a grid with dark seams and
+	## rivets, a band of green collector cells along the middle, a few lit windows.
+	static func panel_texture() -> ImageTexture:
+		if _tex != null:
+			return _tex
+		var img := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 39
+		for y in 256:
+			for x in 256:
+				var px := x % 32
+				var py := y % 32
+				var shade := 0.6 + 0.06 * float(((x / 32) * 7 + (y / 32) * 3) % 4)
+				var col := Color(shade * 0.88, shade * 0.95, shade, 1.0)
+				if px == 0 or py == 0:
+					col = Color(0.16, 0.19, 0.21)
+				elif px == 31 or py == 31:
+					col = col.darkened(0.25)
+				elif px == 1 or py == 1:
+					col = col.lightened(0.15)
+				elif (px == 4 or px == 27) and (py == 4 or py == 27):
+					col = Color(0.3, 0.34, 0.36)
+				if y >= 104 and y < 152:
+					# the collector band
+					var cx := x % 12
+					var cy := (y - 104) % 12
+					col = Color(0.05, 0.18, 0.12) if cx == 0 or cy == 0 else Color(0.1, 0.45, 0.3).lerp(Color(0.2, 0.75, 0.5), float(cy) / 12.0)
+				img.set_pixel(x, y, col)
+		for k in 14:
+			var wx := rng.randi_range(6, 248)
+			var wy := rng.randi_range(8, 96) if k % 2 == 0 else rng.randi_range(160, 248)
+			for dy in 3:
+				for dx in 5:
+					img.set_pixel(wx + dx, wy + dy, Color(1.0, 0.92, 0.65) if dy == 1 else Color(0.25, 0.25, 0.22))
+		_tex = ImageTexture.create_from_image(img)
+		return _tex
+
+	func _draw() -> void:
+		var z: float = view.camera.zoom.x
+		var px := 1.0 / maxf(z, 0.0000001)
+		var vs: Vector2 = view.get_viewport_rect().size * px
+		var view_r := Rect2(view.camera.position - vs * 0.6, vs * 1.2)
+		if px > WIDTH / 8.0:
+			_draw_far(px)
+			return
+		var tex := panel_texture()
+		var uvs := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
+		for ri in Universe.DYSON_RINGS.size():
+			var ring: Array = Universe.DYSON_RINGS[ri]
+			for i in PANELS:
+				var f := float(i) / PANELS
+				var rel := fposmod(f - float(ring[3]), 1.0)
+				var built := rel < float(ring[2])
+				var scaff := not built and (rel < float(ring[2]) + 0.1 or rel > 0.97)
+				if not built and not scaff:
+					continue
+				var p0 := _pt(f * TAU, ring)
+				var p1 := _pt((f + 1.0 / PANELS) * TAU, ring)
+				var bb := Rect2(p0, Vector2.ZERO).expand(p1).grow(WIDTH)
+				if not view_r.intersects(bb):
+					continue
+				var n0 := p0.normalized() * WIDTH * 0.5
+				var n1 := p1.normalized() * WIDTH * 0.5
+				var back := sin(f * TAU + 0.3) < 0.0
+				var quad := PackedVector2Array([p0 - n0, p1 - n1, p1 + n1, p0 + n0])
+				if built:
+					var tone := 0.62 if back else 1.0
+					draw_colored_polygon(quad, Color(tone, tone, tone), uvs, tex)
+					var glow := 0.5 + 0.5 * sin(t * 1.4 + i * 0.21 + ri)
+					draw_line(p0, p1, Color(0.4, 1.0, 0.65, 0.12 + 0.18 * glow), WIDTH * 0.16)
+				else:
+					var col := Color(0.6, 0.65, 0.67, 0.75 if not back else 0.45)
+					draw_line(p0 - n0, p1 - n1, col, maxf(px * 2.0, 40.0))
+					draw_line(p0 + n0, p1 + n1, col, maxf(px * 2.0, 40.0))
+					draw_line(p0 - n0, p1 + n1, col, maxf(px * 1.5, 24.0))
+					draw_line(p0 + n0, p1 - n1, col, maxf(px * 1.5, 24.0))
+					draw_line(p0 - n0, p0 + n0, col, maxf(px * 1.5, 24.0))
+					if (i * 13 + ri) % 3 == 0 and fposmod(t * 2.0 + i * 0.3, 1.0) < 0.25:
+						draw_circle((p0 + p1) * 0.5, maxf(px * 5.0, 60.0), Color(1.0, 0.95, 0.7, 0.9))
+
+	func _far_arc(pts: PackedVector2Array, px: float) -> void:
+		draw_polyline(pts, Color(0.72, 0.8, 0.82, 0.25), maxf(px * 9.0, WIDTH * 2.0))
+		draw_polyline(pts, Color(0.75, 0.82, 0.85, 0.95), maxf(px * 4.0, WIDTH))
+		draw_polyline(pts, Color(0.35, 1.0, 0.6, 0.8), maxf(px * 1.2, WIDTH * 0.2))
+
+	## Zoomed out: each ring as a lattice line – solid where built, faint where it is still scaffolding.
+	func _draw_far(px: float) -> void:
+		for ri in Universe.DYSON_RINGS.size():
+			var ring: Array = Universe.DYSON_RINGS[ri]
+			var built := PackedVector2Array()
+			var scaff := PackedVector2Array()
+			for i in 121:
+				var f := float(i) / 120.0
+				var rel := fposmod(f - float(ring[3]), 1.0)
+				var p := _pt(f * TAU, ring)
+				if rel < float(ring[2]):
+					built.append(p)
+				else:
+					if built.size() > 1:
+						_far_arc(built, px)
+					built = PackedVector2Array()
+				if rel >= float(ring[2]) and (rel < float(ring[2]) + 0.1 or rel > 0.97):
+					scaff.append(p)
+				else:
+					if scaff.size() > 1:
+						draw_polyline(scaff, Color(0.6, 0.65, 0.67, 0.4), maxf(px * 1.0, WIDTH * 0.3))
+					scaff = PackedVector2Array()
+			if built.size() > 1:
+				_far_arc(built, px)
+			if scaff.size() > 1:
+				draw_polyline(scaff, Color(0.6, 0.65, 0.67, 0.4), maxf(px * 1.0, WIDTH * 0.3))
 
 
 ## 0.6.39.5: the Pilgrim Gate's light – thin rays from the tips of its spires gather in a focus ahead of the gate, and

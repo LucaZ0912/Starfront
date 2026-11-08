@@ -195,6 +195,8 @@ func service_available(svc: Dictionary) -> String:
 			return "" if station.get("senate", false) else "Only in The Vote (Landfall)"
 		"curia":
 			return "" if station.get("curia", false) else "Only in the Cathedral of Return (Heimkehr)"
+		"exchange":
+			return "" if station.get("exchange", false) else "Only in the Meridian Sphere (Durchbruch)"
 	return ""
 
 
@@ -571,6 +573,8 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 			continue                                 # package 39a: The Senate only shows in The Vote
 		if String(svc.get("requires", "")) == "curia" and not station.get("curia", false):
 			continue                                 # package 39b: The Curia only in the Cathedral of Return
+		if String(svc.get("requires", "")) == "exchange" and not station.get("exchange", false):
+			continue                                 # package 39c: the Research Exchange only in the Meridian Sphere
 		_service_tile(grid, svc, tiles, true)
 
 

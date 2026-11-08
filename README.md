@@ -122,6 +122,15 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   trials** at the Concord Yards (pirates destroyed by your drones in Assembly space).
 - Debug → World: to Landfall, give/take the permit, ballot drone, new bill, vote now (with or without a bribe found out).
 
+## Durchbruch – the Directorate's capital (phase 0.5 package 39c)
+- A blue-white star with a **Dyson sphere under construction** round it – frame rings of silver collector plates and
+  scaffolding; its hub, the **Meridian Sphere**, is the only station built round a star. Closed like the other capitals.
+- **Curie** half terraformed (green on one side, desert on the other) under three solar mirrors.
+- **Axiom Yards** with ships testing their cloaks and small jump gates being built round the yard; the Threshold only
+  there.
+- **Research Exchange:** research data (from analysed anomalies) and exotic matter for credits and standing.
+- Contracts: measurement probes, exotic matter, prototype test flights. Debug → World: Durchbruch & the Research Exchange.
+
 ## Heimkehr – the Covenant's capital (phase 0.5 package 39b)
 - Under a red supergiant: Lauds (lava), the red gas giant Compline with the desert moon **Vesper** (pilgrim cities) and
   Nones, the ice world Matins. Closed like Landfall: the Covenant's entry permit from Friendly on.

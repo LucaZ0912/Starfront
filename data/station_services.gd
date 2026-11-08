@@ -43,4 +43,7 @@ const SERVICES := [
 	# package 39b: only in the Cathedral of Return (Heimkehr) – edicts, tithes, indulgences, relics
 	{"id": "curia", "title": "The Curia", "corp": "cur", "icon": "curia",
 		"panel": "res://scripts/ui/station/curia_panel.gd", "requires": "curia"},
+	# package 39c: only in the Meridian Sphere (Durchbruch) – research data and exotic matter
+	{"id": "exchange", "title": "Research Exchange", "corp": "rex", "icon": "t_analyzer",
+		"panel": "res://scripts/ui/station/exchange_panel.gd", "requires": "exchange"},
 ]

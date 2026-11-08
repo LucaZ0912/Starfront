@@ -183,6 +183,12 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	mat.set_shader_parameter("faint", float(t.get("faint", 0.0)))
 	mat.set_shader_parameter("city", float(p.get("city", 0.0)))
 	mat.set_shader_parameter("city_style", float(p.get("city_style", 0.0)))      # package 39: Agora
+	if p.get("terraform", false):
+		mat.set_shader_parameter("terraform", 1.0)                                # 39c: Curie, half desert
+		var dt: Dictionary = Universe.PLANET_TYPES["desert"]
+		mat.set_shader_parameter("dry_a", dt["a"])
+		mat.set_shader_parameter("dry_b", dt["b"])
+		mat.set_shader_parameter("dry_c", dt["c"])
 	mat.set_shader_parameter("ring_in", rng.randf_range(1.2, 1.5))
 	mat.set_shader_parameter("ring_out", rng.randf_range(1.7, 1.95))
 	mat.set_shader_parameter("ring_tilt", rng.randf_range(2.4, 4.5))
@@ -658,6 +664,38 @@ func _draw_landmark_live() -> void:
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 				if f > 0.97:
 					draw_circle(pos, px * 10.0, Color(1.0, 0.9, 0.6, (f - 0.97) * 25.0))
+		"mirror":
+			# 39c: the light it steers onto Curie – a pale beam down to the land, a bright spot where it lands
+			if view != null and data.has("beam_to"):
+				var pl := Universe.body_by_id(view.layout, String(data["beam_to"]))
+				if not pl.is_empty():
+					var to: Vector2 = (pl["pos"] as Vector2) - position
+					var hit := to - to.normalized() * float(pl["radius"]) * 0.97
+					var lv := 0.8 + 0.2 * sin(_t * 0.9 + float(data.get("seed", 0)))
+					draw_line(Vector2.ZERO, hit, Color(1.0, 0.97, 0.85, 0.07 * lv), float(art["size"]) * 0.6)
+					draw_line(Vector2.ZERO, hit, Color(1.0, 0.98, 0.9, 0.18 * lv), float(art["size"]) * 0.18)
+					draw_circle(hit, float(art["size"]) * 0.5, Color(1.0, 0.95, 0.8, 0.12 * lv))
+		"gate_frame":
+			# 39c: now and then a test: the ring flickers green, a wormhole tries to open – and collapses
+			var cyc := fposmod(_t / 40.0 + float(int(data.get("seed", 0)) % 7) / 7.0, 1.0)
+			if cyc < 0.08:
+				var k2 := cyc / 0.08
+				var r2 := float(art["size"]) * 0.33
+				draw_circle(Vector2.ZERO, r2 * (0.3 + 0.7 * k2), Color(0.3, 1.0, 0.6, 0.35 * (1.0 - k2)))
+				draw_arc(Vector2.ZERO, r2, 0.0, TAU, 32, Color(0.6, 1.0, 0.8, 0.8 * (1.0 - k2)), px * 3.0)
+		"axiom_yards":
+			# 39c: Axiom ships testing their cloaks round the yard – fading out, drifting on, fading in again
+			for j in 4:
+				var a3 := _t * 0.03 * (1.0 if j % 2 == 0 else -1.0) + j * TAU / 4.0
+				var pos3 := Vector2.from_angle(a3) * float(art["size"]) * (0.75 + 0.1 * j)
+				var vis := clampf(0.5 + 0.8 * sin(_t * 0.5 + j * 1.9), 0.0, 1.0)
+				draw_set_transform(pos3, a3 + PI * 0.5 * (1.0 if j % 2 == 0 else -1.0), Vector2.ONE)
+				var shp := PackedVector2Array([Vector2(px * 10.0, 0), Vector2(-px * 6.0, -px * 4.0), Vector2(-px * 4.0, 0), Vector2(-px * 6.0, px * 4.0)])
+				draw_colored_polygon(shp, Color(0.55, 0.62, 0.64, vis))
+				draw_line(Vector2(-px * 4.0, 0), Vector2(px * 9.0, 0), Color(0.3, 1.0, 0.6, vis), px)
+				if vis > 0.05 and vis < 0.95:
+					draw_arc(Vector2.ZERO, px * 12.0, 0.0, TAU, 16, Color(0.4, 0.9, 1.0, 0.4 * (1.0 - absf(vis - 0.5) * 2.0)), px)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		"lux_aeterna":
 			# 39b: the great focus crystal at her bow glows and pulses
 			var size3 := float(art["size"])

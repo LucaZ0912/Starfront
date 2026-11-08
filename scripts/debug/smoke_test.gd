@@ -585,6 +585,7 @@ func _process(delta: float) -> void:
 				_test_planets(view)
 				_test_landfall(view)
 				_test_heimkehr(view)
+				_test_durchbruch(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -795,7 +796,7 @@ func _test_station(sp: StationUI) -> void:
 	check(el == "" and int(GameState.pilot["look"]["hair"]) == int(nl["hair"]) and GameState.credits == cr_l - Commands.look_price() and GameState.pilot["attrs"] == attrs0,
 		"image studio: new looks for %s – the attributes stay as they are" % GameData.fmt_credits(Commands.look_price()))
 	sp.show_concourse(false)
-	check(sp.concourse_tiles == GameData.services.size() - int(not sp.station.get("senate", false)) - int(not sp.station.get("curia", false)) and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
+	check(sp.concourse_tiles == GameData.services.size() - int(not sp.station.get("senate", false)) - int(not sp.station.get("curia", false)) - int(not sp.station.get("exchange", false)) and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
 	# Market via commands
 	var c0 := GameState.credits
 	var item := ""
@@ -6617,6 +6618,94 @@ func _test_heimkehr(view: SystemView) -> void:
 		if m2.get("relic", false):
 			kinds["relic"] = true
 	check(kinds.has("escort") and kinds.has("courier") and kinds.has("relic"), "39b: pilgrim convoys and crystal transports to Heimkehr, relic recoveries from the Cathedral (%s)" % ", ".join(kinds.keys()))
+
+
+## Package 39c: Durchbruch – the Directorate's capital with the Dyson sphere, Curie half terraformed, the Axiom Yards
+## and their gates, the Research Exchange and the Directorate's contracts.
+func _test_durchbruch(view: SystemView) -> void:
+	var U = Universe
+	var db: int = U.special_system("durchbruch")
+	var sys: Dictionary = U.systems[db] if db >= 0 else {}
+	check(db >= 0 and String(sys["name"]) == "Durchbruch" and String(sys["faction"]) == "directorate" and String(U.star_type(db)["id"]) == "A",
+		"39c: the Directorate's capital is Durchbruch under a blue-white A star")
+	if db < 0:
+		return
+	var L: Dictionary = U.get_layout(db)
+	var names: Array = L["planets"].filter(func(p): return not p.get("dwarf", false)).map(func(p): return String(p["name"]))
+	var curie: Dictionary = L["planets"][1]
+	var moons: Array = U.moons_of(L, 2).map(func(m): return String(m["name"]))
+	var spr: Sprite2D = Celestial.make_planet_sprite(curie, 100.0, Vector2.LEFT)
+	var terra_ok: bool = float((spr.material as ShaderMaterial).get_shader_parameter("terraform")) > 0.5
+	spr.free()
+	check(names == ["Noether", "Curie", "Planck", "Kepler"] and curie.get("terraform", false) and terra_ok and moons == ["Meitner", "Bohr"],
+		"39c: Noether, Curie (half terraformed), Planck with Meitner and Bohr, Kepler")
+	var hub := {}
+	var yards := {}
+	for st in L["stations"]:
+		if String(st.get("art", "")) == "dyson_hub":
+			hub = st
+		elif String(st.get("art", "")) == "axiom_yards":
+			yards = st
+	var thr_where: Array = []
+	for sid in U.systems.size():
+		for st2 in U.get_layout(sid)["stations"]:
+			if "axa_threshold" in st2.get("shipyard", []):
+				thr_where.append(String(st2["name"]))
+	check(not hub.is_empty() and hub.get("exchange", false) and absf((hub["pos"] as Vector2).length() - U.DYSON_R) < 1.0 and not hub.has("anchor")
+		and not yards.is_empty() and thr_where == ["Axiom Yards"],
+		"39c: the Meridian Sphere sits on the Dyson shell round the star (Research Exchange); the Threshold only at the Axiom Yards")
+	var arts: Dictionary = {}
+	for x in L["structures"]:
+		arts[String(x["art"])] = int(arts.get(String(x["art"]), 0)) + 1
+	var art_ok := true
+	for a in ["dyson_hub", "mirror", "gate_frame", "axiom_yards"]:
+		var built: Dictionary = StationArt.build({"art": a, "type": a, "tier": 1, "seed": 701})
+		art_ok = art_ok and built["texture"] != null and float(built["size"]) == float(StationArt.LANDMARK_SIZE[a]) * StationArt.PX
+	var shell = SystemView.DysonShell.new()
+	shell.view = view
+	view.celestial_layer.add_child(shell)
+	var shell_ok: bool = is_instance_valid(shell) and shell._pt(0.0, U.DYSON_RINGS[0]).distance_to(Vector2(U.DYSON_R, 0)) < 1.0
+	shell.queue_free()
+	check(int(arts.get("dyson_shell", 0)) == 1 and int(arts.get("mirror", 0)) == 3 and int(arts.get("gate_frame", 0)) == 6 and art_ok and shell_ok,
+		"39c: the Dyson shell, three solar mirrors over Curie, six jump gates being built round the yard; their own art")
+	# the Research Exchange
+	var keep_cr: int = GameState.credits
+	var keep_em: int = GameState.exotic_matter
+	var keep_rep: float = GameState.rep.values.get("directorate", 0.0)
+	GameState.research_data = 3
+	GameState.exotic_matter = 2
+	GameState.rep.values["directorate"] = 0.0
+	var cr0: int = GameState.credits
+	GameState.exchange("data")
+	GameState.exchange("sell_em", 1)
+	var sold_ok: bool = GameState.credits == cr0 + 3 * GameState.DATA_PRICE + GameState.EM_SELL and GameState.research_data == 0 and GameState.exotic_matter == 1 and GameState.rep.get_rep("directorate") > 2.0
+	var refuse: bool = GameState.exchange("buy_em", 1) != ""
+	GameState.rep.values["directorate"] = 80.0
+	GameState.credits = 100000
+	var bought: bool = GameState.exchange("buy_em", 1) == "" and GameState.exotic_matter == 2
+	GameState.credits = keep_cr
+	GameState.exotic_matter = keep_em
+	GameState.rep.values["directorate"] = keep_rep
+	check(sold_ok and refuse and bought, "39c: the Research Exchange buys research data and exotic matter, sells exotic matter only to Allied pilots")
+	# contracts
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 393
+	var other := {}
+	var other_sid := -1
+	for sid3 in U.territory_of("directorate"):
+		if sid3 != db and not U.get_layout(sid3)["stations"].is_empty():
+			other = U.get_layout(sid3)["stations"][0]
+			other_sid = sid3
+			break
+	var kinds := {}
+	for i in 80:
+		for pair in [[db, hub], [db, yards], [other_sid, other]]:
+			if pair[1].is_empty():
+				continue
+			var m: Dictionary = Missions.generate_faction(int(pair[0]), pair[1], rng)
+			if String(m["type"]) in ["probe", "exotic"] or String(m.get("title", "")).begins_with("Test flight"):
+				kinds[String(m["type"])] = true
+	check(kinds.has("probe") and kinds.has("exotic") and kinds.has("escort"), "39c: measurement probes, exotic matter for the Sphere, test flights from the Axiom Yards (%s)" % ", ".join(kinds.keys()))
 
 
 func _with_progress(m: Dictionary) -> Dictionary:

@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.6 – 2026-11-08
+
+**Package 39c: Durchbruch, the capital of the Directorate.** A new game is needed.
+- A blue-white A star – and round it a **Dyson sphere under construction**: frame rings of the shell, closed with
+  silver collector plates where they are built, bare scaffolding (welders at work) where not. Its hub, the **Meridian
+  Sphere**, is the only station in the Cluster built round a star.
+- Physicists: Noether, **Curie** (half terraformed – green with seas on one side, desert on the other, three solar
+  mirrors beaming light onto the new land), Planck with Meitner and Bohr, Kepler.
+- **Axiom Yards** at Meitner: sleek berths, ships testing their cloaks, and six **small jump gates** being built round
+  the yard (now and then one is test-fired). The Threshold is sold only there.
+- **Research Exchange** (Meridian Sphere): research data from analysed anomalies and exotic matter for credits and
+  standing; exotic matter for sale to Allied pilots.
+- Contracts: measurement probes, exotic matter for the Sphere, test flights from the Axiom Yards; codex entries; debug.
+
 ## alpha 0.6.39.5 – 2026-11-08
 
 - Pilgrim Gate: rays from the tips of its spires gather in a burning focus ahead of the gate; from there the mighty

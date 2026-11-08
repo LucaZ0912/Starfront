@@ -38,6 +38,12 @@ const CORPS := {
 		"slogan": "The road leads home.",
 		"desc": "The Hierarch proclaims, the Curia administers: edicts, tithes, indulgences – and the relics of Earth, laid in the Cathedral of Return.",
 	},
+	# package 39c: not a corporation – the Directorate's research council, in the Meridian Sphere
+	"rex": {
+		"name": "Meridian Research Council", "tag": "MRC", "color": Color(0.35, 0.95, 0.6),
+		"slogan": "Measure twice. Cross once.",
+		"desc": "Buys what pilots learn out there – anomaly data, exotic matter – and, to those it trusts most, sells exotic matter back.",
+	},
 	"lnn": {
 		"name": "Lumen Newsnet", "tag": "LNN", "color": Color(0.55, 0.9, 1.0),
 		"slogan": "Everything worth knowing, first.",
