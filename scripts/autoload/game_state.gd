@@ -1760,14 +1760,14 @@ func _arrive_wormhole(f: ShipFitting, force_fail: int = -1) -> void:
 		var spots: Array = []
 		for fl in L["fields"]:
 			spots.append(fl["pos"])
-		spots.append(Vector2.from_angle(randf() * TAU) * randf_range(400000.0, 1600000.0))
+		spots.append(Vector2.from_angle(randf() * TAU) * randf_range(400000.0, 1600000.0) * Universe.SCALE)
 		f.position = spots[randi() % spots.size()] + Vector2.from_angle(randf() * TAU) * randf_range(0.0, 3000.0)
 		log_msg("The wormhole collapsed early – %s is thrown out somewhere in %s!" % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_WARN)
 	elif not L["stations"].is_empty():
 		var st: Dictionary = L["stations"][randi() % L["stations"].size()]
 		f.position = (st["pos"] as Vector2) + Vector2.from_angle(randf() * TAU) * 6000.0
 	else:
-		f.position = Vector2.from_angle(randf() * TAU) * 500000.0
+		f.position = Vector2.from_angle(randf() * TAU) * 500000.0 * Universe.SCALE
 	f.rotation = randf() * TAU
 
 

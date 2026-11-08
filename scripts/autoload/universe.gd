@@ -30,7 +30,7 @@ const ALL_STATION_TYPES := ["trade", "industry", "mining_colony", "agri", "resea
 const ROMAN := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
 ## Asteroid field classes and their orbital band (km from the star, before frost scaling).
 const FIELD_CLASSES := ["metallic", "stony", "icy"]
-const FIELD_BANDS := {"metallic": Vector2(380000, 900000), "stony": Vector2(750000, 1350000), "icy": Vector2(1250000, 1850000)}
+const FIELD_BANDS := {"metallic": Vector2(1140000, 2700000), "stony": Vector2(2250000, 4050000), "icy": Vector2(3750000, 5550000)}
 ## Hot stars push the frost line outward, cool ones pull it in.
 const FROST_SCALE := {"Yellow Dwarf": 1.0, "Red Dwarf": 0.8, "Blue Giant": 1.15, "White Dwarf": 0.85, "Orange Giant": 1.05}
 ## Rock class orbiting each planet type (gas giants collect ice, lava worlds metal).
@@ -59,9 +59,10 @@ const ANOMALY_NAMES := [
 ]
 const MAP_SIZE := Vector2(2100, 1350)
 ## A system is ONE continuous space. 1 unit = 1 km.
-## At sublight speed (~300 km/s) flying from the star to the edge takes 1–2 hours.
-const SYSTEM_RADIUS := 2000000.0
-const GATE_DISTANCE := 1900000.0
+## Package 35: three times as big as before (6 million km); warps are faster, so crossing takes 20–30 s.
+const SCALE := 3.0
+const SYSTEM_RADIUS := 6000000.0
+const GATE_DISTANCE := 5700000.0
 ## Below this distance ships fly normally instead of warping.
 const WARP_MIN := 40000.0
 const STAR_TYPES := [
@@ -524,7 +525,7 @@ func territory_of(f: String) -> Array:
 ## Inhabitants per planet type (billions): earthlike worlds carry most of the population.
 const PLANET_POP := {"terran": 3.0, "desert": 1.0, "ice": 0.8, "toxic": 0.3, "lava": 0.25, "gas": 0.2, "barren": 0.1}
 ## Upper limit of NPC ships in one system (player excluded).
-const NPC_CAP := 60
+const NPC_CAP := 90                  # package 35: busier systems
 
 
 ## What lives in a system: population (from the planets), stations, and from that the size of
@@ -573,15 +574,16 @@ func system_profile(sid: int) -> Dictionary:
 		"population": pop,
 		"stations": L["stations"].size(), "tiers": tiers, "trade": trade, "military": military,
 		"mining": mining, "ice": ice,
-		"shuttles": clampi(int(round(pop * 2.0 + tiers * 0.6)), 0, 16) if has_st else 0,
-		"miners": clampi((mining + ice) * 2 + 1, 0, 10) if mining + ice > 0 else (2 if nf > 0 else 0),
+		# package 35: the systems are three times as big – about half again as much traffic
+		"shuttles": clampi(int(round(pop * 3.0 + tiers * 0.9)), 0, 24) if has_st else 0,
+		"miners": clampi((mining + ice) * 3 + nf, 0, 16) if mining + ice > 0 else (nf + 1 if nf > 0 else 0),
 		# loiterers (they stay around one place): haulers holding near stations, field patrols, gate pickets
-		"holding": clampi(tiers + 1, 0, 8) if has_st else 0,
-		"field_patrols": mini(nf, 3) if lawful else 0,
-		"pickets": mini(L["gates"].size(), 2) if ctl in FactionData.POWERS else 0,
+		"holding": clampi(tiers * 2 + 1, 0, 12) if has_st else 0,
+		"field_patrols": mini(nf, 4) if lawful else 0,
+		"pickets": mini(L["gates"].size(), 3) if ctl in FactionData.POWERS else 0,
 		"patrol_groups": patrol_groups, "patrol_size": patrol_size, "patrol_quality": patrol_q,
 		"convoy_weight": trade * 2.0 + (tiers - trade) * 0.5,
-		"pirates": int(round((1.0 - sec) * 4.0)),
+		"pirates": int(round((1.0 - sec) * 5.5)),
 	}
 
 
@@ -891,7 +893,7 @@ func _generate_layout(id: int) -> Dictionary:
 	var planet_count := rng.randi_range(3, 6)
 	var ptypes: Array = PLANET_TYPES.keys()
 	for i in planet_count:
-		var orbit := 260000.0 + i * 290000.0 + rng.randf_range(-40000.0, 40000.0)
+		var orbit := (260000.0 + i * 290000.0 + rng.randf_range(-40000.0, 40000.0)) * SCALE
 		var pos := Vector2.from_angle(rng.randf() * TAU) * orbit
 		var ptype: String = ptypes[rng.randi() % ptypes.size()]
 		if i == 0 and rng.randf() < 0.5:
@@ -939,32 +941,22 @@ func _generate_layout(id: int) -> Dictionary:
 		need_icy = need_icy or pe[0] == "ice_refinery"
 	var has_icy := false
 	var nf := rng.randi_range(2, 4)
+	L["belts"] = _make_belts(L, id)                   # package 35: asteroid belt and Kuiper belt (scenery)
 	for b in nf:
 		var cls: String = FIELD_CLASSES[rng.randi() % FIELD_CLASSES.size()]
 		if b == nf - 1 and need_icy and not has_icy:
 			cls = "icy"          # an Ice Refinery always has an icy field nearby
 		has_icy = has_icy or cls == "icy"
-		var band: Vector2 = FIELD_BANDS[cls]
-		var center := _free_spot(rng, used, minf(band.x * frost, 1600000.0), minf(band.y * frost, 1850000.0))
+		var center := _field_spot(L, cls, frost, used, rng)
 		var mix := _field_mix(cls, sec, rng)
 		var fid := "f%d" % b
-		var fradius := rng.randf_range(10000.0, 16000.0)
-		L["fields"].append({"id": fid, "name": "Asteroid Field %s (%s)" % [ROMAN[b], cls.capitalize()],
-			"class": cls, "ores": mix.keys(), "ore": mix.keys()[0], "pos": center, "radius": fradius})
-		# Asteroids gather in clumps inside the field
-		var clumps: Array = []
-		for c in rng.randi_range(4, 7):
-			clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.8, rng.randf_range(700.0, 2000.0)])
-		for k in rng.randi_range(70, 130):
-			var clump: Array = clumps[rng.randi() % clumps.size()]
-			var pos: Vector2 = clump[0] + Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * float(clump[1])
-			L["asteroids"].append(_make_asteroid("a_%d_%d" % [b, k], fid, cls, mix, pos, rng))
+		_make_field(L, fid, b, cls, mix, center, rng)
 	# Hidden anomalies (must be scanned down)
 	for k in rng.randi_range(2, 4):
 		var diff := lerpf(8.0, 40.0, 1.0 - sec) + rng.randf_range(0.0, 10.0)
 		var an := {
 			"id": "an_%d" % k, "name": ANOMALY_NAMES[rng.randi() % ANOMALY_NAMES.size()],
-			"pos": _free_spot(rng, used, 300000.0, 1800000.0),
+			"pos": _free_spot(rng, used, 300000.0 * SCALE, 1800000.0 * SCALE),
 			"difficulty": diff, "scan": 0.0, "revealed": false, "analysis": 0.0, "done": false,
 		}
 		# package 25g: a few rare anomalies hold exotic matter (decided by a hash – the layout stays as it was)
@@ -991,7 +983,7 @@ func _add_waystation(L: Dictionary, id: int) -> void:
 		return
 	var g: Dictionary = L["gates"][rng.randi() % L["gates"].size()]
 	var gp: Vector2 = g["pos"]
-	var pos := gp * rng.randf_range(0.5, 0.75) + gp.normalized().orthogonal() * rng.randf_range(-60000.0, 60000.0)
+	var pos := gp * rng.randf_range(0.5, 0.75) + gp.normalized().orthogonal() * rng.randf_range(-60000.0, 60000.0) * SCALE
 	var pidx := 0
 	var bd := INF
 	for i in L["planets"].size():
@@ -1035,7 +1027,7 @@ func _special_stations(L: Dictionary, id: int, sec: float) -> void:
 			var f: Dictionary = L["fields"][rng.randi() % L["fields"].size()]
 			pos = (f["pos"] as Vector2) + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(30000.0, 60000.0)
 		else:
-			pos = Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(400000.0, 1600000.0)
+			pos = Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(400000.0, 1600000.0) * SCALE
 		var ok := true
 		for o in L["stations"]:
 			ok = ok and (o["pos"] as Vector2).distance_to(pos) > 120000.0
@@ -1185,7 +1177,7 @@ func _scatter_loose(L: Dictionary, id: int, sec: float) -> void:
 	for sp in spots:
 		var center: Vector2 = sp[0]
 		var dist := center.length()
-		var cls: String = "metallic" if dist < 800000.0 else ("stony" if dist < 1350000.0 else "icy")
+		var cls: String = "metallic" if dist < 800000.0 * SCALE else ("stony" if dist < 1350000.0 * SCALE else "icy")
 		var mix := _field_mix(cls, sec, rng)
 		for k in int(sp[2]):
 			var pos := center + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(float(sp[1]) * 0.25, float(sp[1]))
@@ -1206,6 +1198,93 @@ func _make_debris(cls: String, mix: Dictionary, pos: Vector2, rng: RandomNumberG
 	return {"pos": pos, "class": cls, "ore": _roll_ore(mix, rng), "shape": shapes[rng.randi() % shapes.size()],
 		"radius": rng.randf_range(12.0, 40.0) if rng.randf() < 0.85 else rng.randf_range(40.0, 85.0),
 		"seed": rng.randi(), "rot": rng.randf() * TAU, "spin": rng.randf_range(-0.08, 0.08)}
+
+
+# ---------------------------------------------------------------- Belts and fields (package 35)
+
+## Field styles: how the rocks lie and which sizes come up (small / medium threshold of the size roll).
+const FIELD_STYLES := {
+	"clustered": {"name": "Clustered", "weights": Vector2(0.5, 0.88)},
+	"band": {"name": "Band", "weights": Vector2(0.45, 0.85)},
+	"core": {"name": "Dense Core", "weights": Vector2(0.35, 0.75)},
+	"scattered": {"name": "Boulder Field", "weights": Vector2(0.2, 0.6)},
+	"gravel": {"name": "Gravel Field", "weights": Vector2(0.75, 0.96)},
+}
+const BELT_SHARE := 0.8              # systems with an asteroid belt …
+const KUIPER_SHARE := 0.7            # … and with a Kuiper belt
+
+
+## The decorative belts: an asteroid belt between the rocky planets and the gas giants, a Kuiper belt far out.
+## {"kind", "r" (centre radius), "w" (half width), "cls"}. Own RNG.
+func _make_belts(L: Dictionary, id: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 61403 + id * 2711 + 35
+	var out: Array = []
+	if rng.randf() < BELT_SHARE:
+		var r := 0.42 * SYSTEM_RADIUS
+		var planets: Array = L["planets"]
+		for i in planets.size():
+			if String(planets[i]["type"]) in ["gas", "toxic"] and i > 0:
+				r = (float(planets[i - 1]["orbit"]) + float(planets[i]["orbit"])) * 0.5
+				break
+		out.append({"kind": "asteroid", "r": r, "w": rng.randf_range(0.05, 0.08) * SYSTEM_RADIUS, "cls": "stony", "seed": rng.randi()})
+	if rng.randf() < KUIPER_SHARE:
+		out.append({"kind": "kuiper", "r": rng.randf_range(0.82, 0.86) * SYSTEM_RADIUS, "w": rng.randf_range(0.05, 0.07) * SYSTEM_RADIUS, "cls": "icy", "seed": rng.randi()})
+	return out
+
+
+## Where a field of a class lies: metal and stone in the asteroid belt, ice in the Kuiper belt – otherwise in the
+## old orbital bands. Keeps away from everything else placed so far.
+func _field_spot(L: Dictionary, cls: String, frost: float, used: Array, rng: RandomNumberGenerator) -> Vector2:
+	var want := "kuiper" if cls == "icy" else "asteroid"
+	for bt in L.get("belts", []):
+		if String(bt["kind"]) == want:
+			return _free_spot(rng, used, float(bt["r"]) - float(bt["w"]) * 0.7, float(bt["r"]) + float(bt["w"]) * 0.7)
+	var band: Vector2 = FIELD_BANDS[cls]
+	return _free_spot(rng, used, minf(band.x * frost, 4800000.0), minf(band.y * frost, 5550000.0))
+
+
+## An asteroid field: much bigger and denser than before, in one of five styles.
+func _make_field(L: Dictionary, fid: String, b: int, cls: String, mix: Dictionary, center: Vector2, rng: RandomNumberGenerator) -> void:
+	var keys: Array = FIELD_STYLES.keys()
+	var style: String = keys[rng.randi() % keys.size()]
+	var w: Vector2 = FIELD_STYLES[style]["weights"]
+	var fradius := rng.randf_range(20000.0, 40000.0)
+	# denser than before on average (about 0.22 rocks per 1,000 km², tightly clumped)
+	var count := int(PI * pow(fradius / 1000.0, 2.0) * rng.randf_range(0.18, 0.26))
+	match style:
+		"scattered":
+			count = int(count * 0.6)
+		"gravel":
+			count = int(count * 1.3)
+	L["fields"].append({"id": fid, "name": "Asteroid Field %s (%s, %s)" % [ROMAN[b], cls.capitalize(), FIELD_STYLES[style]["name"]],
+		"class": cls, "ores": mix.keys(), "ore": mix.keys()[0], "pos": center, "radius": fradius, "style": style})
+	var tangent := center.normalized().orthogonal() if center.length() > 1.0 else Vector2.RIGHT
+	var clumps: Array = []
+	match style:
+		"clustered":
+			for c in rng.randi_range(7, 12):
+				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.8, rng.randf_range(1500.0, 4000.0)])
+		"band":
+			for c2 in rng.randi_range(9, 14):
+				var t := rng.randf_range(-1.0, 1.0)
+				clumps.append([center + tangent * t * fradius + tangent.orthogonal() * rng.randf_range(-0.2, 0.2) * fradius, rng.randf_range(1500.0, 3500.0)])
+		"core":
+			clumps.append([center, fradius * 0.18])
+			clumps.append([center, fradius * 0.18])
+			clumps.append([center, fradius * 0.18])
+			for c3 in rng.randi_range(4, 6):
+				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.4, 0.85) * fradius, rng.randf_range(2000.0, 5000.0)])
+		"scattered":
+			for c4 in rng.randi_range(10, 16):
+				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.9, rng.randf_range(3000.0, 7000.0)])
+		_:
+			for c5 in rng.randi_range(6, 10):
+				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.8, rng.randf_range(1200.0, 3000.0)])
+	for k in count:
+		var clump: Array = clumps[rng.randi() % clumps.size()]
+		var pos: Vector2 = clump[0] + Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * float(clump[1])
+		L["asteroids"].append(_make_asteroid("a_%d_%d" % [b, k], fid, cls, mix, pos, rng, w))
 
 
 func _free_spot(rng: RandomNumberGenerator, used: Array, rmin: float, rmax: float) -> Vector2:
@@ -1283,9 +1362,9 @@ func _field_mix(cls: String, sec: float, rng: RandomNumberGenerator) -> Dictiona
 
 ## One asteroid: size class (small / medium / large), shape, ore(s) and deposit.
 ## Large asteroids often hold a second ore of the same field ("mix": ore -> share).
-func _make_asteroid(id: String, fid: String, cls: String, mix: Dictionary, pos: Vector2, rng: RandomNumberGenerator) -> Dictionary:
+func _make_asteroid(id: String, fid: String, cls: String, mix: Dictionary, pos: Vector2, rng: RandomNumberGenerator, weights: Vector2 = Vector2(0.5, 0.88)) -> Dictionary:
 	var r := rng.randf()
-	var size := "small" if r < 0.5 else ("medium" if r < 0.88 else "large")
+	var size := "small" if r < weights.x else ("medium" if r < weights.y else "large")
 	var sz: Dictionary = ASTEROID_SIZES[size]
 	var ore := _roll_ore(mix, rng)
 	var amount: float = rng.randf_range(sz["amount"].x, sz["amount"].y) * RARITY_AMOUNT[GameData.commodities[ore]["rarity"]]

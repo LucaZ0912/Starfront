@@ -573,6 +573,7 @@ func _process(delta: float) -> void:
 				_test_platform()
 				_test_collection()
 				_test_review5(view)
+				_test_scale()
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -5988,3 +5989,40 @@ func _test_review5(view: SystemView) -> void:
 	main.loss_window.visible = false
 	main.pilot_window.close()
 	check(w1_ok and w2_ok and w3_ok, "review 5: wingmen keep to no-fire zones, are repaired when docked; the SHIP LOST window takes the keys")
+
+
+## Package 35: three times the size, belts as scenery, bigger and denser fields in five styles, more traffic,
+## pictures made ahead of time (loading screen, hyperspace jump).
+func _test_scale() -> void:
+	var U = Universe
+	var scale_ok: bool = is_equal_approx(U.SYSTEM_RADIUS, 6000000.0) and U.GATE_DISTANCE < U.SYSTEM_RADIUS and U.NPC_CAP >= 90
+	# a made-up system: belts, a field of each style
+	var L := {"planets": [{"type": "terran", "orbit": 800000.0}, {"type": "desert", "orbit": 1700000.0}, {"type": "gas", "orbit": 2600000.0}],
+		"fields": [], "asteroids": []}
+	var belts: Array = []
+	var both := 0
+	for i in 40:
+		belts = U._make_belts(L, 1000 + i)
+		if belts.size() == 2:
+			both += 1
+	var styles := {}
+	var dense_ok := true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 35
+	for b in 12:
+		var cnt0: int = L["asteroids"].size()
+		U._make_field(L, "tf%d" % b, b % 8, "stony", {"iron_ore": 1.0}, Vector2(1500000, 0), rng)
+		var f: Dictionary = L["fields"].back()
+		styles[f["style"]] = true
+		var n: int = L["asteroids"].size() - cnt0
+		dense_ok = dense_ok and float(f["radius"]) >= 20000.0 and n >= 120
+	var belt_ok: bool = both >= 15 and both <= 32
+	if not belts.is_empty():
+		belt_ok = belt_ok and float(belts[0]["r"]) > 0.0
+	# loading: the warm-up queues the pictures of a system and works them off
+	var wu = main.warmup
+	wu.queue_system(GameState.current_system)
+	var warm_ok: bool = wu != null and wu.made >= 0
+	var traffic_ok: bool = int(U.system_profile(GameState.current_system).get("holding", 0)) >= 0
+	check(scale_ok and belt_ok and styles.size() >= 4 and dense_ok and warm_ok and traffic_ok and main.last_load_ms > 0.0,
+		"package 35: systems 3× as big (6M km), belts in most systems (%d of 40 both), fields of %d styles, bigger and denser; pictures made ahead (system built in %.0f ms)" % [both, styles.size(), main.last_load_ms])

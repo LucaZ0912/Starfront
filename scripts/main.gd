@@ -13,6 +13,11 @@ var ship_menu: ShipMenu
 var pilot_window                       # package 29: skills, skill tree, the pilot (U)
 const PilotWindowScript = preload("res://scripts/ui/pilot_window.gd")
 var loss_window                        # package 31a: the ship is lost – buy it back?
+var warmup                             # package 35: pictures made ahead of time (scripts/core/warmup.gd)
+var loading: CanvasLayer               # package 35: the short loading screen at the start
+var _loading_bar: ProgressBar
+var _loading_t := 0.0
+var _loading_total := 1
 const LossWindowScript = preload("res://scripts/ui/loss_window.gd")
 var transit_fx: TransitOverlay
 var pause_menu: PauseMenu
@@ -67,6 +72,10 @@ func _ready() -> void:
 	GameState.active_changed.connect(_on_active_changed)
 	GameState.anomaly_revealed.connect(func(_s, _a): hud.refresh_overview())
 
+	warmup = load("res://scripts/core/warmup.gd").new()
+	add_child(warmup)
+	warmup.queue_system(GameState.current_system)
+	_show_loading()
 	load_system(GameState.current_system)
 	if is_new:
 		GameState.log_msg("Welcome to Sternenfront, %s! Press H for controls." % GameState.pilot_name, GameState.COL_GOOD)
@@ -83,7 +92,11 @@ func _ready() -> void:
 		add_child(load("res://scripts/debug/smoke_test.gd").new())
 
 
+var last_load_ms := 0.0                 # package 35: how long building the last system took (debug)
+
+
 func load_system(sys: int) -> void:
+	var t0 := Time.get_ticks_usec()
 	if view != null and is_instance_valid(view):
 		view.sync_to_fits()
 		remove_child(view)
@@ -93,6 +106,7 @@ func load_system(sys: int) -> void:
 	add_child(view)
 	move_child(view, 0)
 	view.build(sys)
+	last_load_ms = float(Time.get_ticks_usec() - t0) / 1000.0
 	view.station_docked.connect(_on_station_docked)
 	Commands.world = view
 	hud.set_view(view)
@@ -153,6 +167,8 @@ func _on_routes_changed() -> void:
 
 func _on_jumped_out(f: ShipFitting) -> void:
 	in_hyperspace = true
+	if f.transit_to != null:
+		warmup.queue_system(int(f.transit_to))       # package 35: the jump hides the loading of the next system
 	view.remove_player()
 	station_panel.close()
 	ship_menu.close()
@@ -307,3 +323,49 @@ func handle_input(event: InputEvent) -> void:
 				if view != null and not in_hyperspace:
 					hud.hotkey_command(a)
 				return
+
+
+# ---------------------------------------------------------------- Loading screen (package 35)
+
+## A short loading screen when the game starts: the system's pictures are made behind it (at most a few seconds).
+func _show_loading() -> void:
+	loading = CanvasLayer.new()
+	loading.layer = 120
+	add_child(loading)
+	var bg := ColorRect.new()
+	bg.color = Color(0.015, 0.01, 0.03)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	loading.add_child(bg)
+	var c := CenterContainer.new()
+	c.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.add_child(c)
+	var v := UI.vbox(14)
+	c.add_child(v)
+	var t := UI.label("STERNENFRONT", 40, UI.NEON_CYAN)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var s2 := UI.label("Entering %s …" % Universe.systems[GameState.current_system]["name"], 16, UI.TEXT_DIM)
+	s2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(s2)
+	_loading_bar = UI.bar(UI.NEON_CYAN, 420)
+	_loading_bar.custom_minimum_size = Vector2(420, 6)
+	v.add_child(_loading_bar)
+	_loading_total = maxi(warmup.pending(), 1)
+	warmup.budget_ms = 24.0                        # behind the loading screen: as fast as it goes
+	_loading_t = 0.0
+
+
+func _process(delta: float) -> void:
+	if loading == null:
+		return
+	_loading_t += delta
+	_loading_bar.max_value = float(_loading_total)
+	_loading_bar.value = float(_loading_total - warmup.pending())
+	if (warmup.done() and _loading_t > 0.4) or _loading_t > 8.0:
+		warmup.budget_ms = 4.0
+		var lay := loading
+		loading = null
+		var tw := create_tween()
+		tw.tween_property(lay.get_child(0), "modulate:a", 0.0, 0.35)
+		tw.tween_callback(lay.queue_free)

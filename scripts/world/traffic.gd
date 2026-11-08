@@ -965,7 +965,7 @@ func _on_convoy_live(c: Dictionary) -> void:
 	elif int(c["prev"]) >= 0 and view.gates.has(int(c["prev"])):
 		entry = view.gates[int(c["prev"])].position
 	else:
-		entry = Vector2.from_angle(randf() * TAU) * 1500000.0
+		entry = Vector2.from_angle(randf() * TAU) * 1500000.0 * Universe.SCALE
 	var exit := entry
 	if int(c["cur"]) == int(c["dst"]):
 		var dst = view.stations.get(String(c["dst_st"]))
@@ -1304,7 +1304,7 @@ func spawn_smuggler(m: Dictionary) -> Ship:
 	for an in L["anomalies"]:
 		spots.append(an["pos"])
 	if spots.is_empty():
-		spots.append(Vector2.from_angle(randf() * TAU) * 800000.0)
+		spots.append(Vector2.from_angle(randf() * TAU) * 800000.0 * Universe.SCALE)
 	var pos: Vector2 = spots[randi() % spots.size()] + Vector2.from_angle(randf() * TAU) * 5000.0
 	var gate := {}
 	var far := -1.0

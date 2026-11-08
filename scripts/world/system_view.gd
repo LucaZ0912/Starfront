@@ -867,7 +867,7 @@ func _spawn_captain(c: Dictionary, arriving: bool) -> Ship:
 	for hv in layout.get("havens", []):
 		spots.append(hv["pos"])
 	if spots.is_empty():
-		spots.append(Vector2.from_angle(randf() * TAU) * 600000.0)
+		spots.append(Vector2.from_angle(randf() * TAU) * 600000.0 * Universe.SCALE)
 	if not NotoriousData.lawless(system_id) and not layout["fields"].is_empty():
 		spots.clear()               # visiting safer space: they lurk in the asteroid fields
 		for f in layout["fields"]:
@@ -1952,10 +1952,82 @@ static func fmt_dist(d: float) -> String:
 
 
 ## Scenery rocks: only those near the camera, slowly turning.
+# ---------------------------------------------------------------- Belts (package 35)
+
+var _belt_pts := {}                # belt index -> PackedVector2Array of short dashes for the system map
+
+
+## The belts on the system map: a band of fine grains.
+func _draw_belts_map(o: Node2D, px: float, map_a: float) -> void:
+	var belts: Array = layout.get("belts", [])
+	for i in belts.size():
+		var bt: Dictionary = belts[i]
+		if not _belt_pts.has(i):
+			var rng := RandomNumberGenerator.new()
+			rng.seed = int(bt.get("seed", i))
+			var pts := PackedVector2Array()
+			var n := 2600 if String(bt["kind"]) == "kuiper" else 1900
+			for k in n:
+				var a := rng.randf() * TAU
+				var r := float(bt["r"]) + float(bt["w"]) * (rng.randf() + rng.randf() - 1.0)
+				var p := Vector2.from_angle(a) * r
+				pts.append(p)
+				pts.append(p + Vector2.from_angle(a + PI * 0.5) * 1.0)
+			_belt_pts[i] = pts
+		var col := Color(0.62, 0.78, 1.0, 0.35 * map_a) if String(bt["kind"]) == "kuiper" else Color(0.85, 0.72, 0.55, 0.35 * map_a)
+		# the dashes are scaled with the zoom so every grain stays a few pixels
+		var pts2: PackedVector2Array = _belt_pts[i]
+		var sized := PackedVector2Array()
+		sized.resize(pts2.size())
+		for j in range(0, pts2.size(), 2):
+			sized[j] = pts2[j]
+			sized[j + 1] = pts2[j] + (pts2[j + 1] - pts2[j]) * 3.0 * px
+		o.draw_multiline(sized, col, 2.5 * px)
+
+
+## Close up inside a belt: rocks drift by in the background (slower than the foreground – parallax).
+const BELT_CELL := 1400.0
+const BELT_PARALLAX := 0.45
+
+
+func _draw_belt_background(a: float) -> void:
+	var cp := camera.position
+	var dist := cp.length()
+	for bt in layout.get("belts", []):
+		var edge := absf(dist - float(bt["r"])) / float(bt["w"])
+		if edge > 1.2:
+			continue
+		var dens := clampf(1.2 - edge, 0.0, 1.0)
+		var bg := cp * BELT_PARALLAX                       # the background moves slower than the camera
+		var half := get_viewport_rect().size * 0.5 / camera.zoom.x + Vector2(200, 200)
+		var c0 := Vector2i(floori((bg.x - half.x) / BELT_CELL), floori((bg.y - half.y) / BELT_CELL))
+		var c1 := Vector2i(floori((bg.x + half.x) / BELT_CELL), floori((bg.y + half.y) / BELT_CELL))
+		if (c1.x - c0.x + 1) * (c1.y - c0.y + 1) > 160:
+			continue                                        # zoomed out too far for scenery
+		var cls := String(bt["cls"])
+		var shapes: Array = Universe.SHAPES_BY_CLASS[cls]
+		for cx in range(c0.x, c1.x + 1):
+			for cy in range(c0.y, c1.y + 1):
+				var h := hash(Vector3i(cx, cy, int(bt.get("seed", 0)) % 100000))
+				var rng := RandomNumberGenerator.new()
+				rng.seed = h
+				var n := int(rng.randi_range(3, 7) * dens)
+				for k in n:
+					var q := Vector2((cx + rng.randf()) * BELT_CELL, (cy + rng.randf()) * BELT_CELL)
+					var r := rng.randf_range(20.0, 70.0) if rng.randf() < 0.9 else rng.randf_range(90.0, 180.0)
+					var pos := cp + (q - bg)
+					var tex := PixelArt.asteroid_sprite(cls, String(shapes[rng.randi() % shapes.size()]), rng.randi(), int(r / 2.2), {"metallic": "iron_ore", "stony": "silicate_rock"}.get(cls, "water_ice"))
+					var sz := Vector2(tex.get_width(), tex.get_height()) * (r * 2.0 / tex.get_width())
+					debris_layer.draw_set_transform(pos, rng.randf() * TAU + _t * rng.randf_range(-0.05, 0.05), Vector2.ONE)
+					debris_layer.draw_texture_rect(tex, Rect2(-sz * 0.5, sz), false, Color(0.45, 0.45, 0.5, a * 0.75))
+	debris_layer.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw_debris() -> void:
 	var a := sky_alpha()
 	if a <= 0.01:
 		return
+	_draw_belt_background(a)                           # package 35
 	var half := get_viewport_rect().size * 0.5 / camera.zoom.x + Vector2(120, 120)
 	var cp := camera.position
 	var mod := Color(0.82, 0.82, 0.86, a)
@@ -2052,7 +2124,10 @@ func _cull_asteroids() -> void:
 		if not is_instance_valid(a):
 			continue
 		var d: Vector2 = a.position - cp
-		a.visible = local and absf(d.x) < half.x and absf(d.y) < half.y
+		var vis: bool = local and absf(d.x) < half.x and absf(d.y) < half.y
+		if vis != a.visible:
+			a.visible = vis
+			a.set_process(vis)                           # package 35: hidden rocks cost nothing
 	for co in colossi:
 		var d2: Vector2 = co.position - cp
 		co.visible = local and absf(d2.x) < half.x + co.radius * 1.3 and absf(d2.y) < half.y + co.radius * 1.3
@@ -2118,6 +2193,7 @@ func _draw_overlay() -> void:
 		if is_instance_valid(hv) and (map_a > 0.01 or hv.position.distance_to(camera.position) < HAVEN_RANGE + view_r):
 			o.draw_arc(hv.position, HAVEN_RANGE, 0.0, TAU, 160, Color(1.0, 0.25, 0.25, 0.3 * map_a + 0.3 * sky_alpha()), 1.5 * px)
 	if map_a > 0.01:
+		_draw_belts_map(o, px, map_a)                  # package 35
 		# Orbits and system boundary
 		for p in layout["planets"]:
 			o.draw_arc(Vector2.ZERO, float(p["orbit"]), 0.0, TAU, 180, Color(0.4, 0.6, 0.9, 0.2 * map_a), 1.5 * px)
@@ -2730,7 +2806,7 @@ func survey_radius(id: String, kind: String) -> float:
 		"planet":
 			return float(t.get("data", {}).get("radius", 10000.0)) * 4.0
 		"star":
-			return 200000.0
+			return 200000.0 * Universe.SCALE
 	return 30000.0
 
 

@@ -1575,6 +1575,24 @@ func dock_target(f: ShipFitting, stations: Array) -> Dictionary:
 	return {}
 
 
+## {"type":"debug_belt", "kind": "asteroid"|"kuiper"} – package 35: puts the ship (undocked) into a belt of this system
+func _c_debug_belt(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	for bt in world.layout.get("belts", []):
+		if String(bt["kind"]) == String(c.get("kind", "asteroid")):
+			var f := _fit()
+			f.docked_at = ""
+			var p := Vector2.from_angle(randf() * TAU) * float(bt["r"])
+			world.player.position = p
+			f.position = p
+			world.player.order = {"type": "idle"}
+			world.center_on_player()
+			return ""
+	return "This system has no %s belt." % String(c.get("kind", "asteroid"))
+
+
 func _c_debug_teleport(c: Dictionary) -> String:
 	var f := _fit()
 	var to := int(c["system"])

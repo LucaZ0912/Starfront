@@ -292,6 +292,9 @@ func info_text() -> String:
 func _process(delta: float) -> void:
 	_t += delta
 	if kind == "asteroid":
+		if not visible:
+			set_process(false)                           # package 35: SystemView switches it on again when in view
+			return
 		if visible:
 			rotation += float(data.get("spin", 0.0)) * delta
 		return

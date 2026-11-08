@@ -299,6 +299,16 @@ func _build_items() -> void:
 
 
 func _build_world() -> void:
+	# package 35: system scale, belts, loading
+	_section("System scale & loading (package 35)")
+	var mn = get_tree().current_scene
+	var wu = mn.get("warmup") if mn != null else null
+	content.add_child(UI.label("Last system built in %.0f ms  •  pictures made ahead: %d (last system %.0f ms, %d waiting)" % [
+		float(mn.get("last_load_ms")) if mn != null and mn.get("last_load_ms") != null else 0.0,
+		int(wu.made) if wu != null else 0, float(wu.last_ms) if wu != null else 0.0, int(wu.pending()) if wu != null else 0], 12, UI.TEXT_DIM))
+	var rb := _row()
+	rb.add_child(UI.button("Into the asteroid belt", func(): _cmd({"type": "debug_belt", "kind": "asteroid"})))
+	rb.add_child(UI.button("Into the Kuiper belt", func(): _cmd({"type": "debug_belt", "kind": "kuiper"})))
 	_section("Teleport (docks at the first station)")
 	var sys_ids: Array = []
 	for s in Universe.systems:

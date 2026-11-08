@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.1 – 2026-11-08
+
+**Part 6 begins – package 35: system scale.** A new game is needed.
+- Systems are three times as big (6 million km); warps are faster, crossing a system takes 20–30 s.
+- Asteroid belts and Kuiper belts as scenery: a band on the system map, rocks drifting in the background close up.
+- Asteroid fields lie in the belts, are bigger and denser and come in five styles (clustered, band, dense core,
+  boulder field, gravel field).
+- More traffic (about half again as much, up to 90 ships per system).
+- A short loading screen at the start; asteroid pictures and the colossus shader are made ahead of time (no more
+  hitch when entering a field with colossi), the next system during the hyperspace jump.
+
 ## alpha 0.5.34.4 – 2026-11-08
 
 **Part 5 review fixes** (reviews/teil5_review.md): wingmen and the platform ship keep to no-fire zones (self-defence

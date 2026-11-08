@@ -103,6 +103,13 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## System scale and belts (phase 0.5 package 35)
+- Systems are **6 million km** across the radius – three times as big as before; warps are faster to match.
+- Most systems have an **asteroid belt** and a **Kuiper belt** – scenery on the system map and in the background.
+  The mineable **asteroid fields** lie in them: metal and stone in the asteroid belt, ice in the Kuiper belt; bigger,
+  denser and in five styles (clustered, band, dense core, boulder field, gravel field).
+- Busier systems; a short loading screen at the start makes the pictures ahead of time.
+
 ## Collection and wanted posters (phase 0.5 package 34)
 - Notorious pirates have a face and Piloting & Gunnery that grow with their stars. Their **wanted posters** in every
   Bond Office: WANTED, the mugshot, the stars, DEAD OR ALIVE, the reward, ship and escort.
