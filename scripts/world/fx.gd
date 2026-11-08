@@ -98,6 +98,34 @@ static func smoke(pos: Vector2, drift: Vector2, radius: float) -> Fx:
 	return f
 
 
+## 0.6.35.11: the glittering trail a ship leaves dropping out of warp – a long line of twinkling sparks behind it
+## (longer than the combat view), brightest at the ship. It all flares up at once, then fades from the far end
+## towards the ship.
+const GLITTER_LIFE := 6.0
+var sparks := PackedVector3Array()      # x, y = place (local), z = share of the length (0 at the ship, 1 far end)
+var spark_phase := PackedFloat32Array()
+
+
+static func glitter(pos: Vector2, back: Vector2, length: float, width: float, col: Color) -> Fx:
+	var f := Fx.new()
+	f.kind = "glitter"
+	f.position = pos
+	f.a = back
+	f.size = length
+	f.color = col
+	f.life = GLITTER_LIFE
+	f.max_life = GLITTER_LIFE
+	var side := back.orthogonal()
+	var n := int(clampf(length / 9.0, 80.0, 900.0))
+	for i in n:
+		var u := pow(randf(), 1.4)                  # more sparks close to the ship
+		var spread := width * (0.35 + 0.65 * u)    # the trail widens a little behind
+		var p := back * (u * length) + side * randf_range(-spread, spread)
+		f.sparks.append(Vector3(p.x, p.y, u))
+		f.spark_phase.append(randf() * TAU)
+	return f
+
+
 ## Package 25f: the Cathedral's anti-drone pulse – a red ring racing out to `radius`.
 static func pulse(pos: Vector2, radius: float, col: Color) -> Fx:
 	var f := Fx.new()
@@ -158,6 +186,8 @@ func _draw() -> void:
 			draw_circle(Vector2.ZERO, size * (0.6 + g * 1.6), Color(color, 0.7 * t))
 			draw_circle(Vector2(size * 0.4, -size * 0.3) * g, size * (0.4 + g * 1.1), Color(color.lightened(0.18), 0.55 * t))
 			draw_circle(Vector2(-size * 0.3, size * 0.2) * g, size * (0.3 + g * 0.9), Color(color.darkened(0.4), 0.6 * t))
+		"glitter":
+			_draw_glitter()
 		"marker":
 			draw_arc(Vector2.ZERO, 8.0 + 30.0 * t, 0.0, TAU, 24, Color(color, t), 2.0)
 		"pulse":
@@ -175,3 +205,45 @@ func _draw() -> void:
 			draw_string_outline(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, 4, Color(0, 0, 0, 0.75 * alpha))
 			draw_string(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(color, alpha))
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_glitter() -> void:
+	var age := max_life - life
+	var flare := clampf(1.0 - age / 0.5, 0.0, 1.0)            # everything flares up at the start
+	var z := maxf(get_viewport().get_canvas_transform().get_scale().x, 0.0001)
+	var px := 1.0 / z                                          # one screen pixel in world units
+	# a faint glowing line along the course, fading from the far end towards the ship
+	var segs := 24
+	for i in segs:
+		var u0 := float(i) / segs
+		var u1 := float(i + 1) / segs
+		var al := _glitter_alpha(u0, age) * 0.28
+		if al <= 0.003:
+			continue
+		draw_line(a * (u0 * size), a * (u1 * size), Color(color, al), maxf(3.0 * px, 4.0))
+	for i in sparks.size():
+		var sp := sparks[i]
+		var al := _glitter_alpha(sp.z, age)
+		if al <= 0.01:
+			continue
+		var tw := 0.5 + 0.5 * sin(age * (5.0 + fmod(spark_phase[i] * 3.7, 9.0)) + spark_phase[i])
+		tw = tw * tw * tw                                          # mostly dim, now and then a bright twinkle
+		al *= 0.25 + 0.75 * tw
+		var p := Vector2(sp.x, sp.y)
+		var big := 1.25 - 0.55 * sp.z                              # bigger at the ship
+		var d := maxf((1.6 + 1.5 * flare) * px * big, 0.8)
+		draw_circle(p, d, Color(color.lerp(Color.WHITE, tw), al))
+		if tw > 0.6 or flare > 0.3:
+			var r := px * big * (2.0 + 5.0 * maxf(tw, flare))
+			var c := Color(1, 1, 1, al * maxf(tw, flare))
+			draw_line(p - Vector2(r, 0), p + Vector2(r, 0), c, maxf(px, 0.6))
+			draw_line(p - Vector2(0, r), p + Vector2(0, r), c, maxf(px, 0.6))
+
+
+## How bright the glitter trail is at share `u` of its length after `age` seconds: brightest at the ship, the far end
+## goes out first, the part at the ship last.
+func _glitter_alpha(u: float, age: float) -> float:
+	var flare := clampf(1.0 - age / 0.5, 0.0, 1.0)
+	var ends := max_life * (0.3 + 0.7 * (1.0 - u))
+	var fade := clampf((ends - age) / 1.2, 0.0, 1.0)
+	return (1.0 - 0.7 * u) * fade * (1.0 + 0.8 * flare)

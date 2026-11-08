@@ -1524,18 +1524,13 @@ func _warp_flash() -> void:
 	view.spawn_fx(Fx.flash(position, Color(1.0, 1.0, 1.0), maxf(radius * 3.5, 60.0)))
 
 
-## 0.6.35.10: coming out of warp a ship leaves a short bluish trail behind it that fades after a few seconds.
+## 0.6.35.11: coming out of warp a ship leaves a long glittering trail along its course (longer than the combat
+## view), brightest at the ship, fading from the far end towards it.
 func _warp_trail(vel: Vector2) -> void:
 	if view == null:
 		return
 	var back := -vel.normalized() if vel.length() > 1.0 else Vector2.from_angle(heading + PI)
-	for i in 16:
-		var f := Fx.smoke(position + back * (radius * 0.8 * i + randf_range(-6.0, 6.0)) + back.orthogonal() * randf_range(-radius * 0.25, radius * 0.25),
-			back * randf_range(4.0, 14.0) + back.orthogonal() * randf_range(-6.0, 6.0), radius * (0.55 + 0.04 * i))
-		f.color = Color(0.45, 0.68, 1.0)
-		f.life = randf_range(4.0, 6.0) * (1.0 - i * 0.03)
-		f.max_life = f.life
-		view.spawn_fx(f)
+	view.spawn_fx(Fx.glitter(position, back, 7500.0, maxf(radius * 0.9, 18.0), Color(0.55, 0.78, 1.0)))
 
 
 ## Pulled out of warp (pirate interdiction): stops right here, the drive needs a moment.
@@ -1594,7 +1589,7 @@ func _update_warp(delta: float) -> void:
 		velocity = (to - from).normalized() * float(fit.stats()["speed"]) * 0.3
 		order = {"type": "idle"}
 		_warp_flash()                                   # 0.6.35.10: a bright flash coming out …
-		_warp_trail(velocity)                            # … and a bluish trail that fades
+		_warp_trail(velocity)                            # … and a glittering trail
 		view.on_warp_finished(self)
 		if not then.is_empty():
 			set_order(view.resolve_order(then))
@@ -1633,7 +1628,7 @@ func _formation_warp(delta: float) -> void:
 		velocity = vel
 		order = {"type": "idle"}
 		_warp_flash()                                   # 0.6.35.10: a bright flash coming out …
-		_warp_trail(velocity)                            # … and a bluish trail that fades
+		_warp_trail(velocity)                            # … and a glittering trail
 		view.on_warp_finished(self)
 		if not then.is_empty():
 			set_order(view.resolve_order(then))
