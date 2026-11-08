@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.36.7 – 2026-11-08
+
+**Depth:** the parallax of planets, moons and stars now depends on how close they are – a near planet glides by as a
+layer of its own (slower than the ships, clearly faster than the stars), a far one hardly moves; right above a body it
+slides smoothly under the ship.
+
 ## alpha 0.6.36.6 – 2026-11-08
 
 **More impressive planets, moons and stars:** about as big as before from afar, but growing ever more steeply towards

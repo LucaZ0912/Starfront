@@ -1206,6 +1206,19 @@ const SKY_STAR := 1.5
 const CORONA_SIZE := 2.4                # corona quad relative to the star's quad
 
 
+## 0.6.36.7: parallax (screen px per km of distance) of a far body, and how much it grows close up.
+const SKY_PARALLAX_FAR := 0.00035
+const SKY_PARALLAX_NEAR := 0.03
+
+
+## Distance (px) of a body's picture from the screen centre: parallax × distance, softly limited to the screen.
+static func sky_offset(r: float, dist: float, vmin: float, app_r: float) -> float:
+	var close := r * 1.1 / sqrt(dist * dist + pow(r * 1.1, 2.0))
+	var par := SKY_PARALLAX_FAR + SKY_PARALLAX_NEAR * close
+	var lim := vmin * 0.5 + app_r * 0.4
+	return lim * tanh(dist * par / lim)
+
+
 ## Apparent radius on screen (px) of a body of radius `r` at `dist` (km); vmin = smaller screen side.
 static func sky_radius(r: float, dist: float, vmin: float, star: bool = false) -> float:
 	var dist_eff := sqrt(dist * dist + pow(r * 1.1, 2.0))
@@ -1239,10 +1252,10 @@ func _update_bodies() -> void:
 		var app_r := sky_radius(r, dist, vmin, b["star"])
 		if sky_a > 0.01 and app_r >= 2.0:
 			sky_spr.visible = true
-			# close bodies move towards the edge ("oblique" view of the planet), far ones towards the centre
-			var side := smoothstep(0.0, 1.0, (dist - r) / (r * 2.0))   # 0 = directly above, 1 = to the side
-			var lim := vmin * 0.5 + app_r * 0.4
-			var off := lim * tanh((dist * 0.00035 + app_r * 0.9 * side) / lim)
+			# 0.6.36.7: depth – the screen offset follows the distance with a parallax that grows the closer the body is:
+			# a near planet glides by as a layer of its own (slower than the ships, clearly faster than the stars), a far
+			# one hardly moves; right above it the body slides smoothly under the ship
+			var off := sky_offset(r, dist, vmin, app_r)
 			sky_spr.position = center + d / dist * off
 			sky_spr.scale = Vector2.ONE * app_r * quad / 64.0
 			sky_spr.modulate.a = sky_a

@@ -6245,6 +6245,18 @@ func _test_warp36(view: SystemView) -> void:
 	var far_ok: bool = absf(SystemView.sky_radius(r, r * 40.0, vmin) / (r * view.SKY_SIZE / (r * 40.0)) - 1.0) < 0.1
 	smooth_ok = smooth_ok and far_ok and SystemView.sky_radius(r, r * 3.0, vmin, true) > SystemView.sky_radius(r, r * 3.0, vmin) * 1.3
 	var old := vmin * 0.42
+	# 0.6.36.7: depth – a near body glides by much faster than a far one (screen px per km), and its picture moves
+	# away from the centre steadily (no jumps)
+	var off_prev := -1.0
+	var depth_ok := true
+	for i2 in 80:
+		var dd := r * 0.05 * i2
+		var o2 := SystemView.sky_offset(r, dd, vmin, SystemView.sky_radius(r, dd, vmin))
+		depth_ok = depth_ok and o2 >= off_prev and o2 - off_prev < 60.0
+		off_prev = o2
+	var near_rate := SystemView.sky_offset(r, r * 1.0, vmin, SystemView.sky_radius(r, r, vmin)) / r
+	var far_rate := SystemView.sky_offset(r, r * 50.0, vmin, SystemView.sky_radius(r, r * 50.0, vmin)) / (r * 50.0)
+	smooth_ok = smooth_ok and depth_ok and near_rate > far_rate * 10.0
 	check(fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok and peak > old * 1.3,
 		"0.6.36.3: warp 50 %% faster; emergency shutdown – the warp key asks in warp, again within 5 s throws the ship out of warp, tumbling; sky bodies come closer (right above a planet %.0f px radius instead of %.0f), growing smoothly" % [peak, old])
 
