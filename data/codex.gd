@@ -19,9 +19,35 @@ const MakerData = preload("res://data/manufacturers.gd")
 const CATEGORIES := [
 	["basics", "Basics"], ["history", "History"], ["factions", "Factions"],
 	["corporations", "Corporations"], ["cluster", "The Cluster"], ["technology", "Technology"],
+	["pilot", "Pilot & Crew"],
 ]
 
 const ENTRIES := {
+	# ---------------------------------------------------------------- Pilot & crew (phase 0.5 part 5, package 34)
+	"pilot_skills": {"cat": "pilot", "title": "Skills and the pilot level", "unlock": "start", "image": {"icon": "face"},
+		"text": "Twelve skills grow by doing – flying, fighting, mining, trading, science and more. Every level adds +1 % to what the skill does on your own ships. All experience also feeds the pilot level, and every pilot level brings a perk point.\n\nThe Pilot window [U] shows it all: the pilot with statistics, standings, the codex and the collection, then skills, perks and the skill tree.",
+		"see": ["pilot_perks", "pilot_tree"]},
+	"pilot_perks": {"cat": "pilot", "title": "Perks", "unlock": "start", "image": {"icon": "o_targeting"},
+		"text": "Perks are special abilities in six groups – combat, flight, industry, science, commerce, command. A perk point per pilot level buys one; some need a skill level first.",
+		"see": ["pilot_skills"]},
+	"pilot_tree": {"cat": "pilot", "title": "The skill tree", "unlock": "start", "image": {"icon": "hull"},
+		"text": "Ships and modules can be bought anywhere – flying and using them needs the skill tree. The Pilot Licence is the trunk; above Shields the branches split by activity: defence, combat, mining, industry, flight, exploration, security, trade and drones. Mastery are the roots.\n\nA tile opens once the tile below it is open and its achievements are met – then it glows and you confirm it. A ship without its tile stays docked; a module without it stays offline.",
+		"see": ["pilot_skills", "crew_crew"]},
+	"crew_crew": {"cat": "pilot", "title": "Crew", "unlock": "crew", "image": {"icon": "face"},
+		"text": "Ships from M upwards carry crew. Every hull has its posts – Co-Pilot, Gunner, Engineer, Science Officer, Mining Foreman, Quartermaster, Drone Operator – and some of them must be filled before the ship may undock. A new ship comes with rookies on those.\n\nEvery spacer is someone: a name, a face, a profession, a quality from F to A and one rolled bonus. They learn slowly from the right work and step up. Very rarely one has a perk. The crew of your active ship takes a small share of your income.",
+		"see": ["corp_dwt", "crew_loss", "crew_collection"]},
+	"crew_wingmen": {"cat": "pilot", "title": "Wingmen", "unlock": "wingmen", "image": {"icon": "w_kinetic"},
+		"text": "Pilots for hire wait at the bars: real characters with their own ship and loadout, two skills and two traits that colour how they fly. A contract runs 30, 60 or 120 minutes, paid up front, plus a share of your income – much more than crew.\n\nThey fly in formation, warp and jump with you and fight near you: aggressive, defensive or passive, or straight at your target. If a wingman dies, the ship is gone and the contract ends.",
+		"see": ["crew_crew", "crew_platform"]},
+	"crew_platform": {"cat": "pilot", "title": "The Citadel's launch platform", "unlock": "platform", "image": {"ship": "hdy_talon"},
+		"text": "Hadrian Dynamics built the Citadel around a launch platform. Any Hadrian S ship fits on it, fitted as you like, and a Co-Pilot with the rare perk Wingman flies it – launched and recalled from the bridge.\n\nLose it, and Aegis Mutual rebuilds it at the next hangar for a tenth of its value.",
+		"see": ["crew_wingmen", "maker_hadrian"]},
+	"crew_loss": {"cat": "pilot", "title": "Losing the ship", "unlock": "pod", "image": {"icon": "o_shield"},
+		"text": "When a ship breaks apart, every crew member has a chance to reach an escape pod – the better they are, the better the odds, and the longer the pod's signal lasts. Warp to the pod and fly close to take them aboard.\n\nYou wake at the last station you docked at. Aegis Mutual offers to rebuild the lost ship for a tenth of its value – or you start over in a Dragonfly.",
+		"see": ["crew_crew"]},
+	"crew_collection": {"cat": "pilot", "title": "The collection", "unlock": "collection", "image": {"icon": "t_warrant"},
+		"text": "Pilot window → Pilot → Collection keeps what a career gathers: every crew perk that has served with you, and the wanted posters of the notorious pirates you destroyed.",
+		"see": ["crew_crew", "cluster_notorious"]},
 	# ---------------------------------------------------------------- Basics (known from the start)
 	"basics_flight": {"cat": "basics", "title": "Flying and warping", "unlock": "start", "image": {"icon": "engine"},
 		"text": "Click empty space to fly at sublight speed, click an object to select it – the panel top right lists what you can do: warp, approach, orbit, keep at range, lock, dock, jump.\n\nSystems are huge. Anything further than 40,000 km is reached by warp: the ship aligns, accelerates and crosses the system in seconds. Three zoom levels – Combat, Recon (radar) and System – show the same space at different scales.",

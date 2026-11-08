@@ -16,6 +16,7 @@ extends RefCounted
 ## After a death a successor (1–2 stars) takes over the crew after a while. A step towards bosses.
 
 const FactionData = preload("res://data/factions.gd")
+const PilotArtN = preload("res://scripts/core/pilot_art.gd")
 const ArchData = preload("res://data/pirate_archetypes.gd")
 
 const START_STARS := [1, 1, 2, 2, 3]    # the five captains of a new game
@@ -114,6 +115,8 @@ func _make(slot: int, predecessor: String, stars: int) -> Dictionary:
 		"since": GameState.play_time, "star_t": GameState.play_time,
 		"alive": true, "system": -1, "seen": GameState.play_time, "next_move": 0.0, "respawn": 0.0,
 		"raid": {}, "predecessor": predecessor, "bonus": 0, "red": 0, "hidden_until": 0.0,
+		# package 34: a real character – a face for the posters, Piloting and Gunnery that grow with the stars
+		"look": PilotArtN.random_look(), "skill_base": randi_range(1, 3),
 	}
 	c["bounty"] = int(c["base_bounty"])
 	_set_stars(c, stars)
@@ -130,6 +133,19 @@ func _set_stars(c: Dictionary, stars: int) -> void:
 		var ea: String = arch_keys[randi() % arch_keys.size()]
 		var tier := 0 if int(c["stars"]) <= 1 else (1 if int(c["stars"]) <= 3 else randi_range(1, 2))
 		esc.append(String(ArchData.ARCHETYPES[ea]["presets"][tier]))
+
+
+## Package 34: Piloting / Gunnery of a captain (+1 % speed / damage each): grows with the stars.
+static func skill(c: Dictionary) -> int:
+	return clampi(int(c.get("skill_base", 2)) + int(c.get("stars", 1)) * 2 - 1, 1, 12)
+
+
+## Makes older captains real characters too.
+static func ensure_character(c: Dictionary) -> void:
+	if not c.has("look"):
+		c["look"] = PilotArtN.random_look()
+	if not c.has("skill_base"):
+		c["skill_base"] = 2
 
 
 static func title(c: Dictionary) -> String:
@@ -158,6 +174,13 @@ static func is_hidden(c: Dictionary) -> bool:
 
 static func toughness(c: Dictionary) -> float:
 	return float(TOUGHNESS[clampi(int(c.get("stars", 1)), 0, 5)])
+
+
+## The hull of the captain's own ship.
+static func hull_of(c: Dictionary) -> String:
+	if c.has("hull"):
+		return String(c["hull"])
+	return String(GameData.presets[String(c["preset"])]["hull"])
 
 
 func get_captain(id: String) -> Dictionary:
@@ -329,6 +352,8 @@ func on_killed(id: String, by_player: bool) -> void:
 	if c.is_empty() or not c["alive"]:
 		return
 	c["alive"] = false
+	if by_player:
+		GameState.collect_notorious(c)              # package 34: the collection
 	if not (c["raid"] as Dictionary).is_empty():
 		_news("The raid on %s ended with the death of %s." % [c["raid"].get("name", "a station"), title(c)])
 	c["raid"] = {}

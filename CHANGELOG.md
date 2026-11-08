@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.34.1 – 2026-11-08
+
+**Package 34 – codex, collection, wanted posters** (the last package of part 5).
+- Notorious pirates are characters: a face and Piloting & Gunnery that grow with their stars and work on their ship.
+- The Bond Office shows Wild West wanted posters: WANTED, the mugshot, the stars, DEAD OR ALIVE, the reward, the ship
+  and the escort.
+- Pilot window → Pilot → Collection: crew perks you have had (the rest "???") and the posters of the notorious
+  pirates you destroyed.
+- Codex: new category Pilot & Crew (8 entries), unlocked at first contact.
+
 ## alpha 0.5.33.1 – 2026-11-07
 
 **Package 33 – wingmen** (mercenaries for ground combat follow in part 7).

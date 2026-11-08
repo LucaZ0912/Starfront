@@ -890,6 +890,7 @@ func _c_platform_load(c: Dictionary) -> String:
 	cit.platform_ship = s.to_dict()
 	cit.platform_out = false
 	GameState.log_msg("%s now stands on the platform of the %s." % [s.ship_name, cit.ship_name], GameState.COL_GOOD)
+	GameState.codex.event("platform")
 	GameState.fleet_changed.emit()
 	return ""
 
@@ -1011,6 +1012,7 @@ func _c_crew_hire(c: Dictionary) -> String:
 	offers.remove_at(i)
 	var m: Dictionary = o["m"]
 	GameState.quarters_of(String(st["id"])).append(m)
+	GameState.codex.event("crew")
 	GameState.log_msg("%s (%s, quality %s) hired for %s." % [m["name"], CrewData.role_name(String(m["role"])), m["quality"], GameData.fmt_credits(int(o["price"]))], GameState.COL_GOOD)
 	if c.has("ship"):
 		var e2 := _c_crew_assign({"member": int(m["id"]), "ship": int(c["ship"]), "slot": int(c.get("slot", -1))})

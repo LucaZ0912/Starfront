@@ -67,6 +67,9 @@ var _pod_tick_t := 0.0
 ## as plain data in w["ship"]. Their ships fly as nodes only while the pilot is in space (SystemView).
 var wingmen: Array = []
 var _wing_tick_t := 0.0
+## Package 34: the collection – crew perks the pilot has had in the crew, notorious pirates destroyed
+var collection := {"perks": [], "notorious": []}
+var _collect_t := 0.0
 signal wingmen_changed
 const WingData = preload("res://data/wingmen.gd")
 const CrewData = preload("res://data/crew.gd")
@@ -135,6 +138,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	rescued.clear()
 	_pod_seq = 1
 	wingmen.clear()
+	collection = {"perks": [], "notorious": []}
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -453,6 +457,7 @@ func to_dict() -> Dictionary:
 		"crew_quarters": crew_quarters.duplicate(true), "bar": bar.duplicate(true), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
+		"collection": collection.duplicate(true),
 	}
 
 
@@ -487,6 +492,7 @@ func from_dict(d: Dictionary) -> void:
 	rescued = d.get("rescued", []).duplicate(true)
 	_pod_seq = int(d.get("pod_seq", 1))
 	wingmen = d.get("wingmen", []).duplicate(true)
+	collection = d.get("collection", {"perks": [], "notorious": []}).duplicate(true)
 	if not loss_offer.is_empty():
 		ship_lost.emit.call_deferred(loss_offer)        # saved before deciding: ask again
 	Missions._counter = int(d.get("mission_counter", 1000))
@@ -810,6 +816,8 @@ func _lose_active(f: ShipFitting) -> void:
 			dead.append(m2)
 	for m3 in dead:
 		log_msg("%s (%s) did not make it out." % [m3["name"], CrewData.role_name(String(m3["role"]))], COL_BAD)
+	if not members.is_empty():
+		codex.event("pod")
 	if not alive.is_empty():
 		var pod := {"id": "pod%d" % _pod_seq, "system": f.system_id, "pos": f.position, "crew": alive}
 		_pod_seq += 1
@@ -978,6 +986,8 @@ func new_crew(role: String, quality: String, perk: String = "?") -> Dictionary:
 ## a rookie platform pilot (package 33).
 func crew_fill_required(f: ShipFitting) -> void:
 	var sl := f.crew_slots()
+	if not sl.is_empty() and fleet.has(f):
+		codex.event("crew")                       # package 34: the first ship with crew
 	for i in sl.size():
 		if bool(sl[i][1]) and f.crew_at(i).is_empty():
 			f.set_crew(i, new_crew(String(sl[i][0]), "F", ""))
@@ -1084,6 +1094,37 @@ func crew_learn(metric_id: String, n: float) -> void:
 				Audio.play("mission_complete", "crew step up")
 
 
+# ---------------------------------------------------------------- The collection (package 34)
+
+## Every perk a crew member of the pilot has (aboard any ship, in the quarters, the platform pilot) is collected.
+func collect_perks() -> void:
+	var have: Array = collection.get("perks", [])
+	var found: Array = []
+	for f in fleet:
+		for m in f.crew_members():
+			found.append(String(m.get("perk", "")))
+	for sid in crew_quarters:
+		for m2 in crew_quarters[sid]:
+			found.append(String(m2.get("perk", "")))
+	for p in found:
+		if p != "" and not p in have:
+			have.append(p)
+			log_msg("Collection: crew perk \"%s\" collected." % CrewData.PERKS.get(p, {}).get("name", p), COL_GOOD)
+			codex.event("collection")
+	collection["perks"] = have
+
+
+## A notorious pirate destroyed by the pilot goes into the collection – with the mugshot.
+func collect_notorious(c: Dictionary) -> void:
+	var NC = load("res://scripts/core/notorious.gd")
+	NC.ensure_character(c)
+	collection["notorious"].append({"name": c["name"], "nick": c["nick"], "stars": int(c["stars"]), "red": int(c.get("red", 0)),
+		"look": (c["look"] as Dictionary).duplicate(), "hull": NC.hull_of(c), "paint": int(c["paint"]), "bounty": int(c["bounty"]),
+		"trait": String(c["trait"]), "faction": String(c["faction"]), "t": play_time, "system": int(c.get("system", current_system)),
+		"escorts_n": (c["escorts"] as Array).size(), "alive": false})
+	codex.event("collection")
+
+
 # ---------------------------------------------------------------- Wingmen (package 33)
 
 ## A wingman: name, portrait, level, Piloting and Gunnery, two traits, a ship with its standard fit.
@@ -1162,6 +1203,7 @@ func wing_hire_error() -> String:
 
 func wing_hire(w: Dictionary, minutes: int) -> void:
 	wingmen.append({"w": w, "until": play_time + float(minutes) * 60.0, "stance": "defensive", "minutes": minutes})
+	codex.event("wingmen")
 	skill_xp("leadership", 10.0)
 	log_msg("%s (%s, %s) flies with you for %d minutes – share %d %% of the income." % [w["name"], w["level"], String(w["ship"]["ship_name"]),
 		minutes, int(round(float(WingData.SHARE[String(w["level"])]) * 100.0))], COL_GOOD)
@@ -1761,6 +1803,10 @@ func _process(delta: float) -> void:
 	if _pod_tick_t <= 0.0 and not pods.is_empty():
 		_pod_tick_t = 1.0
 		pods_tick()                              # package 31a
+	_collect_t -= delta
+	if _collect_t <= 0.0:
+		_collect_t = 2.0
+		collect_perks()                          # package 34
 	_wing_tick_t -= delta
 	if _wing_tick_t <= 0.0 and not wingmen.is_empty():
 		_wing_tick_t = 1.0

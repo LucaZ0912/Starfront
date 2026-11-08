@@ -54,11 +54,11 @@ static func hire_roles() -> Array:
 ## second_profession: also fits a second role, with a bonus of its own there.
 const PERKS := {
 	"second_profession": {"name": "Second Profession", "text": "Also serves in a second role, with its own bonus there.", "weight": 1.0},
-	"lucky": {"name": "Lucky", "text": "Survives the loss of the ship almost always (package 31a).", "weight": 0.5},
+	"lucky": {"name": "Lucky", "text": "Survives the loss of the ship almost always.", "weight": 0.5},
 	"quick_learner": {"name": "Quick Learner", "text": "Learns twice as fast.", "weight": 0.5},
 	"loyal": {"name": "Loyal", "text": "Takes no share of the income.", "weight": 0.5},
 	"old_hand": {"name": "Old Hand", "text": "Bonus +50 %.", "weight": 0.4},
-	"medic": {"name": "Medic", "text": "The rest of the crew survives a ship loss more often (package 31a).", "weight": 0.4},
+	"medic": {"name": "Medic", "text": "The rest of the crew survives a ship loss more often.", "weight": 0.4},
 	"thrifty": {"name": "Thrifty", "text": "The whole crew of the ship takes half the share.", "weight": 0.35},
 	"night_owl": {"name": "Night Owl", "text": "Bonus doubled in systems with low security (below 0.5).", "weight": 0.35},
 	# package 31a (ideas of Luz)

@@ -20,7 +20,9 @@ const TAB_PILOT := 0
 const TAB_SKILLS := 1
 const TAB_PERKS := 2
 const TAB_TREE := 3
-const SUBS := ["Info", "Standings", "Codex"]
+const SUBS := ["Info", "Standings", "Codex", "Collection"]
+const CrewDataP = preload("res://data/crew.gd")
+const BondPanel = preload("res://scripts/ui/station/bond_panel.gd")
 const StandingView = preload("res://scripts/ui/standing_view.gd")
 const CodexView = preload("res://scripts/ui/codex_view.gd")
 const TreeData = preload("res://data/skilltree.gd")
@@ -627,6 +629,46 @@ func _pilot() -> void:
 			var cv := CodexView.new()
 			body.add_child(cv)
 			cv.setup(true)
+		3: _collection()
+
+
+## Package 34: the collection – crew perks the pilot has had in the crew (tiles; the rest "???"), notorious pirates
+## destroyed (their wanted posters with the mugshot).
+func _collection() -> void:
+	var have: Array = GameState.collection.get("perks", [])
+	body.add_child(UI.label("CREW PERKS  %d / %d" % [have.size(), CrewDataP.PERKS.size()], 16, COL))
+	body.add_child(UI.label("A perk counts once a crew member with it serves you – aboard, on the platform or in the crew quarters. Perks are very rare.", 12, UI.TEXT_DIM))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	body.add_child(flow)
+	for p in CrewDataP.PERKS:
+		var got: bool = p in have
+		var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.12, 0.09, 0.03, 0.95) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
+		tile.custom_minimum_size = Vector2(230, 96)
+		flow.add_child(tile)
+		var v := UI.vbox(2)
+		tile.add_child(v)
+		if got:
+			v.add_child(UI.label("★ " + String(CrewDataP.PERKS[p]["name"]), 15, COL))
+			v.add_child(UI.wrap_label(String(CrewDataP.PERKS[p]["text"]), 11, Color(0.9, 0.88, 0.8), 210))
+		else:
+			var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
+			q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			q.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			v.add_child(q)
+	var killed: Array = GameState.collection.get("notorious", [])
+	body.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
+	if killed.is_empty():
+		body.add_child(UI.label("None yet – their wanted posters hang in every Bond Office.", 12, UI.TEXT_DIM))
+		return
+	var pf := HFlowContainer.new()
+	pf.add_theme_constant_override("h_separation", 12)
+	pf.add_theme_constant_override("v_separation", 12)
+	body.add_child(pf)
+	for k in range(killed.size() - 1, -1, -1):
+		pf.add_child(BondPanel.wanted_poster(killed[k]))
 
 
 func _set_sub(i: int) -> void:

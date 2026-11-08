@@ -571,6 +571,7 @@ func _process(delta: float) -> void:
 				_test_pilot()
 				_test_wingmen(view)
 				_test_platform()
+				_test_collection()
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -2911,7 +2912,8 @@ func _test_codex(view: SystemView) -> void:
 	var all: Dictionary = cdx.all
 	var cats := {}
 	var refs_ok := true
-	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond"]
+	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
+		"crew", "wingmen", "platform", "pod", "collection"]
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -2919,7 +2921,7 @@ func _test_codex(view: SystemView) -> void:
 			refs_ok = refs_ok and all.has(r)
 		var u := String(all[id]["unlock"])
 		unlock_ok = unlock_ok and (u in events or u.begins_with("faction:") or u.begins_with("corp:"))
-	check(all.size() >= 40 and cats.size() == 6, "codex: %d entries in %d categories" % [all.size(), cats.size()])
+	check(all.size() >= 40 and cats.size() == 7, "codex: %d entries in %d categories" % [all.size(), cats.size()])
 	check(refs_ok and unlock_ok, "codex: every cross reference and unlock event is valid")
 	var start_n := 0
 	for id in all:
@@ -5892,3 +5894,54 @@ func _shoot_wingmen(view: SystemView) -> void:
 	view._sync_wingmen()
 	GameState.pilot["skills"]["leadership"]["lvl"] = lead_keep
 	_shooting = false
+
+
+## Package 34: notorious pirates as characters, the Wild West poster, the collection.
+func _test_collection() -> void:
+	var NC = load("res://scripts/core/notorious.gd")
+	var BP = load("res://scripts/ui/station/bond_panel.gd")
+	var keep: Dictionary = GameState.collection.duplicate(true)
+	var c: Dictionary = {}
+	for cc in GameState.notorious.captains:
+		if cc["alive"]:
+			c = cc
+			break
+	var char_ok := true
+	var poster_ok := true
+	if not c.is_empty():
+		NC.ensure_character(c)
+		char_ok = not (c["look"] as Dictionary).is_empty() and NC.skill(c) >= 1 and NC.skill(c) <= 12
+		var p = BP.wanted_poster(c, GameState.current_system)
+		poster_ok = p != null and p.find_children("*", "Label", true, false).any(func(l): return (l as Label).text == "WANTED") 			and p.find_children("*", "Label", true, false).any(func(l): return (l as Label).text == "DEAD OR ALIVE")
+		p.free()
+	check(char_ok and poster_ok, "notorious pirates are characters (face, Piloting & Gunnery by stars); the wanted poster: WANTED, mugshot, stars, DEAD OR ALIVE, reward, ship and escort")
+	# the collection: perks of the crew, destroyed captains with their poster
+	GameState.collection = {"perks": [], "notorious": []}
+	var f := GameState.active()
+	var room := -1
+	for i in f.crew_slots().size():
+		if f.crew_at(i).is_empty():
+			room = i
+	var tmp: Dictionary = {}
+	if room >= 0:
+		tmp = GameState.new_crew(String(f.crew_slots()[room][0]), "C", "loyal")
+		f.set_crew(room, tmp)
+	else:
+		GameState.quarters_of("smoke_q").append(GameState.new_crew("gunner", "C", "loyal"))
+	GameState.collect_perks()
+	var perk_ok: bool = "loyal" in GameState.collection["perks"]
+	if room >= 0:
+		f.set_crew(room, {})
+	GameState.crew_quarters.erase("smoke_q")
+	if not c.is_empty():
+		GameState.collect_notorious(c)
+	var rec_ok: bool = c.is_empty() or (GameState.collection["notorious"].size() == 1 and String(GameState.collection["notorious"][0]["name"]) == String(c["name"]))
+	var pw = main.pilot_window
+	pw.sub = 3
+	pw.open(0)
+	var n_ui: int = pw.body.get_child_count()
+	var posters: int = pw.body.find_children("*", "Label", true, false).filter(func(l): return (l as Label).text == "WANTED").size()
+	pw.sub = 0
+	pw.close()
+	check(perk_ok and rec_ok and n_ui > 4 and (c.is_empty() or posters == 1), "collection: a crew perk counts once it serves you, a destroyed notorious pirate hangs there with the poster (Pilot → Collection)")
+	GameState.collection = keep

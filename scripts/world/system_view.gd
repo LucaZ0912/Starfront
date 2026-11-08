@@ -867,6 +867,9 @@ func _spawn_captain(c: Dictionary, arriving: bool) -> Ship:
 		lead.fit.modules["weapon_0"] = GameData.legacy_id("w_ion_torpedo")
 		lead.fit.mark_dirty()
 	lead.fit.ship_name = NotoriousData.title(c)
+	NotoriousData.ensure_character(c)                # package 34: the captain's skills work on the ship
+	lead.fit.wing_mult = {"speed": NotoriousData.skill(c) * 0.01, "damage": NotoriousData.skill(c) * 0.01}
+	lead.fit.mark_dirty()
 	lead.paint = "notorious_%d" % int(c["paint"])
 	lead.bounty = int(c["bounty"])
 	lead.bounty_by = GameState.rep.issuer(system_id)

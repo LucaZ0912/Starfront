@@ -103,6 +103,12 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## Collection and wanted posters (phase 0.5 package 34)
+- Notorious pirates have a face and Piloting & Gunnery that grow with their stars. Their **wanted posters** in every
+  Bond Office: WANTED, the mugshot, the stars, DEAD OR ALIVE, the reward, ship and escort.
+- **Pilot window → Pilot → Collection:** every crew perk that has served with you (the others show "???") and the
+  posters of the notorious pirates you destroyed. Codex category **Pilot & Crew**.
+
 ## Wingmen (phase 0.5 package 33)
 - **The Bar → Pilots for hire:** wingmen with their own ship (loadout shown), two skills and two traits (Daredevil,
   Cautious, Disciplined, Hothead, Sharpshooter, Loyal, Greedy). A contract runs 30, 60 or 120 minutes: paid up front,
