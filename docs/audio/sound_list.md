@@ -187,3 +187,5 @@ maschinengewehrartig gleich klingt.
 
 **Umfang:** insgesamt 103 Einträge – Priorität A sind 36 Sounds, B 39, C 28. Damit ist das Grundgerüst vollständig spielbar; alles andere kann nach und
 nach mit den Paketen kommen.
+
+| `cme_alarm` | 0.6.37.4: Warnung vor einem koronalen Massenausbruch (10 s vorher bis kurz danach) | Ruhiger, fremdartiger Alarm im Loop – von Luz geliefert (Pixabay, „extraterrestrial alert sound“ von fnx_sound, Pixabay Content License) | Loop | ✓ echt |

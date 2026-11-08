@@ -6351,6 +6351,22 @@ func _test_stars(view: SystemView) -> void:
 			view._cme_hit(dr, 9.0e6, 60000.0)
 			drone_ok = float(dr.get("stunned_t")) > 0.0 and bool(dr.get("stun_white"))
 			dr.set("stunned_t", 0.0)
+	# 0.6.37.4: 10 s before the eruption a red banner top centre and the alarm; not earlier
+	var banner_ok := true
+	if bool(view.star_type().get("cme", false)):
+		view.start_cme()
+		view._update_cme(view.CME_WARN - view.CME_BANNER - 2.0)
+		var early: bool = view.cme_banner().is_empty() and not Audio.loop_playing("cme_alarm")
+		view._update_cme(5.0)
+		var b: Dictionary = view.cme_banner()
+		main.hud._update_cme_banner(0.1)
+		banner_ok = early and String(b.get("text", "")).contains("ENERGY SPIKE") and Audio.loop_playing("cme_alarm") and main.hud.cme_banner.visible
+		view._cme = {}
+		view._cme_alarm()
+		main.hud._update_cme_banner(0.1)
+		banner_ok = banner_ok and not Audio.loop_playing("cme_alarm") and not main.hud.cme_banner.visible
+		pl2.jammed_t = 0.0
+	check(banner_ok, "0.6.37.4: 10 s before a coronal mass ejection a red banner top centre (ENERGY SPIKE DETECTED) and an alarm; gone once it is over")
 	# 0.6.37.2: star classes go into the collection (not the codex)
 	var seen_ok: bool = String(view.layout["star"].get("star_id", "")) in GameState.collection.get("stars", [])
 	var facts_ok := true

@@ -246,6 +246,26 @@ func _ready() -> void:
 	GameState.codex_unlocked.connect(_on_codex_unlocked)
 	GameState.pods_changed.connect(refresh_overview)         # package 31a: escape pods in the overview
 
+	# --- 0.6.37.4: the coronal mass ejection warning (top centre, red and bold)
+	cme_banner = UI.vbox(2)
+	cme_banner.anchor_left = 0.5
+	cme_banner.anchor_right = 0.5
+	cme_banner.offset_left = -500
+	cme_banner.offset_right = 500
+	cme_banner.offset_top = 124
+	cme_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cme_banner.visible = false
+	root.add_child(cme_banner)
+	for k in 2:
+		var bl := UI.label("", 30 if k == 0 else 15, Color(1.0, 0.22, 0.18) if k == 0 else Color(1.0, 0.55, 0.45))
+		bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bl.add_theme_color_override("font_outline_color", Color(0.25, 0.0, 0.0, 0.95))
+		bl.add_theme_constant_override("outline_size", 8 if k == 0 else 5)
+		bl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+		bl.add_theme_constant_override("shadow_offset_x", 2)
+		bl.add_theme_constant_override("shadow_offset_y", 2)
+		cme_banner.add_child(bl)
+
 	# --- No-fire zone / hostile guns banner (bottom centre, above the module bar)
 	zone_label = UI.label("", 14, UI.GOLD)
 	zone_label.anchor_left = 0.5
@@ -631,8 +651,28 @@ func _update_fps(delta: float) -> void:
 	_fps_worst = 0.0
 
 
+var cme_banner: VBoxContainer
+var _cme_pulse := 0.0
+
+
+## 0.6.37.4: the red CME warning top centre – pulsing.
+func _update_cme_banner(delta: float) -> void:
+	if cme_banner == null:
+		return
+	var b: Dictionary = view.cme_banner() if view != null and is_instance_valid(view) else {}
+	cme_banner.visible = not b.is_empty()
+	if b.is_empty():
+		_cme_pulse = 0.0
+		return
+	_cme_pulse += delta
+	(cme_banner.get_child(0) as Label).text = String(b["text"])
+	(cme_banner.get_child(1) as Label).text = String(b["sub"])
+	cme_banner.modulate.a = float(b["k"]) * (0.72 + 0.28 * absf(sin(_cme_pulse * 3.2)))
+
+
 func _process(delta: float) -> void:
 	_update_fps(delta)
+	_update_cme_banner(delta)
 	if hover_panel.visible:
 		var mp := get_viewport().get_mouse_position()
 		hover_panel.position = mp + Vector2(18, 18)

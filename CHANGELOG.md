@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.37.4 – 2026-11-08
+
+**Coronal mass ejection warning:** 10 s before the eruption a red, bold, pulsing banner top centre – "! ENERGY SPIKE
+DETECTED ON THE STAR !" with a countdown – and a calm, alien alarm that fades in and out (sound: "extraterrestrial
+alert sound" by fnx_sound, Pixabay). The audio system now plays MP3 as well.
+
 ## alpha 0.6.37.3 – 2026-11-08
 
 **Zooming between the recon view and the map:** the planets, moons and the star glide from their place in the sky to

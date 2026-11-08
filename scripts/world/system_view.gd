@@ -152,6 +152,8 @@ const CME_WARN := 25.0                        # s of warning
 const CME_SPEED := 90000.0                    # km/s of the shockwave
 const CME_BAND := 260000.0                    # km thickness of the shockwave
 const CME_ERUPT := 6.0                        # s the eruption takes on the star
+const CME_BANNER := 10.0                      # 0.6.37.4: s before the eruption the red banner and the alarm start
+const CME_ALARM_VOL := 0.55
 var _cme: Dictionary = {}
 var _cme_next := -1.0
 
@@ -168,6 +170,7 @@ func _update_cme(delta: float) -> void:
 		return
 	_cme["t"] = float(_cme["t"]) + delta
 	var t: float = _cme["t"]
+	_cme_alarm()
 	if _cme["phase"] == "warn":
 		if t >= CME_WARN:
 			_cme["phase"] = "burst"
@@ -193,6 +196,35 @@ func _update_cme(delta: float) -> void:
 	if r - CME_BAND > Universe.SYSTEM_RADIUS * 1.05:
 		_cme = {}
 		_cme_next = randf_range(CME_EVERY.x, CME_EVERY.y)
+		Audio.loop("cme_alarm", "cme_alarm", false)
+
+
+## 0.6.37.4: the red banner top centre: {} or {"text", "sub", "k" (0…1 how strongly it shows)} – 10 s before the
+## eruption until a few seconds after it.
+func cme_banner() -> Dictionary:
+	if _cme.is_empty():
+		return {}
+	var t: float = _cme["t"]
+	if _cme["phase"] == "warn":
+		var left := CME_WARN - t
+		if left > CME_BANNER:
+			return {}
+		return {"text": "! ENERGY SPIKE DETECTED ON THE STAR !", "sub": "Coronal mass ejection in %d s – brace for the shockwave" % int(ceil(left)), "k": 1.0}
+	if t < 4.0:
+		return {"text": "! CORONAL MASS EJECTION !", "sub": "Shockwave on its way through the system", "k": 1.0 - smoothstep(2.5, 4.0, t)}
+	return {}
+
+
+## 0.6.37.4: the alarm – fades in with the banner, fades out after the eruption.
+func _cme_alarm() -> void:
+	var b := cme_banner()
+	if b.is_empty():
+		Audio.loop("cme_alarm", "cme_alarm", false)
+		return
+	var vol := CME_ALARM_VOL * float(b["k"])
+	if _cme["phase"] == "warn":
+		vol *= smoothstep(0.0, 1.0, CME_BANNER - (CME_WARN - float(_cme["t"])))
+	Audio.loop("cme_alarm", "cme_alarm", vol > 0.01, maxf(vol, 0.01))
 
 
 ## Starts a coronal mass ejection (debug: at once, without the warning).

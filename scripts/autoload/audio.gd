@@ -12,7 +12,7 @@ extends Node
 const BUSES := ["Music", "Ambience", "SFX", "UI"]
 const BUS_OF := {"amb_": "Ambience", "mus_": "Music", "ui_": "UI", "buy": "UI", "sell": "UI", "notify": "UI", "warn": "UI",
 	"mission_": "UI"}
-const LOOPS := ["engine_loop", "w_beam_loop", "mining_loop", "alarm_hull", "amb_space"]
+const LOOPS := ["engine_loop", "w_beam_loop", "mining_loop", "alarm_hull", "amb_space", "cme_alarm"]
 const HEAR_RANGE := 9000.0        # km: sounds further from the camera are not heard
 const VOICES := 24                # one-shot players in the pool
 const SAME_ID_GAP := 0.045        # seconds: the same sound does not start again faster than this
@@ -55,7 +55,7 @@ func ids() -> Array:
 		var base := f.get_basename()
 		if f.ends_with(".import") or base in out:
 			continue
-		if f.get_extension() in ["wav", "ogg"]:
+		if f.get_extension() in ["wav", "ogg", "mp3"]:
 			out.append(base)
 	out.sort()
 	return out
@@ -65,7 +65,7 @@ func stream(id: String) -> AudioStream:
 	if _streams.has(id):
 		return _streams[id]
 	var s: AudioStream = null
-	for ext in ["ogg", "wav"]:
+	for ext in ["ogg", "wav", "mp3"]:          # 0.6.37.4: mp3 too (the CME alarm)
 		var path := "res://assets/sfx/%s.%s" % [id, ext]
 		if ResourceLoader.exists(path):
 			s = load(path)
@@ -77,6 +77,8 @@ func stream(id: String) -> AudioStream:
 			s.loop_begin = 0
 			s.loop_end = int(s.get_length() * float(s.mix_rate))
 		elif s is AudioStreamOggVorbis:
+			s.loop = true
+		elif s is AudioStreamMP3:
 			s.loop = true
 	_streams[id] = s
 	return s
