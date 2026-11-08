@@ -1014,6 +1014,15 @@ func gas_volume() -> float:
 	return v
 
 
+## Package 41: gas in the tanks / in the racks (there at twice the room).
+func gas_tank_used() -> float:
+	return minf(gas_volume(), float(stats().get("gas_cargo_max", 0.0)))
+
+
+func gas_in_racks() -> float:
+	return maxf(0.0, gas_volume() - float(stats().get("gas_cargo_max", 0.0)))
+
+
 ## Ore volume in the ore-hold sense (radioactive ore in shielded racks does not count).
 func ore_volume() -> float:
 	var v := 0.0

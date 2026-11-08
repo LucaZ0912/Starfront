@@ -889,7 +889,8 @@ func _build_ship() -> void:
 		"Sensor range: %.0f km" % s["sensor_range"],
 		"Resolution: %.2f" % s["resolution"],
 		"Scan strength: %.2f" % s["scan_strength"],
-		"Cargo: %.0f / %.0f m³" % [fit.cargo_used(), s["cargo_max"]],
+		"Cargo: %.0f / %.0f m³" % [fit.cargo_used(), s["cargo_max"]] + ("  •  gas tanks %.0f / %.0f m³" % [fit.gas_tank_used(), float(s["gas_cargo_max"])] if float(s.get("gas_cargo_max", 0.0)) > 0.0 else "")
+			+ ("  •  shielded %.0f / %.0f m³" % [float(fit.rad_split()["shielded"]), float(s["rad_cargo_max"])] if float(s.get("rad_cargo_max", 0.0)) > 0.0 else ""),
 		"Tools fitted: %d / %d" % [s["tools"].size(), int(h["slots"].get("tool", 0))],
 		"Optional slots: %d" % int(h["slots"].get("optional", 0)),
 	])
@@ -910,6 +911,41 @@ func _build_ship() -> void:
 
 # ================================================================ Inventory
 
+## Package 41: the gas tanks and shielded racks under the cargo bar, with where the gas and the radioactive goods are.
+func _extra_holds(c: Control) -> void:
+	var s := fit.stats()
+	var gmax := float(s.get("gas_cargo_max", 0.0))
+	var rmax := float(s.get("rad_cargo_max", 0.0))
+	if gmax > 0.0:
+		c.add_child(UI.label("GAS TANKS  –  %.1f / %.0f m³" % [fit.gas_tank_used(), gmax], 13, UI.NEON_CYAN))
+		var gb := UI.bar(Color(0.55, 0.85, 0.95), 600)
+		gb.max_value = gmax
+		gb.value = fit.gas_tank_used()
+		c.add_child(gb)
+	if fit.gas_in_racks() > 0.0:
+		c.add_child(UI.label("Gas in the cargo racks: %.1f m³ – takes twice the room there (%.1f m³)%s" % [fit.gas_in_racks(), fit.gas_in_racks() * fit.GAS_RACK_MULT,
+			"" if gmax > 0.0 else "  •  gas tanks hold it at its own volume"], 12, UI.GOLD))
+	var rs := fit.rad_split()
+	if rmax > 0.0:
+		c.add_child(UI.label("SHIELDED RACKS  –  %.1f / %.0f m³" % [float(rs["shielded"]), rmax], 13, UI.NEON_CYAN))
+		var rb := UI.bar(Color(0.55, 0.95, 0.4), 600)
+		rb.max_value = rmax
+		rb.value = float(rs["shielded"])
+		c.add_child(rb)
+	var over := float(rs["ore_over"]) + float(rs["other_over"])
+	if over > 0.0:
+		c.add_child(UI.label("☢ %.1f m³ of radioactive goods outside shielded racks – the crew is exposed" % over, 12, UI.BAD))
+
+
+func _volume_text(item: String, amount: float) -> String:
+	var v := amount * GameData.item_volume(item)
+	if fit.is_gas(item):
+		return "%.1f m³ (gas)" % v
+	if fit.is_radioactive(item):
+		return "%.1f m³ ☢" % v
+	return "%.1f m³" % v
+
+
 func _build_inventory() -> void:
 	var box := _scroll()
 	var ore_t := ""
@@ -920,6 +956,7 @@ func _build_inventory() -> void:
 	b.max_value = maxf(float(fit.stats()["cargo_max"]), 0.001)
 	b.value = fit.cargo_used()
 	c.add_child(b)
+	_extra_holds(c)                                  # package 41: gas tanks, shielded racks
 	if fit.cargo.is_empty():
 		c.add_child(UI.label("The cargo hold is empty.", 13, UI.TEXT_DIM))
 	else:
@@ -942,7 +979,7 @@ func _build_inventory() -> void:
 			grid.add_child(UI.icon(tex, 24))
 			grid.add_child(UI.label(GameData.item_name(item), 14))
 			grid.add_child(UI.label("%.1f" % amount))
-			grid.add_child(UI.label("%.1f m³" % (amount * GameData.item_volume(item)), 13, UI.TEXT_DIM))
+			grid.add_child(UI.label(_volume_text(String(item), amount), 13, UI.TEXT_DIM))
 			grid.add_child(UI.label(GameData.fmt_credits(GameData.item_value(item) * amount) if GameData.item_value(item) > 0.0 else "–", 13, UI.GOLD))
 			var id: String = item
 			var jet := UI.button("Jettison", func(): _jettison(id))

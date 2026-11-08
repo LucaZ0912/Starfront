@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.41.4 – 2026-11-08
+
+- Inventory: the gas tanks and shielded racks get their own bars under the cargo hold (used / room); gas in the
+  ordinary racks is shown with the room it takes there (twice its volume); radioactive goods outside shielded racks
+  get a warning line. Gases are marked "(gas)", radioactive goods ☢.
+- The ship info (HUD and the Info tab) shows the gas tanks and shielded racks next to the cargo.
+
 ## alpha 0.6.41.3 – 2026-11-08
 
 - Fixed: the ship menu's Modules tab crashed with a gas collector or deep core drill fitted (the tool kinds had no name).

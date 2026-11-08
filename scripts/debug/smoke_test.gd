@@ -6903,6 +6903,22 @@ func _test_mining41(view: SystemView) -> void:
 		smg.open(view, 1)                         # the Modules tab with the collector fitted (crashed in 0.6.41.2)
 		var tab_ok: bool = smg.visible
 		smg.close()
+		# the Inventory and Info tabs show the gas tanks and shielded racks (with gas in the hold)
+		var okeep: String = ship.fit.modules.get("optional_0", "")
+		ship.fit.modules["optional_0"] = "o_gastank:2:C"
+		ship.fit.mark_dirty()
+		ship.fit.add_cargo("hydrogen", 3.0)
+		smg.open(view, 3)
+		var inv_text := ""
+		for lb in smg.find_children("*", "Label", true, false):
+			inv_text += (lb as Label).text + "
+"
+		smg.open(view, 0)
+		smg.close()
+		ship.fit.remove_cargo("hydrogen", 3.0)
+		ship.fit.modules["optional_0"] = okeep
+		ship.fit.mark_dirty()
+		check(inv_text.contains("GAS TANKS") and inv_text.contains("(gas)"), "41: the Inventory shows the gas tanks (used / room) and which goods are gas")
 		gerr = gerr if tab_ok else "Modules tab did not open"
 		ship.set_module_active(gslot, false)
 		ship.fit.modules[gslot] = gkeep

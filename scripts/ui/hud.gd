@@ -756,6 +756,10 @@ func _process(delta: float) -> void:
 	var ore_txt := ""
 	if float(s["ore_cargo_max"]) > 0.0:
 		ore_txt = "  + ore %.0f / %.0f" % [f.ore_hold_used(), float(s["ore_cargo_max"])]
+	if float(s.get("gas_cargo_max", 0.0)) > 0.0:
+		ore_txt += "  + gas %.0f / %.0f" % [f.gas_tank_used(), float(s["gas_cargo_max"])]
+	if float(s.get("rad_cargo_max", 0.0)) > 0.0:
+		ore_txt += "  + shielded %.0f / %.0f" % [float(f.rad_split()["shielded"]), float(s["rad_cargo_max"])]
 	_w["cargo"].text = "Cargo %.0f / %.0f%s   •   %s" % [f.cargo_used(), float(s["cargo_max"]), ore_txt, f.location_text()]
 	_set_bar(_w["shield"], f.shield, s["shield_max"])
 	_set_bar(_w["armor"], f.armor, s["armor_max"])
