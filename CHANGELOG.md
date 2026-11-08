@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.37.3 – 2026-11-08
+
+**Zooming between the recon view and the map:** the planets, moons and the star glide from their place in the sky to
+their place on the map (and back), the zoom passes the change at an even pace (about 0.6 s), and a holo grid flashes
+up while a scan line sweeps the screen – like a cockpit display switching to the tactical view.
+
 ## alpha 0.6.37.2 – 2026-11-08
 
 - **Neutron stars** blaze much brighter – a bright point even on the system map.

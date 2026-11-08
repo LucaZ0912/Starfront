@@ -87,6 +87,13 @@ func build(p_system: int) -> void:
 	sky = CanvasLayer.new()
 	sky.layer = -9
 	add_child(sky)
+	# 0.6.37.3: the holo grid and scan line of the change between the local view and the map
+	var zfx_layer := CanvasLayer.new()
+	zfx_layer.layer = 4
+	add_child(zfx_layer)
+	var zfx := ZoomFx.new()
+	zfx.view = self
+	zfx_layer.add_child(zfx)
 
 	body_layer = Node2D.new()
 	body_layer.z_index = -20
@@ -1251,7 +1258,15 @@ func _process(delta: float) -> void:
 	if not (_warp_auto and player != null and is_instance_valid(player) and player.in_warp()):
 		var target := level_zoom(level)
 		if absf(log(_zoom) - log(target)) > 0.001:
-			_set_zoom(exp(lerpf(log(_zoom), log(target), 1.0 - exp(-delta * 9.0))))
+			# 0.6.37.3: slower through the change between the local view and the map – the bodies glide to their places
+			var step := (log(target) - log(_zoom)) * (1.0 - exp(-delta * 9.0))
+			var mp := morph_p()
+			if mp > 0.0 and mp < 1.0:
+				step = signf(step) * minf(absf(step), ZOOM_MORPH_SPEED * delta)   # an even pace through the change
+			elif (mp <= 0.0 and step < 0.0) or (mp >= 1.0 and step > 0.0):
+				# about to enter the change: no faster than its pace on the last bit before it
+				step = signf(step) * minf(absf(step), maxf(ZOOM_MORPH_SPEED * delta, absf(step) * 0.5))
+			_set_zoom(exp(log(_zoom) + step))
 		else:
 			_set_zoom(target)
 	var ls := 1.0 / camera.zoom.x
@@ -1274,6 +1289,53 @@ func level_zoom(l: int) -> float:
 		var vs2 := get_viewport_rect().size
 		return maxf(minf(vs2.x, vs2.y) * 0.5 / ORBIT_VIEW, _min_zoom)
 	return _min_zoom if l >= 3 else float(LEVEL_ZOOMS[l])
+
+
+## 0.6.37.3: how far the change from the local view (0) to the map (1) has got – between 1.6× and 0.6× the switch
+## zoom. The bodies glide from their place in the sky to their place on the map meanwhile.
+const ZOOM_MORPH_SPEED := 1.6          # log-zoom units per second through the change (≈ 0.6 s)
+
+
+func morph_p() -> float:
+	var zs := switch_zoom()
+	return clampf((log(zs * 1.6) - log(camera.zoom.x)) / log(1.6 / 0.6), 0.0, 1.0)
+
+
+## 0.6.37.3: the change of view as a tactical display switching over – a grid in radar green flashes up, a scan line
+## sweeps across the screen.
+class ZoomFx extends Node2D:
+	var view
+	var _last := 0.0
+
+	func _process(_d: float) -> void:
+		var p: float = view.morph_p() if view != null else 0.0
+		if p != _last or (p > 0.0 and p < 1.0):
+			queue_redraw()
+		_last = p
+
+	func _draw() -> void:
+		if view == null:
+			return
+		var p: float = view.morph_p()
+		if p <= 0.0 or p >= 1.0:
+			return
+		var vs := get_viewport_rect().size
+		var a := sin(p * PI)
+		var col := Color(0.35, 1.0, 0.6)
+		var step := 48.0
+		var x := fposmod(-vs.x * 0.5, step)
+		while x < vs.x:
+			draw_line(Vector2(x, 0), Vector2(x, vs.y), Color(col, 0.14 * a), 1.0)
+			x += step
+		var y := fposmod(-vs.y * 0.5, step)
+		while y < vs.y:
+			draw_line(Vector2(0, y), Vector2(vs.x, y), Color(col, 0.14 * a), 1.0)
+			y += step
+		# the scan line with a fading trail behind it
+		var sy := vs.y * p
+		for i in 10:
+			draw_line(Vector2(0, sy - i * 5.0), Vector2(vs.x, sy - i * 5.0), Color(col, 0.5 * a * (1.0 - i / 10.0)), 2.0)
+		draw_line(Vector2(0, sy), Vector2(vs.x, sy), Color(0.8, 1.0, 0.9, 0.85 * a), 2.0)
 
 
 ## Boundary between the local view (background bodies) and the system map.
@@ -1426,8 +1488,10 @@ func _update_bodies() -> void:
 	var vs := get_viewport_rect().size
 	var vmin := minf(vs.x, vs.y)
 	var center := vs * 0.5
-	var sky_a := sky_alpha()
-	var map_a := map_alpha()
+	var mp := morph_p()                                        # 0.6.37.3: 0 local view … 1 map
+	var mk := smoothstep(0.0, 1.0, mp)
+	var sky_body_a := 1.0 - smoothstep(0.8, 1.0, mp)            # the sky picture holds until it has reached its place
+	var map_body_a := smoothstep(0.75, 1.0, mp)                 # … then the map picture takes over
 	for b in bodies:
 		var data: Dictionary = b["data"]
 		var r: float = b.get("r_vis", data["radius"])          # package 37: a star's visible extent
@@ -1442,7 +1506,9 @@ func _update_bodies() -> void:
 		# eases off softly towards the surface, the size grows smoothly towards a big cap (no hard limits), and the
 		# planet glides under the ship instead of flipping sides.
 		var app_r := sky_radius(r, dist, vmin, b["star"])
-		if sky_a > 0.01 and app_r >= 2.0:
+		var min_px := 14.0 if b["star"] else 6.0
+		var rs := maxf(r * z, min_px)
+		if sky_body_a > 0.01 and (app_r >= 2.0 or mp > 0.0):
 			sky_spr.visible = true
 			# 0.6.36.7: depth – the screen offset follows the distance with a parallax that grows the closer the body is:
 			# a near planet glides by as a layer of its own (slower than the ships, clearly faster than the stars), a far
@@ -1450,7 +1516,14 @@ func _update_bodies() -> void:
 			var off := sky_offset(r, dist, vmin, app_r)
 			sky_spr.position = center + d / dist * off
 			sky_spr.scale = Vector2.ONE * app_r * quad / 64.0
-			sky_spr.modulate.a = sky_a
+			sky_spr.modulate.a = sky_body_a
+			if mp > 0.0:
+				# 0.6.37.3: on the way to the map the body glides to its place there and takes on its size
+				var map_pos := center + d * z
+				sky_spr.position = sky_spr.position.lerp(map_pos, mk)
+				var s_map := rs * quad / 64.0
+				sky_spr.scale = Vector2.ONE * exp(lerpf(log(maxf(sky_spr.scale.x, 0.0001)), log(s_map), mk))
+				app_r = sky_spr.scale.x * 64.0 / quad
 			sky_spr.z_index = -clampi(int(dist / 1000.0), 0, 4000)
 			if b["star"]:
 				_size_core(sky_spr, maxf(app_r * 0.09, 14.0), 1.0)              # 0.6.37.2: neutron star core
@@ -1464,12 +1537,10 @@ func _update_bodies() -> void:
 		else:
 			sky_spr.visible = false
 		# Map representation (true position, minimum on-screen size)
-		if map_a > 0.01:
+		if map_body_a > 0.01:
 			map_spr.visible = true
-			var min_px := 14.0 if b["star"] else 6.0
-			var rs := maxf(r * z, min_px)
 			map_spr.scale = Vector2.ONE * (rs / z) * quad / 64.0
-			map_spr.modulate.a = map_a
+			map_spr.modulate.a = map_body_a
 			_set_pixels(map_spr, rs * quad / 3.0)
 			if b["star"]:
 				_size_core(map_spr, 9.0, 1.0 / z)                          # 0.6.37.2: a bright point on the map
