@@ -171,7 +171,9 @@ func _process(delta: float) -> void:
 	if life <= 0.0:
 		queue_free()
 		return
-	if SystemView.on_screen(_bounds()):          # 0.6.41.5: off screen nothing is redrawn
+	var bb := _bounds()
+	# 0.6.41.5: off screen nothing is redrawn; 0.6.41.6: nor what would be a few pixels (the system map)
+	if SystemView.on_screen(bb) and maxf(bb.size.x, bb.size.y) * SystemView.cam_zoom > 3.0:
 		visible = true
 		queue_redraw()
 	else:

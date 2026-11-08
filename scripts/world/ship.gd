@@ -55,6 +55,7 @@ var warrant_known := false       # NPC: the player's Warrant Scanner has read it
 var scan_jobs := {}
 var _mine_acc := {}              # ore -> units mined since the last floating number
 var _mine_t := 0.0
+var _tiny_hidden := false         # 0.6.41.6: hidden while smaller than a pixel on screen
 var _pw_t := randf() * 0.25        # 0.6.41.5: NPC power plan timer (staggered)
 var _gas_t := 0.0                 # package 41: harvesting gas right now (for the scoop and the stream)
 var _gas_from := Vector2.ZERO     # where the gas streams in from (the giant's centre, local)
@@ -683,7 +684,8 @@ func _physics_process(delta: float) -> void:
 		module_on.erase("builtin_cloak")       # no cloaking in a hangar
 		cloak_k = 0.0
 		return
-	visible = true
+	if not visible and not _tiny_hidden:
+		visible = true
 	_pw_t -= delta
 	if manual or _pw_t <= 0.0:                    # 0.6.41.5: NPC ships check their power plan 4× a second
 		_pw_t = 0.25
@@ -732,6 +734,13 @@ func _physics_process(delta: float) -> void:
 
 ## 0.6.41.5: redraw only on screen (or with a beam that may reach onto it, or the player's own ship).
 func _redraw_if_seen() -> void:
+	# 0.6.41.6: on the system map an NPC ship is less than a pixel – hidden (the map marks it), not redrawn
+	var tiny := not manual and radius * SystemView.cam_zoom < 0.75
+	if tiny != _tiny_hidden:
+		_tiny_hidden = tiny
+		visible = not tiny
+	if tiny:
+		return
 	if manual or not tool_beams.is_empty() or SystemView.on_screen_at(position, radius * 3.0 + 600.0):
 		queue_redraw()
 

@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.41.6 – 2026-11-09
+
+**Performance on the system map.** Fully zoomed out: 8–12 ms per frame (spikes to 28 ms) → about 4 ms (spikes to 8 ms).
+- Dashed rings (no-fire zones, harvest bands) are one draw call each instead of one per dash (90 per station), and
+  are left out where they would be a speck.
+- NPC ships smaller than a pixel on screen are hidden and not redrawn (the map marks them); effects and stations that
+  would be a few pixels are not redrawn either.
+- The belt dashes on the map are only rebuilt when the zoom changes.
+
 ## alpha 0.6.41.5 – 2026-11-09
 
 **Performance.** The game logic runs on one CPU core (GDScript), so a busy system could drop to 20–50 FPS while the

@@ -50,6 +50,7 @@ var _cull_timer := 0.0
 ## Performance (0.6.41.5): the part of the world on screen this frame (with a margin) – effects, stations and ships
 ## only redraw while they are inside it.
 static var screen_rect := Rect2(-1e12, -1e12, 2e12, 2e12)
+static var cam_zoom := 1.0                 # screen pixels per world unit this frame
 var _hover_t := 0.0
 var _hover_mouse := Vector2(-1, -1)
 
@@ -1406,6 +1407,23 @@ func _update_screen_rect() -> void:
 	var half := vs * 0.5 / z
 	var c := camera.get_screen_center_position()
 	screen_rect = Rect2(c - half, half * 2.0).grow(maxf(half.x, half.y) * 0.25 + 200.0)
+	cam_zoom = z
+
+
+## A dashed ring in one draw call (0.6.41.6: one draw_arc per dash cost dearly on the map). `dashes` dashes,
+## `pts` points along each.
+static func dashed_ring(o: CanvasItem, c: Vector2, r: float, dashes: int, col: Color, width: float, pts: int = 4) -> void:
+	var lines := PackedVector2Array()
+	var step := TAU / (dashes * 2)
+	for k in dashes:
+		var a0 := k * 2 * step
+		var prev := c + Vector2.from_angle(a0) * r
+		for j in range(1, pts + 1):
+			var p := c + Vector2.from_angle(a0 + step * j / pts) * r
+			lines.append(prev)
+			lines.append(p)
+			prev = p
+	o.draw_multiline(lines, col, width)
 
 
 func level_zoom(l: int) -> float:
@@ -2452,6 +2470,9 @@ var _belt_pts := {}                # belt index -> PackedVector2Array of short d
 
 
 ## The belts on the system map: a band of fine grains.
+var _belt_sized := {}
+
+
 func _draw_belts_map(o: Node2D, px: float, map_a: float) -> void:
 	var belts: Array = layout.get("belts", [])
 	for i in belts.size():
@@ -2471,12 +2492,16 @@ func _draw_belts_map(o: Node2D, px: float, map_a: float) -> void:
 		var col := Color(0.62, 0.78, 1.0, 0.35 * map_a) if String(bt["kind"]) == "kuiper" else Color(0.85, 0.72, 0.55, 0.35 * map_a)
 		# the dashes are scaled with the zoom so every grain stays a few pixels
 		var pts2: PackedVector2Array = _belt_pts[i]
-		var sized := PackedVector2Array()
-		sized.resize(pts2.size())
-		for j in range(0, pts2.size(), 2):
-			sized[j] = pts2[j]
-			sized[j + 1] = pts2[j] + (pts2[j + 1] - pts2[j]) * 3.0 * px
-		o.draw_multiline(sized, col, 2.5 * px)
+		var cached: Array = _belt_sized.get(i, [])
+		if cached.is_empty() or not is_equal_approx(float(cached[0]), px):
+			var sized := PackedVector2Array()
+			sized.resize(pts2.size())
+			for j in range(0, pts2.size(), 2):
+				sized[j] = pts2[j]
+				sized[j + 1] = pts2[j] + (pts2[j + 1] - pts2[j]) * 3.0 * px
+			cached = [px, sized]
+			_belt_sized[i] = cached                # 0.6.41.6: only when the zoom changed
+		o.draw_multiline(cached[1], col, 2.5 * px)
 
 
 ## Close up inside a belt: rocks drift by in the background (slower than the foreground – parallax).
@@ -2676,11 +2701,9 @@ func _draw_overlay() -> void:
 		var gbv := {"pos": gp["pos"]}
 		var gr: float = float(gp["radius"])
 		var gcol := Color(1.0, 0.55, 0.3) if gas_storm(gp) else Color(0.55, 0.85, 1.0)
-		var segs := 72
-		for k in segs:
-			if k % 2 == 0:
-				var a0 := k * TAU / segs
-				o.draw_arc(gbv["pos"], gr * Universe.BAND_OUT, a0, a0 + TAU / segs, 4, Color(gcol, 0.45), maxf(px * 1.5, 1.0))
+		if gr * Universe.BAND_OUT / px < 3.0:
+			continue                                  # a dot on screen – nothing to see
+		dashed_ring(o, gbv["pos"], gr * Universe.BAND_OUT, 36, Color(gcol, 0.45), maxf(px * 1.5, 1.0), 3)
 		o.draw_arc(gbv["pos"], gr * (Universe.BAND_IN + (Universe.BAND_OUT - Universe.BAND_IN) * 0.55), 0.0, TAU, 96, Color(1.0, 0.4, 0.2, 0.18), maxf(px * 1.0, 1.0))
 	# No-fire zones around stations (dashed amber ring) and the haven gun range (red)
 	var view_r := get_viewport_rect().size.length() * 0.5 / z
@@ -2693,10 +2716,8 @@ func _draw_overlay() -> void:
 		var dd: float = st.position.distance_to(camera.position)
 		if map_a > 0.01 or absf(dd - zr) < view_r * 1.2:
 			var za := 0.3 * map_a + 0.35 * sky_alpha()
-			var segs := 180
-			for k in segs:
-				if k % 2 == 0:
-					o.draw_arc(st.position, zr, k * TAU / segs, (k + 1) * TAU / segs, 6, Color(1.0, 0.7, 0.3, za), 1.5 * px)
+			if zr / px >= 3.0:                                # 0.6.41.6: not as a speck on the map; one draw call
+				dashed_ring(o, st.position, zr, 90, Color(1.0, 0.7, 0.3, za), 1.5 * px, 3)
 	_draw_raid(o, px)
 	for hv in havens:
 		if is_instance_valid(hv) and (map_a > 0.01 or hv.position.distance_to(camera.position) < HAVEN_RANGE + view_r):

@@ -905,6 +905,8 @@ The game logic runs on one CPU core; rendering is cheap. Measured costs came fro
 - No loops over all celestials (~1,700 in a system) every frame – throttle (hover: on mouse move or 10×/s) or test the
   cheap things first (visible, distance).
 - Per-ship work that rarely changes (power plan) runs a few times a second for NPC ships.
+- Nothing is redrawn that would be a few pixels on screen (`SystemView.cam_zoom`); NPC ships below a pixel are hidden.
+- Many small shapes (dashes) go into one `draw_multiline` (`SystemView.dashed_ring`), not one draw call each.
 - Measuring: scratch scripts time frames with vsync off and switch parts on and off in turn (A/B).
 
 ## Extending
