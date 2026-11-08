@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.36.6 – 2026-11-08
+
+**More impressive planets, moons and stars:** about as big as before from afar, but growing ever more steeply towards
+the surface – right above a planet it fills the screen (about 1,050 instead of 650 px radius at 1080p). The star is
+half again as big and has a wide, soft corona.
+
 ## alpha 0.6.36.5 – 2026-11-08
 
 **Station orbits:** like moons, stations have their own orbit round their planet or moon and stand somewhere else on it

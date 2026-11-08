@@ -154,6 +154,26 @@ func _make_bodies() -> void:
 		var map_spr: Sprite2D
 		if is_star:
 			sky_spr = Celestial.make_star_sprite(star["color"], 100.0)
+			# 0.6.36.6: a wide soft corona behind the star (additive, no pixel steps)
+			var glow := Sprite2D.new()
+			var gt := GradientTexture2D.new()
+			gt.width = 128
+			gt.height = 128
+			gt.fill = GradientTexture2D.FILL_RADIAL
+			gt.fill_from = Vector2(0.5, 0.5)
+			gt.fill_to = Vector2(1.0, 0.5)
+			var gr := Gradient.new()
+			gr.offsets = PackedFloat32Array([0.0, 0.2, 0.45, 1.0])
+			var sc: Color = star["color"]
+			gr.colors = PackedColorArray([Color(sc.lightened(0.4), 0.75), Color(sc, 0.45), Color(sc, 0.14), Color(sc, 0.0)])
+			gt.gradient = gr
+			glow.texture = gt
+			glow.scale = Vector2.ONE * CORONA_SIZE * 64.0 / 128.0
+			var gm := CanvasItemMaterial.new()
+			gm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+			glow.material = gm
+			glow.show_behind_parent = true
+			sky_spr.add_child(glow)
 			map_spr = Celestial.make_star_sprite(star["color"], float(star["radius"]))
 		else:
 			var ldir := (-(b["pos"] as Vector2)).normalized()
@@ -1179,6 +1199,20 @@ func center_on_player() -> void:
 const SKY_SIZE := 900.0
 const SKY_CAP := 3.0
 const SKY_PIXELS := 160.0
+## 0.6.36.6: more impressive up close – the size grows ever more steeply towards the surface (up to 1 + SKY_NEAR
+## times), far away it stays as it was; the star is SKY_STAR times bigger still and has a wide soft corona.
+const SKY_NEAR := 0.9
+const SKY_STAR := 1.5
+const CORONA_SIZE := 2.4                # corona quad relative to the star's quad
+
+
+## Apparent radius on screen (px) of a body of radius `r` at `dist` (km); vmin = smaller screen side.
+static func sky_radius(r: float, dist: float, vmin: float, star: bool = false) -> float:
+	var dist_eff := sqrt(dist * dist + pow(r * 1.1, 2.0))
+	var close := r * 1.1 / dist_eff                    # 1 right above the surface, → 0 far away
+	var raw := r * SKY_SIZE / dist_eff * (1.0 + SKY_NEAR * close * close) * (SKY_STAR if star else 1.0)
+	var cap := vmin * SKY_CAP
+	return raw / (1.0 + raw / cap)
 
 
 ## Star and planets: background bodies when close, flat on the map when far.
@@ -1202,10 +1236,7 @@ func _update_bodies() -> void:
 		# 0.6.36.3: closer and smoother. Don't hide during a fly-over (camera inside/near the planet): the distance
 		# eases off softly towards the surface, the size grows smoothly towards a big cap (no hard limits), and the
 		# planet glides under the ship instead of flipping sides.
-		var dist_eff := sqrt(dist * dist + pow(r * 1.1, 2.0))
-		var raw := r * SKY_SIZE / dist_eff
-		var cap := vmin * SKY_CAP
-		var app_r := raw / (1.0 + raw / cap)
+		var app_r := sky_radius(r, dist, vmin, b["star"])
 		if sky_a > 0.01 and app_r >= 2.0:
 			sky_spr.visible = true
 			# close bodies move towards the edge ("oblique" view of the planet), far ones towards the centre

@@ -6236,14 +6236,14 @@ func _test_warp36(view: SystemView) -> void:
 	var smooth_ok := true
 	for i in 60:
 		var dist := r * 30.0 / (1.0 + i * 0.5)
-		var de := sqrt(dist * dist + pow(r * 1.1, 2.0))
-		var raw := r * view.SKY_SIZE / de
-		var app := raw / (1.0 + raw / (vmin * view.SKY_CAP))
+		var app := SystemView.sky_radius(r, dist, vmin)
 		smooth_ok = smooth_ok and app > prev
 		prev = app
 	# right above the planet: before 0.6.36.3 capped at 42 % of the smaller screen side
-	var raw0: float = view.SKY_SIZE / 1.1
-	var peak := raw0 / (1.0 + raw0 / (vmin * view.SKY_CAP))
+	var peak := SystemView.sky_radius(r, 0.0, vmin)
+	# 0.6.36.6: far away about as before, close up much bigger; the star bigger still
+	var far_ok: bool = absf(SystemView.sky_radius(r, r * 40.0, vmin) / (r * view.SKY_SIZE / (r * 40.0)) - 1.0) < 0.1
+	smooth_ok = smooth_ok and far_ok and SystemView.sky_radius(r, r * 3.0, vmin, true) > SystemView.sky_radius(r, r * 3.0, vmin) * 1.3
 	var old := vmin * 0.42
 	check(fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok and peak > old * 1.3,
 		"0.6.36.3: warp 50 %% faster; emergency shutdown – the warp key asks in warp, again within 5 s throws the ship out of warp, tumbling; sky bodies come closer (right above a planet %.0f px radius instead of %.0f), growing smoothly" % [peak, old])
