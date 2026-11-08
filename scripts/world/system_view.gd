@@ -162,7 +162,7 @@ func _update_cme(delta: float) -> void:
 	if not bool(star_type().get("cme", false)):
 		return
 	if _cme_next < 0.0:
-		_cme_next = randf_range(CME_EVERY.x, CME_EVERY.y)
+		_cme_next = cme_interval()
 	if _cme.is_empty():
 		_cme_next -= delta
 		if _cme_next <= 0.0:
@@ -195,7 +195,7 @@ func _update_cme(delta: float) -> void:
 			m.explode.call_deferred()
 	if r - CME_BAND > Universe.SYSTEM_RADIUS * 1.05:
 		_cme = {}
-		_cme_next = randf_range(CME_EVERY.x, CME_EVERY.y)
+		_cme_next = cme_interval()
 		Audio.loop("cme_alarm", "cme_alarm", false)
 
 
@@ -225,6 +225,13 @@ func _cme_alarm() -> void:
 	if _cme["phase"] == "warn":
 		vol *= smoothstep(0.0, 1.0, CME_BANNER - (CME_WARN - float(_cme["t"])))
 	Audio.loop("cme_alarm", "cme_alarm", vol > 0.01, maxf(vol, 0.01))
+
+
+## 0.6.37.6: seconds to the next ejection – by star class (a red dwarf every 3–7 minutes, a G star every 7–15, a
+## blue star every 14–30).
+func cme_interval() -> float:
+	var rate := maxf(float(star_type().get("cme_rate", 1.0)), 0.05)
+	return randf_range(CME_EVERY.x, CME_EVERY.y) / rate
 
 
 ## Starts a coronal mass ejection (debug: at once, without the warning).

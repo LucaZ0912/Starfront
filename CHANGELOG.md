@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.37.6 – 2026-11-08
+
+- The plasma arc of a coronal mass ejection no longer stops at a straight edge – it fades out before the star's
+  picture ends.
+- **Eruptions by star class:** red dwarfs and red supergiants erupt far more often (a red dwarf every 3–7 minutes),
+  hot blue stars rarely (every 14–30).
+- Flares on the star's disc smaller, rarer and in the star's hot colour instead of white.
+
 ## alpha 0.6.37.5 – 2026-11-08
 
 - **Coronal mass ejection:** inside the shockwave (combat and recon view) plasma streaks race across the screen away

@@ -84,9 +84,9 @@ void fragment() {
 		// flares on the disc: bright patches that flash up now and then
 		if (flares > 0.0) {
 			float fl = vnoise(q * 9.0 + seed);
-			float cell = hash21(vec2(floor(vnoise(q * 2.5 + seed * 1.3) * 7.0), seed));   // irregular regions, each flashing on its own
-			float pulse = pow(max(0.0, sin(t * 0.45 + cell * 40.0)), 30.0);
-			col = mix(col, vec3(1.0, 1.0, 0.95), step(0.78, fl) * pulse);
+			float cell = hash21(vec2(floor(vnoise(q * 2.5 + seed * 1.3) * 24.0), seed));  // irregular regions, each flashing on its own
+			float pulse = pow(max(0.0, sin(t * 0.45 + cell * 40.0)), 40.0);
+			col = mix(col, mix(color2.rgb, vec3(1.0), 0.45), step(0.86, fl) * pulse * 0.85);
 		}
 		col *= limb;
 		col = mix(col, color2.rgb, 0.12);                                        // a touch of the hot colour everywhere
@@ -114,14 +114,15 @@ void fragment() {
 	if (cme_t >= 0.0) {
 		vec2 n = vec2(cos(cme_ang), sin(cme_ang));
 		vec2 base = n * rad;
-		float s = rad * 0.15 + cme_t * (1.6 - rad);
+		float s = rad * 0.15 + cme_t * (0.92 - rad);         // stays inside the picture (the shockwave carries on outside)
 		vec2 p = c - base;
 		float dd = length(p);
 		float facing = dot(normalize(p + 0.0001), n);
 		if (facing > 0.15 && d > rad * 0.98) {
 			float shell = 1.0 - smoothstep(0.0, 0.05 + 0.08 * cme_t, abs(dd - s));
 			float inner = (1.0 - smoothstep(0.0, s, dd)) * 0.35;
-			float k = (shell + inner) * smoothstep(0.15, 0.6, facing) * (1.0 - cme_t);
+			float edge = 1.0 - smoothstep(0.72, 0.97, max(abs(c.x), abs(c.y)));   // fades before the picture's square edge
+			float k = (shell + inner) * smoothstep(0.15, 0.6, facing) * (1.0 - cme_t) * edge;
 			k *= 0.6 + 0.4 * fbm(vec2(atan(p.y, p.x) * 6.0, dd * 10.0 - t));
 			k = floor(clamp(k, 0.0, 1.0) * 5.0) / 5.0;
 			vec3 cc = mix(color2.rgb, vec3(1.0), 0.3);

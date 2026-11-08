@@ -6366,6 +6366,9 @@ func _test_stars(view: SystemView) -> void:
 		main.hud._update_cme_banner(0.1)
 		banner_ok = banner_ok and not Audio.loop_playing("cme_alarm") and not main.hud.cme_banner.visible
 		pl2.jammed_t = 0.0
+	# 0.6.37.6: red dwarfs and red supergiants erupt far more often than the hot stars
+	var U2 = Universe
+	banner_ok = banner_ok and float(U2.STAR_TYPES[U2.star_index("M")]["cme_rate"]) > 1.5 * float(U2.STAR_TYPES[U2.star_index("G")]["cme_rate"]) 		and float(U2.STAR_TYPES[U2.star_index("RSG")]["cme_rate"]) > 1.5 * float(U2.STAR_TYPES[U2.star_index("G")]["cme_rate"]) 		and float(U2.STAR_TYPES[U2.star_index("O")]["cme_rate"]) < float(U2.STAR_TYPES[U2.star_index("G")]["cme_rate"])
 	# 0.6.37.5: the debug command starts at the countdown (banner and alarm at once)
 	if bool(view.star_type().get("cme", false)):
 		var was: bool = Commands.cheats_enabled
