@@ -2279,8 +2279,8 @@ func _draw_overlay() -> void:
 				o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# Radar in recon view
 	var radar_a := mark_a * sky_alpha()
-	if radar_a > 0.01 and player != null and is_instance_valid(player) and not player.is_docked():
-		_draw_radar(o, player.position, px, radar_a)
+	if radar_a > 0.01 and player != null and is_instance_valid(player) and not player.is_docked() and not player.in_warp():
+		_draw_radar(o, player.position, px, radar_a)          # 0.6.35.8: no radar during a warp
 	# Own ship as an icon (recon + system)
 	if player != null and is_instance_valid(player) and not player.is_docked():
 		var pp := player.position

@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.8 – 2026-11-08
+
+**Warp:** the radar is hidden during a warp (it showed in recon by mistake in 0.6.35.7).
+
 ## alpha 0.6.35.7 – 2026-11-08
 
 **Warp:** the camera stays at close range (zoom out by hand whenever you like – the radar now shows in recon during
