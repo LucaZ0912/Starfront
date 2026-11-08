@@ -696,7 +696,7 @@ Trade Hub, station storage is merged there, open contracts are cancelled.
 | Click empty space | sublight flight |
 | Click object / overview entry | select it – the panel top right lists its actions (Warp to, Approach, Orbit, Keep at range, Lock target, Dock, Jump) |
 | Click a locked target (top centre) | make it the active target · right-click: unlock |
-| Mouse wheel / F1–F3 | zoom level: Combat → Recon → System |
+| Mouse wheel / F1–F4 | zoom level: Combat → Recon → Orbit (a planet and its moons; not in warp) → System |
 | WASD | fly the ship in that direction (screen up = north); release: it stops |
 | Arrow keys / middle mouse, Space | pan camera, recentre on ship |
 | Tab | cycle through everything within sensor range – ships first (nearest first), then asteroids, wrecks and anomalies; with nothing selected it starts with the ships again |

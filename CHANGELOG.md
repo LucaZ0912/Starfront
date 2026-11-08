@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.36.2 – 2026-11-08
+
+**Orbit view:** a new zoom level between Recon and System (F3; System is now F4) – a flat map 260,000 km round the ship,
+enough for a planet with all its moons, their orbits and names. Not during a warp (the wheel skips it). Saved zoom keys
+are reset once to the new defaults.
+
 ## alpha 0.6.36.1 – 2026-11-08
 
 **Package 36: moons.** A new game is needed.

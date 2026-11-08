@@ -347,7 +347,7 @@ const HELP_TEXT := """[b]Sternenfront – Controls[/b]
 
 You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped there.
 
-[color=#7fd8ff]Mouse wheel / {zoom_combat}, {zoom_recon}, {zoom_system}[/color]: zoom levels Combat → Recon → System
+[color=#7fd8ff]Mouse wheel / {zoom_combat}, {zoom_recon}, {zoom_orbit}, {zoom_system}[/color]: zoom levels Combat → Recon → Orbit (a planet and its moons; not in warp) → System
 [color=#7fd8ff]Click an object[/color] (or an overview entry): it appears in the panel top right with its actions –
    Warp to • Approach • Orbit • Keep at range • Lock target • Dock • Jump
 [color=#7fd8ff]Lock targets[/color]: locked targets appear top centre – click one to make it the active target

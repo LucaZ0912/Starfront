@@ -21,8 +21,11 @@ signal object_selected(id: String)   # clicked object -> HUD shows the selected-
 const MAX_ZOOM := 2.0
 ## Fixed zoom levels: 0 = Close Combat, 1 = Long-Range Recon (both local, bodies in the background),
 ## 2 = System (everything flat on one plane). The "System" value adapts to the window size.
-const LEVEL_NAMES := ["Combat", "Recon", "System"]
-const LEVEL_ZOOMS := [0.6, 0.05, 0.0]
+const LEVEL_NAMES := ["Combat", "Recon", "Orbit", "System"]
+const LEVEL_ZOOMS := [0.6, 0.05, 0.0, 0.0]
+## 0.6.36.2: the Orbit level between Recon and System – a planet with its whole moon system on screen (this many km
+## from the ship to the edge of the smaller screen side). Not during a warp.
+const ORBIT_VIEW := 260000.0
 const RADAR_SCREEN := 0.44       # radar radius as a share of the smaller screen side
 
 var system_id := -1
@@ -1056,7 +1059,10 @@ func level_zoom(l: int) -> float:
 		# recon: the radar shows exactly the recon range, whatever the window size
 		var vs := get_viewport_rect().size
 		return minf(vs.x, vs.y) * RADAR_SCREEN / GameData.RECON_RANGE
-	return _min_zoom if l >= 2 else float(LEVEL_ZOOMS[l])
+	if l == 2:
+		var vs2 := get_viewport_rect().size
+		return maxf(minf(vs2.x, vs2.y) * 0.5 / ORBIT_VIEW, _min_zoom)
+	return _min_zoom if l >= 3 else float(LEVEL_ZOOMS[l])
 
 
 ## Boundary between the local view (background bodies) and the system map.
@@ -1076,7 +1082,10 @@ func map_alpha() -> float:
 
 
 func set_level(l: int) -> void:
-	l = clampi(l, 0, 2)
+	l = clampi(l, 0, 3)
+	# 0.6.36.2: no Orbit level during a warp – the wheel skips it, the key is refused
+	if l == 2 and player != null and is_instance_valid(player) and player.in_warp():
+		l = 1 if level >= 2 else 3                      # zooming in from the map → Recon, out → System
 	_warp_auto = false
 	if l != level:
 		level = l
@@ -2264,7 +2273,8 @@ func _draw_overlay() -> void:
 					continue
 				col = Color(0.7, 0.78, 0.9, 0.75 * map_a)
 			var label: String = t["name"]
-			o.draw_set_transform(pos + Vector2(14.0, 4.0) * px, 0.0, Vector2(px, px))
+			var ly := 18.0 if t["kind"] == "field" and t["data"].has("moon") else 4.0     # below its moon's name
+			o.draw_set_transform(pos + Vector2(14.0, ly) * px, 0.0, Vector2(px, px))
 			o.draw_string(font, Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.8 * map_a))
 			o.draw_string(font, Vector2.ZERO, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 			o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -2675,6 +2685,8 @@ func on_warp_started(ship: Ship) -> void:
 		GameState.codex.event("warp")
 		# 0.6.35.7: the camera stays where it is (combat range) – the pilot may zoom out by hand; no automatic zoom
 		_warp_auto = false
+		if level == 2:
+			set_level(3)                                   # 0.6.36.2: the Orbit level is not for warps
 		follow = true
 		GameState.log_msg("Warp drive active → %s" % ship.warp["name"])
 

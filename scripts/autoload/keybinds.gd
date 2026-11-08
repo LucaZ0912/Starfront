@@ -23,7 +23,8 @@ const ACTIONS := [
 	{"id": "cam_center", "label": "Centre camera on ship", "group": "Camera", "def": [{"k": KEY_SPACE}, {"m": MOUSE_BUTTON_MIDDLE}]},
 	{"id": "zoom_combat", "label": "Zoom: Combat", "group": "Camera", "def": [{"k": KEY_F1}]},
 	{"id": "zoom_recon", "label": "Zoom: Recon", "group": "Camera", "def": [{"k": KEY_F2}]},
-	{"id": "zoom_system", "label": "Zoom: System", "group": "Camera", "def": [{"k": KEY_F3}]},
+	{"id": "zoom_orbit", "label": "Zoom: Orbit (moons round a planet)", "group": "Camera", "def": [{"k": KEY_F3}]},     # 0.6.36.2
+	{"id": "zoom_system", "label": "Zoom: System", "group": "Camera", "def": [{"k": KEY_F4}]},
 	{"id": "module_1", "label": "Module 1", "group": "Modules", "def": [{"k": KEY_1}]},
 	{"id": "module_2", "label": "Module 2", "group": "Modules", "def": [{"k": KEY_2}]},
 	{"id": "module_3", "label": "Module 3", "group": "Modules", "def": [{"k": KEY_3}]},
@@ -70,9 +71,9 @@ const ACTIONS := [
 	{"id": "menu_next_tab", "label": "Menu: next tab", "group": "Menus", "def": [{"k": KEY_E}]},
 ]
 const SLOTS := 2
-const LAYOUT := 3   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets)
+const LAYOUT := 4   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets; 4: F3 Orbit, F4 System)
 ## Bindings reset once when a saved file is older than this layout (prefix -> layout that changed it)
-const LAYOUT_RESETS := {"cam_": 2, "sel_": 3}
+const LAYOUT_RESETS := {"cam_": 2, "sel_": 3, "zoom_": 4}
 
 var binds := {}   # action id -> Array of descriptors (size SLOTS, {} = empty)
 

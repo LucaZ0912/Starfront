@@ -181,7 +181,7 @@ func _process(delta: float) -> void:
 				s4_frames += 1   # let the ship process the kill (lock release) first
 				if s4_frames == 3:
 					check(view.player.locks.is_empty() and not view.player.module_on.values().has(true), "lock dropped and weapons off after the kill (locks %d)" % view.player.locks.size())
-					view.set_level(2)
+					view.set_level(3)
 					timer = 0.0
 				return
 			if timer < 2.0:
@@ -6142,4 +6142,28 @@ func _test_moons(view: SystemView) -> void:
 	spr.free()
 	check(keep_ok and moved_ok and saved_ok and arrive_ok and body_ok and wt_ok and look_ok,
 		"package 36: on arrival planets and moons stand elsewhere on their orbits – stations, moon fields and ring rocks move along (saved); moons are bodies and warp targets, with craters / lumpy outline")
+	# 0.6.36.2: the Orbit level – flat map, a whole moon system on screen; skipped in warp
+	var vs: Vector2 = view.get_viewport_rect().size
+	var oz: float = view.level_zoom(2)
+	var fit_ok: bool = oz < view.level_zoom(1) and oz > view.level_zoom(3) and is_equal_approx(minf(vs.x, vs.y) * 0.5 / oz, view.ORBIT_VIEW)
+	var lv0: int = view.level
+	view.set_level(2)
+	var orbit_ok: bool = view.level == 2
+	view._set_zoom(oz)
+	var map_ok: bool = view.map_alpha() > 0.99 and view.sky_alpha() < 0.01
+	view.set_level(1)
+	view.player.warp = {"from": view.player.position, "to": view.player.position + Vector2(500000, 0), "t": 0.0, "T": 10.0, "then": {}, "name": "Test"}
+	view.set_level(2)
+	var skip_ok: bool = view.level == 3
+	view.set_level(1)
+	view.set_level(2)
+	skip_ok = skip_ok and view.level == 3
+	view.set_level(3)
+	view.set_level(2)
+	skip_ok = skip_ok and view.level == 1
+	view.player.warp = {}
+	view.set_level(lv0)
+	view._set_zoom(view.level_zoom(lv0))
+	check(fit_ok and orbit_ok and map_ok and skip_ok and Keybinds.ACTIONS.any(func(x): return x["id"] == "zoom_orbit"),
+		"0.6.36.2: Orbit level between Recon and System (%s from the ship to the screen edge, flat map) – skipped during a warp" % SystemView.fmt_dist(view.ORBIT_VIEW))
 

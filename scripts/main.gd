@@ -292,10 +292,13 @@ func handle_input(event: InputEvent) -> void:
 		if view != null:
 			view.center_on_player()
 	else:
-		for i in 3:
-			if event.is_action_pressed(["zoom_combat", "zoom_recon", "zoom_system"][i], false, true):
+		for i in 4:
+			if event.is_action_pressed(["zoom_combat", "zoom_recon", "zoom_orbit", "zoom_system"][i], false, true):
 				if view != null:
-					view.set_level(i)
+					if i == 2 and view.player != null and is_instance_valid(view.player) and view.player.in_warp():
+						GameState.log_msg("The Orbit view is not available during a warp.", GameState.COL_WARN)
+					else:
+						view.set_level(i)
 				return
 		for i in 9:
 			if event.is_action_pressed("module_%d" % (i + 1), false, true):
