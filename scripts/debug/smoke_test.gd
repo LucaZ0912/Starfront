@@ -6878,6 +6878,16 @@ func _test_mining41(view: SystemView) -> void:
 	check(band_ok and not kj.is_empty() and float(kf.stats()["gas_cargo_max"]) >= 1500.0 and has_scoop and float(kj["heat_resist"]) > 0.0 and tex.get_width() > 100,
 		"41: harvest bands round the giants (deeper = more), each kind its own gases; the Kujira – 1,600 m³ of gas tanks, a built-in scoop, heat resistant")
 	var ship: Ship = view.player
+	# every tool kind has a name (the Modules tab crashed on the gas collector in 0.6.41.2)
+	var names_ok := true
+	for mid41 in GameData.modules:
+		var md41: Dictionary = GameData.modules[mid41]
+		if md41.has("tool"):
+			names_ok = names_ok and GameData.TOOL_NAMES.has(String(md41["tool"])) and GameData.module_summary(mid41) != ""
+	for bm41 in kf.builtin_modules():
+		if bm41["data"].has("tool"):
+			names_ok = names_ok and GameData.TOOL_NAMES.has(String(bm41["data"]["tool"]))
+	check(names_ok, "41: every tool – the gas collector and deep drill too – has a name and a summary (Modules tab)")
 	# switching the collector on needs no target (it crashed in 0.6.41.1 on the empty target)
 	var gslot := ""
 	for gk in ship.fit.modules:
@@ -6889,6 +6899,11 @@ func _test_mining41(view: SystemView) -> void:
 		ship.fit.modules[gslot] = "t_gas:1:C"
 		ship.fit.mark_dirty()
 		var gerr := ship.set_module_active(gslot, true)
+		var smg: ShipMenu = view.get_tree().current_scene.ship_menu
+		smg.open(view, 1)                         # the Modules tab with the collector fitted (crashed in 0.6.41.2)
+		var tab_ok: bool = smg.visible
+		smg.close()
+		gerr = gerr if tab_ok else "Modules tab did not open"
 		ship.set_module_active(gslot, false)
 		ship.fit.modules[gslot] = gkeep
 		ship.fit.mark_dirty()

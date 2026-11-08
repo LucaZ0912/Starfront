@@ -39,6 +39,7 @@ const TOOL_NAMES := {
 	"salvage": "Salvager", "repair": "Repair Beam", "harvester": "Ice Harvester",
 	"survey": "Long-Range Survey", "prospect": "Prospector", "warrant": "Warrant Scanner", "interdict": "Warp Interdictor",
 	"shield_transfer": "Shield Transfer", "cargo_scan": "Cargo Scanner",
+	"gas": "Gas Collector", "deepdrill": "Deep Core Drill",                 # package 41
 }
 ## Package 20: shield variants – downtime factor after a collapse (capacity: long, regen: short)
 const SHIELD_KINDS := {"balanced": {"name": "Balanced", "down": 1.0}, "capacity": {"name": "High capacity", "down": 1.35},

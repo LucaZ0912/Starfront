@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.41.3 – 2026-11-08
+
+- Fixed: the ship menu's Modules tab crashed with a gas collector or deep core drill fitted (the tool kinds had no name).
+
 ## alpha 0.6.41.2 – 2026-11-08
 
 - Fixed: switching on the gas collector (the Kujira's scoop above all) crashed the game – it has no target.
