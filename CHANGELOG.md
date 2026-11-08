@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.37.1 – 2026-11-08
+
+**Package 37: new star types.** A new game is needed.
+- Twelve star types: the main sequence O, B, A, F, G, K, M, pink brown dwarfs, red supergiants (ten times a G star –
+  the planets move out), white dwarfs, neutron stars and black holes (only in systems without stations, now and then
+  with a research station).
+- All animated in a finer pixel style: boiling surfaces, sunspots, prominences rising and falling on the limb, flares;
+  a neutron star with huge glowing field lines and sweeping jets; a black hole with its turning accretion disc, the far
+  side bent over the hole, and a gravitational lens bending the stars behind it.
+- Coronal mass ejections: warning in the log, an eruption on the star, then a shockwave races through the system –
+  sensors jammed, shields weakened (collapsed close to the star).
+- The solar collector draws by the star's brightness; a black hole pulls ships in close up and crushes what crosses
+  its horizon.
+- Codex entries; debug: any star type in the current system, an ejection at once.
+
 ## alpha 0.6.36.7 – 2026-11-08
 
 **Depth:** the parallax of planets, moons and stars now depends on how close they are – a near planet glides by as a

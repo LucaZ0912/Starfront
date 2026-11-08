@@ -103,6 +103,14 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## Stars (phase 0.5 package 37)
+- **Twelve star types:** blue O and B stars down to red M dwarfs, pink brown dwarfs, red supergiants, white dwarfs,
+  **neutron stars** with glowing magnetic field lines and sweeping jets, and **black holes** with an accretion disc and
+  a gravitational lens. All animated: boiling surfaces, sunspots, prominences and flares.
+- **Coronal mass ejections:** a star erupts, a shockwave races through the system – sensors jammed, shields weakened.
+- The **solar collector** draws by the star's brightness; a **black hole** pulls ships in – too close and there is no
+  escape.
+
 ## Moons (phase 0.5 package 36)
 - Planets have **moons** – gas giants two or three: rocky moons with craters, ice moons, volcanic moons and captured
   asteroids. They are far bigger than colossi and can be warped to; some stations orbit a moon, some moons have a small

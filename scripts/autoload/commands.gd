@@ -1621,6 +1621,41 @@ func _c_debug_moon(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_star", "star": "G"|"BH"|…} – package 37: gives the current system another star type (the system is
+## built anew around it; for looking at the stars).
+func _c_debug_star(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var sid := GameState.current_system
+	var idx := Universe.star_index(String(c.get("star", "G")))
+	Universe.systems[sid]["star"] = idx
+	Universe.layouts.erase(sid)
+	var mn = world.get_tree().current_scene
+	if mn != null and mn.has_method("load_system"):
+		mn.load_system(sid)
+	var f := _fit()
+	if f != null and f.docked_at == "":
+		var st: Dictionary = Universe.get_layout(sid)["star"]
+		var land := float(Universe.STAR_TYPES[idx]["land"]) * float(st["radius"])
+		Commands.world.player.position = Vector2(land, 0.0)
+		f.position = Commands.world.player.position
+		Commands.world.center_on_player()
+	GameState.log_msg("Debug: the star is now a %s." % Universe.STAR_TYPES[idx]["name"])
+	return ""
+
+
+## {"type":"debug_cme"} – package 37: the star throws off a coronal mass ejection at once.
+func _c_debug_cme(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	if not bool(world.star_type().get("cme", false)):
+		return "This star does not erupt."
+	world.start_cme(true)
+	return ""
+
+
 ## {"type":"debug_roll_orbits"} – package 36: planets and moons to new places on their orbits, as on arriving by jump
 ## (the ship stays where it is).
 func _c_debug_roll_orbits(_c: Dictionary) -> String:

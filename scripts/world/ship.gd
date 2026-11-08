@@ -706,6 +706,10 @@ func _physics_process(delta: float) -> void:
 		return
 	_update_targeting(delta, s)
 	_update_movement(delta, s)
+	if view != null and view.has_method("apply_gravity"):
+		view.apply_gravity(self, delta)                   # package 37: a black hole's pull
+		if dying:
+			return
 	_update_weapons(delta, s)
 	_update_tools(delta, s)
 	_update_pd(delta, s)
@@ -793,9 +797,11 @@ func solar_rate(s: Dictionary) -> float:
 	var rate := float(s.get("solar", 0.0))
 	if rate <= 0.0 or view == null or not ("layout" in view) or view.layout.is_empty():
 		return 0.0
-	var star_r := float(view.layout["star"]["radius"])
-	var d := maxf(position.length(), star_r)
-	return rate * clampf(pow(star_r * 4.0 / d, 2.0), 0.0, 1.0)
+	# package 37: by the star's brightness (a G star as bright as before; a brown dwarf hardly, a black hole not at all)
+	var star: Dictionary = view.layout["star"]
+	var lum := float(Universe.STAR_TYPES[Universe.star_index(String(star.get("star_id", "G")))]["lum"])
+	var d := maxf(position.length(), float(star["radius"]))
+	return rate * clampf(lum * pow(240000.0 / d, 2.0), 0.0, 1.0)
 
 
 func _solar(delta: float, s: Dictionary) -> void:

@@ -581,6 +581,7 @@ func _process(delta: float) -> void:
 				_test_rocks(view)
 				_test_moons(view)
 				_test_warp36(view)
+				_test_stars(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -2925,7 +2926,7 @@ func _test_codex(view: SystemView) -> void:
 	var cats := {}
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
-		"crew", "wingmen", "platform", "pod", "collection"]
+		"crew", "wingmen", "platform", "pod", "collection", "cme", "star:main", "star:neutron", "star:blackhole"]   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -6259,4 +6260,73 @@ func _test_warp36(view: SystemView) -> void:
 	smooth_ok = smooth_ok and depth_ok and near_rate > far_rate * 10.0
 	check(fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok and peak > old * 1.3,
 		"0.6.36.3: warp 50 %% faster; emergency shutdown – the warp key asks in warp, again within 5 s throws the ship out of warp, tumbling; sky bodies come closer (right above a planet %.0f px radius instead of %.0f), growing smoothly" % [peak, old])
+
+
+## Package 37: twelve star types – spread by weight, neutron stars and black holes only where there are no
+## stations but research; red supergiants push the planets out; brightness drives the solar collector; animated
+## shaders per kind; coronal mass ejections (shockwave: shields and sensors); a black hole's pull.
+func _test_stars(view: SystemView) -> void:
+	var U = Universe
+	var wsum := 0.0
+	for t in U.STAR_TYPES:
+		wsum += float(t["weight"])
+	var counts := {}
+	var exotic_ok := true
+	for s2 in U.systems:
+		var tid := String(U.STAR_TYPES[int(s2["star"])]["id"])
+		counts[tid] = int(counts.get(tid, 0)) + 1
+		if tid in ["NS", "BH"]:
+			for pl in s2["stations_plan"]:
+				exotic_ok = exotic_ok and String(pl[0]) == "research"
+			exotic_ok = exotic_ok and int(s2.get("haven_tier", 0)) == 0
+	var home_ok: bool = String(U.star_type(U.home_system)["id"]) == "G"
+	var dist_ok: bool = is_equal_approx(wsum, 100.0) and int(counts.get("NS", 0)) >= 1 and int(counts.get("BH", 0)) >= 1 and int(counts.get("M", 0)) > int(counts.get("O", 0)) and counts.size() >= 8
+	# a red supergiant: the planets keep their distance
+	var rsg_ok := true
+	for s3 in U.systems:
+		if String(U.STAR_TYPES[int(s3["star"])]["id"]) == "RSG":
+			var L: Dictionary = U.get_layout(int(s3["id"]))
+			for p in L["planets"]:
+				rsg_ok = rsg_ok and float(p["orbit"]) > float(L["star"]["radius"]) * 3.0
+	var lum_ok: bool = float(U.STAR_TYPES[U.star_index("O")]["lum"]) > float(U.STAR_TYPES[U.star_index("G")]["lum"]) and float(U.STAR_TYPES[U.star_index("G")]["lum"]) > float(U.STAR_TYPES[U.star_index("M")]["lum"]) and float(U.STAR_TYPES[U.star_index("BH")]["lum"]) == 0.0
+	# every kind gets its own animated shader
+	var shader_ok := true
+	for t2 in U.STAR_TYPES:
+		var spr: Sprite2D = Celestial.make_star_sprite({"color": t2["color"], "color2": t2["color2"], "kind": t2["kind"], "star_id": t2["id"], "radius": t2["radius"]}, 100.0)
+		var want = {"neutron": Celestial.NeutronShader, "blackhole": Celestial.BlackHoleShader}.get(String(t2["kind"]), Celestial.StarShader)
+		shader_ok = shader_ok and (spr.material as ShaderMaterial).shader == want
+		spr.free()
+	check(dist_ok and exotic_ok and home_ok and rsg_ok and lum_ok and shader_ok,
+		"package 37: %d star types spread by weight (%s); neutron stars and black holes only with research stations; home a G star; red supergiants push the planets out; brightness for the solar collector; a shader per kind" % [U.STAR_TYPES.size(), str(counts)])
+	# coronal mass ejection: the shockwave passes the pilot – shields and sensors suffer
+	var pl2: Ship = view.player
+	var cme_ok := true
+	if bool(view.star_type().get("cme", false)):
+		pl2.jammed_t = 0.0
+		view.start_cme(true)
+		var steps := 0
+		while not view._cme.is_empty() and steps < 400 and pl2.jammed_t <= 0.0:
+			view._update_cme(0.5)
+			steps += 1
+		cme_ok = pl2.jammed_t > 0.0 and GameState.codex.unlocked.has("cluster_cme")
+		view._cme = {}
+		pl2.jammed_t = 0.0
+		pl2.shield_down = 0.0
+	# a black hole pulls (borrowed: this system's star as a black hole for a moment)
+	var star: Dictionary = view.layout["star"]
+	var keep := star.duplicate()
+	star["kind"] = "blackhole"
+	star["radius"] = 12000.0
+	var p0 := pl2.position
+	pl2.position = Vector2(12000.0 * 6.0, 0.0)
+	view.apply_gravity(pl2, 0.5)
+	var pull_ok: bool = pl2.position.x < 12000.0 * 6.0 - 10.0 and not pl2.dying
+	pl2.position = Vector2(12000.0 * 20.0, 0.0)
+	view.apply_gravity(pl2, 0.5)
+	var far_ok: bool = is_equal_approx(pl2.position.x, 12000.0 * 20.0)
+	star.merge(keep, true)
+	pl2.position = p0
+	view._bh_warned = false
+	check(cme_ok and pull_ok and far_ok and GameState.codex.all.has("cluster_blackhole") and GameState.codex.all.has("cluster_neutron"),
+		"package 37: a coronal mass ejection sends a shockwave through the system (shields and sensors suffer); a black hole pulls ships in close up, not from afar; codex entries")
 

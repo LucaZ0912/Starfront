@@ -5,7 +5,7 @@ extends RefCounted
 ##   title   heading
 ##   text    English text; paragraphs separated by "\n\n"
 ##   unlock  "start" or an event id: "dock", "jump", "warp", "mining", "colossus", "haven", "notorious",
-##           "raid", "ion", "contract", "bond", "faction:<id>", "corp:<id>"
+##           "raid", "ion", "contract", "bond", "faction:<id>", "corp:<id>", "cme", "star:<kind>" (package 37)
 ##   image   {"crest": faction} | {"maker": manufacturer} | {"ship": hull} | {"icon": module icon key}  (optional)
 ##   see     related entry ids (cross references)
 ## Faction, corporation and manufacturer entries are generated from data/factions.gd,
@@ -107,6 +107,27 @@ const ENTRIES := {
 	"cluster_asteroids": {"cat": "cluster", "title": "Asteroid fields", "unlock": "mining", "image": {"icon": "t_mining"},
 		"text": "Fields come in three classes: metallic close to the star, stony further out, icy beyond the frost line. Common ores are everywhere, rare ones only in unsafe space. Mining lasers work best on rock; ice needs an ice harvester.",
 		"see": ["cluster_colossi", "corp_cmc"]},
+	# package 37: stars
+	"cluster_stars": {"cat": "cluster", "title": "Stars", "unlock": "star:main", "image": {"icon": "sensors"},
+		"text": "Most suns of the Cluster are ordinary stars, sorted by their heat: blue O and B stars, white A, yellow-white F, yellow G, orange K and the small red M dwarfs that make up a third of all. A brown dwarf is a failed star – too small to burn, it only glows a dull pink. White dwarfs are the burnt-out cores of dead stars, red supergiants the bloated giants at the end of their lives; around them the planets keep their distance.
+
+The hotter and brighter a star, the more a solar collector draws from it – and the further out the frost line lies where the ice fields begin.",
+		"see": ["cluster_cme", "cluster_neutron", "cluster_blackhole"]},
+	"cluster_cme": {"cat": "cluster", "title": "Coronal mass ejections", "unlock": "cme", "image": {"icon": "o_shield"},
+		"text": "Now and then a star hurls a cloud of plasma into space. The sensors give about half a minute's warning; then the shockwave races out through the whole system. Where it passes, shields falter and sensors go blind for a while – close to the star the shields collapse.
+
+Brown dwarfs, white dwarfs, neutron stars and black holes do not erupt.",
+		"see": ["cluster_stars"]},
+	"cluster_neutron": {"cat": "cluster", "title": "Neutron stars", "unlock": "star:neutron", "image": {"icon": "sensors"},
+		"text": "The collapsed core of a giant star: twenty kilometres of matter heavier than anything else in the Cluster, spinning, wrapped in a magnetic field so strong that its lines of force glow. Two jets stream out along the magnetic axis and sweep round like the beam of a lighthouse.
+
+There is hardly any light to collect. Researchers come here; settlers do not.",
+		"see": ["cluster_stars", "cluster_blackhole"]},
+	"cluster_blackhole": {"cat": "cluster", "title": "Black holes", "unlock": "star:blackhole", "image": {"icon": "w_explosive"},
+		"text": "Nothing comes back from beyond the event horizon – not even light. Around it gas heated to millions of degrees circles in an accretion disc; the hole's gravity bends the light so much that the far side of the disc shows above and below it, and the stars behind it are smeared into a ring.
+
+Close in, its pull drags ships towards it. Out to about four horizon radii engines can still fight it; further in they cannot – and whatever crosses the horizon is crushed.",
+		"see": ["cluster_stars", "cluster_neutron"]},
 	"cluster_colossi": {"cat": "cluster", "title": "Colossal asteroids", "unlock": "colossus", "image": {"icon": "t_survey"},
 		"text": "Rocks thousands of kilometres long, lying in the asteroid fields. They are obstacles – ships fly around them – and they cast a radar shadow: nothing behind a colossus shows on the radar, can be locked or hit.\n\nPirates use them for ambushes. So can you.",
 		"see": ["basics_combat", "pir_archetypes"]},

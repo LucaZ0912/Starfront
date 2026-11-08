@@ -130,6 +130,136 @@ func build(p_system: int) -> void:
 		camera.position = player.position
 
 
+## Package 37: the star type of this system.
+func star_type() -> Dictionary:
+	return Universe.STAR_TYPES[Universe.star_index(String(layout["star"].get("star_id", "G")))]
+
+
+# ---------------------------------------------------------------- Coronal mass ejections (package 37)
+
+## Now and then a star throws off a coronal mass ejection: a warning in the log, the eruption on the star, then a
+## shockwave races out through the whole system. Where it passes, shields falter and sensors go blind for a while –
+## much worse close to the star.
+const CME_EVERY := Vector2(420.0, 900.0)      # s between two ejections
+const CME_WARN := 25.0                        # s of warning
+const CME_SPEED := 90000.0                    # km/s of the shockwave
+const CME_BAND := 260000.0                    # km thickness of the shockwave
+const CME_ERUPT := 6.0                        # s the eruption takes on the star
+var _cme: Dictionary = {}
+var _cme_next := -1.0
+
+
+func _update_cme(delta: float) -> void:
+	if not bool(star_type().get("cme", false)):
+		return
+	if _cme_next < 0.0:
+		_cme_next = randf_range(CME_EVERY.x, CME_EVERY.y)
+	if _cme.is_empty():
+		_cme_next -= delta
+		if _cme_next <= 0.0:
+			start_cme()
+		return
+	_cme["t"] = float(_cme["t"]) + delta
+	var t: float = _cme["t"]
+	if _cme["phase"] == "warn":
+		if t >= CME_WARN:
+			_cme["phase"] = "burst"
+			_cme["t"] = 0.0
+			GameState.log_msg("The coronal mass ejection has broken loose – the shockwave is on its way.", GameState.COL_WARN)
+		return
+	_set_star_param("cme_t", t / CME_ERUPT if t < CME_ERUPT else -1.0)
+	var star_r := float(layout["star"]["radius"])
+	var r := star_r + CME_SPEED * t
+	_cme["r"] = r
+	var hit: Dictionary = _cme["hit"]
+	for n in ship_layer.get_children():
+		if n is Ship and not n.dying and not n.is_docked() and not hit.has(n.get_instance_id()):
+			var d: float = n.position.length()
+			if d <= r:
+				hit[n.get_instance_id()] = true
+				_cme_hit(n, d, star_r)
+	if r - CME_BAND > Universe.SYSTEM_RADIUS * 1.05:
+		_cme = {}
+		_cme_next = randf_range(CME_EVERY.x, CME_EVERY.y)
+
+
+## Starts a coronal mass ejection (debug: at once, without the warning).
+func start_cme(at_once: bool = false) -> void:
+	_cme = {"phase": "burst" if at_once else "warn", "t": 0.0, "ang": randf() * TAU, "r": 0.0, "hit": {}}
+	_set_star_param("cme_ang", float(_cme["ang"]))
+	GameState.codex.event("cme")
+	if not at_once:
+		GameState.log_msg("SOLAR ALERT: a coronal mass ejection is building on %s – shockwave in %d s. Shields and sensors will falter."
+			% [layout["star"]["name"], int(CME_WARN)], GameState.COL_WARN)
+
+
+func _cme_hit(ship: Ship, d: float, star_r: float) -> void:
+	var close := d < star_r * 25.0
+	if close:
+		ship.shield_collapse(5.0)
+		ship.jammed_t = maxf(ship.jammed_t, 14.0)
+	else:
+		ship.fit.shield *= 0.6
+		ship.jammed_t = maxf(ship.jammed_t, 7.0)
+	if ship == player:
+		spawn_fx(Fx.flash(ship.position, Color(1.0, 0.6, 0.3), ship.radius * 12.0))
+		GameState.log_msg("The CME shockwave hits – %s" % ("shields down, sensors blind." if close else "shields weakened, sensors jammed."), GameState.COL_BAD)
+
+
+func _set_star_param(key: String, value) -> void:
+	for b in bodies:
+		if b["star"]:
+			for spr in [b["sky"], b["map"]]:
+				var mat := (spr as Sprite2D).material as ShaderMaterial
+				if mat != null and mat.shader == Celestial.StarShader:
+					mat.set_shader_parameter(key, value)
+
+
+## The shockwave: a broad orange front racing outwards (on every zoom level).
+func _draw_cme(o: Node2D, px: float) -> void:
+	if _cme.is_empty() or _cme["phase"] != "burst":
+		return
+	var r: float = _cme["r"]
+	var fade := 1.0 - clampf(r / (Universe.SYSTEM_RADIUS * 1.05), 0.0, 1.0) * 0.6
+	for i in 8:
+		var rr := r - CME_BAND * float(i) / 8.0
+		if rr <= 0.0:
+			break
+		var a := 0.16 * fade * (1.0 - float(i) / 8.0)
+		o.draw_arc(Vector2.ZERO, rr, 0.0, TAU, 360, Color(1.0, 0.55, 0.25, a), maxf(CME_BAND / 8.0, 2.0 * px))
+	o.draw_arc(Vector2.ZERO, r, 0.0, TAU, 360, Color(1.0, 0.8, 0.5, 0.5 * fade), 2.5 * px)
+
+
+# ---------------------------------------------------------------- Black hole (package 37)
+
+## Close to a black hole its gravity pulls ships in – a current the engines can fight (out to about four horizon
+## radii they still can, further in they cannot); whatever crosses the event horizon is crushed.
+const BH_REACH := 14.0                       # in horizon radii
+const BH_PULL := 400.0                       # km/s at four horizon radii
+var _bh_warned := false
+
+
+func apply_gravity(ship: Ship, delta: float) -> void:
+	if String(layout["star"].get("kind", "")) != "blackhole" or ship.dying or ship.is_docked() or ship.in_warp():
+		return
+	var R := float(layout["star"]["radius"])
+	var d := ship.position.length()
+	if d > R * BH_REACH or d < 1.0:
+		if ship == player:
+			_bh_warned = false
+		return
+	if d < R * 1.02:
+		if ship == player:
+			GameState.log_msg("%s crosses the event horizon and is crushed." % ship.display_name(), GameState.COL_BAD)
+		ship._die(null)
+		return
+	var pull := minf(BH_PULL * pow(R * 4.0 / d, 2.0), 3000.0)
+	ship.position -= ship.position / d * pull * delta
+	if ship == player and not _bh_warned and d < R * 8.0:
+		_bh_warned = true
+		GameState.log_msg("GRAVITY WELL: the black hole is pulling you in – full thrust away from it!", GameState.COL_BAD)
+
+
 ## Codex (package 18): what this system shows the pilot.
 func _codex_discover() -> void:
 	for f in [Universe.controller(system_id)] + Universe.claimants(system_id):
@@ -139,6 +269,10 @@ func _codex_discover() -> void:
 		GameState.codex.event("colossus")
 	if not havens.is_empty():
 		GameState.codex.event("haven")
+	var skind := String(layout["star"].get("kind", "main"))                      # package 37
+	GameState.codex.event("star:" + skind)
+	if not skind in ["neutron", "blackhole"]:
+		GameState.codex.event("star:main")
 
 
 # ---------------------------------------------------------------- Setup
@@ -152,29 +286,35 @@ func _make_bodies() -> void:
 		var is_star: bool = b["id"] == "star"
 		var sky_spr: Sprite2D
 		var map_spr: Sprite2D
+		var look: Dictionary = Celestial.star_look(star) if is_star else {}
 		if is_star:
-			sky_spr = Celestial.make_star_sprite(star["color"], 100.0)
-			# 0.6.36.6: a wide soft corona behind the star (additive, no pixel steps)
-			var glow := Sprite2D.new()
-			var gt := GradientTexture2D.new()
-			gt.width = 128
-			gt.height = 128
-			gt.fill = GradientTexture2D.FILL_RADIAL
-			gt.fill_from = Vector2(0.5, 0.5)
-			gt.fill_to = Vector2(1.0, 0.5)
-			var gr := Gradient.new()
-			gr.offsets = PackedFloat32Array([0.0, 0.2, 0.45, 1.0])
-			var sc: Color = star["color"]
-			gr.colors = PackedColorArray([Color(sc.lightened(0.4), 0.75), Color(sc, 0.45), Color(sc, 0.14), Color(sc, 0.0)])
-			gt.gradient = gr
-			glow.texture = gt
-			glow.scale = Vector2.ONE * CORONA_SIZE * 64.0 / 128.0
-			var gm := CanvasItemMaterial.new()
-			gm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-			glow.material = gm
-			glow.show_behind_parent = true
-			sky_spr.add_child(glow)
-			map_spr = Celestial.make_star_sprite(star["color"], float(star["radius"]))
+			sky_spr = Celestial.make_star_sprite(star, 100.0)
+			var kind := String(look["kind"])
+			if kind == "blackhole":
+				sky_spr.add_child(Celestial.make_lens_sprite())       # package 37: space bends round the hole
+			else:
+				# 0.6.36.6: a wide soft corona behind the star (additive, no pixel steps); package 37: by star kind
+				var glow := Sprite2D.new()
+				var gt := GradientTexture2D.new()
+				gt.width = 128
+				gt.height = 128
+				gt.fill = GradientTexture2D.FILL_RADIAL
+				gt.fill_from = Vector2(0.5, 0.5)
+				gt.fill_to = Vector2(1.0, 0.5)
+				var gr := Gradient.new()
+				gr.offsets = PackedFloat32Array([0.0, 0.2, 0.45, 1.0])
+				var sc: Color = star["color"]
+				var gk: float = {"brown": 0.35, "neutron": 0.5, "white": 0.8}.get(kind, 1.0)
+				gr.colors = PackedColorArray([Color(sc.lightened(0.4), 0.75 * gk), Color(sc, 0.45 * gk), Color(sc, 0.14 * gk), Color(sc, 0.0)])
+				gt.gradient = gr
+				glow.texture = gt
+				glow.scale = Vector2.ONE * (0.8 if kind == "neutron" else CORONA_SIZE) * 64.0 / 128.0
+				var gm := CanvasItemMaterial.new()
+				gm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+				glow.material = gm
+				glow.show_behind_parent = true
+				sky_spr.add_child(glow)
+			map_spr = Celestial.make_star_sprite(star, float(look["vis_r"]))
 		else:
 			var ldir := (-(b["pos"] as Vector2)).normalized()
 			sky_spr = Celestial.make_planet_sprite(b, 100.0, ldir)
@@ -183,7 +323,8 @@ func _make_bodies() -> void:
 		map_spr.position = b["pos"]
 		body_layer.add_child(map_spr)
 		bodies.append({"data": b, "sky": sky_spr, "map": map_spr, "star": is_star,
-			"quad": _quad_factor(b, is_star)})
+			"quad": float(look["quad"]) if is_star else _quad_factor(b, false),
+			"r_vis": float(look["vis_r"]) if is_star else float(b["radius"]), "kind": String(look.get("kind", ""))})
 
 
 func _quad_factor(b: Dictionary, is_star: bool) -> float:
@@ -1050,6 +1191,7 @@ func _process(delta: float) -> void:
 	_update_interdict()
 	_update_notorious(delta)
 	_update_raid(delta)
+	_update_cme(delta)                                  # package 37
 	_respawn_timer -= delta
 	if _respawn_timer <= 0.0:
 		_respawn_timer = 120.0
@@ -1204,6 +1346,7 @@ const SKY_PIXELS := 160.0
 const SKY_NEAR := 0.9
 const SKY_STAR := 1.5
 const CORONA_SIZE := 2.4                # corona quad relative to the star's quad
+const STAR_PIXELS := {"main": 1000.0, "white": 1000.0, "brown": 900.0, "giant": 1100.0, "neutron": 700.0, "blackhole": 700.0}
 
 
 ## 0.6.36.7: parallax (screen px per km of distance) of a far body, and how much it grows close up.
@@ -1238,7 +1381,7 @@ func _update_bodies() -> void:
 	var map_a := map_alpha()
 	for b in bodies:
 		var data: Dictionary = b["data"]
-		var r: float = data["radius"]
+		var r: float = b.get("r_vis", data["radius"])          # package 37: a star's visible extent
 		var bpos: Vector2 = data["pos"]
 		var quad: float = b["quad"]
 		var sky_spr: Sprite2D = b["sky"]
@@ -1260,7 +1403,14 @@ func _update_bodies() -> void:
 			sky_spr.scale = Vector2.ONE * app_r * quad / 64.0
 			sky_spr.modulate.a = sky_a
 			sky_spr.z_index = -clampi(int(dist / 1000.0), 0, 4000)
-			_set_pixels(sky_spr, SKY_PIXELS * quad * 0.43)          # 0.6.36.3: a fixed pixel grid – no flicker while it grows
+			if b["star"]:
+				# package 37: stars much finer (≈ 450 pixel rows across an ordinary star's disc)
+				(sky_spr.material as ShaderMaterial).set_shader_parameter("pixels", STAR_PIXELS.get(String(b["kind"]), 1000.0))
+				if b["kind"] == "blackhole" and sky_spr.get_child_count() > 0:
+					var half := 64.0 * sky_spr.scale.x * 1.8 * 0.5
+					(sky_spr.get_child(0).material as ShaderMaterial).set_shader_parameter("quad_screen", Vector2(half / vs.x, half / vs.y))
+			else:
+				_set_pixels(sky_spr, SKY_PIXELS * quad * 0.43)          # 0.6.36.3: a fixed pixel grid – no flicker while it grows
 		else:
 			sky_spr.visible = false
 		# Map representation (true position, minimum on-screen size)
@@ -2372,6 +2522,7 @@ func _draw_overlay() -> void:
 				o.draw_string(font, Vector2(-40, -4), "%s LEAD" % n.escort_kind.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(gc, ca + 0.2))
 				o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# Radar in recon view
+	_draw_cme(o, px)                                    # package 37: the shockwave of a coronal mass ejection
 	var radar_a := mark_a * sky_alpha()
 	if radar_a > 0.01 and player != null and is_instance_valid(player) and not player.is_docked() and not player.in_warp():
 		_draw_radar(o, player.position, px, radar_a)          # 0.6.35.8: no radar during a warp

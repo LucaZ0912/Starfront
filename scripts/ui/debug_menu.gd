@@ -330,6 +330,24 @@ func _build_world() -> void:
 		rm.add_child(UI.button(String(Universe.MOON_TYPES[mt]["name"]), func(): _cmd({"type": "debug_moon", "moon_type": mtk})))
 	var ro := _row()
 	ro.add_child(UI.button("Roll the orbits (as on arrival)", func(): _cmd({"type": "debug_roll_orbits"})))
+	# package 37: star types
+	_section("Stars (package 37)")
+	var st_counts := {}
+	for s37 in Universe.systems:
+		var tid := String(Universe.STAR_TYPES[int(s37["star"])]["id"])
+		st_counts[tid] = int(st_counts.get(tid, 0)) + 1
+	var parts: Array = []
+	for t37 in Universe.STAR_TYPES:
+		parts.append("%s %d" % [t37["id"], int(st_counts.get(String(t37["id"]), 0))])
+	content.add_child(UI.label("This system: %s  •  Cluster: %s" % [Universe.star_type(GameState.current_system)["name"], "  ".join(parts)], 12, UI.TEXT_DIM))
+	var rs1 := _row()
+	var rs2 := _row()
+	var si := 0
+	for t38 in Universe.STAR_TYPES:
+		var tid2 := String(t38["id"])
+		(rs1 if si < 6 else rs2).add_child(UI.button(tid2, func(): _cmd({"type": "debug_star", "star": tid2}), String(t38["name"])))
+		si += 1
+	rs2.add_child(UI.button("Coronal mass ejection now", func(): _cmd({"type": "debug_cme"})))
 	_section("Teleport (docks at the first station)")
 	var sys_ids: Array = []
 	for s in Universe.systems:

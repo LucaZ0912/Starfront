@@ -6,6 +6,9 @@ extends Node2D
 
 const PlanetShader = preload("res://shaders/planet.gdshader")
 const StarShader = preload("res://shaders/star.gdshader")
+const NeutronShader = preload("res://shaders/neutron.gdshader")          # package 37
+const BlackHoleShader = preload("res://shaders/blackhole.gdshader")
+const LensShader = preload("res://shaders/lens.gdshader")
 const ColossusShader = preload("res://shaders/colossus.gdshader")
 const FactionData = preload("res://data/factions.gd")
 const COLOSSUS_BODY := 0.8      # outer radius of the rock relative to the shader quad
@@ -164,17 +167,63 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	return spr
 
 
-static func make_star_sprite(col: Color, r: float) -> Sprite2D:
+## Package 37: how a star is drawn – its visible extent (km; a neutron star's field lines and a black hole's disc
+## reach far beyond the body) and the quad factor (quad width / visible radius).
+static func star_look(star: Dictionary) -> Dictionary:
+	var r := float(star.get("radius", 60000.0))
+	match String(star.get("kind", "main")):
+		"neutron":
+			return {"vis_r": r * 15.0, "quad": 2.0 / 0.95, "kind": "neutron"}
+		"blackhole":
+			return {"vis_r": r * 6.0, "quad": 2.0 / 0.98, "kind": "blackhole"}
+	return {"vis_r": r, "quad": 2.0 / 0.45, "kind": String(star.get("kind", "main"))}
+
+
+## A star sprite of visible radius `r` (km or px). `star`: the layout's star dictionary (package 37) – or just a
+## colour (an ordinary star).
+static func make_star_sprite(star, r: float) -> Sprite2D:
+	var sd: Dictionary = star if star is Dictionary else {"color": star, "kind": "main"}
+	var look := star_look(sd)
 	var spr := Sprite2D.new()
 	spr.texture = PixelArt.white()
-	var quad := r * 2.0 / 0.45
+	var quad: float = r * float(look["quad"])
 	spr.scale = Vector2.ONE * quad / 64.0
 	var mat := ShaderMaterial.new()
-	mat.shader = StarShader
+	var col: Color = sd.get("color", Color(1.0, 0.85, 0.5))
+	var col2: Color = sd.get("color2", col.lightened(0.6))
+	match String(look["kind"]):
+		"neutron":
+			mat.shader = NeutronShader
+			mat.set_shader_parameter("pixels", 420.0)
+		"blackhole":
+			mat.shader = BlackHoleShader
+			mat.set_shader_parameter("pixels", 420.0)
+		_:
+			mat.shader = StarShader
+			mat.set_shader_parameter("pixels", clampf(quad / 10.0, 60.0, 200.0))
+			var tid := String(sd.get("star_id", "G"))
+			var tdef: Dictionary = Universe.STAR_TYPES[Universe.star_index(tid)]
+			mat.set_shader_parameter("mode", {"brown": 1, "giant": 2}.get(String(look["kind"]), 0))
+			mat.set_shader_parameter("flares", 1.0 if bool(tdef.get("flares", true)) else 0.0)
+			mat.set_shader_parameter("spots", 0.8 if tid in ["K", "M", "G"] else (0.3 if String(look["kind"]) == "main" else 0.0))
 	mat.set_shader_parameter("color", col)
-	mat.set_shader_parameter("pixels", clampf(quad / 10.0, 60.0, 200.0))
+	mat.set_shader_parameter("color2", col2)
+	mat.set_shader_parameter("seed", float(sd.get("seed", 1.0)))
 	spr.material = mat
 	return spr
+
+
+## Package 37: the gravitational lens round a black hole – a child of its sprite, drawn behind it.
+static func make_lens_sprite() -> Sprite2D:
+	var lens := Sprite2D.new()
+	lens.texture = PixelArt.white()
+	lens.scale = Vector2.ONE * 1.8
+	lens.show_behind_parent = true
+	var mat := ShaderMaterial.new()
+	mat.shader = LensShader
+	mat.set_shader_parameter("horizon", 0.16 / 1.8)
+	lens.material = mat
+	return lens
 
 
 func title() -> String:

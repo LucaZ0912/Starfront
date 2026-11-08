@@ -19,7 +19,7 @@ const SYSTEM_NAMES := [
 	"Leuchtfeuer", "Ödland", "Himmelstor", "Nachtfalke", "Hohenstein",
 ]
 ## Galaxy generator version (stored in saves; older saves are moved to the current cluster).
-const GALAXY_VERSION := 4          # package 36: moons, orbits rolled on arrival
+const GALAXY_VERSION := 5          # package 36: moons, orbits rolled on arrival; package 37: star types
 const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
 const POWER_SYSTEMS := 12
@@ -32,7 +32,6 @@ const ROMAN := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
 const FIELD_CLASSES := ["metallic", "stony", "icy"]
 const FIELD_BANDS := {"metallic": Vector2(1140000, 2700000), "stony": Vector2(2250000, 4050000), "icy": Vector2(3750000, 5550000)}
 ## Hot stars push the frost line outward, cool ones pull it in.
-const FROST_SCALE := {"Yellow Dwarf": 1.0, "Red Dwarf": 0.8, "Blue Giant": 1.15, "White Dwarf": 0.85, "Orange Giant": 1.05}
 ## Rock class orbiting each planet type (gas giants collect ice, lava worlds metal).
 const PLANET_ROCK_CLASS := {"terran": "stony", "desert": "stony", "ice": "icy", "lava": "metallic", "gas": "icy", "toxic": "icy", "barren": "metallic"}
 ## No-fire zone radius around stations by tier (km). Firing inside makes the station's defence engage.
@@ -73,13 +72,78 @@ const WARP_MIN_STATION := 8000.0
 ## Least distance for a warp to target `t` (a warp target dictionary).
 static func warp_min_for(t: Dictionary) -> float:
 	return WARP_MIN_STATION if String(t.get("kind", "")) in ["station", "haven"] else WARP_MIN
+## Package 37: the star types. kind = how it is drawn and what it does (main sequence, brown dwarf, red supergiant,
+## white dwarf, neutron star, black hole). radius in km (G = 60,000); lum = brightness for the solar collector
+## (G = 1); frost = how far out the frost line lies (G = 1); weight = share in the Cluster (in %); land = warp
+## arrival distance in radii; flares / cme = prominences and coronal mass ejections; color2 = the hot colour.
 const STAR_TYPES := [
-	{"name": "Yellow Dwarf", "color": Color(1.0, 0.9, 0.5), "radius": 60000.0},
-	{"name": "Red Dwarf", "color": Color(1.0, 0.45, 0.3), "radius": 40000.0},
-	{"name": "Blue Giant", "color": Color(0.55, 0.7, 1.0), "radius": 110000.0},
-	{"name": "White Dwarf", "color": Color(0.9, 0.95, 1.0), "radius": 25000.0},
-	{"name": "Orange Giant", "color": Color(1.0, 0.65, 0.3), "radius": 90000.0},
+	{"id": "O", "name": "Class O Blue Star", "kind": "main", "color": Color(0.5, 0.62, 1.0), "color2": Color(0.85, 0.92, 1.0), "radius": 150000.0, "lum": 8.0, "frost": 1.35, "weight": 2.0, "land": 2.5, "flares": true, "cme": true},
+	{"id": "B", "name": "Class B Blue-White Star", "kind": "main", "color": Color(0.62, 0.75, 1.0), "color2": Color(0.92, 0.96, 1.0), "radius": 115000.0, "lum": 4.0, "frost": 1.25, "weight": 3.0, "land": 2.5, "flares": true, "cme": true},
+	{"id": "A", "name": "Class A White Star", "kind": "main", "color": Color(0.85, 0.9, 1.0), "color2": Color(1.0, 1.0, 1.0), "radius": 85000.0, "lum": 2.0, "frost": 1.15, "weight": 5.0, "land": 2.5, "flares": true, "cme": true},
+	{"id": "F", "name": "Class F Yellow-White Star", "kind": "main", "color": Color(1.0, 0.95, 0.75), "color2": Color(1.0, 1.0, 0.95), "radius": 70000.0, "lum": 1.4, "frost": 1.07, "weight": 8.0, "land": 2.5, "flares": true, "cme": true},
+	{"id": "G", "name": "Class G Yellow Dwarf", "kind": "main", "color": Color(1.0, 0.82, 0.38), "color2": Color(1.0, 0.97, 0.8), "radius": 60000.0, "lum": 1.0, "frost": 1.0, "weight": 15.0, "land": 2.5, "flares": true, "cme": true},
+	{"id": "K", "name": "Class K Orange Dwarf", "kind": "main", "color": Color(1.0, 0.6, 0.25), "color2": Color(1.0, 0.88, 0.6), "radius": 50000.0, "lum": 0.6, "frost": 0.9, "weight": 20.0, "land": 2.5, "flares": true, "cme": true},
+	{"id": "M", "name": "Class M Red Dwarf", "kind": "main", "color": Color(0.95, 0.32, 0.18), "color2": Color(1.0, 0.7, 0.45), "radius": 38000.0, "lum": 0.3, "frost": 0.8, "weight": 30.0, "land": 2.5, "flares": true, "cme": true},
+	{"id": "BD", "name": "Brown Dwarf", "kind": "brown", "color": Color(0.78, 0.28, 0.58), "color2": Color(1.0, 0.6, 0.85), "radius": 28000.0, "lum": 0.05, "frost": 0.6, "weight": 6.0, "land": 2.5, "flares": false, "cme": false},
+	{"id": "RSG", "name": "Red Supergiant", "kind": "giant", "color": Color(0.95, 0.28, 0.1), "color2": Color(1.0, 0.62, 0.3), "radius": 600000.0, "lum": 6.0, "frost": 1.3, "weight": 4.0, "land": 1.6, "flares": true, "cme": true},
+	{"id": "WD", "name": "White Dwarf", "kind": "white", "color": Color(0.88, 0.94, 1.0), "color2": Color(1.0, 1.0, 1.0), "radius": 18000.0, "lum": 0.3, "frost": 0.85, "weight": 3.0, "land": 3.0, "flares": false, "cme": false},
+	{"id": "NS", "name": "Neutron Star", "kind": "neutron", "color": Color(0.5, 0.6, 1.0), "color2": Color(0.45, 1.0, 0.95), "radius": 6000.0, "lum": 0.1, "frost": 0.6, "weight": 2.0, "land": 5.0, "flares": false, "cme": false},
+	{"id": "BH", "name": "Black Hole", "kind": "blackhole", "color": Color(1.0, 0.5, 0.15), "color2": Color(1.0, 0.92, 0.7), "radius": 12000.0, "lum": 0.0, "frost": 0.6, "weight": 2.0, "land": 10.0, "flares": false, "cme": false},
 ]
+
+
+## Index of a star type by id ("G", "BH" …).
+static func star_index(type_id: String) -> int:
+	for i in STAR_TYPES.size():
+		if String(STAR_TYPES[i]["id"]) == type_id:
+			return i
+	return 4
+
+
+## Package 37: star types across the Cluster by their weights. Home: a G star. Neutron stars and black holes go to
+## systems without stations (about one in fifty each, at least one); some of them get a research station.
+func _assign_stars() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 52021 + 37
+	var exotic := ["NS", "BH"]
+	var empty: Array = []
+	for s2 in systems:
+		s2["star"] = star_index("G")
+		if int(s2["id"]) != home_system and (s2["stations_plan"] as Array).is_empty() and int(s2.get("haven_tier", 0)) == 0:
+			empty.append(int(s2["id"]))
+	_shuffle(empty, rng)
+	var taken := {}
+	for ex in exotic:
+		var want := maxi(1, int(round(systems.size() * float(STAR_TYPES[star_index(ex)]["weight"]) / 100.0)))
+		for k in want:
+			if empty.is_empty():
+				break
+			var sid: int = empty.pop_back()
+			systems[sid]["star"] = star_index(ex)
+			taken[sid] = true
+			if rng.randf() < 0.5:                         # scientists like strange places
+				systems[sid]["stations_plan"] = [["research", rng.randi_range(1, 2)]]
+	var total := 0.0
+	for t in STAR_TYPES:
+		if not String(t["id"]) in exotic:
+			total += float(t["weight"])
+	for s3 in systems:
+		var sid3 := int(s3["id"])
+		if sid3 == home_system or taken.has(sid3):
+			continue
+		var x := rng.randf() * total
+		for i in STAR_TYPES.size():
+			if String(STAR_TYPES[i]["id"]) in exotic:
+				continue
+			x -= float(STAR_TYPES[i]["weight"])
+			if x <= 0.0:
+				s3["star"] = i
+				break
+
+
+## The star type dictionary of a system.
+func star_type(sid: int) -> Dictionary:
+	return STAR_TYPES[int(systems[sid].get("star", 4))]
 
 ## systems[i] = {id, name, pos (Galaxiekarte), security 0..1, star, links {nachbar_id: routenklasse}}
 var systems: Array = []
@@ -121,6 +185,7 @@ func generate(p_seed: int) -> void:
 	_build_routes(rng)
 	_assign_territory()
 	_plan_stations()
+	_assign_stars()                                   # package 37
 
 
 ## Decides type and tier of every station (and Pirate Haven) in the cluster up front, so that every
@@ -643,7 +708,7 @@ func generate_test() -> void:
 func build_test_layout() -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 777
-	var st_type: Dictionary = STAR_TYPES[0]
+	var st_type: Dictionary = STAR_TYPES[star_index("G")]
 	var L := {
 		"star": {"id": "star", "name": "Testfeld", "type": st_type["name"], "color": st_type["color"],
 			"radius": float(st_type["radius"]), "pos": Vector2.ZERO},
@@ -1111,15 +1176,23 @@ func _generate_layout(id: int) -> Dictionary:
 	var st_type: Dictionary = STAR_TYPES[sys["star"]]
 	var L := {
 		"star": {"id": "star", "name": sys["name"], "type": st_type["name"], "color": st_type["color"],
-			"radius": float(st_type["radius"]), "pos": Vector2.ZERO},
+			"radius": float(st_type["radius"]), "pos": Vector2.ZERO, "star_id": st_type["id"], "kind": st_type["kind"],
+			"color2": st_type["color2"], "seed": float(id) * 3.7 + 1.0},
 		"planets": [], "stations": [], "gates": [], "fields": [], "asteroids": [], "anomalies": [], "colossi": [], "havens": [],
 	}
 	var used: Array = []
 	# Planets
 	var planet_count := rng.randi_range(3, 6)
 	var ptypes: Array = PLANET_TYPES.keys()
+	# package 37: a red supergiant pushes the inner orbits out (squeezing them towards the edge); around neutron stars
+	# and black holes only a few dead worlds remain
+	var push := maxf(0.0, float(st_type["radius"]) * 3.2 - 780000.0) / (1.0 - 780000.0 / 5400000.0)
+	if String(st_type["kind"]) in ["neutron", "blackhole"]:
+		planet_count = mini(planet_count, 3)
+		ptypes = ["barren", "ice", "lava", "gas"]
 	for i in planet_count:
 		var orbit := (260000.0 + i * 290000.0 + rng.randf_range(-40000.0, 40000.0)) * SCALE
+		orbit += push * (1.0 - orbit / 5400000.0)
 		var pos := Vector2.from_angle(rng.randf() * TAU) * orbit
 		var ptype: String = ptypes[rng.randi() % ptypes.size()]
 		if i == 0 and rng.randf() < 0.5:
@@ -1169,7 +1242,7 @@ func _generate_layout(id: int) -> Dictionary:
 			"pos": dir * GATE_DISTANCE, "name": "Gate to %s" % systems[nb]["name"],
 		})
 	# Asteroid fields: metallic near the star, stony in between, icy beyond the frost line
-	var frost: float = FROST_SCALE.get(STAR_TYPES[int(sys["star"])]["name"], 1.0)
+	var frost: float = float(st_type["frost"])          # package 37
 	var need_icy := false
 	for pe in plan:
 		need_icy = need_icy or pe[0] == "ice_refinery"
@@ -1581,7 +1654,8 @@ func warp_targets(system_id: int) -> Array:
 	var L := get_layout(system_id)
 	var out: Array = []
 	var star: Dictionary = L["star"]
-	out.append({"id": "star", "kind": "star", "name": "%s (%s)" % [star["name"], star["type"]], "pos": star["pos"], "land": float(star["radius"]) * 2.5, "data": star})
+	var land_mult := float(STAR_TYPES[star_index(String(star.get("star_id", "G")))]["land"])       # package 37
+	out.append({"id": "star", "kind": "star", "name": "%s (%s)" % [star["name"], star["type"]], "pos": star["pos"], "land": float(star["radius"]) * land_mult, "data": star})
 	for p in L["planets"]:
 		out.append({"id": p["id"], "kind": "planet", "name": p["name"], "pos": p["pos"], "land": float(p["radius"]) * 1.6, "data": p})
 	for m in L.get("moons", []):                   # package 36
