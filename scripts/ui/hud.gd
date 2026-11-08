@@ -113,6 +113,11 @@ func _ready() -> void:
 	system_label = UI.label("", 17, UI.ACCENT)
 	hb.add_child(system_label)
 	hb.add_child(UI.spacer())
+	# 0.6.35.15: frames per second, left of the buttons (can be switched off in the settings)
+	fps_label = UI.label("", 14, UI.TEXT_DIM)
+	fps_label.tooltip_text = "Frames per second (average over the last second) and the slowest frame"
+	fps_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	hb.add_child(fps_label)
 	hb.add_child(nav)                  # top right, where the old buttons were
 
 	# --- Ship panel (bottom left)
@@ -602,7 +607,32 @@ func _update_overview() -> void:
 		b.tooltip_text = "Warp" if d > Universe.WARP_MIN else "Approach"
 
 
+## 0.6.35.15: the FPS display – updated four times a second; green, yellow below 50, red below 30.
+var fps_label: Label
+var _fps_t := 0.0
+var _fps_worst := 0.0
+
+
+func _update_fps(delta: float) -> void:
+	if fps_label == null:
+		return
+	var on := bool(SaveGame.settings.get("show_fps", true))
+	fps_label.visible = on
+	if not on:
+		return
+	_fps_worst = maxf(_fps_worst, delta)
+	_fps_t += delta
+	if _fps_t < 0.25:
+		return
+	_fps_t = 0.0
+	var fps := Engine.get_frames_per_second()
+	fps_label.text = "%d FPS  ·  max %d ms" % [int(fps), int(round(_fps_worst * 1000.0))]
+	fps_label.add_theme_color_override("font_color", Color(0.45, 1.0, 0.55) if fps >= 50 else (Color(1.0, 0.85, 0.3) if fps >= 30 else Color(1.0, 0.4, 0.35)))
+	_fps_worst = 0.0
+
+
 func _process(delta: float) -> void:
+	_update_fps(delta)
 	if hover_panel.visible:
 		var mp := get_viewport().get_mouse_position()
 		hover_panel.position = mp + Vector2(18, 18)

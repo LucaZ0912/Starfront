@@ -34,6 +34,12 @@ func _ready() -> void:
 	au.toggled.connect(func(on): _change("autosave", on))
 	v.add_child(au)
 
+	var fp := CheckButton.new()
+	fp.text = "Show frames per second (FPS) in the top bar"
+	fp.button_pressed = bool(SaveGame.settings["show_fps"])
+	fp.toggled.connect(func(on): _change("show_fps", on))
+	v.add_child(fp)
+
 	# package 28a: one volume slider per channel
 	for spec in [["Master volume", "volume"], ["Music", "vol_music"], ["Atmosphere", "vol_ambience"], ["Effects", "vol_sfx"]]:
 		var key: String = spec[1]

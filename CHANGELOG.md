@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.15 – 2026-11-08
+
+- **Warp:** the lines streaming behind a ship in warp are gone (the friction glow replaces them).
+- **FPS display** in the top bar, left of the Ship / Pilot / Map buttons: frames per second and the slowest frame, green / yellow / red; can be switched off in the settings.
+
 ## alpha 0.6.35.14 – 2026-11-08
 
 **Warp:** the tunnel and the warp trail reach only from the start to the end of the warp (on the system map they ran to infinity). Fixed: the system map stuttered badly during a warp – thousands of tunnel rings were drawn every frame (about 170 ms a frame, now about 17 ms).

@@ -3728,22 +3728,12 @@ func _draw() -> void:
 	if fit == null:
 		return
 	var selected := faction == "player" and fit.uid == GameState.active_uid
-	# Warp trail
+	# Warp: the friction glow (0.6.35.15: the lines streaming behind are gone)
 	if in_warp():
 		var z: float = view.camera.zoom.x if view != null and view.camera != null else 1.0
-		var dir := Vector2.from_angle(heading)
 		var p := warp_progress()
-		var strength := clampf(minf(p, 1.0 - p) * 6.0, 0.0, 1.0)
 		var hot := clampf(p * 8.0, 0.0, 1.0) * clampf((1.0 - p) * 40.0, 0.0, 1.0)     # 0.6.35.13: full to the end
-		# NPC trails are much shorter and fainter, so a busy system map stays readable
 		var npc := fit.uid < 0
-		if npc:
-			strength *= 0.45
-		var trail := (70.0 if npc else 420.0) / z * strength
-		trail = minf(trail, position.distance_to(warp["from"]))       # 0.6.35.14: never behind the start
-		for i in 3:
-			var off := dir.orthogonal() * (i - 1) * 5.0 / z
-			draw_line(off, off - dir * trail * (1.0 - absf(i - 1) * 0.35), Color(0.55, 0.85, 1.0, 0.55 * strength), (4.0 - absf(i - 1) * 2.0) / z)
 		_draw_warp_friction(hot * (0.7 if npc else 1.0), z)
 
 	# Tool beams
