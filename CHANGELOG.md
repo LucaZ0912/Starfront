@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.5 – 2026-11-08
+
+- Radar shadows end at the radar range.
+- Two new colossus shapes for each kind of rock: metal slab and spindle, stone rubble pile and kidney, ice teardrop
+  and spiked crystal – with matching radar shadows.
+- Colossi can be mined: a huge deposit of two ores; mined out they stay and show as empty.
+- Small asteroids mined out break apart, the pieces drift and fade; they grow back after 30–60 minutes.
+
 ## alpha 0.6.35.4 – 2026-11-08
 
 **Asteroid fields:** more compact (12,000–22,000 km) and made of many small structures – dense knots, patches and streams – with open space between them and some very dense spots. Every field now has 3–5 colossi (one more in lawless space).

@@ -574,6 +574,7 @@ func _process(delta: float) -> void:
 				_test_collection()
 				_test_review5(view)
 				_test_scale()
+				_test_rocks(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -995,12 +996,13 @@ func _test_resources() -> void:
 			var fk := "%d_%s" % [sid, co["field"]]
 			col_per_field[fk] = int(col_per_field.get(fk, 0)) + 1
 			for a in lay["asteroids"]:
-				if ColossusShape.contains(co["poly"], (a["pos"] as Vector2) - (co["pos"] as Vector2)):
+				var rel_a: Vector2 = (a["pos"] as Vector2) - (co["pos"] as Vector2)
+				if rel_a.length() < float(co["radius"]) + 200.0 and ColossusShape.contains(co["poly"], rel_a):     # far points confuse the polygon test
 					inside += 1
 				if String(a.get("near", "")) == co["name"]:
 					rim += 1
 	check(ncol > 10 and col_classes.size() == 3, "colossal asteroids in all three classes (%d)" % ncol)
-	check(col_shapes.size() == 3, "all three colossus shapes occur (%s)" % str(col_shapes.keys()))
+	check(col_shapes.size() == 9, "all nine colossus shapes occur – three shared, two more for each kind of rock (%s)" % str(col_shapes.keys()))
 	var groups := 0
 	for fk2 in col_per_field:
 		if int(col_per_field[fk2]) >= 2:
@@ -1094,7 +1096,7 @@ func _test_resources() -> void:
 	check(TL["stations"][0]["type"] == "trade" and int(TL["stations"][0]["tier"]) == 3, "test system: start at the tier-3 Trade Hub")
 	check(t_planets.size() == Universe.PLANET_TYPES.size(), "test system: every planet type")
 	check(t_ores.size() == all_ores and t_sizes.size() == 3, "test system: every ore (%d/%d) and asteroid size" % [t_ores.size(), all_ores])
-	check(t_cols.size() == 9 and TL["gates"].is_empty(), "test system: colossi in all 9 class/shape combinations, no gates")
+	check(t_cols.size() == 15 and TL["gates"].is_empty(), "test system: colossi in all 15 class/shape combinations, no gates")
 	check(Universe.seed_value == seed_before and Universe.systems.size() == sys_before and not Universe.test_mode, "test system leaves the running galaxy untouched")
 	check(Ship.mining_mult({"tool": "mining"}, "water_ice") < 1.0 and Ship.mining_mult({"tool": "mining"}, "iron_ore") == 1.0, "mining lasers get a malus on ice")
 	var pal := PixelArt.ore_palette("helium3_ice")
@@ -6026,3 +6028,37 @@ func _test_scale() -> void:
 	var traffic_ok: bool = int(U.system_profile(GameState.current_system).get("holding", 0)) >= 0
 	check(scale_ok and belt_ok and styles.size() >= 4 and dense_ok and warm_ok and traffic_ok and main.last_load_ms > 0.0,
 		"package 35: systems 3× as big (6M km), belts in most systems (%d of 40 both), fields of %d styles, bigger and denser; pictures made ahead (system built in %.0f ms)" % [both, styles.size(), main.last_load_ms])
+
+
+## 0.6.35.5: colossi can be mined (empty they stay), small asteroids break apart and come back after 30–60 min.
+func _test_rocks(view: SystemView) -> void:
+	var small = null
+	for a in view.asteroid_nodes:
+		if is_instance_valid(a) and String(a.data.get("size", "")) == "small" and not a.data.has("gone"):
+			small = a
+			break
+	var rock_ok := false
+	if small != null:
+		var a0 := float(small.data["amount0"])
+		small.data["amount"] = 0.0
+		small.shatter()
+		var gone_ok: bool = small.data.has("gone") and small.is_depleted() and not Ship.lockable(small)
+		var wait := float(small.data["respawn_at"]) - GameState.play_time
+		var saved: Dictionary = Universe.to_dict()["layouts"][view.system_id]["gone"]
+		small.data["respawn_at"] = GameState.play_time - 1.0
+		small._break_t = -1.0
+		view._return_rocks()
+		rock_ok = gone_ok and wait >= 1800.0 - 1.0 and wait <= 3600.0 + 1.0 and saved.has(String(small.data["id"])) and not small.data.has("gone") and is_equal_approx(float(small.data["amount"]), a0)
+	var col_ok := false
+	if not view.colossi.is_empty():
+		var co = view.colossi[0]
+		var full: bool = float(co.data.get("amount", 0.0)) > 10000.0 and not co.is_depleted() and Ship.lockable(co)
+		var keep := float(co.data["amount"])
+		co.data["amount"] = 0.0
+		var empty: bool = co.is_depleted() and Ship.lockable(co) and co.deposit_text() == "empty"
+		var err := ""
+		if view.player != null:
+			err = view.player.module_target_error({"kind": "tool", "data": {"tool": "mining", "name": "Mining Laser"}}, co)
+		co.data["amount"] = keep
+		col_ok = full and empty and err.contains("empty")
+	check(rock_ok and col_ok, "small asteroids break apart when mined out and return after 30–60 min; colossi hold a huge deposit, mined out they stay (empty)")

@@ -840,7 +840,7 @@ func hotkey_command(action: String) -> String:
 	var err := ""
 	match action:
 		"cmd_lock":
-			if not (d.has("node") and kind in ["ship", "asteroid", "wreck", "anomaly"]):
+			if not (d.has("node") and kind in ["ship", "asteroid", "wreck", "anomaly", "colossus"]):
 				err = "Only ships, asteroids, wrecks and anomalies can be locked."
 				GameState.log_msg(err, GameState.COL_WARN)
 			elif p.lock_index(id) >= 0:
@@ -1023,7 +1023,7 @@ func _build_selected() -> void:
 		var fb := UI.button("Following" if fol else "Follow", func(): _cmd({"type": "follow", "id": id}), "Stay with this ship – also in warp and through gates\n" + _hk("cmd_follow"))
 		fb.disabled = fol
 		r1.add_child(fb)
-	if has_node and kind in ["ship", "asteroid", "wreck", "anomaly"]:
+	if has_node and kind in ["ship", "asteroid", "wreck", "anomaly", "colossus"]:
 		var locked: bool = view.player != null and is_instance_valid(view.player) and view.player.lock_index(id) >= 0
 		if locked:
 			r1.add_child(UI.button("Unlock", func(): _cmd({"type": "unlock", "id": id}), _hk("cmd_lock")))

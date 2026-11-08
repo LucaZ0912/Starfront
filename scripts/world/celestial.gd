@@ -108,7 +108,7 @@ static func make_colossus_sprite(d: Dictionary) -> Sprite2D:
 	mat.set_shader_parameter("col_light", pal[3])
 	mat.set_shader_parameter("col_accent", pal[4])
 	mat.set_shader_parameter("kind", {"metallic": 0, "stony": 1, "icy": 2}.get(String(d["class"]), 1))
-	mat.set_shader_parameter("shape", {"potato": 0, "binary": 1, "shard": 2}.get(String(d.get("shape", "potato")), 0))
+	mat.set_shader_parameter("shape", int(ColossusShape.SHADER_SHAPE.get(String(d.get("shape", "potato")), 0)))
 	mat.set_shader_parameter("seed", float(posmod(int(d["seed"]), 997)) * 0.37)
 	var to_star := -(d["pos"] as Vector2)
 	mat.set_shader_parameter("light_dir", to_star.normalized() if to_star.length() > 1.0 else Vector2(-0.7, -0.6))
@@ -197,6 +197,8 @@ func _estimate(v: float, salt: float) -> float:
 
 
 func deposit_text() -> String:
+	if float(data.get("amount", 0.0)) <= 0.0:
+		return "empty"                               # 0.6.35.5: mined out (a colossus stays)
 	return "~%.0f units (±%d%%)" % [_estimate(float(data["amount"]), 7.0), int(float(data.get("prospected", 1.0)) * 100.0)]
 
 
@@ -217,6 +219,39 @@ func composition_text() -> String:
 	return "%s  •  deposit %s" % [", ".join(parts), deposit_text()]
 
 
+# ---------------------------------------------------------------- 0.6.35.5: small asteroids break apart and return
+
+const BREAK_TIME := 7.0
+var _break_t := -1.0
+var _fade_t := -1.0
+
+
+## A small asteroid mined out: it breaks into pieces that drift apart and fade; it grows back in 30–60 minutes
+## (smaller rocks sooner, weighted random).
+func shatter() -> void:
+	if data.has("gone"):
+		return
+	data["gone"] = true
+	var frac := clampf((float(data.get("radius", 15.0)) - 10.0) / 15.0, 0.0, 1.0)
+	var roll := clampf(frac * 0.5 + (randf() + randf()) * 0.25, 0.0, 1.0)
+	data["respawn_at"] = GameState.play_time + lerpf(30.0, 60.0, roll) * 60.0
+	_break_t = 0.0
+	set_process(true)
+	queue_redraw()
+
+
+## The rock is back (SystemView checks the time).
+func restore() -> void:
+	data.erase("gone")
+	data.erase("respawn_at")
+	data["amount"] = float(data.get("amount0", 60.0))
+	_break_t = -1.0
+	_fade_t = 0.0
+	modulate.a = 0.0
+	set_process(true)
+	queue_redraw()
+
+
 ## Package 31a: who is in the pod and how long the signal lasts.
 func pod_text() -> String:
 	for pod in GameState.pods:
@@ -231,7 +266,9 @@ func pod_text() -> String:
 func is_depleted() -> bool:
 	match kind:
 		"asteroid":
-			return float(data["amount"]) <= 0.0
+			return float(data["amount"]) <= 0.0 or data.has("gone")
+		"colossus":
+			return float(data.get("amount", 0.0)) <= 0.0
 		"anomaly":
 			return bool(data["done"])
 		"wreck":
@@ -270,6 +307,8 @@ func info_text() -> String:
 			var sec: float = Universe.systems[to]["security"]
 			return "%s\nRoute class %d   Destination security: %.1f\nClick: hyperspace jump" % [data["name"], int(data["class"]), sec]
 		"asteroid":
+			if kind == "colossus" and is_depleted():
+				return "%s\nMined out – empty" % title()
 			if not is_prospected():
 				return "%s\nComposition unknown – lock it and use a Prospector Scanner\nClick: select (lock it and use a mining laser)" % title()
 			return "%s\nDeposit: %s\nClick: select (lock it and use a mining laser)" % [title(), deposit_text()]
@@ -292,6 +331,19 @@ func info_text() -> String:
 func _process(delta: float) -> void:
 	_t += delta
 	if kind == "asteroid":
+		if _break_t >= 0.0:
+			_break_t += delta                            # 0.6.35.5: the pieces drift apart and fade
+			queue_redraw()
+			if _break_t > BREAK_TIME:
+				_break_t = -1.0
+				queue_redraw()
+			return
+		if _fade_t >= 0.0:
+			_fade_t += delta
+			modulate.a = clampf(_fade_t / 3.0, 0.0, 1.0)
+			if _fade_t > 3.0:
+				_fade_t = -1.0
+				modulate.a = 1.0
 		if not visible:
 			set_process(false)                           # package 35: SystemView switches it on again when in view
 			return
@@ -360,6 +412,21 @@ func _draw() -> void:
 				var px := int(float(data["radius"]) / 2.2)
 				_tex = PixelArt.asteroid_sprite(String(data.get("class", "stony")), String(data.get("shape", "round")), int(data.get("seed", 1)), px, data["ore"])
 			var size := Vector2(_tex.get_width(), _tex.get_height()) * (float(data["radius"]) * 2.0 / _tex.get_width()) * 1.05
+			if data.has("gone"):
+				if _break_t < 0.0:
+					return                                   # broken apart – back later
+				# 0.6.35.5: pieces drift apart, spin and fade
+				var k := _break_t / BREAK_TIME
+				var rng := RandomNumberGenerator.new()
+				rng.seed = int(data.get("seed", 1))
+				for i in 6:
+					var dir := Vector2.from_angle(TAU * i / 6.0 + rng.randf_range(-0.4, 0.4))
+					var ps := size * rng.randf_range(0.28, 0.45)
+					var off := dir * float(data["radius"]) * (0.3 + 2.4 * k)
+					draw_set_transform(off, rng.randf_range(-2.0, 2.0) * _break_t, Vector2.ONE)
+					draw_texture_rect(_tex, Rect2(-ps * 0.5, ps), false, Color(0.8, 0.78, 0.75, 1.0 - k))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				return
 			var mod := Color(0.35, 0.35, 0.4, 0.6) if is_depleted() else Color.WHITE
 			draw_texture_rect(_tex, Rect2(-size * 0.5, size), false, mod)
 		"anomaly":

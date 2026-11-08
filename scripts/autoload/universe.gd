@@ -707,13 +707,16 @@ func build_test_layout() -> Dictionary:
 			var clump: Array = clumps[k % clumps.size()]
 			var ap: Vector2 = clump[0] + Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * float(clump[1])
 			L["asteroids"].append(_make_asteroid("a_%d_%d" % [b, k], fid, cls, mix, ap, rng))
-		for k in ColossusShape.SHAPES.size():
-			var shape: String = ColossusShape.SHAPES[k]
+		var tshapes: Array = ColossusShape.shapes_for(cls)        # 0.6.35.5: every shape of this kind of rock
+		for k in tshapes.size():
+			var shape: String = tshapes[k]
 			var R := rng.randf_range(900.0, 1300.0)
-			var cpos := fc + Vector2.from_angle(-0.6 + k * 0.6 + PI) * fr * 0.78
+			var cpos := fc + Vector2.from_angle(-1.2 + k * 0.6 + PI) * fr * 0.78
+			var tore := _roll_ore(mix, rng)
 			L["colossi"].append({
-				"id": "col_%d_%d" % [b, k], "name": "Colossus T-%d%d" % [b + 1, k + 1], "class": cls, "ore": _roll_ore(mix, rng),
+				"id": "col_%d_%d" % [b, k], "name": "Colossus T-%d%d" % [b + 1, k + 1], "class": cls, "ore": tore,
 				"pos": cpos, "radius": R, "shape": shape, "poly": ColossusShape.generate(shape, R, rng), "seed": rng.randi(), "field": fid,
+				"mix": {tore: 1.0}, "amount": roundf(R * 55.0), "amount0": roundf(R * 55.0),
 			})
 	# a few anomalies, already revealed
 	for k in 3:
@@ -736,12 +739,18 @@ func to_dict() -> Dictionary:
 	for id in layouts:
 		var L: Dictionary = layouts[id]
 		var ast := {}
+		var gone := {}
 		for a in L["asteroids"]:
 			ast[a["id"]] = a["amount"]
+			if a.has("gone"):
+				gone[a["id"]] = float(a.get("respawn_at", 0.0))
+		var cols := {}
+		for co in L.get("colossi", []):
+			cols[co["id"]] = co.get("amount", 0.0)
 		var an := {}
 		for x in L["anomalies"]:
 			an[x["id"]] = {"scan": x["scan"], "revealed": x["revealed"], "analysis": x["analysis"], "done": x["done"]}
-		changed[id] = {"asteroids": ast, "anomalies": an}
+		changed[id] = {"asteroids": ast, "anomalies": an, "gone": gone, "colossi": cols}
 	return {"seed": seed_value, "version": GALAXY_VERSION, "layouts": changed}
 
 
@@ -751,9 +760,17 @@ func from_dict(d: Dictionary) -> void:
 	for id in changed:
 		var L := get_layout(int(id))
 		var ast: Dictionary = changed[id]["asteroids"]
+		var gone: Dictionary = changed[id].get("gone", {})
 		for a in L["asteroids"]:
 			if ast.has(a["id"]):
 				a["amount"] = ast[a["id"]]
+			if gone.has(a["id"]):
+				a["gone"] = true
+				a["respawn_at"] = gone[a["id"]]
+		var cols: Dictionary = changed[id].get("colossi", {})
+		for co in L.get("colossi", []):
+			if cols.has(co["id"]):
+				co["amount"] = cols[co["id"]]
 		var an: Dictionary = changed[id]["anomalies"]
 		for x in L["anomalies"]:
 			if an.has(x["id"]):
@@ -1092,13 +1109,25 @@ func _place_colossi(L: Dictionary, id: int, sec: float) -> void:
 					ok = false
 			if not ok:
 				continue
-			var shape: String = ColossusShape.SHAPES[rng.randi() % ColossusShape.SHAPES.size()]
+			var shapes_c: Array = ColossusShape.shapes_for(cls)
+			var shape: String = shapes_c[rng.randi() % shapes_c.size()]
 			var poly := ColossusShape.generate(shape, R, rng)
 			var col := {
 				"id": "col_%d" % n, "name": "Colossus %s-%d" % [COLOSSUS_PREFIX[rng.randi() % COLOSSUS_PREFIX.size()], rng.randi_range(2, 98)],
 				"class": cls, "ore": _roll_ore(mix, rng), "pos": pos, "radius": R, "shape": shape, "poly": poly,
 				"seed": rng.randi(), "field": f["id"],
 			}
+			# 0.6.35.5: a colossus can be mined – a huge deposit of two ores of its field
+			var cmix := {String(col["ore"]): 1.0}
+			if mix.size() > 1:
+				var second := String(col["ore"])
+				while second == String(col["ore"]):
+					second = _roll_ore(mix, rng)
+				var sh := rng.randf_range(0.2, 0.4)
+				cmix = {String(col["ore"]): 1.0 - sh, second: sh}
+			col["mix"] = cmix
+			col["amount"] = roundf(R * rng.randf_range(40.0, 70.0))
+			col["amount0"] = col["amount"]
 			L["colossi"].append(col)
 			n += 1
 			placed += 1
@@ -1395,7 +1424,7 @@ func _make_asteroid(id: String, fid: String, cls: String, mix: Dictionary, pos: 
 	var shapes: Array = SHAPES_BY_CLASS[cls]
 	return {
 		"id": id, "field": fid, "class": cls, "size": size, "shape": shapes[rng.randi() % shapes.size()],
-		"pos": pos, "ore": ore, "mix": shares, "amount": amount,
+		"pos": pos, "ore": ore, "mix": shares, "amount": amount, "amount0": amount,
 		"radius": rng.randf_range(sz["radius"].x, sz["radius"].y), "seed": rng.randi(),
 		"spin": rng.randf_range(-0.06, 0.06),
 	}

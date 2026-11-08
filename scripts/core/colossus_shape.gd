@@ -8,7 +8,20 @@ extends RefCounted
 ##   shard   – angular fragment with straight facets (broken off a larger body)
 
 const SHAPES := ["potato", "binary", "shard"]
-const SHAPE_NAMES := {"potato": "elongated", "binary": "contact binary", "shard": "angular fragment"}
+const SHAPE_NAMES := {"potato": "elongated", "binary": "contact binary", "shard": "angular fragment",
+	"slab": "blocky slab", "spindle": "spindle", "rubble": "rubble pile", "kidney": "kidney", "teardrop": "teardrop", "spiky": "spiked crystal"}
+## 0.6.35.5: two more shapes for each kind of rock (metal, stone, ice)
+const SHAPES_BY_CLASS := {
+	"metallic": ["potato", "binary", "shard", "slab", "spindle"],
+	"stony": ["potato", "binary", "shard", "rubble", "kidney"],
+	"icy": ["potato", "binary", "shard", "teardrop", "spiky"],
+}
+## how the shader lights a shape: 0 round body, 1 two lobes, 2 flat facets
+const SHADER_SHAPE := {"potato": 0, "binary": 1, "shard": 2, "slab": 2, "spindle": 0, "rubble": 1, "kidney": 0, "teardrop": 0, "spiky": 2}
+
+
+static func shapes_for(cls: String) -> Array:
+	return SHAPES_BY_CLASS.get(cls, SHAPES)
 
 
 ## Polygon for shape `shape` whose farthest point is `R` km from the centre.
@@ -49,6 +62,63 @@ static func generate(shape: String, R: float, rng: RandomNumberGenerator) -> Pac
 				pts.append(a0)
 				for s in [0.33, 0.66]:
 					pts.append(a0.lerp(a1, s) + nrm * rng.randf_range(-0.018, 0.012))
+		"slab":
+			# a blocky slab: a superellipse with flat sides and a couple of notches
+			var e2 := rng.randf_range(0.5, 0.7)
+			var n3 := 48
+			var notch := rng.randf() * TAU
+			for i in n3:
+				var a := TAU * i / n3
+				var c := cos(a)
+				var s := sin(a)
+				var r := pow(pow(absf(c), 6.0) + pow(absf(s) / e2, 6.0), -1.0 / 6.0)
+				r *= 1.0 - 0.14 * exp(-pow(wrapf(a - notch, -PI, PI), 2.0) / 0.03) + rng.randf_range(-0.012, 0.012)
+				pts.append(Vector2(c, s) * r)
+		"spindle":
+			# long and thin, pointed at both ends
+			var e3 := rng.randf_range(0.26, 0.36)
+			var q4 := rng.randf() * TAU
+			var n4 := 48
+			for i in n4:
+				var a := TAU * i / n4
+				var taper := 0.55 + 0.45 * absf(sin(a))
+				var bump := 1.0 + 0.05 * sin(4.0 * a + q4) + rng.randf_range(-0.015, 0.015)
+				pts.append(Vector2(cos(a), sin(a) * e3 * taper) * bump)
+		"rubble":
+			# a rubble pile: strong lumps all round
+			var r1 := rng.randf() * TAU
+			var r2 := rng.randf() * TAU
+			var r3 := rng.randf() * TAU
+			var n5 := 52
+			for i in n5:
+				var a := TAU * i / n5
+				var bump := 1.0 + 0.16 * sin(3.0 * a + r1) + 0.11 * sin(5.0 * a + r2) + 0.07 * sin(9.0 * a + r3) + rng.randf_range(-0.03, 0.03)
+				pts.append(Vector2(cos(a), sin(a) * 0.82) * bump)
+		"kidney":
+			# a bean with a deep dent on one side
+			var dent := rng.randf() * TAU
+			var e4 := rng.randf_range(0.55, 0.7)
+			var n6 := 52
+			for i in n6:
+				var a := TAU * i / n6
+				var r := 1.0 - 0.38 * exp(-pow(wrapf(a - dent, -PI, PI), 2.0) / 0.22) + 0.04 * sin(3.0 * a) + rng.randf_range(-0.015, 0.015)
+				pts.append(Vector2(cos(a), sin(a) * e4) * r)
+		"teardrop":
+			# round head, long pointed tail – like a frozen comet
+			var n7 := 52
+			for i in n7:
+				var a := TAU * i / n7
+				var r := 0.42 + 0.58 * pow((1.0 + cos(a)) * 0.5, 3.0) + 0.03 * sin(5.0 * a) + rng.randf_range(-0.015, 0.015)
+				pts.append(Vector2(cos(a), sin(a)) * r)
+		"spiky":
+			# an ice crystal: a core with sharp spikes
+			var k2 := rng.randi_range(6, 9)
+			var off := rng.randf() * TAU
+			var n8 := 72
+			for i in n8:
+				var a := TAU * i / n8
+				var r := 0.55 + 0.45 * pow(absf(cos(k2 * (a + off) * 0.5)), 8.0) + rng.randf_range(-0.02, 0.02)
+				pts.append(Vector2(cos(a), sin(a)) * r)
 		_:
 			# potato: lumpy ellipse
 			var e := rng.randf_range(0.52, 0.7)

@@ -430,6 +430,13 @@ func _wing_salvage(n: Ship, lead) -> bool:
 	return true
 
 
+## 0.6.35.5: broken small asteroids grow back once their time has come.
+func _return_rocks() -> void:
+	for a in asteroid_nodes:
+		if is_instance_valid(a) and a.data.has("gone") and a._break_t < 0.0 and GameState.play_time >= float(a.data.get("respawn_at", 0.0)):
+			a.restore()
+
+
 ## A ship of the pilot close to a pod takes it aboard.
 func _pod_pickup_check() -> void:
 	if player == null or not is_instance_valid(player) or GameState.pods.is_empty():
@@ -996,6 +1003,7 @@ func _process(delta: float) -> void:
 		_pod_pickup_check()
 		_sync_wingmen()                      # package 33
 		_sync_platform()
+		_return_rocks()                      # 0.6.35.5
 	_update_camera(delta)
 	_update_bodies()
 	background.follow(camera)
@@ -2439,7 +2447,7 @@ func _draw_radar_shadow(o: Node2D, c: Vector2, co, r: float, px: float, a: float
 		if da > amax:
 			amax = da
 			vmax = w
-	var far := maxf(r * 1.02, d + R)
+	var far := r                                     # 0.6.35.5: the shadow ends at the radar range
 	# draw in local coordinates (huge world coordinates break polygon triangulation)
 	o.draw_set_transform(c, 0.0, Vector2.ONE)
 	var steps := 28

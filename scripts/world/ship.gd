@@ -1161,7 +1161,7 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 				order = {"type": "idle"}
 			else:
 				var rng := float(tool["range"])
-				dest = tn.position if position.distance_to(tn.position) > rng * 0.75 else position
+				dest = tn.position if surface_dist(tn) > rng * 0.75 else position
 				activity = {"mine": "Mining", "analyze": "Analysing", "salvage": "Salvaging"}[ot]
 	if order.get("type", "idle") == "idle":
 		if fleeing:
@@ -1876,10 +1876,17 @@ func afterburner_mult() -> float:
 
 
 ## Returns false when mining must stop (target gone or depleted, hold full).
+## Distance to a rock's surface: a colossus is measured to its outline (0.6.35.5).
+func surface_dist(node) -> float:
+	if node.kind == "colossus":
+		return maxf(0.0, ColossusShape.signed_dist(node.poly, position - node.position))
+	return position.distance_to(node.position)
+
+
 func _mine(delta: float, t: Dictionary, node) -> bool:
 	if node == null or not is_instance_valid(node) or node.is_depleted():
 		return false
-	if position.distance_to(node.position) > float(t["range"]):
+	if surface_dist(node) > float(t["range"]):
 		return true
 	var ore: String = node.data["ore"]
 	var cls: String = GameData.commodities.get(ore, {}).get("class", "")
@@ -1896,6 +1903,9 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 			GameState.log_msg("%s: cargo hold full." % display_name(), GameState.COL_WARN)
 		return false
 	node.data["amount"] = float(node.data["amount"]) - added
+	# 0.6.35.5: a small asteroid mined out breaks apart; it comes back after 30–60 minutes
+	if node.kind == "asteroid" and float(node.data["amount"]) <= 0.5 and String(node.data.get("size", "")) == "small":
+		node.shatter()
 	if faction == "player" and fit.uid == GameState.active_uid:
 		# package 30: Deep Core – more from every asteroid; Prospector's Eye – now and then a rare ore as a bonus
 		if GameState.has_perk("deep_core"):
@@ -1985,6 +1995,8 @@ static func lockable(node) -> bool:
 		return false
 	if node is Ship:
 		return node.is_targetable()
+	if node.kind == "colossus":
+		return true                                  # 0.6.35.5: mined out it still stands (prospect it, lock it)
 	return node.kind in ["asteroid", "wreck", "anomaly"] and not node.is_depleted()
 
 
@@ -2171,10 +2183,12 @@ func module_target_error(e: Dictionary, node) -> String:
 		"survey", "interdict":
 			return ""   # aimed at the selection, checked when switched on
 		"mining", "prospect":
-			if node == null or node is Ship or node.kind != "asteroid":
+			if node == null or node is Ship or not node.kind in ["asteroid", "colossus"]:
 				return "%s needs a locked asteroid." % d["name"]
+			if String(d.get("tool", "")) == "mining" and node.is_depleted():
+				return "Nothing left to mine – the %s is empty." % ("colossus" if node.kind == "colossus" else "asteroid")
 		"harvester":
-			if node == null or node is Ship or node.kind != "asteroid":
+			if node == null or node is Ship or not node.kind in ["asteroid", "colossus"]:
 				return "%s needs a locked icy asteroid." % d["name"]
 			if mining_mult(d, String(node.data["ore"])) <= 0.0:
 				return "%s only works on icy asteroids." % d["name"]
