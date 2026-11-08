@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.11 – 2026-11-08
+
+- Yards: the docking bays of the Atelier Aurelle and the Hadrian Foundry are flush with the hull now (arms and
+  docking blocks as wide as the bays); the berths' girders no longer jump a pixel half-way (Kanayama Works).
+
 ## alpha 0.6.39.10 – 2026-11-08
 
 **Package 39d: the manufacturers' systems.** A new game is needed.

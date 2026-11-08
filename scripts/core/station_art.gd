@@ -1358,6 +1358,9 @@ func _axiom_yards() -> void:
 ## A berth: girders either side of a slot from `base` outwards along `dir`, a gantry across – and a "berth" vent that
 ## tells the live drawing which of the maker's ships lies in it (and which way its bow points).
 func berth(base: Vector2, dir: Vector2, length: float, hw: float, hull_id: String, girder: int = HULL, h: float = 12.0) -> void:
+	base = base.round() + Vector2(0.25, 0.25)              # 0.6.39.11: off the pixel edges – no step in the girders
+	hw = roundf(hw)
+	length = roundf(length)
 	var side := dir.orthogonal()
 	var tip := base + dir * length
 	# the dock bed: a dark floor with ribs the hull rests on
@@ -1462,8 +1465,8 @@ func _aur_yard() -> void:
 	for k3 in 8:
 		box(P(n * 0.165, k3 * TAU / 8.0), k3 * TAU / 8.0, 3.0, 2.0, PANEL, 21.0)
 	# docking: slim arms at the sides
-	dock_arm(0.0, n * 0.31, n * 0.47, 38.0, 11.0)
-	dock_arm(PI, n * 0.31, n * 0.47, 38.0, 11.0)
+	dock_arm(0.0, n * 0.3, n * 0.47, BAY_W + 12.0, 11.0)        # 0.6.39.11: as wide as the bay – flush
+	dock_arm(PI, n * 0.3, n * 0.47, BAY_W + 12.0, 11.0)
 	for k4 in 12:
 		light(P(n * 0.295, k4 * TAU / 12.0 + 0.13), Color(1.0, 0.88, 0.6), 0.5)
 	var pn := P(n * 0.36, -PI * 0.5)
@@ -1492,8 +1495,14 @@ func _hdy_yard() -> void:
 			poly(PackedVector2Array([bp + Vector2(-6, 0), bp + Vector2(0, sd * 18.0), bp + Vector2(6, 0)]), HULL, 14.0, 1.5, 0)
 	for k3 in 14:
 		light(Vector2(c - n * 0.44 + k3 * n * 0.065, c + (n * 0.045 if k3 % 2 == 0 else -n * 0.045)), Color(1.0, 0.12, 0.1), 0.6 + 0.1 * (k3 % 3))
-	add_bay(0.0, n * 0.47, 12.0)
-	add_bay(PI, n * 0.46, 12.0)
+	# 0.6.39.11: docking blocks at both ends, as wide as the bays – flush with the hull
+	for sd2 in [-1.0, 1.0]:
+		var dx: float = c + sd2 * n * 0.4
+		box(Vector2(dx, c), 0.0, n * 0.075, BAY_W * 0.5 + 6.0, HULL, 12.0, P_ARMOR)
+		box(Vector2(dx, c - BAY_W * 0.5 - 6.0), 0.0, n * 0.075, 1.0, ACC, 14.0)
+		box(Vector2(dx, c + BAY_W * 0.5 + 6.0), 0.0, n * 0.075, 1.0, ACC, 14.0)
+	add_bay(0.0, n * 0.475, 12.0)
+	add_bay(PI, n * 0.475, 12.0)
 	for k4 in 6:
 		turret(Vector2(c - n * 0.3 + k4 * n * 0.12, c + (1.0 if k4 % 2 == 0 else -1.0) * 26.0), 5.5)
 
