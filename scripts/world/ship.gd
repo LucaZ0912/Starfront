@@ -1472,7 +1472,7 @@ func _warp_align(delta: float, s: Dictionary):
 		target = null
 		clear_locks()
 		order = {"type": "warping"}
-		_warp_flash()                                   # 0.6.35.10: a bright flash going into warp
+		_warp_flash(true)                               # 0.6.35.10: a bright flash going into warp
 		view.on_warp_started(self)
 		# the whole formation goes into warp in the same instant
 		if view.has_method("followers_of"):
@@ -1512,16 +1512,29 @@ func _follow_warp(fn, remaining: float, to: Vector2, wname: String) -> void:
 		clear_locks()
 	order = {"type": "warping"}
 	spool = -1.0
-	_warp_flash()                                   # 0.6.35.10: a bright flash going into warp
+	_warp_flash(true)                               # 0.6.35.10: a bright flash going into warp
 	view.on_warp_started(self)
 
 
-## 0.6.35.10: a bright flash of light going into or coming out of warp.
-func _warp_flash() -> void:
+## 0.6.35.10: a bright flash of light going into or coming out of warp (0.6.35.12: much brighter going in).
+func _warp_flash(going_in: bool = false) -> void:
 	if view == null:
+		return
+	if going_in:
+		view.spawn_fx(Fx.warp_flash(position, maxf(radius * 9.0, 200.0)))
 		return
 	view.spawn_fx(Fx.flash(position, Color(0.65, 0.88, 1.0), maxf(radius * 9.0, 160.0)))
 	view.spawn_fx(Fx.flash(position, Color(1.0, 1.0, 1.0), maxf(radius * 3.5, 60.0)))
+
+
+## 0.6.35.12: the flash coming out of warp comes a moment before the ship arrives.
+const EXIT_FLASH_LEAD := 0.45
+
+
+func _early_exit_flash(left: float) -> void:
+	if left <= EXIT_FLASH_LEAD and not warp.get("flashed", false):
+		warp["flashed"] = true
+		_warp_flash()
 
 
 ## 0.6.35.11: coming out of warp a ship leaves a long glittering trail along its course (longer than the combat
@@ -1583,12 +1596,15 @@ func _update_warp(delta: float) -> void:
 	position = np
 	heading = (to - from).angle()
 	activity = "In warp → %s  (%d s)" % [warp["name"], int(ceil(float(warp["T"]) - float(warp["t"])))]
+	_early_exit_flash(float(warp["T"]) - float(warp["t"]))     # 0.6.35.12
 	if p >= 1.0:
 		var then: Dictionary = warp["then"]
+		var flashed: bool = warp.get("flashed", false)
 		warp = {}
 		velocity = (to - from).normalized() * float(fit.stats()["speed"]) * 0.3
 		order = {"type": "idle"}
-		_warp_flash()                                   # 0.6.35.10: a bright flash coming out …
+		if not flashed:
+			_warp_flash()                               # 0.6.35.10: a bright flash coming out (normally already shown)
 		_warp_trail(velocity)                            # … and a glittering trail
 		view.on_warp_finished(self)
 		if not then.is_empty():
@@ -1624,15 +1640,19 @@ func _formation_warp(delta: float) -> void:
 	if not fn.in_warp():
 		var then: Dictionary = warp["then"]
 		var vel: Vector2 = fn.velocity
+		var flashed: bool = warp.get("flashed", false)
 		warp = {}
 		velocity = vel
 		order = {"type": "idle"}
-		_warp_flash()                                   # 0.6.35.10: a bright flash coming out …
+		if not flashed:
+			_warp_flash()                               # 0.6.35.10: a bright flash coming out (normally already shown)
 		_warp_trail(velocity)                            # … and a glittering trail
 		view.on_warp_finished(self)
 		if not then.is_empty():
 			set_order(view.resolve_order(then))
 		return
+	if not fn.warp.get("formation", false):
+		_early_exit_flash(float(fn.warp["T"]) - float(fn.warp["t"]))   # 0.6.35.12: with the lead
 	var slot: Vector2 = formation_offset(fn).rotated(fn.heading)
 	var k := smoothstep(0.0, 1.5, float(warp["t"]))
 	# the lead may not have moved yet this frame (e.g. the pilot's ship is updated first): use where
@@ -3632,6 +3652,68 @@ func _repair(delta: float, t: Dictionary) -> void:
 
 # ---------------------------------------------------------------- Drawing
 
+## 0.6.35.12: in warp every ship glows like a ship entering an atmosphere, only bluer: a hot sheath wrapped round
+## the bow, flickering tongues of flame streaming back along the flanks and sparks torn off behind.
+func _draw_warp_friction(k: float, z: float) -> void:
+	if k <= 0.01:
+		return
+	var tm := float(Time.get_ticks_msec()) / 1000.0 + float(get_instance_id() % 997)
+	var R := maxf(radius, 14.0)
+	draw_set_transform(Vector2.ZERO, heading, Vector2.ONE)
+	var outer := Color(0.3, 0.45, 1.0)
+	var mid := Color(0.45, 0.75, 1.0)
+	var core := Color(0.85, 0.96, 1.0)
+	# the sheath: nested crescents wrapped round the bow (parabolas opening backwards), bright at the nose and
+	# fading out along the flanks; hottest and tightest inside
+	for j in 4:
+		var q := 3 - j                                              # outer shells first
+		var fl := 1.0 + 0.07 * sin(tm * (23.0 + q * 5.0) + q) + 0.04 * sin(tm * 41.0 + q * 2.0)
+		var nose := R * (1.25 + 0.3 * q) * fl
+		var half := R * (0.95 + 0.4 * q)
+		var back := -R * (1.0 + 0.9 * q) * fl
+		var thick := R * (0.4 + 0.15 * q)
+		var c: Color = [core, mid, mid, outer][j]
+		var al: float = k * [1.0, 0.75, 0.5, 0.32][j]
+		var pts := PackedVector2Array()
+		var cols := PackedColorArray()
+		for i in 25:
+			var u := -1.0 + 2.0 * i / 24.0
+			pts.append(Vector2(nose - (nose - back) * u * u, half * u))
+			cols.append(Color(c, al * (1.0 - pow(absf(u), 1.5))))
+		for i in range(24, -1, -1):
+			var u := -1.0 + 2.0 * i / 24.0
+			pts.append(Vector2(nose - thick - (nose - thick - back) * u * u, (half - thick * 0.6) * u))
+			cols.append(Color(c, al * 0.15 * (1.0 - absf(u))))
+		draw_polygon(pts, cols)
+	# a glowing spot at the nose and the hot white rim in front of it
+	var gl := 1.0 + 0.12 * sin(tm * 37.0)
+	for i in 4:
+		draw_circle(Vector2(R * (1.0 + 0.05 * i), 0.0), R * (0.85 - 0.18 * i) * gl, Color(core.lerp(Color.WHITE, i / 3.0), k * (0.18 + 0.2 * i)))
+	var rim := PackedVector2Array()
+	for i in 17:
+		var u := -1.0 + 2.0 * i / 16.0
+		rim.append(Vector2(R * 1.3 * gl - R * 1.2 * u * u, R * 0.85 * u))
+	draw_polyline(rim, Color(1, 1, 1, 0.9 * k), maxf(2.0 / z, R * 0.1))
+	# tongues of flame along the flanks
+	for i in 12:
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var ph := float(i) * 1.7
+		var start := Vector2(R * (0.4 - 0.12 * (i / 2)), side * R * (0.55 + 0.06 * (i / 2)))
+		var len := R * (1.6 + 1.4 * (0.5 + 0.5 * sin(tm * (17.0 + i) + ph))) * (1.0 + 0.25 * sin(tm * 9.0 + ph))
+		var wob := sin(tm * 31.0 + ph) * R * 0.08
+		var pts2 := PackedVector2Array([start, start + Vector2(-len * 0.5, side * R * 0.15 + wob), start + Vector2(-len, side * R * 0.32 - wob)])
+		var cols := PackedColorArray([Color(core, 0.7 * k), Color(mid, 0.45 * k), Color(outer, 0.0)])
+		draw_polyline_colors(pts2, cols, maxf(1.5 / z, R * (0.14 - 0.008 * i)))
+	# sparks torn off behind
+	for i in 14:
+		var ph2 := float(i) * 2.39
+		var f := fposmod(tm * (1.3 + 0.1 * i) + ph2, 1.0)                  # 0 → 1 as it streams back
+		var y := sin(ph2 * 3.1) * R * 0.8
+		var sp := Vector2(R * 0.3 - f * R * 4.0, y * (1.0 + f))
+		draw_circle(sp, maxf(1.2 / z, R * 0.05) * (1.0 - f * 0.6), Color(core.lerp(mid, f), k * (1.0 - f)))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw() -> void:
 	if fit == null:
 		return
@@ -3650,7 +3732,7 @@ func _draw() -> void:
 		for i in 3:
 			var off := dir.orthogonal() * (i - 1) * 5.0 / z
 			draw_line(off, off - dir * trail * (1.0 - absf(i - 1) * 0.35), Color(0.55, 0.85, 1.0, 0.55 * strength), (4.0 - absf(i - 1) * 2.0) / z)
-		draw_circle(Vector2.ZERO, (5.0 if npc else 14.0) / z, Color(0.7, 0.9, 1.0, 0.35 * strength))
+		_draw_warp_friction(clampf(minf(p, 1.0 - p) * 8.0, 0.0, 1.0) * (0.7 if npc else 1.0), z)
 
 	# Tool beams
 	for b in tool_beams:

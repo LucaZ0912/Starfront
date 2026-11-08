@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.12 – 2026-11-08
+
+**Warp:** a much brighter flash going in; the flash coming out comes a moment before arrival; the glittering trail is shorter (about 3.5 s). Instead of the arc in front of the ship, every ship in warp glows like a ship entering an atmosphere, only bluer – a hot sheath round the bow, flickering tongues of flame and sparks streaming back.
+
 ## alpha 0.6.35.11 – 2026-11-08
 
 **Warp trail:** instead of smoke, a long glittering trail along the course (7,500 km, longer than the combat view), brighter towards the ship; it flares up all at once, then fades from the far end towards the ship.

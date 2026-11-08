@@ -98,10 +98,23 @@ static func smoke(pos: Vector2, drift: Vector2, radius: float) -> Fx:
 	return f
 
 
+## 0.6.35.12: the flash going into warp – a blinding white burst with a wide blue glow and a lens streak.
+static func warp_flash(pos: Vector2, radius: float) -> Fx:
+	var f := Fx.new()
+	f.kind = "warpflash"
+	f.position = pos
+	f.size = radius
+	f.color = Color(0.6, 0.85, 1.0)
+	f.life = 0.9
+	f.max_life = 0.9
+	f.z_index = 15
+	return f
+
+
 ## 0.6.35.11: the glittering trail a ship leaves dropping out of warp – a long line of twinkling sparks behind it
 ## (longer than the combat view), brightest at the ship. It all flares up at once, then fades from the far end
 ## towards the ship.
-const GLITTER_LIFE := 6.0
+const GLITTER_LIFE := 3.6              # 0.6.35.12: shorter
 var sparks := PackedVector3Array()      # x, y = place (local), z = share of the length (0 at the ship, 1 far end)
 var spark_phase := PackedFloat32Array()
 
@@ -188,6 +201,18 @@ func _draw() -> void:
 			draw_circle(Vector2(-size * 0.3, size * 0.2) * g, size * (0.3 + g * 0.9), Color(color.darkened(0.4), 0.6 * t))
 		"glitter":
 			_draw_glitter()
+		"warpflash":
+			var e := 1.0 - t                                         # 0 → 1 over the life
+			var hot := t * t
+			draw_circle(Vector2.ZERO, size * (0.5 + 1.1 * e), Color(color, 0.35 * t))
+			draw_circle(Vector2.ZERO, size * (0.35 + 0.6 * e), Color(color.lightened(0.4), 0.55 * t))
+			draw_circle(Vector2.ZERO, size * (0.22 + 0.25 * e), Color(1, 1, 1, minf(1.0, 1.4 * t)))
+			draw_circle(Vector2.ZERO, size * 0.12, Color(1, 1, 1, hot))
+			draw_arc(Vector2.ZERO, size * (0.3 + 1.6 * e), 0.0, TAU, 48, Color(color.lightened(0.3), 0.8 * t), size * 0.04 * t + 1.0)
+			# a lens streak across
+			for i in 3:
+				var w := size * (2.6 - i * 0.7) * (0.6 + 0.4 * t)
+				draw_line(Vector2(-w, 0), Vector2(w, 0), Color(1, 1, 1, hot * (0.5 + 0.25 * i)), size * (0.05 - i * 0.012))
 		"marker":
 			draw_arc(Vector2.ZERO, 8.0 + 30.0 * t, 0.0, TAU, 24, Color(color, t), 2.0)
 		"pulse":
@@ -245,5 +270,5 @@ func _draw_glitter() -> void:
 func _glitter_alpha(u: float, age: float) -> float:
 	var flare := clampf(1.0 - age / 0.5, 0.0, 1.0)
 	var ends := max_life * (0.3 + 0.7 * (1.0 - u))
-	var fade := clampf((ends - age) / 1.2, 0.0, 1.0)
+	var fade := clampf((ends - age) / 0.8, 0.0, 1.0)
 	return (1.0 - 0.7 * u) * fade * (1.0 + 0.8 * flare)

@@ -2618,8 +2618,6 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 		var len := rng.randf_range(0.08, 0.25) * L
 		var sx := L - fposmod(flow * rng.randf_range(0.8, 1.6) + rng.randf() * 2.0 * L, 2.0 * L)
 		o.draw_line(Vector2(sx, y), Vector2(sx - len, y), Color(0.85, 0.95, 1.0, 0.28 * k * (absf(y) / rt)), 1.5 * px)
-	# a faint bow glow in front of the ship
-	o.draw_arc(Vector2(s.radius * 0.6, 0.0), s.radius * 1.4, -PI * 0.45, PI * 0.45, 20, Color(col.lightened(0.4), 0.4 * k), 3.0 * px)
 	o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
