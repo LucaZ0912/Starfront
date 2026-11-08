@@ -57,6 +57,7 @@ var player: Ship = null
 var hovered = null
 var input_enabled := true
 var follow := true
+var _cam_blend := 0.0                 # 0.6.35.2: seconds the camera still glides after switching to / from the map
 
 var _zoom := 0.6
 var _min_zoom := 0.0002
@@ -103,6 +104,11 @@ func build(p_system: int) -> void:
 	add_child(overlay)
 	overlay.draw.connect(_draw_overlay)
 	camera = Camera2D.new()
+	# 0.6.35.2: Godot's default camera limits (±10 million) would push the system map of the bigger systems aside
+	camera.limit_left = -1000000000
+	camera.limit_top = -1000000000
+	camera.limit_right = 1000000000
+	camera.limit_bottom = 1000000000
 	add_child(camera)
 	camera.make_current()
 	var vs := get_viewport_rect().size
@@ -1057,6 +1063,8 @@ func set_level(l: int) -> void:
 	l = clampi(l, 0, 2)
 	_warp_auto = false
 	if l != level:
+		if (l >= 2) != (level >= 2):
+			_cam_blend = 0.7                         # 0.6.35.2: glide between the ship and the star
 		level = l
 		level_changed.emit(level)
 
@@ -1094,7 +1102,14 @@ func _update_camera(delta: float) -> void:
 			k = 1.0 - smoothstep(0.78, 1.0, p)
 		_set_zoom(exp(lerpf(log(_warp_saved_zoom), log(far_zoom), k)))
 	if follow and player != null and is_instance_valid(player):
-		camera.position = player.position
+		# 0.6.35.2: the system map is centred on the star; closer in the camera is on the ship. Between the two the
+		# camera glides for a moment after a level change.
+		var want: Vector2 = Vector2.ZERO if level >= 2 and not (player.in_warp() and _warp_auto) else player.position
+		_cam_blend = maxf(0.0, _cam_blend - delta)
+		if _cam_blend > 0.0:
+			camera.position = camera.position.lerp(want, 1.0 - exp(-delta * 9.0))
+		else:
+			camera.position = want
 	camera.position = camera.position.limit_length(Universe.SYSTEM_RADIUS * 1.05)
 
 
