@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.4 – 2026-11-08
+
+**Asteroid fields:** more compact (12,000–22,000 km) and made of many small structures – dense knots, patches and streams – with open space between them and some very dense spots. Every field now has 3–5 colossi (one more in lawless space).
+
 ## alpha 0.6.35.3 – 2026-11-08
 
 **System map centred on your ship again** (as before); the camera-limit fix from 0.6.35.2 stays.

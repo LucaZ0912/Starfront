@@ -1065,22 +1065,20 @@ func _place_colossi(L: Dictionary, id: int, sec: float) -> void:
 	rng.seed = seed_value * 48611 + id * 6007 + 11
 	var n := 0
 	for f in L["fields"]:
-		if rng.randf() > lerpf(0.55, 0.9, 1.0 - sec):
-			continue
 		var fc: Vector2 = f["pos"]
 		var fr: float = f["radius"]
 		var cls: String = f["class"]
 		var mix := _field_mix(cls, sec, rng)
-		var want := rng.randi_range(2, 3)
+		var want := rng.randi_range(3, 5) + (1 if sec < 0.4 else 0)       # 0.6.35.4: more colossi, in every field
 		var placed := 0
 		# the group sits together in one part of the field
 		var group_dir := rng.randf() * TAU
-		for attempt in 40:
+		for attempt in 90:
 			if placed >= want:
 				break
-			var R := rng.randf_range(800.0, 1400.0) if placed == 0 else rng.randf_range(400.0, 1000.0)
-			var dist := rng.randf_range(0.2, 0.85) * fr
-			var pos := fc + Vector2.from_angle(group_dir + rng.randf_range(-0.9, 0.9)) * dist
+			var R := rng.randf_range(800.0, 1500.0) if placed == 0 else rng.randf_range(400.0, 1100.0)
+			var dist := rng.randf_range(0.15, 0.9) * fr
+			var pos := fc + Vector2.from_angle(group_dir + rng.randf_range(-1.6, 1.6)) * dist
 			# keep the warp arrival ring (half the field radius) and the field centre clear
 			if absf(pos.distance_to(fc) - fr * 0.5) < R + 1500.0 or pos.distance_to(fc) < R + 1500.0:
 				continue
@@ -1090,7 +1088,7 @@ func _place_colossi(L: Dictionary, id: int, sec: float) -> void:
 					ok = false
 			for o2 in L["colossi"]:
 				var gap := pos.distance_to(o2["pos"]) - R - float(o2["radius"])
-				if gap < 900.0 or (placed > 0 and String(o2["field"]) == String(f["id"]) and gap > 7000.0):
+				if gap < 900.0 or (placed > 0 and String(o2["field"]) == String(f["id"]) and gap > 16000.0):
 					ok = false
 			if not ok:
 				continue
@@ -1244,47 +1242,66 @@ func _field_spot(L: Dictionary, cls: String, frost: float, used: Array, rng: Ran
 	return _free_spot(rng, used, minf(band.x * frost, 4800000.0), minf(band.y * frost, 5550000.0))
 
 
-## An asteroid field: much bigger and denser than before, in one of five styles.
+## An asteroid field (0.6.35.4): many small structures – knots, patches and streams of rock – close together, so
+## most of the field is covered, with open water between them and a few very dense spots. Five styles set the mix.
+## structure: [centre, radius, weight, stretch direction (Vector2.ZERO = round), stretch]
 func _make_field(L: Dictionary, fid: String, b: int, cls: String, mix: Dictionary, center: Vector2, rng: RandomNumberGenerator) -> void:
 	var keys: Array = FIELD_STYLES.keys()
 	var style: String = keys[rng.randi() % keys.size()]
 	var w: Vector2 = FIELD_STYLES[style]["weights"]
-	var fradius := rng.randf_range(20000.0, 40000.0)
-	# denser than before on average (about 0.22 rocks per 1,000 km², tightly clumped)
-	var count := int(PI * pow(fradius / 1000.0, 2.0) * rng.randf_range(0.18, 0.26))
+	var fradius := rng.randf_range(12000.0, 22000.0)
+	var area := PI * pow(fradius / 1000.0, 2.0)                # in 1,000 km²
+	var count := int(area * rng.randf_range(0.8, 1.0))
 	match style:
 		"scattered":
-			count = int(count * 0.6)
+			count = int(count * 0.55)
 		"gravel":
-			count = int(count * 1.3)
+			count = int(count * 1.25)
 	L["fields"].append({"id": fid, "name": "Asteroid Field %s (%s, %s)" % [ROMAN[b], cls.capitalize(), FIELD_STYLES[style]["name"]],
 		"class": cls, "ores": mix.keys(), "ore": mix.keys()[0], "pos": center, "radius": fradius, "style": style})
 	var tangent := center.normalized().orthogonal() if center.length() > 1.0 else Vector2.RIGHT
-	var clumps: Array = []
-	match style:
-		"clustered":
-			for c in rng.randi_range(7, 12):
-				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.8, rng.randf_range(1500.0, 4000.0)])
-		"band":
-			for c2 in rng.randi_range(9, 14):
-				var t := rng.randf_range(-1.0, 1.0)
-				clumps.append([center + tangent * t * fradius + tangent.orthogonal() * rng.randf_range(-0.2, 0.2) * fradius, rng.randf_range(1500.0, 3500.0)])
-		"core":
-			clumps.append([center, fradius * 0.18])
-			clumps.append([center, fradius * 0.18])
-			clumps.append([center, fradius * 0.18])
-			for c3 in rng.randi_range(4, 6):
-				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.4, 0.85) * fradius, rng.randf_range(2000.0, 5000.0)])
-		"scattered":
-			for c4 in rng.randi_range(10, 16):
-				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.9, rng.randf_range(3000.0, 7000.0)])
-		_:
-			for c5 in rng.randi_range(6, 10):
-				clumps.append([center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.8, rng.randf_range(1200.0, 3000.0)])
+	var structs: Array = []
+	var n_struct := int(area * rng.randf_range(0.11, 0.14))
+	var knot_share: float = {"clustered": 0.25, "band": 0.15, "core": 0.2, "scattered": 0.05, "gravel": 0.4}[style]
+	var stream_share: float = {"clustered": 0.15, "band": 0.55, "core": 0.1, "scattered": 0.1, "gravel": 0.15}[style]
+	for i in n_struct:
+		var pos := center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.92
+		if style == "band":
+			# along the orbit: squash the field across the tangent
+			var t := rng.randf_range(-1.0, 1.0)
+			pos = center + tangent * t * fradius + tangent.orthogonal() * rng.randf_range(-0.35, 0.35) * fradius
+		if style == "core" and rng.randf() < 0.35:
+			pos = center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius * 0.3
+		var r := rng.randf()
+		if r < knot_share:
+			structs.append([pos, rng.randf_range(150.0, 420.0), rng.randf_range(3.0, 6.0), Vector2.ZERO, 1.0])       # a dense knot
+		elif r < knot_share + stream_share:
+			var dir := (tangent if style == "band" and rng.randf() < 0.7 else Vector2.from_angle(rng.randf() * TAU))
+			structs.append([pos, rng.randf_range(250.0, 600.0), rng.randf_range(2.0, 4.0), dir, rng.randf_range(3.0, 6.0)])   # a stream
+		else:
+			structs.append([pos, rng.randf_range(400.0, 1000.0), rng.randf_range(1.5, 3.0), Vector2.ZERO, 1.0])      # a patch
+	var total := 0.0
+	for st in structs:
+		total += float(st[2])
 	for k in count:
-		var clump: Array = clumps[rng.randi() % clumps.size()]
-		var pos: Vector2 = clump[0] + Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * float(clump[1])
-		L["asteroids"].append(_make_asteroid("a_%d_%d" % [b, k], fid, cls, mix, pos, rng, w))
+		# a structure by weight; a few rocks drift loose between them
+		var pos2 := Vector2.ZERO
+		if rng.randf() < 0.06:
+			pos2 = center + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * fradius
+		else:
+			var x := rng.randf() * total
+			var st2: Array = structs[0]
+			for st3 in structs:
+				x -= float(st3[2])
+				if x <= 0.0:
+					st2 = st3
+					break
+			var off := Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.8) * float(st2[1])
+			var dir2: Vector2 = st2[3]
+			if dir2 != Vector2.ZERO:
+				off = dir2 * rng.randf_range(-1.0, 1.0) * float(st2[1]) * float(st2[4]) + dir2.orthogonal() * off.y * 0.5
+			pos2 = (st2[0] as Vector2) + off
+		L["asteroids"].append(_make_asteroid("a_%d_%d" % [b, k], fid, cls, mix, pos2, rng, w))
 
 
 func _free_spot(rng: RandomNumberGenerator, used: Array, rmin: float, rmax: float) -> Vector2:

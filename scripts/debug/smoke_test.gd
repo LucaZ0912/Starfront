@@ -6015,7 +6015,7 @@ func _test_scale() -> void:
 		var f: Dictionary = L["fields"].back()
 		styles[f["style"]] = true
 		var n: int = L["asteroids"].size() - cnt0
-		dense_ok = dense_ok and float(f["radius"]) >= 20000.0 and n >= 120
+		dense_ok = dense_ok and float(f["radius"]) >= 12000.0 and n >= 250
 	var belt_ok: bool = both >= 15 and both <= 32
 	if not belts.is_empty():
 		belt_ok = belt_ok and float(belts[0]["r"]) > 0.0
