@@ -25,6 +25,7 @@ var runway := false               # still taking off along the carrier's flight 
 var hatch_launch := false         # waiting below the carrier's drone hatch (package 25d, Citadel)
 var hatch_name := "drones"        # the hangar door it uses (Concord carriers have several, package 25e)
 var stunned_t := 0.0              # knocked out by an anti-drone pulse: drifts, does nothing (package 25f)
+var stun_white := false           # 0.6.37.2: knocked out by a coronal mass ejection – white lightning instead of red
 var _hold := 0.0                  # waiting for its turn at the start of the runway
 const RUNWAY_GAP := 0.45          # seconds between two drones on the runway
 const HATCH_WAIT := 0.5           # the drone hatch needs this long to slide open
@@ -114,6 +115,8 @@ func _physics_process(delta: float) -> void:
 	if stunned_t > 0.0:
 		# knocked out (package 25f): drifts helplessly, flickers, still burns fuel
 		stunned_t -= delta
+		if stunned_t <= 0.0:
+			stun_white = false
 		rec["fuel"] = float(rec["fuel"]) - delta * float(BURN["idle"]) / maxf(float(dstats["fuel"]), 1.0)
 		if float(rec["fuel"]) <= 0.0:
 			_lost("out of fuel")
@@ -569,8 +572,8 @@ func _draw() -> void:
 			p += Vector2.from_angle(a + randf_range(-1.1, 1.1)) * r * 0.6
 			pts.append(p)
 		for j2 in pts.size() - 1:
-			draw_line(pts[j2], pts[j2 + 1], Color(1.0, 0.2, 0.1, 0.5), 5.0)
-			draw_line(pts[j2], pts[j2 + 1], Color(1.0, 0.3, 0.2, 1.0), 2.4)
+			draw_line(pts[j2], pts[j2 + 1], Color(0.75, 0.85, 1.0, 0.5) if stun_white else Color(1.0, 0.2, 0.1, 0.5), 5.0)
+			draw_line(pts[j2], pts[j2 + 1], Color(1.0, 1.0, 1.0, 1.0) if stun_white else Color(1.0, 0.3, 0.2, 1.0), 2.4)
 			draw_line(pts[j2], pts[j2 + 1], Color(1.0, 0.9, 0.8, 0.9), 0.9)
 	if randf() < 0.3:
 		draw_circle(Vector2.ZERO, r * 0.7, Color(1.0, 0.25, 0.15, 0.25))

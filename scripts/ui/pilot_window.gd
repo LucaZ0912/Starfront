@@ -645,7 +645,9 @@ func _collection() -> void:
 	row.add_child(left)
 	var have: Array = GameState.collection.get("perks", [])
 	var killed: Array = GameState.collection.get("notorious", [])
-	var cats := [["perks", "Crew perks", "%d / %d" % [have.size(), CrewDataP.PERKS.size()]], ["notorious", "Notorious pirates", "%d destroyed" % killed.size()]]
+	var stars_seen: Array = GameState.collection.get("stars", [])
+	var cats := [["perks", "Crew perks", "%d / %d" % [have.size(), CrewDataP.PERKS.size()]], ["notorious", "Notorious pirates", "%d destroyed" % killed.size()],
+		["stars", "Star classes", "%d / %d" % [stars_seen.size(), Universe.STAR_TYPES.size()]]]
 	for c in cats:
 		var cid: String = c[0]
 		var b := UI.button("%s   %s" % [c[1], c[2]], func(): coll_cat = cid; rebuild())
@@ -664,6 +666,8 @@ func _collection() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rs.add_child(right)
 	match coll_cat:
+		"stars":
+			_collection_stars(right, stars_seen)
 		"notorious":
 			right.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
 			if killed.is_empty():
@@ -698,6 +702,56 @@ func _collection() -> void:
 					q.size_flags_vertical = Control.SIZE_EXPAND_FILL
 					q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 					v.add_child(q)
+
+
+## 0.6.37.2: a tile per star class – a small animated picture of the star, its size in solar radii, its mass in
+## solar masses, its surface temperature and a few words. Classes not visited yet show greyed out as "???".
+func _collection_stars(right: VBoxContainer, seen: Array) -> void:
+	right.add_child(UI.label("STAR CLASSES  %d / %d" % [seen.size(), Universe.STAR_TYPES.size()], 16, COL))
+	right.add_child(UI.label("A star class counts once you have been in a system with such a star.", 12, UI.TEXT_DIM))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	right.add_child(flow)
+	for t in Universe.STAR_TYPES:
+		var got: bool = String(t["id"]) in seen
+		var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.03, 0.03, 0.07, 0.97) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
+		tile.custom_minimum_size = Vector2(360, 150)
+		flow.add_child(tile)
+		var h := UI.hbox(10)
+		tile.add_child(h)
+		# the picture: the star's own shader on a small square (greyed out while unknown)
+		var pic := TextureRect.new()
+		pic.texture = PixelArt.white()
+		pic.custom_minimum_size = Vector2(120, 120)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_SCALE
+		var spr: Sprite2D = Celestial.make_star_sprite({"color": t["color"], "color2": t["color2"], "kind": t["kind"], "star_id": t["id"], "radius": t["radius"], "seed": 3.0}, 100.0)
+		pic.material = spr.material
+		var sm := pic.material as ShaderMaterial
+		sm.set_shader_parameter("pixels", 120.0 if String(t["kind"]) in ["main", "brown", "giant", "white"] else 160.0)
+		spr.free()
+		if not got:
+			# the shader ignores modulate – a dark veil over the picture greys it out
+			var veil := ColorRect.new()
+			veil.color = Color(0.07, 0.07, 0.08, 0.86)
+			veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+			veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pic.add_child(veil)
+		h.add_child(pic)
+		var v := UI.vbox(2)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(v)
+		if got:
+			v.add_child(UI.label(String(t["name"]), 15, COL))
+			var facts := "%s R☉  •  %s M☉  •  %s" % [t["r_sun"], t["m_sun"], t["temp"]]
+			v.add_child(UI.label(facts, 12, UI.NEON_CYAN))
+			v.add_child(UI.wrap_label(String(t["text"]), 11, Color(0.9, 0.88, 0.8), 210))
+		else:
+			var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
+			q.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			v.add_child(q)
 
 
 func _set_sub(i: int) -> void:

@@ -178,6 +178,11 @@ func _update_cme(delta: float) -> void:
 			if d <= r:
 				hit[n.get_instance_id()] = true
 				_cme_hit(n, d, star_r)
+	# 0.6.37.2: mines the shockwave passes go off
+	for m in get_tree().get_nodes_in_group("mines"):
+		if is_instance_valid(m) and not hit.has(m.get_instance_id()) and (m.position as Vector2).length() <= r:
+			hit[m.get_instance_id()] = true
+			m.explode.call_deferred()
 	if r - CME_BAND > Universe.SYSTEM_RADIUS * 1.05:
 		_cme = {}
 		_cme_next = randf_range(CME_EVERY.x, CME_EVERY.y)
@@ -194,6 +199,21 @@ func start_cme(at_once: bool = false) -> void:
 
 
 func _cme_hit(ship: Ship, d: float, star_r: float) -> void:
+	# 0.6.37.2: drones are knocked out for a few seconds (white lightning); a ship in warp drops out; cloaks fail
+	if ship.is_drone:
+		ship.set("stunned_t", maxf(float(ship.get("stunned_t")), 6.0))
+		ship.set("stun_white", true)
+		return
+	if ship.in_warp():
+		if ship == player:
+			GameState.log_msg("The shockwave tears you out of warp – emergency shutdown!", GameState.COL_BAD)
+		ship.emergency_drop()
+	ship.cme_t = 20.0
+	if ship.cloaked():
+		ship.module_on["builtin_cloak"] = false
+		ship.module_state["builtin_cloak"] = "off"
+		if ship == player:
+			GameState.log_msg("The plasma clings to the hull – the cloak fails for 20 s.", GameState.COL_BAD)
 	var close := d < star_r * 25.0
 	if close:
 		ship.shield_collapse(5.0)
@@ -269,10 +289,7 @@ func _codex_discover() -> void:
 		GameState.codex.event("colossus")
 	if not havens.is_empty():
 		GameState.codex.event("haven")
-	var skind := String(layout["star"].get("kind", "main"))                      # package 37
-	GameState.codex.event("star:" + skind)
-	if not skind in ["neutron", "blackhole"]:
-		GameState.codex.event("star:main")
+	GameState.collect_star(String(layout["star"].get("star_id", "")))          # 0.6.37.2: star classes in the collection
 
 
 # ---------------------------------------------------------------- Setup
@@ -315,6 +332,10 @@ func _make_bodies() -> void:
 				glow.show_behind_parent = true
 				sky_spr.add_child(glow)
 			map_spr = Celestial.make_star_sprite(star, float(look["vis_r"]))
+			if kind == "neutron":
+				# 0.6.37.2: a blinding white core that keeps a least size on screen – a bright point even on the map
+				sky_spr.add_child(_core_glow())
+				map_spr.add_child(_core_glow())
 		else:
 			var ldir := (-(b["pos"] as Vector2)).normalized()
 			sky_spr = Celestial.make_planet_sprite(b, 100.0, ldir)
@@ -325,6 +346,34 @@ func _make_bodies() -> void:
 		bodies.append({"data": b, "sky": sky_spr, "map": map_spr, "star": is_star,
 			"quad": float(look["quad"]) if is_star else _quad_factor(b, false),
 			"r_vis": float(look["vis_r"]) if is_star else float(b["radius"]), "kind": String(look.get("kind", ""))})
+
+
+## 0.6.37.2: an additive white glow (radius 64 texture px) – a neutron star's core.
+func _core_glow() -> Sprite2D:
+	var g := Sprite2D.new()
+	g.name = "CoreGlow"
+	var gt := GradientTexture2D.new()
+	gt.width = 128
+	gt.height = 128
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	var gr := Gradient.new()
+	gr.offsets = PackedFloat32Array([0.0, 0.18, 0.4, 1.0])
+	gr.colors = PackedColorArray([Color(1, 1, 1, 1), Color(0.92, 0.96, 1.0, 0.95), Color(0.6, 0.75, 1.0, 0.35), Color(0.5, 0.6, 1.0, 0.0)])
+	gt.gradient = gr
+	g.texture = gt
+	var gm := CanvasItemMaterial.new()
+	gm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	g.material = gm
+	return g
+
+
+## Keeps a core glow at least `px` screen pixels in radius (world_per_px: world units per screen pixel of its parent).
+static func _size_core(spr: Sprite2D, want_px: float, world_per_px: float) -> void:
+	var g = spr.get_node_or_null("CoreGlow")
+	if g != null:
+		g.scale = Vector2.ONE * want_px * world_per_px / (64.0 * maxf(spr.scale.x, 0.000001))
 
 
 func _quad_factor(b: Dictionary, is_star: bool) -> float:
@@ -1404,6 +1453,7 @@ func _update_bodies() -> void:
 			sky_spr.modulate.a = sky_a
 			sky_spr.z_index = -clampi(int(dist / 1000.0), 0, 4000)
 			if b["star"]:
+				_size_core(sky_spr, maxf(app_r * 0.09, 14.0), 1.0)              # 0.6.37.2: neutron star core
 				# package 37: stars much finer (≈ 450 pixel rows across an ordinary star's disc)
 				(sky_spr.material as ShaderMaterial).set_shader_parameter("pixels", STAR_PIXELS.get(String(b["kind"]), 1000.0))
 				if b["kind"] == "blackhole" and sky_spr.get_child_count() > 0:
@@ -1421,6 +1471,8 @@ func _update_bodies() -> void:
 			map_spr.scale = Vector2.ONE * (rs / z) * quad / 64.0
 			map_spr.modulate.a = map_a
 			_set_pixels(map_spr, rs * quad / 3.0)
+			if b["star"]:
+				_size_core(map_spr, 9.0, 1.0 / z)                          # 0.6.37.2: a bright point on the map
 		else:
 			map_spr.visible = false
 
@@ -3005,6 +3057,7 @@ func drone_pulse(src: Ship, radius: float, stun: float) -> int:
 	for d in ship_layer.get_children():
 		if d is Ship and d.is_drone and not d.dying and d.position.distance_to(src.position) <= radius:
 			d.stunned_t = maxf(float(d.stunned_t), stun)
+			d.stun_white = false
 			n += 1
 	if src == player or (player != null and is_instance_valid(player) and player.position.distance_to(src.position) < radius * 1.5):
 		GameState.log_msg("%s: anti-drone pulse – %d drone%s knocked out for %d s." % [src.display_name(), n, "" if n == 1 else "s", int(stun)], GameState.COL_WARN)

@@ -6,7 +6,7 @@ shader_type canvas_item;
 uniform vec4 color : source_color = vec4(0.5, 0.6, 1.0, 1.0);     // field lines
 uniform vec4 color2 : source_color = vec4(0.45, 1.0, 0.95, 1.0);  // jets
 uniform float pixels = 400.0;
-uniform float core = 0.025;          // core radius relative to the quad half-width
+uniform float core = 0.03;          // core radius relative to the quad half-width
 uniform float seed = 1.0;
 uniform float spin = 0.12;           // turns of the magnetic axis (rad / s)
 
@@ -50,9 +50,10 @@ void fragment() {
 	col += color2.rgb * jet * 1.4;
 	a = max(a, jet);
 	// the core and its glow
-	float glow = exp(-d / (core * 1.6));
-	col += vec3(0.9, 0.95, 1.0) * glow * 1.5;
-	a = max(a, glow);
+	float glow = exp(-d / (core * 3.0)) * 1.8;                      // blinding core
+	float halo = exp(-d / (core * 9.0)) * 0.35;                     // a bluish halo round it
+	col += vec3(0.95, 0.97, 1.0) * glow * 2.0 + color.rgb * halo;
+	a = max(a, max(glow, halo * 0.8));
 	if (d < core) {
 		col = vec3(1.0);
 		a = 1.0;

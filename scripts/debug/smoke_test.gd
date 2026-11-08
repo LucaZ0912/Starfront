@@ -6327,6 +6327,36 @@ func _test_stars(view: SystemView) -> void:
 	star.merge(keep, true)
 	pl2.position = p0
 	view._bh_warned = false
-	check(cme_ok and pull_ok and far_ok and GameState.codex.all.has("cluster_blackhole") and GameState.codex.all.has("cluster_neutron"),
-		"package 37: a coronal mass ejection sends a shockwave through the system (shields and sensors suffer); a black hole pulls ships in close up, not from afar; codex entries")
+	check(cme_ok and pull_ok and far_ok and not GameState.codex.all.has("cluster_blackhole"),
+		"package 37: a coronal mass ejection sends a shockwave through the system (shields and sensors suffer); a black hole pulls ships in close up, not from afar")
+	# 0.6.37.2: the shockwave tears a ship out of warp and spoils its cloak; drones are knocked out (white lightning)
+	var warp_ok := true
+	var drone_ok := true
+	if bool(view.star_type().get("cme", false)):
+		pl2.warp = {"from": pl2.position, "to": pl2.position + Vector2(900000, 0), "t": 1.0, "T": 10.0, "then": {}, "name": "Test"}
+		view._cme_hit(pl2, 9.0e6, 60000.0)
+		var cloak_err: String = pl2._set_module_active("builtin_cloak", true) if not pl2.find_module("builtin_cloak").is_empty() else "no cloak here"
+		warp_ok = not pl2.in_warp() and pl2.tumble_t > 0.0 and pl2.cme_t > 0.0 and cloak_err != ""
+		pl2.tumble_t = 0.0
+		pl2.velocity = Vector2.ZERO
+		pl2.cme_t = 0.0
+		pl2.warp_disrupted = 0.0
+		pl2.jammed_t = 0.0
+		var dr = null
+		for n in view.ship_layer.get_children():
+			if n is Ship and n.is_drone and not n.dying:
+				dr = n
+				break
+		if dr != null:
+			view._cme_hit(dr, 9.0e6, 60000.0)
+			drone_ok = float(dr.get("stunned_t")) > 0.0 and bool(dr.get("stun_white"))
+			dr.set("stunned_t", 0.0)
+	# 0.6.37.2: star classes go into the collection (not the codex)
+	var seen_ok: bool = String(view.layout["star"].get("star_id", "")) in GameState.collection.get("stars", [])
+	var facts_ok := true
+	for t3 in U.STAR_TYPES:
+		facts_ok = facts_ok and t3.has("r_sun") and t3.has("m_sun") and t3.has("temp") and String(t3.get("text", "")) != ""
+	var near_ok: bool = U.WARP_MIN <= 15000.0
+	check(warp_ok and drone_ok and seen_ok and facts_ok and near_ok,
+		"0.6.37.2: the CME shockwave tears ships out of warp, spoils cloaks, knocks out drones; star classes in the collection (size, mass, temperature, text); warp from %s" % SystemView.fmt_dist(U.WARP_MIN))
 

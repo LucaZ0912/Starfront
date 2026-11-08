@@ -63,7 +63,7 @@ const SCALE := 3.0
 const SYSTEM_RADIUS := 6000000.0
 const GATE_DISTANCE := 5700000.0
 ## Below this distance ships fly normally instead of warping.
-const WARP_MIN := 40000.0
+const WARP_MIN := 12000.0          # 0.6.37.2: 40,000 before – planet to moon took up to ten minutes
 ## 0.6.35.17: stations and havens – their no-fire zones reach out to 30,000 km, and from there the flight in at
 ## sublight took minutes. Further out than this a ship warps right up to the station.
 const WARP_MIN_STATION := 8000.0
@@ -75,20 +75,33 @@ static func warp_min_for(t: Dictionary) -> float:
 ## Package 37: the star types. kind = how it is drawn and what it does (main sequence, brown dwarf, red supergiant,
 ## white dwarf, neutron star, black hole). radius in km (G = 60,000); lum = brightness for the solar collector
 ## (G = 1); frost = how far out the frost line lies (G = 1); weight = share in the Cluster (in %); land = warp
-## arrival distance in radii; flares / cme = prominences and coronal mass ejections; color2 = the hot colour.
+## arrival distance in radii; flares / cme = prominences and coronal mass ejections; color2 = the hot colour;
+## r_sun / m_sun / temp / text: what the collection shows (0.6.37.2).
 const STAR_TYPES := [
-	{"id": "O", "name": "Class O Blue Star", "kind": "main", "color": Color(0.5, 0.62, 1.0), "color2": Color(0.85, 0.92, 1.0), "radius": 150000.0, "lum": 8.0, "frost": 1.35, "weight": 2.0, "land": 2.5, "flares": true, "cme": true},
-	{"id": "B", "name": "Class B Blue-White Star", "kind": "main", "color": Color(0.62, 0.75, 1.0), "color2": Color(0.92, 0.96, 1.0), "radius": 115000.0, "lum": 4.0, "frost": 1.25, "weight": 3.0, "land": 2.5, "flares": true, "cme": true},
-	{"id": "A", "name": "Class A White Star", "kind": "main", "color": Color(0.85, 0.9, 1.0), "color2": Color(1.0, 1.0, 1.0), "radius": 85000.0, "lum": 2.0, "frost": 1.15, "weight": 5.0, "land": 2.5, "flares": true, "cme": true},
-	{"id": "F", "name": "Class F Yellow-White Star", "kind": "main", "color": Color(1.0, 0.95, 0.75), "color2": Color(1.0, 1.0, 0.95), "radius": 70000.0, "lum": 1.4, "frost": 1.07, "weight": 8.0, "land": 2.5, "flares": true, "cme": true},
-	{"id": "G", "name": "Class G Yellow Dwarf", "kind": "main", "color": Color(1.0, 0.82, 0.38), "color2": Color(1.0, 0.97, 0.8), "radius": 60000.0, "lum": 1.0, "frost": 1.0, "weight": 15.0, "land": 2.5, "flares": true, "cme": true},
-	{"id": "K", "name": "Class K Orange Dwarf", "kind": "main", "color": Color(1.0, 0.6, 0.25), "color2": Color(1.0, 0.88, 0.6), "radius": 50000.0, "lum": 0.6, "frost": 0.9, "weight": 20.0, "land": 2.5, "flares": true, "cme": true},
-	{"id": "M", "name": "Class M Red Dwarf", "kind": "main", "color": Color(0.95, 0.32, 0.18), "color2": Color(1.0, 0.7, 0.45), "radius": 38000.0, "lum": 0.3, "frost": 0.8, "weight": 30.0, "land": 2.5, "flares": true, "cme": true},
-	{"id": "BD", "name": "Brown Dwarf", "kind": "brown", "color": Color(0.78, 0.28, 0.58), "color2": Color(1.0, 0.6, 0.85), "radius": 28000.0, "lum": 0.05, "frost": 0.6, "weight": 6.0, "land": 2.5, "flares": false, "cme": false},
-	{"id": "RSG", "name": "Red Supergiant", "kind": "giant", "color": Color(0.95, 0.28, 0.1), "color2": Color(1.0, 0.62, 0.3), "radius": 600000.0, "lum": 6.0, "frost": 1.3, "weight": 4.0, "land": 1.6, "flares": true, "cme": true},
-	{"id": "WD", "name": "White Dwarf", "kind": "white", "color": Color(0.88, 0.94, 1.0), "color2": Color(1.0, 1.0, 1.0), "radius": 18000.0, "lum": 0.3, "frost": 0.85, "weight": 3.0, "land": 3.0, "flares": false, "cme": false},
-	{"id": "NS", "name": "Neutron Star", "kind": "neutron", "color": Color(0.5, 0.6, 1.0), "color2": Color(0.45, 1.0, 0.95), "radius": 6000.0, "lum": 0.1, "frost": 0.6, "weight": 2.0, "land": 5.0, "flares": false, "cme": false},
-	{"id": "BH", "name": "Black Hole", "kind": "blackhole", "color": Color(1.0, 0.5, 0.15), "color2": Color(1.0, 0.92, 0.7), "radius": 12000.0, "lum": 0.0, "frost": 0.6, "weight": 2.0, "land": 10.0, "flares": false, "cme": false},
+	{"id": "O", "name": "Class O Blue Star", "kind": "main", "color": Color(0.5, 0.62, 1.0), "color2": Color(0.85, 0.92, 1.0), "radius": 150000.0, "lum": 8.0, "frost": 1.35, "weight": 2.0, "land": 2.5, "flares": true, "cme": true, "r_sun": "10", "m_sun": "30", "temp": "35,000 K",
+		"text": "Rare blue giants of the main sequence – blinding, hot and short-lived. A few million years, then they end in a supernova."},
+	{"id": "B", "name": "Class B Blue-White Star", "kind": "main", "color": Color(0.62, 0.75, 1.0), "color2": Color(0.92, 0.96, 1.0), "radius": 115000.0, "lum": 4.0, "frost": 1.25, "weight": 3.0, "land": 2.5, "flares": true, "cme": true, "r_sun": "4", "m_sun": "8", "temp": "18,000 K",
+		"text": "Hot blue-white stars. Their light carries far: the frost line lies a long way out and solar collectors run at full power."},
+	{"id": "A", "name": "Class A White Star", "kind": "main", "color": Color(0.85, 0.9, 1.0), "color2": Color(1.0, 1.0, 1.0), "radius": 85000.0, "lum": 2.0, "frost": 1.15, "weight": 5.0, "land": 2.5, "flares": true, "cme": true, "r_sun": "1.8", "m_sun": "2", "temp": "8,500 K",
+		"text": "White stars that spin fast; their light is clear and hard."},
+	{"id": "F", "name": "Class F Yellow-White Star", "kind": "main", "color": Color(1.0, 0.95, 0.75), "color2": Color(1.0, 1.0, 0.95), "radius": 70000.0, "lum": 1.4, "frost": 1.07, "weight": 8.0, "land": 2.5, "flares": true, "cme": true, "r_sun": "1.3", "m_sun": "1.3", "temp": "6,700 K",
+		"text": "Yellow-white stars, a little hotter and brighter than a sun like Sol."},
+	{"id": "G", "name": "Class G Yellow Dwarf", "kind": "main", "color": Color(1.0, 0.82, 0.38), "color2": Color(1.0, 0.97, 0.8), "radius": 60000.0, "lum": 1.0, "frost": 1.0, "weight": 15.0, "land": 2.5, "flares": true, "cme": true, "r_sun": "1", "m_sun": "1", "temp": "5,800 K",
+		"text": "Yellow dwarfs like Sol, the sun of Earth. Calm, long-lived – the kind of star humanity was born under."},
+	{"id": "K", "name": "Class K Orange Dwarf", "kind": "main", "color": Color(1.0, 0.6, 0.25), "color2": Color(1.0, 0.88, 0.6), "radius": 50000.0, "lum": 0.6, "frost": 0.9, "weight": 20.0, "land": 2.5, "flares": true, "cme": true, "r_sun": "0.8", "m_sun": "0.75", "temp": "4,500 K",
+		"text": "Orange dwarfs: smaller and cooler than Sol, and they burn for tens of billions of years."},
+	{"id": "M", "name": "Class M Red Dwarf", "kind": "main", "color": Color(0.95, 0.32, 0.18), "color2": Color(1.0, 0.7, 0.45), "radius": 38000.0, "lum": 0.3, "frost": 0.8, "weight": 30.0, "land": 2.5, "flares": true, "cme": true, "r_sun": "0.4", "m_sun": "0.3", "temp": "3,200 K",
+		"text": "Red dwarfs – the most common stars of all. Dim and cool, and fond of sudden flares."},
+	{"id": "BD", "name": "Brown Dwarf", "kind": "brown", "color": Color(0.78, 0.28, 0.58), "color2": Color(1.0, 0.6, 0.85), "radius": 28000.0, "lum": 0.05, "frost": 0.6, "weight": 6.0, "land": 2.5, "flares": false, "cme": false, "r_sun": "0.1", "m_sun": "0.05", "temp": "1,500 K",
+		"text": "A failed star: too light to ignite hydrogen in its core. It glows a dull pink from the heat of its own contraction and gives hardly any light."},
+	{"id": "RSG", "name": "Red Supergiant", "kind": "giant", "color": Color(0.95, 0.28, 0.1), "color2": Color(1.0, 0.62, 0.3), "radius": 600000.0, "lum": 6.0, "frost": 1.3, "weight": 4.0, "land": 1.6, "flares": true, "cme": true, "r_sun": "800", "m_sun": "15", "temp": "3,600 K",
+		"text": "A giant star at the end of its life, swollen to hundreds of times its size. Its surface boils in convection cells as big as whole stars; one day it will explode."},
+	{"id": "WD", "name": "White Dwarf", "kind": "white", "color": Color(0.88, 0.94, 1.0), "color2": Color(1.0, 1.0, 1.0), "radius": 18000.0, "lum": 0.3, "frost": 0.85, "weight": 3.0, "land": 3.0, "flares": false, "cme": false, "r_sun": "0.012", "m_sun": "0.6", "temp": "15,000 K",
+		"text": "The burnt-out core of a dead star, no bigger than a planet and still white-hot. It cools for billions of years."},
+	{"id": "NS", "name": "Neutron Star", "kind": "neutron", "color": Color(0.5, 0.6, 1.0), "color2": Color(0.45, 1.0, 0.95), "radius": 6000.0, "lum": 0.1, "frost": 0.6, "weight": 2.0, "land": 5.0, "flares": false, "cme": false, "r_sun": "0.000015", "m_sun": "1.4", "temp": "600,000 K",
+		"text": "The collapsed core of a giant star: twenty kilometres of matter heavier than anything else, spinning, wrapped in a magnetic field so strong its lines of force glow. Two jets sweep round like the beam of a lighthouse."},
+	{"id": "BH", "name": "Black Hole", "kind": "blackhole", "color": Color(1.0, 0.5, 0.15), "color2": Color(1.0, 0.92, 0.7), "radius": 12000.0, "lum": 0.0, "frost": 0.6, "weight": 2.0, "land": 10.0, "flares": false, "cme": false, "r_sun": "0.00004", "m_sun": "10", "temp": "—",
+		"text": "Nothing comes back from beyond the event horizon, not even light. Gas circles it in a glowing accretion disc, the far side bent over the hole by its gravity. Close in, it pulls ships in – and crushes what crosses the horizon."},
 ]
 
 

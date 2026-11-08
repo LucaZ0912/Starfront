@@ -68,7 +68,7 @@ var _pod_tick_t := 0.0
 var wingmen: Array = []
 var _wing_tick_t := 0.0
 ## Package 34: the collection – crew perks the pilot has had in the crew, notorious pirates destroyed
-var collection := {"perks": [], "notorious": []}
+var collection := {"perks": [], "notorious": [], "stars": []}     # 0.6.37.2: star classes visited
 var _collect_t := 0.0
 signal wingmen_changed
 const WingData = preload("res://data/wingmen.gd")
@@ -138,7 +138,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	rescued.clear()
 	_pod_seq = 1
 	wingmen.clear()
-	collection = {"perks": [], "notorious": []}
+	collection = {"perks": [], "notorious": [], "stars": []}
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -493,6 +493,8 @@ func from_dict(d: Dictionary) -> void:
 	_pod_seq = int(d.get("pod_seq", 1))
 	wingmen = d.get("wingmen", []).duplicate(true)
 	collection = d.get("collection", {"perks": [], "notorious": []}).duplicate(true)
+	if not collection.has("stars"):
+		collection["stars"] = []
 	if not loss_offer.is_empty():
 		ship_lost.emit.call_deferred(loss_offer)        # saved before deciding: ask again
 	Missions._counter = int(d.get("mission_counter", 1000))
@@ -1100,6 +1102,17 @@ func collect_perks() -> void:
 			log_msg("Collection: crew perk \"%s\" collected." % CrewData.PERKS.get(p, {}).get("name", p), COL_GOOD)
 			codex.event("collection")
 	collection["perks"] = have
+
+
+## 0.6.37.2: a star class goes into the collection the first time the pilot is in a system with such a star.
+func collect_star(type_id: String) -> void:
+	var have: Array = collection.get("stars", [])
+	if type_id == "" or type_id in have:
+		return
+	have.append(type_id)
+	collection["stars"] = have
+	log_msg("Collection: star class \"%s\" recorded." % Universe.STAR_TYPES[Universe.star_index(type_id)]["name"], COL_GOOD)
+	codex.event("collection")
 
 
 ## A notorious pirate destroyed by the pilot goes into the collection – with the mugshot.

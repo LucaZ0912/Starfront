@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.37.2 – 2026-11-08
+
+- **Neutron stars** blaze much brighter – a bright point even on the system map.
+- **Warp** from 12,000 km (was 40,000): planet to moon no longer means minutes of sublight flight.
+- **Star classes in the Collection** (instead of the codex): a tile per class with a small animated picture, size in
+  solar radii, mass in solar masses, surface temperature and a description; classes not yet visited show as "???".
+- **Coronal mass ejections** hit harder: a ship in warp is torn out of it (emergency shutdown), cloaks fail for 20 s,
+  drones are knocked out for a few seconds (white lightning), mines go off.
+
 ## alpha 0.6.37.1 – 2026-11-08
 
 **Package 37: new star types.** A new game is needed.

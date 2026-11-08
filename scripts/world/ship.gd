@@ -683,6 +683,7 @@ func _physics_process(delta: float) -> void:
 	warp_disrupted = maxf(0.0, warp_disrupted - delta)
 	emp_t = maxf(0.0, emp_t - delta)
 	jammed_t = maxf(0.0, jammed_t - delta)
+	cme_t = maxf(0.0, cme_t - delta)                     # 0.6.37.2
 	_xfer_t = maxf(0.0, _xfer_t - delta)
 	_regen(delta, s)
 	_update_hatches(delta)
@@ -1559,6 +1560,10 @@ func _warp_trail(vel: Vector2) -> void:
 
 
 ## Pulled out of warp (pirate interdiction): stops right here, the drive needs a moment.
+## 0.6.37.2: struck by a coronal mass ejection – no cloak for a while.
+var cme_t := 0.0
+
+
 ## 0.6.36.3: emergency shutdown of the warp drive (the pilot: Space twice). The ship is thrown out at speed and
 ## tumbles a few times round itself before it answers the helm again; the drive needs a moment.
 const TUMBLE_TIME := 3.0
@@ -2350,6 +2355,8 @@ func _set_module_active(slot: String, on: bool) -> String:
 		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
 		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) == "cloak":
+		if on and cme_t > 0.0:
+			return "%s: the CME's plasma still clings to the hull – no cloak for another %d s." % [d["name"], int(ceil(cme_t))]
 		if on and fit.capacitor < float(d["energy_rate"]):
 			return "%s: not enough energy." % d["name"]
 		if on:
@@ -3191,7 +3198,7 @@ func _update_npc_cloak(delta: float) -> void:
 		_cloak_drain(delta)
 		if _cloak_calm > 25.0:
 			module_on["builtin_cloak"] = false
-	elif combat_t > 4.0 and last_attacker != null and is_instance_valid(last_attacker) and Ship.hostile(self, last_attacker):
+	elif combat_t > 4.0 and cme_t <= 0.0 and last_attacker != null and is_instance_valid(last_attacker) and Ship.hostile(self, last_attacker):
 		module_on["builtin_cloak"] = true
 		_cloak_calm = 0.0
 		target = null
