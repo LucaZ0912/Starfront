@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.13 – 2026-11-08
+
+**Warp:** no more slowing down at the end – after accelerating, the ship flies at full speed right to the destination and drops straight to sublight; the exit flash appears at the point of arrival.
+
 ## alpha 0.6.35.12 – 2026-11-08
 
 **Warp:** a much brighter flash going in; the flash coming out comes a moment before arrival; the glittering trail is shorter (about 3.5 s). Instead of the arc in front of the ship, every ship in warp glows like a ship entering an atmosphere, only bluer – a hot sheath round the bow, flickering tongues of flame and sparks streaming back.

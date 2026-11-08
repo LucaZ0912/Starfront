@@ -1517,24 +1517,26 @@ func _follow_warp(fn, remaining: float, to: Vector2, wname: String) -> void:
 
 
 ## 0.6.35.10: a bright flash of light going into or coming out of warp (0.6.35.12: much brighter going in).
-func _warp_flash(going_in: bool = false) -> void:
+func _warp_flash(going_in: bool = false, at = null) -> void:
 	if view == null:
 		return
+	var pos: Vector2 = position if at == null else at
 	if going_in:
-		view.spawn_fx(Fx.warp_flash(position, maxf(radius * 9.0, 200.0)))
+		view.spawn_fx(Fx.warp_flash(pos, maxf(radius * 9.0, 200.0)))
 		return
-	view.spawn_fx(Fx.flash(position, Color(0.65, 0.88, 1.0), maxf(radius * 9.0, 160.0)))
-	view.spawn_fx(Fx.flash(position, Color(1.0, 1.0, 1.0), maxf(radius * 3.5, 60.0)))
+	view.spawn_fx(Fx.flash(pos, Color(0.65, 0.88, 1.0), maxf(radius * 9.0, 160.0)))
+	view.spawn_fx(Fx.flash(pos, Color(1.0, 1.0, 1.0), maxf(radius * 3.5, 60.0)))
 
 
-## 0.6.35.12: the flash coming out of warp comes a moment before the ship arrives.
+## 0.6.35.12: the flash coming out of warp comes a moment before the ship arrives – at the point of arrival
+## (0.6.35.13: at full speed the ship is still far away then).
 const EXIT_FLASH_LEAD := 0.45
 
 
 func _early_exit_flash(left: float) -> void:
 	if left <= EXIT_FLASH_LEAD and not warp.get("flashed", false):
 		warp["flashed"] = true
-		_warp_flash()
+		_warp_flash(false, warp["to"])
 
 
 ## 0.6.35.11: coming out of warp a ship leaves a long glittering trail along its course (longer than the combat
@@ -1569,9 +1571,16 @@ func warp_progress() -> float:
 	return clampf(float(warp["t"]) / float(warp["T"]), 0.0, 1.0)
 
 
-## Warp profile: fast acceleration, long cruise, gentle deceleration.
+## Warp profile (0.6.35.13): a smooth acceleration, then full speed right to the end – no slowing down, the ship
+## drops straight to sublight on arrival.
+const WARP_ACCEL := 0.18
+
+
 static func warp_ease(p: float) -> float:
-	return p * p * p * (p * (p * 6.0 - 15.0) + 10.0)
+	var v := 1.0 / (1.0 - WARP_ACCEL * 0.5)          # top speed, so the whole way is covered at p = 1
+	if p < WARP_ACCEL:
+		return v * p * p / (2.0 * WARP_ACCEL)
+	return minf(v * (p - WARP_ACCEL * 0.5), 1.0)
 
 
 func _update_warp(delta: float) -> void:
@@ -1602,6 +1611,7 @@ func _update_warp(delta: float) -> void:
 		var flashed: bool = warp.get("flashed", false)
 		warp = {}
 		velocity = (to - from).normalized() * float(fit.stats()["speed"]) * 0.3
+		position = to
 		order = {"type": "idle"}
 		if not flashed:
 			_warp_flash()                               # 0.6.35.10: a bright flash coming out (normally already shown)
@@ -3724,6 +3734,7 @@ func _draw() -> void:
 		var dir := Vector2.from_angle(heading)
 		var p := warp_progress()
 		var strength := clampf(minf(p, 1.0 - p) * 6.0, 0.0, 1.0)
+		var hot := clampf(p * 8.0, 0.0, 1.0) * clampf((1.0 - p) * 40.0, 0.0, 1.0)     # 0.6.35.13: full to the end
 		# NPC trails are much shorter and fainter, so a busy system map stays readable
 		var npc := fit.uid < 0
 		if npc:
@@ -3732,7 +3743,7 @@ func _draw() -> void:
 		for i in 3:
 			var off := dir.orthogonal() * (i - 1) * 5.0 / z
 			draw_line(off, off - dir * trail * (1.0 - absf(i - 1) * 0.35), Color(0.55, 0.85, 1.0, 0.55 * strength), (4.0 - absf(i - 1) * 2.0) / z)
-		_draw_warp_friction(clampf(minf(p, 1.0 - p) * 8.0, 0.0, 1.0) * (0.7 if npc else 1.0), z)
+		_draw_warp_friction(hot * (0.7 if npc else 1.0), z)
 
 	# Tool beams
 	for b in tool_beams:

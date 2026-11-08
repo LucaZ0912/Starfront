@@ -2576,7 +2576,7 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 	if s.warp.is_empty() or s.warp.get("formation", false):
 		return
 	var p := s.warp_progress()
-	var k := smoothstep(0.0, 0.06, p) * (1.0 - smoothstep(0.9, 1.0, p))
+	var k := smoothstep(0.0, 0.06, p) * (1.0 - smoothstep(0.97, 1.0, p))     # 0.6.35.13: full speed to the end
 	if k <= 0.01:
 		return
 	var d: Vector2 = ((s.warp["to"] as Vector2) - (s.warp["from"] as Vector2)).normalized()
