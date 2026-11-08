@@ -2579,36 +2579,50 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 	var k := smoothstep(0.0, 0.06, p) * (1.0 - smoothstep(0.97, 1.0, p))     # 0.6.35.13: full speed to the end
 	if k <= 0.01:
 		return
-	var d: Vector2 = ((s.warp["to"] as Vector2) - (s.warp["from"] as Vector2)).normalized()
-	var n := d.orthogonal()
+	var from: Vector2 = s.warp["from"]
+	var to: Vector2 = s.warp["to"]
+	var d: Vector2 = (to - from).normalized()
 	var c: Vector2 = s.position
 	var rt := TUNNEL_RADIUS                                       # 0.6.35.9: a fixed size – a whole formation fits in
 	var L := get_viewport_rect().size.length() * 0.6 * px          # reaches past the screen
+	# 0.6.35.14: only from the start to the end of the warp (on the system map it used to reach to infinity)
+	var x0 := maxf(-L, (from - c).dot(d))
+	var x1 := minf(L, (to - c).dot(d))
+	if x1 <= x0:
+		return
 	var col := Color(0.45, 0.75, 1.0)
 	var speed := Ship.warp_ease(minf(p + 0.02, 1.0)) - Ship.warp_ease(p)
 	var flow := float(s.warp["t"]) * (900.0 + 60000.0 * clampf(speed * 20.0, 0.0, 1.0))
 	o.draw_set_transform(c, d.angle(), Vector2.ONE)
 	# a faint blue veil inside the tube
-	o.draw_rect(Rect2(-L, -rt, 2.0 * L, 2.0 * rt), Color(col, 0.07 * k))
+	o.draw_rect(Rect2(x0, -rt, x1 - x0, 2.0 * rt), Color(col, 0.07 * k))
 	# the walls: soft bands, brighter at the edge
 	for side in [-1.0, 1.0]:
 		var inner: float = side * rt * 0.62
 		var outer: float = side * rt
-		var poly := PackedVector2Array([Vector2(-L, inner), Vector2(L, inner), Vector2(L, outer), Vector2(-L, outer)])
+		var poly := PackedVector2Array([Vector2(x0, inner), Vector2(x1, inner), Vector2(x1, outer), Vector2(x0, outer)])
 		var cols := PackedColorArray([Color(col, 0.0), Color(col, 0.0), Color(col, 0.26 * k), Color(col, 0.26 * k)])
 		o.draw_polygon(poly, cols)
-		o.draw_line(Vector2(-L, outer), Vector2(L, outer), Color(col.lightened(0.3), 0.55 * k), 2.0 * px)
+		o.draw_line(Vector2(x0, outer), Vector2(x1, outer), Color(col.lightened(0.3), 0.55 * k), 2.0 * px)
+	# 0.6.35.14: rings and streaks only where they can be seen – zoomed far out the tunnel is a few pixels wide, and
+	# thousands of rings along millions of km made the system map stutter
+	if rt / px < 6.0:
+		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
 	# rings rushing past backwards (ellipses: the tunnel seen from above at a slant)
 	var gap := rt * 1.6
 	var off := fposmod(flow, gap)
 	var x := -L - off + gap
-	while x < L:
-		var fade := 1.0 - absf(x) / L
-		var pts := PackedVector2Array()
-		for i in 25:
-			var a := PI * 0.5 + PI * i / 24.0
-			pts.append(Vector2(x + cos(a) * rt * 0.22, sin(a) * rt))
-		o.draw_polyline(pts, Color(col.lightened(0.2), 0.35 * k * fade), 2.0 * px)
+	var drawn := 0
+	while x < x1 and drawn < 80:
+		if x > x0:
+			var fade := 1.0 - absf(x) / L
+			var pts := PackedVector2Array()
+			for i in 25:
+				var a := PI * 0.5 + PI * i / 24.0
+				pts.append(Vector2(x + cos(a) * rt * 0.22, sin(a) * rt))
+			o.draw_polyline(pts, Color(col.lightened(0.2), 0.35 * k * fade), 2.0 * px)
+			drawn += 1
 		x += gap
 	# streaks along the walls
 	var rng := RandomNumberGenerator.new()
@@ -2617,7 +2631,10 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 		var y := rng.randf_range(-rt * 0.95, rt * 0.95)
 		var len := rng.randf_range(0.08, 0.25) * L
 		var sx := L - fposmod(flow * rng.randf_range(0.8, 1.6) + rng.randf() * 2.0 * L, 2.0 * L)
-		o.draw_line(Vector2(sx, y), Vector2(sx - len, y), Color(0.85, 0.95, 1.0, 0.28 * k * (absf(y) / rt)), 1.5 * px)
+		var ex := maxf(sx - len, x0)
+		sx = minf(sx, x1)
+		if sx > ex:
+			o.draw_line(Vector2(sx, y), Vector2(ex, y), Color(0.85, 0.95, 1.0, 0.28 * k * (absf(y) / rt)), 1.5 * px)
 	o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 

@@ -3740,6 +3740,7 @@ func _draw() -> void:
 		if npc:
 			strength *= 0.45
 		var trail := (70.0 if npc else 420.0) / z * strength
+		trail = minf(trail, position.distance_to(warp["from"]))       # 0.6.35.14: never behind the start
 		for i in 3:
 			var off := dir.orthogonal() * (i - 1) * 5.0 / z
 			draw_line(off, off - dir * trail * (1.0 - absf(i - 1) * 0.35), Color(0.55, 0.85, 1.0, 0.55 * strength), (4.0 - absf(i - 1) * 2.0) / z)
