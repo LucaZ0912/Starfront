@@ -1622,6 +1622,8 @@ func _update_bodies() -> void:
 				sky_spr.scale = Vector2.ONE * exp(lerpf(log(maxf(sky_spr.scale.x, 0.0001)), log(s_map), mk))
 				app_r = sky_spr.scale.x * 64.0 / quad
 			sky_spr.z_index = -clampi(int(dist / 1000.0), 0, 4000)
+			b["sky_pos"] = sky_spr.position                          # 0.6.39.8: where it shows (body_view)
+			b["sky_r"] = app_r
 			if b["star"]:
 				_size_core(sky_spr, maxf(app_r * 0.09, 14.0), 1.0)              # 0.6.37.2: neutron star core
 				# package 37: stars much finer (≈ 450 pixel rows across an ordinary star's disc)
@@ -3163,6 +3165,21 @@ func spawn_fx(f: Node2D) -> void:
 	fx_layer.add_child(f)
 
 
+## 0.6.39.8: where body `bid` appears right now, in world coordinates, and how big – in the local view a planet hangs in
+## the sky with parallax, not at its true place (the solar mirrors aim at what you see).
+func body_view(bid: String) -> Dictionary:
+	for b in bodies:
+		if String(b["data"].get("id", "")) != bid:
+			continue
+		var sky: Sprite2D = b["sky"]
+		if sky.visible and b.has("sky_pos"):
+			var z := camera.zoom.x
+			var vs := get_viewport_rect().size
+			return {"pos": camera.get_screen_center_position() + ((b["sky_pos"] as Vector2) - vs * 0.5) / z, "r": float(b["sky_r"]) / z}
+		return {"pos": b["data"]["pos"], "r": float(b["data"]["radius"])}
+	return {}
+
+
 # ---------------------------------------------------------------- Package 39a: the votes go out
 
 const VOTE_BEAM_EVERY := Vector2(120.0, 240.0)
@@ -3264,6 +3281,7 @@ class DysonShell extends Node2D:
 			return
 		var tex := panel_texture()
 		var uvs := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
+		_draw_haulers(view_r, px, tex, uvs)
 		for ri in Universe.DYSON_RINGS.size():
 			var ring: Array = Universe.DYSON_RINGS[ri]
 			for i in PANELS:
@@ -3296,6 +3314,46 @@ class DysonShell extends Node2D:
 					draw_line(p0 - n0, p0 + n0, col, maxf(px * 1.5, 24.0))
 					if (i * 13 + ri) % 3 == 0 and fposmod(t * 2.0 + i * 0.3, 1.0) < 0.25:
 						draw_circle((p0 + p1) * 0.5, maxf(px * 5.0, 60.0), Color(1.0, 0.95, 0.7, 0.9))
+
+	const HAULERS := 10
+	const HAUL_RANGE := 16000.0              # km along the shell either side of the hub
+	const HAUL_SPEED := 320.0                # km/s
+
+	## 0.6.39.8: big haulers near the hub carrying plates out to where the shell is still being built – slow, dimmed,
+	## in the background behind the traffic.
+	func _draw_haulers(view_r: Rect2, px: float, tex: Texture2D, uvs: PackedVector2Array) -> void:
+		var hub := Vector2.from_angle(Universe.DYSON_HUB_ANGLE) * Universe.DYSON_R
+		var out_n := hub.normalized()
+		var tang := out_n.orthogonal()
+		for j in HAULERS:
+			var lane := (float(j % 4) - 1.5) * 900.0 + (1600.0 if j % 2 == 0 else -1600.0)
+			var cyc := fposmod(t * HAUL_SPEED / (HAUL_RANGE * 2.0) + j * 0.37, 1.0)
+			var fwd := cyc < 0.5                                      # out loaded, back empty
+			var s := (cyc * 2.0 if fwd else 2.0 - cyc * 2.0) * HAUL_RANGE * (1.0 if j % 3 != 0 else -1.0)
+			var pos := hub + tang * s + out_n * lane
+			if not view_r.has_point(pos):
+				continue
+			var dir := tang * (1.0 if (fwd == (j % 3 != 0)) else -1.0)
+			var ang := dir.angle()
+			draw_set_transform(pos, ang, Vector2.ONE)
+			var dim := Color(0.78, 0.8, 0.82)
+			# the hull: a long spine with a cab forward and engines aft
+			draw_rect(Rect2(Vector2(-210, -26), Vector2(380, 52)), Color(0.3, 0.33, 0.36).lerp(dim, 0.1))
+			draw_rect(Rect2(Vector2(-210, -26), Vector2(380, 8)), Color(0.45, 0.5, 0.53))
+			draw_rect(Rect2(Vector2(150, -34), Vector2(70, 68)), Color(0.48, 0.52, 0.55))
+			draw_rect(Rect2(Vector2(196, -12), Vector2(16, 24)), Color(0.55, 0.95, 0.7))
+			for e in [-16.0, 16.0]:
+				draw_rect(Rect2(Vector2(-236, e - 9), Vector2(26, 18)), Color(0.2, 0.22, 0.24))
+				draw_circle(Vector2(-246, e), 14.0 + 4.0 * sin(t * 12.0 + j), Color(0.45, 0.9, 1.0, 0.55))
+			# the plate it carries (out loaded, back empty)
+			if fwd:
+				var plate := PackedVector2Array([Vector2(-190, -150), Vector2(140, -150), Vector2(140, 150), Vector2(-190, 150)])
+				draw_colored_polygon(plate, Color(0.9, 0.9, 0.92), uvs, tex)
+				for cx in [-150.0, 100.0]:
+					draw_line(Vector2(cx, -26), Vector2(cx, -150), Color(0.25, 0.28, 0.3), 10.0)
+					draw_line(Vector2(cx, 26), Vector2(cx, 150), Color(0.25, 0.28, 0.3), 10.0)
+			draw_circle(Vector2(220, 0), maxf(px * 2.0, 10.0), Color(1.0, 0.3, 0.25, 0.9 if fposmod(t + j * 0.3, 1.0) < 0.2 else 0.3))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	func _far_arc(pts: PackedVector2Array, px: float) -> void:
 		draw_polyline(pts, Color(0.72, 0.8, 0.82, 0.25), maxf(px * 9.0, WIDTH * 2.0))

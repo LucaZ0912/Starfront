@@ -665,16 +665,47 @@ func _draw_landmark_live() -> void:
 				if f > 0.97:
 					draw_circle(pos, px * 10.0, Color(1.0, 0.9, 0.6, (f - 0.97) * 25.0))
 		"mirror":
-			# 39c: the light it steers onto Curie – a pale beam down to the land, a bright spot where it lands
+			# 39c / 0.6.39.8: a curved reflector that turns to Curie as you see her (in the local view she hangs in
+			# the sky with parallax) – its facets gather the light into a beam that lands on the surface
 			if view != null and data.has("beam_to"):
-				var pl := Universe.body_by_id(view.layout, String(data["beam_to"]))
-				if not pl.is_empty():
-					var to: Vector2 = (pl["pos"] as Vector2) - position
-					var hit := to - to.normalized() * float(pl["radius"]) * 0.97
+				var tv: Dictionary = view.body_view(String(data["beam_to"]))
+				# only near the camera does the planet's place in the sky count – from afar aim at its true place
+				if not tv.is_empty() and position.distance_to(view.camera.get_screen_center_position()) > 80000.0:
+					var bd := Universe.body_by_id(view.layout, String(data["beam_to"]))
+					tv = {"pos": bd["pos"], "r": float(bd["radius"])}
+				if not tv.is_empty():
+					var to: Vector2 = (tv["pos"] as Vector2) - position
+					var dist := to.length()
+					var size := float(art["size"])
+					var rc := size * 0.5
+					var foc := Vector2(rc * 0.9, 0.0)
+					var hit_d := maxf(dist - float(tv["r"]) * 0.95, foc.x + 10.0)
 					var lv := 0.8 + 0.2 * sin(_t * 0.9 + float(data.get("seed", 0)))
-					draw_line(Vector2.ZERO, hit, Color(1.0, 0.97, 0.85, 0.07 * lv), float(art["size"]) * 0.6)
-					draw_line(Vector2.ZERO, hit, Color(1.0, 0.98, 0.9, 0.18 * lv), float(art["size"]) * 0.18)
-					draw_circle(hit, float(art["size"]) * 0.5, Color(1.0, 0.95, 0.8, 0.12 * lv))
+					draw_set_transform(Vector2.ZERO, to.angle(), Vector2.ONE)
+					# the beam onto the planet
+					draw_line(foc, Vector2(hit_d, 0), Color(1.0, 0.97, 0.85, 0.08 * lv), size * 0.5)
+					draw_line(foc, Vector2(hit_d, 0), Color(1.0, 0.98, 0.9, 0.22 * lv), size * 0.14)
+					draw_circle(Vector2(hit_d, 0), size * 0.45, Color(1.0, 0.95, 0.8, 0.14 * lv))
+					draw_circle(Vector2(hit_d, 0), size * 0.16, Color(1.0, 0.98, 0.9, 0.35 * lv))
+					# struts from the hub to the reflector
+					for k in 3:
+						var fa := (k - 1) * 0.5
+						draw_line(Vector2.ZERO, Vector2(-cos(fa) * rc + rc * 0.45, sin(fa) * rc), Color(0.4, 0.45, 0.47), px * 2.0)
+					# the facets on a curve, hollow side to the planet; light from each into the focus
+					var nf := 11
+					for k2 in nf:
+						var fa2 := lerpf(-0.75, 0.75, float(k2) / (nf - 1))
+						var fp := Vector2(-cos(fa2) * rc + rc * 0.45, sin(fa2) * rc)
+						var tn := Vector2(sin(fa2), cos(fa2))
+						var nrm := Vector2(cos(fa2), -sin(fa2))
+						var hw := size * 0.065
+						var q := PackedVector2Array([fp - tn * hw - nrm * px * 3.0, fp + tn * hw - nrm * px * 3.0, fp + tn * hw + nrm * px * 3.0, fp - tn * hw + nrm * px * 3.0])
+						var shine := 0.75 + 0.25 * sin(_t * 1.1 + k2 * 0.6)
+						draw_colored_polygon(q, Color(0.72 * shine, 0.86 * shine, 0.95 * shine))
+						draw_line(fp - tn * hw, fp + tn * hw, Color(1.0, 1.0, 1.0, 0.8 * shine), px)
+						draw_line(fp, foc, Color(1.0, 0.97, 0.85, 0.12 * lv), px * 1.5)
+					draw_circle(foc, px * 5.0, Color(1.0, 0.98, 0.9, 0.7 * lv))
+					draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		"gate_frame":
 			# 39c: now and then a test: the ring flickers green, a wormhole tries to open – and collapses
 			var cyc := fposmod(_t / 40.0 + float(int(data.get("seed", 0)) % 7) / 7.0, 1.0)

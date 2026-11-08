@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.8 – 2026-11-08
+
+- Durchbruch: big haulers carry Dyson plates along the shell near the Meridian Sphere (out loaded, back empty).
+- The solar mirrors over Curie are curved reflectors now, turned to the planet as you see it in the sky – their
+  facets gather the light into a beam that lands on the surface.
+- Curie has a research station: the Curie Terraforming Institute. A new game is needed.
+
 ## alpha 0.6.39.7 – 2026-11-08
 
 - Fix: the debug menu crashed the game ("Invalid access … 'desert'") – Vesper, Heimkehr's desert moon, is a moon of a

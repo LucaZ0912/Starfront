@@ -217,7 +217,7 @@ const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr", "durchbr
 const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG", "durchbruch": "A"}
 ## The fixed stations of a special system (type, tier) – their place and look come from SPECIAL_STATIONS.
 const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]], "heimkehr": [["trade", 3], ["shipyard", 3]],
-	"durchbruch": [["research", 3], ["shipyard", 3]]}
+	"durchbruch": [["research", 3], ["shipyard", 3], ["research", 2]]}
 ## Fixed planets: type, orbit (km, before the scale), radius (km), ring, city lights; moons per planet: [name, type, radius].
 const SPECIAL_BODIES := {
 	"landfall": [
@@ -256,6 +256,7 @@ const SPECIAL_STATIONS := {
 	"durchbruch": [
 		{"name": "Meridian Sphere", "art": "dyson_hub", "body": "STAR", "dist": DYSON_R, "exchange": true},
 		{"name": "Axiom Yards", "art": "axiom_yards", "body": "Meitner", "dist": 15000.0, "capital_yard": true},
+		{"name": "Curie Terraforming Institute", "art": "research", "body": "Curie", "dist": 26000.0},
 	],
 }
 ## 39c: the Dyson sphere round Durchbruch's star – its radius (km) and the frame rings of the shell:

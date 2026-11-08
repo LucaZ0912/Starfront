@@ -6662,6 +6662,10 @@ func _test_durchbruch(view: SystemView) -> void:
 		for st2 in U.get_layout(sid)["stations"]:
 			if "axa_threshold" in st2.get("shipyard", []):
 				thr_where.append(String(st2["name"]))
+	var inst: Array = L["stations"].filter(func(st3): return String(st3.get("anchor", "")) == String(curie["id"]) and String(st3["type"]) == "research")
+	check(inst.size() == 1, "39c: Curie has its research station (Curie Terraforming Institute)")
+	var tv: Dictionary = view.body_view("nonexistent")
+	check(tv.is_empty(), "39c: body_view finds nothing for an unknown body")
 	check(not hub.is_empty() and hub.get("exchange", false) and absf((hub["pos"] as Vector2).length() - U.DYSON_R) < 1.0 and not hub.has("anchor")
 		and not yards.is_empty() and thr_where == ["Axiom Yards"],
 		"39c: the Meridian Sphere sits on the Dyson shell round the star (Research Exchange); the Threshold only at the Axiom Yards")

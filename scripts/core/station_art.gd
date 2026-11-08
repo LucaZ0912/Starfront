@@ -1257,20 +1257,14 @@ func _dyson_hub() -> void:
 	light(center, Color(0.6, 1.0, 0.8), 0.6, true)
 
 
-## A solar mirror over Curie: a dish of hexagonal mirror facets in a truss frame, steering light onto the land.
+## A solar mirror over Curie: the hub with its control module and two small solar sails – the curved reflector itself
+## is drawn live, turned to the planet (Celestial._draw_landmark_live).
 func _mirror() -> void:
 	var center := Vector2(c, c)
-	for k in 3:
-		var a := k * TAU / 3.0
-		seg(P(n * 0.1, a), P(n * 0.46, a), 1.6, TRUSS, 6.0)
-	var hx := n * 0.07
-	for q in range(-3, 4):
-		for r in range(-3, 4):
-			var hp := center + Vector2(hx * 1.75 * (q + r * 0.5), hx * 1.52 * r)
-			if hp.distance_to(center) > n * 0.4:
-				continue
-			poly(regular(hp, hx * 0.92, 6, PI / 6.0), ICE, 10.0 + hp.distance_to(center) * 0.06, 1.0, 0)
-	disc(center, n * 0.07, HULL, 16.0, D_HUB)
+	solar_wing(P(n * 0.08, PI * 0.5), P(n * 0.22, PI * 0.5), 6.0, 5.0)
+	solar_wing(P(n * 0.08, -PI * 0.5), P(n * 0.22, -PI * 0.5), 6.0, 5.0)
+	disc(center, n * 0.075, HULL, 14.0, D_HUB)
+	disc(center, n * 0.03, ACC, 17.0, D_DOME)
 	light(center, Color(0.6, 1.0, 0.8), 1.2, true)
 
 
