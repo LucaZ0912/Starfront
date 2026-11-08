@@ -6,6 +6,10 @@ extends RefCounted
 ##   metallic (M-type), stony (S-type, silicate) and icy.
 ## "rarity": common / uncommon / rare (rare only in systems with security < 0.5).
 ## "refines_to" + "yield": refined product and base units out per unit in.
+## Package 41: "deep" = only in colossi, for the deep core drill (never in asteroid fields); "radioactive" = needs
+## shielded cargo racks, else the crew takes radiation (warning + alarm); category "gas" = harvested from giants
+## (takes twice the room in ordinary cargo racks, fits gas tanks); category "components" = built from refined
+## materials (Industry.COMPONENTS).
 const COMMODITIES := {
 	# --- Metallic ores
 	"iron_ore": {"name": "Iron Ore", "price": 14, "volume": 1.0, "category": "ore", "class": "metallic", "rarity": "common", "refines_to": "iron_ingot", "yield": 0.5},
@@ -27,6 +31,20 @@ const COMMODITIES := {
 	"methane_ice": {"name": "Methane Ice", "price": 24, "volume": 1.2, "category": "ore", "class": "icy", "rarity": "uncommon", "refines_to": "methane", "yield": 0.4},
 	"deuterium_ice": {"name": "Deuterium Ice", "price": 45, "volume": 1.2, "category": "ore", "class": "icy", "rarity": "uncommon", "refines_to": "deuterium", "yield": 0.4},
 	"helium3_ice": {"name": "Helium-3 Ice", "price": 170, "volume": 1.2, "category": "ore", "class": "icy", "rarity": "rare", "refines_to": "helium3", "yield": 0.3},
+	# package 41: new ores – copper, tungsten, gold, uraninite (metallic), spodumene (lithium), graphite, quartz,
+	# monazite (stony), nitrogen ice and dry ice (icy); osmium and palladium only deep in colossi
+	"copper_ore": {"name": "Copper Ore", "price": 20, "volume": 1.0, "category": "ore", "class": "metallic", "rarity": "common", "refines_to": "copper", "yield": 0.5},
+	"tungsten_ore": {"name": "Tungsten Ore", "price": 58, "volume": 1.0, "category": "ore", "class": "metallic", "rarity": "uncommon", "refines_to": "tungsten", "yield": 0.4},
+	"gold_ore": {"name": "Gold Ore", "price": 190, "volume": 1.0, "category": "ore", "class": "metallic", "rarity": "rare", "refines_to": "gold", "yield": 0.3},
+	"uraninite": {"name": "Uraninite", "price": 160, "volume": 1.0, "category": "ore", "class": "metallic", "rarity": "rare", "refines_to": "enriched_uranium", "yield": 0.25, "radioactive": true},
+	"spodumene": {"name": "Spodumene", "price": 22, "volume": 1.0, "category": "ore", "class": "stony", "rarity": "common", "refines_to": "lithium", "yield": 0.45},
+	"graphite_ore": {"name": "Graphite Ore", "price": 30, "volume": 1.0, "category": "ore", "class": "stony", "rarity": "uncommon", "refines_to": "graphite", "yield": 0.5},
+	"quartz": {"name": "Quartz", "price": 12, "volume": 1.0, "category": "ore", "class": "stony", "rarity": "common", "refines_to": "optical_quartz", "yield": 0.5},
+	"monazite": {"name": "Monazite", "price": 70, "volume": 1.0, "category": "ore", "class": "stony", "rarity": "uncommon", "refines_to": "thorium", "yield": 0.3, "radioactive": true},
+	"nitrogen_ice": {"name": "Nitrogen Ice", "price": 10, "volume": 1.2, "category": "ore", "class": "icy", "rarity": "common", "refines_to": "liquid_nitrogen", "yield": 0.5},
+	"dry_ice": {"name": "Dry Ice", "price": 9, "volume": 1.2, "category": "ore", "class": "icy", "rarity": "common", "refines_to": "carbon_dioxide", "yield": 0.5},
+	"osmium_ore": {"name": "Osmium Ore", "price": 320, "volume": 1.0, "category": "ore", "class": "metallic", "rarity": "rare", "refines_to": "osmium", "yield": 0.3, "deep": true},
+	"palladium_ore": {"name": "Palladium Ore", "price": 280, "volume": 1.0, "category": "ore", "class": "stony", "rarity": "rare", "refines_to": "palladium", "yield": 0.3, "deep": true},
 	"cryo_crystal": {"name": "Cryo Crystals", "price": 150, "volume": 1.2, "category": "ore", "class": "icy", "rarity": "rare", "refines_to": "cryo_coolant", "yield": 0.3},
 	# --- Refined: metals
 	"iron_ingot": {"name": "Iron Ingots", "price": 38, "volume": 0.5, "category": "refined", "class": "metallic"},
@@ -49,6 +67,44 @@ const COMMODITIES := {
 	"deuterium": {"name": "Deuterium", "price": 152, "volume": 0.5, "category": "refined", "class": "icy"},
 	"helium3": {"name": "Helium-3", "price": 765, "volume": 0.3, "category": "refined", "class": "icy"},
 	"cryo_coolant": {"name": "Cryo Coolant", "price": 675, "volume": 0.3, "category": "refined", "class": "icy"},
+	# package 41: what the new ores refine to
+	"copper": {"name": "Copper", "price": 52, "volume": 0.5, "category": "refined", "class": "metallic"},
+	"tungsten": {"name": "Tungsten", "price": 190, "volume": 0.5, "category": "refined", "class": "metallic"},
+	"gold": {"name": "Gold", "price": 820, "volume": 0.3, "category": "refined", "class": "metallic"},
+	"enriched_uranium": {"name": "Enriched Uranium", "price": 900, "volume": 0.3, "category": "refined", "class": "metallic", "radioactive": true},
+	"lithium": {"name": "Lithium", "price": 64, "volume": 0.5, "category": "refined", "class": "stony"},
+	"graphite": {"name": "Graphite", "price": 78, "volume": 0.5, "category": "refined", "class": "stony"},
+	"optical_quartz": {"name": "Optical Quartz", "price": 32, "volume": 0.5, "category": "refined", "class": "stony"},
+	"thorium": {"name": "Thorium", "price": 330, "volume": 0.3, "category": "refined", "class": "stony", "radioactive": true},
+	"liquid_nitrogen": {"name": "Liquid Nitrogen", "price": 26, "volume": 0.8, "category": "refined", "class": "icy"},
+	"carbon_dioxide": {"name": "Carbon Dioxide", "price": 22, "volume": 0.8, "category": "refined", "class": "icy"},
+	"osmium": {"name": "Osmium", "price": 1450, "volume": 0.3, "category": "refined", "class": "metallic"},
+	"palladium": {"name": "Palladium", "price": 1250, "volume": 0.3, "category": "refined", "class": "stony"},
+	# package 41: gases from the giants (gas collector) – twice the room in cargo racks, efficient in gas tanks
+	"hydrogen": {"name": "Hydrogen", "price": 14, "volume": 1.0, "category": "gas"},
+	"helium": {"name": "Helium", "price": 26, "volume": 1.0, "category": "gas"},
+	"nitrogen_gas": {"name": "Nitrogen", "price": 16, "volume": 1.0, "category": "gas"},
+	"neon": {"name": "Neon", "price": 95, "volume": 1.0, "category": "gas"},
+	"xenon": {"name": "Xenon", "price": 380, "volume": 1.0, "category": "gas"},
+	"sulfur_dioxide": {"name": "Sulfur Dioxide", "price": 34, "volume": 1.0, "category": "gas"},
+	"phosphine": {"name": "Phosphine", "price": 340, "volume": 1.0, "category": "gas"},
+	"chlorine": {"name": "Chlorine", "price": 48, "volume": 1.0, "category": "gas"},
+	"ammonia_gas": {"name": "Ammonia Gas", "price": 30, "volume": 1.0, "category": "gas"},
+	"fluorine": {"name": "Fluorine", "price": 420, "volume": 1.0, "category": "gas"},
+	"helium3_gas": {"name": "Helium-3 Gas", "price": 520, "volume": 1.0, "category": "gas"},
+	# package 41: components – built from refined materials at a station's fabricators (Industry.COMPONENTS)
+	"circuits": {"name": "Circuit Boards", "price": 300, "volume": 0.3, "category": "components"},
+	"battery_cells": {"name": "Battery Cells", "price": 260, "volume": 0.5, "category": "components"},
+	"armor_plating": {"name": "Armor Plating", "price": 560, "volume": 1.0, "category": "components"},
+	"carbon_fiber": {"name": "Carbon Fiber", "price": 240, "volume": 0.5, "category": "components"},
+	"ion_propellant": {"name": "Ion Propellant", "price": 900, "volume": 0.5, "category": "components"},
+	"magnet_coils": {"name": "Magnet Coils", "price": 2100, "volume": 0.5, "category": "components"},
+	"fusion_cells": {"name": "Fusion Cells", "price": 2300, "volume": 0.3, "category": "components"},
+	"fuel_rods": {"name": "Fuel Rods", "price": 2600, "volume": 0.5, "category": "components", "radioactive": true},
+	"tritium": {"name": "Tritium", "price": 1900, "volume": 0.2, "category": "components", "radioactive": true},
+	"medical_isotopes": {"name": "Medical Isotopes", "price": 1600, "volume": 0.1, "category": "components", "radioactive": true},
+	"precision_optics": {"name": "Precision Optics", "price": 700, "volume": 0.3, "category": "components"},
+	"cryo_systems": {"name": "Cryo Systems", "price": 420, "volume": 0.5, "category": "components"},
 	# --- Manufactured goods & other
 	"food": {"name": "Food Rations", "price": 22, "volume": 1.0, "category": "goods"},
 	"medicine": {"name": "Medicine", "price": 95, "volume": 0.5, "category": "goods"},

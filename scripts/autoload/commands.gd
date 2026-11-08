@@ -1744,6 +1744,40 @@ func _c_debug_research(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"fabricate", "item": "circuits", "n": 1} – package 41: components at the station's fabricators
+func _c_fabricate(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	return Industry.fabricate(_fit(), docked_station(), String(c.get("item", "")), int(c.get("n", 1)))
+
+
+## {"type":"debug_gas_giant"} – package 41: into the harvest band of the next giant in this system (moving along it)
+var _debug_gas_i := -1
+
+
+func _c_debug_gas_giant(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var gs: Array = world.layout["planets"].filter(func(p): return Universe.GAS_YIELDS.has(String(p["type"])))
+	if gs.is_empty():
+		return "No giant in this system."
+	_debug_gas_i = (_debug_gas_i + 1) % gs.size()
+	var p: Dictionary = gs[_debug_gas_i]
+	var f := _fit()
+	f.docked_at = ""
+	var dir := (p["pos"] as Vector2).normalized().rotated(0.6)
+	var pos: Vector2 = (p["pos"] as Vector2) + dir * float(p["radius"]) * 1.15
+	world.player.position = pos
+	f.position = pos
+	world.player.velocity = dir.orthogonal() * 120.0
+	world.player.order = {"type": "idle"}
+	world.center_on_player()
+	GameState.log_msg("Debug: in the harvest band of %s." % p["name"])
+	return ""
+
+
 ## {"type":"debug_special", "special": "altwerft"|…} – 39d: to a special system (docked at its first station)
 func _c_debug_special(c: Dictionary) -> String:
 	var sid := Universe.special_system(String(c.get("special", "")))

@@ -2631,6 +2631,21 @@ func _draw_overlay() -> void:
 	_draw_locks(o, px)
 	var font := ThemeDB.fallback_font
 	var map_a := map_alpha()
+	# package 41: the harvest bands of the giants (dashed, a ring where it gets too hot)
+	for gp in layout["planets"]:
+		if not Universe.GAS_YIELDS.has(String(gp["type"])):
+			continue
+		if map_a < 0.5 and camera.get_screen_center_position().distance_to(gp["pos"]) > float(gp["radius"]) * GAS_NEAR:
+			continue                                  # in the local view only round a giant you are close to
+		var gbv := {"pos": gp["pos"]}
+		var gr: float = float(gp["radius"])
+		var gcol := Color(1.0, 0.55, 0.3) if gas_storm(gp) else Color(0.55, 0.85, 1.0)
+		var segs := 72
+		for k in segs:
+			if k % 2 == 0:
+				var a0 := k * TAU / segs
+				o.draw_arc(gbv["pos"], gr * Universe.BAND_OUT, a0, a0 + TAU / segs, 4, Color(gcol, 0.45), maxf(px * 1.5, 1.0))
+		o.draw_arc(gbv["pos"], gr * (Universe.BAND_IN + (Universe.BAND_OUT - Universe.BAND_IN) * 0.55), 0.0, TAU, 96, Color(1.0, 0.4, 0.2, 0.18), maxf(px * 1.0, 1.0))
 	# No-fire zones around stations (dashed amber ring) and the haven gun range (red)
 	var view_r := get_viewport_rect().size.length() * 0.5 / z
 	for st in stations.values():
@@ -3163,6 +3178,38 @@ func on_warp_finished(ship: Ship) -> void:
 
 func spawn_fx(f: Node2D) -> void:
 	fx_layer.add_child(f)
+
+
+## Package 41: the harvest band of a giant at `pos` – {name, center, depth 0 (top) … 1 (deep), gases, storm} or {}.
+## Measured against the giant's true place and size (the band ring shows on the map).
+func gas_band(pos: Vector2) -> Dictionary:
+	for p in layout["planets"]:
+		var t := String(p["type"])
+		if not Universe.GAS_YIELDS.has(t):
+			continue
+		if pos.distance_to(p["pos"]) > float(p["radius"]) * GAS_NEAR:
+			continue                                  # far away it only looks close in the sky
+		var depth := band_depth(pos, p["pos"], float(p["radius"]))
+		if depth < 0.0:
+			continue
+		return {"name": String(p["name"]), "center": p["pos"], "r": float(p["radius"]), "depth": depth, "gases": Universe.GAS_YIELDS[t], "storm": gas_storm(p)}
+	return {}
+
+
+const GAS_NEAR := 4.0                 # the band counts only this close (giant radii, true distance)
+
+
+## Depth in a harvest band round `c` (radius r): 0 at the top … 1 deep down, −1 = outside.
+static func band_depth(pos: Vector2, c: Vector2, r: float) -> float:
+	var d := pos.distance_to(c)
+	if d > r * Universe.BAND_OUT:
+		return -1.0
+	return clampf((r * Universe.BAND_OUT - d) / (r * (Universe.BAND_OUT - Universe.BAND_IN)), 0.0, 1.0)
+
+
+## A storm in a giant's harvest band now and then (about a fifth of the time).
+static func gas_storm(p: Dictionary) -> bool:
+	return fposmod(GameState.play_time / 240.0 + float(p.get("seed", 0.0)) * 0.137, 1.0) < 0.2
 
 
 ## 0.6.39.8: where body `bid` appears right now, in world coordinates, and how big – in the local view a planet hangs in

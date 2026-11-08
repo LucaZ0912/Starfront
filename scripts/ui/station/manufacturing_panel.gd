@@ -22,6 +22,7 @@ func build() -> void:
 		section("IN PRODUCTION")
 		for j in q:
 			add_child(UI.label("%s – %d s left" % [GameData.module_name(String(j["item"])), int(ceil(float(j["left"])))], 13, UI.GOLD))
+	_components(f)                                   # package 41
 	var list := Industry.buildable(station)
 	if list.is_empty():
 		add_child(UI.label("Nothing can be built here.", 13, UI.TEXT_DIM))
@@ -55,3 +56,37 @@ func build() -> void:
 
 func _build(mid: String) -> void:
 	run({"type": "build", "module": mid})
+
+
+## Package 41: components from refined materials – inputs from the hold, the component into it.
+func _components(f: ShipFitting) -> void:
+	section("COMPONENTS")
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 6)
+	add_child(grid)
+	for item in Industry.COMPONENTS:
+		var it: String = item
+		var row := UI.hbox(8)
+		grid.add_child(row)
+		var info := UI.vbox(0)
+		info.custom_minimum_size = Vector2(420, 0)
+		row.add_child(info)
+		var radio := " ☢" if bool(GameData.commodities[it].get("radioactive", false)) else ""
+		info.add_child(UI.label("%s%s  –  %s each" % [GameData.item_name(it), radio, GameData.fmt_credits(int(GameData.commodities[it]["price"]))], 13, corp_color()))
+		var parts: PackedStringArray = []
+		var ok := true
+		for inp in Industry.COMPONENTS[it]:
+			var need := int(Industry.COMPONENTS[it][inp])
+			var have := int(floor(float(f.cargo.get(inp, 0.0)) + 0.0001))
+			ok = ok and have >= need
+			parts.append("%d %s (%d)" % [need, GameData.item_name(inp), have])
+		info.add_child(UI.label(", ".join(parts) + "  •  fee %s" % GameData.fmt_credits(Industry.component_fee(station, it)), 11, UI.TEXT_DIM if ok else UI.BAD))
+		var mx := Industry.component_max(f, it)
+		var b1 := UI.button("Make 1", func(): run({"type": "fabricate", "item": it, "n": 1}))
+		b1.disabled = mx <= 0
+		row.add_child(b1)
+		var b2 := UI.button("Make all (%d)" % mx, func(): run({"type": "fabricate", "item": it, "n": mx}))
+		b2.disabled = mx <= 1
+		row.add_child(b2)

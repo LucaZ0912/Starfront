@@ -587,6 +587,7 @@ func _process(delta: float) -> void:
 				_test_heimkehr(view)
 				_test_durchbruch(view)
 				_test_makers(view)
+				_test_mining41(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -899,7 +900,7 @@ func _test_station(sp: StationUI) -> void:
 ## Data integrity for resources, refining and recipes (phase 0.5 package 1).
 func _test_resources() -> void:
 	var ores := Industry.ores()
-	check(ores.size() == 18, "18 refinable ores and ices (%d)" % ores.size())
+	check(ores.size() >= 28, "refinable ores and ices: 18 + 12 from package 41 (%d)" % ores.size())
 	var classes := {"metallic": 0, "stony": 0, "icy": 0}
 	var bad := []
 	for ore in ores:
@@ -914,7 +915,7 @@ func _test_resources() -> void:
 		if not refinable:
 			bad.append(ore + " (no refinery)")
 	check(bad.is_empty(), "every ore refines into a known product somewhere %s" % str(bad))
-	check(classes["metallic"] == 6 and classes["stony"] == 6 and classes["icy"] == 6, "6 ores per asteroid class")
+	check(classes["metallic"] >= 6 and classes["stony"] >= 6 and classes["icy"] >= 6, "at least 6 ores per asteroid class %s" % str(classes))
 	var unknown := []
 	var st: Dictionary = Universe.get_layout(Universe.home_system)["stations"][0]
 	for mid in GameData.modules:
@@ -2942,7 +2943,7 @@ func _test_codex(view: SystemView) -> void:
 	var cats := {}
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
-		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "star:main", "star:neutron", "star:blackhole"]   # package 37: stars
+		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole"]   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -6781,6 +6782,106 @@ func _test_makers(_view: SystemView) -> void:
 	var sw: int = U.special_system("schwarzwacht")
 	var plats: Array = U.get_layout(sw)["structures"].filter(func(x): return String(x["art"]) == "weapon_platform") if sw >= 0 else []
 	check(plats.size() == 5, "39d: weapon platforms being built round the Hadrian Foundry")
+
+
+## Package 41: the mining expansion – new ores (deep ones only in colossi), purity, gases from the giants (tanks,
+## twice the room in racks), radioactive goods (shielded racks, warning), components, the Kujira.
+func _test_mining41(view: SystemView) -> void:
+	var U = Universe
+	var GD = GameData
+	var new_ok := true
+	for cid in ["copper_ore", "tungsten_ore", "gold_ore", "uraninite", "spodumene", "graphite_ore", "quartz", "monazite", "nitrogen_ice", "dry_ice", "osmium_ore", "palladium_ore",
+			"hydrogen", "xenon", "phosphine", "fluorine", "circuits", "fuel_rods", "medical_isotopes"]:
+		new_ok = new_ok and GD.commodities.has(cid)
+	var deep_in_field := false
+	var deep_cols := 0
+	var purities := {}
+	for sid in U.systems.size():
+		var L: Dictionary = U.get_layout(sid)
+		for a in L["asteroids"]:
+			deep_in_field = deep_in_field or bool(GD.commodities[String(a["ore"])].get("deep", false))
+			purities[U.purity_grade(a)] = true
+		for co in L.get("colossi", []):
+			deep_cols += 1 if float(co.get("deep_amount", 0.0)) > 0.0 else 0
+	check(new_ok and not deep_in_field and deep_cols > 0 and purities.size() == 3,
+		"41: new ores, gases, components; osmium and palladium only deep in colossi (%d), asteroids of low / medium / high purity" % deep_cols)
+	# storage: gases twice the room in racks, efficient in tanks; radioactive goods want shielded racks
+	var f := GameState.create_from_preset("std_mule", "player")
+	f.cargo.clear()
+	var free0 := f.cargo_free()
+	f.add_cargo("hydrogen", 10.0)
+	var gas_double: bool = is_equal_approx(free0 - f.cargo_free(), 20.0)
+	f.cargo.clear()
+	f.add_cargo("uraninite", 5.0)
+	f.add_cargo("thorium", 2.0)
+	var exposed: bool = f.unshielded_rad() > 0.0
+	f.modules["optional_0"] = "o_shielded:3:C"
+	f.modules["optional_1"] = "o_gastank:3:C"
+	f.mark_dirty()
+	var shield_cap := float(f.stats()["rad_cargo_max"])
+	var shielded: bool = f.unshielded_rad() <= 0.001 if shield_cap >= 5.6 else f.unshielded_rad() < 5.6
+	f.cargo.clear()
+	var free1 := f.cargo_free()
+	f.add_cargo("hydrogen", 10.0)
+	var in_tank: bool = is_equal_approx(f.cargo_free(), free1)
+	var less_room: bool = float(GD.modules["o_shielded:3:C"]["rad_cargo"]) < float(GD.modules["o_cargo:3:C"]["cargo"]) * 0.5
+	check(gas_double and exposed and shielded and in_tank and less_room,
+		"41: gases take twice the room in cargo racks and their own in gas tanks; radioactive goods outside shielded racks expose the crew; shielded racks hold far less")
+	var hud = view.get_tree().current_scene.hud if view.get_tree().current_scene.get("hud") != null else null
+	if hud != null and hud.has_method("radiation_banner"):
+		var act := GameState.active()
+		var keep_cargo: Dictionary = act.cargo.duplicate()
+		var keep_dock: String = act.docked_at
+		act.docked_at = ""
+		act.cargo["enriched_uranium"] = 2.0
+		var rb: Dictionary = hud.radiation_banner()
+		act.cargo = keep_cargo
+		act.docked_at = keep_dock
+		check(not rb.is_empty() and String(rb["text"]).begins_with("RADIATION"), "41: unshielded radioactive cargo raises the red RADIATION warning (with an alarm)")
+	# components at a station's fabricators
+	var st: Dictionary = {}
+	for st_c in view.layout["stations"]:
+		if Industry.can_fabricate_here(st_c):
+			st = st_c
+			break
+	if not st.is_empty():
+		var g := GameState.create_from_preset("std_mule", "player")
+		g.cargo.clear()
+		g.add_cargo("copper", 6.0)
+		g.add_cargo("silicon", 4.0)
+		var cr0 := GameState.credits
+		GameState.credits = 100000
+		var err := Industry.fabricate(g, st, "circuits", 5)
+		var comp_ok: bool = err == "" and is_equal_approx(float(g.cargo.get("circuits", 0.0)), 2.0) and float(g.cargo.get("copper", 0.0)) < 0.01
+		GameState.credits = cr0
+		check(comp_ok, "41: components from refined materials at a station's fabricators (2 circuit boards from 6 copper and 4 silicon)")
+	# gas giants, the band and the harvest
+	var giant := {}
+	for pl in view.layout["planets"]:
+		if U.GAS_YIELDS.has(String(pl["type"])):
+			giant = pl
+			break
+	var c0 := Vector2(1000, 0)
+	var band_ok: bool = SystemView.band_depth(c0 + Vector2(120, 0), c0, 100.0) < SystemView.band_depth(c0 + Vector2(80, 0), c0, 100.0) 		and SystemView.band_depth(c0 + Vector2(150, 0), c0, 100.0) < 0.0 and U.GAS_YIELDS.size() == 4
+	var far_all := true
+	for pl2 in view.layout["planets"]:
+		if U.GAS_YIELDS.has(String(pl2["type"])):
+			far_all = far_all and view.player.position.distance_to(pl2["pos"]) > float(pl2["radius"]) * view.GAS_NEAR
+	if far_all:
+		band_ok = band_ok and view.gas_band(view.player.position).is_empty()          # far away: no band, however it looks
+	var kj: Dictionary = GD.hulls.get("kujira", {})
+	var kf := GameState.create_from_preset("std_kujira", "player")
+	var has_scoop := false
+	for b in kf.builtin_modules():
+		has_scoop = has_scoop or String(b["data"].get("tool", "")) == "gas"
+	var tex: Texture2D = PixelArt.ship_texture("kujira", "player")
+	check(band_ok and not kj.is_empty() and float(kf.stats()["gas_cargo_max"]) >= 1500.0 and has_scoop and float(kj["heat_resist"]) > 0.0 and tex.get_width() > 100,
+		"41: harvest bands round the giants (deeper = more), each kind its own gases; the Kujira – 1,600 m³ of gas tanks, a built-in scoop, heat resistant")
+	var ship: Ship = view.player
+	var a0: float = ship.fit.armor + ship.fit.structure
+	ship.heat_damage(5.0)
+	check(ship.fit.armor + ship.fit.structure < a0 - 4.9, "41: heat and pressure go past the shields into armour and hull")
+	ship.fit.armor = minf(ship.fit.armor + 5.0, float(ship.fit.stats()["armor_max"]))
 
 
 func _with_progress(m: Dictionary) -> Dictionary:

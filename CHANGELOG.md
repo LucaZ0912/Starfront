@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.41.1 – 2026-11-08
+
+**Package 41: the mining expansion.** A new game is needed.
+- 12 new ores with their refined materials: copper, tungsten, gold, uraninite, spodumene (lithium), graphite, quartz,
+  monazite (thorium), nitrogen ice, dry ice – and osmium and palladium, found only as deep deposits in colossi.
+- Purity: every asteroid is low, medium or high grade (the prospector reads it); purer rock gives more ore.
+- **Gas harvesting:** every giant has a harvest band (dashed rings on the map). Fly through it with a gas collector on
+  and keep moving – the scoop swings out and draws a stream of gas in. Deeper means more gas; below the inner ring heat
+  and pressure wear armour and hull past the shields. Storms double both. Gas giants give hydrogen and helium (rarely
+  helium-3), ice giants nitrogen and neon (xenon), red giants hydrogen and sulfur dioxide (phosphine), toxic giants
+  chlorine and ammonia (fluorine).
+- New modules: Gas Collector (1–4), Deep Core Drill (2–4, colossi only), Gas Tanks, Shielded Cargo Rack.
+- Gases take twice the room in ordinary racks; gas tanks hold them at their own volume.
+- **Radioactive goods** (uraninite, monazite, enriched uranium, thorium, fuel rods, tritium, medical isotopes) outside
+  shielded racks raise a red RADIATION banner with an alarm. Shielded racks hold far less per size.
+- **Components** at any station with fabricators: circuit boards, battery cells, armour plating, carbon fiber, ion
+  propellant, magnet coils, fusion cells, fuel rods, tritium, medical isotopes, precision optics, cryo systems.
+- **KHI Kujira** (L gas freighter): big round tanks, 1,600 m³ of gas, a built-in scoop, heat resistant hull.
+- Codex entries, debug section "Mining expansion (package 41)", smoke tests.
+
 ## alpha 0.6.39.11 – 2026-11-08
 
 - Yards: the docking bays of the Atelier Aurelle and the Hadrian Foundry are flush with the hull now (arms and

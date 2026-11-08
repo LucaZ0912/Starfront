@@ -347,6 +347,19 @@ func _build_world() -> void:
 	r39b.add_child(UI.button("Vote now", func(): _cmd({"type": "debug_senate", "do": "resolve"})))
 	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
 	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
+	# package 41: the mining expansion
+	_section("Mining expansion (package 41)")
+	var r41 := _row()
+	r41.add_child(UI.button("Into a gas giant's band", func(): _cmd({"type": "debug_gas_giant"})))
+	r41.add_child(UI.button("Gas collector, deep drill, tanks, shielded racks → storage", func():
+		for mid41 in ["t_gas:2:C", "t_deepdrill:2:C", "o_gastank:3:C", "o_shielded:3:C"]:
+			_cmd({"type": "debug_give_module", "module": mid41})))
+	var r41b := _row()
+	r41b.add_child(UI.button("+10 Uraninite (radioactive)", func(): _cmd({"type": "debug_give_cargo", "item": "uraninite", "amount": 10})))
+	r41b.add_child(UI.button("+ materials for components", func():
+		for it41 in ["copper", "silicon", "lithium", "aluminium", "tungsten", "iron_ingot", "graphite"]:
+			_cmd({"type": "debug_give_cargo", "item": it41, "amount": 6})))
+	r41b.add_child(UI.button("Kujira → hangar", func(): _cmd({"type": "debug_give_ship", "hull": "kujira", "fitted": true, "board": false})))
 	# package 39d: the manufacturers' systems
 	_section("Manufacturers' systems (package 39d)")
 	var r39e := _row()

@@ -38,6 +38,11 @@ const PRESETS := {
 		"tank": "tank_l", "hyperdrive": "hyp_c3_m", "sensors": "sen_radar_s",
 		"weapon_0": "w_autocannon_s", "weapon_1": "w_rocket_s", "tool_0": "t_mining_m", "tool_1": "t_harvester_m",
 		"optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_cargo_l"}},
+	"std_kujira": {"hull": "kujira", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_fusion_m",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_m", "sensors": "sen_radar_s",
+		"weapon_0": "w_autocannon_s", "weapon_1": "w_rocket_s", "tool_0": "t_prospector_s",
+		"optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_cargo_l"}},
 	"civ_miner_khi": {"hull": "anaguma", "modules": {
 		"hull": "hull_composite_m", "engine": "eng_plasma_m", "distributor": "dist_m", "reactor": "rea_fusion_m",
 		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s",

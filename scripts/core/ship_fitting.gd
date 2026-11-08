@@ -325,6 +325,7 @@ func _compute() -> Dictionary:
 		"drive_class": 0, "jump_fuel_base": 0.0, "spool": 0.0,
 		"sensor_range": 300.0, "resolution": 0.5, "scan_strength": 0.5,
 		"speed_mult": 1.0, "range_mult": 1.0, "ore_cargo_max": 0.0, "survey_range_mult": 1.0,
+		"gas_cargo_max": 0.0, "rad_cargo_max": 0.0, "heat_resist": 0.0,     # package 41: gas tanks, shielded racks
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
 		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0, "cabins": [], "reflect": 0.0,
@@ -423,6 +424,8 @@ func _compute() -> Dictionary:
 				s["speed_mult"] *= float(m.get("speed_mult", 1.0))
 				s["range_mult"] *= float(m.get("range_mult", 1.0))
 				s["ore_cargo_max"] += float(m.get("ore_cargo", 0))
+				s["gas_cargo_max"] += float(m.get("gas_cargo", 0))       # package 41
+				s["rad_cargo_max"] += float(m.get("rad_cargo", 0))
 				s["survey_range_mult"] *= float(m.get("survey_range_mult", 1.0))
 				var mb: Dictionary = m.get("mining_bonus", {})
 				for cls in mb:
@@ -436,6 +439,8 @@ func _compute() -> Dictionary:
 
 	# Hull traits (package 25a): built-in ore hold, mining bonus, built-in modules
 	s["ore_cargo_max"] += float(h.get("ore_cargo", 0.0))
+	s["gas_cargo_max"] += float(h.get("gas_cargo", 0.0))            # package 41: the Kujira's gas tanks
+	s["heat_resist"] = float(h.get("heat_resist", 0.0))
 	# package 25f (Forge of Return): a hugely reinforced reactor
 	s["power_output"] *= float(h.get("reactor_mult", 1.0))
 	# package 25c (Maison Aurelle): fast hulls, strong shields
@@ -649,6 +654,14 @@ func builtin_modules() -> Array:
 	var h := hull()
 	for b in h.get("builtin", []):
 		match String(b):
+			"gas":
+				# package 41: the Kujira's gas scoop
+				var gm: Dictionary = GameData.modules.get("t_gas:4:C", {}).duplicate()
+				gm["name"] = "Gas Scoop (built-in)"
+				gm["id"] = "builtin:gas"
+				gm["builtin"] = true
+				gm["rate"] = float(gm.get("rate", 6.0)) * 1.5
+				_builtin_cache.append({"key": "builtin_gas", "data": gm})
 			"prospect":
 				var m: Dictionary = GameData.modules.get("t_prospector:2:C", {}).duplicate()
 				m["name"] = "Prospector (built-in)"
@@ -958,12 +971,56 @@ static func is_ore(item: String) -> bool:
 	return GameData.commodities.get(item, {}).get("category", "") == "ore"
 
 
+## Package 41: gases (from the giants) and radioactive goods.
+static func is_gas(item: String) -> bool:
+	return GameData.commodities.get(item, {}).get("category", "") == "gas"
+
+
+static func is_radioactive(item: String) -> bool:
+	return bool(GameData.commodities.get(item, {}).get("radioactive", false))
+
+
+const GAS_RACK_MULT := 2.0          # a gas in ordinary cargo racks takes twice the room
+
+
+## Where the radioactive goods are: {"shielded": volume in shielded racks, "ore_over": radioactive ore outside them,
+## "other_over": other radioactive goods outside them}. The racks take the refined goods first, then the ore.
+func rad_split() -> Dictionary:
+	var ore_v := 0.0
+	var other_v := 0.0
+	for item in cargo:
+		if is_radioactive(item):
+			if is_ore(item):
+				ore_v += float(cargo[item]) * GameData.item_volume(item)
+			else:
+				other_v += float(cargo[item]) * GameData.item_volume(item)
+	var cap := float(stats().get("rad_cargo_max", 0.0))
+	var other_in := minf(other_v, cap)
+	var ore_in := minf(ore_v, cap - other_in)
+	return {"shielded": other_in + ore_in, "ore_over": ore_v - ore_in, "other_over": other_v - other_in}
+
+
+## Radioactive cargo outside shielded racks (m³) – the crew is exposed (HUD warning and alarm).
+func unshielded_rad() -> float:
+	var r := rad_split()
+	return float(r["ore_over"]) + float(r["other_over"])
+
+
+func gas_volume() -> float:
+	var v := 0.0
+	for item in cargo:
+		if is_gas(item):
+			v += float(cargo[item]) * GameData.item_volume(item)
+	return v
+
+
+## Ore volume in the ore-hold sense (radioactive ore in shielded racks does not count).
 func ore_volume() -> float:
 	var v := 0.0
 	for item in cargo:
-		if is_ore(item):
+		if is_ore(item) and not is_radioactive(item):
 			v += float(cargo[item]) * GameData.item_volume(item)
-	return v
+	return v + float(rad_split()["ore_over"])
 
 
 ## Volume used in the ore hold.
@@ -975,9 +1032,12 @@ func ore_hold_used() -> float:
 func cargo_used() -> float:
 	var used := 0.0
 	for item in cargo:
-		if not is_ore(item):
+		if not is_ore(item) and not is_gas(item) and not is_radioactive(item):
 			used += float(cargo[item]) * GameData.item_volume(item)
-	return used + maxf(0.0, ore_volume() - float(stats()["ore_cargo_max"]))
+	var st := stats()
+	used += float(rad_split()["other_over"])
+	used += maxf(0.0, gas_volume() - float(st.get("gas_cargo_max", 0.0))) * GAS_RACK_MULT
+	return used + maxf(0.0, ore_volume() - float(st["ore_cargo_max"]))
 
 
 func cargo_free() -> float:
@@ -987,8 +1047,13 @@ func cargo_free() -> float:
 ## Free space for a given item (ore may also use the ore hold).
 func free_for(item: String) -> float:
 	var f := cargo_free()
+	var st := stats()
+	if is_gas(item):
+		return maxf(0.0, float(st.get("gas_cargo_max", 0.0)) - gas_volume()) + f / GAS_RACK_MULT
 	if is_ore(item):
-		f += maxf(0.0, float(stats()["ore_cargo_max"]) - ore_volume())
+		f += maxf(0.0, float(st["ore_cargo_max"]) - ore_volume())
+	if is_radioactive(item):
+		f += maxf(0.0, float(st.get("rad_cargo_max", 0.0)) - float(rad_split()["shielded"]))
 	return f
 
 

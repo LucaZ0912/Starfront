@@ -1211,12 +1211,15 @@ func to_dict() -> Dictionary:
 			if a.has("gone"):
 				gone[a["id"]] = float(a.get("respawn_at", 0.0))
 		var cols := {}
+		var deep := {}
 		for co in L.get("colossi", []):
 			cols[co["id"]] = co.get("amount", 0.0)
+			if co.has("deep_amount"):
+				deep[co["id"]] = co["deep_amount"]                  # package 41
 		var an := {}
 		for x in L["anomalies"]:
 			an[x["id"]] = {"scan": x["scan"], "revealed": x["revealed"], "analysis": x["analysis"], "done": x["done"]}
-		changed[id] = {"asteroids": ast, "anomalies": an, "gone": gone, "colossi": cols}
+		changed[id] = {"asteroids": ast, "anomalies": an, "gone": gone, "colossi": cols, "deep": deep}
 	return {"seed": seed_value, "version": GALAXY_VERSION, "layouts": changed, "orbits": orbit_phase.duplicate()}
 
 
@@ -1236,9 +1239,12 @@ func from_dict(d: Dictionary) -> void:
 				a["gone"] = true
 				a["respawn_at"] = gone[a["id"]]
 		var cols: Dictionary = changed[id].get("colossi", {})
+		var deep: Dictionary = changed[id].get("deep", {})
 		for co in L.get("colossi", []):
 			if cols.has(co["id"]):
 				co["amount"] = cols[co["id"]]
+			if deep.has(co["id"]):
+				co["deep_amount"] = deep[co["id"]]
 		var an: Dictionary = changed[id]["anomalies"]
 		for x in L["anomalies"]:
 			if an.has(x["id"]):
@@ -1919,6 +1925,7 @@ func _place_colossi(L: Dictionary, id: int, sec: float) -> void:
 			col["mix"] = cmix
 			col["amount"] = roundf(R * rng.randf_range(40.0, 70.0))
 			col["amount0"] = col["amount"]
+			_deep_ore(col)                              # package 41
 			L["colossi"].append(col)
 			n += 1
 			placed += 1
@@ -2189,7 +2196,7 @@ func _field_mix(cls: String, sec: float, rng: RandomNumberGenerator) -> Dictiona
 	var by_rarity := {"common": [], "uncommon": [], "rare": []}
 	for cid in CommodityData.COMMODITIES:
 		var c: Dictionary = CommodityData.COMMODITIES[cid]
-		if c.get("category", "") == "ore" and c["class"] == cls:
+		if c.get("category", "") == "ore" and c["class"] == cls and not c.get("deep", false):     # package 41: deep ores only in colossi
 			by_rarity[c["rarity"]].append(cid)
 	var mix := {}
 	for cid in by_rarity["common"]:
@@ -2207,6 +2214,46 @@ func _field_mix(cls: String, sec: float, rng: RandomNumberGenerator) -> Dictiona
 			for r in rare:
 				mix[r] = maxf(float(mix.get(r, 0.0)), 0.6)
 	return mix
+
+
+# ---------------------------------------------------------------- Package 41: purity, deep ore, gas giants
+
+const PURITY := {"low": 0.7, "medium": 1.0, "high": 1.4}
+const DEEP_ORES := {"metallic": "osmium_ore", "stony": "palladium_ore"}
+const DEEP_SHARE := 0.75                 # share of metallic / stony colossi with a deep deposit
+## Gases of each kind of giant: gas -> share (the rare one small).
+const GAS_YIELDS := {
+	"gas": {"hydrogen": 3.0, "helium": 2.0, "helium3_gas": 0.25},
+	"ice_giant": {"nitrogen_gas": 3.0, "neon": 1.5, "xenon": 0.3},
+	"red_gas": {"hydrogen": 3.0, "sulfur_dioxide": 2.0, "phosphine": 0.3},
+	"toxic": {"chlorine": 3.0, "ammonia_gas": 2.0, "fluorine": 0.3},
+}
+## The harvest band: from BAND_OUT radii out (depth 0) down to BAND_IN radii (depth 1 – far too hot).
+const BAND_OUT := 1.3
+const BAND_IN := 0.7
+
+
+## Purity grade of an asteroid (from its id – nothing in the layout shifts): low / medium / high.
+static func purity_grade(d: Dictionary) -> String:
+	if d.has("purity_grade"):
+		return String(d["purity_grade"])
+	var h := posmod(hash(String(d.get("id", ""))), 100)
+	var g := "low" if h < 25 else ("high" if h >= 80 else "medium")
+	d["purity_grade"] = g
+	return g
+
+
+static func purity_of(d: Dictionary) -> float:
+	return float(PURITY[purity_grade(d)])
+
+
+## A deep deposit in a colossus (osmium in metallic, palladium in stony ones) – only the deep core drill reaches it.
+func _deep_ore(col: Dictionary) -> void:
+	var cls := String(col.get("class", ""))
+	if not DEEP_ORES.has(cls) or posmod(hash(String(col["id"]) + str(col.get("seed", 0))), 100) >= int(DEEP_SHARE * 100.0):
+		return
+	col["deep_ore"] = DEEP_ORES[cls]
+	col["deep_amount"] = 60.0 + float(posmod(int(col.get("seed", 0)), 90))
 
 
 ## One asteroid: size class (small / medium / large), shape, ore(s) and deposit.

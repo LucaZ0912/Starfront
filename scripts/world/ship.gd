@@ -54,7 +54,11 @@ var _called_help := false
 var warrant_known := false       # NPC: the player's Warrant Scanner has read its bounty
 var scan_jobs := {}
 var _mine_acc := {}              # ore -> units mined since the last floating number
-var _mine_t := 0.0              # slot -> {t, total, ...}: running survey / prospect / warrant scans
+var _mine_t := 0.0
+var _gas_t := 0.0                 # package 41: harvesting gas right now (for the scoop and the stream)
+var _gas_from := Vector2.ZERO     # where the gas streams in from (the giant's centre, local)
+var _gas_heat := 0.0              # how hot the hull runs in the band (0 … 1)
+var _gas_in := false              # inside a harvest band (for the message on entering)              # slot -> {t, total, ...}: running survey / prospect / warrant scans
 var _avoid_side := {}            # colossus instance id -> +1/-1 (which way round it we go)
 var _stuck_t := 0.0
 var _stuck_ref := Vector2.ZERO
@@ -661,6 +665,8 @@ func _dock(st_node) -> void:
 func _physics_process(delta: float) -> void:
 	if dying:
 		return
+	if _gas_t > 0.0:
+		_gas_t = maxf(0.0, _gas_t - delta)            # package 41: the scoop folds in when the harvest stops
 	if is_docked():
 		visible = false
 		activity = "Docked"
@@ -1792,6 +1798,88 @@ func _update_weapons(delta: float, s: Dictionary) -> void:
 			return
 
 
+# ---------------------------------------------------------------- Package 41: gas harvesting, deep drilling
+
+## The gas collector: in the harvest band of a giant (and moving) it draws gas in – the deeper, the more, but heat and
+## pressure wear the hull; a storm doubles both.
+func _run_gas(delta: float, slot: String, d: Dictionary) -> void:
+	var band: Dictionary = view.gas_band(position) if view != null and view.has_method("gas_band") else {}
+	if band.is_empty():
+		if _gas_in and faction == "player":
+			_mlog("%s: out of the harvest band." % d["name"])
+		_gas_in = false
+		module_state[slot] = "range"
+		_gas_heat = maxf(0.0, _gas_heat - delta)
+		return
+	var depth := float(band["depth"])
+	var storm: bool = band.get("storm", false)
+	if not _gas_in and faction == "player":
+		_mlog("%s: in the harvest band of %s%s – keep moving; the deeper, the more gas (and heat)." % [d["name"], band["name"], " – a storm is raging" if storm else ""], GameState.COL_GOOD)
+	_gas_in = true
+	module_state[slot] = "on"
+	var vmax := maxf(float(fit.stats()["speed"]), 1.0)
+	var moving := clampf(velocity.length() / (vmax * 0.3), 0.0, 1.0)
+	var amount := float(d["rate"]) * (0.35 + 1.65 * depth) * moving * (2.0 if storm else 1.0) * float(fit.stats()["power_ratio"]) * delta
+	var mix: Dictionary = band["gases"]
+	var total := 0.0
+	for g in mix:
+		total += float(mix[g])
+	var added := 0.0
+	if amount > 0.0:
+		for g2 in mix:
+			added += fit.add_cargo(String(g2), amount * float(mix[g2]) / total)
+		if added <= 0.0:
+			_switch_off(slot, d, "cargo full (gas tanks and racks)")
+			return
+	_gas_t = 0.3 if amount > 0.0 else _gas_t
+	_gas_from = (band["center"] as Vector2) - position
+	if faction == "player":
+		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
+		GameState.skill_xp("mining", 0.2 * added)
+		GameState.codex.event("gas")
+		activity = "Harvesting gas – %s" % band["name"]
+	# heat and pressure below the upper half of the band
+	_gas_heat = clampf((depth - 0.45) / 0.55, 0.0, 1.0)
+	if depth > 0.45:
+		var resist := 1.0 - float(fit.stats().get("heat_resist", 0.0))
+		heat_damage(pow(depth - 0.45, 2.0) * float(fit.stats()["structure_max"]) * 0.06 * resist * (2.0 if storm else 1.0) * delta)
+
+
+## Heat and pressure: past the shields, into the armour and the structure.
+func heat_damage(amount: float) -> void:
+	if amount <= 0.0 or dying or (faction == "player" and Commands.god_mode):
+		return
+	var a := minf(fit.armor, amount)
+	fit.armor -= a
+	fit.structure -= amount - a
+	if fit.structure <= 0.0:
+		_die(null)
+
+
+## The deep core drill: only into colossi, slowly – the deep ore (osmium, palladium) nothing else reaches.
+func _deep_drill(delta: float, t: Dictionary, node) -> bool:
+	if node == null or not is_instance_valid(node) or float(node.data.get("deep_amount", 0.0)) <= 0.0:
+		return false
+	if surface_dist(node) > float(t["range"]):
+		return true
+	var ore := String(node.data.get("deep_ore", ""))
+	if ore == "":
+		return false
+	var amount := minf(float(t["rate"]) * float(fit.stats()["power_ratio"]) * delta, float(node.data["deep_amount"]))
+	var added := fit.add_cargo(ore, amount)
+	if added <= 0.0:
+		if faction == "player":
+			GameState.log_msg("%s: cargo hold full." % display_name(), GameState.COL_WARN)
+		return false
+	node.data["deep_amount"] = float(node.data["deep_amount"]) - added
+	if faction == "player":
+		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
+		GameState.skill_xp("mining", 0.6 * added)
+		GameState.codex.event("mining")
+	tool_beams.append([node.position, Color(0.65, 0.8, 1.0), "mining", float(node.radius)])
+	return true
+
+
 func take_damage(amount: float, dtype: String, attacker) -> void:
 	if dying or is_docked() or in_station():
 		return
@@ -1953,7 +2041,7 @@ static func _rare_ore_of(cls: String) -> String:
 	var out: Array = []
 	for cid in GameData.commodities:
 		var c: Dictionary = GameData.commodities[cid]
-		if String(c.get("category", "")) == "ore" and String(c.get("class", "")) == cls and String(c.get("rarity", "")) == "rare":
+		if String(c.get("category", "")) == "ore" and String(c.get("class", "")) == cls and String(c.get("rarity", "")) == "rare" and not c.get("deep", false):
 			out.append(cid)
 	return "" if out.is_empty() else String(out[randi() % out.size()])
 
@@ -1998,9 +2086,10 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 	var amount := minf(float(t["rate"]) * mining_mult(t, ore) * bonus * skill * float(fit.stats()["power_ratio"]) * delta, float(node.data["amount"]))
 	# Mixed asteroids yield their ores in proportion ("mix": ore -> share)
 	var mix: Dictionary = node.data.get("mix", {ore: 1.0})
+	var purity := Universe.purity_of(node.data)                       # package 41: purer rock, more ore
 	var added := 0.0
 	for o in mix:
-		added += fit.add_cargo(o, amount * float(mix[o]))
+		added += fit.add_cargo(o, amount * float(mix[o]) * purity) / purity
 	if added <= 0.0:
 		if faction == "player":
 			GameState.log_msg("%s: cargo hold full." % display_name(), GameState.COL_WARN)
@@ -2290,6 +2379,11 @@ func module_target_error(e: Dictionary, node) -> String:
 				return "%s needs a locked asteroid." % d["name"]
 			if String(d.get("tool", "")) == "mining" and node.is_depleted():
 				return "Nothing left to mine – the %s is empty." % ("colossus" if node.kind == "colossus" else "asteroid")
+		"deepdrill":
+			if node == null or node is Ship or node.kind != "colossus":
+				return "%s needs a locked colossus." % d["name"]
+			if float(node.data.get("deep_amount", 0.0)) <= 0.0:
+				return "This colossus has no deep ore left."
 		"harvester":
 			if node == null or node is Ship or not node.kind in ["asteroid", "colossus"]:
 				return "%s needs a locked icy asteroid." % d["name"]
@@ -2502,6 +2596,9 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 			continue
 		if e["kind"] == "tool" and d["tool"] == "interdict":
 			continue             # run by SystemView (timing game)
+		if e["kind"] == "tool" and d["tool"] == "gas":
+			_run_gas(delta, slot, d)                  # package 41: no target – the harvest band of a giant
+			continue
 		var mkey := String(module_target.get(slot, active_lock))
 		node = locked_node(mkey)
 		if node == null and waiting_for(mkey):
@@ -2563,6 +2660,9 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 			"harvester":
 				keep = _mine(delta, d, tgt)
 				why = "asteroid depleted" if (is_instance_valid(tgt) and tgt.is_depleted()) else "cargo hold full"
+			"deepdrill":
+				keep = _deep_drill(delta, d, tgt)
+				why = "no deep ore left" if (is_instance_valid(tgt) and float(tgt.data.get("deep_amount", 0.0)) <= 0.0) else "cargo hold full"
 			"prospect", "warrant", "cargo_scan":
 				keep = _run_scan(delta, slot, d, tgt)
 				why = "scan complete"
@@ -3780,6 +3880,29 @@ func _draw_warp_friction(k: float, z: float) -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+func _draw_gas_scoop() -> void:
+	var px := PixelArt.SCALE
+	var bow := Vector2.from_angle(heading) * radius * 0.9
+	var side := Vector2.from_angle(heading).orthogonal()
+	var fwd := Vector2.from_angle(heading)
+	var a := clampf(_gas_t / 0.3, 0.0, 1.0)
+	# the funnel
+	var mouth := bow + fwd * px * 10.0
+	var funnel := PackedVector2Array([bow - side * px * 2.0, mouth - side * px * 7.0, mouth + side * px * 7.0, bow + side * px * 2.0])
+	draw_colored_polygon(funnel, Color(0.85, 0.7, 0.2, 0.85 * a))
+	draw_line(mouth - side * px * 7.0, mouth + side * px * 7.0, Color(0.2, 0.2, 0.22, a), px * 1.5)
+	# gas swirling into it from the giant's side
+	var from_dir := _gas_from.normalized() if _gas_from.length() > 1.0 else fwd
+	for k in 14:
+		var f := fposmod(Time.get_ticks_msec() / 1000.0 * 1.4 + k / 14.0, 1.0)
+		var start := mouth + from_dir * radius * 3.0 + from_dir.orthogonal() * sin(k * 2.3) * radius * 1.2
+		var p := start.lerp(mouth, f) + side * sin(f * 9.0 + k) * px * 4.0 * (1.0 - f)
+		draw_circle(p, px * (2.5 - 1.5 * f), Color(0.75, 0.88, 0.95, 0.55 * a * (1.0 - f * 0.5)))
+	# heat: a glowing rim round the hull
+	if _gas_heat > 0.0:
+		draw_circle(Vector2.ZERO, radius * 1.05, Color(1.0, 0.45, 0.15, 0.18 * _gas_heat * (0.8 + 0.2 * sin(Time.get_ticks_msec() / 90.0))))
+
+
 func _draw() -> void:
 	if fit == null:
 		return
@@ -3802,6 +3925,9 @@ func _draw() -> void:
 		draw_line(Vector2.ZERO, p, Color(bc, 0.35), 5.0)
 		draw_line(Vector2.ZERO, p, bc, 1.5)
 
+	# package 41: the gas scoop out at the bow, a stream of gas swirling in, the hull glowing with heat
+	if _gas_t > 0.0:
+		_draw_gas_scoop()
 	# Target lock lines for the player ship (active lock brighter)
 	if selected and manual:
 		for l in locks:

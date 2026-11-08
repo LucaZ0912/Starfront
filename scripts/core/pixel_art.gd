@@ -569,6 +569,19 @@ const ORE_TINT := {
 	"deuterium_ice": [Color(0.55, 0.7, 0.9), Color(0.5, 0.8, 1.0)],
 	"helium3_ice": [Color(0.7, 0.68, 0.85), Color(1.0, 0.85, 1.0)],
 	"cryo_crystal": [Color(0.55, 0.85, 0.9), Color(0.4, 1.0, 1.0)],
+	# package 41
+	"copper_ore": [Color(0.52, 0.38, 0.3), Color(0.95, 0.55, 0.3)],
+	"tungsten_ore": [Color(0.36, 0.36, 0.4), Color(0.7, 0.72, 0.78)],
+	"gold_ore": [Color(0.5, 0.44, 0.32), Color(1.0, 0.82, 0.25)],
+	"uraninite": [Color(0.3, 0.32, 0.28), Color(0.55, 1.0, 0.35)],
+	"spodumene": [Color(0.62, 0.56, 0.58), Color(0.95, 0.75, 0.9)],
+	"graphite_ore": [Color(0.3, 0.3, 0.32), Color(0.55, 0.55, 0.6)],
+	"quartz": [Color(0.66, 0.64, 0.62), Color(1.0, 1.0, 0.95)],
+	"monazite": [Color(0.55, 0.45, 0.32), Color(0.85, 1.0, 0.4)],
+	"nitrogen_ice": [Color(0.78, 0.82, 0.9), Color(0.9, 0.95, 1.0)],
+	"dry_ice": [Color(0.82, 0.84, 0.86), Color(1.0, 1.0, 1.0)],
+	"osmium_ore": [Color(0.32, 0.36, 0.45), Color(0.55, 0.75, 1.0)],
+	"palladium_ore": [Color(0.55, 0.53, 0.5), Color(0.95, 0.92, 0.8)],
 }
 static var _ore_pal := {}
 
@@ -756,7 +769,7 @@ static func module_icon_key(module_id: String) -> String:
 	if module_id.begins_with("builtin:"):
 		return {"builtin:refinery": "refinery", "builtin:prospect": "t_prospect", "builtin:factory": "factory", "builtin:market": "market",
 			"builtin:afterburner": "o_afterburner", "builtin:pd": "w_pointdef", "builtin:drone_pulse": "o_jammer",
-			"builtin:auto_fire": "w_focus", "builtin:cloak": "o_cloak"}.get(module_id, "empty")
+			"builtin:auto_fire": "w_focus", "builtin:cloak": "o_cloak", "builtin:gas": "t_gas"}.get(module_id, "empty")
 	if not GameData.modules.has(module_id):
 		return "empty"
 	var m: Dictionary = GameData.modules[module_id]
@@ -787,7 +800,7 @@ static func module_icon_key(module_id: String) -> String:
 					return "o_shieldboost"
 				"armor_repair":
 					return "o_armorrep"
-			for k in [["ore_cargo", "o_orehold"], ["mining_bonus", "o_mining"], ["survey_range_mult", "o_survey_amp"],
+			for k in [["gas_cargo", "o_gastank"], ["rad_cargo", "o_shielded"], ["ore_cargo", "o_orehold"], ["mining_bonus", "o_mining"], ["survey_range_mult", "o_survey_amp"],
 					["cargo", "o_cargo"], ["shield", "o_shield"], ["armor", "o_armor"], ["speed_mult", "o_afterburner"],
 					["range_mult", "o_targeting"], ["fuel", "o_fuel"], ["cap_bonus", "o_capacitor"]]:
 				if m.has(k[0]):

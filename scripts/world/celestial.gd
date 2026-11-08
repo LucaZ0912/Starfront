@@ -301,7 +301,10 @@ func composition_text() -> String:
 	var parts: PackedStringArray = []
 	for o in est:
 		parts.append("%s ~%d%%" % [GameData.item_name(o), int(round(float(est[o]) / total * 100.0))])
-	return "%s  •  deposit %s" % [", ".join(parts), deposit_text()]
+	var extra := "  •  purity %s" % Universe.purity_grade(data)                  # package 41
+	if kind == "colossus" and float(data.get("deep_amount", 0.0)) > 0.0:
+		extra += "  •  deep: %s (deep core drill)" % GameData.item_name(String(data["deep_ore"]))
+	return "%s  •  deposit %s%s" % [", ".join(parts), deposit_text(), extra]
 
 
 # ---------------------------------------------------------------- 0.6.35.5: small asteroids break apart and return

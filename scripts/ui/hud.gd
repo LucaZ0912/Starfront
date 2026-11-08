@@ -656,10 +656,29 @@ var _cme_pulse := 0.0
 
 
 ## 0.6.37.4: the red CME warning top centre – pulsing.
+const RAD_ALARM_VOL := 0.45
+
+
+## Package 41: the radiation warning – {text, sub, k} or {} (no unshielded radioactive cargo).
+func radiation_banner() -> Dictionary:
+	var f := GameState.active()
+	if f == null or f.in_transit() or f.docked_at != "":
+		return {}
+	var v := f.unshielded_rad()
+	if v <= 0.001:
+		return {}
+	return {"text": "RADIATION – UNSHIELDED CARGO", "sub": "%.1f m³ of radioactive goods outside shielded cargo racks – the crew is exposed. Fit shielded racks or get rid of it." % v, "k": 1.0}
+
+
 func _update_cme_banner(delta: float) -> void:
 	if cme_banner == null:
 		return
 	var b: Dictionary = view.cme_banner() if view != null and is_instance_valid(view) else {}
+	# package 41: radioactive cargo outside shielded racks – the same banner, with its own alarm
+	var rad := radiation_banner()
+	Audio.loop("rad_alarm", "cme_alarm", not rad.is_empty() and b.is_empty(), RAD_ALARM_VOL)
+	if b.is_empty():
+		b = rad
 	cme_banner.visible = not b.is_empty()
 	if b.is_empty():
 		_cme_pulse = 0.0

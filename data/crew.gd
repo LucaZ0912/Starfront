@@ -81,6 +81,7 @@ const PERK_CHANCE := 0.04            # all perks together (second profession abo
 ## Crew slots of the hulls: [role, required]. S hulls carry no crew for now.
 const SHIP_CREW := {
 	"mule": [["copilot", true], ["quartermaster", false]],
+	"kujira": [["foreman", true], ["engineer", true], ["quartermaster", false], ["copilot", false]],
 	"freighter": [["copilot", true], ["quartermaster", false], ["engineer", false], ["quartermaster", false]],
 	"drillhead": [["foreman", true], ["copilot", false], ["engineer", false]],
 	"anaguma": [["foreman", true], ["copilot", false], ["engineer", false]],

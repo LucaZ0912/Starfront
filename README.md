@@ -103,6 +103,19 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## Mining expansion (phase 0.5 package 41)
+
+- **New ores:** copper, tungsten, gold, uraninite, spodumene, graphite, quartz, monazite, nitrogen ice, dry ice in the
+  fields; osmium and palladium only as deep deposits in colossi (Deep Core Drill). Each refines to a material.
+- **Purity:** asteroids are low / medium / high grade (×0.7 / ×1 / ×1.4 ore).
+- **Gas:** a harvest band round every giant (dashed rings). A Gas Collector draws gas in while you move through it;
+  deeper gives more but heat and pressure hurt armour and hull (past shields); storms double gas and heat. Each giant
+  class has its own three gases (`Universe.GAS_YIELDS`).
+- **Storage:** gases need twice the room in cargo racks, their own in Gas Tanks; radioactive goods belong in Shielded
+  Cargo Racks – otherwise the red RADIATION banner and alarm (`HUD.radiation_banner`).
+- **Components:** made from materials at any station with fabricators (Manufacturing → Components, `Industry.COMPONENTS`).
+- **KHI Kujira:** L gas freighter, 1,600 m³ gas tanks, built-in scoop, 60 % heat resistance.
+
 ## Landfall – the Assembly's capital (phase 0.5 package 39a)
 - The capital of the Cluster Assembly is a hand-made system: **Landfall** (a yellow G star) with Pnyx, **Agora** (the
   brightest city lights in the Cluster), the ocean world Ekklesia and the deep-blue ice giant **Boulé** with its moons

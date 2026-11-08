@@ -32,6 +32,67 @@ const VALUE_PER_UNIT := 260.0
 const BUILD_FEE_FACTOR := 0.18
 
 
+# ---------------------------------------------------------------- Package 41: components
+
+## Components from refined materials (and gases): inputs per unit made. Every station with fabricators makes them;
+## the fee is a share of the component's price (cheaper at bigger stations).
+const COMPONENTS := {
+	"circuits": {"copper": 3, "silicon": 2},
+	"battery_cells": {"lithium": 2, "aluminium": 1},
+	"armor_plating": {"tungsten": 2, "iron_ingot": 2},
+	"carbon_fiber": {"graphite": 2},
+	"ion_propellant": {"xenon": 2},
+	"magnet_coils": {"neodymium": 2, "copper": 2},
+	"fusion_cells": {"helium3": 2, "deuterium": 2},
+	"fuel_rods": {"enriched_uranium": 2, "tungsten": 1},
+	"tritium": {"lithium": 5, "enriched_uranium": 1},
+	"medical_isotopes": {"thorium": 4},
+	"precision_optics": {"optical_quartz": 6, "rare_earths": 2},
+	"cryo_systems": {"liquid_nitrogen": 6, "copper": 2, "carbon_dioxide": 3},
+}
+const COMPONENT_FEE := 0.08
+
+
+static func can_fabricate_here(station: Dictionary) -> bool:
+	return not station_type(station).get("manufacturing", []).is_empty()
+
+
+static func component_fee(station: Dictionary, item: String) -> int:
+	return int(ceil(float(GameData.commodities[item]["price"]) * COMPONENT_FEE * (4 - int(station["tier"])) / 2.0))
+
+
+## How many of `item` the docked ship's hold has the materials for.
+static func component_max(fit: ShipFitting, item: String) -> int:
+	var n := 999
+	for inp in COMPONENTS[item]:
+		n = mini(n, int(floor(float(fit.cargo.get(inp, 0.0)) / float(COMPONENTS[item][inp]) + 0.0001)))
+	return n
+
+
+## Makes `n` of a component from the hold ("" = done, otherwise why not).
+static func fabricate(fit: ShipFitting, station: Dictionary, item: String, n: int) -> String:
+	if not COMPONENTS.has(item):
+		return "Unknown component."
+	if not can_fabricate_here(station):
+		return "No fabricators at this station."
+	n = mini(n, component_max(fit, item))
+	if n <= 0:
+		return "Not enough materials in the hold."
+	var fee := component_fee(station, item) * n
+	if not GameState.spend(fee):
+		return "Not enough credits for the fee."
+	for inp in COMPONENTS[item]:
+		fit.remove_cargo(inp, float(COMPONENTS[item][inp]) * n)
+	var made := fit.add_cargo(item, float(n))
+	if made < float(n):
+		# no room for all of it: give back the materials of the rest
+		for inp2 in COMPONENTS[item]:
+			fit.add_cargo(inp2, float(COMPONENTS[item][inp2]) * (n - made))
+	GameState.log_msg("Fabricated %d × %s (fee %s)." % [int(made), GameData.item_name(item), GameData.fmt_credits(fee)], GameState.COL_GOOD)
+	GameState.stats["built"] = int(GameState.stats["built"]) + int(made)
+	return ""
+
+
 static func station_type(station: Dictionary) -> Dictionary:
 	return GameData.station_types[station["type"]]
 

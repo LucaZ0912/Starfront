@@ -50,6 +50,7 @@ const EXP_PRICE := 1.6
 const FIELD_EXP := {
 	"damage": 1.3, "armor": 1.3, "shield": 1.3, "shield_regen": 1.3, "thrust": 1.3, "output": 1.3,
 	"capacitor": 1.3, "recharge": 1.3, "fuel": 1.3, "cargo": 1.3, "ore_cargo": 1.3, "rate": 1.3,
+	"gas_cargo": 1.3, "rad_cargo": 1.3,
 	"cap_bonus": 1.3, "cap_drain": 1.3, "strength": 1.0, "jump_fuel": 1.0,
 	"range": 0.35, "resolution": 0.2, "scan_strength": 0.6, "splash": 0.5, "res_bonus": 0.5,
 	"energy": 1.1, "energy_rate": 1.1,
@@ -115,6 +116,9 @@ const FAMILIES := {
 	"t_analyzer": {"name": "Analyzer", "anchor": "t_analyzer_s", "ref": 1, "sizes": [1, 3]},
 	"t_mining": {"name": "Mining Laser", "anchor": "t_mining_s", "ref": 1, "sizes": [1, 3]},
 	"t_stripminer": {"name": "Strip Miner", "anchor": "t_stripminer_l", "ref": 3, "sizes": [3, 4]},
+	# package 41: gas from the giants, deep ore from the colossi
+	"t_gas": {"name": "Gas Collector", "anchor": "t_gas_s", "ref": 1, "sizes": [1, 4]},
+	"t_deepdrill": {"name": "Deep Core Drill", "anchor": "t_deepdrill_m", "ref": 2, "sizes": [2, 4]},
 	"t_harvester": {"name": "Ice Harvester", "anchor": "t_harvester_s", "ref": 1, "sizes": [1, 3]},
 	"t_salvage": {"name": "Salvager", "anchor": "t_salvage_s", "ref": 1, "sizes": [1, 3]},
 	"t_repair": {"name": "Repair Beam", "anchor": "t_repair_s", "ref": 1, "sizes": [1, 3]},
@@ -148,6 +152,9 @@ const FAMILIES := {
 	"o_shieldboost": {"name": "Shield Booster", "anchor": "o_shieldboost_s", "ref": 1, "sizes": [1, 8]},
 	"o_armorrep": {"name": "Armor Repairer", "anchor": "o_armorrep_s", "ref": 1, "sizes": [1, 8]},
 	"o_orehold": {"name": "Ore Hold", "anchor": "o_orehold_s", "ref": 1, "sizes": [1, 10]},
+	# package 41: gas tanks (gases at their own volume) and shielded racks (radioactive goods, much less room)
+	"o_gastank": {"name": "Gas Tanks", "anchor": "o_gastank_s", "ref": 1, "sizes": [1, 10]},
+	"o_shielded": {"name": "Shielded Cargo Rack", "anchor": "o_shielded_s", "ref": 1, "sizes": [1, 10]},
 	"o_mining_metal": {"name": "Metallic Mining Upgrade", "anchor": "o_mining_metal_s", "ref": 1, "sizes": [1, 4]},
 	"o_mining_stone": {"name": "Silicate Mining Upgrade", "anchor": "o_mining_stone_s", "ref": 1, "sizes": [1, 4]},
 	"o_mining_ice": {"name": "Cryo Mining Upgrade", "anchor": "o_mining_ice_s", "ref": 1, "sizes": [1, 4]},
@@ -382,6 +389,9 @@ const ANCHORS := {
 	"t_harvester_s": {"name": "Ice Harvester", "slot": "tool", "size": 1, "price": 4500, "mass": 90, "power": 6, "tool": "harvester", "rate": 1.6, "range": 300},
 	"t_harvester_m": {"name": "Heavy Ice Harvester", "slot": "tool", "size": 2, "price": 18000, "mass": 260, "power": 14, "tool": "harvester", "rate": 4.6, "range": 360},
 	"t_stripminer_l": {"name": "Strip Miner", "slot": "tool", "size": 3, "price": 75000, "mass": 900, "power": 30, "tool": "mining", "rate": 13.0, "range": 450},
+	# package 41
+	"t_gas_s": {"name": "Gas Collector", "slot": "tool", "size": 1, "price": 5500, "mass": 110, "power": 6, "tool": "gas", "rate": 2.0, "range": 0},
+	"t_deepdrill_m": {"name": "Deep Core Drill", "slot": "tool", "size": 2, "price": 32000, "mass": 420, "power": 16, "tool": "deepdrill", "rate": 0.6, "range": 260},
 
 	# ---------------- Optional equipment ----------------
 	"o_cargo_s": {"name": "Cargo Rack", "slot": "optional", "size": 1, "price": 1500, "mass": 100, "power": 0, "cargo": 40},
@@ -413,6 +423,9 @@ const ANCHORS := {
 	"o_orehold_s": {"name": "Ore Hold", "slot": "optional", "size": 1, "price": 2500, "mass": 120, "power": 0, "ore_cargo": 70},
 	"o_orehold_m": {"name": "Ore Hold", "slot": "optional", "size": 2, "price": 10000, "mass": 380, "power": 0, "ore_cargo": 280},
 	"o_orehold_l": {"name": "Ore Hold", "slot": "optional", "size": 3, "price": 30000, "mass": 950, "power": 0, "ore_cargo": 800},
+	# package 41
+	"o_gastank_s": {"name": "Gas Tanks", "slot": "optional", "size": 1, "price": 2200, "mass": 110, "power": 0, "gas_cargo": 40},
+	"o_shielded_s": {"name": "Shielded Cargo Rack", "slot": "optional", "size": 1, "price": 3500, "mass": 180, "power": 0, "rad_cargo": 12},
 	"o_mining_metal_s": {"name": "Metallic Mining Upgrade", "slot": "optional", "size": 1, "price": 5000, "mass": 30, "power": 4, "mining_bonus": {"metallic": 0.3}},
 	"o_mining_stone_s": {"name": "Silicate Mining Upgrade", "slot": "optional", "size": 1, "price": 5000, "mass": 30, "power": 4, "mining_bonus": {"stony": 0.3}},
 	"o_mining_ice_s": {"name": "Cryo Mining Upgrade", "slot": "optional", "size": 1, "price": 5000, "mass": 30, "power": 4, "mining_bonus": {"icy": 0.3}},
