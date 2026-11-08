@@ -2391,7 +2391,7 @@ func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 			_draw_radar_shadow(o, c, co, r, px, a)
 	# Contacts (only with line of sight)
 	for n in ship_layer.get_children():
-		if n is Ship and n != player and not n.dying and not n.is_docked() and line_of_sight(c, n.position) and contact_visible(n):
+		if n is Ship and n != player and not n.dying and not n.is_docked() and n.position.distance_squared_to(c) <= r * r 				and line_of_sight(c, n.position) and contact_visible(n):
 			if n.is_drone:
 				_blip(o, c, n.position, r, sweep, px, a, Color(0.4, 1.0, 0.5), 2.0)
 				continue
@@ -2408,6 +2408,8 @@ func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	for cel in celestials:
 		if not is_instance_valid(cel) or not cel.is_pickable() or cel.kind == "colossus":
+			continue
+		if cel.position.distance_squared_to(c) > r * r:     # 0.6.35.16: out of range first – sight lines cost
 			continue
 		if not line_of_sight(c, cel.position):
 			continue
@@ -2468,8 +2470,13 @@ func _draw_radar_shadow(o: Node2D, c: Vector2, co, r: float, px: float, a: float
 	for i in steps:
 		var a0 := base + amin + (amax - amin) * i / steps
 		var a1 := base + amin + (amax - amin) * (i + 1) / steps
-		var q := PackedVector2Array([starts[i], Vector2.from_angle(a0) * far, Vector2.from_angle(a1) * far, starts[i + 1]])
-		o.draw_colored_polygon(q, Color(0.0, 0.03, 0.01, 0.62 * a))
+		# 0.6.35.16: two triangles instead of a polygon – a slice can be twisted, and every failed triangulation
+		# logged an error (several a frame: the recon view dropped to ~10 FPS in fields with colossi)
+		var f0 := Vector2.from_angle(a0) * far
+		var f1 := Vector2.from_angle(a1) * far
+		var sc := PackedColorArray([Color(0.0, 0.03, 0.01, 0.62 * a)])
+		o.draw_primitive(PackedVector2Array([starts[i], f0, f1]), sc, PackedVector2Array())
+		o.draw_primitive(PackedVector2Array([starts[i], f1, starts[i + 1]]), sc, PackedVector2Array())
 	# "no return" range arcs across the shadow
 	var arc_step := 22.0 * px
 	var dd := ceilf(d / arc_step) * arc_step

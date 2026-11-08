@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.16 – 2026-11-08
+
+**Fixed:** the recon view slowed to about 10 FPS in asteroid fields with colossi. Slices of the radar shadows could be twisted, and every failed triangulation logged an error, several times a frame (about 95 ms a frame, now about 20 ms). Contacts out of radar range are skipped before the sight-line check.
+
 ## alpha 0.6.35.15 – 2026-11-08
 
 - **Warp:** the lines streaming behind a ship in warp are gone (the friction glow replaces them).
