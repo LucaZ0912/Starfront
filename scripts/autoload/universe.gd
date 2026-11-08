@@ -65,6 +65,14 @@ const SYSTEM_RADIUS := 6000000.0
 const GATE_DISTANCE := 5700000.0
 ## Below this distance ships fly normally instead of warping.
 const WARP_MIN := 40000.0
+## 0.6.35.17: stations and havens – their no-fire zones reach out to 30,000 km, and from there the flight in at
+## sublight took minutes. Further out than this a ship warps right up to the station.
+const WARP_MIN_STATION := 8000.0
+
+
+## Least distance for a warp to target `t` (a warp target dictionary).
+static func warp_min_for(t: Dictionary) -> float:
+	return WARP_MIN_STATION if String(t.get("kind", "")) in ["station", "haven"] else WARP_MIN
 const STAR_TYPES := [
 	{"name": "Yellow Dwarf", "color": Color(1.0, 0.9, 0.5), "radius": 60000.0},
 	{"name": "Red Dwarf", "color": Color(1.0, 0.45, 0.3), "radius": 40000.0},

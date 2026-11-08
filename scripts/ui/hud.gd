@@ -604,7 +604,7 @@ func _update_overview() -> void:
 		overview_box.move_child(b, i)
 		var d := pp.distance_to(t["pos"])
 		b.text = "%s %s   ·  %s" % [KIND_ICONS.get(t["kind"], "•"), t["name"], SystemView.fmt_dist(d)]
-		b.tooltip_text = "Warp" if d > Universe.WARP_MIN else "Approach"
+		b.tooltip_text = "Warp" if d > Universe.warp_min_for(t) else "Approach"
 
 
 ## 0.6.35.15: the FPS display – updated four times a second; green, yellow below 50, red below 30.
@@ -1016,7 +1016,7 @@ func _build_selected() -> void:
 	var id: String = d["id"]
 	var kind: String = d["kind"]
 	var has_node := d.has("node")
-	var far := view._player_pos().distance_to(d["pos"]) > Universe.WARP_MIN
+	var far := view._player_pos().distance_to(d["pos"]) > Universe.warp_min_for(d)
 	var r1 := UI.hbox(4)
 	sel_box.add_child(r1)
 	if far or kind in ["planet", "star", "field"]:

@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.17 – 2026-11-08
+
+**Warp to stations:** stations and pirate havens can be warped to from 8,000 km (other targets still 40,000 km). Standing just outside a no-fire zone used to mean minutes of sublight flight; now a ship always arrives 2,500 km from the station.
+
 ## alpha 0.6.35.16 – 2026-11-08
 
 **Fixed:** the recon view slowed to about 10 FPS in asteroid fields with colossi. Slices of the radar shadows could be twisted, and every failed triangulation logged an error, several times a frame (about 95 ms a frame, now about 20 ms). Contacts out of radar range are skipped before the sight-line check.

@@ -1437,10 +1437,11 @@ func _warp_align(delta: float, s: Dictionary):
 		return null
 	var dest := warp_destination(t)
 	var dist := position.distance_to(dest)
-	if warp_disrupted > 0.0 and dist >= Universe.WARP_MIN:
+	var wmin := Universe.warp_min_for(t)
+	if warp_disrupted > 0.0 and dist >= wmin:
 		activity = "Warp drive disrupted (%d s)" % int(ceil(warp_disrupted))
 		return position
-	if dist < Universe.WARP_MIN:
+	if dist < wmin:
 		# too close for warp -> approach normally or run the follow-up order
 		var then: Dictionary = order.get("then", {})
 		if not then.is_empty():

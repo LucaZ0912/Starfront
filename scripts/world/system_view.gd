@@ -1828,7 +1828,7 @@ func order_warp(id: String) -> String:
 	var t := Universe.warp_target(system_id, id)
 	if t.is_empty():
 		t = {"id": id, "kind": d["kind"], "name": d["name"], "pos": d["pos"], "land": 1500.0}
-	if player.position.distance_to(player.warp_destination(t)) <= Universe.WARP_MIN:
+	if player.position.distance_to(player.warp_destination(t)) <= Universe.warp_min_for(t):
 		return "Too close to warp – approach instead."
 	command_target(t, {})
 	return ""
@@ -1859,7 +1859,7 @@ func command_target(t: Dictionary, then: Dictionary) -> void:
 	if player == null or t.is_empty():
 		return
 	var dest := player.warp_destination(t)
-	if player.position.distance_to(dest) > Universe.WARP_MIN:
+	if player.position.distance_to(dest) > Universe.warp_min_for(t):
 		player.set_order({"type": "warp", "target": t, "then": then})
 		GameState.log_msg("Aligning for warp → %s" % t["name"])
 	elif not then.is_empty():
