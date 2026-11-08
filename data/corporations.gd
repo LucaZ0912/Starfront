@@ -32,6 +32,12 @@ const CORPS := {
 		"slogan": "The Cluster is home.",
 		"desc": "Every citizen votes on every law. In The Vote the ballots from all over the Assembly come together – and some say not every vote is cast for free.",
 	},
+	# package 39b: not a corporation – the Church of Return, in the Cathedral of Return
+	"cur": {
+		"name": "Curia of the Hierarch", "tag": "CUR", "color": Color(1.0, 0.72, 0.28),
+		"slogan": "The road leads home.",
+		"desc": "The Hierarch proclaims, the Curia administers: edicts, tithes, indulgences – and the relics of Earth, laid in the Cathedral of Return.",
+	},
 	"lnn": {
 		"name": "Lumen Newsnet", "tag": "LNN", "color": Color(0.55, 0.9, 1.0),
 		"slogan": "Everything worth knowing, first.",

@@ -347,6 +347,19 @@ func _build_world() -> void:
 	r39b.add_child(UI.button("Vote now", func(): _cmd({"type": "debug_senate", "do": "resolve"})))
 	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
 	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
+	# package 39b: Heimkehr and the Curia
+	_section("Heimkehr & the Curia (package 39b)")
+	var cu39 = GameState.curia
+	content.add_child(UI.label("Heimkehr: %s  •  permit: %s  •  edict: %s  •  blessed: %s" % [
+		"system %d" % Universe.special_system("heimkehr") if Universe.special_system("heimkehr") >= 0 else "none",
+		"yes" if GameState.has_permit("covenant") else "no",
+		String(cu39.EDICTS[cu39.edict["id"]]["name"]) if not cu39.edict.is_empty() else "none", "yes" if cu39.blessed() else "no"], 12, UI.TEXT_DIM))
+	var r39c := _row()
+	r39c.add_child(UI.button("To Heimkehr", func(): _cmd({"type": "debug_heimkehr"})))
+	r39c.add_child(UI.button("Give permit", func(): _cmd({"type": "debug_permit", "faction": "covenant", "on": true})))
+	r39c.add_child(UI.button("Take permit", func(): _cmd({"type": "debug_permit", "faction": "covenant", "on": false})))
+	r39c.add_child(UI.button("New edict", func(): _cmd({"type": "debug_edict"})))
+	r39c.add_child(UI.button("+3 relics", func(): _cmd({"type": "debug_relic", "n": 3})))
 	# package 38: planet types
 	_section("Planets (package 38)")
 	var L38 := Universe.get_layout(GameState.current_system)

@@ -212,11 +212,11 @@ func generate(p_seed: int) -> void:
 # still up to the generator – the capital of a power always becomes its special system.
 
 ## faction -> special system id (its capital)
-const SPECIAL_CAPITALS := {"assembly": "landfall"}
-const SPECIAL_NAMES := {"landfall": "Landfall"}
-const SPECIAL_STARS := {"landfall": "G"}
+const SPECIAL_CAPITALS := {"assembly": "landfall", "covenant": "heimkehr"}
+const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr"}
+const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG"}
 ## The fixed stations of a special system (type, tier) – their place and look come from SPECIAL_STATIONS.
-const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]]}
+const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]], "heimkehr": [["trade", 3], ["shipyard", 3]]}
 ## Fixed planets: type, orbit (km, before the scale), radius (km), ring, city lights; moons per planet: [name, type, radius].
 const SPECIAL_BODIES := {
 	"landfall": [
@@ -226,6 +226,13 @@ const SPECIAL_BODIES := {
 		{"name": "Boulé", "type": "ice_giant", "orbit": 1250000.0, "radius": 34000.0, "seed": 88.0, "ring": true, "deep": true,
 			"moons": [["Ostrakon", "moon_ice", 5200.0], ["Kleros", "moon_rock", 4100.0]]},
 	],
+	# 39b: the canonical hours – Vesper, the desert world, is a moon of the red gas giant Compline
+	"heimkehr": [
+		{"name": "Lauds", "type": "lava", "orbit": 700000.0, "radius": 8000.0, "seed": 13.0},
+		{"name": "Compline", "type": "gas", "orbit": 1150000.0, "radius": 30000.0, "seed": 71.0, "hue": 0.01,
+			"moons": [["Vesper", "desert", 8500.0, {"city": 0.85, "city_style": 1.0}], ["Nones", "moon_rock", 3800.0]]},
+		{"name": "Matins", "type": "ice", "orbit": 1620000.0, "radius": 7000.0, "seed": 34.0},
+	],
 }
 ## Fixed stations: name, art (landmark look), the body they orbit ("p1" / "m3_0"), distance, extra keys.
 const SPECIAL_STATIONS := {
@@ -233,9 +240,13 @@ const SPECIAL_STATIONS := {
 		{"name": "The Vote", "art": "vote", "body": "Agora", "dist": 32000.0, "senate": true},
 		{"name": "Concord Yards", "art": "concord_yards", "body": "Ostrakon", "dist": 14000.0, "capital_yard": true},
 	],
+	"heimkehr": [
+		{"name": "Cathedral of Return", "art": "cathedral", "body": "Vesper", "dist": 26000.0, "curia": true},
+		{"name": "Forge of Return", "art": "forge", "body": "Lauds", "dist": 22000.0, "capital_yard": true},
+	],
 }
 ## Hulls sold only at the yard of their faction's capital (package 39: the flagships of the state manufacturers).
-const CAPITAL_ONLY := {"cfw_concordia": "assembly"}
+const CAPITAL_ONLY := {"cfw_concordia": "assembly", "for_cathedral": "covenant"}
 
 
 ## Names the capitals with a special system after it, makes them very safe.
@@ -289,6 +300,8 @@ func _special_planets(L: Dictionary, id: int, sp: String) -> void:
 			L["planets"].back()["city_fixed"] = float(d["city"])
 		if d.get("deep", false):
 			L["planets"].back()["deep"] = true
+		if d.has("hue"):
+			L["planets"].back()["hue"] = float(d["hue"])            # 39b: the red gas giant Compline
 		if d.has("city_style"):
 			L["planets"].back()["city_style"] = float(d["city_style"])
 		i += 1
@@ -307,6 +320,8 @@ func _special_moons(L: Dictionary, sp: String) -> void:
 			orbit += mr
 			L["moons"].append({"id": "m%d_%d" % [pi, k], "planet": pi, "name": String(md[0]), "type": String(md[1]), "radius": mr,
 				"orbit": orbit, "pos": p["pos"], "seed": 30.0 + pi * 7.0 + k * 3.0})
+			if md.size() > 3:
+				L["moons"].back().merge(md[3])               # 39b: Vesper's city lights
 			orbit += mr + 30000.0
 			k += 1
 		pi += 1
@@ -341,6 +356,9 @@ func _special_station(L: Dictionary, sp: String, i: int, base: Dictionary) -> Di
 ## Concord Yards … They move with the station they belong to ("anchor").
 func _special_structures(L: Dictionary, sp: String) -> void:
 	L["structures"] = []
+	if sp == "heimkehr":
+		_heimkehr_structures(L)
+		return
 	if sp != "landfall":
 		return
 	var vote := {}
@@ -365,6 +383,20 @@ func _special_structures(L: Dictionary, sp: String) -> void:
 
 
 const VOTE_RELAYS := 4
+
+
+## 39b: the Pilgrim Gate off the Cathedral of Return (it points home, away from the star) and the Lux Aeterna in her
+## berth at the Forge of Return.
+func _heimkehr_structures(L: Dictionary) -> void:
+	for st in L["stations"]:
+		match String(st.get("art", "")):
+			"cathedral":
+				var off := Vector2(4200.0, -2600.0)
+				L["structures"].append({"id": "pilgrim_gate", "name": "Pilgrim Gate", "art": "pilgrim_gate", "type": "pilgrim_gate",
+					"tier": 1, "seed": 777, "anchor": st["id"], "pos": (st["pos"] as Vector2) + off, "label_y": 640.0})
+			"forge":
+				L["structures"].append({"id": "lux_aeterna", "name": "Lux Aeterna (under construction)", "art": "lux_aeterna", "type": "lux_aeterna",
+					"tier": 1, "seed": 4243, "anchor": st["id"], "pos": (st["pos"] as Vector2) + Vector2(-2050.0, 0.0), "label_y": -560.0})
 
 
 ## Decides type and tier of every station (and Pirate Haven) in the cluster up front, so that every
@@ -817,6 +849,7 @@ func system_profile(sid: int) -> Dictionary:
 	if ctl in FactionData.POWERS:
 		patrol_groups = 1 + int(military >= 2) + int(sys.get("capital", false)) + int(sec >= 0.8 and tiers >= 3)
 		patrol_groups += int(ctl == "assembly" and GameState.senate.mod("patrols") > 1.0)       # package 39: Militia Act
+		patrol_groups += int(ctl == "covenant" and GameState.curia.mod("patrols") > 1.0)        # 39b: Crusade, Vigil
 		patrol_size = 2 + int(military >= 3)
 		patrol_q = clampi(int(military / 2) + int(sys.get("capital", false)), 0, 2)
 	elif ctl == "" and not claimants(sid).is_empty():

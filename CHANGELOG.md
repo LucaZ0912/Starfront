@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.4 – 2026-11-08
+
+**Package 39b: Heimkehr, the capital of the Covenant.** A new game is needed.
+- Heimkehr under a red supergiant: the lava world Lauds, the red gas giant Compline (no rings) with the desert moon
+  Vesper (pilgrim cities) and Nones, the ice world Matins.
+- The Cathedral of Return over Vesper – pale stone, stained glass, a rose window ringed in gold, spires; modern docking
+  arms and solar sails beneath the old forms.
+- The Pilgrim Gate: a ceremonial ring of ivory and gold that points home; its light never goes out and pilgrims pass
+  through it in an endless line.
+- The Forge of Return at Lauds: furnace towers, a farm of red focus crystals, a warship in its berth – the only yard
+  that sells the Cathedral. Beside it the Lux Aeterna: the Covenant's capital ship, crimson and gold, a great focus
+  crystal at the bow, huge weapon towers, a habitat ring at her heart.
+- The Curia (Cathedral of Return): the Hierarch's edicts (each with a blessing and a burden), tithes (standing, a
+  petition for the next edict), indulgences (wipe your record with the Covenant), relics of Earth (found in anomalies –
+  standing and a blessing: cheaper prices at Covenant stations).
+- Contracts: pilgrim convoys and crystal transports to Heimkehr, relic recoveries; codex entries; debug functions.
+
 ## alpha 0.6.39.3 – 2026-11-08
 
 - The background stars twinkle much less – a gentle, slow shimmer instead of blinking.

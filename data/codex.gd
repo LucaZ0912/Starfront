@@ -114,6 +114,21 @@ Landfall is closed: its gates let in only pilots holding the Assembly's entry pe
 
 With an entry permit you vote too. A party donation sways the vote a little. A bribe settles it – unless it comes out, and then the money is gone and the Assembly's trust with it.",
 		"see": ["cluster_landfall", "fac_assembly"]},
+	# package 39b: Heimkehr
+	"cluster_heimkehr": {"cat": "cluster", "title": "Heimkehr", "unlock": "jump", "image": {"icon": "curia"},
+		"text": "The capital of the Covenant of Return, under a red supergiant whose eruptions the faithful take for trials sent to them. Its heart is Vesper, a desert moon of the red gas giant Compline, crowded with pilgrim cities; above it rises the Cathedral of Return – pale stone, stained glass and a rose window ringed in gold, the sun over the road.
+
+Off the cathedral stands the Pilgrim Gate. It leads nowhere – it points home, and the light it throws towards Earth never goes out. Pilgrims pass through it in an endless line.
+
+Near the lava world Lauds the Forge of Return glows, where the Covenant's warships and focus crystals are made – and the Lux Aeterna, its capital ship, lies in her berth. Only there is the Cathedral sold.
+
+Heimkehr is closed: its gates let in only pilots with the Covenant's entry permit, given from Friendly standing on.",
+		"see": ["fac_covenant", "cluster_curia"]},
+	"cluster_curia": {"cat": "cluster", "title": "The Curia", "unlock": "permit", "image": {"icon": "curia"},
+		"text": "Nobody votes in the Covenant. Every half hour or hour the Hierarch proclaims an edict that holds in all of its territory until the next one – a blessing and a burden in one.
+
+The faithful have their ways all the same. Tithes earn standing, and who gives enough may petition for the next edict. An indulgence – dearer than any fine – wipes out every crime against the Covenant. And relics of Earth, found in anomalies all over the Cluster, are laid in the Cathedral of Return for a blessing: cheaper prices at every Covenant station.",
+		"see": ["cluster_heimkehr", "fac_covenant"]},
 	"cluster_stations": {"cat": "cluster", "title": "Stations", "unlock": "dock", "image": {"icon": "o_cargo"},
 		"text": "Stations are built from modules; their type decides what they trade and which services they offer: trade hubs, industrial complexes, mining colonies, agricultural and research stations, military outposts, ice refineries and shipyards. Bigger tiers mean bigger stations, wider no-fire zones and more guns.\n\nEvery station flies the flag of the power that owns its system.",
 		"see": ["corp_kvx", "basics_zones"]},

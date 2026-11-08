@@ -42,12 +42,12 @@ func build() -> void:
 		info.add_child(UI.label("Structure %d  •  Mass %d t  •  Cargo %d m³  •  Slots: %d weapons, %d tools, %d optional" % [
 			int(h["structure"]), int(h["mass"]), int(h["cargo"]), int(sl.get("weapon", 0)), int(sl.get("tool", 0)), int(sl.get("optional", 0))], 12))
 		var id: String = hid
-		var b1 := UI.button("Bare hull\n%s" % GameData.fmt_credits(int(round(buy_price(int(h["price"])) * GameState.senate.hull_mult(hid, String(station.get("faction", "")))))), func(): _buy(id, false))
+		var b1 := UI.button("Bare hull\n%s" % GameData.fmt_credits(int(round(buy_price(int(h["price"])) * GameState.senate.hull_mult(hid, String(station.get("faction", ""))) * GameState.curia.hull_mult(hid, String(station.get("faction", "")))))), func(): _buy(id, false))
 		b1.disabled = why_t != ""
 		row.add_child(b1)
 		var preset: String = "std_" + hid
 		if GameData.presets.has(preset):
-			var b2 := UI.button("Standard fit\n%s" % GameData.fmt_credits(int(round(buy_price(GameData.preset_price(preset)) * GameState.senate.hull_mult(hid, String(station.get("faction", "")))))), func(): _buy(id, true))
+			var b2 := UI.button("Standard fit\n%s" % GameData.fmt_credits(int(round(buy_price(GameData.preset_price(preset)) * GameState.senate.hull_mult(hid, String(station.get("faction", ""))) * GameState.curia.hull_mult(hid, String(station.get("faction", "")))))), func(): _buy(id, true))
 			b2.disabled = why_t != ""
 			row.add_child(b2)
 

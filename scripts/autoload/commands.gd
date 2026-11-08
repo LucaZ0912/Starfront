@@ -114,6 +114,8 @@ func service_cost(mode: String, f: ShipFitting) -> int:
 	var k := GameState.rep.price_factor(docked_faction(), "buy")
 	if docked_faction() == "assembly":
 		k *= GameState.senate.mod("service") / GameState.senate.mod("buy")     # package 39a: fuel and repair laws
+	elif docked_faction() == "covenant":
+		k *= GameState.curia.mod("service") / GameState.curia.mod("buy")       # package 39b: edicts
 	if mode == "fuel":
 		return int((float(s["fuel_max"]) - f.fuel) * FUEL_PRICE * k)
 	return int(((float(s["structure_max"]) - f.structure) + (float(s["armor_max"]) - f.armor)) * REPAIR_PRICE * k)
@@ -599,7 +601,7 @@ func _c_ship_buy(c: Dictionary) -> String:
 	if with_fit and not GameData.presets.has(preset):
 		return "No standard fit available."
 	var price := GameData.preset_price(preset) if with_fit else int(GameData.hulls[hid]["price"])
-	price = int(round(GameState.rep.buy_price(price, docked_faction()) * GameState.senate.hull_mult(hid, docked_faction())))
+	price = int(round(GameState.rep.buy_price(price, docked_faction()) * GameState.senate.hull_mult(hid, docked_faction()) * GameState.curia.hull_mult(hid, docked_faction())))
 	if not GameState.spend(price):
 		return "Not enough credits."
 	var f: ShipFitting
@@ -1702,6 +1704,48 @@ func _c_senate_donate(c: Dictionary) -> String:
 ## {"type":"senate_bribe", "side": "yes"|"no"}
 func _c_senate_bribe(c: Dictionary) -> String:
 	return GameState.senate.bribe(String(c.get("side", "yes")))
+
+
+# ---------------------------------------------------------------- Package 39b: the Curia, Heimkehr
+
+func _c_curia_tithe(_c: Dictionary) -> String:
+	return GameState.curia.tithe()
+
+
+## {"type":"curia_petition", "edict": id}
+func _c_curia_petition(c: Dictionary) -> String:
+	return GameState.curia.petition(String(c.get("edict", "")))
+
+
+func _c_curia_indulgence(_c: Dictionary) -> String:
+	return GameState.curia.indulgence()
+
+
+func _c_curia_relics(_c: Dictionary) -> String:
+	return GameState.curia.give_relics(_fit())
+
+
+## {"type":"debug_heimkehr"} – to Heimkehr (docked at the Cathedral of Return)
+func _c_debug_heimkehr(_c: Dictionary) -> String:
+	var sid := Universe.special_system("heimkehr")
+	if sid < 0:
+		return "No Heimkehr in this cluster."
+	return _c_debug_teleport({"system": sid})
+
+
+## {"type":"debug_edict", "edict": id ("" = random)} – the Hierarch proclaims now
+func _c_debug_edict(c: Dictionary) -> String:
+	GameState.curia.proclaim(String(c.get("edict", "")))
+	return ""
+
+
+## {"type":"debug_relic", "n": 1} – relics of Earth into the hold
+func _c_debug_relic(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No active ship."
+	f.add_cargo("earth_relic", float(c.get("n", 1)))
+	return ""
 
 
 ## {"type":"debug_landfall"} – to Landfall (docked at The Vote)

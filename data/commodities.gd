@@ -63,6 +63,8 @@ const COMMODITIES := {
 	"mine_timer": {"name": "Timed Mine", "price": 280, "volume": 0.5, "category": "munitions"},
 	"mine_emp": {"name": "EMP Mine", "price": 650, "volume": 0.5, "category": "munitions"},
 	"sealed_cargo": {"name": "Sealed Cargo", "price": 0, "volume": 1.0, "category": "mission", "tradeable": false},
+	# package 39b: found in anomalies, laid in the Cathedral of Return for a blessing
+	"earth_relic": {"name": "Relic of Earth", "price": 0, "volume": 0.5, "category": "mission", "tradeable": false},
 }
 
 const CLASS_NAMES := {"metallic": "Metallic", "stony": "Stony (Silicate)", "icy": "Icy"}

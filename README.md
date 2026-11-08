@@ -122,6 +122,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   trials** at the Concord Yards (pirates destroyed by your drones in Assembly space).
 - Debug → World: to Landfall, give/take the permit, ballot drone, new bill, vote now (with or without a bribe found out).
 
+## Heimkehr – the Covenant's capital (phase 0.5 package 39b)
+- Under a red supergiant: Lauds (lava), the red gas giant Compline with the desert moon **Vesper** (pilgrim cities) and
+  Nones, the ice world Matins. Closed like Landfall: the Covenant's entry permit from Friendly on.
+- **Cathedral of Return** over Vesper – old church forms in modern sci-fi: stained glass, a golden rose window, spires.
+- **Pilgrim Gate:** points home; its light never goes out, pilgrims pass through in an endless line.
+- **Forge of Return** at Lauds – furnaces and a farm of red focus crystals; the only yard that sells the Cathedral.
+  Beside it the **Lux Aeterna**, the Covenant's capital ship (crimson and gold, a habitat ring at her heart).
+- **The Curia:** the Hierarch's edicts, tithes (and a petition for the next edict), indulgences, relics of Earth
+  (found in anomalies) for a blessing – cheaper prices at Covenant stations.
+- Contracts: pilgrim convoys, crystal transports, relic recoveries. Debug → World: Heimkehr & the Curia.
+
 ## Planets (phase 0.5 package 38)
 - Eleven planet types – terran, ocean and jungle worlds, deserts, ice worlds, lava worlds, barren rock, gas giants,
   toxic giants, ice giants and dwarf planets – each with seas, clouds, caps, storms, lava or craters, and every planet

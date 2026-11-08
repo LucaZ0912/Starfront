@@ -160,6 +160,8 @@ func price_factor(f: String, kind: String) -> float:
 	var k := float(PRICES[tier_id(f)][kind])
 	if f == "assembly":
 		k *= GameState.senate.mod(kind)              # package 39a: laws of the Assembly
+	elif f == "covenant":
+		k *= GameState.curia.mod(kind)               # package 39b: edicts of the Hierarch, your blessing
 	return k
 
 

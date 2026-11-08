@@ -158,6 +158,8 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 		var c0: Color = t[k[1]]
 		if p.get("deep", false):
 			c0 = Color.from_hsv(0.62, minf(1.0, c0.s * 1.6 + 0.25), c0.v * 0.62)       # package 39: Boulé, deep blue
+		if p.has("hue"):
+			c0 = Color.from_hsv(float(p["hue"]), minf(1.0, c0.s * 1.5 + 0.2), c0.v * 0.85)   # 39b: the red giant Compline
 		mat.set_shader_parameter(k[0], Color.from_hsv(fposmod(c0.h + dh, 1.0), clampf(c0.s * dsat, 0.0, 1.0), clampf(c0.v * dval, 0.0, 1.0)))
 	mat.set_shader_parameter("atmo", t["atmo"])
 	mat.set_shader_parameter("gas", t["gas"])
@@ -639,6 +641,32 @@ func _draw_landmark_live() -> void:
 					draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 					draw_circle(pos, px * 3.0, Color(0.45, 0.7, 1.0, 0.18 * fade))
 				k += 1
+		"pilgrim_gate":
+			# 39b: the light it throws home (away from the star) and the pilgrims passing through, one by one
+			var home := position.normalized() if position.length() > 1.0 else Vector2.RIGHT
+			var gr := float(art["size"]) * 0.32
+			var tip := home * 90000.0
+			for w in [[gr * 1.6, 0.05], [gr * 0.9, 0.09], [gr * 0.35, 0.22]]:
+				draw_line(home * gr * 0.2, tip, Color(1.0, 0.82, 0.45, float(w[1]) * (0.85 + 0.15 * sin(_t * 1.3))), float(w[0]))
+			draw_circle(Vector2.ZERO, gr * 0.9, Color(1.0, 0.85, 0.5, 0.12 + 0.05 * sin(_t * 2.0)))
+			for j in 9:
+				var f := fposmod(_t / 70.0 + j / 9.0, 1.0)              # from far away up to the gate
+				var pos := -home * (4200.0 * (1.0 - f)) + home.orthogonal() * 120.0 * sin(j * 1.7)
+				var a := clampf((1.0 - f) * 8.0, 0.0, 1.0) * clampf(f * 10.0, 0.0, 1.0)
+				draw_set_transform(pos, home.angle(), Vector2.ONE)
+				draw_rect(Rect2(Vector2(-px * 4.0, -px * 1.5), Vector2(px * 8.0, px * 3.0)), Color(0.86, 0.8, 0.68, a))
+				draw_rect(Rect2(Vector2(-px * 1.0, -px * 1.0), Vector2(px * 2.0, px * 2.0)), Color(1.0, 0.85, 0.45, a))
+				draw_rect(Rect2(Vector2(-px * 7.0, -px * 0.7), Vector2(px * 3.0, px * 1.4)), Color(1.0, 0.65, 0.3, 0.5 * a))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				if f > 0.97:
+					draw_circle(pos, px * 10.0, Color(1.0, 0.9, 0.6, (f - 0.97) * 25.0))
+		"lux_aeterna":
+			# 39b: the great focus crystal at her bow glows and pulses
+			var size3 := float(art["size"])
+			var cp := Vector2(-size3 * 0.42, 0.0)
+			var pulse := 0.5 + 0.5 * sin(_t * 1.6)
+			draw_circle(cp, size3 * 0.05, Color(1.0, 0.2, 0.3, 0.12 + 0.12 * pulse))
+			draw_circle(cp, size3 * 0.025, Color(1.0, 0.45, 0.5, 0.18 + 0.2 * pulse))
 		"res_publica":
 			# 0.6.39.2: drones launching from the hatches on her hull, flying a short loop and landing again
 			var hatches: Array = art["vents"].filter(func(v): return String(v["kind"]) == "hatch")

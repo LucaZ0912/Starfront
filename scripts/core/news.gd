@@ -82,6 +82,8 @@ func latest(n: int, system: int = -2) -> Array:
 ## Bounty multiplier of a running campaign in system `sid` (1.0 = none).
 func bounty_mult(sid: int) -> float:
 	var law := GameState.senate.mod("bounty") if Universe.controller(sid) == "assembly" else 1.0     # package 39a
+	if Universe.controller(sid) == "covenant":
+		law = GameState.curia.mod("bounty")                                 # package 39b
 	var c: Dictionary = campaigns.get(sid, {})
 	if c.is_empty():
 		return law

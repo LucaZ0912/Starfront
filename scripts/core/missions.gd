@@ -154,6 +154,8 @@ static func generate_faction(system_id: int, station: Dictionary, rng: RandomNum
 	var kind: String = kinds[rng.randi() % kinds.size()]
 	# package 39a: special contracts of the Assembly – ballots to The Vote, drone field trials at the Concord Yards
 	var sp := _assembly_special(m, system_id, station, rng)
+	if sp.is_empty():
+		sp = _covenant_special(m, system_id, station, rng)        # package 39b
 	if not sp.is_empty():
 		return sp
 	if kind == "hunt":
@@ -212,6 +214,60 @@ const BALLOT_TIME_JUMP := 150.0
 const BALLOT_AMBUSH := 0.55          # chance per system on the way that thieves try to grab them
 const TRIAL_CHANCE := 0.6            # at the Concord Yards: drone field trials
 const TRIAL_KILLS := Vector2i(3, 6)
+
+
+const COVENANT_CHANCE := 0.3        # package 39b: Covenant stations elsewhere: pilgrims and crystals for Heimkehr
+const RELIC_CHANCE := 0.6           # at the Cathedral of Return: relic recoveries
+
+
+## Package 39b: the Covenant's own contracts – pilgrim convoys and crystal transports to Heimkehr, relic recoveries
+## from the Cathedral of Return.
+static func _covenant_special(m: Dictionary, system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	if String(station.get("faction", "")) != "covenant":
+		return {}
+	var hk := Universe.special_system("heimkehr")
+	if hk < 0:
+		return {}
+	if station.get("curia", false):
+		if rng.randf() >= RELIC_CHANCE:
+			return {}
+		var cands: Array = []
+		for sid in _systems_within(system_id, 3):
+			if sid != system_id and not Universe.get_layout(sid)["anomalies"].is_empty():
+				cands.append(sid)
+		if cands.is_empty():
+			return {}
+		var ts: int = cands[rng.randi() % cands.size()]
+		m.merge({"type": "relic", "relic": true, "min_tier": "friendly", "target_system": ts, "amount": 1,
+			"reward": 9000 + int((1.0 - float(Universe.systems[ts]["security"])) * 9000),
+			"title": "Relic recovery in %s" % Universe.systems[ts]["name"],
+			"desc": "The Curia has word of a relic of Earth in an anomaly in %s. Scan the system, analyse the anomaly and bring the relic to the Cathedral of Return." % Universe.systems[ts]["name"]}, true)
+		return m
+	if system_id == hk or rng.randf() >= COVENANT_CHANCE:
+		return {}
+	var cath := {}
+	var forge := {}
+	for st in Universe.get_layout(hk)["stations"]:
+		if st.get("curia", false):
+			cath = st
+		elif String(st.get("art", "")) == "forge":
+			forge = st
+	var jumps := Universe.find_path(system_id, hk, 3).size()
+	if jumps <= 0 or cath.is_empty() or forge.is_empty():
+		return {}
+	if rng.randf() < 0.5:
+		escort_fill(m, system_id, [hk, cath], rng.randi_range(2, 4), "covenant")
+		m["min_tier"] = "friendly"
+		m["to_capital"] = true
+		m["title"] = "Pilgrims: a convoy of the faithful to the Cathedral of Return"
+		m["desc"] = "Pilgrim ships leave this station for Heimkehr (%d jump%s). Keep them safe on the road home – at least %d %% of the way. You are paid per ship that arrives." % [jumps, "" if jumps == 1 else "s", int(ESCORT_SHARE * 100.0)]
+		return m
+	var amount := rng.randi_range(4, 10)
+	m.merge({"type": "courier", "min_tier": "friendly", "to_capital": true, "target_system": hk, "target_station": forge["id"],
+		"item": "sealed_cargo", "amount": amount, "reward": 4000 + jumps * 3000 + amount * 350,
+		"title": "Crystal transport: raw focus crystals to the Forge of Return",
+		"desc": "%d crates of raw focus crystals for the Forge of Return in Heimkehr (%d jump%s). Handle them gently – they are worth more than your ship." % [amount, jumps, "" if jumps == 1 else "s"]}, true)
+	return m
 
 
 static func _assembly_special(m: Dictionary, system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
@@ -299,6 +355,8 @@ static func can_turn_in(m: Dictionary, fit: ShipFitting, station_id: String) -> 
 			return station_id == m["giver"] and float(fit.cargo.get(m["item"], 0.0)) >= float(m["amount"]) - 0.01
 		"bounty", "survey", "drone_trial":
 			return station_id == m["giver"] and int(m["progress"]) >= int(m["amount"])
+		"relic":
+			return station_id == m["giver"] and int(m["progress"]) >= 1 and fit != null and float(fit.cargo.get("earth_relic", 0.0)) >= 0.99
 		"passenger":
 			return station_id == m["target_station"] and fit != null and fit.uid == int(m.get("ship_uid", -1))
 	return false
@@ -336,6 +394,8 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 			return "Deliver to %s" % Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?")
 		"drone_trial":
 			return "%d / %d pirates destroyed by your drones in Assembly space" % [int(m["progress"]), int(m["amount"])]
+		"relic":
+			return "Relic found – bring it to the Cathedral of Return" if int(m["progress"]) >= 1 else "Analyse an anomaly in %s" % Universe.systems[int(m["target_system"])]["name"]
 		"mining":
 			return "%d / %d %s in cargo" % [int(fit.cargo.get(m["item"], 0.0)) if fit != null else 0, int(m["amount"]), GameData.item_name(m["item"])]
 		"bounty":

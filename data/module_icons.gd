@@ -5,6 +5,25 @@ extends RefCounted
 ## Module -> icon mapping: PixelArt.module_icon_key()
 
 const ICONS := {
+	# package 39b: The Curia (a sun over a road)
+	"curia": [
+		"................",
+		".......yy.......",
+		"...y...yy...y...",
+		"....y.yyyy.y....",
+		"......yyyy......",
+		"..yyyyyyyyyyyy..",
+		"......yyyy......",
+		"....y.yyyy.y....",
+		"...y...yy...y...",
+		".......WW.......",
+		"......WggW......",
+		".....WggggW.....",
+		"....WggggggW....",
+		"...WggggggggW...",
+		"..rrrrrrrrrrrr..",
+		"................",
+	],
 	# package 39a: The Senate (a hall of columns)
 	"senate": [
 		"................",

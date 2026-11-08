@@ -15,7 +15,7 @@ const SIZE := {1: 240, 2: 320, 3: 400}            # canvas size (art px) by tier
 const BAY_W := 46.0                               # hangar bay width / depth (art px) – an L hull is 38 x 30
 const BAY_D := 50.0
 
-enum {NONE, HULL, DARK, ACC, GLASS, SOLAR, GREEN, TANK, RUST, HANGAR, TRUSS, HOT, ICE, NEON, PANEL, ROCK, GUN, MARK}
+enum {NONE, HULL, DARK, ACC, GLASS, SOLAR, GREEN, TANK, RUST, HANGAR, TRUSS, HOT, ICE, NEON, PANEL, ROCK, GUN, MARK, STAIN, CRYST}
 enum {P_FLAT, P_PLATES, P_WINDOWS, P_CYL, P_SOLAR, P_TRUSS, P_HAZARD, P_ARMOR, P_BLOCK, P_RIBS, P_BAY, P_GIRDER}
 enum {D_FLAT, D_DOME, D_TANK, D_GREEN, D_DISH, D_COOL, D_HUB, D_TURRET, D_ROCK, D_HOTTOWER}
 
@@ -76,6 +76,14 @@ static func build(data: Dictionary) -> Dictionary:
 			a._concord_yards()
 		"res_publica":
 			a._res_publica()
+		"cathedral":
+			a._cathedral()
+		"pilgrim_gate":
+			a._pilgrim_gate()
+		"forge":
+			a._forge()
+		"lux_aeterna":
+			a._lux_aeterna()
 		_:
 			a._trade()
 	var img := a._render()
@@ -129,6 +137,8 @@ func _setup(t: String, tr: int, sd: int) -> void:
 	acc = PixelArt.STATION_ACCENT.get(t, Color(0.3, 0.85, 1.0))
 	if ASSEMBLY_ARTS.has(t):
 		acc = Color(0.35, 0.62, 1.0)                  # Assembly blue
+	if COVENANT_ARTS.has(t):
+		acc = Color(1.0, 0.78, 0.3)                   # Covenant gold
 
 
 # ================================================================ Primitives
@@ -727,7 +737,9 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 
 # ================================================================ Package 39: landmarks of Landfall
 
-const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 560}
+const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 560,
+	"cathedral": 520, "pilgrim_gate": 300, "forge": 460, "lux_aeterna": 600}
+const COVENANT_ARTS := {"cathedral": true, "pilgrim_gate": true, "forge": true, "lux_aeterna": true}
 const ASSEMBLY_ARTS := {"vote": true, "vote_relay": true, "concord_yards": true, "res_publica": true}
 const VOTE_RELAY_ANGLE := 0.4                       # where the first relay lies (Universe._special_structures)
 
@@ -960,6 +972,235 @@ func _rx(f: float) -> float:
 func _ry(f: float) -> float:
 	return c + f * n
 
+# ================================================================ 39b: landmarks of Heimkehr
+
+## A pointed spire from `base` outwards along `ang`: a tapering body with a lantern window, a gold tip.
+func spire(base: Vector2, ang: float, length: float, w: float, h: float) -> void:
+	var dir := Vector2.from_angle(ang)
+	var side := dir.orthogonal()
+	poly(PackedVector2Array([base - side * w, base + dir * length * 0.7 - side * w * 0.55, base + dir * length, base + dir * length * 0.7 + side * w * 0.55, base + side * w]), HULL, h, 2.0, 0)
+	box(base + dir * length * 0.45, ang, length * 0.12, w * 0.3, STAIN, h + 6.0, P_FLAT, true)
+	box(base + dir * length * 0.92, ang, length * 0.06, w * 0.18, ACC, h + 8.0)
+
+
+## A pointed window (lancet) of stained glass, `ang` = the way it points.
+func lancet(p: Vector2, ang: float, length: float, w: float, h: float) -> void:
+	var dir := Vector2.from_angle(ang)
+	var side := dir.orthogonal()
+	poly(PackedVector2Array([p - dir * length * 0.5 - side * w, p + dir * length * 0.25 - side * w, p + dir * length * 0.5, p + dir * length * 0.25 + side * w, p - dir * length * 0.5 + side * w]), STAIN, h, 0.0, 0)
+
+
+## The Cathedral of Return over Vesper: the Covenant's home – a cruciform nave of pale stone with flying buttresses,
+## a great rose window of stained glass ringed in gold (the sun over the road), spires at every arm and pinnacles along
+## the nave; and, modern beneath the old forms, docking arms, solar sails and gold neon.
+func _cathedral() -> void:
+	var center := Vector2(c, c)
+	# solar sails and docking arms (lowest) on the diagonals
+	for k in 4:
+		var a := PI * 0.25 + k * PI * 0.5
+		solar_wing(P(n * 0.2, a + 0.22), P(n * 0.46, a + 0.22), 10.0, 5.0)
+		dock_arm(a, n * 0.12, n * 0.4, 46.0, 11.0)
+	# flying buttresses along the nave and the transept
+	for sd in [-1.0, 1.0]:
+		for j in 5:
+			var y := c - n * 0.34 + j * n * 0.17
+			if absf(y - c) < n * 0.08:
+				continue
+			seg(Vector2(c + sd * n * 0.05, y), Vector2(c + sd * n * 0.13, y + n * 0.03), 2.2, HULL, 9.0, P_GIRDER)
+			disc(Vector2(c + sd * n * 0.13, y + n * 0.03), 5.0, HULL, 12.0, D_DOME)
+	# the nave (vertical) and the transept (horizontal)
+	box(center, PI * 0.5, n * 0.42, n * 0.065, HULL, 14.0, P_PLATES)
+	box(center, 0.0, n * 0.3, n * 0.055, HULL, 13.0, P_PLATES)
+	box(center, PI * 0.5, n * 0.4, 2.0, PANEL, 16.0)                     # a crimson runner down the roof
+	box(center, 0.0, n * 0.28, 2.0, PANEL, 15.5)
+	# lancet windows along the nave and transept
+	for j2 in 6:
+		for sd2 in [-1.0, 1.0]:
+			lancet(Vector2(c + sd2 * n * 0.04, c - n * 0.36 + j2 * n * 0.05 + (n * 0.47 if j2 >= 3 else 0.0)), -PI * 0.5, 14.0, 3.0, 17.0)
+	for j3 in 3:
+		for sd3 in [-1.0, 1.0]:
+			lancet(Vector2(c - n * 0.26 + j3 * n * 0.05 + (n * 0.37 if sd3 > 0.0 else 0.0), c + n * 0.032), -PI * 0.5, 12.0, 3.0, 16.5)
+	# the apse at the head of the nave, with its chapels
+	disc(Vector2(c, c - n * 0.42), n * 0.06, HULL, 12.0, D_FLAT)
+	ring(Vector2(c, c - n * 0.42), n * 0.045, n * 0.06, PANEL, 14.0, false, 12)
+	disc(Vector2(c, c - n * 0.42), n * 0.03, ACC, 16.0, D_DOME)
+	for k2 in 5:
+		var a2 := -PI * 0.5 + (k2 - 2) * 0.45
+		disc(Vector2(c, c - n * 0.42) + Vector2.from_angle(a2) * n * 0.07, n * 0.022, HULL, 13.0, D_DOME)
+		lancet(Vector2(c, c - n * 0.42) + Vector2.from_angle(a2) * n * 0.045, a2, 12.0, 3.0, 20.0)
+	# spires at the ends of the arms and at the crossing's corners, pinnacles along the nave
+	spire(Vector2(c, c + n * 0.42), PI * 0.5, n * 0.07, 9.0, 18.0)
+	spire(Vector2(c - n * 0.3, c), PI, n * 0.08, 9.0, 18.0)
+	spire(Vector2(c + n * 0.3, c), 0.0, n * 0.08, 9.0, 18.0)
+	spire(Vector2(c, c - n * 0.49), -PI * 0.5, n * 0.035, 6.0, 18.0)
+	for k3 in 4:
+		var a3 := PI * 0.25 + k3 * PI * 0.5
+		spire(center + Vector2.from_angle(a3) * n * 0.17, a3, n * 0.08, 7.0, 22.0)
+	for j4 in 7:
+		for sd4 in [-1.0, 1.0]:
+			var py := c - n * 0.36 + j4 * n * 0.12
+			if absf(py - c) < n * 0.07:
+				continue
+			disc(Vector2(c + sd4 * n * 0.065, py), 3.0, ACC, 19.0, D_DOME)
+	# the rose window over the crossing, ringed in gold – the sun over the road
+	disc(center, n * 0.13, HULL, 22.0, D_FLAT)
+	disc(center, n * 0.115, STAIN, 24.0, D_FLAT)
+	for k4 in 16:
+		var a4 := k4 * TAU / 16.0
+		seg(center + Vector2.from_angle(a4) * n * 0.03, center + Vector2.from_angle(a4) * n * 0.115, 0.7, DARK, 25.0, P_FLAT, true)
+	ring(center, n * 0.055, n * 0.062, DARK, 24.5, false, 32)
+	ring(center, n * 0.115, n * 0.135, ACC, 24.0, false, 48)
+	for k5 in 24:
+		var a5 := k5 * TAU / 24.0
+		box(center + Vector2.from_angle(a5) * n * 0.15, a5, 5.0, 1.6, ACC, 23.0)       # the sun's rays
+	disc(center, n * 0.025, ACC, 27.0, D_DOME)
+	# gold neon over the docking arms, lights like candles along the nave
+	for k6 in 2:
+		var a6 := PI * 0.25 + k6 * PI
+		var pn := P(n * 0.33, a6) + Vector2.from_angle(a6).orthogonal() * 30.0
+		box(pn, a6, 13.0, 3.0, DARK, 13.0)
+		box(pn, a6, 12.0, 2.0, NEON, 14.0)
+		neons.append({"pos": pn - center, "ang": a6, "len": 24.0, "wid": 4.0})
+	for j5 in 10:
+		light(Vector2(c + (1.0 if j5 % 2 == 0 else -1.0) * n * 0.07, c - n * 0.38 + j5 * n * 0.08), Color(1.0, 0.75, 0.35), 0.4)
+	for k7 in 4:
+		turret(P(n * 0.22, k7 * PI * 0.5 + 0.35), 5.0)
+	light(center, Color(1.0, 0.85, 0.5), 0.8, true)
+
+
+## The Pilgrim Gate: a ceremonial gate ring of ivory and gold with the sun's rays all round and stained glass in its
+## rim. It points home; the live drawing adds the light it throws towards Earth and the pilgrims passing through.
+func _pilgrim_gate() -> void:
+	var center := Vector2(c, c)
+	for k in 12:
+		var a := k * TAU / 12.0
+		spire(center + Vector2.from_angle(a) * n * 0.36, a, n * 0.12, 7.0, 12.0)
+	ring(center, n * 0.27, n * 0.37, HULL, 10.0, false, 24)
+	ring(center, n * 0.3, n * 0.34, STAIN, 18.0, false, 24)
+	for k2 in 24:
+		var a2 := k2 * TAU / 24.0
+		seg(center + Vector2.from_angle(a2) * n * 0.29, center + Vector2.from_angle(a2) * n * 0.35, 0.8, ACC, 19.0, P_FLAT, true)
+	ring(center, n * 0.265, n * 0.285, ACC, 20.0, false, 48)
+	ring(center, n * 0.36, n * 0.375, ACC, 20.0, false, 48)
+	for k3 in 8:
+		light(center + Vector2.from_angle(k3 * TAU / 8.0 + 0.2) * n * 0.32, Color(1.0, 0.85, 0.45), 0.7)
+
+
+## The Forge of Return near Lauds: a foundry of crimson iron – furnace towers glowing, chimneys smoking, a farm of red
+## focus crystals – berths with Covenant ships being built and, to the left, the gantries to the Lux Aeterna.
+func _forge() -> void:
+	var tx := c - n * 0.2
+	for j in 3:
+		var y := c + (j - 1) * n * 0.2
+		seg(Vector2(2.0, y), Vector2(tx, y), 6.0, HULL, 9.0, P_GIRDER)
+		seg(Vector2(2.0, y - 10.0), Vector2(tx, y - 10.0), 1.5, TRUSS, 10.0)
+		for q in 4:
+			light(Vector2(10.0 + q * (tx - 20.0) / 3.0, y), Color(1.0, 0.6, 0.3), 0.7)
+		vent(Vector2(8.0 + j * 9.0, y + 5.0), "spark", 2.0)
+	# the foundry block to the right with its furnace towers and chimneys
+	box(Vector2(c + n * 0.2, c), 0.0, n * 0.26, n * 0.12, HULL, 11.0, P_ARMOR)
+	for k in 3:
+		var fp := Vector2(c + n * 0.06 + k * n * 0.14, c - n * 0.03)
+		disc(fp, n * 0.058, HULL, 16.0, D_HOTTOWER)
+		ring(fp, n * 0.058, n * 0.066, PANEL, 18.0, false, 16)
+		vent(fp, "glow", n * 0.03)
+		vent(fp + Vector2(0, n * 0.07), "smoke", 6.0)
+		box(fp + Vector2(0, n * 0.07), 0.0, 4.0, 4.0, DARK, 18.0)
+	box(Vector2(c + n * 0.2, c + n * 0.09), 0.0, n * 0.24, 2.0, ACC, 15.0)
+	# the crystal farm below: clusters of red focus crystals in gold frames
+	box(Vector2(c + n * 0.2, c + n * 0.28), 0.0, n * 0.25, n * 0.13, HULL, 8.0, P_ARMOR)
+	box(Vector2(c + n * 0.2, c + n * 0.28), 0.0, n * 0.23, n * 0.11, PANEL, 9.0, P_GIRDER)
+	# the great crystal in its gold cradle in the middle of the farm
+	var gc := Vector2(c + n * 0.2, c + n * 0.28)
+	poly(regular(gc, n * 0.06, 6, PI / 6.0), PANEL, 14.0, 3.0, 0)
+	poly(PackedVector2Array([gc + Vector2(-n * 0.05, 0), gc + Vector2(0, -n * 0.035), gc + Vector2(n * 0.05, 0), gc + Vector2(0, n * 0.035)]), CRYST, 30.0, 4.0, 0)
+	light(gc, Color(1.0, 0.3, 0.35), 0.4)
+	for k2 in 22:
+		var cp := Vector2(c + rng.randf_range(0.0, n * 0.42), c + n * 0.18 + rng.randf_range(0.0, n * 0.2))
+		if cp.distance_to(gc) < n * 0.075:
+			continue
+		for j2 in 4:
+			var a2 := -PI * 0.5 + rng.randf_range(-0.9, 0.9)
+			var l := rng.randf_range(9.0, 22.0)
+			poly(PackedVector2Array([cp - Vector2.from_angle(a2).orthogonal() * 3.5, cp + Vector2.from_angle(a2) * l, cp + Vector2.from_angle(a2).orthogonal() * 3.5]), CRYST, 12.0 + l, 2.0, 0)
+		if k2 % 3 == 0:
+			light(cp, Color(1.0, 0.25, 0.3), 0.5)
+	# a berth above with a Covenant warship being built
+	var base := Vector2(c + n * 0.2, c - n * 0.13)
+	seg(base + Vector2(-n * 0.24, 0), base + Vector2(-n * 0.24, -n * 0.3), 3.5, HULL, 12.0, P_GIRDER)
+	seg(base + Vector2(n * 0.24, 0), base + Vector2(n * 0.24, -n * 0.3), 3.5, HULL, 12.0, P_GIRDER)
+	_hull_frame(base + Vector2(0, -n * 0.17), -1.0, n * 0.13, n * 0.06)
+	for sp in 4:
+		vent(base + Vector2(rng.randf_range(-n * 0.05, n * 0.05), -n * rng.randf_range(0.08, 0.28)), "spark", 2.0)
+	# the tower over the gantries
+	box(Vector2(tx, c), PI * 0.5, n * 0.3, 20.0, HULL, 14.0, P_ARMOR)
+	box(Vector2(tx, c), PI * 0.5, n * 0.28, 3.0, ACC, 17.0)
+	disc(Vector2(tx, c), 24.0, HULL, 20.0, D_HUB)
+	spire(Vector2(tx, c - n * 0.3), -PI * 0.5, n * 0.08, 8.0, 18.0)
+	spire(Vector2(tx, c + n * 0.3), PI * 0.5, n * 0.08, 8.0, 18.0)
+	add_bay(0.0, n * 0.47, 12.0)
+	for k3 in 4:
+		turret(Vector2(tx + (1.0 if k3 % 2 == 0 else -1.0) * 26.0, c + (k3 - 1.5) * n * 0.16), 5.0)
+
+
+## The Lux Aeterna, the Forge of Return's capital ship – long and splendid, crimson and gold. A great red focus crystal
+## in a gold fork at the bow, huge weapon towers fore and aft along the spine, and at her heart a habitat ring the
+## spine runs through; spires and stained glass on her towers, engines aft. Part of her is still under scaffolding.
+func _lux_aeterna() -> void:
+	# the spine (bow to the left)
+	poly(PackedVector2Array([Vector2(_rx(0.08), _ry(-0.03)), Vector2(_rx(0.3), _ry(-0.06)), Vector2(_rx(0.82), _ry(-0.07)), Vector2(_rx(0.95), _ry(-0.05)),
+		Vector2(_rx(0.95), _ry(0.05)), Vector2(_rx(0.82), _ry(0.07)), Vector2(_rx(0.3), _ry(0.06)), Vector2(_rx(0.08), _ry(0.03))]), HULL, 12.0, 3.0, 0)
+	box(Vector2(_rx(0.52), c), 0.0, _rx(0.42), 2.0, ACC, 14.0)
+	for sd in [-1.0, 1.0]:
+		seg(Vector2(_rx(0.1), _ry(sd * 0.033)), Vector2(_rx(0.94), _ry(sd * 0.068)), 1.2, ACC, 13.0, P_FLAT, true)
+	# the habitat ring at her heart
+	var rc := Vector2(_rx(0.52), c)
+	ring(rc, _rx(0.13), _rx(0.19), PANEL, -10.0, false, 32)
+	ring(rc, _rx(0.14), _rx(0.18), HULL, 2.0, true, 32)
+	for k in 12:
+		var a := k * TAU / 12.0
+		seg(rc + Vector2.from_angle(a) * _rx(0.06), rc + Vector2.from_angle(a) * _rx(0.135), 2.0, PANEL, 10.0, P_GIRDER)
+		box(rc + Vector2.from_angle(a) * _rx(0.16), a, 4.0, 3.0, STAIN, 18.0, P_FLAT, true)
+	ring(rc, _rx(0.185), _rx(0.195), ACC, 19.0, false, 64)
+	disc(rc, _rx(0.06), HULL, 16.0, D_HUB)
+	# the bow: a gold fork holding the great focus crystal
+	for sd2 in [-1.0, 1.0]:
+		poly(PackedVector2Array([Vector2(_rx(0.03), _ry(sd2 * 0.045)), Vector2(_rx(0.14), _ry(sd2 * 0.05)), Vector2(_rx(0.16), _ry(sd2 * 0.025)), Vector2(_rx(0.06), _ry(sd2 * 0.02))]), PANEL, 16.0, 2.0, 0)
+	poly(PackedVector2Array([Vector2(_rx(0.025), c), Vector2(_rx(0.07), _ry(-0.028)), Vector2(_rx(0.13), c), Vector2(_rx(0.07), _ry(0.028))]), CRYST, 24.0, 3.0, 0)
+	# weapon towers: two fore of the ring, two aft – heavy turrets with long twin barrels
+	for tx in [0.24, 0.34, 0.7, 0.8]:
+		var tp := Vector2(_rx(tx), c)
+		poly(regular(tp, _rx(0.06), 8, PI / 8.0), HULL, 20.0, 3.0, 0)
+		ring(tp, _rx(0.052), _rx(0.06), PANEL, 23.0, false, 16)
+		disc(tp, _rx(0.038), PANEL, 28.0, D_TURRET)
+		var aim := -1.0 if tx < 0.5 else 1.0                       # the fore towers aim ahead, the aft ones astern
+		for sd3 in [-1.0, 1.0]:
+			box(tp + Vector2(aim * _rx(0.075), sd3 * 6.0), 0.0, _rx(0.055), 2.8, GUN, 32.0)
+			box(tp + Vector2(aim * _rx(0.128), sd3 * 6.0), 0.0, 3.0, 3.6, PANEL, 33.0)
+		turrets.append(tp - Vector2(c, c))
+	# side batteries and spires along her flanks
+	for k2 in 6:
+		var x := _rx(0.2 + k2 * 0.12)
+		if absf(x - rc.x) < _rx(0.2):
+			continue
+		for sd4 in [-1.0, 1.0]:
+			spire(Vector2(x, _ry(sd4 * 0.055)), PI * 0.5 * sd4, _rx(0.05), 5.0, 15.0)
+	# the bridge tower aft, with stained glass
+	box(Vector2(_rx(0.88), c), 0.0, _rx(0.05), _rx(0.035), HULL, 24.0, P_WINDOWS)
+	lancet(Vector2(_rx(0.88), c), PI, 18.0, 4.0, 30.0)
+	# engines
+	for k3 in 4:
+		var ep := Vector2(_rx(0.96), _ry((k3 - 1.5) * 0.026))
+		disc(ep, _rx(0.013), DARK, 15.0, D_DISH)
+		light(ep, Color(1.0, 0.55, 0.25), 0.5)
+	# still under construction: a flank section bare under scaffolding, welders at work
+	box(Vector2(_rx(0.75), _ry(0.06)), 0.0, _rx(0.08), _rx(0.025), TRUSS, 22.0, P_TRUSS, true)
+	for k4 in 7:
+		vent(Vector2(_rx(rng.randf_range(0.15, 0.92)), _ry(rng.randf_range(-0.06, 0.06))), "spark", 2.0)
+	for k5 in 8:
+		light(Vector2(_rx(0.12 + k5 * 0.11), _ry(0.075 * (1.0 if k5 % 2 == 0 else -1.0))), Color(1.0, 0.8, 0.4), 0.6)
+	light(Vector2(_rx(0.06), c), Color(1.0, 0.3, 0.35), 0.9, true)
+
 ## Package 26: a waystation – a small hub on struts with round landing pads (2 / 3 / 4 by tier) for S and M
 ## ships: hazard rim, a landing circle, a hatch in the middle the ships sink through, lights around it.
 const PAD_R := 19.0
@@ -1057,6 +1298,14 @@ func _render() -> Image:
 			if m == MARK:
 				img.set_pixel(x, y, Color(pal[MARK][1], 0.9))
 				continue
+			if m == STAIN:
+				# 39b: stained glass – panes of colour in a dark lead mesh
+				if posmod(x, 3) == 0 or posmod(y, 4) == 0:
+					img.set_pixel(x, y, Color(0.12, 0.08, 0.06))
+				else:
+					var sc := [Color(0.85, 0.12, 0.15), Color(1.0, 0.75, 0.25), Color(0.2, 0.35, 0.9), Color(0.55, 0.2, 0.75), Color(1.0, 0.5, 0.15)]
+					img.set_pixel(x, y, sc[int(_hash(x / 3, y / 4) * 5.0) % 5])
+				continue
 			var empty_n := _m(x - 1, y) == NONE or _m(x + 1, y) == NONE or _m(x, y - 1) == NONE or _m(x, y + 1) == NONE
 			if empty_n and m != GLASS and m != NEON:
 				img.set_pixel(x, y, outline)
@@ -1102,6 +1351,13 @@ func _palettes() -> Dictionary:
 	var hull := [Color(0.3, 0.33, 0.4), Color(0.52, 0.56, 0.64), Color(0.76, 0.8, 0.88)]
 	if ASSEMBLY_ARTS.has(type):
 		hull = [Color(0.4, 0.45, 0.56), Color(0.66, 0.72, 0.82), Color(0.88, 0.92, 0.98)]     # Assembly white and blue
+	var panel := [Color(0.33, 0.31, 0.3), Color(0.5, 0.48, 0.45), Color(0.68, 0.65, 0.6)]
+	if type in ["cathedral", "pilgrim_gate"]:
+		hull = [Color(0.44, 0.39, 0.33), Color(0.7, 0.64, 0.55), Color(0.9, 0.85, 0.75)]       # 39b: pale stone and ivory
+		panel = [Color(0.36, 0.06, 0.08), Color(0.56, 0.1, 0.12), Color(0.74, 0.2, 0.18)]      # crimson
+	elif type in ["forge", "lux_aeterna"]:
+		hull = [Color(0.34, 0.07, 0.08), Color(0.56, 0.13, 0.13), Color(0.76, 0.26, 0.22)]      # 39b: Covenant crimson
+		panel = [Color(0.4, 0.3, 0.12), Color(0.62, 0.48, 0.2), Color(0.82, 0.68, 0.32)]       # dull gold
 	if type == "pirate_haven":
 		hull = [Color(0.22, 0.22, 0.25), Color(0.38, 0.38, 0.42), Color(0.55, 0.55, 0.58)]
 	elif type == "military":
@@ -1109,8 +1365,9 @@ func _palettes() -> Dictionary:
 	return {
 		HULL: hull,
 		DARK: [Color(0.16, 0.17, 0.21), Color(0.26, 0.28, 0.34), Color(0.38, 0.41, 0.48)],
-		PANEL: [Color(0.33, 0.31, 0.3), Color(0.5, 0.48, 0.45), Color(0.68, 0.65, 0.6)],
+		PANEL: panel,
 		ACC: [acc.darkened(0.55), acc.darkened(0.2), acc.lerp(Color.WHITE, 0.3)],
+		CRYST: [Color(0.45, 0.02, 0.08), Color(0.85, 0.1, 0.18), Color(1.0, 0.55, 0.6)],      # 39b: focus crystals
 		GLASS: [Color(0.9, 0.8, 0.45), acc.lerp(Color(1.0, 0.92, 0.6), 0.6), Color(1.0, 0.97, 0.85)],
 		SOLAR: [Color(0.06, 0.1, 0.26), Color(0.12, 0.2, 0.46), Color(0.3, 0.45, 0.8)],
 		GREEN: [Color(0.1, 0.3, 0.14), Color(0.2, 0.55, 0.26), Color(0.55, 0.92, 0.5)],

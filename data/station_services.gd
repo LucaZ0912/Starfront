@@ -40,4 +40,7 @@ const SERVICES := [
 	# package 39a: only in The Vote (Landfall) – bills, votes, donations … and bribes
 	{"id": "senate", "title": "The Senate", "corp": "sen", "icon": "senate",
 		"panel": "res://scripts/ui/station/senate_panel.gd", "requires": "senate"},
+	# package 39b: only in the Cathedral of Return (Heimkehr) – edicts, tithes, indulgences, relics
+	{"id": "curia", "title": "The Curia", "corp": "cur", "icon": "curia",
+		"panel": "res://scripts/ui/station/curia_panel.gd", "requires": "curia"},
 ]

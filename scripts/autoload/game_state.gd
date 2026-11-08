@@ -106,6 +106,9 @@ var codex = CodexStateScript.new()
 ## Package 39a: the Senate of the Assembly (bills, votes, laws in force) – see scripts/core/senate.gd.
 const SenateScript = preload("res://scripts/core/senate.gd")
 var senate = SenateScript.new()
+## Package 39b: the Curia of the Covenant (edicts, tithes, indulgences, relics) – see scripts/core/curia.gd.
+const CuriaScript = preload("res://scripts/core/curia.gd")
+var curia = CuriaScript.new()
 ## Package 39: entry permits to the capitals (faction -> true). Given from Friendly on, taken away only at Arch-enemy.
 var permits := {}
 var _permit_t := 0.0
@@ -162,6 +165,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	news.reset()
 	codex.reset()
 	senate.reset()
+	curia.reset()
 	permits.clear()
 	if test_system:
 		notorious.reset()
@@ -463,7 +467,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "permits": permits.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
@@ -517,6 +521,10 @@ func from_dict(d: Dictionary) -> void:
 		senate.from_dict(d["senate"])
 	else:
 		senate.reset()
+	if d.has("curia"):
+		curia.from_dict(d["curia"])
+	else:
+		curia.reset()
 	permits = d.get("permits", {}).duplicate()
 	if d.has("news"):
 		news.from_dict(d["news"])
@@ -1472,6 +1480,8 @@ func faction_job_error(m: Dictionary) -> String:
 		return "A field trial needs drones – fly a carrier with a drone hangar."
 	if m.get("ballot", false) and not has_permit("assembly"):
 		return "The ballots go to Landfall – you need the Assembly's entry permit."
+	if m.get("to_capital", false) and not has_permit(String(m["faction"])):
+		return "This goes to the capital – you need the %s's entry permit." % FactionData.short_of(String(m["faction"]))
 	return ""
 
 
@@ -1566,6 +1576,8 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 			f.remove_cargo("sealed_cargo", float(m["amount"]))
 		"mining":
 			f.remove_cargo(m["item"], float(m["amount"]))
+		"relic":
+			f.remove_cargo("earth_relic", 1.0)               # package 39b
 	missions.erase(m)
 	var pay := int(round(Missions.payout(m) * (1.0 + skill_bonus("negotiation"))))      # package 29
 	# package 30: achievements and perks
@@ -1658,6 +1670,25 @@ func _update_faction_jobs(delta: float) -> void:
 						fail_mission(m, "someone else got the target")
 
 
+## Package 39b: an analysed anomaly may hold a relic of Earth (always, for a relic contract in its system).
+func _find_relic(system_id: int) -> void:
+	var f := active()
+	if f == null:
+		return
+	var jobs: Array = missions.filter(func(m): return m.get("relic", false) and int(m["target_system"]) == system_id and int(m["progress"]) < 1)
+	if jobs.is_empty() and randf() >= curia.RELIC_FIND:
+		return
+	if f.cargo_free() < GameData.item_volume("earth_relic"):
+		log_msg("The anomaly held a relic of Earth – but your hold is full.", COL_WARN)
+		return
+	f.add_cargo("earth_relic", 1.0)
+	for m in jobs:
+		m["progress"] = 1
+	if not jobs.is_empty():
+		missions_changed.emit()
+	log_msg("A relic of Earth recovered from the anomaly! The Church of Return pays for these in blessings (Cathedral of Return, Heimkehr).", COL_GOOD)
+
+
 ## Package 39a: a pirate destroyed by one of the pilot's drones – field trials of Concord Fleetworks.
 func notify_drone_kill(system_id: int) -> void:
 	if Universe.controller(system_id) != "assembly":
@@ -1680,6 +1711,7 @@ func notify(event: String, system_id: int) -> void:
 			stats["analysed"] = int(stats["analysed"]) + 1
 			crew_learn("analysed", 1.0)
 			skill_xp("science", 20.0)
+			_find_relic(system_id)                   # package 39b
 	var changed := false
 	for m in missions:
 		if (event == "kill" and m["type"] == "bounty") or (event == "analyse" and m["type"] == "survey"):
@@ -1929,6 +1961,7 @@ func _process(delta: float) -> void:
 	notorious.update(current_system)
 	news.update()
 	senate.update()                              # package 39a
+	curia.update()                               # package 39b
 	_permit_t -= delta
 	if _permit_t <= 0.0:
 		_permit_t = 1.0

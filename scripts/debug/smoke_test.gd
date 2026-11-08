@@ -584,6 +584,7 @@ func _process(delta: float) -> void:
 				_test_stars(view)
 				_test_planets(view)
 				_test_landfall(view)
+				_test_heimkehr(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -794,7 +795,7 @@ func _test_station(sp: StationUI) -> void:
 	check(el == "" and int(GameState.pilot["look"]["hair"]) == int(nl["hair"]) and GameState.credits == cr_l - Commands.look_price() and GameState.pilot["attrs"] == attrs0,
 		"image studio: new looks for %s – the attributes stay as they are" % GameData.fmt_credits(Commands.look_price()))
 	sp.show_concourse(false)
-	check(sp.concourse_tiles == GameData.services.size() - int(not sp.station.get("senate", false)) and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
+	check(sp.concourse_tiles == GameData.services.size() - int(not sp.station.get("senate", false)) - int(not sp.station.get("curia", false)) and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
 	# Market via commands
 	var c0 := GameState.credits
 	var item := ""
@@ -6520,6 +6521,102 @@ func _test_landfall(view: SystemView) -> void:
 	view.spawn_fx(beam)
 	check(is_instance_valid(beam) and beam.LIFE > beam.REACH, "39a: the ballot drone's blue beam to a gate")
 	beam.queue_free()
+
+
+## Package 39b: Heimkehr – the Covenant's capital, the Curia (edicts, tithes, indulgences, relics), its contracts.
+func _test_heimkehr(view: SystemView) -> void:
+	var U = Universe
+	var hk: int = U.special_system("heimkehr")
+	var sys: Dictionary = U.systems[hk] if hk >= 0 else {}
+	check(hk >= 0 and String(sys["name"]) == "Heimkehr" and bool(sys["capital"]) and String(sys["faction"]) == "covenant" and String(U.star_type(hk)["id"]) == "RSG",
+		"39b: the Covenant's capital is Heimkehr under a red supergiant")
+	if hk < 0:
+		return
+	var L: Dictionary = U.get_layout(hk)
+	var names: Array = L["planets"].filter(func(p): return not p.get("dwarf", false)).map(func(p): return String(p["name"]))
+	var comp: Dictionary = L["planets"][1]
+	var cm: Array = U.moons_of(L, 1)
+	var star_r := float(L["star"]["radius"]) * float(U.STAR_TYPES[U.star_index("RSG")]["land"])
+	check(names == ["Lauds", "Compline", "Matins"] and String(comp["type"]) == "gas" and not comp.get("ring", false) and comp.has("hue")
+		and cm.size() == 2 and String(cm[0]["name"]) == "Vesper" and String(cm[0]["type"]) == "desert" and float(cm[0].get("city", 0.0)) > 0.5
+		and float(L["planets"][0]["orbit"]) > star_r * 1.5,
+		"39b: Lauds, the red gas giant Compline (no rings) with the desert moon Vesper and Nones, Matins – all clear of the giant star")
+	var cath := {}
+	var forge := {}
+	for st in L["stations"]:
+		if String(st.get("art", "")) == "cathedral":
+			cath = st
+		elif String(st.get("art", "")) == "forge":
+			forge = st
+	var cath_where: Array = []
+	for sid in U.systems.size():
+		for st2 in U.get_layout(sid)["stations"]:
+			if "for_cathedral" in st2.get("shipyard", []):
+				cath_where.append(String(st2["name"]))
+	check(not cath.is_empty() and cath.get("curia", false) and String(cath["anchor"]) == String(cm[0]["id"]) and not forge.is_empty() and String(forge["anchor"]) == "p0"
+		and cath_where == ["Forge of Return"], "39b: the Cathedral of Return over Vesper (The Curia), the Forge of Return at Lauds – the only yard with the Cathedral")
+	var gate: Array = L["structures"].filter(func(x): return String(x["art"]) == "pilgrim_gate")
+	var lux: Array = L["structures"].filter(func(x): return String(x["art"]) == "lux_aeterna")
+	var arts_ok := true
+	for a in ["cathedral", "pilgrim_gate", "forge", "lux_aeterna"]:
+		var built: Dictionary = StationArt.build({"art": a, "type": a, "tier": 1, "seed": 5})
+		arts_ok = arts_ok and built["texture"] != null and float(built["size"]) == float(StationArt.LANDMARK_SIZE[a]) * StationArt.PX
+	check(gate.size() == 1 and lux.size() == 1 and arts_ok and not StationArt.build(cath)["bays"].is_empty(), "39b: the Pilgrim Gate and the Lux Aeterna; the landmarks have their own art")
+	# the Curia
+	var cu = GameState.curia
+	var keep_cr: int = GameState.credits
+	var keep_rep: float = GameState.rep.values.get("covenant", 0.0)
+	GameState.credits = 1000000
+	GameState.rep.values["covenant"] = 0.0
+	cu.reset()
+	cu.proclaim("crusade")
+	var bounty_ok: bool = is_equal_approx(GameState.news.bounty_mult(hk), 1.35) and is_equal_approx(cu.mod("bounty"), 1.35)
+	for i in 5:
+		cu.tithe()
+	var tithe_ok: bool = GameState.rep.get_rep("covenant") >= 6.0 - 0.01 and cu.can_petition()
+	var want: String = cu.edict["offer"][0]
+	cu.petition(want)
+	cu.proclaim()
+	var pet_ok: bool = cu.active_id() == want
+	cu.proclaim("forge")
+	var forge_ok: bool = is_equal_approx(cu.hull_mult("for_cathedral", "covenant"), 0.85) and is_equal_approx(cu.hull_mult("for_cathedral", "assembly"), 1.0)
+	GameState.law.records["covenant"] = {"points": 4, "last": GameState.play_time}
+	var ind_cost: int = cu.indulgence_cost()
+	cu.indulgence()
+	var ind_ok: bool = ind_cost > 0 and GameState.law.points("covenant") == 0
+	var f := GameState.active()
+	var keep_cargo: Dictionary = f.cargo.duplicate()
+	var base_buy: float = GameState.rep.price_factor("covenant", "buy")
+	f.add_cargo("earth_relic", 2.0)
+	var rep0: float = GameState.rep.get_rep("covenant")
+	cu.give_relics(f)
+	var relic_ok: bool = cu.blessed() and GameState.rep.get_rep("covenant") > rep0 + 5.0 and is_equal_approx(GameState.rep.price_factor("covenant", "buy"), base_buy * cu.BLESSING_BUY) and float(f.cargo.get("earth_relic", 0.0)) < 0.01
+	f.cargo = keep_cargo
+	cu.reset()
+	GameState.credits = keep_cr
+	GameState.rep.values["covenant"] = keep_rep
+	check(bounty_ok and tithe_ok and pet_ok and forge_ok and ind_ok and relic_ok,
+		"39b: the Curia – edicts change bounties and Forge ships, tithes earn standing and a petition, an indulgence wipes the record, relics bring a blessing (cheaper prices)")
+	# the contracts
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 391
+	var other := {}
+	var other_sid := -1
+	for sid3 in U.territory_of("covenant"):
+		if sid3 != hk and not U.get_layout(sid3)["stations"].is_empty() and not U.find_path(sid3, hk, 3).is_empty():
+			other = U.get_layout(sid3)["stations"][0]
+			other_sid = sid3
+			break
+	var kinds := {}
+	for i2 in 80:
+		if not other.is_empty():
+			var m: Dictionary = Missions.generate_faction(other_sid, other, rng)
+			if m.get("to_capital", false):
+				kinds[String(m["type"])] = true
+		var m2: Dictionary = Missions.generate_faction(hk, cath, rng)
+		if m2.get("relic", false):
+			kinds["relic"] = true
+	check(kinds.has("escort") and kinds.has("courier") and kinds.has("relic"), "39b: pilgrim convoys and crystal transports to Heimkehr, relic recoveries from the Cathedral (%s)" % ", ".join(kinds.keys()))
 
 
 func _with_progress(m: Dictionary) -> Dictionary:
