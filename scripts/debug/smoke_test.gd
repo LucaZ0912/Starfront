@@ -6878,6 +6878,21 @@ func _test_mining41(view: SystemView) -> void:
 	check(band_ok and not kj.is_empty() and float(kf.stats()["gas_cargo_max"]) >= 1500.0 and has_scoop and float(kj["heat_resist"]) > 0.0 and tex.get_width() > 100,
 		"41: harvest bands round the giants (deeper = more), each kind its own gases; the Kujira – 1,600 m³ of gas tanks, a built-in scoop, heat resistant")
 	var ship: Ship = view.player
+	# switching the collector on needs no target (it crashed in 0.6.41.1 on the empty target)
+	var gslot := ""
+	for gk in ship.fit.modules:
+		if String(gk).begins_with("tool"):
+			gslot = gk
+			break
+	if gslot != "":
+		var gkeep: String = ship.fit.modules[gslot]
+		ship.fit.modules[gslot] = "t_gas:1:C"
+		ship.fit.mark_dirty()
+		var gerr := ship.set_module_active(gslot, true)
+		ship.set_module_active(gslot, false)
+		ship.fit.modules[gslot] = gkeep
+		ship.fit.mark_dirty()
+		check(gerr == "" and kj.has("hatches"), "41: the gas collector switches on without a target; the Kujira takes its gas in through a drone hatch")
 	var a0: float = ship.fit.armor + ship.fit.structure
 	ship.heat_damage(5.0)
 	check(ship.fit.armor + ship.fit.structure < a0 - 4.9, "41: heat and pressure go past the shields into armour and hull")

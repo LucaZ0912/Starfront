@@ -114,7 +114,8 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - **Storage:** gases need twice the room in cargo racks, their own in Gas Tanks; radioactive goods belong in Shielded
   Cargo Racks – otherwise the red RADIATION banner and alarm (`HUD.radiation_banner`).
 - **Components:** made from materials at any station with fabricators (Manufacturing → Components, `Industry.COMPONENTS`).
-- **KHI Kujira:** L gas freighter, 1,600 m³ gas tanks, built-in scoop, 60 % heat resistance.
+- **KHI Kujira:** L gas freighter, 1,600 m³ gas tanks, built-in scoop, 60 % heat resistance, raised bridge on the nose.
+- The collector opens the ship's drone hatch and the gas streams in through it; ships without a hatch take it in on the underside.
 
 ## Landfall – the Assembly's capital (phase 0.5 package 39a)
 - The capital of the Cluster Assembly is a hand-made system: **Landfall** (a yellow G star) with Pnyx, **Agora** (the

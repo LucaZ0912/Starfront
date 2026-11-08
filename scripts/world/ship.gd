@@ -1832,6 +1832,8 @@ func _run_gas(delta: float, slot: String, d: Dictionary) -> void:
 			_switch_off(slot, d, "cargo full (gas tanks and racks)")
 			return
 	_gas_t = 0.3 if amount > 0.0 else _gas_t
+	if amount > 0.0 and _gas_hatch() != "":
+		open_hatch(_gas_hatch(), 0.4)            # the drone hatch opens and the gas is drawn in through it
 	_gas_from = (band["center"] as Vector2) - position
 	if faction == "player":
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
@@ -2372,8 +2374,8 @@ func module_target_error(e: Dictionary, node) -> String:
 		"cargo_scan":
 			if node == null or not (node is Ship) or node.faction == "player":
 				return "%s needs a locked ship." % d["name"]
-		"survey", "interdict":
-			return ""   # aimed at the selection, checked when switched on
+		"survey", "interdict", "gas":
+			return ""   # aimed at the selection, checked when switched on (gas: the band, no target)
 		"mining", "prospect":
 			if node == null or node is Ship or not node.kind in ["asteroid", "colossus"]:
 				return "%s needs a locked asteroid." % d["name"]
@@ -2535,6 +2537,8 @@ func _set_module_active(slot: String, on: bool) -> String:
 		var tgt = node
 		if e["kind"] == "tool" and d["tool"] == "repair" and (tgt == null or not (tgt is Ship) or hostile(self, tgt)):
 			tgt = self
+		if e["kind"] == "tool" and d["tool"] == "gas":
+			tgt = self                             # package 41: no target – the band of a giant
 		var msg := "%s activated → %s" % [d["name"], "your own ship" if tgt == self else node_name(tgt)]
 		if e["kind"] == "tool" and tgt != self and not (tgt is Ship) and tgt.kind == "asteroid" and mining_mult(d, String(tgt.data["ore"])) < 1.0:
 			msg += "  (ice: mining lasers only work at %d%% – an ice harvester is far better)" % int(ICE_LASER_MULT * 100.0)
@@ -3880,27 +3884,43 @@ func _draw_warp_friction(k: float, z: float) -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-func _draw_gas_scoop() -> void:
+## Package 41: the gas stream – drifting in from the giant's side; into the open drone hatch (ships with one), or
+## under the hull (the gas is taken in on the underside: drawn before the hull, which covers its end).
+func _gas_hatch() -> String:
+	var hs := drone_hatches()
+	return String(hs[0]) if not hs.is_empty() else ""
+
+
+func _draw_gas_stream(into: Vector2, spread: float) -> void:
 	var px := PixelArt.SCALE
-	var bow := Vector2.from_angle(heading) * radius * 0.9
-	var side := Vector2.from_angle(heading).orthogonal()
-	var fwd := Vector2.from_angle(heading)
 	var a := clampf(_gas_t / 0.3, 0.0, 1.0)
-	# the funnel
-	var mouth := bow + fwd * px * 10.0
-	var funnel := PackedVector2Array([bow - side * px * 2.0, mouth - side * px * 7.0, mouth + side * px * 7.0, bow + side * px * 2.0])
-	draw_colored_polygon(funnel, Color(0.85, 0.7, 0.2, 0.85 * a))
-	draw_line(mouth - side * px * 7.0, mouth + side * px * 7.0, Color(0.2, 0.2, 0.22, a), px * 1.5)
-	# gas swirling into it from the giant's side
-	var from_dir := _gas_from.normalized() if _gas_from.length() > 1.0 else fwd
-	for k in 14:
-		var f := fposmod(Time.get_ticks_msec() / 1000.0 * 1.4 + k / 14.0, 1.0)
-		var start := mouth + from_dir * radius * 3.0 + from_dir.orthogonal() * sin(k * 2.3) * radius * 1.2
-		var p := start.lerp(mouth, f) + side * sin(f * 9.0 + k) * px * 4.0 * (1.0 - f)
-		draw_circle(p, px * (2.5 - 1.5 * f), Color(0.75, 0.88, 0.95, 0.55 * a * (1.0 - f * 0.5)))
-	# heat: a glowing rim round the hull
-	if _gas_heat > 0.0:
-		draw_circle(Vector2.ZERO, radius * 1.05, Color(1.0, 0.45, 0.15, 0.18 * _gas_heat * (0.8 + 0.2 * sin(Time.get_ticks_msec() / 90.0))))
+	var from_dir := (velocity.normalized() if velocity.length() > 5.0 else Vector2.from_angle(heading)).rotated(-heading)   # scooped up ahead
+	var side := from_dir.orthogonal()
+	var now := Time.get_ticks_msec() / 1000.0
+	var reach := px * 26.0 * spread           # the stream: a short swirl of haze, not a cloud round the whole ship
+	for k in 24:
+		var f := fposmod(now * 1.1 + k / 24.0, 1.0)
+		var start := into + from_dir * reach + side * sin(k * 2.3) * reach * 0.45
+		var p := start.lerp(into, f * f * (3.0 - 2.0 * f)) + side * sin(f * 7.0 + k) * px * 2.0 * (1.0 - f)
+		var sz := px * lerpf(1.6, 0.5, f) * spread
+		draw_circle(p, sz, Color(0.78, 0.9, 0.96, 0.4 * a * minf(f * 4.0, 1.0) * (1.0 - f * 0.4)))
+
+
+func _draw_gas_under() -> void:
+	if _gas_hatch() != "":
+		return
+	draw_set_transform(Vector2.ZERO, heading, Vector2.ONE)
+	_draw_gas_stream(Vector2.ZERO, 1.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_gas_top() -> void:
+	var n := _gas_hatch()
+	if n != "":
+		var r := hatch_local(n)
+		_draw_gas_stream(r.get_center(), clampf(r.size.y / (PixelArt.SCALE * 6.0), 0.8, 1.2))
+	if _gas_heat > 0.0:                     # heat: a glowing rim round the hull
+		draw_circle(Vector2.ZERO, radius * 1.05, Color(1.0, 0.45, 0.15, 0.16 * _gas_heat * (0.8 + 0.2 * sin(Time.get_ticks_msec() / 90.0))))
 
 
 func _draw() -> void:
@@ -3925,9 +3945,9 @@ func _draw() -> void:
 		draw_line(Vector2.ZERO, p, Color(bc, 0.35), 5.0)
 		draw_line(Vector2.ZERO, p, bc, 1.5)
 
-	# package 41: the gas scoop out at the bow, a stream of gas swirling in, the hull glowing with heat
+	# package 41: gas taken in on the underside (ships without a drone hatch) – the hull covers the end of the stream
 	if _gas_t > 0.0:
-		_draw_gas_scoop()
+		_draw_gas_under()
 	# Target lock lines for the player ship (active lock brighter)
 	if selected and manual:
 		for l in locks:
@@ -3984,6 +4004,8 @@ func _draw() -> void:
 	if not arms.is_empty():
 		_draw_arms(arms, size, mod)
 	_draw_hatches()                      # after the arms/wings: the Concordia's doors sit on its wings
+	if _gas_t > 0.0:
+		_draw_gas_top()                  # package 41: gas streaming into the open drone hatch
 	if fit.hull().get("stripe_fx", false):
 		_draw_stripes(size)
 	if fit.hull().get("spike_fx", false):

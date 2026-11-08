@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.41.2 – 2026-11-08
+
+- Fixed: switching on the gas collector (the Kujira's scoop above all) crashed the game – it has no target.
+- No more funnel: ships with a drone hatch open it and the gas streams in through it; ships without one take the gas
+  in on their underside (the stream vanishes under the hull). The gas comes in from ahead, where the ship is flying.
+- Kujira: the funnel at the bow is gone – a slightly raised bridge with cockpit glass sits on the nose now, and a
+  drone hatch on the spine between the last tank and the bridge (two drones, crew posts).
+
 ## alpha 0.6.41.1 – 2026-11-08
 
 **Package 41: the mining expansion.** A new game is needed.

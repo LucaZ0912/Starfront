@@ -180,9 +180,10 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 2, "optional": 3, "dweapon": 1, "dtool": 1, "dbonus": 1},
 		"slot_sizes": {"weapon": [2, 2], "tool": [3, 3], "optional": [6, 5, 4], "hull": 9, "engine": 8, "reactor": 8, "distributor": 7, "tank": 8, "hyperdrive": 5, "sensors": 5, "hangar": 4, "dweapon": [1], "dtool": [1], "dbonus": [2]},
 		"drones": 2, "shape": "kujira", "length": 116,
+		"hatches": {"drones": [98, 12, 6, 7]}, "hatch_overlay": true,
 		"gas_cargo": 1600, "heat_resist": 0.6, "turn_mult": 0.65, "align_mult": 1.6,
 		"builtin": ["gas"],
-		"desc": "\"Whale\" – KHI's gas freighter: three great round tanks (1,600 m³ of gas), a gas scoop built into the bow and a hull that bears the heat deep in a giant's harvest band.",
+		"desc": "\"Whale\" – KHI's gas freighter: three great round tanks (1,600 m³ of gas), a gas scoop under the drone hatch, the bridge raised on the nose and a hull that bears the heat deep in a giant's harvest band.",
 	},
 	# ---------------- Axiom Astronautics (package 25g, Meridian Directorate) ----------------
 	"axa_parallax": {
