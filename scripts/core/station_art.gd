@@ -1352,7 +1352,10 @@ func _palettes() -> Dictionary:
 	if ASSEMBLY_ARTS.has(type):
 		hull = [Color(0.4, 0.45, 0.56), Color(0.66, 0.72, 0.82), Color(0.88, 0.92, 0.98)]     # Assembly white and blue
 	var panel := [Color(0.33, 0.31, 0.3), Color(0.5, 0.48, 0.45), Color(0.68, 0.65, 0.6)]
-	if type in ["cathedral", "pilgrim_gate"]:
+	if type == "cathedral":
+		hull = [Color(0.34, 0.05, 0.07), Color(0.58, 0.1, 0.12), Color(0.8, 0.22, 0.19)]       # 0.6.39.5: crimson …
+		panel = [Color(0.55, 0.38, 0.1), Color(0.84, 0.64, 0.22), Color(1.0, 0.86, 0.45)]      # … and gold
+	elif type == "pilgrim_gate":
 		hull = [Color(0.44, 0.39, 0.33), Color(0.7, 0.64, 0.55), Color(0.9, 0.85, 0.75)]       # 39b: pale stone and ivory
 		panel = [Color(0.36, 0.06, 0.08), Color(0.56, 0.1, 0.12), Color(0.74, 0.2, 0.18)]      # crimson
 	elif type in ["forge", "lux_aeterna"]:

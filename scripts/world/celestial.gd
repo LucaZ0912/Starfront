@@ -643,12 +643,10 @@ func _draw_landmark_live() -> void:
 				k += 1
 		"pilgrim_gate":
 			# 39b: the light it throws home (away from the star) and the pilgrims passing through, one by one
+			# (0.6.39.5: the light itself – rays from the spires gathering in a focus – is the SystemView's PilgrimBeam)
 			var home := position.normalized() if position.length() > 1.0 else Vector2.RIGHT
 			var gr := float(art["size"]) * 0.32
-			var tip := home * 90000.0
-			for w in [[gr * 1.6, 0.05], [gr * 0.9, 0.09], [gr * 0.35, 0.22]]:
-				draw_line(home * gr * 0.2, tip, Color(1.0, 0.82, 0.45, float(w[1]) * (0.85 + 0.15 * sin(_t * 1.3))), float(w[0]))
-			draw_circle(Vector2.ZERO, gr * 0.9, Color(1.0, 0.85, 0.5, 0.12 + 0.05 * sin(_t * 2.0)))
+			draw_circle(Vector2.ZERO, gr * 0.8, Color(1.0, 0.85, 0.5, 0.06 + 0.03 * sin(_t * 2.0)))
 			for j in 9:
 				var f := fposmod(_t / 70.0 + j / 9.0, 1.0)              # from far away up to the gate
 				var pos := -home * (4200.0 * (1.0 - f)) + home.orthogonal() * 120.0 * sin(j * 1.7)
@@ -667,6 +665,22 @@ func _draw_landmark_live() -> void:
 			var pulse := 0.5 + 0.5 * sin(_t * 1.6)
 			draw_circle(cp, size3 * 0.05, Color(1.0, 0.2, 0.3, 0.12 + 0.12 * pulse))
 			draw_circle(cp, size3 * 0.025, Color(1.0, 0.45, 0.5, 0.18 + 0.2 * pulse))
+			# 0.6.39.5: work drones at her hull – hopping from one welding spot to the next, flashing as they weld
+			var spots: Array = art["vents"].filter(func(v): return String(v["kind"]) == "spark")
+			if not spots.is_empty():
+				for j in 14:
+					var cyc := _t / 6.0 + j * 0.53
+					var leg := int(floorf(cyc))
+					var f := fposmod(cyc, 1.0)
+					var p0: Vector2 = spots[(leg * 3 + j) % spots.size()]["pos"]
+					var p1: Vector2 = spots[((leg + 1) * 3 + j) % spots.size()]["pos"]
+					var off := Vector2(cos(j * 2.1), sin(j * 1.7)) * 70.0
+					var mv := smoothstep(0.0, 0.35, f)                  # fly over, then hover and weld
+					var pos := (p0 + off).lerp(p1 + off, mv) + Vector2(0.0, -sin(mv * PI) * 120.0)
+					draw_rect(Rect2(pos - Vector2(px, px), Vector2(px * 2.0, px * 2.0)), Color(1.0, 0.8, 0.4, 0.95))
+					draw_circle(pos, px * 2.5, Color(1.0, 0.6, 0.25, 0.25))
+					if mv >= 1.0 and posmod(int(_t * 9.0) + j, 3) == 0:
+						draw_circle(pos + Vector2(0.0, px * 3.0), px * 2.2, Color(1.0, 0.95, 0.75, 0.9))
 		"res_publica":
 			# 0.6.39.2: drones launching from the hatches on her hull, flying a short loop and landing again
 			var hatches: Array = art["vents"].filter(func(v): return String(v["kind"]) == "hatch")

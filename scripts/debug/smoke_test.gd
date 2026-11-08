@@ -6537,7 +6537,7 @@ func _test_heimkehr(view: SystemView) -> void:
 	var comp: Dictionary = L["planets"][1]
 	var cm: Array = U.moons_of(L, 1)
 	var star_r := float(L["star"]["radius"]) * float(U.STAR_TYPES[U.star_index("RSG")]["land"])
-	check(names == ["Lauds", "Compline", "Matins"] and String(comp["type"]) == "gas" and not comp.get("ring", false) and comp.has("hue")
+	check(names == ["Lauds", "Compline", "Matins"] and String(comp["type"]) == "red_gas" and not comp.get("ring", false)
 		and cm.size() == 2 and String(cm[0]["name"]) == "Vesper" and String(cm[0]["type"]) == "desert" and float(cm[0].get("city", 0.0)) > 0.5
 		and float(L["planets"][0]["orbit"]) > star_r * 1.5,
 		"39b: Lauds, the red gas giant Compline (no rings) with the desert moon Vesper and Nones, Matins – all clear of the giant star")

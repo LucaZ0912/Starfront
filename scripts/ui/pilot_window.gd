@@ -815,7 +815,7 @@ func _collection_bodies(right: VBoxContainer, types: Dictionary, head: String, h
 	var i := 0
 	for tid in types:
 		var t: Dictionary = types[tid]
-		var ring: bool = String(tid) in ["gas", "ice_giant"]
+		var ring: bool = String(tid) in ["gas", "ice_giant", "red_gas"]
 		var spr: Sprite2D = Celestial.make_planet_sprite({"type": tid, "seed": 7.0 + i * 5.0, "ring": ring, "city": 0.8 if String(tid) in Universe.CITY_WORLDS else 0.0}, 100.0, Vector2(-0.8, -0.35))
 		var sm := spr.material as ShaderMaterial
 		sm.set_shader_parameter("pixels", 120.0 if not ring else 200.0)

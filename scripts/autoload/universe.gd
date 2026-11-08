@@ -19,7 +19,7 @@ const SYSTEM_NAMES := [
 	"Leuchtfeuer", "Ödland", "Himmelstor", "Nachtfalke", "Hohenstein",
 ]
 ## Galaxy generator version (stored in saves; older saves are moved to the current cluster).
-const GALAXY_VERSION := 7          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets; 39: special systems
+const GALAXY_VERSION := 8          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets; 39: special systems
 const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
 const POWER_SYSTEMS := 12
@@ -34,7 +34,7 @@ const FIELD_BANDS := {"metallic": Vector2(1140000, 2700000), "stony": Vector2(22
 ## Hot stars push the frost line outward, cool ones pull it in.
 ## Rock class orbiting each planet type (gas giants collect ice, lava worlds metal).
 const PLANET_ROCK_CLASS := {"terran": "stony", "desert": "stony", "ice": "icy", "lava": "metallic", "gas": "icy", "toxic": "icy", "barren": "metallic",
-	"ice_giant": "icy", "dwarf": "icy", "ocean": "stony", "jungle": "stony"}
+	"ice_giant": "icy", "dwarf": "icy", "ocean": "stony", "jungle": "stony", "red_gas": "icy"}
 ## No-fire zone radius around stations by tier (km). Firing inside makes the station's defence engage.
 const NO_FIRE_ZONE := [15000.0, 22000.0, 30000.0]
 const HAVEN_NAMES := ["Rustmaw", "Blackhook", "Carrion Nest", "Gallows Reach", "Scrapjaw Den", "Red Lantern", "Vulture's Rest"]
@@ -229,7 +229,7 @@ const SPECIAL_BODIES := {
 	# 39b: the canonical hours – Vesper, the desert world, is a moon of the red gas giant Compline
 	"heimkehr": [
 		{"name": "Lauds", "type": "lava", "orbit": 700000.0, "radius": 8000.0, "seed": 13.0},
-		{"name": "Compline", "type": "gas", "orbit": 1150000.0, "radius": 30000.0, "seed": 71.0, "hue": 0.01,
+		{"name": "Compline", "type": "red_gas", "orbit": 1150000.0, "radius": 30000.0, "seed": 71.0,
 			"moons": [["Vesper", "desert", 8500.0, {"city": 0.85, "city_style": 1.0}], ["Nones", "moon_rock", 3800.0]]},
 		{"name": "Matins", "type": "ice", "orbit": 1620000.0, "radius": 7000.0, "seed": 34.0},
 	],
@@ -811,7 +811,7 @@ func territory_of(f: String) -> Array:
 
 ## Inhabitants per planet type (billions): earthlike worlds carry most of the population.
 const PLANET_POP := {"terran": 3.0, "desert": 1.0, "ice": 0.8, "toxic": 0.3, "lava": 0.25, "gas": 0.2, "barren": 0.1,
-	"ocean": 3.0, "jungle": 3.0, "ice_giant": 0.1, "dwarf": 0.0}          # package 38
+	"ocean": 3.0, "jungle": 3.0, "ice_giant": 0.1, "dwarf": 0.0, "red_gas": 0.2}          # package 38
 ## Upper limit of NPC ships in one system (player excluded).
 const NPC_CAP := 90                  # package 35: busier systems
 
@@ -1215,6 +1215,10 @@ const PLANET_TYPES := {
 	"gas": {"name": "Gas Giant", "a": Color(0.68, 0.48, 0.32), "b": Color(0.86, 0.7, 0.5), "c": Color(0.96, 0.9, 0.76), "atmo": Color(1.0, 0.85, 0.6, 0.4), "gas": 1.0,
 		"storms": 1.0, "big": 2.6,
 		"r_earth": "11", "m_earth": "318", "temp": "−110 °C", "text": "A giant of hydrogen and helium without a surface: bands of cloud racing round it, storms bigger than whole worlds."},
+	# 0.6.39.5: the red gas giant (first seen as Compline in Heimkehr) – a planet type of its own
+	"red_gas": {"name": "Red Gas Giant", "a": Color(0.58, 0.06, 0.02), "b": Color(0.73, 0.16, 0.13), "c": Color(0.82, 0.42, 0.38), "atmo": Color(1.0, 0.4, 0.3, 0.4), "gas": 1.0,
+		"storms": 1.0, "big": 2.8,
+		"r_earth": "13", "m_earth": "420", "temp": "−40 °C", "text": "A giant the colour of embers: sulphur and phosphorus haze stain its bands deep red. Pilgrims say it burns for the road home."},
 	"toxic": {"name": "Toxic Gas Giant", "a": Color(0.35, 0.5, 0.18), "b": Color(0.58, 0.74, 0.3), "c": Color(0.82, 0.88, 0.45), "atmo": Color(0.7, 1.0, 0.4, 0.55), "gas": 1.0,
 		"storms": 0.6, "big": 2.6,
 		"r_earth": "9", "m_earth": "95", "temp": "−130 °C", "text": "A gas giant with poisonous clouds of sulphur and ammonia. Its green-yellow glow can be seen from far away."},
@@ -1249,7 +1253,7 @@ const MOON_TYPES := {
 const MOON_LETTERS := ["a", "b", "c", "d"]
 ## How many moons a planet type gets: [chance of 0, of 1, of 2, of 3].
 const MOON_COUNT := {
-	"gas": [0.0, 0.0, 0.55, 1.0], "toxic": [0.0, 0.0, 0.6, 1.0], "ice_giant": [0.0, 0.0, 0.6, 1.0],
+	"gas": [0.0, 0.0, 0.55, 1.0], "toxic": [0.0, 0.0, 0.6, 1.0], "ice_giant": [0.0, 0.0, 0.6, 1.0], "red_gas": [0.0, 0.0, 0.55, 1.0],
 	"ocean": [0.4, 0.85, 1.0, 1.0], "jungle": [0.3, 0.8, 1.0, 1.0], "dwarf": [1.0, 1.0, 1.0, 1.0],
 	"terran": [0.25, 0.75, 1.0, 1.0], "desert": [0.3, 0.8, 1.0, 1.0], "ice": [0.3, 0.8, 1.0, 1.0],
 	"lava": [0.85, 1.0, 1.0, 1.0], "barren": [0.8, 1.0, 1.0, 1.0],
@@ -1282,7 +1286,7 @@ func _make_moons(L: Dictionary, id: int) -> void:
 			if String(p["type"]) in ["ice"] and rng.randf() < 0.5:
 				mt = "moon_ice"
 			var rr: Vector2 = MOON_TYPES[mt]["r"]
-			var mr := rng.randf_range(rr.x, rr.y) * (1.2 if String(p["type"]) in ["gas", "toxic", "ice_giant"] else 1.0)
+			var mr := rng.randf_range(rr.x, rr.y) * (1.2 if String(p["type"]) in ["gas", "toxic", "ice_giant", "red_gas"] else 1.0)
 			mr = clampf(mr, 3000.0, maxf(3000.0, float(p["radius"]) * 0.65))
 			orbit += mr
 			L["moons"].append({
@@ -1884,7 +1888,7 @@ func _make_belts(L: Dictionary, id: int) -> Array:
 		var r := 0.42 * SYSTEM_RADIUS
 		var planets: Array = L["planets"]
 		for i in planets.size():
-			if String(planets[i]["type"]) in ["gas", "toxic", "ice_giant"] and i > 0:
+			if String(planets[i]["type"]) in ["gas", "toxic", "ice_giant", "red_gas"] and i > 0:
 				r = (float(planets[i - 1]["orbit"]) + float(planets[i]["orbit"])) * 0.5
 				break
 		out.append({"kind": "asteroid", "r": r, "w": rng.randf_range(0.05, 0.08) * SYSTEM_RADIUS, "cls": "stony", "seed": rng.randi()})

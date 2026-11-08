@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.5 – 2026-11-08
+
+- Pilgrim Gate: rays from the tips of its spires gather in a burning focus ahead of the gate; from there the mighty
+  beam runs home right across the system map.
+- Cathedral of Return in crimson and gold instead of pale stone.
+- New planet type **Red Gas Giant** (Compline is one) – it now turns up elsewhere too and has its tile in the
+  collection. A new game is needed.
+- Work drones hop over the Lux Aeterna from one welding spot to the next.
+
 ## alpha 0.6.39.4 – 2026-11-08
 
 **Package 39b: Heimkehr, the capital of the Covenant.** A new game is needed.

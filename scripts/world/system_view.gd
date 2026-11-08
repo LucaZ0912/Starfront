@@ -503,7 +503,12 @@ func _spawn_celestials() -> void:
 		havens.append(hv)
 		stations[ph["id"]] = hv      # dockable with pirate standing (package 12); zone 0 = no no-fire zone
 	for sx in layout.get("structures", []):
-		_add_celestial("structure", sx)          # package 39: landmarks
+		var sc := _add_celestial("structure", sx)          # package 39: landmarks
+		if String(sx.get("art", "")) == "pilgrim_gate":
+			var pb := PilgrimBeam.new()                    # 0.6.39.5: its light, across the whole system
+			pb.view = self
+			pb.gate = sc
+			fx_layer.add_child(pb)
 	_vote_beam_t = randf_range(20.0, 60.0)
 	_sync_pods()
 
@@ -3183,6 +3188,49 @@ func fire_vote_beam() -> Node2D:
 	spawn_fx(beam)
 	Audio.play_at("gate_activate", r["pos"], "ballot drone")
 	return beam
+
+
+## 0.6.39.5: the Pilgrim Gate's light – thin rays from the tips of its spires gather in a focus ahead of the gate, and
+## from there the mighty beam runs home (away from the star) right across the system map.
+class PilgrimBeam extends Node2D:
+	const SPIRES := 12
+	const TIP_R := 576.0                     # km from the gate's centre to a spire tip (StationArt: 0.48 × 300 px × 4)
+	const FOCUS := 1100.0                    # the focus, ahead of the gate
+	const REACH := 14000000.0
+	var view
+	var gate
+	var t := 0.0
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		if gate == null or not is_instance_valid(gate):
+			return
+		var z: float = view.camera.zoom.x
+		var px := 1.0 / maxf(z, 0.0000001)
+		var g: Vector2 = gate.position
+		var home := g.normalized() if g.length() > 1.0 else Vector2.RIGHT
+		var focus := g + home * FOCUS
+		var pulse := 0.85 + 0.15 * sin(t * 1.3)
+		var gold := Color(1.0, 0.82, 0.45)
+		# rays from the spire tips into the focus
+		for k in SPIRES:
+			var tip := g + Vector2.from_angle(k * TAU / SPIRES) * TIP_R
+			var flick := 0.75 + 0.25 * sin(t * 3.0 + k * 1.3)
+			draw_line(tip, focus, Color(gold, 0.18 * flick), maxf(px * 1.2, 22.0))
+			draw_line(tip, focus, Color(1.0, 0.95, 0.8, 0.5 * flick), maxf(px * 1.0, 7.0))
+			draw_circle(tip, maxf(px * 2.0, 18.0), Color(1.0, 0.9, 0.6, 0.6 * flick))
+		# the mighty beam home, from the focus right across the system
+		var end := focus + home * REACH
+		draw_line(focus, end, Color(gold, 0.06 * pulse), maxf(px * 9.0, 380.0))
+		draw_line(focus, end, Color(gold, 0.12 * pulse), maxf(px * 5.0, 190.0))
+		draw_line(focus, end, Color(1.0, 0.95, 0.8, 0.45 * pulse), maxf(px * 2.0, 60.0))
+		# the focus burns white
+		draw_circle(focus, maxf(px * 14.0, 260.0), Color(gold, 0.15 * pulse))
+		draw_circle(focus, maxf(px * 6.0, 110.0), Color(1.0, 0.92, 0.7, 0.55 * pulse))
+		draw_circle(focus, maxf(px * 2.5, 40.0), Color(1, 1, 1, 0.95))
 
 
 class VoteBeam extends Node2D:
