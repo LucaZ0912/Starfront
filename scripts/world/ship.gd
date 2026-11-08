@@ -1472,7 +1472,7 @@ func _warp_align(delta: float, s: Dictionary):
 		target = null
 		clear_locks()
 		order = {"type": "warping"}
-		view.spawn_fx(Fx.flash(position, Color(0.6, 0.85, 1.0), radius * 3.0))
+		_warp_flash()                                   # 0.6.35.10: a bright flash going into warp
 		view.on_warp_started(self)
 		# the whole formation goes into warp in the same instant
 		if view.has_method("followers_of"):
@@ -1512,8 +1512,30 @@ func _follow_warp(fn, remaining: float, to: Vector2, wname: String) -> void:
 		clear_locks()
 	order = {"type": "warping"}
 	spool = -1.0
-	view.spawn_fx(Fx.flash(position, Color(0.6, 0.85, 1.0), radius * 3.0))
+	_warp_flash()                                   # 0.6.35.10: a bright flash going into warp
 	view.on_warp_started(self)
+
+
+## 0.6.35.10: a bright flash of light going into or coming out of warp.
+func _warp_flash() -> void:
+	if view == null:
+		return
+	view.spawn_fx(Fx.flash(position, Color(0.65, 0.88, 1.0), maxf(radius * 9.0, 160.0)))
+	view.spawn_fx(Fx.flash(position, Color(1.0, 1.0, 1.0), maxf(radius * 3.5, 60.0)))
+
+
+## 0.6.35.10: coming out of warp a ship leaves a short bluish trail behind it that fades after a few seconds.
+func _warp_trail(vel: Vector2) -> void:
+	if view == null:
+		return
+	var back := -vel.normalized() if vel.length() > 1.0 else Vector2.from_angle(heading + PI)
+	for i in 16:
+		var f := Fx.smoke(position + back * (radius * 0.8 * i + randf_range(-6.0, 6.0)) + back.orthogonal() * randf_range(-radius * 0.25, radius * 0.25),
+			back * randf_range(4.0, 14.0) + back.orthogonal() * randf_range(-6.0, 6.0), radius * (0.55 + 0.04 * i))
+		f.color = Color(0.45, 0.68, 1.0)
+		f.life = randf_range(4.0, 6.0) * (1.0 - i * 0.03)
+		f.max_life = f.life
+		view.spawn_fx(f)
 
 
 ## Pulled out of warp (pirate interdiction): stops right here, the drive needs a moment.
@@ -1571,7 +1593,8 @@ func _update_warp(delta: float) -> void:
 		warp = {}
 		velocity = (to - from).normalized() * float(fit.stats()["speed"]) * 0.3
 		order = {"type": "idle"}
-		view.spawn_fx(Fx.flash(position, Color(0.6, 0.85, 1.0), radius * 3.0))
+		_warp_flash()                                   # 0.6.35.10: a bright flash coming out …
+		_warp_trail(velocity)                            # … and a bluish trail that fades
 		view.on_warp_finished(self)
 		if not then.is_empty():
 			set_order(view.resolve_order(then))
@@ -1609,7 +1632,8 @@ func _formation_warp(delta: float) -> void:
 		warp = {}
 		velocity = vel
 		order = {"type": "idle"}
-		view.spawn_fx(Fx.flash(position, Color(0.6, 0.85, 1.0), radius * 3.0))
+		_warp_flash()                                   # 0.6.35.10: a bright flash coming out …
+		_warp_trail(velocity)                            # … and a bluish trail that fades
 		view.on_warp_finished(self)
 		if not then.is_empty():
 			set_order(view.resolve_order(then))

@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.35.10 – 2026-11-08
+
+**Warp:** a bright flash of light going into and coming out of warp; every ship leaves a small bluish trail of smoke when it drops out, fading after a few seconds.
+
 ## alpha 0.6.35.9 – 2026-11-08
 
 **Warp tunnel:** a fixed size (1,300 km radius) – big at close range with room for the whole formation, a narrow tunnel on the recon view; always centred on the ship leading the formation.
