@@ -1593,6 +1593,47 @@ func _c_debug_belt(c: Dictionary) -> String:
 	return "This system has no %s belt." % String(c.get("kind", "asteroid"))
 
 
+## {"type":"debug_moon", "moon_type"?: "moon_rock"|…} – package 36: puts the ship (undocked) next to a moon of this
+## system (the next one each call, or the next one of a type).
+var _debug_moon_i := -1
+
+
+func _c_debug_moon(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var moons: Array = world.layout.get("moons", [])
+	var want := String(c.get("moon_type", ""))
+	if want != "":
+		moons = moons.filter(func(m): return String(m["type"]) == want)
+	if moons.is_empty():
+		return "No such moon in this system."
+	_debug_moon_i = (_debug_moon_i + 1) % moons.size()
+	var m: Dictionary = moons[_debug_moon_i]
+	var f := _fit()
+	f.docked_at = ""
+	var p: Vector2 = (m["pos"] as Vector2) + Vector2.from_angle(randf() * TAU) * float(m["radius"]) * 2.5
+	world.player.position = p
+	f.position = p
+	world.player.order = {"type": "idle"}
+	world.center_on_player()
+	GameState.log_msg("Debug: next to %s (%s)." % [m["name"], Universe.MOON_TYPES[m["type"]]["name"]])
+	return ""
+
+
+## {"type":"debug_roll_orbits"} – package 36: planets and moons to new places on their orbits, as on arriving by jump
+## (the ship stays where it is).
+func _c_debug_roll_orbits(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	Universe.roll_orbits(GameState.current_system)
+	var mn = world.get_tree().current_scene
+	if mn != null and mn.has_method("load_system"):
+		mn.load_system(GameState.current_system)
+	return ""
+
+
 func _c_debug_teleport(c: Dictionary) -> String:
 	var f := _fit()
 	var to := int(c["system"])

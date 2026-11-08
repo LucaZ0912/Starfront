@@ -136,7 +136,7 @@ static func make_colossus_sprite(d: Dictionary) -> Sprite2D:
 
 ## Pixel planet as a shader sprite (also used by the system map).
 static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite2D:
-	var t: Dictionary = Universe.PLANET_TYPES[p["type"]]
+	var t: Dictionary = Universe.body_type(String(p["type"]))      # package 36: planets and moons
 	var spr := Sprite2D.new()
 	spr.texture = PixelArt.white()
 	var ring: bool = p.get("ring", false)
@@ -155,6 +155,11 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	mat.set_shader_parameter("radius", 0.5 if ring else 0.86)
 	mat.set_shader_parameter("pixels", clampf(quad / 7.0, 48.0, 220.0))
 	mat.set_shader_parameter("spin", 0.004 if r > 300.0 else 0.015)
+	mat.set_shader_parameter("craters", float(t.get("craters", 0.0)))   # package 36: moons
+	mat.set_shader_parameter("lumpy", float(t.get("lumpy", 0.0)))
+	mat.set_shader_parameter("glow", float(t.get("glow", 0.0)))
+	if t.has("craters"):
+		mat.set_shader_parameter("spin", 0.0)                          # moons turn one face to their planet
 	spr.material = mat
 	return spr
 

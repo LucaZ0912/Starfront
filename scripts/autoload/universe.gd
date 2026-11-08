@@ -19,7 +19,7 @@ const SYSTEM_NAMES := [
 	"Leuchtfeuer", "Ödland", "Himmelstor", "Nachtfalke", "Hohenstein",
 ]
 ## Galaxy generator version (stored in saves; older saves are moved to the current cluster).
-const GALAXY_VERSION := 3
+const GALAXY_VERSION := 4          # package 36: moons, orbits rolled on arrival
 const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
 const POWER_SYSTEMS := 12
@@ -100,6 +100,7 @@ func generate(p_seed: int) -> void:
 	seed_value = p_seed
 	systems.clear()
 	layouts.clear()
+	orbit_phase.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed
 	for i in SYSTEM_NAMES.size():
@@ -630,6 +631,7 @@ func generate_test() -> void:
 	seed_value = 777
 	systems.clear()
 	layouts.clear()
+	orbit_phase.clear()
 	systems.append({"id": 0, "name": "Testfeld", "pos": MAP_SIZE * 0.5, "security": 0.5, "star": 0, "links": {},
 		"faction": "", "claimants": ["assembly", "covenant"], "capital": false, "core_dist": 0})
 	home_system = 0
@@ -658,6 +660,18 @@ func build_test_layout() -> Dictionary:
 			"orbit": pos.length(), "pos": pos, "radius": 22000.0 if big else 9000.0,
 			"seed": 10.0 + i * 7.0, "ring": big,
 		})
+	# package 36: one moon of every type round the first gas giant
+	L["moons"] = []
+	for pi in L["planets"].size():
+		if String(L["planets"][pi]["type"]) == "gas":
+			var gp: Dictionary = L["planets"][pi]
+			var mk := 0
+			for mt in MOON_TYPES:
+				var mpos: Vector2 = (gp["pos"] as Vector2) + Vector2.from_angle(mk * TAU / MOON_TYPES.size()) * (80000.0 + mk * 30000.0)
+				L["moons"].append({"id": "m%d_%d" % [pi, mk], "planet": pi, "name": "%s-%s" % [gp["name"], MOON_LETTERS[mk]], "type": mt,
+					"radius": 4000.0, "orbit": 80000.0 + mk * 30000.0, "pos": mpos, "seed": 20.0 + mk * 5.0})
+				mk += 1
+			break
 	# every station type in every tier: tier 1 on the inner ring, tier 3 on the outer one
 	var n_types := ALL_STATION_TYPES.size()
 	for tier in [1, 2, 3]:
@@ -759,11 +773,13 @@ func to_dict() -> Dictionary:
 		for x in L["anomalies"]:
 			an[x["id"]] = {"scan": x["scan"], "revealed": x["revealed"], "analysis": x["analysis"], "done": x["done"]}
 		changed[id] = {"asteroids": ast, "anomalies": an, "gone": gone, "colossi": cols}
-	return {"seed": seed_value, "version": GALAXY_VERSION, "layouts": changed}
+	return {"seed": seed_value, "version": GALAXY_VERSION, "layouts": changed, "orbits": orbit_phase.duplicate()}
 
 
 func from_dict(d: Dictionary) -> void:
 	generate(int(d["seed"]))
+	for k in d.get("orbits", {}):                     # package 36: planets and moons where they were
+		orbit_phase[int(k)] = int(d["orbits"][k])
 	var changed: Dictionary = d.get("layouts", {})
 	for id in changed:
 		var L := get_layout(int(id))
@@ -900,6 +916,168 @@ const PLANET_TYPES := {
 }
 
 
+## Package 36: moons. Drawn with the planet shader (plus craters, a lumpy outline or glowing volcanoes);
+## far bigger than colossi (3,000–7,800 km radius, at most two thirds of their planet), no radar shadow. "cls" = rock class of a field next to the moon.
+const MOON_TYPES := {
+	"moon_rock": {"name": "Rocky Moon", "a": Color(0.3, 0.29, 0.3), "b": Color(0.46, 0.45, 0.44), "c": Color(0.63, 0.61, 0.59),
+		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 0.0, "glow": 0.0, "cls": "stony", "r": Vector2(3000, 6000)},
+	"moon_ice": {"name": "Ice Moon", "a": Color(0.5, 0.62, 0.76), "b": Color(0.78, 0.86, 0.94), "c": Color(0.97, 0.98, 1.0),
+		"atmo": Color(0.8, 0.9, 1.0, 0.25), "gas": 0.0, "craters": 0.55, "lumpy": 0.0, "glow": 0.0, "cls": "icy", "r": Vector2(3000, 6500)},
+	"moon_volcanic": {"name": "Volcanic Moon", "a": Color(0.92, 0.74, 0.26), "b": Color(0.78, 0.46, 0.16), "c": Color(0.24, 0.14, 0.09),
+		"atmo": Color(1.0, 0.65, 0.3, 0.22), "gas": 0.0, "craters": 0.0, "lumpy": 0.0, "glow": 1.0, "cls": "metallic", "r": Vector2(3500, 6500)},
+	"moon_captured": {"name": "Captured Asteroid", "a": Color(0.2, 0.18, 0.17), "b": Color(0.3, 0.27, 0.25), "c": Color(0.43, 0.4, 0.37),
+		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 1.0, "glow": 0.0, "cls": "metallic", "r": Vector2(3000, 4500)},
+}
+const MOON_LETTERS := ["a", "b", "c", "d"]
+## How many moons a planet type gets: [chance of 0, of 1, of 2, of 3].
+const MOON_COUNT := {
+	"gas": [0.0, 0.0, 0.55, 1.0], "toxic": [0.0, 0.0, 0.6, 1.0],
+	"terran": [0.25, 0.75, 1.0, 1.0], "desert": [0.3, 0.8, 1.0, 1.0], "ice": [0.3, 0.8, 1.0, 1.0],
+	"lava": [0.85, 1.0, 1.0, 1.0], "barren": [0.8, 1.0, 1.0, 1.0],
+}
+const MOON_STATION_SHARE := 0.35     # share of planet stations that orbit one of its moons instead
+const MOON_FIELD_SHARE := 0.25       # share of moons with a small asteroid field next to them
+
+
+## Colours and look of a planet or moon type (for the sprite).
+static func body_type(t: String) -> Dictionary:
+	return PLANET_TYPES[t] if PLANET_TYPES.has(t) else MOON_TYPES.get(t, PLANET_TYPES["barren"])
+
+
+## Moons of every planet (own RNG). Moon "orbit" = distance from its planet, "angle" set by _place_orbits.
+func _make_moons(L: Dictionary, id: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 33113 + id * 6151 + 36
+	L["moons"] = []
+	var mtypes: Array = MOON_TYPES.keys()
+	for pi in L["planets"].size():
+		var p: Dictionary = L["planets"][pi]
+		var odds: Array = MOON_COUNT.get(String(p["type"]), [1.0, 1.0, 1.0, 1.0])
+		var roll := rng.randf()
+		var n := 0
+		while n < 3 and roll >= float(odds[n]):
+			n += 1
+		var orbit := float(p["radius"]) * 2.6 + rng.randf_range(22000.0, 32000.0)
+		for k in n:
+			var mt: String = mtypes[rng.randi() % mtypes.size()]
+			if String(p["type"]) in ["ice"] and rng.randf() < 0.5:
+				mt = "moon_ice"
+			var rr: Vector2 = MOON_TYPES[mt]["r"]
+			var mr := rng.randf_range(rr.x, rr.y) * (1.2 if String(p["type"]) in ["gas", "toxic"] else 1.0)
+			mr = clampf(mr, 3000.0, maxf(3000.0, float(p["radius"]) * 0.65))
+			orbit += mr
+			L["moons"].append({
+				"id": "m%d_%d" % [pi, k], "planet": pi, "name": "%s-%s" % [p["name"], MOON_LETTERS[k]],
+				"type": mt, "radius": mr, "orbit": orbit, "pos": p["pos"], "seed": rng.randf_range(0.0, 100.0),
+			})
+			orbit += mr + rng.randf_range(20000.0, 34000.0)
+
+
+## Moons of planet `pi`.
+static func moons_of(L: Dictionary, pi: int) -> Array:
+	return L.get("moons", []).filter(func(m): return int(m["planet"]) == pi)
+
+
+## Package 36: a small asteroid field next to some moons (own RNG); it moves with its moon.
+func _moon_fields(L: Dictionary, id: int, sec: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 27449 + id * 8317 + 36
+	var b: int = L["fields"].size()
+	for m in L.get("moons", []):
+		if rng.randf() >= MOON_FIELD_SHARE:
+			continue
+		var cls: String = MOON_TYPES[m["type"]]["cls"]
+		var mix := _field_mix(cls, sec, rng)
+		var fr := rng.randf_range(4000.0, 7000.0)
+		var off := Vector2.from_angle(rng.randf() * TAU) * (float(m["radius"]) + fr + rng.randf_range(2500.0, 6000.0))
+		var center: Vector2 = (m["pos"] as Vector2) + off
+		var fid := "f%d" % b
+		L["fields"].append({"id": fid, "name": "%s Field (%s)" % [m["name"], cls.capitalize()], "class": cls, "ores": mix.keys(),
+			"ore": mix.keys()[0], "pos": center, "radius": fr, "style": "scattered", "moon": m["id"], "anchor": m["id"]})
+		var w: Vector2 = FIELD_STYLES["scattered"]["weights"]
+		for k in rng.randi_range(45, 90):
+			var pos := center + Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.75) * fr
+			var ast := _make_asteroid("a_%d_%d" % [b, k], fid, cls, mix, pos, rng, w)
+			ast["anchor"] = m["id"]
+			L["asteroids"].append(ast)
+		b += 1
+
+
+# ------------------------------------------------------------------ orbits (package 36)
+
+## Orbit phase per system: the planets and moons stand somewhere else on their orbits each time the pilot jumps in
+## (the illusion that they move). Saved, so a loaded game finds everything where it was.
+var orbit_phase: Dictionary = {}
+
+
+## A new random place on the orbits for system `sid` (on arrival by jump or wormhole).
+func roll_orbits(sid: int) -> void:
+	orbit_phase[sid] = randi()
+	if layouts.has(sid):
+		_place_orbits(layouts[sid], sid)
+
+
+func _default_phase(sid: int) -> int:
+	return seed_value * 15013 + sid * 911 + 36
+
+
+## Puts planets on their orbit round the star and moons on theirs round the planet, then moves everything anchored
+## to them (stations, ring rocks, moon fields) along. A planet keeps clear of gates, the belt fields, havens and
+## waystations.
+func _place_orbits(L: Dictionary, sid: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(orbit_phase.get(sid, _default_phase(sid)))
+	var moved := {}                                    # body id -> delta
+	var keep_off: Array = []                           # [pos, radius]
+	for g in L["gates"]:
+		keep_off.append([g["pos"], 30000.0])
+	for f in L["fields"]:
+		if not f.has("moon"):
+			keep_off.append([f["pos"], float(f["radius"]) + 15000.0])
+	for hv in L.get("havens", []):
+		keep_off.append([hv["pos"], 40000.0])
+	for st in L["stations"]:
+		if String(st.get("anchor", "")) == "":
+			keep_off.append([st["pos"], 40000.0])
+	for pi in L["planets"].size():
+		var p: Dictionary = L["planets"][pi]
+		var reach := float(p["radius"]) * 2.4
+		for m in moons_of(L, pi):
+			reach = maxf(reach, float(m["orbit"]) + float(m["radius"]) + 14000.0)
+		var orbit := float(p["orbit"])
+		var best := Vector2.from_angle(rng.randf() * TAU) * orbit
+		var best_gap := -INF
+		for attempt in 40:
+			var cand := best if attempt == 0 else Vector2.from_angle(rng.randf() * TAU) * orbit
+			var gap := INF
+			for ko in keep_off:
+				gap = minf(gap, cand.distance_to(ko[0]) - float(ko[1]) - reach)
+			if gap > best_gap:
+				best_gap = gap
+				best = cand
+			if gap > 0.0:
+				break
+		moved[p["id"]] = best - (p["pos"] as Vector2)
+		p["pos"] = best
+		for m in moons_of(L, pi):
+			var mp: Vector2 = best + Vector2.from_angle(rng.randf() * TAU) * float(m["orbit"])
+			moved[m["id"]] = mp - (m["pos"] as Vector2)
+			m["pos"] = mp
+	for key in ["stations", "fields", "asteroids", "debris"]:
+		for o in L.get(key, []):
+			var anc := String(o.get("anchor", ""))
+			if anc != "" and moved.has(anc):
+				o["pos"] = (o["pos"] as Vector2) + (moved[anc] as Vector2)
+
+
+## Name of a planet or moon by id ("p2", "m2_0").
+static func body_by_id(L: Dictionary, bid: String) -> Dictionary:
+	for b in L["planets"] + L.get("moons", []):
+		if String(b["id"]) == bid:
+			return b
+	return {}
+
+
 ## Layout of a system (all positions in km, star at the origin):
 ## star, planets, stations, gates, fields (asteroid fields), asteroids, anomalies (hidden)
 func _generate_layout(id: int) -> Dictionary:
@@ -930,7 +1108,10 @@ func _generate_layout(id: int) -> Dictionary:
 			"radius": rng.randf_range(6000.0, 12000.0) * (2.6 if big else 1.0),
 			"seed": rng.randf_range(0.0, 100.0), "ring": big and rng.randf() < 0.6,
 		})
-	# Stations orbit planets (type and tier come from the cluster-wide plan)
+	_make_moons(L, id)                                # package 36
+	var mrng := RandomNumberGenerator.new()           # package 36: which stations orbit a moon (own RNG)
+	mrng.seed = seed_value * 40193 + id * 5381 + 36
+	# Stations orbit planets (type and tier come from the cluster-wide plan) – or one of their moons (package 36)
 	var plan: Array = sys.get("stations_plan", [])
 	var station_planets: Array = []
 	for i in plan.size():
@@ -943,10 +1124,15 @@ func _generate_layout(id: int) -> Dictionary:
 		var tier: int = plan[i][1]
 		var tdef: Dictionary = CommodityData.STATION_TYPES[type]
 		var off := Vector2.from_angle(rng.randf() * TAU) * (float(planet["radius"]) * 1.7 + rng.randf_range(3000.0, 6000.0))
+		var parent: Dictionary = planet
+		var pmoons := moons_of(L, pidx)
+		if not pmoons.is_empty() and mrng.randf() < MOON_STATION_SHARE:
+			parent = pmoons[mrng.randi() % pmoons.size()]
+			off = Vector2.from_angle(mrng.randf() * TAU) * (float(parent["radius"]) * 1.7 + mrng.randf_range(3000.0, 6000.0))
 		L["stations"].append({
-			"id": "st_%d_%d" % [id, i], "planet": pidx,
-			"name": "%s – %s" % [planet["name"], tdef["name"]],
-			"type": type, "tier": tier, "pos": (planet["pos"] as Vector2) + off,
+			"id": "st_%d_%d" % [id, i], "planet": pidx, "anchor": parent["id"],
+			"name": "%s – %s" % [parent["name"], tdef["name"]],
+			"type": type, "tier": tier, "pos": (parent["pos"] as Vector2) + off,
 			"market": _make_market(type, rng),
 			"shop": _make_shop(type, tier, rng),
 			"shipyard": _make_shipyard(type, tier, Missions.wealthy(id)),
@@ -993,6 +1179,8 @@ func _generate_layout(id: int) -> Dictionary:
 	_special_stations(L, id, sec)
 	_scatter_loose(L, id, sec)
 	_place_colossi(L, id, sec)
+	_moon_fields(L, id, sec)                          # package 36: after the colossi – moon fields have none
+	_place_orbits(L, id)                              # package 36: planets and moons on their orbits
 	return L
 
 
@@ -1196,17 +1384,20 @@ func _scatter_loose(L: Dictionary, id: int, sec: float) -> void:
 			var spread := rng.randf_range(600.0, 1400.0)
 			for k in rng.randi_range(10, 18):
 				var pos := cpos + Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * spread
-				L["debris"].append(_make_debris(cls, mix, pos, rng))
+				var deb := _make_debris(cls, mix, pos, rng)
+				deb["anchor"] = p["id"]                      # package 36: moves with the planet
+				L["debris"].append(deb)
 			if c % 2 == 0:
 				var ast := _make_asteroid("l_%d" % n, "", cls, mix, cpos + Vector2.from_angle(rng.randf() * TAU) * spread * 0.5, rng)
 				ast["near"] = p["name"]
+				ast["anchor"] = p["id"]
 				L["asteroids"].append(ast)
 				n += 1
 	var spots: Array = []
 	for g in L["gates"]:
 		spots.append([g["pos"], 1600.0, rng.randi_range(30, 45), 3])
 	for st in L["stations"]:
-		spots.append([st["pos"], 1100.0, rng.randi_range(12, 20), 1])
+		spots.append([st["pos"], 1100.0, rng.randi_range(12, 20), 1, String(st.get("anchor", ""))])
 	for an in L["anomalies"]:
 		spots.append([an["pos"], 2200.0, rng.randi_range(30, 50), 5])
 	for sp in spots:
@@ -1214,12 +1405,18 @@ func _scatter_loose(L: Dictionary, id: int, sec: float) -> void:
 		var dist := center.length()
 		var cls: String = "metallic" if dist < 800000.0 * SCALE else ("stony" if dist < 1350000.0 * SCALE else "icy")
 		var mix := _field_mix(cls, sec, rng)
+		var anc: String = sp[4] if sp.size() > 4 else ""
 		for k in int(sp[2]):
 			var pos := center + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(float(sp[1]) * 0.25, float(sp[1]))
-			L["debris"].append(_make_debris(cls, mix, pos, rng))
+			var deb2 := _make_debris(cls, mix, pos, rng)
+			if anc != "":
+				deb2["anchor"] = anc
+			L["debris"].append(deb2)
 		for k in int(sp[3]):
 			var pos2 := center + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(float(sp[1]) * 0.4, float(sp[1]) * 1.1)
 			var ast2 := _make_asteroid("l_%d" % n, "", cls, mix, pos2, rng)
+			if anc != "":
+				ast2["anchor"] = anc
 			if ast2["size"] == "large":
 				ast2["size"] = "medium"
 				ast2["radius"] = rng.randf_range(25.0, 60.0)
@@ -1364,6 +1561,8 @@ func warp_targets(system_id: int) -> Array:
 	out.append({"id": "star", "kind": "star", "name": "%s (%s)" % [star["name"], star["type"]], "pos": star["pos"], "land": float(star["radius"]) * 2.5, "data": star})
 	for p in L["planets"]:
 		out.append({"id": p["id"], "kind": "planet", "name": p["name"], "pos": p["pos"], "land": float(p["radius"]) * 1.6, "data": p})
+	for m in L.get("moons", []):                   # package 36
+		out.append({"id": m["id"], "kind": "moon", "name": m["name"], "pos": m["pos"], "land": float(m["radius"]) * 1.6, "data": m})
 	for st in L["stations"]:
 		out.append({"id": st["id"], "kind": "station", "name": st["name"], "pos": st["pos"], "land": 2500.0, "data": st})
 	for g in L["gates"]:

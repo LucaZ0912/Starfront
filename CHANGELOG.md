@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.36.1 – 2026-11-08
+
+**Package 36: moons.** A new game is needed.
+- Gas giants have 2–3 moons, rocky worlds mostly one; four kinds: rocky (craters), ice, volcanic (glowing volcanoes) and
+  captured asteroids (lumpy). 3,000–7,800 km across the radius – far bigger than colossi. Named after their planet
+  ("Sonnenwende V-a").
+- Every time you jump into a system, the planets and moons stand somewhere else on their orbits; stations, ring rocks
+  and moon fields move with them. Saved with the game.
+- Some stations orbit a moon; every fourth moon has a small asteroid field; pirates hide behind moons.
+- Moons are warp targets and show in the overview and on the system map (orbits and names when zoomed in).
+- Debug: moons of the system, jump to a moon (of each kind), roll the orbits.
+
 ## alpha 0.6.35.17 – 2026-11-08
 
 **Warp to stations:** stations and pirate havens can be warped to from 8,000 km (other targets still 40,000 km). Standing just outside a no-fire zone used to mean minutes of sublight flight; now a ship always arrives 2,500 km from the station.

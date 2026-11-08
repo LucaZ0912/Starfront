@@ -293,9 +293,13 @@ func _process(delta: float) -> void:
 				for i in 24:
 					round.append(Vector2.from_angle(TAU * i / 24) * 300.0)
 				c1.poly = round
+				# only the two test rocks count here (a real colossus of a field nearby must not get in the way)
+				var all_cols: Array = view.colossi.duplicate()
+				view.colossi = [c1, c2]
 				check(view.colossus_hidden(pp2, c2), "a colossus inside another one's radar shadow is hidden")
 				check(not view.colossus_hidden(pp2, c1), "the near colossus stays on the radar")
 				check(not view.colossus_hidden(pp2 + Vector2(0, 1500), c2), "seen from the side both are visible")
+				view.colossi = all_cols
 				test_cols = [c1, c2]
 				patrol = []
 				for k in 4:
@@ -575,6 +579,7 @@ func _process(delta: float) -> void:
 				_test_review5(view)
 				_test_scale()
 				_test_rocks(view)
+				_test_moons(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -910,6 +915,8 @@ func _test_resources() -> void:
 		var lay := Universe.get_layout(sid)
 		var sec := float(Universe.systems[sid]["security"])
 		for fl in lay["fields"]:
+			if fl.has("moon"):
+				continue                 # package 36: a moon's field lies where its moon is
 			dist_sum[fl["class"]] += (fl["pos"] as Vector2).length()
 			dist_n[fl["class"]] += 1
 			if (fl["ores"] as Array).size() < 3:
@@ -6062,3 +6069,77 @@ func _test_rocks(view: SystemView) -> void:
 		co.data["amount"] = keep
 		col_ok = full and empty and err.contains("empty")
 	check(rock_ok and col_ok, "small asteroids break apart when mined out and return after 30–60 min; colossi hold a huge deposit, mined out they stay (empty)")
+
+
+## Package 36: moons – gas giants 2–3, far bigger than colossi, named after their planet; stations and small fields
+## at moons; planets and moons on new places of their orbits on every arrival (anchored things move along).
+func _test_moons(view: SystemView) -> void:
+	var U = Universe
+	var gas_ok := true
+	var name_ok := true
+	var size_ok := true
+	var max_col := 0.0
+	var at_moon := 0
+	var moon_fields := 0
+	var clear_ok := true
+	var total := 0
+	for sid in U.systems.size():
+		var L: Dictionary = U.get_layout(sid)
+		for co in L.get("colossi", []):
+			max_col = maxf(max_col, float(co["radius"]))
+		for pi in L["planets"].size():
+			var p: Dictionary = L["planets"][pi]
+			var ms: Array = U.moons_of(L, pi)
+			if String(p["type"]) in ["gas", "toxic"]:
+				gas_ok = gas_ok and ms.size() >= 2 and ms.size() <= 3
+			for k in ms.size():
+				name_ok = name_ok and String(ms[k]["name"]) == "%s-%s" % [p["name"], U.MOON_LETTERS[k]]
+			for f in L["fields"]:
+				if not f.has("moon"):
+					clear_ok = clear_ok and (p["pos"] as Vector2).distance_to(f["pos"]) > float(f["radius"]) + float(p["radius"])
+		for m in L["moons"]:
+			total += 1
+			size_ok = size_ok and float(m["radius"]) >= 3000.0
+		for st in L["stations"]:
+			at_moon += 1 if String(st.get("anchor", "")).begins_with("m") else 0
+		moon_fields += L["fields"].filter(func(f): return f.has("moon")).size()
+	size_ok = size_ok and max_col > 0.0
+	var smallest := INF
+	for sid in U.systems.size():
+		for m in U.get_layout(sid)["moons"]:
+			smallest = minf(smallest, float(m["radius"]))
+	size_ok = size_ok and smallest > max_col * 1.8
+	check(gas_ok and name_ok and size_ok and total > 50 and at_moon > 0 and moon_fields > 0 and clear_ok,
+		"package 36: %d moons (gas giants 2–3, named after their planet, smallest %.0f km vs colossi up to %.0f km); %d stations and %d small fields at moons; planets clear of the belt fields" % [total, smallest, max_col, at_moon, moon_fields])
+	# rolling the orbits of another system: planets move, stations / moon fields / ring rocks keep their place on their body
+	var other: int = (GameState.current_system + 1) % U.systems.size()
+	var L2: Dictionary = U.get_layout(other)
+	var probe: Array = []
+	for key in ["stations", "asteroids", "debris"]:
+		for o in L2.get(key, []):
+			if String(o.get("anchor", "")) != "":
+				probe.append([o, U.body_by_id(L2, String(o["anchor"]))])
+				break
+	var rel0: Array = []
+	for pr in probe:
+		rel0.append((pr[0]["pos"] as Vector2) - (pr[1]["pos"] as Vector2))
+	var p0: Vector2 = L2["planets"][0]["pos"]
+	U.roll_orbits(other)
+	var keep_ok := probe.size() >= 2
+	for i in probe.size():
+		keep_ok = keep_ok and ((probe[i][0]["pos"] as Vector2) - (probe[i][1]["pos"] as Vector2)).distance_to(rel0[i]) < 1.0
+	var moved_ok: bool = p0.distance_to(L2["planets"][0]["pos"]) > 1.0 and is_equal_approx((L2["planets"][0]["pos"] as Vector2).length(), float(L2["planets"][0]["orbit"]))
+	var saved_ok: bool = U.to_dict()["orbits"].has(other)
+	var arrive_ok: bool = GameState._may_roll_orbits(GameState.active())
+	# in the current system: moons are bodies of the view and warp targets; the debug jump puts the ship next to one
+	var vL: Dictionary = view.layout
+	var body_ok: bool = view.bodies.size() == 1 + vL["planets"].size() + vL.get("moons", []).size()
+	var wt_ok := true
+	for m in vL.get("moons", []):
+		wt_ok = wt_ok and String(U.warp_target(view.system_id, String(m["id"])).get("kind", "")) == "moon"
+	var spr: Sprite2D = Celestial.make_planet_sprite({"type": "moon_captured", "seed": 3.0}, 3000.0, Vector2.LEFT)
+	var look_ok: bool = float((spr.material as ShaderMaterial).get_shader_parameter("lumpy")) > 0.5 and float((spr.material as ShaderMaterial).get_shader_parameter("craters")) > 0.0
+	spr.free()
+	check(keep_ok and moved_ok and saved_ok and arrive_ok and body_ok and wt_ok and look_ok,
+		"package 36: on arrival planets and moons stand elsewhere on their orbits – stations, moon fields and ring rocks move along (saved); moons are bodies and warp targets, with craters / lumpy outline")
+

@@ -1733,6 +1733,8 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 func _arrive(f: ShipFitting) -> void:
 	var from_id := int(f.transit_from)
 	f.system_id = int(f.transit_to)
+	if _may_roll_orbits(f):
+		Universe.roll_orbits(f.system_id)        # package 36: planets and moons stand elsewhere on their orbits
 	note_stat("systems", f.system_id)            # package 30
 	if f.transit_kind == "wormhole":
 		_arrive_wormhole(f)
@@ -1749,6 +1751,15 @@ func _arrive(f: ShipFitting) -> void:
 	if f.route.is_empty():
 		log_msg("%s arrived in %s." % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_GOOD)
 	ship_arrived_system.emit(f)
+
+
+## Package 36: the orbits are rolled on arrival – unless another of the pilot's ships waits out in space in that
+## system (it would suddenly be somewhere else relative to the stations).
+func _may_roll_orbits(f: ShipFitting) -> bool:
+	for o in fleet:
+		if o != f and o.system_id == f.system_id and o.transit_to == null and o.docked_at == "":
+			return false
+	return true
 
 
 ## The end of a wormhole: next to a station – or, if it goes wrong, somewhere at random (maybe right in

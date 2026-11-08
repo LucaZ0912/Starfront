@@ -309,6 +309,27 @@ func _build_world() -> void:
 	var rb := _row()
 	rb.add_child(UI.button("Into the asteroid belt", func(): _cmd({"type": "debug_belt", "kind": "asteroid"})))
 	rb.add_child(UI.button("Into the Kuiper belt", func(): _cmd({"type": "debug_belt", "kind": "kuiper"})))
+	# package 36: moons and orbits
+	_section("Moons & orbits (package 36)")
+	var L36 := Universe.get_layout(GameState.current_system)
+	var by_type := {}
+	for m in L36.get("moons", []):
+		by_type[m["type"]] = int(by_type.get(m["type"], 0)) + 1
+	var mt_txt: Array = []
+	for mt in by_type:
+		mt_txt.append("%d %s" % [by_type[mt], Universe.MOON_TYPES[mt]["name"]])
+	var at_moon := 0
+	for st in L36["stations"]:
+		at_moon += 1 if String(st.get("anchor", "")).begins_with("m") else 0
+	content.add_child(UI.label("This system: %d moons (%s) • %d stations at moons • %d moon fields" % [L36.get("moons", []).size(),
+		", ".join(mt_txt) if not mt_txt.is_empty() else "none", at_moon, L36["fields"].filter(func(f): return f.has("moon")).size()], 12, UI.TEXT_DIM))
+	var rm := _row()
+	rm.add_child(UI.button("To the next moon", func(): _cmd({"type": "debug_moon"})))
+	for mt in Universe.MOON_TYPES:
+		var mtk: String = mt
+		rm.add_child(UI.button(String(Universe.MOON_TYPES[mt]["name"]), func(): _cmd({"type": "debug_moon", "moon_type": mtk})))
+	var ro := _row()
+	ro.add_child(UI.button("Roll the orbits (as on arrival)", func(): _cmd({"type": "debug_roll_orbits"})))
 	_section("Teleport (docks at the first station)")
 	var sys_ids: Array = []
 	for s in Universe.systems:

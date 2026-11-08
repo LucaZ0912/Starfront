@@ -144,6 +144,7 @@ func _make_bodies() -> void:
 	var star: Dictionary = layout["star"]
 	var list: Array = [star]
 	list.append_array(layout["planets"])
+	list.append_array(layout.get("moons", []))          # package 36
 	for b in list:
 		var is_star: bool = b["id"] == "star"
 		var sky_spr: Sprite2D
@@ -562,7 +563,7 @@ func _pirate_preset() -> String:
 	return String(ArchData.pick(sec)[1])
 
 
-## Pirates lurk at asteroid fields and anomalies.
+## Pirates lurk at asteroid fields and anomalies (and behind moons, package 36).
 func _spawn_pirates() -> void:
 	var sec: float = Universe.systems[system_id]["security"]
 	if system_id == Universe.home_system:
@@ -574,6 +575,14 @@ func _spawn_pirates() -> void:
 		_spots.append({"pos": f["pos"], "want": want, "ships": []})
 	for an in layout["anomalies"]:
 		_spots.append({"pos": an["pos"], "want": want + 1, "ships": []})
+	# package 36: pirates like to hide behind moons (on the side away from the star), away from any station
+	for m in layout.get("moons", []):
+		var hide: Vector2 = (m["pos"] as Vector2) + (m["pos"] as Vector2).normalized() * float(m["radius"]) * 1.8
+		var near_station := false
+		for st in layout["stations"]:
+			near_station = near_station or (st["pos"] as Vector2).distance_to(hide) < float(st.get("zone", 15000.0)) + 10000.0
+		if not near_station:
+			_spots.append({"pos": hide, "want": maxi(1, want - 1), "ships": []})
 	for spot in _spots:
 		_fill_spot(spot, false)
 
@@ -1276,7 +1285,7 @@ func pick(pos: Vector2) -> Dictionary:
 		var grab := 26.0 / z
 		for t in Universe.warp_targets(system_id):
 			var r := grab
-			if t["kind"] in ["star", "planet", "field"]:
+			if t["kind"] in ["star", "planet", "moon", "field"]:
 				r = maxf(float(t["data"]["radius"]), grab)
 			var d := pos.distance_to(t["pos"])
 			if d < r and d / r < best_d:
@@ -1314,7 +1323,7 @@ func pick(pos: Vector2) -> Dictionary:
 		if t["kind"] in ["station", "gate", "anomaly"]:
 			continue
 		var r := 14.0 / z
-		if t["kind"] in ["star", "planet"]:
+		if t["kind"] in ["star", "planet", "moon"]:
 			r = maxf(float(t["data"]["radius"]), r)
 		elif t["kind"] == "field" and z < switch_zoom():
 			r = maxf(float(t["data"]["radius"]), r)
@@ -2210,6 +2219,11 @@ func _draw_overlay() -> void:
 		# Orbits and system boundary
 		for p in layout["planets"]:
 			o.draw_arc(Vector2.ZERO, float(p["orbit"]), 0.0, TAU, 180, Color(0.4, 0.6, 0.9, 0.2 * map_a), 1.5 * px)
+		# package 36: moon orbits round their planet, once they are big enough on screen
+		for m in layout.get("moons", []):
+			if float(m["orbit"]) / px > 12.0:
+				var pl: Dictionary = layout["planets"][int(m["planet"])]
+				o.draw_arc(pl["pos"], float(m["orbit"]), 0.0, TAU, 96, Color(0.4, 0.6, 0.9, 0.14 * map_a), 1.0 * px)
 		o.draw_arc(Vector2.ZERO, Universe.SYSTEM_RADIUS, 0.0, TAU, 220, Color(0.3, 0.5, 0.8, 0.3 * map_a), 2.0 * px)
 		for t in Universe.warp_targets(system_id):
 			var pos: Vector2 = t["pos"]
@@ -2240,6 +2254,15 @@ func _draw_overlay() -> void:
 					o.draw_polyline(PackedVector2Array([pos + Vector2(0, -r), pos + Vector2(r, 0), pos + Vector2(0, r), pos + Vector2(-r, 0), pos + Vector2(0, -r)]), col, 2.0 * px)
 			if t["kind"] in ["star", "planet"]:
 				col = Color(0.75, 0.85, 1.0, 0.85 * map_a)
+			if t["kind"] == "field" and t["data"].has("moon"):
+				var fm := Universe.body_by_id(layout, String(t["data"]["moon"]))
+				if not fm.is_empty() and float(fm["orbit"]) / px < 60.0:
+					continue                                   # package 36: a moon's field is named with its moon
+			if t["kind"] == "moon":
+				# package 36: moon names only once the moons stand apart from their planet on screen
+				if float(t["data"]["orbit"]) / px < 60.0:
+					continue
+				col = Color(0.7, 0.78, 0.9, 0.75 * map_a)
 			var label: String = t["name"]
 			o.draw_set_transform(pos + Vector2(14.0, 4.0) * px, 0.0, Vector2(px, px))
 			o.draw_string(font, Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.8 * map_a))
@@ -2900,7 +2923,7 @@ func survey_radius(id: String, kind: String) -> float:
 	match kind:
 		"field":
 			return float(t.get("data", {}).get("radius", 15000.0)) * 1.3
-		"planet":
+		"planet", "moon":
 			return float(t.get("data", {}).get("radius", 10000.0)) * 4.0
 		"star":
 			return 200000.0 * Universe.SCALE
@@ -3126,7 +3149,7 @@ func landmark(p: Vector2) -> String:
 	var best := "deep space"
 	var bd := INF
 	for t in Universe.warp_targets(system_id):
-		if not String(t["kind"]) in ["station", "gate", "field", "planet", "anomaly", "haven"]:
+		if not String(t["kind"]) in ["station", "gate", "field", "planet", "moon", "anomaly", "haven"]:
 			continue
 		var d := (t["pos"] as Vector2).distance_to(p)
 		if d < bd:
