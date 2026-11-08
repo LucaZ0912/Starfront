@@ -2285,7 +2285,11 @@ func _draw_overlay() -> void:
 	if player != null and is_instance_valid(player) and not player.is_docked():
 		var pp := player.position
 		if player.in_warp():
-			_draw_warp_tunnel(o, player, px)            # 0.6.35.7
+			# 0.6.35.9: the tunnel belongs to the ship that leads the formation
+			var lead = player
+			if player.warp.get("formation", false) and is_instance_valid(player.warp.get("follow")):
+				lead = player.warp["follow"]
+			_draw_warp_tunnel(o, lead, px)              # 0.6.35.7
 		if mark_a > 0.01:
 			_draw_player_icon(o, pp, player.heading, px, mark_a)
 		if player.in_warp():
@@ -2565,6 +2569,9 @@ func _update_audio() -> void:
 
 ## 0.6.35.7: in warp a pale blue tunnel forms round the ship – walls along the course, rings and streaks that rush
 ## past backwards; it builds up at the start and fades before arrival.
+const TUNNEL_RADIUS := 1300.0          # km: big at close range (room for the formation), small on the recon view
+
+
 func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 	if s.warp.is_empty() or s.warp.get("formation", false):
 		return
@@ -2575,7 +2582,7 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 	var d: Vector2 = ((s.warp["to"] as Vector2) - (s.warp["from"] as Vector2)).normalized()
 	var n := d.orthogonal()
 	var c: Vector2 = s.position
-	var rt := maxf(s.radius * 2.4, 70.0 * px)                     # tunnel radius: about two ship lengths
+	var rt := TUNNEL_RADIUS                                       # 0.6.35.9: a fixed size – a whole formation fits in
 	var L := get_viewport_rect().size.length() * 0.6 * px          # reaches past the screen
 	var col := Color(0.45, 0.75, 1.0)
 	var speed := Ship.warp_ease(minf(p + 0.02, 1.0)) - Ship.warp_ease(p)
