@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.34.2 – 2026-11-08
+
+**Wanted posters:** the ship's icon (in the captain's paint) beside the ship's name.
+
 ## alpha 0.5.34.1 – 2026-11-08
 
 **Package 34 – codex, collection, wanted posters** (the last package of part 5).

@@ -168,8 +168,13 @@ static func wanted_poster(c: Dictionary, sid: int = -1, course = null) -> Contro
 	rule.custom_minimum_size = Vector2(0, 2)
 	v.add_child(rule)
 	var h: Dictionary = GameData.hulls.get(NotoriousData.hull_of(c), {})
-	var ship := _ink("Ship: %s %s" % [h.get("class", ""), h.get("name", "")], 13)
-	v.add_child(ship)
+	var sr := UI.hbox(6)
+	sr.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(sr)
+	var sic := UI.icon(PixelArt.ship_texture(NotoriousData.hull_of(c), "notorious_%d" % int(c.get("paint", 0))), 30)
+	sic.custom_minimum_size = Vector2(44, 30)
+	sr.add_child(sic)                                  # 0.5.34.2: the ship's icon beside its name
+	sr.add_child(_ink("Ship: %s %s" % [h.get("class", ""), h.get("name", "")], 13))
 	var ne: int = int(c["escorts_n"]) if c.has("escorts_n") else (c.get("escorts", []) as Array).size()
 	v.add_child(_ink("Escort: %d ship%s" % [ne, "" if ne == 1 else "s"], 13))
 	var tl := _ink("%s  •  %s  •  Piloting & Gunnery %d" % [NotoriousData.trait_name(c), FactionData.short_of(String(c["faction"])), NotoriousData.skill(c)], 11)
