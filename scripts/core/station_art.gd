@@ -92,6 +92,16 @@ static func build(data: Dictionary) -> Dictionary:
 			a._gate_frame()
 		"axiom_yards":
 			a._axiom_yards()
+		"ew_yard":
+			a._ew_yard()
+		"khi_yard":
+			a._khi_yard()
+		"aur_yard":
+			a._aur_yard()
+		"hdy_yard":
+			a._hdy_yard()
+		"weapon_platform":
+			a._weapon_platform()
 		_:
 			a._trade()
 	var img := a._render()
@@ -149,6 +159,8 @@ func _setup(t: String, tr: int, sd: int) -> void:
 		acc = Color(1.0, 0.78, 0.3)                   # Covenant gold
 	if DIRECTORATE_ARTS.has(t):
 		acc = Color(0.3, 0.95, 0.6)                   # Directorate green
+	if MAKER_ACC.has(t):
+		acc = MAKER_ACC[t]                            # 39d: the manufacturers' colours
 
 
 # ================================================================ Primitives
@@ -749,9 +761,12 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 
 const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 560,
 	"cathedral": 520, "pilgrim_gate": 300, "forge": 460, "lux_aeterna": 600,
-	"dyson_hub": 480, "mirror": 170, "gate_frame": 190, "axiom_yards": 440}
+	"dyson_hub": 480, "mirror": 170, "gate_frame": 190, "axiom_yards": 440,
+	"ew_yard": 460, "khi_yard": 480, "aur_yard": 480, "hdy_yard": 460, "weapon_platform": 170}
 const COVENANT_ARTS := {"cathedral": true, "pilgrim_gate": true, "forge": true, "lux_aeterna": true}
 const DIRECTORATE_ARTS := {"dyson_hub": true, "mirror": true, "gate_frame": true, "axiom_yards": true}
+const MAKER_ACC := {"ew_yard": Color(0.45, 0.75, 1.0), "khi_yard": Color(1.0, 0.82, 0.15), "aur_yard": Color(1.0, 0.82, 0.45),
+	"hdy_yard": Color(1.0, 0.15, 0.12), "weapon_platform": Color(1.0, 0.15, 0.12)}
 const ASSEMBLY_ARTS := {"vote": true, "vote_relay": true, "concord_yards": true, "res_publica": true}
 const VOTE_RELAY_ANGLE := 0.4                       # where the first relay lies (Universe._special_structures)
 
@@ -1338,6 +1353,167 @@ func _axiom_yards() -> void:
 	for k in 4:
 		turret(Vector2(c - n * 0.2 + k * n * 0.16, c + (1.0 if k % 2 == 0 else -1.0) * 20.0), 4.5)
 
+# ================================================================ 39d: the manufacturers' yards
+
+## A berth: girders either side of a slot from `base` outwards along `dir`, a gantry across – and a "berth" vent that
+## tells the live drawing which of the maker's ships lies in it (and which way its bow points).
+func berth(base: Vector2, dir: Vector2, length: float, hw: float, hull_id: String, girder: int = HULL, h: float = 12.0) -> void:
+	var side := dir.orthogonal()
+	var tip := base + dir * length
+	# the dock bed: a dark floor with ribs the hull rests on
+	box(base + dir * length * 0.5, dir.angle(), length * 0.5, hw, DARK, 3.0, P_FLAT, true)
+	var rib := 0.0
+	while rib < length:
+		seg(base + dir * rib + side * hw, base + dir * rib - side * hw, 1.0, TRUSS, 5.0)
+		rib += 12.0
+	seg(base + side * hw, tip + side * hw, 3.5, girder, h, P_GIRDER)
+	seg(base - side * hw, tip - side * hw, 3.5, girder, h, P_GIRDER)
+	box(base + dir * 3.0, dir.angle(), 3.0, hw + 3.0, DARK, h + 1.0, P_ARMOR)
+	seg(tip + side * hw, tip - side * hw, 1.5, TRUSS, h + 6.0)
+	light(tip + side * hw, Color(1.0, 0.25, 0.2), 1.5, true)
+	light(tip - side * hw, Color(0.3, 1.0, 0.4), 1.5, true)
+	vents.append({"pos": (base + tip) * 0.5 - Vector2(c, c), "kind": "berth", "size": 1.0, "phase": 0.0, "hull": hull_id, "ang": dir.angle()})
+	for sp in 3:
+		vent(base + dir * length * rng.randf_range(0.25, 0.85) + side * rng.randf_range(-hw * 0.5, hw * 0.5), "spark", 2.0)
+
+
+## The Earthworks Second Yard (12696 HE, the first yard in the Cluster): the standard shipyard – a long spine with
+## berths above and below it, the plain Earth design, Earthworks' ships in them.
+func _ew_yard() -> void:
+	var center := Vector2(c, c)
+	box(center, 0.0, n * 0.47, 16.0, HULL, 10.0, P_WINDOWS)
+	box(center, 0.0, n * 0.45, 3.0, ACC, 12.0)
+	var up := ["bastion", "warden", "mule"]
+	var down := ["freighter", "hornet", "dragonfly"]
+	for k in 3:
+		var x := c + (k - 1) * n * 0.3
+		berth(Vector2(x, c - 16.0), Vector2.UP, n * (0.4 if k == 0 else 0.3), n * (0.085 if k == 0 else 0.06), up[k])
+		berth(Vector2(x, c + 16.0), Vector2.DOWN, n * (0.38 if k == 0 else 0.25), n * (0.07 if k == 0 else 0.045), down[k])
+	add_bay(0.0, n * 0.47, 12.0)
+	add_bay(PI, n * 0.47, 12.0)
+	disc(center, 22.0, HULL, 18.0, D_HUB)
+	for k2 in 4:
+		turret(Vector2(c + (k2 - 1.5) * n * 0.2, c + (1.0 if k2 % 2 == 0 else -1.0) * 22.0), 5.0)
+	# the old Earthworks sign
+	var pn := Vector2(c + n * 0.15, c + 24.0)
+	box(pn, 0.0, 22.0, 3.0, DARK, 14.0)
+	box(pn, 0.0, 21.0, 2.0, NEON, 15.0)
+	neons.append({"pos": pn - center, "ang": 0.0, "len": 42.0, "wid": 4.0})
+
+
+## Kanayama Works: KHI's yard looks like a building site – a yellow frame platform under scaffolding, two tower cranes
+## with their booms out, hazard stripes, floodlights, a smoking refinery block – and KHI's ships in the berths.
+func _khi_yard() -> void:
+	var center := Vector2(c, c)
+	# the frame platform with its scaffolding grid
+	box(center, 0.0, n * 0.44, n * 0.06, HULL, 9.0, P_PLATES)
+	box(center + Vector2(0, -n * 0.06), 0.0, n * 0.44, 2.5, ACC, 11.0, P_HAZARD)
+	box(center + Vector2(0, n * 0.06), 0.0, n * 0.44, 2.5, ACC, 11.0, P_HAZARD)
+	for k in 9:
+		box(Vector2(c - n * 0.4 + k * n * 0.1, c), 0.0, n * 0.04, n * 0.05, TRUSS, 12.0, P_TRUSS, true)
+	# berths: the big ships above, the small ones below
+	berth(Vector2(c - n * 0.16, c - n * 0.07), Vector2.UP, n * 0.38, n * 0.1, "kanayama", HULL, 12.0)
+	berth(Vector2(c + n * 0.16, c - n * 0.07), Vector2.UP, n * 0.36, n * 0.085, "iwakudaki", HULL, 12.0)
+	berth(Vector2(c - n * 0.1, c + n * 0.07), Vector2.DOWN, n * 0.24, n * 0.06, "anaguma", HULL, 12.0)
+	berth(Vector2(c + n * 0.2, c + n * 0.07), Vector2.DOWN, n * 0.16, n * 0.04, "mogura", HULL, 12.0)
+	# tower cranes: a mast, a long boom, a counterweight, a hook on its cable
+	for cr in [[Vector2(c - n * 0.42, c - n * 0.1), 0.35], [Vector2(c + n * 0.42, c + n * 0.12), PI + 0.4]]:
+		var mp: Vector2 = cr[0]
+		var ang: float = cr[1]
+		var bd := Vector2.from_angle(ang)
+		seg(mp - bd * n * 0.08, mp + bd * n * 0.3, 4.0, ACC, 26.0, P_GIRDER, true)
+		box(mp - bd * n * 0.07, ang, 6.0, 7.0, PANEL, 27.0, P_ARMOR)
+		disc(mp, 7.0, ACC, 28.0, D_HUB)
+		disc(mp + bd * n * 0.24, 2.5, DARK, 24.0)
+		light(mp + bd * n * 0.3, Color(1.0, 0.3, 0.2), 1.0, true)
+	# the refinery block with its chimneys
+	box(Vector2(c + n * 0.36, c - n * 0.2), 0.0, n * 0.07, n * 0.1, PANEL, 14.0, P_ARMOR)
+	for k2 in 3:
+		var chp := Vector2(c + n * 0.33 + k2 * n * 0.03, c - n * 0.27)
+		disc(chp, 4.0, DARK, 22.0, D_COOL)
+		vent(chp, "smoke", 6.0)
+	# floodlights round the site
+	for k3 in 8:
+		light(Vector2(c - n * 0.44 + k3 * n * 0.125, c + (n * 0.065 if k3 % 2 == 0 else -n * 0.065)), Color(1.0, 0.95, 0.75), 0.5)
+	add_bay(0.0, n * 0.47, 12.0)
+	add_bay(PI, n * 0.47, 12.0)
+
+
+## Atelier Aurelle: a yard of quality – slender, rounded, ivory and gold. At its heart a glass dome with a biosphere
+## (as on the liners), a gold ring round it, curved arms out to the berths where Aurelle's liners are finished.
+func _aur_yard() -> void:
+	var center := Vector2(c, c)
+	# slender curved arms
+	for k in 4:
+		var a := PI * 0.25 + k * PI * 0.5
+		seg(P(n * 0.16, a), P(n * 0.3, a), 5.0, HULL, 11.0, P_WINDOWS)
+	ring(center, n * 0.28, n * 0.31, HULL, 10.0, true, 48)
+	ring(center, n * 0.305, n * 0.315, PANEL, 13.0, false, 96)
+	# berths on the diagonals, bows outwards – the liners
+	var hulls := ["aur_empress", "aur_opal", "aur_boulevard", "aur_pearl"]
+	for k2 in 4:
+		var a2 := PI * 0.25 + k2 * PI * 0.5
+		var big := k2 == 0
+		berth(P(n * 0.31, a2), Vector2.from_angle(a2), n * (0.18 if big else 0.15), n * (0.075 if big else 0.06), hulls[k2], HULL, 12.0)
+	# the biosphere: a glass dome over gardens, ringed in gold
+	disc(center, n * 0.17, HULL, 13.0, D_HUB)
+	disc(center, n * 0.145, GREEN, 18.0, D_GREEN)
+	ring(center, n * 0.145, n * 0.16, PANEL, 20.0, false, 48)
+	for k3 in 8:
+		box(P(n * 0.165, k3 * TAU / 8.0), k3 * TAU / 8.0, 3.0, 2.0, PANEL, 21.0)
+	# docking: slim arms at the sides
+	dock_arm(0.0, n * 0.31, n * 0.47, 38.0, 11.0)
+	dock_arm(PI, n * 0.31, n * 0.47, 38.0, 11.0)
+	for k4 in 12:
+		light(P(n * 0.295, k4 * TAU / 12.0 + 0.13), Color(1.0, 0.88, 0.6), 0.5)
+	var pn := P(n * 0.36, -PI * 0.5)
+	box(pn, 0.0, 18.0, 3.0, DARK, 14.0)
+	box(pn, 0.0, 17.0, 2.0, NEON, 15.0)
+	neons.append({"pos": pn - center, "ang": 0.0, "len": 34.0, "wid": 4.0})
+
+
+## Hadrian Foundry: black and angular, red lights everywhere – an armoured wedge of a yard, its berths full of
+## Hadrian's warships. Round it weapon platforms are being built (structures of their own, with drones at work).
+func _hdy_yard() -> void:
+	var center := Vector2(c, c)
+	# the wedge
+	poly(PackedVector2Array([Vector2(c - n * 0.46, c - n * 0.05), Vector2(c + n * 0.2, c - n * 0.09), Vector2(c + n * 0.47, c), Vector2(c + n * 0.2, c + n * 0.09), Vector2(c - n * 0.46, c + n * 0.05)]), HULL, 12.0, 4.0, 14)
+	box(center, 0.0, n * 0.42, 1.5, ACC, 16.0)
+	for k in 6:
+		box(Vector2(c - n * 0.36 + k * n * 0.12, c), 0.0, n * 0.035, n * 0.04, PANEL, 15.0, P_ARMOR)
+	berth(Vector2(c - n * 0.2, c - n * 0.06), Vector2.UP, n * 0.38, n * 0.09, "hdy_citadel", HULL, 12.0)
+	berth(Vector2(c + n * 0.1, c - n * 0.08), Vector2.UP, n * 0.34, n * 0.08, "hdy_goliath", HULL, 12.0)
+	berth(Vector2(c - n * 0.2, c + n * 0.06), Vector2.DOWN, n * 0.24, n * 0.06, "hdy_maul", HULL, 12.0)
+	berth(Vector2(c + n * 0.1, c + n * 0.08), Vector2.DOWN, n * 0.18, n * 0.045, "hdy_talon", HULL, 12.0)
+	# spikes and red running lights
+	for sd in [-1.0, 1.0]:
+		for k2 in 4:
+			var bp := Vector2(c - n * 0.42 + k2 * n * 0.16, c + sd * (n * 0.05 + k2 * n * 0.01))
+			poly(PackedVector2Array([bp + Vector2(-6, 0), bp + Vector2(0, sd * 18.0), bp + Vector2(6, 0)]), HULL, 14.0, 1.5, 0)
+	for k3 in 14:
+		light(Vector2(c - n * 0.44 + k3 * n * 0.065, c + (n * 0.045 if k3 % 2 == 0 else -n * 0.045)), Color(1.0, 0.12, 0.1), 0.6 + 0.1 * (k3 % 3))
+	add_bay(0.0, n * 0.47, 12.0)
+	add_bay(PI, n * 0.46, 12.0)
+	for k4 in 6:
+		turret(Vector2(c - n * 0.3 + k4 * n * 0.12, c + (1.0 if k4 % 2 == 0 else -1.0) * 26.0), 5.5)
+
+
+## A weapon platform being built round the Hadrian Foundry: an octagonal armoured deck with a heavy twin turret, part
+## of it still bare frame – drones at work (live drawing).
+func _weapon_platform() -> void:
+	var center := Vector2(c, c)
+	poly(regular(center, n * 0.36, 8, PI / 8.0), HULL, 10.0, 3.0, 12)
+	var open_a := rng.randf() * TAU
+	for k in 3:
+		var a := open_a + k * 0.5
+		box(P(n * 0.26, a), a, n * 0.08, n * 0.1, TRUSS, 14.0, P_TRUSS, true)
+		vent(P(n * 0.26, a), "spark", 2.0)
+	disc(center, n * 0.13, PANEL, 18.0, D_TURRET)
+	for sd in [-1.0, 1.0]:
+		box(center + Vector2(n * 0.2, sd * 5.0), 0.0, n * 0.16, 3.0, GUN, 22.0)
+	for k2 in 8:
+		light(P(n * 0.34, k2 * TAU / 8.0), Color(1.0, 0.12, 0.1), 0.8, k2 % 2 == 0)
+
 ## Package 26: a waystation – a small hub on struts with round landing pads (2 / 3 / 4 by tier) for S and M
 ## ships: hazard rim, a landing circle, a hatch in the middle the ships sink through, lights around it.
 const PAD_R := 19.0
@@ -1492,6 +1668,16 @@ func _palettes() -> Dictionary:
 	if DIRECTORATE_ARTS.has(type):
 		hull = [Color(0.36, 0.4, 0.42), Color(0.6, 0.66, 0.68), Color(0.84, 0.9, 0.9)]          # 39c: Directorate silver
 		panel = [Color(0.12, 0.14, 0.15), Color(0.2, 0.23, 0.24), Color(0.32, 0.36, 0.37)]      # graphite
+	match type:
+		"khi_yard":
+			hull = [Color(0.52, 0.38, 0.04), Color(0.86, 0.68, 0.1), Color(1.0, 0.86, 0.35)]       # 39d: KHI yellow
+			panel = [Color(0.18, 0.18, 0.2), Color(0.3, 0.3, 0.32), Color(0.45, 0.45, 0.47)]
+		"aur_yard":
+			hull = [Color(0.6, 0.56, 0.48), Color(0.86, 0.82, 0.74), Color(0.98, 0.96, 0.9)]       # 39d: Aurelle ivory
+			panel = [Color(0.5, 0.36, 0.12), Color(0.8, 0.62, 0.26), Color(1.0, 0.85, 0.5)]       # gold
+		"hdy_yard", "weapon_platform":
+			hull = [Color(0.05, 0.05, 0.06), Color(0.12, 0.12, 0.14), Color(0.24, 0.24, 0.27)]     # 39d: Hadrian black
+			panel = [Color(0.16, 0.08, 0.08), Color(0.28, 0.12, 0.12), Color(0.42, 0.18, 0.17)]
 	if type == "cathedral":
 		hull = [Color(0.34, 0.05, 0.07), Color(0.58, 0.1, 0.12), Color(0.8, 0.22, 0.19)]       # 0.6.39.5: crimson …
 		panel = [Color(0.55, 0.38, 0.1), Color(0.84, 0.64, 0.22), Color(1.0, 0.86, 0.45)]      # … and gold

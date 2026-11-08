@@ -122,6 +122,12 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   trials** at the Concord Yards (pirates destroyed by your drones in Assembly space).
 - Debug → World: to Landfall, give/take the permit, ballot drone, new bill, vote now (with or without a bribe found out).
 
+## The manufacturers' systems (phase 0.5 package 39d)
+- **Altwerft** (Assembly): the Earthworks Second Yard. **Independent systems** (yellow on the map): **Erzhalde**
+  (Kanayama Works – a building site), **Perlmutt** (Atelier Aurelle – ivory and gold round a biosphere dome),
+  **Schwarzwacht** (Hadrian Foundry – black with red lights, weapon platforms being built by drones).
+- Each yard sells all of its maker's ships and builds them in its berths.
+
 ## Durchbruch – the Directorate's capital (phase 0.5 package 39c)
 - A blue-white star with a **Dyson sphere under construction** round it – frame rings of silver collector plates and
   scaffolding; its hub, the **Meridian Sphere**, is the only station built round a star. Closed like the other capitals.

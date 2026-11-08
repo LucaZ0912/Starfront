@@ -586,6 +586,7 @@ func _process(delta: float) -> void:
 				_test_landfall(view)
 				_test_heimkehr(view)
 				_test_durchbruch(view)
+				_test_makers(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -4191,6 +4192,11 @@ func _test_aurelle(view: SystemView) -> void:
 	check(d_plain > 0.0 and gain_e > gain_b * 1.3 and String(emp.hull()["drone_paint"]) == "aurelle_drone", "its white drones have their own shield; the shield module adds 50 %% more (%.0f)" % float(emp.stats()["drone"]["shield"]))
 	# passenger contracts
 	var st: Dictionary = view.layout["stations"][0]
+	for st_c in view.layout["stations"]:                # 0.6.39.10: a station with a board that is not knocked out
+		var only: Array = GameData.station_types.get(String(st_c["type"]), {}).get("services", [])
+		if (only.is_empty() or "bulletin" in only) and not GameState.stations.is_down(String(st_c["id"])):
+			st = st_c
+			break
 	var offers: Array = GameState.passenger_offers_for(view.system_id, st)
 	check(offers.size() == Missions.PASSENGER_OFFERS and String(offers[0]["type"]) == "passenger", "bulletin board: passenger contracts (%d)" % offers.size())
 	var boul := GameState.create_from_preset("std_aur_boulevard", "player")
@@ -4245,6 +4251,10 @@ func _test_aurelle(view: SystemView) -> void:
 	# the board's passenger tab builds
 	var sp: StationUI = main.station_panel
 	sp.open(st, view)
+	var bsvc: Dictionary = GameData.services.filter(func(x): return x["id"] == "bulletin")[0]
+	if sp.service_available(bsvc) != "":
+		# 0.6.39.10: no board here (a waystation only) – the home trade hub's board
+		sp.open(Universe.get_layout(Universe.home_system)["stations"][0], view)
 	sp.open_service("bulletin")
 	sp._panel._set_tab(1)
 	var lbl_ok := false
@@ -4906,7 +4916,7 @@ func _test_axiom(view: SystemView) -> void:
 				asm_t3 = st
 		if not dir_t3.is_empty() and not asm_t3.is_empty():
 			break
-	check(not dir_t3.is_empty() and "axa_threshold" in dir_t3["shipyard"] and not "axa_threshold" in asm_t3.get("shipyard", []), "the Threshold is sold only at Directorate shipyards")
+	check(not dir_t3.is_empty() and ("axa_threshold" in dir_t3["shipyard"]) == dir_t3.get("capital_yard", false) and "axa_parallax" in dir_t3["shipyard"] and not "axa_threshold" in asm_t3.get("shipyard", []), "the Threshold is sold only at Directorate shipyards (0.6.39: only at the Axiom Yards)")
 	# sensors +25 %, lower signature, more efficient power use
 	var mods := {"sensors": "sen_basic:2:C", "reactor": "rea_fusion:4:C", "weapon_0": "w_pulse:1:C"}
 	var px := GameState.create_fit("axa_parallax", mods, "player")
@@ -6130,7 +6140,22 @@ func _test_moons(view: SystemView) -> void:
 	check(gas_ok and name_ok and size_ok and total > 50 and at_moon > 0 and moon_fields > 0 and clear_ok,
 		"package 36: %d moons (gas giants 2–3, named after their planet, smallest %.0f km vs colossi up to %.0f km); %d stations and %d small fields at moons; planets clear of the belt fields" % [total, smallest, max_col, at_moon, moon_fields])
 	# rolling the orbits of another system: planets move, stations / moon fields / ring rocks keep their place on their body
+	# 0.6.39.10: a system with stations on orbits and anchored rocks (the cluster changes with every package)
 	var other: int = (GameState.current_system + 1) % U.systems.size()
+	for k_o in U.systems.size():
+		var cand: int = (GameState.current_system + 1 + k_o) % U.systems.size()
+		if cand == GameState.current_system:
+			continue
+		var Lc: Dictionary = U.get_layout(cand)
+		var anchored := 0
+		for pre0 in ["p", "m", "st_"]:
+			for o0 in Lc.get("asteroids", []) + Lc.get("debris", []):
+				if String(o0.get("anchor", "")).begins_with(pre0):
+					anchored += 1
+					break
+		if anchored >= 2 and Lc["stations"].any(func(st0): return st0.has("orbit")):
+			other = cand
+			break
 	var L2: Dictionary = U.get_layout(other)
 	# rocks anchored to a planet, a moon and a station (0.6.36.5: stations have their own orbit)
 	var by_id := {}
@@ -6721,6 +6746,41 @@ func _test_durchbruch(view: SystemView) -> void:
 			if String(m["type"]) in ["probe", "exotic"] or String(m.get("title", "")).begins_with("Test flight"):
 				kinds[String(m["type"])] = true
 	check(kinds.has("probe") and kinds.has("exotic") and kinds.has("escort"), "39c: measurement probes, exotic matter for the Sphere, test flights from the Axiom Yards (%s)" % ", ".join(kinds.keys()))
+
+
+## Package 39d: the manufacturers' systems – Earthworks in the Assembly's space, KHI, Aurelle and Hadrian independent
+## (yellow), each with a yard in the maker's style that sells all its ships and has them in its berths.
+func _test_makers(_view: SystemView) -> void:
+	var U = Universe
+	var place_ok := true
+	var yards_ok := true
+	var art_ok := true
+	var arts := {"earthworks": "ew_yard", "khi": "khi_yard", "aurelle": "aur_yard", "hadrian": "hdy_yard"}
+	for mk in U.MAKER_SYSTEMS:
+		var sid: int = U.special_system(String(U.MAKER_SYSTEMS[mk]))
+		if sid < 0:
+			place_ok = false
+			continue
+		var sys: Dictionary = U.systems[sid]
+		if mk == "earthworks":
+			place_ok = place_ok and String(sys["faction"]) == "assembly" and not bool(sys["capital"]) and sid != U.home_system
+		else:
+			place_ok = place_ok and String(sys["faction"]) == "" and U.is_independent(sid) and (sys["claimants"] as Array).is_empty() 				and is_equal_approx(float(sys["security"]), U.INDEPENDENT_SECURITY) and GalaxyMap.territory_bbcode(sid).contains("Independent")
+		var yard: Dictionary = U.get_layout(sid)["stations"][0]
+		var all_ok := true
+		for hid in U.maker_hulls(String(mk)):
+			all_ok = all_ok and hid in yard["shipyard"]
+		yards_ok = yards_ok and String(yard.get("art", "")) == arts[mk] and String(yard["type"]) == "shipyard" and all_ok
+		var built: Dictionary = StationArt.build(yard)
+		var berths: Array = built["vents"].filter(func(v): return String(v["kind"]) == "berth")
+		for bv in berths:
+			art_ok = art_ok and GameData.hulls.has(String(bv["hull"])) and String(GameData.hulls[String(bv["hull"])]["maker"]) == ("earthworks" if mk == "earthworks" else String(mk))
+		art_ok = art_ok and berths.size() >= 4
+	check(place_ok, "39d: Earthworks in the Assembly's space, KHI, Aurelle and Hadrian in independent systems (yellow)")
+	check(yards_ok and art_ok, "39d: every maker's yard in its own style sells all its ships and has them in its berths")
+	var sw: int = U.special_system("schwarzwacht")
+	var plats: Array = U.get_layout(sw)["structures"].filter(func(x): return String(x["art"]) == "weapon_platform") if sw >= 0 else []
+	check(plats.size() == 5, "39d: weapon platforms being built round the Hadrian Foundry")
 
 
 func _with_progress(m: Dictionary) -> Dictionary:

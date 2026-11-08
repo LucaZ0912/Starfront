@@ -213,11 +213,18 @@ func generate(p_seed: int) -> void:
 
 ## faction -> special system id (its capital)
 const SPECIAL_CAPITALS := {"assembly": "landfall", "covenant": "heimkehr", "directorate": "durchbruch"}
-const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr", "durchbruch": "Durchbruch"}
+const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr", "durchbruch": "Durchbruch",
+	"altwerft": "Altwerft", "erzhalde": "Erzhalde", "perlmutt": "Perlmutt", "schwarzwacht": "Schwarzwacht"}
+## 39d: the systems of the private manufacturers – Earthworks always in the Assembly's space, the others independent
+## (no power holds them; yellow on the galaxy map). Their bodies are random, their yard is the maker's own.
+const MAKER_SYSTEMS := {"earthworks": "altwerft", "khi": "erzhalde", "aurelle": "perlmutt", "hadrian": "schwarzwacht"}
+const INDEPENDENT_SECURITY := 0.75
 const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG", "durchbruch": "A"}
 ## The fixed stations of a special system (type, tier) – their place and look come from SPECIAL_STATIONS.
 const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]], "heimkehr": [["trade", 3], ["shipyard", 3]],
-	"durchbruch": [["research", 3], ["shipyard", 3], ["research", 2]]}
+	"durchbruch": [["research", 3], ["shipyard", 3], ["research", 2]],
+	"altwerft": [["shipyard", 3], ["trade", 2]], "erzhalde": [["shipyard", 3], ["industry", 2]],
+	"perlmutt": [["shipyard", 3], ["trade", 3]], "schwarzwacht": [["shipyard", 3], ["military", 2]]}
 ## Fixed planets: type, orbit (km, before the scale), radius (km), ring, city lights; moons per planet: [name, type, radius].
 const SPECIAL_BODIES := {
 	"landfall": [
@@ -258,6 +265,11 @@ const SPECIAL_STATIONS := {
 		{"name": "Axiom Yards", "art": "axiom_yards", "body": "Meitner", "dist": 15000.0, "capital_yard": true},
 		{"name": "Curie Terraforming Institute", "art": "research", "body": "Curie", "dist": 26000.0},
 	],
+	# 39d: the manufacturers' yards ("#1": the second planet, whatever it is)
+	"altwerft": [{"name": "Earthworks Second Yard", "art": "ew_yard", "body": "#1", "dist": 30000.0, "maker": "earthworks"}],
+	"erzhalde": [{"name": "Kanayama Works", "art": "khi_yard", "body": "#1", "dist": 30000.0, "maker": "khi"}],
+	"perlmutt": [{"name": "Atelier Aurelle", "art": "aur_yard", "body": "#1", "dist": 30000.0, "maker": "aurelle"}],
+	"schwarzwacht": [{"name": "Hadrian Foundry", "art": "hdy_yard", "body": "#1", "dist": 30000.0, "maker": "hadrian"}],
 }
 ## 39c: the Dyson sphere round Durchbruch's star – its radius (km) and the frame rings of the shell:
 ## [rotation, flattening (seen from above), share already built, where the built arc begins (0–1)]
@@ -279,6 +291,77 @@ func _apply_specials() -> void:
 		s["special"] = sp
 		s["name"] = SPECIAL_NAMES[sp]
 		s["security"] = 1.0
+	_place_makers()
+
+
+## 39d: Earthworks gets a safe Assembly system (not the capital, not the start); KHI, Aurelle and Hadrian each an
+## independent system – unclaimed ones first, then contested ones, then the edge of a power's space – kept apart from
+## each other and from the pirates.
+func _place_makers() -> void:
+	var hops := _hop_table()
+	var taken := {home_system: true}
+	for s0 in systems:
+		if String(s0.get("special", "")) != "":
+			taken[int(s0["id"])] = true
+	# Earthworks
+	var best := -1
+	var best_sc := -INF
+	for s in systems:
+		var sid := int(s["id"])
+		if taken.has(sid) or String(s.get("faction", "")) != "assembly":
+			continue
+		var sc := float(s["security"]) * 10.0 - absf(int(s.get("core_dist", 0)) - 2)
+		if sc > best_sc:
+			best_sc = sc
+			best = sid
+	if best >= 0:
+		_make_special(best, "altwerft")
+		systems[best]["security"] = maxf(float(systems[best]["security"]), 0.8)
+		taken[best] = true
+	# the independents
+	var chosen: Array = []
+	for mk in ["khi", "aurelle", "hadrian"]:
+		var pick := -1
+		var pick_sc := -INF
+		for s2 in systems:
+			var sid2 := int(s2["id"])
+			var f := String(s2.get("faction", ""))
+			if taken.has(sid2) or f in FactionData.PIRATES or bool(s2.get("capital", false)):
+				continue
+			var near_pirates := false
+			for nb in s2["links"]:
+				near_pirates = near_pirates or String(systems[nb].get("faction", "")) in FactionData.PIRATES
+			var sc2 := 0.0
+			if f == "":
+				sc2 += 200.0 if (s2.get("claimants", []) as Array).is_empty() else 120.0
+			else:
+				sc2 += float(int(s2.get("core_dist", 0))) * 10.0
+			sc2 -= 80.0 if near_pirates else 0.0
+			for c in chosen:
+				sc2 += minf(float(hops[sid2][c]), 6.0) * 6.0          # apart from the other independents
+			if sc2 > pick_sc:
+				pick_sc = sc2
+				pick = sid2
+		if pick < 0:
+			continue
+		_make_special(pick, String(MAKER_SYSTEMS[mk]))
+		var sp: Dictionary = systems[pick]
+		sp["faction"] = ""
+		sp["claimants"] = []
+		sp["independent"] = true
+		sp["security"] = INDEPENDENT_SECURITY
+		taken[pick] = true
+		chosen.append(pick)
+
+
+func _make_special(sid: int, sp: String) -> void:
+	systems[sid]["special"] = sp
+	systems[sid]["name"] = SPECIAL_NAMES[sp]
+
+
+## 39d: an independent system (no power holds it – yellow on the map).
+func is_independent(sid: int) -> bool:
+	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("independent", false))
 
 
 ## The special system id of a system ("" = an ordinary one).
@@ -367,6 +450,8 @@ func _special_station(L: Dictionary, sp: String, i: int, base: Dictionary) -> Di
 				base[key0] = d[key0]
 		return base
 	var parent := {}
+	if String(d["body"]).begins_with("#"):
+		parent = L["planets"][clampi(int(String(d["body"]).substr(1)), 0, L["planets"].size() - 1)]      # 39d
 	for b in L["planets"] + L.get("moons", []):
 		if String(b["name"]) == String(d["body"]):
 			parent = b
@@ -382,7 +467,20 @@ func _special_station(L: Dictionary, sp: String, i: int, base: Dictionary) -> Di
 	for key in d:
 		if not key in ["name", "art", "body", "dist"]:
 			base[key] = d[key]
+	if d.has("maker"):
+		base["shipyard"] = maker_hulls(String(d["maker"]))              # 39d: every ship of the house
 	return base
+
+
+## 39d: every ship a manufacturer sells, smallest first.
+static func maker_hulls(mk: String) -> Array:
+	var out: Array = []
+	for hid in GameData.hulls:
+		var h: Dictionary = GameData.hulls[hid]
+		if String(h.get("maker", "")) == mk and h["buyable"] and not h.get("drone_only", false) and not h.get("haven_only", false):
+			out.append(hid)
+	out.sort_custom(func(a, b): return int(GameData.hulls[a]["size"]) < int(GameData.hulls[b]["size"]))
+	return out
 
 
 ## Landmarks of a special system that are no stations: the relay stations round The Vote, the Res Publica at the
@@ -394,6 +492,14 @@ func _special_structures(L: Dictionary, sp: String) -> void:
 		return
 	if sp == "durchbruch":
 		_durchbruch_structures(L)
+		return
+	if sp == "schwarzwacht":
+		for st in L["stations"]:
+			if String(st.get("art", "")) == "hdy_yard":
+				for k in 5:
+					var off := Vector2.from_angle(k * TAU / 5.0 + 0.6) * (2700.0 + 450.0 * (k % 2))
+					L["structures"].append({"id": "wplat_%d" % k, "name": "", "art": "weapon_platform", "type": "weapon_platform", "tier": 1,
+						"seed": 800 + k, "anchor": st["id"], "pos": (st["pos"] as Vector2) + off})
 		return
 	if sp != "landfall":
 		return
@@ -1499,7 +1605,7 @@ func _generate_layout(id: int) -> Dictionary:
 	var sp := String(sys.get("special", ""))           # package 39: a hand-made system
 	# Planets
 	var planet_count := rng.randi_range(3, 6)
-	if sp != "":
+	if sp != "" and SPECIAL_BODIES.has(sp):
 		planet_count = 0
 	var ptypes: Array = PLANET_TYPES.keys().filter(func(t): return t != "dwarf")     # package 38: dwarfs come separately
 	# package 37: a red supergiant pushes the inner orbits out (squeezing them towards the edge); around neutron stars
@@ -1527,12 +1633,12 @@ func _generate_layout(id: int) -> Dictionary:
 			"radius": rng.randf_range(6000.0, 12000.0) * float(PLANET_TYPES[ptype].get("big", 1.0)),
 			"seed": rng.randf_range(0.0, 100.0), "ring": big and rng.randf() < (0.45 if ptype == "ice_giant" else 0.6),
 		})
-	if sp != "":
+	if sp != "" and SPECIAL_BODIES.has(sp):
 		_special_planets(L, id, sp)
 		for pp in L["planets"]:
 			used.append(pp["pos"])
 	_make_moons(L, id)                                # package 36
-	if sp != "":
+	if sp != "" and SPECIAL_BODIES.has(sp):
 		_special_moons(L, sp)
 	var mrng := RandomNumberGenerator.new()           # package 36: which stations orbit a moon (own RNG)
 	mrng.seed = seed_value * 40193 + id * 5381 + 36

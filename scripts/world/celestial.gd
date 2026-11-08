@@ -619,11 +619,62 @@ func _draw_holo_banner(fid: String, st_size: float) -> void:
 const VOTE_DRONES := 14              # drones on each lane between The Vote and a relay (0.6.39.2: many more)
 
 
+## 39d: the ships in a yard's berths – the manufacturer's own hulls, bows outwards, under scaffolding, a section still
+## open ("berth" vents of the art; the Axiom Yards' carry no hull and pick Threshold / Parallax by size).
+func _draw_berths() -> void:
+	var px := StationArt.PX
+	for v in art["vents"]:
+		if String(v["kind"]) != "berth":
+			continue
+		var hid := String(v.get("hull", ""))
+		var ang := float(v.get("ang", PI * 0.5 * signf(float(v["size"]))))
+		if hid == "":
+			hid = "axa_threshold" if float(v["phase"]) > 0.5 else "axa_parallax"
+		var tex: Texture2D = PixelArt.ship_texture(hid, "civilian" if v.has("hull") else "directorate")
+		var tsz := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE
+		draw_set_transform(v["pos"], ang, Vector2.ONE)
+		draw_texture_rect(tex, Rect2(-tsz * 0.5, tsz), false, Color(0.92, 0.95, 0.95))
+		var hl := tsz.x * 0.5
+		var hw2 := tsz.y * 0.5 + px * 4.0
+		for q in 4:
+			var xq := lerpf(-hl * 0.8, hl * 0.8, q / 3.0)
+			draw_line(Vector2(xq, -hw2), Vector2(xq, hw2), Color(0.5, 0.55, 0.57, 0.85), px * 1.5)
+		draw_rect(Rect2(Vector2(-hl * 0.15, -tsz.y * 0.3), Vector2(hl * 0.45, tsz.y * 0.6)), Color(0.12, 0.14, 0.15, 0.55))
+		for q2 in 6:
+			draw_line(Vector2(-hl * 0.15 + q2 * hl * 0.09, -tsz.y * 0.3), Vector2(-hl * 0.15 + q2 * hl * 0.09, tsz.y * 0.3), Color(0.55, 0.6, 0.62, 0.7), px)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Work drones hopping between the welding spots ("spark" vents) of a landmark being built.
+func _work_drones(count: int, col: Color) -> void:
+	var px := StationArt.PX
+	var spots: Array = art["vents"].filter(func(v): return String(v["kind"]) == "spark")
+	if spots.is_empty():
+		return
+	for j in count:
+		var cyc := _t / 5.0 + j * 0.61 + float(int(data.get("seed", 0)) % 5)
+		var leg := int(floorf(cyc))
+		var mv := smoothstep(0.0, 0.4, fposmod(cyc, 1.0))
+		var a0: Vector2 = spots[(leg + j) % spots.size()]["pos"]
+		var a1: Vector2 = spots[(leg + j + 1) % spots.size()]["pos"]
+		var off := (a0.normalized() if a0.length() > 1.0 else Vector2.UP) * (40.0 + 15.0 * j)
+		var dp := (a0 + off).lerp(a1 + off, mv)
+		draw_rect(Rect2(dp - Vector2(px, px), Vector2(px * 2.0, px * 2.0)), Color(col, 0.95))
+		draw_circle(dp, px * 2.5, Color(col, 0.25))
+		if mv >= 1.0 and posmod(int(_t * 8.0) + j, 3) == 0:
+			draw_circle(dp - off * 0.5, px * 2.0, Color(1.0, 0.95, 0.75, 0.9))
+
+
 ## Package 39: the life of the landmarks – drones shuttling between The Vote and its relay stations, the work
 ## drones round the Res Publica.
 func _draw_landmark_live() -> void:
 	var px := StationArt.PX
+	_draw_berths()                                    # 39d: the ships being built in the yards' berths
 	match String(data.get("art", "")):
+		"weapon_platform":
+			_work_drones(6, Color(1.0, 0.45, 0.35))
+		"ew_yard", "khi_yard", "aur_yard", "hdy_yard":
+			_work_drones(6, Color(1.0, 0.85, 0.5))
 		"vote":
 			var hub_r := float(art["size"]) * 0.32
 			var k := 0
@@ -730,27 +781,6 @@ func _draw_landmark_live() -> void:
 				draw_circle(Vector2.ZERO, r2 * (0.3 + 0.7 * k2), Color(0.3, 1.0, 0.6, 0.35 * (1.0 - k2)))
 				draw_arc(Vector2.ZERO, r2, 0.0, TAU, 32, Color(0.6, 1.0, 0.8, 0.8 * (1.0 - k2)), px * 3.0)
 		"axiom_yards":
-			# 0.6.39.9: in the berths the yard's own ships – Thresholds and Parallaxes – under scaffolding
-			for v in art["vents"]:
-				if String(v["kind"]) != "berth":
-					continue
-				var big: bool = float(v["phase"]) > 0.5
-				var tex: Texture2D = PixelArt.ship_texture("axa_threshold" if big else "axa_parallax", "directorate")
-				var tsz := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE
-				var bp: Vector2 = v["pos"]
-				var sgn := signf(float(v["size"]))
-				draw_set_transform(bp, PI * 0.5 * sgn, Vector2.ONE)     # the bow points away from the spine
-				draw_texture_rect(tex, Rect2(-tsz * 0.5, tsz), false, Color(0.92, 0.95, 0.95))
-				# scaffolding across the hull, a bare section still open
-				var hl := tsz.x * 0.5
-				var hw2 := tsz.y * 0.5 + px * 4.0
-				for q in 4:
-					var xq := lerpf(-hl * 0.8, hl * 0.8, q / 3.0)
-					draw_line(Vector2(xq, -hw2), Vector2(xq, hw2), Color(0.5, 0.55, 0.57, 0.85), px * 1.5)
-				draw_rect(Rect2(Vector2(-hl * 0.15, -tsz.y * 0.3), Vector2(hl * 0.45, tsz.y * 0.6)), Color(0.12, 0.14, 0.15, 0.55))
-				for q2 in 6:
-					draw_line(Vector2(-hl * 0.15 + q2 * hl * 0.09, -tsz.y * 0.3), Vector2(-hl * 0.15 + q2 * hl * 0.09, tsz.y * 0.3), Color(0.55, 0.6, 0.62, 0.7), px)
-				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			# 39c: Axiom ships testing their cloaks round the yard – fading out, drifting on, fading in again
 			for j in 4:
 				var a3 := _t * 0.03 * (1.0 if j % 2 == 0 else -1.0) + j * TAU / 4.0

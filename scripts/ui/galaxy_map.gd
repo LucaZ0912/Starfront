@@ -144,6 +144,16 @@ func _ready() -> void:
 		row.tooltip_text = "%s – %s\n\"%s\"%s" % [fd["name"], fd["gov"], fd["motto"], "" if fd["territory"] else "\nNo territory – appears as pirates anywhere"]
 		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		fg.add_child(row)
+	# 39d: independent systems
+	var irow := UI.hbox(3)
+	var isw := ColorRect.new()
+	isw.color = INDEPENDENT_COLOR
+	isw.custom_minimum_size = Vector2(12, 12)
+	irow.add_child(isw)
+	irow.add_child(UI.label("Independent", 11, INDEPENDENT_COLOR))
+	irow.tooltip_text = "Independent systems – no power holds them (the private manufacturers' homes)"
+	irow.mouse_filter = Control.MOUSE_FILTER_PASS
+	fg.add_child(irow)
 	sv.add_child(HSeparator.new())
 	sv.add_child(UI.label("Your ships", 16, UI.ACCENT))
 	var scroll := ScrollContainer.new()
@@ -298,7 +308,7 @@ static func territory_texture() -> Texture2D:
 	var rkey := {}
 	for s3 in Universe.systems:
 		var f: String = s3.get("faction", "")
-		rkey[int(s3["id"])] = f if f != "" else "c:" + ",".join(PackedStringArray(s3.get("claimants", [])))
+		rkey[int(s3["id"])] = f if f != "" else ("ind" if s3.get("independent", false) else "c:" + ",".join(PackedStringArray(s3.get("claimants", []))))
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	for y in h:
@@ -322,6 +332,9 @@ static func territory_texture() -> Texture2D:
 			var sys: Dictionary = Universe.systems[o]
 			if String(sys.get("faction", "")) != "":
 				col = FactionData.color_of(sys["faction"])
+			elif sys.get("independent", false):
+				col = INDEPENDENT_COLOR                      # 39d: independent systems in yellow
+				alpha = 0.16
 			else:
 				var cl: Array = sys.get("claimants", [])
 				alpha = 0.11
@@ -610,9 +623,14 @@ func _update_info() -> void:
 
 
 ## Controlling faction(s) of a system in their colours (for RichTextLabels).
+const INDEPENDENT_COLOR := Color(1.0, 0.86, 0.25)
+
+
 static func territory_bbcode(sid: int) -> String:
 	var f := Universe.controller(sid)
 	var txt := Universe.territory_text(sid)
+	if Universe.is_independent(sid):
+		return "[color=#%s]Independent system[/color]" % INDEPENDENT_COLOR.to_html(false)
 	if f != "":
 		return "[color=#%s]%s[/color]" % [FactionData.color_of(f).to_html(false), txt]
 	var cl := Universe.claimants(sid)

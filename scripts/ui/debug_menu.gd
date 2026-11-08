@@ -347,6 +347,15 @@ func _build_world() -> void:
 	r39b.add_child(UI.button("Vote now", func(): _cmd({"type": "debug_senate", "do": "resolve"})))
 	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
 	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
+	# package 39d: the manufacturers' systems
+	_section("Manufacturers' systems (package 39d)")
+	var r39e := _row()
+	for mk in Universe.MAKER_SYSTEMS:
+		var spk: String = Universe.MAKER_SYSTEMS[mk]
+		var sid39: int = Universe.special_system(spk)
+		var b39 := UI.button("To %s (%s%s)" % [Universe.SPECIAL_NAMES[spk], String(MakerData.MAKERS[mk]["tag"]), ", independent" if Universe.is_independent(sid39) else ""], func(): _cmd({"type": "debug_special", "special": spk}))
+		b39.disabled = sid39 < 0
+		r39e.add_child(b39)
 	# package 39c: Durchbruch and the Research Exchange
 	_section("Durchbruch & the Research Exchange (package 39c)")
 	content.add_child(UI.label("Durchbruch: %s  •  permit: %s  •  research data: %d  •  exotic matter: %d" % [

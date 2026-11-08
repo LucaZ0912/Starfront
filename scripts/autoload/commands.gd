@@ -1744,6 +1744,14 @@ func _c_debug_research(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_special", "special": "altwerft"|…} – 39d: to a special system (docked at its first station)
+func _c_debug_special(c: Dictionary) -> String:
+	var sid := Universe.special_system(String(c.get("special", "")))
+	if sid < 0:
+		return "No such system in this cluster."
+	return _c_debug_teleport({"system": sid})
+
+
 ## {"type":"debug_heimkehr"} – to Heimkehr (docked at the Cathedral of Return)
 func _c_debug_heimkehr(_c: Dictionary) -> String:
 	var sid := Universe.special_system("heimkehr")

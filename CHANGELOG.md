@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.10 – 2026-11-08
+
+**Package 39d: the manufacturers' systems.** A new game is needed.
+- Earthworks: **Altwerft** in the Assembly's space – the Earthworks Second Yard (12696 HE), the standard yard design.
+- New class of systems: **independent** (yellow on the galaxy map), no power holds them:
+  - **Erzhalde** – Kanayama Works: a yellow building site with scaffolding, tower cranes and a smoking refinery block.
+  - **Perlmutt** – Atelier Aurelle: slender and rounded, ivory and gold, a glass dome with a biosphere at its heart.
+  - **Schwarzwacht** – Hadrian Foundry: black and angular with red lights; weapon platforms are being built round it,
+    drones at work.
+- Every maker's yard sells all of its ships, and the berths hold them under construction (scaffolding, sparks, drones).
+- Codex entry on independent systems; debug: jump to each maker's system.
+
 ## alpha 0.6.39.9 – 2026-11-08
 
 - Axiom Yards reworked: the spine ends at its sensor hub instead of running off the left edge; in the berths lie the
