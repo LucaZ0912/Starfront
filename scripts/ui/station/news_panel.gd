@@ -13,7 +13,7 @@ func build() -> void:
 	var camps: Dictionary = GameState.news.campaigns
 	var active: Array = []
 	for k in camps.keys():
-		if GameState.news.bounty_mult(int(k)) > 1.0:
+		if GameState.play_time < float(camps[k]["until"]):
 			active.append(int(k))
 	section("BOUNTY CAMPAIGNS")
 	if active.is_empty():

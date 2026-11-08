@@ -156,6 +156,7 @@ const CME_BANNER := 10.0                      # 0.6.37.4: s before the eruption 
 const CME_ALARM_VOL := 0.55
 var _cme: Dictionary = {}
 var _cme_next := -1.0
+var _vote_beam_t := 60.0          # package 39a: the next ballot drone sent out to a gate (Landfall)
 
 
 func _update_cme(delta: float) -> void:
@@ -501,6 +502,9 @@ func _spawn_celestials() -> void:
 		var hv := _add_celestial("haven", ph)
 		havens.append(hv)
 		stations[ph["id"]] = hv      # dockable with pirate standing (package 12); zone 0 = no no-fire zone
+	for sx in layout.get("structures", []):
+		_add_celestial("structure", sx)          # package 39: landmarks
+	_vote_beam_t = randf_range(20.0, 60.0)
 	_sync_pods()
 
 
@@ -1329,6 +1333,7 @@ func _process(delta: float) -> void:
 	_update_notorious(delta)
 	_update_raid(delta)
 	_update_cme(delta)                                  # package 37
+	_update_vote_beam(delta)                            # package 39a
 	_respawn_timer -= delta
 	if _respawn_timer <= 0.0:
 		_respawn_timer = 120.0
@@ -3147,6 +3152,96 @@ func spawn_fx(f: Node2D) -> void:
 	fx_layer.add_child(f)
 
 
+# ---------------------------------------------------------------- Package 39a: the votes go out
+
+const VOTE_BEAM_EVERY := Vector2(120.0, 240.0)
+
+
+## Every few minutes in Landfall a blue beam – like the hyperspace tunnel, only small – shoots a drone from a relay
+## station round The Vote to one of the gates: the votes going out into the Cluster.
+func _update_vote_beam(delta: float) -> void:
+	if Universe.special_of(system_id) != "landfall":
+		return
+	_vote_beam_t -= delta
+	if _vote_beam_t > 0.0:
+		return
+	_vote_beam_t = randf_range(VOTE_BEAM_EVERY.x, VOTE_BEAM_EVERY.y)
+	fire_vote_beam()
+
+
+## Sends one ballot drone (also the debug menu). Returns the beam, or null if there is nothing to send it from.
+func fire_vote_beam() -> Node2D:
+	var relays: Array = layout.get("structures", []).filter(func(x): return String(x.get("art", "")) == "vote_relay")
+	if relays.is_empty() or layout["gates"].is_empty():
+		return null
+	var r: Dictionary = relays[randi() % relays.size()]
+	var g: Dictionary = layout["gates"][randi() % layout["gates"].size()]
+	var beam := VoteBeam.new()
+	beam.view = self
+	beam.a = r["pos"]
+	beam.b = g["pos"]
+	spawn_fx(beam)
+	Audio.play_at("gate_activate", r["pos"], "ballot drone")
+	return beam
+
+
+class VoteBeam extends Node2D:
+	const LIFE := 5.0
+	const REACH := 1.1                       # the beam reaches the gate after this long
+	var view
+	var a := Vector2.ZERO
+	var b := Vector2.ZERO
+	var t := 0.0
+	var _flashed := false
+
+	func _process(delta: float) -> void:
+		t += delta
+		if t >= REACH and not _flashed:
+			_flashed = true
+			view.spawn_fx(Fx.flash(b, Color(0.5, 0.75, 1.0), 900.0))
+		if t >= LIFE:
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var z: float = view.camera.zoom.x
+		var px := 1.0 / maxf(z, 0.0000001)                 # world units per screen pixel
+		var d := b - a
+		var len := d.length()
+		var dir := d / maxf(len, 1.0)
+		var side := dir.orthogonal()
+		var fade := clampf((LIFE - t) / 1.2, 0.0, 1.0)
+		var front := clampf(t / REACH, 0.0, 1.0)
+		var tip := a + d * pow(front, 2.2)
+		var w := maxf(160.0, px * 5.0)
+		var col := Color(0.4, 0.7, 1.0)
+		# the tunnel: soft walls and a bright core
+		draw_line(a, tip, Color(col, 0.12 * fade), w * 2.6)
+		draw_line(a + side * w, tip + side * w, Color(col, 0.45 * fade), maxf(px * 1.5, w * 0.08))
+		draw_line(a - side * w, tip - side * w, Color(col, 0.45 * fade), maxf(px * 1.5, w * 0.08))
+		draw_line(a, tip, Color(0.85, 0.95, 1.0, 0.8 * fade), maxf(px * 2.0, w * 0.18))
+		# rings rushing along towards the gate
+		var n := 36
+		for i in n:
+			var f := fposmod(float(i) / n + t * 0.35, 1.0)
+			if f > pow(front, 2.2):
+				continue
+			var q := a + d * f
+			draw_set_transform(q, dir.angle(), Vector2(0.3, 1.0))
+			draw_arc(Vector2.ZERO, w, 0.0, TAU, 18, Color(0.6, 0.85, 1.0, 0.5 * fade), maxf(px * 1.5, w * 0.06))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# the drone with the votes: a white spark racing ahead
+		var dp := tip
+		if t > REACH:
+			dp = b
+		draw_circle(dp, maxf(w * 0.6, px * 4.0), Color(0.75, 0.9, 1.0, 0.5 * fade))
+		draw_circle(dp, maxf(w * 0.25, px * 2.0), Color(1, 1, 1, fade))
+		# the launch flash at the relay
+		if t < 0.8:
+			draw_circle(a, maxf(w * 2.0, px * 8.0) * (1.0 - t / 0.8), Color(0.7, 0.9, 1.0, 0.7 * (1.0 - t / 0.8)))
+
+
 ## Package 28a: the sound of a weapon – by its family (placeholders: one per kind of weapon).
 static func weapon_sound(w: Dictionary) -> String:
 	var fam := String(w.get("family", ""))
@@ -3553,6 +3648,8 @@ func on_ship_destroyed(ship: Ship, _killer) -> void:
 	if ship.faction != "pirate":
 		_lawful_wreck(ship, _killer)
 		return
+	if _killer is Ship and is_instance_valid(_killer) and _killer.get("carrier") != null and _killer.get("carrier") == player:
+		GameState.notify_drone_kill(system_id)       # package 39a: field trials
 	if _killer is Ship and _killer.faction == "player":
 		GameState.notify("kill", system_id)
 		if ship.bounty > 0:

@@ -19,7 +19,7 @@ const SYSTEM_NAMES := [
 	"Leuchtfeuer", "Ödland", "Himmelstor", "Nachtfalke", "Hohenstein",
 ]
 ## Galaxy generator version (stored in saves; older saves are moved to the current cluster).
-const GALAXY_VERSION := 6          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets
+const GALAXY_VERSION := 7          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets; 39: special systems
 const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
 const POWER_SYSTEMS := 12
@@ -124,7 +124,7 @@ func _assign_stars() -> void:
 	var empty: Array = []
 	for s2 in systems:
 		s2["star"] = star_index("G")
-		if int(s2["id"]) != home_system and (s2["stations_plan"] as Array).is_empty() and int(s2.get("haven_tier", 0)) == 0:
+		if int(s2["id"]) != home_system and (s2["stations_plan"] as Array).is_empty() and int(s2.get("haven_tier", 0)) == 0 and String(s2.get("special", "")) == "":
 			empty.append(int(s2["id"]))
 	_shuffle(empty, rng)
 	var taken := {}
@@ -145,6 +145,9 @@ func _assign_stars() -> void:
 	for s3 in systems:
 		var sid3 := int(s3["id"])
 		if sid3 == home_system or taken.has(sid3):
+			continue
+		if SPECIAL_STARS.has(String(s3.get("special", ""))):
+			s3["star"] = star_index(String(SPECIAL_STARS[String(s3["special"])]))     # package 39
 			continue
 		var x := rng.randf() * total
 		for i in STAR_TYPES.size():
@@ -199,8 +202,167 @@ func generate(p_seed: int) -> void:
 		})
 	_build_routes(rng)
 	_assign_territory()
+	_apply_specials()                                 # package 39
 	_plan_stations()
 	_assign_stars()                                   # package 37
+
+
+# ---------------------------------------------------------------- Special systems (package 39)
+# Hand-made systems: fixed name, star, planets and moons with names, fixed stations and a landmark. WHERE they lie is
+# still up to the generator – the capital of a power always becomes its special system.
+
+## faction -> special system id (its capital)
+const SPECIAL_CAPITALS := {"assembly": "landfall"}
+const SPECIAL_NAMES := {"landfall": "Landfall"}
+const SPECIAL_STARS := {"landfall": "G"}
+## The fixed stations of a special system (type, tier) – their place and look come from SPECIAL_STATIONS.
+const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]]}
+## Fixed planets: type, orbit (km, before the scale), radius (km), ring, city lights; moons per planet: [name, type, radius].
+const SPECIAL_BODIES := {
+	"landfall": [
+		{"name": "Pnyx", "type": "barren", "orbit": 250000.0, "radius": 6500.0, "seed": 21.0},
+		{"name": "Agora", "type": "terran", "orbit": 560000.0, "radius": 11500.0, "seed": 47.0, "city": 1.0},
+		{"name": "Ekklesia", "type": "ocean", "orbit": 860000.0, "radius": 10500.0, "seed": 63.0},
+		{"name": "Boulé", "type": "ice_giant", "orbit": 1250000.0, "radius": 34000.0, "seed": 88.0, "ring": true, "deep": true,
+			"moons": [["Ostrakon", "moon_ice", 5200.0], ["Kleros", "moon_rock", 4100.0]]},
+	],
+}
+## Fixed stations: name, art (landmark look), the body they orbit ("p1" / "m3_0"), distance, extra keys.
+const SPECIAL_STATIONS := {
+	"landfall": [
+		{"name": "The Vote", "art": "vote", "body": "Agora", "dist": 32000.0, "senate": true},
+		{"name": "Concord Yards", "art": "concord_yards", "body": "Ostrakon", "dist": 14000.0, "capital_yard": true},
+	],
+}
+## Hulls sold only at the yard of their faction's capital (package 39: the flagships of the state manufacturers).
+const CAPITAL_ONLY := {"cfw_concordia": "assembly"}
+
+
+## Names the capitals with a special system after it, makes them very safe.
+func _apply_specials() -> void:
+	for s in systems:
+		if not s.get("capital", false):
+			continue
+		var sp := String(SPECIAL_CAPITALS.get(String(s.get("faction", "")), ""))
+		if sp == "":
+			continue
+		s["special"] = sp
+		s["name"] = SPECIAL_NAMES[sp]
+		s["security"] = 1.0
+
+
+## The special system id of a system ("" = an ordinary one).
+func special_of(sid: int) -> String:
+	if sid < 0 or sid >= systems.size():
+		return ""
+	return String(systems[sid].get("special", ""))
+
+
+## The system of a special id (-1 = not in this cluster).
+func special_system(sp: String) -> int:
+	for s in systems:
+		if String(s.get("special", "")) == sp:
+			return int(s["id"])
+	return -1
+
+
+## Faction whose capital this special system is ("" = none).
+func special_faction(sid: int) -> String:
+	var sp := special_of(sid)
+	for f in SPECIAL_CAPITALS:
+		if SPECIAL_CAPITALS[f] == sp:
+			return String(f)
+	return ""
+
+
+## Fixed planets of a special system (replaces the random ones).
+func _special_planets(L: Dictionary, id: int, sp: String) -> void:
+	var i := 0
+	for d in SPECIAL_BODIES[sp]:
+		var orbit := float(d["orbit"]) * SCALE
+		L["planets"].append({
+			"id": "p%d" % i, "name": String(d["name"]), "type": String(d["type"]), "orbit": orbit,
+			"pos": Vector2.from_angle(float(d["seed"])) * orbit, "radius": float(d["radius"]), "seed": float(d["seed"]),
+			"ring": bool(d.get("ring", false)), "fixed": true,
+		})
+		if d.has("city"):
+			L["planets"].back()["city_fixed"] = float(d["city"])
+		if d.get("deep", false):
+			L["planets"].back()["deep"] = true
+		i += 1
+
+
+## Fixed moons of a special system (replaces the random ones).
+func _special_moons(L: Dictionary, sp: String) -> void:
+	L["moons"] = []
+	var pi := 0
+	for d in SPECIAL_BODIES[sp]:
+		var p: Dictionary = L["planets"][pi]
+		var orbit := float(p["radius"]) * 2.6 + 26000.0
+		var k := 0
+		for md in d.get("moons", []):
+			var mr := float(md[2])
+			orbit += mr
+			L["moons"].append({"id": "m%d_%d" % [pi, k], "planet": pi, "name": String(md[0]), "type": String(md[1]), "radius": mr,
+				"orbit": orbit, "pos": p["pos"], "seed": 30.0 + pi * 7.0 + k * 3.0})
+			orbit += mr + 30000.0
+			k += 1
+		pi += 1
+
+
+## Station i of a special system: where it orbits and how it looks.
+func _special_station(L: Dictionary, sp: String, i: int, base: Dictionary) -> Dictionary:
+	var specs: Array = SPECIAL_STATIONS.get(sp, [])
+	if i >= specs.size():
+		return base
+	var d: Dictionary = specs[i]
+	var parent := {}
+	for b in L["planets"] + L.get("moons", []):
+		if String(b["name"]) == String(d["body"]):
+			parent = b
+	if parent.is_empty():
+		return base
+	var off := Vector2.from_angle(0.7 + i * 2.1) * float(d["dist"])
+	base["anchor"] = parent["id"]
+	base["orbit"] = off.length()
+	base["pos"] = (parent["pos"] as Vector2) + off
+	base["name"] = String(d["name"])
+	base["art"] = String(d["art"])
+	base["planet"] = int(parent["planet"]) if parent.has("planet") else L["planets"].find(parent)
+	for key in d:
+		if not key in ["name", "art", "body", "dist"]:
+			base[key] = d[key]
+	return base
+
+
+## Landmarks of a special system that are no stations: the relay stations round The Vote, the Res Publica at the
+## Concord Yards … They move with the station they belong to ("anchor").
+func _special_structures(L: Dictionary, sp: String) -> void:
+	L["structures"] = []
+	if sp != "landfall":
+		return
+	var vote := {}
+	var yards := {}
+	for st in L["stations"]:
+		if String(st.get("art", "")) == "vote":
+			vote = st
+		elif String(st.get("art", "")) == "concord_yards":
+			yards = st
+	if not vote.is_empty():
+		var offs: Array = []
+		for k in VOTE_RELAYS:
+			var off := Vector2.from_angle(TAU * k / VOTE_RELAYS + 0.4) * (3400.0 + 500.0 * (k % 2))
+			offs.append(off)
+			L["structures"].append({"id": "vr_%d" % k, "name": "Vote Relay %s" % ROMAN[k], "art": "vote_relay", "type": "vote_relay",
+				"tier": 1, "seed": 400 + k, "anchor": vote["id"], "pos": (vote["pos"] as Vector2) + off})
+		vote["relay_offs"] = offs
+	if not yards.is_empty():
+		var off2 := Vector2(-2700.0, 300.0)
+		L["structures"].append({"id": "res_publica", "name": "Res Publica (under construction)", "art": "res_publica", "type": "res_publica",
+			"tier": 1, "seed": 4242, "anchor": yards["id"], "pos": (yards["pos"] as Vector2) + off2})
+
+
+const VOTE_RELAYS := 4
 
 
 ## Decides type and tier of every station (and Pirate Haven) in the cluster up front, so that every
@@ -214,6 +376,8 @@ func _plan_stations() -> void:
 		var plan: Array = []
 		if s["id"] == home_system:
 			plan = [["trade", 3], ["military", 2]]
+		elif SPECIAL_PLANS.has(String(s.get("special", ""))):
+			plan = SPECIAL_PLANS[String(s["special"])].duplicate(true)       # package 39: fixed stations
 		else:
 			var r := prng.randf()
 			var cnt := 0 if r < 0.22 else (1 if r < 0.78 else 2)
@@ -650,6 +814,7 @@ func system_profile(sid: int) -> Dictionary:
 	var patrol_q := 0                 # 0 light … 2 heavy
 	if ctl in FactionData.POWERS:
 		patrol_groups = 1 + int(military >= 2) + int(sys.get("capital", false)) + int(sec >= 0.8 and tiers >= 3)
+		patrol_groups += int(ctl == "assembly" and GameState.senate.mod("patrols") > 1.0)       # package 39: Militia Act
 		patrol_size = 2 + int(military >= 3)
 		patrol_q = clampi(int(military / 2) + int(sys.get("capital", false)), 0, 2)
 	elif ctl == "" and not claimants(sid).is_empty():
@@ -1205,7 +1370,7 @@ func _place_orbits(L: Dictionary, sid: int) -> void:
 		var sp: Vector2 = (par["pos"] as Vector2) + Vector2.from_angle(ang) * float(st["orbit"])
 		moved[st["id"]] = sp - (st["pos"] as Vector2)
 		st["pos"] = sp
-	for key in ["fields", "asteroids", "debris"]:
+	for key in ["fields", "asteroids", "debris", "structures"]:
 		for o in L.get(key, []):
 			var anc := String(o.get("anchor", ""))
 			if anc != "" and moved.has(anc):
@@ -1235,8 +1400,11 @@ func _generate_layout(id: int) -> Dictionary:
 		"planets": [], "stations": [], "gates": [], "fields": [], "asteroids": [], "anomalies": [], "colossi": [], "havens": [],
 	}
 	var used: Array = []
+	var sp := String(sys.get("special", ""))           # package 39: a hand-made system
 	# Planets
 	var planet_count := rng.randi_range(3, 6)
+	if sp != "":
+		planet_count = 0
 	var ptypes: Array = PLANET_TYPES.keys().filter(func(t): return t != "dwarf")     # package 38: dwarfs come separately
 	# package 37: a red supergiant pushes the inner orbits out (squeezing them towards the edge); around neutron stars
 	# and black holes only a few dead worlds remain
@@ -1263,7 +1431,13 @@ func _generate_layout(id: int) -> Dictionary:
 			"radius": rng.randf_range(6000.0, 12000.0) * float(PLANET_TYPES[ptype].get("big", 1.0)),
 			"seed": rng.randf_range(0.0, 100.0), "ring": big and rng.randf() < (0.45 if ptype == "ice_giant" else 0.6),
 		})
+	if sp != "":
+		_special_planets(L, id, sp)
+		for pp in L["planets"]:
+			used.append(pp["pos"])
 	_make_moons(L, id)                                # package 36
+	if sp != "":
+		_special_moons(L, sp)
 	var mrng := RandomNumberGenerator.new()           # package 36: which stations orbit a moon (own RNG)
 	mrng.seed = seed_value * 40193 + id * 5381 + 36
 	# Stations orbit planets (type and tier come from the cluster-wide plan) – or one of their moons (package 36)
@@ -1281,7 +1455,7 @@ func _generate_layout(id: int) -> Dictionary:
 		var off := Vector2.from_angle(rng.randf() * TAU) * (float(planet["radius"]) * 1.7 + rng.randf_range(3000.0, 6000.0))
 		var parent: Dictionary = planet
 		var pmoons := moons_of(L, pidx)
-		if not pmoons.is_empty() and mrng.randf() < MOON_STATION_SHARE:
+		if not pmoons.is_empty() and mrng.randf() < MOON_STATION_SHARE and sp == "":
 			parent = pmoons[mrng.randi() % pmoons.size()]
 			off = Vector2.from_angle(mrng.randf() * TAU) * (float(parent["radius"]) * 1.7 + mrng.randf_range(3000.0, 6000.0))
 		L["stations"].append({
@@ -1292,6 +1466,8 @@ func _generate_layout(id: int) -> Dictionary:
 			"shop": _make_shop(type, tier, rng),
 			"shipyard": _make_shipyard(type, tier, Missions.wealthy(id)),
 		})
+		if sp != "":
+			_special_station(L, sp, i, L["stations"].back())
 	# Hyperspace gates – direction matches the neighbour's position on the galaxy map
 	for nb in sys["links"]:
 		var dir := ((systems[nb]["pos"] as Vector2) - (sys["pos"] as Vector2)).normalized()
@@ -1334,6 +1510,7 @@ func _generate_layout(id: int) -> Dictionary:
 		L["anomalies"].append(an)
 	_special_stations(L, id, sec)
 	_city_lights(L, id)                               # package 38
+	_special_structures(L, sp)                        # package 39
 	_scatter_loose(L, id, sec)
 	_place_colossi(L, id, sec)
 	_moon_fields(L, id, sec)                          # package 36: after the colossi – moon fields have none
@@ -1376,6 +1553,8 @@ func _city_lights(L: Dictionary, id: int) -> void:
 		var t := String(p["type"])
 		if inhabited and t in CITY_WORLDS:
 			p["city"] = clampf(0.55 + (0.3 if rich else 0.0) + float(systems[id].get("security", 0.5)) * 0.2, 0.0, 1.0)
+		if p.has("city_fixed"):
+			p["city"] = float(p["city_fixed"])            # package 39: Agora shines brightest
 	for st in L["stations"]:
 		var pi2 := int(st.get("planet", -1))
 		if pi2 < 0 or pi2 >= L["planets"].size():
@@ -1956,6 +2135,8 @@ func _add_faction_yard(st: Dictionary) -> void:
 		var h: Dictionary = GameData.hulls[hid]
 		var mk: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
 		if String(mk.get("kind", "")) == "state" and String(mk.get("faction", "")) == f and h["buyable"] and int(h["size"]) <= int(st["tier"]) and not hid in st["shipyard"]:
+			if CAPITAL_ONLY.has(hid) and not st.get("capital_yard", false):
+				continue                                 # package 39: the flagship only at the capital's yard
 			st["shipyard"].append(hid)
 
 

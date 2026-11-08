@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.1 – 2026-11-08
+
+**Package 39a: Landfall, the capital of the Assembly** – the first hand-made special system. A new game is needed.
+- The Assembly's capital is now Landfall: G star, Pnyx, Agora (brightest city lights), Ekklesia and the deep-blue ice
+  giant Boulé with Ostrakon and Kleros.
+- Capitals are closed: an entry permit from Friendly standing on (taken only at Arch-enemy) opens the gates.
+- The Vote: trade hub with four relay stations, drone traffic and a blue beam that sends ballot drones to the gates.
+- The Senate: bills every 30–60 min with an upside and a price for an hour; votes, party donations, bribes.
+- Concord Yards with the Res Publica in her berth; the Concordia is sold only there.
+- Ballot couriers and drone field trials; codex entries Landfall and The Senate; debug functions.
+
 ## alpha 0.6.38.2 – 2026-11-08
 
 - Collection: moon types are a category of their own (Moon types), apart from the planet types.

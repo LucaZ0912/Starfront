@@ -101,6 +101,19 @@ const ENTRIES := {
 	"cluster_long_gate": {"cat": "cluster", "title": "The Long Gate", "unlock": "jump",
 		"text": "Once the only route between the Cluster and Earth. Its wreckage still drifts in a rim system – a reminder, a relic, and to some a promise.",
 		"see": ["hist_severance", "cluster_veil"]},
+	# package 39a: Landfall
+	"cluster_landfall": {"cat": "cluster", "title": "Landfall", "unlock": "jump", "image": {"icon": "senate"},
+		"text": "The capital of the Cluster Assembly – the system where the first colonists set down. Agora, its crowded Earth-like world, shines brighter at night than any other world in the Cluster. Above it hangs The Vote: the great trade hub where the ballots of every Assembly citizen come together, ringed by relay stations whose drones carry the votes out to the gates.
+
+Out at the deep-blue ice giant Boulé lie the Concord Yards, where Concord Fleetworks builds its carriers – and the Res Publica, a supercarrier the size of a station, still in her berth. Only there is the Concordia sold.
+
+Landfall is closed: its gates let in only pilots holding the Assembly's entry permit, given from Friendly standing on and taken away only from arch-enemies.",
+		"see": ["fac_assembly", "cluster_senate"]},
+	"cluster_senate": {"cat": "cluster", "title": "The Senate", "unlock": "permit", "image": {"icon": "senate"},
+		"text": "Every citizen of the Assembly votes on every law. Every half hour or hour a bill comes to the vote in The Vote; a passed bill holds for an hour in all of the Assembly's territory – cheaper goods, higher bounties, subsidised ships … and always a price to pay for it.
+
+With an entry permit you vote too. A party donation sways the vote a little. A bribe settles it – unless it comes out, and then the money is gone and the Assembly's trust with it.",
+		"see": ["cluster_landfall", "fac_assembly"]},
 	"cluster_stations": {"cat": "cluster", "title": "Stations", "unlock": "dock", "image": {"icon": "o_cargo"},
 		"text": "Stations are built from modules; their type decides what they trade and which services they offer: trade hubs, industrial complexes, mining colonies, agricultural and research stations, military outposts, ice refineries and shipyards. Bigger tiers mean bigger stations, wider no-fire zones and more guns.\n\nEvery station flies the flag of the power that owns its system.",
 		"see": ["corp_kvx", "basics_zones"]},

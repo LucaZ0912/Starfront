@@ -26,6 +26,12 @@ const CORPS := {
 		"slogan": "Every price has a buyer.",
 		"desc": "Owns every trade terminal from the core to the rim. If it changes hands, KVX takes a cut.",
 	},
+	# package 39a: not a corporation – the Assembly's parliament, in The Vote
+	"sen": {
+		"name": "Senate of the Assembly", "tag": "SEN", "color": Color(0.42, 0.66, 1.0),
+		"slogan": "The Cluster is home.",
+		"desc": "Every citizen votes on every law. In The Vote the ballots from all over the Assembly come together – and some say not every vote is cast for free.",
+	},
 	"lnn": {
 		"name": "Lumen Newsnet", "tag": "LNN", "color": Color(0.55, 0.9, 1.0),
 		"slogan": "Everything worth knowing, first.",

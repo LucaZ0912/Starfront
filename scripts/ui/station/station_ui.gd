@@ -191,6 +191,8 @@ func service_available(svc: Dictionary) -> String:
 			return "" if Industry.refinery_yield(station) > 0.0 else "No refinery at this station"
 		"manufacturing":
 			return "" if not station_type().get("manufacturing", []).is_empty() else "No fabricators at this station"
+		"senate":
+			return "" if station.get("senate", false) else "Only in The Vote (Landfall)"
 	return ""
 
 
@@ -563,6 +565,8 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	for svc in GameData.services:
 		if String(svc["id"]) in SHIP_SERVICES or svc["id"] == "news":
 			continue
+		if String(svc.get("requires", "")) == "senate" and not station.get("senate", false):
+			continue                                 # package 39a: The Senate only shows in The Vote
 		_service_tile(grid, svc, tiles, true)
 
 

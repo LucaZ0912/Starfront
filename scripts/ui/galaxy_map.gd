@@ -556,6 +556,9 @@ func _update_info() -> void:
 	var t := "[b][font_size=18]%s[/font_size][/b]\n" % s["name"]
 	t += "Security: [color=#%s]%.1f[/color]\n" % [_sec_color(s["security"]).to_html(false), float(s["security"])]
 	t += "Control: %s\n" % territory_bbcode(selected_system)
+	var cap_f := Universe.special_faction(selected_system)       # package 39: a closed capital
+	if cap_f != "":
+		t += "[color=#7fe0a0]Capital – your entry permit opens its gates[/color]\n" if GameState.has_permit(cap_f) else "[color=#ff7060]Capital – closed: entry permit needed (Friendly standing)[/color]\n"
 	var prof := Universe.system_profile(selected_system)
 	var pg := int(prof["patrol_groups"])
 	t += "Population: %.1f bn  •  Traffic: %s\n" % [float(prof["population"]), Universe.traffic_word(prof)]

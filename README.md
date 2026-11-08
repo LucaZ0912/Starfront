@@ -103,6 +103,24 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## Landfall – the Assembly's capital (phase 0.5 package 39a)
+- The capital of the Cluster Assembly is a hand-made system: **Landfall** (a yellow G star) with Pnyx, **Agora** (the
+  brightest city lights in the Cluster), the ocean world Ekklesia and the deep-blue ice giant **Boulé** with its moons
+  Ostrakon and Kleros. Where it lies is still up to the cluster generator.
+- **Closed:** its gates (and Threshold wormholes) let in only pilots with the Assembly's **entry permit** – given from
+  Friendly standing on, taken away only at Arch-enemy.
+- **The Vote** over Agora: the great trade hub, ringed by four relay stations; drones fly between them, and every few
+  minutes a blue beam shoots a ballot drone out to a gate.
+- **The Senate** (a service in The Vote): every 30–60 minutes a bill comes to the vote; a passed bill holds for an hour
+  in all of the Assembly's territory (prices, fuel and repairs, Concord ships, bounties, patrols) – always with an
+  upside and a price. Vote Yes or No, give party donations (a little sway) – or bribe the tellers: it settles the vote
+  unless it comes out (45 %: the money is gone, standing −30).
+- **Concord Yards** at Ostrakon: the only yard that sells the **Concordia**; beside it the **Res Publica**, Concord
+  Fleetworks' supercarrier the size of a station, still in her berth.
+- Contracts: **ballot couriers** from Assembly stations to The Vote (deadline, thieves on the way) and **drone field
+  trials** at the Concord Yards (pirates destroyed by your drones in Assembly space).
+- Debug → World: to Landfall, give/take the permit, ballot drone, new bill, vote now (with or without a bribe found out).
+
 ## Planets (phase 0.5 package 38)
 - Eleven planet types – terran, ocean and jungle worlds, deserts, ice worlds, lava worlds, barren rock, gas giants,
   toxic giants, ice giants and dwarf planets – each with seas, clouds, caps, storms, lava or craters, and every planet

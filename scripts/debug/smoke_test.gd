@@ -583,6 +583,7 @@ func _process(delta: float) -> void:
 				_test_warp36(view)
 				_test_stars(view)
 				_test_planets(view)
+				_test_landfall(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -793,7 +794,7 @@ func _test_station(sp: StationUI) -> void:
 	check(el == "" and int(GameState.pilot["look"]["hair"]) == int(nl["hair"]) and GameState.credits == cr_l - Commands.look_price() and GameState.pilot["attrs"] == attrs0,
 		"image studio: new looks for %s – the attributes stay as they are" % GameData.fmt_credits(Commands.look_price()))
 	sp.show_concourse(false)
-	check(sp.concourse_tiles == GameData.services.size() and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
+	check(sp.concourse_tiles == GameData.services.size() - int(not sp.station.get("senate", false)) and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
 	# Market via commands
 	var c0 := GameState.credits
 	var item := ""
@@ -2927,7 +2928,7 @@ func _test_codex(view: SystemView) -> void:
 	var cats := {}
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
-		"crew", "wingmen", "platform", "pod", "collection", "cme", "star:main", "star:neutron", "star:blackhole"]   # package 37: stars
+		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "star:main", "star:neutron", "star:blackhole"]   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -4623,7 +4624,7 @@ func _test_concord(view: SystemView) -> void:
 				asm_t3 = st
 			elif String(st.get("faction", "")) in ["covenant", "directorate"] and other_t3.is_empty():
 				other_t3 = st
-	check(not asm_t3.is_empty() and "cfw_concordia" in asm_t3["shipyard"] and "cfw_demos" in asm_t3["shipyard"] and (other_t3.is_empty() or not "cfw_demos" in other_t3["shipyard"]), "Concord ships are sold only at Assembly shipyards")
+	check(not asm_t3.is_empty() and ("cfw_concordia" in asm_t3["shipyard"]) == asm_t3.get("capital_yard", false) and "cfw_quirinus" in asm_t3["shipyard"] and "cfw_demos" in asm_t3["shipyard"] and (other_t3.is_empty() or not "cfw_demos" in other_t3["shipyard"]), "Concord ships are sold only at Assembly shipyards")
 	var r = GameState.rep
 	var keep: float = r.get_rep("assembly")
 	r.values["assembly"] = 0.0
@@ -6097,7 +6098,7 @@ func _test_moons(view: SystemView) -> void:
 			if String(p["type"]) in ["gas", "toxic"]:
 				gas_ok = gas_ok and ms.size() >= 2 and ms.size() <= 3
 			for k in ms.size():
-				name_ok = name_ok and String(ms[k]["name"]) == "%s-%s" % [p["name"], U.MOON_LETTERS[k]]
+				name_ok = name_ok and (String(ms[k]["name"]) == "%s-%s" % [p["name"], U.MOON_LETTERS[k]] or p.get("fixed", false))     # 39: named moons
 			for f in L["fields"]:
 				if not f.has("moon"):
 					clear_ok = clear_ok and (p["pos"] as Vector2).distance_to(f["pos"]) > float(f["radius"]) + float(p["radius"])
@@ -6393,6 +6394,140 @@ func _test_stars(view: SystemView) -> void:
 ## Package 38: new planet types (ice giants, dwarf planets in the Kuiper belt, ocean and jungle worlds), every type
 ## reworked (seas, clouds, caps, lava, storms, rings, a shade of its own), city lights, a waystation at a dwarf now
 ## and then, planet types in the collection.
+## Package 39a: Landfall – the Assembly's capital as a hand-made system, the entry permit, the Senate, the special
+## contracts, the landmarks.
+func _test_landfall(view: SystemView) -> void:
+	var U = Universe
+	var lf: int = U.special_system("landfall")
+	var sys: Dictionary = U.systems[lf] if lf >= 0 else {}
+	check(lf >= 0 and String(sys["name"]) == "Landfall" and bool(sys["capital"]) and String(sys["faction"]) == "assembly" and float(sys["security"]) >= 1.0
+		and String(U.star_type(lf)["id"]) == "G", "39a: the Assembly's capital is Landfall (G star, security 1.0)")
+	if lf < 0:
+		return
+	var L: Dictionary = U.get_layout(lf)
+	var names: Array = L["planets"].filter(func(p): return not p.get("dwarf", false)).map(func(p): return String(p["name"]))
+	var boule: Dictionary = L["planets"][3]
+	var moons: Array = U.moons_of(L, 3).map(func(m): return String(m["name"]))
+	check(names == ["Pnyx", "Agora", "Ekklesia", "Boulé"] and String(L["planets"][1]["type"]) == "terran" and float(L["planets"][1].get("city", 0.0)) >= 1.0
+		and String(boule["type"]) == "ice_giant" and boule.get("deep", false) and moons == ["Ostrakon", "Kleros"] and U.moons_of(L, 1).is_empty(),
+		"39a: Pnyx, Agora (brightest city lights), Ekklesia and the deep-blue ice giant Boulé with Ostrakon and Kleros")
+	var vote := {}
+	var yards := {}
+	for st in L["stations"]:
+		if String(st.get("art", "")) == "vote":
+			vote = st
+		elif String(st.get("art", "")) == "concord_yards":
+			yards = st
+	var ost: Dictionary = U.moons_of(L, 3)[0]
+	check(not vote.is_empty() and String(vote["name"]) == "The Vote" and String(vote["type"]) == "trade" and int(vote["tier"]) == 3 and vote.get("senate", false)
+		and String(vote["anchor"]) == "p1" and not yards.is_empty() and String(yards["type"]) == "shipyard" and String(yards["anchor"]) == String(ost["id"]),
+		"39a: The Vote (trade hub, The Senate) over Agora, the Concord Yards at Ostrakon")
+	var conc_where: Array = []
+	for sid in U.systems.size():
+		for st2 in U.get_layout(sid)["stations"]:
+			if "cfw_concordia" in st2.get("shipyard", []):
+				conc_where.append(String(st2["name"]))
+	check(conc_where == ["Concord Yards"] and "cfw_quirinus" in yards["shipyard"], "39a: the Concordia is sold only at the Concord Yards (%s)" % ", ".join(conc_where))
+	var relays: Array = L.get("structures", []).filter(func(x): return String(x["art"]) == "vote_relay")
+	var rp: Array = L.get("structures", []).filter(func(x): return String(x["art"]) == "res_publica")
+	U.roll_orbits(lf)
+	var rel_ok: bool = relays.size() == U.VOTE_RELAYS and not rp.is_empty()
+	for k in relays.size():
+		rel_ok = rel_ok and ((relays[k]["pos"] as Vector2) - (vote["pos"] as Vector2)).distance_to(vote["relay_offs"][k]) < 1.0
+	rel_ok = rel_ok and ((rp[0]["pos"] as Vector2) - (yards["pos"] as Vector2)).length() < 4000.0 if not rp.is_empty() else false
+	var arts_ok := true
+	for a in ["vote", "vote_relay", "concord_yards", "res_publica"]:
+		var built: Dictionary = StationArt.build({"art": a, "type": a, "tier": 1, "seed": 400})
+		arts_ok = arts_ok and built["texture"] != null and float(built["size"]) == float(StationArt.LANDMARK_SIZE[a]) * StationArt.PX
+	check(rel_ok and arts_ok and not StationArt.build(vote)["bays"].is_empty(), "39a: four relay stations round The Vote and the Res Publica beside the yards move with them; the landmarks have their own art")
+	# the entry permit
+	var keep_rep: float = GameState.rep.values.get("assembly", 0.0)
+	var keep_perm: Dictionary = GameState.permits.duplicate()
+	GameState.permits.erase("assembly")
+	GameState.rep.values["assembly"] = 0.0
+	GameState.check_permits()
+	var closed: bool = GameState.entry_error(lf) != "" and GameState.entry_error(U.home_system) == ""
+	GameState.rep.values["assembly"] = 30.0
+	GameState.check_permits()
+	var given: bool = GameState.has_permit("assembly") and GameState.entry_error(lf) == ""
+	GameState.rep.values["assembly"] = -50.0
+	GameState.check_permits()
+	var kept: bool = GameState.has_permit("assembly")
+	GameState.rep.values["assembly"] = -90.0
+	GameState.check_permits()
+	var taken: bool = not GameState.has_permit("assembly")
+	check(closed and given and kept and taken, "39a: Landfall's gates need the entry permit – given at Friendly, kept when standing drops, taken only at Arch-enemy")
+	# the Senate
+	GameState.rep.values["assembly"] = 30.0
+	GameState.permits["assembly"] = true
+	var keep_cr: int = GameState.credits
+	GameState.credits = 2000000
+	var sen = GameState.senate
+	sen.reset()
+	var base_buy: float = GameState.rep.price_factor("assembly", "buy")
+	sen.new_bill("tariff")
+	var c0: float = sen.yes_chance()
+	sen.vote("yes")
+	sen.donate("yes")
+	var c1: float = sen.yes_chance()
+	sen.bribe("yes")
+	var paid: int = 2000000 - GameState.credits
+	var r1: Dictionary = sen.resolve(0)
+	var tariff_ok: bool = r1.get("passed", false) and sen.in_force("tariff") and is_equal_approx(GameState.rep.price_factor("assembly", "buy"), base_buy * 0.92) and is_equal_approx(GameState.rep.price_factor("covenant", "buy"), GameState.rep.price_factor("covenant", "buy"))
+	var rep_before: float = GameState.rep.get_rep("assembly")
+	sen.new_bill("militia")
+	sen.bribe("no")
+	var r2: Dictionary = sen.resolve(1)
+	var caught_ok: bool = r2.get("caught", false) and GameState.rep.get_rep("assembly") < rep_before - 20.0
+	sen.laws = [{"id": "militia", "until": GameState.play_time + 100.0}, {"id": "yards", "until": GameState.play_time + 100.0}]
+	var mods_ok: bool = is_equal_approx(sen.mod("bounty"), 1.3) and is_equal_approx(sen.hull_mult("cfw_concordia", "assembly"), 0.85) and is_equal_approx(sen.hull_mult("cfw_concordia", "covenant"), 1.0) \
+		and is_equal_approx(GameState.news.bounty_mult(lf), 1.3)
+	sen.reset()
+	check(c1 > c0 and paid >= sen.BRIBE_BASE + sen.DONATION_STEP and tariff_ok and caught_ok and mods_ok,
+		"39a: the Senate – a vote and a donation sway the polls, a bribe settles the vote (or comes out: money gone, standing −%d), passed bills change prices, bounties and Concord ships" % int(sen.BRIBE_REP))
+	# the special contracts
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 39
+	var other := {}
+	var other_sid := -1
+	for sid2 in U.territory_of("assembly"):
+		if sid2 != lf and not U.get_layout(sid2)["stations"].is_empty() and not U.find_path(sid2, lf, 3).is_empty():
+			other = U.get_layout(sid2)["stations"][0]
+			other_sid = sid2
+			break
+	var ballot := {}
+	var trial := {}
+	for i in 60:
+		if ballot.is_empty() and not other.is_empty():
+			var m: Dictionary = Missions.generate_faction(other_sid, other, rng)
+			if m.get("ballot", false):
+				ballot = m
+		if trial.is_empty():
+			var m2: Dictionary = Missions.generate_faction(lf, yards, rng)
+			if String(m2["type"]) == "drone_trial":
+				trial = m2
+	var mis_ok: bool = not ballot.is_empty() and String(ballot["target_station"]) == String(vote["id"]) and float(ballot["time_limit"]) > 300.0 \
+		and not trial.is_empty() and Missions.can_turn_in(_with_progress(trial), null, String(yards["id"]))
+	check(mis_ok, "39a: Assembly stations send ballot couriers to The Vote, the Concord Yards offer drone field trials")
+	GameState.credits = keep_cr
+	GameState.rep.values["assembly"] = keep_rep
+	GameState.permits = keep_perm
+	# the ballot drone's beam
+	var beam = SystemView.VoteBeam.new()
+	beam.view = view
+	beam.a = Vector2.ZERO
+	beam.b = Vector2(100000, 0)
+	view.spawn_fx(beam)
+	check(is_instance_valid(beam) and beam.LIFE > beam.REACH, "39a: the ballot drone's blue beam to a gate")
+	beam.queue_free()
+
+
+func _with_progress(m: Dictionary) -> Dictionary:
+	var d := m.duplicate()
+	d["progress"] = int(d["amount"])
+	return d
+
+
 func _test_planets(view: SystemView) -> void:
 	var U = Universe
 	var seen := {}

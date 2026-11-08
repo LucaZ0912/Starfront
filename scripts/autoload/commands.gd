@@ -112,6 +112,8 @@ func _need_world() -> String:
 func service_cost(mode: String, f: ShipFitting) -> int:
 	var s := f.stats()
 	var k := GameState.rep.price_factor(docked_faction(), "buy")
+	if docked_faction() == "assembly":
+		k *= GameState.senate.mod("service") / GameState.senate.mod("buy")     # package 39a: fuel and repair laws
 	if mode == "fuel":
 		return int((float(s["fuel_max"]) - f.fuel) * FUEL_PRICE * k)
 	return int(((float(s["structure_max"]) - f.structure) + (float(s["armor_max"]) - f.armor)) * REPAIR_PRICE * k)
@@ -597,7 +599,7 @@ func _c_ship_buy(c: Dictionary) -> String:
 	if with_fit and not GameData.presets.has(preset):
 		return "No standard fit available."
 	var price := GameData.preset_price(preset) if with_fit else int(GameData.hulls[hid]["price"])
-	price = GameState.rep.buy_price(price, docked_faction())
+	price = int(round(GameState.rep.buy_price(price, docked_faction()) * GameState.senate.hull_mult(hid, docked_faction())))
 	if not GameState.spend(price):
 		return "Not enough credits."
 	var f: ShipFitting
@@ -1682,6 +1684,69 @@ func _c_debug_planet(c: Dictionary) -> String:
 	world.player.order = {"type": "idle"}
 	world.center_on_player()
 	GameState.log_msg("Debug: next to %s (%s)." % [p["name"], Universe.PLANET_TYPES[String(p["type"])]["name"]])
+	return ""
+
+
+# ---------------------------------------------------------------- Package 39a: the Senate, Landfall
+
+## {"type":"senate_vote", "side": "yes"|"no"}
+func _c_senate_vote(c: Dictionary) -> String:
+	return GameState.senate.vote(String(c.get("side", "yes")))
+
+
+## {"type":"senate_donate", "side": "yes"|"no"} – one party donation
+func _c_senate_donate(c: Dictionary) -> String:
+	return GameState.senate.donate(String(c.get("side", "yes")))
+
+
+## {"type":"senate_bribe", "side": "yes"|"no"}
+func _c_senate_bribe(c: Dictionary) -> String:
+	return GameState.senate.bribe(String(c.get("side", "yes")))
+
+
+## {"type":"debug_landfall"} – to Landfall (docked at The Vote)
+func _c_debug_landfall(_c: Dictionary) -> String:
+	var sid := Universe.special_system("landfall")
+	if sid < 0:
+		return "No Landfall in this cluster."
+	return _c_debug_teleport({"system": sid})
+
+
+## {"type":"debug_permit", "faction": "assembly", "on": true|false} – give or take the entry permit
+func _c_debug_permit(c: Dictionary) -> String:
+	var f := String(c.get("faction", "assembly"))
+	if bool(c.get("on", true)):
+		GameState.permits[f] = true
+	else:
+		GameState.permits.erase(f)
+	GameState.log_msg("Debug: entry permit of the %s %s." % [FactionData.name_of(f), "given" if bool(c.get("on", true)) else "taken"])
+	return ""
+
+
+## {"type":"debug_senate", "do": "new"|"resolve"|"caught"|"clean", "bill": id} – a new bill now, or the vote now
+## (caught / clean: a bribe comes out / does not)
+func _c_debug_senate(c: Dictionary) -> String:
+	match String(c.get("do", "new")):
+		"new":
+			GameState.senate.new_bill(String(c.get("bill", "")))
+		"resolve":
+			if GameState.senate.bill.is_empty():
+				return "No bill on the floor."
+			GameState.senate.resolve()
+		"caught", "clean":
+			if GameState.senate.bill.is_empty():
+				return "No bill on the floor."
+			GameState.senate.resolve(1 if String(c["do"]) == "caught" else 0)
+	return ""
+
+
+## {"type":"debug_vote_beam"} – a ballot drone out to a gate now (Landfall)
+func _c_debug_vote_beam(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	if world.fire_vote_beam() == null:
+		return "Only in Landfall."
 	return ""
 
 

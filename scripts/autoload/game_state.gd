@@ -103,6 +103,13 @@ var news = NewsScript.new()
 const CodexStateScript = preload("res://scripts/core/codex.gd")
 var codex = CodexStateScript.new()
 
+## Package 39a: the Senate of the Assembly (bills, votes, laws in force) – see scripts/core/senate.gd.
+const SenateScript = preload("res://scripts/core/senate.gd")
+var senate = SenateScript.new()
+## Package 39: entry permits to the capitals (faction -> true). Given from Friendly on, taken away only at Arch-enemy.
+var permits := {}
+var _permit_t := 0.0
+
 
 func _ready() -> void:
 	convoys = ConvoySimScript.new()
@@ -154,6 +161,8 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	stations.reset()
 	news.reset()
 	codex.reset()
+	senate.reset()
+	permits.clear()
 	if test_system:
 		notorious.reset()
 	else:
@@ -454,6 +463,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
+		"senate": senate.to_dict(), "permits": permits.duplicate(),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
@@ -503,6 +513,11 @@ func from_dict(d: Dictionary) -> void:
 	law.from_dict(d.get("wanted", {}))
 	stations.from_dict(d.get("stations_down", {}))
 	codex.from_dict(d.get("codex", {}))
+	if d.has("senate"):
+		senate.from_dict(d["senate"])
+	else:
+		senate.reset()
+	permits = d.get("permits", {}).duplicate()
 	if d.has("news"):
 		news.from_dict(d["news"])
 	else:
@@ -1453,6 +1468,10 @@ func faction_job_error(m: Dictionary) -> String:
 		var c: Dictionary = notorious.get_captain(String(m["captain"]))
 		if c.is_empty() or not c["alive"]:
 			return "That captain is already dead."
+	if m["type"] == "drone_trial" and (active() == null or active().drones.is_empty()):
+		return "A field trial needs drones – fly a carrier with a drone hangar."
+	if m.get("ballot", false) and not has_permit("assembly"):
+		return "The ballots go to Landfall – you need the Assembly's entry permit."
 	return ""
 
 
@@ -1474,6 +1493,9 @@ func accept_mission(m: Dictionary) -> String:
 			log_msg("The convoy gathers outside %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km) – it sets off once you are with it." % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station"), COL_INFO)
 		"smuggler":
 			m["expires"] = play_time + Missions.SMUGGLER_TIME
+		"courier":
+			if m.get("ballot", false):
+				m["expires"] = play_time + float(m.get("time_limit", 900.0))
 		"patrol":
 			log_msg("The %s patrol waits for you at %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km) – it sets off once you are with it." % [FactionData.short_of(String(m["faction"])), m.get("meet", {}).get("name", "the station")], COL_INFO)
 	var fkey: String = String(m["giver"]) + "#f"
@@ -1623,11 +1645,29 @@ func _update_faction_jobs(delta: float) -> void:
 			"smuggler":
 				if int(m["progress"]) < 1 and float(m["expires"]) > 0.0 and play_time >= float(m["expires"]):
 					fail_mission(m, "the smuggler got through")
+			"courier":
+				if m.get("ballot", false) and play_time >= float(m.get("expires", INF)):     # package 39a
+					var cf := active()
+					if cf != null:
+						cf.remove_cargo("sealed_cargo", float(m["amount"]))
+					fail_mission(m, "the polls closed before the ballots arrived")
 			"hunt":
 				if int(m["progress"]) < 1:
 					var cap: Dictionary = notorious.get_captain(String(m["captain"]))
 					if cap.is_empty() or not cap["alive"]:
 						fail_mission(m, "someone else got the target")
+
+
+## Package 39a: a pirate destroyed by one of the pilot's drones – field trials of Concord Fleetworks.
+func notify_drone_kill(system_id: int) -> void:
+	if Universe.controller(system_id) != "assembly":
+		return
+	for m in missions:
+		if m["type"] == "drone_trial" and int(m["progress"]) < int(m["amount"]):
+			m["progress"] = int(m["progress"]) + 1
+			if int(m["progress"]) >= int(m["amount"]):
+				log_msg("Field trial complete – report back to the Concord Yards.", COL_GOOD)
+			missions_changed.emit()
 
 
 ## Game events that advance contracts.
@@ -1676,6 +1716,8 @@ func wormhole_error(f: ShipFitting, to_id: int) -> String:
 		return "Undock first."
 	if bool(Universe.systems[to_id].get("veil", false)):
 		return "The Veil cannot be reached by wormhole – that is left to Project Bridge."
+	if entry_error(to_id) != "":
+		return entry_error(to_id)
 	var dist := Universe.find_path(f.system_id, to_id, 3).size()
 	if dist <= 0:
 		return "No way there."
@@ -1718,8 +1760,40 @@ func begin_wormhole(f: ShipFitting, to_id: int) -> String:
 const WORMHOLE_TIME := 3.0
 
 
+## Package 39: entry permits to the capitals. Friendly standing gets one (a message), Arch-enemy loses it.
+func check_permits() -> void:
+	for fid in Universe.SPECIAL_CAPITALS:
+		var f := String(fid)
+		var sid := Universe.special_system(String(Universe.SPECIAL_CAPITALS[f]))
+		if sid < 0:
+			continue
+		if not permits.has(f) and rep.at_least(f, "friendly"):
+			permits[f] = true
+			log_msg("The %s grants you an entry permit to %s – its gates will let you through." % [FactionData.name_of(f), Universe.systems[sid]["name"]], COL_GOOD)
+			codex.event("permit")
+		elif permits.has(f) and rep.tier_id(f) == "nemesis":
+			permits.erase(f)
+			log_msg("The %s has revoked your entry permit to %s." % [FactionData.name_of(f), Universe.systems[sid]["name"]], COL_BAD)
+
+
+func has_permit(f: String) -> bool:
+	return permits.has(f)
+
+
+## Why the pilot may not enter system `sid` ("" = may). Only the capitals with a special system are closed.
+func entry_error(sid: int) -> String:
+	var f := Universe.special_faction(sid)
+	if f == "" or has_permit(f):
+		return ""
+	return "%s is closed – the %s lets in only pilots with an entry permit (Friendly standing, yours: %s)." % [Universe.systems[sid]["name"], FactionData.name_of(f), rep.tier_name(f)]
+
+
 func can_jump(f: ShipFitting, to_id: int) -> String:
 	var sys: Dictionary = Universe.systems[f.system_id]
+	if f in fleet:                               # package 39: the capitals check the pilot's ships
+		var lock := entry_error(to_id)
+		if lock != "":
+			return lock
 	if not sys["links"].has(to_id):
 		return "No hyperspace route to %s" % Universe.systems[to_id]["name"]
 	var cls := int(sys["links"][to_id])
@@ -1854,6 +1928,11 @@ func _process(delta: float) -> void:
 		wing_tick()                              # package 33
 	notorious.update(current_system)
 	news.update()
+	senate.update()                              # package 39a
+	_permit_t -= delta
+	if _permit_t <= 0.0:
+		_permit_t = 1.0
+		check_permits()
 	_update_faction_jobs(delta)
 	_update_passengers()
 	var f := active()

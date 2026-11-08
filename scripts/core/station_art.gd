@@ -39,7 +39,7 @@ var pads: Array = []      # package 26: landing pads {pos, radius, dir, hatch}
 
 ## Texture + live points for a station / haven dictionary (cached per type, tier and seed).
 static func build(data: Dictionary) -> Dictionary:
-	var t: String = data.get("type", "trade")
+	var t: String = data.get("art", data.get("type", "trade"))      # package 39: landmarks have an art of their own
 	var tr := clampi(int(data.get("tier", 1)), 1, 3)
 	var sd := int(data.get("seed", 1))
 	var key := "%s_%d_%d" % [t, tr, sd]
@@ -68,6 +68,14 @@ static func build(data: Dictionary) -> Dictionary:
 			a._haven()
 		"waystation":
 			a._waystation()
+		"vote":
+			a._vote()
+		"vote_relay":
+			a._vote_relay()
+		"concord_yards":
+			a._concord_yards()
+		"res_publica":
+			a._res_publica()
 		_:
 			a._trade()
 	var img := a._render()
@@ -111,12 +119,16 @@ func _setup(t: String, tr: int, sd: int) -> void:
 		n = 260 + 40 * (tier - 1)
 	elif t == "waystation":
 		n = 200 + 30 * (tier - 1)
+	elif LANDMARK_SIZE.has(t):
+		n = int(LANDMARK_SIZE[t])                      # package 39
 	c = n * 0.5
 	mat.resize(n * n)
 	mat.fill(NONE)
 	hgt.resize(n * n)
 	hgt.fill(-1.0)
 	acc = PixelArt.STATION_ACCENT.get(t, Color(0.3, 0.85, 1.0))
+	if ASSEMBLY_ARTS.has(t):
+		acc = Color(0.35, 0.62, 1.0)                  # Assembly blue
 
 
 # ================================================================ Primitives
@@ -713,6 +725,208 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 		disc(mid + Vector2(s * hw * 0.45, -sgn * hl * 0.98), hw * 0.28, DARK, 16.0, D_DISH)
 
 
+# ================================================================ Package 39: landmarks of Landfall
+
+const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 480}
+const ASSEMBLY_ARTS := {"vote": true, "vote_relay": true, "concord_yards": true, "res_publica": true}
+const VOTE_RELAY_ANGLE := 0.4                       # where the first relay lies (Universe._special_structures)
+
+
+## The Vote: the Assembly's great trade hub over Agora, where the citizens' votes from every gate come together. A
+## broad domed hub, a wide habitat ring full of windows, a thin outer ring of data emitters on long spokes, four
+## docking arms and four small drone hangars facing the relay stations.
+func _vote() -> void:
+	var center := Vector2(c, c)
+	var r_ring := n * 0.27
+	var r_out := n * 0.44
+	# outer data ring on spokes (lowest)
+	for k in 12:
+		var a := k * TAU / 12.0 + PI / 12.0
+		seg(P(r_ring + 10.0, a), P(r_out, a), 1.8, TRUSS, 6.0)
+	ring(center, r_out - 3.0, r_out + 3.0, PANEL, 7.0, false, 48)
+	for k in 24:
+		var a2 := k * TAU / 24.0
+		disc(P(r_out, a2), 4.5, DARK, 10.0, D_DISH)
+		light(P(r_out, a2), Color(0.45, 0.75, 1.0), 0.8 + 0.05 * (k % 5))
+	# solar wings between the docking arms
+	for k in 4:
+		solar_wing(P(r_ring + 12.0, k * PI * 0.5), P(r_out - 8.0, k * PI * 0.5), 14.0, 5.0)
+	# the habitat ring and its spokes
+	for k in 8:
+		seg(P(n * 0.12, k * PI * 0.25), P(r_ring, k * PI * 0.25), 5.0, HULL, 10.0, P_PLATES)
+	ring(center, r_ring - 13.0, r_ring + 13.0, HULL, 10.0, true, 32)
+	ring(center, r_ring - 2.0, r_ring + 2.0, ACC, 12.0, false, 64)
+	# four docking arms (diagonal) with the player bays
+	for k in 4:
+		dock_arm(PI * 0.25 + k * PI * 0.5, n * 0.1, n * 0.36, 52.0, 12.0)
+	# four small drone hangars facing the relays (the drones fly out and in)
+	for k in 4:
+		var a3 := VOTE_RELAY_ANGLE + k * TAU / 4.0
+		box(P(r_ring + 15.0, a3), a3, 9.0, 11.0, HULL, 13.0, P_ARMOR)
+		box(P(r_ring + 22.0, a3), a3, 2.5, 7.0, HANGAR, 1.0, P_FLAT, true)
+		for sgn in [-1.0, 1.0]:
+			light(P(r_ring + 23.0, a3) + Vector2.from_angle(a3).orthogonal() * sgn * 9.0, Color(1.0, 0.75, 0.3), 2.5, true)
+	# the hub: a broad dome with the chamber of votes in the middle
+	disc(center, n * 0.13, HULL, 14.0, D_HUB)
+	ring(center, n * 0.13 - 3.0, n * 0.13, DARK, 16.0, false, 32)
+	disc(center, n * 0.065, GLASS, 20.0, D_DOME)
+	for k in 6:
+		box(P(n * 0.095, k * TAU / 6.0), k * TAU / 6.0, 5.0, 2.0, ACC, 19.0)
+	# blue neon bands on the ring (the Assembly's colours), white beacons on the hub
+	for k in 4:
+		var a4 := k * PI * 0.5
+		var p := P(r_ring + 15.0, a4 + PI * 0.12)
+		box(p, a4 + PI * 0.62, 14.0, 3.0, DARK, 14.0)
+		box(p, a4 + PI * 0.62, 13.0, 2.0, NEON, 15.0)
+		neons.append({"pos": p - center, "ang": a4 + PI * 0.62, "len": 26.0, "wid": 4.0})
+	for k in 6:
+		turret(P(r_ring, PI * 0.125 + k * TAU / 6.0 + 0.2), 5.0)
+	light(center, Color(1, 1, 1), 1.0, true)
+	for k in 4:
+		light(P(n * 0.13, k * PI * 0.5), Color(0.5, 0.8, 1.0), 1.2, true)
+
+
+## A relay station round The Vote: an octagonal platform with a small drone hangar facing the hub, a dish and two
+## solar panels. Which way it faces comes from its seed (400 + index).
+func _vote_relay() -> void:
+	var center := Vector2(c, c)
+	var k := posmod(int(rng.seed) - 400, 8)
+	var face := VOTE_RELAY_ANGLE + k * TAU / 4.0 + PI          # towards The Vote
+	solar_wing(P(n * 0.2, face + PI * 0.5), P(n * 0.46, face + PI * 0.5), 9.0, 4.0)
+	solar_wing(P(n * 0.2, face - PI * 0.5), P(n * 0.46, face - PI * 0.5), 9.0, 4.0)
+	poly(regular(center, n * 0.24, 8, PI / 8.0), HULL, 9.0, 3.0, 9)
+	ring(center, n * 0.24 - 2.0, n * 0.24 + 1.0, ACC, 11.0, false, 16)
+	# the drone hangar
+	box(P(n * 0.2, face), face, 8.0, 10.0, HULL, 12.0, P_ARMOR)
+	box(P(n * 0.26, face), face, 3.0, 6.5, HANGAR, 1.0, P_FLAT, true)
+	for sgn in [-1.0, 1.0]:
+		light(P(n * 0.27, face) + Vector2.from_angle(face).orthogonal() * sgn * 8.0, Color(1.0, 0.75, 0.3), 2.5, true)
+	# dish towards the gates (away from the hub)
+	disc(P(n * 0.12, face + PI), 9.0, DARK, 14.0, D_DISH)
+	light(P(n * 0.12, face + PI), Color(0.45, 0.8, 1.0), 0.9)
+	disc(center, 7.0, GLASS, 13.0, D_DOME)
+	light(center, Color(0.45, 0.75, 1.0), 1.4, true)
+
+
+## Concord Yards: the Assembly's shipyard at Ostrakon. A tower where wide gantries reach out to the Res Publica in her
+## berth beside it (left), a long spine with three construction berths – Concord carriers being built – and docking
+## bays at its end and on the tower.
+func _concord_yards() -> void:
+	var tx := c - n * 0.2                                      # the tower
+	# gantries to the Res Publica (left edge of the picture, she lies beyond it)
+	for j in 3:
+		var y := c + (j - 1) * n * 0.2
+		seg(Vector2(2.0, y), Vector2(tx, y), 6.0, HULL, 9.0, P_GIRDER)
+		seg(Vector2(2.0, y - 10.0), Vector2(tx, y - 10.0), 1.5, TRUSS, 10.0)
+		seg(Vector2(2.0, y + 10.0), Vector2(tx, y + 10.0), 1.5, TRUSS, 10.0)
+		for q in 4:
+			light(Vector2(10.0 + q * (tx - 20.0) / 3.0, y), Color(1.0, 0.85, 0.4), 0.7)
+		vent(Vector2(8.0 + j * 9.0, y + 5.0), "spark", 2.0)
+	# the spine to the right
+	var sx := (tx + n * 0.97) * 0.5
+	box(Vector2(sx, c), 0.0, (n * 0.97 - tx) * 0.5, 15.0, HULL, 10.0, P_WINDOWS)
+	box(Vector2(sx, c), 0.0, (n * 0.97 - tx) * 0.5 - 2.0, 2.5, ACC, 12.0)
+	# three berths with Concord carriers being built
+	var docks: Array = [[0.02, -1.0], [0.26, -1.0], [0.14, 1.0]]
+	for dk in docks:
+		var x := c + float(dk[0]) * n
+		var sgn := float(dk[1])
+		var base := Vector2(x, c + sgn * 16.0)
+		var tip := Vector2(x, c + sgn * n * 0.47)
+		var hw := n * 0.085
+		var length := (tip - base).length()
+		seg(base + Vector2(-hw, 0), tip + Vector2(-hw, 0), 3.5, HULL, 12.0, P_GIRDER)
+		seg(base + Vector2(hw, 0), tip + Vector2(hw, 0), 3.5, HULL, 12.0, P_GIRDER)
+		box(base + Vector2(0, sgn * 4.0), 0.0, hw + 4.0, 4.0, DARK, 13.0, P_ARMOR)
+		var mid := base + Vector2(0, sgn * length * 0.52)
+		_hull_frame(mid, sgn, length * 0.4, hw * 0.55)
+		# the flight decks of a carrier either side, half plated
+		for sd in [-1.0, 1.0]:
+			box(mid + Vector2(sd * hw * 0.62, -sgn * length * 0.05), PI * 0.5, length * 0.26, hw * 0.16, DARK, 11.0, P_RIBS)
+		box(mid + Vector2(0, sgn * length * 0.2), PI * 0.5, length * 0.14, 1.2, ACC, 30.0)
+		for j2 in 4:
+			var yb := lerpf(base.y, tip.y, 0.18 + j2 * 0.22)
+			seg(Vector2(x - hw, yb), Vector2(x + hw, yb), 1.6, TRUSS, 20.0)
+			light(Vector2(x, yb), Color(1.0, 0.95, 0.75), 0.6)
+		for sp in 4:
+			vent(Vector2(x + rng.randf_range(-hw * 0.4, hw * 0.4), lerpf(base.y, tip.y, rng.randf_range(0.2, 0.85))), "spark", 2.0)
+		light(tip + Vector2(-hw, 0), Color(1.0, 0.25, 0.2), 1.5, true)
+		light(tip + Vector2(hw, 0), Color(0.3, 1.0, 0.4), 1.5, true)
+	# the tower over the gantries
+	box(Vector2(tx, c), PI * 0.5, n * 0.3, 20.0, HULL, 14.0, P_ARMOR)
+	box(Vector2(tx, c), PI * 0.5, n * 0.28, 3.0, ACC, 17.0)
+	disc(Vector2(tx, c), 24.0, HULL, 20.0, D_HUB)
+	# docking: the end of the spine and the ends of the tower
+	add_bay(0.0, n * 0.48, 12.0)
+	box(Vector2(tx, c - n * 0.3), 0.0, 26.0, 8.0, HULL, 12.0, P_PLATES)
+	box(Vector2(tx, c + n * 0.3), 0.0, 26.0, 8.0, HULL, 12.0, P_PLATES)
+	# the Assembly's neon
+	var pn := Vector2(tx + 26.0, c - n * 0.16)
+	box(pn, PI * 0.5, 18.0, 3.0, DARK, 16.0)
+	box(pn, PI * 0.5, 17.0, 2.0, NEON, 17.0)
+	neons.append({"pos": pn - Vector2(c, c), "ang": PI * 0.5, "len": 34.0, "wid": 4.0})
+	for k in 4:
+		turret(Vector2(tx + (1.0 if k % 2 == 0 else -1.0) * 26.0, c + (k - 1.5) * n * 0.16), 5.0)
+	light(Vector2(tx, c - n * 0.3), Color(1.0, 0.3, 0.25), 1.2, true)
+	light(Vector2(tx, c + n * 0.3), Color(1.0, 0.3, 0.25), 1.2, true)
+
+
+## The Res Publica, Concord Fleetworks' capital ship – a supercarrier the size of a station, still in her berth. Her
+## fore body is a great armoured ring with an opening in the middle, ringed by drone hatches; behind it a long hull
+## with the stepped command tower and a bank of engines. Some sections are still bare frames under scaffolding.
+func _res_publica() -> void:
+	var rc := Vector2(c + n * 0.16, c)                        # centre of the ring (towards the yard)
+	var r_out := n * 0.31
+	var r_in := n * 0.12
+	# aft hull: from inside the ring to the engines (left), with side sponsons
+	var aft := Vector2(c - n * 0.17, c)
+	for sd in [-1.0, 1.0]:
+		box(aft + Vector2(n * 0.02, sd * n * 0.1), 0.0, n * 0.17, n * 0.035, DARK, 11.0, P_ARMOR)
+	box(aft, 0.0, n * 0.25, n * 0.085, HULL, 13.0, P_ARMOR)
+	box(aft, 0.0, n * 0.24, 2.0, ACC, 15.0)
+	# engines: a bank of big nozzles
+	for k in 5:
+		var ep := Vector2(c - n * 0.45, c + (k - 2) * n * 0.042)
+		box(ep + Vector2(10.0, 0), 0.0, 12.0, n * 0.019, DARK, 16.0, P_ARMOR)
+		disc(ep, n * 0.019, DARK, 15.0, D_DISH)
+		light(ep, Color(0.4, 0.7, 1.0), 0.5)
+	# the ring: armour plating in sectors, few windows, the blue stripes of Concord
+	ring(rc, r_in, r_out, HULL, -22.0, false, 24)                  # low, so plates and stripes stand out on it
+	for k in 24:
+		var a := k * TAU / 24.0
+		var pm := rc + Vector2.from_angle(a) * (r_in + r_out) * 0.5
+		box(pm, a, (r_out - r_in) * 0.36, 6.0 + (k % 3) * 2.0, PANEL if k % 2 == 0 else HULL, 15.0 + (k % 2), P_ARMOR)
+	for k5 in 48:
+		var a5 := k5 * TAU / 48.0
+		if k5 % 3 != 0:
+			box(rc + Vector2.from_angle(a5) * (r_out - 9.0), a5, 1.0, 2.0, GLASS, 16.0)
+	ring(rc, r_out - 5.0, r_out - 2.5, ACC, 18.0, false, 96)
+	ring(rc, r_in + 2.5, r_in + 5.0, ACC, 18.0, false, 96)
+	# drone hatches round the opening
+	for k2 in 10:
+		var a2 := k2 * TAU / 10.0
+		var hp := rc + Vector2.from_angle(a2) * (r_in + 11.0)
+		box(hp, a2, 4.5, 6.0, HANGAR, 2.0, P_FLAT, true)
+		box(hp + Vector2.from_angle(a2) * 5.5, a2, 1.2, 7.0, MARK, 19.0)
+		light(hp + Vector2.from_angle(a2) * 7.0, Color(1.0, 0.75, 0.3), 2.0, true)
+	# the command tower astride the hull where it meets the ring, stepped
+	for j in 5:
+		box(Vector2(c - n * 0.11 - j * 6.0, c), 0.0, n * 0.075 - j * 5.0, n * 0.06 - j * 4.0, HULL if j % 2 == 0 else PANEL, 20.0 + j * 5.0, P_WINDOWS if j >= 2 else P_ARMOR)
+	disc(Vector2(c - n * 0.16, c - n * 0.035), 6.0, DARK, 46.0, D_DISH)
+	disc(Vector2(c - n * 0.16, c + n * 0.035), 5.0, DARK, 46.0, D_DISH)
+	light(Vector2(c - n * 0.12, c), Color(1.0, 0.3, 0.25), 1.5, true)
+	# still under construction: a bare sector of the ring and part of the aft plating, scaffolds and welders
+	for k3 in 4:
+		var a3 := -1.0 + k3 * 0.22
+		var p3 := rc + Vector2.from_angle(a3) * (r_in + r_out) * 0.5
+		box(p3, a3, (r_out - r_in) * 0.42, 10.0, TRUSS, 22.0, P_RIBS, true)
+		vent(p3, "spark", 2.5)
+	box(aft + Vector2(-n * 0.08, n * 0.05), 0.0, n * 0.07, n * 0.03, TRUSS, 20.0, P_TRUSS, true)
+	for k4 in 6:
+		vent(Vector2(c + rng.randf_range(-n * 0.35, n * 0.4), c + rng.randf_range(-n * 0.3, n * 0.3)), "spark", 2.0)
+	for k6 in 8:
+		light(rc + Vector2.from_angle(k6 * TAU / 8.0 + 0.2) * (r_out + 3.0), Color(1.0, 0.95, 0.75), 0.6)
+
 ## Package 26: a waystation – a small hub on struts with round landing pads (2 / 3 / 4 by tier) for S and M
 ## ships: hazard rim, a landing circle, a hatch in the middle the ships sink through, lights around it.
 const PAD_R := 19.0
@@ -853,6 +1067,8 @@ func _hash(x: int, y: int) -> float:
 
 func _palettes() -> Dictionary:
 	var hull := [Color(0.3, 0.33, 0.4), Color(0.52, 0.56, 0.64), Color(0.76, 0.8, 0.88)]
+	if ASSEMBLY_ARTS.has(type):
+		hull = [Color(0.4, 0.45, 0.56), Color(0.66, 0.72, 0.82), Color(0.88, 0.92, 0.98)]     # Assembly white and blue
 	if type == "pirate_haven":
 		hull = [Color(0.22, 0.22, 0.25), Color(0.38, 0.38, 0.42), Color(0.55, 0.55, 0.58)]
 	elif type == "military":

@@ -157,7 +157,10 @@ func dock_error(st: Dictionary) -> String:
 func price_factor(f: String, kind: String) -> float:
 	if f == "" or not values.has(f):
 		return 1.0
-	return float(PRICES[tier_id(f)][kind])
+	var k := float(PRICES[tier_id(f)][kind])
+	if f == "assembly":
+		k *= GameState.senate.mod(kind)              # package 39a: laws of the Assembly
+	return k
 
 
 func buy_price(base: int, f: String) -> int:

@@ -49,8 +49,9 @@ func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0
 			radius = float(data["radius"])
 			add_child(make_star_sprite(data["color"], radius))
 			z_index = -6
-		"station", "haven":
+		"station", "haven", "structure":
 			# modular pixel-art station (StationArt): texture + docking bays, lights, vents, turrets
+			# (package 39: "structure" = a landmark that is no station – relays, a capital ship in her berth)
 			art = StationArt.build(data)
 			_tex = art["texture"]
 			radius = float(art["radius"])
@@ -83,7 +84,7 @@ func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0
 	if kind in ["planet", "star_far", "colossus"]:
 		pass
 	elif z_index == 0:
-		z_index = -1 if kind in ["station", "haven", "gate", "asteroid"] else 0
+		z_index = -1 if kind in ["station", "haven", "gate", "asteroid", "structure"] else 0
 
 
 ## Outline of a colossus (from the layout; generated from its seed if missing).
@@ -155,6 +156,8 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	var dval := rng.randf_range(0.9, 1.1)
 	for k in [["col_a", "a"], ["col_b", "b"], ["col_c", "c"]]:
 		var c0: Color = t[k[1]]
+		if p.get("deep", false):
+			c0 = Color.from_hsv(0.62, minf(1.0, c0.s * 1.6 + 0.25), c0.v * 0.62)       # package 39: Boulé, deep blue
 		mat.set_shader_parameter(k[0], Color.from_hsv(fposmod(c0.h + dh, 1.0), clampf(c0.s * dsat, 0.0, 1.0), clampf(c0.v * dval, 0.0, 1.0)))
 	mat.set_shader_parameter("atmo", t["atmo"])
 	mat.set_shader_parameter("gas", t["gas"])
@@ -357,7 +360,7 @@ func is_pickable() -> bool:
 			return not is_depleted()
 		"colossus", "haven":
 			return true
-		"planet", "star_far":
+		"planet", "star_far", "structure":
 			return false
 	return visible
 
@@ -443,7 +446,7 @@ func _process(delta: float) -> void:
 		if float(data["life"]) <= 0.0:
 			queue_free()
 			return
-	if kind in ["station", "haven"]:
+	if kind in ["station", "haven", "structure"]:
 		for i in turret_flash.size():
 			turret_flash[i] = maxf(0.0, float(turret_flash[i]) - delta)
 		for pi in pad_want:
@@ -462,10 +465,11 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	match kind:
-		"station", "haven":
+		"station", "haven", "structure":
 			var size := Vector2.ONE * float(art["size"])
 			draw_texture_rect(_tex, Rect2(-size * 0.5, size), false)
 			_draw_station_live()
+			_draw_landmark_live()
 			if has_pads():
 				_draw_pads()
 			if String(data.get("faction", "")) != "":
@@ -540,7 +544,7 @@ func _draw() -> void:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# Label (zoom-independent)
-	if show_labels and (kind in ["station", "haven", "gate"] or (kind == "anomaly" and data["revealed"])):
+	if show_labels and (kind in ["station", "haven", "gate", "structure"] or (kind == "anomaly" and data["revealed"])):
 		var font := ThemeDB.fallback_font
 		var s := label_scale
 		var off := radius + 16.0 * s
@@ -599,6 +603,44 @@ func _draw_holo_banner(fid: String, st_size: float) -> void:
 		y += sc * 2.0
 	var sweep := fposmod(_t * 0.35, 1.0) * bh
 	draw_rect(Rect2(top_left + Vector2(0.0, sweep), Vector2(bw, sc * 1.2)), Color(holo.lightened(0.5), 0.18 * alpha))
+
+
+## Package 39: the life of the landmarks – drones shuttling between The Vote and its relay stations, the work
+## drones round the Res Publica.
+func _draw_landmark_live() -> void:
+	var px := StationArt.PX
+	match String(data.get("art", "")):
+		"vote":
+			var hub_r := float(art["size"]) * 0.32
+			var k := 0
+			for off in data.get("relay_offs", []):
+				var to: Vector2 = off
+				var dir := to.normalized()
+				var a := dir * hub_r
+				var b := to - dir * 260.0
+				for j in 3:
+					var cyc := _t / 26.0 + j / 3.0 + k * 0.17
+					var f := fposmod(cyc, 1.0)
+					var out := posmod(int(floorf(cyc)), 2) == 0
+					var s := smoothstep(0.0, 1.0, f)
+					var pos := a.lerp(b, s if out else 1.0 - s)
+					var fade := clampf(minf(f, 1.0 - f) * 12.0, 0.0, 1.0)
+					draw_set_transform(pos, dir.angle() + (0.0 if out else PI), Vector2.ONE)
+					draw_rect(Rect2(Vector2(-px * 1.5, -px), Vector2(px * 3.0, px * 2.0)), Color(0.82, 0.88, 0.96, fade))
+					draw_rect(Rect2(Vector2(-px * 5.5, -px * 0.4), Vector2(px * 4.0, px * 0.8)), Color(0.45, 0.7, 1.0, 0.45 * fade))
+					draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+					draw_circle(pos, px * 3.0, Color(0.45, 0.7, 1.0, 0.18 * fade))
+				k += 1
+		"res_publica":
+			var size := float(art["size"])
+			var rc := Vector2(size * 0.13, 0.0)
+			for j in 9:
+				var ang := _t * (0.08 + 0.02 * (j % 3)) + j * TAU / 9.0
+				var rr := size * (0.38 + 0.04 * sin(_t * 0.3 + j))
+				var pos2 := rc + Vector2(cos(ang), sin(ang) * 0.85) * rr
+				draw_rect(Rect2(pos2 - Vector2(px, px), Vector2(px * 2.0, px * 2.0)), Color(1.0, 0.82, 0.4, 0.9))
+				if posmod(int(_t * 3.0) + j, 4) == 0:
+					draw_circle(pos2, px * 3.0, Color(1.0, 0.75, 0.3, 0.25))
 
 
 ## Animated parts of a station: blinking lights, bay guide lights, neon signs, steam/smoke/sparks,

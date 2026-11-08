@@ -37,4 +37,7 @@ const SERVICES := [
 	# package 31: hiring crew (part 7 makes the bar much more)
 	{"id": "bar", "title": "The Bar", "corp": "dwt", "icon": "bar",
 		"panel": "res://scripts/ui/station/bar_panel.gd", "requires": ""},
+	# package 39a: only in The Vote (Landfall) – bills, votes, donations … and bribes
+	{"id": "senate", "title": "The Senate", "corp": "sen", "icon": "senate",
+		"panel": "res://scripts/ui/station/senate_panel.gd", "requires": "senate"},
 ]

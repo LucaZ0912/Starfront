@@ -152,6 +152,10 @@ static func generate_faction(system_id: int, station: Dictionary, rng: RandomNum
 		"faction": f, "against": "", "faction_job": true, "min_tier": "neutral", "rep": FACTION_REP}
 	var kinds: Array = ["escort", "patrol", "smuggler", "hunt"]
 	var kind: String = kinds[rng.randi() % kinds.size()]
+	# package 39a: special contracts of the Assembly – ballots to The Vote, drone field trials at the Concord Yards
+	var sp := _assembly_special(m, system_id, station, rng)
+	if not sp.is_empty():
+		return sp
 	if kind == "hunt":
 		var caps: Array = []
 		for c in GameState.notorious.captains:
@@ -201,6 +205,45 @@ static func generate_faction(system_id: int, station: Dictionary, rng: RandomNum
 
 
 const TRADE_ESCORT_CHANCE := 0.3    # BlackLedger offers at trade hubs that are convoy escorts
+
+const BALLOT_CHANCE := 0.3           # package 39a: Assembly stations elsewhere send their ballots to The Vote
+const BALLOT_TIME := 300.0           # deadline: 5 minutes + BALLOT_TIME_JUMP per jump
+const BALLOT_TIME_JUMP := 150.0
+const BALLOT_AMBUSH := 0.55          # chance per system on the way that thieves try to grab them
+const TRIAL_CHANCE := 0.6            # at the Concord Yards: drone field trials
+const TRIAL_KILLS := Vector2i(3, 6)
+
+
+static func _assembly_special(m: Dictionary, system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	if String(station.get("faction", "")) != "assembly":
+		return {}
+	if String(station.get("art", "")) == "concord_yards" and rng.randf() < TRIAL_CHANCE:
+		var n := rng.randi_range(TRIAL_KILLS.x, TRIAL_KILLS.y)
+		m.merge({"type": "drone_trial", "min_tier": "friendly", "amount": n, "drone_trial": true,
+			"reward": 9000 + n * 3500,
+			"title": "Field trial: %d pirates by drone" % n,
+			"desc": "Concord Fleetworks wants combat data from the field. Let your drones destroy %d pirate ships anywhere in Assembly space – your own guns do not count. A drone carrier is a must." % n}, true)
+		return m
+	var lf := Universe.special_system("landfall")
+	if lf < 0 or lf == system_id or rng.randf() >= BALLOT_CHANCE:
+		return {}
+	var vote := {}
+	for st in Universe.get_layout(lf)["stations"]:
+		if st.get("senate", false):
+			vote = st
+	if vote.is_empty():
+		return {}
+	var jumps := Universe.find_path(system_id, lf, 3).size()
+	if jumps <= 0:
+		return {}
+	var amount := rng.randi_range(2, 6)
+	var limit := BALLOT_TIME + jumps * BALLOT_TIME_JUMP
+	m.merge({"type": "courier", "ballot": true, "min_tier": "friendly", "target_system": lf, "target_station": vote["id"],
+		"item": "sealed_cargo", "amount": amount, "time_limit": limit,
+		"reward": 5000 + jumps * 3500 + amount * 400,
+		"title": "Ballot courier: the votes of %s to The Vote" % Universe.systems[system_id]["name"],
+		"desc": "%d sealed ballot cores must reach The Vote in Landfall (%d jump%s) before the polls close – %d:%02d from the moment you take them. Somebody always wants to know – or change – what is inside: expect thieves on the way." % [amount, jumps, "" if jumps == 1 else "s", int(limit) / 60, int(limit) % 60]}, true)
+	return m
 
 
 ## Convoy escort (faction contract with `gov`, or – gov "" – a trader's convoy from BlackLedger):
@@ -254,7 +297,7 @@ static func can_turn_in(m: Dictionary, fit: ShipFitting, station_id: String) -> 
 			return station_id == m["target_station"] and float(fit.cargo.get("sealed_cargo", 0.0)) >= float(m["amount"]) - 0.01
 		"mining":
 			return station_id == m["giver"] and float(fit.cargo.get(m["item"], 0.0)) >= float(m["amount"]) - 0.01
-		"bounty", "survey":
+		"bounty", "survey", "drone_trial":
 			return station_id == m["giver"] and int(m["progress"]) >= int(m["amount"])
 		"passenger":
 			return station_id == m["target_station"] and fit != null and fit.uid == int(m.get("ship_uid", -1))
@@ -287,7 +330,12 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 				return "Intercept the smuggler in %s – %d:%02d left" % [Universe.systems[int(m["target_system"])]["name"], int(left) / 60, int(left) % 60]
 			return "Intercept the smuggler in %s" % Universe.systems[int(m["target_system"])]["name"]
 		"courier":
+			if m.get("ballot", false) and float(m.get("expires", -1.0)) > 0.0:
+				var left2 := maxf(0.0, float(m["expires"]) - GameState.play_time)
+				return "Ballots to %s (Landfall) – %d:%02d until the polls close" % [Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?"), int(left2) / 60, int(left2) % 60]
 			return "Deliver to %s" % Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?")
+		"drone_trial":
+			return "%d / %d pirates destroyed by your drones in Assembly space" % [int(m["progress"]), int(m["amount"])]
 		"mining":
 			return "%d / %d %s in cargo" % [int(fit.cargo.get(m["item"], 0.0)) if fit != null else 0, int(m["amount"]), GameData.item_name(m["item"])]
 		"bounty":

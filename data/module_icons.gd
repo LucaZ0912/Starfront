@@ -5,6 +5,25 @@ extends RefCounted
 ## Module -> icon mapping: PixelArt.module_icon_key()
 
 const ICONS := {
+	# package 39a: The Senate (a hall of columns)
+	"senate": [
+		"................",
+		".......WW.......",
+		".....WWbbWW.....",
+		"...WWbbbbbbWW...",
+		"..WWWWWWWWWWWW..",
+		"..gggggggggggg..",
+		"...WW.WW.WW.WW..",
+		"...WW.WW.WW.WW..",
+		"...WW.WW.WW.WW..",
+		"...WW.WW.WW.WW..",
+		"...WW.WW.WW.WW..",
+		"...WW.WW.WW.WW..",
+		"..gggggggggggg..",
+		".dddddddddddddd.",
+		"................",
+		"................",
+	],
 	# 0.5.30.3: the HUD buttons (ship, pilot, map)
 	"bar": [
 		"................",

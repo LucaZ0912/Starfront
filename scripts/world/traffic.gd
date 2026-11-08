@@ -1237,6 +1237,7 @@ var smugglers: Array = []          # {ship, mission, gate}
 
 
 func _update_faction_jobs(dt: float) -> void:
+	_ballot_thieves()                                # package 39a
 	# convoy ambushes
 	for e in convoys.values():
 		if not e.has("ambush_t") or e.get("done", false):
@@ -1292,6 +1293,33 @@ func _update_faction_jobs(dt: float) -> void:
 					GameState.fail_mission(m2, "the smuggler reached the gate and jumped out")
 		elif _idle(sm):
 			go(sm, String(e3["gate_id"]))
+
+
+## Package 39a: thieves after the ballot cores – in a system on the way (not Landfall) they may strike once,
+## a little while after the pilot came in.
+func _ballot_thieves() -> void:
+	var pl = view.player
+	if pl == null or not is_instance_valid(pl) or pl.is_docked() or pl.in_warp():
+		return
+	for m in GameState.missions:
+		if not m.get("ballot", false) or int(m["target_system"]) == sid:
+			continue
+		var amb: Dictionary = m.get("amb", {})
+		var key := str(sid)
+		if not amb.has(key):
+			amb[key] = GameState.play_time + randf_range(15.0, 40.0) if randf() < Missions.BALLOT_AMBUSH else -1.0
+			m["amb"] = amb
+		if float(amb[key]) < 0.0 or GameState.play_time < float(amb[key]):
+			continue
+		amb[key] = -1.0
+		var n := randi_range(2, 3)
+		for i in n:
+			var p: Ship = view.spawn_npc(view._pirate_preset(), pl.position + Vector2.from_angle(randf() * TAU) * randf_range(5000.0, 8000.0))
+			p.home = pl.position
+			p.set_order({"type": "attack", "target": pl})
+			view.spawn_fx(Fx.flash(p.position, Color(1.0, 0.4, 0.3), p.radius * 3.0))
+		GameState.log_msg("Ballot thieves! %d ships drop out of warp – they want the ballot cores." % n, GameState.COL_WARN)
+		GameState.news.radio("Pirates try to seize ballots bound for The Vote!", sid, pl.position)
 
 
 ## The unregistered hauler of an intercept contract: appears somewhere out of sight and runs for the

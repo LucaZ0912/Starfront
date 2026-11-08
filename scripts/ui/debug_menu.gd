@@ -330,6 +330,23 @@ func _build_world() -> void:
 		rm.add_child(UI.button(String(Universe.MOON_TYPES[mt]["name"]), func(): _cmd({"type": "debug_moon", "moon_type": mtk})))
 	var ro := _row()
 	ro.add_child(UI.button("Roll the orbits (as on arrival)", func(): _cmd({"type": "debug_roll_orbits"})))
+	# package 39a: Landfall, the Senate, entry permits
+	_section("Landfall & the Senate (package 39a)")
+	var lf39 := Universe.special_system("landfall")
+	var sen39 = GameState.senate
+	content.add_child(UI.label("Landfall: %s  •  permit: %s  •  bill: %s  •  laws: %d" % [
+		"system %d" % lf39 if lf39 >= 0 else "none", "yes" if GameState.has_permit("assembly") else "no",
+		String(sen39.BILLS[sen39.bill["id"]]["name"]) if not sen39.bill.is_empty() else "none", sen39.laws.size()], 12, UI.TEXT_DIM))
+	var r39 := _row()
+	r39.add_child(UI.button("To Landfall", func(): _cmd({"type": "debug_landfall"})))
+	r39.add_child(UI.button("Give permit", func(): _cmd({"type": "debug_permit", "on": true})))
+	r39.add_child(UI.button("Take permit", func(): _cmd({"type": "debug_permit", "on": false})))
+	r39.add_child(UI.button("Ballot drone", func(): _cmd({"type": "debug_vote_beam"})))
+	var r39b := _row()
+	r39b.add_child(UI.button("New bill", func(): _cmd({"type": "debug_senate", "do": "new"})))
+	r39b.add_child(UI.button("Vote now", func(): _cmd({"type": "debug_senate", "do": "resolve"})))
+	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
+	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
 	# package 38: planet types
 	_section("Planets (package 38)")
 	var L38 := Universe.get_layout(GameState.current_system)
