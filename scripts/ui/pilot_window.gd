@@ -28,7 +28,8 @@ const CodexView = preload("res://scripts/ui/codex_view.gd")
 const TreeData = preload("res://data/skilltree.gd")
 
 var tab := 0
-var sub := 0                              # Pilot tab: 0 Info, 1 Standings, 2 Codex
+var sub := 0                              # Pilot tab: 0 Info, 1 Standings, 2 Codex, 3 Collection
+var coll_cat := "perks"                   # Collection: the category shown (0.5.34.3)
 var tab_buttons: Array = []
 var body: VBoxContainer
 var _sc: ScrollContainer
@@ -113,7 +114,7 @@ func rebuild() -> void:
 	_tsc = null
 	_canvas = null
 	_detail_box = null
-	var fixed := tab == TAB_TREE or (tab == TAB_PILOT and sub == 2)     # the tree and the codex scroll by themselves
+	var fixed := tab == TAB_TREE or (tab == TAB_PILOT and sub >= 2)     # the tree, the codex and the collection scroll by themselves
 	_sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if fixed else ScrollContainer.SCROLL_MODE_AUTO
 	_sc.scroll_vertical = 0
 	UI.clear(body)
@@ -635,40 +636,68 @@ func _pilot() -> void:
 ## Package 34: the collection – crew perks the pilot has had in the crew (tiles; the rest "???"), notorious pirates
 ## destroyed (their wanted posters with the mugshot).
 func _collection() -> void:
+	var row := UI.hbox(14)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(row)
+	# the categories as a button list on the left (0.5.34.3)
+	var left := UI.vbox(4)
+	left.custom_minimum_size = Vector2(250, 0)
+	row.add_child(left)
 	var have: Array = GameState.collection.get("perks", [])
-	body.add_child(UI.label("CREW PERKS  %d / %d" % [have.size(), CrewDataP.PERKS.size()], 16, COL))
-	body.add_child(UI.label("A perk counts once a crew member with it serves you – aboard, on the platform or in the crew quarters. Perks are very rare.", 12, UI.TEXT_DIM))
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 10)
-	flow.add_theme_constant_override("v_separation", 10)
-	body.add_child(flow)
-	for p in CrewDataP.PERKS:
-		var got: bool = p in have
-		var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.12, 0.09, 0.03, 0.95) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
-		tile.custom_minimum_size = Vector2(230, 96)
-		flow.add_child(tile)
-		var v := UI.vbox(2)
-		tile.add_child(v)
-		if got:
-			v.add_child(UI.label("★ " + String(CrewDataP.PERKS[p]["name"]), 15, COL))
-			v.add_child(UI.wrap_label(String(CrewDataP.PERKS[p]["text"]), 11, Color(0.9, 0.88, 0.8), 210))
-		else:
-			var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
-			q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			q.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			v.add_child(q)
 	var killed: Array = GameState.collection.get("notorious", [])
-	body.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
-	if killed.is_empty():
-		body.add_child(UI.label("None yet – their wanted posters hang in every Bond Office.", 12, UI.TEXT_DIM))
-		return
-	var pf := HFlowContainer.new()
-	pf.add_theme_constant_override("h_separation", 12)
-	pf.add_theme_constant_override("v_separation", 12)
-	body.add_child(pf)
-	for k in range(killed.size() - 1, -1, -1):
-		pf.add_child(BondPanel.wanted_poster(killed[k]))
+	var cats := [["perks", "Crew perks", "%d / %d" % [have.size(), CrewDataP.PERKS.size()]], ["notorious", "Notorious pirates", "%d destroyed" % killed.size()]]
+	for c in cats:
+		var cid: String = c[0]
+		var b := UI.button("%s   %s" % [c[1], c[2]], func(): coll_cat = cid; rebuild())
+		b.toggle_mode = true
+		b.button_pressed = coll_cat == cid
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size = Vector2(250, 36)
+		left.add_child(b)
+	# the chosen category on the right
+	var rs := ScrollContainer.new()
+	rs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	row.add_child(rs)
+	var right := UI.vbox(8)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rs.add_child(right)
+	match coll_cat:
+		"notorious":
+			right.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
+			if killed.is_empty():
+				right.add_child(UI.label("None yet – their wanted posters hang in every Bond Office.", 12, UI.TEXT_DIM))
+				return
+			var pf := HFlowContainer.new()
+			pf.add_theme_constant_override("h_separation", 12)
+			pf.add_theme_constant_override("v_separation", 12)
+			right.add_child(pf)
+			for k in range(killed.size() - 1, -1, -1):
+				pf.add_child(BondPanel.wanted_poster(killed[k]))
+		_:
+			right.add_child(UI.label("CREW PERKS  %d / %d" % [have.size(), CrewDataP.PERKS.size()], 16, COL))
+			right.add_child(UI.label("A perk counts once a crew member with it serves you – aboard, on the platform or in the crew quarters. Perks are very rare.", 12, UI.TEXT_DIM))
+			var flow := HFlowContainer.new()
+			flow.add_theme_constant_override("h_separation", 10)
+			flow.add_theme_constant_override("v_separation", 10)
+			right.add_child(flow)
+			for p in CrewDataP.PERKS:
+				var got: bool = p in have
+				var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.12, 0.09, 0.03, 0.95) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
+				tile.custom_minimum_size = Vector2(230, 96)
+				flow.add_child(tile)
+				var v := UI.vbox(2)
+				tile.add_child(v)
+				if got:
+					v.add_child(UI.label("★ " + String(CrewDataP.PERKS[p]["name"]), 15, COL))
+					v.add_child(UI.wrap_label(String(CrewDataP.PERKS[p]["text"]), 11, Color(0.9, 0.88, 0.8), 210))
+				else:
+					var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
+					q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					q.size_flags_vertical = Control.SIZE_EXPAND_FILL
+					q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+					v.add_child(q)
 
 
 func _set_sub(i: int) -> void:

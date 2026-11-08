@@ -5938,10 +5938,14 @@ func _test_collection() -> void:
 	var rec_ok: bool = c.is_empty() or (GameState.collection["notorious"].size() == 1 and String(GameState.collection["notorious"][0]["name"]) == String(c["name"]))
 	var pw = main.pilot_window
 	pw.sub = 3
+	pw.coll_cat = "perks"
 	pw.open(0)
-	var n_ui: int = pw.body.get_child_count()
+	var tiles: int = pw.body.find_children("*", "Label", true, false).filter(func(l): return (l as Label).text == "???" or (l as Label).text.begins_with("★ ")).size()
+	pw.coll_cat = "notorious"
+	pw.rebuild()
 	var posters: int = pw.body.find_children("*", "Label", true, false).filter(func(l): return (l as Label).text == "WANTED").size()
+	pw.coll_cat = "perks"
 	pw.sub = 0
 	pw.close()
-	check(perk_ok and rec_ok and n_ui > 4 and (c.is_empty() or posters == 1), "collection: a crew perk counts once it serves you, a destroyed notorious pirate hangs there with the poster (Pilot → Collection)")
+	check(perk_ok and rec_ok and tiles == load("res://data/crew.gd").PERKS.size() and (c.is_empty() or posters == 1), "collection: categories on the left – crew perks (one tile each) and the destroyed notorious pirates with their posters (Pilot → Collection)")
 	GameState.collection = keep

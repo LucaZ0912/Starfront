@@ -3,6 +3,10 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.5.34.3 – 2026-11-08
+
+**Collection:** the categories as a list of buttons on the left, the chosen one on the right.
+
 ## alpha 0.5.34.2 – 2026-11-08
 
 **Wanted posters:** the ship's icon (in the captain's paint) beside the ship's name.
