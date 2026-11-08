@@ -707,6 +707,21 @@ func _draw_landmark_live() -> void:
 					draw_circle(foc, px * 5.0, Color(1.0, 0.98, 0.9, 0.7 * lv))
 					draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		"gate_frame":
+			# 0.6.39.9: work drones at the unfinished ring – hopping from welding spot to welding spot
+			var spots2: Array = art["vents"].filter(func(v): return String(v["kind"]) == "spark")
+			if not spots2.is_empty():
+				for j2 in 5:
+					var cyc2 := _t / 5.0 + j2 * 0.61 + float(int(data.get("seed", 0)) % 5)
+					var leg2 := int(floorf(cyc2))
+					var mv2 := smoothstep(0.0, 0.4, fposmod(cyc2, 1.0))
+					var a0: Vector2 = spots2[(leg2 + j2) % spots2.size()]["pos"]
+					var a1: Vector2 = spots2[(leg2 + j2 + 1) % spots2.size()]["pos"]
+					var off2 := a0.normalized() * (40.0 + 15.0 * j2)
+					var dp := (a0 + off2).lerp(a1 + off2, mv2)
+					draw_rect(Rect2(dp - Vector2(px, px), Vector2(px * 2.0, px * 2.0)), Color(0.75, 1.0, 0.85, 0.95))
+					draw_circle(dp, px * 2.5, Color(0.4, 1.0, 0.6, 0.25))
+					if mv2 >= 1.0 and posmod(int(_t * 8.0) + j2, 3) == 0:
+						draw_circle(dp - off2 * 0.5, px * 2.0, Color(1.0, 0.95, 0.75, 0.9))
 			# 39c: now and then a test: the ring flickers green, a wormhole tries to open – and collapses
 			var cyc := fposmod(_t / 40.0 + float(int(data.get("seed", 0)) % 7) / 7.0, 1.0)
 			if cyc < 0.08:
@@ -715,6 +730,27 @@ func _draw_landmark_live() -> void:
 				draw_circle(Vector2.ZERO, r2 * (0.3 + 0.7 * k2), Color(0.3, 1.0, 0.6, 0.35 * (1.0 - k2)))
 				draw_arc(Vector2.ZERO, r2, 0.0, TAU, 32, Color(0.6, 1.0, 0.8, 0.8 * (1.0 - k2)), px * 3.0)
 		"axiom_yards":
+			# 0.6.39.9: in the berths the yard's own ships – Thresholds and Parallaxes – under scaffolding
+			for v in art["vents"]:
+				if String(v["kind"]) != "berth":
+					continue
+				var big: bool = float(v["phase"]) > 0.5
+				var tex: Texture2D = PixelArt.ship_texture("axa_threshold" if big else "axa_parallax", "directorate")
+				var tsz := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE
+				var bp: Vector2 = v["pos"]
+				var sgn := signf(float(v["size"]))
+				draw_set_transform(bp, PI * 0.5 * sgn, Vector2.ONE)     # the bow points away from the spine
+				draw_texture_rect(tex, Rect2(-tsz * 0.5, tsz), false, Color(0.92, 0.95, 0.95))
+				# scaffolding across the hull, a bare section still open
+				var hl := tsz.x * 0.5
+				var hw2 := tsz.y * 0.5 + px * 4.0
+				for q in 4:
+					var xq := lerpf(-hl * 0.8, hl * 0.8, q / 3.0)
+					draw_line(Vector2(xq, -hw2), Vector2(xq, hw2), Color(0.5, 0.55, 0.57, 0.85), px * 1.5)
+				draw_rect(Rect2(Vector2(-hl * 0.15, -tsz.y * 0.3), Vector2(hl * 0.45, tsz.y * 0.6)), Color(0.12, 0.14, 0.15, 0.55))
+				for q2 in 6:
+					draw_line(Vector2(-hl * 0.15 + q2 * hl * 0.09, -tsz.y * 0.3), Vector2(-hl * 0.15 + q2 * hl * 0.09, tsz.y * 0.3), Color(0.55, 0.6, 0.62, 0.7), px)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			# 39c: Axiom ships testing their cloaks round the yard – fading out, drifting on, fading in again
 			for j in 4:
 				var a3 := _t * 0.03 * (1.0 if j % 2 == 0 else -1.0) + j * TAU / 4.0

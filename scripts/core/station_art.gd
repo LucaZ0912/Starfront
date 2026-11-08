@@ -1291,38 +1291,52 @@ func _gate_frame() -> void:
 		light(center + Vector2.from_angle(a2) * n * 0.46, Color(0.4, 1.0, 0.6), 1.2, true)
 
 
-## The Axiom Yards at Meitner: a slender spine with swept sensor fins, berths with sleek Axiom hulls being built,
-## docking at both ends. (The live drawing adds ships that cloak and uncloak; the small gates being built lie round it.)
+## The Axiom Yards at Meitner: a slender spine from a sensor hub (left) to the docks (right), swept sensor fins, and
+## four berths – two big ones for the Threshold, two small ones for the Parallax. The hulls in the berths are drawn
+## live (Celestial: the manufacturer's own ships under scaffolding); the art marks them with "berth" vents.
+## (0.6.39.9: the spine no longer runs off the left edge.)
 func _axiom_yards() -> void:
-	var center := Vector2(c, c)
+	var hub := Vector2(c - n * 0.36, c)
 	# swept fins
 	for sd in [-1.0, 1.0]:
 		poly(PackedVector2Array([Vector2(c - n * 0.05, c), Vector2(c - n * 0.3, c + sd * n * 0.42), Vector2(c - n * 0.2, c + sd * n * 0.44), Vector2(c + n * 0.08, c + sd * 0.04 * n)]), PANEL, 8.0, 2.0, 0)
 		seg(Vector2(c - n * 0.02, c + sd * n * 0.02), Vector2(c - n * 0.25, c + sd * n * 0.43), 0.8, ACC, 10.0, P_FLAT, true)
-	# the spine
-	box(center, 0.0, n * 0.46, 13.0, HULL, 11.0, P_WINDOWS)
-	box(center, 0.0, n * 0.44, 1.5, ACC, 13.0)
-	# berths along the spine with sleek hulls
-	for j in 3:
-		var x := c + n * (0.06 + j * 0.13)
-		for sd2 in [-1.0, 1.0]:
-			var base := Vector2(x, c + sd2 * 15.0)
-			var tip := Vector2(x, c + sd2 * n * 0.3)
-			seg(base + Vector2(-n * 0.045, 0), tip + Vector2(-n * 0.045, 0), 2.0, HULL, 12.0, P_GIRDER)
-			seg(base + Vector2(n * 0.045, 0), tip + Vector2(n * 0.045, 0), 2.0, HULL, 12.0, P_GIRDER)
-			var mid := (base + tip) * 0.5
-			poly(PackedVector2Array([mid + Vector2(0, -sd2 * n * 0.11), mid + Vector2(-n * 0.028, sd2 * n * 0.07), mid + Vector2(n * 0.028, sd2 * n * 0.07)]), PANEL, 13.0, 2.0, 0)
-			seg(mid + Vector2(0, -sd2 * n * 0.1), mid + Vector2(0, sd2 * n * 0.06), 0.8, ACC, 15.0, P_FLAT, true)
-			vent(mid, "spark", 2.0)
-			light(tip, Color(0.4, 1.0, 0.6), 1.3, true)
-	# sensor dishes and a hub at the left end
-	disc(Vector2(c - n * 0.36, c), n * 0.06, HULL, 16.0, D_HUB)
-	disc(Vector2(c - n * 0.36, c - n * 0.1), 9.0, DARK, 18.0, D_DISH)
-	disc(Vector2(c - n * 0.36, c + n * 0.1), 9.0, DARK, 18.0, D_DISH)
+	# the spine, from the sensor hub to the docks
+	var x0 := hub.x
+	var x1 := c + n * 0.47
+	box(Vector2((x0 + x1) * 0.5, c), 0.0, (x1 - x0) * 0.5, 13.0, HULL, 11.0, P_WINDOWS)
+	box(Vector2((x0 + x1) * 0.5, c), 0.0, (x1 - x0) * 0.5 - 2.0, 1.5, ACC, 13.0)
+	# the berths: frames of girders, a gantry across, the hull itself drawn live
+	var berths := [[0.12, -1.0, true], [0.12, 1.0, true], [0.31, -1.0, false], [0.31, 1.0, false]]
+	for bt in berths:
+		var x := c + n * float(bt[0])
+		var sgn := float(bt[1])
+		var big: bool = bt[2]
+		var hw := n * (0.085 if big else 0.045)
+		var reach := n * (0.4 if big else 0.2)
+		var base := Vector2(x, c + sgn * 15.0)
+		var tip := Vector2(x, c + sgn * reach)
+		seg(base + Vector2(-hw, 0), tip + Vector2(-hw, 0), 2.5, HULL, 12.0, P_GIRDER)
+		seg(base + Vector2(hw, 0), tip + Vector2(hw, 0), 2.5, HULL, 12.0, P_GIRDER)
+		box(base + Vector2(0, sgn * 3.0), 0.0, hw + 3.0, 3.0, DARK, 13.0, P_ARMOR)
+		light(tip + Vector2(-hw, 0), Color(0.4, 1.0, 0.6), 1.3, true)
+		light(tip + Vector2(hw, 0), Color(0.4, 1.0, 0.6), 1.3, true)
+		vents.append({"pos": (base + tip) * 0.5 - Vector2(c, c), "kind": "berth", "size": sgn, "phase": 1.0 if big else 0.0})
+		for sp in 3:
+			vent(Vector2(x + rng.randf_range(-hw * 0.5, hw * 0.5), lerpf(base.y, tip.y, rng.randf_range(0.25, 0.85))), "spark", 2.0)
+	# the sensor hub with its dishes
+	disc(hub, n * 0.07, HULL, 16.0, D_HUB)
+	disc(hub, n * 0.025, ACC, 19.0, D_DOME)
+	disc(hub + Vector2(0, -n * 0.1), 10.0, DARK, 18.0, D_DISH)
+	disc(hub + Vector2(0, n * 0.1), 10.0, DARK, 18.0, D_DISH)
+	disc(hub + Vector2(-n * 0.085, 0), 7.0, DARK, 18.0, D_DISH)
+	seg(hub + Vector2(0, -n * 0.07), hub + Vector2(0, -n * 0.1), 2.0, TRUSS, 15.0)
+	seg(hub + Vector2(0, n * 0.07), hub + Vector2(0, n * 0.1), 2.0, TRUSS, 15.0)
+	light(hub + Vector2(-n * 0.085, 0), Color(0.4, 1.0, 0.6), 0.8, true)
+	# docking at the right end
 	add_bay(0.0, n * 0.47, 12.0)
-	add_bay(PI, n * 0.47, 12.0)
 	for k in 4:
-		turret(Vector2(c - n * 0.1 + k * n * 0.12, c + (1.0 if k % 2 == 0 else -1.0) * 20.0), 4.5)
+		turret(Vector2(c - n * 0.2 + k * n * 0.16, c + (1.0 if k % 2 == 0 else -1.0) * 20.0), 4.5)
 
 ## Package 26: a waystation – a small hub on struts with round landing pads (2 / 3 / 4 by tier) for S and M
 ## ships: hazard rim, a landing circle, a hatch in the middle the ships sink through, lights around it.

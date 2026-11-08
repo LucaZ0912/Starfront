@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.9 – 2026-11-08
+
+- Axiom Yards reworked: the spine ends at its sensor hub instead of running off the left edge; in the berths lie the
+  manufacturer's own ships – two Thresholds and two Parallaxes – under scaffolding, a section still open.
+- Work drones hop round the unfinished jump gates, welding.
+
 ## alpha 0.6.39.8 – 2026-11-08
 
 - Durchbruch: big haulers carry Dyson plates along the shell near the Meridian Sphere (out loaded, back empty).
