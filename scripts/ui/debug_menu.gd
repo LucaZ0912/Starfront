@@ -317,7 +317,7 @@ func _build_world() -> void:
 		by_type[m["type"]] = int(by_type.get(m["type"], 0)) + 1
 	var mt_txt: Array = []
 	for mt in by_type:
-		mt_txt.append("%d %s" % [by_type[mt], Universe.MOON_TYPES[mt]["name"]])
+		mt_txt.append("%d %s" % [by_type[mt], Universe.body_type(String(mt))["name"]])     # 0.6.39.7: Vesper is a desert world
 	var at_moon := 0
 	for st in L36["stations"]:
 		at_moon += 1 if String(st.get("anchor", "")).begins_with("m") else 0

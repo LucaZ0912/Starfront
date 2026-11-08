@@ -599,6 +599,17 @@ func _process(delta: float) -> void:
 				for i in dm.TABS.size():
 					dm._set_tab(i)
 					check(dm.content.get_child_count() > 0, "debug menu tab '%s'" % dm.TABS[i])
+				# 0.6.39.7: the World tab in every capital (Vesper, a moon of a planet type, once broke it)
+				var keep_sys := GameState.current_system
+				var tabs_ok := true
+				for sp in Universe.SPECIAL_CAPITALS.values():
+					GameState.current_system = Universe.special_system(String(sp))
+					for i2 in dm.TABS.size():
+						dm._set_tab(i2)
+						tabs_ok = tabs_ok and dm.content.get_child_count() > 0
+				GameState.current_system = keep_sys
+				dm._set_tab(0)
+				check(tabs_ok, "debug menu: every tab opens in Landfall, Heimkehr and Durchbruch")
 				dm.close()
 				var c0 := GameState.credits
 				Commands.execute({"type": "debug_credits", "amount": 1000000})

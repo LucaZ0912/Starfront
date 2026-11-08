@@ -1621,7 +1621,7 @@ func _c_debug_moon(c: Dictionary) -> String:
 	f.position = p
 	world.player.order = {"type": "idle"}
 	world.center_on_player()
-	GameState.log_msg("Debug: next to %s (%s)." % [m["name"], Universe.MOON_TYPES[m["type"]]["name"]])
+	GameState.log_msg("Debug: next to %s (%s)." % [m["name"], Universe.body_type(String(m["type"]))["name"]])
 	return ""
 
 

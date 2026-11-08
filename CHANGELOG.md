@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.7 – 2026-11-08
+
+- Fix: the debug menu crashed the game ("Invalid access … 'desert'") – Vesper, Heimkehr's desert moon, is a moon of a
+  planet type, and a few places looked moons up among the moon types only (debug menu, moon fields, debug jump to a
+  moon). The smoke test now opens every debug tab in all three capitals.
+
 ## alpha 0.6.39.6 – 2026-11-08
 
 **Package 39c: Durchbruch, the capital of the Directorate.** A new game is needed.

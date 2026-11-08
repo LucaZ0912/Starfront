@@ -1365,7 +1365,7 @@ func _moon_fields(L: Dictionary, id: int, sec: float) -> void:
 	for m in L.get("moons", []):
 		if rng.randf() >= MOON_FIELD_SHARE:
 			continue
-		var cls: String = MOON_TYPES[m["type"]]["cls"]
+		var cls: String = String(body_type(String(m["type"])).get("cls", PLANET_ROCK_CLASS.get(String(m["type"]), "stony")))      # 0.6.39.7: moons of a planet type
 		var mix := _field_mix(cls, sec, rng)
 		var fr := rng.randf_range(4000.0, 7000.0)
 		var off := Vector2.from_angle(rng.randf() * TAU) * (float(m["radius"]) + fr + rng.randf_range(2500.0, 6000.0))
