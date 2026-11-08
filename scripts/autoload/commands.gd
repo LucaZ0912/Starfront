@@ -1658,6 +1658,33 @@ func _c_debug_cme(_c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_planet", "planet_type": "terran"|…} – package 38: puts the ship next to the next planet of this type
+## in the current system (on its night side, to see city lights).
+var _debug_planet_i := -1
+
+
+func _c_debug_planet(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var want := String(c.get("planet_type", ""))
+	var ps: Array = world.layout["planets"].filter(func(p): return want == "" or String(p["type"]) == want)
+	if ps.is_empty():
+		return "No %s in this system." % (String(Universe.PLANET_TYPES[want]["name"]) if Universe.PLANET_TYPES.has(want) else "planet")
+	_debug_planet_i = (_debug_planet_i + 1) % ps.size()
+	var p: Dictionary = ps[_debug_planet_i]
+	var f := _fit()
+	f.docked_at = ""
+	var night := (p["pos"] as Vector2).normalized()            # away from the star: the night side
+	var pos: Vector2 = (p["pos"] as Vector2) + night.rotated(0.5) * float(p["radius"]) * 2.2
+	world.player.position = pos
+	f.position = pos
+	world.player.order = {"type": "idle"}
+	world.center_on_player()
+	GameState.log_msg("Debug: next to %s (%s)." % [p["name"], Universe.PLANET_TYPES[String(p["type"])]["name"]])
+	return ""
+
+
 ## {"type":"debug_roll_orbits"} – package 36: planets and moons to new places on their orbits, as on arriving by jump
 ## (the ship stays where it is).
 func _c_debug_roll_orbits(_c: Dictionary) -> String:

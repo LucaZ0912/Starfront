@@ -582,6 +582,7 @@ func _process(delta: float) -> void:
 				_test_moons(view)
 				_test_warp36(view)
 				_test_stars(view)
+				_test_planets(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -6387,4 +6388,55 @@ func _test_stars(view: SystemView) -> void:
 	var near_ok: bool = U.WARP_MIN <= 15000.0
 	check(warp_ok and drone_ok and seen_ok and facts_ok and near_ok,
 		"0.6.37.2: the CME shockwave tears ships out of warp, spoils cloaks, knocks out drones; star classes in the collection (size, mass, temperature, text); warp from %s" % SystemView.fmt_dist(U.WARP_MIN))
+
+
+## Package 38: new planet types (ice giants, dwarf planets in the Kuiper belt, ocean and jungle worlds), every type
+## reworked (seas, clouds, caps, lava, storms, rings, a shade of its own), city lights, a waystation at a dwarf now
+## and then, planet types in the collection.
+func _test_planets(view: SystemView) -> void:
+	var U = Universe
+	var seen := {}
+	var dwarf_ok := true
+	var giant_ok := true
+	var way_dwarf := 0
+	var city_ok := true
+	var cities := 0
+	for sid in U.systems.size():
+		var L: Dictionary = U.get_layout(sid)
+		var kb := {}
+		for bt in L.get("belts", []):
+			if String(bt["kind"]) == "kuiper":
+				kb = bt
+		for i in L["planets"].size():
+			var p: Dictionary = L["planets"][i]
+			var t := String(p["type"])
+			seen[t] = true
+			if t == "dwarf":
+				dwarf_ok = dwarf_ok and not kb.is_empty() and absf(float(p["orbit"]) - float(kb["r"])) <= float(kb["w"]) * 0.51 and U.moons_of(L, i).is_empty()
+			if t == "ice_giant":
+				giant_ok = giant_ok and i >= 2
+			if float(p.get("city", 0.0)) >= 0.5:
+				cities += 1
+				city_ok = city_ok and U.has_stations(sid) and t in U.CITY_WORLDS
+		for st in L["stations"]:
+			if String(st["type"]) == "waystation" and String(st.get("anchor", "")) != "":
+				var par: Dictionary = U.body_by_id(L, String(st["anchor"]))
+				if par.get("dwarf", false):
+					way_dwarf += 1
+	var types_ok: bool = seen.has("ice_giant") and seen.has("dwarf") and seen.has("ocean") and seen.has("jungle") and seen.size() >= 10
+	# the shader gets each type's features, and every planet a shade of its own
+	var t1: Sprite2D = Celestial.make_planet_sprite({"type": "terran", "seed": 3.0, "city": 0.9}, 100.0, Vector2.LEFT)
+	var t2: Sprite2D = Celestial.make_planet_sprite({"type": "terran", "seed": 61.0}, 100.0, Vector2.LEFT)
+	var lv: Sprite2D = Celestial.make_planet_sprite({"type": "lava", "seed": 3.0}, 100.0, Vector2.LEFT)
+	var m1 := t1.material as ShaderMaterial
+	var look_ok: bool = float(m1.get_shader_parameter("sea")) > 0.0 and float(m1.get_shader_parameter("clouds")) > 0.0 and float(m1.get_shader_parameter("city")) > 0.5 		and (m1.get_shader_parameter("col_a") as Color) != ((t2.material as ShaderMaterial).get_shader_parameter("col_a") as Color) 		and float((lv.material as ShaderMaterial).get_shader_parameter("lava")) > 0.5
+	for sp in [t1, t2, lv]:
+		sp.free()
+	var facts_ok := true
+	for d in [U.PLANET_TYPES, U.MOON_TYPES]:
+		for tid in d:
+			facts_ok = facts_ok and String(d[tid].get("text", "")) != "" and d[tid].has("r_earth")
+	var coll_ok: bool = String(view.layout["planets"][0]["type"]) in GameState.collection.get("planets", [])
+	check(types_ok and dwarf_ok and giant_ok and way_dwarf > 0 and city_ok and cities > 0 and look_ok and facts_ok and coll_ok,
+		"package 38: %d planet types (ice giants out beyond, dwarf planets in the Kuiper belt, ocean and jungle worlds); %d waystations at a dwarf; %d worlds with city lights; every planet its own shade; planet and moon types in the collection" % [seen.size(), way_dwarf, cities])
 

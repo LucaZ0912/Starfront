@@ -19,7 +19,7 @@ const SYSTEM_NAMES := [
 	"Leuchtfeuer", "Ödland", "Himmelstor", "Nachtfalke", "Hohenstein",
 ]
 ## Galaxy generator version (stored in saves; older saves are moved to the current cluster).
-const GALAXY_VERSION := 5          # package 36: moons, orbits rolled on arrival; package 37: star types
+const GALAXY_VERSION := 6          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets
 const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
 const POWER_SYSTEMS := 12
@@ -33,7 +33,8 @@ const FIELD_CLASSES := ["metallic", "stony", "icy"]
 const FIELD_BANDS := {"metallic": Vector2(1140000, 2700000), "stony": Vector2(2250000, 4050000), "icy": Vector2(3750000, 5550000)}
 ## Hot stars push the frost line outward, cool ones pull it in.
 ## Rock class orbiting each planet type (gas giants collect ice, lava worlds metal).
-const PLANET_ROCK_CLASS := {"terran": "stony", "desert": "stony", "ice": "icy", "lava": "metallic", "gas": "icy", "toxic": "icy", "barren": "metallic"}
+const PLANET_ROCK_CLASS := {"terran": "stony", "desert": "stony", "ice": "icy", "lava": "metallic", "gas": "icy", "toxic": "icy", "barren": "metallic",
+	"ice_giant": "icy", "dwarf": "icy", "ocean": "stony", "jungle": "stony"}
 ## No-fire zone radius around stations by tier (km). Firing inside makes the station's defence engage.
 const NO_FIRE_ZONE := [15000.0, 22000.0, 30000.0]
 const HAVEN_NAMES := ["Rustmaw", "Blackhook", "Carrion Nest", "Gallows Reach", "Scrapjaw Den", "Red Lantern", "Vulture's Rest"]
@@ -611,7 +612,8 @@ func territory_of(f: String) -> Array:
 # ---------------------------------------------------------------- Population & traffic (phase 0.5 package 11)
 
 ## Inhabitants per planet type (billions): earthlike worlds carry most of the population.
-const PLANET_POP := {"terran": 3.0, "desert": 1.0, "ice": 0.8, "toxic": 0.3, "lava": 0.25, "gas": 0.2, "barren": 0.1}
+const PLANET_POP := {"terran": 3.0, "desert": 1.0, "ice": 0.8, "toxic": 0.3, "lava": 0.25, "gas": 0.2, "barren": 0.1,
+	"ocean": 3.0, "jungle": 3.0, "ice_giant": 0.1, "dwarf": 0.0}          # package 38
 ## Upper limit of NPC ships in one system (player excluded).
 const NPC_CAP := 90                  # package 35: busier systems
 
@@ -732,11 +734,11 @@ func build_test_layout() -> Dictionary:
 	var ptypes: Array = PLANET_TYPES.keys()
 	for i in ptypes.size():
 		var pt: String = ptypes[i]
-		var big := pt in ["gas", "toxic"]
+		var big := float(PLANET_TYPES[pt].get("big", 1.0)) > 1.5
 		var pos := Vector2.from_angle(-PI * 0.5 + i * TAU / ptypes.size()) * 600000.0
 		L["planets"].append({
-			"id": "p%d" % i, "name": "Testfeld %s – %s" % [ROMAN[i], PLANET_TYPES[pt]["name"]], "type": pt,
-			"orbit": pos.length(), "pos": pos, "radius": 22000.0 if big else 9000.0,
+			"id": "p%d" % i, "name": "Testfeld %d – %s" % [i + 1, PLANET_TYPES[pt]["name"]], "type": pt,
+			"orbit": pos.length(), "pos": pos, "radius": 22000.0 if big else 9000.0, "city": 0.8 if pt in CITY_WORLDS else 0.0,
 			"seed": 10.0 + i * 7.0, "ring": big,
 		})
 	# package 36: one moon of every type round the first gas giant
@@ -984,33 +986,71 @@ func find_station(system_id: int, station_id: String) -> Dictionary:
 	return {}
 
 
+## Package 38: every planet type, drawn by the planet shader. a/b/c = low/mid/high colours (for the habitable worlds a
+## is the sea), atmo = rim of the atmosphere, gas = banded giant; sea = share under water; clouds, caps (polar caps),
+## lava (glowing flows), storms (big vortices), craters – how strongly; cloud = cloud colour; big = size factor;
+## r_earth / m_earth / temp / text: what the collection shows.
 const PLANET_TYPES := {
-	"terran": {"name": "Terran", "a": Color(0.13, 0.28, 0.58), "b": Color(0.3, 0.55, 0.28), "c": Color(0.88, 0.9, 0.85), "atmo": Color(0.5, 0.75, 1.0, 0.8), "gas": 0.0},
-	"desert": {"name": "Desert World", "a": Color(0.62, 0.38, 0.22), "b": Color(0.85, 0.62, 0.36), "c": Color(0.95, 0.85, 0.6), "atmo": Color(1.0, 0.8, 0.5, 0.45), "gas": 0.0},
-	"ice": {"name": "Ice World", "a": Color(0.45, 0.62, 0.8), "b": Color(0.75, 0.87, 0.97), "c": Color(1.0, 1.0, 1.0), "atmo": Color(0.75, 0.9, 1.0, 0.5), "gas": 0.0},
-	"lava": {"name": "Lava World", "a": Color(1.0, 0.45, 0.1), "b": Color(0.28, 0.13, 0.1), "c": Color(0.15, 0.08, 0.07), "atmo": Color(1.0, 0.4, 0.2, 0.5), "gas": 0.0},
-	"gas": {"name": "Gas Giant", "a": Color(0.68, 0.48, 0.32), "b": Color(0.86, 0.7, 0.5), "c": Color(0.96, 0.9, 0.76), "atmo": Color(1.0, 0.85, 0.6, 0.4), "gas": 1.0},
-	"toxic": {"name": "Toxic Gas Giant", "a": Color(0.35, 0.5, 0.18), "b": Color(0.58, 0.74, 0.3), "c": Color(0.82, 0.88, 0.45), "atmo": Color(0.7, 1.0, 0.4, 0.55), "gas": 1.0},
-	"barren": {"name": "Barren Rock", "a": Color(0.33, 0.32, 0.34), "b": Color(0.48, 0.47, 0.47), "c": Color(0.64, 0.62, 0.6), "atmo": Color(0.0, 0.0, 0.0, 0.0), "gas": 0.0},
+	"terran": {"name": "Terran", "a": Color(0.13, 0.28, 0.58), "b": Color(0.3, 0.55, 0.28), "c": Color(0.6, 0.56, 0.42), "atmo": Color(0.5, 0.75, 1.0, 0.8), "gas": 0.0,
+		"sea": 0.5, "clouds": 0.55, "caps": 0.6, "cloud": Color(1, 1, 1), "big": 1.0,
+		"r_earth": "1", "m_earth": "1", "temp": "15 °C", "text": "Oceans, continents, clouds and ice at the poles – the kind of world humanity was made for, and the first it settles. On the night side the cities shine."},
+	"ocean": {"name": "Ocean World", "a": Color(0.06, 0.2, 0.5), "b": Color(0.2, 0.5, 0.42), "c": Color(0.85, 0.82, 0.62), "atmo": Color(0.45, 0.72, 1.0, 0.85), "gas": 0.0,
+		"sea": 0.8, "clouds": 0.75, "caps": 0.45, "cloud": Color(1, 1, 1), "big": 1.15,
+		"r_earth": "1.3", "m_earth": "2", "temp": "17 °C", "text": "Water to the horizon and beyond – only chains of islands break the surface. Floating towns and island cities; dense clouds and storms."},
+	"jungle": {"name": "Jungle World", "a": Color(0.08, 0.26, 0.4), "b": Color(0.12, 0.42, 0.14), "c": Color(0.3, 0.58, 0.22), "atmo": Color(0.55, 0.9, 0.7, 0.8), "gas": 0.0,
+		"sea": 0.32, "clouds": 0.85, "caps": 0.15, "cloud": Color(0.95, 1.0, 0.96), "big": 1.0,
+		"r_earth": "1.05", "m_earth": "1.1", "temp": "28 °C", "text": "Hot, wet and green from pole to pole. Rain clouds hang over endless forests; the settlements cling to the rivers and coasts."},
+	"desert": {"name": "Desert World", "a": Color(0.62, 0.38, 0.22), "b": Color(0.85, 0.62, 0.36), "c": Color(0.95, 0.85, 0.6), "atmo": Color(1.0, 0.8, 0.5, 0.45), "gas": 0.0,
+		"sea": 0.0, "clouds": 0.12, "caps": 0.3, "cloud": Color(0.95, 0.86, 0.72), "craters": 0.12, "big": 1.0,
+		"r_earth": "0.9", "m_earth": "0.8", "temp": "45 °C", "text": "Dunes, salt flats and canyons under a thin, dusty sky. Water is worth more than fuel here."},
+	"ice": {"name": "Ice World", "a": Color(0.45, 0.62, 0.8), "b": Color(0.75, 0.87, 0.97), "c": Color(1.0, 1.0, 1.0), "atmo": Color(0.75, 0.9, 1.0, 0.5), "gas": 0.0,
+		"sea": 0.0, "clouds": 0.25, "caps": 0.0, "cloud": Color(1, 1, 1), "craters": 0.2, "big": 1.0,
+		"r_earth": "0.8", "m_earth": "0.5", "temp": "−75 °C", "text": "A world buried under kilometres of ice, crossed by blue cracks. Under the ice there may be oceans."},
+	"lava": {"name": "Lava World", "a": Color(1.0, 0.45, 0.1), "b": Color(0.28, 0.13, 0.1), "c": Color(0.15, 0.08, 0.07), "atmo": Color(1.0, 0.4, 0.2, 0.5), "gas": 0.0,
+		"sea": 0.0, "clouds": 0.0, "lava": 1.0, "big": 1.0,
+		"r_earth": "1.1", "m_earth": "1.3", "temp": "900 °C", "text": "So close to its star that the rock melts. Rivers of lava glow through a black crust – on the night side too."},
+	"barren": {"name": "Barren Rock", "a": Color(0.33, 0.32, 0.34), "b": Color(0.48, 0.47, 0.47), "c": Color(0.64, 0.62, 0.6), "atmo": Color(0.0, 0.0, 0.0, 0.0), "gas": 0.0,
+		"sea": 0.0, "clouds": 0.0, "craters": 1.0, "big": 1.0,
+		"r_earth": "0.4", "m_earth": "0.1", "temp": "−60 °C", "text": "No air, no water – only rock and the craters of four billion years of impacts. Good for mines, bad for everything else."},
+	"gas": {"name": "Gas Giant", "a": Color(0.68, 0.48, 0.32), "b": Color(0.86, 0.7, 0.5), "c": Color(0.96, 0.9, 0.76), "atmo": Color(1.0, 0.85, 0.6, 0.4), "gas": 1.0,
+		"storms": 1.0, "big": 2.6,
+		"r_earth": "11", "m_earth": "318", "temp": "−110 °C", "text": "A giant of hydrogen and helium without a surface: bands of cloud racing round it, storms bigger than whole worlds."},
+	"toxic": {"name": "Toxic Gas Giant", "a": Color(0.35, 0.5, 0.18), "b": Color(0.58, 0.74, 0.3), "c": Color(0.82, 0.88, 0.45), "atmo": Color(0.7, 1.0, 0.4, 0.55), "gas": 1.0,
+		"storms": 0.6, "big": 2.6,
+		"r_earth": "9", "m_earth": "95", "temp": "−130 °C", "text": "A gas giant with poisonous clouds of sulphur and ammonia. Its green-yellow glow can be seen from far away."},
+	"ice_giant": {"name": "Ice Giant", "a": Color(0.18, 0.45, 0.62), "b": Color(0.3, 0.68, 0.78), "c": Color(0.62, 0.9, 0.92), "atmo": Color(0.55, 0.9, 1.0, 0.5), "gas": 1.0,
+		"storms": 0.5, "big": 2.0, "faint": 1.0,
+		"r_earth": "4", "m_earth": "15", "temp": "−200 °C", "text": "Smaller than a gas giant, colder, and blue from the methane in its air. Under the clouds lie oceans of water, ammonia and ice."},
+	"dwarf": {"name": "Dwarf Planet", "a": Color(0.42, 0.36, 0.32), "b": Color(0.62, 0.55, 0.5), "c": Color(0.9, 0.88, 0.86), "atmo": Color(0.0, 0.0, 0.0, 0.0), "gas": 0.0,
+		"sea": 0.0, "caps": 0.0, "craters": 0.8, "big": 1.0,
+		"r_earth": "0.18", "m_earth": "0.002", "temp": "−230 °C", "text": "Too small to clear its orbit: a little world of rock and frozen nitrogen far out in the Kuiper belt. Waystations like its quiet."},
 }
+## Package 38: dwarf planets per system with a Kuiper belt, and how often a waystation sits at one.
+const DWARF_COUNT := Vector2i(1, 2)
+const DWARF_WAYSTATION := 0.4
 
 
 ## Package 36: moons. Drawn with the planet shader (plus craters, a lumpy outline or glowing volcanoes);
 ## far bigger than colossi (3,000–7,800 km radius, at most two thirds of their planet), no radar shadow. "cls" = rock class of a field next to the moon.
 const MOON_TYPES := {
 	"moon_rock": {"name": "Rocky Moon", "a": Color(0.3, 0.29, 0.3), "b": Color(0.46, 0.45, 0.44), "c": Color(0.63, 0.61, 0.59),
-		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 0.0, "glow": 0.0, "cls": "stony", "r": Vector2(3000, 6000)},
+		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 0.0, "glow": 0.0, "cls": "stony", "r_earth": "0.27", "m_earth": "0.012", "temp": "−20 °C", "text": "A grey ball of rock covered in craters – most moons look like this.",
+		"r": Vector2(3000, 6000)},
 	"moon_ice": {"name": "Ice Moon", "a": Color(0.5, 0.62, 0.76), "b": Color(0.78, 0.86, 0.94), "c": Color(0.97, 0.98, 1.0),
-		"atmo": Color(0.8, 0.9, 1.0, 0.25), "gas": 0.0, "craters": 0.55, "lumpy": 0.0, "glow": 0.0, "cls": "icy", "r": Vector2(3000, 6500)},
+		"atmo": Color(0.8, 0.9, 1.0, 0.25), "gas": 0.0, "craters": 0.55, "lumpy": 0.0, "glow": 0.0, "cls": "icy", "r_earth": "0.25", "m_earth": "0.008", "temp": "−160 °C", "text": "A shell of ice over a frozen – or hidden liquid – sea; cracks run across its face.",
+		"r": Vector2(3000, 6500)},
 	"moon_volcanic": {"name": "Volcanic Moon", "a": Color(0.92, 0.74, 0.26), "b": Color(0.78, 0.46, 0.16), "c": Color(0.24, 0.14, 0.09),
-		"atmo": Color(1.0, 0.65, 0.3, 0.22), "gas": 0.0, "craters": 0.0, "lumpy": 0.0, "glow": 1.0, "cls": "metallic", "r": Vector2(3500, 6500)},
+		"atmo": Color(1.0, 0.65, 0.3, 0.22), "gas": 0.0, "craters": 0.0, "lumpy": 0.0, "glow": 1.0, "cls": "metallic", "r_earth": "0.29", "m_earth": "0.015", "temp": "−130 °C", "text": "Squeezed by its planet's tides until its insides melt: sulphur volcanoes glow on its surface.",
+		"r": Vector2(3500, 6500)},
 	"moon_captured": {"name": "Captured Asteroid", "a": Color(0.2, 0.18, 0.17), "b": Color(0.3, 0.27, 0.25), "c": Color(0.43, 0.4, 0.37),
-		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 1.0, "glow": 0.0, "cls": "metallic", "r": Vector2(3000, 4500)},
+		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 1.0, "glow": 0.0, "cls": "metallic", "r_earth": "0.03", "m_earth": "0.00001", "temp": "−80 °C", "text": "Not a true moon but an asteroid its planet caught – lumpy, dark and scarred.",
+		"r": Vector2(3000, 4500)},
 }
 const MOON_LETTERS := ["a", "b", "c", "d"]
 ## How many moons a planet type gets: [chance of 0, of 1, of 2, of 3].
 const MOON_COUNT := {
-	"gas": [0.0, 0.0, 0.55, 1.0], "toxic": [0.0, 0.0, 0.6, 1.0],
+	"gas": [0.0, 0.0, 0.55, 1.0], "toxic": [0.0, 0.0, 0.6, 1.0], "ice_giant": [0.0, 0.0, 0.6, 1.0],
+	"ocean": [0.4, 0.85, 1.0, 1.0], "jungle": [0.3, 0.8, 1.0, 1.0], "dwarf": [1.0, 1.0, 1.0, 1.0],
 	"terran": [0.25, 0.75, 1.0, 1.0], "desert": [0.3, 0.8, 1.0, 1.0], "ice": [0.3, 0.8, 1.0, 1.0],
 	"lava": [0.85, 1.0, 1.0, 1.0], "barren": [0.8, 1.0, 1.0, 1.0],
 }
@@ -1042,7 +1082,7 @@ func _make_moons(L: Dictionary, id: int) -> void:
 			if String(p["type"]) in ["ice"] and rng.randf() < 0.5:
 				mt = "moon_ice"
 			var rr: Vector2 = MOON_TYPES[mt]["r"]
-			var mr := rng.randf_range(rr.x, rr.y) * (1.2 if String(p["type"]) in ["gas", "toxic"] else 1.0)
+			var mr := rng.randf_range(rr.x, rr.y) * (1.2 if String(p["type"]) in ["gas", "toxic", "ice_giant"] else 1.0)
 			mr = clampf(mr, 3000.0, maxf(3000.0, float(p["radius"]) * 0.65))
 			orbit += mr
 			L["moons"].append({
@@ -1197,7 +1237,7 @@ func _generate_layout(id: int) -> Dictionary:
 	var used: Array = []
 	# Planets
 	var planet_count := rng.randi_range(3, 6)
-	var ptypes: Array = PLANET_TYPES.keys()
+	var ptypes: Array = PLANET_TYPES.keys().filter(func(t): return t != "dwarf")     # package 38: dwarfs come separately
 	# package 37: a red supergiant pushes the inner orbits out (squeezing them towards the edge); around neutron stars
 	# and black holes only a few dead worlds remain
 	var push := maxf(0.0, float(st_type["radius"]) * 3.2 - 780000.0) / (1.0 - 780000.0 / 5400000.0)
@@ -1211,12 +1251,17 @@ func _generate_layout(id: int) -> Dictionary:
 		var ptype: String = ptypes[rng.randi() % ptypes.size()]
 		if i == 0 and rng.randf() < 0.5:
 			ptype = "lava"
-		var big := ptype in ["gas", "toxic"]
+		# package 38: ice giants only out beyond the gas giants, ocean and jungle worlds in the warm middle
+		if ptype == "ice_giant" and i < 2:
+			ptype = "gas"
+		if ptype in ["ocean", "jungle"] and (i == 0 or i > 3):
+			ptype = "barren" if i == 0 else "ice"
+		var big := float(PLANET_TYPES[ptype].get("big", 1.0)) > 1.5
 		used.append(pos)
 		L["planets"].append({
 			"id": "p%d" % i, "name": "%s %s" % [sys["name"], ROMAN[i]], "type": ptype, "orbit": orbit, "pos": pos,
-			"radius": rng.randf_range(6000.0, 12000.0) * (2.6 if big else 1.0),
-			"seed": rng.randf_range(0.0, 100.0), "ring": big and rng.randf() < 0.6,
+			"radius": rng.randf_range(6000.0, 12000.0) * float(PLANET_TYPES[ptype].get("big", 1.0)),
+			"seed": rng.randf_range(0.0, 100.0), "ring": big and rng.randf() < (0.45 if ptype == "ice_giant" else 0.6),
 		})
 	_make_moons(L, id)                                # package 36
 	var mrng := RandomNumberGenerator.new()           # package 36: which stations orbit a moon (own RNG)
@@ -1263,6 +1308,7 @@ func _generate_layout(id: int) -> Dictionary:
 	var has_icy := false
 	var nf := rng.randi_range(2, 4)
 	L["belts"] = _make_belts(L, id)                   # package 35: asteroid belt and Kuiper belt (scenery)
+	_make_dwarfs(L, id)                               # package 38
 	for b in nf:
 		var cls: String = FIELD_CLASSES[rng.randi() % FIELD_CLASSES.size()]
 		if b == nf - 1 and need_icy and not has_icy:
@@ -1287,11 +1333,56 @@ func _generate_layout(id: int) -> Dictionary:
 			an["difficulty"] = diff + 10.0
 		L["anomalies"].append(an)
 	_special_stations(L, id, sec)
+	_city_lights(L, id)                               # package 38
 	_scatter_loose(L, id, sec)
 	_place_colossi(L, id, sec)
 	_moon_fields(L, id, sec)                          # package 36: after the colossi – moon fields have none
 	_place_orbits(L, id)                              # package 36: planets and moons on their orbits
 	return L
+
+
+## Package 38: one or two dwarf planets out in the Kuiper belt (own RNG). They are planets of their own (orbit,
+## warp target, collection) – small, no moons.
+func _make_dwarfs(L: Dictionary, id: int) -> void:
+	var kb: Dictionary = {}
+	for bt in L.get("belts", []):
+		if String(bt["kind"]) == "kuiper":
+			kb = bt
+	if kb.is_empty():
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 19937 + id * 7121 + 38
+	var n := rng.randi_range(DWARF_COUNT.x, DWARF_COUNT.y)
+	for k in n:
+		var i: int = L["planets"].size()
+		var orbit := float(kb["r"]) + rng.randf_range(-0.5, 0.5) * float(kb["w"])
+		L["planets"].append({
+			"id": "p%d" % i, "name": "%s %s" % [systems[id]["name"], ROMAN[mini(i, ROMAN.size() - 1)]], "type": "dwarf", "orbit": orbit,
+			"pos": Vector2.from_angle(rng.randf() * TAU) * orbit, "radius": rng.randf_range(1800.0, 2900.0),
+			"seed": rng.randf_range(0.0, 100.0), "ring": false, "dwarf": true,
+		})
+
+
+## Package 38: the lights of cities on the night side. Habitable worlds (terran, ocean, jungle) in inhabited systems
+## shine brightly – more in rich systems; other solid worlds with a station in orbit show a few settlements.
+const CITY_WORLDS := ["terran", "ocean", "jungle"]
+
+
+func _city_lights(L: Dictionary, id: int) -> void:
+	var inhabited := has_stations(id)
+	var rich := Missions.wealthy(id)
+	for pi in L["planets"].size():
+		var p: Dictionary = L["planets"][pi]
+		var t := String(p["type"])
+		if inhabited and t in CITY_WORLDS:
+			p["city"] = clampf(0.55 + (0.3 if rich else 0.0) + float(systems[id].get("security", 0.5)) * 0.2, 0.0, 1.0)
+	for st in L["stations"]:
+		var pi2 := int(st.get("planet", -1))
+		if pi2 < 0 or pi2 >= L["planets"].size():
+			continue
+		var p2: Dictionary = L["planets"][pi2]
+		if float(PLANET_TYPES[String(p2["type"])].get("gas", 0.0)) < 0.5 and float(p2.get("city", 0.0)) < 0.2:
+			p2["city"] = 0.2
 
 
 ## Package 26: a waystation (station type 0: landing pads for S and M ships) in most systems – out on the
@@ -1316,6 +1407,18 @@ func _add_waystation(L: Dictionary, id: int) -> void:
 			pidx = i
 	var r := rng.randf()
 	var tier := 1 if r < 0.55 else (2 if r < 0.88 else 3)
+	var wst := {}
+	# package 38: now and then the waystation sits at a dwarf planet out in the Kuiper belt (and goes round it)
+	var dwarfs: Array = []
+	for i2 in L["planets"].size():
+		if L["planets"][i2].get("dwarf", false):
+			dwarfs.append(i2)
+	if not dwarfs.is_empty() and rng.randf() < DWARF_WAYSTATION:
+		pidx = dwarfs[rng.randi() % dwarfs.size()]
+		var dp: Dictionary = L["planets"][pidx]
+		var off := Vector2.from_angle(rng.randf() * TAU) * (float(dp["radius"]) * 1.8 + rng.randf_range(2500.0, 4500.0))
+		pos = (dp["pos"] as Vector2) + off
+		wst = {"anchor": dp["id"], "orbit": off.length()}
 	L["stations"].append({
 		"id": "st_%d_%d" % [id, L["stations"].size()], "planet": pidx,
 		"name": "%s Waystation" % systems[id]["name"],
@@ -1324,6 +1427,7 @@ func _add_waystation(L: Dictionary, id: int) -> void:
 		"shop": [],
 		"shipyard": [],
 	})
+	L["stations"].back().merge(wst)
 
 
 ## Phase 0.5 package 6: art seed + no-fire zone for every station, Ice Refineries next to icy
@@ -1566,7 +1670,7 @@ func _make_belts(L: Dictionary, id: int) -> Array:
 		var r := 0.42 * SYSTEM_RADIUS
 		var planets: Array = L["planets"]
 		for i in planets.size():
-			if String(planets[i]["type"]) in ["gas", "toxic"] and i > 0:
+			if String(planets[i]["type"]) in ["gas", "toxic", "ice_giant"] and i > 0:
 				r = (float(planets[i - 1]["orbit"]) + float(planets[i]["orbit"])) * 0.5
 				break
 		out.append({"kind": "asteroid", "r": r, "w": rng.randf_range(0.05, 0.08) * SYSTEM_RADIUS, "cls": "stony", "seed": rng.randi()})

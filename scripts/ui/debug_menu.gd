@@ -330,6 +330,20 @@ func _build_world() -> void:
 		rm.add_child(UI.button(String(Universe.MOON_TYPES[mt]["name"]), func(): _cmd({"type": "debug_moon", "moon_type": mtk})))
 	var ro := _row()
 	ro.add_child(UI.button("Roll the orbits (as on arrival)", func(): _cmd({"type": "debug_roll_orbits"})))
+	# package 38: planet types
+	_section("Planets (package 38)")
+	var L38 := Universe.get_layout(GameState.current_system)
+	var here: Array = []
+	for p38 in L38["planets"]:
+		here.append(String(Universe.PLANET_TYPES[String(p38["type"])]["name"]))
+	content.add_child(UI.label("This system: %s  •  the test system shows every type in a row" % ", ".join(here), 12, UI.TEXT_DIM))
+	var rp1 := _row()
+	var rp2 := _row()
+	var pi38 := 0
+	for pt38 in Universe.PLANET_TYPES:
+		var ptk: String = pt38
+		(rp1 if pi38 < 6 else rp2).add_child(UI.button(String(Universe.PLANET_TYPES[pt38]["name"]), func(): _cmd({"type": "debug_planet", "planet_type": ptk})))
+		pi38 += 1
 	# package 37: star types
 	_section("Stars (package 37)")
 	var st_counts := {}

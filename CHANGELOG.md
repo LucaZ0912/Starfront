@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.38.1 – 2026-11-08
+
+**Package 38: new planet types.** A new game is needed.
+- New: ice giants, dwarf planets out in the Kuiper belt, ocean worlds and jungle worlds. Now and then a waystation
+  orbits a dwarf planet.
+- Every planet type reworked, twice as fine: seas and coasts, a cloud layer of its own, polar caps, a twilight edge,
+  glowing lava flows, banded giants with vortices and great storms, craters, rings in many shapes – and every planet
+  its own shade of its type.
+- City lights on the night side of habitable worlds in inhabited systems.
+- Collection → Planet types: a tile per planet and moon type with picture, size, mass, temperature and description.
+- Debug: jump to a planet of each type.
+
 ## alpha 0.6.37.6 – 2026-11-08
 
 - The plasma arc of a coronal mass ejection no longer stops at a straight edge – it fades out before the star's

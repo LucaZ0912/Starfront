@@ -647,7 +647,8 @@ func _collection() -> void:
 	var killed: Array = GameState.collection.get("notorious", [])
 	var stars_seen: Array = GameState.collection.get("stars", [])
 	var cats := [["perks", "Crew perks", "%d / %d" % [have.size(), CrewDataP.PERKS.size()]], ["notorious", "Notorious pirates", "%d destroyed" % killed.size()],
-		["stars", "Star classes", "%d / %d" % [stars_seen.size(), Universe.STAR_TYPES.size()]]]
+		["stars", "Star classes", "%d / %d" % [stars_seen.size(), Universe.STAR_TYPES.size()]],
+		["planets", "Planet types", "%d / %d" % [GameState.collection.get("planets", []).size(), Universe.PLANET_TYPES.size() + Universe.MOON_TYPES.size()]]]
 	for c in cats:
 		var cid: String = c[0]
 		var b := UI.button("%s   %s" % [c[1], c[2]], func(): coll_cat = cid; rebuild())
@@ -668,6 +669,8 @@ func _collection() -> void:
 	match coll_cat:
 		"stars":
 			_collection_stars(right, stars_seen)
+		"planets":
+			_collection_planets(right, GameState.collection.get("planets", []))
 		"notorious":
 			right.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
 			if killed.is_empty():
@@ -752,6 +755,59 @@ func _collection_stars(right: VBoxContainer, seen: Array) -> void:
 			q.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			v.add_child(q)
+
+
+## 0.6.38.1: a tile per planet type and per moon type – a small turning picture, size in Earth radii, mass in Earth
+## masses, temperature and a few words; types not seen yet show greyed out as "???".
+func _collection_planets(right: VBoxContainer, seen: Array) -> void:
+	right.add_child(UI.label("PLANET TYPES  %d / %d" % [seen.size(), Universe.PLANET_TYPES.size() + Universe.MOON_TYPES.size()], 16, COL))
+	right.add_child(UI.label("A type counts once you have been in a system with such a world.", 12, UI.TEXT_DIM))
+	for group in [["PLANETS", Universe.PLANET_TYPES], ["MOONS", Universe.MOON_TYPES]]:
+		right.add_child(UI.label(String(group[0]), 14, UI.NEON_CYAN))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 10)
+		flow.add_theme_constant_override("v_separation", 10)
+		right.add_child(flow)
+		var types: Dictionary = group[1]
+		var i := 0
+		for tid in types:
+			var t: Dictionary = types[tid]
+			var got: bool = String(tid) in seen
+			var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.03, 0.03, 0.07, 0.97) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
+			tile.custom_minimum_size = Vector2(360, 150)
+			flow.add_child(tile)
+			var h := UI.hbox(10)
+			tile.add_child(h)
+			var pic := TextureRect.new()
+			pic.texture = PixelArt.white()
+			pic.custom_minimum_size = Vector2(120, 120)
+			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			pic.stretch_mode = TextureRect.STRETCH_SCALE
+			var ring: bool = String(tid) in ["gas", "ice_giant"]
+			var spr: Sprite2D = Celestial.make_planet_sprite({"type": tid, "seed": 7.0 + i * 5.0, "ring": ring, "city": 0.8 if String(tid) in Universe.CITY_WORLDS else 0.0}, 100.0, Vector2(-0.8, -0.35))
+			pic.material = spr.material
+			(pic.material as ShaderMaterial).set_shader_parameter("pixels", 120.0 if not ring else 200.0)
+			spr.free()
+			if not got:
+				var veil := ColorRect.new()
+				veil.color = Color(0.07, 0.07, 0.08, 0.86)
+				veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+				veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				pic.add_child(veil)
+			h.add_child(pic)
+			var v := UI.vbox(2)
+			v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			h.add_child(v)
+			if got:
+				v.add_child(UI.label(String(t["name"]), 15, COL))
+				v.add_child(UI.label("%s R⊕  •  %s M⊕  •  %s" % [t.get("r_earth", "?"), t.get("m_earth", "?"), t.get("temp", "?")], 12, UI.NEON_CYAN))
+				v.add_child(UI.wrap_label(String(t.get("text", "")), 11, Color(0.9, 0.88, 0.8), 210))
+			else:
+				var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
+				q.size_flags_vertical = Control.SIZE_EXPAND_FILL
+				q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				v.add_child(q)
+			i += 1
 
 
 func _set_sub(i: int) -> void:

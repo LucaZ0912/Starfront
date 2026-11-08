@@ -147,9 +147,15 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	spr.scale = Vector2.ONE * quad / 64.0
 	var mat := ShaderMaterial.new()
 	mat.shader = PlanetShader
-	mat.set_shader_parameter("col_a", t["a"])
-	mat.set_shader_parameter("col_b", t["b"])
-	mat.set_shader_parameter("col_c", t["c"])
+	# package 38: every planet its own shade of its type (hue, saturation, brightness), sea, clouds and rings
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(float(p.get("seed", 1.0)) * 1000.0) + 38
+	var dh := rng.randf_range(-0.035, 0.035)
+	var dsat := rng.randf_range(0.85, 1.15)
+	var dval := rng.randf_range(0.9, 1.1)
+	for k in [["col_a", "a"], ["col_b", "b"], ["col_c", "c"]]:
+		var c0: Color = t[k[1]]
+		mat.set_shader_parameter(k[0], Color.from_hsv(fposmod(c0.h + dh, 1.0), clampf(c0.s * dsat, 0.0, 1.0), clampf(c0.v * dval, 0.0, 1.0)))
 	mat.set_shader_parameter("atmo", t["atmo"])
 	mat.set_shader_parameter("gas", t["gas"])
 	mat.set_shader_parameter("seed", float(p.get("seed", 1.0)))
@@ -161,7 +167,20 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	mat.set_shader_parameter("craters", float(t.get("craters", 0.0)))   # package 36: moons
 	mat.set_shader_parameter("lumpy", float(t.get("lumpy", 0.0)))
 	mat.set_shader_parameter("glow", float(t.get("glow", 0.0)))
-	if t.has("craters"):
+	var sea := float(t.get("sea", 0.0))
+	mat.set_shader_parameter("sea", clampf(sea + (rng.randf_range(-0.12, 0.12) if sea > 0.0 else 0.0), 0.0, 0.95))
+	var cl := float(t.get("clouds", 0.0))
+	mat.set_shader_parameter("clouds", clampf(cl + (rng.randf_range(-0.15, 0.15) if cl > 0.0 else 0.0), 0.0, 1.0))
+	mat.set_shader_parameter("cloud_col", t.get("cloud", Color(1, 1, 1)))
+	mat.set_shader_parameter("caps", float(t.get("caps", 0.0)) * rng.randf_range(0.6, 1.3))
+	mat.set_shader_parameter("lava", float(t.get("lava", 0.0)))
+	mat.set_shader_parameter("storms", float(t.get("storms", 0.0)) * rng.randf_range(0.5, 1.2))
+	mat.set_shader_parameter("faint", float(t.get("faint", 0.0)))
+	mat.set_shader_parameter("city", float(p.get("city", 0.0)))
+	mat.set_shader_parameter("ring_in", rng.randf_range(1.2, 1.5))
+	mat.set_shader_parameter("ring_out", rng.randf_range(1.7, 1.95))
+	mat.set_shader_parameter("ring_tilt", rng.randf_range(2.4, 4.5))
+	if t.has("lumpy"):
 		mat.set_shader_parameter("spin", 0.0)                          # moons turn one face to their planet
 	spr.material = mat
 	return spr

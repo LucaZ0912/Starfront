@@ -68,7 +68,7 @@ var _pod_tick_t := 0.0
 var wingmen: Array = []
 var _wing_tick_t := 0.0
 ## Package 34: the collection – crew perks the pilot has had in the crew, notorious pirates destroyed
-var collection := {"perks": [], "notorious": [], "stars": []}     # 0.6.37.2: star classes visited
+var collection := {"perks": [], "notorious": [], "stars": [], "planets": []}     # 0.6.37.2: star classes; 0.6.38.1: planet and moon types
 var _collect_t := 0.0
 signal wingmen_changed
 const WingData = preload("res://data/wingmen.gd")
@@ -138,7 +138,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	rescued.clear()
 	_pod_seq = 1
 	wingmen.clear()
-	collection = {"perks": [], "notorious": [], "stars": []}
+	collection = {"perks": [], "notorious": [], "stars": [], "planets": []}
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -493,8 +493,9 @@ func from_dict(d: Dictionary) -> void:
 	_pod_seq = int(d.get("pod_seq", 1))
 	wingmen = d.get("wingmen", []).duplicate(true)
 	collection = d.get("collection", {"perks": [], "notorious": []}).duplicate(true)
-	if not collection.has("stars"):
-		collection["stars"] = []
+	for ck in ["stars", "planets"]:
+		if not collection.has(ck):
+			collection[ck] = []
 	if not loss_offer.is_empty():
 		ship_lost.emit.call_deferred(loss_offer)        # saved before deciding: ask again
 	Missions._counter = int(d.get("mission_counter", 1000))
@@ -1112,6 +1113,17 @@ func collect_star(type_id: String) -> void:
 	have.append(type_id)
 	collection["stars"] = have
 	log_msg("Collection: star class \"%s\" recorded." % Universe.STAR_TYPES[Universe.star_index(type_id)]["name"], COL_GOOD)
+	codex.event("collection")
+
+
+## 0.6.38.1: planet and moon types go into the collection the first time the pilot is in a system with one.
+func collect_planet(type_id: String) -> void:
+	var have: Array = collection.get("planets", [])
+	if type_id == "" or type_id in have:
+		return
+	have.append(type_id)
+	collection["planets"] = have
+	log_msg("Collection: %s recorded." % String(Universe.body_type(type_id)["name"]), COL_GOOD)
 	codex.event("collection")
 
 

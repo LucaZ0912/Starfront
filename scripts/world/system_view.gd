@@ -376,6 +376,8 @@ func _codex_discover() -> void:
 	if not havens.is_empty():
 		GameState.codex.event("haven")
 	GameState.collect_star(String(layout["star"].get("star_id", "")))          # 0.6.37.2: star classes in the collection
+	for body in layout["planets"] + layout.get("moons", []):                  # 0.6.38.1: planet and moon types
+		GameState.collect_planet(String(body["type"]))
 
 
 # ---------------------------------------------------------------- Setup
@@ -1530,7 +1532,7 @@ func center_on_player() -> void:
 ## smaller screen side; SKY_PIXELS = pixel rows across a planet's disc.
 const SKY_SIZE := 900.0
 const SKY_CAP := 3.0
-const SKY_PIXELS := 160.0
+const SKY_PIXELS := 320.0                # 0.6.38.1: twice as fine (planets got more detail)
 ## 0.6.36.6: more impressive up close – the size grows ever more steeply towards the surface (up to 1 + SKY_NEAR
 ## times), far away it stays as it was; the star is SKY_STAR times bigger still and has a wide soft corona.
 const SKY_NEAR := 0.9
@@ -1630,7 +1632,7 @@ func _update_bodies() -> void:
 func _set_pixels(spr: Sprite2D, px: float) -> void:
 	var mat := spr.material as ShaderMaterial
 	if mat != null:
-		mat.set_shader_parameter("pixels", clampf(px, 16.0, 420.0))
+		mat.set_shader_parameter("pixels", clampf(px, 16.0, 900.0))
 
 
 # ---------------------------------------------------------------- Input
