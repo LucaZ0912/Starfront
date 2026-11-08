@@ -28,6 +28,7 @@ uniform float lava = 0.0;                   // glowing lava flows
 uniform float storms = 0.0;                 // vortices and a big storm on a giant
 uniform float faint = 0.0;                  // 1 = faint bands (ice giant)
 uniform float city = 0.0;                   // lights of cities on the night side
+uniform float city_style = 0.0;             // package 39: 1 = a capital world (structured: coasts, metropolises, highways)
 uniform float ring_in = 1.3;                // ring inner / outer edge (planet radii), tilt (flattening)
 uniform float ring_out = 1.85;
 uniform float ring_tilt = 3.2;
@@ -139,7 +140,29 @@ void fragment() {
 		col = mix(col, atmo.rgb * 0.8, dusk * atmo.a * 0.25);
 		col = mix(col, atmo.rgb, pow(1.0 - z, 3.0) * atmo.a * max(lv, 0.15));
 		// city lights on the night side: clusters along the coasts and in the lowlands, flickering a little
-		if (city > 0.0 && gas < 0.5) {
+		if (city > 0.0 && gas < 0.5 && city_style > 0.5) {
+			// package 39: a capital world – the lights follow the land: bright metropolises, a glittering band along
+			// every coast, and highways strung between them; the open land and the sea stay dark
+			float night = 1.0 - smoothstep(-0.05, 0.12, diff);
+			float sea_lv2 = mix(0.0, 0.62, sea);
+			float hd2 = h + 0.18 * (fbm(st * 9.0 + seed * 2.3) - 0.5);
+			float on_land = step(sea_lv2, hd2);
+			float coast = on_land * (1.0 - smoothstep(0.0, 0.045, hd2 - sea_lv2));
+			float mfield = fbm(st * 2.6 + seed * 5.3);
+			float metro = on_land * smoothstep(0.53, 0.6, mfield);
+			float core = on_land * smoothstep(0.63, 0.69, mfield);
+			float road = on_land * (1.0 - smoothstep(0.0, 0.016, abs(fbm(st * 1.8 + seed * 9.1) - 0.5)));
+			road = max(road, on_land * (1.0 - smoothstep(0.0, 0.008, abs(fbm(st * 3.1 + seed * 2.7) - 0.5))) * 0.8);
+			vec2 cell2 = floor(sts * pixels * 0.5);
+			float rnd = hash21(cell2 + seed);
+			float dens = max(max(coast * 0.8, metro * 0.9), road * 0.65);
+			float lit = step(1.0 - dens, rnd) + core;
+			float tw2 = 0.85 + 0.15 * sin(TIME * 2.0 + rnd * 30.0);
+			float lights2 = clamp(lit, 0.0, 1.0) * night * (1.0 - cl * 0.6) * tw2;
+			vec3 lc = mix(vec3(1.0, 0.78, 0.4), vec3(1.0, 0.95, 0.82), core);
+			col = mix(col, lc, lights2);
+			col += vec3(1.0, 0.7, 0.35) * metro * night * 0.12;              // the glow over the big cities
+		} else if (city > 0.0 && gas < 0.5) {
 			float night = 1.0 - smoothstep(-0.05, 0.12, diff);
 			float landm = (sea > 0.0) ? step(mix(0.0, 0.62, sea), h + 0.18 * (fbm(st * 9.0 + seed * 2.3) - 0.5)) : 1.0;
 			float region = smoothstep(0.3, 0.55, fbm(st * 5.0 + seed * 4.1));           // where people live

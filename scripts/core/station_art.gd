@@ -727,7 +727,7 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 
 # ================================================================ Package 39: landmarks of Landfall
 
-const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 480}
+const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 560}
 const ASSEMBLY_ARTS := {"vote": true, "vote_relay": true, "concord_yards": true, "res_publica": true}
 const VOTE_RELAY_ANGLE := 0.4                       # where the first relay lies (Universe._special_structures)
 
@@ -871,61 +871,94 @@ func _concord_yards() -> void:
 	light(Vector2(tx, c + n * 0.3), Color(1.0, 0.3, 0.25), 1.2, true)
 
 
-## The Res Publica, Concord Fleetworks' capital ship – a supercarrier the size of a station, still in her berth. Her
-## fore body is a great armoured ring with an opening in the middle, ringed by drone hatches; behind it a long hull
-## with the stepped command tower and a bank of engines. Some sections are still bare frames under scaffolding.
+## The Res Publica, Concord Fleetworks' capital ship (0.6.39.2, after Luz's reference) – a supercarrier the size of a
+## station, still in her berth, bow to the left. A long narrow bow split by the trench of her spinal railgun (against
+## other capital ships), broad shoulders, swept wings at the stern with the engine core sunk between them – and
+## everywhere on the hull small hatches the drones launch from. Part of a wing is still bare frame under scaffolding.
 func _res_publica() -> void:
-	var rc := Vector2(c + n * 0.16, c)                        # centre of the ring (towards the yard)
-	var r_out := n * 0.31
-	var r_in := n * 0.12
-	# aft hull: from inside the ring to the engines (left), with side sponsons
-	var aft := Vector2(c - n * 0.17, c)
+	# the wings at the stern (lowest), mirrored
 	for sd in [-1.0, 1.0]:
-		box(aft + Vector2(n * 0.02, sd * n * 0.1), 0.0, n * 0.17, n * 0.035, DARK, 11.0, P_ARMOR)
-	box(aft, 0.0, n * 0.25, n * 0.085, HULL, 13.0, P_ARMOR)
-	box(aft, 0.0, n * 0.24, 2.0, ACC, 15.0)
-	# engines: a bank of big nozzles
-	for k in 5:
-		var ep := Vector2(c - n * 0.45, c + (k - 2) * n * 0.042)
-		box(ep + Vector2(10.0, 0), 0.0, 12.0, n * 0.019, DARK, 16.0, P_ARMOR)
-		disc(ep, n * 0.019, DARK, 15.0, D_DISH)
+		var wing := PackedVector2Array([Vector2(_rx(0.55), _ry(sd * 0.095)), Vector2(_rx(0.66), _ry(sd * 0.17)), Vector2(_rx(0.8), _ry(sd * 0.205)),
+			Vector2(_rx(0.925), _ry(sd * 0.175)), Vector2(_rx(0.935), _ry(sd * 0.075)), Vector2(_rx(0.9), _ry(sd * 0.06)), Vector2(_rx(0.62), _ry(sd * 0.06))])
+		poly(wing, HULL, 10.0, 3.0, 0)
+		# grey stripes along the leading edge
+		for i in 4:
+			var o := 0.018 + i * 0.007
+			seg(Vector2(_rx(0.64 + o * 0.6), _ry(sd * (0.155 - o))), Vector2(_rx(0.79), _ry(sd * (0.19 - o))), 0.6, PANEL, 13.5, P_FLAT, true)
+		# a raised armour plate on the wing
+		poly(PackedVector2Array([Vector2(_rx(0.68), _ry(sd * 0.15)), Vector2(_rx(0.8), _ry(sd * 0.18)), Vector2(_rx(0.9), _ry(sd * 0.16)),
+			Vector2(_rx(0.9), _ry(sd * 0.115)), Vector2(_rx(0.7), _ry(sd * 0.105))]), HULL, 15.0, 2.5, 0)
+		for i2 in 3:
+			seg(Vector2(_rx(0.71), _ry(sd * (0.118 + i2 * 0.006))), Vector2(_rx(0.88), _ry(sd * (0.128 + i2 * 0.006))), 0.5, PANEL, 19.0, P_FLAT, true)
+		# the shoulders
+		poly(PackedVector2Array([Vector2(_rx(0.37), _ry(sd * 0.062)), Vector2(_rx(0.44), _ry(sd * 0.105)), Vector2(_rx(0.6), _ry(sd * 0.115)),
+			Vector2(_rx(0.67), _ry(sd * 0.08)), Vector2(_rx(0.62), _ry(sd * 0.05)), Vector2(_rx(0.42), _ry(sd * 0.045))]), HULL, 13.0, 3.0, 0)
+		seg(Vector2(_rx(0.45), _ry(sd * 0.095)), Vector2(_rx(0.59), _ry(sd * 0.104)), 0.6, PANEL, 16.5, P_FLAT, true)
+		seg(Vector2(_rx(0.45), _ry(sd * 0.088)), Vector2(_rx(0.58), _ry(sd * 0.097)), 0.6, PANEL, 16.5, P_FLAT, true)
+		# the bow halves either side of the railgun
+		poly(PackedVector2Array([Vector2(_rx(0.03), _ry(sd * 0.012)), Vector2(_rx(0.035), _ry(sd * 0.04)), Vector2(_rx(0.07), _ry(sd * 0.05)),
+			Vector2(_rx(0.4), _ry(sd * 0.068)), Vector2(_rx(0.46), _ry(sd * 0.05)), Vector2(_rx(0.46), _ry(sd * 0.012))]), HULL, 12.0, 2.5, 0)
+		seg(Vector2(_rx(0.12), _ry(sd * 0.048)), Vector2(_rx(0.38), _ry(sd * 0.058)), 0.6, PANEL, 14.5, P_FLAT, true)
+		# navigation lights at the wing tips
+		light(Vector2(_rx(0.92), _ry(sd * 0.175)), Color(1.0, 0.25, 0.2) if sd < 0.0 else Color(0.3, 1.0, 0.4), 1.5, true)
+	# the spine and the engine core sunk between the wings
+	box(Vector2(_rx(0.64), c), 0.0, _rx(0.3), _rx(0.05), DARK, 8.0, P_FLAT, true)
+	box(Vector2(_rx(0.53), c), 0.0, _rx(0.07), _rx(0.035), HULL, 15.0, P_ARMOR)
+	box(Vector2(_rx(0.77), c), 0.0, _rx(0.17), _rx(0.026), HULL, 17.0, P_CYL)
+	for k in 4:
+		disc(Vector2(_rx(0.64 + k * 0.05), c), _rx(0.018), DARK, 18.0, D_TANK)
+	for sd2 in [-1.0, 1.0]:
+		box(Vector2(_rx(0.75), _ry(sd2 * 0.04)), 0.0, _rx(0.12), _rx(0.006), GUN, 12.0, P_RIBS)
+	# engines
+	for k2 in 3:
+		var ep := Vector2(_rx(0.95), _ry((k2 - 1) * 0.03))
+		box(ep - Vector2(8.0, 0), 0.0, 10.0, _rx(0.014), DARK, 16.0, P_ARMOR)
+		disc(ep, _rx(0.015), DARK, 15.0, D_DISH)
 		light(ep, Color(0.4, 0.7, 1.0), 0.5)
-	# the ring: armour plating in sectors, few windows, the blue stripes of Concord
-	ring(rc, r_in, r_out, HULL, -22.0, false, 24)                  # low, so plates and stripes stand out on it
-	for k in 24:
-		var a := k * TAU / 24.0
-		var pm := rc + Vector2.from_angle(a) * (r_in + r_out) * 0.5
-		box(pm, a, (r_out - r_in) * 0.36, 6.0 + (k % 3) * 2.0, PANEL if k % 2 == 0 else HULL, 15.0 + (k % 2), P_ARMOR)
-	for k5 in 48:
-		var a5 := k5 * TAU / 48.0
-		if k5 % 3 != 0:
-			box(rc + Vector2.from_angle(a5) * (r_out - 9.0), a5, 1.0, 2.0, GLASS, 16.0)
-	ring(rc, r_out - 5.0, r_out - 2.5, ACC, 18.0, false, 96)
-	ring(rc, r_in + 2.5, r_in + 5.0, ACC, 18.0, false, 96)
-	# drone hatches round the opening
-	for k2 in 10:
-		var a2 := k2 * TAU / 10.0
-		var hp := rc + Vector2.from_angle(a2) * (r_in + 11.0)
-		box(hp, a2, 4.5, 6.0, HANGAR, 2.0, P_FLAT, true)
-		box(hp + Vector2.from_angle(a2) * 5.5, a2, 1.2, 7.0, MARK, 19.0)
-		light(hp + Vector2.from_angle(a2) * 7.0, Color(1.0, 0.75, 0.3), 2.0, true)
-	# the command tower astride the hull where it meets the ring, stepped
-	for j in 5:
-		box(Vector2(c - n * 0.11 - j * 6.0, c), 0.0, n * 0.075 - j * 5.0, n * 0.06 - j * 4.0, HULL if j % 2 == 0 else PANEL, 20.0 + j * 5.0, P_WINDOWS if j >= 2 else P_ARMOR)
-	disc(Vector2(c - n * 0.16, c - n * 0.035), 6.0, DARK, 46.0, D_DISH)
-	disc(Vector2(c - n * 0.16, c + n * 0.035), 5.0, DARK, 46.0, D_DISH)
-	light(Vector2(c - n * 0.12, c), Color(1.0, 0.3, 0.25), 1.5, true)
-	# still under construction: a bare sector of the ring and part of the aft plating, scaffolds and welders
-	for k3 in 4:
-		var a3 := -1.0 + k3 * 0.22
-		var p3 := rc + Vector2.from_angle(a3) * (r_in + r_out) * 0.5
-		box(p3, a3, (r_out - r_in) * 0.42, 10.0, TRUSS, 22.0, P_RIBS, true)
-		vent(p3, "spark", 2.5)
-	box(aft + Vector2(-n * 0.08, n * 0.05), 0.0, n * 0.07, n * 0.03, TRUSS, 20.0, P_TRUSS, true)
-	for k4 in 6:
-		vent(Vector2(c + rng.randf_range(-n * 0.35, n * 0.4), c + rng.randf_range(-n * 0.3, n * 0.3)), "spark", 2.0)
-	for k6 in 8:
-		light(rc + Vector2.from_angle(k6 * TAU / 8.0 + 0.2) * (r_out + 3.0), Color(1.0, 0.95, 0.75), 0.6)
+	# the railgun: a trench down the bow with rails, cross braces and the breech at its end
+	box(Vector2(_rx(0.25), c), 0.0, _rx(0.21), _rx(0.015), DARK, 2.0, P_FLAT, true)
+	for sd3 in [-1.0, 1.0]:
+		box(Vector2(_rx(0.25), _ry(sd3 * 0.008)), 0.0, _rx(0.205), 1.0, ACC, 6.0, P_FLAT, true)
+	var xb := _rx(0.06)
+	while xb < _rx(0.45):
+		box(Vector2(xb, c), PI * 0.5, _rx(0.012), 1.2, TRUSS, 5.0, P_FLAT, true)
+		xb += _rx(0.035)
+	box(Vector2(_rx(0.47), c), 0.0, _rx(0.025), _rx(0.03), GUN, 18.0, P_ARMOR)
+	for k3 in 3:
+		disc(Vector2(_rx(0.455 + k3 * 0.012), c), _rx(0.011), DARK, 21.0, D_TANK)
+	light(Vector2(_rx(0.04), c), Color(0.6, 0.85, 1.0), 0.8, true)
+	# the bridge on the shoulders
+	box(Vector2(_rx(0.56), c), 0.0, _rx(0.03), _rx(0.022), HULL, 24.0, P_WINDOWS)
+	light(Vector2(_rx(0.56), c), Color(1.0, 0.3, 0.25), 1.2, true)
+	# drone hatches all over the hull (the drones of the live drawing launch from them)
+	var rows := [[0.09, 0.37, 0.034, 0.04], [0.46, 0.6, 0.075, 0.03], [0.66, 0.9, 0.09, 0.04], [0.7, 0.88, 0.145, 0.035]]
+	for r in rows:
+		var x := float(r[0])
+		while x <= float(r[1]):
+			for sd4 in [-1.0, 1.0]:
+				var hp := Vector2(_rx(x), _ry(sd4 * float(r[2])))
+				box(hp, 0.0, 2.5, 1.6, HANGAR, 1.0, P_FLAT, true)
+				_put(int(hp.x - 3.0), int(hp.y), MARK, 20.0, true)
+				_put(int(hp.x + 3.0), int(hp.y), MARK, 20.0, true)
+				vent(hp, "hatch", 1.0)
+				if posmod(int(x * 100.0), 3) == 0:
+					light(hp + Vector2(0.0, sd4 * 3.0), Color(1.0, 0.75, 0.3), 2.0, true)
+			x += float(r[3])
+	# still under construction: the lower wing tip is bare frame under scaffolding, welders at work
+	box(Vector2(_rx(0.84), _ry(0.165)), -0.25, _rx(0.07), _rx(0.03), TRUSS, 22.0, P_TRUSS, true)
+	box(Vector2(_rx(0.2), _ry(-0.055)), 0.03, _rx(0.06), _rx(0.012), TRUSS, 18.0, P_TRUSS, true)
+	for k4 in 7:
+		vent(Vector2(_rx(rng.randf_range(0.15, 0.92)), _ry(rng.randf_range(-0.17, 0.17))), "spark", 2.0)
+	vent(Vector2(_rx(0.84), _ry(0.165)), "spark", 2.5)
+	vent(Vector2(_rx(0.2), _ry(-0.055)), "spark", 2.5)
+
+
+func _rx(f: float) -> float:
+	return f * n
+
+
+func _ry(f: float) -> float:
+	return c + f * n
 
 ## Package 26: a waystation – a small hub on struts with round landing pads (2 / 3 / 4 by tier) for S and M
 ## ships: hazard rim, a landing circle, a hatch in the middle the ships sink through, lights around it.

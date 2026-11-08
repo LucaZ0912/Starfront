@@ -116,7 +116,8 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   upside and a price. Vote Yes or No, give party donations (a little sway) – or bribe the tellers: it settles the vote
   unless it comes out (45 %: the money is gone, standing −30).
 - **Concord Yards** at Ostrakon: the only yard that sells the **Concordia**; beside it the **Res Publica**, Concord
-  Fleetworks' supercarrier the size of a station, still in her berth.
+  Fleetworks' supercarrier the size of a station, still in her berth – a spinal railgun down her bow, drone hatches
+  all over her hull.
 - Contracts: **ballot couriers** from Assembly stations to The Vote (deadline, thieves on the way) and **drone field
   trials** at the Concord Yards (pirates destroyed by your drones in Assembly space).
 - Debug → World: to Landfall, give/take the permit, ballot drone, new bill, vote now (with or without a bribe found out).

@@ -180,6 +180,7 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	mat.set_shader_parameter("storms", float(t.get("storms", 0.0)) * rng.randf_range(0.5, 1.2))
 	mat.set_shader_parameter("faint", float(t.get("faint", 0.0)))
 	mat.set_shader_parameter("city", float(p.get("city", 0.0)))
+	mat.set_shader_parameter("city_style", float(p.get("city_style", 0.0)))      # package 39: Agora
 	mat.set_shader_parameter("ring_in", rng.randf_range(1.2, 1.5))
 	mat.set_shader_parameter("ring_out", rng.randf_range(1.7, 1.95))
 	mat.set_shader_parameter("ring_tilt", rng.randf_range(2.4, 4.5))
@@ -550,6 +551,8 @@ func _draw() -> void:
 		var off := radius + 16.0 * s
 		if kind == "beacon":
 			off = 14.0 * s
+		if data.has("label_y"):
+			off = float(data["label_y"]) - 30.0 * s       # 0.6.39.2: a long, thin landmark – the name above it
 		draw_set_transform(Vector2(0.0, off), 0.0, Vector2(s, s))
 		var text := title()
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
@@ -605,6 +608,9 @@ func _draw_holo_banner(fid: String, st_size: float) -> void:
 	draw_rect(Rect2(top_left + Vector2(0.0, sweep), Vector2(bw, sc * 1.2)), Color(holo.lightened(0.5), 0.18 * alpha))
 
 
+const VOTE_DRONES := 14              # drones on each lane between The Vote and a relay (0.6.39.2: many more)
+
+
 ## Package 39: the life of the landmarks – drones shuttling between The Vote and its relay stations, the work
 ## drones round the Res Publica.
 func _draw_landmark_live() -> void:
@@ -618,12 +624,14 @@ func _draw_landmark_live() -> void:
 				var dir := to.normalized()
 				var a := dir * hub_r
 				var b := to - dir * 260.0
-				for j in 3:
-					var cyc := _t / 26.0 + j / 3.0 + k * 0.17
+				var lane := dir.orthogonal()
+				for j in VOTE_DRONES:
+					# 0.6.39.2: a busy shuttle – two lanes, out on one and back on the other
+					var cyc := _t / 16.0 + float(j) / VOTE_DRONES * 2.0 + k * 0.17
 					var f := fposmod(cyc, 1.0)
 					var out := posmod(int(floorf(cyc)), 2) == 0
 					var s := smoothstep(0.0, 1.0, f)
-					var pos := a.lerp(b, s if out else 1.0 - s)
+					var pos := a.lerp(b, s if out else 1.0 - s) + lane * (90.0 if out else -90.0) * sin(s * PI)
 					var fade := clampf(minf(f, 1.0 - f) * 12.0, 0.0, 1.0)
 					draw_set_transform(pos, dir.angle() + (0.0 if out else PI), Vector2.ONE)
 					draw_rect(Rect2(Vector2(-px * 1.5, -px), Vector2(px * 3.0, px * 2.0)), Color(0.82, 0.88, 0.96, fade))
@@ -632,15 +640,21 @@ func _draw_landmark_live() -> void:
 					draw_circle(pos, px * 3.0, Color(0.45, 0.7, 1.0, 0.18 * fade))
 				k += 1
 		"res_publica":
-			var size := float(art["size"])
-			var rc := Vector2(size * 0.13, 0.0)
-			for j in 9:
-				var ang := _t * (0.08 + 0.02 * (j % 3)) + j * TAU / 9.0
-				var rr := size * (0.38 + 0.04 * sin(_t * 0.3 + j))
-				var pos2 := rc + Vector2(cos(ang), sin(ang) * 0.85) * rr
-				draw_rect(Rect2(pos2 - Vector2(px, px), Vector2(px * 2.0, px * 2.0)), Color(1.0, 0.82, 0.4, 0.9))
-				if posmod(int(_t * 3.0) + j, 4) == 0:
-					draw_circle(pos2, px * 3.0, Color(1.0, 0.75, 0.3, 0.25))
+			# 0.6.39.2: drones launching from the hatches on her hull, flying a short loop and landing again
+			var hatches: Array = art["vents"].filter(func(v): return String(v["kind"]) == "hatch")
+			if hatches.is_empty():
+				return
+			for j in 16:
+				var hv: Dictionary = hatches[(j * 7) % hatches.size()]
+				var hp: Vector2 = hv["pos"]
+				var cyc := _t / 9.0 + j * 0.37
+				var f := fposmod(cyc, 1.0)
+				var side := signf(hp.y) if absf(hp.y) > 1.0 else 1.0
+				var arc := sin(f * PI)
+				var pos2 := hp + Vector2(cos(f * TAU) * 260.0, side * arc * 520.0)
+				var a2 := clampf(arc * 4.0, 0.0, 1.0)
+				draw_rect(Rect2(pos2 - Vector2(px, px), Vector2(px * 2.0, px * 2.0)), Color(0.85, 0.9, 1.0, a2))
+				draw_circle(pos2, px * 3.0, Color(0.45, 0.7, 1.0, 0.2 * a2))
 
 
 ## Animated parts of a station: blinking lights, bay guide lights, neon signs, steam/smoke/sparks,

@@ -221,7 +221,7 @@ const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]]}
 const SPECIAL_BODIES := {
 	"landfall": [
 		{"name": "Pnyx", "type": "barren", "orbit": 250000.0, "radius": 6500.0, "seed": 21.0},
-		{"name": "Agora", "type": "terran", "orbit": 560000.0, "radius": 11500.0, "seed": 47.0, "city": 1.0},
+		{"name": "Agora", "type": "terran", "orbit": 560000.0, "radius": 11500.0, "seed": 47.0, "city": 1.0, "city_style": 1.0},
 		{"name": "Ekklesia", "type": "ocean", "orbit": 860000.0, "radius": 10500.0, "seed": 63.0},
 		{"name": "Boulé", "type": "ice_giant", "orbit": 1250000.0, "radius": 34000.0, "seed": 88.0, "ring": true, "deep": true,
 			"moons": [["Ostrakon", "moon_ice", 5200.0], ["Kleros", "moon_rock", 4100.0]]},
@@ -289,6 +289,8 @@ func _special_planets(L: Dictionary, id: int, sp: String) -> void:
 			L["planets"].back()["city_fixed"] = float(d["city"])
 		if d.get("deep", false):
 			L["planets"].back()["deep"] = true
+		if d.has("city_style"):
+			L["planets"].back()["city_style"] = float(d["city_style"])
 		i += 1
 
 
@@ -357,9 +359,9 @@ func _special_structures(L: Dictionary, sp: String) -> void:
 				"tier": 1, "seed": 400 + k, "anchor": vote["id"], "pos": (vote["pos"] as Vector2) + off})
 		vote["relay_offs"] = offs
 	if not yards.is_empty():
-		var off2 := Vector2(-2700.0, 300.0)
+		var off2 := Vector2(-2010.0, 0.0)               # 0.6.39.2: her stern against the yard's gantries
 		L["structures"].append({"id": "res_publica", "name": "Res Publica (under construction)", "art": "res_publica", "type": "res_publica",
-			"tier": 1, "seed": 4242, "anchor": yards["id"], "pos": (yards["pos"] as Vector2) + off2})
+			"tier": 1, "seed": 4242, "label_y": -520.0, "anchor": yards["id"], "pos": (yards["pos"] as Vector2) + off2})
 
 
 const VOTE_RELAYS := 4

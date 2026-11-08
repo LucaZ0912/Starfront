@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.39.2 – 2026-11-08
+
+- Agora's city lights have structure: bright metropolises, a glittering band along the coasts and highways between
+  them – the open land and the sea stay dark.
+- Much busier drone traffic between The Vote and its relay stations (two lanes each way).
+- The Res Publica redesigned after Luz's reference: a long bow split by the trench of her spinal railgun, broad
+  shoulders, swept wings at the stern with the engine core between them, drone hatches all over the hull (drones
+  launch and land), a wing still under scaffolding; her stern lies against the yard's gantries.
+
 ## alpha 0.6.39.1 – 2026-11-08
 
 **Package 39a: Landfall, the capital of the Assembly** – the first hand-made special system. A new game is needed.
