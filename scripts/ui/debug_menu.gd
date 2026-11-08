@@ -347,7 +347,7 @@ func _build_world() -> void:
 		var tid2 := String(t38["id"])
 		(rs1 if si < 6 else rs2).add_child(UI.button(tid2, func(): _cmd({"type": "debug_star", "star": tid2}), String(t38["name"])))
 		si += 1
-	rs2.add_child(UI.button("Coronal mass ejection now", func(): _cmd({"type": "debug_cme"})))
+	rs2.add_child(UI.button("Coronal mass ejection (10 s countdown)", func(): _cmd({"type": "debug_cme"})))
 	_section("Teleport (docks at the first station)")
 	var sys_ids: Array = []
 	for s in Universe.systems:

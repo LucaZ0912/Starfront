@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.37.5 – 2026-11-08
+
+- **Coronal mass ejection:** inside the shockwave (combat and recon view) plasma streaks race across the screen away
+  from the star and the light turns warm.
+- Debug: the coronal mass ejection starts at the countdown (banner and alarm, 10 s to the eruption).
+
 ## alpha 0.6.37.4 – 2026-11-08
 
 **Coronal mass ejection warning:** 10 s before the eruption a red, bold, pulsing banner top centre – "! ENERGY SPIKE

@@ -1645,14 +1645,16 @@ func _c_debug_star(c: Dictionary) -> String:
 	return ""
 
 
-## {"type":"debug_cme"} – package 37: the star throws off a coronal mass ejection at once.
+## {"type":"debug_cme"} – package 37: a coronal mass ejection – 0.6.37.5: from the start of the countdown (red banner and
+## alarm, 10 s to the eruption).
 func _c_debug_cme(_c: Dictionary) -> String:
 	var e := _need_world()
 	if e != "":
 		return e
 	if not bool(world.star_type().get("cme", false)):
 		return "This star does not erupt."
-	world.start_cme(true)
+	world.start_cme()
+	world._cme["t"] = world.CME_WARN - world.CME_BANNER
 	return ""
 
 

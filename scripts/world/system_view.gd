@@ -274,11 +274,51 @@ func _set_star_param(key: String, value) -> void:
 					mat.set_shader_parameter(key, value)
 
 
+## 0.6.37.5: inside the shockwave (combat and recon view) plasma streaks race across the screen away from the star
+## and the light turns warm – the real front is far too fast to see at this range.
+const CME_STREAKS := 64
+const CME_STREAK_SPEED := 1100.0              # screen px / s
+
+
+func _draw_cme_streaks(o: Node2D, px: float, r: float) -> void:
+	if sky_alpha() < 0.01:
+		return
+	var cam := camera.position
+	var d := cam.length()
+	var into := r - d                              # how far the front has passed the camera
+	if into < 0.0 or into > CME_BAND or d < 1.0:
+		return
+	var k := sin(PI * into / CME_BAND) * sky_alpha()
+	var u := cam / d                               # away from the star
+	var side := u.orthogonal()
+	var vs := get_viewport_rect().size
+	var span := vs.length() * px                   # world size of the screen diagonal
+	# a warm wash over everything
+	o.draw_rect(Rect2(cam - vs * px, vs * px * 2.0), Color(1.0, 0.5, 0.2, 0.1 * k))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3737
+	for i in CME_STREAKS:
+		var lat := rng.randf_range(-0.6, 0.6) * span
+		var len_px := rng.randf_range(70.0, 260.0)
+		var speed := CME_STREAK_SPEED * rng.randf_range(0.7, 1.4)
+		var along := fposmod(rng.randf() * span + _t * speed * px, span * 1.3) - span * 0.65
+		var a := k * rng.randf_range(0.35, 0.9)
+		var head := cam + u * along + side * lat
+		var tail := head - u * len_px * px
+		# a slightly wavy streak: three segments
+		var w := side * sin(_t * 6.0 + float(i)) * 6.0 * px
+		var col := Color(1.0, 0.62, 0.3) if i % 3 != 0 else Color(1.0, 0.88, 0.6)
+		o.draw_line(tail, tail.lerp(head, 0.4) + w, Color(col, a * 0.35), 3.0 * px)
+		o.draw_line(tail.lerp(head, 0.4) + w, tail.lerp(head, 0.75) - w, Color(col, a * 0.7), 3.5 * px)
+		o.draw_line(tail.lerp(head, 0.75) - w, head, Color(1.0, 0.95, 0.85, a), 2.5 * px)
+
+
 ## The shockwave: a broad orange front racing outwards (on every zoom level).
 func _draw_cme(o: Node2D, px: float) -> void:
 	if _cme.is_empty() or _cme["phase"] != "burst":
 		return
 	var r: float = _cme["r"]
+	_draw_cme_streaks(o, px, r)
 	var fade := 1.0 - clampf(r / (Universe.SYSTEM_RADIUS * 1.05), 0.0, 1.0) * 0.6
 	for i in 8:
 		var rr := r - CME_BAND * float(i) / 8.0

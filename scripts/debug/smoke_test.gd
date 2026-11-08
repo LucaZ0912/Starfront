@@ -6366,7 +6366,16 @@ func _test_stars(view: SystemView) -> void:
 		main.hud._update_cme_banner(0.1)
 		banner_ok = banner_ok and not Audio.loop_playing("cme_alarm") and not main.hud.cme_banner.visible
 		pl2.jammed_t = 0.0
-	check(banner_ok, "0.6.37.4: 10 s before a coronal mass ejection a red banner top centre (ENERGY SPIKE DETECTED) and an alarm; gone once it is over")
+	# 0.6.37.5: the debug command starts at the countdown (banner and alarm at once)
+	if bool(view.star_type().get("cme", false)):
+		var was: bool = Commands.cheats_enabled
+		Commands.cheats_enabled = true
+		var e2 := Commands.execute({"type": "debug_cme"})
+		banner_ok = banner_ok and e2 == "" and view._cme.get("phase", "") == "warn" and not view.cme_banner().is_empty()
+		Commands.cheats_enabled = was
+		view._cme = {}
+		view._cme_alarm()
+	check(banner_ok, "0.6.37.4: 10 s before a coronal mass ejection a red banner top centre (ENERGY SPIKE DETECTED) and an alarm; gone once it is over; the debug command starts at the countdown")
 	# 0.6.37.2: star classes go into the collection (not the codex)
 	var seen_ok: bool = String(view.layout["star"].get("star_id", "")) in GameState.collection.get("stars", [])
 	var facts_ok := true
