@@ -1021,8 +1021,8 @@ func _default_phase(sid: int) -> int:
 	return seed_value * 15013 + sid * 911 + 36
 
 
-## Puts planets on their orbit round the star and moons on theirs round the planet, then moves everything anchored
-## to them (stations, ring rocks, moon fields) along. A planet keeps clear of gates, the belt fields, havens and
+## Puts planets on their orbit round the star, moons on theirs round the planet and stations on theirs round their
+## planet or moon (0.6.36.5), then moves everything anchored to them (ring rocks, moon fields, rocks at stations) along. A planet keeps clear of gates, the belt fields, havens and
 ## waystations.
 func _place_orbits(L: Dictionary, sid: int) -> void:
 	var rng := RandomNumberGenerator.new()
@@ -1063,7 +1063,30 @@ func _place_orbits(L: Dictionary, sid: int) -> void:
 			var mp: Vector2 = best + Vector2.from_angle(rng.randf() * TAU) * float(m["orbit"])
 			moved[m["id"]] = mp - (m["pos"] as Vector2)
 			m["pos"] = mp
-	for key in ["stations", "fields", "asteroids", "debris"]:
+	# 0.6.36.5: stations on their own orbit round their planet or moon – a new place on it each time; two stations
+	# of one body keep well apart
+	var taken := {}                                    # body id -> angles in use
+	for st in L["stations"]:
+		if not st.has("orbit"):
+			continue
+		var par := body_by_id(L, String(st.get("anchor", "")))
+		if par.is_empty():
+			continue
+		var used_a: Array = taken.get(par["id"], [])
+		var ang := rng.randf() * TAU
+		for attempt in 12:
+			var ok := true
+			for ua in used_a:
+				ok = ok and absf(wrapf(ang - float(ua), -PI, PI)) > 1.2
+			if ok:
+				break
+			ang = rng.randf() * TAU
+		used_a.append(ang)
+		taken[par["id"]] = used_a
+		var sp: Vector2 = (par["pos"] as Vector2) + Vector2.from_angle(ang) * float(st["orbit"])
+		moved[st["id"]] = sp - (st["pos"] as Vector2)
+		st["pos"] = sp
+	for key in ["fields", "asteroids", "debris"]:
 		for o in L.get(key, []):
 			var anc := String(o.get("anchor", ""))
 			if anc != "" and moved.has(anc):
@@ -1130,7 +1153,7 @@ func _generate_layout(id: int) -> Dictionary:
 			parent = pmoons[mrng.randi() % pmoons.size()]
 			off = Vector2.from_angle(mrng.randf() * TAU) * (float(parent["radius"]) * 1.7 + mrng.randf_range(3000.0, 6000.0))
 		L["stations"].append({
-			"id": "st_%d_%d" % [id, i], "planet": pidx, "anchor": parent["id"],
+			"id": "st_%d_%d" % [id, i], "planet": pidx, "anchor": parent["id"], "orbit": off.length(),     # 0.6.36.5: own orbit
 			"name": "%s – %s" % [parent["name"], tdef["name"]],
 			"type": type, "tier": tier, "pos": (parent["pos"] as Vector2) + off,
 			"market": _make_market(type, rng),
@@ -1397,7 +1420,7 @@ func _scatter_loose(L: Dictionary, id: int, sec: float) -> void:
 	for g in L["gates"]:
 		spots.append([g["pos"], 1600.0, rng.randi_range(30, 45), 3])
 	for st in L["stations"]:
-		spots.append([st["pos"], 1100.0, rng.randi_range(12, 20), 1, String(st.get("anchor", ""))])
+		spots.append([st["pos"], 1100.0, rng.randi_range(12, 20), 1, String(st["id"]) if st.has("orbit") else ""])   # rocks go round with the station
 	for an in L["anomalies"]:
 		spots.append([an["pos"], 2200.0, rng.randi_range(30, 50), 5])
 	for sp in spots:

@@ -5758,7 +5758,8 @@ func _test_gameover() -> void:
 		var n := GameState.pod_pickup(pid, reb)
 		var waiting := GameState.rescued.size()
 		GameState.note_docked(GameState.current_system, String(st["id"]))
-		rescued_ok = n >= 1 and waiting >= 1 and GameState.rescued.is_empty() and GameState.quarters_of(String(st["id"])).size() >= waiting
+		# survivors may all find a free post on board (then nobody waits for the station) – depends on the dice
+		rescued_ok = n >= 1 and GameState.rescued.is_empty() and GameState.quarters_of(String(st["id"])).size() >= waiting
 	var fade := {"id": "pod_test", "system": GameState.current_system, "pos": Vector2.ZERO, "crew": [{"m": GameState.new_crew("gunner", "C", ""), "until": GameState.play_time - 1.0}]}
 	GameState.pods.append(fade)
 	GameState.pods_tick()
@@ -6115,12 +6116,21 @@ func _test_moons(view: SystemView) -> void:
 	# rolling the orbits of another system: planets move, stations / moon fields / ring rocks keep their place on their body
 	var other: int = (GameState.current_system + 1) % U.systems.size()
 	var L2: Dictionary = U.get_layout(other)
+	# rocks anchored to a planet, a moon and a station (0.6.36.5: stations have their own orbit)
+	var by_id := {}
+	for b in L2["planets"] + L2.get("moons", []) + L2["stations"]:
+		by_id[String(b["id"])] = b
 	var probe: Array = []
-	for key in ["stations", "asteroids", "debris"]:
-		for o in L2.get(key, []):
-			if String(o.get("anchor", "")) != "":
-				probe.append([o, U.body_by_id(L2, String(o["anchor"]))])
+	for pre in ["p", "m", "st_"]:
+		for o in L2.get("asteroids", []) + L2.get("debris", []):
+			var anc := String(o.get("anchor", ""))
+			if anc.begins_with(pre) and by_id.has(anc):
+				probe.append([o, by_id[anc]])
 				break
+	var st_ang0 := {}
+	for st in L2["stations"]:
+		if st.has("orbit"):
+			st_ang0[st["id"]] = ((st["pos"] as Vector2) - (by_id[String(st["anchor"])]["pos"] as Vector2)).angle()
 	var rel0: Array = []
 	for pr in probe:
 		rel0.append((pr[0]["pos"] as Vector2) - (pr[1]["pos"] as Vector2))
@@ -6130,6 +6140,14 @@ func _test_moons(view: SystemView) -> void:
 	for i in probe.size():
 		keep_ok = keep_ok and ((probe[i][0]["pos"] as Vector2) - (probe[i][1]["pos"] as Vector2)).distance_to(rel0[i]) < 1.0
 	var moved_ok: bool = p0.distance_to(L2["planets"][0]["pos"]) > 1.0 and is_equal_approx((L2["planets"][0]["pos"] as Vector2).length(), float(L2["planets"][0]["orbit"]))
+	var st_orbit_ok := not st_ang0.is_empty()
+	var st_turned := false
+	for st in L2["stations"]:
+		if st.has("orbit"):
+			var rel: Vector2 = (st["pos"] as Vector2) - (by_id[String(st["anchor"])]["pos"] as Vector2)
+			st_orbit_ok = st_orbit_ok and absf(rel.length() - float(st["orbit"])) < 1.0
+			st_turned = st_turned or absf(wrapf(rel.angle() - float(st_ang0[st["id"]]), -PI, PI)) > 0.01
+	moved_ok = moved_ok and st_orbit_ok and st_turned
 	var saved_ok: bool = U.to_dict()["orbits"].has(other)
 	var arrive_ok: bool = GameState._may_roll_orbits(GameState.active())
 	# in the current system: moons are bodies of the view and warp targets; the debug jump puts the ship next to one
@@ -6142,7 +6160,7 @@ func _test_moons(view: SystemView) -> void:
 	var look_ok: bool = float((spr.material as ShaderMaterial).get_shader_parameter("lumpy")) > 0.5 and float((spr.material as ShaderMaterial).get_shader_parameter("craters")) > 0.0
 	spr.free()
 	check(keep_ok and moved_ok and saved_ok and arrive_ok and body_ok and wt_ok and look_ok,
-		"package 36: on arrival planets and moons stand elsewhere on their orbits – stations, moon fields and ring rocks move along (saved); moons are bodies and warp targets, with craters / lumpy outline")
+		"package 36: on arrival planets, moons and stations (0.6.36.5: own orbits) stand elsewhere on their orbits – moon fields, ring rocks and rocks at stations move along (saved); moons are bodies and warp targets, with craters / lumpy outline")
 	# 0.6.36.2: the Orbit level – flat map, a whole moon system on screen; skipped in warp
 	var vs: Vector2 = view.get_viewport_rect().size
 	var oz: float = view.level_zoom(2)
@@ -6194,15 +6212,20 @@ func _test_warp36(view: SystemView) -> void:
 	view._emergency_until = -1.0
 	# a real key press on the warp key reaches the shutdown (Space never did – buttons took it)
 	pl.warp = {"from": pl.position, "to": pl.position + Vector2(900000, 0), "t": 1.0, "T": 10.0, "then": {}, "name": "Test"}
-	var ev := InputEventKey.new()
-	ev.keycode = KEY_X
-	ev.physical_keycode = KEY_X
-	ev.pressed = true
-	get_viewport().push_input(ev)
-	var ev2 := ev.duplicate()
-	ev2.pressed = false
-	get_viewport().push_input(ev2)
-	var key_ok: bool = view._emergency_until > view._t and pl.in_warp()
+	# an open context menu takes every key (as in the game) – close what earlier checks left open
+	for w in get_tree().root.find_children("*", "PopupMenu", true, false):
+		(w as PopupMenu).hide()
+	var key_ok := false
+	for e0 in InputMap.action_get_events("cmd_warp"):
+		if e0 is InputEventKey:
+			var ev: InputEventKey = e0.duplicate()
+			ev.pressed = true
+			get_viewport().push_input(ev)
+			var ev2: InputEventKey = ev.duplicate()
+			ev2.pressed = false
+			get_viewport().push_input(ev2)
+			key_ok = view._emergency_until > view._t and pl.in_warp()
+			break
 	pl.warp = {}
 	view._emergency_until = -1.0
 	expire_ok = expire_ok and key_ok
@@ -6222,8 +6245,6 @@ func _test_warp36(view: SystemView) -> void:
 	var raw0: float = view.SKY_SIZE / 1.1
 	var peak := raw0 / (1.0 + raw0 / (vmin * view.SKY_CAP))
 	var old := vmin * 0.42
-	if not (fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok):
-		print("[SMOKE] warp36 parts: ", [fast_ok, idle_ok, ask_ok, drop_ok, spin_ok, expire_ok, smooth_ok])
 	check(fast_ok and idle_ok and ask_ok and drop_ok and spin_ok and expire_ok and smooth_ok and peak > old * 1.3,
 		"0.6.36.3: warp 50 %% faster; emergency shutdown – the warp key asks in warp, again within 5 s throws the ship out of warp, tumbling; sky bodies come closer (right above a planet %.0f px radius instead of %.0f), growing smoothly" % [peak, old])
 

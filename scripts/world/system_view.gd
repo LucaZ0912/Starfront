@@ -2244,6 +2244,12 @@ func _draw_overlay() -> void:
 			if float(m["orbit"]) / px > 12.0:
 				var pl: Dictionary = layout["planets"][int(m["planet"])]
 				o.draw_arc(pl["pos"], float(m["orbit"]), 0.0, TAU, 96, Color(0.4, 0.6, 0.9, 0.14 * map_a), 1.0 * px)
+		# 0.6.36.5: station orbits round their planet or moon
+		for st in layout["stations"]:
+			if st.has("orbit") and float(st["orbit"]) / px > 12.0:
+				var par := Universe.body_by_id(layout, String(st.get("anchor", "")))
+				if not par.is_empty():
+					o.draw_arc(par["pos"], float(st["orbit"]), 0.0, TAU, 72, Color(0.45, 0.85, 0.95, 0.16 * map_a), 1.0 * px)
 		o.draw_arc(Vector2.ZERO, Universe.SYSTEM_RADIUS, 0.0, TAU, 220, Color(0.3, 0.5, 0.8, 0.3 * map_a), 2.0 * px)
 		for t in Universe.warp_targets(system_id):
 			var pos: Vector2 = t["pos"]

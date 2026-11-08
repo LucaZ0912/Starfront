@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.36.5 – 2026-11-08
+
+**Station orbits:** like moons, stations have their own orbit round their planet or moon and stand somewhere else on it
+each time you jump in (the rocks round a station go with it); the orbits show in the Orbit view. Waystations stay on
+their gate route. A new game is recommended.
+
 ## alpha 0.6.36.4 – 2026-11-08
 
 **Emergency shutdown** on the warp key (X): in warp it only does the shutdown – once asks, again within 5 s drops out.
