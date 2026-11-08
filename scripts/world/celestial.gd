@@ -468,10 +468,10 @@ func _process(delta: float) -> void:
 			if _pad_check <= 0.0:
 				_pad_check = 0.5
 				_free_dead_pads()
-		if visible:
-			queue_redraw()
+		if visible and SystemView.on_screen_at(position, float(art.get("size", radius * 2.0)) + 400.0):
+			queue_redraw()                           # 0.6.41.5: not while off screen
 		return
-	if kind in ["gate", "anomaly", "wreck", "beacon", "pod"]:
+	if kind in ["gate", "anomaly", "wreck", "beacon", "pod"] and SystemView.on_screen_at(position, radius * 4.0 + 600.0):
 		queue_redraw()
 
 

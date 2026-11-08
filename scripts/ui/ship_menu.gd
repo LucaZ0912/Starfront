@@ -1168,5 +1168,3 @@ func _build_bonds() -> void:
 		if not ok:
 			var tgt_sys: int = GameState.faction_office_system(f, fit.system_id) if f != "" else int(b.get("redeem", b["system"]))
 			r.add_child(UI.button("Course", func(): _course(tgt_sys)))
-
-

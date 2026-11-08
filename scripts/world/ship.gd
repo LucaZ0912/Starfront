@@ -55,6 +55,7 @@ var warrant_known := false       # NPC: the player's Warrant Scanner has read it
 var scan_jobs := {}
 var _mine_acc := {}              # ore -> units mined since the last floating number
 var _mine_t := 0.0
+var _pw_t := randf() * 0.25        # 0.6.41.5: NPC power plan timer (staggered)
 var _gas_t := 0.0                 # package 41: harvesting gas right now (for the scoop and the stream)
 var _gas_from := Vector2.ZERO     # where the gas streams in from (the giant's centre, local)
 var _gas_heat := 0.0              # how hot the hull runs in the band (0 … 1)
@@ -683,7 +684,10 @@ func _physics_process(delta: float) -> void:
 		cloak_k = 0.0
 		return
 	visible = true
-	_update_power()
+	_pw_t -= delta
+	if manual or _pw_t <= 0.0:                    # 0.6.41.5: NPC ships check their power plan 4× a second
+		_pw_t = 0.25
+		_update_power()
 	var s := fit.stats()
 	hit_flash = maxf(0.0, hit_flash - delta)
 	warp_disrupted = maxf(0.0, warp_disrupted - delta)
@@ -706,7 +710,7 @@ func _physics_process(delta: float) -> void:
 		_cloak_drain(delta)                    # review K2: the cloak costs energy in warp too
 		fit.position = position
 		fit.rotation = heading
-		queue_redraw()
+		_redraw_if_seen()
 		return
 	if tumble_t > 0.0:
 		_tumble(delta)
@@ -723,7 +727,13 @@ func _physics_process(delta: float) -> void:
 	_update_npc_jammer(delta, s)
 	fit.position = position
 	fit.rotation = heading
-	queue_redraw()
+	_redraw_if_seen()
+
+
+## 0.6.41.5: redraw only on screen (or with a beam that may reach onto it, or the player's own ship).
+func _redraw_if_seen() -> void:
+	if manual or not tool_beams.is_empty() or SystemView.on_screen_at(position, radius * 3.0 + 600.0):
+		queue_redraw()
 
 
 func _regen(delta: float, s: Dictionary) -> void:

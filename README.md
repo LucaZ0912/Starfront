@@ -897,6 +897,16 @@ scripts/ui/station StationUI (concourse) + one panel script per service
 shaders/           planet, star, colossus, background, hyperspace, scanlines
 ```
 
+## Performance rules (0.6.41.5)
+
+The game logic runs on one CPU core; rendering is cheap. Measured costs came from GDScript `_draw` and per-frame loops:
+- Redraw only what is on screen: `SystemView.on_screen(rect)` / `on_screen_at(pos, radius)` (the visible world rect
+  of this frame, with a margin). Effects, stations, structures, gates and NPC ships use it.
+- No loops over all celestials (~1,700 in a system) every frame – throttle (hover: on mouse move or 10×/s) or test the
+  cheap things first (visible, distance).
+- Per-ship work that rarely changes (power plan) runs a few times a second for NPC ships.
+- Measuring: scratch scripts time frames with vsync off and switch parts on and off in turn (A/B).
+
 ## Extending
 - **New station service**: add an entry to `data/station_services.gd` and a panel script extending
   `StationServicePanel` (implement `build()`). The tile appears automatically.

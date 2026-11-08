@@ -129,7 +129,7 @@ static func glitter(pos: Vector2, back: Vector2, length: float, width: float, co
 	f.life = GLITTER_LIFE
 	f.max_life = GLITTER_LIFE
 	var side := back.orthogonal()
-	var n := int(clampf(length / 9.0, 80.0, 900.0))
+	var n := int(clampf(length / 16.0, 60.0, 480.0))   # 0.6.41.5: about half the sparks (drawn one by one)
 	for i in n:
 		var u := pow(randf(), 1.4)                  # more sparks close to the ship
 		var spread := width * (0.35 + 0.65 * u)    # the trail widens a little behind
@@ -171,7 +171,26 @@ func _process(delta: float) -> void:
 	if life <= 0.0:
 		queue_free()
 		return
-	queue_redraw()
+	if SystemView.on_screen(_bounds()):          # 0.6.41.5: off screen nothing is redrawn
+		visible = true
+		queue_redraw()
+	else:
+		visible = false
+
+
+## Roughly where the effect draws (world coordinates).
+func _bounds() -> Rect2:
+	match kind:
+		"beam":
+			return Rect2(a, Vector2.ZERO).expand(b).grow(size)
+		"glitter":
+			return Rect2(position, Vector2.ZERO).expand(position + a * size).grow(400.0)
+		"streak":
+			return Rect2(position, Vector2.ZERO).expand(position + a * 4000.0).grow(60.0)
+		"number":
+			return Rect2(position - Vector2(400, 400), Vector2(800, 800))
+	var r := size * 3.0 + 60.0
+	return Rect2(position - Vector2(r, r), Vector2(r, r) * 2.0)
 
 
 func _draw() -> void:

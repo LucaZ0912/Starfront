@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.41.5 – 2026-11-09
+
+**Performance.** The game logic runs on one CPU core (GDScript), so a busy system could drop to 20–50 FPS while the
+PC looked idle. Measured in the start system: 19 ms per frame (spikes to 38 ms) → 2.5 ms (spikes to 5 ms).
+- Effects (warp glitter trails, explosions, beams, smoke) are only redrawn while on screen; a glitter trail has about
+  half the sparks.
+- Stations, structures, gates and NPC ships are only redrawn while on screen.
+- What is under the mouse is looked up when the mouse moves, otherwise ten times a second (it walked all ~1,700
+  objects every frame); hidden rocks are skipped at once.
+- NPC ships check their power plan four times a second instead of every frame.
+
 ## alpha 0.6.41.4 – 2026-11-08
 
 - Inventory: the gas tanks and shielded racks get their own bars under the cargo hold (used / room); gas in the

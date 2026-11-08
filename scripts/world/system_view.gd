@@ -47,6 +47,12 @@ var asteroid_nodes: Array = []   # drawn only near the camera (see _cull_asteroi
 var colossi: Array = []          # colossal asteroids: obstacles, cover, radar shadow
 var debris_layer: Node2D         # scenery rocks outside fields (layout["debris"]), drawn in bulk
 var _cull_timer := 0.0
+## Performance (0.6.41.5): the part of the world on screen this frame (with a margin) – effects, stations and ships
+## only redraw while they are inside it.
+static var screen_rect := Rect2(-1e12, -1e12, 2e12, 2e12)
+var _hover_t := 0.0
+var _hover_mouse := Vector2(-1, -1)
+
 var _pan_dist := 0.0              # distance dragged with the middle mouse button
 var selected_id := ""            # object shown in the HUD's selected-item panel
 var gates := {}                  # destination system id -> Celestial
@@ -1330,9 +1336,16 @@ func _process(delta: float) -> void:
 		_sync_platform()
 		_return_rocks()                      # 0.6.35.5
 	_update_camera(delta)
+	_update_screen_rect()
 	_update_bodies()
 	background.follow(camera)
-	_update_hover()
+	# hover: when the mouse moves, otherwise ten times a second (picking walks all objects – 0.6.41.5)
+	_hover_t -= delta
+	var mpos := get_viewport().get_mouse_position()
+	if _hover_t <= 0.0 or mpos != _hover_mouse:
+		_hover_t = 0.1
+		_hover_mouse = mpos
+		_update_hover()
 	if sky_alpha() > 0.01:
 		debris_layer.queue_redraw()
 	_cull_timer -= delta
@@ -1375,6 +1388,24 @@ func _process(delta: float) -> void:
 			if is_instance_valid(c):
 				c.queue_redraw()
 	overlay.queue_redraw()
+
+
+static func on_screen(r: Rect2) -> bool:
+	return screen_rect.intersects(r)
+
+
+static func on_screen_at(p: Vector2, radius: float) -> bool:
+	return screen_rect.intersects(Rect2(p - Vector2(radius, radius), Vector2(radius, radius) * 2.0))
+
+
+func _update_screen_rect() -> void:
+	if camera == null:
+		return
+	var vs := get_viewport_rect().size
+	var z := maxf(camera.zoom.x, 0.000001)
+	var half := vs * 0.5 / z
+	var c := camera.get_screen_center_position()
+	screen_rect = Rect2(c - half, half * 2.0).grow(maxf(half.x, half.y) * 0.25 + 200.0)
 
 
 func level_zoom(l: int) -> float:
@@ -1738,10 +1769,15 @@ func pick(pos: Vector2) -> Dictionary:
 				best = {"kind": "ship", "node": n}
 	if not best.is_empty():
 		return best
+	var near_tol := tol + 14.0 / z
 	for c in celestials:
-		if is_instance_valid(c) and c.is_pickable():
-			var d := pos.distance_to(c.position)
-			var r: float = c.radius
+		if not is_instance_valid(c) or not c.visible:
+			continue                                 # culled far-away rocks are not under the mouse
+		var d := pos.distance_to(c.position)
+		var r: float = c.radius
+		if d > r + near_tol:
+			continue                                 # cheap test first (0.6.41.5)
+		if c.is_pickable():
 			if c.kind == "colossus":
 				# the outline counts, not the bounding circle
 				if d > r + tol or ColossusShape.signed_dist(c.poly, pos - c.position) > tol:
