@@ -648,7 +648,8 @@ func _collection() -> void:
 	var stars_seen: Array = GameState.collection.get("stars", [])
 	var cats := [["perks", "Crew perks", "%d / %d" % [have.size(), CrewDataP.PERKS.size()]], ["notorious", "Notorious pirates", "%d destroyed" % killed.size()],
 		["stars", "Star classes", "%d / %d" % [stars_seen.size(), Universe.STAR_TYPES.size()]],
-		["planets", "Planet types", "%d / %d" % [GameState.collection.get("planets", []).size(), Universe.PLANET_TYPES.size() + Universe.MOON_TYPES.size()]]]
+		["planets", "Planet types", "%d / %d" % [_seen_of(Universe.PLANET_TYPES).size(), Universe.PLANET_TYPES.size()]],
+		["moons", "Moon types", "%d / %d" % [_seen_of(Universe.MOON_TYPES).size(), Universe.MOON_TYPES.size()]]]
 	for c in cats:
 		var cid: String = c[0]
 		var b := UI.button("%s   %s" % [c[1], c[2]], func(): coll_cat = cid; rebuild())
@@ -670,7 +671,9 @@ func _collection() -> void:
 		"stars":
 			_collection_stars(right, stars_seen)
 		"planets":
-			_collection_planets(right, GameState.collection.get("planets", []))
+			_collection_bodies(right, Universe.PLANET_TYPES, "PLANET TYPES", "A planet type counts once you have been in a system with such a world.")
+		"moons":
+			_collection_bodies(right, Universe.MOON_TYPES, "MOON TYPES", "A moon type counts once you have been in a system with such a moon.")
 		"notorious":
 			right.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
 			if killed.is_empty():
@@ -685,129 +688,140 @@ func _collection() -> void:
 		_:
 			right.add_child(UI.label("CREW PERKS  %d / %d" % [have.size(), CrewDataP.PERKS.size()], 16, COL))
 			right.add_child(UI.label("A perk counts once a crew member with it serves you – aboard, on the platform or in the crew quarters. Perks are very rare.", 12, UI.TEXT_DIM))
-			var flow := HFlowContainer.new()
-			flow.add_theme_constant_override("h_separation", 10)
-			flow.add_theme_constant_override("v_separation", 10)
-			right.add_child(flow)
+			var k := _coll_scale()
+			var flow := _coll_flow(right, 230.0 * k)
 			for p in CrewDataP.PERKS:
 				var got: bool = p in have
 				var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.12, 0.09, 0.03, 0.95) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
-				tile.custom_minimum_size = Vector2(230, 96)
+				tile.custom_minimum_size = Vector2(230, 96) * k
 				flow.add_child(tile)
 				var v := UI.vbox(2)
 				tile.add_child(v)
 				if got:
-					v.add_child(UI.label("★ " + String(CrewDataP.PERKS[p]["name"]), 15, COL))
-					v.add_child(UI.wrap_label(String(CrewDataP.PERKS[p]["text"]), 11, Color(0.9, 0.88, 0.8), 210))
+					v.add_child(UI.label("★ " + String(CrewDataP.PERKS[p]["name"]), int(15 * k), COL))
+					var tx := UI.wrap_label(String(CrewDataP.PERKS[p]["text"]), int(11 * k), Color(0.9, 0.88, 0.8), 100)
+					tx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+					v.add_child(tx)
 				else:
-					var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
+					var q := UI.label("???", int(34 * k), Color(0.45, 0.45, 0.48))
 					q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 					q.size_flags_vertical = Control.SIZE_EXPAND_FILL
 					q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 					v.add_child(q)
 
 
+## 0.6.38.2: the collection grows with the screen – tiles, pictures and text scale with the window (1× up to
+## 1600×900, up to 2.4× on very large screens), and the tiles stretch so that each row fills the width.
+func _coll_scale() -> float:
+	var vs := get_viewport().get_visible_rect().size
+	return clampf(minf(vs.x / 1600.0, vs.y / 900.0), 1.0, 2.4)
+
+
+## A flow of tiles whose width is fitted to the space: as many columns of at least `min_w` as fit, the tiles then
+## share the rest of the row.
+func _coll_flow(right: VBoxContainer, min_w: float) -> HFlowContainer:
+	var flow := HFlowContainer.new()
+	var sep := 10
+	flow.add_theme_constant_override("h_separation", sep)
+	flow.add_theme_constant_override("v_separation", sep)
+	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_child(flow)
+	var fit := func():
+		var w := flow.size.x
+		if w <= 0.0:
+			return
+		var cols := maxi(1, int(floor((w + sep) / (min_w + sep))))
+		var tw := floorf((w - sep * (cols - 1)) / cols) - 1.0
+		for c in flow.get_children():
+			var ctl := c as Control
+			if ctl != null and absf(ctl.custom_minimum_size.x - tw) > 0.5:
+				ctl.custom_minimum_size.x = tw
+	flow.resized.connect(fit)
+	return flow
+
+
+## The pilot's collected types among `types` (planet and moon types share one list in the save).
+func _seen_of(types: Dictionary) -> Array:
+	var out := []
+	for tid in GameState.collection.get("planets", []):
+		if types.has(tid):
+			out.append(tid)
+	return out
+
+
+## One tile of the star and body collections: an animated picture (its shader; greyed out while unknown), name,
+## facts and a few words – or "???".
+func _coll_tile(flow: HFlowContainer, k: float, got: bool, mat: Material, title: String, facts: String, text: String) -> void:
+	var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.03, 0.03, 0.07, 0.97) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
+	tile.custom_minimum_size = Vector2(360, 150) * k
+	flow.add_child(tile)
+	var h := UI.hbox(int(10 * k))
+	tile.add_child(h)
+	var pic := TextureRect.new()
+	pic.texture = PixelArt.white()
+	pic.custom_minimum_size = Vector2(120, 120) * k
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_SCALE
+	pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pic.material = mat
+	if not got:
+		# the shader ignores modulate – a dark veil over the picture greys it out
+		var veil := ColorRect.new()
+		veil.color = Color(0.07, 0.07, 0.08, 0.86)
+		veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+		veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pic.add_child(veil)
+	h.add_child(pic)
+	var v := UI.vbox(int(3 * k))
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	if got:
+		v.add_child(UI.label(title, int(15 * k), COL))
+		v.add_child(UI.label(facts, int(12 * k), UI.NEON_CYAN))
+		var tx := UI.wrap_label(text, int(11 * k), Color(0.9, 0.88, 0.8), 100)
+		tx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_child(tx)
+	else:
+		var q := UI.label("???", int(34 * k), Color(0.45, 0.45, 0.48))
+		q.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		v.add_child(q)
+
+
 ## 0.6.37.2: a tile per star class – a small animated picture of the star, its size in solar radii, its mass in
 ## solar masses, its surface temperature and a few words. Classes not visited yet show greyed out as "???".
 func _collection_stars(right: VBoxContainer, seen: Array) -> void:
-	right.add_child(UI.label("STAR CLASSES  %d / %d" % [seen.size(), Universe.STAR_TYPES.size()], 16, COL))
-	right.add_child(UI.label("A star class counts once you have been in a system with such a star.", 12, UI.TEXT_DIM))
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 10)
-	flow.add_theme_constant_override("v_separation", 10)
-	right.add_child(flow)
+	var k := _coll_scale()
+	right.add_child(UI.label("STAR CLASSES  %d / %d" % [seen.size(), Universe.STAR_TYPES.size()], int(16 * k), COL))
+	right.add_child(UI.label("A star class counts once you have been in a system with such a star.", int(12 * k), UI.TEXT_DIM))
+	var flow := _coll_flow(right, 360.0 * k)
 	for t in Universe.STAR_TYPES:
-		var got: bool = String(t["id"]) in seen
-		var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.03, 0.03, 0.07, 0.97) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
-		tile.custom_minimum_size = Vector2(360, 150)
-		flow.add_child(tile)
-		var h := UI.hbox(10)
-		tile.add_child(h)
-		# the picture: the star's own shader on a small square (greyed out while unknown)
-		var pic := TextureRect.new()
-		pic.texture = PixelArt.white()
-		pic.custom_minimum_size = Vector2(120, 120)
-		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		pic.stretch_mode = TextureRect.STRETCH_SCALE
 		var spr: Sprite2D = Celestial.make_star_sprite({"color": t["color"], "color2": t["color2"], "kind": t["kind"], "star_id": t["id"], "radius": t["radius"], "seed": 3.0}, 100.0)
-		pic.material = spr.material
-		var sm := pic.material as ShaderMaterial
+		var sm := spr.material as ShaderMaterial
 		sm.set_shader_parameter("pixels", 120.0 if String(t["kind"]) in ["main", "brown", "giant", "white"] else 160.0)
 		spr.free()
-		if not got:
-			# the shader ignores modulate – a dark veil over the picture greys it out
-			var veil := ColorRect.new()
-			veil.color = Color(0.07, 0.07, 0.08, 0.86)
-			veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-			veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			pic.add_child(veil)
-		h.add_child(pic)
-		var v := UI.vbox(2)
-		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(v)
-		if got:
-			v.add_child(UI.label(String(t["name"]), 15, COL))
-			var facts := "%s R☉  •  %s M☉  •  %s" % [t["r_sun"], t["m_sun"], t["temp"]]
-			v.add_child(UI.label(facts, 12, UI.NEON_CYAN))
-			v.add_child(UI.wrap_label(String(t["text"]), 11, Color(0.9, 0.88, 0.8), 210))
-		else:
-			var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
-			q.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			v.add_child(q)
+		_coll_tile(flow, k, String(t["id"]) in seen, sm, String(t["name"]), "%s R☉  •  %s M☉  •  %s" % [t["r_sun"], t["m_sun"], t["temp"]], String(t["text"]))
 
 
-## 0.6.38.1: a tile per planet type and per moon type – a small turning picture, size in Earth radii, mass in Earth
-## masses, temperature and a few words; types not seen yet show greyed out as "???".
-func _collection_planets(right: VBoxContainer, seen: Array) -> void:
-	right.add_child(UI.label("PLANET TYPES  %d / %d" % [seen.size(), Universe.PLANET_TYPES.size() + Universe.MOON_TYPES.size()], 16, COL))
-	right.add_child(UI.label("A type counts once you have been in a system with such a world.", 12, UI.TEXT_DIM))
-	for group in [["PLANETS", Universe.PLANET_TYPES], ["MOONS", Universe.MOON_TYPES]]:
-		right.add_child(UI.label(String(group[0]), 14, UI.NEON_CYAN))
-		var flow := HFlowContainer.new()
-		flow.add_theme_constant_override("h_separation", 10)
-		flow.add_theme_constant_override("v_separation", 10)
-		right.add_child(flow)
-		var types: Dictionary = group[1]
-		var i := 0
-		for tid in types:
-			var t: Dictionary = types[tid]
-			var got: bool = String(tid) in seen
-			var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.03, 0.03, 0.07, 0.97) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
-			tile.custom_minimum_size = Vector2(360, 150)
-			flow.add_child(tile)
-			var h := UI.hbox(10)
-			tile.add_child(h)
-			var pic := TextureRect.new()
-			pic.texture = PixelArt.white()
-			pic.custom_minimum_size = Vector2(120, 120)
-			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			pic.stretch_mode = TextureRect.STRETCH_SCALE
-			var ring: bool = String(tid) in ["gas", "ice_giant"]
-			var spr: Sprite2D = Celestial.make_planet_sprite({"type": tid, "seed": 7.0 + i * 5.0, "ring": ring, "city": 0.8 if String(tid) in Universe.CITY_WORLDS else 0.0}, 100.0, Vector2(-0.8, -0.35))
-			pic.material = spr.material
-			(pic.material as ShaderMaterial).set_shader_parameter("pixels", 120.0 if not ring else 200.0)
-			spr.free()
-			if not got:
-				var veil := ColorRect.new()
-				veil.color = Color(0.07, 0.07, 0.08, 0.86)
-				veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-				veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				pic.add_child(veil)
-			h.add_child(pic)
-			var v := UI.vbox(2)
-			v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			h.add_child(v)
-			if got:
-				v.add_child(UI.label(String(t["name"]), 15, COL))
-				v.add_child(UI.label("%s R⊕  •  %s M⊕  •  %s" % [t.get("r_earth", "?"), t.get("m_earth", "?"), t.get("temp", "?")], 12, UI.NEON_CYAN))
-				v.add_child(UI.wrap_label(String(t.get("text", "")), 11, Color(0.9, 0.88, 0.8), 210))
-			else:
-				var q := UI.label("???", 34, Color(0.45, 0.45, 0.48))
-				q.size_flags_vertical = Control.SIZE_EXPAND_FILL
-				q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				v.add_child(q)
-			i += 1
+## 0.6.38.1: a tile per planet type (0.6.38.2: and, in a category of their own, per moon type) – a small turning
+## picture, size in Earth radii, mass in Earth masses, temperature and a few words; types not seen yet show greyed
+## out as "???".
+func _collection_bodies(right: VBoxContainer, types: Dictionary, head: String, hint: String) -> void:
+	var k := _coll_scale()
+	right.add_child(UI.label("%s  %d / %d" % [head, _seen_of(types).size(), types.size()], int(16 * k), COL))
+	right.add_child(UI.label(hint, int(12 * k), UI.TEXT_DIM))
+	var flow := _coll_flow(right, 360.0 * k)
+	var seen: Array = GameState.collection.get("planets", [])
+	var i := 0
+	for tid in types:
+		var t: Dictionary = types[tid]
+		var ring: bool = String(tid) in ["gas", "ice_giant"]
+		var spr: Sprite2D = Celestial.make_planet_sprite({"type": tid, "seed": 7.0 + i * 5.0, "ring": ring, "city": 0.8 if String(tid) in Universe.CITY_WORLDS else 0.0}, 100.0, Vector2(-0.8, -0.35))
+		var sm := spr.material as ShaderMaterial
+		sm.set_shader_parameter("pixels", 120.0 if not ring else 200.0)
+		spr.free()
+		_coll_tile(flow, k, String(tid) in seen, sm, String(t["name"]), "%s R⊕  •  %s M⊕  •  %s" % [t.get("r_earth", "?"), t.get("m_earth", "?"), t.get("temp", "?")], String(t.get("text", "")))
+		i += 1
 
 
 func _set_sub(i: int) -> void:

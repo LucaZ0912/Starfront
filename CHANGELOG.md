@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.38.2 – 2026-11-08
+
+- Collection: moon types are a category of their own (Moon types), apart from the planet types.
+- Collection tiles grow with the screen – picture, text and tile size scale up on large screens, and the tiles
+  stretch so each row fills the width.
+
 ## alpha 0.6.38.1 – 2026-11-08
 
 **Package 38: new planet types.** A new game is needed.

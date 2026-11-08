@@ -107,7 +107,7 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - Eleven planet types – terran, ocean and jungle worlds, deserts, ice worlds, lava worlds, barren rock, gas giants,
   toxic giants, ice giants and dwarf planets – each with seas, clouds, caps, storms, lava or craters, and every planet
   a shade of its own. Inhabited worlds glow with city lights on their night side.
-- The Collection lists every planet and moon type you have seen.
+- The Collection lists every planet type and, in a category of their own, every moon type you have seen. Its tiles grow with the screen.
 
 ## Stars (phase 0.5 package 37)
 - **Twelve star types:** blue O and B stars down to red M dwarfs, pink brown dwarfs, red supergiants, white dwarfs,

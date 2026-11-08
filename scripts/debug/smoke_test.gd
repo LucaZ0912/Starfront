@@ -6437,6 +6437,20 @@ func _test_planets(view: SystemView) -> void:
 		for tid in d:
 			facts_ok = facts_ok and String(d[tid].get("text", "")) != "" and d[tid].has("r_earth")
 	var coll_ok: bool = String(view.layout["planets"][0]["type"]) in GameState.collection.get("planets", [])
+	# 0.6.38.2: planet types and moon types are categories of their own, a tile per type each
+	var pw = view.get_tree().current_scene.pilot_window
+	var keep_sub: int = pw.sub
+	var keep_cat: String = pw.coll_cat
+	pw.sub = 3
+	var counts := []
+	for cat in ["planets", "moons"]:
+		pw.coll_cat = cat
+		pw.rebuild()
+		counts.append(pw.body.find_children("*", "PanelContainer", true, false).filter(func(n): return (n as Control).custom_minimum_size.y >= 149.0).size())
+	pw.sub = keep_sub
+	pw.coll_cat = keep_cat
+	pw.rebuild()
+	coll_ok = coll_ok and counts[0] == U.PLANET_TYPES.size() and counts[1] == U.MOON_TYPES.size()
 	check(types_ok and dwarf_ok and giant_ok and way_dwarf > 0 and city_ok and cities > 0 and look_ok and facts_ok and coll_ok,
 		"package 38: %d planet types (ice giants out beyond, dwarf planets in the Kuiper belt, ocean and jungle worlds); %d waystations at a dwarf; %d worlds with city lights; every planet its own shade; planet and moon types in the collection" % [seen.size(), way_dwarf, cities])
 
