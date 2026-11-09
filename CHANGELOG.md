@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.5 – 2026-11-09
+
+**The deck goes a little cyberpunk – neon by default, coloured by the station type.**
+- **Neon shop signs:** the shop names are no longer labels but neon signs mounted on the wall over each door –
+  glowing tube letters in the shop's colours on a dark plate with brackets, a pool of light below; now and then one
+  stutters. Closed shops' signs are dark.
+- **The BAR sign** is a tall neon sign: pink tube letters in a cyan neon frame, glowing, one letter flickering now
+  and then.
+- **Neon and light everywhere:** a neon strip runs along the foot of every wall and its light spills onto the floor
+  (in the station type's accent colour); the corridor's guide line glows; lamp posts, the jukebox, the bar counter
+  and the tables cast pools of light; the cold light of the planet falls in through the window front.
+- **Holographic adverts** hover over the corridor wall between the shops – made-up brands of the cluster (Neuro+,
+  Orbital Cola, Synth Noodles, Chrome & Soul …), see-through, with scan lines and the odd jolt.
+
 ## alpha 0.7.49.4 – 2026-11-09
 
 **The deck feels closed in now.**

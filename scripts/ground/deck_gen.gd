@@ -25,6 +25,10 @@ const SHOPS := ["market", "outfitter", "shipyard", "bonds", "look", "refinery", 
 const SHOP_W := 7
 const DOCK_TERMINALS := ["fuel", "repair", "drones", "munitions", "hangar"]
 const KIOSKS := ["news", "bulletin"]
+## Holographic adverts in the corridor – made-up brands of the cluster.
+const ADS := [["NEURO+", "think faster"], ["ORBITAL COLA", "taste the void"], ["SYNTH NOODLES", "hot · 24/7"],
+	["DREAMWARE", "sleep implants"], ["CHROME & SOUL", "body mods"], ["VOIDBANK", "your credits, safe"],
+	["STARLIGHT HOTEL", "rooms by the hour"], ["ZERO-G GYM", "lift nothing"], ["KAIJU TV", "live from the rim"]]
 ## rows
 const BAR_Y0 := 8                 # first floor row of the bar (rows 0 cap, 1–7 the window front)
 const COR_Y0 := 17                # the railing row – the corridor below it to row 20
@@ -91,7 +95,9 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 		m.add_object({"kind": "stool", "x": cx - 1, "y": sy, "col": Color(0.75, 0.25, 0.22)}, false)
 		if rng.randf() < 0.45:
 			m.people.append({"pos": Vector2(cx - 0.5, sy + 1.1) * GroundMap.TILE, "dir": 3, "sit": true})
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "bar_sign", "title": "BAR", "col": Color(1.0, 0.82, 0.35),
+	m.lights.append({"pos": Vector2(cx + 1, BAR_Y0 + 2.5) * GroundMap.TILE, "r": 60.0, "col": Color(1.0, 0.3, 0.7), "a": 0.55, "flicker": true})
+	m.lights.append({"pos": Vector2(cx - 0.5, BAR_Y0 + 3.5) * GroundMap.TILE, "r": 46.0, "col": Color(1.0, 0.75, 0.4), "a": 0.3})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "bar_sign", "title": "BAR", "col": Color(1.0, 0.3, 0.72),
 		"sign": Vector2(cx + 1, BAR_Y0 + 0.2) * GroundMap.TILE, "vertical": true})
 	_zone(m, "bar", available, Rect2(Vector2(cx - 2, BAR_Y0) * GroundMap.TILE, Vector2(2, 7) * GroundMap.TILE), Vector2(-100, -100))
 	# round tables with chairs and guests
@@ -109,6 +115,16 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 		tx += 5
 		row += 1
 	m.add_object({"kind": "jukebox", "x": bx0 + 1, "y": BAR_Y0 + 1, "w": 1, "h": 1, "col": Color(1.0, 0.45, 0.7)})
+	m.lights.append({"pos": Vector2(bx0 + 1.5, BAR_Y0 + 2.2) * GroundMap.TILE, "r": 40.0, "col": Color(1.0, 0.45, 0.7), "a": 0.4})
+	# the planet's and the stars' cold light falling in through the window front
+	var wx := bx0 + 4
+	while wx < W - 4:
+		m.lights.append({"pos": Vector2(wx, BAR_Y0 + 0.6) * GroundMap.TILE, "r": 56.0, "col": Color(0.45, 0.6, 1.0), "a": 0.14})
+		wx += 6
+	# lamps over the round tables
+	for o in m.objects:
+		if String(o["kind"]) == "round_table":
+			m.lights.append({"pos": Vector2(float(o["x"]) + 1.0, float(o["y"]) + 1.2) * GroundMap.TILE, "r": 30.0, "col": Color(1.0, 0.7, 0.4), "a": 0.22})
 	m.add_object({"kind": "plant", "x": cx - 3, "y": BAR_Y0, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": bx0 + 1, "y": COR_Y0 - 1, "w": 1, "h": 1})
 	m.add_object({"kind": "sofa", "x": bx0 + 2, "y": COR_Y0 - 2, "w": 3, "h": 1, "col": m.pal["carpet"]})
@@ -182,10 +198,39 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	m.fill(sx, SHOP_CAP, W - sx, SHOP_Y1 - SHOP_CAP + 2, GroundMap.T.CAP)
 	# corridor dressing: lamp posts and plants on the south side, between the doors
 	var lx := bx0 + 2
-	while lx < W - 2:
-		if m.t_at(lx, SHOP_CAP) == GroundMap.T.CAP and m.t_at(lx - 1, SHOP_CAP) == GroundMap.T.CAP and m.t_at(lx + 1, SHOP_CAP) == GroundMap.T.CAP and m.t_at(lx, COR_Y1) == GroundMap.T.FLOOR:
-			m.add_object({"kind": "plant" if (lx / 4) % 2 == 0 else "lamp_post", "x": lx, "y": COR_Y1, "w": 1, "h": 1, "col": m.pal["accent"]})
-		lx += 4
+	var slot := 0
+	var ads := ADS.duplicate()
+	ads.shuffle()
+	var ad_cols := [Color(0.3, 0.95, 1.0), Color(1.0, 0.3, 0.75), Color(0.75, 0.45, 1.0), Color(0.45, 1.0, 0.55)]
+	# one thing per stretch of wall between two doors
+	var wall_spots: Array = []
+	var n_ads := 0
+	var run0 := -1
+	for xx in range(bx0 + 1, W - 1):
+		var wall := m.t_at(xx, SHOP_CAP) == GroundMap.T.CAP and m.t_at(xx, COR_Y1) == GroundMap.T.FLOOR
+		if wall and run0 < 0:
+			run0 = xx
+		if (not wall or xx == W - 2) and run0 >= 0:
+			var run1 := xx - 1 if not wall else xx
+			if run1 - run0 >= 2:
+				wall_spots.append((run0 + run1) / 2)
+			run0 = -1
+	for lx2 in wall_spots:
+		lx = lx2
+		if true:
+			match [0, 1, 0, 1, 2, 1][slot % 6]:
+				0:
+					m.add_object({"kind": "lamp_post", "x": lx, "y": COR_Y1, "w": 1, "h": 1, "col": m.pal["accent"]})
+					m.lights.append({"pos": Vector2(lx + 0.5, COR_Y1 + 0.3) * GroundMap.TILE, "r": 44.0, "col": Color(m.pal["accent"]).lerp(Color.WHITE, 0.3), "a": 0.35})
+				1:
+					var ad: Array = ads[n_ads % ads.size()]
+					n_ads += 1
+					var ac: Color = ad_cols[rng.randi() % ad_cols.size()]
+					m.holos.append({"pos": Vector2(lx + 0.5, SHOP_CAP + 0.35) * GroundMap.TILE, "text": ad[0], "sub": ad[1], "col": ac})
+					m.lights.append({"pos": Vector2(lx + 0.5, COR_Y1 + 0.2) * GroundMap.TILE, "r": 36.0, "col": ac, "a": 0.3, "flicker": true})
+				2:
+					m.add_object({"kind": "plant", "x": lx, "y": COR_Y1, "w": 1, "h": 1, "col": m.pal["accent"]})
+			slot += 1
 	for k2 in 14:
 		m.wander.append(Vector2(rng.randf_range(bx0 + 1, W - 3), rng.randf_range(COR_Y0 + 1.3, COR_Y1 - 0.1)) * GroundMap.TILE)
 	for k3 in 4:

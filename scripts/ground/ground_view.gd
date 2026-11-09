@@ -23,6 +23,9 @@ var _hull: TextureRect
 var _window: Control                  # the window front's opening – space is only drawn inside it
 var _neb: ColorRect
 var _off0 = null
+var _lights: Node2D
+var _flicker: Array = []              # [sprite, base alpha, phase]
+static var _glow_tex: Texture2D
 var _sorted: Node2D
 var _signs: Node2D
 var _prompt: Label
@@ -183,6 +186,18 @@ func _build() -> void:
 	pilot = Walker.new()
 	pilot.setup(map, GameState.pilot.get("look", ChibiArt.PilotArt.default_look()), map.spawn, false)
 	_sorted.add_child(pilot)
+	# light: lamps, neon, the window – added on top, the deck a little darker round them
+	_lights = Node2D.new()
+	_lights.z_index = 5
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	for l in map.lights:
+		_add_light(l, add_mat)
+	for z in map.zones:
+		var sp: Vector2 = z.get("sign", Vector2(-100, -100))
+		if sp.x >= 0.0 and not z.get("vertical", false) and String(z.get("closed", "")) == "":
+			_add_light({"pos": sp + Vector2(0, 6), "r": 30.0, "col": z.get("col", Color.WHITE), "a": 0.3}, add_mat)
+	_world.add_child(_lights)
 	_signs = Node2D.new()
 	_signs.z_index = 10
 	_signs.draw.connect(_draw_signs)
@@ -190,8 +205,46 @@ func _build() -> void:
 	_camera()
 
 
+static func glow_texture() -> Texture2D:
+	if _glow_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		g.add_point(0.35, Color(1, 1, 1, 0.55))
+		g.add_point(0.7, Color(1, 1, 1, 0.15))
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.5)
+		gt.fill_to = Vector2(1.0, 0.5)
+		gt.width = 128
+		gt.height = 128
+		_glow_tex = gt
+	return _glow_tex
+
+
+func _add_light(l: Dictionary, mat: Material) -> void:
+	var sp := Sprite2D.new()
+	sp.texture = glow_texture()
+	sp.material = mat
+	var r: float = l.get("r", 40.0)
+	sp.scale = Vector2(1.0, 0.7) * r * 2.0 * GroundMap.SCALE / 128.0          # pools on the floor: a little flattened
+	sp.position = Vector2(l["pos"]) * GroundMap.SCALE
+	var a: float = l.get("a", 0.3)
+	sp.modulate = Color(Color(l.get("col", Color.WHITE)), a)
+	_lights.add_child(sp)
+	if l.get("flicker", false):
+		_flicker.append([sp, a, randf() * 50.0])
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	for f in _flicker:
+		var ph: float = f[2]
+		var k := 1.0
+		if fposmod(_t * 0.7 + ph, 9.0) < 0.18:
+			k = 0.35 if fposmod(_t * 31.0, 1.0) < 0.5 else 0.8
+		(f[0] as Sprite2D).modulate.a = float(f[1]) * k
 	if pilot == null:
 		return
 	if input_enabled:
@@ -278,36 +331,101 @@ func _camera() -> void:
 		m.set_shader_parameter("offset", -off * 0.3)
 
 
-## Shop signs over the doors (crisp text in screen pixels), the bar's tall neon sign, a glow where the pilot stands.
+const _GLOW_OFFS := [Vector2(-2, 0), Vector2(2, 0), Vector2(0, -2), Vector2(0, 2), Vector2(-1, -1), Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1)]
+
+
+## Neon: a soft halo in the tube's colour, a bright core near white.
+func _neon_text(font: Font, p: Vector2, txt: String, size: int, c: Color, k: float) -> void:
+	for o in _GLOW_OFFS:
+		_signs.draw_string(font, p + o * 1.5, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(c, 0.16 * k))
+	for o2 in _GLOW_OFFS:
+		_signs.draw_string(font, p + o2 * 0.6, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(c, 0.3 * k))
+	_signs.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(c.lerp(Color.WHITE, 0.55), 0.6 + 0.4 * k))
+
+
+func _neon_rect(r: Rect2, c: Color, k: float) -> void:
+	_signs.draw_rect(r.grow(2), Color(c, 0.12 * k), false, 6.0)
+	_signs.draw_rect(r, Color(c, 0.45 * k), false, 3.0)
+	_signs.draw_rect(r, Color(c.lerp(Color.WHITE, 0.5), 0.5 + 0.5 * k), false, 1.0)
+
+
+## How lit a neon is now: mostly steady, now and then a stutter.
+func _flick(seed_v: float) -> float:
+	if fposmod(_t * 0.6 + seed_v, 11.0) < 0.22:
+		return 0.25 if fposmod(_t * 27.0, 1.0) < 0.5 else 0.9
+	return 0.92 + 0.08 * sin(_t * 3.0 + seed_v)
+
+
+## Neon shop signs mounted on the wall over the doors, the bar's tall neon sign, holographic adverts over the
+## corridor wall, a glow where the pilot stands.
 func _draw_signs() -> void:
 	var font := ThemeDB.fallback_font
 	var s := GroundMap.SCALE
+	for h in map.holos:
+		_draw_holo(font, h)
 	for z in map.zones:
 		var sp: Vector2 = z.get("sign", Vector2(-100, -100))
 		if sp.x < 0.0:
 			continue
 		var c: Color = z.get("col", Color.WHITE)
-		var glow: float = 0.8 + 0.2 * sin(_t * 2.0 + sp.x * 0.01)
+		var k := _flick(sp.x * 0.13)
 		if z.get("vertical", false):
 			var letters: String = String(z["title"])
 			var y := sp.y * s
-			_signs.draw_rect(Rect2(Vector2(sp.x * s - 18, y - 8), Vector2(36, letters.length() * 34 + 10)), Color(0.05, 0.03, 0.06, 0.9))
-			_signs.draw_rect(Rect2(Vector2(sp.x * s - 18, y - 8), Vector2(36, letters.length() * 34 + 10)), Color(c, 0.8 * glow), false, 2.0)
+			var box := Rect2(Vector2(sp.x * s - 20, y - 8), Vector2(40, letters.length() * 36 + 14))
+			_signs.draw_rect(box, Color(0.03, 0.02, 0.05, 0.92))
+			_neon_rect(box.grow(-4), Color(0.3, 0.95, 1.0), _flick(3.3))
 			for i in letters.length():
 				var ch := letters.substr(i, 1)
-				var cw := font.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
-				_signs.draw_string(font, Vector2(sp.x * s - cw * 0.5, y + 26 + i * 34), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(c, glow))
+				var cw := font.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
+				var lk := k if i != 1 else _flick(7.7)
+				_neon_text(font, Vector2(sp.x * s - cw * 0.5, y + 30 + i * 36), ch, 30, c, lk)
 			continue
 		var txt: String = String(z["title"]).to_upper()
-		if String(z.get("closed", "")) != "":
+		var closed := String(z.get("closed", "")) != ""
+		if closed:
 			txt += " · CLOSED"
-			c = Color(0.55, 0.55, 0.6)
-		var size := 13
+			c = Color(0.45, 0.45, 0.5)
+			k = 0.15
+		var size := 15
 		var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		var p: Vector2 = sp * s - Vector2(tw * 0.5, 0)
-		_signs.draw_rect(Rect2(p + Vector2(-7, -size - 1), Vector2(tw + 14, size + 8)), Color(0.04, 0.03, 0.06, 0.92))
-		_signs.draw_rect(Rect2(p + Vector2(-7, -size - 1), Vector2(tw + 14, size + 8)), Color(c, 0.7 * glow), false, 2.0)
-		_signs.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(c, glow))
-	if not zone.is_empty() and zone["kind"] in ["service", "exit"]:
+		var p: Vector2 = sp * s - Vector2(tw * 0.5, -2)
+		var plate := Rect2(p + Vector2(-10, -size - 3), Vector2(tw + 20, size + 11))
+		# two brackets into the wall, a dark backing plate, the neon tube text and frame
+		_signs.draw_rect(Rect2(plate.position + Vector2(8, -6), Vector2(3, 6)), Color(0.1, 0.1, 0.12))
+		_signs.draw_rect(Rect2(plate.end - Vector2(11, plate.size.y + 6), Vector2(3, 6)), Color(0.1, 0.1, 0.12))
+		_signs.draw_rect(plate, Color(0.02, 0.02, 0.04, 0.9))
+		_neon_rect(plate.grow(-3), c, k * 0.8)
+		_neon_text(font, p, txt, size, c, k)
+	if not zone.is_empty() and zone["kind"] in ["service", "exit"] and zone["rect"].size.x > 0.0:
 		var r: Rect2 = zone["rect"]
 		_signs.draw_rect(Rect2(r.position * s, r.size * s), Color(1.0, 0.85, 0.35, 0.07 + 0.04 * sin(_t * 4.0)))
+
+
+## A holographic advert hovering over the corridor wall: see-through, scan lines, now and then a jolt.
+func _draw_holo(font: Font, h: Dictionary) -> void:
+	var s := GroundMap.SCALE
+	var c: Color = h["col"]
+	var base: Vector2 = Vector2(h["pos"]) * s
+	var k := _flick(base.x * 0.07)
+	var jolt := 0.0
+	if fposmod(_t * 0.9 + base.x * 0.01, 7.0) < 0.12:
+		jolt = 5.0 * sin(_t * 90.0)
+	var t1: String = h["text"]
+	var t2: String = h["sub"]
+	var w1 := font.get_string_size(t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	var w2 := font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	var bw := maxf(w1, w2) + 22.0
+	var r := Rect2(base + Vector2(-bw * 0.5 + jolt, -62), Vector2(bw, 46))
+	# the projector on the wall and its beam
+	_signs.draw_rect(Rect2(base + Vector2(-8, -6), Vector2(16, 6)), Color(0.08, 0.08, 0.1))
+	_signs.draw_rect(Rect2(base + Vector2(-2, -5), Vector2(4, 2)), Color(c, 0.9))
+	_signs.draw_colored_polygon(PackedVector2Array([base + Vector2(-3, -5), base + Vector2(3, -5), r.end - Vector2(0, 0), Vector2(r.position.x, r.end.y)]), Color(c, 0.07 * k))
+	_signs.draw_rect(r, Color(c, 0.22 * k))
+	var yy := r.position.y + fposmod(_t * 20.0, 3.0)
+	while yy < r.end.y:
+		_signs.draw_line(Vector2(r.position.x, yy), Vector2(r.end.x, yy), Color(c, 0.1 * k), 1.0)
+		yy += 3.0
+	_signs.draw_rect(r, Color(c, 0.85 * k), false, 2.0)
+	_signs.draw_string(font, Vector2(r.position.x + (bw - w1) * 0.5, r.position.y + 20), t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(c.lerp(Color.WHITE, 0.6), k))
+	_signs.draw_string(font, Vector2(r.position.x + (bw - w2) * 0.5, r.position.y + 37), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(c.lerp(Color.WHITE, 0.3), 0.9 * k))

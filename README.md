@@ -134,7 +134,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   `zones` (service / exit / crew / label, with `sign`, `vertical`), `objects` (standing furniture), `decals`,
   `face_deco`, `people`, `wander`, `spawn`, `pal`, `hull_top` (the station's structure from this row down, drawn by
   the view from `hull_texture()`; wall tops only where they border a room), `round_corners` (the window front's
-  rounded corners), `window_rect` (the view draws space – nebula, star, planet – only there, clipped; black elsewhere); `texture()` renders floors and walls once.
+  rounded corners), `window_rect` (the view draws space – nebula, star, planet – only there, clipped; black elsewhere), `lights`
+  (light pools, additive, some flicker), `holos` (holographic adverts, `DeckGen.ADS`); neon strips along wall feet.
+  The view draws shop signs and the BAR sign as neon (`_neon_text`, `_neon_rect`, `_flick`).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

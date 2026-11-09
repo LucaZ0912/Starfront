@@ -21,6 +21,8 @@ var decals: Array = []                        # flat things painted into the flo
 var face_deco: Array = []                     # things on a wall face: {kind, x, y, w, col}
 var people: Array = []                        # NPCs that stay: {pos (art px, feet), look?, dir, role, sit, crew?}
 var wander: Array = []                        # where strolling NPCs may go (art px)
+var lights: Array = []                        # light pools (the view adds them): {pos (art px), r, col, a, flicker}
+var holos: Array = []                         # holographic adverts over a wall: {pos (art px, bottom centre), text, sub, col}
 var spawn := Vector2.ZERO
 var pal: Dictionary = {}
 var hull_top := -1                    # the station's structure goes on everywhere from this row down (the view draws it)
@@ -150,6 +152,10 @@ func _render() -> void:
 				var left := t_at(x2 - 1, y2)
 				if left == T.CAP or left == T.FACE:
 					_shade_x(x2 * TILE, y2 * TILE, 3, TILE, 0.18)
+				if up == T.CAP:
+					# the neon strip's light spilling onto the floor
+					for k in 4:
+						_tint(x2 * TILE, y2 * TILE + k, TILE, 1, pal["accent"], [0.3, 0.17, 0.09, 0.04][k])
 
 
 ## A wall's top only where it borders a room – the solid mass behind it is the station's structure (drawn by the view).
@@ -212,6 +218,15 @@ func hull_texture() -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
+func _tint(x: int, y: int, rw: int, rh: int, c: Color, k: float) -> void:
+	for yy in range(y, y + rh):
+		for xx in range(x, x + rw):
+			if xx >= 0 and yy >= 0 and xx < _img.get_width() and yy < _img.get_height():
+				var o := _img.get_pixel(xx, yy)
+				if o.a > 0.0:
+					_img.set_pixel(xx, yy, Color(o.r + c.r * k, o.g + c.g * k, o.b + c.b * k, o.a))
+
+
 func _shade(x: int, y: int, rw: int, rh: int, k: float) -> void:
 	for yy in range(y, y + rh):
 		for xx in range(x, x + rw):
@@ -269,7 +284,9 @@ func _cap_tile(x: int, y: int, px: int, py: int) -> void:
 	var below := t_at(x, y + 1)
 	if walkable_t(below) or below == T.BLOCK:
 		_rect(px, py + TILE - 4, TILE, 4, Color(pal["wall"]).darkened(0.05))      # the low face of a thin wall
-		_rect(px, py + TILE - 1, TILE, 1, Color(pal["trim"]).darkened(0.3))
+		var ac: Color = pal["accent"]
+		_rect(px, py + TILE - 2, TILE, 1, ac.darkened(0.2))                      # a neon strip along its foot
+		_rect(px, py + TILE - 1, TILE, 1, ac.lerp(Color.WHITE, 0.35))
 	if t_at(x, y - 1) != T.CAP:
 		_rect(px, py, TILE, 1, top.lightened(0.25))
 
@@ -321,7 +338,12 @@ func _decal(d: Dictionary) -> void:
 			_rect(px + 2, py + 2, pw - 4, ph - 4, c.darkened(0.1))
 			_rect(px + 4, py + 4, pw - 8, ph - 8, c.darkened(0.25))
 		"guide":
-			_rect(px, py + ph / 2 - 1, pw, 2, Color(pal["floor"]).lerp(c, 0.45))
+			# a lit line set into the floor
+			_tint(px, py + ph / 2 - 3, pw, 1, c, 0.08)
+			_tint(px, py + ph / 2 - 2, pw, 1, c, 0.18)
+			_rect(px, py + ph / 2 - 1, pw, 2, c.lerp(Color.WHITE, 0.25))
+			_tint(px, py + ph / 2 + 1, pw, 1, c, 0.18)
+			_tint(px, py + ph / 2 + 2, pw, 1, c, 0.08)
 		"mat":
 			_rect(px + 2, py + 3, pw - 4, ph - 6, Color(0.16, 0.14, 0.16))
 			for k in int((pw - 6) / 3):
