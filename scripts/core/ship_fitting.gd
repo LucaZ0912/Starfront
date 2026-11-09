@@ -314,6 +314,12 @@ func stats() -> Dictionary:
 	return _stats
 
 
+## 0.6.75.1: the speed curve – SPEED_BASE km/s at SPEED_REF_TW kN of thrust per tonne, growing with the SPEED_EXP power
+const SPEED_BASE := 300.0
+const SPEED_REF_TW := 0.2883
+const SPEED_EXP := 0.5
+
+
 func _compute() -> Dictionary:
 	var h := hull()
 	var s := {
@@ -487,7 +493,10 @@ func _compute() -> Dictionary:
 	var ratio := throttle
 	s["power_ratio"] = ratio
 
-	s["speed"] = s["thrust"] * 1000.0 / maxf(s["mass"], 1.0) * s["speed_mult"] * ratio
+	# 0.6.75.1: speed follows the square root of thrust per mass (was linear), set so the standard fits of all classes
+	# average about 300 km/s – more thrust is still faster, but small ships with huge engines no longer fly 1,500 km/s
+	var tw := float(s["thrust"]) / maxf(float(s["mass"]), 1.0)
+	s["speed"] = SPEED_BASE * pow(tw / SPEED_REF_TW, SPEED_EXP) * s["speed_mult"] * ratio
 	s["accel"] = s["speed"] * 1.3
 	s["warp_mult"] = clampf(s["speed"] / 300.0, 0.6, 1.6)
 	s["warp_speed"] = 360000.0 * s["warp_mult"] * float(h.get("warp_mult", 1.0))   # package 35: bigger systems, faster warp; 0.6.36.3: +50 %

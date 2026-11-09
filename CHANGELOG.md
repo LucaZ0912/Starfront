@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.75.1 – 2026-11-09
+
+**Interim part 6½, package 75: speed.**
+- The **Plasma Drive** had less thrust than an Ion Drive of the same size (1,400 kN at size 5 against 1,843) – now
+  2,500 kN at size 5, about 35 % above the Ion Drive (still more power-hungry and less agile).
+- **New speed curve:** speed follows the square root of thrust per mass (was linear), set to 300 km/s at 0.2883 kN
+  per tonne. Double the thrust is about 41 % faster instead of twice as fast. The standard fits now average about
+  **300 km/s** (S 271, M 331, L 297, was S ~250, M ~250, L ~180); with the best engine S ~560, M ~430, L ~325 –
+  big ships stay slower at their best, but they all meet in the middle. Small ships with oversized engines no longer
+  reach 1,000–1,600 km/s.
+- `Balancing_Kernmodule.md`: all core modules by size and quality, how the values scale, the speed formula.
+
 ## alpha 0.6.40.10 – 2026-11-09
 
 **Package 40e: codex, debug, tests, balance and performance** – package 40 (the new cluster) is done.

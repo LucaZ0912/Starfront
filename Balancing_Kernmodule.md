@@ -1,6 +1,6 @@
 # Balancing – Kernmodule
 
-Stand alpha 0.6.40.10, erzeugt aus den Spieldaten (`data/modules.gd`, `GameData.modules`). Zwischenteil 6½, Paket 75 (Bestandsaufnahme) – Teil 1: die Kernmodule (jedes Schiff hat jeden Kernslot genau einmal: Panzerung, Triebwerk, Energieverteiler, Reaktor, Tank, Sprungantrieb, Sensoren; dazu der Drohnenhangar).
+Stand alpha 0.6.75.1, erzeugt aus den Spieldaten (`data/modules.gd`, `GameData.modules`). Zwischenteil 6½, Paket 75 (Bestandsaufnahme) – Teil 1: die Kernmodule (jedes Schiff hat jeden Kernslot genau einmal: Panzerung, Triebwerk, Energieverteiler, Reaktor, Tank, Sprungantrieb, Sensoren; dazu der Drohnenhangar).
 
 ## So entstehen die Werte
 
@@ -40,8 +40,13 @@ Die Qualität multipliziert vier Dinge: **Leistung** (alle Werte aus der Größe
 
 **Nicht** von der Qualität verändert: Resistenzen, Wendigkeit, Aufladezeit des Sprungantriebs, Sprungantrieb-Stufe. D ist die leichteste Qualität, F die schwerste; B ist so schwer wie A.
 
+### Geschwindigkeit im Schiff (seit 0.6.75.1)
+
+Geschwindigkeit = **300 km/s × √(Schub ÷ Masse ÷ 0,2883)** × Tempo-Bonus des Rumpfs × Stromversorgung. Bei 0,2883 kN Schub je Tonne fliegt ein Schiff 300 km/s; doppelter Schub macht es etwa 41 % schneller (vorher doppelt so schnell). Beschleunigung = Geschwindigkeit × 1,3; Warp-Tempo folgt der Geschwindigkeit (×0,6 bis ×1,6 bei 180–480 km/s). Die Standardausrüstungen liegen im Schnitt bei etwa 300 km/s (S 271, M 331, L 297), mit dem besten Triebwerk S ~560, M ~430, L ~325.
+
 ### Auffälligkeiten (für die Abstimmung)
 
+0. ~~Der Plasma Drive hatte in jeder Größe weniger Schub als der Ion Drive~~ – seit 0.6.75.1 rund 35 % mehr (2.500 statt 1.400 kN bei Größe 5).
 1. **Treibstoff je Sprung steigt mit der Qualität** (A verbraucht 16 % mehr als C) – er läuft wie ein Leistungswert mit; vermutlich ungewollt.
 2. **Resistenzen** der Panzerung sind bei jeder Größe und Qualität gleich (Standard 10 % kinetisch, Reflective 35 % optisch, Ablative 35 % explosiv).
 3. **Wendigkeit** des Triebwerks ist bei jeder Größe und Qualität gleich – und im Schiff hängt sie nur am Triebwerk, am Rumpf (`turn_mult`) und an der Stromversorgung, **nicht an Masse oder Schub**. Ein A-Triebwerk macht das Schiff schneller (Schub), aber nicht wendiger. Geschwindigkeit = Schub ÷ Masse; Beschleunigung und Warp-Tempo folgen der Geschwindigkeit.
@@ -199,25 +204,25 @@ Die Qualität multipliziert vier Dinge: **Leistung** (alle Werte aus der Größe
 
 | Größe | Schub (kN) | Wendigkeit (rad/s) | Masse | Strombedarf (MW) | Preis (cr) |
 | --- | --- | --- | --- | --- | --- |
-| 3 | 721 | 2.60 | 173 | 9.10 | 7950 |
-| 4 | 1047 | 2.60 | 245 | 13 | 12600 |
-| 5 | 1400 | 2.60 | 320 | 16 | 18000 |
-| 6 | 1774 | 2.60 | 398 | 20 | 24100 |
-| 7 | 2168 | 2.60 | 479 | 23 | 30840 |
-| 8 | 2579 | 2.60 | 562 | 27 | 38180 |
-| 9 | 3006 | 2.60 | 648 | 31 | 46100 |
-| 10 | 3447 | 2.60 | 735 | 34 | 54570 |
+| 3 | 1287 | 2.60 | 173 | 9.10 | 7950 |
+| 4 | 1870 | 2.60 | 245 | 13 | 12600 |
+| 5 | 2500 | 2.60 | 320 | 16 | 18000 |
+| 6 | 3169 | 2.60 | 398 | 20 | 24100 |
+| 7 | 3872 | 2.60 | 479 | 23 | 30840 |
+| 8 | 4606 | 2.60 | 562 | 27 | 38180 |
+| 9 | 5368 | 2.60 | 648 | 31 | 46100 |
+| 10 | 6156 | 2.60 | 735 | 34 | 54570 |
 
 **Nach Qualität** (Größe 5):
 
 | Qualität | Schub (kN) | Wendigkeit (rad/s) | Masse | Strombedarf (MW) | Preis (cr) |
 | --- | --- | --- | --- | --- | --- |
-| F | 1120 | 2.60 | 400 | 15 | 9900 |
-| E | 1232 | 2.60 | 352 | 15 | 12600 |
-| D | 1330 | 2.60 | 288 | 16 | 15300 |
-| C | 1400 | 2.60 | 320 | 16 | 18000 |
-| B | 1512 | 2.60 | 346 | 17 | 25200 |
-| A | 1624 | 2.60 | 346 | 17 | 36000 |
+| F | 2000 | 2.60 | 400 | 15 | 9900 |
+| E | 2200 | 2.60 | 352 | 15 | 12600 |
+| D | 2375 | 2.60 | 288 | 16 | 15300 |
+| C | 2500 | 2.60 | 320 | 16 | 18000 |
+| B | 2700 | 2.60 | 346 | 17 | 25200 |
+| A | 2900 | 2.60 | 346 | 17 | 36000 |
 
 ## Energieverteiler (distributor)
 

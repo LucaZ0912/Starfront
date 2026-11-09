@@ -315,7 +315,7 @@ const ANCHORS := {
 	# ---------------- Engines ----------------
 	"eng_chem_s": {"name": "Chemical Thruster", "slot": "engine", "size": 1, "price": 1200, "mass": 120, "power": 3, "thrust": 420, "turn": 3.5},
 	"eng_ion_s": {"name": "Ion Drive", "slot": "engine", "size": 1, "price": 5000, "mass": 90, "power": 8, "thrust": 560, "turn": 4.0},
-	"eng_plasma_m": {"name": "Plasma Drive", "slot": "engine", "size": 2, "price": 18000, "mass": 320, "power": 16, "thrust": 1400, "turn": 2.6},
+	"eng_plasma_m": {"name": "Plasma Drive", "slot": "engine", "size": 2, "price": 18000, "mass": 320, "power": 16, "thrust": 2500, "turn": 2.6},     # 0.6.75.1: was 1400 – weaker than an Ion Drive of the same size; now ~35 % above it
 	"eng_ion_m": {"name": "Ion Drive", "slot": "engine", "size": 2, "price": 24000, "mass": 260, "power": 24, "thrust": 1650, "turn": 3.0},
 	"eng_fusion_l": {"name": "Fusion Drive", "slot": "engine", "size": 3, "price": 70000, "mass": 900, "power": 40, "thrust": 2900, "turn": 1.6},
 

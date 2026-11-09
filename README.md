@@ -126,6 +126,11 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## Speed curve (0.6.75.1)
+
+- `ShipFitting._compute`: speed = `SPEED_BASE` × (thrust ÷ mass ÷ `SPEED_REF_TW`) ^ `SPEED_EXP` × speed_mult × power
+  ratio (300 km/s, 0.2883 kN/t, 0.5). Plasma Drive anchor thrust 2,500 kN at size 5.
+
 ## Package 40e (0.6.40.10)
 
 - Debug: `Commands._c_debug_p40` (`to`: rim / far / veil / fortress / battlefield / derelict / radiation / ion_storm /
