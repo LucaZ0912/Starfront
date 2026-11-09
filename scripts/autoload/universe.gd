@@ -1908,7 +1908,7 @@ func _add_resort(L: Dictionary, id: int) -> void:
 	var tier := 3 if forced else clampi(1 + int(float(sys["security"]) >= 0.6) + int(score >= 4.5), 1, 3)
 	L["stations"].append({
 		"id": "st_%d_%d" % [id, L["stations"].size()], "planet": pidx, "anchor": planet["id"], "orbit": off.length(),
-		"name": "%s – %s" % [planet["name"], RESORT_NAMES[variant]],
+		"name": "%s – %s" % [planet["name"], "Habitat Ring" if tier >= 3 else "Biosphere"],
 		"type": "resort", "tier": tier, "pos": (planet["pos"] as Vector2) + off,
 		"market": _make_market("resort", rng), "shop": _make_shop("resort", tier, rng), "shipyard": [],
 		"art": "resort_" + variant, "resort": variant,

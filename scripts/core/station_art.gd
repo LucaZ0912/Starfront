@@ -15,7 +15,8 @@ const SIZE := {1: 240, 2: 320, 3: 400}            # canvas size (art px) by tier
 const BAY_W := 46.0                               # hangar bay width / depth (art px) – an L hull is 38 x 30
 const BAY_D := 50.0
 
-enum {NONE, HULL, DARK, ACC, GLASS, SOLAR, GREEN, TANK, RUST, HANGAR, TRUSS, HOT, ICE, NEON, PANEL, ROCK, GUN, MARK, STAIN, CRYST}
+enum {NONE, HULL, DARK, ACC, GLASS, SOLAR, GREEN, TANK, RUST, HANGAR, TRUSS, HOT, ICE, NEON, PANEL, ROCK, GUN, MARK, STAIN, CRYST,
+	LAND, FOREST, WATER, TOWN, ROOF}                  # package 43: a landscape under glass
 enum {P_FLAT, P_PLATES, P_WINDOWS, P_CYL, P_SOLAR, P_TRUSS, P_HAZARD, P_ARMOR, P_BLOCK, P_RIBS, P_BAY, P_GIRDER}
 enum {D_FLAT, D_DOME, D_TANK, D_GREEN, D_DISH, D_COOL, D_HUB, D_TURRET, D_ROCK, D_HOTTOWER}
 
@@ -35,6 +36,8 @@ var turrets: Array = []   # Vector2
 var neons: Array = []     # {pos, ang, len, wid}
 var vents: Array = []     # {pos, kind ("steam" / "smoke" / "spark" / "glow"), size}
 var pads: Array = []      # package 26: landing pads {pos, radius, dir, hatch}
+var night_dir := Vector2.ZERO   # package 43: the landscape on this side lies in night (its towns lit); ZERO = all day
+var land_center := Vector2.ZERO
 
 
 ## Texture + live points for a station / haven dictionary (cached per type, tier and seed).
@@ -102,12 +105,11 @@ static func build(data: Dictionary) -> Dictionary:
 			a._hdy_yard()
 		"weapon_platform":
 			a._weapon_platform()
-		"resort_ring", "resort":
-			a._resort_ring()                      # package 43
-		"resort_star":
-			a._resort_star()
-		"resort_fun":
-			a._resort_fun()
+		"resort", "resort_ring", "resort_star", "resort_fun":
+			if a.tier >= 3:
+				a._resort_habitat()                # package 43: the great habitat ring
+			else:
+				a._resort_biosphere()              # … the smaller ones a biosphere
 		_:
 			a._trade()
 	var img := a._render()
@@ -1487,113 +1489,121 @@ func _aur_yard() -> void:
 
 # ================================================================ Package 43: resorts
 
-const RESORT_ACC := {"resort": Color(1.0, 0.55, 0.85), "resort_ring": Color(1.0, 0.55, 0.85),
-	"resort_star": Color(0.62, 0.58, 1.0), "resort_fun": Color(1.0, 0.3, 0.8)}
+const RESORT_ACC := {"resort": Color(1.0, 0.82, 0.45), "resort_ring": Color(1.0, 0.82, 0.45),
+	"resort_star": Color(1.0, 0.82, 0.45), "resort_fun": Color(1.0, 0.82, 0.45)}        # gold
 
 
-## Ring resort (at a ringed giant): a wide hotel ring with rows of lit windows, a garden dome in the hub, glass
-## observation pods all round the rim.
-func _resort_ring() -> void:
+## Package 43: a landscape under glass – meadows, forests, lakes and towns from value noise; ribs of the glass roof
+## over it. Fills an annulus (r0 … r1) or, with r0 = 0, a disc round `cen`.
+func _vn(x: float, y: float, salt: int) -> float:
+	var ix := int(floor(x))
+	var iy := int(floor(y))
+	var fx := x - ix
+	var fy := y - iy
+	fx = fx * fx * (3.0 - 2.0 * fx)
+	fy = fy * fy * (3.0 - 2.0 * fy)
+	var a := _hash(ix + salt * 131, iy - salt * 71)
+	var b := _hash(ix + 1 + salt * 131, iy - salt * 71)
+	var c2 := _hash(ix + salt * 131, iy + 1 - salt * 71)
+	var d := _hash(ix + 1 + salt * 131, iy + 1 - salt * 71)
+	return lerpf(lerpf(a, b, fx), lerpf(c2, d, fx), fy)
+
+
+func landscape(cen: Vector2, r0: float, r1: float) -> void:
+	land_center = cen
+	for y in range(int(cen.y - r1) - 1, int(cen.y + r1) + 2):
+		for x in range(int(cen.x - r1) - 1, int(cen.x + r1) + 2):
+			var dx := x + 0.5 - cen.x
+			var dy := y + 0.5 - cen.y
+			var dd := sqrt(dx * dx + dy * dy)
+			if dd > r1 or dd < r0:
+				continue
+			var big := _vn(x * 0.045, y * 0.045, 1) * 0.7 + _vn(x * 0.11, y * 0.11, 2) * 0.3
+			var town := _vn(x * 0.07, y * 0.07, 3)
+			var m := LAND
+			var h := 6.0
+			if big < 0.34:
+				m = WATER
+				h = 5.0
+			elif town > 0.66 and big > 0.4:
+				m = TOWN
+				h = 7.0 + (1.5 if _hash(x / 2, y / 2) > 0.5 else 0.0)
+				if posmod(x, 5) == 0 or posmod(y, 5) == 0:
+					m = LAND                              # streets between the blocks
+					h = 6.0
+			elif _vn(x * 0.16, y * 0.16, 4) > 0.55:
+				m = FOREST
+				h = 6.4 + _hash(x, y) * 1.2               # tree crowns
+			_put(x, y, m, h, true)
+
+
+## Ribs of the glass roof: radial ones every `step` radians, and rings.
+func roof_ribs(cen: Vector2, r0: float, r1: float, spokes: int, rings: Array) -> void:
+	for k in spokes:
+		var a := k * TAU / spokes
+		seg(cen + Vector2.from_angle(a) * maxf(r0, 2.0), cen + Vector2.from_angle(a) * r1, 0.45, ROOF, 6.9)
+	for rr in rings:
+		ring(cen, float(rr) - 0.45, float(rr) + 0.45, ROOF, 6.9, false, 96)
+
+
+## Habitat ring (the big resorts): a wide ring with a landscape under a glass roof – meadows, forests, lakes and
+## towns – walled on both edges; half of it lies in night, its towns lit. Spokes to the hub, docks at the rim.
+func _resort_habitat() -> void:
 	var center := Vector2(c, c)
-	var r0 := n * 0.34
-	var r1 := n * 0.41
-	for k in 6:
-		var a := k * TAU / 6.0
-		seg(P(n * 0.12, a), P(r0, a), 3.0, HULL, 9.0, P_WINDOWS)
-	# observation pods on short stalks, outside the ring
-	for k2 in 10:
-		var a2 := k2 * TAU / 10.0 + TAU / 20.0
-		seg(P(r1, a2), P(n * 0.455, a2), 1.6, TRUSS, 8.5)
-		disc(P(n * 0.46, a2), n * 0.03, GLASS, 12.0, D_DOME)
-	ring(center, r0, r1, HULL, 11.0, true, 40 + tier * 8)
-	ring(center, r0 - 1.0, r0 + 1.5, PANEL, 12.5, false, 64)
-	ring(center, r1 - 1.5, r1 + 1.0, PANEL, 12.5, false, 64)
-	ring(center, (r0 + r1) * 0.5 - 1.0, (r0 + r1) * 0.5 + 1.0, GLASS, 12.0, false, 96)      # the window band
-	# docking arms across the ring
-	dock_arm(0.0, n * 0.1, n * 0.48, BAY_W + 12.0, 13.0)
-	dock_arm(PI, n * 0.1, n * 0.48, BAY_W + 12.0, 13.0)
-	# the hub: a garden under glass, rimmed in gold
-	disc(center, n * 0.13, HULL, 14.0, D_HUB)
-	disc(center, n * 0.105, GREEN, 18.0, D_GREEN)
-	ring(center, n * 0.105, n * 0.12, PANEL, 19.0, false, 40)
-	for k3 in 16:
-		light(P((r0 + r1) * 0.5, k3 * TAU / 16.0 + 0.1), Color(1.0, 0.86, 0.62), 0.45)
-	for k4 in 10:
-		light(P(n * 0.46, k4 * TAU / 10.0 + TAU / 20.0), acc.lerp(Color.WHITE, 0.4), 0.8)
-	var pn := P(n * 0.25, -PI * 0.5)
-	box(pn, 0.0, 16.0, 3.0, DARK, 14.0)
-	box(pn, 0.0, 15.0, 2.0, NEON, 15.0)
-	neons.append({"pos": pn - center, "ang": 0.0, "len": 30.0, "wid": 4.0})
-	light(center, Color(1, 1, 1), 1.0, true)
-
-
-## Observatory resort (at a wondrous star): a great telescope dish, a glazed gallery all round, a long boom with a
-## glass bubble at its end for the best view, guest wings on the diagonals.
-func _resort_star() -> void:
-	var center := Vector2(c, c)
-	var view_a := -PI * 0.5
-	# the boom and its viewing bubble
-	seg(P(n * 0.12, view_a), P(n * 0.43, view_a), 3.5, TRUSS, 9.0, P_TRUSS)
-	seg(P(n * 0.12, view_a), P(n * 0.43, view_a), 1.5, HULL, 9.5)
-	disc(P(n * 0.43, view_a), n * 0.055, HULL, 11.0, D_HUB)
-	disc(P(n * 0.43, view_a), n * 0.045, GLASS, 14.0, D_DOME)
-	# guest wings on the diagonals, windows all along
+	var r0 := n * 0.26
+	var r1 := n * 0.42
+	night_dir = Vector2.from_angle(PI * 0.8)
+	# spokes and the hub
 	for k in 4:
 		var a := PI * 0.25 + k * PI * 0.5
-		box(P(n * 0.3, a), a, n * 0.1, n * 0.035, HULL, 10.0, P_WINDOWS)
-		box(P(n * 0.39, a), a + PI * 0.5, n * 0.05, n * 0.02, PANEL, 11.0)
-	# the gallery: a glazed ring
-	ring(center, n * 0.2, n * 0.25, HULL, 11.0, true, 48)
-	ring(center, n * 0.22, n * 0.235, GLASS, 12.5, false, 96)
-	dock_arm(0.0, n * 0.2, n * 0.48, BAY_W + 12.0, 12.0)
-	dock_arm(PI, n * 0.2, n * 0.48, BAY_W + 12.0, 12.0)
-	# the telescope: a great dish on the hub, turned to the star
-	disc(center, n * 0.16, HULL, 14.0, D_HUB)
-	disc(center + Vector2(0, n * 0.02), n * 0.12, PANEL, 17.0, D_DISH)
-	disc(center + Vector2(0, n * 0.02), n * 0.025, DARK, 20.0, D_FLAT)
-	for k2 in 12:
-		light(P(n * 0.225, k2 * TAU / 12.0), acc.lerp(Color.WHITE, 0.5), 0.6)
-	light(P(n * 0.43, view_a), Color(1, 1, 1), 1.2, true)
-	var pn := P(n * 0.3, PI * 0.5)
-	box(pn, 0.0, 16.0, 3.0, DARK, 13.0)
-	box(pn, 0.0, 15.0, 2.0, NEON, 14.0)
-	neons.append({"pos": pn - center, "ang": 0.0, "len": 30.0, "wid": 4.0})
-
-
-## Pleasure dome (elsewhere): an octagonal casino under a glass dome, neon on every edge, a great wheel of cabins
-## turning round it, billboards, lights everywhere.
-func _resort_fun() -> void:
-	var center := Vector2(c, c)
-	# the wheel: a thin rim on spokes, cabins all round
-	ring(center, n * 0.38, n * 0.395, TRUSS, 9.0, false, 64)
-	for k in 12:
-		var a := k * TAU / 12.0
-		seg(P(n * 0.22, a), P(n * 0.385, a), 1.2, TRUSS, 8.5)
-	for k2 in 16:
-		disc(P(n * 0.39, k2 * TAU / 16.0), n * 0.022, ACC, 10.5, D_DOME)
-	dock_arm(PI * 0.5, n * 0.18, n * 0.48, BAY_W + 12.0, 12.0)
-	dock_arm(PI * 0.5 + TAU / 3.0, n * 0.18, n * 0.48, BAY_W + 12.0, 12.0)
-	dock_arm(PI * 0.5 + 2.0 * TAU / 3.0, n * 0.18, n * 0.48, BAY_W + 12.0, 12.0)
-	# the casino: an octagon in ivory and gold, neon on every edge
-	poly(regular(center, n * 0.22, 8, PI / 8.0), HULL, 12.0, 3.0, 10)
-	poly(regular(center, n * 0.17, 8, PI / 8.0), PANEL, 14.0, 2.0, 8)
-	for k3 in 8:
-		var a3 := k3 * TAU / 8.0
-		var pe := P(n * 0.205, a3)
-		box(pe, a3 + PI * 0.5, n * 0.06, 1.6, NEON, 15.0)
-		neons.append({"pos": pe - center, "ang": a3 + PI * 0.5, "len": n * 0.12, "wid": 3.0})
-	disc(center, n * 0.11, GLASS, 18.0, D_DOME)
-	# billboards
-	for k4 in 2:
-		var a4 := PI * 0.5 + PI * 0.33 + k4 * PI * 1.34
-		var pb := P(n * 0.3, a4)
-		box(pb, a4 + PI * 0.5, 14.0, 3.0, DARK, 12.0)
-		box(pb, a4 + PI * 0.5, 13.0, 2.0, NEON, 13.0)
-		neons.append({"pos": pb - center, "ang": a4 + PI * 0.5, "len": 26.0, "wid": 4.0})
-	var cols := [Color(1.0, 0.3, 0.8), Color(0.3, 0.9, 1.0), Color(1.0, 0.85, 0.3)]
-	for k5 in 24:
-		light(P(n * 0.39, k5 * TAU / 24.0 + 0.05), cols[k5 % 3], 2.5, k5 % 4 == 0)
+		seg(P(n * 0.1, a), P(r0, a), 4.0, HULL, 9.0, P_WINDOWS)
+	dock_arm(0.0, r1 - 2.0, n * 0.49, BAY_W + 12.0, 11.0)
+	dock_arm(PI, r1 - 2.0, n * 0.49, BAY_W + 12.0, 11.0)
+	disc(center, n * 0.11, HULL, 14.0, D_HUB)
+	# the land, the roof ribs, the walls
+	landscape(center, r0 + 3.0, r1 - 3.0)
+	roof_ribs(center, r0 + 3.0, r1 - 3.0, 24, [])
+	ring(center, r0, r0 + 3.0, HULL, 11.0, false, 96)
+	ring(center, r1 - 3.0, r1, HULL, 11.0, false, 96)
+	ring(center, r1 - 1.5, r1 - 0.5, PANEL, 12.0, false, 96)
+	_town_lights(center, r0, r1)
 	light(center, Color(1, 1, 1), 1.0, true)
+
+
+## Biosphere (the smaller resorts): a great glass dome with the same landscape, half in night; a service ring round it
+## with the docks.
+func _resort_biosphere() -> void:
+	var center := Vector2(c, c)
+	var rd := n * 0.3
+	night_dir = Vector2.from_angle(PI * 0.8)
+	# the service ring and its docks
+	ring(center, rd + 4.0, rd + 12.0, HULL, 9.0, true, 32)
+	for k in 6:
+		box(P(rd + 8.0, k * TAU / 6.0 + TAU / 12.0), k * TAU / 6.0 + TAU / 12.0, 6.0, 9.0, PANEL, 10.0)
+	dock_arm(-PI * 0.5, rd + 8.0, n * 0.49, BAY_W + 12.0, 11.0)
+	if tier >= 2:
+		dock_arm(PI * 0.5, rd + 8.0, n * 0.49, BAY_W + 12.0, 11.0)
+	# the dome: land under glass, ribs like meridians, a gold rim
+	landscape(center, 0.0, rd)
+	roof_ribs(center, n * 0.03, rd, 10, [rd * 0.62])
+	disc(center, n * 0.03, ROOF, 10.0, D_FLAT)
+	ring(center, rd, rd + 4.0, PANEL, 12.0, false, 96)
+	_town_lights(center, 0.0, rd)
+
+
+## A few twinkling lights over the towns on the night side.
+func _town_lights(center: Vector2, r0: float, r1: float) -> void:
+	var made := 0
+	for t in 400:
+		if made >= 26:
+			break
+		var p := center + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(r0 + 4.0, r1 - 4.0)
+		var x := int(p.x)
+		var y := int(p.y)
+		if _m(x, y) != TOWN or (p - center).normalized().dot(night_dir) < 0.2:
+			continue
+		light(p, Color(1.0, 0.82, 0.45), 0.4 + rng.randf() * 0.5)
+		made += 1
 
 
 ## Hadrian Foundry: black and angular, red lights everywhere – an armoured wedge of a yard, its berths full of
@@ -1765,6 +1775,19 @@ func _render() -> Image:
 				tone = 0
 			var cols: Array = pal[m]
 			var col: Color = cols[tone]
+			if m >= LAND and m <= TOWN:
+				# package 43: under glass – a glint now and then; on the night side dark, the towns' windows lit
+				if posmod(x + y, 29) < 2:
+					col = col.lerp(Color(0.85, 0.95, 1.0), 0.25)
+				if night_dir != Vector2.ZERO:
+					var pdir := (Vector2(x + 0.5, y + 0.5) - land_center).normalized()
+					var nf := smoothstep(-0.12, 0.25, pdir.dot(night_dir))
+					var dark := col.darkened(0.78).lerp(Color(0.02, 0.04, 0.1), 0.35)
+					if m == TOWN and _hash(x, y + 7) < 0.62:
+						dark = Color(1.0, 0.82, 0.45) if _hash(x + 3, y) < 0.7 else Color(1.0, 0.95, 0.8)
+					col = col.lerp(dark, nf)
+				img.set_pixel(x, y, col)
+				continue
 			if m == GLASS or m == NEON or m == HOT:
 				col = cols[1] if (x * 7 + y * 13) % 5 != 0 else cols[2]
 			elif _hash(x, y) < 0.03 and tone > 0 and m != TRUSS:
@@ -1842,5 +1865,10 @@ func _palettes() -> Dictionary:
 		ICE: [Color(0.55, 0.7, 0.8), Color(0.75, 0.88, 0.96), Color(0.92, 0.98, 1.0)],
 		NEON: [acc, acc.lerp(Color.WHITE, 0.35), Color(1.0, 0.95, 1.0)],
 		ROCK: [Color(0.25, 0.2, 0.17), Color(0.42, 0.35, 0.29), Color(0.6, 0.52, 0.44)],
+		LAND: [Color(0.18, 0.38, 0.15), Color(0.32, 0.58, 0.24), Color(0.52, 0.76, 0.36)],
+		FOREST: [Color(0.05, 0.2, 0.08), Color(0.1, 0.33, 0.13), Color(0.2, 0.47, 0.2)],
+		WATER: [Color(0.06, 0.2, 0.42), Color(0.13, 0.36, 0.62), Color(0.42, 0.68, 0.92)],
+		TOWN: [Color(0.5, 0.47, 0.44), Color(0.74, 0.72, 0.68), Color(0.93, 0.92, 0.88)],
+		ROOF: [Color(0.36, 0.5, 0.58), Color(0.52, 0.68, 0.76), Color(0.7, 0.84, 0.9)],
 		GUN: [Color(0.2, 0.21, 0.24), Color(0.34, 0.36, 0.4), Color(0.5, 0.52, 0.58)],
 	}

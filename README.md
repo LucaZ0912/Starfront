@@ -121,7 +121,9 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - `Universe._add_resort` (own RNG, after the waystation): `resort_appeal` – beautiful worlds, a ringed giant, a
   wondrous star, security, capital – against `RESORT_SCORE`; always in `RESORT_SPECIALS`. Variant (`station["resort"]`,
   art `resort_ring` / `resort_star` / `resort_fun`) from what is there.
-- `StationArt._resort_ring / _resort_star / _resort_fun` (ivory and gold, `RESORT_ACC`).
+- `StationArt._resort_habitat` (tier 3) / `_resort_biosphere`: `landscape()` paints meadows, forests, lakes and towns
+  from value noise (materials LAND, FOREST, WATER, TOWN), `roof_ribs()` the glass roof (ROOF); `night_dir` puts half
+  of it in night in `_render` (towns lit).
 - `scripts/core/tourism.gd` (`Tourism`): `sights(sid)` – worlds, rings, stars, landmarks (`SIGHT_ARTS`) with appeal;
   `resorts(sid)`.
 

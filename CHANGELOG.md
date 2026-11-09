@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.43.2 – 2026-11-09
+
+- Resorts redrawn: the big ones (tier 3) are **habitat rings** – a wide ring with a landscape under a glass roof:
+  meadows, forests, lakes and towns, walled on both edges, half of it in night with the towns' windows lit and lights
+  twinkling over them; spokes to the hub, docks at the rim. The smaller ones are **biospheres** – a great glass dome
+  over the same landscape, half in night, with a service ring and docks. Names: "… – Habitat Ring" / "… – Biosphere".
+  (The ring resort, observatory and pleasure dome looks are gone.)
+
 ## alpha 0.6.43.1 – 2026-11-09
 
 **Package 43a: resorts and sights.** A new game is needed.

@@ -7114,22 +7114,24 @@ func _test_resorts43(_view: SystemView) -> void:
 			n += 1
 			variants[String(st["resort"])] = true
 			market_ok = market_ok and Market.role(st, "souvenirs") == "produce" and Market.role(st, "luxury_goods") == "consume" and float(Economy.of(sid)["scores"].get("tourism", 0.0)) >= 5.0
-			if String(st["resort"]) == "star":
-				var has_star := false
-				for sg in Tourism.sights(sid):
-					has_star = has_star or String(sg["kind"]) == "star"
-				sight_ok = sight_ok and has_star
+			sight_ok = sight_ok and String(st["name"]).ends_with("Habitat Ring" if int(st["tier"]) >= 3 else "Biosphere")
 	var spec_ok := true
 	for sp in U.RESORT_SPECIALS:
 		var ssid: int = U.special_system(sp)
 		if ssid >= 0:
 			spec_ok = spec_ok and not Tourism.resorts(ssid).is_empty()
 	check(GameData.station_types.has("resort") and n >= 4 and n <= 24 and spec_ok and market_ok and sight_ok,
-		"43a: %d resorts in the cluster (%s), the capitals and Perlmutt among them; they make souvenirs and want luxuries; observatories stand at wondrous stars" % [n, ", ".join(PackedStringArray(variants.keys()))])
+		"43a: %d resorts in the cluster, the capitals and Perlmutt among them; they make souvenirs and want luxuries; the big ones are habitat rings, the smaller biospheres" % n)
 	var art_ok := true
-	for a in ["resort_ring", "resort_star", "resort_fun"]:
-		var built: Dictionary = StationArt.build({"art": a, "type": "resort", "tier": 2, "seed": 43})
-		art_ok = art_ok and (built["texture"] as Texture2D).get_width() > 200 and not (built["bays"] as Array).is_empty() and not (built["neons"] as Array).is_empty()
+	for tr in [1, 2, 3]:
+		var built: Dictionary = StationArt.build({"art": "resort", "type": "resort", "tier": tr, "seed": 43})
+		var img: Image = (built["texture"] as Texture2D).get_image()
+		var green := 0
+		for yy in range(0, img.get_height(), 4):
+			for xx in range(0, img.get_width(), 4):
+				var px: Color = img.get_pixel(xx, yy)
+				green += 1 if px.a > 0.5 and px.g > px.r * 1.25 and px.g > px.b else 0
+		art_ok = art_ok and img.get_width() > 200 and not (built["bays"] as Array).is_empty() and green > 40 and not (built["lights"] as Array).is_empty()
 	var total_sights := 0
 	for sy2 in U.systems:
 		total_sights += Tourism.sights(int(sy2["id"])).size()
@@ -7139,7 +7141,7 @@ func _test_resorts43(_view: SystemView) -> void:
 		for sg2 in Tourism.sights(lf):
 			landmark = landmark or String(sg2["kind"]) == "landmark"
 	check(art_ok and total_sights > U.systems.size() and landmark,
-		"43a: three looks – ring resort, observatory, pleasure dome – each with docking bays and neon; %d sights in the cluster (worlds, rings, stars, landmarks such as The Vote)" % total_sights)
+		"43a: habitat ring and biosphere – a landscape under glass (green), docking bays, town lights on the night side; %d sights in the cluster (worlds, rings, stars, landmarks such as The Vote)" % total_sights)
 
 
 func _test_mining41(view: SystemView) -> void:
