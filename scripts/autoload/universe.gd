@@ -1548,26 +1548,34 @@ func to_dict() -> Dictionary:
 	var changed := {}
 	for id in layouts:
 		var L: Dictionary = layouts[id]
+		# review 6 W1: only what differs from the generated layout (mined rock, broken rock, colossi dug into, anomalies
+		# scanned) – the warmup creates the layouts of every inhabited system, and they all used to be written in full
 		var ast := {}
 		var gone := {}
 		for a in L["asteroids"]:
-			ast[a["id"]] = a["amount"]
+			if absf(float(a["amount"]) - float(a.get("amount0", a["amount"]))) > 0.001:
+				ast[a["id"]] = a["amount"]
 			if a.has("gone"):
 				gone[a["id"]] = float(a.get("respawn_at", 0.0))
 		var cols := {}
 		var deep := {}
 		for co in L.get("colossi", []):
-			cols[co["id"]] = co.get("amount", 0.0)
-			if co.has("deep_amount"):
+			if absf(float(co.get("amount", 0.0)) - float(co.get("amount0", co.get("amount", 0.0)))) > 0.001:
+				cols[co["id"]] = co.get("amount", 0.0)
+			if co.has("deep_amount") and absf(float(co["deep_amount"]) - float(co.get("deep0", co["deep_amount"]))) > 0.001:
 				deep[co["id"]] = co["deep_amount"]                  # package 41
 		var an := {}
 		for x in L["anomalies"]:
-			an[x["id"]] = {"scan": x["scan"], "revealed": x["revealed"], "analysis": x["analysis"], "done": x["done"]}
+			var touched: bool = float(x["analysis"]) > 0.0 or x["done"] or (not x.get("veil", false) and (float(x["scan"]) > 0.0 or x["revealed"]))
+			if touched:
+				an[x["id"]] = {"scan": x["scan"], "revealed": x["revealed"], "analysis": x["analysis"], "done": x["done"]}
 		var salv := {}
 		for ws in L.get("sites", []):
 			for w in ws["wrecks"]:
 				if w.get("salvaged", false):
 					salv[w["id"]] = true
+		if ast.is_empty() and an.is_empty() and gone.is_empty() and cols.is_empty() and deep.is_empty() and salv.is_empty():
+			continue
 		changed[id] = {"asteroids": ast, "anomalies": an, "gone": gone, "colossi": cols, "deep": deep, "salvaged": salv}
 	return {"seed": seed_value, "version": GALAXY_VERSION, "layouts": changed, "orbits": orbit_phase.duplicate()}
 
@@ -1579,7 +1587,7 @@ func from_dict(d: Dictionary) -> void:
 	var changed: Dictionary = d.get("layouts", {})
 	for id in changed:
 		var L := get_layout(int(id))
-		var ast: Dictionary = changed[id]["asteroids"]
+		var ast: Dictionary = changed[id].get("asteroids", {})
 		var gone: Dictionary = changed[id].get("gone", {})
 		for a in L["asteroids"]:
 			if ast.has(a["id"]):
@@ -1594,7 +1602,7 @@ func from_dict(d: Dictionary) -> void:
 				co["amount"] = cols[co["id"]]
 			if deep.has(co["id"]):
 				co["deep_amount"] = deep[co["id"]]
-		var an: Dictionary = changed[id]["anomalies"]
+		var an: Dictionary = changed[id].get("anomalies", {})
 		for x in L["anomalies"]:
 			if an.has(x["id"]):
 				x.merge(an[x["id"]], true)
@@ -1911,6 +1919,13 @@ func _place_orbits(L: Dictionary, sid: int) -> void:
 			keep_off.append([f["pos"], float(f["radius"]) + 15000.0])
 	for hv in L.get("havens", []):
 		keep_off.append([hv["pos"], 40000.0])
+	for ws in L.get("sites", []):                       # review 6 M4: wreck sites, hazards, anomalies too
+		keep_off.append([ws["pos"], float(ws["radius"]) + 20000.0])
+	for hz in L.get("hazards", []):
+		if String(hz.get("field", "")) == "" and String(hz["id"]) != "hz_rad_star":
+			keep_off.append([hz["pos"], float(hz["radius"]) + 15000.0])
+	for an0 in L.get("anomalies", []):
+		keep_off.append([an0["pos"], 15000.0])
 	for st in L["stations"]:
 		if String(st.get("anchor", "")) == "":
 			keep_off.append([st["pos"], 40000.0])
@@ -2113,6 +2128,9 @@ func _generate_layout(id: int) -> Dictionary:
 	_wreck_sites(L, id, used)                         # package 40c: old battlefields and pre-Severance derelicts
 	_veil_rifts(L, id, used)                          # package 40c: tears at the edge of the Veil
 	_hazards(L, id, used)                             # package 40d: radiation, ion storms, old minefields
+	for co0 in L.get("colossi", []):
+		if co0.has("deep_amount"):
+			co0["deep0"] = co0["deep_amount"]             # review 6 W1: what it held when made (saves only the change)
 	_place_orbits(L, id)                              # package 36: planets and moons on their orbits
 	return L
 
@@ -2224,9 +2242,13 @@ func _derelict(L: Dictionary, id: int, used: Array, rng: RandomNumberGenerator) 
 	var ship: String = RELIC_SHIPS[rng.randi() % RELIC_SHIPS.size()]
 	var site := {"id": "site_r", "kind": "derelict", "pos": pos, "radius": 4200.0, "ship": ship,
 		"name": "Pre-Severance Derelict – %s" % ship, "seed": rng.randi(), "wrecks": []}
-	var loot := {"old_tech": rng.randi_range(3, 6), "research_data": rng.randi_range(4, 8), "salvage": rng.randi_range(15, 25)}
-	if rng.randf() < 0.4:
-		loot["earth_relic"] = 1                    # for the Cathedral of Return
+	var loot := {}
+	var has_relic := rng.randf() < 0.4
+	if has_relic:
+		loot["earth_relic"] = 1                    # for the Cathedral of Return – first, so a full hold never loses it (review 6 W2)
+	loot["old_tech"] = rng.randi_range(3, 6)
+	loot["research_data"] = rng.randi_range(4, 8)
+	loot["salvage"] = rng.randi_range(15, 25)
 	site["wrecks"].append({"id": "sr_%d_0" % id, "relic": true, "name": ship, "pos": pos, "rot": rng.randf_range(-0.5, 0.5),
 		"seed": rng.randi(), "loot": loot})
 	for i in rng.randi_range(2, 4):                # pieces that broke off
@@ -2332,8 +2354,9 @@ func _hazards(L: Dictionary, id: int, used: Array) -> void:
 		var pos := _free_spot(rng, used, 400000.0 * SCALE, 1800000.0 * SCALE)
 		var r := rng.randf_range(30000.0, 60000.0)
 		var field := ""
-		if not L["fields"].is_empty() and rng.randf() < 0.6:
-			var f: Dictionary = L["fields"][rng.randi() % L["fields"].size()]
+		var still: Array = L["fields"].filter(func(x): return not x.has("moon"))      # review 6 M1: moon fields move
+		if not still.is_empty() and rng.randf() < 0.6:
+			var f: Dictionary = still[rng.randi() % still.size()]
 			pos = f["pos"]
 			r = float(f["radius"]) * 1.8
 			field = String(f["id"])

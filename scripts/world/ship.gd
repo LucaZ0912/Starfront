@@ -1111,7 +1111,7 @@ func boost_error() -> String:
 	if dying or is_docked():
 		return "Docked."
 	if in_warp() or String(order.get("type", "")) in ["warp", "warping", "docking", "undocking"]:
-		return "Not in warp."
+		return "Not while warping or docking."
 	if boost_t > 0.0:
 		return "Thrust already burning."
 	if boost_cd > 0.0:

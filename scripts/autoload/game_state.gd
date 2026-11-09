@@ -204,6 +204,9 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	permits.clear()
 	research_data = 0
 	fortress_broken.clear()
+	misjumps.clear()                             # review 6 K1
+	pending_arrival = {}
+	debug_misjump = false
 	if test_system:
 		notorious.reset()
 	else:
@@ -521,6 +524,9 @@ func to_dict() -> Dictionary:
 
 
 func from_dict(d: Dictionary) -> void:
+	misjumps.clear()                             # review 6 K1
+	pending_arrival = {}
+	debug_misjump = false
 	if convoys != null:
 		convoys.reset()
 	pilot_name = d["pilot_name"]
@@ -1730,7 +1736,14 @@ func _update_faction_jobs(delta: float) -> void:
 				if m.get("ballot", false) and play_time >= float(m.get("expires", INF)):     # package 39a
 					var cf := active()
 					if cf != null:
-						cf.remove_cargo("sealed_cargo", float(m["amount"]))
+						# review 6 K4: only the urns of this contract – other couriers' sealed crates stay aboard
+						var others := 0.0
+						for m2 in missions:
+							if m2 != m and String(m2.get("item", "")) == "sealed_cargo" and int(m2.get("progress", 0)) < 1:
+								others += float(m2.get("amount", 0.0))
+						var extra := float(cf.cargo.get("sealed_cargo", 0.0)) - others
+						if extra > 0.0:
+							cf.remove_cargo("sealed_cargo", minf(extra, float(m["amount"])))
 					fail_mission(m, "the polls closed before the ballots arrived")
 			"hunt":
 				if int(m["progress"]) < 1:
@@ -2032,7 +2045,7 @@ func _misjump(f: ShipFitting, from_id: int) -> void:
 	var dmg := float(s["structure_max"]) * MISJUMP_DAMAGE
 	var a := minf(f.armor, dmg)
 	f.armor -= a
-	f.structure = maxf(f.structure - (dmg - a), float(s["structure_max"]) * 0.25)
+	f.structure = maxf(f.structure - (dmg - a), minf(f.structure, float(s["structure_max"]) * 0.25))      # review 6 M3: never heals
 	log_msg("The field of the gate at %s broke down mid-jump – %s is flung out somewhere in %s and took damage." % [Universe.systems[from_id]["name"], f.ship_name, Universe.systems[f.system_id]["name"]], COL_BAD)
 	if f.uid == active_uid:
 		pending_arrival = {"kind": "misjump", "from": from_id}

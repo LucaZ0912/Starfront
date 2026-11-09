@@ -281,12 +281,3 @@ static func sold(station: Dictionary, cid: String, n: float) -> void:
 	set_stock(station, cid, stock(station, cid) + n)
 
 
-## Writes the current prices into station["market"] (for everything that reads the old table).
-static func sync(station: Dictionary) -> void:
-	var mk: Dictionary = station.get("market", {})
-	for cid in GameData.commodities:
-		if not on_market(cid):
-			mk.erase(cid)
-			continue
-		mk[cid] = {"buy": buy_price(station, cid), "sell": int(round(sell_price(station, cid)))}
-	station["market"] = mk

@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.75.4 – 2026-11-09
+
+**Fixes from the code review of Teil 6** (`reviews/teil6_review.md`) – all twelve findings.
+- **W1 – save size:** the save held every asteroid of every system ever generated (the warmup makes all inhabited ones):
+  3.6 MB after 17 minutes, rewritten after every jump. Now only what differs from the generated layout is saved
+  (mined or broken rock, colossi dug into, anomalies scanned, salvaged wrecks); untouched systems are left out –
+  about 70 KB after loading a new game.
+- **W2 – fixed wrecks:** a battlefield hulk or derelict whose loot did not fit into the hold vanished with the rest –
+  the Relic of Earth too. Now it stays (salvage again after making room), and things wanted by a contract or a
+  blessing come aboard first.
+- **M1:** a radiation zone is laid only over fields that stay put (moon fields move with their moon).
+- **M2:** a coronal mass ejection no longer sets off the old minefields.
+- **M3:** a misjump no longer repairs a battered hull up to 25 %.
+- **M4:** planets and moons keep clear of wreck sites, hazards and anomalies when their orbits are rolled.
+- **Small:** misjump state cleared on a new game and on loading; the thrust message reads "Not while warping or
+  docking."; a fortress garrison has no cowards, and one that fled far away no longer holds the fortress; when the
+  polls close only that contract's ballot crates are taken, not other couriers' sealed cargo; the unused price table
+  (`Market.sync`) is gone; the arrival animation's timer belongs to the view.
+
 ## alpha 0.6.75.3 – 2026-11-09
 
 **Fix: crash when a target died ("Left operand of 'is' is a previously freed instance").** Reported by Luz: attacking

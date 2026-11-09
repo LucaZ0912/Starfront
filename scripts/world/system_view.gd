@@ -204,7 +204,7 @@ func _update_cme(delta: float) -> void:
 				_cme_hit(n, d, star_r)
 	# 0.6.37.2: mines the shockwave passes go off
 	for m in get_tree().get_nodes_in_group("mines"):
-		if is_instance_valid(m) and not hit.has(m.get_instance_id()) and (m.position as Vector2).length() <= r:
+		if is_instance_valid(m) and m.faction != "derelict" and not hit.has(m.get_instance_id()) and (m.position as Vector2).length() <= r:     # review 6 M2
 			hit[m.get_instance_id()] = true
 			m.explode.call_deferred()
 	if r - CME_BAND > Universe.SYSTEM_RADIUS * 1.05:
@@ -828,7 +828,13 @@ func play_arrival(a: Dictionary) -> void:
 			player.position = g0.position + dir0 * g0.radius * 0.3      # waiting in the gate until the tunnel fades
 			player.heading = dir0.angle()
 			player.velocity = Vector2.ZERO
-	get_tree().create_timer(ARRIVAL_DELAY).timeout.connect(_arrival_now.bind(a))
+	var tm := Timer.new()                       # review 6 K6: the view's own timer – it goes with the view
+	tm.one_shot = true
+	tm.wait_time = ARRIVAL_DELAY
+	add_child(tm)
+	tm.timeout.connect(_arrival_now.bind(a))
+	tm.timeout.connect(tm.queue_free)
+	tm.start()
 
 
 func _arrival_now(a: Dictionary) -> void:
@@ -3875,7 +3881,12 @@ func _spawn_hazards() -> void:
 			continue
 		for i in randi_range(GARRISON.x, GARRISON.y):
 			var pos: Vector2 = hv.position + Vector2.from_angle(randf() * TAU) * randf_range(3000.0, 7000.0)
-			var s := spawn_npc(String(ArchData.pick(0.0)[1]), pos, "pirate", String(hv.data.get("faction", "")))
+			var pk: Array = ArchData.pick(0.0)
+			for tries in 8:
+				if String(GameData.presets[String(pk[1])].get("archetype", "")) != "coward":
+					break
+				pk = ArchData.pick(0.0)                   # review 6 K3: a garrison holds its ground
+			var s := spawn_npc(String(pk[1]), pos, "pirate", String(hv.data.get("faction", "")))
 			s.home = hv.position
 			s.set_meta("garrison", String(hv.data["id"]))
 			_garrison.append(s)
@@ -3887,9 +3898,13 @@ func _garrison_lost(ship: Ship, killer) -> void:
 	_garrison.erase(ship)
 	if killer != null and is_instance_valid(killer) and killer is Ship and (killer.faction == "player" or killer.wingman_id >= 0 or killer.get("carrier") == player):
 		_garrison_by_player += 1
+	var fort_pos := Vector2.INF
+	for h0 in havens:
+		if is_instance_valid(h0) and String(h0.data["id"]) == String(ship.get_meta("garrison")):
+			fort_pos = h0.position
 	for g in _garrison:
-		if is_instance_valid(g) and not g.dying:
-			return
+		if is_instance_valid(g) and not g.dying and (fort_pos == Vector2.INF or g.position.distance_to(fort_pos) < 60000.0):
+			return                                    # review 6 K3: one that fled far away no longer holds the fortress
 	if _garrison_by_player <= 0:
 		return
 	var hv = null
@@ -4430,17 +4445,32 @@ func complete_salvage(node: Celestial, ship: Ship) -> void:
 				cands.append(m)
 		if not cands.is_empty():
 			node.data["loot"]["mod:" + String(cands[randi() % cands.size()])] = 1      # package 40c: an old module, still whole
-	if node.data.has("hulk") or node.data.get("relic", false) or String(node.data.get("id", "")).begins_with("sr_"):
-		node.data["salvaged"] = true                   # package 40c: a fixed wreck – gone for good
-		if ship.faction == "player":
-			GameState.codex.event("relic" if String(node.data.get("id", "")).begins_with("sr_") else "battlefield")
-	for item in node.data["loot"].keys():
+	var fixed: bool = node.data.has("hulk") or node.data.get("relic", false) or String(node.data.get("id", "")).begins_with("sr_")
+	if fixed and ship.faction == "player":
+		GameState.codex.event("relic" if String(node.data.get("id", "")).begins_with("sr_") else "battlefield")
+	# review 6 W2: things wanted by a contract or a blessing come aboard first
+	var keys: Array = node.data["loot"].keys()
+	keys.sort_custom(func(x, y): return int(String(GameData.commodities.get(x, {}).get("category", "")) == "mission") > int(String(GameData.commodities.get(y, {}).get("category", "")) == "mission"))
+	var left := 0.0
+	for item in keys:
 		var n := float(node.data["loot"][item])
 		var added := ship.fit.add_cargo(item, n)
 		if added > 0.0:
 			got.append("%s ×%d" % [GameData.item_name(item), int(added)])
 		node.data["loot"][item] = n - added
+		left += maxf(0.0, n - added)
 	GameState.log_msg("%s salvaged: %s" % [ship.display_name(), ", ".join(PackedStringArray(got)) if not got.is_empty() else "nothing (cargo hold full)"], GameState.COL_GOOD)
+	if fixed and left > 0.001:
+		# review 6 W2: a fixed wreck with loot left stays – make room and salvage it again
+		node.data["salvage"] = 0.0
+		for k2 in node.data["loot"].keys():
+			if float(node.data["loot"][k2]) <= 0.001:
+				node.data["loot"].erase(k2)
+		if ship.faction == "player":
+			GameState.log_msg("The cargo hold is full – the rest stays in the %s. Make room and salvage it again." % node.data.get("name", "wreck"), GameState.COL_WARN)
+		return
+	if fixed:
+		node.data["salvaged"] = true                   # package 40c: a fixed wreck – gone for good
 	celestials.erase(node)
 	by_id.erase(node.data.get("id", ""))
 	node.queue_free()

@@ -601,6 +601,7 @@ func _process(delta: float) -> void:
 				_test_wards(view)
 				_test_p40e(view)
 				_test_boost(view)
+				_test_review6(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -826,8 +827,8 @@ func _test_station(sp: StationUI) -> void:
 	# Market via commands
 	var c0 := GameState.credits
 	var item := ""
-	for cid in station["market"]:
-		if int(station["market"][cid]["buy"]) > 0 and GameData.is_tradeable(cid):
+	for cid in GameData.commodities:
+		if Market.buy_price(station, cid) > 0 and GameData.is_tradeable(cid):
 			item = cid
 			break
 	check(Commands.execute({"type": "market_buy", "item": item, "amount": 2}) == "" and GameState.credits < c0, "market_buy %s" % item)
@@ -7556,6 +7557,51 @@ func _test_boost(view: SystemView) -> void:
 	var key_ok: bool = Keybinds.key_text("boost") != "" and InputMap.has_action("boost")
 	check(ok_fire and cost_ok and mult_ok and again != "" and cd_err.contains("recharging") and key_ok and pl.NPC_BOOST_COOLDOWN > pl.BOOST_COOLDOWN,
 		"0.6.75.2: thrust burst – ×%.1f speed for %.1f s, a fifth of the capacitor, %d s to recharge (NPCs %d s, and only now and then); key %s" % [pl.BOOST_MULT, pl.BOOST_TIME, int(pl.BOOST_COOLDOWN), int(pl.NPC_BOOST_COOLDOWN), Keybinds.key_text("boost")])
+
+
+## 0.6.75.4: fixes from the code review of Teil 6.
+func _test_review6(view: SystemView) -> void:
+	var U = Universe
+	# W1: an untouched layout is not saved; one mined rock is
+	var far_sid := -1
+	for sy in U.systems:
+		if sy.get("outer", false) and int(sy["id"]) != GameState.current_system:
+			far_sid = int(sy["id"])
+			break
+	U.layouts.erase(far_sid)                           # made afresh (earlier groups may have made every layout)
+	var L: Dictionary = U.get_layout(far_sid)
+	var clean: bool = not U.to_dict()["layouts"].has(far_sid)
+	var a0: Dictionary = L["asteroids"][0]
+	var keep := float(a0["amount"])
+	a0["amount"] = keep * 0.5
+	var mined: Dictionary = U.to_dict()["layouts"].get(far_sid, {})
+	var one: bool = (mined.get("asteroids", {}) as Dictionary).size() == 1
+	a0["amount"] = keep
+	check(far_sid >= 0 and clean and one, "review 6 W1: the save holds only what changed – an untouched system nothing, a mined rock just itself")
+	# W2: a fixed wreck with loot left over stays (the relic comes aboard first)
+	var pl: Ship = view.player
+	var cargo_keep: Dictionary = pl.fit.cargo.duplicate()
+	var free := pl.fit.cargo_free()
+	pl.fit.add_cargo("salvage", maxf(0.0, free - GameData.item_volume("earth_relic") - 0.01))
+	var w := view._add_celestial("wreck", {"id": "sr_test_0", "relic": true, "name": "Test Derelict", "pos": pl.position + Vector2(300, 0),
+		"seed": 5, "loot": {"salvage": 50, "earth_relic": 1}, "salvage": 100.0, "life": 1.0e12})
+	view.complete_salvage(w, pl)
+	var relic_in: bool = float(pl.fit.cargo.get("earth_relic", 0.0)) >= 1.0
+	var stays: bool = is_instance_valid(w) and not w.is_queued_for_deletion() and not w.data.get("salvaged", false) and float(w.data["loot"].get("salvage", 0.0)) > 0.0
+	view.celestials.erase(w)
+	w.queue_free()
+	pl.fit.cargo = cargo_keep
+	check(relic_in and stays, "review 6 W2: a fixed wreck keeps what a full hold could not take – the Relic of Earth comes aboard first")
+	# M3: a misjump never heals
+	var f2 := GameState.create_from_preset("std_mule", "player")
+	var s2 := f2.stats()
+	f2.system_id = int(U.systems[far_sid]["links"].keys()[0])
+	f2.armor = 0.0
+	f2.structure = float(s2["structure_max"]) * 0.05
+	var keep_pa: Dictionary = GameState.pending_arrival.duplicate()
+	GameState._misjump(f2, far_sid)
+	GameState.pending_arrival = keep_pa
+	check(f2.structure <= float(s2["structure_max"]) * 0.05 + 0.01 and f2.structure > 0.0, "review 6 M3: a misjump with a battered hull does not repair it (%.0f %%)" % (f2.structure / float(s2["structure_max"]) * 100.0))
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.
