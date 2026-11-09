@@ -165,7 +165,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   frames 0 stand, 1–2 walk, 3 sit (`HIP_SIT`).
 - 0.7.49.12: seats in `ObjArt` measured from the footprint's bottom (seat top ~7 px = the figures' hips); `bench_back`
   (the front backrest of a bench whose sitters face away, added by `DeckGen._seat`); objects may carry `sort_dy`
-  (tiles) – sorted that much lower but drawn in the same place (in front of a sitter).; `texture()` renders floors and walls once.
+  (tiles) – sorted that much lower but drawn in the same place (in front of a sitter).
+- 0.7.49.13: the bartender – `GroundView.open_bartender()` (sitting at a stool or E at the bar zone), `DRINKS`,
+  `BAR_TALK`, `_order` (credits, `Walker.drink_t` animation, `GameState.pilot["alcohol"]`/`["alcohol_t"]` for a later
+  debuff); `StationUI.on_foot` (set by `main._on_deck_use`: only the service, *Back to the deck*, no concourse; the
+  station hotkey is ignored while `main.ground` exists); `DeckGen.hangar_no(station, uid)`, `GroundView._hangar_uid` /
+  `_hangar_stale()` / `on_service_closed()` (after a ship swap: the toast, the lift to the new hangar).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

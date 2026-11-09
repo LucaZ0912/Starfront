@@ -13,6 +13,8 @@ const ScanlineShader = preload("res://shaders/scanlines.gdshader")
 const FactionData = preload("res://data/factions.gd")
 
 signal walk_requested                 # package 49: get out and walk the station's deck
+var on_foot := false                  # 0.7.49.13: opened from the deck – only the service, closing goes back on foot
+var _head_btns: Array = []
 
 var station: Dictionary = {}
 var view: SystemView
@@ -70,9 +72,11 @@ func _ready() -> void:
 	head.add_child(UI.spacer())
 	credits_label = UI.label("", 18, UI.GOLD)
 	head.add_child(credits_label)
-	head.add_child(UI.button("Ship [%s]" % Keybinds.key_text("ship_menu"), func(): ship_menu_requested.emit()))
-	head.add_child(UI.button("Walk the deck", func(): walk_requested.emit()))      # package 49
-	head.add_child(UI.button("Undock", undock))
+	_head_btns.append(UI.button("Ship [%s]" % Keybinds.key_text("ship_menu"), func(): ship_menu_requested.emit()))
+	_head_btns.append(UI.button("Walk the deck", func(): walk_requested.emit()))      # package 49
+	_head_btns.append(UI.button("Undock", undock))
+	for hb in _head_btns:
+		head.add_child(hb)
 	head.add_child(UI.button("Close [%s]" % Keybinds.key_text("menu_back"), close))
 	var line := ColorRect.new()
 	line.color = Color(UI.NEON_PINK, 0.6)
@@ -92,6 +96,8 @@ func open(p_station: Dictionary, p_view: SystemView) -> void:
 	Audio.play("ui_open", "station menu")
 	current_service = ""
 	_update_header()
+	for hb in _head_btns:
+		hb.visible = not on_foot
 	show_concourse(true)
 	# Intro: window fades/slides in
 	win.modulate.a = 0.0
@@ -215,6 +221,9 @@ var concourse_tiles := 0          # tiles built in the last concourse (smoke tes
 ## state and the ship services in the middle, the station (faction, economy, balance) and its services on
 ## the right. Long tiles with icons.
 func show_concourse(animate: bool = false) -> void:
+	if on_foot and visible and current_service != "":
+		close()                                        # 0.7.49.13: on foot there is no concourse – back to the deck
+		return
 	current_service = ""
 	_panel = null
 	crumb_label.text = "STATION CONCOURSE"
@@ -665,7 +674,10 @@ func open_service(svc_id: String) -> void:
 	body.add_child(banner)
 	var bh := UI.hbox(14)
 	banner.add_child(bh)
-	bh.add_child(UI.button("‹ Concourse", func(): show_concourse(true)))
+	if on_foot:
+		bh.add_child(UI.button("‹ Back to the deck", close))
+	else:
+		bh.add_child(UI.button("‹ Concourse", func(): show_concourse(true)))
 	bh.add_child(UI.icon(PixelArt.icon_texture(svc["icon"]), 40))
 	var bv := UI.vbox(0)
 	bh.add_child(bv)

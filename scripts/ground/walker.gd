@@ -17,6 +17,9 @@ var npc := false
 var marker := ""                   # "!" over someone you can talk to
 var stays := false                 # keeps its place (shopkeeper, bartender)
 var leave_to := Vector2.INF        # walks there and is gone (hired crew off to the lift)
+var drink_t := 0.0                 # 0.7.49.13: seconds left of a drink (the glass goes up to the mouth and down)
+var drink_col := Color(0.95, 0.7, 0.25)
+const DRINK_TIME := 3.2
 var _t := 0.0
 var _walk := 0.0
 var _goal := Vector2.INF
@@ -65,6 +68,7 @@ func step(d: Vector2, delta: float, speed_mult: float = 1.0) -> bool:
 
 func _process(delta: float) -> void:
 	_t += delta
+	drink_t = maxf(0.0, drink_t - delta)
 	if leave_to != Vector2.INF:
 		if _path.is_empty():
 			_path = map.path(pos, leave_to)
@@ -142,6 +146,21 @@ func _draw() -> void:
 		draw_texture_rect(st, Rect2(Vector2(-size.x * 0.5, -size.y - SIT_LIFT * s), size), false)
 	else:
 		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
+	if drink_t > 0.0:
+		# the glass: from the hand up to the mouth, a sip, back down
+		var p := 1.0 - drink_t / DRINK_TIME
+		var up := clampf(sin(p * PI) * 1.4, 0.0, 1.0)
+		var cs := ChibiArt.CHAR_SCALE
+		var lift := SIT_LIFT * s if sitting else -bob * s
+		var hand_y := -(ChibiArt.H - 31) * cs - lift if sitting else -(ChibiArt.H - 24) * cs
+		var mouth_y := -(ChibiArt.H - 14) * cs - lift if sitting else -(ChibiArt.H - 6) * cs
+		var gx := (-6.0 if dir == 2 else 5.0) * cs
+		if dir == 3:
+			gx = 4.0 * cs
+		var gy := lerpf(hand_y, mouth_y, up)
+		draw_rect(Rect2(Vector2(gx - 3, gy - 8), Vector2(6, 9)), Color(0.06, 0.05, 0.08))
+		draw_rect(Rect2(Vector2(gx - 2, gy - 7), Vector2(4, 7)), drink_col)
+		draw_rect(Rect2(Vector2(gx - 2, gy - 7), Vector2(4, 2)), Color(0.95, 0.95, 0.9))
 	if marker != "":
 		var y0 := -size.y - 10.0 + sin(_t * 3.0) * 3.0
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(1.0, 0.85, 0.35))

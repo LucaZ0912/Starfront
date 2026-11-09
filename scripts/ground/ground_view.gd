@@ -51,6 +51,8 @@ var _sys := -1
 var _lift_menu: Control = null
 var _ship_spr: Sprite2D
 var talk: DialogueView = null          # a conversation (0.7.49.7: after Luz's mockup)
+var _hangar_uid := -1                   # 0.7.49.13: whose hangar this is (the active ship when it was built)
+var _bartender: Walker = null
 var talk_menu: CrewTalk = null          # its "Info": the questions, the record, signing on
 var _talk_offer := {}
 var _talk_index := -1
@@ -70,6 +72,7 @@ func _ready() -> void:
 	ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui)
+	ui.z_index = 50                                 # above the neon signs (z 10) – talks and panels stay readable
 	_ui = ui
 	_music = AudioStreamPlayer.new()
 	_music.bus = "Music"
@@ -111,6 +114,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_world.remove_child(c)
 		c.queue_free()
 	people.clear()
+	_bartender = null
 	_lift_open.clear()
 	_flicker.clear()
 	_seat = {}
@@ -122,7 +126,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	level = p_level
 	if level == "hangar":
 		var sz := _ship_size()
-		map = DeckGen.build_hangar(station, sz.x, sz.y, _avail)
+		var af := GameState.active()
+		_hangar_uid = af.uid if af != null else 0
+		map = DeckGen.build_hangar(station, sz.x, sz.y, _avail, _hangar_uid)
 	else:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
 	_build()
@@ -304,6 +310,8 @@ func _build() -> void:
 		w.sitting = bool(p.get("sit", false))
 		if String(p.get("role", "")) in ["bartender", "keeper"]:
 			w.stays = true
+		if String(p.get("role", "")) == "bartender":
+			_bartender = w
 		if String(p.get("role", "")) == "crew":
 			w.marker = "!"
 			w.set_meta("crew", int(p.get("crew", -1)))
@@ -466,6 +474,8 @@ func use(instant: bool = false) -> bool:
 	match String(zone["kind"]):
 		"seat":
 			_sit(zone)
+			if String(zone.get("title", "")) == "Sit at the bar" and _bartender != null:
+				open_bartender()
 			return true
 		"jukebox":
 			_jukebox()
@@ -478,9 +488,15 @@ func use(instant: bool = false) -> bool:
 			_open_lift_menu(zone)
 			return true
 		"exit":
+			if _hangar_stale():
+				_say_toast("The %s is stored here now – your active ship stands in %s. Take the lift." % [_stored_name(), _active_hangar()])
+				return false
 			if not instant:
 				_start_ride(zone, "", -1)
 				return true
+		"service":
+			if String(zone.get("id", "")) == "bar" and _bartender != null:
+				return open_bartender()
 	Audio.play("ui_open", "on foot: use")
 	used.emit(zone)
 	return true
@@ -549,8 +565,10 @@ func _open_lift_menu(z: Dictionary) -> void:
 	p.add_child(v)
 	v.add_child(UI.label("LIFT", 20, Color(0.4, 1.0, 0.6)))
 	v.add_child(UI.label("Which level?", 13, UI.TEXT_DIM))
-	for lv in [["hangar", "1.  Hangar – your ship"], ["commercial", "2.  Commercial level – shops and the bar"]]:
-		var here: bool = lv[0] == level
+	var af := GameState.active()
+	var hname := "Hangar %02d – your %s" % [DeckGen.hangar_no(station, af.uid if af != null else 0), af.ship_name if af != null else "ship"]
+	for lv in [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level – shops and the bar"]]:
+		var here: bool = lv[0] == level and (lv[0] != "hangar" or not _hangar_stale())
 		var b := UI.button(String(lv[1]) + ("   (you are here)" if here else ""), func(): _choose_level(String(lv[0])))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.disabled = here
@@ -571,7 +589,7 @@ func _choose_level(target: String) -> void:
 		return
 	var z: Dictionary = _lift_menu.get_meta("zone", {})
 	_close_lift_menu()
-	if target != level:
+	if target != level or (target == "hangar" and _hangar_stale()):
 		_start_ride(z, target)
 
 
@@ -705,6 +723,121 @@ func talk_info() -> void:
 		if talk != null:
 			talk.visible = true
 			talk.say("See you aboard, captain." if _talk_hired else "Anything else, captain?", _talk_options()))
+
+
+# ---------------------------------------------------------------- 0.7.49.13: ships, the bartender, drinks
+
+## Back from a service window: if the active ship changed (the hangar service), say where it stands now.
+func on_service_closed() -> void:
+	if level == "hangar" and _hangar_stale():
+		_say_toast("Your active ship, the %s, stands in %s – the lift takes you there." % [GameState.active().ship_name, _active_hangar()], 6.0)
+
+
+func _hangar_stale() -> bool:
+	var af := GameState.active()
+	return level == "hangar" and af != null and af.uid != _hangar_uid
+
+
+func _active_hangar() -> String:
+	var af := GameState.active()
+	return "Hangar %02d" % DeckGen.hangar_no(station, af.uid if af != null else 0)
+
+
+func _stored_name() -> String:
+	var f := GameState.get_fit(_hangar_uid)
+	return f.ship_name if f != null else "old ship"
+
+
+func _say_toast(t: String, secs: float = 4.0) -> void:
+	_toast = t
+	_toast_t = secs
+
+
+const DRINKS := [
+	["Nebula Ale", 8, 0.15, Color(0.95, 0.7, 0.25)],
+	["Pulsar Punch", 14, 0.25, Color(1.0, 0.35, 0.55)],
+	["Void Whisky", 25, 0.35, Color(0.75, 0.45, 0.15)],
+	["Orbital Cola – no alcohol", 4, 0.0, Color(0.35, 0.18, 0.1)],
+]
+const BAR_TALK := [
+	"Saw a hauler come in yesterday with half a moon stuck to its hull. Pilot swore it followed him.",
+	"Tip from the house: never fly through an ion storm on an empty stomach. Or a full one.",
+	"The pirates out at the rim pay in old coins. Good money, if you like your money haunted.",
+	"They say the gates were built by someone who came before the Severance. I say they were built by someone who never had to use them.",
+	"Prices for ice are up again. Everyone wants their drinks cold and their reactors colder.",
+	"If you're heading out to the Far Reaches: bring fuel. Then bring more fuel.",
+	"A man once paid his tab in live crabs. We still have one. He runs the till on Tuesdays.",
+	"Rumour has it the Veil whispers if you park close enough. I asked it for a tip once. Nothing.",
+	"Miners tip best. Traders talk most. Pirates do both, and then they shoot someone.",
+	"The jukebox only knows three songs. So do I, after a long shift.",
+	"Keep an eye on the bounty board – the big names don't stay big for long.",
+	"Old gates are slow, but they get you there. Mostly. Usually. Eventually.",
+	"I had a robot bartender once. Made perfect drinks. Terrible listener.",
+	"Word is a derelict from before the Severance drifts near a battlefield out there. Full of old tech, they say. And full of something else, they also say.",
+	"Want my advice? Hire a good engineer before you need one. Afterwards they cost twice as much.",
+	"We're out of synthetic olives. Don't ask what's in the real ones.",
+]
+
+
+## The bartender: a drink, a word, or who is looking for a post.
+func open_bartender() -> bool:
+	if _bartender == null or talk != null:
+		return false
+	Audio.play("ui_open", "on foot: bartender")
+	talk = DialogueView.new()
+	_ui.add_child(talk)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(station.get("id", ""))) + 13
+	var bname: String = CrewTalk.CrewData.FIRST_NAMES[rng.randi() % CrewTalk.CrewData.FIRST_NAMES.size()]
+	talk.open(_bartender.look, bname, "Bartender", Color(1.0, 0.75, 0.35))
+	talk.closed.connect(func(): talk = null)
+	talk.say(["What'll it be, captain?", "Evening. Long flight?", "Welcome in. First one's not free, but it's good."][randi() % 3], _bar_options())
+	return true
+
+
+func _bar_options() -> Array:
+	var o: Array = [["A drink, please.", _bar_drinks], ["What's new?", _bar_talk]]
+	if _avail.has("bar") and String(_avail.get("bar", "")) == "":
+		o.append(["Who's looking for work here?", _bar_crew])
+	o.append(["Goodbye.", func(): talk.close()])
+	return o
+
+
+func _bar_drinks() -> void:
+	var o: Array = []
+	for d in DRINKS:
+		var dd: Array = d
+		o.append(["%s – %s" % [dd[0], GameData.fmt_credits(int(dd[1]))], func(): _order(dd)])
+	o.append(["Maybe later.", func(): talk.say("Suit yourself.", _bar_options())])
+	talk.say("Here's what's on the shelf tonight.", o)
+
+
+func _order(d: Array) -> void:
+	if not GameState.spend(int(d[1])):
+		talk.say("Credits first, captain. House rules.", _bar_options())
+		return
+	Audio.play("buy", "on foot: a drink")
+	pilot.drink_col = d[3]
+	pilot.drink_t = Walker.DRINK_TIME
+	# for later: alcohol makes things wobbly (a debuff to come); it wears off with play time
+	var a := float(GameState.pilot.get("alcohol", 0.0))
+	var since := GameState.play_time - float(GameState.pilot.get("alcohol_t", GameState.play_time))
+	a = maxf(0.0, a - since / 600.0) + float(d[2])
+	GameState.pilot["alcohol"] = minf(a, 1.0)
+	GameState.pilot["alcohol_t"] = GameState.play_time
+	var line := "One %s, coming up." % String(d[0])
+	if float(GameState.pilot["alcohol"]) > 0.6:
+		line = "One %s… you sure, captain? You're starting to lean." % String(d[0])
+	talk.say(line, _bar_options())
+
+
+func _bar_talk() -> void:
+	talk.say(BAR_TALK[randi() % BAR_TALK.size()], _bar_options())
+
+
+func _bar_crew() -> void:
+	talk.close()
+	used.emit({"kind": "service", "id": "bar"})
 
 
 ## Hired: that one heads for the lift; the others' places in the bar's list move up.

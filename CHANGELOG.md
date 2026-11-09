@@ -3,6 +3,24 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.13 – 2026-11-09
+
+**The bar works, the station window stays shut on foot, every ship its own hangar.**
+- **At the bar:** sit down on a bar stool (or E at the counter) and the bartender talks to you: *A drink, please*
+  (Nebula Ale, Pulsar Punch, Void Whisky, Orbital Cola – a few credits; the glass goes up to your mouth; alcohol is
+  noted for a debuff to come and wears off with time), *What's new?* (funny, useful or nonsensical bar talk) and
+  *Who's looking for work here?* (the crew window). The bartender has a name.
+- **On foot, no way back into the station window:** a service opened from the deck shows only that service – its
+  button says *‹ Back to the deck*, closing it puts you back on your feet; the station hotkey does nothing while you
+  walk.
+- **Ship swap:** every ship has its own hangar number at a station. Board another ship at the hangar service and,
+  leaving the shop, you are told where it stands ("Your active ship, the …, stands in Hangar 07 – the lift takes
+  you there"); the lift offers that hangar, the old ship's hangar is no longer a way aboard (its stairs tell you
+  where to go).
+- **The hangar bench** stands by the glass and faces the ship – no longer in front of a shop's door.
+- Talks and panels on the deck are drawn above the neon signs.
+- Roadmap: **minigames** noted as a package of their own (54b – billiards at the dive's pool table first).
+
 ## alpha 0.7.49.12 – 2026-11-09
 
 **Seats sized for the new figures.** Every piece of furniture you can sit on is rebuilt to the tall figures: the seat

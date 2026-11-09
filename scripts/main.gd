@@ -63,6 +63,9 @@ func _ready() -> void:
 	galaxy.routes_changed.connect(_on_routes_changed)
 	galaxy.closed.connect(_update_input)
 	station_panel.closed.connect(_update_input)
+	station_panel.closed.connect(func():
+		if ground != null and is_instance_valid(ground):
+			ground.on_service_closed())
 	station_panel.walk_requested.connect(open_deck)          # package 49
 	ship_menu.closed.connect(func(): station_panel.rebuild())
 	station_panel.ship_menu_requested.connect(open_ship_menu)
@@ -174,6 +177,7 @@ func _on_deck_use(z: Dictionary) -> void:
 			if f == null or f.docked_at == "" or not view.stations.has(f.docked_at):
 				close_deck(false)
 				return
+			station_panel.on_foot = true
 			station_panel.open(view.stations[f.docked_at].data, view)
 			station_panel.open_service(String(z["id"]))
 			_update_input()
@@ -286,6 +290,7 @@ func open_station() -> void:
 		return
 	galaxy.close()
 	ship_menu.close()
+	station_panel.on_foot = false
 	station_panel.open(view.stations[f.docked_at].data, view)
 	_update_input()
 
@@ -336,6 +341,8 @@ func handle_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("pilot_window", false, true):
 		toggle_pilot_window()
 	elif event.is_action_pressed("station", false, true):
+		if ground != null and is_instance_valid(ground):
+			return                                         # 0.7.49.13: on foot, the station is around you
 		if station_panel.visible:
 			station_panel.close()
 		else:

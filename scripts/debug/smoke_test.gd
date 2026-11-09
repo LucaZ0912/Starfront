@@ -7651,11 +7651,13 @@ func _test_deck(view: SystemView) -> void:
 	# a shop door opens its window over the deck; closing it goes back to the deck; the airlock back to the ship
 	g.walk_to_zone("market")
 	var used: bool = g.use()
-	var panel_ok: bool = main.station_panel.visible and main.station_panel.current_service == "market"
+	var panel_ok: bool = main.station_panel.visible and main.station_panel.current_service == "market" and main.station_panel.on_foot
 	main.station_panel.close()
 	var back_on_deck: bool = main.ground != null and not main.station_panel.visible
 	# 0.7.49.6: sit down and stand up, the jukebox, a talk with someone at the bar
 	var sat: bool = g.walk_to_zone("seat") and g.use() and g.is_sitting() and g.pilot.sitting
+	if g.talk != null:
+		g.talk.close()                                 # a bar stool: the bartender spoke up (0.7.49.13)
 	g.use()
 	var stood: bool = not g.is_sitting() and not g.pilot.sitting
 	g.walk_to_zone("jukebox")
@@ -7684,6 +7686,17 @@ func _test_deck(view: SystemView) -> void:
 			terminals_ok = false
 	check(sat and stood and music and talked and terminals_ok and m.lifts.size() == 2,
 		"49: sit down and stand up again, the jukebox plays, a talk with someone at the bar (questions, record), the dock office terminals clear of the door, two lifts")
+	# 0.7.49.13: the bartender – a drink (credits, the glass in the hand), a word; the service window on foot
+	var cr0 := GameState.credits
+	var bt: bool = g.open_bartender() and g.talk != null
+	if g.talk != null:
+		g._order(g.DRINKS[0])
+		bt = bt and GameState.credits == cr0 - int(g.DRINKS[0][1]) and g.pilot.drink_t > 0.0 and float(GameState.pilot.get("alcohol", 0.0)) > 0.0
+		g._bar_talk()
+		g.talk.close()
+	var st: Dictionary = g.station
+	check(bt and g.talk == null and DeckGen.hangar_no(st, 1) >= 1 and DeckGen.hangar_no(st, 1) <= 24,
+		"49: the bartender – a drink for a few credits (the glass in the hand), bar talk; every ship its own hangar number")
 	g.go_level("hangar", "lift")
 	g.walk_to_zone("ship")
 	g.use(true)

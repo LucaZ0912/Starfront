@@ -583,7 +583,12 @@ const HANGAR_LOBBY := 6               # tiles at the east end: the lifts
 ## The hangar level: a raised walkway along a glass front, below it the closed hangar where your ship stands (its
 ## length decides the walkway's); the stairs down to the ship at the west end (you start there), the lifts at the
 ## east end. ship_len / ship_beam: the ship's size in art px (nose to the east).
-static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float, available: Dictionary = {}) -> GroundMap:
+## The number of the hangar a ship stands in at this station.
+static func hangar_no(station: Dictionary, uid: int) -> int:
+	return 1 + absi(hash("%s_%d" % [String(station.get("id", "")), uid])) % 24
+
+
+static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float, available: Dictionary = {}, uid: int = 0) -> GroundMap:
 	var m := GroundMap.new()
 	m.pal = palette_for(station)
 	m.title = String(station.get("name", "Station"))
@@ -632,7 +637,7 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 		m.lifts.append({"x": lx0 + k * 3, "y": G + 1, "w": 2})
 	m.zones.append({"rect": Rect2(Vector2(lx0, G + 2) * GroundMap.TILE, Vector2(5, 1.4) * GroundMap.TILE), "kind": "lift", "id": "lift",
 		"title": "Lifts – Hangar · Commercial level", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "hangar_sign", "title": "Hangar %02d" % (1 + absi(hash(String(station.get("id", "")))) % 24),
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "hangar_sign", "title": "Hangar %02d" % hangar_no(station, uid),
 		"col": m.pal["accent"], "sign": Vector2(x_h + HW * 0.5, G + 0.45) * GroundMap.TILE})
 	# the ship lies in the middle of the bay, nose to the east
 	m.ship_at = Vector2(x_h + HW * 0.5, 3 + HH * 0.5) * GroundMap.TILE
@@ -651,7 +656,8 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	for k3 in 3:
 		m.lights.append({"pos": Vector2(x_h + HW * (0.2 + k3 * 0.3), G + 3.0) * GroundMap.TILE, "r": 44.0, "col": Color(m.pal["accent"]).lerp(Color.WHITE, 0.4), "a": 0.22})
 	m.add_object({"kind": "plant", "x": W - 2, "y": G + 4, "w": 1, "h": 1})
-	m.add_object({"kind": "bench", "x": x_h + HW / 2 - 1, "y": G + 4, "w": 2, "h": 1, "col": m.pal["accent"], "face": 0}, false)
+	# a bench by the glass, facing the ship – clear of the shop doors on the other side
+	_seat(m, "bench", x_h + HW / 2 - 4, G + 2, 1, m.pal["accent"], rng, 0.0, 2)
 	_seats(m)
 	for k4 in 5:
 		m.wander.append(Vector2(rng.randf_range(4, W - 3), rng.randf_range(G + 2.4, G + 4.2)) * GroundMap.TILE)
