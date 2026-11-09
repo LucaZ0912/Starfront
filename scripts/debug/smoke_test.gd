@@ -7074,7 +7074,28 @@ func _test_prosperity42(view: SystemView) -> void:
 		var dstd: Dictionary = U.find_station(int(c["dst"]), String(c["dst_st"]))
 		cv_ok = cv_ok and Market.role(sst, String(c["cargo"])) == "produce" and Market.role(dstd, String(c["cargo"])) == "consume"
 		GameState.convoys.convoys.erase(c)
+	# 42d: waystations keep to their own list; the galaxy map shows how far prosperity is from its usual level; the
+	# Munitions Depot has its codex entry; no arbitrage at any market
+	var way_ok := true
+	var arb := 0
+	for sy7 in U.systems:
+		for st7 in U.get_layout(int(sy7["id"]))["stations"]:
+			for cid7 in GameData.commodities:
+				if not Market.on_market(cid7):
+					continue
+				if String(st7["type"]) == "waystation" and Market.role(st7, cid7) == "produce":
+					way_ok = way_ok and cid7 in GameData.station_types["waystation"]["produces"]
+				var b7: int = Market.buy_price(st7, cid7)
+				if b7 > 0 and Market.sell_price(st7, cid7) >= b7:
+					arb += 1
+	Economy.set_prosperity(sid, Economy.base_prosperity(sid) + 12.0)
+	var mainv = view.get_tree().current_scene
+	mainv.galaxy.selected_system = sid
+	mainv.galaxy._update_info()
+	var trend_ok: bool = String(mainv.galaxy.info.text).contains("from its usual")
 	GameState.prosperity = keep
+	check(way_ok and arb == 0 and trend_ok and preload("res://data/codex.gd").ENTRIES.has("basics_munitions"),
+		"42d: waystations sell only their own goods; no market buys back above its price; the galaxy map shows the swing from the usual prosperity; codex entry for the Munitions Depot")
 	check(shop_ok and cv_ok and made > 0, "42c: military outfitters carry more A-quality and every size of weapon the tier allows; convoys carry what their source makes to a market that wants it (%d)" % made)
 
 
@@ -7203,8 +7224,7 @@ func _test_mining41(view: SystemView) -> void:
 		smg.open(view, 3)
 		var inv_text := ""
 		for lb in smg.find_children("*", "Label", true, false):
-			inv_text += (lb as Label).text + "
-"
+			inv_text += (lb as Label).text + "\n"
 		smg.open(view, 0)
 		smg.close()
 		ship.fit.remove_cargo("hydrogen", 3.0)

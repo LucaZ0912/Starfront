@@ -251,7 +251,7 @@ static func level_color(sid: int) -> Color:
 # ---------------------------------------------------------------- Package 42c: prosperity changes, effects
 
 const DRIFT := 7200.0                    # seconds of game time for prosperity to go most of the way back to its base
-const TRADE_WANTED := 6000.0             # credits of wanted goods sold for one point of prosperity
+const TRADE_WANTED := 5000.0             # credits of wanted goods sold for one point of prosperity (42d: a level ≈ 100k)
 const TRADE_MADE := 20000.0              # credits of made goods bought for one point
 const RAID_LOSS := 10.0                  # a station knocked out by a raid
 const CONTRACT_GAIN := 0.5

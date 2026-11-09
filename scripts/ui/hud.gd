@@ -876,8 +876,7 @@ func _update_zone_label() -> void:
 		for i in rl["turrets"].size():
 			on += 1 if view.turret_ok(rl["st"], i) else 0
 		var raid_txt := "☠ RAID ON %s · hull %d%% · turrets %d / %d · %d:%02d left" % [rl["st"].title().to_upper(), int(100.0 * float(rl["hp"]) / maxf(float(rl["hp_max"]), 1.0)), on, rl["turrets"].size(), int(left) / 60, int(left) % 60]
-		text = raid_txt if text == "" else raid_txt + "
-" + text
+		text = raid_txt if text == "" else raid_txt + "\n" + text
 		col = Color(1.0, 0.35, 0.3)
 	zone_label.text = text
 	zone_label.add_theme_color_override("font_color", col)

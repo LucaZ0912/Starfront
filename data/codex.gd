@@ -138,7 +138,10 @@ Prosperity runs in five levels – Impoverished, Poor, Average, Wealthy, Rich �
 What a market makes and wants comes from its station and from the economy of its system: an agricultural system sells grain and coffee and wants machinery and fertiliser; a mining system sells its ores and wants drill bits and explosives. Wealthy and rich systems want luxuries – wine, jewellery, gold, holo displays; some goods are needed everywhere.
 
 Trade moves the stock: sell a hold full of anything and its price drops with every unit; buy a market empty and the price climbs. Over time the stocks drift back – the made goods are made again, the wanted ones used up.",
-		"see": ["cluster_economy"]},
+		"see": ["cluster_economy", "basics_munitions"]},
+	"basics_munitions": {"cat": "basics", "title": "Munitions Depot", "unlock": "dock", "image": {"icon": "w_mines"},
+		"text": "Weapons that have to be reloaded are restocked at the Munitions Depot of Obsidian Ordnance, not on the market – so far the mines of the mine launchers.\n\nWhat a depot carries follows the economy of its system: military systems stock every kind and sell them cheapest, industrial systems and shipyards the common ones, high-tech systems the jammer mines; pirate havens sell everything, at a price. Where the economy does not support a depot, the service stays dark. Munitions you no longer need go back for half their price.",
+		"see": ["basics_market"]},
 	# package 39d: the manufacturers' systems and the independent systems
 	"cluster_independent": {"cat": "cluster", "title": "Independent systems", "unlock": "jump", "image": {"icon": "hull"},
 		"text": "Not every system belongs to a power. The independent ones – yellow on the galaxy map – govern themselves; no power patrols them, and no power's law is kept there but their own.\n\nThe private manufacturers have made their homes in such systems: Kanayama Heavy Industries builds its mining ships at Kanayama Works in Erzhalde, Maison Aurelle finishes its liners at the Atelier Aurelle in Perlmutt, and Hadrian Dynamics forges its warships and weapon platforms at the Hadrian Foundry in Schwarzwacht. Only Earthworks stayed with the Assembly: its Second Yard in Altwerft, built in 12696 HE, was the first shipyard in the Cluster.\n\nEvery manufacturer's yard sells all of its ships.",

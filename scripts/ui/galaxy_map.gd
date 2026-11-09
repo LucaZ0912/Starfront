@@ -579,10 +579,13 @@ func _update_info() -> void:
 	var eco := Economy.of(selected_system)
 	var ecol := Economy.color_of(eco["main"]).to_html(false)
 	t += "Economy: [color=#%s]%s[/color]" % [ecol, Economy.label(selected_system)]
-	t += "  [font_size=11][color=#a0a8b8](%s)[/color][/font_size]
-" % ", ".join(PackedStringArray(Economy.reasons(selected_system, eco["main"])))
-	t += "Prosperity: [color=#%s]%s[/color] [color=#a0a8b8](%d / 100)[/color]
-" % [Economy.level_color(selected_system).to_html(false), Economy.level_name(selected_system), int(Economy.prosperity(selected_system))]
+	t += "  [font_size=11][color=#a0a8b8](%s)[/color][/font_size]\n" % ", ".join(PackedStringArray(Economy.reasons(selected_system, eco["main"])))
+	var pdev := Economy.prosperity(selected_system) - Economy.base_prosperity(selected_system)
+	var ptrend := ""
+	if absf(pdev) >= 1.0:
+		# 42d: how far trade, raids and contracts have moved it from where it rests
+		ptrend = "  [color=#%s]%s%d from its usual %d[/color]" % ["7fe0a0" if pdev > 0.0 else "ff8060", "+" if pdev > 0.0 else "−", int(absf(pdev)), int(Economy.base_prosperity(selected_system))]
+	t += "Prosperity: [color=#%s]%s[/color] [color=#a0a8b8](%d / 100)[/color]%s\n" % [Economy.level_color(selected_system).to_html(false), Economy.level_name(selected_system), int(Economy.prosperity(selected_system)), ptrend]
 	var prof := Universe.system_profile(selected_system)
 	var pg := int(prof["patrol_groups"])
 	t += "Population: %.1f bn  •  Traffic: %s\n" % [float(prof["population"]), Universe.traffic_word(prof)]

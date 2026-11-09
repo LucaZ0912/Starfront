@@ -143,6 +143,9 @@ static func _role(station: Dictionary, sid: int, lv: int, cid: String) -> String
 		return "consume"
 	if String(station["type"]) == "pirate_haven":
 		return "neutral"                     # the pirates' own trade only
+	if String(station["type"]) == "waystation":
+		# 42d: a rest stop – its own list and the basic needs, not the system's whole economy
+		return "consume" if is_flag(cid, "basic") and lv >= 1 else "neutral"
 	var c: Dictionary = GameData.commodities[cid]
 	var cat := String(c.get("category", ""))
 	if cat in ["munitions", "loot", "data", "mission"]:

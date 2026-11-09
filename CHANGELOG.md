@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.42.5 – 2026-11-09
+
+**Package 42d: tuning – Wirtschaft 2.0 done.**
+- Trade balance checked across two clusters: no market ever buys back above its price; the best routes earn about
+  10,000–14,000 credits per 100 m³ load over one jump (artworks, fuel rods, medical isotopes, magnet coils – limited by
+  the stock), a hold of ore about 5,000, contracts 5,000–20,000.
+- Waystations keep to their own goods (water, food, fuel) and the basic needs instead of taking on the system's whole
+  economy.
+- Prosperity rises a little faster with trade: a level is about 100,000 credits of wanted goods (was 120,000).
+- Galaxy map: how far a system's prosperity has moved from its usual level ("+8 from its usual 52").
+- Codex entry "Munitions Depot".
+- Fixed: a few texts had a line break written into the code instead of an escape (no visible change).
+
 ## alpha 0.6.42.4 – 2026-11-09
 
 **Package 42c: prosperity changes and shapes the systems.**

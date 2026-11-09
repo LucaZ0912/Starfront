@@ -281,9 +281,7 @@ func _variant_tile(parent: Control, f: ShipFitting, mid: String, from_store: boo
 	var on := pick == mid and pick_store == from_store
 	var b := _tile(parent, Vector2(118, 70), qc, on, func(): _set_pick(mid, from_store))
 	b.disabled = reason != ""
-	b.tooltip_text = reason if reason != "" else (tree_e + " Until then it stays offline.
-
-" if tree_e != "" else "") + GameData.module_summary(mid)
+	b.tooltip_text = reason if reason != "" else (tree_e + " Until then it stays offline.\n\n" if tree_e != "" else "") + GameData.module_summary(mid)
 	var v := UI.vbox(0)
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 8
