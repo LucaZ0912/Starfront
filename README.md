@@ -136,7 +136,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   the view from `hull_texture()`; wall tops only where they border a room), `round_corners` (the window front's
   rounded corners), `window_rect` (the view draws space – nebula, star, planet – only there, clipped; black elsewhere), `lights`
   (light pools, additive, some flicker), `holos` (holographic adverts, `DeckGen.ADS`); neon strips along wall feet.
-  The view draws shop signs and the BAR sign as neon (`_neon_text`, `_neon_rect`, `_flick`).; `texture()` renders floors and walls once.
+  The view draws shop signs and the BAR sign as neon (`_neon_text`, `_neon_rect`, `_flick`).
+- 0.7.49.6: zones of kind `seat` (`seat` pos, `dir`) and `jukebox`; `GroundMap.lifts` (the view animates the doors:
+  `_doors`, `_draw_lifts`, the ride back `_start_ride`/`_ride_step`; `use(true)` skips the ride for tests);
+  `jukebox.gd` – `Jukebox.stream(i)` makes a looping lounge track (AudioStreamWAV, bus Music);
+  `crew_talk.gd` – `CrewTalk`: a talk with one bar offer (questions, crew card, `crew_hire`), signals `closed`,
+  `hired(index)`; the view's `open_talk(zone)`, `_on_hired` (the others' indexes move up, the hired one walks to the lift
+  – `Walker.leave_to`).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

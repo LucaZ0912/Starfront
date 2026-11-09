@@ -7639,8 +7639,33 @@ func _test_deck(view: SystemView) -> void:
 	var panel_ok: bool = main.station_panel.visible and main.station_panel.current_service == "market"
 	main.station_panel.close()
 	var back_on_deck: bool = main.ground != null and not main.station_panel.visible
-	g.walk_to_zone("ship")
+	# 0.7.49.6: sit down and stand up, the jukebox, a talk with someone at the bar
+	var sat: bool = g.walk_to_zone("seat") and g.use() and g.is_sitting() and g.pilot.sitting
 	g.use()
+	var stood: bool = not g.is_sitting() and not g.pilot.sitting
+	g.walk_to_zone("jukebox")
+	g.use()
+	var music: bool = g.track == 0 and g._music.stream != null
+	var talked := true
+	for zc in m.zones:
+		if zc["kind"] == "crew":
+			talked = g.open_talk(zc) and g.talk != null and is_instance_valid(g.talk)
+			if g.talk != null:
+				g.talk._ask_role()
+				g.talk._ask_skill()
+				g.talk._ask_price()
+				g.talk._ask_record()
+				g.talk._close()
+			talked = talked and g.talk == null
+			break
+	var terminals_ok := true
+	for o in m.objects:
+		if String(o["kind"]) == "terminal" and int(o["y"]) == DeckGen.SHOP_FACE + 1:
+			terminals_ok = false
+	check(sat and stood and music and talked and terminals_ok and m.lifts.size() == 2,
+		"49: sit down and stand up again, the jukebox plays, a talk with someone at the bar (questions, record), the dock office terminals clear of the door, two lifts")
+	g.walk_to_zone("ship")
+	g.use(true)
 	var aboard: bool = main.ground == null and main.station_panel.visible
 	check(used and panel_ok and back_on_deck and aboard and GameState.codex.unlocked.has("basics_on_foot"),
 		"49: E at the market door opens the market over the deck, closing it is back on the deck; the airlock leads back to the ship and the station window")

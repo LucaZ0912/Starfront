@@ -31,6 +31,20 @@ var _signs: Node2D
 var _prompt: Label
 var _title: Label
 var _t := 0.0
+var _ui: Control
+# 0.7.49.6: lifts with doors, seats, the jukebox, talking to the crew
+var _lift_node: Node2D
+var _lift_open: Array = []            # 0 closed … 1 open, per lift
+var _ride: Dictionary = {}            # riding the lift back to the ship: {lift, zone, phase, t}
+var _arrive := 0.0                    # stepping out of the lift when the deck opens
+var _arrive_lift := 0
+var _seat: Dictionary = {}            # the seat the pilot sits on
+var _stand_pos := Vector2.ZERO
+var _music: AudioStreamPlayer
+var track := -1                       # the jukebox: -1 off, else the track playing
+var _toast := ""
+var _toast_t := 0.0
+var talk: CrewTalk = null
 
 
 func _ready() -> void:
@@ -46,6 +60,11 @@ func _ready() -> void:
 	ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui)
+	_ui = ui
+	_music = AudioStreamPlayer.new()
+	_music.bus = "Music"
+	_music.volume_db = -6.0
+	add_child(_music)
 	_title = UI.label("", 18, UI.NEON_CYAN)
 	_title.position = Vector2(24, 18)
 	ui.add_child(_title)
@@ -146,6 +165,11 @@ func _build() -> void:
 	spr.centered = false
 	spr.scale = Vector2.ONE * GroundMap.SCALE
 	_world.add_child(spr)
+	_lift_node = Node2D.new()
+	_lift_node.draw.connect(_draw_lifts)
+	_world.add_child(_lift_node)
+	for l in map.lifts:
+		_lift_open.append(0.0)
 	_sorted = Node2D.new()
 	_sorted.y_sort_enabled = true
 	_world.add_child(_sorted)
@@ -173,6 +197,7 @@ func _build() -> void:
 			w.stays = true
 		if String(p.get("role", "")) == "crew":
 			w.marker = "!"
+			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
 	var n := 5 + int(station.get("tier", 1)) * 2
@@ -186,6 +211,15 @@ func _build() -> void:
 	pilot = Walker.new()
 	pilot.setup(map, GameState.pilot.get("look", ChibiArt.PilotArt.default_look()), map.spawn, false)
 	_sorted.add_child(pilot)
+	# out of the lift: the doors open, the pilot steps out
+	if not map.lifts.is_empty():
+		_arrive_lift = 0
+		var l0: Dictionary = map.lifts[0]
+		pilot.pos = Vector2((float(l0["x"]) + float(l0["w"]) * 0.5) * GroundMap.TILE, (float(l0["y"]) + 1.0) * GroundMap.TILE + 5.0)
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0
+		_lift_open[0] = 1.0
+		_arrive = 0.7
 	# light: lamps, neon, the window – added on top, the deck a little darker round them
 	_lights = Node2D.new()
 	_lights.z_index = 5
@@ -247,15 +281,29 @@ func _process(delta: float) -> void:
 		(f[0] as Sprite2D).modulate.a = float(f[1]) * k
 	if pilot == null:
 		return
-	if input_enabled:
+	_toast_t = maxf(_toast_t - delta, 0.0)
+	if _arrive > 0.0:
+		_arrive -= delta
+		pilot.step(Vector2.DOWN, delta, 0.8)
+	elif not _ride.is_empty():
+		_ride_step(delta)
+	elif input_enabled and talk == null:
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
-		pilot.step(dir, delta, 1.6 if Input.is_action_pressed("boost") else 1.0)
+		if not _seat.is_empty():
+			if dir.length() > 0.3:
+				_stand_up()
+		else:
+			pilot.step(dir, delta, 1.6 if Input.is_action_pressed("boost") else 1.0)
 	else:
 		pilot.moving = false
-	zone = map.zone_at(pilot.pos)
-	if zone.get("kind", "") == "label":
-		zone = {}
-	_prompt.text = _prompt_text(zone)
+	_doors(delta)
+	if not _seat.is_empty():
+		zone = _seat
+	else:
+		zone = map.zone_at(pilot.pos)
+	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null:
+		zone = {} if _seat.is_empty() else _seat
+	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null else _prompt_text(zone))
 	_camera()
 	_signs.queue_redraw()
 
@@ -269,12 +317,21 @@ func _prompt_text(z: Dictionary) -> String:
 			return "[%s] %s" % [key, z["title"]]
 		"crew":
 			return "[%s] Talk to %s – looking for a post" % [key, z["title"]]
+		"seat":
+			return "[%s] Stand up" % key if not _seat.is_empty() else "[%s] %s" % [key, z["title"]]
+		"jukebox":
+			return "[%s] Jukebox – %s" % [key, ("next track (now: %s)" % Jukebox.track_name(track)) if track >= 0 else "play some music"]
 	if String(z.get("closed", "")) != "":
 		return "%s – closed: %s" % [z["title"], z["closed"]]
 	return "[%s] %s%s" % [key, z["title"], ("  –  " + String(z["corp"])) if String(z.get("corp", "")) != "" else ""]
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if talk != null:
+		if event.is_action_pressed("menu_back", false, true):
+			get_viewport().set_input_as_handled()
+			talk._close()
+		return
 	if not input_enabled or pilot == null:
 		return
 	if event.is_action_pressed("interact", false, false):
@@ -282,13 +339,190 @@ func _unhandled_input(event: InputEvent) -> void:
 		use()
 
 
-## Uses what the pilot stands at (also for the smoke test).
-func use() -> bool:
+## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
+func use(instant: bool = false) -> bool:
+	if not _ride.is_empty() or talk != null or _arrive > 0.0:
+		return false
+	if not _seat.is_empty():
+		_stand_up()
+		return true
 	if zone.is_empty() or String(zone.get("closed", "")) != "":
 		return false
+	match String(zone["kind"]):
+		"seat":
+			_sit(zone)
+			return true
+		"jukebox":
+			_jukebox()
+			return true
+		"crew":
+			return open_talk(zone)
+		"exit":
+			if not instant and not map.lifts.is_empty():
+				_start_ride(zone)
+				return true
 	Audio.play("ui_open", "on foot: use")
 	used.emit(zone)
 	return true
+
+
+# ---------------------------------------------------------------- 0.7.49.6: lifts, seats, jukebox, crew talk
+
+func _lift_door_pos(i: int) -> Vector2:
+	var l: Dictionary = map.lifts[i]
+	return Vector2((float(l["x"]) + float(l["w"]) * 0.5) * GroundMap.TILE, (float(l["y"]) + 1.0) * GroundMap.TILE)
+
+
+## The doors slide open when someone comes close (or the lift is being ridden), and shut again.
+func _doors(delta: float) -> void:
+	for i in map.lifts.size():
+		var dp := _lift_door_pos(i)
+		var want := 0.0
+		if _arrive > 0.0 and i == _arrive_lift:
+			want = 1.0
+		elif not _ride.is_empty() and int(_ride["lift"]) == i:
+			want = 1.0 if int(_ride["phase"]) < 2 else 0.0
+		elif pilot.visible and absf(pilot.pos.x - dp.x) < 18.0 and pilot.pos.y - dp.y < 22.0:
+			want = 1.0
+		var was: float = _lift_open[i]
+		_lift_open[i] = move_toward(was, want, delta * 2.6)
+		if was == 0.0 and _lift_open[i] > 0.0:
+			Audio.play("ui_open", "on foot: lift doors")
+	_lift_node.queue_redraw()
+
+
+func _draw_lifts() -> void:
+	var s := GroundMap.SCALE
+	_lift_node.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
+	for i in map.lifts.size():
+		var l: Dictionary = map.lifts[i]
+		var px := float(l["x"]) * GroundMap.TILE
+		var py := float(l["y"]) * GroundMap.TILE
+		var pw := float(l["w"]) * GroundMap.TILE
+		var o: float = _lift_open[i]
+		var half := (pw - 6.0) * 0.5
+		var dw := roundf(half * (1.0 - o))
+		var top := py - 10.0
+		var hh := GroundMap.TILE + 7.0
+		if dw > 0.0:
+			_lift_node.draw_rect(Rect2(px + 3.0, top, dw, hh), Color(0.62, 0.65, 0.7))
+			_lift_node.draw_rect(Rect2(px + 3.0, top, 1.0, hh), Color(0.75, 0.78, 0.82))
+			_lift_node.draw_rect(Rect2(px + 3.0 + dw - 1.0, top, 1.0, hh), Color(0.4, 0.42, 0.46))
+			_lift_node.draw_rect(Rect2(px + pw - 3.0 - dw, top, dw, hh), Color(0.56, 0.59, 0.64))
+			_lift_node.draw_rect(Rect2(px + pw - 3.0 - dw, top, 1.0, hh), Color(0.3, 0.32, 0.36))
+		# the lamp over the doors: green when open
+		var lc := Color(0.4, 1.0, 0.6) if o > 0.5 else Color(1.0, 0.6, 0.25)
+		_lift_node.draw_rect(Rect2(px + pw * 0.5 - 2.0, py - 14.0, 4.0, 1.0), lc)
+	_lift_node.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _start_ride(z: Dictionary) -> void:
+	var best := 0
+	for i in map.lifts.size():
+		if absf(_lift_door_pos(i).x - pilot.pos.x) < absf(_lift_door_pos(best).x - pilot.pos.x):
+			best = i
+	_ride = {"lift": best, "zone": z, "phase": 0, "t": 0.0}
+
+
+## Into the lift: walk to the doors, step in, the doors close, then back to the ship.
+func _ride_step(delta: float) -> void:
+	_ride["t"] = float(_ride["t"]) + delta
+	var dp := _lift_door_pos(int(_ride["lift"])) + Vector2(0, 5)
+	match int(_ride["phase"]):
+		0:
+			var to := dp - pilot.pos
+			if to.length() < 3.0 or float(_ride["t"]) > 1.6:
+				_ride["phase"] = 1
+				_ride["t"] = 0.0
+			else:
+				if not pilot.step(to.normalized(), delta, 1.0):
+					pilot.pos += to.normalized() * minf(to.length(), Walker.SPEED * delta)
+					pilot.position = pilot.pos * GroundMap.SCALE
+		1:
+			pilot.dir = 0
+			pilot.modulate.a = maxf(0.0, 1.0 - float(_ride["t"]) / 0.35)
+			if float(_ride["t"]) > 0.35:
+				pilot.visible = false
+				_ride["phase"] = 2
+				_ride["t"] = 0.0
+		2:
+			if float(_ride["t"]) > 0.6:
+				var z: Dictionary = _ride["zone"]
+				_ride["phase"] = 3
+				used.emit(z)
+
+
+func _sit(z: Dictionary) -> void:
+	_stand_pos = pilot.pos
+	_seat = z
+	pilot.pos = z["seat"]
+	pilot.position = pilot.pos * GroundMap.SCALE
+	pilot.dir = int(z.get("dir", 0))
+	pilot.sitting = true
+	pilot.moving = false
+
+
+func _stand_up() -> void:
+	_seat = {}
+	pilot.sitting = false
+	pilot.pos = _stand_pos
+	pilot.position = pilot.pos * GroundMap.SCALE
+
+
+func is_sitting() -> bool:
+	return not _seat.is_empty()
+
+
+## The jukebox: the next track, and after the last one quiet again.
+func _jukebox() -> void:
+	track += 1
+	if track >= Jukebox.TRACKS.size():
+		track = -1
+		_music.stop()
+		_toast = "The jukebox falls silent."
+	else:
+		_music.stream = Jukebox.stream(track)
+		_music.play()
+		_toast = "♪  Now playing: %s" % Jukebox.track_name(track)
+	_toast_t = 2.5
+
+
+## Talking to someone looking for a post – a conversation with just them.
+func open_talk(z: Dictionary) -> bool:
+	var offers: Array = GameState.bar_offers(station)
+	var i := int(z.get("crew", -1))
+	if i < 0 or i >= offers.size():
+		return false
+	Audio.play("ui_open", "on foot: talk")
+	talk = CrewTalk.new()
+	_ui.add_child(talk)
+	talk.setup(offers[i], i)
+	talk.closed.connect(func(): talk = null)
+	talk.hired.connect(_on_hired)
+	for w in people:
+		if is_instance_valid(w) and w.has_meta("crew") and int(w.get_meta("crew")) == i:
+			w.dir = 0 if pilot.pos.y > w.pos.y else 1
+	return true
+
+
+## Hired: that one heads for the lift; the others' places in the bar's list move up.
+func _on_hired(idx: int) -> void:
+	for z in map.zones.duplicate():
+		if z["kind"] == "crew":
+			if int(z["crew"]) == idx:
+				map.zones.erase(z)
+			elif int(z["crew"]) > idx:
+				z["crew"] = int(z["crew"]) - 1
+	for w in people:
+		if not is_instance_valid(w) or not w.has_meta("crew"):
+			continue
+		var c := int(w.get_meta("crew"))
+		if c == idx:
+			w.marker = ""
+			w.remove_meta("crew")
+			w.leave_to = _lift_door_pos(0) + Vector2(0, 5) if not map.lifts.is_empty() else map.spawn
+		elif c > idx:
+			w.set_meta("crew", c - 1)
 
 
 ## Puts the pilot at a zone (debug, smoke test).
@@ -301,9 +535,8 @@ func walk_to_zone(id: String) -> bool:
 				if map.free_at(p, Walker.RADIUS):
 					pilot.pos = p
 					pilot.position = p * GroundMap.SCALE
-					zone = map.zone_at(p)
-					if zone.get("kind", "") == "label":
-						zone = {}
+					zone = z
+					_arrive = 0.0
 					return true
 	return false
 

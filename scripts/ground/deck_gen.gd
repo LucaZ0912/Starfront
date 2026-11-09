@@ -92,7 +92,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	m.add_object({"kind": "fridge", "x": W - 2, "y": BAR_Y0 + 6, "w": 1, "h": 1, "col": m.pal["accent"]})
 	m.people.append({"pos": Vector2(W - 2.5, BAR_Y0 + 3.6) * GroundMap.TILE, "dir": 2, "role": "bartender"})
 	for sy in range(BAR_Y0 + 1, BAR_Y0 + 7, 2):
-		m.add_object({"kind": "stool", "x": cx - 1, "y": sy, "col": Color(0.75, 0.25, 0.22)}, false)
+		m.add_object({"kind": "stool", "x": cx - 1, "y": sy, "col": Color(0.75, 0.25, 0.22), "face": 3}, false)
 		if rng.randf() < 0.45:
 			m.people.append({"pos": Vector2(cx - 0.5, sy + 1.1) * GroundMap.TILE, "dir": 3, "sit": true})
 	m.lights.append({"pos": Vector2(cx + 1, BAR_Y0 + 2.5) * GroundMap.TILE, "r": 60.0, "col": Color(1.0, 0.3, 0.7), "a": 0.55, "flicker": true})
@@ -106,8 +106,8 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	while tx + 2 < cx - 3:
 		var ty := BAR_Y0 + 1 + (0 if row % 2 == 0 else 4)
 		m.add_object({"kind": "round_table", "x": tx, "y": ty, "w": 2, "h": 2})
-		m.add_object({"kind": "chair", "x": tx - 1, "y": ty + 1, "col": Color(0.55, 0.22, 0.2), "back": "up"}, false)
-		m.add_object({"kind": "chair", "x": tx + 2, "y": ty + 1, "col": Color(0.55, 0.22, 0.2), "back": "up"}, false)
+		m.add_object({"kind": "chair", "x": tx - 1, "y": ty + 1, "col": Color(0.55, 0.22, 0.2), "back": "up", "face": 3}, false)
+		m.add_object({"kind": "chair", "x": tx + 2, "y": ty + 1, "col": Color(0.55, 0.22, 0.2), "back": "up", "face": 2}, false)
 		if rng.randf() < 0.6:
 			m.people.append({"pos": Vector2(tx - 0.5, ty + 2.1) * GroundMap.TILE, "dir": 3, "sit": true})
 		if rng.randf() < 0.5:
@@ -116,6 +116,8 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 		row += 1
 	m.add_object({"kind": "jukebox", "x": bx0 + 1, "y": BAR_Y0 + 1, "w": 1, "h": 1, "col": Color(1.0, 0.45, 0.7)})
 	m.lights.append({"pos": Vector2(bx0 + 1.5, BAR_Y0 + 2.2) * GroundMap.TILE, "r": 40.0, "col": Color(1.0, 0.45, 0.7), "a": 0.4})
+	m.zones.append({"rect": Rect2(Vector2(bx0 + 0.9, BAR_Y0 + 1.6) * GroundMap.TILE, Vector2(1.8, 1.4) * GroundMap.TILE), "kind": "jukebox",
+		"id": "jukebox", "title": "Jukebox", "sign": Vector2(-100, -100)})
 	# the planet's and the stars' cold light falling in through the window front
 	var wx := bx0 + 4
 	while wx < W - 4:
@@ -127,7 +129,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 			m.lights.append({"pos": Vector2(float(o["x"]) + 1.0, float(o["y"]) + 1.2) * GroundMap.TILE, "r": 30.0, "col": Color(1.0, 0.7, 0.4), "a": 0.22})
 	m.add_object({"kind": "plant", "x": cx - 3, "y": BAR_Y0, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": bx0 + 1, "y": COR_Y0 - 1, "w": 1, "h": 1})
-	m.add_object({"kind": "sofa", "x": bx0 + 2, "y": COR_Y0 - 2, "w": 3, "h": 1, "col": m.pal["carpet"]})
+	m.add_object({"kind": "sofa", "x": bx0 + 2, "y": COR_Y0 - 2, "w": 3, "h": 1, "col": m.pal["carpet"], "face": 0})
 	m.decals.append({"kind": "rug", "x": bx0 + 6, "y": BAR_Y0 + 3, "w": 5, "h": 3, "col": m.pal["carpet"]})
 	# the crew looking for work – they stand about in the bar and can be spoken to
 	var spots: Array = []
@@ -175,8 +177,9 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	m.fill(LOBBY_X1 + 1, ly + 1, 1, COR_Y0 - ly - 1, GroundMap.T.CAP)
 	m.fill(LOBBY_X1 + 1, COR_Y1 + 1, 1, ly + 11 - COR_Y1 - 1, GroundMap.T.CAP)
 	m.fill(LOBBY_X1 + 1, COR_Y0, 1, COR_Y1 - COR_Y0 + 1, GroundMap.T.FLOOR, 0)
-	m.face_deco.append({"kind": "lift", "x": 1, "y": ly + 2, "w": 2, "col": Color(0.4, 1.0, 0.6)})
-	m.face_deco.append({"kind": "lift", "x": 4, "y": ly + 2, "w": 2, "col": Color(0.4, 1.0, 0.6)})
+	for lx0 in [1, 4]:
+		m.face_deco.append({"kind": "lift", "x": lx0, "y": ly + 2, "w": 2, "col": Color(0.4, 1.0, 0.6)})
+		m.lifts.append({"x": lx0, "y": ly + 2, "w": 2})
 	m.decals.append({"kind": "mat", "x": 1, "y": ly + 3, "w": 5, "h": 1, "col": m.pal["accent"]})
 	m.spawn = Vector2(3.5, ly + 4.6) * GroundMap.TILE
 	m.zones.append({"rect": Rect2(Vector2(1, ly + 3) * GroundMap.TILE, Vector2(5, 1.4) * GroundMap.TILE), "kind": "exit", "id": "ship",
@@ -188,7 +191,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 			_zone(m, k, available, Rect2(Vector2(kx - 0.5, ly + 7.6) * GroundMap.TILE, Vector2(2, 1.6) * GroundMap.TILE), Vector2(kx + 0.5, ly + 8.4) * GroundMap.TILE)
 			kx += 3
 	m.add_object({"kind": "plant", "x": 1, "y": ly + 7, "w": 1, "h": 1})
-	m.add_object({"kind": "bench", "x": 3, "y": ly + 6, "w": 2, "h": 1, "col": m.pal["accent"]})
+	m.add_object({"kind": "bench", "x": 3, "y": ly + 6, "w": 2, "h": 1, "col": m.pal["accent"], "face": 0})
 	# ---- the shops below the corridor
 	m.fill(bx0, SHOP_CAP, W - bx0, 1, GroundMap.T.CAP)
 	var sx := x_shops - 1
@@ -231,11 +234,33 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 				2:
 					m.add_object({"kind": "plant", "x": lx, "y": COR_Y1, "w": 1, "h": 1, "col": m.pal["accent"]})
 			slot += 1
+	_seats(m)
 	for k2 in 14:
 		m.wander.append(Vector2(rng.randf_range(bx0 + 1, W - 3), rng.randf_range(COR_Y0 + 1.3, COR_Y1 - 0.1)) * GroundMap.TILE)
 	for k3 in 4:
 		m.wander.append(Vector2(rng.randf_range(bx0 + 2, cx - 3), rng.randf_range(BAR_Y0 + 1.5, COR_Y0 - 1.2)) * GroundMap.TILE)
 	return m
+
+
+## Every free seat becomes a place to sit down (E): chairs, bar stools, the sofa, the lobby bench.
+static func _seats(m: GroundMap) -> void:
+	for o in m.objects:
+		var k := String(o["kind"])
+		if not k in ["chair", "stool", "sofa", "bench"]:
+			continue
+		for i in int(o.get("w", 1)):
+			var sp := Vector2(float(o["x"]) + 0.5 + i, float(o["y"]) + (1.1 if k in ["chair", "stool"] else 0.95)) * GroundMap.TILE
+			var taken := false
+			for p in m.people:
+				if (p["pos"] as Vector2).distance_to(sp) < 8.0:
+					taken = true
+			if taken:
+				continue
+			var r := Rect2(sp + Vector2(-0.8, -0.9) * GroundMap.TILE, Vector2(1.6, 1.7) * GroundMap.TILE)
+			if k in ["sofa", "bench"]:
+				r = Rect2(sp + Vector2(-0.5, -0.4) * GroundMap.TILE, Vector2(1.0, 1.4) * GroundMap.TILE)
+			m.zones.append({"rect": r, "kind": "seat", "id": "seat", "title": {"chair": "Sit down", "stool": "Sit at the bar",
+				"sofa": "Sit on the sofa", "bench": "Sit on the bench"}[k], "seat": sp, "dir": int(o.get("face", 0)), "sign": Vector2(-100, -100)})
 
 
 static func _svc(id: String) -> Dictionary:
@@ -278,12 +303,13 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 		for d in dock:
 			if tx >= sx + rw - 1:
 				break
-			m.add_object({"kind": "terminal", "x": tx, "y": SHOP_FACE + 1, "w": 1, "h": 1, "col": _svc_col(d), "icon": _svc_icon(d)})
-			_zone(m, d, available, Rect2(Vector2(tx - 0.1, SHOP_FACE + 1.4) * GroundMap.TILE, Vector2(1.2, 1.6) * GroundMap.TILE),
+			m.add_object({"kind": "terminal", "x": tx, "y": SHOP_Y1, "w": 1, "h": 1, "col": _svc_col(d), "icon": _svc_icon(d)})
+			_zone(m, d, available, Rect2(Vector2(tx - 0.1, SHOP_Y1 - 1.3) * GroundMap.TILE, Vector2(1.2, 1.5) * GroundMap.TILE),
 				Vector2(-100, -100))
+			m.lights.append({"pos": Vector2(tx + 0.5, SHOP_Y1 - 0.2) * GroundMap.TILE, "r": 18.0, "col": _svc_col(d), "a": 0.3})
 			tx += 1
 		m.zones.append({"rect": Rect2(), "kind": "label", "title": "Dock Office", "col": col, "sign": sign, "id": "dock"})
-		m.add_object({"kind": "plant", "x": sx + rw - 2, "y": SHOP_Y1, "w": 1, "h": 1})
+		m.add_object({"kind": "plant", "x": sx + rw - 2, "y": SHOP_FACE + 1, "w": 1, "h": 1})
 		return
 	_zone(m, id, available, inside, sign)
 	var deco := "shelf"

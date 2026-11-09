@@ -16,6 +16,7 @@ var sitting := false
 var npc := false
 var marker := ""                   # "!" over someone you can talk to
 var stays := false                 # keeps its place (shopkeeper, bartender)
+var leave_to := Vector2.INF        # walks there and is gone (hired crew off to the lift)
 var _t := 0.0
 var _walk := 0.0
 var _goal := Vector2.INF
@@ -60,7 +61,13 @@ func step(d: Vector2, delta: float, speed_mult: float = 1.0) -> bool:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if npc and not sitting and not stays and marker == "":
+	if leave_to != Vector2.INF:
+		var to := leave_to - pos
+		if to.length() < 5.0:
+			queue_free()
+		elif not step(to.normalized(), delta, 0.9):
+			step((to + Vector2(0, 12)).normalized(), delta, 0.9)
+	elif npc and not sitting and not stays and marker == "":
 		_wander(delta)
 	queue_redraw()
 

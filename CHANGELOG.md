@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.6 – 2026-11-09
+
+**On the deck: talk to the crew, sit down, the jukebox, lifts with doors.**
+- **Talking to the crew:** E at someone with a "!" in the bar starts a conversation with just them – their portrait
+  and how they greet you (a rookie is nervous, an elite knows their worth). Ask *What do you do on a ship?*, *How
+  good are you?* (bonus, quality, what they learn from, their perk), *What would you cost?* (price and share of
+  income) and *Show me your record* (the full crew card), then sign them on – into the station's crew quarters or
+  straight onto your ship. Once hired, they pick up their bag and head for the lift. Esc ends the talk.
+- **Sit down:** every free chair, bar stool, the sofa and the lobby bench – E to sit, E or a step to get up.
+- **The jukebox** plays: three lounge tracks (Neon Rain, Dock Nine Blues, Low Orbit Lounge), E for the next one,
+  after the last it falls silent. The music is made in the game, no files.
+- **Lifts with doors:** you step out of the lift when you get off the ship; the doors slide open when you come near
+  (green lamp) and shut behind you; E at the lift and you walk in, the doors close, and you are back on your ship.
+- **Dock office:** the terminals stand along the back wall now, no longer in the doorway.
+
 ## alpha 0.7.49.5 – 2026-11-09
 
 **The deck goes a little cyberpunk – neon by default, coloured by the station type.**

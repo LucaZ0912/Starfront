@@ -22,6 +22,7 @@ var face_deco: Array = []                     # things on a wall face: {kind, x,
 var people: Array = []                        # NPCs that stay: {pos (art px, feet), look?, dir, role, sit, crew?}
 var wander: Array = []                        # where strolling NPCs may go (art px)
 var lights: Array = []                        # light pools (the view adds them): {pos (art px), r, col, a, flicker}
+var lifts: Array = []                         # lift doors on a wall face: {x, y, w} (tiles) – the view animates them
 var holos: Array = []                         # holographic adverts over a wall: {pos (art px, bottom centre), text, sub, col}
 var spawn := Vector2.ZERO
 var pal: Dictionary = {}
@@ -371,10 +372,10 @@ func _face_deco(d: Dictionary) -> void:
 				_rect(px + 4, py + 4 + k * 2, int((pw - 8) * (0.4 + 0.2 * k)), 1, c)
 		"lift":
 			_rect(px + 1, py - 12, pw - 2, TILE + 10, Color(0.2, 0.21, 0.24))
-			_rect(px + 3, py - 10, pw / 2 - 3, TILE + 7, Color(0.62, 0.65, 0.7))
-			_rect(px + pw / 2, py - 10, pw / 2 - 3, TILE + 7, Color(0.56, 0.59, 0.64))
-			_rect(px + pw / 2 - 1, py - 10, 1, TILE + 7, Color(0.25, 0.26, 0.3))
-			_rect(px + 3, py - 10, 1, TILE + 7, Color(0.75, 0.78, 0.82))
+			_rect(px + 3, py - 10, pw - 6, TILE + 7, Color(0.13, 0.14, 0.17))          # the car inside
+			_rect(px + 3, py - 10, pw - 6, 2, Color(0.85, 0.9, 1.0))
+			_rect(px + 4, py - 8, pw - 8, TILE + 2, Color(0.2, 0.22, 0.26))
+			_rect(px + 4, py + 2, pw - 8, 1, Color(0.3, 0.32, 0.36))
 			_rect(px + pw / 2 - 4, py - 15, 8, 3, Color(0.08, 0.08, 0.1))
 			_rect(px + pw / 2 - 2, py - 14, 4, 1, c)
 		"shelf":
