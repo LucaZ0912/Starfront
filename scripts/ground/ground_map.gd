@@ -24,6 +24,7 @@ var wander: Array = []                        # where strolling NPCs may go (art
 var spawn := Vector2.ZERO
 var pal: Dictionary = {}
 var hull_top := -1                    # the station's structure goes on everywhere from this row down (the view draws it)
+var window_rect := Rect2()            # tiles: where space shows through the glass (the view draws it there only)
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
 var _img: Image
@@ -174,7 +175,7 @@ func _round_corner(rc: Dictionary) -> void:
 		for px in range(x0, x0 + r):
 			var d := Vector2(px + 0.5, py + 0.5).distance_to(c)
 			if d > r:
-				_img.set_pixel(px, py, Color(0, 0, 0, 0))
+				_img.set_pixel(px, py, Color(0, 0, 0))
 			elif d > r - 1.2:
 				_img.set_pixel(px, py, top.lightened(0.25))
 			elif d > r - TILE:

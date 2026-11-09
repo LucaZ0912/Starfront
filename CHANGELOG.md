@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.4 – 2026-11-09
+
+**The deck feels closed in now.**
+- **Space only through the glass:** everything above the window front's frame is black – the stars, the nebula, the
+  star and the planet are seen only through the windows.
+- **Even bigger windows:** the window front is seven rows tall, its rounded corners wider; the planet fills it.
+
 ## alpha 0.7.49.3 – 2026-11-09
 
 **The deck, second round of Luz's notes.**

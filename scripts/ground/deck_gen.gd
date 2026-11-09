@@ -26,15 +26,15 @@ const SHOP_W := 7
 const DOCK_TERMINALS := ["fuel", "repair", "drones", "munitions", "hangar"]
 const KIOSKS := ["news", "bulletin"]
 ## rows
-const BAR_Y0 := 6                 # first floor row of the bar (rows 0 cap, 1–5 the window front)
-const COR_Y0 := 15                # the railing row – the corridor below it to row 18
-const COR_Y1 := 18
-const SHOP_CAP := 19              # the corridor's south wall …
-const SHOP_FACE := 20             # … the shop's back wall face, seen from inside
-const SHOP_Y1 := 25               # last floor row of the shops
+const BAR_Y0 := 8                 # first floor row of the bar (rows 0 cap, 1–7 the window front)
+const COR_Y0 := 17                # the railing row – the corridor below it to row 20
+const COR_Y1 := 20
+const SHOP_CAP := 21              # the corridor's south wall …
+const SHOP_FACE := 22             # … the shop's back wall face, seen from inside
+const SHOP_Y1 := 27               # last floor row of the shops
 const LOBBY_X1 := 6               # the lift lobby: x 1 … 6, deep inside the station
 const LOBBY_Y0 := COR_Y0 - 5      # its north wall (the lifts) – station all round it, not space
-const CORNER_R := 6               # the window front's rounded corners (tiles)
+const CORNER_R := BAR_Y0          # the window front's rounded corners (tiles)
 
 
 static func palette_for(station: Dictionary) -> Dictionary:
@@ -75,6 +75,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	m.fill(bx0, 1, W - bx0, BAR_Y0 - 1, GroundMap.T.GLASS)
 	m.fill(bx0, 0, CORNER_R, CORNER_R, GroundMap.T.GLASS)
 	m.fill(W - CORNER_R, 0, CORNER_R, CORNER_R, GroundMap.T.GLASS)
+	m.window_rect = Rect2(bx0, 0, W - bx0, BAR_Y0)
 	m.round_corners.append({"x": bx0, "r": CORNER_R, "side": -1})
 	m.round_corners.append({"x": W - 1, "r": CORNER_R, "side": 1})
 	m.fill(W - 1, BAR_Y0, 1, COR_Y1 - BAR_Y0 + 2, GroundMap.T.CAP)

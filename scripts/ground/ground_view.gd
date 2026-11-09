@@ -20,6 +20,9 @@ var _space: ColorRect
 var _sky: Node2D
 var _world: Node2D
 var _hull: TextureRect
+var _window: Control                  # the window front's opening – space is only drawn inside it
+var _neb: ColorRect
+var _off0 = null
 var _sorted: Node2D
 var _signs: Node2D
 var _prompt: Label
@@ -29,12 +32,11 @@ var _t := 0.0
 
 func _ready() -> void:
 	layer = LAYER
-	_space = ColorRect.new()
+	_space = ColorRect.new()                        # everything that is neither deck nor window: black
+	_space.color = Color(0, 0, 0)
 	_space.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_space.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_space)
-	_sky = Node2D.new()
-	add_child(_sky)
 	_world = Node2D.new()
 	add_child(_world)
 	var ui := Control.new()
@@ -64,8 +66,8 @@ func _ready() -> void:
 func setup_station(p_station: Dictionary, available: Dictionary, crew: Array = [], sys_id: int = -1) -> void:
 	station = p_station
 	map = DeckGen.build(station, available, crew)
-	_space_view(sys_id)
 	_build()
+	_space_view(sys_id)
 	_title.text = "%s – Promenade" % map.title
 
 
@@ -79,15 +81,16 @@ func _space_view(sys_id: int) -> void:
 	mat.set_shader_parameter("neb_a", Color.from_hsv(fposmod(hue, 1.0), 0.7, 0.85))
 	mat.set_shader_parameter("neb_b", Color.from_hsv(fposmod(hue + 0.45, 1.0), 0.6, 0.75))
 	mat.set_shader_parameter("neb_strength", 1.1)
-	_space.material = mat
+	_neb.material = mat
 	if sys_id < 0:
 		return
 	var L := Universe.get_layout(sys_id)
 	var star: Dictionary = L["star"]
-	# placed beyond the window front (deck px) – they drift a little slower than the deck: far away
-	var s := GroundMap.TILE * GroundMap.SCALE
-	var star_at := Vector2((map.w * 0.22) * s, 2.2 * s)
-	var planet_at := Vector2((map.w * 0.62) * s, 3.6 * s)
+	# placed beyond the window front (in the window's px) – they drift a little slower than the deck: far away
+	var ww := _window.size.x
+	var wh := _window.size.y
+	var star_at := Vector2(ww * 0.12, wh * 0.38)
+	var planet_at := Vector2(ww * 0.58, wh * 0.62)
 	var st_spr := Celestial.make_star_sprite(star, 46.0)
 	st_spr.position = star_at
 	_sky.add_child(st_spr)
@@ -95,12 +98,28 @@ func _space_view(sys_id: int) -> void:
 	if pi >= 0 and pi < L["planets"].size():
 		var p: Dictionary = L["planets"][pi]
 		var lit := (star_at - planet_at).normalized()
-		var ps := Celestial.make_planet_sprite(p, 300.0, lit)
+		var ps := Celestial.make_planet_sprite(p, wh * 0.95, lit)
 		ps.position = planet_at
 		_sky.add_child(ps)
 
 
 func _build() -> void:
+	# the window: space drawn only behind the glass
+	_window = Control.new()
+	_window.clip_contents = true
+	_window.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var wr := map.window_rect
+	_window.position = wr.position * GroundMap.TILE * GroundMap.SCALE
+	_window.size = wr.size * GroundMap.TILE * GroundMap.SCALE
+	_world.add_child(_window)
+	_neb = ColorRect.new()
+	_neb.color = Color(0, 0, 0)
+	_neb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_neb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_neb.size = _window.size
+	_window.add_child(_neb)
+	_sky = Node2D.new()
+	_window.add_child(_sky)
 	# the station goes on round the deck – its structure seen from above, everywhere below the window front's top
 	if map.hull_top >= 0:
 		_hull = TextureRect.new()
@@ -251,8 +270,10 @@ func _camera() -> void:
 		off.y = (vs.y - mp.y) * 0.5
 	_world.position = off.round()
 	# space beyond the glass moves only a little – it is far away
-	_sky.position = (off * 0.9).round()
-	var m := _space.material as ShaderMaterial
+	if _off0 == null:
+		_off0 = off
+	_sky.position = (-(off - (_off0 as Vector2)) * 0.9).round()
+	var m := _neb.material as ShaderMaterial
 	if m != null:
 		m.set_shader_parameter("offset", -off * 0.3)
 
