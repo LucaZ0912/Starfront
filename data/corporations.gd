@@ -84,6 +84,11 @@ const CORPS := {
 		"slogan": "Your ship. Our vault.",
 		"desc": "Hangar space, ship custody and an insurance arm nobody reads the fine print of.",
 	},
+	"obx": {
+		"name": "Obsidian Ordnance", "tag": "OBX", "color": Color(1.0, 0.55, 0.3),
+		"slogan": "Every shot accounted for.",
+		"desc": "Stocks the munitions of the Cluster – mines today, whatever needs reloading tomorrow. Cheapest where the navy buys.",
+	},
 	"pyre": {
 		"name": "Pyre Fuel Syndicate", "tag": "PYRE", "color": Color(1.0, 0.4, 0.2),
 		"slogan": "Burn bright. Pay later.",

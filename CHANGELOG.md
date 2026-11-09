@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.42.3 – 2026-11-09
+
+- Market: the goods are grouped in **sixteen categories** – ores, ices, gases, metals, minerals, nuclear materials,
+  fuels & coolants, components, food, chemicals, industrial goods, consumer goods, high-tech & medical, science,
+  military goods, luxury goods – with a heading per group and a filter for each (the economy filters stay below).
+- Raw materials are wanted by their own users now, not all by "industry and high-tech": tungsten and titanium by the
+  military, helium-3 and cryo coolant by research, ammonia and carbon dioxide by agriculture, xenon by the military …
+- Weapon parts are made by industry and used by the military.
+- New service **Munitions Depot** (Obsidian Ordnance): ammunition for every weapon that has to be restocked – the
+  mines of the mine launchers so far; mines are no longer sold on the market. What a depot stocks and charges follows
+  the economy: military systems carry every kind and sell it cheapest, industrial ones the common kinds, high-tech
+  ones the jammer mines; pirate havens sell everything, dearly. Munitions go back for half their price.
+- `Warenliste.md`: all tradeable goods with category, producing and consuming economy.
+
 ## alpha 0.6.42.2 – 2026-11-09
 
 **Package 42b: markets with real stocks.** A new game is needed.

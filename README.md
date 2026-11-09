@@ -124,6 +124,10 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   prosperity; the station pays `SPREAD` of what it asks. Quotes price a whole trade along the stock.
 - `GameState.market_stock` keeps traded stocks (saved); `Market.sync(station)` rewrites the old `station["market"]`
   table for code that reads it.
+- Sixteen market categories (`MARKET_CATEGORIES`, `GOODS_CATEGORY`, `Market.category_of`); raw materials have their
+  own consumers (`RAW_WANTS`). `Warenliste.md` lists every good.
+- Munitions Depot (`scripts/core/munitions.gd`, `munitions_panel.gd`): `Munitions.AMMO` (munition → weapon family),
+  `Munitions.offer(station)` from the system's economy; munitions are off the market (`Market.on_market`).
 
 ## Mining expansion (phase 0.5 package 41)
 

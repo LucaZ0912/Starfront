@@ -13,7 +13,7 @@ func build() -> void:
 	var made: Array = []
 	var wanted: Array = []
 	for cid in GameData.commodities:
-		if not GameData.is_tradeable(cid):
+		if not Market.on_market(cid):
 			continue
 		match Market.role(station, cid):
 			"produce":
@@ -30,9 +30,13 @@ func build() -> void:
 	add_child(mw)
 	standing_line()
 	cargo_line()
-	# Filters: local trade, the hold, raw materials, components, the nine economies, all
+	# Filters: local trade, the hold, all – the sixteen categories – the nine economies
 	var tabs := UI.hbox(4)
 	add_child(tabs)
+	var tabs_c := HFlowContainer.new()
+	tabs_c.add_theme_constant_override("h_separation", 3)
+	tabs_c.add_theme_constant_override("v_separation", 3)
+	add_child(tabs_c)
 	var tabs2 := UI.hbox(3)
 	add_child(tabs2)
 	for spec in FILTERS:
@@ -40,10 +44,14 @@ func build() -> void:
 		var b := UI.button(spec[1], func(): _set_filter(key))
 		b.toggle_mode = true
 		b.button_pressed = filter == key
-		if Economy.ECONOMIES.has(key):
+		if key.begins_with("econ:"):
 			b.add_theme_font_size_override("font_size", 12)
-			b.add_theme_color_override("font_color", Economy.color_of(key))
+			b.add_theme_color_override("font_color", Economy.color_of(key.substr(5)))
+			b.tooltip_text = "Goods of %s systems" % Economy.name_of(key.substr(5))
 			tabs2.add_child(b)
+		elif key.begins_with("cat:"):
+			b.add_theme_font_size_override("font_size", 12)
+			tabs_c.add_child(b)
 		else:
 			tabs.add_child(b)
 	var grid := GridContainer.new()
@@ -54,10 +62,18 @@ func build() -> void:
 	for h in ["Commodity", "", "Stock", "Buy", "Sell", "In hold", "Buy", "Sell"]:
 		grid.add_child(UI.label(h, 13, corp_color()))
 	var rows := 0
-	for cid in GameData.commodities:
-		if not GameData.is_tradeable(cid) or not _matches(cid, f):
+	var last_cat := "-"
+	for cid in _sorted_goods():
+		if not _matches(cid, f):
 			continue
 		rows += 1
+		var cat := Market.category_of(cid)
+		if cat != last_cat:
+			# a heading per category
+			last_cat = cat
+			grid.add_child(UI.label(Market.category_name(cat).to_upper() if cat != "" else "OTHER", 12, Color(0.55, 0.75, 1.0)))
+			for _i in 7:
+				grid.add_child(Control.new())
 		var c: Dictionary = GameData.commodities[cid]
 		var role := Market.role(station, cid)
 		var stk := Market.stock(station, cid)
@@ -113,24 +129,36 @@ static func _short(names: Array) -> String:
 
 
 static func _sector_text(cid: String) -> String:
-	var cat := String(GameData.commodities[cid].get("category", ""))
-	match cat:
-		"ore":
-			return "Ore"
-		"gas":
-			return "Gas"
-		"refined":
-			return "Refined material"
-		"components":
-			return "Component"
 	var e := Market.econ_of(cid)
-	return "%s goods" % Economy.name_of(e) if e != "" else cat.capitalize()
+	return "%s  •  made by %s systems" % [Market.category_name(Market.category_of(cid)), Economy.name_of(e)] if e != "" else Market.category_name(Market.category_of(cid))
 
 
-const FILTERS := [["local", "Local trade"], ["hold", "In hold"], ["raw", "Raw materials"], ["components", "Components"], ["luxury", "Luxury"], ["all", "All"],
-	["agri", "Agriculture"], ["mining", "Mining"], ["industry", "Industry"], ["refinery", "Refining"], ["chemistry", "Chemistry"],
-	["hightech", "High-Tech"], ["research", "Research"], ["military", "Military"], ["tourism", "Tourism"]]
+static var FILTERS: Array = _make_filters()
 static var filter := "local"
+static var _order: Array = []
+
+
+static func _make_filters() -> Array:
+	var out: Array = [["local", "Local trade"], ["hold", "In hold"], ["all", "All"]]
+	for c in preload("res://data/commodities.gd").MARKET_CATEGORIES:
+		out.append(["cat:" + String(c[0]), String(c[1])])
+	for e in ["agri", "mining", "industry", "refinery", "chemistry", "hightech", "research", "military", "tourism"]:
+		out.append(["econ:" + e, {"agri": "Agriculture", "mining": "Mining", "industry": "Industry", "refinery": "Refining",
+			"chemistry": "Chemistry", "hightech": "High-Tech", "research": "Research", "military": "Military", "tourism": "Tourism"}[e]])
+	return out
+
+
+## The market's goods in category order (and in their data order inside a category).
+static func _sorted_goods() -> Array:
+	if _order.is_empty():
+		var cats: Array = []
+		for c in preload("res://data/commodities.gd").MARKET_CATEGORIES:
+			cats.append(String(c[0]))
+		for cat in cats + [""]:
+			for cid in GameData.commodities:
+				if Market.on_market(cid) and Market.category_of(cid) == cat:
+					_order.append(cid)
+	return _order
 
 
 ## Q / E (0.5.28.2): the previous / next filter.
@@ -155,16 +183,12 @@ func _matches(cid: String, f: ShipFitting) -> bool:
 			return Market.role(station, cid) != "neutral" or float(f.cargo.get(cid, 0.0)) > 0.0
 		"hold":
 			return float(f.cargo.get(cid, 0.0)) > 0.0
-		"raw":
-			return cat in ["ore", "gas", "refined"]
-		"components":
-			return cat == "components"
-		"luxury":
-			return Market.is_flag(cid, "lux")
 		"all":
 			return true
-	# an economy: its goods (raw materials not included)
-	return not cat in ["ore", "gas", "refined", "components"] and Market.econ_of(cid) == filter
+	if filter.begins_with("cat:"):
+		return Market.category_of(cid) == filter.substr(4)
+	# an economy: the goods its systems make (raw materials not included)
+	return not cat in ["ore", "gas", "refined", "components"] and Market.econ_of(cid) == filter.substr(5)
 
 
 func _buy(cid: String, n: int) -> void:

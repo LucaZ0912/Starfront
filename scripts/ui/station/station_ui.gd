@@ -197,12 +197,14 @@ func service_available(svc: Dictionary) -> String:
 			return "" if station.get("curia", false) else "Only in the Cathedral of Return (Heimkehr)"
 		"exchange":
 			return "" if station.get("exchange", false) else "Only in the Meridian Sphere (Durchbruch)"
+		"munitions":
+			return "" if not Munitions.offer(station).is_empty() else "No munitions stocked here (the system's economy)"
 	return ""
 
 
 ## Services shown in the ship column (the rest sit as tiles in the station column; the news archive opens
 ## from the news column).
-const SHIP_SERVICES := ["fuel", "repair", "drones", "outfitter", "hangar"]
+const SHIP_SERVICES := ["fuel", "repair", "drones", "munitions", "outfitter", "hangar"]
 var concourse_tiles := 0          # tiles built in the last concourse (smoke test)
 
 
@@ -501,7 +503,7 @@ func _ship_column(v: VBoxContainer, tiles: Array) -> void:
 			GameData.corp(fuel_svc["corp"])["color"], func(): _quick("refuel", uid), why_f if why_f != "" else ("" if fc > 0 else "Tank full"), tiles)
 		_long_tile(v, "t_repair", "Repair all" + ("  (%s)" % GameData.fmt_credits(rc) if rc > 0 else "  (at full health)"), String(GameData.corp(rep_svc["corp"])["name"]),
 			GameData.corp(rep_svc["corp"])["color"], func(): _quick("repair", uid), why_r if why_r != "" else ("" if rc > 0 else "No damage"), tiles)
-	for sid in ["drones", "outfitter", "hangar"]:
+	for sid in ["drones", "munitions", "outfitter", "hangar"]:
 		_service_tile(v, _svc(sid), tiles)
 
 

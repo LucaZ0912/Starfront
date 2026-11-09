@@ -30,6 +30,9 @@ const SERVICES := [
 		"panel": "res://scripts/ui/station/service_panel.gd", "requires": "", "mode": "fuel"},
 	{"id": "drones", "title": "Drone Bay", "corp": "hwd", "icon": "drone",
 		"panel": "res://scripts/ui/station/drone_panel.gd", "requires": ""},
+	# package 42b: ammunition for the weapons that have to be restocked (mines) – stock follows the economy
+	{"id": "munitions", "title": "Munitions Depot", "corp": "obx", "icon": "w_mines",
+		"panel": "res://scripts/ui/station/munitions_panel.gd", "requires": "munitions"},
 	{"id": "repair", "title": "Repair Bay", "corp": "mdx", "icon": "t_repair",
 		"panel": "res://scripts/ui/station/service_panel.gd", "requires": "", "mode": "repair"},
 	{"id": "look", "title": "Image Studio", "corp": "vsg", "icon": "face",

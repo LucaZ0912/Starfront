@@ -189,13 +189,68 @@ const OLD_GOODS_ECON := {
 	"medicine": ["hightech", ["mining", "military", "agri"], {"basic": true}],
 	"alloys": ["refinery", ["industry", "military", "agri"], {}],
 	"electronics": ["hightech", ["industry", "agri", "research"], {}],
-	"weapon_parts": ["military", ["military"], {}],
+	"weapon_parts": ["industry", ["military"], {}],                 # industry makes them, the military uses them
 	"gold": ["refinery", ["tourism", "hightech"], {"lux": true}],
 	"platinum_ingot": ["refinery", ["hightech", "tourism"], {"lux": true}],
 	"mine_proximity": ["military", [], {}], "mine_jammer": ["military", [], {}], "mine_timer": ["military", [], {}], "mine_emp": ["military", [], {}],
 	"salvage": ["", ["refinery", "industry"], {}],
 	"research_data": ["research", ["hightech"], {}],
 }
+## Package 42b: who wants each raw material – finer than "industry and high-tech" for all of them.
+const RAW_WANTS := {
+	# metals
+	"iron_ingot": ["industry", "military"], "nickel_ingot": ["industry", "hightech"], "titanium_ingot": ["military", "industry"],
+	"cobalt_ingot": ["hightech", "industry"], "iridium_ingot": ["hightech", "research"], "aluminium": ["industry", "agri"],
+	"magnesium": ["industry", "chemistry"], "neodymium": ["hightech", "military"], "copper": ["industry", "hightech"],
+	"tungsten": ["military", "industry"], "lithium": ["hightech", "industry"], "osmium": ["research", "military"],
+	"palladium": ["hightech", "chemistry"],
+	# minerals
+	"silicon": ["hightech", "industry"], "rare_earths": ["hightech", "research"], "xeno_lattice": ["research", "hightech"],
+	"graphite": ["industry", "refinery"], "optical_quartz": ["hightech", "research"],
+	# nuclear materials
+	"enriched_uranium": ["military", "industry"], "thorium": ["research", "hightech"],
+	# fuels and coolants
+	"ammonia": ["agri", "chemistry"], "methane": ["chemistry", "industry"], "deuterium": ["military", "research", "industry"],
+	"helium3": ["research", "military"], "cryo_coolant": ["research", "military"], "liquid_nitrogen": ["agri", "hightech"],
+	"carbon_dioxide": ["agri", "chemistry"],
+	# ices (beside the refineries)
+	"water_ice": ["refinery", "agri"], "ammonia_ice": ["refinery", "chemistry"], "methane_ice": ["refinery", "chemistry"],
+	# gases
+	"hydrogen": ["chemistry", "industry"], "helium": ["industry", "research"], "nitrogen_gas": ["agri", "chemistry"],
+	"neon": ["hightech", "industry"], "xenon": ["military", "research"], "sulfur_dioxide": ["chemistry", "refinery"],
+	"phosphine": ["chemistry", "research"], "chlorine": ["chemistry", "refinery"], "ammonia_gas": ["agri", "chemistry"],
+	"fluorine": ["chemistry", "hightech"], "helium3_gas": ["research", "military"],
+}
+
+## Package 42b: the categories of the market (in this order) and the goods that do not follow from their data.
+const MARKET_CATEGORIES := [
+	["ores", "Ores"], ["ices", "Ices"], ["gases", "Gases"], ["metals", "Metals"], ["minerals", "Minerals"],
+	["nuclear", "Nuclear Materials"], ["fuels", "Fuels & Coolants"], ["components", "Components"], ["food", "Food"],
+	["chemicals", "Chemicals"], ["industrial", "Industrial Goods"], ["consumer", "Consumer Goods"],
+	["hightech", "High-Tech & Medical"], ["science", "Science"], ["military", "Military Goods"], ["luxury", "Luxury Goods"],
+]
+const GOODS_CATEGORY := {
+	"silicon": "minerals", "rare_earths": "minerals", "xeno_lattice": "minerals", "graphite": "minerals", "optical_quartz": "minerals",
+	"enriched_uranium": "nuclear", "thorium": "nuclear",
+	"ammonia": "fuels", "methane": "fuels", "deuterium": "fuels", "helium3": "fuels", "cryo_coolant": "fuels",
+	"liquid_nitrogen": "fuels", "carbon_dioxide": "fuels", "refined_fuel": "fuels",
+	"water": "food", "food": "food", "grain": "food", "fresh_produce": "food", "protein": "food", "coffee": "food", "spices": "food",
+	"seed_stock": "food", "field_rations": "food",
+	"plastics": "chemicals", "acids": "chemicals", "solvents": "chemicals", "pharma_precursors": "chemicals", "dyes": "chemicals",
+	"explosives": "chemicals", "fertiliser": "chemicals",
+	"alloys": "industrial", "steel": "industrial", "composites": "industrial", "glass": "industrial", "lubricants": "industrial",
+	"regolith": "industrial", "industrial_diamonds": "industrial", "drill_bits": "industrial", "machinery": "industrial",
+	"hand_tools": "industrial", "robots": "industrial", "ground_vehicles": "industrial", "prefab_habitats": "industrial", "salvage": "industrial",
+	"consumer_goods": "consumer", "textiles": "consumer", "furniture": "consumer", "consumer_electronics": "consumer",
+	"holo_films": "consumer", "souvenirs": "consumer",
+	"electronics": "hightech", "computers": "hightech", "medicine": "hightech", "medical_equipment": "hightech", "nanites": "hightech",
+	"implants": "hightech", "ai_cores": "hightech", "lab_equipment": "hightech", "holo_displays": "hightech",
+	"research_data": "science", "star_charts": "science", "prototypes": "science", "gene_samples": "science", "exotic_specimens": "science",
+	"weapon_parts": "military", "small_arms": "military", "ammunition": "military", "body_armour": "military", "combat_drones": "military",
+	"fine_wine": "luxury", "spirits": "luxury", "perfume": "luxury", "jewellery": "luxury", "luxury_goods": "luxury",
+	"designer_clothing": "luxury", "artworks": "luxury", "gemstones": "luxury",
+}
+
 ## Components (package 41): who makes and who wants them.
 const COMPONENT_ECON := {
 	"circuits": ["hightech", ["industry", "military"]], "battery_cells": ["industry", ["mining", "agri", "military"]],

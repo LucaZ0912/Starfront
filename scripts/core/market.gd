@@ -41,6 +41,8 @@ static func wants_of(cid: String) -> Array:
 	var c: Dictionary = GameData.commodities.get(cid, {})
 	if c.has("wants"):
 		return c["wants"]
+	if CommodityData.RAW_WANTS.has(cid):
+		return CommodityData.RAW_WANTS[cid]
 	if CommodityData.OLD_GOODS_ECON.has(cid):
 		return CommodityData.OLD_GOODS_ECON[cid][1]
 	if CommodityData.COMPONENT_ECON.has(cid):
@@ -62,6 +64,35 @@ static func is_flag(cid: String, flag: String) -> bool:
 	if CommodityData.OLD_GOODS_ECON.has(cid):
 		return bool(CommodityData.OLD_GOODS_ECON[cid][2].get(flag, false))
 	return false
+
+
+## The market category of a good (CommodityData.MARKET_CATEGORIES) – "" for munitions and the like.
+static func category_of(cid: String) -> String:
+	if CommodityData.GOODS_CATEGORY.has(cid):
+		return String(CommodityData.GOODS_CATEGORY[cid])
+	var c: Dictionary = GameData.commodities.get(cid, {})
+	match String(c.get("category", "")):
+		"ore":
+			return "ices" if String(c.get("class", "")) == "icy" else "ores"
+		"gas":
+			return "gases"
+		"components":
+			return "components"
+		"refined":
+			return "metals"
+	return ""
+
+
+static func category_name(cat: String) -> String:
+	for c in CommodityData.MARKET_CATEGORIES:
+		if c[0] == cat:
+			return String(c[1])
+	return cat.capitalize()
+
+
+## Goods of the market (munitions go to the Munitions Depot – package 42b).
+static func on_market(cid: String) -> bool:
+	return GameData.is_tradeable(cid) and String(GameData.commodities[cid].get("category", "")) != "munitions"
 
 
 ## The economy a good belongs to in the market's filters ("" = raw materials and the rest).
@@ -215,14 +246,14 @@ static func mult(station: Dictionary, cid: String, at_stock: float) -> float:
 
 ## What the station asks per unit now (-1 = nothing in stock / not traded).
 static func buy_price(station: Dictionary, cid: String) -> int:
-	if not GameData.is_tradeable(cid) or stock(station, cid) < 1.0:
+	if not on_market(cid) or stock(station, cid) < 1.0:
 		return -1
 	return maxi(int(round(float(GameData.commodities[cid]["price"]) * mult(station, cid, stock(station, cid)))), 1)
 
 
 ## What the station pays per unit now.
 static func sell_price(station: Dictionary, cid: String) -> float:
-	if not GameData.is_tradeable(cid):
+	if not on_market(cid):
 		return 0.0
 	return float(GameData.commodities[cid]["price"]) * mult(station, cid, stock(station, cid)) * SPREAD
 
@@ -251,7 +282,8 @@ static func sold(station: Dictionary, cid: String, n: float) -> void:
 static func sync(station: Dictionary) -> void:
 	var mk: Dictionary = station.get("market", {})
 	for cid in GameData.commodities:
-		if not GameData.is_tradeable(cid):
+		if not on_market(cid):
+			mk.erase(cid)
 			continue
 		mk[cid] = {"buy": buy_price(station, cid), "sell": int(round(sell_price(station, cid)))}
 	station["market"] = mk

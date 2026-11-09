@@ -335,6 +335,48 @@ func _c_drone_buy(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"munitions_buy", "item": id, "amount": n} – package 42b: ammunition at the Munitions Depot
+func _c_munitions_buy(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var st := docked_station()
+	var f := _fit()
+	var cid := String(c.get("item", ""))
+	var offer := Munitions.offer(st)
+	if not offer.has(cid):
+		return "Not stocked at this depot."
+	var price := GameState.rep.buy_price(int(offer[cid]), docked_faction())
+	var n := mini(int(c.get("amount", 1)), int(floor(f.free_for(cid) / GameData.item_volume(cid))))
+	n = mini(n, int(floor(float(GameState.credits) / float(maxi(price, 1)))))
+	if n <= 0:
+		return "Purchase not possible (cargo space or credits)."
+	GameState.spend(n * price)
+	f.add_cargo(cid, float(n))
+	GameState.log_msg("Bought %d × %s for %s." % [n, GameData.item_name(cid), GameData.fmt_credits(n * price)], GameState.COL_GOOD)
+	return ""
+
+
+## {"type":"munitions_sell", "item": id, "amount": n (-1 = all)} – back to the depot for half the price
+func _c_munitions_sell(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var f := _fit()
+	var cid := String(c.get("item", ""))
+	if not Munitions.AMMO.has(cid):
+		return "The depot only takes munitions."
+	var have := int(floor(float(f.cargo.get(cid, 0.0)) + 0.001))
+	var n := have if int(c.get("amount", -1)) < 0 else mini(int(c.get("amount", 1)), have)
+	if n <= 0:
+		return "Nothing to sell."
+	var earn := int(round(float(GameData.commodities[cid]["price"]) * Munitions.BUYBACK * n))
+	f.remove_cargo(cid, float(n))
+	GameState.add_credits(earn)
+	GameState.log_msg("Sold %d × %s back for %s." % [n, GameData.item_name(cid), GameData.fmt_credits(earn)], GameState.COL_GOOD)
+	return ""
+
+
 ## {"type":"drone_sell", "index": i} – sell a drone from the hangar.
 func _c_drone_sell(c: Dictionary) -> String:
 	var e := _need_service()
@@ -691,6 +733,8 @@ func _c_market_buy(c: Dictionary) -> String:
 	var st := docked_station()
 	var f := _fit()
 	var cid: String = c["item"]
+	if GameData.commodities.get(cid, {}).get("category", "") == "munitions":
+		return "Munitions are sold at the Munitions Depot."
 	if not GameData.is_tradeable(cid) or Market.buy_price(st, cid) < 0:
 		return "Not on offer here."
 	# package 42b: from the stock – it runs out, and the price rises as you buy
@@ -721,6 +765,8 @@ func _c_market_sell(c: Dictionary) -> String:
 	var st := docked_station()
 	var f := _fit()
 	var cid: String = c["item"]
+	if GameData.commodities.get(cid, {}).get("category", "") == "munitions":
+		return "Munitions are taken back at the Munitions Depot."
 	if not GameData.is_tradeable(cid):
 		return "This station does not buy that."
 	var have := float(f.cargo.get(cid, 0.0))

@@ -3236,9 +3236,9 @@ func _test_package20(view: SystemView) -> void:
 	var mine_market := false
 	for s2 in Universe.systems:
 		for st in Universe.get_layout(int(s2["id"]))["stations"]:
-			if int(st["market"].get("mine_emp", {"buy": -1})["buy"]) > 0:
+			if Munitions.offer(st).has("mine_emp"):
 				mine_market = true
-	check(mine_market, "mines are sold as goods (military outposts, havens)")
+	check(mine_market, "mines are sold at the Munitions Depot (military systems, havens) – package 42b")
 	var fams_sold := {}
 	for s3 in Universe.systems:
 		for st3 in Universe.get_layout(int(s3["id"]))["stations"]:
@@ -6951,7 +6951,41 @@ func _test_market42(view: SystemView) -> void:
 			built = built and mp.get_child_count() > 3
 		mp._set_filter("local")
 		sp.close()
-		check(built and mp.FILTERS.size() >= 15, "42b: the market panel – local trade, hold, raw materials, components, luxury, all and the nine economies")
+		check(built and mp.FILTERS.size() >= 28, "42b: the market panel – local trade, hold, all, the sixteen categories and the nine economies")
+	# categories, finer consumers, weapon parts, the Munitions Depot (package 42b, second part)
+	var cat_ok := true
+	for cid5 in GD.commodities:
+		if Market.on_market(cid5):
+			cat_ok = cat_ok and Market.category_of(cid5) != ""
+	var wants_ok: bool = "military" in Market.wants_of("tungsten") and "research" in Market.wants_of("helium3") and Market.econ_of("weapon_parts") == "industry" and Market.wants_of("weapon_parts") == ["military"]
+	check(cat_ok and Market.category_of("tungsten") == "metals" and Market.category_of("fertiliser") == "chemicals" and Market.category_of("water_ice") == "ices" and not Market.on_market("mine_emp") and wants_ok,
+		"42b: every market good in one of sixteen categories; raw materials wanted by their own users (tungsten by the military); weapon parts made by industry, used by the military; mines off the market")
+	var mil_st: Dictionary = {}
+	var poor_st: Dictionary = {}
+	for sy6 in Universe.systems:
+		for s6 in Universe.get_layout(int(sy6["id"]))["stations"]:
+			var ec6: Dictionary = Economy.of(int(sy6["id"]))
+			if mil_st.is_empty() and ec6["main"] == "military" and String(s6["type"]) != "waystation":
+				mil_st = s6
+			if poor_st.is_empty() and ec6["main"] == "agri" and ec6["second"] != "military" and String(s6["type"]) in ["agri", "trade"] and int(s6["tier"]) < 3:
+				poor_st = s6
+	var dep_ok: bool = mil_st.is_empty() or Munitions.offer(mil_st).size() == Munitions.AMMO.size()
+	if not mil_st.is_empty() and not poor_st.is_empty() and Munitions.offer(poor_st).has("mine_proximity"):
+		dep_ok = dep_ok and int(Munitions.offer(mil_st)["mine_proximity"]) < int(Munitions.offer(poor_st)["mine_proximity"])
+	var buy_mine := true
+	if not dst.is_empty() and not Munitions.offer(dst).is_empty():
+		var mcid: String = Munitions.offer(dst).keys()[0]
+		var f6 := GameState.active()
+		var h6 := float(f6.cargo.get(mcid, 0.0))
+		var cr6 := GameState.credits
+		GameState.credits = 1000000
+		var refused: bool = Commands.execute({"type": "market_buy", "item": mcid, "amount": 1}) != ""
+		Commands.execute({"type": "munitions_buy", "item": mcid, "amount": 2})
+		var got: bool = float(f6.cargo.get(mcid, 0.0)) - h6 >= 1.99
+		Commands.execute({"type": "munitions_sell", "item": mcid, "amount": 2})
+		buy_mine = refused and got and absf(float(f6.cargo.get(mcid, 0.0)) - h6) < 0.01
+		GameState.credits = cr6
+	check(dep_ok and buy_mine, "42b: the Munitions Depot – a military system stocks every mine, cheaper than elsewhere; buy there (not on the market), sell back")
 	act.docked_at = keep_dock
 	act.system_id = keep_sys
 
