@@ -1602,6 +1602,18 @@ Jedes Paket mit eigenen Debug-Funktionen (z. B. zu jedem Systemtyp springen, Ste
 - [x] **Codex:** Independent systems. **Debug:** zu jedem Manufaktur-System.
 - [x] **0.6.39.11 (Luz):** Andockbuchten bei Aurelle und Hadrian bündig mit dem Rest; Gerüstschienen der Docks springen nicht mehr um einen Pixel (KHI).
 
+#### Paket 40 – Neuer Cluster (Fragen 9. Nov 2026, in Klärung)
+
+**Antworten Luz (9. Nov 2026):**
+- **Größe:** etwa **120 Systeme** – ein bewohnter Kern (~60) und ein Gürtel unbewohnter Systeme (~60). Die Galaxiekarte bekommt **Zoom und Verschieben**.
+- **Gürtel:** ein **Ring um den Kern**, dahinter beginnt der Veil. Die Gürtelsysteme sollen sich **in Gruppen zusammentun** (Konstellationen und Regionen, ähnlich der Karte von EVE Online) statt gleichmäßig verteilt zu sein.
+- **Inhalt des Gürtels:** **reiche Rohstoffe** (große Felder, seltene Erze, Colossi mit Tiefenerz, Gasriesen), **Anomalien und Wracks** (alte Schlachtfelder, Überreste aus der Zeit vor dem Bruch), **Piraten und Gefahren**, **Veil-Randsysteme** (seltsame Phänomene, Vorbereitung für Teil B).
+- **Neue Gefahren:** **Strahlungszonen**, **Ionenstürme**, **alte Minenfelder**, **Piratenfestungen** (größer als die bisherigen Häfen, mit Verteidigung und eigenem Kopfgeld).
+- **Unabhängige Systeme:** **kleine freie Siedlungen** – gelbe unabhängige Systeme im Gürtel mit einem Außenposten (Bergbau-, Handels- oder Forschungsposten), eigene Regeln, keine Patrouillen der Mächte.
+- **Namen:** **gemischt** – im Kern deutsche, bildhafte Namen wie bisher, im Gürtel eher Katalognummern und Entdeckernamen (z. B. „KVX-114“, „Brandts Wacht“).
+- **Gebiete:** die drei Mächte behalten ihre Gebiete im Kern **ungefähr wie bisher**, Piratenfraktionen an den Rändern; **die Heimatsysteme der Fraktionen sind ausschließlich von Systemen der eigenen Fraktion umgeben**.
+- **Tore:** noch zu klären (Luz hat dazu etwas).
+
 #### Paket 41 – Bergbau-Erweiterung (umgesetzt 8. Nov 2026, alpha 0.6.41.1)
 
 **Antworten Luz (8. Nov 2026):**
