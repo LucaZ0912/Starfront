@@ -236,7 +236,7 @@ func module_summary_lines(id: String) -> Array:
 	var labels := {
 		"armor": "Armor", "thrust": "Thrust (kN)", "turn": "Agility", "output": "Output (MW)",
 		"capacitor": "Capacitor", "recharge": "Recharge/s", "efficiency": "Efficiency",
-		"fuel": "Fuel", "drive_class": "Drive class", "jump_fuel": "Fuel per jump",
+		"fuel": "Fuel", "drive_class": "Jump drive grade", "jump_fuel": "Fuel per jump",
 		"spool": "Spool-up (s)", "range": "Range", "resolution": "Resolution",
 		"scan_strength": "Scan strength", "damage": "Damage", "cooldown": "Cooldown (s)",
 		"energy": "Energy/activation", "projectile_speed": "Projectile speed", "splash": "Blast radius",

@@ -1,7 +1,7 @@
 class_name GalaxyMap
 extends CanvasLayer
 const NotoriousData = preload("res://scripts/core/notorious.gd")
-## Galaxy map: systems, hyperspace routes (class 1–3), own ships, route planning, fleet overview.
+## Galaxy map: systems, hyperspace routes, own ships, route planning, fleet overview.
 
 signal view_system(id: int)
 signal routes_changed
@@ -43,6 +43,7 @@ const TERR_CELL := 8.0           # map units per territory pixel
 static var _terr_tex: Texture2D
 static var _terr_key := ""
 static var _centres := {}
+var veil_rect: ColorRect
 static var _centres_key := ""
 
 
@@ -68,6 +69,16 @@ func _ready() -> void:
 	map.mouse_filter = Control.MOUSE_FILTER_STOP
 	map.clip_contents = true
 	map.draw.connect(_draw_map)
+	# 0.6.40.6: the Veil – wavering black clouds with violet light, under everything the map draws
+	veil_rect = ColorRect.new()
+	veil_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	veil_rect.z_index = -1                  # map at z 1, the clouds at 0 – above the panel's background
+	map.z_index = 1
+	var vm := ShaderMaterial.new()
+	vm.shader = preload("res://shaders/veil_clouds.gdshader")
+	veil_rect.material = vm
+	map.add_child(veil_rect)
 	map.gui_input.connect(_on_map_input)
 	hb.add_child(map)
 	# overlay switches on the map itself (saved in the settings)
@@ -173,7 +184,7 @@ func _ready() -> void:
 	fleet_box = UI.vbox(4)
 	fleet_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(fleet_box)
-	sv.add_child(UI.label("Lines: blue = cl.1, yellow = cl.2, red = cl.3\nClick: select system, then \"Set course\"  •  Wheel: zoom  •  Drag: move", 11, Color(0.6, 0.7, 0.8)))
+	sv.add_child(UI.label("Lines: hyperspace routes\nClick: select system, then \"Set course\"  •  Wheel: zoom  •  Drag: move", 11, Color(0.6, 0.7, 0.8)))
 
 
 func _overlay_button(text: String, on: bool, tip: String, cb: Callable) -> Button:
@@ -408,9 +419,8 @@ func _draw_map() -> void:
 		for nb in s["links"]:
 			if nb < s["id"]:
 				continue
-			var cls := int(s["links"][nb])
-			map.draw_line(_to_screen(s["pos"]), _to_screen(Universe.systems[nb]["pos"]), cls_cols[cls - 1], 1.0 + cls * 0.7)
-	_draw_veil_glow()
+			map.draw_line(_to_screen(s["pos"]), _to_screen(Universe.systems[nb]["pos"]), cls_cols[0], 1.6)     # 0.6.40.6: one kind of route
+	_update_veil()
 	if overview:
 		_draw_ring_names(font)
 	_draw_anomaly_finder(font)
@@ -606,17 +616,13 @@ func _draw_ring_names(font: Font) -> void:
 const VEIL_F := 2.38
 
 
-func _draw_veil_glow() -> void:
-	var c := Universe.MAP_SIZE * 0.5
-	var R := Universe.CORE_R
-	for i in 7:
-		var f := VEIL_F + i * 0.06
-		var pts := PackedVector2Array()
-		for k in 97:
-			var a := k * TAU / 96.0
-			var w := 0.012 * sin(a * 7.0 + _t * 0.4 + i) + 0.008 * sin(a * 13.0 - _t * 0.3)
-			pts.append(_to_screen(c + Vector2(cos(a) * R.x, sin(a) * R.y) * (f + w)))
-		map.draw_polyline(pts, Color(0.6, 0.3, 0.95, 0.16 - i * 0.018), maxf(4.0, (70.0 + i * 35.0) * _scale()))
+func _update_veil() -> void:
+	if veil_rect == null:
+		return
+	var vm := veil_rect.material as ShaderMaterial
+	vm.set_shader_parameter("centre", _to_screen(Universe.MAP_SIZE * 0.5))
+	vm.set_shader_parameter("radii", Universe.CORE_R * _scale())
+	vm.set_shader_parameter("rect_size", map.size)
 
 
 ## Text along the ellipse (CORE_R × f round the middle of the map), centred on angle `mid`; `upright` reads it
@@ -824,7 +830,7 @@ func _update_info() -> void:
 	t += "Routes: "
 	var routes: Array = []
 	for nb in s["links"]:
-		routes.append("%s (cl.%d)" % [Universe.systems[nb]["name"], int(s["links"][nb])])
+		routes.append(String(Universe.systems[nb]["name"]))
 	t += ", ".join(PackedStringArray(routes)) + "\n\n"
 	var fits := GameState.selected_fits()
 	if fits.is_empty():
@@ -836,7 +842,7 @@ func _update_info() -> void:
 				continue
 			var path := Universe.find_path(f.system_id, selected_system, int(f.stats()["drive_class"]))
 			if path.is_empty():
-				t += "[color=#ff7070]%s: no route (drive class %d)[/color]\n" % [f.ship_name, int(f.stats()["drive_class"])]
+				t += "[color=#ff7070]%s: no route (%s)[/color]\n" % [f.ship_name, "no jump drive" if int(f.stats()["drive_class"]) <= 0 else "unreachable"]
 				continue
 			var fuel := 0.0
 			var prev: int = f.system_id

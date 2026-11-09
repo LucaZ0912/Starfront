@@ -1569,15 +1569,10 @@ func _dist(a: int, b: int) -> float:
 	return (systems[a]["pos"] as Vector2).distance_to(systems[b]["pos"])
 
 
+## 0.6.40.6: every route is open to every ship with a jump drive – no route classes any more (the value stays 1).
 func _link(a: int, b: int) -> void:
-	var d := _dist(a, b)
-	var cls := 1
-	if d >= 340.0:
-		cls = 3
-	elif d >= 250.0:
-		cls = 2
-	systems[a]["links"][b] = cls
-	systems[b]["links"][a] = cls
+	systems[a]["links"][b] = 1
+	systems[b]["links"][a] = 1
 
 
 func _build_routes(rng: RandomNumberGenerator) -> void:

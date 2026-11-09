@@ -405,7 +405,7 @@ func info_text() -> String:
 		"gate":
 			var to: int = data["to"]
 			var sec: float = Universe.systems[to]["security"]
-			return "%s\nRoute class %d   Destination security: %.1f\nClick: hyperspace jump" % [data["name"], int(data["class"]), sec]
+			return "%s\nDestination security: %.1f\nClick: hyperspace jump" % [data["name"], sec]
 		"asteroid":
 			if kind == "colossus" and is_depleted():
 				return "%s\nMined out – empty" % title()

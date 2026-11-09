@@ -126,6 +126,13 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## No route classes (0.6.40.6)
+
+- `Universe._link` sets every route to 1; `GameState.can_jump` only needs a jump drive (and fuel, and entry permits);
+  `jump_fuel` is the drive's own. `drive_class` is the drive's grade Mk I–III: `DRIVE_TIME` in `jump_duration(from, f)`,
+  `DRIVE_MISJUMP` on the misjump roll; `drive_grade(f)`.
+- Galaxy map: `veil_rect` (a ColorRect under the map's drawing, `shaders/veil_clouds.gdshader`, `_update_veil`).
+
 ## Gates (phase 0.5 package 40b)
 
 - `Universe.gate_style(sid)`: a power's own style, `pirate` for pirate systems, `old` for the empty Rim, else

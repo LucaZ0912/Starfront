@@ -215,7 +215,7 @@ Brown dwarfs, white dwarfs, neutron stars and black holes do not erupt. The star
 
 	# ---------------------------------------------------------------- Technology
 	"tech_gates": {"cat": "technology", "title": "Hyperspace gates", "unlock": "jump", "image": {"icon": "hyperdrive"},
-		"text": "Gates link neighbouring systems. Every route has a class; your hyperdrive must match it, and every jump costs fuel. Larger, heavier ships need more.
+		"text": "Gates link neighbouring systems. Any jump drive takes any route – a better one (Mk II, Mk III) jumps faster and steadies an old gate's field – and every jump costs fuel. Larger, heavier ships need more.
 
 Every route between two systems ends in a gate, and you can tell who keeps it: the Assembly's white-and-blue rings with their four pylons, the Covenant's crimson and gold with eight spires, the Directorate's silver octagons with green emitters, the plain yellow-striped gates of the independents.\n\nOut in the Rim nobody keeps them any more. The old gates there are rusted, missing plates, broken in places down to the bare frame, and their fields flicker; the pirates patch theirs with scrap. A jump through an old gate takes longer – and very rarely its field breaks down mid-jump: the ship is flung out somewhere in the target system and takes damage. It is never fatal, but it hurts.",
 		"see": ["hist_leap", "tech_warp"]},

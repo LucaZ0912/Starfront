@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.6 – 2026-11-09
+
+**No more route classes; the Veil as clouds.** A new game is needed.
+- **Every hyperspace route is open to every ship with a jump drive** – the route classes (and the drive class they
+  asked for) are gone; the systems' own conditions, entry permits and the dangers of the Far Reaches are the
+  barriers now. Every jump costs the same fuel.
+- The jump drives are **grades Mk I–III** now (the old Cl.1–3 drives): a better drive **jumps faster** (×1 / ×0.85 /
+  ×0.7) and holds an old gate's failing field together (**misjumps** ×1 / ×0.6 / ×0.3).
+- Galaxy map: all routes in one colour, the route list without classes; gate tooltips without a route class.
+- **The Veil on the galaxy map** is a slowly wavering band of **black clouds with violet accents** – violet light in
+  their folds and along their ragged inner edge (a shader, `veil_clouds.gdshader`).
+
 ## alpha 0.6.40.5 – 2026-11-09
 
 **Package 40c: the content of the Rim.** A new game is needed.

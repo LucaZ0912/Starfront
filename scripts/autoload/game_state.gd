@@ -1817,8 +1817,9 @@ func notify(event: String, system_id: int) -> void:
 
 # ---------------------------------------------------------------- Hyperspace
 
-func jump_fuel(f: ShipFitting, cls: int) -> float:
-	return float(f.stats()["jump_fuel"]) * (1.0 + 0.35 * (cls - 1))
+## 0.6.40.6: every route costs the same – no route classes any more (`_cls` kept for the callers).
+func jump_fuel(f: ShipFitting, _cls: int = 1) -> float:
+	return float(f.stats()["jump_fuel"])
 
 
 ## Empty string = jump possible, otherwise the reason.
@@ -1919,21 +1920,28 @@ func can_jump(f: ShipFitting, to_id: int) -> String:
 			return lock
 	if not sys["links"].has(to_id):
 		return "No hyperspace route to %s" % Universe.systems[to_id]["name"]
-	var cls := int(sys["links"][to_id])
 	var s := f.stats()
 	if int(s["drive_class"]) <= 0:
 		return "No hyperdrive fitted"
-	if int(s["drive_class"]) < cls:
-		return "Class %d route – class %d hyperdrive is not enough" % [cls, int(s["drive_class"])]
-	var need := jump_fuel(f, cls)
+	var need := jump_fuel(f)
 	if f.fuel < need:
 		return "Not enough fuel (%.0f / %.0f)" % [f.fuel, need]
 	return ""
 
 
-## Package 40b: how long a jump from this system takes (old and patched gates are slower).
-func jump_duration(from_sid: int) -> float:
-	return JUMP_TIME * (OLD_GATE_TIME if Universe.old_gate(from_sid) else 1.0)
+## 0.6.40.6: the grade of the jump drive (Mk I–III) – a better drive jumps faster and holds an old gate's failing
+## field together (fewer misjumps).
+const DRIVE_TIME := [1.0, 1.0, 0.85, 0.7]
+const DRIVE_MISJUMP := [1.0, 1.0, 0.6, 0.3]
+
+
+static func drive_grade(f: ShipFitting) -> int:
+	return clampi(int(f.stats()["drive_class"]), 0, 3) if f != null else 1
+
+
+## Package 40b: how long a jump from this system takes (old and patched gates are slower; 0.6.40.6: better drives faster).
+func jump_duration(from_sid: int, f: ShipFitting = null) -> float:
+	return JUMP_TIME * (OLD_GATE_TIME if Universe.old_gate(from_sid) else 1.0) * float(DRIVE_TIME[drive_grade(f)])
 
 
 func begin_jump(f: ShipFitting, to_id: int) -> bool:
@@ -1941,7 +1949,7 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	if err != "":
 		log_msg("%s: %s" % [f.ship_name, err], COL_WARN)
 		return false
-	f.fuel -= jump_fuel(f, Universe.route_class(f.system_id, to_id))
+	f.fuel -= jump_fuel(f)
 	f.transit_kind = "jump"
 	f.transit_from = f.system_id
 	f.transit_to = to_id
@@ -1949,9 +1957,9 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	# package 40b: an old gate – longer, and now and then its field breaks down
 	var style := Universe.gate_style(f.system_id)
 	misjumps.erase(f.uid)
-	f.transit_total = jump_duration(f.system_id)
+	f.transit_total = jump_duration(f.system_id, f)
 	if style in ["old", "pirate"]:
-		if randf() < (MISJUMP_OLD if style == "old" else MISJUMP_PIRATE):
+		if randf() < (MISJUMP_OLD if style == "old" else MISJUMP_PIRATE) * float(DRIVE_MISJUMP[drive_grade(f)]):
 			misjumps[f.uid] = true
 		log_msg("The %s here is long past its last service – the jump takes longer, and its field is not to be trusted." % ("old gate" if style == "old" else "patched pirate gate"), COL_WARN)
 	f.transit = f.transit_total

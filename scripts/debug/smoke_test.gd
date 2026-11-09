@@ -3023,7 +3023,7 @@ func _test_modules(view: SystemView) -> void:
 			heaviest = q
 	check(lightest == "D" and heaviest == "F" and int(m["A"]["mass"]) == int(m["B"]["mass"]), "mass: D lightest, F heaviest, B as heavy as A")
 	check(int(m["A"]["price"]) > int(m["C"]["price"]) and int(m["F"]["price"]) < int(m["C"]["price"]) and float(m["A"]["power"]) > float(m["C"]["power"]), "quality also raises power draw and price")
-	check(int(M["hyperdrive:2:C"]["drive_class"]) == 1 and int(M["hyperdrive:4:C"]["drive_class"]) == 2 and int(M["hyperdrive:6:C"]["drive_class"]) == 3, "hyperdrive size sets the jump class (1–2 / 3–4 / 5–6)")
+	check(int(M["hyperdrive:2:C"]["drive_class"]) == 1 and int(M["hyperdrive:4:C"]["drive_class"]) == 2 and int(M["hyperdrive:6:C"]["drive_class"]) == 3, "hyperdrive size sets the drive grade Mk I–III (1–2 / 3–4 / 5–6)")
 	# per-slot sizes, smaller modules fit bigger slots
 	var dfly := GameState.create_from_preset("std_dragonfly", "player")
 	var bas := GameState.create_from_preset("std_bastion", "player")
@@ -7385,6 +7385,26 @@ func _test_rim40c(_view: SystemView) -> void:
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.
 func _test_gates40(view: SystemView) -> void:
 	var U = Universe
+	# 0.6.40.6: no route classes – every route is open to any jump drive; a better drive is faster and steadier
+	var one := true
+	for sy0 in U.systems:
+		for nb0 in sy0["links"]:
+			one = one and int(sy0["links"][nb0]) == 1
+	var f_mk1 := GameState.create_from_preset("std_mule", "player")
+	f_mk1.modules["hyperdrive"] = "hyperdrive:2:C"
+	f_mk1.mark_dirty()
+	var far_sid := -1
+	for sy1 in U.systems:
+		if sy1.get("outer", false):
+			far_sid = int(sy1["id"])
+			break
+	var path_far: Array = U.find_path(U.home_system, far_sid, GameState.drive_grade(f_mk1))
+	var f_mk3 := GameState.create_from_preset("std_mule", "player")
+	f_mk3.modules["hyperdrive"] = "hyperdrive:6:C"
+	f_mk3.mark_dirty()
+	var faster: bool = GameState.jump_duration(U.home_system, f_mk3) < GameState.jump_duration(U.home_system, f_mk1)
+	check(one and not path_far.is_empty() and faster,
+		"0.6.40.6: no route classes – a Mk I jump drive reaches the Far Reaches (%d jumps); a Mk III jumps faster (%.1f s vs %.1f s) and steadies old gates" % [path_far.size(), GameState.jump_duration(U.home_system, f_mk3), GameState.jump_duration(U.home_system, f_mk1)])
 	var styles := {}
 	var rule_ok := true
 	for sy in U.systems:

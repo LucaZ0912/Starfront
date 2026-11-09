@@ -2206,7 +2206,7 @@ func _c_debug_convoy(c: Dictionary) -> String:
 	rng.randomize()
 	var m := Missions.debug_escort(f.system_id, st, n, jumps, rng)
 	if m.is_empty():
-		return "No station exactly %d jump%s away (class-1 routes)." % [jumps, "" if jumps == 1 else "s"]
+		return "No station exactly %d jump%s away." % [jumps, "" if jumps == 1 else "s"]
 	var err := GameState.accept_mission(m)
 	if err != "":
 		return err

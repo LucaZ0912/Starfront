@@ -14,7 +14,8 @@ extends RefCounted
 ##   distributor: capacitor, recharge (/s), efficiency (multiplier on reactor output)
 ##   reactor:     output (MW)
 ##   tank:        fuel
-##   hyperdrive:  drive_class (max. route class from the size: 1–2 → 1, 3–4 → 2, 5–6 → 3), jump_fuel, spool (s)
+##   hyperdrive:  drive_class = the drive's grade Mk I–III (from the size: 1–2 → 1, 3–4 → 2, 5–6 → 3) – faster jumps and
+##                fewer misjumps at old gates (0.6.40.6; route classes are gone), jump_fuel, spool (s)
 ##   sensors:     range, resolution (target lock), scan_strength
 ##   weapon:      damage_type, damage, cooldown, range, energy, projectile_speed (0 = beam), splash, homing
 ##   tool:        tool (scanner/analyzer/mining/harvester/salvage/repair/survey/prospect/warrant/interdict/
@@ -326,11 +327,11 @@ const ANCHORS := {
 	"tank_l": {"name": "Fuel Tank", "slot": "tank", "size": 3, "price": 12000, "mass": 400, "power": 0, "fuel": 750},
 
 	# ---------------- Hyperdrives ----------------
-	"hyp_c1_s": {"name": "Jump Drive Cl.1", "slot": "hyperdrive", "size": 1, "price": 2500, "mass": 80, "power": 6, "drive_class": 1, "jump_fuel": 18, "spool": 3.0},
-	"hyp_c2_s": {"name": "Jump Drive Cl.2", "slot": "hyperdrive", "size": 1, "price": 12000, "mass": 100, "power": 10, "drive_class": 2, "jump_fuel": 22, "spool": 2.5},
-	"hyp_c2_m": {"name": "Jump Drive Cl.2", "slot": "hyperdrive", "size": 2, "price": 20000, "mass": 250, "power": 14, "drive_class": 2, "jump_fuel": 30, "spool": 3.5},
-	"hyp_c3_m": {"name": "Jump Drive Cl.3", "slot": "hyperdrive", "size": 2, "price": 55000, "mass": 300, "power": 24, "drive_class": 3, "jump_fuel": 40, "spool": 3.0},
-	"hyp_c3_l": {"name": "Jump Drive Cl.3", "slot": "hyperdrive", "size": 3, "price": 80000, "mass": 600, "power": 30, "drive_class": 3, "jump_fuel": 55, "spool": 4.0},
+	"hyp_c1_s": {"name": "Jump Drive Mk I", "slot": "hyperdrive", "size": 1, "price": 2500, "mass": 80, "power": 6, "drive_class": 1, "jump_fuel": 18, "spool": 3.0},
+	"hyp_c2_s": {"name": "Jump Drive Mk II", "slot": "hyperdrive", "size": 1, "price": 12000, "mass": 100, "power": 10, "drive_class": 2, "jump_fuel": 22, "spool": 2.5},
+	"hyp_c2_m": {"name": "Jump Drive Mk II", "slot": "hyperdrive", "size": 2, "price": 20000, "mass": 250, "power": 14, "drive_class": 2, "jump_fuel": 30, "spool": 3.5},
+	"hyp_c3_m": {"name": "Jump Drive Mk III", "slot": "hyperdrive", "size": 2, "price": 55000, "mass": 300, "power": 24, "drive_class": 3, "jump_fuel": 40, "spool": 3.0},
+	"hyp_c3_l": {"name": "Jump Drive Mk III", "slot": "hyperdrive", "size": 3, "price": 80000, "mass": 600, "power": 30, "drive_class": 3, "jump_fuel": 55, "spool": 4.0},
 
 	# ---------------- Sensors ----------------
 	"sen_basic_s": {"name": "Basic Sensor Suite", "slot": "sensors", "size": 1, "price": 1000, "mass": 40, "power": 3, "range": 900, "resolution": 1.0, "scan_strength": 1.0},

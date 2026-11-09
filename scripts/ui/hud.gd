@@ -390,7 +390,7 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 • Pirates attack you on their own – lock them and switch your weapons on.
 • Scanners sweep the whole system passively and reveal hidden anomalies.
 • Optical → strong vs shields, kinetic → armor, explosive → structure.
-• Hyperspace routes have classes 1–3 – your jump drive must be at least that class.
+• Any jump drive takes any route; a bigger drive (Mk II, Mk III) jumps faster.
 • The reactor output is a hard limit: passive modules always draw power, weapons and active modules only while in use. On an overload priority group 4 shuts down first, then 3, then 2 (Ship menu → Modules → Power).
 """
 

@@ -17,7 +17,7 @@ const DESC := {
 	"rea_fusion": "Compact fusion reactor – more power for its size.",
 	# travel
 	"tank": "Holds the fuel for warp and hyperspace jumps.",
-	"hyperdrive": "Jump drive for the gates – its class decides which gates you can use.",
+	"hyperdrive": "Jump drive for the gates – every gate takes any drive; a bigger one (Mk II, Mk III) jumps faster and holds an old gate's field steadier.",
 	# sensors
 	"sen_basic": "Basic sensors – lock range, resolution and scan strength.",
 	"sen_radar": "Long-range radar – sees and locks targets further away.",

@@ -868,7 +868,7 @@ func _build_ship() -> void:
 		"Agility: %.1f" % s["turn"],
 		"Warp speed: %s/s" % SystemView.fmt_dist(s["warp_speed"]),
 		"Mass: %.0f t" % s["mass"],
-		"Hyperdrive: class %d" % int(s["drive_class"]),
+		"Jump drive: Mk %s (jump time ×%.2f)" % [["–", "I", "II", "III"][clampi(int(s["drive_class"]), 0, 3)], float(GameState.DRIVE_TIME[clampi(int(s["drive_class"]), 0, 3)])],
 		"Fuel per jump: %.0f" % s["jump_fuel"],
 		"Spool-up: %.1f s" % s["spool"],
 		"Fuel: %.0f / %.0f" % [fit.fuel, s["fuel_max"]],
