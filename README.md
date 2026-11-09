@@ -126,6 +126,14 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## Territories by the lore (0.6.40.7)
+
+- `_assign_territory`: the capital with the fewest routes (≤ `DIRECTORATE_SYSTEMS` − 1, else another candidate) goes to
+  the Directorate, which takes only its ring and does not grow; pirates grow to `PIRATE_SYSTEMS` (3); the Assembly and
+  the Covenant grow without limit, leftovers go to an Assembly / Covenant neighbour. Contested: up to
+  `CONTESTED_SYSTEMS` on the Assembly–Covenant front (never next to the Directorate or a capital ring); every other
+  unowned core system is independent.
+
 ## No route classes (0.6.40.6)
 
 - `Universe._link` sets every route to 1; `GameState.can_jump` only needs a jump drive (and fuel, and entry permits);

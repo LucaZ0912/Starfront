@@ -36,7 +36,9 @@ const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
 const POWER_SYSTEMS := 15                # package 40: a core of about 60 systems
 const POWER_SYSTEMS_MAX := 17
-const PIRATE_SYSTEMS := 5
+const PIRATE_SYSTEMS := 3                 # 0.6.40.7 (lore): each pirate faction at most three systems
+const DIRECTORATE_SYSTEMS := 4            # the Directorate: a small enclave – its capital and the systems round it
+const CONTESTED_SYSTEMS := 6              # contested border systems – only between the Assembly and the Covenant
 ## Every station type exists in every tier at least once somewhere in the cluster.
 const ALL_STATION_TYPES := ["trade", "industry", "mining_colony", "agri", "research", "military", "ice_refinery", "shipyard"]
 const ROMAN := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
@@ -997,8 +999,24 @@ func _assign_territory() -> void:
 				if score > best_score:
 					best_score = score
 					caps = [a, b, c]
-	var powers: Array = FactionData.POWERS.duplicate()
+	# 0.6.40.7: the Assembly and the Covenant share the core; the Directorate is a small enclave – its capital has at
+	# most three routes, so it and its ring are no more than DIRECTORATE_SYSTEMS systems
+	var powers: Array = ["assembly", "covenant"]
 	_shuffle(powers, trng)
+	caps.sort_custom(func(x, y): return (systems[x]["links"] as Dictionary).size() < (systems[y]["links"] as Dictionary).size())
+	var dir_cap: int = caps[0]
+	if (systems[dir_cap]["links"] as Dictionary).size() > DIRECTORATE_SYSTEMS - 1:
+		var bd := -1
+		for c0 in cand:
+			var nl := (systems[c0]["links"] as Dictionary).size()
+			if c0 in caps or nl < 2 or nl > DIRECTORATE_SYSTEMS - 1:
+				continue
+			var dm := mini(int(hops[c0][caps[1]]), int(hops[c0][caps[2]]))
+			if dm > bd:
+				bd = dm
+				dir_cap = c0
+	caps = [caps[1], caps[2], dir_cap]
+	powers.append("directorate")
 	var owner := {}
 	for i in 3:
 		owner[caps[i]] = powers[i]
@@ -1034,6 +1052,10 @@ func _assign_territory() -> void:
 	var count := {}
 	for f in cores:
 		count[f] = 1
+	for nbd in systems[dir_cap]["links"]:
+		if not owner.has(nbd) and not systems[nbd].get("belt", false):
+			owner[nbd] = "directorate"
+			count["directorate"] = int(count["directorate"]) + 1
 	for pf2 in FactionData.TERRITORIAL_PIRATES:
 		while int(count[pf2]) < PIRATE_SYSTEMS:
 			var nxt := _territory_candidate(pf2, owner, cores, hops)
@@ -1045,8 +1067,8 @@ func _assign_territory() -> void:
 	while grew:
 		grew = false
 		for pw in powers:
-			if int(count[pw]) >= POWER_SYSTEMS_MAX:
-				continue
+			if pw == "directorate":
+				continue                              # 0.6.40.7: the enclave does not grow, the others have no limit
 			var nxt2 := _territory_candidate(pw, owner, cores, hops)
 			if nxt2 < 0:
 				continue
@@ -1062,43 +1084,67 @@ func _assign_territory() -> void:
 					count[oc] = int(count[oc]) - 1
 				owner[nbc] = powers[ci]
 				count[powers[ci]] = int(count[powers[ci]]) + 1
-	# contested borders: frontier systems where two powers meet (farthest from the own capital)
+	# 0.6.40.7: the Assembly and the Covenant about the same size – the bigger one cedes border systems (farthest from its
+	# capital, never the ring round it) to the smaller until they differ by at most a few
+	for guard in 40:
+		var big := "assembly" if int(count["assembly"]) >= int(count["covenant"]) else "covenant"
+		var small := "covenant" if big == "assembly" else "assembly"
+		if int(count[big]) - int(count[small]) <= 3:
+			break
+		var give := -1
+		var gd := -1
+		for sidb in owner:
+			if owner[sidb] != big or systems[sidb]["capital"]:
+				continue
+			var touches := false
+			var ring := false
+			for nbb in systems[sidb]["links"]:
+				touches = touches or owner.get(nbb, "") == small
+				ring = ring or (systems[nbb]["capital"] and owner.get(nbb, "") == big)
+			if touches and not ring and int(hops[sidb][cores[big]]) > gd:
+				gd = int(hops[sidb][cores[big]])
+				give = sidb
+		if give < 0:
+			break
+		owner[give] = small
+		count[big] = int(count[big]) - 1
+		count[small] = int(count[small]) + 1
+	# 0.6.40.7: whatever the growth could not reach goes to an Assembly or Covenant neighbour (else it stays independent)
+	for leftover in core_ids:
+		if owner.has(leftover):
+			continue
+		for nbl in systems[leftover]["links"]:
+			if owner.get(nbl, "") in ["assembly", "covenant"]:
+				owner[leftover] = owner[nbl]
+				count[owner[nbl]] = int(count[owner[nbl]]) + 1
+				break
+	# contested borders – only where the Assembly and the Covenant meet, never next to the Directorate or a capital ring
 	var front: Array = []
 	for sid2 in owner:
 		var f2: String = owner[sid2]
-		if not f2 in FactionData.POWERS or systems[sid2]["capital"]:
+		if not f2 in ["assembly", "covenant"] or systems[sid2]["capital"]:
 			continue
-		var by_capital := false
+		var rival := "covenant" if f2 == "assembly" else "assembly"
+		var by_rival := false
+		var bad := false
 		for nbk in systems[sid2]["links"]:
-			by_capital = by_capital or (systems[nbk]["capital"] and owner.get(nbk, "") == f2)
-		if by_capital:
-			continue                                  # package 40: the ring round a capital stays its own
-		var rival := ""
-		for nb in systems[sid2]["links"]:
-			var o2: String = owner.get(nb, "")
-			if o2 != f2 and o2 in FactionData.POWERS:
-				rival = o2
-		if rival != "":
+			var ok2: String = owner.get(nbk, "")
+			by_rival = by_rival or ok2 == rival
+			bad = bad or ok2 == "directorate" or (systems[nbk]["capital"] and ok2 == f2)
+		if by_rival and not bad:
 			front.append([sid2, rival, int(hops[sid2][cores[f2]])])
 	front.sort_custom(func(x, y): return x[2] > y[2] if x[2] != y[2] else int(x[0]) < int(y[0]))
-	var target_contested := maxi(0, core_ids.size() - POWER_SYSTEMS * 3 - PIRATE_SYSTEMS * 2)
+	var taken_side := {"assembly": 0, "covenant": 0}
 	var contested := 0
-	for unclaimed in core_ids:
-		if not owner.has(unclaimed):
-			contested += 1
 	for fr in front:
-		var f3: String = owner.get(fr[0], "")
-		if f3 == "":
-			continue
-		var over := false
-		for pw2 in powers:
-			over = over or int(count[pw2]) > POWER_SYSTEMS
-		if contested >= target_contested and not over:
+		if contested >= CONTESTED_SYSTEMS:
 			break
-		if int(count[f3]) <= POWER_SYSTEMS and contested >= target_contested:
-			continue
+		var f3: String = owner[fr[0]]
+		if int(taken_side[f3]) >= CONTESTED_SYSTEMS / 2 + 1:
+			continue                                  # both sides give up some ground
 		owner.erase(fr[0])
 		count[f3] = int(count[f3]) - 1
+		taken_side[f3] = int(taken_side[f3]) + 1
 		systems[fr[0]]["claimants"] = [f3, fr[1]]
 		contested += 1
 	# write back + security
@@ -1111,14 +1157,7 @@ func _assign_territory() -> void:
 			s2["claimants"] = []
 			s2["security"] = snappedf(trng.randf_range(0.0, 0.15) if s2.get("outer", false) else trng.randf_range(0.04, 0.3), 0.01)
 			continue
-		if f4 == "" and (s2["claimants"] as Array).is_empty():
-			var cl: Array = []
-			for nb2 in s2["links"]:
-				var o3: String = owner.get(nb2, "")
-				if o3 != "" and not o3 in cl:
-					cl.append(o3)
-			cl.sort_custom(func(x, y): return int(x in FactionData.POWERS) > int(y in FactionData.POWERS))
-			s2["claimants"] = cl.slice(0, 2)
+		# 0.6.40.7: no other contested systems – an unowned core system is simply independent
 		var sec := 0.25
 		if f4 in FactionData.POWERS:
 			var dist: int = hops[sid3][cores[f4]]

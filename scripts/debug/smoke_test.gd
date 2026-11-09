@@ -1156,12 +1156,24 @@ func _test_resources() -> void:
 			sec_ok = false
 		if f10 in FD.TERRITORIAL_PIRATES and float(s10["security"]) > 0.15:
 			sec_ok = false
-	var sizes_ok := true
-	for pw in FD.POWERS:
-		sizes_ok = sizes_ok and int(fcount.get(pw, 0)) >= 9 and int(fcount.get(pw, 0)) <= Universe.POWER_SYSTEMS_MAX
+	# 0.6.40.7 (lore): the Directorate a small enclave (max 4), pirates max 3 each, the Assembly and the Covenant share the
+	# rest; contested systems only between those two, none next to the Directorate
+	var sizes_ok: bool = int(fcount.get("directorate", 0)) >= 2 and int(fcount.get("directorate", 0)) <= Universe.DIRECTORATE_SYSTEMS
+	sizes_ok = sizes_ok and int(fcount.get("assembly", 0)) >= 15 and int(fcount.get("covenant", 0)) >= 15
 	for pf in FD.TERRITORIAL_PIRATES:
 		sizes_ok = sizes_ok and int(fcount.get(pf, 0)) >= 2 and int(fcount.get(pf, 0)) <= Universe.PIRATE_SYSTEMS
-	check(sizes_ok and int(fcount.get("contested", 0)) >= 2 and not fcount.has("free_captains"), "territories: powers ~12, pirates ~4, some contested, Free Captains none %s" % str(fcount))
+	var cont_ok := true
+	var n_cont := 0
+	for s12 in Universe.systems:
+		var cl12: Array = s12.get("claimants", [])
+		if cl12.is_empty():
+			continue
+		n_cont += 1
+		cont_ok = cont_ok and cl12.size() == 2 and "assembly" in cl12 and "covenant" in cl12
+		for nb12 in s12["links"]:
+			cont_ok = cont_ok and String(Universe.systems[nb12]["faction"]) != "directorate"
+	check(sizes_ok and n_cont >= 2 and cont_ok and not fcount.has("free_captains"),
+		"territories: the Directorate a small enclave, pirates at most 3 each, the Assembly and the Covenant share the rest; %d contested systems, all on the Assembly–Covenant border %s" % [n_cont, str(fcount)])
 	check(caps.size() == 5 and caps.values().max() == 1, "one capital / stronghold per territorial faction")
 	check(sec_ok, "security follows territory (powers safe, pirate space lawless)")
 	check(Universe.controller(Universe.home_system) == "assembly" and not Universe.systems[Universe.home_system]["capital"], "start in an Assembly system (%s)" % Universe.territory_text(Universe.home_system))
@@ -2935,6 +2947,10 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 func _test_jump_warning(view: SystemView) -> void:
 	var pl: Ship = view.player
 	var g = view.gates.values()[0]
+	for g2 in view.gates.values():                     # a gate whose far side lets us in (no capital's entry permit)
+		if GameState.entry_error(int(g2.data["to"])) == "":
+			g = g2
+			break
 	var fuel0: float = pl.fit.fuel
 	pl.fit.fuel = 0.0
 	main.hud._warn_text = ""

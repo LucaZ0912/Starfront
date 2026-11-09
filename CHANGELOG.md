@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.7 – 2026-11-09
+
+**Territories by the lore.** A new game is needed.
+- **The Assembly and the Covenant share the core** between them and grow without limit; where they meet, a few
+  border systems are **contested** – the only contested systems in the cluster.
+  The two stay about the same size (the bigger one cedes border systems to the smaller).
+- **The Meridian Directorate is a small enclave:** its capital (one with at most three routes) and the systems round
+  it – **at most 4 systems**. No contested border touches it.
+- **The pirate factions hold at most 3 systems each.**
+
 ## alpha 0.6.40.6 – 2026-11-09
 
 **No more route classes; the Veil as clouds.** A new game is needed.
