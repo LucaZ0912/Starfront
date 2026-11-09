@@ -44,15 +44,21 @@ static func _rise(kind: String) -> int:
 			return 14
 		"barrel", "barrel_table", "ore_cart":
 			return 8
-		"pool_table", "lounger", "crate_seat", "trash", "flower_bed", "table_small":
+		"pool_table", "trash", "flower_bed", "table_small", "lounger":
 			return 6
+		"crate_seat":
+			return 4
 		"plant", "terminal", "jukebox", "lamp_post", "display", "fridge":
 			return 18
 		"bar_counter", "counter", "counter_v", "machine", "crates":
 			return 10
 		"round_table", "table":
 			return 8
-		"chair", "stool", "bench", "sofa", "railing":
+		"chair", "bench", "bench_back":
+			return 12
+		"sofa":
+			return 14
+		"stool", "railing":
 			return 6
 	return 6
 
@@ -95,25 +101,31 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 3, fy + ph - 2, 2, 2, wood.darkened(0.5))
 			_r(img, pw - 5, fy + ph - 2, 2, 2, wood.darkened(0.5))
 		"chair":
-			# the backrest on the side away from the table (face: where the sitter looks)
+			# 0.7.49.12: sized for the tall figures – the seat at hip height, the backrest up to the shoulders,
+			# on the side away from the table (face: where the sitter looks)
 			var fc := int(o.get("face", 0))
+			var b := fy + ph
 			if fc == 0:
-				_r(img, 3, fy - 4, 10, 8, c.darkened(0.3))
-				_r(img, 4, fy - 3, 8, 1, c.lightened(0.1))
-			_r(img, 2, fy + 4, 12, 6, c.darkened(0.15))            # seat
-			_r(img, 2, fy + 4, 12, 2, c.lightened(0.15))
-			_r(img, 3, fy + 10, 2, 4, Color(0.15, 0.14, 0.15))
-			_r(img, 11, fy + 10, 2, 4, Color(0.15, 0.14, 0.15))
+				_r(img, 3, b - 24, pw - 6, 14, c.darkened(0.32))
+				_r(img, 3, b - 24, pw - 6, 1, c.lightened(0.12))
+				_r(img, 5, b - 21, pw - 10, 8, c.darkened(0.22))
+			_r(img, 2, b - 12, pw - 4, 5, c.lightened(0.05))                 # the seat, seen from above
+			_r(img, 2, b - 12, pw - 4, 1, c.lightened(0.22))
+			_r(img, 2, b - 7, pw - 4, 2, c.darkened(0.3))                    # its front edge
+			_r(img, 3, b - 5, 2, 5, Color(0.15, 0.14, 0.15))
+			_r(img, pw - 5, b - 5, 2, 5, Color(0.15, 0.14, 0.15))
 			if fc == 3:
-				_r(img, 1, fy - 5, 3, 13, c.darkened(0.3))
-				_r(img, 1, fy - 5, 3, 1, c.lightened(0.1))
+				_r(img, 1, b - 24, 3, 19, c.darkened(0.3))
+				_r(img, 1, b - 24, 3, 1, c.lightened(0.12))
 			elif fc == 2:
-				_r(img, pw - 4, fy - 5, 3, 13, c.darkened(0.3))
-				_r(img, pw - 4, fy - 5, 3, 1, c.lightened(0.1))
+				_r(img, pw - 4, b - 24, 3, 19, c.darkened(0.3))
+				_r(img, pw - 4, b - 24, 3, 1, c.lightened(0.12))
 		"stool":
-			_r(img, 6, fy + 6, 4, 8, Color(0.2, 0.2, 0.22))
-			_ellipse(img, 8, fy + 5, 5, 3, c.darkened(0.1))
-			_ellipse(img, 8, fy + 4, 4, 2, c.lightened(0.15))
+			var b2 := fy + ph
+			_r(img, pw / 2 - 1, b2 - 9, 2, 8, Color(0.2, 0.2, 0.22))
+			_r(img, pw / 2 - 4, b2 - 3, 8, 1, Color(0.3, 0.3, 0.33))           # the foot ring
+			_ellipse(img, pw * 0.5, b2 - 10, 5.5, 3, c.darkened(0.15))
+			_ellipse(img, pw * 0.5, b2 - 11, 4.5, 2, c.lightened(0.15))
 		"bar_counter":            # horizontal: a long counter, glasses on top
 			_r(img, 0, fy - 4, pw, ph - 2, wood.darkened(0.05))
 			_r(img, 0, fy - 4, pw, 3, wood.lightened(0.25))
@@ -166,17 +178,30 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 							if pc.a > 0.3:
 								_p(img, pw / 2 - 4 + xx, fy - 12 + yy, pc)
 		"bench":
-			_r(img, 1, fy + 2, pw - 2, 8, metal.darkened(0.2))
-			_r(img, 1, fy + 2, pw - 2, 2, metal.lightened(0.2))
+			var b3 := fy + ph
 			if int(o.get("face", 0)) == 0:
-				_r(img, 1, fy - 3, pw - 2, 5, c.darkened(0.35))
-			_r(img, 2, fy + 10, 2, 3, Color(0.15, 0.15, 0.17))
-			_r(img, pw - 4, fy + 10, 2, 3, Color(0.15, 0.15, 0.17))
+				_r(img, 1, b3 - 22, pw - 2, 11, c.darkened(0.35))           # the backrest behind
+				_r(img, 1, b3 - 22, pw - 2, 1, c.lightened(0.1))
+			_r(img, 1, b3 - 12, pw - 2, 5, metal.lightened(0.05))              # the seat
+			_r(img, 1, b3 - 12, pw - 2, 1, metal.lightened(0.3))
+			_r(img, 1, b3 - 7, pw - 2, 2, metal.darkened(0.3))
+			_r(img, 2, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
+			_r(img, pw - 4, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
+			if pw > 32:
+				_r(img, pw / 2 - 1, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
 		"sofa":
-			_r(img, 1, fy - 2, pw - 2, ph - 2, c.darkened(0.25))
-			_r(img, 1, fy - 2, pw - 2, 5, c.darkened(0.4))
-			_r(img, 3, fy + 3, pw - 6, ph - 9, c)
-			_r(img, 3, fy + 3, pw - 6, 2, c.lightened(0.2))
+			var b4 := fy + ph
+			_r(img, 1, b4 - 24, pw - 2, 13, c.darkened(0.3))                    # the back
+			_r(img, 1, b4 - 24, pw - 2, 2, c.darkened(0.15))
+			_r(img, 3, b4 - 12, pw - 6, 6, c)                                     # the cushions
+			_r(img, 3, b4 - 12, pw - 6, 1, c.lightened(0.2))
+			for k in int(pw / 16):
+				_r(img, 3 + k * 16 + 14, b4 - 12, 1, 6, c.darkened(0.2))
+			_r(img, 1, b4 - 6, pw - 2, 3, c.darkened(0.35))
+			_r(img, 0, b4 - 17, 3, 14, c.darkened(0.2))                            # the arms
+			_r(img, pw - 3, b4 - 17, 3, 14, c.darkened(0.35))
+			_r(img, 2, b4 - 3, 2, 3, Color(0.15, 0.12, 0.1))
+			_r(img, pw - 4, b4 - 3, 2, 3, Color(0.15, 0.12, 0.1))
 		"railing":
 			_r(img, 0, fy + 2, pw, 2, metal.lightened(0.3))
 			_r(img, 0, fy + 4, pw, 1, metal.darkened(0.3))
@@ -260,9 +285,12 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, pw / 2 - 3, fy - 9, 2, 3, Color(0.95, 0.8, 0.3))
 				_r(img, pw / 2 + 1, fy - 8, 2, 2, Color(0.6, 0.85, 1.0))
 		"crate_seat":
-			_r(img, 3, fy - 2, pw - 6, ph - 2, Color(0.5, 0.36, 0.2))
-			_r(img, 3, fy - 2, pw - 6, 2, Color(0.62, 0.46, 0.28))
-			_r(img, 3, fy + 5, pw - 6, 1, Color(0.35, 0.24, 0.12))
+			var b5 := fy + ph
+			_r(img, 2, b5 - 13, pw - 4, 6, Color(0.62, 0.46, 0.28))              # the lid, from above
+			_r(img, 2, b5 - 13, pw - 4, 1, Color(0.72, 0.56, 0.36))
+			_r(img, 2, b5 - 7, pw - 4, 7, Color(0.5, 0.36, 0.2))
+			_r(img, 2, b5 - 4, pw - 4, 1, Color(0.35, 0.24, 0.12))
+			_r(img, 7, b5 - 7, 1, 7, Color(0.4, 0.28, 0.15))
 		"pool_table":
 			_r(img, 0, fy - 4, pw, ph - 2, Color(0.35, 0.2, 0.12))
 			_r(img, 3, fy - 2, pw - 6, ph - 8, Color(0.1, 0.45, 0.25))
@@ -308,11 +336,14 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			for k in 3:
 				_r(img, int(pw * 0.5) - 6 + k * 5, fy - 25, 2, 5, Color(0.97, 0.95, 0.9))
 		"lounger":
-			_r(img, 2, fy - 2, pw - 4, ph - 3, Color(0.92, 0.9, 0.85))
-			_r(img, 3, fy - 1, pw - 6, ph - 5, c)
-			_r(img, 2, fy - 5, pw - 4, 4, Color(0.85, 0.82, 0.78))
-			_r(img, 3, fy + ph - 5, 1, 4, Color(0.6, 0.6, 0.6))
-			_r(img, pw - 4, fy + ph - 5, 1, 4, Color(0.6, 0.6, 0.6))
+			var b6 := fy + ph
+			_r(img, 2, b6 - 18, pw - 4, 7, Color(0.85, 0.82, 0.78))              # the raised back
+			_r(img, 3, b6 - 17, pw - 6, 5, c.lightened(0.1))
+			_r(img, 2, b6 - 11, pw - 4, 6, Color(0.92, 0.9, 0.85))               # the seat
+			_r(img, 3, b6 - 10, pw - 6, 4, c)
+			_r(img, 2, b6 - 5, pw - 4, 1, Color(0.6, 0.6, 0.6))
+			_r(img, 3, b6 - 4, 1, 4, Color(0.6, 0.6, 0.6))
+			_r(img, pw - 4, b6 - 4, 1, 4, Color(0.6, 0.6, 0.6))
 		"fountain":
 			_ellipse(img, pw * 0.5, fy + 4, pw * 0.48, 6, Color(0.75, 0.72, 0.65))
 			_ellipse(img, pw * 0.5, fy + 3, pw * 0.4, 4, Color(0.35, 0.7, 0.9))
@@ -341,6 +372,13 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 3, fy - 15 + k * 4, pw - 9, 2, [Color(0.9, 0.3, 0.2), Color(0.3, 0.8, 0.4), Color(0.95, 0.8, 0.3)][k])
 			_r(img, pw - 4, fy - 14, 2, 4, Color(0.95, 0.95, 0.5))
 			_r(img, 2, fy + ph - 6, pw - 7, 3, Color(0.08, 0.08, 0.1))
+		"bench_back":
+			var b7 := fy + ph
+			_r(img, 1, b7 - 12, pw - 2, 3, c.darkened(0.3))                # a rail at the small of the back: the sitters show above it
+			_r(img, 1, b7 - 12, pw - 2, 1, c.lightened(0.15))
+			_r(img, 1, b7 - 10, pw - 2, 1, c.darkened(0.5))
+			_r(img, 3, b7 - 10, 2, 4, metal.darkened(0.4))
+			_r(img, pw - 5, b7 - 10, 2, 4, metal.darkened(0.4))
 		"fridge":
 			_r(img, 2, fy - 14, pw - 4, ph + 12, Color(0.75, 0.8, 0.85))
 			_r(img, 3, fy - 13, pw - 6, 10, Color(0.3, 0.6, 0.8, 0.8))

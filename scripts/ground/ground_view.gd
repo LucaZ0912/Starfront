@@ -288,8 +288,9 @@ func _build() -> void:
 		os.texture = ImageTexture.create_from_image(img)
 		os.centered = false
 		os.scale = Vector2.ONE * GroundMap.SCALE
-		os.offset = Vector2(0, -img.get_height())
-		os.position = Vector2(float(o["x"]) * GroundMap.TILE, float(int(o["y"]) + int(o.get("h", 1))) * GroundMap.TILE) * GroundMap.SCALE
+		var sdy: float = float(o.get("sort_dy", 0.0)) * GroundMap.TILE        # sorts lower, drawn in the same place
+		os.offset = Vector2(0, -img.get_height() - sdy)
+		os.position = Vector2(float(o["x"]) * GroundMap.TILE, float(int(o["y"]) + int(o.get("h", 1))) * GroundMap.TILE + sdy) * GroundMap.SCALE
 		_sorted.add_child(os)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", ""))) + 49

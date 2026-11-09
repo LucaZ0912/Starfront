@@ -346,6 +346,8 @@ static func _seat_pos(o: Dictionary, i: int = 0) -> Vector2:
 static func _seat(m: GroundMap, kind: String, x: int, y: int, face: int, col: Color, rng: RandomNumberGenerator, chance: float, w: int = 1) -> void:
 	var o := {"kind": kind, "x": x, "y": y, "w": w, "h": 1, "col": col, "face": face}
 	m.add_object(o, false)
+	if kind == "bench" and face == 1:
+		m.add_object({"kind": "bench_back", "x": x, "y": y, "w": w, "h": 1, "col": col, "sort_dy": 0.15}, false)
 	for i in w:
 		if rng.randf() < chance:
 			m.people.append({"pos": _seat_pos(o, i), "dir": face, "sit": true})

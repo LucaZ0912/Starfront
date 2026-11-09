@@ -162,7 +162,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   truck and its hose; set up by the view from `bay_rect`, `ship_at` and the ship's size.
 - 0.7.49.11: `ChibiArt` now draws the tall "C3" figures (18×40, `CHAR_SCALE` 2 screen px per pixel – the walker
   scales by it, not by `GroundMap.SCALE`), black outline (`_outline`) and neon rim light (`_rim`, `RIM_L`/`RIM_R`);
-  frames 0 stand, 1–2 walk, 3 sit (`HIP_SIT`).; `texture()` renders floors and walls once.
+  frames 0 stand, 1–2 walk, 3 sit (`HIP_SIT`).
+- 0.7.49.12: seats in `ObjArt` measured from the footprint's bottom (seat top ~7 px = the figures' hips); `bench_back`
+  (the front backrest of a bench whose sitters face away, added by `DeckGen._seat`); objects may carry `sort_dy`
+  (tiles) – sorted that much lower but drawn in the same place (in front of a sitter).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

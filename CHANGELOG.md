@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.12 – 2026-11-09
+
+**Seats sized for the new figures.** Every piece of furniture you can sit on is rebuilt to the tall figures: the seat
+at hip height, the backrest up to the shoulders – chairs (backrest on the side away from the table), bar stools (a
+foot ring), benches, the sofa (cushions, arms), crates, sun loungers. Benches whose sitters turn their backs to you
+(the far side of the long tables) now have their backrest in front of them – a rail at the small of the back, the
+sitters' shoulders and heads above it – instead of none.
+
 ## alpha 0.7.49.11 – 2026-11-09
 
 **New figures on foot (Luz's choice "C3").** The little chibis are gone: people are now tall and slim – about six
