@@ -3,6 +3,32 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.7 – 2026-11-09
+
+**Every station type its own deck, people who find their way, sitting properly, conversations after Luz's mockup.**
+- **Station themes** – the bar, its floor, the window's corners and what stands about follow the station type:
+  - *Trade hubs:* the lounge – round tables, a sofa, a rug, plants along the window.
+  - *Military outposts:* a mess hall – long tables with benches, steel deck plates, banners and lockers, almost
+    square window corners.
+  - *Research stations:* a bright café – little tables for two, white tiles, holo pillars, specimen tanks.
+  - *Industrial complexes and shipyards:* a canteen – long tables, grating or deck plates, pipes, vending machines,
+    engine parts on display.
+  - *Mining colonies and pirate havens:* a dive – a pool table, barrels for tables, crates to sit on, worn dark
+    planks, ore carts, barrels, cages and rubbish in the corridor.
+  - *Agri stations:* picnic tables among planters full of crops, flower beds.
+  - *Ice refineries:* the lounge in icy tiles with ice sculptures and glowing heaters.
+  - *Resorts:* a **beach bar** – sand, a pool in the middle, sun loungers under parasols, palms, little tables for
+    two, a fountain and flower beds in the corridor.
+- **Sitting properly:** chairs stand at the tables (the backrest away from the table); whoever sits – a guest or you
+  – sits *on* the seat with the legs bent, no longer sinking into the floor in front of it. Benches at the long
+  tables, crates in the dive and sun loungers can be sat on too.
+- **Finding the way:** people walk along paths round walls and furniture (A* over the deck) instead of bumping into
+  walls, and now and then go shopping – into the shops, up to the counter.
+- **Conversations (Luz's mockup):** talking to someone at the bar opens a conversation screen – the one you talk to
+  large in a frame on the left, what they say typed out in the box along the bottom, your answers in a box above it
+  on the right (1–9 or click; E / Space shows the whole line). For now: **Info** (opens the questions, the record and
+  signing on, as before) and **Goodbye**. The screen is meant for all conversations to come (Teil 8).
+
 ## alpha 0.7.49.6 – 2026-11-09
 
 **On the deck: talk to the crew, sit down, the jukebox, lifts with doors.**

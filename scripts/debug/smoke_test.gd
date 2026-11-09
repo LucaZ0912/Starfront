@@ -7651,11 +7651,16 @@ func _test_deck(view: SystemView) -> void:
 		if zc["kind"] == "crew":
 			talked = g.open_talk(zc) and g.talk != null and is_instance_valid(g.talk)
 			if g.talk != null:
-				g.talk._ask_role()
-				g.talk._ask_skill()
-				g.talk._ask_price()
-				g.talk._ask_record()
-				g.talk._close()
+				g.talk.choose(0)                          # Info
+				talked = talked and g.talk_menu != null
+				if g.talk_menu != null:
+					g.talk_menu._ask_role()
+					g.talk_menu._ask_skill()
+					g.talk_menu._ask_price()
+					g.talk_menu._ask_record()
+					g.talk_menu._close()
+				talked = talked and g.talk_menu == null and g.talk != null and g.talk.visible
+				g.talk.choose(1)                          # Goodbye
 			talked = talked and g.talk == null
 			break
 	var terminals_ok := true

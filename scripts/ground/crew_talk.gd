@@ -63,7 +63,7 @@ func setup(p_offer: Dictionary, p_index: int) -> void:
 	right.add_child(_extra)
 	_buttons = UI.vbox(5)
 	right.add_child(_buttons)
-	_reply("", _greeting())
+	_reply("", "What do you want to know, captain?")
 	_menu()
 
 
@@ -71,19 +71,20 @@ func _ship() -> Variant:
 	return GameState.active()
 
 
-func _greeting() -> String:
-	var m: Dictionary = offer["m"]
+## How someone looking for a post greets you – a rookie is nervous, an elite knows their worth.
+static func greeting(m: Dictionary) -> String:
 	var role := CrewData.role_name(String(m["role"]))
+	var first := String(m.get("name", "?")).split(" ")[0]
 	match String(m["quality"]):
 		"F":
-			return "Oh – hi! Are you a captain? I'm %s. I just finished my training as a %s, and I'm ready. Really ready." % [_first(), role]
+			return "Oh – hi! Are you a captain? I'm %s. I just finished my training as a %s, and I'm ready. Really ready." % [first, role]
 		"D":
-			return "Evening, captain. %s, %s. I've done a few runs already – are you looking for hands?" % [_first(), role]
+			return "Evening, captain. %s, %s. I've done a few runs already – are you looking for hands?" % [first, role]
 		"C":
-			return "Captain. Name's %s. Word at the bar is you might need a %s – I've been around." % [_first(), role]
+			return "Captain. Name's %s. Word at the bar is you might need a %s – I've been around." % [first, role]
 		"B":
-			return "So you're the one with the ship. %s – %s, many years of it. I've flown with worse crews, I'm sure. What do you need?" % [_first(), role]
-	return "Sit down, captain. I'm %s, and I don't come cheap – but you won't find a better %s on this station." % [_first(), role]
+			return "So you're the one with the ship. %s – %s, many years of it. I've flown with worse crews, I'm sure. What do you need?" % [first, role]
+	return "Sit down, captain. I'm %s, and I don't come cheap – but you won't find a better %s on this station." % [first, role]
 
 
 func _first() -> String:

@@ -44,7 +44,11 @@ var _music: AudioStreamPlayer
 var track := -1                       # the jukebox: -1 off, else the track playing
 var _toast := ""
 var _toast_t := 0.0
-var talk: CrewTalk = null
+var talk: DialogueView = null          # a conversation (0.7.49.7: after Luz's mockup)
+var talk_menu: CrewTalk = null          # its "Info": the questions, the record, signing on
+var _talk_offer := {}
+var _talk_index := -1
+var _talk_hired := false
 
 
 func _ready() -> void:
@@ -303,7 +307,7 @@ func _process(delta: float) -> void:
 		zone = map.zone_at(pilot.pos)
 	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null:
 		zone = {} if _seat.is_empty() else _seat
-	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null else _prompt_text(zone))
+	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null or talk_menu != null else _prompt_text(zone))
 	_camera()
 	_signs.queue_redraw()
 
@@ -327,10 +331,15 @@ func _prompt_text(z: Dictionary) -> String:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if talk_menu != null:
+		if event.is_action_pressed("menu_back", false, true):
+			get_viewport().set_input_as_handled()
+			talk_menu._close()
+		return
 	if talk != null:
 		if event.is_action_pressed("menu_back", false, true):
 			get_viewport().set_input_as_handled()
-			talk._close()
+			talk.close()
 		return
 	if not input_enabled or pilot == null:
 		return
@@ -494,15 +503,45 @@ func open_talk(z: Dictionary) -> bool:
 	if i < 0 or i >= offers.size():
 		return false
 	Audio.play("ui_open", "on foot: talk")
-	talk = CrewTalk.new()
+	_talk_offer = offers[i]
+	_talk_index = i
+	_talk_hired = false
+	var m: Dictionary = _talk_offer["m"]
+	var q := String(m["quality"])
+	talk = DialogueView.new()
 	_ui.add_child(talk)
-	talk.setup(offers[i], i)
+	talk.open(m.get("look", {}), String(m["name"]), "%s · %s %s" % [CrewTalk.CrewData.role_name(String(m["role"])), q,
+		CrewTalk.CrewData.QUALITY_NAMES.get(q, "")], CrewTalk.CrewData.QUALITY_COLORS.get(q, UI.NEON_CYAN))
 	talk.closed.connect(func(): talk = null)
-	talk.hired.connect(_on_hired)
+	talk.say(CrewTalk.greeting(m), _talk_options())
 	for w in people:
 		if is_instance_valid(w) and w.has_meta("crew") and int(w.get_meta("crew")) == i:
 			w.dir = 0 if pilot.pos.y > w.pos.y else 1
 	return true
+
+
+func _talk_options() -> Array:
+	if _talk_hired:
+		return [["Goodbye.", func(): talk.close()]]
+	return [["Info – tell me about yourself.", talk_info], ["Goodbye.", func(): talk.close()]]
+
+
+## "Info": the questions about trade, skill and price, the record, signing on.
+func talk_info() -> void:
+	if talk == null or talk_menu != null:
+		return
+	talk.visible = false
+	talk_menu = CrewTalk.new()
+	_ui.add_child(talk_menu)
+	talk_menu.setup(_talk_offer, _talk_index)
+	talk_menu.hired.connect(func(idx: int):
+		_talk_hired = true
+		_on_hired(idx))
+	talk_menu.closed.connect(func():
+		talk_menu = null
+		if talk != null:
+			talk.visible = true
+			talk.say("See you aboard, captain." if _talk_hired else "Anything else, captain?", _talk_options()))
 
 
 ## Hired: that one heads for the lift; the others' places in the bar's list move up.

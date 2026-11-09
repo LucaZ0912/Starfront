@@ -3,7 +3,7 @@ extends RefCounted
 ## Package 49 (0.7.49.2): people on foot in a slanted, cosy top-down view – a small figure (16 × 24 art px) with a big
 ## head, seen from the front, the back or the side, built from the same "look" as the portrait (skin, hair, eyes,
 ## outfit colours, beard, headgear). Four directions × three frames (standing, two steps).
-## Directions: 0 down (towards the viewer), 1 up (away), 2 left, 3 right.
+## Directions: 0 down (towards the viewer), 1 up (away), 2 left, 3 right. Frame 3 (0.7.49.7): sitting, the legs bent.
 
 const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const W := 16
@@ -46,11 +46,23 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	var eye: Color = PilotArt.EYES[l["eyes"]]
 	var bw: int = [4, 5, 6][int(l["body"])]                     # half the shoulders' width … roughly
 	var cx := 8
-	var step := 0 if f == 0 else (1 if f == 1 else -1)
+	var step := 0 if f == 0 or f == 3 else (1 if f == 1 else -1)
 	# legs and shoes (rows 19–23)
 	var pants: Color = c1.darkened(0.45) if int(l["outfit"]) != 2 else c1.darkened(0.2)
 	var shoe := Color(0.16, 0.13, 0.12)
-	if dir == 2:
+	if f == 3:
+		if dir == 2:
+			_rect(img, cx - 6, 18, 7, 3, pants)                  # the thighs forward, on the seat
+			_rect(img, cx - 6, 21, 3, 2, pants.darkened(0.1))     # the shins down
+			_rect(img, cx - 7, 23, 4, 1, shoe)
+		elif dir == 0:
+			_rect(img, cx - 3, 19, 3, 2, pants.lightened(0.08))   # the knees towards you
+			_rect(img, cx, 19, 3, 2, pants.lightened(0.08))
+			_rect(img, cx - 3, 21, 3, 1, pants.darkened(0.1))
+			_rect(img, cx, 21, 3, 1, pants.darkened(0.1))
+			_rect(img, cx - 3, 22, 3, 1, shoe)
+			_rect(img, cx, 22, 3, 1, shoe)
+	elif dir == 2:
 		_rect(img, cx - 2 + step, 19, 3, 4, pants)
 		_rect(img, cx - 1 - step, 19, 3, 4, pants.darkened(0.15))
 		_rect(img, cx - 3 + step, 23, 4, 1, shoe)

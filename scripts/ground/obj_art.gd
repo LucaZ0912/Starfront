@@ -12,7 +12,7 @@ static var _cache := {}
 
 ## {image, rise} for an object.
 static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
-	var key := "%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", ""))]
+	var key := "%s_%d_%d_%s_%s_%d_%d" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4]
 	if _cache.has(key):
 		return _cache[key]
 	var pw := int(o.get("w", 1)) * TILE
@@ -32,6 +32,20 @@ static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
 
 static func _rise(kind: String) -> int:
 	match kind:
+		"palm":
+			return 34
+		"parasol":
+			return 28
+		"banner", "holo_pillar", "pipes":
+			return 24
+		"tank", "ice_sculpture", "cage", "vending", "locker":
+			return 20
+		"engine_part", "fountain", "heater", "planter":
+			return 14
+		"barrel", "barrel_table", "ore_cart":
+			return 8
+		"pool_table", "lounger", "crate_seat", "trash", "flower_bed", "table_small":
+			return 6
 		"plant", "terminal", "jukebox", "lamp_post", "display", "fridge":
 			return 18
 		"bar_counter", "counter", "counter_v", "machine", "crates":
@@ -81,14 +95,21 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 3, fy + ph - 2, 2, 2, wood.darkened(0.5))
 			_r(img, pw - 5, fy + ph - 2, 2, 2, wood.darkened(0.5))
 		"chair":
-			_r(img, 3, fy + 4, 10, 7, c.darkened(0.15))            # seat
-			_r(img, 3, fy + 3, 10, 2, c.lightened(0.15))
-			var back_up: bool = o.get("back", "up") == "up"
-			if back_up:
-				_r(img, 3, fy - 4, 10, 8, c.darkened(0.3))         # backrest behind
+			# the backrest on the side away from the table (face: where the sitter looks)
+			var fc := int(o.get("face", 0))
+			if fc == 0:
+				_r(img, 3, fy - 4, 10, 8, c.darkened(0.3))
 				_r(img, 4, fy - 3, 8, 1, c.lightened(0.1))
-			_r(img, 4, fy + 11, 2, 3, Color(0.15, 0.14, 0.15))
-			_r(img, 10, fy + 11, 2, 3, Color(0.15, 0.14, 0.15))
+			_r(img, 2, fy + 4, 12, 6, c.darkened(0.15))            # seat
+			_r(img, 2, fy + 4, 12, 2, c.lightened(0.15))
+			_r(img, 3, fy + 10, 2, 4, Color(0.15, 0.14, 0.15))
+			_r(img, 11, fy + 10, 2, 4, Color(0.15, 0.14, 0.15))
+			if fc == 3:
+				_r(img, 1, fy - 5, 3, 13, c.darkened(0.3))
+				_r(img, 1, fy - 5, 3, 1, c.lightened(0.1))
+			elif fc == 2:
+				_r(img, pw - 4, fy - 5, 3, 13, c.darkened(0.3))
+				_r(img, pw - 4, fy - 5, 3, 1, c.lightened(0.1))
 		"stool":
 			_r(img, 6, fy + 6, 4, 8, Color(0.2, 0.2, 0.22))
 			_ellipse(img, 8, fy + 5, 5, 3, c.darkened(0.1))
@@ -147,7 +168,8 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 		"bench":
 			_r(img, 1, fy + 2, pw - 2, 8, metal.darkened(0.2))
 			_r(img, 1, fy + 2, pw - 2, 2, metal.lightened(0.2))
-			_r(img, 1, fy - 3, pw - 2, 5, c.darkened(0.35))
+			if int(o.get("face", 0)) == 0:
+				_r(img, 1, fy - 3, pw - 2, 5, c.darkened(0.35))
 			_r(img, 2, fy + 10, 2, 3, Color(0.15, 0.15, 0.17))
 			_r(img, pw - 4, fy + 10, 2, 3, Color(0.15, 0.15, 0.17))
 		"sofa":
@@ -182,6 +204,143 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 		"lamp_post":
 			_r(img, pw / 2 - 1, fy - 12, 2, ph + 10, metal.darkened(0.3))
 			_ellipse(img, pw * 0.5, fy - 14, 4, 3, c.lightened(0.4))
+		"table_small":
+			_r(img, 2, fy, pw - 4, ph - 6, wood.lightened(0.12))
+			_r(img, 2, fy, pw - 4, 2, wood.lightened(0.3))
+			_r(img, 2, fy + ph - 6, pw - 4, 3, wood.darkened(0.3))
+			_r(img, pw / 2 - 1, fy + ph - 3, 2, 3, Color(0.15, 0.14, 0.15))
+			_r(img, pw / 2 - 2, fy + 2, 2, 3, Color(0.95, 0.9, 0.8))
+		"banner":
+			_r(img, 2, fy - 22, 2, ph + 20, metal.darkened(0.4))
+			_r(img, 4, fy - 20, pw - 5, 16, c.darkened(0.15))
+			_r(img, 4, fy - 20, pw - 5, 2, c.lightened(0.2))
+			_r(img, 6, fy - 15, pw - 9, 5, Color(0.95, 0.9, 0.7))
+			_r(img, 1, fy + ph - 3, 5, 2, metal.darkened(0.5))
+		"locker":
+			_r(img, 1, fy - 18, pw - 2, ph + 16, metal.darkened(0.25))
+			_r(img, 1, fy - 18, pw - 2, 2, metal.lightened(0.1))
+			_r(img, pw / 2, fy - 16, 1, ph + 12, metal.darkened(0.5))
+			for k in 3:
+				_r(img, 3, fy - 15 + k * 3, pw / 2 - 4, 1, metal.darkened(0.45))
+			_r(img, pw / 2 - 3, fy - 6, 2, 3, c)
+		"holo_pillar":
+			_r(img, pw / 2 - 5, fy + ph - 6, 10, 5, metal.darkened(0.35))
+			_r(img, pw / 2 - 4, fy - 22, 8, ph + 16, Color(c, 0.35))
+			_r(img, pw / 2 - 1, fy - 22, 2, ph + 16, Color(c.lightened(0.5), 0.6))
+			for k in 4:
+				_r(img, pw / 2 - 4, fy - 20 + k * 6, 8, 1, Color(c.lightened(0.4), 0.7))
+		"tank":
+			_r(img, 2, fy - 20, pw - 4, ph + 18, Color(0.55, 0.85, 0.8, 0.35))
+			_r(img, 3, fy - 14, pw - 6, ph + 10, Color(0.2, 0.85, 0.55, 0.55))
+			_ellipse(img, pw * 0.5, fy - 6, 3, 4, Color(0.75, 0.95, 0.6))
+			_r(img, 1, fy - 21, pw - 2, 3, metal.darkened(0.3))
+			_r(img, 1, fy + ph - 4, pw - 2, 4, metal.darkened(0.3))
+			_r(img, 4, fy - 12, 1, 6, Color(1, 1, 1, 0.5))
+		"pipes":
+			for k in 3:
+				var pc := metal.darkened(0.15 + 0.1 * k)
+				_r(img, 1 + k * 5, fy - 22, 4, ph + 20, pc)
+				_r(img, 1 + k * 5, fy - 22, 1, ph + 20, pc.lightened(0.25))
+			_r(img, 0, fy - 8, pw, 3, metal.darkened(0.4))
+			_ellipse(img, pw * 0.5, fy - 12, 3, 3, Color(0.85, 0.2, 0.15))
+		"ore_cart":
+			_r(img, 1, fy - 2, pw - 2, ph - 2, Color(0.4, 0.36, 0.32))
+			_r(img, 1, fy - 2, pw - 2, 2, Color(0.55, 0.5, 0.45))
+			for k in 6:
+				_ellipse(img, 3 + GroundMap.hash2(k, 1) * (pw - 6), fy - 3 + GroundMap.hash2(k, 2) * 3, 2.5, 2, Color(0.55, 0.45, 0.35).lerp(c, 0.25 * GroundMap.hash2(k, 3)))
+			_r(img, 2, fy + ph - 4, 3, 3, Color(0.12, 0.12, 0.12))
+			_r(img, pw - 5, fy + ph - 4, 3, 3, Color(0.12, 0.12, 0.12))
+		"barrel", "barrel_table":
+			var bc := Color(0.45, 0.3, 0.16) if kind == "barrel_table" or int(o.get("x", 0)) % 2 == 0 else Color(0.35, 0.42, 0.5)
+			_r(img, 2, fy - 6, pw - 4, ph + 3, bc)
+			_r(img, 2, fy - 2, pw - 4, 1, bc.darkened(0.4))
+			_r(img, 2, fy + ph - 6, pw - 4, 1, bc.darkened(0.4))
+			_ellipse(img, pw * 0.5, fy - 6, (pw - 4) * 0.5, 3, bc.lightened(0.15))
+			if kind == "barrel_table":
+				_r(img, pw / 2 - 3, fy - 9, 2, 3, Color(0.95, 0.8, 0.3))
+				_r(img, pw / 2 + 1, fy - 8, 2, 2, Color(0.6, 0.85, 1.0))
+		"crate_seat":
+			_r(img, 3, fy - 2, pw - 6, ph - 2, Color(0.5, 0.36, 0.2))
+			_r(img, 3, fy - 2, pw - 6, 2, Color(0.62, 0.46, 0.28))
+			_r(img, 3, fy + 5, pw - 6, 1, Color(0.35, 0.24, 0.12))
+		"pool_table":
+			_r(img, 0, fy - 4, pw, ph - 2, Color(0.35, 0.2, 0.12))
+			_r(img, 3, fy - 2, pw - 6, ph - 8, Color(0.1, 0.45, 0.25))
+			for k in 6:
+				_ellipse(img, 8 + GroundMap.hash2(k, 7) * (pw - 16), fy + 2 + GroundMap.hash2(k, 8) * (ph - 14), 1.5, 1.5,
+					[Color(0.95, 0.95, 0.9), Color(0.9, 0.2, 0.2), Color(0.95, 0.8, 0.2), Color(0.2, 0.3, 0.9), Color(0.1, 0.1, 0.1), Color(0.9, 0.5, 0.1)][k])
+			_r(img, 2, fy + ph - 6, 3, 6, Color(0.25, 0.14, 0.08))
+			_r(img, pw - 5, fy + ph - 6, 3, 6, Color(0.25, 0.14, 0.08))
+		"planter":
+			_r(img, 0, fy, pw, ph - 2, Color(0.42, 0.3, 0.2))
+			_r(img, 1, fy + 1, pw - 2, 4, Color(0.3, 0.2, 0.12))
+			for k in int(pw / 4):
+				var gx := 2 + k * 4
+				var gh := 6 + int(GroundMap.hash2(k, int(o.get("x", 0))) * 8)
+				_r(img, gx, fy + 2 - gh, 1, gh, Color(0.25, 0.6, 0.2))
+				_r(img, gx - 1, fy + 2 - gh, 3, 3, Color(0.35, 0.75, 0.25) if k % 3 != 0 else Color(0.95, 0.8, 0.25))
+		"ice_sculpture":
+			_r(img, 3, fy + ph - 5, pw - 6, 4, Color(0.75, 0.8, 0.85))
+			_ellipse(img, pw * 0.5, fy - 2, 5, 7, Color(0.75, 0.92, 1.0, 0.8))
+			_ellipse(img, pw * 0.5 + 2, fy - 12, 2.5, 3, Color(0.8, 0.95, 1.0, 0.85))
+			_r(img, pw / 2 + 1, fy - 10, 2, 6, Color(0.8, 0.95, 1.0, 0.85))
+			_r(img, pw / 2 - 2, fy - 6, 1, 6, Color(1, 1, 1, 0.8))
+		"heater":
+			_r(img, 2, fy - 12, pw - 4, ph + 10, Color(0.25, 0.22, 0.2))
+			for k in 4:
+				_r(img, 4, fy - 9 + k * 4, pw - 8, 2, Color(1.0, 0.45 + 0.1 * k, 0.15))
+		"engine_part":
+			_r(img, 2, fy + ph - 5, pw - 4, 4, metal.darkened(0.4))
+			_ellipse(img, pw * 0.5, fy - 2, pw * 0.42, 9, metal.darkened(0.15))
+			_ellipse(img, pw * 0.5, fy - 2, pw * 0.3, 6, Color(0.15, 0.15, 0.18))
+			_ellipse(img, pw * 0.5, fy - 2, pw * 0.15, 3, Color(0.4, 0.75, 1.0))
+		"palm":
+			for k in 8:
+				_r(img, pw / 2 - 1 + (1 if k % 2 == 0 else 0), fy + ph - 4 - k * 4, 3, 4, Color(0.5, 0.36, 0.22).lightened(0.05 * (k % 2)))
+			for a in 7:
+				var ang := -PI + a * (PI / 6.0)
+				for t in 9:
+					_r(img, int(pw * 0.5 + cos(ang) * t * 1.2), int(fy - 28 + sin(ang) * t * 0.6 + t * 0.35 * absf(cos(ang))), 2, 2, Color(0.2, 0.6, 0.25).lightened(0.1 * (t % 2)))
+			_r(img, pw / 2 - 5, fy + ph - 5, 10, 5, Color(0.6, 0.42, 0.3))
+		"parasol":
+			_r(img, pw / 2, fy - 22, 1, ph + 20, Color(0.85, 0.85, 0.8))
+			_ellipse(img, pw * 0.5, fy - 22, pw * 0.48, 5, c)
+			for k in 3:
+				_r(img, int(pw * 0.5) - 6 + k * 5, fy - 25, 2, 5, Color(0.97, 0.95, 0.9))
+		"lounger":
+			_r(img, 2, fy - 2, pw - 4, ph - 3, Color(0.92, 0.9, 0.85))
+			_r(img, 3, fy - 1, pw - 6, ph - 5, c)
+			_r(img, 2, fy - 5, pw - 4, 4, Color(0.85, 0.82, 0.78))
+			_r(img, 3, fy + ph - 5, 1, 4, Color(0.6, 0.6, 0.6))
+			_r(img, pw - 4, fy + ph - 5, 1, 4, Color(0.6, 0.6, 0.6))
+		"fountain":
+			_ellipse(img, pw * 0.5, fy + 4, pw * 0.48, 6, Color(0.75, 0.72, 0.65))
+			_ellipse(img, pw * 0.5, fy + 3, pw * 0.4, 4, Color(0.35, 0.7, 0.9))
+			_r(img, pw / 2 - 2, fy - 10, 4, 12, Color(0.75, 0.72, 0.65))
+			_ellipse(img, pw * 0.5, fy - 11, 6, 2, Color(0.7, 0.9, 1.0, 0.8))
+			_r(img, pw / 2 - 1, fy - 14, 2, 4, Color(0.8, 0.95, 1.0, 0.8))
+		"flower_bed":
+			_r(img, 0, fy, pw, ph - 2, Color(0.5, 0.4, 0.3))
+			_r(img, 1, fy + 1, pw - 2, ph - 5, Color(0.3, 0.45, 0.2))
+			for k in int(pw / 3):
+				_r(img, 1 + k * 3, fy - 1 + (k % 2) * 3, 2, 2, [Color(1.0, 0.4, 0.5), Color(1.0, 0.85, 0.3), Color(0.7, 0.5, 1.0), Color(1, 1, 1)][k % 4])
+		"trash":
+			_ellipse(img, pw * 0.4, fy + 6, 5, 4, Color(0.18, 0.2, 0.18))
+			_ellipse(img, pw * 0.65, fy + 8, 4, 3, Color(0.25, 0.22, 0.3))
+			_r(img, 3, fy + 10, 3, 2, Color(0.8, 0.75, 0.3))
+		"cage":
+			_r(img, 1, fy - 18, pw - 2, 2, metal.darkened(0.3))
+			_r(img, 1, fy + ph - 4, pw - 2, 3, metal.darkened(0.4))
+			for k in 4:
+				_r(img, 1 + k * 4, fy - 16, 1, ph + 12, metal.darkened(0.15))
+			_ellipse(img, pw * 0.5, fy + 2, 3, 3, Color(0.85, 0.3, 0.2))
+		"vending":
+			_r(img, 1, fy - 18, pw - 2, ph + 16, Color(0.2, 0.22, 0.28))
+			_r(img, 2, fy - 16, pw - 7, 14, c.darkened(0.1))
+			for k in 3:
+				_r(img, 3, fy - 15 + k * 4, pw - 9, 2, [Color(0.9, 0.3, 0.2), Color(0.3, 0.8, 0.4), Color(0.95, 0.8, 0.3)][k])
+			_r(img, pw - 4, fy - 14, 2, 4, Color(0.95, 0.95, 0.5))
+			_r(img, 2, fy + ph - 6, pw - 7, 3, Color(0.08, 0.08, 0.1))
 		"fridge":
 			_r(img, 2, fy - 14, pw - 4, ph + 12, Color(0.75, 0.8, 0.85))
 			_r(img, 3, fy - 13, pw - 6, 10, Color(0.3, 0.6, 0.8, 0.8))

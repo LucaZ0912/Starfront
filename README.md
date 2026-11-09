@@ -142,7 +142,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   `jukebox.gd` – `Jukebox.stream(i)` makes a looping lounge track (AudioStreamWAV, bus Music);
   `crew_talk.gd` – `CrewTalk`: a talk with one bar offer (questions, crew card, `crew_hire`), signals `closed`,
   `hired(index)`; the view's `open_talk(zone)`, `_on_hired` (the others' indexes move up, the hired one walks to the lift
-  – `Walker.leave_to`).; `texture()` renders floors and walls once.
+  – `Walker.leave_to`).
+- 0.7.49.7: `DeckGen.THEMES` (per station type: `bar` style lounge / mess / canteen / cafe / dive / garden / beach,
+  `floor`, `corner`, `cor_floor`, `deco`, `props`, `seat`), `_bar_*` builders, `_seat()` (seat object + maybe a
+  guest), `_seat_pos()`, `SEATS`; floor kinds 5–10 (plates, tiles, sand, grating, dark planks, water); many new
+  `ObjArt` kinds; `GroundMap.path(a, b)` (AStarGrid2D) used by `Walker._follow`; `ChibiArt` frame 3 = sitting
+  (`Walker.SIT_LIFT`); `dialogue_view.gd` – `DialogueView` (`open`, `say(text, [[label, Callable]])`, `choose(i)`,
+  `close`): the conversation screen; the view's `talk` (DialogueView) and `talk_menu` (CrewTalk, via `talk_info`).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

@@ -76,6 +76,33 @@ func free_at(p: Vector2, r: float = 4.0) -> bool:
 	return true
 
 
+var _astar: AStarGrid2D
+
+
+## A path (art px, tile centres) from a to b round walls and furniture – empty if there is none.
+func path(a: Vector2, b: Vector2) -> PackedVector2Array:
+	if _astar == null:
+		_astar = AStarGrid2D.new()
+		_astar.region = Rect2i(0, 0, w, h)
+		_astar.cell_size = Vector2(TILE, TILE)
+		_astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+		_astar.update()
+		for y in h:
+			for x in w:
+				_astar.set_point_solid(Vector2i(x, y), not walkable_t(t_at(x, y)))
+	var ta := Vector2i(clampi(int(a.x / TILE), 0, w - 1), clampi(int(a.y / TILE), 0, h - 1))
+	var tb := Vector2i(clampi(int(b.x / TILE), 0, w - 1), clampi(int(b.y / TILE), 0, h - 1))
+	if _astar.is_point_solid(ta) or _astar.is_point_solid(tb):
+		return PackedVector2Array()
+	var pts := _astar.get_point_path(ta, tb)
+	var out := PackedVector2Array()
+	for k in range(1, pts.size()):
+		out.append(pts[k] + Vector2(TILE, TILE) * 0.5)
+	if not out.is_empty():
+		out[out.size() - 1] = b
+	return out
+
+
 func zone_at(p: Vector2) -> Dictionary:
 	for z in zones:
 		if (z["rect"] as Rect2).has_point(p):
@@ -276,6 +303,53 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px, py, TILE, TILE, cp)
 			if (x + y) % 2 == 0:
 				_rect(px + 7, py + 7, 2, 2, cp.lightened(0.12))
+		5:              # heavy deck plates with rivets (military, shipyard)
+			var mp: Color = Color(pal["floor2"]).darkened(0.08)
+			_rect(px, py, TILE, TILE, mp)
+			_rect(px, py, TILE, 1, mp.lightened(0.1))
+			_rect(px, py + TILE - 1, TILE, 1, mp.darkened(0.25))
+			_rect(px + TILE - 1, py, 1, TILE, mp.darkened(0.2))
+			for c in [Vector2i(2, 2), Vector2i(13, 2), Vector2i(2, 13), Vector2i(13, 13)]:
+				_px(px + c.x, py + c.y, mp.lightened(0.25))
+		6:              # bright tiles (research, ice, resort halls)
+			var tc: Color = Color(pal["floor2"]).lightened(0.08)
+			_rect(px, py, TILE, TILE, tc if (x + y) % 2 == 0 else tc.darkened(0.04))
+			_rect(px, py + TILE - 1, TILE, 1, tc.darkened(0.12))
+			_rect(px + TILE - 1, py, 1, TILE, tc.darkened(0.1))
+		7:              # sand
+			var sc := Color(0.86, 0.76, 0.55)
+			_rect(px, py, TILE, TILE, sc)
+			for k in 6:
+				_px(px + int(hash2(x, y, k) * 15), py + int(hash2(y, x, k + 9) * 15), sc.darkened(0.1 + 0.08 * (k % 2)))
+		8:              # grating (industry)
+			var gc: Color = Color(pal["floor2"]).darkened(0.15)
+			_rect(px, py, TILE, TILE, gc.darkened(0.35))
+			for k in 4:
+				_rect(px, py + k * 4, TILE, 2, gc)
+			_rect(px + TILE - 1, py, 1, TILE, gc.darkened(0.45))
+		9:              # dark worn planks (mining, pirates)
+			var dw: Color = Color(pal["wood"]).darkened(0.35)
+			_rect(px, py, TILE, TILE, dw)
+			for k in 2:
+				_rect(px, py + k * 8 + 7, TILE, 1, dw.darkened(0.35))
+				_rect(px + int(hash2(x, y * 2 + k) * 15), py + k * 8, 1, 7, dw.darkened(0.3))
+			if hash2(x, y, 5) > 0.85:
+				_rect(px + 4, py + 5, 5, 3, dw.darkened(0.2))
+		10:             # water (a pool)
+			var wc := Color(0.2, 0.6, 0.8)
+			_rect(px, py, TILE, TILE, wc)
+			for k in 3:
+				var wy := int(hash2(x, y, k) * 14)
+				_rect(px + int(hash2(y, x, k) * 10), py + wy, 5, 1, wc.lightened(0.3))
+			if t_at(x, y - 1) != T.BLOCK or floor_kind[(y - 1) * w + x] != 10:
+				_rect(px, py, TILE, 3, Color(0.85, 0.9, 0.92))
+				_rect(px, py + 3, TILE, 2, wc.darkened(0.3))
+			if y + 1 < h and floor_kind[(y + 1) * w + x] != 10:
+				_rect(px, py + TILE - 2, TILE, 2, Color(0.85, 0.9, 0.92))
+			if x > 0 and floor_kind[y * w + x - 1] != 10:
+				_rect(px, py, 2, TILE, Color(0.85, 0.9, 0.92))
+			if x + 1 < w and floor_kind[y * w + x + 1] != 10:
+				_rect(px + TILE - 2, py, 2, TILE, Color(0.85, 0.9, 0.92))
 
 
 ## The top of a wall – seen from above, a thin lit edge.

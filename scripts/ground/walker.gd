@@ -21,6 +21,10 @@ var _t := 0.0
 var _walk := 0.0
 var _goal := Vector2.INF
 var _wait := 0.0
+var _path := PackedVector2Array()
+var _pi := 0
+var _stuck := 0.0
+const SIT_LIFT := 4.0              # art px: a sitter is drawn this much higher – on the seat, not in the floor
 
 
 func setup(p_map: GroundMap, p_look: Dictionary, p_pos: Vector2, p_npc: bool) -> void:
@@ -62,17 +66,17 @@ func step(d: Vector2, delta: float, speed_mult: float = 1.0) -> bool:
 func _process(delta: float) -> void:
 	_t += delta
 	if leave_to != Vector2.INF:
-		var to := leave_to - pos
-		if to.length() < 5.0:
+		if _path.is_empty():
+			_path = map.path(pos, leave_to)
+			_pi = 0
+		if pos.distance_to(leave_to) < 6.0 or not _follow(delta, 0.9):
 			queue_free()
-		elif not step(to.normalized(), delta, 0.9):
-			step((to + Vector2(0, 12)).normalized(), delta, 0.9)
 	elif npc and not sitting and not stays and marker == "":
 		_wander(delta)
 	queue_redraw()
 
 
-## People on the deck stroll from one spot to the next and stand about a while.
+## People on the deck stroll from one spot to the next along a path round walls and furniture, and stand about.
 func _wander(delta: float) -> void:
 	if _wait > 0.0:
 		_wait -= delta
@@ -82,11 +86,35 @@ func _wander(delta: float) -> void:
 		if map.wander.is_empty():
 			return
 		_goal = map.wander[randi() % map.wander.size()]
-	var to := _goal - pos
-	if to.length() < 4.0 or not step(to.normalized(), delta, 0.6):
+		_path = map.path(pos, _goal)
+		_pi = 0
+		if _path.is_empty():
+			_goal = Vector2.INF
+			_wait = 1.0
+			return
+	if not _follow(delta, 0.6):
 		_goal = Vector2.INF
+		_path = PackedVector2Array()
 		_wait = randf_range(1.5, 6.0)
 		moving = false
+
+
+## One step along the path; false when it is walked (or hopelessly stuck).
+func _follow(delta: float, mult: float) -> bool:
+	if _pi >= _path.size():
+		return false
+	var to := _path[_pi] - pos
+	if to.length() < 2.5:
+		_pi += 1
+		return _pi < _path.size()
+	if step(to.normalized(), delta, mult):
+		_stuck = 0.0
+	else:
+		_stuck += delta
+		if _stuck > 0.8:
+			_stuck = 0.0
+			_pi += 1                     # skip a corner it cannot round
+	return true
 
 
 func _draw() -> void:
@@ -100,17 +128,18 @@ func _draw() -> void:
 	if not moving and not sitting:
 		bob = round(sin(_t * 2.2) * 0.4)               # breathing
 	# a soft shadow at the feet
-	draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
-	draw_circle(Vector2.ZERO, 6.0 * s, Color(0, 0, 0, 0.28))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if not sitting:
+		draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, 6.0 * s, Color(0, 0, 0, 0.28))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if not npc:
 		draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
 		draw_arc(Vector2.ZERO, 8.0 * s, 0.0, TAU, 32, Color(0.35, 1.0, 0.55, 0.7 + 0.2 * sin(_t * 4.0)), 2.0)      # that is you
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if sitting:
-		# sitting: the legs hidden by the chair or the counter – only the upper body shows, a little lower
-		var keep := 18.0
-		draw_texture_rect_region(tex, Rect2(Vector2(-size.x * 0.5, -keep * s + 2.0 * s), Vector2(size.x, keep * s)), Rect2(0, 0, tex.get_width(), keep))
+		# sitting on the seat: legs bent, the figure raised onto it
+		var st := ChibiArt.frame(look, dir, 3)
+		draw_texture_rect(st, Rect2(Vector2(-size.x * 0.5, -size.y - SIT_LIFT * s), size), false)
 	else:
 		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
 	if marker != "":
