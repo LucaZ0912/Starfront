@@ -111,6 +111,7 @@ const CuriaScript = preload("res://scripts/core/curia.gd")
 var curia = CuriaScript.new()
 ## Package 39: entry permits to the capitals (faction -> true). Given from Friendly on, taken away only at Arch-enemy.
 var permits := {}
+var prosperity := {}            # package 42: system id -> prosperity 0–100 (only systems whose value has changed / been read)
 var _permit_t := 0.0
 ## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
 var research_data := 0
@@ -128,6 +129,20 @@ func _ready() -> void:
 	add_child(convoys)
 	convoys.convoy_delivered.connect(_on_convoy_done.bind(true))
 	convoys.convoy_lost.connect(_on_convoy_done.bind(false))
+
+
+## Package 42: prosperity from a save (JSON keys come back as strings).
+func load_prosperity(prd: Dictionary) -> void:
+	prosperity.clear()
+	for pk in prd:
+		prosperity[int(pk)] = float(prd[pk])
+
+
+func _saved_prosperity() -> Dictionary:
+	var out := {}
+	for k in prosperity:
+		out[str(k)] = snappedf(float(prosperity[k]), 0.01)
+	return out
 
 
 func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = false, p_data: Dictionary = {}) -> void:
@@ -155,6 +170,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	loss_offer = {}
 	rescued.clear()
 	_pod_seq = 1
+	prosperity.clear()                      # package 42
 	wingmen.clear()
 	collection = {"perks": [], "notorious": [], "stars": [], "planets": []}
 	play_time = 0.0
@@ -477,6 +493,7 @@ func to_dict() -> Dictionary:
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data,
+		"prosperity": _saved_prosperity(),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
@@ -535,6 +552,7 @@ func from_dict(d: Dictionary) -> void:
 	else:
 		curia.reset()
 	permits = d.get("permits", {}).duplicate()
+	load_prosperity(d.get("prosperity", {}))                   # package 42
 	research_data = int(d.get("research_data", 0))
 	if d.has("news"):
 		news.from_dict(d["news"])

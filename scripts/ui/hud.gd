@@ -464,7 +464,8 @@ func _on_hover(text: String) -> void:
 func _update_header() -> void:
 	credits_label.text = GameData.fmt_credits(GameState.credits)
 	var sys: Dictionary = Universe.systems[GameState.current_system]
-	system_label.text = "%s  (security %.1f)  •  %s" % [sys["name"], float(sys["security"]), Universe.territory_text(GameState.current_system)]
+	system_label.text = "%s  (security %.1f)  •  %s  •  %s, %s" % [sys["name"], float(sys["security"]), Universe.territory_text(GameState.current_system),
+		Economy.label(GameState.current_system), Economy.level_name(GameState.current_system).to_lower()]     # package 42
 
 
 # ---------------------------------------------------------------- Ship panel

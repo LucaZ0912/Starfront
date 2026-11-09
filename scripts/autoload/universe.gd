@@ -34,7 +34,7 @@ const FIELD_BANDS := {"metallic": Vector2(1140000, 2700000), "stony": Vector2(22
 ## Hot stars push the frost line outward, cool ones pull it in.
 ## Rock class orbiting each planet type (gas giants collect ice, lava worlds metal).
 const PLANET_ROCK_CLASS := {"terran": "stony", "desert": "stony", "ice": "icy", "lava": "metallic", "gas": "icy", "toxic": "icy", "barren": "metallic",
-	"ice_giant": "icy", "dwarf": "icy", "ocean": "stony", "jungle": "stony", "red_gas": "icy"}
+	"ice_giant": "icy", "dwarf": "icy", "ocean": "stony", "jungle": "stony", "red_gas": "icy", "metal": "metallic"}
 ## No-fire zone radius around stations by tier (km). Firing inside makes the station's defence engage.
 const NO_FIRE_ZONE := [15000.0, 22000.0, 30000.0]
 const HAVEN_NAMES := ["Rustmaw", "Blackhook", "Carrion Nest", "Gallows Reach", "Scrapjaw Den", "Red Lantern", "Vulture's Rest"]
@@ -180,6 +180,7 @@ func _ready() -> void:
 func generate(p_seed: int) -> void:
 	test_mode = false
 	seed_value = p_seed
+	Economy.clear_cache()                 # package 42
 	systems.clear()
 	layouts.clear()
 	orbit_phase.clear()
@@ -974,7 +975,7 @@ func territory_of(f: String) -> Array:
 
 ## Inhabitants per planet type (billions): earthlike worlds carry most of the population.
 const PLANET_POP := {"terran": 3.0, "desert": 1.0, "ice": 0.8, "toxic": 0.3, "lava": 0.25, "gas": 0.2, "barren": 0.1,
-	"ocean": 3.0, "jungle": 3.0, "ice_giant": 0.1, "dwarf": 0.0, "red_gas": 0.2}          # package 38
+	"ocean": 3.0, "jungle": 3.0, "ice_giant": 0.1, "dwarf": 0.0, "red_gas": 0.2, "metal": 0.6}          # package 38; metal worlds: package 42
 ## Upper limit of NPC ships in one system (player excluded).
 const NPC_CAP := 90                  # package 35: busier systems
 
@@ -1072,6 +1073,7 @@ const TEST_RING := [900000.0, 1150000.0, 1400000.0]
 
 
 func generate_test() -> void:
+	Economy.clear_cache()                 # package 42
 	seed_value = 777
 	systems.clear()
 	layouts.clear()
@@ -1394,6 +1396,10 @@ const PLANET_TYPES := {
 	"ice_giant": {"name": "Ice Giant", "a": Color(0.18, 0.45, 0.62), "b": Color(0.3, 0.68, 0.78), "c": Color(0.62, 0.9, 0.92), "atmo": Color(0.55, 0.9, 1.0, 0.5), "gas": 1.0,
 		"storms": 0.5, "big": 2.0, "faint": 1.0,
 		"r_earth": "4", "m_earth": "15", "temp": "−200 °C", "text": "Smaller than a gas giant, colder, and blue from the methane in its air. Under the clouds lie oceans of water, ammonia and ice."},
+	# package 42: the metal world – ore lies open at the surface (mining)
+	"metal": {"name": "Metal World", "a": Color(0.2, 0.2, 0.23), "b": Color(0.38, 0.36, 0.37), "c": Color(0.55, 0.47, 0.4), "atmo": Color(0.85, 0.75, 0.65, 0.18), "gas": 0.0,
+		"sea": 0.0, "clouds": 0.08, "cloud": Color(0.8, 0.75, 0.7), "craters": 0.45, "metal": 1.0, "big": 1.0,
+		"r_earth": "0.95", "m_earth": "1.9", "temp": "60 °C", "text": "A dense iron world whose crust is laced with ore: veins of copper and silver run open at the surface and glint in the sun. Prospectors' paradise – the whole planet is one mine."},
 	"dwarf": {"name": "Dwarf Planet", "a": Color(0.42, 0.36, 0.32), "b": Color(0.62, 0.55, 0.5), "c": Color(0.9, 0.88, 0.86), "atmo": Color(0.0, 0.0, 0.0, 0.0), "gas": 0.0,
 		"sea": 0.0, "caps": 0.0, "craters": 0.8, "big": 1.0,
 		"r_earth": "0.18", "m_earth": "0.002", "temp": "−230 °C", "text": "Too small to clear its orbit: a little world of rock and frozen nitrogen far out in the Kuiper belt. Waystations like its quiet."},
@@ -1425,7 +1431,7 @@ const MOON_COUNT := {
 	"gas": [0.0, 0.0, 0.55, 1.0], "toxic": [0.0, 0.0, 0.6, 1.0], "ice_giant": [0.0, 0.0, 0.6, 1.0], "red_gas": [0.0, 0.0, 0.55, 1.0],
 	"ocean": [0.4, 0.85, 1.0, 1.0], "jungle": [0.3, 0.8, 1.0, 1.0], "dwarf": [1.0, 1.0, 1.0, 1.0],
 	"terran": [0.25, 0.75, 1.0, 1.0], "desert": [0.3, 0.8, 1.0, 1.0], "ice": [0.3, 0.8, 1.0, 1.0],
-	"lava": [0.85, 1.0, 1.0, 1.0], "barren": [0.8, 1.0, 1.0, 1.0],
+	"lava": [0.85, 1.0, 1.0, 1.0], "barren": [0.8, 1.0, 1.0, 1.0], "metal": [0.7, 1.0, 1.0, 1.0],
 }
 const MOON_STATION_SHARE := 0.35     # share of planet stations that orbit one of its moons instead
 const MOON_FIELD_SHARE := 0.25       # share of moons with a small asteroid field next to them

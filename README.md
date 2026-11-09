@@ -103,6 +103,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   concourse (Driftwood Taverns): 4–8 people looking for work, new faces every 20 minutes.
 - Skill tree: a hull tile brings the professions its ships need; the Science Officer has a tile of its own.
 
+## Economies and prosperity (phase 0.5 package 42a)
+
+- `scripts/core/economy.gd` (`Economy`): per system a main and an optional secondary economy (`Economy.of(sid)`)
+  from weighted factors – stations per tier (`STATION_WEIGHTS`, strongest), planets (`PLANET_WEIGHTS`), moons, fields,
+  belts; the hand-made systems get a fixed lean (`SPECIAL`). A secondary economy needs 35 % of the main one's points.
+- Nine economies: agri, mining, industry, refinery, chemistry, hightech, research, military, tourism.
+- Prosperity 0–100 in five levels (`Economy.level`): starting value from population, stations, security, capitals
+  and makers' homes (`base_prosperity`, cached); changes live in `GameState.prosperity` (saved).
+- New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
+- Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
+
 ## Mining expansion (phase 0.5 package 41)
 
 - **New ores:** copper, tungsten, gold, uraninite, spodumene, graphite, quartz, monazite, nitrogen ice, dry ice in the

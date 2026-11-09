@@ -588,6 +588,7 @@ func _process(delta: float) -> void:
 				_test_durchbruch(view)
 				_test_makers(view)
 				_test_mining41(view)
+				_test_economy42(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -6786,6 +6787,68 @@ func _test_makers(_view: SystemView) -> void:
 
 ## Package 41: the mining expansion – new ores (deep ones only in colossi), purity, gases from the giants (tanks,
 ## twice the room in racks), radioactive goods (shielded racks, warning), components, the Kujira.
+## Package 42a: Wirtschaft 2.0 – economies from the system's factors, prosperity in five levels, metal worlds,
+## the galaxy map and the header show them; prosperity is saved.
+func _test_economy42(view: SystemView) -> void:
+	var U = Universe
+	var mains := {}
+	var levels := {}
+	var all_ok := true
+	var uninhabited_poor := true
+	for sy in U.systems:
+		var sid: int = sy["id"]
+		var ec: Dictionary = Economy.of(sid)
+		all_ok = all_ok and Economy.ORDER.has(ec["main"]) and (ec["second"] == "" or (Economy.ORDER.has(ec["second"]) and ec["second"] != ec["main"]))
+		mains[ec["main"]] = true
+		levels[Economy.level(sid)] = true
+		if not ec["inhabited"]:
+			uninhabited_poor = uninhabited_poor and Economy.level(sid) <= 1
+	check(all_ok and mains.size() >= 5 and levels.size() == 5 and uninhabited_poor,
+		"42a: every system a main (and maybe a secondary) economy – %d kinds as main; all five prosperity levels; uninhabited systems poor" % mains.size())
+	var spec_ok := true
+	for sp in Economy.SPECIAL:
+		var ssid: int = U.special_system(sp)
+		if ssid >= 0:
+			spec_ok = spec_ok and Economy.of(ssid)["main"] == Economy.SPECIAL[sp][0]
+	var lf: int = U.special_system("landfall")
+	check(spec_ok and (lf < 0 or Economy.level(lf) >= 3), "42a: the hand-made systems lean towards their own economies; the capitals are wealthy")
+	# factors: a metal world gives mining, a military outpost military
+	var metal_ok: bool = U.PLANET_TYPES.has("metal") and float(Economy.PLANET_WEIGHTS["metal"]["mining"]) > float(Economy.PLANET_WEIGHTS["barren"]["mining"])
+	var spr: Sprite2D = Celestial.make_planet_sprite({"type": "metal", "seed": 3.0}, 100.0, Vector2.LEFT)
+	metal_ok = metal_ok and float((spr.material as ShaderMaterial).get_shader_parameter("metal")) > 0.5
+	spr.free()
+	var fac_ok := true
+	for sy2 in U.systems:
+		for st in U.get_layout(int(sy2["id"]))["stations"]:
+			if String(st["type"]) == "military" and int(st["tier"]) >= 3:
+				fac_ok = fac_ok and float(Economy.of(int(sy2["id"]))["scores"].get("military", 0.0)) >= 15.0
+	check(metal_ok and fac_ok, "42a: the metal world (ore veins, glints) counts for mining; a big military outpost makes a military economy")
+	# prosperity: saved and loaded, the debug command moves it
+	var here: int = GameState.current_system
+	var p0: float = Economy.prosperity(here)
+	Commands.execute({"type": "debug_prosperity", "delta": -15})
+	var moved: bool = absf(Economy.prosperity(here) - clampf(p0 - 15.0, 0.0, 100.0)) < 0.01
+	var dd: Dictionary = JSON.parse_string(JSON.stringify(GameState.to_dict()))
+	GameState.prosperity.clear()
+	GameState.load_prosperity(dd["prosperity"])
+	var kept: bool = absf(Economy.prosperity(here) - clampf(p0 - 15.0, 0.0, 100.0)) < 0.05
+	Economy.set_prosperity(here, p0)
+	check(moved and kept, "42a: prosperity changes (debug) and is saved with the game")
+	# shown: galaxy map info, the header
+	var main = view.get_tree().current_scene
+	main.galaxy.open()
+	main.galaxy.selected_system = here
+	main.galaxy._update_info()
+	main.galaxy._set_filter("mining")
+	main.galaxy.map.queue_redraw()
+	var info_t: String = main.galaxy.info.text
+	main.galaxy._set_filter("mining")
+	main.galaxy.close()
+	main.hud._update_header()
+	check(info_t.contains("Economy:") and info_t.contains("Prosperity:") and main.hud.system_label.text.contains(Economy.label(here)),
+		"42a: the galaxy map shows economy and prosperity (filter by economy), the header the economy of the system")
+
+
 func _test_mining41(view: SystemView) -> void:
 	var U = Universe
 	var GD = GameData

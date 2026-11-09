@@ -32,10 +32,6 @@ const TERR_CELL := 6.0           # map units per territory pixel
 static var _terr_tex: Texture2D
 static var _terr_key := ""
 
-const ECON_TYPES := ["trade", "industry", "mining_colony", "agri", "research", "military", "ice_refinery", "shipyard", "pirate_haven"]
-const ECON_SHORT := {"trade": "Trade Hub", "industry": "Industry", "mining_colony": "Mining", "agri": "Agriculture",
-	"research": "Research", "military": "Military", "ice_refinery": "Ice Refinery", "shipyard": "Shipyard", "pirate_haven": "Pirate Haven"}
-
 
 func _ready() -> void:
 	layer = 15
@@ -101,28 +97,30 @@ func _ready() -> void:
 	view_btn = UI.button("View system", _view_selected)
 	view_btn.visible = false
 	sv.add_child(HSeparator.new())
+	# package 42: the economies of the systems (main and secondary) – click to highlight
 	sv.add_child(UI.label("Economies – click to highlight", 14, UI.ACCENT))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 3)
 	sv.add_child(grid)
-	for et in ECON_TYPES:
+	for et in Economy.ORDER:
 		var t: String = et
 		var b := Button.new()
-		b.text = "■ " + ECON_SHORT[t]
+		b.text = "■ " + Economy.name_of(t)
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.add_theme_font_size_override("font_size", 11)
-		b.add_theme_color_override("font_color", PixelArt.STATION_ACCENT.get(t, Color.WHITE))
+		b.add_theme_color_override("font_color", Economy.color_of(t))
 		b.add_theme_color_override("font_pressed_color", Color.WHITE)
 		b.custom_minimum_size = Vector2(112, 0)
-		b.tooltip_text = "Highlight every system with a %s" % ECON_SHORT[t]
+		b.tooltip_text = "Highlight every system with %s as its main or secondary economy
+%s" % [Economy.name_of(t), Economy.ECONOMIES[t]["text"]]
 		b.pressed.connect(func(): _set_filter(t))
 		grid.add_child(b)
 		_legend_btns[t] = b
-	sv.add_child(UI.label("Squares next to a system = its stations (bigger = higher tier)", 11, Color(0.6, 0.7, 0.8)))
+	sv.add_child(UI.label("Squares = stations (bigger = higher tier)  •  pips = prosperity (1 Impoverished … 5 Rich)", 11, Color(0.6, 0.7, 0.8)))
 	sv.add_child(HSeparator.new())
 	sv.add_child(UI.label("Factions", 14, UI.ACCENT))
 	var fg := GridContainer.new()
@@ -402,12 +400,9 @@ func _draw_map() -> void:
 		var econ := economies(s)
 		var dim := false
 		if econ_filter != "":
-			dim = true
-			for e in econ:
-				if e[0] == econ_filter:
-					dim = false
+			dim = not Economy.has_economy(int(s["id"]), econ_filter)      # package 42: main or secondary economy
 			if not dim:
-				var fc: Color = PixelArt.STATION_ACCENT.get(econ_filter, Color.WHITE)
+				var fc: Color = Economy.color_of(econ_filter)
 				map.draw_circle(p, 15.0 + 2.0 * sin(_t * 4.0), Color(fc, 0.18))
 				map.draw_arc(p, 15.0 + 2.0 * sin(_t * 4.0), 0.0, TAU, 28, fc, 2.0)
 		if dim:
@@ -442,6 +437,14 @@ func _draw_map() -> void:
 			map.draw_string(font, p + Vector2(-30, -8), "☠" + ("×%d" % nc if nc > 1 else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1.0, 0.3, 0.3, 0.55 + 0.45 * absf(sin(_t * 2.5))))
 		map.draw_string(font, p + Vector2(11, -6), s["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.9, 1.0, 0.3 if dim else 1.0))
 		map.draw_string(font, p + Vector2(11, 7), "%.1f" % sec, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+		# package 42: prosperity as five pips after the security, and the main economy as a small coloured mark
+		var lv := Economy.level(int(s["id"]))
+		var pc: Color = Economy.LEVEL_COLORS[lv]
+		for i in 5:
+			var pr := Rect2(p + Vector2(31.0 + i * 4.0, 1.0), Vector2(3, 3))
+			map.draw_rect(pr, Color(pc, 0.3 if dim else 1.0) if i <= lv else Color(0.3, 0.33, 0.4, 0.25 if dim else 0.6))
+		var ecm: Color = Economy.color_of(String(Economy.of(int(s["id"]))["main"]))
+		map.draw_rect(Rect2(p + Vector2(-4.0, -15.0), Vector2(8, 3)), Color(ecm, 0.3 if dim else 0.95))
 		if counts.has(s["id"]):
 			map.draw_string(font, p + Vector2(-26, 4), "▲%d" % counts[s["id"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.4, 0.9, 1.0))
 	_draw_convoys()
@@ -572,6 +575,14 @@ func _update_info() -> void:
 	var cap_f := Universe.special_faction(selected_system)       # package 39: a closed capital
 	if cap_f != "":
 		t += "[color=#7fe0a0]Capital – your entry permit opens its gates[/color]\n" if GameState.has_permit(cap_f) else "[color=#ff7060]Capital – closed: entry permit needed (Friendly standing)[/color]\n"
+	# package 42: economy and prosperity
+	var eco := Economy.of(selected_system)
+	var ecol := Economy.color_of(eco["main"]).to_html(false)
+	t += "Economy: [color=#%s]%s[/color]" % [ecol, Economy.label(selected_system)]
+	t += "  [font_size=11][color=#a0a8b8](%s)[/color][/font_size]
+" % ", ".join(PackedStringArray(Economy.reasons(selected_system, eco["main"])))
+	t += "Prosperity: [color=#%s]%s[/color] [color=#a0a8b8](%d / 100)[/color]
+" % [Economy.level_color(selected_system).to_html(false), Economy.level_name(selected_system), int(Economy.prosperity(selected_system))]
 	var prof := Universe.system_profile(selected_system)
 	var pg := int(prof["patrol_groups"])
 	t += "Population: %.1f bn  •  Traffic: %s\n" % [float(prof["population"]), Universe.traffic_word(prof)]

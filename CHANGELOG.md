@@ -3,6 +3,24 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.42.1 – 2026-11-09
+
+**Package 42a: Wirtschaft 2.0 – the economic model.** A new game is needed.
+- Every system has a **main economy** and, if strong enough, a **secondary** one: Agriculture, Mining, Industry,
+  Refining, Chemistry, High-Tech, Research, Military or Tourism. They come from the system's factors – its stations
+  above all (they are fixed and shape the economy), then its planets, moons, asteroid fields and belts. Ocean and
+  jungle worlds feed, metal worlds and fields are mined, gas giants power industry, red and toxic giants supply the
+  chemists, earthlike worlds draw tourists and high-tech firms. The hand-made systems lean towards their own.
+- **Prosperity** in five levels (Impoverished, Poor, Average, Wealthy, Rich): it starts from a system's people,
+  stations and security, is saved with the game and will change in play (package 42c).
+- New planet type **Metal World**: a dense iron world laced with copper and silver ore veins that glint in the sun –
+  the strongest mining factor. In the collection too.
+- Galaxy map: the economy filter now highlights the nine economies (main or secondary); a coloured mark above each
+  system shows its main economy, five pips its prosperity; the system info names the economy, its strongest reasons
+  and the prosperity. The header shows the economy of the current system.
+- Codex entry "Economies and prosperity"; debug section "Economy (package 42)": the factors in the log, prosperity
+  ±20, to a metal world, to a system of each economy.
+
 ## alpha 0.6.41.6 – 2026-11-09
 
 **Performance on the system map.** Fully zoomed out: 8–12 ms per frame (spikes to 28 ms) → about 4 ms (spikes to 8 ms).

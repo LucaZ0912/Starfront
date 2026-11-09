@@ -347,6 +347,17 @@ func _build_world() -> void:
 	r39b.add_child(UI.button("Vote now", func(): _cmd({"type": "debug_senate", "do": "resolve"})))
 	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
 	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
+	# package 42: Wirtschaft 2.0
+	_section("Economy (package 42)")
+	var r42 := _row()
+	r42.add_child(UI.button("Economy here → log", func(): _cmd({"type": "debug_economy"})))
+	r42.add_child(UI.button("Prosperity +20", func(): _cmd({"type": "debug_prosperity", "delta": 20})))
+	r42.add_child(UI.button("Prosperity −20", func(): _cmd({"type": "debug_prosperity", "delta": -20})))
+	r42.add_child(UI.button("To a metal world", func(): _cmd({"type": "debug_economy_system", "economy": "metal"})))
+	var r42b := _row()
+	for e42 in Economy.ORDER:
+		var e42s: String = e42
+		r42b.add_child(UI.button(Economy.name_of(e42s), func(): _cmd({"type": "debug_economy_system", "economy": e42s})))
 	# package 41: the mining expansion
 	_section("Mining expansion (package 41)")
 	var r41 := _row()

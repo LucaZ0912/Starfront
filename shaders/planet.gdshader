@@ -29,6 +29,7 @@ uniform float storms = 0.0;                 // vortices and a big storm on a gia
 uniform float faint = 0.0;                  // 1 = faint bands (ice giant)
 uniform float city = 0.0;                   // lights of cities on the night side
 uniform float city_style = 0.0;             // package 39: 1 = a capital world (structured: coasts, metropolises, highways)
+uniform float metal = 0.0;                  // package 42: a metal world – bright ore veins in a dark iron crust, glinting
 uniform float terraform = 0.0;              // 39c: 1 = half terraformed – green with seas on one side, desert on the other
 uniform vec4 dry_a : source_color = vec4(0.62, 0.38, 0.22, 1.0);
 uniform vec4 dry_b : source_color = vec4(0.85, 0.62, 0.36, 1.0);
@@ -122,6 +123,21 @@ void fragment() {
 				emit_col = mix(vec3(1.0, 0.35, 0.05), vec3(1.0, 0.85, 0.35), vein * (0.5 + 0.5 * sin(TIME * 1.3 + f * 20.0)));
 			}
 		}
+		// package 42: metal world – veins of copper and silver ore through the crust, plates of bare metal
+		float glint = 0.0;
+		if (metal > 0.0 && gas < 0.5) {
+			float fv = fbm(st * 5.5 + vec2(seed * 2.1, seed * 0.7));
+			float vein = 1.0 - smoothstep(0.0, 0.035, abs(fv - 0.5));
+			float fv2 = fbm(st * 11.0 + vec2(seed, seed * 3.3));
+			float vein2 = 1.0 - smoothstep(0.0, 0.025, abs(fv2 - 0.5));
+			vec3 copper = vec3(0.86, 0.55, 0.3);
+			vec3 silver = vec3(0.86, 0.88, 0.92);
+			base = mix(base, copper, vein * 0.85 * metal);
+			base = mix(base, silver, vein2 * 0.6 * metal);
+			float plate = smoothstep(0.62, 0.66, fbm(st * 3.0 + seed * 4.4));
+			base = mix(base, silver * 0.8, plate * 0.5 * metal);
+			glint = max(max(vein, vein2 * 0.8), plate) * metal;
+		}
 		// craters: darker floor, a rim lit on the side facing the light
 		float shade = 0.0;
 		if (craters > 0.0) {
@@ -153,6 +169,13 @@ void fragment() {
 		float dusk = smoothstep(-0.08, 0.06, diff) * (1.0 - smoothstep(0.06, 0.22, diff));
 		col = mix(col, atmo.rgb * 0.8, dusk * atmo.a * 0.25);
 		col = mix(col, atmo.rgb, pow(1.0 - z, 3.0) * atmo.a * max(lv, 0.15));
+		// package 42: metal glints where the light strikes the ore (twinkling pixels on the day side)
+		if (glint > 0.0) {
+			vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
+			float spec = pow(max(dot(n, H), 0.0), 6.0);
+			float tw = step(0.82, hash21(floor(uv * pixels) + floor(TIME * 1.5)));
+			col += vec3(1.0, 0.95, 0.85) * glint * spec * (0.35 + 0.65 * tw) * step(0.05, diff);
+		}
 		// city lights on the night side: clusters along the coasts and in the lowlands, flickering a little
 		if (city > 0.0 && gas < 0.5 && city_style > 0.5) {
 			// package 39: a capital world – the lights follow the land: bright metropolises, a glittering band along

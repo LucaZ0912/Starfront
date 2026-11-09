@@ -179,6 +179,7 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	mat.set_shader_parameter("cloud_col", t.get("cloud", Color(1, 1, 1)))
 	mat.set_shader_parameter("caps", float(t.get("caps", 0.0)) * rng.randf_range(0.6, 1.3))
 	mat.set_shader_parameter("lava", float(t.get("lava", 0.0)))
+	mat.set_shader_parameter("metal", float(t.get("metal", 0.0)))          # package 42: metal worlds
 	mat.set_shader_parameter("storms", float(t.get("storms", 0.0)) * rng.randf_range(0.5, 1.2))
 	mat.set_shader_parameter("faint", float(t.get("faint", 0.0)))
 	mat.set_shader_parameter("city", float(p.get("city", 0.0)))

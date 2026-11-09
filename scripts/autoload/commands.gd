@@ -1786,6 +1786,51 @@ func _c_debug_special(c: Dictionary) -> String:
 	return _c_debug_teleport({"system": sid})
 
 
+## {"type":"debug_prosperity", "delta": 20} – package 42: the prosperity of the current system up or down
+func _c_debug_prosperity(c: Dictionary) -> String:
+	var sid := GameState.current_system
+	Economy.set_prosperity(sid, Economy.prosperity(sid) + float(c.get("delta", 20)))
+	GameState.log_msg("[Debug] %s: prosperity %d – %s." % [Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
+	return ""
+
+
+## {"type":"debug_economy"} – package 42: the economy of the current system and why, in the log
+func _c_debug_economy(_c: Dictionary) -> String:
+	var sid := GameState.current_system
+	var ec := Economy.of(sid)
+	var parts: Array = []
+	var keys: Array = (ec["scores"] as Dictionary).keys()
+	keys.sort_custom(func(a, b): return float(ec["scores"][a]) > float(ec["scores"][b]))
+	for e in keys:
+		parts.append("%s %.1f" % [Economy.name_of(e), float(ec["scores"][e])])
+	GameState.log_msg("[Debug] %s: %s, %s (%d) – %s" % [Universe.systems[sid]["name"], Economy.label(sid), Economy.level_name(sid), int(Economy.prosperity(sid)), ", ".join(PackedStringArray(parts))])
+	return ""
+
+
+## {"type":"debug_economy_system", "economy": "agri"} – package 42: to the next system with that main economy
+## ("metal" = to the next system with a metal world)
+var _debug_econ_i := {}
+
+
+func _c_debug_economy_system(c: Dictionary) -> String:
+	var want := String(c.get("economy", "mining"))
+	var hits: Array = []
+	for s in Universe.systems:
+		var sid: int = s["id"]
+		if want == "metal":
+			for p in Universe.get_layout(sid)["planets"]:
+				if String(p["type"]) == "metal":
+					hits.append(sid)
+					break
+		elif Economy.of(sid)["main"] == want:
+			hits.append(sid)
+	if hits.is_empty():
+		return "No such system in this cluster."
+	var i := (int(_debug_econ_i.get(want, -1)) + 1) % hits.size()
+	_debug_econ_i[want] = i
+	return _c_debug_teleport({"system": hits[i]})
+
+
 ## {"type":"debug_heimkehr"} – to Heimkehr (docked at the Cathedral of Return)
 func _c_debug_heimkehr(_c: Dictionary) -> String:
 	var sid := Universe.special_system("heimkehr")

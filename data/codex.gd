@@ -124,6 +124,14 @@ Landfall is closed: its gates let in only pilots holding the Assembly's entry pe
 
 With an entry permit you vote too. A party donation sways the vote a little. A bribe settles it – unless it comes out, and then the money is gone and the Assembly's trust with it.",
 		"see": ["cluster_landfall", "fac_assembly"]},
+	# package 42: Wirtschaft 2.0
+	"cluster_economy": {"cat": "cluster", "title": "Economies and prosperity", "unlock": "jump", "image": {"icon": "distributor"},
+		"text": "Every system lives from something. Its main economy – and often a secondary one – comes from what is there: the stations above all (an industrial complex makes an industrial system, a military outpost a military one), and then the worlds, moons, fields and belts. Ocean and jungle worlds feed the Cluster, metal worlds and asteroid fields are mined, gas giants power industry, red and toxic giants supply the chemists, earthlike worlds draw tourists and high-tech firms.
+
+The nine economies: Agriculture, Mining, Industry, Refining, Chemistry, High-Tech, Research, Military and Tourism. The galaxy map highlights them – the coloured mark above a system is its main economy.
+
+Prosperity runs in five levels – Impoverished, Poor, Average, Wealthy, Rich – shown as pips beside each system. It starts from a system's people, stations and security, and it changes slowly: trade and needs met raise it, pirates and shortages wear it down.",
+		"see": ["cluster_independent"]},
 	# package 39d: the manufacturers' systems and the independent systems
 	"cluster_independent": {"cat": "cluster", "title": "Independent systems", "unlock": "jump", "image": {"icon": "hull"},
 		"text": "Not every system belongs to a power. The independent ones – yellow on the galaxy map – govern themselves; no power patrols them, and no power's law is kept there but their own.\n\nThe private manufacturers have made their homes in such systems: Kanayama Heavy Industries builds its mining ships at Kanayama Works in Erzhalde, Maison Aurelle finishes its liners at the Atelier Aurelle in Perlmutt, and Hadrian Dynamics forges its warships and weapon platforms at the Hadrian Foundry in Schwarzwacht. Only Earthworks stayed with the Assembly: its Second Yard in Altwerft, built in 12696 HE, was the first shipyard in the Cluster.\n\nEvery manufacturer's yard sells all of its ships.",
