@@ -24,6 +24,7 @@ var miners: Array = []        # {ship, station, field, state, t}
 var loiterers: Array = []     # {ship, kind, anchor, pos, rmin, rmax, life, wait} – stay around one place
 var patrols: Array = []       # {gov, ships, wps, wp, dwell, target}
 var convoys := {}             # convoy id -> {c, ships: Array, leader, done}
+var tourists: Array = []      # package 43c: {ship, kind ("cruise" / "tour"), resort, sight, state, t}
 var _tick := 0.0
 var _spawn_t := 2.0
 var _patrol_wait := {}        # gov -> seconds until a lost patrol is replaced
@@ -187,6 +188,13 @@ func _initial() -> void:
 		for i in int(ceil(_wanted(kind) * 0.5)):
 			if _room(2):
 				_spawn_loiterer(kind, false)
+	# package 43c: some sightseers are already out at the sights
+	for i in int(ceil(int(profile.get("tour_shuttles", 0)) * 0.5)):
+		if _room():
+			_spawn_tourist("tour", true)
+	for i in int(ceil(int(profile.get("cruise", 0)) * 0.5)):
+		if _room():
+			_spawn_tourist("cruise", true)
 
 
 ## How many loiterers of a kind the system wants; Axiom research ships only in Directorate systems.
@@ -222,6 +230,7 @@ func _process(delta: float) -> void:
 	_update_patrols(dt)
 	_update_convoys()
 	_update_loiterers(dt)
+	_update_tourists(dt)                       # package 43c
 	_update_faction_jobs(dt)
 	_spawn_t -= dt
 	if _spawn_t <= 0.0:
@@ -243,6 +252,13 @@ func _top_up() -> void:
 				have_k += 1
 		if _wanted(kind) > have_k:
 			todo.append(kind)
+	for tk in [["cruise", "cruise"], ["tour", "tour_shuttles"]]:
+		var have_t := 0
+		for e in tourists:
+			if e["kind"] == tk[0]:
+				have_t += 1
+		if int(profile.get(tk[1], 0)) > have_t:
+			todo.append(tk[0])
 	if not todo.is_empty() and _room(2):
 		var pick: String = todo[randi() % todo.size()]
 		match pick:
@@ -250,6 +266,8 @@ func _top_up() -> void:
 				_spawn_shuttle(false)
 			"miner":
 				_spawn_miner(false)
+			"cruise", "tour":
+				_spawn_tourist(pick, false)
 			_:
 				_spawn_loiterer(pick, true)
 	var want := _patrol_govs()
@@ -436,6 +454,94 @@ func _update_shuttles() -> void:
 				go(s, p["id"])
 		elif e["mode"] == "in" and _idle(s):
 			go(s, e["station"], {"type": "dock", "id": e["station"]})
+
+
+# ---------------------------------------------------------------- Package 43c: cruise liners and sightseers
+
+const VIEW_TIME := Vector2(18.0, 40.0)        # seconds at a sight
+const CRUISE_PRESETS := [["std_aur_opal", 0.5], ["std_aur_pearl", 0.3], ["std_aur_empress", 0.2]]
+
+
+## A cruise liner (Maison Aurelle) through a gate to a sight, then to the resort – or a sightseeing shuttle out of the
+## resort to a sight and back. `midway`: already at the sight.
+func _spawn_tourist(kind: String, midway: bool) -> void:
+	var rs: Array = Tourism.resorts(sid)
+	var sights: Array = Tourism.sights(sid)
+	if sights.is_empty() or (kind == "tour" and rs.is_empty()):
+		return
+	var sg: Dictionary = sights[randi() % mini(sights.size(), 4)]          # the best few
+	var resort: Dictionary = rs[randi() % rs.size()] if not rs.is_empty() else {}
+	var gov := String(resort.get("faction", Universe.controller(sid)))
+	if not gov in FactionData.POWERS:
+		gov = ""
+	var preset := "civ_shuttle"
+	var name := "Sightseer %s" % _reg()
+	if kind == "cruise":
+		var r := randf()
+		for cp in CRUISE_PRESETS:
+			r -= float(cp[1])
+			preset = String(cp[0])
+			if r <= 0.0:
+				break
+		name = ("Grand Liner %s" if preset == "std_aur_empress" else "Cruise Liner %s") % _reg()
+	var s: Ship = null
+	var state := "to_sight"
+	if midway:
+		var place := Missions.sight_place({"system": sid, "body": String(sg["body"])})
+		if place.is_empty():
+			return
+		var pos: Vector2 = (place["pos"] as Vector2) + Vector2.from_angle(randf() * TAU) * float(place["range"]) * randf_range(0.5, 0.9)
+		if _near_player(pos):
+			return
+		s = _spawn(preset, pos, "civilian", gov, name)
+		state = "viewing"
+	elif kind == "cruise":
+		s = _arrive(preset, "civilian", gov, name)
+	else:
+		s = _spawn_docked(preset, String(resort["id"]), "civilian", gov, name)
+	if s == null:
+		return
+	s.activity = "Sightseeing – %s" % sg["name"]
+	var e := {"ship": s, "kind": kind, "resort": String(resort.get("id", "")), "sight": String(sg["body"]), "name": String(sg["name"]),
+		"state": state, "t": randf_range(VIEW_TIME.x, VIEW_TIME.y)}
+	if state == "to_sight":
+		go(s, String(sg["body"]))
+	tourists.append(e)
+
+
+func _update_tourists(dt: float) -> void:
+	for e in tourists.duplicate():
+		var s = e["ship"]
+		if not _alive(s):
+			tourists.erase(e)
+			continue
+		match String(e["state"]):
+			"to_sight":
+				if _idle(s):
+					e["state"] = "viewing"
+					s.set_order({"type": "move", "pos": s.position + Vector2.from_angle(randf() * TAU) * 2500.0})      # a slow drift past
+			"viewing":
+				e["t"] = float(e["t"]) - dt
+				if float(e["t"]) <= 0.0:
+					if String(e["resort"]) != "":
+						e["state"] = "home"
+						s.activity = "Back to the resort"
+						go(s, String(e["resort"]), {"type": "dock", "id": String(e["resort"])})
+					else:
+						e["state"] = "leave"                         # no resort here: on to the next system
+						var g := _far_gate()
+						if g.is_empty() and not view.layout["gates"].is_empty():
+							g = view.layout["gates"][0]
+						if not g.is_empty():
+							go(s, String(g["id"]))
+			"home":
+				if _idle(s):
+					go(s, String(e["resort"]), {"type": "dock", "id": String(e["resort"])})
+			"leave":
+				if _idle(s):
+					view.spawn_fx(Fx.flash(s.position, Color(0.75, 0.45, 1.0), s.radius * 4.0))
+					_despawn(s)
+					tourists.erase(e)
 
 
 # ---------------------------------------------------------------- Miners

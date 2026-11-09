@@ -995,6 +995,14 @@ func system_profile(sid: int) -> Dictionary:
 	if lv >= 3 and int(p["patrol_groups"]) > 0:
 		p["patrol_groups"] = int(p["patrol_groups"]) + 1
 	p["prosperity"] = lv
+	# package 43c: tourist traffic – cruise liners and sightseeing shuttles where there are resorts (liners also
+	# visit a famous sight in a well-off system without one)
+	var rs := Tourism.resorts(sid).size()
+	var famous := false
+	for sg in Tourism.sights(sid):
+		famous = famous or float(sg["appeal"]) >= 2.5
+	p["cruise"] = mini(rs * (1 + int(lv >= 3)), 3) if rs > 0 else (1 if famous and lv >= 2 else 0)
+	p["tour_shuttles"] = mini(rs * 2 + int(lv >= 3), 5) if rs > 0 else 0
 	return p
 
 

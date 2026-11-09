@@ -357,6 +357,7 @@ func _build_world() -> void:
 	r42.add_child(UI.button("To a metal world", func(): _cmd({"type": "debug_economy_system", "economy": "metal"})))
 	r42.add_child(UI.button("To a resort (43)", func(): _cmd({"type": "debug_economy_system", "economy": "resort"})))
 	r42.add_child(UI.button("Round trips: sight seen", func(): _cmd({"type": "debug_tour_view"})))
+	r42.add_child(UI.button("Cruise liner + sightseers", func(): _cmd({"type": "debug_tourists"})))
 	r42.add_child(UI.button("Markets: +1 h", func(): _cmd({"type": "debug_market_age", "hours": 1})))
 	r42.add_child(UI.button("+20 luxury goods", func(): _cmd({"type": "debug_give_cargo", "item": "luxury_goods", "amount": 20})))
 	var r42b := _row()

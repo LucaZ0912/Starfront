@@ -593,6 +593,7 @@ func _process(delta: float) -> void:
 				_test_prosperity42(view)
 				_test_resorts43(view)
 				_test_tours43(view)
+				_test_cruise43(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -7206,6 +7207,34 @@ func _test_tours43(view: SystemView) -> void:
 	GameState.prosperity = keep
 	check(not before and halfway and seen and after,
 		"43b: the sightseers look while you stay close to %s (%d s), and only then can they disembark where they boarded" % [sg[0]["name"], int(Missions.TOUR_VIEW)])
+
+
+## Package 43c: tourist traffic – cruise liners and sightseeing shuttles go to the sights, linger, and go home.
+func _test_cruise43(view: SystemView) -> void:
+	var U = Universe
+	var prof_ok := true
+	var n_res := 0
+	for sy in U.systems:
+		if not Tourism.resorts(int(sy["id"])).is_empty():
+			n_res += 1
+			var p: Dictionary = U.system_profile(int(sy["id"]))
+			prof_ok = prof_ok and int(p["cruise"]) > 0 and int(p["tour_shuttles"]) > 0
+	var tr = view.traffic
+	var flow_ok := true
+	var made := 0
+	if not Tourism.sights(view.system_id).is_empty():
+		var n0: int = tr.tourists.size()
+		tr._spawn_tourist("cruise", true)
+		made = tr.tourists.size() - n0
+		for e in tr.tourists.slice(n0):
+			flow_ok = flow_ok and e["state"] == "viewing" and String(e["ship"].fit.ship_name).contains("Liner")
+			e["t"] = 0.0
+		tr._update_tourists(0.5)
+		for e2 in tr.tourists.slice(n0):
+			flow_ok = flow_ok and e2["state"] in ["home", "leave"]
+			if is_instance_valid(e2["ship"]):
+				e2["ship"].queue_free()
+	check(n_res > 0 and prof_ok and flow_ok, "43c: resort systems have cruise liners and sightseeing shuttles; a liner lingers at the sight, then berths at the resort or sails on (%d)" % made)
 
 
 func _test_mining41(view: SystemView) -> void:

@@ -1876,6 +1876,18 @@ func _c_debug_prosperity_drift(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_tourists"} – package 43c: a cruise liner and a sightseeing shuttle set out now
+func _c_debug_tourists(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var n0: int = world.traffic.tourists.size()
+	world.traffic._spawn_tourist("cruise", false)
+	world.traffic._spawn_tourist("tour", false)
+	GameState.log_msg("[Debug] %d tourist ship(s) set out." % (world.traffic.tourists.size() - n0))
+	return ""
+
+
 ## {"type":"debug_tour_view"} – package 43b: every round trip aboard has seen its sight
 func _c_debug_tour_view(_c: Dictionary) -> String:
 	var n := 0

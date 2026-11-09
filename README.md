@@ -114,6 +114,12 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## Tourist traffic (phase 0.5 package 43c)
+
+- `Traffic.tourists`: cruise liners (`CRUISE_PRESETS`, through a gate) and sightseeing shuttles (out of the resort)
+  fly to a sight (`Tourism.sights`), linger `VIEW_TIME`, then dock at the resort – or, without one, leave through a
+  gate. Counts from `system_profile` (`cruise`, `tour_shuttles`).
+
 ## Tourist flights and round trips (phase 0.5 package 43b)
 
 - `Missions.generate_passenger`: from Average prosperity a share (`TOUR_SHARE`) are round trips (`generate_tour`),

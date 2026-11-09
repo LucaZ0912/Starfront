@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.43.4 – 2026-11-09
+
+**Package 43c: tourist traffic – Tourismus done.**
+- **Cruise liners** of Maison Aurelle (Pearl, Opal and now and then an Empress as a "Grand Liner") come through the
+  gates, fly to a sight of the system, drift past it for a while and then berth at the resort; in a well-off system
+  with a famous sight but no resort they sail on through a gate afterwards.
+- **Sightseeing shuttles** leave the resort for a sight (the rings, a beautiful world, a wondrous star, a landmark),
+  linger and fly home.
+- Their numbers follow the resorts and the prosperity of the system (Universe.system_profile: cruise, tour_shuttles).
+- Debug: cruise liner + sightseers now. Codex "Resorts and sights" mentions them.
+
 ## alpha 0.6.43.3 – 2026-11-09
 
 **Package 43b: tourist flights and round trips.**
