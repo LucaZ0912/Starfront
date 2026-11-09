@@ -1739,6 +1739,17 @@ Landen auf Planeten und Gameplay am Boden – aus Teil 6 herausgelöst, weil es 
 
 Jedes Paket mit eigenen Debug-Funktionen (z. B. sofort landen, zu einem POI springen, Bodenmission starten, Gegner am Boden spawnen).
 
+**Antworten Luz (9. Nov 2026):**
+- **Landung:** jeder Planet hat **feste Landeplätze**, jeder eine eigene, begrenzte Karte – **Städte** (ähnlich wie Stationen im All) und **POIs**; aus dem Orbit wählt man, wo man landet.
+- **Steuerung zu Fuß:** noch offen – „die große Frage, wie das Gameplay ablaufen soll“; wird **zuerst konzeptionell** besprochen (Kampf und Gameplay am Boden).
+- **Am Boden:** alles aus dem Vorschlag – Städte mit Bar, Händler, Ausrüster, Auftragsbrett, NPCs; Bodenaufträge (liefern, retten, Kopfgeld zu Fuß, Anomalie scannen, Wrack bergen); Erkundung (Ruinen, Absturzstellen, Höhlen); Rohstoffe von Hand; **nicht-menschliche Gegner (Tiere, Lebewesen) als eigenes Paket**.
+- **Umwelt:** der Planetentyp bestimmt den nötigen Schutz (Hitze, Kälte, giftige Luft, Vakuum), ohne passenden Anzug sinkt die Lebensleiste – ja.
+- **Persönliche Ausrüstung:** Anzüge, Handwaffen, Werkzeuge, eigenes kleines Inventar; **Ausrüstungsprinzip wie beim Raumschiff** (Größe/Qualität F–A, Slots).
+- **Wer ist am Boden:** zurückgestellt (Söldner als Begleiter, Wachen, Banditen), bis das Kampfsystem steht.
+- **All während der Landung:** wird **weiter simuliert**.
+- **Wolkenstädte:** ja, in Teil 7.
+- **Als Nächstes:** Kampf und Gameplay am Boden **konzeptionell** durchdenken, bevor die Pakete festgelegt werden.
+
 ### Entscheidungen zu Teil 7
 
 | Frage | Optionen | Vorschlag | Entscheidung |
