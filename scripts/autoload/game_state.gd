@@ -202,6 +202,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	curia.reset()
 	permits.clear()
 	research_data = 0
+	fortress_broken.clear()
 	if test_system:
 		notorious.reset()
 	else:
@@ -503,7 +504,7 @@ func to_dict() -> Dictionary:
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
-		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
+		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data,
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
@@ -534,6 +535,7 @@ func from_dict(d: Dictionary) -> void:
 	play_time = float(d["play_time"])
 	jobs = d.get("jobs", []).duplicate(true)
 	exotic_matter = int(d.get("exotic_matter", 0))
+	fortress_broken = d.get("fortress_broken", {}).duplicate()
 	_next_uid = int(d["next_uid"])
 	crew_quarters = d.get("crew_quarters", {}).duplicate(true)
 	bar = d.get("bar", {}).duplicate(true)
@@ -1825,6 +1827,13 @@ func jump_fuel(f: ShipFitting, _cls: int = 1) -> float:
 ## Empty string = jump possible, otherwise the reason.
 ## Axiom Threshold (package 25g): exotic matter – a pilot resource without cargo space.
 var exotic_matter := 0
+## Package 40d: broken pirate fortresses – system id (as text) -> play time until they are rebuilt
+var fortress_broken := {}
+const FORTRESS_REBUILD := 1800.0
+
+
+func fortress_down(sid: int) -> bool:
+	return float(fortress_broken.get(str(sid), 0.0)) > play_time
 
 
 ## Why the Threshold cannot open a wormhole to `to_id` ("" = it can). Distance = normal jumps.

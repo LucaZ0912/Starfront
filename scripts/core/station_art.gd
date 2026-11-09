@@ -69,6 +69,8 @@ static func build(data: Dictionary) -> Dictionary:
 			a._shipyard()
 		"pirate_haven":
 			a._haven()
+		"pirate_fortress":
+			a._fortress()
 		"waystation":
 			a._waystation()
 		"vote":
@@ -151,6 +153,8 @@ func _setup(t: String, tr: int, sd: int) -> void:
 		n = 320 + 60 * (tier - 1)
 	elif t == "pirate_haven":
 		n = 260 + 40 * (tier - 1)
+	elif t == "pirate_fortress":
+		n = 460                                        # package 40d: far bigger than any haven
 	elif t == "waystation":
 		n = 200 + 30 * (tier - 1)
 	elif RESORT_ACC.has(t):
@@ -1694,6 +1698,46 @@ func _waystation() -> void:
 	light(center, Color(1, 1, 1), 1.0, true)
 
 
+## Package 40d: a pirate fortress – a hollowed-out rock behind a ring of armoured bastions, each with a heavy gun,
+## spikes of scrap pointing outward, red lights, a fortified dock.
+func _fortress() -> void:
+	acc = Color(0.95, 0.18, 0.14)
+	# the rock: lumps of dark stone round the middle
+	for k in 9:
+		var p := P(n * rng.randf_range(0.0, 0.12), rng.randf() * TAU)
+		disc(p, n * rng.randf_range(0.1, 0.16), DARK if k % 3 else RUST, 10.0 + rng.randf() * 4.0, D_DOME)
+	# the bastions and the walls between them
+	var bast := 7
+	var pts: Array = []
+	var a0 := rng.randf() * TAU
+	for k2 in bast:
+		pts.append(P(n * 0.33, a0 + k2 * TAU / bast))
+	for k3 in bast:
+		seg(pts[k3], pts[(k3 + 1) % bast], 7.0, HULL if k3 % 2 else DARK, 9.0)
+		seg(Vector2(c, c), pts[k3], 3.0, TRUSS, 6.0)
+	for k4 in bast:
+		var ang := a0 + k4 * TAU / bast
+		box(pts[k4], ang, 20.0, 16.0, RUST if k4 % 2 else HULL, 14.0, P_PLATES)
+		box(pts[k4] + Vector2.from_angle(ang) * 22.0, ang, 12.0, 4.0, DARK, 10.0, P_CYL)        # a spike of scrap
+		turret(pts[k4] + Vector2.from_angle(ang + PI) * 4.0, 8.0)
+		light(pts[k4] + Vector2.from_angle(ang) * 34.0, Color(1.0, 0.12, 0.1), 1.6, true)
+	# inner guns, battle damage, containers
+	for k5 in 4:
+		turret(P(n * rng.randf_range(0.12, 0.2), rng.randf() * TAU), 6.0)
+	for k6 in 7:
+		erase_disc(P(n * rng.randf_range(0.05, 0.36), rng.randf() * TAU), rng.randf_range(2.0, 5.0))
+	for k7 in 14:
+		var cp := P(n * rng.randf_range(0.1, 0.27), rng.randf() * TAU)
+		box(cp, rng.randf() * PI, 5.0, 3.0, [RUST, PANEL, ACC, DARK][rng.randi() % 4], 8.0, P_FLAT)
+	disc(Vector2(c, c), n * 0.06, RUST, 16.0, D_DOME)
+	disc(Vector2(c, c), n * 0.028, ACC, 20.0, D_DOME)
+	var bang := a0 + TAU / bast * 0.5
+	box(P(n * 0.2, bang), bang, 26.0, 30.0, DARK, 12.0, P_PLATES)
+	add_bay(bang, n * 0.2 + 4.0, 14.0, BAY_W - 2.0, BAY_D * 0.9)
+	for k8 in 10:
+		light(P(n * rng.randf_range(0.05, 0.42), rng.randf() * TAU), Color(1.0, 0.1, 0.1), rng.randf_range(0.6, 2.2), rng.randf() < 0.5)
+
+
 func _haven() -> void:
 	# a cluster of patched-together wrecks around a scrap core
 	var parts := 4 + tier
@@ -1843,7 +1887,7 @@ func _palettes() -> Dictionary:
 	if RESORT_ACC.has(type):
 		hull = [Color(0.56, 0.53, 0.5), Color(0.83, 0.8, 0.76), Color(0.98, 0.96, 0.93)]        # package 43: ivory …
 		panel = [Color(0.5, 0.36, 0.14), Color(0.8, 0.62, 0.28), Color(1.0, 0.85, 0.5)]        # … and gold
-	if type == "pirate_haven":
+	if type in ["pirate_haven", "pirate_fortress"]:
 		hull = [Color(0.22, 0.22, 0.25), Color(0.38, 0.38, 0.42), Color(0.55, 0.55, 0.58)]
 	elif type == "military":
 		hull = [Color(0.26, 0.29, 0.3), Color(0.42, 0.46, 0.47), Color(0.6, 0.65, 0.66)]

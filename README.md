@@ -126,6 +126,16 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## The dangers of the Rim (phase 0.5 package 40d)
+
+- `Universe._hazards` → `L["hazards"]` (`radiation` with `strength` / `field`, `ion_storm` with `vel`, `minefield` with
+  `mines`) by `RAD_SHARE` / `ION_SHARE` / `MINE_SHARE` / `MINES_AT_BATTLE`; warp targets of kind `hazard`.
+- `_plan_fortresses` (`FORTRESS_COUNT` in the Rim, `fortress`, `fortress_gov`), `_add_fortress` (a haven with
+  `art: pirate_fortress`, `fortress`, `bounty`); `StationArt._fortress`.
+- `SystemView._spawn_hazards` (hazard celestials, old mines `Mine.setup_old` – faction `derelict`, the garrison),
+  `_hazard_tick`, `hazard_banner` (HUD), `_garrison_lost` → `GameState.fortress_broken` / `fortress_down`
+  (`FORTRESS_REBUILD`), `FORTRESS_RANGE`. `Celestial._draw_hazard`.
+
 ## Territories by the lore (0.6.40.7)
 
 - `_assign_territory`: the capital with the fewest routes (≤ `DIRECTORATE_SYSTEMS` − 1, else another candidate) goes to

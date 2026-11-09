@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.8 – 2026-11-09
+
+**Package 40d: the dangers of the Rim.** A new game is needed.
+- **Radiation zones** – always round neutron stars and black holes, now and then elsewhere (a quarter of the Rim,
+  more in the Far Reaches), often over an asteroid field: inside, shields drain and then the hull burns; the rock
+  under a zone is purer and richer. A yellow-green haze with a striped ring; a big warning banner.
+- **Ion storms** – blue clouds with lightning that drift slowly through a system: radar jammed, lightning strikes
+  knock out shields and systems for a moment and scorch the hull.
+- **Old minefields** – round old battlefields or across the way to a gate: 18–30 rusted mines of a forgotten war,
+  armed against anyone (pirates and patrols too); point defence shoots them down. A red dashed ring.
+- **Pirate fortresses** – six in the Rim, held by the Hollow Crown and the Severed: a hollowed-out rock behind seven
+  armoured bastions, heavy guns with a long reach, a garrison of 6–8 ships. Destroy the whole garrison and the
+  fortress is **broken**: its guns fall silent and its **bounty (150,000 cr)** is paid as a bond; half an hour later
+  it is rebuilt. Fortress systems count as inhabited (German names) and have patched pirate gates.
+- Hazards are warp targets (you arrive at their edge), named in the system info of the galaxy map; fortresses are
+  marked with a red square. Codex: Radiation zones, Ion storms, Old minefields, Pirate fortresses. Smoke tests.
+
 ## alpha 0.6.40.7 – 2026-11-09
 
 **Territories by the lore.** A new game is needed.

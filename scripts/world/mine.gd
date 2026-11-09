@@ -35,6 +35,19 @@ func setup(p_layer, p_kind: String, p_slot: String, p_fuse: float, p_power: floa
 	add_to_group("mines")
 
 
+## Package 40d: an old mine of a forgotten war – nobody's, it goes off against anyone, it never runs out.
+func setup_old(pos: Vector2, p_view: Node) -> void:
+	layer = null
+	faction = "derelict"
+	kind = "mine_proximity"
+	view = p_view
+	life = 1.0e12
+	power = 1.4
+	age = ARM_TIME
+	position = pos
+	add_to_group("mines")
+
+
 func data() -> Dictionary:
 	return GameData.MINES[kind]
 
@@ -43,6 +56,8 @@ func data() -> Dictionary:
 func threatens(n) -> bool:
 	if n == null or not is_instance_valid(n) or not n.is_targetable():
 		return false
+	if faction == "derelict":
+		return true
 	if layer != null and is_instance_valid(layer):
 		return Ship.hostile(layer, n)
 	return Ship.are_hostile(faction, n.faction)
@@ -109,7 +124,7 @@ func intercept() -> void:
 
 
 func _draw() -> void:
-	var col: Color = data()["color"]
+	var col: Color = data()["color"] if faction != "derelict" else Color(0.8, 0.42, 0.2)
 	var z: float = view.camera.zoom.x if view != null and view.camera != null else 1.0
 	var s := maxf(6.0, 4.0 / maxf(z, 0.001)) if z < 0.5 else 6.0
 	draw_circle(Vector2.ZERO, s, Color(0.12, 0.12, 0.14))

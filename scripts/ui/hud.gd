@@ -680,6 +680,8 @@ func _update_cme_banner(delta: float) -> void:
 	Audio.loop("rad_alarm", "cme_alarm", not rad.is_empty() and b.is_empty(), RAD_ALARM_VOL)
 	if b.is_empty():
 		b = rad
+	if b.is_empty() and view != null and is_instance_valid(view):
+		b = view.hazard_banner()                      # package 40d
 	cme_banner.visible = not b.is_empty()
 	if b.is_empty():
 		_cme_pulse = 0.0

@@ -597,6 +597,7 @@ func _process(delta: float) -> void:
 				_test_cluster40(view)
 				_test_gates40(view)
 				_test_rim40c(view)
+				_test_hazards40d(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -939,7 +940,7 @@ func _test_resources() -> void:
 	var rare_in_safe := 0
 	var rare_in_unsafe := 0
 	var mixed_ok := true
-	for sid in mini(Universe.systems.size(), 40):
+	for sid in Universe.systems.size():          # 40d: over the whole cluster – a sample of 40 swings with the stars
 		var lay := Universe.get_layout(sid)
 		var sec := float(Universe.systems[sid]["security"])
 		for fl in lay["fields"]:
@@ -1195,7 +1196,7 @@ func _test_resources() -> void:
 			if ctl in FD.PIRATES and st10["faction"] != "":
 				st_fac_ok = false
 		for hv10 in L10["havens"]:
-			hv_fac_ok = hv_fac_ok and hv10["faction"] == Universe.controller(sid10)
+			hv_fac_ok = hv_fac_ok and (hv10["faction"] == Universe.controller(sid10) or (hv10.get("fortress", false) and hv10["faction"] in FD.TERRITORIAL_PIRATES))
 	check(st_fac_ok and hv_fac_ok, "stations fly the flag of the system owner, pirate havens of their faction")
 	check(FD.relation("assembly", "covenant") < 0.0 and FD.relation("hollow_crown", "directorate") < 0.0 and FD.relation("assembly", "directorate") > 0.0, "faction relations")
 	var crest_ok := true
@@ -2974,7 +2975,7 @@ func _test_codex(view: SystemView) -> void:
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
 		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
-		"battlefield", "relic", "veil", "veil_rift"]   # package 40c   # package 37: stars
+		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress"]   # packages 40c, 40d   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -7278,7 +7279,7 @@ func _test_cluster40(view: SystemView) -> void:
 	var outer_ok := true
 	for sy in U.systems:
 		var sid: int = sy["id"]
-		var lived: bool = U.has_stations(sid) or int(sy.get("haven_tier", 0)) > 0
+		var lived: bool = U.has_stations(sid) or int(sy.get("haven_tier", 0)) > 0 or sy.get("fortress", false)
 		var catalog: bool = not (String(sy["name"]) in U.SYSTEM_NAMES) and String(sy.get("special", "")) == ""
 		if lived and String(sy.get("special", "")) == "":
 			name_ok = name_ok and String(sy["name"]) in U.SYSTEM_NAMES
@@ -7398,6 +7399,61 @@ func _test_rim40c(_view: SystemView) -> void:
 	check(GameData.commodities.has("old_tech") and buyer, "40c: Pre-Severance Tech from the wrecks – research stations buy it")
 
 
+## Package 40d: the dangers of the Rim – radiation zones, ion storms, old minefields, pirate fortresses.
+func _test_hazards40d(view: SystemView) -> void:
+	var U = Universe
+	var n_fort := 0
+	var fort_ok := true
+	var kinds := {"radiation": 0, "ion_storm": 0, "minefield": 0}
+	var star_rad := true
+	for sy in U.systems:
+		var sid: int = sy["id"]
+		var L: Dictionary = U.get_layout(sid)
+		if sy.get("fortress", false):
+			n_fort += 1
+			var has := false
+			for hv in L["havens"]:
+				has = has or (hv.get("fortress", false) and int(hv.get("bounty", 0)) > 0)
+			fort_ok = fort_ok and has and U.gate_style(sid) == "pirate" and String(sy["name"]) in U.SYSTEM_NAMES and sy.get("belt", false)
+		for hz in L.get("hazards", []):
+			kinds[String(hz["kind"])] = int(kinds[String(hz["kind"])]) + 1
+		if String(L["star"].get("kind", "")) in ["neutron", "blackhole"] and String(sy.get("special", "")) == "":
+			var round_star := false
+			for hz2 in L.get("hazards", []):
+				round_star = round_star or String(hz2["id"]) == "hz_rad_star"
+			star_rad = star_rad and round_star
+	check(n_fort >= 4 and fort_ok, "40d: %d pirate fortresses in the Rim – inhabited (German names), patched gates, a bounty on each" % n_fort)
+	check(int(kinds["radiation"]) >= 10 and int(kinds["ion_storm"]) >= 10 and int(kinds["minefield"]) >= 5 and star_rad,
+		"40d: hazards across the cluster – %d radiation zones (always round neutron stars and black holes), %d ion storms, %d old minefields" % [kinds["radiation"], kinds["ion_storm"], kinds["minefield"]])
+	# radiation drains the shields, the HUD warns; an old mine threatens anyone
+	var pl: Ship = view.player
+	var hz_node = view._add_celestial("hazard", {"id": "hz_test", "kind": "radiation", "name": "Radiation Zone", "pos": pl.position,
+		"radius": 5000.0, "strength": 1.0, "seed": 1})
+	view.hazard_nodes.append(hz_node)
+	var sh_max := float(pl.fit.stats()["shield_max"])
+	pl.fit.shield = sh_max
+	view._hazard_tick(1.0)
+	var drained: bool = pl.fit.shield < sh_max or sh_max <= 0.0
+	var banner: Dictionary = view.hazard_banner()
+	view.hazard_nodes.erase(hz_node)
+	view.celestials.erase(hz_node)
+	hz_node.queue_free()
+	view._hazard_tick(0.5)
+	var m = view.MineScript.new()
+	m.setup_old(pl.position + Vector2(50000, 0), view)
+	var mine_ok: bool = m.threatens(pl) and m.armed()
+	m.free()
+	check(drained and String(banner.get("text", "")) == "RADIATION ZONE" and view.hazard_here == "" and mine_ok,
+		"40d: a radiation zone drains the shields (then burns the hull), the HUD warns; old mines threaten anyone")
+	# a broken fortress: silent for a while, remembered in the save
+	var sid0: int = view.system_id
+	GameState.fortress_broken[str(sid0)] = GameState.play_time + 100.0
+	var down: bool = GameState.fortress_down(sid0)
+	var saved: bool = GameState.to_dict()["fortress_broken"].has(str(sid0))
+	GameState.fortress_broken.erase(str(sid0))
+	check(down and saved and not GameState.fortress_down(sid0), "40d: a broken fortress stays silent until it is rebuilt – kept in the save")
+
+
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.
 func _test_gates40(view: SystemView) -> void:
 	var U = Universe
@@ -7431,7 +7487,7 @@ func _test_gates40(view: SystemView) -> void:
 		if f in ["assembly", "covenant", "directorate"]:
 			rule_ok = rule_ok and st == f
 		elif sy.get("belt", false) and not sy.get("independent", false) and f == "":
-			rule_ok = rule_ok and st == "old"
+			rule_ok = rule_ok and st == ("pirate" if sy.get("fortress", false) else "old")     # 40d: fortresses patch their gates
 	var gate_ok := true
 	for g in view.layout["gates"]:
 		gate_ok = gate_ok and String(g.get("style", "")) == U.gate_style(view.system_id)

@@ -138,6 +138,7 @@ func build(p_system: int) -> void:
 	_spawn_celestials()
 	sync_player()
 	_spawn_pirates()
+	_spawn_hazards()                     # package 40d: old mines, the fortress garrison
 	_codex_discover()
 	traffic = TrafficScript.new()
 	traffic.name = "Traffic"
@@ -1392,6 +1393,7 @@ func _process(delta: float) -> void:
 		_sync_wingmen()                      # package 33
 		_sync_platform()
 		_return_rocks()                      # 0.6.35.5
+		_hazard_tick(0.5)                    # package 40d
 	_update_camera(delta)
 	_update_screen_rect()
 	_update_bodies()
@@ -3792,6 +3794,127 @@ const ION_COLOR := Color(0.75, 0.45, 1.0)
 const ArchData = preload("res://data/pirate_archetypes.gd")
 const DEF_COOLDOWN := 1.6
 const HAVEN_RANGE := 7000.0
+const FORTRESS_RANGE := 11000.0
+const GARRISON := Vector2i(6, 8)
+
+
+# ---------------------------------------------------------------- Package 40d: the dangers of the Rim
+
+var hazard_nodes: Array = []
+var _garrison: Array = []
+var _garrison_by_player := 0
+var _hz_inside := {}                     # hazard id -> the player was inside on the last tick
+var hazard_here := ""                    # "radiation" / "ion_storm" / "minefield" / "" – for the HUD
+
+
+func _spawn_hazards() -> void:
+	hazard_nodes.clear()
+	for hz in layout.get("hazards", []):
+		hazard_nodes.append(_add_celestial("hazard", hz))
+		if hz["kind"] == "minefield":
+			for mp in hz["mines"]:
+				var m = MineScript.new()
+				m.setup_old(mp, self)
+				fx_layer.add_child(m)
+	# the garrison of a pirate fortress (not while it lies broken)
+	_garrison.clear()
+	_garrison_by_player = 0
+	for hv in havens:
+		if not is_instance_valid(hv) or not hv.data.get("fortress", false) or GameState.fortress_down(system_id):
+			continue
+		for i in randi_range(GARRISON.x, GARRISON.y):
+			var pos: Vector2 = hv.position + Vector2.from_angle(randf() * TAU) * randf_range(3000.0, 7000.0)
+			var s := spawn_npc(String(ArchData.pick(0.0)[1]), pos, "pirate", String(hv.data.get("faction", "")))
+			s.home = hv.position
+			s.set_meta("garrison", String(hv.data["id"]))
+			_garrison.append(s)
+
+
+## A ship of the fortress garrison died. When the last one falls – and the pilot had a hand in it – the fortress
+## is broken: its guns fall silent for a while and its bounty is paid.
+func _garrison_lost(ship: Ship, killer) -> void:
+	_garrison.erase(ship)
+	if killer is Ship and is_instance_valid(killer) and (killer.faction == "player" or killer.wingman_id >= 0 or killer.get("carrier") == player):
+		_garrison_by_player += 1
+	for g in _garrison:
+		if is_instance_valid(g) and not g.dying:
+			return
+	if _garrison_by_player <= 0:
+		return
+	var hv = null
+	for h in havens:
+		if is_instance_valid(h) and String(h.data["id"]) == String(ship.get_meta("garrison")):
+			hv = h
+	if hv == null:
+		return
+	GameState.fortress_broken[str(system_id)] = GameState.play_time + GameState.FORTRESS_REBUILD
+	var amount := int(hv.data.get("bounty", Universe.FORTRESS_BOUNTY))
+	var bond := GameState.add_bond(system_id, String(hv.data["name"]), amount, GameState.rep.issuer(system_id))
+	GameState.log_msg("FORTRESS BROKEN: the garrison of %s is gone and its guns fall silent. Bounty bond from the %s: %s – redeem it at %s." % [hv.data["name"], FactionData.name_of(String(bond["faction"])), GameData.fmt_credits(amount), GameState.bond_where(bond, system_id)], GameState.COL_GOOD)
+	GameState.news.radio("%s broken – the pirate fortress in %s has lost its garrison." % [hv.data["name"], Universe.systems[system_id]["name"]], system_id, hv.position)
+	GameState.codex.event("fortress")
+	spawn_fx(Fx.explosion(hv.position, hv.radius * 0.6, Color(1.0, 0.5, 0.2)))
+
+
+## Every half second: radiation drains shields and then burns the hull, ion storms jam radars and strike with
+## lightning; the pilot is told on entering.
+func _hazard_tick(dt: float) -> void:
+	hazard_here = ""
+	if hazard_nodes.is_empty():
+		return
+	var ships: Array = []
+	for n in ship_layer.get_children():
+		if n is Ship and n.is_targetable() and not n.is_docked():
+			ships.append(n)
+	for hn in hazard_nodes:
+		if not is_instance_valid(hn):
+			continue
+		var hz: Dictionary = hn.data
+		var r := float(hz["radius"])
+		var k := String(hz["kind"])
+		var player_in := false
+		for s in ships:
+			if s.position.distance_to(hn.position) > r:
+				continue
+			if s == player:
+				player_in = true
+			match k:
+				"radiation":
+					var st: Dictionary = s.fit.stats()
+					var str_k := float(hz.get("strength", 1.0))
+					s.fit.shield = maxf(0.0, s.fit.shield - float(st["shield_max"]) * 0.06 * str_k * dt)
+					if s.fit.shield <= 0.5:
+						s.take_damage(float(st["structure_max"]) * 0.006 * str_k * dt, "optical", null)
+				"ion_storm":
+					s.jam(1.0)
+					if randf() < 0.08:
+						s.apply_emp(1.5, null)
+						s.take_damage(8.0 + s.radius * 0.1, "optical", null)
+						var top: Vector2 = s.position + Vector2(randf_range(-1, 1), -1.0).normalized() * randf_range(1500.0, 3000.0)
+						var bf := Fx.beam(top, s.position, Color(0.75, 0.9, 1.0), 8.0)
+						bf.life = 0.25
+						bf.max_life = 0.25
+						spawn_fx(bf)
+						spawn_fx(Fx.flash(s.position, Color(0.6, 0.85, 1.0), s.radius * 2.0))
+		if player_in:
+			hazard_here = k
+			if not _hz_inside.get(hz["id"], false):
+				var msg := {"radiation": "RADIATION ZONE – your shields are draining; once they are gone the hull burns.",
+					"ion_storm": "ION STORM – radar jammed, lightning strikes knock out your systems.",
+					"minefield": "OLD MINEFIELD – mines of a forgotten war, armed against anyone. Fly with care or clear a path."}
+				GameState.log_msg(String(msg[k]), GameState.COL_BAD)
+				GameState.codex.event({"radiation": "hz_radiation", "ion_storm": "hz_ion", "minefield": "hz_mines"}[k])
+		_hz_inside[hz["id"]] = player_in
+
+
+## The HUD's banner while the pilot is in a radiation zone or an ion storm ({} otherwise).
+func hazard_banner() -> Dictionary:
+	match hazard_here:
+		"radiation":
+			return {"text": "RADIATION ZONE", "sub": "Shields draining – then the hull burns. Get out.", "k": 1.0}
+		"ion_storm":
+			return {"text": "ION STORM", "sub": "Radar jammed, lightning strikes – systems may cut out.", "k": 0.8}
+	return {}
 
 
 func _update_defence(delta: float) -> void:
@@ -3816,7 +3939,10 @@ func _update_defence(delta: float) -> void:
 		if not is_instance_valid(hv):
 			continue
 		var tgt = null
-		var bd := HAVEN_RANGE
+		var fort: bool = hv.data.get("fortress", false)
+		if fort and GameState.fortress_down(system_id):
+			continue                          # package 40d: a broken fortress is silent
+		var bd := FORTRESS_RANGE if fort else HAVEN_RANGE
 		var hf := String(hv.data.get("faction", ""))
 		for n in ship_layer.get_children():
 			if n is Ship and n.faction != "pirate" and n.is_targetable() and n.position.distance_to(hv.position) < bd:
@@ -3829,7 +3955,7 @@ func _update_defence(delta: float) -> void:
 		if tgt == player and _t - _haven_warned > 20.0:
 			_haven_warned = _t
 			GameState.log_msg("%s: the pirate guns are firing at you – keep %s away!" % [hv.title(), fmt_dist(HAVEN_RANGE)], GameState.COL_BAD)
-		_turrets_fire(hv, tgt, 18.0 + 10.0 * float(hv.data.get("tier", 2)), Color(1.0, 0.35, 0.3), delta, 2.6)
+		_turrets_fire(hv, tgt, (18.0 + 10.0 * float(hv.data.get("tier", 2))) * (2.2 if fort else 1.0), Color(1.0, 0.35, 0.3), delta, 2.0 if fort else 2.6)
 
 
 func _turrets_fire(st: Celestial, ship: Ship, dmg: float, col: Color, delta: float, cooldown: float = DEF_COOLDOWN) -> void:
@@ -4015,6 +4141,8 @@ func npc_jump(ship: Ship, next: int) -> void:
 
 
 func on_ship_destroyed(ship: Ship, _killer) -> void:
+	if ship.has_meta("garrison"):
+		_garrison_lost(ship, _killer)        # package 40d
 	Audio.play_at("explosion_large" if int(ship.fit.hull().get("size", 1)) >= 2 else "explosion_small", ship.position, "ship destroyed")
 	spawn_fx(Fx.explosion(ship.position, ship.radius * 3.0, Color(1.0, 0.6, 0.2)))
 	spawn_fx(Fx.flash(ship.position, Color(1.0, 0.8, 0.4), ship.radius * 2.0))

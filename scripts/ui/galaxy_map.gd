@@ -480,6 +480,8 @@ func _draw_map() -> void:
 				map.draw_rect(Rect2(p + Vector2(ex, 15.0 - sz * 0.5), Vector2(sz, sz)), ec)
 				map.draw_rect(Rect2(p + Vector2(ex, 15.0 - sz * 0.5), Vector2(sz, sz)), Color(0, 0, 0, 0.6), false, 1.0)
 			ex += sz + 3.0
+		if s.get("fortress", false):                 # package 40d: a pirate fortress
+			map.draw_rect(Rect2(p - Vector2(10, 10), Vector2(20, 20)), Color(1.0, 0.3, 0.25, 0.4 if GameState.fortress_down(int(s["id"])) else 0.9), false, 2.0)
 		if s.get("veil", false):
 			map.draw_arc(p, 9.0 if not overview else 6.5, 0.0, TAU, 16, Color(0.75, 0.45, 1.0, 0.6 + 0.3 * sin(_t * 2.0 + float(s["id"]))), 1.5)
 		if s["id"] == GameState.current_system:
@@ -799,6 +801,12 @@ func _update_info() -> void:
 		notes.append("[color=#b0a898]old battlefield[/color]" if ws["kind"] == "battlefield" else "[color=#d8d0c0]pre-Severance derelict[/color]")
 	if Universe.is_veil(selected_system):
 		notes.append("[color=#c080ff]edge of the Veil[/color]")
+	for hz in L.get("hazards", []):                 # package 40d
+		notes.append({"radiation": "[color=#d8f040]radiation[/color]", "ion_storm": "[color=#80b8ff]ion storm[/color]",
+			"minefield": "[color=#ff7050]old minefield[/color]"}[String(hz["kind"])])
+	for hv in L["havens"]:
+		if hv.get("fortress", false):
+			notes.append("[color=#ff5040]pirate fortress %s (bounty %s)[/color]" % ["– broken" if GameState.fortress_down(selected_system) else "", GameData.fmt_credits(int(hv.get("bounty", 0)))])
 	if not notes.is_empty():
 		t += " • ".join(notes) + "\n"
 	if L["stations"].is_empty():

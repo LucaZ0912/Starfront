@@ -148,7 +148,7 @@ func _assign_stars() -> void:
 	var empty: Array = []
 	for s2 in systems:
 		s2["star"] = star_index("G")
-		if int(s2["id"]) != home_system and (s2["stations_plan"] as Array).is_empty() and int(s2.get("haven_tier", 0)) == 0 and String(s2.get("special", "")) == "":
+		if int(s2["id"]) != home_system and (s2["stations_plan"] as Array).is_empty() and int(s2.get("haven_tier", 0)) == 0 and String(s2.get("special", "")) == "" and not s2.get("fortress", false):
 			empty.append(int(s2["id"]))
 	_shuffle(empty, rng)
 	var taken := {}
@@ -217,6 +217,7 @@ func generate(p_seed: int) -> void:
 	_apply_specials()                                 # package 39
 	_plan_stations()
 	_plan_settlements()                               # package 40: free settlements in the ring
+	_plan_fortresses()                                # package 40d: pirate fortresses in the Rim
 	_assign_stars()                                   # package 37
 	_name_systems()                                   # package 40: inhabited – German names, the rest catalogue / explorers
 	_mark_veil()                                      # package 40c: the outermost systems touch the Veil
@@ -408,7 +409,7 @@ func _name_systems() -> void:
 	for s in systems:
 		if String(s.get("special", "")) != "":
 			continue
-		var lived: bool = not (s.get("stations_plan", []) as Array).is_empty() or int(s.get("haven_tier", 0)) > 0
+		var lived: bool = not (s.get("stations_plan", []) as Array).is_empty() or int(s.get("haven_tier", 0)) > 0 or s.get("fortress", false)
 		var nm := ""
 		if lived:
 			while not pool.is_empty() and nm == "":
@@ -595,7 +596,7 @@ func gate_style(sid: int) -> String:
 	var f := String(s.get("faction", ""))
 	if f in FactionData.POWERS:
 		return f
-	if f in FactionData.PIRATES:
+	if f in FactionData.PIRATES or s.get("fortress", false):
 		return "pirate"
 	if s.get("belt", false) and not s.get("independent", false):
 		return "old"
@@ -2102,6 +2103,7 @@ func _generate_layout(id: int) -> Dictionary:
 			an["difficulty"] = diff + 10.0
 		L["anomalies"].append(an)
 	_special_stations(L, id, sec)
+	_add_fortress(L, id)                              # package 40d
 	_city_lights(L, id)                               # package 38
 	_special_structures(L, sp)                        # package 39
 	_scatter_loose(L, id, sec)
@@ -2110,6 +2112,7 @@ func _generate_layout(id: int) -> Dictionary:
 	_rim_riches(L, id)                                # package 40c: richer rock, purer ore, deep deposits
 	_wreck_sites(L, id, used)                         # package 40c: old battlefields and pre-Severance derelicts
 	_veil_rifts(L, id, used)                          # package 40c: tears at the edge of the Veil
+	_hazards(L, id, used)                             # package 40d: radiation, ion storms, old minefields
 	_place_orbits(L, id)                              # package 36: planets and moons on their orbits
 	return L
 
@@ -2245,6 +2248,128 @@ func _veil_rifts(L: Dictionary, id: int, used: Array) -> void:
 		L["anomalies"].append({"id": "rift_%d" % k, "name": "Veil Rift", "veil": true, "exotic": rng.randf() < 0.6,
 			"pos": pos, "difficulty": 45.0 + rng.randf_range(0.0, 15.0), "scan": 100.0, "revealed": true, "analysis": 0.0,
 			"done": false, "seed": rng.randi()})
+
+
+# ---------------------------------------------------------------- Package 40d: the dangers of the Rim
+
+const FORTRESS_COUNT := 6
+const FORTRESS_BOUNTY := 150000
+const FORTRESS_NAMES := ["Ironhold", "Black Bastion", "Gallows Keep", "Redmaw", "The Teeth", "Carrion Hold", "Rustcrown",
+	"Gravewall", "Hangman's Rock", "Cinder Keep"]
+const RAD_SHARE := {"core": 0.03, "rim": 0.25, "far": 0.35}
+const ION_SHARE := {"core": 0.04, "rim": 0.22, "far": 0.3}
+const MINE_SHARE := {"core": 0.0, "rim": 0.12, "far": 0.1}
+const MINES_AT_BATTLE := 0.4
+
+
+## Pirate fortresses: strongholds of the pirate factions out in the Rim, one in each of a few constellations – bigger
+## than any haven, guns, a garrison and a bounty of their own.
+func _plan_fortresses() -> void:
+	var frng := RandomNumberGenerator.new()
+	frng.seed = seed_value * 40404 + 11
+	var groups := {}
+	for s in systems:
+		if s.get("belt", false) and not s.get("outer", false):
+			var k := int(s["constellation"])
+			if not groups.has(k):
+				groups[k] = []
+			groups[k].append(s)
+	var keys: Array = groups.keys()
+	keys.sort()
+	_shuffle(keys, frng)
+	var n := 0
+	for k2 in keys:
+		if n >= FORTRESS_COUNT:
+			break
+		var best: Dictionary = {}
+		for s2 in groups[k2]:
+			if s2.get("settlement", false) or String(s2.get("special", "")) != "" or not (s2.get("stations_plan", []) as Array).is_empty():
+				continue
+			if best.is_empty() or (s2["links"] as Dictionary).size() > (best["links"] as Dictionary).size():
+				best = s2
+		if best.is_empty():
+			continue
+		best["fortress"] = true
+		best["fortress_gov"] = FactionData.TERRITORIAL_PIRATES[n % FactionData.TERRITORIAL_PIRATES.size()]
+		best["security"] = 0.0
+		n += 1
+
+
+func is_fortress(sid: int) -> bool:
+	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("fortress", false))
+
+
+func _add_fortress(L: Dictionary, id: int) -> void:
+	var s: Dictionary = systems[id]
+	if not s.get("fortress", false):
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 40411 + id * 977
+	var pos := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(700000.0, 1400000.0) * SCALE
+	var hv := {"id": "pf_%d" % id, "name": FORTRESS_NAMES[(id + seed_value) % FORTRESS_NAMES.size()], "type": "pirate_haven",
+		"art": "pirate_fortress", "tier": 3, "fortress": true, "pos": pos, "seed": rng.randi(),
+		"faction": String(s.get("fortress_gov", "hollow_crown")), "bounty": FORTRESS_BOUNTY}
+	_haven_services(hv, id)
+	L["havens"].append(hv)
+
+
+## Radiation zones, ion storms and old minefields – own RNG, nothing else in the layout shifts.
+func _hazards(L: Dictionary, id: int, used: Array) -> void:
+	var s: Dictionary = systems[id]
+	if String(s.get("special", "")) != "":
+		L["hazards"] = []
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 40413 + id * 1597
+	var zone := "far" if s.get("outer", false) else ("rim" if s.get("belt", false) else "core")
+	var hz: Array = []
+	var kind := String(L["star"].get("kind", ""))
+	# radiation: round a neutron star or a black hole always, elsewhere now and then – often over an asteroid field
+	if kind in ["neutron", "blackhole"]:
+		hz.append({"id": "hz_rad_star", "kind": "radiation", "name": "Radiation Zone (%s)" % ("neutron star" if kind == "neutron" else "black hole"),
+			"pos": Vector2.ZERO, "radius": 260000.0 * SCALE, "strength": 1.4, "seed": rng.randi()})
+	if rng.randf() < float(RAD_SHARE[zone]):
+		var pos := _free_spot(rng, used, 400000.0 * SCALE, 1800000.0 * SCALE)
+		var r := rng.randf_range(30000.0, 60000.0)
+		var field := ""
+		if not L["fields"].is_empty() and rng.randf() < 0.6:
+			var f: Dictionary = L["fields"][rng.randi() % L["fields"].size()]
+			pos = f["pos"]
+			r = float(f["radius"]) * 1.8
+			field = String(f["id"])
+		used.append(pos)
+		hz.append({"id": "hz_rad", "kind": "radiation", "name": "Radiation Zone", "pos": pos, "radius": r, "strength": 1.0,
+			"field": field, "seed": rng.randi()})
+	# ion storms drift slowly through the system
+	if rng.randf() < float(ION_SHARE[zone]):
+		var pos2 := _free_spot(rng, used, 500000.0 * SCALE, 2000000.0 * SCALE)
+		hz.append({"id": "hz_ion", "kind": "ion_storm", "name": "Ion Storm", "pos": pos2, "radius": rng.randf_range(40000.0, 70000.0),
+			"vel": Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(30.0, 70.0), "seed": rng.randi()})
+	# old minefields: round an old battlefield, or across the way to a gate
+	var mf_pos := Vector2.INF
+	for ws in L.get("sites", []):
+		if ws["kind"] == "battlefield" and rng.randf() < MINES_AT_BATTLE:
+			mf_pos = (ws["pos"] as Vector2) + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(7000.0, 10000.0)
+	if mf_pos == Vector2.INF and rng.randf() < float(MINE_SHARE[zone]) and not L["gates"].is_empty():
+		var g: Dictionary = L["gates"][rng.randi() % L["gates"].size()]
+		mf_pos = (g["pos"] as Vector2) - (g["pos"] as Vector2).normalized() * rng.randf_range(14000.0, 22000.0)
+	if mf_pos != Vector2.INF:
+		var mines: Array = []
+		var mr := rng.randf_range(4500.0, 6500.0)
+		for i in rng.randi_range(18, 30):
+			mines.append(mf_pos + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * mr)
+		hz.append({"id": "hz_mines", "kind": "minefield", "name": "Old Minefield", "pos": mf_pos, "radius": mr, "mines": mines,
+			"seed": rng.randi()})
+	L["hazards"] = hz
+	# asteroids under a radiation zone: purer and richer (the price of the dose)
+	for h in hz:
+		if h["kind"] != "radiation" or String(h.get("field", "")) == "":
+			continue
+		for a in L["asteroids"]:
+			if String(a["field"]) == String(h["field"]):
+				a["purity_grade"] = "high"
+				a["amount"] = float(a["amount"]) * 1.3
+				a["amount0"] = a["amount"]
 
 
 func _make_dwarfs(L: Dictionary, id: int) -> void:
@@ -2772,6 +2897,8 @@ func warp_targets(system_id: int) -> Array:
 			out.append({"id": an["id"], "kind": "anomaly", "name": an["name"], "pos": an["pos"], "land": 2200.0, "data": an})
 	for ws in L.get("sites", []):                  # package 40c
 		out.append({"id": ws["id"], "kind": "site", "name": ws["name"], "pos": ws["pos"], "land": float(ws["radius"]) * 0.6, "data": ws})
+	for hz in L.get("hazards", []):                # package 40d: you arrive at the edge, not inside
+		out.append({"id": hz["id"], "kind": "hazard", "name": hz["name"], "pos": hz["pos"], "land": float(hz["radius"]) * 1.25, "data": hz})
 	for pod in GameState.pods:                     # package 31a: escape pods with crew waiting for rescue
 		if int(pod["system"]) == system_id:
 			out.append({"id": pod["id"], "kind": "pod", "name": "Escape pod – %d crew" % (pod["crew"] as Array).size(), "pos": pod["pos"], "land": 900.0, "data": pod})

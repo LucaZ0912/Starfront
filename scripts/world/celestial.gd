@@ -88,6 +88,9 @@ func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0
 		"site":
 			radius = float(data.get("radius", 8000.0))
 			z_index = -2
+		"hazard":
+			radius = float(data.get("radius", 30000.0))
+			z_index = -3
 		"pod":
 			radius = 30.0                        # package 31a: an escape pod
 		"beacon":
@@ -401,7 +404,17 @@ func info_text() -> String:
 			t += "\nNo-fire zone: %s" % SystemView.fmt_dist(float(data.get("zone", 15000.0)))
 			return t
 		"haven":
+			if data.get("fortress", false):
+				return "%s\nPirate Fortress – hostile\nHeavy guns and a garrison. Destroy the garrison to break it: bounty %s." % [data["name"], GameData.fmt_credits(int(data.get("bounty", 0)))]
 			return "%s\nPirate Haven – hostile\nIts guns fire on anyone who comes close.\nDocking requires pirate reputation (later)." % data["name"]
+		"hazard":
+			match String(data.get("kind", "")):
+				"radiation":
+					return "%s\nShields drain, then the hull burns. Ore inside is purer." % data["name"]
+				"ion_storm":
+					return "%s\nRadar jammed, lightning knocks out systems. It drifts." % data["name"]
+				"minefield":
+					return "%s\nOld mines – they go off against anyone." % data["name"]
 		"gate":
 			var to: int = data["to"]
 			var sec: float = Universe.systems[to]["security"]
@@ -489,6 +502,15 @@ func _process(delta: float) -> void:
 		if visible and asz * SystemView.cam_zoom > 3.0 and SystemView.on_screen_at(position, asz + 400.0):
 			queue_redraw()                           # 0.6.41.5: not while off screen (0.6.41.6: nor as a speck)
 		return
+	if kind == "hazard":
+		if String(data.get("kind", "")) == "ion_storm":
+			position += (data["vel"] as Vector2) * delta              # the storm drifts
+			data["pos"] = position
+			if position.length() > Universe.SYSTEM_RADIUS * 0.9:
+				data["vel"] = -(data["vel"] as Vector2)
+		if SystemView.on_screen_at(position, radius * 1.2) and int(_t * 8.0) != int((_t - delta) * 8.0):
+			queue_redraw()                                            # 0.6.41.5: a few redraws a second is enough
+		return
 	if kind in ["gate", "anomaly", "wreck", "beacon", "pod"] and SystemView.on_screen_at(position, radius * 4.0 + 600.0):
 		queue_redraw()
 
@@ -574,6 +596,8 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, pr, 0.0, TAU, 32, Color(1.0, 0.45, 0.3, 0.6 * (1.0 - fmod(_t, 2.0) / 2.0)), 3.0)
 		"site":
 			_draw_site()
+		"hazard":
+			_draw_hazard()
 		"wreck":
 			var size := Vector2(_tex.get_width(), _tex.get_height()) * PixelArt.SCALE * (2.0 if data.get("relic", false) else 1.0)
 			draw_texture_rect(_tex, Rect2(-size * 0.5, size), false)
@@ -613,6 +637,55 @@ func _draw() -> void:
 
 ## Holo banner (phase 0.5 package 10): the coat of arms of the station's faction, projected
 ## beside the station – tinted, scanlined, flickering, now and then a glitch.
+## Package 40d: radiation (a sickly yellow-green haze, hazard ring), an ion storm (blue clouds, lightning), an old
+## minefield (a faint red-dashed border – the mines themselves are drawn by their own nodes).
+func _draw_hazard() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(data.get("seed", 3))
+	var px := maxf(1.0, 3.0 / maxf(SystemView.cam_zoom, 0.0001))
+	match String(data.get("kind", "")):
+		"radiation":
+			var col := Color(0.75, 0.95, 0.25)
+			for i in 26:
+				var p := Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * radius * 0.85
+				var r := radius * rng.randf_range(0.12, 0.3) * (1.0 + 0.08 * sin(_t * 0.7 + i))
+				draw_circle(p, r, Color(col, 0.05))
+			draw_circle(Vector2.ZERO, radius, Color(col, 0.03))
+			var seg_n := 48
+			for k in seg_n:
+				if k % 2 == 0:
+					var a0 := k * TAU / seg_n + _t * 0.03
+					draw_arc(Vector2.ZERO, radius, a0, a0 + TAU / seg_n, 4, Color(1.0, 0.85, 0.1, 0.5), px * 2.0)
+			# the trefoil, small, at the centre
+			for k2 in 3:
+				var a1 := k2 * TAU / 3.0 - PI / 2.0
+				draw_arc(Vector2.ZERO, radius * 0.035, a1 - 0.5, a1 + 0.5, 8, Color(1.0, 0.85, 0.1, 0.25), radius * 0.03)
+		"ion_storm":
+			for i2 in 30:
+				var p2 := Vector2.from_angle(rng.randf() * TAU + _t * 0.02 * (1.0 if i2 % 2 else -1.0)) * sqrt(rng.randf()) * radius * 0.85
+				var r2 := radius * rng.randf_range(0.15, 0.32) * (1.0 + 0.1 * sin(_t * 0.5 + i2 * 1.7))
+				draw_circle(p2, r2, Color(0.25, 0.5, 1.0, 0.09))
+				draw_circle(p2, r2 * 0.6, Color(0.5, 0.8, 1.0, 0.07))
+			# lightning: now and then a jagged bolt between two clouds
+			var bolt := int(_t * 2.5)
+			var brng := RandomNumberGenerator.new()
+			brng.seed = bolt * 7919 + int(data.get("seed", 3))
+			if fposmod(_t * 2.5, 1.0) < 0.35:
+				var a := Vector2.from_angle(brng.randf() * TAU) * brng.randf() * radius * 0.7
+				var b := Vector2.from_angle(brng.randf() * TAU) * brng.randf() * radius * 0.7
+				var prev := a
+				for j in 8:
+					var q := a.lerp(b, (j + 1) / 8.0) + Vector2(brng.randf_range(-1, 1), brng.randf_range(-1, 1)) * radius * 0.04
+					draw_line(prev, q, Color(0.8, 0.95, 1.0, 0.9), px * 2.5)
+					prev = q
+		"minefield":
+			var seg_n2 := 40
+			for k3 in seg_n2:
+				if k3 % 2 == 0:
+					var a2 := k3 * TAU / seg_n2
+					draw_arc(Vector2.ZERO, radius, a2, a2 + TAU / seg_n2, 4, Color(1.0, 0.35, 0.2, 0.45), px * 1.5)
+
+
 ## Package 40c: the debris haze of an old battlefield or round a derelict – scraps of hull, drawn once.
 func _draw_site() -> void:
 	var rng := RandomNumberGenerator.new()
