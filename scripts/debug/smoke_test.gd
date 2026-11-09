@@ -594,6 +594,7 @@ func _process(delta: float) -> void:
 				_test_resorts43(view)
 				_test_tours43(view)
 				_test_cruise43(view)
+				_test_cluster40(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -1080,7 +1081,7 @@ func _test_resources() -> void:
 			ice_ok = ice_ok and (st3["type"] != "ice_refinery" or icy)
 		for ph3 in lay3["havens"]:
 			haven_tiers[int(ph3["tier"])] = true
-	check(Universe.systems.size() == 48, "star cluster has 48 systems")
+	check(Universe.systems.size() >= 110 and Universe.systems.size() <= 130, "star cluster has about 120 systems (%d) – package 40" % Universe.systems.size())
 	check(combos.size() == 24, "every station type exists in every tier (%d/24)" % combos.size())
 	check(haven_tiers.size() == 3, "Pirate Havens in all three tiers")
 	check(plan_ok, "station plan (star map) matches the generated systems")
@@ -4218,6 +4219,8 @@ func _test_aurelle(view: SystemView) -> void:
 	GameState.missions.clear()
 	GameState.active_uid = boul.uid
 	var m: Dictionary = offers[0].duplicate()
+	m.erase("tour")                              # package 43b: a plain transport for this test, not a round trip
+	m.erase("tourist")
 	m["cabin"] = "bulk"
 	var free0 := Missions.bulk_free(boul)
 	m["amount"] = free0 + 1
@@ -7235,6 +7238,57 @@ func _test_cruise43(view: SystemView) -> void:
 			if is_instance_valid(e2["ship"]):
 				e2["ship"].queue_free()
 	check(n_res > 0 and prof_ok and flow_ok, "43c: resort systems have cruise liners and sightseeing shuttles; a liner lingers at the sight, then berths at the resort or sails on (%d)" % made)
+
+
+## Package 40a: the new cluster – a core of ~60 systems held by the powers, a ring of constellations round it that
+## belongs to no one (free settlements aside); capitals ringed by their own systems; names by who lives there.
+func _test_cluster40(view: SystemView) -> void:
+	var U = Universe
+	var belt := 0
+	var cons := {}
+	var claimed_belt := 0
+	var cap_ok := true
+	var name_ok := true
+	var settle := 0
+	for sy in U.systems:
+		var sid: int = sy["id"]
+		var lived: bool = U.has_stations(sid) or int(sy.get("haven_tier", 0)) > 0
+		var catalog: bool = not (String(sy["name"]) in U.SYSTEM_NAMES) and String(sy.get("special", "")) == ""
+		if lived and String(sy.get("special", "")) == "":
+			name_ok = name_ok and String(sy["name"]) in U.SYSTEM_NAMES
+		elif not lived:
+			name_ok = name_ok and catalog
+		if sy.get("belt", false):
+			belt += 1
+			cons[int(sy["constellation"])] = true
+			if String(sy.get("faction", "")) != "":
+				claimed_belt += 1
+			if sy.get("settlement", false):
+				settle += 1
+		if sy.get("capital", false) and String(sy.get("faction", "")) in ["assembly", "covenant", "directorate"]:
+			for nb in sy["links"]:
+				cap_ok = cap_ok and String(U.systems[nb].get("faction", "")) == String(sy["faction"])
+	check(belt >= 45 and cons.size() >= 8 and claimed_belt == 0 and settle >= 3 and cap_ok and name_ok,
+		"40a: %d systems in the ring, %d constellations, no power claims them (%d free settlements); every capital ringed by its own systems; inhabited systems German names, the empty ones catalogue / explorers" % [belt, cons.size(), settle])
+	# the galaxy map zooms and pans
+	var main = view.get_tree().current_scene
+	main.galaxy.open()
+	var z0: float = main.galaxy.view_zoom
+	var at: Vector2 = main.galaxy.map.size * 0.5
+	main.galaxy.zoom_at(at, 1.5)
+	var zoomed: bool = main.galaxy.view_zoom > z0
+	var mp: Vector2 = main.galaxy._to_map(at)
+	var back: Vector2 = main.galaxy._to_screen(mp)
+	main.galaxy.close()
+	check(z0 > 1.0 and zoomed and back.distance_to(at) < 1.0 and U.territory_text(_belt_empty()) == "Unclaimed – the Rim",
+		"40a: the galaxy map opens zoomed in on the current system, zooms towards the pointer and pans; the ring is 'Unclaimed – the Rim'")
+
+
+func _belt_empty() -> int:
+	for sy in Universe.systems:
+		if sy.get("belt", false) and not Universe.is_independent(int(sy["id"])):
+			return int(sy["id"])
+	return 0
 
 
 func _test_mining41(view: SystemView) -> void:

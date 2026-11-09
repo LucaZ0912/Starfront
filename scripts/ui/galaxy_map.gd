@@ -25,6 +25,14 @@ var _legend_btns := {}
 var show_territory := true       # faction territories (phase 0.5 package 10), key T
 var show_traffic := true         # trade convoys (phase 0.5 package 11)
 var _terr_btn: Button
+## Package 40: zoom and pan – view_zoom 1 shows the whole cluster; the centre of the view in map units.
+var view_zoom := 1.0
+var view_center := Vector2.ZERO
+var _drag_from := Vector2.ZERO
+var _dragging := false
+var _drag_moved := false
+const ZOOM_MAX := 4.0
+const OPEN_ZOOM := 2.2
 var _traffic_btn: Button
 
 const FactionData = preload("res://data/factions.gd")
@@ -160,7 +168,7 @@ func _ready() -> void:
 	fleet_box = UI.vbox(4)
 	fleet_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(fleet_box)
-	sv.add_child(UI.label("Lines: blue = cl.1, yellow = cl.2, red = cl.3\nClick: select system, then \"Set course\"  •  Mouse wheel: back", 11, Color(0.6, 0.7, 0.8)))
+	sv.add_child(UI.label("Lines: blue = cl.1, yellow = cl.2, red = cl.3\nClick: select system, then \"Set course\"  •  Wheel: zoom  •  Drag: move", 11, Color(0.6, 0.7, 0.8)))
 
 
 func _overlay_button(text: String, on: bool, tip: String, cb: Callable) -> Button:
@@ -216,6 +224,10 @@ func open(p_transit: bool = false) -> void:
 	title_label.text = "Hyperspace – Star Map" if transit_mode else "Galaxy Map"
 	if selected_system < 0:
 		selected_system = GameState.current_system
+	# package 40: open close in round the current system
+	view_zoom = OPEN_ZOOM
+	view_center = Universe.systems[GameState.current_system]["pos"]
+	_clamp_view()
 	refresh()
 
 
@@ -245,15 +257,40 @@ func refresh() -> void:
 
 # ---------------------------------------------------------------- Coordinates
 
-func _scale() -> float:
+func _fit_scale() -> float:
 	var ms := Universe.MAP_SIZE
 	return minf((map.size.x - 40.0) / ms.x, (map.size.y - 40.0) / ms.y)
 
 
+func _scale() -> float:
+	return _fit_scale() * view_zoom
+
+
 func _to_screen(p: Vector2) -> Vector2:
-	var sc := _scale()
-	var offset := (map.size - Universe.MAP_SIZE * sc) / 2.0
-	return offset + p * sc
+	if view_center == Vector2.ZERO:
+		view_center = Universe.MAP_SIZE * 0.5
+	return map.size * 0.5 + (p - view_center) * _scale()
+
+
+func _to_map(sp: Vector2) -> Vector2:
+	return view_center + (sp - map.size * 0.5) / maxf(_scale(), 0.0001)
+
+
+## Keeps the view on the cluster.
+func _clamp_view() -> void:
+	var half := map.size * 0.5 / maxf(_scale(), 0.0001) if map != null else Vector2.ZERO
+	var ms := Universe.MAP_SIZE
+	view_center.x = clampf(view_center.x, minf(half.x, ms.x * 0.5), maxf(ms.x - half.x, ms.x * 0.5))
+	view_center.y = clampf(view_center.y, minf(half.y, ms.y * 0.5), maxf(ms.y - half.y, ms.y * 0.5))
+
+
+## Zoom by `k` keeping the map point under `at` (screen) in place.
+func zoom_at(at: Vector2, k: float) -> void:
+	var before := _to_map(at)
+	view_zoom = clampf(view_zoom * k, 1.0, ZOOM_MAX)
+	view_center += before - _to_map(at)
+	_clamp_view()
+	map.queue_redraw()
 
 
 func _system_at(pos: Vector2) -> int:
@@ -438,13 +475,14 @@ func _draw_map() -> void:
 		map.draw_string(font, p + Vector2(11, -6), s["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.9, 1.0, 0.3 if dim else 1.0))
 		map.draw_string(font, p + Vector2(11, 7), "%.1f" % sec, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
 		# package 42: prosperity as five pips after the security, and the main economy as a small coloured mark
-		var lv := Economy.level(int(s["id"]))
-		var pc: Color = Economy.LEVEL_COLORS[lv]
-		for i in 5:
-			var pr := Rect2(p + Vector2(31.0 + i * 4.0, 1.0), Vector2(3, 3))
-			map.draw_rect(pr, Color(pc, 0.3 if dim else 1.0) if i <= lv else Color(0.3, 0.33, 0.4, 0.25 if dim else 0.6))
-		var ecm: Color = Economy.color_of(String(Economy.of(int(s["id"]))["main"]))
-		map.draw_rect(Rect2(p + Vector2(-4.0, -15.0), Vector2(8, 3)), Color(ecm, 0.3 if dim else 0.95))
+		if Universe.has_stations(int(s["id"])):
+			var lv := Economy.level(int(s["id"]))
+			var pc: Color = Economy.LEVEL_COLORS[lv]
+			for i in 5:
+				var pr := Rect2(p + Vector2(31.0 + i * 4.0, 1.0), Vector2(3, 3))
+				map.draw_rect(pr, Color(pc, 0.3 if dim else 1.0) if i <= lv else Color(0.3, 0.33, 0.4, 0.25 if dim else 0.6))
+			var ecm: Color = Economy.color_of(String(Economy.of(int(s["id"]))["main"]))
+			map.draw_rect(Rect2(p + Vector2(-4.0, -15.0), Vector2(8, 3)), Color(ecm, 0.3 if dim else 0.95))
 		if counts.has(s["id"]):
 			map.draw_string(font, p + Vector2(-26, 4), "▲%d" % counts[s["id"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.4, 0.9, 1.0))
 	_draw_convoys()
@@ -520,20 +558,37 @@ func _dashed(a: Vector2, b: Vector2, col: Color) -> void:
 
 
 func _on_map_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP and not transit_mode:
-		close()
+	# package 40: the wheel zooms (towards the pointer), any button drags the map; a click without dragging selects
+	if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		zoom_at(event.position, 1.2 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.2)
+		return
+	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
+		if event.pressed:
+			_dragging = true
+			_drag_moved = false
+			_drag_from = event.position
+		else:
+			_dragging = false
+			if event.button_index == MOUSE_BUTTON_LEFT and not _drag_moved:
+				var sid := _system_at(event.position)
+				if sid >= 0:
+					selected_system = sid
+					refresh()
 		return
 	if event is InputEventMouseMotion:
+		if _dragging:
+			var d: Vector2 = event.position - _drag_from
+			if _drag_moved or d.length() > 5.0:
+				_drag_moved = true
+				view_center -= d / maxf(_scale(), 0.0001)
+				_drag_from = event.position
+				_clamp_view()
+				map.queue_redraw()
+			return
 		var h := _system_at(event.position)
 		if h != hover_system:
 			hover_system = h
 			map.queue_redraw()
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var sid := _system_at(event.position)
-		if sid >= 0:
-			selected_system = sid
-			refresh()
-			pass
 
 
 # ---------------------------------------------------------------- Route planning

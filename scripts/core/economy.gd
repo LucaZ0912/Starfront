@@ -165,6 +165,8 @@ static func _compute(sid: int) -> Dictionary:
 
 ## Does the system have this economy (main or secondary)?
 static func has_economy(sid: int, e: String) -> bool:
+	if not Universe.has_stations(sid):
+		return false                         # package 40: the empty systems of the ring have none
 	var ec := of(sid)
 	return ec["main"] == e or ec["second"] == e
 
@@ -206,6 +208,8 @@ static func base_prosperity(sid: int) -> float:
 
 static func _base(sid: int) -> float:
 	var sys: Dictionary = Universe.systems[sid]
+	if not Universe.has_stations(sid) and int(sys.get("haven_tier", 0)) == 0:
+		return 6.0 + float(int(hash([Universe.seed_value, sid]) % 800)) / 100.0       # package 40: nobody lives here
 	var prof: Dictionary = Universe.system_profile_raw(sid)
 	if int(prof["stations"]) == 0:
 		return clampf(8.0 + float(prof["population"]) * 2.0, 3.0, 24.0)

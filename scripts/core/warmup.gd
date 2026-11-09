@@ -43,7 +43,8 @@ var _layouts: Array = []
 func queue_layouts() -> void:
 	for s in Universe.systems:
 		var sid := int(s["id"])
-		if not Universe.layouts.has(sid) and not sid in _layouts:
+		# package 40: only the inhabited systems – the empty ones of the ring are made when they are needed
+		if not Universe.layouts.has(sid) and not sid in _layouts and Universe.has_stations(sid):
 			_layouts.append(sid)
 	if not _layouts.is_empty() and _t0 == 0:
 		_t0 = Time.get_ticks_msec()

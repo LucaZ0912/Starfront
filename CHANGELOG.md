@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.1 – 2026-11-09
+
+**Package 40a: the new cluster.** A new game is needed (older saves are moved to the new cluster).
+- About **120 systems**: a **core** of ~60 held by the Assembly, the Covenant, the Directorate and – at its edges – the
+  pirates, much as before; round it **the Rim**, a ring of **11 constellations** of 4–7 systems each, close together
+  and joined among themselves, to their neighbours by a single route (now and then none – regions form) and to the core
+  by one or two. The Rim belongs to no one: wild, unwatched, low security.
+- **Capitals are ringed by their own systems** – every neighbour of a capital belongs to its power.
+- **Free settlements** in most constellations: a small outpost (mining, trade, research or ice), an independent
+  system (yellow). The manufacturers' independent homes (Erzhalde, Perlmutt, Schwarzwacht) lie in constellations right
+  on the core.
+- **Names:** inhabited systems (stations, havens, settlements) German names – 40 new ones; empty systems catalogue
+  numbers or the names of their explorers ("KVX-114", "Brandts Wacht", "Ruiz' Hoffnung").
+- **Galaxy map: zoom and pan** – it opens zoomed in round the current system; the wheel zooms towards the pointer,
+  dragging moves the map. Empty systems show no economy or prosperity; the Rim is "Unclaimed – the Rim".
+- The empty systems of the Rim are made when first needed (not behind the loading screen).
+
 ## alpha 0.6.43.4 – 2026-11-09
 
 **Package 43c: tourist traffic – Tourismus done.**

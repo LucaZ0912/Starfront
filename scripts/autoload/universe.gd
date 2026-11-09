@@ -17,14 +17,26 @@ const SYSTEM_NAMES := [
 	"Kristallsee", "Donnerkeil", "Sternenwacht", "Mondsichel", "Eiswind", "Rotgold", "Feuerkranz",
 	"Nordlicht", "Tiefenhall", "Grauwacke", "Sturmfels", "Weltenrand", "Bernstein", "Funkenflug",
 	"Leuchtfeuer", "Ödland", "Himmelstor", "Nachtfalke", "Hohenstein",
+	# package 40: the bigger cluster – names for its inhabited systems
+	"Abendrot", "Silberfeld", "Goldhafen", "Klippenstein", "Rosenhall", "Lichtung", "Fernweh", "Seefeuer", "Windheim",
+	"Bergkrone", "Sonnenhang", "Eichenhain", "Falkenrast", "Wellenstein", "Morgenstern", "Kupferberg", "Nebelhorn",
+	"Löwenstein", "Blauwasser", "Sternquell", "Glockenturm", "Hafenlicht", "Wintergarten", "Lerchenfeld", "Flammenhof",
+	"Sturmhafen", "Perlenbucht", "Tannenhöhe", "Saphirsee", "Glutstein", "Wolkenhain", "Ankerplatz", "Rabenhorst",
+	"Mittsommer", "Schwalbennest", "Grenzwacht", "Kometenweg", "Kristallhof", "Brückenheim", "Aurorafeld",
 ]
+## Package 40: uninhabited systems get catalogue numbers or the names of the explorers who charted them.
+const CATALOG_PREFIX := ["KVX", "HD", "GSC", "TYC", "XR", "LRS", "KSO", "NGC"]
+const EXPLORERS := ["Brandt", "Okafor", "Lindqvist", "Moreau", "Tanaka", "Novak", "Haldane", "Petrov", "Abara", "Solberg",
+	"Castell", "Mbeki", "Kowalski", "Ruiz", "Fenwick", "Ibsen", "Varga", "Achebe", "Strand", "Kerrigan", "Duval", "Hollis",
+	"Nakamura", "Rask", "Quell", "Voss", "Ashby", "Oyelaran", "Marquez", "Sørensen"]
+const EXPLORER_PLACES := ["Wacht", "Rast", "Ende", "Feuer", "Fund", "Fall", "Grab", "Hoffnung", "Riff", "Senke", "Leuchte", "Tor"]
 ## Galaxy generator version (stored in saves; older saves are moved to the current cluster).
-const GALAXY_VERSION := 8          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets; 39: special systems
+const GALAXY_VERSION := 9          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets; 39: special systems
 const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
-const POWER_SYSTEMS := 12
-const POWER_SYSTEMS_MAX := 14
-const PIRATE_SYSTEMS := 4
+const POWER_SYSTEMS := 15                # package 40: a core of about 60 systems
+const POWER_SYSTEMS_MAX := 17
+const PIRATE_SYSTEMS := 5
 ## Every station type exists in every tier at least once somewhere in the cluster.
 const ALL_STATION_TYPES := ["trade", "industry", "mining_colony", "agri", "research", "military", "ice_refinery", "shipyard"]
 const ROMAN := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
@@ -57,7 +69,13 @@ const ANOMALY_NAMES := [
 	"Gravitational Anomaly", "Derelict Wreck Field", "Subspace Echo", "Ion Storm Core",
 	"Unknown Signal", "Crystalline Structure", "Ancient Probe", "Dark Matter Cloud",
 ]
-const MAP_SIZE := Vector2(2100, 1350)
+const MAP_SIZE := Vector2(3600, 2400)    # package 40: a core of ~60 systems and a ring of constellations round it
+const CORE_SYSTEMS := 60
+const CORE_R := Vector2(1100, 700)       # the core: an ellipse round the middle of the map
+const BELT_CONSTELLATIONS := 11
+const BELT_SIZE := Vector2i(4, 7)        # systems per constellation
+const BELT_RING := Vector2(1.3, 1.42)    # where the constellations lie (× CORE_R)
+const SETTLEMENT_SHARE := 0.7            # constellations with a free settlement
 ## A system is ONE continuous space. 1 unit = 1 km.
 ## Package 35: three times as big as before (6 million km); warps are faster, so crossing takes 20–30 s.
 const SCALE := 3.0
@@ -187,26 +205,172 @@ func generate(p_seed: int) -> void:
 	orbit_phase.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed
-	for i in SYSTEM_NAMES.size():
-		var pos := Vector2.ZERO
-		for attempt in 400:
-			pos = Vector2(rng.randf_range(70.0, MAP_SIZE.x - 70.0), rng.randf_range(70.0, MAP_SIZE.y - 70.0))
-			var ok := true
-			for s in systems:
-				if (s["pos"] as Vector2).distance_to(pos) < 165.0:
-					ok = false
-					break
-			if ok:
-				break
-		systems.append({
-			"id": i, "name": SYSTEM_NAMES[i], "pos": pos, "security": 0.5,
-			"star": rng.randi() % STAR_TYPES.size(), "links": {},
-		})
+	_place_systems(rng)                               # package 40: the core and the ring of constellations
 	_build_routes(rng)
 	_assign_territory()
 	_apply_specials()                                 # package 39
 	_plan_stations()
+	_plan_settlements()                               # package 40: free settlements in the ring
 	_assign_stars()                                   # package 37
+	_name_systems()                                   # package 40: inhabited – German names, the rest catalogue / explorers
+
+
+# ---------------------------------------------------------------- Package 40: the cluster
+
+func _new_system(pos: Vector2, belt: bool, constellation: int, rng: RandomNumberGenerator) -> void:
+	systems.append({
+		"id": systems.size(), "name": "", "pos": pos, "security": 0.5,
+		"star": rng.randi() % STAR_TYPES.size(), "links": {}, "belt": belt, "constellation": constellation,
+	})
+
+
+func _spot_free(pos: Vector2, gap: float) -> bool:
+	for o in systems:
+		if (o["pos"] as Vector2).distance_to(pos) < gap:
+			return false
+	return true
+
+
+## The core (an ellipse of ~60 systems) and round it a ring of constellations (4–7 systems close together).
+func _place_systems(rng: RandomNumberGenerator) -> void:
+	var c := MAP_SIZE * 0.5
+	for i in CORE_SYSTEMS:
+		var pos := c
+		for attempt in 500:
+			var a := rng.randf() * TAU
+			var r := sqrt(rng.randf())
+			pos = c + Vector2(cos(a) * CORE_R.x, sin(a) * CORE_R.y) * r
+			if _spot_free(pos, 165.0):
+				break
+		_new_system(pos, false, -1, rng)
+	var off := rng.randf() * TAU
+	for k in BELT_CONSTELLATIONS:
+		var a2 := off + k * TAU / BELT_CONSTELLATIONS + rng.randf_range(-0.12, 0.12)
+		var f := rng.randf_range(BELT_RING.x, BELT_RING.y)
+		var cc := c + Vector2(cos(a2) * CORE_R.x, sin(a2) * CORE_R.y) * f
+		var n := rng.randi_range(BELT_SIZE.x, BELT_SIZE.y)
+		for j in n:
+			var pos2 := cc
+			for attempt2 in 300:
+				pos2 = cc + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, 190.0)
+				if _spot_free(pos2, 115.0) and pos2.x > 50.0 and pos2.y > 50.0 and pos2.x < MAP_SIZE.x - 50.0 and pos2.y < MAP_SIZE.y - 50.0:
+					break
+			_new_system(pos2, true, k, rng)
+
+
+func is_belt(sid: int) -> bool:
+	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("belt", false))
+
+
+## A minimum spanning tree over `ids` (Prim).
+func _mst(ids: Array) -> void:
+	if ids.size() < 2:
+		return
+	var in_tree := {ids[0]: true}
+	while in_tree.size() < ids.size():
+		var best_d := INF
+		var ba := -1
+		var bb := -1
+		for a in in_tree.keys():
+			for b in ids:
+				if in_tree.has(b):
+					continue
+				var d := _dist(a, b)
+				if d < best_d:
+					best_d = d
+					ba = a
+					bb = b
+		_link(ba, bb)
+		in_tree[bb] = true
+
+
+## The closest pair between two groups of systems.
+func _closest_pair(xs: Array, ys: Array) -> Array:
+	var best := [-1, -1]
+	var bd := INF
+	for x in xs:
+		for y in ys:
+			var d := _dist(x, y)
+			if d < bd:
+				bd = d
+				best = [x, y]
+	return best
+
+
+## Package 40: free settlements – about one in most constellations of the ring: an outpost (mining, trade, research or
+## ice), an independent system (yellow), safer than the wild around it.
+func _plan_settlements() -> void:
+	var srng := RandomNumberGenerator.new()
+	srng.seed = seed_value * 40401 + 7
+	var groups := {}
+	for s in systems:
+		if s.get("belt", false):
+			var k := int(s["constellation"])
+			if not groups.has(k):
+				groups[k] = []
+			groups[k].append(int(s["id"]))
+	var keys: Array = groups.keys()
+	keys.sort()
+	for k2 in keys:
+		if srng.randf() > SETTLEMENT_SHARE:
+			continue
+		var best := -1
+		var bs := -INF
+		for sid in groups[k2]:
+			var sy: Dictionary = systems[sid]
+			if String(sy.get("special", "")) != "" or not (sy["stations_plan"] as Array).is_empty():
+				continue
+			var sc := float((sy["links"] as Dictionary).size()) + srng.randf()
+			if sc > bs:
+				bs = sc
+				best = sid
+		if best < 0:
+			continue
+		var types := ["mining_colony", "mining_colony", "trade", "research", "ice_refinery"]
+		var sys: Dictionary = systems[best]
+		sys["stations_plan"] = [[types[srng.randi() % types.size()], 1 if srng.randf() < 0.7 else 2]]
+		sys["independent"] = true
+		sys["settlement"] = true
+		sys["faction"] = ""
+		sys["claimants"] = []
+		sys["security"] = snappedf(srng.randf_range(0.45, 0.6), 0.01)
+
+
+## Package 40: names – inhabited systems (stations, a haven, a settlement, the special ones) German names, the rest
+## catalogue numbers or the names of their explorers.
+func _name_systems() -> void:
+	var nrng := RandomNumberGenerator.new()
+	nrng.seed = seed_value * 17389 + 40
+	var pool: Array = SYSTEM_NAMES.duplicate()
+	_shuffle(pool, nrng)
+	var used := {}
+	for s0 in systems:
+		if String(s0.get("special", "")) != "":
+			used[String(s0["name"])] = true
+	# the home system first, then by id – deterministic
+	for s in systems:
+		if String(s.get("special", "")) != "":
+			continue
+		var lived: bool = not (s.get("stations_plan", []) as Array).is_empty() or int(s.get("haven_tier", 0)) > 0
+		var nm := ""
+		if lived:
+			while not pool.is_empty() and nm == "":
+				var cand: String = pool.pop_back()
+				if not used.has(cand):
+					nm = cand
+		if nm == "":
+			for attempt in 50:
+				if nrng.randf() < 0.5:
+					var px: String = CATALOG_PREFIX[nrng.randi() % CATALOG_PREFIX.size()]
+					nm = ("%s-%d" % [px, nrng.randi_range(100, 999)]) if nrng.randf() < 0.5 else ("%s %d" % [px, nrng.randi_range(1000, 9999)])
+				else:
+					var who: String = EXPLORERS[nrng.randi() % EXPLORERS.size()]
+					var gen := who + ("'" if who.ends_with("s") or who.ends_with("x") or who.ends_with("z") else "s")
+					nm = "%s %s" % [gen, EXPLORER_PLACES[nrng.randi() % EXPLORER_PLACES.size()]]
+				if not used.has(nm):
+					break
+		used[nm] = true
+		s["name"] = nm
 
 
 # ---------------------------------------------------------------- Special systems (package 39)
@@ -330,6 +494,12 @@ func _place_makers() -> void:
 			var f := String(s2.get("faction", ""))
 			if taken.has(sid2) or f in FactionData.PIRATES or bool(s2.get("capital", false)):
 				continue
+			if s2.get("belt", false):
+				var by_core := false
+				for nbm in s2["links"]:
+					by_core = by_core or not systems[nbm].get("belt", false)
+				if not by_core:
+					continue                             # package 40: the makers stay near the core
 			var near_pirates := false
 			for nb in s2["links"]:
 				near_pirates = near_pirates or String(systems[nb].get("faction", "")) in FactionData.PIRATES
@@ -577,6 +747,8 @@ func _plan_stations() -> void:
 			plan = [["trade", 3], ["military", 2]]
 		elif SPECIAL_PLANS.has(String(s.get("special", ""))):
 			plan = SPECIAL_PLANS[String(s["special"])].duplicate(true)       # package 39: fixed stations
+		elif s.get("belt", false):
+			plan = []                                                         # package 40: the ring is wild
 		else:
 			var r := prng.randf()
 			var cnt := 0 if r < 0.22 else (1 if r < 0.78 else 2)
@@ -597,7 +769,7 @@ func _plan_stations() -> void:
 	while slots.size() < required.size() + 4:
 		var sid := prng.randi() % systems.size()
 		var pl: Array = systems[sid]["stations_plan"]
-		if sid != home_system and pl.size() < 2:
+		if sid != home_system and pl.size() < 2 and not systems[sid].get("belt", false):
 			pl.append([])
 			slots.append([sid, pl.size() - 1])
 	_shuffle(slots, prng)
@@ -702,9 +874,16 @@ func _assign_territory() -> void:
 		s["core_dist"] = 0
 	# capitals: three well-connected systems as far apart from each other as possible
 	var cand: Array = []
+	var core_ids: Array = []
 	for s in systems:
-		if (s["links"] as Dictionary).size() >= 2:
-			cand.append(int(s["id"]))
+		if s.get("belt", false):
+			continue
+		core_ids.append(int(s["id"]))
+		var inner := true
+		for nb0 in s["links"]:
+			inner = inner and not systems[nb0].get("belt", false)
+		if (s["links"] as Dictionary).size() >= 2 and inner:
+			cand.append(int(s["id"]))                    # package 40: a capital lies inside the core
 	# pass 1: the largest possible minimum distance; pass 2: among good triples, the one that
 	# leaves every power enough room (hop-Voronoi regions of similar size)
 	var max_mh := 0
@@ -729,7 +908,7 @@ func _assign_territory() -> void:
 					var p: Vector2 = systems[x]["pos"]
 					edge += minf(minf(p.x, MAP_SIZE.x - p.x), minf(p.y, MAP_SIZE.y - p.y))
 				var region := [0, 0, 0]
-				for sx in n:
+				for sx in core_ids:
 					var da: int = hops[sx][a]
 					var db: int = hops[sx][b]
 					var dc: int = hops[sx][c]
@@ -757,7 +936,7 @@ func _assign_territory() -> void:
 		var pick := -1
 		for s in systems:
 			var sid: int = s["id"]
-			if owner.has(sid):
+			if owner.has(sid) or s.get("belt", false):
 				continue
 			var dcap := 99
 			for c in caps:
@@ -800,12 +979,26 @@ func _assign_territory() -> void:
 			owner[nxt2] = pw
 			count[pw] = int(count[pw]) + 1
 			grew = true
+	# package 40: a capital is ringed by its own systems only
+	for ci in 3:
+		for nbc in systems[caps[ci]]["links"]:
+			var oc: String = owner.get(nbc, "")
+			if oc != powers[ci]:
+				if oc != "":
+					count[oc] = int(count[oc]) - 1
+				owner[nbc] = powers[ci]
+				count[powers[ci]] = int(count[powers[ci]]) + 1
 	# contested borders: frontier systems where two powers meet (farthest from the own capital)
 	var front: Array = []
 	for sid2 in owner:
 		var f2: String = owner[sid2]
 		if not f2 in FactionData.POWERS or systems[sid2]["capital"]:
 			continue
+		var by_capital := false
+		for nbk in systems[sid2]["links"]:
+			by_capital = by_capital or (systems[nbk]["capital"] and owner.get(nbk, "") == f2)
+		if by_capital:
+			continue                                  # package 40: the ring round a capital stays its own
 		var rival := ""
 		for nb in systems[sid2]["links"]:
 			var o2: String = owner.get(nb, "")
@@ -814,9 +1007,9 @@ func _assign_territory() -> void:
 		if rival != "":
 			front.append([sid2, rival, int(hops[sid2][cores[f2]])])
 	front.sort_custom(func(x, y): return x[2] > y[2] if x[2] != y[2] else int(x[0]) < int(y[0]))
-	var target_contested := maxi(0, n - POWER_SYSTEMS * 3 - PIRATE_SYSTEMS * 2)
+	var target_contested := maxi(0, core_ids.size() - POWER_SYSTEMS * 3 - PIRATE_SYSTEMS * 2)
 	var contested := 0
-	for unclaimed in n:
+	for unclaimed in core_ids:
 		if not owner.has(unclaimed):
 			contested += 1
 	for fr in front:
@@ -839,6 +1032,11 @@ func _assign_territory() -> void:
 		var sid3: int = s2["id"]
 		var f4: String = owner.get(sid3, "")
 		s2["faction"] = f4
+		if s2.get("belt", false):
+			# package 40: the ring belongs to no one – wild and unwatched
+			s2["claimants"] = []
+			s2["security"] = snappedf(trng.randf_range(0.04, 0.3), 0.01)
+			continue
 		if f4 == "" and (s2["claimants"] as Array).is_empty():
 			var cl: Array = []
 			for nb2 in s2["links"]:
@@ -895,8 +1093,8 @@ func _territory_candidate(f: String, owner: Dictionary, cores: Dictionary, hops:
 		if owner[sid] != f:
 			continue
 		for nb in systems[sid]["links"]:
-			if owner.has(nb):
-				continue
+			if owner.has(nb) or systems[nb].get("belt", false):
+				continue                               # package 40: no faction claims the ring
 			var d := float(hops[nb][core]) * 1000.0 + _dist(nb, core)
 			if d < bd:
 				bd = d
@@ -929,6 +1127,8 @@ func territory_text(sid: int) -> String:
 		return t
 	var cl := claimants(sid)
 	if cl.is_empty():
+		if is_belt(sid) and not is_independent(sid):
+			return "Unclaimed – the Rim"          # package 40: the wild ring round the core
 		return "Independent"
 	var names: PackedStringArray = []
 	for c in cl:
@@ -1295,28 +1495,24 @@ func _link(a: int, b: int) -> void:
 
 
 func _build_routes(rng: RandomNumberGenerator) -> void:
-	# Minimum spanning tree (Prim) guarantees that every system is reachable.
-	var n := systems.size()
-	var in_tree := {0: true}
-	while in_tree.size() < n:
-		var best_d := INF
-		var ba := -1
-		var bb := -1
-		for a in in_tree.keys():
-			for b in n:
-				if in_tree.has(b):
-					continue
-				var d := _dist(a, b)
-				if d < best_d:
-					best_d = d
-					ba = a
-					bb = b
-		_link(ba, bb)
-		in_tree[bb] = true
-	# Extra connections create loops / alternative routes.
-	for a in n:
+	# package 40: the core is meshed as before; each constellation of the ring among itself; neighbouring
+	# constellations by a single route (now and then none – regions form); every constellation one or two routes
+	# into the core. A spanning tree in each part keeps everything reachable.
+	var core: Array = []
+	var groups := {}
+	for s in systems:
+		var sid := int(s["id"])
+		if s.get("belt", false):
+			var k := int(s["constellation"])
+			if not groups.has(k):
+				groups[k] = []
+			groups[k].append(sid)
+		else:
+			core.append(sid)
+	_mst(core)
+	for a in core:
 		var cand: Array = []
-		for b in n:
+		for b in core:
 			if b != a and not systems[a]["links"].has(b):
 				cand.append(b)
 		cand.sort_custom(func(x, y): return _dist(a, x) < _dist(a, y))
@@ -1325,6 +1521,33 @@ func _build_routes(rng: RandomNumberGenerator) -> void:
 		var c: int = cand[0]
 		if systems[a]["links"].size() < 3 and systems[c]["links"].size() < 4 and _dist(a, c) < 360.0 and rng.randf() < 0.75:
 			_link(a, c)
+	var keys: Array = groups.keys()
+	keys.sort()
+	for k2 in keys:
+		var g: Array = groups[k2]
+		_mst(g)
+		# one extra route inside the constellation (a loop)
+		for a2 in g:
+			for b2 in g:
+				if a2 < b2 and not systems[a2]["links"].has(b2) and _dist(a2, b2) < 200.0 and rng.randf() < 0.25:
+					_link(a2, b2)
+		# into the core
+		var pr := _closest_pair(g, core)
+		_link(pr[0], pr[1])
+		if rng.randf() < 0.35:
+			var rest: Array = g.filter(func(x): return x != pr[0])
+			var pr2 := _closest_pair(rest, core.filter(func(x): return x != pr[1]))
+			if pr2[0] >= 0 and _dist(pr2[0], pr2[1]) < 520.0:
+				_link(pr2[0], pr2[1])
+	# between neighbouring constellations
+	for idx in keys.size():
+		var ka: int = keys[idx]
+		var kb: int = keys[(idx + 1) % keys.size()]
+		if rng.randf() < 0.2:
+			continue                                    # a gap: two regions meet only through the core
+		var pr3 := _closest_pair(groups[ka], groups[kb])
+		if pr3[0] >= 0 and _dist(pr3[0], pr3[1]) < 620.0:
+			_link(pr3[0], pr3[1])
 
 
 ## Shortest route (number of jumps), only via routes with class <= max_class.

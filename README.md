@@ -114,6 +114,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## The cluster (phase 0.5 package 40a)
+
+- `Universe._place_systems`: `CORE_SYSTEMS` in an ellipse (`CORE_R`), `BELT_CONSTELLATIONS` constellations of
+  `BELT_SIZE` systems on a ring (`BELT_RING`); `systems[i]["belt"]`, `["constellation"]`. `MAP_SIZE` 3600 × 2400.
+- `_build_routes`: spanning tree + extras in the core, a tree (+ a loop) per constellation, one route to each
+  neighbouring constellation (20 % none), one or two into the core.
+- `_assign_territory` works on the core only (capitals inside it; a capital's neighbours forced to its power);
+  `_plan_settlements` – free settlements (independent) in the Rim; `_name_systems` – `SYSTEM_NAMES` for inhabited
+  systems, `CATALOG_PREFIX` / `EXPLORERS` + `EXPLORER_PLACES` for the rest. `GALAXY_VERSION` 9.
+- Galaxy map: `view_zoom` / `view_center`, `zoom_at`, `_to_map`; drag to pan.
+
 ## Tourist traffic (phase 0.5 package 43c)
 
 - `Traffic.tourists`: cruise liners (`CRUISE_PRESETS`, through a gate) and sightseeing shuttles (out of the resort)
