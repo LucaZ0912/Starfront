@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.8 – 2026-11-09
+
+**The hangar, levels with a lift, and the waystations' own deck.**
+- **The hangar:** getting out of the ship you now stand in the hangar – on a raised walkway along a glass front, and
+  below it, in the closed bay, **your own ship** (nose to the bay doors' side, its shadow on the floor, landing marks,
+  crates, a machine, mechanics, lamps). The walkway is as long as your ship needs. At the west end the **stairs**
+  lead down to the ship – you start there, and E there takes you back aboard and to the station window. At the east
+  end are the **lifts**.
+- **Lifts with a choice:** E at a lift opens a little panel: *Hangar* or *Commercial level* (1 / 2, the level you are
+  on is marked). You step in, the doors close, and you come out of the lift on the other level, the doors opening.
+  The commercial level is the deck built so far (shops, corridor, bar); its lifts work the same.
+- **Waystations** have a deck of their own: instead of the wide bar a round **glass dome** out front, completely
+  rounded, and under it a **diner** – checkered floor, a long counter with the cook behind it and red stools, booths
+  in the corners, the jukebox under the glass, a neon *Diner · open 24/7* over the door; in the corridor vending
+  machines and lamps.
+
 ## alpha 0.7.49.7 – 2026-11-09
 
 **Every station type its own deck, people who find their way, sitting properly, conversations after Luz's mockup.**

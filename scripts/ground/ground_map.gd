@@ -26,7 +26,9 @@ var lifts: Array = []                         # lift doors on a wall face: {x, y
 var holos: Array = []                         # holographic adverts over a wall: {pos (art px, bottom centre), text, sub, col}
 var spawn := Vector2.ZERO
 var pal: Dictionary = {}
-var hull_top := -1                    # the station's structure goes on everywhere from this row down (the view draws it)
+var hull_top := -9999                 # the station's structure goes on everywhere from this row down (the view draws it)
+var under_glass := -1                 # floor kind seen through glass (the hangar below the walkway); -1: space
+var ship_at := Vector2.INF            # the hangar: where the player's ship stands (art px)
 var window_rect := Rect2()            # tiles: where space shows through the glass (the view draws it there only)
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
@@ -162,6 +164,8 @@ func _render() -> void:
 				T.FACE:
 					_face_tile(x, y, px, py)
 				T.GLASS:
+					if under_glass >= 0:
+						_floor_tile(x, y, px, py, under_glass)
 					_glass_tile(x, y, px, py)
 	for rc in round_corners:
 		_round_corner(rc)
@@ -335,6 +339,19 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 				_rect(px + int(hash2(x, y * 2 + k) * 15), py + k * 8, 1, 7, dw.darkened(0.3))
 			if hash2(x, y, 5) > 0.85:
 				_rect(px + 4, py + 5, 5, 3, dw.darkened(0.2))
+		11:             # the hangar floor, one level down: dark plates, a little darker towards the walls
+			var hc: Color = Color(pal["floor"]).darkened(0.35)
+			_rect(px, py, TILE, TILE, hc if (x + y) % 2 == 0 else hc.darkened(0.06))
+			_rect(px, py + TILE - 1, TILE, 1, hc.darkened(0.3))
+			_rect(px + TILE - 1, py, 1, TILE, hc.darkened(0.25))
+			if hash2(x, y, 11) > 0.88:
+				_rect(px + 3, py + 6, 6, 3, hc.darkened(0.22))        # oil stains
+		12:             # a diner's checkered floor
+			var a := Color(0.9, 0.88, 0.84)
+			var b := Color(0.16, 0.15, 0.17)
+			for qy in 2:
+				for qx in 2:
+					_rect(px + qx * 8, py + qy * 8, 8, 8, a if (qx + qy) % 2 == 0 else b)
 		10:             # water (a pool)
 			var wc := Color(0.2, 0.6, 0.8)
 			_rect(px, py, TILE, TILE, wc)
@@ -381,7 +398,10 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 
 ## Glass: see-through (space behind), framed – thin mullions, a sill.
 func _glass_tile(x: int, y: int, px: int, py: int) -> void:
-	_rect(px, py, TILE, TILE, Color(0.55, 0.75, 1.0, 0.07))
+	if under_glass >= 0:
+		_tint(px, py, TILE, TILE, Color(0.55, 0.75, 1.0), 0.1)        # the hangar shows through
+	else:
+		_rect(px, py, TILE, TILE, Color(0.55, 0.75, 1.0, 0.07))
 	var fr: Color = pal["frame"]
 	if t_at(x, y - 1) != T.GLASS:
 		_rect(px, py, TILE, 2, fr)
@@ -419,6 +439,25 @@ func _decal(d: Dictionary) -> void:
 			_rect(px, py + ph / 2 - 1, pw, 2, c.lerp(Color.WHITE, 0.25))
 			_tint(px, py + ph / 2 + 1, pw, 1, c, 0.18)
 			_tint(px, py + ph / 2 + 2, pw, 1, c, 0.08)
+		"pad":                     # the landing marks on the hangar floor
+			_tint(px, py, pw, 2, c, 0.35)
+			_tint(px, py + ph - 2, pw, 2, c, 0.35)
+			for k in int(pw / 6):
+				_rect(px + k * 6, py, 3, 2, c.darkened(0.1))
+				_rect(px + k * 6, py + ph - 2, 3, 2, c.darkened(0.1))
+			var cx := px + pw / 2
+			var cy := py + ph / 2
+			for k2 in 64:
+				var an := k2 * TAU / 64.0
+				_px(cx + int(cos(an) * ph * 0.42), cy + int(sin(an) * ph * 0.42), c.darkened(0.15))
+		"stairs":                  # steps going down to the west, each a little darker
+			var steps := int(pw / 4)
+			for k in steps:
+				var sc: Color = Color(pal["floor"]).darkened(0.05 + 0.5 * float(k) / steps)
+				_rect(px + pw - (k + 1) * 4, py, 4, ph, sc)
+				_rect(px + pw - (k + 1) * 4, py, 1, ph, sc.lightened(0.25))
+			_rect(px, py, pw, 1, c)
+			_rect(px, py + ph - 1, pw, 1, c)
 		"mat":
 			_rect(px + 2, py + 3, pw - 4, ph - 6, Color(0.16, 0.14, 0.16))
 			for k in int((pw - 6) / 3):
@@ -452,6 +491,15 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px + 4, py + 2, pw - 8, 1, Color(0.3, 0.32, 0.36))
 			_rect(px + pw / 2 - 4, py - 15, 8, 3, Color(0.08, 0.08, 0.1))
 			_rect(px + pw / 2 - 2, py - 14, 4, 1, c)
+		"bay_door":                # the hangar's great doors, shut
+			_rect(px, py - 14, pw, TILE + 12, Color(0.22, 0.23, 0.26))
+			_rect(px + 2, py - 12, pw / 2 - 3, TILE + 8, Color(0.42, 0.44, 0.48))
+			_rect(px + pw / 2 + 1, py - 12, pw / 2 - 3, TILE + 8, Color(0.4, 0.42, 0.46))
+			for k in int(pw / 8):
+				_rect(px + 2 + k * 8, py + TILE - 6, 4, 3, Color(0.95, 0.8, 0.2))
+				_rect(px + 6 + k * 8, py + TILE - 6, 4, 3, Color(0.15, 0.15, 0.15))
+			_rect(px + pw / 2 - 1, py - 12, 2, TILE + 8, Color(0.15, 0.15, 0.17))
+			_rect(px + pw / 2 - 6, py - 16, 12, 2, c)
 		"shelf":
 			_rect(px + 1, py + 1, pw - 2, TILE - 3, Color(pal["wall"]).darkened(0.35))
 			for k in int((pw - 4) / 4):

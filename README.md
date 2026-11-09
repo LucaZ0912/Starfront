@@ -148,7 +148,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   guest), `_seat_pos()`, `SEATS`; floor kinds 5–10 (plates, tiles, sand, grating, dark planks, water); many new
   `ObjArt` kinds; `GroundMap.path(a, b)` (AStarGrid2D) used by `Walker._follow`; `ChibiArt` frame 3 = sitting
   (`Walker.SIT_LIFT`); `dialogue_view.gd` – `DialogueView` (`open`, `say(text, [[label, Callable]])`, `choose(i)`,
-  `close`): the conversation screen; the view's `talk` (DialogueView) and `talk_menu` (CrewTalk, via `talk_info`).; `texture()` renders floors and walls once.
+  `close`): the conversation screen; the view's `talk` (DialogueView) and `talk_menu` (CrewTalk, via `talk_info`).
+- 0.7.49.8: levels – `GroundView.go_level("hangar" | "commercial", arrive)`, `level`; `DeckGen.build_hangar(station,
+  ship_len, ship_beam)` (walkway, glass front over the bay – `GroundMap.under_glass`, `ship_at`; stairs zone `exit` /
+  `ship`, lifts zone `lift`); zones of kind `lift` open the lift panel (`_open_lift_menu`, `_choose_level`), the ride
+  ends on the other level; the exit (stairs) walks there and fades. Waystations: `DeckGen._dome_room` (a semicircle
+  of glass – two round corners of radius `BAR_Y0` meeting – and a diner), the others `_bar_room`; `_place_crew`.
+  Floor kinds 11 (hangar), 12 (diner checkers); decals `pad`, `stairs`; face deco `bay_door`.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

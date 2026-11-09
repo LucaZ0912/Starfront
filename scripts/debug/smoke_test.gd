@@ -7613,6 +7613,21 @@ func _test_deck(view: SystemView) -> void:
 	if not ok:
 		check(false, "49: the deck opens from the station window")
 		return
+	# 0.7.49.8: you start in the hangar at the stairs, your ship below; the lifts lead to the commercial level
+	var hm: GroundMap = g.map
+	var hangar_ok: bool = g.level == "hangar" and g._ship_spr != null and hm.lifts.size() == 2 and hm.zone_at(hm.spawn).get("id", "") == "ship"
+	var hz := {}
+	for zh in hm.zones:
+		if zh["kind"] == "lift":
+			hz = zh
+	g.walk_to_zone("lift")
+	g.use()
+	var menu_ok: bool = g._lift_menu != null
+	g._choose_level("commercial")
+	for i in 120:
+		g._process(1.0 / 30.0)
+	check(hangar_ok and not hz.is_empty() and menu_ok and g.level == "commercial",
+		"49: the hangar – a walkway over your ship, the stairs to it, the lifts; the lift panel takes you to the commercial level")
 	var m: GroundMap = g.map
 	var doors := 0
 	var ids := {}
@@ -7631,7 +7646,7 @@ func _test_deck(view: SystemView) -> void:
 		g.pilot.step(Vector2.RIGHT, 1.0 / 30.0)
 	var walked: bool = g.pilot.pos.x > p0.x + 20.0
 	var wall_ok: bool = not m.free_at(Vector2(-10, -10)) and m.free_at(m.spawn)
-	check(doors >= 6 and ids.has("bar") and ids.has("market") and ids.has("ship") and reach and walked and wall_ok and m.texture().get_width() == m.w * GroundMap.TILE,
+	check(doors >= 6 and ids.has("bar") and ids.has("market") and ids.has("lift") and reach and walked and wall_ok and m.texture().get_width() == m.w * GroundMap.TILE,
 		"49: the station deck – airlock with your ship, promenade, %d shops and the bar behind doors, people about; the pilot walks and walls stop him" % doors)
 	# a shop door opens its window over the deck; closing it goes back to the deck; the airlock back to the ship
 	g.walk_to_zone("market")
@@ -7669,6 +7684,7 @@ func _test_deck(view: SystemView) -> void:
 			terminals_ok = false
 	check(sat and stood and music and talked and terminals_ok and m.lifts.size() == 2,
 		"49: sit down and stand up again, the jukebox plays, a talk with someone at the bar (questions, record), the dock office terminals clear of the door, two lifts")
+	g.go_level("hangar", "lift")
 	g.walk_to_zone("ship")
 	g.use(true)
 	var aboard: bool = main.ground == null and main.station_panel.visible

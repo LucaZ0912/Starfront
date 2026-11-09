@@ -44,6 +44,12 @@ var _music: AudioStreamPlayer
 var track := -1                       # the jukebox: -1 off, else the track playing
 var _toast := ""
 var _toast_t := 0.0
+var level := ""                         # 0.7.49.8: "hangar" or "commercial"
+var _avail: Dictionary = {}
+var _crew: Array = []
+var _sys := -1
+var _lift_menu: Control = null
+var _ship_spr: Sprite2D
 var talk: DialogueView = null          # a conversation (0.7.49.7: after Luz's mockup)
 var talk_menu: CrewTalk = null          # its "Info": the questions, the record, signing on
 var _talk_offer := {}
@@ -74,7 +80,7 @@ func _ready() -> void:
 	ui.add_child(_title)
 	var hint := UI.label("", 12, UI.TEXT_DIM)
 	hint.position = Vector2(24, 46)
-	hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  the lift takes you back to your ship" % [
+	hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  the stairs in the hangar lead back to your ship" % [
 		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
 		Keybinds.key_text("boost"), Keybinds.key_text("interact")]
 	ui.add_child(hint)
@@ -89,12 +95,68 @@ func _ready() -> void:
 
 
 ## A station's deck: available = service id -> "" or the reason it is closed; crew = the bar's offers.
+## You start in the hangar, at the stairs up from your ship.
 func setup_station(p_station: Dictionary, available: Dictionary, crew: Array = [], sys_id: int = -1) -> void:
 	station = p_station
-	map = DeckGen.build(station, available, crew)
+	_avail = available
+	_crew = crew
+	_sys = sys_id
+	go_level("hangar", "stairs")
+
+
+## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
+## of a lift, the doors opening).
+func go_level(p_level: String, arrive: String = "lift") -> void:
+	for c in _world.get_children():
+		_world.remove_child(c)
+		c.queue_free()
+	people.clear()
+	_lift_open.clear()
+	_flicker.clear()
+	_seat = {}
+	_ride = {}
+	_off0 = null
+	zone = {}
+	_arrive = 0.0
+	_ship_spr = null
+	level = p_level
+	if level == "hangar":
+		var sz := _ship_size()
+		map = DeckGen.build_hangar(station, sz.x, sz.y)
+	else:
+		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
 	_build()
-	_space_view(sys_id)
-	_title.text = "%s – Promenade" % map.title
+	_space_view(_sys)
+	_title.text = "%s – %s" % [map.title, "Hangar" if level == "hangar" else "Commercial level"]
+	if arrive == "lift" and not map.lifts.is_empty():
+		_arrive_lift = 0
+		var l0: Dictionary = map.lifts[0]
+		pilot.pos = Vector2((float(l0["x"]) + float(l0["w"]) * 0.5) * GroundMap.TILE, (float(l0["y"]) + 1.0) * GroundMap.TILE + 5.0)
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0
+		_lift_open[0] = 1.0
+		_arrive = 0.7
+	else:
+		pilot.dir = 3
+	_camera()
+
+
+const HANGAR_ART := 3.5                 # art px per pixel of the ship's picture in the hangar
+
+
+func _ship_tex() -> Texture2D:
+	var f := GameState.active()
+	if f == null:
+		return PixelArt.ship_texture("dragonfly", "player")
+	return PixelArt.ship_texture(f.hull_id, f.gov if f.gov != "" else f.faction)
+
+
+## The ship's length and beam in art px (it lies nose to the east).
+func _ship_size() -> Vector2:
+	var t := _ship_tex()
+	if t == null:
+		return Vector2(64, 40)
+	return Vector2(t.get_width(), t.get_height()) * HANGAR_ART
 
 
 ## Beyond the glass: the system's sky – its nebula, its star, the planet the station circles.
@@ -147,7 +209,7 @@ func _build() -> void:
 	_sky = Node2D.new()
 	_window.add_child(_sky)
 	# the station goes on round the deck – its structure seen from above, everywhere below the window front's top
-	if map.hull_top >= 0:
+	if map.hull_top > -9999:
 		_hull = TextureRect.new()
 		_hull.texture = map.hull_texture()
 		_hull.stretch_mode = TextureRect.STRETCH_TILE
@@ -155,7 +217,7 @@ func _build() -> void:
 		_hull.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var far := 4000.0 / GroundMap.SCALE
 		_hull.position = Vector2(-far, map.hull_top * GroundMap.TILE) * GroundMap.SCALE
-		_hull.size = Vector2(map.w * GroundMap.TILE + far * 2.0, map.h * GroundMap.TILE + far)
+		_hull.size = Vector2(map.w * GroundMap.TILE + far * 2.0, (map.h - map.hull_top) * GroundMap.TILE + far)
 		_hull.scale = Vector2.ONE * GroundMap.SCALE
 		_world.add_child(_hull)
 		var rim := ColorRect.new()                    # the edge where the station's structure meets space
@@ -169,6 +231,22 @@ func _build() -> void:
 	spr.centered = false
 	spr.scale = Vector2.ONE * GroundMap.SCALE
 	_world.add_child(spr)
+	# the hangar: your own ship down in the bay, nose to the east, a shadow under it
+	if map.ship_at != Vector2.INF:
+		var tex := _ship_tex()
+		if tex != null:
+			var sh := Sprite2D.new()
+			sh.texture = tex
+			sh.scale = Vector2.ONE * HANGAR_ART * GroundMap.SCALE
+			sh.position = (map.ship_at + Vector2(6, 8)) * GroundMap.SCALE
+			sh.modulate = Color(0, 0, 0, 0.45)
+			_world.add_child(sh)
+			_ship_spr = Sprite2D.new()
+			_ship_spr.texture = tex
+			_ship_spr.scale = Vector2.ONE * HANGAR_ART * GroundMap.SCALE
+			_ship_spr.position = map.ship_at * GroundMap.SCALE
+			_ship_spr.modulate = Color(0.82, 0.84, 0.9)             # one level down, a little in the shade
+			_world.add_child(_ship_spr)
 	_lift_node = Node2D.new()
 	_lift_node.draw.connect(_draw_lifts)
 	_world.add_child(_lift_node)
@@ -204,7 +282,7 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
-	var n := 5 + int(station.get("tier", 1)) * 2
+	var n := 5 + int(station.get("tier", 1)) * 2 if level != "hangar" else 2
 	for i in n:
 		if map.wander.is_empty():
 			break
@@ -215,15 +293,6 @@ func _build() -> void:
 	pilot = Walker.new()
 	pilot.setup(map, GameState.pilot.get("look", ChibiArt.PilotArt.default_look()), map.spawn, false)
 	_sorted.add_child(pilot)
-	# out of the lift: the doors open, the pilot steps out
-	if not map.lifts.is_empty():
-		_arrive_lift = 0
-		var l0: Dictionary = map.lifts[0]
-		pilot.pos = Vector2((float(l0["x"]) + float(l0["w"]) * 0.5) * GroundMap.TILE, (float(l0["y"]) + 1.0) * GroundMap.TILE + 5.0)
-		pilot.position = pilot.pos * GroundMap.SCALE
-		pilot.dir = 0
-		_lift_open[0] = 1.0
-		_arrive = 0.7
 	# light: lamps, neon, the window – added on top, the deck a little darker round them
 	_lights = Node2D.new()
 	_lights.z_index = 5
@@ -291,7 +360,7 @@ func _process(delta: float) -> void:
 		pilot.step(Vector2.DOWN, delta, 0.8)
 	elif not _ride.is_empty():
 		_ride_step(delta)
-	elif input_enabled and talk == null:
+	elif input_enabled and talk == null and _lift_menu == null:
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
 		if not _seat.is_empty():
 			if dir.length() > 0.3:
@@ -307,7 +376,7 @@ func _process(delta: float) -> void:
 		zone = map.zone_at(pilot.pos)
 	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null:
 		zone = {} if _seat.is_empty() else _seat
-	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null or talk_menu != null else _prompt_text(zone))
+	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null or talk_menu != null or _lift_menu != null else _prompt_text(zone))
 	_camera()
 	_signs.queue_redraw()
 
@@ -317,7 +386,7 @@ func _prompt_text(z: Dictionary) -> String:
 		return ""
 	var key := Keybinds.key_text("interact")
 	match String(z["kind"]):
-		"exit":
+		"exit", "lift":
 			return "[%s] %s" % [key, z["title"]]
 		"crew":
 			return "[%s] Talk to %s – looking for a post" % [key, z["title"]]
@@ -331,6 +400,16 @@ func _prompt_text(z: Dictionary) -> String:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _lift_menu != null:
+		if event.is_action_pressed("menu_back", false, true):
+			get_viewport().set_input_as_handled()
+			_close_lift_menu()
+		elif event is InputEventKey and event.is_pressed() and not event.is_echo():
+			var k := (event as InputEventKey).keycode
+			if k == KEY_1 or k == KEY_2:
+				get_viewport().set_input_as_handled()
+				_choose_level("hangar" if k == KEY_1 else "commercial")
+		return
 	if talk_menu != null:
 		if event.is_action_pressed("menu_back", false, true):
 			get_viewport().set_input_as_handled()
@@ -350,7 +429,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
 func use(instant: bool = false) -> bool:
-	if not _ride.is_empty() or talk != null or _arrive > 0.0:
+	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null:
 		return false
 	if not _seat.is_empty():
 		_stand_up()
@@ -366,9 +445,14 @@ func use(instant: bool = false) -> bool:
 			return true
 		"crew":
 			return open_talk(zone)
+		"lift":
+			if instant:
+				return false
+			_open_lift_menu(zone)
+			return true
 		"exit":
-			if not instant and not map.lifts.is_empty():
-				_start_ride(zone)
+			if not instant:
+				_start_ride(zone, "", -1)
 				return true
 	Audio.play("ui_open", "on foot: use")
 	used.emit(zone)
@@ -425,18 +509,66 @@ func _draw_lifts() -> void:
 	_lift_node.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-func _start_ride(z: Dictionary) -> void:
+## The lift's little panel: which level?
+func _open_lift_menu(z: Dictionary) -> void:
+	Audio.play("ui_open", "on foot: lift panel")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var p := UI.neon_panel(Color(0.4, 1.0, 0.6, 0.85), Color(0.03, 0.05, 0.06, 0.96), 2)
+	p.custom_minimum_size = Vector2(380, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("LIFT", 20, Color(0.4, 1.0, 0.6)))
+	v.add_child(UI.label("Which level?", 13, UI.TEXT_DIM))
+	for lv in [["hangar", "1.  Hangar – your ship"], ["commercial", "2.  Commercial level – shops and the bar"]]:
+		var here: bool = lv[0] == level
+		var b := UI.button(String(lv[1]) + ("   (you are here)" if here else ""), func(): _choose_level(String(lv[0])))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.disabled = here
+		v.add_child(b)
+	v.add_child(UI.button("Cancel [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+
+
+func _close_lift_menu() -> void:
+	if _lift_menu != null:
+		_lift_menu.queue_free()
+	_lift_menu = null
+
+
+func _choose_level(target: String) -> void:
+	if _lift_menu == null:
+		return
+	var z: Dictionary = _lift_menu.get_meta("zone", {})
+	_close_lift_menu()
+	if target != level:
+		_start_ride(z, target)
+
+
+## Into a lift (and on to another level), or down the stairs to the ship (lift -1).
+func _start_ride(z: Dictionary, target: String = "", lift: int = -2) -> void:
 	var best := 0
-	for i in map.lifts.size():
-		if absf(_lift_door_pos(i).x - pilot.pos.x) < absf(_lift_door_pos(best).x - pilot.pos.x):
-			best = i
-	_ride = {"lift": best, "zone": z, "phase": 0, "t": 0.0}
+	if lift == -2:
+		for i in map.lifts.size():
+			if absf(_lift_door_pos(i).x - pilot.pos.x) < absf(_lift_door_pos(best).x - pilot.pos.x):
+				best = i
+	else:
+		best = lift
+	_ride = {"lift": best, "zone": z, "phase": 0, "t": 0.0, "target": target}
 
 
-## Into the lift: walk to the doors, step in, the doors close, then back to the ship.
+## Into the lift: walk to the doors, step in, the doors close, then the other level (or back to the ship).
 func _ride_step(delta: float) -> void:
 	_ride["t"] = float(_ride["t"]) + delta
-	var dp := _lift_door_pos(int(_ride["lift"])) + Vector2(0, 5)
+	var dp: Vector2
+	if int(_ride["lift"]) >= 0:
+		dp = _lift_door_pos(int(_ride["lift"])) + Vector2(0, 5)
+	else:
+		var zr: Rect2 = (_ride["zone"] as Dictionary)["rect"]
+		dp = Vector2(zr.position.x + 8.0, zr.get_center().y)
 	match int(_ride["phase"]):
 		0:
 			var to := dp - pilot.pos
@@ -455,10 +587,14 @@ func _ride_step(delta: float) -> void:
 				_ride["phase"] = 2
 				_ride["t"] = 0.0
 		2:
-			if float(_ride["t"]) > 0.6:
+			if float(_ride["t"]) > (0.6 if int(_ride["lift"]) >= 0 else 0.15):
 				var z: Dictionary = _ride["zone"]
+				var target := String(_ride.get("target", ""))
 				_ride["phase"] = 3
-				used.emit(z)
+				if target != "":
+					go_level(target, "lift")
+				else:
+					used.emit(z)
 
 
 func _sit(z: Dictionary) -> void:
