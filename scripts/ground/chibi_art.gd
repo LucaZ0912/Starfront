@@ -1,14 +1,29 @@
 class_name ChibiArt
 extends RefCounted
-## Package 49 (0.7.49.2): people on foot in a slanted, cosy top-down view – a small figure (16 × 24 art px) with a big
-## head, seen from the front, the back or the side, built from the same "look" as the portrait (skin, hair, eyes,
-## outfit colours, beard, headgear). Four directions × three frames (standing, two steps).
-## Directions: 0 down (towards the viewer), 1 up (away), 2 left, 3 right. Frame 3 (0.7.49.7): sitting, the legs bent.
+## People on foot. 0.7.49.11 (Luz's choice "C3"): tall figures (18 × 40 px, about six heads), built from the same
+## "look" as the portrait (skin, hair, eyes, outfit and colours, beard, headgear), black outlines and a neon rim
+## light – cyan from the left, pink from the right, as if lit by the station's signs. Drawn at CHAR_SCALE screen px
+## per pixel (finer than the deck's ×3, so they stand as tall as the doors allow).
+## Directions: 0 down (towards the viewer), 1 up (away), 2 left, 3 right (mirrored).
+## Frames: 0 standing, 1 and 2 walking, 3 sitting.
 
 const PilotArt = preload("res://scripts/core/pilot_art.gd")
-const W := 16
-const H := 24
-const OUTLINE := Color(0.09, 0.07, 0.11)
+const W := 18
+const H := 40
+const CHAR_SCALE := 2.0
+const OUTLINE := Color(0.06, 0.05, 0.08)
+const RIM_L := Color(0.3, 0.9, 1.0)
+const RIM_R := Color(1.0, 0.35, 0.8)
+const HIP_SIT := 10                   # sitting: the hips this many px above the feet
+
+# proportions
+const HW := 7                         # head width
+const HH := 8                         # head height
+const NECK := 2
+const TORSO := 12
+const LEGS := 17
+const SH := 5                         # half the shoulders' width (± body type)
+const ARM := 3
 
 static var _cache := {}
 
@@ -17,9 +32,10 @@ static func frame(look: Dictionary, dir: int, f: int) -> Texture2D:
 	var l := PilotArt.clean(look)
 	var key := "%s_%d_%d" % [PilotArt._key(l), dir, f]
 	if not _cache.has(key):
-		var img := _draw(l, dir if dir != 3 else 2, f)
+		var img := _draw(l, 2 if dir == 3 else dir, f)
 		if dir == 3:
 			img.flip_x()
+		_rim(img)
 		_outline(img)
 		_cache[key] = ImageTexture.create_from_image(img)
 	return _cache[key]
@@ -30,7 +46,7 @@ static func _px(img: Image, x: int, y: int, c: Color) -> void:
 		img.set_pixel(x, y, c)
 
 
-static func _rect(img: Image, x: int, y: int, w: int, h: int, c: Color) -> void:
+static func _r(img: Image, x: int, y: int, w: int, h: int, c: Color) -> void:
 	for yy in range(y, y + h):
 		for xx in range(x, x + w):
 			_px(img, xx, yy, c)
@@ -44,157 +60,237 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	var skin: Color = PilotArt.SKINS[l["skin"]]
 	var hair: Color = PilotArt.HAIR_COLORS[l["hair_color"]]
 	var eye: Color = PilotArt.EYES[l["eyes"]]
-	var bw: int = [4, 5, 6][int(l["body"])]                     # half the shoulders' width … roughly
-	var cx := 8
+	var outfit := int(l["outfit"])
+	var sh := SH + (int(l["body"]) - 1)
+	var cx := W / 2
+	var sitting := f == 3
+	var legs := LEGS if not sitting else HIP_SIT
+	var feet := H - 1
+	var leg_top := feet - legs + 1
+	var torso_top := leg_top - TORSO
+	var head_bot := torso_top - NECK
+	var head_top := head_bot - HH + 1
+	var pants := c1.darkened(0.45) if outfit != 2 else c1.darkened(0.15)
+	var boot := Color(0.17, 0.14, 0.13)
 	var step := 0 if f == 0 or f == 3 else (1 if f == 1 else -1)
-	# legs and shoes (rows 19–23)
-	var pants: Color = c1.darkened(0.45) if int(l["outfit"]) != 2 else c1.darkened(0.2)
-	var shoe := Color(0.16, 0.13, 0.12)
-	if f == 3:
-		if dir == 2:
-			_rect(img, cx - 6, 18, 7, 3, pants)                  # the thighs forward, on the seat
-			_rect(img, cx - 6, 21, 3, 2, pants.darkened(0.1))     # the shins down
-			_rect(img, cx - 7, 23, 4, 1, shoe)
-		elif dir == 0:
-			_rect(img, cx - 3, 19, 3, 2, pants.lightened(0.08))   # the knees towards you
-			_rect(img, cx, 19, 3, 2, pants.lightened(0.08))
-			_rect(img, cx - 3, 21, 3, 1, pants.darkened(0.1))
-			_rect(img, cx, 21, 3, 1, pants.darkened(0.1))
-			_rect(img, cx - 3, 22, 3, 1, shoe)
-			_rect(img, cx, 22, 3, 1, shoe)
-	elif dir == 2:
-		_rect(img, cx - 2 + step, 19, 3, 4, pants)
-		_rect(img, cx - 1 - step, 19, 3, 4, pants.darkened(0.15))
-		_rect(img, cx - 3 + step, 23, 4, 1, shoe)
-		_rect(img, cx - 2 - step, 23, 3, 1, shoe.lightened(0.1))
+	var side := dir == 2
+	var back := dir == 1
+	# ---- legs and boots
+	if sitting:
+		if side:
+			_r(img, cx - 6, leg_top, 8, 3, pants)                      # thighs forward on the seat
+			_r(img, cx - 6, leg_top, 8, 1, pants.lightened(0.12))
+			_r(img, cx - 6, leg_top + 3, 3, legs - 5, pants.darkened(0.1))   # shins down
+			_r(img, cx - 7, feet - 1, 4, 2, boot)
+			_r(img, cx - 7, feet - 1, 4, 1, boot.lightened(0.25))
+		elif not back:
+			_r(img, cx - 4, leg_top, 3, 3, pants.lightened(0.1))       # knees towards you
+			_r(img, cx + 1, leg_top, 3, 3, pants)
+			_r(img, cx - 4, leg_top + 3, 3, legs - 5, pants.darkened(0.08))
+			_r(img, cx + 1, leg_top + 3, 3, legs - 5, pants.darkened(0.18))
+			_r(img, cx - 5, feet - 1, 4, 2, boot)
+			_r(img, cx + 1, feet - 1, 4, 2, boot.darkened(0.1))
+			_r(img, cx - 5, feet - 1, 4, 1, boot.lightened(0.25))
+	elif side:
+		var lw := 3
+		# the far leg darker; striding: one forward, one back
+		_r(img, cx - 2 - step * 2, leg_top, lw, legs - 3, pants.darkened(0.18))
+		_r(img, cx - 2 - step * 2 - 1, feet - 2, lw + 1, 3, boot.darkened(0.15))
+		_r(img, cx - 1 + step * 2, leg_top, lw, legs - 3, pants)
+		_r(img, cx - 1 + step * 2, leg_top, 1, legs - 3, pants.lightened(0.12))
+		_r(img, cx - 2 + step * 2, feet - 2, lw + 2, 3, boot)
+		_r(img, cx - 2 + step * 2, feet - 2, lw + 2, 1, boot.lightened(0.25))
 	else:
-		_rect(img, cx - 3, 19 - maxi(0, step), 3, 4 + maxi(0, step), pants)
-		_rect(img, cx, 19 - maxi(0, -step), 3, 4 + maxi(0, -step), pants.darkened(0.1))
-		_rect(img, cx - 3, 23, 3, 1, shoe)
-		_rect(img, cx, 23, 3, 1, shoe)
-	# body (rows 11–19)
-	var top := 11
-	if dir == 2:
-		_rect(img, cx - 3, top, 6, 8, c1)
-		_rect(img, cx - 3, top, 6, 1, c1.lightened(0.2))
-		_rect(img, cx + 2, top + 1, 1, 7, c1.darkened(0.25))
-		if int(l["outfit"]) in [1, 3]:
-			_rect(img, cx - 4, top + 6, 1, 3, c1.darkened(0.15))          # coat tail
-		_rect(img, cx - 3, top + 5, 6, 1, c2)                            # belt
-		# the arm swings
-		_rect(img, cx - 1 - step, top + 1, 2, 6, c1.darkened(0.12))
-		_rect(img, cx - 1 - step, top + 7, 2, 1, skin)
+		var lw2 := maxi(3, sh - 1)
+		var up_l := maxi(0, step)                                      # walking: the lifted leg is shorter
+		var up_r := maxi(0, -step)
+		_r(img, cx - lw2, leg_top, lw2, legs - 3 - up_l, pants)
+		_r(img, cx + 1, leg_top, lw2, legs - 3 - up_r, pants.darkened(0.12))
+		_r(img, cx - lw2, leg_top, 1, legs - 3 - up_l, pants.lightened(0.12))
+		_r(img, cx - 2, leg_top + legs / 2, 1, 1, pants.darkened(0.25))
+		_r(img, cx + 2, leg_top + legs / 2, 1, 1, pants.darkened(0.3))
+		_r(img, cx - lw2 - 1, feet - 2 - up_l, lw2 + 1, 3, boot)
+		_r(img, cx + 1, feet - 2 - up_r, lw2 + 1, 3, boot.darkened(0.1))
+		if not back:
+			_r(img, cx - lw2 - 1, feet - 2 - up_l, lw2 + 1, 1, boot.lightened(0.25))
+			_r(img, cx + 1, feet - 2 - up_r, lw2 + 1, 1, boot.lightened(0.15))
+	# ---- torso: broad shoulders, a narrower waist
+	var tw := sh * 2 if not side else int(sh * 1.6)
+	var tx := cx - tw / 2
+	for y in TORSO:
+		var yy := torso_top + y
+		var inset := 1 if y == 0 else 0
+		var taper := int(round(float(y) / TORSO)) if not side else 0
+		_r(img, tx + inset + taper, yy, tw - 2 * (inset + taper), 1, c1)
+		_px(img, tx + inset + taper, yy, c1.lightened(0.18))
+		_px(img, tx + tw - 1 - inset - taper, yy, c1.darkened(0.3))
+	if not side and not back:
+		if outfit in [1, 3]:
+			_r(img, cx - 1, torso_top + 1, 2, TORSO - 2, c2.lightened(0.1))        # the shirt under the jacket
+			_r(img, cx - 2, torso_top + 1, 1, 3, c1.darkened(0.25))                # lapels
+			_r(img, cx + 1, torso_top + 1, 1, 3, c1.darkened(0.25))
+		else:
+			_r(img, cx, torso_top + 1, 1, TORSO - 3, c1.darkened(0.25))           # zip
+			_r(img, cx - sh + 2, torso_top + 2, 2, 2, c2)                          # chest patch
+			_px(img, cx + sh - 3, torso_top + 2, Color(0.4, 1.0, 0.8))             # a little light
+	elif back:
+		_r(img, cx - 2, torso_top + 2, 4, 1, c1.darkened(0.2))                     # shoulder seam
+		_r(img, cx, torso_top + 3, 1, TORSO - 5, c1.darkened(0.15))
+	var belt_y := leg_top - 2
+	_r(img, tx + (1 if not side else 0), belt_y, tw - (2 if not side else 0), 1, c2.darkened(0.2))
+	if not side and not back:
+		_px(img, cx, belt_y, Color(0.85, 0.75, 0.4))
+	if outfit == 3 and not sitting:
+		var tl := LEGS / 2
+		if not side:
+			_r(img, tx, leg_top - 1, 2, tl, c1.darkened(0.1))
+			_r(img, tx + tw - 2, leg_top - 1, 2, tl, c1.darkened(0.25))
+			if back:
+				_r(img, tx, leg_top - 1, tw, tl - 2, c1.darkened(0.15))
+		else:
+			_r(img, tx - 1 + 3, leg_top - 1, 2, tl, c1.darkened(0.15))
+	if outfit == 2:
+		_r(img, tx - 1, torso_top, 3, 2, c2.lightened(0.1))                        # shoulder plates
+		if not side:
+			_r(img, tx + tw - 2, torso_top, 3, 2, c2)
+	# ---- arms and hands (swinging when walking)
+	var al := TORSO + 1
+	if side:
+		var sw := step * 2
+		_r(img, cx - 1 + sw, torso_top + 1, ARM - 1, al - 2, c1.darkened(0.2))
+		_r(img, cx - 1 + sw, torso_top + al / 2, ARM - 1, 1, c1.darkened(0.4))
+		_r(img, cx - 1 + sw, torso_top + al - 1, 2, 2, skin.darkened(0.08))
 	else:
-		_rect(img, cx - bw, top + 1, bw * 2, 7, c1)
-		_rect(img, cx - bw + 1, top, bw * 2 - 2, 1, c1.lightened(0.15))
-		_rect(img, cx - bw, top + 5, bw * 2, 1, c2)                      # belt / accent
-		if dir == 0:
-			_rect(img, cx - 1, top + 1, 2, 4, c2 if int(l["outfit"]) in [0, 2] else c1.lightened(0.25))   # zip / collar
-			if int(l["outfit"]) == 3:
-				_rect(img, cx - bw, top + 1, 2, 7, c1.darkened(0.2))      # coat lapels
-				_rect(img, cx + bw - 2, top + 1, 2, 7, c1.darkened(0.2))
-		# arms at the sides, swinging
-		_rect(img, cx - bw - 1, top + 1 + maxi(0, step), 1, 6, c1.darkened(0.2))
-		_rect(img, cx + bw, top + 1 + maxi(0, -step), 1, 6, c1.darkened(0.2))
-		_px(img, cx - bw - 1, top + 7 + maxi(0, step), skin)
-		_px(img, cx + bw, top + 7 + maxi(0, -step), skin)
-	# head (rows 1–11): big and round
-	var hx0 := cx - 5
-	var hy0 := 1
-	for y in 10:
-		for x in 10:
-			var dx := (x + 0.5 - 5.0) / 5.0
-			var dy := (y + 0.5 - 5.2) / 5.2
-			if dx * dx + dy * dy <= 1.0:
-				_px(img, hx0 + x, hy0 + y, skin if y > 1 else skin.lightened(0.05))
-	_px(img, hx0 + 1, hy0 + 8, skin.darkened(0.12))
-	var bald := int(l["hair"]) == 0
+		var al_l := al - 2 + (step if step > 0 else 0)
+		var al_r := al - 2 + (-step if step < 0 else 0)
+		_r(img, tx - ARM, torso_top + 1, ARM, al_l, c1.darkened(0.12))
+		_r(img, tx + tw, torso_top + 1, ARM, al_r, c1.darkened(0.3))
+		_r(img, tx - ARM, torso_top + 1, 1, al_l, c1.lightened(0.05))
+		_r(img, tx - ARM, torso_top + al / 2, ARM, 1, c1.darkened(0.25))
+		_r(img, tx + tw, torso_top + al / 2, ARM, 1, c1.darkened(0.4))
+		_r(img, tx - ARM, torso_top + 1 + al_l, ARM, 2, skin)
+		_r(img, tx + tw, torso_top + 1 + al_r, ARM, 2, skin.darkened(0.15))
+	# ---- neck and head
+	_r(img, cx - 1, head_bot + 1, 2, NECK, skin.darkened(0.2))
+	var hx := cx - HW / 2
+	for y in HH:
+		var cut := 1 if (y == 0 or y == HH - 1) else 0
+		_r(img, hx + cut, head_top + y, HW - 2 * cut, 1, skin)
+		_px(img, hx + HW - 1 - cut, head_top + y, skin.darkened(0.15))
 	var hs := int(l["hair"])
-	if dir == 1:
-		# from behind: all hair (or the bald head with a little shine)
-		for y2 in 9:
-			for x2 in 10:
-				var dx2 := (x2 + 0.5 - 5.0) / 5.0
-				var dy2 := (y2 + 0.5 - 5.0) / 5.0
-				if dx2 * dx2 + dy2 * dy2 <= 1.0 and not bald:
-					_px(img, hx0 + x2, hy0 + y2, hair if (x2 + y2) % 5 != 0 else hair.darkened(0.15))
-		if hs in [4, 5]:
-			_rect(img, cx - 2, hy0 + 8, 4, 4 if hs == 4 else 3, hair.darkened(0.1))     # long hair / ponytail
-		if hs == 8:
-			_rect(img, cx - 1, hy0 - 1, 3, 2, hair.darkened(0.2))                         # bun
-		if bald:
-			_px(img, cx - 2, hy0 + 2, skin.lightened(0.3))
-	else:
-		# hair on top (front / side)
+	var bald := hs == 0
+	var ey := head_top + HH / 2
+	if back:
+		# from behind: the hair (or a bald head with a shine)
 		if not bald:
-			var fringe := 3 if hs in [2, 3, 7] else 2
-			if hs == 1:
-				fringe = 1
-			for x3 in 10:
-				for y3 in fringe + 1:
-					var dx3 := (x3 + 0.5 - 5.0) / 5.0
-					var dy3 := (y3 + 0.5 - 5.2) / 5.2
-					if dx3 * dx3 + dy3 * dy3 <= 1.0:
-						_px(img, hx0 + x3, hy0 + y3, hair)
-			if hs == 3:
-				_rect(img, hx0 + 1, hy0 + 2, 4, 2, hair)                                   # side part
-			if hs == 6:
-				_rect(img, cx - 1, hy0 - 2, 2, 4, hair)                                    # mohawk
+			_r(img, hx, head_top - 1, HW, HH - 1, hair)
+			_r(img, hx + 1, head_top - 2, HW - 2, 1, hair)
+			_r(img, hx + 1, head_top - 1, HW / 2, 1, hair.lightened(0.22))
 			if hs in [4, 5]:
-				_rect(img, hx0, hy0 + 2, 1, 7 if hs == 4 else 3, hair)
-				_rect(img, hx0 + 9, hy0 + 2, 1, 7 if hs == 4 else 3, hair)
-				if dir == 2:
-					_rect(img, hx0 + 6, hy0 + 2, 3, 7 if hs == 4 else 4, hair)
-			if hs == 7:
-				for k in 5:
-					_px(img, hx0 + 1 + k * 2, hy0, hair.lightened(0.15))
+				_r(img, hx, head_top + HH - 2, HW, 5 if hs == 4 else 2, hair.darkened(0.1))
+				if hs == 5:
+					_r(img, cx - 1, head_top + HH, 2, 5, hair.darkened(0.15))
 			if hs == 8:
-				_rect(img, cx - 1, hy0 - 1, 3, 2, hair.darkened(0.2))
-			if dir == 2:
-				_rect(img, hx0 + 5, hy0 + 1, 5, 4, hair)                                  # the back of the head
-		# the face
-		if dir == 0:
-			_px(img, cx - 2, hy0 + 5, OUTLINE)
-			_px(img, cx + 1, hy0 + 5, OUTLINE)
-			_px(img, cx - 2, hy0 + 4, eye.lightened(0.2))
-			_px(img, cx + 1, hy0 + 4, eye.lightened(0.2))
-			_px(img, cx - 3, hy0 + 6, skin.darkened(0.1) if int(l["freckles"]) == 0 else Color(0.75, 0.45, 0.3))
-			_px(img, cx + 2, hy0 + 6, skin.darkened(0.1) if int(l["freckles"]) == 0 else Color(0.75, 0.45, 0.3))
-			_rect(img, cx - 1, hy0 + 7, 2, 1, skin.darkened(0.3))                          # mouth
-			if int(l["beard"]) == 1:
-				_rect(img, cx - 3, hy0 + 7, 6, 2, Color(hair, 0.5).lerp(skin, 0.4))
-			elif int(l["beard"]) in [2, 3]:
-				_rect(img, cx - (1 if int(l["beard"]) == 2 else 3), hy0 + 7, 2 if int(l["beard"]) == 2 else 6, 2 if int(l["beard"]) == 2 else 3, hair)
-				_rect(img, cx - 1, hy0 + 7, 2, 1, skin.darkened(0.3))
-			elif int(l["beard"]) == 4:
-				_rect(img, cx - 2, hy0 + 6, 4, 1, hair)
-		elif dir == 2:
-			_px(img, cx - 3, hy0 + 5, OUTLINE)
-			_px(img, cx - 3, hy0 + 4, eye.lightened(0.2))
-			_px(img, hx0, hy0 + 6, skin.darkened(0.1))                                      # nose
-			_px(img, cx - 3, hy0 + 7, skin.darkened(0.3))
-			if int(l["beard"]) in [2, 3]:
-				_rect(img, hx0 + 1, hy0 + 7, 4, 2, hair)
-		# headgear
+				_r(img, cx - 2, head_top - 4, 4, 3, hair.darkened(0.15))
+			if hs == 6:
+				_r(img, cx - 1, head_top - 4, 2, 3, hair)
+		else:
+			_px(img, hx + 2, head_top + 1, skin.lightened(0.3))
+	elif side:
+		_px(img, hx - 1, ey + 1, skin)                                   # nose
+		_px(img, hx + 1, ey, eye.darkened(0.2))
+		_r(img, hx + 1, ey - 1, 2, 1, hair.darkened(0.1))
+		_px(img, hx + 1, ey + 2, skin.darkened(0.35))
+		_px(img, hx + HW / 2 + 1, ey + 1, skin.darkened(0.25))            # ear
+		if not bald:
+			_r(img, hx + 1, head_top - 2, HW - 1, 3, hair)
+			_r(img, hx + HW / 2, head_top - 1, HW / 2 + 1, HH / 2 + 1, hair)
+			_r(img, hx + 2, head_top - 2, HW / 2, 1, hair.lightened(0.22))
+			if hs in [4, 5]:
+				_r(img, hx + HW - 1, head_top + 2, 2, HH + (3 if hs == 4 else 0), hair.darkened(0.1))
+			if hs == 5:
+				_r(img, hx + HW + 1, head_top + 2, 2, 4, hair.darkened(0.15))
+			if hs == 6:
+				_r(img, hx + 2, head_top - 4, HW - 3, 2, hair)
+			if hs == 8:
+				_r(img, hx + HW - 2, head_top - 3, 3, 3, hair.darkened(0.15))
+		if int(l["beard"]) in [2, 3]:
+			_r(img, hx, ey + 2, HW / 2, HH - HH / 2 - 2, hair)
+		if int(l["headgear"]) == 2:
+			_r(img, hx - 1, ey - 1, 3, 2, Color(0.3, 0.85, 1.0))
+	else:
+		_px(img, cx - 2, ey, Color(0.95, 0.95, 0.95))
+		_px(img, cx - 1, ey, eye.darkened(0.2))
+		_px(img, cx + 1, ey, eye.darkened(0.2))
+		_px(img, cx + 2, ey, Color(0.95, 0.95, 0.95))
+		_r(img, cx - 2, ey - 1, 2, 1, hair.darkened(0.1))                # brows
+		_r(img, cx + 1, ey - 1, 2, 1, hair.darkened(0.1))
+		_px(img, cx, ey + 1, skin.darkened(0.2))                          # nose
+		_r(img, cx - 1, ey + 2, 3, 1, skin.darkened(0.35))                # mouth
+		if int(l["freckles"]) == 1:
+			_px(img, cx - 3, ey + 1, Color(0.75, 0.45, 0.3))
+			_px(img, cx + 3, ey + 1, Color(0.75, 0.45, 0.3))
+		match int(l["beard"]):
+			1:
+				_r(img, hx + 1, ey + 2, HW - 2, 2, Color(hair, 0.5).lerp(skin, 0.45))
+			2:
+				_r(img, cx - 1, ey + 2, 3, 2, hair)
+				_r(img, cx - 1, ey + 2, 3, 1, skin.darkened(0.35))
+			3:
+				_r(img, hx + 1, ey + 1, HW - 2, HH - HH / 2 - 1, hair)
+				_r(img, cx - 1, ey + 2, 3, 1, skin.darkened(0.35))
+			4:
+				_r(img, cx - 2, ey + 1, 5, 1, hair)
+		if not bald:
+			_r(img, hx, head_top - 1, HW, 3, hair)
+			_r(img, hx + 1, head_top - 2, HW - 2, 1, hair)
+			_r(img, hx + 1, head_top - 2, HW / 2 - 1, 1, hair.lightened(0.25))
+			_r(img, hx - 1, head_top, 1, HH / 2, hair.darkened(0.1))
+			_r(img, hx + HW, head_top, 1, HH / 2, hair.darkened(0.2))
+			if hs == 1:
+				_r(img, hx, head_top + 1, HW, 1, skin)                    # buzz cut: only a cap of hair
+			if hs in [2, 3, 7]:
+				_r(img, hx + (0 if hs == 3 else 2), head_top + 1, HW / 2, 1, hair)
+			if hs in [4, 5]:
+				_r(img, hx - 1, head_top, 1, HH + (4 if hs == 4 else 1), hair.darkened(0.1))
+				_r(img, hx + HW, head_top, 1, HH + (4 if hs == 4 else 1), hair.darkened(0.2))
+			if hs == 6:
+				_r(img, hx, head_top - 1, HW, 2, skin)
+				_r(img, cx - 1, head_top - 4, 2, 5, hair)
+			if hs == 7:
+				for k in 4:
+					_px(img, hx + k * 2, head_top - 2, hair.lightened(0.15))
+			if hs == 8:
+				_r(img, cx - 2, head_top - 4, 4, 2, hair.darkened(0.15))
 		match int(l["headgear"]):
 			1:
-				_rect(img, hx0 - 1 if dir != 2 else hx0 + 4, hy0 + 4, 1, 3, Color(0.25, 0.25, 0.3))     # headset
-				_rect(img, hx0 + 1, hy0, 8, 1, Color(0.25, 0.25, 0.3))
+				_r(img, hx - 1, ey - 1, 1, 3, Color(0.25, 0.25, 0.3))
+				_r(img, hx, head_top - 2, HW, 1, Color(0.25, 0.25, 0.3))
 			2:
-				if dir == 0:
-					_rect(img, cx - 3, hy0 + 4, 6, 2, Color(0.3, 0.85, 1.0))                   # visor
-				elif dir == 2:
-					_rect(img, hx0, hy0 + 4, 3, 2, Color(0.3, 0.85, 1.0))
+				_r(img, hx, ey - 1, HW, 2, Color(0.3, 0.85, 1.0))
 			3:
-				if dir == 0:
-					_rect(img, cx - 3, hy0 + 4, 2, 2, Color(0.75, 0.85, 0.95))
-					_rect(img, cx + 1, hy0 + 4, 2, 2, Color(0.75, 0.85, 0.95))
-		if int(l["implant"]) == 1 and dir == 0:
-			_px(img, cx + 1, hy0 + 4, Color(1.0, 0.25, 0.25))
+				_r(img, cx - 3, ey, 2, 1, Color(0.8, 0.9, 1.0, 0.8))
+				_r(img, cx + 1, ey, 2, 1, Color(0.8, 0.9, 1.0, 0.8))
+		if int(l["implant"]) == 1:
+			_px(img, cx + 1, ey, Color(1.0, 0.25, 0.25))
 	return img
 
 
-## A dark outline round the figure – it reads on any floor.
+## Neon rim light: the left edge catches cyan, the right edge pink.
+static func _rim(img: Image) -> void:
+	var src := img.duplicate()
+	for y in H:
+		for x in W:
+			var c: Color = src.get_pixel(x, y)
+			if c.a < 0.5:
+				continue
+			if x < W / 2 and (x == 0 or src.get_pixel(x - 1, y).a < 0.5):
+				img.set_pixel(x, y, c.lerp(RIM_L, 0.45))
+			elif x >= W / 2 and (x == W - 1 or src.get_pixel(x + 1, y).a < 0.5):
+				img.set_pixel(x, y, c.lerp(RIM_R, 0.6))
+
+
+## A black outline round the figure – it reads on any floor.
 static func _outline(img: Image) -> void:
 	var src := img.duplicate()
 	for y in H:

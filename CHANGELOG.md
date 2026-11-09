@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.11 – 2026-11-09
+
+**New figures on foot (Luz's choice "C3").** The little chibis are gone: people are now tall and slim – about six
+heads, 18 × 40 px, drawn finer than the deck (2 screen px per pixel), so they stand about as tall as before and fit
+the doors and furniture. Black outlines and a **neon rim light** – cyan from the left, pink from the right, as if the
+station's signs lit them. Broad shoulders, a narrower waist, arms with elbows and hands, a face with eyes, brows, nose
+and mouth, boots with a shine; the jacket open over the shirt, the flight suit with its zip and a chest light, the
+coat's tails, the armour's shoulder plates; every hair style, beard and headgear of the portrait. Front, back and
+side, two walking steps (legs and arms swing), and a sitting pose with bent legs.
+
 ## alpha 0.7.49.10 – 2026-11-09
 
 **Life down in the hangar bay** – roughly to scale, tiny next to the ship:

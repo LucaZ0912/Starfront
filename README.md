@@ -159,7 +159,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   `_shop(…, cap_y)` at any row) and left out of the commercial level; `GroundMap.bay_rect` (the view lays a haze
   gradient over the bay), decal `bay` (tiny crates and lights far below); no people in the bay.
 - 0.7.49.10: `bay_life.gd` – `BayLife` (Node2D in art px over the bay): loaders, repair drones with sparks, the fuel
-  truck and its hose; set up by the view from `bay_rect`, `ship_at` and the ship's size.; `texture()` renders floors and walls once.
+  truck and its hose; set up by the view from `bay_rect`, `ship_at` and the ship's size.
+- 0.7.49.11: `ChibiArt` now draws the tall "C3" figures (18×40, `CHAR_SCALE` 2 screen px per pixel – the walker
+  scales by it, not by `GroundMap.SCALE`), black outline (`_outline`) and neon rim light (`_rim`, `RIM_L`/`RIM_R`);
+  frames 0 stand, 1–2 walk, 3 sit (`HIP_SIT`).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

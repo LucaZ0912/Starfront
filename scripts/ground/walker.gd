@@ -24,7 +24,7 @@ var _wait := 0.0
 var _path := PackedVector2Array()
 var _pi := 0
 var _stuck := 0.0
-const SIT_LIFT := 4.0              # art px: a sitter is drawn this much higher – on the seat, not in the floor
+const SIT_LIFT := 0.5              # art px: a sitter is drawn this much higher – on the seat, not in the floor
 
 
 func setup(p_map: GroundMap, p_look: Dictionary, p_pos: Vector2, p_npc: bool) -> void:
@@ -123,10 +123,10 @@ func _draw() -> void:
 	if moving:
 		f = 1 + int(_walk * 7.0) % 2
 	var tex := ChibiArt.frame(look, dir, f)
-	var size := Vector2(tex.get_width(), tex.get_height()) * s
+	var size := Vector2(tex.get_width(), tex.get_height()) * ChibiArt.CHAR_SCALE        # 0.7.49.11: finer than the deck
 	var bob := 0.0
 	if not moving and not sitting:
-		bob = round(sin(_t * 2.2) * 0.4)               # breathing
+		bob = round(sin(_t * 2.2) * 0.4) * ChibiArt.CHAR_SCALE / s     # breathing
 	# a soft shadow at the feet
 	if not sitting:
 		draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
