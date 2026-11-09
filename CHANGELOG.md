@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.2 – 2026-11-09
+
+**Package 40b: the gates.**
+- Gates now show **whose system it is**, in six drawings: the **Assembly's** white-and-blue ring with four pylons,
+  the **Covenant's** crimson and gold with eight spires, the **Directorate's** silver octagon with green emitters, the
+  plain yellow-striped gates of the **independents** – and in the empty Rim the **old gates**: rusted, plates missing,
+  broken down to the bare frame in places, their field flickering. The **pirates** patch theirs with scrap plates and
+  red lights.
+- A jump through an **old or patched gate takes longer** (×1.6) and, very rarely (3 %, pirate gates 1.5 %), its field
+  breaks down mid-jump: the ship is **flung out somewhere in the target system** (far out or near a field) and takes
+  damage (15 % of the hull, armour first – never fatal). The log says what happened and why.
+- **Two new animations:** coming out of a gate – the gate flares, the ship shoots out of it and slows to its place
+  with a flash and a glittering trail, like dropping out of warp; and the **misjump** – violet lightning, a torn ring,
+  the ship thrown out tumbling with sparks and smoke. NPCs make the gate flare too.
+- Codex: "Hyperspace gates" tells of the styles, the old gates and misjumps. Smoke tests for the styles and the misjump.
+
 ## alpha 0.6.40.1 – 2026-11-09
 
 **Package 40a: the new cluster.** A new game is needed (older saves are moved to the new cluster).

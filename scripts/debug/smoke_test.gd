@@ -595,6 +595,7 @@ func _process(delta: float) -> void:
 				_test_tours43(view)
 				_test_cruise43(view)
 				_test_cluster40(view)
+				_test_gates40(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -7282,6 +7283,55 @@ func _test_cluster40(view: SystemView) -> void:
 	main.galaxy.close()
 	check(z0 > 1.0 and zoomed and back.distance_to(at) < 1.0 and U.territory_text(_belt_empty()) == "Unclaimed – the Rim",
 		"40a: the galaxy map opens zoomed in on the current system, zooms towards the pointer and pans; the ring is 'Unclaimed – the Rim'")
+
+
+## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.
+func _test_gates40(view: SystemView) -> void:
+	var U = Universe
+	var styles := {}
+	var rule_ok := true
+	for sy in U.systems:
+		var sid: int = sy["id"]
+		var st: String = U.gate_style(sid)
+		styles[st] = true
+		var f := String(sy.get("faction", ""))
+		if f in ["assembly", "covenant", "directorate"]:
+			rule_ok = rule_ok and st == f
+		elif sy.get("belt", false) and not sy.get("independent", false) and f == "":
+			rule_ok = rule_ok and st == "old"
+	var gate_ok := true
+	for g in view.layout["gates"]:
+		gate_ok = gate_ok and String(g.get("style", "")) == U.gate_style(view.system_id)
+	var tex_ok := true
+	var seen := {}
+	for st2 in PixelArt.GATE_STYLES:
+		var im: Image = PixelArt.gate_texture_styled(2, st2).get_image()
+		tex_ok = tex_ok and im.get_width() == 81
+		seen[im.get_data().hex_encode().sha256_text()] = true
+	check(styles.has("old") and styles.has("independent") and rule_ok and gate_ok and tex_ok and seen.size() == 6,
+		"40b: gates by whose system it is – the powers' own, independent, old ones in the empty Rim, patched pirate gates (%d styles in the cluster), six distinct drawings" % styles.size())
+	# old gates: longer jumps; a misjump flings the ship out somewhere and hurts – never fatally
+	var old_sid := -1
+	for sy2 in U.systems:
+		if U.gate_style(int(sy2["id"])) == "old":
+			old_sid = int(sy2["id"])
+			break
+	var slow: bool = GameState.jump_duration(old_sid) > GameState.jump_duration(Universe.home_system) * 1.4
+	var f2 := GameState.create_from_preset("std_mule", "player")
+	f2.system_id = old_sid
+	var nb: int = int(U.systems[old_sid]["links"].keys()[0])
+	f2.system_id = nb
+	var s0 := f2.stats()
+	f2.armor = float(s0["armor_max"])
+	f2.structure = float(s0["structure_max"])
+	var keep_pa: Dictionary = GameState.pending_arrival.duplicate()
+	GameState._misjump(f2, old_sid)
+	GameState.pending_arrival = keep_pa
+	var gpos: Vector2 = U.get_gate_pos(nb, old_sid)
+	var thrown: bool = f2.position.distance_to(gpos) > 20000.0
+	var hurt: bool = f2.armor < float(s0["armor_max"]) and f2.structure >= float(s0["structure_max"]) * 0.25
+	check(old_sid >= 0 and slow and thrown and hurt,
+		"40b: an old gate's jump takes longer (%.1f s); when its field breaks the ship is flung out far from the gate and damaged, never destroyed" % GameState.jump_duration(old_sid))
 
 
 func _belt_empty() -> int:

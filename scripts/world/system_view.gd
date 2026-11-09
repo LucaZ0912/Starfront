@@ -798,6 +798,50 @@ func sync_player() -> void:
 			spawn_fx(Fx.flash(player.position, Color(0.6, 0.85, 1.0), player.radius * 3.0))
 
 
+## Package 40b: how the pilot's ship comes into the system. "gate": the gate flares, the ship shoots out of it and
+## slows to its place, with a flash and a glittering trail like coming out of warp. "misjump": a violent burst, the
+## ship flung out tumbling, sparks and smoke.
+const ARRIVAL_DELAY := 0.75             # the arrival overlay fades out first
+
+
+func play_arrival(a: Dictionary) -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	if String(a.get("kind", "")) == "gate":
+		var g0 = gates.get(int(a.get("from", -1)))
+		if g0 != null and is_instance_valid(g0):
+			var dir0: Vector2 = ((player.position as Vector2) - (g0.position as Vector2)).normalized()
+			player.position = g0.position + dir0 * g0.radius * 0.3      # waiting in the gate until the tunnel fades
+			player.heading = dir0.angle()
+			player.velocity = Vector2.ZERO
+	get_tree().create_timer(ARRIVAL_DELAY).timeout.connect(_arrival_now.bind(a))
+
+
+func _arrival_now(a: Dictionary) -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	match String(a.get("kind", "")):
+		"gate":
+			var g = gates.get(int(a.get("from", -1)))
+			if g == null or not is_instance_valid(g):
+				return
+			g.gate_flash = 1.0
+			var dir := Vector2.from_angle(player.heading)
+			player.velocity = dir * 1900.0
+			player._warp_flash(false, g.position)
+			player._warp_trail(player.velocity)
+		"misjump":
+			spawn_fx(Fx.misjump(player.position, maxf(player.radius * 14.0, 500.0)))
+			spawn_fx(Fx.flash(player.position, Color(0.7, 0.35, 1.0), maxf(player.radius * 10.0, 300.0)))
+			player.velocity = Vector2.from_angle(randf() * TAU) * 1300.0
+			player.tumble_t = player.TUMBLE_TIME
+			player.tumble_text = "Thrown out of a failed jump – tumbling"
+			player.hit_flash = 0.4
+			for i in 5:
+				spawn_fx(Fx.smoke(player.position + Vector2.from_angle(randf() * TAU) * player.radius, player.velocity * 0.3 + Vector2.from_angle(randf() * TAU) * 80.0, 8.0 + player.radius * 0.1))
+			Audio.play("warp_exit", "misjump")
+
+
 func remove_player() -> void:
 	if player != null and is_instance_valid(player):
 		player.queue_free()

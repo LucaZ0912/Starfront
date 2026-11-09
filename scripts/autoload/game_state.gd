@@ -27,6 +27,13 @@ const COL_GOOD := Color(0.5, 1.0, 0.6)
 const COL_WARN := Color(1.0, 0.8, 0.4)
 const COL_BAD := Color(1.0, 0.45, 0.4)
 const JUMP_TIME := 6.0
+## Package 40b: old (and patched) gates – the jump takes longer and very rarely goes wrong.
+const OLD_GATE_TIME := 1.6
+const MISJUMP_OLD := 0.03
+const MISJUMP_PIRATE := 0.015
+const MISJUMP_DAMAGE := 0.15
+var misjumps := {}                  # ship uid -> true: this jump goes wrong (rolled at the start)
+var pending_arrival := {}           # for the view: how the active ship arrived ({kind: "gate" / "misjump", …})
 const START_CREDITS := 30000
 const MAX_ACTIVE_MISSIONS := 5
 
@@ -1924,6 +1931,11 @@ func can_jump(f: ShipFitting, to_id: int) -> String:
 	return ""
 
 
+## Package 40b: how long a jump from this system takes (old and patched gates are slower).
+func jump_duration(from_sid: int) -> float:
+	return JUMP_TIME * (OLD_GATE_TIME if Universe.old_gate(from_sid) else 1.0)
+
+
 func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	var err := can_jump(f, to_id)
 	if err != "":
@@ -1934,7 +1946,15 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	f.transit_from = f.system_id
 	f.transit_to = to_id
 	f.transit_total = JUMP_TIME
-	f.transit = JUMP_TIME
+	# package 40b: an old gate – longer, and now and then its field breaks down
+	var style := Universe.gate_style(f.system_id)
+	misjumps.erase(f.uid)
+	f.transit_total = jump_duration(f.system_id)
+	if style in ["old", "pirate"]:
+		if randf() < (MISJUMP_OLD if style == "old" else MISJUMP_PIRATE):
+			misjumps[f.uid] = true
+		log_msg("The %s here is long past its last service – the jump takes longer, and its field is not to be trusted." % ("old gate" if style == "old" else "patched pirate gate"), COL_WARN)
+	f.transit = f.transit_total
 	f.docked_at = ""
 	stats["jumps"] = int(stats["jumps"]) + 1
 	crew_learn("jumps", 1.0)
@@ -1953,10 +1973,14 @@ func _arrive(f: ShipFitting) -> void:
 	note_stat("systems", f.system_id)            # package 30
 	if f.transit_kind == "wormhole":
 		_arrive_wormhole(f)
+	elif misjumps.has(f.uid):
+		_misjump(f, from_id)                    # package 40b
 	else:
 		var gate := Universe.get_gate_pos(f.system_id, from_id)
 		f.position = gate + (-gate).normalized() * 2500.0 + Vector2(randf_range(-600, 600), randf_range(-600, 600))
 		f.rotation = (-gate).angle()
+		if f.uid == active_uid:
+			pending_arrival = {"kind": "gate", "from": from_id}
 	if not f.route.is_empty() and int(f.route[0]) == f.system_id:
 		f.route.pop_front()
 	f.transit_kind = ""
@@ -1966,6 +1990,27 @@ func _arrive(f: ShipFitting) -> void:
 	if f.route.is_empty():
 		log_msg("%s arrived in %s." % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_GOOD)
 	ship_arrived_system.emit(f)
+
+
+## Package 40b: the field of an old gate broke down mid-jump – the ship is flung out somewhere in the target system and
+## takes some damage (never fatal).
+func _misjump(f: ShipFitting, from_id: int) -> void:
+	misjumps.erase(f.uid)
+	var L := Universe.get_layout(f.system_id)
+	var spots: Array = [Vector2.from_angle(randf() * TAU) * randf_range(500000.0, 1500000.0) * Universe.SCALE]
+	for fl in L["fields"]:
+		spots.append((fl["pos"] as Vector2) + Vector2.from_angle(randf() * TAU) * float(fl.get("radius", 10000.0)) * 1.2)
+	f.position = spots[randi() % spots.size()]
+	f.rotation = randf() * TAU
+	var s := f.stats()
+	var dmg := float(s["structure_max"]) * MISJUMP_DAMAGE
+	var a := minf(f.armor, dmg)
+	f.armor -= a
+	f.structure = maxf(f.structure - (dmg - a), float(s["structure_max"]) * 0.25)
+	log_msg("The field of the gate at %s broke down mid-jump – %s is flung out somewhere in %s and took damage." % [Universe.systems[from_id]["name"], f.ship_name, Universe.systems[f.system_id]["name"]], COL_BAD)
+	if f.uid == active_uid:
+		pending_arrival = {"kind": "misjump", "from": from_id}
+	codex.event("misjump")
 
 
 ## Package 36: the orbits are rolled on arrival – unless another of the pilot's ships waits out in space in that

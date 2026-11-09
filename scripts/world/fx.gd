@@ -140,6 +140,20 @@ static func glitter(pos: Vector2, back: Vector2, length: float, width: float, co
 
 
 ## Package 25f: the Cathedral's anti-drone pulse – a red ring racing out to `radius`.
+## Package 40b: a gate jump gone wrong – jagged violet lightning bursting out, a torn ring.
+static func misjump(pos: Vector2, radius: float) -> Fx:
+	var f := Fx.new()
+	f.kind = "misjump"
+	f.position = pos
+	f.size = radius
+	f.color = Color(0.75, 0.4, 1.0)
+	f.life = 1.6
+	f.max_life = 1.6
+	f.z_index = 14
+	f.a = Vector2(randf() * TAU, 0.0)
+	return f
+
+
 static func pulse(pos: Vector2, radius: float, col: Color) -> Fx:
 	var f := Fx.new()
 	f.kind = "pulse"
@@ -236,6 +250,24 @@ func _draw() -> void:
 				draw_line(Vector2(-w, 0), Vector2(w, 0), Color(1, 1, 1, hot * (0.5 + 0.25 * i)), size * (0.05 - i * 0.012))
 		"marker":
 			draw_arc(Vector2.ZERO, 8.0 + 30.0 * t, 0.0, TAU, 24, Color(color, t), 2.0)
+		"misjump":
+			var e := 1.0 - t
+			var rng := RandomNumberGenerator.new()
+			rng.seed = int(a.x * 1000.0)
+			for k in 9:
+				var ang := a.x + k * TAU / 9.0 + rng.randf_range(-0.2, 0.2)
+				var prev := Vector2.ZERO
+				var reach := size * (0.4 + 0.8 * e) * rng.randf_range(0.6, 1.0)
+				for j in 6:
+					var p := Vector2.from_angle(ang + rng.randf_range(-0.35, 0.35)) * reach * (j + 1) / 6.0
+					draw_line(prev, p, Color(color.lightened(0.3), t), maxf(size * 0.012, 2.0))
+					prev = p
+			var rr2 := size * (0.3 + 0.9 * e)
+			for k2 in 18:
+				if k2 % 3 != 1:
+					var a0 := a.x + k2 * TAU / 18.0
+					draw_arc(Vector2.ZERO, rr2, a0, a0 + TAU / 22.0, 4, Color(color, 0.8 * t), maxf(size * 0.03, 3.0))
+			draw_circle(Vector2.ZERO, size * 0.25 * t, Color(1, 0.95, 1, 0.7 * t))
 		"pulse":
 			var rr := size * (1.0 - t * t)
 			draw_arc(Vector2.ZERO, rr, 0.0, TAU, 96, Color(color, t), 14.0 + 30.0 * t)

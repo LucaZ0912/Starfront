@@ -1594,6 +1594,7 @@ var cme_t := 0.0
 const TUMBLE_TIME := 3.0
 const TUMBLE_TURNS := 3.0
 var tumble_t := 0.0
+var tumble_text := "Emergency shutdown – tumbling"       # package 40b: or thrown out of a failed gate jump
 
 
 func emergency_drop() -> void:
@@ -1622,7 +1623,9 @@ func _tumble(delta: float) -> void:
 	velocity *= exp(-0.7 * delta)
 	position += velocity * delta
 	tumble_t = maxf(0.0, tumble_t - delta)
-	activity = "Emergency shutdown – tumbling"
+	activity = tumble_text
+	if tumble_t <= 0.0:
+		tumble_text = "Emergency shutdown – tumbling"
 	fit.position = position
 	fit.rotation = heading
 	queue_redraw()

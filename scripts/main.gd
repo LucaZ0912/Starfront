@@ -175,6 +175,8 @@ func _on_jumped_out(f: ShipFitting) -> void:
 	ship_menu.close()
 	if f.transit_kind == "wormhole":
 		transit_fx.play("jump", "Wormhole → %s" % Universe.systems[int(f.transit_to)]["name"], 2.4)
+	elif Universe.old_gate(int(f.transit_from)):
+		transit_fx.play("jump", "Hyperspace jump (old gate) → %s" % Universe.systems[int(f.transit_to)]["name"], 2.6)      # package 40b
 	else:
 		transit_fx.play("jump", "Hyperspace jump → %s" % Universe.systems[int(f.transit_to)]["name"], 1.8)
 	galaxy.open(true)
@@ -186,6 +188,9 @@ func _on_arrived_system(f: ShipFitting) -> void:
 	galaxy.close()
 	transit_fx.play("jump", "Arrival: %s" % Universe.systems[f.system_id]["name"], 1.0)
 	load_system(f.system_id)
+	if view != null and not GameState.pending_arrival.is_empty():
+		view.play_arrival(GameState.pending_arrival)       # package 40b: out of the gate – or flung out
+		GameState.pending_arrival = {}
 	SaveGame.autosave.call_deferred()
 
 

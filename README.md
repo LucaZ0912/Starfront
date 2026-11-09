@@ -114,6 +114,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## Gates (phase 0.5 package 40b)
+
+- `Universe.gate_style(sid)`: a power's own style, `pirate` for pirate systems, `old` for the empty Rim, else
+  `independent`; stored as `"style"` in each gate of the layout. `old_gate(sid)` – old or pirate.
+- `PixelArt.gate_texture_styled(cls, style)` (`GATE_STYLES`, 81 × 81); the old field flickers in `Celestial`, and
+  `gate_flash` makes a gate flare when a ship comes through.
+- `GameState.jump_duration(from)` – ×`OLD_GATE_TIME` through an old gate; `begin_jump` rolls a misjump
+  (`MISJUMP_OLD` / `MISJUMP_PIRATE`), `_misjump` flings the ship to a random spot and deals `MISJUMP_DAMAGE`
+  (structure never below 25 %). `pending_arrival` → `SystemView.play_arrival` (gate exit or misjump, after
+  `ARRIVAL_DELAY`); `Fx.misjump`.
+
 ## The cluster (phase 0.5 package 40a)
 
 - `Universe._place_systems`: `CORE_SYSTEMS` in an ellipse (`CORE_R`), `BELT_CONSTELLATIONS` constellations of

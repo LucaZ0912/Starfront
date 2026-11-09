@@ -531,6 +531,25 @@ func _make_special(sid: int, sp: String) -> void:
 	systems[sid]["name"] = SPECIAL_NAMES[sp]
 
 
+## Package 40b: whose gates stand in a system – a power's, the independents', the old ones of the empty Rim, the
+## pirates' patched ones.
+func gate_style(sid: int) -> String:
+	var s: Dictionary = systems[sid]
+	var f := String(s.get("faction", ""))
+	if f in FactionData.POWERS:
+		return f
+	if f in FactionData.PIRATES:
+		return "pirate"
+	if s.get("belt", false) and not s.get("independent", false):
+		return "old"
+	return "independent"
+
+
+## Old or patched gates: the jump takes longer and now and then goes wrong (package 40b).
+func old_gate(sid: int) -> bool:
+	return gate_style(sid) in ["old", "pirate"]
+
+
 ## 39d: an independent system (no power holds it – yellow on the map).
 func is_independent(sid: int) -> bool:
 	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("independent", false))
@@ -1938,7 +1957,7 @@ func _generate_layout(id: int) -> Dictionary:
 		used.append(dir * GATE_DISTANCE)
 		L["gates"].append({
 			"id": "g_%d_%d" % [id, nb], "to": nb, "class": int(sys["links"][nb]),
-			"pos": dir * GATE_DISTANCE, "name": "Gate to %s" % systems[nb]["name"],
+			"pos": dir * GATE_DISTANCE, "name": "Gate to %s" % systems[nb]["name"], "style": gate_style(id),
 		})
 	# Asteroid fields: metallic near the star, stony in between, icy beyond the frost line
 	var frost: float = float(st_type["frost"])          # package 37

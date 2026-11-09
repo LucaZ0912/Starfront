@@ -506,6 +506,143 @@ const STATION_ACCENT := {
 
 # ---------------------------------------------------------------- Hyperspace gate
 
+## Package 40b: the gates in six styles – the powers' (Assembly, Covenant, Directorate), the independents', the old,
+## half-dead gates of the Rim and the pirates' patched ones. 81 × 81 art pixels, lit from the top left like the rest.
+const GATE_STYLES := ["assembly", "covenant", "directorate", "independent", "old", "pirate"]
+
+
+static func gate_texture_styled(cls: int, style: String) -> Texture2D:
+	if not style in GATE_STYLES:
+		return gate_texture(cls)
+	var key := "gate_%s_%d" % [style, cls]
+	if _cache.has(key):
+		return _cache[key]
+	var n := 81
+	var c := 40.0
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var hull: Array = [Color(0.42, 0.46, 0.55), Color(0.66, 0.71, 0.8), Color(0.88, 0.92, 0.98)]
+	var trim: Array = [Color(0.3, 0.32, 0.38), Color(0.45, 0.48, 0.56), Color(0.62, 0.65, 0.74)]
+	var acc := gate_color(cls)
+	match style:
+		"assembly":
+			hull = [Color(0.45, 0.5, 0.62), Color(0.74, 0.79, 0.89), Color(0.94, 0.96, 1.0)]
+			trim = [Color(0.16, 0.28, 0.55), Color(0.28, 0.48, 0.85), Color(0.5, 0.7, 1.0)]
+		"covenant":
+			hull = [Color(0.32, 0.05, 0.07), Color(0.56, 0.11, 0.12), Color(0.78, 0.24, 0.2)]
+			trim = [Color(0.52, 0.38, 0.12), Color(0.84, 0.64, 0.24), Color(1.0, 0.88, 0.5)]
+		"directorate":
+			hull = [Color(0.34, 0.38, 0.4), Color(0.6, 0.66, 0.68), Color(0.85, 0.9, 0.9)]
+			trim = [Color(0.1, 0.12, 0.13), Color(0.18, 0.21, 0.22), Color(0.3, 0.34, 0.35)]
+		"independent":
+			hull = [Color(0.33, 0.31, 0.27), Color(0.55, 0.52, 0.44), Color(0.75, 0.72, 0.6)]
+			trim = [Color(0.6, 0.45, 0.05), Color(0.95, 0.75, 0.15), Color(1.0, 0.9, 0.45)]
+		"old", "pirate":
+			hull = [Color(0.2, 0.17, 0.15), Color(0.36, 0.3, 0.25), Color(0.5, 0.42, 0.34)]
+			trim = [Color(0.34, 0.16, 0.07), Color(0.52, 0.27, 0.12), Color(0.68, 0.4, 0.2)]
+	var seed_h := hash(style) % 997
+	for y in n:
+		for x in n:
+			var dx := x + 0.5 - c
+			var dy := y + 0.5 - c
+			var r := sqrt(dx * dx + dy * dy)
+			var ang := atan2(dy, dx)
+			var a01 := fposmod(ang, TAU) / TAU
+			var lit := (-dx - dy) / maxf(r, 0.001)
+			var tone := 2 if lit > 0.45 else (1 if lit > -0.45 else 0)
+			var col := Color(0, 0, 0, 0)
+			var rr := r
+			if style == "directorate":
+				rr = maxf(maxf(absf(dx), absf(dy)), (absf(dx) + absf(dy)) / sqrt(2.0)) * 0.96      # an octagon
+			var h := _gate_hash(x, y, seed_h)
+			# the ring
+			if rr >= 27.0 and rr <= 35.0:
+				col = hull[tone]
+				var seg := int(a01 * 24.0)
+				if absf(fposmod(a01 * 24.0, 1.0) - 0.5) > 0.46:
+					col = hull[0].darkened(0.3)                      # seams between the plates
+				if rr < 28.6:
+					col = trim[1] if style != "old" else hull[0]       # the inner rim
+				if rr > 33.8:
+					col = trim[tone] if style in ["assembly", "covenant", "independent"] else hull[0]
+				if style in ["old", "pirate"]:
+					var hc := _gate_hash(int(a01 * 48.0), int(rr / 3.0), seed_h)          # whole plates, not pixels
+					if hc < 0.28:
+						col = trim[tone]                              # rusted plates
+					elif hc > 0.93 and style == "old":
+						col = hull[0].darkened(0.4)                   # a plate gone, the dark frame behind it
+					var gap := fposmod(a01 + 0.03, 0.33)
+					if gap < 0.055 and style == "old":
+						# broken: only the bare lattice of the frame left
+						var lat := posmod(x + y, 5) == 0 or posmod(x - y, 5) == 0 or rr < 28.0 or rr > 34.0
+						col = hull[0] if lat else Color(0, 0, 0, 0)
+				if style == "pirate" and seg % 5 == 2 and rr > 29.0 and rr < 33.5:
+					col = [Color(0.55, 0.52, 0.3), Color(0.35, 0.45, 0.38), Color(0.6, 0.35, 0.3)][seg % 3]   # patch plates
+					if absf(fposmod(a01 * 24.0, 1.0) - 0.5) > 0.4 or absf(rr - 31.2) > 2.0:
+						col = Color(0.15, 0.13, 0.12)                  # welds
+			# style details outside the ring
+			match style:
+				"assembly":
+					for k in 4:
+						var ad := absf(angle_difference(ang, PI * 0.25 + k * PI * 0.5))
+						if r > 33.0 and r < 40.0 and ad * r < 4.5:
+							col = hull[tone] if ad * r < 3.2 else trim[1]
+							if r > 38.4:
+								col = trim[2]
+				"covenant":
+					for k in 8:
+						var ad2 := absf(angle_difference(ang, k * PI * 0.25))
+						var w := (44.0 - r) * 0.42
+						if r > 34.0 and r < 44.0 and ad2 * r < w:
+							col = trim[tone] if ad2 * r > w * 0.45 else hull[tone]
+				"directorate":
+					for k in 8:
+						var vp := Vector2.from_angle(k * PI * 0.25 + PI / 8.0) * 31.0 * 1.04
+						if Vector2(dx, dy).distance_to(vp) < 2.6:
+							col = Color(0.3, 0.95, 0.6) if Vector2(dx, dy).distance_to(vp) < 1.6 else trim[2]
+				"independent":
+					for k in 3:
+						var ad3 := absf(angle_difference(ang, -PI * 0.5 + k * TAU / 3.0))
+						if r > 33.0 and r < 42.0 and ad3 * r < 3.0:
+							col = hull[tone]
+							if int(r + (ad3 * r) * 1.5) % 4 < 2:
+								col = Color(0.95, 0.75, 0.15)              # hazard stripes
+							if ad3 * r > 2.3:
+								col = Color(0.12, 0.12, 0.12)
+				"old":
+					if r > 35.0 and r < 39.0 and _gate_hash(int(ang * 14.0), 3, seed_h) < 0.18 and absf(fposmod(ang * 14.0 / TAU * TAU, 1.0) - 0.5) < 0.35:
+						col = hull[tone].darkened(0.2)                     # torn plates sticking out
+			if col.a > 0.0:
+				img.set_pixel(x, y, col)
+	# lights
+	var lights: Array = []
+	match style:
+		"assembly":
+			for k in 4:
+				lights.append([Vector2.from_angle(PI * 0.25 + k * PI * 0.5) * 39.0, Color(0.5, 0.75, 1.0)])
+		"covenant":
+			for k in 8:
+				lights.append([Vector2.from_angle(k * PI * 0.25) * 43.0, Color(1.0, 0.85, 0.4)])
+		"independent":
+			for k in 3:
+				lights.append([Vector2.from_angle(-PI * 0.5 + k * TAU / 3.0) * 41.0, Color(1.0, 0.7, 0.2)])
+		"pirate":
+			for k in 6:
+				lights.append([Vector2.from_angle(k * TAU / 6.0 + 0.3) * 34.6, Color(1.0, 0.2, 0.15)])
+	for l in lights:
+		var lp: Vector2 = l[0] + Vector2(c, c)
+		for oy in 2:
+			for ox in 2:
+				img.set_pixel(clampi(int(lp.x) + ox, 0, n - 1), clampi(int(lp.y) + oy, 0, n - 1), l[1])
+	_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
+
+static func _gate_hash(x: int, y: int, salt: int) -> float:
+	var v := sin(float(x) * 12.9898 + float(y) * 78.233 + float(salt)) * 43758.5453
+	return v - floor(v)
+
+
 static func gate_texture(cls: int) -> Texture2D:
 	var key := "gate_%d" % cls
 	if _cache.has(key):

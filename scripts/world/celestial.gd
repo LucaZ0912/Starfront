@@ -59,7 +59,7 @@ func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0
 				turret_aim.append(randf() * TAU)
 				turret_flash.append(0.0)
 		"gate":
-			_tex = PixelArt.gate_texture(int(data["class"]))
+			_tex = PixelArt.gate_texture_styled(int(data["class"]), String(data.get("style", "")))      # package 40b
 			radius = _tex.get_width() * 4.0 * 0.45
 		"asteroid":
 			# texture is created lazily on first draw (SystemView only shows asteroids near the camera)
@@ -417,8 +417,13 @@ func info_text() -> String:
 	return title()
 
 
+var gate_flash := 0.0              # package 40b: the gate flares up as a ship comes through (1 → 0)
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	if gate_flash > 0.0:
+		gate_flash = maxf(0.0, gate_flash - delta * 0.7)
 	if kind == "asteroid":
 		if _break_t >= 0.0:
 			_break_t += delta                            # 0.6.35.5: the pieces drift apart and fade
@@ -491,12 +496,24 @@ func _draw() -> void:
 		"gate":
 			var size := Vector2(_tex.get_width(), _tex.get_height()) * 4.0
 			var c := PixelArt.gate_color(int(data["class"]))
-			var inner := size.x * 0.36
+			var inner := size.x * (0.36 if not data.has("style") else 0.31)
+			var st := String(data.get("style", ""))
+			var fl := 1.0
+			if st in ["old", "pirate"]:
+				# package 40b: an old gate's field flickers, now and then it nearly dies
+				fl = 0.55 + 0.45 * sin(_t * 7.3) * sin(_t * 2.1 + 1.0)
+				if fposmod(_t, 4.7) < 0.18:
+					fl = 0.12
+				if st == "pirate":
+					c = c.lerp(Color(1.0, 0.3, 0.25), 0.35)
+			if gate_flash > 0.0:
+				fl += gate_flash * 3.0
+				draw_circle(Vector2.ZERO, inner * (1.0 + gate_flash * 0.8), Color(c.lightened(0.5), 0.35 * gate_flash))
 			for i in 4:
-				draw_circle(Vector2.ZERO, inner * (1.0 - i * 0.2), Color(c, 0.06 + 0.04 * sin(_t * 2.0 + i)))
+				draw_circle(Vector2.ZERO, inner * (1.0 - i * 0.2), Color(c, (0.06 + 0.04 * sin(_t * 2.0 + i)) * fl))
 			for i in 6:
 				var a := _t * (0.6 + i * 0.13) + i
-				draw_arc(Vector2.ZERO, inner * (0.3 + i * 0.11), a, a + 1.6, 16, Color(c.lightened(0.3), 0.5), 6.0)
+				draw_arc(Vector2.ZERO, inner * (0.3 + i * 0.11), a, a + 1.6, 16, Color(c.lightened(0.3), 0.5 * minf(fl, 1.5)), 6.0)
 			draw_texture_rect(_tex, Rect2(-size * 0.5, size), false)
 		"asteroid":
 			if _tex == null:

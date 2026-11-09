@@ -118,6 +118,9 @@ func _arrive(preset: String, role: String, gov: String, name: String = "") -> Sh
 	var pos: Vector2 = (g["pos"] as Vector2) + Vector2.from_angle(randf() * TAU) * randf_range(2000.0, 4500.0)
 	var s := _spawn(preset, pos, role, gov, name)
 	view.spawn_fx(Fx.flash(s.position, Color(0.75, 0.45, 1.0), s.radius * 4.0))
+	var gn = view.gates.get(int(g["to"]))
+	if gn != null and is_instance_valid(gn):
+		gn.gate_flash = maxf(gn.gate_flash, 0.6)          # package 40b: the gate flares as it comes through
 	return s
 
 
