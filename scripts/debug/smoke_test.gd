@@ -590,6 +590,7 @@ func _process(delta: float) -> void:
 				_test_mining41(view)
 				_test_economy42(view)
 				_test_market42(view)
+				_test_prosperity42(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -3022,15 +3023,19 @@ func _test_modules(view: SystemView) -> void:
 		for k in f.modules:
 			presets_ok = presets_ok and f.can_fit(k, f.modules[k]) == ""
 	check(presets_ok, "every standard fit and NPC loadout fits its hull")
-	# outfitters: sizes by tier, B from tier 2, A from tier 3 / military, no pirate gear
+	# outfitters: sizes by tier, qualities by tier (B from tier 2, A from tier 3 / military) – one step more in high-tech
+	# and rich systems, A in military systems (package 42c) – no pirate gear
 	var shop_ok := true
 	var why := ""
+	var QL := ["F", "E", "D", "C", "B", "A"]
 	for s2 in Universe.systems:
 		for st in Universe.get_layout(int(s2["id"]))["stations"]:
 			var tier := int(st["tier"])
+			Economy.prepare_station(st, int(s2["id"]))
+			var qm := Economy.max_quality(st, int(s2["id"]))
 			for id in st["shop"]:
 				var mm: Dictionary = M[id]
-				if int(mm["size"]) > GameData.size_cap(String(mm["slot"]), tier) or (mm["quality"] == "B" and tier < 2) or (mm["quality"] == "A" and tier < 3 and st["type"] != "military") or mm.get("pirate_only", false):
+				if int(mm["size"]) > GameData.size_cap(String(mm["slot"]), tier) or QL.find(String(mm["quality"])) > qm or mm.get("pirate_only", false):
 					shop_ok = false
 					why = "%s at %s" % [id, st["name"]]
 	check(shop_ok, "outfitters stock sizes and qualities by station tier %s" % why)
@@ -6988,6 +6993,89 @@ func _test_market42(view: SystemView) -> void:
 	check(dep_ok and buy_mine, "42b: the Munitions Depot – a military system stocks every mine, cheaper than elsewhere; buy there (not on the market), sell back")
 	act.docked_at = keep_dock
 	act.system_id = keep_sys
+
+
+## Package 42c: prosperity changes (trade, contracts, kills, raids; drifts back) and shapes the systems – traffic,
+## pirates and patrols, contract pay, outfitter stock, convoy cargo.
+func _test_prosperity42(view: SystemView) -> void:
+	var U = Universe
+	var keep: Dictionary = GameState.prosperity.duplicate()
+	var sid: int = GameState.current_system
+	var base := Economy.base_prosperity(sid)
+	# changes and news
+	Economy.set_prosperity(sid, 50.0)
+	Economy.change(sid, 25.0, "test")
+	var up: bool = Economy.level(sid) == 3
+	var news_ok: bool = not GameState.news.items.is_empty() and String(GameState.news.items[0]["text"]).contains("on the rise")
+	# drift: ten hours later it is back at its base
+	Economy.drift(36000.0)
+	var back: bool = absf(Economy.prosperity(sid) - base) < 1.0
+	# a raid costs, selling what the system wants helps
+	Economy.set_prosperity(sid, 50.0)
+	var st0: Dictionary = U.get_layout(sid)["stations"][0]
+	GameState.stations.knock_out(st0, sid)
+	GameState.stations.down.erase(st0["id"])
+	var raided: bool = Economy.prosperity(sid) < 41.0
+	var want := ""
+	for cid in GameData.commodities:
+		if Market.on_market(cid) and Market.role(st0, cid) == "consume":
+			want = cid
+			break
+	var p1 := Economy.prosperity(sid)
+	if want != "":
+		Economy.on_trade(st0, want, 12000.0, true)
+	var traded: bool = want == "" or Economy.prosperity(sid) > p1 + 1.5
+	check(up and news_ok and back and raided and traded,
+		"42c: prosperity rises with trade and falls with raids (news when the level changes); left alone it drifts back to its base")
+	# effects: traffic, pirates, patrols
+	Economy.set_prosperity(sid, 95.0)
+	var rich: Dictionary = U.system_profile(sid)
+	Economy.set_prosperity(sid, 5.0)
+	var poor: Dictionary = U.system_profile(sid)
+	var traffic_ok: bool = int(rich["shuttles"]) >= int(poor["shuttles"]) and int(poor["pirates"]) > int(rich["pirates"]) and int(rich["patrol_groups"]) >= int(poor["patrol_groups"])
+	# contracts: more and better paid when rich
+	var keep_offers: Dictionary = GameState.offers.duplicate(true)
+	GameState.offers.erase(String(st0["id"]))
+	var poor_offers: Array = GameState.offers_for(sid, st0)
+	GameState.offers.erase(String(st0["id"]))
+	Economy.set_prosperity(sid, 95.0)
+	var rich_offers: Array = GameState.offers_for(sid, st0)
+	GameState.offers = keep_offers
+	check(traffic_ok and rich_offers.size() > poor_offers.size(),
+		"42c: rich systems are busier and better patrolled, poor ones draw pirates (%d vs %d); rich ones offer more work (%d vs %d contracts)" % [int(poor["pirates"]), int(rich["pirates"]), rich_offers.size(), poor_offers.size()])
+	# outfitters: a military system carries bigger and better weapons
+	var shop_ok := false
+	for sy in U.systems:
+		if Economy.of(int(sy["id"]))["main"] != "military":
+			continue
+		for stm in U.get_layout(int(sy["id"]))["stations"]:
+			var copy := {"id": String(stm["id"]) + "_t", "type": stm["type"], "tier": stm["tier"], "shop": (stm.get("shop", []) as Array).duplicate()}
+			var n_a := 0
+			for mid in copy["shop"]:
+				n_a += 1 if String(mid).ends_with(":A") else 0
+			Economy.prepare_station(copy, int(sy["id"]))
+			var n_a2 := 0
+			for mid2 in copy["shop"]:
+				n_a2 += 1 if String(mid2).ends_with(":A") else 0
+			if n_a2 > n_a:
+				shop_ok = true
+				break
+		if shop_ok:
+			break
+	# convoys carry what their source makes, to a market that wants it
+	var cv_ok := true
+	var made := 0
+	for i in 6:
+		var c: Dictionary = GameState.convoys._make()
+		if c.is_empty():
+			continue
+		made += 1
+		var sst: Dictionary = U.find_station(int(c["src"]), String(c["src_st"]))
+		var dstd: Dictionary = U.find_station(int(c["dst"]), String(c["dst_st"]))
+		cv_ok = cv_ok and Market.role(sst, String(c["cargo"])) == "produce" and Market.role(dstd, String(c["cargo"])) == "consume"
+		GameState.convoys.convoys.erase(c)
+	GameState.prosperity = keep
+	check(shop_ok and cv_ok and made > 0, "42c: military outfitters carry more A-quality and every size of weapon the tier allows; convoys carry what their source makes to a market that wants it (%d)" % made)
 
 
 func _test_mining41(view: SystemView) -> void:

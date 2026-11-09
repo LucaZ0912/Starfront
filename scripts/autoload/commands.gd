@@ -751,6 +751,7 @@ func _c_market_buy(c: Dictionary) -> String:
 	f.add_cargo(cid, amount)
 	Market.bought(st, cid, amount)
 	Market.sync(st)
+	Economy.on_trade(st, cid, float(price), false)             # package 42c
 	GameState.skill_xp("trading", float(price) / 500.0)      # package 29
 	GameState.note_stat("markets", String(st["id"]))                    # package 30
 	GameState.count_stat("turnover", float(price))
@@ -777,6 +778,7 @@ func _c_market_sell(c: Dictionary) -> String:
 	f.remove_cargo(cid, amount)
 	# package 42b: into the station's stock – the more you sell, the less it pays
 	var earn := int(round(GameState.rep.sell_price(Market.quote_sell(st, cid, amount), docked_faction()) * (1.0 + GameState.skill_bonus("trading") * 0.5)))
+	Economy.on_trade(st, cid, float(earn), true)               # package 42c
 	Market.sold(st, cid, amount)
 	Market.sync(st)
 	if GameState.has_perk("haggler") and String(GameData.commodities.get(cid, {}).get("category", "")) in ["ore", "refined"]:
@@ -1848,7 +1850,7 @@ func _c_debug_special(c: Dictionary) -> String:
 ## {"type":"debug_prosperity", "delta": 20} – package 42: the prosperity of the current system up or down
 func _c_debug_prosperity(c: Dictionary) -> String:
 	var sid := GameState.current_system
-	Economy.set_prosperity(sid, Economy.prosperity(sid) + float(c.get("delta", 20)))
+	Economy.change(sid, float(c.get("delta", 20)), "debug")
 	GameState.log_msg("[Debug] %s: prosperity %d – %s." % [Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
 	return ""
 
@@ -1863,6 +1865,14 @@ func _c_debug_market_age(c: Dictionary) -> String:
 	if not st.is_empty():
 		Market.sync(st)
 	GameState.log_msg("[Debug] Markets: %.0f h passed for every traded stock." % float(c.get("hours", 1)))
+	return ""
+
+
+## {"type":"debug_prosperity_drift", "hours": 1} – package 42c: prosperity drifts back as if `hours` had passed
+func _c_debug_prosperity_drift(c: Dictionary) -> String:
+	Economy.drift(float(c.get("hours", 1)) * 3600.0)
+	var sid := GameState.current_system
+	GameState.log_msg("[Debug] Prosperity drifted %.0f h – %s: %d (%s)." % [float(c.get("hours", 1)), Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
 	return ""
 
 

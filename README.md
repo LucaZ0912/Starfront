@@ -114,6 +114,18 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## Prosperity at work (phase 0.5 package 42c)
+
+- `Economy.change(sid, d, why)` moves prosperity (news on a new level); `Economy.drift(dt)` pulls it back to the base
+  (`DRIFT` 2 h), called by GameState every 30 s. Sources: `on_trade` (wanted goods sold, made goods bought),
+  contracts (`CONTRACT_GAIN`), kills (`KILL_GAIN`), raids (`RAID_LOSS`, in `StationStatus.knock_out`).
+- `Universe.system_profile` = `system_profile_raw` + prosperity: traffic ×0.7…1.3, pirates +2…−2, an extra patrol
+  from Wealthy. The starting prosperity uses the raw profile.
+- Contract offers per station ±1 and pay ×0.85…1.15 by level (`GameState.offers_for`).
+- Outfitters: `Economy.max_quality(station, sid)` and `Economy.prepare_station` (once, from `Universe.find_station`).
+- Convoys pick goods by market role (`ConvoySim._make`); Warmup prepares all layouts and market roles behind the
+  loading screen (`queue_layouts`).
+
 ## Markets with stocks (phase 0.5 package 42b)
 
 - `scripts/core/market.gd` (`Market`): role of a good at a station (`produce` / `consume` / `neutral`) from the

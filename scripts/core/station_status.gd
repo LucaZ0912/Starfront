@@ -40,6 +40,7 @@ static func relief_needs(st: Dictionary) -> Dictionary:
 
 
 func knock_out(st: Dictionary, sid: int) -> void:
+	Economy.change(sid, -Economy.RAID_LOSS, "a station was raided")      # package 42c
 	down[st["id"]] = {"system": sid, "name": st["name"], "type": st["type"], "tier": int(st.get("tier", 1)),
 		"faction": String(st.get("faction", "")), "until": GameState.play_time + DOWN_TIME,
 		"need": relief_needs(st), "got": {}}

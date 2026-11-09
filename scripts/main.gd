@@ -75,6 +75,7 @@ func _ready() -> void:
 	warmup = load("res://scripts/core/warmup.gd").new()
 	add_child(warmup)
 	warmup.queue_system(GameState.current_system)
+	warmup.queue_layouts()                          # package 42c: all systems behind the loading screen
 	_show_loading()
 	load_system(GameState.current_system)
 	if is_new:

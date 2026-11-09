@@ -114,6 +114,7 @@ var permits := {}
 var prosperity := {}
 var market_stock := {}          # package 42b: station id -> {good: [stock, play time]} – only goods that were traded            # package 42: system id -> prosperity 0–100 (only systems whose value has changed / been read)
 var _permit_t := 0.0
+var _prosper_t := 0.0             # package 42c: prosperity drifts back to its base
 ## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
 var research_data := 0
 const DATA_PRICE := 5000           # per unit of data …
@@ -1478,8 +1479,14 @@ func offers_for(system_id: int, station: Dictionary) -> Array:
 	if not offers.has(sid):
 		offers[sid] = []
 	var list: Array = offers[sid]
-	while list.size() < Missions.OFFERS_PER_STATION:
-		list.append(Missions.generate(system_id, station, _rng))
+	# package 42c: rich systems have more and better-paid work, impoverished ones less
+	var lv := Economy.level(system_id)
+	var want := Missions.OFFERS_PER_STATION + (1 if lv >= 3 else 0) - (1 if lv == 0 else 0)
+	while list.size() < want:
+		var m := Missions.generate(system_id, station, _rng)
+		if m.has("reward"):
+			m["reward"] = int(round(float(m["reward"]) * (0.85 + 0.075 * lv)))
+		list.append(m)
 	return list
 
 
@@ -1628,6 +1635,7 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 		m["rep"] = float(m.get("rep", rep.GAIN["contract"])) * 1.25
 	add_credits(pay)
 	crew_cut(pay)                                 # package 31
+	Economy.change(current_system, Economy.CONTRACT_GAIN)      # package 42c: work done for the system
 	stats["missions_done"] = int(stats["missions_done"]) + 1
 	skill_xp("negotiation", 12.0)
 	log_msg("Contract complete: %s  (+%s)" % [m["title"], GameData.fmt_credits(pay)], COL_GOOD)
@@ -1779,6 +1787,7 @@ func notify(event: String, system_id: int) -> void:
 		"kill":
 			stats["kills"] = int(stats["kills"]) + 1
 			crew_learn("kills", 1.0)                 # package 31
+			Economy.change(system_id, Economy.KILL_GAIN)      # package 42c: safer lanes
 		"analyse":
 			stats["analysed"] = int(stats["analysed"]) + 1
 			crew_learn("analysed", 1.0)
@@ -2039,6 +2048,10 @@ func _process(delta: float) -> void:
 	if _permit_t <= 0.0:
 		_permit_t = 1.0
 		check_permits()
+	_prosper_t -= delta
+	if _prosper_t <= 0.0:
+		_prosper_t = 30.0
+		Economy.drift(30.0)                      # package 42c
 	_update_faction_jobs(delta)
 	_update_passengers()
 	var f := active()

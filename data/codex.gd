@@ -130,7 +130,7 @@ With an entry permit you vote too. A party donation sways the vote a little. A b
 
 The nine economies: Agriculture, Mining, Industry, Refining, Chemistry, High-Tech, Research, Military and Tourism. The galaxy map highlights them – the coloured mark above a system is its main economy.
 
-Prosperity runs in five levels – Impoverished, Poor, Average, Wealthy, Rich – shown as pips beside each system. It starts from a system's people, stations and security, and it changes slowly: trade and needs met raise it, pirates and shortages wear it down.",
+Prosperity runs in five levels – Impoverished, Poor, Average, Wealthy, Rich – shown as pips beside each system. It starts from a system's people, stations and security. Selling a system what it wants, buying what it makes, finishing its contracts and clearing its pirates raise it; a raid that knocks out a station costs it dearly; left alone it drifts back to where it started.\n\nProsperity shows: rich systems are busier, better patrolled and pay more for contracts, their markets keep bigger stocks and their outfitters better qualities; poor ones draw pirates and offer less. Military systems sell bigger and better weapons and armour, high-tech systems better modules.",
 		"see": ["cluster_independent", "basics_market"]},
 	"basics_market": {"cat": "basics", "title": "Markets and stocks", "unlock": "dock", "image": {"icon": "o_cargo"},
 		"text": "Every market keeps stocks. Goods made here – green – are cheap and plentiful; goods wanted here – gold – are dear and scarce, and the station pays well for them. Neutral goods it buys at a fair price and sells only what traders have left.

@@ -35,17 +35,47 @@ func _add(cls: String, shape: String, seed_v: int, px: int, ore: String) -> void
 	_queue.append([cls, shape, seed_v, px, ore])
 
 
+## Package 42c: every system's layout and its markets' roles – the galaxy map (economies) and the convoys (goods
+## from market to market) need them all; made behind the loading screen instead of in one hitch later.
+var _layouts: Array = []
+
+
+func queue_layouts() -> void:
+	for s in Universe.systems:
+		var sid := int(s["id"])
+		if not Universe.layouts.has(sid) and not sid in _layouts:
+			_layouts.append(sid)
+	if not _layouts.is_empty() and _t0 == 0:
+		_t0 = Time.get_ticks_msec()
+
+
+func _warm_layout(sid: int) -> void:
+	var L := Universe.get_layout(sid)
+	Economy.of(sid)
+	for st in L["stations"]:
+		for cid in GameData.commodities:
+			if Market.on_market(cid):
+				Market.role(st, cid)
+
+
 func pending() -> int:
-	return _queue.size()
+	return _queue.size() + _layouts.size()
 
 
 func done() -> bool:
-	return _queue.is_empty() and _shader_done
+	return _queue.is_empty() and _layouts.is_empty() and _shader_done
 
 
 func _process(_d: float) -> void:
 	if not _shader_done:
 		_warm_shader()
+	if not _layouts.is_empty():
+		var t_l := Time.get_ticks_usec()
+		while not _layouts.is_empty():
+			_warm_layout(int(_layouts.pop_front()))          # at least one per frame
+			if float(Time.get_ticks_usec() - t_l) / 1000.0 >= budget_ms:
+				break
+		return
 	if _queue.is_empty():
 		if _t0 != 0:
 			last_ms = float(Time.get_ticks_msec() - _t0)

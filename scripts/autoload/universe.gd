@@ -984,6 +984,22 @@ const NPC_CAP := 90                  # package 35: busier systems
 ## What lives in a system: population (from the planets), stations, and from that the size of
 ## its traffic – shuttles, miners, patrols, convoy weight and pirate pressure.
 func system_profile(sid: int) -> Dictionary:
+	# package 42c: prosperity shapes the traffic – rich systems are busier and better patrolled, poor ones draw pirates
+	var p := system_profile_raw(sid)
+	var lv := Economy.level(sid)
+	var k := 0.7 + 0.15 * lv
+	p["shuttles"] = int(round(float(p["shuttles"]) * k))
+	p["holding"] = int(round(float(p["holding"]) * k))
+	p["convoy_weight"] = float(p["convoy_weight"]) * k
+	p["pirates"] = maxi(0, int(p["pirates"]) + 2 - lv)
+	if lv >= 3 and int(p["patrol_groups"]) > 0:
+		p["patrol_groups"] = int(p["patrol_groups"]) + 1
+	p["prosperity"] = lv
+	return p
+
+
+## The profile from the system alone (before prosperity – package 42c; the starting prosperity is worked out from it).
+func system_profile_raw(sid: int) -> Dictionary:
 	var L := get_layout(sid)
 	var sys: Dictionary = systems[sid]
 	var pop := 0.0
@@ -1352,6 +1368,7 @@ func find_station(system_id: int, station_id: String) -> Dictionary:
 	var L := get_layout(system_id)
 	for st in L["stations"]:
 		if st["id"] == station_id:
+			Economy.prepare_station(st, system_id)          # package 42c: the outfitter's stock follows the economy
 			return st
 	for ph in L.get("havens", []):
 		if ph["id"] == station_id:

@@ -112,7 +112,7 @@ func _make() -> Dictionary:
 	for s in Universe.systems:
 		var plan: Array = s.get("stations_plan", [])
 		for i in plan.size():
-			var w := float(plan[i][1]) * (3.0 if plan[i][0] == "trade" else 1.0)
+			var w := float(plan[i][1]) * (3.0 if plan[i][0] == "trade" else 1.0) * (0.7 + 0.15 * Economy.level(int(s["id"])))     # 42c
 			pool.append([int(s["id"]), i, String(plan[i][0]), int(plan[i][1]), w])
 			total += w
 	if pool.is_empty():
@@ -125,15 +125,23 @@ func _make() -> Dictionary:
 			if r <= 0.0:
 				src = e
 				break
-		var goods: Array = (CommodityData.STATION_TYPES[src[2]]["produces"] as Array).duplicate()
+		# package 42c: what the source's market makes, bound for a market that wants it
+		var src_st := Universe.find_station(int(src[0]), "st_%d_%d" % [src[0], src[1]])
+		var goods: Array = []
+		for cid in GameData.commodities:
+			if Market.on_market(cid) and not src_st.is_empty() and Market.role(src_st, cid) == "produce":
+				goods.append(cid)
+		if goods.is_empty():
+			goods = (CommodityData.STATION_TYPES[src[2]]["produces"] as Array).duplicate()
 		goods.shuffle()
-		for good in goods:
+		for good in goods.slice(0, 8):
 			var best: Array = []
 			var best_score := -INF
 			for e2 in pool:
 				if e2[0] == src[0]:
 					continue
-				if not good in CommodityData.STATION_TYPES[e2[2]]["consumes"]:
+				var dst_st := Universe.find_station(int(e2[0]), "st_%d_%d" % [e2[0], e2[1]])
+				if dst_st.is_empty() or Market.role(dst_st, String(good)) != "consume":
 					continue
 				var path := Universe.find_path(src[0], e2[0], 2)
 				if path.is_empty() or path.size() > MAX_JUMPS:

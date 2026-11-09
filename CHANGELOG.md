@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.42.4 – 2026-11-09
+
+**Package 42c: prosperity changes and shapes the systems.**
+- Prosperity moves: selling a system what it wants and buying what it makes raise it, so do finished contracts and
+  pirates shot down there; a raid that knocks out a station costs 10 points. Left alone it drifts back to its base
+  (most of the way in about two hours). The news report when a system rises or falls a level.
+- Rich systems are busier (more shuttles and haulers) and get an extra patrol; poor ones draw more pirates.
+- Contracts: rich systems offer one more and pay up to 15 % more, impoverished ones one fewer and up to 15 % less.
+- Outfitters: high-tech, wealthy and rich systems carry one quality step better than the station's tier allows;
+  military systems carry A quality and every size of weapon and armour up to the tier; impoverished systems lose A.
+- Convoys carry what the source market makes, bound for a market that wants it; richer systems send more of them.
+- The loading screen prepares every system's layout and markets (the galaxy map and the convoys need them) – no hitch
+  later.
+- Debug: prosperity drift 1 h. Codex "Economies and prosperity" updated.
+
 ## alpha 0.6.42.3 – 2026-11-09
 
 - Market: the goods are grouped in **sixteen categories** – ores, ices, gases, metals, minerals, nuclear materials,
