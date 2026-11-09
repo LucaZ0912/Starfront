@@ -149,7 +149,7 @@ func open_deck() -> void:
 	ground = GroundView.new()
 	ground.name = "Ground"
 	add_child(ground)
-	ground.setup_station(st, avail)
+	ground.setup_station(st, avail, GameState.bar_offers(st) if avail.has("bar") else [], GameState.current_system)
 	ground.used.connect(_on_deck_use)
 	GameState.codex.event("on_foot")
 	_update_input()
@@ -169,7 +169,7 @@ func _on_deck_use(z: Dictionary) -> void:
 	match String(z.get("kind", "")):
 		"exit":
 			close_deck(true)
-		"service":
+		"service", "crew":
 			var f := GameState.active()
 			if f == null or f.docked_at == "" or not view.stations.has(f.docked_at):
 				close_deck(false)

@@ -128,15 +128,19 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 
 ## On foot (phase 0.5 Teil 7, package 49)
 
-- `scripts/ground/ground_map.gd` – `GroundMap`: tiles (`TILE` 16 art px, drawn ×`SCALE` 3), `T` (VOID, FLOOR, WALL,
-  DOOR, BLOCK, WINDOW), `free_at`, `zones` (service / exit / label, with `sign`), `props` (counter, bar_counter,
-  stool, table, shelf, crates, rack, terminal, planter, bench, pillar, holo, machine, stripes, ship, mirror,
-  fountain, rug, wallscreen), `people`, `wander`, `spawn`, `dock_at`; `texture()` renders it once.
-- `deck_gen.gd` – `DeckGen.build(station, available)`: airlock + promenade + rooms (`ROOM_W`) on both sides, dock
-  office terminals (`DOCK_TERMINALS`), kiosks (`KIOSKS`), furniture per service (`_furnish`), palette per station type
-  (`PALETTES`).
-- `walker.gd` – `Walker`: `step(dir, delta, mult)` sliding along walls, NPC wandering, sprite from `PilotArt`.
-- `ground_view.gd` – `GroundView` (CanvasLayer 12): the docked ship, people, signs, prompt; signal `used(zone)`.
+Slanted, cosy top-down view since 0.7.49.2.
+- `scripts/ground/ground_map.gd` – `GroundMap`: tiles (`TILE` 16 art px, drawn ×`SCALE` 3), `T` (VOID, FLOOR, CAP
+  = wall top, FACE = a wall's front face, GLASS = window front, DOOR, BLOCK), `floor_kind`, `free_at` (feet),
+  `zones` (service / exit / crew / label, with `sign`, `vertical`), `objects` (standing furniture), `decals`,
+  `face_deco`, `people`, `wander`, `spawn`, `pal`, `hull_from_y`; `texture()` renders floors and walls once.
+- `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
+- `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
+- `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,
+  dock office terminals) and the bar above behind a railing (window front, counter, tables, crew from the bar
+  offers), palette per station type (`PALETTES`).
+- `walker.gd` – `Walker`: `step(dir, delta, mult)` sliding along walls, facing, NPC wandering, `marker` ("!").
+- `ground_view.gd` – `GroundView` (CanvasLayer 12): space beyond the glass (background shader, the system's star and
+  the station's planet), y-sorted furniture and people, signs, prompt; signal `used(zone)` (service / crew / exit).
 - `main.gd`: `open_deck()` (from `StationUI.walk_requested`), `close_deck()`, `_on_deck_use`, `_check_deck` (closes the
   deck when the ship is no longer docked there). Keys: `walk_*`, `interact` in the "On foot" group – `Keybinds._context`.
 

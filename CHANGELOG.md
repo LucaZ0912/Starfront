@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.2 – 2026-11-09
+
+**Package 49 reworked: the deck in a slanted, cosy view, laid out after Luz's sketch.**
+- **Slanted view:** walls show their front face, furniture stands up (tables, chairs, sofas, counters, plants, the
+  jukebox …) and people walk behind and in front of it, sorted by depth. People are new small figures (big head,
+  four directions, walking steps) built from the same look as the portraits – your own pilot looks like the pilot
+  you created.
+- **The new layout:** you step out of the **lift lobby** on the left (two lift doors, News Archive and Bulletin Board,
+  a bench) – the lift takes you back to your ship. It opens onto the **corridor**; below it are the **shops** (Dock
+  Office with the ship-service terminals, Market, Outfitter, Shipyard, Bond Office, Image Studio, Refinery,
+  Manufacturing … whatever the station offers), each with its door, sign, shelves, counter and keeper. Above the
+  corridor, behind a railing, lies **the big bar**: wooden floor, round tables with guests, a sofa, a rug, a jukebox,
+  the bar counter with a tall neon "BAR" sign, the bartender and stools.
+- **The window front:** the whole north wall of the bar is glass – outside is the system you are in: its nebula, its
+  star and the planet the station circles.
+- **Crew in the bar:** the people on offer stand in the bar with a "!" over their head – walk up to them and press E
+  to talk about hiring them.
+- Each station type keeps its own colours (floors, walls, accent lights).
+
 ## alpha 0.7.49.1 – 2026-11-09
 
 **Teil 7, package 49: on foot – the ground view and walkable station decks.**
