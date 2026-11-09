@@ -131,7 +131,14 @@ With an entry permit you vote too. A party donation sways the vote a little. A b
 The nine economies: Agriculture, Mining, Industry, Refining, Chemistry, High-Tech, Research, Military and Tourism. The galaxy map highlights them – the coloured mark above a system is its main economy.
 
 Prosperity runs in five levels – Impoverished, Poor, Average, Wealthy, Rich – shown as pips beside each system. It starts from a system's people, stations and security, and it changes slowly: trade and needs met raise it, pirates and shortages wear it down.",
-		"see": ["cluster_independent"]},
+		"see": ["cluster_independent", "basics_market"]},
+	"basics_market": {"cat": "basics", "title": "Markets and stocks", "unlock": "dock", "image": {"icon": "o_cargo"},
+		"text": "Every market keeps stocks. Goods made here – green – are cheap and plentiful; goods wanted here – gold – are dear and scarce, and the station pays well for them. Neutral goods it buys at a fair price and sells only what traders have left.
+
+What a market makes and wants comes from its station and from the economy of its system: an agricultural system sells grain and coffee and wants machinery and fertiliser; a mining system sells its ores and wants drill bits and explosives. Wealthy and rich systems want luxuries – wine, jewellery, gold, holo displays; some goods are needed everywhere.
+
+Trade moves the stock: sell a hold full of anything and its price drops with every unit; buy a market empty and the price climbs. Over time the stocks drift back – the made goods are made again, the wanted ones used up.",
+		"see": ["cluster_economy"]},
 	# package 39d: the manufacturers' systems and the independent systems
 	"cluster_independent": {"cat": "cluster", "title": "Independent systems", "unlock": "jump", "image": {"icon": "hull"},
 		"text": "Not every system belongs to a power. The independent ones – yellow on the galaxy map – govern themselves; no power patrols them, and no power's law is kept there but their own.\n\nThe private manufacturers have made their homes in such systems: Kanayama Heavy Industries builds its mining ships at Kanayama Works in Erzhalde, Maison Aurelle finishes its liners at the Atelier Aurelle in Perlmutt, and Hadrian Dynamics forges its warships and weapon platforms at the Hadrian Foundry in Schwarzwacht. Only Earthworks stayed with the Assembly: its Second Yard in Altwerft, built in 12696 HE, was the first shipyard in the Cluster.\n\nEvery manufacturer's yard sells all of its ships.",

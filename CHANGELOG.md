@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.42.2 – 2026-11-09
+
+**Package 42b: markets with real stocks.** A new game is needed.
+- 56 new goods of the nine economies – grain, coffee and fine wine; drill bits, gemstones and industrial diamonds;
+  machinery, robots and prefab habitats; steel, refined fuel and glass; plastics, explosives and fertiliser; computers,
+  nanites, implants and AI cores; star charts and prototypes; ammunition and body armour; souvenirs, jewellery,
+  perfume and artworks. Some are trade goods only. The older goods have their place in the economies too.
+- Every good has a role at each station: **made here** (green – its station, or the system's main or secondary
+  economy; ores only where the system's fields hold them, gases only where a giant gives them), **wanted here**
+  (gold – its station, the economies that need it, luxuries in wealthy and rich systems, basic needs everywhere) or
+  neutral.
+- **Real stocks:** buying takes from the stock and raises the price, selling fills it and lowers the price (whole
+  sales are priced along the way). Over game time the stocks drift back: made goods are made again, wanted goods
+  used up, neutral goods carried off. Richer systems keep bigger stocks and pay a little more. Traded stocks are saved.
+- Market screen: the economy and prosperity of the system, what is made and wanted here, a stock column, filters for
+  local trade, the hold, raw materials, components, luxury goods, all and each of the nine economies. The galaxy map
+  lists what each station's market sells and buys.
+- Codex entry "Markets and stocks"; debug: markets +1 h, +20 luxury goods.
+
 ## alpha 0.6.42.1 – 2026-11-09
 
 **Package 42a: Wirtschaft 2.0 – the economic model.** A new game is needed.

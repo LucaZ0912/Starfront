@@ -111,7 +111,8 @@ const CuriaScript = preload("res://scripts/core/curia.gd")
 var curia = CuriaScript.new()
 ## Package 39: entry permits to the capitals (faction -> true). Given from Friendly on, taken away only at Arch-enemy.
 var permits := {}
-var prosperity := {}            # package 42: system id -> prosperity 0–100 (only systems whose value has changed / been read)
+var prosperity := {}
+var market_stock := {}          # package 42b: station id -> {good: [stock, play time]} – only goods that were traded            # package 42: system id -> prosperity 0–100 (only systems whose value has changed / been read)
 var _permit_t := 0.0
 ## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
 var research_data := 0
@@ -171,6 +172,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	rescued.clear()
 	_pod_seq = 1
 	prosperity.clear()                      # package 42
+	market_stock.clear()
 	wingmen.clear()
 	collection = {"perks": [], "notorious": [], "stars": [], "planets": []}
 	play_time = 0.0
@@ -442,9 +444,11 @@ func best_nearby_sell(cid: String) -> Array:
 	var best: Array = []
 	for nb in Universe.systems[current_system]["links"]:
 		for st in Universe.get_layout(int(nb))["stations"]:
-			var mk: Dictionary = st.get("market", {})
-			if mk.has(cid) and (best.is_empty() or float(mk[cid]["sell"]) > float(best[0])):
-				best = [float(mk[cid]["sell"]), String(st["name"]), String(Universe.systems[int(nb)]["name"])]
+			if not st.has("market"):
+				continue
+			var sp := Market.sell_price(st, cid)                 # package 42b: from the stock
+			if best.is_empty() or sp > float(best[0]):
+				best = [sp, String(st["name"]), String(Universe.systems[int(nb)]["name"])]
 	return best
 
 
@@ -493,7 +497,7 @@ func to_dict() -> Dictionary:
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data,
-		"prosperity": _saved_prosperity(),
+		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
@@ -553,6 +557,7 @@ func from_dict(d: Dictionary) -> void:
 		curia.reset()
 	permits = d.get("permits", {}).duplicate()
 	load_prosperity(d.get("prosperity", {}))                   # package 42
+	market_stock = (d.get("market_stock", {}) as Dictionary).duplicate(true)
 	research_data = int(d.get("research_data", 0))
 	if d.has("news"):
 		news.from_dict(d["news"])

@@ -114,6 +114,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## Markets with stocks (phase 0.5 package 42b)
+
+- `scripts/core/market.gd` (`Market`): role of a good at a station (`produce` / `consume` / `neutral`) from the
+  station type and the system's economies (`econ` / `wants` / `lux` / `basic` in `data/commodities.gd`; older goods
+  via `OLD_GOODS_ECON` / `COMPONENT_ECON`; ores and gases by what the system has).
+- Stock target from price, tier and prosperity; equilibrium: produce = target, consume = ¼ target, neutral = 0. A stock
+  relaxes back with `RELAX` (30 min game time). Price = good's price × role level (`M0`) × stock factor (±50 %) ×
+  prosperity; the station pays `SPREAD` of what it asks. Quotes price a whole trade along the stock.
+- `GameState.market_stock` keeps traded stocks (saved); `Market.sync(station)` rewrites the old `station["market"]`
+  table for code that reads it.
+
 ## Mining expansion (phase 0.5 package 41)
 
 - **New ores:** copper, tungsten, gold, uraninite, spodumene, graphite, quartz, monazite, nitrogen ice, dry ice in the

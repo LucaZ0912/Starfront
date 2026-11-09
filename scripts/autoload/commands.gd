@@ -82,7 +82,11 @@ func docked_station() -> Dictionary:
 	var f := _fit()
 	if f == null or f.docked_at == "":
 		return {}
-	return Universe.find_station(f.system_id, f.docked_at)
+	var st := Universe.find_station(f.system_id, f.docked_at)
+	if not st.is_empty() and st.has("market") and not st.get("_mk_synced", false):
+		st["_mk_synced"] = true
+		Market.sync(st)                         # package 42b: the price table from the stocks
+	return st
 
 
 ## Faction of the docked station ("" = free port) – prices follow your standing with it.
@@ -687,19 +691,25 @@ func _c_market_buy(c: Dictionary) -> String:
 	var st := docked_station()
 	var f := _fit()
 	var cid: String = c["item"]
-	if not st["market"].has(cid) or int(st["market"][cid]["buy"]) < 0:
+	if not GameData.is_tradeable(cid) or Market.buy_price(st, cid) < 0:
 		return "Not on offer here."
-	var price := maxi(int(round(GameState.rep.buy_price(int(st["market"][cid]["buy"]), docked_faction()) * (1.0 - GameState.skill_bonus("trading") * 0.5))), 1)
+	# package 42b: from the stock – it runs out, and the price rises as you buy
+	var fac := GameState.rep.price_factor(docked_faction(), "buy") * (1.0 - GameState.skill_bonus("trading") * 0.5)
 	var max_space := int(floor(f.free_for(cid) / GameData.item_volume(cid)))
-	var max_money := int(floor(float(GameState.credits) / float(price)))
-	var amount := mini(int(c.get("amount", 1)), mini(max_space, max_money))
+	var max_stock := int(floor(Market.stock(st, cid)))
+	var amount := mini(int(c.get("amount", 1)), mini(max_space, max_stock))
+	while amount > 0 and maxi(int(round(Market.quote_buy(st, cid, amount) * fac)), 1) > GameState.credits:
+		amount -= maxi(1, amount / 8)
 	if amount <= 0:
-		return "Purchase not possible (cargo space or credits)."
-	GameState.spend(amount * price)
+		return "Purchase not possible (cargo space, credits or stock)."
+	var price := maxi(int(round(Market.quote_buy(st, cid, amount) * fac)), 1)
+	GameState.spend(price)
 	f.add_cargo(cid, amount)
-	GameState.skill_xp("trading", float(amount * price) / 500.0)      # package 29
+	Market.bought(st, cid, amount)
+	Market.sync(st)
+	GameState.skill_xp("trading", float(price) / 500.0)      # package 29
 	GameState.note_stat("markets", String(st["id"]))                    # package 30
-	GameState.count_stat("turnover", float(amount * price))
+	GameState.count_stat("turnover", float(price))
 	return ""
 
 
@@ -711,7 +721,7 @@ func _c_market_sell(c: Dictionary) -> String:
 	var st := docked_station()
 	var f := _fit()
 	var cid: String = c["item"]
-	if not st["market"].has(cid) or not GameData.is_tradeable(cid):
+	if not GameData.is_tradeable(cid):
 		return "This station does not buy that."
 	var have := float(f.cargo.get(cid, 0.0))
 	var n := float(c.get("amount", -1.0))
@@ -719,7 +729,10 @@ func _c_market_sell(c: Dictionary) -> String:
 	if amount <= 0.0:
 		return "Nothing to sell."
 	f.remove_cargo(cid, amount)
-	var earn := int(round(amount * GameState.rep.sell_price(float(st["market"][cid]["sell"]), docked_faction()) * (1.0 + GameState.skill_bonus("trading") * 0.5)))
+	# package 42b: into the station's stock – the more you sell, the less it pays
+	var earn := int(round(GameState.rep.sell_price(Market.quote_sell(st, cid, amount), docked_faction()) * (1.0 + GameState.skill_bonus("trading") * 0.5)))
+	Market.sold(st, cid, amount)
+	Market.sync(st)
 	if GameState.has_perk("haggler") and String(GameData.commodities.get(cid, {}).get("category", "")) in ["ore", "refined"]:
 		earn = int(round(earn * 1.05))                                  # package 30
 	GameState.skill_xp("trading", float(earn) / 500.0)      # package 29
@@ -1791,6 +1804,19 @@ func _c_debug_prosperity(c: Dictionary) -> String:
 	var sid := GameState.current_system
 	Economy.set_prosperity(sid, Economy.prosperity(sid) + float(c.get("delta", 20)))
 	GameState.log_msg("[Debug] %s: prosperity %d – %s." % [Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
+	return ""
+
+
+## {"type":"debug_market_age", "hours": 1} – package 42b: the stocks of every traded good as if `hours` had passed
+func _c_debug_market_age(c: Dictionary) -> String:
+	var dt := float(c.get("hours", 1)) * 3600.0
+	for stid in GameState.market_stock:
+		for cid in GameState.market_stock[stid]:
+			GameState.market_stock[stid][cid][1] = float(GameState.market_stock[stid][cid][1]) - dt
+	var st := docked_station()
+	if not st.is_empty():
+		Market.sync(st)
+	GameState.log_msg("[Debug] Markets: %.0f h passed for every traded stock." % float(c.get("hours", 1)))
 	return ""
 
 

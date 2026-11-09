@@ -592,12 +592,22 @@ func _update_info() -> void:
 	if L["stations"].is_empty():
 		t += "Stations: none\n"
 	for st in L["stations"]:
-		var tdef: Dictionary = GameData.station_types[st["type"]]
 		var hc := (PixelArt.STATION_ACCENT.get(String(st["type"]), Color.WHITE) as Color).to_html(false)
 		var sf := String(st.get("faction", ""))
 		var owner_txt := "[color=#%s]%s[/color]" % [FactionData.color_of(sf).to_html(false), FactionData.short_of(sf) if sf != "" else "free port"]
 		t += "[color=#%s]■[/color] %s [color=#a0a8b8](tier %d)%s[/color] %s\n" % [hc, st["name"], int(st["tier"]), " – shipyard" if not st["shipyard"].is_empty() else "", owner_txt]
-		t += "[font_size=11][color=#90e0a0]  sells: %s[/color]\n[color=#e0c080]  buys: %s[/color][/font_size]\n" % [_goods(tdef["produces"]), _goods(tdef["consumes"])]
+		if st.has("market"):
+			# package 42b: what the market makes and wants (from the system's economy and the station)
+			var mk_made: Array = []
+			var mk_want: Array = []
+			for cid in GameData.commodities:
+				if GameData.is_tradeable(cid):
+					var rl := Market.role(st, cid)
+					if rl == "produce":
+						mk_made.append(cid)
+					elif rl == "consume":
+						mk_want.append(cid)
+			t += "[font_size=11][color=#90e0a0]  sells: %s[/color]\n[color=#e0c080]  buys: %s[/color][/font_size]\n" % [_goods(mk_made), _goods(mk_want)]
 	for ph in L.get("havens", []):
 		t += "[color=#ff4050]◆ %s – Pirate Haven (tier %d), hostile[/color] [color=#%s]%s[/color]\n" % [ph["name"], int(ph["tier"]), FactionData.color_of(String(ph.get("faction", ""))).to_html(false), FactionData.short_of(String(ph.get("faction", "")))]
 	for c in (GameState.notorious.alive_in(selected_system) if GameState.notorious != null else []):

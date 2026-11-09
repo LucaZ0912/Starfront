@@ -181,6 +181,7 @@ func generate(p_seed: int) -> void:
 	test_mode = false
 	seed_value = p_seed
 	Economy.clear_cache()                 # package 42
+	Market.clear_cache()
 	systems.clear()
 	layouts.clear()
 	orbit_phase.clear()
@@ -1074,6 +1075,7 @@ const TEST_RING := [900000.0, 1150000.0, 1400000.0]
 
 func generate_test() -> void:
 	Economy.clear_cache()                 # package 42
+	Market.clear_cache()
 	seed_value = 777
 	systems.clear()
 	layouts.clear()

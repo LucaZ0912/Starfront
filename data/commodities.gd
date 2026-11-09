@@ -111,6 +111,64 @@ const COMMODITIES := {
 	"alloys": {"name": "Alloys", "price": 70, "volume": 1.0, "category": "goods"},
 	"electronics": {"name": "Electronics", "price": 150, "volume": 0.5, "category": "goods"},
 	"weapon_parts": {"name": "Weapon Parts", "price": 190, "volume": 1.0, "category": "goods"},
+	# --- Package 42: trade goods of the nine economies (econ = made in such systems, wants = wanted there;
+	#     lux = wanted in wealthy and rich systems, basic = needed everywhere; trade_only = never an ingredient)
+	"grain": {"name": "Grain", "price": 12, "volume": 1.0, "category": "goods", "econ": "agri", "wants": ["industry", "military", "chemistry"], "basic": true},
+	"fresh_produce": {"name": "Fresh Produce", "price": 30, "volume": 1.0, "category": "goods", "econ": "agri", "wants": ["mining", "industry", "tourism"]},
+	"protein": {"name": "Cultured Protein", "price": 40, "volume": 1.0, "category": "goods", "econ": "agri", "wants": ["military", "mining", "research"]},
+	"coffee": {"name": "Coffee", "price": 85, "volume": 0.5, "category": "goods", "econ": "agri", "wants": ["research", "hightech"], "lux": true},
+	"spices": {"name": "Spices", "price": 120, "volume": 0.3, "category": "goods", "econ": "agri", "wants": ["tourism"], "lux": true},
+	"fine_wine": {"name": "Fine Wine", "price": 260, "volume": 0.5, "category": "goods", "econ": "agri", "wants": ["tourism"], "lux": true},
+	"seed_stock": {"name": "Seed Stock", "price": 70, "volume": 0.5, "category": "goods", "econ": "agri", "wants": [], "trade_only": true},
+	"regolith": {"name": "Construction Regolith", "price": 8, "volume": 2.0, "category": "goods", "econ": "mining", "wants": ["industry", "refinery"]},
+	"industrial_diamonds": {"name": "Industrial Diamonds", "price": 180, "volume": 0.1, "category": "goods", "econ": "mining", "wants": ["industry", "hightech"]},
+	"gemstones": {"name": "Raw Gemstones", "price": 320, "volume": 0.1, "category": "goods", "econ": "mining", "wants": ["tourism"], "lux": true},
+	"drill_bits": {"name": "Drill Bits", "price": 110, "volume": 1.0, "category": "goods", "econ": "industry", "wants": ["mining"]},
+	"machinery": {"name": "Machinery", "price": 210, "volume": 3.0, "category": "goods", "econ": "industry", "wants": ["mining", "agri", "refinery"]},
+	"hand_tools": {"name": "Hand Tools", "price": 60, "volume": 1.0, "category": "goods", "econ": "industry", "wants": ["mining", "agri"]},
+	"consumer_goods": {"name": "Consumer Goods", "price": 75, "volume": 1.0, "category": "goods", "econ": "industry", "wants": ["agri", "mining", "tourism"], "basic": true},
+	"textiles": {"name": "Textiles", "price": 45, "volume": 1.0, "category": "goods", "econ": "industry", "wants": ["military", "tourism"]},
+	"furniture": {"name": "Furniture", "price": 90, "volume": 3.0, "category": "goods", "econ": "industry", "wants": ["tourism"]},
+	"ground_vehicles": {"name": "Ground Vehicles", "price": 600, "volume": 6.0, "category": "goods", "econ": "industry", "wants": ["mining", "agri", "military"]},
+	"prefab_habitats": {"name": "Prefab Habitat Modules", "price": 900, "volume": 10.0, "category": "goods", "econ": "industry", "wants": ["research", "mining"]},
+	"robots": {"name": "Industrial Robots", "price": 750, "volume": 2.0, "category": "goods", "econ": "industry", "wants": ["mining", "refinery", "agri"]},
+	"steel": {"name": "Steel Beams", "price": 55, "volume": 2.0, "category": "goods", "econ": "refinery", "wants": ["industry", "military"]},
+	"refined_fuel": {"name": "Refined Fuel", "price": 40, "volume": 1.0, "category": "goods", "econ": "refinery", "wants": ["mining", "agri", "military", "tourism"], "basic": true},
+	"lubricants": {"name": "Lubricants", "price": 50, "volume": 1.0, "category": "goods", "econ": "refinery", "wants": ["industry", "mining"]},
+	"glass": {"name": "Glass Panels", "price": 35, "volume": 2.0, "category": "goods", "econ": "refinery", "wants": ["agri", "industry", "tourism"]},
+	"composites": {"name": "Construction Composites", "price": 80, "volume": 2.0, "category": "goods", "econ": "refinery", "wants": ["industry", "military"]},
+	"plastics": {"name": "Plastics", "price": 40, "volume": 1.0, "category": "goods", "econ": "chemistry", "wants": ["industry", "hightech"]},
+	"acids": {"name": "Industrial Acids", "price": 35, "volume": 1.0, "category": "goods", "econ": "chemistry", "wants": ["refinery", "mining"]},
+	"solvents": {"name": "Solvents", "price": 45, "volume": 1.0, "category": "goods", "econ": "chemistry", "wants": ["hightech", "industry"]},
+	"pharma_precursors": {"name": "Pharmaceutical Precursors", "price": 140, "volume": 0.5, "category": "goods", "econ": "chemistry", "wants": ["hightech", "research"]},
+	"dyes": {"name": "Dyes and Pigments", "price": 70, "volume": 0.5, "category": "goods", "econ": "chemistry", "wants": ["industry"]},
+	"explosives": {"name": "Mining Explosives", "price": 60, "volume": 1.0, "category": "goods", "econ": "chemistry", "wants": ["mining", "military"]},
+	"fertiliser": {"name": "Fertiliser", "price": 26, "volume": 1.0, "category": "goods", "econ": "chemistry", "wants": ["agri"]},
+	"consumer_electronics": {"name": "Consumer Electronics", "price": 280, "volume": 0.5, "category": "goods", "econ": "hightech", "wants": ["tourism", "agri", "mining"]},
+	"computers": {"name": "Computers", "price": 420, "volume": 0.5, "category": "goods", "econ": "hightech", "wants": ["research", "industry", "military"]},
+	"medical_equipment": {"name": "Medical Equipment", "price": 650, "volume": 1.0, "category": "goods", "econ": "hightech", "wants": ["military", "mining"], "basic": true},
+	"holo_displays": {"name": "Holo Displays", "price": 380, "volume": 0.5, "category": "goods", "econ": "hightech", "wants": ["tourism"], "lux": true},
+	"nanites": {"name": "Nanite Cultures", "price": 900, "volume": 0.1, "category": "goods", "econ": "hightech", "wants": ["research", "military"]},
+	"implants": {"name": "Cybernetic Implants", "price": 1100, "volume": 0.1, "category": "goods", "econ": "hightech", "wants": ["military"], "lux": true},
+	"ai_cores": {"name": "AI Cores", "price": 1400, "volume": 0.2, "category": "goods", "econ": "hightech", "wants": ["research", "industry"]},
+	"lab_equipment": {"name": "Laboratory Equipment", "price": 480, "volume": 1.0, "category": "goods", "econ": "hightech", "wants": ["research"]},
+	"star_charts": {"name": "Star Charts", "price": 220, "volume": 0.1, "category": "goods", "econ": "research", "wants": [], "trade_only": true},
+	"prototypes": {"name": "Prototype Parts", "price": 800, "volume": 0.5, "category": "goods", "econ": "research", "wants": ["hightech", "military"]},
+	"gene_samples": {"name": "Gene Samples", "price": 260, "volume": 0.1, "category": "goods", "econ": "research", "wants": ["agri", "hightech"]},
+	"exotic_specimens": {"name": "Exotic Specimens", "price": 480, "volume": 0.5, "category": "goods", "econ": "research", "wants": ["tourism"], "lux": true, "trade_only": true},
+	"small_arms": {"name": "Small Arms", "price": 240, "volume": 0.5, "category": "goods", "econ": "military", "wants": [], "trade_only": true},
+	"ammunition": {"name": "Ammunition", "price": 60, "volume": 1.0, "category": "goods", "econ": "military", "wants": ["mining"]},
+	"body_armour": {"name": "Body Armour", "price": 320, "volume": 1.0, "category": "goods", "econ": "military", "wants": ["mining", "industry"]},
+	"field_rations": {"name": "Field Rations", "price": 35, "volume": 1.0, "category": "goods", "econ": "military", "wants": [], "trade_only": true},
+	"combat_drones": {"name": "Combat Drones", "price": 900, "volume": 2.0, "category": "goods", "econ": "military", "wants": [], "trade_only": true},
+	"souvenirs": {"name": "Souvenirs", "price": 30, "volume": 0.5, "category": "goods", "econ": "tourism", "wants": [], "trade_only": true},
+	"holo_films": {"name": "Holo Films", "price": 120, "volume": 0.1, "category": "goods", "econ": "tourism", "wants": ["mining", "military"]},
+	"luxury_goods": {"name": "Luxury Goods", "price": 500, "volume": 0.5, "category": "goods", "econ": "industry", "wants": ["tourism"], "lux": true},
+	"jewellery": {"name": "Jewellery", "price": 900, "volume": 0.1, "category": "goods", "econ": "industry", "wants": ["tourism"], "lux": true},
+	"perfume": {"name": "Perfume", "price": 350, "volume": 0.1, "category": "goods", "econ": "chemistry", "wants": ["tourism"], "lux": true},
+	"designer_clothing": {"name": "Designer Clothing", "price": 400, "volume": 0.5, "category": "goods", "econ": "industry", "wants": ["tourism"], "lux": true},
+	"spirits": {"name": "Spirits", "price": 180, "volume": 0.5, "category": "goods", "econ": "agri", "wants": ["mining", "military", "tourism"], "lux": true},
+	"artworks": {"name": "Artworks", "price": 2000, "volume": 1.0, "category": "goods", "econ": "tourism", "wants": [], "lux": true, "trade_only": true},
 	"salvage": {"name": "Salvage", "price": 30, "volume": 1.0, "category": "loot"},
 	"research_data": {"name": "Research Data", "price": 260, "volume": 0.1, "category": "data"},
 	# --- Munitions (package 20): mines for mine launchers
@@ -122,6 +180,32 @@ const COMMODITIES := {
 	# package 39b: found in anomalies, laid in the Cathedral of Return for a blessing
 	"earth_relic": {"name": "Relic of Earth", "price": 0, "volume": 0.5, "category": "mission", "tradeable": false},
 }
+
+## Package 42: the economy of the goods that came before Wirtschaft 2.0 (made / wanted / flags) – ores and gases come
+## from mining, refined materials from refining, components from industry or high-tech.
+const OLD_GOODS_ECON := {
+	"food": ["agri", ["mining", "industry", "military", "research"], {"basic": true}],
+	"water": ["agri", ["mining", "industry", "military"], {"basic": true}],
+	"medicine": ["hightech", ["mining", "military", "agri"], {"basic": true}],
+	"alloys": ["refinery", ["industry", "military", "agri"], {}],
+	"electronics": ["hightech", ["industry", "agri", "research"], {}],
+	"weapon_parts": ["military", ["military"], {}],
+	"gold": ["refinery", ["tourism", "hightech"], {"lux": true}],
+	"platinum_ingot": ["refinery", ["hightech", "tourism"], {"lux": true}],
+	"mine_proximity": ["military", [], {}], "mine_jammer": ["military", [], {}], "mine_timer": ["military", [], {}], "mine_emp": ["military", [], {}],
+	"salvage": ["", ["refinery", "industry"], {}],
+	"research_data": ["research", ["hightech"], {}],
+}
+## Components (package 41): who makes and who wants them.
+const COMPONENT_ECON := {
+	"circuits": ["hightech", ["industry", "military"]], "battery_cells": ["industry", ["mining", "agri", "military"]],
+	"armor_plating": ["industry", ["military"]], "carbon_fiber": ["industry", ["hightech", "military"]],
+	"ion_propellant": ["chemistry", ["military", "research"]], "magnet_coils": ["industry", ["hightech", "research"]],
+	"fusion_cells": ["hightech", ["industry", "military"]], "fuel_rods": ["refinery", ["industry", "military"]],
+	"tritium": ["chemistry", ["military", "research"]], "medical_isotopes": ["research", ["hightech", "military"]],
+	"precision_optics": ["hightech", ["research", "military"]], "cryo_systems": ["industry", ["research", "agri"]],
+}
+
 
 const CLASS_NAMES := {"metallic": "Metallic", "stony": "Stony (Silicate)", "icy": "Icy"}
 

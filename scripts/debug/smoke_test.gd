@@ -589,6 +589,7 @@ func _process(delta: float) -> void:
 				_test_makers(view)
 				_test_mining41(view)
 				_test_economy42(view)
+				_test_market42(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -6847,6 +6848,112 @@ func _test_economy42(view: SystemView) -> void:
 	main.hud._update_header()
 	check(info_t.contains("Economy:") and info_t.contains("Prosperity:") and main.hud.system_label.text.contains(Economy.label(here)),
 		"42a: the galaxy map shows economy and prosperity (filter by economy), the header the economy of the system")
+
+
+## Package 42b: markets with real stocks – ~55 new goods of the nine economies, roles from station and economy,
+## prices follow the stock, stocks drift back, saved; the market panel with its filters.
+func _test_market42(view: SystemView) -> void:
+	var GD = GameData
+	var n_new := 0
+	var goods_ok := true
+	for cid in GD.commodities:
+		var c: Dictionary = GD.commodities[cid]
+		if c.has("econ"):
+			n_new += 1
+			goods_ok = goods_ok and Economy.ECONOMIES.has(String(c["econ"]))
+			for w in c["wants"]:
+				goods_ok = goods_ok and Economy.ECONOMIES.has(String(w))
+	var mined_by_market := true
+	for cid2 in ["food", "water", "medicine", "alloys", "electronics", "iron_ore", "hydrogen", "circuits"]:
+		mined_by_market = mined_by_market and Market.econ_of(cid2) != ""
+	check(n_new >= 50 and goods_ok and mined_by_market and GD.commodities.has("gemstones") and Market.is_flag("gold", "lux"),
+		"42b: %d new goods of the nine economies (made / wanted), the old goods placed in them too; gold is a luxury" % n_new)
+	# roles: a station's own produce, its system's main economy
+	var st: Dictionary = {}
+	var sid := -1
+	for sy in Universe.systems:
+		for s2 in Universe.get_layout(int(sy["id"]))["stations"]:
+			if String(s2["type"]) == "agri" and Economy.of(int(sy["id"]))["main"] == "agri":
+				st = s2
+				sid = int(sy["id"])
+				break
+		if sid >= 0:
+			break
+	if st.is_empty():
+		st = Universe.get_layout(Universe.home_system)["stations"][0]
+		sid = Universe.home_system
+	var t: Dictionary = GD.station_types[String(st["type"])]
+	var role_ok: bool = Market.role(st, String(t["produces"][0])) == "produce"
+	if Economy.of(sid)["main"] == "agri":
+		role_ok = role_ok and Market.role(st, "grain") == "produce" and Market.role(st, "fertiliser") == "consume"
+	# prices: made cheaper than wanted; selling pushes the price down; buying empties the stock
+	var made := ""
+	var want := ""
+	for cid3 in GD.commodities:
+		if GD.is_tradeable(cid3) and made == "" and Market.role(st, cid3) == "produce":
+			made = cid3
+		if GD.is_tradeable(cid3) and want == "" and Market.role(st, cid3) == "consume":
+			want = cid3
+	var cheap: bool = made != "" and want != "" and Market.sell_price(st, made) / float(GD.commodities[made]["price"]) < Market.sell_price(st, want) / float(GD.commodities[want]["price"])
+	var keep_ms: Dictionary = GameState.market_stock.duplicate(true)
+	var p0 := Market.sell_price(st, want)
+	var s0 := Market.stock(st, want)
+	Market.sold(st, want, float(Market.info(st, want)["target"]))
+	var p1 := Market.sell_price(st, want)
+	var s1 := Market.stock(st, want)
+	# the stock drifts back over two hours of game time
+	GameState.market_stock[String(st["id"])][want][1] = float(GameState.market_stock[String(st["id"])][want][1]) - 7200.0
+	var s2v := Market.stock(st, want)
+	var back: bool = absf(s2v - float(Market.info(st, want)["eq"])) < absf(s1 - float(Market.info(st, want)["eq"])) * 0.1
+	check(role_ok and cheap and p1 < p0 * 0.75 and s1 > s0 and back,
+		"42b: made goods cheap, wanted goods dear; selling fills the stock and lowers the price (%.0f → %.0f cr), the stock drifts back in time" % [p0, p1])
+	# buying at a station of this system (docked there for the test): limited by the stock, saved with the game
+	var act := GameState.active()
+	var keep_dock: String = act.docked_at
+	var keep_sys: int = act.system_id
+	act.system_id = view.system_id
+	act.docked_at = String(view.layout["stations"][0]["id"])
+	var dst := Commands.docked_station()
+	var buy_ok := false
+	var save_ok := false
+	if not dst.is_empty():
+		var cid4 := ""
+		for c4 in GD.commodities:
+			if GD.is_tradeable(c4) and Market.role(dst, c4) == "produce" and float(GD.commodities[c4]["volume"]) <= 1.0 and Market.stock(dst, c4) >= 5.0:
+				cid4 = c4
+				break
+		buy_ok = cid4 == ""
+		save_ok = cid4 == ""
+		if cid4 != "":
+			var f := GameState.active()
+			var cr0 := GameState.credits
+			GameState.credits = 10000000
+			var stock0 := Market.stock(dst, cid4)
+			var have0 := float(f.cargo.get(cid4, 0.0))
+			Commands.execute({"type": "market_buy", "item": cid4, "amount": 5})
+			buy_ok = float(f.cargo.get(cid4, 0.0)) - have0 >= 4.99 and Market.stock(dst, cid4) < stock0 - 4.9
+			var dd: Dictionary = JSON.parse_string(JSON.stringify(GameState.to_dict()))
+			save_ok = (dd["market_stock"] as Dictionary).has(String(dst["id"]))
+			f.remove_cargo(cid4, 5.0)
+			GameState.credits = cr0
+	GameState.market_stock = keep_ms
+	check(buy_ok and save_ok, "42b: buying takes from the station's stock; the stocks are saved with the game")
+	# the market panel: every filter builds
+	var main = view.get_tree().current_scene
+	if not dst.is_empty() and main.get("station_panel") != null:
+		var sp = main.station_panel
+		sp.open(dst, view)
+		sp.open_service("market")
+		var mp = sp._panel
+		var built := true
+		for spec in mp.FILTERS:
+			mp._set_filter(spec[0])
+			built = built and mp.get_child_count() > 3
+		mp._set_filter("local")
+		sp.close()
+		check(built and mp.FILTERS.size() >= 15, "42b: the market panel – local trade, hold, raw materials, components, luxury, all and the nine economies")
+	act.docked_at = keep_dock
+	act.system_id = keep_sys
 
 
 func _test_mining41(view: SystemView) -> void:
