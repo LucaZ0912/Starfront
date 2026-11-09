@@ -1602,7 +1602,7 @@ Jedes Paket mit eigenen Debug-Funktionen (z. B. zu jedem Systemtyp springen, Ste
 - [x] **Codex:** Independent systems. **Debug:** zu jedem Manufaktur-System.
 - [x] **0.6.39.11 (Luz):** Andockbuchten bei Aurelle und Hadrian bündig mit dem Rest; Gerüstschienen der Docks springen nicht mehr um einen Pixel (KHI).
 
-#### Paket 40 – Neuer Cluster (Fragen 9. Nov 2026, in Klärung)
+#### Paket 40 – Neuer Cluster (geplant, Antworten 9. Nov 2026)
 
 **Antworten Luz (9. Nov 2026):**
 - **Größe:** etwa **120 Systeme** – ein bewohnter Kern (~60) und ein Gürtel unbewohnter Systeme (~60). Die Galaxiekarte bekommt **Zoom und Verschieben**.
@@ -1610,9 +1610,18 @@ Jedes Paket mit eigenen Debug-Funktionen (z. B. zu jedem Systemtyp springen, Ste
 - **Inhalt des Gürtels:** **reiche Rohstoffe** (große Felder, seltene Erze, Colossi mit Tiefenerz, Gasriesen), **Anomalien und Wracks** (alte Schlachtfelder, Überreste aus der Zeit vor dem Bruch), **Piraten und Gefahren**, **Veil-Randsysteme** (seltsame Phänomene, Vorbereitung für Teil B).
 - **Neue Gefahren:** **Strahlungszonen**, **Ionenstürme**, **alte Minenfelder**, **Piratenfestungen** (größer als die bisherigen Häfen, mit Verteidigung und eigenem Kopfgeld).
 - **Unabhängige Systeme:** **kleine freie Siedlungen** – gelbe unabhängige Systeme im Gürtel mit einem Außenposten (Bergbau-, Handels- oder Forschungsposten), eigene Regeln, keine Patrouillen der Mächte.
-- **Namen:** **gemischt** – im Kern deutsche, bildhafte Namen wie bisher, im Gürtel eher Katalognummern und Entdeckernamen (z. B. „KVX-114“, „Brandts Wacht“).
+- **Namen:** **bewohnte Systeme** (auch die freien Siedlungen) bekommen **deutsche, bildhafte Namen** wie bisher; **unbewohnte** Systeme **Katalognummern und Entdeckernamen** (z. B. „KVX-114“, „Brandts Wacht“).
 - **Gebiete:** die drei Mächte behalten ihre Gebiete im Kern **ungefähr wie bisher**, Piratenfraktionen an den Rändern; **die Heimatsysteme der Fraktionen sind ausschließlich von Systemen der eigenen Fraktion umgeben**.
-- **Tore:** noch zu klären (Luz hat dazu etwas).
+- **Tore – neues, detaillierteres Design:** in bewohnten Systemen **vier Bauarten** – **Assembly**, **Covenant**, **Directorate** und **Independent**; in unbewohnten Systemen **ältere, teils heruntergekommene Tore** (unbewohnte Systeme haben keine gepflegte Tor-Infrastruktur); in Piratensystemen die **alten Tore, behelfsmäßig geflickt** (Schrott, rote Lichter).
+- **Alte Tore spielen sich anders:** der Sprung **dauert länger** und kann **sehr selten** danebengehen – Ankunft irgendwo im Zielsystem, etwas Schaden am Schiff –, und zwar so, dass man den Zusammenhang versteht (Meldung, sichtbarer Grund).
+- **Zwei neue Animationen:** das **Ankommen im System** nach einem Torsprung (ähnlich dem Austritt aus dem Warp) und der **misslungene Sprung**, bei dem das Schiff woanders herausgeschleudert wird.
+
+**Vorschlag Aufteilung:**
+- **40a** – Neuer Cluster: 120 Systeme, Kern mit den Gebieten wie bisher (Heimatsysteme nur von eigenen Systemen umgeben), Gürtel als Ring aus Konstellationen und Regionen (wenige Verbindungen zwischen den Gruppen, wie bei EVE), Namen (deutsch für bewohnte, Katalog/Entdecker für unbewohnte), Galaxiekarte mit Zoom und Verschieben, Laden
+- **40b** – Tore: vier Bauarten für bewohnte Systeme, alte Tore im Gürtel, geflickte Piratentore; längerer, selten misslingender Sprung durch alte Tore; Animationen für Ankunft und misslungenen Sprung
+- **40c** – Inhalt des Gürtels: reiche Rohstoffe, Anomalien und Wracks (alte Schlachtfelder, Überreste vor dem Bruch), freie Siedlungen mit Außenposten, Veil-Randsysteme mit seltsamen Phänomenen
+- **40d** – Gefahren: Strahlungszonen, Ionenstürme, alte Minenfelder, Piratenfestungen
+- **40e** – Codex, Debug, Tests, Abstimmung und Performance
 
 #### Paket 41 – Bergbau-Erweiterung (umgesetzt 8. Nov 2026, alpha 0.6.41.1)
 
