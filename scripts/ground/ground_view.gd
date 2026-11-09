@@ -265,6 +265,14 @@ func _build() -> void:
 		haze.position = map.bay_rect.position * GroundMap.TILE * GroundMap.SCALE
 		haze.size = map.bay_rect.size * GroundMap.TILE * GroundMap.SCALE
 		_world.add_child(haze)
+	# life down in the bay: loaders, repair drones, the fuel truck (0.7.49.10)
+	if map.bay_rect.size.x > 0.0 and map.ship_at != Vector2.INF:
+		var floor_r := Rect2((map.bay_rect.position + Vector2(0, 2)) * GroundMap.TILE, (map.bay_rect.size - Vector2(0, 2)) * GroundMap.TILE)
+		var ssz := _ship_size()
+		var life := BayLife.new()
+		life.setup(floor_r, Rect2(map.ship_at - ssz * 0.5, ssz), map.pal["accent"], hash(String(station.get("id", ""))))
+		life.modulate = Color(0.8, 0.84, 0.92)        # a little in the haze, its lights still bright
+		_world.add_child(life)
 	_lift_node = Node2D.new()
 	_lift_node.draw.connect(_draw_lifts)
 	_world.add_child(_lift_node)

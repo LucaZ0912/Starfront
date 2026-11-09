@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.10 – 2026-11-09
+
+**Life down in the hangar bay** – roughly to scale, tiny next to the ship:
+- **Loaders** – little yellow forklifts – drive between the crate stacks along the bay's walls and the ship, a crate
+  on their forks on the way there, empty on the way back, a light blinking.
+- **Repair drones** fly to spots on the hull, hover there and weld – sparks falling.
+- A **fuel truck** stands at the stern, its hose to the ship, fuel pulsing along it.
+
 ## alpha 0.7.49.9 – 2026-11-09
 
 **The hangar feels far below – and gets its own shops.**
