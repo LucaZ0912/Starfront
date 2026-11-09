@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.75.3 – 2026-11-09
+
+**Fix: crash when a target died ("Left operand of 'is' is a previously freed instance").** Reported by Luz: attacking
+pirates in the Far Reaches with the Citadel and its nine drones, the game crashed as the last pirate went down.
+- A lock could still point at a ship destroyed in the same frame (it is cleared on the next tick); drones and modules
+  asked for it in between and checked "is it a ship?" on the freed object. `locked_node` now returns nothing then.
+- Every place that receives an attacker or shooter (damage, EMP, a ship destroyed or attacked, a fortress garrison
+  lost) now treats one that is already gone as "nobody" instead of touching it.
+- **Drone shots are quieter and thinned out** (at most one drone shot sound every 0.18 s, −9 dB) – nine drones
+  firing pulse lasers sounded like a weapon played a million times.
+
 ## alpha 0.6.75.2 – 2026-11-09
 
 **Thrust burst.** Every ship can kick its drives for a moment – **Shift** (rebindable; Shift can be bound now).

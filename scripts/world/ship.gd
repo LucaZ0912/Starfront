@@ -802,6 +802,8 @@ func shield_collapse(t: float = -1.0) -> void:
 
 ## EMP (mine): capacitor drained, shield down, modules dead for `t` seconds.
 func apply_emp(t: float, src = null) -> void:
+	if src != null and not is_instance_valid(src):
+		src = null                       # 0.6.75.3
 	if dying or is_docked():
 		return
 	if faction == "player" and Commands.god_mode:
@@ -1983,6 +1985,8 @@ func _deep_drill(delta: float, t: Dictionary, node) -> bool:
 
 
 func take_damage(amount: float, dtype: String, attacker) -> void:
+	if attacker != null and not is_instance_valid(attacker):
+		attacker = null                  # 0.6.75.3: the shooter may already be gone (freed) – then nobody did it
 	if dying or is_docked() or in_station():
 		return
 	if module_on.get("builtin_cloak", false):
@@ -2281,7 +2285,10 @@ func locked_node(key: String = ""):
 	var i := lock_index(key)
 	if i < 0 or float(locks[i]["progress"]) < 1.0:
 		return null
-	return locks[i]["node"]
+	var n = locks[i]["node"]
+	if n == null or not is_instance_valid(n):
+		return null                      # 0.6.75.3: destroyed this frame – the lock is cleared on the next tick
+	return n
 
 
 static func lockable(node) -> bool:
@@ -2447,7 +2454,7 @@ func _update_locks(delta: float, s: Dictionary) -> void:
 	var i := lock_index(active_lock)
 	target = null
 	lock_progress = 0.0
-	if i >= 0 and locks[i]["node"] is Ship:
+	if i >= 0 and is_instance_valid(locks[i]["node"]) and locks[i]["node"] is Ship:
 		target = locks[i]["node"]
 		lock_progress = locks[i]["progress"]
 

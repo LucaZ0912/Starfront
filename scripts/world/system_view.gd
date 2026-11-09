@@ -3704,9 +3704,19 @@ static func weapon_sound(w: Dictionary) -> String:
 	return "w_pulse"
 
 
+const DRONE_SOUND_GAP := 0.18
+var _drone_snd_t := -1.0
+
+
 func fire_weapon(shooter: Ship, target: Ship, w: Dictionary) -> void:
 	_check_zone_fire(shooter, target)
-	Audio.play_at(weapon_sound(w), shooter.position, "weapon fired", -2.0 if shooter != player else 0.0)
+	# 0.6.75.3: drone shots quieter and thinned out – nine drones firing at once sounded like a machine gun gone mad
+	if shooter.is_drone:
+		if _t - _drone_snd_t >= DRONE_SOUND_GAP:
+			_drone_snd_t = _t
+			Audio.play_at(weapon_sound(w), shooter.position, "drone fired", -9.0)
+	else:
+		Audio.play_at(weapon_sound(w), shooter.position, "weapon fired", -2.0 if shooter != player else 0.0)
 	var dtype: String = w["damage_type"]
 	var col: Color = GameData.DAMAGE_COLORS[dtype]
 	if w.has("cap_drain"):
@@ -3875,7 +3885,7 @@ func _spawn_hazards() -> void:
 ## is broken: its guns fall silent for a while and its bounty is paid.
 func _garrison_lost(ship: Ship, killer) -> void:
 	_garrison.erase(ship)
-	if killer is Ship and is_instance_valid(killer) and (killer.faction == "player" or killer.wingman_id >= 0 or killer.get("carrier") == player):
+	if killer != null and is_instance_valid(killer) and killer is Ship and (killer.faction == "player" or killer.wingman_id >= 0 or killer.get("carrier") == player):
 		_garrison_by_player += 1
 	for g in _garrison:
 		if is_instance_valid(g) and not g.dying:
@@ -4188,6 +4198,8 @@ func npc_jump(ship: Ship, next: int) -> void:
 
 
 func on_ship_destroyed(ship: Ship, _killer) -> void:
+	if _killer != null and not is_instance_valid(_killer):
+		_killer = null                       # 0.6.75.3: a killer already freed (its shot was still flying)
 	if ship.has_meta("garrison"):
 		_garrison_lost(ship, _killer)        # package 40d
 	Audio.play_at("explosion_large" if int(ship.fit.hull().get("size", 1)) >= 2 else "explosion_small", ship.position, "ship destroyed")
@@ -4287,7 +4299,9 @@ func landmark(p: Vector2) -> String:
 
 
 ## A civilian or patrol ship was attacked: distress call, fleeing traffic, escalation (package 16).
-func on_ship_attacked(victim: Ship, attacker: Ship) -> void:
+func on_ship_attacked(victim: Ship, attacker) -> void:
+	if attacker == null or not is_instance_valid(attacker) or not attacker is Ship:
+		return                               # 0.6.75.3
 	if traffic != null and is_instance_valid(traffic):
 		traffic.on_attacked(victim, attacker)
 
