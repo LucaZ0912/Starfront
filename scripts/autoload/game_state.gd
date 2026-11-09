@@ -410,6 +410,11 @@ func module_tree_error(mid: String) -> String:
 func fab_tree_error(mid: String) -> String:
 	if mid == "drone" or not GameData.modules.has(mid):
 		return ""
+	# 0.6.40.9: specialised blueprints – a craft-only module needs its own tile
+	if GameData.modules[mid].get("craft_only", false):
+		var bt := TreeData.tile_of_blueprint(String(GameData.modules[mid]["family"]))
+		if bt != "" and not tile_open(bt):
+			return "Skill tree: no blueprint yet (\"%s\")." % TreeData.TILES[bt]["name"]
 	var sz := int(GameData.modules[mid]["size"])
 	if sz > _tree_best("fab_size", 2):
 		return "Skill tree: no blueprint for size %d yet (\"%s\")." % [sz, "Station Manufacturing" if sz <= 2 else ("Blueprints II" if sz <= 5 else "Blueprints III")]

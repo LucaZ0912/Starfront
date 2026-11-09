@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.9 – 2026-11-09
+
+**Hazard wards from specialised blueprints.**
+- Two new optional modules (size 1), **never sold – only built** at a station's fabricators:
+  - **Radiation Insulation** – keeps part of a radiation zone's dose off (shield drain and hull burn), recipe of
+    tungsten, armour plating and electronics.
+  - **Shielded Hull Lining** – a conductive lining against ion storms: fewer lightning strikes, shorter knock-outs,
+    less damage, and the radar is jammed less often; recipe of copper, magnet coils and circuits.
+  - The effect depends on the **quality**: F 50 %, E 58 %, D 66 %, C 74 %, B 82 %, A 90 % (the best one fitted counts).
+- **Two new tiles in the Industry branch of the skill tree** (after Station Manufacturing) hold the specialised
+  blueprints: *Radiation Insulation* (10 modules built, 120 s spent in radiation zones) and *Shielded Hull Lining*
+  (10 modules built, 5 ion-storm lightning strikes taken). New achievement metrics for both.
+
 ## alpha 0.6.40.8 – 2026-11-09
 
 **Package 40d: the dangers of the Rim.** A new game is needed.

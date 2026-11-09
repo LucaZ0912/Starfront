@@ -80,6 +80,8 @@ const DESC := {
 	"o_orehold": "A separate hold just for ore and ice.",
 	"o_gastank": "Pressure tanks: gases at their own volume instead of twice the room in racks.",
 	"o_shielded": "Lead-lined racks for radioactive goods – safe, but they hold far less.",
+	"o_rad_ward": "Insulates the hull against radiation zones – keeps 50 % (F) to 90 % (A) of the dose off. Only built from its blueprint.",
+	"o_ion_ward": "A conductive lining that carries ion-storm lightning round the ship – 50 % (F) to 90 % (A) fewer strikes, shorter and weaker. Only built from its blueprint.",
 	"o_mining_metal": "Mines metallic asteroids faster.",
 	"o_mining_stone": "Mines silicate asteroids faster.",
 	"o_mining_ice": "Mines icy asteroids faster.",

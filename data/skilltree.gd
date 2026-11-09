@@ -15,6 +15,7 @@ const METRICS := {
 	"bounty_jobs": "bounty contracts", "jobs_covenant": "contracts for the Covenant", "jobs_assembly": "contracts for the Assembly",
 	"passengers": "passengers delivered", "analysed": "anomalies analysed", "exotic": "exotic matter collected", "scans": "ships scanned",
 	"bounties": "bounties redeemed", "pilot_level": "pilot level", "damage_taken": "damage taken", "missions_done": "contracts completed",
+	"rad_time": "seconds in radiation zones", "ion_hits": "ion-storm lightning strikes taken",
 }
 
 ## id: branch, name, prerequisites (the first one is the parent in the drawing), achievements [[metric, amount], …],
@@ -69,6 +70,11 @@ const TILES := {
 		"unlocks": {"fab_size": 2}},
 	"blueprints_2": {"branch": "Industry", "name": "Blueprints II", "pre": ["station_mfg"], "req": [["built", 20]], "unlocks": {"fab_size": 5}},
 	"blueprints_3": {"branch": "Industry", "name": "Blueprints III", "pre": ["blueprints_2"], "req": [["built", 100]], "unlocks": {"fab_size": 99}},
+	# 0.6.40.9: specialised blueprints – the hazard wards are never sold, only built
+	"rad_insulation": {"branch": "Industry", "name": "Radiation Insulation", "pre": ["station_mfg"], "req": [["built", 10], ["rad_time", 120]],
+		"unlocks": {"families": ["o_rad_ward"], "blueprints": ["o_rad_ward"]}},
+	"hull_lining": {"branch": "Industry", "name": "Shielded Hull Lining", "pre": ["station_mfg"], "req": [["built", 10], ["ion_hits", 5]],
+		"unlocks": {"families": ["o_ion_ward"], "blueprints": ["o_ion_ward"]}},
 	# ---- flight
 	"navigation": {"branch": "Flight", "name": "Navigation", "pre": ["shields"], "req": [["warps", 25], ["jumps", 10]],
 		"unlocks": {"families": ["o_afterburner", "sen_radar"]}},
@@ -158,6 +164,14 @@ static func free_tiles() -> Array:
 static func tile_of_hull(hid: String) -> String:
 	for id in TILES:
 		if hid in TILES[id]["unlocks"].get("hulls", []):
+			return id
+	return ""
+
+
+## 0.6.40.9: the tile holding the specialised blueprint of a craft-only family.
+static func tile_of_blueprint(fam: String) -> String:
+	for id in TILES:
+		if fam in TILES[id]["unlocks"].get("blueprints", []):
 			return id
 	return ""
 
@@ -270,6 +284,8 @@ static func opens_text(id: String) -> String:
 		parts.append("optional modules and tools up to size %d" % int(u["size"]) if int(u["size"]) < 99 else "optional modules and tools of any size")
 	if u.has("quality"):
 		parts.append("modules of quality %s" % u["quality"])
+	for bp in u.get("blueprints", []):
+		parts.append("blueprint: %s" % String(MD.FAMILIES[bp]["name"]) if MD.FAMILIES.has(bp) else String(bp))
 	if u.has("fab_size"):
 		parts.append("blueprints up to size %d" % int(u["fab_size"]) if int(u["fab_size"]) < 99 else "blueprints of any size")
 	return ", ".join(PackedStringArray(parts))

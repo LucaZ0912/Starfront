@@ -29,6 +29,8 @@ extends RefCounted
 ##                solar (fuel per second next to the star), jam_range (radar jammer radius)
 ##                cabin (package 25c: "bulk"/"business"/"luxury") + passengers (seats, whole numbers);
 ##                aurelle_only = only fits into Maison Aurelle hulls (luxury suites)
+##                rad_ward / ion_ward (0.6.40.9): share of a radiation zone's / an ion storm's effect kept off the ship,
+##                set by quality (WARD_BY_QUALITY, 50–90 %); craft_only = never sold, only built from a blueprint
 
 const QUALITIES := ["F", "E", "D", "C", "B", "A"]          # S and S+ follow in the endgame
 ## perf = performance, mass, power draw and price factors per quality (D is the lightest, F the
@@ -64,6 +66,8 @@ const RANGE_BUFF := {"weapon": 1.10, "sensors": 1.15}
 ## Multipliers: only the part above 1 grows (with the square root of the size ratio)
 const MULT_FIELDS := ["boost", "range_mult", "survey_range_mult", "speed_mult", "efficiency",
 	"d_range", "d_damage", "d_wrange", "d_fuel", "d_speed"]
+## 0.6.40.9: the hazard wards – how much of a radiation zone / an ion storm they keep off, by quality
+const WARD_BY_QUALITY := {"F": 0.5, "E": 0.58, "D": 0.66, "C": 0.74, "B": 0.82, "A": 0.9}
 ## Drone hangar (package 23): room for drones per size, by quality
 const HANGAR_ROOM := {"F": 0.6, "E": 0.75, "D": 0.9, "C": 1.0, "B": 1.25, "A": 1.5}
 ## Size ranges per slot type (family ranges lie inside)
@@ -156,6 +160,9 @@ const FAMILIES := {
 	# package 41: gas tanks (gases at their own volume) and shielded racks (radioactive goods, much less room)
 	"o_gastank": {"name": "Gas Tanks", "anchor": "o_gastank_s", "ref": 1, "sizes": [1, 10]},
 	"o_shielded": {"name": "Shielded Cargo Rack", "anchor": "o_shielded_s", "ref": 1, "sizes": [1, 10]},
+	# 0.6.40.9: hazard wards – only built from the skill tree's specialised blueprints
+	"o_rad_ward": {"name": "Radiation Insulation", "anchor": "o_rad_ward_s", "ref": 1, "sizes": [1, 1]},
+	"o_ion_ward": {"name": "Shielded Hull Lining", "anchor": "o_ion_ward_s", "ref": 1, "sizes": [1, 1]},
 	"o_mining_metal": {"name": "Metallic Mining Upgrade", "anchor": "o_mining_metal_s", "ref": 1, "sizes": [1, 4]},
 	"o_mining_stone": {"name": "Silicate Mining Upgrade", "anchor": "o_mining_stone_s", "ref": 1, "sizes": [1, 4]},
 	"o_mining_ice": {"name": "Cryo Mining Upgrade", "anchor": "o_mining_ice_s", "ref": 1, "sizes": [1, 4]},
@@ -254,6 +261,9 @@ static func make(fam: String, size: int, q: String) -> Dictionary:
 			m[key] = v
 	if m["slot"] == "hyperdrive":
 		m["drive_class"] = clampi(int(ceil(size / 2.0)), 1, 3)
+	for wk in ["rad_ward", "ion_ward"]:
+		if m.has(wk):
+			m[wk] = float(WARD_BY_QUALITY[q])                # 0.6.40.9: 50 % (F) … 90 % (A)
 	if m["slot"] == "hangar":
 		m["drone_storage"] = maxi(1, int(round(size * 3.0 * float(HANGAR_ROOM[q]))))
 	# balancing 0.4.22.3: weapon ranges +10 %, sensor ranges +15 %
@@ -427,6 +437,8 @@ const ANCHORS := {
 	# package 41
 	"o_gastank_s": {"name": "Gas Tanks", "slot": "optional", "size": 1, "price": 2200, "mass": 110, "power": 0, "gas_cargo": 40},
 	"o_shielded_s": {"name": "Shielded Cargo Rack", "slot": "optional", "size": 1, "price": 3500, "mass": 180, "power": 0, "rad_cargo": 12},
+	"o_rad_ward_s": {"name": "Radiation Insulation", "slot": "optional", "size": 1, "price": 22000, "mass": 140, "power": 4, "rad_ward": 0.74, "craft_only": true},
+	"o_ion_ward_s": {"name": "Shielded Hull Lining", "slot": "optional", "size": 1, "price": 22000, "mass": 160, "power": 5, "ion_ward": 0.74, "craft_only": true},
 	"o_mining_metal_s": {"name": "Metallic Mining Upgrade", "slot": "optional", "size": 1, "price": 5000, "mass": 30, "power": 4, "mining_bonus": {"metallic": 0.3}},
 	"o_mining_stone_s": {"name": "Silicate Mining Upgrade", "slot": "optional", "size": 1, "price": 5000, "mass": 30, "power": 4, "mining_bonus": {"stony": 0.3}},
 	"o_mining_ice_s": {"name": "Cryo Mining Upgrade", "slot": "optional", "size": 1, "price": 5000, "mass": 30, "power": 4, "mining_bonus": {"icy": 0.3}},

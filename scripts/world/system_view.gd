@@ -3881,15 +3881,21 @@ func _hazard_tick(dt: float) -> void:
 			match k:
 				"radiation":
 					var st: Dictionary = s.fit.stats()
-					var str_k := float(hz.get("strength", 1.0))
+					var str_k := float(hz.get("strength", 1.0)) * (1.0 - float(st.get("rad_ward", 0.0)))     # 0.6.40.9
+					if s == player:
+						GameState.count_stat("rad_time", dt)
 					s.fit.shield = maxf(0.0, s.fit.shield - float(st["shield_max"]) * 0.06 * str_k * dt)
 					if s.fit.shield <= 0.5:
 						s.take_damage(float(st["structure_max"]) * 0.006 * str_k * dt, "optical", null)
 				"ion_storm":
-					s.jam(1.0)
-					if randf() < 0.08:
-						s.apply_emp(1.5, null)
-						s.take_damage(8.0 + s.radius * 0.1, "optical", null)
+					var iw := float(s.fit.stats().get("ion_ward", 0.0))                                  # 0.6.40.9
+					if randf() >= iw:
+						s.jam(1.0)
+					if randf() < 0.08 * (1.0 - iw):
+						s.apply_emp(1.5 * (1.0 - iw * 0.5), null)
+						s.take_damage((8.0 + s.radius * 0.1) * (1.0 - iw), "optical", null)
+						if s == player:
+							GameState.count_stat("ion_hits")
 						var top: Vector2 = s.position + Vector2(randf_range(-1, 1), -1.0).normalized() * randf_range(1500.0, 3000.0)
 						var bf := Fx.beam(top, s.position, Color(0.75, 0.9, 1.0), 8.0)
 						bf.life = 0.25

@@ -22,6 +22,11 @@ const BLUEPRINT_MIX := {
 	"tool": {"electronics": 2.0, "alloys": 1.0, "iron_ingot": 1.0, "silicon": 1.0},
 	"optional": {"alloys": 2.0, "aluminium": 1.0, "electronics": 1.0},
 }
+## 0.6.40.9: the hazard wards have recipes of their own (lead-like tungsten and plating, copper and coils)
+const FAMILY_MIX := {
+	"o_rad_ward": {"tungsten": 3.0, "armor_plating": 2.0, "electronics": 1.0},
+	"o_ion_ward": {"copper": 3.0, "magnet_coils": 2.0, "circuits": 1.0},
+}
 ## Extra exotic materials for large (size L) modules, per slot.
 const LARGE_EXTRA := {
 	"reactor": {"cryo_coolant": 2}, "weapon": {"cryo_coolant": 2}, "hull": {"iridium_ingot": 2},
@@ -200,7 +205,7 @@ static func buildable(station: Dictionary) -> Array:
 ## Bill of materials + fabrication fee for a module at a station.
 static func recipe(station: Dictionary, module_id: String) -> Dictionary:
 	var m: Dictionary = GameData.modules[module_id]
-	var mix: Dictionary = BLUEPRINT_MIX.get(m["slot"], BLUEPRINT_MIX["optional"])
+	var mix: Dictionary = FAMILY_MIX.get(String(m.get("family", "")), BLUEPRINT_MIX.get(m["slot"], BLUEPRINT_MIX["optional"]))
 	var total_w := 0.0
 	for k in mix:
 		total_w += float(mix[k])

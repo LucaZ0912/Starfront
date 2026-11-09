@@ -126,6 +126,13 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## Hazard wards (0.6.40.9)
+
+- Families `o_rad_ward` / `o_ion_ward` (anchors `o_rad_ward_s` / `o_ion_ward_s`, `craft_only` – never in `_make_shop`),
+  `rad_ward` / `ion_ward` set by `ModuleData.WARD_BY_QUALITY`; ship stats keep the best one. Recipes in
+  `Industry.FAMILY_MIX`. Skill tree tiles `rad_insulation` / `hull_lining` with `unlocks.blueprints`
+  (`TreeData.tile_of_blueprint`, checked in `GameState.fab_tree_error`); metrics `rad_time`, `ion_hits`.
+
 ## The dangers of the Rim (phase 0.5 package 40d)
 
 - `Universe._hazards` → `L["hazards"]` (`radiation` with `strength` / `field`, `ion_storm` with `vel`, `minefield` with

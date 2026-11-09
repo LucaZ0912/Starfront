@@ -325,7 +325,7 @@ func _compute() -> Dictionary:
 		"drive_class": 0, "jump_fuel_base": 0.0, "spool": 0.0,
 		"sensor_range": 300.0, "resolution": 0.5, "scan_strength": 0.5,
 		"speed_mult": 1.0, "range_mult": 1.0, "ore_cargo_max": 0.0, "survey_range_mult": 1.0,
-		"gas_cargo_max": 0.0, "rad_cargo_max": 0.0, "heat_resist": 0.0,     # package 41: gas tanks, shielded racks
+		"gas_cargo_max": 0.0, "rad_cargo_max": 0.0, "heat_resist": 0.0, "rad_ward": 0.0, "ion_ward": 0.0,     # package 41: gas tanks, shielded racks
 		"mining_bonus": {"metallic": 0.0, "stony": 0.0, "icy": 0.0},
 		"weapons": [], "tools": [], "actives": [], "missing": [],
 		"pd": [], "minelayers": [], "solar": 0.0, "shield_downtime": 0.0, "cabins": [], "reflect": 0.0,
@@ -426,6 +426,8 @@ func _compute() -> Dictionary:
 				s["ore_cargo_max"] += float(m.get("ore_cargo", 0))
 				s["gas_cargo_max"] += float(m.get("gas_cargo", 0))       # package 41
 				s["rad_cargo_max"] += float(m.get("rad_cargo", 0))
+				s["rad_ward"] = maxf(float(s["rad_ward"]), float(m.get("rad_ward", 0.0)))       # 0.6.40.9: the best one counts
+				s["ion_ward"] = maxf(float(s["ion_ward"]), float(m.get("ion_ward", 0.0)))
 				s["survey_range_mult"] *= float(m.get("survey_range_mult", 1.0))
 				var mb: Dictionary = m.get("mining_bonus", {})
 				for cls in mb:

@@ -598,6 +598,7 @@ func _process(delta: float) -> void:
 				_test_gates40(view)
 				_test_rim40c(view)
 				_test_hazards40d(view)
+				_test_wards(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -7452,6 +7453,66 @@ func _test_hazards40d(view: SystemView) -> void:
 	var saved: bool = GameState.to_dict()["fortress_broken"].has(str(sid0))
 	GameState.fortress_broken.erase(str(sid0))
 	check(down and saved and not GameState.fortress_down(sid0), "40d: a broken fortress stays silent until it is rebuilt – kept in the save")
+
+
+## 0.6.40.9: the hazard wards – built only from the skill tree's blueprints, 50–90 % by quality.
+func _test_wards(view: SystemView) -> void:
+	var M = GameData.modules
+	var q_ok: bool = M.has("o_rad_ward:1:F") and M.has("o_ion_ward:1:A") and absf(float(M["o_rad_ward:1:F"]["rad_ward"]) - 0.5) < 0.001 \
+		and absf(float(M["o_rad_ward:1:A"]["rad_ward"]) - 0.9) < 0.001 and absf(float(M["o_ion_ward:1:C"]["ion_ward"]) - 0.74) < 0.001
+	var sold := false
+	for sy in Universe.systems.slice(0, 60):
+		for st in Universe.get_layout(int(sy["id"]))["stations"]:
+			for mid in st.get("shop", []):
+				sold = sold or String(mid).begins_with("o_rad_ward") or String(mid).begins_with("o_ion_ward")
+	var tree_keep: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var all_keep = GameState.pilot.get("tree_all", false)
+	GameState.pilot["tree_all"] = false
+	GameState.pilot["tree"] = tree_keep.filter(func(x): return x != "rad_insulation")
+	var locked: bool = GameState.fab_tree_error("o_rad_ward:1:C") != ""
+	var rec: Dictionary = Industry.recipe({"type": "industry", "tier": 2, "id": "t"}, "o_rad_ward:1:C")
+	check(q_ok and not sold and locked and rec["materials"].has("tungsten"),
+		"0.6.40.9: Radiation Insulation and Shielded Hull Lining – never sold, built only with their blueprint from the skill tree (tungsten and plating / copper and coils); 50 % (F) to 90 % (A)")
+	# an A-grade insulation keeps 90 % of the dose off
+	GameState.pilot["tree_all"] = true                    # the blueprint tile and quality A open
+	var pl: Ship = view.player
+	var opt := ""
+	for k in pl.fit.slot_keys():
+		if String(k).begins_with("optional_") and pl.fit.slot_max(k) >= 1:
+			opt = k
+			break
+	var keep_mod: String = pl.fit.modules.get(opt, "")
+	var hz_node = view._add_celestial("hazard", {"id": "hz_ward", "kind": "radiation", "name": "Radiation Zone", "pos": pl.position,
+		"radius": 5000.0, "strength": 1.0, "seed": 1})
+	view.hazard_nodes.append(hz_node)
+	var smax := float(pl.fit.stats()["shield_max"])
+	var hp0 := [pl.fit.shield, pl.fit.armor, pl.fit.structure]
+	pl.fit.shield = 0.0                                   # no shield: the dose goes straight to the hull
+	view._hazard_tick(1.0)
+	var bare: float = (float(hp0[1]) + float(hp0[2])) - (pl.fit.armor + pl.fit.structure)
+	pl.fit.armor = float(hp0[1])
+	pl.fit.structure = float(hp0[2])
+	pl.fit.modules[opt] = "o_rad_ward:1:A"
+	pl.fit.mark_dirty()
+	pl.fit.shield = 0.0
+	view._hazard_tick(1.0)
+	var warded: float = (float(hp0[1]) + float(hp0[2])) - (pl.fit.armor + pl.fit.structure)
+	pl.fit.armor = float(hp0[1])
+	pl.fit.structure = float(hp0[2])
+	if keep_mod == "":
+		pl.fit.modules.erase(opt)
+	else:
+		pl.fit.modules[opt] = keep_mod
+	pl.fit.mark_dirty()
+	pl.fit.shield = float(hp0[0])
+	view.hazard_nodes.erase(hz_node)
+	view.celestials.erase(hz_node)
+	hz_node.queue_free()
+	view._hazard_tick(0.5)
+	GameState.pilot["tree"] = tree_keep
+	GameState.pilot["tree_all"] = all_keep
+	check(opt != "" and bare > 0.0 and absf(warded - bare * 0.1) < bare * 0.02,
+		"0.6.40.9: an A-grade Radiation Insulation keeps 90 %% of the dose off (hull damage %.1f → %.1f)" % [bare, warded])
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.

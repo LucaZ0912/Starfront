@@ -3043,7 +3043,7 @@ func _make_shop(type: String, tier: int, rng: RandomNumberGenerator) -> Array:
 	var shop: Array = []
 	for fam in ModuleData.FAMILIES:
 		var a: Dictionary = ModuleData.ANCHORS[ModuleData.FAMILIES[fam]["anchor"]]
-		if a.get("notorious_only", false) or (a.get("pirate_only", false) and type != "pirate_haven") or a.get("covenant_only", false) or a.get("directorate_only", false):
+		if a.get("notorious_only", false) or (a.get("pirate_only", false) and type != "pirate_haven") or a.get("covenant_only", false) or a.get("directorate_only", false) or a.get("craft_only", false):
 			continue
 		var chance := 0.9 if a["slot"] in t["shop"] else 0.12
 		if a["slot"] in ["hangar", "drone"]:
