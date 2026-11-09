@@ -1436,7 +1436,7 @@ Die Veil-Mechanik entsteht bewusst schon hier, damit die Story (Teil 8) sie spä
 | 38 ✓ | Neue Planetentypen | Eisriesen, Eisplaneten, Zwergplaneten |
 | 39 ✓ | Spezialsysteme | die drei Fraktions-Heimatsysteme fest gestaltet; Systeme der Manufakturen |
 | 40 | Cluster ca. 100 Systeme | weiterhin ca. 50 bewohnte Systeme im Kern, darum ein Gürtel unbewohnter Systeme: eine Mischung aus reichen Rohstoffen, Anomalien und Wracks, Piratenverstecken und Gefahren; dazu teilweise **unabhängige Systemregierungen mit Außenposten** |
-| 41 | Bergbau-Erweiterung | starke Erweiterung des Bergbaus: viele neue abbaubare Elemente und daraus herstellbare Waren |
+| 41 ✓ | Bergbau-Erweiterung | starke Erweiterung des Bergbaus: viele neue abbaubare Elemente und daraus herstellbare Waren |
 | 42 | Wirtschaft 2.0 | Systeme bekommen eine Wirtschaft und ein Wohlstandslevel; daraus Materialausstoß, Bedürfnisse, Angebot und Nachfrage. Handelskonvois haben **zum System passende Waren** an Bord – die Wirtschaft bestimmt die Konvois, nicht umgekehrt (echte Warenströme erst in einem späteren „Wirtschaft 3.0“) |
 | 43 | Tourismus | Tourismus-Stationen als neuer Stationstyp und eine Tourismus-Wirtschaft |
 
@@ -1623,6 +1623,26 @@ Jedes Paket mit eigenen Debug-Funktionen (z. B. zu jedem Systemtyp springen, Ste
 - [x] KHI Kujira (L, 640.000 cr): 1.600 m³ Gastanks, eingebauter Gas-Schöpfer (×1,5), 60 % Hitzeschutz
 - [x] 0.6.41.2: Absturz beim Einschalten des Sammlers behoben; kein Trichter mehr – Gas strömt durch die geöffnete Drohnenklappe (ohne Klappe: an der Unterseite); Kujira mit leicht erhöhter Brücke am Bug und Drohnenklappe
 - [x] Codex-Einträge (Gasernte, Bauteile und Reinheit, radioaktive Waren), Debug-Abschnitt, Smoke-Tests
+
+#### Paket 42 – Wirtschaft 2.0 (geplant, Antworten 9. Nov 2026)
+
+**Reihenfolge:** Wirtschaft 2.0 vor dem Tourismus (Paket 43) – der Tourismus wird als Wirtschaftszweig gleich mitgedacht und in 43 nur noch angedockt.
+
+**Antworten Luz (9. Nov 2026):**
+- **Ebene:** Jedes System hat eine **Haupt- und eine Nebenwirtschaft**. Sie ergeben sich aus **Faktoren** im System – welche Planeten (und Monde), Gürtel und Felder es gibt und welche Stationen dazu passen. Die Stationen sind fest und **prägen die Wirtschaft**, nicht umgekehrt.
+- **Planeten als Faktor:** Erdähnliche Welten boosten **Tourismus und Hightech**, Wasserwelten **Agrar**, die neue **Hochmetallwelt** (Planetentyp mit hohen Metallvorkommen an der Oberfläche) **Bergbau**. Gasriesen boosten **Bergbau plus eine zweite** Wirtschaft: Gasriese → Industrie (Energie, Helium-3), Eisriese → Agrar (Wasser, Stickstoff), Roter Riese → Chemie, Toxischer Riese → Chemie/Raffinerie. Die übrigen Typen ordnen wir beim Umsetzen sinngemäß zu.
+- **Wirtschaftsarten:** Agrar, Bergbau, Industrie, Raffinerie, Chemie, Hightech, Forschung, Militär, Tourismus.
+- **Wohlstand:** 5 Stufen (Verarmt · Arm · Durchschnittlich · Wohlhabend · Reich), **ändert sich langsam**: steigt mit erfüllten Bedürfnissen und Handel, sinkt durch Piraten, Überfälle und Engpässe.
+- **Markt:** **echte Lagerbestände** – Verkäufe drücken den Preis, Käufe heben ihn, Produktion und Verbrauch füllen bzw. leeren die Lager mit der Zeit.
+- **Dienste:** fest je Station, aber **wie viel sie anbieten** hängt von Wohlstand und Wirtschaft ab – z. B. höhere Qualitätsstufen beim Ausrüster in Hightech- und reichen Systemen, stärkere Waffen in Militärsystemen.
+- **Weitere Wirkungen des Wohlstands:** Verkehr und Konvois (mit zum System passenden Waren), Sicherheit und Piraten (arme Systeme ziehen Piraten an, reiche haben mehr Patrouillen), Aufträge und später Touristenströme.
+- **Waren:** **etwa 50 neue Waren** zu den Wirtschaftsarten; **nicht alle herstellbar** oder für etwas anderes nötig – manche sind reine Handelswaren. Gold (aus Paket 41) wird in wohlhabenden und Tourismus-Systemen gefragt.
+
+**Vorschlag Aufteilung:**
+- **42a** – Wirtschaftsmodell: Faktoren → Haupt-/Nebenwirtschaft je System, Wohlstand (5 Stufen), neuer Planetentyp Hochmetallwelt, Anzeige auf Galaxiekarte und Systeminfo, Debug
+- **42b** – Markt: echte Lagerbestände, Preise aus Bestand, Produktion/Verbrauch je Wirtschaft, ~50 neue Waren, Markt-UI mit Kategorien und Beständen
+- **42c** – Wirkungen: Dienste nach Wohlstand/Wirtschaft (Ausrüster-Qualitäten, Waffen, Werften), Verkehr und Konvois mit passenden Waren, Sicherheit/Piraten, Aufträge; Wohlstand verändert sich durch Handel, Engpässe und Piraterie
+- **42d** – Codex, Smoke-Tests, Abstimmung (Preise, Tempo der Veränderung)
 
 ### Entscheidungen zu Teil 6
 
