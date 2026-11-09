@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.43.3 – 2026-11-09
+
+**Package 43b: tourist flights and round trips.**
+- **Tourist flights** among the passenger contracts: holidaymakers bound for a resort, more of them in richer
+  systems, more often in business and luxury class; they pay 30 % more. Each group delivered raises the resort
+  system's prosperity a little.
+- **Round trips** (from Average prosperity up): sightseers board here, you take them to a sight in another system
+  (up to three jumps) – a beautiful world, the rings of a giant, a wondrous star, a landmark – stay close, out of warp,
+  for 45 seconds while they look, and bring them back to where they boarded. The deadline covers the whole trip; the
+  more famous the sight, the better the pay. The sight's system gains a little prosperity.
+- The board marks them "TOURISTS" and "ROUND TRIP"; the contract shows how long they have looked.
+- Codex "Tourists and round trips"; debug: round trips – sight seen.
+
 ## alpha 0.6.43.2 – 2026-11-09
 
 - Resorts redrawn: the big ones (tier 3) are **habitat rings** – a wide ring with a landscape under a glass roof:

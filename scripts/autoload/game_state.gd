@@ -1629,6 +1629,8 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 		count_stat("jobs_" + String(m["faction"]))
 	if String(m["type"]) == "passenger":
 		count_stat("passengers", float(m.get("amount", 1)))
+		if m.get("tourist", false):
+			Economy.change(current_system, 0.6, "tourists")       # package 43b: holidaymakers bring money
 	if String(m["type"]) == "escort" and has_perk("convoy_shepherd"):
 		pay = int(round(pay * 1.2))
 	if has_perk("diplomat"):
@@ -2054,6 +2056,7 @@ func _process(delta: float) -> void:
 		Economy.drift(30.0)                      # package 42c
 	_update_faction_jobs(delta)
 	_update_passengers()
+	_update_tours(delta)                         # package 43b
 	var f := active()
 	if f == null:
 		return
@@ -2067,6 +2070,34 @@ func _process(delta: float) -> void:
 
 ## Scanners sweep the whole system: hidden anomalies are revealed over time.
 ## Passenger deadlines (package 25c).
+## Package 43b: round trips – near the sight, out of warp, the sightseers look (TOUR_VIEW seconds).
+func _update_tours(delta: float) -> void:
+	var f := active()
+	if f == null or f.in_transit() or Commands.world == null or not is_instance_valid(Commands.world):
+		return
+	var pl = Commands.world.player
+	if pl == null or not is_instance_valid(pl) or pl.in_warp() or f.docked_at != "":
+		return
+	for m in missions:
+		if String(m["type"]) != "passenger" or not m.has("tour") or int(m.get("ship_uid", -1)) != f.uid:
+			continue
+		var tr: Dictionary = m["tour"]
+		if bool(tr["done"]) or int(tr["system"]) != current_system:
+			continue
+		var place := Missions.sight_place(tr)
+		if place.is_empty() or (pl.position as Vector2).distance_to(place["pos"]) > float(place["range"]):
+			continue
+		if float(tr["t"]) <= 0.0:
+			log_msg("The sightseers crowd the windows: %s." % tr["name"], COL_GOOD)
+		tr["t"] = float(tr["t"]) + delta
+		if float(tr["t"]) >= Missions.TOUR_VIEW:
+			tr["done"] = true
+			log_msg("They have seen %s – back to %s." % [tr["name"], Universe.find_station(int(m["target_system"]), String(m["target_station"])).get("name", "?")], COL_GOOD)
+			Economy.change(current_system, 0.4, "tourists")
+			codex.event("tour")
+			missions_changed.emit()
+
+
 func _update_passengers() -> void:
 	for m in missions.duplicate():
 		if String(m["type"]) == "passenger" and float(m.get("expires", -1.0)) > 0.0 and play_time > float(m["expires"]):

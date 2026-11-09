@@ -1876,6 +1876,19 @@ func _c_debug_prosperity_drift(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_tour_view"} – package 43b: every round trip aboard has seen its sight
+func _c_debug_tour_view(_c: Dictionary) -> String:
+	var n := 0
+	for m in GameState.missions:
+		if m.has("tour") and not bool(m["tour"]["done"]):
+			m["tour"]["t"] = Missions.TOUR_VIEW
+			m["tour"]["done"] = true
+			n += 1
+	GameState.missions_changed.emit()
+	GameState.log_msg("[Debug] %d round trip%s: the sight is seen." % [n, "" if n == 1 else "s"])
+	return ""
+
+
 ## {"type":"debug_economy"} – package 42: the economy of the current system and why, in the log
 func _c_debug_economy(_c: Dictionary) -> String:
 	var sid := GameState.current_system

@@ -110,7 +110,14 @@ func _card(m: Dictionary, extra: String, bonus: float = 0.0) -> HBoxContainer:
 	add_child(box)
 	var row := UI.hbox(14)
 	box.add_child(row)
-	var tag := UI.label(TYPE_LABELS.get(m["type"], "?"), 13, col)
+	var tag_text: String = TYPE_LABELS.get(m["type"], "?")
+	if m.has("tour"):
+		tag_text = "ROUND TRIP"                  # package 43b
+		col = Color(0.6, 1.0, 0.75)
+	elif m.get("tourist", false):
+		tag_text = "TOURISTS"
+		col = Color(1.0, 0.7, 0.9)
+	var tag := UI.label(tag_text, 13, col)
 	tag.custom_minimum_size = Vector2(80, 0)
 	row.add_child(tag)
 	var info := UI.vbox(1)

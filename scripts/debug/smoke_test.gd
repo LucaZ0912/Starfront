@@ -592,6 +592,7 @@ func _process(delta: float) -> void:
 				_test_market42(view)
 				_test_prosperity42(view)
 				_test_resorts43(view)
+				_test_tours43(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -7142,6 +7143,69 @@ func _test_resorts43(_view: SystemView) -> void:
 			landmark = landmark or String(sg2["kind"]) == "landmark"
 	check(art_ok and total_sights > U.systems.size() and landmark,
 		"43a: habitat ring and biosphere – a landscape under glass (green), docking bays, town lights on the night side; %d sights in the cluster (worlds, rings, stars, landmarks such as The Vote)" % total_sights)
+
+
+## Package 43b: tourist flights to the resorts and round trips to a sight of another system and back.
+func _test_tours43(view: SystemView) -> void:
+	var U = Universe
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4343
+	# a rich system with a station: its passenger offers hold tourists bound for resorts and round trips
+	var keep: Dictionary = GameState.prosperity.duplicate()
+	var tourists := 0
+	var resort_ok := true
+	var tours := 0
+	var tour_ok := true
+	for sy in U.systems:
+		var sid: int = sy["id"]
+		var sts: Array = U.get_layout(sid)["stations"]
+		if sts.is_empty():
+			continue
+		Economy.set_prosperity(sid, 95.0)
+		for i in 12:
+			var m: Dictionary = Missions.generate_passenger(sid, sts[0], rng)
+			if m.is_empty():
+				continue
+			if m.get("tourist", false):
+				tourists += 1
+				resort_ok = resort_ok and String(U.find_station(int(m["target_system"]), String(m["target_station"])).get("type", "")) == "resort"
+			if m.has("tour"):
+				tours += 1
+				tour_ok = tour_ok and int(m["tour"]["system"]) != sid and String(m["target_station"]) == String(sts[0]["id"]) and not Missions.sight_place(m["tour"]).is_empty()
+		if tourists >= 3 and tours >= 3:
+			break
+	GameState.prosperity = keep
+	check(tourists > 0 and resort_ok and tours > 0 and tour_ok,
+		"43b: rich systems offer tourist flights to resorts (%d) and round trips to a sight of another system and back (%d)" % [tourists, tours])
+	# viewing: near a sight of this system, out of warp – then (and only then) they can disembark where they boarded
+	var here: int = view.system_id
+	var sg: Array = Tourism.sights(here)
+	if sg.is_empty():
+		return
+	var f := GameState.active()
+	var st0: Dictionary = U.get_layout(here)["stations"][0] if not U.get_layout(here)["stations"].is_empty() else {"id": "none"}
+	var tm := {"id": "tour_test", "type": "passenger", "giver": st0["id"], "giver_system": here, "amount": 2, "cabin": "bulk",
+		"target_system": here, "target_station": st0["id"], "ship_uid": f.uid, "expires": GameState.play_time + 999.0, "time_limit": 999.0,
+		"reward": 1000, "title": "Round trip (test)", "desc": "", "faction": "", "progress": 0, "cabin_slot": "",
+		"tour": {"system": here, "sight": sg[0]["id"], "name": sg[0]["name"], "body": sg[0]["body"], "kind": sg[0]["kind"], "t": 0.0, "done": false}}
+	GameState.missions.append(tm)
+	var before: bool = Missions.can_turn_in(tm, f, String(st0["id"]))
+	var keep_dock: String = f.docked_at
+	var keep_pos: Vector2 = view.player.position
+	f.docked_at = ""
+	var place: Dictionary = Missions.sight_place(tm["tour"])
+	view.player.position = (place["pos"] as Vector2) + Vector2(float(place["range"]) * 0.5, 0.0)
+	GameState._update_tours(20.0)
+	var halfway: bool = not bool(tm["tour"]["done"])
+	GameState._update_tours(30.0)
+	var seen: bool = bool(tm["tour"]["done"])
+	var after: bool = Missions.can_turn_in(tm, f, String(st0["id"]))
+	GameState.missions.erase(tm)
+	view.player.position = keep_pos
+	f.docked_at = keep_dock
+	GameState.prosperity = keep
+	check(not before and halfway and seen and after,
+		"43b: the sightseers look while you stay close to %s (%d s), and only then can they disembark where they boarded" % [sg[0]["name"], int(Missions.TOUR_VIEW)])
 
 
 func _test_mining41(view: SystemView) -> void:

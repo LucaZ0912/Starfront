@@ -114,6 +114,14 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## Tourist flights and round trips (phase 0.5 package 43b)
+
+- `Missions.generate_passenger`: from Average prosperity a share (`TOUR_SHARE`) are round trips (`generate_tour`),
+  others tourist flights to a resort (`TOURIST_SHARE` + 8 % per level, pay ×`TOURIST_PAY`, `m["tourist"]`).
+- A round trip is a passenger contract back to the giving station with `m["tour"]` = {system, sight, body, t, done};
+  `GameState._update_tours` counts the time near the sight (`Missions.sight_place` – range by body) out of warp;
+  `can_turn_in` waits for `done`. Prosperity: +0.6 per tourist group delivered, +0.4 per sight seen.
+
 ## Resorts and sights (phase 0.5 package 43a)
 
 - Station type `resort` (`data/commodities.gd`): sells souvenirs, holo films, artworks; wants luxuries, fine food,
