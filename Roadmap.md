@@ -1727,15 +1727,21 @@ Dazu am Ende das **Code-Review von Teil 6 Part A** (wie nach jedem Teil).
 
 Landen auf Planeten und Gameplay am Boden – aus Teil 6 herausgelöst, weil es fast ein eigenes Spiel innerhalb des Spiels ist (eigene Ansicht, Steuerung, Kollision, KI).
 
+**Pakete (Vorschlag 9. Nov 2026, nach den Antworten unten – ersetzt den groben Plan):**
+
 | # | Arbeitspaket | Inhalt |
 | --- | --- | --- |
-| 49 | Landung | Landeanimation beim Absinken; bei Planeten mit Atmosphäre eine glühende Scheibe um das Schiff (Eintritt) |
-| 50 | Planetenkarten | Karten der Planeten mit Städten und Points of Interest; prozedural aus dem Seed, Schlüsselorte von Hand gebaut; landbar sind alle festen Planeten |
-| 51 | Bodengameplay & Bodenmissionen | was man am Boden tut, Missionen am Boden |
-| 51a | Persönliche Ausrüstung | Ausrüstung des Piloten für den Boden und außerhalb des Schiffs: **Raumanzüge**, **Handwaffen**, **Tools** und weiteres Zubehör. Details besprechen wir, wenn wir dran sind (Idee Luz, 7. Nov 2026) |
-| 52 | Kampf zu Fuß | Kampf mit dem Piloten ohne Schiff (nutzt Athletics/Firearms aus Teil 5) |
-| 53 | Wolkenstädte | Gasriesen bekommen Wolkenstädte |
-| 54 | Personentransport & Sehenswürdigkeiten | Personentransport-Aufträge ausgebaut: Touristen zu Touristengebieten und Sehenswürdigkeiten (auf Planeten, in Wolkenstädten, an besonderen Orten im All) – baut auf der Tourismus-Wirtschaft aus Paket 43 auf |
+| 49 | Bodengrundlage & begehbare Stationen | die **Bodenansicht** als eigene Szene: Pixel-Kacheln, Kollision, Kamera, der Pilot läuft mit **WASD** (Sprite aus Teil 5), Aussteigen und Einsteigen; als erster begehbarer Ort ein **Stationsdeck**: in jeder Station kann man aussteigen und einen kleinen Bereich begehen, dessen Aussehen vom Stationstyp abhängt – mit **Läden und Bar** (öffnen die bekannten Fenster); das Stationsfenster bleibt wie bisher |
+| 50 | Landung, Landeplätze & Städte | aus dem Orbit einen **Landeplatz** wählen; **Landeanimation** mit glühender Scheibe beim Eintritt in eine Atmosphäre, Start; jeder feste Planet und Mond hat einige Landeplätze; **Städte** wie Stationen (Landefeld, Straßen, Gebäude mit Diensten, Wachen nach Systemsicherheit), Stil nach Planet, Fraktion und Wohlstand, prozedural aus dem Seed, Hauptstädte von Hand |
+| 51 | Persönliche Ausrüstung & Umwelt | Anzüge, Handwaffen, Werkzeuge, aktive Teile (Granate, Schildgenerator, Medkit, Stimulans) – **Prinzip wie beim Schiff** (Slots, Größe, Qualität F–A); eigenes kleines Inventar; Ausrüster am Boden; **Umwelt nach Planetentyp** (Hitze, Kälte, giftige Luft, Vakuum) – ohne passenden Anzug sinkt die Lebensleiste |
+| 52 | Kampf zu Fuß (Hybrid) | laufen mit WASD, **Gegner aufschalten, die Waffe feuert selbst** (Trefferquote aus Firearms), Position, **Deckung**, Abstand und **Ausweichen** (Athletics); aktive Ausrüstung auf 1–4; menschliche Gegner (Banditen, Piraten, Wachen); **Tod am Boden:** Aufwachen in der Klinik der nächsten Stadt bzw. Station, ein Teil der Ausrüstung ist weg |
+| 52a | Bodenteam | **Crewmitglieder als Bodenteam** (später auch Söldner) steuern: folgen, Position halten, angreifen, Fähigkeit einsetzen; eigene Ausrüstung je Mitglied; verletzt statt tot (Klinik) |
+| 53 | POIs & Bodenaufträge | Einsatzorte mit Ziel: Wrack bergen, Rettung, Kopfgeld zu Fuß, Anomalie scannen, Ruinen, Absturzstellen, Höhlen, **Rohstoffe von Hand**; Aufträge vom Auftragsbrett in Städten und Stationen |
+| 53a | Lebewesen | **nicht-menschliche Gegner** und Tiere auf Dschungel-, Ozean- und Eiswelten (friedlich oder gefährlich) – eigenes Paket (Wunsch Luz) |
+| 54 | Wolkenstädte | Städte auf Plattformen in den Wolken der Gasriesen |
+| 54a | Personentransport & Sehenswürdigkeiten am Boden | Touristen zu Sehenswürdigkeiten auf Planeten und in Wolkenstädten – baut auf Paket 43 auf |
+
+Am Ende wie immer Codex, Debug, Tests, Abstimmung und das **Code-Review von Teil 7**.
 
 Jedes Paket mit eigenen Debug-Funktionen (z. B. sofort landen, zu einem POI springen, Bodenmission starten, Gegner am Boden spawnen).
 
@@ -1749,6 +1755,13 @@ Jedes Paket mit eigenen Debug-Funktionen (z. B. sofort landen, zu einem POI spri
 - **All während der Landung:** wird **weiter simuliert**.
 - **Wolkenstädte:** ja, in Teil 7.
 - **Als Nächstes:** Kampf und Gameplay am Boden **konzeptionell** durchdenken, bevor die Pakete festgelegt werden.
+
+**Konzept Boden (Entscheidung Luz, 9. Nov 2026):**
+- **Ablauf:** **Städte** sind begehbare Orte, die wie Stationen funktionieren (Landefeld, Straßen, Gebäude mit Bar, Markt, Ausrüster, Auftragsbrett; Wachen nach Sicherheit); **POIs** sind Einsatzorte mit einem Ziel (bergen, retten, erkunden, abbauen) mit Gefahren und Gegnern – danach zurück zum Schiff. Ein Ort dauert typisch 5–15 Minuten; das All läuft weiter.
+- **Begehbare Stationen:** ab Teil 7 hat auch **jede Raumstation einen begehbaren Bereich** – man kann weiterhin alles über das Fenster machen, aber auch **aussteigen** und einen kleinen Teil der Station begehen, dessen **Design vom Stationstyp abhängt**, mit allen möglichen **Läden und der Bar**.
+- **Kampf: Hybrid (D).** Laufen mit WASD; gekämpft wird mit **Aufschalten wie beim Schiff** – die Waffe feuert selbst, Firearms bestimmt die Trefferquote; die Aufgabe des Spielers sind Position, Deckung, Abstand, Ausweichen und **aktive Ausrüstung auf 1–4** (Granate, Schildgenerator, Medkit, Stimulans). Dazu als Aufgabe: das **Steuern der Crewmitglieder im Bodenteam**, wenn man eins hat.
+- **Gefühl:** Kampf ist eine wichtige Sache – wahrscheinlich die wichtigste, wie im All –, aber **nicht die einzige**.
+- **Schwierigkeit:** der Pilot kann am Boden sterben – er **wacht in der Klinik** auf und verliert einen Teil seiner Ausrüstung.
 
 ### Entscheidungen zu Teil 7
 
