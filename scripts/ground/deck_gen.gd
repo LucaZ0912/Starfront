@@ -88,11 +88,11 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	m.title = String(station.get("name", "Station"))
 	var shops: Array = []
 	for sid in SHOPS:
-		if available.has(sid):
+		if available.has(sid) and not sid in HANGAR_SERVICES:
 			shops.append(sid)
 	var dock: Array = []
 	for d in DOCK_TERMINALS:
-		if available.has(d):
+		if available.has(d) and not d in HANGAR_SERVICES:
 			dock.append(d)
 	if not dock.is_empty():
 		shops.insert(0, "dock")
@@ -517,28 +517,31 @@ static func _zone(m: GroundMap, id: String, available: Dictionary, r: Rect2, sig
 
 ## One shop room below the corridor: a door in the corridor's wall, its back wall (seen from inside) with shelves,
 ## the counter along the right side with the shopkeeper behind it.
-static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock: Array, rng: RandomNumberGenerator, station: Dictionary) -> void:
+static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock: Array, rng: RandomNumberGenerator, station: Dictionary, cap_y: int = SHOP_CAP) -> void:
+	var scap := cap_y
+	var sface := cap_y + 1
+	var sy1 := cap_y + (SHOP_Y1 - SHOP_CAP)
 	var rw := SHOP_W
-	m.fill(sx, SHOP_CAP, rw, SHOP_Y1 - SHOP_CAP + 2, GroundMap.T.CAP)
-	m.fill(sx + 1, SHOP_FACE, rw - 2, 1, GroundMap.T.FACE)
-	m.fill(sx + 1, SHOP_FACE + 1, rw - 2, SHOP_Y1 - SHOP_FACE, GroundMap.T.FLOOR, 1)
+	m.fill(sx, scap, rw, sy1 - scap + 2, GroundMap.T.CAP)
+	m.fill(sx + 1, sface, rw - 2, 1, GroundMap.T.FACE)
+	m.fill(sx + 1, sface + 1, rw - 2, sy1 - sface, GroundMap.T.FLOOR, 1)
 	var dx := sx + rw / 2 - 1
-	m.fill(dx, SHOP_CAP, 2, 2, GroundMap.T.DOOR, 1)
+	m.fill(dx, scap, 2, 2, GroundMap.T.DOOR, 1)
 	var col: Color = _svc_col(id) if id != "dock" else m.pal["accent"]
-	var sign := Vector2(dx + 1, SHOP_CAP + 0.55) * GroundMap.TILE
-	var inside := Rect2(Vector2(sx + 1, SHOP_FACE + 1) * GroundMap.TILE, Vector2(rw - 2, SHOP_Y1 - SHOP_FACE) * GroundMap.TILE)
+	var sign := Vector2(dx + 1, scap + 0.55) * GroundMap.TILE
+	var inside := Rect2(Vector2(sx + 1, sface + 1) * GroundMap.TILE, Vector2(rw - 2, sy1 - sface) * GroundMap.TILE)
 	if id == "dock":
 		var tx := sx + 1
 		for d in dock:
 			if tx >= sx + rw - 1:
 				break
-			m.add_object({"kind": "terminal", "x": tx, "y": SHOP_Y1, "w": 1, "h": 1, "col": _svc_col(d), "icon": _svc_icon(d)})
-			_zone(m, d, available, Rect2(Vector2(tx - 0.1, SHOP_Y1 - 1.3) * GroundMap.TILE, Vector2(1.2, 1.5) * GroundMap.TILE),
+			m.add_object({"kind": "terminal", "x": tx, "y": sy1, "w": 1, "h": 1, "col": _svc_col(d), "icon": _svc_icon(d)})
+			_zone(m, d, available, Rect2(Vector2(tx - 0.1, sy1 - 1.3) * GroundMap.TILE, Vector2(1.2, 1.5) * GroundMap.TILE),
 				Vector2(-100, -100))
-			m.lights.append({"pos": Vector2(tx + 0.5, SHOP_Y1 - 0.2) * GroundMap.TILE, "r": 18.0, "col": _svc_col(d), "a": 0.3})
+			m.lights.append({"pos": Vector2(tx + 0.5, sy1 - 0.2) * GroundMap.TILE, "r": 18.0, "col": _svc_col(d), "a": 0.3})
 			tx += 1
 		m.zones.append({"rect": Rect2(), "kind": "label", "title": "Dock Office", "col": col, "sign": sign, "id": "dock"})
-		m.add_object({"kind": "plant", "x": sx + rw - 2, "y": SHOP_FACE + 1, "w": 1, "h": 1})
+		m.add_object({"kind": "plant", "x": sx + rw - 2, "y": sface + 1, "w": 1, "h": 1})
 		return
 	_zone(m, id, available, inside, sign)
 	var deco := "shelf"
@@ -551,25 +554,26 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 			deco = "poster"
 	for fx in range(sx + 1, sx + rw - 1, 2):
 		if fx + 1 < sx + rw - 1 and not (fx <= dx + 1 and fx + 1 >= dx):
-			m.face_deco.append({"kind": deco, "x": fx, "y": SHOP_FACE, "w": 2, "col": col})
+			m.face_deco.append({"kind": deco, "x": fx, "y": sface, "w": 2, "col": col})
 	# the counter on the right, the shopkeeper behind it facing the room
-	m.add_object({"kind": "counter_v", "x": sx + rw - 3, "y": SHOP_FACE + 2, "w": 1, "h": 3})
-	m.people.append({"pos": Vector2(sx + rw - 1.5, SHOP_FACE + 3.8) * GroundMap.TILE, "dir": 2, "role": "keeper"})
-	m.wander.append(Vector2(sx + rw - 3.6, SHOP_FACE + 3.4) * GroundMap.TILE)          # customers at the counter
+	m.add_object({"kind": "counter_v", "x": sx + rw - 3, "y": sface + 2, "w": 1, "h": 3})
+	m.people.append({"pos": Vector2(sx + rw - 1.5, sface + 3.8) * GroundMap.TILE, "dir": 2, "role": "keeper"})
+	m.wander.append(Vector2(sx + rw - 3.6, sface + 3.4) * GroundMap.TILE)          # customers at the counter
 	match id:
 		"market":
-			m.add_object({"kind": "crates", "x": sx + 1, "y": SHOP_Y1, "w": 2, "h": 1})
+			m.add_object({"kind": "crates", "x": sx + 1, "y": sy1, "w": 2, "h": 1})
 		"outfitter", "shipyard":
-			m.add_object({"kind": "display", "x": sx + 1, "y": SHOP_Y1 - 1, "w": 2, "h": 1, "col": col})
+			m.add_object({"kind": "display", "x": sx + 1, "y": sy1 - 1, "w": 2, "h": 1, "col": col})
 		"refinery", "manufacturing":
-			m.add_object({"kind": "machine", "x": sx + 1, "y": SHOP_Y1 - 1, "w": 2, "h": 2})
+			m.add_object({"kind": "machine", "x": sx + 1, "y": sy1 - 1, "w": 2, "h": 2})
 		_:
-			m.add_object({"kind": "plant", "x": sx + 1, "y": SHOP_Y1, "w": 1, "h": 1})
-	m.decals.append({"kind": "mat", "x": dx, "y": SHOP_FACE + 1, "w": 2, "h": 1, "col": col})
+			m.add_object({"kind": "plant", "x": sx + 1, "y": sy1, "w": 1, "h": 1})
+	m.decals.append({"kind": "mat", "x": dx, "y": sface + 1, "w": 2, "h": 1, "col": col})
 
 
 # ---------------------------------------------------------------- 0.7.49.8: the hangar
 
+const HANGAR_SERVICES := ["hangar", "shipyard"]   # 0.7.49.9: shops on the hangar walkway, not up on the commercial level
 const HANGAR_STAIRS := 3              # tiles at the west end: the stairs down to the ship
 const HANGAR_LOBBY := 6               # tiles at the east end: the lifts
 
@@ -577,16 +581,20 @@ const HANGAR_LOBBY := 6               # tiles at the east end: the lifts
 ## The hangar level: a raised walkway along a glass front, below it the closed hangar where your ship stands (its
 ## length decides the walkway's); the stairs down to the ship at the west end (you start there), the lifts at the
 ## east end. ship_len / ship_beam: the ship's size in art px (nose to the east).
-static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float) -> GroundMap:
+static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float, available: Dictionary = {}) -> GroundMap:
 	var m := GroundMap.new()
 	m.pal = palette_for(station)
 	m.title = String(station.get("name", "Station"))
-	var HW := clampi(int(ceil(ship_len / GroundMap.TILE)) + 10, 22, 64)
+	var hshops: Array = []
+	for hs in HANGAR_SERVICES:
+		if available.has(hs):
+			hshops.append(hs)
+	var HW := clampi(maxi(int(ceil(ship_len / GroundMap.TILE)) + 10, hshops.size() * (SHOP_W - 1) + 2), 22, 64)
 	var HH := clampi(int(ceil(ship_beam / GroundMap.TILE)) + 6, 9, 16)
 	var x_h := 1 + HANGAR_STAIRS                         # the hangar's first column
 	var W := x_h + HW + HANGAR_LOBBY + 1
 	var G := 3 + HH                                      # the glass front's first row
-	var H := G + 6
+	var H := G + 6 + (SHOP_Y1 - SHOP_CAP + 2 if not hshops.is_empty() else 0)
 	m.setup(W, H)
 	m.hull_top = -60                                     # all round: the station
 	m.under_glass = 11
@@ -597,7 +605,9 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float)
 	m.fill(x_h - 1, 1, 1, G + 1, GroundMap.T.CAP)
 	m.fill(x_h + HW, 1, 1, G + 1, GroundMap.T.CAP)
 	m.face_deco.append({"kind": "bay_door", "x": x_h + HW / 2 - 5, "y": 2, "w": 10, "col": m.pal["accent"]})
+	m.decals.append({"kind": "bay", "x": x_h, "y": 3, "w": HW, "h": HH, "col": m.pal["accent"]})
 	m.decals.append({"kind": "pad", "x": x_h + 3, "y": 4, "w": HW - 6, "h": HH - 2, "col": Color(0.95, 0.8, 0.2)})
+	m.bay_rect = Rect2(x_h, 1, HW, G - 1)
 	# the glass front of the walkway
 	m.fill(x_h, G, HW, 2, GroundMap.T.GLASS)
 	# the walkway, the stairs end, the lifts end
@@ -627,16 +637,15 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float)
 	# things on the hangar floor, lamps over it, a mechanic or two
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", "x"))) + 7
-	m.add_object({"kind": "crates", "x": x_h + 1, "y": 3 + HH - 2, "w": 2, "h": 1})
-	m.add_object({"kind": "machine", "x": x_h + HW - 3, "y": 3 + HH - 3, "w": 2, "h": 2})
-	m.add_object({"kind": "barrel", "x": x_h + 1, "y": 4, "w": 1, "h": 1})
-	m.add_object({"kind": "engine_part", "x": x_h + HW - 2, "y": 4, "w": 1, "h": 1})
-	for k2 in 2:
-		m.people.append({"pos": Vector2(x_h + 3 + k2 * (HW - 7), 3 + HH - 1.2) * GroundMap.TILE, "dir": 1 if k2 == 0 else 2, "role": "keeper"})
 	var lxx := x_h + 3
 	while lxx < x_h + HW - 2:
-		m.lights.append({"pos": Vector2(lxx, 3 + HH * 0.5) * GroundMap.TILE, "r": 60.0, "col": Color(1.0, 0.95, 0.8), "a": 0.16})
+		m.lights.append({"pos": Vector2(lxx, 3 + HH * 0.5) * GroundMap.TILE, "r": 70.0, "col": Color(0.8, 0.88, 1.0), "a": 0.08})
 		lxx += 7
+	# the hangar's services: shops on the south side of the walkway
+	var hsx := x_h + 1
+	for hs2 in hshops:
+		_shop(m, hs2, hsx, available, [], rng, station, G + 5)
+		hsx += SHOP_W - 1
 	for k3 in 3:
 		m.lights.append({"pos": Vector2(x_h + HW * (0.2 + k3 * 0.3), G + 3.0) * GroundMap.TILE, "r": 44.0, "col": Color(m.pal["accent"]).lerp(Color.WHITE, 0.4), "a": 0.22})
 	m.add_object({"kind": "plant", "x": W - 2, "y": G + 4, "w": 1, "h": 1})

@@ -154,7 +154,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   `ship`, lifts zone `lift`); zones of kind `lift` open the lift panel (`_open_lift_menu`, `_choose_level`), the ride
   ends on the other level; the exit (stairs) walks there and fades. Waystations: `DeckGen._dome_room` (a semicircle
   of glass – two round corners of radius `BAR_Y0` meeting – and a diner), the others `_bar_room`; `_place_crew`.
-  Floor kinds 11 (hangar), 12 (diner checkers); decals `pad`, `stairs`; face deco `bay_door`.; `texture()` renders floors and walls once.
+  Floor kinds 11 (hangar), 12 (diner checkers); decals `pad`, `stairs`; face deco `bay_door`.
+- 0.7.49.9: `DeckGen.HANGAR_SERVICES` (hangar, shipyard) are shops on the hangar walkway (`build_hangar(…, available)`,
+  `_shop(…, cap_y)` at any row) and left out of the commercial level; `GroundMap.bay_rect` (the view lays a haze
+  gradient over the bay), decal `bay` (tiny crates and lights far below); no people in the bay.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

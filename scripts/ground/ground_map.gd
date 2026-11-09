@@ -28,7 +28,8 @@ var spawn := Vector2.ZERO
 var pal: Dictionary = {}
 var hull_top := -9999                 # the station's structure goes on everywhere from this row down (the view draws it)
 var under_glass := -1                 # floor kind seen through glass (the hangar below the walkway); -1: space
-var ship_at := Vector2.INF            # the hangar: where the player's ship stands (art px)
+var ship_at := Vector2.INF
+var bay_rect := Rect2()               # tiles: the hangar bay (the view lays a haze over it – it is far below)            # the hangar: where the player's ship stands (art px)
 var window_rect := Rect2()            # tiles: where space shows through the glass (the view draws it there only)
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
@@ -339,13 +340,15 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 				_rect(px + int(hash2(x, y * 2 + k) * 15), py + k * 8, 1, 7, dw.darkened(0.3))
 			if hash2(x, y, 5) > 0.85:
 				_rect(px + 4, py + 5, 5, 3, dw.darkened(0.2))
-		11:             # the hangar floor, one level down: dark plates, a little darker towards the walls
-			var hc: Color = Color(pal["floor"]).darkened(0.35)
-			_rect(px, py, TILE, TILE, hc if (x + y) % 2 == 0 else hc.darkened(0.06))
-			_rect(px, py + TILE - 1, TILE, 1, hc.darkened(0.3))
-			_rect(px + TILE - 1, py, 1, TILE, hc.darkened(0.25))
-			if hash2(x, y, 11) > 0.88:
-				_rect(px + 3, py + 6, 6, 3, hc.darkened(0.22))        # oil stains
+		11:             # the hangar floor far below: small plates (it is far away), seams, now and then a stain
+			var hc: Color = Color(pal["floor"]).darkened(0.4)
+			for qy in 4:
+				for qx in 4:
+					_rect(px + qx * 4, py + qy * 4, 4, 4, hc if (x * 4 + qx + y * 4 + qy) % 2 == 0 else hc.darkened(0.05))
+			_rect(px, py + TILE - 1, TILE, 1, hc.darkened(0.2))
+			_rect(px + TILE - 1, py, 1, TILE, hc.darkened(0.18))
+			if hash2(x, y, 11) > 0.9:
+				_rect(px + 5, py + 7, 3, 2, hc.darkened(0.2))
 		12:             # a diner's checkered floor
 			var a := Color(0.9, 0.88, 0.84)
 			var b := Color(0.16, 0.15, 0.17)
@@ -439,6 +442,17 @@ func _decal(d: Dictionary) -> void:
 			_rect(px, py + ph / 2 - 1, pw, 2, c.lerp(Color.WHITE, 0.25))
 			_tint(px, py + ph / 2 + 1, pw, 1, c, 0.18)
 			_tint(px, py + ph / 2 + 2, pw, 1, c, 0.08)
+		"bay":                     # far down in the bay: tiny crates, carts and floor lights – the scale of a giant room
+			for k in int(pw * ph / 700):
+				var tx := px + 2 + int(hash2(k, 3, 7) * (pw - 6))
+				var edge := hash2(k, 4, 7)
+				var ty := py + 2 + (int(hash2(k, 5, 7) * 6) if edge < 0.5 else ph - 8 + int(hash2(k, 5, 7) * 5))
+				var kc: Color = [Color(0.45, 0.35, 0.22), Color(0.35, 0.38, 0.42), Color(0.6, 0.5, 0.2)][k % 3]
+				_rect(tx, ty, 3 + k % 2, 2, kc)
+				_rect(tx, ty, 3 + k % 2, 1, kc.lightened(0.2))
+			for k2 in int(pw / 12):
+				_px(px + 6 + k2 * 12, py + 1, c.lightened(0.3))
+				_px(px + 6 + k2 * 12, py + ph - 2, c.lightened(0.3))
 		"pad":                     # the landing marks on the hangar floor
 			_tint(px, py, pw, 2, c, 0.35)
 			_tint(px, py + ph - 2, pw, 2, c, 0.35)

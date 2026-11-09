@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.9 – 2026-11-09
+
+**The hangar feels far below – and gets its own shops.**
+- **No people down in the bay:** the mechanics and the person-sized crates, barrels and machines are gone; ships are
+  giants, and the bay is far below the walkway. Its floor has small plates now, tiny crates and carts line its walls,
+  little lights its edges, and a haze lies over it – thicker towards the far wall –, the ship in it too.
+- **Hangar and shipyard on the walkway:** where the station has them, the **Hangar** service and the **Shipyard** are
+  shops on the south side of the hangar walkway (door, neon sign, counter, keeper) – no longer up on the commercial
+  level.
+
 ## alpha 0.7.49.8 – 2026-11-09
 
 **The hangar, levels with a lift, and the waystations' own deck.**

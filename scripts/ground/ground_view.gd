@@ -122,7 +122,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	level = p_level
 	if level == "hangar":
 		var sz := _ship_size()
-		map = DeckGen.build_hangar(station, sz.x, sz.y)
+		map = DeckGen.build_hangar(station, sz.x, sz.y, _avail)
 	else:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
 	_build()
@@ -247,6 +247,24 @@ func _build() -> void:
 			_ship_spr.position = map.ship_at * GroundMap.SCALE
 			_ship_spr.modulate = Color(0.82, 0.84, 0.9)             # one level down, a little in the shade
 			_world.add_child(_ship_spr)
+	# the bay is far below: a haze over it, thicker towards the far wall
+	if map.bay_rect.size.x > 0.0:
+		var g := Gradient.new()
+		g.set_color(0, Color(0.03, 0.05, 0.1, 0.62))
+		g.set_color(1, Color(0.03, 0.05, 0.1, 0.22))
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill_from = Vector2(0, 0)
+		gt.fill_to = Vector2(0, 1)
+		gt.width = 4
+		gt.height = 64
+		var haze := TextureRect.new()
+		haze.texture = gt
+		haze.stretch_mode = TextureRect.STRETCH_SCALE
+		haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		haze.position = map.bay_rect.position * GroundMap.TILE * GroundMap.SCALE
+		haze.size = map.bay_rect.size * GroundMap.TILE * GroundMap.SCALE
+		_world.add_child(haze)
 	_lift_node = Node2D.new()
 	_lift_node.draw.connect(_draw_lifts)
 	_world.add_child(_lift_node)
