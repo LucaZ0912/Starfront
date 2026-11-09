@@ -19,6 +19,7 @@ var zone: Dictionary = {}
 var _space: ColorRect
 var _sky: Node2D
 var _world: Node2D
+var _hull: TextureRect
 var _sorted: Node2D
 var _signs: Node2D
 var _prompt: Label
@@ -83,19 +84,41 @@ func _space_view(sys_id: int) -> void:
 		return
 	var L := Universe.get_layout(sys_id)
 	var star: Dictionary = L["star"]
+	# placed beyond the window front (deck px) – they drift a little slower than the deck: far away
+	var s := GroundMap.TILE * GroundMap.SCALE
+	var star_at := Vector2((map.w * 0.22) * s, 2.2 * s)
+	var planet_at := Vector2((map.w * 0.62) * s, 3.6 * s)
 	var st_spr := Celestial.make_star_sprite(star, 46.0)
-	st_spr.position = Vector2(260, 120)
+	st_spr.position = star_at
 	_sky.add_child(st_spr)
 	var pi := int(station.get("planet", -1))
 	if pi >= 0 and pi < L["planets"].size():
 		var p: Dictionary = L["planets"][pi]
-		var lit := (Vector2(260, 120) - Vector2(1150, 260)).normalized()
-		var ps := Celestial.make_planet_sprite(p, 230.0, lit)
-		ps.position = Vector2(1150, 250)
+		var lit := (star_at - planet_at).normalized()
+		var ps := Celestial.make_planet_sprite(p, 300.0, lit)
+		ps.position = planet_at
 		_sky.add_child(ps)
 
 
 func _build() -> void:
+	# the station goes on round the deck – its structure seen from above, everywhere below the window front's top
+	if map.hull_top >= 0:
+		_hull = TextureRect.new()
+		_hull.texture = map.hull_texture()
+		_hull.stretch_mode = TextureRect.STRETCH_TILE
+		_hull.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_hull.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var far := 4000.0 / GroundMap.SCALE
+		_hull.position = Vector2(-far, map.hull_top * GroundMap.TILE) * GroundMap.SCALE
+		_hull.size = Vector2(map.w * GroundMap.TILE + far * 2.0, map.h * GroundMap.TILE + far)
+		_hull.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(_hull)
+		var rim := ColorRect.new()                    # the edge where the station's structure meets space
+		rim.color = Color(map.pal["wall_top"]).lightened(0.25)
+		rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rim.position = _hull.position
+		rim.size = Vector2(_hull.size.x * GroundMap.SCALE, GroundMap.SCALE)
+		_world.add_child(rim)
 	var spr := Sprite2D.new()
 	spr.texture = map.texture()
 	spr.centered = false
@@ -228,7 +251,7 @@ func _camera() -> void:
 		off.y = (vs.y - mp.y) * 0.5
 	_world.position = off.round()
 	# space beyond the glass moves only a little – it is far away
-	_sky.position = (off * 0.08).round()
+	_sky.position = (off * 0.9).round()
 	var m := _space.material as ShaderMaterial
 	if m != null:
 		m.set_shader_parameter("offset", -off * 0.3)

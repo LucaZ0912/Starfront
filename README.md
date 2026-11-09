@@ -132,7 +132,9 @@ Slanted, cosy top-down view since 0.7.49.2.
 - `scripts/ground/ground_map.gd` – `GroundMap`: tiles (`TILE` 16 art px, drawn ×`SCALE` 3), `T` (VOID, FLOOR, CAP
   = wall top, FACE = a wall's front face, GLASS = window front, DOOR, BLOCK), `floor_kind`, `free_at` (feet),
   `zones` (service / exit / crew / label, with `sign`, `vertical`), `objects` (standing furniture), `decals`,
-  `face_deco`, `people`, `wander`, `spawn`, `pal`, `hull_from_y`; `texture()` renders floors and walls once.
+  `face_deco`, `people`, `wander`, `spawn`, `pal`, `hull_top` (the station's structure from this row down, drawn by
+  the view from `hull_texture()`; wall tops only where they border a room), `round_corners` (the window front's
+  rounded corners); `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

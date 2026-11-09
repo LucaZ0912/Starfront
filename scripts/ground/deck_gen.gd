@@ -26,13 +26,15 @@ const SHOP_W := 7
 const DOCK_TERMINALS := ["fuel", "repair", "drones", "munitions", "hangar"]
 const KIOSKS := ["news", "bulletin"]
 ## rows
-const BAR_Y0 := 4                 # first floor row of the bar (rows 0 cap, 1–3 window front)
-const COR_Y0 := 13                # the railing row – the corridor below it to row 16
-const COR_Y1 := 16
-const SHOP_CAP := 17              # the corridor's south wall …
-const SHOP_FACE := 18             # … the shop's back wall face, seen from inside
-const SHOP_Y1 := 23               # last floor row of the shops
-const LOBBY_X1 := 6               # the lift lobby: x 1 … 6
+const BAR_Y0 := 6                 # first floor row of the bar (rows 0 cap, 1–5 the window front)
+const COR_Y0 := 15                # the railing row – the corridor below it to row 18
+const COR_Y1 := 18
+const SHOP_CAP := 19              # the corridor's south wall …
+const SHOP_FACE := 20             # … the shop's back wall face, seen from inside
+const SHOP_Y1 := 25               # last floor row of the shops
+const LOBBY_X1 := 6               # the lift lobby: x 1 … 6, deep inside the station
+const LOBBY_Y0 := COR_Y0 - 5      # its north wall (the lifts) – station all round it, not space
+const CORNER_R := 6               # the window front's rounded corners (tiles)
 
 
 static func palette_for(station: Dictionary) -> Dictionary:
@@ -51,7 +53,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	rng.seed = hash(String(station.get("id", "x")))
 	var m := GroundMap.new()
 	m.pal = palette_for(station)
-	m.hull_from_y = COR_Y0
+	m.hull_top = BAR_Y0
 	m.title = String(station.get("name", "Station"))
 	var shops: Array = []
 	for sid in SHOPS:
@@ -67,17 +69,17 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	var W := maxi(x_shops + shops.size() * (SHOP_W - 1) + 3, 44)
 	var H := SHOP_Y1 + 2
 	m.setup(W, H)
-	var bx0 := LOBBY_X1 + 1                             # the bar's west window column
-	# ---- the bar: window front to the north and west, the counter at the east
+	var bx0 := LOBBY_X1 + 1                             # the bar's west wall
+	# ---- the bar: a big window front to the north with rounded corners, the counter at the east
 	m.fill(bx0, 0, W - bx0, 1, GroundMap.T.CAP)
-	m.fill(bx0 + 1, 1, W - bx0 - 2, 3, GroundMap.T.GLASS)
-	m.fill(bx0, 1, 1, COR_Y0 - 3, GroundMap.T.GLASS)      # the west side: glass down to the lobby
-	m.fill(bx0 + 1, 1, 1, 1, GroundMap.T.VOID)            # a rounded corner (Luz's sketch)
-	m.set_t(bx0, 1, GroundMap.T.VOID)
-	m.set_t(bx0, 2, GroundMap.T.VOID)
-	m.fill(W - 1, 0, 1, COR_Y0 + 4, GroundMap.T.CAP)
+	m.fill(bx0, 1, W - bx0, BAR_Y0 - 1, GroundMap.T.GLASS)
+	m.fill(bx0, 0, CORNER_R, CORNER_R, GroundMap.T.GLASS)
+	m.fill(W - CORNER_R, 0, CORNER_R, CORNER_R, GroundMap.T.GLASS)
+	m.round_corners.append({"x": bx0, "r": CORNER_R, "side": -1})
+	m.round_corners.append({"x": W - 1, "r": CORNER_R, "side": 1})
+	m.fill(W - 1, BAR_Y0, 1, COR_Y1 - BAR_Y0 + 2, GroundMap.T.CAP)
+	m.fill(bx0, BAR_Y0, 1, COR_Y0 - BAR_Y0, GroundMap.T.CAP)
 	m.fill(bx0 + 1, BAR_Y0, W - bx0 - 2, COR_Y0 - BAR_Y0, GroundMap.T.FLOOR, 3)
-	m.fill(bx0, COR_Y0 - 2, 1, 2, GroundMap.T.CAP)        # the bar meets the lobby wall
 	# the counter, the bartender behind it, the shelves
 	var cx := W - 5
 	m.add_object({"kind": "counter_v", "x": cx, "y": BAR_Y0 + 1, "w": 2, "h": 6})
@@ -105,7 +107,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 			m.people.append({"pos": Vector2(tx + 2.5, ty + 2.1) * GroundMap.TILE, "dir": 2, "sit": true})
 		tx += 5
 		row += 1
-	m.add_object({"kind": "jukebox", "x": bx0 + 1, "y": BAR_Y0, "w": 1, "h": 1, "col": Color(1.0, 0.45, 0.7)})
+	m.add_object({"kind": "jukebox", "x": bx0 + 1, "y": BAR_Y0 + 1, "w": 1, "h": 1, "col": Color(1.0, 0.45, 0.7)})
 	m.add_object({"kind": "plant", "x": cx - 3, "y": BAR_Y0, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": bx0 + 1, "y": COR_Y0 - 1, "w": 1, "h": 1})
 	m.add_object({"kind": "sofa", "x": bx0 + 2, "y": COR_Y0 - 2, "w": 3, "h": 1, "col": m.pal["carpet"]})
@@ -147,28 +149,29 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	m.fill(bx0, COR_Y0 + 1, W - bx0 - 1, COR_Y1 - COR_Y0, GroundMap.T.FLOOR, 0)
 	m.decals.append({"kind": "guide", "x": bx0, "y": COR_Y0 + 2, "w": W - bx0 - 1, "h": 1, "col": m.pal["accent"]})
 	# ---- the lift lobby
-	m.fill(0, 8, LOBBY_X1 + 2, 1, GroundMap.T.CAP)
-	m.fill(1, 9, LOBBY_X1, 2, GroundMap.T.FACE)
-	m.fill(0, 9, 1, SHOP_Y1 - 6, GroundMap.T.CAP)
-	m.fill(1, 11, LOBBY_X1, 8, GroundMap.T.FLOOR, 2)
-	m.fill(0, 19, LOBBY_X1 + 2, 1, GroundMap.T.CAP)
-	m.fill(LOBBY_X1 + 1, 9, 1, 2, GroundMap.T.CAP)
-	m.fill(LOBBY_X1 + 1, COR_Y1 + 1, 1, 3, GroundMap.T.CAP)
+	var ly := LOBBY_Y0
+	m.fill(0, ly, LOBBY_X1 + 2, 1, GroundMap.T.CAP)
+	m.fill(1, ly + 1, LOBBY_X1, 2, GroundMap.T.FACE)
+	m.fill(0, ly + 1, 1, SHOP_Y1 - ly + 1, GroundMap.T.CAP)
+	m.fill(1, ly + 3, LOBBY_X1, 8, GroundMap.T.FLOOR, 2)
+	m.fill(0, ly + 11, LOBBY_X1 + 2, SHOP_Y1 - ly - 9, GroundMap.T.CAP)
+	m.fill(LOBBY_X1 + 1, ly + 1, 1, COR_Y0 - ly - 1, GroundMap.T.CAP)
+	m.fill(LOBBY_X1 + 1, COR_Y1 + 1, 1, ly + 11 - COR_Y1 - 1, GroundMap.T.CAP)
 	m.fill(LOBBY_X1 + 1, COR_Y0, 1, COR_Y1 - COR_Y0 + 1, GroundMap.T.FLOOR, 0)
-	m.face_deco.append({"kind": "lift", "x": 1, "y": 10, "w": 2, "col": Color(0.4, 1.0, 0.6)})
-	m.face_deco.append({"kind": "lift", "x": 4, "y": 10, "w": 2, "col": Color(0.4, 1.0, 0.6)})
-	m.decals.append({"kind": "mat", "x": 1, "y": 11, "w": 5, "h": 1, "col": m.pal["accent"]})
-	m.spawn = Vector2(3.5, 12.6) * GroundMap.TILE
-	m.zones.append({"rect": Rect2(Vector2(1, 11) * GroundMap.TILE, Vector2(5, 1.4) * GroundMap.TILE), "kind": "exit", "id": "ship",
-		"title": "Lift to the dock – your ship", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(3.5, 8.7) * GroundMap.TILE})
+	m.face_deco.append({"kind": "lift", "x": 1, "y": ly + 2, "w": 2, "col": Color(0.4, 1.0, 0.6)})
+	m.face_deco.append({"kind": "lift", "x": 4, "y": ly + 2, "w": 2, "col": Color(0.4, 1.0, 0.6)})
+	m.decals.append({"kind": "mat", "x": 1, "y": ly + 3, "w": 5, "h": 1, "col": m.pal["accent"]})
+	m.spawn = Vector2(3.5, ly + 4.6) * GroundMap.TILE
+	m.zones.append({"rect": Rect2(Vector2(1, ly + 3) * GroundMap.TILE, Vector2(5, 1.4) * GroundMap.TILE), "kind": "exit", "id": "ship",
+		"title": "Lift to the dock – your ship", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(3.5, ly + 0.7) * GroundMap.TILE})
 	var kx := 2
 	for k in KIOSKS:
 		if available.has(k):
-			m.add_object({"kind": "terminal", "x": kx, "y": 17, "w": 1, "h": 1, "col": _svc_col(k), "icon": _svc_icon(k)})
-			_zone(m, k, available, Rect2(Vector2(kx - 0.5, 15.6) * GroundMap.TILE, Vector2(2, 1.6) * GroundMap.TILE), Vector2(kx + 0.5, 16.4) * GroundMap.TILE)
+			m.add_object({"kind": "terminal", "x": kx, "y": ly + 9, "w": 1, "h": 1, "col": _svc_col(k), "icon": _svc_icon(k)})
+			_zone(m, k, available, Rect2(Vector2(kx - 0.5, ly + 7.6) * GroundMap.TILE, Vector2(2, 1.6) * GroundMap.TILE), Vector2(kx + 0.5, ly + 8.4) * GroundMap.TILE)
 			kx += 3
-	m.add_object({"kind": "plant", "x": 1, "y": 15, "w": 1, "h": 1})
-	m.add_object({"kind": "bench", "x": 3, "y": 14, "w": 2, "h": 1, "col": m.pal["accent"]})
+	m.add_object({"kind": "plant", "x": 1, "y": ly + 7, "w": 1, "h": 1})
+	m.add_object({"kind": "bench", "x": 3, "y": ly + 6, "w": 2, "h": 1, "col": m.pal["accent"]})
 	# ---- the shops below the corridor
 	m.fill(bx0, SHOP_CAP, W - bx0, 1, GroundMap.T.CAP)
 	var sx := x_shops - 1

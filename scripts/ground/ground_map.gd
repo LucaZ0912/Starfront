@@ -23,7 +23,8 @@ var people: Array = []                        # NPCs that stay: {pos (art px, fe
 var wander: Array = []                        # where strolling NPCs may go (art px)
 var spawn := Vector2.ZERO
 var pal: Dictionary = {}
-var hull_from_y := 1 << 20           # VOID rows from here on are the station's inside (dark hull), not space
+var hull_top := -1                    # the station's structure goes on everywhere from this row down (the view draws it)
+var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
 var _img: Image
 var _tex: Texture2D
@@ -125,17 +126,14 @@ func _render() -> void:
 				T.FLOOR, T.DOOR, T.BLOCK:
 					_floor_tile(x, y, px, py, floor_kind[y * w + x])
 				T.CAP:
-					_cap_tile(x, y, px, py)
+					if hull_top < 0 or y < hull_top or _cap_shows(x, y):
+						_cap_tile(x, y, px, py)
 				T.FACE:
 					_face_tile(x, y, px, py)
 				T.GLASS:
 					_glass_tile(x, y, px, py)
-				T.VOID:
-					if y >= hull_from_y:
-						var hc: Color = Color(pal.get("wall", Color(0.2, 0.2, 0.25))).darkened(0.72)
-						_rect(px, py, TILE, TILE, hc)
-						if (x + y) % 3 == 0:
-							_rect(px + 3, py + 3, TILE - 6, TILE - 6, hc.lightened(0.04))
+	for rc in round_corners:
+		_round_corner(rc)
 	for d in decals:
 		_decal(d)
 	for fd in face_deco:
@@ -151,6 +149,66 @@ func _render() -> void:
 				var left := t_at(x2 - 1, y2)
 				if left == T.CAP or left == T.FACE:
 					_shade_x(x2 * TILE, y2 * TILE, 3, TILE, 0.18)
+
+
+## A wall's top only where it borders a room – the solid mass behind it is the station's structure (drawn by the view).
+func _cap_shows(x: int, y: int) -> bool:
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			var t := t_at(x + dx, y + dy)
+			if t != T.CAP and t != T.VOID:
+				return true
+	return false
+
+
+## Rounds a window front's upper corner: outside the arc it is space, along it the wall's top (one tile thick, like
+## the straight walls), inside it the glass – the window's face reaches down to the floor below.
+func _round_corner(rc: Dictionary) -> void:
+	var r := int(rc["r"]) * TILE
+	var side := int(rc["side"])
+	var x0 := int(rc["x"]) * TILE if side < 0 else (int(rc["x"]) + 1) * TILE - r
+	var c := Vector2(x0 + r if side < 0 else x0, r)
+	var top: Color = pal["wall_top"]
+	var fr: Color = pal["frame"]
+	for py in r:
+		for px in range(x0, x0 + r):
+			var d := Vector2(px + 0.5, py + 0.5).distance_to(c)
+			if d > r:
+				_img.set_pixel(px, py, Color(0, 0, 0, 0))
+			elif d > r - 1.2:
+				_img.set_pixel(px, py, top.lightened(0.25))
+			elif d > r - TILE:
+				_img.set_pixel(px, py, top)
+			elif d > r - TILE - 2.0:
+				_img.set_pixel(px, py, fr)
+
+
+## The station's structure round the deck, seen from above (tiled by the view): plates, seams, rivets, a vent, a pipe
+## run, a small light – the station goes on for kilometres in every direction.
+func hull_texture() -> Texture2D:
+	var n := 64
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var base: Color = Color(pal["wall_top"]).darkened(0.12)
+	img.fill(base)
+	for py in n:
+		for px in n:
+			var hv := hash2(px / 16, py / 16, 7)
+			var c := base.lightened(0.03) if hv > 0.6 else (base.darkened(0.06) if hv < 0.25 else base)
+			if px % 32 == 0 or py % 32 == 0:
+				c = base.darkened(0.3)
+			elif px % 16 == 0 or py % 16 == 0:
+				c = base.darkened(0.14)
+			elif (px % 32 == 1) or (py % 32 == 1):
+				c = c.lightened(0.07)
+			img.set_pixel(px, py, c)
+	for k in [Vector2i(3, 3), Vector2i(28, 3), Vector2i(3, 28), Vector2i(28, 28), Vector2i(35, 35), Vector2i(60, 35), Vector2i(35, 60), Vector2i(60, 60)]:
+		img.set_pixel(k.x, k.y, base.lightened(0.18))
+	for i in 5:
+		img.fill_rect(Rect2i(38, 6 + i * 4, 18, 2), base.darkened(0.35))
+	img.fill_rect(Rect2i(0, 47, 32, 3), base.lightened(0.08))
+	img.fill_rect(Rect2i(0, 50, 32, 1), base.darkened(0.3))
+	img.fill_rect(Rect2i(8, 12, 2, 2), Color(pal["accent"]).darkened(0.2))
+	return ImageTexture.create_from_image(img)
 
 
 func _shade(x: int, y: int, rw: int, rh: int, k: float) -> void:

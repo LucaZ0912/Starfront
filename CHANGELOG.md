@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.3 – 2026-11-09
+
+**The deck, second round of Luz's notes.**
+- **A real panorama:** the bar's window front is much taller (five rows instead of three) and its two upper corners
+  are properly rounded – a curved glass gallery with the star and a bigger planet outside.
+- **The lifts sit inside the station:** the lift lobby lies deep in the structure, no longer against open space.
+- **The station goes on:** round the deck, to every side and below, the station's structure continues (hull plates,
+  seams, vents, small lights) – only above the bar's window front is there space. Walls are one tile thick; the solid
+  mass behind them is part of that structure.
+
 ## alpha 0.7.49.2 – 2026-11-09
 
 **Package 49 reworked: the deck in a slanted, cosy view, laid out after Luz's sketch.**
