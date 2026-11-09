@@ -34,6 +34,11 @@ const ACTIONS := [
 	{"id": "module_7", "label": "Module 7", "group": "Modules", "def": [{"k": KEY_7}]},
 	{"id": "module_8", "label": "Module 8", "group": "Modules", "def": [{"k": KEY_8}]},
 	{"id": "module_9", "label": "Module 9", "group": "Modules", "def": [{"k": KEY_9}]},
+	{"id": "walk_up", "label": "Walk up", "group": "On foot", "def": [{"k": KEY_W}, {"k": KEY_UP}]},          # package 49
+	{"id": "walk_down", "label": "Walk down", "group": "On foot", "def": [{"k": KEY_S}, {"k": KEY_DOWN}]},
+	{"id": "walk_left", "label": "Walk left", "group": "On foot", "def": [{"k": KEY_A}, {"k": KEY_LEFT}]},
+	{"id": "walk_right", "label": "Walk right", "group": "On foot", "def": [{"k": KEY_D}, {"k": KEY_RIGHT}]},
+	{"id": "interact", "label": "Use (door, terminal, airlock)", "group": "On foot", "def": [{"k": KEY_E}]},
 	{"id": "boost", "label": "Thrust burst (a few seconds of extra speed)", "group": "Ship commands", "def": [{"k": KEY_SHIFT}]},
 	{"id": "sel_target", "label": "Cycle targets in sensor range (ships, asteroids, wrecks, anomalies)", "group": "Ship commands", "def": [{"k": KEY_TAB}]},
 	{"id": "sel_hostile", "label": "Cycle hostile ships (nearest first)", "group": "Ship commands", "def": [{"k": KEY_V}]},
@@ -142,18 +147,27 @@ func _apply_all() -> void:
 ## Assigns a binding. A binding used by another action is removed there first.
 ## Returns the label of the action that lost the binding ("" if none).
 func _is_menu(id: String) -> bool:
+	return _context(id) == "menu"
+
+
+## Package 49: menus, on foot and in space are separate contexts – a key may do one thing in each.
+func _context(id: String) -> String:
 	for a in ACTIONS:
 		if a["id"] == id:
-			return String(a["group"]) == "Menus"
-	return false
+			match String(a["group"]):
+				"Menus":
+					return "menu"
+				"On foot":
+					return "foot"
+	return "space"
 
 
 func set_binding(id: String, slot: int, d: Dictionary) -> String:
 	var taken_from := ""
 	if not d.is_empty():
 		for other in binds:
-			if _is_menu(other) != _is_menu(id):
-				continue                          # menu keys and game keys may share a key (0.5.28.2)
+			if _context(other) != _context(id):
+				continue                          # menu, on-foot and space keys may share a key (0.5.28.2, package 49)
 			var list: Array = binds[other]
 			for i in list.size():
 				if same(list[i], d) and not (other == id and i == slot):

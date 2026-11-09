@@ -63,6 +63,7 @@ func _ready() -> void:
 	galaxy.routes_changed.connect(_on_routes_changed)
 	galaxy.closed.connect(_update_input)
 	station_panel.closed.connect(_update_input)
+	station_panel.walk_requested.connect(open_deck)          # package 49
 	ship_menu.closed.connect(func(): station_panel.rebuild())
 	station_panel.ship_menu_requested.connect(open_ship_menu)
 	ship_menu.closed.connect(_update_input)
@@ -115,8 +116,76 @@ func load_system(sys: int) -> void:
 
 
 func _update_input() -> void:
+	var overlay: bool = galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace
 	if view != null and is_instance_valid(view):
-		view.input_enabled = not (galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace)
+		view.input_enabled = not overlay and ground == null
+	if ground != null and is_instance_valid(ground):
+		ground.input_enabled = not overlay and not pause_menu.visible
+
+
+# ---------------------------------------------------------------- Package 49: on foot
+
+var ground: GroundView = null
+
+
+## Gets out of the ship and walks the deck of the station it is docked at.
+func open_deck() -> void:
+	var f := GameState.active()
+	if f == null or f.docked_at == "" or view == null or not view.stations.has(f.docked_at):
+		return
+	var st: Dictionary = view.stations[f.docked_at].data
+	var avail := {}
+	for svc in GameData.services:
+		avail[String(svc["id"])] = station_panel.service_available(svc) if station_panel.station == st else ""
+	station_panel.station = st
+	station_panel.view = view
+	for svc2 in GameData.services:
+		avail[String(svc2["id"])] = station_panel.service_available(svc2)
+	for k in avail.keys():
+		if String(avail[k]).begins_with("Not offered") or String(avail[k]).begins_with("No ") or String(avail[k]).begins_with("Only in"):
+			avail.erase(k)                         # what this station does not have at all gets no door
+	station_panel.close()
+	close_deck(false)
+	ground = GroundView.new()
+	ground.name = "Ground"
+	add_child(ground)
+	ground.setup_station(st, avail)
+	ground.used.connect(_on_deck_use)
+	GameState.codex.event("on_foot")
+	_update_input()
+
+
+## Back into the ship (open: show the station window again).
+func close_deck(open_window: bool = true) -> void:
+	if ground != null and is_instance_valid(ground):
+		ground.queue_free()
+	ground = null
+	if open_window:
+		open_station()
+	_update_input()
+
+
+func _on_deck_use(z: Dictionary) -> void:
+	match String(z.get("kind", "")):
+		"exit":
+			close_deck(true)
+		"service":
+			var f := GameState.active()
+			if f == null or f.docked_at == "" or not view.stations.has(f.docked_at):
+				close_deck(false)
+				return
+			station_panel.open(view.stations[f.docked_at].data, view)
+			station_panel.open_service(String(z["id"]))
+			_update_input()
+
+
+## The deck goes away when the ship is no longer docked where the pilot walks (undocked, lost, teleported).
+func _check_deck() -> void:
+	if ground == null or not is_instance_valid(ground):
+		return
+	var f := GameState.active()
+	if f == null or f.docked_at == "" or String(ground.station.get("id", "")) != f.docked_at:
+		close_deck(false)
 
 
 func toggle_galaxy() -> void:
@@ -195,6 +264,7 @@ func _on_arrived_system(f: ShipFitting) -> void:
 
 
 func _on_active_changed() -> void:
+	_check_deck()                                        # package 49
 	var f := GameState.active()
 	if f == null:
 		return
@@ -372,6 +442,7 @@ func _show_loading() -> void:
 
 
 func _process(delta: float) -> void:
+	_check_deck()                                        # package 49: undocked, lost or moved – back from the deck
 	if loading == null:
 		return
 	_loading_t += delta

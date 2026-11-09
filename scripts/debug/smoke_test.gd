@@ -128,6 +128,7 @@ func _process(delta: float) -> void:
 				check(saw_docking, "docking animation played")
 				var sp: StationUI = main.station_panel
 				check(sp.visible, "station window open after docking (%.1fs)" % timer)
+				_test_deck(view)                 # package 49 – before the station test, which ends by undocking
 				_test_station(sp)
 				_next()
 			elif timer > 120.0:
@@ -2814,7 +2815,7 @@ func _test_follow(view: SystemView, tr, e: Dictionary, lead: Ship) -> void:
 		if String(a["id"]) in ["interdict_hit", "map_territory"] or String(a["group"]) == "Menus":
 			continue
 		for b in a["def"]:
-			var kk := str(b)
+			var kk := Keybinds._context(String(a["id"])) + str(b)      # package 49: per context (space / on foot)
 			dup_ok = dup_ok and not dup.has(kk)
 			dup[kk] = true
 	check(InputMap.has_action("cmd_lock") and Keybinds.key_text("cmd_lock") == "R" and dup_ok, "command hotkeys exist (Lock = %s) and no default key is used twice" % Keybinds.key_text("cmd_lock"))
@@ -2979,7 +2980,7 @@ func _test_codex(view: SystemView) -> void:
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
 		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
-		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim"]   # packages 40c–e   # package 37: stars
+		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot"]   # packages 40c–e, 49   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -7602,6 +7603,47 @@ func _test_review6(view: SystemView) -> void:
 	GameState._misjump(f2, far_sid)
 	GameState.pending_arrival = keep_pa
 	check(f2.structure <= float(s2["structure_max"]) * 0.05 + 0.01 and f2.structure > 0.0, "review 6 M3: a misjump with a battered hull does not repair it (%.0f %%)" % (f2.structure / float(s2["structure_max"]) * 100.0))
+
+
+## Package 49: on foot – walk the deck of the station, use a shop door, back to the ship.
+func _test_deck(view: SystemView) -> void:
+	main.open_deck()
+	var g = main.ground
+	var ok: bool = g != null and is_instance_valid(g) and g.map != null and not main.station_panel.visible
+	if not ok:
+		check(false, "49: the deck opens from the station window")
+		return
+	var m: GroundMap = g.map
+	var doors := 0
+	var ids := {}
+	for z in m.zones:
+		ids[String(z.get("id", ""))] = true
+		if z["kind"] == "service":
+			doors += 1
+	var reach := true
+	for z2 in m.zones:
+		if z2["kind"] in ["service", "exit"]:
+			reach = reach and g.walk_to_zone(String(z2["id"]))
+	# walking: blocked by walls, free on the promenade
+	g.pilot.pos = m.spawn
+	var p0: Vector2 = g.pilot.pos
+	for i in 30:
+		g.pilot.step(Vector2.RIGHT, 1.0 / 30.0)
+	var walked: bool = g.pilot.pos.x > p0.x + 20.0
+	var wall_ok: bool = not m.free_at(Vector2(-10, -10)) and m.free_at(m.spawn)
+	check(doors >= 6 and ids.has("bar") and ids.has("market") and ids.has("ship") and reach and walked and wall_ok and m.texture().get_width() == m.w * GroundMap.TILE,
+		"49: the station deck – airlock with your ship, promenade, %d shops and the bar behind doors, people about; the pilot walks and walls stop him" % doors)
+	# a shop door opens its window over the deck; closing it goes back to the deck; the airlock back to the ship
+	g.walk_to_zone("market")
+	var used: bool = g.use()
+	var panel_ok: bool = main.station_panel.visible and main.station_panel.current_service == "market"
+	main.station_panel.close()
+	var back_on_deck: bool = main.ground != null and not main.station_panel.visible
+	g.walk_to_zone("ship")
+	g.use()
+	var aboard: bool = main.ground == null and main.station_panel.visible
+	check(used and panel_ok and back_on_deck and aboard and GameState.codex.unlocked.has("basics_on_foot"),
+		"49: E at the market door opens the market over the deck, closing it is back on the deck; the airlock leads back to the ship and the station window")
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.

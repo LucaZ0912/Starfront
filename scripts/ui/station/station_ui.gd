@@ -12,6 +12,8 @@ signal ship_menu_requested
 const ScanlineShader = preload("res://shaders/scanlines.gdshader")
 const FactionData = preload("res://data/factions.gd")
 
+signal walk_requested                 # package 49: get out and walk the station's deck
+
 var station: Dictionary = {}
 var view: SystemView
 var current_service := ""
@@ -69,6 +71,7 @@ func _ready() -> void:
 	credits_label = UI.label("", 18, UI.GOLD)
 	head.add_child(credits_label)
 	head.add_child(UI.button("Ship [%s]" % Keybinds.key_text("ship_menu"), func(): ship_menu_requested.emit()))
+	head.add_child(UI.button("Walk the deck", func(): walk_requested.emit()))      # package 49
 	head.add_child(UI.button("Undock", undock))
 	head.add_child(UI.button("Close [%s]" % Keybinds.key_text("menu_back"), close))
 	var line := ColorRect.new()

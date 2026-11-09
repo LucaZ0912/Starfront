@@ -126,6 +126,20 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## On foot (phase 0.5 Teil 7, package 49)
+
+- `scripts/ground/ground_map.gd` – `GroundMap`: tiles (`TILE` 16 art px, drawn ×`SCALE` 3), `T` (VOID, FLOOR, WALL,
+  DOOR, BLOCK, WINDOW), `free_at`, `zones` (service / exit / label, with `sign`), `props` (counter, bar_counter,
+  stool, table, shelf, crates, rack, terminal, planter, bench, pillar, holo, machine, stripes, ship, mirror,
+  fountain, rug, wallscreen), `people`, `wander`, `spawn`, `dock_at`; `texture()` renders it once.
+- `deck_gen.gd` – `DeckGen.build(station, available)`: airlock + promenade + rooms (`ROOM_W`) on both sides, dock
+  office terminals (`DOCK_TERMINALS`), kiosks (`KIOSKS`), furniture per service (`_furnish`), palette per station type
+  (`PALETTES`).
+- `walker.gd` – `Walker`: `step(dir, delta, mult)` sliding along walls, NPC wandering, sprite from `PilotArt`.
+- `ground_view.gd` – `GroundView` (CanvasLayer 12): the docked ship, people, signs, prompt; signal `used(zone)`.
+- `main.gd`: `open_deck()` (from `StationUI.walk_requested`), `close_deck()`, `_on_deck_use`, `_check_deck` (closes the
+  deck when the ship is no longer docked there). Keys: `walk_*`, `interact` in the "On foot" group – `Keybinds._context`.
+
 ## Thrust burst (0.6.75.2)
 
 - `Ship.boost()` / `boost_error()` / `boost_mult()`: `BOOST_TIME`, `BOOST_MULT`, `BOOST_ACCEL`, `BOOST_COOLDOWN`,

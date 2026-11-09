@@ -3,6 +3,28 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.1 – 2026-11-09
+
+**Teil 7, package 49: on foot – the ground view and walkable station decks.**
+- **Walk the deck:** a new button in the station window gets the pilot out of the ship onto the station's deck – the
+  space view keeps running below. Everything still works through the station window as before.
+- **The deck:** an **airlock** where your own ship lies docked beyond the window (nose to the hatch, docking tube),
+  a **promenade** with kiosks (News Archive, Bulletin Board), planters, benches, pillars and holo adverts, and the
+  **shops and the bar as rooms** on both sides, each behind a door with a lit sign in its corporation's colours: Market
+  (crates, counter), Outfitter (weapon racks), Shipyard (a ship in the dock window), Bond Office, Image Studio
+  (mirror), Refinery/Manufacturing (machines), the Senate, the Curia and the Research Exchange where the station has
+  them, and **the Bar** (wooden floor, bar counter with bottles, stools, tables, guests). The ship services (fuel,
+  repair, drones, munitions, hangar) are terminals in the **Dock Office**. Only what the station offers gets a door;
+  a raided station's shops show "closed".
+- **People:** a bartender, shopkeepers, guests at the bar and passers-by strolling the promenade (random looks).
+- **Every station type looks its own:** bright and clean on a research station, grey and stern with red lights on a
+  military outpost, rust and crates on industry and mining, wood and green on agri stations, icy blue on ice
+  refineries, ivory and gold with a fountain at resorts, neon and scrap in pirate havens.
+- **Controls:** W A S D (or arrows) to walk, Shift to run, **E** at a door, a terminal or the airlock; the pilot has a
+  green ring. A door opens its service window over the deck; closing it is back on the deck; the airlock leads back
+  to the ship and the station window. New key group "On foot" (keys may do one thing on foot and another in space).
+- Codex: On foot. Smoke tests for the deck (doors reachable, walls, a shop, back to the ship).
+
 ## alpha 0.6.75.4 – 2026-11-09
 
 **Fixes from the code review of Teil 6** (`reviews/teil6_review.md`) – all twelve findings.
