@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.43.1 – 2026-11-09
+
+**Package 43a: resorts and sights.** A new game is needed.
+- New station type **Resort** (ivory and gold) in three looks: a **ring resort** of hotel decks with a garden dome and
+  glass observation pods at a ringed giant, an **observatory resort** with a great telescope, a glazed gallery and a
+  viewing bubble at a wondrous star (red supergiant, neutron star, black hole, blue giant), and a **pleasure dome** –
+  an octagonal casino under glass, neon on every edge and a great wheel – at a beautiful world.
+- Resorts stand where a holiday is worth it: earthlike, ocean and jungle worlds, ringed giants, wondrous stars, safe
+  and wealthy systems – about ten in a cluster; Landfall, Heimkehr and Perlmutt always have one.
+- Tourism trade: resorts sell souvenirs, holo films and art and want luxuries, fine food, wine, perfume and gold; a
+  resort gives its system a strong tourism economy.
+- The sights of a system (beautiful worlds, the rings of the giants, wondrous stars, landmarks such as The Vote, the
+  Pilgrim Gate and the Meridian Sphere) – for the round trips of package 43b.
+- The station column of the concourse shows the system's economy and what this market makes and wants (it still
+  showed the old station-type lists).
+- Codex "Resorts and sights"; debug: to a resort.
+
 ## alpha 0.6.42.5 – 2026-11-09
 
 **Package 42d: tuning – Wirtschaft 2.0 done.**

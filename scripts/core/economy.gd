@@ -72,6 +72,7 @@ const STATION_WEIGHTS := {
 	"ice_refinery": {"refinery": 3.0, "agri": 1.0, "chemistry": 1.0},
 	"shipyard": {"industry": 3.0, "military": 1.5, "hightech": 1.5},
 	"waystation": {"tourism": 0.8},
+	"resort": {"tourism": 5.0},                 # package 43
 }
 ## The hand-made systems lean towards their own economies (main, secondary).
 const SPECIAL := {

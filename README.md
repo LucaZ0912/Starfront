@@ -114,6 +114,17 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## Resorts and sights (phase 0.5 package 43a)
+
+- Station type `resort` (`data/commodities.gd`): sells souvenirs, holo films, artworks; wants luxuries, fine food,
+  wine, perfume, gold; tourism weight 5 per tier (`Economy.STATION_WEIGHTS`).
+- `Universe._add_resort` (own RNG, after the waystation): `resort_appeal` – beautiful worlds, a ringed giant, a
+  wondrous star, security, capital – against `RESORT_SCORE`; always in `RESORT_SPECIALS`. Variant (`station["resort"]`,
+  art `resort_ring` / `resort_star` / `resort_fun`) from what is there.
+- `StationArt._resort_ring / _resort_star / _resort_fun` (ivory and gold, `RESORT_ACC`).
+- `scripts/core/tourism.gd` (`Tourism`): `sights(sid)` – worlds, rings, stars, landmarks (`SIGHT_ARTS`) with appeal;
+  `resorts(sid)`.
+
 ## Prosperity at work (phase 0.5 package 42c)
 
 - `Economy.change(sid, d, why)` moves prosperity (news on a new level); `Economy.drift(dt)` pulls it back to the base

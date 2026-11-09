@@ -591,6 +591,7 @@ func _process(delta: float) -> void:
 				_test_economy42(view)
 				_test_market42(view)
 				_test_prosperity42(view)
+				_test_resorts43(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -1064,8 +1065,8 @@ func _test_resources() -> void:
 	for sid3 in Universe.systems.size():
 		var lay3 := Universe.get_layout(sid3)
 		var plan3: Array = Universe.systems[sid3]["stations_plan"]
-		# package 26: waystations come on top of the station plan
-		var sts3: Array = lay3["stations"].filter(func(x): return x["type"] != "waystation")
+		# package 26: waystations come on top of the station plan (package 43: resorts too)
+		var sts3: Array = lay3["stations"].filter(func(x): return not x["type"] in ["waystation", "resort"])
 		plan_ok = plan_ok and plan3.size() == sts3.size()
 		var icy := false
 		for f3 in lay3["fields"]:
@@ -7097,6 +7098,48 @@ func _test_prosperity42(view: SystemView) -> void:
 	check(way_ok and arb == 0 and trend_ok and preload("res://data/codex.gd").ENTRIES.has("basics_munitions"),
 		"42d: waystations sell only their own goods; no market buys back above its price; the galaxy map shows the swing from the usual prosperity; codex entry for the Munitions Depot")
 	check(shop_ok and cv_ok and made > 0, "42c: military outfitters carry more A-quality and every size of weapon the tier allows; convoys carry what their source makes to a market that wants it (%d)" % made)
+
+
+## Package 43a: resorts – a station type of its own in three looks, placed where a holiday is worth it (beautiful
+## worlds, wonders of space, the capitals and Perlmutt, safe systems); tourism trade; the sights of a system.
+func _test_resorts43(_view: SystemView) -> void:
+	var U = Universe
+	var n := 0
+	var variants := {}
+	var market_ok := true
+	var sight_ok := true
+	for sy in U.systems:
+		var sid: int = sy["id"]
+		for st in Tourism.resorts(sid):
+			n += 1
+			variants[String(st["resort"])] = true
+			market_ok = market_ok and Market.role(st, "souvenirs") == "produce" and Market.role(st, "luxury_goods") == "consume" and float(Economy.of(sid)["scores"].get("tourism", 0.0)) >= 5.0
+			if String(st["resort"]) == "star":
+				var has_star := false
+				for sg in Tourism.sights(sid):
+					has_star = has_star or String(sg["kind"]) == "star"
+				sight_ok = sight_ok and has_star
+	var spec_ok := true
+	for sp in U.RESORT_SPECIALS:
+		var ssid: int = U.special_system(sp)
+		if ssid >= 0:
+			spec_ok = spec_ok and not Tourism.resorts(ssid).is_empty()
+	check(GameData.station_types.has("resort") and n >= 4 and n <= 24 and spec_ok and market_ok and sight_ok,
+		"43a: %d resorts in the cluster (%s), the capitals and Perlmutt among them; they make souvenirs and want luxuries; observatories stand at wondrous stars" % [n, ", ".join(PackedStringArray(variants.keys()))])
+	var art_ok := true
+	for a in ["resort_ring", "resort_star", "resort_fun"]:
+		var built: Dictionary = StationArt.build({"art": a, "type": "resort", "tier": 2, "seed": 43})
+		art_ok = art_ok and (built["texture"] as Texture2D).get_width() > 200 and not (built["bays"] as Array).is_empty() and not (built["neons"] as Array).is_empty()
+	var total_sights := 0
+	for sy2 in U.systems:
+		total_sights += Tourism.sights(int(sy2["id"])).size()
+	var lf: int = U.special_system("landfall")
+	var landmark := lf < 0
+	if lf >= 0:
+		for sg2 in Tourism.sights(lf):
+			landmark = landmark or String(sg2["kind"]) == "landmark"
+	check(art_ok and total_sights > U.systems.size() and landmark,
+		"43a: three looks – ring resort, observatory, pleasure dome – each with docking bays and neon; %d sights in the cluster (worlds, rings, stars, landmarks such as The Vote)" % total_sights)
 
 
 func _test_mining41(view: SystemView) -> void:

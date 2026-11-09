@@ -102,6 +102,12 @@ static func build(data: Dictionary) -> Dictionary:
 			a._hdy_yard()
 		"weapon_platform":
 			a._weapon_platform()
+		"resort_ring", "resort":
+			a._resort_ring()                      # package 43
+		"resort_star":
+			a._resort_star()
+		"resort_fun":
+			a._resort_fun()
 		_:
 			a._trade()
 	var img := a._render()
@@ -145,6 +151,8 @@ func _setup(t: String, tr: int, sd: int) -> void:
 		n = 260 + 40 * (tier - 1)
 	elif t == "waystation":
 		n = 200 + 30 * (tier - 1)
+	elif RESORT_ACC.has(t):
+		n = 280 + 50 * (tier - 1)                      # package 43: resorts
 	elif LANDMARK_SIZE.has(t):
 		n = int(LANDMARK_SIZE[t])                      # package 39
 	c = n * 0.5
@@ -161,6 +169,8 @@ func _setup(t: String, tr: int, sd: int) -> void:
 		acc = Color(0.3, 0.95, 0.6)                   # Directorate green
 	if MAKER_ACC.has(t):
 		acc = MAKER_ACC[t]                            # 39d: the manufacturers' colours
+	if RESORT_ACC.has(t):
+		acc = RESORT_ACC[t]                           # package 43
 
 
 # ================================================================ Primitives
@@ -1475,6 +1485,117 @@ func _aur_yard() -> void:
 	neons.append({"pos": pn - center, "ang": 0.0, "len": 34.0, "wid": 4.0})
 
 
+# ================================================================ Package 43: resorts
+
+const RESORT_ACC := {"resort": Color(1.0, 0.55, 0.85), "resort_ring": Color(1.0, 0.55, 0.85),
+	"resort_star": Color(0.62, 0.58, 1.0), "resort_fun": Color(1.0, 0.3, 0.8)}
+
+
+## Ring resort (at a ringed giant): a wide hotel ring with rows of lit windows, a garden dome in the hub, glass
+## observation pods all round the rim.
+func _resort_ring() -> void:
+	var center := Vector2(c, c)
+	var r0 := n * 0.34
+	var r1 := n * 0.41
+	for k in 6:
+		var a := k * TAU / 6.0
+		seg(P(n * 0.12, a), P(r0, a), 3.0, HULL, 9.0, P_WINDOWS)
+	# observation pods on short stalks, outside the ring
+	for k2 in 10:
+		var a2 := k2 * TAU / 10.0 + TAU / 20.0
+		seg(P(r1, a2), P(n * 0.455, a2), 1.6, TRUSS, 8.5)
+		disc(P(n * 0.46, a2), n * 0.03, GLASS, 12.0, D_DOME)
+	ring(center, r0, r1, HULL, 11.0, true, 40 + tier * 8)
+	ring(center, r0 - 1.0, r0 + 1.5, PANEL, 12.5, false, 64)
+	ring(center, r1 - 1.5, r1 + 1.0, PANEL, 12.5, false, 64)
+	ring(center, (r0 + r1) * 0.5 - 1.0, (r0 + r1) * 0.5 + 1.0, GLASS, 12.0, false, 96)      # the window band
+	# docking arms across the ring
+	dock_arm(0.0, n * 0.1, n * 0.48, BAY_W + 12.0, 13.0)
+	dock_arm(PI, n * 0.1, n * 0.48, BAY_W + 12.0, 13.0)
+	# the hub: a garden under glass, rimmed in gold
+	disc(center, n * 0.13, HULL, 14.0, D_HUB)
+	disc(center, n * 0.105, GREEN, 18.0, D_GREEN)
+	ring(center, n * 0.105, n * 0.12, PANEL, 19.0, false, 40)
+	for k3 in 16:
+		light(P((r0 + r1) * 0.5, k3 * TAU / 16.0 + 0.1), Color(1.0, 0.86, 0.62), 0.45)
+	for k4 in 10:
+		light(P(n * 0.46, k4 * TAU / 10.0 + TAU / 20.0), acc.lerp(Color.WHITE, 0.4), 0.8)
+	var pn := P(n * 0.25, -PI * 0.5)
+	box(pn, 0.0, 16.0, 3.0, DARK, 14.0)
+	box(pn, 0.0, 15.0, 2.0, NEON, 15.0)
+	neons.append({"pos": pn - center, "ang": 0.0, "len": 30.0, "wid": 4.0})
+	light(center, Color(1, 1, 1), 1.0, true)
+
+
+## Observatory resort (at a wondrous star): a great telescope dish, a glazed gallery all round, a long boom with a
+## glass bubble at its end for the best view, guest wings on the diagonals.
+func _resort_star() -> void:
+	var center := Vector2(c, c)
+	var view_a := -PI * 0.5
+	# the boom and its viewing bubble
+	seg(P(n * 0.12, view_a), P(n * 0.43, view_a), 3.5, TRUSS, 9.0, P_TRUSS)
+	seg(P(n * 0.12, view_a), P(n * 0.43, view_a), 1.5, HULL, 9.5)
+	disc(P(n * 0.43, view_a), n * 0.055, HULL, 11.0, D_HUB)
+	disc(P(n * 0.43, view_a), n * 0.045, GLASS, 14.0, D_DOME)
+	# guest wings on the diagonals, windows all along
+	for k in 4:
+		var a := PI * 0.25 + k * PI * 0.5
+		box(P(n * 0.3, a), a, n * 0.1, n * 0.035, HULL, 10.0, P_WINDOWS)
+		box(P(n * 0.39, a), a + PI * 0.5, n * 0.05, n * 0.02, PANEL, 11.0)
+	# the gallery: a glazed ring
+	ring(center, n * 0.2, n * 0.25, HULL, 11.0, true, 48)
+	ring(center, n * 0.22, n * 0.235, GLASS, 12.5, false, 96)
+	dock_arm(0.0, n * 0.2, n * 0.48, BAY_W + 12.0, 12.0)
+	dock_arm(PI, n * 0.2, n * 0.48, BAY_W + 12.0, 12.0)
+	# the telescope: a great dish on the hub, turned to the star
+	disc(center, n * 0.16, HULL, 14.0, D_HUB)
+	disc(center + Vector2(0, n * 0.02), n * 0.12, PANEL, 17.0, D_DISH)
+	disc(center + Vector2(0, n * 0.02), n * 0.025, DARK, 20.0, D_FLAT)
+	for k2 in 12:
+		light(P(n * 0.225, k2 * TAU / 12.0), acc.lerp(Color.WHITE, 0.5), 0.6)
+	light(P(n * 0.43, view_a), Color(1, 1, 1), 1.2, true)
+	var pn := P(n * 0.3, PI * 0.5)
+	box(pn, 0.0, 16.0, 3.0, DARK, 13.0)
+	box(pn, 0.0, 15.0, 2.0, NEON, 14.0)
+	neons.append({"pos": pn - center, "ang": 0.0, "len": 30.0, "wid": 4.0})
+
+
+## Pleasure dome (elsewhere): an octagonal casino under a glass dome, neon on every edge, a great wheel of cabins
+## turning round it, billboards, lights everywhere.
+func _resort_fun() -> void:
+	var center := Vector2(c, c)
+	# the wheel: a thin rim on spokes, cabins all round
+	ring(center, n * 0.38, n * 0.395, TRUSS, 9.0, false, 64)
+	for k in 12:
+		var a := k * TAU / 12.0
+		seg(P(n * 0.22, a), P(n * 0.385, a), 1.2, TRUSS, 8.5)
+	for k2 in 16:
+		disc(P(n * 0.39, k2 * TAU / 16.0), n * 0.022, ACC, 10.5, D_DOME)
+	dock_arm(PI * 0.5, n * 0.18, n * 0.48, BAY_W + 12.0, 12.0)
+	dock_arm(PI * 0.5 + TAU / 3.0, n * 0.18, n * 0.48, BAY_W + 12.0, 12.0)
+	dock_arm(PI * 0.5 + 2.0 * TAU / 3.0, n * 0.18, n * 0.48, BAY_W + 12.0, 12.0)
+	# the casino: an octagon in ivory and gold, neon on every edge
+	poly(regular(center, n * 0.22, 8, PI / 8.0), HULL, 12.0, 3.0, 10)
+	poly(regular(center, n * 0.17, 8, PI / 8.0), PANEL, 14.0, 2.0, 8)
+	for k3 in 8:
+		var a3 := k3 * TAU / 8.0
+		var pe := P(n * 0.205, a3)
+		box(pe, a3 + PI * 0.5, n * 0.06, 1.6, NEON, 15.0)
+		neons.append({"pos": pe - center, "ang": a3 + PI * 0.5, "len": n * 0.12, "wid": 3.0})
+	disc(center, n * 0.11, GLASS, 18.0, D_DOME)
+	# billboards
+	for k4 in 2:
+		var a4 := PI * 0.5 + PI * 0.33 + k4 * PI * 1.34
+		var pb := P(n * 0.3, a4)
+		box(pb, a4 + PI * 0.5, 14.0, 3.0, DARK, 12.0)
+		box(pb, a4 + PI * 0.5, 13.0, 2.0, NEON, 13.0)
+		neons.append({"pos": pb - center, "ang": a4 + PI * 0.5, "len": 26.0, "wid": 4.0})
+	var cols := [Color(1.0, 0.3, 0.8), Color(0.3, 0.9, 1.0), Color(1.0, 0.85, 0.3)]
+	for k5 in 24:
+		light(P(n * 0.39, k5 * TAU / 24.0 + 0.05), cols[k5 % 3], 2.5, k5 % 4 == 0)
+	light(center, Color(1, 1, 1), 1.0, true)
+
+
 ## Hadrian Foundry: black and angular, red lights everywhere – an armoured wedge of a yard, its berths full of
 ## Hadrian's warships. Round it weapon platforms are being built (structures of their own, with drones at work).
 func _hdy_yard() -> void:
@@ -1696,6 +1817,9 @@ func _palettes() -> Dictionary:
 	elif type in ["forge", "lux_aeterna"]:
 		hull = [Color(0.34, 0.07, 0.08), Color(0.56, 0.13, 0.13), Color(0.76, 0.26, 0.22)]      # 39b: Covenant crimson
 		panel = [Color(0.4, 0.3, 0.12), Color(0.62, 0.48, 0.2), Color(0.82, 0.68, 0.32)]       # dull gold
+	if RESORT_ACC.has(type):
+		hull = [Color(0.56, 0.53, 0.5), Color(0.83, 0.8, 0.76), Color(0.98, 0.96, 0.93)]        # package 43: ivory …
+		panel = [Color(0.5, 0.36, 0.14), Color(0.8, 0.62, 0.28), Color(1.0, 0.85, 0.5)]        # … and gold
 	if type == "pirate_haven":
 		hull = [Color(0.22, 0.22, 0.25), Color(0.38, 0.38, 0.42), Color(0.55, 0.55, 0.58)]
 	elif type == "military":

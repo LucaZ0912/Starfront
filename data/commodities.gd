@@ -305,6 +305,11 @@ const STATION_TYPES := {
 		"refinery": {"metallic": 0.8}, "manufacturing": ["hull", "engine", "reactor", "distributor", "tank", "hyperdrive"]},
 	# Phase 0.5 package 26: station type 0 – a small waystation with landing pads instead of hangar bays,
 	# only for S and M ships (max_size), an extra station in most systems (not part of the station plan)
+	# package 43: the resort – hotel ring, observation decks and lights; tourists' money buys luxuries and fine food
+	"resort": {"name": "Resort", "produces": ["souvenirs", "holo_films", "artworks"],
+		"consumes": ["luxury_goods", "fine_wine", "spirits", "fresh_produce", "food", "spices", "coffee", "designer_clothing", "perfume", "jewellery", "gold"],
+		"shop": ["optional", "tool"], "shipyard": false,
+		"refinery": {}, "manufacturing": []},
 	"waystation": {"name": "Waystation", "produces": ["water", "food"], "consumes": ["electronics", "medicine", "deuterium"],
 		"shop": [], "shipyard": false,
 		"refinery": {}, "manufacturing": [], "max_size": 2,

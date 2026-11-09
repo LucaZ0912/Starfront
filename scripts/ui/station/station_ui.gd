@@ -536,14 +536,22 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	else:
 		v.add_child(UI.label("Free port – no faction", 13, UI.TEXT_DIM))
 	var t := station_type()
+	# package 42/43: the system's economy and what this market makes and wants (from its stocks' roles)
 	var prod: Array = []
-	for it in t.get("produces", []):
-		prod.append(GameData.item_name(String(it)))
 	var need: Array = []
-	for it2 in t.get("consumes", []):
-		need.append(GameData.item_name(String(it2)))
-	v.add_child(UI.wrap_label("Economy – produces: %s" % (", ".join(prod) if not prod.is_empty() else "—"), 12, UI.TEXT_DIM, 380))
-	v.add_child(UI.wrap_label("Needs: %s" % (", ".join(need) if not need.is_empty() else "—"), 12, UI.TEXT_DIM, 380))
+	if station.has("market"):
+		for cid in GameData.commodities:
+			if not Market.on_market(cid):
+				continue
+			match Market.role(station, cid):
+				"produce":
+					prod.append(GameData.item_name(cid))
+				"consume":
+					need.append(GameData.item_name(cid))
+	var esid := Market.system_of(station)
+	v.add_child(UI.wrap_label("Economy: %s  •  %s" % [Economy.label(esid), Economy.level_name(esid)], 12, Economy.color_of(String(Economy.of(esid)["main"])), 380))
+	v.add_child(UI.wrap_label("Made here: %s" % _few(prod), 12, UI.TEXT_DIM, 380))
+	v.add_child(UI.wrap_label("Wanted here: %s" % _few(need), 12, UI.TEXT_DIM, 380))
 	if GameState.stations.is_down(String(station.get("id", ""))):
 		v.add_child(UI.wrap_label(GameState.stations.down_error(station), 13, UI.BAD, 380))
 		_relief_panel(v)
@@ -672,3 +680,11 @@ func open_service(svc_id: String) -> void:
 	_panel.build()
 	_panel.modulate.a = 0.0
 	_panel.create_tween().tween_property(_panel, "modulate:a", 1.0, 0.25)
+
+
+## A few names and how many more (package 42/43).
+static func _few(names: Array) -> String:
+	if names.is_empty():
+		return "—"
+	var shown := names.slice(0, 6)
+	return ", ".join(PackedStringArray(shown)) + ("  … (+%d)" % (names.size() - shown.size()) if names.size() > shown.size() else "")

@@ -1842,6 +1842,79 @@ func _add_waystation(L: Dictionary, id: int) -> void:
 	L["stations"].back().merge(wst)
 
 
+## Package 43: a resort in systems worth a holiday – beautiful worlds (earthlike, ocean, jungle), wonders of space
+## (ringed giants, red supergiants, neutron stars, black holes, blue giants), the capitals and Perlmutt, safe and
+## wealthy systems first. Three looks: a ring resort at a ringed giant, an observatory at a wondrous star, a pleasure
+## dome elsewhere. Own RNG.
+const RESORT_SPECIALS := ["landfall", "heimkehr", "perlmutt"]
+const RESORT_NAMES := {"ring": "Ring Resort", "star": "Observatory Resort", "fun": "Pleasure Dome"}
+const RESORT_SCORE := 3.55
+
+
+## How much a system is worth a holiday (package 43): beautiful worlds, ringed giants, a wondrous star, safety.
+func resort_appeal(L: Dictionary, id: int) -> Dictionary:
+	var sys: Dictionary = systems[id]
+	var score := 0.0
+	var beauty := -1
+	var ringed := -1
+	for i in L["planets"].size():
+		var p: Dictionary = L["planets"][i]
+		var pt := String(p["type"])
+		if pt in CITY_WORLDS:
+			score += 1.2 if beauty < 0 else 0.6       # the first beautiful world counts most
+			if beauty < 0:
+				beauty = i
+		elif p.get("ring", false) and float(PLANET_TYPES.get(pt, {}).get("gas", 0.0)) > 0.5:
+			if ringed < 0:
+				score += 1.0                           # rings are common – one counts
+				ringed = i
+	var st_t: Dictionary = STAR_TYPES[star_index(String(L["star"].get("star_id", "G")))]
+	var wonder: bool = String(st_t["kind"]) in ["giant", "neutron", "blackhole"] or String(st_t["id"]) == "O"
+	if wonder:
+		score += 2.0
+	score += (float(sys["security"]) - 0.5) * 2.0
+	if sys.get("capital", false):
+		score += 1.0
+	return {"score": score, "beauty": beauty, "ringed": ringed, "wonder": wonder}
+
+
+func _add_resort(L: Dictionary, id: int) -> void:
+	var sys: Dictionary = systems[id]
+	var sp := String(sys.get("special", ""))
+	if (sys.get("stations_plan", []) as Array).is_empty() and not sp in RESORT_SPECIALS:
+		return                                          # nobody lives here to run a resort
+	if L["planets"].is_empty():
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 61027 + id * 7717 + 43
+	var ap := resort_appeal(L, id)
+	var forced: bool = sp in RESORT_SPECIALS
+	var score := float(ap["score"])
+	if not forced and score + rng.randf() * 1.5 < RESORT_SCORE:
+		return
+	var variant := "fun"
+	if ap["wonder"]:
+		variant = "star"
+	elif int(ap["ringed"]) >= 0 and (int(ap["beauty"]) < 0 or rng.randf() < 0.5):
+		variant = "ring"
+	var pidx := 0
+	match variant:
+		"ring":
+			pidx = int(ap["ringed"])
+		"fun":
+			pidx = int(ap["beauty"]) if int(ap["beauty"]) >= 0 else rng.randi() % L["planets"].size()
+	var planet: Dictionary = L["planets"][pidx]
+	var off := Vector2.from_angle(rng.randf() * TAU) * (float(planet["radius"]) * 1.9 + rng.randf_range(3500.0, 6500.0))
+	var tier := 3 if forced else clampi(1 + int(float(sys["security"]) >= 0.6) + int(score >= 4.5), 1, 3)
+	L["stations"].append({
+		"id": "st_%d_%d" % [id, L["stations"].size()], "planet": pidx, "anchor": planet["id"], "orbit": off.length(),
+		"name": "%s – %s" % [planet["name"], RESORT_NAMES[variant]],
+		"type": "resort", "tier": tier, "pos": (planet["pos"] as Vector2) + off,
+		"market": _make_market("resort", rng), "shop": _make_shop("resort", tier, rng), "shipyard": [],
+		"art": "resort_" + variant, "resort": variant,
+	})
+
+
 ## Phase 0.5 package 6: art seed + no-fire zone for every station, Ice Refineries next to icy
 ## fields, Shipyard Complexes in safe systems, Pirate Havens in lawless ones. Own RNG keeps the
 ## base layout (and saves) stable.
@@ -1849,6 +1922,7 @@ func _special_stations(L: Dictionary, id: int, sec: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value * 70001 + id * 9173 + 3
 	_add_waystation(L, id)
+	_add_resort(L, id)                                # package 43
 	var si := 0
 	for st in L["stations"]:
 		st["seed"] = rng.randi()

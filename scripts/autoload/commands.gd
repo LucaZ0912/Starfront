@@ -1904,6 +1904,9 @@ func _c_debug_economy_system(c: Dictionary) -> String:
 				if String(p["type"]) == "metal":
 					hits.append(sid)
 					break
+		elif want == "resort":
+			if not Tourism.resorts(sid).is_empty():
+				hits.append(sid)                      # package 43
 		elif Economy.of(sid)["main"] == want:
 			hits.append(sid)
 	if hits.is_empty():
