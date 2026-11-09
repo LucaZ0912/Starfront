@@ -170,7 +170,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   `BAR_TALK`, `_order` (credits, `Walker.drink_t` animation, `GameState.pilot["alcohol"]`/`["alcohol_t"]` for a later
   debuff); `StationUI.on_foot` (set by `main._on_deck_use`: only the service, *Back to the deck*, no concourse; the
   station hotkey is ignored while `main.ground` exists); `DeckGen.hangar_no(station, uid)`, `GroundView._hangar_uid` /
-  `_hangar_stale()` / `on_service_closed()` (after a ship swap: the toast, the lift to the new hangar).; `texture()` renders floors and walls once.
+  `_hangar_stale()` / `on_service_closed()` (after a ship swap: the toast, the lift to the new hangar).
+- 0.7.49.14: `GroundView._camera(delta)` eases (`_cam_c`); seated on the hangar bench it looks at `map.ship_at`; the
+  sky sprites (`_star_spr`, `_planet_spr`) are placed in the visible part of `_window` each frame.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

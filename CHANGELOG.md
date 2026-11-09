@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.49.14 – 2026-11-10
+
+- **A look at your ship:** sit down on the bench in the hangar and the camera glides over to your ship and centres
+  it; stand up and it glides back to you.
+- **The view from the bar:** the star and the planet the station circles now always stand in the part of the window
+  front you can see – whatever the screen size and wherever you stand – as things far away do.
+- The camera on the deck eases now instead of jumping.
+
 ## alpha 0.7.49.13 – 2026-11-09
 
 **The bar works, the station window stays shut on foot, every ship its own hangar.**

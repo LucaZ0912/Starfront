@@ -51,7 +51,10 @@ var _sys := -1
 var _lift_menu: Control = null
 var _ship_spr: Sprite2D
 var talk: DialogueView = null          # a conversation (0.7.49.7: after Luz's mockup)
-var _hangar_uid := -1                   # 0.7.49.13: whose hangar this is (the active ship when it was built)
+var _hangar_uid := -1
+var _star_spr: Node2D = null            # 0.7.49.14: kept in the visible part of the window front
+var _planet_spr: Node2D = null
+var _cam_c := Vector2.INF               # where the camera looks (screen px of the world), eased                   # 0.7.49.13: whose hangar this is (the active ship when it was built)
 var _bartender: Walker = null
 var talk_menu: CrewTalk = null          # its "Info": the questions, the record, signing on
 var _talk_offer := {}
@@ -120,6 +123,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_seat = {}
 	_ride = {}
 	_off0 = null
+	_star_spr = null
+	_planet_spr = null
+	_cam_c = Vector2.INF
 	zone = {}
 	_arrive = 0.0
 	_ship_spr = null
@@ -188,6 +194,7 @@ func _space_view(sys_id: int) -> void:
 	var st_spr := Celestial.make_star_sprite(star, 46.0)
 	st_spr.position = star_at
 	_sky.add_child(st_spr)
+	_star_spr = st_spr
 	var pi := int(station.get("planet", -1))
 	if pi >= 0 and pi < L["planets"].size():
 		var p: Dictionary = L["planets"][pi]
@@ -195,6 +202,7 @@ func _space_view(sys_id: int) -> void:
 		var ps := Celestial.make_planet_sprite(p, wh * 0.95, lit)
 		ps.position = planet_at
 		_sky.add_child(ps)
+		_planet_spr = ps
 
 
 func _build() -> void:
@@ -411,8 +419,8 @@ func _process(delta: float) -> void:
 		zone = map.zone_at(pilot.pos)
 	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null:
 		zone = {} if _seat.is_empty() else _seat
+	_camera(delta)
 	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null or talk_menu != null or _lift_menu != null else _prompt_text(zone))
-	_camera()
 	_signs.queue_redraw()
 
 
@@ -876,10 +884,20 @@ func walk_to_zone(id: String) -> bool:
 	return false
 
 
-func _camera() -> void:
+func _camera(delta: float = -1.0) -> void:
 	var vs := get_viewport().get_visible_rect().size
 	var mp := map.size_px() * GroundMap.SCALE
 	var c := pilot.position + Vector2(0, -24)
+	# 0.7.49.14: sitting on the hangar's bench, the camera glides over to the ship – a look at her
+	var at_ship := level == "hangar" and not _seat.is_empty() and map.ship_at != Vector2.INF
+	if at_ship:
+		c = map.ship_at * GroundMap.SCALE
+	if delta < 0.0 or _cam_c == Vector2.INF:
+		_cam_c = c
+	else:
+		var rate := 3.0 if at_ship or _cam_c.distance_to(c) > 120.0 else 14.0
+		_cam_c = _cam_c.lerp(c, 1.0 - exp(-delta * rate))
+	c = _cam_c
 	var off := vs * 0.5 - c
 	if mp.x > vs.x:
 		off.x = clampf(off.x, vs.x - mp.x, 0.0)
@@ -890,10 +908,18 @@ func _camera() -> void:
 	else:
 		off.y = (vs.y - mp.y) * 0.5
 	_world.position = off.round()
-	# space beyond the glass moves only a little – it is far away
-	if _off0 == null:
-		_off0 = off
-	_sky.position = (-(off - (_off0 as Vector2)) * 0.9).round()
+	# the star and the planet are far away: they stay in the part of the window front you can see, wherever you stand
+	_sky.position = Vector2.ZERO
+	if _window != null and _window.size.x > 0.0 and (_star_spr != null or _planet_spr != null):
+		var wpos := off + _window.position
+		var vis := Rect2(wpos, _window.size).intersection(Rect2(Vector2.ZERO, vs))
+		if vis.size.x > 8.0:
+			var lo := vis.position - wpos
+			var wh := _window.size.y
+			if _star_spr != null:
+				_star_spr.position = (lo + Vector2(vis.size.x * 0.14, wh * 0.38)).round()
+			if _planet_spr != null:
+				_planet_spr.position = (lo + Vector2(vis.size.x * (0.62 if vis.size.x > 500.0 else 0.5), wh * 0.62)).round()
 	var m := _neb.material as ShaderMaterial
 	if m != null:
 		m.set_shader_parameter("offset", -off * 0.3)
