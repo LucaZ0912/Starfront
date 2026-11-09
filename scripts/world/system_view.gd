@@ -17,6 +17,8 @@ signal hover_changed(text: String)
 signal station_docked(station_id: String)
 signal level_changed(level: int)
 signal object_selected(id: String)   # clicked object -> HUD shows the selected-item panel
+signal descended(body_id: String)    # package 50: the player's ship went down to a body's surface
+signal ascended                      # … and is back in orbit
 
 const MAX_ZOOM := 2.0
 ## Fixed zoom levels: 0 = Close Combat, 1 = Long-Range Recon (both local, bodies in the background),
@@ -58,6 +60,8 @@ var _pan_dist := 0.0              # distance dragged with the middle mouse butto
 var selected_id := ""            # object shown in the HUD's selected-item panel
 var gates := {}                  # destination system id -> Celestial
 var stations := {}               # station_id -> Celestial
+var descents := {}               # package 50: body id -> its descent beacon (Celestial)
+var _descent := {}               # package 50: the descent or ascent under way
 var havens: Array = []           # Pirate Havens (hostile, guns fire on the player)
 var _aggro := {}                 # ship instance id -> {ship, station, until}: fired inside a no-fire zone
 var _def_cd := {}                # station / haven instance id -> Array of turret cooldowns
@@ -519,6 +523,8 @@ func _spawn_celestials() -> void:
 			w["salvage"] = 0.0
 			w["life"] = 1.0e12
 			_add_celestial("wreck", w)
+	for ds in Universe.descents(system_id):             # package 50: descent beacons over the bodies to land on
+		descents[String(ds["body"])] = _add_celestial("descent", ds)
 	for ph in layout.get("havens", []):
 		var hv := _add_celestial("haven", ph)
 		havens.append(hv)
@@ -1389,6 +1395,8 @@ func pirate_count() -> int:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if not _descent.is_empty():
+		_update_descent(delta)
 	_update_audio()
 	_veil_tick(delta)                        # package 40c
 	_jam_tick -= delta
@@ -1657,7 +1665,7 @@ func _key_flight() -> void:
 
 ## Flies the pilot's ship in direction `d` (zero = release: brake).
 func steer(d: Vector2) -> void:
-	if player == null or not is_instance_valid(player) or player.in_warp() or player.is_docked() or player.dying:
+	if player == null or not is_instance_valid(player) or player.in_warp() or player.is_docked() or player.dying or not _descent.is_empty():
 		_key_flying = false
 		return
 	# review (co-op): keyboard flight goes through the command bus like every other player order
@@ -2480,6 +2488,8 @@ func command_celestial(c: Celestial) -> void:
 		"wreck":
 			var then := {"type": "salvage", "id": c.data["id"]} if player.fit.has_tool("salvage") else {}
 			command_target(near, then)
+		"descent":
+			command_target(Universe.warp_target(system_id, c.data["id"]), {"type": "descend", "id": c.data["id"]})
 		_:
 			var wt := Universe.warp_target(system_id, String(c.data.get("id", "")))
 			command_target(wt if not wt.is_empty() else near, {})
@@ -2488,7 +2498,7 @@ func command_celestial(c: Celestial) -> void:
 ## Turns a stored follow-up order (with object ids) into an executable order.
 func resolve_order(o: Dictionary) -> Dictionary:
 	var t: String = o.get("type", "idle")
-	if t in ["dock", "mine", "analyze", "salvage"]:
+	if t in ["dock", "mine", "analyze", "salvage", "descend"]:
 		var node = by_id.get(o.get("id", ""))
 		if node == null or not is_instance_valid(node):
 			return {"type": "idle"}
@@ -4342,6 +4352,111 @@ func _lawful_wreck(ship: Ship, killer) -> void:
 	})
 	if killer is Ship and is_instance_valid(killer) and killer.faction == "pirate":
 		GameState.news.radio("%s lost near %s – pirates destroyed it." % [ship.display_name(), landmark(ship.position)], system_id, ship.position)
+
+
+# ---------------------------------------------------------------- package 50: down to the surface and back
+
+const DESCENT_SPEEDUP := 1.3          # s: the ship speeds up
+const DESCENT_SINK := 3.2             # s: and sinks – smaller and smaller – into the planet
+const ASCENT_TIME := 3.4
+
+
+## The player's ship goes down: speeds up along its heading, then sinks, smaller and smaller, into the planet below –
+## through a heat shimmer where there is air. At the end it is "landed" (docked_at "land:<body>") and the planet map
+## opens (signal descended).
+func start_descent(ship: Ship, node) -> void:
+	if ship != player or not _descent.is_empty():
+		return
+	var body := Universe.find_body(system_id, String(node.data["body"]))
+	var fx := DescentFx.new()
+	fx.ship = ship
+	fx.size = ship.radius * 1.4
+	fx.z_index = 6
+	fx_layer.add_child(fx)
+	ship.order = {"type": "descending"}
+	ship.velocity = Vector2.ZERO
+	_descent = {"ship": ship, "body": String(node.data["body"]), "t": 0.0, "atmo": Universe.has_atmosphere(body), "fx": fx,
+		"dir": Vector2.from_angle(ship.heading), "up": false}
+	var ac = Universe.body_type(String(body.get("type", ""))).get("atmo", Color(1, 0.6, 0.3))
+	if ac is Color:
+		fx.heat_col = Color(1.0, 0.55, 0.2).lerp(Color(ac.r, ac.g, ac.b), 0.25)
+	Audio.play("boost", "descent")
+	GameState.log_msg("Descending to %s …" % String(body.get("name", "the surface")))
+
+
+## Back up from the surface: the ship rises out of the planet – small, glowing, growing – and flies on.
+func start_ascent(body_id: String) -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	var node = descents.get(body_id)
+	var body := Universe.find_body(system_id, body_id)
+	var at: Vector2 = node.position if node != null else (body.get("pos", player.position) as Vector2)
+	var fx := DescentFx.new()
+	fx.ship = player
+	fx.size = player.radius * 1.4
+	fx.z_index = 6
+	fx_layer.add_child(fx)
+	var dir := Vector2.from_angle(randf() * TAU)
+	player.position = at - dir * 900.0
+	player.heading = dir.angle()
+	player.scale = Vector2.ONE * 0.04
+	player.visible = true
+	player.order = {"type": "ascending"}
+	_descent = {"ship": player, "body": body_id, "t": 0.0, "atmo": Universe.has_atmosphere(body), "fx": fx, "dir": dir, "up": true}
+	Audio.play("boost", "ascent")
+
+
+func _update_descent(delta: float) -> void:
+	var sh: Ship = _descent["ship"]
+	var fx: DescentFx = _descent["fx"]
+	if sh == null or not is_instance_valid(sh):
+		if fx != null and is_instance_valid(fx):
+			fx.queue_free()
+		_descent = {}
+		return
+	_descent["t"] = float(_descent["t"]) + delta
+	var t: float = _descent["t"]
+	var dir: Vector2 = _descent["dir"]
+	var atmo: bool = _descent["atmo"]
+	if not bool(_descent["up"]):
+		if t < DESCENT_SPEEDUP:
+			var k := t / DESCENT_SPEEDUP
+			sh.position += dir * lerpf(150.0, 1400.0, k * k) * delta
+			fx.flame = k
+			fx.heat = 0.0
+		elif t < DESCENT_SPEEDUP + DESCENT_SINK:
+			var k2 := (t - DESCENT_SPEEDUP) / DESCENT_SINK
+			sh.position += dir * 1400.0 * (1.0 - k2) * delta
+			sh.scale = Vector2.ONE * lerpf(1.0, 0.04, ease(k2, 0.6))
+			sh.modulate = Color.WHITE.lerp(Color(1.0, 0.7, 0.5) if atmo else Color(0.6, 0.6, 0.7), k2 * 0.6)
+			fx.flame = 1.0 - k2
+			fx.heat = (minf(1.0, sin(minf(k2 * 1.3, 1.0) * PI) * 1.4) if atmo else 0.0)
+		else:
+			fx.queue_free()
+			sh.visible = false
+			sh.scale = Vector2.ONE
+			sh.modulate = Color.WHITE
+			sh.order = {"type": "idle"}
+			sh.fit.docked_at = "land:" + String(_descent["body"])
+			var bid: String = _descent["body"]
+			_descent = {}
+			descended.emit(bid)
+		return
+	# the ascent
+	var k3 := clampf(t / ASCENT_TIME, 0.0, 1.0)
+	sh.scale = Vector2.ONE * lerpf(0.04, 1.0, ease(k3, 2.2))
+	sh.position += dir * lerpf(200.0, 900.0, k3) * delta
+	sh.modulate = (Color(1.0, 0.7, 0.5) if atmo else Color(0.6, 0.6, 0.7)).lerp(Color.WHITE, k3)
+	fx.flame = 0.4 + 0.6 * k3
+	fx.heat = (sin(k3 * PI) * 1.1 if atmo else 0.0) * (1.0 - k3 * 0.5)
+	if t >= ASCENT_TIME:
+		fx.queue_free()
+		sh.scale = Vector2.ONE
+		sh.modulate = Color.WHITE
+		sh.order = {"type": "idle"}
+		sh.velocity = dir * 250.0
+		_descent = {}
+		ascended.emit()
 
 
 func on_ship_docked(ship: Ship, st_node: Celestial) -> void:

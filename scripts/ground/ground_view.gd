@@ -50,6 +50,8 @@ var _crew: Array = []
 var _sys := -1
 var _lift_menu: Control = null
 var _ship_spr: Sprite2D
+var _body: Dictionary = {}              # package 50: landed – the body and the site
+var _site: Dictionary = {}
 var talk: DialogueView = null          # a conversation (0.7.49.7: after Luz's mockup)
 var _hangar_uid := -1
 var _star_spr: Node2D = null            # 0.7.49.14: kept in the visible part of the window front
@@ -110,6 +112,17 @@ func setup_station(p_station: Dictionary, available: Dictionary, crew: Array = [
 	go_level("hangar", "stairs")
 
 
+## Package 50: on a planet – the landing field at a site, your ship on the pad.
+func setup_landing(p_body: Dictionary, p_site: Dictionary, sys_id: int = -1) -> void:
+	_body = p_body
+	_site = p_site
+	station = {"id": String(p_site.get("id", "")), "name": String(p_site.get("name", ""))}
+	_avail = {}
+	_crew = []
+	_sys = sys_id
+	go_level("landing", "ramp")
+
+
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
@@ -130,7 +143,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_arrive = 0.0
 	_ship_spr = null
 	level = p_level
-	if level == "hangar":
+	if level == "landing":
+		var lsz := _ship_size()
+		map = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)
+	elif level == "hangar":
 		var sz := _ship_size()
 		var af := GameState.active()
 		_hangar_uid = af.uid if af != null else 0
@@ -139,7 +155,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
 	_build()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, "Hangar" if level == "hangar" else "Commercial level"]
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "commercial": "Commercial level"}.get(level, "")]
 	if arrive == "lift" and not map.lifts.is_empty():
 		_arrive_lift = 0
 		var l0: Dictionary = map.lifts[0]
@@ -259,7 +275,7 @@ func _build() -> void:
 			_ship_spr.texture = tex
 			_ship_spr.scale = Vector2.ONE * HANGAR_ART * GroundMap.SCALE
 			_ship_spr.position = map.ship_at * GroundMap.SCALE
-			_ship_spr.modulate = Color(0.82, 0.84, 0.9)             # one level down, a little in the shade
+			_ship_spr.modulate = Color(0.82, 0.84, 0.9) if level == "hangar" else Color.WHITE   # one level down, in the shade
 			_world.add_child(_ship_spr)
 	# the bay is far below: a haze over it, thicker towards the far wall
 	if map.bay_rect.size.x > 0.0:
@@ -325,7 +341,7 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
-	var n := 5 + int(station.get("tier", 1)) * 2 if level != "hangar" else 2
+	var n := 5 + int(station.get("tier", 1)) * 2 if level == "commercial" else 2
 	for i in n:
 		if map.wander.is_empty():
 			break
@@ -431,6 +447,8 @@ func _prompt_text(z: Dictionary) -> String:
 	match String(z["kind"]):
 		"exit", "lift":
 			return "[%s] %s" % [key, z["title"]]
+		"soon":
+			return String(z["title"])
 		"crew":
 			return "[%s] Talk to %s – looking for a post" % [key, z["title"]]
 		"seat":
@@ -490,6 +508,9 @@ func use(instant: bool = false) -> bool:
 			return true
 		"crew":
 			return open_talk(zone)
+		"soon":
+			_say_toast(String(zone["title"]), 3.0)
+			return true
 		"lift":
 			if instant:
 				return false

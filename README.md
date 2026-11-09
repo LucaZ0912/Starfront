@@ -172,7 +172,22 @@ Slanted, cosy top-down view since 0.7.49.2.
   station hotkey is ignored while `main.ground` exists); `DeckGen.hangar_no(station, uid)`, `GroundView._hangar_uid` /
   `_hangar_stale()` / `on_service_closed()` (after a ship swap: the toast, the lift to the new hangar).
 - 0.7.49.14: `GroundView._camera(delta)` eases (`_cam_c`); seated on the hangar bench it looks at `map.ship_at`; the
-  sky sprites (`_star_spr`, `_planet_spr`) are placed in the visible part of `_window` each frame.; `texture()` renders floors and walls once.
+  sky sprites (`_star_spr`, `_planet_spr`) are placed in the visible part of `_window` each frame.
+
+## Landing (phase 0.5 Teil 7, package 50)
+
+- `Universe.landable(body)`, `has_atmosphere(body)`, `descents(system)` (a beacon over every solid planet and moon,
+  warp target kind `descent`), `find_body`, `landing_sites(system, body)` (`SITE_KINDS`: city, outpost, mine, ruins,
+  crash, research – with lon/lat on the visible face).
+- `SystemView`: celestial kind `descent` (`Celestial._draw_descent`), `descents` (body id → beacon), the order
+  `descend` (Ship: fly to the beacon, then `view.start_descent`), `start_descent` / `start_ascent` /
+  `_update_descent` (speed-up, sinking, `DescentFx` – flame and heat), signals `descended(body_id)`, `ascended`.
+  Down there the fit is "docked" at `land:<body id>`.
+- `scripts/ui/planet_map.gd` – `PlanetMap` (CanvasLayer 11): the planet, its places, the list; signals `land(site)`,
+  `back`. `main`: `_on_descended`, `land_at(body, site)`, `take_off()`.
+- `DeckGen.build_landing(body, site, ship_len, ship_beam)` / `palette_for_body`: the landing field (floor kinds 13
+  ground, 14 pad concrete, 15 gravel; decals `pad_marks`, `ramp`; the ground all round as the "hull"); the view's
+  level `landing` (`GroundView.setup_landing`), the ramp = zone `exit`, the place itself = zone `soon` for now.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

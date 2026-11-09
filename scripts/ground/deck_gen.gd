@@ -662,3 +662,79 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	for k4 in 5:
 		m.wander.append(Vector2(rng.randf_range(4, W - 3), rng.randf_range(G + 2.4, G + 4.2)) * GroundMap.TILE)
 	return m
+
+
+# ---------------------------------------------------------------- package 50: a landing field on a planet
+
+## Colours for a landing site from the body it lies on.
+static func palette_for_body(body: Dictionary) -> Dictionary:
+	var bt := Universe.body_type(String(body.get("type", "")))
+	var a: Color = bt.get("a", Color(0.4, 0.38, 0.35))
+	var b: Color = bt.get("b", Color(0.5, 0.45, 0.38))
+	var c: Color = bt.get("c", Color(0.62, 0.56, 0.45))
+	var wall := Color(0.62, 0.64, 0.68)
+	return {"floor": Color(0.42, 0.43, 0.46), "floor2": Color(0.46, 0.47, 0.5), "shop_floor": Color(0.5, 0.48, 0.45),
+		"wood": Color(0.46, 0.3, 0.18), "carpet": Color(0.4, 0.25, 0.3), "wall": wall, "wall_top": wall.darkened(0.55),
+		"trim": wall.darkened(0.35), "frame": wall.darkened(0.25), "accent": Color(1.0, 0.8, 0.25), "type": "landing",
+		"terrain_a": a, "terrain_b": b, "terrain_c": c}
+
+
+## The landing field at a site: the ground of the planet all round, a concrete pad with your ship on it and her ramp
+## down, lights along the pad, fuel and crates, and a gravel path to the place itself (the city's gate, the camp …).
+static func build_landing(body: Dictionary, site: Dictionary, ship_len: float, ship_beam: float) -> GroundMap:
+	var m := GroundMap.new()
+	m.pal = palette_for_body(body)
+	m.title = String(site.get("name", "Landing site"))
+	m.hull_top = -60
+	var sl := clampi(int(ceil(ship_len / GroundMap.TILE)) + 4, 10, 40)
+	var sb := clampi(int(ceil(ship_beam / GroundMap.TILE)) + 4, 7, 20)
+	var W := sl + 24
+	var H := sb + 12
+	m.setup(W, H)
+	m.fill(0, 0, W, H, GroundMap.T.FLOOR, 13)
+	m.fill(0, 0, W, 1, GroundMap.T.BLOCK, 13)                  # an edge you cannot walk past (the ground goes on)
+	m.fill(0, H - 1, W, 1, GroundMap.T.BLOCK, 13)
+	m.fill(0, 0, 1, H, GroundMap.T.BLOCK, 13)
+	m.fill(W - 1, 0, 1, H, GroundMap.T.BLOCK, 13)
+	var px0 := 3
+	var py0 := 3
+	m.fill(px0, py0, sl, sb, GroundMap.T.FLOOR, 14)
+	m.decals.append({"kind": "pad_marks", "x": px0, "y": py0, "w": sl, "h": sb, "col": Color(0.95, 0.8, 0.2)})
+	# the ship on the pad, nose to the east – you cannot walk through her
+	var sc := Vector2(px0 + sl * 0.5, py0 + sb * 0.5)
+	m.ship_at = sc * GroundMap.TILE
+	var bx := int(sc.x - ship_len / GroundMap.TILE * 0.5) + 1
+	var bw := maxi(2, int(ship_len / GroundMap.TILE) - 2)
+	var bh := maxi(1, int(ship_beam / GroundMap.TILE) - 1)
+	m.fill(bx, int(sc.y - bh * 0.5), bw, bh, GroundMap.T.BLOCK, 14)
+	# her ramp, down to the south side of the pad
+	var rx := int(sc.x) - 1
+	var ry := int(sc.y + bh * 0.5)
+	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
+	m.spawn = Vector2(rx + 1.0, ry + 2.6) * GroundMap.TILE
+	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * GroundMap.TILE, Vector2(3, 3.2) * GroundMap.TILE), "kind": "exit", "id": "ship",
+		"title": "Up the ramp – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	# lights round the pad, a fuel tank, crates
+	for k in range(0, sl + 1, 4):
+		m.lights.append({"pos": Vector2(px0 + k, py0) * GroundMap.TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35, "flicker": k % 8 == 0})
+		m.lights.append({"pos": Vector2(px0 + k, py0 + sb) * GroundMap.TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35})
+	m.add_object({"kind": "machine", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 2})
+	m.add_object({"kind": "crates", "x": px0 + sl + 1, "y": py0 + sb - 1, "w": 2, "h": 1})
+	m.add_object({"kind": "lamp_post", "x": px0 + sl + 1, "y": py0 + sb + 2, "w": 1, "h": 1, "col": Color(1.0, 0.8, 0.4)})
+	m.lights.append({"pos": Vector2(px0 + sl + 1.5, py0 + sb + 2.3) * GroundMap.TILE, "r": 44.0, "col": Color(1.0, 0.85, 0.5), "a": 0.35})
+	# the path to the place itself
+	var kd := String(site.get("kind", "outpost"))
+	var path_y := py0 + sb + 3
+	m.fill(int(sc.x), py0 + sb, 2, 3, GroundMap.T.FLOOR, 15)
+	m.fill(int(sc.x), path_y, W - 2 - int(sc.x), 2, GroundMap.T.FLOOR, 15)
+	var gx := W - 4
+	m.add_object({"kind": "banner", "x": gx, "y": path_y - 2, "w": 1, "h": 1, "col": Universe.SITE_KINDS[kd]["col"]})
+	m.add_object({"kind": "banner", "x": gx, "y": path_y + 2, "w": 1, "h": 1, "col": Universe.SITE_KINDS[kd]["col"]})
+	m.zones.append({"rect": Rect2(Vector2(gx - 2, path_y - 0.5) * GroundMap.TILE, Vector2(4, 3) * GroundMap.TILE), "kind": "soon", "id": "site",
+		"title": "%s – %s" % [String(site["name"]), "the city opens with the next update" if kd == "city" else "exploring comes with a later update"],
+		"col": Universe.SITE_KINDS[kd]["col"], "sign": Vector2(-100, -100)})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "site_sign", "title": "%s  →" % String(site["name"]),
+		"col": Universe.SITE_KINDS[kd]["col"], "sign": Vector2(gx - 3, path_y - 1.2) * GroundMap.TILE})
+	for k2 in 4:
+		m.wander.append(Vector2(randf_range(int(sc.x) + 2, W - 4), path_y + 1.0) * GroundMap.TILE)
+	return m

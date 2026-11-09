@@ -143,6 +143,7 @@ func _process(delta: float) -> void:
 				saw_undock = true
 			if undock_started and timer > 1.5 and view.player != null and not view.player.is_docked() and view.player.order.get("type", "") != "undocking":
 				check(saw_undock, "undocking through a hangar bay")
+				_test_landing(view)              # package 50 – down to a planet and back up, then on to the fight
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -2980,7 +2981,7 @@ func _test_codex(view: SystemView) -> void:
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
 		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
-		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot"]   # packages 40c–e, 49   # package 37: stars
+		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot", "landing"]   # packages 40c–e, 49, 50   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -7703,6 +7704,49 @@ func _test_deck(view: SystemView) -> void:
 	var aboard: bool = main.ground == null and main.station_panel.visible
 	check(used and panel_ok and back_on_deck and aboard and GameState.codex.unlocked.has("basics_on_foot"),
 		"49: E at the market door opens the market over the deck, closing it is back on the deck; the airlock leads back to the ship and the station window")
+
+
+## Package 50: descent beacons over the bodies you can land on; down (speed-up, sinking, heat), the planet map with
+## its places, landing on a field with your ship on the pad, and back up to orbit.
+func _test_landing(view: SystemView) -> void:
+	var beacons := 0
+	var gas_free := true
+	for t in Universe.warp_targets(view.system_id):
+		if t["kind"] == "descent":
+			beacons += 1
+			var b := Universe.find_body(view.system_id, String(t["data"]["body"]))
+			gas_free = gas_free and Universe.landable(b)
+	var node = null
+	for bid in view.descents:
+		node = view.descents[bid]
+		if Universe.has_atmosphere(Universe.find_body(view.system_id, bid)):
+			break
+	if node == null:
+		check(false, "50: a descent beacon in the home system")
+		return
+	var p := view.player
+	p.position = node.position + Vector2(-80, 0)
+	view.start_descent(p, node)
+	var guard := 0
+	while not view._descent.is_empty() and guard < 600:
+		view._update_descent(1.0 / 30.0)
+		guard += 1
+	var f := GameState.active()
+	var down: bool = f.docked_at.begins_with("land:") and main.planet_map != null and not main.planet_map.sites.is_empty()
+	var body: Dictionary = main.planet_map.body if main.planet_map != null else {}
+	var site: Dictionary = main.planet_map.sites[0] if down else {}
+	if down:
+		main.land_at(body, site)
+	var g = main.ground
+	var field: bool = g != null and g.level == "landing" and g.map.ship_at != Vector2.INF and g._ship_spr != null and g.map.zone_at(g.map.spawn).get("id", "") == "ship"
+	main.take_off()
+	guard = 0
+	while not view._descent.is_empty() and guard < 600:
+		view._update_descent(1.0 / 30.0)
+		guard += 1
+	var up: bool = f.docked_at == "" and p.visible and is_equal_approx(p.scale.x, 1.0) and main.ground == null and main.planet_map == null
+	check(beacons >= 1 and gas_free and down and field and up and GameState.codex.unlocked.has("basics_landing"),
+		"50: %d descent beacons (none over a gas giant); down to %s, the planet map (%d places), landed at %s, back up to orbit" % [beacons, String(body.get("name", "?")), main.planet_map.sites.size() if main.planet_map != null else Universe.landing_sites(view.system_id, body).size(), String(site.get("name", "?"))])
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.

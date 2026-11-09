@@ -90,7 +90,9 @@ func _ready() -> void:
 	else:
 		GameState.log_msg("Game loaded. Welcome back, %s." % GameState.pilot_name, GameState.COL_GOOD)
 		var f := GameState.active()
-		if f != null and f.docked_at != "":
+		if f != null and f.docked_at.begins_with("land:"):
+			_on_descended.call_deferred(f.docked_at.substr(5))      # package 50: still down on a planet
+		elif f != null and f.docked_at != "":
 			open_station.call_deferred()
 
 	if "--smoketest" in OS.get_cmdline_user_args():
@@ -113,13 +115,15 @@ func load_system(sys: int) -> void:
 	view.build(sys)
 	last_load_ms = float(Time.get_ticks_usec() - t0) / 1000.0
 	view.station_docked.connect(_on_station_docked)
+	view.descended.connect(_on_descended)                       # package 50
+	view.ascended.connect(_update_input)
 	Commands.world = view
 	hud.set_view(view)
 	_update_input()
 
 
 func _update_input() -> void:
-	var overlay: bool = galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace
+	var overlay: bool = (planet_map != null and is_instance_valid(planet_map)) or galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace
 	if view != null and is_instance_valid(view):
 		view.input_enabled = not overlay and ground == null
 	if ground != null and is_instance_valid(ground):
@@ -129,6 +133,7 @@ func _update_input() -> void:
 # ---------------------------------------------------------------- Package 49: on foot
 
 var ground: GroundView = null
+var planet_map: PlanetMap = null        # package 50: the planet below, its places to land
 
 
 ## Gets out of the ship and walks the deck of the station it is docked at.
@@ -158,6 +163,61 @@ func open_deck() -> void:
 	_update_input()
 
 
+# ---------------------------------------------------------------- package 50: landing
+
+## Down on a body: the planet map with its places to land.
+func _on_descended(body_id: String) -> void:
+	var f := GameState.active()
+	if f == null:
+		return
+	var body := Universe.find_body(f.system_id, body_id)
+	if body.is_empty():
+		f.docked_at = ""
+		return
+	_close_planet_map()
+	planet_map = PlanetMap.new()
+	add_child(planet_map)
+	planet_map.open(f.system_id, body)
+	planet_map.land.connect(func(site: Dictionary): land_at(body, site))
+	planet_map.back.connect(func(): take_off())
+	GameState.codex.event("landing")
+	_update_input()
+
+
+func _close_planet_map() -> void:
+	if planet_map != null and is_instance_valid(planet_map):
+		planet_map.queue_free()
+	planet_map = null
+
+
+## Down at a place: the landing field, your ship on the pad.
+func land_at(body: Dictionary, site: Dictionary) -> void:
+	_close_planet_map()
+	close_deck(false)
+	ground = GroundView.new()
+	ground.name = "Ground"
+	add_child(ground)
+	ground.setup_landing(body, site, GameState.current_system)
+	ground.used.connect(_on_deck_use)
+	GameState.log_msg("Landed at %s on %s." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
+	_update_input()
+
+
+## Up again: from the landing field or the planet map back to orbit – the ascent.
+func take_off() -> void:
+	var f := GameState.active()
+	_close_planet_map()
+	close_deck(false)
+	if f == null or not f.docked_at.begins_with("land:"):
+		_update_input()
+		return
+	var body_id := f.docked_at.substr(5)
+	f.docked_at = ""
+	if view != null and is_instance_valid(view):
+		view.start_ascent(body_id)
+	_update_input()
+
+
 ## Back into the ship (open: show the station window again).
 func close_deck(open_window: bool = true) -> void:
 	if ground != null and is_instance_valid(ground):
@@ -171,7 +231,10 @@ func close_deck(open_window: bool = true) -> void:
 func _on_deck_use(z: Dictionary) -> void:
 	match String(z.get("kind", "")):
 		"exit":
-			close_deck(true)
+			if ground != null and is_instance_valid(ground) and ground.level == "landing":
+				take_off()
+			else:
+				close_deck(true)
 		"service", "crew":
 			var f := GameState.active()
 			if f == null or f.docked_at == "" or not view.stations.has(f.docked_at):
@@ -188,6 +251,10 @@ func _check_deck() -> void:
 	if ground == null or not is_instance_valid(ground):
 		return
 	var f := GameState.active()
+	if ground.level == "landing":
+		if f == null or not f.docked_at.begins_with("land:"):
+			close_deck(false)
+		return
 	if f == null or f.docked_at == "" or String(ground.station.get("id", "")) != f.docked_at:
 		close_deck(false)
 

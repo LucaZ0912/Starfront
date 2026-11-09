@@ -2924,9 +2924,106 @@ func warp_targets(system_id: int) -> Array:
 		out.append({"id": ws["id"], "kind": "site", "name": ws["name"], "pos": ws["pos"], "land": float(ws["radius"]) * 0.6, "data": ws})
 	for hz in L.get("hazards", []):                # package 40d: you arrive at the edge, not inside
 		out.append({"id": hz["id"], "kind": "hazard", "name": hz["name"], "pos": hz["pos"], "land": float(hz["radius"]) * 1.25, "data": hz})
+	for ds in descents(system_id):                 # package 50: descent beacons over the bodies you can land on
+		out.append({"id": ds["id"], "kind": "descent", "name": ds["name"], "pos": ds["pos"], "land": 700.0, "data": ds})
 	for pod in GameState.pods:                     # package 31a: escape pods with crew waiting for rescue
 		if int(pod["system"]) == system_id:
 			out.append({"id": pod["id"], "kind": "pod", "name": "Escape pod – %d crew" % (pod["crew"] as Array).size(), "pos": pod["pos"], "land": 900.0, "data": pod})
+	return out
+
+
+# ---------------------------------------------------------------- package 50: landing
+
+## Can a ship land on this body? Every solid planet and moon – not the gas giants.
+static func landable(b: Dictionary) -> bool:
+	if b.get("dwarf_star", false):
+		return false
+	return float(body_type(String(b.get("type", ""))).get("gas", 0.0)) < 0.5
+
+
+## Has the body an atmosphere (heat shimmer on the way down)?
+static func has_atmosphere(b: Dictionary) -> bool:
+	var a = body_type(String(b.get("type", ""))).get("atmo", Color(0, 0, 0, 0))
+	return a is Color and (a as Color).a > 0.2
+
+
+## A descent beacon over the middle of every body you can land on – the planet looks biggest from there.
+func descents(system_id: int) -> Array:
+	var L := get_layout(system_id)
+	var out: Array = []
+	for b in L["planets"] + L.get("moons", []):
+		if landable(b):
+			out.append({"id": "descent_%s" % b["id"], "name": "%s Descent Beacon" % b["name"], "pos": b["pos"], "body": b["id"],
+				"radius": 45.0})
+	return out
+
+
+func find_body(system_id: int, body_id: String) -> Dictionary:
+	var L := get_layout(system_id)
+	for b in L["planets"] + L.get("moons", []):
+		if String(b["id"]) == body_id:
+			return b
+	return {}
+
+
+const SITE_KINDS := {
+	"city": {"name": "City", "icon": "■", "col": Color(1.0, 0.85, 0.35), "text": "Streets, shops, a landing field, people – a city like a station on the ground."},
+	"outpost": {"name": "Outpost", "icon": "▲", "col": Color(0.45, 0.85, 1.0), "text": "A handful of domes and a pad: a trader, fuel, a bar if you are lucky."},
+	"mine": {"name": "Mine", "icon": "⛏", "col": Color(0.85, 0.6, 0.35), "text": "Shafts and conveyor belts, ore for those who dig it."},
+	"ruins": {"name": "Ruins", "icon": "◆", "col": Color(0.75, 0.55, 1.0), "text": "Older than the colonies, some say older than the Severance."},
+	"crash": {"name": "Crash site", "icon": "✖", "col": Color(1.0, 0.45, 0.35), "text": "A ship came down here. What it carried may still lie in the wreck."},
+	"research": {"name": "Research camp", "icon": "✚", "col": Color(0.45, 1.0, 0.6), "text": "Scientists in a few huts and many instruments."},
+}
+const CITY_ENDS := ["Port", "Haven", "Landing", "Reach", "Crossing", "Heights", "Springs", "Falls", "Gate", "Hold"]
+const CITY_STARTS := ["New", "Fort", "Saint", "Old", "Upper", "Lower", "East", "West", "Port", ""]
+
+
+## The places to land on a body (deterministic from its id): cities on worlds people like, outposts, mines, ruins,
+## crash sites and research camps elsewhere. Each: {id, name, kind, lon, lat} (lon/lat: where on the visible face).
+func landing_sites(system_id: int, body: Dictionary) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%d_%s_%d" % [system_id, String(body["id"]), seed_value])
+	var hab := has_atmosphere(body) and float(body_type(String(body["type"])).get("sea", 0.0)) > 0.0
+	var inhabited: bool = not systems[system_id].get("outer", false)
+	var cities := 0
+	if inhabited:
+		cities = (rng.randi_range(1, 3) if hab else (1 if rng.randf() < 0.35 else 0))
+		if float(body.get("city", 0.0)) > 0.5:
+			cities += 1
+	var kinds: Array = []
+	for i in cities:
+		kinds.append("city")
+	var others: Array = ["outpost", "mine", "ruins", "crash", "research"]
+	if not inhabited:
+		others = ["ruins", "crash", "mine", "research"]
+	for k in rng.randi_range(2, 3):
+		kinds.append(others[rng.randi() % others.size()])
+	var out: Array = []
+	var used: Array = []
+	for i in kinds.size():
+		var kd: String = kinds[i]
+		var nm := ""
+		if kd == "city":
+			var st: String = CITY_STARTS[rng.randi() % CITY_STARTS.size()]
+			nm = ("%s %s" % [st, String(body["name"]).split(" ")[0]]).strip_edges() if rng.randf() < 0.5 else "%s %s" % [String(body["name"]).split(" ")[0], CITY_ENDS[rng.randi() % CITY_ENDS.size()]]
+		else:
+			nm = "%s %s-%d" % [SITE_KINDS[kd]["name"], ["Kilo", "Delta", "Echo", "Sierra", "Tango", "Vega", "Orion", "Lima"][rng.randi() % 8], rng.randi_range(2, 19)]
+		if nm in used:
+			nm += " II"
+		used.append(nm)
+		# spread over the visible face, not too close to each other
+		var lon := 0.0
+		var lat := 0.0
+		for tries in 20:
+			lon = rng.randf_range(-1.1, 1.1)
+			lat = rng.randf_range(-0.85, 0.85)
+			var ok := true
+			for o in out:
+				if Vector2(lon - float(o["lon"]), lat - float(o["lat"])).length() < 0.42:
+					ok = false
+			if ok:
+				break
+		out.append({"id": "%s_site_%d" % [String(body["id"]), i], "name": nm, "kind": kd, "lon": lon, "lat": lat})
 	return out
 
 

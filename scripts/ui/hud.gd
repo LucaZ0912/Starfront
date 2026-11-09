@@ -11,7 +11,7 @@ signal pilot_window_requested          # package 29
 signal pilot_tab_requested(tab: int)   # 0.5.30.5: the hint opens the skill tree or the perks
 
 const FactionData = preload("res://data/factions.gd")
-const KIND_ICONS := {"star": "☀", "planet": "●", "moon": "◐", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖", "pod": "✚"}
+const KIND_ICONS := {"star": "☀", "planet": "●", "moon": "◐", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖", "pod": "✚", "descent": "▼"}
 
 var view: SystemView
 var credits_label: Label

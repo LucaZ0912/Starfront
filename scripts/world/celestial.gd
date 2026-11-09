@@ -95,6 +95,8 @@ func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0
 			radius = 30.0                        # package 31a: an escape pod
 		"beacon":
 			radius = 45.0
+		"descent":
+			radius = 90.0                          # package 50: a descent beacon over a planet's middle
 	if kind in ["planet", "star_far", "colossus"]:
 		pass
 	elif z_index == 0:
@@ -438,6 +440,10 @@ func info_text() -> String:
 			return "%s\n%s\nClick with salvager: salvage (%d%%)" % [data["name"], ", ".join(PackedStringArray(items)), int(data.get("salvage", 0.0))]
 		"beacon":
 			return "→ %s\nClick: warp here" % data["name"]
+		"descent":
+			var b := Universe.find_body(int(view.system_id) if view != null else GameState.current_system, String(data["body"]))
+			return "%s\nDescent to %s%s\nClick: fly there and descend" % [data["name"], String(b.get("name", "?")),
+				" – mind the heat on the way down" if Universe.has_atmosphere(b) else ""]
 	return title()
 
 
@@ -511,7 +517,7 @@ func _process(delta: float) -> void:
 		if SystemView.on_screen_at(position, radius * 1.2) and int(_t * 8.0) != int((_t - delta) * 8.0):
 			queue_redraw()                                            # 0.6.41.5: a few redraws a second is enough
 		return
-	if kind in ["gate", "anomaly", "wreck", "beacon", "pod"] and SystemView.on_screen_at(position, radius * 4.0 + 600.0):
+	if kind in ["gate", "anomaly", "wreck", "beacon", "pod", "descent"] and SystemView.on_screen_at(position, radius * 4.0 + 600.0):
 		queue_redraw()
 
 
@@ -605,6 +611,8 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 32, Color(0.6, 1.0, 0.6, (0.08 + 0.06 * sin(_t * 3.0)) if fixed else (0.25 + 0.2 * sin(_t * 3.0))), 2.0)
 			if float(data.get("salvage", 0.0)) > 0.0:
 				draw_arc(Vector2.ZERO, radius + 8.0, -PI / 2.0, -PI / 2.0 + TAU * float(data["salvage"]) / 100.0, 32, Color(0.6, 1.0, 0.6), 4.0)
+		"descent":
+			_draw_descent()
 		"beacon":
 			var s := label_scale
 			var col := poi_color(String(data["kind"]))
@@ -616,7 +624,7 @@ func _draw() -> void:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# Label (zoom-independent)
-	if show_labels and (kind in ["station", "haven", "gate", "structure"] or (kind == "anomaly" and data["revealed"])):
+	if show_labels and (kind in ["station", "haven", "gate", "structure", "descent"] or (kind == "anomaly" and data["revealed"])):
 		var font := ThemeDB.fallback_font
 		var s := label_scale
 		var off := radius + 16.0 * s
@@ -633,6 +641,34 @@ func _draw() -> void:
 		draw_string(font, Vector2(-w / 2.0 + 1, 13.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0, 0, 0, 0.8))
 		draw_string(font, Vector2(-w / 2.0, 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Package 50: the descent beacon – a small probe holding station over the planet's middle: a hexagonal body, three
+## arms with blinking lights, a slow turn, and below it rings that pulse outwards (the descent corridor).
+func _draw_descent() -> void:
+	var r := radius
+	for i in 3:
+		var k := fposmod(_t * 0.45 + i / 3.0, 1.0)
+		draw_arc(Vector2.ZERO, r * (0.8 + k * 2.6), 0.0, TAU, 48, Color(0.35, 0.9, 1.0, 0.35 * (1.0 - k)), 3.0)
+	for j in 12:
+		var a := TAU * j / 12.0 + _t * 0.3
+		draw_line(Vector2.from_angle(a) * r * 1.05, Vector2.from_angle(a) * r * 1.25, Color(0.35, 0.9, 1.0, 0.45), 2.0)
+	var rot := _t * 0.25
+	for arm in 3:
+		var a2 := rot + TAU * arm / 3.0
+		var tip := Vector2.from_angle(a2) * r * 0.95
+		draw_line(Vector2.ZERO, tip, Color(0.55, 0.58, 0.64), 6.0)
+		var on := fposmod(_t * 1.4 + arm * 0.33, 1.0) < 0.25
+		draw_circle(tip, 7.0, [Color(1.0, 0.3, 0.25), Color(0.35, 1.0, 0.5), Color(1.0, 0.9, 0.4)][arm])
+		if on:
+			draw_circle(tip, 16.0, Color(1.0, 1.0, 1.0, 0.25))
+	var hexp := PackedVector2Array()
+	for h in 6:
+		hexp.append(Vector2.from_angle(rot + TAU * h / 6.0) * r * 0.45)
+	draw_colored_polygon(hexp, Color(0.32, 0.34, 0.4))
+	hexp.append(hexp[0])
+	draw_polyline(hexp, Color(0.7, 0.75, 0.82), 3.0)
+	draw_circle(Vector2.ZERO, r * 0.18, Color(0.35, 0.9, 1.0, 0.6 + 0.3 * sin(_t * 3.0)))
 
 
 ## Holo banner (phase 0.5 package 10): the coat of arms of the station's faction, projected

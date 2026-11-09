@@ -1208,6 +1208,19 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 				activity = "Approaching for docking"
 			else:
 				order = {"type": "idle"}
+		"descend":                                      # package 50: to the descent beacon, then down
+			var dn = order.get("node")
+			if dn == null or not is_instance_valid(dn):
+				order = {"type": "idle"}
+				return
+			dest = dn.position
+			activity = "Approaching the descent beacon"
+			if position.distance_to(dest) < 260.0 and view != null and view.has_method("start_descent"):
+				view.start_descent(self, dn)
+				return
+		"descending", "ascending":
+			activity = "Descending to the surface" if ot == "descending" else "Climbing to orbit"
+			return
 		"docking":
 			_update_docking(delta)
 			return

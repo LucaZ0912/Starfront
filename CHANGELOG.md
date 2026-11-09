@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.1 – 2026-11-10
+
+**Teil 7, package 50 begins: down to the planets.**
+- **Descent beacons:** over the middle of every planet and moon with solid ground (not the gas giants) hangs a descent
+  beacon – a small probe with three blinking arms and rings pulsing out from it; from there the planet below looks
+  its biggest. It is in the overview (▼) and a warp target; click it, and the ship flies there and goes down.
+- **The way down:** the ship speeds up along its heading, flame bright, then sinks – smaller and smaller – into the
+  world below. On worlds with an atmosphere it glows: a bow shock of heat in front of it, plasma streaming past, a
+  glowing ball sinking away. On airless moons it just drops, cold and quiet.
+- **The planet map:** below, the planet fills the screen, its places marked on its face – cities (on worlds people
+  like, more where the night side glitters), outposts, mines, ruins, crash sites, research camps – and listed beside
+  it with a word about each. Pick one and land, or go back to orbit.
+- **Landing:** you stand on the landing field at the place: the planet's own ground all round, a concrete pad with
+  your ship on it, her ramp down, lights along the pad, fuel and crates, and a gravel path to the place itself. Walk
+  up the ramp and the ship climbs back to orbit – out of the planet, small and glowing, growing, on its way.
+- While you are down, your ship counts as docked (safe, hidden); a game saved on the ground opens the planet map
+  again. The cities themselves – streets, shops, people – come with the next update.
+- Codex: Landing on planets.
+
 ## alpha 0.7.49.14 – 2026-11-10
 
 - **A look at your ship:** sit down on the bench in the hangar and the camera glides over to your ship and centres

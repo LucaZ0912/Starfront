@@ -228,6 +228,20 @@ func _round_corner(rc: Dictionary) -> void:
 func hull_texture() -> Texture2D:
 	var n := 64
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	if pal.has("terrain_b"):
+		# package 50: on a planet the ground goes on all round – rougher, a little darker
+		var ta: Color = pal["terrain_b"]
+		var tb: Color = pal["terrain_c"]
+		for py in n:
+			for px in n:
+				var hv := hash2(px / 3, py / 3, 50)
+				img.set_pixel(px, py, ta.lerp(tb, hv * 0.7).darkened(0.12 + 0.1 * hash2(px, py, 7)))
+		for k in 10:
+			var rx := int(hash2(k, 1, 9) * 58)
+			var ry := int(hash2(k, 2, 9) * 58)
+			img.fill_rect(Rect2i(rx, ry, 4, 3), ta.darkened(0.45))
+			img.fill_rect(Rect2i(rx, ry, 4, 1), ta.darkened(0.2))
+		return ImageTexture.create_from_image(img)
 	var base: Color = Color(pal["wall_top"]).darkened(0.12)
 	img.fill(base)
 	for py in n:
@@ -355,6 +369,27 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			for qy in 2:
 				for qx in 2:
 					_rect(px + qx * 8, py + qy * 8, 8, 8, a if (qx + qy) % 2 == 0 else b)
+		13:             # the ground of a planet – its own colours, a little noise and pebbles
+			var ta: Color = pal.get("terrain_b", Color(0.5, 0.45, 0.35))
+			var tb: Color = pal.get("terrain_c", Color(0.6, 0.55, 0.42))
+			for qy in 4:
+				for qx in 4:
+					var hv := hash2(x * 4 + qx, y * 4 + qy, 13)
+					_rect(px + qx * 4, py + qy * 4, 4, 4, ta.lerp(tb, hv * 0.6).darkened(0.08 * hash2(qx, qy, x + y)))
+			if hash2(x, y, 31) > 0.8:
+				_rect(px + int(hash2(x, y, 3) * 12), py + int(hash2(y, x, 4) * 12), 2, 2, ta.darkened(0.35))
+		14:             # the landing pad: concrete slabs
+			var cc := Color(0.52, 0.53, 0.55)
+			_rect(px, py, TILE, TILE, cc if (x + y) % 2 == 0 else cc.darkened(0.04))
+			_rect(px, py + TILE - 1, TILE, 1, cc.darkened(0.2))
+			_rect(px + TILE - 1, py, 1, TILE, cc.darkened(0.18))
+			if hash2(x, y, 14) > 0.85:
+				_rect(px + 4, py + 6, 5, 3, cc.darkened(0.15))
+		15:             # a gravel path
+			var gc := Color(pal.get("terrain_c", Color(0.6, 0.55, 0.42))).lerp(Color(0.55, 0.55, 0.55), 0.6)
+			_rect(px, py, TILE, TILE, gc)
+			for k in 8:
+				_px(px + int(hash2(x, y, k) * 15), py + int(hash2(y, x, k + 3) * 15), gc.darkened(0.25))
 		10:             # water (a pool)
 			var wc := Color(0.2, 0.6, 0.8)
 			_rect(px, py, TILE, TILE, wc)
@@ -464,6 +499,20 @@ func _decal(d: Dictionary) -> void:
 			for k2 in 64:
 				var an := k2 * TAU / 64.0
 				_px(cx + int(cos(an) * ph * 0.42), cy + int(sin(an) * ph * 0.42), c.darkened(0.15))
+		"pad_marks":               # the landing pad's markings: a yellow frame, a big H
+			_rect(px, py, pw, 2, c)
+			_rect(px, py + ph - 2, pw, 2, c)
+			_rect(px, py, 2, ph, c)
+			_rect(px + pw - 2, py, 2, ph, c)
+			for k in int(pw / 12):
+				_rect(px + 4 + k * 12, py + 4, 6, 1, c.darkened(0.2))
+				_rect(px + 4 + k * 12, py + ph - 5, 6, 1, c.darkened(0.2))
+		"ramp":                    # the ship's ramp, down to the pad
+			_rect(px, py, pw, ph, Color(0.38, 0.4, 0.45))
+			for k in int(ph / 3):
+				_rect(px, py + k * 3, pw, 1, Color(0.3, 0.32, 0.36))
+			_rect(px, py, 1, ph, c)
+			_rect(px + pw - 1, py, 1, ph, c)
 		"stairs":                  # steps going down to the west, each a little darker
 			var steps := int(pw / 4)
 			for k in steps:
