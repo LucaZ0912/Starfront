@@ -154,6 +154,23 @@ static func misjump(pos: Vector2, radius: float) -> Fx:
 	return f
 
 
+var tex: Texture2D
+
+
+## Package 40c: a ship's outline at the edge of the Veil that is not there – flickers up and fades.
+static func ghost(pos: Vector2, t: Texture2D, rot: float) -> Fx:
+	var f := Fx.new()
+	f.kind = "ghost"
+	f.position = pos
+	f.rotation = rot
+	f.tex = t
+	f.size = maxf(t.get_width(), t.get_height()) * PixelArt.SCALE
+	f.life = 3.5
+	f.max_life = 3.5
+	f.z_index = 6
+	return f
+
+
 static func pulse(pos: Vector2, radius: float, col: Color) -> Fx:
 	var f := Fx.new()
 	f.kind = "pulse"
@@ -250,6 +267,11 @@ func _draw() -> void:
 				draw_line(Vector2(-w, 0), Vector2(w, 0), Color(1, 1, 1, hot * (0.5 + 0.25 * i)), size * (0.05 - i * 0.012))
 		"marker":
 			draw_arc(Vector2.ZERO, 8.0 + 30.0 * t, 0.0, TAU, 24, Color(color, t), 2.0)
+		"ghost":
+			var sz := Vector2(tex.get_width(), tex.get_height()) * PixelArt.SCALE
+			var fl := (0.5 + 0.5 * sin(life * 23.0)) * sin(t * PI)
+			draw_texture_rect(tex, Rect2(-sz * 0.5, sz), false, Color(0.7, 0.5, 1.0, 0.45 * fl))
+			draw_texture_rect(tex, Rect2(-sz * 0.5 + Vector2(6, 0), sz), false, Color(0.4, 0.9, 1.0, 0.2 * fl))
 		"misjump":
 			var e := 1.0 - t
 			var rng := RandomNumberGenerator.new()

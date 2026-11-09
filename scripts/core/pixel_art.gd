@@ -638,6 +638,118 @@ static func gate_texture_styled(cls: int, style: String) -> Texture2D:
 	return _cache[key]
 
 
+## Package 40c: a warship's hulk from an old battle – the ship's own picture, burnt grey and rust, holed, often broken
+## in two (the rest is gone).
+static func hulk_texture(hull_id: String, seed_v: int) -> Texture2D:
+	var key := "hulk_%s_%d" % [hull_id, seed_v]
+	if _cache.has(key):
+		return _cache[key]
+	var img: Image = ship_texture(hull_id, "player").get_image()
+	img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	var h := img.get_height()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	var cut := rng.randf() < 0.55
+	var cx := rng.randf_range(0.35, 0.65) * w
+	var side := 1.0 if rng.randf() < 0.5 else -1.0
+	var holes: Array = []
+	for i in rng.randi_range(2, 5):
+		holes.append([Vector2(rng.randf_range(0, w), rng.randf_range(0, h)), rng.randf_range(1.2, 3.2)])
+	var salt := seed_v % 997
+	for y in h:
+		for x in w:
+			var c := img.get_pixel(x, y)
+			if c.a <= 0.0:
+				continue
+			var edge := (x - cx) * side - (sin(y * 1.3 + salt) * 1.5 + _gate_hash(x, y, salt) * 2.5)
+			if cut and edge > 0.0:
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+				continue
+			var gone := false
+			for hl in holes:
+				gone = gone or Vector2(x, y).distance_to(hl[0]) < float(hl[1])
+			if gone:
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+				continue
+			var g := c.get_luminance()
+			var hs := _gate_hash(x, y, salt + 7)
+			var base := Color(0.2, 0.19, 0.18).lerp(Color(0.52, 0.49, 0.45), g)
+			if hs < 0.16:
+				base = base.lerp(Color(0.48, 0.24, 0.1), 0.6)          # rust
+			elif hs > 0.9:
+				base = base.darkened(0.55)                               # scorch
+			if cut and edge > -2.0:
+				base = base.darkened(0.5)                                # the torn edge
+			img.set_pixel(x, y, Color(base, c.a))
+	_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
+
+## Package 40c: one of the ships that brought people to the Cluster, long dead – a long spine, a broken habitat ring,
+## the engine block, faded paint, holes; broken through in one place.
+static func relic_texture(seed_v: int) -> Texture2D:
+	var key := "relic_%d" % seed_v
+	if _cache.has(key):
+		return _cache[key]
+	var w := 160
+	var h := 56
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	var salt := seed_v % 991
+	var cy := h / 2
+	var hull := [Color(0.3, 0.3, 0.3), Color(0.55, 0.55, 0.53), Color(0.74, 0.73, 0.69)]
+	var brk := rng.randi_range(80, 100)                 # where the spine is broken through
+	var ring_x := rng.randi_range(38, 52)
+	for x in range(8, 152):
+		# the profile: a pointed bow, the spine, the engine block
+		var half := 6
+		if x < 22:
+			half = 2 + (x - 8) * 4 / 14
+		if x > 124:
+			half = 11
+		if x > 146:
+			half = 8
+		if absi(x - brk) < 3 and _gate_hash(x, 0, salt) < 0.8:
+			continue
+		for y in range(cy - half, cy + half + 1):
+			var t := float(y - (cy - half)) / maxf(1.0, half * 2.0)
+			var col: Color = hull[2] if t < 0.3 else (hull[1] if t < 0.75 else hull[0])
+			if x % 7 == 0:
+				col = col.darkened(0.25)                        # panel seams
+			if y == cy - 1 and x > 24 and x < 120 and x % 3 != 0:
+				col = Color(0.32, 0.45, 0.62)                    # the faded blue stripe
+			if x > 60 and x < 76 and y > cy + 1 and y < cy + 5 and (x + y) % 3 != 0:
+				col = Color(0.55, 0.3, 0.26)                     # faded lettering
+			var hs := _gate_hash(x, y, salt)
+			if hs < 0.12:
+				col = col.lerp(Color(0.42, 0.3, 0.2), 0.5)       # grime
+			if hs > 0.975 or (absi(x - brk) < 6 and hs > 0.6):
+				continue                                         # holes, torn edges at the break
+			img.set_pixel(x, y, col)
+	# the engine nozzles
+	for k in 3:
+		var ny := cy - 7 + k * 7
+		for y2 in range(ny - 2, ny + 3):
+			for x2 in range(150, 156):
+				img.set_pixel(x2, y2, Color(0.22, 0.2, 0.2) if absi(y2 - ny) < 2 else Color(0.4, 0.38, 0.36))
+	# the habitat ring seen edge-on, broken in places
+	for y3 in range(2, h - 2):
+		var u := float(y3 - cy) / float(cy - 2)
+		var dx := int(round(sqrt(maxf(0.0, 1.0 - u * u)) * 5.0))
+		for xx in [ring_x - dx, ring_x + dx, ring_x - dx + 1, ring_x + dx - 1]:
+			if _gate_hash(xx, y3, salt + 3) < 0.82 and absi(y3 - cy) > 3:
+				img.set_pixel(xx, y3, hull[1] if xx < ring_x else hull[0])
+	# the spokes
+	for y4 in range(5, h - 5):
+		if absi(y4 - cy) > 6 and y4 % 2 == 0:
+			img.set_pixel(ring_x, y4, hull[0])
+	_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
+
 static func _gate_hash(x: int, y: int, salt: int) -> float:
 	var v := sin(float(x) * 12.9898 + float(y) * 78.233 + float(salt)) * 43758.5453
 	return v - floor(v)

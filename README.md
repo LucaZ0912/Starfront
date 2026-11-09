@@ -114,6 +114,18 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - New planet type `metal` (Metal World): shader parameter `metal` – ore veins and glints.
 - Galaxy map: economy filter, main-economy mark, prosperity pips, economy and prosperity in the system info.
 
+## The content of the Rim (phase 0.5 package 40c)
+
+- `Universe._rim_riches` (×`RIM_AMOUNT` / `FAR_AMOUNT`, purity, deep deposits, `L["rich"]`), `_rim_giant`, one or two
+  more fields in `_generate_layout`.
+- `_wreck_sites` → `L["sites"]`: `_battlefield` (hulks: `hulk`, `side`, `loot`, `mod_chance`) and `_derelict`
+  (`relic` + fragments) by `BATTLE_SHARE` / `RELIC_SHARE`; warp targets of kind `site`. The view spawns a `site`
+  celestial (scrap, drawn once) and a `wreck` per hulk with endless life; `complete_salvage` sets `salvaged`, kept in
+  the save (`"salvaged"` per layout). `PixelArt.hulk_texture` / `relic_texture`. Good `old_tech`.
+- `_mark_veil` (`VEIL_PER_CONSTELLATION` outermost of each Far Reaches constellation, `is_veil`), `_veil_rifts`
+  (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
+  (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
+
 ## Gates (phase 0.5 package 40b)
 
 - `Universe.gate_style(sid)`: a power's own style, `pirate` for pirate systems, `old` for the empty Rim, else

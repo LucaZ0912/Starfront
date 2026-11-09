@@ -195,7 +195,7 @@ Alle 150 handelbaren Waren in den 16 Kategorien des Markts (Minen gibt es seit 0
 | AI Cores | 1400 | Hightech | Forschung, Industrie |  |
 | Laboratory Equipment | 480 | Hightech | Forschung |  |
 
-## Wissenschaft (Science) – 5
+## Wissenschaft (Science) – 6
 
 | Ware | Preis | Hergestellt von | Verbraucht von | Hinweis |
 | --- | ---: | --- | --- | --- |
@@ -203,6 +203,7 @@ Alle 150 handelbaren Waren in den 16 Kategorien des Markts (Minen gibt es seit 0
 | Prototype Parts | 800 | Forschung | Hightech, Militär |  |
 | Gene Samples | 260 | Forschung | Agrar, Hightech |  |
 | Exotic Specimens | 480 | Forschung | Tourismus | Luxus, reine Handelsware |
+| Pre-Severance Tech | 1600 | – (nur aus alten Wracks) | Forschung, High-Tech | Paket 40c |
 | Research Data | 260 | Forschung | Hightech |  |
 
 ## Militärgüter (Military goods) – 9

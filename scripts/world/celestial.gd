@@ -73,10 +73,21 @@ func setup(p_kind: String, p_data: Dictionary, p_light_dir: Vector2 = Vector2(-0
 			_col_sprite = make_colossus_sprite(data)
 			add_child(_col_sprite)
 		"anomaly":
-			radius = 90.0
+			radius = 90.0 if not data.get("veil", false) else 420.0
 		"wreck":
 			_tex = PixelArt.wreck_texture(int(data.get("seed", 3)))
 			radius = 40.0
+			if data.has("hulk"):                         # package 40c: a warship's hulk of an old battle
+				_tex = PixelArt.hulk_texture(String(data["hulk"]), int(data["seed"]))
+				radius = maxf(_tex.get_width(), _tex.get_height()) * PixelArt.SCALE * 0.42
+				rotation = float(data.get("rot", 0.0))
+			elif data.get("relic", false):               # a pre-Severance derelict
+				_tex = PixelArt.relic_texture(int(data["seed"]))
+				radius = _tex.get_width() * PixelArt.SCALE * 2.0 * 0.4
+				rotation = float(data.get("rot", 0.0))
+		"site":
+			radius = float(data.get("radius", 8000.0))
+			z_index = -2
 		"pod":
 			radius = 30.0                        # package 31a: an escape pod
 		"beacon":
@@ -540,6 +551,9 @@ func _draw() -> void:
 		"anomaly":
 			if not data["revealed"]:
 				return
+			if data.get("veil", false):
+				_draw_rift()
+				return
 			var c := Color(0.8, 0.4, 1.0) if not data["done"] else Color(0.4, 0.4, 0.5)
 			for i in 4:
 				var r := radius * (0.35 + 0.25 * i) + 6.0 * sin(_t * 2.0 + i)
@@ -558,10 +572,13 @@ func _draw() -> void:
 				draw_rect(Rect2(Vector2(-1, -9) * s2, Vector2(2, 2) * s2), Color(1.0, 0.25, 0.2))
 			var pr := radius + 30.0 * fmod(_t, 2.0)
 			draw_arc(Vector2.ZERO, pr, 0.0, TAU, 32, Color(1.0, 0.45, 0.3, 0.6 * (1.0 - fmod(_t, 2.0) / 2.0)), 3.0)
+		"site":
+			_draw_site()
 		"wreck":
-			var size := Vector2(_tex.get_width(), _tex.get_height()) * PixelArt.SCALE
+			var size := Vector2(_tex.get_width(), _tex.get_height()) * PixelArt.SCALE * (2.0 if data.get("relic", false) else 1.0)
 			draw_texture_rect(_tex, Rect2(-size * 0.5, size), false)
-			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 24, Color(0.6, 1.0, 0.6, 0.25 + 0.2 * sin(_t * 3.0)), 2.0)
+			var fixed: bool = data.has("hulk") or data.get("relic", false)
+			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 32, Color(0.6, 1.0, 0.6, (0.08 + 0.06 * sin(_t * 3.0)) if fixed else (0.25 + 0.2 * sin(_t * 3.0))), 2.0)
 			if float(data.get("salvage", 0.0)) > 0.0:
 				draw_arc(Vector2.ZERO, radius + 8.0, -PI / 2.0, -PI / 2.0 + TAU * float(data["salvage"]) / 100.0, 32, Color(0.6, 1.0, 0.6), 4.0)
 		"beacon":
@@ -596,6 +613,59 @@ func _draw() -> void:
 
 ## Holo banner (phase 0.5 package 10): the coat of arms of the station's faction, projected
 ## beside the station – tinted, scanlined, flickering, now and then a glitch.
+## Package 40c: the debris haze of an old battlefield or round a derelict – scraps of hull, drawn once.
+func _draw_site() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(data.get("seed", 1))
+	var n := 220 if String(data.get("kind", "")) == "battlefield" else 90
+	for i in n:
+		var p := Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * radius
+		var s := rng.randf_range(8.0, 30.0)
+		var g := rng.randf_range(0.25, 0.5)
+		var col := Color(g, g * 0.95, g * 0.9, 0.9) if rng.randf() < 0.8 else Color(0.5, 0.27, 0.12, 0.9)
+		# a shard of hull plate: thin, turned any way
+		draw_set_transform(p, rng.randf() * TAU, Vector2.ONE)
+		draw_rect(Rect2(Vector2(-s * 0.5, -s * 0.12), Vector2(s, s * rng.randf_range(0.15, 0.35))), col)
+		if rng.randf() < 0.3:
+			draw_rect(Rect2(Vector2(-s * 0.2, -s * 0.3), Vector2(s * 0.4, s * 0.12)), col.darkened(0.3))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Package 40c: a tear at the edge of the Veil – a jagged violet rent, white at its heart, shimmering, motes drifting in.
+func _draw_rift() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(data.get("seed", 7))
+	var done: bool = data["done"]
+	var c := Color(0.75, 0.4, 1.0) if not done else Color(0.45, 0.4, 0.55)
+	var pts := PackedVector2Array()
+	var n := 14
+	for i in n + 1:
+		var y := lerpf(-radius, radius, float(i) / n)
+		var x := rng.randf_range(-0.22, 0.22) * radius * (1.0 - absf(y / radius))
+		x += sin(_t * 1.3 + i) * radius * 0.03
+		pts.append(Vector2(x, y))
+	# the open tear: a lens of deep violet round the rent, glowing at its rim
+	var lens := PackedVector2Array()
+	for i2 in 25:
+		var u := float(i2) / 24.0 * TAU
+		var y2 := cos(u) * radius
+		var x2 := sin(u) * radius * 0.3 * (1.0 + 0.12 * sin(_t * 1.7 + u * 3.0)) * sqrt(maxf(0.0, 1.0 - pow(y2 / radius, 2.0)))
+		lens.append(Vector2(x2 + pts[clampi(int((y2 / radius * 0.5 + 0.5) * n), 0, n)].x, y2))
+	draw_colored_polygon(lens, Color(0.12, 0.02, 0.25, 0.75 if not done else 0.35))
+	draw_circle(Vector2.ZERO, radius * 0.55, Color(c, 0.07))
+	for k in 4:
+		var wdt := (34.0 - k * 8.0) * (1.0 + 0.15 * sin(_t * 2.0 + k))
+		var cc := c.lerp(Color(1, 0.95, 1), k / 3.0)
+		draw_polyline(pts, Color(cc, (0.18 + k * 0.2) * (0.5 if done else 1.0)), wdt)
+	for j in 18:
+		var ph := fposmod(_t * 0.25 + j * 0.37, 1.0)
+		var a0 := j * 2.4
+		var p := Vector2.from_angle(a0) * radius * (1.4 - ph) * Vector2(0.7, 1.0)
+		draw_rect(Rect2(p, Vector2(10, 10)), Color(c.lightened(0.4), 0.7 * ph))
+	if not done and float(data["analysis"]) > 0.0:
+		draw_arc(Vector2.ZERO, radius + 40.0, -PI / 2.0, -PI / 2.0 + TAU * float(data["analysis"]) / 100.0, 48, Color(0.9, 0.7, 1.0), 8.0)
+
+
 func _draw_holo_banner(fid: String, st_size: float) -> void:
 	var crest := CrestArt.texture(fid)
 	var px := StationArt.PX

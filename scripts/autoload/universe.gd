@@ -217,6 +217,7 @@ func generate(p_seed: int) -> void:
 	_plan_settlements()                               # package 40: free settlements in the ring
 	_assign_stars()                                   # package 37
 	_name_systems()                                   # package 40: inhabited – German names, the rest catalogue / explorers
+	_mark_veil()                                      # package 40c: the outermost systems touch the Veil
 
 
 # ---------------------------------------------------------------- Package 40: the cluster
@@ -284,6 +285,36 @@ func is_belt(sid: int) -> bool:
 ## The Far Reaches – the outer ring beyond the Rim.
 func is_outer(sid: int) -> bool:
 	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("outer", false))
+
+
+## Package 40c: a system at the edge of the Veil (the two outermost of every constellation of the Far Reaches).
+func is_veil(sid: int) -> bool:
+	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("veil", false))
+
+
+const VEIL_PER_CONSTELLATION := 2
+
+
+func _mark_veil() -> void:
+	var c := MAP_SIZE * 0.5
+	var groups := {}
+	for s in systems:
+		if s.get("outer", false):
+			var k := int(s["constellation"])
+			if not groups.has(k):
+				groups[k] = []
+			groups[k].append(s)
+	for k2 in groups:
+		var g: Array = groups[k2]
+		g.sort_custom(func(x, y): return _ell_r(x["pos"], c) > _ell_r(y["pos"], c))
+		for i in mini(VEIL_PER_CONSTELLATION, g.size()):
+			g[i]["veil"] = true
+
+
+## How far out a map point lies, in units of the core ellipse.
+func _ell_r(p: Vector2, c: Vector2) -> float:
+	var d := p - c
+	return Vector2(d.x / CORE_R.x, d.y / CORE_R.y).length()
 
 
 ## A minimum spanning tree over `ids` (Prim).
@@ -1492,7 +1523,12 @@ func to_dict() -> Dictionary:
 		var an := {}
 		for x in L["anomalies"]:
 			an[x["id"]] = {"scan": x["scan"], "revealed": x["revealed"], "analysis": x["analysis"], "done": x["done"]}
-		changed[id] = {"asteroids": ast, "anomalies": an, "gone": gone, "colossi": cols, "deep": deep}
+		var salv := {}
+		for ws in L.get("sites", []):
+			for w in ws["wrecks"]:
+				if w.get("salvaged", false):
+					salv[w["id"]] = true
+		changed[id] = {"asteroids": ast, "anomalies": an, "gone": gone, "colossi": cols, "deep": deep, "salvaged": salv}
 	return {"seed": seed_value, "version": GALAXY_VERSION, "layouts": changed, "orbits": orbit_phase.duplicate()}
 
 
@@ -1522,6 +1558,11 @@ func from_dict(d: Dictionary) -> void:
 		for x in L["anomalies"]:
 			if an.has(x["id"]):
 				x.merge(an[x["id"]], true)
+		var salv: Dictionary = changed[id].get("salvaged", {})
+		for ws in L.get("sites", []):
+			for w in ws["wrecks"]:
+				if salv.has(w["id"]):
+					w["salvaged"] = true
 
 
 func _dist(a: int, b: int) -> float:
@@ -1950,6 +1991,7 @@ func _generate_layout(id: int) -> Dictionary:
 		_special_planets(L, id, sp)
 		for pp in L["planets"]:
 			used.append(pp["pos"])
+	_rim_giant(L, id)                                 # package 40c
 	_make_moons(L, id)                                # package 36
 	if sp != "" and SPECIAL_BODIES.has(sp):
 		_special_moons(L, sp)
@@ -1998,6 +2040,8 @@ func _generate_layout(id: int) -> Dictionary:
 		need_icy = need_icy or pe[0] == "ice_refinery"
 	var has_icy := false
 	var nf := rng.randi_range(2, 4)
+	if sys.get("belt", false):
+		nf += 1 if not sys.get("outer", false) else 2          # package 40c: the Rim is rich
 	L["belts"] = _make_belts(L, id)                   # package 35: asteroid belt and Kuiper belt (scenery)
 	_make_dwarfs(L, id)                               # package 38
 	for b in nf:
@@ -2029,12 +2073,146 @@ func _generate_layout(id: int) -> Dictionary:
 	_scatter_loose(L, id, sec)
 	_place_colossi(L, id, sec)
 	_moon_fields(L, id, sec)                          # package 36: after the colossi – moon fields have none
+	_rim_riches(L, id)                                # package 40c: richer rock, purer ore, deep deposits
+	_wreck_sites(L, id, used)                         # package 40c: old battlefields and pre-Severance derelicts
+	_veil_rifts(L, id, used)                          # package 40c: tears at the edge of the Veil
 	_place_orbits(L, id)                              # package 36: planets and moons on their orbits
 	return L
 
 
 ## Package 38: one or two dwarf planets out in the Kuiper belt (own RNG). They are planets of their own (orbit,
 ## warp target, collection) – small, no moons.
+# ---------------------------------------------------------------- Package 40c: the content of the Rim
+
+const RIM_AMOUNT := 1.5          # deposits in the Rim (× the core) …
+const FAR_AMOUNT := 1.8          # … and in the Far Reaches
+const GIANT_TYPES := ["gas", "ice_giant", "red_gas", "toxic"]
+const BATTLE_SHARE := {"core": 0.06, "rim": 0.4, "far": 0.35}
+const RELIC_SHARE := {"core": 0.0, "rim": 0.1, "far": 0.22, "veil": 0.45}
+const BATTLE_SIDES := [["assembly", "covenant"], ["assembly", "directorate"], ["covenant", "directorate"],
+	["assembly", "pirate"], ["covenant", "pirate"], ["directorate", "pirate"]]
+const BATTLE_YEARS := Vector2i(12712, 12880)
+const RELIC_SHIPS := ["UNS Long Reach", "EAS Meridian Dawn", "Colony Ship Hesperos", "UNS Patience", "EAS Far Harbour",
+	"Generation Ship Arcadia Vale", "UNS Covenant of Stars", "Survey Carrier Ishikari", "EAS Second Spring",
+	"Colony Ship New Kirkwall", "UNS Tidewater", "Ark Ship Saint Brendan"]
+
+
+## Every Rim system has at least one giant to harvest – the outermost world becomes one if none was rolled.
+func _rim_giant(L: Dictionary, id: int) -> void:
+	if not systems[id].get("belt", false) or L["planets"].size() < 3:
+		return
+	for p in L["planets"]:
+		if String(p["type"]) in GIANT_TYPES:
+			return
+	var pl: Dictionary = L["planets"].back()
+	var old_big := float(PLANET_TYPES[String(pl["type"])].get("big", 1.0))
+	var t := "gas" if posmod(seed_value + id * 13, 3) != 0 else "ice_giant"
+	pl["type"] = t
+	pl["radius"] = float(pl["radius"]) / old_big * float(PLANET_TYPES[t].get("big", 1.0))
+
+
+## Richer rock in the Rim: bigger deposits, purer ore, a deep deposit in every metallic and stony colossus.
+func _rim_riches(L: Dictionary, id: int) -> void:
+	var s: Dictionary = systems[id]
+	if not s.get("belt", false):
+		return
+	var k := FAR_AMOUNT if s.get("outer", false) else RIM_AMOUNT
+	for a in L["asteroids"]:
+		a["amount"] = float(a["amount"]) * k
+		a["amount0"] = a["amount"]
+		var h := posmod(hash(String(a.get("id", "")) + "rim"), 100)
+		a["purity_grade"] = "low" if h < 10 else ("high" if h >= 55 else "medium")
+	for co in L.get("colossi", []):
+		co["amount"] = float(co["amount"]) * k
+		co["amount0"] = co["amount"]
+		if DEEP_ORES.has(String(co["class"])) and not co.has("deep_ore"):
+			co["deep_ore"] = DEEP_ORES[String(co["class"])]
+			co["deep_amount"] = 60.0 + float(posmod(int(co.get("seed", 0)), 90))
+		if co.has("deep_amount"):
+			co["deep_amount"] = float(co["deep_amount"]) * k
+	L["rich"] = true
+
+
+## Package 40c: old battlefields (hulks of warships from the wars after the Severance) and – rarer, further out – the
+## derelicts of the ships that brought people here. Fixed sites: their wrecks stay until salvaged.
+func _wreck_sites(L: Dictionary, id: int, used: Array) -> void:
+	var s: Dictionary = systems[id]
+	if String(s.get("special", "")) != "":
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 40403 + id * 7717 + 3
+	var zone := "far" if s.get("outer", false) else ("rim" if s.get("belt", false) else "core")
+	L["sites"] = []
+	if rng.randf() < float(BATTLE_SHARE[zone]):
+		_battlefield(L, id, used, rng)
+	var rs := float(RELIC_SHARE["veil"]) if s.get("veil", false) else float(RELIC_SHARE[zone])
+	if rng.randf() < rs:
+		_derelict(L, id, used, rng)
+
+
+static func hulk_hulls() -> Array:
+	var out: Array = []
+	for h in GameData.hulls:
+		var d: Dictionary = GameData.hulls[h]
+		if int(d.get("size", 1)) >= 2 and d.get("buyable", false) and not d.get("drone_only", false) and PixelArt.ShipArt.SHIPS.has(h):
+			out.append(h)
+	out.sort()
+	return out
+
+
+func _battlefield(L: Dictionary, id: int, used: Array, rng: RandomNumberGenerator) -> void:
+	var pos := _free_spot(rng, used, 500000.0 * SCALE, 1600000.0 * SCALE)
+	used.append(pos)
+	var sides: Array = BATTLE_SIDES[rng.randi() % BATTLE_SIDES.size()]
+	var year := rng.randi_range(BATTLE_YEARS.x, BATTLE_YEARS.y)
+	var hulls := hulk_hulls()
+	var site := {"id": "site_b", "kind": "battlefield", "pos": pos, "radius": 3800.0, "year": year, "sides": sides,
+		"name": "Old Battlefield (%d HE)" % year, "seed": rng.randi(), "wrecks": []}
+	for i in rng.randi_range(6, 12):
+		var hid: String = hulls[rng.randi() % hulls.size()]
+		var side: String = sides[i % 2]
+		var loot := {"salvage": rng.randi_range(6, 14), "alloys": rng.randi_range(3, 8), "weapon_parts": rng.randi_range(2, 6)}
+		if rng.randf() < 0.3:
+			loot["old_tech"] = rng.randi_range(1, 2)
+		site["wrecks"].append({"id": "sw_%d_%d" % [id, i], "hulk": hid, "side": side,
+			"name": "Hulk of a %s (%s)" % [GameData.hulls[hid]["name"], side.capitalize() if side != "pirate" else "pirate"],
+			"pos": pos + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * 2800.0,
+			"rot": rng.randf() * TAU, "seed": rng.randi(), "loot": loot, "mod_chance": 0.25})
+	L["sites"].append(site)
+
+
+func _derelict(L: Dictionary, id: int, used: Array, rng: RandomNumberGenerator) -> void:
+	var pos := _free_spot(rng, used, 700000.0 * SCALE, 2000000.0 * SCALE)
+	used.append(pos)
+	var ship: String = RELIC_SHIPS[rng.randi() % RELIC_SHIPS.size()]
+	var site := {"id": "site_r", "kind": "derelict", "pos": pos, "radius": 4200.0, "ship": ship,
+		"name": "Pre-Severance Derelict – %s" % ship, "seed": rng.randi(), "wrecks": []}
+	var loot := {"old_tech": rng.randi_range(3, 6), "research_data": rng.randi_range(4, 8), "salvage": rng.randi_range(15, 25)}
+	if rng.randf() < 0.4:
+		loot["earth_relic"] = 1                    # for the Cathedral of Return
+	site["wrecks"].append({"id": "sr_%d_0" % id, "relic": true, "name": ship, "pos": pos, "rot": rng.randf_range(-0.5, 0.5),
+		"seed": rng.randi(), "loot": loot})
+	for i in rng.randi_range(2, 4):                # pieces that broke off
+		site["wrecks"].append({"id": "sr_%d_%d" % [id, i + 1], "name": "Fragment of the %s" % ship,
+			"pos": pos + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(1700.0, 3400.0), "rot": rng.randf() * TAU,
+			"seed": rng.randi(), "loot": {"salvage": rng.randi_range(4, 9), "old_tech": rng.randi_range(0, 1)}})
+	L["sites"].append(site)
+
+
+## Package 40c: at the edge of the Veil, tears in space – visible from afar, rich in data and exotic matter.
+func _veil_rifts(L: Dictionary, id: int, used: Array) -> void:
+	if not systems[id].get("veil", false):
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 40407 + id * 389 + 5
+	for k in rng.randi_range(1, 2):
+		var pos := _free_spot(rng, used, 600000.0 * SCALE, 2200000.0 * SCALE)
+		used.append(pos)
+		L["anomalies"].append({"id": "rift_%d" % k, "name": "Veil Rift", "veil": true, "exotic": rng.randf() < 0.6,
+			"pos": pos, "difficulty": 45.0 + rng.randf_range(0.0, 15.0), "scan": 100.0, "revealed": true, "analysis": 0.0,
+			"done": false, "seed": rng.randi()})
+
+
 func _make_dwarfs(L: Dictionary, id: int) -> void:
 	var kb: Dictionary = {}
 	for bt in L.get("belts", []):
@@ -2558,6 +2736,8 @@ func warp_targets(system_id: int) -> Array:
 	for an in L["anomalies"]:
 		if an["revealed"]:
 			out.append({"id": an["id"], "kind": "anomaly", "name": an["name"], "pos": an["pos"], "land": 2200.0, "data": an})
+	for ws in L.get("sites", []):                  # package 40c
+		out.append({"id": ws["id"], "kind": "site", "name": ws["name"], "pos": ws["pos"], "land": float(ws["radius"]) * 0.6, "data": ws})
 	for pod in GameState.pods:                     # package 31a: escape pods with crew waiting for rescue
 		if int(pod["system"]) == system_id:
 			out.append({"id": pod["id"], "kind": "pod", "name": "Escape pod – %d crew" % (pod["crew"] as Array).size(), "pos": pod["pos"], "land": 900.0, "data": pod})

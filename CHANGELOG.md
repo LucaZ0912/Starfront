@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.5 – 2026-11-09
+
+**Package 40c: the content of the Rim.** A new game is needed.
+- **Rich deposits:** every Rim system has one more asteroid field (the Far Reaches two), its rock holds 1.5× as much
+  ore (Far Reaches 1.8×) and is purer (45 % high grade instead of 20 %), every metallic and stony colossus has a deep
+  deposit, and every system a giant to harvest.
+- **Old battlefields** (~40 % of the Rim, a few in the core): 6–12 hulks of warships of two old enemies, burnt grey,
+  rusted, holed and often broken in two, in a field of scrap. Salvaged: salvage, alloys, weapon parts, sometimes an old
+  module and **Pre-Severance Tech**. They stay until salvaged – for good.
+- **Pre-Severance derelicts** (more often further out): the colony and generation ships that brought people to the
+  Cluster – a long spine, a broken habitat ring, faded paint – with fragments round them. Salvaged: Pre-Severance
+  Tech, research data, scrap, and now and then a **Relic of Earth**.
+- New good **Pre-Severance Tech** (1,600 cr) – only from the wrecks; research and high-tech worlds buy it.
+- **The edge of the Veil:** the two outermost systems of every constellation of the Far Reaches (40 in all), violet on
+  the galaxy map. A violet curtain of light in their sky, ghost ships flickering up on the sensors, echoes and voices
+  in the log – and **Veil rifts**, jagged tears in space visible from afar: analysing one gives much more data (Veil
+  readings for the Research Exchange) and often exotic matter.
+- Galaxy map: the Veil glows violet round the cluster, "THE VEIL" in the overview; the system info lists rich
+  deposits, battlefields, derelicts and the edge of the Veil.
+- Codex: Old battlefields, Pre-Severance derelicts, The edge of the Veil, Veil rifts. Smoke tests for all of it.
+
 ## alpha 0.6.40.4 – 2026-11-09
 
 **Galaxy map overview.** Zoomed right out (below ×1.8), the map becomes an overview: system names, security and

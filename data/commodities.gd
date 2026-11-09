@@ -170,6 +170,8 @@ const COMMODITIES := {
 	"spirits": {"name": "Spirits", "price": 180, "volume": 0.5, "category": "goods", "econ": "agri", "wants": ["mining", "military", "tourism"], "lux": true},
 	"artworks": {"name": "Artworks", "price": 2000, "volume": 1.0, "category": "goods", "econ": "tourism", "wants": [], "lux": true, "trade_only": true},
 	"salvage": {"name": "Salvage", "price": 30, "volume": 1.0, "category": "loot"},
+	# package 40c: found only in the old wrecks of the Rim – wanted by research and high-tech
+	"old_tech": {"name": "Pre-Severance Tech", "price": 1600, "volume": 0.5, "category": "goods", "econ": "", "wants": ["research", "hightech"]},
 	"research_data": {"name": "Research Data", "price": 260, "volume": 0.1, "category": "data"},
 	# --- Munitions (package 20): mines for mine launchers
 	"mine_proximity": {"name": "Proximity Mine", "price": 320, "volume": 0.5, "category": "munitions"},
@@ -245,7 +247,7 @@ const GOODS_CATEGORY := {
 	"holo_films": "consumer", "souvenirs": "consumer",
 	"electronics": "hightech", "computers": "hightech", "medicine": "hightech", "medical_equipment": "hightech", "nanites": "hightech",
 	"implants": "hightech", "ai_cores": "hightech", "lab_equipment": "hightech", "holo_displays": "hightech",
-	"research_data": "science", "star_charts": "science", "prototypes": "science", "gene_samples": "science", "exotic_specimens": "science",
+	"research_data": "science", "star_charts": "science", "prototypes": "science", "gene_samples": "science", "exotic_specimens": "science", "old_tech": "science",
 	"weapon_parts": "military", "small_arms": "military", "ammunition": "military", "body_armour": "military", "combat_drones": "military",
 	"fine_wine": "luxury", "spirits": "luxury", "perfume": "luxury", "jewellery": "luxury", "luxury_goods": "luxury",
 	"designer_clothing": "luxury", "artworks": "luxury", "gemstones": "luxury",

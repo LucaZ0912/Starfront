@@ -23,6 +23,16 @@ func setup(seed_v: float, hue: float, strength: float = 1.0) -> void:
 	add_child(rect)
 
 
+## Package 40c: the edge of the Veil – a shimmering violet curtain on the side facing outward.
+func veil(outward: Vector2) -> void:
+	if mat == null:
+		return
+	mat.set_shader_parameter("veil", 1.0)
+	mat.set_shader_parameter("veil_dir", Vector2(outward.x, -outward.y).normalized())
+	mat.set_shader_parameter("neb_a", Color(0.55, 0.25, 0.9))
+	mat.set_shader_parameter("neb_b", Color(0.25, 0.15, 0.6))
+
+
 func follow(cam: Camera2D) -> void:
 	if mat != null and cam != null:
 		# Zoom-independent: the background stays the same across zoom levels

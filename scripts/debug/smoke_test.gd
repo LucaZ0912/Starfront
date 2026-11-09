@@ -596,6 +596,7 @@ func _process(delta: float) -> void:
 				_test_cruise43(view)
 				_test_cluster40(view)
 				_test_gates40(view)
+				_test_rim40c(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -976,7 +977,12 @@ func _test_resources() -> void:
 			mixed += 1
 	var per_field := float(lay0["asteroids"].size()) / maxf(float(lay0["fields"].size()), 1.0)
 	check(per_field >= 70.0, "denser fields (%.0f asteroids per field)" % per_field)
-	check(sizes["small"] > sizes["large"] and sizes["large"] > 0, "size classes small > medium > large (%s)" % str(sizes))
+	# over several systems – one system's fields alone can be boulder fields (40c: less fragile)
+	var sizes_all := {"small": 0, "medium": 0, "large": 0}
+	for sy_s in Universe.systems.slice(0, 8):
+		for a_s in Universe.get_layout(int(sy_s["id"]))["asteroids"]:
+			sizes_all[a_s["size"]] += 1
+	check(sizes_all["small"] > sizes_all["large"] and sizes_all["large"] > 0, "size classes small > medium > large (%s)" % str(sizes_all))
 	check(mixed > 0, "some large asteroids hold two ores (%d)" % mixed)
 	var tex_ok := true
 	for cls in ["metallic", "stony", "icy"]:
@@ -2951,7 +2957,8 @@ func _test_codex(view: SystemView) -> void:
 	var cats := {}
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
-		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole"]   # package 37: stars
+		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
+		"battlefield", "relic", "veil", "veil_rift"]   # package 40c   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -6872,7 +6879,7 @@ func _test_market42(view: SystemView) -> void:
 		var c: Dictionary = GD.commodities[cid]
 		if c.has("econ"):
 			n_new += 1
-			goods_ok = goods_ok and Economy.ECONOMIES.has(String(c["econ"]))
+			goods_ok = goods_ok and (Economy.ECONOMIES.has(String(c["econ"])) or cid == "old_tech")     # 40c: found, not made
 			for w in c["wants"]:
 				goods_ok = goods_ok and Economy.ECONOMIES.has(String(w))
 	var mined_by_market := true
@@ -7299,6 +7306,80 @@ func _test_cluster40(view: SystemView) -> void:
 	check(over, "40a: zoomed right out the galaxy map is an overview – no system names, the territories named, the Rim and the Far Reaches written along their rings")
 	check(z0 > 1.0 and zoomed and back.distance_to(at) < 1.0 and U.territory_text(_belt_empty()) == "Unclaimed – the Rim",
 		"40a: the galaxy map opens zoomed in on the current system, zooms towards the pointer and pans; the ring is 'Unclaimed – the Rim'")
+
+
+## Package 40c: the content of the Rim – rich rock, old battlefields, pre-Severance derelicts, the edge of the Veil.
+func _test_rim40c(_view: SystemView) -> void:
+	var U = Universe
+	var rich_ok := true
+	var giant_ok := true
+	var n_rim := 0
+	var battles := 0
+	var derelicts := 0
+	var site_ok := true
+	var veil := 0
+	var veil_ok := true
+	var rifts := 0
+	var amt_rim := 0.0
+	var amt_core := 0.0
+	var cnt_rim := 0
+	var cnt_core := 0
+	for sy in U.systems:
+		var sid: int = sy["id"]
+		var L: Dictionary = U.get_layout(sid)
+		if sy.get("belt", false):
+			n_rim += 1
+			rich_ok = rich_ok and L.get("rich", false)
+			var giant := false
+			for pl in L["planets"]:
+				giant = giant or String(pl["type"]) in U.GIANT_TYPES
+			giant_ok = giant_ok and (giant or L["planets"].size() < 3)
+			if n_rim % 10 == 0:
+				for a2 in L["asteroids"]:
+					amt_rim += float(a2["amount"])
+					cnt_rim += 1
+		elif sid % 10 == 0:
+			for a3 in L["asteroids"]:
+				amt_core += float(a3["amount"])
+				cnt_core += 1
+		for ws in L.get("sites", []):
+			if ws["kind"] == "battlefield":
+				battles += 1
+			else:
+				derelicts += 1
+			site_ok = site_ok and not (ws["wrecks"] as Array).is_empty()
+			for w in ws["wrecks"]:
+				site_ok = site_ok and not (w["loot"] as Dictionary).is_empty()
+		if sy.get("veil", false):
+			veil += 1
+			veil_ok = veil_ok and sy.get("outer", false) and U.is_veil(sid)
+			var has_rift := false
+			for an in L["anomalies"]:
+				if an.get("veil", false):
+					has_rift = true
+					rifts += 1
+					veil_ok = veil_ok and an["revealed"]
+			veil_ok = veil_ok and has_rift
+	var richer: bool = cnt_rim > 0 and cnt_core > 0 and amt_rim / cnt_rim > amt_core / cnt_core * 1.3
+	check(rich_ok and giant_ok and richer,
+		"40c: the Rim is rich – bigger deposits (%.0f vs %.0f per rock), purer ore, deep deposits in its colossi, a giant to harvest in every system" % [amt_rim / maxf(cnt_rim, 1), amt_core / maxf(cnt_core, 1)])
+	var hh: Array = U.hulk_hulls()
+	var tex_ok: bool = not hh.is_empty() and PixelArt.hulk_texture(String(hh[0]), 5).get_width() > 0 and PixelArt.relic_texture(9).get_width() == 160
+	var save: Dictionary = U.to_dict()
+	check(battles >= 20 and derelicts >= 8 and site_ok and tex_ok and save["layouts"].values()[0].has("salvaged"),
+		"40c: %d old battlefields with warships' hulks and %d pre-Severance derelicts – fixed, with loot, salvaged ones remembered" % [battles, derelicts])
+	check(veil >= 30 and veil_ok and rifts >= veil,
+		"40c: %d systems at the edge of the Veil (the outermost of the Far Reaches), each with Veil rifts to analyse (%d)" % [veil, rifts])
+	# Pre-Severance Tech: research and high-tech worlds buy it
+	var buyer := false
+	for sy2 in U.systems:
+		if buyer:
+			break
+		for st in U.get_layout(int(sy2["id"]))["stations"]:
+			if String(st["type"]) == "research" and Market.role(st, "old_tech") == "consume":
+				buyer = true
+				break
+	check(GameData.commodities.has("old_tech") and buyer, "40c: Pre-Severance Tech from the wrecks – research stations buy it")
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.

@@ -91,6 +91,9 @@ func build(p_system: int) -> void:
 	background = SpaceBackground.new()
 	add_child(background)
 	background.setup(float(system_id) * 1.37 + 0.5, float(system_id) * 0.137, 0.8)
+	if Universe.is_veil(system_id):
+		background.veil(Universe.systems[system_id]["pos"] - Universe.MAP_SIZE * 0.5)     # package 40c
+		GameState.codex.event("veil")
 	sky = CanvasLayer.new()
 	sky.layer = -9
 	add_child(sky)
@@ -505,6 +508,14 @@ func _spawn_celestials() -> void:
 		_add_celestial("anomaly", an)
 	for co in layout.get("colossi", []):
 		_add_celestial("colossus", co)
+	for ws in layout.get("sites", []):                 # package 40c: old battlefields and derelicts
+		_add_celestial("site", ws)
+		for w in ws["wrecks"]:
+			if w.get("salvaged", false):
+				continue
+			w["salvage"] = 0.0
+			w["life"] = 1.0e12
+			_add_celestial("wreck", w)
 	for ph in layout.get("havens", []):
 		var hv := _add_celestial("haven", ph)
 		havens.append(hv)
@@ -1370,6 +1381,7 @@ func pirate_count() -> int:
 func _process(delta: float) -> void:
 	_t += delta
 	_update_audio()
+	_veil_tick(delta)                        # package 40c
 	_jam_tick -= delta
 	if _jam_tick <= 0.0:
 		_jam_tick = 0.5
@@ -4157,6 +4169,30 @@ func on_ship_docked(ship: Ship, st_node: Celestial) -> void:
 		station_docked.emit(st_node.data["id"])
 
 
+## Package 40c: at the edge of the Veil the sensors see things – a ship's outline that is not there, an echo, a voice.
+var _veil_t := 20.0
+const VEIL_ECHOES := ["Sensor echo bearing %d° – a hull, then nothing.", "A carrier signal on an old frequency, then static.",
+	"The hull creaks. The instruments say nothing touched it.", "Your own transponder answers back, three seconds late.",
+	"A contact in the overview for half a second – then gone.", "Faint voices on the comm band, in no language the computer knows."]
+
+
+func _veil_tick(delta: float) -> void:
+	if not Universe.is_veil(system_id) or player == null or not is_instance_valid(player):
+		return
+	_veil_t -= delta
+	if _veil_t > 0.0:
+		return
+	_veil_t = randf_range(45.0, 110.0)
+	var ang := randf() * TAU
+	var pos: Vector2 = player.position + Vector2.from_angle(ang) * randf_range(2500.0, 6000.0)
+	var hulls := Universe.hulk_hulls()
+	spawn_fx(Fx.ghost(pos, PixelArt.ship_texture(String(hulls[randi() % hulls.size()]), "player"), randf() * TAU))
+	var msg: String = VEIL_ECHOES[randi() % VEIL_ECHOES.size()]
+	if msg.contains("%d"):
+		msg = msg % int(fposmod(rad_to_deg(ang) + 90.0, 360.0))
+	GameState.log_msg(msg, Color(0.75, 0.55, 1.0))
+
+
 func complete_anomaly(node: Celestial, ship: Ship) -> void:
 	node.data["done"] = true
 	node.data["analysis"] = 100.0
@@ -4175,6 +4211,11 @@ func complete_anomaly(node: Celestial, ship: Ship) -> void:
 		var found: String = candidates[randi() % candidates.size()]
 		if ship.fit.add_cargo("mod:" + found, 1) > 0.0:
 			text += ", found: %s" % GameData.module_name(found)
+	if node.data.get("veil", false) and ship.faction == "player":
+		var extra := randi_range(4, 8)                 # package 40c: a rift is worth far more
+		GameState.research_data += extra
+		text += ", %d Veil readings for the Research Exchange" % extra
+		GameState.codex.event("veil_rift")
 	if node.data.get("exotic", false) and ship.faction == "player":
 		var em := randi_range(2, 4)
 		GameState.exotic_matter += em
@@ -4192,6 +4233,18 @@ func complete_anomaly(node: Celestial, ship: Ship) -> void:
 
 func complete_salvage(node: Celestial, ship: Ship) -> void:
 	var got: Array = []
+	if node.data.has("mod_chance") and randf() < float(node.data["mod_chance"]):
+		node.data.erase("mod_chance")
+		var cands: Array = []
+		for m in GameData.modules:
+			if int(GameData.modules[m]["size"]) in [2, 3]:
+				cands.append(m)
+		if not cands.is_empty():
+			node.data["loot"]["mod:" + String(cands[randi() % cands.size()])] = 1      # package 40c: an old module, still whole
+	if node.data.has("hulk") or node.data.get("relic", false) or String(node.data.get("id", "")).begins_with("sr_"):
+		node.data["salvaged"] = true                   # package 40c: a fixed wreck – gone for good
+		if ship.faction == "player":
+			GameState.codex.event("relic" if String(node.data.get("id", "")).begins_with("sr_") else "battlefield")
 	for item in node.data["loot"].keys():
 		var n := float(node.data["loot"][item])
 		var added := ship.fit.add_cargo(item, n)

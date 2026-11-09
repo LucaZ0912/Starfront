@@ -410,6 +410,7 @@ func _draw_map() -> void:
 				continue
 			var cls := int(s["links"][nb])
 			map.draw_line(_to_screen(s["pos"]), _to_screen(Universe.systems[nb]["pos"]), cls_cols[cls - 1], 1.0 + cls * 0.7)
+	_draw_veil_glow()
 	if overview:
 		_draw_ring_names(font)
 	_draw_anomaly_finder(font)
@@ -469,6 +470,8 @@ func _draw_map() -> void:
 				map.draw_rect(Rect2(p + Vector2(ex, 15.0 - sz * 0.5), Vector2(sz, sz)), ec)
 				map.draw_rect(Rect2(p + Vector2(ex, 15.0 - sz * 0.5), Vector2(sz, sz)), Color(0, 0, 0, 0.6), false, 1.0)
 			ex += sz + 3.0
+		if s.get("veil", false):
+			map.draw_arc(p, 9.0 if not overview else 6.5, 0.0, TAU, 16, Color(0.75, 0.45, 1.0, 0.6 + 0.3 * sin(_t * 2.0 + float(s["id"]))), 1.5)
 		if s["id"] == GameState.current_system:
 			map.draw_arc(p, 12.0, 0.0, TAU, 24, Color.WHITE, 2.0)
 		if s["id"] == selected_system:
@@ -595,6 +598,25 @@ func _draw_ring_names(font: Font) -> void:
 		_arc_text(font, "T H E   F A R   R E A C H E S", far, -PI * 0.5 if top else PI * 0.5, top, 28, fc)
 	_arc_text(font, "T H E   F A R   R E A C H E S", far, PI, true, 28, fc)
 	_arc_text(font, "T H E   F A R   R E A C H E S", far, 0.0, true, 28, fc)
+	for top2 in [true, false]:
+		_arc_text(font, "T H E   V E I L", VEIL_F + 0.12, -PI * 0.5 if top2 else PI * 0.5, top2, 30, Color(0.85, 0.55, 1.0, 0.75))
+
+
+## Package 40c: beyond the Far Reaches the Veil glows – a violet haze round the cluster.
+const VEIL_F := 2.38
+
+
+func _draw_veil_glow() -> void:
+	var c := Universe.MAP_SIZE * 0.5
+	var R := Universe.CORE_R
+	for i in 7:
+		var f := VEIL_F + i * 0.06
+		var pts := PackedVector2Array()
+		for k in 97:
+			var a := k * TAU / 96.0
+			var w := 0.012 * sin(a * 7.0 + _t * 0.4 + i) + 0.008 * sin(a * 13.0 - _t * 0.3)
+			pts.append(_to_screen(c + Vector2(cos(a) * R.x, sin(a) * R.y) * (f + w)))
+		map.draw_polyline(pts, Color(0.6, 0.3, 0.95, 0.16 - i * 0.018), maxf(4.0, (70.0 + i * 35.0) * _scale()))
 
 
 ## Text along the ellipse (CORE_R × f round the middle of the map), centred on angle `mid`; `upright` reads it
@@ -763,6 +785,16 @@ func _update_info() -> void:
 	t += "Patrols: %s  •  Convoys here: %d\n" % [("%d group%s" % [pg, "" if pg == 1 else "s"]) if pg > 0 else "none", GameState.convoys.count_in(selected_system) if GameState.convoys != null else 0]
 	t += "Star: %s\n" % L["star"]["type"]
 	t += "Planets: %d   Asteroids: %d\n" % [L["planets"].size(), L["asteroids"].size()]
+	# package 40c: what the Rim holds
+	var notes: PackedStringArray = []
+	if L.get("rich", false):
+		notes.append("[color=#e0b060]rich deposits[/color]")
+	for ws in L.get("sites", []):
+		notes.append("[color=#b0a898]old battlefield[/color]" if ws["kind"] == "battlefield" else "[color=#d8d0c0]pre-Severance derelict[/color]")
+	if Universe.is_veil(selected_system):
+		notes.append("[color=#c080ff]edge of the Veil[/color]")
+	if not notes.is_empty():
+		t += " • ".join(notes) + "\n"
 	if L["stations"].is_empty():
 		t += "Stations: none\n"
 	for st in L["stations"]:
