@@ -505,6 +505,8 @@ func rebuild_ship_panel() -> void:
 	sr.add_child(sl)
 	_w["speed"] = UI.label("", 13, Color(0.55, 0.85, 1.0))
 	sr.add_child(_w["speed"])
+	_w["boost"] = UI.label("", 11, Color(1.0, 0.8, 0.35))                # 0.6.75.2: the thrust burst
+	sr.add_child(_w["boost"])
 	ship_box.add_child(sr)
 	for spec in [["shield", "Shield", Color(0.35, 0.65, 1.0)], ["armor", "Armor", Color(1.0, 0.8, 0.3)], ["structure", "Structure", Color(0.9, 0.3, 0.3)], ["cap", "Energy", Color(0.6, 0.5, 1.0)], ["fuel", "Fuel", Color(0.4, 0.9, 0.5)]]:
 		var row := UI.hbox(6)
@@ -751,6 +753,19 @@ func _process(delta: float) -> void:
 			cur = view.player.velocity.length()
 			warping = view.player.in_warp()
 		_w["speed"].text = "WARP" if warping else "%.0f km/s" % cur
+		if _w.has("boost") and view != null and view.player != null and is_instance_valid(view.player):
+			var pl = view.player
+			var key := Keybinds.key_text("boost")
+			if pl.boost_t > 0.0:
+				_w["boost"].text = "  ▶▶ THRUST"
+				_w["boost"].modulate = Color(1, 1, 1, 1)
+			elif pl.boost_cd > 0.0:
+				var n := int(round((1.0 - pl.boost_cd / pl.BOOST_COOLDOWN) * 8.0))
+				_w["boost"].text = "  thrust " + "▮".repeat(n) + "▯".repeat(8 - n)
+				_w["boost"].modulate = Color(1, 1, 1, 0.55)
+			else:
+				_w["boost"].text = "  thrust ready [%s]" % key
+				_w["boost"].modulate = Color(1, 1, 1, 0.85)
 	_update_modules()
 	_update_locks()
 	_update_drones()

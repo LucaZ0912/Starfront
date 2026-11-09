@@ -294,6 +294,12 @@ func handle_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("debug_menu", false, true):
 		if Commands.cheats_enabled:
 			debug_menu.toggle()
+	elif event.is_action_pressed("boost", false, false) and view != null and view.player != null and is_instance_valid(view.player):
+		var be: String = view.player.boost_error()            # 0.6.75.2: the thrust burst (Shift – modifiers ignored)
+		if be == "":
+			view.player.boost()
+		elif not be.begins_with("Docked") and not be.begins_with("Thrust already"):
+			GameState.log_msg(be, GameState.COL_WARN)
 	elif event.is_action_pressed("cam_center", false, true):
 		if view != null:
 			view.center_on_player()

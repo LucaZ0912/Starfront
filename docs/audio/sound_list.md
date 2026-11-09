@@ -28,6 +28,7 @@ Lautstärkereglern.
 | ID | Ereignis | Klangvorschlag | Länge | Prio |
 | --- | --- | --- | --- | --- |
 | `engine_loop` | Eigenes Triebwerk (Loop, Tonhöhe und Lautstärke folgen der Geschwindigkeit) | Tiefes, weiches Rauschen mit leichtem Brummen darunter; bei Vollgas heller und luftiger | Loop 3–4 s | A |
+| `boost` | Schub (Shift): kurzer Boost, 0.6.75.2 | Hartes Zünd-Fauchen mit tiefem Druckstoß, das schnell abklingt | 1,1 s | A |
 | `afterburner_on` | Nachbrenner an | Kurzes Zünd-„Wumm“, dann ein fauchender Schub, der in den Loop übergeht | 0,6 s | B |
 | `afterburner_loop` | Nachbrenner läuft | Heiseres, druckvolles Fauchen | Loop 2 s | B |
 | `warp_spool` | Warp lädt auf (Ausrichten) | Ansteigender Synth-Ton mit pulsierendem Flattern, wie ein aufgeladener Kondensator | 2–3 s | A |

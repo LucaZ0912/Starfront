@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.75.2 – 2026-11-09
+
+**Thrust burst.** Every ship can kick its drives for a moment – **Shift** (rebindable; Shift can be bound now).
+- **2.5 s** of **×1.8 top speed** and three times the acceleration; from a standstill the ship shoots straight ahead.
+  Costs **a fifth of the capacitor**, then **15 s** to recharge; not in warp, not docked. Works on top of an afterburner.
+- A long **yellow-orange flame** behind every drive (about as long as the ship), a flash behind the stern on ignition,
+  a short camera shake and a roaring ignition sound (`boost`, placeholder); the flame cools off after the burst.
+- HUD: next to the speed – "▶▶ THRUST" while it burns, a recharge bar, "thrust ready [Shift]".
+- **NPCs use it rarely:** pirates and patrols now and then when fleeing from an attacker close behind or closing on a
+  far target (a 6 % chance every 2 s, 35 s cooldown) – the pilot can still catch up or get away.
+
 ## alpha 0.6.75.1 – 2026-11-09
 
 **Interim part 6½, package 75: speed.**

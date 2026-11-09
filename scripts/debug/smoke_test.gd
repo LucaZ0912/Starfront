@@ -600,6 +600,7 @@ func _process(delta: float) -> void:
 				_test_hazards40d(view)
 				_test_wards(view)
 				_test_p40e(view)
+				_test_boost(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -7535,6 +7536,26 @@ func _test_p40e(_view: SystemView) -> void:
 	GameState.fortress_broken.erase(str(GameState.current_system))
 	ok_cmds = ok_cmds and Commands.has_method("_c_debug_p40")
 	check(codex_ok and ok_cmds, "40e: the codex tells of the new cluster (the Rim and the Far Reaches, territories by the lore); debug: every place of package 40, a forced misjump, break / rebuild a fortress")
+
+
+## 0.6.75.2: the thrust burst – Shift, ×1.8 speed for 2.5 s, costs a fifth of the capacitor, 15 s to recharge; NPCs rarely.
+func _test_boost(view: SystemView) -> void:
+	var pl: Ship = view.player
+	var cm := float(pl.fit.stats()["cap_max"])
+	pl.fit.capacitor = cm
+	pl.boost_cd = 0.0
+	pl.boost_t = 0.0
+	var ok_fire: bool = pl.boost_error() == "" and pl.boost()
+	var cost_ok: bool = absf(pl.fit.capacitor - cm * (1.0 - pl.BOOST_CAP)) < 0.5
+	var mult_ok: bool = absf(pl.boost_mult() - pl.BOOST_MULT) < 0.001
+	var again: String = pl.boost_error()
+	pl.boost_t = 0.0
+	var cd_err: String = pl.boost_error()
+	pl.boost_cd = 0.0
+	pl.boost_glow = 0.0
+	var key_ok: bool = Keybinds.key_text("boost") != "" and InputMap.has_action("boost")
+	check(ok_fire and cost_ok and mult_ok and again != "" and cd_err.contains("recharging") and key_ok and pl.NPC_BOOST_COOLDOWN > pl.BOOST_COOLDOWN,
+		"0.6.75.2: thrust burst – ×%.1f speed for %.1f s, a fifth of the capacitor, %d s to recharge (NPCs %d s, and only now and then); key %s" % [pl.BOOST_MULT, pl.BOOST_TIME, int(pl.BOOST_COOLDOWN), int(pl.NPC_BOOST_COOLDOWN), Keybinds.key_text("boost")])
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.

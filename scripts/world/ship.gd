@@ -49,6 +49,19 @@ var _raid_break := false
 var _ambush_t := -1.0            # ambusher: seconds since it sprang its ambush (-1 = lying in wait)
 var _hide := Vector2.INF         # ambusher: hiding spot
 var fleeing := false             # coward: running away
+## 0.6.75.2: the thrust burst – every ship can kick its drives for a moment (Shift for the pilot)
+const BOOST_TIME := 2.5
+const BOOST_MULT := 1.8            # top speed while it burns
+const BOOST_ACCEL := 3.0           # acceleration while it burns
+const BOOST_COOLDOWN := 15.0
+const BOOST_CAP := 0.2             # share of the capacitor it costs
+const NPC_BOOST_COOLDOWN := 35.0   # NPCs use it rarely – the pilot can catch up or get away
+const NPC_BOOST_CHANCE := 0.06     # per check (every 2 s) while fleeing or chasing a far target
+var boost_t := 0.0                 # seconds of burst left
+var boost_cd := 0.0                # seconds until it is ready again
+var boost_glow := 0.0              # the big yellow flame (1 while it burns, fading after)
+var _npc_boost_check := 2.0
+var _bt := 0.0                     # flicker clock of the burst flame
 var _flee_t := 0.0
 var _called_help := false
 var warrant_known := false       # NPC: the player's Warrant Scanner has read its bounty
@@ -667,6 +680,11 @@ func _dock(st_node) -> void:
 func _physics_process(delta: float) -> void:
 	if dying:
 		return
+	if boost_t > 0.0 or boost_cd > 0.0 or boost_glow > 0.0:
+		boost_t = maxf(0.0, boost_t - delta)
+		boost_cd = maxf(0.0, boost_cd - delta)
+		boost_glow = 1.0 if boost_t > 0.0 else maxf(0.0, boost_glow - delta * 1.4)
+		_bt += delta
 	if _gas_t > 0.0:
 		_gas_t = maxf(0.0, _gas_t - delta)            # package 41: the scoop folds in when the harvest stops
 	if is_docked():
@@ -1086,8 +1104,66 @@ func _lock_time(s: Dictionary) -> float:
 
 # ---------------------------------------------------------------- Movement
 
+## 0.6.75.2: why the thrust burst cannot fire now ("" = it can).
+func boost_error() -> String:
+	if dying or is_docked():
+		return "Docked."
+	if in_warp() or String(order.get("type", "")) in ["warp", "warping", "docking", "undocking"]:
+		return "Not in warp."
+	if boost_t > 0.0:
+		return "Thrust already burning."
+	if boost_cd > 0.0:
+		return "Thrust recharging (%.0f s)." % ceilf(boost_cd)
+	var cm := float(fit.stats()["cap_max"])
+	if fit.capacitor < cm * BOOST_CAP:
+		return "Not enough energy for a thrust burst."
+	return ""
+
+
+## Kicks the drives: a few seconds of much higher speed and acceleration, a big yellow flame, a flash and a roar.
+func boost() -> bool:
+	if boost_error() != "":
+		return false
+	fit.capacitor -= float(fit.stats()["cap_max"]) * BOOST_CAP
+	boost_t = BOOST_TIME
+	boost_glow = 1.0
+	boost_cd = BOOST_COOLDOWN if faction == "player" else NPC_BOOST_COOLDOWN
+	if view != null:
+		var back: Vector2 = position - Vector2.from_angle(heading) * radius * 1.2
+		view.spawn_fx(Fx.flash(back, Color(1.0, 0.75, 0.25), radius * 2.2))
+		if self == view.player:
+			Audio.play("boost", "thrust burst")
+			view.shake(0.35, 6.0)
+		else:
+			Audio.play_at("boost", position, "thrust burst")
+	return true
+
+
+func boost_mult() -> float:
+	return BOOST_MULT if boost_t > 0.0 else 1.0
+
+
+## NPCs use the burst now and then – fleeing from an attacker close behind, or closing on a target far ahead.
+func _npc_boost(delta: float) -> void:
+	_npc_boost_check -= delta
+	if _npc_boost_check > 0.0:
+		return
+	_npc_boost_check = 2.0
+	if boost_cd > 0.0 or is_traffic() or not faction in ["pirate", "patrol"]:
+		return
+	var want := false
+	if fleeing and _valid(last_attacker) and position.distance_to(last_attacker.position) < 4000.0:
+		want = true
+	elif target != null and is_instance_valid(target) and target is Ship and position.distance_to(target.position) > 4500.0:
+		want = true
+	if want and randf() < NPC_BOOST_CHANCE:
+		boost()
+
+
 func _update_movement(delta: float, s: Dictionary) -> void:
-	var speed: float = float(s["speed"]) * afterburner_mult()
+	var speed: float = float(s["speed"]) * afterburner_mult() * boost_mult()
+	if not manual:
+		_npc_boost(delta)
 	if is_traffic():
 		speed *= 0.6                 # traffic cruises at a relaxed pace
 	var speed_factor := 1.0
@@ -1236,11 +1312,13 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 		if dist > 4.0:
 			var spd := speed * speed_factor
 			var brake := spd * spd / (2.0 * maxf(float(s["accel"]), 1.0))
-			if dist < brake:
+			if dist < brake and boost_t <= 0.0:
 				spd = spd * dist / brake
 			desired = to / dist * spd
+	elif boost_t > 0.0:
+		desired = Vector2.from_angle(heading) * speed            # 0.6.75.2: a burst from standstill goes straight ahead
 	desired = _avoid_colossi(desired)
-	velocity = velocity.move_toward(desired, float(s["accel"]) * delta)
+	velocity = velocity.move_toward(desired, float(s["accel"]) * (BOOST_ACCEL if boost_t > 0.0 else 1.0) * delta)
 	position += velocity * delta
 	_push_out_of_colossi()
 	if position.length() > Universe.SYSTEM_RADIUS:
@@ -4008,12 +4086,16 @@ func _draw() -> void:
 				multi_flames.append([g2[0], maxf(float(g2[1]), 10.0) * flick, glow])
 		elif ep.is_empty():
 			var ex := -size.x * 0.5
+			if boost_glow > 0.0:
+				_boost_flame(Vector2(ex, 0.0), size.y * 0.16 * flick, fa)
 			draw_circle(Vector2(ex - 2.0, 0.0), size.y * 0.16 * flick, Color(glow, 0.35 * fa))
 			draw_circle(Vector2(ex, 0.0), size.y * 0.09 * flick, Color(1, 1, 1, 0.8 * fa))
 		else:
 			for e in ep:                      # one flame per drive (package 25d: the Goliath's arm drives)
 				var p: Vector2 = e[0]
 				var r := float(e[1]) * flick
+				if boost_glow > 0.0:
+					_boost_flame(p, r, fa)
 				draw_circle(p - Vector2(2.0, 0.0), r, Color(glow, 0.35 * fa))
 				draw_circle(p, r * 0.55, Color(1, 1, 1, 0.8 * fa))
 	var mod := Color(1.8, 1.8, 1.8) if hit_flash > 0.0 else Color.WHITE
@@ -4034,6 +4116,8 @@ func _draw() -> void:
 		_draw_spikes(size)
 	for mf in multi_flames:
 		var mp: Vector2 = mf[0] - Vector2(PixelArt.SCALE * 1.5, 0.0)
+		if boost_glow > 0.0:
+			_boost_flame(mp, float(mf[1]), 1.0)
 		draw_circle(mp - Vector2(float(mf[1]) * 0.4, 0.0), float(mf[1]), Color(mf[2], 0.35))
 		draw_circle(mp, float(mf[1]) * 0.5, Color(1, 1, 1, 0.8))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -4055,6 +4139,21 @@ func _draw() -> void:
 		var need := spool_need if String(order.get("type", "")) == "warp" else float(s["spool"])
 		var frac := minf(spool / maxf(need, 0.1), 1.0)
 		draw_arc(Vector2.ZERO, radius + 18.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 40, Color(0.6, 0.5, 1.0), 3.0)
+
+
+## 0.6.75.2: the thrust burst's flame – a long yellow-orange tongue behind a drive (about three times the normal one),
+## flickering hard, a white-hot root; it shrinks and cools as the burst fades.
+func _boost_flame(p: Vector2, r: float, fa: float) -> void:
+	var k := boost_glow
+	var len_f := maxf(r * 5.5, radius * 1.3) * randf_range(0.85, 1.15) * k
+	var w := maxf(r * 1.15, radius * 0.16) * (1.0 + 0.12 * sin(_bt * 40.0)) * (0.6 + 0.4 * k)
+	var outer := PackedVector2Array([p + Vector2(1.0, -w), p + Vector2(-len_f * 0.55, -w * 0.8), p + Vector2(-len_f, 0.0),
+		p + Vector2(-len_f * 0.55, w * 0.8), p + Vector2(1.0, w)])
+	draw_colored_polygon(outer, Color(1.0, 0.55, 0.12, 0.45 * k * fa))
+	var mid := PackedVector2Array([p + Vector2(1.0, -w * 0.62), p + Vector2(-len_f * 0.4, -w * 0.45), p + Vector2(-len_f * 0.72, 0.0),
+		p + Vector2(-len_f * 0.4, w * 0.45), p + Vector2(1.0, w * 0.62)])
+	draw_colored_polygon(mid, Color(1.0, 0.85, 0.25, 0.8 * k * fa))
+	draw_circle(p, w * 0.55, Color(1.0, 1.0, 0.85, 0.9 * k * fa))
 
 
 ## Mining laser: pulsing beam with travelling energy packets, a shimmering sheath and a hot,

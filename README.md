@@ -126,6 +126,13 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## Thrust burst (0.6.75.2)
+
+- `Ship.boost()` / `boost_error()` / `boost_mult()`: `BOOST_TIME`, `BOOST_MULT`, `BOOST_ACCEL`, `BOOST_COOLDOWN`,
+  `BOOST_CAP`; `boost_glow` draws `_boost_flame` behind every drive. NPCs: `_npc_boost` (`NPC_BOOST_CHANCE`,
+  `NPC_BOOST_COOLDOWN`). Key action `boost` (default Shift – `Keybinds.event_to_desc` accepts Shift now), handled in
+  `main.gd` (not exact, so the modifier itself counts). `SystemView.shake`. Sound `boost`.
+
 ## Speed curve (0.6.75.1)
 
 - `ShipFitting._compute`: speed = `SPEED_BASE` × (thrust ÷ mass ÷ `SPEED_REF_TW`) ^ `SPEED_EXP` × speed_mult × power

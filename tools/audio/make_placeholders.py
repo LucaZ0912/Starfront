@@ -105,6 +105,8 @@ def save(name, t, norm=0.85):
 SOUNDS = {
     # flight & navigation
     "engine_loop": lambda: loopify(mix(noise(3.5, 0.6, 0.03, a=0, r=0), tone(3.5, 55, wave_="saw", vol=0.25, a=0, r=0, vib=0.01, vib_rate=3))),
+    "boost": lambda: mix(noise(1.1, 0.75, 0.08, 0.25, a=0.01, r=0.7), tone(0.9, 70, 150, "saw", 0.45, a=0.01, r=0.6, vib=0.03, vib_rate=14),
+                         tone(0.25, 180, 60, "sine", 0.7, r=0.2)),     # 0.6.75.2: thrust burst – a hard ignition roar
     "warp_spool": lambda: mix(tone(2.5, 120, 640, "saw", 0.35, a=0.3, r=0.2, vib=0.04, vib_rate=11), noise(2.5, 0.2, 0.05, 0.3, a=0.5, r=0.2)),
     "warp_enter": lambda: mix(tone(1.0, 90, 30, "sine", 0.8, r=0.5), noise(1.0, 0.5, 0.4, 0.02, r=0.6), tone(0.6, 300, 1600, "sine", 0.25, r=0.3)),
     "warp_exit": lambda: mix(noise(1.0, 0.6, 0.02, 0.4, a=0.05, r=0.5), tone(1.0, 900, 120, "sine", 0.3, r=0.6), tone(0.8, 50, 40, "sine", 0.5, r=0.5), at=[0, 0, 0.2]),

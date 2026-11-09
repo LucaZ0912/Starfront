@@ -34,6 +34,7 @@ const ACTIONS := [
 	{"id": "module_7", "label": "Module 7", "group": "Modules", "def": [{"k": KEY_7}]},
 	{"id": "module_8", "label": "Module 8", "group": "Modules", "def": [{"k": KEY_8}]},
 	{"id": "module_9", "label": "Module 9", "group": "Modules", "def": [{"k": KEY_9}]},
+	{"id": "boost", "label": "Thrust burst (a few seconds of extra speed)", "group": "Ship commands", "def": [{"k": KEY_SHIFT}]},
 	{"id": "sel_target", "label": "Cycle targets in sensor range (ships, asteroids, wrecks, anomalies)", "group": "Ship commands", "def": [{"k": KEY_TAB}]},
 	{"id": "sel_hostile", "label": "Cycle hostile ships (nearest first)", "group": "Ship commands", "def": [{"k": KEY_V}]},
 	{"id": "sel_friend", "label": "Cycle friendly ships (nearest first)", "group": "Ship commands", "def": [{"k": KEY_C}]},
@@ -185,7 +186,7 @@ static func desc_to_event(d: Dictionary) -> InputEvent:
 static func event_to_desc(ev: InputEvent) -> Dictionary:
 	if ev is InputEventKey:
 		var kc: int = (ev as InputEventKey).keycode
-		if kc in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META, KEY_NONE]:
+		if kc in [KEY_CTRL, KEY_ALT, KEY_META, KEY_NONE]:      # 0.6.75.2: Shift may be bound (the thrust burst)
 			return {}
 		return {"k": kc}
 	if ev is InputEventMouseButton:

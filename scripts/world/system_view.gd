@@ -1576,7 +1576,24 @@ func _set_zoom(z: float) -> void:
 	camera.zoom = Vector2(_zoom, _zoom)
 
 
+## 0.6.75.2: a short shake of the camera (the thrust burst).
+var _shake_t := 0.0
+var _shake_amp := 0.0
+
+
+func shake(t: float, amp_px: float) -> void:
+	_shake_t = maxf(_shake_t, t)
+	_shake_amp = maxf(_shake_amp, amp_px)
+
+
 func _update_camera(delta: float) -> void:
+	if _shake_t > 0.0:
+		_shake_t = maxf(0.0, _shake_t - delta)
+		var k := _shake_t / 0.35
+		camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake_amp * k / maxf(camera.zoom.x, 0.0001)
+		if _shake_t <= 0.0:
+			camera.offset = Vector2.ZERO
+			_shake_amp = 0.0
 	if input_enabled and get_viewport().gui_get_focus_owner() == null:
 		var move := Vector2.ZERO
 		if Input.is_action_pressed("cam_up"):
