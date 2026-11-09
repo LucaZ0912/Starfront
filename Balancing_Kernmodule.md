@@ -44,7 +44,7 @@ Die Qualität multipliziert vier Dinge: **Leistung** (alle Werte aus der Größe
 
 1. **Treibstoff je Sprung steigt mit der Qualität** (A verbraucht 16 % mehr als C) – er läuft wie ein Leistungswert mit; vermutlich ungewollt.
 2. **Resistenzen** der Panzerung sind bei jeder Größe und Qualität gleich (Standard 10 % kinetisch, Reflective 35 % optisch, Ablative 35 % explosiv).
-3. **Wendigkeit** des Triebwerks ist bei jeder Größe und Qualität gleich (im Schiff hängt sie zusätzlich am Verhältnis Schub zu Masse).
+3. **Wendigkeit** des Triebwerks ist bei jeder Größe und Qualität gleich – und im Schiff hängt sie nur am Triebwerk, am Rumpf (`turn_mult`) und an der Stromversorgung, **nicht an Masse oder Schub**. Ein A-Triebwerk macht das Schiff schneller (Schub), aber nicht wendiger. Geschwindigkeit = Schub ÷ Masse; Beschleunigung und Warp-Tempo folgen der Geschwindigkeit.
 4. **Sensor-Reichweite und Auflösung** wachsen mit der Größe kaum (Größe 8 hat nur 1,6× die Reichweite von Größe 2).
 5. Der **Basic-Energieverteiler** hat bei jeder Größe und Qualität Effizienz 1,00 – Qualität verbessert dort nur Kondensator und Aufladung.
 6. **Preis** wächst mit Exponent 1,6, die meisten Leistungswerte mit 1,3 – große Module sind pro Leistung teurer.
