@@ -1644,6 +1644,23 @@ Jedes Paket mit eigenen Debug-Funktionen (z. B. zu jedem Systemtyp springen, Ste
 - [x] **42c** – Wirkungen: Dienste nach Wohlstand/Wirtschaft (Ausrüster-Qualitäten, Waffen, Werften), Verkehr und Konvois mit passenden Waren, Sicherheit/Piraten, Aufträge; Wohlstand verändert sich durch Handel, Engpässe und Piraterie – **umgesetzt 9. Nov 2026, alpha 0.6.42.4** (Werften bleiben vorerst fest)
 - [x] **42d** – Codex, Smoke-Tests, Abstimmung (Preise, Tempo der Veränderung) – **umgesetzt 9. Nov 2026, alpha 0.6.42.5**
 
+#### Paket 43 – Tourismus (geplant, Antworten 9. Nov 2026)
+
+**Antworten Luz (9. Nov 2026):**
+- **Station:** **ein neuer Stationstyp „Resort“** mit Hotelring, Aussichtsdecks und Lichtern, in **Varianten je nach Ort** – Ring-Resort am Gasriesen, Sternwarte an besonderen Sternen, Vergnügungsstation an Handelsknoten.
+- **Orte:** an **schönen Welten** (erdähnlich, Ozean, Dschungel), an **Naturwundern im All** (Gasriesen mit Ringen, rote Überriesen, Schwarze Löcher, Neutronensterne, Doppelsterne), in den **Spezialsystemen** (Landfall, Heimkehr mit den Pilgern, Perlmutt …) und bevorzugt in **wohlhabenden und reichen Systemen**.
+- **Gameplay:**
+  - **Touristenflüge:** Passagieraufträge – Touristen aus reichen Systemen zu den Resorts bringen (baut auf den Kabinen aus Paket 25c auf).
+  - **Rundflüge – von anderen Systemen aus:** Touristen in einem System an Bord nehmen, zu einer Sehenswürdigkeit **in einem anderen System** fliegen, dort nah genug eine Weile verweilen und sie wieder zurückbringen.
+  - **Tourismus-Handel:** Resorts kaufen Luxusgüter, Essen und Wein teuer und verkaufen Souvenirs, Holofilme, Kunst.
+  - **NPC-Kreuzfahrtschiffe:** Aurelle-Liner und Touristenshuttles als Verkehr zwischen Resorts und Sehenswürdigkeiten.
+- **Dienste:** **keine besonderen** – das Resort hat Markt, Bar und die üblichen Dienste.
+
+**Vorschlag Aufteilung:**
+- **43a** – Resort-Stationstyp mit Varianten (Grafik), Platzierung im Cluster (schöne Welten, Naturwunder, Spezialsysteme, reiche Systeme), Tourismus-Wirtschaft und -Markt, Sehenswürdigkeiten als Liste je System
+- **43b** – Touristenflüge und Rundflüge (Aufträge, Verweilen an der Sehenswürdigkeit, Rückflug), Tourismus hebt den Wohlstand
+- **43c** – NPC-Kreuzfahrtschiffe und Touristenshuttles, Codex, Debug, Tests, Abstimmung
+
 ### Entscheidungen zu Teil 6
 
 | Frage | Optionen | Vorschlag | Entscheidung |
