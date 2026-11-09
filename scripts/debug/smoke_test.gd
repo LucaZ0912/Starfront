@@ -7289,7 +7289,14 @@ func _test_cluster40(view: SystemView) -> void:
 	var zoomed: bool = main.galaxy.view_zoom > z0
 	var mp: Vector2 = main.galaxy._to_map(at)
 	var back: Vector2 = main.galaxy._to_screen(mp)
+	# zoomed right out: an overview with the territories named
+	main.galaxy.view_zoom = 1.0
+	var over: bool = main.galaxy.is_overview() and not main.galaxy.is_overview() == (z0 < main.galaxy.OVERVIEW_ZOOM)
+	var fc: Dictionary = main.galaxy.faction_centres()
+	over = over and fc.has("assembly") and fc.has("covenant") and fc.has("directorate")
+	main.galaxy.view_zoom = z0
 	main.galaxy.close()
+	check(over, "40a: zoomed right out the galaxy map is an overview – no system names, the territories named, the Rim and the Far Reaches written along their rings")
 	check(z0 > 1.0 and zoomed and back.distance_to(at) < 1.0 and U.territory_text(_belt_empty()) == "Unclaimed – the Rim",
 		"40a: the galaxy map opens zoomed in on the current system, zooms towards the pointer and pans; the ring is 'Unclaimed – the Rim'")
 

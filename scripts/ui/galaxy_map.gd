@@ -33,12 +33,17 @@ var _dragging := false
 var _drag_moved := false
 const ZOOM_MAX := 6.0
 const OPEN_ZOOM := 3.2
+## Zoomed out further than this, the map is an overview: no system names, the territories always shown and named,
+## the Rim and the Far Reaches written along their rings.
+const OVERVIEW_ZOOM := 1.8
 var _traffic_btn: Button
 
 const FactionData = preload("res://data/factions.gd")
 const TERR_CELL := 8.0           # map units per territory pixel
 static var _terr_tex: Texture2D
 static var _terr_key := ""
+static var _centres := {}
+static var _centres_key := ""
 
 
 func _ready() -> void:
@@ -387,7 +392,8 @@ static func territory_texture() -> Texture2D:
 func _draw_map() -> void:
 	var font := ThemeDB.fallback_font
 	var cls_cols := [Color(0.4, 0.6, 1.0, 0.6), Color(1.0, 0.75, 0.3, 0.6), Color(1.0, 0.35, 0.35, 0.6)]
-	if show_territory:
+	var overview := is_overview()
+	if show_territory or overview:
 		var tex0 := territory_texture()
 		map.draw_texture_rect(tex0, Rect2(_to_screen(Vector2.ZERO), Universe.MAP_SIZE * _scale()), false)
 		# coat of arms next to every capital / pirate stronghold
@@ -404,6 +410,8 @@ func _draw_map() -> void:
 				continue
 			var cls := int(s["links"][nb])
 			map.draw_line(_to_screen(s["pos"]), _to_screen(Universe.systems[nb]["pos"]), cls_cols[cls - 1], 1.0 + cls * 0.7)
+	if overview:
+		_draw_ring_names(font)
 	_draw_anomaly_finder(font)
 	# Planned route
 	if not planned_path.is_empty() and _from_system >= 0:
@@ -444,10 +452,11 @@ func _draw_map() -> void:
 				map.draw_arc(p, 15.0 + 2.0 * sin(_t * 4.0), 0.0, TAU, 28, fc, 2.0)
 		if dim:
 			col = Color(col, 0.25)
-		map.draw_circle(p, 7.0, col)
+		map.draw_circle(p, 4.5 if overview else 7.0, col)
+		var named: bool = not overview or s["id"] == GameState.current_system or s["id"] == selected_system or s["id"] == hover_system
 		# station squares (size = tier), a red diamond for a Pirate Haven
 		var ex := 11.0
-		for e in econ:
+		for e in (econ if not overview else []):
 			var ec: Color = PixelArt.STATION_ACCENT.get(String(e[0]), Color.WHITE)
 			var sz := 3.0 + float(e[1]) * 2.0
 			if dim:
@@ -472,10 +481,15 @@ func _draw_map() -> void:
 		var nc: int = GameState.notorious.alive_in(int(s["id"])).size() if GameState.notorious != null else 0
 		if nc > 0:
 			map.draw_string(font, p + Vector2(-30, -8), "☠" + ("×%d" % nc if nc > 1 else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1.0, 0.3, 0.3, 0.55 + 0.45 * absf(sin(_t * 2.5))))
-		map.draw_string(font, p + Vector2(11, -6), s["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.9, 1.0, 0.3 if dim else 1.0))
-		map.draw_string(font, p + Vector2(11, 7), "%.1f" % sec, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+		if named:
+			map.draw_string_outline(font, p + Vector2(11, -6), s["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.8))
+			map.draw_string(font, p + Vector2(11, -6), s["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.9, 1.0, 0.3 if dim else 1.0))
+		if overview:
+			pass
+		else:
+			map.draw_string(font, p + Vector2(11, 7), "%.1f" % sec, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
 		# package 42: prosperity as five pips after the security, and the main economy as a small coloured mark
-		if Universe.has_stations(int(s["id"])):
+		if not overview and Universe.has_stations(int(s["id"])):
 			var lv := Economy.level(int(s["id"]))
 			var pc: Color = Economy.LEVEL_COLORS[lv]
 			for i in 5:
@@ -485,6 +499,8 @@ func _draw_map() -> void:
 			map.draw_rect(Rect2(p + Vector2(-4.0, -15.0), Vector2(8, 3)), Color(ecm, 0.3 if dim else 0.95))
 		if counts.has(s["id"]):
 			map.draw_string(font, p + Vector2(-26, 4), "▲%d" % counts[s["id"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.4, 0.9, 1.0))
+	if overview:
+		_draw_faction_names(font)
 	_draw_convoys()
 	# Ships in hyperspace
 	for f in GameState.fleet:
@@ -505,6 +521,106 @@ func _draw_map() -> void:
 		map.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if f.uid == GameState.active_uid:
 			map.draw_arc(pos, sz.x * 0.8 + 3.0 * sin(_t * 5.0), 0.0, TAU, 24, Color(0.3, 1.0, 0.5), 1.5)
+
+
+func is_overview() -> bool:
+	return view_zoom < OVERVIEW_ZOOM
+
+
+## Overview: every faction's name over the middle of its territory (pirate holdings smaller).
+func _draw_faction_names(font: Font) -> void:
+	var placed: Array = []
+	var order: Array = faction_centres().keys()
+	order.sort_custom(func(x, y): return int(FactionData.FACTIONS[x]["kind"] == "pirate") < int(FactionData.FACTIONS[y]["kind"] == "pirate"))
+	for f in order:
+		var pirate: bool = FactionData.FACTIONS[f]["kind"] == "pirate"
+		var size := 13 if pirate else 19
+		var txt: String = FactionData.short_of(f).to_upper()
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var base := _to_screen(faction_centres()[f])
+		var p := base + Vector2(-w * 0.5, size * 0.35)
+		# never on top of another label: step down or up until it is free
+		for off in [0.0, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
+			var q: Vector2 = base + Vector2(-w * 0.5, size * 0.35 + off * (size + 4.0))
+			var r := Rect2(q + Vector2(-4, -size), Vector2(w + 8, size + 6))
+			var free := true
+			for o in placed:
+				free = free and not r.intersects(o)
+			if free:
+				p = q
+				placed.append(r)
+				break
+		var c: Color = FactionData.color_of(f)
+		map.draw_string_outline(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 6, Color(0, 0, 0, 0.85))
+		map.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, c.lightened(0.25))
+
+
+## The middle of each faction's territory (map units) – only factions that hold systems.
+static func faction_centres() -> Dictionary:
+	var key := "%d_%d" % [Universe.seed_value, Universe.systems.size()]
+	if _centres_key == key:
+		return _centres
+	var sums := {}
+	for s in Universe.systems:
+		var f := String(s.get("faction", ""))
+		if f == "" or not FactionData.FACTIONS.has(f):
+			continue
+		if not sums.has(f):
+			sums[f] = [Vector2.ZERO, 0]
+		sums[f][0] += s["pos"]
+		sums[f][1] += 1
+	_centres = {}
+	for f2 in sums:
+		var c: Vector2 = sums[f2][0] / float(sums[f2][1])
+		# the label sits on the faction's system nearest that middle, so it never floats in someone else's land
+		var best: Vector2 = c
+		var bd := INF
+		for s2 in Universe.systems:
+			if String(s2.get("faction", "")) == f2 and (s2["pos"] as Vector2).distance_to(c) < bd:
+				bd = (s2["pos"] as Vector2).distance_to(c)
+				best = s2["pos"]
+		_centres[f2] = c.lerp(best, 0.5)
+	_centres_key = key
+	return _centres
+
+
+## Overview: "THE RIM" and "THE FAR REACHES" written along their rings, top and bottom (and the sides for the outer one).
+func _draw_ring_names(font: Font) -> void:
+	var rim := (Universe.BELT_RING.x + Universe.BELT_RING.y) * 0.5
+	var far := (Universe.OUTER_RING.x + Universe.OUTER_RING.y) * 0.5
+	var rc := Color(0.95, 0.6, 0.35, 0.7)
+	var fc := Color(0.7, 0.6, 0.95, 0.62)
+	for top in [true, false]:
+		_arc_text(font, "T H E   R I M", rim, -PI * 0.5 if top else PI * 0.5, top, 26, rc)
+		_arc_text(font, "T H E   F A R   R E A C H E S", far, -PI * 0.5 if top else PI * 0.5, top, 28, fc)
+	_arc_text(font, "T H E   F A R   R E A C H E S", far, PI, true, 28, fc)
+	_arc_text(font, "T H E   F A R   R E A C H E S", far, 0.0, true, 28, fc)
+
+
+## Text along the ellipse (CORE_R × f round the middle of the map), centred on angle `mid`; `upright` reads it
+## left to right with the letters' tops outward on the upper half, inward on the lower.
+func _arc_text(font: Font, txt: String, f: float, mid: float, upright: bool, size: int, col: Color) -> void:
+	var c := Universe.MAP_SIZE * 0.5
+	var R := Universe.CORE_R * f
+	var sc := _scale()
+	var total := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var dir := 1.0 if upright else -1.0
+	# speed along the ellipse (screen px per radian) at the middle – good enough over the short span of a label
+	var speed := Vector2(R.x * sin(mid), R.y * cos(mid)).length() * sc
+	var t := mid - dir * total * 0.5 / maxf(speed, 1.0)
+	for ch in txt:
+		var w := font.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var sp := Vector2(R.x * sin(t), R.y * cos(t)).length() * sc
+		var tc := t + dir * w * 0.5 / maxf(sp, 1.0)
+		var pt := _to_screen(c + Vector2(cos(tc) * R.x, sin(tc) * R.y))
+		var tang := Vector2(-sin(tc) * R.x, cos(tc) * R.y).normalized() * dir
+		var rot := tang.angle()
+		if ch != " ":
+			map.draw_set_transform(pt, rot, Vector2.ONE)
+			map.draw_string_outline(font, Vector2(-w * 0.5, size * 0.35), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 5, Color(0, 0, 0, 0.6))
+			map.draw_string(font, Vector2(-w * 0.5, size * 0.35), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+		t += dir * w / maxf(sp, 1.0)
+	map.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_convoys() -> void:

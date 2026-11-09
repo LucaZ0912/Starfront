@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.4 – 2026-11-09
+
+**Galaxy map overview.** Zoomed right out (below ×1.8), the map becomes an overview: system names, security and
+station marks are hidden (only your current, the selected and the hovered system keep their names), the territories
+are always shown and each faction's name stands over its land (pirate holdings smaller, labels never overlap), and
+"THE RIM" and "THE FAR REACHES" are written along their rings.
+
 ## alpha 0.6.40.3 – 2026-11-09
 
 **Package 40a extended: the Far Reaches.** A new game is needed.

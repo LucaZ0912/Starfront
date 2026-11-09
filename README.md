@@ -137,7 +137,9 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - **The Far Reaches** (0.6.40.3): `OUTER_CONSTELLATIONS` constellations of `OUTER_SIZE` systems on a second ring
   (`OUTER_RING`), `systems[i]["outer"]`, `is_outer`; belt systems too, but routes only into the Rim, no settlements,
   no research posts, security 0.0–0.15. ~240 systems in all, `GALAXY_VERSION` 10.
-- Galaxy map: `view_zoom` / `view_center`, `zoom_at`, `_to_map`; drag to pan.
+- Galaxy map: `view_zoom` / `view_center`, `zoom_at`, `_to_map`; drag to pan. Below `OVERVIEW_ZOOM` (`is_overview`):
+  no system names, territories always on, `_draw_faction_names` (at `faction_centres()`, stacked so they never
+  overlap) and `_draw_ring_names` / `_arc_text` – the ring names along the ellipses.
 
 ## Tourist traffic (phase 0.5 package 43c)
 
