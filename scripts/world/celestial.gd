@@ -646,11 +646,12 @@ func _draw_hazard() -> void:
 	match String(data.get("kind", "")):
 		"radiation":
 			var col := Color(0.75, 0.95, 0.25)
-			for i in 26:
-				var p := Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * radius * 0.85
-				var r := radius * rng.randf_range(0.12, 0.3) * (1.0 + 0.08 * sin(_t * 0.7 + i))
-				draw_circle(p, r, Color(col, 0.05))
-			draw_circle(Vector2.ZERO, radius, Color(col, 0.03))
+			# 40e: two slowly turning layers of one haze texture (was 27 big circles – heavy on the fill rate)
+			var ht := PixelArt.haze_texture(int(data.get("seed", 3)), Color(col, 0.22))
+			for layer in 2:
+				draw_set_transform(Vector2.ZERO, _t * (0.01 if layer == 0 else -0.007) + layer * 1.3, Vector2.ONE)
+				draw_texture_rect(ht, Rect2(-Vector2.ONE * radius, Vector2.ONE * radius * 2.0), false)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			var seg_n := 48
 			for k in seg_n:
 				if k % 2 == 0:
@@ -661,11 +662,13 @@ func _draw_hazard() -> void:
 				var a1 := k2 * TAU / 3.0 - PI / 2.0
 				draw_arc(Vector2.ZERO, radius * 0.035, a1 - 0.5, a1 + 0.5, 8, Color(1.0, 0.85, 0.1, 0.25), radius * 0.03)
 		"ion_storm":
-			for i2 in 30:
-				var p2 := Vector2.from_angle(rng.randf() * TAU + _t * 0.02 * (1.0 if i2 % 2 else -1.0)) * sqrt(rng.randf()) * radius * 0.85
-				var r2 := radius * rng.randf_range(0.15, 0.32) * (1.0 + 0.1 * sin(_t * 0.5 + i2 * 1.7))
-				draw_circle(p2, r2, Color(0.25, 0.5, 1.0, 0.09))
-				draw_circle(p2, r2 * 0.6, Color(0.5, 0.8, 1.0, 0.07))
+			var it := PixelArt.haze_texture(int(data.get("seed", 3)), Color(0.35, 0.6, 1.0, 0.4))
+			var it2 := PixelArt.haze_texture(int(data.get("seed", 3)) + 17, Color(0.65, 0.85, 1.0, 0.3))
+			draw_set_transform(Vector2.ZERO, _t * 0.02, Vector2.ONE)
+			draw_texture_rect(it, Rect2(-Vector2.ONE * radius, Vector2.ONE * radius * 2.0), false)
+			draw_set_transform(Vector2.ZERO, -_t * 0.015 + 2.0, Vector2.ONE * 0.8)
+			draw_texture_rect(it2, Rect2(-Vector2.ONE * radius, Vector2.ONE * radius * 2.0), false)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			# lightning: now and then a jagged bolt between two clouds
 			var bolt := int(_t * 2.5)
 			var brng := RandomNumberGenerator.new()

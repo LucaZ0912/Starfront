@@ -2076,7 +2076,7 @@ func _generate_layout(id: int) -> Dictionary:
 	var has_icy := false
 	var nf := rng.randi_range(2, 4)
 	if sys.get("belt", false):
-		nf += 1 if not sys.get("outer", false) else 2          # package 40c: the Rim is rich
+		nf += 1                                                  # package 40c: the Rim is rich (40e: the Far Reaches too – one more field, not two)
 	L["belts"] = _make_belts(L, id)                   # package 35: asteroid belt and Kuiper belt (scenery)
 	_make_dwarfs(L, id)                               # package 38
 	for b in nf:
@@ -2245,7 +2245,7 @@ func _veil_rifts(L: Dictionary, id: int, used: Array) -> void:
 	for k in rng.randi_range(1, 2):
 		var pos := _free_spot(rng, used, 600000.0 * SCALE, 2200000.0 * SCALE)
 		used.append(pos)
-		L["anomalies"].append({"id": "rift_%d" % k, "name": "Veil Rift", "veil": true, "exotic": rng.randf() < 0.6,
+		L["anomalies"].append({"id": "rift_%d" % k, "name": "Veil Rift", "veil": true, "exotic": rng.randf() < 0.4,
 			"pos": pos, "difficulty": 45.0 + rng.randf_range(0.0, 15.0), "scan": 100.0, "revealed": true, "analysis": 0.0,
 			"done": false, "seed": rng.randi()})
 
@@ -2426,6 +2426,8 @@ func _add_waystation(L: Dictionary, id: int) -> void:
 	rng.seed = seed_value * 52711 + id * 3301 + 11
 	if L["gates"].is_empty() or L["planets"].is_empty() or rng.randf() > WAYSTATION_SHARE:
 		return
+	if systems[id].get("outer", false) or systems[id].get("fortress", false):
+		return                                          # 40e: nobody keeps a rest stop in the Far Reaches or under a fortress's guns
 	var g: Dictionary = L["gates"][rng.randi() % L["gates"].size()]
 	var gp: Vector2 = g["pos"]
 	var pos := gp * rng.randf_range(0.5, 0.75) + gp.normalized().orthogonal() * rng.randf_range(-60000.0, 60000.0) * SCALE

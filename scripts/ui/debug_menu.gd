@@ -347,6 +347,24 @@ func _build_world() -> void:
 	r39b.add_child(UI.button("Vote now", func(): _cmd({"type": "debug_senate", "do": "resolve"})))
 	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
 	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
+	# package 40: the new cluster
+	_section("The new cluster (package 40)")
+	var r40 := _row()
+	for p40 in [["rim", "To the Rim"], ["far", "To the Far Reaches"], ["veil", "To the Veil's edge"], ["fortress", "To a pirate fortress"]]:
+		var k40: String = p40[0]
+		r40.add_child(UI.button(p40[1], func(): _cmd({"type": "debug_p40", "to": k40})))
+	var r40b := _row()
+	for p40b in [["battlefield", "Old battlefield"], ["derelict", "Pre-Severance derelict"], ["radiation", "Radiation zone"], ["ion_storm", "Ion storm"], ["minefield", "Old minefield"]]:
+		var k40b: String = p40b[0]
+		r40b.add_child(UI.button(p40b[1], func(): _cmd({"type": "debug_p40", "to": k40b})))
+	var r40c := _row()
+	r40c.add_child(UI.button("Next jump misjumps", func(): _cmd({"type": "debug_misjump"})))
+	r40c.add_child(UI.button("Break the fortress here", func(): _cmd({"type": "debug_fortress", "do": "break"})))
+	r40c.add_child(UI.button("Rebuild it", func(): _cmd({"type": "debug_fortress", "do": "rebuild"})))
+	r40c.add_child(UI.button("Hazard wards (A) → storage", func():
+		for mid40 in ["o_rad_ward:1:A", "o_ion_ward:1:A"]:
+			_cmd({"type": "debug_give_module", "module": mid40})))
+	r40c.add_child(UI.button("+5 Pre-Severance Tech", func(): _cmd({"type": "debug_give_cargo", "item": "old_tech", "amount": 5})))
 	# package 42: Wirtschaft 2.0
 	_section("Economy (package 42)")
 	var r42 := _row()

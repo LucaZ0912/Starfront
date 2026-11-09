@@ -126,6 +126,13 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
   (revealed anomalies with `veil`); `SpaceBackground.veil` (shader `veil`, `veil_dir`); `SystemView._veil_tick`
   (`Fx.ghost`, `VEIL_ECHOES`); galaxy map `_draw_veil_glow`.
 
+## Package 40e (0.6.40.10)
+
+- Debug: `Commands._c_debug_p40` (`to`: rim / far / veil / fortress / battlefield / derelict / radiation / ion_storm /
+  minefield; `_place_after_load`), `_c_debug_fortress`, `_c_debug_misjump` (`GameState.debug_misjump`).
+- Performance: `SystemView._radar_cands` (gathered every 0.25 s or on a big move / zoom), `MIN_ROCK_PX` in
+  `_cull_asteroids`; `PixelArt.haze_texture` for radiation and ion storms; old mines check every 0.2 s.
+
 ## Hazard wards (0.6.40.9)
 
 - Families `o_rad_ward` / `o_ion_ward` (anchors `o_rad_ward_s` / `o_ion_ward_s`, `craft_only` – never in `_make_shop`),

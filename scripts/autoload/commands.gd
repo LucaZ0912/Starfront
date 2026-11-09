@@ -1941,6 +1941,103 @@ func _c_debug_economy_system(c: Dictionary) -> String:
 	return _c_debug_teleport({"system": hits[i]})
 
 
+## {"type":"debug_p40", "to": "rim"|"far"|"veil"|"battlefield"|"derelict"|"radiation"|"ion_storm"|"minefield"|"fortress"}
+## – 40e: to the next system with it, undocked next to it (outside a fortress's guns, at a hazard's edge)
+var _debug_p40_i := {}
+
+
+func _c_debug_p40(c: Dictionary) -> String:
+	var want := String(c.get("to", "rim"))
+	var hits: Array = []                       # [system id, place or Vector2.INF]
+	for s in Universe.systems:
+		var sid: int = s["id"]
+		match want:
+			"rim":
+				if s.get("belt", false) and not s.get("outer", false):
+					hits.append([sid, Vector2.INF])
+			"far":
+				if s.get("outer", false) and not s.get("veil", false):
+					hits.append([sid, Vector2.INF])
+			"veil":
+				if s.get("veil", false):
+					hits.append([sid, Vector2.INF])
+			"fortress":
+				if s.get("fortress", false):
+					for hv in Universe.get_layout(sid)["havens"]:
+						if hv.get("fortress", false):
+							hits.append([sid, (hv["pos"] as Vector2) + Vector2(14000.0, 0.0)])
+			"battlefield", "derelict":
+				if s.get("belt", false):
+					for ws in Universe.get_layout(sid).get("sites", []):
+						if String(ws["kind"]) == want:
+							hits.append([sid, (ws["pos"] as Vector2) + Vector2(float(ws["radius"]) * 0.8, 0.0)])
+			_:
+				for hz in Universe.get_layout(sid).get("hazards", []):
+					if String(hz["kind"]) == want and String(hz["id"]) != "hz_rad_star":
+						hits.append([sid, (hz["pos"] as Vector2) + Vector2(float(hz["radius"]) * 1.15, 0.0)])
+						break
+	if hits.is_empty():
+		return "No such place in this cluster."
+	var i := (int(_debug_p40_i.get(want, -1)) + 1) % hits.size()
+	_debug_p40_i[want] = i
+	if int(hits[i][0]) == GameState.current_system and world != null and is_instance_valid(world) and world.player != null and hits[i][1] != Vector2.INF:
+		var f0 := _fit()
+		f0.docked_at = ""
+		world.player.position = hits[i][1]
+		f0.position = hits[i][1]
+		world.player.order = {"type": "idle"}
+		world.center_on_player()
+		GameState.log_msg("[Debug] %s (%d of %d) – in this system." % [want.capitalize(), i + 1, hits.size()], GameState.COL_WARN)
+		return ""
+	var e := _c_debug_teleport({"system": hits[i][0]})
+	if e != "":
+		return e
+	var f := _fit()
+	if hits[i][1] != Vector2.INF:
+		f.docked_at = ""
+		f.position = hits[i][1]
+		GameState.active_changed.emit()
+		_place_after_load.call_deferred(int(hits[i][0]), hits[i][1])
+	GameState.log_msg("[Debug] %s (%d of %d)." % [want.capitalize(), i + 1, hits.size()], GameState.COL_WARN)
+	return ""
+
+
+## Once the system is loaded, the ship goes where the debug command wanted it.
+func _place_after_load(sid: int, pos: Vector2) -> void:
+	for k in 30:
+		if world != null and is_instance_valid(world) and world.system_id == sid and world.player != null and is_instance_valid(world.player):
+			var f := _fit()
+			f.docked_at = ""
+			f.position = pos
+			world.player.position = pos
+			world.player.velocity = Vector2.ZERO
+			world.player.order = {"type": "idle"}
+			world.center_on_player()
+			return
+		await get_tree().process_frame
+
+
+## {"type":"debug_fortress", "do": "break"|"rebuild"} – 40e: the fortress of this system
+func _c_debug_fortress(c: Dictionary) -> String:
+	var sid := GameState.current_system
+	if not Universe.is_fortress(sid):
+		return "No pirate fortress in this system."
+	if String(c.get("do", "break")) == "break":
+		GameState.fortress_broken[str(sid)] = GameState.play_time + GameState.FORTRESS_REBUILD
+		GameState.log_msg("[Debug] The fortress is broken – its guns are silent for %d min." % int(GameState.FORTRESS_REBUILD / 60.0), GameState.COL_WARN)
+	else:
+		GameState.fortress_broken.erase(str(sid))
+		GameState.log_msg("[Debug] The fortress is rebuilt – its garrison returns the next time you arrive.", GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_misjump"} – 40e: the pilot's next jump goes wrong
+func _c_debug_misjump(_c: Dictionary) -> String:
+	GameState.debug_misjump = true
+	GameState.log_msg("[Debug] Your next jump goes wrong.", GameState.COL_WARN)
+	return ""
+
+
 ## {"type":"debug_heimkehr"} – to Heimkehr (docked at the Cathedral of Return)
 func _c_debug_heimkehr(_c: Dictionary) -> String:
 	var sid := Universe.special_system("heimkehr")

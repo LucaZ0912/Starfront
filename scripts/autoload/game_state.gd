@@ -33,6 +33,7 @@ const MISJUMP_OLD := 0.03
 const MISJUMP_PIRATE := 0.015
 const MISJUMP_DAMAGE := 0.15
 var misjumps := {}                  # ship uid -> true: this jump goes wrong (rolled at the start)
+var debug_misjump := false          # 40e: the next jump of the pilot's ship goes wrong (debug menu)
 var pending_arrival := {}           # for the view: how the active ship arrived ({kind: "gate" / "misjump", …})
 const START_CREDITS := 30000
 const MAX_ACTIVE_MISSIONS := 5
@@ -1972,6 +1973,9 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	var style := Universe.gate_style(f.system_id)
 	misjumps.erase(f.uid)
 	f.transit_total = jump_duration(f.system_id, f)
+	if debug_misjump and f.uid == active_uid:
+		debug_misjump = false
+		misjumps[f.uid] = true
 	if style in ["old", "pirate"]:
 		if randf() < (MISJUMP_OLD if style == "old" else MISJUMP_PIRATE) * float(DRIVE_MISJUMP[drive_grade(f)]):
 			misjumps[f.uid] = true

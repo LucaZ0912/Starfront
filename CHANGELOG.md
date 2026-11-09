@@ -3,6 +3,24 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.10 – 2026-11-09
+
+**Package 40e: codex, debug, tests, balance and performance** – package 40 (the new cluster) is done.
+- **Codex:** "The Cluster" and "Security and territory" tell of the new cluster (about 240 systems; the core shared by
+  the Assembly and the Covenant, the Directorate's enclave, the Rim, the Far Reaches, the Veil); new entry **The Rim
+  and the Far Reaches** (unlocked on entering the Rim).
+- **Debug menu – "The new cluster (package 40)":** to the Rim, the Far Reaches, the Veil's edge, a pirate fortress
+  (outside its guns), an old battlefield, a pre-Severance derelict, a radiation zone, an ion storm, an old minefield
+  (the next one each click); the next jump misjumps; break / rebuild the fortress here; hazard wards (A); Pre-Severance Tech.
+- **Balance:** the Far Reaches get one extra asteroid field, not two; Veil rifts hold exotic matter less often
+  (40 % instead of 60 %) and give 3–6 Veil readings instead of 4–8; no waystations in the Far Reaches or in fortress
+  systems.
+- **Performance** (uncapped, 1600 × 900): zoomed out in a Rim system 65 → 157 fps, in the core 111 → 257 fps – the
+  radar gathers the objects in its range four times a second instead of walking every asteroid each frame, and rocks
+  smaller than about two pixels are no longer drawn; radiation zones 122 → 202 fps and ion storms draw a haze texture
+  instead of dozens of big circles; old minefields 208 → 373 fps – old mines look for ships five times a second and
+  redraw only on screen. Loading a new game: 13.2 s (as before).
+
 ## alpha 0.6.40.9 – 2026-11-09
 
 **Hazard wards from specialised blueprints.**

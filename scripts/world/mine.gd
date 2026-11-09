@@ -19,6 +19,7 @@ var life := 300.0
 var fuse := 10.0                 # timed mine: seconds until it explodes
 var power := 1.0                 # damage multiplier from the launcher size
 var _jam_tick := 0.0
+var _check_t := 0.0             # 40e: old mines look for ships five times a second, not every frame
 
 
 func setup(p_layer, p_kind: String, p_slot: String, p_fuse: float, p_power: float, p_view: Node) -> void:
@@ -68,6 +69,20 @@ func armed() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if faction == "derelict":
+		age += delta
+		if SystemView.on_screen_at(position, 400.0):
+			queue_redraw()
+		_check_t -= delta
+		if _check_t > 0.0:
+			return
+		_check_t = 0.2
+		var trig := float(data()["trigger"])
+		for n in get_tree().get_nodes_in_group("ships"):
+			if threatens(n) and position.distance_to(n.position) <= trig + float(n.radius):
+				explode()
+				return
+		return
 	age += delta
 	if age >= life:
 		queue_free()

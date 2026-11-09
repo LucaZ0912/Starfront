@@ -599,6 +599,7 @@ func _process(delta: float) -> void:
 				_test_rim40c(view)
 				_test_hazards40d(view)
 				_test_wards(view)
+				_test_p40e(view)
 				_test_intro()
 				if "--shots" in OS.get_cmdline_user_args():
 					await _shoot_convoy(view)
@@ -2976,7 +2977,7 @@ func _test_codex(view: SystemView) -> void:
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
 		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
-		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress"]   # packages 40c, 40d   # package 37: stars
+		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim"]   # packages 40c–e   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -5197,11 +5198,17 @@ func _test_waystation(view: SystemView) -> void:
 	var a3: Dictionary = StationArt.build({"type": "waystation", "tier": 3, "seed": 12})
 	check(a1["pads"].size() == 2 and a3["pads"].size() == 4 and a1["bays"].is_empty(), "waystation: landing pads instead of hangar bays (2 at tier 1 … 4 at tier 3)")
 	var with_ws := 0
+	var may := 0
+	var none_far := true
 	for sy in Universe.systems:
+		var allowed: bool = not sy.get("outer", false) and not sy.get("fortress", false)     # 40e: none out there
+		if allowed:
+			may += 1
 		for st in Universe.get_layout(int(sy["id"]))["stations"]:
 			if st["type"] == "waystation":
 				with_ws += 1
-	check(with_ws > Universe.systems.size() / 2 and with_ws <= Universe.systems.size(), "a waystation in most systems (%d of %d)" % [with_ws, Universe.systems.size()])
+				none_far = none_far and allowed
+	check(with_ws > may / 2 and with_ws <= may and none_far, "a waystation in most systems (%d of %d), none in the Far Reaches or under a fortress" % [with_ws, may])
 	var wd := {"id": "st_ws_test", "name": "Test Waystation", "type": "waystation", "tier": 1, "pos": view.player.position + Vector2(0, -160000),
 		"seed": 11, "zone": 0.0, "faction": "", "market": {}, "shop": [], "shipyard": []}
 	var wn: Celestial = view._add_celestial("station", wd)
@@ -7513,6 +7520,21 @@ func _test_wards(view: SystemView) -> void:
 	GameState.pilot["tree_all"] = all_keep
 	check(opt != "" and bare > 0.0 and absf(warded - bare * 0.1) < bare * 0.02,
 		"0.6.40.9: an A-grade Radiation Insulation keeps 90 %% of the dose off (hull damage %.1f → %.1f)" % [bare, warded])
+
+
+## Package 40e: the codex knows the new cluster, the debug menu reaches every place of package 40.
+func _test_p40e(_view: SystemView) -> void:
+	var cx: Dictionary = GameState.codex.all
+	var codex_ok: bool = cx.has("cluster_rim") and String(cx["cluster_cluster"]["text"]).contains("two hundred and forty") 		and String(cx["cluster_security"]["text"]).contains("enclave")
+	var ok_cmds := true
+	ok_cmds = ok_cmds and Commands.execute({"type": "debug_misjump"}) == "" and GameState.debug_misjump
+	GameState.debug_misjump = false
+	var here_fort: bool = Universe.is_fortress(GameState.current_system)
+	var fe: String = Commands.execute({"type": "debug_fortress", "do": "break"})
+	ok_cmds = ok_cmds and (fe == "" if here_fort else fe.contains("No pirate fortress"))
+	GameState.fortress_broken.erase(str(GameState.current_system))
+	ok_cmds = ok_cmds and Commands.has_method("_c_debug_p40")
+	check(codex_ok and ok_cmds, "40e: the codex tells of the new cluster (the Rim and the Far Reaches, territories by the lore); debug: every place of package 40, a forced misjump, break / rebuild a fortress")
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.

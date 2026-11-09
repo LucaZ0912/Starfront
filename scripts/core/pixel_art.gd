@@ -750,6 +750,49 @@ static func relic_texture(seed_v: int) -> Texture2D:
 	return _cache[key]
 
 
+## 40e: the haze of a hazard as one small pixel texture (drawn stretched over the zone) instead of dozens of big
+## translucent circles: soft lumps of value noise, falling off towards the rim, in a few steps.
+static func haze_texture(seed_v: int, col: Color) -> Texture2D:
+	var key := "haze_%d_%s" % [seed_v, col.to_html()]
+	if _cache.has(key):
+		return _cache[key]
+	var n := 96
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var salt := seed_v % 991
+	for y in n:
+		for x in n:
+			var dx := (x + 0.5) / n * 2.0 - 1.0
+			var dy := (y + 0.5) / n * 2.0 - 1.0
+			var r := sqrt(dx * dx + dy * dy)
+			if r >= 1.0:
+				continue
+			var v := 0.0
+			var amp := 0.55
+			var f := 3.0
+			for o in 3:
+				var fx := (dx + 1.0) * f
+				var fy := (dy + 1.0) * f
+				var ix := int(floor(fx))
+				var iy := int(floor(fy))
+				var tx := fx - ix
+				var ty := fy - iy
+				tx = tx * tx * (3.0 - 2.0 * tx)
+				ty = ty * ty * (3.0 - 2.0 * ty)
+				var a0 := lerpf(_gate_hash(ix, iy, salt + o), _gate_hash(ix + 1, iy, salt + o), tx)
+				var a1 := lerpf(_gate_hash(ix, iy + 1, salt + o), _gate_hash(ix + 1, iy + 1, salt + o), tx)
+				v += lerpf(a0, a1, ty) * amp
+				amp *= 0.5
+				f *= 2.0
+			var fall := clampf((1.0 - r) * 2.2, 0.0, 1.0)
+			var a := clampf((v - 0.25) * 1.6, 0.0, 1.0) * fall
+			a = floor(a * 5.0) / 5.0
+			if a > 0.0:
+				img.set_pixel(x, y, Color(col, a * col.a))
+	_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
+
 static func _gate_hash(x: int, y: int, salt: int) -> float:
 	var v := sin(float(x) * 12.9898 + float(y) * 78.233 + float(salt)) * 43758.5453
 	return v - floor(v)

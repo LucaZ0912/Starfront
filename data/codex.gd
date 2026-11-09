@@ -100,11 +100,14 @@ const ENTRIES := {
 
 	# ---------------------------------------------------------------- The Cluster
 	"cluster_cluster": {"cat": "cluster", "title": "The Cluster", "unlock": "start", "image": {"icon": "sensors"},
-		"text": "Forty-eight systems linked by hyperspace routes. Everyone simply calls it \"the Cluster\"; its old catalogue name survives only in archives.\n\nSecurity follows the territory: deep inside a power's space patrols are everywhere, at the borders less so, and pirate space is lawless.",
-		"see": ["hist_today", "cluster_security"]},
+		"text": "About two hundred and forty systems linked by hyperspace gates. Everyone simply calls it \"the Cluster\"; its old catalogue name survives only in archives.\n\nIn the middle lies the core, shared by the Cluster Assembly and the Covenant of Return, with the small enclave of the Meridian Directorate and a few pirate holdings. Round it runs the Rim, a ring of constellations no power holds; beyond the Rim the empty Far Reaches, and beyond them the Veil.\n\nSecurity follows the territory: deep inside a power's space patrols are everywhere, at the borders less so, and pirate space, the Rim and the Far Reaches are lawless.",
+		"see": ["hist_today", "cluster_security", "cluster_rim"]},
 	"cluster_security": {"cat": "cluster", "title": "Security and territory", "unlock": "jump", "image": {"icon": "o_shield"},
-		"text": "Each system shows its security from 1.0 (safe) to 0.0 (lawless). The three powers grow outward from their capitals; where they meet, systems are contested and shared. Two pirate factions hold remote corners around their havens.\n\nThe galaxy map's Territory layer shows who owns what.",
+		"text": "Each system shows its security from 1.0 (safe) to 0.0 (lawless). The Assembly and the Covenant grow outward from their capitals; where they meet, a handful of border systems are contested – the old rivals have never settled them. The Meridian Directorate keeps to its enclave of a few systems round Durchbruch and has no disputed borders. Two pirate factions hold small strongholds of their own.\n\nThe galaxy map's Territory layer shows who owns what; zoomed right out it names every territory.",
 		"see": ["fac_assembly", "cluster_havens"]},
+	"cluster_rim": {"cat": "cluster", "title": "The Rim and the Far Reaches", "unlock": "rim", "image": {"icon": "sensors"},
+		"text": "Round the core runs the Rim – constellations of a few systems each, close together and joined among themselves, with only one or two routes to their neighbours and into the core. No power claims them. Free settlements keep small outposts here, the pirates hold fortresses, and the rock is richer than anywhere in the core.\n\nBeyond the Rim lie the Far Reaches: a second ring of constellations, reached only through the Rim, where nobody lives at all. Their gates are old, their security nil, their dangers many – and at their outer edge the Veil begins.",
+		"see": ["cluster_battlefields", "cluster_fortresses", "cluster_veil_edge"]},
 	"cluster_veil": {"cat": "cluster", "title": "The Veil", "unlock": "jump",
 		"text": "A belt of unstable hyperspace around the Cluster. Every long-range jump since the Severance has ended there – ships that tried to cross it were never heard from again. The Meridian Directorate's Project Bridge searches for a way through.",
 		"see": ["hist_severance", "fac_directorate"]},

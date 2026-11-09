@@ -91,6 +91,8 @@ func build(p_system: int) -> void:
 	background = SpaceBackground.new()
 	add_child(background)
 	background.setup(float(system_id) * 1.37 + 0.5, float(system_id) * 0.137, 0.8)
+	if Universe.is_belt(system_id):
+		GameState.codex.event("rim")                     # 40e
 	if Universe.is_veil(system_id):
 		background.veil(Universe.systems[system_id]["pos"] - Universe.MAP_SIZE * 0.5)     # package 40c
 		GameState.codex.event("veil")
@@ -2692,16 +2694,21 @@ static func hit_point(a: Vector2, b: Vector2, co) -> Vector2:
 	return a if t < 0.0 else a.lerp(b, t)
 
 
+const MIN_ROCK_PX := 1.8
+
+
 ## Asteroids are only visible (and get their texture) near the camera in the local zoom levels.
 func _cull_asteroids() -> void:
 	var local := sky_alpha() > 0.01
 	var half := get_viewport_rect().size * 0.5 / camera.zoom.x * 1.4 + Vector2(400, 400)
 	var cp := camera.position
+	# 40e: a rock smaller than about two pixels is not drawn at all (the dense fields of the Rim held thousands)
+	var min_r := MIN_ROCK_PX / maxf(camera.zoom.x, 0.0001)
 	for a in asteroid_nodes:
 		if not is_instance_valid(a):
 			continue
 		var d: Vector2 = a.position - cp
-		var vis: bool = local and absf(d.x) < half.x and absf(d.y) < half.y
+		var vis: bool = local and absf(d.x) < half.x and absf(d.y) < half.y and float(a.radius) >= min_r
 		if vis != a.visible:
 			a.visible = vis
 			a.set_process(vis)                           # package 35: hidden rocks cost nothing
@@ -2938,6 +2945,12 @@ func _draw_player_icon(o: Node2D, pos: Vector2, heading: float, px: float, a: fl
 
 ## Radar display: range rings, sensor range, rotating sweep with afterglow;
 ## contacts light up when the sweep passes over them.
+var _radar_cands: Array = []
+var _radar_t := -10.0
+var _radar_r := 0.0
+var _radar_c := Vector2.INF
+
+
 func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 	var vs := get_viewport_rect().size
 	var r := minf(vs.x, vs.y) * RADAR_SCREEN * px
@@ -3003,8 +3016,19 @@ func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
 		o.draw_set_transform(c + Vector2(-60.0, -r * 0.55) * Vector2(px, 1.0), 0.0, Vector2(px, px))
 		o.draw_string(font, Vector2.ZERO, "RADAR JAMMED", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.4, 0.4, 0.9 * a))
 		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	for cel in celestials:
-		if not is_instance_valid(cel) or not cel.is_pickable() or cel.kind == "colossus":
+	# 40e: the objects near enough are gathered a few times a second, not every frame (the Rim's fields hold thousands)
+	if _t - _radar_t > 0.25 or absf(r - _radar_r) > r * 0.1 or c.distance_to(_radar_c) > r * 0.2:
+		_radar_t = _t
+		_radar_r = r
+		_radar_c = c
+		_radar_cands.clear()
+		var rr := r * 1.3 + 2000.0
+		rr *= rr
+		for cel0 in celestials:
+			if is_instance_valid(cel0) and cel0.kind != "colossus" and cel0.position.distance_squared_to(c) <= rr:
+				_radar_cands.append(cel0)
+	for cel in _radar_cands:
+		if not is_instance_valid(cel) or not cel.is_pickable():
 			continue
 		if cel.position.distance_squared_to(c) > r * r:     # 0.6.35.16: out of range first – sight lines cost
 			continue
@@ -4346,7 +4370,7 @@ func complete_anomaly(node: Celestial, ship: Ship) -> void:
 		if ship.fit.add_cargo("mod:" + found, 1) > 0.0:
 			text += ", found: %s" % GameData.module_name(found)
 	if node.data.get("veil", false) and ship.faction == "player":
-		var extra := randi_range(4, 8)                 # package 40c: a rift is worth far more
+		var extra := randi_range(3, 6)                 # package 40c: a rift is worth far more (40e: a little less)
 		GameState.research_data += extra
 		text += ", %d Veil readings for the Research Exchange" % extra
 		GameState.codex.event("veil_rift")
