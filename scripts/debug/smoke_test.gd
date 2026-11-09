@@ -1082,7 +1082,7 @@ func _test_resources() -> void:
 			ice_ok = ice_ok and (st3["type"] != "ice_refinery" or icy)
 		for ph3 in lay3["havens"]:
 			haven_tiers[int(ph3["tier"])] = true
-	check(Universe.systems.size() >= 110 and Universe.systems.size() <= 130, "star cluster has about 120 systems (%d) – package 40" % Universe.systems.size())
+	check(Universe.systems.size() >= 220 and Universe.systems.size() <= 260, "star cluster has about 240 systems (%d) – package 40, with the Far Reaches" % Universe.systems.size())
 	check(combos.size() == 24, "every station type exists in every tier (%d/24)" % combos.size())
 	check(haven_tiers.size() == 3, "Pirate Havens in all three tiers")
 	check(plan_ok, "station plan (star map) matches the generated systems")
@@ -7251,6 +7251,8 @@ func _test_cluster40(view: SystemView) -> void:
 	var cap_ok := true
 	var name_ok := true
 	var settle := 0
+	var outer := 0
+	var outer_ok := true
 	for sy in U.systems:
 		var sid: int = sy["id"]
 		var lived: bool = U.has_stations(sid) or int(sy.get("haven_tier", 0)) > 0
@@ -7259,6 +7261,11 @@ func _test_cluster40(view: SystemView) -> void:
 			name_ok = name_ok and String(sy["name"]) in U.SYSTEM_NAMES
 		elif not lived:
 			name_ok = name_ok and catalog
+		if sy.get("outer", false):
+			outer += 1
+			outer_ok = outer_ok and not lived and float(sy["security"]) <= 0.15 and U.territory_text(sid) == "Unclaimed – the Far Reaches"
+			for nb0 in sy["links"]:
+				outer_ok = outer_ok and U.is_belt(nb0)               # reached only through the Rim
 		if sy.get("belt", false):
 			belt += 1
 			cons[int(sy["constellation"])] = true
@@ -7269,6 +7276,8 @@ func _test_cluster40(view: SystemView) -> void:
 		if sy.get("capital", false) and String(sy.get("faction", "")) in ["assembly", "covenant", "directorate"]:
 			for nb in sy["links"]:
 				cap_ok = cap_ok and String(U.systems[nb].get("faction", "")) == String(sy["faction"])
+	check(outer >= 100 and outer_ok,
+		"40a: the Far Reaches – %d empty, lawless systems in a ring beyond the Rim, reached only through it" % outer)
 	check(belt >= 45 and cons.size() >= 8 and claimed_belt == 0 and settle >= 3 and cap_ok and name_ok,
 		"40a: %d systems in the ring, %d constellations, no power claims them (%d free settlements); every capital ringed by its own systems; inhabited systems German names, the empty ones catalogue / explorers" % [belt, cons.size(), settle])
 	# the galaxy map zooms and pans

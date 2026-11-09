@@ -31,7 +31,7 @@ const EXPLORERS := ["Brandt", "Okafor", "Lindqvist", "Moreau", "Tanaka", "Novak"
 	"Nakamura", "Rask", "Quell", "Voss", "Ashby", "Oyelaran", "Marquez", "Sørensen"]
 const EXPLORER_PLACES := ["Wacht", "Rast", "Ende", "Feuer", "Fund", "Fall", "Grab", "Hoffnung", "Riff", "Senke", "Leuchte", "Tor"]
 ## Galaxy generator version (stored in saves; older saves are moved to the current cluster).
-const GALAXY_VERSION := 9          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets; 39: special systems
+const GALAXY_VERSION := 10          # package 36: moons, orbits rolled on arrival; package 37: star types; 38: planets; 39: special systems
 const FactionData = preload("res://data/factions.gd")
 ## Territory sizes (phase 0.5 package 10): systems per power / per territorial pirate faction.
 const POWER_SYSTEMS := 15                # package 40: a core of about 60 systems
@@ -69,12 +69,16 @@ const ANOMALY_NAMES := [
 	"Gravitational Anomaly", "Derelict Wreck Field", "Subspace Echo", "Ion Storm Core",
 	"Unknown Signal", "Crystalline Structure", "Ancient Probe", "Dark Matter Cloud",
 ]
-const MAP_SIZE := Vector2(3600, 2400)    # package 40: a core of ~60 systems and a ring of constellations round it
+const MAP_SIZE := Vector2(5300, 3600)    # package 40: a core of ~60 systems, a ring of constellations round it, the Far Reaches beyond
 const CORE_SYSTEMS := 60
 const CORE_R := Vector2(1100, 700)       # the core: an ellipse round the middle of the map
 const BELT_CONSTELLATIONS := 11
 const BELT_SIZE := Vector2i(4, 7)        # systems per constellation
 const BELT_RING := Vector2(1.3, 1.42)    # where the constellations lie (× CORE_R)
+## The Far Reaches: a second, outer ring of constellations beyond the Rim – uninhabited, reached only through the Rim.
+const OUTER_CONSTELLATIONS := 20
+const OUTER_SIZE := Vector2i(5, 7)
+const OUTER_RING := Vector2(2.1, 2.22)
 const SETTLEMENT_SHARE := 0.7            # constellations with a free settlement
 ## A system is ONE continuous space. 1 unit = 1 km.
 ## Package 35: three times as big as before (6 million km); warps are faster, so crossing takes 20–30 s.
@@ -154,7 +158,7 @@ func _assign_stars() -> void:
 			var sid: int = empty.pop_back()
 			systems[sid]["star"] = star_index(ex)
 			taken[sid] = true
-			if rng.randf() < 0.5:                         # scientists like strange places
+			if rng.randf() < 0.5 and not systems[sid].get("outer", false):     # scientists like strange places (not out in the Far Reaches)
 				systems[sid]["stations_plan"] = [["research", rng.randi_range(1, 2)]]
 	var total := 0.0
 	for t in STAR_TYPES:
@@ -256,10 +260,30 @@ func _place_systems(rng: RandomNumberGenerator) -> void:
 				if _spot_free(pos2, 115.0) and pos2.x > 50.0 and pos2.y > 50.0 and pos2.x < MAP_SIZE.x - 50.0 and pos2.y < MAP_SIZE.y - 50.0:
 					break
 			_new_system(pos2, true, k, rng)
+	# the Far Reaches
+	var off2 := rng.randf() * TAU
+	for k3 in OUTER_CONSTELLATIONS:
+		var a3 := off2 + k3 * TAU / OUTER_CONSTELLATIONS + rng.randf_range(-0.06, 0.06)
+		var f3 := rng.randf_range(OUTER_RING.x, OUTER_RING.y)
+		var cc3 := c + Vector2(cos(a3) * CORE_R.x, sin(a3) * CORE_R.y) * f3
+		var n3 := rng.randi_range(OUTER_SIZE.x, OUTER_SIZE.y)
+		for j3 in n3:
+			var pos3 := cc3
+			for attempt3 in 300:
+				pos3 = cc3 + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, 200.0)
+				if _spot_free(pos3, 115.0) and pos3.x > 50.0 and pos3.y > 50.0 and pos3.x < MAP_SIZE.x - 50.0 and pos3.y < MAP_SIZE.y - 50.0:
+					break
+			_new_system(pos3, true, BELT_CONSTELLATIONS + k3, rng)
+			systems[systems.size() - 1]["outer"] = true
 
 
 func is_belt(sid: int) -> bool:
 	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("belt", false))
+
+
+## The Far Reaches – the outer ring beyond the Rim.
+func is_outer(sid: int) -> bool:
+	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("outer", false))
 
 
 ## A minimum spanning tree over `ids` (Prim).
@@ -304,7 +328,7 @@ func _plan_settlements() -> void:
 	srng.seed = seed_value * 40401 + 7
 	var groups := {}
 	for s in systems:
-		if s.get("belt", false):
+		if s.get("belt", false) and not s.get("outer", false):          # the Far Reaches stay empty
 			var k := int(s["constellation"])
 			if not groups.has(k):
 				groups[k] = []
@@ -1054,7 +1078,7 @@ func _assign_territory() -> void:
 		if s2.get("belt", false):
 			# package 40: the ring belongs to no one – wild and unwatched
 			s2["claimants"] = []
-			s2["security"] = snappedf(trng.randf_range(0.04, 0.3), 0.01)
+			s2["security"] = snappedf(trng.randf_range(0.0, 0.15) if s2.get("outer", false) else trng.randf_range(0.04, 0.3), 0.01)
 			continue
 		if f4 == "" and (s2["claimants"] as Array).is_empty():
 			var cl: Array = []
@@ -1146,6 +1170,8 @@ func territory_text(sid: int) -> String:
 		return t
 	var cl := claimants(sid)
 	if cl.is_empty():
+		if is_outer(sid):
+			return "Unclaimed – the Far Reaches"  # the outer ring beyond the Rim
 		if is_belt(sid) and not is_independent(sid):
 			return "Unclaimed – the Rim"          # package 40: the wild ring round the core
 		return "Independent"
@@ -1518,6 +1544,7 @@ func _build_routes(rng: RandomNumberGenerator) -> void:
 	# constellations by a single route (now and then none – regions form); every constellation one or two routes
 	# into the core. A spanning tree in each part keeps everything reachable.
 	var core: Array = []
+	var rim: Array = []
 	var groups := {}
 	for s in systems:
 		var sid := int(s["id"])
@@ -1526,6 +1553,8 @@ func _build_routes(rng: RandomNumberGenerator) -> void:
 			if not groups.has(k):
 				groups[k] = []
 			groups[k].append(sid)
+			if not s.get("outer", false):
+				rim.append(sid)
 		else:
 			core.append(sid)
 	_mst(core)
@@ -1550,23 +1579,26 @@ func _build_routes(rng: RandomNumberGenerator) -> void:
 			for b2 in g:
 				if a2 < b2 and not systems[a2]["links"].has(b2) and _dist(a2, b2) < 200.0 and rng.randf() < 0.25:
 					_link(a2, b2)
-		# into the core
-		var pr := _closest_pair(g, core)
+		# into the core – the Far Reaches into the Rim
+		var outer: bool = systems[g[0]].get("outer", false)
+		var inward: Array = rim if outer else core
+		var pr := _closest_pair(g, inward)
 		_link(pr[0], pr[1])
-		if rng.randf() < 0.35:
+		if rng.randf() < (0.3 if outer else 0.35):
 			var rest: Array = g.filter(func(x): return x != pr[0])
-			var pr2 := _closest_pair(rest, core.filter(func(x): return x != pr[1]))
-			if pr2[0] >= 0 and _dist(pr2[0], pr2[1]) < 520.0:
+			var pr2 := _closest_pair(rest, inward.filter(func(x): return x != pr[1]))
+			if pr2[0] >= 0 and _dist(pr2[0], pr2[1]) < (700.0 if outer else 520.0):
 				_link(pr2[0], pr2[1])
-	# between neighbouring constellations
-	for idx in keys.size():
-		var ka: int = keys[idx]
-		var kb: int = keys[(idx + 1) % keys.size()]
-		if rng.randf() < 0.2:
-			continue                                    # a gap: two regions meet only through the core
-		var pr3 := _closest_pair(groups[ka], groups[kb])
-		if pr3[0] >= 0 and _dist(pr3[0], pr3[1]) < 620.0:
-			_link(pr3[0], pr3[1])
+	# between neighbouring constellations (the Rim among itself, the Far Reaches among itself)
+	for ring in [keys.filter(func(x): return x < BELT_CONSTELLATIONS), keys.filter(func(x): return x >= BELT_CONSTELLATIONS)]:
+		for idx in ring.size():
+			var ka: int = ring[idx]
+			var kb: int = ring[(idx + 1) % ring.size()]
+			if rng.randf() < (0.2 if ka < BELT_CONSTELLATIONS else 0.3):
+				continue                                # a gap: two regions meet only further in
+			var pr3 := _closest_pair(groups[ka], groups[kb])
+			if pr3[0] >= 0 and _dist(pr3[0], pr3[1]) < 720.0:
+				_link(pr3[0], pr3[1])
 
 
 ## Shortest route (number of jumps), only via routes with class <= max_class.

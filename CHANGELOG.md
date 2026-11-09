@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.6.40.3 – 2026-11-09
+
+**Package 40a extended: the Far Reaches.** A new game is needed.
+- Beyond the Rim lies a second ring of **20 constellations** of 5–7 systems each – about **120 more systems**, the
+  cluster now has ~240. Nobody lives there: no settlements, no stations, no research posts at the strange stars, the
+  lowest security in the cluster (0.0–0.15), old gates everywhere.
+- The Far Reaches are reached **only through the Rim** (one or two routes per constellation), their constellations
+  joined among themselves by single routes with more gaps than in the Rim – regions you have to go round.
+- Territory reads "Unclaimed – the Far Reaches". The galaxy map is larger (5300 × 3600) and zooms further.
+
 ## alpha 0.6.40.2 – 2026-11-09
 
 **Package 40b: the gates.**

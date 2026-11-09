@@ -134,6 +134,9 @@ The sounds are synthesised. With `--smoketest` (or headless) the intro is skippe
 - `_assign_territory` works on the core only (capitals inside it; a capital's neighbours forced to its power);
   `_plan_settlements` – free settlements (independent) in the Rim; `_name_systems` – `SYSTEM_NAMES` for inhabited
   systems, `CATALOG_PREFIX` / `EXPLORERS` + `EXPLORER_PLACES` for the rest. `GALAXY_VERSION` 9.
+- **The Far Reaches** (0.6.40.3): `OUTER_CONSTELLATIONS` constellations of `OUTER_SIZE` systems on a second ring
+  (`OUTER_RING`), `systems[i]["outer"]`, `is_outer`; belt systems too, but routes only into the Rim, no settlements,
+  no research posts, security 0.0–0.15. ~240 systems in all, `GALAXY_VERSION` 10.
 - Galaxy map: `view_zoom` / `view_center`, `zoom_at`, `_to_map`; drag to pan.
 
 ## Tourist traffic (phase 0.5 package 43c)

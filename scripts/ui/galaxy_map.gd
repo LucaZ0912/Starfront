@@ -31,12 +31,12 @@ var view_center := Vector2.ZERO
 var _drag_from := Vector2.ZERO
 var _dragging := false
 var _drag_moved := false
-const ZOOM_MAX := 4.0
-const OPEN_ZOOM := 2.2
+const ZOOM_MAX := 6.0
+const OPEN_ZOOM := 3.2
 var _traffic_btn: Button
 
 const FactionData = preload("res://data/factions.gd")
-const TERR_CELL := 6.0           # map units per territory pixel
+const TERR_CELL := 8.0           # map units per territory pixel
 static var _terr_tex: Texture2D
 static var _terr_key := ""
 
