@@ -148,6 +148,11 @@ Trade moves the stock: sell a hold full of anything and its price drops with eve
 	"basics_cities": {"cat": "basics", "title": "Cities", "unlock": "city", "image": {"icon": "o_cargo"},
 		"text": "Most ships are far too big for a city's streets – so a city takes them in below the ground. Your ship comes down over one of its giant landing hatches, the hatch opens, she sinks into the shaft and the hatch closes over her. Below lie the city's hangars, like a station's.\n\nA city works like a station: from the hangar the lifts take you to its shopping street – the market, the outfitter, the shipyard and whatever else it has – and up to the bar high in its towers, with a view over the city at night: the other towers, speeders in their lanes, drones drifting past. To leave, go down the stairs to your ship; she rises out of the hatch and climbs back to orbit.\n\nThe small places – outposts, mines, ruins, wrecks, camps – have no hatch. Every ship carries a landing drone for them: it drops out of her drone bay and takes you down while she waits above.",
 		"see": ["basics_landing"]},
+	"basics_settlements": {"cat": "basics", "title": "Settlements", "unlock": "settlement", "image": {"icon": "o_cargo"},
+		"text": "The small places on the planets – outposts, mines, research camps – are settlements under the open sky. Your landing drone sets you down on one of their pads; other drones come and go on the rest. A street runs past the pads with the settlement's shops – walk in, as on a station – its houses, and the building it is known for: a mine's ore depot with its headframe, a farming co-op with greenhouses and silos, a research station with its dish, a workshop, a refinery outlet, a recruitment office, a lookout hotel. Guards walk their rounds.
+
+What bounds a settlement is its world: dense jungle, the sea round its platforms, dunes, ice, a crater's rocks, cooled lava.",
+		"see": ["basics_cities"]},
 	"basics_landing": {"cat": "basics", "title": "Landing on planets", "unlock": "landing", "image": {"icon": "engine"},
 		"text": "Over the middle of every planet and moon with solid ground hangs a descent beacon – warp to it, and from there your ship goes down: it speeds up and sinks, smaller and smaller, into the world below. Where there is air, the way down glows with heat.
 

@@ -12,7 +12,7 @@ static var _cache := {}
 
 ## {image, rise} for an object.
 static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
-	var key := "%s_%d_%d_%s_%s_%d_%d" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4]
+	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", ""))]
 	if _cache.has(key):
 		return _cache[key]
 	var pw := int(o.get("w", 1)) * TILE
@@ -32,6 +32,24 @@ static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
 
 static func _rise(kind: String) -> int:
 	match kind:
+		"tree":
+			return 46
+		"tower_rig":
+			return 70
+		"silo":
+			return 44
+		"house":
+			return 30
+		"dish":
+			return 34
+		"crystal":
+			return 22
+		"greenhouse":
+			return 20
+		"rock", "lava_rock":
+			return 10
+		"dune":
+			return 6
 		"palm":
 			return 34
 		"parasol":
@@ -322,6 +340,95 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.5, fy - 2, pw * 0.42, 9, metal.darkened(0.15))
 			_ellipse(img, pw * 0.5, fy - 2, pw * 0.3, 6, Color(0.15, 0.15, 0.18))
 			_ellipse(img, pw * 0.5, fy - 2, pw * 0.15, 3, Color(0.4, 0.75, 1.0))
+		# ---- 0.7.50.10: the settlements and what bounds them
+		"tree":                     # a jungle tree: a short trunk, a crown of leaves in layers
+			var tc: Color = o.get("col", Color(0.18, 0.45, 0.2))
+			var vh := absi(int(o.get("x", 0)) * 7 + int(o.get("y", 0)) * 13)
+			_r(img, pw / 2 - 3, fy + ph - 14, 6, 14, Color(0.32, 0.22, 0.14))
+			_r(img, pw / 2 - 3, fy + ph - 14, 2, 14, Color(0.4, 0.28, 0.18))
+			var cy := fy - 10.0
+			_ellipse(img, pw * 0.5, cy + 6.0, pw * 0.48, 20.0, tc.darkened(0.35))
+			_ellipse(img, pw * 0.5 - 4.0 + float(vh % 5), cy, pw * 0.4, 17.0, tc)
+			_ellipse(img, pw * 0.38, cy - 6.0, pw * 0.22, 10.0, tc.lightened(0.12))
+			_ellipse(img, pw * 0.62, cy - 2.0, pw * 0.2, 9.0, tc.lightened(0.06))
+			for k3 in 6:
+				_p(img, int(pw * 0.3) + (vh * (k3 + 3)) % int(pw * 0.4), int(cy - 12.0) + (vh * (k3 + 1)) % 14, tc.lightened(0.3))
+		"rock", "lava_rock":         # a boulder (with glowing cracks on a lava world)
+			var rc: Color = o.get("col", Color(0.45, 0.43, 0.42))
+			_ellipse(img, pw * 0.5, fy + ph * 0.55, pw * 0.46, ph * 0.5 + 4.0, rc.darkened(0.25))
+			_ellipse(img, pw * 0.48, fy + ph * 0.45, pw * 0.4, ph * 0.42 + 3.0, rc)
+			_ellipse(img, pw * 0.38, fy + ph * 0.3, pw * 0.16, 3.0, rc.lightened(0.18))
+			if kind == "lava_rock":
+				for k4 in 5:
+					_p(img, int(pw * 0.3) + k4 * 2, int(fy + ph * 0.5) + (k4 % 2), Color(1.0, 0.5, 0.15))
+		"dune":
+			var dc: Color = o.get("col", Color(0.85, 0.7, 0.45))
+			_ellipse(img, pw * 0.5, fy + ph * 0.6, pw * 0.5, ph * 0.45 + 3.0, dc.darkened(0.12))
+			_ellipse(img, pw * 0.45, fy + ph * 0.5, pw * 0.42, ph * 0.35 + 2.0, dc)
+			_ellipse(img, pw * 0.35, fy + ph * 0.4, pw * 0.2, 2.0, dc.lightened(0.15))
+		"crystal":                  # shards of ice
+			var ic: Color = o.get("col", Color(0.75, 0.9, 1.0))
+			for k5 in 3:
+				var bx := 3 + k5 * (pw - 8) / 3
+				var hh := 14 + (k5 * 7) % 10
+				for yy in hh:
+					var ww := maxi(1, int(5.0 * (1.0 - float(yy) / hh)))
+					_r(img, bx + 2 - ww / 2, fy + ph - 2 - yy, ww, 1, ic.lightened(0.2) if yy % 4 == 0 else ic)
+		"house":                    # a settlement building: its roof seen from above, its front with a door and windows
+			var roof: Color = o.get("col", Color(0.4, 0.4, 0.45))
+			var wall: Color = o.get("col2", metal)
+			var fh := 22
+			var roof_h := fy + ph - fh
+			_r(img, 0, 2, pw, roof_h - 2, roof)
+			_r(img, 0, 2, pw, 2, roof.lightened(0.2))
+			_r(img, 0, roof_h - 2, pw, 2, roof.darkened(0.3))
+			for sx in range(6, pw - 4, 12):                 # vents, a unit on the roof
+				_r(img, sx, 8, 6, 4, roof.darkened(0.15))
+			_r(img, 0, roof_h, pw, fh, wall)
+			_r(img, 0, roof_h, pw, 2, wall.darkened(0.3))
+			var door_x := int(o.get("door", pw / 2 - 5))
+			_r(img, door_x, roof_h + 6, 10, fh - 6, Color(0.14, 0.14, 0.18))
+			_r(img, door_x + 1, roof_h + 7, 8, 2, Color(o.get("lamp", Color(1.0, 0.85, 0.5))))
+			for wx in range(4, pw - 8, 14):
+				if wx > door_x - 10 and wx < door_x + 12:
+					continue
+				_r(img, wx, roof_h + 7, 8, 7, Color(0.1, 0.12, 0.16))
+				_r(img, wx + 1, roof_h + 8, 6, 5, Color(o.get("win", Color(1.0, 0.85, 0.55))))
+		"tower_rig":                # a mine's headframe: two legs, cross braces, the wheel on top
+			var mc := metal.darkened(0.2)
+			var top := 4
+			_r(img, 3, top + 10, 3, fy + ph - top - 10, mc)
+			_r(img, pw - 6, top + 10, 3, fy + ph - top - 10, mc)
+			for yy2 in range(top + 14, fy + ph - 6, 12):
+				for t2 in pw - 8:
+					_p(img, 4 + t2, yy2 + int(t2 * 10.0 / (pw - 8)), mc.lightened(0.1))
+			_ellipse(img, pw * 0.5, top + 8.0, 8.0, 8.0, mc.darkened(0.2))
+			_ellipse(img, pw * 0.5, top + 8.0, 5.0, 5.0, Color(0, 0, 0, 0))
+			_r(img, pw / 2 - 1, top + 8, 2, fy + ph - top - 10, Color(0.15, 0.15, 0.17))
+			_r(img, 0, fy + ph - 5, pw, 5, Color(0.3, 0.28, 0.25))
+			_r(img, pw / 2 - 2, top, 4, 3, Color(1.0, 0.3, 0.2))
+		"silo":
+			var scol: Color = o.get("col", Color(0.7, 0.7, 0.68))
+			_r(img, 2, 10, pw - 4, fy + ph - 12, scol)
+			_r(img, 2, 10, 4, fy + ph - 12, scol.lightened(0.15))
+			_r(img, pw - 6, 10, 4, fy + ph - 12, scol.darkened(0.2))
+			_ellipse(img, pw * 0.5, 10.0, pw * 0.5 - 2.0, 7.0, scol.lightened(0.1))
+			for yy3 in range(16, fy + ph - 4, 9):
+				_r(img, 2, yy3, pw - 4, 1, scol.darkened(0.15))
+		"greenhouse":
+			var gc := Color(0.55, 0.85, 0.7, 1.0)
+			_r(img, 1, 6, pw - 2, fy + ph - 7, Color(0.22, 0.4, 0.28))
+			for gx in range(3, pw - 3, 4):
+				_r(img, gx, 8, 2, fy + ph - 11, Color(0.3, 0.6, 0.32))
+			_r(img, 1, 6, pw - 2, 2, gc)
+			for fx2 in range(1, pw, 8):
+				_r(img, fx2, 6, 1, fy + ph - 7, gc.darkened(0.2))
+		"dish":                     # a dish antenna on its mast
+			_r(img, pw / 2 - 2, 18, 4, fy + ph - 18, metal.darkened(0.2))
+			_ellipse(img, pw * 0.5, 14.0, pw * 0.45, 9.0, metal.lightened(0.15))
+			_ellipse(img, pw * 0.5, 12.0, pw * 0.35, 6.0, metal.darkened(0.1))
+			_r(img, pw / 2 - 1, 4, 2, 9, metal.darkened(0.3))
+			_r(img, pw / 2 - 1, 3, 2, 2, Color(1.0, 0.3, 0.25))
 		"palm":
 			for k in 8:
 				_r(img, pw / 2 - 1 + (1 if k % 2 == 0 else 0), fy + ph - 4 - k * 4, 3, 4, Color(0.5, 0.36, 0.22).lightened(0.05 * (k % 2)))

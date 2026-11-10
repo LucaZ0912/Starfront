@@ -146,6 +146,18 @@ func setup_landing(p_body: Dictionary, p_site: Dictionary, sys_id: int = -1, tou
 	go_level("landing", "touchdown" if touchdown else "ramp")
 
 
+## 0.7.50.10: a settlement – down by the landing drone on its first pad.
+func setup_settlement(p_body: Dictionary, p_site: Dictionary, town: Dictionary, available: Dictionary, crew: Array, sys_id: int, touchdown: bool = false) -> void:
+	_lander = true
+	_body = p_body
+	_site = p_site
+	station = town
+	_avail = available
+	_crew = crew
+	_sys = sys_id
+	go_level("settlement", "touchdown" if touchdown else "ramp")
+
+
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
@@ -174,7 +186,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_puffs.clear()
 	_dust = null
 	level = p_level
-	if level == "landing":
+	if level == "settlement":
+		map = SettleGen.build(station, _body, _site, _avail, _sys)
+	elif level == "landing":
 		var lsz := _ship_size()
 		map = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)
 		if _lander:
@@ -204,7 +218,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				zc["title"] = "Stairs down – aboard your ship and up through the hatch"
 	_build()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "commercial": "Commercial level",
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
 		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor()}.get(level, "")]
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
@@ -226,7 +240,7 @@ const HANGAR_ART := 3.5                 # art px per pixel of the ship's picture
 
 
 func _ship_tex() -> Texture2D:
-	if level == "landing" and _lander:
+	if level in ["landing", "settlement"] and _lander:
 		return FlightScene.lander_texture()
 	var f := GameState.active()
 	if f == null:
@@ -247,9 +261,14 @@ func is_city() -> bool:
 	return bool(station.get("city", false))
 
 
+## 0.7.50.10: in a city or a settlement – a place on the ground with people, guards and its own time of day.
+func is_town() -> bool:
+	return bool(station.get("city", false)) or bool(station.get("settlement", false))
+
+
 ## 0.7.50.6: how much daylight the city has (0 night … 1 day).
 func city_day() -> float:
-	return float(station.get("day", 0.0)) if is_city() else 0.0
+	return float(station.get("day", 0.0)) if is_town() else 0.0
 
 
 ## How high up the tower bar is.
@@ -260,7 +279,7 @@ func tower_floor() -> int:
 ## Beyond the glass: the system's sky – its nebula, its star, the planet the station circles.
 ## In a city's tower bar (0.7.50.5): the city at night – towers, speeders, drones.
 func _space_view(sys_id: int) -> void:
-	if is_city():
+	if is_town():
 		_neb.material = null
 		_neb.color = Color(0.02, 0.02, 0.05)
 		var body := Universe.find_body(sys_id, String(station.get("body", ""))) if sys_id >= 0 else {}
@@ -394,6 +413,13 @@ func _build() -> void:
 		life.setup(floor_r, Rect2(map.ship_at - ssz * 0.5, ssz), map.pal["accent"], hash(String(station.get("id", ""))))
 		life.modulate = Color(0.8, 0.84, 0.92)        # a little in the haze, its lights still bright
 		_world.add_child(life)
+	# 0.7.50.10: the other landing drones coming and going on a settlement's free pads
+	if map.pads.size() > 1:
+		var pt := PadTraffic.new()
+		var prng := RandomNumberGenerator.new()
+		prng.seed = hash(String(station.get("id", ""))) + 77
+		pt.setup(map.pads.slice(1), prng, Color(map.pal.get("terrain_b", Color(0.6, 0.55, 0.45))))
+		_world.add_child(pt)
 	_lift_node = Node2D.new()
 	_lift_node.draw.connect(_draw_lifts)
 	_world.add_child(_lift_node)
@@ -432,9 +458,9 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
-	if is_city():
+	if is_town():
 		_add_guards(rng)
-	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower"] else 2
+	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
 	if level == "street":
 		n += 6                                        # a city's street is busy
 	for i in n:
@@ -454,7 +480,7 @@ func _build() -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
 	# it (they hardly show); the tower bar's window lets in the sun by day
-	if is_city() and level == "street":
+	if is_town() and level in ["street", "settlement"]:
 		var tint := ColorRect.new()
 		_tint = tint
 		var mm := CanvasItemMaterial.new()
@@ -464,10 +490,13 @@ func _build() -> void:
 		var tx0 := DeckGen.LOBBY_X1 + 1                  # the street only – not the lift lobby, not inside the shops
 		tint.position = Vector2(tx0, map.hull_top) * GroundMap.TILE * GroundMap.SCALE
 		tint.size = Vector2(map.w - tx0, DeckGen.SHOP_CAP + 1 - map.hull_top) * GroundMap.TILE * GroundMap.SCALE
+		if level == "settlement":                       # all of it lies under the sky
+			tint.position = Vector2.ZERO
+			tint.size = map.size_px() * GroundMap.SCALE
 		_world.add_child(tint)
 	for l in map.lights:
 		var lsp := _add_light(l, add_mat)
-		if is_city() and level == "street":
+		if is_town() and level in ["street", "settlement"]:
 			_city_lights.append([lsp, l, "street"])
 		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
 			lsp.scale *= 1.4                           # the light through the glass: sun, sunset or night
@@ -477,7 +506,7 @@ func _build() -> void:
 		if sp.x >= 0.0 and not z.get("vertical", false) and String(z.get("closed", "")) == "":
 			_add_light({"pos": sp + Vector2(0, 6), "r": 30.0, "col": z.get("col", Color.WHITE), "a": 0.3}, add_mat)
 	_world.add_child(_lights)
-	if is_city():
+	if is_town():
 		_apply_day(city_day(), true)
 	_signs = Node2D.new()
 	_signs.z_index = 10
@@ -624,7 +653,7 @@ func _process(delta: float) -> void:
 	if pilot == null:
 		return
 	_toast_t = maxf(_toast_t - delta, 0.0)
-	if is_city():
+	if is_town():
 		_update_city_day(delta)
 	_update_dust(delta)
 	if _touch >= 0.0:
@@ -650,7 +679,7 @@ func _process(delta: float) -> void:
 		zone = map.zone_at(pilot.pos)
 	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null:
 		zone = {} if _seat.is_empty() else _seat
-	if zone.is_empty() and is_city() and _ride.is_empty() and talk == null and _near_guard() != null:
+	if zone.is_empty() and is_town() and _ride.is_empty() and talk == null and _near_guard() != null:
 		zone = {"kind": "guard", "id": "guard", "title": String(CityStyle.guards(station)["name"]), "rect": Rect2()}
 	_camera(delta)
 	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null or talk_menu != null or _lift_menu != null else _prompt_text(zone))
@@ -890,7 +919,7 @@ func _ride_step(delta: float) -> void:
 				_ride["phase"] = 2
 				_ride["t"] = 0.0
 		2:
-			if level == "landing" and int(_ride["lift"]) < 0 and _ship_spr != null:
+			if level in ["landing", "settlement"] and int(_ride["lift"]) < 0 and _ship_spr != null:
 				# lift-off: dust, she rises off the pad, bigger (nearer to you), and is gone upwards
 				var lt := float(_ride["t"])
 				if lt < 0.05 and _puffs.is_empty():

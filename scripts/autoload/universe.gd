@@ -1750,6 +1750,7 @@ const CITY_TYPES := {"terran": "trade", "ocean": "trade", "jungle": "agri", "des
 	"lava": "industry", "barren": "mining_colony", "toxic": "research", "metal": "shipyard", "dwarf": "mining_colony",
 	"moon_rock": "mining_colony", "moon_ice": "ice_refinery", "moon_volcanic": "industry", "moon_captured": "mining_colony"}
 var _cities := {}
+const SETTLED_KINDS := ["city", "outpost", "mine", "research"]     # 0.7.50.10: places with people and shops
 
 
 static func city_id(body: Dictionary, site: Dictionary) -> String:
@@ -1766,9 +1767,14 @@ func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Diction
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%s_%d_city" % [key, seed_value])
 	var type := String(CITY_TYPES.get(String(body.get("type", "")), "trade"))
+	var settle := String(site.get("kind", "city")) != "city"         # 0.7.50.10: a settlement (outpost, mine, camp)
+	if settle:
+		type = {"mine": "mining_colony", "research": "research"}.get(String(site.get("kind", "")), type)
 	if not CommodityData.STATION_TYPES.has(type):
 		type = "trade"
 	var tier := 3 if has_atmosphere(body) and float(body.get("city", 0.0)) > 0.5 else 2
+	if settle:
+		tier = 1
 	var L := get_layout(system_id)
 	var pidx := int(body.get("planet", -1))
 	for i in L["planets"].size():
@@ -1779,7 +1785,8 @@ func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Diction
 		"market": _make_market(type, rng), "shop": _make_shop(type, tier, rng),
 		"shipyard": _make_shipyard(type, tier, Missions.wealthy(system_id)),
 		"seed": rng.randi(), "zone": NO_FIRE_ZONE[tier - 1], "faction": station_faction(system_id, rng.randi() % 3),
-		"city": true, "body": String(body.get("id", "")), "site": String(site.get("id", "")),
+		"city": not settle, "settlement": settle, "kind": String(site.get("kind", "city")),
+		"body": String(body.get("id", "")), "site": String(site.get("id", "")),
 		"day": CityStyle.daylight(site, body),           # 0.7.50.6: on the day or the night side (0.7.50.7: now)
 		"lon": float(site.get("lon", 0.0)), "lat": float(site.get("lat", 0.0))}   # 0.7.50.8: where it lies – its day goes on
 	_add_faction_yard(st)
@@ -1796,7 +1803,7 @@ func find_city(system_id: int, cid: String) -> Dictionary:
 	if b.is_empty():
 		return {}
 	for s in landing_sites(system_id, b):
-		if String(s["id"]) == parts[1] and String(s["kind"]) == "city":
+		if String(s["id"]) == parts[1] and String(s["kind"]) in SETTLED_KINDS:
 			var st := city_station(system_id, b, s)
 			Economy.prepare_station(st, system_id)
 			return st

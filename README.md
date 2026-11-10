@@ -214,7 +214,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   `CityCanyon.set_day`, the street tint, the lights in `_city_lights`); `CityStyle.rising`, `dusk`, `sunset_color`,
   `star_color`; `CityStyle.sky(body, day, sunset)`; the skyline's sun (`_draw_sun`, its own parallax).
 - 0.7.50.9: `CityStyle.GUARDS` (uniform, name, lines), `GroundView._add_guards` (posted by lifts and stairs, patrols;
-  count by system security), `Walker.guard` / `patrol` (`_patrol`, the slung rifle), zone kind `guard`.; `texture()` renders floors and walls once.
+  count by system security), `Walker.guard` / `patrol` (`_patrol`, the slung rifle), zone kind `guard`.
+- 0.7.50.10: settlements – `scripts/ground/settle_gen.gd` (`SettleGen.build`, `SPECIAL` by economy, `BOUNDS` by world,
+  `GroundMap.pads`), `scripts/ground/pad_traffic.gd` (`PadTraffic`: the other drones on the free pads),
+  `Universe.city_station` also for outposts, mines and camps (`settlement: true`, `SETTLED_KINDS`), `main.land_at` →
+  `GroundView.setup_settlement` (level `settlement`, `is_town()`), `main._services_for`; new objects `tree`, `rock`,
+  `lava_rock`, `dune`, `crystal`, `house`, `tower_rig`, `silo`, `greenhouse`, `dish`.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.10 – 2026-11-10
+
+**Settlements – the small places come alive.**
+- Outposts, mines and research camps are now **settlements under the open sky**, one walkable map: your landing drone
+  comes down on one of its **four landing pads** – on the others, other landing drones come and go (dropping in from
+  above with their shadows closing in, setting down in a puff of dust, waiting, lifting off), their beacons blinking.
+- **The street** runs from the pads past the settlement: its **shops** on the south side – walk in, as on a station
+  (market, outfitter, bar, repair bay, bulletin board, news, as the place has them) – houses on the north side with
+  lit windows, lamp posts, crates, the fuel pump by the pads.
+- **The building it is known for**, by what it lives from (a mine always mines, a research camp researches, an
+  outpost lives from its system's economy): an ore depot with its headframe, ore cart and spoil (mining), an agri
+  co-op with greenhouses and a silo, a workshop, a refinery outlet or chem plant with its silos, a tech lab or
+  research station with its dish, a recruitment office with banners (signs on crew), a lookout hotel.
+- **What bounds it is its world:** dense jungle on jungle worlds, woods on terran ones, **the sea round its platforms**
+  on ocean worlds (a gangway between them, buoys blinking), dunes in the desert, ice shards on ice worlds, a crater's
+  rocks on barren worlds and moons, cooled lava glowing on lava worlds.
+- Guards walk their rounds (one posted by your drone), its people go about; a settlement works like a station (its
+  own market, by the kind of place); in its power's colours; day and night as in the cities.
+- Ruins and crash sites stay landing fields for now – they become POIs (package 53).
+- Codex: **Settlements**.
+
 ## alpha 0.7.50.9 – 2026-11-10
 
 **City guards.**

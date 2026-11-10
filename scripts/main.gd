@@ -173,11 +173,9 @@ func open_deck() -> void:
 	_open_ground_at(view.stations[f.docked_at].data)
 
 
-## The walkable deck of a station – or of a city (0.7.50.5): which of its services have a door.
-func _open_ground_at(st: Dictionary) -> void:
+## Which of a station's (or city's, or settlement's) services there are – id -> "" or why it is closed.
+func _services_for(st: Dictionary) -> Dictionary:
 	var avail := {}
-	for svc in GameData.services:
-		avail[String(svc["id"])] = station_panel.service_available(svc) if station_panel.station == st else ""
 	station_panel.station = st
 	station_panel.view = view
 	for svc2 in GameData.services:
@@ -186,6 +184,12 @@ func _open_ground_at(st: Dictionary) -> void:
 		if String(avail[k]).begins_with("Not offered") or String(avail[k]).begins_with("No ") or String(avail[k]).begins_with("Only in"):
 			avail.erase(k)                         # what this station does not have at all gets no door
 	station_panel.close()
+	return avail
+
+
+## The walkable deck of a station – or of a city (0.7.50.5): which of its services have a door.
+func _open_ground_at(st: Dictionary) -> void:
+	var avail := _services_for(st)
 	close_deck(false)
 	ground = GroundView.new()
 	ground.name = "Ground"
@@ -252,6 +256,20 @@ func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false) -> voi
 	ground = GroundView.new()
 	ground.name = "Ground"
 	add_child(ground)
+	if String(site.get("kind", "")) in ["outpost", "mine", "research"]:
+		# 0.7.50.10: a settlement – its pads, its street and shops; you are there by the landing drone
+		var town := Universe.city_station(GameState.current_system, body, site)
+		var f2 := GameState.active()
+		if f2 != null:
+			f2.docked_at = String(town["id"])
+		Economy.prepare_station(town, GameState.current_system)
+		var av := _services_for(town)
+		ground.setup_settlement(body, site, town, av, GameState.bar_offers(town) if av.has("bar") else [], GameState.current_system, touchdown)
+		ground.used.connect(_on_deck_use)
+		GameState.log_msg("Down at %s on %s by the landing drone." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
+		GameState.codex.event("settlement")
+		_update_input()
+		return
 	ground.setup_landing(body, site, GameState.current_system, touchdown, String(site.get("kind", "")) != "city")
 	ground.used.connect(_on_deck_use)
 	GameState.log_msg("Landed at %s on %s." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
@@ -346,7 +364,7 @@ func close_deck(open_window: bool = true) -> void:
 func _on_deck_use(z: Dictionary) -> void:
 	match String(z.get("kind", "")):
 		"exit":
-			if ground != null and is_instance_valid(ground) and ground.level == "landing":
+			if ground != null and is_instance_valid(ground) and ground.level in ["landing", "settlement"]:
 				take_off()
 			elif ground != null and is_instance_valid(ground) and ground.station.get("city", false):
 				leave_city()

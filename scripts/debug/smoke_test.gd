@@ -2981,7 +2981,7 @@ func _test_codex(view: SystemView) -> void:
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
 		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
-		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot", "landing", "city"]   # packages 40c–e, 49, 50   # package 37: stars
+		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot", "landing", "city", "settlement"]   # packages 40c–e, 49, 50   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -7741,7 +7741,8 @@ func _test_landing(view: SystemView) -> void:
 	if down:
 		main.land_at(body, site)
 	var g = main.ground
-	var field: bool = g != null and g.level == "landing" and g.map.ship_at != Vector2.INF and g._ship_spr != null and g.map.zone_at(g.map.spawn).get("id", "") == "ship"
+	var field: bool = g != null and g.level in ["landing", "settlement"] and g.map.ship_at != Vector2.INF and g._ship_spr != null and g.map.zone_at(g.map.spawn).get("id", "") == "ship"
+	_test_settlement(view, body, sites_all)
 	# 0.7.50.4: a small place - down by the landing drone, not the ship; a city - the ship herself
 	var drone_ok := true
 	if down:
@@ -7767,6 +7768,53 @@ func _test_landing(view: SystemView) -> void:
 	var up: bool = f.docked_at == "" and p.visible and is_equal_approx(p.scale.x, 1.0) and main.ground == null and main.planet_map == null
 	check(cmd_ok and beacons >= 1 and gas_free and down and field and up and GameState.codex.unlocked.has("basics_landing"),
 		"50: %d descent beacons (none over a gas giant); down to %s, the planet map (%d places), landed at %s, back up to orbit" % [beacons, String(body.get("name", "?")), main.planet_map.sites.size() if main.planet_map != null else Universe.landing_sites(view.system_id, body).size(), String(site.get("name", "?"))])
+
+
+## 0.7.50.10: a settlement – its four pads (drones coming and going on the free ones), its street, walk-in shops, the
+## building its economy is known for, guards; bounded by its world; its market trades.
+func _test_settlement(view: SystemView, body: Dictionary, sites_all: Array) -> void:
+	var site := {}
+	for s in sites_all:
+		if String(s["kind"]) in ["outpost", "mine", "research"]:
+			site = s
+			break
+	if site.is_empty():
+		check(true, "0.7.50.10: (no settlement on this body)")
+		return
+	main.land_at(body, site)
+	var g = main.ground
+	var f := GameState.active()
+	var shops := 0
+	var special := ""
+	for z in g.map.zones:
+		if String(z.get("kind", "")) == "service":
+			shops += 1
+			if String(z["title"]).contains("–"):
+				special = String(z["title"])
+	var traffic = null
+	for ch in g._world.get_children():
+		if ch is PadTraffic:
+			traffic = ch
+	var moved := false
+	if traffic != null:
+		for i in 900:
+			traffic._process(0.05)
+			for p in traffic.pads:
+				moved = moved or String(p["state"]) in ["landing", "lifting"]
+	var guards := 0
+	for w in g.people:
+		if w.guard:
+			guards += 1
+	var border := 0
+	for o in g.map.objects:
+		if String(o["kind"]) in ["tree", "rock", "dune", "crystal", "lava_rock"]:
+			border += 1
+	var sea_ok: bool = SettleGen.bounds(body) == "sea" or border > 20
+	var town: Dictionary = Commands.docked_station()
+	var buy := Commands.execute({"type": "market_buy", "item": "food", "amount": 1})
+	check(g.level == "settlement" and g.map.pads.size() == 4 and moved and shops >= 3 and special != "" and guards >= 1 and sea_ok
+		and town.get("settlement", false) and f.docked_at == Universe.city_id(body, site) and GameState.codex.unlocked.has("basics_settlements"),
+		"0.7.50.10: %s – a settlement: 4 pads (drones coming and going), %d shops, '%s', %d guards, bounded by %s (%d) – market: %s" % [String(site["name"]), shops, special, guards, SettleGen.bounds(body), border, "trades" if buy == "" else buy])
 
 
 ## 0.7.50.5: a city – down through its landing hatch, its hangar, the lifts to the shopping street and the tower bar,

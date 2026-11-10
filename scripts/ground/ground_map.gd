@@ -33,6 +33,7 @@ var bay_rect := Rect2()               # tiles: the hangar bay (the view lays a h
 var window_rect := Rect2()            # tiles: where space shows through the glass (the view draws it there only)
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
+var pads: Array = []                  # 0.7.50.10: a settlement's landing pads – their centres (art px)
 var _img: Image
 var _tex: Texture2D
 
