@@ -7725,6 +7725,8 @@ func _test_landing(view: SystemView) -> void:
 		check(false, "50: a descent beacon in the home system")
 		return
 	var p := view.player
+	p.position = node.position + Vector2(-900, 0)
+	var cmd_ok: bool = Commands.execute({"type": "descend", "id": node.data["id"]}) == "" and p.order.get("type", "") == "descend"
 	p.position = node.position + Vector2(-80, 0)
 	view.start_descent(p, node)
 	var guard := 0
@@ -7745,7 +7747,7 @@ func _test_landing(view: SystemView) -> void:
 		view._update_descent(1.0 / 30.0)
 		guard += 1
 	var up: bool = f.docked_at == "" and p.visible and is_equal_approx(p.scale.x, 1.0) and main.ground == null and main.planet_map == null
-	check(beacons >= 1 and gas_free and down and field and up and GameState.codex.unlocked.has("basics_landing"),
+	check(cmd_ok and beacons >= 1 and gas_free and down and field and up and GameState.codex.unlocked.has("basics_landing"),
 		"50: %d descent beacons (none over a gas giant); down to %s, the planet map (%d places), landed at %s, back up to orbit" % [beacons, String(body.get("name", "?")), main.planet_map.sites.size() if main.planet_map != null else Universe.landing_sites(view.system_id, body).size(), String(site.get("name", "?"))])
 
 

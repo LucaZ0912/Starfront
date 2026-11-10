@@ -213,6 +213,17 @@ func _c_dock(c: Dictionary) -> String:
 	return world.order_goto(String(c["id"]))
 
 
+## {"type":"descend", "id": <descent beacon id>} – package 50: fly to the beacon (warp if far) and go down.
+func _c_descend(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var n = world.find_object(String(c["id"]))
+	if n == null or n is Ship or n.kind != "descent":
+		return "That is no descent beacon."
+	return world.order_goto(String(c["id"]))
+
+
 ## {"type":"jump", "id": <gate id>} – fly to the gate and jump.
 func _c_jump(c: Dictionary) -> String:
 	var e := _need_world()

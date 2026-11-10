@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.2 – 2026-11-10
+
+- **Fix – no way down at the beacon:** a selected descent beacon now has a **Descend** button (also the dock key);
+  the ship flies to the beacon – warping first if it is far – and goes down. Before, only *Warp to* and *Approach*
+  were offered.
+
 ## alpha 0.7.50.1 – 2026-11-10
 
 **Teil 7, package 50 begins: down to the planets.**
