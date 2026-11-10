@@ -35,6 +35,7 @@ var round_corners: Array = []         # {x, r, side}: a window front's corner ro
 var title := ""
 var pads: Array = []                  # 0.7.50.10: a settlement's landing pads – their centres (art px)
 var pad_rects: Array = []             # 0.7.50.15: the pads themselves (art px) – their lights follow them
+var foe_spawns: Array = []             # package 52: where foes stand when a fight is set up (art px)
 var econ: Dictionary = {}             # 0.7.50.12: a settlement's economy area – {kind, rect (art px), …} for its life
 var _img: Image
 var _tex: Texture2D

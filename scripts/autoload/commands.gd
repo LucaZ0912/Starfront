@@ -2665,3 +2665,110 @@ func _c_debug_wake_clinic(_c: Dictionary) -> String:
 		m.station_panel.close()
 	m._wake_at(st)
 	return ""
+
+
+# ---------------------------------------------------------------- package 52: fights on foot
+
+const FoeData = preload("res://data/foes.gd")
+const DEBUG_ARENA_FOES := ["bandit_rifleman", "bandit_scrapper", "bandit_gunner"]
+
+
+## {"type":"debug_arena", "world": a world type ("" = the body's own), "foes": [kinds] (default: three bandits),
+##  "body": id} – package 52: down by the landing drone to the debug arena on a body here: the drone's pad, a field of
+## cover, foes at the far side.
+func _c_debug_arena(c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	if f.in_transit():
+		return "Not during a hyperspace jump."
+	var body := Universe.find_body(f.system_id, String(c.get("body", "")))
+	if body.is_empty():
+		var L := Universe.get_layout(f.system_id)
+		for b in L["planets"] + L.get("moons", []):
+			if Universe.landable(b):
+				body = b
+				break
+	var wt := String(c.get("world", ""))
+	if wt != "" and not (Universe.PLANET_TYPES.has(wt) or Universe.MOON_TYPES.has(wt)):
+		return "Unknown world type."
+	if not body.is_empty():
+		body = Universe.debug_body_as(body, wt)
+	if body.is_empty() or not Universe.landable(body):
+		return "No body to land on here."
+	var kinds: Array = c.get("foes", DEBUG_ARENA_FOES)
+	for k in kinds:
+		if not FoeData.FOES.has(String(k)):
+			return "Unknown foe '%s'." % String(k)
+	var site := {"id": "%s_dbg_arena" % String(body["id"]), "kind": "crash", "lon": -0.3, "lat": -0.2, "name": "Debug Arena",
+		"arena": true, "foes": kinds.duplicate()}
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	m.land_at(body, site)
+	if _ground() == null or _ground().combat == null:
+		return "Could not open the arena."
+	GameState.log_msg("[Debug] Arena on %s – %d foes." % [String(body["name"]), kinds.size()], GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_foe", "kind": id, "n": 1, "quality": "" | F–A, "near": bool} – package 52: foes into the fight here
+## (at the far side, or near you), aware of you at once.
+func _c_debug_foe(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.combat == null:
+		return "No fight possible here – open the arena first."
+	var kind := String(c.get("kind", "bandit_rifleman"))
+	if not FoeData.FOES.has(kind):
+		return "Unknown foe '%s'." % kind
+	var q := String(c.get("quality", ""))
+	if q != "" and not q in GearShop.GearData.QUALITIES:
+		return "Unknown quality."
+	var n := clampi(int(c.get("n", 1)), 1, 12)
+	var made := 0
+	for i in n:
+		var at := Vector2.INF
+		if bool(c.get("near", false)):
+			for tries in 12:
+				at = g.combat._free_near(g.pilot.pos + Vector2(randf_range(90, 160), 0).rotated(randf() * TAU))
+				if at != Vector2.INF:
+					break
+		elif not g.map.foe_spawns.is_empty():
+			at = g.map.foe_spawns[randi() % g.map.foe_spawns.size()] + Vector2(randf_range(-10, 10), randf_range(-6, 6))
+			if not g.map.free_at(at, 5.0):
+				at = g.combat._free_near(at)
+		if at == Vector2.INF:
+			continue
+		var fo: Dictionary = g.combat.spawn(kind, at, q)
+		g.combat._wake(fo)
+		made += 1
+	GameState.log_msg("[Debug] %d × %s." % [made, String(FoeData.FOES[kind]["name"])], GameState.COL_WARN)
+	return "" if made > 0 else "No room for them."
+
+
+## {"type":"debug_combat", "do": "kill"|"end"|"freeze"|"ai"|"hurt", "on": bool, "amount": 30} – package 52: every foe
+## down; the fight over (foes gone); foes frozen; the AI view (cover tiles, sight lines, states, chances); hurt yourself.
+func _c_debug_combat(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.combat == null:
+		return "No fight here."
+	var cb = g.combat
+	match String(c.get("do", "")):
+		"kill":
+			for fo in cb.alive():
+				cb._hurt_foe(fo, 99999.0, "explosive")
+		"end":
+			for fo2 in cb.foes:
+				(fo2["w"] as Node).queue_free()
+			cb.foes.clear()
+			cb.locks.clear()
+			cb.active = null
+		"freeze":
+			cb.frozen = bool(c.get("on", not cb.frozen))
+		"ai":
+			cb.show_ai = bool(c.get("on", not cb.show_ai))
+		"hurt":
+			cb._hurt_pilot(float(c.get("amount", 30.0)), String(c.get("dtype", "kinetic")))
+		_:
+			return "Unknown combat debug."
+	return ""

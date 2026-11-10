@@ -286,6 +286,27 @@ Slanted, cosy top-down view since 0.7.49.2.
   `clinic_heal` (`Commands.clinic_price()`), `DeckGen.SHOPS` with `clinic` (object `med_bed`), `GroundView` arrive
   "clinic" / `_clinic_spot()` / `wake_in_clinic()`; `main._wake_at(st)`, `_wake_after_loss` (`GameState.wake_pending`
   after `on_player_ship_lost`), `_fallen()` / `nearest_clinic_city(sys, body)`, `PilotGear.fall()`.
+- 0.7.52.1 (package 52, fights on foot): `scripts/ground/ground_combat.gd` – `GroundCombat` (a Node2D in the view's
+  world, z 40): the cover grid `cover` (0 none, 1 low – `LOW_KINDS`, 2 high – everything else that blocks; `NO_KINDS`
+  thin posts), `sight(a, b)` {blocked, cover, at}; foes `spawn(kind, p, q)` (dicts {w Walker, st, mx, weapon, state
+  idle/engage/move/cover/fight/flee/down, aware, goal, path …}), `_foe_step` / `_decide` / `_cover_spot` / `_wake`;
+  `locks` (`MAX_LOCKS` 3), `active`, `lock(f)` / `unlock(f)` / `next_target()` / `_auto_lock()` (the nearest when a fight
+  starts), `lock_t`; `fire(from, to, w)` (null = the pilot; pellets, shots resolved on arrival in `_resolve` – a dodge
+  turns a hit into a miss), `_explode`, `_hurt_pilot` (`Commands.suit_god` holds it off) / `_hurt_foe`; `dodge(dir)`,
+  `dodge_charges`, `max_dodges()` (Athletics), `swap_weapon()`, `weapon_i`, `in_cover`, `frozen`, `show_ai`, `kills`;
+  `GearData` – `apply_damage(st, dmg, dtype)`, `hit_chance(w, firearms, dist, cover, moving, t_athletics, stim)`,
+  `COVER_CUT`, `COVER_NEAR`, `SHIELD_WAIT`, `SHIELD_ENERGY`, `DODGE_*`, `LOCK_TIME`, `SHOT_SPEED`; `ft_jets` `dash` is a
+  multiplier now (`dash_energy`); `PilotGear.shield` / `armor` (saved), `shield_wait`, `take_damage`, `shield_step`;
+  `data/foes.gd` – `FOES` (bandit scrapper/rifleman/gunner/boss: suit, weapon, quality, firearms, athletics, role, flee,
+  look), `DAMAGE` (foes' share of their weapon's damage), `SIGHT`, `HEAR`; `scripts/ground/combat_hud.gd` – `CombatHud`
+  (lock cards, HOSTILES, cover line under `SuitHud.bottom_y`, weapons with dodge charges); `SuitHud` shows the shield
+  and the new Armour bar as they are; `Walker.aim` / `aim_dtype` (the weapon in the hands, `_draw_aim`), `down`;
+  `scripts/ground/arena_gen.gd` – `ArenaGen.build(body, site, len, beam)` (site `arena`, `foes`), `GroundMap.foe_spawns`;
+  `ObjArt` kinds `barrier` (low) and `bulwark` (high); `GroundView.combat` / `combat_hud` / `combat_allowed()` (the arena
+  only), `_on_click` (left: lock, right: let go), `_collapse(reason)` → `main._fallen(reason)` ("fight"); keys
+  `foot_target` (Tab), `foot_dodge` (Space), `foot_swap` (Q); commands `debug_arena` {world, foes, body}, `debug_foe`
+  {kind, n, quality, near}, `debug_combat` {do kill/end/freeze/ai/hurt}; codex `basics_foot_combat` (event
+  `foot_fight`); skills Athletics and Firearms work; smoke group `foot_combat`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

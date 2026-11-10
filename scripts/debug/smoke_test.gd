@@ -146,6 +146,7 @@ func _process(delta: float) -> void:
 				_test_gear()                     # package 51 – the pilot's suit, slots, pockets, locker
 				_test_landing(view)              # package 50 – down to a planet and back up, then on to the fight
 				_test_debug_ground(view)         # 0.7.51.5 – the debug functions of packages 49–51
+				_test_foot_combat(view)          # package 52 – fights on foot
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -2983,7 +2984,7 @@ func _test_codex(view: SystemView) -> void:
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
 		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
-		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot", "landing", "city", "settlement"]   # packages 40c–e, 49, 50   # package 37: stars
+		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot", "landing", "city", "settlement", "foot_fight"]   # packages 40c–e, 49, 50   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -8856,3 +8857,154 @@ func _test_debug_shot() -> void:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/debug_ground_2.png")
 	print("[SMOKE] screenshot: Claude outputs/debug_ground.png")
+
+
+## Package 52: fights on foot – the layers and the hit chance, the arena and its cover (low: shot over, high: no sight),
+## locking, firing, foes going down, the AI waking, dodging (no hit during the jump), the shield coming back, going
+## down yourself (the clinic), the codex.
+func _test_foot_combat(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	# the layers: optical burns the shield, the rest goes on into the armour at its weight
+	var st := {"shield": 10.0, "armor": 10.0, "health": 100.0}
+	var o1: Dictionary = GD.apply_damage(st, 20.0, "optical")
+	var st2 := {"shield": 0.0, "armor": 50.0, "health": 100.0}
+	GD.apply_damage(st2, 20.0, "kinetic")
+	var st3 := {"shield": 0.0, "armor": 0.0, "health": 100.0}
+	GD.apply_damage(st3, 20.0, "explosive")
+	var layer_ok: bool = is_zero_approx(float(st["shield"])) and absf(float(st["armor"]) - (10.0 - (20.0 - 10.0 / 1.3) * 0.8)) < 0.01 and is_equal_approx(float(st["health"]), 100.0) \
+		and is_equal_approx(float(o1["shield"]), 10.0) and is_equal_approx(float(st2["armor"]), 25.0) and is_equal_approx(float(st3["health"]), 72.0)
+	# the hit chance: cover and running cut it, distance past the optimum too, nothing past the reach; Firearms helps
+	var w: Dictionary = GD.stats("wp_rifle:C")
+	var open_c: float = GD.hit_chance(w, 0, 100.0, false, false, 0, false)
+	var chance_ok: bool = GD.hit_chance(w, 0, 100.0, true, false, 0, false) < open_c * 0.5 and GD.hit_chance(w, 0, 100.0, false, true, 0, false) < open_c \
+		and GD.hit_chance(w, 0, 400.0, false, false, 0, false) < open_c and GD.hit_chance(w, 0, 500.0, false, false, 0, false) == 0.0 \
+		and GD.hit_chance(w, 10, 100.0, false, false, 0, false) > open_c
+	# the arena
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	gear.weapons[0] = "wp_laser_rifle:C"
+	gear.weapons[1] = "wp_rifle:C"
+	var e1 := Commands.execute({"type": "debug_arena", "world": "desert"})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "package 52: the arena opens  [%s]" % e1)
+		return
+	var arena_ok: bool = e1 == "" and cb.foes.size() == 3 and cb.cover.has(1) and cb.cover.has(2) and g.map.wander.is_empty() \
+		and g.combat_allowed() and not cb.fight
+	gear.refill()
+	cb.frozen = true
+	# cover from the map: across a bulwark there is no sight; right behind crates there is cover
+	var high_ok := false
+	var low_ok := false
+	for ob in g.map.objects:
+		var r := Rect2(Vector2(int(ob["x"]), int(ob["y"])) * 16.0, Vector2(int(ob.get("w", 1)), int(ob.get("h", 1))) * 16.0)
+		if String(ob["kind"]) == "bulwark" and r.size.x > r.size.y:
+			high_ok = high_ok or cb.sight(Vector2(r.get_center().x, r.position.y - 20.0), Vector2(r.get_center().x, r.end.y + 20.0))["blocked"]
+		if String(ob["kind"]) == "crates":
+			var b := Vector2(r.get_center().x, r.end.y + 8.0)
+			var sg: Dictionary = cb.sight(b - Vector2(0, 70), b)
+			low_ok = low_ok or (sg["cover"] and not sg["blocked"])
+	# locks: Tab locks one, a second lock adds, the active one is the newest
+	cb.next_target()
+	var a1 = cb.active
+	var other = cb.foes[0] if cb.foes[0] != a1 else cb.foes[1]
+	cb.lock(other)
+	var lock_ok: bool = a1 != null and cb.locks.size() == 2 and cb.active == other and cb.lock_t > 0.0
+	cb.unlock(other)
+	lock_ok = lock_ok and cb.locks.size() == 1 and cb.active == a1
+	# firing: a clear line close to a foe, laser shots land on its layers
+	var tgt: Dictionary = cb.foes[2]
+	var tp: Vector2 = (tgt["w"] as Walker).pos
+	var spot := Vector2.INF
+	for k in 16:
+		var q := tp + Vector2(40, 0).rotated(k * TAU / 16.0)
+		if g.map.free_at(q, 5.0) and not cb.sight(q, tp)["blocked"] and not cb.sight(q, tp)["cover"]:
+			spot = q
+			break
+	var fire_ok := false
+	if spot != Vector2.INF:
+		g.pilot.pos = spot
+		g.pilot.position = spot * GroundMap.SCALE
+		var before: float = float(tgt["st"]["shield"]) + float(tgt["st"]["armor"]) + float(tgt["st"]["health"])
+		for i in 20:
+			cb.fire(null, tgt, GD.stats("wp_laser_rifle:C"))
+		fire_ok = float(tgt["st"]["shield"]) + float(tgt["st"]["armor"]) + float(tgt["st"]["health"]) < before - 50.0
+	# a foe goes down
+	var victim: Dictionary = cb.foes[0]
+	var kills0 := cb.kills
+	cb._hurt_foe(victim, 99999.0, "explosive")
+	var down_ok: bool = victim["dead"] and (victim["w"] as Walker).down and cb.kills == kills0 + 1 and not cb.alive().has(victim) and not cb.locks.has(victim)
+	# waking: the others notice, the fight starts, the nearest is locked by itself, the codex knows, the helmet closes
+	cb.locks.clear()
+	cb.active = null
+	cb.frozen = false
+	cb._wake(cb.foes[1])
+	cb.step(0.05, Vector2.ZERO)
+	var wake_ok: bool = cb.fight and cb.active != null and cb.foes[1]["aware"] and GameState.codex.unlocked.has("basics_foot_combat") and gear.combat_t > 0.0 \
+		and bool(g.pilot_look()["helmet"])
+	for i2 in 30:
+		cb.step(0.1, Vector2.ZERO)
+	var ai_ok: bool = cb.alive().all(func(x): return String(x["state"]) != "idle")
+	cb.frozen = true
+	# dodging: a hit arriving during the jump misses; after it, the next one hurts; the shield waits, then recovers
+	Commands.suit_god = false
+	gear.refill()
+	var sh0: float = gear.shield
+	var c0: float = cb.dodge_charges
+	var dodged: bool = cb.dodge(Vector2.RIGHT)
+	var shot := {"res": {"to": null, "kind": "hit", "dmg": 20.0, "dtype": "kinetic", "splash": 0.0, "from": cb.foes[1]}, "b": g.pilot.pos, "done": false}
+	cb._resolve(shot)
+	var dodge_ok: bool = dodged and cb.dodging() and cb.dodge_charges < c0 and is_equal_approx(gear.shield, sh0) and not cb.dodge(Vector2.RIGHT)
+	for i3 in 5:
+		cb.step(0.1, Vector2.ZERO)
+	shot["done"] = false
+	cb._resolve(shot)
+	var hurt_ok: bool = not cb.dodging() and gear.shield < sh0 and gear.shield_wait > 0.0
+	var sh1: float = gear.shield
+	for i4 in 70:
+		cb.step(0.1, Vector2.ZERO)
+	var regen_ok: bool = gear.shield > sh1
+	# the other weapon in hand
+	var w0 := cb.weapon_id()
+	cb.swap_weapon()
+	var swap_ok: bool = cb.weapon_id() != w0 and cb.weapon_id() == "wp_rifle:C"
+	# debug: spawn near, the AI view, all down, the fight ends
+	var n0 := cb.foes.size()
+	var dbg_ok: bool = Commands.execute({"type": "debug_foe", "kind": "bandit_boss", "n": 2, "near": true}) == "" and cb.foes.size() == n0 + 2 \
+		and Commands.execute({"type": "debug_foe", "kind": "nobody"}) != "" and Commands.execute({"type": "debug_combat", "do": "ai", "on": true}) == "" and cb.show_ai \
+		and Commands.execute({"type": "debug_combat", "do": "kill"}) == "" and cb.alive().is_empty()
+	cb.show_ai = false
+	for i5 in 25:
+		cb.step(0.1, Vector2.ZERO)
+	var end_ok: bool = not cb.fight and cb.active == null
+	# shot down: you wake in a clinic, the body weak
+	var fall_ok := true
+	if not main.nearest_clinic_city(view.system_id, String(g._body.get("id", ""))).is_empty():
+		Commands.execute({"type": "debug_foe", "kind": "bandit_rifleman", "near": true})
+		var e2 := Commands.execute({"type": "debug_combat", "do": "hurt", "amount": 9999.0, "dtype": "explosive"})
+		fall_ok = e2 == "" and main.ground != null and main.ground.level == "clinic" and is_equal_approx(gear.health, 60.0) and main.ground.combat == null
+	# back into space as before
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(layer_ok and chance_ok and arena_ok and high_ok and low_ok and lock_ok and fire_ok and down_ok and wake_ok and ai_ok and dodge_ok and hurt_ok and regen_ok and swap_ok and dbg_ok and end_ok and fall_ok,
+		"package 52: fights on foot – layers, hit chance; the arena (%d foes), cover high and low; locks, firing, a foe down, waking and the auto-lock, the AI moving; a dodge no hit lands in, the shield waits and comes back; weapon swap; debug spawn, AI view, all down, the fight over; shot down → the clinic  [%s]" % [n0,
+		" ".join(PackedStringArray([str(layer_ok), str(chance_ok), str(arena_ok), str(high_ok), str(low_ok), str(lock_ok), str(fire_ok), str(down_ok), str(wake_ok), str(ai_ok), str(dodge_ok), str(hurt_ok), str(regen_ok), str(swap_ok), str(dbg_ok), str(end_ok), str(fall_ok)]))])

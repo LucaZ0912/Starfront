@@ -22,6 +22,9 @@ var stim_t := 0.0                      # 0.7.51.3: a stimulant working (seconds 
 ## 0.7.51.10 (Luz): when the helmet is worn – "auto": only when needed (no air to breathe, or in a fight), "always"
 var helmet := "auto"
 var combat_t := 0.0                     # 0.7.51.10: seconds the pilot counts as in a fight (set when shooting starts)
+var shield := 0.0                       # package 52: the suit's shield and armour as they are now (totals() has the most)
+var armor := 0.0
+var shield_wait := 0.0                  # seconds before the shield recovers after a hit
 
 
 ## A new pilot: a civilian suit (F), a laser pistol, two medkits and an energy cell on the belt.
@@ -46,6 +49,8 @@ func refill() -> void:
 	energy = float(t["energy"])
 	oxygen = float(t["oxygen"])
 	ammo = int(t["ammo"])
+	shield = float(t["shield"])
+	armor = float(t["armor"])
 
 
 ## The slot arrays sized to the suit (what no longer fits is returned).
@@ -107,6 +112,8 @@ func clamp_state() -> void:
 	oxygen = minf(oxygen, float(t["oxygen"]))
 	ammo = mini(ammo, int(t["ammo"]))
 	health = minf(health, GearData.HEALTH)
+	shield = clampf(shield, 0.0, float(t["shield"]))
+	armor = clampf(armor, 0.0, float(t["armor"]))
 
 
 # ---------------------------------------------------------------- 0.7.51.3: outside
@@ -146,6 +153,32 @@ func env_step(delta: float, env: Dictionary, sprinting: bool) -> Dictionary:
 	stim_t = maxf(0.0, stim_t - delta)
 	combat_t = maxf(0.0, combat_t - delta)
 	return {"exposure": exposure, "out_of_air": no_air, "out_of_energy": not powered}
+
+
+## Package 52: hit on foot – through shield, armour and health (GearData.apply_damage); the shield waits before it
+## recovers. Returns what each layer lost.
+func take_damage(dmg: float, dtype: String) -> Dictionary:
+	var st := {"shield": shield, "armor": armor, "health": health}
+	var out := GearData.apply_damage(st, dmg, dtype)
+	shield = float(st["shield"])
+	armor = float(st["armor"])
+	health = maxf(0.0, float(st["health"]))
+	shield_wait = GearData.SHIELD_WAIT
+	return out
+
+
+## Package 52: the shield recovers after a while without hits, on the suit's energy (regen points a second).
+func shield_step(delta: float) -> void:
+	if shield_wait > 0.0:
+		shield_wait = maxf(0.0, shield_wait - delta)
+		return
+	var t := totals()
+	var mx := float(t["shield"])
+	if shield >= mx or energy <= 0.0:
+		return
+	var add := minf(float(t["regen"]) * delta, mx - shield)
+	shield += add
+	energy = maxf(0.0, energy - add * GearData.SHIELD_ENERGY)
 
 
 ## Walking speed × (the suit, its plates, a stimulant; running with a sprint booster).
@@ -193,7 +226,7 @@ func use_belt(i: int) -> String:
 				belt[i] = {}
 			return "%s used." % String(s["name"])
 		"grenade":
-			return "%s – throwing comes with the fights on foot." % String(s["name"])
+			return "%s – throwing grenades comes with the next update." % String(s["name"])
 		"tool":
 			return "%s – its work comes with the places to explore." % String(s["name"])
 	return ""
@@ -218,6 +251,9 @@ func fall() -> Array:
 	charge()
 	health = 60.0
 	stim_t = 0.0
+	var t := totals()
+	shield = float(t["shield"])
+	armor = float(t["armor"])
 	return lost
 
 
@@ -226,6 +262,9 @@ func aboard() -> void:
 	charge()
 	health = GearData.HEALTH
 	stim_t = 0.0
+	var t := totals()
+	shield = float(t["shield"])
+	armor = float(t["armor"])                       # package 52: the ship's workshop mends the plate
 
 
 # ---------------------------------------------------------------- pockets
@@ -429,7 +468,7 @@ func fetch(j: int, fit) -> String:
 func to_dict() -> Dictionary:
 	return {"suit": suit, "weapons": weapons.duplicate(), "belt": belt.duplicate(true), "features": features.duplicate(),
 		"inv": inv.duplicate(true), "lockers": lockers.duplicate(true), "health": health, "energy": energy, "oxygen": oxygen, "ammo": ammo,
-		"helmet": helmet}
+		"helmet": helmet, "shield": shield, "armor": armor}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -450,4 +489,7 @@ func from_dict(d: Dictionary) -> void:
 	energy = float(d.get("energy", 0.0))
 	oxygen = float(d.get("oxygen", 0.0))
 	ammo = int(d.get("ammo", 0))
+	var t := totals()
+	shield = float(d.get("shield", t["shield"]))
+	armor = float(d.get("armor", t["armor"]))
 	clamp_state()

@@ -160,6 +160,13 @@ Every suit has an energy store and an oxygen tank. Out on a hostile world the li
 
 The Gear shops (Fieldkit Outfitters) sell all of it. If you fall outside, someone finds you: you wake in the clinic of the nearest city, or of the last station – and what was in your pockets is gone. If your ship is lost, you wake in the clinic of the station she is rebuilt at.",
 		"see": ["basics_settlements", "basics_landing"]},
+	"basics_foot_combat": {"cat": "basics", "title": "Fighting on foot", "unlock": "foot_fight", "image": {"icon": "o_armor"},
+		"text": "On foot you fight as you do in space: you lock your targets and your weapon fires by itself. When a fight starts the nearest foe is locked at once; Tab locks the next one, a click on a foe locks it (up to three, the active one with the thick red brackets) and a right click lets it go. How often you hit depends on the weapon, your Firearms, the distance – past about half its reach a weapon loses its aim – and on the target: one that runs is harder to hit, one in cover much harder.
+
+Your part is where you stand. Crates, rocks, barrels and barriers are low cover – you shoot over them, and shots at you from the other side mostly end in them; a green half-ring shows you are covered. Bulwarks and walls are high cover: nobody sees or shoots through them. Space is a dodge – a quick jump in the direction you walk, during which no shot hits you; Athletics gives you more of them and brings them back sooner, and jump jets make them longer. Q puts your other weapon in hand: lasers burn through shields, slugs through armour, shells hurt the body.
+
+Damage goes through the shield, then the armour, then the body. The shield comes back by itself after a few quiet seconds, drawing on the suit's energy; armour is only mended aboard your ship. Foes take cover facing you, move on when you get round them, rush you with scatter guns, and run when they are badly hurt. If you go down, you wake in a clinic – and what was in your pockets is gone.",
+		"see": ["basics_gear", "basics_on_foot"]},
 	"basics_landing": {"cat": "basics", "title": "Landing on planets", "unlock": "landing", "image": {"icon": "engine"},
 		"text": "Over the middle of every planet and moon with solid ground hangs a descent beacon – warp to it, and from there your ship goes down: it speeds up and sinks, smaller and smaller, into the world below. Where there is air, the way down glows with heat.
 

@@ -19,8 +19,8 @@ const SKILLS := [
 	["leadership", "Leadership", ["charisma"], "Leading crews and wingmen (from package 31)", "flying with a crew or wingmen (later)"],
 	["negotiation", "Negotiation", ["charisma", "reflexes"], "Higher contract rewards", "completing contracts"],
 	["electronics", "Electronics", ["intelligence", "reflexes"], "Radar jammer range, scanner speed", "jamming, warrant and cargo scans, interdictions"],
-	["athletics", "Athletics", ["strength", "dexterity"], "On foot (part 7)", "on foot (part 7)"],
-	["firearms", "Firearms", ["dexterity", "reflexes"], "Hand weapons (part 7)", "on foot (part 7)"],
+	["athletics", "Athletics", ["strength", "dexterity"], "On foot: more dodges that come back sooner, harder to hit while moving", "dodging shots on foot"],
+	["firearms", "Firearms", ["dexterity", "reflexes"], "Hand weapons: a better hit chance, quicker target locks", "hits with hand weapons"],
 ]
 
 

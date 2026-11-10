@@ -23,6 +23,9 @@ var drink_col := Color(0.95, 0.7, 0.25)
 var guard := false                 # 0.7.50.9: a city guard – posted (stays) or on patrol
 var xray := false                  # 0.7.51.13: behind the clinic's scanner – drawn as a skeleton
 var patrol: Array = []             # the points a guard walks between, in turn
+var aim := Vector2.INF             # package 52: in a fight – the weapon in the hands, pointed there (art px)
+var aim_dtype := "kinetic"         # its damage type (the colour of the weapon)
+var down := false                  # package 52: fallen in a fight – lies on the ground
 var _pp := 0
 const DRINK_TIME := 3.2
 var _t := 0.0
@@ -157,6 +160,15 @@ func _draw() -> void:
 	if xray:
 		tex = ChibiArt.skeleton(dir, f)
 	var size := Vector2(tex.get_width(), tex.get_height()) * ChibiArt.CHAR_SCALE        # 0.7.49.11: finer than the deck
+	if down:
+		# package 52: fallen – lying on the ground, the head to one side, darker
+		draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, 11.0 * s, Color(0, 0, 0, 0.3))
+		var side := -1.0 if dir == 2 else 1.0
+		draw_set_transform(Vector2(-size.y * 0.5 * side, -3.0 * s), PI * 0.5 * side, Vector2.ONE)
+		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y), size), false, Color(0.62, 0.6, 0.62))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
 	var bob := 0.0
 	if not moving and not sitting:
 		bob = round(sin(_t * 2.2) * 0.4) * ChibiArt.CHAR_SCALE / s     # breathing
@@ -175,7 +187,9 @@ func _draw() -> void:
 		draw_texture_rect(st, Rect2(Vector2(-size.x * 0.5, -size.y - SIT_LIFT * s), size), false)
 	else:
 		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
-	if guard and not sitting:
+	if aim != Vector2.INF and not sitting and not down:
+		_draw_aim(size, bob * s)
+	elif guard and not sitting:
 		# 0.7.50.9: a guard's rifle slung across the chest (pointing down – it stays there), a lamp on the shoulder
 		var cs2 := ChibiArt.CHAR_SCALE
 		var gy0 := -size.y + bob * s
@@ -188,7 +202,7 @@ func _draw() -> void:
 		var lamp: Color = PilotArt_CLOTH(int(look.get("color2", 3)))
 		if fposmod(_t * 1.3 + pos.x * 0.01, 2.0) < 1.4:
 			draw_rect(Rect2(Vector2(-7.0 * cs2 * side - 2.0, gy0 + 13.0 * cs2), Vector2(4, 4)), lamp.lightened(0.3))
-	if slung != "" and not guard and not sitting:
+	if slung != "" and not guard and not sitting and aim == Vector2.INF:
 		# 0.7.51.2: the weapon slung across the back – seen behind the shoulder, whole from behind
 		var cs3 := ChibiArt.CHAR_SCALE
 		var wy0 := -size.y + bob * s
@@ -230,3 +244,31 @@ func _draw() -> void:
 static func PilotArt_CLOTH(i: int) -> Color:
 	var c: Array = ChibiArt.PilotArt.CLOTH
 	return c[posmod(i, c.size())]
+
+
+## Package 52: the weapon in the hands at chest height, pointed at what is aimed at (seen from the side when facing
+## left or right, foreshortened up and down); lasers with a glowing emitter, slug guns dark, launchers olive.
+func _draw_aim(size: Vector2, bob_px: float) -> void:
+	var cs := ChibiArt.CHAR_SCALE
+	var chest := Vector2(0, -size.y + bob_px + 22.0 * cs)
+	var to := (aim - pos) * GroundMap.SCALE + Vector2(0, -14.0 * GroundMap.SCALE) - chest
+	var d := to.normalized() if to.length() > 0.1 else Vector2.RIGHT
+	d.y *= 0.6
+	d = d.normalized()
+	var side := 1.0 if d.x >= 0.0 else -1.0
+	var hand := chest + Vector2(3.0 * cs * side, 0.0)
+	var tip := hand + d * 11.0 * cs
+	var wc: Color = {"optical": Color(0.75, 0.8, 0.88), "kinetic": Color(0.3, 0.32, 0.36), "explosive": Color(0.38, 0.42, 0.3)}.get(aim_dtype, Color(0.3, 0.32, 0.36))
+	var behind := dir == 1                                     # facing away: the weapon in front of the body, hidden
+	if behind:
+		return
+	draw_line(hand - d * 3.0 * cs, tip, Color(0.06, 0.06, 0.08), 3.4 * cs)
+	draw_line(hand - d * 3.0 * cs, tip, wc, 1.4 * cs)
+	draw_line(hand + Vector2(0, 1.0 * cs), hand + Vector2(0, 3.0 * cs), Color(0.06, 0.06, 0.08), 2.0 * cs)   # the grip
+	if aim_dtype == "optical":
+		draw_circle(tip - d * 1.5 * cs, 1.0 * cs, Color(0.35, 0.95, 1.0))
+
+
+## The muzzle (screen px relative to the walker) – where shots leave.
+func muzzle() -> Vector2:
+	return pos + Vector2(4.0 if dir != 2 else -4.0, -15.0)

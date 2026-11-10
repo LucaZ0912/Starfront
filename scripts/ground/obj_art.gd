@@ -113,6 +113,10 @@ static func _rise(kind: String) -> int:
 			return 30
 		"med_cabinet":
 			return 30
+		"barrier":                  # package 52: cover – a low plated barricade (~1.3 m) and a high bulwark (~2.6 m)
+			return 8
+		"bulwark":
+			return 30
 	return 6
 
 
@@ -556,6 +560,45 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			for k6 in 4:
 				if srng.randf() < 0.5:
 					_p(img, int(pw * 0.5 + srng.randf_range(-pw * 0.3, pw * 0.3)), int(fy + ph * 0.4 + srng.randf_range(-3.0, 3.0)), Color.from_hsv(srng.randf(), 0.6, 0.95))
+		"barrier", "bulwark":       # package 52: cover in a fight – plated sections with seams, a light strip, emitters
+			var hi := kind == "bulwark"
+			var bc: Color = o.get("col", Color(0.4, 0.43, 0.48))
+			var lc: Color = Color(1.0, 0.62, 0.18) if not hi else Color(0.35, 0.9, 1.0)
+			var face_h := 30 if hi else 12          # the front face, seen from the south
+			var top_d := 8                          # the depth of its top
+			if pw >= ph:
+				var y0 := fy + ph - face_h - top_d
+				_r(img, 0, y0, pw, top_d, bc.lightened(0.18))                   # the top
+				_r(img, 0, y0, pw, 1, bc.lightened(0.38))
+				_r(img, 0, y0 + top_d, pw, face_h, bc.darkened(0.12))           # the front face
+				_r(img, 0, y0 + top_d, pw, 1, bc.darkened(0.4))
+				for x in range(0, pw, 16):                                     # its sections
+					_r(img, x, y0, 1, top_d + face_h, bc.darkened(0.45))
+					_p(img, x + 3, y0 + top_d + 3, bc.lightened(0.3))
+					_p(img, x + 12, y0 + top_d + 3, bc.lightened(0.3))
+					if hi:
+						_r(img, x + 4, y0 + top_d + 9, 8, 12, bc.darkened(0.22))  # an inset plate
+						_r(img, x + 4, y0 + top_d + 9, 8, 1, bc.lightened(0.1))
+				_r(img, 1, y0 + top_d + face_h - 5, pw - 2, 1, lc)               # the light strip low on the face
+				_r(img, 1, y0 + top_d + face_h - 2, pw - 2, 2, bc.darkened(0.5))
+				for x2 in range(8, pw, 16):
+					_p(img, x2, y0 + 2, lc.lightened(0.3))                      # emitters along the top
+			else:
+				var yt := fy - (face_h - 12) - top_d + 4
+				var x0 := 3
+				var ww := pw - 6
+				_r(img, x0, yt, ww, fy + ph - face_h - yt, bc.lightened(0.18))   # the top along its length
+				_r(img, x0, yt, 1, fy + ph - face_h - yt, bc.lightened(0.38))
+				_r(img, x0 + ww - 1, yt, 1, fy + ph - face_h - yt, bc.darkened(0.3))
+				for y in range(yt + 12, fy + ph - face_h, 16):
+					_r(img, x0, y, ww, 1, bc.darkened(0.4))
+					_p(img, x0 + ww / 2, y + 5, lc.lightened(0.3))
+				_r(img, x0, fy + ph - face_h, ww, face_h, bc.darkened(0.12))      # its end face to the south
+				_r(img, x0, fy + ph - face_h, ww, 1, bc.darkened(0.4))
+				_r(img, x0 + 1, fy + ph - 5, ww - 2, 1, lc)
+				_r(img, x0, fy + ph - 2, ww, 2, bc.darkened(0.5))
+				if hi:
+					_r(img, x0 + 2, fy + ph - face_h + 6, ww - 4, 12, bc.darkened(0.22))
 		"rock", "lava_rock":         # 0.7.50.11: a group of boulders, each its own – facets, cracks, moss or glowing seams
 			var rc: Color = o.get("col", Color(0.45, 0.43, 0.42))
 			var rrng := RandomNumberGenerator.new()

@@ -29,6 +29,17 @@ const LAYER_MULT := {
 }
 const HEALTH := 100.0                 # the pilot's own body
 
+## Package 52: fights on foot.
+const COVER_CUT := 0.6                 # low cover takes this share off the hit chance of shots at you
+const COVER_NEAR := 26.0               # low cover counts when it is this close to you (art px), between you and the shot
+const SHIELD_WAIT := 4.0               # seconds without a hit before a shield recovers
+const SHIELD_ENERGY := 0.25            # suit energy per point of shield recovered
+const DODGE_TIME := 0.3                # a dodge: seconds of the jump (no shot hits meanwhile)
+const DODGE_SPEED := 2.6               # × walking speed while dodging (~3 m)
+const DODGE_RECHARGE := 4.5            # seconds a dodge charge takes to come back (Athletics shortens it)
+const LOCK_TIME := 0.6                 # seconds to lock a target (Firearms shortens it)
+const SHOT_SPEED := 720.0              # slugs and shells, art px a second (lasers are at once)
+
 ## The suit classes. weapons / belt / features: slot counts; shield, armor, energy, oxygen (minutes of breathing),
 ## ammo: base values at quality C; env: protection 0..1 against each hazard; speed: walking speed ×.
 const SUITS := {
@@ -113,8 +124,8 @@ const FEATURES := {
 		"desc": "More plate over chest and legs; a little slower."},
 	"ft_sprint": {"name": "Sprint Booster", "maker": "Maison Aurelle", "sprint": 1.3, "energy_rate": 6.0, "price": 2300,
 		"desc": "Servos in the legs: a third faster while running, on the suit's energy."},
-	"ft_jets": {"name": "Jump Jets", "maker": "Axiom Astronautics", "dash": 120.0, "energy": 8.0, "price": 3600,
-		"desc": "A burst of thrust: a quick dash to dodge or to cover."},
+	"ft_jets": {"name": "Jump Jets", "maker": "Axiom Astronautics", "dash": 1.6, "dash_energy": 8.0, "price": 3600,
+		"desc": "A burst of thrust: every dodge takes you further (×1.6), for a little of the suit's energy."},
 	"ft_thermo": {"name": "Temperature Regulator", "maker": "Earthworks", "env": {"heat": 0.3, "cold": 0.3}, "price": 1700,
 		"desc": "Keeps heat and cold out – the life support needs less."},
 	"ft_o2": {"name": "Oxygen Reserve", "maker": "Earthworks", "oxygen": 30.0, "price": 1200, "desc": "A second tank: +30 minutes of air."},
@@ -290,3 +301,43 @@ static func all_ids() -> Array:
 		else:
 			out.append(f2)
 	return out
+
+
+# ---------------------------------------------------------------- package 52: fights on foot
+
+## Damage through the layers shield → armour → health, each layer weighing the damage type as LAYER_MULT says (as the
+## ships do): what is left over passes on to the next layer at its own rate. `st` has shield, armor, health and is
+## changed. Returns what each layer lost: {shield, armor, health}.
+static func apply_damage(st: Dictionary, dmg: float, dtype: String) -> Dictionary:
+	var out := {"shield": 0.0, "armor": 0.0, "health": 0.0}
+	var left := dmg
+	for layer in ["shield", "armor", "health"]:
+		if left <= 0.0001:
+			break
+		var m := float(LAYER_MULT[layer].get(dtype, 1.0))
+		var have := float(st.get(layer, 0.0))
+		var take := minf(left * m, have)
+		st[layer] = have - take
+		out[layer] = take
+		left -= take / m
+	return out
+
+
+## The chance one shot of weapon `w` (stats) hits: steadier weapons and Firearms aim better; past the optimal range
+## (45 % of the reach) it falls off to half at the end; a target that moves (Athletics makes it harder still), is on a
+## stimulant or sits in low cover is harder to hit. 0 beyond the reach.
+static func hit_chance(w: Dictionary, firearms: int, dist: float, cover: bool, moving: bool, t_athletics: int, stim: bool) -> float:
+	var reach := float(w.get("range", 200.0))
+	if dist > reach:
+		return 0.0
+	var c := 0.78 - float(w.get("spread", 0.05)) * 0.8 + 0.015 * firearms
+	var opt := reach * 0.45
+	if dist > opt:
+		c *= lerpf(1.0, 0.55, (dist - opt) / maxf(reach - opt, 1.0))
+	if moving:
+		c *= 0.85 - 0.01 * t_athletics
+	if stim:
+		c *= 0.9
+	if cover:
+		c *= 1.0 - COVER_CUT
+	return clampf(c, 0.03, 0.95)

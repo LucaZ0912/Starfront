@@ -3,6 +3,40 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.1 – 2026-11-10
+
+**Package 52 begins – fights on foot (hybrid, after the mockup Luz approved).** For now in the **debug arena**
+(F12 → Ground → Combat; the real places to fight come once the system stands – Luz).
+
+- **Locking as in space:** when a fight starts the nearest foe is locked by itself (Luz: yes); Tab locks the next, a
+  click on a foe locks it, a right click lets it go – up to three targets with red brackets (T1–T3), the active one
+  thick, a short lock-on arc; lock cards top centre with name, distance, hit chance, their weapon and the bars for
+  shield, armour and health.
+- **The weapon fires by itself** at the active target when it is in reach and in sight; the hit chance comes from the
+  weapon's steadiness, **Firearms**, the distance (past about half the reach it falls off), and the target – running,
+  on a stimulant, in cover. Lasers draw the suit's energy, slug guns and launchers ammunition; Q puts the other weapon
+  in hand. Shots fly (lasers at once), misses fly past and stop at high cover, damage numbers in the colour of the
+  layer they reached.
+- **Shield → armour → health** with the damage types' weights as on the ships; the suit's shield comes back after four
+  quiet seconds on its energy, armour is mended aboard. The suit's bars now show shield and armour as they are.
+- **Cover from the map:** crates, rocks, barrels and the new plated **barriers** are low cover – you shoot over them,
+  shots at someone right behind them mostly end in them ("blocked", sparks); the new **bulwarks**, walls and the ship
+  are high cover – no sight through them. A green half-ring and the line "IN COVER / PARTLY IN COVER / OUT IN THE OPEN"
+  show where you stand.
+- **Dodge on Space** (Luz: yes): a quick jump in your walking direction (sideways to the target if you stand), no shot
+  lands during it; charges and their recharge from **Athletics**, jump jets make it ×1.6 longer.
+- **Bandits** (Dust Rats): the scrapper rushes in with a scatter gun, the rifleman takes cover at range, the gunner
+  sprays from a spot, the boss leads from cover with a laser rifle and a real shield. They notice you (sight, shots
+  heard), call to each other, seek cover facing you and move on when you get round it, run when badly hurt, and fall.
+- **Going down in a fight:** you wake in the clinic ("You went down in the fight"), the pockets emptied.
+- **The weapon in the hands** of whoever fights, pointed at the target; the helmet closes for the fight.
+- **Debug (F12 → Ground → Combat):** open the arena (world type to choose, with three bandits or empty), spawn any foe
+  (quality, number, far or near), all foes down, end the fight, freeze them, the **AI view** (low and high cover, sight
+  lines, states, layers, both hit chances), hit yourself or go down now, Firearms/Athletics 0/5/10; the status line
+  shows the fight.
+- Codex entry "Fighting on foot"; Athletics and Firearms now work (skill tree); keys Tab / Space / Q in the "On foot"
+  group; smoke test group `foot_combat`.
+
 ## alpha 0.7.51.20 – 2026-11-10
 
 **Fix (Luz): the hangar's guide line no longer runs through the wall by the lifts** – it stops at the wall and goes on

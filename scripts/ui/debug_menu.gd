@@ -702,6 +702,7 @@ func _process(_delta: float) -> void:
 # ---------------------------------------------------------------- 0.7.51.5: packages 49–51 – on foot, landing, gear
 
 const GroundGear = preload("res://data/gear.gd")
+const FoeData52 = preload("res://data/foes.gd")
 const PHASES := [["day", "Day"], ["dusk", "Dusk"], ["night", "Night"], ["dawn", "Dawn"]]
 var _ground_status: Label
 
@@ -821,6 +822,43 @@ func _build_ground() -> void:
 	rc.add_child(UI.button("Collapse now", func(): _cmd({"type": "debug_collapse"})))
 	rc.add_child(UI.button("Wake in the clinic here", func(): _cmd({"type": "debug_wake_clinic"})))
 	content.add_child(UI.wrap_label("Collapse: on foot the body gives out – you wake in the nearest city's clinic (else the last station's), the pockets emptied. Wake in the clinic: of the station or city you are docked at.", 12, UI.TEXT_DIM, 560))
+	# package 52: fights on foot
+	_section("Combat on foot (package 52)")
+	var at: Array = _world_types("World: the body's own")
+	var aw := _option(at[0], at[1], 160)
+	var ra := _row()
+	ra.add_child(aw)
+	ra.add_child(UI.button("Open the arena (3 bandits)", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata()})))
+	ra.add_child(UI.button("Empty arena", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(), "foes": []})))
+	var fk: Array = []
+	var fn: Array = []
+	for k in FoeData52.KINDS:
+		fk.append(k)
+		fn.append(String(FoeData52.FOES[k]["name"]))
+	var fsel2 := _option(fk, fn, 200)
+	var fq := _option([""] + GroundGear.QUALITIES, ["Quality: its own"] + GroundGear.QUALITIES, 130)
+	var fcnt := _spin(1, 12, 1)
+	fcnt.custom_minimum_size = Vector2(70, 0)
+	var rf := _row()
+	rf.add_child(fsel2)
+	rf.add_child(fq)
+	rf.add_child(fcnt)
+	rf.add_child(UI.button("Spawn far", func(): _cmd({"type": "debug_foe", "kind": fsel2.get_selected_metadata(), "quality": fq.get_selected_metadata(), "n": int(fcnt.value)})))
+	rf.add_child(UI.button("Spawn near", func(): _cmd({"type": "debug_foe", "kind": fsel2.get_selected_metadata(), "quality": fq.get_selected_metadata(), "n": int(fcnt.value), "near": true})))
+	var rk := _row()
+	rk.add_child(UI.button("All foes down", func(): _cmd({"type": "debug_combat", "do": "kill"})))
+	rk.add_child(UI.button("End the fight (foes gone)", func(): _cmd({"type": "debug_combat", "do": "end"})))
+	rk.add_child(UI.button("Freeze / unfreeze foes", func(): _cmd({"type": "debug_combat", "do": "freeze"})))
+	rk.add_child(UI.button("AI view on / off", func(): _cmd({"type": "debug_combat", "do": "ai"})))
+	var rh := _row()
+	rh.add_child(UI.button("Hit me (30 kinetic)", func(): _cmd({"type": "debug_combat", "do": "hurt", "amount": 30.0})))
+	rh.add_child(UI.button("Go down now", func(): _cmd({"type": "debug_combat", "do": "hurt", "amount": 9999.0, "dtype": "explosive"})))
+	for sk in ["firearms", "athletics"]:
+		var skk: String = sk
+		for lv2 in [0, 5, 10]:
+			var lvv: int = lv2
+			rh.add_child(UI.button("%s %d" % [skk.capitalize(), lvv], func(): _cmd({"type": "debug_skill", "skill": skk, "level": lvv})))
+	content.add_child(UI.wrap_label("The arena: the landing drone on its pad, a field of cover (crates, barriers and rocks to shoot over; bulwarks you cannot see through), foes at the far side. Tab locks the next target, a click any, Space dodges, Q swaps the weapon. AI view: low cover amber, high cover red, sight lines (green clear, amber over cover, red blocked), each foe's state, layers and both hit chances. The suit's invulnerability (above) holds off shots too.", 12, UI.TEXT_DIM, 560))
 
 
 func _update_ground_status() -> void:
@@ -840,7 +878,10 @@ func _update_ground_status() -> void:
 			"indoors" if gv.env.is_empty() else (("air " if bool(gv.env.get("breathable", true)) else "no air ") + ", ".join(hz))]
 		if gv.is_town():
 			where += "  •  daylight %d %%" % int(gv.city_day() * 100.0)
+		if gv.combat != null:
+			where += "  •  fight: %s, foes %d (%d aware), %d down" % ["on" if gv.combat.fight else "off", gv.combat.alive().size(),
+				gv.combat.alive().filter(func(x): return x["aware"]).size(), gv.combat.kills]
 	var f := GameState.active()
-	_ground_status.text = "%s  •  docked: %s\nHealth %d  •  Energy %d/%d  •  Oxygen %.1f/%d min  •  Ammo %d/%d  •  %s" % [where,
-		f.docked_at if f != null and f.docked_at != "" else "–", int(g.health), int(g.energy), int(t["energy"]), g.oxygen, int(t["oxygen"]),
+	_ground_status.text = "%s  •  docked: %s\nHealth %d  •  Shield %d  •  Armour %d  •  Energy %d/%d  •  Oxygen %.1f/%d min  •  Ammo %d/%d  •  %s" % [where,
+		f.docked_at if f != null and f.docked_at != "" else "–", int(g.health), int(g.shield), int(g.armor), int(g.energy), int(t["energy"]), g.oxygen, int(t["oxygen"]),
 		g.ammo, int(t["ammo"]), GroundGear.display_name(g.suit)]

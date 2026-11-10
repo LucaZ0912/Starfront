@@ -9,6 +9,7 @@ var env: Dictionary = {}                # {} = indoors / a safe place
 var indoors := false
 var exposure := 0.0
 var _t := 0.0
+var bottom_y := 0.0                      # package 52: where the bars end (the cover line goes under them)
 
 
 func _ready() -> void:
@@ -43,7 +44,9 @@ func _draw() -> void:
 	var w := 200.0
 	_bar(Vector2(x, y), w, "Health", g.health, GearData.HEALTH, Color(1.0, 0.35, 0.35), "%d" % int(g.health))
 	y += 22
-	_bar(Vector2(x, y), w, "Shield", float(t["shield"]), float(t["shield"]), Color(0.35, 0.85, 1.0), "%d" % int(t["shield"]))
+	_bar(Vector2(x, y), w, "Shield", g.shield, float(t["shield"]), Color(0.35, 0.85, 1.0), "%d" % int(g.shield))
+	y += 22
+	_bar(Vector2(x, y), w, "Armour", g.armor, float(t["armor"]), Color(1.0, 0.8, 0.3), "%d" % int(g.armor))       # package 52
 	y += 22
 	_bar(Vector2(x, y), w, "Energy", g.energy, float(t["energy"]), Color(1.0, 0.85, 0.3), "%d" % int(g.energy))
 	y += 22
@@ -70,8 +73,12 @@ func _draw() -> void:
 			y += 19
 		if g.energy <= 0.0:
 			draw_string(font, Vector2(x + 7, y + 14), "SUIT ENERGY EMPTY – life support off", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.3, 0.3) if fposmod(_t * 2.0, 1.0) < 0.6 else Color(1.0, 0.7, 0.4))
+		if g.energy <= 0.0:
+			y += 20
 	elif indoors and not env.is_empty():
 		draw_string(font, Vector2(x + 4, y + 13), "Indoors – the suit rests", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.6, 0.95, 0.65))
+		y += 18
+	bottom_y = y
 	# the belt along the bottom left
 	var bx := 14.0
 	var by := get_viewport_rect().size.y - 54.0

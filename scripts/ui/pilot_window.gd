@@ -428,7 +428,7 @@ func _skill_card(s: Array) -> Control:
 	var id: String = s[0]
 	var sk: Dictionary = GameState.pilot.get("skills", {}).get(id, {"lvl": 0, "xp": 0.0})
 	var lvl := int(sk["lvl"])
-	var later := id in ["athletics", "firearms", "leadership"]
+	var later := id in ["leadership"]                     # package 52: Athletics and Firearms work on foot
 	var card := UI.neon_panel(Color(COL, 0.35), Color(0.05, 0.04, 0.03, 0.95), 1)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.custom_minimum_size = Vector2(560, 0)

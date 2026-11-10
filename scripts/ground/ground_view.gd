@@ -85,6 +85,8 @@ const HATCH_TIME := 0.85
 var env: Dictionary = {}                # 0.7.51.3: the world outside ({} on a station's or city's deck)
 var hud: SuitHud = null
 var _collapsed := false
+var combat: GroundCombat = null         # package 52: the fight on foot (where weapons are allowed)
+var combat_hud: CombatHud = null
 var _warned := {}
 
 
@@ -94,6 +96,7 @@ func _ready() -> void:
 	_space.color = Color(0, 0, 0)
 	_space.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_space.mouse_filter = Control.MOUSE_FILTER_STOP
+	_space.gui_input.connect(_on_click)                # package 52: a click on a foe locks it
 	add_child(_space)
 	_world = Node2D.new()
 	add_child(_world)
@@ -133,6 +136,9 @@ func _ready() -> void:
 	ui.add_child(_prompt)
 	hud = SuitHud.new()                             # 0.7.51.3: the suit's bars, the hazards, the belt
 	ui.add_child(hud)
+	combat_hud = CombatHud.new()                    # package 52
+	combat_hud.suit_hud = hud
+	ui.add_child(combat_hud)
 
 
 ## The line under the title: how to walk – and the way back (0.7.50.15: by the place you are in).
@@ -149,6 +155,10 @@ func _set_hint() -> void:
 	_hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
 		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
 		Keybinds.key_text("boost"), Keybinds.key_text("interact"), back]
+	if combat_allowed():
+		_hint.text = "%s %s %s %s walk  •  %s next target / click  •  %s dodge  •  %s other weapon  •  1–4 belt" % [
+			Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
+			Keybinds.key_text("foot_target"), Keybinds.key_text("foot_dodge"), Keybinds.key_text("foot_swap")]
 
 
 ## A station's deck: available = service id -> "" or the reason it is closed; crew = the bar's offers.
@@ -213,6 +223,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_touch = -1.0
 	_puffs.clear()
 	_dust = null
+	combat = null
+	if pilot != null and is_instance_valid(pilot):
+		pilot.aim = Vector2.INF
 	level = p_level
 	env = ChibiArt.GearData.env_of(String(_body.get("type", ""))) if level in ["landing", "settlement"] else {}
 	_warned = {}
@@ -220,7 +233,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = SettleGen.build(station, _body, _site, _avail, _sys)
 	elif level == "landing":
 		var lsz := _ship_size()
-		map = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)
+		if bool(_site.get("arena", false)):
+			map = ArenaGen.build(_body, _site, lsz.x, lsz.y)          # package 52: the debug arena
+		else:
+			map = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)
 		if _lander:
 			for zl in map.zones:
 				if String(zl.get("id", "")) == "ship":
@@ -253,6 +269,14 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
 	_build()
+	if combat_allowed():
+		combat = GroundCombat.new()                   # package 52: weapons allowed here
+		combat.setup(self, map)
+		_world.add_child(combat)
+		for i in mini(map.foe_spawns.size(), (_site.get("foes", []) as Array).size()):
+			combat.spawn(String(_site["foes"][i]), map.foe_spawns[i])
+	if combat_hud != null:
+		combat_hud.combat = combat
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
@@ -376,13 +400,35 @@ func _env_step(delta: float) -> void:
 
 
 ## The body gives out: dark, and someone finds you (0.7.51.4: the clinic).
-func _collapse() -> void:
+func _collapse(reason: String = "") -> void:
 	if _collapsed:
 		return
 	_collapsed = true
 	input_enabled = false
 	pilot.moving = false
-	used.emit({"kind": "collapse", "rect": Rect2()})
+	pilot.aim = Vector2.INF
+	used.emit({"kind": "collapse", "rect": Rect2(), "reason": reason})      # package 52: "fight" – shot down
+
+
+## Package 52: left click on a foe – lock it and make it the active target; right click – let it go.
+func _on_click(event: InputEvent) -> void:
+	if combat == null or not input_enabled or _collapsed or not (event is InputEventMouseButton) or not event.pressed:
+		return
+	if event.button_index != MOUSE_BUTTON_LEFT and event.button_index != MOUSE_BUTTON_RIGHT:
+		return
+	var f = combat.foe_at((event.position - _world.position) / GroundMap.SCALE)
+	if f == null:
+		return
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		combat.lock(f)
+	else:
+		combat.unlock(f)
+
+
+## Package 52: may weapons be used here? So far only in the debug arena (Luz: the real fights come once the system
+## stands); never in the built-up parts of cities.
+func combat_allowed() -> bool:
+	return level == "landing" and bool(_site.get("arena", false))
 
 
 func _slung() -> String:
@@ -879,9 +925,15 @@ func _process(delta: float) -> void:
 				_stand_up()
 		else:
 			var run := Input.is_action_pressed("boost")
-			pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run))      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
+			if combat == null or not combat.dodging():
+				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run))      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
 	else:
 		pilot.moving = false
+	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
+		combat.step(delta, Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
+		var helm: bool = pilot_look()["helmet"]
+		if helm != bool(pilot.look.get("helmet", false)):
+			pilot.look = pilot_look()                    # 0.7.51.10: the helmet closes for the fight
 	_doors(delta)
 	if not _seat.is_empty():
 		zone = _seat
@@ -943,6 +995,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not input_enabled or pilot == null:
 		return
+	if combat != null and _ride.is_empty() and _touch < 0.0 and not _collapsed:
+		if event.is_action_pressed("foot_target", false, true):
+			get_viewport().set_input_as_handled()
+			combat.next_target()
+			return
+		if event.is_action_pressed("foot_dodge", false, true):
+			get_viewport().set_input_as_handled()
+			combat.dodge(Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down"))
+			return
+		if event.is_action_pressed("foot_swap", false, true):
+			get_viewport().set_input_as_handled()
+			_say_toast(combat.swap_weapon(), 2.0)
+			return
 	if event.is_action_pressed("interact", false, false):
 		get_viewport().set_input_as_handled()
 		use()

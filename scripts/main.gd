@@ -407,7 +407,7 @@ func _wake_after_loss() -> void:
 ## The body gave out on foot: found and brought to the nearest city with a clinic in this system – your ship is
 ## taken to its hangar – or, if there is none, to the last station (the ship with you). What was in the pockets is
 ## gone.
-func _fallen() -> void:
+func _fallen(reason: String = "") -> void:
 	var f := GameState.active()
 	var lost: Array = GameState.gear.fall()
 	var sys := GameState.current_system
@@ -417,11 +417,12 @@ func _fallen() -> void:
 	if f == null:
 		return
 	var city := nearest_clinic_city(sys, here)
+	var how := "You went down in the fight." if reason == "fight" else "You collapsed outside."      # package 52
 	var what := ("Lost from your pockets: " + ", ".join(PackedStringArray(lost)) + ".") if not lost.is_empty() else "Your pockets were empty."
 	if not city.is_empty():
 		f.docked_at = String(city["id"])
 		Economy.prepare_station(city, sys)
-		GameState.log_msg("You collapsed outside. They found you and brought you to %s – your ship waits in its hangar. %s" % [String(city.get("name", "the city")), what], GameState.COL_BAD)
+		GameState.log_msg(how + " They found you and brought you to %s – your ship waits in its hangar. %s" % [String(city.get("name", "the city")), what], GameState.COL_BAD)
 		_wake_at(city)
 		return
 	var st := GameState._respawn_station()
@@ -431,7 +432,7 @@ func _fallen() -> void:
 	if view != null and is_instance_valid(view) and view.player != null and is_instance_valid(view.player):
 		view.player.queue_free()
 		view.player = null
-	GameState.log_msg("You collapsed outside. There is no clinic in this system – they flew you and your ship to %s. %s" % [String(st.get("name", "the station")), what], GameState.COL_BAD)
+	GameState.log_msg(how + " There is no clinic in this system – they flew you and your ship to %s. %s" % [String(st.get("name", "the station")), what], GameState.COL_BAD)
 	GameState.wake_pending = true
 	GameState.active_changed.emit()
 	_wake_after_loss.call_deferred()
@@ -464,7 +465,7 @@ func close_deck(open_window: bool = true) -> void:
 func _on_deck_use(z: Dictionary) -> void:
 	match String(z.get("kind", "")):
 		"collapse":
-			_fallen()                                          # 0.7.51.4: you wake in a clinic
+			_fallen(String(z.get("reason", "")))               # 0.7.51.4: you wake in a clinic (package 52: also shot down)
 		"exit":
 			var dest := String(z.get("dest", "orbit"))
 			if ground != null and is_instance_valid(ground) and ground.level in ["landing", "settlement"]:
