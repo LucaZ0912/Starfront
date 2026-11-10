@@ -266,6 +266,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   names), `o.sealed` (portholes, `_airlock`), `_armour` / `_composite` / `_stone` / `_printed` walls, `_curtain`,
   `_hex_crown`; `SettleGen.sealed` (set by `build` from `Universe.has_atmosphere`), `_arch` by power and world;
   `ObjArt` stall, signpost, cable_pole, lookout, target and decals `awning`, `boardwalk` rebuilt.
+- 0.7.51.7: `scripts/ui/gear_icons.gd` – `icon(id)` (24×24 by family, cached; preloaded, no class_name); `PilotWindow`
+  Gear tab: `_gear` (suit mockup via `ChibiArt.frame`, bars, protection), `_gear_flow`, `_gear_tile`, `_gear_sel_detail`,
+  selection `_gsel` {where suit/weapons/belt/features/inv/locker, idx}.
 - 0.7.51.4: service `clinic` (corp `mhc`, `requires` "clinic" – not in settlements, `clinic_panel.gd`), command
   `clinic_heal` (`Commands.clinic_price()`), `DeckGen.SHOPS` with `clinic` (object `med_bed`), `GroundView` arrive
   "clinic" / `_clinic_spot()` / `wake_in_clinic()`; `main._wake_at(st)`, `_wake_after_loss` (`GameState.wake_pending`

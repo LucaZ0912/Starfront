@@ -7778,6 +7778,51 @@ func _test_gear() -> void:
 	var game_ok: bool = GameState.gear != null and GameState.to_dict().has("gear")
 	check(start_ok and ids_ok and q_ok and heavy_ok and three_ok and belt_ok and spill_ok and locker_ok and save_ok and game_ok,
 		"51: gear – %d pieces, a civilian suit to start, the suit sets the slots (3 weapons in a heavy combat suit), belt stacks, quality F–A, what no longer fits into the pockets, the ship's locker, saved" % GD.all_ids().size())
+	_test_gear_page()
+
+
+## 0.7.51.7 (Luz: like the ship menu): the Gear page – tiles with pictures for the suit, every slot, the pockets and
+## the locker; every piece has its icon; picking a tile in the pockets and "Put on" puts it on.
+func _test_gear_page() -> void:
+	var GD = preload("res://data/gear.gd")
+	var GI = preload("res://scripts/ui/gear_icons.gd")
+	var icons_ok := true
+	for id in GD.all_ids():
+		var tx: Texture2D = GI.icon(String(id))
+		icons_ok = icons_ok and tx != null and tx.get_width() == 24
+	var g = GameState.gear
+	var saved: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	for wi in g.weapons.size():
+		g.unequip("weapons", wi)                          # a weapon slot free for the rifle
+	g.add_item("wp_rifle:B")
+	var pw = main.pilot_window
+	pw.open(4)
+	var tiles := _gp_buttons(pw.body).filter(func(b): return (b as Button).icon != null and (b as Button).custom_minimum_size == Vector2(72, 72))
+	var want: int = 1 + g.weapons.size() + g.belt.size() + g.features.size() + GD.INV_SLOTS
+	var ri := -1
+	for k in g.inv.size():
+		if not (g.inv[k] as Dictionary).is_empty() and String(g.inv[k]["id"]) == "wp_rifle:B":
+			ri = k
+	pw._gsel = {"where": "inv", "idx": ri}
+	pw.rebuild()
+	var put: Array = _gp_buttons(pw.body).filter(func(b): return (b as Button).text == "Put on")
+	var swapped := false
+	if not put.is_empty():
+		(put[0] as Button).pressed.emit()
+		swapped = g.weapons.has("wp_rifle:B")
+	pw.close()
+	g.from_dict(saved)
+	check(icons_ok and tiles.size() >= want and swapped,
+		"0.7.51.7: the Gear page like the ship menu – %d tiles with pictures (suit, slots, pockets%s), an icon for every piece, pick in the pockets and put on" % [tiles.size(), ", locker" if tiles.size() > want else ""])
+
+
+func _gp_buttons(n: Node) -> Array:
+	var out: Array = []
+	for c in n.get_children():
+		if c is Button:
+			out.append(c)
+		out.append_array(_gp_buttons(c))
+	return out
 
 
 func _test_landing(view: SystemView) -> void:

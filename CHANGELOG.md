@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.7 – 2026-11-10
+
+**The Gear page like the ship menu (Luz).** The pilot window's Gear tab now follows the pattern of the ship menu's
+FITTING – tiles with pictures instead of lists of buttons.
+- **Left, the suit as a mockup:** the pilot standing in the suit they wear (helmet on), its name in the quality's
+  colour, maker, quality and slots; health, shield, armour, energy, oxygen and ammunition as coloured bars; the
+  protection against heat, cold, toxic air and vacuum as bars; walking speed.
+- **Below it, the piece picked** (like "Select a module"): its picture, name, where it sits, everything it does – and
+  the buttons for it: *Take off → pockets* (worn), *Put on* and *→ Locker* (in the pockets), *← Into the pockets*
+  (in the locker).
+- **Right, tiles:** Suit, Weapons, Belt (each place with its key 1–n), Features, the 12 places of the Pockets and the
+  ship's Locker (aboard or in the hangar) – frame and corner in the quality's colour (F–A), stacks with ×n, the tile
+  picked framed green.
+- **A pixel icon for every piece** (new `gear_icons.gd`, 24×24 like the module icons): the suits in their colours,
+  lasers glowing cyan, slug guns in steel, the launcher, grenades, scanner, cutting torch, mining laser, medkit,
+  stimulant, energy cell, oxygen, ammunition, and the features (shield generator, plates, sprint booster, jump jets,
+  temperature regulator, oxygen reserve, ammunition pack, battery).
+- Smoke test: every piece has its icon, the page shows a tile for the suit, each slot and each pocket place, and
+  picking a piece in the pockets and *Put on* puts it on.
+
 ## alpha 0.7.51.6 – 2026-11-10
 
 **Sci-fi buildings on the ground (Luz: "buildings that look like suburban houses won't do at all").** Every building

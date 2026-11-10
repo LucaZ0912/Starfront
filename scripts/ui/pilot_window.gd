@@ -24,6 +24,7 @@ const TAB_PERKS := 2
 const TAB_TREE := 3
 const TAB_GEAR := 4
 const GearData = preload("res://data/gear.gd")
+const GearIcons = preload("res://scripts/ui/gear_icons.gd")
 const SUBS := ["Info", "Standings", "Codex", "Collection"]
 const CrewDataP = preload("res://data/crew.gd")
 const BondPanel = preload("res://scripts/ui/station/bond_panel.gd")
@@ -44,7 +45,6 @@ var _tiles := {}
 var _sel := ""
 var _tscroll := Vector2(-1, -1)
 var _gear_msg := ""
-var _gear_detail: Label = null
 
 
 func _ready() -> void:
@@ -146,119 +146,243 @@ func _locker_fit():
 	return f
 
 
+## 0.7.51.7 (Luz: like the ship menu): the Gear page in the pattern of the ship's FITTING – on the left the suit as a
+## mockup with the pilot in it, its bars and protection, then the piece picked; on the right the slots as tiles with
+## pictures (suit, weapons, belt on its keys, features), the pockets and the ship's locker as tiles too. Click a tile
+## to pick it, the buttons under its description act on it.
+var _gsel := {}                            # {"where": suit|weapons|belt|features|inv|locker, "idx": int}
+
+
 func _gear() -> void:
 	var g = GameState.gear
 	var t: Dictionary = g.totals()
-	var row := UI.hbox(22)
+	var fit = _locker_fit()
+	var row := UI.hbox(16)
 	body.add_child(row)
-	# the suit and what it adds up to
-	var c1 := UI.vbox(4)
-	c1.custom_minimum_size = Vector2(330, 0)
-	row.add_child(c1)
-	c1.add_child(UI.label("SUIT", 16, COL))
-	var sb := _gear_button(g.suit, func(): pass)
-	sb.disabled = false
-	c1.add_child(sb)
-	c1.add_child(UI.label("Put another suit on from your pockets.", 11, UI.TEXT_DIM))
-	for ln in [["Health", "%d / %d" % [int(g.health), int(GearData.HEALTH)]], ["Shield", "%d" % int(t["shield"])], ["Armour", "%d" % int(t["armor"])],
-			["Energy", "%d / %d" % [int(g.energy), int(t["energy"])]], ["Oxygen", "%d / %d min" % [int(g.oxygen), int(t["oxygen"])]],
-			["Ammunition", "%d / %d" % [int(g.ammo), int(t["ammo"])]], ["Walking speed", "×%.2f" % float(t["speed"])]]:
+	# ---- left: the suit as a mockup, its bars, the piece picked
+	var lp := UI.neon_panel(Color(COL, 0.35), Color(0.07, 0.05, 0.03, 0.95), 1)
+	lp.custom_minimum_size = Vector2(430, 0)
+	row.add_child(lp)
+	var left := UI.vbox(6)
+	lp.add_child(left)
+	var top := UI.hbox(12)
+	left.add_child(top)
+	var stage := PanelContainer.new()
+	stage.add_theme_stylebox_override("panel", UI.panel_style(Color(0.03, 0.03, 0.05), Color(COL, 0.25)))
+	stage.custom_minimum_size = Vector2(150, 200)
+	top.add_child(stage)
+	var look: Dictionary = (GameState.pilot.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate()
+	look["suit"] = GearData.family(String(g.suit))
+	look["helmet"] = true
+	stage.add_child(UI.icon(ChibiArt.frame(look, 0, 0), 190))
+	var head := UI.vbox(3)
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	var sq := GearData.quality(String(g.suit))
+	head.add_child(UI.wrap_label(GearData.display_name(String(g.suit)), 17, GameData.quality_color(sq) if sq != "" else COL, 240))
+	var sd: Dictionary = GearData.stats(String(g.suit))
+	head.add_child(UI.label("%s  •  quality %s" % [String(sd.get("maker", "")), sq], 12, UI.TEXT_DIM))
+	head.add_child(UI.label("%d weapon%s  •  %d belt  •  %d feature%s" % [int(sd.get("weapons", 1)), "" if int(sd.get("weapons", 1)) == 1 else "s",
+		int(sd.get("belt", 1)), int(sd.get("features", 0)), "" if int(sd.get("features", 0)) == 1 else "s"], 12, UI.TEXT_DIM))
+	head.add_child(HSeparator.new())
+	for ln in [["Health", g.health, GearData.HEALTH, Color(0.95, 0.35, 0.35)], ["Shield", t["shield"], t["shield"], Color(0.35, 0.8, 1.0)],
+			["Armour", t["armor"], t["armor"], Color(0.8, 0.8, 0.75)], ["Energy", g.energy, t["energy"], Color(1.0, 0.82, 0.3)],
+			["Oxygen", g.oxygen, t["oxygen"], Color(0.4, 0.6, 1.0)], ["Ammo", g.ammo, t["ammo"], Color(0.75, 0.75, 0.7)]]:
 		var r := UI.hbox(6)
-		r.add_child(UI.label(String(ln[0]), 13, UI.TEXT_DIM))
+		r.add_child(UI.label(String(ln[0]), 12, UI.TEXT_DIM))
 		r.add_child(UI.spacer())
-		r.add_child(UI.label(String(ln[1]), 13, Color(0.92, 0.92, 0.9)))
-		c1.add_child(r)
-	c1.add_child(UI.label("Protection", 13, COL))
+		var bar := UI.bar(ln[3], 90)
+		bar.max_value = maxf(1.0, float(ln[2]))
+		bar.value = float(ln[1])
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		r.add_child(bar)
+		var vl := UI.label("%d%s" % [int(ln[1]), " min" if String(ln[0]) == "Oxygen" else ""], 12, Color(0.92, 0.92, 0.9))
+		vl.custom_minimum_size = Vector2(52, 0)
+		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		r.add_child(vl)
+		head.add_child(r)
+	left.add_child(UI.label("PROTECTION   •   walking speed ×%.2f" % float(t["speed"]), 13, COL))
+	var pr := UI.hbox(10)
+	left.add_child(pr)
 	for h in GearData.HAZARDS:
-		var r2 := UI.hbox(6)
-		r2.add_child(UI.label(String(GearData.HAZARD_NAMES[h]), 13, UI.TEXT_DIM))
-		r2.add_child(UI.spacer())
 		var pv := float(t["env"][h])
-		r2.add_child(UI.label("%d%%" % int(pv * 100.0), 13, Color(0.5, 1.0, 0.6) if pv >= 0.8 else (Color(1.0, 0.8, 0.35) if pv >= 0.5 else Color(1.0, 0.45, 0.35))))
-		c1.add_child(r2)
-	# the slots
-	var c2 := UI.vbox(4)
-	c2.custom_minimum_size = Vector2(330, 0)
-	row.add_child(c2)
-	for sec in [["weapons", "WEAPONS"], ["belt", "BELT  (keys 1–%d)" % g.belt.size()], ["features", "FEATURES"]]:
+		var pc := Color(0.5, 1.0, 0.6) if pv >= 0.8 else (Color(1.0, 0.8, 0.35) if pv >= 0.5 else Color(1.0, 0.45, 0.35))
+		var cell := UI.vbox(1)
+		cell.add_child(UI.label("%s  %d%%" % [String(GearData.HAZARD_NAMES[h]), int(pv * 100.0)], 11, pc))
+		var pb := UI.bar(pc, 92)
+		pb.max_value = 1.0
+		pb.value = pv
+		cell.add_child(pb)
+		pr.add_child(cell)
+	left.add_child(HSeparator.new())
+	_gear_sel_detail(left, g, fit)
+	# ---- right: the slots, the pockets, the locker – tiles with pictures
+	var right := UI.vbox(8)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(right)
+	var sflow := _gear_flow(right, "Suit", "")
+	sflow.add_child(_gear_tile(String(g.suit), 1, "", "suit", 0, "Suit"))
+	for sec in [["weapons", "Weapons"], ["belt", "Belt  –  keys 1–%d" % g.belt.size()], ["features", "Features"]]:
 		var key := String(sec[0])
-		c2.add_child(UI.label(String(sec[1]), 16, COL))
 		var arr: Array = g.get(key)
+		var filled := 0
+		for it in arr:
+			if (it is Dictionary and not (it as Dictionary).is_empty()) or (it is String and String(it) != ""):
+				filled += 1
+		var flow := _gear_flow(right, String(sec[1]), "(%d/%d)" % [filled, arr.size()])
 		for i in arr.size():
-			var it = arr[i]
+			var it2 = arr[i]
 			var id := ""
 			var n := 1
-			if it is Dictionary:
-				if not (it as Dictionary).is_empty():
-					id = String(it["id"])
-					n = int(it["n"])
+			if it2 is Dictionary:
+				if not (it2 as Dictionary).is_empty():
+					id = String(it2["id"])
+					n = int(it2["n"])
 			else:
-				id = String(it)
-			var idx: int = i
-			var b := _gear_button(id, func(): _gear_do(g.unequip(key, idx)), n, "%d.  " % (i + 1) if key == "belt" else "")
-			c2.add_child(b)
-	c2.add_child(UI.label("Click a slot to take it off into your pockets.", 11, UI.TEXT_DIM))
-	# pockets and locker
-	var c3 := UI.vbox(4)
-	c3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(c3)
-	c3.add_child(UI.label("POCKETS  (%d / %d)" % [GearData.INV_SLOTS - g.free_places(), GearData.INV_SLOTS], 16, COL))
-	var fit = _locker_fit()
+				id = String(it2)
+			flow.add_child(_gear_tile(id, n, str(i + 1) if key == "belt" else "", key, i, "empty"))
+	var pflow := _gear_flow(right, "Pockets", "(%d/%d)" % [GearData.INV_SLOTS - g.free_places(), GearData.INV_SLOTS])
 	for i2 in g.inv.size():
 		var p: Dictionary = g.inv[i2]
-		if p.is_empty():
-			continue
-		var r3 := UI.hbox(6)
-		var idx2: int = i2
-		var eb := _gear_button(String(p["id"]), func(): _gear_do(g.equip_from_inv(idx2)), int(p["n"]))
-		eb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		r3.add_child(eb)
-		if fit != null:
-			r3.add_child(UI.button("→ Locker", func(): _gear_do(g.store(idx2, fit))))
-		c3.add_child(r3)
-	if g.free_places() == GearData.INV_SLOTS:
-		c3.add_child(UI.label("Empty.", 12, UI.TEXT_DIM))
-	c3.add_child(UI.label("Click to put it on.", 11, UI.TEXT_DIM))
+		pflow.add_child(_gear_tile(String(p.get("id", "")), int(p.get("n", 1)), "", "inv", i2, ""))
 	if fit != null:
 		var l: Array = g.locker(fit)
-		c3.add_child(UI.label("LOCKER – %s  (%d / %d)" % [fit.ship_name, l.size() - g.free_places(l), l.size()], 16, COL))
-		var any := false
+		var lflow := _gear_flow(right, "Locker  –  %s" % fit.ship_name, "(%d/%d)" % [l.size() - g.free_places(l), l.size()])
 		for j in l.size():
-			var lp: Dictionary = l[j]
-			if lp.is_empty():
-				continue
-			any = true
-			var jdx: int = j
-			c3.add_child(_gear_button(String(lp["id"]), func(): _gear_do(g.fetch(jdx, fit)), int(lp["n"]), "← "))
-		if not any:
-			c3.add_child(UI.label("Empty.", 12, UI.TEXT_DIM))
+			var lpc: Dictionary = l[j]
+			lflow.add_child(_gear_tile(String(lpc.get("id", "")), int(lpc.get("n", 1)), "", "locker", j, ""))
 	else:
-		c3.add_child(UI.label("The ship's locker is aboard – you are not.", 12, UI.TEXT_DIM))
-	if _gear_msg != "":
-		c3.add_child(UI.label(_gear_msg, 13, Color(1.0, 0.6, 0.4)))
-	# what the mouse is over
-	_gear_detail = UI.label("Point at a piece to see what it does.", 13, UI.TEXT_DIM)
-	_gear_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_child(_gear_detail)
+		right.add_child(UI.label("Locker", 17, COL))
+		right.add_child(UI.label("  The ship's locker is aboard – you are not.", 12, UI.TEXT_DIM))
 
 
-func _gear_button(id: String, cb: Callable, n: int = 1, prefix: String = "") -> Button:
-	var txt := prefix + ("— empty —" if id == "" else GearData.display_name(id) + (" ×%d" % n if n > 1 else ""))
-	var b := UI.button(txt, cb)
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size = Vector2(300, 30)
+func _gear_flow(parent: VBoxContainer, title: String, count: String) -> HFlowContainer:
+	parent.add_child(UI.label(title + ("   " + count if count != "" else ""), 17, COL))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
+	parent.add_child(flow)
+	parent.add_child(HSeparator.new())
+	return flow
+
+
+## A tile like the ship's module tiles: the picture, the quality in its corner (and its frame), a belt place's key,
+## how many, the name under it.
+func _gear_tile(id: String, n: int, key_badge: String, where: String, idx: int, empty_caption: String) -> Control:
+	var box := UI.vbox(2)
+	box.custom_minimum_size = Vector2(86, 0)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(72, 72)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.focus_mode = Control.FOCUS_NONE
+	b.toggle_mode = true
+	b.button_pressed = String(_gsel.get("where", "")) == where and int(_gsel.get("idx", -1)) == idx
+	b.icon = GearIcons.icon(id)
+	b.expand_icon = true
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var q := GearData.quality(id) if id != "" else ""
+	var border := Color(0.3, 0.27, 0.22)
 	if id != "":
-		var q := GearData.quality(id)
-		if q != "":
-			b.add_theme_color_override("font_color", GameData.quality_color(q))
-		var lines: Array = GearData.describe(id)
-		b.tooltip_text = "\n".join(lines)
-		b.mouse_entered.connect(func():
-			if is_instance_valid(_gear_detail):
-				_gear_detail.text = " – ".join(lines.filter(func(x): return String(x) != "")))
+		border = GameData.quality_color(q) if q != "" else Color(0.75, 0.7, 0.6)
+	var normal := UI.panel_style(Color(0.1, 0.08, 0.06), border)
+	normal.set_border_width_all(2)
+	var hover := UI.panel_style(Color(0.16, 0.13, 0.09), border.lightened(0.3))
+	hover.set_border_width_all(2)
+	var pressed := UI.panel_style(Color(0.1, 0.2, 0.16), Color(0.3, 1.0, 0.6))
+	pressed.set_border_width_all(3)
+	b.add_theme_stylebox_override("normal", normal)
+	b.add_theme_stylebox_override("hover", hover)
+	b.add_theme_stylebox_override("pressed", pressed)
+	b.add_theme_stylebox_override("hover_pressed", pressed)
+	if id != "":
+		b.tooltip_text = "\n".join(GearData.describe(id))
+	b.pressed.connect(func():
+		_gsel = {"where": where, "idx": idx}
+		_gear_msg = ""
+		Audio.play("ui_click", "gear")
+		rebuild())
+	if key_badge != "":
+		var kl := UI.label(key_badge, 12, Color(1.0, 0.82, 0.35))
+		kl.position = Vector2(5, 2)
+		b.add_child(kl)
+	if q != "":
+		var ql := UI.label(q, 12, GameData.quality_color(q))
+		ql.position = Vector2(58, 2)
+		b.add_child(ql)
+	if n > 1:
+		var nl := UI.label("×%d" % n, 11, Color(0.95, 0.95, 0.9))
+		nl.position = Vector2(46, 54)
+		b.add_child(nl)
+	box.add_child(b)
+	var cap := GearData.display_name(id).replace(" · " + q, "") if id != "" else empty_caption
+	var l := UI.label(cap, 11, Color(0.92, 0.88, 0.8) if id != "" else UI.TEXT_DIM)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(86, 0)
+	box.add_child(l)
+	return box
+
+
+## What is picked: its picture, name, what it does – and what can be done with it from where it is.
+func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
+	var where := String(_gsel.get("where", ""))
+	var idx := int(_gsel.get("idx", -1))
+	var id := ""
+	var n := 1
+	match where:
+		"suit":
+			id = String(g.suit)
+		"weapons", "belt", "features":
+			var arr: Array = g.get(where)
+			if idx >= 0 and idx < arr.size():
+				var it = arr[idx]
+				if it is Dictionary:
+					id = String((it as Dictionary).get("id", ""))
+					n = int((it as Dictionary).get("n", 1))
+				else:
+					id = String(it)
+		"inv":
+			if idx >= 0 and idx < g.inv.size():
+				id = String(g.inv[idx].get("id", ""))
+				n = int(g.inv[idx].get("n", 1))
+		"locker":
+			if fit != null:
+				var lk: Array = g.locker(fit)
+				if idx >= 0 and idx < lk.size():
+					id = String(lk[idx].get("id", ""))
+					n = int(lk[idx].get("n", 1))
+	if id == "":
+		left.add_child(UI.label("Select a piece" if where == "" else "Empty place", 17, COL))
+		left.add_child(UI.wrap_label("Click a tile to see what it does. Pieces in your pockets go on from here; the ship's locker is open aboard or down in the hangar beside her." if where == "" else "Pick something in your pockets to put on.", 12, UI.TEXT_DIM, 400))
 	else:
-		b.disabled = true
-	return b
+		var hd := UI.hbox(10)
+		left.add_child(hd)
+		hd.add_child(UI.icon(GearIcons.icon(id), 64))
+		var nv := UI.vbox(2)
+		hd.add_child(nv)
+		var q := GearData.quality(id)
+		nv.add_child(UI.wrap_label(GearData.display_name(id) + (" ×%d" % n if n > 1 else ""), 16, GameData.quality_color(q) if q != "" else COL, 320))
+		nv.add_child(UI.label(String({"suit": "Worn", "weapons": "Weapon slot %d" % (idx + 1), "belt": "Belt – key %d" % (idx + 1), "features": "Feature slot %d" % (idx + 1),
+			"inv": "In your pockets", "locker": "In the ship's locker"}.get(where, "")), 12, UI.TEXT_DIM))
+		for ln in GearData.describe(id):
+			if String(ln) != "":
+				left.add_child(UI.wrap_label(String(ln), 12, Color(0.88, 0.86, 0.8), 400))
+		var acts := UI.hbox(6)
+		left.add_child(acts)
+		match where:
+			"suit":
+				left.add_child(UI.label("Put another suit on from your pockets.", 11, UI.TEXT_DIM))
+			"weapons", "belt", "features":
+				acts.add_child(UI.button("Take off → pockets", func(): _gsel = {}; _gear_do(g.unequip(where, idx))))
+			"inv":
+				acts.add_child(UI.button("Put on", func(): _gsel = {}; _gear_do(g.equip_from_inv(idx))))
+				if fit != null:
+					acts.add_child(UI.button("→ Locker", func(): _gsel = {}; _gear_do(g.store(idx, fit))))
+			"locker":
+				acts.add_child(UI.button("← Into the pockets", func(): _gsel = {}; _gear_do(g.fetch(idx, fit))))
+	if _gear_msg != "":
+		left.add_child(UI.label(_gear_msg, 13, Color(1.0, 0.6, 0.4)))
 
 
 func _gear_do(err: String) -> void:
