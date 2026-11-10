@@ -39,7 +39,8 @@ const ACTIONS := [
 	{"id": "walk_left", "label": "Walk left", "group": "On foot", "def": [{"k": KEY_A}, {"k": KEY_LEFT}]},
 	{"id": "walk_right", "label": "Walk right", "group": "On foot", "def": [{"k": KEY_D}, {"k": KEY_RIGHT}]},
 	{"id": "interact", "label": "Use (door, terminal, airlock)", "group": "On foot", "def": [{"k": KEY_E}]},
-	{"id": "foot_target", "label": "Fight: lock the next target", "group": "On foot", "def": [{"k": KEY_TAB}]},          # package 52
+	{"id": "foot_target", "label": "Fight: lock the next target", "group": "On foot", "def": [{"k": KEY_R}]},          # package 52 (0.7.52.2, Luz: R)
+	{"id": "foot_tactics", "label": "Fight: tactical view (tap: cover / the target's view, hold: off)", "group": "On foot", "def": [{"k": KEY_TAB}]},
 	{"id": "foot_dodge", "label": "Fight: dodge (a jump no shot hits)", "group": "On foot", "def": [{"k": KEY_SPACE}]},
 	{"id": "foot_swap", "label": "Fight: the other weapon in hand", "group": "On foot", "def": [{"k": KEY_Q}]},
 	{"id": "boost", "label": "Thrust burst (a few seconds of extra speed)", "group": "Ship commands", "def": [{"k": KEY_SHIFT}]},
@@ -80,9 +81,9 @@ const ACTIONS := [
 	{"id": "menu_next_tab", "label": "Menu: next tab", "group": "Menus", "def": [{"k": KEY_E}]},
 ]
 const SLOTS := 2
-const LAYOUT := 4   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets; 4: F3 Orbit, F4 System)
+const LAYOUT := 5   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets; 4: F3 Orbit, F4 System; 5: on foot R target, Tab tactics)
 ## Bindings reset once when a saved file is older than this layout (prefix -> layout that changed it)
-const LAYOUT_RESETS := {"cam_": 2, "sel_": 3, "zoom_": 4}
+const LAYOUT_RESETS := {"cam_": 2, "sel_": 3, "zoom_": 4, "foot_": 5}
 
 var binds := {}   # action id -> Array of descriptors (size SLOTS, {} = empty)
 

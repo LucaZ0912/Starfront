@@ -2746,7 +2746,7 @@ func _c_debug_foe(c: Dictionary) -> String:
 	return "" if made > 0 else "No room for them."
 
 
-## {"type":"debug_combat", "do": "kill"|"end"|"freeze"|"ai"|"hurt", "on": bool, "amount": 30} – package 52: every foe
+## {"type":"debug_combat", "do": "kill"|"end"|"freeze"|"ai"|"hurt"|"tactics", "on": bool, "amount": 30, "mode": 0–2} – package 52: every foe
 ## down; the fight over (foes gone); foes frozen; the AI view (cover tiles, sight lines, states, chances); hurt yourself.
 func _c_debug_combat(c: Dictionary) -> String:
 	var g = _ground()
@@ -2769,6 +2769,9 @@ func _c_debug_combat(c: Dictionary) -> String:
 			cb.show_ai = bool(c.get("on", not cb.show_ai))
 		"hurt":
 			cb._hurt_pilot(float(c.get("amount", 30.0)), String(c.get("dtype", "kinetic")))
+		"tactics":                                     # 0.7.52.2: the tactical view – 0 off, 1 your sight, 2 the target's
+			cb.tactics = clampi(int(c.get("mode", 1)), 0, 2)
+			cb._vis = {}
 		_:
 			return "Unknown combat debug."
 	return ""

@@ -87,6 +87,8 @@ var hud: SuitHud = null
 var _collapsed := false
 var combat: GroundCombat = null         # package 52: the fight on foot (where weapons are allowed)
 var combat_hud: CombatHud = null
+var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up) – a tap switches the view, holding ends it
+const TAB_HOLD := 0.35
 var _warned := {}
 
 
@@ -156,9 +158,9 @@ func _set_hint() -> void:
 		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
 		Keybinds.key_text("boost"), Keybinds.key_text("interact"), back]
 	if combat_allowed():
-		_hint.text = "%s %s %s %s walk  •  %s next target / click  •  %s dodge  •  %s other weapon  •  1–4 belt" % [
+		_hint.text = "%s %s %s %s walk  •  %s next target / click  •  %s dodge  •  %s other weapon  •  %s tactics  •  1–4 belt" % [
 			Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
-			Keybinds.key_text("foot_target"), Keybinds.key_text("foot_dodge"), Keybinds.key_text("foot_swap")]
+			Keybinds.key_text("foot_target"), Keybinds.key_text("foot_dodge"), Keybinds.key_text("foot_swap"), Keybinds.key_text("foot_tactics")]
 
 
 ## A station's deck: available = service id -> "" or the reason it is closed; crew = the bar's offers.
@@ -931,6 +933,12 @@ func _process(delta: float) -> void:
 		pilot.moving = false
 	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
 		combat.step(delta, Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
+		if _tab_held >= 0.0:
+			var was := _tab_held
+			_tab_held += delta
+			if was < TAB_HOLD and _tab_held >= TAB_HOLD and combat.tactics != 0:
+				combat.tactics = 0                        # held: the tactical view goes off
+				Audio.play("ui_close", "tactical view off", -6.0)
 		var helm: bool = pilot_look()["helmet"]
 		if helm != bool(pilot.look.get("helmet", false)):
 			pilot.look = pilot_look()                    # 0.7.51.10: the helmet closes for the fight
@@ -996,6 +1004,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled or pilot == null:
 		return
 	if combat != null and _ride.is_empty() and _touch < 0.0 and not _collapsed:
+		if event.is_action_pressed("foot_tactics", false, true):
+			get_viewport().set_input_as_handled()
+			if not event.is_echo():
+				_tab_held = 0.0
+			return
+		if event.is_action_released("foot_tactics", true):
+			get_viewport().set_input_as_handled()
+			if _tab_held >= 0.0 and _tab_held < TAB_HOLD:
+				combat.cycle_tactics()                    # a tap: your sight, the target's sight, yours …
+			_tab_held = -1.0
+			return
 		if event.is_action_pressed("foot_target", false, true):
 			get_viewport().set_input_as_handled()
 			combat.next_target()

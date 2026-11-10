@@ -850,6 +850,9 @@ func _build_ground() -> void:
 	rk.add_child(UI.button("End the fight (foes gone)", func(): _cmd({"type": "debug_combat", "do": "end"})))
 	rk.add_child(UI.button("Freeze / unfreeze foes", func(): _cmd({"type": "debug_combat", "do": "freeze"})))
 	rk.add_child(UI.button("AI view on / off", func(): _cmd({"type": "debug_combat", "do": "ai"})))
+	for tm in [[1, "Tactics: your sight"], [2, "Tactics: the target's"], [0, "Tactics off"]]:
+		var tmv: int = tm[0]
+		rk.add_child(UI.button(String(tm[1]), func(): _cmd({"type": "debug_combat", "do": "tactics", "mode": tmv})))
 	var rh := _row()
 	rh.add_child(UI.button("Hit me (30 kinetic)", func(): _cmd({"type": "debug_combat", "do": "hurt", "amount": 30.0})))
 	rh.add_child(UI.button("Go down now", func(): _cmd({"type": "debug_combat", "do": "hurt", "amount": 9999.0, "dtype": "explosive"})))
@@ -858,7 +861,7 @@ func _build_ground() -> void:
 		for lv2 in [0, 5, 10]:
 			var lvv: int = lv2
 			rh.add_child(UI.button("%s %d" % [skk.capitalize(), lvv], func(): _cmd({"type": "debug_skill", "skill": skk, "level": lvv})))
-	content.add_child(UI.wrap_label("The arena: the landing drone on its pad, a field of cover (crates, barriers and rocks to shoot over; bulwarks you cannot see through), foes at the far side. Tab locks the next target, a click any, Space dodges, Q swaps the weapon. AI view: low cover amber, high cover red, sight lines (green clear, amber over cover, red blocked), each foe's state, layers and both hit chances. The suit's invulnerability (above) holds off shots too.", 12, UI.TEXT_DIM, 560))
+	content.add_child(UI.wrap_label("The arena: the landing drone on its pad, a field of cover (crates, barriers and rocks to shoot over; bulwarks you cannot see through), foes at the far side. R locks the next target, a click any, Space dodges, Q swaps the weapon, Tab the tactical view (tap: yours / the target's, hold: off). AI view: low cover amber, high cover red, sight lines (green clear, amber over cover, red blocked), each foe's state, layers and both hit chances. The suit's invulnerability (above) holds off shots too.", 12, UI.TEXT_DIM, 560))
 
 
 func _update_ground_status() -> void:

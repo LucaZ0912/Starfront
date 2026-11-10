@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.2 – 2026-11-10
+
+**The tactical view on Tab, the next target on R (Luz).**
+
+- **R** locks the next target now (as R locks in space); a click still locks any foe.
+- **Tab** opens the **tactical view**, drawn like the radar in space and lying on the ground under people and cover: a
+  disc as far as your weapon reaches, with rings and a sweep. **Green** is everything in your sight; every piece of
+  cover leaves its **radar shadow** – nothing behind bulwarks and walls, and right behind crates, barriers, rocks and
+  barrels the dark band where a foe is covered from you (beyond it you shoot over the cover again). So you see where
+  they hide and how to get round them.
+- **Tab again** switches to the **red view – the locked target's sight** (its own weapon's reach): red it can hit, its
+  shadows are where you are safe from it; the line at the top tells you whether you stand in its sight. Tab again goes
+  back to your sight; **holding Tab** closes the view.
+- Saved key bindings of the on-foot fight keys reset once to the new defaults. Debug: the tactical view from the
+  Combat section; codex entry and smoke test extended.
+
 ## alpha 0.7.52.1 – 2026-11-10
 
 **Package 52 begins – fights on foot (hybrid, after the mockup Luz approved).** For now in the **debug arena**

@@ -49,6 +49,14 @@ var _t := 0.0
 var _next_id := 1
 var _out_warned := false
 var _end_t := 0.0
+## 0.7.52.2 (Luz): the tactical view on Tab – 0 off, 1 your sight (green), 2 the target's sight (red). Drawn like the
+## radar in space: a disc as far as the weapon reaches, cover leaves its shadow – behind high cover nothing, right
+## behind low cover a band where someone is covered (beyond it you shoot over it again).
+var tactics := 0
+var tac_node: Node2D = null
+var _vis: Dictionary = {}                         # {from, reach, rays: [[t0, t1], …] per ray, at}
+const TAC_RAYS := 360
+const TAC_STEP := 3.0
 
 
 func setup(p_view, p_map: GroundMap) -> void:
@@ -57,6 +65,11 @@ func setup(p_view, p_map: GroundMap) -> void:
 	z_index = 40
 	_build_cover()
 	dodge_charges = float(max_dodges())
+	# the tactical view lies on the ground: under the people and the cover, over the floor
+	tac_node = Node2D.new()
+	tac_node.draw.connect(_draw_tactics)
+	view._world.add_child(tac_node)
+	view._world.move_child(tac_node, view._sorted.get_index())
 
 
 # ---------------------------------------------------------------- cover and sight
@@ -365,7 +378,10 @@ func step(delta: float, move: Vector2) -> void:
 	else:
 		view.pilot.aim = Vector2.INF
 	_fx_step(delta)
+	_tac_step(delta)
 	queue_redraw()
+	if tac_node != null:
+		tac_node.queue_redraw()
 
 
 static func _face(d: Vector2) -> int:
@@ -736,6 +752,151 @@ func _flee_spot(from: Vector2, pp: Vector2) -> Vector2:
 			bd = dd
 			best = q
 	return best
+
+
+# ---------------------------------------------------------------- 0.7.52.2: the tactical view
+
+## Tab tapped: your sight → the target's sight → your sight … (the target's only when there is one).
+func cycle_tactics() -> String:
+	if tactics == 1 and tac_viewer() != null:
+		tactics = 2
+	else:
+		tactics = 1
+	_vis = {}
+	Audio.play("scan_ping", "tactical view", -8.0)
+	return ""
+
+
+## Whose sight the red view shows: the active target, else the nearest foe that knows of you.
+func tac_viewer() -> Variant:
+	if active != null and not active["dead"]:
+		return active
+	var best = null
+	var bd := INF
+	for f in alive():
+		var dd := pilot_pos().distance_to((f["w"] as Walker).pos)
+		if f["aware"] and dd < bd:
+			bd = dd
+			best = f
+	return best
+
+
+## Rays from `from` out to `reach` (art px): for each, the stretches that are in sight – ended by high cover, broken
+## by low cover and the band right behind it (COVER_NEAR) where someone is covered.
+func cast(from: Vector2, reach: float) -> Array:
+	var rays: Array = []
+	var own := Vector2i(floor(from / GroundMap.TILE))
+	for i in TAC_RAYS:
+		var dir := Vector2.from_angle(TAU * i / TAC_RAYS)
+		var lit: Array = []
+		var open_at := 0.0
+		var is_open := true
+		var in_low := false
+		var guard_to := -1.0
+		var t := TAC_STEP
+		while t < reach:
+			var p := from + dir * t
+			var c := cover_at(p)
+			if Vector2i(floor(p / GroundMap.TILE)) == own:
+				c = 0
+			if c == 2:
+				break
+			if c == 1:
+				in_low = true
+			elif in_low:
+				in_low = false
+				guard_to = t + GearData.COVER_NEAR
+			var want := not in_low and t >= guard_to
+			if want and not is_open:
+				is_open = true
+				open_at = t
+			elif not want and is_open:
+				is_open = false
+				if t - open_at > 0.5:
+					lit.append([open_at, t])
+			t += TAC_STEP
+		if is_open and minf(t, reach) - open_at > 0.5:
+			lit.append([open_at, minf(t, reach)])
+		rays.append(lit)
+	return rays
+
+
+## Is p in sight in a cast made from `from` (the ray nearest its direction)?
+func lit_in(rays: Array, from: Vector2, p: Vector2) -> bool:
+	var d := p - from
+	var i := posmod(int(round(d.angle() / TAU * TAC_RAYS)), TAC_RAYS)
+	var dist := d.length()
+	for seg in rays[i]:
+		if dist >= float(seg[0]) and dist <= float(seg[1]):
+			return true
+	return false
+
+
+func _tac_source() -> Dictionary:
+	if tactics == 2:
+		var f = tac_viewer()
+		if f == null:
+			return {}
+		return {"from": (f["w"] as Walker).pos, "reach": float(GearData.stats(String(f["weapon"])).get("range", 300.0)), "red": true, "who": f}
+	var wid := weapon_id()
+	return {"from": pilot_pos(), "reach": float(GearData.stats(wid).get("range", 300.0)) if wid != "" else 300.0, "red": false, "who": null}
+
+
+func _tac_step(delta: float) -> void:
+	if tactics == 2 and tac_viewer() == null:
+		tactics = 1
+	if tactics == 0:
+		_vis = {}
+		return
+	var src := _tac_source()
+	if src.is_empty():
+		return
+	_vis["at"] = float(_vis.get("at", 0.0)) - delta
+	if _vis.get("rays") == null or (src["from"] as Vector2).distance_to(_vis.get("from", Vector2.INF)) > 2.0 or float(_vis["at"]) <= 0.0 			or not is_equal_approx(float(_vis.get("reach", 0.0)), float(src["reach"])) or bool(_vis.get("red", false)) != bool(src["red"]):
+		_vis = {"from": src["from"], "reach": src["reach"], "red": src["red"], "rays": cast(src["from"], src["reach"]), "at": 0.25}
+
+
+func _draw_tactics() -> void:
+	if tactics == 0 or _vis.get("rays") == null:
+		return
+	var from: Vector2 = _vis["from"]
+	var reach: float = _vis["reach"]
+	var red: bool = _vis["red"]
+	var col := Color(1.0, 0.3, 0.28) if red else Color(0.35, 1.0, 0.55)
+	var c := from * S
+	# the dark disc: everything in reach – what is in sight lights up on it, the shadows stay dark
+	tac_node.draw_circle(c, reach * S, Color(0.0, 0.02, 0.01, 0.5) if not red else Color(0.04, 0.0, 0.0, 0.5))
+	var rays: Array = _vis["rays"]
+	var h := TAU / TAC_RAYS * 0.5
+	var fill := Color(col, 0.2)
+	var edges: Array = []                                   # the edges between rays – shared exactly, no seams
+	for j in rays.size() + 1:
+		edges.append(Vector2.from_angle(TAU * j / TAC_RAYS - h))
+	for i in rays.size():
+		var d0: Vector2 = edges[i]
+		var d1: Vector2 = edges[i + 1]
+		for seg in rays[i]:
+			var t0 := float(seg[0]) * S
+			var t1 := float(seg[1]) * S
+			tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), fill)
+	# the edges of the shadows: where a ray's sight ends short of the reach
+	for i2 in rays.size():
+		var segs: Array = rays[i2]
+		var a2 := TAU * i2 / TAC_RAYS
+		for seg2 in segs:
+			if float(seg2[1]) < reach - 1.0:
+				tac_node.draw_circle(c + Vector2.from_angle(a2) * float(seg2[1]) * S, 1.6, Color(col, 0.75))
+	# rings and the reach, as on the radar
+	for k in range(1, 5):
+		tac_node.draw_arc(c, reach * S * k / 4.0, 0.0, TAU, 96, Color(col, 0.35 if k == 4 else 0.14), 2.0 if k == 4 else 1.0)
+	if not red:
+		var sweep := fmod(_t / 2.4, 1.0) * TAU                       # the sweep with its afterglow
+		for j in 18:
+			var b0 := sweep - j * 0.045
+			var b1 := sweep - (j + 1) * 0.045
+			tac_node.draw_colored_polygon(PackedVector2Array([c, c + Vector2.from_angle(b0) * reach * S, c + Vector2.from_angle(b1) * reach * S]),
+				Color(col, 0.12 * pow(1.0 - j / 18.0, 1.6)))
+		tac_node.draw_line(c, c + Vector2.from_angle(sweep) * reach * S, Color(0.7, 1.0, 0.8, 0.6), 2.0)
 
 
 # ---------------------------------------------------------------- effects

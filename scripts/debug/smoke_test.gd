@@ -8909,12 +8909,28 @@ func _test_foot_combat(view: SystemView) -> void:
 			var b := Vector2(r.get_center().x, r.end.y + 8.0)
 			var sg: Dictionary = cb.sight(b - Vector2(0, 70), b)
 			low_ok = low_ok or (sg["cover"] and not sg["blocked"])
-	# locks: Tab locks one, a second lock adds, the active one is the newest
+	# 0.7.52.2: the tactical view – the far side of a bulwark lies in its shadow, the near side in sight; a tap goes from
+	# your sight to the target's and back
+	var tac_ok := false
+	for ob2 in g.map.objects:
+		var r2 := Rect2(Vector2(int(ob2["x"]), int(ob2["y"])) * 16.0, Vector2(int(ob2.get("w", 1)), int(ob2.get("h", 1))) * 16.0)
+		if String(ob2["kind"]) == "bulwark" and r2.size.x > r2.size.y and not tac_ok:
+			var from := Vector2(r2.get_center().x, r2.position.y - 30.0)
+			var rays: Array = cb.cast(from, 300.0)
+			tac_ok = rays.size() == GroundCombat.TAC_RAYS and not cb.lit_in(rays, from, Vector2(r2.get_center().x, r2.end.y + 30.0)) 				and cb.lit_in(rays, from, from + Vector2(0, -20))
+	# locks: R locks one, a second lock adds, the active one is the newest
 	cb.next_target()
 	var a1 = cb.active
 	var other = cb.foes[0] if cb.foes[0] != a1 else cb.foes[1]
 	cb.lock(other)
 	var lock_ok: bool = a1 != null and cb.locks.size() == 2 and cb.active == other and cb.lock_t > 0.0
+	cb.cycle_tactics()
+	var t1: int = cb.tactics
+	cb.cycle_tactics()
+	var t2: int = cb.tactics
+	cb.step(0.05, Vector2.ZERO)
+	tac_ok = tac_ok and t1 == 1 and t2 == 2 and cb._vis.get("rays") != null and bool(cb._vis["red"]) and Keybinds.key_text("foot_tactics") != Keybinds.key_text("foot_target")
+	cb.tactics = 0
 	cb.unlock(other)
 	lock_ok = lock_ok and cb.locks.size() == 1 and cb.active == a1
 	# firing: a clear line close to a foe, laser shots land on its layers
@@ -9005,6 +9021,6 @@ func _test_foot_combat(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(layer_ok and chance_ok and arena_ok and high_ok and low_ok and lock_ok and fire_ok and down_ok and wake_ok and ai_ok and dodge_ok and hurt_ok and regen_ok and swap_ok and dbg_ok and end_ok and fall_ok,
-		"package 52: fights on foot – layers, hit chance; the arena (%d foes), cover high and low; locks, firing, a foe down, waking and the auto-lock, the AI moving; a dodge no hit lands in, the shield waits and comes back; weapon swap; debug spawn, AI view, all down, the fight over; shot down → the clinic  [%s]" % [n0,
-		" ".join(PackedStringArray([str(layer_ok), str(chance_ok), str(arena_ok), str(high_ok), str(low_ok), str(lock_ok), str(fire_ok), str(down_ok), str(wake_ok), str(ai_ok), str(dodge_ok), str(hurt_ok), str(regen_ok), str(swap_ok), str(dbg_ok), str(end_ok), str(fall_ok)]))])
+	check(tac_ok and layer_ok and chance_ok and arena_ok and high_ok and low_ok and lock_ok and fire_ok and down_ok and wake_ok and ai_ok and dodge_ok and hurt_ok and regen_ok and swap_ok and dbg_ok and end_ok and fall_ok,
+		"package 52: fights on foot – layers, hit chance; the arena (%d foes), cover high and low; locks, firing, a foe down, waking and the auto-lock, the AI moving; a dodge no hit lands in, the shield waits and comes back; weapon swap; debug spawn, AI view, all down, the fight over; shot down → the clinic; the tactical view (shadow behind a bulwark, your sight → the target's)  [%s]" % [n0,
+		" ".join(PackedStringArray([str(tac_ok), str(layer_ok), str(chance_ok), str(arena_ok), str(high_ok), str(low_ok), str(lock_ok), str(fire_ok), str(down_ok), str(wake_ok), str(ai_ok), str(dodge_ok), str(hurt_ok), str(regen_ok), str(swap_ok), str(dbg_ok), str(end_ok), str(fall_ok)]))])

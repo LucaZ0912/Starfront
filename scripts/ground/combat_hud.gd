@@ -63,6 +63,21 @@ func _draw() -> void:
 			_bar(r.position + Vector2(8, 40 + k * 7), 174, float(st[layer]) / maxf(float(mx[layer]), 0.001), COLS[k])
 			k += 1
 		x += 198
+	# 0.7.52.2: the tactical view's line under the lock cards
+	if combat.tactics != 0:
+		var tred := combat.tactics == 2
+		var who = combat.tac_viewer()
+		var line := "TACTICS – your sight: green you can hit, dark is covered from you" if not tred else 			"TACTICS – %s's sight: red it can hit, dark is safe from it" % (String(who["name"]) if who != null else "?")
+		var you := ""
+		if tred and who != null and combat._vis.get("rays") != null:
+			you = "  •  you are %s" % ("IN ITS SIGHT" if combat.lit_in(combat._vis["rays"], combat._vis["from"], combat.pilot_pos()) else "safe from it")
+		var keys := "%s: %s  •  hold %s: off" % [Keybinds.key_text("foot_tactics"), "the target's sight" if not tred else "your sight", Keybinds.key_text("foot_tactics")]
+		var tcol := Color(1.0, 0.45, 0.4) if tred else Color(0.45, 1.0, 0.6)
+		var tw := maxf(font.get_string_size(line + you, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, font.get_string_size(keys, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x) + 20.0
+		var tr := Rect2(Vector2(vs.x * 0.5 - tw * 0.5, 82 if n > 0 else 12), Vector2(tw, 40))
+		_panel(tr, Color(tcol, 0.7))
+		_s(tr.position + Vector2(10, 17), line + you, tcol, 13)
+		_s(tr.position + Vector2(10, 33), keys, dim, 11)
 	# the fight, top right
 	if combat.fight:
 		var aware: Array = combat.alive().filter(func(f): return f["aware"])
@@ -119,7 +134,7 @@ func _draw() -> void:
 		_s(wr.position + Vector2(16, 113), {"optical": "strong on shields", "kinetic": "strong on armour", "explosive": "strong on the body, splash"}[odt], dim, 11)
 	else:
 		_s(wr.position + Vector2(16, 96), "one weapon slot in use", dim, 12)
-	_s(wr.position + Vector2(10, 140), "Firearms %d – aim  •  Athletics %d – dodge  •  %s next target" % [GameState.skill_level("firearms"), GameState.skill_level("athletics"), Keybinds.key_text("foot_target")], dim, 11)
+	_s(wr.position + Vector2(10, 140), "Firearms %d – aim  •  Athletics %d – dodge  •  %s target  •  %s tactics" % [GameState.skill_level("firearms"), GameState.skill_level("athletics"), Keybinds.key_text("foot_target"), Keybinds.key_text("foot_tactics")], dim, 11)
 	_s(wr.position + Vector2(10, 166), "%s  dodge" % Keybinds.key_text("foot_dodge"), Color(0.95, 0.95, 0.95), 13)
 	var mxd := combat.max_dodges()
 	for i2 in mxd:

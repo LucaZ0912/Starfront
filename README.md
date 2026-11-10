@@ -307,6 +307,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   `foot_target` (Tab), `foot_dodge` (Space), `foot_swap` (Q); commands `debug_arena` {world, foes, body}, `debug_foe`
   {kind, n, quality, near}, `debug_combat` {do kill/end/freeze/ai/hurt}; codex `basics_foot_combat` (event
   `foot_fight`); skills Athletics and Firearms work; smoke group `foot_combat`.
+- 0.7.52.2: `GroundCombat.tactics` (0 off, 1 your sight, 2 the target's – `tac_viewer()`), `cycle_tactics()`,
+  `cast(from, reach)` (`TAC_RAYS` rays, lit stretches – high cover ends a ray, low cover and `COVER_NEAR` behind it
+  break it), `lit_in(rays, from, p)`, `_vis` cache, `tac_node` (drawn on the ground under `_sorted`); `GroundView`
+  `_tab_held` / `TAB_HOLD` (tap cycles, hold closes); keys `foot_target` R, `foot_tactics` Tab (`Keybinds.LAYOUT` 5,
+  `LAYOUT_RESETS` "foot_"); `debug_combat` do `tactics` {mode}.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
