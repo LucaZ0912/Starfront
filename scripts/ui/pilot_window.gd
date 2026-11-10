@@ -173,7 +173,7 @@ func _gear() -> void:
 	top.add_child(stage)
 	var look: Dictionary = (GameState.pilot.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate()
 	look["suit"] = GearData.family(String(g.suit))
-	look["helmet"] = true
+	look["helmet"] = g.helmet == "always"                # 0.7.51.10: as it is set to be worn
 	stage.add_child(UI.icon(ChibiArt.frame(look, 0, 0), 190))
 	var head := UI.vbox(3)
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -214,6 +214,19 @@ func _gear() -> void:
 		pb.value = pv
 		cell.add_child(pb)
 		pr.add_child(cell)
+	# 0.7.51.10 (Luz): when the helmet is worn
+	var hr := UI.hbox(6)
+	left.add_child(hr)
+	hr.add_child(UI.label("HELMET", 13, COL))
+	hr.add_child(UI.spacer())
+	for hm in [["auto", "When needed"], ["always", "Always"]]:
+		var mode := String(hm[0])
+		var hb := UI.button(String(hm[1]), func(): g.helmet = mode; _gear_do(""))
+		hb.toggle_mode = true
+		hb.button_pressed = g.helmet == mode
+		hb.custom_minimum_size = Vector2(120, 28)
+		hb.tooltip_text = "Only where the air cannot be breathed, and in a fight" if mode == "auto" else "On all the time, outside and aboard"
+		hr.add_child(hb)
 	left.add_child(HSeparator.new())
 	_gear_sel_detail(left, g, fit)
 	# ---- right: the slots, the pockets, the locker – tiles with pictures

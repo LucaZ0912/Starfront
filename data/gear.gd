@@ -50,12 +50,12 @@ const SUITS := {
 	"suit_mil_light": {"name": "Light Combat Suit", "maker": "Hadrian Dynamics", "weapons": 2, "belt": 3, "features": 2,
 		"shield": 50.0, "armor": 45.0, "energy": 120.0, "oxygen": 25.0, "ammo": 160,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 9500,
-		"col": Color(0.4, 0.45, 0.38), "trim": Color(0.9, 0.85, 0.6),
+		"col": Color(0.86, 0.88, 0.9), "trim": Color(0.35, 0.75, 1.0),
 		"desc": "Marine issue: quick on its feet, a strong shield, two weapons at hand."},
 	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 2, "features": 3,
 		"shield": 70.0, "armor": 110.0, "energy": 170.0, "oxygen": 20.0, "ammo": 260,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
-		"col": Color(0.32, 0.34, 0.38), "trim": Color(1.0, 0.3, 0.2),
+		"col": Color(0.3, 0.32, 0.36), "trim": Color(1.0, 0.25, 0.2),
 		"desc": "A walking bunker: three weapons, heavy plate, a deep magazine – and slow, and short of air."},
 }
 

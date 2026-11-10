@@ -7779,6 +7779,7 @@ func _test_gear() -> void:
 	check(start_ok and ids_ok and q_ok and heavy_ok and three_ok and belt_ok and spill_ok and locker_ok and save_ok and game_ok,
 		"51: gear – %d pieces, a civilian suit to start, the suit sets the slots (3 weapons in a heavy combat suit), belt stacks, quality F–A, what no longer fits into the pockets, the ship's locker, saved" % GD.all_ids().size())
 	_test_gear_page()
+	_test_suit_looks()
 
 
 ## 0.7.51.7 (Luz: like the ship menu): the Gear page – tiles with pictures for the suit, every slot, the pockets and
@@ -7814,6 +7815,45 @@ func _test_gear_page() -> void:
 	g.from_dict(saved)
 	check(icons_ok and tiles.size() >= want and swapped,
 		"0.7.51.7: the Gear page like the ship menu – %d tiles with pictures (suit, slots, pockets%s), an icon for every piece, pick in the pockets and put on" % [tiles.size(), ", locker" if tiles.size() > want else ""])
+
+
+## 0.7.51.10 (Luz): the suits each their own – combat suits plated with a closed visor helmet, the civilian and
+## survey suits an EVA helmet with a gold visor; the powers' guards in combat suits of their colours; the helmet worn
+## when needed or always (saved).
+func _test_suit_looks() -> void:
+	var CA = ChibiArt
+	var look: Dictionary = (GameState.pilot.get("look", {}) as Dictionary).duplicate()
+	var datas := {}
+	var differ := true
+	for suit in ["suit_civil", "suit_survey", "suit_work", "suit_mil_light", "suit_mil_heavy"]:
+		for hm in [false, true]:
+			var l2 := look.duplicate()
+			l2["suit"] = suit
+			l2["helmet"] = hm
+			var d: PackedByteArray = CA.frame(l2, 0, 0).get_image().get_data()
+			for k in datas:
+				differ = differ and datas[k] != d
+			datas["%s%s" % [suit, hm]] = d
+	# the helmet hides the face of a combat suit: no skin colour left in the head
+	var lv := {}
+	for liv in CA.LIVERY:
+		var l3 := look.duplicate()
+		l3["suit"] = "suit_mil_light"
+		l3["helmet"] = true
+		l3["livery"] = liv
+		lv[liv] = CA.frame(l3, 0, 0).get_image().get_data()
+	var liv_ok: bool = lv.size() == 4 and lv["covenant"] != lv["directorate"] and lv["assembly"] != lv["independent"]
+	# the helmet setting, saved and loaded
+	var g = GameState.gear
+	var was := String(g.helmet)
+	g.helmet = "always"
+	var PG = preload("res://scripts/core/pilot_gear.gd")
+	var g2 = PG.new()
+	g2.from_dict(JSON.parse_string(JSON.stringify(g.to_dict())))
+	var save_ok: bool = g2.helmet == "always"
+	g.helmet = was
+	check(differ and liv_ok and save_ok,
+		"0.7.51.10: every suit its own look with and without its helmet (%d pictures), the guards' combat suits in 4 powers' colours, the helmet worn when needed or always, saved" % datas.size())
 
 
 func _gp_buttons(n: Node) -> Array:

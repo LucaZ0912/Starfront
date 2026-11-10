@@ -19,6 +19,9 @@ var energy := 0.0
 var oxygen := 0.0
 var ammo := 0
 var stim_t := 0.0                      # 0.7.51.3: a stimulant working (seconds left)
+## 0.7.51.10 (Luz): when the helmet is worn – "auto": only when needed (no air to breathe, or in a fight), "always"
+var helmet := "auto"
+var combat_t := 0.0                     # 0.7.51.10: seconds the pilot counts as in a fight (set when shooting starts)
 
 
 ## A new pilot: a civilian suit (F), a laser pistol, two medkits and an energy cell on the belt.
@@ -141,6 +144,7 @@ func env_step(delta: float, env: Dictionary, sprinting: bool) -> Dictionary:
 			health -= GearData.SUFFOCATE * delta
 	health = maxf(health, 0.0)
 	stim_t = maxf(0.0, stim_t - delta)
+	combat_t = maxf(0.0, combat_t - delta)
 	return {"exposure": exposure, "out_of_air": no_air, "out_of_energy": not powered}
 
 
@@ -424,7 +428,8 @@ func fetch(j: int, fit) -> String:
 
 func to_dict() -> Dictionary:
 	return {"suit": suit, "weapons": weapons.duplicate(), "belt": belt.duplicate(true), "features": features.duplicate(),
-		"inv": inv.duplicate(true), "lockers": lockers.duplicate(true), "health": health, "energy": energy, "oxygen": oxygen, "ammo": ammo}
+		"inv": inv.duplicate(true), "lockers": lockers.duplicate(true), "health": health, "energy": energy, "oxygen": oxygen, "ammo": ammo,
+		"helmet": helmet}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -439,6 +444,7 @@ func from_dict(d: Dictionary) -> void:
 	while inv.size() < GearData.INV_SLOTS:
 		inv.append({})
 	lockers = (d.get("lockers", {}) as Dictionary).duplicate(true)
+	helmet = "always" if String(d.get("helmet", "auto")) == "always" else "auto"
 	_fit_slots()
 	health = float(d.get("health", GearData.HEALTH))
 	energy = float(d.get("energy", 0.0))

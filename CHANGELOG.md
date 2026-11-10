@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.10 – 2026-11-10
+
+**The suits each their own, the combat suits dangerous, the helmet when you want it (Luz).**
+- **Combat suits:** plates over a black undersuit – a chest plate with its seam and lights, a segmented belly,
+  pauldrons, thigh, knee and shin plates, gauntlets. The **Light Combat Suit** white with cyan lights, its closed
+  helmet with a broad dark visor and jaw guard – in profile the visor juts forward and the back flares; the **Heavy
+  Combat Suit** gunmetal with red lights, broader, its pauldrons standing out past the arms, an antenna off its pack,
+  a T-slit visor lit red.
+- **Civilian and Survey Suits:** a hard white EVA helmet with a gold sun visor (the survey helmet with lamps and a
+  camera at its side); the survey suit's cyan seams and shoulder sensor pod. **Work Suit:** reflective bands, a chest
+  box with its lights, a hard yellow helmet with a lamp. Gloves on every suit.
+- **The powers' guards** wear the combat suits in their power's colours, helmets on – Independent gunmetal with neon
+  cyan, Assembly pale blue-grey with blue, Covenant dark red with gold, Directorate white with green; some posted
+  guards in the heavy suit.
+- **Helmet: When needed / Always** on the Gear page (saved): when needed it is on where the air cannot be breathed
+  and in a fight (the fight trigger is ready for combat on foot, which comes later); always – outside and aboard.
+- Smoke test: every suit looks its own with and without its helmet, the guards' four liveries, the helmet setting
+  saved.
+
 ## alpha 0.7.51.9 – 2026-11-10
 
 **Fix (Luz): the Gear shop showed itself twice, one under the other.** The shop did not clear itself when it was

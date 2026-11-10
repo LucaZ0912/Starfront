@@ -323,7 +323,7 @@ func _draw_hatch() -> void:
 func pilot_look() -> Dictionary:
 	var lk: Dictionary = (GameState.pilot.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate()
 	lk["suit"] = ChibiArt.GearData.family(String(GameState.gear.suit))
-	lk["helmet"] = needs_helmet()
+	lk["helmet"] = needs_helmet() or GameState.gear.helmet == "always" or GameState.gear.combat_t > 0.0   # 0.7.51.10
 	return lk
 
 
@@ -742,7 +742,10 @@ func _add_guards(rng: RandomNumberGenerator) -> void:
 		lk["color1"] = int(g["c1"])
 		lk["color2"] = int(g["c2"])
 		lk["headgear"] = 2 if rng.randf() < 0.7 else 1
-		lk = _outside_look(lk, rng, true)
+		# 0.7.51.10 (Luz): in a combat suit of their power's colours, the helmet on (a heavy one now and then at a post)
+		lk["suit"] = "suit_mil_heavy" if i < n_post and rng.randf() < 0.3 else "suit_mil_light"
+		lk["livery"] = CityStyle.key_for(station)
+		lk["helmet"] = true
 		var w := Walker.new()
 		var at: Vector2
 		if i < n_post:
