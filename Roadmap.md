@@ -1941,9 +1941,17 @@ Nummerierung schließt an Teil 7 an (dort bis Paket 54).
 | 60 | Fenster „Acquaintances“ | Personen, die man kennengelernt hat (Dan, der Directorate-Kontakt …), mit Porträt, Ort und Beziehung; der bestehende Schiffs-Reiter „Contacts“ bleibt |
 | 61 | Spezialsystem Fern | Casino-System: ein einziger Planet um einen orangen Riesen, mit einer besonderen Casino-Station |
 | 62 | Casino-Minispiele | neue Minispiele in der Casino-Station |
+| 62a | Das Kolosseum | Bodenkämpfe als Einrichtung im Casino-System (Idee Luz, 11. Nov 2026) – Spielmodi King of the Kolosseum, Team-Deathmatch und ein Survivor-/Bullet-Hell-Modus; Einzug, VS-Bild und Hologramm-Start; die Kampfkarte als VR, auch viel größer als die Arena (Details unten); baut auf den Bodenkämpfen (Paket 52) auf |
 | 63 | Neue Schiffe | das alte Earthworks-Schiff des Piloten (nicht mehr hergestellt; taucht später als 100-Millionen-Sammlerstück in den Nachrichten auf), besondere Casino-Schiffe, ein Rennschiff von Maison Aurelle |
 | 64 | Neue Missionsarten | _(Details offen)_ |
 | 65 | Neue Touristenziele | _(Details offen)_ – baut auf Tourismus (Paket 43) und Sehenswürdigkeiten (Paket 54) auf |
+
+**Paket 62a – Das Kolosseum (Idee Luz, 11. Nov 2026, spätere Sache):** eine Einrichtung im Casino-System für Bodenkämpfe.
+- **Einzug (bei allen Spielmodi):** Der Spieler betritt ein rundes Gebäude; hinter einer hohen Wand ragen die Zuschauerränge auf – **wie voll sie sind, hängt vom Fortschritt im jeweiligen Spielmodus ab**. Die Kamera zoomt wieder herunter, gegenüber öffnet sich das Tor, die Gegner treten ein. Dann eine kleine Animation: **die Porträts der Gegner VS das Porträt des Spielers**. Danach eine **Hologramm-Startanimation**, und die eigentliche Kampfkarte lädt – sie kann **viel größer als die Arena** sein, die Idee ist, dass das eine Form von **VR** ist.
+- **King of the Kolosseum:** der Spieler gegen **3 Gegner – einen starken und zwei schwache**. Ein Sieg bringt **Coins** (die Währung des Casinos) und **Ausrüstungspunkte**; mit den Ausrüstungspunkten bekommt man Waffen und Ausrüstung **für diesen Spielmodus**. Bei einer Niederlage sind **alle Ausrüstungspunkte weg**, und es geht von vorne los. **Je weiter man kommt, desto stärker die Gegner.**
+- **Team-Deathmatch:** dasselbe, nur in einem **Team zu dritt gegen 3 starke Gegner**.
+- **Survivor-/Bullet-Hell-Modus** (wie Vampire Survivors) – ein verrückter Spielmodus aus Spaß.
+- Anmerkung Claude: die Gefahrenstufen grün/gelb/rot (0.7.52.4) passen dazu („ein starker, zwei schwache“), das Team-Deathmatch kann auf dem Bodenteam (Paket 52a) aufbauen.
 
 Wie immer: **jedes Paket mit eigenen Debug-Funktionen** – z. B. zu jedem Story-Schritt springen, Story-Flags setzen, Intro überspringen, direkt nach Beyond oder Fern teleportieren, Casino-Spiele mit festem Ausgang testen.
 
