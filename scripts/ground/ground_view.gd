@@ -51,6 +51,7 @@ var _sys := -1
 var _lift_menu: Control = null
 var _ship_spr: Sprite2D
 var _body: Dictionary = {}              # package 50: landed – the body and the site
+var _lander := false                    # 0.7.50.4: down by the landing drone (small places), not the ship
 var _ship_shadow: Sprite2D
 var _touch := -1.0                      # 0.7.50.3: the touchdown under way (seconds), -1: none
 var _ship_base := Vector2.ZERO
@@ -121,7 +122,8 @@ func setup_station(p_station: Dictionary, available: Dictionary, crew: Array = [
 
 
 ## Package 50: on a planet – the landing field at a site, your ship on the pad.
-func setup_landing(p_body: Dictionary, p_site: Dictionary, sys_id: int = -1, touchdown: bool = false) -> void:
+func setup_landing(p_body: Dictionary, p_site: Dictionary, sys_id: int = -1, touchdown: bool = false, by_lander: bool = false) -> void:
+	_lander = by_lander
 	_body = p_body
 	_site = p_site
 	station = {"id": String(p_site.get("id", "")), "name": String(p_site.get("name", ""))}
@@ -158,6 +160,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if level == "landing":
 		var lsz := _ship_size()
 		map = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)
+		if _lander:
+			for zl in map.zones:
+				if String(zl.get("id", "")) == "ship":
+					zl["title"] = "Board the landing drone – back up to your ship"
 	elif level == "hangar":
 		var sz := _ship_size()
 		var af := GameState.active()
@@ -188,6 +194,8 @@ const HANGAR_ART := 3.5                 # art px per pixel of the ship's picture
 
 
 func _ship_tex() -> Texture2D:
+	if level == "landing" and _lander:
+		return FlightScene.lander_texture()
 	var f := GameState.active()
 	if f == null:
 		return PixelArt.ship_texture("dragonfly", "player")

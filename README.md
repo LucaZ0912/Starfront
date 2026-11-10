@@ -192,7 +192,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   zoom during descent/ascent (`z0`); `PlanetMap` intro (planet turns in, places light up, list fades in);
   `scripts/ui/flight_scene.gd` – `FlightScene` (`ground_texture(body)`, `cloud_texture`, the place drawn on its
   patch of land), `main.fly_down_to(body, site)` → `land_at(…, touchdown)`; `GroundView` touchdown (`_touchdown_step`,
-  `_dust_burst`, shake) and lift-off (in the ramp ride, `LIFT_TIME`).; `texture()` renders floors and walls once.
+  `_dust_burst`, shake) and lift-off (in the ramp ride, `LIFT_TIME`).
+- 0.7.50.4: `FlightScene.lander` (site kind != city → the landing drone, `lander_texture()`, launched at `DRONE_AT`),
+  `_draw_city_lights` (a city only as its lights; the ship shrinks into them); `GroundView.setup_landing(…, by_lander)`.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

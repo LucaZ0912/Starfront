@@ -7737,10 +7737,27 @@ func _test_landing(view: SystemView) -> void:
 	var down: bool = f.docked_at.begins_with("land:") and main.planet_map != null and not main.planet_map.sites.is_empty()
 	var body: Dictionary = main.planet_map.body if main.planet_map != null else {}
 	var site: Dictionary = main.planet_map.sites[0] if down else {}
+	var sites_all: Array = main.planet_map.sites.duplicate() if down else []
 	if down:
 		main.land_at(body, site)
 	var g = main.ground
 	var field: bool = g != null and g.level == "landing" and g.map.ship_at != Vector2.INF and g._ship_spr != null and g.map.zone_at(g.map.spawn).get("id", "") == "ship"
+	# 0.7.50.4: a small place - down by the landing drone, not the ship; a city - the ship herself
+	var drone_ok := true
+	if down:
+		for s2 in sites_all:
+			if String(s2["kind"]) != "city":
+				main.land_at(body, s2)
+				g = main.ground
+				drone_ok = g != null and g._lander and g._ship_tex().get_width() == 18
+				break
+		for s3 in sites_all:
+			if String(s3["kind"]) == "city":
+				main.land_at(body, s3)
+				g = main.ground
+				drone_ok = drone_ok and g != null and not g._lander
+				break
+	check(drone_ok, "0.7.50.4: small places by the landing drone, cities by the ship herself")
 	main.take_off()
 	guard = 0
 	while not view._descent.is_empty() and guard < 600:

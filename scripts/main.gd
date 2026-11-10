@@ -244,7 +244,7 @@ func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false) -> voi
 	ground = GroundView.new()
 	ground.name = "Ground"
 	add_child(ground)
-	ground.setup_landing(body, site, GameState.current_system, touchdown)
+	ground.setup_landing(body, site, GameState.current_system, touchdown, String(site.get("kind", "")) != "city")
 	ground.used.connect(_on_deck_use)
 	GameState.log_msg("Landed at %s on %s." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
 	_update_input()

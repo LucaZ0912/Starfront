@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.4 – 2026-11-10
+
+**Cities as lights, and a landing drone for the small places.**
+- **Into a city:** no more drawn blocks – the city comes up out of the dusk as its lights: fine strings of light
+  along its avenues, hundreds of tiny warm windows, densest and brightest in its heart, now and then one going out.
+  Your ship sinks into them, growing smaller and smaller until she is a speck among the lights.
+- **The landing drone:** every ship carries one. Small places (outposts, mines, ruins, wrecks, camps) are not landed
+  at by the ship herself: halfway down the drone bay flashes, the small lander drops out of it with its own flame,
+  your ship pulls up and away, and you follow the drone down. It sets down on the pad in its cloud of dust; to get
+  back up you board the landing drone, which flies you back to your ship.
+
 ## alpha 0.7.50.3 – 2026-11-10
 
 **The landing gets its way down – no more hard cuts.**
