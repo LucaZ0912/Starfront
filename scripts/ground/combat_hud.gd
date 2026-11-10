@@ -67,7 +67,7 @@ func _draw() -> void:
 	if combat.tactics != 0:
 		var tred := combat.tactics == 2
 		var who = combat.tac_viewer()
-		var line := "TACTICS – your sight: green you can hit, dark is covered from you" if not tred else 			"TACTICS – %s's sight: red it can hit, dark is safe from it" % (String(who["name"]) if who != null else "?")
+		var line := "TACTICS – your sight: green you can hit, dark is covered from you" if not tred else 			"TACTICS – %s's sight: red it sees you, dark is safe from it" % (String(who["name"]) if who != null else "?")
 		var you := ""
 		if tred and who != null and combat._vis.get("rays") != null:
 			you = "  •  you are %s" % ("IN ITS SIGHT" if combat.lit_in(combat._vis["rays"], combat._vis["from"], combat.pilot_pos()) else "safe from it")

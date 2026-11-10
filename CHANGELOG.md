@@ -3,6 +3,24 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.3 – 2026-11-10
+
+**Weapons with detail, shots from the tip, mightier fights, the tactical view at your weapon's reach (Luz).**
+
+- **Every hand weapon has its own pixel picture** at the figures' fineness and in real size (pistols ~0.3 m, rifles
+  ~1 m, the Long Rail ~1.5 m), in its maker's look: Axiom white with cyan cells, coils and emitters; Hadrian gunmetal
+  with amber sights, rails and magazines; Forge of Return dark bronze with red glow seams, the scatter gun's double bore
+  and pump, the Long Rail's scope and bipod; Concord's blue-white cutting beam with its focusing head; the olive
+  grenade launcher with its drum. Held at chest height, turned straight at the target and mirrored when aiming left;
+  facing away, the weapon is behind the body.
+- **Shots leave the very tip of the weapon** – lasers, slugs and shells, for you and for the foes – in line with the
+  barrel.
+- **Mightier fights:** foes hit for 12 % of their weapon's damage (was 30 %) and have weaker bodies (scrapper 55,
+  rifleman 60, gunner 65, boss 100 against your 100) – one against three is fairly easy with decent gear; standing in
+  the open still hurts.
+- **The tactical view reaches exactly as far as the weapon in your hands** – the green view and the red one (the
+  target's sight within your reach) – with a clear ring at the reach, labelled with the weapon and its metres.
+
 ## alpha 0.7.52.2 – 2026-11-10
 
 **The tactical view on Tab, the next target on R (Luz).**

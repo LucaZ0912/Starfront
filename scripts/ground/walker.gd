@@ -25,6 +25,7 @@ var xray := false                  # 0.7.51.13: behind the clinic's scanner – 
 var patrol: Array = []             # the points a guard walks between, in turn
 var aim := Vector2.INF             # package 52: in a fight – the weapon in the hands, pointed there (art px)
 var aim_dtype := "kinetic"         # its damage type (the colour of the weapon)
+var aim_weapon := ""               # 0.7.52.3: the weapon's family (its picture, WeaponArt)
 var down := false                  # package 52: fallen in a fight – lies on the ground
 var _pp := 0
 const DRINK_TIME := 3.2
@@ -186,9 +187,12 @@ func _draw() -> void:
 		var st := ChibiArt.frame(look, dir, 3)
 		draw_texture_rect(st, Rect2(Vector2(-size.x * 0.5, -size.y - SIT_LIFT * s), size), false)
 	else:
+		if aim != Vector2.INF and not down and dir == 1:
+			_draw_aim(bob * s)                     # facing away: the weapon in front of the body, behind it for us
 		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
 	if aim != Vector2.INF and not sitting and not down:
-		_draw_aim(size, bob * s)
+		if dir != 1:
+			_draw_aim(bob * s)
 	elif guard and not sitting:
 		# 0.7.50.9: a guard's rifle slung across the chest (pointing down – it stays there), a lamp on the shoulder
 		var cs2 := ChibiArt.CHAR_SCALE
@@ -246,29 +250,34 @@ static func PilotArt_CLOTH(i: int) -> Color:
 	return c[posmod(i, c.size())]
 
 
-## Package 52: the weapon in the hands at chest height, pointed at what is aimed at (seen from the side when facing
-## left or right, foreshortened up and down); lasers with a glowing emitter, slug guns dark, launchers olive.
-func _draw_aim(size: Vector2, bob_px: float) -> void:
+## Package 52 / 0.7.52.3: where the weapon is held and where it points (screen px, relative to the walker): the hand at
+## chest height on the side it points to, the angle straight at the aim (in line with the shots), the picture
+## mirrored when pointing left, and the muzzle – the very tip, where the shots leave.
+func aim_geom(bob_px: float = 0.0) -> Dictionary:
 	var cs := ChibiArt.CHAR_SCALE
-	var chest := Vector2(0, -size.y + bob_px + 22.0 * cs)
+	var chest := Vector2(0, -ChibiArt.H * cs + bob_px + 22.0 * cs)
 	var to := (aim - pos) * GroundMap.SCALE + Vector2(0, -14.0 * GroundMap.SCALE) - chest
-	var d := to.normalized() if to.length() > 0.1 else Vector2.RIGHT
-	d.y *= 0.6
-	d = d.normalized()
-	var side := 1.0 if d.x >= 0.0 else -1.0
-	var hand := chest + Vector2(3.0 * cs * side, 0.0)
-	var tip := hand + d * 11.0 * cs
-	var wc: Color = {"optical": Color(0.75, 0.8, 0.88), "kinetic": Color(0.3, 0.32, 0.36), "explosive": Color(0.38, 0.42, 0.3)}.get(aim_dtype, Color(0.3, 0.32, 0.36))
-	var behind := dir == 1                                     # facing away: the weapon in front of the body, hidden
-	if behind:
-		return
-	draw_line(hand - d * 3.0 * cs, tip, Color(0.06, 0.06, 0.08), 3.4 * cs)
-	draw_line(hand - d * 3.0 * cs, tip, wc, 1.4 * cs)
-	draw_line(hand + Vector2(0, 1.0 * cs), hand + Vector2(0, 3.0 * cs), Color(0.06, 0.06, 0.08), 2.0 * cs)   # the grip
-	if aim_dtype == "optical":
-		draw_circle(tip - d * 1.5 * cs, 1.0 * cs, Color(0.35, 0.95, 1.0))
+	var d := to if to.length() > 0.1 else Vector2.RIGHT
+	var flip := d.x < 0.0
+	var hand := chest + Vector2(3.0 * cs * (-1.0 if flip else 1.0), 1.0 * cs)
+	var art := WeaponArt.art(aim_weapon if aim_weapon != "" else "wp_" + aim_dtype)
+	var sc := Vector2(cs, -cs if flip else cs)
+	var ang := d.angle()
+	var muzzle_px := hand + ((art["muzzle"] as Vector2) - (art["grip"] as Vector2)) * sc
+	return {"hand": hand, "ang": ang, "scale": sc, "art": art, "muzzle": hand + (muzzle_px - hand).rotated(ang)}
 
 
-## The muzzle (screen px relative to the walker) – where shots leave.
-func muzzle() -> Vector2:
-	return pos + Vector2(4.0 if dir != 2 else -4.0, -15.0)
+## The weapon in the hands, pointed at the aim (WeaponArt's picture, turned and mirrored).
+func _draw_aim(bob_px: float) -> void:
+	var g := aim_geom(bob_px)
+	var art: Dictionary = g["art"]
+	draw_set_transform(g["hand"], g["ang"], g["scale"])
+	draw_texture(art["tex"], -(art["grip"] as Vector2))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## The muzzle in art px of the map – where this walker's shots leave (its chest when it holds no weapon up).
+func muzzle_art() -> Vector2:
+	if aim == Vector2.INF:
+		return pos + Vector2(4.0 if dir != 2 else -4.0, -15.0)
+	return pos + (aim_geom()["muzzle"] as Vector2) / GroundMap.SCALE

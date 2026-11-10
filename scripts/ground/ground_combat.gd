@@ -146,10 +146,11 @@ func spawn(kind: String, p: Vector2, quality: String = "") -> Dictionary:
 	var wid := FoeData.weapon_id(kind, q)
 	w.slung = String(GearData.base(wid).get("dtype", "kinetic"))
 	w.aim_dtype = w.slung
+	w.aim_weapon = GearData.family(wid)
 	view._sorted.add_child(w)
 	var f := {"id": _next_id, "w": w, "kind": kind, "name": String(d["name"]), "weapon": wid, "quality": q,
-		"st": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": GearData.HEALTH},
-		"mx": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": GearData.HEALTH},
+		"st": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": float(d.get("health", 60.0))},
+		"mx": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": float(d.get("health", 60.0))},
 		"cool": randf_range(0.3, 1.0), "state": "idle", "aware": false, "goal": Vector2.INF, "path": PackedVector2Array(), "pi": 0,
 		"think": randf_range(0.0, 0.5), "regen_wait": 0.0, "role": String(d["role"]), "flee": float(d["flee"]),
 		"firearms": int(d["firearms"]), "athletics": int(d["athletics"]), "out_t": 0.0, "home": p, "dead": false, "burst": 0}
@@ -373,6 +374,7 @@ func step(delta: float, move: Vector2) -> void:
 	if fight and active != null and wid != "":
 		view.pilot.aim = (active["w"] as Walker).pos
 		view.pilot.aim_dtype = String(GearData.base(wid).get("dtype", "kinetic"))
+		view.pilot.aim_weapon = GearData.family(wid)
 		if not view.pilot.moving and dodge_t <= 0.0:
 			view.pilot.dir = _face((active["w"] as Walker).pos - pilot_pos())
 	else:
@@ -438,7 +440,12 @@ func fire(from, to, w: Dictionary) -> void:
 	var dtype := String(w.get("dtype", "kinetic"))
 	var col: Color = {"optical": Color(0.55, 0.95, 1.0), "kinetic": Color(1.0, 0.85, 0.4), "explosive": Color(1.0, 0.55, 0.2)}.get(dtype, Color.WHITE)
 	var pellets := int(w.get("pellets", 1))
-	var muzzle := a + CHEST + Vector2(5.0 if b.x >= a.x else -5.0, 0.0)
+	var shooter: Walker = view.pilot if from == null else from["w"]
+	shooter.aim = b                                        # 0.7.52.3: the shot leaves the tip of the weapon
+	if from == null:
+		shooter.aim_weapon = GearData.family(weapon_id())
+		shooter.aim_dtype = dtype
+	var muzzle := shooter.muzzle_art()
 	for i in pellets:
 		var r := randf()
 		var res := {"to": to, "dmg": float(w["damage"]) * (FoeData.DAMAGE if from != null else 1.0), "dtype": dtype, "splash": float(w.get("splash", 0.0)), "from": from}
@@ -608,7 +615,7 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	else:
 		f["out_t"] = 0.0
 	# running away when badly hurt
-	if f["state"] != "flee" and float(st["health"]) < float(f["flee"]) * GearData.HEALTH:
+	if f["state"] != "flee" and float(st["health"]) < float(f["flee"]) * float(f["mx"]["health"]):
 		f["state"] = "flee"
 		f["goal"] = _flee_spot(w.pos, pp)
 		f["path"] = map.path(w.pos, f["goal"])
@@ -832,14 +839,19 @@ func lit_in(rays: Array, from: Vector2, p: Vector2) -> bool:
 	return false
 
 
+## 0.7.52.3 (Luz): both views reach exactly as far as the weapon in your hands.
+func tac_reach() -> float:
+	var wid := weapon_id()
+	return float(GearData.stats(wid).get("range", 300.0)) if wid != "" else 300.0
+
+
 func _tac_source() -> Dictionary:
 	if tactics == 2:
 		var f = tac_viewer()
 		if f == null:
 			return {}
-		return {"from": (f["w"] as Walker).pos, "reach": float(GearData.stats(String(f["weapon"])).get("range", 300.0)), "red": true, "who": f}
-	var wid := weapon_id()
-	return {"from": pilot_pos(), "reach": float(GearData.stats(wid).get("range", 300.0)) if wid != "" else 300.0, "red": false, "who": null}
+		return {"from": (f["w"] as Walker).pos, "reach": tac_reach(), "red": true, "who": f}
+	return {"from": pilot_pos(), "reach": tac_reach(), "red": false, "who": null}
 
 
 func _tac_step(delta: float) -> void:
@@ -887,8 +899,15 @@ func _draw_tactics() -> void:
 			if float(seg2[1]) < reach - 1.0:
 				tac_node.draw_circle(c + Vector2.from_angle(a2) * float(seg2[1]) * S, 1.6, Color(col, 0.75))
 	# rings and the reach, as on the radar
-	for k in range(1, 5):
-		tac_node.draw_arc(c, reach * S * k / 4.0, 0.0, TAU, 96, Color(col, 0.35 if k == 4 else 0.14), 2.0 if k == 4 else 1.0)
+	for k in range(1, 4):
+		tac_node.draw_arc(c, reach * S * k / 4.0, 0.0, TAU, 96, Color(col, 0.14), 1.0)
+	tac_node.draw_arc(c, reach * S, 0.0, TAU, 160, Color(col, 0.9), 3.0)            # the reach of your weapon, exactly
+	var wid := weapon_id()
+	var lbl := "%s – %d m" % [String(GearData.base(wid).get("name", "")), int(round(reach / 15.0))]
+	for ang in [-PI * 0.5, 0.0]:
+		var lp := c + Vector2.from_angle(ang) * reach * S + Vector2(6, -6)
+		tac_node.draw_string_outline(ThemeDB.fallback_font, lp, lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0, 0, 0, 0.8))
+		tac_node.draw_string(ThemeDB.fallback_font, lp, lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(col, 0.95))
 	if not red:
 		var sweep := fmod(_t / 2.4, 1.0) * TAU                       # the sweep with its afterglow
 		for j in 18:

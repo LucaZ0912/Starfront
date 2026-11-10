@@ -8862,6 +8862,9 @@ func _test_debug_shot() -> void:
 ## Package 52: fights on foot – the layers and the hit chance, the arena and its cover (low: shot over, high: no sight),
 ## locking, firing, foes going down, the AI waking, dodging (no hit during the jump), the shield coming back, going
 ## down yourself (the clinic), the codex.
+const FoeData52 = preload("res://data/foes.gd")
+
+
 func _test_foot_combat(view: SystemView) -> void:
 	var GD = GearShop.GearData
 	var f := GameState.active()
@@ -8877,6 +8880,9 @@ func _test_foot_combat(view: SystemView) -> void:
 	GD.apply_damage(st3, 20.0, "explosive")
 	var layer_ok: bool = is_zero_approx(float(st["shield"])) and absf(float(st["armor"]) - (10.0 - (20.0 - 10.0 / 1.3) * 0.8)) < 0.01 and is_equal_approx(float(st["health"]), 100.0) \
 		and is_equal_approx(float(o1["shield"]), 10.0) and is_equal_approx(float(st2["armor"]), 25.0) and is_equal_approx(float(st3["health"]), 72.0)
+	# 0.7.52.3 (Luz): mightier – foes' bodies weaker than the pilot's, their shots a small share of their weapons' damage
+	var foe_ok: bool = FoeData52.DAMAGE <= 0.15 and FoeData52.FOES.values().all(func(x): return float(x.get("health", 100.0)) <= GD.HEALTH)
+	layer_ok = layer_ok and foe_ok
 	# the hit chance: cover and running cut it, distance past the optimum too, nothing past the reach; Firearms helps
 	var w: Dictionary = GD.stats("wp_rifle:C")
 	var open_c: float = GD.hit_chance(w, 0, 100.0, false, false, 0, false)
@@ -8929,7 +8935,7 @@ func _test_foot_combat(view: SystemView) -> void:
 	cb.cycle_tactics()
 	var t2: int = cb.tactics
 	cb.step(0.05, Vector2.ZERO)
-	tac_ok = tac_ok and t1 == 1 and t2 == 2 and cb._vis.get("rays") != null and bool(cb._vis["red"]) and Keybinds.key_text("foot_tactics") != Keybinds.key_text("foot_target")
+	tac_ok = tac_ok and t1 == 1 and t2 == 2 and cb._vis.get("rays") != null and bool(cb._vis["red"]) 		and is_equal_approx(float(cb._vis["reach"]), float(GD.stats(cb.weapon_id())["range"])) and Keybinds.key_text("foot_tactics") != Keybinds.key_text("foot_target")
 	cb.tactics = 0
 	cb.unlock(other)
 	lock_ok = lock_ok and cb.locks.size() == 1 and cb.active == a1
@@ -8950,6 +8956,9 @@ func _test_foot_combat(view: SystemView) -> void:
 		for i in 20:
 			cb.fire(null, tgt, GD.stats("wp_laser_rifle:C"))
 		fire_ok = float(tgt["st"]["shield"]) + float(tgt["st"]["armor"]) + float(tgt["st"]["health"]) < before - 50.0
+		# 0.7.52.3: the shots leave the very tip of the weapon in the hands, pointed at the target
+		var g0: Dictionary = g.pilot.aim_geom()
+		fire_ok = fire_ok and not cb.shots.is_empty() and (cb.shots[-1]["a"] as Vector2).distance_to(g.pilot.muzzle_art()) < 0.01 			and g.pilot.muzzle_art().distance_to(g.pilot.pos) > 8.0 and absf(angle_difference(float(g0["ang"]), ((tp + Vector2(0, -14)) * GroundMap.SCALE - (g.pilot.pos * GroundMap.SCALE + (g0["hand"] as Vector2))).angle())) < 0.35
 	# a foe goes down
 	var victim: Dictionary = cb.foes[0]
 	var kills0 := cb.kills

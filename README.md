@@ -312,6 +312,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   break it), `lit_in(rays, from, p)`, `_vis` cache, `tac_node` (drawn on the ground under `_sorted`); `GroundView`
   `_tab_held` / `TAB_HOLD` (tap cycles, hold closes); keys `foot_target` R, `foot_tactics` Tab (`Keybinds.LAYOUT` 5,
   `LAYOUT_RESETS` "foot_"); `debug_combat` do `tactics` {mode}.
+- 0.7.52.3: `scripts/ground/weapon_art.gd` – `WeaponArt.art(family)` {tex, grip, muzzle, len} (pixel pictures per weapon
+  family, outlined, cached); `Walker.aim_weapon`, `aim_geom(bob)` {hand, ang, scale, art, muzzle}, `_draw_aim`,
+  `muzzle_art()` – `GroundCombat.fire` starts every shot there; `FoeData.DAMAGE` 0.12, `FOES[*].health`;
+  `GroundCombat.tac_reach()` (both tactical views at the weapon in hand's range, ring labelled).
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
