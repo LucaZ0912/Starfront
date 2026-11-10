@@ -683,6 +683,8 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	m.bay_rect = Rect2(x_h, 1, HW, G - 1)
 	# the glass front of the walkway
 	m.fill(x_h, G, HW, 2, GroundMap.T.GLASS)
+	m.fill(x_h - 1, G, 1, 2, GroundMap.T.FACE)                 # 0.7.51.17 (Luz): the hangar walls' ends beside the glass,
+	m.fill(x_h + HW, G, 1, 2, GroundMap.T.FACE)                # as high as every other wall
 	# the walkway, the stairs end, the lifts end
 	m.fill(0, G - 1, x_h, 1, GroundMap.T.CAP)
 	m.fill(1, G, HANGAR_STAIRS - 1 + 1, 2, GroundMap.T.FACE)

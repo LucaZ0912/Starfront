@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.17 – 2026-11-10
+
+**Fix (Luz): the hangar's wall ends at full height.** On the hangar walkway the walls at both ends of the glass front
+(by the stairs and by the lifts) now show their face like every other wall instead of only their top.
+
 ## alpha 0.7.51.16 – 2026-11-10
 
 **Fix (Luz): more walls at full height.** The lift lobby's wall where it ends at the corridor (stations, cities) now
