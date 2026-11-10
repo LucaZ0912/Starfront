@@ -194,7 +194,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   patch of land), `main.fly_down_to(body, site)` → `land_at(…, touchdown)`; `GroundView` touchdown (`_touchdown_step`,
   `_dust_burst`, shake) and lift-off (in the ramp ride, `LIFT_TIME`).
 - 0.7.50.4: `FlightScene.lander` (site kind != city → the landing drone, `lander_texture()`, launched at `DRONE_AT`),
-  `_draw_city_lights` (a city only as its lights; the ship shrinks into them); `GroundView.setup_landing(…, by_lander)`.; `texture()` renders floors and walls once.
+  `_draw_city_lights` (a city only as its lights; the ship shrinks into them); `GroundView.setup_landing(…, by_lander)`.
+- 0.7.50.5 (package 50b): a city is a station on the ground – `Universe.city_station(sys, body, site)` (cached, kind by
+  `CITY_TYPES`), id = the landed state `land:<body>|<site>`, so `Universe.find_station` / `Commands.docked_station()`
+  find it and every service works; `scripts/ui/city_hatch.gd` – `CityHatch` (down/up), `main._city_hatch`,
+  `enter_city`, `leave_city`, `_open_ground_at(st)`; `GroundView` city levels `hangar` / `street` / `tower`
+  (`is_city()`, `tower_floor()`), `DeckGen.build(…, mode)` with `_street_north` (face deco `storefront`),
+  `scripts/ground/city_skyline.gd` – `CitySkyline` behind the tower bar's glass.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

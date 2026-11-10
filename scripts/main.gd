@@ -91,7 +91,7 @@ func _ready() -> void:
 		GameState.log_msg("Game loaded. Welcome back, %s." % GameState.pilot_name, GameState.COL_GOOD)
 		var f := GameState.active()
 		if f != null and f.docked_at.begins_with("land:"):
-			_on_descended.call_deferred(f.docked_at.substr(5))      # package 50: still down on a planet
+			_on_descended.call_deferred(f.docked_at.substr(5).split("|")[0])      # package 50: still down on a planet
 		elif f != null and f.docked_at != "":
 			open_station.call_deferred()
 
@@ -124,7 +124,7 @@ func load_system(sys: int) -> void:
 
 
 func _update_input() -> void:
-	var overlay: bool = (planet_map != null and is_instance_valid(planet_map)) or (flight != null and is_instance_valid(flight)) or galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace
+	var overlay: bool = (planet_map != null and is_instance_valid(planet_map)) or (flight != null and is_instance_valid(flight)) or (hatch != null and is_instance_valid(hatch)) or galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace
 	if view != null and is_instance_valid(view):
 		view.input_enabled = not overlay and ground == null
 	if ground != null and is_instance_valid(ground):
@@ -136,6 +136,7 @@ func _update_input() -> void:
 var ground: GroundView = null
 var planet_map: PlanetMap = null        # package 50: the planet below, its places to land
 var flight: FlightScene = null          # 0.7.50.3: the flight down through the air to the place
+var hatch: CityHatch = null             # 0.7.50.5: a city's landing hatch
 var _fade: ColorRect = null             # 0.7.50.3: flashes and fades over everything
 var _fade_tw: Tween = null
 
@@ -169,7 +170,11 @@ func open_deck() -> void:
 	var f := GameState.active()
 	if f == null or f.docked_at == "" or view == null or not view.stations.has(f.docked_at):
 		return
-	var st: Dictionary = view.stations[f.docked_at].data
+	_open_ground_at(view.stations[f.docked_at].data)
+
+
+## The walkable deck of a station – or of a city (0.7.50.5): which of its services have a door.
+func _open_ground_at(st: Dictionary) -> void:
 	var avail := {}
 	for svc in GameData.services:
 		avail[String(svc["id"])] = station_panel.service_available(svc) if station_panel.station == st else ""
@@ -232,7 +237,10 @@ func fly_down_to(body: Dictionary, site: Dictionary) -> void:
 			if flight != null and is_instance_valid(flight):
 				flight.queue_free()
 			flight = null
-			land_at(body, site, true)
+			if String(site.get("kind", "")) == "city":
+				_city_hatch(body, site, true)             # 0.7.50.5: a city takes the ship in below the ground
+			else:
+				land_at(body, site, true)
 			fade(Color(0, 0, 0, 0), 0.6)))
 	_update_input()
 
@@ -250,6 +258,63 @@ func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false) -> voi
 	_update_input()
 
 
+## Package 50b (0.7.50.5): the city's landing hatch – down: the ship sinks below the ground, then you are in the
+## city's hangar; up: she rises out of it and climbs away.
+func _city_hatch(body: Dictionary, site: Dictionary, down: bool) -> void:
+	if hatch != null and is_instance_valid(hatch):
+		hatch.queue_free()
+	hatch = CityHatch.new()
+	add_child(hatch)
+	hatch.open(body, site, down)
+	var h := hatch
+	hatch.finished.connect(func():
+		if down:
+			var tw := fade(Color(0, 0, 0, 1), 0.4)
+			tw.finished.connect(func():
+				if is_instance_valid(h):
+					h.queue_free()
+				hatch = null
+				enter_city(body, site)
+				fade(Color(0, 0, 0, 0), 0.7))
+		else:
+			if is_instance_valid(h):
+				h.queue_free()
+			hatch = null
+			take_off())
+	_update_input()
+
+
+## Into a city: it works like a station – you are in its hangar beside your ship, the lifts take you to its
+## shopping street and up to the bar high in its towers.
+func enter_city(body: Dictionary, site: Dictionary) -> void:
+	var f := GameState.active()
+	if f == null:
+		return
+	_close_planet_map()
+	close_deck(false)
+	var city := Universe.city_station(GameState.current_system, body, site)
+	f.docked_at = String(city["id"])
+	Economy.prepare_station(city, GameState.current_system)
+	_open_ground_at(city)
+	GameState.log_msg("Landed in %s on %s – your ship is in the city's hangars." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
+	GameState.codex.event("city")
+
+
+## Out of the city: the hatch opens, the ship rises and climbs away.
+func leave_city() -> void:
+	var f := GameState.active()
+	if f == null:
+		return
+	var st := Commands.docked_station()
+	var body := Universe.find_body(f.system_id, String(st.get("body", "")))
+	var site := {"id": String(st.get("site", "")), "name": String(st.get("name", "")), "kind": "city"}
+	var tw := fade(Color(0, 0, 0, 1), 0.35)
+	tw.finished.connect(func():
+		close_deck(false)
+		_city_hatch(body, site, false)
+		fade(Color(0, 0, 0, 0), 0.5))
+
+
 ## Up again: from the landing field or the planet map back to orbit – the ascent.
 func take_off() -> void:
 	var f := GameState.active()
@@ -258,7 +323,7 @@ func take_off() -> void:
 	if f == null or not f.docked_at.begins_with("land:"):
 		_update_input()
 		return
-	var body_id := f.docked_at.substr(5)
+	var body_id := f.docked_at.substr(5).split("|")[0]
 	f.docked_at = ""
 	if view != null and is_instance_valid(view):
 		view.start_ascent(body_id)
@@ -283,15 +348,18 @@ func _on_deck_use(z: Dictionary) -> void:
 		"exit":
 			if ground != null and is_instance_valid(ground) and ground.level == "landing":
 				take_off()
+			elif ground != null and is_instance_valid(ground) and ground.station.get("city", false):
+				leave_city()
 			else:
 				close_deck(true)
 		"service", "crew":
 			var f := GameState.active()
-			if f == null or f.docked_at == "" or not view.stations.has(f.docked_at):
+			var st: Dictionary = Commands.docked_station() if f != null and f.docked_at != "" else {}
+			if st.is_empty():
 				close_deck(false)
 				return
 			station_panel.on_foot = true
-			station_panel.open(view.stations[f.docked_at].data, view)
+			station_panel.open(st, view)
 			station_panel.open_service(String(z["id"]))
 			_update_input()
 

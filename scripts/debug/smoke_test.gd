@@ -2981,7 +2981,7 @@ func _test_codex(view: SystemView) -> void:
 	var refs_ok := true
 	var events := ["start", "dock", "jump", "warp", "mining", "colossus", "haven", "notorious", "raid", "ion", "contract", "bond",
 		"crew", "wingmen", "platform", "pod", "collection", "cme", "permit", "gas", "star:main", "star:neutron", "star:blackhole",
-		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot", "landing"]   # packages 40c–e, 49, 50   # package 37: stars
+		"battlefield", "relic", "veil", "veil_rift", "hz_radiation", "hz_ion", "hz_mines", "fortress", "rim", "on_foot", "landing", "city"]   # packages 40c–e, 49, 50   # package 37: stars
 	var unlock_ok := true
 	for id in all:
 		cats[all[id]["cat"]] = true
@@ -7758,6 +7758,7 @@ func _test_landing(view: SystemView) -> void:
 				drone_ok = drone_ok and g != null and not g._lander
 				break
 	check(drone_ok, "0.7.50.4: small places by the landing drone, cities by the ship herself")
+	_test_city(view, body, sites_all)
 	main.take_off()
 	guard = 0
 	while not view._descent.is_empty() and guard < 600:
@@ -7766,6 +7767,94 @@ func _test_landing(view: SystemView) -> void:
 	var up: bool = f.docked_at == "" and p.visible and is_equal_approx(p.scale.x, 1.0) and main.ground == null and main.planet_map == null
 	check(cmd_ok and beacons >= 1 and gas_free and down and field and up and GameState.codex.unlocked.has("basics_landing"),
 		"50: %d descent beacons (none over a gas giant); down to %s, the planet map (%d places), landed at %s, back up to orbit" % [beacons, String(body.get("name", "?")), main.planet_map.sites.size() if main.planet_map != null else Universe.landing_sites(view.system_id, body).size(), String(site.get("name", "?"))])
+
+
+## 0.7.50.5: a city – down through its landing hatch, its hangar, the lifts to the shopping street and the tower bar,
+## its services working like a station's, back up through the hatch.
+func _test_city(view: SystemView, body: Dictionary, sites_all: Array) -> void:
+	var site := {}
+	for s in sites_all:
+		if String(s["kind"]) == "city":
+			site = s
+			break
+	if site.is_empty():
+		var bodies: Array = Universe.get_layout(view.system_id)["planets"] + Universe.get_layout(view.system_id).get("moons", [])
+		for b2 in bodies:
+			if not Universe.landable(b2):
+				continue
+			for s2 in Universe.landing_sites(view.system_id, b2):
+				if String(s2["kind"]) == "city":
+					body = b2
+					site = s2
+					break
+			if not site.is_empty():
+				break
+	if site.is_empty():
+		check(false, "50b: a city to land in")
+		return
+	var f := GameState.active()
+	# the hatch: its doors open and close, the ship sinks; at the end you are in the city
+	var h := CityHatch.new()
+	main.add_child(h)
+	h.open(body, site, true)
+	var fin := [false]
+	h.finished.connect(func(): fin[0] = true)
+	var opened := false
+	for i in 240:
+		h._update(1.0 / 30.0)
+		opened = opened or h._open_k() > 0.99
+	var shut := h._open_k() < 0.01
+	h.queue_free()
+	main.enter_city(body, site)
+	var g = main.ground
+	var city: Dictionary = Commands.docked_station()
+	var in_city: bool = g != null and g.is_city() and g.level == "hangar" and f.docked_at == Universe.city_id(body, site) and city.get("city", false) \
+		and String(city.get("name", "")) == String(site["name"]) and g.map.ship_at != Vector2.INF
+	# the lifts: shopping street and tower bar
+	var lifts_ok := false
+	for z in g.map.zones:
+		if String(z.get("id", "")) == "lift":
+			lifts_ok = String(z["title"]).contains("Tower bar")
+	g.go_level("street")
+	var shops := 0
+	var fronts := 0
+	for z2 in g.map.zones:
+		if String(z2.get("kind", "")) == "service":
+			shops += 1
+		if String(z2.get("id", "")).begins_with("front_"):
+			fronts += 1
+	var street_ok: bool = g.level == "street" and shops >= 2 and fronts >= 3 and g.map.path(g.map.spawn, g.map.wander[0]).size() > 0
+	# a shop works like a station's
+	var opened_svc := ""
+	for z3 in g.map.zones:
+		if String(z3.get("kind", "")) == "service" and String(z3.get("closed", "")) == "":
+			main._on_deck_use(z3)
+			opened_svc = String(z3["id"]) if main.station_panel.visible and main.station_panel.current_service == String(z3["id"]) else ""
+			main.station_panel.close()
+			break
+	g = main.ground
+	g.go_level("tower")
+	var bar_ok: bool = g.level == "tower" and g._skyline != null and g._bartender != null and g.map.window_rect.size.x > 0.0
+	for i2 in 30:
+		g._skyline._process(1.0 / 30.0)
+	var market_ok := Commands.execute({"type": "market_buy", "item": "food", "amount": 1}) == ""
+	check(opened and shut and in_city and lifts_ok and street_ok and opened_svc != "" and bar_ok and market_ok and GameState.codex.unlocked.has("basics_cities"),
+		"50b: %s – down through landing hatch %d (opened, shut), the city's hangar; lifts to the shopping street (%d shops, %d shop fronts) and the tower bar (floor %d, the city's skyline); %s opened on foot, the market trades" % [String(site["name"]), h.hatch_no, shops, fronts, g.tower_floor(), opened_svc])
+	# and up again through the hatch
+	g.go_level("hangar", "stairs")
+	var back_body := Universe.find_body(f.system_id, String(city.get("body", "")))
+	main.close_deck(false)
+	main._city_hatch(back_body, {"id": String(city.get("site", "")), "name": String(city.get("name", "")), "kind": "city"}, false)
+	var hu: CityHatch = main.hatch
+	var guard := 0
+	var up_ok: bool = hu != null and not hu.down and not back_body.is_empty()
+	if hu != null:
+		hu._update(CityHatch.UP_TIME + 0.1)
+	guard = 0
+	while not view._descent.is_empty() and guard < 600:
+		view._update_descent(1.0 / 30.0)
+		guard += 1
+	check(up_ok and f.docked_at == "" and main.ground == null, "50b: out of the city – up through the hatch and back to orbit")
 
 
 ## Package 40b: gates in six styles by whose system it is; old gates are slower and now and then fling the ship out.

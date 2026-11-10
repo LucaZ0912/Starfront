@@ -79,7 +79,9 @@ static func palette_for(station: Dictionary) -> Dictionary:
 
 
 ## available: service id -> "" (open) or the reason it is closed. crew: the bar's offers (GameState.bar_offers).
-static func build(station: Dictionary, available: Dictionary, crew: Array = []) -> GroundMap:
+## mode (0.7.50.5, cities): "" a station's commercial level; "street" the city's shopping street (shop fronts to the
+## north instead of the bar); "tower" the bar high in the city's towers (no shops – they are in the street).
+static func build(station: Dictionary, available: Dictionary, crew: Array = [], mode: String = "") -> GroundMap:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", "x")))
 	var m := GroundMap.new()
@@ -102,7 +104,10 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = []) 
 	m.setup(W, H)
 	var bx0 := LOBBY_X1 + 1                             # the bar's west wall
 	var th: Dictionary = THEMES.get(String(m.pal["type"]), THEMES["trade"])
-	if String(station.get("type", "")) == "waystation":
+	if mode == "street":
+		m.hull_top = 0                                  # the city's structure above the shop fronts
+		_street_north(m, th, bx0, W, rng)
+	elif String(station.get("type", "")) == "waystation":
 		_dome_room(m, th, bx0, W, available, crew, rng)
 	else:
 		_bar_room(m, th, bx0, W, available, crew, rng)
@@ -263,6 +268,46 @@ static func _bar_room(m: GroundMap, th: Dictionary, bx0: int, W: int, available:
 		rx += run
 	for k3 in 4:
 		m.wander.append(Vector2(rng.randf_range(bx0 + 2, cx - 3), rng.randf_range(BAR_Y0 + 1.5, COR_Y0 - 1.2)) * GroundMap.TILE)
+
+
+## Made-up shops of the cities – their fronts line the north side of the shopping street.
+const STREET_FRONTS := [["NOODLE BAR", Color(1.0, 0.75, 0.3)], ["CHROME & SOUL", Color(0.3, 0.95, 1.0)], ["PAWN", Color(1.0, 0.85, 0.3)],
+	["HOTEL", Color(1.0, 0.3, 0.72)], ["PHARMACY", Color(0.4, 1.0, 0.55)], ["CYBERWARE", Color(0.75, 0.45, 1.0)],
+	["KARAOKE", Color(1.0, 0.35, 0.6)], ["TEA HOUSE", Color(0.5, 1.0, 0.7)], ["ARCADE", Color(0.3, 0.8, 1.0)],
+	["TAILOR", Color(1.0, 0.7, 0.5)], ["DUMPLINGS", Color(1.0, 0.55, 0.3)], ["BOOKS", Color(0.9, 0.85, 0.6)]]
+
+
+## 0.7.50.5: a city's shopping street – instead of the bar, shop fronts along its north side (lit windows, awnings,
+## neon names), lamp posts and stalls between them; the real shops lie on its south side as on a station.
+static func _street_north(m: GroundMap, th: Dictionary, bx0: int, W: int, rng: RandomNumberGenerator) -> void:
+	var fy := COR_Y0 - 3
+	m.fill(bx0, 0, W - bx0, fy, GroundMap.T.CAP)
+	m.fill(bx0, fy, W - bx0, 2, GroundMap.T.FACE)
+	m.fill(bx0, COR_Y0 - 1, 1, 1, GroundMap.T.CAP)
+	m.fill(bx0 + 1, COR_Y0 - 1, W - bx0 - 2, 2, GroundMap.T.FLOOR, int(th["cor_floor"]))
+	m.fill(W - 1, fy, 1, COR_Y1 - fy + 2, GroundMap.T.CAP)
+	var order: Array = []
+	for i in STREET_FRONTS.size():
+		order.insert(rng.randi() % (order.size() + 1), i)
+	var x := bx0 + 2
+	var n := 0
+	while x + 4 < W - 2:
+		var fw := mini(rng.randi_range(4, 6), W - 2 - x)
+		var fr: Array = STREET_FRONTS[order[n % order.size()]]
+		var col: Color = fr[1]
+		m.face_deco.append({"kind": "storefront", "x": x, "y": fy, "w": fw, "col": col})
+		m.zones.append({"rect": Rect2(), "kind": "label", "id": "front_%d" % n, "title": String(fr[0]), "col": col,
+			"sign": Vector2(x + fw * 0.5, fy - 0.15) * GroundMap.TILE})
+		m.lights.append({"pos": Vector2(x + fw * 0.5, COR_Y0 - 0.3) * GroundMap.TILE, "r": 52.0, "col": col, "a": 0.22, "flicker": n % 3 == 1})
+		var gx := x + fw
+		if gx + 1 < W - 2:
+			var pk: String = ["lamp_post", "vending", "plant", "lamp_post", "trash"][n % 5]
+			m.add_object({"kind": pk, "x": gx, "y": COR_Y0 - 1, "w": 1, "h": 1, "col": m.pal["accent"]})
+			_prop_light(m, pk, Vector2(gx + 0.5, COR_Y0 - 0.7))
+		x += fw + 2
+		n += 1
+	for k in 6:
+		m.wander.append(Vector2(rng.randf_range(bx0 + 2, W - 3), rng.randf_range(COR_Y0 - 0.6, COR_Y0 + 0.8)) * GroundMap.TILE)
 
 
 ## The people looking for a post stand about in the room (x0…x1, y0…y1 in tiles) and can be spoken to.

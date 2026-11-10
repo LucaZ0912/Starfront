@@ -67,6 +67,7 @@ var _star_spr: Node2D = null            # 0.7.49.14: kept in the visible part of
 var _planet_spr: Node2D = null
 var _cam_c := Vector2.INF               # where the camera looks (screen px of the world), eased                   # 0.7.49.13: whose hangar this is (the active ship when it was built)
 var _bartender: Walker = null
+var _skyline: CitySkyline = null        # 0.7.50.5: the view from a city's tower bar
 var talk_menu: CrewTalk = null          # its "Info": the questions, the record, signing on
 var _talk_offer := {}
 var _talk_index := -1
@@ -148,6 +149,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_off0 = null
 	_star_spr = null
 	_planet_spr = null
+	_skyline = null
 	_cam_c = Vector2.INF
 	zone = {}
 	_arrive = 0.0
@@ -169,11 +171,26 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		var af := GameState.active()
 		_hangar_uid = af.uid if af != null else 0
 		map = DeckGen.build_hangar(station, sz.x, sz.y, _avail, _hangar_uid)
+	elif level == "street":
+		map = DeckGen.build(station, _avail, [], "street")
+	elif level == "tower":
+		var bar_only := {}
+		for k in ["bar", "news", "bulletin"]:
+			if _avail.has(k):
+				bar_only[k] = _avail[k]
+		map = DeckGen.build(station, bar_only, GameState.bar_offers(station) if _avail.has("bar") else [], "tower")
 	else:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
+	if is_city():
+		for zc in map.zones:
+			if String(zc.get("id", "")) == "lift":
+				zc["title"] = "Lifts – Hangar · Shopping street · Tower bar"
+			elif String(zc.get("id", "")) == "ship" and level == "hangar":
+				zc["title"] = "Stairs down – aboard your ship and up through the hatch"
 	_build()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "commercial": "Commercial level"}.get(level, "")]
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "commercial": "Commercial level",
+		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor()}.get(level, "")]
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
 		pilot.visible = false
@@ -210,8 +227,28 @@ func _ship_size() -> Vector2:
 	return Vector2(t.get_width(), t.get_height()) * HANGAR_ART
 
 
+## 0.7.50.5: in a city (a station on the ground)?
+func is_city() -> bool:
+	return bool(station.get("city", false))
+
+
+## How high up the tower bar is.
+func tower_floor() -> int:
+	return 140 + absi(hash(String(station.get("id", "")))) % 160
+
+
 ## Beyond the glass: the system's sky – its nebula, its star, the planet the station circles.
+## In a city's tower bar (0.7.50.5): the city at night – towers, speeders, drones.
 func _space_view(sys_id: int) -> void:
+	if is_city():
+		_neb.material = null
+		_neb.color = Color(0.02, 0.02, 0.05)
+		if _window.size.x > 0.0:
+			_skyline = CitySkyline.new()
+			var body := Universe.find_body(sys_id, String(station.get("body", ""))) if sys_id >= 0 else {}
+			_skyline.setup(_window.size, body, hash(String(station.get("id", ""))) + 3, _window.size.x + map.size_px().x * GroundMap.SCALE)
+			_sky.add_child(_skyline)
+		return
 	var mat := ShaderMaterial.new()
 	mat.shader = BgShader
 	var seed_v := float(sys_id) * 1.37 + 0.5
@@ -366,7 +403,9 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
-	var n := 5 + int(station.get("tier", 1)) * 2 if level == "commercial" else 2
+	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower"] else 2
+	if level == "street":
+		n += 6                                        # a city's street is busy
 	for i in n:
 		if map.wander.is_empty():
 			break
@@ -624,7 +663,10 @@ func _open_lift_menu(z: Dictionary) -> void:
 	v.add_child(UI.label("Which level?", 13, UI.TEXT_DIM))
 	var af := GameState.active()
 	var hname := "Hangar %02d – your %s" % [DeckGen.hangar_no(station, af.uid if af != null else 0), af.ship_name if af != null else "ship"]
-	for lv in [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level – shops and the bar"]]:
+	var lvls := [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level – shops and the bar"]]
+	if is_city():
+		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street – the shops"], ["tower", "3.  Tower bar – floor %d, a view over the city" % tower_floor()]]
+	for lv in lvls:
 		var here: bool = lv[0] == level and (lv[0] != "hangar" or not _hangar_stale())
 		var b := UI.button(String(lv[1]) + ("   (you are here)" if here else ""), func(): _choose_level(String(lv[0])))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -1049,6 +1091,8 @@ func _camera(delta: float = -1.0) -> void:
 				_star_spr.position = (lo + Vector2(vis.size.x * 0.14, wh * 0.38)).round()
 			if _planet_spr != null:
 				_planet_spr.position = (lo + Vector2(vis.size.x * (0.62 if vis.size.x > 500.0 else 0.5), wh * 0.62)).round()
+	if _skyline != null:
+		_skyline.scroll(off.x)
 	var m := _neb.material as ShaderMaterial
 	if m != null:
 		m.set_shader_parameter("offset", -off * 0.3)

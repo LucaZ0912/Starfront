@@ -1731,6 +1731,8 @@ func get_gate_pos(system_id: int, to_id: int) -> Vector2:
 
 
 func find_station(system_id: int, station_id: String) -> Dictionary:
+	if station_id.begins_with("land:") and station_id.contains("|"):
+		return find_city(system_id, station_id)
 	var L := get_layout(system_id)
 	for st in L["stations"]:
 		if st["id"] == station_id:
@@ -1739,6 +1741,61 @@ func find_station(system_id: int, station_id: String) -> Dictionary:
 	for ph in L.get("havens", []):
 		if ph["id"] == station_id:
 			return ph
+	return {}
+
+
+## Package 50b (0.7.50.5): a city on a planet works like a station – its market, outfitter, shipyard, bar, crew …
+## Its id is the landed state while you walk in it: "land:<body>|<site>". Its kind follows the world it stands on.
+const CITY_TYPES := {"terran": "trade", "ocean": "trade", "jungle": "agri", "desert": "industry", "ice": "ice_refinery",
+	"lava": "industry", "barren": "mining_colony", "toxic": "research", "metal": "shipyard", "dwarf": "mining_colony",
+	"moon_rock": "mining_colony", "moon_ice": "ice_refinery", "moon_volcanic": "industry", "moon_captured": "mining_colony"}
+var _cities := {}
+
+
+static func city_id(body: Dictionary, site: Dictionary) -> String:
+	return "land:%s|%s" % [String(body.get("id", "")), String(site.get("id", ""))]
+
+
+func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Dictionary:
+	var cid := city_id(body, site)
+	var key := "%d:%s:%d" % [system_id, cid, seed_value]
+	if _cities.has(key):
+		return _cities[key]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%s_%d_city" % [key, seed_value])
+	var type := String(CITY_TYPES.get(String(body.get("type", "")), "trade"))
+	if not CommodityData.STATION_TYPES.has(type):
+		type = "trade"
+	var tier := 3 if has_atmosphere(body) and float(body.get("city", 0.0)) > 0.5 else 2
+	var L := get_layout(system_id)
+	var pidx := int(body.get("planet", -1))
+	for i in L["planets"].size():
+		if String(L["planets"][i]["id"]) == String(body.get("id", "")):
+			pidx = i
+	var st := {"id": cid, "planet": pidx, "anchor": String(body.get("id", "")), "name": String(site.get("name", "City")),
+		"type": type, "tier": tier, "pos": body.get("pos", Vector2.ZERO), "orbit": 0.0,
+		"market": _make_market(type, rng), "shop": _make_shop(type, tier, rng),
+		"shipyard": _make_shipyard(type, tier, Missions.wealthy(system_id)),
+		"seed": rng.randi(), "zone": NO_FIRE_ZONE[tier - 1], "faction": station_faction(system_id, rng.randi() % 3),
+		"city": true, "body": String(body.get("id", "")), "site": String(site.get("id", ""))}
+	_add_faction_yard(st)
+	_cities[key] = st
+	return st
+
+
+## The city behind a landed id "land:<body>|<site>" ({} if there is none).
+func find_city(system_id: int, cid: String) -> Dictionary:
+	var parts := cid.substr(5).split("|")
+	if parts.size() < 2:
+		return {}
+	var b := find_body(system_id, parts[0])
+	if b.is_empty():
+		return {}
+	for s in landing_sites(system_id, b):
+		if String(s["id"]) == parts[1] and String(s["kind"]) == "city":
+			var st := city_station(system_id, b, s)
+			Economy.prepare_station(st, system_id)
+			return st
 	return {}
 
 

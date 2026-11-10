@@ -554,6 +554,20 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px + 4, py + 2, pw - 8, 1, Color(0.3, 0.32, 0.36))
 			_rect(px + pw / 2 - 4, py - 15, 8, 3, Color(0.08, 0.08, 0.1))
 			_rect(px + pw / 2 - 2, py - 14, 4, 1, c)
+		"storefront":              # 0.7.50.5: a shop's front in a city street – lit window, goods, door, awning
+			var fh := TILE * 2
+			_rect(px, py, pw, fh, Color(pal["wall"]).darkened(0.5))
+			_rect(px + 2, py + 3, pw - 4, fh - 3, Color(0.06, 0.06, 0.09))
+			_rect(px + 3, py + 5, pw - 18, fh - 9, c.darkened(0.55))
+			_rect(px + 3, py + 5, pw - 18, 1, c.lightened(0.3))
+			for k in int((pw - 22) / 5):
+				_rect(px + 5 + k * 5, py + fh - 12, 3, 6, Color.from_hsv(hash2(k, int(d["x"]), 3), 0.5, 0.9))
+			_rect(px + pw - 13, py + 6, 10, fh - 6, Color(0.13, 0.13, 0.17))
+			_rect(px + pw - 12, py + 8, 8, fh - 9, c.darkened(0.7))
+			_rect(px + pw - 6, py + fh / 2 + 2, 1, 2, c)
+			for k2 in int(pw / 4):
+				_rect(px + k2 * 4, py, 2, 4, c.darkened(0.15))
+				_rect(px + k2 * 4 + 2, py, 2, 4, Color(0.88, 0.88, 0.9))
 		"bay_door":                # the hangar's great doors, shut
 			_rect(px, py - 14, pw, TILE + 12, Color(0.22, 0.23, 0.26))
 			_rect(px + 2, py - 12, pw / 2 - 3, TILE + 8, Color(0.42, 0.44, 0.48))

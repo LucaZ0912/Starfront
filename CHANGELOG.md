@@ -3,6 +3,30 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.5 – 2026-11-10
+
+**Package 50b begins: the cities – down through a landing hatch, into the city's hangars, its shopping street and
+the bar high up in its towers.**
+- **The landing hatch:** most ships are far too big for a city's streets, so a city takes them in below the ground.
+  Seen from above – the roofs of the city at night all round (towers with air units, roof gardens, flyer pads, neon
+  edges, blinking warning lights; streets with their lamps and cars) – your ship comes down over a giant hatch with
+  hazard stripes; its lamps blink amber, its two leaves slide apart, the shaft below shows frames of light running down
+  into the deep; she sinks into it, darker and smaller, and the hatch closes over her (lamps green while it is open).
+- **A city works like a station:** it has its own market, outfitter, shipyard, bonds, bar with crew to hire, news and
+  bulletin board – its kind follows the world it stands on (trade cities on terran and ocean worlds, industry on
+  deserts and lava worlds, ice refineries on ice, mining towns on barren rock, research on toxic worlds …).
+- **The city's hangar:** you arrive beside your ship, as on a station (the hangar and shipyard shops on its walkway).
+- **The lifts:** Hangar · Shopping street · Tower bar.
+- **The shopping street:** busy – the real shops on its south side, on its north side a row of made-up shop fronts
+  (noodle bar, cyberware, karaoke, tea house, pawn, hotel …) with lit windows, striped awnings and neon names, lamp
+  posts, vending machines and plants between them.
+- **The tower bar:** the bar high up in the city's towers (its floor on the title) – out of its window front the city
+  at night: towers far and near with their lit windows, neon running down them and red lights blinking on their tops,
+  speeders in their lanes with light trails, drones drifting past; the layers move at their own pace as you walk.
+- **Leaving:** down the stairs to your ship – the hatch opens, she rises out of the shaft, it closes under her and she
+  climbs back to orbit.
+- Codex: **Cities**.
+
 ## alpha 0.7.50.4 – 2026-11-10
 
 **Cities as lights, and a landing drone for the small places.**
