@@ -97,6 +97,15 @@ static func paint(img: Image, o: Dictionary, pw: int, total_h: int) -> void:
 				_window(img, rng, wx, wy, arch, win, wall)
 				wx += 19 + rng.randi_range(0, 5)
 	_door(img, rng, door_x, base - DOOR_H, arch, lamp, wall)
+	# 0.7.50.14: what makes it now – a light strip under the eaves (the built-new kinds), a lit access panel by the door
+	var acc: Color = o.get("acc", Color(0.35, 0.95, 1.0))
+	if arch in ["prefab", "module", "quonset", "container"]:
+		_r(img, 0, top_face + 3, pw, 1, acc)
+		_r(img, 0, top_face + 4, pw, 1, acc.darkened(0.5))
+	var pnl := door_x + DOOR_W + 4 if door_x + DOOR_W + 10 < pw else door_x - 9
+	_r(img, pnl, base - 20, 5, 8, Color(0.14, 0.15, 0.18))
+	_r(img, pnl + 1, base - 19, 3, 3, acc)
+	_r(img, pnl + 1, base - 15, 3, 1, Color(0.4, 1.0, 0.55))
 	_wall_clutter(img, rng, arch, pw, top_face, base, wall, lamp, door_x)
 	# dust and grime along the foot
 	for x in pw:

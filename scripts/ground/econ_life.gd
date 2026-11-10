@@ -57,6 +57,12 @@ func _along(path: Array, d: float) -> Array:
 func _vehicle(kind: String, foot: Vector2, east: bool, col: Color = Color(0.95, 0.75, 0.15), tint: Color = Color.WHITE) -> void:
 	var tex := VehicleArt.texture(kind, col)
 	var sz := Vector2(tex.get_width(), tex.get_height())
+	if kind in VehicleArt.HOVER:
+		# 0.7.50.14: it floats – its light on the ground below, a gentle bob
+		draw_set_transform(foot, 0.0, Vector2(1.0, 0.22))
+		draw_circle(Vector2.ZERO, sz.x * 0.42, Color(VehicleArt.GLOW, 0.16))
+		draw_circle(Vector2.ZERO, sz.x * 0.25, Color(VehicleArt.GLOW, 0.14))
+		foot += Vector2(0, -6.0 + sin(_t * 2.4 + foot.x * 0.02) * 1.5)
 	draw_set_transform(foot, 0.0, Vector2(1.0 if east else -1.0, 1.0))
 	draw_texture_rect(tex, Rect2(Vector2(-sz.x * 0.5, -sz.y), sz), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -161,15 +167,21 @@ func _excavator(foot: Vector2, working: bool) -> void:
 	var j2 := root + Vector2.from_angle(boom_ang) * 70.0
 	var j3 := j2 + Vector2.from_angle(boom_ang + 1.9 - (phase + 1.0) * 0.4) * 48.0
 	var yel := Color(0.95, 0.72, 0.12)
+	# 0.7.50.14: an articulated arm, glowing joints, a cutter claw with its plasma edge
 	draw_line(root, j2, Color(0.08, 0.07, 0.1), 12.0)
 	draw_line(root, j2, yel, 9.0)
-	draw_line(root + Vector2(0, 6), root.lerp(j2, 0.6) + Vector2(0, 4), Color(0.75, 0.75, 0.78), 3.0)     # the cylinder
+	draw_line(root.lerp(j2, 0.15), root.lerp(j2, 0.85), Color(0.25, 0.26, 0.3), 3.0)
+	draw_line(root.lerp(j2, 0.2), root.lerp(j2, 0.8), VehicleArt.GLOW, 1.0)
 	draw_line(j2, j3, Color(0.08, 0.07, 0.1), 9.0)
 	draw_line(j2, j3, yel.darkened(0.08), 6.0)
-	var bucket := PackedVector2Array([j3 + Vector2(-10, -6), j3 + Vector2(10, -6), j3 + Vector2(8, 10), j3 + Vector2(-8, 12)])
-	draw_colored_polygon(bucket, Color(0.3, 0.28, 0.25))
-	for k in 4:
-		draw_rect(Rect2(j3 + Vector2(-8 + k * 5, 11), Vector2(2, 3)), Color(0.75, 0.75, 0.78))
+	for jp in [root, j2]:
+		draw_circle(jp, 6.0, Color(0.15, 0.15, 0.18))
+		draw_circle(jp, 3.0, VehicleArt.GLOW)
+	var claw := PackedVector2Array([j3 + Vector2(-12, -6), j3 + Vector2(12, -6), j3 + Vector2(6, 12), j3 + Vector2(0, 6), j3 + Vector2(-6, 12)])
+	draw_colored_polygon(claw, Color(0.3, 0.32, 0.36))
+	var hot := Color(1.0, 0.45, 0.25, 0.6 + 0.4 * sin(_t * 18.0))
+	draw_line(j3 + Vector2(-6, 12), j3 + Vector2(6, 12), hot, 2.0)
+	draw_circle(j3 + Vector2(0, 12), 6.0, Color(1.0, 0.5, 0.3, 0.15))
 	if working and phase < -0.85 and randf() < 0.4:
 		_puffs.append([j3 + Vector2(randf_range(-8, 8), 6), Vector2(randf_range(-8, 8), randf_range(-10, -3)), 1.4, 5.0, Color(0.6, 0.52, 0.42)])
 

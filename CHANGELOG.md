@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.14 – 2026-11-10
+
+**Settlements in the future (Luz: "the vehicles look very 21st century – make them sci-fi").**
+- **The machines, new:** the **ore hauler** runs on two armoured track pods with glowing seams between their plates,
+  a chamfered hexagonal hopper with hazard chevrons and a light line, heat vents glowing along its spine, a canopy dome
+  with a glowing visor band, a sensor mast (crystals glinting in its ore when loaded); the **mining platform** floats
+  on three anti-grav pads with a glowing reactor behind its vents – its articulated arm with glowing joints and a
+  light line, a **cutter claw** with a plasma edge; the **harvester glider** hovers on its glowing skirt with an
+  intake rotor and a cutter bar of light; a **hover tanker** on skids with a capsule tank and glowing ports; a **hover
+  tank** with a twin-barrelled turret in its energy coil; a **hydrofoil** work boat with its jets.
+- Whatever floats bobs gently and lights the ground below it.
+- **The plants:** exhaust towers with plated rings and light between them and a hot vent on top, tanks with a light
+  band and status lights, dishes with a glowing emitter, the rig's derrick with an energy core, fence posts with
+  lights, the parked armoured vehicles and rovers on hover skirts and skids.
+- **The buildings:** a light strip under the eaves of the prefab halls, modules, quonsets and containers, and a lit
+  access panel beside every door.
+
 ## alpha 0.7.50.13 – 2026-11-10
 
 **Settlements to scale (Luz: "the sizes are all off").**

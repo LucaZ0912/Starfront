@@ -232,7 +232,10 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.50.13: scale ~15 art px a metre (a person ~27 px): `BuildArt.STOREY` / `DOOR_W` / `DOOR_H` / `CONT_H`;
   `scripts/ground/vehicle_art.gd` – `VehicleArt.texture(kind, col)` (haul, haul_full, excavator, combine, tanker, apc,
   boat); the mine as decal `pit_edge` with `econ.bands`; objects take an own `rise` (lamp posts, signposts, poles,
-  stalls, rovers, trees, dishes, silos, chimneys to their height).; `texture()` renders floors and walls once.
+  stalls, rovers, trees, dishes, silos, chimneys to their height).
+- 0.7.50.14: `VehicleArt` sci-fi (`GLOW`, `HEAT`, `HOVER` – EconLife bobs those and lights the ground), the
+  excavator's arm and cutter claw in `EconLife._excavator`; light accents in `ObjArt` (chimneys, tanks, dishes, rig,
+  fence, armoured vehicles, rover) and `BuildArt.paint` (eaves strip, door panel).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,
