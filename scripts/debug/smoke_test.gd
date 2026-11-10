@@ -7888,6 +7888,29 @@ func _test_city(view: SystemView, body: Dictionary, sites_all: Array) -> void:
 	g._update_city_day(1.0)
 	var sc := CityStyle.sunset_color(CityStyle.star_color(view.system_id))
 	check(live and sc.r > sc.b, "0.7.50.8: the day goes on while you are in the city – the view from the bar follows it (dusk in the star's light, sunset colour %s)" % sc.to_html(false))
+	# 0.7.50.9: guards – posted and on patrol, in the power's uniform, they speak; no weapons drawn in the city
+	var guards := 0
+	var patrols := 0
+	for lv in ["hangar", "street", "tower"]:
+		g.go_level(lv, "stairs" if lv == "hangar" else "lift")
+		for w in g.people:
+			if w.guard:
+				guards += 1
+				if not w.patrol.is_empty():
+					patrols += 1
+	g.go_level("street")
+	var gw = null
+	for w2 in g.people:
+		if w2.guard:
+			gw = w2
+			break
+	var spoke := false
+	if gw != null:
+		g._arrive = 0.0
+		g.pilot.pos = gw.pos + Vector2(10, 0)
+		g._process(0.016)
+		spoke = String(g.zone.get("kind", "")) == "guard" and g.use() and g._toast != ""
+	check(guards >= 3 and patrols >= 1 and spoke, "0.7.50.9: %d city guards in hangar, street and tower bar (%d on patrol) – spoken to: %s" % [guards, patrols, g._toast])
 	# and up again through the hatch
 	g.go_level("hangar", "stairs")
 	var back_body := Universe.find_body(f.system_id, String(city.get("body", "")))

@@ -432,6 +432,8 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
+	if is_city():
+		_add_guards(rng)
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower"] else 2
 	if level == "street":
 		n += 6                                        # a city's street is busy
@@ -517,6 +519,59 @@ func _add_light(l: Dictionary, mat: Material) -> Sprite2D:
 	return sp
 
 
+## 0.7.50.9: city guards – some posted by the lifts and the ways in, some on patrol; more of them the safer the
+## system. In their power's uniform, a visor down. Weapons stay holstered in the city (and the pilot's too).
+func _add_guards(rng: RandomNumberGenerator) -> void:
+	var g := CityStyle.guards(station)
+	var sec := float(Universe.systems[_sys].get("security", 0.5)) if _sys >= 0 and _sys < Universe.systems.size() else 0.5
+	var posts: Array = []
+	for z in map.zones:
+		if String(z.get("id", "")) in ["lift", "ship"] and (z["rect"] as Rect2).size.x > 0.0:
+			var r: Rect2 = z["rect"]
+			posts.append(r.get_center() + Vector2(r.size.x * 0.5 + 10.0, 14.0))
+	var n_post := mini(posts.size(), 1 + int(round(sec * 2.0)))
+	var n_patrol := int(round(sec * 2.5)) + (1 if level == "street" else 0)
+	var made := 0
+	for i in n_post + n_patrol:
+		var lk := ChibiArt.PilotArt.random_look(rng)
+		lk["outfit"] = 2
+		lk["color1"] = int(g["c1"])
+		lk["color2"] = int(g["c2"])
+		lk["headgear"] = 2 if rng.randf() < 0.7 else 1
+		var w := Walker.new()
+		var at: Vector2
+		if i < n_post:
+			at = posts[i]
+			if not map.free_at(at):
+				continue
+		elif not map.wander.is_empty():
+			at = map.wander[rng.randi() % map.wander.size()]
+		else:
+			continue
+		w.setup(map, lk, at, true)
+		w.guard = true
+		w.set_meta("guard", true)
+		if i < n_post:
+			w.stays = true
+			w.dir = 0
+		else:
+			for k in 4:
+				w.patrol.append(map.wander[rng.randi() % map.wander.size()])
+		_sorted.add_child(w)
+		people.append(w)
+		made += 1
+
+
+## The guard nearest the pilot, if near enough to speak to.
+func _near_guard() -> Walker:
+	if pilot == null:
+		return null
+	for w in people:
+		if is_instance_valid(w) and w.guard and w.pos.distance_to(pilot.pos) < 22.0:
+			return w
+	return null
+
+
 ## 0.7.50.8: the day goes on while you are in a city – the sky outside, the street's light, the light through the
 ## bar's glass follow it (checked twice a second).
 func _update_city_day(delta: float) -> void:
@@ -595,6 +650,8 @@ func _process(delta: float) -> void:
 		zone = map.zone_at(pilot.pos)
 	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null:
 		zone = {} if _seat.is_empty() else _seat
+	if zone.is_empty() and is_city() and _ride.is_empty() and talk == null and _near_guard() != null:
+		zone = {"kind": "guard", "id": "guard", "title": String(CityStyle.guards(station)["name"]), "rect": Rect2()}
 	_camera(delta)
 	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null or talk_menu != null or _lift_menu != null else _prompt_text(zone))
 	_signs.queue_redraw()
@@ -613,6 +670,8 @@ func _prompt_text(z: Dictionary) -> String:
 			return "[%s] Talk to %s – looking for a post" % [key, z["title"]]
 		"seat":
 			return "[%s] Stand up" % key if not _seat.is_empty() else "[%s] %s" % [key, z["title"]]
+		"guard":
+			return "[%s] %s – weapons stay holstered in the city" % [key, z["title"]]
 		"jukebox":
 			return "[%s] Jukebox – %s" % [key, ("next track (now: %s)" % Jukebox.track_name(track)) if track >= 0 else "play some music"]
 	if String(z.get("closed", "")) != "":
@@ -670,6 +729,13 @@ func use(instant: bool = false) -> bool:
 			return open_talk(zone)
 		"soon":
 			_say_toast(String(zone["title"]), 3.0)
+			return true
+		"guard":
+			var gl: Array = CityStyle.guards(station)["lines"]
+			var gw := _near_guard()
+			if gw != null:
+				gw.dir = 0
+			_say_toast("%s: \"%s\"" % [String(zone["title"]), String(gl[randi() % gl.size()])], 4.0)
 			return true
 		"lift":
 			if instant:

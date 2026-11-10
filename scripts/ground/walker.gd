@@ -19,6 +19,9 @@ var stays := false                 # keeps its place (shopkeeper, bartender)
 var leave_to := Vector2.INF        # walks there and is gone (hired crew off to the lift)
 var drink_t := 0.0                 # 0.7.49.13: seconds left of a drink (the glass goes up to the mouth and down)
 var drink_col := Color(0.95, 0.7, 0.25)
+var guard := false                 # 0.7.50.9: a city guard – posted (stays) or on patrol
+var patrol: Array = []             # the points a guard walks between, in turn
+var _pp := 0
 const DRINK_TIME := 3.2
 var _t := 0.0
 var _walk := 0.0
@@ -75,6 +78,8 @@ func _process(delta: float) -> void:
 			_pi = 0
 		if pos.distance_to(leave_to) < 6.0 or not _follow(delta, 0.9):
 			queue_free()
+	elif npc and not patrol.is_empty() and not stays:
+		_patrol(delta)
 	elif npc and not sitting and not stays and marker == "":
 		_wander(delta)
 	queue_redraw()
@@ -100,6 +105,26 @@ func _wander(delta: float) -> void:
 		_goal = Vector2.INF
 		_path = PackedVector2Array()
 		_wait = randf_range(1.5, 6.0)
+		moving = false
+
+
+## 0.7.50.9: a guard walks the round – from one point to the next, a look about at each.
+func _patrol(delta: float) -> void:
+	if _wait > 0.0:
+		_wait -= delta
+		moving = false
+		return
+	if _path.is_empty() or _pi >= _path.size():
+		_pp = (_pp + 1) % patrol.size()
+		_path = map.path(pos, patrol[_pp])
+		_pi = 0
+		if _path.is_empty():
+			_wait = 1.0
+			return
+	if not _follow(delta, 0.5):
+		_path = PackedVector2Array()
+		_wait = randf_range(1.5, 3.5)
+		dir = randi() % 4
 		moving = false
 
 
@@ -146,6 +171,19 @@ func _draw() -> void:
 		draw_texture_rect(st, Rect2(Vector2(-size.x * 0.5, -size.y - SIT_LIFT * s), size), false)
 	else:
 		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
+	if guard and not sitting:
+		# 0.7.50.9: a guard's rifle slung across the chest (pointing down – it stays there), a lamp on the shoulder
+		var cs2 := ChibiArt.CHAR_SCALE
+		var gy0 := -size.y + bob * s
+		var side := -1.0 if dir == 2 else 1.0
+		if dir != 1:
+			var a := Vector2(-6.0 * side, 15.0) * cs2 + Vector2(0, gy0)
+			var b := Vector2(6.0 * side, 27.0) * cs2 + Vector2(0, gy0)
+			draw_line(a, b, Color(0.06, 0.06, 0.08), 3.0 * cs2)
+			draw_line(a, b, Color(0.3, 0.32, 0.36), 1.0 * cs2)
+		var lamp: Color = PilotArt_CLOTH(int(look.get("color2", 3)))
+		if fposmod(_t * 1.3 + pos.x * 0.01, 2.0) < 1.4:
+			draw_rect(Rect2(Vector2(-7.0 * cs2 * side - 2.0, gy0 + 13.0 * cs2), Vector2(4, 4)), lamp.lightened(0.3))
 	if drink_t > 0.0:
 		# the glass: from the hand up to the mouth, a sip, back down
 		var p := 1.0 - drink_t / DRINK_TIME
@@ -166,3 +204,8 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(1.0, 0.85, 0.35))
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(0.15, 0.1, 0.05), false, 2.0)
 		draw_string(ThemeDB.fallback_font, Vector2(-4, y0 - 2), marker, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.2, 0.1, 0.05))
+
+
+static func PilotArt_CLOTH(i: int) -> Color:
+	var c: Array = ChibiArt.PilotArt.CLOTH
+	return c[posmod(i, c.size())]

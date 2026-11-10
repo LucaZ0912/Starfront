@@ -720,9 +720,9 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 		var fk := String(dk["flag_kind"])
 		for fx in [x_h + 2, x_h + HW / 2 - 9, x_h + HW / 2 + 7, x_h + HW - 4]:
 			if fx > x_h and fx < x_h + HW - 2:
-				m.face_deco.append({"kind": fk, "x": fx, "y": 2, "w": 2, "col": fl[0], "col2": fl[1]})
-		m.face_deco.append({"kind": fk, "x": 1, "y": G + 1, "w": 2, "col": fl[0], "col2": fl[1]})
-		m.face_deco.append({"kind": fk, "x": x_h + HW + 1 + 2, "y": G + 1, "w": 1, "col": fl[0], "col2": fl[1]})
+				m.face_deco.append({"kind": fk, "x": fx, "y": 2, "w": 2, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})
+		m.face_deco.append({"kind": fk, "x": 1, "y": G + 1, "w": 2, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})
+		m.face_deco.append({"kind": fk, "x": x_h + HW + 1 + 2, "y": G + 1, "w": 1, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})
 	# a bench by the glass, facing the ship – clear of the shop doors on the other side
 	_seat(m, "bench", x_h + HW / 2 - 4, G + 2, 1, m.pal["accent"], rng, 0.0, 2)
 	_seats(m)

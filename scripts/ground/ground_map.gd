@@ -557,8 +557,19 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px + 3, py - 11, 1, TILE + 2, c.lightened(0.2))
 			for k3 in 3:
 				_rect(px + 3 + k3, py + TILE - 9 + k3, pw - 6 - k3 * 2, 1, c)
-			_rect(px + pw / 2 - 1, py - 7, 2, 8, c2)
-			_rect(px + pw / 2 - 3, py - 5, 6, 2, c2)
+			match String(d.get("sign", "cross")):
+				"circle":                                  # the Assembly's open hand – a ring
+					_rect(px + pw / 2 - 2, py - 8, 4, 1, c2)
+					_rect(px + pw / 2 - 2, py - 2, 4, 1, c2)
+					_rect(px + pw / 2 - 3, py - 7, 1, 5, c2)
+					_rect(px + pw / 2 + 2, py - 7, 1, 5, c2)
+				"diamond":                                 # the Directorate's compass
+					for k5 in 4:
+						_rect(px + pw / 2 - 1 - k5, py - 8 + k5, 2 + k5 * 2, 1, c2)
+						_rect(px + pw / 2 - 1 - k5, py - 1 - k5, 2 + k5 * 2, 1, c2)
+				_:                                         # the Covenant's sun road
+					_rect(px + pw / 2 - 1, py - 7, 2, 8, c2)
+					_rect(px + pw / 2 - 3, py - 5, 6, 2, c2)
 		"poster":
 			if d.has("col2"):                     # a free city's neon poster
 				_rect(px + 2, py - 12, pw - 4, TILE + 4, Color(0.05, 0.05, 0.08))

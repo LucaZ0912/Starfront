@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.9 – 2026-11-10
+
+**City guards.**
+- Guards stand in the cities now – posted by the lifts and the stairs to your ship, others walking their rounds
+  through the hangar, the shopping street and the tower bar; more of them the safer the system. They wear their
+  power's uniform (contract security in a free city, the Assembly's militia in navy and white, the Covenant's Wardens
+  of the Road in crimson and gold, the Directorate's civic order in white and green), an armoured suit and a visor,
+  a rifle slung across the chest and a lamp blinking on the shoulder.
+- Walk up to one and speak to them ([E]) – they have a word for you, in their power's way. Weapons stay holstered in
+  the city.
+- The hangar flags carry their power's sign: the Assembly's ring, the Covenant's sun road, the Directorate's compass.
+
 ## alpha 0.7.50.8 – 2026-11-10
 
 **Sunset from the tower bar – the day goes on while you are in the city.**

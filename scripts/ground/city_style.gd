@@ -77,7 +77,7 @@ const DECK := {
 	"assembly": {"pal": [Color(0.58, 0.57, 0.53), Color(0.63, 0.62, 0.57), Color(0.68, 0.64, 0.56), Color(0.55, 0.4, 0.25), Color(0.28, 0.42, 0.34), Color(0.9, 0.88, 0.84), Color(0.4, 0.68, 1.0)],
 		"theme": {"bar": "garden", "floor": 3, "corner": 8, "cor_floor": 6, "deco": ["planter", "plant"],
 			"props": ["planter", "lamp_post", "flower_bed", "holo"], "seat": Color(0.35, 0.5, 0.75)},
-		"flag": [Color(0.16, 0.32, 0.72), Color(0.95, 0.97, 1.0)], "flag_kind": "flag"},
+		"flag": [Color(0.16, 0.32, 0.72), Color(0.95, 0.97, 1.0)], "flag_kind": "flag", "sign": "circle"},
 	"covenant": {"pal": [Color(0.3, 0.22, 0.2), Color(0.34, 0.25, 0.22), Color(0.38, 0.3, 0.25), Color(0.35, 0.2, 0.12), Color(0.45, 0.08, 0.12), Color(0.56, 0.43, 0.37), Color(1.0, 0.8, 0.3)],
 		"theme": {"bar": "mess", "floor": 4, "corner": 2, "cor_floor": 9, "deco": ["banner", "plant"],
 			"props": ["banner", "lamp_post", "banner", "holo"], "seat": Color(0.5, 0.1, 0.14)},
@@ -85,8 +85,26 @@ const DECK := {
 	"directorate": {"pal": [Color(0.74, 0.78, 0.79), Color(0.8, 0.84, 0.84), Color(0.8, 0.83, 0.83), Color(0.6, 0.62, 0.62), Color(0.2, 0.4, 0.35), Color(0.93, 0.95, 0.95), Color(0.25, 0.85, 0.55)],
 		"theme": {"bar": "cafe", "floor": 6, "corner": 4, "cor_floor": 6, "deco": ["holo_pillar", "plant"],
 			"props": ["holo_pillar", "lamp_post", "plant", "holo"], "seat": Color(0.85, 0.9, 0.92)},
-		"flag": [Color(0.1, 0.42, 0.3), Color(0.85, 0.9, 0.92)], "flag_kind": "flag"},
+		"flag": [Color(0.1, 0.42, 0.3), Color(0.85, 0.9, 0.92)], "flag_kind": "flag", "sign": "diamond"},
 }
+
+
+## 0.7.50.9: the city guards – their uniform (main and accent colour of PilotArt.CLOTH), what they are called and
+## what they say.
+const GUARDS := {
+	"independent": {"c1": 0, "c2": 13, "name": "Contract security",
+		"lines": ["Contract security. Don't make me file a report.", "Keep it holstered, pilot – the city pays us to keep the peace.", "Trouble? Not on my street."]},
+	"assembly": {"c1": 4, "c2": 3, "name": "City militia",
+		"lines": ["Militia on duty – the city is safe, citizen.", "Weapons stay holstered in the city. The Assembly voted on it.", "Need directions? The lifts take you anywhere."]},
+	"covenant": {"c1": 8, "c2": 10, "name": "Wardens of the Road",
+		"lines": ["The road leads home. Walk it in peace.", "No blade, no gun drawn within these walls.", "The Hierarch's peace holds here, pilgrim."]},
+	"directorate": {"c1": 3, "c2": 6, "name": "Civic order",
+		"lines": ["Your permit is in order. Proceed.", "Discharging weapons inside the city is not permitted.", "Please keep to the marked walkways."]},
+}
+
+
+static func guards(st: Dictionary) -> Dictionary:
+	return GUARDS[key_for(st)]
 
 
 static func deck(st: Dictionary) -> Dictionary:

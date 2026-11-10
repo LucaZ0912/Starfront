@@ -212,7 +212,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   `flag`.
 - 0.7.50.8: `GroundView._update_city_day` / `_apply_day` (twice a second: `CitySkyline.set_day(d, rising)`,
   `CityCanyon.set_day`, the street tint, the lights in `_city_lights`); `CityStyle.rising`, `dusk`, `sunset_color`,
-  `star_color`; `CityStyle.sky(body, day, sunset)`; the skyline's sun (`_draw_sun`, its own parallax).; `texture()` renders floors and walls once.
+  `star_color`; `CityStyle.sky(body, day, sunset)`; the skyline's sun (`_draw_sun`, its own parallax).
+- 0.7.50.9: `CityStyle.GUARDS` (uniform, name, lines), `GroundView._add_guards` (posted by lifts and stairs, patrols;
+  count by system security), `Walker.guard` / `patrol` (`_patrol`, the slung rifle), zone kind `guard`.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,
