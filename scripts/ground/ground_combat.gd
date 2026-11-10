@@ -53,6 +53,20 @@ var _end_t := 0.0
 ## radar in space: a disc as far as the weapon reaches, cover leaves its shadow – behind high cover nothing, right
 ## behind low cover a band where someone is covered (beyond it you shoot over it again).
 var tactics := 0
+## 0.7.52.5: grenades – yours on the belt keys (hold: aim at the mouse, release: throw; a tap throws at the target),
+## theirs when you sit too long behind the same cover. In flight: {a, b, t, life, id, from, st}; then smoke clouds
+## {pos, r, t, time} nobody aims well through, and shield domes {pos, r, hp, mx, t, time} that stop fire and blasts
+## from outside and let fire from inside out.
+const THROW_RANGE := 190.0
+var gr_hold := -1                                  # the belt place being aimed (-1: none)
+var gr_held := 0.0
+var gr_aim := Vector2.ZERO                         # where it would land (art px)
+var aim_at := Vector2.INF                          # debug / tests: aim there instead of at the mouse
+var grenades: Array = []
+var clouds: Array = []
+var domes: Array = []
+var camp_t := 0.0                                  # how long you have sat behind the same cover
+var _camp_at := Vector2.INF
 var tac_node: Node2D = null
 var _vis: Dictionary = {}                         # {from, reach, rays: [[t0, t1], …] per ray, at}
 const TAC_RAYS := 360
@@ -144,6 +158,8 @@ func spawn(kind: String, p: Vector2, quality: String = "", tier: String = "green
 	lk["suit"] = String(d["suit"])
 	lk["helmet"] = bool(d["helmet"]) or (view.needs_helmet() if view != null else false)
 	lk["headgear"] = 1 if not bool(d["helmet"]) else 0
+	if d.has("livery"):
+		lk["livery"] = String(d["livery"])                 # 0.7.52.5: pirates' black and red, guards' colours
 	var w := Walker.new()
 	w.setup(map, lk, p, true)
 	w.stays = true
@@ -159,7 +175,9 @@ func spawn(kind: String, p: Vector2, quality: String = "", tier: String = "green
 		"tier": tier, "dmg": FoeData.DAMAGE * float(td["damage"]),
 		"cool": randf_range(0.3, 1.0), "state": "idle", "aware": false, "goal": Vector2.INF, "path": PackedVector2Array(), "pi": 0,
 		"think": randf_range(0.0, 0.5), "regen_wait": 0.0, "role": String(d["role"]), "flee": float(d["flee"]),
-		"firearms": int(d["firearms"]) + int(td["firearms"]), "athletics": int(d["athletics"]), "out_t": 0.0, "home": p, "dead": false, "burst": 0}
+		"firearms": int(d["firearms"]) + int(td["firearms"]), "athletics": int(d["athletics"]), "out_t": 0.0, "home": p, "dead": false, "burst": 0,
+		"faction": String(d.get("faction", "")), "grenades": int(d.get("grenades", 0)), "gr_cool": randf_range(1.0, 3.0),
+		"aim": float(d.get("aim", 1.0)), "rof": float(d.get("rof", 1.0)), "sight": float(d.get("sight", FoeData.SIGHT)), "lost_t": 0.0}
 	_next_id += 1
 	foes.append(f)
 	return f
@@ -301,7 +319,8 @@ func chance_at_foe(f) -> float:
 	var sg := sight(a, b)
 	if sg["blocked"]:
 		return 0.0
-	return GearData.hit_chance(GearData.stats(wid), GameState.skill_level("firearms"), a.distance_to(b), sg["cover"], (f["w"] as Walker).moving, int(f["athletics"]), false)
+	var c := GearData.hit_chance(GearData.stats(wid), GameState.skill_level("firearms"), a.distance_to(b), sg["cover"], (f["w"] as Walker).moving, int(f["athletics"]), false)
+	return c * (SMOKE_CUT if smoke_between(a, b) else 1.0)
 
 
 func chance_at_pilot(f) -> float:
@@ -310,7 +329,9 @@ func chance_at_pilot(f) -> float:
 	var sg := sight(a, b)
 	if sg["blocked"]:
 		return 0.0
-	return GearData.hit_chance(GearData.stats(String(f["weapon"])), int(f["firearms"]), a.distance_to(b), sg["cover"], view.pilot.moving, GameState.skill_level("athletics"), GameState.gear.stim_t > 0.0)
+	var c := GearData.hit_chance(GearData.stats(String(f["weapon"])), int(f["firearms"]), a.distance_to(b), sg["cover"], view.pilot.moving, GameState.skill_level("athletics"), GameState.gear.stim_t > 0.0)
+	c = minf(0.97, c * float(f.get("aim", 1.0)))          # 0.7.52.5: the sniper's eye
+	return c * (SMOKE_CUT if smoke_between(a, b) else 1.0)
 
 
 # ---------------------------------------------------------------- the step
@@ -375,6 +396,16 @@ func step(delta: float, move: Vector2) -> void:
 		if sg["cover"]:
 			covered += 1
 	in_cover = 0 if covered == 0 else (2 if covered == seen_by else 1)
+	# 0.7.52.5: sitting behind the same cover – the ones with grenades notice
+	if in_cover > 0 and _camp_at != Vector2.INF and pilot_pos().distance_to(_camp_at) < 24.0:
+		camp_t += delta
+	else:
+		camp_t = 0.0
+		_camp_at = pilot_pos()
+	if gr_hold >= 0:
+		gr_held += delta
+		gr_aim = _clamp_throw(view.mouse_art() if aim_at == Vector2.INF else aim_at)
+	_grenade_step(delta)
 	# the weapon in the hands while fighting, facing the target when standing
 	var wid := weapon_id()
 	if fight and active != null and wid != "":
@@ -442,6 +473,7 @@ func fire(from, to, w: Dictionary) -> void:
 	var b: Vector2 = pilot_pos() if to == null else (to["w"] as Walker).pos
 	var sg := sight(a, b)
 	var chance: float = chance_at_pilot(from) if to == null else chance_at_foe(to)
+	var dome = dome_between(a, b)                         # 0.7.52.5: a shield dome round the target stops it
 	var open_chance := chance / (1.0 - GearData.COVER_CUT) if sg["cover"] else chance
 	var dtype := String(w.get("dtype", "kinetic"))
 	var col: Color = {"optical": Color(0.55, 0.95, 1.0), "kinetic": Color(1.0, 0.85, 0.4), "explosive": Color(1.0, 0.55, 0.2)}.get(dtype, Color.WHITE)
@@ -474,6 +506,10 @@ func fire(from, to, w: Dictionary) -> void:
 				if cover_at(p) == 2:
 					end = p + CHEST
 					break
+		if dome != null and res["kind"] != "miss":
+			res["kind"] = "dome"
+			res["dome"] = dome
+			end = (dome["pos"] as Vector2) + (a - (dome["pos"] as Vector2)).normalized() * float(dome["r"]) + CHEST
 		var instant := dtype == "optical"
 		var life := 0.09 if instant else maxf(0.05, muzzle.distance_to(end) / GearData.SHOT_SPEED)
 		shots.append({"a": muzzle, "b": end, "t": 0.0, "life": life, "kind": "beam" if instant else ("shell" if dtype == "explosive" else "slug"), "col": col, "res": res, "done": false})
@@ -514,6 +550,14 @@ func _resolve(s: Dictionary) -> void:
 				sparks.append({"pos": s["b"], "vel": Vector2(randf_range(-60, 60), randf_range(-70, 10)), "t": 0.0})
 			if not floaters.any(func(fl): return String(fl["text"]) == "blocked" and float(fl["t"]) < 0.4 and (fl["pos"] as Vector2).distance_to(s["b"]) < 30.0):
 				floaters.append({"pos": s["b"] + Vector2(0, -12), "text": "blocked", "col": Color(0.82, 0.82, 0.78), "t": 0.0})
+		"dome":
+			var dm: Dictionary = res["dome"]
+			dm["hp"] = float(dm["hp"]) - float(res["dmg"])
+			for i2 in 4:
+				sparks.append({"pos": s["b"], "vel": Vector2(randf_range(-50, 50), randf_range(-60, 10)), "t": 0.0, "col": Color(0.45, 0.9, 1.0)})
+			if float(dm["hp"]) <= 0.0:
+				dm["time"] = 0.0
+				floaters.append({"pos": (dm["pos"] as Vector2) + Vector2(0, -50), "text": "shield down", "col": Color(0.45, 0.9, 1.0), "t": 0.0})
 		"miss":
 			if to != null and res["from"] == null and not floaters.any(func(fl): return String(fl["text"]) == "miss" and float(fl["t"]) < 0.4):
 				floaters.append({"pos": (to["w"] as Walker).pos + Vector2(0, -34), "text": "miss", "col": Color(0.75, 0.75, 0.72), "t": 0.0})
@@ -523,12 +567,28 @@ func _explode(at: Vector2, r: float, dmg: float, dtype: String, from) -> void:
 	booms.append({"pos": at, "r": r, "t": 0.0})
 	Audio.play("explosion_small", "shell on foot", -4.0)
 	view._shake = 0.25
-	if at.distance_to(pilot_pos()) < r:
-		_hurt_pilot(dmg * (1.0 - at.distance_to(pilot_pos()) / r * 0.6), dtype)
+	var k := blast_share(at, pilot_pos(), r)
+	if k > 0.0:
+		_hurt_pilot(dmg * k, dtype)
 	for f in alive():
-		var dd: float = at.distance_to((f["w"] as Walker).pos)
-		if dd < r:
-			_hurt_foe(f, dmg * (1.0 - dd / r * 0.6), dtype)
+		var k2 := blast_share(at, (f["w"] as Walker).pos, r)
+		if k2 > 0.0:
+			_hurt_foe(f, dmg * k2, dtype)
+
+
+## 0.7.52.5: how much of a blast at `at` (radius r) reaches p – less further out, nothing behind high cover or inside a
+## shield dome it went off outside of, half behind low cover.
+func blast_share(at: Vector2, p: Vector2, r: float) -> float:
+	var dd := at.distance_to(p)
+	if dd >= r:
+		return 0.0
+	for dm in domes:
+		if p.distance_to(dm["pos"]) < float(dm["r"]) and at.distance_to(dm["pos"]) >= float(dm["r"]):
+			return 0.0
+	var sg := sight(at, p)
+	if sg["blocked"]:
+		return 0.0
+	return (1.0 - dd / r * 0.6) * (0.5 if sg["cover"] else 1.0)
 
 
 func _hurt_pilot(dmg: float, dtype: String) -> void:
@@ -558,6 +618,14 @@ func _hurt_foe(f: Dictionary, dmg: float, dtype: String) -> void:
 		kills += 1
 		locks.erase(f)
 		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "down", "col": Color(1.0, 0.45, 0.35), "t": 0.0})
+		if String(f["role"]) == "leader":                  # 0.7.52.5: the leader falls – the rest lose heart
+			var broke := 0
+			for o in alive():
+				if String(o["faction"]) == String(f["faction"]):
+					o["flee"] = minf(0.9, float(o["flee"]) + FoeData.MORALE_BREAK)
+					broke += 1
+			if broke > 0:
+				view._say_toast("%s is down – the rest lose heart!" % String(f["name"]), 3.0)
 
 
 func _number(at: Vector2, out: Dictionary) -> void:
@@ -603,7 +671,7 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	var dist := w.pos.distance_to(pp)
 	var sg := sight(w.pos, pp)
 	if not f["aware"]:
-		if dist < FoeData.SIGHT and not sg["blocked"]:
+		if dist < float(f["sight"]) and not sg["blocked"] and not smoke_between(w.pos, pp):
 			_wake(f)
 		else:
 			w.moving = false
@@ -620,6 +688,7 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 			return
 	else:
 		f["out_t"] = 0.0
+	f["lost_t"] = float(f["lost_t"]) + delta if sg["blocked"] else 0.0
 	# running away when badly hurt
 	if f["state"] != "flee" and float(st["health"]) < float(f["flee"]) * float(f["mx"]["health"]):
 		f["state"] = "flee"
@@ -657,21 +726,32 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		w.dir = _face(pp - w.pos)
 	if float(f["cool"]) <= 0.0 and not sg["blocked"] and dist <= reach:
 		fire(f, null, wst)
-		var base := 1.0 / float(wst["rof"])
-		if String(f["role"]) == "gunner":
+		var base := 1.0 / (float(wst["rof"]) * float(f["rof"]))
+		if String(f["role"]) == "holder" and float(wst["rof"]) >= 4.0:
 			f["burst"] = int(f["burst"]) + 1
 			f["cool"] = base if int(f["burst"]) % 6 != 0 else base + 1.6          # bursts of six
 		else:
 			f["cool"] = base * randf_range(1.0, 1.5) + (0.3 if w.moving else 0.0)
+	# 0.7.52.5: a grenade at you when you have dug in
+	f["gr_cool"] = float(f["gr_cool"]) - delta
+	var camp_need := FoeData.THROWER_CAMP if String(f["role"]) == "thrower" else FoeData.GRENADE_CAMP
+	if int(f["grenades"]) > 0 and float(f["gr_cool"]) <= 0.0 and camp_t >= camp_need and dist <= THROW_RANGE * 1.3 and dist > 40.0:
+		var land := pp + Vector2(randf_range(-14, 14), randf_range(-10, 10))
+		throw_grenade(f, land, "gr_frag")
+		f["grenades"] = int(f["grenades"]) - 1
+		f["gr_cool"] = 5.0
 
 
-## What to do next: stay in good cover, find new cover facing you, or (scatter guns) close in.
+## What to do next – by the foe's role (0.7.52.5, FoeData.ROLE): rushers close in, flankers run round to your open
+## side, holders keep their spot, the rest (riflemen, throwers, leaders, snipers) take cover facing you at their
+## distance – near their leader, if they have one.
 func _decide(f: Dictionary, dist: float, sg: Dictionary, reach: float) -> void:
 	var w: Walker = f["w"]
 	var pp := pilot_pos()
 	var role := String(f["role"])
+	var rd: Dictionary = FoeData.ROLE.get(role, FoeData.ROLE["rifleman"])
 	if role == "rusher":
-		var want := reach * 0.45
+		var want := reach * float(rd["pref"])
 		if dist > want or sg["blocked"]:
 			var tgt := pp + (w.pos - pp).normalized().rotated(randf_range(-0.6, 0.6)) * want * 0.8
 			_go(f, _free_near(tgt), "move")
@@ -679,21 +759,76 @@ func _decide(f: Dictionary, dist: float, sg: Dictionary, reach: float) -> void:
 			# strafing about close in
 			_go(f, _free_near(w.pos + (pp - w.pos).normalized().rotated(PI * 0.5 * (1.0 if randf() < 0.5 else -1.0)) * 28.0), "fight")
 		return
-	# riflemen, gunners, the boss: cover between them and you
+	if role == "flanker":
+		_decide_flank(f, dist, sg, reach)
+		return
 	var covered: bool = sight(pp, w.pos)["cover"]
 	var good: bool = covered and not sg["blocked"] and dist <= reach * 0.95
+	if role == "holder" and f["state"] == "cover" and float(f["lost_t"]) < 6.0:
+		return                                        # it holds its spot (unless it has lost you for long)
 	if good and f["goal"] == Vector2.INF:
 		f["state"] = "cover"
 		return
 	if f["goal"] != Vector2.INF and f["state"] == "move":
 		return                                        # on the way
-	var spot := _cover_spot(w.pos, pp, reach, 0.75 if role == "boss" else 0.6)
+	var spot := _cover_spot(w.pos, pp, reach, float(rd["pref"]), _leader_of(f), 14 if role == "sniper" else 8)
 	if spot != Vector2.INF:
 		_go(f, spot, "move")
 	elif dist > reach * 0.9 or sg["blocked"]:
-		_go(f, _free_near(pp + (w.pos - pp).normalized() * reach * 0.6), "move")
+		_go(f, _free_near(pp + (w.pos - pp).normalized() * reach * float(rd["pref"])), "move")
 	else:
 		f["state"] = "fight"
+
+
+## A flanker: somewhere at your side, off the line the others shoot along, where your cover does not cover you from it.
+func _decide_flank(f: Dictionary, dist: float, sg: Dictionary, reach: float) -> void:
+	var w: Walker = f["w"]
+	var pp := pilot_pos()
+	var open_shot: bool = not sg["blocked"] and not sight(w.pos, pp)["cover"] and dist <= reach * 0.85
+	if open_shot and f["goal"] == Vector2.INF:
+		f["state"] = "fight"
+		if randf() < 0.35:                            # keeps moving a little so it is hard to hit
+			_go(f, _free_near(w.pos + (pp - w.pos).normalized().rotated(PI * 0.5 * (1.0 if randf() < 0.5 else -1.0)) * 24.0), "fight")
+		return
+	if f["goal"] != Vector2.INF and f["state"] == "move":
+		return
+	# the line the others fight along
+	var front := Vector2.ZERO
+	for o in alive():
+		if o != f and o["aware"]:
+			front += ((o["w"] as Walker).pos - pp).normalized()
+	if front.length() < 0.1:
+		front = (w.pos - pp).normalized()
+	front = front.normalized()
+	var side := 1.0 if front.cross(w.pos - pp) >= 0.0 else -1.0
+	var best := Vector2.INF
+	var bs := INF
+	for k in 9:
+		var ang := side * randf_range(PI * 0.4, PI * 0.75)
+		var q := pp + front.rotated(ang) * reach * randf_range(0.35, 0.6)
+		q = _free_near(q)
+		if q == Vector2.INF:
+			continue
+		var s2 := sight(q, pp)
+		if s2["blocked"] or s2["cover"]:
+			continue
+		var score := q.distance_to(w.pos) + randf() * 20.0
+		if score < bs:
+			bs = score
+			best = q
+	if best != Vector2.INF:
+		_go(f, best, "move")
+		f["state"] = "move"
+	elif not sg["blocked"]:
+		f["state"] = "fight"
+
+
+## The leader of a foe's band (alive, the same faction, not itself) – null if there is none.
+func _leader_of(f: Dictionary) -> Variant:
+	for o in alive():
+		if o != f and String(o["role"]) == "leader" and String(o["faction"]) == String(f["faction"]):
+			return o
+	return null
 
 
 func _go(f: Dictionary, to: Vector2, state: String) -> void:
@@ -711,13 +846,14 @@ func _go(f: Dictionary, to: Vector2, state: String) -> void:
 
 ## The best spot near p to fight you from: a free tile right behind low cover (the cover between it and you), in
 ## reach, with you in sight over it; near, and about `pref` of the reach away from you. INF if there is none.
-func _cover_spot(p: Vector2, pp: Vector2, reach: float, pref: float) -> Vector2:
+func _cover_spot(p: Vector2, pp: Vector2, reach: float, pref: float, leader = null, rad: int = 8) -> Vector2:
 	var best := Vector2.INF
 	var bs := INF
 	var tx := int(p.x / GroundMap.TILE)
 	var ty := int(p.y / GroundMap.TILE)
-	for yy in range(ty - 8, ty + 9):
-		for xx in range(tx - 8, tx + 9):
+	var lp: Vector2 = (leader["w"] as Walker).pos if leader != null else Vector2.INF
+	for yy in range(ty - rad, ty + rad + 1):
+		for xx in range(tx - rad, tx + rad + 1):
 			if not GroundMap.walkable_t(map.t_at(xx, yy)):
 				continue
 			var c := (Vector2(xx, yy) + Vector2(0.5, 0.6)) * GroundMap.TILE
@@ -730,6 +866,8 @@ func _cover_spot(p: Vector2, pp: Vector2, reach: float, pref: float) -> Vector2:
 			if sg["blocked"] or not sg["cover"]:
 				continue
 			var score := c.distance_to(p) + absf(dd - reach * pref) * 0.6 + randf() * 12.0
+			if lp != Vector2.INF:
+				score += maxf(0.0, c.distance_to(lp) - 140.0) * 0.5      # 0.7.52.5: the band keeps near its leader
 			if score < bs:
 				bs = score
 				best = c
@@ -937,6 +1075,208 @@ func _draw_tactics_view() -> void:
 		tac_node.draw_line(c, c + Vector2.from_angle(sweep) * reach * S, Color(0.7, 1.0, 0.8, 0.6), 2.0)
 
 
+# ---------------------------------------------------------------- 0.7.52.5: grenades, smoke, shield domes
+
+const SMOKE_CUT := 0.3                             # a shot through smoke keeps this share of its chance
+
+
+## Belt place i pressed: a grenade there starts aiming (true), anything else is not ours (false).
+func grenade_press(i: int) -> bool:
+	var g = GameState.gear
+	if i < 0 or i >= g.belt.size() or (g.belt[i] as Dictionary).is_empty():
+		return false
+	if String(GearData.base(String(g.belt[i]["id"])).get("kind", "")) != "grenade":
+		return false
+	gr_hold = i
+	gr_held = 0.0
+	gr_aim = _clamp_throw(view.mouse_art())
+	return true
+
+
+## Released: a tap throws at the active target (if it is within a throw), a hold where you aimed.
+func grenade_release() -> String:
+	if gr_hold < 0:
+		return ""
+	var i := gr_hold
+	gr_hold = -1
+	var g = GameState.gear
+	if i >= g.belt.size() or (g.belt[i] as Dictionary).is_empty():
+		return ""
+	var at := gr_aim
+	if gr_held < 0.2 and active != null and pilot_pos().distance_to((active["w"] as Walker).pos) <= THROW_RANGE:
+		at = (active["w"] as Walker).pos
+	var id := String(g.belt[i]["id"])
+	throw_grenade(null, at, id)
+	g.belt[i]["n"] = int(g.belt[i]["n"]) - 1
+	if int(g.belt[i]["n"]) <= 0:
+		g.belt[i] = {}
+	return "%s thrown." % String(GearData.base(id)["name"])
+
+
+func _clamp_throw(p: Vector2) -> Vector2:
+	var d := p - pilot_pos()
+	if d.length() > THROW_RANGE:
+		d = d.normalized() * THROW_RANGE
+	return pilot_pos() + d
+
+
+## A grenade flies from `from` (null: you) to `at` and goes off where it lands.
+func throw_grenade(from, at: Vector2, id: String) -> void:
+	var w: Walker = view.pilot if from == null else from["w"]
+	var a := w.pos + Vector2(0, -16)
+	var life := clampf(a.distance_to(at) / 260.0, 0.45, 0.95)
+	grenades.append({"a": a, "b": at, "t": 0.0, "life": life, "id": id, "from": from, "st": GearData.stats(id)})
+	if from == null:
+		GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
+		for f in alive():
+			if not f["aware"] and f["w"].pos.distance_to(at) < FoeData.HEAR:
+				_wake(f)
+	Audio.play("ui_click", "grenade thrown", -4.0)
+
+
+func _grenade_step(delta: float) -> void:
+	for gr in grenades:
+		gr["t"] = float(gr["t"]) + delta
+		if float(gr["t"]) >= float(gr["life"]) and not gr.has("done"):
+			gr["done"] = true
+			_detonate(gr)
+	grenades = grenades.filter(func(gr): return not gr.has("done"))
+	for c in clouds:
+		c["t"] = float(c["t"]) + delta
+	clouds = clouds.filter(func(c): return float(c["t"]) < float(c["time"]))
+	for dm in domes:
+		dm["t"] = float(dm["t"]) + delta
+	domes = domes.filter(func(dm): return float(dm["t"]) < float(dm["time"]))
+
+
+func _detonate(gr: Dictionary) -> void:
+	var at: Vector2 = gr["b"]
+	var st: Dictionary = gr["st"]
+	var from = gr["from"]
+	var r := float(st.get("radius", 60.0))
+	match String(gr["id"]):
+		"gr_frag":
+			var mult := float(from["dmg"]) / FoeData.DAMAGE * 0.25 if from != null else 1.0
+			_explode(at, r, float(st.get("damage", 60.0)) * mult, "explosive", from)
+		"gr_emp":
+			booms.append({"pos": at, "r": r, "t": 0.0, "col": Color(0.45, 0.8, 1.0)})
+			Audio.play("shield_down", "EMP grenade", -4.0)
+			var sd := float(st.get("shield_damage", 90.0))
+			if blast_share(at, pilot_pos(), r) > 0.0 and not Commands.suit_god:
+				GameState.gear.shield = maxf(0.0, GameState.gear.shield - sd)
+				GameState.gear.shield_wait = GearData.SHIELD_WAIT
+				_number(pilot_pos(), {"shield": sd, "armor": 0.0, "health": 0.0})
+			for f in alive():
+				if blast_share(at, (f["w"] as Walker).pos, r) > 0.0:
+					var had := float(f["st"]["shield"])
+					f["st"]["shield"] = maxf(0.0, had - sd)
+					f["regen_wait"] = GearData.SHIELD_WAIT
+					_number((f["w"] as Walker).pos, {"shield": had - float(f["st"]["shield"]), "armor": 0.0, "health": 0.0})
+					_wake(f)
+		"gr_smoke":
+			clouds.append({"pos": at, "r": r * 0.8, "t": 0.0, "time": float(st.get("time", 8.0)), "seed": randi() % 1000})
+			Audio.play("undock_release", "smoke grenade", -8.0)
+		"gr_shield":
+			domes.append({"pos": at, "r": r * 0.75, "hp": float(st.get("shield", 120.0)), "mx": float(st.get("shield", 120.0)), "t": 0.0,
+				"time": float(st.get("time", 10.0))})
+			Audio.play("module_on", "shield grenade", -4.0)
+
+
+## Does the line a → b pass through a smoke cloud?
+func smoke_between(a: Vector2, b: Vector2) -> bool:
+	for c in clouds:
+		var cp: Vector2 = c["pos"]
+		var q := Geometry2D.get_closest_point_to_segment(cp, a, b)
+		if q.distance_to(cp) < float(c["r"]) * minf(1.0, float(c["t"]) * 3.0):
+			return true
+	return false
+
+
+## The shield dome a shot from a to b runs into: b inside it, a outside (fire from inside goes out freely).
+func dome_between(a: Vector2, b: Vector2) -> Variant:
+	for dm in domes:
+		if float(dm["hp"]) > 0.0 and b.distance_to(dm["pos"]) < float(dm["r"]) and a.distance_to(dm["pos"]) >= float(dm["r"]):
+			return dm
+	return null
+
+
+func _draw_grenades() -> void:
+	var font := ThemeDB.fallback_font
+	# shield domes: a glassy blue dome over the ground with a hex edge and its strength
+	for dm in domes:
+		var c: Vector2 = (dm["pos"] as Vector2) * S
+		var r := float(dm["r"]) * S
+		var k := clampf(float(dm["hp"]) / maxf(float(dm["mx"]), 1.0), 0.0, 1.0)
+		var fade := clampf((float(dm["time"]) - float(dm["t"])) / 0.5, 0.0, 1.0) * clampf(float(dm["t"]) / 0.25, 0.0, 1.0)
+		draw_set_transform(c, 0.0, Vector2(1.0, 0.62))
+		draw_circle(Vector2.ZERO, r, Color(0.35, 0.8, 1.0, 0.12 * fade))
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 6, Color(0.5, 0.95, 1.0, 0.6 * fade), 2.0)
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(0.5, 0.95, 1.0, 0.85 * fade), 3.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_arc(c + Vector2(0, -r * 0.1), r * 0.92, PI * 1.08, PI * 1.92, 32, Color(0.7, 1.0, 1.0, 0.45 * fade), 2.0)   # its top
+		draw_rect(Rect2(c + Vector2(-30, -r * 0.62 - 14), Vector2(60, 4)), Color(0.05, 0.1, 0.15, 0.8 * fade))
+		draw_rect(Rect2(c + Vector2(-30, -r * 0.62 - 14), Vector2(60 * k, 4)), Color(0.45, 0.9, 1.0, fade))
+	# grenades in flight: an arc with a shadow below; theirs show where they will land
+	for gr in grenades:
+		var k2 := clampf(float(gr["t"]) / float(gr["life"]), 0.0, 1.0)
+		var a: Vector2 = gr["a"]
+		var b: Vector2 = gr["b"]
+		var ground := a.lerp(b + Vector2(0, 0), k2) + Vector2(0, 16.0 * (1.0 - k2))
+		var hp := (a.lerp(b, k2) - Vector2(0, sin(k2 * PI) * 40.0)) * S
+		draw_set_transform(ground * S, 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, 5.0, Color(0, 0, 0, 0.3))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_circle(hp, 5.0, Color(0.05, 0.05, 0.06))
+		draw_circle(hp, 3.5, {"gr_frag": Color(0.4, 0.42, 0.32), "gr_emp": Color(0.3, 0.6, 1.0), "gr_smoke": Color(0.6, 0.6, 0.6), "gr_shield": Color(0.4, 0.9, 1.0)}.get(String(gr["id"]), Color.GRAY))
+		if fposmod(_t * 8.0, 1.0) < 0.5:
+			draw_circle(hp + Vector2(0, -2), 1.5, Color(1.0, 0.3, 0.2))
+		if gr["from"] != null:
+			var rr := float((gr["st"] as Dictionary).get("radius", 60.0)) * S
+			draw_set_transform(b * S, 0.0, Vector2(1.0, 0.55))
+			draw_circle(Vector2.ZERO, rr, Color(1.0, 0.2, 0.15, 0.1 + 0.15 * k2))
+			draw_arc(Vector2.ZERO, rr, 0.0, TAU, 40, Color(1.0, 0.25, 0.2, 0.5 + 0.5 * sin(_t * 18.0) * 0.5), 2.5)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# your aim while holding the key: the arc, where it lands, how far it reaches
+	if gr_hold >= 0:
+		var g = GameState.gear
+		if gr_hold < g.belt.size() and not (g.belt[gr_hold] as Dictionary).is_empty():
+			var gid := String(g.belt[gr_hold]["id"])
+			var gst := GearData.stats(gid)
+			var a2 := (pilot_pos() + Vector2(0, -16)) * S
+			var b2 := gr_aim * S
+			var prev := a2
+			for i in range(1, 25):
+				var t := i / 24.0
+				var p := a2.lerp(b2, t) - Vector2(0, sin(t * PI) * 40.0 * S)
+				if i % 2 == 0:
+					draw_line(prev, p, Color(1.0, 0.6, 0.25, 0.9), 3.0)
+				prev = p
+			var rr2 := float(gst.get("radius", 60.0)) * S * (0.75 if gid == "gr_shield" else (0.8 if gid == "gr_smoke" else 1.0))
+			draw_set_transform(b2, 0.0, Vector2(1.0, 0.55))
+			draw_circle(Vector2.ZERO, rr2, Color(1.0, 0.45, 0.15, 0.12))
+			draw_arc(Vector2.ZERO, rr2, 0.0, TAU, 48, Color(1.0, 0.55, 0.2, 0.9), 2.0)
+			draw_set_transform(pilot_pos() * S, 0.0, Vector2(1.0, 0.55))
+			draw_arc(Vector2.ZERO, THROW_RANGE * S, 0.0, TAU, 64, Color(1.0, 0.6, 0.25, 0.3), 1.5)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_txt(b2 - Vector2(0, rr2 * 0.55 + 10), "[%d] %s – release to throw" % [gr_hold + 1, String(gst["name"])], Color(1.0, 0.7, 0.35), 12)
+
+
+## Smoke clouds drawn over the people (they hide in them): soft grey puffs that swell and thin out.
+func _draw_clouds() -> void:
+	for c in clouds:
+		var k := clampf(float(c["t"]) * 3.0, 0.0, 1.0)
+		var left := clampf((float(c["time"]) - float(c["t"])) / 1.5, 0.0, 1.0)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(c["seed"])
+		var cp: Vector2 = (c["pos"] as Vector2) * S
+		var r := float(c["r"]) * S * k
+		for i in 22:
+			var off := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)).limit_length(1.0) * r * 0.75
+			off.y *= 0.6
+			var drift := Vector2(sin(_t * 0.6 + i), cos(_t * 0.5 + i * 1.3)) * 6.0
+			draw_circle(cp + off + drift - Vector2(0, 20), r * rng.randf_range(0.25, 0.4), Color(0.72, 0.72, 0.7, 0.16 * left))
+
+
 # ---------------------------------------------------------------- effects
 
 func _fx_step(delta: float) -> void:
@@ -964,6 +1304,16 @@ func _fx_step(delta: float) -> void:
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var red := Color(1.0, 0.3, 0.3)
+	_draw_grenades()
+	# 0.7.52.5: a sniper's red aiming line in the last moment before its shot – your cue to dodge
+	for sf in alive():
+		if String(sf["role"]) == "sniper" and sf["aware"] and float(sf["cool"]) < 0.9 and sf["state"] != "flee":
+			var sw: Walker = sf["w"]
+			if not sight(sw.pos, pilot_pos())["blocked"] and sw.aim != Vector2.INF:
+				var k0 := 1.0 - clampf(float(sf["cool"]) / 0.9, 0.0, 1.0)
+				var m0 := sw.muzzle_art() * S
+				draw_line(m0, (pilot_pos() + CHEST) * S, Color(1.0, 0.15, 0.1, 0.25 + 0.55 * k0), 1.0 + 1.5 * k0)
+				draw_circle((pilot_pos() + CHEST) * S, 3.0 + 3.0 * k0, Color(1.0, 0.2, 0.15, 0.4 + 0.5 * k0))
 	# the dodge's after-images
 	for tr in trail:
 		var k: float = float(tr["t"]) / 0.25
@@ -1027,16 +1377,18 @@ func _draw() -> void:
 				draw_circle(hp, 3.0, col3)
 	for sp in sparks:
 		var pp2: Vector2 = (sp["pos"] as Vector2) * S
-		draw_line(pp2, pp2 - (sp["vel"] as Vector2) * 0.04 * S, Color(1.0, 0.8, 0.35, 1.0 - float(sp["t"]) / 0.35), 2.0)
+		draw_line(pp2, pp2 - (sp["vel"] as Vector2) * 0.04 * S, Color(sp.get("col", Color(1.0, 0.8, 0.35)), 1.0 - float(sp["t"]) / 0.35), 2.0)
 	for bm in booms:
 		var k3: float = float(bm["t"]) / 0.5
 		draw_set_transform((bm["pos"] as Vector2) * S, 0.0, Vector2(1.0, 0.55))
-		draw_circle(Vector2.ZERO, float(bm["r"]) * S * (0.4 + k3 * 0.6), Color(1.0, 0.55, 0.15, 0.45 * (1.0 - k3)))
-		draw_arc(Vector2.ZERO, float(bm["r"]) * S * (0.4 + k3 * 0.6), 0, TAU, 40, Color(1.0, 0.8, 0.4, 1.0 - k3), 3.0)
+		var bc: Color = bm.get("col", Color(1.0, 0.55, 0.15))
+		draw_circle(Vector2.ZERO, float(bm["r"]) * S * (0.4 + k3 * 0.6), Color(bc, 0.45 * (1.0 - k3)))
+		draw_arc(Vector2.ZERO, float(bm["r"]) * S * (0.4 + k3 * 0.6), 0, TAU, 40, Color(bc.lightened(0.3), 1.0 - k3), 3.0)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	for fl in floaters:
 		var k4: float = float(fl["t"]) / 1.1
 		_txt((fl["pos"] as Vector2) * S + Vector2(0, -k4 * 40.0), String(fl["text"]), Color(fl["col"], 1.0 - k4 * k4), 16 if String(fl["text"]).is_valid_int() else 12)
+	_draw_clouds()
 	if show_ai:
 		_draw_ai(font)
 

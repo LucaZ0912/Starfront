@@ -226,7 +226,7 @@ func use_belt(i: int) -> String:
 				belt[i] = {}
 			return "%s used." % String(s["name"])
 		"grenade":
-			return "%s – throwing grenades comes with the next update." % String(s["name"])
+			return "%s – hold its key to aim, let go to throw (only where you may fight)." % String(s["name"])
 		"tool":
 			return "%s – its work comes with the places to explore." % String(s["name"])
 	return ""

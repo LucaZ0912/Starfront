@@ -830,6 +830,13 @@ func _build_ground() -> void:
 	ra.add_child(aw)
 	ra.add_child(UI.button("Open the arena (3 bandits)", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata()})))
 	ra.add_child(UI.button("Empty arena", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(), "foes": []})))
+	var ra3 := _row()                                               # 0.7.52.5: pirates, guards, a sniper
+	ra3.add_child(UI.button("Arena: pirate crew", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
+		"foes": ["pirate_raider", "pirate_raider", "pirate_gunner", "pirate_grenadier", "pirate_sniper@yellow", "pirate_captain@yellow"]})))
+	ra3.add_child(UI.button("Arena: guard squad", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
+		"foes": ["guard_trooper", "guard_trooper", "guard_heavy", "guard_sergeant@yellow"]})))
+	ra3.add_child(UI.button("Arena: one sniper", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(), "foes": ["pirate_sniper"]})))
+	ra3.add_child(UI.button("Grenades on the belt", func(): _cmd({"type": "debug_gear", "grenades": true})))
 	var ra2 := _row()                                               # 0.7.52.4 (Luz): mixed strengths
 	ra2.add_child(UI.button("Arena: 2 green + 1 yellow", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
 		"foes": ["bandit_scrapper@green", "bandit_rifleman@green", "bandit_gunner@yellow"]})))

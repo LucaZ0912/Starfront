@@ -33,6 +33,7 @@ const LIVERY := {
 	"assembly": [Color(0.68, 0.74, 0.84), Color(0.4, 0.68, 1.0)],
 	"covenant": [Color(0.42, 0.16, 0.14), Color(1.0, 0.8, 0.3)],
 	"directorate": [Color(0.93, 0.95, 0.95), Color(0.25, 0.85, 0.55)],
+	"pirate": [Color(0.15, 0.12, 0.13), Color(1.0, 0.24, 0.2)],          # 0.7.52.5: pirates on foot – black plate, red light
 }
 
 

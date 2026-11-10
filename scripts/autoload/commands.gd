@@ -2580,7 +2580,7 @@ func _c_debug_daytime(c: Dictionary) -> String:
 
 ## {"type":"debug_gear", ...} – package 51: "give": id (+ "n") into the pockets; "fill_belt": every belt place full;
 ## "refill": health, energy, oxygen, ammunition full; "clear": empty pockets; "set": {health|energy|oxygen|ammo: percent};
-## "suit_god": bool – the world outside does not hurt.
+## "suit_god": bool – the world outside does not hurt; "grenades": every belt place a stack of grenades (0.7.52.5).
 func _c_debug_gear(c: Dictionary) -> String:
 	var g = GameState.gear
 	if g == null:
@@ -2595,6 +2595,11 @@ func _c_debug_gear(c: Dictionary) -> String:
 		if left >= n:
 			return "Your pockets are full."
 		GameState.log_msg("[Debug] %s ×%d into the pockets." % [GD.display_name(id), n - left], GameState.COL_WARN)
+	if c.get("grenades", false):                        # 0.7.52.5: frag, smoke, shield, EMP on the belt
+		var grs := ["gr_frag", "gr_smoke", "gr_shield", "gr_emp"]
+		for i in g.belt.size():
+			g.belt[i] = {"id": grs[i % grs.size()], "n": GD.stack_max(grs[i % grs.size()])}
+		GameState.log_msg("[Debug] Grenades on the belt.", GameState.COL_WARN)
 	if c.get("fill_belt", false):
 		for i in g.belt.size():
 			var fam: String = DEBUG_BELT[i % DEBUG_BELT.size()]

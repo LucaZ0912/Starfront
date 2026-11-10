@@ -319,6 +319,13 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.52.4: `FoeData.TIERS` (green/yellow/red: health, damage, firearms, quality, col), `TIER_ORDER`, `tier_quality(q, tier)`,
   `parse("kind@tier")`; `GroundCombat.spawn(kind, p, quality, tier)` (foe dict `tier`, `dmg`), the ring drawn in
   `_draw_tactics` on `tac_node`; arena site `foes` and `debug_arena` take "kind@tier", `debug_foe` takes `tier`.
+- 0.7.52.5: `FoeData` – kinds `pirate_*` / `guard_*`, fields `livery`, `grenades`, `aim`, `rof`, `sight`; `ROLES` / `ROLE`
+  {pref, cover}, `GRENADE_CAMP`, `THROWER_CAMP`, `MORALE_BREAK`; `ChibiArt.LIVERY.pirate`; `GroundCombat` – `_decide`
+  by role, `_decide_flank`, `_leader_of`, `_cover_spot(…, leader, rad)`, morale in `_hurt_foe`, `camp_t`; grenades
+  `grenade_press(i)` / `grenade_release()` / `throw_grenade(from, at, id)` / `_detonate`, `THROW_RANGE`, `gr_hold`,
+  `gr_aim`, `aim_at`, `grenades`, `clouds` (`smoke_between`, `SMOKE_CUT`), `domes` (`dome_between`), `blast_share(at, p, r)`;
+  the sniper's aiming line in `_draw`; `GroundView.mouse_art()`, belt keys press/release; `debug_gear` {grenades};
+  smoke group `foot_tactics`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

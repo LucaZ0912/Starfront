@@ -147,6 +147,7 @@ func _process(delta: float) -> void:
 				_test_landing(view)              # package 50 – down to a planet and back up, then on to the fight
 				_test_debug_ground(view)         # 0.7.51.5 – the debug functions of packages 49–51
 				_test_foot_combat(view)          # package 52 – fights on foot
+				_test_foot_tactics(view)         # 0.7.52.5 – grenades, AI types, pirates and guards
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -7843,7 +7844,7 @@ func _test_suit_looks() -> void:
 		l3["helmet"] = true
 		l3["livery"] = liv
 		lv[liv] = CA.frame(l3, 0, 0).get_image().get_data()
-	var liv_ok: bool = lv.size() == 4 and lv["covenant"] != lv["directorate"] and lv["assembly"] != lv["independent"]
+	var liv_ok: bool = lv.size() == 5 and lv["covenant"] != lv["directorate"] and lv["assembly"] != lv["independent"] and lv["pirate"] != lv["independent"]      # 0.7.52.5: + the pirates
 	# the helmet setting, saved and loaded
 	var g = GameState.gear
 	var was := String(g.helmet)
@@ -9040,3 +9041,149 @@ func _test_foot_combat(view: SystemView) -> void:
 	check(tac_ok and layer_ok and chance_ok and arena_ok and high_ok and low_ok and lock_ok and fire_ok and down_ok and wake_ok and ai_ok and dodge_ok and hurt_ok and regen_ok and swap_ok and dbg_ok and end_ok and fall_ok,
 		"package 52: fights on foot – layers, hit chance; the arena (%d foes), cover high and low; locks, firing, a foe down, waking and the auto-lock, the AI moving; a dodge no hit lands in, the shield waits and comes back; weapon swap; debug spawn, AI view, all down, the fight over; shot down → the clinic; the tactical view (shadow behind a bulwark, your sight → the target's)  [%s]" % [n0,
 		" ".join(PackedStringArray([str(tac_ok), str(layer_ok), str(chance_ok), str(arena_ok), str(high_ok), str(low_ok), str(lock_ok), str(fire_ok), str(down_ok), str(wake_ok), str(ai_ok), str(dodge_ok), str(hurt_ok), str(regen_ok), str(swap_ok), str(dbg_ok), str(end_ok), str(fall_ok)]))])
+
+
+## 0.7.52.5: grenades (frag, EMP, smoke, shield dome), the AI types (flanker, holder, thrower, leader, sniper), pirates and
+## guards.
+func _test_foot_tactics(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	gear.weapons[0] = "wp_laser_rifle:C"
+	var e1 := Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "0.7.52.5: the arena opens  [%s]" % e1)
+		return
+	gear.refill()
+	Commands.suit_god = false
+	# a clear patch: the pilot and a spot 60 px east with nothing between
+	var me := Vector2.INF
+	for k in 200:
+		var q := Vector2(randf_range(0.55, 0.9) * g.map.w, randf_range(0.2, 0.8) * g.map.h) * 16.0
+		var ok := true
+		for dx in range(-80, 81, 16):
+			for dy in range(-40, 41, 16):
+				ok = ok and g.map.free_at(q + Vector2(dx, dy), 5.0) and cb.cover_at(q + Vector2(dx, dy)) == 0
+		if ok:
+			me = q
+			break
+	if me == Vector2.INF:
+		check(false, "0.7.52.5: a clear patch in the arena")
+		return
+	g.pilot.pos = me
+	g.pilot.position = me * GroundMap.SCALE
+	# the grenade belt; a frag thrown by hand at two foes hurts both, the far one less
+	var dbg_ok: bool = Commands.execute({"type": "debug_gear", "grenades": true}) == "" and String(gear.belt[0]["id"]) == "gr_frag"
+	var fa: Dictionary = cb.spawn("bandit_rifleman", me + Vector2(60, 0))
+	var fb: Dictionary = cb.spawn("bandit_rifleman", me + Vector2(60, 40))
+	cb.frozen = true
+	var n0 := int(gear.belt[0]["n"])
+	var pressed: bool = cb.grenade_press(0)
+	cb.gr_aim = me + Vector2(60, 0)
+	cb.gr_held = 0.5
+	var msg: String = cb.grenade_release()
+	for i in 12:
+		cb.step(0.1, Vector2.ZERO)
+	var ha := float(fa["st"]["shield"]) + float(fa["st"]["armor"]) + float(fa["st"]["health"])
+	var hb := float(fb["st"]["shield"]) + float(fb["st"]["armor"]) + float(fb["st"]["health"])
+	var full := float(fa["mx"]["shield"]) + float(fa["mx"]["armor"]) + float(fa["mx"]["health"])
+	var frag_ok: bool = pressed and msg != "" and int(gear.belt[0]["n"]) == n0 - 1 and ha < full - 20.0 and hb < full and hb > ha and not cb.grenade_press(5)
+	# EMP: the shields go
+	var fc: Dictionary = cb.spawn("bandit_boss", me + Vector2(70, -20))
+	cb.throw_grenade(null, me + Vector2(70, -20), "gr_emp")
+	for i2 in 12:
+		cb.step(0.1, Vector2.ZERO)
+	var emp_ok: bool = float(fc["st"]["shield"]) < 1.0 and float(fc["st"]["health"]) == float(fc["mx"]["health"])
+	# smoke between: worse aim both ways, and an unaware foe does not see through it
+	var c_open: float = cb.chance_at_pilot(fc)
+	cb.throw_grenade(null, me + Vector2(35, -10), "gr_smoke")
+	for i3 in 10:
+		cb.step(0.1, Vector2.ZERO)
+	var smoke_ok: bool = cb.smoke_between(me, me + Vector2(70, -20)) and cb.chance_at_pilot(fc) < c_open * 0.5
+	cb.clouds.clear()
+	# a shield dome round you: fire from outside breaks on it (and wears it down), a blast outside does not reach you
+	cb.throw_grenade(null, me, "gr_shield")
+	for i4 in 8:
+		cb.step(0.1, Vector2.ZERO)
+	var h0: float = gear.health + gear.shield + gear.armor
+	var dm: Dictionary = cb.domes[0] if not cb.domes.is_empty() else {}
+	var hp0: float = float(dm.get("hp", 0.0))
+	for i5 in 6:
+		cb.fire(fc, null, GD.stats("wp_rifle:C"))
+	for i6 in 10:
+		cb.step(0.1, Vector2.ZERO)
+	var outside := me + Vector2(float(dm.get("r", 50.0)) + 20.0, 0)
+	cb._explode(outside, 60.0, 80.0, "explosive", fc)
+	var dome_ok: bool = not dm.is_empty() and is_equal_approx(gear.health + gear.shield + gear.armor, h0) and float(dm["hp"]) < hp0 \
+		and cb.dome_between(me + Vector2(200, 0), me) != null and cb.dome_between(me, me + Vector2(200, 0)) == null
+	cb.domes.clear()
+	# a high-cover wall shelters from a blast
+	var shelter_ok := false
+	for ob in g.map.objects:
+		if String(ob["kind"]) == "bulwark" and int(ob["w"]) > int(ob["h"]) and not shelter_ok:
+			var r := Rect2(Vector2(int(ob["x"]), int(ob["y"])) * 16.0, Vector2(int(ob["w"]), int(ob["h"])) * 16.0)
+			shelter_ok = cb.blast_share(Vector2(r.get_center().x, r.position.y - 14.0), Vector2(r.get_center().x, r.end.y + 14.0), 80.0) == 0.0 \
+				and cb.blast_share(Vector2(r.get_center().x, r.end.y + 30.0), Vector2(r.get_center().x, r.end.y + 14.0), 80.0) > 0.5
+	# the kinds: pirates in black and red, guards in their colours, all foes weaker in body than you
+	var pr: Dictionary = cb.spawn("pirate_raider", me + Vector2(-60, 30))
+	var gs: Dictionary = cb.spawn("guard_sergeant", me + Vector2(-60, -30))
+	var look_ok: bool = String((pr["w"] as Walker).look.get("livery", "")) == "pirate" and String((gs["w"] as Walker).look.get("livery", "")) == "independent" \
+		and ChibiArt.LIVERY.has("pirate") and FoeData52.KINDS.size() == FoeData52.FOES.size() and FoeData52.FOES.values().all(func(x): return FoeData52.ROLE.has(String(x["role"])))
+	# the sniper: far better aim, far slower fire
+	var sn: Dictionary = cb.spawn("pirate_sniper", me + Vector2(0, -60))
+	var rif: Dictionary = cb.spawn("bandit_rifleman", me + Vector2(0, 60))
+	var sniper_ok: bool = float(sn["aim"]) >= 1.5 and float(sn["rof"]) <= 0.5 and float(sn["sight"]) > FoeData52.SIGHT * 2.0
+	# the leader falls: its band loses heart
+	var fl0 := float(pr["flee"])
+	var cap: Dictionary = cb.spawn("pirate_captain", me + Vector2(-90, 0))
+	cb._hurt_foe(cap, 99999.0, "explosive")
+	var morale_ok: bool = float(pr["flee"]) > fl0 + 0.2 and float(gs["flee"]) < 0.2
+	# a thrower throws when you dig in; nobody does while you keep moving
+	for o in cb.alive():
+		cb._hurt_foe(o, 99999.0, "explosive")
+	var thr: Dictionary = cb.spawn("pirate_grenadier", me + Vector2(110, 0))
+	cb._wake(thr)
+	cb.frozen = false
+	cb.camp_t = 0.0
+	var thrown_moving := false
+	for i7 in 15:
+		cb._camp_at = Vector2.INF                       # moving all the while
+		cb.step(0.1, Vector2.ZERO)
+		thrown_moving = thrown_moving or not cb.grenades.is_empty()
+	cb.camp_t = FoeData52.THROWER_CAMP + 1.0
+	thr["gr_cool"] = 0.0
+	var g0 := int(thr["grenades"])
+	cb._foe_step(thr, 0.05)
+	var thrower_ok: bool = int(thr["grenades"]) == g0 - 1 and not cb.grenades.is_empty() and cb.grenades[-1]["from"] == thr
+	# a flanker heads for a spot where your cover does not help you
+	cb.grenades.clear()
+	var fl: Dictionary = cb.spawn("pirate_raider", me + Vector2(150, -60))
+	cb._wake(fl)
+	cb._decide(fl, (fl["w"] as Walker).pos.distance_to(me), cb.sight((fl["w"] as Walker).pos, me), 200.0)
+	var flank_ok: bool = String(fl["state"]) in ["move", "fight"] and (fl["goal"] == Vector2.INF or not cb.sight(fl["goal"], me)["cover"])
+	# back
+	cb.frozen = true
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(dbg_ok and frag_ok and emp_ok and smoke_ok and dome_ok and shelter_ok and look_ok and sniper_ok and morale_ok and thrower_ok and flank_ok,
+		"0.7.52.5: grenades (a frag thrown by hand hurts near more than far, EMP takes shields, smoke spoils aim, a shield dome stops fire and blasts from outside, high cover shelters); pirates and guards in their colours; the sniper's aim and slow fire; a fallen leader breaks its band; a thrower throws at you dug in; a flanker seeks your open side  [%s]" % " ".join(PackedStringArray([str(dbg_ok), str(frag_ok), str(emp_ok), str(smoke_ok), str(dome_ok), str(shelter_ok), str(look_ok), str(sniper_ok), str(morale_ok), str(thrower_ok), str(flank_ok)])))

@@ -1035,11 +1035,28 @@ func _unhandled_input(event: InputEvent) -> void:
 		var n := (event as InputEventKey).keycode - KEY_1
 		if n >= 0 and n < GameState.gear.belt.size():
 			get_viewport().set_input_as_handled()
+			if combat != null and not _collapsed and combat.grenade_press(n):
+				return                                        # 0.7.52.5: a grenade – aimed while the key is held
 			use_belt(n)
+	elif event is InputEventKey and not event.is_pressed() and combat != null and combat.gr_hold >= 0:
+		if (event as InputEventKey).keycode - KEY_1 == combat.gr_hold:
+			get_viewport().set_input_as_handled()
+			var msg := combat.grenade_release()
+			if msg != "":
+				_say_toast(msg, 1.5)
+
+
+## 0.7.52.5: where the mouse points on the map (art px).
+func mouse_art() -> Vector2:
+	return (get_viewport().get_mouse_position() - _world.position) / GroundMap.SCALE
 
 
 ## 0.7.51.3: a belt place on its number key.
 func use_belt(n: int) -> void:
+	var b: Array = GameState.gear.belt
+	if n < b.size() and not (b[n] as Dictionary).is_empty() and String(ChibiArt.GearData.base(String(b[n]["id"])).get("kind", "")) == "grenade" and combat == null:
+		_say_toast("No fighting here – the grenade stays on your belt.", 2.5)       # 0.7.52.5
+		return
 	var msg: String = GameState.gear.use_belt(n)
 	if msg != "":
 		_say_toast(msg, 2.5)

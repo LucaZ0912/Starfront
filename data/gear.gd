@@ -102,7 +102,7 @@ const BELT := {
 	"gr_smoke": {"name": "Smoke Grenade", "kind": "grenade", "radius": 90.0, "time": 8.0, "stack": 4, "price": 90,
 		"desc": "A cloud nobody aims through."},
 	"gr_shield": {"name": "Shield Grenade", "kind": "grenade", "radius": 70.0, "time": 10.0, "shield": 120.0, "stack": 3, "price": 420,
-		"desc": "Throws up a dome of shield: fire and grenades from outside bounce off it, your own fire goes out through it."},
+		"desc": "Throws up a dome of shield: fire and blasts from outside break on it, your own fire goes out through it."},
 	"tl_scanner": {"name": "Scanner", "kind": "tool", "maker": "Axiom Astronautics", "strength": 1.0, "range": 300.0, "energy": 3.0, "price": 1400,
 		"desc": "Reads a place: who and what is here, what lies under the ground."},
 	"tl_cutter": {"name": "Cutting Torch", "kind": "tool", "maker": "Kanayama Heavy Industries", "strength": 1.0, "range": 40.0, "energy": 5.0, "price": 1600,

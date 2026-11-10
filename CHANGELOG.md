@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.5 – 2026-11-11
+
+**Grenades, pirates and guards, and foe types with tactics of their own (package 52, the next round).**
+
+- **Throwing grenades:** hold a grenade's belt key – a dashed arc to where the mouse points (up to ~13 m) and the
+  blast's reach; let go to throw. A quick tap throws at the locked target. **Frag** (explosive, less further out, half
+  behind low cover, nothing behind high cover), **EMP** (knocks shields down), **smoke** (a cloud: shots through it keep
+  a third of their chance, foes do not see through it), **shield grenade** (a dome: fire and blasts from outside break
+  on it and wear it down, your own fire goes out through it).
+- **Foe types, each with its own tactic:** rusher (closes in, sidesteps), rifleman (cover facing you, moves on when
+  flanked), **holder** (keeps its spot, sprays in bursts), **flanker** (runs round to your open side while the others
+  pin you), **thrower** (keeps back and throws frag grenades as soon as you settle behind cover – their grenades show
+  where they will land in red), **leader** (further back; its band keeps near it and loses heart when it falls), and
+  Luz's **sniper** (90 % of its reach, in cover, far better aim, far slower fire – a red aiming line warns of its shot).
+  Anyone with grenades throws one if you sit too long behind the same cover.
+- **Pirates (Red Talon):** raider (flanker), gunner (holder), grenadier (thrower), sniper, captain (leader) – combat
+  suits in black plate with red lights. **Guards:** trooper, heavy, sergeant (they only fight where weapons are allowed
+  – for now the arena). The bandits' gunner holds, their boss leads.
+- **Debug:** "Arena: pirate crew", "Arena: guard squad", "Arena: one sniper", "Grenades on the belt"; every foe kind in
+  the spawn list. Codex entry, smoke test group `foot_tactics`.
+
 ## alpha 0.7.52.4 – 2026-11-11
 
 **Threat tiers – a coloured ring at every foe's feet (Luz).**
