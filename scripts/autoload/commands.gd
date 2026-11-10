@@ -2434,7 +2434,8 @@ func _c_debug_deck(_c: Dictionary) -> String:
 	return "" if _ground() != null else "The deck did not open."
 
 
-## {"type":"debug_ground_level", "level": "hangar"|"commercial"|"street"|"tower"} – package 49/50: straight to a level.
+## {"type":"debug_ground_level", "level": "hangar"|"commercial"|"street"|"tower"|"clinic"} – package 49/50: straight to a
+## level (0.7.51.11: the clinic, where there is one).
 func _c_debug_ground_level(c: Dictionary) -> String:
 	var g = _ground()
 	if g == null:
@@ -2443,8 +2444,10 @@ func _c_debug_ground_level(c: Dictionary) -> String:
 	var ok: Array = []
 	if g.is_city():
 		ok = ["hangar", "street", "tower"]
-	elif not g.is_town() and g.level in ["hangar", "commercial"]:
+	elif not g.is_town() and g.level in ["hangar", "commercial", "clinic"]:
 		ok = ["hangar", "commercial"]
+	if not ok.is_empty() and g._avail.has("clinic"):
+		ok.append("clinic")
 	if ok.is_empty():
 		return "No levels here (a landing field or a settlement)."
 	if not lv in ok:

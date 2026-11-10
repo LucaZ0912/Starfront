@@ -103,8 +103,16 @@ static func _rise(kind: String) -> int:
 			return 14
 		"stool", "railing":
 			return 6
-		"med_bed":
+		"med_bed", "med_bed_occ":
 			return 14
+		"med_pod":
+			return 20
+		"sculpt_chair":
+			return 26
+		"holo_bust":
+			return 30
+		"med_cabinet":
+			return 30
 	return 6
 
 
@@ -312,6 +320,80 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 6, fy - 9, 4, 1, Color(0.4, 1.0, 0.55))
 			_r(img, pw - 5, fy - 11, 1, 2, Color(0.4, 1.0, 0.55))
 			_r(img, pw - 4, fy - 4, 1, 4, metal.darkened(0.3))
+		"med_bed_occ":              # 0.7.51.11: a bed with its patient – the head on the pillow, the sheet over them, a drip
+			var prng := RandomNumberGenerator.new()
+			prng.seed = int(o.get("seed", 3))
+			_r(img, 1, fy, pw - 2, ph - 2, Color(0.88, 0.9, 0.92))
+			_r(img, 2, fy + 2, pw - 4, ph - 6, Color(0.55, 0.75, 0.95))
+			_r(img, 2, fy + 2, pw - 4, 5, Color(0.96, 0.97, 0.98))
+			var skin: Color = [Color(0.95, 0.8, 0.68), Color(0.78, 0.58, 0.42), Color(0.5, 0.34, 0.24), Color(0.88, 0.72, 0.58)][prng.randi() % 4]
+			var hair: Color = [Color(0.2, 0.15, 0.1), Color(0.55, 0.35, 0.2), Color(0.85, 0.75, 0.45), Color(0.15, 0.15, 0.17)][prng.randi() % 4]
+			_ellipse(img, pw * 0.5, fy + 8.0, 5.0, 4.5, skin)                                 # the head on the pillow
+			_r(img, pw / 2 - 5, fy + 3, 10, 3, hair)
+			_r(img, pw / 2 - 2, fy + 8, 1, 1, Color(0.2, 0.15, 0.15))                        # eyes shut
+			_r(img, pw / 2 + 1, fy + 8, 1, 1, Color(0.2, 0.15, 0.15))
+			_r(img, 3, fy + 13, pw - 6, ph - 18, Color(0.62, 0.8, 0.97))                    # the sheet over them
+			_r(img, 3, fy + 13, pw - 6, 2, Color(0.85, 0.93, 1.0))
+			_r(img, 5, fy + 15, 3, 6, skin)                                                 # an arm on the sheet
+			_r(img, 4, fy + ph - 9, pw - 8, 2, Color(0.5, 0.68, 0.88))
+			_r(img, 2, fy + ph - 4, 2, 4, metal.darkened(0.4))
+			_r(img, pw - 4, fy + ph - 4, 2, 4, metal.darkened(0.4))
+			_r(img, pw - 7, fy - 12, 6, 8, Color(0.08, 0.1, 0.12))                         # the monitor
+			_r(img, pw - 6, fy - 9, 4, 1, Color(0.4, 1.0, 0.55))
+			_r(img, pw - 5, fy - 11, 1, 2, Color(0.4, 1.0, 0.55))
+			_r(img, pw - 4, fy - 4, 1, 4, metal.darkened(0.3))
+			_r(img, 1, fy - 12, 1, 14, Color(0.55, 0.58, 0.62))                           # the drip on its stand
+			_r(img, 0, fy - 12, 3, 4, Color(0.8, 0.92, 1.0, 0.85))
+		"med_pod":                  # 0.7.51.11: the auto-surgeon – a capsule under a glass lid, its arm over it, lit
+			c = Color(0.4, 0.9, 1.0)
+			_r(img, 2, fy + 2, pw - 4, ph - 4, Color(0.86, 0.88, 0.9))
+			_r(img, 4, fy + 4, pw - 8, ph - 9, Color(0.18, 0.3, 0.36))
+			_r(img, 4, fy + 4, pw - 8, ph - 9, Color(c, 0.35))
+			_r(img, 5, fy + 5, pw - 10, 2, Color(0.85, 0.97, 1.0, 0.7))                    # the glass lid's glint
+			_r(img, 3, fy + ph - 4, pw - 6, 2, c)                                          # its light strip
+			_r(img, pw / 2 - 1, 0, 2, fy + 6, Color(0.6, 0.62, 0.66))                      # the surgeon arm over it
+			_r(img, pw / 2 - 5, 0, 10, 3, Color(0.5, 0.52, 0.56))
+			_r(img, pw / 2 - 2, fy + 4, 4, 3, Color(0.4, 0.42, 0.46))
+			_r(img, pw / 2 - 1, fy + 7, 2, 1, Color(1.0, 0.3, 0.3))
+			_r(img, pw - 6, fy - 6, 5, 7, Color(0.08, 0.1, 0.12))                          # its screen
+			_r(img, pw - 5, fy - 4, 3, 1, Color(0.4, 1.0, 0.55))
+			_r(img, pw - 5, fy - 2, 2, 1, c)
+		"sculpt_chair":             # 0.7.51.11: Visage's sculpting chair – reclined, its scanner ring over the head, lit
+			_r(img, pw / 2 - 2, fy + ph - 6, 4, 6, metal.darkened(0.35))                   # its stand
+			_r(img, 4, fy + ph - 7, pw - 8, 2, metal.darkened(0.2))
+			_r(img, 3, fy + 6, pw - 6, ph - 14, Color(0.18, 0.18, 0.22))                   # seat and back, padded
+			_r(img, 3, fy + 6, pw - 6, 2, Color(0.32, 0.32, 0.38))
+			_r(img, 5, fy, pw - 10, 8, Color(0.22, 0.22, 0.27))                            # the headrest
+			for k in 3:
+				_r(img, 4, fy + 10 + k * 5, pw - 8, 1, Color(0.12, 0.12, 0.15))
+			_ellipse(img, pw * 0.5, fy - 6.0, pw * 0.42, 6.0, c)                            # the scanner ring
+			_ellipse(img, pw * 0.5, fy - 6.0, pw * 0.42 - 2.0, 4.0, Color(0, 0, 0, 0))
+			_r(img, pw / 2 - 1, 0, 2, fy - 10, metal.darkened(0.2))                         # its arm
+			_r(img, 2, fy + 8, 2, 8, c.darkened(0.3))                                       # light strips on its sides
+			_r(img, pw - 4, fy + 8, 2, 8, c.darkened(0.3))
+		"holo_bust":                # 0.7.51.11: a holographic bust over its pedestal – the face being made
+			_r(img, 3, fy + ph - 10, pw - 6, 10, Color(0.2, 0.2, 0.25))
+			_r(img, 3, fy + ph - 10, pw - 6, 2, c)
+			_r(img, 5, fy + ph - 12, pw - 10, 2, Color(c, 0.6))
+			var hc := Color(c.lerp(Color(0.6, 1.0, 1.0), 0.5), 0.55)
+			_ellipse(img, pw * 0.5, fy + ph - 26.0, 6.0, 7.5, hc)                           # the head
+			_r(img, pw / 2 - 5, fy + ph - 18, 10, 5, hc)                                    # neck and shoulders
+			_r(img, pw / 2 - 9, fy + ph - 14, 18, 3, hc)
+			for sl in range(fy + ph - 34, fy + ph - 12, 3):
+				_r(img, pw / 2 - 9, sl, 18, 1, Color(1, 1, 1, 0.18))                        # scan lines
+			_r(img, pw / 2 - 3, fy + ph - 27, 2, 1, Color(1, 1, 1, 0.8))
+			_r(img, pw / 2 + 1, fy + ph - 27, 2, 1, Color(1, 1, 1, 0.8))
+		"med_cabinet":              # 0.7.51.11: a medicine cabinet – white, glass doors, boxes and vials, the cross on top
+			_r(img, 1, 4, pw - 2, fy + ph - 5, Color(0.9, 0.92, 0.94))
+			_r(img, 1, 4, pw - 2, 1, Color(1, 1, 1))
+			_r(img, 3, 7, pw - 6, fy + ph - 12, Color(0.6, 0.75, 0.82))
+			for sy in range(9, fy + ph - 6, 7):
+				_r(img, 3, sy + 4, pw - 6, 1, Color(0.85, 0.88, 0.9))
+				for bx in range(4, pw - 5, 4):
+					_r(img, bx, sy, 3, 4, [Color(0.95, 0.95, 0.95), Color(0.9, 0.4, 0.35), Color(0.4, 0.75, 0.95), Color(0.95, 0.8, 0.3)][(bx + sy) % 4])
+			_r(img, pw / 2, 7, 1, fy + ph - 12, Color(0.75, 0.8, 0.84))
+			_r(img, pw / 2 - 3, 0, 6, 2, Color(0.9, 0.2, 0.2))
+			_r(img, pw / 2 - 1, -2 + 0, 2, 6, Color(0.9, 0.2, 0.2))
 		"table_small":
 			_r(img, 2, fy, pw - 4, ph - 6, wood.lightened(0.12))
 			_r(img, 2, fy, pw - 4, 2, wood.lightened(0.3))

@@ -7997,29 +7997,41 @@ func _test_clinic(view: SystemView, body: Dictionary, sites_all: Array) -> void:
 		return
 	var f := GameState.active()
 	var gear = GameState.gear
-	# a station's commercial level has the clinic
+	# 0.7.51.11: the clinic is a level of its own – not in the shop row; its treatment window, its image studio, its
+	# recovery room; the image studio leaves the shop row where there is a clinic
 	var st: Dictionary = view.stations.values()[0].data
-	var deck := DeckGen.build(st, {"clinic": "", "market": "", "gear": ""})
-	var room_ok := false
+	var av := {"clinic": "", "market": "", "gear": "", "look": ""}
+	var deck := DeckGen.build(st, av)
+	var cl := DeckGen.build_clinic(st, av)
+	var room_ok := true
 	for z in deck.zones:
-		room_ok = room_ok or (String(z.get("kind", "")) == "service" and String(z.get("id", "")) == "clinic")
+		room_ok = room_ok and not (String(z.get("kind", "")) == "service" and String(z.get("id", "")) in ["clinic", "look"])
+	var ids := {}
+	for z2 in cl.zones:
+		ids[String(z2.get("id", ""))] = String(z2.get("kind", ""))
+	room_ok = room_ok and ids.get("clinic", "") == "service" and ids.get("look", "") == "service" and ids.has("wake") and cl.lifts.size() == 2
+	var no_clinic_deck := DeckGen.build(st, {"market": "", "look": ""})
+	var look_row := false
+	for z3 in no_clinic_deck.zones:
+		look_row = look_row or (String(z3.get("kind", "")) == "service" and String(z3.get("id", "")) == "look")
+	room_ok = room_ok and look_row
 	# fallen at a settlement
 	main.land_at(body, site)
 	gear.add_item("cs_medkit", 2)
 	gear.add_item("wp_smg:C")
 	main._fallen()
 	var g = main.ground
-	var city_ok: bool = g != null and g.is_city() and g.level == "street" and f.docked_at.begins_with("land:") and bool(Commands.docked_station().get("city", false)) \
+	var city_ok: bool = g != null and g.is_city() and g.level == "clinic" and f.docked_at.begins_with("land:") and bool(Commands.docked_station().get("city", false)) \
 		and g.pilot.pos.distance_to(g._clinic_spot()) < 2.0 and gear.free_places() == gear.inv.size() and gear.health < 100.0
 	var treat: String = Commands.execute({"type": "clinic_heal"})
 	var healed: bool = treat == "" and is_equal_approx(gear.health, 100.0)
 	# after a lost ship: the station's clinic
 	main._wake_at(st)
 	var g2 = main.ground
-	var station_ok: bool = g2 != null and g2.level == "commercial" and g2.pilot.pos.distance_to(g2._clinic_spot()) < 2.0
+	var station_ok: bool = g2 != null and g2.level == "clinic" and g2.pilot.pos.distance_to(g2._clinic_spot()) < 2.0
 	main.close_deck(false)
 	check(room_ok and city_ok and healed and station_ok,
-		"0.7.51.4: the clinic – a room on the commercial level; fallen at %s you wake in %s's clinic (ship in its hangar, pockets emptied), treatment heals; after a lost ship you wake in the station's clinic" % [String(site["name"]), String(Commands.docked_station().get("name", "?"))])
+		"0.7.51.4/0.7.51.11: the clinic – a level of its own by the lift (treatment, image studio, recovery room), the image studio in the shop row only without a clinic; fallen at %s you wake in %s's clinic (ship in its hangar, pockets emptied), treatment heals; after a lost ship you wake in the station's clinic" % [String(site["name"]), String(Commands.docked_station().get("name", "?"))])
 
 
 ## 0.7.51.3: outside on an airless moon – the helmet on (the townsfolk in suits too), the tank empties, the life
@@ -8786,7 +8798,7 @@ func _test_debug_ground(view: SystemView) -> void:
 	if not main.nearest_clinic_city(view.system_id, bid).is_empty():
 		var e5 := Commands.execute({"type": "debug_collapse"})
 		g = main.ground
-		fall_ok = e5 == "" and g != null and g.is_city() and g.level == "street" and g.pilot.pos.distance_to(g._clinic_spot()) < 2.0
+		fall_ok = e5 == "" and g != null and g.is_city() and g.level == "clinic" and g.pilot.pos.distance_to(g._clinic_spot()) < 2.0
 		# and waking in the clinic of the city you are docked at
 		main.close_deck(false)
 		var e6 := Commands.execute({"type": "debug_wake_clinic"})
@@ -8797,8 +8809,9 @@ func _test_debug_ground(view: SystemView) -> void:
 	var st: Dictionary = view.stations.values()[0].data
 	f.docked_at = String(st["id"])
 	var deck_st: bool = Commands.execute({"type": "debug_deck"}) == "" and main.ground != null and main.ground.level == "hangar" \
-		and Commands.execute({"type": "debug_ground_level", "level": "commercial"}) == "" and main.ground.level == "commercial"
-	var clinic_st: bool = Commands.execute({"type": "debug_wake_clinic"}) == "" and main.ground != null and main.ground.level == "commercial" \
+		and Commands.execute({"type": "debug_ground_level", "level": "commercial"}) == "" and main.ground.level == "commercial" \
+		and (not main.ground._avail.has("clinic") or (Commands.execute({"type": "debug_ground_level", "level": "clinic"}) == "" and main.ground.level == "clinic"))
+	var clinic_st: bool = Commands.execute({"type": "debug_wake_clinic"}) == "" and main.ground != null and main.ground.level == "clinic" \
 		and main.ground.pilot.pos.distance_to(main.ground._clinic_spot()) < 2.0
 	if main.station_panel.visible:
 		main.station_panel.close()

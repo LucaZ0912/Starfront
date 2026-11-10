@@ -232,6 +232,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build_hangar(station, sz.x, sz.y, _avail, _hangar_uid)
 	elif level == "street":
 		map = DeckGen.build(station, _avail, [], "street")
+	elif level == "clinic":
+		map = DeckGen.build_clinic(station, _avail)                 # 0.7.51.11: Mercy Hall, a level of its own
 	elif level == "tower":
 		var bar_only := {}
 		for k in ["bar", "news", "bulletin"]:
@@ -242,17 +244,19 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
 	if level in ["landing", "settlement"] and _lander and map.ship_at != Vector2.INF:
 		_drone_ramp_zone()
-	if is_city():
-		for zc in map.zones:
-			if String(zc.get("id", "")) == "lift":
-				zc["title"] = "Lifts – Hangar · Shopping street · Tower bar"
-			elif String(zc.get("id", "")) == "ship" and level == "hangar":
-				zc["title"] = "Stairs down – aboard your ship and up through the hatch"
+	var lift_title := "Lifts – Hangar · Shopping street · Tower bar" if is_city() else "Lifts – Hangar · Commercial level"
+	if _avail.has("clinic"):
+		lift_title += " · Clinic"                                     # 0.7.51.11
+	for zc in map.zones:
+		if String(zc.get("id", "")) == "lift" and level != "settlement" and level != "landing":
+			zc["title"] = lift_title
+		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
+			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
 	_build()
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
-		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor()}.get(level, "")]
+		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall"}.get(level, "")]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
@@ -390,6 +394,9 @@ func _slung() -> String:
 
 ## 0.7.51.4: where you wake – inside the clinic, by its beds (INF: no clinic here).
 func _clinic_spot() -> Vector2:
+	for zw in map.zones:                                          # 0.7.51.11: beside a bed in the recovery room
+		if String(zw.get("id", "")) == "wake":
+			return (zw["rect"] as Rect2).get_center()
 	for z in map.zones:
 		if String(z.get("kind", "")) == "service" and String(z.get("id", "")) == "clinic":
 			var r: Rect2 = z["rect"]
@@ -399,7 +406,9 @@ func _clinic_spot() -> Vector2:
 
 ## 0.7.51.4: wake in the clinic – on the commercial level of a station, in a city's street. False if there is none.
 func wake_in_clinic() -> bool:
-	go_level("street" if is_city() else "commercial", "clinic")
+	if not _avail.has("clinic"):
+		return false
+	go_level("clinic", "clinic")                                  # 0.7.51.11: in its recovery room
 	return _clinic_spot() != Vector2.INF
 
 
@@ -1060,6 +1069,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 	var lvls := [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level – shops and the bar"]]
 	if is_city():
 		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street – the shops"], ["tower", "3.  Tower bar – floor %d, a view over the city" % tower_floor()]]
+	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
+		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
 	var keys: Array = []
 	for lv in lvls:
 		keys.append(func(): _choose_level(String(lv[0])))

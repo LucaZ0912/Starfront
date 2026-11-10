@@ -266,6 +266,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   names), `o.sealed` (portholes, `_airlock`), `_armour` / `_composite` / `_stone` / `_printed` walls, `_curtain`,
   `_hex_crown`; `SettleGen.sealed` (set by `build` from `Universe.has_atmosphere`), `_arch` by power and world;
   `ObjArt` stall, signpost, cable_pole, lookout, target and decals `awning`, `boardwalk` rebuilt.
+- 0.7.51.11: `DeckGen.build_clinic(station, available)` (`CLINIC_W/H`, `_clinic_look`), level `clinic` in
+  `GroundView.go_level` and the lift menu, zone id `wake` (`_clinic_spot`), `wake_in_clinic()` goes there; `clinic`
+  left `DeckGen.SHOPS`, `look` skipped in the shop row where there is a clinic; objects `med_bed_occ`, `med_pod`,
+  `med_cabinet`, `sculpt_chair`, `holo_bust`; `debug_ground_level` takes `clinic`.
 - 0.7.51.10: `ChibiArt` – `_armour` (combat plates), `_suit_detail`, `_helmet` (closed visor helmets, EVA helmet with
   gold visor, work helmet), `LIVERY` {power: [plate, light]} via look `livery`; gloves; `PilotGear.helmet` ("auto" /
   "always", saved) and `combat_t`; `GroundView.pilot_look()` uses both; guards in `_add_guards` wear

@@ -48,7 +48,7 @@ const THEMES := {
 		"props": ["barrel", "trash", "holo", "cage", "holo"], "seat": Color(0.4, 0.18, 0.2)},
 }
 ## Shops below the corridor (the bar has its own room); the ship services are terminals in the dock office.
-const SHOPS := ["market", "outfitter", "gear", "clinic", "shipyard", "bonds", "look", "refinery", "manufacturing", "senate", "curia", "exchange"]
+const SHOPS := ["market", "outfitter", "gear", "shipyard", "bonds", "look", "refinery", "manufacturing", "senate", "curia", "exchange"]
 const SHOP_W := 7
 const DOCK_TERMINALS := ["fuel", "repair", "drones", "munitions", "hangar"]
 const KIOSKS := ["news", "bulletin"]
@@ -97,6 +97,8 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = [], 
 	var shops: Array = []
 	for sid in SHOPS:
 		if available.has(sid) and not sid in HANGAR_SERVICES:
+			if sid == "look" and available.has("clinic"):
+				continue                                    # 0.7.51.11: the image studio is a room of the clinic's level
 			shops.append(sid)
 	var dock: Array = []
 	for d in DOCK_TERMINALS:
@@ -735,6 +737,159 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	for k4 in 5:
 		m.wander.append(Vector2(rng.randf_range(4, W - 3), rng.randf_range(G + 2.4, G + 4.2)) * GroundMap.TILE)
 	return m
+
+
+# ---------------------------------------------------------------- 0.7.51.11: the clinic, a level of its own
+
+## 0.7.51.11 (Leitlinien 4: important places are levels of their own, by the lift): Mercy Hall – out of the lift into
+## its lobby; the reception hall with its counter (the treatment window), the waiting seats, the hall's sign; a
+## corridor east, the wards north of it (two beds each, patients in them, monitors), south of it the recovery room
+## (where you come to), the treatment room with the auto-surgeon and the pharmacy. Doctors in white coats, nurses in
+## sky blue. Clean light floors and walls, the clinic's colour in its signs and lights.
+const CLINIC_W := 58
+const CLINIC_H := 27
+
+
+static func build_clinic(station: Dictionary, available: Dictionary) -> GroundMap:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(station.get("id", "x"))) + 51
+	var m := GroundMap.new()
+	m.pal = palette_for(station).duplicate()
+	var col := _svc_col("clinic")
+	m.pal["shop_floor"] = Color(0.8, 0.85, 0.87)
+	m.pal["floor2"] = Color(0.66, 0.72, 0.76)
+	m.pal["floor"] = Color(0.6, 0.66, 0.7)
+	m.pal["wall"] = Color(0.84, 0.87, 0.9)
+	m.pal["accent"] = col
+	m.title = String(station.get("name", "Station"))
+	m.hull_top = -60                                      # all round: the station
+	var W := CLINIC_W
+	var H := CLINIC_H
+	m.setup(W, H)
+	m.fill(0, 0, W, H, GroundMap.T.CAP)
+	# ---- the rooms north of the corridor: lobby, reception, two wards (their north walls' faces in rows 1–2)
+	var NY0 := 3                                          # first floor row north
+	var NY1 := 11                                         # last floor row north
+	var CY0 := 13                                         # the corridor
+	var CY1 := 15
+	var SY0 := 19                                         # first floor row south (faces in 17–18)
+	var SY1 := 24
+	var rooms_n := [[1, 6, 2], [8, 21, 1], [23, 33, 1], [35, 44, 1], [46, 56, 4]]   # x0, x1, floor kind
+	for r in rooms_n:
+		m.fill(int(r[0]), 1, int(r[1]) - int(r[0]) + 1, 2, GroundMap.T.FACE)
+		m.fill(int(r[0]), NY0, int(r[1]) - int(r[0]) + 1, NY1 - NY0 + 1, GroundMap.T.FLOOR, int(r[2]))
+	m.fill(1, CY0, W - 2, CY1 - CY0 + 1, GroundMap.T.FLOOR, 6)
+	m.fill(7, 5, 1, 4, GroundMap.T.FLOOR, 2)                # the lobby opens into the reception
+	m.fill(8, NY1 + 1, 14, 1, GroundMap.T.FLOOR, 6)         # the reception opens onto the corridor
+	m.fill(1, NY1 + 1, 6, 1, GroundMap.T.FLOOR, 2)          # and so does the lobby
+	for dxw in [27, 39, 50]:                              # the wards' doors, the studio's
+		m.fill(dxw, NY1 + 1, 2, 1, GroundMap.T.DOOR, 1)
+	# ---- south: recovery, treatment, pharmacy
+	var rooms_s := [[2, 16], [18, 31], [33, 44]]
+	for r2 in rooms_s:
+		m.fill(int(r2[0]), 17, int(r2[1]) - int(r2[0]) + 1, 2, GroundMap.T.FACE)
+		m.fill(int(r2[0]), SY0, int(r2[1]) - int(r2[0]) + 1, SY1 - SY0 + 1, GroundMap.T.FLOOR, 1)
+	for dxs in [8, 24, 38]:
+		m.fill(dxs, 16, 2, 3, GroundMap.T.DOOR, 1)
+	m.decals.append({"kind": "guide", "x": 1, "y": CY0 + 1, "w": W - 2, "h": 1, "col": col})
+	# ---- the lifts
+	for lx0 in [1, 4]:
+		m.face_deco.append({"kind": "lift", "x": lx0, "y": 2, "w": 2, "col": Color(0.4, 1.0, 0.6)})
+		m.lifts.append({"x": lx0, "y": 2, "w": 2})
+	m.decals.append({"kind": "mat", "x": 1, "y": NY0, "w": 5, "h": 1, "col": col})
+	m.spawn = Vector2(3.5, NY0 + 1.6) * GroundMap.TILE
+	m.zones.append({"rect": Rect2(Vector2(1, NY0) * GroundMap.TILE, Vector2(5, 1.4) * GroundMap.TILE), "kind": "lift", "id": "lift",
+		"title": "Lifts", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "plant", "x": 1, "y": NY1 - 1, "w": 1, "h": 1})
+	# ---- the reception: its counter, the treatment window, the waiting seats, the hall's sign
+	m.holos.append({"pos": Vector2(14.5, 1.6) * GroundMap.TILE, "text": "MERCY HALL", "sub": "clinic · treatment · recovery", "col": col})
+	for fx in [9, 18]:
+		m.face_deco.append({"kind": "screen", "x": fx, "y": 2, "w": 2, "col": col})
+	m.add_object({"kind": "counter", "x": 11, "y": 5, "w": 7, "h": 1})
+	m.people.append({"pos": Vector2(14.5, 4.4) * GroundMap.TILE, "dir": 0, "role": "keeper", "look": _clinic_look(rng, "nurse")})
+	m.people.append({"pos": Vector2(12.2, 4.4) * GroundMap.TILE, "dir": 0, "role": "keeper", "look": _clinic_look(rng, "doctor")})
+	_zone(m, "clinic", available, Rect2(Vector2(11, 6) * GroundMap.TILE, Vector2(7, 1.5) * GroundMap.TILE), Vector2(-100, -100))
+	for sx in [9, 12, 16, 19]:
+		_seat(m, "chair", sx, 9, 1, col.darkened(0.2), rng, 0.45)
+		_seat(m, "chair", sx + 1, 9, 1, col.darkened(0.2), rng, 0.3)
+	m.add_object({"kind": "plant", "x": 21, "y": 3, "w": 1, "h": 1})
+	m.add_object({"kind": "plant", "x": 8, "y": 3, "w": 1, "h": 1})
+	# ---- the wards: two beds each with their patients, monitors, a cabinet
+	var ward_no := 1
+	for wr in [[23, 33, 27], [35, 44, 39]]:
+		var wx0: int = wr[0]
+		var wx1: int = wr[1]
+		var wdoor: int = wr[2]
+		m.add_object({"kind": "med_bed_occ", "x": wx0 + 1, "y": NY0, "w": 2, "h": 3, "col": col, "seed": rng.randi()})
+		m.add_object({"kind": "med_bed_occ" if rng.randf() < 0.7 else "med_bed", "x": wx0 + 5, "y": NY0, "w": 2, "h": 3, "col": col, "seed": rng.randi()})
+		m.add_object({"kind": "med_cabinet", "x": wx1 - 1, "y": NY0, "w": 2, "h": 1, "col": col})
+		m.add_object({"kind": "plant", "x": wx1, "y": NY1 - 1, "w": 1, "h": 1})
+		m.zones.append({"rect": Rect2(), "kind": "label", "id": "ward_%d" % ward_no, "title": "WARD %d" % ward_no, "col": col,
+			"sign": Vector2(wdoor + 1.0, NY1 + 1.6) * GroundMap.TILE})
+		m.people.append({"pos": Vector2(wx0 + 4.0, NY0 + 3.6) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "nurse" if ward_no == 1 else "doctor")})
+		m.lights.append({"pos": Vector2((wx0 + wx1) * 0.5, NY0 + 3.0) * GroundMap.TILE, "r": 60.0, "col": Color(0.85, 0.95, 1.0), "a": 0.14})
+		ward_no += 1
+	# ---- 0.7.51.11 (Luz): the aesthetics studio – Visage Clinics, where the pilot's looks are changed: a sculpting
+	# chair under its scanner ring, a holographic bust of the face being made, a mirror wall, a stylist
+	var vcol := _svc_col("look")
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "visage_sign", "title": "AESTHETICS", "col": vcol, "sign": Vector2(51.0, NY1 + 1.6) * GroundMap.TILE})
+	m.holos.append({"pos": Vector2(51.5, 1.6) * GroundMap.TILE, "text": "VISAGE", "sub": "be who you mean to be", "col": vcol})
+	for mx in [47, 54]:
+		m.face_deco.append({"kind": "screen", "x": mx, "y": 2, "w": 2, "col": vcol})
+	m.add_object({"kind": "sculpt_chair", "x": 48, "y": NY0 + 1, "w": 3, "h": 3, "col": vcol})
+	m.add_object({"kind": "holo_bust", "x": 53, "y": NY0 + 1, "w": 2, "h": 2, "col": vcol})
+	m.add_object({"kind": "plant", "x": 46, "y": NY1 - 1, "w": 1, "h": 1})
+	m.add_object({"kind": "plant", "x": 56, "y": NY1 - 1, "w": 1, "h": 1})
+	_seat(m, "sofa", 53, NY1 - 2, 0, vcol.darkened(0.3), rng, 0.4, 3)
+	m.people.append({"pos": Vector2(51.6, NY0 + 3.2) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "stylist")})
+	_zone(m, "look", available, Rect2(Vector2(47.5, NY0 + 4) * GroundMap.TILE, Vector2(5, 2) * GroundMap.TILE), Vector2(-100, -100))
+	m.lights.append({"pos": Vector2(49.5, NY0 + 2.0) * GroundMap.TILE, "r": 56.0, "col": vcol, "a": 0.28})
+	m.lights.append({"pos": Vector2(54.0, NY0 + 1.5) * GroundMap.TILE, "r": 40.0, "col": vcol.lerp(Color.WHITE, 0.4), "a": 0.22, "flicker": true})
+	# ---- south: the recovery room (where you come to), the treatment room, the pharmacy
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "recovery_sign", "title": "RECOVERY", "col": col, "sign": Vector2(9.0, 16.4) * GroundMap.TILE})
+	for bx in [3, 6, 11, 14]:
+		m.add_object({"kind": "med_bed_occ" if bx == 11 else "med_bed", "x": bx, "y": SY0, "w": 2, "h": 3, "col": col, "seed": rng.randi()})
+	m.zones.append({"rect": Rect2(Vector2(3.0, SY0 + 3.0) * GroundMap.TILE, Vector2(2.0, 1.0) * GroundMap.TILE), "kind": "label", "id": "wake",
+		"title": "", "col": col, "sign": Vector2(-100, -100)})
+	m.people.append({"pos": Vector2(9.0, SY0 + 3.8) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "nurse")})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "treat_sign", "title": "TREATMENT", "col": col, "sign": Vector2(25.0, 16.4) * GroundMap.TILE})
+	m.add_object({"kind": "med_pod", "x": 21, "y": SY0, "w": 4, "h": 3, "col": col})
+	m.add_object({"kind": "med_cabinet", "x": 29, "y": SY0, "w": 2, "h": 1, "col": col})
+	m.people.append({"pos": Vector2(26.4, SY0 + 2.2) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "doctor")})
+	m.lights.append({"pos": Vector2(23.0, SY0 + 1.5) * GroundMap.TILE, "r": 50.0, "col": Color(0.9, 1.0, 1.0), "a": 0.25})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "pharm_sign", "title": "PHARMACY", "col": col, "sign": Vector2(39.0, 16.4) * GroundMap.TILE})
+	for cx in [34, 36, 41]:
+		m.add_object({"kind": "med_cabinet", "x": cx, "y": SY0, "w": 2, "h": 1, "col": col})
+	m.add_object({"kind": "counter", "x": 35, "y": SY0 + 3, "w": 6, "h": 1})
+	m.people.append({"pos": Vector2(38.0, SY0 + 2.2) * GroundMap.TILE, "dir": 0, "role": "keeper", "look": _clinic_look(rng, "nurse")})
+	# ---- light along the corridor, a few visitors
+	for lxx in range(4, W - 2, 7):
+		m.lights.append({"pos": Vector2(lxx, CY0 + 1.5) * GroundMap.TILE, "r": 46.0, "col": Color(0.8, 0.95, 1.0), "a": 0.16})
+	for k in 6:
+		m.wander.append(Vector2(rng.randf_range(2, W - 3), rng.randf_range(CY0 + 0.4, CY1 + 0.6)) * GroundMap.TILE)
+	m.wander.append(Vector2(14.0, 8.0) * GroundMap.TILE)
+	_seats(m)
+	return m
+
+
+## A clinic's staff: doctors in white coats with a sky-blue shirt, nurses in sky-blue scrubs.
+static func _clinic_look(rng: RandomNumberGenerator, role: String) -> Dictionary:
+	var lk := ChibiArt.PilotArt.random_look(rng)
+	lk["headgear"] = 0
+	if role == "doctor":
+		lk["outfit"] = 3
+		lk["color1"] = 3
+		lk["color2"] = 5
+	elif role == "stylist":
+		lk["outfit"] = 1
+		lk["color1"] = 0
+		lk["color2"] = 12
+		lk["implant"] = 3
+	else:
+		lk["outfit"] = 0
+		lk["color1"] = 5
+		lk["color2"] = 3
+	return lk
 
 
 # ---------------------------------------------------------------- package 50: a landing field on a planet

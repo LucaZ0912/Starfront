@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.11 – 2026-11-10
+
+**The clinic, a level of its own (Leitlinien 4, Luz).** Mercy Hall is no longer a room in the shop row – the lift
+takes you there, on stations and in cities that have one ("Clinic – Mercy Hall, treatment and recovery").
+- **The lobby** by the lifts; **the reception** with the hall's sign, screens, its counter with a nurse and a
+  doctor (the treatment window), waiting seats and plants.
+- **The wards** (Ward 1 and 2) along the corridor: two beds each with their patients (on the pillow, a drip, the
+  monitor), a medicine cabinet, staff by the beds.
+- **The recovery room** – where you come to now, beside a bed (after a lost ship, after a fall on foot); **the
+  treatment room** with the auto-surgeon (a capsule under glass, its arm, its screen); **the pharmacy** with its
+  cabinets and counter.
+- **Aesthetics – Visage** (Luz): the image studio moved in as a room of the clinic – a sculpting chair under its
+  scanner ring, a holographic bust of the face being made, a stylist, a sofa; the character editor opens there. Where
+  a station has a clinic, the image studio leaves the shop row.
+- Doctors in white coats, nurses in sky blue; clean light floors and walls, the clinic's colour in its signs and
+  lights. The lifts name the clinic; F12 → Ground can go straight to it.
+- Smoke test: the clinic's level (treatment window, image studio, recovery room, lifts), not in the shop row, the
+  image studio in the shop row only without a clinic, waking in the recovery room, the debug level.
+
 ## alpha 0.7.51.10 – 2026-11-10
 
 **The suits each their own, the combat suits dangerous, the helmet when you want it (Luz).**

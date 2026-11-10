@@ -729,7 +729,7 @@ func _build_ground() -> void:
 	_section("On foot – decks and levels (packages 49, 50)")
 	var r49 := _row()
 	r49.add_child(UI.button("Open the deck here", func(): _cmd({"type": "debug_deck"})))
-	for lv in [["hangar", "Hangar"], ["commercial", "Commercial"], ["street", "Street"], ["tower", "Tower bar"]]:
+	for lv in [["hangar", "Hangar"], ["commercial", "Commercial"], ["street", "Street"], ["tower", "Tower bar"], ["clinic", "Clinic"]]:
 		var lvk: String = lv[0]
 		r49.add_child(UI.button(String(lv[1]), func(): _cmd({"type": "debug_ground_level", "level": lvk})))
 	content.add_child(UI.wrap_label("The deck of the station you are docked at (in a city: its hangar). Levels: a station has hangar and commercial level, a city hangar, shopping street and tower bar.", 12, UI.TEXT_DIM, 560))
