@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.16 – 2026-11-10
+
+**The way down and the sizes (Luz: "the flame far too big", "the shuttle gigantic next to the Threshold").**
+- **The descent's flame keeps to the ship's size** – it shrinks with her as she sinks (it used to stay as big as
+  the heat round her). Drawn new: its glow, a rounded flame in four layers, the white-hot core, shock diamonds.
+- **The heat of the way down, drawn new and in more detail:** a bow shock shaped round her nose in three layers
+  (white-hot at the stagnation point, orange, a dim red edge), flickering at its rim; a plasma wake streaming back
+  from it, swaying and thinning out, turbulent bands in it; streaks flowing over the shell; sparks of the ablating
+  hull shed behind her; a soft glow of ionised air round it all – added light, so it glows.
+- **The landing drone and the ship to their real sizes:** the drone (~10 m) beside the ship by her real length –
+  next to a scout it is a third of her, next to a Threshold (124 m) a speck under her belly. For the catch the view
+  comes in close: the drone big enough to see, a big ship filling the sky over it; she flies higher on the screen,
+  the drone climbs up to her from below. Her flame starts at her tail, as big as she is.
+- The 2D anti-aliasing setting is gone (the Compatibility renderer does not support it – Godot warned about it on
+  every start).
+
 ## alpha 0.7.50.15 – 2026-11-10
 
 **Taking off, the landing drone, the pads (Luz, after playing).**

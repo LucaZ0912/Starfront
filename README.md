@@ -243,6 +243,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   `FlightScene.open_up` (`_update_up`, `CATCH_AT`, the tractor beam); `scripts/ground/pad_lights.gd` – `PadLights`
   (edge lights and status per pad, reads `PadTraffic`); `GroundMap.pad_rects`, decal `landing_pad` (`n`),
   objects `fuel_point`, `cargo_loader`; `SettleGen.PAD` 10×7, `FIELD`, map 98 wide.
+- 0.7.50.16: `DescentFx` drawn new (`_draw_flame` at the ship's scale `_ss`, `_draw_heat` at `_hs`: bow shock bands
+  along the shell's normal, wake, streaks, `_sparks`; additive `CanvasItemMaterial`); `FlightScene` sizes by the
+  hull's `length` (`DRONE_M`, `DRONE_MIN_PX`, `_ship_m`, `_home_y`, `_ship_len_px`, `_ship_flame`).
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

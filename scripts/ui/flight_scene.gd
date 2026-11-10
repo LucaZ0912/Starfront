@@ -45,6 +45,11 @@ var up := false
 var _up_scroll := Vector2.ZERO
 var _clamped := false
 var _drone_from := Vector2.ZERO       # up: the pad it lifts off from (screen)
+# 0.7.50.16 (Luz): the drone and the ship to their real sizes – a big ship is huge beside its drone
+const DRONE_M := 9.8                  # the drone picture's length (m)
+const DRONE_MIN_PX := 30.0            # it never gets smaller than this on screen
+var _ship_m := 30.0                   # her length (m)
+var _home_y := 0.58                   # where she flies (share of the screen height)
 
 
 ## 0.7.50.15: the climb back up by the landing drone, caught by the ship.
@@ -97,10 +102,20 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 	_ship.rotation = -PI * 0.5                 # nose up: she flies up the screen, the ground passes downwards
 	_ship.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	var ss := clampf(150.0 / maxf(tex.get_width(), 1.0), 2.0, 5.0) * (1.45 if up else 1.0)   # up: closer – the catch
+	var tw := maxf(tex.get_width(), 1.0)
+	_ship_m = float(f.hull().get("length", 30)) if f != null else 30.0
+	var ss := clampf(150.0 / tw, 2.0, 5.0)
+	var dpx := ss * tw * DRONE_M / _ship_m                          # the drone beside her, to scale
+	if up:
+		# up close for the catch: the drone big enough to see, the ship as big as that makes her (a big ship fills
+		# the sky over it); she flies higher up the screen, the drone climbs to her from below
+		var ship_px := clampf(maxf(tw * ss * 1.45, 56.0 * _ship_m / DRONE_M), 120.0, _vs.y * 0.78)
+		ss = ship_px / tw
+		dpx = maxf(ship_px * DRONE_M / _ship_m, DRONE_MIN_PX)
+		_home_y = clampf(0.5 - (ship_px * 0.5 + dpx + 40.0) / _vs.y * 0.35, 0.3, 0.5)
 	_ship.scale = Vector2.ONE * ss
 	_shadow.scale = Vector2.ONE * ss
-	_ship.position = _vs * Vector2(0.5, 0.58)
+	_ship.position = _vs * Vector2(0.5, _home_y)
 	add_child(_ship)
 	_ship_s = ss
 	if lander:
@@ -108,7 +123,7 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 		_drone.texture = lander_texture()
 		_drone.rotation = -PI * 0.5
 		_drone.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_drone_s = maxf(ss * tex.get_width() * 0.5 / float(LanderArt.W), 1.8)   # about half her length
+		_drone_s = maxf(dpx, DRONE_MIN_PX) / float(LanderArt.W)
 		_drone.visible = false
 		add_child(_drone)
 		if up:
@@ -224,8 +239,8 @@ func _update_up(delta: float) -> void:
 	_scroll = _up_scroll
 	_ground.scale = Vector2.ONE * gscale
 	_ground.region_rect = Rect2(_scroll - _vs / gscale * 0.5, _vs / gscale)
-	var home := _vs * Vector2(0.5, 0.58) + Vector2(sin(_t * 1.3) * 5.0, sin(_t * 2.1) * 2.5)
-	var below := home + Vector2(0, _vs.y * 0.27)
+	var home := _vs * Vector2(0.5, _home_y) + Vector2(sin(_t * 1.3) * 5.0, sin(_t * 2.1) * 2.5)
+	var below := home + Vector2(0, minf(_ship_len_px() * 0.5 + LanderArt.W * _drone_s + 60.0, _vs.y * 0.95 - home.y))
 	# the drone: off the pad and up, then into her bay
 	var rise := smoothstep(CATCH_AT, CATCH_AT + 0.2, k)
 	var climb := smoothstep(0.0, 0.25, k)
@@ -257,6 +272,23 @@ func _update_up(delta: float) -> void:
 		_haze.color.a = lerpf(0.04, 0.32, k)
 	_place.queue_redraw()
 	_fx.queue_redraw()
+
+
+## Her length on screen now (px).
+func _ship_len_px() -> float:
+	return _ship.texture.get_width() * _ship.scale.x
+
+
+## Her flame, below her (she flies up the screen) – from her tail, as big as she is.
+func _ship_flame(p: Vector2, thrust: float) -> void:
+	var half := _ship_len_px() * 0.5
+	var bw := _ship.texture.get_height() * _ship.scale.x
+	var tail := p + Vector2(0, half * 0.92)
+	for j in 3:
+		var len := half * (0.7 - j * 0.16) * thrust * (0.85 + 0.15 * sin(_t * 30.0 + j))
+		var w := bw * (0.14 - j * 0.035)
+		_fx.draw_colored_polygon(PackedVector2Array([tail + Vector2(-w, 0), tail + Vector2(0, len), tail + Vector2(w, 0)]),
+			Color([Color(1.0, 0.5, 0.15), Color(1.0, 0.8, 0.3), Color(1, 1, 0.85)][j], 0.55 * _ship.modulate.a))
 
 
 ## Where a place's landing pad lies from its middle (blocks) – as _draw_place draws it.
@@ -319,10 +351,7 @@ func _draw_fx() -> void:
 		var thrust := smoothstep(0.84, 0.9, k)
 		if thrust <= 0.01:
 			return
-		for j in 3:
-			var len := (60.0 - j * 14.0) * fs * thrust * (0.85 + 0.15 * sin(_t * 30.0 + j))
-			_fx.draw_colored_polygon(PackedVector2Array([p + Vector2(-14 + j * 4, 55) * fs, p + Vector2(0, 55 * fs + len), p + Vector2(14 - j * 4, 55) * fs]),
-				Color([Color(1.0, 0.5, 0.15), Color(1.0, 0.8, 0.3), Color(1, 1, 0.85)][j], 0.55 * _ship.modulate.a))
+		_ship_flame(p, thrust)
 		return
 	if lander and _drone != null and _drone.visible:
 		var dk := clampf((_t / DURATION - DRONE_AT) / (1.0 - DRONE_AT), 0.0, 1.0)
@@ -338,10 +367,7 @@ func _draw_fx() -> void:
 		for i in 4:
 			_fx.draw_circle(p + Vector2(0, -20), 90.0 - i * 18.0, Color(1.0, 0.6 - i * 0.08, 0.25, heat * (0.12 + i * 0.06)))
 	# the flame, below her (she flies up)
-	for j in 3:
-		var len := (60.0 - j * 14.0) * fs * (0.85 + 0.15 * sin(_t * 30.0 + j))
-		_fx.draw_colored_polygon(PackedVector2Array([p + Vector2(-14 + j * 4, 55) * fs, p + Vector2(0, 55 * fs + len), p + Vector2(14 - j * 4, 55) * fs]),
-			Color([Color(1.0, 0.5, 0.15), Color(1.0, 0.8, 0.3), Color(1, 1, 0.85)][j], 0.55 * _ship.modulate.a))
+	_ship_flame(p, 1.0)
 
 
 ## The place ahead: it comes into view at the top and slides down to meet the ship.
