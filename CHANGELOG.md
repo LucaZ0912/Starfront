@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.20 – 2026-11-10
+
+**Fix (Luz): the hangar's guide line no longer runs through the wall by the lifts** – it stops at the wall and goes on
+behind it.
+
 ## alpha 0.7.51.19 – 2026-11-10
 
 **The hangar's wall by the lifts thinner (Luz).** The wall that sets the lifts apart is now a single tile thin, its top

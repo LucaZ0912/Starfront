@@ -696,9 +696,12 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	# their own (0.7.51.19: one tile, its top along the glass, its face below in the walkway)
 	m.fill(x_h + HW, G, 1, 2, GroundMap.T.CAP)
 	m.fill(x_h + HW, G + 2, 1, 2, GroundMap.T.FACE)
+	# the guide line along the walkway – broken where that wall stands (0.7.51.20)
+	m.decals.append({"kind": "guide", "x": 3, "y": G + 3, "w": x_h + HW - 3, "h": 1, "col": m.pal["accent"]})
+	m.decals.append({"kind": "guide", "x": x_h + HW + 1, "y": G + 3, "w": W - 2 - (x_h + HW + 1), "h": 1, "col": m.pal["accent"]})
 	m.fill(0, G + 5, W, 1, GroundMap.T.CAP)
 	m.decals.append({"kind": "stairs", "x": 1, "y": G + 2, "w": 2, "h": 3, "col": m.pal["accent"]})
-	m.decals.append({"kind": "guide", "x": 3, "y": G + 3, "w": W - 4, "h": 1, "col": m.pal["accent"]})
+
 	m.spawn = Vector2(2.6, G + 3.5) * GroundMap.TILE
 	m.zones.append({"rect": Rect2(Vector2(1, G + 2) * GroundMap.TILE, Vector2(2.2, 3) * GroundMap.TILE), "kind": "exit", "id": "ship",
 		"title": "Stairs down – back aboard your ship", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
