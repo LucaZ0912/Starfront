@@ -7,6 +7,8 @@ extends CanvasLayer
 ##   Perks      – a perk point per pilot level
 ##   Skill tree – drawn as a tree (0.5.30.2): the trunk (Pilot Licence) at the bottom, branches by activity;
 ##                drag it, walk it with W/A/S/D, the detail of a tile on the right
+##   Gear       – package 51: the suit and what it adds up to, its weapon, belt and feature slots, the pockets and
+##                the ship's locker (click to put on, take off, store, fetch)
 ## Mouse and keyboard (W/A/S/D, Enter, Q/E for the tabs, Escape).
 
 signal closed
@@ -15,11 +17,13 @@ const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const PilotData = preload("res://data/pilot.gd")
 const SkillData = preload("res://data/skills.gd")
 const COL := Color(1.0, 0.82, 0.35)
-const TABS := ["Pilot", "Skills", "Perks", "Skill tree"]
+const TABS := ["Pilot", "Skills", "Perks", "Skill tree", "Gear"]
 const TAB_PILOT := 0
 const TAB_SKILLS := 1
 const TAB_PERKS := 2
 const TAB_TREE := 3
+const TAB_GEAR := 4
+const GearData = preload("res://data/gear.gd")
 const SUBS := ["Info", "Standings", "Codex", "Collection"]
 const CrewDataP = preload("res://data/crew.gd")
 const BondPanel = preload("res://scripts/ui/station/bond_panel.gd")
@@ -39,6 +43,8 @@ var _detail_box: VBoxContainer
 var _tiles := {}
 var _sel := ""
 var _tscroll := Vector2(-1, -1)
+var _gear_msg := ""
+var _gear_detail: Label = null
 
 
 func _ready() -> void:
@@ -123,6 +129,142 @@ func rebuild() -> void:
 		TAB_SKILLS: _skills()
 		TAB_PERKS: _perks()
 		TAB_TREE: _tree()
+		TAB_GEAR: _gear()
+
+
+# ---- package 51: gear
+
+## Is the ship's locker at hand? Aboard (not walking about), or down in the hangar beside her.
+func _locker_fit():
+	var f := GameState.active()
+	if f == null:
+		return null
+	var mn = get_tree().current_scene
+	var g = mn.get("ground") if mn != null else null
+	if g != null and is_instance_valid(g) and String(g.level) != "hangar":
+		return null
+	return f
+
+
+func _gear() -> void:
+	var g = GameState.gear
+	var t: Dictionary = g.totals()
+	var row := UI.hbox(22)
+	body.add_child(row)
+	# the suit and what it adds up to
+	var c1 := UI.vbox(4)
+	c1.custom_minimum_size = Vector2(330, 0)
+	row.add_child(c1)
+	c1.add_child(UI.label("SUIT", 16, COL))
+	var sb := _gear_button(g.suit, func(): pass)
+	sb.disabled = false
+	c1.add_child(sb)
+	c1.add_child(UI.label("Put another suit on from your pockets.", 11, UI.TEXT_DIM))
+	for ln in [["Health", "%d / %d" % [int(g.health), int(GearData.HEALTH)]], ["Shield", "%d" % int(t["shield"])], ["Armour", "%d" % int(t["armor"])],
+			["Energy", "%d / %d" % [int(g.energy), int(t["energy"])]], ["Oxygen", "%d / %d min" % [int(g.oxygen), int(t["oxygen"])]],
+			["Ammunition", "%d / %d" % [int(g.ammo), int(t["ammo"])]], ["Walking speed", "×%.2f" % float(t["speed"])]]:
+		var r := UI.hbox(6)
+		r.add_child(UI.label(String(ln[0]), 13, UI.TEXT_DIM))
+		r.add_child(UI.spacer())
+		r.add_child(UI.label(String(ln[1]), 13, Color(0.92, 0.92, 0.9)))
+		c1.add_child(r)
+	c1.add_child(UI.label("Protection", 13, COL))
+	for h in GearData.HAZARDS:
+		var r2 := UI.hbox(6)
+		r2.add_child(UI.label(String(GearData.HAZARD_NAMES[h]), 13, UI.TEXT_DIM))
+		r2.add_child(UI.spacer())
+		var pv := float(t["env"][h])
+		r2.add_child(UI.label("%d%%" % int(pv * 100.0), 13, Color(0.5, 1.0, 0.6) if pv >= 0.8 else (Color(1.0, 0.8, 0.35) if pv >= 0.5 else Color(1.0, 0.45, 0.35))))
+		c1.add_child(r2)
+	# the slots
+	var c2 := UI.vbox(4)
+	c2.custom_minimum_size = Vector2(330, 0)
+	row.add_child(c2)
+	for sec in [["weapons", "WEAPONS"], ["belt", "BELT  (keys 1–%d)" % g.belt.size()], ["features", "FEATURES"]]:
+		var key := String(sec[0])
+		c2.add_child(UI.label(String(sec[1]), 16, COL))
+		var arr: Array = g.get(key)
+		for i in arr.size():
+			var it = arr[i]
+			var id := ""
+			var n := 1
+			if it is Dictionary:
+				if not (it as Dictionary).is_empty():
+					id = String(it["id"])
+					n = int(it["n"])
+			else:
+				id = String(it)
+			var idx: int = i
+			var b := _gear_button(id, func(): _gear_do(g.unequip(key, idx)), n, "%d.  " % (i + 1) if key == "belt" else "")
+			c2.add_child(b)
+	c2.add_child(UI.label("Click a slot to take it off into your pockets.", 11, UI.TEXT_DIM))
+	# pockets and locker
+	var c3 := UI.vbox(4)
+	c3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(c3)
+	c3.add_child(UI.label("POCKETS  (%d / %d)" % [GearData.INV_SLOTS - g.free_places(), GearData.INV_SLOTS], 16, COL))
+	var fit = _locker_fit()
+	for i2 in g.inv.size():
+		var p: Dictionary = g.inv[i2]
+		if p.is_empty():
+			continue
+		var r3 := UI.hbox(6)
+		var idx2: int = i2
+		var eb := _gear_button(String(p["id"]), func(): _gear_do(g.equip_from_inv(idx2)), int(p["n"]))
+		eb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r3.add_child(eb)
+		if fit != null:
+			r3.add_child(UI.button("→ Locker", func(): _gear_do(g.store(idx2, fit))))
+		c3.add_child(r3)
+	if g.free_places() == GearData.INV_SLOTS:
+		c3.add_child(UI.label("Empty.", 12, UI.TEXT_DIM))
+	c3.add_child(UI.label("Click to put it on.", 11, UI.TEXT_DIM))
+	if fit != null:
+		var l: Array = g.locker(fit)
+		c3.add_child(UI.label("LOCKER – %s  (%d / %d)" % [fit.ship_name, l.size() - g.free_places(l), l.size()], 16, COL))
+		var any := false
+		for j in l.size():
+			var lp: Dictionary = l[j]
+			if lp.is_empty():
+				continue
+			any = true
+			var jdx: int = j
+			c3.add_child(_gear_button(String(lp["id"]), func(): _gear_do(g.fetch(jdx, fit)), int(lp["n"]), "← "))
+		if not any:
+			c3.add_child(UI.label("Empty.", 12, UI.TEXT_DIM))
+	else:
+		c3.add_child(UI.label("The ship's locker is aboard – you are not.", 12, UI.TEXT_DIM))
+	if _gear_msg != "":
+		c3.add_child(UI.label(_gear_msg, 13, Color(1.0, 0.6, 0.4)))
+	# what the mouse is over
+	_gear_detail = UI.label("Point at a piece to see what it does.", 13, UI.TEXT_DIM)
+	_gear_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_child(_gear_detail)
+
+
+func _gear_button(id: String, cb: Callable, n: int = 1, prefix: String = "") -> Button:
+	var txt := prefix + ("— empty —" if id == "" else GearData.display_name(id) + (" ×%d" % n if n > 1 else ""))
+	var b := UI.button(txt, cb)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.custom_minimum_size = Vector2(300, 30)
+	if id != "":
+		var q := GearData.quality(id)
+		if q != "":
+			b.add_theme_color_override("font_color", GameData.quality_color(q))
+		var lines: Array = GearData.describe(id)
+		b.tooltip_text = "\n".join(lines)
+		b.mouse_entered.connect(func():
+			if is_instance_valid(_gear_detail):
+				_gear_detail.text = " – ".join(lines.filter(func(x): return String(x) != "")))
+	else:
+		b.disabled = true
+	return b
+
+
+func _gear_do(err: String) -> void:
+	_gear_msg = err
+	Audio.play("ui_click" if err == "" else "ui_error", "gear")
+	rebuild()
 
 
 # ---- skills

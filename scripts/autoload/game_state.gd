@@ -125,6 +125,9 @@ var _permit_t := 0.0
 var _prosper_t := 0.0             # package 42c: prosperity drifts back to its base
 ## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
 var research_data := 0
+## Package 51: the pilot's personal equipment – suit, weapons, belt, features, pockets, the ships' lockers.
+const PilotGearScript = preload("res://scripts/core/pilot_gear.gd")
+var gear = PilotGearScript.new()
 const DATA_PRICE := 5000           # per unit of data …
 const DATA_REP := 0.5              # … and standing with the Directorate
 const EM_SELL := 12000             # exotic matter: what the exchange pays …
@@ -166,6 +169,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	else:
 		Universe.generate(p_seed)
 	set_pilot(make_pilot(p_pilot, p_data))
+	gear.start()                                 # package 51: a civilian suit, a laser pistol, medkits
 	surveys.clear()
 	stats = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0,
 		# package 30: achievements for the skill tree
@@ -519,7 +523,7 @@ func to_dict() -> Dictionary:
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
-		"collection": collection.duplicate(true),
+		"collection": collection.duplicate(true), "gear": gear.to_dict(),
 	}
 
 
@@ -532,6 +536,7 @@ func from_dict(d: Dictionary) -> void:
 	pilot_name = d["pilot_name"]
 	var pd: Dictionary = d.get("pilot_data", {})
 	set_pilot(make_pilot(pilot_name, pd))     # package 28 (older saves: default looks and attributes)
+	gear.from_dict(d.get("gear", {}))         # package 51 (older saves: the starting gear)
 	surveys.clear()
 	credits = int(d["credits"])
 	fleet.clear()

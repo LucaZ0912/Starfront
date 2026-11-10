@@ -249,6 +249,11 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.50.17: `FlightScene._build_town` / `_draw_town` (points `_town_pts` of kind `TP`, laid out in town units
   `TOWN`, `_tp` / `_road` only on land, `_land_dir`; `PADS_AT`; economy from `SettleGen.economy`), `town_day`,
   `_ground.modulate` darkens at night; no flame on the way down (`SystemView._update_descent`, `_draw_fx`).
+- 0.7.51.1 (package 51): `data/gear.gd` – `SUITS`, `WEAPONS`, `BELT`, `FEATURES` (ids `<family>:<quality>`,
+  consumables and grenades without), `stats(id)` / `describe(id)` / `all_ids()`, `LAYER_MULT` (shield → armour →
+  health); `scripts/core/pilot_gear.gd` – `PilotGear` (`GameState.gear`: suit, weapons, belt, features, inv, lockers by
+  ship uid, health/energy/oxygen/ammo; `totals()`, `equip_from_inv`, `unequip`, `store`, `fetch`); pilot window tab
+  `TAB_GEAR` (`_gear`, `_locker_fit`).
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

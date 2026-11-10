@@ -143,6 +143,7 @@ func _process(delta: float) -> void:
 				saw_undock = true
 			if undock_started and timer > 1.5 and view.player != null and not view.player.is_docked() and view.player.order.get("type", "") != "undocking":
 				check(saw_undock, "undocking through a hangar bay")
+				_test_gear()                     # package 51 – the pilot's suit, slots, pockets, locker
 				_test_landing(view)              # package 50 – down to a planet and back up, then on to the fight
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
@@ -7708,6 +7709,76 @@ func _test_deck(view: SystemView) -> void:
 
 ## Package 50: descent beacons over the bodies you can land on; down (speed-up, sinking, heat), the planet map with
 ## its places, landing on a field with your ship on the pad, and back up to orbit.
+## Package 51: the suit sets the slots; weapons, belt items and features go on and come off; a combat suit has
+## three weapon slots, a civilian one one; changing the suit spills what no longer fits into the pockets; the
+## ship's locker takes and gives; all of it survives a save.
+func _test_gear() -> void:
+	var GD = preload("res://data/gear.gd")
+	var PG = preload("res://scripts/core/pilot_gear.gd")
+	var g = PG.new()
+	g.start()
+	var start_ok: bool = g.suit == "suit_civil:F" and g.weapons.size() == 1 and g.belt.size() == 2 and g.features.size() == 1 \
+		and g.weapons[0] == "wp_laser_pistol:F" and g.count("cs_medkit") == 2 and g.energy > 0.0 and g.oxygen > 0.0
+	# every piece the shop could sell is valid and priced
+	var ids_ok := true
+	for id in GD.all_ids():
+		ids_ok = ids_ok and GD.valid(String(id)) and GD.price(String(id)) > 0 and GD.describe(String(id)).size() >= 3
+	# quality makes a suit better
+	var qf: Dictionary = GD.stats("suit_mil_light:F")
+	var qa: Dictionary = GD.stats("suit_mil_light:A")
+	var q_ok: bool = float(qa["shield"]) > float(qf["shield"]) and float(qa["armor"]) > float(qf["armor"]) and float(qa["energy"]) > float(qf["energy"]) \
+		and int(qa["ammo"]) > int(qf["ammo"]) and float(qa["oxygen"]) > float(qf["oxygen"]) and GD.price("suit_mil_light:A") > GD.price("suit_mil_light:F")
+	# into the pockets, then on: a heavy combat suit – three weapon slots
+	g.add_item("suit_mil_heavy:C")
+	g.add_item("wp_rifle:B")
+	g.add_item("wp_launcher:C")
+	g.add_item("gr_shield", 3)
+	g.add_item("ft_shield:C")
+	var t0: Dictionary = g.totals()
+	var e1: String = g.equip_from_inv(0)
+	var heavy_ok: bool = e1 == "" and g.suit == "suit_mil_heavy:C" and g.weapons.size() == 3 and g.features.size() == 3 \
+		and g.inv.any(func(x): return not (x as Dictionary).is_empty() and String(x["id"]) == "suit_civil:F")
+	for k in g.inv.size():
+		if not (g.inv[k] as Dictionary).is_empty() and GD.kind(String(g.inv[k]["id"])) in ["weapon", "feature"]:
+			g.equip_from_inv(k)
+	var three_ok: bool = g.weapons.count("") == 0 and g.features.has("ft_shield:C") and float(g.totals()["shield"]) > float(t0["shield"]) + 60.0
+	var full_belt: bool = g.belt.size() == 2 and g.unequip("belt", 1) == ""          # the cell comes off – a place free
+	var gi := -1
+	for k2 in g.inv.size():
+		if not (g.inv[k2] as Dictionary).is_empty() and String(g.inv[k2]["id"]) == "gr_shield":
+			gi = k2
+	var belt_ok: bool = full_belt and g.equip_from_inv(gi) == "" and g.count("gr_shield") == 3 and g.belt.any(func(x): return not (x as Dictionary).is_empty() and String(x["id"]) == "gr_shield")
+	# back into the civilian suit: two of the three weapons and two features spill into the pockets
+	var ci := -1
+	for k3 in g.inv.size():
+		if not (g.inv[k3] as Dictionary).is_empty() and String(g.inv[k3]["id"]) == "suit_civil:F":
+			ci = k3
+	var e2: String = g.equip_from_inv(ci)
+	var spill_ok: bool = e2 == "" and g.weapons.size() == 1 and g.features.size() == 1 and g.count("wp_launcher:C") + g.count("wp_rifle:B") + int(g.weapons[0] in ["wp_rifle:B", "wp_launcher:C"]) >= 2
+	# the locker
+	var f := GameState.active()
+	var li := -1
+	for k4 in g.inv.size():
+		if not (g.inv[k4] as Dictionary).is_empty():
+			li = k4
+			break
+	var lid := String(g.inv[li]["id"])
+	var locker_ok: bool = g.locker_size(f) >= 12 and g.store(li, f) == "" and (g.locker(f) as Array).any(func(x): return not (x as Dictionary).is_empty() and String(x["id"]) == lid)
+	var lj := -1
+	var lk: Array = g.locker(f)
+	for k5 in lk.size():
+		if not (lk[k5] as Dictionary).is_empty():
+			lj = k5
+	locker_ok = locker_ok and g.fetch(lj, f) == ""
+	# saved and loaded
+	var g2 = PG.new()
+	g2.from_dict(JSON.parse_string(JSON.stringify(g.to_dict())))
+	var save_ok: bool = g2.suit == g.suit and str(g2.weapons) == str(g.weapons) and g2.count("gr_shield") == g.count("gr_shield") and g2.free_places() == g.free_places()
+	var game_ok: bool = GameState.gear != null and GameState.to_dict().has("gear")
+	check(start_ok and ids_ok and q_ok and heavy_ok and three_ok and belt_ok and spill_ok and locker_ok and save_ok and game_ok,
+		"51: gear – %d pieces, a civilian suit to start, the suit sets the slots (3 weapons in a heavy combat suit), belt stacks, quality F–A, what no longer fits into the pockets, the ship's locker, saved" % GD.all_ids().size())
+
+
 func _test_landing(view: SystemView) -> void:
 	var beacons := 0
 	var gas_free := true

@@ -3,6 +3,31 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.1 – 2026-11-10
+
+**Package 51 begins: personal equipment (Luz: the suit like a ship).**
+- **The suit is the pilot's hull:** its class sets how many weapon slots, belt places and feature slots there are
+  and how well it keeps out heat, cold, toxic air and vacuum – the **Civilian Spacesuit** (1 weapon · 2 belt ·
+  1 feature), the **Survey Suit** (1 · 3 · 2, the best life support), the **Work Suit** (1 · 4 · 1, plated), the
+  **Light Combat Suit** (2 · 3 · 2, quick, a strong shield) and the **Heavy Combat Suit** (3 · 2 · 3, heavy plate, a
+  deep magazine – slow and short of air). Quality F–A gives a better base shield, more ammunition, more armour,
+  more energy and oxygen.
+- **Every suit has energy** (shields, tools and the life support will draw on it) **and an oxygen tank.**
+- **Weapons F–A, no sizes:** optical (laser pistol, laser rifle, cutting beam – strong against shields, on the suit's
+  energy), kinetic (slug pistol, burst gun, rail carbine, scatter gun, long rail – strong against armour, on
+  ammunition), explosive (grenade launcher – strong against the body, bursts). Shooting comes with package 52.
+- **The belt:** frag, EMP, smoke and **shield grenades** (a dome of shield that turns fire from outside and lets
+  yours out), tools F–A (scanner, cutting torch, mining laser), medkits, stimulants, energy cells, oxygen cartridges
+  – stacked, on the number keys.
+- **Features** (the suit's modules): shield generator, armour plates, sprint booster, jump jets, temperature
+  regulator, oxygen reserve, ammunition pack, battery pack.
+- **Pockets** (12 places) and **a locker in every ship** (12 / 20 / 30 places by the ship's size), at hand aboard and
+  in the hangar beside her.
+- **The pilot window has a Gear tab:** the suit and what it adds up to (health, shield, armour, energy, oxygen,
+  ammunition, speed, protection), its slots, the pockets and the locker – click to put on, take off, store, fetch;
+  point at a piece for what it does. A suit change puts what no longer fits into the pockets.
+- New pilots start in a civilian suit (F) with a laser pistol, two medkits and an energy cell.
+
 ## alpha 0.7.50.17 – 2026-11-10
 
 **The small places from the air (Luz: "far too big – small lights like the cities, with what marks them, bound to
