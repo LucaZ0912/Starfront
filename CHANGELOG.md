@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.16 – 2026-11-10
+
+**Fix (Luz): more walls at full height.** The lift lobby's wall where it ends at the corridor (stations, cities) now
+shows its face like every other wall; in the settlements the shop block's outer wall on its south side shows its full
+height out in the open instead of only its top.
+
 ## alpha 0.7.51.15 – 2026-11-10
 
 **Fix (Luz): the shops' back walls as high as every other wall** – on the stations' commercial level, in the cities'

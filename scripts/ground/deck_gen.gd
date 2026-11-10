@@ -137,6 +137,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = [], 
 	m.fill(LOBBY_X1 + 1, ly + 1, 1, COR_Y0 - ly - 1, GroundMap.T.CAP)
 	m.fill(LOBBY_X1 + 1, COR_Y1 + 1, 1, ly + 11 - COR_Y1 - 1, GroundMap.T.CAP)
 	m.fill(LOBBY_X1 + 1, COR_Y0, 1, COR_Y1 - COR_Y0 + 1, GroundMap.T.FLOOR, 0)
+	m.fill(LOBBY_X1 + 1, COR_Y0 - 2, 1, 2, GroundMap.T.FACE)          # 0.7.51.16 (Luz): the lobby wall's end as high as the rest
 	for lx0 in [1, 4]:
 		m.face_deco.append({"kind": "lift", "x": lx0, "y": ly + 2, "w": 2, "col": Color(0.4, 1.0, 0.6)})
 		m.lifts.append({"x": lx0, "y": ly + 2, "w": 2})

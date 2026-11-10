@@ -127,6 +127,10 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 		# 0.7.50.11: each shop its own striped awning over the street
 		m.face_deco.append({"kind": "awning", "x": sx, "y": SHOP_CAP, "w": DeckGen.SHOP_W, "col": DeckGen._svc_col(s2).lerp(Color.from_hsv(rng.randf(), 0.5, 0.8), 0.35)})
 		sx += DeckGen.SHOP_W - 1
+	# 0.7.51.16 (Luz): out in the open the block's south side shows its outer wall, as high as the others
+	var block_y := SHOP_CAP + (DeckGen.SHOP_Y1 - DeckGen.SHOP_CAP) + 2
+	if sx > SHOP_X0:
+		m.fill(SHOP_X0, block_y, sx - SHOP_X0 + 1, 2, GroundMap.T.FACE)
 	# the shops' block ends; the ground behind them is the world again
 	var style := CityStyle.of(station)
 	var roof := CityStyle.tone(style, "roof", 1.0)
@@ -273,7 +277,7 @@ static func _border(m: GroundMap, bk: String, body: Dictionary, rng: RandomNumbe
 	for k2 in 26:
 		var x2 := rng.randi_range(B, TW - B - w)
 		var y2 := rng.randi_range(B, H - B - hgt)
-		if not _free(m, x2, y2, w, hgt) or (y2 >= DeckGen.COR_Y0 - 1 and y2 <= SHOP_CAP + 9):
+		if not _free(m, x2, y2, w, hgt) or (y2 >= DeckGen.COR_Y0 - 1 and y2 <= SHOP_CAP + 11):
 			continue
 		if x2 < B + FIELD:
 			continue                                                       # not on the landing field
