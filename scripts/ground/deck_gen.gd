@@ -855,13 +855,13 @@ static func build_clinic(station: Dictionary, available: Dictionary) -> GroundMa
 		"title": "", "col": col, "sign": Vector2(-100, -100)})
 	m.people.append({"pos": Vector2(9.0, SY0 + 3.8) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "nurse")})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "treat_sign", "title": "TREATMENT", "col": col, "sign": Vector2(25.0, SY0 - 2.6) * GroundMap.TILE})
-	m.add_object({"kind": "med_pod", "x": 21, "y": SY0 + 1, "w": 4, "h": 3, "col": col})
+	m.add_object({"kind": "med_pod", "x": 19, "y": SY0 + 1, "w": 4, "h": 3, "col": col})   # 0.7.51.14: clear of the door
 	# 0.7.51.13 (Luz): an easter egg – step behind the scanner and it shows your skeleton
-	m.zones.append({"rect": Rect2(Vector2(21.0, SY0) * GroundMap.TILE, Vector2(4.0, 1.0) * GroundMap.TILE), "kind": "label", "id": "xray",
+	m.zones.append({"rect": Rect2(Vector2(19.0, SY0) * GroundMap.TILE, Vector2(4.0, 1.0) * GroundMap.TILE), "kind": "label", "id": "xray",
 		"title": "", "col": col, "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "med_cabinet", "x": 29, "y": SY0, "w": 2, "h": 1, "col": col})
 	m.people.append({"pos": Vector2(26.4, SY0 + 2.2) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "doctor")})
-	m.lights.append({"pos": Vector2(23.0, SY0 + 1.5) * GroundMap.TILE, "r": 50.0, "col": Color(0.9, 1.0, 1.0), "a": 0.25})
+	m.lights.append({"pos": Vector2(21.0, SY0 + 1.5) * GroundMap.TILE, "r": 50.0, "col": Color(0.9, 1.0, 1.0), "a": 0.25})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "pharm_sign", "title": "PHARMACY", "col": col, "sign": Vector2(39.0, SY0 - 2.6) * GroundMap.TILE})
 	for cx in [34, 36, 41]:
 		m.add_object({"kind": "med_cabinet", "x": cx, "y": SY0, "w": 2, "h": 1, "col": col})

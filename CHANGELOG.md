@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.14 – 2026-11-10
+
+**Fix (Luz): the clinic's scanner out of the doorway.** The auto-surgeon with its scanner screen moved two tiles to
+the left, clear of the treatment room's door (the easter egg moved with it).
+
 ## alpha 0.7.51.13 – 2026-11-10
 
 **The clinic's lobby walled, and an easter egg (Luz).**
