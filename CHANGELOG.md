@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.12 – 2026-11-10
+
+**Fix (Luz): the clinic's walls along the corridor as high as the others.** The wall between the wards (and the
+aesthetics studio) and the corridor showed only its top; it now shows its face to the corridor like every other wall,
+its doors cut through it. The corridor and the rooms south of it moved down two rows.
+
 ## alpha 0.7.51.11 – 2026-11-10
 
 **The clinic, a level of its own (Leitlinien 4, Luz).** Mercy Hall is no longer a room in the shop row – the lift
