@@ -132,6 +132,8 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 		var city := Universe.city_station(GameState.current_system, body, site)
 		city_day = float(city.get("day", 0.0))
 		city_style = CityStyle.of(city)
+		city_style_key = CityStyle.key_for(city)
+		_build_city()
 	Audio.play("boost", "flight down")
 	_update(0.0)
 
@@ -289,58 +291,261 @@ func _draw_place() -> void:
 			_landing_pad(c, u)
 
 
-## A city from above: only its lights – along its avenues, in its blocks, brightest in the middle – fading up as you
-## come near; the ship sinks into them.
+## 0.7.50.7: a city's ground plan, seen from the air – its form follows the world it stands on, its streets the power
+## that built it. Laid out once (offsets in blocks from its middle), only on land (piers and floating platforms only on
+## the sea):
+##   radial (terran) · harbour (ocean: along the coast, piers and platforms out on the water) · clearings (jungle,
+##   lava: quarters in clearings, roads between) · walled (desert: a dense square behind its wall, an oasis) ·
+##   domes (ice, toxic: quarters under domes, tubes between) · crater (barren, rocky moons: on the crater's rim and
+##   in its middle) · grid (metal worlds).
+## Streets: independent – a few crooked avenues; Assembly – ring roads and parks; Covenant – spokes to a great
+## cathedral square; Directorate – a strict grid.
+const CITY_FORMS := {"terran": "radial", "ocean": "harbour", "jungle": "clearings", "lava": "clearings", "desert": "walled",
+	"ice": "domes", "toxic": "domes", "metal": "grid", "barren": "crater", "dwarf": "crater", "moon_rock": "crater",
+	"moon_ice": "domes", "moon_volcanic": "clearings", "moon_captured": "crater"}
+enum CP { BLD, ROAD, PARK, MARK, PIER, RIM }
+var city_form := "radial"
+var city_style_key := "independent"
+var _city_pts: Array = []             # [offset (blocks), size, kind CP, warm 0..1]
+
+
+func _tex_sea(off: Vector2) -> bool:
+	if _sea.is_empty():
+		return false
+	var p := _place_at + off * 4.0
+	return _sea[posmod(int(floor(p.y)), _S) * _S + posmod(int(floor(p.x)), _S)] == 1
+
+
+func _near_sea(off: Vector2, r: float) -> bool:
+	for k in 8:
+		if _tex_sea(off + Vector2.from_angle(k * TAU / 8.0) * r):
+			return true
+	return false
+
+
+func _cp(off: Vector2, size: float, kind: int, rng: RandomNumberGenerator) -> void:
+	var sea := _tex_sea(off)
+	if kind == CP.PIER:
+		if not sea:
+			return
+	elif sea:
+		return
+	_city_pts.append([off, size, kind, rng.randf()])
+
+
+func _build_city() -> void:
+	_city_pts.clear()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(site.get("id", ""))) + 3
+	city_form = String(CITY_FORMS.get(String(body.get("type", "")), "radial"))
+	var st: Dictionary = city_style if not city_style.is_empty() else CityStyle.STYLES["independent"]
+	var sk := city_style_key
+	var grid := sk == "directorate" or city_form == "grid"
+	# the quarters: where the buildings stand
+	var centres: Array = [Vector2.ZERO]
+	match city_form:
+		"clearings":
+			centres = []
+			for i in rng.randi_range(4, 5):
+				centres.append(Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(4.0, 17.0) if i > 0 else Vector2.ZERO)
+		"domes":
+			centres = [Vector2.ZERO]
+			for i2 in rng.randi_range(2, 3):
+				centres.append(Vector2.from_angle(i2 * TAU / 3.0 + rng.randf() * 0.6) * rng.randf_range(11.0, 15.0))
+	var n := 900
+	for i3 in n:
+		var off := Vector2.ZERO
+		match city_form:
+			"harbour":
+				off = Vector2.from_angle(rng.randf() * TAU) * absf(rng.randfn(0.0, 0.45)) * 28.0
+				if not _near_sea(off, 4.0) and rng.randf() < 0.55:
+					continue                                       # it crowds along the coast
+			"clearings":
+				off = centres[i3 % centres.size()] + Vector2.from_angle(rng.randf() * TAU) * absf(rng.randfn(0.0, 0.5)) * 6.0
+			"walled":
+				off = Vector2(rng.randf_range(-13.0, 13.0), rng.randf_range(-11.0, 11.0))
+			"domes":
+				var dc: Vector2 = centres[i3 % centres.size()]
+				off = dc + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * (7.0 if dc == Vector2.ZERO else 5.0)
+			"crater":
+				if rng.randf() < 0.7:
+					off = Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(12.0, 16.5)
+				else:
+					off = Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * 4.5
+			_:
+				off = Vector2.from_angle(rng.randf() * TAU) * absf(rng.randfn(0.0, 0.38)) * 26.0
+		if grid:
+			off = off.snapped(Vector2(1.0, 1.0))
+			if int(off.x) % 5 == 0 or int(off.y) % 5 == 0:
+				continue                                           # the streets between the blocks
+		var sz := 0.24 if off.length() < 5.0 else 0.16
+		if sk == "covenant" and off.length() < 3.5:
+			continue                                               # the cathedral square
+		if sk == "assembly" and rng.randf() < 0.12:
+			_cp(off, 0.9, CP.PARK, rng)                              # parks and gardens between the houses
+			continue
+		_cp(off, sz, CP.BLD, rng)
+	# the streets
+	var reach := 24.0 if city_form != "clearings" else 20.0
+	if city_form == "walled":
+		reach = 13.0                                               # inside its wall
+	match sk:
+		"directorate":
+			for gl in range(-25, 26, 5):
+				for t in range(-25, 26):
+					var a := Vector2(gl, t)
+					var b := Vector2(t, gl)
+					if a.length() < reach:
+						_cp(a, 0.18, CP.ROAD, rng)
+					if b.length() < reach:
+						_cp(b, 0.18, CP.ROAD, rng)
+		"assembly":
+			for ring in [8.0, 16.0]:
+				for k in int(ring * 4.0):
+					_cp(Vector2.from_angle(k * TAU / (ring * 4.0)) * ring, 0.18, CP.ROAD, rng)
+			for sp in 4:
+				var dir := Vector2.from_angle(sp * PI * 0.5 + 0.4)
+				for t2 in 50:
+					_cp(dir * t2 * 0.5, 0.18, CP.ROAD, rng)
+			for pk in 5:                                           # bigger parks
+				var pc := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(4.0, 18.0)
+				for q in 14:
+					_cp(pc + Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-2.0, 2.0)), 1.0, CP.PARK, rng)
+		"covenant":
+			for sp2 in 8:
+				var dir2 := Vector2.from_angle(sp2 * TAU / 8.0)
+				for t3 in range(8, 52):
+					_cp(dir2 * t3 * 0.5, 0.18, CP.ROAD, rng)
+			for k2 in 28:                                          # the square's ring of lamps
+				_cp(Vector2.from_angle(k2 * TAU / 28.0) * 3.6, 0.2, CP.ROAD, rng)
+			_cp(Vector2.ZERO, 1.4, CP.MARK, rng)                     # the cathedral
+		_:
+			for av in 6:
+				var dir3 := Vector2.from_angle(rng.randf() * PI)
+				var bend := rng.randf_range(-0.012, 0.012)
+				for t4 in 64:
+					var tt := (t4 - 32) * 0.75
+					var off2 := dir3.rotated(bend * tt) * tt
+					if off2.length() < reach:
+						_cp(off2, 0.18, CP.ROAD, rng)
+	# what the world adds
+	match city_form:
+		"harbour":
+			# piers out into the sea, platforms floating on it
+			var piers := 0
+			for tries in 200:
+				var po := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(4.0, 22.0)
+				if _tex_sea(po) or not _near_sea(po, 2.5) or piers >= 9:
+					continue
+				var to_sea := Vector2.ZERO
+				for k3 in 16:
+					var d := Vector2.from_angle(k3 * TAU / 16.0)
+					if _tex_sea(po + d * 2.5):
+						to_sea = d
+						break
+				for t5 in range(2, 16):
+					_cp(po + to_sea * t5 * 0.5, 0.2, CP.PIER, rng)
+				piers += 1
+			for pf in 3:
+				var fc := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(18.0, 30.0)
+				for q2 in 40:
+					_cp(fc + Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-2.0, 2.0)), 0.18, CP.PIER, rng)
+		"walled":
+			for e in 104:
+				var t6 := e / 104.0 * 4.0
+				var wp: Vector2
+				if t6 < 1.0:
+					wp = Vector2(lerpf(-14.0, 14.0, t6), -12.0)
+				elif t6 < 2.0:
+					wp = Vector2(14.0, lerpf(-12.0, 12.0, t6 - 1.0))
+				elif t6 < 3.0:
+					wp = Vector2(lerpf(14.0, -14.0, t6 - 2.0), 12.0)
+				else:
+					wp = Vector2(-14.0, lerpf(12.0, -12.0, t6 - 3.0))
+				_cp(wp, 0.3, CP.RIM, rng)
+			for q3 in 30:                                          # the oasis
+				_cp(Vector2(rng.randf_range(-2.5, 2.5), rng.randf_range(-2.0, 2.0)) + Vector2(5, 3), 1.0, CP.PARK, rng)
+		"domes":
+			for dc2 in centres:
+				var rr := 7.5 if dc2 == Vector2.ZERO else 5.5
+				for k4 in 48:
+					_cp(dc2 + Vector2.from_angle(k4 * TAU / 48.0) * rr, 0.22, CP.RIM, rng)
+			for i4 in range(1, centres.size()):
+				var dd: Vector2 = centres[i4]
+				for t7 in 20:
+					_cp(dd * (t7 / 20.0), 0.2, CP.ROAD, rng)
+		"clearings":
+			for i5 in range(1, centres.size()):
+				var cc: Vector2 = centres[i5]
+				var prev: Vector2 = centres[i5 - 1]
+				for t8 in 24:
+					_cp(prev.lerp(cc, t8 / 24.0), 0.18, CP.ROAD, rng)
+		"crater":
+			for k5 in 96:
+				_cp(Vector2.from_angle(k5 * TAU / 96.0) * 10.5, 0.3, CP.RIM, rng)
+
+
+## A city from above: its ground plan (see _build_city) – by night its lights, by day its roofs, parks and streets –
+## fading up as you come near; the ship sinks into it.
 func _draw_city_lights(c: Vector2, u: float, rng: RandomNumberGenerator) -> void:
 	var k := clampf(_t / DURATION, 0.0, 1.0)
 	var a := smoothstep(0.05, 0.4, k)
 	if a <= 0.0:
 		return
-	if city_day > 0.5:
-		_draw_city_day(c, u, rng, a)
-		return
-	# dusk over the city, so its lights show: a soft dark round it, a warm glow in its heart
-	for av in 6:                                                               # avenues: fine strings of light
-		var dir := Vector2.from_angle(rng.randf() * PI)
-		for st in 60:
-			var p := c + dir * (st - 30) * u * 0.75
-			if p.distance_to(c) < u * 24.0 and not _is_sea(p):
-				_place.draw_rect(Rect2(p, Vector2(u * 0.18, u * 0.18)), Color(1.0, 0.85, 0.55, 0.85 * a))
-	for i in 900:                                                              # windows: tiny warm points, densest in the middle
-		var r := absf(rng.randfn(0.0, 0.38))
-		var p2 := c + Vector2.from_angle(rng.randf() * TAU) * r * u * 26.0
-		var blink := fposmod(_t * rng.randf_range(0.3, 1.5) + i * 0.37, 1.0) < 0.05
-		var w := rng.randf()
-		if blink or _is_sea(p2):
-			continue                                                           # a light goes out for a blink
-		var col: Color = Color(1.0, 0.86, 0.55) if w < 0.7 else (Color(1.0, 0.97, 0.88) if w < 0.92 else Color(0.75, 0.9, 1.0))
-		var sz := u * (0.16 if r > 0.15 else 0.24)
-		_place.draw_rect(Rect2(p2, Vector2(sz, sz)), Color(col, 0.9 * a))
-
-
-## 0.7.50.6: a city by day – its roofs packed along the avenues, densest in the middle, in its style's colours; parks
-## where the Assembly builds; only on land.
-func _draw_city_day(c: Vector2, u: float, rng: RandomNumberGenerator, a: float) -> void:
+	if _city_pts.is_empty():
+		_build_city()
 	var st: Dictionary = city_style if not city_style.is_empty() else CityStyle.STYLES["independent"]
+	var day := city_day > 0.5
+	var wins: Array = st["win"]
 	var roof := CityStyle.tone(st, "roof", 1.0)
-	for av in 6:
-		var dir := Vector2.from_angle(rng.randf() * PI)
-		for s in 60:
-			var p := c + dir * (s - 30) * u * 0.75
-			if p.distance_to(c) < u * 24.0 and not _is_sea(p):
-				_place.draw_rect(Rect2(p, Vector2(u * 0.5, u * 0.5)), Color(0.32, 0.32, 0.34, 0.8 * a))
-	for i in 700:
-		var r := absf(rng.randfn(0.0, 0.36))
-		var p2 := c + Vector2.from_angle(rng.randf() * TAU) * r * u * 26.0
-		var sz := u * (0.55 if r > 0.18 else 0.85) * rng.randf_range(0.7, 1.3)
-		if _is_sea(p2):
+	var acc: Color = st["accent"]
+	# a crater's floor and rim, by day and night
+	if city_form == "crater":
+		_place.draw_arc(c, u * 10.5, 0.0, TAU, 64, Color(0, 0, 0, 0.25 * a), u * 2.0)
+		_place.draw_circle(c, u * 9.5, Color(0, 0, 0, 0.12 * a))
+	for i in _city_pts.size():
+		var pt: Array = _city_pts[i]
+		var p: Vector2 = c + (pt[0] as Vector2) * u
+		var sz: float = float(pt[1]) * u
+		var kind: int = pt[2]
+		var w: float = pt[3]
+		if day:
+			match kind:
+				CP.BLD:
+					var bs := sz * 3.2
+					var rc := roof.lightened(w * 0.15).darkened((1.0 - w) * 0.18)
+					_place.draw_rect(Rect2(p + Vector2(bs * 0.4, bs * 0.4), Vector2(bs, bs)), Color(0, 0, 0, 0.3 * a))
+					_place.draw_rect(Rect2(p, Vector2(bs, bs)), Color(rc, 0.95 * a))
+				CP.ROAD, CP.PIER:
+					_place.draw_rect(Rect2(p, Vector2(sz * 2.5, sz * 2.5)), Color(0.33, 0.33, 0.35, 0.85 * a) if kind == CP.ROAD else Color(0.55, 0.5, 0.42, 0.9 * a))
+				CP.PARK:
+					_place.draw_rect(Rect2(p, Vector2(sz, sz)), Color(0.3, 0.55, 0.28, 0.85 * a))
+				CP.MARK:
+					_place.draw_circle(p, sz, Color(roof.darkened(0.2), a))
+					_place.draw_circle(p - Vector2(sz, sz) * 0.25, sz * 0.5, Color(roof.lightened(0.2), a))
+					_place.draw_circle(p, sz * 0.25, Color(1.0, 0.8, 0.3, a))
+				CP.RIM:
+					_place.draw_rect(Rect2(p, Vector2(sz * 2.0, sz * 2.0)), Color(roof.lightened(0.25), 0.9 * a))
 			continue
-		if rng.randf() < float(st["green"]) * 0.35:
-			_place.draw_rect(Rect2(p2, Vector2(sz, sz)), Color(0.3, 0.55, 0.28, 0.85 * a))
-			continue
-		var rc := roof.lightened(rng.randf_range(0.0, 0.15)).darkened(rng.randf_range(0.0, 0.2))
-		_place.draw_rect(Rect2(p2 + Vector2(sz * 0.4, sz * 0.4), Vector2(sz, sz)), Color(0, 0, 0, 0.3 * a))
-		_place.draw_rect(Rect2(p2, Vector2(sz, sz)), Color(rc, 0.95 * a))
+		# by night
+		match kind:
+			CP.BLD:
+				if fposmod(_t * (0.3 + w * 1.2) + i * 0.37, 1.0) < 0.05:
+					continue                                           # a light goes out for a blink
+				var col: Color = wins[0] if w < float(st["warm"]) else wins[1]
+				_place.draw_rect(Rect2(p, Vector2(sz, sz)), Color(col, 0.9 * a))
+			CP.ROAD:
+				_place.draw_rect(Rect2(p, Vector2(sz, sz)), Color(Color(1.0, 0.85, 0.55) if st.get("grid", false) == false else Color(0.85, 1.0, 0.95), 0.85 * a))
+			CP.PIER:
+				_place.draw_rect(Rect2(p, Vector2(sz, sz)), Color(1.0, 0.95, 0.8, 0.9 * a))
+			CP.MARK:
+				_place.draw_circle(p, sz * 1.4, Color(1.0, 0.75, 0.35, 0.1 * a))
+				_place.draw_circle(p, sz * 0.5, Color(1.0, 0.8, 0.4, 0.25 * a))
+				_place.draw_rect(Rect2(p - Vector2(u, u) * 0.15, Vector2(u, u) * 0.3), Color(1.0, 0.95, 0.75, a))
+			CP.RIM:
+				_place.draw_rect(Rect2(p, Vector2(sz, sz)), Color(acc, 0.8 * a))
+			_:
+				pass
 
 
 ## The flight's distance along the ground picture after t seconds (the ground comes closer and slows).

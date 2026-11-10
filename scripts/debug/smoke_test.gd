@@ -7857,6 +7857,24 @@ func _test_city(view: SystemView, body: Dictionary, sites_all: Array) -> void:
 	fl.queue_free()
 	check(styles_ok and dn_ok and canyon and on_land and meets,
 		"0.7.50.6: city styles (Assembly, Covenant, Directorate, independent), %s by the planet map's light; the shopping street a canyon under the sky; the flight's city on land, coming with the ground" % ("day" if float(city.get("day", 0.0)) > 0.5 else "night"))
+	# 0.7.50.7: ground plans by world, the worlds turn, decks in the city's style
+	var forms := {}
+	for bt in ["terran", "ocean", "jungle", "desert", "ice", "barren"]:
+		forms[String(FlightScene.CITY_FORMS.get(bt, "radial"))] = true
+	var t_keep := GameState.play_time
+	var turned := false
+	for h2 in 12:
+		GameState.play_time = t_keep + CityStyle.day_length(body) * h2 / 12.0
+		var dd := CityStyle.daylight(site, body) > 0.5
+		turned = turned or (dd != (float(city.get("day", 0.0)) > 0.5))
+	GameState.play_time = t_keep
+	g.go_level("hangar", "stairs")
+	var flags := 0
+	for fd in g.map.face_deco:
+		if String(fd.get("kind", "")) in ["flag", "poster"] and fd.has("col2"):
+			flags += 1
+	var deck_ok: bool = String(g.map.pal.get("type", "")).begins_with("city_") and flags >= 2
+	check(forms.size() >= 6 and turned and deck_ok, "0.7.50.7: %d city ground plans by world (harbour, clearings, walled, domes, crater …); the world turns – the city sees day and night; its hangar in its colours with %d flags" % [forms.size(), flags])
 	# and up again through the hatch
 	g.go_level("hangar", "stairs")
 	var back_body := Universe.find_body(f.system_id, String(city.get("body", "")))

@@ -10,6 +10,7 @@ uniform vec4 col_c : source_color = vec4(0.9, 0.9, 0.85, 1.0);   // high (mounta
 uniform vec4 atmo : source_color = vec4(0.5, 0.7, 1.0, 0.7);
 uniform float pixels = 96.0;
 uniform vec2 light_dir = vec2(-0.7, -0.5);  // direction towards the light source
+uniform float light_z = 0.55;               // 0.7.50.7: how far the light comes from in front (negative: from behind – night on the face)
 uniform float seed = 1.0;
 uniform float gas = 0.0;                    // 1 = banded giant
 uniform float spin = 0.01;
@@ -42,7 +43,7 @@ void fragment() {
 	vec2 uv = (floor(UV * pixels) + 0.5) / pixels;
 	vec2 c = (uv - 0.5) * 2.0;
 	float d = length(c);
-	vec3 L = normalize(vec3(light_dir, 0.55));
+	vec3 L = normalize(vec3(light_dir, light_z));
 	vec4 outc = vec4(0.0);
 	float rad = radius;
 	if (lumpy > 0.5) {

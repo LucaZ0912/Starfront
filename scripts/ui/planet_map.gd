@@ -53,6 +53,10 @@ func open(p_system: int, p_body: Dictionary) -> void:
 	var pm := spr.material as ShaderMaterial
 	if pm != null:
 		pm.set_shader_parameter("spin", 0.0)
+		var lv := CityStyle.light_vec(body)                # 0.7.50.7: where the sun stands over this world now
+		pm.set_shader_parameter("light_dir", Vector2(lv.x, lv.y))
+		pm.set_shader_parameter("light_z", lv.z)
+		pm.set_shader_parameter("city", 0.0)               # no blocky lights at this size – the real cities glow instead
 	spr.position = _center
 	_planet.add_child(spr)
 	spr.scale *= 0.8
@@ -132,6 +136,10 @@ func select(i: int) -> void:
 	var k: Dictionary = Universe.SITE_KINDS[s["kind"]]
 	_info.add_child(UI.label("%s  %s" % [k["icon"], s["name"]], 18, k["col"]))
 	_info.add_child(UI.wrap_label(String(k["text"]), 13, UI.TEXT_DIM, 460))
+	var dl := CityStyle.daylight(s, body)
+	var turn := CityStyle.minutes_to_turn(s, body)
+	_info.add_child(UI.label(("☀  Day there now" if dl > 0.5 else "☾  Night there now") + ("  ·  %s in about %d min" % ["sunset" if dl > 0.5 else "sunrise", turn] if turn > 0 else ""),
+		13, Color(1.0, 0.85, 0.45) if dl > 0.5 else Color(0.6, 0.7, 1.0)))
 	for j in _list.get_child_count():
 		(_list.get_child(j) as Button).modulate = Color(1, 1, 1) if j == i else Color(0.7, 0.72, 0.8)
 	_land_btn.disabled = false
@@ -157,6 +165,10 @@ func _draw_marks() -> void:
 		if _t < at:
 			continue
 		var pk := clampf((_t - at) / 0.35, 0.0, 1.0)
+		if String(s["kind"]) == "city" and CityStyle.daylight(s, body) < 0.5:
+			# a city on the night side: its glow
+			_marks.draw_circle(p, 22.0, Color(1.0, 0.75, 0.35, 0.12))
+			_marks.draw_circle(p, 13.0, Color(1.0, 0.8, 0.45, 0.18))
 		if pk < 1.0:
 			_marks.draw_circle(p, 6.0 + 26.0 * pk, Color(c, 0.6 * (1.0 - pk)))
 		if sel:

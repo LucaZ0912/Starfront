@@ -537,10 +537,6 @@ func _face_deco(d: Dictionary) -> void:
 		"lamp":
 			_rect(px + 6, py + 3, 4, 4, c.lightened(0.3))
 			_rect(px + 5, py + 7, 6, 1, Color(pal["wall"]).darkened(0.3))
-		"poster":
-			_rect(px + 3, py + 2, pw - 6, 10, Color(0.1, 0.1, 0.12))
-			_rect(px + 4, py + 3, pw - 8, 8, c)
-			_rect(px + 5, py + 4, int((pw - 10) * 0.6), 2, c.lightened(0.5))
 		"screen":
 			_rect(px + 2, py + 2, pw - 4, 10, Color(0.05, 0.06, 0.09))
 			_rect(px + 3, py + 3, pw - 6, 8, c.darkened(0.4))
@@ -554,6 +550,28 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px + 4, py + 2, pw - 8, 1, Color(0.3, 0.32, 0.36))
 			_rect(px + pw / 2 - 4, py - 15, 8, 3, Color(0.08, 0.08, 0.1))
 			_rect(px + pw / 2 - 2, py - 14, 4, 1, c)
+		"flag":                    # 0.7.50.7: a power's flag hanging on the wall – cloth, its sign, a pointed end
+			var c2: Color = d.get("col2", Color(1, 1, 1))
+			_rect(px + 1, py - 13, pw - 2, 2, Color(0.25, 0.22, 0.18))
+			_rect(px + 3, py - 11, pw - 6, TILE + 2, c)
+			_rect(px + 3, py - 11, 1, TILE + 2, c.lightened(0.2))
+			for k3 in 3:
+				_rect(px + 3 + k3, py + TILE - 9 + k3, pw - 6 - k3 * 2, 1, c)
+			_rect(px + pw / 2 - 1, py - 7, 2, 8, c2)
+			_rect(px + pw / 2 - 3, py - 5, 6, 2, c2)
+		"poster":
+			if d.has("col2"):                     # a free city's neon poster
+				_rect(px + 2, py - 12, pw - 4, TILE + 4, Color(0.05, 0.05, 0.08))
+				_rect(px + 2, py - 12, pw - 4, 1, d["col2"])
+				_rect(px + 2, py + TILE - 9, pw - 4, 1, d["col2"])
+				_rect(px + 2, py - 12, 1, TILE + 4, d["col2"])
+				_rect(px + pw - 3, py - 12, 1, TILE + 4, d["col2"])
+				for k4 in 3:
+					_rect(px + 5, py - 8 + k4 * 6, pw - 10, 2, Color(d["col2"]).lightened(0.3))
+				return
+			_rect(px + 3, py + 2, pw - 6, 10, Color(0.1, 0.1, 0.12))
+			_rect(px + 4, py + 3, pw - 8, 8, c)
+			_rect(px + 5, py + 4, int((pw - 10) * 0.6), 2, c.lightened(0.5))
 		"storefront":              # 0.7.50.5: a shop's front in a city street – lit window, goods, door, awning
 			var fh := TILE * 2
 			_rect(px, py, pw, fh, Color(pal["wall"]).darkened(0.5))

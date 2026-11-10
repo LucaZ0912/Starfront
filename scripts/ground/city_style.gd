@@ -67,6 +67,32 @@ const STYLES := {
 }
 
 
+## 0.7.50.7: indoors – the deck colours of a city's hangar, street and bar (floor, floor2, shop floor, wood, carpet,
+## wall, accent), how its bar is furnished (like DeckGen.THEMES) and the flags in its hangar [cloth, sign].
+const DECK := {
+	"independent": {"pal": [Color(0.2, 0.21, 0.26), Color(0.24, 0.25, 0.3), Color(0.36, 0.32, 0.3), Color(0.3, 0.2, 0.16), Color(0.35, 0.12, 0.3), Color(0.5, 0.52, 0.6), Color(0.3, 0.95, 1.0)],
+		"theme": {"bar": "lounge", "floor": 3, "corner": 4, "cor_floor": 0, "deco": ["holo_pillar", "plant"],
+			"props": ["lamp_post", "holo", "vending", "holo", "trash"], "seat": Color(0.6, 0.15, 0.42)},
+		"flag": [Color(0.06, 0.06, 0.09), Color(1.0, 0.3, 0.72)], "flag_kind": "poster"},
+	"assembly": {"pal": [Color(0.58, 0.57, 0.53), Color(0.63, 0.62, 0.57), Color(0.68, 0.64, 0.56), Color(0.55, 0.4, 0.25), Color(0.28, 0.42, 0.34), Color(0.9, 0.88, 0.84), Color(0.4, 0.68, 1.0)],
+		"theme": {"bar": "garden", "floor": 3, "corner": 8, "cor_floor": 6, "deco": ["planter", "plant"],
+			"props": ["planter", "lamp_post", "flower_bed", "holo"], "seat": Color(0.35, 0.5, 0.75)},
+		"flag": [Color(0.16, 0.32, 0.72), Color(0.95, 0.97, 1.0)], "flag_kind": "flag"},
+	"covenant": {"pal": [Color(0.3, 0.22, 0.2), Color(0.34, 0.25, 0.22), Color(0.38, 0.3, 0.25), Color(0.35, 0.2, 0.12), Color(0.45, 0.08, 0.12), Color(0.56, 0.43, 0.37), Color(1.0, 0.8, 0.3)],
+		"theme": {"bar": "mess", "floor": 4, "corner": 2, "cor_floor": 9, "deco": ["banner", "plant"],
+			"props": ["banner", "lamp_post", "banner", "holo"], "seat": Color(0.5, 0.1, 0.14)},
+		"flag": [Color(0.62, 0.08, 0.12), Color(1.0, 0.8, 0.3)], "flag_kind": "flag"},
+	"directorate": {"pal": [Color(0.74, 0.78, 0.79), Color(0.8, 0.84, 0.84), Color(0.8, 0.83, 0.83), Color(0.6, 0.62, 0.62), Color(0.2, 0.4, 0.35), Color(0.93, 0.95, 0.95), Color(0.25, 0.85, 0.55)],
+		"theme": {"bar": "cafe", "floor": 6, "corner": 4, "cor_floor": 6, "deco": ["holo_pillar", "plant"],
+			"props": ["holo_pillar", "lamp_post", "plant", "holo"], "seat": Color(0.85, 0.9, 0.92)},
+		"flag": [Color(0.1, 0.42, 0.3), Color(0.85, 0.9, 0.92)], "flag_kind": "flag"},
+}
+
+
+static func deck(st: Dictionary) -> Dictionary:
+	return DECK[key_for(st)]
+
+
 ## The style of a city (a station dict with "city"): its power's, independent otherwise.
 static func key_for(st: Dictionary) -> String:
 	var f := String(st.get("faction", ""))
@@ -77,14 +103,44 @@ static func of(st: Dictionary) -> Dictionary:
 	return STYLES[key_for(st)]
 
 
-## How much daylight a site has (0 night … 1 day): where it lies on the planet map's disc, lit from the upper left –
-## the same light the map shows.
-static func daylight(site: Dictionary) -> float:
+## 0.7.50.7: the worlds turn – the sun goes round each one (a day of 20 to 40 minutes of play, each world its own
+## length and hour), so the same city can be visited by day and by night. The light as the planet map shows it.
+const LIGHT_A0 := 0.905                  # the angle at which the light comes from the upper left, in front
+
+
+static func day_length(body: Dictionary) -> float:
+	return 1200.0 + float(absi(hash(String(body.get("id", "")) + "day")) % 1200)
+
+
+static func light_vec(body: Dictionary = {}) -> Vector3:
+	if body.is_empty():
+		return Vector3(-0.7, -0.5, 0.55).normalized()
+	var ph := float(absi(hash(String(body.get("id", "")) + "sun")) % 1000) / 1000.0
+	var a := LIGHT_A0 + TAU * fposmod(GameState.play_time / day_length(body) + ph, 1.0)
+	return Vector3(-sin(a) * 0.86, -0.5, cos(a) * 0.86).normalized()
+
+
+## How much daylight a site has (0 night … 1 day): where it lies on the planet's face and where the sun stands now.
+static func daylight(site: Dictionary, body: Dictionary = {}) -> float:
 	var lon := float(site.get("lon", 0.0))
 	var lat := float(site.get("lat", 0.0))
 	var n := Vector3(sin(lon) * cos(lat), -sin(lat), cos(lon) * cos(lat))
-	var l := Vector3(-0.7, -0.5, 0.55).normalized()
-	return smoothstep(-0.12, 0.18, n.dot(l))
+	return smoothstep(-0.12, 0.18, n.dot(light_vec(body)))
+
+
+## Minutes until the light changes at a site (sunrise or sunset) – for the planet map.
+static func minutes_to_turn(site: Dictionary, body: Dictionary) -> int:
+	var now := daylight(site, body) > 0.5
+	var t0 := GameState.play_time
+	var step := day_length(body) / 240.0
+	for i in range(1, 241):
+		GameState.play_time = t0 + step * i
+		var d := daylight(site, body) > 0.5
+		if d != now:
+			GameState.play_time = t0
+			return maxi(1, int(round(step * i / 60.0)))
+	GameState.play_time = t0
+	return -1
 
 
 ## A colour between the style's night and day tone: "tower", "roof" or "facade".

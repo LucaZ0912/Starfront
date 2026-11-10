@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.7 – 2026-11-10
+
+**Cities: a ground plan for every kind of world, the worlds turn, bar and hangar in the city's style.**
+- **Ground plans from the air:** a city's form now follows its world – on terran worlds it spreads out round its
+  heart; on **ocean worlds** it crowds along the coast with piers reaching out into the sea and platforms floating on
+  it; in the **jungle** (and on lava worlds) its quarters lie in clearings, roads running between them; in the
+  **desert** it is a dense square behind its wall with an oasis inside; on **ice and toxic worlds** its quarters sit
+  under domes linked by tubes; on **barren worlds and rocky moons** it stands on a crater's rim and in its middle;
+  metal worlds are a grid. And its streets follow who built it: crooked avenues (independent), ring roads and parks
+  (Assembly), spokes to a great cathedral square (Covenant), a strict grid (Directorate). By night its lights, by day
+  its roofs, parks and streets – always only on land (piers and platforms only on the sea).
+- **The worlds turn:** the sun goes round every world – a day lasts 20 to 40 minutes of play, each world its own
+  length and hour – so the same city can be visited by day and by night. The planet map shows where the sun stands
+  now (the night side dark, the cities there glowing) and says for each city "Day there now · sunset in about N min"
+  or "Night there now · sunrise in about N min".
+- **The bar and the hangar in the city's style:** the decks take the power's colours and the bar its furnishing –
+  a neon lounge (independent), a garden bar with planters (Assembly), long tables on red carpet with banners
+  (Covenant), a bright cafe with holo pillars (Directorate); the hangar hangs its power's flags on its walls (blue with
+  the white hand, red with the gold sign, green and white – neon posters in a free city).
+
 ## alpha 0.7.50.6 – 2026-11-10
 
 **The cities refined: four building styles, day and night, a street canyon, a city that stands up.**

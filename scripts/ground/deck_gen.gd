@@ -69,6 +69,12 @@ const CORNER_R := BAR_Y0          # the window front's rounded corners (tiles)
 
 
 static func palette_for(station: Dictionary) -> Dictionary:
+	if station.get("city", false):
+		# 0.7.50.7: a city's decks in its power's colours
+		var cp: Array = CityStyle.deck(station)["pal"]
+		var cw: Color = cp[5]
+		return {"floor": cp[0], "floor2": cp[1], "shop_floor": cp[2], "wood": cp[3], "carpet": cp[4], "wall": cw,
+			"wall_top": cw.darkened(0.55), "trim": cw.darkened(0.35), "frame": cw.darkened(0.25), "accent": cp[6], "type": "city_" + CityStyle.key_for(station)}
 	var t := String(station.get("type", "trade"))
 	if t.begins_with("resort") or String(station.get("art", "")).begins_with("resort"):
 		t = "resort"
@@ -104,6 +110,8 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = [], 
 	m.setup(W, H)
 	var bx0 := LOBBY_X1 + 1                             # the bar's west wall
 	var th: Dictionary = THEMES.get(String(m.pal["type"]), THEMES["trade"])
+	if station.get("city", false):
+		th = CityStyle.deck(station)["theme"]           # 0.7.50.7: the bar furnished in the city's style
 	if mode == "street":
 		m.hull_top = COR_Y0 - 3                         # 0.7.50.6: above the shop fronts the street canyon (drawn by the view)
 		_street_north(m, th, bx0, W, rng, CityStyle.of(station))
@@ -705,6 +713,16 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	for k3 in 3:
 		m.lights.append({"pos": Vector2(x_h + HW * (0.2 + k3 * 0.3), G + 3.0) * GroundMap.TILE, "r": 44.0, "col": Color(m.pal["accent"]).lerp(Color.WHITE, 0.4), "a": 0.22})
 	m.add_object({"kind": "plant", "x": W - 2, "y": G + 4, "w": 1, "h": 1})
+	# 0.7.50.7: in a city, its power's flags on the walls (neon posters in a free city)
+	if station.get("city", false):
+		var dk: Dictionary = CityStyle.deck(station)
+		var fl: Array = dk["flag"]
+		var fk := String(dk["flag_kind"])
+		for fx in [x_h + 2, x_h + HW / 2 - 9, x_h + HW / 2 + 7, x_h + HW - 4]:
+			if fx > x_h and fx < x_h + HW - 2:
+				m.face_deco.append({"kind": fk, "x": fx, "y": 2, "w": 2, "col": fl[0], "col2": fl[1]})
+		m.face_deco.append({"kind": fk, "x": 1, "y": G + 1, "w": 2, "col": fl[0], "col2": fl[1]})
+		m.face_deco.append({"kind": fk, "x": x_h + HW + 1 + 2, "y": G + 1, "w": 1, "col": fl[0], "col2": fl[1]})
 	# a bench by the glass, facing the ship – clear of the shop doors on the other side
 	_seat(m, "bench", x_h + HW / 2 - 4, G + 2, 1, m.pal["accent"], rng, 0.0, 2)
 	_seats(m)
