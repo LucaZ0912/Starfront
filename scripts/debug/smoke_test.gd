@@ -7875,6 +7875,19 @@ func _test_city(view: SystemView, body: Dictionary, sites_all: Array) -> void:
 			flags += 1
 	var deck_ok: bool = String(g.map.pal.get("type", "")).begins_with("city_") and flags >= 2
 	check(forms.size() >= 6 and turned and deck_ok, "0.7.50.7: %d city ground plans by world (harbour, clearings, walled, domes, crater …); the world turns – the city sees day and night; its hangar in its colours with %d flags" % [forms.size(), flags])
+	# 0.7.50.8: the day goes on while you are there – the tower bar's view follows it
+	g.go_level("tower")
+	var d_before: float = g._skyline.day
+	var t_keep2 := GameState.play_time
+	var live := false
+	for h3 in 6:
+		GameState.play_time = t_keep2 + CityStyle.day_length(body) * (h3 + 1) / 7.0
+		g._update_city_day(1.0)
+		live = live or absf(g._skyline.day - d_before) > 0.3
+	GameState.play_time = t_keep2
+	g._update_city_day(1.0)
+	var sc := CityStyle.sunset_color(CityStyle.star_color(view.system_id))
+	check(live and sc.r > sc.b, "0.7.50.8: the day goes on while you are in the city – the view from the bar follows it (dusk in the star's light, sunset colour %s)" % sc.to_html(false))
 	# and up again through the hatch
 	g.go_level("hangar", "stairs")
 	var back_body := Universe.find_body(f.system_id, String(city.get("body", "")))

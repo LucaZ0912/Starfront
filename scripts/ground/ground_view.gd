@@ -68,6 +68,12 @@ var _planet_spr: Node2D = null
 var _cam_c := Vector2.INF               # where the camera looks (screen px of the world), eased                   # 0.7.49.13: whose hangar this is (the active ship when it was built)
 var _bartender: Walker = null
 var _skyline: CitySkyline = null        # 0.7.50.5: the view from a city's tower bar
+var _canyon: CityCanyon = null          # 0.7.50.6: the street canyon
+var _tint: ColorRect = null             # 0.7.50.8: the street's light (night darker, dusk warm)
+var _city_lights: Array = []            # [sprite, light, kind] – lights that follow the time of day
+var _city_body: Dictionary = {}
+var _day_t := 0.0
+var _day_seen := -1.0                   # the daylight the view was last drawn in
 var talk_menu: CrewTalk = null          # its "Info": the questions, the record, signing on
 var _talk_offer := {}
 var _talk_index := -1
@@ -156,6 +162,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_star_spr = null
 	_planet_spr = null
 	_skyline = null
+	_canyon = null
+	_tint = null
+	_city_lights.clear()
 	_cam_c = Vector2.INF
 	zone = {}
 	_arrive = 0.0
@@ -255,15 +264,18 @@ func _space_view(sys_id: int) -> void:
 		_neb.material = null
 		_neb.color = Color(0.02, 0.02, 0.05)
 		var body := Universe.find_body(sys_id, String(station.get("body", ""))) if sys_id >= 0 else {}
+		_city_body = body
 		var cst := CityStyle.of(station)
 		var dk := city_day()
+		var star := CityStyle.star_color(sys_id)
 		if _window.size.x > 0.0 and level == "street":
-			var cy := CityCanyon.new()                 # 0.7.50.6: the street canyon above the shop fronts
-			cy.setup(_window.size, body, cst, dk, hash(String(station.get("id", ""))) + 11)
-			_sky.add_child(cy)
+			_canyon = CityCanyon.new()                 # 0.7.50.6: the street canyon above the shop fronts
+			_canyon.setup(_window.size, body, cst, dk, hash(String(station.get("id", ""))) + 11, star)
+			_sky.add_child(_canyon)
 		elif _window.size.x > 0.0:
 			_skyline = CitySkyline.new()
-			_skyline.setup(_window.size, body, hash(String(station.get("id", ""))) + 3, _window.size.x + map.size_px().x * GroundMap.SCALE, cst, dk)
+			_skyline.setup(_window.size, body, hash(String(station.get("id", ""))) + 3, _window.size.x + map.size_px().x * GroundMap.SCALE, cst, dk,
+				star, CityStyle.rising(station, body) if not body.is_empty() else false)
 			_sky.add_child(_skyline)
 		return
 	var mat := ShaderMaterial.new()
@@ -440,10 +452,9 @@ func _build() -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
 	# it (they hardly show); the tower bar's window lets in the sun by day
-	var dk := city_day()
-	if is_city() and level == "street" and dk < 0.6:
+	if is_city() and level == "street":
 		var tint := ColorRect.new()
-		tint.color = Color(0.58, 0.62, 0.82).lerp(Color.WHITE, dk / 0.6)
+		_tint = tint
 		var mm := CanvasItemMaterial.new()
 		mm.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
 		tint.material = mm
@@ -453,21 +464,19 @@ func _build() -> void:
 		tint.size = Vector2(map.w - tx0, DeckGen.SHOP_CAP + 1 - map.hull_top) * GroundMap.TILE * GroundMap.SCALE
 		_world.add_child(tint)
 	for l in map.lights:
-		var l2: Dictionary = l
-		if is_city() and level == "street" and dk > 0.5:
-			l2 = l.duplicate()
-			l2["a"] = float(l.get("a", 0.3)) * 0.4
-		if is_city() and level == "tower" and dk > 0.5 and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
-			l2 = l.duplicate()                         # the cold light through the glass becomes sunlight
-			l2["col"] = Color(1.0, 0.9, 0.7)
-			l2["a"] = 0.3
-			l2["r"] = float(l.get("r", 40.0)) * 1.4
-		_add_light(l2, add_mat)
+		var lsp := _add_light(l, add_mat)
+		if is_city() and level == "street":
+			_city_lights.append([lsp, l, "street"])
+		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
+			lsp.scale *= 1.4                           # the light through the glass: sun, sunset or night
+			_city_lights.append([lsp, l, "window"])
 	for z in map.zones:
 		var sp: Vector2 = z.get("sign", Vector2(-100, -100))
 		if sp.x >= 0.0 and not z.get("vertical", false) and String(z.get("closed", "")) == "":
 			_add_light({"pos": sp + Vector2(0, 6), "r": 30.0, "col": z.get("col", Color.WHITE), "a": 0.3}, add_mat)
 	_world.add_child(_lights)
+	if is_city():
+		_apply_day(city_day(), true)
 	_signs = Node2D.new()
 	_signs.z_index = 10
 	_signs.draw.connect(_draw_signs)
@@ -493,7 +502,7 @@ static func glow_texture() -> Texture2D:
 	return _glow_tex
 
 
-func _add_light(l: Dictionary, mat: Material) -> void:
+func _add_light(l: Dictionary, mat: Material) -> Sprite2D:
 	var sp := Sprite2D.new()
 	sp.texture = glow_texture()
 	sp.material = mat
@@ -505,6 +514,48 @@ func _add_light(l: Dictionary, mat: Material) -> void:
 	_lights.add_child(sp)
 	if l.get("flicker", false):
 		_flicker.append([sp, a, randf() * 50.0])
+	return sp
+
+
+## 0.7.50.8: the day goes on while you are in a city – the sky outside, the street's light, the light through the
+## bar's glass follow it (checked twice a second).
+func _update_city_day(delta: float) -> void:
+	_day_t -= delta
+	if _day_t > 0.0 or _city_body.is_empty():
+		return
+	_day_t = 0.5
+	_apply_day(CityStyle.daylight(station, _city_body))
+
+
+func _apply_day(d: float, force: bool = false) -> void:
+	if not force and absf(d - _day_seen) < 0.004:
+		return
+	_day_seen = d
+	station["day"] = d
+	var dk := CityStyle.dusk(d)
+	var sunset := CityStyle.sunset_color(CityStyle.star_color(_sys))
+	if _skyline != null:
+		_skyline.set_day(d, CityStyle.rising(station, _city_body) if not _city_body.is_empty() else false)
+	if _canyon != null:
+		_canyon.set_day(d)
+	if _tint != null:
+		_tint.color = Color(0.58, 0.62, 0.82).lerp(Color.WHITE, smoothstep(0.0, 0.65, d)).lerp(Color(1.0, 0.78, 0.62), dk * 0.5)
+	for cl in _city_lights:
+		var sp: Sprite2D = cl[0]
+		var l: Dictionary = cl[1]
+		var a0: float = l.get("a", 0.3)
+		var col0: Color = l.get("col", Color.WHITE)
+		var a := a0
+		var col := col0
+		if String(cl[2]) == "street":
+			a = a0 * lerpf(1.0, 0.4, smoothstep(0.4, 0.8, d))
+		else:
+			col = col0.lerp(Color(1.0, 0.9, 0.7), smoothstep(0.3, 0.7, d)).lerp(sunset, dk * 0.85)
+			a = lerpf(a0, 0.3, d) + dk * 0.18
+		sp.modulate = Color(col, a)
+		for f in _flicker:
+			if f[0] == sp:
+				f[1] = a
 
 
 func _process(delta: float) -> void:
@@ -518,6 +569,8 @@ func _process(delta: float) -> void:
 	if pilot == null:
 		return
 	_toast_t = maxf(_toast_t - delta, 0.0)
+	if is_city():
+		_update_city_day(delta)
 	_update_dust(delta)
 	if _touch >= 0.0:
 		_touchdown_step(delta)

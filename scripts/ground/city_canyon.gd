@@ -20,13 +20,17 @@ var _speeders: Array = []
 var _t := 0.0
 
 
-func setup(p_size: Vector2, body: Dictionary, p_style: Dictionary, p_day: float, seed_v: int) -> void:
+var body: Dictionary = {}
+var sunset := Color(1.0, 0.45, 0.2)
+
+
+func setup(p_size: Vector2, p_body: Dictionary, p_style: Dictionary, p_day: float, seed_v: int, star_col: Color = Color(1.0, 0.85, 0.5)) -> void:
 	size = p_size
 	style = p_style
+	body = p_body
 	day = p_day
-	var sk: Array = CityStyle.sky(body, day)
-	_sky_top = sk[0]
-	_sky_low = sk[1]
+	sunset = CityStyle.sunset_color(star_col)
+	_set_sky()
 	_sky_h = snappedf(size.y * 0.2, P)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
@@ -39,9 +43,7 @@ func setup(p_size: Vector2, body: Dictionary, p_style: Dictionary, p_day: float,
 		var top := snappedf(_sky_h * rng.randf_range(0.15, 1.0), P)
 		if grid:
 			top = snappedf(_sky_h * [0.3, 0.6][int(x / w) % 2], P)
-		var face := CityStyle.tone(style, "facade", day)
-		face = face.lightened(rng.randf_range(0.0, 0.07)).darkened(rng.randf_range(0.0, 0.1))
-		_blds.append({"x": x, "w": w, "top": top, "face": face, "seed": rng.randi(), "crown": String(crowns[rng.randi() % crowns.size()]),
+		_blds.append({"x": x, "w": w, "top": top, "l": rng.randf_range(0.0, 0.07), "dk": rng.randf_range(0.0, 0.1), "seed": rng.randi(), "crown": String(crowns[rng.randi() % crowns.size()]),
 			"neon": rng.randf() < float(style["neon_share"][2]) + (0.45 if String(style["sign"]) == "banner" else 0.15), "ncol": neon[rng.randi() % neon.size()], "green": rng.randf() < float(style["green"]),
 			"escape": rng.randf() < 0.5})
 		x += w
@@ -53,6 +55,26 @@ func setup(p_size: Vector2, body: Dictionary, p_style: Dictionary, p_day: float,
 	_moving = Node2D.new()
 	_moving.draw.connect(_draw_moving)
 	add_child(_moving)
+
+
+func _set_sky() -> void:
+	var sk: Array = CityStyle.sky(body, day, sunset)
+	_sky_top = sk[0]
+	_sky_low = sk[1]
+
+
+## 0.7.50.8: the day goes on – the canyon in the light of now (the windows come on one by one at dusk).
+func set_day(d: float) -> void:
+	if absf(d - day) < 0.004:
+		return
+	day = d
+	_set_sky()
+	if _static != null:
+		_static.queue_redraw()
+
+
+func _face(b: Dictionary) -> Color:
+	return CityStyle.tone(style, "facade", day).lightened(float(b["l"])).darkened(float(b["dk"])).lerp(sunset, CityStyle.dusk(day) * 0.22)
 
 
 func _process(delta: float) -> void:
@@ -87,7 +109,7 @@ func _draw_static() -> void:
 		var x: float = b["x"]
 		var w: float = b["w"]
 		var top: float = b["top"]
-		var face: Color = b["face"]
+		var face := _face(b)
 		n.draw_rect(Rect2(x, top, w, size.y - top), face)
 		n.draw_rect(Rect2(x, top, P * 2, size.y - top), face.lightened(0.1 + 0.1 * day))
 		n.draw_rect(Rect2(x + w - P * 2, top, P * 2, size.y - top), face.darkened(0.3))
@@ -100,7 +122,8 @@ func _draw_static() -> void:
 			var row_on := r.randf() < lit * 1.3 if style["grid"] else true
 			var wx := x + 12.0
 			while wx < x + w - 24.0:
-				var on := row_on and r.randf() < (0.85 if style["grid"] else lit)
+				var rv := r.randf()
+				var on := row_on and rv < (0.85 if style["grid"] else lit)
 				var wc: Color = wins[0] if r.randf() < float(style["warm"]) else wins[1]
 				var wr := Rect2(wx, y, 12.0, 15.0)
 				n.draw_rect(wr.grow(P * 0.67), face.darkened(0.25))
@@ -200,7 +223,7 @@ func _crown(n: Node2D, b: Dictionary) -> void:
 	var x: float = b["x"]
 	var w: float = b["w"]
 	var top: float = b["top"]
-	var face: Color = b["face"]
+	var face := _face(b)
 	match String(b["crown"]):
 		"spire", "gothic":
 			n.draw_colored_polygon(PackedVector2Array([Vector2(x, top), Vector2(x + w * 0.5, top - 40.0), Vector2(x + w, top)]), face)

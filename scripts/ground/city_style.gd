@@ -112,20 +112,44 @@ static func day_length(body: Dictionary) -> float:
 	return 1200.0 + float(absi(hash(String(body.get("id", "")) + "day")) % 1200)
 
 
-static func light_vec(body: Dictionary = {}) -> Vector3:
+static func light_vec(body: Dictionary = {}, dt: float = 0.0) -> Vector3:
 	if body.is_empty():
 		return Vector3(-0.7, -0.5, 0.55).normalized()
 	var ph := float(absi(hash(String(body.get("id", "")) + "sun")) % 1000) / 1000.0
-	var a := LIGHT_A0 + TAU * fposmod(GameState.play_time / day_length(body) + ph, 1.0)
+	var a := LIGHT_A0 + TAU * fposmod((GameState.play_time + dt) / day_length(body) + ph, 1.0)
 	return Vector3(-sin(a) * 0.86, -0.5, cos(a) * 0.86).normalized()
 
 
 ## How much daylight a site has (0 night … 1 day): where it lies on the planet's face and where the sun stands now.
-static func daylight(site: Dictionary, body: Dictionary = {}) -> float:
+static func daylight(site: Dictionary, body: Dictionary = {}, dt: float = 0.0) -> float:
 	var lon := float(site.get("lon", 0.0))
 	var lat := float(site.get("lat", 0.0))
 	var n := Vector3(sin(lon) * cos(lat), -sin(lat), cos(lon) * cos(lat))
-	return smoothstep(-0.12, 0.18, n.dot(light_vec(body)))
+	return smoothstep(-0.12, 0.18, n.dot(light_vec(body, dt)))
+
+
+## 0.7.50.8: is the sun coming up (true) or going down there?
+static func rising(site: Dictionary, body: Dictionary) -> bool:
+	var lon := float(site.get("lon", 0.0))
+	var lat := float(site.get("lat", 0.0))
+	var n := Vector3(sin(lon) * cos(lat), -sin(lat), cos(lon) * cos(lat))
+	return n.dot(light_vec(body, 5.0)) > n.dot(light_vec(body))
+
+
+## How much of dusk (or dawn) there is: 0 in full day or full night, 1 in the middle of the change.
+static func dusk(day: float) -> float:
+	return clampf(1.0 - absf(day * 2.0 - 1.0), 0.0, 1.0)
+
+
+## The colour of the setting sun – the star's own light, reddened by the air.
+static func sunset_color(star_col: Color) -> Color:
+	return star_col.lerp(Color(1.0, 0.42, 0.16), 0.6)
+
+
+static func star_color(sys_id: int) -> Color:
+	if sys_id < 0:
+		return Color(1.0, 0.85, 0.5)
+	return Color(Universe.get_layout(sys_id)["star"].get("color", Color(1.0, 0.85, 0.5)))
 
 
 ## Minutes until the light changes at a site (sunrise or sunset) – for the planet map.
@@ -151,7 +175,7 @@ static func tone(style: Dictionary, key: String, day: float) -> Color:
 
 
 ## The sky over a city: top and horizon colours, by the world's air and the time of day.
-static func sky(body: Dictionary, day: float) -> Array:
+static func sky(body: Dictionary, day: float, sunset: Color = Color(1.0, 0.45, 0.2)) -> Array:
 	var bt := Universe.body_type(String(body.get("type", "")))
 	var ac = bt.get("atmo", Color(0.5, 0.7, 1.0))
 	var air: Color = ac if ac is Color else Color(0.5, 0.7, 1.0)
@@ -160,4 +184,5 @@ static func sky(body: Dictionary, day: float) -> Array:
 	var n_low := air.darkened(0.55).lerp(Color(1.0, 0.5, 0.3), 0.35)
 	var d_top := air.darkened(0.15).lerp(Color(0.35, 0.55, 0.9), 0.3)
 	var d_low := air.lightened(0.45).lerp(Color(1.0, 0.95, 0.85), 0.35)
-	return [n_top.lerp(d_top, day), n_low.lerp(d_low, day)]
+	var dk := dusk(day)
+	return [n_top.lerp(d_top, day).lerp(Color(0.32, 0.18, 0.4), dk * 0.45), n_low.lerp(d_low, day).lerp(sunset, dk * 0.85)]

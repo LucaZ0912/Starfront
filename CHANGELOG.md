@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.8 – 2026-11-10
+
+**Sunset from the tower bar – the day goes on while you are in the city.**
+- The time of day in a city now goes on while you walk in it (before, it was fixed when you came down): the sky
+  outside, the street's light and the light falling through the bar's glass follow the sun as it goes round.
+- **Dusk and dawn:** the sky turns to the colour of the star's setting light (a red dwarf's deep red, a blue star's
+  violet, a yellow sun's orange), the towers glow in it, the sun sinks low and big behind the towers in the west (or
+  rises in the east), the light through the bar's window turns to sunset, and the windows of the city come on one by
+  one – the red lights on the tops start blinking, the neon brightens. At dawn the other way round.
+- The street: its light warms at dusk and darkens into night (the lamps and neon taking over), and brightens at
+  dawn.
+
 ## alpha 0.7.50.7 – 2026-11-10
 
 **Cities: a ground plan for every kind of world, the worlds turn, bar and hangar in the city's style.**

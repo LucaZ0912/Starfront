@@ -6,6 +6,9 @@ extends Node2D
 ## 0.7.50.6: built in the city's style (CityStyle – independent, Assembly, Covenant, Directorate) and lit by its time
 ## of day: at night the windows and neon glow and red lights blink on the tops; by day the towers stand in the sun,
 ## their glass catching the sky, a few lights still on.
+## 0.7.50.8: the day goes on while you sit there (set_day) – at dusk the sky turns to the colour of the star's
+## setting light, the sun sinks behind the towers on the west (or rises in the east), and the windows come on one by
+## one; at dawn the other way round.
 
 const P := 3.0                          # one art pixel
 
@@ -24,21 +27,33 @@ var _t := 0.0
 var _scroll := 0.0
 var _span := 4000.0
 const PAR := [0.92, 0.78, 0.55]
+var body: Dictionary = {}
+var star_col := Color(1.0, 0.85, 0.5)
+var sunset := Color(1.0, 0.45, 0.2)
+var rising := false
+var _sky: Node2D
+var _sun: Node2D
 
 
-func setup(p_size: Vector2, body: Dictionary, seed_v: int, span: float = 4000.0, p_style: Dictionary = {}, p_day: float = 0.0) -> void:
+func setup(p_size: Vector2, p_body: Dictionary, seed_v: int, span: float = 4000.0, p_style: Dictionary = {}, p_day: float = 0.0, p_star: Color = Color(1.0, 0.85, 0.5), p_rising: bool = false) -> void:
 	size = p_size
+	body = p_body
 	_span = maxf(span, size.x + 400.0)
 	_rng.seed = seed_v
 	if not p_style.is_empty():
 		style = p_style
+	star_col = p_star
+	sunset = CityStyle.sunset_color(star_col)
+	rising = p_rising
 	day = p_day
-	var sk: Array = CityStyle.sky(body, day)
-	_sky_top = sk[0]
-	_sky_low = sk[1]
+	_set_sky()
 	var sky := Node2D.new()
 	sky.draw.connect(_draw_sky.bind(sky))
 	add_child(sky)
+	_sky = sky
+	_sun = Node2D.new()                                   # the sun, far away – behind all the towers
+	_sun.draw.connect(_draw_sun)
+	add_child(_sun)
 	for d in 3:
 		var node := Node2D.new()
 		var towers := _make_towers(d)
@@ -58,6 +73,53 @@ func setup(p_size: Vector2, body: Dictionary, seed_v: int, span: float = 4000.0,
 		_drones.append([_rng.randf_range(0.0, _span), _rng.randf_range(size.y * 0.15, size.y * 0.75), _rng.randf() * TAU, _rng.randf_range(16.0, 40.0) * (1.0 if j % 2 == 0 else -1.0)])
 
 
+func _set_sky() -> void:
+	var sk: Array = CityStyle.sky(body, day, sunset)
+	_sky_top = sk[0]
+	_sky_low = sk[1]
+
+
+## 0.7.50.8: the time of day changes – everything outside is drawn anew in its light.
+func set_day(d: float, p_rising: bool) -> void:
+	if absf(d - day) < 0.004 and p_rising == rising:
+		return
+	day = d
+	rising = p_rising
+	_set_sky()
+	if _sky != null:
+		_sky.queue_redraw()
+	if _sun != null:
+		_sun.queue_redraw()
+	for l in _layers:
+		(l[0] as Node2D).queue_redraw()
+
+
+## A tower's colour in the light of now: its style's tone, far ones fading into the air, at dusk lit by the sunset.
+func _tower_col(t: Dictionary, d: int) -> Color:
+	var fade_k: float = [0.38, 0.16, 0.02][d] if day < 0.5 else [0.5, 0.25, 0.05][d]
+	var base := CityStyle.tone(style, "tower", day).lerp(_sky_low, fade_k)
+	return base.lightened(float(t["l"])).darkened(float(t["dk"]))
+
+
+func _draw_sun() -> void:
+	# up by day, low and big at dusk, below the horizon at night; in the west when it sets, the east when it rises
+	if day <= 0.02:
+		return
+	var dk := CityStyle.dusk(day)
+	var y := size.y * (1.08 - 0.8 * day)                    # at the change it touches the towers' tops
+	var x := size.x * (0.82 if rising else 0.18)
+	var p := Vector2(x, y)
+	var col := star_col.lerp(Color.WHITE, 0.4).lerp(sunset, dk)
+	var r := lerpf(26.0, 40.0, dk)
+	for g in 4:
+		_sun.draw_circle(p, r * (4.5 - g), Color(col, (0.05 + 0.04 * g) * (0.5 + dk)))
+	_sun.draw_circle(p, r, col.lerp(Color.WHITE, 0.35))
+	_sun.draw_circle(p, r * 0.7, col.lerp(Color.WHITE, 0.7))
+	# at dusk a band of light along the horizon
+	if dk > 0.05:
+		_sun.draw_rect(Rect2(-200.0 + -position.x, size.y * 0.62, _span + 400.0, size.y * 0.4), Color(sunset, 0.18 * dk))
+
+
 ## Towers of one depth: 0 far, 1 middle, 2 near.
 func _make_towers(d: int) -> Array:
 	var out: Array = []
@@ -65,7 +127,6 @@ func _make_towers(d: int) -> Array:
 	var grid: bool = style["grid"]
 	var crowns: Array = style["crowns"]
 	var neon: Array = style["neon"]
-	var base0 := CityStyle.tone(style, "tower", day)
 	while x < _span:
 		var w := _rng.randf_range([36.0, 60.0, 110.0][d], [70.0, 130.0, 220.0][d])
 		if grid:
@@ -74,10 +135,7 @@ func _make_towers(d: int) -> Array:
 		if d == 2 and _rng.randf() < 0.45:
 			x += w + _rng.randf_range(120.0, 360.0)        # the near ones stand apart – you see past them
 			continue
-		# far towers fade into the air
-		var fade_k: float = [0.38, 0.16, 0.02][d] if day < 0.5 else [0.5, 0.25, 0.05][d]
-		var base := base0.lerp(_sky_low, fade_k)
-		var t := {"x": snappedf(x, P), "w": snappedf(w, P), "top": snappedf(top, P), "col": base.lightened(_rng.randf_range(0.0, 0.06)).darkened(_rng.randf_range(0.0, 0.08)),
+		var t := {"x": snappedf(x, P), "w": snappedf(w, P), "top": snappedf(top, P), "l": _rng.randf_range(0.0, 0.06), "dk": _rng.randf_range(0.0, 0.08),
 			"seed": _rng.randi(), "neon": _rng.randf() < float(style["neon_share"][d]), "ncol": neon[_rng.randi() % neon.size()],
 			"crown": String(crowns[_rng.randi() % crowns.size()]), "green": _rng.randf() < float(style["green"])}
 		out.append(t)
@@ -107,6 +165,8 @@ func scroll(off_x: float) -> void:
 	_scroll = off_x
 	for l in _layers:
 		(l[0] as Node2D).position.x = round(-off_x * PAR[int(l[2])])
+	if _sun != null:
+		_sun.position.x = round(-off_x * 0.97)
 	if _traffic != null:
 		_traffic.position.x = round(-off_x * 0.7)
 
@@ -160,9 +220,9 @@ func _draw_layer(n: Node2D, towers: Array, d: int) -> void:
 		var x: float = t["x"]
 		var w: float = t["w"]
 		var top: float = t["top"]
-		var col: Color = t["col"]
+		var col := _tower_col(t, d)
 		var h := size.y - top + 40.0
-		var lit_edge := col.lightened(0.12 + 0.18 * day)
+		var lit_edge := col.lightened(0.12 + 0.18 * day).lerp(sunset, CityStyle.dusk(day) * 0.5)
 		n.draw_rect(Rect2(x, top, w, h), col)
 		# the side the light falls on (the sun by day is low on the left)
 		n.draw_rect(Rect2(x, top, P * (1 if d == 0 else 2), h), lit_edge)
@@ -179,7 +239,8 @@ func _draw_layer(n: Node2D, towers: Array, d: int) -> void:
 			# the Directorate: whole floors lit evenly; the others: window by window
 			var row_lit := r.randf() < lit_share * 1.3 if grid else true
 			while xx < x + w - cell * 0.5 - P:
-				var on := row_lit and r.randf() < (0.85 if grid else lit_share)
+				var rv := r.randf()
+				var on := row_lit and rv < (0.85 if grid else lit_share)
 				if on:
 					var wc: Color = wins[0] if r.randf() < warm else wins[1]
 					n.draw_rect(Rect2(snappedf(xx, P), snappedf(yy, P), ww, wh), Color(wc, [0.45, 0.65, 0.85][d] * lerpf(1.0, 0.5, day)))

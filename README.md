@@ -209,7 +209,10 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.50.7: `FlightScene.CITY_FORMS` / `_build_city` (ground plan points, kinds `CP`), `CityStyle.light_vec(body)` /
   `day_length` / `minutes_to_turn` (the sun goes round each world over `GameState.play_time`; planet shader uniform
   `light_z`), `CityStyle.DECK` (deck palette, bar theme, hangar flags; `DeckGen.palette_for` for cities), face deco
-  `flag`.; `texture()` renders floors and walls once.
+  `flag`.
+- 0.7.50.8: `GroundView._update_city_day` / `_apply_day` (twice a second: `CitySkyline.set_day(d, rising)`,
+  `CityCanyon.set_day`, the street tint, the lights in `_city_lights`); `CityStyle.rising`, `dusk`, `sunset_color`,
+  `star_color`; `CityStyle.sky(body, day, sunset)`; the skyline's sun (`_draw_sun`, its own parallax).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,
