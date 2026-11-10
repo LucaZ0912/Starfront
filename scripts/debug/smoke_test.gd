@@ -7816,6 +7816,7 @@ func _test_landing(view: SystemView) -> void:
 	_test_settlement(view, body, sites_all)
 	_test_takeoff(body, sites_all)
 	_test_env()
+	_test_clinic(view, body, sites_all)
 	# 0.7.50.4: a small place - down by the landing drone, not the ship; a city - the ship herself
 	var drone_ok := true
 	if down:
@@ -7893,6 +7894,46 @@ func _test_takeoff(body: Dictionary, sites_all: Array) -> void:
 	var map_ok: bool = main.planet_map != null and f.docked_at == "land:" + bid and main.ground == null
 	check(ramp_ok and lights == 4 and menu_ok and shut and caught and map_ok,
 		"0.7.50.15: %s – the drone's ramp down, %d pads lit, take-off: orbit or planet map, ramp up, the drone caught by the ship, back to the planet map" % [String(site["name"]), lights])
+
+
+## 0.7.51.4: the clinic – a room on a station's commercial level (none in a settlement); fallen on foot at a
+## settlement you wake in the nearest city's clinic (your ship in its hangar), the pockets emptied; after a lost ship
+## you wake in the station's clinic.
+func _test_clinic(view: SystemView, body: Dictionary, sites_all: Array) -> void:
+	var site := {}
+	var has_city := false
+	for s in sites_all:
+		if String(s["kind"]) in ["outpost", "mine", "research"] and site.is_empty():
+			site = s
+	has_city = not main.nearest_clinic_city(view.system_id, String(body["id"])).is_empty()
+	if site.is_empty() or not has_city:
+		check(true, "0.7.51.4: (no settlement here or no city in the system)")
+		return
+	var f := GameState.active()
+	var gear = GameState.gear
+	# a station's commercial level has the clinic
+	var st: Dictionary = view.stations.values()[0].data
+	var deck := DeckGen.build(st, {"clinic": "", "market": "", "gear": ""})
+	var room_ok := false
+	for z in deck.zones:
+		room_ok = room_ok or (String(z.get("kind", "")) == "service" and String(z.get("id", "")) == "clinic")
+	# fallen at a settlement
+	main.land_at(body, site)
+	gear.add_item("cs_medkit", 2)
+	gear.add_item("wp_smg:C")
+	main._fallen()
+	var g = main.ground
+	var city_ok: bool = g != null and g.is_city() and g.level == "street" and f.docked_at.begins_with("land:") and bool(Commands.docked_station().get("city", false)) \
+		and g.pilot.pos.distance_to(g._clinic_spot()) < 2.0 and gear.free_places() == gear.inv.size() and gear.health < 100.0
+	var treat: String = Commands.execute({"type": "clinic_heal"})
+	var healed: bool = treat == "" and is_equal_approx(gear.health, 100.0)
+	# after a lost ship: the station's clinic
+	main._wake_at(st)
+	var g2 = main.ground
+	var station_ok: bool = g2 != null and g2.level == "commercial" and g2.pilot.pos.distance_to(g2._clinic_spot()) < 2.0
+	main.close_deck(false)
+	check(room_ok and city_ok and healed and station_ok,
+		"0.7.51.4: the clinic – a room on the commercial level; fallen at %s you wake in %s's clinic (ship in its hangar, pockets emptied), treatment heals; after a lost ship you wake in the station's clinic" % [String(site["name"]), String(Commands.docked_station().get("name", "?"))])
 
 
 ## 0.7.51.3: outside on an airless moon – the helmet on (the townsfolk in suits too), the tank empties, the life

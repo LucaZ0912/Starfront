@@ -48,7 +48,7 @@ const THEMES := {
 		"props": ["barrel", "trash", "holo", "cage", "holo"], "seat": Color(0.4, 0.18, 0.2)},
 }
 ## Shops below the corridor (the bar has its own room); the ship services are terminals in the dock office.
-const SHOPS := ["market", "outfitter", "gear", "shipyard", "bonds", "look", "refinery", "manufacturing", "senate", "curia", "exchange"]
+const SHOPS := ["market", "outfitter", "gear", "clinic", "shipyard", "bonds", "look", "refinery", "manufacturing", "senate", "curia", "exchange"]
 const SHOP_W := 7
 const DOCK_TERMINALS := ["fuel", "repair", "drones", "munitions", "hangar"]
 const KIOSKS := ["news", "bulletin"]
@@ -611,6 +611,8 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 			deco = "screen"
 		"look":
 			deco = "poster"
+		"clinic":
+			deco = "screen"
 	for fx in range(sx + 1, sx + rw - 1, 2):
 		if fx + 1 < sx + rw - 1 and not (fx <= dx + 1 and fx + 1 >= dx):
 			m.face_deco.append({"kind": deco, "x": fx, "y": sface, "w": 2, "col": col})
@@ -625,6 +627,10 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 			m.add_object({"kind": "display", "x": sx + 1, "y": sy1 - 1, "w": 2, "h": 1, "col": col})
 		"refinery", "manufacturing":
 			m.add_object({"kind": "machine", "x": sx + 1, "y": sy1 - 1, "w": 2, "h": 2})
+		"clinic":
+			# 0.7.51.4: beds along the back wall – where you wake
+			m.add_object({"kind": "med_bed", "x": sx + 1, "y": sface + 1, "w": 2, "h": 2, "col": col})
+			m.add_object({"kind": "med_bed", "x": sx + 1, "y": sface + 4, "w": 2, "h": 2, "col": col})
 		_:
 			m.add_object({"kind": "plant", "x": sx + 1, "y": sy1, "w": 1, "h": 1})
 	m.decals.append({"kind": "mat", "x": dx, "y": sface + 1, "w": 2, "h": 1, "col": col})

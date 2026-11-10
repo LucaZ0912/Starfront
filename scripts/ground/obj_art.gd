@@ -103,6 +103,8 @@ static func _rise(kind: String) -> int:
 			return 14
 		"stool", "railing":
 			return 6
+		"med_bed":
+			return 14
 	return 6
 
 
@@ -300,6 +302,16 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw / 2 - 1, 4, 2, fy + ph - 6, metal.darkened(0.3))
 			_r(img, pw / 2 - 2, fy + ph - 4, 4, 2, metal.darkened(0.4))
 			_ellipse(img, pw * 0.5, 3, 4, 3, c.lightened(0.4))
+		"med_bed":                  # 0.7.51.4: a clinic bed – white frame, blue sheet, a monitor at its head
+			_r(img, 1, fy, pw - 2, ph - 2, Color(0.88, 0.9, 0.92))
+			_r(img, 2, fy + 2, pw - 4, ph - 6, Color(0.55, 0.75, 0.95))
+			_r(img, 2, fy + 2, pw - 4, 4, Color(0.96, 0.97, 0.98))                       # the pillow
+			_r(img, 2, fy + ph - 4, 2, 4, metal.darkened(0.4))
+			_r(img, pw - 4, fy + ph - 4, 2, 4, metal.darkened(0.4))
+			_r(img, pw - 7, fy - 12, 6, 8, Color(0.08, 0.1, 0.12))                       # the monitor
+			_r(img, pw - 6, fy - 9, 4, 1, Color(0.4, 1.0, 0.55))
+			_r(img, pw - 5, fy - 11, 1, 2, Color(0.4, 1.0, 0.55))
+			_r(img, pw - 4, fy - 4, 1, 4, metal.darkened(0.3))
 		"table_small":
 			_r(img, 2, fy, pw - 4, ph - 6, wood.lightened(0.12))
 			_r(img, 2, fy, pw - 4, 2, wood.lightened(0.3))

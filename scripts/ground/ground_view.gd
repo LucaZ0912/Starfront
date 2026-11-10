@@ -257,6 +257,12 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
 		pilot.visible = false
+	elif arrive == "clinic" and _clinic_spot() != Vector2.INF:
+		# 0.7.51.4: you come to beside a clinic bed
+		pilot.pos = _clinic_spot()
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0
+		_say_toast("You come to in the clinic of %s." % String(station.get("name", "the station")), 5.0)
 	elif arrive == "lift" and not map.lifts.is_empty():
 		_arrive_lift = 0
 		var l0: Dictionary = map.lifts[0]
@@ -377,6 +383,21 @@ func _slung() -> String:
 		if String(w) != "":
 			return String(ChibiArt.GearData.base(String(w)).get("dtype", "kinetic"))
 	return ""
+
+
+## 0.7.51.4: where you wake – inside the clinic, by its beds (INF: no clinic here).
+func _clinic_spot() -> Vector2:
+	for z in map.zones:
+		if String(z.get("kind", "")) == "service" and String(z.get("id", "")) == "clinic":
+			var r: Rect2 = z["rect"]
+			return Vector2(r.position.x + r.size.x * 0.6, r.get_center().y)
+	return Vector2.INF
+
+
+## 0.7.51.4: wake in the clinic – on the commercial level of a station, in a city's street. False if there is none.
+func wake_in_clinic() -> bool:
+	go_level("street" if is_city() else "commercial", "clinic")
+	return _clinic_spot() != Vector2.INF
 
 
 ## 0.7.51.3: the people out in the open on a hostile world wear suits and helmets too.

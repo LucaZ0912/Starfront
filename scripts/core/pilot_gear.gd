@@ -202,6 +202,21 @@ func charge() -> void:
 	oxygen = float(t["oxygen"])
 
 
+## 0.7.51.4: fallen outside and found – what was in the pockets is gone; you come to weak, the suit recharged.
+## Returns the names of what was lost.
+func fall() -> Array:
+	var lost: Array = []
+	for i in inv.size():
+		var p: Dictionary = inv[i]
+		if not p.is_empty():
+			lost.append(GearData.display_name(String(p["id"])) + (" ×%d" % int(p["n"]) if int(p["n"]) > 1 else ""))
+			inv[i] = {}
+	charge()
+	health = 60.0
+	stim_t = 0.0
+	return lost
+
+
 ## Back aboard the ship: charged, and the medbay sees to the body.
 func aboard() -> void:
 	charge()

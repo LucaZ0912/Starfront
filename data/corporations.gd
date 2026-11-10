@@ -10,6 +10,12 @@ const CORPS := {
 		"slogan": "Every crew starts with a round.",
 		"desc": "A bar on every station that matters, older than most of them. Spacers between posts drink, talk and wait here – and captains who need hands know where to look.",
 	},
+	# package 51: the clinics – where pilots are patched up, and where they wake
+	"mhc": {
+		"name": "Mercy Hall", "tag": "MHC", "color": Color(1.0, 0.45, 0.45),
+		"slogan": "We have seen worse.",
+		"desc": "Clinics on every station and in every city: they patch you up – and take in who was found outside.",
+	},
 	# package 51: the Gear shops – suits, sidearms, tools for the pilot on foot
 	"fkt": {
 		"name": "Fieldkit Outfitters", "tag": "FKT", "color": Color(0.55, 0.9, 0.45),

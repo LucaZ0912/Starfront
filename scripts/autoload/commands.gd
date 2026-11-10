@@ -766,6 +766,25 @@ func _c_market_buy(c: Dictionary) -> String:
 
 
 ## {"type":"market_sell", "item": String, "amount": float (-1 = all)}
+## Package 51 (0.7.51.4): what the clinic asks to treat what is hurt.
+func clinic_price() -> int:
+	return int(ceil(maxf(0.0, 100.0 - float(GameState.gear.health)) * 12.0))
+
+
+func _c_clinic_heal(_c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var price := GameState.rep.buy_price(clinic_price(), docked_faction())
+	if price <= 0:
+		return "Nothing to treat."
+	if not GameState.spend(price):
+		return "Not enough credits."
+	GameState.gear.health = 100.0
+	GameState.log_msg("Treated at the clinic – you feel well again.", GameState.COL_GOOD)
+	return ""
+
+
 ## Package 51: buys a piece of personal gear at the Gear shop – into the pockets.
 func _c_gear_buy(c: Dictionary) -> String:
 	var e := _need_service()

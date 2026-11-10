@@ -153,6 +153,13 @@ Trade moves the stock: sell a hold full of anything and its price drops with eve
 
 What bounds a settlement is its world: dense jungle, the sea round its platforms, dunes, ice, a crater's rocks, cooled lava.",
 		"see": ["basics_cities"]},
+	"basics_gear": {"cat": "basics", "title": "Suits and personal gear", "unlock": "on_foot", "image": {"icon": "o_armor"},
+		"text": "Outside the ship you wear a suit – it is to you what the hull is to your ship. Its class sets how many weapons you carry, how many places your belt has and how many features it takes; its quality, F to A, gives a better shield, more armour, more energy, more air and more ammunition. Civilian suits carry one weapon, combat suits up to three.
+
+Every suit has an energy store and an oxygen tank. Out on a hostile world the life support keeps out heat, cold, poison and vacuum on the suit's energy; what gets through hurts, and where the air cannot be breathed the tank empties. Charging points by the landing pads fill both up, and so does your ship. The belt's places sit on the number keys: medkits, stimulants, energy cells, oxygen, ammunition – grenades and tools come with the fights and the places to explore. Lasers are strong against shields, slugs against armour, explosives against the body.
+
+The Gear shops (Fieldkit Outfitters) sell all of it. If you fall outside, someone finds you: you wake in the clinic of the nearest city, or of the last station – and what was in your pockets is gone. If your ship is lost, you wake in the clinic of the station she is rebuilt at.",
+		"see": ["basics_settlements", "basics_landing"]},
 	"basics_landing": {"cat": "basics", "title": "Landing on planets", "unlock": "landing", "image": {"icon": "engine"},
 		"text": "Over the middle of every planet and moon with solid ground hangs a descent beacon – warp to it, and from there your ship goes down: it speeds up and sinks, smaller and smaller, into the world below. Where there is air, the way down glows with heat.
 

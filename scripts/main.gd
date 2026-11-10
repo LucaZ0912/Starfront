@@ -48,6 +48,7 @@ func _ready() -> void:
 		loss_window.open(o)
 		_update_input())
 	loss_window.closed.connect(_update_input)
+	loss_window.closed.connect(func(): _wake_after_loss.call_deferred())     # 0.7.51.4: then you wake in the clinic
 	transit_fx = TransitOverlay.new()
 	add_child(transit_fx)
 	pause_menu = PauseMenu.new()
@@ -381,6 +382,75 @@ func drone_up(body: Dictionary, site: Dictionary, dest: String) -> void:
 	_update_input()
 
 
+# ---------------------------------------------------------------- 0.7.51.4: the clinic
+
+## Wakes the pilot in the clinic of a station or city (its deck opens there).
+func _wake_at(st: Dictionary) -> void:
+	_open_ground_at(st)
+	if ground != null and is_instance_valid(ground):
+		ground.wake_in_clinic()
+	fade(Color(0, 0, 0, 1), 0.01)
+	_fade.color = Color(0, 0, 0, 1)
+	fade(Color(0, 0, 0, 0), 1.6)
+
+
+## After the ship was lost (and the buy-back window is closed): in the clinic of the station she was rebuilt at.
+func _wake_after_loss() -> void:
+	if not GameState.wake_pending:
+		return
+	GameState.wake_pending = false
+	var f := GameState.active()
+	if f != null and f.docked_at != "" and view != null and view.stations.has(f.docked_at):
+		_wake_at(view.stations[f.docked_at].data)
+
+
+## The body gave out on foot: found and brought to the nearest city with a clinic in this system – your ship is
+## taken to its hangar – or, if there is none, to the last station (the ship with you). What was in the pockets is
+## gone.
+func _fallen() -> void:
+	var f := GameState.active()
+	var lost: Array = GameState.gear.fall()
+	var sys := GameState.current_system
+	var here := f.docked_at.substr(5).split("|")[0] if f != null and f.docked_at.begins_with("land:") else ""
+	close_deck(false)
+	_close_planet_map()
+	if f == null:
+		return
+	var city := nearest_clinic_city(sys, here)
+	var what := ("Lost from your pockets: " + ", ".join(PackedStringArray(lost)) + ".") if not lost.is_empty() else "Your pockets were empty."
+	if not city.is_empty():
+		f.docked_at = String(city["id"])
+		Economy.prepare_station(city, sys)
+		GameState.log_msg("You collapsed outside. They found you and brought you to %s – your ship waits in its hangar. %s" % [String(city.get("name", "the city")), what], GameState.COL_BAD)
+		_wake_at(city)
+		return
+	var st := GameState._respawn_station()
+	f.system_id = int(GameState.last_station.get("system", Universe.home_system))
+	f.docked_at = String(st["id"])
+	f.position = st["pos"]
+	if view != null and is_instance_valid(view) and view.player != null and is_instance_valid(view.player):
+		view.player.queue_free()
+		view.player = null
+	GameState.log_msg("You collapsed outside. There is no clinic in this system – they flew you and your ship to %s. %s" % [String(st.get("name", "the station")), what], GameState.COL_BAD)
+	GameState.wake_pending = true
+	GameState.active_changed.emit()
+	_wake_after_loss.call_deferred()
+
+
+## The nearest city with a clinic in a system – on the body you were on first, else any. {} if there is none.
+func nearest_clinic_city(sys: int, body_id: String = "") -> Dictionary:
+	var L := Universe.get_layout(sys)
+	var bodies: Array = L["planets"] + L.get("moons", [])
+	bodies.sort_custom(func(a, b): return String(a["id"]) == body_id and String(b["id"]) != body_id)
+	for b2 in bodies:
+		if not Universe.landable(b2):
+			continue
+		for s in Universe.landing_sites(sys, b2):
+			if String(s["kind"]) == "city":
+				return Universe.city_station(sys, b2, s)
+	return {}
+
+
 ## Back into the ship (open: show the station window again).
 func close_deck(open_window: bool = true) -> void:
 	if ground != null and is_instance_valid(ground):
@@ -394,10 +464,7 @@ func close_deck(open_window: bool = true) -> void:
 func _on_deck_use(z: Dictionary) -> void:
 	match String(z.get("kind", "")):
 		"collapse":
-			# 0.7.51.3: the body gave out outside – for now the drone's autopilot brings you up to the ship
-			# (0.7.51.4: you wake in a clinic)
-			GameState.log_msg("You collapsed – the landing drone's autopilot carried you back up to your ship.", GameState.COL_BAD)
-			take_off("orbit")
+			_fallen()                                          # 0.7.51.4: you wake in a clinic
 		"exit":
 			var dest := String(z.get("dest", "orbit"))
 			if ground != null and is_instance_valid(ground) and ground.level in ["landing", "settlement"]:

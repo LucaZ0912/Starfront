@@ -262,6 +262,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   `PilotGear.env_step(delta, env, sprinting)`, `speed_mult`, `use_belt(i)`, `charge()`, `aboard()`, `stim_t`;
   `GroundView.env`, `indoors()`, `_env_step`, `_collapse` (used {kind "collapse"}), `use_belt`, `_outside_look`, zone
   kind `charge`; `scripts/ground/suit_hud.gd` – `SuitHud`; `main` calls `gear.aboard()` at landing, decks, take-off.
+- 0.7.51.4: service `clinic` (corp `mhc`, `requires` "clinic" – not in settlements, `clinic_panel.gd`), command
+  `clinic_heal` (`Commands.clinic_price()`), `DeckGen.SHOPS` with `clinic` (object `med_bed`), `GroundView` arrive
+  "clinic" / `_clinic_spot()` / `wake_in_clinic()`; `main._wake_at(st)`, `_wake_after_loss` (`GameState.wake_pending`
+  after `on_player_ship_lost`), `_fallen()` / `nearest_clinic_city(sys, body)`, `PilotGear.fall()`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

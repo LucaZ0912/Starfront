@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.4 – 2026-11-10
+
+**The clinic, and where you wake (Luz).** Package 51 is complete.
+- **The Clinic (Mercy Hall)** is a real room on every station's commercial level and in every city's shopping
+  street – two beds with their monitors along the wall; treatment heals what is hurt (paid by what is missing).
+  Settlements have none.
+- **Ship lost:** after the buy-back window you wake in the clinic of the last station you docked at.
+- **Fallen on foot:** you wake in the clinic of the nearest city in the system (your ship is taken to its hangar) –
+  if there is none, at the last station (the ship with you). What was in your pockets is gone; you come to weak.
+- A codex entry on suits and personal gear.
+
 ## alpha 0.7.51.3 – 2026-11-10
 
 **The world outside: energy, oxygen, what gets through.**

@@ -208,6 +208,8 @@ func service_available(svc: Dictionary) -> String:
 			return "" if station.get("exchange", false) else "Only in the Meridian Sphere (Durchbruch)"
 		"munitions":
 			return "" if not Munitions.offer(station).is_empty() else "No munitions stocked here (the system's economy)"
+		"clinic":
+			return "" if not station.get("settlement", false) else "No clinic in a settlement – the cities and stations have one"
 	return ""
 
 

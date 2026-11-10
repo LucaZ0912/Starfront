@@ -18,6 +18,9 @@ const SERVICES := [
 		"panel": "res://scripts/ui/station/refinery_panel.gd", "requires": "refinery"},
 	{"id": "manufacturing", "title": "Manufacturing", "corp": "mlf", "icon": "distributor",
 		"panel": "res://scripts/ui/station/manufacturing_panel.gd", "requires": "manufacturing"},
+	# package 51 (0.7.51.4): the clinic – a room with beds; treatment, and where you wake
+	{"id": "clinic", "title": "Clinic", "corp": "mhc", "icon": "t_repair",
+		"panel": "res://scripts/ui/station/clinic_panel.gd", "requires": "clinic"},
 	# package 51: the personal outfitter – suits, weapons, tools for the pilot on foot
 	{"id": "gear", "title": "Gear", "corp": "fkt", "icon": "o_armor",
 		"panel": "res://scripts/ui/station/gear_panel.gd", "requires": ""},

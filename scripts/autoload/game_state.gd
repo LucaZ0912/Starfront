@@ -128,6 +128,7 @@ var research_data := 0
 ## Package 51: the pilot's personal equipment – suit, weapons, belt, features, pockets, the ships' lockers.
 const PilotGearScript = preload("res://scripts/core/pilot_gear.gd")
 var gear = PilotGearScript.new()
+var wake_pending := false        # 0.7.51.4: the ship was lost – after the buy-back window you wake in the clinic
 const DATA_PRICE := 5000           # per unit of data …
 const DATA_REP := 0.5              # … and standing with the Directorate
 const EM_SELL := 12000             # exotic matter: what the exchange pays …
@@ -925,7 +926,10 @@ func _lose_active(f: ShipFitting) -> void:
 		"station": String(st0["id"]), "station_system": int(last_station.get("system", Universe.home_system)),
 		"insured": insured, "cargo_value": cargo_value(f), "alive": alive.map(func(e): return e["m"]["name"]), "dead": dead.map(func(e): return e["name"]),
 		"system": f.system_id, "where": f.location_text()}
-	# back at the last station, for now in a beginner ship
+	# back at the last station, for now in a beginner ship – and you wake in its clinic (0.7.51.4)
+	wake_pending = true
+	gear.aboard()
+	gear.health = 70.0
 	var next := _beginner_ship()
 	active_uid = next.uid
 	log_msg("Your own escape pod reaches %s. Aegis Mutual offers to rebuild the %s for %s." % [next.location_text(), f.ship_name, GameData.fmt_credits(price)], COL_WARN)
