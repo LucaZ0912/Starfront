@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.3 – 2026-11-10
+
+**The world outside: energy, oxygen, what gets through.**
+- **Each kind of world has its air and its hazards:** terran, ocean and jungle worlds good to breathe; deserts hot;
+  ice worlds cold and thin; lava worlds hot and toxic; metal worlds toxic; rocks, dwarfs and most moons airless
+  and cold; icy moons bitterly cold; volcanic moons hot, toxic, almost airless.
+- **Outside** (landing fields and settlements – not under a roof, not in a city or on a station) **the suit works:**
+  its life support keeps out what it can and draws energy for it; what gets through (by the suit's protection)
+  hurts; where the air cannot be breathed the oxygen tank empties – empty, you suffocate. The shield generator draws
+  energy all the time, the sprint booster while running. If the energy runs out, the life support stops.
+- **The helmet goes on** where the air is not to be breathed or poisoned – and the townsfolk and guards out there
+  wear suits and helmets too.
+- **On foot, the suit's bars:** health, shield, energy, oxygen (where it is used), ammunition; the hazards and how
+  much of each gets through; the belt along the bottom, its places on the **number keys** – medkits, stimulants
+  (quicker for 20 s), energy cells, oxygen cartridges and the new **ammunition boxes** work; warnings when energy,
+  air or health run low.
+- **Charging points** by every landing pad (the fuel points) fill the suit's energy and oxygen; back aboard, the
+  ship charges the suit and the medbay sees to you.
+- The suit's weight and plates slow you, a stimulant and a sprint booster speed you up.
+- If your body gives out outside, for now the landing drone's autopilot carries you back up (the clinic follows).
+
 ## alpha 0.7.51.2 – 2026-11-10
 
 **The Gear shop, and the pilot in the suit.**

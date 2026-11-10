@@ -786,7 +786,9 @@ static func build_landing(body: Dictionary, site: Dictionary, ship_len: float, s
 	for k in range(0, sl + 1, 4):
 		m.lights.append({"pos": Vector2(px0 + k, py0) * GroundMap.TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35, "flicker": k % 8 == 0})
 		m.lights.append({"pos": Vector2(px0 + k, py0 + sb) * GroundMap.TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35})
-	m.add_object({"kind": "machine", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 2})
+	m.add_object({"kind": "fuel_point", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 1, "rise": 34})
+	m.zones.append({"rect": Rect2(Vector2(px0 + sl + 0.4, py0 + 1.0) * GroundMap.TILE, Vector2(3.2, 1.6) * GroundMap.TILE), "kind": "charge", "id": "charge",
+		"title": "Charging point – the suit's energy and oxygen", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})   # 0.7.51.3
 	m.add_object({"kind": "crates", "x": px0 + sl + 1, "y": py0 + sb - 1, "w": 2, "h": 1})
 	m.add_object({"kind": "lamp_post", "x": px0 + sl + 1, "y": py0 + sb + 2, "w": 1, "h": 1, "col": Color(1.0, 0.8, 0.4)})
 	m.lights.append({"pos": Vector2(px0 + sl + 1.5, py0 + sb + 2.3) * GroundMap.TILE, "r": 44.0, "col": Color(1.0, 0.85, 0.5), "a": 0.35})

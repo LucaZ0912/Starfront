@@ -258,6 +258,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   (cached in `st._gear_offer`), `sells`, `SELL_SHARE`; commands `gear_buy` {id}, `gear_sell` {slot}; `DeckGen.SHOPS` /
   `SettleGen.SHOPS` with `gear` (`SettleGen.TW` 76, `W` 104); `ChibiArt.frame` reads `look.suit` / `look.helmet`
   (`_blend`), `Walker.slung`, `GroundView.pilot_look()` / `needs_helmet()` / `_slung()`.
+- 0.7.51.3: `GearData.ENV` / `env_of(type)` / `needs_helmet(env)`, `LIFE_SUPPORT`, `EXPOSURE_HURT`, `SUFFOCATE`;
+  `PilotGear.env_step(delta, env, sprinting)`, `speed_mult`, `use_belt(i)`, `charge()`, `aboard()`, `stim_t`;
+  `GroundView.env`, `indoors()`, `_env_step`, `_collapse` (used {kind "collapse"}), `use_belt`, `_outside_look`, zone
+  kind `charge`; `scripts/ground/suit_hud.gd` – `SuitHud`; `main` calls `gear.aboard()` at landing, decks, take-off.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

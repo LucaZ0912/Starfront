@@ -170,6 +170,7 @@ func open_deck() -> void:
 	var f := GameState.active()
 	if f == null or f.docked_at == "" or view == null or not view.stations.has(f.docked_at):
 		return
+	GameState.gear.aboard()
 	_open_ground_at(view.stations[f.docked_at].data)
 
 
@@ -253,6 +254,7 @@ func fly_down_to(body: Dictionary, site: Dictionary) -> void:
 func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false) -> void:
 	_close_planet_map()
 	close_deck(false)
+	GameState.gear.aboard()                                  # 0.7.51.3: out of the ship charged and well
 	ground = GroundView.new()
 	ground.name = "Ground"
 	add_child(ground)
@@ -343,6 +345,7 @@ func take_off(dest: String = "orbit") -> void:
 		_update_input()
 		return
 	var body_id := f.docked_at.substr(5).split("|")[0]
+	GameState.gear.aboard()                                  # 0.7.51.3: back aboard – charged, the medbay sees to you
 	if dest == "map":
 		f.docked_at = "land:" + body_id
 		fade(Color(0, 0, 0, 1), 0.01)
@@ -390,6 +393,11 @@ func close_deck(open_window: bool = true) -> void:
 
 func _on_deck_use(z: Dictionary) -> void:
 	match String(z.get("kind", "")):
+		"collapse":
+			# 0.7.51.3: the body gave out outside – for now the drone's autopilot brings you up to the ship
+			# (0.7.51.4: you wake in a clinic)
+			GameState.log_msg("You collapsed – the landing drone's autopilot carried you back up to your ship.", GameState.COL_BAD)
+			take_off("orbit")
 		"exit":
 			var dest := String(z.get("dest", "orbit"))
 			if ground != null and is_instance_valid(ground) and ground.level in ["landing", "settlement"]:

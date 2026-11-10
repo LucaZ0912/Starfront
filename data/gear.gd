@@ -102,6 +102,7 @@ const BELT := {
 	"cs_stim": {"name": "Stimulant", "kind": "use", "time": 20.0, "speed": 1.25, "stack": 4, "price": 220, "desc": "20 seconds quicker on your feet and harder to hit."},
 	"cs_cell": {"name": "Energy Cell", "kind": "use", "energy": 60.0, "stack": 6, "price": 90, "desc": "Recharges the suit: +60 energy."},
 	"cs_o2": {"name": "Oxygen Cartridge", "kind": "use", "oxygen": 15.0, "stack": 6, "price": 60, "desc": "Refills the tank: +15 minutes of air."},
+	"cs_ammo": {"name": "Ammunition Box", "kind": "use", "ammo": 60, "stack": 6, "price": 80, "desc": "Slugs and shells: +60 rounds."},
 }
 
 ## Features – the suit's modules (quality F–A). energy_rate: energy per minute while it works.
@@ -122,6 +123,37 @@ const FEATURES := {
 }
 
 const INV_SLOTS := 12                 # the pilot's own pockets and pack
+
+## 0.7.51.3: what each kind of world does to someone outside – breathable air (else the tank is used), and the
+## hazards 0..1 (heat, cold, toxic air, vacuum). Gas giants only have their cloud cities (package 54).
+const ENV := {
+	"terran": {"breathable": true}, "ocean": {"breathable": true}, "jungle": {"breathable": true, "heat": 0.2},
+	"desert": {"breathable": true, "heat": 0.55},
+	"ice": {"breathable": false, "cold": 0.8},
+	"lava": {"breathable": false, "heat": 1.0, "toxic": 0.7},
+	"metal": {"breathable": false, "heat": 0.3, "toxic": 0.5},
+	"barren": {"breathable": false, "vacuum": 1.0, "cold": 0.4}, "dwarf": {"breathable": false, "vacuum": 1.0, "cold": 0.7},
+	"moon_rock": {"breathable": false, "vacuum": 1.0, "cold": 0.4}, "moon_captured": {"breathable": false, "vacuum": 1.0, "cold": 0.5},
+	"moon_ice": {"breathable": false, "vacuum": 1.0, "cold": 1.0},
+	"moon_volcanic": {"breathable": false, "vacuum": 0.8, "heat": 0.6, "toxic": 0.6},
+}
+const LIFE_SUPPORT := 6.0             # energy a minute the life support needs per full hazard it keeps out
+const EXPOSURE_HURT := 1.2            # health a second per full hazard that gets through
+const SUFFOCATE := 3.0                # health a second without air
+
+
+## The world outside for a body: {breathable, heat, cold, toxic, vacuum}.
+static func env_of(body_type: String) -> Dictionary:
+	var e: Dictionary = (ENV.get(body_type, {"breathable": false, "vacuum": 1.0, "cold": 0.4}) as Dictionary).duplicate()
+	for h in HAZARDS:
+		if not e.has(h):
+			e[h] = 0.0
+	return e
+
+
+## Is a helmet needed out there (the air not to be breathed, or poisoned)?
+static func needs_helmet(env: Dictionary) -> bool:
+	return not bool(env.get("breathable", true)) or float(env.get("toxic", 0.0)) > 0.0 or float(env.get("vacuum", 0.0)) > 0.0
 
 
 static func family(id: String) -> String:

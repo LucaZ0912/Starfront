@@ -18,6 +18,7 @@ var health := GearData.HEALTH
 var energy := 0.0
 var oxygen := 0.0
 var ammo := 0
+var stim_t := 0.0                      # 0.7.51.3: a stimulant working (seconds left)
 
 
 ## A new pilot: a civilian suit (F), a laser pistol, two medkits and an energy cell on the belt.
@@ -103,6 +104,109 @@ func clamp_state() -> void:
 	oxygen = minf(oxygen, float(t["oxygen"]))
 	ammo = mini(ammo, int(t["ammo"]))
 	health = minf(health, GearData.HEALTH)
+
+
+# ---------------------------------------------------------------- 0.7.51.3: outside
+
+## A step outside: the life support keeps out what it can (on the suit's energy), what gets through hurts; without
+## breathable air the tank is used, empty it suffocates; features that work draw energy (the sprint booster only
+## while running). Returns {exposure (hazard that gets through), out_of_air, out_of_energy}.
+func env_step(delta: float, env: Dictionary, sprinting: bool) -> Dictionary:
+	var t := totals()
+	var mins := delta / 60.0
+	var draw := 0.0
+	for fid in features:
+		if String(fid) == "":
+			continue
+		var f := GearData.stats(String(fid))
+		if f.has("energy_rate") and (not f.has("sprint") or sprinting):
+			draw += float(f["energy_rate"])
+	var hz := 0.0
+	for h in GearData.HAZARDS:
+		hz += float(env.get(h, 0.0))
+	draw += hz * GearData.LIFE_SUPPORT
+	energy = maxf(0.0, energy - draw * mins)
+	var powered := energy > 0.0
+	var exposure := 0.0
+	for h2 in GearData.HAZARDS:
+		var sev := float(env.get(h2, 0.0))
+		var prot := float(t["env"].get(h2, 0.0)) if powered else 0.0
+		exposure += sev * (1.0 - prot)
+	health -= exposure * GearData.EXPOSURE_HURT * delta
+	var no_air := false
+	if not bool(env.get("breathable", true)):
+		oxygen = maxf(0.0, oxygen - mins)
+		if oxygen <= 0.0:
+			no_air = true
+			health -= GearData.SUFFOCATE * delta
+	health = maxf(health, 0.0)
+	stim_t = maxf(0.0, stim_t - delta)
+	return {"exposure": exposure, "out_of_air": no_air, "out_of_energy": not powered}
+
+
+## Walking speed × (the suit, its plates, a stimulant; running with a sprint booster).
+func speed_mult(running: bool) -> float:
+	var t := totals()
+	var m := float(t["speed"])
+	if stim_t > 0.0:
+		m *= 1.25
+	if running and energy > 0.0:
+		m *= float(t["sprint"])
+	return m
+
+
+## Uses what is on belt place i: a consumable works (medkit, stimulant, energy cell, oxygen cartridge, ammunition);
+## grenades and tools say when they come. Returns what happened (a line for the screen).
+func use_belt(i: int) -> String:
+	if i < 0 or i >= belt.size() or (belt[i] as Dictionary).is_empty():
+		return ""
+	var p: Dictionary = belt[i]
+	var id := String(p["id"])
+	var s := GearData.stats(id)
+	var t := totals()
+	match String(s.get("kind", "")):
+		"use":
+			if s.has("heal"):
+				if health >= GearData.HEALTH:
+					return "You are not hurt."
+				health = minf(GearData.HEALTH, health + float(s["heal"]))
+			elif s.has("energy"):
+				if energy >= float(t["energy"]):
+					return "The suit's energy is full."
+				energy = minf(float(t["energy"]), energy + float(s["energy"]))
+			elif s.has("oxygen"):
+				if oxygen >= float(t["oxygen"]):
+					return "The tank is full."
+				oxygen = minf(float(t["oxygen"]), oxygen + float(s["oxygen"]))
+			elif s.has("ammo"):
+				if ammo >= int(t["ammo"]):
+					return "No room for more rounds."
+				ammo = mini(int(t["ammo"]), ammo + int(s["ammo"]))
+			elif s.has("time"):
+				stim_t = float(s["time"])
+			p["n"] = int(p["n"]) - 1
+			if int(p["n"]) <= 0:
+				belt[i] = {}
+			return "%s used." % String(s["name"])
+		"grenade":
+			return "%s – throwing comes with the fights on foot." % String(s["name"])
+		"tool":
+			return "%s – its work comes with the places to explore." % String(s["name"])
+	return ""
+
+
+## At a charging point (or aboard): energy and oxygen full again.
+func charge() -> void:
+	var t := totals()
+	energy = float(t["energy"])
+	oxygen = float(t["oxygen"])
+
+
+## Back aboard the ship: charged, and the medbay sees to the body.
+func aboard() -> void:
+	charge()
+	health = GearData.HEALTH
+	stim_t = 0.0
 
 
 # ---------------------------------------------------------------- pockets

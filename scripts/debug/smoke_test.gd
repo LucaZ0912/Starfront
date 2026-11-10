@@ -7815,6 +7815,7 @@ func _test_landing(view: SystemView) -> void:
 	var field: bool = g != null and g.level in ["landing", "settlement"] and g.map.ship_at != Vector2.INF and g._ship_spr != null and g.map.zone_at(g.map.spawn).get("id", "") == "ship"
 	_test_settlement(view, body, sites_all)
 	_test_takeoff(body, sites_all)
+	_test_env()
 	# 0.7.50.4: a small place - down by the landing drone, not the ship; a city - the ship herself
 	var drone_ok := true
 	if down:
@@ -7892,6 +7893,66 @@ func _test_takeoff(body: Dictionary, sites_all: Array) -> void:
 	var map_ok: bool = main.planet_map != null and f.docked_at == "land:" + bid and main.ground == null
 	check(ramp_ok and lights == 4 and menu_ok and shut and caught and map_ok,
 		"0.7.50.15: %s – the drone's ramp down, %d pads lit, take-off: orbit or planet map, ramp up, the drone caught by the ship, back to the planet map" % [String(site["name"]), lights])
+
+
+## 0.7.51.3: outside on an airless moon – the helmet on (the townsfolk in suits too), the tank empties, the life
+## support draws energy, the cold that gets through hurts; a medkit heals, a charging point fills up; without air it
+## suffocates, and at the end the body gives out (collapse). Under a roof the suit rests; a terran world's air is
+## good to breathe.
+func _test_env() -> void:
+	var GD = preload("res://data/gear.gd")
+	var body := {"id": "env_test_moon", "type": "moon_rock", "name": "Test Moon"}
+	var site := {"id": "env_test_site", "kind": "outpost", "name": "Vacuum Post"}
+	main.land_at(body, site)
+	var g = main.ground
+	var gear = GameState.gear
+	var helmet_ok: bool = g.needs_helmet() and bool(g.pilot.look.get("helmet", false))
+	var folk := 0
+	for w in g.people:
+		if bool(w.look.get("helmet", false)):
+			folk += 1
+	g.pilot.pos = g.map.spawn
+	var o0: float = gear.oxygen
+	var e0: float = gear.energy
+	var h0: float = gear.health
+	for i in 60:
+		g._env_step(1.0)
+	var drain_ok: bool = gear.oxygen < o0 - 0.9 and gear.energy < e0 and gear.health < h0 and not g.indoors()
+	# a medkit off the belt
+	var hb: float = gear.health
+	var mk := -1
+	for b in gear.belt.size():
+		if not (gear.belt[b] as Dictionary).is_empty() and String(gear.belt[b]["id"]) == "cs_medkit":
+			mk = b
+	g.use_belt(mk)
+	var heal_ok: bool = mk >= 0 and gear.health > hb
+	# a charging point by a pad
+	var charge_z := {}
+	for z in g.map.zones:
+		if String(z.get("kind", "")) == "charge":
+			charge_z = z
+	g.pilot.pos = (charge_z["rect"] as Rect2).get_center() if not charge_z.is_empty() else g.pilot.pos
+	g.zone = g.map.zone_at(g.pilot.pos)
+	g.use()
+	var t: Dictionary = gear.totals()
+	var charge_ok: bool = not charge_z.is_empty() and is_equal_approx(gear.energy, float(t["energy"])) and is_equal_approx(gear.oxygen, float(t["oxygen"]))
+	# no air
+	g.pilot.pos = g.map.spawn
+	gear.oxygen = 0.0
+	var hs: float = gear.health
+	g._env_step(1.0)
+	var choke_ok: bool = gear.health <= hs - GD.SUFFOCATE + 0.01
+	# the end
+	g.used.disconnect(main._on_deck_use)
+	gear.health = 0.01
+	g._env_step(1.0)
+	var collapse_ok: bool = g._collapsed and not g.input_enabled
+	g.used.connect(main._on_deck_use)
+	# a terran world: good air, no helmet
+	var safe_ok: bool = GD.env_of("terran")["breathable"] and not GD.needs_helmet(GD.env_of("terran")) and GD.needs_helmet(GD.env_of("lava"))
+	gear.aboard()
+	check(helmet_ok and folk >= 1 and drain_ok and heal_ok and charge_ok and choke_ok and collapse_ok and safe_ok,
+		"0.7.51.3: on an airless moon – helmet on (%d townsfolk in suits), oxygen and energy drain, the cold gets through, a medkit heals, a charging point fills up, no air suffocates, the body gives out; good air on a terran world" % folk)
 
 
 ## 0.7.50.10: a settlement – its four pads (drones coming and going on the free ones), its street, walk-in shops, the
@@ -7977,6 +8038,7 @@ func _test_gear_shop(g, town: Dictionary) -> void:
 	# the pilot in the suit
 	var plain := ChibiArt.frame(GameState.pilot.get("look", {}), 0, 0).get_image()
 	var lk: Dictionary = g.pilot_look()
+	lk["helmet"] = false                                 # (0.7.51.3: on a hostile world it is already on)
 	var suited := ChibiArt.frame(lk, 0, 0).get_image()
 	lk["helmet"] = true
 	var helmed := ChibiArt.frame(lk, 0, 0).get_image()

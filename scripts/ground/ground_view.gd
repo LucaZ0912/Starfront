@@ -82,6 +82,10 @@ var _hint: Label
 var _hatch := 0.0                       # 0.7.50.15: the landing drone's ramp – 0 shut … 1 down
 var _hatch_node: Node2D = null
 const HATCH_TIME := 0.85
+var env: Dictionary = {}                # 0.7.51.3: the world outside ({} on a station's or city's deck)
+var hud: SuitHud = null
+var _collapsed := false
+var _warned := {}
 
 
 func _ready() -> void:
@@ -127,6 +131,8 @@ func _ready() -> void:
 	_prompt.offset_left = -500
 	_prompt.offset_right = 500
 	ui.add_child(_prompt)
+	hud = SuitHud.new()                             # 0.7.51.3: the suit's bars, the hazards, the belt
+	ui.add_child(hud)
 
 
 ## The line under the title: how to walk – and the way back (0.7.50.15: by the place you are in).
@@ -208,6 +214,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_puffs.clear()
 	_dust = null
 	level = p_level
+	env = ChibiArt.GearData.env_of(String(_body.get("type", ""))) if level in ["landing", "settlement"] else {}
+	_warned = {}
 	if level == "settlement":
 		map = SettleGen.build(station, _body, _site, _avail, _sys)
 	elif level == "landing":
@@ -313,9 +321,55 @@ func pilot_look() -> Dictionary:
 	return lk
 
 
-## Outside on a world whose air is not to be breathed (filled in by 0.7.51.3).
+## Outside on a world whose air is not to be breathed (or is poisoned, or there is none).
 func needs_helmet() -> bool:
-	return false
+	return not env.is_empty() and ChibiArt.GearData.needs_helmet(env)
+
+
+## 0.7.51.3: under a roof – in a shop, the bar, a building's door (the suit rests there).
+func indoors() -> bool:
+	if env.is_empty():
+		return true
+	var z := map.zone_at(pilot.pos) if pilot != null else {}
+	return String(z.get("kind", "")) in ["service", "crew", "seat", "jukebox"]
+
+
+## A step outside for the suit: energy, air, what gets through; warnings; collapsing at the end.
+func _env_step(delta: float) -> void:
+	if hud != null:
+		hud.env = env
+		hud.indoors = indoors()
+	if env.is_empty() or indoors() or _touch >= 0.0 or not _ride.is_empty() or _collapsed:
+		if hud != null:
+			hud.exposure = 0.0
+		return
+	var g = GameState.gear
+	var r: Dictionary = g.env_step(delta, env, Input.is_action_pressed("boost"))
+	if hud != null:
+		hud.exposure = float(r["exposure"])
+	var t: Dictionary = g.totals()
+	for w in [["energy", g.energy / maxf(float(t["energy"]), 1.0), "Suit energy low – find a charging point or use an energy cell."],
+			["oxygen", g.oxygen / maxf(float(t["oxygen"]), 1.0) if not bool(env.get("breathable", true)) else 1.0, "Oxygen low – back to the drone, a charging point or a cartridge."],
+			["health", g.health / ChibiArt.GearData.HEALTH, "You are badly hurt – a medkit, or get under a roof."]]:
+		var k := String(w[0])
+		if float(w[1]) < 0.25 and not _warned.has(k):
+			_warned[k] = true
+			_say_toast(String(w[2]), 4.0)
+			Audio.play("ui_error", "suit warning")
+		elif float(w[1]) > 0.4:
+			_warned.erase(k)
+	if g.health <= 0.0:
+		_collapse()
+
+
+## The body gives out: dark, and someone finds you (0.7.51.4: the clinic).
+func _collapse() -> void:
+	if _collapsed:
+		return
+	_collapsed = true
+	input_enabled = false
+	pilot.moving = false
+	used.emit({"kind": "collapse", "rect": Rect2()})
 
 
 func _slung() -> String:
@@ -323,6 +377,16 @@ func _slung() -> String:
 		if String(w) != "":
 			return String(ChibiArt.GearData.base(String(w)).get("dtype", "kinetic"))
 	return ""
+
+
+## 0.7.51.3: the people out in the open on a hostile world wear suits and helmets too.
+func _outside_look(lk: Dictionary, rng: RandomNumberGenerator, guard_look: bool = false) -> Dictionary:
+	if not needs_helmet():
+		return lk
+	var l2 := lk.duplicate()
+	l2["suit"] = "suit_mil_light" if guard_look else ["suit_civil", "suit_work", "suit_survey"][rng.randi() % 3]
+	l2["helmet"] = true
+	return l2
 
 
 ## 0.7.50.5: in a city (a station on the ground)?
@@ -553,7 +617,7 @@ func _build() -> void:
 		if map.wander.is_empty():
 			break
 		var w2 := Walker.new()
-		w2.setup(map, ChibiArt.PilotArt.random_look(rng), map.wander[i % map.wander.size()], true)
+		w2.setup(map, _outside_look(ChibiArt.PilotArt.random_look(rng), rng), map.wander[i % map.wander.size()], true)
 		_sorted.add_child(w2)
 		people.append(w2)
 	pilot = Walker.new()
@@ -654,6 +718,7 @@ func _add_guards(rng: RandomNumberGenerator) -> void:
 		lk["color1"] = int(g["c1"])
 		lk["color2"] = int(g["c2"])
 		lk["headgear"] = 2 if rng.randf() < 0.7 else 1
+		lk = _outside_look(lk, rng, true)
 		var w := Walker.new()
 		var at: Vector2
 		if i < n_post:
@@ -743,6 +808,7 @@ func _process(delta: float) -> void:
 	if is_town():
 		_update_city_day(delta)
 	_update_dust(delta)
+	_env_step(delta)
 	if _hatch_node != null and is_instance_valid(_hatch_node):
 		_hatch_node.queue_redraw()
 	if _touch >= 0.0:
@@ -758,7 +824,8 @@ func _process(delta: float) -> void:
 			if dir.length() > 0.3:
 				_stand_up()
 		else:
-			pilot.step(dir, delta, 1.6 if Input.is_action_pressed("boost") else 1.0)
+			var run := Input.is_action_pressed("boost")
+			pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run))      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
 	else:
 		pilot.moving = false
 	_doors(delta)
@@ -780,7 +847,7 @@ func _prompt_text(z: Dictionary) -> String:
 		return ""
 	var key := Keybinds.key_text("interact")
 	match String(z["kind"]):
-		"exit", "lift":
+		"exit", "lift", "charge":
 			return "[%s] %s" % [key, z["title"]]
 		"soon":
 			return String(z["title"])
@@ -825,6 +892,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact", false, false):
 		get_viewport().set_input_as_handled()
 		use()
+	elif event is InputEventKey and event.is_pressed() and not event.is_echo() and _ride.is_empty() and _touch < 0.0:
+		var n := (event as InputEventKey).keycode - KEY_1
+		if n >= 0 and n < GameState.gear.belt.size():
+			get_viewport().set_input_as_handled()
+			use_belt(n)
+
+
+## 0.7.51.3: a belt place on its number key.
+func use_belt(n: int) -> void:
+	var msg: String = GameState.gear.use_belt(n)
+	if msg != "":
+		_say_toast(msg, 2.5)
+		Audio.play("ui_click", "belt")
 
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
@@ -849,6 +929,11 @@ func use(instant: bool = false) -> bool:
 			return open_talk(zone)
 		"soon":
 			_say_toast(String(zone["title"]), 3.0)
+			return true
+		"charge":
+			GameState.gear.charge()                   # 0.7.51.3: energy and oxygen full again
+			_say_toast("Charged – the suit's energy and oxygen are full.", 2.5)
+			Audio.play("dock_clamp", "charging point")
 			return true
 		"guard":
 			var gl: Array = CityStyle.guards(station)["lines"]
