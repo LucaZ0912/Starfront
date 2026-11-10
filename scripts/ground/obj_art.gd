@@ -269,9 +269,10 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 4, fy - 3, pw - 8, 3, Color(0.95, 0.55, 0.15))
 			for k in int(pw / 8):
 				_r(img, 3 + k * 8, fy + ph - 6, 4, 4, Color(0.15, 0.15, 0.15))
-		"lamp_post":
-			_r(img, pw / 2 - 1, fy - 12, 2, ph + 10, metal.darkened(0.3))
-			_ellipse(img, pw * 0.5, fy - 14, 4, 3, c.lightened(0.4))
+		"lamp_post":                # (0.7.50.13: as tall as its rise – a street lamp in a settlement stands ~4 m)
+			_r(img, pw / 2 - 1, 4, 2, fy + ph - 6, metal.darkened(0.3))
+			_r(img, pw / 2 - 2, fy + ph - 4, 4, 2, metal.darkened(0.4))
+			_ellipse(img, pw * 0.5, 3, 4, 3, c.lightened(0.4))
 		"table_small":
 			_r(img, 2, fy, pw - 4, ph - 6, wood.lightened(0.12))
 			_r(img, 2, fy, pw - 4, 2, wood.lightened(0.3))
@@ -391,22 +392,27 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 						for t2 in 12:
 							_r(img, int(top.x + cos(ang) * t2 * 1.4), int(top.y + sin(ang) * t2 * 0.6 + t2 * t2 * 0.04), 2, 2, tc.lightened(0.12 * (t2 % 2)))
 				_:
-					# roots and a trunk, then a crown of many clumps – dark beneath, lit on top
-					_r(img, pw / 2 - 3, total - 16, 6, 16, trunk)
-					_r(img, pw / 2 - 3, total - 16, 2, 16, trunk.lightened(0.12))
-					_r(img, pw / 2 - 6, total - 3, 3, 3, trunk.darkened(0.1))
-					_r(img, pw / 2 + 3, total - 3, 3, 3, trunk.darkened(0.1))
-					var crown_y := float(total - 16) - float(fy) * 0.45
-					for k2 in 9:
+					# roots and a trunk, then a crown of many clumps – dark beneath, lit on top (0.7.50.13: to its size)
+					var ks := pw / 32.0
+					var tw2 := maxi(6, pw / 7)
+					var th := maxi(16, int(total * 0.4))
+					_r(img, pw / 2 - tw2 / 2, total - th, tw2, th, trunk)
+					_r(img, pw / 2 - tw2 / 2, total - th, maxi(2, tw2 / 3), th, trunk.lightened(0.12))
+					for bk2 in 3:                                # bark
+						_r(img, pw / 2 - tw2 / 2 + 2 + bk2 * 2, total - th + 6 + bk2 * 9, 1, 6, trunk.darkened(0.2))
+					_r(img, pw / 2 - tw2 / 2 - 4, total - 4, 5, 4, trunk.darkened(0.1))
+					_r(img, pw / 2 + tw2 / 2 - 1, total - 4, 5, 4, trunk.darkened(0.1))
+					var crown_y := float(total - th) - float(fy) * 0.32
+					for k2 in 12:
 						var cx := pw * 0.5 + trng.randf_range(-pw * 0.32, pw * 0.32)
-						var cy2 := crown_y + trng.randf_range(-10.0, 8.0)
-						_ellipse(img, cx, cy2 + 3.0, trng.randf_range(7.0, 11.0), trng.randf_range(6.0, 9.0), tc.darkened(0.3))
-					for k3 in 9:
+						var cy2 := crown_y + trng.randf_range(-10.0, 8.0) * ks
+						_ellipse(img, cx, cy2 + 3.0 * ks, trng.randf_range(7.0, 11.0) * ks, trng.randf_range(6.0, 9.0) * ks, tc.darkened(0.3))
+					for k3 in 12:
 						var cx2 := pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.3)
-						var cy3 := crown_y + trng.randf_range(-12.0, 4.0)
-						_ellipse(img, cx2, cy3, trng.randf_range(6.0, 9.0), trng.randf_range(5.0, 7.0), tc.lightened(trng.randf_range(-0.05, 0.08)))
-					for k4 in 14:
-						_r(img, int(pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.25)), int(crown_y + trng.randf_range(-14.0, 0.0)), 2, 1, tc.lightened(0.3))
+						var cy3 := crown_y + trng.randf_range(-12.0, 4.0) * ks
+						_ellipse(img, cx2, cy3, trng.randf_range(6.0, 9.0) * ks, trng.randf_range(5.0, 7.0) * ks, tc.lightened(trng.randf_range(-0.05, 0.08)))
+					for k4 in int(20 * ks):
+						_r(img, int(pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.25)), int(crown_y + trng.randf_range(-14.0, 0.0) * ks), 2, 1, tc.lightened(0.3))
 					if bool(o.get("vines", false)):
 						for v in 4:
 							var vx := int(pw * 0.5 + trng.randf_range(-pw * 0.35, pw * 0.35))
@@ -457,14 +463,19 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, pw / 2 - 2, fy - 6, 1, ph + 6, fc.lightened(0.1))
 		"smokestack":               # a factory chimney, banded, its top blackened
 			var sc4: Color = o.get("col", Color(0.62, 0.55, 0.5))
-			_r(img, pw / 2 - 6, 4, 12, fy + ph - 4, sc4)
-			_r(img, pw / 2 - 6, 4, 3, fy + ph - 4, sc4.lightened(0.12))
-			_r(img, pw / 2 + 3, 4, 3, fy + ph - 4, sc4.darkened(0.2))
-			for yb in [14, 30]:
-				_r(img, pw / 2 - 6, yb, 12, 3, Color(0.85, 0.25, 0.2))
-				_r(img, pw / 2 - 6, yb + 3, 12, 3, Color(0.92, 0.9, 0.86))
-			_r(img, pw / 2 - 7, 2, 14, 4, Color(0.15, 0.13, 0.13))
+			var sw := maxi(12, int(pw * 0.6))
+			_r(img, pw / 2 - sw / 2, 4, sw, fy + ph - 4, sc4)
+			_r(img, pw / 2 - sw / 2, 4, sw / 4, fy + ph - 4, sc4.lightened(0.12))
+			_r(img, pw / 2 + sw / 4, 4, sw / 4, fy + ph - 4, sc4.darkened(0.2))
+			for yy6 in range(8, fy + ph - 4, 8):                          # its courses of brick
+				_r(img, pw / 2 - sw / 2, yy6, sw, 1, sc4.darkened(0.1))
+			for yb in [14, 34]:
+				_r(img, pw / 2 - sw / 2, yb, sw, 5, Color(0.85, 0.25, 0.2))
+				_r(img, pw / 2 - sw / 2, yb + 5, sw, 5, Color(0.92, 0.9, 0.86))
+			_r(img, pw / 2 - sw / 2 - 1, 2, sw + 2, 4, Color(0.15, 0.13, 0.13))
 			_r(img, pw / 2 - 1, 10, 2, 2, Color(1.0, 0.3, 0.25))
+			for lr in range(30, fy + ph - 8, 4):                          # the ladder
+				_r(img, pw / 2 + sw / 2 - 4, lr, 3, 1, Color(0.3, 0.3, 0.3))
 		"flare":                    # a refinery's flare stack – the flame itself is drawn alive
 			_r(img, pw / 2 - 2, 6, 4, fy + ph - 6, Color(0.55, 0.55, 0.58))
 			for yy4 in range(10, fy + ph - 4, 8):
@@ -494,13 +505,19 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.5, fy - 4.0, 2.0, 2.0, Color(0.9, 0.9, 0.85))
 		"tank_vehicle":             # an armoured vehicle, parked: tracks, hull, turret and gun
 			var tc2: Color = o.get("col", Color(0.35, 0.4, 0.3))
-			_r(img, 1, fy + ph - 6, pw - 2, 6, Color(0.15, 0.15, 0.15))
-			for tx in range(2, pw - 2, 4):
-				_r(img, tx, fy + ph - 5, 2, 4, Color(0.3, 0.3, 0.3))
-			_r(img, 2, fy + ph - 16, pw - 4, 11, tc2)
-			_r(img, 2, fy + ph - 16, pw - 4, 2, tc2.lightened(0.15))
-			_r(img, pw / 2 - 8, fy + ph - 24, 16, 9, tc2.darkened(0.08))
-			_r(img, pw / 2 + 6, fy + ph - 21, 18, 3, tc2.darkened(0.25))
+			var kz := maxf(1.0, pw / 80.0)
+			var gb := fy + ph
+			_r(img, 1, gb - int(10 * kz), pw - 2, int(10 * kz), Color(0.15, 0.15, 0.15))     # the tracks
+			for tx in range(2, pw - 2, 5):
+				_r(img, tx, gb - int(9 * kz), 2, int(8 * kz), Color(0.3, 0.3, 0.3))
+			for wh in range(8, pw - 8, int(14 * kz)):
+				_ellipse(img, wh + 4, gb - 5.0 * kz, 4.0 * kz, 4.0 * kz, Color(0.32, 0.32, 0.34))
+			_r(img, 2, gb - int(24 * kz), pw - 4, int(14 * kz), tc2)                        # the hull
+			_r(img, 2, gb - int(24 * kz), pw - 4, 2, tc2.lightened(0.15))
+			for ap in range(10, pw - 8, 16):
+				_r(img, ap, gb - int(22 * kz), 1, int(11 * kz), tc2.darkened(0.2))
+			_r(img, pw / 2 - int(14 * kz), gb - int(36 * kz), int(28 * kz), int(12 * kz), tc2.darkened(0.08))   # the turret
+			_r(img, pw / 2 + int(12 * kz), gb - int(32 * kz), int(34 * kz), int(4 * kz), tc2.darkened(0.25))   # the gun
 		"stall":                    # a market stall: its striped awning, goods laid out below
 			var ac: Color = o.get("col", Color(0.85, 0.3, 0.25))
 			var srng2 := RandomNumberGenerator.new()
@@ -512,21 +529,27 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			for g in range(3, pw - 4, 3):
 				_r(img, g, fy + ph - 9, 2, 3, Color.from_hsv(srng2.randf(), 0.6, 0.9))
 			for k9 in range(0, pw, 4):
-				_r(img, k9, fy - 18, 4, 9, ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85))
-				_r(img, k9, fy - 9, 4, 2, (ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85)).darkened(0.2))
+				_r(img, k9, 2, 4, 10, ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85))
+				_r(img, k9, 12, 4, 2, (ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85)).darkened(0.2))
 		"rover":                    # a parked ground rover: six wheels, a cab, a cargo bed
 			var rcol: Color = o.get("col", Color(0.75, 0.55, 0.2))
-			for wx in [3, pw / 2 - 2, pw - 7]:
-				_r(img, wx, fy + ph - 5, 5, 5, Color(0.12, 0.12, 0.14))
-				_r(img, wx + 1, fy + ph - 4, 3, 3, Color(0.3, 0.3, 0.33))
-			_r(img, 1, fy + ph - 14, pw - 2, 10, rcol)
-			_r(img, 1, fy + ph - 14, pw - 2, 2, rcol.lightened(0.2))
-			_r(img, pw - 14, fy + ph - 22, 12, 9, rcol.darkened(0.1))
-			_r(img, pw - 12, fy + ph - 20, 8, 4, Color(0.3, 0.5, 0.65))
-			_r(img, 3, fy + ph - 12, pw - 20, 6, rcol.darkened(0.25))
-			_r(img, pw - 3, fy + ph - 12, 2, 2, Color(1.0, 0.95, 0.75))
+			var kr := maxf(1.0, pw / 48.0)
+			var gb2 := fy + ph
+			for wx in [int(3 * kr), int(pw / 2 - 3 * kr), int(pw - 9 * kr)]:
+				_ellipse(img, wx + 3 * kr, gb2 - 4.0 * kr, 4.0 * kr, 4.0 * kr, Color(0.12, 0.12, 0.14))
+				_ellipse(img, wx + 3 * kr, gb2 - 4.0 * kr, 2.0 * kr, 2.0 * kr, Color(0.35, 0.35, 0.38))
+			_r(img, 1, gb2 - int(15 * kr), pw - 2, int(9 * kr), rcol)
+			_r(img, 1, gb2 - int(15 * kr), pw - 2, 2, rcol.lightened(0.2))
+			_r(img, pw - int(15 * kr), gb2 - int(25 * kr), int(13 * kr), int(10 * kr), rcol.darkened(0.1))
+			_r(img, pw - int(13 * kr), gb2 - int(23 * kr), int(9 * kr), int(5 * kr), Color(0.3, 0.5, 0.65))
+			_r(img, pw - int(12 * kr), gb2 - int(22 * kr), int(3 * kr), int(2 * kr), Color(0.7, 0.85, 0.95))
+			_r(img, int(3 * kr), gb2 - int(13 * kr), pw - int(20 * kr), int(5 * kr), rcol.darkened(0.25))
+			for cg in range(int(5 * kr), pw - int(20 * kr), 6):
+				_r(img, cg, gb2 - int(18 * kr), 4, int(3 * kr), Color(0.45, 0.4, 0.32))      # cargo in its bed
+			_r(img, pw - 3, gb2 - int(13 * kr), 2, 2, Color(1.0, 0.95, 0.75))
 		"signpost":                 # a post with arrows to the places
-			_r(img, pw / 2, fy - 20, 2, ph + 20, Color(0.3, 0.28, 0.25))
+			_r(img, pw / 2, 2, 2, fy + ph - 2, Color(0.3, 0.28, 0.25))
+			fy = 2 + 20                                    # the arrows near its top
 			for k10 in 3:
 				var sc3: Color = [Color(0.85, 0.75, 0.3), Color(0.3, 0.6, 0.8), Color(0.75, 0.35, 0.3)][k10]
 				var left := k10 % 2 == 0
@@ -534,11 +557,11 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_p(img, pw / 2 - (11 if left else -12), fy - 17 + k10 * 6, sc3)
 				_r(img, pw / 2 - (8 if left else -2), fy - 17 + k10 * 6, 6, 1, sc3.lightened(0.4))
 		"cable_pole":               # a power pole with its insulators, cables running off
-			_r(img, pw / 2 - 1, fy - 26, 3, ph + 26, Color(0.35, 0.28, 0.2))
-			_r(img, pw / 2 - 7, fy - 22, 15, 2, Color(0.3, 0.25, 0.2))
+			_r(img, pw / 2 - 1, 2, 3, fy + ph - 2, Color(0.35, 0.28, 0.2))
+			_r(img, pw / 2 - 7, 6, 15, 2, Color(0.3, 0.25, 0.2))
 			for k11 in 3:
-				_r(img, pw / 2 - 6 + k11 * 6, fy - 25, 2, 3, Color(0.75, 0.8, 0.85))
-			_r(img, pw / 2 + 2, fy - 14, 4, 6, Color(0.4, 0.42, 0.45))
+				_r(img, pw / 2 - 6 + k11 * 6, 3, 2, 3, Color(0.75, 0.8, 0.85))
+			_r(img, pw / 2 + 2, 18, 4, 6, Color(0.4, 0.42, 0.45))
 		"dune":
 			var dc: Color = o.get("col", Color(0.85, 0.7, 0.45))
 			_ellipse(img, pw * 0.5, fy + ph * 0.6, pw * 0.5, ph * 0.45 + 3.0, dc.darkened(0.12))
@@ -593,9 +616,13 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 2, 10, pw - 4, fy + ph - 12, scol)
 			_r(img, 2, 10, 4, fy + ph - 12, scol.lightened(0.15))
 			_r(img, pw - 6, 10, 4, fy + ph - 12, scol.darkened(0.2))
-			_ellipse(img, pw * 0.5, 10.0, pw * 0.5 - 2.0, 7.0, scol.lightened(0.1))
+			_ellipse(img, pw * 0.5, 10.0, pw * 0.5 - 2.0, maxf(7.0, pw * 0.16), scol.lightened(0.1))
 			for yy3 in range(16, fy + ph - 4, 9):
 				_r(img, 2, yy3, pw - 4, 1, scol.darkened(0.15))
+			if pw >= 64:                                  # a big tank: a stair winding up, a railing on top
+				for st2 in 12:
+					_r(img, 6 + st2 * (pw - 14) / 12, fy + ph - 6 - st2 * (fy + ph - 20) / 12, 6, 2, scol.darkened(0.35))
+				_r(img, 4, 6, pw - 8, 1, scol.darkened(0.3))
 		"greenhouse":
 			var gc := Color(0.55, 0.85, 0.7, 1.0)
 			_r(img, 1, 6, pw - 2, fy + ph - 7, Color(0.22, 0.4, 0.28))
@@ -604,12 +631,20 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 1, 6, pw - 2, 2, gc)
 			for fx2 in range(1, pw, 8):
 				_r(img, fx2, 6, 1, fy + ph - 7, gc.darkened(0.2))
-		"dish":                     # a dish antenna on its mast
-			_r(img, pw / 2 - 2, 18, 4, fy + ph - 18, metal.darkened(0.2))
-			_ellipse(img, pw * 0.5, 14.0, pw * 0.45, 9.0, metal.lightened(0.15))
-			_ellipse(img, pw * 0.5, 12.0, pw * 0.35, 6.0, metal.darkened(0.1))
-			_r(img, pw / 2 - 1, 4, 2, 9, metal.darkened(0.3))
-			_r(img, pw / 2 - 1, 3, 2, 2, Color(1.0, 0.3, 0.25))
+		"dish":                     # a dish antenna on its mount – tipped up towards the sky
+			var dry := maxf(9.0, pw * 0.22)
+			var dcy := 6.0 + dry
+			var mw := maxi(4, pw / 10)
+			_r(img, pw / 2 - mw / 2, int(dcy), mw, fy + ph - int(dcy), metal.darkened(0.2))
+			_r(img, pw / 2 - mw, fy + ph - 10, mw * 2, 10, metal.darkened(0.3))            # its base
+			_ellipse(img, pw * 0.5, dcy + 2.0, pw * 0.47, dry, metal.darkened(0.15))
+			_ellipse(img, pw * 0.5, dcy, pw * 0.45, dry - 1.0, metal.lightened(0.15))
+			_ellipse(img, pw * 0.5, dcy - 1.0, pw * 0.36, dry * 0.7, metal.darkened(0.05))
+			for rib in 5:
+				_r(img, int(pw * 0.15 + rib * pw * 0.175), int(dcy - dry * 0.6), 1, int(dry * 1.2), metal.darkened(0.12))
+			_r(img, pw / 2 - 1, 2, 2, int(dcy) - 2, metal.darkened(0.3))           # the feed on its struts
+			_r(img, pw / 2 - 3, 1, 6, 4, metal.darkened(0.35))
+			_r(img, pw / 2 - 1, 0, 2, 2, Color(1.0, 0.3, 0.25))
 		"palm":
 			for k in 8:
 				_r(img, pw / 2 - 1 + (1 if k % 2 == 0 else 0), fy + ph - 4 - k * 4, 3, 4, Color(0.5, 0.36, 0.22).lightened(0.05 * (k % 2)))

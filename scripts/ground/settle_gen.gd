@@ -130,45 +130,40 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 	var bx := B + 20
 	var by := STREET_Y - 4                                             # its foot row (it stands on rows by … by+2)
 	var skey := CityStyle.key_for(station)
-	m.add_object(_building(_arch(skey, bk, rng, true), bx, by - 1, 9, 3, 2, skey, rng, lamp, 60))
+	m.add_object(_building(_arch(skey, bk, rng, true), bx, by - 1, 12, 3, 2, skey, rng, lamp, 80))
 	m.zones.append({"rect": Rect2(Vector2(bx + 3, by + 2) * GroundMap.TILE, Vector2(3, 1.6) * GroundMap.TILE), "kind": "service", "id": String(sp[1]),
 		"title": String(sp[0]).capitalize() + "  –  " + {"mining": "ore straight from the mine", "agri": "food from its fields", "research": "samples and data", "industry": "parts from its shops",
 			"refinery": "refined goods", "chemistry": "chemicals from the plant", "hightech": "tech from the lab", "military": "sign on crew", "tourism": "rooms and views"}.get(eco, "what the place makes"),
 		"corp": "", "col": Color(1.0, 0.8, 0.3), "closed": String(available.get(String(sp[1]), "")),
 		"sign": Vector2(-100, -100)})
-	match String(sp[2]):
+	match String(sp[2]):                                    # 0.7.50.13: beside it, to scale
 		"tower_rig":
-			m.add_object({"kind": "tower_rig", "x": bx + 10, "y": by - 1, "w": 3, "h": 3})
-			m.add_object({"kind": "ore_cart", "x": bx + 13, "y": by + 1, "w": 1, "h": 1})
-			m.add_object({"kind": "rock", "x": bx + 14, "y": by, "w": 2, "h": 2, "col": Color(0.42, 0.36, 0.3)})
+			m.add_object({"kind": "tower_rig", "x": bx + 13, "y": by - 2, "w": 5, "h": 4, "rise": 170})
+			m.add_object({"kind": "ore_cart", "x": bx + 18, "y": by + 1, "w": 1, "h": 1})
 		"greenhouse":
-			m.add_object({"kind": "greenhouse", "x": bx + 10, "y": by - 1, "w": 4, "h": 3})
-			m.add_object({"kind": "silo", "x": bx + 14, "y": by, "w": 2, "h": 2})
+			m.add_object({"kind": "greenhouse", "x": bx + 13, "y": by - 1, "w": 6, "h": 3, "rise": 36})
 		"silo":
-			m.add_object({"kind": "silo", "x": bx + 10, "y": by, "w": 2, "h": 2, "col": Color(0.75, 0.78, 0.7)})
-			m.add_object({"kind": "silo", "x": bx + 12, "y": by, "w": 2, "h": 2, "col": Color(0.72, 0.72, 0.75)})
-			m.add_object({"kind": "pipes", "x": bx + 14, "y": by + 1, "w": 1, "h": 1})
+			m.add_object({"kind": "silo", "x": bx + 13, "y": by - 1, "w": 4, "h": 3, "rise": 110, "col": Color(0.75, 0.78, 0.7)})
 		"dish":
-			m.add_object({"kind": "dish", "x": bx + 10, "y": by, "w": 3, "h": 2})
-			m.add_object({"kind": "holo_pillar", "x": bx + 13, "y": by + 1, "w": 1, "h": 1, "col": lamp})
+			m.add_object({"kind": "dish", "x": bx + 13, "y": by - 1, "w": 6, "h": 3, "rise": 110})
 		"machine":
-			m.add_object({"kind": "machine", "x": bx + 10, "y": by, "w": 2, "h": 2})
-			m.add_object({"kind": "crates", "x": bx + 12, "y": by + 1, "w": 2, "h": 1})
+			m.add_object({"kind": "machine", "x": bx + 13, "y": by, "w": 3, "h": 2})
+			m.add_object({"kind": "crates", "x": bx + 16, "y": by + 1, "w": 2, "h": 1})
 		"banner":
-			m.add_object({"kind": "banner", "x": bx + 10, "y": by + 1, "w": 1, "h": 1, "col": lamp})
-			m.add_object({"kind": "banner", "x": bx + 12, "y": by + 1, "w": 1, "h": 1, "col": lamp})
+			m.add_object({"kind": "banner", "x": bx + 13, "y": by + 1, "w": 1, "h": 1, "col": lamp})
+			m.add_object({"kind": "banner", "x": bx + 15, "y": by + 1, "w": 1, "h": 1, "col": lamp})
 		_:
-			m.add_object({"kind": "parasol", "x": bx + 10, "y": by + 1, "w": 2, "h": 1, "col": lamp})
+			m.add_object({"kind": "parasol", "x": bx + 13, "y": by + 1, "w": 3, "h": 1, "rise": 34, "col": lamp})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "special_sign", "title": String(sp[0]), "col": Color(1.0, 0.8, 0.3),
-		"sign": Vector2(bx + 4.5, by - 3.4) * GroundMap.TILE})
+		"sign": Vector2(bx + 6.0, by - 3.0) * GroundMap.TILE})
 	m.lights.append({"pos": Vector2(bx + 4.5, by + 2.3) * GroundMap.TILE, "r": 46.0, "col": Color(1.0, 0.8, 0.45), "a": 0.35})
 	# 0.7.50.11: the houses – each its own (architecture by the power and the world), in a front row along the street
 	# and a back row behind it, with stalls, rovers, poles and greenery between
-	var hx := bx + 17
-	while hx + 5 < TW - B - 1:
-		var hw := mini(rng.randi_range(5, 8), TW - B - 1 - hx)
+	var hx := bx + 20
+	while hx + 7 < TW - B - 1:
+		var hw := mini(rng.randi_range(8, 11), TW - B - 1 - hx)
 		var hy := by - rng.randi_range(0, 1)
-		var hd := 2 if rng.randf() < 0.6 else 3
+		var hd := 3
 		if hy + hd > by + 2:
 			hy = by + 2 - hd
 		m.add_object(_building(_arch(skey, bk, rng), hx, hy, hw, hd, 1 if rng.randf() < 0.7 else 2, skey, rng, lamp))
@@ -178,9 +173,9 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 		if gap >= 2 and hx + 2 < TW - B - 1:
 			match rng.randi() % 4:
 				0:
-					m.add_object({"kind": "stall", "x": hx, "y": by + 1, "w": 2, "h": 1, "col": Color.from_hsv(rng.randf(), 0.6, 0.85), "seed": rng.randi()})
+					m.add_object({"kind": "stall", "x": hx, "y": by + 1, "w": 3, "h": 1, "rise": 36, "col": Color.from_hsv(rng.randf(), 0.6, 0.85), "seed": rng.randi()})
 				1:
-					m.add_object({"kind": "cable_pole", "x": hx, "y": by + 1, "w": 1, "h": 1})
+					m.add_object({"kind": "cable_pole", "x": hx, "y": by + 1, "w": 1, "h": 1, "rise": 100})
 				2:
 					if bk in ["jungle", "woods"]:
 						m.add_object({"kind": "shrub", "x": hx, "y": by + 1, "w": 2, "h": 1, "col": Color(0.22, 0.5, 0.24), "seed": rng.randi()})
@@ -191,17 +186,17 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 		hx += gap
 	var hx2 := B + 21
 	var back_y := B + 5
-	while hx2 + 5 < TW - B - 1:
-		var hw2 := mini(rng.randi_range(5, 9), TW - B - 1 - hx2)
-		var hd2 := 2 + rng.randi() % 2
+	while hx2 + 7 < TW - B - 1:
+		var hw2 := mini(rng.randi_range(8, 12), TW - B - 1 - hx2)
+		var hd2 := 3
 		m.add_object(_building(_arch(skey, bk, rng), hx2, back_y + rng.randi_range(0, 2), hw2, hd2, 1 + int(rng.randf() < 0.4), skey, rng, lamp))
 		hx2 += hw2 + rng.randi_range(2, 5)
-	m.add_object({"kind": "signpost", "x": B + 18, "y": STREET_Y - 1, "w": 1, "h": 1})
-	m.add_object({"kind": "rover", "x": B + 2, "y": STREET_Y - 1, "w": 3, "h": 1, "col": Color.from_hsv(rng.randf(), 0.5, 0.75)})
+	m.add_object({"kind": "signpost", "x": B + 18, "y": STREET_Y - 1, "w": 1, "h": 1, "rise": 44})
+	m.add_object({"kind": "rover", "x": B + 2, "y": STREET_Y - 1, "w": 5, "h": 1, "rise": 22, "col": Color.from_hsv(rng.randf(), 0.5, 0.75)})
 	# lamp posts along the street, crates and life between
 	var lx := B + 20
 	while lx < TW - 1:
-		m.add_object({"kind": "lamp_post", "x": lx, "y": STREET_Y - 1, "w": 1, "h": 1, "col": lamp})
+		m.add_object({"kind": "lamp_post", "x": lx, "y": STREET_Y - 1, "w": 1, "h": 1, "rise": 62, "col": lamp})
 		DeckGen._prop_light(m, "lamp_post", Vector2(lx + 0.5, STREET_Y - 0.7))
 		lx += 9
 	m.add_object({"kind": "crates", "x": B + 15, "y": STREET_Y - 3, "w": 2, "h": 1})
@@ -257,7 +252,7 @@ static func _border(m: GroundMap, bk: String, body: Dictionary, rng: RandomNumbe
 				var inner := x >= B and x < W - B and y >= B and y < H - B
 				if inner:
 					continue
-				var o := _nature(kind, bk, col, rng, pass_i == 1 or y < 2)       # low things at the top edge – crowns would be cut
+				var o := _nature(kind, bk, col, rng, pass_i == 1 or y < 2 or y >= H - B)   # low things at the top and bottom edges
 				var ow := int(o["w"])
 				var oh := int(o["h"])
 				if not _free(m, x, y, ow, oh):
@@ -312,125 +307,108 @@ static func _econ(m: GroundMap, eco: String, bk: String, body: Dictionary, rng: 
 		kind = "pens" if eco in ["agri", "tourism", "research", "hightech"] else "rig"
 	var info := {"kind": kind, "rect": Rect2(Vector2(rx, ry) * T, Vector2(rw, rh) * T)}
 	var title: String = {"mining": "OPEN PIT", "agri": "FIELDS", "hydro": "HYDROPONICS", "industry": "WORKS", "refinery": "TANK FARM",
-		"chemistry": "CHEM WORKS", "research": "DISH ARRAY", "hightech": "LAUNCH PAD", "military": "TRAINING YARD",
+		"chemistry": "CHEM WORKS", "research": "DISH ARRAY", "hightech": "DISH ARRAY", "military": "TRAINING YARD",
 		"tourism": "GARDENS", "pens": "FISH PENS", "rig": "OFFSHORE RIG"}.get(kind, "WORKS")
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "econ_sign", "title": String(title), "col": Color(1.0, 0.8, 0.3),
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "econ_sign", "title": title, "col": Color(1.0, 0.8, 0.3),
 		"sign": Vector2(TW + 0.5, STREET_Y - 1.4) * T})
+	# 0.7.50.13: everything to scale with the people (~15 art px a metre)
 	match kind:
 		"mining":
-			var pit := Rect2i(rx + 1, ry + 1, rw - 2, rh - 9)
-			var stp := mini(pit.size.x, pit.size.y) * T / 12
-			m.decals.append({"kind": "pit", "x": pit.position.x, "y": pit.position.y, "w": pit.size.x, "h": pit.size.y, "levels": 5, "step": stp})
-			info["pit"] = Rect2(Vector2(pit.position) * T, Vector2(pit.size) * T)
-			info["step"] = stp
-			info["heap"] = Vector2(rx + rw - 5, ry + rh - 4) * T
-			m.add_object({"kind": "heap", "x": rx + rw - 7, "y": ry + rh - 5, "w": 5, "h": 3, "col": Color(0.45, 0.38, 0.3)})
-			m.add_object({"kind": "heap", "x": rx + 2, "y": ry + rh - 4, "w": 4, "h": 2, "col": Color(0.4, 0.4, 0.42)})
-			m.add_object({"kind": "tower_rig", "x": rx + rw / 2 - 1, "y": ry + rh - 4, "w": 3, "h": 2})
+			# the pit seen from its rim: the berm, then bench after bench falling away into the haze
+			var top := float(ry * T)
+			var rel := [[0, 40, "rim"], [40, 110, "face"], [110, 214, "bench"], [214, 268, "face"], [268, 372, "bench"], [372, 410, "face"], [410, rh * T, "bench"]]
+			var bands: Array = []
+			for b in rel:
+				bands.append([top + float(b[0]), top + float(b[1]), String(b[2])])
+			m.decals.append({"kind": "pit_edge", "x": rx, "y": ry, "w": rw, "h": rh, "bands": bands})
+			info["bands"] = bands
+			m.add_object({"kind": "heap", "x": rx + rw - 8, "y": ry, "w": 7, "h": 2, "rise": 30, "col": Color(0.45, 0.38, 0.3)})
 		"agri":
 			var cols := [Color(0.85, 0.72, 0.3), Color(0.35, 0.62, 0.25), Color(0.25, 0.48, 0.2), Color(0.55, 0.35, 0.55), Color(0.62, 0.55, 0.25)]
 			var fields: Array = []
-			for fx in 2:
-				for fy in 3:
-					var f := Rect2i(rx + 1 + fx * (rw / 2), ry + 1 + fy * (rh / 3), rw / 2 - 2, rh / 3 - 2)
-					m.decals.append({"kind": "field", "x": f.position.x, "y": f.position.y, "w": f.size.x, "h": f.size.y,
-						"col": cols[rng.randi() % cols.size()], "vert": rng.randf() < 0.4})
-					fields.append(Rect2(Vector2(f.position) * T, Vector2(f.size) * T))
-			m.decals.append({"kind": "canal", "x": rx + rw / 2 - 1, "y": ry + 1, "w": 1, "h": rh - 2})
-			for k in 2:
-				m.add_object({"kind": "silo", "x": rx + rw - 3, "y": ry + rh - 3 - k * 3, "w": 2, "h": 2, "col": Color(0.78, 0.76, 0.7)})
+			for fy in 2:
+				var f := Rect2i(rx + 1, ry + 1 + fy * (rh / 2), rw - 6, rh / 2 - 2)
+				m.decals.append({"kind": "field", "x": f.position.x, "y": f.position.y, "w": f.size.x, "h": f.size.y,
+					"col": cols[rng.randi() % cols.size()], "vert": false})
+				fields.append(Rect2(Vector2(f.position) * T, Vector2(f.size) * T))
+			m.decals.append({"kind": "canal", "x": rx + 1, "y": ry + rh / 2 - 1, "w": rw - 6, "h": 1})
+			m.add_object({"kind": "silo", "x": rx + rw - 5, "y": ry + 6, "w": 4, "h": 3, "rise": 120, "col": Color(0.78, 0.76, 0.7)})
+			m.add_object({"kind": "silo", "x": rx + rw - 5, "y": ry + 18, "w": 4, "h": 3, "rise": 110, "col": Color(0.72, 0.72, 0.68)})
 			info["fields"] = fields
 		"hydro":
-			for gy in 4:
-				for gx in 3:
+			for gy in 3:
+				for gx in 2:
 					if (gx + gy) % 3 == 2:
-						m.add_object(_building("dome", rx + 1 + gx * 7, ry + 1 + gy * 7, 5, 3, 1, "assembly", rng, Color(0.6, 1.0, 0.7)))
+						m.add_object(_building("dome", rx + 1 + gx * 11, ry + 3 + gy * 9, 9, 4, 1, "assembly", rng, Color(0.6, 1.0, 0.7)))
 					else:
-						m.add_object({"kind": "greenhouse", "x": rx + 1 + gx * 7, "y": ry + 2 + gy * 7, "w": 6, "h": 3})
+						m.add_object({"kind": "greenhouse", "x": rx + 1 + gx * 11, "y": ry + 4 + gy * 9, "w": 10, "h": 4, "rise": 40})
 			info["fields"] = [Rect2(Vector2(rx, ry) * T, Vector2(rw, rh) * T)]
 		"industry":
 			m.decals.append({"kind": "yard", "x": rx, "y": ry, "w": rw, "h": rh})
-			m.add_object(_building("prefab", rx + 1, ry + 2, 10, 4, 2, "independent", rng, Color(1.0, 0.8, 0.4)))
-			m.add_object(_building("quonset", rx + 12, ry + 2, 8, 4, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
-			m.add_object({"kind": "smokestack", "x": rx + 3, "y": ry + 7, "w": 2, "h": 1})
-			m.add_object({"kind": "smokestack", "x": rx + 7, "y": ry + 7, "w": 2, "h": 1, "col": Color(0.55, 0.5, 0.5)})
-			for row in 2:
-				for cy in 3:
-					m.add_object(_building("container", rx + 2 + cy * 7, ry + rh - 4 - row * 5, 6, 2, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
-			for k in 6:                                               # pallets and crates in the yard
-				var cx2 := rx + 2 + rng.randi_range(0, rw - 5)
-				var cy2 := ry + 11 + rng.randi_range(0, 5)
-				if _free_any(m, cx2, cy2, 2, 1):
-					m.add_object({"kind": "crates" if k % 2 == 0 else "barrel", "x": cx2, "y": cy2, "w": 2 if k % 2 == 0 else 1, "h": 1})
-			m.decals.append({"kind": "piperun", "x": rx + 1, "y": ry + 9, "w": rw - 2, "h": 1})
-			info["stacks"] = [Vector2(rx + 4, ry + 7 - 4.2) * T, Vector2(rx + 8, ry + 7 - 4.2) * T]
-			info["crane"] = Rect2(Vector2(rx + 1, ry + rh - 11) * T, Vector2(rw - 2, 9) * T)
-			info["road"] = [Vector2(rx + 2, ry + 18) * T, Vector2(rx + rw - 3, ry + 18) * T]
+			m.add_object(_building("prefab", rx + 1, ry + 3, 13, 4, 2, "independent", rng, Color(1.0, 0.8, 0.4)))
+			m.add_object({"kind": "smokestack", "x": rx + 15, "y": ry + 5, "w": 3, "h": 2, "rise": 230})
+			m.add_object({"kind": "smokestack", "x": rx + 19, "y": ry + 5, "w": 3, "h": 2, "rise": 200, "col": Color(0.55, 0.5, 0.5)})
+			for row in 2:                                            # twelve-metre containers, two high
+				m.add_object(_building("container", rx + 1, ry + rh - 2 - row * 4, 11, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
+				m.add_object(_building("container", rx + 12, ry + rh - 2 - row * 4, 11, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
+			info["stacks"] = [Vector2(rx + 16.5, ry + 7) * T + Vector2(0, -230 - 4), Vector2(rx + 20.5, ry + 7) * T + Vector2(0, -200 - 4)]
+			info["crane"] = Rect2(Vector2(rx + 1, ry + rh - 10) * T, Vector2(rw - 2, 9) * T)
+			info["road"] = [Vector2(rx + 4, ry + 12) * T, Vector2(rx + rw - 4, ry + 12) * T]
 		"refinery", "chemistry":
 			m.decals.append({"kind": "yard", "x": rx, "y": ry, "w": rw, "h": rh})
 			var tank_col := Color(0.82, 0.82, 0.78) if eco == "refinery" else Color(0.7, 0.82, 0.68)
-			for ty in 3:
-				for tx in 4:
-					m.add_object({"kind": "silo", "x": rx + 1 + tx * 5, "y": ry + 2 + ty * 7, "w": 4, "h": 3, "rise": 18 + rng.randi() % 8, "col": tank_col.darkened(rng.randf() * 0.12)})
-				m.decals.append({"kind": "piperun", "x": rx + 1, "y": ry + 6 + ty * 7, "w": rw - 4, "h": 1})
-			m.add_object({"kind": "flare", "x": rx + rw - 3, "y": ry + rh - 3, "w": 2, "h": 2})
-			info["flare"] = Vector2(rx + rw - 2, ry + rh - 1) * T + Vector2(0, -56 - 2 * T + 4)
-			info["road"] = [Vector2(rx + 1, ry + rh - 1.5) * T, Vector2(rx + rw - 5, ry + rh - 1.5) * T]
+			for ty in 2:
+				for tx in 2:
+					m.add_object({"kind": "silo", "x": rx + 1 + tx * 10, "y": ry + 6 + ty * 12, "w": 8, "h": 5, "rise": 100 + rng.randi() % 30, "col": tank_col.darkened(rng.randf() * 0.12)})
+				m.decals.append({"kind": "piperun", "x": rx + 1, "y": ry + 12 + ty * 12, "w": rw - 4, "h": 1})
+			m.add_object({"kind": "flare", "x": rx + rw - 3, "y": ry + 1, "w": 2, "h": 2, "rise": 220})
+			info["flare"] = Vector2(rx + rw - 2, ry + 3) * T + Vector2(0, -220 - 2 * T + 6)
+			info["road"] = [Vector2(rx + 4, ry + rh - 1) * T, Vector2(rx + rw - 4, ry + rh - 1) * T]
 		"research", "hightech":
-			for dy in 2:
-				for dx in 3:
-					var dsz := 4 + rng.randi() % 2
-					m.add_object({"kind": "dish", "x": rx + 1 + dx * 7, "y": ry + 1 + dy * 7, "w": dsz, "h": 2, "rise": 26 + dsz * 4})
-					if dx > 0:
-						m.decals.append({"kind": "cable", "x": rx + 3 + (dx - 1) * 7, "y": ry + 3 + dy * 7, "dx": 7 * T, "dy": 0})
-			m.add_object(_building("module", rx + 2, ry + 15, 9, 3, 2, "directorate", rng, Color(0.6, 1.0, 0.8)))
-			m.decals.append({"kind": "cable", "x": rx + 6, "y": ry + 10, "dx": 0, "dy": 5 * T})
-			m.add_object({"kind": "rover", "x": rx + 13, "y": ry + 17, "w": 3, "h": 1, "col": Color(0.85, 0.85, 0.88)})
-			var lp := Rect2i(rx + rw - 9, ry + rh - 9, 7, 7)
-			m.decals.append({"kind": "pad_marks", "x": lp.position.x, "y": lp.position.y, "w": lp.size.x, "h": lp.size.y, "col": Color(0.95, 0.4, 0.2)})
-			info["launch"] = Vector2(lp.position.x + lp.size.x * 0.5, lp.position.y + lp.size.y * 0.6) * T
+			for dk in 2:
+				m.add_object({"kind": "dish", "x": rx + 1 + dk * 11, "y": ry + 9, "w": 10, "h": 4, "rise": 130})
+			m.decals.append({"kind": "cable", "x": rx + 6, "y": ry + 13, "dx": 11 * T, "dy": 0})
+			m.add_object(_building("module", rx + 2, ry + 18, 12, 3, 2, "directorate", rng, Color(0.6, 1.0, 0.8)))
+			m.decals.append({"kind": "cable", "x": rx + 6, "y": ry + 13, "dx": 0, "dy": 5 * T})
 		"military":
 			m.decals.append({"kind": "yard", "x": rx, "y": ry, "w": rw, "h": rh})
-			for t in 5:
-				m.add_object({"kind": "target", "x": rx + 2 + t * 4, "y": ry + 2, "w": 1, "h": 1})
-			for v in 3:
-				m.add_object({"kind": "tank_vehicle", "x": rx + 2 + v * 7, "y": ry + rh - 3, "w": 5, "h": 2})
-			m.add_object(_building("prefab", rx + 2, ry + 8, 12, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
-			info["loop"] = Rect2(Vector2(rx + 2, ry + 13) * T, Vector2(rw - 4, 9) * T)
+			for t in 4:
+				m.add_object({"kind": "target", "x": rx + 2 + t * 5, "y": ry + 2, "w": 1, "h": 1, "rise": 26})
+			m.add_object(_building("prefab", rx + 2, ry + 9, 14, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
+			for v in 2:
+				m.add_object({"kind": "tank_vehicle", "x": rx + 1 + v * 11, "y": ry + rh - 3, "w": 9, "h": 3, "rise": 34})
+			info["loop"] = Rect2(Vector2(rx + 5, ry + 14) * T, Vector2(rw - 10, 6) * T)
 		"tourism":
-			for k2 in 14:
-				var gx2 := rx + 1 + rng.randi_range(0, rw - 4)
-				var gy2 := ry + 1 + rng.randi_range(0, rh - 4)
-				if not _free_any(m, gx2, gy2, 3, 2):
+			for k2 in 10:
+				var gx2 := rx + 1 + rng.randi_range(0, rw - 5)
+				var gy2 := ry + 2 + rng.randi_range(0, rh - 5)
+				if not _free_any(m, gx2, gy2, 4, 2):
 					continue
-				var pick := rng.randi() % 3
-				if pick == 0:
-					m.add_object({"kind": "tree", "x": gx2, "y": gy2, "w": 2, "h": 2, "rise": 44, "species": "broad", "col": Color(0.25, 0.55, 0.28), "seed": rng.randi()})
-				elif pick == 1:
-					m.add_object({"kind": "flower_bed", "x": gx2, "y": gy2, "w": 3, "h": 1})
+				if rng.randf() < 0.5:
+					m.add_object({"kind": "tree", "x": gx2, "y": gy2, "w": 4, "h": 2, "rise": 110, "species": "broad", "col": Color(0.25, 0.55, 0.28), "seed": rng.randi()})
 				else:
-					m.add_object({"kind": "palm", "x": gx2, "y": gy2, "w": 1, "h": 1})
-			m.add_object({"kind": "fountain", "x": rx + rw / 2 - 1, "y": ry + rh / 2, "w": 2, "h": 2})
-			m.add_object({"kind": "lookout", "x": rx + rw - 5, "y": ry + 2, "w": 3, "h": 2})
+					m.add_object({"kind": "flower_bed", "x": gx2, "y": gy2, "w": 3, "h": 1})
+			m.add_object({"kind": "fountain", "x": rx + rw / 2 - 2, "y": ry + rh / 2, "w": 4, "h": 3, "rise": 30})
+			m.add_object({"kind": "lookout", "x": rx + rw - 7, "y": ry + 2, "w": 5, "h": 3, "rise": 150})
 		"pens":
 			var pens: Array = []
 			for py2 in 3:
 				for px2 in 2:
 					var pr := Rect2i(rx + 2 + px2 * 10, ry + 2 + py2 * 9, 7, 6)
 					m.decals.append({"kind": "pen", "x": pr.position.x, "y": pr.position.y, "w": pr.size.x, "h": pr.size.y})
-					pens.append(Vector2(pr.position.x + pr.size.x * 0.5, pr.position.y + pr.size.y * 0.5) * T)
-			m.decals.append({"kind": "boardwalk", "x": rx + 9, "y": ry + 2, "w": 2, "h": 25})       # the walkway between them
+					pens.append(Vector2(pr.position.x + pr.size.x * 0.5, pr.position.y + pr.size.y + 3) * T)
+			m.decals.append({"kind": "boardwalk", "x": rx + 9, "y": ry + 2, "w": 2, "h": 25})
 			for bw in 3:
 				m.decals.append({"kind": "boardwalk", "x": rx + 5, "y": ry + 5 + bw * 9, "w": 11, "h": 1})
 			info["pens"] = pens
 		"rig":
-			var rp := Rect2i(rx + 4, ry + 6, 12, 10)
+			var rp := Rect2i(rx + 2, ry + 3, 18, 14)
 			m.fill(rp.position.x, rp.position.y, rp.size.x, rp.size.y, GroundMap.T.BLOCK, 14)
-			m.add_object({"kind": "tower_rig", "x": rp.position.x + 4, "y": rp.position.y + 3, "w": 3, "h": 3})
-			m.add_object({"kind": "silo", "x": rp.position.x + 1, "y": rp.position.y + 6, "w": 3, "h": 3})
-			m.add_object({"kind": "flare", "x": rp.position.x + 9, "y": rp.position.y + 7, "w": 2, "h": 2})
-			info["flare"] = Vector2(rp.position.x + 10, rp.position.y + 9) * T + Vector2(0, -56 - 2 * T + 4)
-			info["pens"] = [Vector2(rx + 14, ry + 22) * T, Vector2(rp.position.x + 6, rp.position.y + rp.size.y + 1) * T]
+			m.add_object({"kind": "tower_rig", "x": rp.position.x + 6, "y": rp.position.y + 4, "w": 6, "h": 4, "rise": 220})
+			m.add_object({"kind": "silo", "x": rp.position.x + 1, "y": rp.position.y + 9, "w": 5, "h": 4, "rise": 70})
+			m.add_object({"kind": "flare", "x": rp.position.x + 15, "y": rp.position.y + 10, "w": 2, "h": 2, "rise": 160})
+			info["flare"] = Vector2(rp.position.x + 16, rp.position.y + 12) * T + Vector2(0, -160 - 2 * T + 6)
+			info["pens"] = [Vector2(rx + 3, ry + rh - 2) * T, Vector2(rx + rw - 4, ry + rh - 2) * T]
 	m.econ = info
 
 
@@ -484,9 +462,11 @@ static func _building(arch: String, x: int, y: int, w: int, h: int, storeys: int
 		_:
 			roof = [Color(0.45, 0.47, 0.52), Color(0.5, 0.36, 0.28), Color(0.35, 0.45, 0.5), Color(0.55, 0.55, 0.5)][rng.randi() % 4]
 			wall = [Color(0.6, 0.62, 0.66), Color(0.55, 0.5, 0.42), Color(0.42, 0.5, 0.55)][rng.randi() % 3]
-	var rise := 22 + rng.randi_range(0, 10) + (storeys - 1) * 14
+	var rise := BuildArt.STOREY * storeys + 6 - h * GroundMap.TILE + 22 + rng.randi_range(0, 16)   # the front to scale, a roof above it
+	if arch == "container":
+		rise = BuildArt.CONT_H * 2 - h * GroundMap.TILE + 30
 	if arch == "dome":
-		rise = 18 + w * 3
+		rise = w * 8
 	var acc: Color = CityStyle.STYLES.get(skey, CityStyle.STYLES["independent"])["accent"]
 	return {"kind": "building", "arch": arch, "x": x, "y": y, "w": w, "h": h, "rise": rise, "storeys": storeys, "col": roof, "col2": wall,
 		"seed": rng.randi(), "lamp": lamp, "win": Color(1.0, 0.85, 0.55) if rng.randf() < 0.7 else Color(0.75, 0.88, 1.0), "acc": acc,
@@ -506,7 +486,7 @@ static func _nature(kind: String, bk: String, col: Color, rng: RandomNumberGener
 				sp = "conifer"
 			elif bk == "jungle" and rng.randf() < 0.15:
 				sp = "palm"
-			return {"kind": "tree", "w": 3 if big else 2, "h": 2, "rise": (58 if big else 44) + rng.randi_range(-4, 6), "species": sp,
+			return {"kind": "tree", "w": 5 if big else 4, "h": 2, "rise": (150 if big else 110) + rng.randi_range(-10, 16), "species": sp,
 				"vines": bk == "jungle" and rng.randf() < 0.6, "col": c, "seed": rng.randi()}
 		"dune":
 			if small or rng.randf() < 0.3:

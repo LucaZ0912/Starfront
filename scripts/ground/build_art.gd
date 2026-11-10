@@ -11,9 +11,14 @@ extends RefCounted
 ##             deep small windows, a canvas awning
 ##   stone     dressed stone, slate roof, pointed-arch windows lit gold, a small bell turret
 ##   module    white panels with rounded corners, a long window band, a green light strip, solar panels on the roof
+## 0.7.50.13 (Luz: "the sizes are off"): to scale with the people – about 15 art px a metre: a storey ~2.6 m (38 px),
+## doors 2 m high (30 px), windows about a metre.
 ## On the roofs: antennas, dishes, water tanks, solar panels, vents, planters, laundry lines – chosen by its seed.
 
 const OUT := Color(0.09, 0.07, 0.11)
+const STOREY := 38                     # art px – a storey, to scale with the people (who are ~27 art px tall)
+const DOOR_W := 16
+const DOOR_H := 30
 
 
 static func paint(img: Image, o: Dictionary, pw: int, total_h: int) -> void:
@@ -25,7 +30,7 @@ static func paint(img: Image, o: Dictionary, pw: int, total_h: int) -> void:
 	var lamp: Color = o.get("lamp", Color(1.0, 0.85, 0.5))
 	var win: Color = o.get("win", Color(1.0, 0.85, 0.55))
 	var storeys := int(o.get("storeys", 1))
-	var fh := 20 + (storeys - 1) * 14                      # the front wall's height (px)
+	var fh := 6 + storeys * STOREY                         # the front wall's height (px)
 	var base := total_h                                    # the ground line
 	var top_face := base - fh                              # where the front starts (the roof's lower edge)
 	match arch:
@@ -71,24 +76,27 @@ static func paint(img: Image, o: Dictionary, pw: int, total_h: int) -> void:
 	_r(img, 0, top_face, pw, 2, roof.darkened(0.4))              # the eaves' shadow
 	# doors and windows
 	var door_x := int(o.get("door", pw / 2 - 5))
-	door_x = clampi(door_x, 3, pw - 13)
+	door_x = clampi(door_x, 4, pw - DOOR_W - 4)
 	if arch == "module":
-		_r(img, 4, top_face + 5, pw - 8, 7, Color(0.12, 0.2, 0.28))
-		for gx in range(5, pw - 5, 6):
-			_r(img, gx, top_face + 6, 4, 5, win.lerp(Color(0.6, 0.85, 1.0), 0.5) if rng.randf() < 0.6 else Color(0.22, 0.34, 0.45))
-		_r(img, 4, top_face + 6, pw - 8, 1, Color(0.8, 0.95, 1.0, 1.0))
-		_r(img, 0, top_face + 14, pw, 1, Color(o.get("acc", Color(0.25, 0.85, 0.55))))
+		for row2 in storeys:
+			var by2 := top_face + 7 + row2 * STOREY
+			_r(img, 4, by2, pw - 8, 15, Color(0.12, 0.2, 0.28))
+			for gx in range(5, pw - 5, 9):
+				_r(img, gx, by2 + 1, 7, 13, win.lerp(Color(0.6, 0.85, 1.0), 0.5) if rng.randf() < 0.6 else Color(0.22, 0.34, 0.45))
+				_r(img, gx + 1, by2 + 2, 2, 1, Color(0.85, 0.95, 1.0))
+			_r(img, 4, by2 + 1, pw - 8, 1, Color(0.8, 0.95, 1.0, 1.0))
+			_r(img, 0, by2 + 19, pw, 2, Color(o.get("acc", Color(0.25, 0.85, 0.55))))
 	else:
 		for row in storeys:
-			var wy := top_face + 5 + row * 14
-			var wx := 4
-			while wx < pw - 10:
-				if row == storeys - 1 and wx > door_x - 9 and wx < door_x + 13:
+			var wy := top_face + 8 + row * STOREY
+			var wx := 5
+			while wx < pw - 16:
+				if row == storeys - 1 and wx > door_x - 15 and wx < door_x + DOOR_W + 4:
 					wx += 3
 					continue
 				_window(img, rng, wx, wy, arch, win, wall)
-				wx += 11 + rng.randi_range(0, 3)
-	_door(img, rng, door_x, base - 16, arch, lamp, wall)
+				wx += 19 + rng.randi_range(0, 5)
+	_door(img, rng, door_x, base - DOOR_H, arch, lamp, wall)
 	_wall_clutter(img, rng, arch, pw, top_face, base, wall, lamp, door_x)
 	# dust and grime along the foot
 	for x in pw:
@@ -265,59 +273,79 @@ static func _window(img: Image, rng: RandomNumberGenerator, x: int, y: int, arch
 	var lit := rng.randf() < 0.65
 	var glass := win if lit else Color(0.16, 0.2, 0.27)
 	match arch:
-		"stone":
-			_r(img, x, y + 2, 6, 8, Color(0.12, 0.1, 0.1))
-			_r(img, x + 1, y + 3, 4, 7, glass.lerp(Color(1.0, 0.75, 0.35), 0.5) if lit else glass)
-			_p(img, x + 2, y + 1, Color(0.12, 0.1, 0.1))
-			_p(img, x + 3, y + 1, Color(0.12, 0.1, 0.1))
-			_p(img, x + 2, y + 2, glass)
-			_p(img, x + 3, y + 2, glass)
-			_r(img, x - 1, y + 10, 8, 1, wall.lightened(0.15))
-		"adobe":
-			_r(img, x, y + 1, 6, 6, wall.darkened(0.3))
-			_r(img, x + 1, y + 2, 4, 4, glass)
-			_r(img, x, y + 7, 6, 1, wall.darkened(0.15))
+		"stone":                                                # a tall pointed-arch window
+			_r(img, x, y + 3, 10, 18, Color(0.12, 0.1, 0.1))
+			_r(img, x + 1, y + 4, 8, 17, glass.lerp(Color(1.0, 0.75, 0.35), 0.5) if lit else glass)
+			for k in 3:
+				_r(img, x + 2 + k, y + 1 + k, 6 - k * 2, 1, Color(0.12, 0.1, 0.1))
+			_r(img, x + 3, y + 3, 4, 1, glass)
+			_r(img, x + 4, y + 4, 2, 17, Color(0.12, 0.1, 0.1, 0.6))
+			_r(img, x + 1, y + 12, 8, 1, Color(0.12, 0.1, 0.1, 0.6))
+			_r(img, x - 1, y + 21, 12, 2, wall.lightened(0.15))
+		"adobe":                                                # small and deep in the thick wall
+			_r(img, x, y + 2, 11, 11, wall.darkened(0.3))
+			_r(img, x + 2, y + 4, 7, 7, glass)
+			_r(img, x + 2, y + 4, 7, 1, wall.darkened(0.45))
+			_r(img, x, y + 13, 11, 1, wall.darkened(0.15))
 		_:
-			_r(img, x - 1, y - 1, 9, 9, wall.darkened(0.3))      # the frame
-			_r(img, x, y, 7, 7, glass)
-			_r(img, x + 3, y, 1, 7, wall.darkened(0.3))          # the mullion
+			_r(img, x - 1, y - 1, 14, 16, wall.darkened(0.3))   # the frame
+			_r(img, x, y, 12, 14, glass)
+			_r(img, x + 6, y, 1, 14, wall.darkened(0.3))         # the mullion
+			_r(img, x, y + 6, 12, 1, wall.darkened(0.3))         # the transom
 			if lit:
-				_p(img, x + 1, y + 1, glass.lightened(0.4))
-				if rng.randf() < 0.4:
-					_r(img, x, y, 2, 7, glass.darkened(0.3))      # a curtain
+				_r(img, x + 1, y + 1, 2, 2, glass.lightened(0.4))
+				if rng.randf() < 0.45:
+					_r(img, x, y, 3, 14, glass.darkened(0.3))     # a curtain
+					_r(img, x + 9, y, 3, 14, glass.darkened(0.3))
+				if rng.randf() < 0.25:                         # someone inside
+					_r(img, x + 7, y + 7, 3, 7, Color(0.15, 0.12, 0.12, 0.8))
+					_r(img, x + 7, y + 5, 3, 3, Color(0.15, 0.12, 0.12, 0.8))
 			else:
-				_p(img, x + 5, y + 1, Color(0.6, 0.75, 0.9))       # the sky in the glass
-			_r(img, x - 1, y + 8, 9, 1, wall.lightened(0.2))     # the sill
+				_r(img, x + 8, y + 1, 2, 4, Color(0.6, 0.75, 0.9))   # the sky in the glass
+			_r(img, x - 2, y + 15, 16, 2, wall.lightened(0.2))   # the sill
 			if arch == "pitched":
-				_r(img, x - 3, y - 1, 2, 9, Color(0.35, 0.45, 0.3))   # shutters
-				_r(img, x + 8, y - 1, 2, 9, Color(0.35, 0.45, 0.3))
+				_r(img, x - 5, y - 1, 4, 16, Color(0.35, 0.45, 0.3))   # shutters
+				_r(img, x + 13, y - 1, 4, 16, Color(0.35, 0.45, 0.3))
+				for sl in range(y + 1, y + 15, 3):
+					_r(img, x - 5, sl, 4, 1, Color(0.28, 0.36, 0.24))
+					_r(img, x + 13, sl, 4, 1, Color(0.28, 0.36, 0.24))
 				if rng.randf() < 0.5:
-					_r(img, x - 1, y + 9, 9, 2, Color(0.45, 0.3, 0.2))   # a flower box
-					for f in 3:
-						_p(img, x + f * 3, y + 8, Color.from_hsv(rng.randf(), 0.6, 0.95))
+					_r(img, x - 1, y + 16, 14, 3, Color(0.45, 0.3, 0.2))   # a flower box
+					for f in 5:
+						_r(img, x + f * 3, y + 14, 2, 2, Color.from_hsv(rng.randf(), 0.6, 0.95))
 
 
 static func _door(img: Image, rng: RandomNumberGenerator, x: int, y: int, arch: String, lamp: Color, wall: Color) -> void:
+	var w := DOOR_W
+	var h := DOOR_H
 	match arch:
 		"adobe", "stone":
-			_r(img, x, y + 2, 10, 14, Color(0.18, 0.12, 0.08))
-			_r(img, x + 1, y + 3, 8, 13, Color(0.38, 0.24, 0.14))
-			_r(img, x + 2, y, 6, 2, Color(0.18, 0.12, 0.08))     # the arch
-			_r(img, x + 5, y + 4, 1, 12, Color(0.28, 0.17, 0.1))
-			if arch == "adobe":                                   # a canvas awning
-				for k in 6:
-					_r(img, x - 3 + k * 3, y - 4, 3, 3, Color(0.85, 0.35, 0.25) if k % 2 == 0 else Color(0.95, 0.88, 0.75))
+			_r(img, x, y + 4, w, h - 4, Color(0.18, 0.12, 0.08))
+			_r(img, x + 1, y + 5, w - 2, h - 5, Color(0.4, 0.25, 0.14))
+			for k in 4:                                          # the arch
+				_r(img, x + 1 + k, y + 3 - k, w - 2 - k * 2, 1, Color(0.18, 0.12, 0.08))
+			_r(img, x + w / 2, y + 5, 1, h - 5, Color(0.28, 0.17, 0.1))
+			for pl in range(y + 9, y + h, 6):
+				_r(img, x + 1, pl, w - 2, 1, Color(0.32, 0.2, 0.11))
+			_r(img, x + w - 4, y + h / 2 + 2, 2, 2, Color(0.85, 0.7, 0.3))      # the handle
+			if arch == "adobe":                                   # a canvas awning on poles
+				for k2 in 8:
+					_r(img, x - 6 + k2 * 4, y - 6, 4, 4, Color(0.85, 0.35, 0.25) if k2 % 2 == 0 else Color(0.95, 0.88, 0.75))
+				_r(img, x - 6, y - 2, 1, h + 2, Color(0.4, 0.3, 0.2))
+				_r(img, x + w + 5, y - 2, 1, h + 2, Color(0.4, 0.3, 0.2))
 		_:
-			_r(img, x - 1, y - 1, 12, 17, wall.darkened(0.35))
-			_r(img, x, y, 10, 16, Color(0.18, 0.2, 0.24))
-			_r(img, x + 1, y + 1, 4, 15, Color(0.3, 0.33, 0.38))
-			_r(img, x + 5, y + 1, 4, 15, Color(0.26, 0.29, 0.34))
-			_r(img, x, y + 6, 10, 1, Color(0.15, 0.16, 0.2))
-			_r(img, x - 2, y - 4, 14, 2, wall.darkened(0.4))      # the canopy
-			_r(img, x - 2, y - 2, 14, 1, wall.darkened(0.2))
-	_r(img, x + 3, y - 7 if arch != "adobe" else y - 7, 4, 2, lamp)   # the lamp over the door
-	_p(img, x + 4, y - 5, lamp.lightened(0.4))
-	_r(img, x - 1, y + 16, 12, 1, wall.lightened(0.15))       # the step
+			_r(img, x - 2, y - 2, w + 4, h + 2, wall.darkened(0.35))
+			_r(img, x, y, w, h, Color(0.18, 0.2, 0.24))
+			_r(img, x + 1, y + 1, w / 2 - 1, h - 1, Color(0.3, 0.33, 0.38))
+			_r(img, x + w / 2 + 1, y + 1, w / 2 - 2, h - 1, Color(0.26, 0.29, 0.34))
+			_r(img, x + 2, y + 4, w / 2 - 3, 8, Color(0.4, 0.55, 0.65))          # glass in the leaves
+			_r(img, x + w / 2 + 2, y + 4, w / 2 - 4, 8, Color(0.36, 0.5, 0.6))
+			_r(img, x - 4, y - 6, w + 8, 3, wall.darkened(0.4))   # the canopy
+			_r(img, x - 4, y - 3, w + 8, 1, wall.darkened(0.2))
+	_r(img, x + w / 2 - 2, y - 11, 5, 3, lamp)                     # the lamp over the door
+	_r(img, x + w / 2 - 1, y - 8, 3, 1, lamp.lightened(0.4))
+	_r(img, x - 2, y + h, w + 4, 2, wall.lightened(0.15))          # the step
+	_r(img, x - 3, y + h - 1, 1, 1, wall.darkened(0.2))
 
 
 static func _wall_clutter(img: Image, rng: RandomNumberGenerator, arch: String, pw: int, y0: int, y1: int, wall: Color, lamp: Color, door_x: int) -> void:
@@ -340,6 +368,9 @@ static func _wall_clutter(img: Image, rng: RandomNumberGenerator, arch: String, 
 
 # ---------------------------------------------------------------- whole buildings of other shapes
 
+const CONT_H := 38                     # a container stands 2.6 m
+
+
 static func _container(img: Image, rng: RandomNumberGenerator, pw: int, base: int, fh: int, roof: Color, wall: Color, lamp: Color, win: Color) -> void:
 	var cols := [Color(0.62, 0.22, 0.18), Color(0.2, 0.42, 0.6), Color(0.75, 0.55, 0.15), Color(0.3, 0.5, 0.3), Color(0.55, 0.55, 0.58)]
 	var levels := 2
@@ -348,26 +379,31 @@ static func _container(img: Image, rng: RandomNumberGenerator, pw: int, base: in
 		var cw := mini(pw - x, rng.randi_range(22, 34))
 		for lv in levels:
 			var c: Color = cols[rng.randi() % cols.size()]
-			var y_front := base - (lv + 1) * 14
+			var y_front := base - (lv + 1) * CONT_H
 			var y_top := y_front - (img.get_height() - fh - 8) / levels
 			if lv == levels - 1 and rng.randf() < 0.35:
 				continue                                         # a gap in the upper row
 			_r(img, x, y_top, cw, y_front - y_top, c.lightened(0.08))          # its top
 			for rx in range(x, x + cw, 3):
 				_r(img, rx, y_top, 1, y_front - y_top, c.darkened(0.08))
-			_r(img, x, y_front, cw, 14, c)                      # its side
-			for rx2 in range(x + 1, x + cw - 1, 2):
-				_r(img, rx2, y_front + 1, 1, 12, c.darkened(0.15))
-			_r(img, x, y_front, cw, 1, c.lightened(0.25))
-			_r(img, x, y_front, 1, 14, c.darkened(0.35))
+			_r(img, x, y_front, cw, CONT_H, c)                  # its side
+			for rx2 in range(x + 1, x + cw - 1, 3):
+				_r(img, rx2, y_front + 2, 1, CONT_H - 4, c.darkened(0.15))
+			_r(img, x, y_front, cw, 2, c.lightened(0.25))
+			_r(img, x, y_front + CONT_H - 2, cw, 2, c.darkened(0.3))
+			_r(img, x, y_front, 2, CONT_H, c.darkened(0.35))
+			_r(img, x + cw - 2, y_front, 2, CONT_H, c.darkened(0.35))
+			for cr in [x + 1, x + cw - 4]:                      # corner castings
+				_r(img, cr, y_front + 1, 3, 3, c.darkened(0.45))
+				_r(img, cr, y_front + CONT_H - 4, 3, 3, c.darkened(0.45))
 			if rng.randf() < 0.5:
-				_r(img, x + cw / 2 - 3, y_front + 3, 6, 5, win if rng.randf() < 0.6 else Color(0.16, 0.2, 0.27))   # a cut-in window
+				_window(img, rng, x + cw / 2 - 6, y_front + 9, "prefab", win, c)   # a cut-in window
 		x += cw + 1
-	_door(img, rng, pw / 2 - 5, base - 16, "prefab", lamp, wall)
-	_r(img, pw - 6, base - 28, 1, 28, Color(0.3, 0.3, 0.32))      # a ladder
-	_r(img, pw - 2, base - 28, 1, 28, Color(0.3, 0.3, 0.32))
-	for ly in range(base - 26, base, 4):
-		_r(img, pw - 6, ly, 5, 1, Color(0.35, 0.35, 0.38))
+	_door(img, rng, pw / 2 - DOOR_W / 2, base - DOOR_H, "prefab", lamp, wall)
+	_r(img, pw - 8, base - CONT_H * 2, 1, CONT_H * 2, Color(0.3, 0.3, 0.32))      # a ladder
+	_r(img, pw - 2, base - CONT_H * 2, 1, CONT_H * 2, Color(0.3, 0.3, 0.32))
+	for ly in range(base - CONT_H * 2 + 2, base, 5):
+		_r(img, pw - 8, ly, 7, 1, Color(0.35, 0.35, 0.38))
 
 
 static func _dome(img: Image, rng: RandomNumberGenerator, pw: int, base: int, fh: int, roof: Color, wall: Color, lamp: Color, win: Color) -> void:
@@ -388,14 +424,16 @@ static func _dome(img: Image, rng: RandomNumberGenerator, pw: int, base: int, fh
 		var a := -0.9 + p * 0.6
 		var px := cx + sin(a) * pw * 0.36
 		var py := cy + ry * 0.35
-		_ellipse(img, px, py, 3.0, 3.0, Color(0.2, 0.22, 0.26))
-		_ellipse(img, px, py, 2.0, 2.0, win if rng.randf() < 0.6 else Color(0.18, 0.24, 0.32))
-	var dx2 := int(cx) - 6                                      # the airlock, in hazard stripes
-	for k2 in 12:
-		_r(img, dx2 + k2, base - 18, 1, 18, Color(0.95, 0.78, 0.15) if (k2 / 2) % 2 == 0 else Color(0.15, 0.15, 0.17))
-	_r(img, dx2 + 2, base - 15, 8, 15, Color(0.3, 0.33, 0.38))
-	_r(img, dx2 + 5, base - 15, 1, 15, Color(0.2, 0.22, 0.26))
-	_r(img, dx2 + 4, base - 22, 4, 2, lamp)
+		_ellipse(img, px, py, 6.0, 6.0, Color(0.2, 0.22, 0.26))
+		_ellipse(img, px, py, 4.5, 4.5, win if rng.randf() < 0.6 else Color(0.18, 0.24, 0.32))
+		_r(img, int(px) - 2, int(py) - 3, 2, 2, Color(0.85, 0.95, 1.0))
+	var dx2 := int(cx) - 11                                     # the airlock, in hazard stripes
+	for k2 in 22:
+		_r(img, dx2 + k2, base - DOOR_H - 4, 1, DOOR_H + 4, Color(0.95, 0.78, 0.15) if (k2 / 3) % 2 == 0 else Color(0.15, 0.15, 0.17))
+	_r(img, dx2 + 3, base - DOOR_H, 16, DOOR_H, Color(0.3, 0.33, 0.38))
+	_r(img, dx2 + 10, base - DOOR_H, 2, DOOR_H, Color(0.2, 0.22, 0.26))
+	_r(img, dx2 + 5, base - DOOR_H + 4, 4, 6, Color(0.45, 0.6, 0.7))
+	_r(img, dx2 + 9, base - DOOR_H - 9, 5, 3, lamp)
 
 
 static func _quonset(img: Image, rng: RandomNumberGenerator, pw: int, base: int, fh: int, roof: Color, wall: Color, lamp: Color, win: Color) -> void:
@@ -413,9 +451,9 @@ static func _quonset(img: Image, rng: RandomNumberGenerator, pw: int, base: int,
 	_ellipse(img, pw * 0.5, float(front + 4), pw * 0.5 - 1.0, 8.0, wall.darkened(0.1))
 	_r(img, 0, front + 4, pw, fh - 4, wall)
 	_panels(img, 0, front + 4, pw, fh - 4, wall)
-	_window(img, rng, 6, front + 6, "prefab", win, wall)
-	_window(img, rng, pw - 14, front + 6, "prefab", win, wall)
-	_door(img, rng, pw / 2 - 5, base - 16, "prefab", lamp, wall)
+	_window(img, rng, 8, front + 10, "prefab", win, wall)
+	_window(img, rng, pw - 20, front + 10, "prefab", win, wall)
+	_door(img, rng, pw / 2 - DOOR_W / 2, base - DOOR_H, "prefab", lamp, wall)
 
 
 # ---------------------------------------------------------------- helpers

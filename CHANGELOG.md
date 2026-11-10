@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.13 – 2026-11-10
+
+**Settlements to scale (Luz: "the sizes are all off").**
+- One scale for everything in the settlements, set by the people (about 15 art px a metre): a storey ~2.6 m, doors
+  2 m high, windows about a metre, street lamps ~4 m, trees 7–10 m, a container 12 m long and 2.6 m high.
+- **Buildings** grew to it: taller fronts, bigger doors with glass and canopies, windows with transoms, curtains and
+  now and then someone inside, shutters with slats, stone windows as tall pointed arches, wider houses; containers,
+  domes (portholes, an airlock as big as a door) and quonsets to match.
+- **The machines are drawn new, at their real size** (pixel pictures with wheels, cabs, ladders, beacons):
+  a **haul truck** with tyres taller than a person, the **excavator** with its boom, stick and bucket, a **combine
+  harvester** with its turning reel, a **tanker**, an eight-wheeled **armoured vehicle**, a **work boat**.
+- **The mine is seen from its rim** (as Luz suggested): the berm with its marker posts, then the pit falls away –
+  rock faces with their strata, benches with tyre tracks and safety berms, the haul road cut down across the faces;
+  a haul truck on the first bench, the excavator loading another on the next, a third far down – the deeper, the more
+  in the haze.
+- The other areas to scale: 12 m containers two high under a ten-metre gantry crane carrying one, chimneys 13–15 m,
+  great tanks with stairs winding up, big dishes with ribs and their feed, armoured vehicles, a lookout tower,
+  silos; the trees at the bottom edge stay low (no longer hiding the shops).
+
 ## alpha 0.7.50.12 – 2026-11-10
 
 **Settlements: what the place lives from, around it.**

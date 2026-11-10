@@ -530,6 +530,61 @@ func _decal(d: Dictionary) -> void:
 			if bot.size.x > 12 and bot.size.y > 12:
 				_rect(bot.position.x + bot.size.x - bot.size.x / 4 - 4, bot.position.y + bot.size.y - bot.size.y / 4 - 4, bot.size.x / 4, bot.size.y / 5, Color(0.28, 0.35, 0.38))   # a pool
 				_rect(bot.position.x + bot.size.x - bot.size.x / 4 - 4, bot.position.y + bot.size.y - bot.size.y / 4 - 4, bot.size.x / 4, 1, Color(0.5, 0.6, 0.65))
+		"pit_edge":                # 0.7.50.13: an open pit seen from its rim – the berm, then faces and benches stepping down
+			var ground2: Color = pal.get("terrain_b", Color(0.5, 0.42, 0.34))
+			var rock := ground2.darkened(0.2).lerp(Color(0.55, 0.45, 0.36), 0.3)
+			var depth := 0
+			for b in d.get("bands", []):
+				var y0 := int(b[0])
+				var y1 := int(b[1])
+				var kind := String(b[2])
+				match kind:
+					"rim":                                       # the berm along the rim, posts with reflectors
+						_rect(px, y1 - 14, pw, 8, ground2.lightened(0.12))
+						_rect(px, y1 - 6, pw, 6, ground2.darkened(0.15))
+						for x in range(px + 6, px + pw, 28):
+							_rect(x, y1 - 26, 2, 14, Color(0.85, 0.85, 0.8))
+							_rect(x, y1 - 24, 2, 3, Color(1.0, 0.4, 0.2))
+					"face":                                      # a rock face: strata, cracks, the lip lit
+						var fc := rock.darkened(0.1 + depth * 0.06)
+						_rect(px, y0, pw, y1 - y0, fc)
+						var sy := y0 + 3
+						var band_i := 0
+						while sy < y1 - 2:
+							var sh := 4 + int(hash2(band_i, depth, 11) * 6)
+							_rect(px, sy, pw, sh, fc.lightened(0.06) if band_i % 2 == 0 else fc.darkened(0.06))
+							sy += sh
+							band_i += 1
+						for k in int(pw / 26):                       # a few cracks down the face
+							var cx := px + int(hash2(k, depth, 12) * pw)
+							var cl := int((y1 - y0) * (0.3 + hash2(k, depth, 15) * 0.5))
+							for t in cl:
+								_px(cx + (t / 9) % 2, y0 + 4 + t, fc.darkened(0.3))
+						_rect(px, y0, pw, 3, fc.lightened(0.22))
+						_rect(px, y1 - 3, pw, 3, fc.darkened(0.25))
+					"bench":                                     # a bench: its floor, tyre tracks, the safety berm at its edge
+						var bc := ground2.darkened(0.06 + depth * 0.05)
+						_rect(px, y0, pw, y1 - y0, bc)
+						for k2 in int(pw * (y1 - y0) / 80):
+							_px(px + int(hash2(k2, depth, 13) * pw), y0 + int(hash2(k2, depth, 14) * (y1 - y0)), bc.darkened(0.12) if k2 % 2 else bc.lightened(0.07))
+						for tr in 2:
+							var ty := y1 - 14 - tr * 9
+							for x2 in range(px, px + pw, 3):
+								_px(x2, ty, bc.darkened(0.15))
+								_px(x2 + 1, ty + 4, bc.darkened(0.15))
+						_rect(px, y1 - 4, pw, 4, bc.lightened(0.1))
+						depth += 1
+			# the haul road down: a ramp cut across the faces on the east side
+			var bands2: Array = d.get("bands", [])
+			if bands2.size() >= 5:
+				var ry0 := int(bands2[1][0])
+				var ry1 := int(bands2[4][1]) - 10
+				for y3 in range(ry0, ry1):
+					var u := float(y3 - ry0) / float(maxi(1, ry1 - ry0))
+					var rx0 := px + pw - 60 - int(u * 120)
+					_rect(rx0, y3, 44, 1, ground2.darkened(0.04 + u * 0.12))
+					_px(rx0, y3, ground2.darkened(0.3))
+					_px(rx0 + 43, y3, ground2.lightened(0.1))
 		"field":                   # a field: rows of its crop, a darker edge, the soil between
 			var soil := Color(0.36, 0.26, 0.16)
 			_rect(px, py, pw, ph, soil)
