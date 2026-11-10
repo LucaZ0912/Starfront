@@ -176,6 +176,7 @@ func start_pending() -> void:
 	pending = {}
 	Engine.time_scale = 1.0
 	Commands.god_mode = false
+	Commands.suit_god = false
 	var err := ""
 	if p.get("mode", "") == "load":
 		err = apply_save(String(p["slot"]))
@@ -192,6 +193,7 @@ func to_menu() -> void:
 	GameState.running = false
 	Engine.time_scale = 1.0
 	Commands.god_mode = false
+	Commands.suit_god = false
 	get_tree().paused = false
 	get_tree().change_scene_to_file(MENU_SCENE)
 

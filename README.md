@@ -1028,6 +1028,15 @@ the editor (debug builds); disabled in exported release builds (`Commands.cheats
 - **Ship:** god mode, refill everything, empty cargo, any hull (incl. the pirate Carrion Crow) with or without standard fit, board immediately
 - **Items:** any module (or one of every module) into station storage, any commodity into the cargo hold
 - **World:** teleport to any system (docks at its first station), reveal anomalies, spawn pirates, destroy all pirates
+- **Ground** (0.7.51.5, packages 49–51): a status line (place, level, the world outside, daylight, the suit's bars);
+  open the deck of the docked station or city, jump to a level (hangar, commercial level, shopping street, tower
+  bar); descend at once to any body; land straight at a city, outpost, mine, research camp or landing field – as
+  another world type, with a settlement's economy forced, at a chosen hour (a debug place is added if the body has
+  none); set the time of day; gear by family and quality into the pockets, fill the belt, refill, empty the pockets;
+  set health / energy / oxygen / ammunition; suit invulnerable; force the world outside; collapse now; wake in the
+  clinic. Commands `debug_deck`, `debug_ground_level`, `debug_descend`, `debug_land`, `debug_daytime`, `debug_gear`,
+  `debug_env`, `debug_collapse`, `debug_wake_clinic`; `Universe.debug_bodies` / `debug_sites` / `debug_body_as()`,
+  `CityStyle.debug_shift`, `Commands.suit_god`.
 
 All cheats are `debug_*` commands on the command bus, so a multiplayer server can simply refuse them.
 

@@ -3031,7 +3031,29 @@ func find_body(system_id: int, body_id: String) -> Dictionary:
 	for b in L["planets"] + L.get("moons", []):
 		if String(b["id"]) == body_id:
 			return b
+	if debug_bodies.has(body_id):
+		return debug_bodies[body_id]                    # 0.7.51.5: a body as another world type (debug menu)
 	return {}
+
+
+## 0.7.51.5 (debug menu): bodies seen as another world type (id "<body>~<type>") and extra places to land on a body
+## (a settlement with a forced economy, a kind the body has not got) – not saved, gone after a restart.
+var debug_bodies := {}
+var debug_sites := {}                   # body id -> Array of sites
+
+
+## 0.7.51.5: a body of this system as another world type – same place in the sky, its own id.
+func debug_body_as(body: Dictionary, world_type: String) -> Dictionary:
+	if world_type == "" or world_type == String(body.get("type", "")):
+		return body
+	var bid := "%s~%s" % [String(body["id"]).split("~")[0], world_type]
+	if not debug_bodies.has(bid):
+		var b2 := body.duplicate()
+		b2["id"] = bid
+		b2["type"] = world_type
+		b2["name"] = "%s (as %s)" % [String(body["name"]).split(" (as ")[0], String(body_type(world_type).get("name", world_type))]
+		debug_bodies[bid] = b2
+	return debug_bodies[bid]
 
 
 const SITE_KINDS := {
@@ -3092,6 +3114,7 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 			if ok:
 				break
 		out.append({"id": "%s_site_%d" % [String(body["id"]), i], "name": nm, "kind": kd, "lon": lon, "lat": lat})
+	out.append_array(debug_sites.get(String(body["id"]), []))      # 0.7.51.5: places the debug menu added
 	return out
 
 

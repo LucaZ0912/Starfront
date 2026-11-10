@@ -11,7 +11,7 @@ const TreeDataX = preload("res://data/skilltree.gd")
 const FactionData = preload("res://data/factions.gd")
 const MakerData = preload("res://data/manufacturers.gd")
 const COL := Color(0.55, 1.0, 0.35)   # terminal green
-const TABS := ["Pilot", "Ship", "Items", "World", "Audio", "Character"]
+const TABS := ["Pilot", "Ship", "Items", "World", "Audio", "Character", "Ground"]
 
 var panel: PanelContainer
 var tab := 0
@@ -34,7 +34,7 @@ func _ready() -> void:
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.position = Vector2(1600 - 500, 56)
+	panel.position = Vector2(1600 - 660, 56)             # 0.7.51.5: seven tabs
 	panel.custom_minimum_size = Vector2(480, 600)
 	root.add_child(panel)
 	var v := UI.vbox(8)
@@ -50,7 +50,7 @@ func _ready() -> void:
 		var idx: int = i
 		var b := UI.button(TABS[i], func(): _set_tab(idx))
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(110, 30)
+		b.custom_minimum_size = Vector2(84, 30)
 		tabs.add_child(b)
 		tab_buttons.append(b)
 	var scroll := ScrollContainer.new()
@@ -88,6 +88,14 @@ func _set_tab(i: int) -> void:
 		3: _build_world()
 		4: _build_audio()
 		5: _build_character()
+		6: _build_ground()
+	_fit_panel.call_deferred()
+
+
+## 0.7.51.5: the panel as wide as its widest row, kept inside the screen at the right edge.
+func _fit_panel() -> void:
+	panel.reset_size()
+	panel.position.x = maxf(8.0, get_viewport().get_visible_rect().size.x - panel.size.x - 12.0)
 
 
 ## Q / E (0.5.28.2): the previous / next tab.
@@ -683,8 +691,156 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 	_update_audio_debug()
+	_update_ground_status()
 	var f := GameState.active()
 	var where := "–"
 	if f != null:
 		where = "%s (#%d)  pos %.0f / %.0f km" % [Universe.systems[f.system_id]["name"], f.system_id, f.position.x, f.position.y]
 	info.text = "seed %d  •  %s  •  %d FPS  •  speed ×%s" % [Universe.seed_value, where, Engine.get_frames_per_second(), str(Engine.time_scale)]
+
+
+# ---------------------------------------------------------------- 0.7.51.5: packages 49–51 – on foot, landing, gear
+
+const GroundGear = preload("res://data/gear.gd")
+const PHASES := [["day", "Day"], ["dusk", "Dusk"], ["night", "Night"], ["dawn", "Dawn"]]
+var _ground_status: Label
+
+
+## Every world type you can land on: [ids, names].
+func _world_types(first: String) -> Array:
+	var ids: Array = [""]
+	var names: Array = [first]
+	for t in Universe.PLANET_TYPES:
+		if Universe.landable({"type": t}):
+			ids.append(t)
+			names.append(String(Universe.PLANET_TYPES[t]["name"]))
+	for t2 in Universe.MOON_TYPES:
+		ids.append(t2)
+		names.append(String(Universe.MOON_TYPES[t2]["name"]))
+	return [ids, names]
+
+
+## Decks, landing, cities and settlements, the suit and the world outside, the clinic.
+func _build_ground() -> void:
+	_ground_status = UI.label("", 12, UI.TEXT_DIM)
+	content.add_child(_ground_status)
+	_update_ground_status()
+	# package 49: on foot
+	_section("On foot – decks and levels (packages 49, 50)")
+	var r49 := _row()
+	r49.add_child(UI.button("Open the deck here", func(): _cmd({"type": "debug_deck"})))
+	for lv in [["hangar", "Hangar"], ["commercial", "Commercial"], ["street", "Street"], ["tower", "Tower bar"]]:
+		var lvk: String = lv[0]
+		r49.add_child(UI.button(String(lv[1]), func(): _cmd({"type": "debug_ground_level", "level": lvk})))
+	content.add_child(UI.wrap_label("The deck of the station you are docked at (in a city: its hangar). Levels: a station has hangar and commercial level, a city hangar, shopping street and tower bar.", 12, UI.TEXT_DIM, 560))
+	# package 50: landing
+	_section("Landing, cities, settlements (package 50)")
+	var L := Universe.get_layout(GameState.current_system)
+	var bids: Array = []
+	var bnames: Array = []
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b):
+			bids.append(String(b["id"]))
+			var sites: Array = Universe.landing_sites(GameState.current_system, b)
+			bnames.append("%s – %s (cities %d, other places %d)" % [String(b["name"]), String(Universe.body_type(String(b["type"]))["name"]),
+				sites.filter(func(x): return String(x["kind"]) == "city").size(), sites.filter(func(x): return String(x["kind"]) != "city").size()])
+	if bids.is_empty():
+		content.add_child(UI.label("Nothing to land on in this system.", 12, UI.TEXT_DIM))
+	var body := _option(bids, bnames, 440)
+	var rb := _row()
+	rb.add_child(body)
+	rb.add_child(UI.button("Descend", func(): _cmd({"type": "debug_descend", "body": body.get_selected_metadata()})))
+	var kinds := _option(["city", "outpost", "mine", "research", "field"], ["City", "Outpost", "Mine", "Research camp", "Landing field"], 120)
+	var wt: Array = _world_types("World: its own")
+	var world := _option(wt[0], wt[1], 140)
+	var ecos: Array = [""] + SettleGen.SPECIAL.keys()
+	var econames: Array = ["Economy: its own"]
+	for e in SettleGen.SPECIAL:
+		econames.append(Economy.name_of(String(e)) if Economy.ORDER.has(e) else String(e).capitalize())
+	var eco := _option(ecos, econames, 140)
+	var hours := _option(["", "day", "dusk", "night", "dawn"], ["Hour: now", "Day", "Dusk", "Night", "Dawn"], 110)
+	var rl := _row()
+	rl.add_child(kinds)
+	rl.add_child(world)
+	rl.add_child(eco)
+	rl.add_child(hours)
+	var rl2 := _row()
+	rl2.add_child(UI.button("Land there", func(): _cmd({"type": "debug_land", "body": body.get_selected_metadata() if not bids.is_empty() else "",
+		"kind": kinds.get_selected_metadata(), "world": world.get_selected_metadata(), "economy": eco.get_selected_metadata(), "day": hours.get_selected_metadata()})))
+	rl2.add_child(UI.label("Time of day here:", 12, UI.TEXT_DIM))
+	for ph in PHASES:
+		var phk: String = ph[0]
+		rl2.add_child(UI.button(String(ph[1]), func(): _cmd({"type": "debug_daytime", "phase": phk})))
+	content.add_child(UI.wrap_label("Lands at once at the first place of that kind on the body – if there is none, or an economy is forced (settlements only), a debug place is added. 'World' shows the body as another world type (ground, bounds, air). The hour turns every world on until the place has it.", 12, UI.TEXT_DIM, 560))
+	# package 51: gear, the world outside, the clinic
+	_section("Gear, the world outside, the clinic (package 51)")
+	var fams: Array = []
+	var fnames: Array = []
+	for t3 in [["Suit", GroundGear.SUITS], ["Weapon", GroundGear.WEAPONS], ["Belt", GroundGear.BELT], ["Feature", GroundGear.FEATURES]]:
+		for fam in (t3[1] as Dictionary):
+			fams.append(String(fam))
+			fnames.append("%s – %s" % [String(t3[0]), String(t3[1][fam]["name"])])
+	var fsel := _option(fams, fnames, 300)
+	var qsel := _option(GroundGear.QUALITIES, GroundGear.QUALITIES, 60)
+	qsel.select(3)
+	var cnt := _spin(1, 20, 1)
+	cnt.custom_minimum_size = Vector2(70, 0)
+	var rg := _row()
+	rg.add_child(fsel)
+	rg.add_child(qsel)
+	rg.add_child(cnt)
+	rg.add_child(UI.button("Into the pockets", func():
+		var fm: String = fsel.get_selected_metadata()
+		var gid: String = fm + ":" + String(qsel.get_selected_metadata()) if GroundGear.has_quality(fm) else fm
+		_cmd({"type": "debug_gear", "give": gid, "n": int(cnt.value)})))
+	var rg2 := _row()
+	rg2.add_child(UI.button("Fill the belt", func(): _cmd({"type": "debug_gear", "fill_belt": true})))
+	rg2.add_child(UI.button("Refill the suit", func(): _cmd({"type": "debug_gear", "refill": true})))
+	rg2.add_child(UI.button("Empty the pockets", func(): _cmd({"type": "debug_gear", "clear": true})))
+	var rs := _row()
+	var stat := _option(["health", "energy", "oxygen", "ammo"], ["Health", "Energy", "Oxygen", "Ammunition"], 130)
+	rs.add_child(stat)
+	var pct := _spin(0, 100, 25)
+	pct.suffix = "%"
+	rs.add_child(pct)
+	rs.add_child(UI.button("Set", func(): _cmd({"type": "debug_gear", "set": {stat.get_selected_metadata(): pct.value}})))
+	for v in [0, 10, 100]:
+		var vv: int = v
+		rs.add_child(UI.button("all %d %%" % vv, func(): _cmd({"type": "debug_gear", "set": {"health": maxi(vv, 1), "energy": vv, "oxygen": vv, "ammo": vv}})))
+	var inv := CheckButton.new()
+	inv.text = "Suit invulnerable (energy and oxygen still drain)"
+	inv.button_pressed = Commands.suit_god
+	inv.toggled.connect(func(on): _cmd({"type": "debug_gear", "suit_god": on}))
+	content.add_child(inv)
+	var et: Array = _world_types("Outside: as the place is")
+	var esel := _option(et[0], et[1], 220)
+	var re := _row()
+	re.add_child(esel)
+	re.add_child(UI.button("Force the world outside", func(): _cmd({"type": "debug_env", "world": esel.get_selected_metadata()})))
+	var rc := _row()
+	rc.add_child(UI.button("Collapse now", func(): _cmd({"type": "debug_collapse"})))
+	rc.add_child(UI.button("Wake in the clinic here", func(): _cmd({"type": "debug_wake_clinic"})))
+	content.add_child(UI.wrap_label("Collapse: on foot the body gives out – you wake in the nearest city's clinic (else the last station's), the pockets emptied. Wake in the clinic: of the station or city you are docked at.", 12, UI.TEXT_DIM, 560))
+
+
+func _update_ground_status() -> void:
+	if tab != 6 or _ground_status == null or not is_instance_valid(_ground_status):
+		return
+	var g = GameState.gear
+	var t: Dictionary = g.totals()
+	var m = get_tree().current_scene
+	var gv = m.get("ground") if m != null else null
+	var where := "aboard"
+	if gv != null and is_instance_valid(gv):
+		var hz: Array = []
+		for h in GroundGear.HAZARDS:
+			if float(gv.env.get(h, 0.0)) > 0.0:
+				hz.append("%s %d%%" % [GroundGear.HAZARD_NAMES[h], int(float(gv.env[h]) * 100.0)])
+		where = "on foot: %s – %s  •  outside: %s" % [String(gv.station.get("name", "?")), gv.level,
+			"indoors" if gv.env.is_empty() else (("air " if bool(gv.env.get("breathable", true)) else "no air ") + ", ".join(hz))]
+		if gv.is_town():
+			where += "  •  daylight %d %%" % int(gv.city_day() * 100.0)
+	var f := GameState.active()
+	_ground_status.text = "%s  •  docked: %s\nHealth %d  •  Energy %d/%d  •  Oxygen %.1f/%d min  •  Ammo %d/%d  •  %s" % [where,
+		f.docked_at if f != null and f.docked_at != "" else "–", int(g.health), int(g.energy), int(t["energy"]), g.oxygen, int(t["oxygen"]),
+		g.ammo, int(t["ammo"]), GroundGear.display_name(g.suit)]

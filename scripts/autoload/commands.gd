@@ -2381,3 +2381,284 @@ func _c_debug_new_contracts(_c: Dictionary) -> String:
 	GameState.offers.erase(sid)
 	GameState.offers.erase(sid + "#f")
 	return ""
+
+
+# ---------------------------------------------------------------- 0.7.51.5: debug for packages 49–51 (on foot, landing, gear)
+
+var suit_god := false         # 0.7.51.5: the world outside does not hurt the pilot (energy and oxygen still drain)
+const DEBUG_SITE_KINDS := ["city", "outpost", "mine", "research", "field"]
+const DEBUG_BELT := ["cs_medkit", "cs_cell", "cs_o2", "cs_stim", "cs_ammo", "gr_shield"]
+
+
+func _main():
+	var m = get_tree().current_scene if is_inside_tree() else null
+	return m if m != null and m.has_method("land_at") else null
+
+
+func _ground():
+	var m = _main()
+	if m == null or m.ground == null or not is_instance_valid(m.ground):
+		return null
+	return m.ground
+
+
+## The player's ship out of space for a landing done by the debug menu (as at the end of a descent).
+func _debug_leave_space(m) -> void:
+	if m.station_panel != null and m.station_panel.visible:
+		m.station_panel.close()
+	m.close_deck(false)
+	if world != null and is_instance_valid(world) and world.player != null and is_instance_valid(world.player):
+		world.player.visible = false
+		world.player.order = {"type": "idle"}
+		world.player.velocity = Vector2.ZERO
+
+
+## {"type":"debug_deck"} – package 49: out of the ship onto the deck of the docked station (or a city's hangar).
+func _c_debug_deck(_c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	var st := docked_station()
+	if st.is_empty():
+		return "Dock at a station (or land in a city) first."
+	if bool(st.get("settlement", false)):
+		return "A settlement has no deck – you are already outside."
+	if m.station_panel.visible:
+		m.station_panel.close()
+	if m.view != null and m.view.stations.has(f.docked_at):
+		m.open_deck()
+	else:
+		GameState.gear.aboard()
+		m._open_ground_at(st)
+	return "" if _ground() != null else "The deck did not open."
+
+
+## {"type":"debug_ground_level", "level": "hangar"|"commercial"|"street"|"tower"} – package 49/50: straight to a level.
+func _c_debug_ground_level(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null:
+		return "Not on foot."
+	var lv := String(c.get("level", ""))
+	var ok: Array = []
+	if g.is_city():
+		ok = ["hangar", "street", "tower"]
+	elif not g.is_town() and g.level in ["hangar", "commercial"]:
+		ok = ["hangar", "commercial"]
+	if ok.is_empty():
+		return "No levels here (a landing field or a settlement)."
+	if not lv in ok:
+		return "No level '%s' here." % lv
+	g.go_level(lv, "lift")
+	return ""
+
+
+## {"type":"debug_descend", "body": id} – package 50: down to a body of this system at once – the planet map opens.
+func _c_debug_descend(c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	if f.in_transit():
+		return "Not during a hyperspace jump."
+	var body := Universe.find_body(f.system_id, String(c.get("body", "")))
+	if body.is_empty() or not Universe.landable(body):
+		return "No body to land on."
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	m._on_descended(String(body["id"]))
+	GameState.log_msg("[Debug] Down to %s." % String(body["name"]), GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_land", "body": id ("" = the first you can land on), "kind": city|outpost|mine|research|field,
+##  "world": a world type to see the body as ("" = its own), "economy": a settlement's economy ("" = its own),
+##  "day": "" or day|dusk|night|dawn} – package 50: straight onto the ground at such a place. If the body has none of
+## that kind (or the economy is forced), the debug menu adds one.
+func _c_debug_land(c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	if f.in_transit():
+		return "Not during a hyperspace jump."
+	var kind := String(c.get("kind", "city"))
+	if not kind in DEBUG_SITE_KINDS:
+		return "Unknown kind of place."
+	var body := Universe.find_body(f.system_id, String(c.get("body", "")))
+	if body.is_empty():
+		var L := Universe.get_layout(f.system_id)
+		for b in L["planets"] + L.get("moons", []):
+			if Universe.landable(b):
+				body = b
+				break
+	var wt := String(c.get("world", ""))
+	if wt != "" and not (Universe.PLANET_TYPES.has(wt) or Universe.MOON_TYPES.has(wt)):
+		return "Unknown world type."
+	if not body.is_empty():
+		body = Universe.debug_body_as(body, wt)
+	if body.is_empty() or not Universe.landable(body):
+		return "No body to land on here."
+	var eco := String(c.get("economy", "")) if kind in ["outpost", "mine", "research"] else ""
+	if eco != "" and not SettleGen.SPECIAL.has(eco):
+		return "Unknown economy."
+	var site := {}
+	if eco == "":
+		for s in Universe.landing_sites(f.system_id, body):
+			if String(s["kind"]) == kind or (kind == "field" and String(s["kind"]) in ["ruins", "crash"]):
+				site = s
+				break
+	if site.is_empty():
+		var bid := String(body["id"])
+		var sid := "%s_dbg_%s%s" % [bid, kind, ("_" + eco) if eco != "" else ""]
+		var real_kind := "crash" if kind == "field" else kind
+		site = {"id": sid, "kind": real_kind, "lon": -0.35, "lat": 0.1,
+			"name": "Debug %s%s" % ["Landing Field" if kind == "field" else String(Universe.SITE_KINDS[real_kind]["name"]), (" (%s)" % eco) if eco != "" else ""]}
+		if eco != "":
+			site["economy"] = eco
+		var extra: Array = Universe.debug_sites.get(bid, [])
+		if not extra.any(func(x): return String(x["id"]) == sid):
+			extra.append(site)
+		Universe.debug_sites[bid] = extra
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	if kind == "city":
+		m.enter_city(body, site)
+	else:
+		m.land_at(body, site)
+	if _ground() == null:
+		return "Could not land."
+	GameState.log_msg("[Debug] Landed at %s on %s." % [String(site["name"]), String(body["name"])], GameState.COL_WARN)
+	if String(c.get("day", "")) != "" and _ground().is_town():
+		return _c_debug_daytime({"phase": String(c["day"])})
+	return ""
+
+
+## {"type":"debug_daytime", "phase": "day"|"dusk"|"night"|"dawn"} – package 50: the world turns on until the city or
+## settlement you are in has that hour (every world turns with it – the planet map agrees).
+func _c_debug_daytime(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or not g.is_town():
+		return "Only in a city or a settlement."
+	var phase := String(c.get("phase", "day"))
+	if not phase in ["day", "dusk", "night", "dawn"]:
+		return "Unknown time of day."
+	var body: Dictionary = g._city_body
+	if body.is_empty():
+		body = Universe.find_body(GameState.current_system, String(g.station.get("body", "")))
+	if body.is_empty():
+		return "No world under this place."
+	var st: Dictionary = g.station
+	var length := CityStyle.day_length(body)
+	var best := 0.0
+	var best_score := INF
+	for i in 480:
+		var dt := length * float(i) / 480.0
+		var d := CityStyle.daylight(st, body, dt)
+		var up := CityStyle.daylight(st, body, dt + 5.0) > d
+		var score := 0.0
+		match phase:
+			"day":
+				score = -d
+			"night":
+				score = d
+			"dusk":
+				score = absf(d - 0.45) + (1.0 if up else 0.0)
+			"dawn":
+				score = absf(d - 0.45) + (0.0 if up else 1.0)
+		if score < best_score - 0.0001:
+			best_score = score
+			best = dt
+	CityStyle.debug_shift += best
+	g._apply_day(CityStyle.daylight(st, body), true)
+	GameState.log_msg("[Debug] %s at %s (daylight %d %%)." % [phase.capitalize(), String(st.get("name", "?")), int(float(st.get("day", 0.0)) * 100.0)], GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_gear", ...} – package 51: "give": id (+ "n") into the pockets; "fill_belt": every belt place full;
+## "refill": health, energy, oxygen, ammunition full; "clear": empty pockets; "set": {health|energy|oxygen|ammo: percent};
+## "suit_god": bool – the world outside does not hurt.
+func _c_debug_gear(c: Dictionary) -> String:
+	var g = GameState.gear
+	if g == null:
+		return "No pilot."
+	var GD = GearShop.GearData
+	if c.has("give"):
+		var id := String(c["give"])
+		if not GD.valid(id):
+			return "Unknown gear '%s'." % id
+		var n := clampi(int(c.get("n", 1)), 1, 99)
+		var left: int = g.add_item(id, n)
+		if left >= n:
+			return "Your pockets are full."
+		GameState.log_msg("[Debug] %s ×%d into the pockets." % [GD.display_name(id), n - left], GameState.COL_WARN)
+	if c.get("fill_belt", false):
+		for i in g.belt.size():
+			var fam: String = DEBUG_BELT[i % DEBUG_BELT.size()]
+			g.belt[i] = {"id": fam, "n": GD.stack_max(fam)}
+		GameState.log_msg("[Debug] Belt filled.", GameState.COL_WARN)
+	if c.get("refill", false):
+		g.refill()
+	if c.get("clear", false):
+		for i2 in g.inv.size():
+			g.inv[i2] = {}
+	if c.has("set"):
+		var t: Dictionary = g.totals()
+		var sv: Dictionary = c["set"]
+		for k in sv:
+			var pct := clampf(float(sv[k]), 0.0, 100.0) / 100.0
+			match String(k):
+				"health":
+					g.health = GD.HEALTH * pct
+				"energy":
+					g.energy = float(t["energy"]) * pct
+				"oxygen":
+					g.oxygen = float(t["oxygen"]) * pct
+				"ammo":
+					g.ammo = int(round(float(t["ammo"]) * pct))
+	if c.has("suit_god"):
+		suit_god = bool(c["suit_god"])
+		GameState.log_msg("[Debug] Suit invulnerable %s." % ("ON" if suit_god else "off"), GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_env", "world": a world type ("" = the place's own)} – package 51: the world outside on this ground map.
+func _c_debug_env(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null:
+		return "Not on foot."
+	var GD = GearShop.GearData
+	var wt := String(c.get("world", ""))
+	if wt == "":
+		g.env = GD.env_of(String(g._body.get("type", ""))) if g.level in ["landing", "settlement"] else {}
+	elif GD.ENV.has(wt):
+		g.env = GD.env_of(wt)
+	else:
+		return "Unknown world type."
+	g._warned = {}
+	g.pilot.look = g.pilot_look()
+	GameState.log_msg("[Debug] Outside now: %s." % ("as the place is" if wt == "" else String(Universe.body_type(wt)["name"])), GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_collapse"} – package 51: the body gives out now (you wake in a clinic).
+func _c_debug_collapse(_c: Dictionary) -> String:
+	var g = _ground()
+	if g == null:
+		return "Not on foot."
+	g._collapse()
+	return ""
+
+
+## {"type":"debug_wake_clinic"} – package 51: wake in the clinic of the docked station (or city).
+func _c_debug_wake_clinic(_c: Dictionary) -> String:
+	var m = _main()
+	var st := docked_station()
+	if m == null or st.is_empty():
+		return "Dock at a station (or land in a city) first."
+	if bool(st.get("settlement", false)):
+		return "No clinic in a settlement."
+	if m.station_panel.visible:
+		m.station_panel.close()
+	m._wake_at(st)
+	return ""

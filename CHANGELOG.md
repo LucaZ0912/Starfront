@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.5 – 2026-11-10
+
+**Debug functions for packages 49–51** (F12 → new tab **Ground**) – every package brings its debug functions
+(Leitlinien 1.5); these were missing for walking, landing, cities, settlements, gear and the clinic.
+- **Status line:** where you are on foot (place, level, the world outside, daylight), docked at, health, energy,
+  oxygen, ammunition, the suit.
+- **On foot (49, 50):** open the deck of the docked station (in a city its hangar); straight to a level – hangar or
+  commercial level on a station, hangar, shopping street or tower bar in a city.
+- **Landing (50):** descend at once to any body of the system (the planet map opens); land straight at a city,
+  outpost, mine, research camp or landing field – optionally seeing the body as another world type, with a
+  settlement's economy forced, at a chosen hour. If the body has no such place, a debug place is added (not saved).
+  Set the time of day where you are (day, dusk, night, dawn) – every world turns on with it.
+- **Gear, the world outside, the clinic (51):** any piece by family and quality (F–A) into the pockets, fill the belt,
+  refill the suit, empty the pockets; set health, energy, oxygen or ammunition to a percentage; **suit invulnerable**
+  (the world outside does not hurt – energy and oxygen still drain); force the world outside on the current map
+  (any world type, or back to the place's own); collapse now; wake in the clinic of the station or city you are
+  docked at.
+- The debug menu keeps itself inside the screen (seven tabs, narrower tab buttons).
+- Smoke test: a check for all the new debug commands; `--only=debug_shot` (windowed) saves a picture of the tab.
+
 ## alpha 0.7.51.4 – 2026-11-10
 
 **The clinic, and where you wake (Luz).** Package 51 is complete.

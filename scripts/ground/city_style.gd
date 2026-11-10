@@ -130,11 +130,15 @@ static func day_length(body: Dictionary) -> float:
 	return 1200.0 + float(absi(hash(String(body.get("id", "")) + "day")) % 1200)
 
 
+## 0.7.51.5 (debug menu): seconds every world is turned ahead of the play time – to see a place at another hour.
+static var debug_shift := 0.0
+
+
 static func light_vec(body: Dictionary = {}, dt: float = 0.0) -> Vector3:
 	if body.is_empty():
 		return Vector3(-0.7, -0.5, 0.55).normalized()
 	var ph := float(absi(hash(String(body.get("id", "")) + "sun")) % 1000) / 1000.0
-	var a := LIGHT_A0 + TAU * fposmod((GameState.play_time + dt) / day_length(body) + ph, 1.0)
+	var a := LIGHT_A0 + TAU * fposmod((GameState.play_time + debug_shift + dt) / day_length(body) + ph, 1.0)
 	return Vector3(-sin(a) * 0.86, -0.5, cos(a) * 0.86).normalized()
 
 

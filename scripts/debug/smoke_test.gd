@@ -145,6 +145,7 @@ func _process(delta: float) -> void:
 				check(saw_undock, "undocking through a hangar bay")
 				_test_gear()                     # package 51 – the pilot's suit, slots, pockets, locker
 				_test_landing(view)              # package 50 – down to a planet and back up, then on to the fight
+				_test_debug_ground(view)         # 0.7.51.5 – the debug functions of packages 49–51
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -8533,3 +8534,140 @@ func _test_planets(view: SystemView) -> void:
 	check(types_ok and dwarf_ok and giant_ok and way_dwarf > 0 and city_ok and cities > 0 and look_ok and facts_ok and coll_ok,
 		"package 38: %d planet types (ice giants out beyond, dwarf planets in the Kuiper belt, ocean and jungle worlds); %d waystations at a dwarf; %d worlds with city lights; every planet its own shade; planet and moon types in the collection" % [seen.size(), way_dwarf, cities])
 
+
+
+## 0.7.51.5: the debug functions of packages 49–51 (F12, tab Ground) – down to a body at once, landing straight at a
+## city at night (its levels, the hour turned to day), a mine seen as an ice world with a forced farming economy
+## (hydroponics), gear into the pockets, the belt filled, the bars set, the suit invulnerable, the world outside
+## forced, collapsing (you wake in a city's clinic), waking in the clinic, the deck of a station; the menu tab builds.
+func _test_debug_ground(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var L := Universe.get_layout(view.system_id)
+	var body := {}
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b) and (body.is_empty() or Universe.landing_sites(view.system_id, b).any(func(s): return String(s["kind"]) == "city")):
+			body = b
+			if Universe.landing_sites(view.system_id, b).any(func(s): return String(s["kind"]) == "city"):
+				break
+	if body.is_empty():
+		check(false, "0.7.51.5: a body to land on in the home system")
+		return
+	var bid := String(body["id"])
+	# the menu tab
+	main.debug_menu._set_tab(6)
+	var tab_ok: bool = main.debug_menu.content.get_child_count() > 12 and main.debug_menu._ground_status.text != ""
+	main.debug_menu._set_tab(0)
+	# down at once
+	var e1 := Commands.execute({"type": "debug_descend", "body": bid})
+	var desc_ok: bool = e1 == "" and main.planet_map != null and f.docked_at == "land:" + bid and not p.visible
+	# a city at night, its levels, then day
+	var e2 := Commands.execute({"type": "debug_land", "body": bid, "kind": "city", "day": "night"})
+	var g = main.ground
+	var night: float = g.city_day() if g != null else 1.0
+	var city_ok: bool = e2 == "" and g != null and g.is_city() and g.level == "hangar" and main.planet_map == null and night < 0.15
+	var e3 := Commands.execute({"type": "debug_daytime", "phase": "day"})
+	var day_ok: bool = e3 == "" and g.city_day() > 0.85
+	var lv_ok: bool = Commands.execute({"type": "debug_ground_level", "level": "street"}) == "" and g.level == "street" \
+		and Commands.execute({"type": "debug_ground_level", "level": "tower"}) == "" and g.level == "tower" \
+		and Commands.execute({"type": "debug_ground_level", "level": "commercial"}) != ""
+	# the city's deck again from aboard (its hangar)
+	main.close_deck(false)
+	var deck_city: bool = Commands.execute({"type": "debug_deck"}) == "" and main.ground != null and main.ground.level == "hangar"
+	# a mine as an ice world, farming forced: hydroponics
+	var e4 := Commands.execute({"type": "debug_land", "body": bid, "kind": "mine", "world": "ice", "economy": "agri"})
+	g = main.ground
+	var mine_ok: bool = e4 == "" and g != null and g.level == "settlement" and String(g._body.get("type", "")) == "ice" \
+		and String(g.map.econ.get("kind", "")) == "hydro" and bool(Commands.docked_station().get("settlement", false)) \
+		and Universe.find_body(view.system_id, String(g._body["id"])).get("type", "") == "ice" and g.needs_helmet()
+	var refuse_ok: bool = Commands.execute({"type": "debug_ground_level", "level": "street"}) != "" and Commands.execute({"type": "debug_wake_clinic"}) != ""
+	# gear
+	var n0: int = gear.count("wp_rifle:B")
+	var give_ok: bool = Commands.execute({"type": "debug_gear", "give": "wp_rifle:B", "n": 2}) == "" and gear.count("wp_rifle:B") == n0 + 2 \
+		and Commands.execute({"type": "debug_gear", "give": "nonsense:Z"}) != ""
+	Commands.execute({"type": "debug_gear", "fill_belt": true})
+	var belt_ok := true
+	for k in gear.belt.size():
+		belt_ok = belt_ok and not (gear.belt[k] as Dictionary).is_empty() and int(gear.belt[k]["n"]) == GearShop.GearData.stack_max(String(gear.belt[k]["id"]))
+	Commands.execute({"type": "debug_gear", "set": {"health": 50, "energy": 10, "oxygen": 0, "ammo": 100}})
+	var t: Dictionary = gear.totals()
+	var set_ok: bool = is_equal_approx(gear.health, 50.0) and is_equal_approx(gear.energy, float(t["energy"]) * 0.1) and gear.oxygen == 0.0 and gear.ammo == int(t["ammo"])
+	# the suit invulnerable: no air, yet no harm – energy still drains
+	g.pilot.pos = g.map.spawn
+	Commands.execute({"type": "debug_gear", "suit_god": true})
+	var e_before: float = gear.energy
+	for i in 5:
+		g._env_step(1.0)
+	var god_ok: bool = is_equal_approx(gear.health, 50.0) and gear.energy < e_before and not g._collapsed
+	Commands.execute({"type": "debug_gear", "suit_god": false})
+	g._env_step(1.0)
+	god_ok = god_ok and gear.health < 50.0
+	# the world outside forced: a terran world's air – no helmet; back to the place's own
+	var env_ok: bool = Commands.execute({"type": "debug_env", "world": "terran"}) == "" and not g.needs_helmet() and not bool(g.pilot.look.get("helmet", true)) \
+		and Commands.execute({"type": "debug_env", "world": ""}) == "" and g.needs_helmet() and float(g.env.get("cold", 0.0)) > 0.5
+	Commands.execute({"type": "debug_gear", "refill": true})
+	# collapse: the nearest city's clinic
+	var fall_ok := true
+	var wake_ok := true
+	if not main.nearest_clinic_city(view.system_id, bid).is_empty():
+		var e5 := Commands.execute({"type": "debug_collapse"})
+		g = main.ground
+		fall_ok = e5 == "" and g != null and g.is_city() and g.level == "street" and g.pilot.pos.distance_to(g._clinic_spot()) < 2.0
+		# and waking in the clinic of the city you are docked at
+		main.close_deck(false)
+		var e6 := Commands.execute({"type": "debug_wake_clinic"})
+		g = main.ground
+		wake_ok = e6 == "" and g != null and g.pilot.pos.distance_to(g._clinic_spot()) < 2.0
+	# a station's deck and clinic (docked by hand for the check)
+	main.close_deck(false)
+	var st: Dictionary = view.stations.values()[0].data
+	f.docked_at = String(st["id"])
+	var deck_st: bool = Commands.execute({"type": "debug_deck"}) == "" and main.ground != null and main.ground.level == "hangar" \
+		and Commands.execute({"type": "debug_ground_level", "level": "commercial"}) == "" and main.ground.level == "commercial"
+	var clinic_st: bool = Commands.execute({"type": "debug_wake_clinic"}) == "" and main.ground != null and main.ground.level == "commercial" \
+		and main.ground.pilot.pos.distance_to(main.ground._clinic_spot()) < 2.0
+	if main.station_panel.visible:
+		main.station_panel.close()
+	# back into space as before
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	CityStyle.debug_shift = 0.0
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.aboard()
+	main._update_input()
+	check(tab_ok and desc_ok and city_ok and day_ok and lv_ok and deck_city and mine_ok and refuse_ok and give_ok and belt_ok and set_ok and god_ok and env_ok and fall_ok and wake_ok and deck_st and clinic_st,
+		"0.7.51.5: debug 49–51 – tab Ground; down to %s at once; a city at night (%.2f), its levels, day; a mine as an ice world farming (hydroponics); gear into the pockets, belt filled, bars set, suit invulnerable, the world outside forced; collapse → city clinic, waking in the clinic; a station's deck and clinic  [%s]" % [String(body["name"]), night,
+		" ".join(PackedStringArray([str(tab_ok), str(desc_ok), str(city_ok), str(day_ok), str(lv_ok), str(deck_city), str(mine_ok), str(refuse_ok), str(give_ok), str(belt_ok), str(set_ok), str(god_ok), str(env_ok), str(fall_ok), str(wake_ok), str(deck_st), str(clinic_st)]))])
+
+
+## 0.7.51.5: a picture of the debug menu's Ground tab (run windowed: -- --smoketest --only=debug_shot).
+func _test_debug_shot() -> void:
+	for i0 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading) or not main.loading.visible:
+			break
+		await get_tree().process_frame
+	Commands.execute({"type": "debug_land", "kind": "city", "day": "dusk"})
+	Commands.execute({"type": "debug_ground_level", "level": "street"})
+	main.debug_menu.toggle()
+	main.debug_menu._set_tab(6)
+	for i in 30:
+		await get_tree().process_frame
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://Claude outputs"))
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/debug_ground.png")
+	main.debug_menu.content.get_parent().scroll_vertical = 600
+	for i2 in 10:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/debug_ground_2.png")
+	print("[SMOKE] screenshot: Claude outputs/debug_ground.png")

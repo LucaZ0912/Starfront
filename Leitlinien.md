@@ -78,7 +78,7 @@ Stand: Entwurf vom 11. Nov 2026 (Claude), zur Korrektur durch Luz.
 
 ## 5. Offene Punkte aus diesem Durchgang
 
-- Debug-Funktionen für die Pakete 49–51 fehlen noch (Landen, Städte, Siedlungen, Ausrüstung, Umwelt, Klinik).
+- [x] ~~Debug-Funktionen für die Pakete 49–51 fehlen noch (Landen, Städte, Siedlungen, Ausrüstung, Umwelt, Klinik).~~ Erledigt in 0.7.51.5 (F12 → Ground).
 - Gebäude am Boden auf Sci-Fi umbauen (alle Bauformen, im Maßstab).
 - Klinik als eigene Ebene über den Aufzug (Rezeption, Zimmer, Aufwachzimmer, Personal).
 - Gear-Seite nach dem Muster des Schiffsmenüs (Kacheln, Anzug-Mockup) – erst Mockup.

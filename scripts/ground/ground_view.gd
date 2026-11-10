@@ -350,7 +350,10 @@ func _env_step(delta: float) -> void:
 			hud.exposure = 0.0
 		return
 	var g = GameState.gear
+	var h0: float = g.health
 	var r: Dictionary = g.env_step(delta, env, Input.is_action_pressed("boost"))
+	if Commands.suit_god:
+		g.health = h0                                   # 0.7.51.5 (debug): the world outside does not hurt
 	if hud != null:
 		hud.exposure = float(r["exposure"])
 	var t: Dictionary = g.totals()
