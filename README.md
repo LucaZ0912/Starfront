@@ -223,7 +223,12 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.50.11: `scripts/ground/build_art.gd` – `BuildArt.paint` (object kind `building`, `arch` prefab/container/quonset/
   dome/pitched/adobe/stone/module, `storeys`, `seed`, own `rise`); `SettleGen._arch` / `_building` / `_nature`;
   objects `shrub`, `stall`, `rover`, `signpost`, `cable_pole`, trees with `species` (broad/conifer/palm) and `vines`,
-  rock groups; face deco `awning`.; `texture()` renders floors and walls once.
+  rock groups; face deco `awning`.
+- 0.7.50.12: settlement map 94 wide (`SettleGen.TW` town, the rest the economy area), `SettleGen._econ` (by
+  `economy(site, sys)`, `site.economy` overrides; `GROWS`), `GroundMap.econ` {kind, rect, pit/step/heap, fields,
+  stacks, crane, road, flare, launch, loop, pens}; `scripts/ground/econ_life.gd` – `EconLife` (vehicles, crane,
+  flame, rocket, boats, smoke); decals `pit`, `field`, `canal`, `yard`, `pen`, `piperun`, `cable`, `boardwalk`;
+  objects `fence`, `smokestack`, `flare`, `lookout`, `heap`, `target`, `tank_vehicle`.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

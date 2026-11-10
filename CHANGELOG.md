@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.12 – 2026-11-10
+
+**Settlements: what the place lives from, around it.**
+- East of every settlement, behind a fence where the street ends (a lookout with a railing, a sign), lies its
+  **economy area** – alive:
+  - **Mining:** an **open pit** stepping down in terraces (strata in their faces, a pool at the bottom), the ramp
+    winding into it; a big **excavator** at the bottom swinging its arm, **haul trucks** winding up and down the ramp
+    (loaded on the way up, dust behind them), a **conveyor** running to the ore heaps, the headframe.
+  - **Farming:** **fields** of different crops (golden grain, green, dark green, purple) with an irrigation channel and
+    silos; a **harvester** working its rows (the cut rows behind it), **crop drones** spraying. Where nothing grows
+    outside (ice, rock, lava, toxic worlds, airless moons): **hydroponics** – rows of greenhouses and domes.
+  - **Industry:** halls with smoking **chimneys**, a pipe run, rows of stacked **containers** under a **gantry crane**
+    moving a container along its rails, pallets and barrels, a truck on its round.
+  - **Refinery / chemistry:** a **tank farm** with pipe runs between the tanks and a **flare** burning.
+  - **Research / high tech:** a **dish array** with cables between the dishes, a control building, a rover, and a
+    **launch pad** – now and then a rocket goes up (the countdown lights, flame and smoke).
+  - **Military:** a **training yard** with targets, parked armoured vehicles, one on its round, a patrol drone.
+  - **Tourism:** **gardens** with trees, palms, flower beds, a fountain, a lookout tower, birds.
+  - **On ocean worlds:** **fish pens** floating on the sea with a boardwalk between them and a boat going round – or
+    an **offshore rig** on its platform with its flare.
+
 ## alpha 0.7.50.11 – 2026-11-10
 
 **Settlements in detail – every building its own (Luz: "too chibi, too boxy").**

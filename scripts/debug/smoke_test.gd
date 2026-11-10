@@ -7810,11 +7810,18 @@ func _test_settlement(view: SystemView, body: Dictionary, sites_all: Array) -> v
 		if String(o["kind"]) in ["tree", "rock", "dune", "crystal", "lava_rock"]:
 			border += 1
 	var sea_ok: bool = SettleGen.bounds(body) == "sea" or border > 20
+	# 0.7.50.12: its economy area behind the fence, alive
+	var econ_life := false
+	for ch2 in g._world.get_children():
+		if ch2 is EconLife:
+			econ_life = true
+			ch2._process(0.5)
+	sea_ok = sea_ok and not g.map.econ.is_empty() and econ_life
 	var town: Dictionary = Commands.docked_station()
 	var buy := Commands.execute({"type": "market_buy", "item": "food", "amount": 1})
 	check(g.level == "settlement" and g.map.pads.size() == 4 and moved and shops >= 3 and special != "" and guards >= 1 and sea_ok
 		and town.get("settlement", false) and f.docked_at == Universe.city_id(body, site) and GameState.codex.unlocked.has("basics_settlements"),
-		"0.7.50.10: %s – a settlement: 4 pads (drones coming and going), %d shops, '%s', %d guards, bounded by %s (%d) – market: %s" % [String(site["name"]), shops, special, guards, SettleGen.bounds(body), border, "trades" if buy == "" else buy])
+		"0.7.50.10: %s – a settlement: 4 pads (drones coming and going), %d shops, '%s', %d guards, bounded by %s (%d), economy area: %s – market: %s" % [String(site["name"]), shops, special, guards, SettleGen.bounds(body), border, String(g.map.econ.get("kind", "?")), "trades" if buy == "" else buy])
 
 
 ## 0.7.50.5: a city – down through its landing hatch, its hangar, the lifts to the shopping street and the tower bar,

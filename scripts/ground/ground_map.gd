@@ -34,6 +34,7 @@ var window_rect := Rect2()            # tiles: where space shows through the gla
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
 var pads: Array = []                  # 0.7.50.10: a settlement's landing pads – their centres (art px)
+var econ: Dictionary = {}             # 0.7.50.12: a settlement's economy area – {kind, rect (art px), …} for its life
 var _img: Image
 var _tex: Texture2D
 
@@ -500,6 +501,100 @@ func _decal(d: Dictionary) -> void:
 			for k2 in 64:
 				var an := k2 * TAU / 64.0
 				_px(cx + int(cos(an) * ph * 0.42), cy + int(sin(an) * ph * 0.42), c.darkened(0.15))
+		# ---- 0.7.50.12: the economy areas
+		"pit":                     # an open pit mine: terraces stepping down, a ramp winding into it, water at the bottom
+			var levels := int(d.get("levels", 5))
+			var stp := int(d.get("step", 14))
+			var ground: Color = pal.get("terrain_b", Color(0.5, 0.42, 0.34))
+			for lv in levels:
+				var inset := lv * stp
+				var rr := Rect2i(px + inset, py + inset, pw - inset * 2, ph - inset * 2)
+				if rr.size.x < 8 or rr.size.y < 8:
+					break
+				var lc := ground.lightened(0.06).darkened(lv * 0.06).lerp(Color(0.6, 0.46, 0.32), 0.12 + 0.1 * lv / levels)
+				_rect(rr.position.x, rr.position.y, rr.size.x, rr.size.y, lc)
+				_rect(rr.position.x, rr.position.y, rr.size.x, 6, lc.darkened(0.3))       # the terrace's face (in shade)
+				_rect(rr.position.x, rr.position.y, 4, rr.size.y, lc.darkened(0.18))
+				_rect(rr.position.x + rr.size.x - 3, rr.position.y, 3, rr.size.y, lc.lightened(0.08))
+				_rect(rr.position.x, rr.position.y + rr.size.y - 2, rr.size.x, 2, lc.lightened(0.12))   # the lit edge below
+				_rect(rr.position.x, rr.position.y + 6, rr.size.x, 1, lc.lightened(0.1))
+				for kk in int(rr.size.x / 9):                                                   # strata in the face
+					_px(rr.position.x + kk * 9 + 3, rr.position.y + 2 + kk % 3, lc.darkened(0.45))
+				for k in int(rr.size.x * rr.size.y / 60):
+					_px(rr.position.x + int(hash2(k, lv, 1) * rr.size.x), rr.position.y + int(hash2(k, lv, 2) * rr.size.y), lc.darkened(0.1) if k % 2 else lc.lightened(0.06))
+			# the ramp: down the west side, then along each terrace
+			for t in levels:                                                                    # the ramp's track down each terrace
+				_rect(px + t * stp + 6, py + t * stp + stp / 2, pw - t * stp * 2 - 20, 3, ground.darkened(0.02 + t * 0.06).lightened(0.1))
+				_rect(px + t * stp + 6, py + t * stp + stp / 2, 3, stp, ground.lightened(0.08))
+			var bot := Rect2i(px + levels * stp, py + levels * stp, pw - levels * stp * 2, ph - levels * stp * 2)
+			if bot.size.x > 12 and bot.size.y > 12:
+				_rect(bot.position.x + bot.size.x - bot.size.x / 4 - 4, bot.position.y + bot.size.y - bot.size.y / 4 - 4, bot.size.x / 4, bot.size.y / 5, Color(0.28, 0.35, 0.38))   # a pool
+				_rect(bot.position.x + bot.size.x - bot.size.x / 4 - 4, bot.position.y + bot.size.y - bot.size.y / 4 - 4, bot.size.x / 4, 1, Color(0.5, 0.6, 0.65))
+		"field":                   # a field: rows of its crop, a darker edge, the soil between
+			var soil := Color(0.36, 0.26, 0.16)
+			_rect(px, py, pw, ph, soil)
+			var vert := bool(d.get("vert", false))
+			if vert:
+				for x in range(px + 1, px + pw - 1, 3):
+					_rect(x, py + 2, 2, ph - 4, c)
+					for y in range(py + 2, py + ph - 2, 4):
+						_px(x, y, c.lightened(0.15))
+			else:
+				for y in range(py + 1, py + ph - 1, 3):
+					_rect(px + 2, y, pw - 4, 2, c)
+					for x in range(px + 2, px + pw - 2, 4):
+						_px(x, y, c.lightened(0.15))
+			_rect(px, py, pw, 1, soil.darkened(0.3))
+			_rect(px, py + ph - 1, pw, 1, soil.lightened(0.15))
+		"piperun":                 # a run of pipes along the ground, with flanges and a valve now and then
+			for k in 3:
+				var yy := py + 3 + k * 4
+				_rect(px, yy, pw, 3, Color(0.5, 0.52, 0.55).darkened(k * 0.08))
+				_rect(px, yy, pw, 1, Color(0.7, 0.72, 0.75))
+				for fx in range(px + 6, px + pw, 24):
+					_rect(fx, yy - 1, 2, 5, Color(0.35, 0.36, 0.38))
+			for vx in range(px + 18, px + pw, 60):
+				_rect(vx, py, 4, 3, Color(0.85, 0.2, 0.2))
+		"cable":                   # cables lying on the ground between two points (w: right, h: down)
+			var x1 := px + int(d.get("dx", 0))
+			var y1 := py + int(d.get("dy", 0))
+			var n := maxi(absi(x1 - px), absi(y1 - py))
+			for t in n:
+				var u := float(t) / maxf(n, 1)
+				_px(int(lerpf(px, x1, u)), int(lerpf(py, y1, u)) + int(sin(u * 9.0) * 1.5), Color(0.12, 0.12, 0.14))
+		"boardwalk":               # a floating walkway of planks
+			_rect(px, py, pw, ph, Color(0.45, 0.33, 0.22))
+			for x in range(px, px + pw, 4):
+				_rect(x, py, 1, ph, Color(0.32, 0.23, 0.15))
+			_rect(px, py, pw, 1, Color(0.6, 0.46, 0.32))
+		"canal":                   # an irrigation channel
+			_rect(px, py, pw, ph, Color(0.2, 0.35, 0.5))
+			_rect(px, py, pw, 1, Color(0.45, 0.6, 0.72))
+			for k in int(pw * ph / 30):
+				_px(px + int(hash2(k, 3, 7) * pw), py + int(hash2(k, 4, 7) * ph), Color(0.55, 0.72, 0.85))
+		"yard":                    # a work yard: concrete slabs, painted lines, oil stains
+			_rect(px, py, pw, ph, Color(0.4, 0.4, 0.41))
+			for x in range(px, px + pw, 32):
+				_rect(x, py, 1, ph, Color(0.34, 0.34, 0.35))
+			for y in range(py, py + ph, 32):
+				_rect(px, y, pw, 1, Color(0.34, 0.34, 0.35))
+			for k in int(pw / 40):
+				_rect(px + 8 + k * 40, py + ph / 2, 20, 2, Color(0.9, 0.75, 0.2))
+			for k2 in int(pw * ph / 3000):
+				var sx := px + int(hash2(k2, 9, 1) * pw)
+				var sy := py + int(hash2(k2, 9, 2) * ph)
+				_rect(sx, sy, 6, 4, Color(0.3, 0.3, 0.31))
+		"pen":                     # a fish pen floating on the sea: a ring of floats, the net below
+			var cx := px + pw / 2
+			var cy := py + ph / 2
+			var r := mini(pw, ph) / 2 - 2
+			for a in 64:
+				var ang := a * TAU / 64.0
+				_rect(cx + int(cos(ang) * r) - 1, cy + int(sin(ang) * r * 0.8) - 1, 3, 3, Color(0.85, 0.55, 0.2) if a % 8 == 0 else Color(0.6, 0.62, 0.65))
+			for k3 in 40:
+				var a2 := hash2(k3, 5, 5) * TAU
+				var rr2 := sqrt(hash2(k3, 6, 5)) * r * 0.85
+				_px(cx + int(cos(a2) * rr2), cy + int(sin(a2) * rr2 * 0.8), Color(0.75, 0.82, 0.88))
 		"pad_marks":               # the landing pad's markings: a yellow frame, a big H
 			_rect(px, py, pw, 2, c)
 			_rect(px, py + ph - 2, pw, 2, c)

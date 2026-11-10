@@ -415,6 +415,11 @@ func _build() -> void:
 		life.setup(floor_r, Rect2(map.ship_at - ssz * 0.5, ssz), map.pal["accent"], hash(String(station.get("id", ""))))
 		life.modulate = Color(0.8, 0.84, 0.92)        # a little in the haze, its lights still bright
 		_world.add_child(life)
+	# 0.7.50.12: life in a settlement's economy area
+	if not map.econ.is_empty():
+		var el := EconLife.new()
+		el.setup(map.econ)
+		_world.add_child(el)
 	# 0.7.50.10: the other landing drones coming and going on a settlement's free pads
 	if map.pads.size() > 1:
 		var pt := PadTraffic.new()
