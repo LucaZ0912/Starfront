@@ -684,7 +684,6 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	# the glass front of the walkway
 	m.fill(x_h, G, HW, 2, GroundMap.T.GLASS)
 	m.fill(x_h - 1, G, 1, 2, GroundMap.T.FACE)                 # 0.7.51.17 (Luz): the hangar walls' ends beside the glass,
-	m.fill(x_h + HW, G, 1, 2, GroundMap.T.FACE)                # as high as every other wall
 	# the walkway, the stairs end, the lifts end
 	m.fill(0, G - 1, x_h, 1, GroundMap.T.CAP)
 	m.fill(1, G, HANGAR_STAIRS - 1 + 1, 2, GroundMap.T.FACE)
@@ -693,6 +692,9 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	m.fill(0, G, 1, 6, GroundMap.T.CAP)
 	m.fill(W - 1, G - 1, 1, 7, GroundMap.T.CAP)
 	m.fill(1, G + 2, W - 2, 3, GroundMap.T.FLOOR, 0)
+	# 0.7.51.18 (Luz): between the glass and the lifts the wall juts out into the walkway – the lifts in a room of their own
+	m.fill(x_h + HW - 1, G, 2, 1, GroundMap.T.CAP)
+	m.fill(x_h + HW - 1, G + 1, 2, 2, GroundMap.T.FACE)
 	m.fill(0, G + 5, W, 1, GroundMap.T.CAP)
 	m.decals.append({"kind": "stairs", "x": 1, "y": G + 2, "w": 2, "h": 3, "col": m.pal["accent"]})
 	m.decals.append({"kind": "guide", "x": 3, "y": G + 3, "w": W - 4, "h": 1, "col": m.pal["accent"]})
@@ -738,7 +740,10 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	_seat(m, "bench", x_h + HW / 2 - 4, G + 2, 1, m.pal["accent"], rng, 0.0, 2)
 	_seats(m)
 	for k4 in 5:
-		m.wander.append(Vector2(rng.randf_range(4, W - 3), rng.randf_range(G + 2.4, G + 4.2)) * GroundMap.TILE)
+		var wp := Vector2(rng.randf_range(4, W - 3), rng.randf_range(G + 2.4, G + 4.2)) * GroundMap.TILE
+		if not m.free_at(wp):
+			wp.y = (G + 4.0) * GroundMap.TILE                    # (not inside the wall that juts out by the lifts)
+		m.wander.append(wp)
 	return m
 
 
