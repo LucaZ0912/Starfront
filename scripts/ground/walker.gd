@@ -21,6 +21,7 @@ var leave_to := Vector2.INF        # walks there and is gone (hired crew off to 
 var drink_t := 0.0                 # 0.7.49.13: seconds left of a drink (the glass goes up to the mouth and down)
 var drink_col := Color(0.95, 0.7, 0.25)
 var guard := false                 # 0.7.50.9: a city guard – posted (stays) or on patrol
+var xray := false                  # 0.7.51.13: behind the clinic's scanner – drawn as a skeleton
 var patrol: Array = []             # the points a guard walks between, in turn
 var _pp := 0
 const DRINK_TIME := 3.2
@@ -153,6 +154,8 @@ func _draw() -> void:
 	if moving:
 		f = 1 + int(_walk * 7.0) % 2
 	var tex := ChibiArt.frame(look, dir, f)
+	if xray:
+		tex = ChibiArt.skeleton(dir, f)
 	var size := Vector2(tex.get_width(), tex.get_height()) * ChibiArt.CHAR_SCALE        # 0.7.49.11: finer than the deck
 	var bob := 0.0
 	if not moving and not sitting:

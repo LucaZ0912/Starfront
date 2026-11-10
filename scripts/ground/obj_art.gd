@@ -106,7 +106,7 @@ static func _rise(kind: String) -> int:
 		"med_bed", "med_bed_occ":
 			return 14
 		"med_pod":
-			return 20
+			return 44
 		"sculpt_chair":
 			return 26
 		"holo_bust":
@@ -351,8 +351,14 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 4, fy + 4, pw - 8, ph - 9, Color(c, 0.35))
 			_r(img, 5, fy + 5, pw - 10, 2, Color(0.85, 0.97, 1.0, 0.7))                    # the glass lid's glint
 			_r(img, 3, fy + ph - 4, pw - 6, 2, c)                                          # its light strip
-			_r(img, pw / 2 - 1, 0, 2, fy + 6, Color(0.6, 0.62, 0.66))                      # the surgeon arm over it
-			_r(img, pw / 2 - 5, 0, 10, 3, Color(0.5, 0.52, 0.56))
+			# 0.7.51.13: the scanner screen standing at its head – glass in a frame, lit, a scan line across (step behind it …)
+			_r(img, 3, 2, 2, fy + 4, Color(0.55, 0.58, 0.62))
+			_r(img, pw - 5, 2, 2, fy + 4, Color(0.55, 0.58, 0.62))
+			_r(img, 3, 0, pw - 6, 3, Color(0.5, 0.52, 0.56))
+			_r(img, 5, 3, pw - 10, fy - 1, Color(0.55, 0.9, 1.0, 0.28))
+			_r(img, 5, 3 + (fy - 1) / 3, pw - 10, 1, Color(0.6, 1.0, 1.0, 0.75))
+			_r(img, 6, 4, 2, fy - 6, Color(1, 1, 1, 0.3))
+			_r(img, pw / 2 - 1, fy - 2, 2, 8, Color(0.6, 0.62, 0.66))                      # the surgeon arm over it
 			_r(img, pw / 2 - 2, fy + 4, 4, 3, Color(0.4, 0.42, 0.46))
 			_r(img, pw / 2 - 1, fy + 7, 2, 1, Color(1.0, 0.3, 0.3))
 			_r(img, pw - 6, fy - 6, 5, 7, Color(0.08, 0.1, 0.12))                          # its screen

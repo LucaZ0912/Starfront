@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.13 – 2026-11-10
+
+**The clinic's lobby walled, and an easter egg (Luz).**
+- The lift lobby is walled off from the corridor – a full-height wall face like the others (the end of the wall by
+  the reception too); the way in leads through the reception.
+- The auto-surgeon has a scanner screen at its head – glass in a frame with a scan line. **Step behind it and you
+  show as a skeleton.**
+
 ## alpha 0.7.51.12 – 2026-11-10
 
 **Fix (Luz): the clinic's walls along the corridor as high as the others.** The wall between the wards (and the

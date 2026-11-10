@@ -392,6 +392,22 @@ func _slung() -> String:
 	return ""
 
 
+## 0.7.51.13 (Luz): the easter egg – behind the scanner in the treatment room the pilot shows as a skeleton, lit
+## above the capsule's glass.
+func _xray_step() -> void:
+	var on := false
+	for z in map.zones:
+		if String(z.get("id", "")) == "xray" and (z["rect"] as Rect2).has_point(pilot.pos):
+			on = true
+	if on != pilot.xray:
+		pilot.xray = on
+		pilot.z_index = 6 if on else 0
+		pilot.modulate = Color(0.7, 1.0, 1.0, 0.9) if on else Color.WHITE
+		pilot.queue_redraw()
+		if on:
+			Audio.play("ui_click", "clinic scanner")
+
+
 ## 0.7.51.4: where you wake – inside the clinic, by its beds (INF: no clinic here).
 func _clinic_spot() -> Vector2:
 	for zw in map.zones:                                          # 0.7.51.11: beside a bed in the recovery room
@@ -840,6 +856,8 @@ func _process(delta: float) -> void:
 		(f[0] as Sprite2D).modulate.a = float(f[1]) * k
 	if pilot == null:
 		return
+	if level == "clinic":
+		_xray_step()
 	_toast_t = maxf(_toast_t - delta, 0.0)
 	if is_town():
 		_update_city_day(delta)

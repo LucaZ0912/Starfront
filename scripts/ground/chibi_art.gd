@@ -508,6 +508,72 @@ static func _helmet(img: Image, suit: String, c1: Color, c2: Color, plate: Color
 		_px(img, lx, ey - 1, c2)
 
 
+## 0.7.51.13 (Luz): the easter egg behind the clinic's scanner – a skeleton the size of a person, bones lit pale
+## cyan: the skull with its sockets, the spine, ribs, pelvis, the arm and leg bones (striding when walking).
+static func skeleton(dir: int, f: int) -> Texture2D:
+	var key := "skel_%d_%d" % [dir, f]
+	if _cache.has(key):
+		return _cache[key]
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var bone := Color(0.88, 0.97, 1.0)
+	var dim := Color(0.55, 0.85, 1.0)
+	var cx := W / 2
+	var feet := H - 1
+	var leg_top := feet - LEGS + 1
+	var torso_top := leg_top - TORSO
+	var head_bot := torso_top - NECK
+	var head_top := head_bot - HH + 1
+	var step := 0 if f == 0 or f == 3 else (1 if f == 1 else -1)
+	var side := dir == 2 or dir == 3
+	# the skull
+	_r(img, cx - 3, head_top, 7, HH - 2, bone)
+	_r(img, cx - 2, head_bot - 1, 5, 2, bone)
+	if dir != 1:
+		if side:
+			_px(img, cx - 2, head_top + 3, Color(0.05, 0.08, 0.12))
+			_r(img, cx - 3, head_bot - 1, 2, 1, dim)
+		else:
+			_r(img, cx - 2, head_top + 3, 2, 2, Color(0.05, 0.08, 0.12))           # the sockets
+			_r(img, cx + 1, head_top + 3, 2, 2, Color(0.05, 0.08, 0.12))
+			_px(img, cx, head_top + 5, Color(0.05, 0.08, 0.12))
+			for t in 3:
+				_px(img, cx - 1 + t, head_bot, Color(0.05, 0.08, 0.12))             # the teeth
+	# the spine and the ribs
+	_r(img, cx, head_bot + 1, 1, TORSO + NECK - 1, bone)
+	for k in 4:
+		var rw := 5 - (k / 2) if not side else 3
+		_r(img, cx - rw, torso_top + 2 + k * 2, rw * 2 + 1, 1, dim)
+	_r(img, cx - 4, torso_top + 1, 9 if not side else 4, 1, bone)                   # the collar bones
+	# the pelvis
+	_r(img, cx - 3, leg_top - 2, 7 if not side else 4, 2, bone)
+	# the arms
+	if not side:
+		_r(img, cx - 5, torso_top + 1, 1, TORSO - 1, bone)
+		_r(img, cx + 5, torso_top + 1, 1, TORSO - 1, bone)
+		_r(img, cx - 6, torso_top + TORSO - 1, 2, 2, dim)
+		_r(img, cx + 5, torso_top + TORSO - 1, 2, 2, dim)
+	else:
+		_r(img, cx + step * 2, torso_top + 2, 1, TORSO - 2, bone)
+	# the legs, striding
+	var up_l := maxi(0, step)
+	var up_r := maxi(0, -step)
+	if side:
+		_r(img, cx - 1 - step * 2, leg_top, 1, LEGS - 2, dim)
+		_r(img, cx + step * 2, leg_top, 1, LEGS - 2, bone)
+		_r(img, cx + step * 2 - 1, feet - 1, 3, 1, bone)
+	else:
+		_r(img, cx - 2, leg_top, 1, LEGS - 2 - up_l, bone)
+		_r(img, cx + 2, leg_top, 1, LEGS - 2 - up_r, bone)
+		_r(img, cx - 3, leg_top + LEGS / 2 - up_l, 2, 1, dim)                       # the knees
+		_r(img, cx + 2, leg_top + LEGS / 2 - up_r, 2, 1, dim)
+		_r(img, cx - 3, feet - 1 - up_l, 3, 1, bone)
+		_r(img, cx + 2, feet - 1 - up_r, 3, 1, bone)
+	var tex := ImageTexture.create_from_image(img)
+	_cache[key] = tex
+	return tex
+
+
 static func _blend(img: Image, x: int, y: int, c: Color) -> void:
 	if x < 0 or y < 0 or x >= W or y >= H:
 		return

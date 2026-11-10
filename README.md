@@ -270,6 +270,8 @@ Slanted, cosy top-down view since 0.7.49.2.
   `GroundView.go_level` and the lift menu, zone id `wake` (`_clinic_spot`), `wake_in_clinic()` goes there; `clinic`
   left `DeckGen.SHOPS`, `look` skipped in the shop row where there is a clinic; objects `med_bed_occ`, `med_pod`,
   `med_cabinet`, `sculpt_chair`, `holo_bust`; `debug_ground_level` takes `clinic`.
+- 0.7.51.13: zone id `xray` behind the clinic's `med_pod` – `GroundView._xray_step()` sets `Walker.xray` (drawn with
+  `ChibiArt.skeleton(dir, f)`, above the scanner glass).
 - 0.7.51.10: `ChibiArt` – `_armour` (combat plates), `_suit_detail`, `_helmet` (closed visor helmets, EVA helmet with
   gold visor, work helmet), `LIVERY` {power: [plate, light]} via look `livery`; gloves; `PilotGear.helmet` ("auto" /
   "always", saved) and `combat_t`; `GroundView.pilot_look()` uses both; guards in `_add_guards` wear

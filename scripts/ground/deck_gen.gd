@@ -781,7 +781,7 @@ static func build_clinic(station: Dictionary, available: Dictionary) -> GroundMa
 	m.fill(1, CY0, W - 2, CY1 - CY0 + 1, GroundMap.T.FLOOR, 6)
 	m.fill(7, 5, 1, 4, GroundMap.T.FLOOR, 2)                # the lobby opens into the reception
 	m.fill(8, NY1 + 1, 14, 3, GroundMap.T.FLOOR, 6)         # the reception opens onto the corridor
-	m.fill(1, NY1 + 1, 6, 3, GroundMap.T.FLOOR, 2)          # and so does the lobby
+	m.fill(1, NY1 + 2, 7, 2, GroundMap.T.FACE)               # 0.7.51.13: the lobby walled off from the corridor, its face
 	# 0.7.51.12 (Luz): the wall between the rooms and the corridor as high as the others – its face seen from the corridor
 	m.fill(22, NY1 + 2, W - 23, 2, GroundMap.T.FACE)
 	for dxw in [27, 39, 50]:                              # the wards' doors, the studio's
@@ -855,7 +855,10 @@ static func build_clinic(station: Dictionary, available: Dictionary) -> GroundMa
 		"title": "", "col": col, "sign": Vector2(-100, -100)})
 	m.people.append({"pos": Vector2(9.0, SY0 + 3.8) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "nurse")})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "treat_sign", "title": "TREATMENT", "col": col, "sign": Vector2(25.0, SY0 - 2.6) * GroundMap.TILE})
-	m.add_object({"kind": "med_pod", "x": 21, "y": SY0, "w": 4, "h": 3, "col": col})
+	m.add_object({"kind": "med_pod", "x": 21, "y": SY0 + 1, "w": 4, "h": 3, "col": col})
+	# 0.7.51.13 (Luz): an easter egg – step behind the scanner and it shows your skeleton
+	m.zones.append({"rect": Rect2(Vector2(21.0, SY0) * GroundMap.TILE, Vector2(4.0, 1.0) * GroundMap.TILE), "kind": "label", "id": "xray",
+		"title": "", "col": col, "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "med_cabinet", "x": 29, "y": SY0, "w": 2, "h": 1, "col": col})
 	m.people.append({"pos": Vector2(26.4, SY0 + 2.2) * GroundMap.TILE, "dir": 2, "role": "keeper", "look": _clinic_look(rng, "doctor")})
 	m.lights.append({"pos": Vector2(23.0, SY0 + 1.5) * GroundMap.TILE, "r": 50.0, "col": Color(0.9, 1.0, 1.0), "a": 0.25})
