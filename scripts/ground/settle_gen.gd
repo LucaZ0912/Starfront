@@ -113,6 +113,8 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 		if sx + DeckGen.SHOP_W > W - B:
 			break
 		DeckGen._shop(m, s2, sx, available, [], rng, station, SHOP_CAP)
+		# 0.7.50.11: each shop its own striped awning over the street
+		m.face_deco.append({"kind": "awning", "x": sx, "y": SHOP_CAP, "w": DeckGen.SHOP_W, "col": DeckGen._svc_col(s2).lerp(Color.from_hsv(rng.randf(), 0.5, 0.8), 0.35)})
 		sx += DeckGen.SHOP_W - 1
 	# the shops' block ends; the ground behind them is the world again
 	var style := CityStyle.of(station)
@@ -124,7 +126,8 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 	var sp: Array = SPECIAL.get(eco, SPECIAL["mining"])
 	var bx := B + 20
 	var by := STREET_Y - 4                                             # its foot row (it stands on rows by … by+2)
-	m.add_object({"kind": "house", "x": bx, "y": by - 1, "w": 9, "h": 3, "col": roof.darkened(0.1), "col2": face, "door": 60, "lamp": lamp, "win": Color(1.0, 0.85, 0.55)})
+	var skey := CityStyle.key_for(station)
+	m.add_object(_building(_arch(skey, bk, rng, true), bx, by - 1, 9, 3, 2, skey, rng, lamp, 60))
 	m.zones.append({"rect": Rect2(Vector2(bx + 3, by + 2) * GroundMap.TILE, Vector2(3, 1.6) * GroundMap.TILE), "kind": "service", "id": String(sp[1]),
 		"title": String(sp[0]).capitalize() + "  –  " + {"mining": "ore straight from the mine", "agri": "food from its fields", "research": "samples and data", "industry": "parts from its shops",
 			"refinery": "refined goods", "chemistry": "chemicals from the plant", "hightech": "tech from the lab", "military": "sign on crew", "tourism": "rooms and views"}.get(eco, "what the place makes"),
@@ -156,13 +159,42 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "special_sign", "title": String(sp[0]), "col": Color(1.0, 0.8, 0.3),
 		"sign": Vector2(bx + 4.5, by - 3.4) * GroundMap.TILE})
 	m.lights.append({"pos": Vector2(bx + 4.5, by + 2.3) * GroundMap.TILE, "r": 46.0, "col": Color(1.0, 0.8, 0.45), "a": 0.35})
+	# 0.7.50.11: the houses – each its own (architecture by the power and the world), in a front row along the street
+	# and a back row behind it, with stalls, rovers, poles and greenery between
 	var hx := bx + 17
-	while hx + 6 < W - B - 1:
-		var hw := rng.randi_range(5, 7)
-		m.add_object({"kind": "house", "x": hx, "y": by, "w": hw, "h": 2, "col": roof.lightened(rng.randf_range(-0.08, 0.08)), "col2": face.darkened(rng.randf_range(0.0, 0.15)),
-			"door": hw * 8 - 5, "lamp": lamp, "win": Color(1.0, 0.85, 0.55) if rng.randf() < 0.7 else Color(0.7, 0.85, 1.0)})
+	while hx + 5 < W - B - 1:
+		var hw := mini(rng.randi_range(5, 8), W - B - 1 - hx)
+		var hy := by - rng.randi_range(0, 1)
+		var hd := 2 if rng.randf() < 0.6 else 3
+		if hy + hd > by + 2:
+			hy = by + 2 - hd
+		m.add_object(_building(_arch(skey, bk, rng), hx, hy, hw, hd, 1 if rng.randf() < 0.7 else 2, skey, rng, lamp))
 		m.lights.append({"pos": Vector2(hx + hw * 0.5, by + 2.4) * GroundMap.TILE, "r": 30.0, "col": Color(1.0, 0.82, 0.5), "a": 0.25})
-		hx += hw + rng.randi_range(1, 3)
+		hx += hw
+		var gap := rng.randi_range(1, 3)
+		if gap >= 2 and hx + 2 < W - B - 1:
+			match rng.randi() % 4:
+				0:
+					m.add_object({"kind": "stall", "x": hx, "y": by + 1, "w": 2, "h": 1, "col": Color.from_hsv(rng.randf(), 0.6, 0.85), "seed": rng.randi()})
+				1:
+					m.add_object({"kind": "cable_pole", "x": hx, "y": by + 1, "w": 1, "h": 1})
+				2:
+					if bk in ["jungle", "woods"]:
+						m.add_object({"kind": "shrub", "x": hx, "y": by + 1, "w": 2, "h": 1, "col": Color(0.22, 0.5, 0.24), "seed": rng.randi()})
+					else:
+						m.add_object({"kind": "barrel", "x": hx, "y": by + 1, "w": 1, "h": 1})
+				_:
+					m.add_object({"kind": "crates", "x": hx, "y": by + 1, "w": 2, "h": 1})
+		hx += gap
+	var hx2 := B + 21
+	var back_y := B + 5
+	while hx2 + 5 < W - B - 1:
+		var hw2 := mini(rng.randi_range(5, 9), W - B - 1 - hx2)
+		var hd2 := 2 + rng.randi() % 2
+		m.add_object(_building(_arch(skey, bk, rng), hx2, back_y + rng.randi_range(0, 2), hw2, hd2, 1 + int(rng.randf() < 0.4), skey, rng, lamp))
+		hx2 += hw2 + rng.randi_range(2, 5)
+	m.add_object({"kind": "signpost", "x": B + 18, "y": STREET_Y - 1, "w": 1, "h": 1})
+	m.add_object({"kind": "rover", "x": B + 2, "y": STREET_Y - 1, "w": 3, "h": 1, "col": Color.from_hsv(rng.randf(), 0.5, 0.75)})
 	# lamp posts along the street, crates and life between
 	var lx := B + 20
 	while lx < W - B - 2:
@@ -212,16 +244,23 @@ static func _border(m: GroundMap, bk: String, body: Dictionary, rng: RandomNumbe
 			col = Color(0.22, 0.18, 0.17)
 		"toxic":
 			col = land.darkened(0.3).lerp(Color(0.5, 0.65, 0.2), 0.3)
-	# fill the border ring – dense, irregular, a second row inside now and then
-	for y in range(0, H, hgt):
-		for x in range(0, W, w):
-			var inner := x >= B and x < W - B and y >= B and y < H - B
-			if inner:
-				continue
-			if not _free(m, x, y, w, hgt):
-				continue
-			m.add_object({"kind": kind, "x": x, "y": y, "w": w, "h": hgt, "col": col.lightened(rng.randf_range(-0.06, 0.08))})
-			m.fill(x, y, w, hgt, GroundMap.T.BLOCK, 13)
+	# fill the border ring – dense and irregular: big and small, kinds mixed, undergrowth in the gaps
+	var green := kind == "tree"
+	for pass_i in 2:
+		for y in range(0, H, 1 if pass_i == 1 else 2):
+			for x in range(0, W, 1 if pass_i == 1 else 2):
+				var inner := x >= B and x < W - B and y >= B and y < H - B
+				if inner:
+					continue
+				var o := _nature(kind, bk, col, rng, pass_i == 1 or y < 2)       # low things at the top edge – crowns would be cut
+				var ow := int(o["w"])
+				var oh := int(o["h"])
+				if not _free(m, x, y, ow, oh):
+					continue
+				o["x"] = x
+				o["y"] = y
+				m.add_object(o)
+				m.fill(x, y, ow, oh, GroundMap.T.BLOCK, 13)
 	# a few further in, where nothing stands
 	for k2 in 26:
 		var x2 := rng.randi_range(B, W - B - w)
@@ -230,11 +269,95 @@ static func _border(m: GroundMap, bk: String, body: Dictionary, rng: RandomNumbe
 			continue
 		if x2 < B + 18 and y2 < STREET_Y:
 			continue                                                       # not on the pads
-		m.add_object({"kind": kind, "x": x2, "y": y2, "w": w, "h": hgt, "col": col.lightened(rng.randf_range(-0.06, 0.08))})
-		m.fill(x2, y2, w, hgt, GroundMap.T.BLOCK, 13)
+		var o2 := _nature(kind, bk, col, rng, rng.randf() < 0.6)
+		o2["x"] = x2
+		o2["y"] = y2
+		m.add_object(o2)
+		m.fill(x2, y2, int(o2["w"]), int(o2["h"]), GroundMap.T.BLOCK, 13)
 	if bk == "lava":
 		for k3 in 8:
 			m.lights.append({"pos": Vector2(rng.randf_range(0, W), rng.randf() * B if k3 % 2 == 0 else H - rng.randf() * B) * GroundMap.TILE, "r": 40.0, "col": Color(1.0, 0.45, 0.15), "a": 0.35, "flicker": true})
+
+
+## 0.7.50.11: which architecture a house gets – by its power, and the world it stands on.
+static func _arch(skey: String, bk: String, rng: RandomNumberGenerator, special: bool = false) -> String:
+	var pool: Array = {"independent": ["prefab", "container", "quonset", "prefab"], "assembly": ["pitched", "dome", "pitched", "prefab"],
+		"covenant": ["stone", "stone", "pitched"], "directorate": ["module", "dome", "module"]}.get(skey, ["prefab"])
+	if special:
+		pool = {"independent": ["prefab"], "assembly": ["pitched"], "covenant": ["stone"], "directorate": ["module"]}.get(skey, ["prefab"])
+	if bk == "dunes" and rng.randf() < (0.4 if special else 0.6):
+		return "adobe"
+	if bk in ["ice", "rocks", "lava"] and not special and rng.randf() < 0.45:
+		return ["dome", "quonset"][rng.randi() % 2]
+	return String(pool[rng.randi() % pool.size()])
+
+
+## A building object: its architecture, size, colours by kind and power.
+static func _building(arch: String, x: int, y: int, w: int, h: int, storeys: int, skey: String, rng: RandomNumberGenerator, lamp: Color, door: int = -1) -> Dictionary:
+	var roof: Color
+	var wall: Color
+	match arch:
+		"pitched":
+			roof = [Color(0.62, 0.32, 0.22), Color(0.42, 0.4, 0.45), Color(0.55, 0.42, 0.28)][rng.randi() % 3]
+			wall = [Color(0.88, 0.84, 0.74), Color(0.62, 0.45, 0.3), Color(0.8, 0.82, 0.86)][rng.randi() % 3]
+		"stone":
+			roof = Color(0.3, 0.27, 0.3)
+			wall = Color(0.58, 0.46, 0.4).lerp(Color(0.5, 0.48, 0.45), rng.randf())
+		"adobe":
+			roof = Color(0.85, 0.72, 0.52).lightened(rng.randf_range(-0.05, 0.05))
+			wall = Color(0.82, 0.66, 0.46).lightened(rng.randf_range(-0.06, 0.04))
+		"module":
+			roof = Color(0.86, 0.88, 0.88)
+			wall = Color(0.9, 0.92, 0.92)
+		"dome":
+			roof = Color(0.82, 0.84, 0.86) if rng.randf() < 0.6 else Color(0.62, 0.66, 0.72)
+			wall = roof.darkened(0.1)
+		"quonset":
+			roof = [Color(0.55, 0.58, 0.55), Color(0.45, 0.5, 0.42), Color(0.6, 0.55, 0.45)][rng.randi() % 3]
+			wall = roof.darkened(0.15)
+		_:
+			roof = [Color(0.45, 0.47, 0.52), Color(0.5, 0.36, 0.28), Color(0.35, 0.45, 0.5), Color(0.55, 0.55, 0.5)][rng.randi() % 4]
+			wall = [Color(0.6, 0.62, 0.66), Color(0.55, 0.5, 0.42), Color(0.42, 0.5, 0.55)][rng.randi() % 3]
+	var rise := 22 + rng.randi_range(0, 10) + (storeys - 1) * 14
+	if arch == "dome":
+		rise = 18 + w * 3
+	var acc: Color = CityStyle.STYLES.get(skey, CityStyle.STYLES["independent"])["accent"]
+	return {"kind": "building", "arch": arch, "x": x, "y": y, "w": w, "h": h, "rise": rise, "storeys": storeys, "col": roof, "col2": wall,
+		"seed": rng.randi(), "lamp": lamp, "win": Color(1.0, 0.85, 0.55) if rng.randf() < 0.7 else Color(0.75, 0.88, 1.0), "acc": acc,
+		"door": door if door >= 0 else rng.randi_range(8, maxi(9, w * 16 - 18))}
+
+
+## 0.7.50.11: one thing of the world's edge – trees of several kinds and sizes, undergrowth, rock groups, dunes, ice.
+static func _nature(kind: String, bk: String, col: Color, rng: RandomNumberGenerator, small: bool) -> Dictionary:
+	var c := col.lightened(rng.randf_range(-0.07, 0.09))
+	match kind:
+		"tree":
+			if small:
+				return {"kind": "shrub", "w": 1 + rng.randi() % 2, "h": 1, "col": c.lightened(0.05), "seed": rng.randi()}
+			var big := rng.randf() < 0.45
+			var sp := "broad"
+			if bk == "woods" and rng.randf() < 0.4:
+				sp = "conifer"
+			elif bk == "jungle" and rng.randf() < 0.15:
+				sp = "palm"
+			return {"kind": "tree", "w": 3 if big else 2, "h": 2, "rise": (58 if big else 44) + rng.randi_range(-4, 6), "species": sp,
+				"vines": bk == "jungle" and rng.randf() < 0.6, "col": c, "seed": rng.randi()}
+		"dune":
+			if small or rng.randf() < 0.3:
+				return {"kind": "rock", "w": 1 + rng.randi() % 2, "h": 1, "col": c.darkened(0.25), "seed": rng.randi()}
+			return {"kind": "dune", "w": 3 + rng.randi() % 2, "h": 2, "col": c}
+		"crystal":
+			var roll := rng.randf()
+			if small or roll < 0.3:
+				return {"kind": "rock", "w": 1 + rng.randi() % 2, "h": 1, "col": Color(0.8, 0.86, 0.92), "seed": rng.randi()}
+			if roll < 0.6:
+				return {"kind": "dune", "w": 3, "h": 2, "col": Color(0.9, 0.94, 0.98)}                   # a snowdrift
+			return {"kind": "crystal", "w": 2 + rng.randi() % 2, "h": 2, "col": c.lerp(Color(0.6, 0.85, 1.0), rng.randf() * 0.4), "seed": rng.randi()}
+	# rocks (and lava rocks): groups of boulders of every size, moss on the wetter worlds
+	if small:
+		return {"kind": kind, "w": 1, "h": 1, "col": c, "seed": rng.randi(), "rise": 6}
+	var rw := 2 + rng.randi() % 2
+	return {"kind": kind, "w": rw, "h": 2, "col": c, "seed": rng.randi(), "rise": 8 + rng.randi() % 10, "moss": bk == "toxic"}
 
 
 static func _free(m: GroundMap, x: int, y: int, w: int, h: int) -> bool:

@@ -12,18 +12,23 @@ static var _cache := {}
 
 ## {image, rise} for an object.
 static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
-	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", ""))]
+	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", "")) + str(o.get("seed", "")) + String(o.get("arch", "")) + String(o.get("species", ""))]
 	if _cache.has(key):
 		return _cache[key]
 	var pw := int(o.get("w", 1)) * TILE
 	var ph := int(o.get("h", 1)) * TILE
 	var rise := _rise(String(o["kind"]))
+	if o.has("rise"):
+		rise = int(o["rise"])                       # 0.7.50.11: buildings and trees of their own height
 	var img := Image.create(pw, ph + rise, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	var c: Color = o.get("col", pal.get("accent", Color(0.4, 0.8, 1.0)))
 	var wood: Color = pal.get("wood", Color(0.42, 0.26, 0.14))
 	var metal: Color = pal.get("wall", Color(0.6, 0.62, 0.68))
-	_paint(img, String(o["kind"]), pw, ph, rise, c, wood, metal, o)
+	if String(o["kind"]) == "building":
+		BuildArt.paint(img, o, pw, ph + rise)
+	else:
+		_paint(img, String(o["kind"]), pw, ph, rise, c, wood, metal, o)
 	_outline(img)
 	var out := {"image": img, "rise": rise}
 	_cache[key] = out
@@ -34,6 +39,14 @@ static func _rise(kind: String) -> int:
 	match kind:
 		"tree":
 			return 46
+		"shrub":
+			return 8
+		"stall":
+			return 22
+		"rover":
+			return 10
+		"signpost", "cable_pole":
+			return 30
 		"tower_rig":
 			return 70
 		"silo":
@@ -341,26 +354,120 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.5, fy - 2, pw * 0.3, 6, Color(0.15, 0.15, 0.18))
 			_ellipse(img, pw * 0.5, fy - 2, pw * 0.15, 3, Color(0.4, 0.75, 1.0))
 		# ---- 0.7.50.10: the settlements and what bounds them
-		"tree":                     # a jungle tree: a short trunk, a crown of leaves in layers
+		"tree":                     # 0.7.50.11: trees of their kind – broad jungle crowns with vines, conifers, palms
 			var tc: Color = o.get("col", Color(0.18, 0.45, 0.2))
-			var vh := absi(int(o.get("x", 0)) * 7 + int(o.get("y", 0)) * 13)
-			_r(img, pw / 2 - 3, fy + ph - 14, 6, 14, Color(0.32, 0.22, 0.14))
-			_r(img, pw / 2 - 3, fy + ph - 14, 2, 14, Color(0.4, 0.28, 0.18))
-			var cy := fy - 10.0
-			_ellipse(img, pw * 0.5, cy + 6.0, pw * 0.48, 20.0, tc.darkened(0.35))
-			_ellipse(img, pw * 0.5 - 4.0 + float(vh % 5), cy, pw * 0.4, 17.0, tc)
-			_ellipse(img, pw * 0.38, cy - 6.0, pw * 0.22, 10.0, tc.lightened(0.12))
-			_ellipse(img, pw * 0.62, cy - 2.0, pw * 0.2, 9.0, tc.lightened(0.06))
-			for k3 in 6:
-				_p(img, int(pw * 0.3) + (vh * (k3 + 3)) % int(pw * 0.4), int(cy - 12.0) + (vh * (k3 + 1)) % 14, tc.lightened(0.3))
-		"rock", "lava_rock":         # a boulder (with glowing cracks on a lava world)
+			var trng := RandomNumberGenerator.new()
+			trng.seed = int(o.get("seed", absi(int(o.get("x", 0)) * 7 + int(o.get("y", 0)) * 13)))
+			var total := fy + ph
+			var trunk := Color(0.32, 0.22, 0.14)
+			match String(o.get("species", "broad")):
+				"conifer":
+					_r(img, pw / 2 - 2, total - 10, 4, 10, trunk)
+					for t in 5:
+						var ty := total - 10 - t * 8
+						var tw := pw * (0.95 - t * 0.17)
+						for yy in 10:
+							var ww := int(tw * (float(yy) / 10.0))
+							_r(img, pw / 2 - ww / 2, ty - 10 + yy, ww, 1, tc.darkened(0.15) if yy > 6 else tc)
+						_r(img, pw / 2 - int(tw * 0.25), ty - 3, int(tw * 0.2), 1, tc.lightened(0.15))
+				"palm":
+					for k in 9:
+						_r(img, pw / 2 - 1 + (1 if k % 2 == 0 else 0) + k / 3, total - 4 - k * 4, 3, 4, Color(0.5, 0.36, 0.22).lightened(0.05 * (k % 2)))
+					var top := Vector2(pw / 2 + 3, total - 38)
+					for a in 8:
+						var ang := -PI + a * (PI / 7.0) + trng.randf_range(-0.1, 0.1)
+						for t2 in 12:
+							_r(img, int(top.x + cos(ang) * t2 * 1.4), int(top.y + sin(ang) * t2 * 0.6 + t2 * t2 * 0.04), 2, 2, tc.lightened(0.12 * (t2 % 2)))
+				_:
+					# roots and a trunk, then a crown of many clumps – dark beneath, lit on top
+					_r(img, pw / 2 - 3, total - 16, 6, 16, trunk)
+					_r(img, pw / 2 - 3, total - 16, 2, 16, trunk.lightened(0.12))
+					_r(img, pw / 2 - 6, total - 3, 3, 3, trunk.darkened(0.1))
+					_r(img, pw / 2 + 3, total - 3, 3, 3, trunk.darkened(0.1))
+					var crown_y := float(total - 16) - float(fy) * 0.45
+					for k2 in 9:
+						var cx := pw * 0.5 + trng.randf_range(-pw * 0.32, pw * 0.32)
+						var cy2 := crown_y + trng.randf_range(-10.0, 8.0)
+						_ellipse(img, cx, cy2 + 3.0, trng.randf_range(7.0, 11.0), trng.randf_range(6.0, 9.0), tc.darkened(0.3))
+					for k3 in 9:
+						var cx2 := pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.3)
+						var cy3 := crown_y + trng.randf_range(-12.0, 4.0)
+						_ellipse(img, cx2, cy3, trng.randf_range(6.0, 9.0), trng.randf_range(5.0, 7.0), tc.lightened(trng.randf_range(-0.05, 0.08)))
+					for k4 in 14:
+						_r(img, int(pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.25)), int(crown_y + trng.randf_range(-14.0, 0.0)), 2, 1, tc.lightened(0.3))
+					if bool(o.get("vines", false)):
+						for v in 4:
+							var vx := int(pw * 0.5 + trng.randf_range(-pw * 0.35, pw * 0.35))
+							var vl := trng.randi_range(6, 14)
+							for yy2 in vl:
+								_p(img, vx + (yy2 / 4) % 2, int(crown_y) + 6 + yy2, tc.darkened(0.45))
+							_p(img, vx, int(crown_y) + 6 + vl, Color(0.9, 0.4, 0.6) if trng.randf() < 0.4 else tc.lightened(0.2))
+		"shrub":                    # undergrowth: a fern, a bush with berries or flowers
+			var sc2: Color = o.get("col", Color(0.22, 0.5, 0.24))
+			var srng := RandomNumberGenerator.new()
+			srng.seed = int(o.get("seed", 3))
+			for k5 in 5:
+				_ellipse(img, pw * 0.5 + srng.randf_range(-pw * 0.3, pw * 0.3), fy + ph * 0.5 + srng.randf_range(-4.0, 3.0), srng.randf_range(4.0, 7.0), srng.randf_range(3.0, 5.0), sc2.lightened(srng.randf_range(-0.12, 0.1)))
+			for k6 in 4:
+				if srng.randf() < 0.5:
+					_p(img, int(pw * 0.5 + srng.randf_range(-pw * 0.3, pw * 0.3)), int(fy + ph * 0.4 + srng.randf_range(-3.0, 3.0)), Color.from_hsv(srng.randf(), 0.6, 0.95))
+		"rock", "lava_rock":         # 0.7.50.11: a group of boulders, each its own – facets, cracks, moss or glowing seams
 			var rc: Color = o.get("col", Color(0.45, 0.43, 0.42))
-			_ellipse(img, pw * 0.5, fy + ph * 0.55, pw * 0.46, ph * 0.5 + 4.0, rc.darkened(0.25))
-			_ellipse(img, pw * 0.48, fy + ph * 0.45, pw * 0.4, ph * 0.42 + 3.0, rc)
-			_ellipse(img, pw * 0.38, fy + ph * 0.3, pw * 0.16, 3.0, rc.lightened(0.18))
-			if kind == "lava_rock":
-				for k4 in 5:
-					_p(img, int(pw * 0.3) + k4 * 2, int(fy + ph * 0.5) + (k4 % 2), Color(1.0, 0.5, 0.15))
+			var rrng := RandomNumberGenerator.new()
+			rrng.seed = int(o.get("seed", absi(int(o.get("x", 0)) * 31 + int(o.get("y", 0)) * 17)))
+			var n_r := rrng.randi_range(1, 3)
+			for k7 in n_r:
+				var rw2 := pw * rrng.randf_range(0.28, 0.48) / (1.0 if k7 == 0 else 1.3)
+				var rh2 := rw2 * rrng.randf_range(0.65, 0.95)
+				var rx := pw * 0.5 + rrng.randf_range(-pw * 0.22, pw * 0.22)
+				var ry := float(fy + ph) - rh2 * 0.6 - rrng.randf_range(0.0, ph * 0.3)
+				_ellipse(img, rx, ry + 2.0, rw2, rh2, rc.darkened(0.3))
+				_ellipse(img, rx - 1.0, ry, rw2 - 1.0, rh2 - 1.0, rc.lightened(rrng.randf_range(-0.06, 0.06)))
+				_ellipse(img, rx - rw2 * 0.3, ry - rh2 * 0.35, rw2 * 0.45, rh2 * 0.3, rc.lightened(0.16))
+				_r(img, int(rx + rw2 * 0.1), int(ry - rh2 * 0.2), 1, int(rh2 * 0.6), rc.darkened(0.3))
+				if bool(o.get("moss", false)):
+					_ellipse(img, rx - rw2 * 0.2, ry - rh2 * 0.5, rw2 * 0.55, 2.5, Color(0.3, 0.52, 0.26))
+				if kind == "lava_rock":
+					for k8 in int(rw2 / 2):
+						_p(img, int(rx - rw2 * 0.5) + k8 * 2, int(ry + (k8 % 3) - 1), Color(1.0, 0.5, 0.15))
+		"stall":                    # a market stall: its striped awning, goods laid out below
+			var ac: Color = o.get("col", Color(0.85, 0.3, 0.25))
+			var srng2 := RandomNumberGenerator.new()
+			srng2.seed = int(o.get("seed", 5))
+			_r(img, 2, fy + 2, 1, ph + 18, Color(0.3, 0.25, 0.2))
+			_r(img, pw - 3, fy + 2, 1, ph + 18, Color(0.3, 0.25, 0.2))
+			_r(img, 1, fy + ph - 6, pw - 2, 6, wood)
+			_r(img, 1, fy + ph - 6, pw - 2, 1, wood.lightened(0.2))
+			for g in range(3, pw - 4, 3):
+				_r(img, g, fy + ph - 9, 2, 3, Color.from_hsv(srng2.randf(), 0.6, 0.9))
+			for k9 in range(0, pw, 4):
+				_r(img, k9, fy - 18, 4, 9, ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85))
+				_r(img, k9, fy - 9, 4, 2, (ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85)).darkened(0.2))
+		"rover":                    # a parked ground rover: six wheels, a cab, a cargo bed
+			var rcol: Color = o.get("col", Color(0.75, 0.55, 0.2))
+			for wx in [3, pw / 2 - 2, pw - 7]:
+				_r(img, wx, fy + ph - 5, 5, 5, Color(0.12, 0.12, 0.14))
+				_r(img, wx + 1, fy + ph - 4, 3, 3, Color(0.3, 0.3, 0.33))
+			_r(img, 1, fy + ph - 14, pw - 2, 10, rcol)
+			_r(img, 1, fy + ph - 14, pw - 2, 2, rcol.lightened(0.2))
+			_r(img, pw - 14, fy + ph - 22, 12, 9, rcol.darkened(0.1))
+			_r(img, pw - 12, fy + ph - 20, 8, 4, Color(0.3, 0.5, 0.65))
+			_r(img, 3, fy + ph - 12, pw - 20, 6, rcol.darkened(0.25))
+			_r(img, pw - 3, fy + ph - 12, 2, 2, Color(1.0, 0.95, 0.75))
+		"signpost":                 # a post with arrows to the places
+			_r(img, pw / 2, fy - 20, 2, ph + 20, Color(0.3, 0.28, 0.25))
+			for k10 in 3:
+				var sc3: Color = [Color(0.85, 0.75, 0.3), Color(0.3, 0.6, 0.8), Color(0.75, 0.35, 0.3)][k10]
+				var left := k10 % 2 == 0
+				_r(img, pw / 2 - (10 if left else 0), fy - 18 + k10 * 6, 12, 4, sc3)
+				_p(img, pw / 2 - (11 if left else -12), fy - 17 + k10 * 6, sc3)
+				_r(img, pw / 2 - (8 if left else -2), fy - 17 + k10 * 6, 6, 1, sc3.lightened(0.4))
+		"cable_pole":               # a power pole with its insulators, cables running off
+			_r(img, pw / 2 - 1, fy - 26, 3, ph + 26, Color(0.35, 0.28, 0.2))
+			_r(img, pw / 2 - 7, fy - 22, 15, 2, Color(0.3, 0.25, 0.2))
+			for k11 in 3:
+				_r(img, pw / 2 - 6 + k11 * 6, fy - 25, 2, 3, Color(0.75, 0.8, 0.85))
+			_r(img, pw / 2 + 2, fy - 14, 4, 6, Color(0.4, 0.42, 0.45))
 		"dune":
 			var dc: Color = o.get("col", Color(0.85, 0.7, 0.45))
 			_ellipse(img, pw * 0.5, fy + ph * 0.6, pw * 0.5, ph * 0.45 + 3.0, dc.darkened(0.12))
@@ -368,9 +475,12 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.35, fy + ph * 0.4, pw * 0.2, 2.0, dc.lightened(0.15))
 		"crystal":                  # shards of ice
 			var ic: Color = o.get("col", Color(0.75, 0.9, 1.0))
-			for k5 in 3:
-				var bx := 3 + k5 * (pw - 8) / 3
-				var hh := 14 + (k5 * 7) % 10
+			var crng := RandomNumberGenerator.new()
+			crng.seed = int(o.get("seed", 9))
+			_ellipse(img, pw * 0.5, fy + ph - 4.0, pw * 0.45, 4.0, Color(0.88, 0.93, 0.98))       # the snow at its foot
+			for k5 in crng.randi_range(2, 5):
+				var bx := crng.randi_range(1, pw - 6)
+				var hh := crng.randi_range(8, 24)
 				for yy in hh:
 					var ww := maxi(1, int(5.0 * (1.0 - float(yy) / hh)))
 					_r(img, bx + 2 - ww / 2, fy + ph - 2 - yy, ww, 1, ic.lightened(0.2) if yy % 4 == 0 else ic)

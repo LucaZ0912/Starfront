@@ -115,6 +115,8 @@ func _ready() -> void:
 		Keybinds.key_text("boost"), Keybinds.key_text("interact")]
 	ui.add_child(hint)
 	_prompt = UI.label("", 18, UI.GOLD)
+	_prompt.add_theme_constant_override("outline_size", 7)             # 0.7.50.11: readable on snow and sand
+	_prompt.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05, 0.9))
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_prompt.offset_top = -90

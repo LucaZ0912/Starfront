@@ -3,6 +3,31 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.11 – 2026-11-10
+
+**Settlements in detail – every building its own (Luz: "too chibi, too boxy").**
+- **Eight architectures**, each building drawn on its own (roof from above, front below, its own seed): **prefab**
+  halls under corrugated metal (ridges, rivets, rust streaks, a canopy over the door, pipes, a neon sign), **stacked
+  containers** in different colours with a ladder, **quonset** halls (a ribbed half-barrel roof, the door in the end
+  wall), **habitat domes** in rings with portholes and an airlock in hazard stripes, **gabled houses** with tiled roofs
+  (moss on the tiles), plastered or planked walls, shutters and flower boxes, **adobe** with a parapet, rounded
+  corners, deep windows, an arched door and a canvas awning, **stone houses** with slate roofs and gold-lit
+  pointed-arch windows, and white **modules** with a long window band and a light strip.
+- Which one by the power that built it (independent: prefab, containers, quonsets; Assembly: gabled houses, domes;
+  Covenant: stone; Directorate: modules, domes) and by the world (adobe in the desert, domes and quonsets on ice,
+  rock and lava worlds); one or two storeys, each its own colours.
+- **On the roofs:** air units with fans, water tanks, solar panels, antennas with their lights, small dishes, vents
+  and skylights, planters, laundry lines. **On the walls:** windows with frames, sills and curtains, the sky in the
+  dark ones, meter boxes, pipes, lamps over the doors, steps, grime along the foot.
+- **Two rows of houses** now, the special building with two storeys; between them market stalls with striped
+  awnings and goods, power poles, crates and barrels, undergrowth; a parked rover by the pads, a signpost.
+- **The world's edge in detail:** trees of several kinds and sizes (broad crowns of many clumps with vines and
+  flowers in the jungle, conifers in the woods, palms), ferns and bushes with berries in the gaps; groups of boulders
+  with facets and cracks (moss on toxic worlds, glowing seams on lava worlds); dunes with rocks; on ice worlds
+  snowdrifts, ice shards of every height and snowy rocks.
+- The shops along the street each have their own striped awning; the prompt on foot has a dark outline (readable on
+  snow and sand).
+
 ## alpha 0.7.50.10 – 2026-11-10
 
 **Settlements – the small places come alive.**

@@ -219,7 +219,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   `GroundMap.pads`), `scripts/ground/pad_traffic.gd` (`PadTraffic`: the other drones on the free pads),
   `Universe.city_station` also for outposts, mines and camps (`settlement: true`, `SETTLED_KINDS`), `main.land_at` →
   `GroundView.setup_settlement` (level `settlement`, `is_town()`), `main._services_for`; new objects `tree`, `rock`,
-  `lava_rock`, `dune`, `crystal`, `house`, `tower_rig`, `silo`, `greenhouse`, `dish`.; `texture()` renders floors and walls once.
+  `lava_rock`, `dune`, `crystal`, `house`, `tower_rig`, `silo`, `greenhouse`, `dish`.
+- 0.7.50.11: `scripts/ground/build_art.gd` – `BuildArt.paint` (object kind `building`, `arch` prefab/container/quonset/
+  dome/pitched/adobe/stone/module, `storeys`, `seed`, own `rise`); `SettleGen._arch` / `_building` / `_nature`;
+  objects `shrub`, `stall`, `rover`, `signpost`, `cable_pole`, trees with `species` (broad/conifer/palm) and `vines`,
+  rock groups; face deco `awning`.; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,
