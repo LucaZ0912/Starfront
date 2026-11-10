@@ -235,7 +235,15 @@ Slanted, cosy top-down view since 0.7.49.2.
   stalls, rovers, trees, dishes, silos, chimneys to their height).
 - 0.7.50.14: `VehicleArt` sci-fi (`GLOW`, `HEAT`, `HOVER` – EconLife bobs those and lights the ground), the
   excavator's arm and cutter claw in `EconLife._excavator`; light accents in `ObjArt` (chimneys, tanks, dishes, rig,
-  fence, armoured vehicles, rover) and `BuildArt.paint` (eaves strip, door panel).; `texture()` renders floors and walls once.
+  fence, armoured vehicles, rover) and `BuildArt.paint` (eaves strip, door panel).
+- 0.7.50.15: `scripts/ground/lander_art.gd` – `LanderArt.texture()` (the drone, 42×30, `FANS`, `C`) and
+  `draw_ramp(ci, centre, sc, open, t, a)` / `ramp_top()` / `ramp_foot()`; `GroundView._hatch` / `_hatch_node` /
+  `_drone_ramp_zone()` (spawn and way in along the ramp), `_open_takeoff_menu` / `_choose_takeoff` (zone `dest`
+  orbit/map, `animate`); `main.take_off(dest)`, `leave_city(dest)`, `drone_up(body, site, dest)` →
+  `FlightScene.open_up` (`_update_up`, `CATCH_AT`, the tractor beam); `scripts/ground/pad_lights.gd` – `PadLights`
+  (edge lights and status per pad, reads `PadTraffic`); `GroundMap.pad_rects`, decal `landing_pad` (`n`),
+  objects `fuel_point`, `cargo_loader`; `SettleGen.PAD` 10×7, `FIELD`, map 98 wide.
+- `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

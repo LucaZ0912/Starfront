@@ -263,6 +263,33 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 1, fy + ph - 6, pw - 2, 6, metal.darkened(0.3))
 			for k in int((pw - 4) / 6):
 				_r(img, 3 + k * 6, fy - 6, 4, 4, c)
+		"cargo_loader":             # 0.7.50.15: a hover loader by the pads, a crate on its forks
+			var gb3 := fy + ph - 1
+			_r(img, 3, gb3 - 6, pw - 10, 4, Color(0.2, 0.21, 0.24))                  # its hover skirt
+			_r(img, 5, gb3 - 2, pw - 14, 1, Color(0.35, 0.95, 1.0))
+			_r(img, 6, gb3 - 18, 18, 12, Color(0.9, 0.68, 0.15))                     # the body
+			_r(img, 6, gb3 - 18, 18, 2, Color(1.0, 0.82, 0.35))
+			_r(img, 9, gb3 - 26, 10, 8, Color(0.25, 0.27, 0.3))                      # the cab, open
+			_r(img, 10, gb3 - 25, 8, 4, Color(0.3, 0.75, 0.95, 0.8))
+			_r(img, 8, gb3 - 27, 14, 2, Color(0.8, 0.6, 0.12))
+			_r(img, 26, gb3 - 30, 2, 26, Color(0.3, 0.3, 0.33))                      # the mast
+			_r(img, 26, gb3 - 9, pw - 28, 2, Color(0.3, 0.3, 0.33))                  # the forks
+			_r(img, 29, gb3 - 21, pw - 32, 12, Color(0.5, 0.36, 0.2))                # the crate on them
+			_r(img, 29, gb3 - 21, pw - 32, 1, Color(0.65, 0.48, 0.28))
+			_r(img, 29, gb3 - 16, pw - 32, 1, Color(0.38, 0.27, 0.15))
+			_r(img, 7, gb3 - 13, 2, 2, Color(1.0, 0.35, 0.25))
+			_r(img, 21, gb3 - 13, 2, 2, Color(0.35, 0.95, 1.0))
+		"fuel_point":               # 0.7.50.15: a pad's fuel point – the pump, its screen, the hose coiled on its side
+			_r(img, 3, fy - 20, pw - 10, ph + 18, Color(0.82, 0.83, 0.85))
+			_r(img, 3, fy - 20, pw - 10, 3, Color(0.95, 0.95, 0.96))
+			_r(img, 3, fy - 4, pw - 10, 3, Color(0.95, 0.75, 0.15))
+			_r(img, 6, fy - 15, pw - 16, 7, Color(0.05, 0.08, 0.1))
+			_r(img, 7, fy - 14, int((pw - 18) * 0.6), 2, Color(0.4, 1.0, 0.55))
+			_r(img, 7, fy - 11, int((pw - 18) * 0.4), 1, Color(0.35, 0.95, 1.0))
+			_ellipse(img, pw - 6, fy - 4, 4, 5, Color(0.15, 0.15, 0.17))
+			_ellipse(img, pw - 6, fy - 4, 2, 3, Color(0.32, 0.32, 0.35))
+			_r(img, pw - 8, fy + ph - 6, 6, 3, Color(0.15, 0.15, 0.17))
+			_r(img, pw / 2 - 2, fy - 24, 3, 4, Color(1.0, 0.45, 0.2))
 		"machine":
 			_r(img, 1, fy - 8, pw - 2, ph + 6, Color(0.32, 0.29, 0.26))
 			_r(img, 1, fy - 8, pw - 2, 3, Color(0.45, 0.4, 0.36))

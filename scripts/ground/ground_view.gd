@@ -78,6 +78,10 @@ var talk_menu: CrewTalk = null          # its "Info": the questions, the record,
 var _talk_offer := {}
 var _talk_index := -1
 var _talk_hired := false
+var _hint: Label
+var _hatch := 0.0                       # 0.7.50.15: the landing drone's ramp – 0 shut … 1 down
+var _hatch_node: Node2D = null
+const HATCH_TIME := 0.85
 
 
 func _ready() -> void:
@@ -110,10 +114,9 @@ func _ready() -> void:
 	ui.add_child(_title)
 	var hint := UI.label("", 12, UI.TEXT_DIM)
 	hint.position = Vector2(24, 46)
-	hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  the stairs in the hangar lead back to your ship" % [
-		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
-		Keybinds.key_text("boost"), Keybinds.key_text("interact")]
 	ui.add_child(hint)
+	_hint = hint
+	_set_hint()
 	_prompt = UI.label("", 18, UI.GOLD)
 	_prompt.add_theme_constant_override("outline_size", 7)             # 0.7.50.11: readable on snow and sand
 	_prompt.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05, 0.9))
@@ -124,6 +127,22 @@ func _ready() -> void:
 	_prompt.offset_left = -500
 	_prompt.offset_right = 500
 	ui.add_child(_prompt)
+
+
+## The line under the title: how to walk – and the way back (0.7.50.15: by the place you are in).
+func _set_hint() -> void:
+	if _hint == null:
+		return
+	var back := "the stairs in the hangar lead back to your ship"
+	if level in ["landing", "settlement"] and _lander:
+		back = "the landing drone's ramp takes you back up"
+	elif level == "landing":
+		back = "her ramp takes you back aboard"
+	elif is_city():
+		back = "the lifts lead to the hangar – your ship and the way up"
+	_hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
+		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
+		Keybinds.key_text("boost"), Keybinds.key_text("interact"), back]
 
 
 ## A station's deck: available = service id -> "" or the reason it is closed; crew = the bar's offers.
@@ -177,6 +196,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_planet_spr = null
 	_skyline = null
 	_canyon = null
+	_hatch_node = null
 	_tint = null
 	_city_lights.clear()
 	_cam_c = Vector2.INF
@@ -212,6 +232,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build(station, bar_only, GameState.bar_offers(station) if _avail.has("bar") else [], "tower")
 	else:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
+	if level in ["landing", "settlement"] and _lander and map.ship_at != Vector2.INF:
+		_drone_ramp_zone()
 	if is_city():
 		for zc in map.zones:
 			if String(zc.get("id", "")) == "lift":
@@ -219,9 +241,11 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			elif String(zc.get("id", "")) == "ship" and level == "hangar":
 				zc["title"] = "Stairs down – aboard your ship and up through the hatch"
 	_build()
+	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
 		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor()}.get(level, "")]
+	_hatch = 1.0 if arrive != "touchdown" else 0.0
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
 		pilot.visible = false
@@ -256,6 +280,29 @@ func _ship_size() -> Vector2:
 	if t == null:
 		return Vector2(64, 40)
 	return Vector2(t.get_width(), t.get_height()) * HANGAR_ART
+
+
+## 0.7.50.15: the landing drone's ramp – you come out at its foot and go in at its top; the ground decal of a ship's
+## ramp is not wanted under it.
+func _drone_ramp_zone() -> void:
+	map.decals = map.decals.filter(func(d): return String(d.get("kind", "")) != "ramp")
+	var top := map.ship_at + LanderArt.ramp_top() * HANGAR_ART
+	var foot := map.ship_at + LanderArt.ramp_foot() * HANGAR_ART
+	map.spawn = foot + Vector2(0, 6)
+	for z in map.zones:
+		if String(z.get("id", "")) == "ship":
+			z["rect"] = Rect2(Vector2(top.x - 1.7 * GroundMap.TILE, top.y - 4.0), Vector2(3.4 * GroundMap.TILE, foot.y - top.y + 1.4 * GroundMap.TILE))
+			z["title"] = "Board the landing drone – take off"
+
+
+func _drone_ramp_top() -> Vector2:
+	return map.ship_at + LanderArt.ramp_top() * HANGAR_ART
+
+
+func _draw_hatch() -> void:
+	if _ship_spr == null or not is_instance_valid(_ship_spr):
+		return
+	LanderArt.draw_ramp(_hatch_node, _ship_spr.position, _ship_spr.scale.x, _hatch, _t, _ship_spr.modulate.a)
 
 
 ## 0.7.50.5: in a city (a station on the ground)?
@@ -371,6 +418,12 @@ func _build() -> void:
 	spr.centered = false
 	spr.scale = Vector2.ONE * GroundMap.SCALE
 	_world.add_child(spr)
+	var plights: PadLights = null
+	if not map.pad_rects.is_empty():
+		plights = PadLights.new()                     # 0.7.50.15: the pads' lights and their status
+		plights.rects = map.pad_rects
+		plights.own = 0 if map.ship_at != Vector2.INF else -1
+		_world.add_child(plights)
 	# the hangar: your own ship down in the bay, nose to the east, a shadow under it
 	if map.ship_at != Vector2.INF:
 		var tex := _ship_tex()
@@ -389,6 +442,10 @@ func _build() -> void:
 			_ship_base = _ship_spr.position
 			_ship_spr.modulate = Color(0.82, 0.84, 0.9) if level == "hangar" else Color.WHITE   # one level down, in the shade
 			_world.add_child(_ship_spr)
+			if level in ["landing", "settlement"] and _lander:
+				_hatch_node = Node2D.new()                # 0.7.50.15: its ramp, folding down and up
+				_hatch_node.draw.connect(_draw_hatch)
+				_world.add_child(_hatch_node)
 	# the bay is far below: a haze over it, thicker towards the far wall
 	if map.bay_rect.size.x > 0.0:
 		var g := Gradient.new()
@@ -427,6 +484,8 @@ func _build() -> void:
 		prng.seed = hash(String(station.get("id", ""))) + 77
 		pt.setup(map.pads.slice(1), prng, Color(map.pal.get("terrain_b", Color(0.6, 0.55, 0.45))))
 		_world.add_child(pt)
+		if plights != null:
+			plights.traffic = pt
 	_lift_node = Node2D.new()
 	_lift_node.draw.connect(_draw_lifts)
 	_world.add_child(_lift_node)
@@ -663,6 +722,8 @@ func _process(delta: float) -> void:
 	if is_town():
 		_update_city_day(delta)
 	_update_dust(delta)
+	if _hatch_node != null and is_instance_valid(_hatch_node):
+		_hatch_node.queue_redraw()
 	if _touch >= 0.0:
 		_touchdown_step(delta)
 	elif _arrive > 0.0:
@@ -722,9 +783,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_close_lift_menu()
 		elif event is InputEventKey and event.is_pressed() and not event.is_echo():
 			var k := (event as InputEventKey).keycode
-			if k == KEY_1 or k == KEY_2:
+			var keys: Array = _lift_menu.get_meta("keys", [])
+			var n := k - KEY_1
+			if n >= 0 and n < keys.size():
 				get_viewport().set_input_as_handled()
-				_choose_level("hangar" if k == KEY_1 else "commercial")
+				(keys[n] as Callable).call()
 		return
 	if talk_menu != null:
 		if event.is_action_pressed("menu_back", false, true):
@@ -783,7 +846,10 @@ func use(instant: bool = false) -> bool:
 				_say_toast("The %s is stored here now – your active ship stands in %s. Take the lift." % [_stored_name(), _active_hangar()])
 				return false
 			if not instant:
-				_start_ride(zone, "", -1)
+				if level in ["landing", "settlement"] or is_city():
+					_open_takeoff_menu(zone)              # 0.7.50.15 (Luz): up to orbit – or to the planet map
+				else:
+					_start_ride(zone, "", -1)
 				return true
 		"service":
 			if String(zone.get("id", "")) == "bar" and _bartender != null:
@@ -861,7 +927,9 @@ func _open_lift_menu(z: Dictionary) -> void:
 	var lvls := [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level – shops and the bar"]]
 	if is_city():
 		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street – the shops"], ["tower", "3.  Tower bar – floor %d, a view over the city" % tower_floor()]]
+	var keys: Array = []
 	for lv in lvls:
+		keys.append(func(): _choose_level(String(lv[0])))
 		var here: bool = lv[0] == level and (lv[0] != "hangar" or not _hangar_stale())
 		var b := UI.button(String(lv[1]) + ("   (you are here)" if here else ""), func(): _choose_level(String(lv[0])))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -870,6 +938,47 @@ func _open_lift_menu(z: Dictionary) -> void:
 	v.add_child(UI.button("Cancel [Esc]", _close_lift_menu))
 	_lift_menu = c
 	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", keys)
+
+
+## 0.7.50.15 (Luz): taking off – back to orbit, or to the planet map to pick another place.
+func _open_takeoff_menu(z: Dictionary) -> void:
+	Audio.play("ui_open", "on foot: take off")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var p := UI.neon_panel(Color(0.4, 1.0, 0.6, 0.85), Color(0.03, 0.05, 0.06, 0.96), 2)
+	p.custom_minimum_size = Vector2(440, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("TAKE OFF", 20, Color(0.4, 1.0, 0.6)))
+	var bname := String(_body.get("name", ""))
+	if bname == "":
+		bname = String(Universe.find_body(GameState.current_system, String(station.get("body", ""))).get("name", "the planet"))
+	v.add_child(UI.label("Aboard the landing drone – where to?" if _lander else "Aboard your ship and up through the hatch – where to?", 13, UI.TEXT_DIM))
+	var opts := [["orbit", "1.  Back to orbit" + (" – the drone docks with your ship" if _lander else "")],
+		["map", "2.  To the planet map – another place on %s" % bname]]
+	var keys: Array = []
+	for o in opts:
+		var b := UI.button(String(o[1]), func(): _choose_takeoff(String(o[0])))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		v.add_child(b)
+		keys.append(func(): _choose_takeoff(String(o[0])))
+	v.add_child(UI.button("Cancel [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", keys)
+
+
+func _choose_takeoff(dest: String) -> void:
+	if _lift_menu == null:
+		return
+	var z: Dictionary = (_lift_menu.get_meta("zone", {}) as Dictionary).duplicate()
+	_close_lift_menu()
+	z["dest"] = dest
+	z["animate"] = true
+	_start_ride(z, "", -1)
 
 
 func _close_lift_menu() -> void:
@@ -905,6 +1014,8 @@ func _ride_step(delta: float) -> void:
 	var dp: Vector2
 	if int(_ride["lift"]) >= 0:
 		dp = _lift_door_pos(int(_ride["lift"])) + Vector2(0, 5)
+	elif level in ["landing", "settlement"] and _lander and map.ship_at != Vector2.INF:
+		dp = _drone_ramp_top()
 	else:
 		var zr: Rect2 = (_ride["zone"] as Dictionary)["rect"]
 		dp = Vector2(zr.position.x + 8.0, zr.get_center().y)
@@ -929,6 +1040,11 @@ func _ride_step(delta: float) -> void:
 			if level in ["landing", "settlement"] and int(_ride["lift"]) < 0 and _ship_spr != null:
 				# lift-off: dust, she rises off the pad, bigger (nearer to you), and is gone upwards
 				var lt := float(_ride["t"])
+				if _lander:
+					_hatch = 1.0 - clampf(lt / HATCH_TIME, 0.0, 1.0)     # 0.7.50.15: the ramp folds up first
+					if lt < HATCH_TIME:
+						return
+					lt -= HATCH_TIME
 				if lt < 0.05 and _puffs.is_empty():
 					_dust_burst(map.ship_at, 18)
 					Audio.play("boost", "lift-off")
@@ -1051,9 +1167,16 @@ func _touchdown_step(delta: float) -> void:
 		_shake = 0.35
 		Audio.play("dock_clamp", "touchdown")
 	if k >= 1.0:
-		# down the ramp
+		# down the ramp (0.7.50.15: the drone's folds down first)
 		var ramp_top: Vector2 = map.spawn - Vector2(0, 2.2 * GroundMap.TILE)
-		var wk := clampf((_touch - TOUCH_TIME) / 0.9, 0.0, 1.0)
+		var after := _touch - TOUCH_TIME
+		if _lander:
+			ramp_top = _drone_ramp_top()
+			_hatch = clampf(after / HATCH_TIME, 0.0, 1.0)
+			if after < HATCH_TIME:
+				return
+			after -= HATCH_TIME
+		var wk := clampf(after / 0.9, 0.0, 1.0)
 		pilot.visible = true
 		pilot.dir = 0
 		pilot.pos = ramp_top.lerp(map.spawn, wk)

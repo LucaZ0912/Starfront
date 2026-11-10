@@ -278,7 +278,7 @@ func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false) -> voi
 
 ## Package 50b (0.7.50.5): the city's landing hatch – down: the ship sinks below the ground, then you are in the
 ## city's hangar; up: she rises out of it and climbs away.
-func _city_hatch(body: Dictionary, site: Dictionary, down: bool) -> void:
+func _city_hatch(body: Dictionary, site: Dictionary, down: bool, dest: String = "orbit") -> void:
 	if hatch != null and is_instance_valid(hatch):
 		hatch.queue_free()
 	hatch = CityHatch.new()
@@ -298,7 +298,7 @@ func _city_hatch(body: Dictionary, site: Dictionary, down: bool) -> void:
 			if is_instance_valid(h):
 				h.queue_free()
 			hatch = null
-			take_off())
+			take_off(dest))
 	_update_input()
 
 
@@ -318,8 +318,8 @@ func enter_city(body: Dictionary, site: Dictionary) -> void:
 	GameState.codex.event("city")
 
 
-## Out of the city: the hatch opens, the ship rises and climbs away.
-func leave_city() -> void:
+## Out of the city: the hatch opens, the ship rises and climbs away (dest: "orbit" or "map" – 0.7.50.15).
+func leave_city(dest: String = "orbit") -> void:
 	var f := GameState.active()
 	if f == null:
 		return
@@ -329,12 +329,13 @@ func leave_city() -> void:
 	var tw := fade(Color(0, 0, 0, 1), 0.35)
 	tw.finished.connect(func():
 		close_deck(false)
-		_city_hatch(body, site, false)
+		_city_hatch(body, site, false, dest)
 		fade(Color(0, 0, 0, 0), 0.5))
 
 
-## Up again: from the landing field or the planet map back to orbit – the ascent.
-func take_off() -> void:
+## Up again: from the landing field or the planet map back to orbit – the ascent. 0.7.50.15 (Luz): or, dest "map",
+## back to the planet map to pick another place.
+func take_off(dest: String = "orbit") -> void:
 	var f := GameState.active()
 	_close_planet_map()
 	close_deck(false)
@@ -342,12 +343,38 @@ func take_off() -> void:
 		_update_input()
 		return
 	var body_id := f.docked_at.substr(5).split("|")[0]
+	if dest == "map":
+		f.docked_at = "land:" + body_id
+		fade(Color(0, 0, 0, 1), 0.01)
+		_fade.color = Color(0, 0, 0, 1)                           # from black into the map
+		_on_descended(body_id)
+		return
 	f.docked_at = ""
 	if view != null and is_instance_valid(view):
 		view.start_ascent(body_id)
 	fade(Color(1.0, 0.95, 0.85, 0.0), 0.01)                       # (makes sure the fade layer is there)
 	_fade.color = Color(1.0, 0.95, 0.85, 1.0)                     # out of the air in a flash …
 	fade(Color(1.0, 0.95, 0.85, 0.0), 1.1)                        # … that clears over the ascent
+	_update_input()
+
+
+## 0.7.50.15 (Luz): back up by the landing drone – it climbs off the pad and the ship catches it; then on to orbit
+## or the planet map.
+func drone_up(body: Dictionary, site: Dictionary, dest: String) -> void:
+	close_deck(false)
+	if flight != null and is_instance_valid(flight):
+		flight.queue_free()
+	flight = FlightScene.new()
+	add_child(flight)
+	flight.open_up(body, site)
+	fade(Color(0, 0, 0, 0), 0.4)
+	flight.finished.connect(func():
+		var tw := fade(Color(0, 0, 0, 1), 0.35)
+		tw.finished.connect(func():
+			if flight != null and is_instance_valid(flight):
+				flight.queue_free()
+			flight = null
+			take_off(dest)))
 	_update_input()
 
 
@@ -364,10 +391,14 @@ func close_deck(open_window: bool = true) -> void:
 func _on_deck_use(z: Dictionary) -> void:
 	match String(z.get("kind", "")):
 		"exit":
+			var dest := String(z.get("dest", "orbit"))
 			if ground != null and is_instance_valid(ground) and ground.level in ["landing", "settlement"]:
-				take_off()
+				if ground._lander and z.get("animate", false):
+					drone_up(ground._body, ground._site, dest)       # 0.7.50.15: the drone climbs, the ship catches it
+				else:
+					take_off(dest)
 			elif ground != null and is_instance_valid(ground) and ground.station.get("city", false):
-				leave_city()
+				leave_city(dest)
 			else:
 				close_deck(true)
 		"service", "crew":

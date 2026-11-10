@@ -766,7 +766,8 @@ static func build_landing(body: Dictionary, site: Dictionary, ship_len: float, s
 	var px0 := 3
 	var py0 := 3
 	m.fill(px0, py0, sl, sb, GroundMap.T.FLOOR, 14)
-	m.decals.append({"kind": "pad_marks", "x": px0, "y": py0, "w": sl, "h": sb, "col": Color(0.95, 0.8, 0.2)})
+	m.decals.append({"kind": "landing_pad", "x": px0, "y": py0, "w": sl, "h": sb, "col": Color(0.95, 0.8, 0.2), "n": 1})
+	m.pad_rects.append(Rect2(Vector2(px0, py0) * GroundMap.TILE, Vector2(sl, sb) * GroundMap.TILE))
 	# the ship on the pad, nose to the east – you cannot walk through her
 	var sc := Vector2(px0 + sl * 0.5, py0 + sb * 0.5)
 	m.ship_at = sc * GroundMap.TILE

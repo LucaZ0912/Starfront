@@ -34,6 +34,7 @@ var window_rect := Rect2()            # tiles: where space shows through the gla
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
 var pads: Array = []                  # 0.7.50.10: a settlement's landing pads – their centres (art px)
+var pad_rects: Array = []             # 0.7.50.15: the pads themselves (art px) – their lights follow them
 var econ: Dictionary = {}             # 0.7.50.12: a settlement's economy area – {kind, rect (art px), …} for its life
 var _img: Image
 var _tex: Texture2D
@@ -650,6 +651,8 @@ func _decal(d: Dictionary) -> void:
 				var a2 := hash2(k3, 5, 5) * TAU
 				var rr2 := sqrt(hash2(k3, 6, 5)) * r * 0.85
 				_px(cx + int(cos(a2) * rr2), cy + int(sin(a2) * rr2 * 0.8), Color(0.75, 0.82, 0.88))
+		"landing_pad":             # 0.7.50.15: a landing pad in detail
+			_landing_pad(px, py, pw, ph, c, int(d.get("n", 1)))
 		"pad_marks":               # the landing pad's markings: a yellow frame, a big H
 			_rect(px, py, pw, 2, c)
 			_rect(px, py + ph - 2, pw, 2, c)
@@ -676,6 +679,93 @@ func _decal(d: Dictionary) -> void:
 			_rect(px + 2, py + 3, pw - 4, ph - 6, Color(0.16, 0.14, 0.16))
 			for k in int((pw - 6) / 3):
 				_rect(px + 3 + k * 3, py + 4, 1, ph - 8, Color(0.16, 0.14, 0.16).lerp(c, 0.35))
+
+
+const DIGITS := {"0": ["111", "101", "101", "101", "111"], "1": ["010", "110", "010", "010", "111"], "2": ["111", "001", "111", "100", "111"],
+	"3": ["111", "001", "111", "001", "111"], "4": ["101", "101", "111", "001", "001"], "5": ["111", "100", "111", "001", "111"],
+	"6": ["111", "100", "111", "101", "111"], "7": ["111", "001", "010", "010", "010"], "8": ["111", "101", "111", "101", "111"],
+	"9": ["111", "101", "111", "001", "111"]}
+
+
+## 0.7.50.15 (Luz): a landing pad in detail – its slabs each a little their own, the scorch of the lift-offs round its
+## middle, the touchdown ring with its H, a hazard band round its edge with a white line inside, the corner brackets,
+## its number painted big, the edge lights in their housings, drainage grates, tie-down rings, the fuel hatch.
+func _landing_pad(px: int, py: int, pw: int, ph: int, c: Color, n: int) -> void:
+	var base: Color = Color(pal.get("floor", Color(0.45, 0.46, 0.48))).lerp(Color(0.56, 0.57, 0.59), 0.45)
+	for sy in range(0, ph, 28):
+		for sx in range(0, pw, 32):
+			var tw2 := mini(32, pw - sx)
+			var th2 := mini(28, ph - sy)
+			var tn := (hash2(px + sx, py + sy, 3) - 0.5) * 0.09
+			_rect(px + sx, py + sy, tw2, th2, base.lightened(tn) if tn > 0.0 else base.darkened(-tn))
+			_rect(px + sx, py + sy, tw2, 1, base.darkened(0.22))
+			_rect(px + sx, py + sy, 1, th2, base.darkened(0.22))
+			if hash2(px + sx, py + sy, 9) < 0.35:                       # a crack, a stain
+				var kx := px + sx + 4 + int(hash2(sx, sy, 4) * (tw2 - 10))
+				var ky := py + sy + 4 + int(hash2(sx, sy, 5) * (th2 - 8))
+				for q in 6:
+					_px(kx + q, ky + int(hash2(q, kx, 6) * 2.0), base.darkened(0.3))
+	var cx := px + pw / 2
+	var cy := py + ph / 2
+	var rx := pw * 0.36
+	var ry := ph * 0.4
+	for yy in range(int(cy - ry), int(cy + ry)):
+		for xx in range(int(cx - rx), int(cx + rx)):
+			var dd := Vector2((xx - cx) / rx, (yy - cy) / ry).length()
+			if dd < 1.0 and xx >= 0 and yy >= 0 and xx < _img.get_width() and yy < _img.get_height():
+				var s2 := pow(1.0 - dd, 1.2) * (0.3 + 0.3 * hash2(xx / 3, yy / 3, 7))
+				_img.set_pixel(xx, yy, _img.get_pixel(xx, yy).darkened(s2))
+	var white := Color(0.9, 0.9, 0.86)
+	var rr := minf(pw, ph) * 0.3
+	for a in 140:
+		var ang := a * TAU / 140.0
+		_rect(int(cx + cos(ang) * rr * 1.25) - 1, int(cy + sin(ang) * rr) - 1, 2, 2, c)
+	_rect(cx - 10, cy - 11, 4, 22, white)
+	_rect(cx + 6, cy - 11, 4, 22, white)
+	_rect(cx - 6, cy - 2, 12, 4, white)
+	var hb := 5
+	for yy in range(py, py + ph):
+		for xx in range(px, px + pw):
+			if xx < px + hb or xx >= px + pw - hb or yy < py + hb or yy >= py + ph - hb:
+				_px(xx, yy, c if ((xx + yy) / 4) % 2 == 0 else Color(0.13, 0.13, 0.15))
+	_rect(px + hb + 2, py + hb + 2, pw - hb * 2 - 4, 1, white)
+	_rect(px + hb + 2, py + ph - hb - 3, pw - hb * 2 - 4, 1, white)
+	_rect(px + hb + 2, py + hb + 2, 1, ph - hb * 2 - 4, white)
+	_rect(px + pw - hb - 3, py + hb + 2, 1, ph - hb * 2 - 4, white)
+	for cs in [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+		var bx2: int = cx + cs.x * int(pw * 0.3)
+		var by2: int = cy + cs.y * int(ph * 0.28)
+		_rect(bx2 - (10 if cs.x > 0 else 0), by2, 10, 2, white)
+		_rect(bx2, by2 - (10 if cs.y > 0 else 0), 2, 10, white)
+	var digits := str(n)
+	for di in digits.length():
+		var g: Array = DIGITS.get(digits[di], DIGITS["0"])
+		for gy in 5:
+			for gx in 3:
+				if String(g[gy])[gx] == "1":
+					_rect(px + hb + 7 + di * 13 + gx * 3, py + hb + 6 + gy * 3, 3, 3, white)
+	for xx2 in range(px + 12, px + pw - 8, 16):
+		for ey in [py + 1, py + ph - 4]:
+			_rect(xx2 - 2, ey, 5, 3, Color(0.16, 0.16, 0.18))
+			_rect(xx2 - 1, ey + 1, 3, 1, Color(1.0, 0.8, 0.45))
+	for yy2 in range(py + 12, py + ph - 8, 16):
+		for ex in [px + 1, px + pw - 4]:
+			_rect(ex, yy2 - 2, 3, 5, Color(0.16, 0.16, 0.18))
+			_rect(ex + 1, yy2 - 1, 1, 3, Color(1.0, 0.8, 0.45))
+	for gx2 in [px + hb + 4, px + pw - hb - 8]:
+		_rect(gx2, cy - 7, 4, 14, Color(0.18, 0.18, 0.2))
+		for sl in range(0, 14, 2):
+			_rect(gx2, cy - 7 + sl, 4, 1, Color(0.3, 0.3, 0.32))
+	for tdx in [Vector2(-0.22, -0.3), Vector2(0.22, -0.3), Vector2(-0.22, 0.3), Vector2(0.22, 0.3)]:
+		var tx := cx + int(tdx.x * pw)
+		var ty := cy + int(tdx.y * ph)
+		_rect(tx - 1, ty - 1, 3, 3, Color(0.25, 0.25, 0.28))
+		_px(tx, ty, Color(0.55, 0.55, 0.58))
+	var fx := px + pw - hb - 16
+	var fy := py + ph - hb - 13
+	_rect(fx, fy, 11, 8, Color(0.85, 0.7, 0.15))
+	_rect(fx + 1, fy + 1, 9, 6, Color(0.62, 0.16, 0.13))
+	_rect(fx + 3, fy + 3, 5, 2, Color(0.4, 0.1, 0.08))
 
 
 ## On a wall face: a lamp, a poster, a screen, lift doors, shelves.

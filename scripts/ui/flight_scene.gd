@@ -37,6 +37,20 @@ var _drone: Sprite2D
 var _ship_s := 1.0                    # the ship's base scale
 var _drone_s := 1.0
 const DRONE_AT := 0.46                # when the landing drone is launched (share of the flight)
+# 0.7.50.15 (Luz): the way back up by the landing drone – it climbs off the pad, the ship comes down over it and takes
+# it into her bay, then pulls away
+const UP_TIME := 6.4
+const CATCH_AT := 0.6                 # when the drone rises into her bay (share of the climb)
+var up := false
+var _up_scroll := Vector2.ZERO
+var _clamped := false
+var _drone_from := Vector2.ZERO       # up: the pad it lifts off from (screen)
+
+
+## 0.7.50.15: the climb back up by the landing drone, caught by the ship.
+func open_up(p_body: Dictionary, p_site: Dictionary) -> void:
+	up = true
+	open(p_body, p_site)
 
 
 func open(p_body: Dictionary, p_site: Dictionary) -> void:
@@ -44,7 +58,7 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 	body = p_body
 	site = p_site
 	atmo = Universe.has_atmosphere(body)
-	lander = String(site.get("kind", "")) != "city"
+	lander = String(site.get("kind", "")) != "city" or up
 	_vs = get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(1600, 900)
 	var bg := ColorRect.new()
 	bg.color = Color(0, 0, 0)
@@ -83,7 +97,7 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 	_ship.rotation = -PI * 0.5                 # nose up: she flies up the screen, the ground passes downwards
 	_ship.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	var ss := clampf(150.0 / maxf(tex.get_width(), 1.0), 2.0, 5.0)
+	var ss := clampf(150.0 / maxf(tex.get_width(), 1.0), 2.0, 5.0) * (1.45 if up else 1.0)   # up: closer – the catch
 	_ship.scale = Vector2.ONE * ss
 	_shadow.scale = Vector2.ONE * ss
 	_ship.position = _vs * Vector2(0.5, 0.58)
@@ -94,9 +108,11 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 		_drone.texture = lander_texture()
 		_drone.rotation = -PI * 0.5
 		_drone.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_drone_s = ss * 0.9
+		_drone_s = maxf(ss * tex.get_width() * 0.5 / float(LanderArt.W), 1.8)   # about half her length
 		_drone.visible = false
 		add_child(_drone)
+		if up:
+			move_child(_drone, _ship.get_index())     # she is above it: it slides in under her belly
 	# clouds above it all, and the air's own haze
 	if atmo:
 		var ct := cloud_texture(int(hash(String(body.get("id", "")))), bt.get("cloud", Color(1, 1, 1)))
@@ -128,13 +144,15 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 	_scroll0 = land - _place_at
 	_place_at = land
 	_scroll = _scroll0
+	_up_scroll = _scroll0 + Vector2(0, -_dist(DURATION))       # up: from where the flight down ended
+	_drone_from = _vs * 0.5 + (_place_at + _pad_off() * 4.0 - _up_scroll) * 4.2
 	if String(site.get("kind", "")) == "city":
 		var city := Universe.city_station(GameState.current_system, body, site)
 		city_day = float(city.get("day", 0.0))
 		city_style = CityStyle.of(city)
 		city_style_key = CityStyle.key_for(city)
 		_build_city()
-	Audio.play("boost", "flight down")
+	Audio.play("boost", "lift-off" if up else "flight down")
 	_update(0.0)
 
 
@@ -143,12 +161,15 @@ func _process(delta: float) -> void:
 		return
 	_t += delta
 	_update(delta)
-	if _t >= DURATION:
+	if _t >= (UP_TIME if up else DURATION):
 		_done = true
 		finished.emit()
 
 
 func _update(delta: float) -> void:
+	if up:
+		_update_up(delta)
+		return
 	var k := clampf(_t / DURATION, 0.0, 1.0)
 	var gscale := lerpf(1.6, 4.2, smoothstep(0.0, 1.0, k))           # the ground comes closer
 	_scroll = _scroll0 + Vector2(0, -_dist(_t))
@@ -194,20 +215,121 @@ func _update(delta: float) -> void:
 	_fx.queue_redraw()
 
 
+## 0.7.50.15: up by the drone – the ground falls away below it, the clouds close in; the ship comes down over it
+## out of the sky, takes it up into her bay on a tractor beam, the clamps close, and she pulls away.
+func _update_up(delta: float) -> void:
+	var k := clampf(_t / UP_TIME, 0.0, 1.0)
+	var gscale := lerpf(4.2, 1.4, smoothstep(0.0, 1.0, k))
+	_up_scroll.y -= lerpf(110.0, 560.0, k) * delta / gscale
+	_scroll = _up_scroll
+	_ground.scale = Vector2.ONE * gscale
+	_ground.region_rect = Rect2(_scroll - _vs / gscale * 0.5, _vs / gscale)
+	var home := _vs * Vector2(0.5, 0.58) + Vector2(sin(_t * 1.3) * 5.0, sin(_t * 2.1) * 2.5)
+	var below := home + Vector2(0, _vs.y * 0.27)
+	# the drone: off the pad and up, then into her bay
+	var rise := smoothstep(CATCH_AT, CATCH_AT + 0.2, k)
+	var climb := smoothstep(0.0, 0.25, k)
+	_drone.visible = rise < 0.999
+	_drone.position = _drone_from.lerp(below, climb).lerp(home, rise)
+	_drone.scale = Vector2.ONE * _drone_s * lerpf(1.0, 1.12, rise)
+	_drone.modulate.a = 1.0 - smoothstep(0.75, 1.0, rise)
+	# its shadow stays on the ground, falling behind and fading
+	_shadow.texture = _drone.texture
+	_shadow.scale = Vector2.ONE * _drone_s * lerpf(1.0, 0.6, climb)
+	_shadow.position = _drone.position + Vector2(30.0 + 220.0 * k, 40.0 + 260.0 * k)
+	_shadow.modulate.a = 0.5 * (1.0 - smoothstep(0.0, 0.5, k))
+	# the ship: down out of the sky over it, holding, then away
+	var arr := smoothstep(0.26, 0.56, k)
+	var pull := smoothstep(0.86, 1.0, k)
+	_ship.position = home + Vector2(0, -_vs.y * 0.9 * pow(1.0 - arr, 2.0)) + Vector2(0, -_vs.y * 0.9 * pull * pull)
+	_ship.scale = Vector2.ONE * _ship_s * lerpf(1.7, 1.0, arr) * lerpf(1.0, 1.7, pull)
+	_ship.modulate.a = smoothstep(0.26, 0.38, k) * (1.0 - smoothstep(0.93, 1.0, k))
+	if rise >= 0.999 and not _clamped:
+		_clamped = true
+		Audio.play("dock_clamp", "drone caught")
+	for c in _clouds:
+		var sp: Sprite2D = c[0]
+		var r := sp.region_rect
+		r.position.y -= float(c[1]) * delta / sp.scale.x
+		sp.region_rect = r
+		sp.modulate.a = float(c[2]) * smoothstep(0.35, 0.95, k)            # up into the clouds
+	if _haze != null:
+		_haze.color.a = lerpf(0.04, 0.32, k)
+	_place.queue_redraw()
+	_fx.queue_redraw()
+
+
+## Where a place's landing pad lies from its middle (blocks) – as _draw_place draws it.
+func _pad_off() -> Vector2:
+	match String(site.get("kind", "")):
+		"outpost", "research":
+			return Vector2(0, 3)
+		"mine":
+			return Vector2(4, 6)
+		"ruins":
+			return Vector2(0, 8)
+		"crash":
+			return Vector2(0, 10)
+		"city":
+			return Vector2(0, 2)
+	return Vector2.ZERO
+
+
+## The drone's own lift: its four fans glowing, the two thrusters at its tail (screen: nose up).
+func _drone_fx(q: Vector2, sc: float, a: float) -> void:
+	for f in LanderArt.FANS:
+		var rel: Vector2 = (f as Vector2) - LanderArt.C
+		var at := q + Vector2(rel.y, -rel.x) * sc
+		var fl := 0.8 + 0.2 * sin(_t * 40.0 + rel.x)
+		_fx.draw_circle(at, 4.2 * sc * fl, Color(0.35, 0.95, 1.0, 0.16 * a))
+		_fx.draw_circle(at, 2.2 * sc, Color(0.6, 1.0, 1.0, 0.22 * a))
+	for jd in 2:
+		var tail := q + Vector2(0, (LanderArt.C.x + 0.5) * sc)
+		var ln := (5.0 - jd * 1.6) * sc * (0.85 + 0.15 * sin(_t * 34.0 + jd))
+		for side in [-3.0, 3.0]:
+			var b: Vector2 = tail + Vector2(side * sc, 0)
+			_fx.draw_colored_polygon(PackedVector2Array([b + Vector2(-1.4 + jd * 0.5, 0) * sc, b + Vector2(0, ln), b + Vector2(1.4 - jd * 0.5, 0) * sc]),
+				Color([Color(1.0, 0.6, 0.2), Color(1, 1, 0.85)][jd], 0.6 * a))
+
+
 func _draw_fx() -> void:
 	var p := _ship.position
 	var fs := _ship.scale.x / _ship_s
+	if up:
+		var k := clampf(_t / UP_TIME, 0.0, 1.0)
+		if _drone.visible:
+			_drone_fx(_drone.position, _drone.scale.x, _drone.modulate.a)
+		# the tractor beam from her bay down to it, then the flash of the clamps
+		var beam := smoothstep(CATCH_AT - 0.06, CATCH_AT, k) * (1.0 - smoothstep(CATCH_AT + 0.2, CATCH_AT + 0.24, k))
+		if beam > 0.0:
+			var dq := _drone.position
+			var wd := 9.0 * _drone.scale.x
+			_fx.draw_colored_polygon(PackedVector2Array([p + Vector2(-wd * 0.5, 0), p + Vector2(wd * 0.5, 0), dq + Vector2(wd, 0), dq + Vector2(-wd, 0)]),
+				Color(0.35, 0.95, 1.0, 0.3 * beam))
+			for i in 5:
+				var ry := fposmod(_t * 1.6 + i * 0.2, 1.0)
+				var rp := dq.lerp(p, ry)
+				_fx.draw_arc(rp, lerpf(wd, wd * 0.5, ry), 0.0, TAU, 28, Color(0.7, 1.0, 1.0, 0.7 * beam * (1.0 - ry)), 3.0)
+		var flash := 1.0 - clampf(absf(k - (CATCH_AT + 0.2)) / 0.04, 0.0, 1.0)
+		if flash > 0.0:
+			_fx.draw_circle(p, 60.0 * fs, Color(0.7, 1.0, 1.0, 0.5 * flash))
+		if _ship.modulate.a <= 0.02:
+			return
+		# her flame – a glow while she holds, full as she pulls away
+		var thrust := smoothstep(0.84, 0.9, k)
+		if thrust <= 0.01:
+			return
+		for j in 3:
+			var len := (60.0 - j * 14.0) * fs * thrust * (0.85 + 0.15 * sin(_t * 30.0 + j))
+			_fx.draw_colored_polygon(PackedVector2Array([p + Vector2(-14 + j * 4, 55) * fs, p + Vector2(0, 55 * fs + len), p + Vector2(14 - j * 4, 55) * fs]),
+				Color([Color(1.0, 0.5, 0.15), Color(1.0, 0.8, 0.3), Color(1, 1, 0.85)][j], 0.55 * _ship.modulate.a))
+		return
 	if lander and _drone != null and _drone.visible:
 		var dk := clampf((_t / DURATION - DRONE_AT) / (1.0 - DRONE_AT), 0.0, 1.0)
 		if dk < 0.12:
 			_fx.draw_circle(p + Vector2(0, 30), 40.0 * (1.0 - dk / 0.12), Color(1.0, 0.9, 0.6, 0.6 * (1.0 - dk / 0.12)))   # the bay
-		# the drone's own small flame
-		var q := _drone.position
-		var dsc := _drone.scale.x / _drone_s
-		for jd in 2:
-			var ln := (30.0 - jd * 10.0) * dsc * (0.85 + 0.15 * sin(_t * 34.0 + jd))
-			_fx.draw_colored_polygon(PackedVector2Array([q + Vector2(-7 + jd * 3, 26) * dsc, q + Vector2(0, 26 * dsc + ln), q + Vector2(7 - jd * 3, 26) * dsc]),
-				Color([Color(1.0, 0.6, 0.2), Color(1, 1, 0.85)][jd], 0.6))
+		# the drone's own lift: its fans and thrusters
+		_drone_fx(_drone.position, _drone.scale.x, 1.0)
 		if _ship.modulate.a <= 0.02:
 			return
 	# the last of the entry heat, at the start
@@ -594,41 +716,9 @@ func _nearest_land(p: Vector2) -> Vector2:
 	return p
 
 
-## The landing drone every ship carries (0.7.50.4): a small lander, nose to the east like the ships.
+## The landing drone every ship carries (0.7.50.4; 0.7.50.15: a dropship for four and a vehicle – LanderArt).
 static func lander_texture() -> Texture2D:
-	var img := Image.create(18, 14, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var hull := Color(0.62, 0.65, 0.72)
-	var dark := Color(0.32, 0.34, 0.4)
-	var o := Color(0.08, 0.07, 0.1)
-	for y in range(3, 11):
-		for x in range(3, 14):
-			img.set_pixel(x, y, hull if y > 4 and y < 9 else dark)
-	for y2 in range(5, 9):
-		img.set_pixel(14, y2, hull)
-		img.set_pixel(15, y2, hull if y2 in [6, 7] else Color(0, 0, 0, 0))
-	img.set_pixel(13, 6, Color(0.35, 0.9, 1.0))
-	img.set_pixel(13, 7, Color(0.35, 0.9, 1.0))
-	img.set_pixel(12, 6, Color(0.55, 0.95, 1.0))
-	for ex in [[1, 2], [1, 10]]:                       # two engine pods
-		for yy in range(ex[1], ex[1] + 2):
-			for xx in range(ex[0], ex[0] + 6):
-				img.set_pixel(xx, yy, dark)
-		img.set_pixel(ex[0], ex[1], Color(1.0, 0.6, 0.25))
-		img.set_pixel(ex[0], ex[1] + 1, Color(1.0, 0.6, 0.25))
-	img.set_pixel(8, 3, Color(1.0, 0.3, 0.25))
-	img.set_pixel(8, 10, Color(0.35, 1.0, 0.5))
-	var src := img.duplicate()
-	for y3 in 14:
-		for x3 in 18:
-			if src.get_pixel(x3, y3).a > 0.0:
-				continue
-			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				var q: Vector2i = Vector2i(x3, y3) + d
-				if q.x >= 0 and q.y >= 0 and q.x < 18 and q.y < 14 and src.get_pixel(q.x, q.y).a > 0.5:
-					img.set_pixel(x3, y3, o)
-					break
-	return ImageTexture.create_from_image(img)
+	return LanderArt.texture()
 
 
 func _landing_pad(p: Vector2, u: float) -> void:

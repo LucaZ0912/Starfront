@@ -20,18 +20,21 @@ func setup(pad_centres: Array, rng: RandomNumberGenerator, p_dust: Color) -> voi
 	for p in pad_centres:
 		var st := "empty" if rng.randf() < 0.5 else "parked"
 		pads.append({"pos": (p as Vector2) * GroundMap.SCALE, "state": st, "t": 0.0, "wait": rng.randf_range(2.0, 10.0),
-			"tint": Color.from_hsv(rng.randf(), rng.randf_range(0.0, 0.35), rng.randf_range(0.75, 1.0))})
+			"tint": Color.from_hsv(rng.randf(), rng.randf_range(0.0, 0.16), rng.randf_range(0.8, 1.0)), "hatch": 1.0 if st == "parked" else 0.0})
 
 
 func _process(delta: float) -> void:
 	for p in pads:
 		p["t"] = float(p["t"]) + delta
+		# 0.7.50.15: a standing drone lowers its ramp, and raises it before it lifts off
+		var want := 1.0 if String(p["state"]) == "parked" and float(p["t"]) > 0.8 and float(p["t"]) < float(p["wait"]) - 1.1 else 0.0
+		p["hatch"] = move_toward(float(p.get("hatch", 0.0)), want, delta / 0.85)
 		match String(p["state"]):
 			"empty":
 				if float(p["t"]) > float(p["wait"]):
 					p["state"] = "landing"
 					p["t"] = 0.0
-					p["tint"] = Color.from_hsv(randf(), randf_range(0.0, 0.35), randf_range(0.75, 1.0))
+					p["tint"] = Color.from_hsv(randf(), randf_range(0.0, 0.16), randf_range(0.8, 1.0))
 			"landing":
 				if float(p["t"]) >= DOWN:
 					p["state"] = "parked"
@@ -89,15 +92,21 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		var pos := at + Vector2(0, -300.0 * h)
 		if String(p["state"]) in ["landing", "lifting"]:
+			for f in LanderArt.FANS:                                # its four lift fans, blowing
+				var fp: Vector2 = pos + ((f as Vector2) - LanderArt.C) * ART * sc
+				draw_circle(fp, 5.0 * ART * sc * (0.85 + 0.15 * sin(Time.get_ticks_msec() * 0.04)), Color(0.35, 0.95, 1.0, 0.12 * a))
 			for j in 2:
 				var ln := (26.0 - j * 9.0) * sc * (0.85 + 0.15 * sin(Time.get_ticks_msec() * 0.03 + j))
-				draw_colored_polygon(PackedVector2Array([pos + Vector2(-tw.x * 0.42, -8 + j * 3) * sc, pos + Vector2(-tw.x * 0.42 - ln, 0), pos + Vector2(-tw.x * 0.42, 8 - j * 3) * sc]),
-					Color([Color(1.0, 0.6, 0.2), Color(1, 1, 0.85)][j], 0.6 * a))
+				for side in [-3.0, 3.0]:
+					var tp: Vector2 = pos + Vector2(-tw.x * 0.5 + ART, side * ART) * sc
+					draw_colored_polygon(PackedVector2Array([tp + Vector2(0, -6 + j * 2) * sc, tp + Vector2(-ln, 0), tp + Vector2(0, 6 - j * 2) * sc]),
+						Color([Color(1.0, 0.6, 0.2), Color(1, 1, 0.85)][j], 0.6 * a))
 		draw_set_transform(pos, 0.0, Vector2.ONE * sc)
 		draw_texture_rect(_tex, Rect2(-tw * 0.5, tw), false, Color(p["tint"], a))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		LanderArt.draw_ramp(self, pos, ART * sc, float(p.get("hatch", 0.0)), Time.get_ticks_msec() * 0.001, a)
 		if String(p["state"]) == "parked" and fposmod(float(p["t"]), 1.2) < 0.3:
-			draw_circle(at + Vector2(0, -tw.y * 0.5), 3.0, Color(0.4, 1.0, 0.55))          # its beacon
+			draw_circle(at + (Vector2(26, 11) - LanderArt.C) * ART, 4.0, Color(1.0, 0.35, 0.3))          # its beacon on the mast
 	for d in _puffs:
 		var k := clampf(float(d[2]), 0.0, 1.0)
 		draw_circle(d[0], float(d[3]) * (1.6 - k * 0.6) * 1.5, Color(dust_col, 0.3 * k))

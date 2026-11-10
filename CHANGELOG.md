@@ -3,6 +3,33 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.15 – 2026-11-10
+
+**Taking off, the landing drone, the pads (Luz, after playing).**
+- **Taking off asks where to:** at the drone's ramp (or the stairs to your ship in a city's hangar) a small panel –
+  **1. back to orbit** or **2. to the planet map** to pick another place on the same world, without the climb to
+  orbit and the way down again.
+- **The landing drone is a dropship now:** a fuselage for four (four portholes along its side) with the vehicle bay
+  aft under a roof hatch, the cockpit canopy wrapped round its nose, four ducted lift fans on stub wings, two
+  thrusters at the tail, a dorsal spine with a sensor housing and a mast, red and green nav lights, a band in the
+  line's colour – about 8 m long, as big as it must be for four people and a vehicle.
+- **Its ramp is animated:** after the touchdown the side door slides up (the lit cabin behind – seats, the rover's
+  flank) and the ramp folds down on its struts, its rail lights running; you walk down it. Going back you walk up
+  it, it folds up behind you, then the drone lifts off. The other drones on the pads lower and raise theirs too.
+- **The drone is caught by the ship:** back up by the drone, it climbs off the pad while the ground falls away
+  below, the clouds close in, the ship comes down over it out of the sky, takes it up into her bay on a tractor
+  beam – a flash as the clamps close – and pulls away. Then orbit or the planet map.
+- **The landing pads in detail** (and bigger, for the new drone): slabs each a little their own with seams, cracks
+  and stains, the scorch of the lift-offs round the middle, the touchdown ring with its H, a hazard band round the
+  edge with a white line inside, corner brackets, the pad's number painted big, edge lights in their housings,
+  drainage grates, tie-down rings, a fuel hatch; a fuel point by each pad, a hover cargo loader on the apron.
+- **The pads' lights live:** dim and steady while a pad is clear, a running chase towards it while a drone comes
+  in (outwards while one lifts off), cyan while one stands on it – and beside each PAD sign its status: CLEAR,
+  INBOUND, DEPARTING, OCCUPIED, YOUR DRONE.
+- The settlements' landing field: two pads north of the street, two south of it, the street running out between
+  them; the town begins east of it.
+- The hint under the title fits the place (no more "the stairs in the hangar" in a settlement).
+
 ## alpha 0.7.50.14 – 2026-11-10
 
 **Settlements in the future (Luz: "the vehicles look very 21st century – make them sci-fi").**

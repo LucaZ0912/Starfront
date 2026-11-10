@@ -7743,6 +7743,7 @@ func _test_landing(view: SystemView) -> void:
 	var g = main.ground
 	var field: bool = g != null and g.level in ["landing", "settlement"] and g.map.ship_at != Vector2.INF and g._ship_spr != null and g.map.zone_at(g.map.spawn).get("id", "") == "ship"
 	_test_settlement(view, body, sites_all)
+	_test_takeoff(body, sites_all)
 	# 0.7.50.4: a small place - down by the landing drone, not the ship; a city - the ship herself
 	var drone_ok := true
 	if down:
@@ -7750,7 +7751,7 @@ func _test_landing(view: SystemView) -> void:
 			if String(s2["kind"]) != "city":
 				main.land_at(body, s2)
 				g = main.ground
-				drone_ok = g != null and g._lander and g._ship_tex().get_width() == 18
+				drone_ok = g != null and g._lander and g._ship_tex().get_width() == LanderArt.W
 				break
 		for s3 in sites_all:
 			if String(s3["kind"]) == "city":
@@ -7768,6 +7769,58 @@ func _test_landing(view: SystemView) -> void:
 	var up: bool = f.docked_at == "" and p.visible and is_equal_approx(p.scale.x, 1.0) and main.ground == null and main.planet_map == null
 	check(cmd_ok and beacons >= 1 and gas_free and down and field and up and GameState.codex.unlocked.has("basics_landing"),
 		"50: %d descent beacons (none over a gas giant); down to %s, the planet map (%d places), landed at %s, back up to orbit" % [beacons, String(body.get("name", "?")), main.planet_map.sites.size() if main.planet_map != null else Universe.landing_sites(view.system_id, body).size(), String(site.get("name", "?"))])
+
+
+## 0.7.50.15: down by the drone, its ramp folds down and you walk out; back aboard, the choice – orbit or the planet
+## map; the ramp folds up, the drone lifts off, climbs and is caught by the ship; then the planet map again.
+func _test_takeoff(body: Dictionary, sites_all: Array) -> void:
+	var site := {}
+	for s in sites_all:
+		if String(s["kind"]) in ["outpost", "mine", "research"]:
+			site = s
+			break
+	if site.is_empty():
+		check(true, "0.7.50.15: (no settlement on this body)")
+		return
+	var f := GameState.active()
+	main.land_at(body, site, true)
+	var g = main.ground
+	for i in 200:
+		if g._touch < 0.0:
+			break
+		g._process(0.05)
+	var ramp_ok: bool = g._hatch >= 0.99 and g.pilot.visible and String(g.map.zone_at(g.pilot.pos).get("id", "")) == "ship"
+	var lights := 0
+	for ch in g._world.get_children():
+		if ch is PadLights:
+			lights = ch.rects.size()
+	g.zone = g.map.zone_at(g.pilot.pos)
+	g.use()
+	var menu_ok: bool = g._lift_menu != null and (g._lift_menu.get_meta("keys", []) as Array).size() == 2
+	g._choose_takeoff("orbit")
+	var shut := false
+	for i in 300:
+		if main.flight != null or not is_instance_valid(g):
+			break
+		g._process(0.05)
+		shut = shut or (g._hatch <= 0.01 and not g.pilot.visible)
+	var fl = main.flight
+	var caught := false
+	if fl != null:
+		for i in 300:
+			fl._process(0.05)
+			if fl._done:
+				break
+		caught = fl.up and fl._clamped and not fl._drone.visible
+		if main._fade_tw != null and main._fade_tw.is_valid():
+			main._fade_tw.kill()                      # (the test goes on by hand)
+		fl.queue_free()
+		main.flight = null
+	var bid := String(body["id"])
+	main.take_off("map")
+	var map_ok: bool = main.planet_map != null and f.docked_at == "land:" + bid and main.ground == null
+	check(ramp_ok and lights == 4 and menu_ok and shut and caught and map_ok,
+		"0.7.50.15: %s – the drone's ramp down, %d pads lit, take-off: orbit or planet map, ramp up, the drone caught by the ship, back to the planet map" % [String(site["name"]), lights])
 
 
 ## 0.7.50.10: a settlement – its four pads (drones coming and going on the free ones), its street, walk-in shops, the
