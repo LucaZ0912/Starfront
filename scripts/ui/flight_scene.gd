@@ -167,6 +167,10 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 		city_style = CityStyle.of(city)
 		city_style_key = CityStyle.key_for(city)
 		_build_city()
+	elif String(site.get("kind", "")) in Universe.SETTLED_KINDS:
+		town_day = float(Universe.city_station(GameState.current_system, body, site).get("day", 1.0))   # 0.7.50.17
+	var dd := city_day if String(site.get("kind", "")) == "city" else town_day
+	_ground.modulate = Color(0.3, 0.34, 0.48).lerp(Color.WHITE, clampf(dd * 1.5, 0.0, 1.0))   # 0.7.50.17: night lies over the land
 	Audio.play("boost", "lift-off" if up else "flight down")
 	_update(0.0)
 
@@ -293,18 +297,9 @@ func _ship_flame(p: Vector2, thrust: float) -> void:
 
 ## Where a place's landing pad lies from its middle (blocks) – as _draw_place draws it.
 func _pad_off() -> Vector2:
-	match String(site.get("kind", "")):
-		"outpost", "research":
-			return Vector2(0, 3)
-		"mine":
-			return Vector2(4, 6)
-		"ruins":
-			return Vector2(0, 8)
-		"crash":
-			return Vector2(0, 10)
-		"city":
-			return Vector2(0, 2)
-	return Vector2.ZERO
+	if String(site.get("kind", "")) == "city":
+		return Vector2(0, 2)
+	return PADS_AT * TOWN
 
 
 ## The drone's own lift: its four fans glowing, the two thrusters at its tail (screen: nose up).
@@ -366,8 +361,7 @@ func _draw_fx() -> void:
 	if heat > 0.0:
 		for i in 4:
 			_fx.draw_circle(p + Vector2(0, -20), 90.0 - i * 18.0, Color(1.0, 0.6 - i * 0.08, 0.25, heat * (0.12 + i * 0.06)))
-	# the flame, below her (she flies up)
-	_ship_flame(p, 1.0)
+	# (0.7.50.17, Luz: no engine flame on the way down)
 
 
 ## The place ahead: it comes into view at the top and slides down to meet the ship.
@@ -386,57 +380,248 @@ func _draw_place() -> void:
 	if kd == "city":
 		_draw_city_lights(c, u, rng)
 		return
-	var plate := Vector2(26, 20) * u
-	_place.draw_rect(Rect2(c - plate * 0.5 - Vector2(u, u) * 2.0, plate + Vector2(u, u) * 4.0), land.darkened(0.15))
-	_place.draw_rect(Rect2(c - plate * 0.5, plate), land)
-	match kd:
-		"city":
-			# blocks of houses along a grid of streets, windows lit
-			for gy in range(-4, 5):
-				for gx in range(-6, 7):
-					if absi(gx) + absi(gy) > 9:
-						continue
-					var bp := c + Vector2(gx, gy) * u * 5.0
-					var bs := Vector2(rng.randf_range(2.5, 4.2), rng.randf_range(2.5, 4.2)) * u
-					var rc := Color(0.35, 0.37, 0.42).lerp(Color(0.55, 0.5, 0.45), rng.randf())
-					_place.draw_rect(Rect2(bp - bs * 0.5 + Vector2(u * 0.4, u * 0.4), bs), Color(0, 0, 0, 0.35))
-					_place.draw_rect(Rect2(bp - bs * 0.5, bs), rc)
-					_place.draw_rect(Rect2(bp - bs * 0.5, Vector2(bs.x, u * 0.3)), rc.lightened(0.2))
-					for w in 3:
-						if rng.randf() < 0.6:
-							_place.draw_rect(Rect2(bp + Vector2(rng.randf_range(-0.4, 0.3), rng.randf_range(-0.4, 0.3)) * bs, Vector2(u * 0.35, u * 0.35)), Color(1.0, 0.85, 0.45))
-			for s in range(-6, 7):
-				_place.draw_rect(Rect2(c + Vector2(s * u * 5.0 + u * 2.5 - u * 0.4, -u * 25.0), Vector2(u * 0.8, u * 50.0)), Color(0.22, 0.22, 0.24, 0.55))
-			_landing_pad(c + Vector2(0, u * 2.0), u)
-		"outpost", "research":
-			for i in 5:
-				var dp := c + Vector2(rng.randf_range(-12, 12), rng.randf_range(-8, 8)) * u
-				var dr := rng.randf_range(2.0, 3.5) * u
-				_place.draw_circle(dp + Vector2(u * 0.5, u * 0.5), dr, Color(0, 0, 0, 0.3))
-				_place.draw_circle(dp, dr, Color(0.8, 0.82, 0.86))
-				_place.draw_circle(dp - Vector2(dr, dr) * 0.3, dr * 0.4, Color(1, 1, 1, 0.5))
-			if kd == "research":
-				_place.draw_line(c + Vector2(8, -4) * u, c + Vector2(8, -10) * u, Color(0.7, 0.7, 0.75), u * 0.4)
-				_place.draw_circle(c + Vector2(8, -10) * u, u * 0.7, Color(0.4, 1.0, 0.6))
-			_landing_pad(c + Vector2(0, u * 3.0), u)
-		"mine":
-			for r in 4:
-				_place.draw_arc(c + Vector2(-8, -2) * u, (6.0 - r * 1.3) * u, 0.0, TAU, 32, Color(0.35, 0.28, 0.2).darkened(r * 0.12), u * 1.2)
-			_place.draw_line(c + Vector2(-8, -2) * u, c + Vector2(10, 4) * u, Color(0.5, 0.45, 0.35), u * 0.8)
-			_landing_pad(c + Vector2(4, 6) * u, u)
-		"ruins":
-			for i in 14:
-				var rp := c + Vector2(rng.randf_range(-14, 14), rng.randf_range(-10, 10)) * u
-				_place.draw_rect(Rect2(rp, Vector2(rng.randf_range(2, 7), rng.randf_range(0.8, 1.6)) * u), Color(0.55, 0.5, 0.48))
-			_landing_pad(c + Vector2(0, u * 8.0), u)
-		"crash":
-			_place.draw_circle(c, u * 9.0, Color(0.1, 0.08, 0.06, 0.5))
-			_place.draw_line(c + Vector2(-16, -10) * u, c, Color(0.12, 0.1, 0.08, 0.6), u * 4.0)
-			_place.draw_rect(Rect2(c - Vector2(5, 2) * u, Vector2(10, 4) * u), Color(0.45, 0.47, 0.5))
-			_place.draw_circle(c + Vector2(3, 0) * u, u * 1.4, Color(1.0, 0.5, 0.2, 0.6 + 0.3 * sin(_t * 9.0)))
-			_landing_pad(c + Vector2(0, u * 10.0), u)
+	_draw_town(c, u)
+
+
+## 0.7.50.17 (Luz: "the small places far too big in the flight – small lights like the cities, with what marks them,
+## the open pit, the fields – bound to the land"): a settlement from the air – a short street of houses, its lamps,
+## its four pads (their lights blinking), and beside it what it lives from: an open pit with its terraces and the lights
+## of the haul trucks going round, fields in their colours (or glowing greenhouses where nothing grows outside), halls
+## with smoking stacks, a tank farm with its flare, a dish array, a training yard, gardens – fish pens out on the
+## water of an ocean world. Laid out once (blocks from its middle), only on land (the pens only on the sea), the
+## economy area towards the land. Ruins and a crash site small and dark, as they are.
+enum TP { HOUSE, LAMP, PAD, PIT, FIELD, HALL, STACK, FLARE, TANK, DISH, GREEN, YARD, PEN, RUIN, WRECK, ROAD }
+var _town_pts: Array = []             # [offset (blocks), size (blocks), kind TP, w 0..1]
+var town_day := 1.0
+const PADS_AT := Vector2(0, 1.2)      # where the pads lie from its middle – under the drone at the end of the flight
+const TOWN := 2.0                     # its layout's unit in blocks
+
+
+func _tp(off: Vector2, size: float, kind: int, w: float) -> void:
+	var sea := _tex_sea(off * TOWN)
+	if kind == TP.PEN:
+		if not sea:
+			return
+	elif sea and kind != TP.PAD:
+		return
+	_town_pts.append([off * TOWN, size * TOWN, kind, w])
+
+
+## A road from a to b (town units) – only where there is land.
+func _road(a: Vector2, b: Vector2, width: float, dark: bool = false) -> void:
+	var n := maxi(1, int(a.distance_to(b) / 0.3))
+	for i in n:
+		var p0 := a.lerp(b, float(i) / n)
+		var p1 := a.lerp(b, float(i + 1) / n)
+		if _tex_sea(p0 * TOWN) or _tex_sea(p1 * TOWN):
+			continue
+		_town_pts.append([p0 * TOWN, width * TOWN, TP.ROAD, 1.0 if dark else 0.0, p1 * TOWN])
+
+
+## Which way the land goes on from the place (for its economy area) – away from its pads, towards no sea.
+func _land_dir(rng: RandomNumberGenerator, want_sea: bool = false) -> Vector2:
+	var best := Vector2.UP
+	var best_v := -999.0
+	for i in 16:
+		var d := Vector2.from_angle(i * TAU / 16.0 + rng.randf() * 0.2)
+		var v := 0.0
+		for r in [2.5, 3.5, 4.5, 5.5]:
+			v += (1.0 if _tex_sea(d * r * TOWN) == want_sea else -1.0)
+		v -= maxf(d.dot(PADS_AT.normalized()), 0.0) * 2.5                # not over the pads
+		v += rng.randf() * 0.5
+		if v > best_v:
+			best_v = v
+			best = d
+	return best
+
+
+func _build_town() -> void:
+	_town_pts.clear()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(site.get("id", ""))) + 5
+	var kd := String(site.get("kind", "outpost"))
+	# the pads, two by two
+	for pi in 4:
+		_tp(PADS_AT + Vector2(-0.55 if pi % 2 == 0 else 0.55, -0.4 if pi < 2 else 0.4), 0.42, TP.PAD, float(pi))
+	if kd == "ruins":
+		for i in 16:
+			_tp(Vector2(rng.randf_range(-3.0, 3.0), rng.randf_range(-2.5, 1.2)), rng.randf_range(0.25, 0.6), TP.RUIN, rng.randf())
+		return
+	if kd == "crash":
+		var d0 := Vector2.from_angle(rng.randf() * TAU)
+		_road(Vector2(0, -1.0) - d0 * 0.5, Vector2(0, -1.0) + d0 * 3.5, 0.45, true)   # the furrow it ploughed
+		_tp(Vector2(0, -1.0) - d0 * 0.6, 0.9, TP.WRECK, 1.0)
+		return
+	# the street and its houses
+	var sd := Vector2.from_angle(rng.randf_range(-0.5, 0.5))           # roughly east–west
+	var c0 := Vector2(0, -1.1)
+	_road(c0 - sd * 2.6, c0 + sd * 2.6, 0.14)
+	for h in 20:
+		var along := rng.randf_range(-2.3, 2.3)
+		var side := (-1.0 if h % 2 == 0 else 1.0) * rng.randf_range(0.42, 0.85)
+		_tp(c0 + sd * along + sd.orthogonal() * side, rng.randf_range(0.26, 0.42), TP.HOUSE, rng.randf())
+	for l in 6:
+		_tp(c0 + sd * (l - 2.5) * 0.85, 0.12, TP.LAMP, rng.randf())
+	_road(c0, PADS_AT, 0.1)                                              # the way to the pads
+	# what it lives from
+	var eco := SettleGen.economy(site, GameState.current_system)
+	var sea_world := SettleGen.bounds(body) == "sea"
+	var grows := String(body.get("type", "")) in SettleGen.GROWS
+	var dir := _land_dir(rng)
+	var ec := c0 + dir * 4.2
+	_road(c0 + dir * 0.8, ec, 0.1)
+	match eco:
+		"mining":
+			_tp(ec + dir * 0.6, 2.4, TP.PIT, rng.randf())
+		"agri":
+			if grows:
+				var ax := dir.orthogonal()
+				for fy in 3:
+					for fx in 3:
+						_tp(ec + ax * (fx - 1) * 1.25 + dir * (fy - 0.5) * 0.95, 0.55, TP.FIELD, rng.randf())
+			else:
+				for g in 7:
+					_tp(ec + Vector2(rng.randf_range(-1.4, 1.4), rng.randf_range(-1.0, 1.0)), rng.randf_range(0.3, 0.45), TP.GREEN, rng.randf())
+		"industry":
+			for hl in 4:
+				_tp(ec + Vector2(rng.randf_range(-1.3, 1.3), rng.randf_range(-0.9, 0.9)), rng.randf_range(0.5, 0.75), TP.HALL, rng.randf())
+			for s in 2:
+				_tp(ec + Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.8, 0.8)), 0.18, TP.STACK, rng.randf())
+		"refinery", "chemistry":
+			for tk in 7:
+				_tp(ec + Vector2.from_angle(tk * TAU / 7.0) * 1.0, rng.randf_range(0.28, 0.4), TP.TANK, rng.randf())
+			_tp(ec + dir * 1.9, 0.16, TP.FLARE, 0.0)
+		"research", "hightech":
+			for ds in 4:
+				_tp(ec + Vector2(-1.2 + ds * 0.8, rng.randf_range(-0.4, 0.4)), 0.35, TP.DISH, rng.randf())
+			_tp(ec + dir * 1.2, 0.5, TP.GREEN, 0.5)
+		"military":
+			_tp(ec, 1.4, TP.YARD, 0.0)
+			_tp(ec + dir.orthogonal() * 1.8, 0.6, TP.HALL, 0.3)
 		_:
-			_landing_pad(c, u)
+			for gd in 10:
+				_tp(ec + Vector2(rng.randf_range(-1.5, 1.5), rng.randf_range(-1.1, 1.1)), rng.randf_range(0.25, 0.45), TP.GREEN, 1.0)
+	if sea_world or _near_sea(Vector2.ZERO, 5.0):
+		# on the water: fish pens (or an ocean world's rig)
+		var sd2 := _land_dir(rng, true)
+		for pn in 4:
+			_tp(sd2 * (4.5 + pn * 0.9) + sd2.orthogonal() * rng.randf_range(-0.8, 0.8), 0.45, TP.PEN, rng.randf())
+
+
+func _draw_town(c: Vector2, u: float) -> void:
+	var a := 1.0 if up else smoothstep(0.08, 0.4, clampf(_t / DURATION, 0.0, 1.0))
+	if a <= 0.0:
+		return
+	if _town_pts.is_empty():
+		_build_town()
+	var bt := Universe.body_type(String(body.get("type", "")))
+	var land: Color = Color(bt.get("b", Color(0.45, 0.42, 0.38))).lerp(Color(bt.get("c", Color(0.6, 0.56, 0.48))), 0.4)
+	var day := town_day > 0.5
+	var warm := Color(1.0, 0.82, 0.45)
+	for i in _town_pts.size():
+		var pt: Array = _town_pts[i]
+		var p: Vector2 = c + (pt[0] as Vector2) * u
+		var s: float = float(pt[1]) * u
+		var kind: int = pt[2]
+		var w: float = pt[3]
+		match kind:
+			TP.ROAD:
+				var q: Vector2 = c + (pt[4] as Vector2) * u
+				_place.draw_line(p, q, Color(0.32, 0.31, 0.3, 0.75 * a) if w < 0.5 else Color(0.08, 0.06, 0.05, 0.55 * a), maxf(1.0, s), true)
+			TP.HOUSE:
+				if day:
+					var rc := Color(0.62, 0.6, 0.58).lerp(Color(0.6, 0.38, 0.3), w * 0.6)
+					_place.draw_rect(Rect2(p - Vector2(s, s) * 0.5 + Vector2(s, s) * 0.25, Vector2(s, s)), Color(0, 0, 0, 0.3 * a))
+					_place.draw_rect(Rect2(p - Vector2(s, s) * 0.5, Vector2(s, s)), Color(rc, a))
+					_place.draw_rect(Rect2(p - Vector2(s, s) * 0.5, Vector2(s, s * 0.3)), Color(rc.lightened(0.2), a))
+				elif fposmod(_t * (0.25 + w) + i * 0.41, 1.0) > 0.04:
+					_place.draw_rect(Rect2(p - Vector2(s, s) * 0.2, Vector2(s, s) * 0.4), Color(warm if w < 0.75 else Color(0.75, 0.9, 1.0), 0.9 * a))
+			TP.LAMP:
+				if not day:
+					_place.draw_circle(p, s * 2.2, Color(warm, 0.12 * a))
+					_place.draw_circle(p, s * 0.5, Color(1.0, 0.92, 0.7, a))
+			TP.PAD:
+				_place.draw_rect(Rect2(p - Vector2(s, s) * 0.68, Vector2(s, s) * 1.36), Color(0.3, 0.31, 0.33, 0.9 * a))      # its apron
+				_place.draw_rect(Rect2(p - Vector2(s, s) * 0.5, Vector2(s, s)), Color(0.45, 0.46, 0.48, 0.9 * a) if day else Color(0.12, 0.12, 0.14, 0.8 * a))
+				_place.draw_rect(Rect2(p - Vector2(s, s) * 0.5, Vector2(s, s)), Color(0.95, 0.8, 0.2, 0.8 * a), false, maxf(1.0, u * 0.06))
+				if fposmod(_t * 1.5 + w * 0.25, 1.0) < 0.5:
+					for cr in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+						_place.draw_circle(p + cr * s * 0.5, maxf(1.0, u * 0.07), Color(1.0, 0.75, 0.3, a))
+			TP.PIT:
+				for r in 5:                                                # the terraces, deeper and darker
+					var rr := s * (1.0 - r * 0.17)
+					_place.draw_set_transform(p, 0.0, Vector2(1.0, 0.8))
+					_place.draw_circle(Vector2.ZERO, rr, Color(land.darkened(0.12 + r * 0.09).lerp(Color(0.4, 0.3, 0.22), 0.3), a))
+					_place.draw_arc(Vector2.ZERO, rr, 0.0, TAU, 40, Color(land.lightened(0.1), 0.5 * a), maxf(1.0, u * 0.05))
+				# the haul trucks going round, their lights
+				for tr in 3:
+					var ang := _t * (0.35 + tr * 0.12) + tr * 2.1
+					var rr2 := s * (0.82 - tr * 0.17)
+					_place.draw_circle(Vector2.from_angle(ang) * rr2, maxf(1.2, u * 0.09), Color(1.0, 0.85, 0.4, a) if not day else Color(0.95, 0.75, 0.15, a))
+				_place.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			TP.FIELD:
+				var fc: Color = [Color(0.42, 0.6, 0.25), Color(0.7, 0.66, 0.3), Color(0.32, 0.5, 0.22), Color(0.55, 0.45, 0.25)][int(w * 3.99)]
+				if not day:
+					fc = fc.darkened(0.6)
+				var fr := Rect2(p - Vector2(s * 1.0, s * 0.75), Vector2(s * 2.0, s * 1.5))
+				_place.draw_rect(fr, Color(fc, 0.9 * a))
+				var ln := 0.0
+				while ln < fr.size.y:                                      # its rows
+					_place.draw_line(fr.position + Vector2(0, ln), fr.position + Vector2(fr.size.x, ln), Color(fc.darkened(0.2), 0.8 * a), 1.0)
+					ln += maxf(2.0, u * 0.18)
+			TP.GREEN:
+				if day:
+					_place.draw_circle(p, s * 0.5, Color(0.75, 0.88, 0.85, 0.85 * a))
+					_place.draw_circle(p - Vector2(s, s) * 0.12, s * 0.2, Color(1, 1, 1, 0.6 * a))
+				else:
+					_place.draw_circle(p, s * 0.8, Color(0.4, 1.0, 0.55, 0.12 * a))
+					_place.draw_circle(p, s * 0.4, Color(0.55, 1.0, 0.65, 0.7 * a))
+			TP.HALL:
+				var hs := Vector2(s * 1.3, s * 0.8)
+				_place.draw_rect(Rect2(p - hs * 0.5 + Vector2(s, s) * 0.2, hs), Color(0, 0, 0, 0.3 * a))
+				_place.draw_rect(Rect2(p - hs * 0.5, hs), Color(Color(0.5, 0.52, 0.55) if day else Color(0.18, 0.19, 0.21), a))
+				if not day:
+					for wn in 3:
+						_place.draw_rect(Rect2(p + Vector2(-hs.x * 0.35 + wn * hs.x * 0.3, -1.0), Vector2(maxf(1.0, u * 0.08), maxf(1.0, u * 0.08))), Color(warm, a))
+			TP.STACK:
+				_place.draw_circle(p, s, Color(0.25, 0.25, 0.27, a))
+				for pf in 4:                                               # its smoke drifting off
+					var ph := fposmod(_t * 0.4 + pf * 0.25 + w, 1.0)
+					_place.draw_circle(p + Vector2(ph * u * 1.6, -ph * u * 0.6), s * (0.8 + ph * 2.0), Color(0.75, 0.75, 0.75, (1.0 - ph) * 0.35 * a))
+				if not day and fposmod(_t, 1.4) < 0.2:
+					_place.draw_circle(p, maxf(1.2, u * 0.09), Color(1.0, 0.25, 0.2, a))
+			TP.FLARE:
+				var fl := 0.7 + 0.3 * sin(_t * 17.0) * sin(_t * 7.0)
+				_place.draw_circle(p, s * 3.0 * fl, Color(1.0, 0.5, 0.15, 0.15 * a))
+				_place.draw_circle(p, s * fl, Color(1.0, 0.8, 0.4, 0.9 * a))
+			TP.TANK:
+				_place.draw_circle(p + Vector2(s, s) * 0.2, s * 0.5, Color(0, 0, 0, 0.3 * a))
+				_place.draw_circle(p, s * 0.5, Color(Color(0.82, 0.83, 0.82) if day else Color(0.25, 0.26, 0.27), a))
+				if not day:
+					_place.draw_circle(p, maxf(1.0, u * 0.06), Color(warm, a))
+			TP.DISH:
+				_place.draw_circle(p, s * 0.5, Color(Color(0.9, 0.9, 0.92) if day else Color(0.3, 0.3, 0.33), a))
+				_place.draw_circle(p, s * 0.12, Color(0.4, 0.4, 0.45, a))
+				if fposmod(_t * 0.8 + w, 1.0) < 0.15:
+					_place.draw_circle(p, maxf(1.2, u * 0.08), Color(1.0, 0.3, 0.25, a))
+			TP.YARD:
+				_place.draw_rect(Rect2(p - Vector2(s, s * 0.7), Vector2(s * 2.0, s * 1.4)), Color(land.darkened(0.2), 0.8 * a))
+				_place.draw_rect(Rect2(p - Vector2(s, s * 0.7), Vector2(s * 2.0, s * 1.4)), Color(0.35, 0.33, 0.3, a), false, maxf(1.0, u * 0.06))
+				var vx := sin(_t * 0.5) * s * 0.7
+				_place.draw_rect(Rect2(p + Vector2(vx, 0) - Vector2(u, u) * 0.12, Vector2(u, u) * 0.24), Color(0.3, 0.38, 0.28, a))
+			TP.PEN:
+				_place.draw_arc(p, s * 0.5, 0.0, TAU, 20, Color(0.85, 0.6, 0.25, 0.9 * a), maxf(1.0, u * 0.07))
+				if not day and fposmod(_t * 0.6 + w, 1.0) < 0.2:
+					_place.draw_circle(p + Vector2(s * 0.5, 0), maxf(1.0, u * 0.06), Color(0.4, 1.0, 0.6, a))
+			TP.RUIN:
+				var rs := Vector2(s * (1.0 + w), s * 0.45)
+				_place.draw_rect(Rect2(p + Vector2(s, s) * 0.15, rs), Color(0, 0, 0, 0.3 * a))
+				_place.draw_rect(Rect2(p, rs), Color(0.55, 0.5, 0.47, 0.9 * a))
+			TP.WRECK:
+				_place.draw_set_transform(p, w * 0.0 + 0.5, Vector2.ONE)
+				_place.draw_rect(Rect2(Vector2(-s * 0.6, -s * 0.2), Vector2(s * 1.2, s * 0.4)), Color(0.45, 0.47, 0.5, a))
+				_place.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				_place.draw_circle(p + Vector2(s * 0.3, 0), s * 0.3 * (0.8 + 0.2 * sin(_t * 9.0)), Color(1.0, 0.5, 0.2, 0.75 * a))
 
 
 ## 0.7.50.7: a city's ground plan, seen from the air – its form follows the world it stands on, its streets the power

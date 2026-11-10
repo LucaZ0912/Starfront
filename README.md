@@ -246,6 +246,9 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.50.16: `DescentFx` drawn new (`_draw_flame` at the ship's scale `_ss`, `_draw_heat` at `_hs`: bow shock bands
   along the shell's normal, wake, streaks, `_sparks`; additive `CanvasItemMaterial`); `FlightScene` sizes by the
   hull's `length` (`DRONE_M`, `DRONE_MIN_PX`, `_ship_m`, `_home_y`, `_ship_len_px`, `_ship_flame`).
+- 0.7.50.17: `FlightScene._build_town` / `_draw_town` (points `_town_pts` of kind `TP`, laid out in town units
+  `TOWN`, `_tp` / `_road` only on land, `_land_dir`; `PADS_AT`; economy from `SettleGen.economy`), `town_day`,
+  `_ground.modulate` darkens at night; no flame on the way down (`SystemView._update_descent`, `_draw_fx`).
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

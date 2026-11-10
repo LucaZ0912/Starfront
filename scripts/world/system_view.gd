@@ -4427,7 +4427,7 @@ func _update_descent(delta: float) -> void:
 		if t < DESCENT_SPEEDUP:
 			var k := t / DESCENT_SPEEDUP
 			sh.position += dir * lerpf(150.0, 1400.0, k * k) * delta
-			fx.flame = k
+			fx.flame = 0.0                                             # 0.7.50.17 (Luz): no engine flame on the way down
 			fx.heat = 0.0
 		elif t < DESCENT_SPEEDUP + DESCENT_SINK:
 			var k2 := (t - DESCENT_SPEEDUP) / DESCENT_SINK
@@ -4438,7 +4438,7 @@ func _update_descent(delta: float) -> void:
 			if k2 > 0.72 and not bool(_descent["flash"]):
 				_descent["flash"] = true
 				descent_ending.emit(atmo)
-			fx.flame = 1.0 - k2
+			fx.flame = 0.0
 			fx.heat = (minf(1.0, sin(minf(k2 * 1.3, 1.0) * PI) * 1.4) if atmo else 0.0)
 		else:
 			fx.queue_free()

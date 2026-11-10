@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.17 – 2026-11-10
+
+**The small places from the air (Luz: "far too big – small lights like the cities, with what marks them, bound to
+the land").**
+- **Settlements in the flight down are small now and drawn like the cities:** a short street of houses (roofs by
+  day, lit windows by night, now and then one going dark), its lamps, the way to its four pads with their blinking
+  lights – and beside it **what it lives from**: an open pit with its terraces and the lights of the haul trucks
+  going round, fields in their colours with their rows (glowing greenhouses where nothing grows outside), halls with
+  smoking stacks and a red light on top, a tank farm with its flare, a dish array with its beacons, a training yard
+  with a vehicle crossing it, gardens. Fish pens out on the water where the sea is near.
+- **Bound to the land:** houses, roads and the economy area only on land (the area goes towards the land and away
+  from the pads), the pens only on the sea.
+- Ruins and crash sites small and dark too (scattered walls; the furrow the wreck ploughed, a fire on it).
+- **Night lies over the land** in the flight to a city or a settlement at night.
+- **No engine flame on the way down** – neither in space nor in the flight (Luz); on the way up it stays.
+
 ## alpha 0.7.50.16 – 2026-11-10
 
 **The way down and the sizes (Luz: "the flame far too big", "the shuttle gigantic next to the Threshold").**
