@@ -200,7 +200,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   find it and every service works; `scripts/ui/city_hatch.gd` – `CityHatch` (down/up), `main._city_hatch`,
   `enter_city`, `leave_city`, `_open_ground_at(st)`; `GroundView` city levels `hangar` / `street` / `tower`
   (`is_city()`, `tower_floor()`), `DeckGen.build(…, mode)` with `_street_north` (face deco `storefront`),
-  `scripts/ground/city_skyline.gd` – `CitySkyline` behind the tower bar's glass.; `texture()` renders floors and walls once.
+  `scripts/ground/city_skyline.gd` – `CitySkyline` behind the tower bar's glass.
+- 0.7.50.6: `scripts/ground/city_style.gd` – `CityStyle` (`STYLES` independent/assembly/covenant/directorate, `key_for`,
+  `daylight(site)` from the planet map's light, `tone`, `sky`); city dict `day`; `scripts/ground/city_canyon.gd` –
+  `CityCanyon` above the street (`map.window_rect` open to the sky); `FlightScene.ground_data` (picture + sea mask),
+  the place locked to the ground (`_place_at`, `_dist`, `_nearest_land`), `_draw_city_day`; `CityHatch` towers
+  (`_draw_tower`).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

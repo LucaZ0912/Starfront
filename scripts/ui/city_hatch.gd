@@ -1,9 +1,11 @@
 class_name CityHatch
 extends CanvasLayer
 ## Package 50b (0.7.50.5, after Luz's idea): most ships are far too big for a city's streets – so a city takes them
-## in below the ground. Seen from above: the roofs of the city all round, in the middle a giant landing hatch. Down:
-## the ship comes down over it, the hatch's two leaves slide apart, the ship sinks into the shaft below (its lights
-## running down into the deep), the hatch closes over her. Up: the same the other way round, then she climbs away.
+## in below the ground. Seen from above: the city all round, in the middle a giant landing hatch. Down: the ship comes
+## down over it, the hatch's two leaves slide apart, the ship sinks into the shaft below (its lights running down into
+## the deep), the hatch closes over her. Up: the same the other way round, then she climbs away.
+## 0.7.50.6: the city stands up – towers with their fronts and windows, seen a little from the south, casting their
+## shadows; built in the city's style (CityStyle) and lit by its time of day.
 
 signal finished
 
@@ -13,16 +15,19 @@ const UP_TIME := 6.4
 var body: Dictionary = {}
 var site: Dictionary = {}
 var down := true
+var style: Dictionary = CityStyle.STYLES["independent"]
+var style_key := "independent"
+var day := 0.0
 var _t := 0.0
 var _vs := Vector2(1600, 900)
-var _city: Node2D                    # the roofs, the streets, the hatch's frame and shaft (drawn)
+var _city: Node2D                    # the ground, the streets, the hatch's frame and shaft, the towers south of it (drawn)
 var _doors: Node2D                   # the hatch's two leaves (drawn over the ship once she is below)
 var _ship: Sprite2D
 var _shadow: Sprite2D
 var _fx: Node2D
 var _ship_s := 1.0
 var _hatch := Rect2()                # the opening (screen px)
-var _roofs: Array = []               # [rect, colour, height (for the shadow), kind]
+var _blds: Array = []                # {foot: Rect2, h, roof, face, seed, kind}
 var _cars: Array = []                # [lane (0 h / 1 v), lane pos, pos, speed, colour]
 var _streets_h: Array = []
 var _streets_v: Array = []
@@ -35,12 +40,16 @@ func open(p_body: Dictionary, p_site: Dictionary, p_down: bool = true) -> void:
 	body = p_body
 	site = p_site
 	down = p_down
+	var city: Dictionary = Universe.city_station(GameState.current_system, body, site) if not body.is_empty() else {}
+	style = CityStyle.of(city)
+	style_key = CityStyle.key_for(city)
+	day = float(city.get("day", 0.0))
 	_vs = get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(1600, 900)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(site.get("id", "x"))) + 50
 	hatch_no = rng.randi_range(2, 48)
 	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.055, 0.075)
+	bg.color = Color(0.05, 0.055, 0.075).lerp(Color(0.36, 0.37, 0.39), day)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.z_index = -3
 	add_child(bg)
@@ -74,7 +83,7 @@ func open(p_body: Dictionary, p_site: Dictionary, p_down: bool = true) -> void:
 	var title := UI.label("%s  ·  Landing hatch %d" % [String(site.get("name", "")), hatch_no], 20, UI.NEON_CYAN)
 	title.position = Vector2(30, 24)
 	add_child(title)
-	var sub := UI.label("Down below the city – the ship is taken into its hangars" if down else "Up out of the city", 13, UI.TEXT_DIM)
+	var sub := UI.label(("Down below the city – the ship is taken into its hangars" if down else "Up out of the city") + ("  ·  day" if day > 0.5 else "  ·  night"), 13, UI.TEXT_DIM)
 	sub.position = Vector2(32, 54)
 	add_child(sub)
 	Audio.play("boost", "landing hatch")
@@ -83,35 +92,45 @@ func open(p_body: Dictionary, p_site: Dictionary, p_down: bool = true) -> void:
 
 ## The city round the hatch: blocks of towers between streets, cars on them.
 func _make_city(rng: RandomNumberGenerator) -> void:
+	var grid: bool = style["grid"]
 	var gx := -40.0
 	while gx < _vs.x + 40.0:
 		_streets_v.append(gx)
-		gx += rng.randf_range(150.0, 240.0)
+		gx += 190.0 if grid else rng.randf_range(150.0, 240.0)
 	var gy := -40.0
-	while gy < _vs.y + 40.0:
+	while gy < _vs.y + 260.0:
 		_streets_h.append(gy)
-		gy += rng.randf_range(130.0, 200.0)
+		gy += 170.0 if grid else rng.randf_range(130.0, 200.0)
 	var keep := _hatch.grow(46.0)
+	var kinds: Array = style["crowns"]
+	var hmax: float = {"independent": 150.0, "assembly": 90.0, "covenant": 120.0, "directorate": 130.0}.get(style_key, 120.0)
 	for i in _streets_v.size() - 1:
 		for j in _streets_h.size() - 1:
 			var blk := Rect2(Vector2(_streets_v[i] + 14.0, _streets_h[j] + 14.0), Vector2(_streets_v[i + 1] - _streets_v[i] - 28.0, _streets_h[j + 1] - _streets_h[j] - 28.0))
-			# a block: one to four towers
-			var n := rng.randi_range(1, 4)
+			var n := 1 if grid else rng.randi_range(1, 3)
 			for k in n:
-				var rw := blk.size.x * rng.randf_range(0.35, 0.95)
-				var rh := blk.size.y * rng.randf_range(0.35, 0.95)
-				var r := Rect2(blk.position + Vector2(rng.randf_range(0.0, blk.size.x - rw), rng.randf_range(0.0, blk.size.y - rh)), Vector2(rw, rh))
-				r.position = r.position.round()
-				r.size = r.size.round()
-				if r.intersects(keep):
+				var rw := blk.size.x * (0.9 if grid else rng.randf_range(0.4, 0.95))
+				var rh := blk.size.y * (0.75 if grid else rng.randf_range(0.4, 0.85))
+				var foot := Rect2(blk.position + Vector2(rng.randf_range(0.0, blk.size.x - rw), rng.randf_range(0.0, blk.size.y - rh)), Vector2(rw, rh))
+				foot.position = foot.position.round()
+				foot.size = foot.size.round()
+				var h := snappedf(rng.randf_range(hmax * 0.3, hmax), 3.0)
+				var drawn := Rect2(foot.position - Vector2(0, h), foot.size + Vector2(0, h))
+				if drawn.intersects(keep):
 					continue
-				var shade := rng.randf_range(0.1, 0.22)
-				var col := Color(shade * 0.9, shade * 0.95, shade * 1.15)
-				_roofs.append([r, col, rng.randf_range(10.0, 34.0), rng.randi() % 5])
-	for c in 46:
+				var shade := rng.randf_range(-0.06, 0.06)
+				var roof := CityStyle.tone(style, "roof", day).lightened(maxf(shade, 0.0)).darkened(maxf(-shade, 0.0))
+				var face := CityStyle.tone(style, "facade", day).darkened(0.12 + rng.randf() * 0.1)
+				_blds.append({"foot": foot, "h": h, "roof": roof, "face": face, "seed": rng.randi(), "kind": String(kinds[rng.randi() % kinds.size()]),
+					"green": rng.randf() < float(style["green"]), "neon": rng.randf() < float(style["neon_share"][1]), "ncol": (style["neon"] as Array)[rng.randi() % (style["neon"] as Array).size()]})
+	_blds.sort_custom(func(a, b): return (a["foot"] as Rect2).end.y < (b["foot"] as Rect2).end.y)
+	var ncars := 26 if day > 0.5 else 46
+	for c in ncars:
 		var horiz := rng.randf() < 0.5
 		var lane: float = (_streets_h[rng.randi() % _streets_h.size()] if horiz else _streets_v[rng.randi() % _streets_v.size()]) + (6.0 if rng.randf() < 0.5 else -6.0)
 		var cc: Color = [Color(1.0, 0.95, 0.8), Color(1.0, 0.3, 0.25), Color(1.0, 0.85, 0.5)][rng.randi() % 3]
+		if day > 0.5:
+			cc = [Color(0.8, 0.25, 0.2), Color(0.85, 0.85, 0.88), Color(0.25, 0.35, 0.6), Color(0.2, 0.2, 0.22)][rng.randi() % 4]
 		_cars.append([0 if horiz else 1, lane, rng.randf_range(0.0, _vs.x if horiz else _vs.y), rng.randf_range(40.0, 110.0) * (1.0 if rng.randf() < 0.5 else -1.0), cc])
 
 
@@ -168,7 +187,6 @@ func _update(delta: float) -> void:
 	_shadow.visible = not below
 	# once she is below the rim the leaves close over her: draw them above the ship then
 	_doors.z_index = 1 if below else -1
-	_ship.z_index = 0
 	for car in _cars:
 		car[2] = fposmod(float(car[2]) + float(car[3]) * delta, _vs.x if int(car[0]) == 0 else _vs.y)
 	_city.queue_redraw()
@@ -178,63 +196,153 @@ func _update(delta: float) -> void:
 
 func _draw_city() -> void:
 	var cv := _city
-	# streets, with the lamps along them
+	var road := Color(0.09, 0.095, 0.12).lerp(Color(0.27, 0.28, 0.3), day)
+	var mark := Color(0.25, 0.24, 0.18, 0.5).lerp(Color(0.85, 0.85, 0.8, 0.5), day)
 	for x in _streets_v:
-		cv.draw_rect(Rect2(x - 14.0, 0, 28.0, _vs.y), Color(0.09, 0.095, 0.12))
-		cv.draw_rect(Rect2(x - 1.0, 0, 2.0, _vs.y), Color(0.25, 0.24, 0.18, 0.5))
+		cv.draw_rect(Rect2(x - 14.0, 0, 28.0, _vs.y), road)
+		cv.draw_rect(Rect2(x - 1.0, 0, 2.0, _vs.y), mark)
 	for y in _streets_h:
-		cv.draw_rect(Rect2(0, y - 14.0, _vs.x, 28.0), Color(0.09, 0.095, 0.12))
-		cv.draw_rect(Rect2(0, y - 1.0, _vs.x, 2.0), Color(0.25, 0.24, 0.18, 0.5))
-	# the street lamps' pools of light
-	for x2 in _streets_v:
-		for y2 in _streets_h:
-			cv.draw_circle(Vector2(x2, y2) + Vector2(14, 14), 12.0, Color(1.0, 0.8, 0.45, 0.12))
-			cv.draw_rect(Rect2(Vector2(x2, y2) + Vector2(12, 12), Vector2(4, 4)), Color(1.0, 0.9, 0.6))
+		cv.draw_rect(Rect2(0, y - 14.0, _vs.x, 28.0), road)
+		cv.draw_rect(Rect2(0, y - 1.0, _vs.x, 2.0), mark)
+	if day < 0.5:
+		for x2 in _streets_v:                               # the street lamps
+			for y2 in _streets_h:
+				cv.draw_circle(Vector2(x2, y2) + Vector2(14, 14), 12.0, Color(1.0, 0.8, 0.45, 0.12))
+				cv.draw_rect(Rect2(Vector2(x2, y2) + Vector2(12, 12), Vector2(4, 4)), Color(1.0, 0.9, 0.6))
 	for car in _cars:
 		var p := Vector2(float(car[2]), float(car[1])) if int(car[0]) == 0 else Vector2(float(car[1]), float(car[2]))
-		cv.draw_circle(p, 5.0, Color(car[4], 0.18))
-		cv.draw_rect(Rect2(p - Vector2(2, 2), Vector2(4, 4)), car[4])
-	# the towers: their shadows, then their roofs with what stands on them
-	for rf in _roofs:
-		var r: Rect2 = rf[0]
-		cv.draw_rect(Rect2(r.position + Vector2(rf[2], rf[2] * 1.2), r.size), Color(0, 0, 0, 0.35))
-	for i in _roofs.size():
-		var rf2: Array = _roofs[i]
-		var r2: Rect2 = rf2[0]
-		var col: Color = rf2[1]
-		cv.draw_rect(r2, col)
-		cv.draw_rect(Rect2(r2.position, Vector2(r2.size.x, 3)), col.lightened(0.25))
-		cv.draw_rect(Rect2(r2.position, Vector2(3, r2.size.y)), col.lightened(0.15))
-		cv.draw_rect(Rect2(r2.position + Vector2(0, r2.size.y - 3), Vector2(r2.size.x, 3)), col.darkened(0.35))
-		match int(rf2[3]):
-			0:                                            # air units
-				for k in int(r2.size.x / 26.0):
-					cv.draw_rect(Rect2(r2.position + Vector2(8 + k * 26, 10), Vector2(16, 12)), col.lightened(0.12))
-					cv.draw_circle(r2.position + Vector2(16 + k * 26, 16), 4.0, col.darkened(0.3))
-			1:                                            # a roof garden
-				cv.draw_rect(r2.grow(-8.0), Color(0.16, 0.3, 0.18))
-				for k2 in 5:
-					cv.draw_circle(r2.position + Vector2(14 + fposmod(k2 * 37.0, maxf(r2.size.x - 28.0, 1.0)), 14 + fposmod(k2 * 23.0, maxf(r2.size.y - 28.0, 1.0))), 6.0, Color(0.2, 0.42, 0.22))
-			2:                                            # a pad for flyers
-				var pc := r2.get_center()
-				var rr := minf(r2.size.x, r2.size.y) * 0.36
-				cv.draw_arc(pc, rr, 0.0, TAU, 32, Color(0.95, 0.8, 0.25, 0.7), 2.0)
-				cv.draw_rect(Rect2(pc - Vector2(rr * 0.35, 2), Vector2(rr * 0.7, 4)), Color(0.95, 0.8, 0.25, 0.7))
-			3:                                            # a neon edge
-				var nc: Color = [Color(0.3, 0.95, 1.0), Color(1.0, 0.3, 0.75), Color(0.75, 0.45, 1.0)][i % 3]
-				cv.draw_rect(r2.grow(-2.0), Color(nc, 0.15 + 0.1 * sin(_t * 2.0 + i)), false, 2.0)
-			_:                                            # skylights, lit from inside
-				for k3 in int(r2.size.x / 22.0):
-					cv.draw_rect(Rect2(r2.position + Vector2(8 + k3 * 22, r2.size.y * 0.4), Vector2(12, 8)), Color(1.0, 0.85, 0.55, 0.75))
-		# the warning light on the corner – blinking
-		if fposmod(_t * 0.8 + i * 0.37, 1.6) < 0.25:
-			cv.draw_circle(r2.position + Vector2(r2.size.x - 6, 6), 6.0, Color(1.0, 0.2, 0.15, 0.35))
-			cv.draw_rect(Rect2(r2.position + Vector2(r2.size.x - 8, 4), Vector2(4, 4)), Color(1.0, 0.3, 0.25))
+		if day < 0.5:
+			cv.draw_circle(p, 5.0, Color(car[4], 0.18))
+			cv.draw_rect(Rect2(p - Vector2(2, 2), Vector2(4, 4)), car[4])
+		else:
+			cv.draw_rect(Rect2(p - (Vector2(5, 3) if int(car[0]) == 0 else Vector2(3, 5)), Vector2(10, 6) if int(car[0]) == 0 else Vector2(6, 10)), car[4])
 	# the hatch: a broad frame with hazard stripes, the shaft below it
+	_draw_hatch(cv)
+	# the towers: their shadows on the ground (by day the sun stands low in the west), then each one, back to front
+	for b in _blds:
+		var foot: Rect2 = b["foot"]
+		var h: float = b["h"]
+		if day > 0.3:
+			cv.draw_colored_polygon(PackedVector2Array([foot.position + Vector2(foot.size.x, 0), foot.position + Vector2(foot.size.x + h * 0.7, h * 0.15),
+				foot.end + Vector2(h * 0.7, h * 0.15), foot.end]), Color(0, 0, 0, 0.3 * day))
+		else:
+			cv.draw_rect(Rect2(foot.position + Vector2(4, 6), foot.size), Color(0, 0, 0, 0.3))
+	for i in _blds.size():
+		_draw_tower(cv, _blds[i], i)
+
+
+## One tower: its south front with floors of windows, its roof on top (in the style's way), the lights on it.
+func _draw_tower(cv: Node2D, b: Dictionary, i: int) -> void:
+	var foot: Rect2 = b["foot"]
+	var h: float = b["h"]
+	var roof_r := Rect2(foot.position - Vector2(0, h), foot.size)
+	var face_r := Rect2(Vector2(foot.position.x, roof_r.end.y), Vector2(foot.size.x, h))
+	var face: Color = b["face"]
+	var roof: Color = b["roof"]
+	var r := RandomNumberGenerator.new()
+	r.seed = int(b["seed"])
+	# the front: storeys of windows
+	cv.draw_rect(face_r, face)
+	cv.draw_rect(Rect2(face_r.position, Vector2(3, face_r.size.y)), face.lightened(0.12 + 0.1 * day))
+	cv.draw_rect(Rect2(face_r.end.x - 3, face_r.position.y, 3, face_r.size.y), face.darkened(0.25))
+	var wins: Array = style["win"]
+	var lit: float = float(style["lit"]) * lerpf(1.0, 0.15, day)
+	var y := face_r.position.y + 6.0
+	var floor_n := 0
+	while y < face_r.end.y - 8.0:
+		var row_on := r.randf() < lit * 1.4 if style["grid"] else true
+		var x := face_r.position.x + 6.0
+		while x < face_r.end.x - 8.0:
+			var on := row_on and r.randf() < (0.85 if style["grid"] else lit)
+			var wc: Color = wins[0] if r.randf() < float(style["warm"]) else wins[1]
+			if on:
+				cv.draw_rect(Rect2(x, y, 4, 5), Color(wc, lerpf(0.85, 0.45, day)))
+			else:
+				cv.draw_rect(Rect2(x, y, 4, 5), face.darkened(0.3).lerp(Color(0.55, 0.7, 0.9), 0.35 * day))
+			x += 9.0
+		if b["green"] and floor_n % 3 == 1:
+			cv.draw_rect(Rect2(face_r.position.x + 2, y + 6, face_r.size.x - 4, 2), Color(0.28, 0.55, 0.3))
+		if String(style["sign"]) == "band" and b["neon"] and floor_n % 4 == 0:
+			cv.draw_rect(Rect2(face_r.position.x, y - 2, face_r.size.x, 2), Color(b["ncol"], lerpf(0.9, 0.5, day)))
+		y += 11.0
+		floor_n += 1
+	# the street-level shops glowing at its foot
+	cv.draw_rect(Rect2(face_r.position.x + 3, face_r.end.y - 6, face_r.size.x - 6, 4), Color(wins[0], lerpf(0.6, 0.25, day)))
+	if String(style["sign"]) == "vertical" and b["neon"]:
+		var nc: Color = b["ncol"]
+		cv.draw_rect(Rect2(face_r.position.x + 8, face_r.position.y + 4, 4, face_r.size.y * 0.6), Color(nc, lerpf(0.95, 0.5, day)))
+		cv.draw_rect(Rect2(face_r.position.x + 5, face_r.position.y + 4, 10, face_r.size.y * 0.6), Color(nc, 0.15 * (1.0 - day)))
+	if String(style["sign"]) == "banner" and b["neon"]:
+		for bx in [face_r.position.x + face_r.size.x * 0.25, face_r.position.x + face_r.size.x * 0.75 - 8]:
+			cv.draw_rect(Rect2(bx, face_r.position.y + 4, 8, face_r.size.y * 0.5), Color(0.62, 0.08, 0.12))
+			cv.draw_rect(Rect2(bx + 3, face_r.position.y + 8, 2, 6), Color(1.0, 0.8, 0.3))
+	# the roof
+	var kind := String(b["kind"])
+	match kind:
+		"spire", "gothic":
+			cv.draw_rect(roof_r, roof)
+			cv.draw_rect(Rect2(roof_r.position, Vector2(roof_r.size.x * 0.5, roof_r.size.y)), roof.lightened(0.12))   # a ridged roof
+			cv.draw_rect(Rect2(roof_r.position.x + roof_r.size.x * 0.5 - 1, roof_r.position.y, 2, roof_r.size.y), roof.darkened(0.3))
+			if kind == "spire":
+				var sp := roof_r.get_center()
+				cv.draw_circle(sp + Vector2(3, 4), 9.0, Color(0, 0, 0, 0.3))
+				cv.draw_circle(sp, 9.0, roof.darkened(0.15))
+				cv.draw_circle(sp + Vector2(-2, -2), 4.0, roof.lightened(0.2))
+				cv.draw_circle(sp, 2.0, Color(1.0, 0.8, 0.3))
+			for cc in [roof_r.position, Vector2(roof_r.end.x - 6, roof_r.position.y), roof_r.end - Vector2(6, 6), Vector2(roof_r.position.x, roof_r.end.y - 6)]:
+				cv.draw_rect(Rect2(cc, Vector2(6, 6)), roof.darkened(0.2))                       # pinnacles
+		"dome", "round":
+			cv.draw_rect(roof_r, roof)
+			var dc := roof_r.get_center()
+			var dr := minf(roof_r.size.x, roof_r.size.y) * 0.26
+			cv.draw_circle(dc + Vector2(3, 4), dr, Color(0, 0, 0, 0.25))
+			cv.draw_circle(dc, dr, roof.lightened(0.08))
+			cv.draw_circle(dc - Vector2(dr, dr) * 0.3, dr * 0.45, roof.lightened(0.25))
+		"terrace":
+			cv.draw_rect(roof_r, roof)
+			cv.draw_rect(roof_r.grow(-6.0), Color(0.22, 0.42, 0.24).lerp(Color(0.35, 0.6, 0.32), day))
+			for k2 in 6:
+				cv.draw_circle(roof_r.position + Vector2(10 + fposmod(k2 * 37.0, maxf(roof_r.size.x - 20.0, 1.0)), 10 + fposmod(k2 * 23.0, maxf(roof_r.size.y - 20.0, 1.0))), 6.0, Color(0.25, 0.5, 0.26).lerp(Color(0.4, 0.68, 0.35), day))
+		"hex":
+			var ch := minf(roof_r.size.x, roof_r.size.y) * 0.18
+			cv.draw_colored_polygon(PackedVector2Array([roof_r.position + Vector2(ch, 0), Vector2(roof_r.end.x - ch, roof_r.position.y), Vector2(roof_r.end.x, roof_r.position.y + ch),
+				Vector2(roof_r.end.x, roof_r.end.y - ch), roof_r.end - Vector2(ch, 0), Vector2(roof_r.position.x + ch, roof_r.end.y), Vector2(roof_r.position.x, roof_r.end.y - ch), roof_r.position + Vector2(0, ch)]), roof)
+			var sp2 := roof_r.grow(-ch - 2.0)
+			var px := sp2.position.x
+			while px < sp2.end.x - 6.0:                       # solar panels
+				cv.draw_rect(Rect2(px, sp2.position.y, 6, sp2.size.y), Color(0.2, 0.3, 0.5).lerp(Color(0.35, 0.5, 0.8), day))
+				px += 9.0
+			cv.draw_rect(Rect2(roof_r.position.x + ch, roof_r.position.y, roof_r.size.x - ch * 2, 2), Color(style["accent"], 0.7))
+		_:
+			cv.draw_rect(roof_r, roof)
+			match int(b["seed"]) % 3:
+				0:                                        # air units
+					for k in int(roof_r.size.x / 26.0):
+						cv.draw_rect(Rect2(roof_r.position + Vector2(8 + k * 26, 8), Vector2(16, 12)), roof.lightened(0.12))
+						cv.draw_circle(roof_r.position + Vector2(16 + k * 26, 14), 4.0, roof.darkened(0.3))
+				1:                                        # a pad for flyers
+					var pc := roof_r.get_center()
+					var rr := minf(roof_r.size.x, roof_r.size.y) * 0.34
+					cv.draw_arc(pc, rr, 0.0, TAU, 32, Color(0.95, 0.8, 0.25, 0.7), 2.0)
+					cv.draw_rect(Rect2(pc - Vector2(rr * 0.35, 2), Vector2(rr * 0.7, 4)), Color(0.95, 0.8, 0.25, 0.7))
+				_:
+					if kind == "antenna":
+						cv.draw_rect(Rect2(roof_r.get_center() - Vector2(1, 14), Vector2(2, 14)), roof.lightened(0.3))
+			if b["neon"] and String(style["sign"]) == "vertical":
+				cv.draw_rect(roof_r.grow(-2.0), Color(b["ncol"], (0.2 + 0.1 * sin(_t * 2.0 + i)) * (1.0 - day * 0.6)), false, 2.0)
+	cv.draw_rect(Rect2(roof_r.position, Vector2(roof_r.size.x, 2)), roof.lightened(0.25))
+	cv.draw_rect(Rect2(roof_r.position, Vector2(2, roof_r.size.y)), roof.lightened(0.15))
+	# the warning light on the corner – blinking at night
+	if day < 0.6 and fposmod(_t * 0.8 + i * 0.37, 1.6) < 0.25:
+		cv.draw_circle(roof_r.position + Vector2(roof_r.size.x - 6, 6), 6.0, Color(1.0, 0.2, 0.15, 0.35))
+		cv.draw_rect(Rect2(roof_r.position + Vector2(roof_r.size.x - 8, 4), Vector2(4, 4)), Color(1.0, 0.3, 0.25))
+
+
+func _draw_hatch(cv: Node2D) -> void:
 	var fr := _hatch.grow(34.0)
 	cv.draw_rect(Rect2(fr.position + Vector2(10, 12), fr.size), Color(0, 0, 0, 0.35))
 	cv.draw_rect(fr, Color(0.3, 0.31, 0.34))
-	cv.draw_rect(fr.grow(-4.0), Color(0.36, 0.37, 0.4))
+	cv.draw_rect(fr.grow(-4.0), Color(0.36, 0.37, 0.4).lerp(Color(0.5, 0.51, 0.54), day))
 	var st := 0.0
 	while st < fr.size.x + fr.size.y:
 		for edge in 2:
@@ -251,7 +359,6 @@ func _draw_city() -> void:
 	for cp in [fr.position + Vector2(10, 10), Vector2(fr.end.x - 10, fr.position.y + 10), fr.end - Vector2(10, 10), Vector2(fr.position.x + 10, fr.end.y - 10)]:
 		cv.draw_circle(cp, 14.0, Color(lc, 0.25 if not blink else 0.05))
 		cv.draw_circle(cp, 5.0, lc if not blink else lc.darkened(0.6))
-	# its number painted beside it
 	var font := ThemeDB.fallback_font
 	cv.draw_string(font, Vector2(fr.position.x + 18, fr.position.y - 8), "HATCH %02d" % hatch_no, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.95, 0.8, 0.25, 0.85))
 
@@ -280,7 +387,7 @@ func _draw_doors() -> void:
 		return
 	for side in 2:
 		var lr := Rect2(Vector2(r.position.x, r.position.y), Vector2(w, r.size.y)) if side == 0 else Rect2(Vector2(r.end.x - w, r.position.y), Vector2(w, r.size.y))
-		_doors.draw_rect(lr, Color(0.4, 0.42, 0.46) if side == 0 else Color(0.37, 0.39, 0.43))
+		_doors.draw_rect(lr, (Color(0.4, 0.42, 0.46) if side == 0 else Color(0.37, 0.39, 0.43)).lightened(0.15 * day))
 		var y := lr.position.y + 16.0
 		while y < lr.end.y - 8.0:
 			_doors.draw_rect(Rect2(lr.position.x + 6.0, y, lr.size.x - 12.0, 2.0), Color(0.3, 0.31, 0.35))

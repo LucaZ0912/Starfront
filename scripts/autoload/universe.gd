@@ -1777,7 +1777,8 @@ func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Diction
 		"market": _make_market(type, rng), "shop": _make_shop(type, tier, rng),
 		"shipyard": _make_shipyard(type, tier, Missions.wealthy(system_id)),
 		"seed": rng.randi(), "zone": NO_FIRE_ZONE[tier - 1], "faction": station_faction(system_id, rng.randi() % 3),
-		"city": true, "body": String(body.get("id", "")), "site": String(site.get("id", ""))}
+		"city": true, "body": String(body.get("id", "")), "site": String(site.get("id", "")),
+		"day": CityStyle.daylight(site)}                 # 0.7.50.6: on the day or the night side
 	_add_faction_yard(st)
 	_cities[key] = st
 	return st

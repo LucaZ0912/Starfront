@@ -7840,6 +7840,23 @@ func _test_city(view: SystemView, body: Dictionary, sites_all: Array) -> void:
 	var market_ok := Commands.execute({"type": "market_buy", "item": "food", "amount": 1}) == ""
 	check(opened and shut and in_city and lifts_ok and street_ok and opened_svc != "" and bar_ok and market_ok and GameState.codex.unlocked.has("basics_cities"),
 		"50b: %s – down through landing hatch %d (opened, shut), the city's hangar; lifts to the shopping street (%d shops, %d shop fronts) and the tower bar (floor %d, the city's skyline); %s opened on foot, the market trades" % [String(site["name"]), h.hatch_no, shops, fronts, g.tower_floor(), opened_svc])
+	# 0.7.50.6: four styles, day and night; the street a canyon under the sky; the flight's city on land
+	var styles_ok: bool = CityStyle.key_for({"faction": "assembly"}) == "assembly" and CityStyle.key_for({"faction": "covenant"}) == "covenant" 		and CityStyle.key_for({"faction": "directorate"}) == "directorate" and CityStyle.key_for({"faction": "rustmaw"}) == "independent"
+	var dn_ok := CityStyle.daylight({"lon": -1.0, "lat": 0.4}) > 0.9 and CityStyle.daylight({"lon": 1.1, "lat": -0.3}) < 0.1 and city.has("day")
+	g.go_level("street")
+	var canyon := false
+	for ch in g._sky.get_children():
+		canyon = canyon or ch is CityCanyon
+	var fl := FlightScene.new()
+	main.add_child(fl)
+	fl.open(body, site)
+	var on_land: bool = fl._sea.is_empty() or fl._sea[posmod(int(fl._place_at.y), fl._S) * fl._S + posmod(int(fl._place_at.x), fl._S)] == 0
+	fl._t = FlightScene.DURATION
+	fl._update(0.0)
+	var meets: bool = fl._to_screen(fl._place_at).distance_to(fl._ship.position + Vector2(0, -40)) < 30.0
+	fl.queue_free()
+	check(styles_ok and dn_ok and canyon and on_land and meets,
+		"0.7.50.6: city styles (Assembly, Covenant, Directorate, independent), %s by the planet map's light; the shopping street a canyon under the sky; the flight's city on land, coming with the ground" % ("day" if float(city.get("day", 0.0)) > 0.5 else "night"))
 	# and up again through the hatch
 	g.go_level("hangar", "stairs")
 	var back_body := Universe.find_body(f.system_id, String(city.get("body", "")))

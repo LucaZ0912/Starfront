@@ -1,0 +1,107 @@
+class_name CityStyle
+extends RefCounted
+## 0.7.50.6 (Luz): every power builds its cities its own way – four styles. And every city lies on the day or the
+## night side of its world (where the planet map shows it), which sets its light.
+##
+## Independent: the cyberpunk sprawl – dark towers crowded together, neon of every colour, antennas, fire escapes.
+## Assembly: a home, not a waiting room – light stone and glass, rounded tops and domes, terraces and roof gardens
+##   full of green, warm windows, a few soft blue lights.
+## Covenant: stone and faith – dark red-brown towers with pointed spires and buttresses, narrow gold-lit windows,
+##   red banners, gold lamps; hardly any neon.
+## Directorate: measured and clean – white towers on a strict grid, chamfered hexagonal crowns, even rows of cool
+##   white windows, green light bands, solar roofs.
+
+const STYLES := {
+	"independent": {
+		"name": "Independent", "night": Color(0.05, 0.06, 0.1), "day": Color(0.42, 0.44, 0.5),
+		"roof": Color(0.17, 0.18, 0.23), "roof_day": Color(0.46, 0.47, 0.52),
+		"win": [Color(1.0, 0.82, 0.5), Color(0.6, 0.85, 1.0)], "warm": 0.75,
+		"neon": [Color(0.3, 0.95, 1.0), Color(1.0, 0.3, 0.72), Color(0.75, 0.45, 1.0), Color(1.0, 0.75, 0.3)], "neon_share": [0.1, 0.35, 0.5],
+		"sign": "vertical", "crowns": ["antenna", "step", "flat"], "green": 0.12, "accent": Color(0.3, 0.95, 1.0),
+		"facade": Color(0.2, 0.21, 0.27), "facade_day": Color(0.48, 0.47, 0.5), "lit": 0.42, "grid": false,
+		"string": "lanterns", "escapes": true,
+		"fronts": [["NOODLE BAR", Color(1.0, 0.75, 0.3)], ["CHROME & SOUL", Color(0.3, 0.95, 1.0)], ["PAWN", Color(1.0, 0.85, 0.3)],
+			["HOTEL", Color(1.0, 0.3, 0.72)], ["PHARMACY", Color(0.4, 1.0, 0.55)], ["CYBERWARE", Color(0.75, 0.45, 1.0)],
+			["KARAOKE", Color(1.0, 0.35, 0.6)], ["TEA HOUSE", Color(0.5, 1.0, 0.7)], ["ARCADE", Color(0.3, 0.8, 1.0)],
+			["TAILOR", Color(1.0, 0.7, 0.5)], ["DUMPLINGS", Color(1.0, 0.55, 0.3)], ["BOOKS", Color(0.9, 0.85, 0.6)]],
+	},
+	"assembly": {
+		"name": "Assembly", "night": Color(0.1, 0.13, 0.2), "day": Color(0.74, 0.77, 0.82),
+		"roof": Color(0.26, 0.3, 0.36), "roof_day": Color(0.78, 0.8, 0.84),
+		"win": [Color(1.0, 0.9, 0.7), Color(0.75, 0.88, 1.0)], "warm": 0.85,
+		"neon": [Color(0.4, 0.68, 1.0), Color(0.95, 0.97, 1.0)], "neon_share": [0.04, 0.12, 0.2],
+		"sign": "vertical", "crowns": ["dome", "terrace", "round"], "green": 0.65, "accent": Color(0.4, 0.68, 1.0),
+		"facade": Color(0.34, 0.38, 0.46), "facade_day": Color(0.8, 0.8, 0.82), "lit": 0.5, "grid": false,
+		"string": "bulbs",
+		"fronts": [["CO-OP MARKET", Color(0.45, 0.9, 0.5)], ["COMMUNITY HALL", Color(0.4, 0.68, 1.0)], ["BAKERY", Color(1.0, 0.8, 0.45)],
+			["GREENHOUSE", Color(0.45, 1.0, 0.55)], ["LIBRARY", Color(0.9, 0.85, 0.65)], ["CAFE", Color(1.0, 0.7, 0.45)],
+			["VOTING BOOTH", Color(0.4, 0.68, 1.0)], ["FERRY TICKETS", Color(0.6, 0.85, 1.0)], ["FLOWERS", Color(1.0, 0.55, 0.7)],
+			["TOOL LIBRARY", Color(1.0, 0.8, 0.3)], ["NOODLES", Color(1.0, 0.65, 0.35)], ["SCHOOL", Color(0.95, 0.95, 1.0)]],
+	},
+	"covenant": {
+		"name": "Covenant", "night": Color(0.09, 0.05, 0.06), "day": Color(0.5, 0.38, 0.34),
+		"roof": Color(0.24, 0.13, 0.13), "roof_day": Color(0.5, 0.33, 0.28),
+		"win": [Color(1.0, 0.75, 0.35), Color(1.0, 0.55, 0.3)], "warm": 0.95,
+		"neon": [Color(1.0, 0.8, 0.3), Color(0.9, 0.2, 0.22)], "neon_share": [0.0, 0.1, 0.18],
+		"sign": "banner", "crowns": ["spire", "spire", "gothic"], "green": 0.05, "accent": Color(1.0, 0.8, 0.3),
+		"facade": Color(0.26, 0.16, 0.15), "facade_day": Color(0.55, 0.42, 0.36), "lit": 0.3, "grid": false,
+		"string": "pennants",
+		"fronts": [["CHAPEL", Color(1.0, 0.8, 0.3)], ["RELIQUARY", Color(1.0, 0.7, 0.3)], ["PILGRIM HOSTEL", Color(0.95, 0.3, 0.3)],
+			["CANDLES", Color(1.0, 0.85, 0.45)], ["ALMS HOUSE", Color(1.0, 0.75, 0.4)], ["SCRIPTORIUM", Color(0.95, 0.85, 0.6)],
+			["ARMOURY", Color(0.95, 0.3, 0.25)], ["BREAD OF RETURN", Color(1.0, 0.75, 0.35)], ["ICONS", Color(1.0, 0.8, 0.3)],
+			["HYMNALS", Color(0.95, 0.85, 0.6)], ["CONFESSION", Color(0.9, 0.25, 0.3)], ["SEXTON", Color(1.0, 0.7, 0.4)]],
+	},
+	"directorate": {
+		"name": "Directorate", "night": Color(0.06, 0.09, 0.09), "day": Color(0.84, 0.87, 0.87),
+		"roof": Color(0.2, 0.24, 0.24), "roof_day": Color(0.86, 0.88, 0.88),
+		"win": [Color(0.88, 0.97, 1.0), Color(0.6, 1.0, 0.8)], "warm": 0.2,
+		"neon": [Color(0.25, 0.85, 0.55), Color(0.85, 0.98, 1.0)], "neon_share": [0.1, 0.3, 0.45],
+		"sign": "band", "crowns": ["hex", "flat", "hex"], "green": 0.3, "accent": Color(0.25, 0.85, 0.55),
+		"facade": Color(0.26, 0.3, 0.31), "facade_day": Color(0.82, 0.85, 0.85), "lit": 0.55, "grid": true,
+		"string": "holo",
+		"fronts": [["INSTITUTE", Color(0.25, 0.85, 0.55)], ["CLINIC", Color(0.85, 0.98, 1.0)], ["EXAM HALL", Color(0.4, 0.9, 0.7)],
+			["LAB SUPPLY", Color(0.6, 0.95, 1.0)], ["ARCHIVE", Color(0.85, 0.98, 1.0)], ["TERRAFORM CO.", Color(0.4, 1.0, 0.55)],
+			["OPTICS", Color(0.6, 0.9, 1.0)], ["DATA CAFE", Color(0.25, 0.85, 0.55)], ["PHARMACY", Color(0.4, 1.0, 0.6)],
+			["BRIDGE OFFICE", Color(0.5, 0.95, 0.8)], ["SURVEY", Color(0.85, 0.98, 1.0)], ["ROBOTICS", Color(0.6, 1.0, 0.8)]],
+	},
+}
+
+
+## The style of a city (a station dict with "city"): its power's, independent otherwise.
+static func key_for(st: Dictionary) -> String:
+	var f := String(st.get("faction", ""))
+	return f if STYLES.has(f) else "independent"
+
+
+static func of(st: Dictionary) -> Dictionary:
+	return STYLES[key_for(st)]
+
+
+## How much daylight a site has (0 night … 1 day): where it lies on the planet map's disc, lit from the upper left –
+## the same light the map shows.
+static func daylight(site: Dictionary) -> float:
+	var lon := float(site.get("lon", 0.0))
+	var lat := float(site.get("lat", 0.0))
+	var n := Vector3(sin(lon) * cos(lat), -sin(lat), cos(lon) * cos(lat))
+	var l := Vector3(-0.7, -0.5, 0.55).normalized()
+	return smoothstep(-0.12, 0.18, n.dot(l))
+
+
+## A colour between the style's night and day tone: "tower", "roof" or "facade".
+static func tone(style: Dictionary, key: String, day: float) -> Color:
+	if key == "tower":
+		return Color(style["night"]).lerp(Color(style["day"]), day)
+	return Color(style[key]).lerp(Color(style[key + "_day"]), day)
+
+
+## The sky over a city: top and horizon colours, by the world's air and the time of day.
+static func sky(body: Dictionary, day: float) -> Array:
+	var bt := Universe.body_type(String(body.get("type", "")))
+	var ac = bt.get("atmo", Color(0.5, 0.7, 1.0))
+	var air: Color = ac if ac is Color else Color(0.5, 0.7, 1.0)
+	air = Color(air.r, air.g, air.b)
+	var n_top := Color(0.02, 0.025, 0.07).lerp(air, 0.08)
+	var n_low := air.darkened(0.55).lerp(Color(1.0, 0.5, 0.3), 0.35)
+	var d_top := air.darkened(0.15).lerp(Color(0.35, 0.55, 0.9), 0.3)
+	var d_low := air.lightened(0.45).lerp(Color(1.0, 0.95, 0.85), 0.35)
+	return [n_top.lerp(d_top, day), n_low.lerp(d_low, day)]

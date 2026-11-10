@@ -24,7 +24,14 @@ var _place: Node2D
 var _fx: Node2D
 var _scroll := Vector2.ZERO
 var _done := false
-var _dest_y := 0.0                    # where the place lies ahead, in screen px above the ship (shrinks as you fly)
+var _dest_y := 0.0                    # (unused since 0.7.50.6 – the place lies on the ground itself)
+var _scroll0 := Vector2.ZERO          # 0.7.50.6: where the flight starts on the ground picture
+var _place_at := Vector2.ZERO         # the place's spot on the ground picture – it moves with the ground
+var _img: Image                       # the ground picture and which of its pixels are sea
+var _sea := PackedByteArray()
+var _S := 384
+var city_day := 0.0                   # 0.7.50.6: the city by day (its roofs) or by night (its lights)
+var city_style: Dictionary = {}
 var lander := false                   # 0.7.50.4: a small place – the ship sends her landing drone down
 var _drone: Sprite2D
 var _ship_s := 1.0                    # the ship's base scale
@@ -46,7 +53,11 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 	var bt := Universe.body_type(String(body.get("type", "")))
 	# the ground: a tiling picture of this world, scrolled and slowly growing (you come closer)
 	_ground = Sprite2D.new()
-	_ground.texture = ground_texture(body)
+	var gd := ground_data(body)
+	_ground.texture = gd["tex"]
+	_img = gd["img"]
+	_sea = gd["sea"]
+	_S = _img.get_width()
 	_ground.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 	_ground.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ground.region_enabled = true
@@ -109,7 +120,18 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 	var title := UI.label("%s  ·  %s" % [String(site.get("name", "")), String(body.get("name", ""))], 20, UI.NEON_CYAN)
 	title.position = Vector2(30, 24)
 	add_child(title)
-	_dest_y = _vs.y * 1.6
+	# 0.7.50.6: the place lies on the ground and comes with it – where the ship will be at the end of the flight;
+	# shifted so that it stands on land, not on the sea
+	var g_end := lerpf(1.6, 4.2, 1.0)
+	_place_at = Vector2(0, -_dist(DURATION)) + (_vs * Vector2(0.5, 0.58) + Vector2(0, -40.0) - _vs * 0.5) / g_end
+	var land := _nearest_land(_place_at)
+	_scroll0 = land - _place_at
+	_place_at = land
+	_scroll = _scroll0
+	if String(site.get("kind", "")) == "city":
+		var city := Universe.city_station(GameState.current_system, body, site)
+		city_day = float(city.get("day", 0.0))
+		city_style = CityStyle.of(city)
 	Audio.play("boost", "flight down")
 	_update(0.0)
 
@@ -127,13 +149,9 @@ func _process(delta: float) -> void:
 func _update(delta: float) -> void:
 	var k := clampf(_t / DURATION, 0.0, 1.0)
 	var gscale := lerpf(1.6, 4.2, smoothstep(0.0, 1.0, k))           # the ground comes closer
-	var speed := lerpf(520.0, 140.0, k)                                 # screen px per second
-	_scroll.y -= speed * delta / gscale
+	_scroll = _scroll0 + Vector2(0, -_dist(_t))
 	_ground.scale = Vector2.ONE * gscale
 	_ground.region_rect = Rect2(_scroll - _vs / gscale * 0.5, _vs / gscale)
-	_dest_y = maxf(0.0, _dest_y - speed * delta)
-	if _t > DURATION * 0.55:
-		_dest_y = lerpf(_dest_y, 0.0, delta * 1.6)
 	# the shadow closes in on the ship as she comes down
 	var alt := 1.0 - k
 	_shadow.position = _ship.position + Vector2(40.0 + 160.0 * alt, 60.0 + 200.0 * alt)
@@ -205,8 +223,8 @@ func _draw_fx() -> void:
 ## The place ahead: it comes into view at the top and slides down to meet the ship.
 func _draw_place() -> void:
 	var gscale := _ground.scale.x
-	var c := _ship.position + Vector2(0, -_dest_y - 40.0)
-	if c.y < -400.0:
+	var c := _to_screen(_place_at)
+	if c.y < -900.0:
 		return
 	var kd := String(site.get("kind", "outpost"))
 	var rng := RandomNumberGenerator.new()
@@ -275,29 +293,100 @@ func _draw_place() -> void:
 ## come near; the ship sinks into them.
 func _draw_city_lights(c: Vector2, u: float, rng: RandomNumberGenerator) -> void:
 	var k := clampf(_t / DURATION, 0.0, 1.0)
-	var a := smoothstep(0.15, 0.55, k)
+	var a := smoothstep(0.05, 0.4, k)
 	if a <= 0.0:
 		return
+	if city_day > 0.5:
+		_draw_city_day(c, u, rng, a)
+		return
 	# dusk over the city, so its lights show: a soft dark round it, a warm glow in its heart
-	_place.draw_circle(c, u * 26.0, Color(0.02, 0.03, 0.08, 0.35 * a))
-	_place.draw_circle(c, u * 18.0, Color(0.02, 0.03, 0.08, 0.25 * a))
-	_place.draw_circle(c, u * 10.0, Color(1.0, 0.75, 0.4, 0.08 * a))
 	for av in 6:                                                               # avenues: fine strings of light
 		var dir := Vector2.from_angle(rng.randf() * PI)
 		for st in 60:
 			var p := c + dir * (st - 30) * u * 0.75
-			if p.distance_to(c) < u * 24.0:
+			if p.distance_to(c) < u * 24.0 and not _is_sea(p):
 				_place.draw_rect(Rect2(p, Vector2(u * 0.18, u * 0.18)), Color(1.0, 0.85, 0.55, 0.85 * a))
 	for i in 900:                                                              # windows: tiny warm points, densest in the middle
 		var r := absf(rng.randfn(0.0, 0.38))
 		var p2 := c + Vector2.from_angle(rng.randf() * TAU) * r * u * 26.0
 		var blink := fposmod(_t * rng.randf_range(0.3, 1.5) + i * 0.37, 1.0) < 0.05
 		var w := rng.randf()
-		if blink:
+		if blink or _is_sea(p2):
 			continue                                                           # a light goes out for a blink
 		var col: Color = Color(1.0, 0.86, 0.55) if w < 0.7 else (Color(1.0, 0.97, 0.88) if w < 0.92 else Color(0.75, 0.9, 1.0))
 		var sz := u * (0.16 if r > 0.15 else 0.24)
 		_place.draw_rect(Rect2(p2, Vector2(sz, sz)), Color(col, 0.9 * a))
+
+
+## 0.7.50.6: a city by day – its roofs packed along the avenues, densest in the middle, in its style's colours; parks
+## where the Assembly builds; only on land.
+func _draw_city_day(c: Vector2, u: float, rng: RandomNumberGenerator, a: float) -> void:
+	var st: Dictionary = city_style if not city_style.is_empty() else CityStyle.STYLES["independent"]
+	var roof := CityStyle.tone(st, "roof", 1.0)
+	for av in 6:
+		var dir := Vector2.from_angle(rng.randf() * PI)
+		for s in 60:
+			var p := c + dir * (s - 30) * u * 0.75
+			if p.distance_to(c) < u * 24.0 and not _is_sea(p):
+				_place.draw_rect(Rect2(p, Vector2(u * 0.5, u * 0.5)), Color(0.32, 0.32, 0.34, 0.8 * a))
+	for i in 700:
+		var r := absf(rng.randfn(0.0, 0.36))
+		var p2 := c + Vector2.from_angle(rng.randf() * TAU) * r * u * 26.0
+		var sz := u * (0.55 if r > 0.18 else 0.85) * rng.randf_range(0.7, 1.3)
+		if _is_sea(p2):
+			continue
+		if rng.randf() < float(st["green"]) * 0.35:
+			_place.draw_rect(Rect2(p2, Vector2(sz, sz)), Color(0.3, 0.55, 0.28, 0.85 * a))
+			continue
+		var rc := roof.lightened(rng.randf_range(0.0, 0.15)).darkened(rng.randf_range(0.0, 0.2))
+		_place.draw_rect(Rect2(p2 + Vector2(sz * 0.4, sz * 0.4), Vector2(sz, sz)), Color(0, 0, 0, 0.3 * a))
+		_place.draw_rect(Rect2(p2, Vector2(sz, sz)), Color(rc, 0.95 * a))
+
+
+## The flight's distance along the ground picture after t seconds (the ground comes closer and slows).
+func _dist(t: float) -> float:
+	var steps := 90
+	var dt := minf(t, DURATION) / steps
+	var d := 0.0
+	for i in steps:
+		var k := (i + 0.5) * dt / DURATION
+		d += lerpf(520.0, 140.0, k) * dt / lerpf(1.6, 4.2, smoothstep(0.0, 1.0, k))
+	return d
+
+
+## A spot on the ground picture → the screen, and back.
+func _to_screen(p: Vector2) -> Vector2:
+	return _vs * 0.5 + (p - _scroll) * _ground.scale.x
+
+
+func _is_sea(screen_p: Vector2) -> bool:
+	if _sea.is_empty():
+		return false
+	var p := _scroll + (screen_p - _vs * 0.5) / _ground.scale.x
+	var x := posmod(int(floor(p.x)), _S)
+	var y := posmod(int(floor(p.y)), _S)
+	return _sea[y * _S + x] == 1
+
+
+## The nearest spot on land (with land round it) to a spot on the ground picture.
+func _nearest_land(p: Vector2) -> Vector2:
+	if _sea.is_empty():
+		return p
+	for r in range(0, 200, 4):
+		for k in 24:
+			var q := p + Vector2.from_angle(k * TAU / 24.0) * r
+			var ok := true
+			for dd in [Vector2.ZERO, Vector2(14, 0), Vector2(-14, 0), Vector2(0, 14), Vector2(0, -14), Vector2(24, 0), Vector2(-24, 0)]:
+				var x := posmod(int(q.x + dd.x), _S)
+				var y := posmod(int(q.y + dd.y), _S)
+				if _sea[y * _S + x] == 1:
+					ok = false
+					break
+			if ok:
+				return q
+			if r == 0:
+				break
+	return p
 
 
 ## The landing drone every ship carries (0.7.50.4): a small lander, nose to the east like the ships.
@@ -348,6 +437,17 @@ func _landing_pad(p: Vector2, u: float) -> void:
 
 ## A tiling picture of a world's ground, in its own colours: sea and land, dunes, ice, lava, craters.
 static func ground_texture(b: Dictionary) -> Texture2D:
+	return ground_data(b)["tex"]
+
+
+static var _ground_cache := {}
+
+
+## 0.7.50.6: the ground picture with its sea mask ({tex, img, sea: PackedByteArray, 1 = sea}), kept per body.
+static func ground_data(b: Dictionary) -> Dictionary:
+	var key := String(b.get("id", "")) + String(b.get("type", ""))
+	if _ground_cache.has(key):
+		return _ground_cache[key]
 	var bt := Universe.body_type(String(b.get("type", "")))
 	var a: Color = bt.get("a", Color(0.3, 0.3, 0.35))
 	var c1: Color = bt.get("b", Color(0.45, 0.42, 0.38))
@@ -363,6 +463,9 @@ static func ground_texture(b: Dictionary) -> Texture2D:
 	var img_a := n.get_seamless_image(S, S)
 	var img_b := n2.get_seamless_image(S, S)
 	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	var mask := PackedByteArray()
+	mask.resize(S * S)
+	mask.fill(0)
 	var sea := float(bt.get("sea", 0.0))
 	var lava := float(bt.get("lava", 0.0))
 	var craters := float(bt.get("craters", 0.0))
@@ -373,6 +476,7 @@ static func ground_texture(b: Dictionary) -> Texture2D:
 			var d := img_b.get_pixel(x, y).r
 			var col: Color
 			if sea > 0.0 and v < sea * 0.9:
+				mask[y * S + x] = 1
 				col = a.lerp(a.darkened(0.3), clampf((sea * 0.9 - v) * 3.0, 0.0, 1.0))
 				if v > sea * 0.9 - 0.03:
 					col = col.lerp(Color(0.85, 0.9, 0.95), 0.4)             # surf along the coast
@@ -400,7 +504,9 @@ static func ground_texture(b: Dictionary) -> Texture2D:
 						var o := img.get_pixel(px, py)
 						var rim := dd > r * 0.8
 						img.set_pixel(px, py, o.lightened(0.15) if rim and yy < 0 else (o.darkened(0.12) if not rim else o.darkened(0.05)))
-	return ImageTexture.create_from_image(img)
+	var out := {"tex": ImageTexture.create_from_image(img), "img": img, "sea": mask}
+	_ground_cache[key] = out
+	return out
 
 
 ## Clouds that tile: soft white (or the world's own cloud colour) where the noise is high, see-through elsewhere.

@@ -105,12 +105,15 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = [], 
 	var bx0 := LOBBY_X1 + 1                             # the bar's west wall
 	var th: Dictionary = THEMES.get(String(m.pal["type"]), THEMES["trade"])
 	if mode == "street":
-		m.hull_top = 0                                  # the city's structure above the shop fronts
-		_street_north(m, th, bx0, W, rng)
-	elif String(station.get("type", "")) == "waystation":
+		m.hull_top = COR_Y0 - 3                         # 0.7.50.6: above the shop fronts the street canyon (drawn by the view)
+		_street_north(m, th, bx0, W, rng, CityStyle.of(station))
+	elif String(station.get("type", "")) == "waystation" and mode == "":
 		_dome_room(m, th, bx0, W, available, crew, rng)
 	else:
 		_bar_room(m, th, bx0, W, available, crew, rng)
+		if mode == "tower":
+			m.round_corners.clear()                     # 0.7.50.6: a tower's window front – square, the wall beside it
+			m.fill(0, 0, bx0, BAR_Y0, GroundMap.T.CAP)
 	# ---- the corridor
 	m.fill(bx0, COR_Y0 + 1, W - bx0 - 1, COR_Y1 - COR_Y0, GroundMap.T.FLOOR, int(th["cor_floor"]))
 	m.decals.append({"kind": "guide", "x": bx0, "y": COR_Y0 + 2, "w": W - bx0 - 1, "h": 1, "col": m.pal["accent"]})
@@ -279,21 +282,22 @@ const STREET_FRONTS := [["NOODLE BAR", Color(1.0, 0.75, 0.3)], ["CHROME & SOUL",
 
 ## 0.7.50.5: a city's shopping street – instead of the bar, shop fronts along its north side (lit windows, awnings,
 ## neon names), lamp posts and stalls between them; the real shops lie on its south side as on a station.
-static func _street_north(m: GroundMap, th: Dictionary, bx0: int, W: int, rng: RandomNumberGenerator) -> void:
+static func _street_north(m: GroundMap, th: Dictionary, bx0: int, W: int, rng: RandomNumberGenerator, style: Dictionary = {}) -> void:
 	var fy := COR_Y0 - 3
-	m.fill(bx0, 0, W - bx0, fy, GroundMap.T.CAP)
+	var fronts: Array = style.get("fronts", STREET_FRONTS)
+	m.window_rect = Rect2(0, 0, W, fy)                  # 0.7.50.6: open to the sky – the buildings rise above the fronts
 	m.fill(bx0, fy, W - bx0, 2, GroundMap.T.FACE)
 	m.fill(bx0, COR_Y0 - 1, 1, 1, GroundMap.T.CAP)
 	m.fill(bx0 + 1, COR_Y0 - 1, W - bx0 - 2, 2, GroundMap.T.FLOOR, int(th["cor_floor"]))
 	m.fill(W - 1, fy, 1, COR_Y1 - fy + 2, GroundMap.T.CAP)
 	var order: Array = []
-	for i in STREET_FRONTS.size():
+	for i in fronts.size():
 		order.insert(rng.randi() % (order.size() + 1), i)
 	var x := bx0 + 2
 	var n := 0
 	while x + 4 < W - 2:
 		var fw := mini(rng.randi_range(4, 6), W - 2 - x)
-		var fr: Array = STREET_FRONTS[order[n % order.size()]]
+		var fr: Array = fronts[order[n % order.size()]]
 		var col: Color = fr[1]
 		m.face_deco.append({"kind": "storefront", "x": x, "y": fy, "w": fw, "col": col})
 		m.zones.append({"rect": Rect2(), "kind": "label", "id": "front_%d" % n, "title": String(fr[0]), "col": col,

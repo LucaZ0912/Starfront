@@ -93,6 +93,12 @@ func _ready() -> void:
 	_music.bus = "Music"
 	_music.volume_db = -6.0
 	add_child(_music)
+	var plate := ColorRect.new()                    # 0.7.50.6: a dark plate behind the title – readable over a sunlit street
+	plate.color = Color(0.0, 0.0, 0.03, 0.55)
+	plate.position = Vector2(14, 12)
+	plate.size = Vector2(540, 56)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(plate)
 	_title = UI.label("", 18, UI.NEON_CYAN)
 	_title.position = Vector2(24, 18)
 	ui.add_child(_title)
@@ -232,6 +238,11 @@ func is_city() -> bool:
 	return bool(station.get("city", false))
 
 
+## 0.7.50.6: how much daylight the city has (0 night … 1 day).
+func city_day() -> float:
+	return float(station.get("day", 0.0)) if is_city() else 0.0
+
+
 ## How high up the tower bar is.
 func tower_floor() -> int:
 	return 140 + absi(hash(String(station.get("id", "")))) % 160
@@ -243,10 +254,16 @@ func _space_view(sys_id: int) -> void:
 	if is_city():
 		_neb.material = null
 		_neb.color = Color(0.02, 0.02, 0.05)
-		if _window.size.x > 0.0:
+		var body := Universe.find_body(sys_id, String(station.get("body", ""))) if sys_id >= 0 else {}
+		var cst := CityStyle.of(station)
+		var dk := city_day()
+		if _window.size.x > 0.0 and level == "street":
+			var cy := CityCanyon.new()                 # 0.7.50.6: the street canyon above the shop fronts
+			cy.setup(_window.size, body, cst, dk, hash(String(station.get("id", ""))) + 11)
+			_sky.add_child(cy)
+		elif _window.size.x > 0.0:
 			_skyline = CitySkyline.new()
-			var body := Universe.find_body(sys_id, String(station.get("body", ""))) if sys_id >= 0 else {}
-			_skyline.setup(_window.size, body, hash(String(station.get("id", ""))) + 3, _window.size.x + map.size_px().x * GroundMap.SCALE)
+			_skyline.setup(_window.size, body, hash(String(station.get("id", ""))) + 3, _window.size.x + map.size_px().x * GroundMap.SCALE, cst, dk)
 			_sky.add_child(_skyline)
 		return
 	var mat := ShaderMaterial.new()
@@ -421,8 +438,31 @@ func _build() -> void:
 	_lights.z_index = 5
 	var add_mat := CanvasItemMaterial.new()
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
+	# it (they hardly show); the tower bar's window lets in the sun by day
+	var dk := city_day()
+	if is_city() and level == "street" and dk < 0.6:
+		var tint := ColorRect.new()
+		tint.color = Color(0.58, 0.62, 0.82).lerp(Color.WHITE, dk / 0.6)
+		var mm := CanvasItemMaterial.new()
+		mm.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+		tint.material = mm
+		tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tx0 := DeckGen.LOBBY_X1 + 1                  # the street only – not the lift lobby, not inside the shops
+		tint.position = Vector2(tx0, map.hull_top) * GroundMap.TILE * GroundMap.SCALE
+		tint.size = Vector2(map.w - tx0, DeckGen.SHOP_CAP + 1 - map.hull_top) * GroundMap.TILE * GroundMap.SCALE
+		_world.add_child(tint)
 	for l in map.lights:
-		_add_light(l, add_mat)
+		var l2: Dictionary = l
+		if is_city() and level == "street" and dk > 0.5:
+			l2 = l.duplicate()
+			l2["a"] = float(l.get("a", 0.3)) * 0.4
+		if is_city() and level == "tower" and dk > 0.5 and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
+			l2 = l.duplicate()                         # the cold light through the glass becomes sunlight
+			l2["col"] = Color(1.0, 0.9, 0.7)
+			l2["a"] = 0.3
+			l2["r"] = float(l.get("r", 40.0)) * 1.4
+		_add_light(l2, add_mat)
 	for z in map.zones:
 		var sp: Vector2 = z.get("sign", Vector2(-100, -100))
 		if sp.x >= 0.0 and not z.get("vertical", false) and String(z.get("closed", "")) == "":

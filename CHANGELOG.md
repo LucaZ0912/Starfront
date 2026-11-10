@@ -3,6 +3,32 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.6 – 2026-11-10
+
+**The cities refined: four building styles, day and night, a street canyon, a city that stands up.**
+- **Four styles – who built the city:** **independent** cities are the cyberpunk sprawl (dark crowded towers, neon of
+  every colour, antennas, fire escapes, paper lanterns over the street); the **Assembly** builds light stone and glass
+  with domes, terraces and roof gardens, green balconies, warm windows and strings of bulbs; the **Covenant** builds
+  dark red-brown stone with pointed spires and pinnacles, narrow gold-lit windows under pointed arches, long red
+  banners with the gold sign and pennants over the street; the **Directorate** builds white towers on a strict grid
+  with chamfered hexagonal crowns, solar roofs, whole floors of cool white light and green light bands. The street's
+  made-up shop fronts follow the style too (co-op market and voting booth; chapel, reliquary and pilgrim hostel;
+  institute, exam hall and data cafe …).
+- **Day and night:** every city lies on the day or the night side of its world – where the planet map shows it –
+  and keeps it: the flight down, the landing hatch, the street and the view from the tower bar are lit by day (sun,
+  clouds, glass catching the sky, the street bright, the neon faint, sunlight falling into the bar) or by night (lit
+  windows, glowing neon, red lights blinking on the tops, the street dark under its lamps).
+- **The street canyon:** the shopping street is no longer a room – above the shop fronts the buildings rise into the
+  sky, storey on storey of windows, balconies, fire escapes, air units, signs and banners, a strip of sky at the top
+  with speeders crossing it, strings of lights hanging along the street.
+- **The landing hatch's city stands up:** towers seen a little from the south – their fronts with floors of windows,
+  their roofs in the style's way (domes and roof gardens, ridged roofs with spires, hexagonal roofs with solar panels,
+  air units and flyer pads), their shadows on the ground by day.
+- **The flight down:** the city now lies on the ground and comes with it (no longer faster than the ground), always
+  on land – its lights (by night) or its roofs (by day) only where there is land, never on the sea; the dark rings
+  round it are gone.
+- The tower bar's window front is square in a city (no space-station corners); the title on foot has a dark plate.
+
 ## alpha 0.7.50.5 – 2026-11-10
 
 **Package 50b begins: the cities – down through a landing hatch, into the city's hangars, its shopping street and
