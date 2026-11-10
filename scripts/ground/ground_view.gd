@@ -276,7 +276,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		combat.setup(self, map)
 		_world.add_child(combat)
 		for i in mini(map.foe_spawns.size(), (_site.get("foes", []) as Array).size()):
-			combat.spawn(String(_site["foes"][i]), map.foe_spawns[i])
+			var fe: Array = GroundCombat.FoeData.parse(String(_site["foes"][i]))         # "kind" or "kind@tier"
+			combat.spawn(String(fe[0]), map.foe_spawns[i], "", String(fe[1]))
 	if combat_hud != null:
 		combat_hud.combat = combat
 	_set_hint()

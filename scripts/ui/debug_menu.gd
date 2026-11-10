@@ -830,6 +830,11 @@ func _build_ground() -> void:
 	ra.add_child(aw)
 	ra.add_child(UI.button("Open the arena (3 bandits)", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata()})))
 	ra.add_child(UI.button("Empty arena", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(), "foes": []})))
+	var ra2 := _row()                                               # 0.7.52.4 (Luz): mixed strengths
+	ra2.add_child(UI.button("Arena: 2 green + 1 yellow", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
+		"foes": ["bandit_scrapper@green", "bandit_rifleman@green", "bandit_gunner@yellow"]})))
+	ra2.add_child(UI.button("Arena: 2 yellow + 1 red", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
+		"foes": ["bandit_scrapper@yellow", "bandit_rifleman@yellow", "bandit_boss@red"]})))
 	var fk: Array = []
 	var fn: Array = []
 	for k in FoeData52.KINDS:
@@ -837,14 +842,16 @@ func _build_ground() -> void:
 		fn.append(String(FoeData52.FOES[k]["name"]))
 	var fsel2 := _option(fk, fn, 200)
 	var fq := _option([""] + GroundGear.QUALITIES, ["Quality: its own"] + GroundGear.QUALITIES, 130)
+	var ftier := _option(FoeData52.TIER_ORDER, ["Green (easy)", "Yellow (middling)", "Red (dangerous)"], 150)
 	var fcnt := _spin(1, 12, 1)
 	fcnt.custom_minimum_size = Vector2(70, 0)
 	var rf := _row()
 	rf.add_child(fsel2)
 	rf.add_child(fq)
+	rf.add_child(ftier)
 	rf.add_child(fcnt)
-	rf.add_child(UI.button("Spawn far", func(): _cmd({"type": "debug_foe", "kind": fsel2.get_selected_metadata(), "quality": fq.get_selected_metadata(), "n": int(fcnt.value)})))
-	rf.add_child(UI.button("Spawn near", func(): _cmd({"type": "debug_foe", "kind": fsel2.get_selected_metadata(), "quality": fq.get_selected_metadata(), "n": int(fcnt.value), "near": true})))
+	rf.add_child(UI.button("Spawn far", func(): _cmd({"type": "debug_foe", "kind": fsel2.get_selected_metadata(), "quality": fq.get_selected_metadata(), "tier": ftier.get_selected_metadata(), "n": int(fcnt.value)})))
+	rf.add_child(UI.button("Spawn near", func(): _cmd({"type": "debug_foe", "kind": fsel2.get_selected_metadata(), "quality": fq.get_selected_metadata(), "tier": ftier.get_selected_metadata(), "n": int(fcnt.value), "near": true})))
 	var rk := _row()
 	rk.add_child(UI.button("All foes down", func(): _cmd({"type": "debug_combat", "do": "kill"})))
 	rk.add_child(UI.button("End the fight (foes gone)", func(): _cmd({"type": "debug_combat", "do": "end"})))

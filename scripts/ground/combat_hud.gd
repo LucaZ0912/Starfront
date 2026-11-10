@@ -50,7 +50,9 @@ func _draw() -> void:
 		var act: bool = f == combat.active
 		var r := Rect2(Vector2(x, 12), Vector2(190, 62))
 		_panel(r, red if act else Color(red, 0.35))
-		_s(r.position + Vector2(8, 17), String(f["name"]).left(26), Color(0.95, 0.95, 0.95), 13)
+		var tcolr: Color = GroundCombat.FoeData.TIERS[String(f.get("tier", "green"))]["col"]
+		draw_circle(r.position + Vector2(r.size.x - 12, 12), 5.0, tcolr)                 # 0.7.52.4: its strength
+		_s(r.position + Vector2(8, 17), String(f["name"]).left(24), Color(0.95, 0.95, 0.95), 13)
 		var dm := combat.pilot_pos().distance_to((f["w"] as Walker).pos) / 15.0
 		var ch := combat.chance_at_foe(f)
 		var info := "T%d  •  %d m  •  %s  •  %s" % [i + 1, int(round(dm)), ("hit %d%%" % int(round(ch * 100.0))) if ch > 0.0 else "no shot",

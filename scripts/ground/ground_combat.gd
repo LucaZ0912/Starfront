@@ -127,10 +127,15 @@ func sight(a: Vector2, b: Vector2) -> Dictionary:
 
 # ---------------------------------------------------------------- foes
 
-## A foe of a kind at p (art px); quality "" = the kind's own. Returns its dict.
-func spawn(kind: String, p: Vector2, quality: String = "") -> Dictionary:
+## A foe of a kind at p (art px); quality "" = the kind's own (stepped up by the tier); tier green/yellow/red
+## (0.7.52.4 – stronger body, damage and aim; shown by the ring at its feet). Returns its dict.
+func spawn(kind: String, p: Vector2, quality: String = "", tier: String = "green") -> Dictionary:
 	var d: Dictionary = FoeData.FOES.get(kind, FoeData.FOES["bandit_rifleman"])
-	var q := quality if quality != "" else String(d["quality"])
+	if not FoeData.TIERS.has(tier):
+		tier = "green"
+	var td: Dictionary = FoeData.TIERS[tier]
+	var q := quality if quality != "" else FoeData.tier_quality(String(d["quality"]), tier)
+	var hp := float(d.get("health", 60.0)) * float(td["health"])
 	var suit := GearData.stats(FoeData.suit_id(kind, q))
 	var lk: Dictionary = ChibiArt.PilotArt.random_look()
 	lk["outfit"] = 2
@@ -149,11 +154,12 @@ func spawn(kind: String, p: Vector2, quality: String = "") -> Dictionary:
 	w.aim_weapon = GearData.family(wid)
 	view._sorted.add_child(w)
 	var f := {"id": _next_id, "w": w, "kind": kind, "name": String(d["name"]), "weapon": wid, "quality": q,
-		"st": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": float(d.get("health", 60.0))},
-		"mx": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": float(d.get("health", 60.0))},
+		"st": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": hp},
+		"mx": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": hp},
+		"tier": tier, "dmg": FoeData.DAMAGE * float(td["damage"]),
 		"cool": randf_range(0.3, 1.0), "state": "idle", "aware": false, "goal": Vector2.INF, "path": PackedVector2Array(), "pi": 0,
 		"think": randf_range(0.0, 0.5), "regen_wait": 0.0, "role": String(d["role"]), "flee": float(d["flee"]),
-		"firearms": int(d["firearms"]), "athletics": int(d["athletics"]), "out_t": 0.0, "home": p, "dead": false, "burst": 0}
+		"firearms": int(d["firearms"]) + int(td["firearms"]), "athletics": int(d["athletics"]), "out_t": 0.0, "home": p, "dead": false, "burst": 0}
 	_next_id += 1
 	foes.append(f)
 	return f
@@ -448,7 +454,7 @@ func fire(from, to, w: Dictionary) -> void:
 	var muzzle := shooter.muzzle_art()
 	for i in pellets:
 		var r := randf()
-		var res := {"to": to, "dmg": float(w["damage"]) * (FoeData.DAMAGE if from != null else 1.0), "dtype": dtype, "splash": float(w.get("splash", 0.0)), "from": from}
+		var res := {"to": to, "dmg": float(w["damage"]) * (float(from["dmg"]) if from != null else 1.0), "dtype": dtype, "splash": float(w.get("splash", 0.0)), "from": from}
 		var end: Vector2
 		if r < chance:
 			res["kind"] = "hit"
@@ -869,6 +875,19 @@ func _tac_step(delta: float) -> void:
 
 
 func _draw_tactics() -> void:
+	_draw_tactics_view()
+	# 0.7.52.4 (Luz): how strong each foe is – a coloured ring on the ground at its feet
+	for f in alive():
+		var col: Color = FoeData.TIERS[String(f.get("tier", "green"))]["col"]
+		var fp: Vector2 = (f["w"] as Walker).pos * S + Vector2(0, -2)
+		tac_node.draw_set_transform(fp, 0.0, Vector2(1.0, 0.45))
+		tac_node.draw_circle(Vector2.ZERO, 26.0, Color(col, 0.22))
+		tac_node.draw_arc(Vector2.ZERO, 26.0, 0.0, TAU, 40, Color(0.03, 0.03, 0.05, 0.85), 8.0)    # dark edge: seen on any ground
+		tac_node.draw_arc(Vector2.ZERO, 26.0, 0.0, TAU, 40, col, 4.0)
+		tac_node.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_tactics_view() -> void:
 	if tactics == 0 or _vis.get("rays") == null:
 		return
 	var from: Vector2 = _vis["from"]

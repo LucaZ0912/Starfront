@@ -8882,6 +8882,10 @@ func _test_foot_combat(view: SystemView) -> void:
 		and is_equal_approx(float(o1["shield"]), 10.0) and is_equal_approx(float(st2["armor"]), 25.0) and is_equal_approx(float(st3["health"]), 72.0)
 	# 0.7.52.3 (Luz): mightier – foes' bodies weaker than the pilot's, their shots a small share of their weapons' damage
 	var foe_ok: bool = FoeData52.DAMAGE <= 0.15 and FoeData52.FOES.values().all(func(x): return float(x.get("health", 100.0)) <= GD.HEALTH)
+	# 0.7.52.4: tiers – red tougher, harder-hitting, better aimed and better kitted than green; "kind@tier" parses
+	foe_ok = foe_ok and float(FoeData52.TIERS["red"]["health"]) > float(FoeData52.TIERS["yellow"]["health"]) and float(FoeData52.TIERS["yellow"]["health"]) > 1.0 \
+		and FoeData52.tier_quality("E", "red") == "C" and FoeData52.tier_quality("A", "red") == "A" and FoeData52.parse("bandit_boss@red") == ["bandit_boss", "red"] \
+		and FoeData52.parse("bandit_boss") == ["bandit_boss", "green"]
 	layer_ok = layer_ok and foe_ok
 	# the hit chance: cover and running cut it, distance past the optimum too, nothing past the reach; Firearms helps
 	var w: Dictionary = GD.stats("wp_rifle:C")
@@ -9000,7 +9004,10 @@ func _test_foot_combat(view: SystemView) -> void:
 	var swap_ok: bool = cb.weapon_id() != w0 and cb.weapon_id() == "wp_rifle:C"
 	# debug: spawn near, the AI view, all down, the fight ends
 	var n0 := cb.foes.size()
-	var dbg_ok: bool = Commands.execute({"type": "debug_foe", "kind": "bandit_boss", "n": 2, "near": true}) == "" and cb.foes.size() == n0 + 2 \
+	var dbg_ok: bool = Commands.execute({"type": "debug_foe", "kind": "bandit_boss", "n": 2, "near": true, "tier": "red"}) == "" and cb.foes.size() == n0 + 2 \
+		and String(cb.foes[-1]["tier"]) == "red" and float(cb.foes[-1]["mx"]["health"]) > float(FoeData52.FOES["bandit_boss"]["health"]) \
+		and int(cb.foes[-1]["firearms"]) == int(FoeData52.FOES["bandit_boss"]["firearms"]) + 4 and String(cb.foes[-1]["quality"]) == "B" \
+		and Commands.execute({"type": "debug_foe", "kind": "bandit_boss", "tier": "purple"}) != "" \
 		and Commands.execute({"type": "debug_foe", "kind": "nobody"}) != "" and Commands.execute({"type": "debug_combat", "do": "ai", "on": true}) == "" and cb.show_ai \
 		and Commands.execute({"type": "debug_combat", "do": "kill"}) == "" and cb.alive().is_empty()
 	cb.show_ai = false

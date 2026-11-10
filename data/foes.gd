@@ -27,6 +27,29 @@ const KINDS := ["bandit_scrapper", "bandit_rifleman", "bandit_gunner", "bandit_b
 ## pilot standing in the open in a light combat suit, from cover far longer; each of them falls in a few seconds.
 const DAMAGE := 0.12
 
+## 0.7.52.4 (Luz): how strong a foe is – shown as a coloured ring at its feet: green very easy, yellow middling, red
+## dangerous. A tier scales its body, its damage and its aim, and gives it better gear (quality steps up).
+const TIERS := {
+	"green": {"name": "easy", "health": 1.0, "damage": 1.0, "firearms": 0, "quality": 0, "col": Color(0.35, 1.0, 0.45)},
+	"yellow": {"name": "middling", "health": 1.6, "damage": 1.7, "firearms": 2, "quality": 1, "col": Color(1.0, 0.85, 0.25)},
+	"red": {"name": "dangerous", "health": 2.5, "damage": 2.7, "firearms": 4, "quality": 2, "col": Color(1.0, 0.3, 0.25)},
+}
+const TIER_ORDER := ["green", "yellow", "red"]
+
+
+## The quality a tier steps a base quality up to ("E" + 2 → "C").
+static func tier_quality(q: String, tier: String) -> String:
+	var qs := ["F", "E", "D", "C", "B", "A"]
+	var i := qs.find(q)
+	return qs[clampi((i if i >= 0 else 1) + int(TIERS.get(tier, TIERS["green"])["quality"]), 0, qs.size() - 1)]
+
+
+## A foe entry of an arena list: "kind" or "kind@tier" → [kind, tier].
+static func parse(entry: String) -> Array:
+	var p := entry.split("@")
+	return [p[0], p[1] if p.size() > 1 and TIERS.has(p[1]) else "green"]
+
+
 ## How far a foe sees you (art px, ~15 a metre) and hears a shot.
 const SIGHT := 300.0
 const HEAR := 420.0

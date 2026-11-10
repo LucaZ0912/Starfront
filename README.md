@@ -316,6 +316,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   family, outlined, cached); `Walker.aim_weapon`, `aim_geom(bob)` {hand, ang, scale, art, muzzle}, `_draw_aim`,
   `muzzle_art()` – `GroundCombat.fire` starts every shot there; `FoeData.DAMAGE` 0.12, `FOES[*].health`;
   `GroundCombat.tac_reach()` (both tactical views at the weapon in hand's range, ring labelled).
+- 0.7.52.4: `FoeData.TIERS` (green/yellow/red: health, damage, firearms, quality, col), `TIER_ORDER`, `tier_quality(q, tier)`,
+  `parse("kind@tier")`; `GroundCombat.spawn(kind, p, quality, tier)` (foe dict `tier`, `dmg`), the ring drawn in
+  `_draw_tactics` on `tac_node`; arena site `foes` and `debug_arena` take "kind@tier", `debug_foe` takes `tier`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

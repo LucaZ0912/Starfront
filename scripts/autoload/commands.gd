@@ -2674,7 +2674,7 @@ const DEBUG_ARENA_FOES := ["bandit_rifleman", "bandit_scrapper", "bandit_gunner"
 
 
 ## {"type":"debug_arena", "world": a world type ("" = the body's own), "foes": [kinds] (default: three bandits),
-##  "body": id} – package 52: down by the landing drone to the debug arena on a body here: the drone's pad, a field of
+##  "body": id} – package 52 (0.7.52.4: a foe as "kind@tier", tier green/yellow/red): down by the landing drone to the debug arena on a body here: the drone's pad, a field of
 ## cover, foes at the far side.
 func _c_debug_arena(c: Dictionary) -> String:
 	var m = _main()
@@ -2699,7 +2699,8 @@ func _c_debug_arena(c: Dictionary) -> String:
 		return "No body to land on here."
 	var kinds: Array = c.get("foes", DEBUG_ARENA_FOES)
 	for k in kinds:
-		if not FoeData.FOES.has(String(k)):
+		var pe: Array = FoeData.parse(String(k))                  # 0.7.52.4: "kind@tier"
+		if not FoeData.FOES.has(String(pe[0])) or (String(k).contains("@") and not FoeData.TIERS.has(String(k).split("@")[1])):
 			return "Unknown foe '%s'." % String(k)
 	var site := {"id": "%s_dbg_arena" % String(body["id"]), "kind": "crash", "lon": -0.3, "lat": -0.2, "name": "Debug Arena",
 		"arena": true, "foes": kinds.duplicate()}
@@ -2712,7 +2713,7 @@ func _c_debug_arena(c: Dictionary) -> String:
 	return ""
 
 
-## {"type":"debug_foe", "kind": id, "n": 1, "quality": "" | F–A, "near": bool} – package 52: foes into the fight here
+## {"type":"debug_foe", "kind": id, "n": 1, "quality": "" | F–A, "tier": green|yellow|red, "near": bool} – package 52: foes into the fight here
 ## (at the far side, or near you), aware of you at once.
 func _c_debug_foe(c: Dictionary) -> String:
 	var g = _ground()
@@ -2724,6 +2725,9 @@ func _c_debug_foe(c: Dictionary) -> String:
 	var q := String(c.get("quality", ""))
 	if q != "" and not q in GearShop.GearData.QUALITIES:
 		return "Unknown quality."
+	var tier := String(c.get("tier", "green"))
+	if not FoeData.TIERS.has(tier):
+		return "Unknown tier."
 	var n := clampi(int(c.get("n", 1)), 1, 12)
 	var made := 0
 	for i in n:
@@ -2739,7 +2743,7 @@ func _c_debug_foe(c: Dictionary) -> String:
 				at = g.combat._free_near(at)
 		if at == Vector2.INF:
 			continue
-		var fo: Dictionary = g.combat.spawn(kind, at, q)
+		var fo: Dictionary = g.combat.spawn(kind, at, q, tier)
 		g.combat._wake(fo)
 		made += 1
 	GameState.log_msg("[Debug] %d × %s." % [made, String(FoeData.FOES[kind]["name"])], GameState.COL_WARN)

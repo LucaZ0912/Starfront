@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.4 – 2026-11-11
+
+**Threat tiers – a coloured ring at every foe's feet (Luz).**
+
+- Every foe has a tier: **green** (very easy), **yellow** (middling) or **red** (dangerous), shown as a ring on the
+  ground at its feet (with a dark edge, readable on any ground) and as a dot on its lock card.
+- The tier scales the foe: body ×1 / ×1.6 / ×2.5, damage ×1 / ×1.7 / ×2.7, aim (Firearms) +0 / +2 / +4 and its gear's
+  quality +0 / +1 / +2 steps (a rifleman's E rail carbine becomes a C one at red).
+- Debug (F12 → Ground → Combat): **"Arena: 2 green + 1 yellow"** and **"Arena: 2 yellow + 1 red"**; the tier can be
+  chosen when spawning foes. Codex entry and smoke test extended.
+- Roadmap: the new foe types with their own tactics (flanker, thrower, leader – and Luz's **sniper**: 90 % of its
+  reach, in cover, far better aim, far slower fire) moved to the next round; **ground combat drones** (laser, kinetic,
+  kamikaze – launched from the pilot's back) noted for the end of the combat mechanics.
+
 ## alpha 0.7.52.3 – 2026-11-10
 
 **Weapons with detail, shots from the tip, mightier fights, the tactical view at your weapon's reach (Luz).**
