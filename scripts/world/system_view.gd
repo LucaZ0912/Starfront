@@ -19,6 +19,7 @@ signal level_changed(level: int)
 signal object_selected(id: String)   # clicked object -> HUD shows the selected-item panel
 signal descended(body_id: String)    # package 50: the player's ship went down to a body's surface
 signal ascended                      # … and is back in orbit
+signal descent_ending(atmo: bool)    # 0.7.50.3: the last moment of the way down – time for the flash
 
 const MAX_ZOOM := 2.0
 ## Fixed zoom levels: 0 = Close Combat, 1 = Long-Range Recon (both local, bodies in the background),
@@ -4376,7 +4377,8 @@ func start_descent(ship: Ship, node) -> void:
 	ship.order = {"type": "descending"}
 	ship.velocity = Vector2.ZERO
 	_descent = {"ship": ship, "body": String(node.data["body"]), "t": 0.0, "atmo": Universe.has_atmosphere(body), "fx": fx,
-		"dir": Vector2.from_angle(ship.heading), "up": false}
+		"dir": Vector2.from_angle(ship.heading), "up": false, "z0": _zoom, "flash": false}
+	follow = true
 	var ac = Universe.body_type(String(body.get("type", ""))).get("atmo", Color(1, 0.6, 0.3))
 	if ac is Color:
 		fx.heat_col = Color(1.0, 0.55, 0.2).lerp(Color(ac.r, ac.g, ac.b), 0.25)
@@ -4402,7 +4404,10 @@ func start_ascent(body_id: String) -> void:
 	player.scale = Vector2.ONE * 0.04
 	player.visible = true
 	player.order = {"type": "ascending"}
-	_descent = {"ship": player, "body": body_id, "t": 0.0, "atmo": Universe.has_atmosphere(body), "fx": fx, "dir": dir, "up": true}
+	_descent = {"ship": player, "body": body_id, "t": 0.0, "atmo": Universe.has_atmosphere(body), "fx": fx, "dir": dir, "up": true,
+		"z0": _zoom, "flash": true}
+	follow = true
+	_set_zoom(_zoom * 2.6)
 	Audio.play("boost", "ascent")
 
 
@@ -4429,6 +4434,10 @@ func _update_descent(delta: float) -> void:
 			sh.position += dir * 1400.0 * (1.0 - k2) * delta
 			sh.scale = Vector2.ONE * lerpf(1.0, 0.04, ease(k2, 0.6))
 			sh.modulate = Color.WHITE.lerp(Color(1.0, 0.7, 0.5) if atmo else Color(0.6, 0.6, 0.7), k2 * 0.6)
+			_set_zoom(float(_descent["z0"]) * lerpf(1.0, 2.8, smoothstep(0.0, 1.0, k2)))      # the camera follows it down
+			if k2 > 0.72 and not bool(_descent["flash"]):
+				_descent["flash"] = true
+				descent_ending.emit(atmo)
 			fx.flame = 1.0 - k2
 			fx.heat = (minf(1.0, sin(minf(k2 * 1.3, 1.0) * PI) * 1.4) if atmo else 0.0)
 		else:
@@ -4437,6 +4446,7 @@ func _update_descent(delta: float) -> void:
 			sh.scale = Vector2.ONE
 			sh.modulate = Color.WHITE
 			sh.order = {"type": "idle"}
+			_set_zoom(float(_descent["z0"]))
 			sh.fit.docked_at = "land:" + String(_descent["body"])
 			var bid: String = _descent["body"]
 			_descent = {}
@@ -4444,6 +4454,7 @@ func _update_descent(delta: float) -> void:
 		return
 	# the ascent
 	var k3 := clampf(t / ASCENT_TIME, 0.0, 1.0)
+	_set_zoom(float(_descent["z0"]) * lerpf(2.6, 1.0, smoothstep(0.0, 1.0, k3)))
 	sh.scale = Vector2.ONE * lerpf(0.04, 1.0, ease(k3, 2.2))
 	sh.position += dir * lerpf(200.0, 900.0, k3) * delta
 	sh.modulate = (Color(1.0, 0.7, 0.5) if atmo else Color(0.6, 0.6, 0.7)).lerp(Color.WHITE, k3)

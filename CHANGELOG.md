@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.50.3 – 2026-11-10
+
+**The landing gets its way down – no more hard cuts.**
+- **Into the planet:** as the ship sinks, the camera follows her down (zooms in); at the end the heat flares into a
+  white flash that turns to black (on airless moons just black), and out of the black the planet map fades in – the
+  planet turning into place, its places lighting up one after the other with a little flash, then the list.
+- **The flight down (seen from above):** after picking a place you fly down to it – the planet's own ground passes
+  below (seas and coasts and continents, dunes, ice, glowing lava cracks, craters – in its colours) and comes closer,
+  your ship's shadow closes in on her, clouds drift between you and the ground where there is air, the last of the
+  entry heat fades, the engine burns; at the end the place itself comes into view on its patch of land – the blocks
+  and lit windows of a city, the domes of an outpost or camp, a pit mine, ruins, a wreck with its scorch mark – and
+  its landing pad, its lights blinking, slides under you.
+- **Touchdown:** the ship comes down onto the pad from above – big at first, near to you, her shadow meeting her –
+  sets down in a cloud of dust (in the ground's colour) with a jolt, and you walk down her ramp.
+- **Lift-off:** up the ramp, dust, the ship rises off the pad, bigger, and is gone upwards; a white flash, and she
+  climbs out of the planet into orbit while the camera pulls back.
+
 ## alpha 0.7.50.2 – 2026-11-10
 
 - **Fix – no way down at the beacon:** a selected descent beacon now has a **Descend** button (also the dock key);

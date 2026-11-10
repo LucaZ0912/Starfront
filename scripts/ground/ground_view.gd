@@ -51,6 +51,14 @@ var _sys := -1
 var _lift_menu: Control = null
 var _ship_spr: Sprite2D
 var _body: Dictionary = {}              # package 50: landed – the body and the site
+var _ship_shadow: Sprite2D
+var _touch := -1.0                      # 0.7.50.3: the touchdown under way (seconds), -1: none
+var _ship_base := Vector2.ZERO
+var _dust: Node2D
+var _puffs: Array = []                  # [pos, vel, life, size]
+var _shake := 0.0
+const TOUCH_TIME := 2.4
+const LIFT_TIME := 2.2
 var _site: Dictionary = {}
 var talk: DialogueView = null          # a conversation (0.7.49.7: after Luz's mockup)
 var _hangar_uid := -1
@@ -113,14 +121,14 @@ func setup_station(p_station: Dictionary, available: Dictionary, crew: Array = [
 
 
 ## Package 50: on a planet – the landing field at a site, your ship on the pad.
-func setup_landing(p_body: Dictionary, p_site: Dictionary, sys_id: int = -1) -> void:
+func setup_landing(p_body: Dictionary, p_site: Dictionary, sys_id: int = -1, touchdown: bool = false) -> void:
 	_body = p_body
 	_site = p_site
 	station = {"id": String(p_site.get("id", "")), "name": String(p_site.get("name", ""))}
 	_avail = {}
 	_crew = []
 	_sys = sys_id
-	go_level("landing", "ramp")
+	go_level("landing", "touchdown" if touchdown else "ramp")
 
 
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
@@ -142,6 +150,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	zone = {}
 	_arrive = 0.0
 	_ship_spr = null
+	_ship_shadow = null
+	_touch = -1.0
+	_puffs.clear()
+	_dust = null
 	level = p_level
 	if level == "landing":
 		var lsz := _ship_size()
@@ -156,7 +168,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_build()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "commercial": "Commercial level"}.get(level, "")]
-	if arrive == "lift" and not map.lifts.is_empty():
+	if arrive == "touchdown" and _ship_spr != null:
+		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
+		pilot.visible = false
+	elif arrive == "lift" and not map.lifts.is_empty():
 		_arrive_lift = 0
 		var l0: Dictionary = map.lifts[0]
 		pilot.pos = Vector2((float(l0["x"]) + float(l0["w"]) * 0.5) * GroundMap.TILE, (float(l0["y"]) + 1.0) * GroundMap.TILE + 5.0)
@@ -271,10 +286,12 @@ func _build() -> void:
 			sh.position = (map.ship_at + Vector2(6, 8)) * GroundMap.SCALE
 			sh.modulate = Color(0, 0, 0, 0.45)
 			_world.add_child(sh)
+			_ship_shadow = sh
 			_ship_spr = Sprite2D.new()
 			_ship_spr.texture = tex
 			_ship_spr.scale = Vector2.ONE * HANGAR_ART * GroundMap.SCALE
 			_ship_spr.position = map.ship_at * GroundMap.SCALE
+			_ship_base = _ship_spr.position
 			_ship_spr.modulate = Color(0.82, 0.84, 0.9) if level == "hangar" else Color.WHITE   # one level down, in the shade
 			_world.add_child(_ship_spr)
 	# the bay is far below: a haze over it, thicker towards the far wall
@@ -414,7 +431,10 @@ func _process(delta: float) -> void:
 	if pilot == null:
 		return
 	_toast_t = maxf(_toast_t - delta, 0.0)
-	if _arrive > 0.0:
+	_update_dust(delta)
+	if _touch >= 0.0:
+		_touchdown_step(delta)
+	elif _arrive > 0.0:
 		_arrive -= delta
 		pilot.step(Vector2.DOWN, delta, 0.8)
 	elif not _ride.is_empty():
@@ -490,7 +510,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
 func use(instant: bool = false) -> bool:
-	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null:
+	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0:
 		return false
 	if not _seat.is_empty():
 		_stand_up()
@@ -661,6 +681,20 @@ func _ride_step(delta: float) -> void:
 				_ride["phase"] = 2
 				_ride["t"] = 0.0
 		2:
+			if level == "landing" and int(_ride["lift"]) < 0 and _ship_spr != null:
+				# lift-off: dust, she rises off the pad, bigger (nearer to you), and is gone upwards
+				var lt := float(_ride["t"])
+				if lt < 0.05 and _puffs.is_empty():
+					_dust_burst(map.ship_at, 18)
+					Audio.play("boost", "lift-off")
+				var lk := clampf(lt / LIFT_TIME, 0.0, 1.0)
+				_ship_spr.position = _ship_base + Vector2(0, -260.0 * lk * lk)
+				_ship_spr.scale = Vector2.ONE * HANGAR_ART * GroundMap.SCALE * lerpf(1.0, 1.6, lk * lk)
+				_ship_spr.modulate.a = 1.0 - smoothstep(0.7, 1.0, lk)
+				if _ship_shadow != null:
+					_ship_shadow.modulate.a = 0.45 * (1.0 - lk)
+				if lt < LIFT_TIME:
+					return
 			if float(_ride["t"]) > (0.6 if int(_ride["lift"]) >= 0 else 0.15):
 				var z: Dictionary = _ride["zone"]
 				var target := String(_ride.get("target", ""))
@@ -752,6 +786,69 @@ func talk_info() -> void:
 		if talk != null:
 			talk.visible = true
 			talk.say("See you aboard, captain." if _talk_hired else "Anything else, captain?", _talk_options()))
+
+
+# ---------------------------------------------------------------- 0.7.50.3: touchdown and dust
+
+## The ship comes down onto the pad – from above (nearer, bigger) to her place, her shadow meeting her; dust and a jolt
+## as she sets down; then the pilot walks down the ramp.
+func _touchdown_step(delta: float) -> void:
+	_touch += delta
+	var k := clampf(_touch / TOUCH_TIME, 0.0, 1.0)
+	var h := 1.0 - smoothstep(0.0, 1.0, minf(k / 0.8, 1.0))
+	_ship_spr.position = _ship_base + Vector2(0, -240.0 * h)
+	_ship_spr.scale = Vector2.ONE * HANGAR_ART * GroundMap.SCALE * lerpf(1.0, 1.55, h)
+	if _ship_shadow != null:
+		_ship_shadow.modulate.a = lerpf(0.45, 0.12, h)
+		_ship_shadow.scale = Vector2.ONE * HANGAR_ART * GroundMap.SCALE * lerpf(1.0, 0.8, h)
+	if k >= 0.8 and _puffs.is_empty() and _touch - delta < TOUCH_TIME * 0.8 + 0.05:
+		_dust_burst(map.ship_at, 22)
+		_shake = 0.35
+		Audio.play("dock_clamp", "touchdown")
+	if k >= 1.0:
+		# down the ramp
+		var ramp_top: Vector2 = map.spawn - Vector2(0, 2.2 * GroundMap.TILE)
+		var wk := clampf((_touch - TOUCH_TIME) / 0.9, 0.0, 1.0)
+		pilot.visible = true
+		pilot.dir = 0
+		pilot.pos = ramp_top.lerp(map.spawn, wk)
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.moving = wk < 1.0
+		if wk >= 1.0:
+			_touch = -1.0
+			pilot.moving = false
+
+
+func _dust_burst(at: Vector2, n: int) -> void:
+	if _dust == null or not is_instance_valid(_dust):
+		_dust = Node2D.new()
+		_dust.z_index = 9
+		_dust.draw.connect(_draw_dust)
+		_world.add_child(_dust)
+	var dc: Color = map.pal.get("terrain_c", Color(0.7, 0.65, 0.55))
+	for i in n:
+		var a := randf() * TAU
+		_puffs.append([at + Vector2.from_angle(a) * randf_range(10.0, 30.0), Vector2.from_angle(a) * randf_range(25.0, 70.0), randf_range(0.8, 1.6), randf_range(5.0, 11.0), dc])
+
+
+func _update_dust(delta: float) -> void:
+	if _puffs.is_empty():
+		return
+	for p in _puffs:
+		p[0] = (p[0] as Vector2) + (p[1] as Vector2) * delta
+		p[1] = (p[1] as Vector2) * (1.0 - delta * 1.6)
+		p[2] = float(p[2]) - delta
+		p[3] = float(p[3]) + delta * 9.0
+	_puffs = _puffs.filter(func(p): return float(p[2]) > 0.0)
+	if _dust != null and is_instance_valid(_dust):
+		_dust.queue_redraw()
+
+
+func _draw_dust() -> void:
+	var s := GroundMap.SCALE
+	for p in _puffs:
+		var c: Color = p[4]
+		_dust.draw_circle((p[0] as Vector2) * s, float(p[3]) * s, Color(c.lightened(0.15), clampf(float(p[2]) * 0.35, 0.0, 0.4)))
 
 
 # ---------------------------------------------------------------- 0.7.49.13: ships, the bartender, drinks
@@ -920,6 +1017,9 @@ func _camera(delta: float = -1.0) -> void:
 		_cam_c = _cam_c.lerp(c, 1.0 - exp(-delta * rate))
 	c = _cam_c
 	var off := vs * 0.5 - c
+	if _shake > 0.0:
+		_shake = maxf(0.0, _shake - (1.0 / 60.0))
+		off += Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 10.0 * _shake / 0.35
 	if mp.x > vs.x:
 		off.x = clampf(off.x, vs.x - mp.x, 0.0)
 	else:

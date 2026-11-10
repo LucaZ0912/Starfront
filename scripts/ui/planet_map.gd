@@ -55,6 +55,11 @@ func open(p_system: int, p_body: Dictionary) -> void:
 		pm.set_shader_parameter("spin", 0.0)
 	spr.position = _center
 	_planet.add_child(spr)
+	spr.scale *= 0.8
+	spr.modulate.a = 0.0
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(spr, "scale", spr.scale / 0.8, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "modulate:a", 1.0, 0.7)
 	_marks = Node2D.new()
 	_marks.draw.connect(_draw_marks)
 	_root.add_child(_marks)
@@ -83,6 +88,10 @@ func open(p_system: int, p_body: Dictionary) -> void:
 	p.offset_top = 100
 	p.custom_minimum_size = Vector2(490, 0)
 	_root.add_child(p)
+	p.modulate.a = 0.0
+	var tw2 := create_tween()
+	tw2.tween_interval(0.6 + sites.size() * 0.22)
+	tw2.tween_property(p, "modulate:a", 1.0, 0.45)
 	var v := UI.vbox(8)
 	p.add_child(v)
 	v.add_child(UI.label("PLACES TO LAND", 16, UI.GOLD))
@@ -142,7 +151,14 @@ func _draw_marks() -> void:
 		var k: Dictionary = Universe.SITE_KINDS[s["kind"]]
 		var p := _site_pos(s)
 		var c: Color = k["col"]
-		var sel := i == selected
+		var sel := i == selected and _t > 0.6 + sites.size() * 0.22
+		# the places light up one after the other, each with a little flash
+		var at := 0.7 + i * 0.22
+		if _t < at:
+			continue
+		var pk := clampf((_t - at) / 0.35, 0.0, 1.0)
+		if pk < 1.0:
+			_marks.draw_circle(p, 6.0 + 26.0 * pk, Color(c, 0.6 * (1.0 - pk)))
 		if sel:
 			for r in 2:
 				var ph := fposmod(_t * 0.8 + r * 0.5, 1.0)

@@ -187,7 +187,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   `back`. `main`: `_on_descended`, `land_at(body, site)`, `take_off()`.
 - `DeckGen.build_landing(body, site, ship_len, ship_beam)` / `palette_for_body`: the landing field (floor kinds 13
   ground, 14 pad concrete, 15 gravel; decals `pad_marks`, `ramp`; the ground all round as the "hull"); the view's
-  level `landing` (`GroundView.setup_landing`), the ramp = zone `exit`, the place itself = zone `soon` for now.; `texture()` renders floors and walls once.
+  level `landing` (`GroundView.setup_landing`), the ramp = zone `exit`, the place itself = zone `soon` for now.
+- 0.7.50.3: `main.fade(col, secs)` (a fade layer over everything); `SystemView.descent_ending(atmo)` (the flash),
+  zoom during descent/ascent (`z0`); `PlanetMap` intro (planet turns in, places light up, list fades in);
+  `scripts/ui/flight_scene.gd` – `FlightScene` (`ground_texture(body)`, `cloud_texture`, the place drawn on its
+  patch of land), `main.fly_down_to(body, site)` → `land_at(…, touchdown)`; `GroundView` touchdown (`_touchdown_step`,
+  `_dust_burst`, shake) and lift-off (in the ramp ride, `LIFT_TIME`).; `texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
 - `deck_gen.gd` – `DeckGen.build(station, available, crew)`: lift lobby (west) → corridor → shops below (`_shop`,

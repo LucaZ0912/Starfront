@@ -116,6 +116,7 @@ func load_system(sys: int) -> void:
 	last_load_ms = float(Time.get_ticks_usec() - t0) / 1000.0
 	view.station_docked.connect(_on_station_docked)
 	view.descended.connect(_on_descended)                       # package 50
+	view.descent_ending.connect(_on_descent_ending)
 	view.ascended.connect(_update_input)
 	Commands.world = view
 	hud.set_view(view)
@@ -123,7 +124,7 @@ func load_system(sys: int) -> void:
 
 
 func _update_input() -> void:
-	var overlay: bool = (planet_map != null and is_instance_valid(planet_map)) or galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace
+	var overlay: bool = (planet_map != null and is_instance_valid(planet_map)) or (flight != null and is_instance_valid(flight)) or galaxy.visible or station_panel.visible or ship_menu.visible or pilot_window.visible or loss_window.visible or in_hyperspace
 	if view != null and is_instance_valid(view):
 		view.input_enabled = not overlay and ground == null
 	if ground != null and is_instance_valid(ground):
@@ -134,6 +135,33 @@ func _update_input() -> void:
 
 var ground: GroundView = null
 var planet_map: PlanetMap = null        # package 50: the planet below, its places to land
+var flight: FlightScene = null          # 0.7.50.3: the flight down through the air to the place
+var _fade: ColorRect = null             # 0.7.50.3: flashes and fades over everything
+var _fade_tw: Tween = null
+
+
+## Fades the screen to a colour (alpha 1) or back (alpha 0) – over everything.
+func fade(col: Color, secs: float) -> Tween:
+	if _fade == null:
+		var cl := CanvasLayer.new()
+		cl.layer = 40
+		add_child(cl)
+		_fade = ColorRect.new()
+		_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_fade.color = Color(col, 0.0)
+		cl.add_child(_fade)
+	if _fade_tw != null and _fade_tw.is_valid():
+		_fade_tw.kill()
+	_fade_tw = create_tween()
+	_fade_tw.tween_property(_fade, "color", col, secs)
+	return _fade_tw
+
+
+## The way down ends: a white flash where there is air (the heat), then black.
+func _on_descent_ending(atmo: bool) -> void:
+	fade(Color(1.0, 0.95, 0.85, 1.0) if atmo else Color(0, 0, 0, 1.0), 0.55)
+	_fade_tw.tween_property(_fade, "color", Color(0, 0, 0, 1.0), 0.35)
 
 
 ## Gets out of the ship and walks the deck of the station it is docked at.
@@ -178,9 +206,11 @@ func _on_descended(body_id: String) -> void:
 	planet_map = PlanetMap.new()
 	add_child(planet_map)
 	planet_map.open(f.system_id, body)
-	planet_map.land.connect(func(site: Dictionary): land_at(body, site))
+	planet_map.land.connect(func(site: Dictionary): fly_down_to(body, site))
 	planet_map.back.connect(func(): take_off())
 	GameState.codex.event("landing")
+	if _fade != null:
+		fade(Color(0, 0, 0, 0), 0.9)                              # the map fades in out of the black
 	_update_input()
 
 
@@ -190,14 +220,31 @@ func _close_planet_map() -> void:
 	planet_map = null
 
 
-## Down at a place: the landing field, your ship on the pad.
-func land_at(body: Dictionary, site: Dictionary) -> void:
+## The flight down through the air to the place you picked – then the touchdown.
+func fly_down_to(body: Dictionary, site: Dictionary) -> void:
+	_close_planet_map()
+	flight = FlightScene.new()
+	add_child(flight)
+	flight.open(body, site)
+	flight.finished.connect(func():
+		var tw := fade(Color(0, 0, 0, 1), 0.35)
+		tw.finished.connect(func():
+			if flight != null and is_instance_valid(flight):
+				flight.queue_free()
+			flight = null
+			land_at(body, site, true)
+			fade(Color(0, 0, 0, 0), 0.6)))
+	_update_input()
+
+
+## Down at a place: the landing field, your ship on the pad (touchdown: she comes down onto it first).
+func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false) -> void:
 	_close_planet_map()
 	close_deck(false)
 	ground = GroundView.new()
 	ground.name = "Ground"
 	add_child(ground)
-	ground.setup_landing(body, site, GameState.current_system)
+	ground.setup_landing(body, site, GameState.current_system, touchdown)
 	ground.used.connect(_on_deck_use)
 	GameState.log_msg("Landed at %s on %s." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
 	_update_input()
@@ -215,6 +262,9 @@ func take_off() -> void:
 	f.docked_at = ""
 	if view != null and is_instance_valid(view):
 		view.start_ascent(body_id)
+	fade(Color(1.0, 0.95, 0.85, 0.0), 0.01)                       # (makes sure the fade layer is there)
+	_fade.color = Color(1.0, 0.95, 0.85, 1.0)                     # out of the air in a flash …
+	fade(Color(1.0, 0.95, 0.85, 0.0), 1.1)                        # … that clears over the ascent
 	_update_input()
 
 
