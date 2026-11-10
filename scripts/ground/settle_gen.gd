@@ -76,6 +76,7 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 	m.setup(W, H)
 	var bk := bounds(body)
 	var sea := bk == "sea"
+	sealed = not Universe.has_atmosphere(body)
 	# the ground (or the sea, with the settlement on its platforms)
 	if sea:
 		m.fill(0, 0, W, H, GroundMap.T.BLOCK, 10)
@@ -352,12 +353,12 @@ static func _econ(m: GroundMap, eco: String, bk: String, body: Dictionary, rng: 
 			info["fields"] = [Rect2(Vector2(rx, ry) * T, Vector2(rw, rh) * T)]
 		"industry":
 			m.decals.append({"kind": "yard", "x": rx, "y": ry, "w": rw, "h": rh})
-			m.add_object(_building("prefab", rx + 1, ry + 3, 13, 4, 2, "independent", rng, Color(1.0, 0.8, 0.4)))
+			m.add_object(_building("hab", rx + 1, ry + 3, 13, 4, 2, "independent", rng, Color(1.0, 0.8, 0.4)))
 			m.add_object({"kind": "smokestack", "x": rx + 15, "y": ry + 5, "w": 3, "h": 2, "rise": 230})
 			m.add_object({"kind": "smokestack", "x": rx + 19, "y": ry + 5, "w": 3, "h": 2, "rise": 200, "col": Color(0.55, 0.5, 0.5)})
 			for row in 2:                                            # twelve-metre containers, two high
-				m.add_object(_building("container", rx + 1, ry + rh - 2 - row * 4, 11, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
-				m.add_object(_building("container", rx + 12, ry + rh - 2 - row * 4, 11, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
+				m.add_object(_building("stack", rx + 1, ry + rh - 2 - row * 4, 11, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
+				m.add_object(_building("stack", rx + 12, ry + rh - 2 - row * 4, 11, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
 			info["stacks"] = [Vector2(rx + 16.5, ry + 7) * T + Vector2(0, -230 - 4), Vector2(rx + 20.5, ry + 7) * T + Vector2(0, -200 - 4)]
 			info["crane"] = Rect2(Vector2(rx + 1, ry + rh - 10) * T, Vector2(rw - 2, 9) * T)
 			info["road"] = [Vector2(rx + 4, ry + 12) * T, Vector2(rx + rw - 4, ry + 12) * T]
@@ -381,7 +382,7 @@ static func _econ(m: GroundMap, eco: String, bk: String, body: Dictionary, rng: 
 			m.decals.append({"kind": "yard", "x": rx, "y": ry, "w": rw, "h": rh})
 			for t in 4:
 				m.add_object({"kind": "target", "x": rx + 2 + t * 5, "y": ry + 2, "w": 1, "h": 1, "rise": 26})
-			m.add_object(_building("prefab", rx + 2, ry + 9, 14, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
+			m.add_object(_building("hab", rx + 2, ry + 9, 14, 3, 1, "independent", rng, Color(1.0, 0.8, 0.4)))
 			for v in 2:
 				m.add_object({"kind": "tank_vehicle", "x": rx + 1 + v * 11, "y": ry + rh - 3, "w": 9, "h": 3, "rise": 34})
 			info["loop"] = Rect2(Vector2(rx + 5, ry + 14) * T, Vector2(rw - 10, 6) * T)
@@ -431,15 +432,21 @@ static func _free_any(m: GroundMap, x: int, y: int, w: int, h: int) -> bool:
 
 
 ## 0.7.50.11: which architecture a house gets – by its power, and the world it stands on.
+## 0.7.51.6 (Luz: no suburban houses): only sci-fi kinds – the Independents' armoured habs, stacked pods and pressure
+## halls, the Assembly's composite-and-glass terraces and domes, the Covenant's stone spires, the Directorate's white
+## modules; dry worlds print theirs from regolith, airless and hostile worlds lean to domes and pressure halls.
+static var sealed := false             # 0.7.51.6: the world has no air to breathe – portholes and airlocks (set by build)
+
+
 static func _arch(skey: String, bk: String, rng: RandomNumberGenerator, special: bool = false) -> String:
-	var pool: Array = {"independent": ["prefab", "container", "quonset", "prefab"], "assembly": ["pitched", "dome", "pitched", "prefab"],
-		"covenant": ["stone", "stone", "pitched"], "directorate": ["module", "dome", "module"]}.get(skey, ["prefab"])
+	var pool: Array = {"independent": ["hab", "stack", "hall", "hab"], "assembly": ["terrace", "dome", "terrace", "terrace"],
+		"covenant": ["spire", "spire", "hall"], "directorate": ["module", "dome", "module"]}.get(skey, ["hab"])
 	if special:
-		pool = {"independent": ["prefab"], "assembly": ["pitched"], "covenant": ["stone"], "directorate": ["module"]}.get(skey, ["prefab"])
-	if bk == "dunes" and rng.randf() < (0.4 if special else 0.6):
-		return "adobe"
-	if bk in ["ice", "rocks", "lava"] and not special and rng.randf() < 0.45:
-		return ["dome", "quonset"][rng.randi() % 2]
+		pool = {"independent": ["hab"], "assembly": ["terrace"], "covenant": ["spire"], "directorate": ["module"]}.get(skey, ["hab"])
+	if bk == "dunes" and skey != "covenant" and rng.randf() < (0.4 if special else 0.55):
+		return "sinter"
+	if (sealed or bk in ["ice", "rocks", "lava"]) and not special and rng.randf() < 0.45:
+		return ["dome", "hall"][rng.randi() % 2]
 	return String(pool[rng.randi() % pool.size()])
 
 
@@ -448,35 +455,35 @@ static func _building(arch: String, x: int, y: int, w: int, h: int, storeys: int
 	var roof: Color
 	var wall: Color
 	match arch:
-		"pitched":
-			roof = [Color(0.62, 0.32, 0.22), Color(0.42, 0.4, 0.45), Color(0.55, 0.42, 0.28)][rng.randi() % 3]
-			wall = [Color(0.88, 0.84, 0.74), Color(0.62, 0.45, 0.3), Color(0.8, 0.82, 0.86)][rng.randi() % 3]
-		"stone":
-			roof = Color(0.3, 0.27, 0.3)
-			wall = Color(0.58, 0.46, 0.4).lerp(Color(0.5, 0.48, 0.45), rng.randf())
-		"adobe":
-			roof = Color(0.85, 0.72, 0.52).lightened(rng.randf_range(-0.05, 0.05))
-			wall = Color(0.82, 0.66, 0.46).lightened(rng.randf_range(-0.06, 0.04))
+		"terrace":
+			roof = Color(0.8, 0.8, 0.76).lerp(Color(0.86, 0.84, 0.78), rng.randf())
+			wall = [Color(0.9, 0.88, 0.82), Color(0.84, 0.86, 0.88), Color(0.92, 0.9, 0.86)][rng.randi() % 3]
+		"spire":
+			roof = Color(0.3, 0.2, 0.19)
+			wall = Color(0.46, 0.27, 0.22).lerp(Color(0.4, 0.25, 0.22), rng.randf())
+		"sinter":
+			roof = Color(0.78, 0.64, 0.46).lightened(rng.randf_range(-0.05, 0.05))
+			wall = Color(0.74, 0.58, 0.4).lightened(rng.randf_range(-0.06, 0.04))
 		"module":
 			roof = Color(0.86, 0.88, 0.88)
 			wall = Color(0.9, 0.92, 0.92)
 		"dome":
 			roof = Color(0.82, 0.84, 0.86) if rng.randf() < 0.6 else Color(0.62, 0.66, 0.72)
 			wall = roof.darkened(0.1)
-		"quonset":
-			roof = [Color(0.55, 0.58, 0.55), Color(0.45, 0.5, 0.42), Color(0.6, 0.55, 0.45)][rng.randi() % 3]
-			wall = roof.darkened(0.15)
+		"hall":
+			roof = [Color(0.5, 0.53, 0.55), Color(0.42, 0.46, 0.42), Color(0.56, 0.52, 0.46)][rng.randi() % 3]
+			wall = roof.darkened(0.12)
 		_:
-			roof = [Color(0.45, 0.47, 0.52), Color(0.5, 0.36, 0.28), Color(0.35, 0.45, 0.5), Color(0.55, 0.55, 0.5)][rng.randi() % 4]
-			wall = [Color(0.6, 0.62, 0.66), Color(0.55, 0.5, 0.42), Color(0.42, 0.5, 0.55)][rng.randi() % 3]
+			roof = [Color(0.36, 0.38, 0.42), Color(0.42, 0.34, 0.3), Color(0.3, 0.38, 0.42), Color(0.44, 0.44, 0.42)][rng.randi() % 4]
+			wall = [Color(0.5, 0.52, 0.56), Color(0.48, 0.44, 0.4), Color(0.38, 0.45, 0.5), Color(0.34, 0.36, 0.4)][rng.randi() % 4]
 	var rise := BuildArt.STOREY * storeys + 6 - h * GroundMap.TILE + 22 + rng.randi_range(0, 16)   # the front to scale, a roof above it
-	if arch == "container":
+	if arch == "stack":
 		rise = BuildArt.CONT_H * 2 - h * GroundMap.TILE + 30
 	if arch == "dome":
 		rise = w * 8
 	var acc: Color = CityStyle.STYLES.get(skey, CityStyle.STYLES["independent"])["accent"]
 	return {"kind": "building", "arch": arch, "x": x, "y": y, "w": w, "h": h, "rise": rise, "storeys": storeys, "col": roof, "col2": wall,
-		"seed": rng.randi(), "lamp": lamp, "win": Color(1.0, 0.85, 0.55) if rng.randf() < 0.7 else Color(0.75, 0.88, 1.0), "acc": acc,
+		"seed": rng.randi(), "lamp": lamp, "sealed": sealed, "win": Color(1.0, 0.85, 0.55) if rng.randf() < 0.7 else Color(0.75, 0.88, 1.0), "acc": acc,
 		"door": door if door >= 0 else rng.randi_range(8, maxi(9, w * 16 - 18))}
 
 

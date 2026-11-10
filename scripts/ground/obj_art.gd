@@ -523,16 +523,19 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			for yy4 in range(10, fy + ph - 4, 8):
 				_r(img, pw / 2 - 5, yy4, 10, 1, Color(0.4, 0.4, 0.44))
 			_r(img, pw / 2 - 4, 4, 8, 3, Color(0.3, 0.3, 0.32))
-		"lookout":                  # a lookout tower: legs, a platform, a roof
-			var lc2 := wood
+		"lookout":                  # 0.7.51.6: a lookout tower – a steel lattice, a glazed cab, a beacon
+			var lc2 := Color(0.32, 0.33, 0.37)
 			_r(img, 3, 18, 2, fy + ph - 18, lc2)
 			_r(img, pw - 5, 18, 2, fy + ph - 18, lc2)
 			for yy5 in range(24, fy + ph - 4, 9):
-				_r(img, 3, yy5, pw - 6, 1, lc2.darkened(0.2))
-			_r(img, 0, 14, pw, 6, lc2.lightened(0.1))
-			_r(img, 0, 14, pw, 1, lc2.lightened(0.3))
-			_r(img, 2, 2, pw - 4, 10, Color(0.6, 0.3, 0.22))
-			_r(img, 2, 2, pw - 4, 2, Color(0.75, 0.4, 0.3))
+				for t5 in pw - 8:
+					_p(img, 4 + t5, yy5 + int(t5 * 8.0 / (pw - 8)), lc2.lightened(0.1))
+			_r(img, 0, 14, pw, 4, lc2.lightened(0.15))
+			_r(img, 0, 17, pw, 1, Color(0.35, 0.95, 1.0))
+			_r(img, 2, 4, pw - 4, 10, Color(0.4, 0.62, 0.75))
+			_r(img, 2, 4, pw - 4, 2, Color(0.25, 0.26, 0.3))
+			_r(img, 3, 7, 4, 2, Color(0.85, 0.95, 1.0))
+			_r(img, pw / 2 - 1, 1, 2, 3, Color(1.0, 0.3, 0.25))
 		"heap":                     # a stockpile of ore
 			var hc: Color = o.get("col", Color(0.45, 0.38, 0.3))
 			_ellipse(img, pw * 0.5, fy + ph - 6.0, pw * 0.5, 12.0, hc.darkened(0.2))
@@ -540,11 +543,13 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.38, fy + ph - 14.0, pw * 0.18, 4.0, hc.lightened(0.15))
 			for k12 in 20:
 				_p(img, int(pw * 0.15 + (k12 * 37) % int(pw * 0.7)), int(fy + ph - 16 + (k12 * 13) % 14), hc.darkened(0.3) if k12 % 2 else Color(0.75, 0.6, 0.35))
-		"target":                   # a practice target on its stand
-			_r(img, pw / 2 - 1, fy - 2, 2, ph + 2, Color(0.35, 0.3, 0.25))
-			_ellipse(img, pw * 0.5, fy - 4.0, 6.0, 6.0, Color(0.9, 0.9, 0.85))
-			_ellipse(img, pw * 0.5, fy - 4.0, 4.0, 4.0, Color(0.85, 0.2, 0.2))
-			_ellipse(img, pw * 0.5, fy - 4.0, 2.0, 2.0, Color(0.9, 0.9, 0.85))
+		"target":                   # 0.7.51.6: a practice target – a plated stand projecting rings of light
+			_r(img, pw / 2 - 1, fy - 2, 3, ph + 2, Color(0.25, 0.26, 0.3))
+			_r(img, pw / 2 - 3, fy + ph - 3, 7, 3, Color(0.2, 0.21, 0.24))
+			_ellipse(img, pw * 0.5, fy - 5.0, 6.5, 6.5, Color(1.0, 0.35, 0.25, 0.85))
+			_ellipse(img, pw * 0.5, fy - 5.0, 5.0, 5.0, Color(0.12, 0.08, 0.1, 0.6))
+			_ellipse(img, pw * 0.5, fy - 5.0, 3.0, 3.0, Color(1.0, 0.45, 0.3, 0.9))
+			_ellipse(img, pw * 0.5, fy - 5.0, 1.5, 1.5, Color(1.0, 0.9, 0.8))
 		"tank_vehicle":             # an armoured vehicle, parked: tracks, hull, turret and gun
 			var tc2: Color = o.get("col", Color(0.35, 0.4, 0.3))
 			var kz := maxf(1.0, pw / 80.0)
@@ -558,19 +563,25 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, ap, gb - int(22 * kz), 1, int(11 * kz), tc2.darkened(0.2))
 			_r(img, pw / 2 - int(14 * kz), gb - int(36 * kz), int(28 * kz), int(12 * kz), tc2.darkened(0.08))   # the turret
 			_r(img, pw / 2 + int(12 * kz), gb - int(32 * kz), int(34 * kz), int(4 * kz), tc2.darkened(0.25))   # the gun
-		"stall":                    # a market stall: its striped awning, goods laid out below
+		"stall":                    # 0.7.51.6: a market stall – a metal counter edged with light, a plated canopy on a mast, a holo sign
 			var ac: Color = o.get("col", Color(0.85, 0.3, 0.25))
 			var srng2 := RandomNumberGenerator.new()
 			srng2.seed = int(o.get("seed", 5))
-			_r(img, 2, fy + 2, 1, ph + 18, Color(0.3, 0.25, 0.2))
-			_r(img, pw - 3, fy + 2, 1, ph + 18, Color(0.3, 0.25, 0.2))
-			_r(img, 1, fy + ph - 6, pw - 2, 6, wood)
-			_r(img, 1, fy + ph - 6, pw - 2, 1, wood.lightened(0.2))
-			for g in range(3, pw - 4, 3):
-				_r(img, g, fy + ph - 9, 2, 3, Color.from_hsv(srng2.randf(), 0.6, 0.9))
-			for k9 in range(0, pw, 4):
-				_r(img, k9, 2, 4, 10, ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85))
-				_r(img, k9, 12, 4, 2, (ac if (k9 / 4) % 2 == 0 else Color(0.95, 0.92, 0.85)).darkened(0.2))
+			_r(img, 3, 12, 2, fy + ph - 12, Color(0.28, 0.29, 0.32))
+			_r(img, pw - 5, 12, 2, fy + ph - 12, Color(0.28, 0.29, 0.32))
+			_r(img, 1, fy + ph - 9, pw - 2, 9, Color(0.32, 0.34, 0.38))           # the counter
+			_r(img, 1, fy + ph - 9, pw - 2, 1, Color(0.55, 0.58, 0.62))
+			_r(img, 1, fy + ph - 3, pw - 2, 1, ac)
+			for g in range(3, pw - 4, 4):
+				var gc := Color.from_hsv(srng2.randf(), 0.55, 0.9)
+				_r(img, g, fy + ph - 12, 3, 3, gc)
+				_p(img, g, fy + ph - 12, gc.lightened(0.4))
+			_r(img, 0, 6, pw, 5, Color(0.22, 0.23, 0.26))                         # the canopy, plated
+			_r(img, 0, 6, pw, 1, Color(0.45, 0.47, 0.5))
+			_r(img, 0, 11, pw, 1, ac)
+			_r(img, pw / 2 - 7, 0, 14, 5, Color(0.05, 0.05, 0.08))                  # its holo sign
+			_r(img, pw / 2 - 6, 1, 12, 1, ac.lightened(0.3))
+			_r(img, pw / 2 - 6, 3, 8, 1, ac)
 		"rover":                    # a parked ground rover: six wheels, a cab, a cargo bed
 			var rcol: Color = o.get("col", Color(0.75, 0.55, 0.2))
 			var kr := maxf(1.0, pw / 48.0)
@@ -587,21 +598,28 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			for cg in range(int(5 * kr), pw - int(20 * kr), 6):
 				_r(img, cg, gb2 - int(18 * kr), 4, int(3 * kr), Color(0.45, 0.4, 0.32))      # cargo in its bed
 			_r(img, pw - 3, gb2 - int(13 * kr), 2, 2, Color(1.0, 0.95, 0.75))
-		"signpost":                 # a post with arrows to the places
-			_r(img, pw / 2, 2, 2, fy + ph - 2, Color(0.3, 0.28, 0.25))
-			fy = 2 + 20                                    # the arrows near its top
+		"signpost":                 # 0.7.51.6: a wayfinding pylon – three lit arrow plates
+			_r(img, pw / 2 - 1, 2, 4, fy + ph - 2, Color(0.22, 0.23, 0.26))
+			_r(img, pw / 2 - 1, 2, 1, fy + ph - 2, Color(0.4, 0.42, 0.46))
+			_r(img, pw / 2 - 2, fy + ph - 4, 6, 4, Color(0.18, 0.19, 0.22))
+			fy = 2 + 20                                    # the plates near its top
 			for k10 in 3:
-				var sc3: Color = [Color(0.85, 0.75, 0.3), Color(0.3, 0.6, 0.8), Color(0.75, 0.35, 0.3)][k10]
+				var sc3: Color = [Color(0.35, 0.95, 1.0), Color(1.0, 0.75, 0.3), Color(0.45, 1.0, 0.6)][k10]
 				var left := k10 % 2 == 0
-				_r(img, pw / 2 - (10 if left else 0), fy - 18 + k10 * 6, 12, 4, sc3)
-				_p(img, pw / 2 - (11 if left else -12), fy - 17 + k10 * 6, sc3)
-				_r(img, pw / 2 - (8 if left else -2), fy - 17 + k10 * 6, 6, 1, sc3.lightened(0.4))
-		"cable_pole":               # a power pole with its insulators, cables running off
-			_r(img, pw / 2 - 1, 2, 3, fy + ph - 2, Color(0.35, 0.28, 0.2))
-			_r(img, pw / 2 - 7, 6, 15, 2, Color(0.3, 0.25, 0.2))
+				var ax := pw / 2 - (11 if left else -3)
+				_r(img, ax, fy - 18 + k10 * 6, 12, 5, Color(0.06, 0.07, 0.09))
+				_r(img, ax + 1, fy - 16 + k10 * 6, 10, 1, sc3)
+				_p(img, ax + (0 if left else 11), fy - 16 + k10 * 6, sc3.lightened(0.4))
+		"cable_pole":               # 0.7.51.6: a power mast – a steel conduit with its energy line, a junction box, a beacon
+			_r(img, pw / 2 - 2, 4, 4, fy + ph - 4, Color(0.3, 0.31, 0.35))
+			_r(img, pw / 2 - 2, 4, 1, fy + ph - 4, Color(0.48, 0.5, 0.54))
+			_r(img, pw / 2, 10, 1, fy + ph - 16, Color(0.35, 0.95, 1.0))
+			_r(img, pw / 2 - 7, 8, 15, 3, Color(0.25, 0.26, 0.3))
 			for k11 in 3:
-				_r(img, pw / 2 - 6 + k11 * 6, 3, 2, 3, Color(0.75, 0.8, 0.85))
-			_r(img, pw / 2 + 2, 18, 4, 6, Color(0.4, 0.42, 0.45))
+				_r(img, pw / 2 - 6 + k11 * 6, 6, 2, 2, Color(0.35, 0.95, 1.0))
+			_r(img, pw / 2 + 2, 24, 5, 8, Color(0.36, 0.38, 0.42))
+			_r(img, pw / 2 + 3, 26, 2, 2, Color(0.4, 1.0, 0.55))
+			_r(img, pw / 2 - 1, 1, 2, 2, Color(1.0, 0.3, 0.25))
 		"dune":
 			var dc: Color = o.get("col", Color(0.85, 0.7, 0.45))
 			_ellipse(img, pw * 0.5, fy + ph * 0.6, pw * 0.5, ph * 0.45 + 3.0, dc.darkened(0.12))

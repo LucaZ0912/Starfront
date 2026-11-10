@@ -262,6 +262,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   `PilotGear.env_step(delta, env, sprinting)`, `speed_mult`, `use_belt(i)`, `charge()`, `aboard()`, `stim_t`;
   `GroundView.env`, `indoors()`, `_env_step`, `_collapse` (used {kind "collapse"}), `use_belt`, `_outside_look`, zone
   kind `charge`; `scripts/ground/suit_hud.gd` – `SuitHud`; `main` calls `gear.aboard()` at landing, decks, take-off.
+- 0.7.51.6: `BuildArt` sci-fi only – `ARCHES` hab/stack/hall/dome/terrace/spire/module/sinter (`ALIAS` maps the old
+  names), `o.sealed` (portholes, `_airlock`), `_armour` / `_composite` / `_stone` / `_printed` walls, `_curtain`,
+  `_hex_crown`; `SettleGen.sealed` (set by `build` from `Universe.has_atmosphere`), `_arch` by power and world;
+  `ObjArt` stall, signpost, cable_pole, lookout, target and decals `awning`, `boardwalk` rebuilt.
 - 0.7.51.4: service `clinic` (corp `mhc`, `requires` "clinic" – not in settlements, `clinic_panel.gd`), command
   `clinic_heal` (`Commands.clinic_price()`), `DeckGen.SHOPS` with `clinic` (object `med_bed`), `GroundView` arrive
   "clinic" / `_clinic_spot()` / `wake_in_clinic()`; `main._wake_at(st)`, `_wake_after_loss` (`GameState.wake_pending`

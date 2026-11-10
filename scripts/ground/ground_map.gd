@@ -618,11 +618,19 @@ func _decal(d: Dictionary) -> void:
 			for t in n:
 				var u := float(t) / maxf(n, 1)
 				_px(int(lerpf(px, x1, u)), int(lerpf(py, y1, u)) + int(sin(u * 9.0) * 1.5), Color(0.12, 0.12, 0.14))
-		"boardwalk":               # a floating walkway of planks
-			_rect(px, py, pw, ph, Color(0.45, 0.33, 0.22))
-			for x in range(px, px + pw, 4):
-				_rect(x, py, 1, ph, Color(0.32, 0.23, 0.15))
-			_rect(px, py, pw, 1, Color(0.6, 0.46, 0.32))
+		"boardwalk":               # a floating walkway – 0.7.51.6: steel grating on pontoons, a light strip along its edges
+			_rect(px, py, pw, ph, Color(0.3, 0.32, 0.36))
+			for x in range(px, px + pw, 3):
+				_rect(x, py, 1, ph, Color(0.22, 0.24, 0.27))
+			for y in range(py, py + ph, 3):
+				_rect(px, y, pw, 1, Color(0.24, 0.26, 0.29))
+			_rect(px, py, pw, 1, Color(0.55, 0.58, 0.62))
+			_rect(px, py + ph - 2, pw, 2, Color(0.18, 0.19, 0.22))
+			if pw >= ph:
+				_rect(px, py + 1, pw, 1, Color(0.35, 0.95, 1.0, 0.7))
+			else:
+				_rect(px + 1, py, 1, ph, Color(0.35, 0.95, 1.0, 0.7))
+				_rect(px + pw - 2, py, 1, ph, Color(0.35, 0.95, 1.0, 0.7))
 		"canal":                   # an irrigation channel
 			_rect(px, py, pw, ph, Color(0.2, 0.35, 0.5))
 			_rect(px, py, pw, 1, Color(0.45, 0.6, 0.72))
@@ -791,18 +799,22 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px + 4, py + 2, pw - 8, 1, Color(0.3, 0.32, 0.36))
 			_rect(px + pw / 2 - 4, py - 15, 8, 3, Color(0.08, 0.08, 0.1))
 			_rect(px + pw / 2 - 2, py - 14, 4, 1, c)
-		"awning":                  # 0.7.50.11: a shop's striped awning along its wall, the door left free
+		"awning":                  # 0.7.50.11: a shop's canopy along its wall, the door left free – 0.7.51.6: plated, lit underneath
 			var door_l := pw / 2 - TILE - 2
 			var door_r := pw / 2 + TILE + 2
-			for x3 in range(px + 2, px + pw - 2, 4):
-				if x3 - px > door_l and x3 - px < door_r:
+			for seg in [[2, door_l], [door_r, pw - 2]]:
+				var sx0: int = seg[0]
+				var sw0: int = seg[1] - seg[0]
+				if sw0 <= 0:
 					continue
-				var stripe := c if ((x3 - px) / 4) % 2 == 0 else Color(0.94, 0.92, 0.86)
-				_rect(x3, py + 2, 4, 9, stripe)
-				_rect(x3, py + 11, 4, 2, stripe.darkened(0.25))
-				_px(x3 + 2, py + 13, stripe.darkened(0.25))
-			_rect(px + 2, py + 1, door_l - 2, 1, c.darkened(0.4))
-			_rect(px + door_r, py + 1, pw - door_r - 2, 1, c.darkened(0.4))
+				_rect(px + sx0, py + 2, sw0, 7, Color(0.2, 0.21, 0.24))
+				_rect(px + sx0, py + 2, sw0, 1, Color(0.45, 0.47, 0.52))
+				for x3 in range(px + sx0 + 10, px + sx0 + sw0, 12):
+					_rect(x3, py + 3, 1, 6, Color(0.12, 0.13, 0.15))
+				_rect(px + sx0, py + 9, sw0, 2, c)
+				_rect(px + sx0, py + 11, sw0, 1, c.darkened(0.45))
+				for x4 in range(px + sx0 + 4, px + sx0 + sw0 - 2, 8):
+					_px(x4, py + 12, c.lightened(0.3))
 		"flag":                    # 0.7.50.7: a power's flag hanging on the wall – cloth, its sign, a pointed end
 			var c2: Color = d.get("col2", Color(1, 1, 1))
 			_rect(px + 1, py - 13, pw - 2, 2, Color(0.25, 0.22, 0.18))

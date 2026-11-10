@@ -3,6 +3,29 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.6 – 2026-11-10
+
+**Sci-fi buildings on the ground (Luz: "buildings that look like suburban houses won't do at all").** Every building
+of the settlements rebuilt as a real sci-fi building, at the realistic scale (a storey ~2.6 m, doors 2 m) – no pitched
+roofs, planks, shutters, flower boxes, rubble stone or adobe any more.
+- **Eight architectures:** Independent – the armoured **hab** (big plates with bolted seams, heat-exchanger fins on
+  the roof, deep rounded windows, a pressure door under a plated canopy, neon sign, cables), **stacked hab pods**
+  with light seams and a steel stair, **pressure halls** of armour segments with glowing seams; Assembly – the
+  **terrace** of pale composite and glass (a glass front per storey, a terrace with a glass railing, roof gardens, a
+  glass dome) and **habitat domes** with a glazed crown; Covenant – the **spire** of great dark red-brown slabs,
+  buttresses with gold lines of light, lancet windows lit gold, a parapet of pointed merlons and a spire, red
+  banners, a metal blast door in a pointed gold frame; Directorate – white **modules** with a hexagonal crown and
+  solar panels; dry worlds – **printed regolith** (smooth, faint layers, rounded, slot windows behind louvres, a
+  portal round the door, sand filters).
+- **Worlds without air:** every window a porthole, every door an airlock (hazard frame, hatch, green status light);
+  domes and pressure halls more often.
+- **The other things in the street, sci-fi too:** the wooden power pole is a steel power mast with its energy line,
+  the striped canvas awnings over the shops are plated canopies lit underneath, market stalls have a metal counter
+  and a holo sign, the signpost is a pylon of lit arrow plates, the lookout tower steel with a glazed cab, the fish
+  farms' walkway steel grating on pontoons, the practice targets project rings of light.
+- Smoke test: every settlement building is one of the sci-fi architectures, sealed exactly on airless worlds, and
+  every architecture paints (sealed and not).
+
 ## alpha 0.7.51.5 – 2026-11-10
 
 **Debug functions for packages 49–51** (F12 → new tab **Ground**) – every package brings its debug functions

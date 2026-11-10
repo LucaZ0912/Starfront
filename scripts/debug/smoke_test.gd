@@ -8050,6 +8050,41 @@ func _test_settlement(view: SystemView, body: Dictionary, sites_all: Array) -> v
 		and town.get("settlement", false) and f.docked_at == Universe.city_id(body, site) and GameState.codex.unlocked.has("basics_settlements"),
 		"0.7.50.10: %s – a settlement: 4 pads (drones coming and going), %d shops, '%s', %d guards, bounded by %s (%d), economy area: %s – market: %s" % [String(site["name"]), shops, special, guards, SettleGen.bounds(body), border, String(g.map.econ.get("kind", "?")), "trades" if buy == "" else buy])
 	_test_gear_shop(g, town)
+	_test_sf_buildings(g, body)
+
+
+## 0.7.51.6 (Luz: no suburban houses): every building of a settlement is one of the sci-fi architectures – no pitched
+## roofs, stone cottages or adobe – each to scale (a storey ~2.6 m), and on a world without air it is sealed.
+func _test_sf_buildings(g, body: Dictionary) -> void:
+	var archs := {}
+	var ok := true
+	var sealed_ok := true
+	var airless := not Universe.has_atmosphere(body)
+	for o in g.map.objects:
+		if String(o["kind"]) != "building":
+			continue
+		var a := String(o.get("arch", ""))
+		archs[a] = true
+		ok = ok and a in BuildArt.ARCHES
+		sealed_ok = sealed_ok and bool(o.get("sealed", false)) == airless
+	# each architecture paints, sealed and not, with a door to scale
+	var painted := true
+	for a2 in BuildArt.ARCHES:
+		for sl in [false, true]:
+			var img := Image.create(160, 140, false, Image.FORMAT_RGBA8)
+			BuildArt.paint(img, {"arch": a2, "storeys": 2, "seed": 7, "sealed": sl, "door": 60}, 160, 140)
+			painted = painted and img.get_pixel(68, 125).a > 0.5
+	# airless: a test body without air gets sealed buildings
+	var dry := {"id": "sf_test_airless", "type": "barren", "name": "Airless"}
+	var gm := SettleGen.build({"faction": "assembly"}, dry, {"id": "sf_site", "kind": "outpost", "name": "Sealed"}, {}, GameState.current_system)
+	var all_sealed := true
+	var n := 0
+	for o2 in gm.objects:
+		if String(o2["kind"]) == "building":
+			n += 1
+			all_sealed = all_sealed and bool(o2.get("sealed", false)) and String(o2["arch"]) in BuildArt.ARCHES
+	check(ok and sealed_ok and painted and n > 3 and all_sealed and BuildArt.STOREY == 38 and BuildArt.DOOR_H == 30,
+		"0.7.51.6: settlement buildings all sci-fi (%s), sealed on airless worlds (%d buildings of an airless outpost all with airlocks), every architecture paints" % [", ".join(archs.keys()), n])
 
 
 ## 0.7.51.2: the Gear shop – a walk-in shop in the settlement; a settlement carries the plain things (no combat
