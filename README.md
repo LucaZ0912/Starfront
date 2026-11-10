@@ -254,6 +254,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   health); `scripts/core/pilot_gear.gd` – `PilotGear` (`GameState.gear`: suit, weapons, belt, features, inv, lockers by
   ship uid, health/energy/oxygen/ammo; `totals()`, `equip_from_inv`, `unequip`, `store`, `fetch`); pilot window tab
   `TAB_GEAR` (`_gear`, `_locker_fit`).
+- 0.7.51.2: service `gear` (corp `fkt`, `scripts/ui/station/gear_panel.gd`), `scripts/core/gear_shop.gd` – `GearShop.offer(st)`
+  (cached in `st._gear_offer`), `sells`, `SELL_SHARE`; commands `gear_buy` {id}, `gear_sell` {slot}; `DeckGen.SHOPS` /
+  `SettleGen.SHOPS` with `gear` (`SettleGen.TW` 76, `W` 104); `ChibiArt.frame` reads `look.suit` / `look.helmet`
+  (`_blend`), `Walker.slung`, `GroundView.pilot_look()` / `needs_helmet()` / `_slung()`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

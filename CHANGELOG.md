@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.2 – 2026-11-10
+
+**The Gear shop, and the pilot in the suit.**
+- **Gear (Fieldkit Outfitters)** – the personal outfitter: a walk-in shop on the stations' commercial level, in the
+  cities' shopping streets and in every settlement (the settlements' street grew a shop longer). Suits, weapons,
+  features and tools by family, a button per quality with its price; grenades and consumables; sell what is in
+  your pockets for half the price. What you buy goes into your pockets.
+- **What a shop carries follows the place:** the best quality as the ship outfitter's (C at small places, B and A at
+  bigger stations, in high-tech and rich systems, A in military ones); combat suits and heavy weapons in military
+  systems and at the bigger stations; a settlement sells the plain things (civilian, work and survey suits,
+  sidearms, tools, consumables – war gear only in military systems).
+- **The pilot walks about in the suit:** its colours, plates on a combat suit, the life-support pack on the back,
+  the straps over the shoulders; the first weapon slung across the back (a laser glowing); a helmet with its glass
+  dome is ready for 0.7.51.3 (outside on worlds whose air is not to be breathed). A new suit shows at once.
+
 ## alpha 0.7.51.1 – 2026-11-10
 
 **Package 51 begins: personal equipment (Luz: the suit like a ship).**

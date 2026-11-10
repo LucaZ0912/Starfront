@@ -766,6 +766,45 @@ func _c_market_buy(c: Dictionary) -> String:
 
 
 ## {"type":"market_sell", "item": String, "amount": float (-1 = all)}
+## Package 51: buys a piece of personal gear at the Gear shop – into the pockets.
+func _c_gear_buy(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var st := docked_station()
+	var id := String(c.get("id", ""))
+	if not GearShop.GearData.valid(id) or not GearShop.sells(st, id):
+		return "Not on offer here."
+	var price := GameState.rep.buy_price(GearShop.GearData.price(id), docked_faction())
+	if GameState.credits < price:
+		return "Not enough credits."
+	if GameState.gear.free_places() == 0 and GameState.gear.count(id) % GearShop.GearData.stack_max(id) == 0:
+		return "Your pockets are full – sell something or store it in the ship's locker."
+	if GameState.gear.add_item(id, 1) > 0:
+		return "Your pockets are full."
+	GameState.spend(price)
+	GameState.log_msg("Bought: %s." % GearShop.GearData.display_name(id), GameState.COL_GOOD)
+	return ""
+
+
+## Package 51: sells what is in a pocket (the whole stack) for half the price.
+func _c_gear_sell(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var i := int(c.get("slot", -1))
+	var g = GameState.gear
+	if i < 0 or i >= g.inv.size() or (g.inv[i] as Dictionary).is_empty():
+		return "Nothing there."
+	var p: Dictionary = g.inv[i]
+	var id := String(p["id"])
+	var got := int(round(float(GearShop.GearData.price(id)) * GearShop.SELL_SHARE)) * int(p["n"])
+	g.inv[i] = {}
+	GameState.add_credits(got)
+	GameState.log_msg("Sold: %s for %s." % [GearShop.GearData.display_name(id), GameData.fmt_credits(got)], GameState.COL_GOOD)
+	return ""
+
+
 func _c_market_sell(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":

@@ -7,8 +7,8 @@ extends RefCounted
 ## and rocks in the desert, ice on an ice world, a crater's rocks on barren worlds and moons, cooled lava on a lava
 ## world.
 
-const TW := 70                        # the town's part of the map (0.7.50.15: wider – the landing field grew)
-const W := 98                         # 0.7.50.12: and east of it, behind a fence, the economy area
+const TW := 76                        # the town's part of the map (0.7.50.15: wider – the landing field grew; 0.7.51.2: the Gear shop)
+const W := 104                        # 0.7.50.12: and east of it, behind a fence, the economy area
 const H := 40
 const B := 4                          # the border the world fills
 const PAD := Vector2i(10, 7)          # a landing pad (tiles) – 0.7.50.15: the drone is a dropship now
@@ -17,7 +17,7 @@ const STREET_Y := 20                  # the street's first row
 const STREET_H := 4
 const SHOP_CAP := STREET_Y + STREET_H # the shops' wall on the street's south side
 const SHOP_X0 := 27
-const SHOPS := ["market", "outfitter", "bar", "repair", "bulletin", "news"]
+const SHOPS := ["market", "outfitter", "gear", "bar", "repair", "bulletin", "news"]
 
 ## The special building by what the place lives from: [title, service it opens, objects]
 const SPECIAL := {

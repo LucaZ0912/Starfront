@@ -9,6 +9,7 @@ const RADIUS := 4.0
 
 var map: GroundMap
 var look: Dictionary = {}
+var slung := ""                         # 0.7.51.2: the pilot's first weapon (its damage type), slung across the back
 var pos := Vector2.ZERO            # art px, the feet
 var dir := 0                       # 0 down (towards you), 1 up, 2 left, 3 right
 var moving := false
@@ -184,6 +185,23 @@ func _draw() -> void:
 		var lamp: Color = PilotArt_CLOTH(int(look.get("color2", 3)))
 		if fposmod(_t * 1.3 + pos.x * 0.01, 2.0) < 1.4:
 			draw_rect(Rect2(Vector2(-7.0 * cs2 * side - 2.0, gy0 + 13.0 * cs2), Vector2(4, 4)), lamp.lightened(0.3))
+	if slung != "" and not guard and not sitting:
+		# 0.7.51.2: the weapon slung across the back – seen behind the shoulder, whole from behind
+		var cs3 := ChibiArt.CHAR_SCALE
+		var wy0 := -size.y + bob * s
+		var wc: Color = {"optical": Color(0.75, 0.8, 0.88), "kinetic": Color(0.3, 0.32, 0.36), "explosive": Color(0.38, 0.42, 0.3)}.get(slung, Color(0.3, 0.32, 0.36))
+		var a2 := Vector2(-6.0, 12.0) * cs3 + Vector2(0, wy0)
+		var b2 := Vector2(6.0, 24.0) * cs3 + Vector2(0, wy0)
+		if dir == 2 or dir == 3:
+			a2 = Vector2(4.0 if dir == 2 else -4.0, 11.0) * cs3 + Vector2(0, wy0)
+			b2 = Vector2(4.0 if dir == 2 else -4.0, 25.0) * cs3 + Vector2(0, wy0)
+		if dir != 0:
+			draw_line(a2, b2, Color(0.06, 0.06, 0.08), 3.0 * cs3)
+			draw_line(a2, b2, wc, 1.0 * cs3)
+			if slung == "optical":
+				draw_circle(a2.lerp(b2, 0.2), 1.0 * cs3, Color(0.35, 0.95, 1.0))
+		else:
+			draw_line(a2 + Vector2(0, -2.0 * cs3), a2 + (b2 - a2) * 0.18, Color(0.06, 0.06, 0.08), 3.0 * cs3)    # its butt over the shoulder
 	if drink_t > 0.0:
 		# the glass: from the hand up to the mouth, a sip, back down
 		var p := 1.0 - drink_t / DRINK_TIME

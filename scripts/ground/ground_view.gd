@@ -305,6 +305,26 @@ func _draw_hatch() -> void:
 	LanderArt.draw_ramp(_hatch_node, _ship_spr.position, _ship_spr.scale.x, _hatch, _t, _ship_spr.modulate.a)
 
 
+## 0.7.51.2: the pilot in the suit they wear (its helmet on outside, where the air is not to be breathed – 0.7.51.3).
+func pilot_look() -> Dictionary:
+	var lk: Dictionary = (GameState.pilot.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate()
+	lk["suit"] = ChibiArt.GearData.family(String(GameState.gear.suit))
+	lk["helmet"] = needs_helmet()
+	return lk
+
+
+## Outside on a world whose air is not to be breathed (filled in by 0.7.51.3).
+func needs_helmet() -> bool:
+	return false
+
+
+func _slung() -> String:
+	for w in GameState.gear.weapons:
+		if String(w) != "":
+			return String(ChibiArt.GearData.base(String(w)).get("dtype", "kinetic"))
+	return ""
+
+
 ## 0.7.50.5: in a city (a station on the ground)?
 func is_city() -> bool:
 	return bool(station.get("city", false))
@@ -537,7 +557,8 @@ func _build() -> void:
 		_sorted.add_child(w2)
 		people.append(w2)
 	pilot = Walker.new()
-	pilot.setup(map, GameState.pilot.get("look", ChibiArt.PilotArt.default_look()), map.spawn, false)
+	pilot.setup(map, pilot_look(), map.spawn, false)
+	pilot.slung = _slung()
 	_sorted.add_child(pilot)
 	# light: lamps, neon, the window – added on top, the deck a little darker round them
 	_lights = Node2D.new()

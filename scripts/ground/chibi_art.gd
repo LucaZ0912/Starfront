@@ -8,6 +8,7 @@ extends RefCounted
 ## Frames: 0 standing, 1 and 2 walking, 3 sitting.
 
 const PilotArt = preload("res://scripts/core/pilot_art.gd")
+const GearData = preload("res://data/gear.gd")
 const W := 18
 const H := 40
 const CHAR_SCALE := 2.0
@@ -30,7 +31,9 @@ static var _cache := {}
 
 static func frame(look: Dictionary, dir: int, f: int) -> Texture2D:
 	var l := PilotArt.clean(look)
-	var key := "%s_%d_%d" % [PilotArt._key(l), dir, f]
+	l["suit"] = String(look.get("suit", ""))             # 0.7.51.2: the suit (family) and, outside, its helmet
+	l["helmet"] = bool(look.get("helmet", false))
+	var key := "%s_%s%d_%d_%d" % [PilotArt._key(l), l["suit"], int(l["helmet"]), dir, f]
 	if not _cache.has(key):
 		var img := _draw(l, 2 if dir == 3 else dir, f)
 		if dir == 3:
@@ -61,6 +64,13 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	var hair: Color = PilotArt.HAIR_COLORS[l["hair_color"]]
 	var eye: Color = PilotArt.EYES[l["eyes"]]
 	var outfit := int(l["outfit"])
+	var suit := String(l.get("suit", ""))
+	var sd: Dictionary = GearData.SUITS.get(suit, {})
+	if not sd.is_empty():
+		# 0.7.51.2: in the suit – its colours, plates on a combat suit, a zip and chest light on the others
+		c1 = sd["col"]
+		c2 = sd["trim"]
+		outfit = 2 if suit.begins_with("suit_mil") else 0
 	var sh := SH + (int(l["body"]) - 1)
 	var cx := W / 2
 	var sitting := f == 3
@@ -72,6 +82,9 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	var head_top := head_bot - HH + 1
 	var pants := c1.darkened(0.45) if outfit != 2 else c1.darkened(0.15)
 	var boot := Color(0.17, 0.14, 0.13)
+	if not sd.is_empty():
+		pants = c1.darkened(0.12)
+		boot = c2.darkened(0.55) if suit.begins_with("suit_mil") else Color(0.25, 0.26, 0.3)
 	var step := 0 if f == 0 or f == 3 else (1 if f == 1 else -1)
 	var side := dir == 2
 	var back := dir == 1
@@ -170,6 +183,19 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 		_r(img, tx + tw, torso_top + al / 2, ARM, 1, c1.darkened(0.4))
 		_r(img, tx - ARM, torso_top + 1 + al_l, ARM, 2, skin)
 		_r(img, tx + tw, torso_top + 1 + al_r, ARM, 2, skin.darkened(0.15))
+	# 0.7.51.2: the suit's life-support pack – on the back, its edge seen from the side
+	if not sd.is_empty() and not sitting:
+		var pk := c1.darkened(0.35)
+		if back:
+			_r(img, cx - 3, torso_top + 1, 6, 7, pk)
+			_r(img, cx - 3, torso_top + 1, 6, 1, pk.lightened(0.2))
+			_px(img, cx - 1, torso_top + 3, Color(0.35, 0.95, 1.0))
+			_px(img, cx + 1, torso_top + 3, Color(0.4, 1.0, 0.55))
+		elif side:
+			_r(img, cx + int(sh * 0.8) - 1, torso_top + 1, 2, 7, pk)
+		else:
+			_r(img, cx - sh - 1, torso_top, 1, 2, pk.lightened(0.1))           # its straps over the shoulders
+			_r(img, cx + sh, torso_top, 1, 2, pk)
 	# ---- neck and head
 	_r(img, cx - 1, head_bot + 1, 2, NECK, skin.darkened(0.2))
 	var hx := cx - HW / 2
@@ -273,7 +299,29 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 				_r(img, cx + 1, ey, 2, 1, Color(0.8, 0.9, 1.0, 0.8))
 		if int(l["implant"]) == 1:
 			_px(img, cx + 1, ey, Color(1.0, 0.25, 0.25))
+	# 0.7.51.2: the helmet – a glass dome over the head with its rim in the suit's colour (outside, where it is needed)
+	if bool(l.get("helmet", false)) and not sd.is_empty():
+		var gtop := head_top - 3
+		var gbot := head_bot + 1
+		for y2 in range(gtop, gbot + 1):
+			var cut2 := 2 if y2 == gtop else (1 if y2 == gtop + 1 or y2 == gbot else 0)
+			for x2 in range(hx - 1 + cut2, hx + HW + 1 - cut2):
+				_blend(img, x2, y2, Color(0.55, 0.85, 1.0, 0.38))
+		_r(img, hx - 1, gbot, HW + 2, 1, c2)                                   # the neck ring
+		if not back:
+			_r(img, hx + (1 if side else 0), gtop + 1, 2, 1, Color(1, 1, 1, 0.9))     # a glint on the glass
+		_px(img, hx + HW, gtop + 2, c1.lightened(0.2))
 	return img
+
+
+static func _blend(img: Image, x: int, y: int, c: Color) -> void:
+	if x < 0 or y < 0 or x >= W or y >= H:
+		return
+	var b := img.get_pixel(x, y)
+	if b.a <= 0.0:
+		img.set_pixel(x, y, c)
+	else:
+		img.set_pixel(x, y, Color(b.lerp(Color(c.r, c.g, c.b), c.a), 1.0))
 
 
 ## Neon rim light: the left edge catches cyan, the right edge pink.

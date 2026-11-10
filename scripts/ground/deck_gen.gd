@@ -48,7 +48,7 @@ const THEMES := {
 		"props": ["barrel", "trash", "holo", "cage", "holo"], "seat": Color(0.4, 0.18, 0.2)},
 }
 ## Shops below the corridor (the bar has its own room); the ship services are terminals in the dock office.
-const SHOPS := ["market", "outfitter", "shipyard", "bonds", "look", "refinery", "manufacturing", "senate", "curia", "exchange"]
+const SHOPS := ["market", "outfitter", "gear", "shipyard", "bonds", "look", "refinery", "manufacturing", "senate", "curia", "exchange"]
 const SHOP_W := 7
 const DOCK_TERMINALS := ["fuel", "repair", "drones", "munitions", "hangar"]
 const KIOSKS := ["news", "bulletin"]
@@ -605,7 +605,7 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 	_zone(m, id, available, inside, sign)
 	var deco := "shelf"
 	match id:
-		"outfitter":
+		"outfitter", "gear":
 			deco = "rack"
 		"shipyard", "exchange", "senate", "curia", "bonds":
 			deco = "screen"
@@ -621,7 +621,7 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 	match id:
 		"market":
 			m.add_object({"kind": "crates", "x": sx + 1, "y": sy1, "w": 2, "h": 1})
-		"outfitter", "shipyard":
+		"outfitter", "shipyard", "gear":
 			m.add_object({"kind": "display", "x": sx + 1, "y": sy1 - 1, "w": 2, "h": 1, "col": col})
 		"refinery", "manufacturing":
 			m.add_object({"kind": "machine", "x": sx + 1, "y": sy1 - 1, "w": 2, "h": 2})

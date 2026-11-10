@@ -18,6 +18,9 @@ const SERVICES := [
 		"panel": "res://scripts/ui/station/refinery_panel.gd", "requires": "refinery"},
 	{"id": "manufacturing", "title": "Manufacturing", "corp": "mlf", "icon": "distributor",
 		"panel": "res://scripts/ui/station/manufacturing_panel.gd", "requires": "manufacturing"},
+	# package 51: the personal outfitter – suits, weapons, tools for the pilot on foot
+	{"id": "gear", "title": "Gear", "corp": "fkt", "icon": "o_armor",
+		"panel": "res://scripts/ui/station/gear_panel.gd", "requires": ""},
 	{"id": "bonds", "title": "Bond Office", "corp": "swx", "icon": "t_warrant",
 		"panel": "res://scripts/ui/station/bond_panel.gd", "requires": ""},
 	{"id": "bulletin", "title": "Bulletin Board", "corp": "blc", "icon": "t_analyzer",

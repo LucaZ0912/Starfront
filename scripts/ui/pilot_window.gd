@@ -263,6 +263,11 @@ func _gear_button(id: String, cb: Callable, n: int = 1, prefix: String = "") -> 
 
 func _gear_do(err: String) -> void:
 	_gear_msg = err
+	var mn = get_tree().current_scene
+	var gv = mn.get("ground") if mn != null else null
+	if gv != null and is_instance_valid(gv) and gv.pilot != null:
+		gv.pilot.look = gv.pilot_look()                      # 0.7.51.2: on foot – the new suit at once
+		gv.pilot.slung = gv._slung()
 	Audio.play("ui_click" if err == "" else "ui_error", "gear")
 	rebuild()
 

@@ -10,6 +10,12 @@ const CORPS := {
 		"slogan": "Every crew starts with a round.",
 		"desc": "A bar on every station that matters, older than most of them. Spacers between posts drink, talk and wait here – and captains who need hands know where to look.",
 	},
+	# package 51: the Gear shops – suits, sidearms, tools for the pilot on foot
+	"fkt": {
+		"name": "Fieldkit Outfitters", "tag": "FKT", "color": Color(0.55, 0.9, 0.45),
+		"slogan": "Dressed for every world.",
+		"desc": "Suits, sidearms, tools and air for the pilot outside the ship – at every station and town worth landing at.",
+	},
 	# package 28: the image studios – new looks for pilots
 	"vsg": {
 		"name": "Visage Clinics", "tag": "VSG", "color": Color(1.0, 0.55, 0.85),

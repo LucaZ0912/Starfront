@@ -7946,6 +7946,43 @@ func _test_settlement(view: SystemView, body: Dictionary, sites_all: Array) -> v
 	check(g.level == "settlement" and g.map.pads.size() == 4 and moved and shops >= 3 and special != "" and guards >= 1 and sea_ok
 		and town.get("settlement", false) and f.docked_at == Universe.city_id(body, site) and GameState.codex.unlocked.has("basics_settlements"),
 		"0.7.50.10: %s – a settlement: 4 pads (drones coming and going), %d shops, '%s', %d guards, bounded by %s (%d), economy area: %s – market: %s" % [String(site["name"]), shops, special, guards, SettleGen.bounds(body), border, String(g.map.econ.get("kind", "?")), "trades" if buy == "" else buy])
+	_test_gear_shop(g, town)
+
+
+## 0.7.51.2: the Gear shop – a walk-in shop in the settlement; a settlement carries the plain things (no combat
+## suits), a military station the combat suits; buying puts it into the pockets, selling pays half; the pilot walks
+## about in the suit (another picture than without one, the helmet another again).
+func _test_gear_shop(g, town: Dictionary) -> void:
+	var GD = preload("res://data/gear.gd")
+	var shop_zone := false
+	for z in g.map.zones:
+		shop_zone = shop_zone or (String(z.get("kind", "")) == "service" and String(z.get("id", "")) == "gear")
+	var o: Dictionary = GearShop.offer(town)
+	var small_ok: bool = o.has("suit_civil") and not o.has("suit_mil_heavy") and not o.has("suit_mil_light") and o.has("cs_medkit") and o.has("cs_o2")
+	var mil := {"id": "test_mil_station", "type": "military", "tier": 3}
+	var om: Dictionary = GearShop.offer(mil)
+	var mil_ok: bool = om.has("suit_mil_heavy") and om.has("suit_mil_light") and (om["suit_mil_light"] as Array).has("A")
+	var gear = GameState.gear
+	var c0 := GameState.credits
+	var n0: int = gear.count("cs_medkit")
+	var b_err := Commands.execute({"type": "gear_buy", "id": "cs_medkit"})
+	var bought: bool = b_err == "" and gear.count("cs_medkit") == n0 + 1 and GameState.credits < c0
+	var not_here := Commands.execute({"type": "gear_buy", "id": "suit_mil_heavy:A"}) != ""
+	var slot := -1
+	for i in gear.inv.size():
+		if not (gear.inv[i] as Dictionary).is_empty() and String(gear.inv[i]["id"]) == "cs_medkit":
+			slot = i
+	var c1 := GameState.credits
+	var sold: bool = slot >= 0 and Commands.execute({"type": "gear_sell", "slot": slot}) == "" and GameState.credits > c1
+	# the pilot in the suit
+	var plain := ChibiArt.frame(GameState.pilot.get("look", {}), 0, 0).get_image()
+	var lk: Dictionary = g.pilot_look()
+	var suited := ChibiArt.frame(lk, 0, 0).get_image()
+	lk["helmet"] = true
+	var helmed := ChibiArt.frame(lk, 0, 0).get_image()
+	var look_ok: bool = String(lk["suit"]) == GD.family(String(gear.suit)) and plain.get_data() != suited.get_data() and suited.get_data() != helmed.get_data() and g.pilot.slung != ""
+	check(shop_zone and small_ok and mil_ok and bought and not_here and sold and look_ok,
+		"0.7.51.2: the Gear shop – walk-in at %s (%d families), a military station sells combat suits up to A, buy into the pockets, sell for half; the pilot in the suit, the helmet, the weapon slung" % [String(town.get("name", "?")), o.size()])
 
 
 ## 0.7.50.5: a city – down through its landing hatch, its hangar, the lifts to the shopping street and the tower bar,
