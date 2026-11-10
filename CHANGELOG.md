@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.6 – 2026-11-11
+
+**Shield domes and smoke in the tactical view; the foe's view at its own weapon's reach (Luz).**
+
+- **Shield domes** cast their shadow in the tactical view when seen from outside: in a foe's red view everything in
+  the dome and behind it is dark – safe from it; from inside, your own green view goes out freely. In the fight, too, a
+  shot from outside that crosses a dome now breaks on it, even when its target stands beyond it.
+- **Smoke** marks, from the chosen side, the area behind the cloud – grey and hatched: shots into or through it aim
+  badly (a third of their chance). The legend says so.
+- **The red view reaches as far as the foe's own weapon** (labelled with its name and metres), so you can see how far
+  it can shoot; your green view stays at your weapon's reach.
+
 ## alpha 0.7.52.5 – 2026-11-11
 
 **Grenades, pirates and guards, and foe types with tactics of their own (package 52, the next round).**

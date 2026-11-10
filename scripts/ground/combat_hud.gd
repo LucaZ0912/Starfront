@@ -73,7 +73,7 @@ func _draw() -> void:
 		var you := ""
 		if tred and who != null and combat._vis.get("rays") != null:
 			you = "  •  you are %s" % ("IN ITS SIGHT" if combat.lit_in(combat._vis["rays"], combat._vis["from"], combat.pilot_pos()) else "safe from it")
-		var keys := "%s: %s  •  hold %s: off" % [Keybinds.key_text("foot_tactics"), "the target's sight" if not tred else "your sight", Keybinds.key_text("foot_tactics")]
+		var keys := "%s: %s  •  hold %s: off  •  grey hatched: behind smoke, shots aim badly" % [Keybinds.key_text("foot_tactics"), "the target's sight" if not tred else "your sight", Keybinds.key_text("foot_tactics")]
 		var tcol := Color(1.0, 0.45, 0.4) if tred else Color(0.45, 1.0, 0.6)
 		var tw := maxf(font.get_string_size(line + you, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, font.get_string_size(keys, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x) + 20.0
 		var tr := Rect2(Vector2(vs.x * 0.5 - tw * 0.5, 82 if n > 0 else 12), Vector2(tw, 40))

@@ -8940,7 +8940,7 @@ func _test_foot_combat(view: SystemView) -> void:
 	cb.cycle_tactics()
 	var t2: int = cb.tactics
 	cb.step(0.05, Vector2.ZERO)
-	tac_ok = tac_ok and t1 == 1 and t2 == 2 and cb._vis.get("rays") != null and bool(cb._vis["red"]) 		and is_equal_approx(float(cb._vis["reach"]), float(GD.stats(cb.weapon_id())["range"])) and Keybinds.key_text("foot_tactics") != Keybinds.key_text("foot_target")
+	tac_ok = tac_ok and t1 == 1 and t2 == 2 and cb._vis.get("rays") != null and bool(cb._vis["red"]) 		and is_equal_approx(float(cb._vis["reach"]), float(GD.stats(String(cb.tac_viewer()["weapon"]))["range"])) and Keybinds.key_text("foot_tactics") != Keybinds.key_text("foot_target")
 	cb.tactics = 0
 	cb.unlock(other)
 	lock_ok = lock_ok and cb.locks.size() == 1 and cb.active == a1
@@ -9122,7 +9122,22 @@ func _test_foot_tactics(view: SystemView) -> void:
 	cb._explode(outside, 60.0, 80.0, "explosive", fc)
 	var dome_ok: bool = not dm.is_empty() and is_equal_approx(gear.health + gear.shield + gear.armor, h0) and float(dm["hp"]) < hp0 \
 		and cb.dome_between(me + Vector2(200, 0), me) != null and cb.dome_between(me, me + Vector2(200, 0)) == null
+	# 0.7.52.6: in the tactical view a dome shadows what is in and behind it for a foe outside – not for you inside;
+	# a shot from outside at a target beyond the dome breaks on it too
+	var fdome: Vector2 = me + Vector2(float(dm.get("r", 50.0)) + 18.0, 0)
+	var rays_foe: Array = cb.cast(fdome, 300.0)
+	var rays_me: Array = cb.cast(me, 300.0)
+	dome_ok = dome_ok and not cb.lit_in(rays_foe, fdome, me) and not cb.lit_in(rays_foe, fdome, me - Vector2(float(dm.get("r", 50.0)) - 10.0, 0)) \
+		and cb.lit_in(rays_me, me, fdome) and cb.dome_between(fdome, me - Vector2(float(dm.get("r", 50.0)) + 20.0, 0)) != null
 	cb.domes.clear()
+	# 0.7.52.6: smoke in the tactical view – what lies behind the cloud is marked (shots aim badly there)
+	cb.clouds.append({"pos": me + Vector2(60, 0), "r": 30.0, "t": 5.0, "time": 8.0, "seed": 1})
+	var rays_s: Array = cb.cast(me, 300.0)
+	var behind: Array = rays_s[0]
+	var smoke_marked: bool = behind.size() >= 2 and not bool(behind[0][2]) and bool(behind[-1][2]) and float(behind[-1][0]) <= 35.0
+	var side_clear: bool = rays_s[90].all(func(sg): return not bool(sg[2]))
+	smoke_ok = smoke_ok and smoke_marked and side_clear
+	cb.clouds.clear()
 	# a high-cover wall shelters from a blast
 	var shelter_ok := false
 	for ob in g.map.objects:

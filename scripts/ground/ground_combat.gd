@@ -509,7 +509,8 @@ func fire(from, to, w: Dictionary) -> void:
 		if dome != null and res["kind"] != "miss":
 			res["kind"] = "dome"
 			res["dome"] = dome
-			end = (dome["pos"] as Vector2) + (a - (dome["pos"] as Vector2)).normalized() * float(dome["r"]) + CHEST
+			var hits := Geometry2D.segment_intersects_circle(a, b, dome["pos"], float(dome["r"]))
+			end = (a.lerp(b, hits) if hits >= 0.0 else (dome["pos"] as Vector2) + (a - (dome["pos"] as Vector2)).normalized() * float(dome["r"])) + CHEST
 		var instant := dtype == "optical"
 		var life := 0.09 if instant else maxf(0.05, muzzle.distance_to(end) / GearData.SHOT_SPEED)
 		shots.append({"a": muzzle, "b": end, "t": 0.0, "life": life, "kind": "beam" if instant else ("shell" if dtype == "explosive" else "slug"), "col": col, "res": res, "done": false})
@@ -937,6 +938,9 @@ func tac_viewer() -> Variant:
 func cast(from: Vector2, reach: float) -> Array:
 	var rays: Array = []
 	var own := Vector2i(floor(from / GroundMap.TILE))
+	# 0.7.52.6 (Luz): a shield dome stops sight and fire from outside – rays end where they reach it; seen from inside
+	# it lets everything out. Smoke: from where a ray enters a cloud on, shots aim badly – those stretches carry a flag.
+	var outer_domes: Array = domes.filter(func(dm): return float(dm["hp"]) > 0.0 and from.distance_to(dm["pos"]) >= float(dm["r"]))
 	for i in TAC_RAYS:
 		var dir := Vector2.from_angle(TAU * i / TAC_RAYS)
 		var lit: Array = []
@@ -944,6 +948,8 @@ func cast(from: Vector2, reach: float) -> Array:
 		var is_open := true
 		var in_low := false
 		var guard_to := -1.0
+		var smoked := false
+		var open_smoked := false
 		var t := TAC_STEP
 		while t < reach:
 			var p := from + dir * t
@@ -952,22 +958,38 @@ func cast(from: Vector2, reach: float) -> Array:
 				c = 0
 			if c == 2:
 				break
+			var in_dome := false
+			for dm in outer_domes:
+				if p.distance_to(dm["pos"]) < float(dm["r"]):
+					in_dome = true
+			if in_dome:
+				break
+			if not smoked:
+				for cl in clouds:
+					if p.distance_to(cl["pos"]) < float(cl["r"]) * minf(1.0, float(cl["t"]) * 3.0):
+						smoked = true
 			if c == 1:
 				in_low = true
 			elif in_low:
 				in_low = false
 				guard_to = t + GearData.COVER_NEAR
 			var want := not in_low and t >= guard_to
+			if want and is_open and smoked != open_smoked:
+				if t - open_at > 0.5:
+					lit.append([open_at, t, open_smoked])        # the smoke begins: a new stretch
+				open_at = t
+				open_smoked = smoked
 			if want and not is_open:
 				is_open = true
 				open_at = t
+				open_smoked = smoked
 			elif not want and is_open:
 				is_open = false
 				if t - open_at > 0.5:
-					lit.append([open_at, t])
+					lit.append([open_at, t, open_smoked])
 			t += TAC_STEP
 		if is_open and minf(t, reach) - open_at > 0.5:
-			lit.append([open_at, minf(t, reach)])
+			lit.append([open_at, minf(t, reach), open_smoked])
 		rays.append(lit)
 	return rays
 
@@ -983,7 +1005,7 @@ func lit_in(rays: Array, from: Vector2, p: Vector2) -> bool:
 	return false
 
 
-## 0.7.52.3 (Luz): both views reach exactly as far as the weapon in your hands.
+## 0.7.52.3 (Luz): your view reaches exactly as far as the weapon in your hands (0.7.52.6: the foe's as far as its own).
 func tac_reach() -> float:
 	var wid := weapon_id()
 	return float(GearData.stats(wid).get("range", 300.0)) if wid != "" else 300.0
@@ -994,7 +1016,8 @@ func _tac_source() -> Dictionary:
 		var f = tac_viewer()
 		if f == null:
 			return {}
-		return {"from": (f["w"] as Walker).pos, "reach": tac_reach(), "red": true, "who": f}
+		# 0.7.52.6 (Luz): the foe's view reaches as far as its own weapon – how far it can shoot
+		return {"from": (f["w"] as Walker).pos, "reach": float(GearData.stats(String(f["weapon"])).get("range", 300.0)), "red": true, "who": f}
 	return {"from": pilot_pos(), "reach": tac_reach(), "red": false, "who": null}
 
 
@@ -1047,6 +1070,17 @@ func _draw_tactics_view() -> void:
 		for seg in rays[i]:
 			var t0 := float(seg[0]) * S
 			var t1 := float(seg[1]) * S
+			if seg.size() > 2 and bool(seg[2]):
+				# 0.7.52.6: behind smoke – grey, with a hatch every few rays: shots from here aim badly
+				tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), Color(0.9, 0.9, 0.86, 0.26))
+				if i % 4 == 0:
+					var hd := (d0 + d1) * 0.5
+					var tt := t0 + fposmod(-t0, 24.0)
+					while tt < t1:
+						var hp0 := c + hd * tt
+						tac_node.draw_line(hp0, hp0 + hd.rotated(PI * 0.5) * 9.0, Color(0.95, 0.95, 0.92, 0.55), 1.5)
+						tt += 18.0
+				continue
 			tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), fill)
 	# the edges of the shadows: where a ray's sight ends short of the reach
 	for i2 in rays.size():
@@ -1060,7 +1094,10 @@ func _draw_tactics_view() -> void:
 		tac_node.draw_arc(c, reach * S * k / 4.0, 0.0, TAU, 96, Color(col, 0.14), 1.0)
 	tac_node.draw_arc(c, reach * S, 0.0, TAU, 160, Color(col, 0.9), 3.0)            # the reach of your weapon, exactly
 	var wid := weapon_id()
-	var lbl := "%s – %d m" % [String(GearData.base(wid).get("name", "")), int(round(reach / 15.0))]
+	var who = tac_viewer() if red else null
+	if who != null:
+		wid = String(who["weapon"])
+	var lbl := "%s%s – %d m" % [(String(who["name"]) + ": ") if who != null else "", String(GearData.base(wid).get("name", "")), int(round(reach / 15.0))]
 	for ang in [-PI * 0.5, 0.0]:
 		var lp := c + Vector2.from_angle(ang) * reach * S + Vector2(6, -6)
 		tac_node.draw_string_outline(ThemeDB.fallback_font, lp, lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0, 0, 0, 0.8))
@@ -1192,10 +1229,14 @@ func smoke_between(a: Vector2, b: Vector2) -> bool:
 	return false
 
 
-## The shield dome a shot from a to b runs into: b inside it, a outside (fire from inside goes out freely).
+## The shield dome a shot from a to b runs into: one it crosses coming from outside (0.7.52.6: also on its way to a
+## target beyond it); from inside fire goes out freely. Null if none.
 func dome_between(a: Vector2, b: Vector2) -> Variant:
 	for dm in domes:
-		if float(dm["hp"]) > 0.0 and b.distance_to(dm["pos"]) < float(dm["r"]) and a.distance_to(dm["pos"]) >= float(dm["r"]):
+		var cp: Vector2 = dm["pos"]
+		if float(dm["hp"]) <= 0.0 or a.distance_to(cp) < float(dm["r"]):
+			continue
+		if Geometry2D.get_closest_point_to_segment(cp, a, b).distance_to(cp) < float(dm["r"]):
 			return dm
 	return null
 
