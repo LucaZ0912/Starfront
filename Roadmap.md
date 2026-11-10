@@ -47,6 +47,8 @@ Die Spiellogik für Bewegung und Kampf steckt noch in den Schiff-Objekten der Da
 
 Ab jetzt wird direkt im Projektordner mit Claude Code gearbeitet. Hinweise für jede neue Sitzung:
 
+- **Leitlinien:** `Leitlinien.md` im Projektordner hält alle verbindlichen Grundsätze (Arbeitsweise, Aussehen, Maßstab, Muster für neue Systeme) – **zu Beginn jedes Pakets lesen**, jedes Ergebnis vor dem Zeigen dagegen prüfen (seit 11. Nov 2026).
+
 - **Projekt:** `C:\Users\Luca\OneDrive\Dokumente\My Games\Sternfeld5.0` – Godot 4.3, GDScript, UI komplett im Code gebaut. Spieltexte englisch, Systemnamen deutsch, Antworten an Luz auf Deutsch.
 - **Roadmap:** liegt als `Roadmap.md` im Projektordner und wird dort gepflegt.
 - **Godot:** `C:\Users\Luca\Desktop\Godot_v4.3-stable_mono_win64\Godot_v4.3-stable_mono_win64_console.exe` (nicht im PATH).
