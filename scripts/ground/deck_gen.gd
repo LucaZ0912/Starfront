@@ -62,7 +62,7 @@ const COR_Y0 := 17                # the railing row – the corridor below it to
 const COR_Y1 := 20
 const SHOP_CAP := 21              # the corridor's south wall …
 const SHOP_FACE := 22             # … the shop's back wall face, seen from inside
-const SHOP_Y1 := 27               # last floor row of the shops
+const SHOP_Y1 := 28               # last floor row of the shops (0.7.51.15: a row deeper – the back wall is 2 rows high)
 const LOBBY_X1 := 6               # the lift lobby: x 1 … 6, deep inside the station
 const LOBBY_Y0 := COR_Y0 - 5      # its north wall (the lifts) – station all round it, not space
 const CORNER_R := BAR_Y0          # the window front's rounded corners (tiles)
@@ -584,13 +584,13 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 	var sy1 := cap_y + (SHOP_Y1 - SHOP_CAP)
 	var rw := SHOP_W
 	m.fill(sx, scap, rw, sy1 - scap + 2, GroundMap.T.CAP)
-	m.fill(sx + 1, sface, rw - 2, 1, GroundMap.T.FACE)
-	m.fill(sx + 1, sface + 1, rw - 2, sy1 - sface, GroundMap.T.FLOOR, 1)
+	m.fill(sx + 1, sface, rw - 2, 2, GroundMap.T.FACE)               # 0.7.51.15 (Luz): the back wall as high as every other
+	m.fill(sx + 1, sface + 2, rw - 2, sy1 - sface - 1, GroundMap.T.FLOOR, 1)
 	var dx := sx + rw / 2 - 1
-	m.fill(dx, scap, 2, 2, GroundMap.T.DOOR, 1)
+	m.fill(dx, scap, 2, 3, GroundMap.T.DOOR, 1)                    # 0.7.51.15: through the cap and both face rows
 	var col: Color = _svc_col(id) if id != "dock" else m.pal["accent"]
 	var sign := Vector2(dx + 1, scap + 0.55) * GroundMap.TILE
-	var inside := Rect2(Vector2(sx + 1, sface + 1) * GroundMap.TILE, Vector2(rw - 2, sy1 - sface) * GroundMap.TILE)
+	var inside := Rect2(Vector2(sx + 1, sface + 2) * GroundMap.TILE, Vector2(rw - 2, sy1 - sface - 1) * GroundMap.TILE)
 	if id == "dock":
 		var tx := sx + 1
 		for d in dock:
@@ -602,7 +602,7 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 			m.lights.append({"pos": Vector2(tx + 0.5, sy1 - 0.2) * GroundMap.TILE, "r": 18.0, "col": _svc_col(d), "a": 0.3})
 			tx += 1
 		m.zones.append({"rect": Rect2(), "kind": "label", "title": "Dock Office", "col": col, "sign": sign, "id": "dock"})
-		m.add_object({"kind": "plant", "x": sx + rw - 2, "y": sface + 1, "w": 1, "h": 1})
+		m.add_object({"kind": "plant", "x": sx + rw - 2, "y": sface + 2, "w": 1, "h": 1})
 		return
 	_zone(m, id, available, inside, sign)
 	var deco := "shelf"
@@ -619,9 +619,9 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 		if fx + 1 < sx + rw - 1 and not (fx <= dx + 1 and fx + 1 >= dx):
 			m.face_deco.append({"kind": deco, "x": fx, "y": sface, "w": 2, "col": col})
 	# the counter on the right, the shopkeeper behind it facing the room
-	m.add_object({"kind": "counter_v", "x": sx + rw - 3, "y": sface + 2, "w": 1, "h": 3})
-	m.people.append({"pos": Vector2(sx + rw - 1.5, sface + 3.8) * GroundMap.TILE, "dir": 2, "role": "keeper"})
-	m.wander.append(Vector2(sx + rw - 3.6, sface + 3.4) * GroundMap.TILE)          # customers at the counter
+	m.add_object({"kind": "counter_v", "x": sx + rw - 3, "y": sface + 3, "w": 1, "h": 3})
+	m.people.append({"pos": Vector2(sx + rw - 1.5, sface + 4.8) * GroundMap.TILE, "dir": 2, "role": "keeper"})
+	m.wander.append(Vector2(sx + rw - 3.6, sface + 4.4) * GroundMap.TILE)          # customers at the counter
 	match id:
 		"market":
 			m.add_object({"kind": "crates", "x": sx + 1, "y": sy1, "w": 2, "h": 1})
@@ -635,7 +635,7 @@ static func _shop(m: GroundMap, id: String, sx: int, available: Dictionary, dock
 			m.add_object({"kind": "med_bed", "x": sx + 1, "y": sface + 4, "w": 2, "h": 2, "col": col})
 		_:
 			m.add_object({"kind": "plant", "x": sx + 1, "y": sy1, "w": 1, "h": 1})
-	m.decals.append({"kind": "mat", "x": dx, "y": sface + 1, "w": 2, "h": 1, "col": col})
+	m.decals.append({"kind": "mat", "x": dx, "y": sface + 2, "w": 2, "h": 1, "col": col})
 
 
 # ---------------------------------------------------------------- 0.7.49.8: the hangar

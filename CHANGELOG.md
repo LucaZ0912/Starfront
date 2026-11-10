@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.15 – 2026-11-10
+
+**Fix (Luz): the shops' back walls as high as every other wall** – on the stations' commercial level, in the cities'
+shopping streets and in the settlements. Each shop's back wall now shows two rows of face like the lobby, the clinic
+and the hangar; the shops are a row deeper so there is as much room inside as before, and their doors go through the
+whole wall.
+
 ## alpha 0.7.51.14 – 2026-11-10
 
 **Fix (Luz): the clinic's scanner out of the doorway.** The auto-surgeon with its scanner screen moved two tiles to
