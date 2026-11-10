@@ -8167,6 +8167,55 @@ func _test_gear_shop(g, town: Dictionary) -> void:
 	var look_ok: bool = String(lk["suit"]) == GD.family(String(gear.suit)) and plain.get_data() != suited.get_data() and suited.get_data() != helmed.get_data() and g.pilot.slung != ""
 	check(shop_zone and small_ok and mil_ok and bought and not_here and sold and look_ok,
 		"0.7.51.2: the Gear shop – walk-in at %s (%d families), a military station sells combat suits up to A, buy into the pockets, sell for half; the pilot in the suit, the helmet, the weapon slung" % [String(town.get("name", "?")), o.size()])
+	_test_gear_shop_page(town)
+
+
+## 0.7.51.8 (Luz, with a sketch): the Gear shop three steps deep – the front's four picture tiles (as high as the
+## window lets them be), a category's kinds as picture tiles, a kind's list with a button per quality; buying from it.
+func _test_gear_shop_page(town: Dictionary) -> void:
+	var GP = load("res://scripts/ui/station/gear_panel.gd")
+	var sp = main.station_panel
+	GP.view = ""
+	GP.group = ""
+	var was_foot: bool = sp.on_foot
+	sp.on_foot = true
+	sp.open(town, main.view)
+	sp.open_service("gear")
+	var front: int = _gs_nodes(sp._panel).filter(func(n): return n.get("clicked") != null and String(n.get("kind")) in ["suit", "weapon", "feature", "belt"]).size()
+	GP.view = "weapon"
+	sp.rebuild()
+	var kinds: int = _gs_nodes(sp._panel).filter(func(n): return n.get("clicked") != null and String(n.get("kind")) == "group").size()
+	GP.group = "wp_kinetic"
+	sp.rebuild()
+	var qbtns: Array = _gs_nodes(sp._panel).filter(func(n): return n is Button and not (n as Button).disabled and (n as Button).text.length() > 2 and (n as Button).text.substr(1, 1) == "\n" and "FEDCBA".contains((n as Button).text.left(1)))
+	var gear = GameState.gear
+	var c0 := GameState.credits
+	if not qbtns.is_empty():
+		(qbtns[0] as Button).pressed.emit()
+	var bought: bool = GameState.credits < c0 and _gs_weapons(gear) > 0
+	var grows: bool = GP.front_height(1100.0) > GP.front_height(900.0) and GP.front_height(300.0) >= 280.0
+	GP.view = ""
+	GP.group = ""
+	sp.close()
+	sp.on_foot = was_foot
+	check(front == 4 and kinds == 3 and not qbtns.is_empty() and bought and grows,
+		"0.7.51.8: the Gear shop – %d picture tiles in front (as high as the window), %d kinds of weapons, a list with quality buttons, bought from it" % [front, kinds])
+
+
+func _gs_weapons(gear) -> int:
+	var n := 0
+	for p in gear.inv:
+		if not (p as Dictionary).is_empty() and String(p["id"]).begins_with("wp_"):
+			n += 1
+	return n
+
+
+func _gs_nodes(n: Node) -> Array:
+	var out: Array = []
+	for c in n.get_children():
+		out.append(c)
+		out.append_array(_gs_nodes(c))
+	return out
 
 
 ## 0.7.50.5: a city – down through its landing hatch, its hangar, the lifts to the shopping street and the tower bar,

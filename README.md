@@ -266,6 +266,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   names), `o.sealed` (portholes, `_airlock`), `_armour` / `_composite` / `_stone` / `_printed` walls, `_curtain`,
   `_hex_crown`; `SettleGen.sealed` (set by `build` from `Universe.has_atmosphere`), `_arch` by power and world;
   `ObjArt` stall, signpost, cable_pole, lookout, target and decals `awning`, `boardwalk` rebuilt.
+- 0.7.51.8: `gear_panel.gd` – static `view` ("" front, a category, "sell") and `group`; `CATS` (category → kinds →
+  families), `front_height(view_h)`, inner class `ShopArt` (the drawn picture tiles: kind suit/weapon/feature/belt/group),
+  `_list` / `_row` / `_columns` / `_value`; the front rebuilds when the window is resized.
 - 0.7.51.7: `scripts/ui/gear_icons.gd` – `icon(id)` (24×24 by family, cached; preloaded, no class_name); `PilotWindow`
   Gear tab: `_gear` (suit mockup via `ChibiArt.frame`, bars, protection), `_gear_flow`, `_gear_tile`, `_gear_sel_detail`,
   selection `_gsel` {where suit/weapons/belt/features/inv/locker, idx}.

@@ -3,6 +3,24 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.8 – 2026-11-10
+
+**The Gear shop rebuilt (Luz, with a sketch).** Three steps deep, with pictures, instead of one long list.
+- **The front:** four big picture tiles in a showroom lit in the shop's colour – **Suits** (the pilot standing in a
+  suit on a lit plinth), **Weapons** (a gun rack), **Features** (the suit's modules), **Belt** (tools, grenades,
+  consumables) – each with how many pieces this shop has; under them *Sell from your pockets*. The tiles share the
+  window's width and grow with its height (they follow the window when it is resized).
+- **A category's kinds** as picture tiles: Suits – Civilian & work, Combat; Weapons – Lasers, Slug guns, Explosive;
+  Features – Defence, Movement, Life support & supply; Belt – Tools, Grenades, Consumables. A kind the shop does not
+  carry is dimmed.
+- **A kind's list:** each piece with its picture, name and description, its numbers in columns (weapons: damage,
+  rate, range, what a shot uses; suits: slots, shield, armour, energy, air, speed; features and belt: their effect)
+  and a button per quality F–A in the quality's colour with its price – the numbers at that quality on the button's
+  tooltip; qualities this shop does not carry are greyed.
+- A path along the top (GEAR › WEAPONS › SLUG GUNS) with *‹ Back*, the free pocket places and your credits.
+- Smoke test: four tiles in front, three kinds of weapons, a list with quality buttons, buying from it, the front's
+  height following the window.
+
 ## alpha 0.7.51.7 – 2026-11-10
 
 **The Gear page like the ship menu (Luz).** The pilot window's Gear tab now follows the pattern of the ship menu's
