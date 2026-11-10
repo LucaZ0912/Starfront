@@ -692,9 +692,10 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	m.fill(0, G, 1, 6, GroundMap.T.CAP)
 	m.fill(W - 1, G - 1, 1, 7, GroundMap.T.CAP)
 	m.fill(1, G + 2, W - 2, 3, GroundMap.T.FLOOR, 0)
-	# 0.7.51.18 (Luz): between the glass and the lifts the wall juts out into the walkway – the lifts in a room of their own
-	m.fill(x_h + HW - 1, G, 2, 1, GroundMap.T.CAP)
-	m.fill(x_h + HW - 1, G + 1, 2, 2, GroundMap.T.FACE)
+	# 0.7.51.18 (Luz): between the glass and the lifts a thin wall juts out into the walkway – the lifts in a room of
+	# their own (0.7.51.19: one tile, its top along the glass, its face below in the walkway)
+	m.fill(x_h + HW, G, 1, 2, GroundMap.T.CAP)
+	m.fill(x_h + HW, G + 2, 1, 2, GroundMap.T.FACE)
 	m.fill(0, G + 5, W, 1, GroundMap.T.CAP)
 	m.decals.append({"kind": "stairs", "x": 1, "y": G + 2, "w": 2, "h": 3, "col": m.pal["accent"]})
 	m.decals.append({"kind": "guide", "x": 3, "y": G + 3, "w": W - 4, "h": 1, "col": m.pal["accent"]})
