@@ -36,6 +36,7 @@ static var group := ""                  # the kind picked within the category ("
 
 
 func build() -> void:
+	UI.clear(self)                                   # 0.7.51.9: a rebuild (after a purchase, a resize) starts afresh
 	var o := GearShop.offer(station)
 	var g = GameState.gear
 	if view != "" and view != "sell" and not CATS.has(view):

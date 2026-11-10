@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.51.9 – 2026-11-10
+
+**Fix (Luz): the Gear shop showed itself twice, one under the other.** The shop did not clear itself when it was
+rebuilt – after a purchase or when the window changed its size the new front was stacked under the old one. It now
+starts afresh on every rebuild. Smoke test: after rebuilds there are still exactly four tiles in front.
+
 ## alpha 0.7.51.8 – 2026-11-10
 
 **The Gear shop rebuilt (Luz, with a sketch).** Three steps deep, with pictures, instead of one long list.

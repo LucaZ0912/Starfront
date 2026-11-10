@@ -8182,6 +8182,9 @@ func _test_gear_shop_page(town: Dictionary) -> void:
 	sp.open(town, main.view)
 	sp.open_service("gear")
 	var front: int = _gs_nodes(sp._panel).filter(func(n): return n.get("clicked") != null and String(n.get("kind")) in ["suit", "weapon", "feature", "belt"]).size()
+	sp.rebuild()                                     # 0.7.51.9: a rebuild must not stack a second front under the first
+	sp.rebuild()
+	var front2: int = _gs_nodes(sp._panel).filter(func(n): return n.get("clicked") != null and String(n.get("kind")) in ["suit", "weapon", "feature", "belt"]).size()
 	GP.view = "weapon"
 	sp.rebuild()
 	var kinds: int = _gs_nodes(sp._panel).filter(func(n): return n.get("clicked") != null and String(n.get("kind")) == "group").size()
@@ -8198,8 +8201,8 @@ func _test_gear_shop_page(town: Dictionary) -> void:
 	GP.group = ""
 	sp.close()
 	sp.on_foot = was_foot
-	check(front == 4 and kinds == 3 and not qbtns.is_empty() and bought and grows,
-		"0.7.51.8: the Gear shop – %d picture tiles in front (as high as the window), %d kinds of weapons, a list with quality buttons, bought from it" % [front, kinds])
+	check(front == 4 and front2 == 4 and kinds == 3 and not qbtns.is_empty() and bought and grows,
+		"0.7.51.8: the Gear shop – %d picture tiles in front (as high as the window, once only after rebuilds), %d kinds of weapons, a list with quality buttons, bought from it" % [front, kinds])
 
 
 func _gs_weapons(gear) -> int:
