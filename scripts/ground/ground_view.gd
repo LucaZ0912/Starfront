@@ -311,8 +311,11 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				if is_city() and _town_kind == "maint":
 					var ms0 := GameState.maint_site_for(String(station.get("id", "")))         # 0.7.53.9 (53c: or a job's)
 					_site = ms0 if not ms0.is_empty() else GameState.city_poi(_sys, station)
+				elif is_city():
+					var hs0 := GameState.sewer_site_for(String(station.get("id", "")))      # 0.7.53.17: or a heist's
+					_site = hs0 if not hs0.is_empty() else GameState.city_poi(_sys, station)
 				else:
-					_site = GameState.city_poi(_sys, station) if is_city() else GameState.settle_poi(_sys, station)
+					_site = GameState.settle_poi(_sys, station)
 		elif _city_site != null:
 			_site = _city_site
 			_city_site = null
@@ -2699,7 +2702,8 @@ func _mission_window() -> void:
 	var rules := {"relic": "Another raider crew will come for the relic – be quick.",
 		"salvage": "The flight recorder lies in the wreck's lower deck.",
 		"bounty_foot": "The captain is somewhere inside. When the alarm rings, they run.",
-		"heist": "The strongbox is behind the code door below. " + ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
+		"heist": ("The dealer's safe is in the office behind a code door – cut it open (cutting torch); a turret guards it. " if String(_site.get("theme", "")) == "sewer" else "The strongbox is behind the code door below. ") \
+			+ ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
 		"spy": "The data is in the deepest computer. Unseen, they pay a bonus.",
 		"reactivate": "Restart the reactor on the lowest level.",
 		"rescue": "The prisoner is in the cells inside. Pick the lock; they follow you – bring them out alive."}

@@ -10421,25 +10421,35 @@ func _test_ground_jobs(view: SystemView) -> void:
 	var offer_ok: bool = grounds == 0 and gof.size() == Missions.GROUND_OFFERS and gof.all(func(x): return String(x["type"]) == "ground")
 	# a relic race: accepted, its site on the map, the briefing, the relic read completes it, the pay at the giver
 	var res := {}
-	for goal in ["relic", "heist", "bounty_foot", "reactivate", "rescue"]:
-		var e: String = Commands.execute({"type": "debug_ground_job", "goal": goal, "seed": 5321 + goal.length() * 7})
-		var mm: Dictionary = GameState.missions[-1] if GameState.missions.size() > 0 else {}
-		res[goal] = e == "" and String(mm.get("type", "")) == "ground" and String(mm.get("goal", "")) == goal
-		if not res[goal]:
+	for goal_k in ["relic", "heist", "heist_dealer", "bounty_foot", "reactivate", "rescue"]:
+		# 0.7.53.17 (Luz): a heist goes for the Red Talons' hoard or the dealer's safe under a city – rolled; take the one wanted
+		var goal: String = "heist" if goal_k == "heist_dealer" else goal_k
+		var e := ""
+		var mm: Dictionary = {}
+		for tr in 24:
+			e = Commands.execute({"type": "debug_ground_job", "goal": goal, "seed": 5321 + goal_k.length() * 7 + tr * 131})
+			mm = GameState.missions[-1] if GameState.missions.size() > 0 else {}
+			if goal != "heist" or e != "" or (String(mm["site"]["theme"]) == "sewer") == (goal_k == "heist_dealer"):
+				break
+			GameState.abandon_mission(mm)
+		res[goal_k] = e == "" and String(mm.get("type", "")) == "ground" and String(mm.get("goal", "")) == goal
+		if not res[goal_k]:
 			continue
 		var site: Dictionary = mm["site"]
 		if goal == "reactivate":
-			res[goal] = not GameState.maint_site_for(String(site["city"])).is_empty()
+			res[goal_k] = not GameState.maint_site_for(String(site["city"])).is_empty()
 			GameState.abandon_mission(mm)
 			GameState.maint_sites.clear()
 			continue
 		var body: Dictionary = Universe.find_body(int(site["system"]), String(site["body"]))
 		var on_map: bool = GameState.pois_for(int(site["system"]), body).any(func(s): return String(s["id"]) == String(site["id"]))
+		if goal_k == "heist_dealer":
+			on_map = not on_map and site.has("city") and GameState.sewer_site_for(String(site["city"])) == site
 		f.docked_at = "land:" + String(body["id"])
 		main.land_at(body, site)
 		var g = main.ground
 		if g == null:
-			res[goal] = false
+			res[goal_k] = false
 			continue
 		g._mission_window()
 		var brief: bool = g._lift_menu != null
@@ -10496,7 +10506,7 @@ func _test_ground_jobs(view: SystemView) -> void:
 				g._mission_step(0.1)
 				ok = int(mm["progress"]) >= 1
 				GameState.abandon_mission(mm)
-		res[goal] = on_map and brief and ok
+		res[goal_k] = on_map and brief and ok
 		main.close_deck(false)
 		main._close_planet_map()
 		f.docked_at = ""
@@ -10517,8 +10527,8 @@ func _test_ground_jobs(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(offer_ok and bool(res.get("relic", false)) and bool(res.get("heist", false)) and bool(res.get("bounty_foot", false)) and bool(res.get("reactivate", false)) and bool(res.get("rescue", false)),
-		"53c: jobs on foot – on their own tab of the board (space contracts untouched); accepted, the site on the planet map with its briefing; the relic read completes a relic race, paid at the giver; a hard heist blown by the alarm; a bounty done when its captain falls; a reactivation sends the city's lift down; a rescue – the cell picked, the prisoner follows, hurt by a blast, out in the open done  [%s %s]" % [str(offer_ok), str(res)])
+	check(offer_ok and bool(res.get("relic", false)) and bool(res.get("heist", false)) and bool(res.get("heist_dealer", false)) and bool(res.get("bounty_foot", false)) and bool(res.get("reactivate", false)) and bool(res.get("rescue", false)),
+		"53c: jobs on foot – on their own tab of the board (space contracts untouched); accepted, the site on the planet map with its briefing; the relic read completes a relic race, paid at the giver; a hard heist blown by the alarm (the Red Talons' hoard, and the dealer's safe under a city – its site below the city, not on the map); a bounty done when its captain falls; a reactivation sends the city's lift down; a rescue – the cell picked, the prisoner follows, hurt by a blast, out in the open done  [%s %s]" % [str(offer_ok), str(res)])
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

@@ -563,12 +563,16 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		else:
 			# the dealer's office: the computer with the client list, a rug, a desk, the safe
 			m.decals.append({"kind": "rug", "x": int(rc.x) - 3, "y": int(rc.y) - 1, "w": 6, "h": 3, "col": Color(0.55, 0.18, 0.13)})
-			ExploreNode.add(m, "terminal", Vector2(rc.x, rc.y - 0.6) * TILE, {"actions": ["list", "door"], "door": di, "target": true, "style": "dealer",
+			var heist := String(site.get("goal", "")) == "heist"         # 0.7.53.17 (Luz): a heist goes for the safe
+			ExploreNode.add(m, "terminal", Vector2(rc.x, rc.y - 0.6) * TILE, {"actions": ["list", "door"], "door": di, "target": not heist, "style": "dealer",
 				"seed": rng.randi(), "level": 2 + int(String(site.get("danger", "yellow")) == "red")})
-			ExploreNode.add(m, "crate", Vector2(vr.end.x - 2.0, vr.position.y + 1.6) * TILE, {"welded": true, "safe": true, "seed": rng.randi(), "theme": theme})
+			ExploreNode.add(m, "crate", Vector2(vr.end.x - 2.0, vr.position.y + 1.6) * TILE, {"welded": true, "safe": true, "target": heist, "seed": rng.randi(), "theme": theme})
 			n_cache += 1
 			m.lights.append({"pos": rc * TILE, "r": 80.0, "col": th["light"], "a": 0.45})
-			targets.append(["dealer", "The dealer's computer – the client list, in an office behind a code door"])
+			if heist:
+				targets.append(["safe", "The dealer's safe – in his office behind a code door; cut it open"])
+			else:
+				targets.append(["dealer", "The dealer's computer – the client list, in an office behind a code door"])
 		var acts: Array = ["door", "data"]
 		if ci >= 0:
 			acts = ["door", "crystals", "data"]

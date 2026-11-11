@@ -147,13 +147,18 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 				kind = String(gk2[0])
 				break
 	var theme: String = GROUND_THEME.get(kind, ["wreck", "precursor", "pirate"][rng.randi() % 3])
-	# where: a body (a city for a reactivation) within two jumps
+	# 0.7.53.17 (Luz): half the heists go for the dealer's safe in the sewers under a city (the back alley's manhole)
+	var dealer := kind == "heist" and rng.randf() < 0.5
+	if dealer:
+		theme = "sewer"
+	var in_city := kind == "reactivate" or dealer
+	# where: a body (a city for a reactivation or the dealer's heist) within two jumps
 	var spots: Array = []
 	for sid in _systems_within(system_id, 2):
 		for b in Universe.get_layout(sid)["planets"] + Universe.get_layout(sid).get("moons", []):
 			if not Universe.landable(b):
 				continue
-			if kind == "reactivate":
+			if in_city:
 				for s in Universe.landing_sites(sid, b):
 					if String(s["kind"]) == "city":
 						spots.append([sid, b, s])
@@ -174,7 +179,7 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 		site["hull"] = String(hl[rng.randi() % hl.size()])
 	var hard := kind == "heist" and rng.randf() < 0.5
 	site["hard"] = hard
-	if kind == "reactivate":
+	if in_city:
 		site["city"] = Universe.city_id(body, sp[2])
 		site["city_name"] = String(sp[2].get("name", "the city"))
 	var jumps := Universe.find_path(system_id, sid2, 3).size()
@@ -198,9 +203,15 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 			d = "The captain of the pirate base %s. Bring them down – they run when the alarm goes." % where
 			base = 11000
 		"heist":
-			t = "Heist%s: the Red Talons' hoard" % (" (hard)" if hard else "")
-			d = "Empty the captain's strongbox in %s. %s" % [where, "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
-			base = 14000 if hard else 10000
+			if dealer:
+				t = "Heist%s: the dealer's safe under %s" % [" (hard)" if hard else "", String(site["city_name"])]
+				d = "A weapons dealer keeps a safe full of money in the sewers under %s (%s) – the manhole in the back alley off the shopping street leads down. Cut it open in the dealer's office. %s" % [
+					String(site["city_name"]), Universe.systems[sid2]["name"], "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
+				base = 12000 if hard else 8500
+			else:
+				t = "Heist%s: the Red Talons' hoard" % (" (hard)" if hard else "")
+				d = "Empty the captain's strongbox in %s. %s" % [where, "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
+				base = 14000 if hard else 10000
 		"spy":
 			t = "Espionage: data from %s" % String(site["name"])
 			d = "Download the data from the deepest computer in %s – a bonus if nobody sees you." % where
@@ -541,6 +552,8 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 			var st: Dictionary = m["site"]
 			if String(m["goal"]) == "reactivate":
 				return "The maintenance tunnels under %s (%s) – take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
+			if st.has("city"):
+				return "The sewers under %s (%s) – the manhole in the back alley" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
 			return "Go to %s on %s (%s) – it is on the planet map" % [String(st["name"]), String(Universe.find_body(int(st["system"]), String(st["body"])).get("name", "?")), Universe.systems[int(st["system"])]["name"]]
 		"escort":
 			if int(m["progress"]) >= 1:

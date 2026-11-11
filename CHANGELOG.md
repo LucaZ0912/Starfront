@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.17 – 2026-11-11
+
+**Package 53c – the dealer's heist (Luz).** Half the heists now go for a weapons dealer's safe in the sewers under a
+city (within two jumps) instead of the Red Talons' hoard: the manhole in the back alley off the shopping street leads
+down, the briefing waits in the alley. The safe stands in the dealer's office behind a code door, a turret guards it;
+cut it open with a cutting torch. The heist's rules hold here too – easy: an alarm halves the pay; hard: an alarm
+blows the job. The site is not on the planet map; the job's progress names the city. Done, the city's sewers are the
+ordinary ones again.
+
 ## alpha 0.7.53.16 – 2026-11-11
 
 **Healing, power sockets, jobs on foot on their own tab (Luz).**

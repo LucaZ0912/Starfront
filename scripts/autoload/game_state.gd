@@ -2090,7 +2090,7 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	var visit := int(poi_visits.get(str(system_id), 0))
 	var out: Array = []
 	for mm in missions:                                  # package 53c: the sites of your jobs on foot
-		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and String(mm["goal"]) != "reactivate":
+		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and not (mm["site"] as Dictionary).has("city"):     # (a city's: below it)
 			var ms: Dictionary = mm["site"]
 			if int(ms["system"]) == system_id and String(ms["body"]) == String(body.get("id", "")) and not poi_used.has(String(ms["id"])):
 				out.append(ms)
@@ -2148,6 +2148,15 @@ func maint_site_for(city_id: String) -> Dictionary:
 	for mm in missions:
 		if String(mm.get("type", "")) == "ground" and String(mm["goal"]) == "reactivate" and int(mm["progress"]) < 1 and String(mm["site"].get("city", "")) == city_id:
 			return mm["site"]
+	return {}
+
+
+## 0.7.53.17 (Luz): the sewers under a city when a heist goes for its dealer's safe – that job's site, else {}.
+func sewer_site_for(city_id: String) -> Dictionary:
+	for mm in missions:
+		var st: Dictionary = mm.get("site", {})
+		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and String(st.get("theme", "")) == "sewer" and String(st.get("city", "")) == city_id:
+			return st
 	return {}
 
 
