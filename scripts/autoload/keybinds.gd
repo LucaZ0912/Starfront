@@ -49,7 +49,7 @@ const ACTIONS := [
 	{"id": "foot_grenade", "label": "Fight: grenade (tap: next, hold: throw)", "group": "On foot", "def": [{"k": KEY_X}]},
 	{"id": "foot_drone", "label": "Fight: drone (kamikaze: dive, others: recall / send)", "group": "On foot", "def": [{"k": KEY_C}]},      # 0.7.52.11
 	{"id": "foot_tactics", "label": "Fight: tactical view (tap: switch, hold: off)", "group": "On foot", "def": [{"k": KEY_TAB}]},
-	{"id": "foot_zoom", "label": "Fight: tactical view zoom (or the wheel)", "group": "On foot", "def": [{"k": KEY_Z}]},          # 0.7.52.8
+	{"id": "foot_zoom", "label": "Fight: zoom – near / out (or the wheel)", "group": "On foot", "def": [{"k": KEY_Z}]},          # 0.7.52.8
 	{"id": "foot_dodge", "label": "Fight: dodge (a jump no shot hits)", "group": "On foot", "def": [{"k": KEY_SPACE}]},
 	{"id": "foot_swap", "label": "Fight: the other weapon in hand", "group": "On foot", "def": [{"k": KEY_Q}]},
 	{"id": "boost", "label": "Thrust burst (a few seconds of extra speed)", "group": "Ship commands", "def": [{"k": KEY_SHIFT}]},

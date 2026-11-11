@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.13 – 2026-11-11
+
+**Tiles along the bottom, the events on the right, a closer zoom (Luz).**
+
+- **Tiles as in space combat** along the bottom: the **weapons** (the one in hand framed green), a little apart the
+  **grenades** (the one in hand framed red), then the **drone** (its state, heat or rounds, the time to a new one) –
+  each with its picture, name and what it holds; Q, X and C go through them as before. The belt's places stay on 1, 2, 3
+  … – now tiles too, bottom left. The weapons panel on the right is gone; the dodge charges sit under the suit's bars.
+- **The events on the right**, as in space: everything that used to pop up in the middle at the bottom – and the
+  game's messages – runs into a log at the bottom right, with the time. The "[E] …" prompts of the place you stand at
+  stay in the middle.
+- **A closer zoom (×1.5)** in the fight and in the tactical view: the mouse wheel steps through the zoom (the fight:
+  normal and near; the tactical view: out, normal and near), Z switches near and back (in the tactical view: out and
+  back).
+
 ## alpha 0.7.52.12 – 2026-11-11
 
 **Drones that turn and sit on your back; ammunition to be had (Luz).**

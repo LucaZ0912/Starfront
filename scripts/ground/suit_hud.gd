@@ -5,6 +5,7 @@ extends Control
 ## its number keys and stacks. Warnings blink when energy or air run low.
 
 const GearData = preload("res://data/gear.gd")
+const GearIcons = preload("res://scripts/ui/gear_icons.gd")
 var env: Dictionary = {}                # {} = indoors / a safe place
 var indoors := false
 var exposure := 0.0
@@ -79,22 +80,40 @@ func _draw() -> void:
 		draw_string(font, Vector2(x + 4, y + 13), "Indoors – the suit rests", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.6, 0.95, 0.65))
 		y += 18
 	bottom_y = y
-	# the belt along the bottom left
+	# the belt along the bottom left – 0.7.52.13: tiles as in space (its places on 1, 2, 3 …)
 	var bx := 14.0
-	var by := get_viewport_rect().size.y - 54.0
+	var by := get_viewport_rect().size.y - 82.0
 	for i in g.belt.size():
 		var p: Dictionary = g.belt[i]
-		var r := Rect2(Vector2(bx, by), Vector2(118, 40))
-		draw_rect(r, Color(0.0, 0.0, 0.03, 0.6))
-		draw_rect(r, Color(0.55, 0.9, 0.45, 0.6), false, 1.0)
-		draw_string(font, Vector2(bx + 5, by + 14), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.82, 0.35))
-		if not p.is_empty():
-			var nm := String(GearData.base(String(p["id"])).get("name", ""))
-			draw_string(font, Vector2(bx + 18, by + 15), nm.left(14), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.92, 0.92, 0.9))
-			if int(p["n"]) > 1:
-				draw_string(font, Vector2(bx + 18, by + 32), "×%d" % int(p["n"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.75, 0.75, 0.75))
+		var r := Rect2(Vector2(bx, by), Vector2(74, 72))
+		if p.is_empty():
+			tile(self, r, null, Keybinds.key_text("foot_belt_%d" % (i + 1)) if i < 4 else str(i + 1), "empty", "", Color(0.5, 0.55, 0.6, 0.35), -1.0, Color.WHITE)
 		else:
-			draw_string(font, Vector2(bx + 18, by + 15), "—", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.5, 0.5, 0.5))
-		bx += 124
+			tile(self, r, GearIcons.icon(String(p["id"])), Keybinds.key_text("foot_belt_%d" % (i + 1)) if i < 4 else str(i + 1),
+				String(GearData.base(String(p["id"])).get("name", "")), ("×%d" % int(p["n"])) if int(p["n"]) > 1 else "", Color(0.55, 0.9, 0.45, 0.6), -1.0, Color.WHITE)
+		bx += 80
+	var by2 := by + 24
 	if g.stim_t > 0.0:
-		draw_string(font, Vector2(bx + 6, by + 24), "Stimulant %ds" % int(ceil(g.stim_t)), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.6, 1.0, 0.6))
+		draw_string(font, Vector2(bx + 6, by2), "Stimulant %ds" % int(ceil(g.stim_t)), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.6, 1.0, 0.6))
+
+
+
+## 0.7.52.13 (Luz): a tile like the ship's module tiles – the key top left, the picture top right, the name, a line under
+## it (rounds, a count, a state) and a bar (`bar` < 0: none); framed in `border`.
+static func tile(ci: CanvasItem, r: Rect2, icon: Texture2D, key: String, name: String, sub: String, border: Color, bar: float, bar_col: Color) -> void:
+	var font := ThemeDB.fallback_font
+	ci.draw_rect(r, Color(0.03, 0.04, 0.08, 0.9))
+	ci.draw_rect(r, border, false, 2.0 if border.a > 0.8 else 1.0)
+	if key != "":
+		ci.draw_string(font, r.position + Vector2(5, 14), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.82, 0.35))
+	if icon != null:
+		ci.draw_texture_rect(icon, Rect2(r.position + Vector2(r.size.x - 36, 4), Vector2(30, 30)), false)
+	var nm := name
+	while nm.length() > 3 and font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x > r.size.x - 10:
+		nm = nm.left(nm.length() - 1)
+	ci.draw_string(font, r.position + Vector2(5, 48), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.85, 0.9, 1.0) if name != "empty" else Color(0.5, 0.5, 0.55))
+	if sub != "":
+		ci.draw_string(font, r.position + Vector2(5, 60), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.75, 0.78, 0.82))
+	if bar >= 0.0:
+		ci.draw_rect(Rect2(r.position + Vector2(5, r.size.y - 7), Vector2(r.size.x - 10, 3)), Color(0.12, 0.12, 0.15))
+		ci.draw_rect(Rect2(r.position + Vector2(5, r.size.y - 7), Vector2((r.size.x - 10) * clampf(bar, 0.0, 1.0), 3)), bar_col)

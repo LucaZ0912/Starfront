@@ -349,6 +349,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   `drone_flying()`, `_drone_make`, `_drone_up`, `drone["head"]` (turned in `DroneArt.draw(…, heading)`),
   `DroneArt.draw_docked(ci, kind, back, dir, sc)`; `PilotGear.charge()` fills the rounds too (supply points, aboard);
   zone title "Supply point – energy, oxygen and ammunition".
+- 0.7.52.13: `SuitHud.tile(ci, rect, icon, key, name, sub, border, bar, bar_col)` (the belt as tiles), `CombatHud._draw_tiles`
+  (weapons, grenades, drone), `_label`, `_draw_dodges`; `GroundView._log` / `log_event(text, col)` (bottom right;
+  `_say_toast` and `GameState.message` go there), `near_zoom` / `ZOOM_NEAR` / `zoom_step(d)`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

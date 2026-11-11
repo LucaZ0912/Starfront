@@ -2,10 +2,11 @@ class_name CombatHud
 extends Control
 ## Package 52: the fight on foot on the screen (after the mockup Luz approved) – the locked targets top centre as in
 ## space (name, T#, distance, hit chance, their weapon; shield, armour, health bars), the fight top right (how many,
-## who is closing in), the cover line under the suit's bars, and the weapons bottom right (the one in hand with its
-## damage type and what a shot costs, the other on Q, the skills, the dodge charges on Space).
+## who is closing in), the cover line under the suit's bars; 0.7.52.13 (Luz): along the bottom tiles as in space – the
+## weapons, the grenades, the drone – and the dodge charges above them.
 
 const GearData = preload("res://data/gear.gd")
+const GearIcons = preload("res://scripts/ui/gear_icons.gd")
 const COLS := [Color(0.35, 0.65, 1.0), Color(1.0, 0.8, 0.3), Color(0.9, 0.3, 0.3)]
 const DT_COL := {"optical": Color(0.45, 0.85, 1.0), "kinetic": Color(1.0, 0.8, 0.35), "explosive": Color(1.0, 0.55, 0.25)}
 var combat: GroundCombat
@@ -110,91 +111,106 @@ func _draw() -> void:
 		var cr := Rect2(Vector2(14, cy), Vector2(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14, 20))
 		draw_rect(cr, Color(0.0, 0.06, 0.03, 0.7))
 		_s(cr.position + Vector2(7, 14), txt, col, 12)
-	_draw_drone_panel(vs)
-	# the weapons, bottom right
-	var ws: Array = combat.weapons()
-	if ws.is_empty():
-		return
-	var wr := Rect2(Vector2(vs.x - 350, vs.y - 226), Vector2(336, 212))
-	_panel(wr, Color(0.35, 0.85, 1.0, 0.7))
-	_s(wr.position + Vector2(10, 20), "WEAPON", dim, 11)
-	var wid := combat.weapon_id()
-	var w := GearData.stats(wid)
-	var dt := String(w.get("dtype", "kinetic"))
-	draw_rect(Rect2(wr.position + Vector2(8, 28), Vector2(320, 46)), Color(DT_COL[dt], 0.12))
-	draw_rect(Rect2(wr.position + Vector2(8, 28), Vector2(320, 46)), Color(DT_COL[dt], 0.8), false, 1.0)
-	_s(wr.position + Vector2(16, 46), GearData.display_name(wid), Color(0.95, 0.95, 0.95), 14)
-	_s(wr.position + Vector2(240, 46), dt.to_upper(), DT_COL[dt], 12)
-	var cost := ("%.1f energy a shot" % float(w["energy"])) if w.has("energy") else ("%d round%s a shot  •  %d left" % [int(w.get("ammo", 1)), "" if int(w.get("ammo", 1)) == 1 else "s", GameState.gear.ammo])
-	var doing := "locking…" if combat.lock_t > 0.0 else ("firing at T%d" % (combat.locks.find(combat.active) + 1) if combat.fight and combat.active != null else "ready")
-	_s(wr.position + Vector2(16, 66), "%s  •  %d dmg  •  %.1f/s  •  %s" % [doing, int(round(float(w["damage"]))), float(w["rof"]), cost], dim, 11)
-	if ws.size() > 1:
-		var other := String(ws[(combat.weapon_i + 1) % ws.size()])
-		var ow := GearData.stats(other)
-		var odt := String(ow.get("dtype", "kinetic"))
-		_s(wr.position + Vector2(16, 96), "%s  %s" % [Keybinds.key_text("foot_swap"), GearData.display_name(other)], Color(0.8, 0.8, 0.8), 13)
-		_s(wr.position + Vector2(240, 96), odt.to_upper(), DT_COL[odt], 12)
-		_s(wr.position + Vector2(16, 113), {"optical": "strong on shields", "kinetic": "strong on armour", "explosive": "strong on the body, splash"}[odt], dim, 11)
-	else:
-		_s(wr.position + Vector2(16, 96), "one weapon slot in use", dim, 12)
-	# 0.7.52.9: the grenade in hand
-	var gp: Dictionary = GameState.gear.grenade()
-	var gtxt := "no grenades"
-	if not gp.is_empty():
-		var nfill: int = GameState.gear.grenades.filter(func(x): return not (x as Dictionary).is_empty()).size()
-		gtxt = "%s ×%d%s" % [String(GearData.base(String(gp["id"]))["name"]), int(gp["n"]), ("  •  tap: next (%d kinds)" % nfill) if nfill > 1 else ""]
-	_s(wr.position + Vector2(16, 140), "%s  %s" % [Keybinds.key_text("foot_grenade"), gtxt], Color(1.0, 0.72, 0.4) if not gp.is_empty() else dim, 13)
-	_s(wr.position + Vector2(16, 156), "hold to aim at the mouse, let go to throw", dim, 11)
-	_s(wr.position + Vector2(10, 182), "Firearms %d  •  Athletics %d  •  %s next  •  %s nearest" % [GameState.skill_level("firearms"), GameState.skill_level("athletics"), Keybinds.key_text("foot_target"), Keybinds.key_text("foot_target_near")], dim, 11)
-	_s(wr.position + Vector2(10, 204), "%s  dodge" % Keybinds.key_text("foot_dodge"), Color(0.95, 0.95, 0.95), 13)
+	_draw_dodges(Vector2(14, (suit_hud.bottom_y if suit_hud != null else 190.0) + (26.0 if combat.fight else 2.0)))
+	# 0.7.52.13 (Luz): tiles along the bottom, as in space – the weapons (the one in hand framed green), a little apart
+	# the grenades (the one in hand framed red), then the drone; Q, X and C go through them
+	_draw_tiles(vs)
+
+
+## A small label on a dark plate (readable on any ground) – its bottom left at p.
+func _label(p: Vector2, t: String) -> void:
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	draw_rect(Rect2(p + Vector2(-3, -13), Vector2(w + 6, 16)), Color(0.0, 0.0, 0.03, 0.7))
+	_s(p, t, Color(0.82, 0.85, 0.9), 11)
+
+
+const TILE := Vector2(74, 72)
+const TILE_GAP := 6.0
+const GROUP_GAP := 22.0
+
+
+## 0.7.52.13: the dodge charges under the suit's bars.
+func _draw_dodges(p: Vector2) -> void:
+	var t := "%s  dodge" % Keybinds.key_text("foot_dodge")
+	var font := ThemeDB.fallback_font
+	var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var mxd := combat.max_dodges()
+	draw_rect(Rect2(p, Vector2(tw + 24 + mxd * 16, 20)), Color(0.0, 0.0, 0.03, 0.55))
+	_s(p + Vector2(7, 14), t, Color(0.85, 0.88, 0.92), 12)
 	for i2 in mxd:
-		var cc := Vector2(wr.position.x + 130 + i2 * 18, wr.position.y + 199)
+		var cc := p + Vector2(tw + 20 + i2 * 16, 10)
 		var fill := clampf(combat.dodge_charges - i2, 0.0, 1.0)
 		if fill >= 1.0:
-			draw_circle(cc, 6.0, Color(0.45, 1.0, 0.6))
+			draw_circle(cc, 5.0, Color(0.45, 1.0, 0.6))
 		else:
-			draw_arc(cc, 6.0, 0, TAU, 16, Color(0.45, 1.0, 0.6, 0.5), 1.5)
+			draw_arc(cc, 5.0, 0, TAU, 16, Color(0.45, 1.0, 0.6, 0.5), 1.5)
 			if fill > 0.0:
-				draw_arc(cc, 6.0, -PI / 2, -PI / 2 + TAU * fill, 16, Color(0.45, 1.0, 0.6), 3.0)
+				draw_arc(cc, 5.0, -PI / 2, -PI / 2 + TAU * fill, 16, Color(0.45, 1.0, 0.6), 2.5)
 
 
-
-## 0.7.52.11: the drone – its name, what it does, shield and armour, heat or rounds, the time to a new one.
-func _draw_drone_panel(vs: Vector2) -> void:
-	var id: String = combat.drone_id()
-	if id == "":
-		return
+## The weapons, the grenades and the drone as tiles, centred along the bottom.
+func _draw_tiles(vs: Vector2) -> void:
+	var g = GameState.gear
+	var ws: Array = combat.weapons()
+	var gr: Array = g.grenades
+	var has_drone: bool = combat.drone_id() != ""
+	var n_tiles: int = ws.size() + gr.size() + (1 if has_drone else 0)
+	var groups: int = int(not ws.is_empty()) + int(not gr.is_empty()) + int(has_drone)
+	var width: float = n_tiles * (TILE.x + TILE_GAP) - TILE_GAP + maxf(0.0, groups - 1) * GROUP_GAP
+	var x: float = vs.x * 0.5 - width * 0.5
+	var y: float = vs.y - TILE.y - 10.0
 	var dim := Color(0.7, 0.72, 0.76)
-	var st := GearData.stats(id)
-	var r := Rect2(Vector2(vs.x - 350 - 300, vs.y - 120), Vector2(290, 106))
-	_panel(r, Color(0.4, 0.95, 1.0, 0.7))
-	_s(r.position + Vector2(10, 18), "DRONE", dim, 11)
-	_s(r.position + Vector2(62, 18), GearData.display_name(id), Color(0.95, 0.95, 0.95), 14)
-	var d: Dictionary = combat.drone
-	var kind := String(st["kind"])
-	var dstate := String(d.get("state", "docked")) if not d.is_empty() else "docked"
-	var cmd := "launch" if dstate == "docked" else ("dive" if kind == "kamikaze" else "back")
-	_s(r.position + Vector2(220, 18), "%s %s" % [Keybinds.key_text("foot_drone"), cmd], Color(1.0, 0.82, 0.35), 12)
-	if not combat.drone_alive():
-		_s(r.position + Vector2(10, 46), "Shot down – a new one in %d s" % int(ceil(combat.drone_rebuild)), Color(1.0, 0.55, 0.4), 13)
-		var full := float(st["rebuild"])
-		_bar(r.position + Vector2(10, 58), 270, 1.0 - combat.drone_rebuild / maxf(full, 0.01), Color(0.45, 0.9, 1.0))
-		return
-	var state := String(d["state"])
-	var what: String = {"launch": "taking off", "hover": ("fighting your target" if combat.fight and combat.active != null else "at your shoulder"),
-		"docked": "on your back, switched off", "dock": "flying back to your back",
-		"return": "empty – flying back to reload", "reload": "reloading from your suit", "dive": "diving at the target!"}.get(state, state)
-	if kind == "kamikaze" and state == "hover":
-		what = "ready – %s to dive at your target" % Keybinds.key_text("foot_drone")
-	_s(r.position + Vector2(10, 36), what, dim, 11)
-	var rows: Array = [["Shield", float(d["st"]["shield"]) / maxf(float(d["mx"]["shield"]), 0.01), Color(0.35, 0.65, 1.0)],
-		["Armour", float(d["st"]["armor"]) / maxf(float(d["mx"]["armor"]), 0.01), Color(1.0, 0.8, 0.3)]]
-	if kind == "laser":
-		rows.append(["Heat", float(d["heat"]) / float(st["heat_max"]), Color(1.0, 0.3, 0.2) if bool(d["over"]) else Color(1.0, 0.55, 0.2)])
-	elif kind == "kinetic":
-		rows.append(["Rounds", float(d["ammo"]) / maxf(float(st["mag"]), 1.0), Color(0.85, 0.85, 0.8)])
-	for i in rows.size():
-		var y := r.position.y + 50 + i * 17
-		_s(Vector2(r.position.x + 10, y + 8), String(rows[i][0]), dim, 11)
-		_bar(Vector2(r.position.x + 64, y), 200, float(rows[i][1]), rows[i][2])
+	# the weapons
+	if not ws.is_empty():
+		_label(Vector2(x, y - 4), "%s  weapon" % Keybinds.key_text("foot_swap"))
+		for i in ws.size():
+			var wid := String(ws[i])
+			var st := GearData.stats(wid)
+			var act: bool = i == combat.weapon_i % ws.size()
+			var sub: String = ("%.1f en" % float(st["energy"])) if st.has("energy") else ("%d rd" % int(g.ammo))
+			var barv: float = (g.energy / maxf(float(g.totals()["energy"]), 1.0)) if st.has("energy") else (float(g.ammo) / maxf(float(g.totals()["ammo"]), 1.0))
+			SuitHud.tile(self, Rect2(Vector2(x, y), TILE), GearIcons.icon(wid), "", String(st["name"]), sub,
+				Color(0.4, 1.0, 0.5) if act else Color(0.5, 0.55, 0.6, 0.5), barv, DT_COL[String(st.get("dtype", "kinetic"))])
+			x += TILE.x + TILE_GAP
+		x += GROUP_GAP - TILE_GAP
+	# the grenades
+	if not gr.is_empty():
+		_label(Vector2(x, y - 4), "%s  grenade – hold: throw" % Keybinds.key_text("foot_grenade"))
+		g.grenade()
+		for j in gr.size():
+			var p: Dictionary = gr[j]
+			var act2: bool = j == int(g.gr_sel) and not p.is_empty()
+			if p.is_empty():
+				SuitHud.tile(self, Rect2(Vector2(x, y), TILE), null, "", "empty", "", Color(0.5, 0.55, 0.6, 0.35), -1.0, Color.WHITE)
+			else:
+				SuitHud.tile(self, Rect2(Vector2(x, y), TILE), GearIcons.icon(String(p["id"])), "", String(GearData.base(String(p["id"]))["name"]),
+					"×%d" % int(p["n"]), Color(1.0, 0.3, 0.25) if act2 else Color(0.5, 0.55, 0.6, 0.5), -1.0, Color.WHITE)
+			x += TILE.x + TILE_GAP
+		x += GROUP_GAP - TILE_GAP
+	# the drone
+	if has_drone:
+		var did: String = combat.drone_id()
+		var dst := GearData.stats(did)
+		var d: Dictionary = combat.drone
+		var state := String(d.get("state", "docked")) if not d.is_empty() else "docked"
+		var sub2 := ""
+		var barv2 := -1.0
+		var bcol := Color(0.45, 0.8, 1.0)
+		if not combat.drone_alive():
+			sub2 = "new in %ds" % int(ceil(combat.drone_rebuild))
+			barv2 = 1.0 - combat.drone_rebuild / maxf(float(dst["rebuild"]), 0.01)
+		else:
+			sub2 = {"docked": "off", "dock": "back", "launch": "up", "hover": "on", "return": "empty", "reload": "reload", "dive": "dive!"}.get(state, state)
+			if String(dst["kind"]) == "laser":
+				barv2 = float(d["heat"]) / float(dst["heat_max"])
+				bcol = Color(1.0, 0.3, 0.2) if bool(d["over"]) else Color(1.0, 0.55, 0.2)
+			elif String(dst["kind"]) == "kinetic":
+				barv2 = float(d["ammo"]) / maxf(float(dst["mag"]), 1.0)
+				bcol = Color(0.85, 0.85, 0.8)
+			else:
+				barv2 = (float(d["st"]["shield"]) + float(d["st"]["armor"])) / maxf(float(d["mx"]["shield"]) + float(d["mx"]["armor"]), 1.0)
+		var on := combat.drone_flying()
+		_label(Vector2(x, y - 4), "%s  drone" % Keybinds.key_text("foot_drone"))
+		SuitHud.tile(self, Rect2(Vector2(x, y), TILE), GearIcons.icon(did), "", String(dst["name"]), sub2,
+			Color(0.45, 0.9, 1.0) if on else Color(0.5, 0.55, 0.6, 0.5), barv2, bcol)

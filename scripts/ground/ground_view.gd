@@ -43,6 +43,7 @@ var _stand_pos := Vector2.ZERO
 var _music: AudioStreamPlayer
 var track := -1                       # the jukebox: -1 off, else the track playing
 var _toast := ""
+var _log: RichTextLabel = null           # 0.7.52.13: the event log on the right
 var _toast_t := 0.0
 var level := ""                         # 0.7.49.8: "hangar" or "commercial"
 var _avail: Dictionary = {}
@@ -88,8 +89,10 @@ var _collapsed := false
 var combat: GroundCombat = null         # package 52: the fight on foot (where weapons are allowed)
 var combat_hud: CombatHud = null
 var zoom := 1.0                         # 0.7.52.8: the camera's zoom (1 = as always)
-var tac_zoom := 1.0                     # the tactical view's zoom: 1 or TAC_ZOOM_OUT (Luz: one step), kept for next time
+var tac_zoom := 1.0                     # the tactical view's zoom: TAC_ZOOM_OUT, 1 or ZOOM_NEAR, kept for next time
+var near_zoom := 1.0                    # 0.7.52.13 (Luz): in a fight also closer – 1 or ZOOM_NEAR
 const TAC_ZOOM_OUT := 0.5
+const ZOOM_NEAR := 1.5
 var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up) – a tap switches the view, holding ends it
 const TAB_HOLD := 0.35
 var _warned := {}
@@ -139,6 +142,25 @@ func _ready() -> void:
 	_prompt.offset_left = -500
 	_prompt.offset_right = 500
 	ui.add_child(_prompt)
+	# 0.7.52.13 (Luz): the events on the right, as in space – what used to pop up in the middle
+	var log_panel := UI.panel(Color(0.03, 0.05, 0.09, 0.8))
+	log_panel.anchor_left = 1
+	log_panel.anchor_right = 1
+	log_panel.anchor_top = 1
+	log_panel.anchor_bottom = 1
+	log_panel.offset_left = -470
+	log_panel.offset_right = -10
+	log_panel.offset_top = -195
+	log_panel.offset_bottom = -10
+	log_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(log_panel)
+	_log = RichTextLabel.new()
+	_log.bbcode_enabled = true
+	_log.scroll_following = true
+	_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_log.add_theme_font_size_override("normal_font_size", 12)
+	log_panel.add_child(_log)
+	GameState.message.connect(log_event)                 # a bound method: let go of when the view is freed
 	hud = SuitHud.new()                             # 0.7.51.3: the suit's bars, the hazards, the belt
 	ui.add_child(hud)
 	combat_hud = CombatHud.new()                    # package 52
@@ -420,10 +442,10 @@ func _collapse(reason: String = "") -> void:
 func _on_click(event: InputEvent) -> void:
 	if combat == null or not input_enabled or _collapsed or not (event is InputEventMouseButton) or not event.pressed:
 		return
-	# 0.7.52.8 (Luz): in the tactical view the mouse wheel zooms out to half (down) and back (up) – one step
+	# 0.7.52.8 / 0.7.52.13 (Luz): the mouse wheel steps the zoom – in a fight normal and near, in the tactical view also
+	# out to half
 	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN or event.button_index == MOUSE_BUTTON_WHEEL_UP:
-		if combat.tactics != 0:
-			tac_zoom = TAC_ZOOM_OUT if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else 1.0
+		zoom_step(-1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else 1)
 		return
 	if event.button_index != MOUSE_BUTTON_LEFT and event.button_index != MOUSE_BUTTON_RIGHT:
 		return
@@ -434,6 +456,23 @@ func _on_click(event: InputEvent) -> void:
 		combat.lock(f)
 	else:
 		combat.unlock(f)
+
+
+## 0.7.52.13: a step of the zoom (+1 nearer, -1 further) – the fight: normal, near; the tactical view: out, normal, near.
+func zoom_step(d: int) -> void:
+	if combat == null:
+		return
+	var steps: Array = [TAC_ZOOM_OUT, 1.0, ZOOM_NEAR] if combat.tactics != 0 else [1.0, ZOOM_NEAR]
+	var cur: float = tac_zoom if combat.tactics != 0 else near_zoom
+	var i := 0
+	for k in steps.size():
+		if absf(float(steps[k]) - cur) < 0.01:
+			i = k
+	var nz: float = steps[clampi(i + d, 0, steps.size() - 1)]
+	if combat.tactics != 0:
+		tac_zoom = nz
+	else:
+		near_zoom = nz
 
 
 ## Package 52: may weapons be used here? So far only in the debug arena (Luz: the real fights come once the system
@@ -961,7 +1000,7 @@ func _process(delta: float) -> void:
 	if zone.is_empty() and is_town() and _ride.is_empty() and talk == null and _near_guard() != null:
 		zone = {"kind": "guard", "id": "guard", "title": String(CityStyle.guards(station)["name"]), "rect": Rect2()}
 	_camera(delta)
-	_prompt.text = _toast if _toast_t > 0.0 else ("" if talk != null or talk_menu != null or _lift_menu != null else _prompt_text(zone))
+	_prompt.text = "" if talk != null or talk_menu != null or _lift_menu != null else _prompt_text(zone)     # 0.7.52.13: events go to the log
 	_signs.queue_redraw()
 
 
@@ -1024,9 +1063,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				combat.cycle_tactics()                    # a tap: your sight, the target's sight, yours …
 			_tab_held = -1.0
 			return
+		if event.is_action_pressed("foot_zoom", false, true) and combat.tactics == 0:
+			get_viewport().set_input_as_handled()
+			near_zoom = 1.0 if near_zoom > 1.0 else ZOOM_NEAR           # 0.7.52.13: in the fight – near and back
+			return
 		if event.is_action_pressed("foot_zoom", false, true) and combat.tactics != 0:
 			get_viewport().set_input_as_handled()
-			tac_zoom = 1.0 if tac_zoom < 1.0 else TAC_ZOOM_OUT         # 0.7.52.8: the same on its key
+			tac_zoom = 1.0 if tac_zoom < 1.0 else TAC_ZOOM_OUT         # 0.7.52.8: out and back on its key
 			return
 		if event.is_action_pressed("foot_target_near", false, true):
 			get_viewport().set_input_as_handled()
@@ -1532,6 +1575,15 @@ func _stored_name() -> String:
 func _say_toast(t: String, secs: float = 4.0) -> void:
 	_toast = t
 	_toast_t = secs
+	log_event(t, Color(1.0, 0.85, 0.45))                  # 0.7.52.13 (Luz): into the log on the right
+
+
+## 0.7.52.13: a line in the event log, with the time.
+func log_event(text: String, col: Color = Color(0.85, 0.9, 1.0)) -> void:
+	if _log == null or text == "":
+		return
+	var tm := Time.get_time_string_from_system().substr(0, 5)
+	_log.append_text("[color=#8090a0]%s[/color] [color=#%s]%s[/color]\n" % [tm, col.to_html(false), text])
 
 
 const DRINKS := [
@@ -1660,7 +1712,7 @@ func walk_to_zone(id: String) -> bool:
 func _camera(delta: float = -1.0) -> void:
 	var vs := get_viewport().get_visible_rect().size
 	# 0.7.52.8: zoomed out only while the tactical view is open, as far as chosen there; eased in and out
-	var zw := tac_zoom if combat != null and combat.tactics != 0 else 1.0
+	var zw := (tac_zoom if combat.tactics != 0 else near_zoom) if combat != null else 1.0
 	zoom = zw if delta < 0.0 else lerpf(zoom, zw, 1.0 - exp(-delta * 10.0))
 	if absf(zoom - zw) < 0.002:
 		zoom = zw
