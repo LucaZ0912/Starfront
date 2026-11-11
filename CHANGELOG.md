@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.16 – 2026-11-11
+
+**The arm laser vanishes into the cover it cuts (Luz).** The beam now disappears where it enters a piece of cover and
+shows again only past the end of that piece's picture – also behind the top of a tall bulwark; in front of cover it
+stays in sight. With the glowing cut and its sparks it looks as if it really cuts through.
+
 ## alpha 0.7.52.15 – 2026-11-11
 
 **The Red Arm Laser: a deep hiss and sparks where it cuts (Luz).**

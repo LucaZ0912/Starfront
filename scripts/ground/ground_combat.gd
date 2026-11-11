@@ -1677,6 +1677,47 @@ func _arm_step(delta: float) -> void:
 		view.pilot.look = view.pilot_look()
 
 
+## 0.7.52.16 (Luz): where the beam can be seen – it vanishes into a piece of cover where it cuts in and shows again past
+## the end of that piece's picture (also behind a tall bulwark's top). Walked along in steps: a step is hidden when its
+## point on the screen lies on the picture of a piece of cover that stands in front of it (the beam's point on the ground
+## is behind the piece's front edge). Returns the visible stretches as [t0, t1] (0..1 along muzzle → end).
+func _beam_runs(ga: Vector2, gb: Vector2, ma: Vector2, mb: Vector2) -> Array:
+	var rects: Array = []                                     # [sprite rect (art px), front edge y (art px)] of cover near the line
+	var lo := Rect2(ga, Vector2.ZERO).expand(gb).grow(64.0)
+	for o in map.objects:
+		var k := String(o["kind"])
+		if k in NO_KINDS:
+			continue
+		var fx := float(int(o["x"])) * GroundMap.TILE
+		var fy := float(int(o["y"]) + int(o.get("h", 1))) * GroundMap.TILE
+		var fw := float(int(o.get("w", 1))) * GroundMap.TILE
+		if not lo.has_point(Vector2(fx + fw * 0.5, fy)):
+			continue
+		var rise := float(ObjArt.make(o, map.pal)["rise"])
+		var top := float(int(o["y"])) * GroundMap.TILE - rise
+		rects.append([Rect2(Vector2(fx, top), Vector2(fw, fy - top)), fy])
+	var runs: Array = []
+	var steps := maxi(8, int(ma.distance_to(mb) / 2.0))
+	var open_at := -1.0
+	for i in steps + 1:
+		var t := float(i) / steps
+		var gp := ga.lerp(gb, t)
+		var sp := ma.lerp(mb, t)
+		var hidden := false
+		for r in rects:
+			if (r[0] as Rect2).has_point(sp) and gp.y < float(r[1]) - 0.5:
+				hidden = true
+				break
+		if not hidden and open_at < 0.0:
+			open_at = t
+		elif hidden and open_at >= 0.0:
+			runs.append([open_at, t])
+			open_at = -1.0
+	if open_at >= 0.0:
+		runs.append([open_at, 1.0])
+	return runs
+
+
 ## The beam: from the emitter at the raised wrist straight through any cover to the target; then it charges anew.
 func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 	var a := pilot_pos()
@@ -1704,7 +1745,7 @@ func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 			cuts.append(muzzle.lerp(end, float(i) / n))
 		was = c
 	shots.append({"a": muzzle, "b": end, "t": 0.0, "life": 0.7, "kind": "armbeam", "col": Color(1.0, 0.3, 0.2), "res": res, "done": false,
-		"cuts": cuts, "dir": (end - muzzle).normalized()})
+		"cuts": cuts, "dir": (end - muzzle).normalized(), "runs": _beam_runs(a, b, muzzle, end)})
 	_resolve(shots[-1])
 	arm_charge = 0.0
 	pilot_cool = 0.8
@@ -1825,9 +1866,12 @@ func _draw() -> void:
 				draw_circle(a, 6.0, Color(col3, 0.8 * fade))
 			"armbeam":
 				var fk := 1.0 - clampf(float(s["t"]) / float(s["life"]), 0.0, 1.0)
-				draw_line(a, b, Color(1.0, 0.15, 0.1, 0.25 * fk), 18.0)
-				draw_line(a, b, Color(1.0, 0.3, 0.2, 0.75 * fk), 8.0)
-				draw_line(a, b, Color(1.0, 0.85, 0.75, fk), 3.0)
+				for run in s.get("runs", [[0.0, 1.0]]):               # 0.7.52.16: hidden inside and behind the cover it cuts
+					var ra := a.lerp(b, float(run[0]))
+					var rb := a.lerp(b, float(run[1]))
+					draw_line(ra, rb, Color(1.0, 0.15, 0.1, 0.25 * fk), 18.0)
+					draw_line(ra, rb, Color(1.0, 0.3, 0.2, 0.75 * fk), 8.0)
+					draw_line(ra, rb, Color(1.0, 0.85, 0.75, fk), 3.0)
 				draw_circle(a, 8.0 * fk + 2.0, Color(1.0, 0.5, 0.35, 0.8 * fk))
 				for cp2 in s.get("cuts", []):                         # the cut glowing white-hot, molten round its edge
 					var cs2: Vector2 = (cp2 as Vector2) * S
