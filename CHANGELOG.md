@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.18 – 2026-11-11
+
+**Sneaking reworked (Luz: foes looking the other way, even in other rooms, noticed you at once).**
+- **Foes see only where they look – standing too.** An unaware foe has its view (the cone the tactical view shows,
+  now also when you stand): standing it reaches further and notices you quicker (about half a second, quicker
+  still close by), sneaking nearer and slower, and low cover hides you only when you are low. Out of its view it does
+  not see you at all.
+- **Noise:** walking close by (55) or running (130) is heard – through a wall half as far; sneaking is silent.
+- **A foe that spots you calls out only to those who can see it** (or stand right by it) – no longer through the
+  walls into the next rooms.
+- **Your lock (R) never wakes a foe**, standing neither – your first shot does; a shot is heard through walls not
+  half as far as in the open.
+
 ## alpha 0.7.53.17 – 2026-11-11
 
 **Package 53c – the dealer's heist (Luz).** Half the heists now go for a weapons dealer's safe in the sewers under a

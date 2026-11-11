@@ -10948,10 +10948,37 @@ func _test_foot_sneak(view: SystemView) -> void:
 		if qq != Vector2.INF and not cb.sight(qq, cb.pilot_pos())["blocked"]:
 			q2 = qq
 			break
+	fo["dead"] = true                                         # the first one out of it: no shots to be heard
+	fw.visible = false
+	cb.fight = false
+	cb.active = null
+	cb.locks.clear()
 	var fo2: Dictionary = cb.spawn("bandit_rifleman", q2)
-	fo2["look0"] = -PI * 0.5
+	# 0.7.53.18 (Luz): standing, it still sees only where it looks – away from you (standing still) it does not notice
+	var away: float = (q2 - cb.pilot_pos()).angle()
+	for i5 in 12:
+		fo2["look0"] = away
+		fo2["look_ph"] = -cb._t * 0.45
+		cb.step(0.1, Vector2.ZERO)
+	var stand_back: bool = not fo2["aware"]
+	# looking at you it notices you quickly (quicker than sneaking)
+	for i6 in 10:
+		fo2["look0"] = away + PI
+		fo2["look_ph"] = -cb._t * 0.45
+		cb.step(0.1, Vector2.ZERO)
+	var stand_seen: bool = fo2["aware"]
+	# walking right behind one: it hears you
+	var fo3: Dictionary = cb.spawn("bandit_rifleman", cb._free_near(cb.pilot_pos() + Vector2(0, 40)))
+	var away3: float = ((fo3["w"] as Walker).pos - cb.pilot_pos()).angle()
+	fo3["look0"] = away3
+	fo3["look_ph"] = -cb._t * 0.45
+	g.pilot.moving = true
 	cb.step(0.1, Vector2.ZERO)
-	off_ok = off_ok and fo2["aware"]
+	var heard_ok: bool = fo3["aware"]
+	g.pilot.moving = false
+	off_ok = off_ok and stand_back and stand_seen and heard_ok
+	if not off_ok:
+		print("[SMOKE] stand: ", stand_back, " ", stand_seen, " ", heard_ok)
 	# back
 	Commands.suit_god = false
 	main.close_deck(false)
@@ -10973,7 +11000,7 @@ func _test_foot_sneak(view: SystemView) -> void:
 	gear.combat_t = 0.0
 	main._update_input()
 	check(key_ok and on_ok and back_ok and lock_ok and sneak_ok and seen_ok and off_ok,
-		"0.7.52.21: sneaking – Ctrl on and off; behind its back it does not see you; your lock does not wake it, the first shot does double damage; in its view it notices you after a moment; standing it sees you at once  [%s]" % " ".join(PackedStringArray([str(key_ok), str(on_ok), str(back_ok), str(lock_ok), str(sneak_ok), str(seen_ok), str(off_ok)])))
+		"0.7.52.21: sneaking – Ctrl on and off; behind its back it does not see you; your lock does not wake it, the first shot does double damage; in its view it notices you after a moment; standing it still sees only where it looks (quicker), and hears you walk close by  [%s]" % " ".join(PackedStringArray([str(key_ok), str(on_ok), str(back_ok), str(lock_ok), str(sneak_ok), str(seen_ok), str(off_ok)])))
 
 
 ## 0.7.52.20 (package 52a): the ground team – up to two crew along, their gear from your pockets, their orders on the

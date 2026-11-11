@@ -292,8 +292,7 @@ func lock(f) -> void:
 	if active != f:
 		active = f
 		lock_t = GearData.LOCK_TIME * (1.0 - 0.04 * GameState.skill_level("firearms"))
-	if not sneaking:
-		_wake(f)                                      # 0.7.52.21: sneaking, it does not notice the lock
+	# 0.7.53.18 (Luz): a lock never wakes it (standing neither) – your first shot does, it is heard
 	Audio.play("lock_acquired", "lock on foot", -6.0)
 
 
@@ -487,7 +486,7 @@ static func _face(d: Vector2) -> int:
 
 func _pilot_fire(delta: float) -> void:
 	pilot_cool = maxf(0.0, pilot_cool - delta)
-	if (not fight and not sneaking) or active == null or lock_t > 0.0 or dodge_t > 0.0 or pilot_cool > 0.0 or view._collapsed:
+	if active == null or lock_t > 0.0 or dodge_t > 0.0 or pilot_cool > 0.0 or view._collapsed:
 		return
 	if cloak_t > 0.0:
 		return                                         # 0.7.52.25: cloaked, your weapons hold fire
@@ -522,8 +521,9 @@ func _pilot_fire(delta: float) -> void:
 	_out_warned = false
 	pilot_cool = 1.0 / float(w["rof"])
 	fire(null, active, w)
-	for f in alive():                                  # a shot is heard
-		if not f["aware"] and (f["w"] as Walker).pos.distance_to(pilot_pos()) < FoeData.HEAR:
+	for f in alive():                                  # a shot is heard (0.7.53.18: through walls not half as far)
+		var hd := (f["w"] as Walker).pos.distance_to(pilot_pos())
+		if not f["aware"] and hd < FoeData.HEAR and (hd < FoeData.HEAR * 0.45 or not sight((f["w"] as Walker).pos, pilot_pos())["blocked"]):
 			_wake(f)
 
 
@@ -756,8 +756,9 @@ func _wake(f: Dictionary) -> void:
 	for o in alive():                                   # it calls out to the others near it
 		if bool(o.get("passive", false)) and not bool(o.get("provoked", false)):
 			continue
-		if not o["aware"] and (o["w"] as Walker).pos.distance_to((f["w"] as Walker).pos) < 220.0:
-			o["aware"] = true
+		var od := (o["w"] as Walker).pos.distance_to((f["w"] as Walker).pos)
+		if not o["aware"] and (od < 70.0 or (od < 220.0 and not sight((o["w"] as Walker).pos, (f["w"] as Walker).pos)["blocked"])):
+			o["aware"] = true                           # 0.7.53.18 (Luz): not through the walls into other rooms
 			o["state"] = "engage"
 			o["think"] = randf_range(0.2, 0.8)
 
@@ -786,13 +787,18 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	if tgt == null and pilot_hidden():
 		sg = {"blocked": true, "cover": false, "at": pp}          # 0.7.52.25: cloaked – it has lost you
 	if not f["aware"]:
-		if sneaking:
-			_watch(f, delta)                          # 0.7.52.21: only in its view, slowly noticing
-			if float(f.get("notice", 0.0)) >= 1.0:
-				_wake(f)
-				floaters.append({"pos": w.pos + Vector2(0, -46), "text": "spotted you!", "col": Color(1.0, 0.4, 0.3), "t": 0.0})
-		elif (dist < float(f["sight"]) and not sg["blocked"] and not smoke_between(w.pos, pp)) or _sees_ally(f):
+		# 0.7.53.18 (Luz): an unaware foe sees only where it looks – standing or sneaking – and takes a moment to notice
+		# you (sneaking: nearer and slower); it hears you walk or run close by (sneaking: not at all), through a wall
+		# only half as far
+		_watch(f, delta)
+		var pd := w.pos.distance_to(pilot_pos())
+		var heard := false
+		if not sneaking and not pilot_hidden() and view.pilot.moving:
+			var nr := NOISE_RUN if Input.is_action_pressed("foot_run") else NOISE_WALK
+			heard = pd < (nr if not sight(w.pos, pilot_pos())["blocked"] else nr * 0.5)
+		if float(f.get("notice", 0.0)) >= 1.0 or heard or _sees_ally(f):
 			_wake(f)
+			floaters.append({"pos": w.pos + Vector2(0, -46), "text": "heard you!" if heard else "spotted you!", "col": Color(1.0, 0.4, 0.3), "t": 0.0})
 		else:
 			w.moving = false
 			return
@@ -1165,9 +1171,8 @@ func _tac_step(delta: float) -> void:
 
 
 func _draw_tactics() -> void:
-	if sneaking:
-		_draw_sneak()                                # 0.7.52.21: where they would spot you
-	else:
+	_draw_sneak()                                    # 0.7.52.21: where they would spot you (0.7.53.18: standing too)
+	if not sneaking:
 		_draw_tactics_view()
 	# 0.7.52.4 (Luz): how strong each foe is – a coloured ring on the ground at its feet
 	for f in alive():
@@ -2083,7 +2088,15 @@ const SNEAK_ATTACK := 2.0                         # your first shot on an unawar
 const SNEAK_RANGE := 0.6                          # share of its sight it spots you at when you sneak
 const VIEW_HALF := 0.9                            # half the angle of its view (radians)
 const CLOSE := 26.0                               # right next to it, it notices you anyway
-const NOTICE_TIME := 1.2                          # seconds in its view before it has spotted you
+const NOTICE_TIME := 1.2                          # seconds in its view before it has spotted you (sneaking)
+const NOTICE_STAND := 0.45                        # 0.7.53.18: … standing up
+const NOISE_WALK := 55.0                          # 0.7.53.18 (Luz): how near a foe hears you walk
+const NOISE_RUN := 130.0                          # … and run (sneaking: silent)
+
+
+## 0.7.53.18: how far an unaware foe sees you – its whole sight standing, part of it when you sneak.
+func view_reach(f: Dictionary) -> float:
+	return float(f["sight"]) * (SNEAK_RANGE if sneaking else 0.85)
 
 
 ## Sneaking on or off (Ctrl). Returns what to say.
@@ -2114,18 +2127,19 @@ func spots(f: Dictionary, p: Vector2) -> bool:
 	var d := w.pos.distance_to(p)
 	if d < CLOSE:
 		return true
-	if d > float(f["sight"]) * SNEAK_RANGE:
+	if d > view_reach(f):
 		return false
 	if absf(angle_difference(look_of(f), (p - w.pos).angle())) > VIEW_HALF:
 		return false
 	var sg := sight(w.pos, p)
-	return not sg["blocked"] and not sg["cover"] and not smoke_between(w.pos, p)
+	return not sg["blocked"] and not (sg["cover"] and sneaking) and not smoke_between(w.pos, p)     # low cover hides you when low
 
 
 func _watch(f: Dictionary, delta: float) -> void:
 	var w: Walker = f["w"]
 	w.dir = _face(Vector2.from_angle(look_of(f)))
-	var k := 1.0 / (NOTICE_TIME * (1.0 + 0.06 * GameState.skill_level("athletics")))
+	var k := 1.0 / ((NOTICE_TIME if sneaking else NOTICE_STAND) * (1.0 + 0.06 * GameState.skill_level("athletics")))
+	k *= clampf(1.6 - w.pos.distance_to(pilot_pos()) / maxf(view_reach(f), 1.0), 0.6, 1.6)      # nearer, quicker
 	if spots(f, pilot_pos()):
 		f["notice"] = minf(1.0, float(f.get("notice", 0.0)) + delta * k)
 	else:
@@ -2135,7 +2149,7 @@ func _watch(f: Dictionary, delta: float) -> void:
 ## The area an unaware foe would spot you in: its view cut off by cover (low cover too – you are low).
 func view_poly(f: Dictionary) -> PackedVector2Array:
 	var w: Walker = f["w"]
-	var reach := float(f["sight"]) * SNEAK_RANGE
+	var reach := view_reach(f)
 	var face := look_of(f)
 	var pts := PackedVector2Array([w.pos])
 	var n := 28
