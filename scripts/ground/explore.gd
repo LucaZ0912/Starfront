@@ -9,7 +9,8 @@ const ChibiArtE = preload("res://scripts/ground/chibi_art.gd")
 const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "terminal": "Terminal – hack it",
 	"tablet": "Carved tablet – scan it (scanner on your belt)", "relic": "Relic – scan it (scanner on your belt)",
 	"blastdoor": "Blast door – sealed (its release is in the box beside it)",
-	"vent": "Ventilation shaft – welded shut (cutting torch)"}
+	"vent": "Ventilation shaft – welded shut (cutting torch)",
+	"crate": "Supply cache – open it (E)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -242,6 +243,22 @@ func _draw() -> void:
 				draw_rect(Rect2(-4, -10, 8, 10), Color(0.02, 0.02, 0.03))
 				draw_rect(Rect2(-8, -14, 16, 14), Color(1.0, 0.5, 0.2, 0.35), false, 0.6)
 			draw_string(ThemeDB.fallback_font, Vector2(-9, -17), "VENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.9, 0.85, 0.5, 0.8))
+		"crate":
+			# package 53a: a supply cache – a heavy chest with straps; welded ones show their seams; open: lid up, empty
+			var cc := Color(0.45, 0.4, 0.3) if not bool(d.get("welded", false)) else Color(0.38, 0.4, 0.44)
+			draw_rect(Rect2(-9, -12, 18, 12), Color(0.08, 0.08, 0.09))
+			draw_rect(Rect2(-8, -11, 16, 11), cc)
+			draw_rect(Rect2(-8, -11, 16, 1), cc.lightened(0.25))
+			draw_rect(Rect2(-5, -11, 2, 11), cc.darkened(0.3))
+			draw_rect(Rect2(3, -11, 2, 11), cc.darkened(0.3))
+			if String(d["state"]) == "shut":
+				draw_rect(Rect2(-8, -15, 16, 4), cc.lightened(0.1))
+				if bool(d.get("welded", false)):
+					draw_line(Vector2(-8, -11), Vector2(8, -11), Color(1.0, 0.75, 0.35, 0.8), 0.8)
+				draw_rect(Rect2(-1.5, -10, 3, 3), Color(0.85, 0.75, 0.3))
+			else:
+				draw_rect(Rect2(-8, -22, 16, 8), cc.darkened(0.15))
+				draw_rect(Rect2(-7, -10, 14, 3), Color(0.04, 0.04, 0.05))
 		"vent_end":
 			# the shaft's other mouth: a hatch over its last stretch – unseen until the shaft is open; it flips open
 			# onto the floor as you come out (0.7.52.28)

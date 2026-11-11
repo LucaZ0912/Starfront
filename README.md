@@ -360,6 +360,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.53.1 (package 53a): `data/poi.gd` (THEMES, DANGER, TARGETS, MAP_CHANCE, `site_name`), `scripts/ground/dungeon_gen.gd`
+  (DungeonGen.build: grid rooms, `_corridor` three wide, `_faces`, roles, things; `map` meta "poi" for the targets window);
+  `GameState.poi_visits`, `poi_used`, `pois_for()`, `poi_use()`; `Universe.landing_sites` appends them (no fixed ruins);
+  site key `poi`; explore kind `crate` (`welded`), `CutGame.inside` "loot"; `GroundView._poi_setup`, `_poi_window`,
+  `_poi_reveal`, `_draw_minimap`, `poi_seen`, `_loot`, `_poi_target_done`; commands `debug_poi`, `debug_poi_reveal`;
+  smoke group `poi`.
 - 0.7.52.29: `GroundMap._duct_tile()` (a duct tile by its neighbours).
 - 0.7.52.28: `GroundMap.refresh_texture()`; duct tiles keep their wall until `open_vent`; `vent_end` key `vent`,
   `open_k` (the hatch flips open near you).

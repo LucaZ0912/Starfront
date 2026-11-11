@@ -125,6 +125,8 @@ var _permit_t := 0.0
 var _prosper_t := 0.0             # package 42c: prosperity drifts back to its base
 ## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
 var research_data := 0
+var poi_visits := {}                    # package 53a: system id (String) -> how often you have come (its sites change with it)
+var poi_used: Array = []                # sites whose target is done – gone
 ## Package 51: the pilot's personal equipment – suit, weapons, belt, features, pockets, the ships' lockers.
 const PilotGearScript = preload("res://scripts/core/pilot_gear.gd")
 var gear = PilotGearScript.new()
@@ -519,7 +521,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data,
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "poi_used": poi_used.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
@@ -587,6 +589,8 @@ func from_dict(d: Dictionary) -> void:
 	load_prosperity(d.get("prosperity", {}))                   # package 42
 	market_stock = (d.get("market_stock", {}) as Dictionary).duplicate(true)
 	research_data = int(d.get("research_data", 0))
+	poi_visits = (d.get("poi_visits", {}) as Dictionary).duplicate()
+	poi_used = (d.get("poi_used", []) as Array).duplicate()
 	if d.has("news"):
 		news.from_dict(d["news"])
 	else:
@@ -2013,6 +2017,28 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	return true
 
 
+## Package 53a (Luz): the sites to explore on a body this visit – sometimes a ruin; a new visit, new chances. Gone
+## once its target is done.
+func pois_for(system_id: int, body: Dictionary) -> Array:
+	const PoiData = preload("res://data/poi.gd")
+	var visit := int(poi_visits.get(str(system_id), 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("poi_%d_%d_%s_%d" % [system_id, visit, String(body.get("id", "")), Universe.seed_value])
+	if rng.randf() >= PoiData.MAP_CHANCE:
+		return []
+	var id := "poi_%d_%d_%s" % [system_id, visit, String(body.get("id", ""))]
+	if poi_used.has(id):
+		return []
+	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
+	return [{"id": id, "name": PoiData.site_name("ruin", rng), "kind": "ruins", "poi": true, "theme": "ruin", "seed": rng.randi(),
+		"danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}]
+
+
+func poi_use(id: String) -> void:
+	if not poi_used.has(id):
+		poi_used.append(id)
+
+
 func _arrive(f: ShipFitting) -> void:
 	var from_id := int(f.transit_from)
 	f.system_id = int(f.transit_to)
@@ -2035,6 +2061,8 @@ func _arrive(f: ShipFitting) -> void:
 	f.transit_to = null
 	f.transit = 0.0
 	current_system = f.system_id
+	if f.uid == active_uid:
+		poi_visits[str(f.system_id)] = int(poi_visits.get(str(f.system_id), 0)) + 1     # package 53a: other sites this time
 	if f.route.is_empty():
 		log_msg("%s arrived in %s." % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_GOOD)
 	ship_arrived_system.emit(f)

@@ -2617,6 +2617,53 @@ func _c_debug_daytime(c: Dictionary) -> String:
 ## {"type":"debug_gear", ...} – package 51: "give": id (+ "n") into the pockets; "fill_belt": every belt place full;
 ## "refill": health, energy, oxygen, ammunition full; "clear": empty pockets; "set": {health|energy|oxygen|ammo: percent};
 ## "suit_god": bool – the world outside does not hurt; "grenades": every belt place a stack of grenades (0.7.52.5).
+## {"type":"debug_poi", "danger": "green"|"yellow"|"red", "seed": int, "theme": "ruin"} – package 53a: down to a
+## generated site on a body here (a new one each time unless a seed is given).
+func _c_debug_poi(c: Dictionary) -> String:
+	const PoiData = preload("res://data/poi.gd")
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	if f.in_transit():
+		return "Not during a hyperspace jump."
+	var L := Universe.get_layout(f.system_id)
+	var body := {}
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b) and body.is_empty():
+			body = b
+	if body.is_empty():
+		return "No body here to land on."
+	var theme := String(c.get("theme", "ruin"))
+	if not PoiData.THEMES.has(theme):
+		return "Unknown theme."
+	var sd := int(c.get("seed", randi()))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = sd
+	var site := {"id": "dbg_poi_%d" % sd, "name": PoiData.site_name(theme, rng), "kind": "ruins", "poi": true, "theme": theme, "seed": sd,
+		"danger": String(c.get("danger", "yellow")), "lon": 0.0, "lat": 0.0}
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	m.land_at(body, site)
+	if _ground() == null:
+		return "Could not open the site."
+	GameState.log_msg("[Debug] %s (%s, seed %d)." % [String(site["name"]), String(site["danger"]), sd], GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_poi_reveal"} – package 53a: the whole site on the minimap.
+func _c_debug_poi_reveal(_c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g._mm == null:
+		return "Not at a site."
+	for y in g.map.h:
+		for x in g.map.w:
+			g.poi_seen[y * g.map.w + x] = 1
+			g._mm_img.set_pixel(x, y, g._mm_col(x, y))
+	g._mm_tex.update(g._mm_img)
+	return ""
+
+
 ## {"type":"debug_vault"} – 0.7.52.23 (Luz): the debug vault, a closed room in a station: a sealed blast door with
 ## a box to cut open beside it (the release button behind the flap), behind it a relic in a laser cage and a terminal
 ## to switch the lasers off. A cutting torch and a scanner go onto your belt.

@@ -156,6 +156,7 @@ func _process(delta: float) -> void:
 				_test_foot_explore(view)         # 0.7.52.22 – package 52b: torch, hack, scan
 				_test_foot_vault(view)           # 0.7.52.23 – the debug vault
 				_test_foot_cloak(view)           # 0.7.52.25 – the short cloak, drones outside a fight
+				_test_poi(view)                  # package 53a – sites to explore
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9423,6 +9424,122 @@ func _test_foot_drones(view: SystemView) -> void:
 ## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
 ## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
 ## the arm raised.
+## Package 53a: sites to explore – found on the map per visit (ruins), generated: a pad outside, rooms and corridors
+## three tiles wide, the vault behind a blast door (its box on the wall, the control room's terminal, an air shaft),
+## guards, caches, tablets, the relic; the "possible targets" window, the minimap; the target done uses the site up.
+func _test_poi(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	# sites per visit: the same for a visit, others for the next; a used one is gone
+	var L := Universe.get_layout(f.system_id)
+	var found := 0
+	var same := true
+	var v0 := int(GameState.poi_visits.get(str(f.system_id), 0))
+	for vi in 12:
+		GameState.poi_visits[str(f.system_id)] = v0 + vi
+		for b in L["planets"] + L.get("moons", []):
+			if Universe.landable(b):
+				var a1: Array = GameState.pois_for(f.system_id, b)
+				var a2: Array = GameState.pois_for(f.system_id, b)
+				found += a1.size()
+				same = same and a1.size() == a2.size() and (a1.is_empty() or String(a1[0]["id"]) == String(a2[0]["id"]))
+	GameState.poi_visits[str(f.system_id)] = v0
+	var static_ruins := false
+	for b2 in L["planets"] + L.get("moons", []):
+		if Universe.landable(b2):
+			for s in Universe.landing_sites(f.system_id, b2):
+				if String(s["kind"]) == "ruins" and not bool(s.get("poi", false)):
+					static_ruins = true
+	var map_ok: bool = found > 0 and same and not static_ruins
+	# a generated site
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5301})
+	var g = main.ground
+	if g == null or e != "" or g.combat == null:
+		check(false, "53a: the site opens  [%s]" % e)
+		return
+	gear.refill()
+	var kinds := {}
+	for d in g.map.explore:
+		kinds[String(d["kind"])] = int(kinds.get(String(d["kind"]), 0)) + 1
+	var door: Dictionary = {}
+	var term: Dictionary = {}
+	var relic: Dictionary = {}
+	var crate: Dictionary = {}
+	for d2 in g.map.explore:
+		match String(d2["kind"]):
+			"blastdoor":
+				door = d2
+			"terminal":
+				term = d2
+			"relic":
+				relic = d2
+			"crate":
+				if crate.is_empty() and not bool(d2.get("welded", false)):
+					crate = d2
+	var panel_wall: bool = g.map.explore.any(func(x): return String(x["kind"]) == "panel" and bool(x.get("wall", false)))
+	var built_ok: bool = int(kinds.get("blastdoor", 0)) == 1 and panel_wall and int(kinds.get("tablet", 0)) == 3 and int(kinds.get("crate", 0)) >= 4 \
+		and g.map.explore.any(func(x): return String(x["kind"]) == "crate" and bool(x.get("welded", false))) and bool(relic.get("target", false)) \
+		and g.combat.foes.size() >= 3 and g.map.has_meta("poi") and (g.map.get_meta("poi")["targets"] as Array).size() == 5
+	# the window on arrival, the minimap filling in
+	if g._lift_menu == null:
+		g._poi_window()                                      # (it opens deferred on arrival)
+	var win_ok: bool = g._lift_menu != null and g._mm != null
+	g._close_lift_menu()
+	g._mm_tile = Vector2i(-99, -99)
+	g._poi_reveal()
+	var seen := 0
+	for sb in g.poi_seen:
+		seen += int(sb)
+	win_ok = win_ok and seen > 20
+	# wide corridors: across every corridor tile there are three floor tiles in a row one way or the other
+	var narrow := 0
+	for y in range(1, g.map.h - 1):
+		for x in range(1, g.map.w - 1):
+			if GroundMap.walkable_t(g.map.t_at(x, y)) and g.map.floor_kind[y * g.map.w + x] == 2:
+				var hr := int(GroundMap.walkable_t(g.map.t_at(x - 1, y))) + int(GroundMap.walkable_t(g.map.t_at(x + 1, y)))
+				var vr := int(GroundMap.walkable_t(g.map.t_at(x, y - 1))) + int(GroundMap.walkable_t(g.map.t_at(x, y + 1)))
+				if hr == 0 and vr == 0:
+					narrow += 1
+	var wide_ok: bool = narrow == 0
+	# the vault: shut off; the terminal opens the door; the relic read uses the site up
+	var vault_p: Vector2 = (relic["pos"] as Vector2) + Vector2(0, 20)
+	var shut_ok: bool = g.map.path(g.map.spawn, vault_p).is_empty()
+	g._hack_done(term, "door")
+	var open_ok: bool = String(door["state"]) == "open" and not g.map.path(g.map.spawn, vault_p).is_empty()
+	var rd := GameState.research_data
+	g.scan_done(relic)
+	var done_ok: bool = GameState.poi_used.has(String(g._site["id"])) and GameState.research_data > rd
+	# a cache: credits and something
+	var cr0 := GameState.credits
+	g._loot(crate)
+	var loot_ok: bool = GameState.credits > cr0 and String(crate["state"]) == "open"
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(map_ok and built_ok and win_ok and wide_ok and shut_ok and open_ok and done_ok and loot_ok,
+		"53a: sites to explore – ruins found per visit (not always, the same within a visit, no fixed ruins any more); a generated site with its blast door (box on the wall), terminal, 3 tablets, caches (one welded), the relic, guards; the targets window and the minimap; corridors three wide; the vault shut off until the terminal opens it; the relic read uses the site up; a cache gives credits  [%s]" % " ".join(PackedStringArray([str(map_ok), str(built_ok), str(win_ok), str(wide_ok), str(shut_ok), str(open_ok), str(done_ok), str(loot_ok)])))
+
+
 ## 0.7.52.25 (Luz): the short cloak – a few seconds unseen by its quality, then recharging; firing shows you. And
 ## the drones on your suit outside a fight – up and back on C.
 func _test_foot_cloak(view: SystemView) -> void:

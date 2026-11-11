@@ -203,7 +203,7 @@ func _draw() -> void:
 	if not opened:
 		_draw_torch(c + torch)
 	else:
-		var tx := "Space: press the button" if inside == "button" else ("Space: crawl in" if inside == "duct" else "Space: jack into the terminal")
+		var tx := "Space: press the button" if inside == "button" else ("Space: crawl in" if inside == "duct" else ("Space: take what is inside" if inside == "loot" else "Space: jack into the terminal"))
 		_s(Vector2(_box.position.x, _box.end.y + 30), tx, Color(0.45, 1.0, 0.6) if inside == "button" else Color(0.4, 0.95, 1.0), 15, HORIZONTAL_ALIGNMENT_CENTER, _box.size.x)
 	_draw_gauges(Vector2(_box.end.x + 40, _box.position.y + 10))
 
@@ -286,7 +286,7 @@ func _draw_housing(r: Rect2) -> void:
 	draw_rect(lp, Color(0.78, 0.78, 0.72))
 	draw_rect(lp, Color(0.25, 0.25, 0.25), false, 1.0)
 	_s(lp.position + Vector2(8, 15), label, Color(0.12, 0.12, 0.14), 13)
-	_s(lp.position + Vector2(8, 29), ("AIR SHAFT – KEEP CLEAR" if inside == "duct" else "⚡ HIGH VOLTAGE – AUTHORISED ONLY"), Color(0.6, 0.1, 0.08), 8)
+	_s(lp.position + Vector2(8, 29), ("AIR SHAFT – KEEP CLEAR" if inside == "duct" else ("SUPPLY CACHE – SEALED" if inside == "loot" else "⚡ HIGH VOLTAGE – AUTHORISED ONLY")), Color(0.6, 0.1, 0.08), 8)
 	var led := Vector2(r.end.x - 28, r.position.y + 28)
 	draw_circle(led, 8.0, Color(0.12, 0.12, 0.14))
 	var on: bool = fposmod(t, 1.2) < 0.9 and not opened
@@ -359,6 +359,18 @@ func _draw_machinery(c: Vector2, poly: PackedVector2Array) -> void:
 	var bounds := Rect2(poly[0], Vector2.ZERO)
 	for p in poly:
 		bounds = bounds.expand(p)
+	if inside == "loot":
+		# package 53a: inside a welded cache – packed supplies, a credit chip, padding
+		draw_colored_polygon(poly, Color(0.1, 0.09, 0.08))
+		for bi in 6:
+			var bp := c + Vector2(-90 + (bi % 3) * 64, -50 + (bi / 3) * 60)
+			if Geometry2D.is_point_in_polygon(bp + Vector2(25, 20), poly):
+				draw_rect(Rect2(bp, Vector2(52, 42)), [Color(0.55, 0.45, 0.3), Color(0.3, 0.45, 0.55), Color(0.5, 0.25, 0.22)][bi % 3])
+				draw_rect(Rect2(bp, Vector2(52, 4)), Color(1, 1, 1, 0.15))
+				draw_rect(Rect2(bp + Vector2(20, 14), Vector2(12, 12)), Color(0.9, 0.9, 0.85, 0.6))
+		draw_rect(Rect2(c + Vector2(-20, 66), Vector2(40, 18)), Color(0.95, 0.8, 0.3))
+		draw_string(ThemeDB.fallback_font, c + Vector2(-16, 80), "CR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.2, 0.15, 0.05))
+		return
 	if inside == "duct":
 		# 0.7.52.27: behind a vent's grille – the shaft running off into the dark, its ribs closing in, a draught of dust
 		for k in 9:

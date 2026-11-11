@@ -851,6 +851,12 @@ func _build_ground() -> void:
 	rex.add_child(UI.label("Explore:", 12, UI.TEXT_DIM))
 	rex.add_child(UI.button("Box, terminal, tablet, relic here", func(): _cmd({"type": "debug_explore"})))
 	rex.add_child(UI.button("The vault (station room)", func(): _cmd({"type": "debug_vault"})))
+	var rpo := _row()                                               # package 53a: generated sites
+	rpo.add_child(UI.label("Site (ruin):", 12, UI.TEXT_DIM))
+	for dz in [["green", "Green"], ["yellow", "Yellow"], ["red", "Red"]]:
+		var dzz: String = dz[0]
+		rpo.add_child(UI.button(String(dz[1]), func(): _cmd({"type": "debug_poi", "danger": dzz})))
+	rpo.add_child(UI.button("Reveal the map", func(): _cmd({"type": "debug_poi_reveal"})))
 	var rtm := _row()                                               # 0.7.52.20: the ground team
 	rtm.add_child(UI.label("Team:", 12, UI.TEXT_DIM))
 	rtm.add_child(UI.button("Gunner + Engineer", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"]})))

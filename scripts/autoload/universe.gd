@@ -3083,9 +3083,9 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 	var kinds: Array = []
 	for i in cities:
 		kinds.append("city")
-	var others: Array = ["outpost", "mine", "ruins", "crash", "research"]
+	var others: Array = ["outpost", "mine", "crash", "research"]       # package 53a: ruins come as sites of a visit
 	if not inhabited:
-		others = ["ruins", "crash", "mine", "research"]
+		others = ["crash", "mine", "research"]
 	for k in rng.randi_range(2, 3):
 		kinds.append(others[rng.randi() % others.size()])
 	var out: Array = []
@@ -3115,6 +3115,7 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 				break
 		out.append({"id": "%s_site_%d" % [String(body["id"]), i], "name": nm, "kind": kd, "lon": lon, "lat": lat})
 	out.append_array(debug_sites.get(String(body["id"]), []))      # 0.7.51.5: places the debug menu added
+	out.append_array(GameState.pois_for(system_id, body))          # package 53a: a ruin to explore, this visit
 	return out
 
 

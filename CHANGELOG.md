@@ -3,6 +3,28 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.1 – 2026-11-11
+
+**Package 53a – sites to explore: the framework (Luz).**
+- **Sites found on the map:** when you come into a system, a body you can land on may show a **ruin** this visit
+  (about one in three; the same all visit long, new chances next time). The fixed ruins of the landing sites are gone –
+  ruins come only this way now. Done with its target, a site is **used up**.
+- **Generated:** the drone's pad outside, the site cut into the rock east of it – **rooms on a grid** joined by
+  **corridors three tiles wide** (there is fighting in here), the walls' faces made wherever a floor has rock above
+  it, the floors cracked. The rooms get **roles**: the entrance, guard rooms (raiders, a leader by the inner door),
+  stores (supply caches, one welded shut), a control room (a terminal), a tablet room (3 carved tablets), and the
+  **vault** with the target – a relic – behind a **blast door** in its approach's north wall. Three ways in: the box
+  on the wall beside the door (cutting torch), the control room's terminal (E-Breach: "Open the door"), or the **air
+  shaft** from the room beside the vault (sneak).
+- **Themes as data** (`data/poi.gd`): look, foes, props, loot, names – the ruin first; more with 53d.
+- **"Possible targets"** – landing at a site found on the map, a window shows what your scanner picks up: what each
+  target needs and gives, the danger, the size. Go in, or back to the ship.
+- **The minimap** (top right): the site as you have seen it – lines of sight reveal it – with the things you found
+  (relic, terminal, caches, doors, tablets, shafts) and you.
+- **Supply caches:** E opens them (the welded ones with the torch) – credits and supplies from the theme's loot.
+- Reading the relic is the site's target: research data, and the site is used up.
+- Debug → ground combat → *Site (ruin): Green / Yellow / Red*, *Reveal the map*. Smoke test group `poi`.
+
 ## alpha 0.7.52.29 – 2026-11-11
 
 **The shaft's bend (Luz).** A duct's tiles are now drawn by their neighbours: open where the duct goes on or a room

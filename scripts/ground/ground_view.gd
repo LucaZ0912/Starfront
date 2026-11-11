@@ -98,6 +98,13 @@ const TAB_HOLD := 0.35
 const ExploreNode = preload("res://scripts/ground/explore.gd")
 const VaultGen = preload("res://scripts/ground/vault_gen.gd")
 const DroneBuddy = preload("res://scripts/ground/drone_buddy.gd")
+const DungeonGen = preload("res://scripts/ground/dungeon_gen.gd")
+const PoiData = preload("res://data/poi.gd")
+var _mm: Control = null                  # package 53a: the minimap of a site (what you have seen)
+var _mm_img: Image = null
+var _mm_tex: ImageTexture = null
+var _mm_tile := Vector2i(-99, -99)
+var poi_seen: PackedByteArray = PackedByteArray()
 var buddy: Node2D = null                 # 0.7.52.25: your drones where there is no fight
 const CutGame = preload("res://scripts/ground/cut_game.gd")
 const HackGame = preload("res://scripts/ground/hack_game.gd")
@@ -276,7 +283,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = SettleGen.build(station, _body, _site, _avail, _sys)
 	elif level == "landing":
 		var lsz := _ship_size()
-		if bool(_site.get("vault", false)):
+		if bool(_site.get("poi", false)):
+			map = DungeonGen.build(_body, _site, lsz.x, lsz.y)        # package 53a: a site to explore
+		elif bool(_site.get("vault", false)):
 			map = VaultGen.build(_site)                               # 0.7.52.23: the debug vault, inside a station
 			env = {}
 		elif bool(_site.get("arena", false)):
@@ -334,6 +343,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		buddy.view = self
 		_world.add_child(buddy)
 	spawn_explore()                                   # 0.7.52.22: boxes, terminals, tablets, relics
+	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
@@ -508,7 +518,7 @@ func zoom_step(d: int) -> void:
 ## Package 52: may weapons be used here? So far only in the debug arena (Luz: the real fights come once the system
 ## stands); never in the built-up parts of cities.
 func combat_allowed() -> bool:
-	return level == "landing" and (bool(_site.get("arena", false)) or bool(_site.get("vault", false)))
+	return level == "landing" and (bool(_site.get("arena", false)) or bool(_site.get("vault", false)) or bool(_site.get("poi", false)))
 
 
 func _slung() -> String:
@@ -978,6 +988,9 @@ func _apply_day(d: float, force: bool = false) -> void:
 func _process(delta: float) -> void:
 	_scan_step(delta)
 	_duct_step()
+	if _mm != null and is_instance_valid(_mm):
+		_poi_reveal()                                  # package 53a: the minimap fills in
+		_mm.queue_redraw()
 	_t += delta
 	for f in _flicker:
 		var ph: float = f[2]
@@ -1310,6 +1323,26 @@ func explore_use(z: Dictionary) -> bool:
 			vg.finished.connect(func(res: String): _cut_done(d, res))
 			_open_game(vg)
 			return true
+		"crate":
+			if String(d["state"]) != "shut":
+				_say_toast("Empty.", 1.5)
+				return true
+			if bool(d.get("welded", false)):
+				var t3 := belt_tool("tl_cutter")
+				if t3 == "":
+					_say_toast("Welded shut – you need a cutting torch on your belt.", 3.0)
+					return true
+				var lg = CutGame.new()
+				lg.inside = "loot"
+				lg.shape = ["rounded", "hex", "notched", "trapezoid"][int(d.get("seed", 0)) % 4]
+				lg.label = "CACHE-%02d" % (int(d.get("seed", 0)) % 90 + 10)
+				lg.skill = GameState.skill_level("engineering")
+				lg.quality = float(ChibiArt.GearData.stats(t3).get("strength", 1.0))
+				lg.finished.connect(func(res: String): _cut_done(d, res))
+				_open_game(lg)
+				return true
+			_loot(d)
+			return true
 		"blastdoor":
 			_say_toast("Sealed – its release is in the maintenance box beside it." if String(d["state"]) != "open" else "Open.", 2.5)
 			return true
@@ -1342,6 +1375,9 @@ func _cut_done(d: Dictionary, res: String) -> void:
 		_say_toast("You leave the box – the cut is lost.", 2.0)
 		return
 	d["state"] = "open"
+	if res == "loot":
+		_loot(d)
+		return
 	if res == "duct":
 		open_vent(d)
 		return
@@ -1431,6 +1467,190 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 			GameState.research_data += n
 			txt = "Data downloaded – %d research data." % n
 	_say_toast(txt, 3.0)                               # (the toast goes into the event log too)
+
+
+# ---------------------------------------------------------------- package 53a: sites to explore
+
+## A crate opened: credits and a thing or two from the site's theme into your pockets.
+func _loot(d: Dictionary) -> void:
+	d["state"] = "open"
+	var th: Dictionary = PoiData.THEMES.get(String(d.get("theme", _site.get("theme", "ruin"))), PoiData.THEMES["ruin"])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(d.get("seed", 1))
+	var cr := rng.randi_range(int(th["credits"][0]), int(th["credits"][1]))
+	GameState.credits += cr
+	var got: Array = ["%d cr" % cr]
+	for i in rng.randi_range(1, 2):
+		var id: String = th["loot"][rng.randi() % th["loot"].size()]
+		var n := rng.randi_range(1, 2)
+		var left: int = GameState.gear.add_item(id, n)
+		if left < n:
+			got.append("%s ×%d" % [String(ChibiArt.GearData.base(id).get("name", id)), n - left])
+		else:
+			got.append("(no room for %s)" % String(ChibiArt.GearData.base(id).get("name", id)))
+	Audio.play("ui_buy", "crate looted", -6.0)
+	_say_toast("Cache opened: %s." % ", ".join(PackedStringArray(got)), 3.5)
+
+
+## The site's target done: it is used up (it will be gone from the planet map); the way back is open.
+func _poi_target_done(d: Dictionary) -> void:
+	if not bool(_site.get("poi", false)):
+		return
+	GameState.poi_use(String(_site.get("id", "")))
+	var n := 6 + int(d.get("seed", 0)) % 6
+	GameState.research_data += n
+	_say_toast("The relic read – the site's prize is yours (+%d research data). Back to the ship when you like." % n, 5.0)
+	Audio.play("lock_acquired", "site target done", -2.0)
+
+
+## On landing at a site: its minimap and – a site found on the map – the window with what the scanner picks up.
+func _poi_setup() -> void:
+	if _mm != null and is_instance_valid(_mm):
+		_mm.queue_free()
+	_mm = null
+	if not map.has_meta("poi"):
+		return
+	poi_seen = PackedByteArray()
+	poi_seen.resize(map.w * map.h)
+	poi_seen.fill(0)
+	_mm_img = Image.create(map.w, map.h, false, Image.FORMAT_RGBA8)
+	_mm_img.fill(Color(0, 0, 0, 0))
+	_mm_tex = ImageTexture.create_from_image(_mm_img)
+	_mm_tile = Vector2i(-99, -99)
+	_mm = Control.new()
+	_mm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mm.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_mm.draw.connect(_draw_minimap)
+	_ui.add_child(_mm)
+	if not bool(_site.get("mission", false)):
+		call_deferred("_poi_window")
+
+
+## What the minimap shows of a tile once seen.
+func _mm_col(x: int, y: int) -> Color:
+	var t := map.t_at(x, y)
+	var fk := map.floor_kind[y * map.w + x]
+	if GroundMap.walkable_t(t) or t == GroundMap.T.BLOCK:
+		if fk == 13 or fk == 14:
+			return Color(0.45, 0.4, 0.32, 0.9)
+		if fk == 16:
+			return Color(0.55, 0.45, 0.8, 0.9)
+		return Color(0.62, 0.64, 0.68, 0.95)
+	if t == GroundMap.T.FACE:
+		return Color(0.32, 0.33, 0.36, 0.95)
+	return Color(0, 0, 0, 0)
+
+
+## Seen: the tiles round you that a line from you reaches (walls stop it; their faces still show).
+func _poi_reveal() -> void:
+	if _mm == null or pilot == null:
+		return
+	var tp := Vector2i(int(pilot.pos.x / GroundMap.TILE), int(pilot.pos.y / GroundMap.TILE))
+	if tp == _mm_tile:
+		return
+	_mm_tile = tp
+	var r := 9
+	var changed := false
+	for y in range(tp.y - r, tp.y + r + 1):
+		for x in range(tp.x - r, tp.x + r + 1):
+			if x < 0 or y < 0 or x >= map.w or y >= map.h or Vector2(x - tp.x, y - tp.y).length() > r:
+				continue
+			if poi_seen[y * map.w + x] == 1:
+				continue
+			var d := Vector2(x - tp.x, y - tp.y)
+			var n := int(d.length() * 2.0)
+			var ok := true
+			for s in range(1, n):
+				var q := Vector2(tp) + d * (float(s) / n)
+				var qt := map.t_at(int(round(q.x)), int(round(q.y)))
+				if not (GroundMap.walkable_t(qt) or qt == GroundMap.T.BLOCK):
+					ok = false
+					break
+			if ok:
+				poi_seen[y * map.w + x] = 1
+				_mm_img.set_pixel(x, y, _mm_col(x, y))
+				changed = true
+	if changed:
+		_mm_tex.update(_mm_img)
+
+
+func _draw_minimap() -> void:
+	var vs := _mm.get_viewport_rect().size
+	var mw := 300.0
+	var sc := mw / float(map.w)
+	var r := Rect2(Vector2(vs.x - mw - 16, 84), Vector2(mw, map.h * sc))
+	_mm.draw_rect(r.grow(6), Color(0.02, 0.03, 0.05, 0.82))
+	_mm.draw_rect(r.grow(6), Color(0.75, 0.55, 1.0, 0.6), false, 1.5)
+	_mm.draw_texture_rect(_mm_tex, r, false)
+	# the things seen: the target, terminals, caches, doors
+	for d in map.explore:
+		var p: Vector2 = d["pos"]
+		var ti := int(p.y / GroundMap.TILE - 0.5) * map.w + int(p.x / GroundMap.TILE)
+		if ti < 0 or ti >= poi_seen.size() or poi_seen[ti] == 0:
+			continue
+		var c: Color = {"relic": Color(0.85, 0.5, 1.0), "terminal": Color(0.3, 1.0, 0.6), "crate": Color(1.0, 0.8, 0.3), "blastdoor": Color(1.0, 0.35, 0.3),
+			"tablet": Color(0.6, 0.85, 1.0), "vent": Color(0.75, 0.6, 1.0)}.get(String(d["kind"]), Color(0, 0, 0, 0))
+		if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
+			c = Color(0.3, 1.0, 0.45)
+		if String(d["state"]) in ["scanned", "open", "hacked"] and String(d["kind"]) != "blastdoor":
+			c = c.darkened(0.5)
+		if c.a > 0.0:
+			_mm.draw_circle(r.position + p * sc / GroundMap.TILE, 2.6, c)
+	var pp := r.position + pilot.pos * sc / GroundMap.TILE
+	_mm.draw_circle(pp, 3.5, Color(0.2, 0.2, 0.2))
+	_mm.draw_circle(pp, 2.5, Color(0.4, 1.0, 0.6))
+	_mm.draw_string(ThemeDB.fallback_font, r.position + Vector2(0, -10), String(map.get_meta("poi")["name"]), HORIZONTAL_ALIGNMENT_LEFT, mw, 12, Color(0.85, 0.75, 1.0))
+
+
+## Package 53a (Luz): landing at a site found on the map – what the scanner picks up, before you go in.
+func _poi_window() -> void:
+	if not map.has_meta("poi") or _lift_menu != null:
+		return
+	var info: Dictionary = map.get_meta("poi")
+	Audio.play("ui_open", "site: possible targets")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var gold := Color(0.95, 0.8, 0.3)
+	var p := UI.neon_panel(Color(gold, 0.9), Color(0.03, 0.04, 0.07, 0.97), 2)
+	p.custom_minimum_size = Vector2(720, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label(String(info["name"]).to_upper(), 22, gold))
+	v.add_child(UI.label("%s  •  %d level%s  •  about %d minutes  •  danger: %s" % [String(info["theme_name"]), int(info["levels"]),
+		"" if int(info["levels"]) == 1 else "s", int(info["minutes"]), String(info["danger_name"])], 13, UI.TEXT_DIM))
+	v.add_child(HSeparator.new())
+	v.add_child(UI.label("WHAT YOUR SCANNER PICKS UP – POSSIBLE TARGETS", 14, Color(0.85, 0.9, 1.0)))
+	for tg in info["targets"]:
+		var td: Dictionary = PoiData.TARGETS.get(String(tg[0]), {})
+		var row := UI.hbox(10)
+		var bar := ColorRect.new()
+		bar.color = td.get("col", Color.WHITE)
+		bar.custom_minimum_size = Vector2(6, 48)
+		row.add_child(bar)
+		var col := UI.vbox(2)
+		col.add_child(UI.label(String(tg[1]), 14, Color(0.92, 0.95, 1.0)))
+		col.add_child(UI.label("needs: %s      gives: %s" % [String(td.get("needs", "")), String(td.get("gives", ""))], 11, UI.TEXT_DIM))
+		row.add_child(col)
+		v.add_child(row)
+	v.add_child(HSeparator.new())
+	var keys: Array = []
+	var go := func(): _close_lift_menu()
+	var back := func():
+		_close_lift_menu()
+		for z in map.zones:
+			if String(z.get("id", "")) == "ship":
+				_open_takeoff_menu(z)
+	var b1 := UI.button("1.  Go in", go)
+	var b2 := UI.button("2.  Not now – back to the ship", back)
+	v.add_child(b1)
+	v.add_child(b2)
+	keys.append(go)
+	keys.append(back)
+	_lift_menu = c
+	_lift_menu.set_meta("zone", {})
+	_lift_menu.set_meta("keys", keys)
 
 
 ## 0.7.52.23: a blast door opens – its gap walkable, the leaves slide into the walls.
@@ -1536,6 +1756,8 @@ func _scan_step(delta: float) -> void:
 
 func scan_done(d: Dictionary) -> void:
 	d["state"] = "scanned"
+	if bool(d.get("target", false)):
+		_poi_target_done(d)
 	var n := 3 + int(d.get("seed", 0)) % 4 + (3 if String(d["kind"]) == "relic" else 0)
 	GameState.research_data += n
 	GameState.skill_xp("science", 3.0)
