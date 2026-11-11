@@ -360,6 +360,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.27: panel key `wall` (set for a door's box); explore kinds `vent` (key `duct`: tiles) and `vent_end`;
+  `CutGame.inside` "duct"; floor kind 16 (air duct); `GroundView.open_vent()`, `_duct_step()` (sneaking in a duct);
+  `VaultGen.DUCT`.
 - 0.7.52.26: member gear key `belt` (tools; `member_equip` / `member_unequip("belt", i)`), ally keys `cloak_id`,
   `cloak_t`, `cloak_cd` (cloaking with you in `GroundCombat.cloak()`); Gear page tiles `m_belt`.
 - 0.7.52.25: blast door lamp (one, by state); `scripts/ground/drone_buddy.gd` (DroneBuddy – the drones where there

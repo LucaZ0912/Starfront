@@ -9548,12 +9548,27 @@ func _test_foot_vault(view: SystemView) -> void:
 		return
 	var VG = load("res://scripts/ground/vault_gen.gd")
 	var dr: Rect2i = VG.DOOR
-	var made_ok: bool = g.env.is_empty() and g.map.explore.size() == 7 and String(g.map.explore[0]["kind"]) == "blastdoor" \
+	var made_ok: bool = g.env.is_empty() and g.map.explore.size() == 9 and String(g.map.explore[7]["kind"]) == "vent" and bool(g.map.explore[2].get("wall", false)) and String(g.map.explore[0]["kind"]) == "blastdoor" \
 		and String(g.map.explore[1]["kind"]) == "blastdoor" and g.belt_tool("tl_cutter") != "" and g.belt_tool("tl_scanner") != "" \
 		and g.belt_tool("cs_breach") != "" and g.combat != null
 	var vault_p := Vector2(10, 12) * GroundMap.TILE
 	var niche_p := Vector2(13, 2.6) * GroundMap.TILE
 	var shut_ok: bool = not GroundMap.walkable_t(g.map.t_at(dr.position.x, dr.position.y + 1)) and g.map.path(g.pilot.pos, vault_p).is_empty()
+	# 0.7.52.27 (Luz): the air shaft – shut; cut open, a way into the vault through it; in it you sneak
+	var vent: Dictionary = g.map.explore[7]
+	var d0: Array = VG.DUCT[0]
+	var vent_ok: bool = not GroundMap.walkable_t(g.map.t_at(int(d0[0]), int(d0[1])))
+	g._cut_done(vent, "duct")
+	vent_ok = vent_ok and String(vent["state"]) == "open" and GroundMap.walkable_t(g.map.t_at(int(d0[0]), int(d0[1]))) \
+		and not g.map.path(g.pilot.pos, vault_p).is_empty()
+	var mid: Array = VG.DUCT[4]
+	var back_pos: Vector2 = g.pilot.pos
+	g.pilot.pos = (Vector2(int(mid[0]), int(mid[1])) + Vector2(0.5, 0.5)) * GroundMap.TILE
+	g._duct_step()
+	vent_ok = vent_ok and g.combat.sneaking
+	g.pilot.pos = back_pos
+	g._duct_step()
+	vent_ok = vent_ok and not g.combat.sneaking
 	# the button behind the flap opens the door: through it there is a way now
 	g._cut_done(g.map.explore[2], "button")
 	var open_ok: bool = String(g.map.explore[0]["state"]) == "open" and GroundMap.walkable_t(g.map.t_at(dr.position.x, dr.position.y + 1)) \
@@ -9599,8 +9614,8 @@ func _test_foot_vault(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(made_ok and shut_ok and open_ok and cage_ok and breach_ok and small_ok,
-		"0.7.52.23: the debug vault – a station room with air, the things and the tools; the blast door sealed, the button behind the flap opens a way; no scan through the laser cage, the terminal switches it off, then the relic scans; jacking in takes an E-Breach; the small door to the niche  [%s]" % " ".join(PackedStringArray([str(made_ok), str(shut_ok), str(open_ok), str(cage_ok), str(breach_ok), str(small_ok)])))
+	check(made_ok and shut_ok and open_ok and cage_ok and breach_ok and small_ok and vent_ok,
+		"0.7.52.23: the debug vault – a station room with air, the things and the tools; the blast door sealed, the button behind the flap opens a way; no scan through the laser cage, the terminal switches it off, then the relic scans; jacking in takes an E-Breach; the small door to the niche; the air shaft cut open, crawled through sneaking  [%s]" % " ".join(PackedStringArray([str(made_ok), str(shut_ok), str(open_ok), str(cage_ok), str(breach_ok), str(small_ok), str(vent_ok)])))
 
 
 ## 0.7.52.22 (package 52b): tools at work – a box cut open with the torch (a button or a terminal behind its one flap),

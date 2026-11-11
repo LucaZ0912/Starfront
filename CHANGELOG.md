@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.27 – 2026-11-11
+
+**The box on the wall, the air shaft (Luz).**
+- A maintenance box that opens a **blast door** now hangs **on the wall right beside the door** (flush, its conduit
+  running up), no longer on a post in front of it.
+- **Ventilation shafts:** a grille in a wall, welded shut – cut it open with the **cutting torch** (its own window: the
+  grille with its slats, "AIR SHAFT – KEEP CLEAR"; behind it the duct running off into the dark). Then the **duct** can be
+  crawled through; inside it you **sneak** by yourself (and stand up again when you are out).
+- **The debug vault** has one: in the start room's north wall, left of the blast door – it runs up behind the vault's
+  west wall and comes out inside the vault, past the blast door.
+
 ## alpha 0.7.52.26 – 2026-11-11
 
 **Your team cloaks with you (Luz).** Members of your ground team now have a **belt** of their own (as many places as

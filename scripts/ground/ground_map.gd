@@ -395,6 +395,13 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px, py, TILE, TILE, gc)
 			for k in 8:
 				_px(px + int(hash2(x, y, k) * 15), py + int(hash2(y, x, k + 3) * 15), gc.darkened(0.25))
+		16:             # 0.7.52.27: an air duct – dark steel, ribs across, a rivet line
+			_rect(px, py, TILE, TILE, Color(0.14, 0.15, 0.17))
+			_rect(px + 2, py, TILE - 4, TILE, Color(0.2, 0.21, 0.24))
+			for k in 4:
+				_rect(px + 2, py + k * 4, TILE - 4, 1, Color(0.28, 0.3, 0.33))
+			_rect(px + 1, py, 1, TILE, Color(0.08, 0.08, 0.09))
+			_rect(px + TILE - 2, py, 1, TILE, Color(0.08, 0.08, 0.09))
 		10:             # water (a pool)
 			var wc := Color(0.2, 0.6, 0.8)
 			_rect(px, py, TILE, TILE, wc)

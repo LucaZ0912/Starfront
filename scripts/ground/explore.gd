@@ -8,7 +8,8 @@ extends Node2D
 const ChibiArtE = preload("res://scripts/ground/chibi_art.gd")
 const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "terminal": "Terminal – hack it",
 	"tablet": "Carved tablet – scan it (scanner on your belt)", "relic": "Relic – scan it (scanner on your belt)",
-	"blastdoor": "Blast door – sealed (its release is in the box beside it)"}
+	"blastdoor": "Blast door – sealed (its release is in the box beside it)",
+	"vent": "Ventilation shaft – welded shut (cutting torch)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -166,6 +167,8 @@ static func add(map: GroundMap, kind: String, pos: Vector2, extra: Dictionary = 
 	var d := {"kind": kind, "pos": pos, "state": "shut", "seed": randi() % 100000}
 	d.merge(extra, true)
 	if kind == "panel":
+		if d.has("door"):
+			d["wall"] = true                       # 0.7.52.27 (Luz): a door's box hangs on the wall beside it
 		d["inside"] = String(d.get("inside", "button"))
 		d["shape"] = String(d.get("shape", ["rounded", "hex", "round", "trapezoid", "notched", "arch"][int(d["seed"]) % 6]))
 		d["label"] = "MAINT-%02d" % (int(d["seed"]) % 90 + 10)
@@ -191,10 +194,51 @@ func _draw() -> void:
 	var s := GroundMap.SCALE
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
-	draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
+	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor"]
+	if not on_wall:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
+		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
-	match String(d["kind"]):
+	match ("panel_wall" if String(d["kind"]) == "panel" and on_wall else String(d["kind"])):
+		"panel_wall":
+			# 0.7.52.27 (Luz): the box mounted on the wall beside a blast door – flush, its conduit running up
+			draw_rect(Rect2(-1.5, -40, 3, 12), Color(0.2, 0.21, 0.24))
+			draw_rect(Rect2(-9, -29, 18, 20), Color(0.1, 0.11, 0.13))
+			draw_rect(Rect2(-8, -28, 16, 18), Color(0.38, 0.4, 0.44))
+			draw_rect(Rect2(-8, -28, 16, 1), Color(0.55, 0.57, 0.6))
+			draw_rect(Rect2(-8, -11, 16, 1), Color(0.2, 0.21, 0.24))
+			draw_rect(Rect2(-7, -13, 14, 2), Color(0.95, 0.78, 0.15))
+			if String(d["state"]) == "shut":
+				draw_rect(Rect2(-5, -25, 10, 10), Color(0.46, 0.48, 0.52))
+				draw_rect(Rect2(-5, -25, 10, 10), Color(0.95, 0.9, 0.55, 0.6), false, 0.5)
+			else:
+				draw_rect(Rect2(-5, -25, 10, 10), Color(0.05, 0.05, 0.06))
+				draw_circle(Vector2(0, -20), 2.5, Color(0.2, 0.9, 0.35) if String(d["inside"]) == "button" else Color(0.2, 0.9, 1.0))
+			draw_circle(Vector2(6, -26), 1.0, Color(1.0, 0.25, 0.2) if fposmod(t, 1.2) < 0.9 else Color(0.3, 0.1, 0.1))
+		"vent":
+			# 0.7.52.27 (Luz): a ventilation shaft's grille in the wall – welded shut, or cut open into the dark duct
+			draw_rect(Rect2(-9, -27, 18, 16), Color(0.12, 0.13, 0.15))
+			if String(d["state"]) == "shut":
+				draw_rect(Rect2(-8, -26, 16, 14), Color(0.42, 0.44, 0.48))
+				for sl in 5:
+					draw_rect(Rect2(-7, -24.5 + sl * 2.6, 14, 1.4), Color(0.18, 0.19, 0.22))
+					draw_rect(Rect2(-7, -23.8 + sl * 2.6, 14, 0.6), Color(0.6, 0.62, 0.66))
+				for bx in [-7.0, 7.0]:
+					for by in [-25.0, -13.0]:
+						draw_circle(Vector2(bx, by), 0.7, Color(0.7, 0.72, 0.75))
+			else:
+				draw_rect(Rect2(-8, -26, 16, 14), Color(0.03, 0.03, 0.04))
+				draw_rect(Rect2(-6, -24, 12, 10), Color(0.06, 0.06, 0.07))
+				draw_rect(Rect2(-4, -22, 8, 6), Color(0.02, 0.02, 0.03))
+				draw_rect(Rect2(-8, -26, 16, 14), Color(1.0, 0.5, 0.2, 0.35), false, 0.6)
+			draw_string(ThemeDB.fallback_font, Vector2(-9, -29), "VENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.9, 0.85, 0.5, 0.8))
+		"vent_end":
+			# the shaft's other mouth: its grille knocked out, hanging open
+			draw_rect(Rect2(-16, -16, 3, 16), Color(0.32, 0.34, 0.38))
+			draw_rect(Rect2(-16, -16, 16, 2), Color(0.32, 0.34, 0.38))
+			draw_rect(Rect2(-16, -2, 16, 2), Color(0.32, 0.34, 0.38))
+			for sl2 in 4:
+				draw_rect(Rect2(-13 + sl2 * 3.5, -13, 1.2, 10), Color(0.2, 0.21, 0.24, 0.5))
 		"panel":
 			# a steel box on its post, conduits in, the flap, its light
 			draw_rect(Rect2(-1.5, -10, 3, 10), Color(0.25, 0.26, 0.29))

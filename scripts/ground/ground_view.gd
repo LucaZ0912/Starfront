@@ -977,6 +977,7 @@ func _apply_day(d: float, force: bool = false) -> void:
 
 func _process(delta: float) -> void:
 	_scan_step(delta)
+	_duct_step()
 	_t += delta
 	for f in _flicker:
 		var ph: float = f[2]
@@ -1292,6 +1293,23 @@ func explore_use(z: Dictionary) -> bool:
 		"terminal":
 			_open_hack(d)
 			return true
+		"vent":
+			if String(d["state"]) != "shut":
+				_say_toast("The shaft is open – crawl in.", 2.0)
+				return true
+			var tool2 := belt_tool("tl_cutter")
+			if tool2 == "":
+				_say_toast("The grille is welded shut – you need a cutting torch on your belt.", 3.0)
+				return true
+			var vg = CutGame.new()
+			vg.inside = "duct"
+			vg.shape = "rounded"
+			vg.label = String(d.get("label", "VENT-06"))
+			vg.skill = GameState.skill_level("engineering")
+			vg.quality = float(ChibiArt.GearData.stats(tool2).get("strength", 1.0))
+			vg.finished.connect(func(res: String): _cut_done(d, res))
+			_open_game(vg)
+			return true
 		"blastdoor":
 			_say_toast("Sealed – its release is in the maintenance box beside it." if String(d["state"]) != "open" else "Open.", 2.5)
 			return true
@@ -1324,6 +1342,9 @@ func _cut_done(d: Dictionary, res: String) -> void:
 		_say_toast("You leave the box – the cut is lost.", 2.0)
 		return
 	d["state"] = "open"
+	if res == "duct":
+		open_vent(d)
+		return
 	if res == "button":
 		_explore_effect(d, "door")
 	else:
@@ -1422,6 +1443,37 @@ func open_door(d: Dictionary) -> void:
 	map._astar = null
 	if combat != null:
 		combat._build_cover()
+
+
+## 0.7.52.27 (Luz): a vent cut open – its duct can be crawled through (you sneak in it).
+func open_vent(d: Dictionary) -> void:
+	d["state"] = "open"
+	for c in d.get("duct", []):
+		map.set_t(int(c[0]), int(c[1]), GroundMap.T.FLOOR, 16)
+	map._astar = null
+	if combat != null:
+		combat._build_cover()
+	_say_toast("The grille drops – the shaft is open. Crawl in.", 2.5)
+
+
+## In a duct you go on all fours: sneaking (and back up when you are out).
+var _duct_sneak := false
+
+
+func _duct_step() -> void:
+	if combat == null or pilot == null:
+		return
+	var tx := int(floor(pilot.pos.x / GroundMap.TILE))
+	var ty := int(floor(pilot.pos.y / GroundMap.TILE))
+	var in_duct := tx >= 0 and ty >= 0 and tx < map.w and ty < map.h and map.floor_kind[ty * map.w + tx] == 16 and GroundMap.walkable_t(map.t_at(tx, ty))
+	if in_duct and not combat.sneaking:
+		combat.toggle_sneak()
+		_duct_sneak = true
+		_say_toast("You crawl into the shaft – low and quiet.", 2.0)
+	elif not in_duct and _duct_sneak:
+		_duct_sneak = false
+		if combat.sneaking:
+			combat.toggle_sneak()
 
 
 ## 0.7.52.23: the laser cage switched off – you may step up to what it guarded (the posts stay).

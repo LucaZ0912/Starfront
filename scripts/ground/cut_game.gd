@@ -203,7 +203,7 @@ func _draw() -> void:
 	if not opened:
 		_draw_torch(c + torch)
 	else:
-		var tx := "Space: press the button" if inside == "button" else "Space: jack into the terminal"
+		var tx := "Space: press the button" if inside == "button" else ("Space: crawl in" if inside == "duct" else "Space: jack into the terminal")
 		_s(Vector2(_box.position.x, _box.end.y + 30), tx, Color(0.45, 1.0, 0.6) if inside == "button" else Color(0.4, 0.95, 1.0), 15, HORIZONTAL_ALIGNMENT_CENTER, _box.size.x)
 	_draw_gauges(Vector2(_box.end.x + 40, _box.position.y + 10))
 
@@ -286,7 +286,7 @@ func _draw_housing(r: Rect2) -> void:
 	draw_rect(lp, Color(0.78, 0.78, 0.72))
 	draw_rect(lp, Color(0.25, 0.25, 0.25), false, 1.0)
 	_s(lp.position + Vector2(8, 15), label, Color(0.12, 0.12, 0.14), 13)
-	_s(lp.position + Vector2(8, 29), "⚡ HIGH VOLTAGE – AUTHORISED ONLY", Color(0.6, 0.1, 0.08), 8)
+	_s(lp.position + Vector2(8, 29), ("AIR SHAFT – KEEP CLEAR" if inside == "duct" else "⚡ HIGH VOLTAGE – AUTHORISED ONLY"), Color(0.6, 0.1, 0.08), 8)
 	var led := Vector2(r.end.x - 28, r.position.y + 28)
 	draw_circle(led, 8.0, Color(0.12, 0.12, 0.14))
 	var on: bool = fposmod(t, 1.2) < 0.9 and not opened
@@ -330,7 +330,19 @@ func _draw_flap(c: Vector2, drop: float) -> void:
 				draw_line(a, b, Color(0.95, 0.9, 0.55, 0.85), 2.0)
 	# stencil and bolts on the flap
 	var lab := cen + Vector2(-60, -6).rotated(rot)
-	_s(lab, "ACCESS", Color(0.95, 0.78, 0.2, 0.9 - drop), 18)
+	if inside == "duct":
+		# the vent's grille: slats across the flap
+		var bb := Rect2(path[0], Vector2.ZERO)
+		for pq in path:
+			bb = bb.expand(pq)
+		var y0 := bb.position.y + 16.0
+		while y0 < bb.end.y - 12.0:
+			var a0 := cen + Vector2(bb.position.x + 16.0, y0).rotated(rot) * (1.0 - drop * 0.15)
+			var a1 := cen + Vector2(bb.end.x - 16.0, y0).rotated(rot) * (1.0 - drop * 0.15)
+			draw_line(a0, a1, Color(0.16, 0.17, 0.2, 1.0 - drop * 0.3), 6.0)
+			draw_line(a0 + Vector2(0, 3), a1 + Vector2(0, 3), Color(0.62, 0.64, 0.68, 1.0 - drop * 0.3), 1.5)
+			y0 += 18.0
+	_s(lab, "ACCESS" if inside != "duct" else "AIR SHAFT", Color(0.95, 0.78, 0.2, 0.9 - drop), 18)
 	_s(lab + Vector2(0, 18).rotated(rot), "do not open under load", Color(0.2, 0.2, 0.22, 0.9 - drop), 10)
 	var bounds := Rect2(path[0], Vector2.ZERO)
 	for p2 in path:
@@ -347,6 +359,18 @@ func _draw_machinery(c: Vector2, poly: PackedVector2Array) -> void:
 	var bounds := Rect2(poly[0], Vector2.ZERO)
 	for p in poly:
 		bounds = bounds.expand(p)
+	if inside == "duct":
+		# 0.7.52.27: behind a vent's grille – the shaft running off into the dark, its ribs closing in, a draught of dust
+		for k in 9:
+			var f := 1.0 - k * 0.1
+			var rr := Rect2(c - bounds.size * 0.5 * f, bounds.size * f)
+			draw_rect(rr, Color(0.22 - k * 0.022, 0.23 - k * 0.022, 0.26 - k * 0.024))
+			draw_rect(rr, Color(0.36 - k * 0.03, 0.38 - k * 0.03, 0.42 - k * 0.03), false, 2.0)
+		draw_rect(Rect2(c - bounds.size * 0.06, bounds.size * 0.12), Color(0.01, 0.01, 0.015))
+		for dp in 14:
+			var q := c + Vector2(sin(t * 0.7 + dp * 1.7) * bounds.size.x * 0.3, cos(t * 0.5 + dp * 2.3) * bounds.size.y * 0.3)
+			draw_circle(q, 1.2, Color(0.8, 0.78, 0.7, 0.25))
+		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _seed + 7
 	var inner := func(q: Vector2, shrink: float) -> bool:
