@@ -2482,7 +2482,9 @@ func _c_debug_ground_level(c: Dictionary) -> String:
 		ok = ["hangar", "street", "tower", "alley"]          # 0.7.53.3: the back alley over the sewers
 	elif not g.is_town() and g.level in ["hangar", "commercial", "clinic"]:
 		ok = ["hangar", "commercial"]
-	if not ok.is_empty() and g._avail.has("clinic"):
+	if g.is_town() and not g.is_city():
+		ok = ["settlement", "minehead"]                     # 0.7.53.7: a settlement and the old mine at its edge
+	if not ok.is_empty() and g._avail.has("clinic") and not (g.is_town() and not g.is_city()):
 		ok.append("clinic")
 	if ok.is_empty():
 		return "No levels here (a landing field or a settlement)."

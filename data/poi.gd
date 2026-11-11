@@ -49,6 +49,24 @@ const THEMES := {
 		"names_b": ["Meridian", "Horizon", "Promise", "Tally", "Comet", "Harvest", "Wanderer", "Lantern"],
 		"hulls": ["freighter", "mule", "warden", "bastion", "hdy_goliath", "aur_boulevard", "hdy_maul", "iwakudaki"],
 		"layers": [{}, {}]},
+	# 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine under its headframe: crooked, branching drifts,
+	# a few bigger chambers, the cage down to the deeper level; rare finds for the Museum
+	"mine": {"name": "Old mine", "kind": "mine_old", "style": "mine", "room_floor": 25, "hall_floor": 25,
+		"floor": Color(0.36, 0.31, 0.26), "floor2": Color(0.31, 0.27, 0.22), "wall": Color(0.34, 0.28, 0.22),
+		"wall_top": Color(0.09, 0.08, 0.07), "trim": Color(0.42, 0.3, 0.17), "accent": Color(1.0, 0.75, 0.4),
+		"light": Color(1.0, 0.75, 0.4),
+		"door": "grate_door", "computer": "pump",
+		"foes": ["bandit_scrapper", "bandit_rifleman", "bandit_gunner"], "leader": "bandit_boss",
+		"props": ["ore_cart", "heap", "crates", "barrel", "heap"],
+		"guard": "", "traps": "mine", "fog": false, "dark": Color(0.62, 0.55, 0.48), "outside": "minehead", "target": "find",
+		"tablets": 0, "vent": false, "descent": "cage", "rails": true, "rubble": true, "stores": [1, 2],
+		"cols": [4, 5], "rows": [3, 3], "cell_w": 18, "cell_h": 15, "room_w": [9, 13], "room_h": [6, 8], "room_chance": 0.4,
+		"corr": 3, "loops": [1, 2], "cover": [3, 5],
+		"loot": ["cs_medkit", "cs_cell", "cs_ammo", "gr_frag"],
+		"credits": [100, 320], "research": [0, 2], "museum_chance": 0.18,
+		"names_a": ["Old", "Deep", "Lower", "North", "Black", "Rust", "Long", "Blind"],
+		"names_b": ["Shaft", "Seam", "Drift", "Pit", "Lode", "Vein", "Gallery", "Level"],
+		"layers": [{}, {}]},
 	# 0.7.53.3 (Luz, package 53b): the way down from a city – the sewers, and deep in them an arms dealer's hideout
 	"sewer": {"name": "Sewers and a dealer's hideout", "kind": "sewer", "style": "sewer", "room_floor": 21, "hall_floor": 19,
 		"floor": Color(0.3, 0.31, 0.3), "floor2": Color(0.26, 0.27, 0.26), "wall": Color(0.38, 0.39, 0.37),
@@ -89,7 +107,13 @@ static func levels(theme: String) -> int:
 	return (THEMES.get(theme, THEMES["precursor"]).get("layers", [{}]) as Array).size()
 
 ## 0.7.53.2 (Luz): rare relics of the two vanished alien kinds – found in ruins, shown in the Museum (package 53e).
+## 0.7.53.7 (Luz): and special mining finds from the old mines.
 const MUSEUM_RELICS := {
+	"mine": [["mn_diamond", "Giant Diamond", "A diamond the size of a fist – the miners who found it never came back up for it."],
+		["mn_geode", "Singing Geode", "Its crystals ring when the air moves."],
+		["mn_fossil", "Fossil in Ore", "Something lived in this rock before there was air on this world."],
+		["mn_meteor", "Iron Meteorite", "Fell here before the colonies, buried under a hundred metres of rock."],
+		["mn_gold", "Gold Nugget", "Heavy, warm-coloured, the size of an egg."]],
 	"precursor": [["pr_lens", "Precursor Lens", "A disc of fused crystal that bends light into words nobody reads."],
 		["pr_key", "Precursor Key-Rod", "A rod of rusted iron and living crystal – it hums near their doors."],
 		["pr_mask", "Precursor Mask", "A face, or what they thought a face should be."],
@@ -123,6 +147,9 @@ const TARGETS := {
 	"alarm": {"col": Color(1.0, 0.25, 0.2), "needs": "cutting torch on its box – before it rings", "gives": "no reinforcements"},
 	"blackbox": {"col": Color(1.0, 0.6, 0.2), "needs": "get to it – on the lower deck, behind a jammed bulkhead (emergency power or its box)", "gives": "the flight recorder – a reward from its owners"},
 	"power": {"col": Color(1.0, 0.85, 0.3), "needs": "the emergency generator – choose where its power goes", "gives": "the bulkheads open – or the lights come back"},
+	"find": {"col": Color(0.95, 0.85, 0.4), "needs": "get to the deepest chamber (its gate: the box beside it, or the old control) · cutting torch to cut it out", "gives": "a rare find for the Museum"},
+	"cage": {"col": Color(1.0, 0.75, 0.4), "needs": "power – start the generator", "gives": "the cage down to the deeper level"},
+	"rubble": {"col": Color(0.7, 0.6, 0.5), "needs": "a frag grenade as a charge – or a box of explosives nearby", "gives": "a buried side chamber – its cache"},
 	"lift": {"col": Color(0.7, 0.5, 1.0), "needs": "E-Breach on their computer, or the cutting torch on a crystal panel", "gives": "the way down to the deeper level"},
 }
 
@@ -133,6 +160,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 	var b: String = th["names_b"][rng.randi() % th["names_b"].size()]
 	if String(th["kind"]) == "sewer":
 		return "%s %s" % [a, b]
+	if String(th["kind"]) == "mine_old":
+		return "The %s %s" % [a, b]
 	if String(th["kind"]) == "crash":
 		return "Wreck of the %s %s" % [a, b]
 	return "%s of %s-%s" % ["Ruin" if String(th["kind"]) == "ruins" else "Site", a, b.capitalize()]

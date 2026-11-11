@@ -216,6 +216,18 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 	m.add_object({"kind": "cargo_loader", "x": B + 13, "y": STREET_Y - 4, "w": 3, "h": 1, "rise": 24})     # 0.7.50.15
 	# 0.7.50.12: what it lives from, east of the town behind a fence
 	_econ(m, eco, bk, body, rng, sea)
+	# 0.7.53.7 (Luz, package 53b): a path at the town's north edge to the old mine (a signpost by it)
+	var mx := B + FIELD + 3
+	for tx in range(B + FIELD + 3, TW - 4):
+		if GroundMap.walkable_t(m.t_at(tx, B)) and GroundMap.walkable_t(m.t_at(tx + 1, B)) and GroundMap.walkable_t(m.t_at(tx + 2, B)) \
+				and GroundMap.walkable_t(m.t_at(tx, B + 1)) and GroundMap.walkable_t(m.t_at(tx + 2, B + 1)):
+			mx = tx
+			break
+	m.fill(mx, 0, 3, B, GroundMap.T.FLOOR, 15)
+	m.zones.append({"rect": Rect2(Vector2(mx, B - 1) * GroundMap.TILE, Vector2(3, 1.6) * GroundMap.TILE), "kind": "mine_path", "id": "mine_path",
+		"title": "A path north – to the old mine", "col": Color(1.0, 0.75, 0.4), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "signpost", "x": mx + 3, "y": B, "w": 1, "h": 1})
+	m.set_meta("mine_path_front", Vector2(mx + 1.5, B + 1.4) * GroundMap.TILE)
 	# what bounds it: the world
 	_border(m, bk, body, rng)
 	for k in 16:

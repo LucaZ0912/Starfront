@@ -159,6 +159,7 @@ func _process(delta: float) -> void:
 				_test_poi(view)                  # package 53a – sites to explore
 				_test_sewer(view)                # package 53b – the sewers, levels, the city's way down
 				_test_wreck(view)                # package 53b – crash sites
+				_test_mine(view)                 # package 53b – the old mine by a settlement
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9969,6 +9970,153 @@ func _test_wreck(view: SystemView) -> void:
 	main._update_input()
 	check(out_ok and deck_ok and shock_ok and low_ok and done_ok and up_ok,
 		"53b: crash sites found on the map with their ship; the wreck at the ground's scale (a 92 m freighter), its breach and airlock, cargo containers, scavengers, smoke; the airlock sealed until its terminal opens it; inside the main corridor along the hull, the hole down, conduits that shock, gas; below the jammed bulkhead – the generator's power opens it; the flight recorder pays; back up and out  [%s]" % " ".join(PackedStringArray([str(out_ok), str(deck_ok), str(shock_ok), str(low_ok), str(done_ok), str(up_ok)])))
+
+
+## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine: the headframe outside (its chained gate),
+## the drifts with their rails, the cage without power (the generator), boxes of explosives that go up, the deepest
+## chamber's find for the Museum; from a real settlement by the path at its edge.
+func _test_mine(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5307, "theme": "mine"})
+	var g = main.ground
+	if g == null or e != "" or g.level != "landing":
+		check(false, "53b: the old mine opens  [%s]" % e)
+		return
+	gear.refill()
+	g._close_lift_menu()
+	var gate: Dictionary = {}
+	for d in g.map.explore:
+		if String(d["kind"]) == "mine_gate":
+			gate = d
+	var zin := _zone_of(g.map, "dungeon_in")
+	var out_ok: bool = not gate.is_empty() and zin.has("gate") and not _zone_of(g.map, "town_path").is_empty() \
+		and g.map.objects.any(func(o): return String(o["kind"]) == "shaft_house")
+	if String(gate["state"]) != "open":
+		g._arrive = 0.0
+		g.zone = zin
+		g.use()
+		out_ok = out_ok and g.level == "landing"
+		g._cut_done(gate, "duct")
+	out_ok = out_ok and String(gate["state"]) == "open"
+	g._arrive = 0.0
+	g.zone = zin
+	g.use()
+	if g.level != "dungeon" or g.combat == null:
+		check(false, "53b: down into the mine  [%s]" % g.level)
+		return
+	gear.refill()
+	# level 1: rails, the cage, explosives, traps
+	var rails := 0
+	for y in g.map.h:
+		for x in g.map.w:
+			if g.map.floor_kind[y * g.map.w + x] in [26, 27]:
+				rails += 1
+	var cage: Dictionary = {}
+	var gen: Dictionary = {}
+	var tnt: Dictionary = {}
+	var traps := 0
+	for d1 in g.map.explore:
+		match String(d1["kind"]):
+			"cage":
+				cage = d1
+			"mine_gen":
+				gen = d1
+			"tnt":
+				if tnt.is_empty():
+					tnt = d1
+			"loose_rock", "gas", "tripwire":
+				traps += 1
+	var lvl_ok: bool = g.map.style == "mine" and rails > 20 and not cage.is_empty() and not tnt.is_empty() and traps >= 1 and g.map.has_meta("dark")
+	# a blast close by sets the explosives off
+	Commands.suit_god = true
+	var nb: int = g.combat.booms.size()
+	g.blast_near((tnt["pos"] as Vector2) + Vector2(24, 0), 30.0)
+	g._fuses_step(0.3)
+	var tnt_ok: bool = String(tnt["state"]) == "gone" and g.combat.booms.size() > nb
+	Commands.suit_god = false
+	# the cage: without power it will not go; the generator gives it power; it sinks with you
+	g.pilot.pos = (cage["pos"] as Vector2) + Vector2(0, 10)
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_down")
+	if String(cage["state"]) == "dormant":
+		g.use()
+		lvl_ok = lvl_ok and g._sink.is_empty() and not gen.is_empty()
+		g.explore_use({"i": g.map.explore.find(gen)})
+	var cage_ok: bool = String(cage["state"]) == "active"
+	g.use()
+	for st in 10:
+		if not g._sink.is_empty():
+			g._sink_step(0.3)
+	cage_ok = cage_ok and g.depth == 1 and g.level == "dungeon"
+	# level 2: the deepest chamber behind its gate, the find
+	var vein: Dictionary = {}
+	var ctrl: Dictionary = {}
+	for d2 in g.map.explore:
+		if String(d2["kind"]) == "vein":
+			vein = d2
+		elif String(d2["kind"]) == "terminal" and (d2.get("actions", []) as Array).has("door"):
+			ctrl = d2
+	var vp: Vector2 = (vein.get("pos", Vector2.ZERO) as Vector2) + Vector2(0, 20)
+	var deep_ok: bool = not vein.is_empty() and bool(vein.get("target", false)) and not ctrl.is_empty() and g.map.path(g.map.spawn, vp).is_empty() \
+		and _has_kind(g.map, "grate_door")
+	g._hack_done(ctrl, "door")
+	deep_ok = deep_ok and not g.map.path(g.map.spawn, vp).is_empty()
+	gear.belt[0] = {"id": "tl_cutter:C", "n": 1}
+	var mf := GameState.museum_finds.size()
+	g.explore_use({"i": g.map.explore.find(vein)})
+	var find_ok: bool = String(vein["state"]) == "taken" and GameState.museum_finds.size() == mf + 1 and GameState.poi_used.has(String(g._site["id"])) \
+		and String(GameState.museum_finds[-1]).begins_with("mn_")
+	GameState.museum_finds.resize(mf)
+	# a real settlement: the path at its edge to the old mine and back
+	main.close_deck(false)
+	main._close_planet_map()
+	f.docked_at = ""
+	var town_ok := true
+	var L := Universe.get_layout(view.system_id)
+	var tbody := {}
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b) and tbody.is_empty():
+			tbody = b
+	if not tbody.is_empty():
+		var e2 := Commands.execute({"type": "debug_land", "body": String(tbody["id"]), "kind": "mine"})
+		g = main.ground
+		town_ok = e2 == "" and g != null and g.level == "settlement" and not _zone_of(g.map, "mine_path").is_empty()
+		if town_ok:
+			var site0: Dictionary = g._site
+			g._arrive = 0.0
+			g.zone = _zone_of(g.map, "mine_path")
+			g.use()
+			town_ok = g.level == "minehead" and String(g._site.get("theme", "")) == "mine" and g.combat == null
+			g._arrive = 0.0
+			g.zone = _zone_of(g.map, "town_path")
+			g.use()
+			town_ok = town_ok and g.level == "settlement" and g._site == site0 and g.pilot.pos.distance_to(g.map.get_meta("mine_path_front")) < 30.0
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(out_ok and lvl_ok and tnt_ok and cage_ok and deep_ok and find_ok and town_ok,
+		"53b: the old mine – the headframe and its chained gate; drifts with rails, the cage, explosives, traps; a blast sets the explosives off; the cage without power waits for the generator, then sinks; the deepest chamber's gate, the find for the Museum; from a settlement by the path at its edge and back  [%s]" % " ".join(PackedStringArray([str(out_ok), str(lvl_ok), str(tnt_ok), str(cage_ok), str(deep_ok), str(find_ok), str(town_ok)])))
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

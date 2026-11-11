@@ -614,6 +614,8 @@ func _resolve(s: Dictionary) -> void:
 	if float(res["splash"]) > 0.0 and kind != "dodged":
 		_explode(s["b"] - CHEST if kind != "hit" else (pilot_pos() if to == null else ((to["pos"] as Vector2) if to.has("is_drone") else (to["w"] as Walker).pos)), float(res["splash"]), float(res["dmg"]), String(res["dtype"]), res["from"])
 		return
+	if kind in ["blocked", "miss"] and view != null and view.has_method("shot_lands"):
+		view.shot_lands(s["b"])                         # 0.7.53.7: a box of explosives hit goes up
 	if to != null and to.has("is_drone") and kind != "dome":
 		if kind == "hit":
 			_hurt_drone(float(res["dmg"]), String(res["dtype"]), to)
@@ -668,6 +670,8 @@ func _explode(at: Vector2, r: float, dmg: float, dtype: String, from, spare_pilo
 			var k3 := blast_share(at, (al["w"] as Walker).pos, r)
 			if k3 > 0.0:
 				_hurt_ally(al, dmg * k3, dtype)
+	if view != null and view.has_method("blast_near"):
+		view.blast_near(at, r)                          # 0.7.53.7: explosives near it go up, rubble is blown away
 
 
 ## 0.7.52.5: how much of a blast at `at` (radius r) reaches p – less further out, nothing behind high cover or inside a

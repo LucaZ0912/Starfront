@@ -81,6 +81,12 @@ static func _rise(kind: String) -> int:
 			return 9
 		"container":                          # 0.7.53.6: a 6 m cargo container (2.6 m tall)
 			return 30
+		"shaft_house":                        # 0.7.53.7: the shaft house with its headframe over it (~22 m)
+			return 170
+		"winding_house":
+			return 50
+		"ore_bin":
+			return 60
 		"locker_down", "seats":               # 0.7.53.6: a ship's lockers fallen over, a row of seats – low cover
 			return 10
 		"pump":                               # 0.7.53.3: a big pump – high cover
@@ -512,6 +518,60 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 					_r(img, dx + 3 + bar * 5, lid_h + 2, 1, face_top - 4, Color(0.75, 0.75, 0.72))
 					_r(img, dx + 2 + bar * 5, lid_h + 12 + bar * 4, 3, 2, Color(0.85, 0.85, 0.8))
 			_ellipse(img, pw * 0.4, lid_h + 14, 6, 4, cc.darkened(0.35))
+		"shaft_house":
+			# 0.7.53.7 (Luz): the old mine's shaft house – corrugated walls rusting, a pitched roof, and over it the
+			# headframe: two lattice legs, braces, the sheave wheel at the top, its ropes going down into the shaft
+			var wl := Color(0.36, 0.31, 0.26)
+			var wall_top := fy - 58
+			_r(img, 0, wall_top, pw, ph + 58, wl)
+			for cg in range(0, pw, 3):
+				_r(img, cg, wall_top, 1, ph + 58, wl.darkened(0.18))
+			for rs in 26:
+				_r(img, int(GroundMap.hash2(rs, 1, 141) * (pw - 3)), wall_top + int(GroundMap.hash2(rs, 2, 141) * 56), 2, 3, Color(0.5, 0.28, 0.14))
+			_r(img, 0, wall_top - 14, pw, 16, Color(0.42, 0.34, 0.27))                 # the roof
+			for rf in range(0, pw, 4):
+				_r(img, rf, wall_top - 14, 1, 16, Color(0.34, 0.27, 0.21))
+			_r(img, 0, wall_top - 14, pw, 2, Color(0.55, 0.45, 0.36))
+			for wi in [12, pw - 26]:
+				_r(img, wi, wall_top + 12, 14, 10, Color(0.08, 0.08, 0.09))             # windows, broken
+				_r(img, wi + 1, wall_top + 13, 5, 4, Color(0.3, 0.38, 0.42))
+			var tx := pw / 2
+			var tt := 4
+			for side in [-1, 1]:
+				for yy in range(tt, wall_top - 12):
+					var xo := int(10 + (yy - tt) * 0.35)
+					_r(img, tx + side * xo, yy, 2, 1, Color(0.55, 0.28, 0.16))
+			for br in range(tt + 8, wall_top - 12, 10):
+				var xo2 := int(10 + (br - tt) * 0.35)
+				_r(img, tx - xo2, br, xo2 * 2, 1, Color(0.48, 0.24, 0.14))
+			_ellipse(img, tx, tt + 4, 9, 9, Color(0.38, 0.36, 0.35))
+			_ellipse(img, tx, tt + 4, 6.5, 6.5, Color(0.16, 0.15, 0.15))
+			for sp in 6:
+				var a := sp * TAU / 6.0
+				_r(img, tx + int(cos(a) * 4), tt + 4 + int(sin(a) * 4), 2, 2, Color(0.45, 0.43, 0.41))
+			_r(img, tx - 1, tt + 4, 1, wall_top - tt + 30, Color(0.15, 0.15, 0.15))
+			_r(img, tx + 7, tt + 4, 1, wall_top - tt + 20, Color(0.15, 0.15, 0.15))
+			_r(img, 0, fy + ph - 3, pw, 3, wl.darkened(0.45))
+		"winding_house":
+			# 0.7.53.7: the winding house – brick, a dark window, a chimney
+			var bc := Color(0.5, 0.36, 0.28)
+			_r(img, 0, fy - 30, pw, ph + 30, bc)
+			for row in range(fy - 30, fy + ph, 4):
+				for bx in range((row / 4) % 2 * 4, pw, 8):
+					_r(img, bx, row, 7, 3, bc.lerp(bc.darkened(0.25), GroundMap.hash2(bx, row, 142)))
+			_r(img, 0, fy - 36, pw, 7, Color(0.36, 0.3, 0.25))
+			_r(img, pw / 2 - 6, fy - 20, 12, 10, Color(0.08, 0.08, 0.09))
+			_r(img, pw - 10, fy - 50, 5, 16, Color(0.4, 0.3, 0.25))
+		"ore_bin":
+			# 0.7.53.7: an ore bin on stilts, rusted, its chute hanging
+			var ob := Color(0.42, 0.3, 0.2)
+			_r(img, 0, fy - 56, pw, 30, ob)
+			_r(img, 0, fy - 56, pw, 3, ob.lightened(0.2))
+			for lg in 4:
+				_r(img, 2 + lg * (pw - 6) / 3, fy - 26, 3, ph + 26, ob.darkened(0.25))
+			_r(img, pw / 2 - 4, fy - 26, 8, 6, Color(0.3, 0.3, 0.32))
+			for rs2 in 10:
+				_p(img, int(GroundMap.hash2(rs2, 1, 143) * pw), fy - 54 + int(GroundMap.hash2(rs2, 2, 143) * 26), Color(0.55, 0.3, 0.15))
 		"locker_down":
 			# 0.7.53.6: a ship's locker fallen on its back – its doors to the sky, one sprung
 			var lc := Color(0.4, 0.45, 0.5)

@@ -3,6 +3,28 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.7 – 2026-11-11
+
+**Package 53b – the old mine, a settlement's way down (Luz).** Theme sheet in Roadmap.md (Paket 53: Minenstollen).
+- **From any settlement** a path at its north edge (a signpost by it) leads to **the old mine**: the shaft house of
+  rusting corrugated iron with its **headframe** – lattice legs, braces, the sheave wheel, the ropes into the shaft –
+  the brick winding house, an ore bin on stilts, tailings heaps, rails out of the shaft with lorries, barrels, crates,
+  lamps; the path back into town in the south. The **gate** into the shaft is chained (cut it) or hangs open.
+- **The drifts:** crooked and branching, few bigger chambers; raw rock with ore glinting in it, timber props holding
+  the roof, a lamp cable, **rails down the middle** of the drifts; rock and gravel underfoot, puddles; dim, warm light.
+  Cover: lorries, ore heaps, crates, barrels.
+- **The cage** takes you to the deeper level – often without power: start the **old generator** by the mine's
+  control (loud – everyone down there hears it). It sinks with you.
+- **Explosives:** red boxes of them against the walls – a blast close by or a shot that hits one sets it off.
+- **A buried side drift:** a fall of rock – blast it with a frag grenade as a charge (or the explosives nearby); behind
+  it a cache that may hold a find for the Museum.
+- **Traps:** loose rock overhead (it comes down a moment after you pass under it – sneaking you get by), gas pockets,
+  tripwires.
+- **The target:** in the deepest chamber behind its old gate something glitters in the rock – cut it out: a **special
+  mining find for the Museum** (a giant diamond, a singing geode, a fossil in ore, an iron meteorite, a gold nugget).
+- For now outposts and research camps have the same old mine at their edge (Luz may give them their own later).
+- Debug: *Site* with theme `mine`; *debug_ground_level minehead / settlement* in a settlement. Smoke test group `mine`.
+
 ## alpha 0.7.53.6 – 2026-11-11
 
 **Package 53b – crash sites (Luz).** Theme sheet in Roadmap.md (Paket 53: Absturzstelle).

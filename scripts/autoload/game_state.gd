@@ -2054,6 +2054,18 @@ func city_poi(system_id: int, city: Dictionary) -> Dictionary:
 		"danger": danger, "used": poi_used.has(id)}
 
 
+## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine under its headframe, rolled anew each visit.
+func settle_poi(system_id: int, town: Dictionary) -> Dictionary:
+	const PoiData = preload("res://data/poi.gd")
+	var visit := int(poi_visits.get(str(system_id), 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("mine_%d_%d_%s_%d" % [system_id, visit, String(town.get("id", "")), Universe.seed_value])
+	var id := "mine_%d_%d_%s" % [system_id, visit, String(town.get("id", ""))]
+	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
+	return {"id": id, "name": PoiData.site_name("mine", rng), "kind": "mine_old", "poi": true, "theme": "mine", "seed": rng.randi(),
+		"danger": danger, "used": poi_used.has(id)}
+
+
 func museum_find(id: String) -> void:
 	museum_finds.append(id)
 	log_msg("A find for the Museum.", COL_GOOD)

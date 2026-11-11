@@ -20,7 +20,10 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"alarm": "Alarm box – cut its wires (cutting torch) before it rings",
 	"bulkhead": "A jammed bulkhead – no power (its box beside it, or the emergency generator)",
 	"blackbox": "The flight recorder – pull it out (E)",
-	"generator": "The emergency generator – route its power (E)"}
+	"generator": "The emergency generator – route its power (E)",
+	"mine_gen": "The old generator – start it (E)",
+	"vein": "Something glitters in the rock – cut it out (cutting torch)",
+	"rubble": "A fall of rock buries the drift – blast it (a frag grenade as a charge)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -414,7 +417,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
-		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole"]
+		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -520,6 +523,93 @@ func _draw() -> void:
 		"ancient_lift":
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			_draw_ancient_lift(d, t)
+		"cage":
+			# 0.7.53.7 (Luz): the cage in its shaft – a steel cage on its rope, a gate in front; without power its lamp
+			# is dark and red; riding it, it sinks
+			var on7 := String(d["state"]) != "dormant"
+			var sk7 := float(d.get("sink", 0.0))
+			draw_rect(Rect2(-22, -40, 44, 44), Color(0.03, 0.03, 0.04))
+			draw_rect(Rect2(-24, -42, 4, 46), Color(0.4, 0.3, 0.18))
+			draw_rect(Rect2(20, -42, 4, 46), Color(0.4, 0.3, 0.18))
+			draw_rect(Rect2(-24, -44, 48, 4), Color(0.45, 0.33, 0.2))
+			var cy := 14.0 * sk7
+			draw_rect(Rect2(-18, -36 + cy, 36, 38), Color(0.12, 0.12, 0.13))
+			for bx in range(-17, 18, 4):
+				draw_line(Vector2(bx, -36 + cy), Vector2(bx, 2 + cy), Color(0.48, 0.48, 0.5), 0.8)
+			draw_rect(Rect2(-18, -36 + cy, 36, 2), Color(0.55, 0.55, 0.58))
+			draw_rect(Rect2(-18, -16 + cy, 36, 1.5), Color(0.55, 0.55, 0.58))
+			draw_line(Vector2(0, -44), Vector2(0, -36 + cy), Color(0.15, 0.15, 0.15), 1.0)
+			draw_circle(Vector2(18, -46), 2.0, Color(0.3, 1.0, 0.45) if on7 else Color(1.0, 0.25, 0.2, 0.5 + 0.3 * sin(t * 2.0)))
+		"mine_gen":
+			# 0.7.53.7: an old generator on skids – a fuel tank, a pull cord; running, it shakes and puffs
+			var run := String(d["state"]) == "open"
+			var jig := sin(t * 40.0) * 0.6 if run else 0.0
+			draw_rect(Rect2(-12 + jig, -14, 24, 14), Color(0.55, 0.45, 0.15))
+			draw_rect(Rect2(-12 + jig, -14, 24, 2), Color(0.7, 0.6, 0.25))
+			draw_rect(Rect2(-9 + jig, -20, 10, 6), Color(0.6, 0.15, 0.12))
+			draw_circle(Vector2(7 + jig, -8), 3.0, Color(0.15, 0.15, 0.15))
+			draw_rect(Rect2(-14, -1, 28, 2), Color(0.3, 0.3, 0.32))
+			draw_circle(Vector2(-6, -17), 1.2, Color(0.3, 1.0, 0.45) if run else Color(1.0, 0.25, 0.2))
+			if run:
+				var ph7 := fposmod(t * 1.2, 1.0)
+				draw_circle(Vector2(10, -16 - ph7 * 14), 2.0 + ph7 * 3.0, Color(0.4, 0.4, 0.4, 0.4 * (1.0 - ph7)))
+		"vein":
+			# 0.7.53.7 (Luz): the rare find – crystals and a glitter in a block of rock (cut out: an empty socket)
+			draw_colored_polygon(PackedVector2Array([Vector2(-14, 0), Vector2(-10, -14), Vector2(2, -18), Vector2(13, -12), Vector2(14, 0)]), Color(0.3, 0.26, 0.22))
+			if String(d["state"]) != "taken":
+				for cr in 5:
+					var cx7 := -8.0 + cr * 4.0
+					draw_colored_polygon(PackedVector2Array([Vector2(cx7, -4), Vector2(cx7 + 2, -12 - cr % 2 * 3), Vector2(cx7 + 4, -4)]), Color(0.85, 0.9, 1.0, 0.9))
+				draw_circle(Vector2(sin(t * 2.0) * 5.0, -10), 1.2 + sin(t * 5.0) * 0.6, Color(1.0, 1.0, 0.8))
+			else:
+				draw_rect(Rect2(-8, -10, 16, 6), Color(0.08, 0.07, 0.06))
+		"rubble":
+			# 0.7.53.7: a fall of rock across the drift – boulders and timber; a charge set: its light blinks
+			if String(d["state"]) != "open":
+				for rb in 14:
+					var rp := Vector2(-14 + hash_f(rb, 81) * 28, -30 + hash_f(rb, 82) * 30)
+					draw_circle(rp, 4.0 + hash_f(rb, 83) * 4.0, Color(0.38, 0.32, 0.27).lerp(Color(0.25, 0.21, 0.18), hash_f(rb, 84)))
+				draw_line(Vector2(-12, -26), Vector2(10, -8), Color(0.42, 0.3, 0.17), 2.0)
+				if String(d["state"]) == "charged":
+					draw_circle(Vector2(0, -6), 2.0, Color(1.0, 0.2, 0.15) if fposmod(t * 4.0, 1.0) < 0.5 else Color(0.4, 0.1, 0.1))
+		"loose_rock":
+			# 0.7.53.7: loose rock in the roof – cracks, dust trickling; falling: dust, stones; fallen: a heap
+			var st7 := String(d["state"])
+			if st7 == "shut":
+				if fposmod(t * 0.7 + float(d.get("seed", 0) % 5), 2.0) < 0.6:
+					for dd7 in 4:
+						draw_circle(Vector2(-4 + dd7 * 3, -30 + fposmod(t * 30.0 + dd7 * 7.0, 26.0)), 0.6, Color(0.6, 0.55, 0.5, 0.7))
+			elif st7 == "falling":
+				for fs in 8:
+					draw_circle(Vector2(-10 + hash_f(fs, 85) * 20, -40 + fposmod(t * 200.0 + fs * 9.0, 40.0)), 2.5, Color(0.42, 0.36, 0.3))
+				draw_circle(Vector2.ZERO, 16.0, Color(0.6, 0.55, 0.5, 0.25))
+			else:
+				for hp in 9:
+					draw_circle(Vector2(-10 + hash_f(hp, 86) * 20, -3 + hash_f(hp, 87) * 5), 2.5 + hash_f(hp, 88) * 2.0, Color(0.4, 0.34, 0.28))
+		"tnt":
+			# 0.7.53.7 (Luz): a box of explosives – red, stencilled; it goes up when something blows up close by
+			if String(d["state"]) == "shut":
+				draw_rect(Rect2(-9, -12, 18, 12), Color(0.6, 0.12, 0.1))
+				draw_rect(Rect2(-9, -12, 18, 3), Color(0.75, 0.2, 0.15))
+				draw_rect(Rect2(-6, -7, 12, 3), Color(0.95, 0.9, 0.8))
+				draw_rect(Rect2(-4, -6, 2, 1), Color(0.6, 0.12, 0.1))
+				draw_rect(Rect2(0, -6, 3, 1), Color(0.6, 0.12, 0.1))
+			else:
+				draw_rect(Rect2(-9, -3, 18, 3), Color(0.1, 0.08, 0.08))
+		"mine_gate":
+			# 0.7.53.7: the gate into the shaft – rusted bars, a chain and padlock; cut: it hangs open
+			draw_rect(Rect2(-18, -34, 36, 34), Color(0.02, 0.02, 0.03))
+			if String(d["state"]) != "open":
+				for bx2 in range(-17, 18, 4):
+					draw_rect(Rect2(bx2, -34, 1.5, 34), Color(0.5, 0.38, 0.25))
+				draw_rect(Rect2(-18, -22, 36, 2), Color(0.45, 0.33, 0.22))
+				for ch in 8:
+					draw_circle(Vector2(-7 + ch * 2, -19 + (ch % 2)), 0.8, Color(0.62, 0.62, 0.64))
+				draw_rect(Rect2(-3, -18, 6, 5), Color(0.75, 0.62, 0.2))
+			else:
+				for bx3 in range(0, 18, 4):
+					draw_line(Vector2(-18, -34 + bx3 * 0.2), Vector2(-26, -30 + bx3 * 1.8), Color(0.5, 0.38, 0.25), 1.2)
+			draw_rect(Rect2(-20, -36, 40, 3), Color(0.4, 0.3, 0.2))
 		"crystals":
 			_draw_crystals(d, t)
 		"panel_rust":

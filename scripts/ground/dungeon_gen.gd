@@ -328,7 +328,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		if tree_cells.has(b2) and not edges.any(func(e): return (e[0] == a2 and e[1] == b2) or (e[0] == b2 and e[1] == a2)):
 			edges.append([a2, b2])
 	for e2 in edges:
-		_corridor(m, rooms[e2[0]], rooms[e2[1]], hf, corr, canal)
+		_corridor(m, rooms[e2[0]], rooms[e2[1]], hf, corr, canal, bool(th.get("rails", false)))
 	# the way to the far cell: on the last level straight up from the approach through the door; above it, a tunnel
 	# to the room with the way down (flooded in the sewers)
 	var door_gap := Rect2i()
@@ -355,7 +355,41 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 					var q := Vector2i(x1, y1)
 					if GroundMap.walkable_t(m.t_at(x1, y1)) and not before.has(q) and not dr.has_point(q):
 						flood_tiles.append([x1, y1, m.floor_kind[y1 * W + x1]])
+	var rubble_tiles: Array = []
+	var side_room := Rect2i()
+	if bool(th.get("rubble", false)):
+		# 0.7.53.7 (Luz): a drift buried by a fall – behind it a small chamber with a cache; blast the rubble away
+		for c11 in cells:
+			if side_room.has_area() or not is_room[c11] or need.has(c11):
+				continue
+			var r11: Rect2i = rooms[c11]
+			for dir in [1, -1]:
+				var x0 := r11.end.x if dir == 1 else r11.position.x - 11
+				var y0 := r11.position.y + r11.size.y / 2 - 2
+				var ok := true
+				for yy in range(y0 - 3, y0 + 6):
+					for xx in (range(x0, x0 + 12) if dir == 1 else range(x0 - 1, x0 + 11)):
+						if m.t_at(xx, yy) != T.CAP:
+							ok = false
+				if ok:
+					var sx := x0 if dir == 1 else x0 + 6
+					m.fill(sx, y0 + 1, 5, 3, T.FLOOR, hf)                              # the drift
+					side_room = Rect2i(x0 + (5 if dir == 1 else 0), y0, 6, 5)
+					m.fill(side_room.position.x, side_room.position.y, side_room.size.x, side_room.size.y, T.FLOOR, rf)
+					var rx0 := sx + (1 if dir == 1 else 2)
+					for ry in 3:
+						for rx in 2:
+							rubble_tiles.append([rx0 + rx, y0 + 1 + ry])
+					break
+			if side_room.has_area():
+				break
 	_faces(m)
+	for rt in rubble_tiles:
+		m.set_t(int(rt[0]), int(rt[1]), T.BLOCK, hf)
+	if not rubble_tiles.is_empty():
+		var rc2 := Vector2(float(rubble_tiles[0][0]) + 1.0, float(rubble_tiles[0][1]) + 2.0) * TILE
+		ExploreNode.add(m, "rubble", rc2, {"tiles": rubble_tiles, "seed": rng.randi()})
+		ExploreNode.add(m, "crate", Vector2(side_room.position.x + 3, side_room.position.y + 3.2) * TILE, {"seed": rng.randi(), "theme": theme, "museum": true})
 	if last:
 		m.fill(door_gap.position.x, door_gap.position.y, door_gap.size.x, door_gap.size.y, T.BLOCK, hf)
 	for ft in flood_tiles:
@@ -367,15 +401,16 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				_bridge(m, rooms[e3[0]], rooms[e3[1]], corr)
 	# ---- the way in (and out)
 	var en: Rect2i = rooms[entr_c]
-	var lift_way := String(th.get("descent", "hatch")) == "lift"
+	var lift_way := String(th.get("descent", "hatch")) in ["lift", "cage"]
+	var lift_kind := "cage" if String(th.get("descent", "")) == "cage" else "ancient_lift"
 	var out_ladder := String(th.get("outside", "ruin")) == "alley" or depth > 0
 	if depth > 0 and lift_way:
 		# 0.7.53.4 (Luz): you come down on the ancient lift – it takes you back up too
 		var lp0 := Vector2(en.position.x + en.size.x * 0.5, en.position.y + 3.2) * TILE
-		_ancient_lift(m, lp0, "active", rf)
+		_ancient_lift(m, lp0, "active", rf, lift_kind)
 		m.spawn = lp0 + Vector2(0, 30)
 		m.zones.append({"rect": Rect2(lp0 - Vector2(20, 12), Vector2(40, 26)), "kind": "dungeon_up", "id": "dungeon_up",
-			"title": "The ancient lift – ride it back up", "col": Color(0.7, 0.5, 1.0), "sign": Vector2(-100, -100)})
+			"title": "The ancient lift – ride it back up" if lift_kind == "ancient_lift" else "The cage – ride it back up", "col": Color(0.7, 0.5, 1.0), "sign": Vector2(-100, -100)})
 	elif out_ladder:
 		# a ladder on the entrance room's north wall: up to the street (or the level above)
 		var lx := _wall_spot(m, en, en.position.x + en.size.x / 2)
@@ -395,10 +430,10 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		# 0.7.53.4 (Luz): the way down in the old ruins – an ancient lift; sometimes it sleeps and must be woken
 		var drl: Rect2i = rooms[down_c]
 		var lp := Vector2(drl.position.x + drl.size.x * 0.5, drl.position.y + drl.size.y * 0.5) * TILE
-		var lft := _ancient_lift(m, lp, "dormant" if rng.randf() < 0.55 else "active", rf)
+		var lft := _ancient_lift(m, lp, "dormant" if rng.randf() < 0.55 else "active", rf, lift_kind)
 		lift_i = m.explore.find(lft)
 		m.zones.append({"rect": Rect2(lp - Vector2(20, 12), Vector2(40, 26)), "kind": "dungeon_down", "id": "dungeon_down",
-			"title": "The ancient lift – ride it down", "col": Color(0.7, 0.5, 1.0), "sign": Vector2(-100, -100)})
+			"title": "The ancient lift – ride it down" if lift_kind == "ancient_lift" else "The cage – ride it down", "col": Color(0.7, 0.5, 1.0), "sign": Vector2(-100, -100)})
 		m.set_meta("down_front", lp + Vector2(0, 30))
 		m.lights.append({"pos": lp, "r": 60.0, "col": th["light"], "a": 0.3, "flicker": true})
 	elif not last:
@@ -426,6 +461,8 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var di := -1
 	var ci := -1
 	var targets: Array = []
+	if not rubble_tiles.is_empty():
+		targets.append(["rubble", "A buried side drift – something was stored behind the fall"])
 	var n_cache := 0
 	var vent_ok := false
 	var cr: Rect2i = rooms[control]
@@ -448,6 +485,11 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "relic", rc * TILE, relic)
 			m.lights.append({"pos": rc * TILE, "r": 60.0, "col": th["light"], "a": 0.4, "flicker": true})
 			targets.append(["relic", "A relic signature – deep inside, behind an old door%s" % (", guarded by floating crystals" if ci >= 0 else "")])
+		elif String(th.get("target", "")) == "find":
+			# 0.7.53.7 (Luz): a rare find in the rock of the deepest chamber – cut it out
+			ExploreNode.add(m, "vein", rc * TILE, {"target": true, "seed": rng.randi()})
+			m.lights.append({"pos": rc * TILE, "r": 50.0, "col": Color(0.95, 0.85, 0.5), "a": 0.4, "flicker": true})
+			targets.append(["find", "Something glitters in the deepest chamber – behind an old gate"])
 		elif String(th.get("target", "")) == "blackbox":
 			# 0.7.53.6 (Luz): the flight recorder – orange, armoured, bolted into a rack in the ship's core
 			ExploreNode.add(m, "blackbox", rc * TILE, {"target": true, "seed": rng.randi()})
@@ -482,6 +524,16 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			term["cage"] = ci
 		if not acts.is_empty():
 			ExploreNode.add(m, "terminal", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE, term)
+	elif lift_i >= 0 and lift_kind == "cage":
+		# 0.7.53.7 (Luz): the cage has no power – start the old generator beside the mine's control
+		var dormant2 := String(m.explore[lift_i]["state"]) == "dormant"
+		ExploreNode.add(m, "terminal", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE,
+			{"actions": ["data"], "seed": rng.randi(), "style": String(th.get("computer", "")), "level": 1})
+		if dormant2:
+			ExploreNode.add(m, "mine_gen", Vector2(cr.position.x + 3, cr.position.y + 1.8) * TILE, {"lift": lift_i, "seed": rng.randi()})
+			targets.append(["cage", "The cage down – no power; the old generator by the control starts it"])
+		else:
+			targets.append(["cage", "The cage down – it has power"])
 	elif lift_i >= 0:
 		# 0.7.53.4: their computer wakes the lift; so does a crystal panel somewhere else on the level
 		var dormant := String(m.explore[lift_i]["state"]) == "dormant"
@@ -530,6 +582,36 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "conduit", Vector2(sxp + 0.5, spine_r.position.y + rng.randi_range(1, 3) + 0.5) * TILE, {"no_zone": true, "seed": rng.randi()})
 		var gx := rng.randi_range(spine_r.position.x + 6, spine_r.end.x - 7)
 		ExploreNode.add(m, "gas", Vector2(gx + 0.5, spine_r.position.y + 2.5) * TILE, {"no_zone": true, "r": 34.0, "seed": rng.randi()})
+	elif String(th.get("traps", "")) == "mine":
+		var placed2 := 0
+		for e6 in edges:
+			if placed2 >= 3:
+				break
+			var spot := _wire_spot(m, rooms[e6[0]], rooms[e6[1]], corr)
+			if spot.is_empty():
+				continue
+			var sp2: Vector2 = spot["pos"]
+			var mid2: Vector2 = sp2 + (Vector2(0, TILE * 1.5) if bool(spot["vertical"]) else Vector2(TILE * 1.5, 0))
+			match placed2 % 3:
+				0:
+					ExploreNode.add(m, "loose_rock", mid2, {"no_zone": true, "seed": rng.randi()})
+				1:
+					ExploreNode.add(m, "gas", mid2, {"no_zone": true, "r": 26.0, "seed": rng.randi()})
+				2:
+					ExploreNode.add(m, "tripwire", sp2, {"len": spot["len"], "vertical": spot["vertical"], "seed": rng.randi(), "no_zone": true})
+					var wl2 := float(spot["len"]) * TILE
+					m.zones.append({"rect": Rect2(sp2 - Vector2(14, 4), Vector2(28, wl2 + 4)) if bool(spot["vertical"]) else Rect2(sp2 - Vector2(4, 14), Vector2(wl2 + 4, 28)),
+						"kind": "explore", "id": "explore", "i": m.explore.size() - 1, "title": "A tripwire – disarm it (E)"})
+			placed2 += 1
+		# boxes of explosives against the walls of a few rooms (they go up when something blows up near them)
+		var tn := 0
+		for c10 in cells:
+			if tn >= 3 or not is_room[c10] or role_of.get(c10, "") in ["vault", "entrance"]:
+				continue
+			var r10: Rect2i = rooms[c10]
+			var tp := Vector2(r10.position.x + 1.5 + rng.randi_range(0, r10.size.x - 3), r10.position.y + 0.9) * TILE
+			ExploreNode.add(m, "tnt", tp, {"no_zone": true, "seed": rng.randi()})
+			tn += 1
 	elif String(th.get("traps", "")) == "tripwire":
 		var placed := 0
 		for e4 in edges:
@@ -658,12 +740,12 @@ static func site_targets(maps: Array) -> Array:
 
 ## 0.7.53.4 (Luz): the Precursors' ancient lift – a round platform in a ring of glyphs, two obelisks with crystals
 ## beside it (they stand in the way), a console before it. "dormant" (wake it first) or "active".
-static func _ancient_lift(m: GroundMap, p: Vector2, state: String, fk: int) -> Dictionary:
+static func _ancient_lift(m: GroundMap, p: Vector2, state: String, fk: int, kind: String = "ancient_lift") -> Dictionary:
 	var tx := int(p.x / TILE)
 	var ty := int(p.y / TILE)
 	for sx in [-2, 2]:
 		m.set_t(tx + sx, ty, T.BLOCK, fk)
-	return ExploreNode.add(m, "ancient_lift", p, {"no_zone": true, "state": state})
+	return ExploreNode.add(m, kind, p, {"no_zone": true, "state": state})
 
 
 ## A spot on a room's north wall (a whole face above it, not a way out), as near `want` as there is.
@@ -725,7 +807,7 @@ static func _scatter_cover(m: GroundMap, th: Dictionary, rng: RandomNumberGenera
 
 ## A way between two cells: along from the first's middle, then up or down to the second's – `corr` tiles wide;
 ## with a canal, its middle tiles are water (wadeable) and its edges walkways.
-static func _corridor(m: GroundMap, a: Rect2i, b: Rect2i, fk: int, corr: int = CORR, canal: bool = false) -> void:
+static func _corridor(m: GroundMap, a: Rect2i, b: Rect2i, fk: int, corr: int = CORR, canal: bool = false, rails: bool = false) -> void:
 	var ca := a.position + a.size / 2
 	var cb := b.position + b.size / 2
 	var lo := -corr / 2
@@ -733,12 +815,12 @@ static func _corridor(m: GroundMap, a: Rect2i, b: Rect2i, fk: int, corr: int = C
 		for k in corr:
 			var y := ca.y + lo + k
 			if not GroundMap.walkable_t(m.t_at(x, y)):
-				m.set_t(x, y, T.FLOOR, 18 if canal and k >= 2 and k < corr - 2 else fk)
+				m.set_t(x, y, T.FLOOR, 18 if canal and k >= 2 and k < corr - 2 else (26 if rails and k == corr / 2 else fk))
 	for y2 in range(mini(ca.y, cb.y) - corr / 2, maxi(ca.y, cb.y) + corr / 2 + 1):
 		for k2 in corr:
 			var x2 := cb.x + lo + k2
 			if not GroundMap.walkable_t(m.t_at(x2, y2)):
-				m.set_t(x2, y2, T.FLOOR, 18 if canal and k2 >= 2 and k2 < corr - 2 else fk)
+				m.set_t(x2, y2, T.FLOOR, 18 if canal and k2 >= 2 and k2 < corr - 2 else (27 if rails and k2 == corr / 2 else fk))
 
 
 ## A bridge of grating across a canal: three tiles of walkway over the water, half-way along a way.
@@ -788,6 +870,78 @@ static func _faces(m: GroundMap) -> void:
 		for d in [1, 2]:
 			if m.t_at(p.x, p.y - d) == T.CAP:
 				m.set_t(p.x, p.y - d, T.FACE)
+
+
+# ---------------------------------------------------------------- outside: the old mine by a settlement (0.7.53.7)
+
+## 0.7.53.7 (Luz): the old mine at the edge of a settlement – the shaft house with its headframe in the north (its
+## gate chained: cut it, or it hangs open), the winding house and an ore bin beside it, tailings heaps behind, rails
+## out of the shaft with lorries (one tipped over), barrels, crates, lamps; in the south the path back into town.
+static func build_minehead(body: Dictionary, site: Dictionary) -> GroundMap:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(site.get("seed", 53)) + 17
+	var m := GroundMap.new()
+	m.pal = DeckGen.palette_for_body(body).duplicate()
+	m.title = String(site.get("name", "The old mine"))
+	m.hull_top = -60
+	var W := 54
+	var H := 30
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.FLOOR, 13)
+	m.fill(0, 0, W, 1, T.BLOCK, 13)
+	m.fill(0, 0, 1, H, T.BLOCK, 13)
+	m.fill(W - 1, 0, 1, H, T.BLOCK, 13)
+	m.fill(0, H - 1, W, 1, T.BLOCK, 13)
+	# tailings heaps along the north
+	for th2 in 7:
+		var hx := 2 + th2 * 4 + rng.randi_range(0, 2)
+		if hx > 14 and hx < 40:
+			continue
+		m.add_object({"kind": "heap", "x": hx, "y": rng.randi_range(2, 4), "w": 3, "h": 2, "col": Color(0.5, 0.48, 0.45)})
+	# the shaft house and headframe, its gate on the south side
+	var sx := W / 2 - 5
+	var sy := 6
+	m.add_object({"kind": "shaft_house", "x": sx, "y": sy, "w": 10, "h": 3})
+	m.fill(sx, sy, 10, 3, T.BLOCK, 13)
+	var gp := Vector2(sx + 5, sy + 3) * TILE
+	var gate := ExploreNode.add(m, "mine_gate", gp, {"no_zone": true, "state": "open" if rng.randf() < 0.3 else "shut", "seed": rng.randi()})
+	var gi := m.explore.find(gate)
+	m.zones.append({"rect": Rect2(gp + Vector2(-26, -8), Vector2(52, 30)), "kind": "explore", "id": "explore", "i": gi, "title": "The gate into the shaft"})
+	m.zones.append({"rect": Rect2(gp + Vector2(-18, -2), Vector2(36, 16)), "kind": "dungeon_in", "id": "dungeon_in", "gate": gi,
+		"title": "Into the old mine", "col": Color(1.0, 0.75, 0.4), "sign": Vector2(-100, -100)})
+	m.set_meta("door_front", gp + Vector2(0, 26))
+	m.add_object({"kind": "winding_house", "x": sx + 12, "y": sy + 1, "w": 4, "h": 2})
+	m.fill(sx + 12, sy + 1, 4, 2, T.BLOCK, 13)
+	m.add_object({"kind": "ore_bin", "x": sx + 18, "y": sy, "w": 3, "h": 2})
+	# rails out of the shaft east, lorries, one tipped with its ore spilled
+	m.decals.append({"kind": "rails", "x": sx + 5, "y": sy + 4, "w": W - sx - 8, "h": 1})
+	m.add_object({"kind": "ore_cart", "x": sx + 10, "y": sy + 4, "w": 2, "h": 1})
+	m.add_object({"kind": "ore_cart", "x": sx + 18, "y": sy + 4, "w": 2, "h": 1})
+	m.add_object({"kind": "heap", "x": sx + 13, "y": sy + 6, "w": 2, "h": 1, "col": Color(0.55, 0.45, 0.3)})
+	# barrels, crates, rocks, a lamp or two
+	for bi in 3:
+		m.add_object({"kind": "barrel", "x": 8 + bi, "y": 12, "w": 1, "h": 1})
+	m.add_object({"kind": "crates", "x": 12, "y": 12, "w": 2, "h": 1})
+	for rk in 8:
+		var rx := rng.randi_range(3, W - 5)
+		var ry := rng.randi_range(14, H - 6)
+		if GroundMap.walkable_t(m.t_at(rx, ry)) and GroundMap.walkable_t(m.t_at(rx + 1, ry)):
+			m.add_object({"kind": "rock", "x": rx, "y": ry, "w": 2, "h": 1, "col": Color(0.45, 0.4, 0.34), "seed": rng.randi()})
+	for lp in [Vector2(sx - 4, sy + 6), Vector2(sx + 22, sy + 7), Vector2(18, 20)]:
+		m.add_object({"kind": "lamp_post", "x": int(lp.x), "y": int(lp.y), "w": 1, "h": 1})
+		m.lights.append({"pos": (lp + Vector2(0.5, 0.5)) * TILE, "r": 70.0, "col": Color(1.0, 0.85, 0.6), "a": 0.35})
+	m.lights.append({"pos": gp + Vector2(0, 6), "r": 40.0, "col": Color(1.0, 0.7, 0.4), "a": 0.3})
+	for db in 30:
+		m.decals.append({"kind": "debris", "x": rng.randi_range(2, W - 3), "y": rng.randi_range(10, H - 3), "w": 1, "h": 1, "seed": rng.randi()})
+	# the path back into town, south
+	var px := W / 2 - 2
+	m.fill(px, H - 1, 4, 1, T.FLOOR, 15)
+	for yy in range(H - 8, H):
+		m.fill(px, yy, 4, 1, T.FLOOR, 15)
+	m.spawn = Vector2(px + 2, H - 3) * TILE
+	m.zones.append({"rect": Rect2(Vector2(px, H - 2) * TILE, Vector2(4, 1.6) * TILE), "kind": "town_path", "id": "town_path",
+		"title": "The path back into town", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	return m
 
 
 # ---------------------------------------------------------------- outside: a crash site (0.7.53.6)
