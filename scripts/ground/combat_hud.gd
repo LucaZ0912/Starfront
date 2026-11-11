@@ -173,7 +173,8 @@ func _draw_drone_panel(vs: Vector2) -> void:
 	_s(r.position + Vector2(62, 18), GearData.display_name(id), Color(0.95, 0.95, 0.95), 14)
 	var d: Dictionary = combat.drone
 	var kind := String(st["kind"])
-	var cmd := "dive" if kind == "kamikaze" else ("send" if combat.drone_recalled else "recall")
+	var dstate := String(d.get("state", "docked")) if not d.is_empty() else "docked"
+	var cmd := "launch" if dstate == "docked" else ("dive" if kind == "kamikaze" else "back")
 	_s(r.position + Vector2(220, 18), "%s %s" % [Keybinds.key_text("foot_drone"), cmd], Color(1.0, 0.82, 0.35), 12)
 	if not combat.drone_alive():
 		_s(r.position + Vector2(10, 46), "Shot down – a new one in %d s" % int(ceil(combat.drone_rebuild)), Color(1.0, 0.55, 0.4), 13)
@@ -181,7 +182,8 @@ func _draw_drone_panel(vs: Vector2) -> void:
 		_bar(r.position + Vector2(10, 58), 270, 1.0 - combat.drone_rebuild / maxf(full, 0.01), Color(0.45, 0.9, 1.0))
 		return
 	var state := String(d["state"])
-	var what: String = {"launch": "taking off", "hover": ("waiting at your back" if combat.drone_recalled else ("fighting your target" if combat.fight and combat.active != null else "at your shoulder")),
+	var what: String = {"launch": "taking off", "hover": ("fighting your target" if combat.fight and combat.active != null else "at your shoulder"),
+		"docked": "on your back, switched off", "dock": "flying back to your back",
 		"return": "empty – flying back to reload", "reload": "reloading from your suit", "dive": "diving at the target!"}.get(state, state)
 	if kind == "kamikaze" and state == "hover":
 		what = "ready – %s to dive at your target" % Keybinds.key_text("foot_drone")

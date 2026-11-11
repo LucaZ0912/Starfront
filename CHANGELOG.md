@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.12 – 2026-11-11
+
+**Drones that turn and sit on your back; ammunition to be had (Luz).**
+
+- **The drone turns where it flies** – and towards its target when it fires: the whole picture with its rotors turns.
+- **Switched off on your back** until you press **C**: its underside against you – from behind you see it flat on your
+  back, from the side its edge behind you, from the front you hide it. C sends it up; C again brings the laser and
+  kinetic drones back to your back and switches them off. The **kamikaze** takes C twice: once to take off, once to send
+  it at your target. A kinetic drone reloading on your back takes off again afterwards (C meanwhile: it stays there).
+  On your back foes cannot shoot it.
+- **Ammunition refilled**: the supply points by the pads (were "charging points") now fill energy, oxygen **and
+  rounds**, and so does your ship when you go aboard – before, only ammunition boxes did.
+
 ## alpha 0.7.52.11 – 2026-11-11
 
 **Ground combat drones (package 52.6, after the mockup Luz approved).**

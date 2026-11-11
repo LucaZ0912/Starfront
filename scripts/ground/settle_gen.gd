@@ -102,7 +102,7 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 		m.add_object({"kind": "fuel_point", "x": px + PAD.x - 2, "y": py - 1, "w": 2, "h": 1, "rise": 34})
 		# 0.7.51.3: it charges suits too – energy and oxygen
 		m.zones.append({"rect": Rect2(Vector2(px + PAD.x - 2.6, py - 0.1) * GroundMap.TILE, Vector2(3.2, 1.5) * GroundMap.TILE), "kind": "charge", "id": "charge_%d" % i,
-			"title": "Charging point – the suit's energy and oxygen", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
+			"title": "Supply point – energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
 	# your landing drone on pad 1, its ramp to the south (the view lays the way in and out along it)
 	m.ship_at = m.pads[0]
 	var p0: Vector2 = m.pads[0] / GroundMap.TILE

@@ -101,23 +101,44 @@ static func _outline(img: Image) -> void:
 
 
 ## Draws a drone on a canvas item at `at` (screen px, its centre), hovering `hover` px above its shadow, rotors
-## spinning (t: seconds), its light blinking.
-static func draw(ci: CanvasItem, kind: String, at: Vector2, hover: float, t: float, sc: float = 2.0) -> void:
+## spinning (t: seconds), its light blinking; 0.7.52.12 (Luz): turned to `heading` (the direction it flies or aims –
+## its nose, the bottom of the picture, points there).
+static func draw(ci: CanvasItem, kind: String, at: Vector2, hover: float, t: float, sc: float = 2.0, heading: float = PI * 0.5) -> void:
 	var a := art(kind)
 	var sz := Vector2(float(a["w"]), float(a["h"])) * sc
 	# the shadow on the ground
 	ci.draw_set_transform(at + Vector2(0, hover), 0.0, Vector2(1.0, 0.45))
 	ci.draw_circle(Vector2.ZERO, sz.x * 0.4, Color(0, 0, 0, 0.3))
-	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	var top := at - sz * 0.5
-	ci.draw_texture_rect(a["tex"], Rect2(top, sz), false)
+	# the drone itself, turned about its centre
+	var rot := heading - PI * 0.5
+	ci.draw_set_transform(at, rot, Vector2.ONE)
+	ci.draw_texture_rect(a["tex"], Rect2(-sz * 0.5, sz), false)
 	# the rotors: a spinning blur over each hub
 	for r in a["rotors"]:
-		var rc: Vector2 = top + (r as Vector2) * sc
-		ci.draw_set_transform(rc, 0.0, Vector2(1.0, 0.45))
-		ci.draw_circle(Vector2.ZERO, 3.2 * sc, Color(0.8, 0.85, 0.9, 0.18))
+		var rc: Vector2 = -sz * 0.5 + (r as Vector2) * sc
+		ci.draw_circle(rc, 3.2 * sc, Color(0.8, 0.85, 0.9, 0.18))
 		var ang := t * 40.0 + rc.x
-		ci.draw_line(Vector2.from_angle(ang) * 3.2 * sc, -Vector2.from_angle(ang) * 3.2 * sc, Color(0.85, 0.9, 0.95, 0.55), 1.5)
-		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		ci.draw_line(rc + Vector2.from_angle(ang) * 3.2 * sc, rc - Vector2.from_angle(ang) * 3.2 * sc, Color(0.85, 0.9, 0.95, 0.55), 1.5)
 	if fposmod(t * 2.0, 1.0) < 0.5:
-		ci.draw_circle(top + (a["light"] as Vector2) * sc, 1.6 * sc * 0.5 + 1.0, Color(a["tex"].get_image().get_pixel(8, 4), 0.9))
+		ci.draw_circle(-sz * 0.5 + (a["light"] as Vector2) * sc, 1.6 * sc * 0.5 + 1.0, Color(a["tex"].get_image().get_pixel(8, 4), 0.9))
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## 0.7.52.12 (Luz): the drone switched off on the pilot's back, its underside against the back: from behind (dir 1)
+## its top flat on the back, rotors still; from the side (dir 2/3) its edge sticking out behind; from the front hidden.
+static func draw_docked(ci: CanvasItem, kind: String, back: Vector2, dir: int, sc: float = 2.0) -> void:
+	var a := art(kind)
+	var sz := Vector2(float(a["w"]), float(a["h"])) * sc * 0.85
+	match dir:
+		1:
+			ci.draw_texture_rect(a["tex"], Rect2(back - sz * 0.5, sz), false, Color(0.82, 0.82, 0.84))
+		2, 3:
+			var sx := 1.0 if dir == 2 else -1.0                 # behind: to the right when facing left
+			var img: Image = a["tex"].get_image()
+			var body := img.get_pixel(8, 6)
+			var edge := Rect2(back + Vector2(sx * 8.0 * sc - 1.5 * sc, -sz.y * 0.5), Vector2(3.0 * sc, sz.y))
+			ci.draw_rect(edge.grow(1.0), Color(0.04, 0.04, 0.06))
+			ci.draw_rect(edge, body.darkened(0.15))
+			ci.draw_rect(Rect2(edge.position, Vector2(1.0 * sc, sz.y)), body.lightened(0.2))
+			for yy in [edge.position.y + 1.0 * sc, edge.end.y - 2.0 * sc]:
+				ci.draw_rect(Rect2(Vector2(edge.position.x + sx * 2.0 * sc, yy), Vector2(2.0 * sc, 1.0 * sc)), Color(0.2, 0.2, 0.22))   # the folded arms

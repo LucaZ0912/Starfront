@@ -258,11 +258,12 @@ func use_belt(i: int) -> String:
 	return ""
 
 
-## At a charging point (or aboard): energy and oxygen full again.
+## At a supply point (or aboard): energy and oxygen full again – 0.7.52.12 (Luz): and the ammunition.
 func charge() -> void:
 	var t := totals()
 	energy = float(t["energy"])
 	oxygen = float(t["oxygen"])
+	ammo = maxi(ammo, int(t["ammo"]))
 
 
 ## 0.7.51.4: fallen outside and found – what was in the pockets is gone; you come to weak, the suit recharged.

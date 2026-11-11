@@ -9284,7 +9284,12 @@ func _test_foot_drones(view: SystemView) -> void:
 	Commands.suit_god = false
 	for i2 in 10:
 		cb.step(0.1, Vector2.ZERO)
-	var up_ok: bool = cb.drone_alive() and String(cb.drone["kind"]) == "laser" and String(cb.drone["state"]) == "hover" \
+	# 0.7.52.12 (Luz): it sits on your back, switched off, until C – then it takes off
+	var up_ok: bool = cb.drone_alive() and not cb.drone_flying() and String(cb.drone["state"]) == "docked"
+	var umsg: String = cb.drone_command()
+	for i2b in 10:
+		cb.step(0.1, Vector2.ZERO)
+	up_ok = up_ok and umsg.contains("up") and String(cb.drone["kind"]) == "laser" and String(cb.drone["state"]) == "hover" \
 		and (cb.drone["pos"] as Vector2).distance_to(g.pilot.pos) < 30.0
 	# the laser fights your target and heats up; overheated it stops until cool
 	var me: Vector2 = g.pilot.pos
@@ -9305,12 +9310,21 @@ func _test_foot_drones(view: SystemView) -> void:
 	var shots0: int = cb.shots.size()
 	cb.step(0.1, Vector2.ZERO)
 	laser_ok = laser_ok and bool(cb.drone["over"]) and cb.shots.size() <= shots0
-	# recall with C: it waits at your back
+	# it turns towards its target when it fires
+	var to_t: float = ((foe["w"] as Walker).pos - (cb.drone["pos"] as Vector2)).angle()
+	laser_ok = laser_ok and absf(angle_difference(float(cb.drone["head"]), to_t)) < 0.6
+	# C again: back on your back, switched off – foes cannot shoot it there
+	cb.drone["over"] = false
+	cb.drone["heat"] = 0.0
 	var rmsg: String = cb.drone_command()
-	laser_ok = laser_ok and cb.drone_recalled and rmsg.contains("recalled")
+	for i3b in 10:
+		cb.step(0.1, Vector2.ZERO)
+	laser_ok = laser_ok and rmsg.contains("back") and String(cb.drone["state"]) == "docked" and not cb.drone_flying()
 	cb.drone_command()
 	# the kinetic one: its magazine empty, it flies back and reloads from the suit
 	Commands.execute({"type": "debug_gear", "drone": "dr_kinetic:C"})
+	cb.step(0.1, Vector2.ZERO)
+	cb.drone_command()
 	for i4 in 10:
 		cb.step(0.1, Vector2.ZERO)
 	var kin_ok: bool = cb.drone_alive() and String(cb.drone["kind"]) == "kinetic"
@@ -9328,7 +9342,10 @@ func _test_foot_drones(view: SystemView) -> void:
 	cb.drone_rebuild = 0.05
 	for i7 in 3:
 		cb.step(0.1, Vector2.ZERO)
-	down_ok = down_ok and cb.drone_alive()
+	down_ok = down_ok and cb.drone_alive() and String(cb.drone["state"]) == "docked"
+	cb.drone_command()
+	for i7b in 8:
+		cb.step(0.1, Vector2.ZERO)
 	# foes shoot at it: a hit wears it down
 	var sh0 := float(cb.drone["st"]["shield"]) + float(cb.drone["st"]["armor"])
 	cb.drone["regen_wait"] = 0.0
@@ -9342,7 +9359,10 @@ func _test_foot_drones(view: SystemView) -> void:
 	Commands.execute({"type": "debug_gear", "drone": "dr_kamikaze:C"})
 	cb.drone = {}
 	cb.drone_rebuild = 0.0
-	for i10 in 10:
+	for i10 in 3:
+		cb.step(0.1, Vector2.ZERO)
+	var kup: String = cb.drone_command()                  # the kamikaze: C to take off, C again to send it
+	for i10b in 8:
 		cb.step(0.1, Vector2.ZERO)
 	cb.lock(foe)
 	var hk0 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
@@ -9353,8 +9373,17 @@ func _test_foot_drones(view: SystemView) -> void:
 		if cb.drone.is_empty():
 			break
 	var hk1 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
-	var kam_ok: bool = kmsg.contains("away") and cb.drone.is_empty() and (hk1 < hk0 or foe["dead"]) and is_equal_approx(gear.health, hp_me) \
+	var kam_ok: bool = kup.contains("again") and kmsg.contains("away") and cb.drone.is_empty() and (hk1 < hk0 or foe["dead"]) and is_equal_approx(gear.health, hp_me) \
 		and is_equal_approx(cb.drone_rebuild, float(GD.stats("dr_kamikaze:C")["rebuild"])) and g.combat_hud != null
+	# 0.7.52.12 (Luz): rounds are refilled at a supply point and aboard
+	gear.ammo = 0
+	gear.charge()
+	var full_ammo: int = int(gear.totals()["ammo"])
+	var ammo_ok: bool = gear.ammo == full_ammo
+	gear.ammo = 3
+	gear.aboard()
+	ammo_ok = ammo_ok and gear.ammo == full_ammo and g.map.zones.any(func(z): return String(z.get("kind", "")) == "charge" and String(z["title"]).contains("ammunition"))
+	kam_ok = kam_ok and ammo_ok
 	# back
 	main.close_deck(false)
 	main._close_planet_map()

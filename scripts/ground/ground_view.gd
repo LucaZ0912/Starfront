@@ -391,8 +391,8 @@ func _env_step(delta: float) -> void:
 	if hud != null:
 		hud.exposure = float(r["exposure"])
 	var t: Dictionary = g.totals()
-	for w in [["energy", g.energy / maxf(float(t["energy"]), 1.0), "Suit energy low – find a charging point or use an energy cell."],
-			["oxygen", g.oxygen / maxf(float(t["oxygen"]), 1.0) if not bool(env.get("breathable", true)) else 1.0, "Oxygen low – back to the drone, a charging point or a cartridge."],
+	for w in [["energy", g.energy / maxf(float(t["energy"]), 1.0), "Suit energy low – find a supply point or use an energy cell."],
+			["oxygen", g.oxygen / maxf(float(t["oxygen"]), 1.0) if not bool(env.get("breathable", true)) else 1.0, "Oxygen low – back to the drone, a supply point or a cartridge."],
 			["health", g.health / ChibiArt.GearData.HEALTH, "You are badly hurt – a medkit, or get under a roof."]]:
 		var k := String(w[0])
 		if float(w[1]) < 0.25 and not _warned.has(k):
@@ -1110,8 +1110,8 @@ func use(instant: bool = false) -> bool:
 			_say_toast(String(zone["title"]), 3.0)
 			return true
 		"charge":
-			GameState.gear.charge()                   # 0.7.51.3: energy and oxygen full again
-			_say_toast("Charged – the suit's energy and oxygen are full.", 2.5)
+			GameState.gear.charge()                   # 0.7.51.3: energy and oxygen full again (0.7.52.12: and the rounds)
+			_say_toast("Supplied – energy, oxygen and ammunition are full.", 2.5)
 			Audio.play("dock_clamp", "charging point")
 			return true
 		"guard":

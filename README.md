@@ -345,6 +345,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   `drone_alive()`, `drone_command()`, `_drone_step`, `_drone_fire`, `_hurt_drone`, `_chance_at_drone`, `_draw_drone`;
   `fire()` takes the drone as a target, `_explode(…, spare_pilot)`; `CombatHud._draw_drone_panel`; key `foot_drone` (C);
   `debug_gear` {drone}, `debug_combat` do drone_kill / drone_ready; smoke group `foot_drones`.
+- 0.7.52.12: drone states `docked` (on the back, off) / `dock` / `launch` / `hover` / `return` / `reload` / `dive` / `down`,
+  `drone_flying()`, `_drone_make`, `_drone_up`, `drone["head"]` (turned in `DroneArt.draw(…, heading)`),
+  `DroneArt.draw_docked(ci, kind, back, dir, sc)`; `PilotGear.charge()` fills the rounds too (supply points, aboard);
+  zone title "Supply point – energy, oxygen and ammunition".
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
