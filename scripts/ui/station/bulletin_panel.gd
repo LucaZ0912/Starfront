@@ -2,12 +2,16 @@ extends StationServicePanel
 ## Bulletin board (BlackLedger Contracts): accept contracts, turn them in, abandon them.
 
 const FactionData = preload("res://data/factions.gd")
+const PoiData_ = preload("res://data/poi.gd")
 const TYPE_LABELS := {"courier": "COURIER", "bounty": "BOUNTY", "mining": "SUPPLY", "survey": "SURVEY",
 	"escort": "ESCORT", "patrol": "PATROL", "hunt": "HUNT", "smuggler": "INTERCEPT", "passenger": "PASSENGERS"}
 const TYPE_COLORS := {"courier": Color(0.4, 0.85, 1.0), "bounty": Color(1.0, 0.35, 0.35), "mining": Color(1.0, 0.75, 0.3), "survey": Color(0.8, 0.5, 1.0),
 	"escort": Color(0.45, 1.0, 0.6), "patrol": Color(0.5, 0.75, 1.0), "hunt": Color(1.0, 0.25, 0.25), "smuggler": Color(0.75, 0.45, 1.0),
-	"passenger": Color(0.95, 0.85, 0.6)}
-## Board tab: 0 = contracts, 1 = passenger transport (package 25c)
+	"passenger": Color(0.95, 0.85, 0.6), "ground": Color(0.55, 1.0, 0.5)}
+## 0.7.53.16: the label of a job on foot by its goal
+const GOAL_LABELS := {"relic": "RELIC RACE", "salvage": "SALVAGE", "bounty_foot": "BOUNTY", "heist": "HEIST", "spy": "ESPIONAGE",
+	"reactivate": "REPAIR", "rescue": "RESCUE"}
+## Board tab: 0 = contracts, 1 = passenger transport (package 25c), 2 = jobs on foot (0.7.53.16, Luz)
 static var tab := 0
 
 
@@ -15,23 +19,28 @@ func build() -> void:
 	UI.clear(self)
 	var tabs := UI.hbox(6)
 	add_child(tabs)
-	for i in 2:
-		var ti := i
-		var b := UI.button(["Contracts (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS],
-			"Passengers (%d / %d)" % [GameState.passenger_count(), Missions.MAX_PASSENGER_JOBS]][i], func(): _set_tab(ti))
+	var n_foot := GameState.missions.filter(func(x): return String(x["type"]) == "ground").size()
+	for i in [0, 2, 1]:
+		var ti: int = i
+		var b := UI.button({0: "Contracts (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS],
+			2: "On foot (%d)" % n_foot,
+			1: "Passengers (%d / %d)" % [GameState.passenger_count(), Missions.MAX_PASSENGER_JOBS]}[i], func(): _set_tab(ti))
 		b.toggle_mode = true
 		b.button_pressed = tab == i
 		tabs.add_child(b)
 	if tab == 1:
 		_build_passengers()
 		return
+	if tab == 2:
+		_build_ground()
+		return
 	var f := fit()
 	section("YOUR CONTRACTS (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS])
 	if GameState.contract_count() == 0:
 		add_child(UI.label("No active contracts.", 13, UI.TEXT_DIM))
 	for m in GameState.missions:
-		if String(m["type"]) == "passenger":
-			continue
+		if String(m["type"]) in ["passenger", "ground"]:
+			continue                                     # 0.7.53.16: jobs on foot are on their own tab
 		var mm: Dictionary = m
 		var can := f != null and Missions.can_turn_in(mm, f, station["id"])
 		var row := _card(mm, Missions.progress_text(mm, f))
@@ -59,6 +68,38 @@ func build() -> void:
 func _set_tab(i: int) -> void:
 	tab = i
 	build()
+
+
+## 0.7.53.16 (Luz): jobs on foot – yours (they count as contracts), and the station's offers.
+func _build_ground() -> void:
+	var f := fit()
+	section("YOUR JOBS ON FOOT  (contracts %d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS])
+	var mine := GameState.missions.filter(func(x): return String(x["type"]) == "ground")
+	if mine.is_empty():
+		add_child(UI.label("No jobs on foot.", 13, UI.TEXT_DIM))
+	for m in mine:
+		var mm: Dictionary = m
+		var row := _card(mm, Missions.progress_text(mm, f))
+		if f != null and Missions.can_turn_in(mm, f, station["id"]):
+			row.add_child(UI.button("Turn in", func(): _turn_in(mm)))
+		row.add_child(UI.button("Abandon", func(): _abandon(mm)))
+	add_child(HSeparator.new())
+	section("JOBS ON FOOT ON THIS BOARD")
+	var sf := String(station.get("faction", ""))
+	var closed: String = GameState.rep.contracts_error(sf)
+	if closed != "":
+		add_child(UI.label(closed, 14, UI.BAD))
+		return
+	add_child(UI.label("Ruins, wrecks, pirate bases, a city's tunnels – the site goes on the planet map when you accept; the goal is set, the pay waits here.", 12, UI.TEXT_DIM))
+	var bonus: float = GameState.rep.contract_bonus(sf)
+	var offs := GameState.ground_offers_for(GameState.current_system, station)
+	if offs.is_empty():
+		add_child(UI.label("No work on foot near here.", 13, UI.TEXT_DIM))
+	for m in offs:
+		var mm: Dictionary = m
+		var dn := String(PoiData_.DANGER.get(String(mm["site"].get("danger", "yellow")), {}).get("name", ""))
+		var row := _card(mm, "Client: %s   •   danger: %s" % [mm["client"], dn], bonus)
+		row.add_child(UI.button("Accept", func(): _accept(mm)))
 
 
 ## Passenger transport (package 25c): your groups aboard, your cabins, the station's offers.
@@ -111,6 +152,8 @@ func _card(m: Dictionary, extra: String, bonus: float = 0.0) -> HBoxContainer:
 	var row := UI.hbox(14)
 	box.add_child(row)
 	var tag_text: String = TYPE_LABELS.get(m["type"], "?")
+	if String(m["type"]) == "ground":
+		tag_text = GOAL_LABELS.get(String(m.get("goal", "")), "ON FOOT")     # 0.7.53.16
 	if m.has("tour"):
 		tag_text = "ROUND TRIP"                  # package 43b
 		col = Color(0.6, 1.0, 0.75)

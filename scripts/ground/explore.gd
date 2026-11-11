@@ -462,7 +462,7 @@ func _draw() -> void:
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
 		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble", "crank_door", "fuse_box", "reactor", "stairs_down", "stairs_up", "service_lift", "steam", "pirate_gate", "searchlight",
-		"ramp_down", "cells"]
+		"ramp_down", "cells", "power_socket"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -544,6 +544,39 @@ func _draw() -> void:
 				var pxp := -cw9 * 0.5 + (pr * 2 + 1) * cw9 / 6.0
 				draw_circle(Vector2(pxp, -16), 4.0, Color(0.6, 0.45, 0.35))
 				draw_rect(Rect2(pxp - 5, -12, 10, 9), Color(0.4, 0.38, 0.3))
+		"power_socket":
+			# 0.7.53.16 (Luz): a power socket on the wall – a heavy outlet box, two contacts, a charge bar; while you
+			# charge, small arcs leap from its contacts to your suit (d["arc"]: where you stand, relative)
+			var left := clampf(float(d.get("charge", 260.0)) / 260.0, 0.0, 1.0)
+			var lc := Color(0.35, 0.85, 1.0) if left > 0.0 else Color(0.5, 0.2, 0.15)
+			draw_rect(Rect2(-10, -34, 20, 24), Color(0.08, 0.09, 0.1))
+			draw_rect(Rect2(-9, -33, 18, 22), Color(0.3, 0.33, 0.36))
+			draw_rect(Rect2(-9, -33, 18, 3), Color(0.95, 0.75, 0.1))
+			for hz in 3:
+				draw_rect(Rect2(-8 + hz * 6, -33, 3, 3), Color(0.1, 0.1, 0.1))
+			draw_rect(Rect2(-7, -28, 14, 9), Color(0.06, 0.06, 0.07))
+			for pc in 2:
+				var px := -4.0 + pc * 8.0
+				draw_rect(Rect2(px - 1.5, -26, 3, 5), Color(0.75, 0.72, 0.6))
+				draw_circle(Vector2(px, -27), 1.6, Color(lc, 0.5 + 0.5 * sin(t * 3.0 + pc)))
+			draw_rect(Rect2(-7, -17, 14, 3), Color(0.05, 0.05, 0.06))
+			draw_rect(Rect2(-7, -17, 14.0 * left, 3), lc)
+			draw_rect(Rect2(-3, -11, 6, 4), Color(0.2, 0.22, 0.24))
+			if d.has("arc"):
+				var to: Vector2 = d["arc"]
+				var rr := RandomNumberGenerator.new()
+				rr.seed = int(t * 24.0) + int(d.get("seed", 0))
+				for bolt in 2:
+					var a0 := Vector2(-4.0 + bolt * 8.0, -26)
+					var pts := PackedVector2Array([a0])
+					var segs := 6
+					for sg in range(1, segs):
+						var p := a0.lerp(to + Vector2(0, -14), float(sg) / segs)
+						pts.append(p + Vector2(rr.randf_range(-5, 5), rr.randf_range(-4, 4)))
+					pts.append(to + Vector2(rr.randf_range(-4, 4), -14 + rr.randf_range(-6, 6)))
+					draw_polyline(pts, Color(0.45, 0.85, 1.0, 0.35), 3.0)
+					draw_polyline(pts, Color(0.9, 0.97, 1.0), 1.0)
+				draw_circle(to + Vector2(0, -14), 5.0 + sin(t * 30.0), Color(0.5, 0.9, 1.0, 0.25))
 		"fuse_box":
 			# 0.7.53.9: a fuse box on the wall – a row of fuses, one gap (until you put one in); its light
 			draw_rect(Rect2(-9, -30, 18, 18), Color(0.1, 0.1, 0.1))

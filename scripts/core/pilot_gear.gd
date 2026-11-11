@@ -29,6 +29,8 @@ var combat_t := 0.0                     # 0.7.51.10: seconds the pilot counts as
 var shield := 0.0                       # package 52: the suit's shield and armour as they are now (totals() has the most)
 var armor := 0.0
 var shield_wait := 0.0                  # seconds before the shield recovers after a hit
+var heal_wait := 0.0                    # 0.7.53.16: seconds before the body mends (any loss of health resets it)
+var _hp_seen := -1.0
 var team: Array = []                    # 0.7.52.20 (package 52a): crew ids of the active ship coming along on foot (≤ 2)
 
 
@@ -198,6 +200,18 @@ func shield_step(delta: float) -> void:
 	var add := minf(float(t["regen"]) * delta, mx - shield)
 	shield += add
 	energy = maxf(0.0, energy - add * GearData.SHIELD_ENERGY)
+
+
+## 0.7.53.16 (Luz): a while without harm (a hit, the cold getting through, no air) and the body mends slowly – up to
+## HEAL_CAP of its health; beyond that only a medkit or the clinic.
+func health_step(delta: float) -> void:
+	if _hp_seen >= 0.0 and health < _hp_seen - 0.0001:
+		heal_wait = GearData.HEAL_WAIT
+	if heal_wait > 0.0:
+		heal_wait = maxf(0.0, heal_wait - delta)
+	elif health > 0.0 and health < GearData.HEALTH * GearData.HEAL_CAP:
+		health = minf(GearData.HEALTH * GearData.HEAL_CAP, health + GearData.HEAL_RATE * delta)
+	_hp_seen = health
 
 
 ## Walking speed × (the suit, its plates, a stimulant; running with a sprint booster).

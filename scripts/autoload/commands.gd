@@ -1440,6 +1440,8 @@ func _c_mission_accept(c: Dictionary) -> String:
 	if m.is_empty():
 		m = _find_mission(GameState.passenger_offers_for(GameState.current_system, st), String(c["id"]))
 	if m.is_empty():
+		m = _find_mission(GameState.ground_offers_for(GameState.current_system, st), String(c["id"]))   # 0.7.53.16
+	if m.is_empty():
 		return "That contract is no longer on the board."
 	return GameState.accept_mission(m)
 

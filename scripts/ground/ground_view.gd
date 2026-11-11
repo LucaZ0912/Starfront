@@ -111,7 +111,8 @@ var _dark_rect: ColorRect = null           # 0.7.53.6: the level's darkness (the
 var _haz_t := {}                          # 0.7.53.6: hazards' cool-downs (shock conduits)
 var _fuses := {}
 var _town_kind := ""
-var _hostage := {}                        # 53c (Luz): the prisoner you rescue – {look, hp, w (Walker)}                      # 0.7.53.9: in a city, the way down taken – "" (the alley's sewers) or "maint"
+var _hostage := {}
+var _socket := -1                          # 0.7.53.16: the power socket you charge at (explore index), -1 none                        # 53c (Luz): the prisoner you rescue – {look, hp, w (Walker)}                      # 0.7.53.9: in a city, the way down taken – "" (the alley's sewers) or "maint"
 var _drone_fx: Node2D = null              # 0.7.53.9: the maintenance drones drawn
 var _rep_spots: Array = []                # 0.7.53.9: where on the walls they mend things                          # 0.7.53.7: charges and explosives about to go up – index -> seconds
 const WreckShader = preload("res://shaders/wreck.gdshader")
@@ -800,6 +801,43 @@ func _restart_reactor(d: Dictionary) -> void:
 		tw.tween_property(_dark_rect, "color", lit, 3.0)
 	Audio.play("module_on", "reactor restart", 0.0)
 	_poi_target_done(d)
+
+
+## 0.7.53.16 (Luz): charging at a power socket – while E is held and you stay by it, small arcs leap to the suit and
+## its energy fills (the socket's own store runs down); no shooting meanwhile (GroundCombat._pilot_fire).
+const SOCKET_RATE := 30.0                 # energy a second
+var socket_hold_test := false             # the smoke test holds the key
+
+
+func charging() -> bool:
+	return _socket >= 0
+
+
+func _socket_step(delta: float) -> void:
+	if _socket < 0:
+		return
+	var sd: Dictionary = map.explore[_socket] if _socket < map.explore.size() else {}
+	var g = GameState.gear
+	var mx := float(g.totals()["energy"])
+	var stay: bool = not sd.is_empty() and Input.is_action_pressed("interact") and String(zone.get("kind", "")) == "socket" \
+		and int(zone.get("i", -1)) == _socket and input_enabled and not _collapsed
+	if socket_hold_test:
+		stay = not sd.is_empty() and not _collapsed
+	if not stay or float(sd.get("charge", 0.0)) <= 0.0 or g.energy >= mx - 0.01:
+		if not sd.is_empty():
+			sd.erase("arc")
+			if g.energy >= mx - 0.01:
+				_say_toast("Charged – the suit's energy is full.", 1.5)
+			elif float(sd.get("charge", 0.0)) <= 0.0:
+				_say_toast("The socket is drawn dry.", 1.5)
+		_socket = -1
+		return
+	var add := minf(minf(SOCKET_RATE * delta, mx - g.energy), float(sd["charge"]))
+	g.energy += add
+	sd["charge"] = float(sd["charge"]) - add
+	sd["arc"] = pilot.pos - (sd["pos"] as Vector2)
+	if randf() < delta * 6.0:
+		Audio.play("ui_click", "socket arc", -14.0)
 
 
 ## 53c (Luz): the rescued prisoner – a walker that follows you (along a path round walls), hurt by blasts.
@@ -1624,6 +1662,9 @@ func _process(delta: float) -> void:
 		_update_city_day(delta)
 	_update_dust(delta)
 	_env_step(delta)
+	_socket_step(delta)
+	if not _collapsed:
+		GameState.gear.health_step(delta)                # 0.7.53.16 (Luz): the body mends slowly, up to 75 %
 	if _hatch_node != null and is_instance_valid(_hatch_node):
 		_hatch_node.queue_redraw()
 	if _touch >= 0.0:
@@ -1698,6 +1739,12 @@ func _prompt_text(z: Dictionary) -> String:
 			return "[%s] %s" % [key, z["title"]]
 		"soon":
 			return String(z["title"])
+		"socket":                                       # 0.7.53.16
+			var sk: Dictionary = map.explore[int(z["i"])]
+			if float(sk.get("charge", 0.0)) <= 0.0:
+				return "A power socket – drawn dry"
+			return ("Charging…  %d / %d" % [int(GameState.gear.energy), int(GameState.gear.totals()["energy"])]) if charging() \
+				else "[hold %s] Power socket – charge the suit (%d left in it)" % [key, int(sk["charge"])]
 		"crew":
 			return "[%s] Talk to %s – looking for a post" % [key, z["title"]]
 		"seat":
@@ -2931,6 +2978,16 @@ func use(instant: bool = false) -> bool:
 			return open_talk(zone)
 		"soon":
 			_say_toast(String(zone["title"]), 3.0)
+			return true
+		"socket":
+			var sd: Dictionary = map.explore[int(zone["i"])]
+			if float(sd.get("charge", 0.0)) <= 0.0:
+				_say_toast("The socket is dead – drawn dry.", 2.0)
+			elif GameState.gear.energy >= float(GameState.gear.totals()["energy"]) - 0.5:
+				_say_toast("The suit's energy is full.", 1.5)
+			else:
+				_socket = int(zone["i"])                  # 0.7.53.16 (Luz): held – it charges (_socket_step)
+				Audio.play("module_on", "socket charging", -6.0)
 			return true
 		"charge":
 			GameState.gear.charge()                   # 0.7.51.3: energy and oxygen full again (0.7.52.12: and the rounds)

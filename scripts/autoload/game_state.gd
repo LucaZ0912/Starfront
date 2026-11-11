@@ -1522,6 +1522,25 @@ func hull_standing_error(hid: String) -> String:
 	return "%s sells the %s only to %s pilots (yours: %s)." % [mk.get("name", "?"), h["name"], tier.capitalize(), rep.tier_name(f)]
 
 
+## 0.7.53.16 (Luz): jobs on foot of a station – their own tab on the board, on top of the space contracts.
+func ground_offers_for(system_id: int, station: Dictionary) -> Array:
+	if not station.has("id"):
+		return []
+	var key: String = String(station["id"]) + "#g"
+	if not offers.has(key):
+		offers[key] = []
+	var list: Array = offers[key]
+	var lv := Economy.level(system_id)
+	var tries := 0
+	while list.size() < Missions.GROUND_OFFERS and tries < 12:
+		tries += 1
+		var m := Missions.generate_ground(system_id, station, _rng)
+		if not m.is_empty():
+			m["reward"] = int(round(float(m["reward"]) * (0.85 + 0.075 * lv)))
+			list.append(m)
+	return list
+
+
 ## Passenger contracts of a station (package 25c) – own tab on the board.
 func passenger_offers_for(system_id: int, station: Dictionary) -> Array:
 	var key: String = String(station["id"]) + "#p"
@@ -1627,6 +1646,9 @@ func accept_mission(m: Dictionary) -> String:
 	var fkey: String = String(m["giver"]) + "#f"
 	if offers.has(fkey):
 		offers[fkey].erase(m)
+	var gkey: String = String(m["giver"]) + "#g"
+	if offers.has(gkey):
+		offers[gkey].erase(m)                            # 0.7.53.16: the On foot tab
 	if m["type"] == "courier":
 		if f == null or f.cargo_free() < float(m["amount"]) * GameData.item_volume("sealed_cargo"):
 			return "Not enough cargo space for the sealed cargo."

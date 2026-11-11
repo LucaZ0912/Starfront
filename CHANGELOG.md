@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.16 – 2026-11-11
+
+**Healing, power sockets, jobs on foot on their own tab (Luz).**
+- **The body mends by itself:** ten seconds without any harm (a hit, the cold getting through, no air) and health
+  comes back slowly (1.5 a second) – up to **75 %**; the rest takes a medkit or the clinic.
+- **Power sockets** on the walls of a room or two in every site's levels: stand by one and **hold E** – small arcs
+  leap from its contacts to your suit and the energy fills (30 a second). Each socket holds 260 energy (its bar shows
+  what is left; drawn dry it goes dark). **No shooting while you charge.**
+- **Jobs on foot have their own tab** on the bulletin board ("On foot"), four offers per station on top of the
+  space contracts – the Contracts tab has as many as before. Labelled by goal: relic race, salvage, bounty, heist,
+  espionage, repair, rescue.
+
 ## alpha 0.7.53.15 – 2026-11-11
 
 **Fixes from play (Luz).**

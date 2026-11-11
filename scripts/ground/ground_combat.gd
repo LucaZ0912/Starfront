@@ -491,6 +491,8 @@ func _pilot_fire(delta: float) -> void:
 		return
 	if cloak_t > 0.0:
 		return                                         # 0.7.52.25: cloaked, your weapons hold fire
+	if view.charging():
+		return                                         # 0.7.53.16 (Luz): charging at a socket – no shooting
 	var wid := weapon_id()
 	if wid == "":
 		return

@@ -770,6 +770,25 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	m.set_meta("foes", foes)
 	if bool(th.get("passive_foes", false)):
 		m.set_meta("passive", true)                      # 0.7.53.9: they leave you be – until shot at
+	# ---- 0.7.53.16 (Luz): power sockets on the walls of a room or two – hold E beside one and it charges the suit
+	var sock_cells: Array = []
+	for c7 in cells:
+		if is_room[c7] and not role_of.get(c7, "") in ["vault", "tablets"]:
+			sock_cells.append(c7)
+	_shuffle(sock_cells, rng)
+	var n_sock := 0
+	for c8 in sock_cells:
+		if n_sock >= (2 if sock_cells.size() >= 4 else 1):
+			break
+		var r8: Rect2i = rooms[c8]
+		var sx := _wall_spot(m, r8, r8.position.x + 2 + rng.randi() % maxi(1, r8.size.x - 4))
+		var sp := Vector2(sx + 0.5, r8.position.y) * TILE
+		if m.t_at(sx, r8.position.y - 1) != T.FACE or m.explore.any(func(d8): return (d8["pos"] as Vector2).distance_to(sp) < 40.0):
+			continue
+		ExploreNode.add(m, "power_socket", sp, {"no_zone": true, "wall": true, "charge": 260.0, "seed": rng.randi()})
+		m.zones.append({"rect": Rect2(sp + Vector2(-16, 0), Vector2(32, 26)), "kind": "socket", "id": "socket", "i": m.explore.size() - 1,
+			"title": "Power socket"})
+		n_sock += 1
 	# ---- cover (0.7.53.3, Luz: more of it – to go about it tactically) and lights
 	for c5 in cells:
 		var rr: Rect2i = rooms[c5]

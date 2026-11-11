@@ -48,10 +48,6 @@ static func generate(system_id: int, station: Dictionary, rng: RandomNumberGener
 	var m := {"id": _new_id(), "giver": station["id"], "giver_system": system_id, "client": client,
 		"progress": 0, "item": "", "amount": 0, "target_system": system_id, "target_station": "",
 		"faction": String(station.get("faction", "")), "against": ""}
-	if rng.randf() < GROUND_CHANCE:
-		var gm := ground_offer(m, system_id, rng)               # package 53c: a job on foot
-		if not gm.is_empty():
-			return gm
 	if String(station.get("type", "")) == "trade" and rng.randf() < TRADE_ESCORT_CHANCE:
 		var esc := _escort_offer(m, system_id, station, rng, "")
 		if not esc.is_empty():
@@ -125,7 +121,15 @@ static func generate(system_id: int, station: Dictionary, rng: RandomNumberGener
 #   heist       – a pirate base: empty the captain's strongbox; easy – an alarm halves the pay, hard – it fails the job
 #   spy         – a crash site, a ruin or a pirate base: download the data from the deepest computer – a bonus unseen
 #   reactivate  – a city's maintenance tunnels: restart the reactor
-const GROUND_CHANCE := 0.3
+const GROUND_OFFERS := 4             # 0.7.53.16 (Luz): jobs on foot have their own tab – these on top of the space contracts
+
+
+## 0.7.53.16: a job on foot for a station's "On foot" tab ({} if no place for one is near).
+static func generate_ground(system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var m := {"id": _new_id(), "giver": station["id"], "giver_system": system_id, "client": CLIENTS[rng.randi() % CLIENTS.size()],
+		"progress": 0, "item": "", "amount": 0, "target_system": system_id, "target_station": "",
+		"faction": String(station.get("faction", "")), "against": ""}
+	return ground_offer(m, system_id, rng)
 const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2]]
 const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate"}
 

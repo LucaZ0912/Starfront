@@ -8124,9 +8124,27 @@ func _test_env() -> void:
 	g.used.connect(main._on_deck_use)
 	# a terran world: good air, no helmet
 	var safe_ok: bool = GD.env_of("terran")["breathable"] and not GD.needs_helmet(GD.env_of("terran")) and GD.needs_helmet(GD.env_of("lava"))
+	# 0.7.53.16 (Luz): a while without harm the body mends slowly – up to 75 %, no further
+	gear.health = 90.0
+	gear.health_step(0.1)
+	gear.health = 40.0
+	gear.health_step(0.1)
+	var h40: float = gear.health
+	for i3 in 5:
+		gear.health_step(1.0)
+	var waits: bool = is_equal_approx(gear.health, h40)
+	for i4 in 60:
+		gear.health_step(1.0)
+	var mend_ok: bool = waits and is_equal_approx(gear.health, GD.HEALTH * GD.HEAL_CAP)
+	gear.health = 90.0
+	gear.health_step(1.0)
+	mend_ok = mend_ok and is_equal_approx(gear.health, 90.0)
+	safe_ok = safe_ok and mend_ok
+	if not mend_ok:
+		print("[SMOKE] heal: ", waits, " ", gear.health)
 	gear.aboard()
 	check(helmet_ok and folk >= 1 and drain_ok and heal_ok and charge_ok and choke_ok and collapse_ok and safe_ok,
-		"0.7.51.3: on an airless moon – helmet on (%d townsfolk in suits), oxygen and energy drain, the cold kept out on energy and getting through without, a medkit heals, a charging point fills up, no air suffocates, the body gives out; good air on a terran world" % folk)
+		"0.7.51.3: on an airless moon – helmet on (%d townsfolk in suits), oxygen and energy drain, the cold kept out on energy and getting through without, a medkit heals, a charging point fills up, no air suffocates, the body gives out; good air on a terran world; the body mends to 75 %% after a while without harm" % folk)
 
 
 ## 0.7.50.10: a settlement – its four pads (drones coming and going on the free ones), its street, walk-in shops, the
@@ -9933,6 +9951,34 @@ func _test_wreck(view: SystemView) -> void:
 	var conduits: Array = g.map.explore.filter(func(d2): return String(d2["kind"]) == "conduit")
 	var deck_ok: bool = g.map.style == "ship" and widest >= g.map.w - 6 and _has_kind(g.map, "deck_hole") and _has_kind(g.map, "gas") \
 		and conduits.size() >= 2 and not _zone_of(g.map, "dungeon_down").is_empty() and g.map.has_meta("dark")
+	# 0.7.53.16 (Luz): power sockets in the sites – held, the suit charges, no shooting meanwhile
+	var n_sock := 0
+	for sd0 in range(4):
+		var mm0: GroundMap = DungeonGen53.build_inside({"id": "sock_body", "type": "moon_rock"}, {"id": "sock_%d" % sd0, "theme": ["precursor", "pirate", "maint", "wreck"][sd0], "seed": 4400 + sd0, "danger": "yellow"}, 0)
+		n_sock += mm0.explore.filter(func(x): return String(x["kind"]) == "power_socket").size()
+	var sock_ok: bool = n_sock >= 3
+	var socks: Array = g.map.explore.filter(func(x): return String(x["kind"]) == "power_socket")
+	if not socks.is_empty():
+		var skz: Dictionary = {}
+		for z9 in g.map.zones:
+			if String(z9.get("kind", "")) == "socket" and int(z9["i"]) == g.map.explore.find(socks[0]):
+				skz = z9
+		gear.energy = 10.0
+		g.pilot.pos = (skz["rect"] as Rect2).get_center()
+		g.zone = skz
+		g._arrive = 0.0
+		g.use()
+		g.socket_hold_test = true
+		var held: bool = g.charging()
+		for i9 in 30:
+			g._socket_step(0.1)
+		sock_ok = sock_ok and held and gear.energy > 80.0 and float(socks[0]["charge"]) < 260.0
+		g.socket_hold_test = false
+		g._socket_step(0.1)
+		sock_ok = sock_ok and not g.charging()
+	if not sock_ok:
+		print("[SMOKE] sockets: ", n_sock, " ", socks.size(), " ", gear.energy)
+	gear.refill()
 	# a conduit shocks you
 	var hp0: float = gear.health + gear.armor + gear.shield
 	g.pilot.pos = conduits[0]["pos"]
@@ -9992,8 +10038,8 @@ func _test_wreck(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(out_ok and deck_ok and shock_ok and low_ok and done_ok and up_ok,
-		"53b: crash sites found on the map with their ship; the wreck at the ground's scale (a 92 m freighter), its breach and airlock, cargo containers, scavengers, smoke; the airlock sealed until its terminal opens it; inside the main corridor along the hull, the hole down, conduits that shock, gas; below the jammed bulkhead – the generator's power opens it; the flight recorder pays; back up and out by the airlock it went in by, the ship's keys locked on the ground  [%s]" % " ".join(PackedStringArray([str(out_ok), str(deck_ok), str(shock_ok), str(low_ok), str(done_ok), str(up_ok)])))
+	check(out_ok and deck_ok and shock_ok and low_ok and done_ok and up_ok and sock_ok,
+		"53b: crash sites found on the map with their ship; the wreck at the ground's scale (a 92 m freighter), its breach and airlock, cargo containers, scavengers, smoke; the airlock sealed until its terminal opens it; inside the main corridor along the hull, the hole down, conduits that shock, gas; below the jammed bulkhead – the generator's power opens it; the flight recorder pays; back up and out by the airlock it went in by, the ship's keys locked on the ground; power sockets in the sites charge the suit while held  [%s]" % " ".join(PackedStringArray([str(out_ok), str(deck_ok), str(shock_ok), str(low_ok), str(done_ok), str(up_ok), str(sock_ok)])))
 
 
 ## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine: the headframe outside (its chained gate),
@@ -10370,7 +10416,9 @@ func _test_ground_jobs(view: SystemView) -> void:
 		var om: Dictionary = Missions.generate(f.system_id, st0, rng)
 		if String(om.get("type", "")) == "ground":
 			grounds += 1
-	var offer_ok: bool = grounds >= 4
+	# 0.7.53.16 (Luz): jobs on foot only on their own tab – the space contracts are as many as before
+	var gof: Array = GameState.ground_offers_for(f.system_id, st0) if not st0.is_empty() else []
+	var offer_ok: bool = grounds == 0 and gof.size() == Missions.GROUND_OFFERS and gof.all(func(x): return String(x["type"]) == "ground")
 	# a relic race: accepted, its site on the map, the briefing, the relic read completes it, the pay at the giver
 	var res := {}
 	for goal in ["relic", "heist", "bounty_foot", "reactivate", "rescue"]:
@@ -10470,7 +10518,7 @@ func _test_ground_jobs(view: SystemView) -> void:
 	gear.combat_t = 0.0
 	main._update_input()
 	check(offer_ok and bool(res.get("relic", false)) and bool(res.get("heist", false)) and bool(res.get("bounty_foot", false)) and bool(res.get("reactivate", false)) and bool(res.get("rescue", false)),
-		"53c: jobs on foot – on the board; accepted, the site on the planet map with its briefing; the relic read completes a relic race, paid at the giver; a hard heist blown by the alarm; a bounty done when its captain falls; a reactivation sends the city's lift down; a rescue – the cell picked, the prisoner follows, hurt by a blast, out in the open done  [%s %s]" % [str(offer_ok), str(res)])
+		"53c: jobs on foot – on their own tab of the board (space contracts untouched); accepted, the site on the planet map with its briefing; the relic read completes a relic race, paid at the giver; a hard heist blown by the alarm; a bounty done when its captain falls; a reactivation sends the city's lift down; a rescue – the cell picked, the prisoner follows, hurt by a blast, out in the open done  [%s %s]" % [str(offer_ok), str(res)])
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:
