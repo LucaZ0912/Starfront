@@ -406,6 +406,32 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 				_px(px + int(hash2(x, y, k) * 15), py + int(hash2(y, x, k + 3) * 15), gc.darkened(0.25))
 		17:             # 0.7.53.2: the Precursors' rusted iron floor
 			_precursor_floor(x, y, px, py)
+		18, 20:         # 0.7.53.3: the sewer's canal – murky water running (18 wadeable, 20 deep: flooded)
+			_canal(x, y, px, py, fk == 20)
+		19:             # 0.7.53.3: a walkway of grating
+			_grate(x, y, px, py)
+		21:             # 0.7.53.3: wet concrete (the sewer's chambers)
+			var cc2 := Color(0.3, 0.31, 0.3).lerp(Color(0.25, 0.26, 0.25), hash2(x, y, 61))
+			_rect(px, py, TILE, TILE, cc2)
+			_rect(px, py + TILE - 1, TILE, 1, cc2.darkened(0.25))
+			_rect(px + TILE - 1, py, 1, TILE, cc2.darkened(0.2))
+			if hash2(x, y, 62) < 0.25:
+				_rect(px + int(hash2(x, y, 63) * 9), py + int(hash2(x, y, 64) * 10), 5, 3, Color(0.18, 0.22, 0.17))     # a wet patch
+			if hash2(x, y, 65) < 0.12:
+				_crack(px + 4 + int(hash2(x, y, 66) * 8), py + 1, 7, x + y * 3)
+		22:             # 0.7.53.3: steel plates with a tread (the dealer's hideout)
+			var sp: Color = Color(pal["floor"]).lerp(Color(pal["floor2"]), hash2(x, y, 67))
+			_rect(px, py, TILE, TILE, sp)
+			_rect(px, py + TILE - 1, TILE, 1, sp.darkened(0.35))
+			_rect(px + TILE - 1, py, 1, TILE, sp.darkened(0.3))
+			for dd in 3:
+				_rect(px + 3 + dd * 4, py + 4 + (dd % 2) * 5, 3, 1, sp.lightened(0.12))
+		23:             # 0.7.53.3: wet asphalt (a city's back alley)
+			for qy in 4:
+				for qx in 4:
+					_rect(px + qx * 4, py + qy * 4, 4, 4, Color(0.19, 0.19, 0.22).lerp(Color(0.14, 0.14, 0.17), hash2(x * 4 + qx, y * 4 + qy, 68)))
+			if hash2(x, y, 69) < 0.06:
+				_rect(px + 2, py + 6, 11, 3, Color(0.22, 0.17, 0.27))         # a puddle, the neon in it
 		16:             # 0.7.52.27: an air duct – dark steel, ribs across its run (0.7.52.28: walls on its closed sides)
 			_duct_tile(x, y, px, py)
 		10:             # water (a pool)
@@ -479,6 +505,144 @@ func _precursor_floor(x: int, y: int, px: int, py: int) -> void:
 		_rect(px + 9, py + 7, 1, 2, Color(0.55, 0.55, 0.52))
 
 
+## 0.7.53.3: the canal – murky water with streaks running along it, foam at its lips (deep: darker, the flood).
+func _canal(x: int, y: int, px: int, py: int, deep: bool) -> void:
+	var base := Color(0.13, 0.17, 0.12) if not deep else Color(0.08, 0.12, 0.13)
+	_rect(px, py, TILE, TILE, base)
+	for i in 3:
+		var sx := px + int(hash2(x, y * 3 + i, 71) * 10)
+		var sy := py + 2 + int(hash2(x * 2 + i, y, 72) * 12)
+		_rect(sx, sy, 3 + int(hash2(x, y, 73 + i) * 6), 1, base.lightened(0.18))
+	var up := t_at(x, y - 1)
+	var dn := t_at(x, y + 1)
+	if y > 0 and not _wet(x, y - 1) and walkable_t(up):
+		_rect(px, py, TILE, 3, Color(0.42, 0.42, 0.4))     # the lip of the walkway above
+		_rect(px, py + 3, TILE, 1, Color(0.4, 0.43, 0.36))
+	if y + 1 < h and not _wet(x, y + 1) and walkable_t(dn):
+		_rect(px, py + TILE - 2, TILE, 1, Color(0.4, 0.43, 0.36))
+		_rect(px, py + TILE - 1, TILE, 1, Color(0.5, 0.5, 0.47))
+	if x > 0 and not _wet(x - 1, y) and walkable_t(t_at(x - 1, y)):
+		_rect(px, py, 2, TILE, Color(0.42, 0.42, 0.4))
+	if x + 1 < w and not _wet(x + 1, y) and walkable_t(t_at(x + 1, y)):
+		_rect(px + TILE - 2, py, 2, TILE, Color(0.36, 0.36, 0.34))
+
+
+func _wet(x: int, y: int) -> bool:
+	if x < 0 or y < 0 or x >= w or y >= h:
+		return false
+	var fk := floor_kind[y * w + x]
+	return fk == 18 or fk == 20
+
+
+## 0.7.53.3: a walkway of grating – the dark below showing through.
+func _grate(x: int, y: int, px: int, py: int) -> void:
+	_rect(px, py, TILE, TILE, Color(0.1, 0.1, 0.11))
+	var gc := Color(0.36, 0.36, 0.35).lerp(Color(0.28, 0.27, 0.25), hash2(x, y, 74))
+	for k in 4:
+		_rect(px, py + k * 4, TILE, 1, gc)
+		_rect(px + k * 4, py, 1, TILE, gc)
+	_rect(px, py, TILE, 1, gc.lightened(0.1))
+	_rect(px + TILE - 1, py, 1, TILE, Color(0.16, 0.16, 0.16))
+
+
+## 0.7.53.3: the sewer's wall: blocks of wet concrete, a big pipe along it, dark streaks, moss at the foot; now and then
+## graffiti.
+func _sewer_face(x: int, y: int, px: int, py: int) -> void:
+	var top_row := t_at(x, y - 1) != T.FACE
+	var base := Color(0.37, 0.38, 0.36).lerp(Color(0.3, 0.31, 0.29), hash2(x, y, 81))
+	if top_row:
+		base = base.darkened(0.15)
+	for by in 2:
+		for bx in 2:
+			var c := base.lerp(base.darkened(0.2), hash2(x * 2 + bx, y * 2 + by, 82))
+			_rect(px + bx * 8, py + by * 8, 7, 7, c)
+			_rect(px + bx * 8, py + by * 8, 7, 1, c.lightened(0.08))
+	var sx := px + int(hash2(x, y, 83) * 14)
+	for yy in int(4 + hash2(x, y, 84) * 10):
+		_px(sx, py + yy, base.darkened(0.35))
+	if top_row:
+		var pc := Color(0.38, 0.31, 0.24)              # the big pipe
+		_rect(px, py + 7, TILE, 5, pc)
+		_rect(px, py + 7, TILE, 1, pc.lightened(0.3))
+		_rect(px, py + 11, TILE, 1, pc.darkened(0.45))
+		if x % 5 == 0:
+			_rect(px + 4, py + 6, 2, 7, pc.darkened(0.25))
+		if hash2(x / 3, y, 85) < 0.2:
+			var gcol: Color = [Color(0.85, 0.3, 0.5), Color(0.3, 0.8, 0.85), Color(0.9, 0.8, 0.3)][int(hash2(x / 3, y, 86) * 3)]
+			for i in 5:
+				_rect(px + i * 3, py + 1 + int(hash2(x, i, 87) * 4), 3, 3, gcol.darkened(0.35))
+	else:
+		for xx in TILE:
+			var mh := int(2 + hash2(x * 16 + xx, y, 88) * 3)
+			_rect(px + xx, py + TILE - mh, 1, mh, Color(0.2, 0.27, 0.16).lerp(Color(0.13, 0.18, 0.11), hash2(xx, x, 89)))
+
+
+## 0.7.53.3: the hideout's wall: steel panels put up inside the old tunnel, rivets, a dark seam between them.
+func _steel_face(x: int, y: int, px: int, py: int) -> void:
+	var top_row := t_at(x, y - 1) != T.FACE
+	var base: Color = Color(pal["wall"]).lerp(Color(pal["wall"]).darkened(0.15), hash2(x, 0, 91))
+	if top_row:
+		base = base.darkened(0.12)
+	_rect(px, py, TILE, TILE, base)
+	_rect(px, py, 1, TILE, base.lightened(0.12))
+	_rect(px + TILE - 1, py, 1, TILE, base.darkened(0.45))
+	_px(px + 2, py + 3, base.lightened(0.35))
+	_px(px + 13, py + 3, base.lightened(0.35))
+	_px(px + 2, py + 12, base.lightened(0.35))
+	_px(px + 13, py + 12, base.lightened(0.35))
+	if not top_row:
+		_rect(px, py + TILE - 3, TILE, 3, Color(pal["trim"]))
+	if hash2(x, y, 92) < 0.1:
+		_rect(px + 5, py + 4, 6, 6, Color(0.85, 0.7, 0.15))                # a warning sticker
+		_rect(px + 6, py + 5, 4, 4, Color(0.15, 0.12, 0.08))
+
+
+## 0.7.53.3: a back alley's buildings: brick and concrete blocks, windows lit, pipes; the lift building's lobby front.
+func _alley_face(x: int, y: int, px: int, py: int) -> void:
+	var lob: Array = get_meta("lobby", [-1, -1])
+	if x >= int(lob[0]) and x <= int(lob[1]):
+		var gl := Color(0.22, 0.25, 0.3)
+		_rect(px, py, TILE, TILE, gl)
+		_rect(px, py, TILE, 1, gl.lightened(0.2))
+		if t_at(x, y - 1) != T.FACE:
+			_rect(px, py, TILE, 4, Color(0.4, 1.0, 0.6).darkened(0.5))          # its lit band
+			_rect(px, py + 1, TILE, 1, Color(0.4, 1.0, 0.6))
+		_rect(px + TILE - 1, py, 1, TILE, Color(0.12, 0.13, 0.15))
+		return
+	var brick := (x / 10) % 2 == 0
+	var base := Color(0.42, 0.3, 0.26) if brick else Color(0.36, 0.37, 0.36)
+	if brick:
+		_rect(px, py, TILE, TILE, base.darkened(0.45))
+		for row in 4:
+			var off := 4 if row % 2 == 1 else 0
+			for bx in range(-off, TILE, 8):
+				var c := base.lerp(base.darkened(0.3), hash2(x * 4 + bx, y * 4 + row, 93))
+				_rect(px + maxi(bx, 0), py + row * 4, mini(7, 7 + bx) if bx < 0 else mini(7, TILE - bx), 3, c)
+	else:
+		_rect(px, py, TILE, TILE, base)
+		_rect(px, py, TILE, 1, base.lightened(0.1))
+		_rect(px, py + 8, TILE, 1, base.darkened(0.2))
+	var fy := y - _face_top(x, y)
+	if fy == 0 and hash2(x / 3, 0, 94) < 0.45 and x % 3 == 1:
+		_rect(px + 1, py + 3, 14, 10, Color(0.08, 0.08, 0.1))                 # a window, lit
+		_rect(px + 2, py + 4, 12, 8, Color(0.95, 0.75, 0.45).darkened(0.35) if hash2(x, 1, 95) < 0.7 else Color(0.4, 0.7, 0.95).darkened(0.4))
+		_rect(px + 7, py + 4, 1, 8, Color(0.08, 0.08, 0.1))
+	if fy == 2:
+		var pc := Color(0.42, 0.38, 0.32)
+		_rect(px, py + 10, TILE, 3, pc)
+		_rect(px, py + 10, TILE, 1, pc.lightened(0.3))
+	if t_at(x, y + 1) != T.FACE:
+		_rect(px, py + TILE - 2, TILE, 2, Color(0.15, 0.15, 0.17))
+
+
+## How many face rows lie above this one.
+func _face_top(x: int, y: int) -> int:
+	var k := 0
+	while t_at(x, y - k - 1) == T.FACE:
+		k += 1
+	return y - k
+
+
 ## The Precursors' wall face: tall rusted panels, cracks, streaks, a rusted ledge at the foot.
 func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 	var wl: Color = Color(pal["wall"]).lerp(Color(0.36, 0.25, 0.18), hash2(x, 0, 41))
@@ -500,7 +664,7 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
-	if style == "precursor":
+	if style in ["precursor", "sewer", "hideout", "alley"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -576,6 +740,15 @@ func _duct_tile(x: int, y: int, px: int, py: int) -> void:
 func _face_tile(x: int, y: int, px: int, py: int) -> void:
 	if style == "precursor":
 		_precursor_face(x, y, px, py)
+		return
+	if style == "sewer":
+		_sewer_face(x, y, px, py)
+		return
+	if style == "hideout":
+		_steel_face(x, y, px, py)
+		return
+	if style == "alley":
+		_alley_face(x, y, px, py)
 		return
 	var wl: Color = pal["wall"]
 	_rect(px, py, TILE, TILE, wl)
@@ -934,6 +1107,23 @@ func _face_deco(d: Dictionary) -> void:
 	var pw := int(d.get("w", 1)) * TILE
 	var c: Color = d.get("col", pal["accent"])
 	match String(d["kind"]):
+		"neon":
+			# 0.7.53.3: a neon sign in blocky letters on a dark board
+			var txt := String(d.get("text", "BAR"))
+			var bw := txt.length() * 12 + 6
+			_rect(px, py + 1, bw, 20, Color(0.06, 0.05, 0.08))
+			var glyph := {"R": ["110", "101", "110", "101", "101"], "A": ["010", "101", "111", "101", "101"], "M": ["101", "111", "111", "101", "101"],
+				"E": ["111", "100", "110", "100", "111"], "N": ["101", "111", "111", "111", "101"], "B": ["110", "101", "110", "101", "110"],
+				"O": ["111", "101", "101", "101", "111"], "D": ["110", "101", "101", "101", "110"], "L": ["100", "100", "100", "100", "111"],
+				"P": ["110", "101", "110", "100", "100"], "W": ["101", "101", "111", "111", "101"], "I": ["111", "010", "010", "010", "111"]}
+			var cx0 := px + 4
+			for ch in txt:
+				var rows: Array = glyph.get(ch, ["111", "101", "101", "101", "111"])
+				for gy in 5:
+					for gx in 3:
+						if String(rows[gy])[gx] == "1":
+							_rect(cx0 + gx * 3, py + 4 + gy * 3, 2, 2, c)
+				cx0 += 12
 		"lamp":
 			_rect(px + 6, py + 3, 4, 4, c.lightened(0.3))
 			_rect(px + 5, py + 7, 6, 1, Color(pal["wall"]).darkened(0.3))

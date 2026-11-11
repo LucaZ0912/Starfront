@@ -12,7 +12,11 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"vent": "Ventilation shaft – welded shut (cutting torch)",
 	"crate": "Supply cache – open it (E)",
 	"ruin_gate": "The ruin's entrance – sealed",
-	"rust_door": "An old rusted door – sealed (its panel beside it)"}
+	"rust_door": "An old rusted door – sealed (its panel beside it)",
+	"grate_door": "A rusted grate door – locked (its box beside it)",
+	"steel_door": "A steel door with a code lock – sealed",
+	"valve": "Valve wheel – turn it (E): the pumps drain the flooded tunnel",
+	"tripwire": "A tripwire – a grenade on the end of it. Disarm it (E)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -185,7 +189,28 @@ func _draw_rust_door(d: Dictionary, t: float) -> void:
 	draw_rect(Rect2(-gw * 0.5 - 4, top - 4, gw + 8, 4), Color(0.16, 0.12, 0.1))
 	draw_rect(Rect2(-gw * 0.5, top, gw, gh), Color(0.04, 0.03, 0.03, 1.0 - k))
 	var hh := gh * (1.0 - k)
-	if hh > 0.6:
+	if hh > 0.6 and String(d["kind"]) == "grate_door":
+		# 0.7.53.3: a rusted grate – bars, two cross bands, a padlock; the dark tunnel behind it
+		var rg := Rect2(-gw * 0.5, top, gw, hh)
+		for bx in int(gw / 4.0):
+			draw_rect(Rect2(rg.position.x + 1 + bx * 4, rg.position.y, 1.4, rg.size.y), Color(0.45, 0.36, 0.26))
+		for cb in [0.15, 0.55]:
+			if hh > gh * cb:
+				draw_rect(Rect2(rg.position.x, rg.position.y + gh * cb, gw, 2), Color(0.4, 0.31, 0.22))
+		draw_rect(Rect2(rg.position.x, rg.end.y - 2, gw, 2), Color(0.35, 0.27, 0.2))
+		if String(d["state"]) != "open":
+			draw_rect(Rect2(-2, top + gh * 0.5, 4, 5), Color(0.75, 0.62, 0.2))
+	elif hh > 0.6 and String(d["kind"]) == "steel_door":
+		# 0.7.53.3: the dealer's door – heavy steel, hazard bands, rivets
+		var rs2 := Rect2(-gw * 0.5, top, gw, hh)
+		draw_rect(rs2, Color(0.42, 0.44, 0.47))
+		draw_rect(Rect2(rs2.position.x, rs2.position.y, gw, 1), Color(0.6, 0.62, 0.65))
+		var nb2 := int(hh / 9.0)
+		for band2 in nb2:
+			draw_rect(Rect2(rs2.position.x + 2, rs2.position.y + 4 + band2 * 9, gw - 4, 2), Color(0.85, 0.68, 0.15))
+		draw_rect(Rect2(-0.5, rs2.position.y, 1, hh), Color(0.2, 0.21, 0.23))
+		draw_rect(Rect2(rs2.position.x, rs2.end.y - 1, gw, 1), Color(0.2, 0.21, 0.23))
+	elif hh > 0.6:
 		var r := Rect2(-gw * 0.5, top, gw, hh)
 		draw_rect(r, Color(0.46, 0.31, 0.21))
 		draw_rect(Rect2(r.position.x, r.end.y - 1, r.size.x, 1), Color(0.25, 0.17, 0.12))
@@ -287,6 +312,8 @@ static func add(map: GroundMap, kind: String, pos: Vector2, extra: Dictionary = 
 
 func _process(delta: float) -> void:
 	var d: Dictionary = view.map.explore[i]
+	if String(d["kind"]) == "valve" and String(d["state"]) == "turning":
+		d["spin"] = float(d.get("spin", 0.0)) + delta * 4.0
 	if String(d["kind"]) == "vent_end":
 		# 0.7.52.28 (Luz): the hatch flips open when you come to it from inside the shaft
 		var vi2 = d.get("vent")
@@ -296,7 +323,7 @@ func _process(delta: float) -> void:
 			Audio.play("dock_clamp", "vent hatch flips open", -12.0)
 		if String(d["state"]) == "open":
 			d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 0.45)
-	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate"] and String(d["state"]) == "open":
+	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door"] and String(d["state"]) == "open":
 		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
 
@@ -306,7 +333,8 @@ func _draw() -> void:
 	var s := GroundMap.SCALE
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
-	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals"]
+	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
+		"manhole", "hatch", "tripwire"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -316,10 +344,14 @@ func _draw() -> void:
 		kk = "panel_rust" if String(d.get("style", "")) == "precursor" else "panel_wall"
 	if kk == "terminal" and String(d.get("style", "")) == "precursor":
 		kk = "terminal_precursor"
+	if kk == "panel_wall" and String(d.get("style", "")) == "hideout":
+		kk = "keypad"                                    # 0.7.53.3: the code lock beside the dealer's door
+	if kk == "terminal" and String(d.get("style", "")) in ["pump", "dealer"]:
+		kk = "terminal_" + String(d["style"])
 	match kk:
 		"ruin_gate":
 			_draw_gate(d, t)
-		"rust_door":
+		"rust_door", "grate_door", "steel_door":
 			_draw_rust_door(d, t)
 		"crystals":
 			_draw_crystals(d, t)
@@ -385,9 +417,100 @@ func _draw() -> void:
 				draw_rect(Rect2(-4, -10, 8, 10), Color(0.02, 0.02, 0.03))
 				draw_rect(Rect2(-8, -14, 16, 14), Color(1.0, 0.5, 0.2, 0.35), false, 0.6)
 			draw_string(ThemeDB.fallback_font, Vector2(-9, -17), "VENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.9, 0.85, 0.5, 0.8))
+		"keypad":
+			# 0.7.53.3: a code lock on the wall – a keypad, a red light (cut it open: the wires behind it)
+			draw_rect(Rect2(-6, -30, 12, 18), Color(0.08, 0.08, 0.09))
+			draw_rect(Rect2(-5, -29, 10, 16), Color(0.2, 0.21, 0.23))
+			if String(d["state"]) == "shut":
+				for kb in 9:
+					draw_rect(Rect2(-4 + (kb % 3) * 3, -26 + (kb / 3) * 3, 2, 2), Color(0.5, 0.8, 1.0, 0.8))
+				draw_rect(Rect2(-4, -16, 8, 1.5), Color(1.0, 0.25, 0.2) if fposmod(t, 1.0) < 0.7 else Color(0.4, 0.1, 0.1))
+			else:
+				draw_rect(Rect2(-4, -27, 8, 10), Color(0.04, 0.04, 0.05))
+				for wi in 3:
+					draw_line(Vector2(-3 + wi * 3, -27), Vector2(-2 + wi * 2, -18), [Color(1, 0.3, 0.2), Color(0.3, 0.6, 1), Color(1, 0.85, 0.2)][wi], 0.6)
+				draw_rect(Rect2(-4, -16, 8, 1.5), Color(0.3, 1.0, 0.45))
+		"terminal_pump":
+			# 0.7.53.3: the pump control – an old grey cabinet, a green screen, the level gauge
+			draw_rect(Rect2(-9, -26, 18, 26), Color(0.1, 0.11, 0.1))
+			draw_rect(Rect2(-8, -25, 16, 25), Color(0.32, 0.35, 0.32))
+			draw_rect(Rect2(-8, -25, 16, 1), Color(0.48, 0.52, 0.47))
+			draw_rect(Rect2(-6, -22, 12, 8), Color(0.04, 0.09, 0.05))
+			var on3 := String(d["state"]) != "hacked"
+			for ln in 3:
+				draw_rect(Rect2(-5, -21 + ln * 2.5, 4 + ln * 2, 0.8), Color(0.4, 1.0, 0.5) if on3 else Color(1.0, 0.75, 0.3))
+			draw_rect(Rect2(-6, -11, 3, 9), Color(0.1, 0.1, 0.1))
+			var lvl := 0.2 if bool(d.get("drained", false)) else 0.85
+			draw_rect(Rect2(-5.5, -2.5 - 8 * lvl, 2, 8 * lvl), Color(0.3, 0.7, 0.9))
+			for bt in 3:
+				draw_circle(Vector2(1 + bt * 3, -7), 1.0, [Color(1, 0.3, 0.2), Color(1, 0.8, 0.2), Color(0.3, 1, 0.4)][bt])
+		"terminal_dealer":
+			# 0.7.53.3: the dealer's computer on the desk – two screens, the list scrolling
+			draw_rect(Rect2(-14, -10, 28, 10), Color(0.32, 0.22, 0.14))
+			draw_rect(Rect2(-14, -10, 28, 2), Color(0.45, 0.32, 0.2))
+			for sc in 2:
+				var sx2 := -12 + sc * 13
+				draw_rect(Rect2(sx2, -23, 11, 12), Color(0.08, 0.08, 0.09))
+				draw_rect(Rect2(sx2 + 1, -22, 9, 9), Color(0.3, 0.6, 0.95, 0.85) if String(d["state"]) != "hacked" else Color(0.3, 0.9, 0.5, 0.85))
+				for ln2 in 3:
+					draw_rect(Rect2(sx2 + 2, -21 + ln2 * 2.6 + fposmod(t * 2.0, 2.6) * float(sc), 6 - ln2, 0.7), Color(0.9, 0.95, 1.0))
+		"ladder":
+			# 0.7.53.3: iron rungs up the wall, light falling down the shaft above
+			draw_rect(Rect2(-8, -40, 16, 40), Color(0.02, 0.02, 0.03, 0.6))
+			draw_rect(Rect2(-7, -40, 2, 40), Color(0.5, 0.45, 0.38))
+			draw_rect(Rect2(5, -40, 2, 40), Color(0.5, 0.45, 0.38))
+			for rg in 8:
+				draw_rect(Rect2(-6, -38 + rg * 5, 12, 1.5), Color(0.58, 0.52, 0.42))
+		"manhole":
+			# 0.7.53.3: an open manhole in the alley – the cover pushed aside, the ladder's top, steam rising
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.62) * GroundMap.SCALE)
+			draw_circle(Vector2.ZERO, 11.0, Color(0.32, 0.32, 0.34))
+			draw_circle(Vector2.ZERO, 9.0, Color(0.01, 0.01, 0.02))
+			draw_circle(Vector2(17, 6), 10.0, Color(0.36, 0.35, 0.34))
+			draw_circle(Vector2(17, 6), 8.5, Color(0.27, 0.26, 0.26))
+			for gl in 4:
+				draw_rect(Rect2(10, 1.5 + gl * 3, 14, 1), Color(0.42, 0.41, 0.4))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+			for rr in 3:
+				draw_rect(Rect2(-4, -3 + rr * 2.5, 8, 1), Color(0.45, 0.42, 0.35))
+			for st in 6:
+				var ph := fposmod(t * 0.5 + st * 0.17, 1.0)
+				draw_circle(Vector2(sin(st * 2.1 + t) * 4.0, -4 - ph * 26.0), 3.0 + ph * 5.0, Color(0.85, 0.9, 0.9, 0.18 * (1.0 - ph)))
+		"hatch":
+			# 0.7.53.3: a hatch in the floor, its lid up – a ladder down into a warm light
+			draw_rect(Rect2(-10, -8, 20, 14), Color(0.25, 0.26, 0.28))
+			draw_rect(Rect2(-8, -6, 16, 10), Color(0.08, 0.05, 0.03))
+			draw_rect(Rect2(-8, -6, 16, 10), Color(1.0, 0.65, 0.3, 0.25 + 0.05 * sin(t * 3.0)))
+			for hr in 3:
+				draw_rect(Rect2(-5, -5 + hr * 3, 10, 1), Color(0.55, 0.5, 0.42))
+			draw_rect(Rect2(-10, -18, 20, 10), Color(0.36, 0.37, 0.4))
+			draw_rect(Rect2(-10, -18, 20, 1), Color(0.55, 0.56, 0.6))
+			draw_rect(Rect2(-7, -15, 14, 1), Color(0.85, 0.7, 0.15))
+		"valve":
+			# 0.7.53.3: a red valve wheel on a pipe in the wall
+			draw_rect(Rect2(-14, -22, 28, 4), Color(0.36, 0.3, 0.24))
+			draw_rect(Rect2(-14, -22, 28, 1), Color(0.5, 0.42, 0.33))
+			var ang := float(d.get("spin", 0.0))
+			var col2 := Color(0.75, 0.15, 0.12) if String(d["state"]) != "open" else Color(0.35, 0.6, 0.3)
+			draw_arc(Vector2(0, -20), 7.0, 0.0, TAU, 20, col2, 1.6)
+			for sp in 4:
+				var a2 := ang + sp * PI * 0.5
+				draw_line(Vector2(0, -20), Vector2(0, -20) + Vector2(cos(a2), sin(a2)) * 7.0, col2, 1.0)
+			draw_circle(Vector2(0, -20), 1.6, Color(0.85, 0.75, 0.3))
+		"tripwire":
+			# 0.7.53.3: a thin wire across the way at shin height, a grenade taped to the wall at its end
+			if String(d["state"]) == "shut":
+				var ln3 := float(d.get("len", 3)) * 16.0
+				var v3 := bool(d.get("vertical", true))
+				var e3 := Vector2(0, ln3) if v3 else Vector2(ln3, 0)
+				draw_line(Vector2(0, -3), e3 + Vector2(0, -3), Color(0.9, 0.9, 0.8, 0.55 + 0.25 * sin(t * 5.0)), 0.5)
+				draw_rect(Rect2(-2, -9, 4, 6), Color(0.3, 0.38, 0.22))
+				draw_circle(Vector2(0, -8), 0.8, Color(1.0, 0.2, 0.15))
 		"crate":
 			# package 53a: a supply cache – a heavy chest with straps; welded ones show their seams; open: lid up, empty
 			var cc := Color(0.45, 0.4, 0.3) if not bool(d.get("welded", false)) else Color(0.38, 0.4, 0.44)
+			if bool(d.get("safe", false)):
+				cc = Color(0.24, 0.25, 0.27)                 # 0.7.53.3: the dealer's safe
 			draw_rect(Rect2(-9, -12, 18, 12), Color(0.08, 0.08, 0.09))
 			draw_rect(Rect2(-8, -11, 16, 11), cc)
 			draw_rect(Rect2(-8, -11, 16, 1), cc.lightened(0.25))

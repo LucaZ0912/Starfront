@@ -3,6 +3,35 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.3 – 2026-11-11
+
+**Package 53b, first part – levels, the structure per theme, and the city's way down: the sewers (Luz).**
+- **Every site is rolled anew** (Mystery-Dungeon-like): the theme gives its STRUCTURE – the grid's size (a range),
+  how many cells hold a room and how many are junctions where the ways cross, room sizes, the width of the ways,
+  loops, the cover per room – and the generator rolls it for each site. What lies where (the things, the traps,
+  the foes, the cover) is rolled too. Recorded in the theme sheets in Roadmap.md (new point **Structure**).
+- **More cover** (Luz): three to five pieces per room, one at each junction, more along the long ways.
+- **Levels:** a site can go down several levels – a hatch in the floor at the far end, a ladder up on the wall where
+  you arrive. The target lies on the last level. What you saw of a level stays on its minimap; doors stay open,
+  drained tunnels drained, the fallen down.
+- **The city's way down:** the lift of a city now also goes to the **back alley** – wet asphalt, brick and concrete,
+  lit windows, a neon sign, bins and crates, and on its west side a **building with lifts back up to the shopping
+  street** (Luz). In the alley a **manhole**, its cover pushed aside, steam rising: down the ladder into…
+- **The sewers (level 1) – long, wide tunnels, few rooms:** walkways of grating on both sides of a **canal** of murky
+  water (wade through it – slowly), bridges here and there, pump chambers of wet concrete, walls of concrete blocks
+  with a big pipe, streaks, moss and graffiti; **dark** – the lamps glow in it. A **flooded tunnel** bars the way to the
+  hatch down: turn the **valve wheel** (loud – the pipes knock) or hack the **pump control** to drain it.
+  **Tripwires** with a grenade across the ways – walked into they go off; sneaking you step over them, and with E
+  you cut them (and keep the grenade). Cover: pipe bundles, rubble, barrels, old pumps.
+- **The dealer's hideout (level 2) – compact, many small rooms:** steel panels put up in the old tunnels, steel
+  plates underfoot, warm light; stores with **arms crates**; the office behind a **steel door with a code lock** (cut
+  it open, or the control room's computer): a rug, the **dealer's computer** – hack it for the **client list** (the
+  site's target: credits now, bounty leads later) – and the **safe** (cutting torch).
+- The city's site comes with each visit to the system; done, there is nothing more down there until the next visit.
+- Debug → ground combat → *Site (sewer): Green / Yellow / Red*, *Back alley (in a city)*. Smoke test group `sewer`.
+- Not yet (later in 53b and 53c/d): the turret and the alarm in the hideout, crash sites, settlements' ways down,
+  the Precursor ruins going deeper than one level.
+
 ## alpha 0.7.53.2 – 2026-11-11
 
 **Package 53a reworked – the entrance outside, the Precursors' ruin (Luz).**

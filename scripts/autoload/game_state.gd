@@ -2036,6 +2036,19 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 		"danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}]
 
 
+## 0.7.53.3 (Luz, package 53b): a city's way down – the sewers behind its back alley, rolled anew each visit to the
+## system (used up once its target is done: then nothing down there until the next visit).
+func city_poi(system_id: int, city: Dictionary) -> Dictionary:
+	const PoiData = preload("res://data/poi.gd")
+	var visit := int(poi_visits.get(str(system_id), 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("sewer_%d_%d_%s_%d" % [system_id, visit, String(city.get("id", "")), Universe.seed_value])
+	var id := "sewer_%d_%d_%s" % [system_id, visit, String(city.get("id", ""))]
+	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
+	return {"id": id, "name": PoiData.site_name("sewer", rng), "kind": "sewer", "poi": true, "theme": "sewer", "seed": rng.randi(),
+		"danger": danger, "used": poi_used.has(id)}
+
+
 func museum_find(id: String) -> void:
 	museum_finds.append(id)
 	log_msg("A find for the Museum.", COL_GOOD)

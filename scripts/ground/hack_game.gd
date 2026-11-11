@@ -9,7 +9,7 @@ signal finished(result: String)          # an action id, "fail" (locked out), ""
 
 const COLS := 9
 const ROWS := 6
-const ACTION_NAMES := {"crystals": "Crystal guardians off", "lasers": "Laser cage off", "door": "Open the door", "power": "Power off / on", "turrets": "Turrets off", "cameras": "Cameras off", "data": "Download data"}
+const ACTION_NAMES := {"list": "Copy the client list", "drain": "Pumps: drain the flooded tunnel", "crystals": "Crystal guardians off", "lasers": "Laser cage off", "door": "Open the door", "power": "Power off / on", "turrets": "Turrets off", "cameras": "Cameras off", "data": "Download data"}
 
 var level := 1                           # 1..3 – tracers and their pace
 var skill := 0                           # Electronics

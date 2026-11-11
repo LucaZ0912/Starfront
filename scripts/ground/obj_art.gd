@@ -77,6 +77,10 @@ static func _rise(kind: String) -> int:
 			return 9
 		"slab":
 			return 8
+		"pipe_bundle", "weapon_crate":        # 0.7.53.3: the sewer's and the hideout's low cover
+			return 9
+		"pump":                               # 0.7.53.3: a big pump – high cover
+			return 26
 		"dune":
 			return 6
 		"palm":
@@ -474,6 +478,43 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 4 + rb * (pw - 10) / 4, fy - 12, 1, 7, Color(0.5, 0.3, 0.18))
 			for rbl in 5:
 				_p(img, int(GroundMap.hash2(rbl, 9, 2) * pw), fy + ph - 2 + int(GroundMap.hash2(rbl, 9, 3) * 2), Color(0.42, 0.36, 0.3))
+		"pipe_bundle":
+			# 0.7.53.3 (Luz): pipes run low along the floor, clamped together – cover in the sewers
+			for k in 3:
+				var pc: Color = [Color(0.38, 0.31, 0.24), Color(0.33, 0.35, 0.39), Color(0.3, 0.33, 0.28)][k]
+				var py := fy - 6 + k * 5
+				_r(img, 0, py, pw, 5, pc)
+				_r(img, 0, py, pw, 1, pc.lightened(0.3))
+				_r(img, 0, py + 4, pw, 1, pc.darkened(0.45))
+			for cl in range(4, pw - 2, 14):
+				_r(img, cl, fy - 7, 3, 16, Color(0.25, 0.25, 0.27))
+				_r(img, cl, fy - 7, 3, 1, Color(0.5, 0.5, 0.52))
+			for dr in 3:
+				_p(img, 3 + int(GroundMap.hash2(dr, int(o.get("x", 0)), 5) * (pw - 6)), fy + 9, Color(0.35, 0.45, 0.35))
+		"pump":
+			# 0.7.53.3: an old pump housing – a drum on a base, a gauge, a wheel, pipes into the floor
+			var hc := Color(0.33, 0.38, 0.42)
+			_r(img, 1, fy + ph - 6, pw - 2, 6, hc.darkened(0.35))
+			_r(img, 3, fy - 20, pw - 6, ph + 15, hc)
+			_r(img, 3, fy - 20, pw - 6, 3, hc.lightened(0.25))
+			_r(img, pw - 5, fy - 20, 2, ph + 15, hc.darkened(0.3))
+			_ellipse(img, pw * 0.5, fy - 8, 4.5, 4.5, Color(0.85, 0.85, 0.8))
+			_ellipse(img, pw * 0.5, fy - 8, 3.5, 3.5, Color(0.15, 0.15, 0.15))
+			_r(img, int(pw * 0.5), fy - 10, 1, 3, Color(0.9, 0.3, 0.2))
+			_r(img, 5, fy + 1, pw - 10, 2, Color(0.55, 0.15, 0.12))
+			for rs in 6:
+				_p(img, 4 + int(GroundMap.hash2(rs, 2, 8) * (pw - 8)), fy - 18 + int(GroundMap.hash2(rs, 3, 8) * 20), Color(0.5, 0.3, 0.15))
+		"weapon_crate":
+			# 0.7.53.3: an olive arms crate, stencilled, its lid ajar on a rifle
+			var wc := Color(0.3, 0.36, 0.25)
+			_r(img, 1, fy - 5, pw - 2, ph + 2, wc)
+			_r(img, 1, fy - 5, pw - 2, 4, wc.lightened(0.2))
+			_r(img, 1, fy - 1, pw - 2, 1, wc.darkened(0.4))
+			_r(img, 3, fy + 3, pw - 6, 1, wc.darkened(0.25))
+			_r(img, 3, fy + 8, pw - 6, 1, wc.darkened(0.25))
+			_r(img, pw / 2 - 5, fy + 4, 10, 3, Color(0.85, 0.8, 0.6))
+			_r(img, 4, fy - 7, pw - 10, 2, Color(0.15, 0.15, 0.16))       # a rifle on top
+			_r(img, pw - 8, fy - 7, 3, 1, Color(0.6, 0.6, 0.6))
 		"ore_cart":
 			_r(img, 1, fy - 2, pw - 2, ph - 2, Color(0.4, 0.36, 0.32))
 			_r(img, 1, fy - 2, pw - 2, 2, Color(0.55, 0.5, 0.45))

@@ -2479,7 +2479,7 @@ func _c_debug_ground_level(c: Dictionary) -> String:
 	var lv := String(c.get("level", ""))
 	var ok: Array = []
 	if g.is_city():
-		ok = ["hangar", "street", "tower"]
+		ok = ["hangar", "street", "tower", "alley"]          # 0.7.53.3: the back alley over the sewers
 	elif not g.is_town() and g.level in ["hangar", "commercial", "clinic"]:
 		ok = ["hangar", "commercial"]
 	if not ok.is_empty() and g._avail.has("clinic"):

@@ -857,6 +857,12 @@ func _build_ground() -> void:
 		var dzz: String = dz[0]
 		rpo.add_child(UI.button(String(dz[1]), func(): _cmd({"type": "debug_poi", "danger": dzz})))
 	rpo.add_child(UI.button("Reveal the map", func(): _cmd({"type": "debug_poi_reveal"})))
+	var rsw := _row()                                               # 0.7.53.3: the sewers under a city
+	rsw.add_child(UI.label("Site (sewer):", 12, UI.TEXT_DIM))
+	for dz2 in [["green", "Green"], ["yellow", "Yellow"], ["red", "Red"]]:
+		var dzz2: String = dz2[0]
+		rsw.add_child(UI.button(String(dz2[1]), func(): _cmd({"type": "debug_poi", "danger": dzz2, "theme": "sewer"})))
+	rsw.add_child(UI.button("Back alley (in a city)", func(): _cmd({"type": "debug_ground_level", "level": "alley"})))
 	var rtm := _row()                                               # 0.7.52.20: the ground team
 	rtm.add_child(UI.label("Team:", 12, UI.TEXT_DIM))
 	rtm.add_child(UI.button("Gunner + Engineer", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"]})))

@@ -103,6 +103,9 @@ const PoiData = preload("res://data/poi.gd")
 const FogNode = preload("res://scripts/ground/fog.gd")
 var _poi_cache := {}                     # 0.7.53.2: the site's two maps while you are there (outside, inside – their state kept)
 var fog: Node2D = null
+var depth := 0                            # 0.7.53.3: the level of a site you are on (0 the top)
+var _city_site = null                     # 0.7.53.3: in a city, the site before the alley's sewers took its place
+var _wires_t := {}                        # 0.7.53.3: tripwires set off – index -> seconds to the blast
 var _mm: Control = null                  # package 53a: the minimap of a site (what you have seen)
 var _mm_img: Image = null
 var _mm_tex: ImageTexture = null
@@ -249,6 +252,8 @@ func setup_settlement(p_body: Dictionary, p_site: Dictionary, town: Dictionary, 
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
+	if map != null and _mm != null and map.has_meta("poi"):
+		map.set_meta("seen", poi_seen)                  # 0.7.53.3: the minimap of the level you leave stays
 	for c in _world.get_children():
 		_world.remove_child(c)
 		c.queue_free()
@@ -286,7 +291,16 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if pilot != null and is_instance_valid(pilot):
 		pilot.aim = Vector2.INF
 	level = p_level
-	env = ChibiArt.GearData.env_of(String(_body.get("type", ""))) if level in ["landing", "settlement", "dungeon"] else {}
+	if is_city():
+		# 0.7.53.3 (Luz): the back alley and the sewers below it are the city's site to explore
+		if level in ["alley", "dungeon"]:
+			if not bool(_site.get("poi", false)):
+				_city_site = _site
+				_site = GameState.city_poi(_sys, station)
+		elif _city_site != null:
+			_site = _city_site
+			_city_site = null
+	env = ChibiArt.GearData.env_of(String(_body.get("type", ""))) if level in ["landing", "settlement", "dungeon"] and not is_city() else {}
 	_warned = {}
 	if level == "settlement":
 		map = SettleGen.build(station, _body, _site, _avail, _sys)
@@ -306,7 +320,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				if String(zl.get("id", "")) == "ship":
 					zl["title"] = "Board the landing drone – back up to your ship"
 	elif level == "dungeon":
-		map = _poi_map("dungeon", Vector2.ZERO)                       # 0.7.53.2: inside the site
+		map = _poi_map("dungeon", Vector2.ZERO)                       # 0.7.53.2: inside the site (0.7.53.3: its level `depth`)
+	elif level == "alley":
+		map = _poi_map("alley", Vector2.ZERO)                         # 0.7.53.3: a city's back alley
 	elif level == "hangar":
 		var sz := _ship_size()
 		var af := GameState.active()
@@ -330,7 +346,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
-		if String(zc.get("id", "")) == "lift" and level != "settlement" and level != "landing":
+		if String(zc.get("id", "")) == "lift" and level != "settlement" and level != "landing" and level != "alley":
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
@@ -369,7 +385,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
-		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside"}.get(level, "")]
+		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley"}.get(level, "")]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
@@ -380,6 +396,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		pilot.position = pilot.pos * GroundMap.SCALE
 		pilot.dir = 0
 		_say_toast("You come to in the clinic of %s." % String(station.get("name", "the station")), 5.0)
+	elif arrive == "dungeon_up" and map.has_meta("down_front"):
+		pilot.pos = map.get_meta("down_front")          # 0.7.53.3: back up the ladder beside the hatch
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0
 	elif arrive == "dungeon_out" and map.has_meta("door_front"):
 		pilot.pos = map.get_meta("door_front")          # 0.7.53.2: back out through the ruin's entrance
 		pilot.position = pilot.pos * GroundMap.SCALE
@@ -543,6 +563,41 @@ func zoom_step(d: int) -> void:
 
 ## Package 52: may weapons be used here? So far only in the debug arena (Luz: the real fights come once the system
 ## stands); never in the built-up parts of cities.
+## 0.7.53.3: wading through the sewer's canal is slow.
+func _wade() -> float:
+	if map == null or pilot == null:
+		return 1.0
+	var tx := int(pilot.pos.x / GroundMap.TILE)
+	var ty := int(pilot.pos.y / GroundMap.TILE)
+	if tx < 0 or ty < 0 or tx >= map.w or ty >= map.h:
+		return 1.0
+	return 0.55 if map.floor_kind[ty * map.w + tx] == 18 else 1.0
+
+
+## 0.7.53.3: tripwires – walking into one (not sneaking) sets off its grenade a moment later; sneaking you step over.
+func _wires_step(delta: float) -> void:
+	if combat == null or map == null:
+		return
+	for k in _wires_t.keys():
+		_wires_t[k] = float(_wires_t[k]) - delta
+		if float(_wires_t[k]) <= 0.0:
+			var d0: Dictionary = map.explore[int(k)]
+			_wires_t.erase(k)
+			combat._explode((d0["pos"] as Vector2) + Vector2(0, 6), 70.0, 55.0, "explosive", null)
+	for i in map.explore.size():
+		var d: Dictionary = map.explore[i]
+		if String(d["kind"]) != "tripwire" or String(d["state"]) != "shut":
+			continue
+		var a: Vector2 = d["pos"]
+		var ln := float(d.get("len", 3)) * GroundMap.TILE
+		var b: Vector2 = a + (Vector2(0, ln) if bool(d.get("vertical", true)) else Vector2(ln, 0))
+		if Geometry2D.get_closest_point_to_segment(pilot.pos, a, b).distance_to(pilot.pos) < 4.0 and not combat.sneaking:
+			d["state"] = "fired"
+			_wires_t[i] = 0.6
+			_say_toast("Click – a tripwire!", 1.5)
+			Audio.play("warn", "tripwire", -2.0)
+
+
 func combat_allowed() -> bool:
 	return (level == "landing" and (bool(_site.get("arena", false)) or bool(_site.get("vault", false)) or bool(_site.get("poi", false)))) \
 		or (level == "dungeon" and bool(_site.get("poi", false)))
@@ -843,7 +898,7 @@ func _build() -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
 	# it (they hardly show); the tower bar's window lets in the sun by day
-	if is_town() and level in ["street", "settlement"]:
+	if is_town() and level in ["street", "settlement", "alley"]:
 		var tint := ColorRect.new()
 		_tint = tint
 		var mm := CanvasItemMaterial.new()
@@ -853,16 +908,27 @@ func _build() -> void:
 		var tx0 := DeckGen.LOBBY_X1 + 1                  # the street only – not the lift lobby, not inside the shops
 		tint.position = Vector2(tx0, map.hull_top) * GroundMap.TILE * GroundMap.SCALE
 		tint.size = Vector2(map.w - tx0, DeckGen.SHOP_CAP + 1 - map.hull_top) * GroundMap.TILE * GroundMap.SCALE
-		if level == "settlement":                       # all of it lies under the sky
+		if level in ["settlement", "alley"]:              # all of it lies under the sky
 			tint.position = Vector2.ZERO
 			tint.size = map.size_px() * GroundMap.SCALE
 		_world.add_child(tint)
+	if map.has_meta("dark"):
+		var dk := ColorRect.new()                        # 0.7.53.3 (Luz): the sewers are dark – the lamps glow in it
+		var dm := CanvasItemMaterial.new()
+		dm.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+		dk.material = dm
+		dk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dk.color = map.get_meta("dark")
+		dk.position = Vector2(0, map.hull_top) * GroundMap.TILE * GroundMap.SCALE
+		dk.size = (map.size_px() - Vector2(0, map.hull_top * GroundMap.TILE)) * GroundMap.SCALE
+		dk.z_index = 4
+		_world.add_child(dk)
 	_named_lights.clear()
 	for l in map.lights:
 		var lsp := _add_light(l, add_mat)
 		if l.has("id"):
 			_named_lights[String(l["id"])] = lsp           # 0.7.52.23: a light that can be switched (the laser cage's)
-		if is_town() and level in ["street", "settlement"]:
+		if is_town() and level in ["street", "settlement", "alley"]:
 			_city_lights.append([lsp, l, "street"])
 		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
 			lsp.scale *= 1.4                           # the light through the glass: sun, sunset or night
@@ -1053,10 +1119,11 @@ func _process(delta: float) -> void:
 			if combat != null and combat.sneaking:
 				run = false                                 # 0.7.52.21: sneaking – half speed, no running
 			if combat == null or not combat.dodging():
-				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run) * (0.5 if combat != null and combat.sneaking else 1.0))      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
+				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run) * (0.5 if combat != null and combat.sneaking else 1.0) * _wade())      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
 	else:
 		pilot.moving = false
 	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
+		_wires_step(delta)
 		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:
@@ -1378,8 +1445,26 @@ func explore_use(z: Dictionary) -> bool:
 			else:
 				_say_toast("Sealed – %s." % ("its panel is on the wall beside it (cutting torch)" if String(d["lock"]) == "panel" else "the computer by it opens it (E-Breach)"), 3.0)
 			return true
-		"rust_door":
+		"rust_door", "grate_door", "steel_door":
 			_say_toast("Sealed – its panel is beside it, or a computer somewhere opens it." if String(d["state"]) != "open" else "Open.", 2.5)
+			return true
+		"valve":
+			if String(d["state"]) == "open":
+				_say_toast("Turned all the way – the tunnel is drained.", 2.0)
+			else:
+				d["state"] = "open"                        # 0.7.53.3: by hand – loud: the pipes bang and knock
+				_drain(d.get("flood", []))
+				if combat != null:
+					for f in combat.alive():
+						if (f["w"] as Walker).pos.distance_to(pilot.pos) < 360.0:
+							combat._wake(f)
+			return true
+		"tripwire":
+			if String(d["state"]) == "shut":
+				d["state"] = "disarmed"                    # 0.7.53.3: carefully – the pin back in, the wire cut
+				GameState.skill_xp("engineering", 2.0)
+				var left: int = GameState.gear.add_item("gr_frag", 1)
+				_say_toast("Disarmed – you cut the wire%s." % (" and keep its grenade" if left == 0 else ""), 2.5)
 			return true
 		"blastdoor":
 			_say_toast("Sealed – its release is in the maintenance box beside it." if String(d["state"]) != "open" else "Open.", 2.5)
@@ -1486,7 +1571,8 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 			if d.has("door"):
 				var dd2: Dictionary = map.explore[int(d["door"])]
 				open_door(dd2)                                  # 0.7.52.23: its blast door slides open
-				txt = {"ruin_gate": "The entrance grinds open – fog spills out.", "rust_door": "The old door shrieks open."}.get(String(dd2["kind"]), "The blast door grinds open.")
+				txt = {"ruin_gate": "The entrance grinds open – fog spills out.", "rust_door": "The old door shrieks open.",
+					"grate_door": "The grate swings open with a rusty squeal.", "steel_door": "The code lock blinks green – the steel door slides open."}.get(String(dd2["kind"]), "The blast door grinds open.")
 			Audio.play("dock_clamp", "door released", -4.0)
 		"lasers":
 			if d.has("cage"):
@@ -1498,6 +1584,12 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 				cage_off(map.explore[int(d["cage"])])
 			txt = "The crystals sink to the floor – their lightning dies."
 			Audio.play("shield_down", "crystal guardians off", -4.0)
+		"drain":
+			_drain(d.get("flood", []))                     # 0.7.53.3: the pumps run
+			txt = ""
+		"list":
+			txt = ""
+			_poi_target_done(d)                            # 0.7.53.3: the dealer's client list – the site's target
 		"emp":
 			txt = "A trap! An EMP – shields, drones and energy weapons are down for a moment."
 			if combat != null:
@@ -1532,6 +1624,8 @@ func _loot(d: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(d.get("seed", 1))
 	var cr := rng.randi_range(int(th["credits"][0]), int(th["credits"][1]))
+	if bool(d.get("safe", false)):
+		cr *= 3                                          # 0.7.53.3: the dealer's safe
 	GameState.credits += cr
 	var got: Array = ["%d cr" % cr]
 	if th.has("research"):
@@ -1559,6 +1653,12 @@ func _poi_target_done(d: Dictionary) -> void:
 	if not bool(_site.get("poi", false)):
 		return
 	GameState.poi_use(String(_site.get("id", "")))
+	if String(_site.get("theme", "")) == "sewer":
+		var pay := 400 + int(d.get("seed", 0)) % 500           # 0.7.53.3: the client list – sold on, or a bounty lead later
+		GameState.credits += pay
+		_say_toast("The client list is yours – names, drops, debts. Worth %d cr to the right people. Back up when you like." % pay, 5.5)
+		Audio.play("lock_acquired", "site target done", -2.0)
+		return
 	var n := 6 + int(d.get("seed", 0)) % 6
 	GameState.research_data += n
 	var rng := RandomNumberGenerator.new()
@@ -1578,15 +1678,27 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 	var sid := String(_site.get("id", ""))
 	if String(_poi_cache.get("site", "")) != sid:
 		_poi_cache = {"site": sid}
-	if not _poi_cache.has("dungeon"):
-		_poi_cache["dungeon"] = DungeonGen.build_inside(_body, _site)
+	var theme := String(_site.get("theme", "precursor"))
+	var nlev := PoiData.levels(theme)
+	for dl in nlev:                                     # 0.7.53.3: every level, built once
+		if not _poi_cache.has("dungeon_%d" % dl):
+			_poi_cache["dungeon_%d" % dl] = DungeonGen.build_inside(_body, _site, dl)
 	if lv == "dungeon":
-		return _poi_cache["dungeon"]
-	if not _poi_cache.has("landing"):
-		var mo: GroundMap = DungeonGen.build_outside(_body, _site, lsz.x, lsz.y)
-		mo.set_meta("poi", (_poi_cache["dungeon"] as GroundMap).get_meta("poi"))
-		_poi_cache["landing"] = mo
-	return _poi_cache["landing"]
+		return _poi_cache["dungeon_%d" % clampi(depth, 0, nlev - 1)]
+	if not _poi_cache.has("outside"):
+		var mo: GroundMap
+		if String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "alley":
+			mo = DungeonGen.build_alley(_body, _site)
+		else:
+			mo = DungeonGen.build_outside(_body, _site, lsz.x, lsz.y)
+		var info: Dictionary = (_poi_cache["dungeon_0"] as GroundMap).get_meta("poi").duplicate()
+		var all: Array = []
+		for dl2 in nlev:
+			all.append(_poi_cache["dungeon_%d" % dl2])
+		info["targets"] = DungeonGen.site_targets(all)
+		mo.set_meta("poi", info)
+		_poi_cache["outside"] = mo
+	return _poi_cache["outside"]
 
 
 ## The site's entrance outside ({} none).
@@ -1604,11 +1716,18 @@ func _poi_setup() -> void:
 	_mm = null
 	if not map.has_meta("poi"):
 		return
-	poi_seen = PackedByteArray()
-	poi_seen.resize(map.w * map.h)
-	poi_seen.fill(0)
+	if map.has_meta("seen"):
+		poi_seen = map.get_meta("seen")                  # 0.7.53.3: what you saw of this level stays seen
+	else:
+		poi_seen = PackedByteArray()
+		poi_seen.resize(map.w * map.h)
+		poi_seen.fill(0)
 	_mm_img = Image.create(map.w, map.h, false, Image.FORMAT_RGBA8)
 	_mm_img.fill(Color(0, 0, 0, 0))
+	for yy in map.h:
+		for xx in map.w:
+			if poi_seen[yy * map.w + xx] == 1:
+				_mm_img.set_pixel(xx, yy, _mm_col(xx, yy))
 	_mm_tex = ImageTexture.create_from_image(_mm_img)
 	_mm_tile = Vector2i(-99, -99)
 	_mm = Control.new()
@@ -1616,7 +1735,7 @@ func _poi_setup() -> void:
 	_mm.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_mm.draw.connect(_draw_minimap)
 	_ui.add_child(_mm)
-	if not bool(_site.get("mission", false)) and level == "landing" and not map.has_meta("shown"):
+	if not bool(_site.get("mission", false)) and level in ["landing", "alley"] and not map.has_meta("shown") and not bool(_site.get("used", false)):
 		map.set_meta("shown", true)
 		call_deferred("_poi_window")
 
@@ -1630,6 +1749,8 @@ func _mm_col(x: int, y: int) -> Color:
 			return Color(0.45, 0.4, 0.32, 0.9)
 		if fk == 16:
 			return Color(0.55, 0.45, 0.8, 0.9)
+		if fk == 18 or fk == 20:
+			return Color(0.3, 0.55, 0.65, 0.9) if fk == 18 else Color(0.2, 0.35, 0.55, 0.95)
 		return Color(0.62, 0.64, 0.68, 0.95)
 	if t == GroundMap.T.FACE:
 		return Color(0.32, 0.33, 0.36, 0.95)
@@ -1670,6 +1791,8 @@ func _poi_reveal() -> void:
 
 
 func _draw_minimap() -> void:
+	if _mm == null or not is_instance_valid(_mm) or not map.has_meta("poi"):
+		return                                       # (the old one, freed, draws a last time)
 	var vs := _mm.get_viewport_rect().size
 	var mw := 300.0
 	var sc := mw / float(map.w)
@@ -1684,7 +1807,9 @@ func _draw_minimap() -> void:
 		if ti < 0 or ti >= poi_seen.size() or poi_seen[ti] == 0:
 			continue
 		var c: Color = {"relic": Color(0.85, 0.5, 1.0), "terminal": Color(0.3, 1.0, 0.6), "crate": Color(1.0, 0.8, 0.3), "blastdoor": Color(1.0, 0.35, 0.3),
-			"tablet": Color(0.6, 0.85, 1.0), "vent": Color(0.75, 0.6, 1.0)}.get(String(d["kind"]), Color(0, 0, 0, 0))
+			"tablet": Color(0.6, 0.85, 1.0), "vent": Color(0.75, 0.6, 1.0), "hatch": Color(1.0, 0.7, 0.35), "ladder": Color(0.4, 1.0, 0.6),
+			"valve": Color(0.4, 0.8, 0.9), "rust_door": Color(1.0, 0.35, 0.3), "grate_door": Color(1.0, 0.35, 0.3), "steel_door": Color(1.0, 0.35, 0.3),
+			"tripwire": Color(1.0, 0.25, 0.2)}.get(String(d["kind"]), Color(0, 0, 0, 0))
 		if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
 			c = Color(0.3, 1.0, 0.45)
 		if String(d["state"]) in ["scanned", "open", "hacked"] and String(d["kind"]) != "blastdoor":
@@ -1694,7 +1819,10 @@ func _draw_minimap() -> void:
 	var pp := r.position + pilot.pos * sc / GroundMap.TILE
 	_mm.draw_circle(pp, 3.5, Color(0.2, 0.2, 0.2))
 	_mm.draw_circle(pp, 2.5, Color(0.4, 1.0, 0.6))
-	_mm.draw_string(ThemeDB.fallback_font, r.position + Vector2(0, -10), String(map.get_meta("poi")["name"]), HORIZONTAL_ALIGNMENT_LEFT, mw, 12, Color(0.85, 0.75, 1.0))
+	var lvn := ""
+	if int(map.get_meta("poi").get("levels", 1)) > 1 and level == "dungeon":
+		lvn = "  ·  level %d of %d" % [depth + 1, int(map.get_meta("poi")["levels"])]
+	_mm.draw_string(ThemeDB.fallback_font, r.position + Vector2(0, -10), String(map.get_meta("poi")["name"]) + lvn, HORIZONTAL_ALIGNMENT_LEFT, mw, 12, Color(0.85, 0.75, 1.0))
 
 
 ## Package 53a (Luz): landing at a site found on the map – what the scanner picks up, before you go in.
@@ -1738,7 +1866,9 @@ func _poi_window() -> void:
 			if String(z.get("id", "")) == "ship":
 				_open_takeoff_menu(z)
 	var b1 := UI.button("1.  Go in", go)
-	var b2 := UI.button("2.  Not now – back to the ship", back)
+	if level == "alley":
+		back = func(): _close_lift_menu()
+	var b2 := UI.button("2.  Not now – back to the ship" if level != "alley" else "2.  Not now", back)
 	v.add_child(b1)
 	v.add_child(b2)
 	keys.append(go)
@@ -1766,6 +1896,30 @@ func open_door(d: Dictionary) -> void:
 	map._astar = null
 	if combat != null:
 		combat._build_cover()
+
+
+## 0.7.53.3 (Luz): the pumps drain a flooded tunnel – its water runs off, the walkways and the canal come out of it.
+func _drain(tiles: Array) -> void:
+	if tiles.is_empty():
+		return
+	var any := false
+	for t in tiles:
+		if map.t_at(int(t[0]), int(t[1])) == GroundMap.T.BLOCK:
+			map.set_t(int(t[0]), int(t[1]), GroundMap.T.FLOOR, int(t[2]))
+			any = true
+	for d in map.explore:
+		if String(d["kind"]) in ["valve", "terminal"] and d.has("flood"):
+			d["drained"] = true
+			if String(d["kind"]) == "valve":
+				d["state"] = "open"
+	if not any:
+		return
+	map.refresh_texture()
+	map._astar = null
+	if combat != null:
+		combat._build_cover()
+	_say_toast("The pumps thunder – the water runs off. The flooded tunnel is clear.", 3.0)
+	Audio.play("undock_release", "tunnel drained", -4.0)
 
 
 ## 0.7.52.27 (Luz): a vent cut open – its duct can be crawled through (you sneak in it).
@@ -1949,6 +2103,9 @@ func use(instant: bool = false) -> bool:
 		"lift":
 			if instant:
 				return false
+			if level == "landing" and bool(_site.get("poi", false)):
+				_say_toast("(Debug site) In a city this lift goes back up to the shopping street.", 2.5)
+				return true
 			_open_lift_menu(zone)
 			return true
 		"exit":
@@ -1968,13 +2125,26 @@ func use(instant: bool = false) -> bool:
 			return explore_use(zone)                     # 0.7.52.22
 		"dungeon_in":
 			var gate := _poi_gate()
-			if gate.is_empty() or String(gate["state"]) == "open":
+			if bool(_site.get("used", false)) or GameState.poi_used.has(String(_site.get("id", ""))):
+				_say_toast("Nothing more down there – the place is cleared out. Come back another time.", 3.0)
+			elif gate.is_empty() or String(gate["state"]) == "open":
+				depth = 0
 				go_level("dungeon", "dungeon_in")          # 0.7.53.2: into the site
 			else:
 				_say_toast("The entrance is shut." + (" Its panel is beside it." if String(gate.get("lock", "")) == "panel" else (" Its computer stands by it." if String(gate.get("lock", "")) == "computer" else " Use it to open it.")), 3.0)
 			return true
 		"dungeon_out":
-			go_level("landing", "dungeon_out")           # 0.7.53.2: back out
+			depth = 0
+			go_level("alley" if is_city() else "landing", "dungeon_out")           # 0.7.53.2: back out
+			return true
+		"dungeon_down":
+			depth += 1                                   # 0.7.53.3: a level deeper
+			go_level("dungeon", "dungeon_down")
+			_say_toast("Down the ladder – level %d." % (depth + 1), 2.0)
+			return true
+		"dungeon_up":
+			depth = maxi(0, depth - 1)
+			go_level("dungeon", "dungeon_up")
 			return true
 	Audio.play("ui_open", "on foot: use")
 	used.emit(zone)
@@ -2051,6 +2221,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street – the shops"], ["tower", "3.  Tower bar – floor %d, a view over the city" % tower_floor()]]
 	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
 		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
+	if is_city():                                                 # 0.7.53.3 (Luz): the way down into the sewers
+		lvls.append(["alley", "%d.  Back alley – a manhole down into the sewers" % (lvls.size() + 1)])
 	var keys: Array = []
 	for lv in lvls:
 		keys.append(func(): _choose_level(String(lv[0])))

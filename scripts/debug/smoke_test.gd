@@ -157,6 +157,7 @@ func _process(delta: float) -> void:
 				_test_foot_vault(view)           # 0.7.52.23 – the debug vault
 				_test_foot_cloak(view)           # 0.7.52.25 – the short cloak, drones outside a fight
 				_test_poi(view)                  # package 53a – sites to explore
+				_test_sewer(view)                # package 53b – the sewers, levels, the city's way down
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -8873,6 +8874,7 @@ func _test_debug_shot() -> void:
 ## locking, firing, foes going down, the AI waking, dodging (no hit during the jump), the shield coming back, going
 ## down yourself (the clinic), the codex.
 const FoeData52 = preload("res://data/foes.gd")
+const DungeonGen53 = preload("res://scripts/ground/dungeon_gen.gd")
 
 
 func _test_foot_combat(view: SystemView) -> void:
@@ -9582,6 +9584,213 @@ func _test_poi(view: SystemView) -> void:
 	main._update_input()
 	check(map_ok and out_ok and built_ok and win_ok and wide_ok and shut_ok and open_ok and done_ok and loot_ok and emp_ok and back_ok,
 		"53a: sites to explore – ruins found per visit (the same within a visit, no fixed ruins); outside the ruin in the north with its gate shut (its panel opens it, fog); inside the Precursors' ruin: rust door, crystal guardians, 3 tablets, caches (one welded), the relic, raiders; the targets window and the minimap; ways three wide; the computer opens the door and puts the crystals down; the relic read uses the site up; a cache pays; the EMP trap; a Museum find; back out before the gate  [%s]" % " ".join(PackedStringArray([str(map_ok), str(out_ok), str(built_ok), str(win_ok), str(wide_ok), str(shut_ok), str(open_ok), str(done_ok), str(loot_ok), str(emp_ok), str(back_ok)])))
+
+
+## 0.7.53.3 (Luz, package 53b): a city's way down – the back alley (a lift building, a manhole), the sewers (long wide
+## tunnels with a canal, a flooded tunnel drained at the pumps or a valve, tripwires) and below them the dealer's
+## hideout (a steel door with a code lock, the office with the computer and the safe); levels joined by ladders;
+## every site rolled anew; more cover.
+func _test_sewer(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	# variety: the structure is rolled per site
+	var sigs := {}
+	for sd in 6:
+		var mm: GroundMap = DungeonGen53.build_inside({}, {"theme": "sewer", "seed": 700 + sd, "danger": "yellow"}, 0)
+		var nroom := 0
+		for y in mm.h:
+			for x in mm.w:
+				if mm.floor_kind[y * mm.w + x] == 21 and GroundMap.walkable_t(mm.t_at(x, y)):
+					nroom += 1
+		sigs["%d_%d_%d" % [mm.w, mm.h, nroom]] = true
+	var pm: GroundMap = DungeonGen53.build_inside({}, {"theme": "precursor", "seed": 701, "danger": "yellow"}, 0)
+	var var_ok: bool = sigs.size() >= 4 and pm.objects.size() >= 12
+	# the site, outside: the alley
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5303, "theme": "sewer"})
+	var g = main.ground
+	if g == null or e != "":
+		check(false, "53b: the sewer site opens  [%s]" % e)
+		return
+	gear.refill()
+	var alley_ok: bool = g.map.style == "alley" and _has_kind(g.map, "manhole") and not (_zone_of(g.map, "dungeon_in") as Dictionary).is_empty() \
+		and not (_zone_of(g.map, "lift") as Dictionary).is_empty() and g.map.lifts.size() == 2 and int(g.map.get_meta("poi")["levels"]) == 2
+	if g._lift_menu == null:
+		g._poi_window()
+	alley_ok = alley_ok and g._lift_menu != null
+	g._close_lift_menu()
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_in")
+	g.use()
+	if g.level != "dungeon" or g.combat == null:
+		check(false, "53b: down into the sewers  [%s]" % g.level)
+		return
+	# level 1: the sewers
+	var canal := 0
+	var grate := 0
+	var deep := 0
+	for y2 in g.map.h:
+		for x2 in g.map.w:
+			match g.map.floor_kind[y2 * g.map.w + x2]:
+				18:
+					canal += int(GroundMap.walkable_t(g.map.t_at(x2, y2)))
+				19:
+					grate += 1
+				20:
+					deep += int(g.map.t_at(x2, y2) == GroundMap.T.BLOCK)
+	var valve: Dictionary = {}
+	var pump: Dictionary = {}
+	var wire: Dictionary = {}
+	for d1 in g.map.explore:
+		match String(d1["kind"]):
+			"valve":
+				valve = d1
+			"terminal":
+				pump = d1
+			"tripwire":
+				if wire.is_empty():
+					wire = d1
+	var down_p: Vector2 = g.map.get_meta("down_front", Vector2.INF)
+	var sewer_ok: bool = g.map.style == "sewer" and canal > 20 and grate > 40 and deep > 5 and _has_kind(g.map, "ladder") and _has_kind(g.map, "hatch") \
+		and not (_zone_of(g.map, "dungeon_out") as Dictionary).is_empty() and not (_zone_of(g.map, "dungeon_down") as Dictionary).is_empty() \
+		and not valve.is_empty() and (pump.get("actions", []) as Array).has("drain") and not wire.is_empty() and g.map.has_meta("dark") \
+		and down_p != Vector2.INF and g.map.path(g.map.spawn, down_p).is_empty() and g.combat.foes.size() >= 2
+	# wading is slow
+	var wade_ok := false
+	for y3 in g.map.h:
+		for x3 in g.map.w:
+			if not wade_ok and g.map.floor_kind[y3 * g.map.w + x3] == 18 and GroundMap.walkable_t(g.map.t_at(x3, y3)):
+				g.pilot.pos = Vector2(x3 + 0.5, y3 + 0.5) * GroundMap.TILE
+				wade_ok = is_equal_approx(g._wade(), 0.55)
+	# the valve drains the flooded tunnel: the way down opens
+	g.explore_use({"i": g.map.explore.find(valve)})
+	var drain_ok: bool = String(valve["state"]) == "open" and not g.map.path(g.map.spawn, down_p).is_empty()
+	# a tripwire: walked into it goes off, sneaking over it does not; disarmed it is safe
+	var cb: GroundCombat = g.combat
+	var a: Vector2 = wire["pos"]
+	g.pilot.pos = a + (Vector2(0, 16) if bool(wire.get("vertical", true)) else Vector2(16, 0))
+	cb.sneaking = true
+	g._wires_step(0.1)
+	var sneak_safe: bool = String(wire["state"]) == "shut"
+	cb.sneaking = false
+	Commands.suit_god = true
+	g._wires_step(0.1)
+	var fired: bool = String(wire["state"]) == "fired"
+	var nb := cb.booms.size()
+	g._wires_step(0.7)
+	var wire_ok: bool = sneak_safe and fired and cb.booms.size() > nb
+	Commands.suit_god = false
+	# down the ladder: level 2, the dealer's hideout
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_down")
+	g.use()
+	var door: Dictionary = {}
+	var ctrl: Dictionary = {}
+	var target: Dictionary = {}
+	var safe: Dictionary = {}
+	for d2 in g.map.explore:
+		match String(d2["kind"]):
+			"steel_door":
+				door = d2
+			"terminal":
+				if bool(d2.get("target", false)):
+					target = d2
+				else:
+					ctrl = d2
+			"crate":
+				if bool(d2.get("safe", false)):
+					safe = d2
+	var keypad: bool = g.map.explore.any(func(x): return String(x["kind"]) == "panel" and String(x.get("style", "")) == "hideout" and x.has("door"))
+	var office_p: Vector2 = (target.get("pos", Vector2.ZERO) as Vector2) + Vector2(0, 30)
+	var hide_ok: bool = g.depth == 1 and g.level == "dungeon" and g.map.style == "hideout" and not door.is_empty() and keypad and not target.is_empty() \
+		and not safe.is_empty() and (target.get("actions", []) as Array).has("list") and g.map.path(g.map.spawn, office_p).is_empty() \
+		and not (_zone_of(g.map, "dungeon_up") as Dictionary).is_empty() and g.combat.foes.size() >= 3
+	g._hack_done(ctrl, "door")
+	var cr0 := GameState.credits
+	g._hack_done(target, "list")
+	var cr1 := GameState.credits
+	g._loot(safe)
+	var done_ok: bool = String(door["state"]) == "open" and not g.map.path(g.map.spawn, office_p).is_empty() and GameState.poi_used.has(String(g._site["id"])) \
+		and cr1 > cr0 and GameState.credits > cr1
+	# back up and out: the levels kept (the water stays drained), out by the manhole
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_up")
+	g.use()
+	var up_ok: bool = g.depth == 0 and g.level == "dungeon" and String(valve["state"]) == "open" and g.pilot.pos.distance_to(down_p) < 30.0
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_out")
+	g.use()
+	var out_ok: bool = g.level == "landing" and g.map.style == "alley"
+	g.zone = _zone_of(g.map, "dungeon_in")
+	g.use()
+	out_ok = out_ok and g.level == "landing"                  # used up: nothing more down there
+	# in a city: the lift goes to the back alley; the city's own site comes back on the street
+	main.close_deck(false)
+	main._close_planet_map()
+	f.docked_at = ""
+	var city_ok := true
+	var L := Universe.get_layout(view.system_id)
+	var cbody := {}
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b) and Universe.landing_sites(view.system_id, b).any(func(s): return String(s["kind"]) == "city"):
+			cbody = b
+			break
+	if not cbody.is_empty():
+		var e2 := Commands.execute({"type": "debug_land", "body": String(cbody["id"]), "kind": "city"})
+		g = main.ground
+		city_ok = e2 == "" and g != null and g.is_city()
+		if city_ok:
+			g._open_lift_menu({})
+			var n_keys: int = (g._lift_menu.get_meta("keys", []) as Array).size()
+			g._close_lift_menu()
+			var site0: Dictionary = g._site
+			city_ok = Commands.execute({"type": "debug_ground_level", "level": "alley"}) == "" and g.level == "alley" and g.map.style == "alley" \
+				and String(g._site.get("theme", "")) == "sewer" and n_keys >= 4 and g.combat == null and not g.map.lifts.is_empty()
+			g.zone = _zone_of(g.map, "dungeon_in")
+			g._arrive = 0.0
+			g.use()
+			city_ok = city_ok and g.level == "dungeon" and g.combat != null and g.env.is_empty()
+			g.zone = _zone_of(g.map, "dungeon_out")
+			g._arrive = 0.0
+			g.use()
+			city_ok = city_ok and g.level == "alley"
+			Commands.execute({"type": "debug_ground_level", "level": "street"})
+			city_ok = city_ok and g.level == "street" and g._site == site0
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(var_ok and alley_ok and sewer_ok and wade_ok and drain_ok and wire_ok and hide_ok and done_ok and up_ok and out_ok and city_ok,
+		"53b: every site rolled anew (and more cover); the back alley with its lift building and the manhole, the window; the sewers – canal, grating, a flooded tunnel to the way down, a valve and the pump control, tripwires, dark; wading is slow; the valve drains the tunnel; a tripwire goes off walked into, not sneaked over; down the ladder the dealer's hideout – steel door with code lock, the office (computer, safe); the door opened, the client list taken, the safe looted; back up (the water stays drained), out; used up; in a city the lift goes to the alley and back  [%s]" % " ".join(PackedStringArray([str(var_ok), str(alley_ok), str(sewer_ok), str(wade_ok), str(drain_ok), str(wire_ok), str(hide_ok), str(done_ok), str(up_ok), str(out_ok), str(city_ok)])))
+
+
+func _has_kind(m: GroundMap, k: String) -> bool:
+	return m.explore.any(func(d): return String(d["kind"]) == k)
+
+
+func _zone_of(m: GroundMap, k: String) -> Dictionary:
+	for z in m.zones:
+		if String(z.get("kind", "")) == k:
+			return z
+	return {}
 
 
 ## 0.7.52.25 (Luz): the short cloak – a few seconds unseen by its quality, then recharging; firing shows you. And
