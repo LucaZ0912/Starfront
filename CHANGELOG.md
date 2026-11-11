@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.15 – 2026-11-11
+
+**The Red Arm Laser: a deep hiss and sparks where it cuts (Luz).**
+
+- **Its own sound** (`w_arm_laser`): a deep, rushing hiss with a dark rumble under it and a faint sizzle on top –
+  instead of the light laser "pew".
+- **It visibly cuts through cover**: wherever the beam goes through a crate, a barrier, a bulwark or a wall, the cut
+  glows white-hot and a spray of sparks flies out to the sides and onwards, falling, for as long as the beam lasts.
+- The target's lock card shows the arm laser's real chance through cover (it cuts through, cover does not count).
+
 ## alpha 0.7.52.14 – 2026-11-11
 
 **The Covenant's Pathfinder armour (Luz's idea, after the mockup she approved).**

@@ -358,6 +358,8 @@ Slanted, cosy top-down view since 0.7.49.2.
   `ChibiArt._pathfinder` / `_pathfinder_helmet`, look `arm_up`; `WeaponArt` "wp_arm_laser" (the raised arm),
   `Walker.aim_geom` raises it from the shoulder; `GroundCombat.arm_charge`, `arm_laser_id()`, `arm_charge_k()`,
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
+- 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
+  `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

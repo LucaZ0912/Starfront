@@ -67,6 +67,7 @@ Waffen klingen nach Schadensart: **optisch** hell, sirrend, **kinetisch** knalle
 | `w_railgun` | Railgun | Elektrisches Laden, dann ein peitschender Knall | 0,8 s | B |
 | `w_massdriver` | Mass Driver | Wuchtiger, tiefer Knall mit metallischem Nachklang | 0,5 s | B |
 | `w_rocket` | Raketenwerfer | Zischendes Abfeuern, „Fssst“ | 0,5 s | A |
+| `w_arm_laser` | Roter Arm-Laser (Pathfinder, zu Fuß) | Tiefes, brodelndes Zischen, darunter ein dunkles Grollen, oben ein leises Brutzeln (0.7.52.15, Luz) | 1 s | A |
 | `w_torpedo` | Torpedo | Tiefes Ausstoßen mit Zischen, langsam anlaufend | 1 s | B |
 | `w_cruise` | Marschflugkörper | Schweres Abheben, länger fauchend | 1,2 s | C |
 | `w_ion` | Ionenwaffen | Knisterndes Elektro-Zappen | 0,3 s | B |

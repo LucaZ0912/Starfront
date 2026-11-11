@@ -1693,24 +1693,23 @@ func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 		res["kind"] = "miss"
 		end = b + CHEST + (b - a).normalized().rotated(PI * 0.5) * randf_range(10.0, 18.0) * (1.0 if randf() < 0.5 else -1.0)
 	var muzzle: Vector2 = view.pilot.muzzle_art()
-	shots.append({"a": muzzle, "b": end, "t": 0.0, "life": 0.55, "kind": "armbeam", "col": Color(1.0, 0.3, 0.2), "res": res, "done": false})
-	_resolve(shots[-1])
-	# where it burns through cover: molten sparks
+	# where it cuts through cover (0.7.52.15, Luz): the points it enters each piece – sparks fly there while the beam lasts
+	var cuts: Array = []
 	var n := int(a.distance_to(b) / 4.0)
-	var burnt := 0
 	var was := 0
 	for i in range(1, n):
 		var p := a.lerp(b, float(i) / n)
 		var c := cover_at(p)
-		if c != 0 and was == 0 and burnt < 4:
-			for k in 6:
-				sparks.append({"pos": p + CHEST, "vel": Vector2(randf_range(-80, 80), randf_range(-90, 10)), "t": 0.0, "col": Color(1.0, 0.6, 0.3)})
-			burnt += 1
+		if c != 0 and was == 0 and cuts.size() < 4:
+			cuts.append(muzzle.lerp(end, float(i) / n))
 		was = c
+	shots.append({"a": muzzle, "b": end, "t": 0.0, "life": 0.7, "kind": "armbeam", "col": Color(1.0, 0.3, 0.2), "res": res, "done": false,
+		"cuts": cuts, "dir": (end - muzzle).normalized()})
+	_resolve(shots[-1])
 	arm_charge = 0.0
 	pilot_cool = 0.8
 	view._shake = maxf(view._shake, 0.15)
-	Audio.play("w_pulse", "the Red Arm Laser", 2.0)
+	Audio.play("w_arm_laser", "the Red Arm Laser – a deep hiss", 0.0)
 	GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
 	for o in alive():
 		if not o["aware"] and (o["w"] as Walker).pos.distance_to(a) < FoeData.HEAR:
@@ -1722,6 +1721,16 @@ func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 func _fx_step(delta: float) -> void:
 	for s in shots:
 		s["t"] = float(s["t"]) + delta
+		if String(s["kind"]) == "armbeam" and float(s["t"]) < float(s["life"]) * 0.85:
+			# 0.7.52.15 (Luz): the beam cuts – a spray of sparks out of every piece of cover it goes through, thrown off to the
+			# sides and onwards, falling
+			var bd: Vector2 = s["dir"]
+			for cp in s["cuts"]:
+				for k in 3:
+					var side := bd.orthogonal() * (1.0 if randf() < 0.5 else -1.0)
+					var v := (side * randf_range(30, 110) + bd * randf_range(-20, 90) + Vector2(0, randf_range(-90, -20)))
+					sparks.append({"pos": (cp as Vector2) + Vector2(randf_range(-2, 2), randf_range(-3, 3)), "vel": v, "t": randf_range(0.0, 0.12),
+						"col": Color(1.0, randf_range(0.55, 0.95), randf_range(0.25, 0.6))})
 		if float(s["t"]) >= float(s["life"]):
 			_resolve(s)
 	shots = shots.filter(func(s): return float(s["t"]) < float(s["life"]) + (0.06 if s["kind"] == "beam" else 0.0))   # (armbeam fades over its life)
@@ -1732,7 +1741,7 @@ func _fx_step(delta: float) -> void:
 		sp["t"] = float(sp["t"]) + delta
 		sp["pos"] = (sp["pos"] as Vector2) + (sp["vel"] as Vector2) * delta
 		sp["vel"] = (sp["vel"] as Vector2) + Vector2(0, 220) * delta
-	sparks = sparks.filter(func(sp): return float(sp["t"]) < 0.35)
+	sparks = sparks.filter(func(sp): return float(sp["t"]) < (0.55 if sp.has("col") else 0.35))
 	for b in booms:
 		b["t"] = float(b["t"]) + delta
 	booms = booms.filter(func(b): return float(b["t"]) < 0.5)
@@ -1820,6 +1829,12 @@ func _draw() -> void:
 				draw_line(a, b, Color(1.0, 0.3, 0.2, 0.75 * fk), 8.0)
 				draw_line(a, b, Color(1.0, 0.85, 0.75, fk), 3.0)
 				draw_circle(a, 8.0 * fk + 2.0, Color(1.0, 0.5, 0.35, 0.8 * fk))
+				for cp2 in s.get("cuts", []):                         # the cut glowing white-hot, molten round its edge
+					var cs2: Vector2 = (cp2 as Vector2) * S
+					var fl := 0.75 + 0.25 * sin(_t * 40.0 + cs2.x)
+					draw_circle(cs2, 16.0 * fk, Color(1.0, 0.45, 0.15, 0.35 * fk))
+					draw_circle(cs2, 9.0 * fk * fl, Color(1.0, 0.75, 0.4, 0.85 * fk))
+					draw_circle(cs2, 4.0 * fk, Color(1.0, 0.97, 0.85, fk))
 			"slug":
 				var k := clampf(float(s["t"]) / float(s["life"]), 0.0, 1.0)
 				var head := a.lerp(b, k)
@@ -1834,7 +1849,7 @@ func _draw() -> void:
 				draw_circle(hp, 3.0, col3)
 	for sp in sparks:
 		var pp2: Vector2 = (sp["pos"] as Vector2) * S
-		draw_line(pp2, pp2 - (sp["vel"] as Vector2) * 0.04 * S, Color(sp.get("col", Color(1.0, 0.8, 0.35)), 1.0 - float(sp["t"]) / 0.35), 2.0)
+		draw_line(pp2, pp2 - (sp["vel"] as Vector2) * 0.04 * S, Color(sp.get("col", Color(1.0, 0.8, 0.35)), 1.0 - float(sp["t"]) / (0.55 if sp.has("col") else 0.35)), 2.0)
 	for bm in booms:
 		var k3: float = float(bm["t"]) / 0.5
 		draw_set_transform((bm["pos"] as Vector2) * S, 0.0, Vector2(1.0, 0.55))
