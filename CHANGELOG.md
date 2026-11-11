@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.10 – 2026-11-11
+
+**The reactor room (Luz).** The reactor stands in the middle of its room, its panel wholly inside it; the reactor room
+is bigger now so the pit has room round it.
+
 ## alpha 0.7.53.9 – 2026-11-11
 
 **Package 53c, first part – the maintenance tunnels, the maintenance drones, the reactor (Luz).** Theme sheet in

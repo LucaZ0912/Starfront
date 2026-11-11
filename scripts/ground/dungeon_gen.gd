@@ -260,9 +260,13 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		var r: Rect2i
 		if room:
 			var w := rng.randi_range(int(th["room_w"][0]), mini(int(th["room_w"][1]), cw - 3))
-			if c == entr_c and (String(th.get("outside", "ruin")) == "alley" or depth > 0):
+			if last and c == vault_c and String(th.get("target", "")) == "reactor":
+				w = mini(maxi(w, 11), cw - 3)                # 0.7.53.9: room round the reactor
+			if c == entr_c and (String(th.get("outside", "ruin")) in ["alley", "lift"] or depth > 0):
 				w = mini(maxi(w, corr + 8), cw - 3)          # room for the ladder beside the way in from above
 			var h := rng.randi_range(int(th["room_h"][0]), mini(int(th["room_h"][1]), chh - 5))
+			if last and c == vault_c and String(th.get("target", "")) == "reactor":
+				h = mini(maxi(h, 9), chh - 5)
 			var x: int = 2 + c.x * cw + rng.randi_range(1, maxi(1, cw - w - 1))
 			var y: int = 1 + c.y * chh + (SP if c.y >= 1 else 0) + 3 + rng.randi_range(0, maxi(0, chh - h - 5))
 			r = Rect2i(x, y, w, h)
@@ -493,10 +497,13 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			targets.append(["relic", "A relic signature – deep inside, behind an old door%s" % (", guarded by floating crystals" if ci >= 0 else "")])
 		elif String(th.get("target", "")) == "reactor":
 			# 0.7.53.9 (Luz): the reactor – its pit in the middle of the room (it stands in the way), its panel before it
-			var rt := Rect2i(int(rc.x) - 3, int(rc.y) - 2, 6, 3)
+			# (0.7.53.9 fix, Luz: the reactor in the room's middle, its panel wholly in the room)
+			var rcx := vr.position.x + vr.size.x * 0.5
+			var rcy := vr.position.y + vr.size.y * 0.5 - 0.5
+			var rt := Rect2i(int(round(rcx - 3.0)), int(round(rcy - 1.5)), 6, 3)
 			m.fill(rt.position.x, rt.position.y, rt.size.x, rt.size.y, T.BLOCK, rf)
-			ExploreNode.add(m, "reactor", rc * TILE + Vector2(0, 8), {"no_zone": true, "tiles": [rt.position.x, rt.position.y, rt.size.x, rt.size.y]})
-			ExploreNode.add(m, "terminal", Vector2(rc.x - 4.5, rc.y + 2.2) * TILE, {"actions": ["restart"], "target": true, "style": "pump", "seed": rng.randi(), "level": 1})
+			ExploreNode.add(m, "reactor", Vector2(rt.position.x + 3.0, rt.position.y + 1.5) * TILE + Vector2(0, 6), {"no_zone": true, "tiles": [rt.position.x, rt.position.y, rt.size.x, rt.size.y]})
+			ExploreNode.add(m, "terminal", Vector2(vr.position.x + 2.5, vr.end.y - 0.8) * TILE, {"actions": ["restart"], "target": true, "style": "pump", "seed": rng.randi(), "level": 1})
 			targets.append(["reactor", "The reactor – on the lowest level; restart it at its panel"])
 		elif String(th.get("target", "")) == "find":
 			# 0.7.53.7 (Luz): a rare find in the rock of the deepest chamber – cut it out
