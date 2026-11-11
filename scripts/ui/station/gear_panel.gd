@@ -286,7 +286,7 @@ func _columns(cat: String) -> Array:
 func _value(col: String, f: String, s: Dictionary) -> String:
 	match col:
 		"Slots":
-			return "%dW · %dB · %dF" % [int(s["weapons"]), int(s["belt"]), int(s["features"])]
+			return "%dW · %dG · %dB · %dF" % [int(s["weapons"]), int(s.get("grenades", 0)), int(s["belt"]), int(s["features"])]
 		"Shield":
 			return "%d" % int(s["shield"])
 		"Armour":

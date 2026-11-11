@@ -2387,7 +2387,7 @@ func _c_debug_new_contracts(_c: Dictionary) -> String:
 
 var suit_god := false         # 0.7.51.5: the world outside does not hurt the pilot (energy and oxygen still drain)
 const DEBUG_SITE_KINDS := ["city", "outpost", "mine", "research", "field"]
-const DEBUG_BELT := ["cs_medkit", "cs_cell", "cs_o2", "cs_stim", "cs_ammo", "gr_shield"]
+const DEBUG_BELT := ["cs_medkit", "cs_cell", "cs_o2", "cs_stim", "cs_ammo"]
 
 
 func _main():
@@ -2596,10 +2596,11 @@ func _c_debug_gear(c: Dictionary) -> String:
 			return "Your pockets are full."
 		GameState.log_msg("[Debug] %s ×%d into the pockets." % [GD.display_name(id), n - left], GameState.COL_WARN)
 	if c.get("grenades", false):                        # 0.7.52.5: frag, smoke, shield, EMP on the belt
-		var grs := ["gr_frag", "gr_smoke", "gr_shield", "gr_emp"]
-		for i in g.belt.size():
-			g.belt[i] = {"id": grs[i % grs.size()], "n": GD.stack_max(grs[i % grs.size()])}
-		GameState.log_msg("[Debug] Grenades on the belt.", GameState.COL_WARN)
+		var grs := ["gr_frag", "gr_shield", "gr_smoke", "gr_emp"]
+		for i in g.grenades.size():
+			g.grenades[i] = {"id": grs[i % grs.size()], "n": GD.stack_max(grs[i % grs.size()])}
+		g.gr_sel = 0
+		GameState.log_msg("[Debug] Grenade places filled.", GameState.COL_WARN)
 	if c.get("fill_belt", false):
 		for i in g.belt.size():
 			var fam: String = DEBUG_BELT[i % DEBUG_BELT.size()]

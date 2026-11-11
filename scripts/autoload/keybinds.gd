@@ -10,7 +10,7 @@ signal changed
 
 const PATH := "user://keybinds.cfg"
 
-## Binding descriptor: {"k": keycode} for keys, {"m": mouse button index} for mouse buttons.
+## Binding descriptor: {"k": keycode} for keys (0.7.52.9: + "shift": true for Shift+key), {"m": mouse button index} for mouse buttons.
 const ACTIONS := [
 	{"id": "ship_up", "label": "Fly up (north)", "group": "Flight", "def": [{"k": KEY_W}]},
 	{"id": "ship_down", "label": "Fly down (south)", "group": "Flight", "def": [{"k": KEY_S}]},
@@ -39,9 +39,16 @@ const ACTIONS := [
 	{"id": "walk_left", "label": "Walk left", "group": "On foot", "def": [{"k": KEY_A}, {"k": KEY_LEFT}]},
 	{"id": "walk_right", "label": "Walk right", "group": "On foot", "def": [{"k": KEY_D}, {"k": KEY_RIGHT}]},
 	{"id": "interact", "label": "Use (door, terminal, airlock)", "group": "On foot", "def": [{"k": KEY_E}]},
+	{"id": "foot_run", "label": "Run", "group": "On foot", "def": [{"k": KEY_SHIFT}]},          # 0.7.52.9: its own, apart from the ship's thrust
+	{"id": "foot_belt_1", "label": "Belt place 1", "group": "On foot", "def": [{"k": KEY_1}]},
+	{"id": "foot_belt_2", "label": "Belt place 2", "group": "On foot", "def": [{"k": KEY_2}]},
+	{"id": "foot_belt_3", "label": "Belt place 3", "group": "On foot", "def": [{"k": KEY_3}]},
+	{"id": "foot_belt_4", "label": "Belt place 4", "group": "On foot", "def": [{"k": KEY_4}]},
 	{"id": "foot_target", "label": "Fight: lock the next target", "group": "On foot", "def": [{"k": KEY_R}]},          # package 52 (0.7.52.2, Luz: R)
-	{"id": "foot_tactics", "label": "Fight: tactical view (tap: cover / the target's view, hold: off)", "group": "On foot", "def": [{"k": KEY_TAB}]},
-	{"id": "foot_zoom", "label": "Fight: tactical view zoomed out / back (also the mouse wheel)", "group": "On foot", "def": [{"k": KEY_Z}]},          # 0.7.52.8
+	{"id": "foot_target_near", "label": "Fight: lock the foe nearest to you", "group": "On foot", "def": [{"k": KEY_R, "shift": true}]},   # 0.7.52.9
+	{"id": "foot_grenade", "label": "Fight: grenade (tap: next, hold: throw)", "group": "On foot", "def": [{"k": KEY_X}]},
+	{"id": "foot_tactics", "label": "Fight: tactical view (tap: switch, hold: off)", "group": "On foot", "def": [{"k": KEY_TAB}]},
+	{"id": "foot_zoom", "label": "Fight: tactical view zoom (or the wheel)", "group": "On foot", "def": [{"k": KEY_Z}]},          # 0.7.52.8
 	{"id": "foot_dodge", "label": "Fight: dodge (a jump no shot hits)", "group": "On foot", "def": [{"k": KEY_SPACE}]},
 	{"id": "foot_swap", "label": "Fight: the other weapon in hand", "group": "On foot", "def": [{"k": KEY_Q}]},
 	{"id": "boost", "label": "Thrust burst (a few seconds of extra speed)", "group": "Ship commands", "def": [{"k": KEY_SHIFT}]},
@@ -82,9 +89,9 @@ const ACTIONS := [
 	{"id": "menu_next_tab", "label": "Menu: next tab", "group": "Menus", "def": [{"k": KEY_E}]},
 ]
 const SLOTS := 2
-const LAYOUT := 5   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets; 4: F3 Orbit, F4 System; 5: on foot R target, Tab tactics)
+const LAYOUT := 6   # default layout version (2: WASD = flight, arrows = camera; 3: Tab = all targets; 4: F3 Orbit, F4 System; 5: on foot R target, Tab tactics; 6: on foot Shift+R, X grenade)
 ## Bindings reset once when a saved file is older than this layout (prefix -> layout that changed it)
-const LAYOUT_RESETS := {"cam_": 2, "sel_": 3, "zoom_": 4, "foot_": 5}
+const LAYOUT_RESETS := {"cam_": 2, "sel_": 3, "zoom_": 4, "foot_": 6}
 
 var binds := {}   # action id -> Array of descriptors (size SLOTS, {} = empty)
 
@@ -186,13 +193,14 @@ func set_binding(id: String, slot: int, d: Dictionary) -> String:
 
 
 static func same(a: Dictionary, b: Dictionary) -> bool:
-	return not a.is_empty() and a.get("k", -1) == b.get("k", -1) and a.get("m", -1) == b.get("m", -1)
+	return not a.is_empty() and a.get("k", -1) == b.get("k", -1) and a.get("m", -1) == b.get("m", -1) and bool(a.get("shift", false)) == bool(b.get("shift", false))
 
 
 static func desc_to_event(d: Dictionary) -> InputEvent:
 	if d.has("k"):
 		var e := InputEventKey.new()
 		e.keycode = int(d["k"])
+		e.shift_pressed = bool(d.get("shift", false))
 		return e
 	if d.has("m"):
 		var m := InputEventMouseButton.new()
@@ -207,6 +215,8 @@ static func event_to_desc(ev: InputEvent) -> Dictionary:
 		var kc: int = (ev as InputEventKey).keycode
 		if kc in [KEY_CTRL, KEY_ALT, KEY_META, KEY_NONE]:      # 0.6.75.2: Shift may be bound (the thrust burst)
 			return {}
+		if (ev as InputEventKey).shift_pressed and kc != KEY_SHIFT:
+			return {"k": kc, "shift": true}                  # 0.7.52.9: Shift+key
 		return {"k": kc}
 	if ev is InputEventMouseButton:
 		var b: int = (ev as InputEventMouseButton).button_index
@@ -217,7 +227,7 @@ static func event_to_desc(ev: InputEvent) -> Dictionary:
 
 static func desc_text(d: Dictionary) -> String:
 	if d.has("k"):
-		return OS.get_keycode_string(int(d["k"]))
+		return ("Shift+" if bool(d.get("shift", false)) else "") + OS.get_keycode_string(int(d["k"]))
 	if d.has("m"):
 		match int(d["m"]):
 			MOUSE_BUTTON_MIDDLE:

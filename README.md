@@ -333,6 +333,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   (`shade`), smoke stretches yellow.
 - 0.7.52.8: `GroundView.zoom` / `tac_zoom` / `TAC_ZOOM_OUT` (`_world.scale`, eased in `_camera`; `mouse_art` and clicks divide by it),
   wheel in `_on_click`, key `foot_zoom` (Z); `debug_combat` tactics {zoom}.
+- 0.7.52.9: suits' `grenades` places; `GearData.is_grenade(id)`, grenade stacks 10; `PilotGear.grenades` / `gr_sel`,
+  `grenade()`, `next_grenade()` (equip routes grenades there; saved); `GroundCombat.grenade_down()` / `grenade_up()` /
+  `grenade_aiming()` / `GR_HOLD`, `nearest_target()`, the bars over foes in `_draw`, softer `shade` / `smoke_col`;
+  keys `foot_run`, `foot_belt_1..4`, `foot_target_near` (Shift+R), `foot_grenade` (X) – `Keybinds` descriptors take
+  `shift`, `LAYOUT` 6; `KeybindPanel.tab` "space"/"ground" (`_set_tab`, `_shift_pending`, `_bind`).
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

@@ -114,7 +114,7 @@ func _draw() -> void:
 	var ws: Array = combat.weapons()
 	if ws.is_empty():
 		return
-	var wr := Rect2(Vector2(vs.x - 350, vs.y - 200), Vector2(336, 186))
+	var wr := Rect2(Vector2(vs.x - 350, vs.y - 226), Vector2(336, 212))
 	_panel(wr, Color(0.35, 0.85, 1.0, 0.7))
 	_s(wr.position + Vector2(10, 20), "WEAPON", dim, 11)
 	var wid := combat.weapon_id()
@@ -136,11 +136,19 @@ func _draw() -> void:
 		_s(wr.position + Vector2(16, 113), {"optical": "strong on shields", "kinetic": "strong on armour", "explosive": "strong on the body, splash"}[odt], dim, 11)
 	else:
 		_s(wr.position + Vector2(16, 96), "one weapon slot in use", dim, 12)
-	_s(wr.position + Vector2(10, 140), "Firearms %d – aim  •  Athletics %d – dodge  •  %s target  •  %s tactics" % [GameState.skill_level("firearms"), GameState.skill_level("athletics"), Keybinds.key_text("foot_target"), Keybinds.key_text("foot_tactics")], dim, 11)
-	_s(wr.position + Vector2(10, 166), "%s  dodge" % Keybinds.key_text("foot_dodge"), Color(0.95, 0.95, 0.95), 13)
+	# 0.7.52.9: the grenade in hand
+	var gp: Dictionary = GameState.gear.grenade()
+	var gtxt := "no grenades"
+	if not gp.is_empty():
+		var nfill: int = GameState.gear.grenades.filter(func(x): return not (x as Dictionary).is_empty()).size()
+		gtxt = "%s ×%d%s" % [String(GearData.base(String(gp["id"]))["name"]), int(gp["n"]), ("  •  tap: next (%d kinds)" % nfill) if nfill > 1 else ""]
+	_s(wr.position + Vector2(16, 140), "%s  %s" % [Keybinds.key_text("foot_grenade"), gtxt], Color(1.0, 0.72, 0.4) if not gp.is_empty() else dim, 13)
+	_s(wr.position + Vector2(16, 156), "hold to aim at the mouse, let go to throw", dim, 11)
+	_s(wr.position + Vector2(10, 182), "Firearms %d  •  Athletics %d  •  %s next  •  %s nearest" % [GameState.skill_level("firearms"), GameState.skill_level("athletics"), Keybinds.key_text("foot_target"), Keybinds.key_text("foot_target_near")], dim, 11)
+	_s(wr.position + Vector2(10, 204), "%s  dodge" % Keybinds.key_text("foot_dodge"), Color(0.95, 0.95, 0.95), 13)
 	var mxd := combat.max_dodges()
 	for i2 in mxd:
-		var cc := Vector2(wr.position.x + 130 + i2 * 18, wr.position.y + 161)
+		var cc := Vector2(wr.position.x + 130 + i2 * 18, wr.position.y + 199)
 		var fill := clampf(combat.dodge_charges - i2, 0.0, 1.0)
 		if fill >= 1.0:
 			draw_circle(cc, 6.0, Color(0.45, 1.0, 0.6))

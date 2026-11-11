@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.9 – 2026-11-11
+
+**Grenade places, the grenade on X, Shift+R, small bars over foes, softer radar colours, the controls in two tabs
+(Luz).**
+
+- **Grenades have places of their own** on every suit, apart from the belt's consumables and tools: civilian, survey
+  and work suits 1, the light combat suit **2 grenade places + 3 on the belt**, the heavy one 3 + 2. Grenades go there
+  when put on (the gear page shows them as their own row); **grenades stack up to 10**, in the pockets and in their
+  places.
+- **One grenade in hand**, as with the weapons: **X** tapped takes the next kind, **X held** shows the arc to the mouse,
+  let go throws it. The weapons panel shows the grenade in hand and how many. The number keys are the belt's alone.
+- **Shift+R** locks the foe nearest to you; R still goes round them all.
+- **Small shield and health bars** right over every foe's head.
+- **The tactical view's colours a little softer** – the red, the green and the yellow.
+- **Controls in two tabs, Space and Ground**, and every key on foot can be changed: walking, use, **run** (its own now,
+  apart from the ship's thrust), **belt places 1–4**, next target, nearest target, grenade, dodge, other weapon, tactics,
+  zoom. Bindings can be Shift+key (hold Shift while pressing the key; Shift alone when let go on its own). Saved on-foot
+  bindings reset once to the new defaults.
+- Debug "Fill the grenade places"; smoke tests extended.
+
 ## alpha 0.7.52.8 – 2026-11-11
 
 **The tactical view zoomed out on demand (Luz).** While the tactical view is open, **Z** or the mouse wheel (down)

@@ -294,6 +294,19 @@ func next_target() -> void:
 	lock(seen[(i + 1) % seen.size()])
 
 
+## 0.7.52.9 (Luz): Shift+R – the foe nearest to you (R goes round them all).
+func nearest_target() -> void:
+	var best = null
+	var bd := INF
+	for f in alive():
+		var dd := pilot_pos().distance_to((f["w"] as Walker).pos) + (400.0 if sight(pilot_pos(), (f["w"] as Walker).pos)["blocked"] else 0.0)
+		if dd < bd:
+			bd = dd
+			best = f
+	if best != null:
+		lock(best)
+
+
 func _auto_lock() -> void:
 	var best = null
 	var bd := INF
@@ -1057,8 +1070,9 @@ func _draw_tactics_view() -> void:
 	var col := Color(1.0, 0.3, 0.28) if red else Color(0.35, 1.0, 0.55)
 	# 0.7.52.7 (Luz): the shadows in the other side's colour – in your view red where foes are covered from you, in a
 	# foe's view green where you are safe from it; the ground behind smoke yellow
-	var shade := Color(0.35, 1.0, 0.55) if red else Color(1.0, 0.3, 0.28)
-	var smoke_col := Color(1.0, 0.85, 0.2)
+	# 0.7.52.9 (Luz): a little less vivid
+	var shade := Color(0.45, 0.78, 0.55) if red else Color(0.82, 0.42, 0.38)
+	var smoke_col := Color(0.88, 0.78, 0.42)
 	var c := from * S
 	# a dark disc under it all: the colours stand out on any ground
 	tac_node.draw_circle(c, reach * S, Color(0.0, 0.0, 0.0, 0.3))
@@ -1068,7 +1082,7 @@ func _draw_tactics_view() -> void:
 	var edges: Array = []                                   # the edges between rays – shared exactly, no seams
 	for j in rays.size() + 1:
 		edges.append(Vector2.from_angle(TAU * j / TAC_RAYS - h))
-	var sfill := Color(shade, 0.22)
+	var sfill := Color(shade, 0.18)
 	for i in rays.size():
 		var d0: Vector2 = edges[i]
 		var d1: Vector2 = edges[i + 1]
@@ -1081,13 +1095,13 @@ func _draw_tactics_view() -> void:
 			last = float(seg[1])
 			if seg.size() > 2 and bool(seg[2]):
 				# 0.7.52.6/7: behind smoke – yellow, with a hatch every few rays: shots through here aim badly
-				tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), Color(smoke_col, 0.24))
+				tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), Color(smoke_col, 0.18))
 				if i % 4 == 0:
 					var hd := (d0 + d1) * 0.5
 					var tt := t0 + fposmod(-t0, 24.0)
 					while tt < t1:
 						var hp0 := c + hd * tt
-						tac_node.draw_line(hp0, hp0 + hd.rotated(PI * 0.5) * 9.0, Color(smoke_col, 0.6), 1.5)
+						tac_node.draw_line(hp0, hp0 + hd.rotated(PI * 0.5) * 9.0, Color(smoke_col, 0.45), 1.5)
 						tt += 18.0
 				continue
 			tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), fill)
@@ -1099,7 +1113,7 @@ func _draw_tactics_view() -> void:
 		var a2 := TAU * i2 / TAC_RAYS
 		for seg2 in segs:
 			if float(seg2[1]) < reach - 1.0:
-				tac_node.draw_circle(c + Vector2.from_angle(a2) * float(seg2[1]) * S, 1.6, Color(shade, 0.85))
+				tac_node.draw_circle(c + Vector2.from_angle(a2) * float(seg2[1]) * S, 1.6, Color(shade, 0.6))
 	# rings and the reach, as on the radar
 	for k in range(1, 4):
 		tac_node.draw_arc(c, reach * S * k / 4.0, 0.0, TAU, 96, Color(col, 0.14), 1.0)
@@ -1128,36 +1142,45 @@ func _draw_tactics_view() -> void:
 const SMOKE_CUT := 0.3                             # a shot through smoke keeps this share of its chance
 
 
-## Belt place i pressed: a grenade there starts aiming (true), anything else is not ours (false).
-func grenade_press(i: int) -> bool:
-	var g = GameState.gear
-	if i < 0 or i >= g.belt.size() or (g.belt[i] as Dictionary).is_empty():
+## 0.7.52.9 (Luz): one grenade is in hand, as with the weapons – X tapped takes the next, X held aims it (the arc to
+## the mouse after GR_HOLD seconds), let go throws it.
+const GR_HOLD := 0.25
+
+
+## X pressed: aiming starts (false if there is no grenade).
+func grenade_down() -> bool:
+	if GameState.gear.grenade().is_empty():
 		return false
-	if String(GearData.base(String(g.belt[i]["id"])).get("kind", "")) != "grenade":
-		return false
-	gr_hold = i
+	gr_hold = int(GameState.gear.gr_sel)
 	gr_held = 0.0
-	gr_aim = _clamp_throw(view.mouse_art())
+	gr_aim = _clamp_throw(view.mouse_art() if aim_at == Vector2.INF else aim_at)
 	return true
 
 
-## Released: a tap throws at the active target (if it is within a throw), a hold where you aimed.
-func grenade_release() -> String:
+## Is the grenade being aimed (X held long enough)?
+func grenade_aiming() -> bool:
+	return gr_hold >= 0 and gr_held >= GR_HOLD
+
+
+## X let go: a tap switches to the next grenade, a hold throws the one in hand where it is aimed. A line for the screen.
+func grenade_up() -> String:
 	if gr_hold < 0:
 		return ""
-	var i := gr_hold
+	var held := gr_held
 	gr_hold = -1
 	var g = GameState.gear
-	if i >= g.belt.size() or (g.belt[i] as Dictionary).is_empty():
+	if held < GR_HOLD:
+		var nm: String = g.next_grenade()
+		return ("%s in hand." % nm) if nm != "" else ""
+	var p: Dictionary = g.grenade()
+	if p.is_empty():
 		return ""
-	var at := gr_aim
-	if gr_held < 0.2 and active != null and pilot_pos().distance_to((active["w"] as Walker).pos) <= THROW_RANGE:
-		at = (active["w"] as Walker).pos
-	var id := String(g.belt[i]["id"])
-	throw_grenade(null, at, id)
-	g.belt[i]["n"] = int(g.belt[i]["n"]) - 1
-	if int(g.belt[i]["n"]) <= 0:
-		g.belt[i] = {}
+	var id := String(p["id"])
+	throw_grenade(null, gr_aim, id)
+	p["n"] = int(p["n"]) - 1
+	if int(p["n"]) <= 0:
+		g.grenades[g.gr_sel] = {}
+		g.next_grenade()
 	return "%s thrown." % String(GearData.base(id)["name"])
 
 
@@ -1289,10 +1312,10 @@ func _draw_grenades() -> void:
 			draw_arc(Vector2.ZERO, rr, 0.0, TAU, 40, Color(1.0, 0.25, 0.2, 0.5 + 0.5 * sin(_t * 18.0) * 0.5), 2.5)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# your aim while holding the key: the arc, where it lands, how far it reaches
-	if gr_hold >= 0:
+	if grenade_aiming():
 		var g = GameState.gear
-		if gr_hold < g.belt.size() and not (g.belt[gr_hold] as Dictionary).is_empty():
-			var gid := String(g.belt[gr_hold]["id"])
+		if not g.grenade().is_empty():
+			var gid := String(g.grenade()["id"])
 			var gst := GearData.stats(gid)
 			var a2 := (pilot_pos() + Vector2(0, -16)) * S
 			var b2 := gr_aim * S
@@ -1310,7 +1333,7 @@ func _draw_grenades() -> void:
 			draw_set_transform(pilot_pos() * S, 0.0, Vector2(1.0, 0.55))
 			draw_arc(Vector2.ZERO, THROW_RANGE * S, 0.0, TAU, 64, Color(1.0, 0.6, 0.25, 0.3), 1.5)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-			_txt(b2 - Vector2(0, rr2 * 0.55 + 10), "[%d] %s – release to throw" % [gr_hold + 1, String(gst["name"])], Color(1.0, 0.7, 0.35), 12)
+			_txt(b2 - Vector2(0, rr2 * 0.55 + 10), "%s – let go to throw" % String(gst["name"]), Color(1.0, 0.7, 0.35), 12)
 
 
 ## Smoke clouds drawn over the people (they hide in them): soft grey puffs that swell and thin out.
@@ -1384,6 +1407,17 @@ func _draw() -> void:
 		draw_set_transform(pilot_pos() * S + Vector2(0, -3), 0.0, Vector2(1.0, 0.45))
 		draw_arc(Vector2.ZERO, 40.0, ang - PI * 0.42, ang + PI * 0.42, 24, col, 4.0)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# 0.7.52.9 (Luz): small shield and health bars right over each foe's head
+	for hf in alive():
+		var hw: Walker = hf["w"]
+		var top := hw.pos * S + Vector2(-14, -ChibiArt.H * ChibiArt.CHAR_SCALE - 10)
+		var hst: Dictionary = hf["st"]
+		var hmx: Dictionary = hf["mx"]
+		draw_rect(Rect2(top - Vector2(1, 1), Vector2(30, 7)), Color(0, 0, 0, 0.65))
+		if float(hmx["shield"]) > 0.0:
+			draw_rect(Rect2(top, Vector2(28.0 * clampf(float(hst["shield"]) / float(hmx["shield"]), 0.0, 1.0), 2)), Color(0.45, 0.8, 1.0))
+		var hk := clampf((float(hst["armor"]) + float(hst["health"])) / maxf(float(hmx["armor"]) + float(hmx["health"]), 1.0), 0.0, 1.0)
+		draw_rect(Rect2(top + Vector2(0, 3), Vector2(28.0 * hk, 2)), Color(1.0, 0.35, 0.3) if hk < 0.35 else Color(0.95, 0.55, 0.35))
 	# lock brackets, red (the active one thick), the lock arc while locking, T1–T3, the hit chance under the active
 	for i in locks.size():
 		var f = locks[i]

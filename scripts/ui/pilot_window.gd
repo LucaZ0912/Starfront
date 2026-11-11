@@ -182,8 +182,8 @@ func _gear() -> void:
 	head.add_child(UI.wrap_label(GearData.display_name(String(g.suit)), 17, GameData.quality_color(sq) if sq != "" else COL, 240))
 	var sd: Dictionary = GearData.stats(String(g.suit))
 	head.add_child(UI.label("%s  •  quality %s" % [String(sd.get("maker", "")), sq], 12, UI.TEXT_DIM))
-	head.add_child(UI.label("%d weapon%s  •  %d belt  •  %d feature%s" % [int(sd.get("weapons", 1)), "" if int(sd.get("weapons", 1)) == 1 else "s",
-		int(sd.get("belt", 1)), int(sd.get("features", 0)), "" if int(sd.get("features", 0)) == 1 else "s"], 12, UI.TEXT_DIM))
+	head.add_child(UI.label("%d weapon%s  •  %d grenade  •  %d belt  •  %d feature%s" % [int(sd.get("weapons", 1)), "" if int(sd.get("weapons", 1)) == 1 else "s",
+		int(sd.get("grenades", 0)), int(sd.get("belt", 1)), int(sd.get("features", 0)), "" if int(sd.get("features", 0)) == 1 else "s"], 12, UI.TEXT_DIM))
 	head.add_child(HSeparator.new())
 	for ln in [["Health", g.health, GearData.HEALTH, Color(0.95, 0.35, 0.35)], ["Shield", t["shield"], t["shield"], Color(0.35, 0.8, 1.0)],
 			["Armour", t["armor"], t["armor"], Color(0.8, 0.8, 0.75)], ["Energy", g.energy, t["energy"], Color(1.0, 0.82, 0.3)],
@@ -235,7 +235,7 @@ func _gear() -> void:
 	row.add_child(right)
 	var sflow := _gear_flow(right, "Suit", "")
 	sflow.add_child(_gear_tile(String(g.suit), 1, "", "suit", 0, "Suit"))
-	for sec in [["weapons", "Weapons"], ["belt", "Belt  –  keys 1–%d" % g.belt.size()], ["features", "Features"]]:
+	for sec in [["weapons", "Weapons"], ["grenades", "Grenades  –  %s switches, hold to throw" % Keybinds.key_text("foot_grenade")], ["belt", "Belt  –  keys 1–%d" % g.belt.size()], ["features", "Features"]]:
 		var key := String(sec[0])
 		var arr: Array = g.get(key)
 		var filled := 0
@@ -346,7 +346,7 @@ func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
 	match where:
 		"suit":
 			id = String(g.suit)
-		"weapons", "belt", "features":
+		"weapons", "belt", "grenades", "features":
 			var arr: Array = g.get(where)
 			if idx >= 0 and idx < arr.size():
 				var it = arr[idx]
@@ -376,7 +376,7 @@ func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
 		hd.add_child(nv)
 		var q := GearData.quality(id)
 		nv.add_child(UI.wrap_label(GearData.display_name(id) + (" ×%d" % n if n > 1 else ""), 16, GameData.quality_color(q) if q != "" else COL, 320))
-		nv.add_child(UI.label(String({"suit": "Worn", "weapons": "Weapon slot %d" % (idx + 1), "belt": "Belt – key %d" % (idx + 1), "features": "Feature slot %d" % (idx + 1),
+		nv.add_child(UI.label(String({"suit": "Worn", "weapons": "Weapon slot %d" % (idx + 1), "belt": "Belt – key %d" % (idx + 1), "grenades": "Grenade place %d" % (idx + 1), "features": "Feature slot %d" % (idx + 1),
 			"inv": "In your pockets", "locker": "In the ship's locker"}.get(where, "")), 12, UI.TEXT_DIM))
 		for ln in GearData.describe(id):
 			if String(ln) != "":
@@ -386,7 +386,7 @@ func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
 		match where:
 			"suit":
 				left.add_child(UI.label("Put another suit on from your pockets.", 11, UI.TEXT_DIM))
-			"weapons", "belt", "features":
+			"weapons", "belt", "grenades", "features":
 				acts.add_child(UI.button("Take off → pockets", func(): _gsel = {}; _gear_do(g.unequip(where, idx))))
 			"inv":
 				acts.add_child(UI.button("Put on", func(): _gsel = {}; _gear_do(g.equip_from_inv(idx))))

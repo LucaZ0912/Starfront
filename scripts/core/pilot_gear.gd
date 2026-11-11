@@ -11,6 +11,8 @@ const LOCKER_BY_SIZE := {1: 12, 2: 20, 3: 30}
 var suit := ""
 var weapons: Array = []
 var belt: Array = []
+var grenades: Array = []                # 0.7.52.9 (Luz): the grenade places, apart from the belt
+var gr_sel := 0                         # the grenade in hand (an index into grenades; X switches)
 var features: Array = []
 var inv: Array = []
 var lockers := {}                      # ship uid (String) -> Array of places
@@ -57,7 +59,7 @@ func refill() -> void:
 func _fit_slots() -> Array:
 	var s := GearData.stats(suit)
 	var spill: Array = []
-	var want := {"weapons": int(s.get("weapons", 1)), "belt": int(s.get("belt", 1)), "features": int(s.get("features", 0))}
+	var want := {"weapons": int(s.get("weapons", 1)), "belt": int(s.get("belt", 1)), "grenades": int(s.get("grenades", 0)), "features": int(s.get("features", 0))}
 	for k in want:
 		var arr: Array = get(k)
 		while arr.size() > int(want[k]):
@@ -67,7 +69,7 @@ func _fit_slots() -> Array:
 			elif last is Dictionary and not (last as Dictionary).is_empty():
 				spill.append(last)
 		while arr.size() < int(want[k]):
-			arr.append({} if k == "belt" else "")
+			arr.append({} if k in ["belt", "grenades"] else "")
 	return spill
 
 
@@ -192,6 +194,29 @@ func speed_mult(running: bool) -> float:
 	return m
 
 
+## 0.7.52.9: the grenade in hand ({} if there is none) – the chosen place, else the first filled one.
+func grenade() -> Dictionary:
+	if grenades.is_empty():
+		return {}
+	gr_sel = posmod(gr_sel, grenades.size())
+	if (grenades[gr_sel] as Dictionary).is_empty():
+		for i in grenades.size():
+			if not (grenades[i] as Dictionary).is_empty():
+				gr_sel = i
+				break
+	return grenades[gr_sel]
+
+
+## X tapped: the next filled grenade place. Returns its name ("" if there is none).
+func next_grenade() -> String:
+	for k in range(1, grenades.size() + 1):
+		var i := posmod(gr_sel + k, grenades.size())
+		if not (grenades[i] as Dictionary).is_empty():
+			gr_sel = i
+			return String(GearData.base(String(grenades[i]["id"]))["name"])
+	return ""
+
+
 ## Uses what is on belt place i: a consumable works (medkit, stimulant, energy cell, oxygen cartridge, ammunition);
 ## grenades and tools say when they come. Returns what happened (a line for the screen).
 func use_belt(i: int) -> String:
@@ -304,7 +329,7 @@ func free_places(arr: Array = inv) -> int:
 
 func count(id: String) -> int:
 	var c := 0
-	for arr in [inv, belt]:
+	for arr in [inv, belt, grenades]:
 		for p in arr:
 			if not (p as Dictionary).is_empty() and String(p["id"]) == id:
 				c += int(p["n"])
@@ -325,7 +350,7 @@ func equip_from_inv(i: int) -> String:
 			# first: is there room in the pockets for the old suit and whatever no longer fits?
 			var s2 := GearData.stats(id)
 			var need := 1
-			for pair in [["weapons", int(s2["weapons"])], ["belt", int(s2["belt"])], ["features", int(s2["features"])]]:
+			for pair in [["weapons", int(s2["weapons"])], ["belt", int(s2["belt"])], ["grenades", int(s2.get("grenades", 0))], ["features", int(s2["features"])]]:
 				var arr2: Array = get(String(pair[0]))
 				for j in range(int(pair[1]), arr2.size()):
 					var it2 = arr2[j]
@@ -352,21 +377,25 @@ func equip_from_inv(i: int) -> String:
 			clamp_state()
 			return ""
 		"belt":
-			# onto a belt place with the same item (stacking), else a free one
+			# onto a place with the same item (stacking), else a free one – grenades into the grenade places
+			# (0.7.52.9), everything else onto the belt
+			var places: Array = grenades if GearData.is_grenade(id) else belt
 			var mx := GearData.stack_max(id)
-			for b in belt.size():
-				var bp: Dictionary = belt[b]
+			for b in places.size():
+				var bp: Dictionary = places[b]
 				if not bp.is_empty() and String(bp["id"]) == id and int(bp["n"]) < mx:
 					var put := mini(int(p["n"]), mx - int(bp["n"]))
 					bp["n"] = int(bp["n"]) + put
 					_take(i, put)
 					return ""
-			for b2 in belt.size():
-				if (belt[b2] as Dictionary).is_empty():
-					belt[b2] = {"id": id, "n": int(p["n"])}
+			for b2 in places.size():
+				if (places[b2] as Dictionary).is_empty():
+					places[b2] = {"id": id, "n": int(p["n"])}
 					inv[i] = {}
 					return ""
-			return "No free place on the belt."
+			if places.is_empty():
+				return "This suit has no grenade places." if places == grenades else "This suit has no belt."
+			return "No free grenade place." if places == grenades else "No free place on the belt."
 	return "That cannot be worn."
 
 
@@ -466,7 +495,7 @@ func fetch(j: int, fit) -> String:
 # ---------------------------------------------------------------- saving
 
 func to_dict() -> Dictionary:
-	return {"suit": suit, "weapons": weapons.duplicate(), "belt": belt.duplicate(true), "features": features.duplicate(),
+	return {"suit": suit, "weapons": weapons.duplicate(), "belt": belt.duplicate(true), "grenades": grenades.duplicate(true), "gr_sel": gr_sel, "features": features.duplicate(),
 		"inv": inv.duplicate(true), "lockers": lockers.duplicate(true), "health": health, "energy": energy, "oxygen": oxygen, "ammo": ammo,
 		"helmet": helmet, "shield": shield, "armor": armor}
 
@@ -478,6 +507,8 @@ func from_dict(d: Dictionary) -> void:
 	suit = String(d["suit"])
 	weapons = (d.get("weapons", []) as Array).duplicate()
 	belt = (d.get("belt", []) as Array).duplicate(true)
+	grenades = (d.get("grenades", []) as Array).duplicate(true)
+	gr_sel = int(d.get("gr_sel", 0))
 	features = (d.get("features", []) as Array).duplicate()
 	inv = (d.get("inv", []) as Array).duplicate(true)
 	while inv.size() < GearData.INV_SLOTS:

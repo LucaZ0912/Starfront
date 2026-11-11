@@ -836,7 +836,7 @@ func _build_ground() -> void:
 	ra3.add_child(UI.button("Arena: guard squad", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
 		"foes": ["guard_trooper", "guard_trooper", "guard_heavy", "guard_sergeant@yellow"]})))
 	ra3.add_child(UI.button("Arena: one sniper", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(), "foes": ["pirate_sniper"]})))
-	ra3.add_child(UI.button("Grenades on the belt", func(): _cmd({"type": "debug_gear", "grenades": true})))
+	ra3.add_child(UI.button("Fill the grenade places", func(): _cmd({"type": "debug_gear", "grenades": true})))
 	var ra2 := _row()                                               # 0.7.52.4 (Luz): mixed strengths
 	ra2.add_child(UI.button("Arena: 2 green + 1 yellow", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
 		"foes": ["bandit_scrapper@green", "bandit_rifleman@green", "bandit_gunner@yellow"]})))

@@ -7750,7 +7750,7 @@ func _test_gear() -> void:
 	for k2 in g.inv.size():
 		if not (g.inv[k2] as Dictionary).is_empty() and String(g.inv[k2]["id"]) == "gr_shield":
 			gi = k2
-	var belt_ok: bool = full_belt and g.equip_from_inv(gi) == "" and g.count("gr_shield") == 3 and g.belt.any(func(x): return not (x as Dictionary).is_empty() and String(x["id"]) == "gr_shield")
+	var belt_ok: bool = full_belt and g.equip_from_inv(gi) == "" and g.count("gr_shield") == 3 and g.grenades.any(func(x): return not (x as Dictionary).is_empty() and String(x["id"]) == "gr_shield")      # 0.7.52.9: into the grenade places
 	# back into the civilian suit: two of the three weapons and two features spill into the pockets
 	var ci := -1
 	for k3 in g.inv.size():
@@ -9054,6 +9054,14 @@ func _test_foot_combat(view: SystemView) -> void:
 ## 0.7.52.5: grenades (frag, EMP, smoke, shield dome), the AI types (flanker, holder, thrower, leader, sniper), pirates and
 ## guards.
 func _test_foot_tactics(view: SystemView) -> void:
+	# 0.7.52.9 (Luz): the controls in two tabs, Space and Ground – every on-foot key on Ground, none of them on Space
+	var kp := KeybindPanel.new()
+	add_child(kp)
+	var on_ground: bool = kp._buttons.has("foot_run:0") == false and kp._buttons.has("cmd_lock:0")
+	kp._set_tab("ground")
+	on_ground = on_ground and kp._buttons.has("foot_run:0") and kp._buttons.has("foot_belt_1:0") and kp._buttons.has("foot_grenade:0") and not kp._buttons.has("cmd_lock:0")
+	kp.queue_free()
+	check(on_ground, "0.7.52.9: the controls window in two tabs – Space and Ground, every key on foot rebindable (run, belt, grenade, Shift+R)")
 	var GD = GearShop.GearData
 	var f := GameState.active()
 	var p := view.player
@@ -9087,21 +9095,48 @@ func _test_foot_tactics(view: SystemView) -> void:
 	g.pilot.pos = me
 	g.pilot.position = me * GroundMap.SCALE
 	# the grenade belt; a frag thrown by hand at two foes hurts both, the far one less
-	var dbg_ok: bool = Commands.execute({"type": "debug_gear", "grenades": true}) == "" and String(gear.belt[0]["id"]) == "gr_frag"
+	var dbg_ok: bool = Commands.execute({"type": "debug_gear", "grenades": true}) == "" and String(gear.grenades[0]["id"]) == "gr_frag"
 	var fa: Dictionary = cb.spawn("bandit_rifleman", me + Vector2(60, 0))
 	var fb: Dictionary = cb.spawn("bandit_rifleman", me + Vector2(60, 40))
 	cb.frozen = true
-	var n0 := int(gear.belt[0]["n"])
-	var pressed: bool = cb.grenade_press(0)
+	var n0 := int(gear.grenades[0]["n"])
+	gear.gr_sel = 0
+	var pressed: bool = cb.grenade_down()
 	cb.gr_aim = me + Vector2(60, 0)
 	cb.gr_held = 0.5
-	var msg: String = cb.grenade_release()
+	var msg: String = cb.grenade_up()
 	for i in 12:
 		cb.step(0.1, Vector2.ZERO)
 	var ha := float(fa["st"]["shield"]) + float(fa["st"]["armor"]) + float(fa["st"]["health"])
 	var hb := float(fb["st"]["shield"]) + float(fb["st"]["armor"]) + float(fb["st"]["health"])
 	var full := float(fa["mx"]["shield"]) + float(fa["mx"]["armor"]) + float(fa["mx"]["health"])
-	var frag_ok: bool = pressed and msg != "" and int(gear.belt[0]["n"]) == n0 - 1 and ha < full - 20.0 and hb < full and hb > ha and not cb.grenade_press(5)
+	var frag_ok: bool = pressed and msg != "" and int(gear.grenades[0]["n"]) == n0 - 1 and ha < full - 20.0 and hb < full and hb > ha
+	# 0.7.52.9 (Luz): grenade places of their own (light combat suit: 2 + 3 on the belt), stacks of 10, X tapped switches
+	cb.grenade_down()
+	cb.gr_held = 0.05
+	cb.grenade_up()
+	var sel_ok: bool = gear.gr_sel == 1 and gear.grenades.size() == 2 and gear.belt.size() == 3 and GD.stack_max("gr_frag") == 10
+	cb.grenade_down()
+	cb.gr_held = 0.05
+	cb.grenade_up()
+	sel_ok = sel_ok and gear.gr_sel == 0
+	gear.grenades[1] = {}
+	for ii in gear.inv.size():
+		gear.inv[ii] = {}
+	gear.inv[0] = {"id": "gr_emp", "n": 10}
+	gear.inv[1] = {"id": "cs_medkit", "n": 2}
+	var eq1: String = gear.equip_from_inv(0)
+	var eq2: String = gear.equip_from_inv(1)
+	sel_ok = sel_ok and eq1 == "" and String(gear.grenades[1]["id"]) == "gr_emp" and int(gear.grenades[1]["n"]) == 10 and eq2 == "" \
+		and gear.belt.any(func(x): return not (x as Dictionary).is_empty() and String(x["id"]) == "cs_medkit") and not gear.belt.any(func(x): return not (x as Dictionary).is_empty() and GD.is_grenade(String(x["id"])))
+	frag_ok = frag_ok and sel_ok
+	# Shift+R: the nearest foe; its key reads Shift+R
+	cb.locks.clear()
+	cb.active = null
+	cb.nearest_target()
+	var near_ok: bool = cb.active == fa and Keybinds.key_text("foot_target_near") == "Shift+R" and Keybinds.key_text("foot_grenade") == "X" \
+		and Keybinds.event_to_desc(Keybinds.desc_to_event({"k": KEY_R, "shift": true})).get("shift", false) and not Keybinds.same({"k": KEY_R}, {"k": KEY_R, "shift": true})
+	frag_ok = frag_ok and near_ok
 	# EMP: the shields go
 	var fc: Dictionary = cb.spawn("bandit_boss", me + Vector2(70, -20))
 	cb.throw_grenade(null, me + Vector2(70, -20), "gr_emp")

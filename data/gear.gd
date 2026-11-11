@@ -40,30 +40,31 @@ const DODGE_RECHARGE := 4.5            # seconds a dodge charge takes to come ba
 const LOCK_TIME := 0.6                 # seconds to lock a target (Firearms shortens it)
 const SHOT_SPEED := 720.0              # slugs and shells, art px a second (lasers are at once)
 
-## The suit classes. weapons / belt / features: slot counts; shield, armor, energy, oxygen (minutes of breathing),
+## The suit classes. weapons / belt / grenades / features: slot counts (0.7.52.9, Luz: grenades have places of their
+## own, apart from the belt's consumables and tools – a light combat suit 2 + 3); shield, armor, energy, oxygen (minutes of breathing),
 ## ammo: base values at quality C; env: protection 0..1 against each hazard; speed: walking speed ×.
 const SUITS := {
-	"suit_civil": {"name": "Civilian Spacesuit", "maker": "Earthworks", "weapons": 1, "belt": 2, "features": 1,
+	"suit_civil": {"name": "Civilian Spacesuit", "maker": "Earthworks", "weapons": 1, "belt": 2, "grenades": 1, "features": 1,
 		"shield": 20.0, "armor": 20.0, "energy": 100.0, "oxygen": 30.0, "ammo": 60,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 1200,
 		"col": Color(0.92, 0.9, 0.85), "trim": Color(1.0, 0.55, 0.15),
 		"desc": "The suit everyone who flies owns: sealed against vacuum and bad air, a little shield, one holster."},
-	"suit_survey": {"name": "Survey Suit", "maker": "Axiom Astronautics", "weapons": 1, "belt": 3, "features": 2,
+	"suit_survey": {"name": "Survey Suit", "maker": "Axiom Astronautics", "weapons": 1, "belt": 3, "grenades": 1, "features": 2,
 		"shield": 28.0, "armor": 18.0, "energy": 150.0, "oxygen": 55.0, "ammo": 60,
 		"env": {"heat": 0.9, "cold": 0.9, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.02, "price": 4200,
 		"col": Color(0.85, 0.9, 0.95), "trim": Color(0.35, 0.85, 1.0),
 		"desc": "For long walks on hostile worlds: the best life support, room for scanner and tools."},
-	"suit_work": {"name": "Work Suit", "maker": "Kanayama Heavy Industries", "weapons": 1, "belt": 4, "features": 1,
+	"suit_work": {"name": "Work Suit", "maker": "Kanayama Heavy Industries", "weapons": 1, "belt": 4, "grenades": 1, "features": 1,
 		"shield": 18.0, "armor": 45.0, "energy": 120.0, "oxygen": 40.0, "ammo": 80,
 		"env": {"heat": 0.8, "cold": 0.8, "toxic": 1.0, "vacuum": 1.0}, "speed": 0.95, "price": 3100,
 		"col": Color(0.95, 0.75, 0.2), "trim": Color(0.2, 0.2, 0.22),
 		"desc": "Mines, docks, wrecks: plated, heavy, four places on its belt for the tools of the trade."},
-	"suit_mil_light": {"name": "Light Combat Suit", "maker": "Hadrian Dynamics", "weapons": 2, "belt": 3, "features": 2,
+	"suit_mil_light": {"name": "Light Combat Suit", "maker": "Hadrian Dynamics", "weapons": 2, "belt": 3, "grenades": 2, "features": 2,
 		"shield": 50.0, "armor": 45.0, "energy": 120.0, "oxygen": 25.0, "ammo": 160,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 9500,
 		"col": Color(0.86, 0.88, 0.9), "trim": Color(0.35, 0.75, 1.0),
 		"desc": "Marine issue: quick on its feet, a strong shield, two weapons at hand."},
-	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 2, "features": 3,
+	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 2, "grenades": 3, "features": 3,
 		"shield": 70.0, "armor": 110.0, "energy": 170.0, "oxygen": 20.0, "ammo": 260,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
 		"col": Color(0.3, 0.32, 0.36), "trim": Color(1.0, 0.25, 0.2),
@@ -95,13 +96,13 @@ const WEAPONS := {
 
 ## Belt items. kind: grenade (thrown, stack), tool (quality, uses energy), use (consumable, stack). Stacks up to `stack`.
 const BELT := {
-	"gr_frag": {"name": "Frag Grenade", "kind": "grenade", "dtype": "explosive", "damage": 60.0, "radius": 70.0, "stack": 4, "price": 180,
+	"gr_frag": {"name": "Frag Grenade", "kind": "grenade", "dtype": "explosive", "damage": 60.0, "radius": 70.0, "stack": 10, "price": 180,
 		"desc": "Splinters all round – hurts what has no shield left."},
-	"gr_emp": {"name": "EMP Grenade", "kind": "grenade", "dtype": "optical", "damage": 0.0, "shield_damage": 90.0, "radius": 80.0, "stack": 4, "price": 260,
+	"gr_emp": {"name": "EMP Grenade", "kind": "grenade", "dtype": "optical", "damage": 0.0, "shield_damage": 90.0, "radius": 80.0, "stack": 10, "price": 260,
 		"desc": "Knocks shields down in a wide burst; harmless to the body."},
-	"gr_smoke": {"name": "Smoke Grenade", "kind": "grenade", "radius": 90.0, "time": 8.0, "stack": 4, "price": 90,
+	"gr_smoke": {"name": "Smoke Grenade", "kind": "grenade", "radius": 90.0, "time": 8.0, "stack": 10, "price": 90,
 		"desc": "A cloud nobody aims through."},
-	"gr_shield": {"name": "Shield Grenade", "kind": "grenade", "radius": 70.0, "time": 10.0, "shield": 120.0, "stack": 3, "price": 420,
+	"gr_shield": {"name": "Shield Grenade", "kind": "grenade", "radius": 70.0, "time": 10.0, "shield": 120.0, "stack": 10, "price": 420,
 		"desc": "Throws up a dome of shield: fire and blasts from outside break on it, your own fire goes out through it."},
 	"tl_scanner": {"name": "Scanner", "kind": "tool", "maker": "Axiom Astronautics", "strength": 1.0, "range": 300.0, "energy": 3.0, "price": 1400,
 		"desc": "Reads a place: who and what is here, what lies under the ground."},
@@ -251,7 +252,7 @@ static func describe(id: String) -> Array:
 	var lines: Array = [display_name(id), String(s.get("desc", ""))]
 	match kind(id):
 		"suit":
-			lines.append("%d weapon · %d belt · %d feature slots" % [int(s["weapons"]), int(s["belt"]), int(s["features"])])
+			lines.append("%d weapon · %d grenade · %d belt · %d feature slots" % [int(s["weapons"]), int(s.get("grenades", 0)), int(s["belt"]), int(s["features"])])
 			lines.append("Shield %d · Armour %d · Energy %d · Oxygen %d min · Ammunition %d" % [int(s["shield"]), int(s["armor"]), int(s["energy"]), int(s["oxygen"]), int(s["ammo"])])
 			var env: Array = []
 			for h in HAZARDS:
@@ -269,7 +270,7 @@ static func describe(id: String) -> Array:
 		"belt":
 			match String(s["kind"]):
 				"grenade":
-					lines.append("Grenade · radius %d · up to %d in a belt place" % [int(s["radius"]), int(s["stack"])])
+					lines.append("Grenade · radius %d · up to %d in a grenade place" % [int(s["radius"]), int(s["stack"])])
 				"tool":
 					lines.append("Tool · strength %.2f · range %d · %.0f energy a use" % [float(s["strength"]), int(s["range"]), float(s["energy"])])
 				"use":
@@ -341,3 +342,9 @@ static func hit_chance(w: Dictionary, firearms: int, dist: float, cover: bool, m
 	if cover:
 		c *= 1.0 - COVER_CUT
 	return clampf(c, 0.03, 0.95)
+
+
+
+## 0.7.52.9: a grenade (it goes into the suit's grenade places, not the belt).
+static func is_grenade(id: String) -> bool:
+	return kind(id) == "belt" and String(BELT[family(id)].get("kind", "")) == "grenade"

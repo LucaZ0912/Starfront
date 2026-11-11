@@ -159,7 +159,7 @@ func _set_hint() -> void:
 		back = "the lifts lead to the hangar – your ship and the way up"
 	_hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
 		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
-		Keybinds.key_text("boost"), Keybinds.key_text("interact"), back]
+		Keybinds.key_text("foot_run"), Keybinds.key_text("interact"), back]
 	if combat_allowed():
 		_hint.text = "%s %s %s %s walk  •  %s next target / click  •  %s dodge  •  %s other weapon  •  %s tactics  •  1–4 belt" % [
 			Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
@@ -385,7 +385,7 @@ func _env_step(delta: float) -> void:
 		return
 	var g = GameState.gear
 	var h0: float = g.health
-	var r: Dictionary = g.env_step(delta, env, Input.is_action_pressed("boost"))
+	var r: Dictionary = g.env_step(delta, env, Input.is_action_pressed("foot_run"))
 	if Commands.suit_god:
 		g.health = h0                                   # 0.7.51.5 (debug): the world outside does not hurt
 	if hud != null:
@@ -935,7 +935,7 @@ func _process(delta: float) -> void:
 			if dir.length() > 0.3:
 				_stand_up()
 		else:
-			var run := Input.is_action_pressed("boost")
+			var run := Input.is_action_pressed("foot_run")
 			if combat == null or not combat.dodging():
 				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run))      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
 	else:
@@ -1028,6 +1028,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			tac_zoom = 1.0 if tac_zoom < 1.0 else TAC_ZOOM_OUT         # 0.7.52.8: the same on its key
 			return
+		if event.is_action_pressed("foot_target_near", false, true):
+			get_viewport().set_input_as_handled()
+			combat.nearest_target()                      # 0.7.52.9 (Luz): Shift+R – the nearest foe
+			return
+		if event.is_action_pressed("foot_grenade", false, false):
+			get_viewport().set_input_as_handled()
+			if not combat.grenade_down():
+				_say_toast("No grenade in your grenade places.", 2.0)
+			return
+		if event.is_action_released("foot_grenade", false) and combat.gr_hold >= 0:
+			get_viewport().set_input_as_handled()
+			var gmsg := combat.grenade_up()
+			if gmsg != "":
+				_say_toast(gmsg, 1.5)
+			return
 		if event.is_action_pressed("foot_target", false, true):
 			get_viewport().set_input_as_handled()
 			combat.next_target()
@@ -1043,19 +1058,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact", false, false):
 		get_viewport().set_input_as_handled()
 		use()
-	elif event is InputEventKey and event.is_pressed() and not event.is_echo() and _ride.is_empty() and _touch < 0.0:
-		var n := (event as InputEventKey).keycode - KEY_1
-		if n >= 0 and n < GameState.gear.belt.size():
+	elif _ride.is_empty() and _touch < 0.0:
+		for n in mini(4, GameState.gear.belt.size()):            # 0.7.52.9: the belt on its own (rebindable) keys
+			if event.is_action_pressed("foot_belt_%d" % (n + 1), false, false):
+				get_viewport().set_input_as_handled()
+				use_belt(n)
+				return
+		if event.is_action_pressed("foot_grenade", false, false):
 			get_viewport().set_input_as_handled()
-			if combat != null and not _collapsed and combat.grenade_press(n):
-				return                                        # 0.7.52.5: a grenade – aimed while the key is held
-			use_belt(n)
-	elif event is InputEventKey and not event.is_pressed() and combat != null and combat.gr_hold >= 0:
-		if (event as InputEventKey).keycode - KEY_1 == combat.gr_hold:
-			get_viewport().set_input_as_handled()
-			var msg := combat.grenade_release()
-			if msg != "":
-				_say_toast(msg, 1.5)
+			_say_toast("No fighting here – the grenades stay on your suit.", 2.5)
 
 
 ## 0.7.52.5: where the mouse points on the map (art px).
@@ -1065,10 +1076,6 @@ func mouse_art() -> Vector2:
 
 ## 0.7.51.3: a belt place on its number key.
 func use_belt(n: int) -> void:
-	var b: Array = GameState.gear.belt
-	if n < b.size() and not (b[n] as Dictionary).is_empty() and String(ChibiArt.GearData.base(String(b[n]["id"])).get("kind", "")) == "grenade" and combat == null:
-		_say_toast("No fighting here – the grenade stays on your belt.", 2.5)       # 0.7.52.5
-		return
 	var msg: String = GameState.gear.use_belt(n)
 	if msg != "":
 		_say_toast(msg, 2.5)
