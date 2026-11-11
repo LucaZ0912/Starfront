@@ -2634,7 +2634,7 @@ func _c_debug_poi(c: Dictionary) -> String:
 			body = b
 	if body.is_empty():
 		return "No body here to land on."
-	var theme := String(c.get("theme", "ruin"))
+	var theme := String(c.get("theme", "precursor"))
 	if not PoiData.THEMES.has(theme):
 		return "Unknown theme."
 	var sd := int(c.get("seed", randi()))
@@ -2642,6 +2642,8 @@ func _c_debug_poi(c: Dictionary) -> String:
 	rng.seed = sd
 	var site := {"id": "dbg_poi_%d" % sd, "name": PoiData.site_name(theme, rng), "kind": "ruins", "poi": true, "theme": theme, "seed": sd,
 		"danger": String(c.get("danger", "yellow")), "lon": 0.0, "lat": 0.0}
+	if c.has("gate"):
+		site["gate"] = String(c["gate"])                 # "open", "panel", "computer"
 	_debug_leave_space(m)
 	f.docked_at = "land:" + String(body["id"])
 	m.land_at(body, site)
@@ -2799,7 +2801,7 @@ func _c_debug_env(c: Dictionary) -> String:
 	var GD = GearShop.GearData
 	var wt := String(c.get("world", ""))
 	if wt == "":
-		g.env = GD.env_of(String(g._body.get("type", ""))) if g.level in ["landing", "settlement"] else {}
+		g.env = GD.env_of(String(g._body.get("type", ""))) if g.level in ["landing", "settlement", "dungeon"] else {}
 	elif GD.ENV.has(wt):
 		g.env = GD.env_of(wt)
 	else:

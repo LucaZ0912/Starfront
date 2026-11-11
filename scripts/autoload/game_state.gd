@@ -127,6 +127,7 @@ var _prosper_t := 0.0             # package 42c: prosperity drifts back to its b
 var research_data := 0
 var poi_visits := {}                    # package 53a: system id (String) -> how often you have come (its sites change with it)
 var poi_used: Array = []                # sites whose target is done – gone
+var museum_finds: Array = []            # 0.7.53.2: relics (ids, data/poi.gd MUSEUM_RELICS) found for the Museum (53e)
 ## Package 51: the pilot's personal equipment – suit, weapons, belt, features, pockets, the ships' lockers.
 const PilotGearScript = preload("res://scripts/core/pilot_gear.gd")
 var gear = PilotGearScript.new()
@@ -521,7 +522,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "poi_used": poi_used.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
@@ -591,6 +592,7 @@ func from_dict(d: Dictionary) -> void:
 	research_data = int(d.get("research_data", 0))
 	poi_visits = (d.get("poi_visits", {}) as Dictionary).duplicate()
 	poi_used = (d.get("poi_used", []) as Array).duplicate()
+	museum_finds = (d.get("museum_finds", []) as Array).duplicate()
 	if d.has("news"):
 		news.from_dict(d["news"])
 	else:
@@ -2030,8 +2032,13 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	if poi_used.has(id):
 		return []
 	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
-	return [{"id": id, "name": PoiData.site_name("ruin", rng), "kind": "ruins", "poi": true, "theme": "ruin", "seed": rng.randi(),
+	return [{"id": id, "name": PoiData.site_name("precursor", rng), "kind": "ruins", "poi": true, "theme": "precursor", "seed": rng.randi(),
 		"danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}]
+
+
+func museum_find(id: String) -> void:
+	museum_finds.append(id)
+	log_msg("A find for the Museum.", COL_GOOD)
 
 
 func poi_use(id: String) -> void:

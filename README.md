@@ -361,6 +361,7 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
 - 0.7.53.1 (package 53a): `data/poi.gd` (THEMES, DANGER, TARGETS, MAP_CHANCE, `site_name`), `scripts/ground/dungeon_gen.gd`
+- 0.7.53.2 (package 53a rework): `DungeonGen.build_outside` (the ruin's facade in the north, `ruin_gate` with lock open/panel/computer, zone `dungeon_in`) and `build_inside` (zone `dungeon_out`, `rust_door`, `crystals`, EMP/cache panels); GroundView level `dungeon`, `_poi_map` keeps both maps per site; `GroundMap.style` ("precursor": rusted floors fk 17, faces, dark caps); `scripts/ground/fog.gd` (fog bands, `burst`); `GroundCombat.emp`; `GameState.museum_finds`; theme data in `data/poi.gd` (`THEMES`, `MUSEUM_RELICS`).
   (DungeonGen.build: grid rooms, `_corridor` three wide, `_faces`, roles, things; `map` meta "poi" for the targets window);
   `GameState.poi_visits`, `poi_used`, `pois_for()`, `poi_use()`; `Universe.landing_sites` appends them (no fixed ruins);
   site key `poi`; explore kind `crate` (`welded`), `CutGame.inside` "loot"; `GroundView._poi_setup`, `_poi_window`,

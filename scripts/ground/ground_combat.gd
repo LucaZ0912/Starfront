@@ -19,7 +19,7 @@ const CrewData = preload("res://data/crew.gd")
 const S := GroundMap.SCALE
 const MAX_LOCKS := 3
 const CHEST := Vector2(0, -15)                    # where shots go and come from (art px above the feet)
-const LOW_KINDS := ["crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence"]
+const LOW_KINDS := ["pillar_fallen", "slab", "crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence"]
 const NO_KINDS := ["lamp_post", "signpost", "cable_pole", "banner", "holo_pillar", "plant", "shrub", "parasol", "flower_bed"]
 const LAYER_COL := {"shield": Color(0.45, 0.8, 1.0), "armor": Color(1.0, 0.8, 0.3), "health": Color(1.0, 0.35, 0.3)}
 
@@ -79,7 +79,9 @@ var wheel_open := false                            # the command wheel is up (V 
 var _team_made := false
 var sneaking := false
 var cloak_t := 0.0                                 # 0.7.52.25 (Luz): seconds you are still unseen (the short cloak)
-var cloak_cd := 0.0                                # … and until it works again                              # 0.7.52.21 (Luz): Ctrl – sneaking (they do not hear you, see you only in their view)
+var cloak_cd := 0.0
+var emp_t := 0.0                                   # 0.7.53.2 (Luz): an EMP trap – shields, drones, energy weapons down
+const EMP_TIME := 6.0                                # … and until it works again                              # 0.7.52.21 (Luz): Ctrl – sneaking (they do not hear you, see you only in their view)
 var reviving = null                                # the member you are bringing back (the use key held beside it)
 var revive_k := 0.0
 var arm_charge := 0.0                              # 0.7.52.14: the Red Arm Laser's charge (seconds of its `charge`)
@@ -494,6 +496,8 @@ func _pilot_fire(delta: float) -> void:
 		return
 	var w := GearData.stats(wid)
 	var tp: Vector2 = (active["w"] as Walker).pos
+	if emp_t > 0.0 and w.has("energy"):
+		return                                         # 0.7.53.2: the EMP – energy weapons are dead for now
 	if bool(w.get("pierce", false)):
 		# 0.7.52.14: the Red Arm Laser – charged, in reach: it cuts through whatever lies between
 		if arm_charge >= float(w["charge"]) and pilot_pos().distance_to(tp) <= float(w["range"]):
@@ -2010,7 +2014,26 @@ func cloak(id: String) -> String:
 	return "Cloaked – %d s unseen. Your weapons hold fire.%s" % [int(cloak_t), ("  %s too." % " and ".join(PackedStringArray(with))) if not with.is_empty() else ""]
 
 
+## 0.7.53.2: an EMP goes off: your shield and your team's are gone, your drones come back to you, your energy
+## weapons will not fire for a while.
+func emp(t: float) -> void:
+	emp_t = maxf(emp_t, t)
+	var g = GameState.gear
+	g.shield = 0.0
+	g.shield_wait = GearData.SHIELD_WAIT + t
+	for a in allies_up():
+		a["st"]["shield"] = 0.0
+		a["regen_wait"] = GearData.SHIELD_WAIT + t
+	for i in 2:
+		var dd: Dictionary = drones[i] if i != drone_slot else drone
+		if _flying(dd):
+			dd["state"] = "dock"
+	booms.append({"pos": pilot_pos(), "r": 120.0, "t": 0.0, "col": Color(0.45, 0.8, 1.0)})
+	floaters.append({"pos": pilot_pos() + Vector2(0, -50), "text": "EMP", "col": Color(0.45, 0.9, 1.0), "t": 0.0})
+
+
 func _cloak_step(delta: float) -> void:
+	emp_t = maxf(0.0, emp_t - delta)
 	var was := cloak_t > 0.0
 	cloak_t = maxf(0.0, cloak_t - delta)
 	cloak_cd = maxf(0.0, cloak_cd - delta)

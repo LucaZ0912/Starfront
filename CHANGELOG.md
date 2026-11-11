@@ -3,6 +3,33 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.2 – 2026-11-11
+
+**Package 53a reworked – the entrance outside, the Precursors' ruin (Luz).**
+- **Outside and inside are two maps now.** You land on the site's own ground: the pad in the south-west, and in the
+  north a **great ruin** rising out of the ground – a rusted iron facade, glyphs, one **entrance gate**. Sometimes it
+  stands open; sometimes it is shut and **hacked** (a Precursor computer beside it) or **cut open** (its panel, with the
+  torch). Through it you go inside; the way out brings you back before the gate. Doors stay open, the fallen stay down
+  as you go in and out. (Crash sites and pirate bases get their own outside the same way later.)
+- **The theme decides how a ruin looks and plays** – recorded in Roadmap.md (Paket 53: wall, floor, doors, computer,
+  foes, cover, extras, loot, traps, feeling). First theme: **the Precursors**:
+  - walls and floors of **rusted iron panels** with cracks; the floor with holes, rubble and rubbish; the solid mass
+    of the ruin dark, so the rooms read as rooms;
+  - **old rusted metal doors** (not the blast doors) whose slab rises into the lintel; their wall panels rusted too;
+  - an **alien but recognisable computer**;
+  - raiders for now (combat robots come with 53f);
+  - cover: **fallen pillars** and **ceiling slabs** with rebar;
+  - **crystal guardians:** three crystals float around the relic and throw lightning between each other – the
+    vault's panel or the computer ("Crystal guardians off") puts them down; until then the relic cannot be reached
+    or scanned;
+  - loot: scan data, relics, and **finds for the Museum** (collected now, shown with 53e);
+  - **traps:** some panels set off an **EMP** – shields, drones and energy weapons are down for a few seconds;
+  - **feeling:** fog lies low over the floors and along the ruin's foot outside, and **bursts out** when the gate
+    opens.
+- Debug: *Site (ruin)* builds the outside; the smoke test group `poi` walks outside → gate → inside → out again.
+- Fixed: the view was closed on entering the ruin (the deck check took it for a station); the gate's opening was
+  announced twice.
+
 ## alpha 0.7.53.1 – 2026-11-11
 
 **Package 53a – sites to explore: the framework (Luz).**

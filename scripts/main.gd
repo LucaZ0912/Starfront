@@ -494,7 +494,7 @@ func _check_deck() -> void:
 	if ground == null or not is_instance_valid(ground):
 		return
 	var f := GameState.active()
-	if ground.level == "landing":
+	if ground.level in ["landing", "dungeon"]:                # 0.7.53.2: the ruin belongs to the landing site
 		if f == null or not f.docked_at.begins_with("land:"):
 			close_deck(false)
 		return

@@ -10,7 +10,9 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"tablet": "Carved tablet – scan it (scanner on your belt)", "relic": "Relic – scan it (scanner on your belt)",
 	"blastdoor": "Blast door – sealed (its release is in the box beside it)",
 	"vent": "Ventilation shaft – welded shut (cutting torch)",
-	"crate": "Supply cache – open it (E)"}
+	"crate": "Supply cache – open it (E)",
+	"ruin_gate": "The ruin's entrance – sealed",
+	"rust_door": "An old rusted door – sealed (its panel beside it)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -134,6 +136,106 @@ static func hash_f(a: int, b: int) -> float:
 	return fposmod(sin(float(a) * 12.9898 + float(b) * 78.233) * 43758.5453, 1.0)
 
 
+## 0.7.53.2 (Luz): the ruin's entrance in its facade – an angular frame, the old rusted double door with its bands and
+## rivets, a line of glyphs and an emblem glowing faintly over it; open, the leaves are pulled into the walls.
+func _draw_gate(d: Dictionary, t: float) -> void:
+	var tl: Array = d["tiles"]
+	var gw := float(tl[2]) * 16.0
+	var gh := float(tl[3]) * 16.0
+	var top := -gh
+	var k := float(d.get("open_k", 0.0))
+	var gl := 0.5 + 0.3 * sin(t * 2.0)
+	draw_colored_polygon(PackedVector2Array([Vector2(-gw * 0.5 - 8, 0), Vector2(-gw * 0.5 - 8, top + 10), Vector2(0, top - 8), Vector2(gw * 0.5 + 8, top + 10), Vector2(gw * 0.5 + 8, 0)]), Color(0.14, 0.1, 0.09))
+	draw_colored_polygon(PackedVector2Array([Vector2(-gw * 0.5 - 2, 0), Vector2(-gw * 0.5 - 2, top + 12), Vector2(0, top - 2), Vector2(gw * 0.5 + 2, top + 12), Vector2(gw * 0.5 + 2, 0)]), Color(0.05, 0.04, 0.04, 1.0 - k * 0.6))
+	var half := gw * 0.5 * (1.0 - k)
+	for side in [-1.0, 1.0]:
+		if half < 0.6:
+			continue
+		var x0 := -gw * 0.5 if side < 0.0 else gw * 0.5 - half
+		var r := Rect2(x0, top + 12, half, gh - 12)
+		draw_rect(r, Color(0.45, 0.31, 0.21))
+		draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), Color(0.6, 0.44, 0.32))
+		for band in 3:
+			var by := r.position.y + 6 + band * (r.size.y - 10) / 3.0
+			draw_rect(Rect2(r.position.x, by, r.size.x, 3), Color(0.28, 0.19, 0.13))
+			var nr := int(r.size.x / 5.0)
+			for rv in nr:
+				draw_rect(Rect2(r.position.x + 2 + rv * 5, by + 1, 1, 1), Color(0.62, 0.46, 0.33))
+		for rs in 10:
+			draw_rect(Rect2(r.position.x + hash_f(rs, int(side) + 5) * r.size.x, r.position.y + hash_f(rs, int(side) + 9) * r.size.y, 1.5, 1.2), Color(0.55, 0.28, 0.12))
+	if k < 0.05:
+		draw_line(Vector2(0, top + 12), Vector2(0, 0), Color(0.1, 0.08, 0.07), 1.5)
+	for gi in 6:
+		draw_rect(Rect2(-gw * 0.4 + gi * gw * 0.14, top + 6, gw * 0.08, 1), Color(0.7, 0.5, 1.0, gl))
+	draw_circle(Vector2(0, top - 12), 5.0, Color(0.15, 0.1, 0.09))
+	draw_arc(Vector2(0, top - 12), 4.0, 0.0, TAU, 12, Color(0.7, 0.5, 1.0, gl), 0.8)
+	draw_line(Vector2(0, top - 16), Vector2(0, top - 8), Color(0.7, 0.5, 1.0, gl), 0.8)
+
+
+## 0.7.53.2 (Luz): a Precursor door inside – a rusted iron slab in the wall's gap, heavy bands, rivets; open, it is
+## pulled up into the lintel.
+func _draw_rust_door(d: Dictionary, t: float) -> void:
+	var tl: Array = d["tiles"]
+	var gw := float(tl[2]) * 16.0
+	var gh := float(tl[3]) * 16.0
+	var top := -gh
+	var k := float(d.get("open_k", 0.0))
+	draw_rect(Rect2(-gw * 0.5 - 4, top - 4, 4, gh + 4), Color(0.12, 0.09, 0.08))
+	draw_rect(Rect2(gw * 0.5, top - 4, 4, gh + 4), Color(0.12, 0.09, 0.08))
+	draw_rect(Rect2(-gw * 0.5 - 4, top - 4, gw + 8, 4), Color(0.16, 0.12, 0.1))
+	draw_rect(Rect2(-gw * 0.5, top, gw, gh), Color(0.04, 0.03, 0.03, 1.0 - k))
+	var hh := gh * (1.0 - k)
+	if hh > 0.6:
+		var r := Rect2(-gw * 0.5, top, gw, hh)
+		draw_rect(r, Color(0.46, 0.31, 0.21))
+		draw_rect(Rect2(r.position.x, r.end.y - 1, r.size.x, 1), Color(0.25, 0.17, 0.12))
+		var nb := int(hh / 10.0)
+		for band in nb:
+			var by := r.position.y + 4 + band * 10
+			draw_rect(Rect2(r.position.x, by, r.size.x, 3), Color(0.28, 0.19, 0.13))
+			for rv in int(gw / 6.0):
+				draw_rect(Rect2(r.position.x + 2 + rv * 6, by + 1, 1, 1), Color(0.62, 0.46, 0.33))
+		for rs in 14:
+			draw_rect(Rect2(r.position.x + hash_f(rs, 21) * r.size.x, r.position.y + hash_f(rs, 22) * r.size.y, 1.5, 1.2), Color(0.55, 0.28, 0.12))
+		for st in 3:
+			var sx := r.position.x + hash_f(st, 23) * r.size.x
+			draw_line(Vector2(sx, r.position.y), Vector2(sx, r.position.y + r.size.y * (0.4 + 0.5 * hash_f(st, 24))), Color(0.5, 0.25, 0.1, 0.45), 1.0)
+	var lc := Color(0.7, 0.5, 1.0) if String(d["state"]) != "open" else Color(0.3, 1.0, 0.45)
+	draw_circle(Vector2(gw * 0.5 + 6, top + gh * 0.4), 1.6, Color(lc, 0.5 + 0.4 * sin(t * 2.0)))
+
+
+## 0.7.53.2 (Luz): the relic's guardians – crystals floating round it, lightning leaping between them; off, they sink
+## to the floor and go dark.
+func _draw_crystals(d: Dictionary, t: float) -> void:
+	var on := String(d["state"]) != "off"
+	var n := 3
+	var pts: Array = []
+	for c in n:
+		var ang := t * 0.6 + c * TAU / n
+		var alt := 22.0 + sin(t * 2.0 + c) * 2.0 if on else 1.0
+		pts.append(Vector2(cos(ang if on else c * TAU / n) * 20.0, sin(ang if on else c * TAU / n) * 9.0 - 8.0 - alt))
+	if on:
+		for c2 in n:
+			var a: Vector2 = pts[c2]
+			var b: Vector2 = pts[(c2 + 1) % n]
+			var pl := PackedVector2Array([a])
+			for s in range(1, 6):
+				pl.append(a.lerp(b, s / 6.0) + Vector2(hash_f(int(t * 20.0) + s, c2) * 5.0 - 2.5, hash_f(int(t * 20.0) + s, c2 + 5) * 5.0 - 2.5))
+			pl.append(b)
+			draw_polyline(pl, Color(0.6, 0.85, 1.0, 0.35), 2.5)
+			draw_polyline(pl, Color(0.9, 0.95, 1.0, 0.9), 0.8)
+	for q in pts:
+		var gnd: Vector2 = Vector2(q.x, q.y * 0.0 + (q.y + (22.0 if on else 1.0)) * 1.0)
+		draw_set_transform(gnd * GroundMap.SCALE, 0.0, Vector2(1.0, 0.45) * GroundMap.SCALE)
+		draw_circle(Vector2.ZERO, 3.0, Color(0, 0, 0, 0.3))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+		var cc := Color(0.45, 0.8, 1.0) if on else Color(0.25, 0.3, 0.38)
+		draw_colored_polygon(PackedVector2Array([q + Vector2(0, -5), q + Vector2(3, 0), q + Vector2(0, 5), q + Vector2(-3, 0)]), cc)
+		draw_colored_polygon(PackedVector2Array([q + Vector2(0, -5), q + Vector2(3, 0), q + Vector2(0, 0)]), cc.lightened(0.4))
+		if on:
+			draw_circle(q, 6.0, Color(0.5, 0.8, 1.0, 0.15))
+
+
 ## 0.7.52.23 (Luz): the laser cage round the relic – four posts with glowing heads and red beams between them at three
 ## heights; off, the posts go dark and the beams are gone.
 func _draw_cage(d: Dictionary, t: float) -> void:
@@ -194,7 +296,7 @@ func _process(delta: float) -> void:
 			Audio.play("dock_clamp", "vent hatch flips open", -12.0)
 		if String(d["state"]) == "open":
 			d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 0.45)
-	if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
+	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate"] and String(d["state"]) == "open":
 		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
 
@@ -204,12 +306,52 @@ func _draw() -> void:
 	var s := GroundMap.SCALE
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
-	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor"]
+	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
-	match ("panel_wall" if String(d["kind"]) == "panel" and on_wall else String(d["kind"])):
+	var kk := String(d["kind"])
+	if kk == "panel" and on_wall:
+		kk = "panel_rust" if String(d.get("style", "")) == "precursor" else "panel_wall"
+	if kk == "terminal" and String(d.get("style", "")) == "precursor":
+		kk = "terminal_precursor"
+	match kk:
+		"ruin_gate":
+			_draw_gate(d, t)
+		"rust_door":
+			_draw_rust_door(d, t)
+		"crystals":
+			_draw_crystals(d, t)
+		"panel_rust":
+			# 0.7.53.2 (Luz): a Precursor panel on the wall – rusted, a corroded flap, a faint glow behind it
+			draw_rect(Rect2(-9, -29, 18, 20), Color(0.1, 0.07, 0.06))
+			draw_rect(Rect2(-8, -28, 16, 18), Color(0.4, 0.28, 0.2))
+			draw_rect(Rect2(-8, -28, 16, 1), Color(0.55, 0.4, 0.3))
+			for rs in 7:
+				draw_rect(Rect2(-7 + hash_f(rs, 3) * 13, -27 + hash_f(rs, 4) * 15, 1.5, 1.2), Color(0.55, 0.28, 0.12))
+			if String(d["state"]) == "shut":
+				draw_rect(Rect2(-5, -25, 10, 10), Color(0.48, 0.34, 0.24))
+				draw_rect(Rect2(-5, -25, 10, 10), Color(0.9, 0.75, 0.5, 0.5), false, 0.5)
+			else:
+				draw_rect(Rect2(-5, -25, 10, 10), Color(0.04, 0.03, 0.03))
+				draw_circle(Vector2(0, -20), 2.5, Color(0.6, 0.45, 1.0) if not bool(d.get("trap", false)) else Color(0.45, 0.9, 1.0))
+			draw_circle(Vector2(6, -26), 1.0, Color(0.7, 0.5, 1.0, 0.4 + 0.4 * sin(t * 2.0)))
+		"terminal_precursor":
+			# 0.7.53.2 (Luz): their computer – a curved stem out of a ring, a pane of glyphs hanging in the air over it
+			draw_set_transform(Vector2(0, 0) * GroundMap.SCALE, 0.0, Vector2(1.0, 0.45) * GroundMap.SCALE)
+			draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 20, Color(0.4, 0.3, 0.24), 2.0)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+			draw_colored_polygon(PackedVector2Array([Vector2(-2, 0), Vector2(-4, -9), Vector2(-1, -17), Vector2(3, -20), Vector2(1, -16), Vector2(-1, -9), Vector2(2, 0)]), Color(0.38, 0.27, 0.2))
+			var hov := sin(t * 1.5) * 1.0
+			var on2 := String(d["state"]) != "hacked"
+			var pane := PackedVector2Array([Vector2(-8, -33 + hov), Vector2(7, -35 + hov), Vector2(9, -25 + hov), Vector2(-6, -23 + hov)])
+			draw_colored_polygon(pane, Color(0.2, 0.75, 0.7, 0.35) if on2 else Color(0.5, 0.4, 0.9, 0.35))
+			var pl := pane.duplicate()
+			pl.append(pl[0])
+			draw_polyline(pl, Color(0.4, 1.0, 0.9, 0.8) if on2 else Color(0.7, 0.55, 1.0, 0.8), 0.8)
+			for gi in 3:
+				draw_line(Vector2(-5 + gi, -30 + gi * 2.5 + hov), Vector2(3 + gi, -31 + gi * 2.5 + hov), Color(0.6, 1.0, 0.95, 0.8), 0.6)
 		"panel_wall":
 			# 0.7.52.27 (Luz): the box mounted on the wall beside a blast door – flush, its conduit running up
 			draw_rect(Rect2(-1.5, -40, 3, 12), Color(0.2, 0.21, 0.24))

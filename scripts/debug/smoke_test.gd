@@ -9453,15 +9453,45 @@ func _test_poi(view: SystemView) -> void:
 				if String(s["kind"]) == "ruins" and not bool(s.get("poi", false)):
 					static_ruins = true
 	var map_ok: bool = found > 0 and same and not static_ruins
-	# a generated site
+	# a generated site: the outside first – the ruin in the north, its gate shut, its panel beside it
 	gear.suit = "suit_mil_light:C"
 	gear._fit_slots()
-	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5301})
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5301, "gate": "panel"})
 	var g = main.ground
-	if g == null or e != "" or g.combat == null:
+	if g == null or e != "" or g.level != "landing":
 		check(false, "53a: the site opens  [%s]" % e)
 		return
 	gear.refill()
+	var gate: Dictionary = g._poi_gate()
+	var gpanel: Dictionary = {}
+	for d0 in g.map.explore:
+		if String(d0["kind"]) == "panel" and int(d0.get("door", -1)) >= 0:
+			gpanel = d0
+	var zin: Dictionary = {}
+	for z0 in g.map.zones:
+		if String(z0.get("kind", "")) == "dungeon_in":
+			zin = z0
+	var out_ok: bool = not gate.is_empty() and String(gate["state"]) != "open" and not gpanel.is_empty() and not zin.is_empty() \
+		and g.map.has_meta("fog") and g.fog != null and g.map.has_meta("poi")
+	# the window on arrival (only outside), the minimap
+	if g._lift_menu == null:
+		g._poi_window()                                      # (it opens deferred on arrival)
+	var win_ok: bool = g._lift_menu != null and g._mm != null
+	g._close_lift_menu()
+	g._arrive = 0.0
+	g.zone = zin
+	g.use()
+	var shut_out: bool = g.level == "landing"              # the gate is shut: you stay outside
+	g._explore_effect(gpanel, "door")
+	out_ok = out_ok and shut_out and String(gate["state"]) == "open"
+	g._arrive = 0.0
+	g.zone = zin
+	g.use()
+	if g.level != "dungeon" or g.combat == null:
+		check(false, "53a: into the ruin  [%s]" % g.level)
+		return
+	gear.refill()
+	# inside: the Precursors' ruin
 	var kinds := {}
 	for d in g.map.explore:
 		kinds[String(d["kind"])] = int(kinds.get(String(d["kind"]), 0)) + 1
@@ -9469,54 +9499,68 @@ func _test_poi(view: SystemView) -> void:
 	var term: Dictionary = {}
 	var relic: Dictionary = {}
 	var crate: Dictionary = {}
+	var cryst: Dictionary = {}
 	for d2 in g.map.explore:
 		match String(d2["kind"]):
-			"blastdoor":
+			"rust_door":
 				door = d2
 			"terminal":
 				term = d2
 			"relic":
 				relic = d2
+			"crystals":
+				cryst = d2
 			"crate":
 				if crate.is_empty() and not bool(d2.get("welded", false)):
 					crate = d2
 	var panel_wall: bool = g.map.explore.any(func(x): return String(x["kind"]) == "panel" and bool(x.get("wall", false)))
-	var built_ok: bool = int(kinds.get("blastdoor", 0)) == 1 and panel_wall and int(kinds.get("tablet", 0)) == 3 and int(kinds.get("crate", 0)) >= 4 \
-		and g.map.explore.any(func(x): return String(x["kind"]) == "crate" and bool(x.get("welded", false))) and bool(relic.get("target", false)) \
-		and g.combat.foes.size() >= 3 and g.map.has_meta("poi") and (g.map.get_meta("poi")["targets"] as Array).size() == 5
-	# the window on arrival, the minimap filling in
-	if g._lift_menu == null:
-		g._poi_window()                                      # (it opens deferred on arrival)
-	var win_ok: bool = g._lift_menu != null and g._mm != null
-	g._close_lift_menu()
+	var welded: bool = g.map.explore.any(func(x): return String(x["kind"]) == "crate" and bool(x.get("welded", false)))
+	var has_out: bool = g.map.zones.any(func(z1): return String(z1.get("kind", "")) == "dungeon_out")
+	var built_ok: bool = int(kinds.get("rust_door", 0)) == 1 and int(kinds.get("blastdoor", 0)) == 0 and int(kinds.get("crystals", 0)) == 1 and panel_wall \
+		and int(kinds.get("tablet", 0)) == 3 and int(kinds.get("crate", 0)) >= 4 and welded and bool(relic.get("target", false)) \
+		and g.combat.foes.size() >= 3 and g.map.has_meta("poi") and (g.map.get_meta("poi")["targets"] as Array).size() == 5 \
+		and g.map.style == "precursor" and g.fog != null and has_out
 	g._mm_tile = Vector2i(-99, -99)
 	g._poi_reveal()
 	var seen := 0
 	for sb in g.poi_seen:
 		seen += int(sb)
 	win_ok = win_ok and seen > 20
-	# wide corridors: across every corridor tile there are three floor tiles in a row one way or the other
+	# wide ways: every floor tile (not the air shaft) has a floor neighbour on both sides one way, or two in a row
 	var narrow := 0
-	for y in range(1, g.map.h - 1):
-		for x in range(1, g.map.w - 1):
-			if GroundMap.walkable_t(g.map.t_at(x, y)) and g.map.floor_kind[y * g.map.w + x] == 2:
-				var hr := int(GroundMap.walkable_t(g.map.t_at(x - 1, y))) + int(GroundMap.walkable_t(g.map.t_at(x + 1, y)))
-				var vr := int(GroundMap.walkable_t(g.map.t_at(x, y - 1))) + int(GroundMap.walkable_t(g.map.t_at(x, y + 1)))
-				if hr == 0 and vr == 0:
+	for y in range(2, g.map.h - 2):
+		for x in range(2, g.map.w - 2):
+			if GroundMap.walkable_t(g.map.t_at(x, y)) and g.map.floor_kind[y * g.map.w + x] != 16:
+				var wk := func(xx: int, yy: int) -> bool: return GroundMap.walkable_t(g.map.t_at(xx, yy)) or g.map.t_at(xx, yy) == GroundMap.T.BLOCK
+				var run_h: bool = (wk.call(x - 1, y) and wk.call(x + 1, y)) or (wk.call(x - 1, y) and wk.call(x - 2, y)) or (wk.call(x + 1, y) and wk.call(x + 2, y))
+				var run_v: bool = (wk.call(x, y - 1) and wk.call(x, y + 1)) or (wk.call(x, y - 1) and wk.call(x, y - 2)) or (wk.call(x, y + 1) and wk.call(x, y + 2))
+				if not run_h or not run_v:
 					narrow += 1
 	var wide_ok: bool = narrow == 0
-	# the vault: shut off; the terminal opens the door; the relic read uses the site up
+	# the vault: shut off; the computer opens the old door and puts the crystals down; the relic read uses the site up
 	var vault_p: Vector2 = (relic["pos"] as Vector2) + Vector2(0, 20)
-	var shut_ok: bool = g.map.path(g.map.spawn, vault_p).is_empty()
+	var acts: Array = term.get("actions", [])
+	var shut_ok: bool = g.map.path(g.map.spawn, vault_p).is_empty() and String(cryst["state"]) != "off" and acts.has("crystals")
 	g._hack_done(term, "door")
-	var open_ok: bool = String(door["state"]) == "open" and not g.map.path(g.map.spawn, vault_p).is_empty()
+	g._hack_done(term, "crystals")
+	var open_ok: bool = String(door["state"]) == "open" and String(cryst["state"]) == "off" and not g.map.path(g.map.spawn, vault_p).is_empty()
 	var rd := GameState.research_data
 	g.scan_done(relic)
 	var done_ok: bool = GameState.poi_used.has(String(g._site["id"])) and GameState.research_data > rd
-	# a cache: credits and something
+	# a cache: credits and something; the EMP trap; a find for the Museum
 	var cr0 := GameState.credits
 	g._loot(crate)
 	var loot_ok: bool = GameState.credits > cr0 and String(crate["state"]) == "open"
+	g._explore_effect({}, "emp")
+	var emp_ok: bool = g.combat.emp_t > 0.0 and float(gear.shield) <= 0.0
+	var mf := GameState.museum_finds.size()
+	GameState.museum_find("pr_lens")
+	emp_ok = emp_ok and GameState.museum_finds.size() == mf + 1
+	GameState.museum_finds.resize(mf)
+	# back out: in front of the gate, which stays open
+	g.go_level("landing", "dungeon_out")
+	var gate2: Dictionary = g._poi_gate()
+	var back_ok: bool = g.level == "landing" and String(gate2.get("state", "")) == "open" and g.pilot.pos.distance_to(gate2["pos"]) < 110.0
 	# back
 	main.close_deck(false)
 	main._close_planet_map()
@@ -9536,8 +9580,8 @@ func _test_poi(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(map_ok and built_ok and win_ok and wide_ok and shut_ok and open_ok and done_ok and loot_ok,
-		"53a: sites to explore – ruins found per visit (not always, the same within a visit, no fixed ruins any more); a generated site with its blast door (box on the wall), terminal, 3 tablets, caches (one welded), the relic, guards; the targets window and the minimap; corridors three wide; the vault shut off until the terminal opens it; the relic read uses the site up; a cache gives credits  [%s]" % " ".join(PackedStringArray([str(map_ok), str(built_ok), str(win_ok), str(wide_ok), str(shut_ok), str(open_ok), str(done_ok), str(loot_ok)])))
+	check(map_ok and out_ok and built_ok and win_ok and wide_ok and shut_ok and open_ok and done_ok and loot_ok and emp_ok and back_ok,
+		"53a: sites to explore – ruins found per visit (the same within a visit, no fixed ruins); outside the ruin in the north with its gate shut (its panel opens it, fog); inside the Precursors' ruin: rust door, crystal guardians, 3 tablets, caches (one welded), the relic, raiders; the targets window and the minimap; ways three wide; the computer opens the door and puts the crystals down; the relic read uses the site up; a cache pays; the EMP trap; a Museum find; back out before the gate  [%s]" % " ".join(PackedStringArray([str(map_ok), str(out_ok), str(built_ok), str(win_ok), str(wide_ok), str(shut_ok), str(open_ok), str(done_ok), str(loot_ok), str(emp_ok), str(back_ok)])))
 
 
 ## 0.7.52.25 (Luz): the short cloak – a few seconds unseen by its quality, then recharging; firing shows you. And

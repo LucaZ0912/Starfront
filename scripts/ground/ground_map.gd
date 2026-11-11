@@ -34,6 +34,7 @@ var bay_rect := Rect2()               # tiles: the hangar bay (the view lays a h
 var window_rect := Rect2()            # tiles: where space shows through the glass (the view draws it there only)
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""
+var style := ""                       # 0.7.53.2: a dungeon theme's own walls and floors ("precursor": rusted iron)
 var pads: Array = []                  # 0.7.50.10: a settlement's landing pads – their centres (art px)
 var pad_rects: Array = []             # 0.7.50.15: the pads themselves (art px) – their lights follow them
 var foe_spawns: Array = []             # package 52: where foes stand when a fight is set up (art px)
@@ -403,6 +404,8 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px, py, TILE, TILE, gc)
 			for k in 8:
 				_px(px + int(hash2(x, y, k) * 15), py + int(hash2(y, x, k + 3) * 15), gc.darkened(0.25))
+		17:             # 0.7.53.2: the Precursors' rusted iron floor
+			_precursor_floor(x, y, px, py)
 		16:             # 0.7.52.27: an air duct – dark steel, ribs across its run (0.7.52.28: walls on its closed sides)
 			_duct_tile(x, y, px, py)
 		10:             # water (a pool)
@@ -423,7 +426,103 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 
 
 ## The top of a wall – seen from above, a thin lit edge.
+## 0.7.53.2 (Luz): rusted iron – a panel with its seams and rivets, rust in patches and streaks running down.
+func _rust(px: int, py: int, pw: int, ph: int, base: Color, sd: int) -> void:
+	_rect(px, py, pw, ph, base)
+	_rect(px, py, pw, 1, base.lightened(0.16))
+	_rect(px, py + ph - 1, pw, 1, base.darkened(0.35))
+	_rect(px + pw - 1, py, 1, ph, base.darkened(0.28))
+	for c in [Vector2i(2, 2), Vector2i(pw - 3, 2), Vector2i(2, ph - 3), Vector2i(pw - 3, ph - 3)]:
+		_px(px + c.x, py + c.y, base.lightened(0.3))
+	for i in int(pw * ph / 26):
+		var rx := px + int(hash2(i, sd, 1) * pw)
+		var ry := py + int(hash2(i, sd, 2) * ph)
+		var rc := Color(0.55, 0.28, 0.12).lerp(Color(0.36, 0.19, 0.1), hash2(i, sd, 3))
+		_rect(rx, ry, 1 + int(hash2(i, sd, 4) * 2.5), 1 + int(hash2(i, sd, 5) * 1.8), rc)
+	var sx := px + 2 + int(hash2(sd, 7) * (pw - 4))
+	var sl := int(ph * (0.3 + 0.6 * hash2(sd, 8)))
+	for yy in sl:
+		_tint(sx, py + 2 + yy, 1, 1, Color(0.5, 0.25, 0.1), 0.5 * (1.0 - float(yy) / maxf(sl, 1)))
+
+
+## A crack: a jagged dark line downwards from (x, y).
+func _crack(x: int, y: int, n: int, sd: int) -> void:
+	var cx := x
+	var cy := y
+	for i in n:
+		_px(cx, cy, Color(0.07, 0.05, 0.04))
+		cx += int(round(hash2(i, sd, 11) * 2.0 - 1.0))
+		cy += 1
+		if cx < 0 or cy >= h * TILE:
+			return
+
+
+## The Precursors' floor: rusted iron panels; here and there a crack, a hole into the dark, rubble, a bit of rubbish.
+func _precursor_floor(x: int, y: int, px: int, py: int) -> void:
+	var base := Color(0.34, 0.25, 0.19).lerp(Color(0.28, 0.2, 0.15), hash2(x, y, 21))
+	_rust(px, py, TILE, TILE, base, x * 31 + y * 17)
+	var r := hash2(x, y, 22)
+	if r < 0.12:
+		_crack(px + 3 + int(hash2(x, y, 23) * 9), py + 1, 8 + int(hash2(x, y, 24) * 6), x + y * 7)
+	elif r < 0.16:
+		# a hole: dark, its broken lip lit on top
+		var hx := px + 4 + int(hash2(x, y, 25) * 4)
+		var hy := py + 4 + int(hash2(x, y, 26) * 4)
+		_rect(hx, hy, 7, 5, Color(0.03, 0.02, 0.02))
+		_rect(hx + 1, hy - 1, 5, 1, Color(0.03, 0.02, 0.02))
+		_rect(hx, hy, 7, 1, Color(0.46, 0.33, 0.24))
+	elif r < 0.3:
+		for k in 3 + int(hash2(x, y, 27) * 4):           # rubble
+			_rect(px + int(hash2(k, x * 3 + y, 28) * 14), py + int(hash2(k, x + y * 5, 29) * 14), 1 + int(hash2(k, x, 30) * 2), 1, Color(0.42, 0.38, 0.33).lerp(Color(0.22, 0.18, 0.15), hash2(k, y, 31)))
+	elif r < 0.34:
+		_rect(px + 4, py + 9, 6, 1, Color(0.55, 0.55, 0.52))   # a bent strip of metal
+		_rect(px + 9, py + 7, 1, 2, Color(0.55, 0.55, 0.52))
+
+
+## The Precursors' wall face: tall rusted panels, cracks, streaks, a rusted ledge at the foot.
+func _precursor_face(x: int, y: int, px: int, py: int) -> void:
+	var wl: Color = Color(pal["wall"]).lerp(Color(0.36, 0.25, 0.18), hash2(x, 0, 41))
+	if t_at(x, y - 1) != T.FACE:
+		wl = wl.darkened(0.12)                           # the upper row lies in the shadow of the ceiling
+	_rust(px, py, TILE, TILE, wl, x * 13 + y * 3)
+	for gx in [5, 11]:
+		_rect(px + gx, py, 1, TILE, wl.darkened(0.32))  # tall panels: vertical grooves, unlike the floor's plates
+	if t_at(x, y - 1) != T.FACE:
+		_rect(px, py, TILE, 2, wl.lightened(0.15))
+	if t_at(x, y + 1) != T.FACE:
+		_rect(px, py + TILE - 3, TILE, 3, Color(pal["trim"]))
+		_rect(px, py + TILE - 1, TILE, 1, Color(pal["trim"]).darkened(0.4))
+	if hash2(x, y, 42) < 0.18:
+		_crack(px + 3 + int(hash2(x, y, 43) * 10), py + 2, 10, x * 5 + y)
+	if x % 4 == 0:
+		_rect(px, py, 2, TILE, wl.darkened(0.2))         # a rib between the panels
+		_rect(px, py, 1, TILE, wl.lightened(0.1))
+
+
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
+	if style == "precursor":
+		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
+		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
+		_rect(px, py, TILE, TILE, top0)
+		if (x + y) % 3 == 0:
+			_px(px + int(hash2(x, y, 52) * 15), py + int(hash2(y, x, 53) * 15), Color(0.32, 0.17, 0.09))
+		if x % 2 == 0:
+			_rect(px, py, 1, TILE, top0.darkened(0.3))
+		if y % 2 == 0:
+			_rect(px, py, TILE, 1, top0.darkened(0.3))
+		var rim: Color = Color(pal["wall"]).darkened(0.1)
+		if t_at(x, y - 1) != T.CAP and t_at(x, y - 1) != T.VOID:
+			_rect(px, py, TILE, 2, rim)
+		if t_at(x - 1, y) != T.CAP and t_at(x - 1, y) != T.VOID:
+			_rect(px, py, 2, TILE, rim)
+		if t_at(x + 1, y) != T.CAP and t_at(x + 1, y) != T.VOID:
+			_rect(px + TILE - 2, py, 2, TILE, rim.darkened(0.2))
+		var below0 := t_at(x, y + 1)
+		if walkable_t(below0) or below0 == T.BLOCK:
+			_rect(px, py + TILE - 3, TILE, 3, Color(pal["wall"]).darkened(0.25))
+		elif below0 == T.FACE:
+			_rect(px, py + TILE - 2, TILE, 2, rim.lightened(0.1))
+		return
 	var top: Color = pal["wall_top"]
 	_rect(px, py, TILE, TILE, top)
 	var below := t_at(x, y + 1)
@@ -475,6 +574,9 @@ func _duct_tile(x: int, y: int, px: int, py: int) -> void:
 
 ## The front face of a wall, lit, with a trim and a skirting board.
 func _face_tile(x: int, y: int, px: int, py: int) -> void:
+	if style == "precursor":
+		_precursor_face(x, y, px, py)
+		return
 	var wl: Color = pal["wall"]
 	_rect(px, py, TILE, TILE, wl)
 	if t_at(x, y - 1) != T.FACE:

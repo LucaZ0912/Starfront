@@ -73,6 +73,10 @@ static func _rise(kind: String) -> int:
 			return 20
 		"rock", "lava_rock":
 			return 10
+		"pillar_fallen":
+			return 9
+		"slab":
+			return 8
 		"dune":
 			return 6
 		"palm":
@@ -443,6 +447,33 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 1 + k * 5, fy - 22, 1, ph + 20, pc.lightened(0.25))
 			_r(img, 0, fy - 8, pw, 3, metal.darkened(0.4))
 			_ellipse(img, pw * 0.5, fy - 12, 3, 3, Color(0.85, 0.2, 0.15))
+		"pillar_fallen":
+			# 0.7.53.2 (Luz): a Precursor pillar lying broken – rusted iron drums, fluted, its broken ends
+			var rc := Color(0.45, 0.33, 0.24)
+			var n := maxi(2, pw / 12)
+			for k in n:
+				var x0 := k * (pw / n) + 1
+				var dw := pw / n - 2
+				_r(img, x0, fy - 6, dw, ph + 3, rc.darkened(0.05 * (k % 2)))
+				_r(img, x0, fy - 6, dw, 2, rc.lightened(0.22))
+				_r(img, x0, fy + ph - 4, dw, 3, rc.darkened(0.35))
+				for fl in 3:
+					_r(img, x0, fy - 2 + fl * 3, dw, 1, rc.darkened(0.2))
+				for s in 6:
+					_p(img, x0 + int(GroundMap.hash2(k, s, 3) * dw), fy - 4 + int(GroundMap.hash2(k, s, 4) * (ph + 2)), Color(0.55, 0.28, 0.12))
+			_r(img, pw - 3, fy - 4, 3, ph, rc.darkened(0.45))
+			_p(img, pw - 2, fy - 6, rc.darkened(0.45))
+		"slab":
+			# 0.7.53.2 (Luz): a slab come down from the ceiling – tilted, its rebar sticking out, rubble round it
+			var sc := Color(0.34, 0.26, 0.2)
+			for yy in ph + 6:
+				var off := int(float(yy) * 0.25)
+				_r(img, 1 + off, fy - 6 + yy, pw - 6, 1, sc.darkened(0.08 * float(yy) / float(ph + 6)))
+			_r(img, 1, fy - 6, pw - 6, 2, sc.lightened(0.2))
+			for rb in 4:
+				_r(img, 4 + rb * (pw - 10) / 4, fy - 12, 1, 7, Color(0.5, 0.3, 0.18))
+			for rbl in 5:
+				_p(img, int(GroundMap.hash2(rbl, 9, 2) * pw), fy + ph - 2 + int(GroundMap.hash2(rbl, 9, 3) * 2), Color(0.42, 0.36, 0.3))
 		"ore_cart":
 			_r(img, 1, fy - 2, pw - 2, ph - 2, Color(0.4, 0.36, 0.32))
 			_r(img, 1, fy - 2, pw - 2, 2, Color(0.55, 0.5, 0.45))
