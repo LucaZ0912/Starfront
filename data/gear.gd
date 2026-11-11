@@ -74,6 +74,21 @@ const SUITS := {
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 31000,
 		"col": Color(0.66, 0.08, 0.1), "trim": Color(0.95, 0.75, 0.3),
 		"desc": "The Covenant's pathfinders: red plate edged in gold, close-fitting and quick – and the Red Arm Laser on the left forearm."},
+	# 0.7.52.18 (Luz): the Assembly's Senate armours – blue plate with white sweeping lines, a crest on the helmet; two
+	# drone places, both drones carried on the shoulders (the second flown with Shift+C); stronger shields; sold only
+	# in the Assembly's lands, only to pilots it calls Friendly
+	"suit_mil_senate_eyes": {"name": "Eyes of the Senate", "maker": "Concord Fleetworks", "faction": "assembly", "shoulder_drones": true,
+		"weapons": 2, "belt": 3, "grenades": 2, "drones": 2, "features": 2,
+		"shield": 80.0, "armor": 50.0, "energy": 190.0, "oxygen": 25.0, "ammo": 240,
+		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 27000,
+		"col": Color(0.42, 0.53, 0.93), "trim": Color(0.93, 0.95, 1.0),
+		"desc": "The Senate's scouts: light blue-and-white plate, a short crest, a strong shield – and two drones riding on the shoulders."},
+	"suit_mil_senate_hand": {"name": "Hand of the Senate", "maker": "Concord Fleetworks", "faction": "assembly", "shoulder_drones": true,
+		"weapons": 3, "belt": 2, "grenades": 3, "drones": 2, "features": 3,
+		"shield": 110.0, "armor": 115.0, "energy": 240.0, "oxygen": 20.0, "ammo": 360,
+		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.85, "price": 36000,
+		"col": Color(0.3, 0.38, 0.75), "trim": Color(0.93, 0.95, 1.0),
+		"desc": "The Senate's guard: heavy deep-blue plate, a cloak down one side, a tall crest, the strongest shield – and two drones on the shoulders."},
 	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 2, "grenades": 3, "drones": 1, "features": 3,
 		"shield": 70.0, "armor": 110.0, "energy": 230.0, "oxygen": 20.0, "ammo": 380,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,

@@ -150,6 +150,7 @@ func _process(delta: float) -> void:
 				_test_foot_tactics(view)         # 0.7.52.5 – grenades, AI types, pirates and guards
 				_test_foot_drones(view)          # 0.7.52.11 – ground combat drones
 				_test_foot_pathfinder(view)      # 0.7.52.14 – the Covenant's Pathfinder armour
+				_test_foot_senate(view)          # 0.7.52.18 – the Assembly's Senate armours
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9409,6 +9410,90 @@ func _test_foot_drones(view: SystemView) -> void:
 ## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
 ## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
 ## the arm raised.
+## 0.7.52.18: the Assembly's Senate armours – two drone places, the drones docked at the arms, the second on Shift+C,
+## stronger shields; sold only in the Assembly's lands.
+func _test_foot_senate(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var se: Dictionary = GD.stats("suit_mil_senate_eyes:C")
+	var sh: Dictionary = GD.stats("suit_mil_senate_hand:C")
+	var data_ok: bool = int(se["drones"]) == 2 and int(sh["drones"]) == 2 and float(se["shield"]) > float(GD.stats("suit_mil_light:C")["shield"]) \
+		and float(sh["shield"]) > float(GD.stats("suit_mil_heavy:C")["shield"]) and bool(GD.base("suit_mil_senate_hand")["shoulder_drones"]) \
+		and Keybinds.key_text("foot_drone_2").to_lower().contains("shift")
+	var asm := {"id": "test_asm_gear2", "faction": "assembly", "tier": 2, "type": "trade"}
+	var cov := {"id": "test_cov_gear2", "faction": "covenant", "tier": 2, "type": "trade"}
+	var shop_ok: bool = GearShop.offer(asm).has("suit_mil_senate_eyes") and GearShop.offer(asm).has("suit_mil_senate_hand") \
+		and not GearShop.offer(cov).has("suit_mil_senate_hand")
+	gear.suit = "suit_mil_senate_hand:C"
+	gear._fit_slots()
+	var slots_ok: bool = gear.drones.size() == 2
+	gear.drones[0] = "dr_laser:C"
+	gear.drones[1] = "dr_kinetic:C"
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "0.7.52.18: the arena opens")
+		return
+	gear.refill()
+	cb.step(0.05, Vector2.ZERO)
+	# both docked at the arms (left and right of you, seen from the front)
+	g.pilot.dir = 0
+	var dock_ok: bool = cb.shoulder_drones() and cb.drone_places().size() == 2 and String(cb.drones[1]["state"]) == "docked" \
+		and String(cb.drone["state"]) == "docked" and cb._dock_at(0).x != cb._dock_at(1).x
+	# Shift+C: only the second takes off
+	var m2: String = cb.drone_command(1)
+	for i in 10:
+		cb.step(0.1, Vector2.ZERO)
+	var second_ok: bool = m2.contains("(2)") and String(cb.drone["state"]) == "docked" and cb.drone_slot == 0
+	cb.pick_drone(1)
+	second_ok = second_ok and String(cb.drone["kind"]) == "kinetic" and cb.drone_flying()
+	cb.pick_drone(0)
+	# C: the first too – both in the air
+	cb.drone_command(0)
+	for i2 in 10:
+		cb.step(0.1, Vector2.ZERO)
+	var both_ok: bool = cb.drone_flying() and cb._flying(cb.drones[1])
+	# a shot at the second hurts the second only; its loss leaves the first flying
+	var foe: Dictionary = cb.spawn("bandit_rifleman", g.pilot.pos + Vector2(80, 0))
+	cb._wake(foe)
+	cb.frozen = true
+	var d2: Dictionary = cb.drones[1]
+	var h2 := float(d2["st"]["shield"]) + float(d2["st"]["armor"])
+	var h1 := float(cb.drone["st"]["shield"]) + float(cb.drone["st"]["armor"])
+	cb._hurt_drone(5.0, "kinetic", d2)
+	var hurt_ok: bool = float(d2["st"]["shield"]) + float(d2["st"]["armor"]) < h2 and is_equal_approx(float(cb.drone["st"]["shield"]) + float(cb.drone["st"]["armor"]), h1)
+	Commands.execute({"type": "debug_combat", "do": "drone_kill", "place": 1})
+	hurt_ok = hurt_ok and String(cb.drones[1]["state"]) == "down" and cb.drone_flying()
+	Commands.execute({"type": "debug_combat", "do": "drone_ready"})
+	cb.step(0.05, Vector2.ZERO)
+	hurt_ok = hurt_ok and String(cb.drones[1].get("state", "")) == "docked"
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(data_ok and shop_ok and slots_ok and dock_ok and second_ok and both_ok and hurt_ok,
+		"0.7.52.18: the Senate armours – two drone places and stronger shields, only in the Assembly's shops; the drones docked at the arms, the second on Shift+C alone, both in the air, each hurt and lost on its own  [%s]" % " ".join(PackedStringArray([str(data_ok), str(shop_ok), str(slots_ok), str(dock_ok), str(second_ok), str(both_ok), str(hurt_ok)])))
+
+
 func _test_foot_pathfinder(view: SystemView) -> void:
 	var GD = GearShop.GearData
 	var f := GameState.active()

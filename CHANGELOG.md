@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.18 – 2026-11-11
+
+**The Assembly's Senate armours (Luz's idea, after the mockup she approved).**
+
+- **Eyes of the Senate** (light, Concord Fleetworks): bright blue plate with white sweeps over the chest, forearms and
+  shins, white-edged pauldrons, a closed helmet with a dark V visor and a short dark-blue **crest**. Shield 80, armour
+  50, quick on its feet; 2 weapons, 2 grenades, 3 on the belt, **2 drone places**, 2 features.
+- **Hand of the Senate** (heavy): deeper blue, broader, a white mark on the pauldron, a **deep-blue cloak** down its
+  left side and a tall crest sweeping back. Shield 110, armour 115; 3 weapons, 3 grenades, 2 on the belt, **2 drone
+  places**, 3 features.
+- **Two drones**: both sit switched off at shoulder height on the outside of the upper arms, their undersides against
+  the arm (edge on from the front and behind, the near one whole from the side). **C** flies the first, **Shift+C** the
+  second (in the hotkeys); each has its own tile, fights, reloads, is shot down and rebuilt on its own.
+- Only in the Assembly's lands and only for pilots it calls Friendly.
+- Smoke test group `foot_senate`.
+
 ## alpha 0.7.52.17 – 2026-11-11
 
 **The arm laser's beam holds 2.5 seconds (Luz).** It stays on its target and follows it, burning in ten bursts (its

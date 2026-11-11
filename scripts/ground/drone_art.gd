@@ -124,6 +124,28 @@ static func draw(ci: CanvasItem, kind: String, at: Vector2, hover: float, t: flo
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+## 0.7.52.18 (Luz): a drone switched off at the shoulder, its underside against the outside of the upper arm. `sx`
+## which way it faces out (-1 left, +1 right): seen edge on, sticking out from the arm; 0 (side on): seen whole, its
+## top towards you, nose up.
+static func draw_arm(ci: CanvasItem, kind: String, at: Vector2, sx: float, sc: float = 2.0) -> void:
+	var a := art(kind)
+	var sz := Vector2(float(a["w"]), float(a["h"])) * sc * 0.55
+	if sx == 0.0:
+		ci.draw_set_transform(at, -PI * 0.5, Vector2.ONE)
+		ci.draw_texture_rect(a["tex"], Rect2(-sz * 0.5, sz), false, Color(0.85, 0.85, 0.88))
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	var img: Image = a["tex"].get_image()
+	var body := img.get_pixel(8, 6)
+	var edge := Rect2(at + Vector2(-1.5 * sc, -sz.x * 0.5), Vector2(3.0 * sc, sz.x))       # its length along the arm
+	ci.draw_rect(edge.grow(1.0), Color(0.04, 0.04, 0.06))
+	ci.draw_rect(edge, body.darkened(0.15))
+	ci.draw_rect(Rect2(edge.position + Vector2((2.0 if sx > 0 else 0.0) * sc, 0), Vector2(1.0 * sc, sz.x)), body.lightened(0.2))
+	for yy in [edge.position.y + 1.0 * sc, edge.end.y - 2.0 * sc]:
+		ci.draw_rect(Rect2(Vector2(edge.position.x + sx * 2.0 * sc, yy), Vector2(2.0 * sc, 1.0 * sc)), Color(0.2, 0.2, 0.22))   # the folded arms
+	ci.draw_rect(Rect2(at + Vector2(-0.5 * sc - sx * 1.5 * sc, -1.0 * sc), Vector2(1.0 * sc, 2.0 * sc)), Color(0.25, 0.25, 0.28))   # the clamp on the arm
+
+
 ## 0.7.52.12 (Luz): the drone switched off on the pilot's back, its underside against the back: from behind (dir 1)
 ## its top flat on the back, rotors still; from the side (dir 2/3) its edge sticking out behind; from the front hidden.
 static func draw_docked(ci: CanvasItem, kind: String, back: Vector2, dir: int, sc: float = 2.0) -> void:

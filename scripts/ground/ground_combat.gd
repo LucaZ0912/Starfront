@@ -67,6 +67,11 @@ var clouds: Array = []
 var domes: Array = []
 var drone: Dictionary = {}                         # 0.7.52.11: your drone in the air ({} none)
 var drone_rebuild := 0.0                           # seconds until a new one is ready after it was shot down
+## 0.7.52.18 (Luz): the Senate armours carry two drones. `drone` / `drone_rebuild` are the drone being looked at;
+## `pick_drone(i)` switches them to place i (and keeps the other's state in `drones` / `drone_rebuilds`).
+var drones: Array = [{}, {}]
+var drone_rebuilds: Array = [0.0, 0.0]
+var drone_slot := 0
 var arm_charge := 0.0                              # 0.7.52.14: the Red Arm Laser's charge (seconds of its `charge`)
 var _arm_up := false
 var camp_t := 0.0                                  # how long you have sat behind the same cover
@@ -577,7 +582,7 @@ func _resolve(s: Dictionary) -> void:
 		return
 	if to != null and to.has("is_drone") and kind != "dome":
 		if kind == "hit":
-			_hurt_drone(float(res["dmg"]), String(res["dtype"]))
+			_hurt_drone(float(res["dmg"]), String(res["dtype"]), to)
 		return
 	match kind:
 		"hit":
@@ -612,8 +617,10 @@ func _explode(at: Vector2, r: float, dmg: float, dtype: String, from, spare_pilo
 	var k := blast_share(at, pilot_pos(), r)
 	if k > 0.0 and not spare_pilot:
 		_hurt_pilot(dmg * k, dtype)
-	if drone_flying() and not spare_pilot and blast_share(at, drone["pos"], r) > 0.0:
-		_hurt_drone(dmg * blast_share(at, drone["pos"], r), dtype)
+	for di in drone_places():                                       # 0.7.52.18: each drone in the air
+		var dd: Dictionary = drones[di] if di != drone_slot else drone
+		if not spare_pilot and _flying(dd) and blast_share(at, dd["pos"], r) > 0.0:
+			_hurt_drone(dmg * blast_share(at, dd["pos"], r), dtype, dd)
 	for f in alive():
 		var k2 := blast_share(at, (f["w"] as Walker).pos, r)
 		if k2 > 0.0:
@@ -772,8 +779,9 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		w.dir = _face(pp - w.pos)
 	if float(f["cool"]) <= 0.0 and not sg["blocked"] and dist <= reach:
 		# 0.7.52.11 (Luz): when your drone is nearer than you, half the shots go at it
-		if drone_flying() and w.pos.distance_to(drone["pos"]) < dist and randf() < 0.5 and not sight(w.pos, drone["pos"])["blocked"]:
-			fire(f, drone, wst)
+		var near_d := _nearest_drone(w.pos)                        # 0.7.52.18: the nearer of your drones
+		if not near_d.is_empty() and w.pos.distance_to(near_d["pos"]) < dist and randf() < 0.5 and not sight(w.pos, near_d["pos"])["blocked"]:
+			fire(f, near_d, wst)
 		else:
 			fire(f, null, wst)
 		var base := 1.0 / (float(wst["rof"]) * float(f["rof"]))
@@ -1390,10 +1398,63 @@ func _draw_clouds() -> void:
 
 # ---------------------------------------------------------------- 0.7.52.11: the ground combat drone
 
-## The drone module in the suit's drone place ("" if none).
-func drone_id() -> String:
+## The drone module in the suit's drone place ("" if none) – the one being looked at, or place `i`.
+func drone_id(i: int = -1) -> String:
 	var ds: Array = GameState.gear.drones
-	return String(ds[0]) if not ds.is_empty() else ""
+	var k := drone_slot if i < 0 else i
+	return String(ds[k]) if k < ds.size() else ""
+
+
+## 0.7.52.18: the drone places of the suit (one, or two on the Senate armours).
+func drone_places() -> Array:
+	return range(mini(2, (GameState.gear.drones as Array).size()))
+
+
+## 0.7.52.18: look at drone place i – `drone`, `drone_rebuild` and the drone functions then mean that one.
+func pick_drone(i: int) -> void:
+	if i == drone_slot:
+		return
+	drones[drone_slot] = drone
+	drone_rebuilds[drone_slot] = drone_rebuild
+	drone_slot = i
+	drone = drones[i]
+	drone_rebuild = float(drone_rebuilds[i])
+
+
+func _flying(d: Dictionary) -> bool:
+	return not d.is_empty() and not String(d["state"]) in ["down", "docked", "reload"]
+
+
+## The flying drone nearest to a point ({} none).
+func _nearest_drone(p: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	for i in drone_places():
+		var d: Dictionary = drones[i] if i != drone_slot else drone
+		if _flying(d) and (best.is_empty() or p.distance_to(d["pos"]) < p.distance_to(best["pos"])):
+			best = d
+	return best
+
+
+## 0.7.52.18 (Luz): the Senate armours carry their drones at the shoulders, on the outside of the upper arms.
+func shoulder_drones() -> bool:
+	return bool(GearData.base(String(GameState.gear.suit)).get("shoulder_drones", false))
+
+
+## Where drone place i docks (on the ground; its height is `alt`): the back, or the left / right upper arm.
+func _dock_at(i: int) -> Vector2:
+	if not shoulder_drones():
+		return pilot_pos() + Vector2(-1, -1)
+	var dir: int = view.pilot.dir
+	var left := i == 0                                       # place 1 on the left arm, place 2 on the right
+	var x := 0.0
+	match dir:
+		0:
+			x = 6.0 if left else -6.0
+		1:
+			x = -6.0 if left else 6.0
+		_:
+			x = 0.0
+	return pilot_pos() + Vector2(x, -1)
 
 
 func drone_alive() -> bool:
@@ -1417,15 +1478,26 @@ func _drone_make(id: String) -> void:
 func _drone_up() -> void:
 	drone["state"] = "launch"
 	drone["t"] = 0.0
-	drone["pos"] = pilot_pos() + Vector2(-1, -1)
-	drone["alt"] = 16.0
+	drone["pos"] = _dock_at(drone_slot)
+	drone["alt"] = 20.0 if shoulder_drones() else 16.0
 	Audio.play("drone_launch", "drone up from the back", -6.0)
 
 
 ## C (0.7.52.12, Luz): on your back – it takes off; in the air – the laser and kinetic drones come back to your back and
 ## switch off, the kamikaze dives at your target (so it takes C twice: up, then away).
-func drone_command() -> String:
+func drone_command(i: int = 0) -> String:
+	var keep := drone_slot
+	pick_drone(i)
+	var msg := _drone_command()
+	pick_drone(keep)
+	return msg
+
+
+func _drone_command() -> String:
 	var id := drone_id()
+	var nth := "" if drone_places().size() < 2 else (" (1)" if drone_slot == 0 else " (2)")
+	if id == "" and drone_slot > 0:
+		return "No drone in your second drone place."
 	if id == "":
 		return "No drone in your drone place."
 	if not drone_alive():
@@ -1433,10 +1505,11 @@ func drone_command() -> String:
 	var stt := String(drone["state"])
 	if stt == "docked":
 		_drone_up()
-		return "Kamikaze drone up – %s again sends it at your target." % Keybinds.key_text("foot_drone") if String(drone["kind"]) == "kamikaze" else "Drone up – it fights your target."
+		var key := Keybinds.key_text("foot_drone" if drone_slot == 0 else "foot_drone_2")
+		return ("Kamikaze drone up – %s again sends it at your target." % key if String(drone["kind"]) == "kamikaze" else "Drone up – it fights your target.") + nth
 	if stt in ["return", "reload"]:
 		drone["stay"] = not bool(drone["stay"])
-		return "It stays on your back after reloading." if bool(drone["stay"]) else "It takes off again after reloading."
+		return ("It stays docked after reloading." if bool(drone["stay"]) else "It takes off again after reloading.") + nth
 	if String(drone["kind"]) == "kamikaze":
 		if active == null:
 			return "Lock a target first – the drone dives at it."
@@ -1446,10 +1519,18 @@ func drone_command() -> String:
 		Audio.play("w_rocket", "kamikaze drone dives", -4.0)
 		return "Kamikaze drone away!"
 	drone["state"] = "dock"
-	return "Drone back on your back – switched off."
+	return ("Drone back on your arm – switched off." if shoulder_drones() else "Drone back on your back – switched off.") + nth
 
 
 func _drone_step(delta: float) -> void:
+	var keep := drone_slot
+	for i in 2:
+		pick_drone(i)
+		_drone_step_one(delta)
+	pick_drone(keep)
+
+
+func _drone_step_one(delta: float) -> void:
 	var id := drone_id()
 	if id == "":
 		drone = {}
@@ -1479,16 +1560,17 @@ func _drone_step(delta: float) -> void:
 		if bool(d["over"]) and float(d["heat"]) <= 0.0:
 			d["over"] = false
 	d["cool"] = maxf(0.0, float(d["cool"]) - delta)
-	var back := pilot_pos() + Vector2(-1, -1)
+	var back := _dock_at(drone_slot)
+	var dalt := 20.0 if shoulder_drones() else 14.0
 	var side := 1.0 if active == null or (active["w"] as Walker).pos.x >= pilot_pos().x else -1.0
-	var home := pilot_pos() + Vector2(14.0 * side, -4.0) + Vector2(sin(float(d["t"]) * 1.7) * 3.0, cos(float(d["t"]) * 1.3) * 2.0)
+	var home := pilot_pos() + (Vector2(14.0 * side, -4.0) if drone_slot == 0 else Vector2(13.0 * side, 13.0)) + Vector2(sin(float(d["t"]) * 1.7) * 3.0, cos(float(d["t"]) * 1.3) * 2.0)
 	var want := home
 	var alt := 30.0
 	var p0: Vector2 = d["pos"]
 	match String(d["state"]):
 		"docked":
-			d["pos"] = back                                 # on your back, switched off
-			d["alt"] = 14.0
+			d["pos"] = back                                 # on your back (or arm), switched off
+			d["alt"] = dalt
 			return
 		"dock":
 			want = back
@@ -1598,7 +1680,17 @@ func _drone_fire(f: Dictionary, st: Dictionary) -> void:
 	Audio.play("w_pulse" if instant else "w_autocannon", "drone fires", -14.0)
 
 
-func _hurt_drone(dmg: float, dtype: String) -> void:
+func _hurt_drone(dmg: float, dtype: String, which = null) -> void:
+	var keep := drone_slot
+	for i in 2:
+		var d: Dictionary = drones[i] if i != drone_slot else drone
+		if which != null and is_same(d, which):
+			pick_drone(i)
+	_hurt_drone_one(dmg, dtype)
+	pick_drone(keep)
+
+
+func _hurt_drone_one(dmg: float, dtype: String) -> void:
 	if not drone_flying():
 		return
 	var out := GearData.apply_damage(drone["st"], dmg, dtype)
@@ -1612,7 +1704,32 @@ func _hurt_drone(dmg: float, dtype: String) -> void:
 
 
 func _draw_drone() -> void:
+	var keep := drone_slot
+	for i in 2:
+		pick_drone(i)
+		_draw_drone_one()
+	pick_drone(keep)
+
+
+func _draw_drone_one() -> void:
 	if drone.is_empty():
+		return
+	if String(drone["state"]) in ["docked", "reload"] and shoulder_drones():
+		# 0.7.52.18 (Luz): at the shoulder, its underside against the outside of the upper arm – from the front and
+		# behind seen edge on, from the side the near one seen whole, the far one hidden behind you
+		var pw2: Walker = view.pilot
+		var cs2 := ChibiArt.CHAR_SCALE
+		var left := drone_slot == 0
+		var bp2 := pw2.pos * S + Vector2(0, -ChibiArt.H * cs2 + 14.0 * cs2)
+		var near := (pw2.dir == 2 and left) or (pw2.dir == 3 and not left)
+		if pw2.dir in [2, 3] and not near:
+			return
+		var sx := 0.0
+		if pw2.dir == 0:
+			sx = 1.0 if left else -1.0
+		elif pw2.dir == 1:
+			sx = -1.0 if left else 1.0
+		DroneArt.draw_arm(self, String(drone["kind"]), bp2 + Vector2(sx * 9.5 * cs2, 0), sx, cs2)
 		return
 	if String(drone["state"]) in ["docked", "reload"]:
 		# 0.7.52.12: switched off on your back, its underside against you – seen from behind flat on the back, from the

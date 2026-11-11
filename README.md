@@ -360,6 +360,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.18: suits `suit_mil_senate_eyes` / `suit_mil_senate_hand` (`faction` "assembly", `shoulder_drones`);
+  `ChibiArt._senate`, `_senate_helmet`, `_senate_frame` (a bigger canvas `SENATE_PAD` for crest and cloak; `_px` clips to
+  the image); `GroundCombat.drones` / `drone_rebuilds` / `drone_slot` with `pick_drone(i)` (the drone functions act on
+  the picked place), `drone_places()`, `drone_command(i)`, `_dock_at(i)`, `shoulder_drones()`, `_nearest_drone`;
+  `DroneArt.draw_arm`; keybind `foot_drone_2` (Shift+C); debug `drone_kill` takes `place`; smoke group `foot_senate`.
 - 0.7.52.17: the arm beam holds `ARM_HOLD` 2.5 s – shot key `to` (its target), `_arm_tick` (one of `ARM_TICKS` burns,
   each rolled), `_arm_geometry` (muzzle, end, cuts, runs; renewed every 0.08 s in `_fx_step`).
 - 0.7.52.16: `GroundCombat._beam_runs(ga, gb, ma, mb)` – the visible stretches of the arm beam (hidden on a cover piece's

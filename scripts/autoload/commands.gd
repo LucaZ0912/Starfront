@@ -2791,10 +2791,16 @@ func _c_debug_combat(c: Dictionary) -> String:
 		"hurt":
 			cb._hurt_pilot(float(c.get("amount", 30.0)), String(c.get("dtype", "kinetic")))
 		"drone_kill":                                  # 0.7.52.11: your drone shot down
-			cb._hurt_drone(99999.0, "kinetic")
+			var keep: int = cb.drone_slot                    # 0.7.52.18: "place" 0 / 1
+			cb.pick_drone(int(c.get("place", 0)))
+			cb._hurt_drone_one(99999.0, "kinetic")
+			cb.pick_drone(keep)
 		"drone_ready":                                 # a new drone at once
-			cb.drone_rebuild = 0.0
-			cb.drone = {}
+			for di in 2:
+				cb.pick_drone(di)
+				cb.drone_rebuild = 0.0
+				cb.drone = {}
+			cb.pick_drone(0)
 		"tactics":                                     # 0.7.52.2: the tactical view – 0 off, 1 your sight, 2 the target's
 			cb.tactics = clampi(int(c.get("mode", 1)), 0, 2)
 			cb._vis = {}

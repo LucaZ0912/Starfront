@@ -170,8 +170,11 @@ func _draw_tiles(vs: Vector2) -> void:
 	var g = GameState.gear
 	var ws: Array = combat.weapons()
 	var gr: Array = g.grenades
-	var has_drone: bool = combat.drone_id() != ""
-	var n_tiles: int = ws.size() + gr.size() + (1 if has_drone else 0)
+	var n_dr := 0
+	for di0 in combat.drone_places():
+		n_dr += int(combat.drone_id(di0) != "")
+	var has_drone: bool = n_dr > 0
+	var n_tiles: int = ws.size() + gr.size() + n_dr
 	var groups: int = int(not ws.is_empty()) + int(not gr.is_empty()) + int(has_drone)
 	var width: float = n_tiles * (TILE.x + TILE_GAP) - TILE_GAP + maxf(0.0, groups - 1) * GROUP_GAP
 	var x: float = vs.x * 0.5 - width * 0.5
@@ -209,8 +212,11 @@ func _draw_tiles(vs: Vector2) -> void:
 					"×%d" % int(p["n"]), Color(1.0, 0.3, 0.25) if act2 else Color(0.5, 0.55, 0.6, 0.5), -1.0, Color.WHITE)
 			x += TILE.x + TILE_GAP
 		x += GROUP_GAP - TILE_GAP
-	# the drone
-	if has_drone:
+	# the drones (0.7.52.18: two on the Senate armours)
+	for di in combat.drone_places():
+		if combat.drone_id(di) == "":
+			continue
+		combat.pick_drone(di)
 		var did: String = combat.drone_id()
 		var dst := GearData.stats(did)
 		var d: Dictionary = combat.drone
@@ -232,6 +238,8 @@ func _draw_tiles(vs: Vector2) -> void:
 			else:
 				barv2 = (float(d["st"]["shield"]) + float(d["st"]["armor"])) / maxf(float(d["mx"]["shield"]) + float(d["mx"]["armor"]), 1.0)
 		var on := combat.drone_flying()
-		_label(Vector2(x, y - 4), "%s  drone" % Keybinds.key_text("foot_drone"))
+		_label(Vector2(x, y - 4), "%s  drone" % Keybinds.key_text("foot_drone" if di == 0 else "foot_drone_2"))
 		SuitHud.tile(self, Rect2(Vector2(x, y), TILE), GearIcons.icon(did), "", String(dst["name"]), sub2,
 			Color(0.45, 0.9, 1.0) if on else Color(0.5, 0.55, 0.6, 0.5), barv2, bcol)
+		x += TILE.x + TILE_GAP
+	combat.pick_drone(0)

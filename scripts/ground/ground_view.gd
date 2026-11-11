@@ -1080,6 +1080,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			_say_toast(combat.drone_command(), 2.0)              # 0.7.52.11
 			return
+		if event.is_action_pressed("foot_drone_2", false, true):
+			get_viewport().set_input_as_handled()
+			_say_toast(combat.drone_command(1), 2.0)             # 0.7.52.18: the second drone (Shift+C)
+			return
 		if event.is_action_pressed("foot_grenade", false, false):
 			get_viewport().set_input_as_handled()
 			if not combat.grenade_down():

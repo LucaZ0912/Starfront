@@ -55,7 +55,7 @@ static func frame(look: Dictionary, dir: int, f: int) -> Texture2D:
 
 
 static func _px(img: Image, x: int, y: int, c: Color) -> void:
-	if x >= 0 and y >= 0 and x < W and y < H:
+	if x >= 0 and y >= 0 and x < img.get_width() and y < img.get_height():      # (0.7.52.18: also the Senate's bigger canvas)
 		img.set_pixel(x, y, c)
 
 
@@ -82,10 +82,11 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 		c2 = sd["trim"]
 		outfit = 2 if suit.begins_with("suit_mil") else 0
 	var combat := suit.begins_with("suit_mil")
-	var heavy := suit == "suit_mil_heavy"
+	var heavy := suit == "suit_mil_heavy" or suit == "suit_mil_senate_hand"
+	var senate := suit.begins_with("suit_mil_senate")       # 0.7.52.18: the Assembly's Senate armours
 	var plate: Color = c1                     # 0.7.51.10: a combat suit – plates over a black undersuit, its lights
 	var glow: Color = c2
-	if combat and LIVERY.has(String(l.get("livery", ""))):
+	if combat and not senate and LIVERY.has(String(l.get("livery", ""))):
 		plate = LIVERY[String(l["livery"])][0]
 		glow = LIVERY[String(l["livery"])][1]
 	var hand := skin
@@ -229,6 +230,8 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 		_armour(img, plate, glow, heavy, cx, tx, tw, sh, torso_top, leg_top, feet, step, side, back)
 		if suit == "suit_mil_pathfinder":
 			_pathfinder(img, plate, glow, cx, tx, tw, sh, torso_top, leg_top, feet, step, side, back, dir, bool(l.get("arm_up", false)))
+		elif senate:
+			_senate(img, plate, glow, heavy, cx, tx, tw, sh, torso_top, leg_top, feet, step, side, back)
 	elif not sd.is_empty() and not sitting:
 		_suit_detail(img, suit, c1, c2, cx, tx, tw, sh, torso_top, leg_top, side, back)
 	# ---- neck and head
@@ -339,6 +342,9 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	# with a dark visor (combat)
 	if bool(l.get("helmet", false)) and not sd.is_empty():
 		_helmet(img, suit, c1, c2, plate, glow, hx, head_top, head_bot, ey, side, back)
+	if senate:
+		return _senate_frame(img, suit, plate, glow, bool(l.get("helmet", false)), sitting, cx, tx, tw, torso_top, leg_top, hx,
+			head_top, side, back)
 	return img
 
 
@@ -496,6 +502,185 @@ static func _pathfinder_helmet(img: Image, plate: Color, gold: Color, hx: int, h
 	_r(img, hx - 1, gbot, HW + 2, 1, gold.darkened(0.3))                                # the neck seal in gold
 
 
+## 0.7.52.18 (Luz): the Senate armours of the Assembly – blue plate, white lines sweeping over it: the pauldrons'
+## white edges, two white sweeps over the chest meeting at the breastbone, a sweep down each forearm and shin, white
+## knee caps; the heavy one ("Hand of the Senate") a white mark on its pauldron and a white-edged chest.
+static func _senate(img: Image, plate: Color, white: Color, heavy: bool, cx: int, tx: int, tw: int, sh: int, torso_top: int,
+		leg_top: int, feet: int, step: int, side: bool, back: bool) -> void:
+	var wd := white.darkened(0.18)
+	var belt := Color(0.08, 0.09, 0.14)
+	if side:
+		_r(img, cx - 2, torso_top - 1, 5 if heavy else 4, 1, white)                    # the pauldron's white edge
+		_px(img, cx - 1, torso_top + 4, white)                                          # a sweep over the chest
+		_px(img, cx, torso_top + 5, white)
+		_px(img, cx + 1, torso_top + 6, wd)
+		_r(img, cx - 1, torso_top + 9, int(sh * 1.3), 1, belt)                          # the dark belt
+		var lx := cx - 1 + step * 2
+		_r(img, lx, leg_top + 7, 4, 1, white)                                           # the knee
+		_px(img, lx, leg_top + 11, white)                                               # the shin's sweep
+		_px(img, lx + 1, leg_top + 12, white)
+		_px(img, lx + 2, leg_top + 13, wd)
+		return
+	var pw := 5 if heavy else 4
+	_r(img, tx - pw + 1, torso_top - 1, pw, 1, white)                                   # white-edged pauldrons
+	_r(img, tx + tw - 1, torso_top - 1, pw, 1, wd)
+	if heavy:
+		_px(img, tx - pw + 2, torso_top + 1, white)                                     # the Senate's mark on the pauldron
+		_px(img, tx - pw + 3, torso_top + 1, white)
+		_px(img, tx - pw + 3, torso_top + 2, wd)
+	if back:
+		_r(img, tx + 1, torso_top + 9, tw - 2, 1, belt)
+		_px(img, cx - 4, torso_top + 2, white)                                          # the sweeps over the shoulder blades
+		_px(img, cx - 5, torso_top + 3, wd)
+		_px(img, cx + 3, torso_top + 2, wd)
+		_px(img, cx + 4, torso_top + 3, wd)
+	else:
+		# two white sweeps over the chest, meeting at the breastbone
+		for i in 4:
+			_px(img, tx + 1 + i, torso_top + 2 + i, white)
+			_px(img, tx + tw - 2 - i, torso_top + 2 + i, wd)
+		_r(img, cx - 1, torso_top + 6, 2, 1, white)
+		if heavy:
+			_r(img, tx + 1, torso_top + 1, tw - 2, 1, white.darkened(0.1))              # the chest plate's white edge
+		_r(img, tx + 1, torso_top + 9, tw - 2, 1, belt)                                 # the dark belt, a white buckle
+		_r(img, cx - 1, torso_top + 9, 2, 1, white)
+	# a sweep down each forearm, white knee caps, a sweep down each shin
+	for k in 2:
+		var ax := tx - ARM if k == 0 else tx + tw
+		var wc := white if k == 0 else wd
+		_px(img, ax, torso_top + TORSO / 2 + 1, wc)
+		_px(img, ax + 1, torso_top + TORSO / 2 + 2, wc)
+		_px(img, ax + 2, torso_top + TORSO / 2 + 3, wc)
+	var lw := maxi(3, sh - 1)
+	var up_l := maxi(0, step)
+	var up_r := maxi(0, -step)
+	_r(img, cx - lw, leg_top + 7, lw, 1, white)
+	_r(img, cx + 1, leg_top + 7, lw, 1, wd)
+	if feet - leg_top - 13 - up_l > 3:
+		_px(img, cx - lw, leg_top + 10, white)
+		_px(img, cx - lw + 1, leg_top + 11, white)
+		_px(img, cx - lw + 2, leg_top + 12, white)
+	if feet - leg_top - 13 - up_r > 3:
+		_px(img, cx + lw, leg_top + 10, wd)
+		_px(img, cx + lw - 1, leg_top + 11, wd)
+		_px(img, cx + lw - 2, leg_top + 12, wd)
+
+
+## 0.7.52.18 (Luz): the Senate helmet – a closed blue shell; the visor a dark V: two eye slits slanting down to a point
+## over the nose, white lines along the cheeks. Its crest is drawn above it by `_senate_frame`.
+static func _senate_helmet(img: Image, plate: Color, white: Color, hx: int, head_top: int, head_bot: int, ey: int,
+		side: bool, back: bool) -> void:
+	var gtop := head_top - 2
+	var gbot := head_bot + 1
+	for y in range(gtop, gbot + 1):
+		var cut := 2 if y == gtop else (1 if y == gtop + 1 else 0)
+		_r(img, hx - 1 + cut, y, HW + 2 - 2 * cut, 1, plate if y < ey + 1 else plate.darkened(0.15))
+	_r(img, hx, gtop, HW, 1, plate.lightened(0.25))
+	var dark := Color(0.03, 0.04, 0.08)
+	if back:
+		_r(img, hx, ey + 2, HW, 1, white.darkened(0.2))                                 # a white band round the back
+	elif side:
+		_r(img, hx - 1, ey - 1, 2, 2, dark)                                             # the visor, side on
+		_px(img, hx - 1, ey + 1, dark)
+		_px(img, hx + 1, ey + 1, white)                                                 # the cheek's white line
+		_px(img, hx + 2, ey + 2, white)
+		_px(img, hx + 3, ey + 2, white.darkened(0.2))
+	else:
+		_r(img, hx + 1, ey - 2, 2, 1, dark)                                             # the V visor
+		_r(img, hx + HW - 3, ey - 2, 2, 1, dark)
+		_r(img, hx + 1, ey - 1, HW - 2, 1, dark)
+		_r(img, hx + 2, ey, HW - 4, 1, dark)
+		_px(img, hx + HW / 2, ey + 1, dark)
+		_px(img, hx + 1, ey - 2, Color(0.55, 0.75, 1.0))                                # a glint
+		_px(img, hx - 1, ey, white)                                                     # white lines down the cheeks
+		_px(img, hx, ey + 1, white)
+		_px(img, hx + HW, ey, white.darkened(0.2))
+		_px(img, hx + HW - 1, ey + 1, white.darkened(0.2))
+		_r(img, hx + HW / 2 - 1, ey + 3, 3, 1, plate.darkened(0.35))                    # the mouth vent
+	_r(img, hx - 1, gbot, HW + 2, 1, plate.darkened(0.4))
+
+
+const SENATE_PAD := Vector2i(3, 7)          # 0.7.52.18: room round a Senate figure for its crest and cloak
+
+## 0.7.52.18 (Luz): a Senate figure on a bigger canvas – the crest above the helmet (a short brush on the Eyes, a tall
+## one sweeping back on the Hand), the Hand's cloak down its left side (over the arm from the front, over half the back
+## from behind, trailing behind it side on).
+static func _senate_frame(src: Image, suit: String, plate: Color, white: Color, helmet: bool, sitting: bool, cx: int, tx: int,
+		tw: int, torso_top: int, leg_top: int, hx: int, head_top: int, side: bool, back: bool) -> Image:
+	var px := SENATE_PAD.x
+	var py := SENATE_PAD.y
+	var img := Image.create(W + 2 * px, H + py, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	img.blit_rect(src, Rect2i(0, 0, W, H), Vector2i(px, py))
+	var hand := suit == "suit_mil_senate_hand"
+	cx += px
+	tx += px
+	hx += px
+	torso_top += py
+	leg_top += py
+	head_top += py
+	# the cloak
+	if hand and not sitting:
+		var cl := Color(0.09, 0.09, 0.34)                                               # deep blue cloth
+		var bot := leg_top + 14
+		if side:
+			for y in range(torso_top, bot):                                             # trailing behind, behind the body
+				var k := float(y - torso_top) / float(bot - torso_top)
+				var x0 := cx + 1
+				var w := 3 + int(k * 3.0)
+				for x in range(x0, x0 + w):
+					if img.get_pixel(x, y).a < 0.1:
+						_px(img, x, y, cl if x < x0 + w - 1 else cl.darkened(0.3))
+			_r(img, cx - 1, torso_top - 1, 4, 1, cl.lightened(0.15))                    # over the shoulder
+		elif back:
+			for y in range(torso_top - 1, bot):                                         # over the left half of the back
+				var k2 := float(y - torso_top) / float(bot - torso_top)
+				var x1 := tx - ARM - 1 - int(k2 * 1.5)
+				_r(img, x1, y, cx + 1 - x1, 1, cl)
+				_px(img, x1, y, cl.darkened(0.3))
+				if (y - torso_top) % 4 == 2:
+					_px(img, x1 + 3, y, cl.darkened(0.2))                                # its folds
+					_px(img, cx - 2, y, cl.darkened(0.15))
+		else:
+			for y in range(torso_top - 1, bot):                                         # over the left arm
+				var k3 := float(y - torso_top) / float(bot - torso_top)
+				var x2 := tx + tw - 2 + (1 if y > torso_top + 2 else 0)
+				var w2 := ARM + 3 + int(k3 * 1.5)
+				_r(img, x2, y, w2, 1, cl)
+				_px(img, x2, y, cl.lightened(0.18))
+				_px(img, x2 + w2 - 1, y, cl.darkened(0.3))
+				if (y - torso_top) % 4 == 1:
+					_px(img, x2 + 2, y, cl.darkened(0.2))
+			_r(img, cx + 2, torso_top - 1, tx + tw - cx - 2, 1, cl.lightened(0.1))     # its edge at the collar
+	# the crest
+	if helmet:
+		var cr := Color(0.1, 0.12, 0.26)
+		var hi := Color(0.32, 0.38, 0.66)
+		var gtop := head_top - 2
+		var tall := 6 if hand else 4
+		if side:
+			# a brush from brow to nape: bristle by bristle, tallest just behind the crown, streaked
+			var n := HW + (3 if hand else 1)
+			for i in n:
+				var t := (float(i) + 0.5) / float(n)
+				var hgt := int(round(float(tall) * sin(PI * pow(t, 0.8))))
+				if hgt <= 0:
+					continue
+				_r(img, hx + i, gtop - hgt, 1, hgt, cr if i % 2 == 0 else cr.lightened(0.08))
+				_px(img, hx + i, gtop - hgt, hi)
+			if hand:
+				_r(img, hx + HW + 1, gtop, 2, 3, cr)                                    # trailing down the back
+				_px(img, hx + HW + 2, gtop + 3, cr)
+		else:
+			for i2 in tall:                                                             # a narrow brush, flaring at its top
+				var y3 := gtop - 1 - i2
+				var w4 := 2 if i2 < tall - 2 else 3
+				_r(img, cx - 1 - (1 if w4 == 3 and back else 0), y3, w4, 1, cr)
+				_px(img, cx - 1, y3, hi)
+			_r(img, cx - 1, gtop, 2, 1, white)                                          # its white socket
+	return img
+
+
 ## 0.7.51.10: what makes the other suits their own – the work suit's chest box and reflective bands, the survey suit's
 ## sensor pod and its cyan seams, the civilian suit's soft folds and its chest light.
 static func _suit_detail(img: Image, suit: String, c1: Color, c2: Color, cx: int, tx: int, tw: int, sh: int, torso_top: int,
@@ -529,6 +714,9 @@ static func _helmet(img: Image, suit: String, c1: Color, c2: Color, plate: Color
 		head_bot: int, ey: int, side: bool, back: bool) -> void:
 	if suit == "suit_mil_pathfinder":
 		_pathfinder_helmet(img, plate, glow, hx, head_top, head_bot, ey, side, back)
+		return
+	if suit.begins_with("suit_mil_senate"):
+		_senate_helmet(img, plate, glow, hx, head_top, head_bot, ey, side, back)
 		return
 	if suit.begins_with("suit_mil"):
 		var heavy := suit == "suit_mil_heavy"
