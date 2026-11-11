@@ -61,8 +61,14 @@ func _draw() -> void:
 		var parts: Array = []
 		for h in GearData.HAZARDS:
 			if float(env.get(h, 0.0)) > 0.0:
-				var through := float(env[h]) * (1.0 - (float(t["env"][h]) if g.energy > 0.0 else 0.0))
-				parts.append("%s %d%%%s" % [GearData.HAZARD_NAMES[h], int(float(env[h]) * 100.0), (" – %d%% gets through" % int(through * 100.0)) if through > 0.01 else " – kept out"])
+				# 0.7.53.14: with energy everything is kept out – beyond the suit's protection at a cost in energy
+				var beyond := float(env[h]) * (1.0 - float(t["env"][h]))
+				var tail := " – kept out"
+				if g.energy <= 0.0:
+					tail = " – gets through"
+				elif beyond > 0.01:
+					tail = " – kept out, drains energy"
+				parts.append("%s %d%%%s" % [GearData.HAZARD_NAMES[h], int(float(env[h]) * 100.0), tail])
 		if bool(env.get("breathable", true)) and parts.is_empty():
 			parts.append("The air is good to breathe")
 		elif not bool(env.get("breathable", true)):

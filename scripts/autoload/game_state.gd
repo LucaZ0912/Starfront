@@ -19,6 +19,7 @@ signal news_added(item: Dictionary)                                     # packag
 signal codex_unlocked(id: String)     # package 18
 signal warning(text: String)          # important problem shown big in the HUD for a few seconds
 signal ship_lost(offer: Dictionary)   # package 31a: the active ship was destroyed – the buy-back window
+signal pilot_fell(offer: Dictionary)  # 0.7.53.14 (Luz): down on foot – the gear buy-back window
 signal pods_changed                   # package 31a: escape pods appeared, were picked up or faded
 
 const FactionData = preload("res://data/factions.gd")
@@ -68,6 +69,7 @@ var _crew_seq := 1
 var last_station := {}
 var pods: Array = []
 var loss_offer := {}
+var fall_offer := {}                    # 0.7.53.14: down on foot – buy the gear back?
 var rescued: Array = []
 var _pod_seq := 1
 var _pod_tick_t := 0.0
@@ -186,6 +188,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	_crew_seq = 1
 	pods.clear()
 	loss_offer = {}
+	fall_offer = {}
 	rescued.clear()
 	_pod_seq = 1
 	prosperity.clear()                      # package 42
@@ -525,7 +528,7 @@ func to_dict() -> Dictionary:
 		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
-		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true),
+		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 		"collection": collection.duplicate(true), "gear": gear.to_dict(),
 	}
@@ -564,6 +567,7 @@ func from_dict(d: Dictionary) -> void:
 	last_station = d.get("last_station", {}).duplicate()
 	pods = d.get("pods", []).duplicate(true)
 	loss_offer = d.get("loss_offer", {}).duplicate(true)
+	fall_offer = d.get("fall_offer", {}).duplicate(true)
 	rescued = d.get("rescued", []).duplicate(true)
 	_pod_seq = int(d.get("pod_seq", 1))
 	wingmen = d.get("wingmen", []).duplicate(true)
@@ -573,6 +577,8 @@ func from_dict(d: Dictionary) -> void:
 			collection[ck] = []
 	if not loss_offer.is_empty():
 		ship_lost.emit.call_deferred(loss_offer)        # saved before deciding: ask again
+	if not fall_offer.is_empty():
+		pilot_fell.emit.call_deferred(fall_offer)
 	Missions._counter = int(d.get("mission_counter", 1000))
 	rep.from_dict(d.get("reputation", {}))   # older saves: start standings
 	law.from_dict(d.get("wanted", {}))
@@ -961,6 +967,40 @@ func _beginner_ship() -> ShipFitting:
 	f.position = st["pos"]
 	add_ship(f)
 	return f
+
+
+## 0.7.53.14 (Luz): down on foot – like a lost ship: what you wore and carried (not the lockers) can be bought back
+## for 10 % of its price; until then you have the basic kit. where: the place you wake; wake: how you got there.
+func fall_open(where: String, wake: String) -> void:
+	var v: Dictionary = gear.carried_value()
+	var price := int(round(float(v["value"]) * 0.1))
+	var sc := int(round(float(v["suit"]) * 0.1))
+	fall_offer = {"foot": true, "gear": gear.to_dict(), "suit": gear.suit, "value": int(v["value"]), "price": price,
+		"suit_cost": sc, "rest_cost": price - sc, "items": v["items"], "where": where, "wake": wake}
+	gear.basic_kit()
+	pilot_fell.emit(fall_offer)
+
+
+## 0.7.53.14: decides the gear buy-back – accept: everything you wore and carried back (the lockers as they are now).
+func fall_decide(accept: bool) -> String:
+	if fall_offer.is_empty():
+		return "There is nothing to decide."
+	var o := fall_offer
+	if not accept:
+		fall_offer = {}
+		log_msg("You decline the offer and keep the basic kit.", COL_INFO)
+		return ""
+	if not spend(int(o["price"])):
+		return "Not enough credits to buy the gear back."
+	var keep_l: Dictionary = gear.lockers.duplicate(true)
+	var hp: float = gear.health
+	gear.from_dict(o["gear"])
+	gear.lockers = keep_l
+	gear.fall()
+	gear.health = hp
+	fall_offer = {}
+	log_msg("Aegis Mutual hands you your gear back for %s." % GameData.fmt_credits(int(o["price"])), COL_GOOD)
+	return ""
 
 
 ## Decides the buy-back offer: accept = rebuild the lost ship at the last station (instead of the beginner ship).

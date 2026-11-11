@@ -150,17 +150,17 @@ func env_step(delta: float, env: Dictionary, sprinting: bool) -> Dictionary:
 		var f := GearData.stats(String(fid))
 		if f.has("energy_rate") and (not f.has("sprint") or sprinting):
 			draw += float(f["energy_rate"])
-	var hz := 0.0
+	# 0.7.53.14 (Luz): while the suit has energy the life support keeps everything out – what its protection does not
+	# cover costs extra energy (LIFE_STRAIN); only with the energy gone does the world outside get through, whole
 	for h in GearData.HAZARDS:
-		hz += float(env.get(h, 0.0))
-	draw += hz * GearData.LIFE_SUPPORT
+		var sv := float(env.get(h, 0.0))
+		draw += sv * (GearData.LIFE_SUPPORT + (1.0 - float(t["env"].get(h, 0.0))) * GearData.LIFE_STRAIN)
 	energy = maxf(0.0, energy - draw * mins)
 	var powered := energy > 0.0
 	var exposure := 0.0
-	for h2 in GearData.HAZARDS:
-		var sev := float(env.get(h2, 0.0))
-		var prot := float(t["env"].get(h2, 0.0)) if powered else 0.0
-		exposure += sev * (1.0 - prot)
+	if not powered:
+		for h2 in GearData.HAZARDS:
+			exposure += float(env.get(h2, 0.0))
 	health -= exposure * GearData.EXPOSURE_HURT * delta
 	var no_air := false
 	if not bool(env.get("breathable", true)):
@@ -284,22 +284,54 @@ func charge() -> void:
 	ammo = maxi(ammo, int(t["ammo"]))
 
 
-## 0.7.51.4: fallen outside and found – what was in the pockets is gone; you come to weak, the suit recharged.
-## Returns the names of what was lost.
-func fall() -> Array:
-	var lost: Array = []
-	for i in inv.size():
-		var p: Dictionary = inv[i]
-		if not p.is_empty():
-			lost.append(GearData.display_name(String(p["id"])) + (" ×%d" % int(p["n"]) if int(p["n"]) > 1 else ""))
-			inv[i] = {}
+## 0.7.51.4: fallen outside and found – you come to weak, the suit recharged (0.7.53.14: what you carried is not
+## simply gone – the buy-back offer, GameState.fall_open, decides it).
+func fall() -> void:
 	charge()
 	health = 60.0
 	stim_t = 0.0
 	var t := totals()
 	shield = float(t["shield"])
 	armor = float(t["armor"])
-	return lost
+
+
+## 0.7.53.14 (Luz): what the pilot wore and carried, priced – the suit; weapons (not a built-in one), drones, features;
+## the belt's and the grenade places' stacks; the pockets. The lockers aboard do not count.
+## {suit, rest, value, items: [[name, price]]}
+func carried_value() -> Dictionary:
+	var sv := GearData.price(suit)
+	var items: Array = [[GearData.display_name(suit), sv]]
+	var ids: Array = []
+	for w in weapons + drones + features:
+		if String(w) != "" and not bool(GearData.base(String(w)).get("builtin", false)):
+			ids.append([String(w), 1])
+	for p in belt + grenades + inv:
+		if not (p as Dictionary).is_empty():
+			ids.append([String(p["id"]), int(p["n"])])
+	var rest := 0
+	for e in ids:
+		var pr := GearData.price(String(e[0])) * int(e[1])
+		rest += pr
+		items.append([GearData.display_name(String(e[0])) + (" ×%d" % int(e[1]) if int(e[1]) > 1 else ""), pr])
+	return {"suit": sv, "rest": rest, "value": sv + rest, "items": items}
+
+
+## 0.7.53.14: the basic kit after a fall not bought back – a new pilot's gear; the lockers, the team, the helmet stay.
+func basic_kit() -> void:
+	var keep_l := lockers.duplicate(true)
+	var keep_t := team.duplicate()
+	var keep_h := helmet
+	weapons = []
+	belt = []
+	grenades = []
+	drones = []
+	features = []
+	gr_sel = 0
+	start()
+	lockers = keep_l
+	team = keep_t
+	helmet = keep_h
+	fall()
 
 
 ## Back aboard the ship: charged, and the medbay sees to the body.

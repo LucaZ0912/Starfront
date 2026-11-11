@@ -1135,6 +1135,11 @@ func _c_debug_wing(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"fall_decide", "accept": bool} – 0.7.53.14: buy back the gear after going down on foot, or keep the basic kit
+func _c_fall_decide(c: Dictionary) -> String:
+	return GameState.fall_decide(bool(c.get("accept", false)))
+
+
 ## {"type":"loss_decide", "accept": bool} – package 31a: rebuild the lost ship or keep the beginner ship
 func _c_loss_decide(c: Dictionary) -> String:
 	return GameState.loss_decide(bool(c.get("accept", false)))

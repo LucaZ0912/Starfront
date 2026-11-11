@@ -8036,10 +8036,23 @@ func _test_clinic(view: SystemView, body: Dictionary, sites_all: Array) -> void:
 	main.land_at(body, site)
 	gear.add_item("cs_medkit", 2)
 	gear.add_item("wp_smg:C")
+	var suit0: String = gear.suit
+	var val0: int = int(gear.carried_value()["value"])
 	main._fallen()
 	var g = main.ground
 	var city_ok: bool = g != null and g.is_city() and g.level == "clinic" and f.docked_at.begins_with("land:") and bool(Commands.docked_station().get("city", false)) \
 		and g.pilot.pos.distance_to(g._clinic_spot()) < 2.0 and gear.free_places() == gear.inv.size() and gear.health < 100.0
+	# 0.7.53.14 (Luz): the buy-back window as for a lost ship – 10 % of what you wore and carried (not the locker); until
+	# then the basic kit; bought back, it is all there again
+	var fo: Dictionary = GameState.fall_offer
+	var offer_ok: bool = main.loss_window.visible and bool(fo.get("foot", false)) and int(fo["price"]) == int(round(val0 * 0.1)) \
+		and gear.suit == "suit_civil:F" and not g.input_enabled
+	GameState.credits += int(fo.get("price", 0))
+	main.loss_window._decide(true)
+	var back_ok: bool = not main.loss_window.visible and gear.suit == suit0 and gear.count("wp_smg:C") == 1 and GameState.fall_offer.is_empty()
+	city_ok = city_ok and offer_ok and back_ok
+	if not (offer_ok and back_ok):
+		print("[SMOKE] fall buy-back: ", offer_ok, " ", back_ok, " ", fo.get("price", -1), " ", val0, " ", gear.suit)
 	var treat: String = Commands.execute({"type": "clinic_heal"})
 	var healed: bool = treat == "" and is_equal_approx(gear.health, 100.0)
 	# after a lost ship: the station's clinic
@@ -8048,7 +8061,7 @@ func _test_clinic(view: SystemView, body: Dictionary, sites_all: Array) -> void:
 	var station_ok: bool = g2 != null and g2.level == "clinic" and g2.pilot.pos.distance_to(g2._clinic_spot()) < 2.0
 	main.close_deck(false)
 	check(room_ok and city_ok and healed and station_ok,
-		"0.7.51.4/0.7.51.11: the clinic – a level of its own by the lift (treatment, image studio, recovery room), the image studio in the shop row only without a clinic; fallen at %s you wake in %s's clinic (ship in its hangar, pockets emptied), treatment heals; after a lost ship you wake in the station's clinic" % [String(site["name"]), String(Commands.docked_station().get("name", "?"))])
+		"0.7.51.4/0.7.51.11: the clinic – a level of its own by the lift (treatment, image studio, recovery room), the image studio in the shop row only without a clinic; fallen at %s you wake in %s's clinic (ship in its hangar), the gear buy-back window (10 %%, basic kit until then, bought back all there), treatment heals; after a lost ship you wake in the station's clinic" % [String(site["name"]), String(Commands.docked_station().get("name", "?"))])
 
 
 ## 0.7.51.3: outside on an airless moon – the helmet on (the townsfolk in suits too), the tank empties, the life
@@ -8073,7 +8086,12 @@ func _test_env() -> void:
 	var h0: float = gear.health
 	for i in 60:
 		g._env_step(1.0)
-	var drain_ok: bool = gear.oxygen < o0 - 0.9 and gear.energy < e0 and gear.health < h0 and not g.indoors()
+	# 0.7.53.14 (Luz): with energy the cold is kept out (at a cost in energy); with the energy gone it gets through
+	var kept_ok: bool = is_equal_approx(gear.health, h0)
+	gear.energy = 0.0
+	for i2 in 10:
+		g._env_step(1.0)
+	var drain_ok: bool = gear.oxygen < o0 - 0.9 and gear.energy < e0 and kept_ok and gear.health < h0 and not g.indoors()
 	# a medkit off the belt
 	var hb: float = gear.health
 	var mk := -1
@@ -8108,7 +8126,7 @@ func _test_env() -> void:
 	var safe_ok: bool = GD.env_of("terran")["breathable"] and not GD.needs_helmet(GD.env_of("terran")) and GD.needs_helmet(GD.env_of("lava"))
 	gear.aboard()
 	check(helmet_ok and folk >= 1 and drain_ok and heal_ok and charge_ok and choke_ok and collapse_ok and safe_ok,
-		"0.7.51.3: on an airless moon – helmet on (%d townsfolk in suits), oxygen and energy drain, the cold gets through, a medkit heals, a charging point fills up, no air suffocates, the body gives out; good air on a terran world" % folk)
+		"0.7.51.3: on an airless moon – helmet on (%d townsfolk in suits), oxygen and energy drain, the cold kept out on energy and getting through without, a medkit heals, a charging point fills up, no air suffocates, the body gives out; good air on a terran world" % folk)
 
 
 ## 0.7.50.10: a settlement – its four pads (drones coming and going on the free ones), its street, walk-in shops, the

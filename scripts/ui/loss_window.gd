@@ -3,6 +3,8 @@ extends CanvasLayer
 ##   left, four tiles: the lost ship (rebuild price) · the respawn station · the crew (in the pod / lost) · losses
 ##   right: the costs (hull, modules, Insurance Agent), total, remaining balance, REBUILD and the starter ship
 ## Taking the starter ship asks once more. The pilot is already back at the last station docked at.
+## 0.7.53.14 (Luz): the same window when you go down on foot (offer["foot"]) – the gear you wore and carried bought
+## back for 10 % of its price (the lockers aboard do not count), or the basic kit.
 
 signal closed
 
@@ -37,8 +39,12 @@ func _ready() -> void:
 func open(p_offer: Dictionary) -> void:
 	offer = p_offer
 	visible = true
-	Audio.play("ui_error", "ship lost")
+	Audio.play("ui_error", "pilot down" if bool(offer.get("foot", false)) else "ship lost")
 	_build()
+
+
+func _foot() -> bool:
+	return bool(offer.get("foot", false))
 
 
 func _build() -> void:
@@ -50,8 +56,12 @@ func _build() -> void:
 	root.add_child(head)
 	var tv := UI.vbox(0)
 	head.add_child(tv)
-	tv.add_child(UI.label("SHIP LOST  –  REBUILD SUMMARY", 28, COL))
-	tv.add_child(UI.label("Flight time %s  •  %s destroyed at %s" % [SaveGame.fmt_time(GameState.play_time), offer["name"], offer["where"]], 13, ACC))
+	if _foot():
+		tv.add_child(UI.label("YOU WENT DOWN  –  GEAR BUY-BACK", 28, COL))
+		tv.add_child(UI.label("Flight time %s  •  you came to in %s" % [SaveGame.fmt_time(GameState.play_time), offer["where"]], 13, ACC))
+	else:
+		tv.add_child(UI.label("SHIP LOST  –  REBUILD SUMMARY", 28, COL))
+		tv.add_child(UI.label("Flight time %s  •  %s destroyed at %s" % [SaveGame.fmt_time(GameState.play_time), offer["name"], offer["where"]], 13, ACC))
 	head.add_child(UI.spacer())
 	var cv := UI.vbox(0)
 	head.add_child(cv)
@@ -79,10 +89,16 @@ func _build() -> void:
 	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	grid.size_flags_stretch_ratio = 2.0
 	body.add_child(grid)
-	_ship_tile(grid)
-	_place_tile(grid)
-	_crew_tile(grid)
-	_loss_tile(grid)
+	if _foot():
+		_gear_tile(grid)
+		_wake_tile(grid)
+		_locker_tile(grid)
+		_carried_tile(grid)
+	else:
+		_ship_tile(grid)
+		_place_tile(grid)
+		_crew_tile(grid)
+		_loss_tile(grid)
 	_costs(body)
 	_confirm = null
 
@@ -192,18 +208,71 @@ func _loss_tile(grid: Control) -> void:
 	v.add_child(UI.wrap_label("If you take the starter ship instead, ship, modules, drones and cargo are gone.", 12, UI.TEXT_DIM, 380))
 
 
+# ---------------------------------------------------------------- 0.7.53.14: down on foot
+
+func _gear_tile(grid: Control) -> void:
+	var v := _tile(grid, ACC, "BUY BACK YOUR GEAR", GameData.fmt_credits(int(offer["price"])), true)
+	var sid := String(offer.get("suit", "suit_civil:F"))
+	v.add_child(UI.label(ChibiArt.GearData.display_name(sid), 15, Color(1, 0.95, 0.85)))
+	var look: Dictionary = (GameState.pilot.get("look", PilotArt.default_look()) as Dictionary).duplicate()
+	look["suit"] = ChibiArt.GearData.family(sid)
+	look["helmet"] = true
+	_big_pic(v, ChibiArt.frame(look, 0, 0))
+	v.add_child(UI.label("WORTH %s   •   %d PIECES" % [GameData.fmt_credits(int(offer.get("value", 0))), (offer.get("items", []) as Array).size()], 13, Color(1, 0.9, 0.75)))
+
+
+func _wake_tile(grid: Control) -> void:
+	var v := _tile(grid, Color(0.45, 0.75, 1.0), "WAKE-UP LOCATION", String(offer.get("where", "?")), false)
+	v.add_child(UI.label(String(Universe.systems[GameState.current_system]["name"]).to_upper() if GameState.current_system >= 0 and GameState.current_system < Universe.systems.size() else "", 15, Color(0.85, 0.9, 1.0)))
+	v.add_child(UI.label(String(offer.get("where", "")), 13, UI.TEXT_DIM))
+	v.add_child(UI.wrap_label(String(offer.get("wake", "")), 12, UI.TEXT_DIM, 380))
+	v.add_child(UI.wrap_label("Until you decide you wear the basic kit: a Civilian Spacesuit · F, a Laser Pistol · F, two medkits and an energy cell.", 12, UI.TEXT_DIM, 380))
+
+
+func _locker_tile(grid: Control) -> void:
+	var n := 0
+	for k in GameState.gear.lockers:
+		for p in GameState.gear.lockers[k]:
+			if not (p as Dictionary).is_empty():
+				n += 1
+	var v := _tile(grid, Color(0.55, 1.0, 0.6), "LOCKER", "%d places in use – safe aboard" % n if n > 0 else "empty", false)
+	v.add_child(UI.wrap_label("What lies in your ship's locker was never with you – it stays yours and is not part of the price.", 13, UI.GOOD, 380))
+
+
+func _carried_tile(grid: Control) -> void:
+	var items: Array = offer.get("items", [])
+	var v := _tile(grid, Color(1.0, 0.85, 0.35), "WORN & CARRIED", "%d pieces" % items.size(), false)
+	var n := 0
+	for it in items:
+		if n >= 8:
+			v.add_child(UI.label("… and %d more" % (items.size() - n), 12, UI.TEXT_DIM))
+			break
+		var r := UI.hbox(8)
+		v.add_child(r)
+		r.add_child(UI.label(String(it[0]), 13, Color(1.0, 0.75, 0.6)))
+		r.add_child(UI.spacer())
+		r.add_child(UI.label(GameData.fmt_credits(int(it[1])), 13, UI.TEXT_DIM))
+		n += 1
+	v.add_child(UI.wrap_label("If you take the basic kit instead, all of this is gone.", 12, UI.TEXT_DIM, 380))
+
+
 func _costs(body: Control) -> void:
 	var v := UI.vbox(10)
 	v.custom_minimum_size = Vector2(400, 0)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(v)
-	v.add_child(UI.label("REBUILD COSTS", 22, Color(0.95, 0.95, 1.0)))
+	v.add_child(UI.label("BUY-BACK COSTS" if _foot() else "REBUILD COSTS", 22, Color(0.95, 0.95, 1.0)))
 	_rule(v)
-	_cost_row(v, "HULL (10 %)", int(offer.get("hull_cost", 0)), UI.TEXT_DIM, ACC)
-	_cost_row(v, "MODULES AND DRONES (10 %)", int(offer.get("modules_cost", 0)), UI.TEXT_DIM, ACC)
-	if bool(offer.get("agent", false)):
-		v.add_child(UI.label("★ Insurance Agent aboard – 5 % off, already counted", 12, UI.GOLD))
-	v.add_child(UI.wrap_label("Crew is not part of the price – they come back from the pod.", 12, UI.TEXT_DIM, 380))
+	if _foot():
+		_cost_row(v, "SUIT (10 %)", int(offer.get("suit_cost", 0)), UI.TEXT_DIM, ACC)
+		_cost_row(v, "WEAPONS, BELT, FEATURES, POCKETS (10 %)", int(offer.get("rest_cost", 0)), UI.TEXT_DIM, ACC)
+		v.add_child(UI.wrap_label("The locker aboard your ship is not counted.", 12, UI.TEXT_DIM, 380))
+	else:
+		_cost_row(v, "HULL (10 %)", int(offer.get("hull_cost", 0)), UI.TEXT_DIM, ACC)
+		_cost_row(v, "MODULES AND DRONES (10 %)", int(offer.get("modules_cost", 0)), UI.TEXT_DIM, ACC)
+		if bool(offer.get("agent", false)):
+			v.add_child(UI.label("★ Insurance Agent aboard – 5 % off, already counted", 12, UI.GOLD))
+		v.add_child(UI.wrap_label("Crew is not part of the price – they come back from the pod.", 12, UI.TEXT_DIM, 380))
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sp)
@@ -214,13 +283,13 @@ func _costs(body: Control) -> void:
 	var rest := GameState.credits - price
 	_cost_row(v, "REMAINING BALANCE", rest, Color(0.95, 0.95, 1.0), ACC if rest >= 0 else UI.BAD, 15)
 	_rule(v)
-	var b1 := _big_button("REBUILD", ACC, func(): _decide(true))
+	var b1 := _big_button("BUY BACK" if _foot() else "REBUILD", ACC, func(): _decide(true))
 	b1.disabled = rest < 0
 	if rest < 0:
 		b1.tooltip_text = "Not enough credits."
-		v.add_child(UI.label("Not enough credits to rebuild.", 13, UI.BAD))
+		v.add_child(UI.label("Not enough credits to buy it back." if _foot() else "Not enough credits to rebuild.", 13, UI.BAD))
 	v.add_child(b1)
-	v.add_child(_big_button("TAKE THE STARTER SHIP", Color(0.6, 0.62, 0.7), _ask_starter))
+	v.add_child(_big_button("TAKE THE BASIC KIT" if _foot() else "TAKE THE STARTER SHIP", Color(0.6, 0.62, 0.7), _ask_starter))
 
 
 func _rule(v: Control) -> void:
@@ -275,17 +344,20 @@ func _ask_starter() -> void:
 	var v := UI.vbox(12)
 	p.add_child(v)
 	v.add_child(UI.label("ARE YOU SURE?", 22, COL))
-	v.add_child(UI.wrap_label("You keep the Dragonfly »Second Chance«. The %s with all its modules, drones and cargo is gone for good – Aegis Mutual will not ask again." % offer["name"], 14, Color(0.95, 0.9, 0.9), 520))
+	if _foot():
+		v.add_child(UI.wrap_label("You keep the basic kit. Your %s, your weapons and everything you carried are gone for good – Aegis Mutual will not ask again." % ChibiArt.GearData.display_name(String(offer.get("suit", ""))), 14, Color(0.95, 0.9, 0.9), 520))
+	else:
+		v.add_child(UI.wrap_label("You keep the Dragonfly »Second Chance«. The %s with all its modules, drones and cargo is gone for good – Aegis Mutual will not ask again." % offer["name"], 14, Color(0.95, 0.9, 0.9), 520))
 	var r := UI.hbox(12)
 	v.add_child(r)
-	r.add_child(_big_button("YES, TAKE THE STARTER SHIP", COL, func(): _decide(false)))
+	r.add_child(_big_button("YES, TAKE THE BASIC KIT" if _foot() else "YES, TAKE THE STARTER SHIP", COL, func(): _decide(false)))
 	r.add_child(_big_button("BACK", Color(0.8, 0.85, 0.95), func():
 		shade.queue_free()
 		_confirm = null))
 
 
 func _decide(accept: bool) -> void:
-	var e := Commands.execute({"type": "loss_decide", "accept": accept})
+	var e := Commands.execute({"type": "fall_decide" if _foot() else "loss_decide", "accept": accept})
 	if e != "":
 		_build()
 		return

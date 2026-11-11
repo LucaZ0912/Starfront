@@ -47,7 +47,16 @@ func _ready() -> void:
 		pilot_window.close()
 		loss_window.open(o)
 		_update_input())
+	GameState.pilot_fell.connect(func(o):                  # 0.7.53.14 (Luz): down on foot – the same window, for the gear
+		galaxy.close()
+		ship_menu.close()
+		pilot_window.close()
+		loss_window.open(o)
+		_update_input())
 	loss_window.closed.connect(_update_input)
+	loss_window.closed.connect(func():                       # 0.7.53.14: the gear bought back – the pilot wears it again
+		if ground != null and is_instance_valid(ground) and ground.pilot != null:
+			ground.pilot.look = ground.pilot_look())
 	loss_window.closed.connect(func(): _wake_after_loss.call_deferred())     # 0.7.51.4: then you wake in the clinic
 	transit_fx = TransitOverlay.new()
 	add_child(transit_fx)
@@ -409,7 +418,7 @@ func _wake_after_loss() -> void:
 ## gone.
 func _fallen(reason: String = "") -> void:
 	var f := GameState.active()
-	var lost: Array = GameState.gear.fall()
+	GameState.gear.fall()
 	var sys := GameState.current_system
 	var here := f.docked_at.substr(5).split("|")[0] if f != null and f.docked_at.begins_with("land:") else ""
 	close_deck(false)
@@ -418,11 +427,11 @@ func _fallen(reason: String = "") -> void:
 		return
 	var city := nearest_clinic_city(sys, here)
 	var how := "You went down in the fight." if reason == "fight" else "You collapsed outside."      # package 52
-	var what := ("Lost from your pockets: " + ", ".join(PackedStringArray(lost)) + ".") if not lost.is_empty() else "Your pockets were empty."
 	if not city.is_empty():
 		f.docked_at = String(city["id"])
 		Economy.prepare_station(city, sys)
-		GameState.log_msg(how + " They found you and brought you to %s – your ship waits in its hangar. %s" % [String(city.get("name", "the city")), what], GameState.COL_BAD)
+		GameState.log_msg(how + " They found you and brought you to %s – your ship waits in its hangar." % String(city.get("name", "the city")), GameState.COL_BAD)
+		GameState.fall_open(String(city.get("name", "the city")), "Found and brought to its clinic – your ship waits in its hangar.")     # 0.7.53.14
 		_wake_at(city)
 		return
 	var st := GameState._respawn_station()
@@ -432,7 +441,8 @@ func _fallen(reason: String = "") -> void:
 	if view != null and is_instance_valid(view) and view.player != null and is_instance_valid(view.player):
 		view.player.queue_free()
 		view.player = null
-	GameState.log_msg(how + " There is no clinic in this system – they flew you and your ship to %s. %s" % [String(st.get("name", "the station")), what], GameState.COL_BAD)
+	GameState.log_msg(how + " There is no clinic in this system – they flew you and your ship to %s." % String(st.get("name", "the station")), GameState.COL_BAD)
+	GameState.fall_open(String(st.get("name", "the station")), "No clinic in that system – they flew you and your ship here.")     # 0.7.53.14
 	GameState.wake_pending = true
 	GameState.active_changed.emit()
 	_wake_after_loss.call_deferred()

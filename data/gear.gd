@@ -46,22 +46,22 @@ const SHOT_SPEED := 720.0              # slugs and shells, art px a second (lase
 ## ammo: base values at quality C; env: protection 0..1 against each hazard; speed: walking speed ×.
 const SUITS := {
 	"suit_civil": {"name": "Civilian Spacesuit", "maker": "Earthworks", "weapons": 1, "belt": 3, "grenades": 1, "features": 1,
-		"shield": 20.0, "armor": 20.0, "energy": 140.0, "oxygen": 30.0, "ammo": 100,
+		"shield": 20.0, "armor": 20.0, "energy": 180.0, "oxygen": 30.0, "ammo": 100,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 1200,
 		"col": Color(0.92, 0.9, 0.85), "trim": Color(1.0, 0.55, 0.15),
 		"desc": "The suit everyone who flies owns: sealed against vacuum and bad air, a little shield, one holster."},
 	"suit_survey": {"name": "Survey Suit", "maker": "Axiom Astronautics", "weapons": 1, "belt": 3, "grenades": 1, "features": 2,
-		"shield": 28.0, "armor": 18.0, "energy": 200.0, "oxygen": 55.0, "ammo": 100,
+		"shield": 28.0, "armor": 18.0, "energy": 260.0, "oxygen": 55.0, "ammo": 100,
 		"env": {"heat": 0.9, "cold": 0.9, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.02, "price": 4200,
 		"col": Color(0.85, 0.9, 0.95), "trim": Color(0.35, 0.85, 1.0),
 		"desc": "For long walks on hostile worlds: the best life support, room for scanner and tools."},
 	"suit_work": {"name": "Work Suit", "maker": "Kanayama Heavy Industries", "weapons": 1, "belt": 4, "grenades": 1, "features": 1,
-		"shield": 18.0, "armor": 45.0, "energy": 160.0, "oxygen": 40.0, "ammo": 130,
+		"shield": 18.0, "armor": 45.0, "energy": 210.0, "oxygen": 40.0, "ammo": 130,
 		"env": {"heat": 0.8, "cold": 0.8, "toxic": 1.0, "vacuum": 1.0}, "speed": 0.95, "price": 3100,
 		"col": Color(0.95, 0.75, 0.2), "trim": Color(0.2, 0.2, 0.22),
 		"desc": "Mines, docks, wrecks: plated, heavy, four places on its belt for the tools of the trade."},
 	"suit_mil_light": {"name": "Light Combat Suit", "maker": "Hadrian Dynamics", "weapons": 2, "belt": 4, "grenades": 2, "drones": 1, "features": 2,
-		"shield": 50.0, "armor": 45.0, "energy": 170.0, "oxygen": 25.0, "ammo": 240,
+		"shield": 50.0, "armor": 45.0, "energy": 220.0, "oxygen": 25.0, "ammo": 240,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 9500,
 		"col": Color(0.86, 0.88, 0.9), "trim": Color(0.35, 0.75, 1.0),
 		"desc": "Marine issue: quick on its feet, a strong shield, two weapons at hand."},
@@ -70,7 +70,7 @@ const SUITS := {
 	# sold only in the Covenant's lands, and only to pilots it calls Friendly
 	"suit_mil_pathfinder": {"name": "Pathfinder Armour", "maker": "Forge of Return", "faction": "covenant", "builtin": "wp_arm_laser",
 		"weapons": 3, "belt": 3, "grenades": 2, "features": 2,
-		"shield": 45.0, "armor": 130.0, "energy": 200.0, "oxygen": 25.0, "ammo": 260,
+		"shield": 45.0, "armor": 130.0, "energy": 260.0, "oxygen": 25.0, "ammo": 260,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 31000,
 		"col": Color(0.66, 0.08, 0.1), "trim": Color(0.95, 0.75, 0.3),
 		"desc": "The Covenant's pathfinders: red plate edged in gold, close-fitting and quick – and the Red Arm Laser on the left forearm."},
@@ -79,18 +79,18 @@ const SUITS := {
 	# in the Assembly's lands, only to pilots it calls Friendly
 	"suit_mil_senate_eyes": {"name": "Eyes of the Senate", "maker": "Concord Fleetworks", "faction": "assembly", "shoulder_drones": true,
 		"weapons": 2, "belt": 4, "grenades": 2, "drones": 2, "features": 2,
-		"shield": 80.0, "armor": 50.0, "energy": 190.0, "oxygen": 25.0, "ammo": 240,
+		"shield": 80.0, "armor": 50.0, "energy": 250.0, "oxygen": 25.0, "ammo": 240,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 27000,
 		"col": Color(0.42, 0.53, 0.93), "trim": Color(0.93, 0.95, 1.0),
 		"desc": "The Senate's scouts: light blue-and-white plate, a short crest, a strong shield – and two drones riding on the shoulders."},
 	"suit_mil_senate_hand": {"name": "Hand of the Senate", "maker": "Concord Fleetworks", "faction": "assembly", "shoulder_drones": true,
 		"weapons": 3, "belt": 4, "grenades": 3, "drones": 2, "features": 3,
-		"shield": 110.0, "armor": 115.0, "energy": 240.0, "oxygen": 20.0, "ammo": 360,
+		"shield": 110.0, "armor": 115.0, "energy": 310.0, "oxygen": 20.0, "ammo": 360,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.85, "price": 36000,
 		"col": Color(0.3, 0.38, 0.75), "trim": Color(0.93, 0.95, 1.0),
 		"desc": "The Senate's guard: heavy deep-blue plate, a cloak down one side, a tall crest, the strongest shield – and two drones on the shoulders."},
 	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 4, "grenades": 3, "drones": 1, "features": 3,
-		"shield": 70.0, "armor": 110.0, "energy": 230.0, "oxygen": 20.0, "ammo": 380,
+		"shield": 70.0, "armor": 110.0, "energy": 300.0, "oxygen": 20.0, "ammo": 380,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
 		"col": Color(0.3, 0.32, 0.36), "trim": Color(1.0, 0.25, 0.2),
 		"desc": "A walking bunker: three weapons, heavy plate, a deep magazine – and slow, and short of air."},
@@ -206,7 +206,8 @@ const ENV := {
 	"moon_volcanic": {"breathable": false, "vacuum": 0.8, "heat": 0.6, "toxic": 0.6},
 }
 const LIFE_SUPPORT := 6.0             # energy a minute the life support needs per full hazard it keeps out
-const EXPOSURE_HURT := 1.2            # health a second per full hazard that gets through
+const LIFE_STRAIN := 24.0             # 0.7.53.14: energy a minute more per full hazard beyond the suit's protection
+const EXPOSURE_HURT := 1.2            # health a second per full hazard that gets through (only without energy)
 const SUFFOCATE := 3.0                # health a second without air
 
 

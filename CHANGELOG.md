@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.14 – 2026-11-11
+
+**Balancing on foot and a buy-back screen when you go down (Luz).**
+- **Heat, cold, poison and vacuum draw on the suit's energy first.** While the suit has energy the life support
+  keeps everything out; what its protection does not cover costs extra energy (a suit made for the cold lasts longer
+  on an ice moon). Only when the energy is gone does the life support fail and the world outside hurt – all of it.
+  The HUD reads "kept out", "kept out, drains energy" or "gets through".
+- **All suits carry about 30 % more energy** (Civilian 180, Survey 260, Work 210, Light Combat 220, Pathfinder 260,
+  Eyes of the Senate 250, Hand of the Senate 310, Heavy Combat 300 at quality C).
+- **Going down on foot has its own screen**, laid out like the one for a lost ship: buy back what you wore and
+  carried (suit, weapons, drones, features, belt, grenades, pockets) for **10 % of its price** – the locker aboard your
+  ship is not counted, it stays yours. Or take the basic kit (Civilian Spacesuit F, Laser Pistol F, two medkits, an
+  energy cell), asked once more. Until you decide you wear the basic kit; the offer is saved with the game.
+
 ## alpha 0.7.53.13 – 2026-11-11
 
 **Package 53c – rescue (Luz).** A new job on foot on the board: **Rescue** – the Red Talons hold someone (a freighter
