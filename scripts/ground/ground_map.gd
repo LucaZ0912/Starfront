@@ -904,6 +904,45 @@ func _decal(d: Dictionary) -> void:
 					_px(px + xx, py + yy, base.lerp(base.darkened(0.2), hash2((px + xx) / 3, (py + yy) / 3, 115)))
 			_rect(px, py, pw, 2, Color(pal.get("terrain_c", Color(0.6, 0.55, 0.42))).lightened(0.1))
 			_rect(px, py + ph - 2, pw, 2, Color(pal.get("terrain_c", Color(0.6, 0.55, 0.42))).lightened(0.1))
+		"trench":
+			# 0.7.53.6 (Luz): the trench a ship ploughed coming down – dark torn earth, gouges running along it, walls
+			# of earth thrown up on both sides with clods scattered beyond
+			var a: Vector2 = d["a"]
+			var b: Vector2 = d["b"]
+			var wid := float(d["wid"])
+			var ax := (b - a).normalized()
+			var nx := ax.orthogonal()
+			var tb: Color = Color(pal.get("terrain_b", Color(0.5, 0.45, 0.35)))
+			var tcc: Color = Color(pal.get("terrain_c", Color(0.6, 0.55, 0.42)))
+			var x0 := int(maxf(0.0, minf(a.x, b.x) - wid))
+			var x1 := int(minf(float(w * TILE), maxf(a.x, b.x) + wid))
+			var y0 := int(maxf(0.0, minf(a.y, b.y) - wid))
+			var y1 := int(minf(float(h * TILE), maxf(a.y, b.y) + wid))
+			var ln := a.distance_to(b)
+			for yy in range(y0, y1):
+				for xx in range(x0, x1):
+					var q := Vector2(xx, yy) - a
+					var along := q.dot(ax)
+					if along < -20.0 or along > ln + 10.0:
+						continue
+					var across := q.dot(nx)
+					var half := wid * 0.5 * (0.75 + 0.25 * clampf(along / maxf(1.0, ln), 0.0, 1.0))      # wider where it hit hardest
+					var e := absf(across) / half
+					if e < 1.0:
+						var dark := 0.5 - 0.15 * e * e
+						var col := tb.lerp(Color(0.36, 0.27, 0.19), 0.55).darkened(dark)          # torn-up soil, not grass
+						var gv := hash2(int(across / 3.0), int(along / 40.0), 117)
+						if gv < 0.3:
+							col = col.darkened(0.12)                                              # a gouge
+						if hash2(xx / 3, yy / 3, 118) < 0.06:
+							col = col.lightened(0.1)
+						_px(xx, yy, col)
+					elif e < 1.35:
+						var lip := 1.0 - (e - 1.0) / 0.35
+						var wall := tb.lerp(Color(0.5, 0.39, 0.27), 0.6)
+						_px(xx, yy, wall.lightened(0.15 * lip).darkened(0.12 * hash2(xx / 2, yy / 2, 119)))   # the wall of thrown-up earth
+					elif e < 2.2 and hash2(xx / 3, yy / 3, 120) < 0.16 * (2.2 - e):
+						_rect(xx, yy, 2, 2, Color(0.4, 0.3, 0.21).darkened(0.2 * hash2(xx, yy, 121)))   # clods thrown out
 		"crater":
 			var cc := Vector2(px + pw * 0.5, py + ph * 0.5)
 			var rr := float(pw) * 0.5

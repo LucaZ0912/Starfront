@@ -997,7 +997,7 @@ static func build_wreck_outside(body: Dictionary, site: Dictionary, ship_len: fl
 	m.pal = DeckGen.palette_for_body(body).duplicate()
 	m.title = String(site.get("name", "Crash site"))
 	m.hull_top = -60
-	var W := int(L / TILE) + 34
+	var W := int(L / TILE) + 70                      # room in the west for the trench it ploughed
 	var H := int(B / TILE) + 36
 	m.setup(W, H)
 	m.fill(0, 0, W, H, T.FLOOR, 13)
@@ -1006,7 +1006,7 @@ static func build_wreck_outside(body: Dictionary, site: Dictionary, ship_len: fl
 	m.fill(W - 1, 0, 1, H, T.BLOCK, 13)
 	m.fill(0, 0, W, 1, T.BLOCK, 13)
 	var ang := rng.randf_range(-0.07, 0.07)
-	var c := Vector2(W * TILE * 0.56, 2.0 * TILE + B * 0.5 + 10.0)
+	var c := Vector2(W * TILE - L * 0.5 - 10.0 * TILE, 2.0 * TILE + B * 0.5 + 10.0)
 	var cut_f := rng.randf_range(0.1, 0.17)
 	var stern_ang := ang - rng.randf_range(0.25, 0.45)
 	# where it broke: the stern piece lies a little back from the break, turned away
@@ -1022,9 +1022,12 @@ static func build_wreck_outside(body: Dictionary, site: Dictionary, ship_len: fl
 	m.set_meta("wreck", {"hull": hull, "c": c, "sc": sc, "ang": ang, "cut": Vector2(0.0, cut_f), "stern_c": stern_c, "stern_ang": stern_ang,
 		"stern_cut": Vector2(cut_f, 1.01), "burnt": rng.randf_range(0.35, 0.55)})
 	# the furrow it ploughed, from the west to its stern; craters; debris; scorch
-	var fy := int(stern_c.y / TILE)
-	fy = int(piece_mid.y / TILE)
-	m.decals.append({"kind": "furrow", "x": 0, "y": fy - 2, "w": maxi(4, int(piece_mid.x / TILE) - 2), "h": 5})
+	# 0.7.53.6 (Luz): the impact trench – as wide as much of its hull, ploughed along its course from the west edge to
+	# where it lies, earth thrown up in walls along both sides, gouges along it; the stern lies in it
+	var dirv := Vector2.RIGHT.rotated(ang)
+	var t_end := c - dirv * (L * 0.5 - 30.0)
+	var t_start := t_end - dirv * (t_end.x + 40.0) / maxf(0.2, dirv.x)
+	m.decals.append({"kind": "trench", "x": 0, "y": 0, "a": t_start, "b": t_end, "wid": B * 0.62, "seed": rng.randi()})
 	for cr in 6:
 		m.decals.append({"kind": "crater", "x": rng.randi_range(4, W - 6), "y": rng.randi_range(int((c.y + B * 0.5) / TILE) + 3, H - 4), "w": rng.randi_range(2, 4), "h": 2})
 	for db in 120:

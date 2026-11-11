@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.8 – 2026-11-11
+
+**The crash site's impact trench (Luz).** Behind the wreck lies the trench it ploughed coming down: as wide as much of
+its hull, along its course from the west edge of the field to where it lies – torn-up soil, gouges running along it,
+walls of thrown-up earth on both sides, clods scattered beyond; the torn-off stern lies in it. The field has more room
+in the west for it.
+
 ## alpha 0.7.53.7 – 2026-11-11
 
 **Package 53b – the old mine, a settlement's way down (Luz).** Theme sheet in Roadmap.md (Paket 53: Minenstollen).
