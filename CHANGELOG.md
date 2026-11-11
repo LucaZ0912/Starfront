@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.24 – 2026-11-11
+
+**E-Breach, more belt places, new blast doors (Luz).**
+- **E-Breach** – a new consumable (stacks of 5, 350 cr, in the gear shops' consumables): hacking a terminal takes one
+  from your belt, used up with the try. Without one you cannot jack in. (The **cutting torch** on your belt was already
+  what starts the cutting – the box asks for it.)
+- **Belt places:** every suit has at least **3**, the light and heavy combat suits (also the Senate armours) **4**.
+- **Blast doors redesigned** after Luz's pictures: an **octagonal plate** set in a recessed frame, two parallel
+  diagonal seams cutting it in three, mottled grey steel, jamb slots, a service hatch on the wide one, lamp strips of
+  red, amber and white beside the frame. Opening, the outer parts slide into the walls and the middle one rises. Two
+  sizes: **small** (narrow and tall) and **wide**.
+- **The debug vault** now has the **wide** door in front and a **small** one in the vault's back wall – the terminal
+  opens it ("Open the door"), behind it a niche with a carved tablet.
+
 ## alpha 0.7.52.23 – 2026-11-11
 
 **The debug vault (Luz).** Debug → ground combat → *Explore: The vault (station room)* takes you into a closed room

@@ -2670,7 +2670,7 @@ func _c_debug_explore(_c: Dictionary) -> String:
 		g.add_explore("relic", put.call(Vector2(80, 30)))
 	var gear = GameState.gear
 	var used: Array = []
-	for tool in ["tl_cutter:C", "tl_scanner:C"]:
+	for tool in ["tl_cutter:C", "tl_scanner:C", "cs_breach"]:
 		if g.belt_tool(tool.get_slice(":", 0)) != "":
 			continue
 		var at := -1
@@ -2681,7 +2681,7 @@ func _c_debug_explore(_c: Dictionary) -> String:
 			if at < 0 and not used.has(j):
 				at = j
 		if at >= 0:
-			gear.belt[at] = {"id": tool, "n": 1}
+			gear.belt[at] = {"id": tool, "n": 5 if tool == "cs_breach" else 1}
 			used.append(at)
 	return ""
 

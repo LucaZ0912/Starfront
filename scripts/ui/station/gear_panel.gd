@@ -28,7 +28,7 @@ const CATS := {
 	"belt": ["Belt", "Tools, grenades, consumables", [
 		["bt_tool", "Tools", "Scanner, torch, mining laser", ["tl_scanner", "tl_cutter", "tl_mining"]],
 		["bt_grenade", "Grenades", "Frag, EMP, smoke, shield", ["gr_frag", "gr_emp", "gr_smoke", "gr_shield"]],
-		["bt_use", "Consumables", "Medkits, cells, air, ammunition", ["cs_medkit", "cs_stim", "cs_cell", "cs_o2", "cs_ammo"]]]],
+		["bt_use", "Consumables", "Medkits, cells, air, ammunition, E-Breach", ["cs_medkit", "cs_stim", "cs_cell", "cs_o2", "cs_ammo", "cs_breach"]]]],
 }
 const ORDER := ["suit", "weapon", "feature", "belt"]
 

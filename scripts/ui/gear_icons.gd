@@ -121,6 +121,13 @@ static func _paint(img: Image, fam: String) -> void:
 			for k4 in 6:
 				_r(img, 8 + k4, 13 - k4, 2, 2, Color(0.4, 1.0, 0.5))
 			_r(img, 3, 18, 3, 3, DARK)
+		"cs_breach":                                       # 0.7.52.24: a spike with its glowing tip
+			_r(img, 10, 3, 4, 12, STEEL)
+			_r(img, 10, 3, 1, 12, Color(0.8, 0.82, 0.86))
+			_r(img, 8, 14, 8, 6, DARK)
+			_r(img, 9, 15, 6, 1, Color(0.3, 1.0, 0.7))
+			_r(img, 11, 20, 2, 3, Color(0.3, 1.0, 0.7))
+			_r(img, 11, 1, 2, 2, Color(0.3, 1.0, 0.7))
 		"cs_cell", "ft_battery":
 			_r(img, 7, 5, 10, 16, DARK)
 			_r(img, 10, 3, 4, 2, STEEL)

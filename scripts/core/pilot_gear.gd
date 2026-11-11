@@ -271,6 +271,8 @@ func use_belt(i: int) -> String:
 			return "%s – hold its key to aim, let go to throw (only where you may fight)." % String(s["name"])
 		"tool":
 			return "%s – its work comes with the places to explore." % String(s["name"])
+		"breach":
+			return "%s – use a terminal (E) to jack it in and hack." % String(s["name"])
 	return ""
 
 

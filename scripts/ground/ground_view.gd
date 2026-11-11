@@ -1316,6 +1316,19 @@ func _open_hack(d: Dictionary) -> void:
 	if float(d.get("locked_t", 0.0)) > Time.get_ticks_msec() * 0.001:
 		_say_toast("Locked out – it will not let you in for a while.", 2.5)
 		return
+	# 0.7.52.24 (Luz): it takes an E-Breach from your belt – used up with the try
+	var bi := -1
+	for i in GameState.gear.belt.size():
+		var b = GameState.gear.belt[i]
+		if b is Dictionary and not (b as Dictionary).is_empty() and String(b["id"]) == "cs_breach" and bi < 0:
+			bi = i
+	if bi < 0:
+		_say_toast("You need an E-Breach on your belt to jack in.", 3.0)
+		return
+	var bp: Dictionary = GameState.gear.belt[bi]
+	bp["n"] = int(bp["n"]) - 1
+	if int(bp["n"]) <= 0:
+		GameState.gear.belt[bi] = {}
 	if String(d.get("state", "")) == "hacked":
 		_say_toast("You are already in – it does what you told it.", 2.0)
 	var hg = HackGame.new()

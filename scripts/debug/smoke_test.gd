@@ -7727,7 +7727,7 @@ func _test_gear() -> void:
 	var PG = preload("res://scripts/core/pilot_gear.gd")
 	var g = PG.new()
 	g.start()
-	var start_ok: bool = g.suit == "suit_civil:F" and g.weapons.size() == 1 and g.belt.size() == 2 and g.features.size() == 1 \
+	var start_ok: bool = g.suit == "suit_civil:F" and g.weapons.size() == 1 and g.belt.size() == 3 and g.features.size() == 1 \
 		and g.weapons[0] == "wp_laser_pistol:F" and g.count("cs_medkit") == 2 and g.energy > 0.0 and g.oxygen > 0.0
 	# every piece the shop could sell is valid and priced
 	var ids_ok := true
@@ -7752,7 +7752,7 @@ func _test_gear() -> void:
 		if not (g.inv[k] as Dictionary).is_empty() and GD.kind(String(g.inv[k]["id"])) in ["weapon", "feature"]:
 			g.equip_from_inv(k)
 	var three_ok: bool = g.weapons.count("") == 0 and g.features.has("ft_shield:C") and float(g.totals()["shield"]) > float(t0["shield"]) + 60.0
-	var full_belt: bool = g.belt.size() == 2 and g.unequip("belt", 1) == ""          # the cell comes off – a place free
+	var full_belt: bool = g.belt.size() == 4 and g.unequip("belt", 1) == ""          # the cell comes off – a place free
 	var gi := -1
 	for k2 in g.inv.size():
 		if not (g.inv[k2] as Dictionary).is_empty() and String(g.inv[k2]["id"]) == "gr_shield":
@@ -9122,7 +9122,7 @@ func _test_foot_tactics(view: SystemView) -> void:
 	cb.grenade_down()
 	cb.gr_held = 0.05
 	cb.grenade_up()
-	var sel_ok: bool = gear.gr_sel == 1 and gear.grenades.size() == 2 and gear.belt.size() == 3 and GD.stack_max("gr_frag") == 10
+	var sel_ok: bool = gear.gr_sel == 1 and gear.grenades.size() == 2 and gear.belt.size() == 4 and GD.stack_max("gr_frag") == 10
 	cb.grenade_down()
 	cb.gr_held = 0.05
 	cb.grenade_up()
@@ -9436,29 +9436,38 @@ func _test_foot_vault(view: SystemView) -> void:
 		return
 	var VG = load("res://scripts/ground/vault_gen.gd")
 	var dr: Rect2i = VG.DOOR
-	var made_ok: bool = g.env.is_empty() and g.map.explore.size() == 5 and String(g.map.explore[0]["kind"]) == "blastdoor" \
-		and g.belt_tool("tl_cutter") != "" and g.belt_tool("tl_scanner") != "" and g.combat != null
-	var inside := Vector2(15, 7.0) * GroundMap.TILE + Vector2(0, 0)
-	var vault_p := Vector2(10, 9) * GroundMap.TILE
+	var made_ok: bool = g.env.is_empty() and g.map.explore.size() == 7 and String(g.map.explore[0]["kind"]) == "blastdoor" \
+		and String(g.map.explore[1]["kind"]) == "blastdoor" and g.belt_tool("tl_cutter") != "" and g.belt_tool("tl_scanner") != "" \
+		and g.belt_tool("cs_breach") != "" and g.combat != null
+	var vault_p := Vector2(10, 12) * GroundMap.TILE
+	var niche_p := Vector2(13, 2.6) * GroundMap.TILE
 	var shut_ok: bool = not GroundMap.walkable_t(g.map.t_at(dr.position.x, dr.position.y + 1)) and g.map.path(g.pilot.pos, vault_p).is_empty()
 	# the button behind the flap opens the door: through it there is a way now
-	g._cut_done(g.map.explore[1], "button")
+	g._cut_done(g.map.explore[2], "button")
 	var open_ok: bool = String(g.map.explore[0]["state"]) == "open" and GroundMap.walkable_t(g.map.t_at(dr.position.x, dr.position.y + 1)) \
 		and not g.map.path(g.pilot.pos, vault_p).is_empty()
 	# the cage: no scan through the lasers; the terminal switches them off; then it scans
-	g.pilot.pos = Vector2(15, 9.4) * GroundMap.TILE
+	g.pilot.pos = Vector2(15, 12.4) * GroundMap.TILE
 	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	# 0.7.52.24: jacking in takes an E-Breach from the belt
+	var nb0: int = gear.count("cs_breach")
+	g._open_hack(g.map.explore[5])
+	var breach_ok: bool = g.minigame != null and gear.count("cs_breach") == nb0 - 1
+	g._close_game()
 	var sk := -1
 	for b in gear.belt.size():
 		if not (gear.belt[b] as Dictionary).is_empty() and String(gear.belt[b]["id"]).begins_with("tl_scanner"):
 			sk = b
 	var caged: bool = g._scan_start(sk) and g._scan.is_empty()
-	g._hack_done(g.map.explore[4], "lasers")
-	var cage_ok: bool = caged and String(g.map.explore[2]["state"]) == "off" and g._scan_start(sk) and not g._scan.is_empty()
+	g._hack_done(g.map.explore[5], "lasers")
+	var cage_ok: bool = caged and String(g.map.explore[3]["state"]) == "off" and g._scan_start(sk) and not g._scan.is_empty()
+	# the terminal opens the small door into the niche
+	g._hack_done(g.map.explore[5], "door")
+	var small_ok: bool = String(g.map.explore[1]["state"]) == "open" and not g.map.path(g.pilot.pos, niche_p).is_empty()
 	var rd := GameState.research_data
 	g._scan = {}
-	g.scan_done(g.map.explore[3])
-	cage_ok = cage_ok and GameState.research_data > rd and String(g.map.explore[3]["state"]) == "scanned"
+	g.scan_done(g.map.explore[4])
+	cage_ok = cage_ok and GameState.research_data > rd and String(g.map.explore[4]["state"]) == "scanned"
 	# back
 	main.close_deck(false)
 	main._close_planet_map()
@@ -9478,8 +9487,8 @@ func _test_foot_vault(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(made_ok and shut_ok and open_ok and cage_ok,
-		"0.7.52.23: the debug vault – a station room with air, the things and the tools; the blast door sealed, the button behind the flap opens a way; no scan through the laser cage, the terminal switches it off, then the relic scans  [%s]" % " ".join(PackedStringArray([str(made_ok), str(shut_ok), str(open_ok), str(cage_ok)])))
+	check(made_ok and shut_ok and open_ok and cage_ok and breach_ok and small_ok,
+		"0.7.52.23: the debug vault – a station room with air, the things and the tools; the blast door sealed, the button behind the flap opens a way; no scan through the laser cage, the terminal switches it off, then the relic scans; jacking in takes an E-Breach; the small door to the niche  [%s]" % " ".join(PackedStringArray([str(made_ok), str(shut_ok), str(open_ok), str(cage_ok), str(breach_ok), str(small_ok)])))
 
 
 ## 0.7.52.22 (package 52b): tools at work – a box cut open with the torch (a button or a terminal behind its one flap),

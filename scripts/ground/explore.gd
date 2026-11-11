@@ -21,53 +21,118 @@ var view                                    # the GroundView
 var i := 0                                  # its index in map.explore
 
 
-## 0.7.52.23 (Luz): a heavy blast door in a wall's gap – two leaves with chevrons, a seam, bolts, a frame with warning
-## lights; open, the leaves slide into the walls. Drawn in art px from the gap's bottom centre.
+## 0.7.52.23 (Luz): a blast door in a wall's gap, drawn in art px from the gap's bottom centre (0.7.52.24: redesigned).
 func _draw_blastdoor(d: Dictionary, t: float) -> void:
+	# 0.7.52.24 (Luz, after her pictures): an octagonal blast door set in a recessed frame in the wall – heavy grey plate,
+	# two parallel diagonal seams cutting it in three; the small one narrow and tall, the wide one broad with gentler
+	# seams. Opening, the outer parts slide into the walls and the middle one rises into the lintel. Lamp strips of
+	# red, amber and white beside the frame show its state.
 	var tl: Array = d["tiles"]
 	var gw := float(tl[2]) * 16.0
 	var gh := float(tl[3]) * 16.0
 	var top := -gh
 	var k := float(d.get("open_k", 0.0))
-	# the frame round the gap
-	draw_rect(Rect2(-gw * 0.5 - 4, top - 4, 4, gh + 4), Color(0.12, 0.13, 0.15))          # the frame's dark edge
-	draw_rect(Rect2(gw * 0.5, top - 4, 4, gh + 4), Color(0.12, 0.13, 0.15))
-	draw_rect(Rect2(-gw * 0.5 - 4, top - 4, gw + 8, 4), Color(0.12, 0.13, 0.15))
-	draw_rect(Rect2(-gw * 0.5 - 3, top - 3, 3, gh + 3), Color(0.45, 0.47, 0.5))
-	draw_rect(Rect2(gw * 0.5, top - 3, 3, gh + 3), Color(0.3, 0.32, 0.35))
-	draw_rect(Rect2(-gw * 0.5 - 3, top - 4, gw + 6, 3), Color(0.5, 0.52, 0.55))
-	# what is behind: the dark of the vault while it opens, the floor once it is open
-	draw_rect(Rect2(-gw * 0.5, top, gw, gh), Color(0.05, 0.06, 0.08, 1.0 - k))
-	# the leaves
-	var half := gw * 0.5 * (1.0 - k)
-	for side in [-1.0, 1.0]:
-		if half < 0.5:
-			continue
-		var x0 := -half if side < 0.0 else 0.0
-		var x0b := -gw * 0.5 if side < 0.0 else gw * 0.5 - half
-		var r := Rect2(x0b, top, half, gh)
-		draw_rect(r, Color(0.36, 0.38, 0.42))
-		draw_rect(Rect2(r.position, Vector2(r.size.x, 2)), Color(0.55, 0.57, 0.6))
-		# chevrons in yellow and black, slanting to the seam
-		var y := top + 8.0
-		while y < -6.0:
-			var pts := PackedVector2Array([Vector2(r.position.x, y), Vector2(r.end.x, y + 5.0 * side), Vector2(r.end.x, y + 5.0 * side + 3.0), Vector2(r.position.x, y + 3.0)])
-			draw_colored_polygon(pts, Color(0.95, 0.78, 0.15))
-			y += 8.0
-		draw_rect(Rect2(r.position.x, -6, r.size.x, 4), Color(0.2, 0.21, 0.24))
-		for by in [top + 4, -10.0]:
-			draw_circle(Vector2(r.position.x + r.size.x * 0.5, by), 1.2, Color(0.65, 0.67, 0.7))
-		x0 = x0
-	if k < 0.05:
-		draw_line(Vector2(0, top), Vector2(0, 0), Color(0.08, 0.08, 0.1), 1.5)                  # the seam
-		draw_rect(Rect2(-3, top + gh * 0.45, 6, 5), Color(0.15, 0.16, 0.18))                    # the lock
-		draw_rect(Rect2(-2, top + gh * 0.45 + 1, 4, 2), Color(1.0, 0.25, 0.2) if fposmod(t, 1.0) < 0.6 else Color(0.4, 0.1, 0.08))
-	# the warning lights over the door: red while sealed, green open, turning while it opens
-	for lx in [-gw * 0.5 - 2, gw * 0.5 + 2]:
-		var lc := Color(1.0, 0.25, 0.2) if String(d["state"]) != "open" else (Color(1.0, 0.75, 0.2) if k < 1.0 else Color(0.3, 1.0, 0.45))
-		var on := fposmod(t * (3.0 if k > 0.0 and k < 1.0 else 1.0), 1.0) < 0.6
-		draw_circle(Vector2(lx, top - 7), 2.5, lc if on else lc.darkened(0.6))
-		draw_circle(Vector2(lx, top - 7), 6.0, Color(lc, 0.2 if on else 0.05))
+	var wide: bool = gw > 40.0
+	var steel := Color(0.4, 0.43, 0.48)
+	var gap := PackedVector2Array([Vector2(-gw * 0.5, top), Vector2(gw * 0.5, top), Vector2(gw * 0.5, 0), Vector2(-gw * 0.5, 0)])
+	# the recessed frame: a dark rebate round the gap, a lit bevel at its top and left, a step at the sill
+	draw_rect(Rect2(-gw * 0.5 - 5, top - 5, gw + 10, 5), Color(0.2, 0.21, 0.24))
+	draw_rect(Rect2(-gw * 0.5 - 5, top - 5, 5, gh + 5), Color(0.24, 0.25, 0.28))
+	draw_rect(Rect2(gw * 0.5, top - 5, 5, gh + 5), Color(0.16, 0.17, 0.19))
+	draw_rect(Rect2(-gw * 0.5 - 5, top - 5, gw + 10, 1), Color(0.55, 0.57, 0.6))
+	draw_rect(Rect2(-gw * 0.5 - 5, top - 5, 1, gh + 5), Color(0.48, 0.5, 0.53))
+	for sx in [-gw * 0.5 - 4, gw * 0.5 + 1]:                         # slots along the jambs
+		for sy in range(int(top) + 4, -4, 8):
+			draw_rect(Rect2(sx + 1, sy, 2, 4), Color(0.1, 0.1, 0.12))
+	# behind it, while it opens: the dark beyond
+	draw_colored_polygon(gap, Color(0.04, 0.05, 0.06, 1.0 - k))
+	# the plate: an octagon in the gap
+	var c := minf(gw, gh) * (0.28 if not wide else 0.3)
+	var oct := PackedVector2Array([Vector2(-gw * 0.5 + c, top + 1), Vector2(gw * 0.5 - c, top + 1), Vector2(gw * 0.5 - 1, top + c), Vector2(gw * 0.5 - 1, -c),
+		Vector2(gw * 0.5 - c, -1), Vector2(-gw * 0.5 + c, -1), Vector2(-gw * 0.5 + 1, -c), Vector2(-gw * 0.5 + 1, top + c)])
+	# the plate's corners outside the octagon: wall plating of the frame, flush and darker
+	if k < 1.0:
+		draw_colored_polygon(gap, Color(0.3, 0.32, 0.36, 1.0 - k))
+	# the three parts, cut by two parallel seams (slope: steep for the small, gentle for the wide)
+	var sl := gh / (gw * (0.55 if wide else 0.9))
+	var off := gw * (0.22 if wide else 0.17)
+	var seam := func(o: float) -> PackedVector2Array:          # a long thin band along a seam line through (o, mid)
+		var mid := top + gh * 0.5
+		var dv := Vector2(1.0, sl).normalized()
+		return PackedVector2Array([Vector2(o, mid) - dv * 400.0, Vector2(o, mid) + dv * 400.0])
+	var halfplane := func(o: float, side: float) -> PackedVector2Array:   # everything on one side of a seam line
+		var mid := top + gh * 0.5
+		var dv := Vector2(1.0, sl).normalized()
+		var nv := Vector2(-dv.y, dv.x) * side
+		var a := Vector2(o, mid) - dv * 400.0
+		var b := Vector2(o, mid) + dv * 400.0
+		return PackedVector2Array([a, b, b + nv * 400.0, a + nv * 400.0])
+	var parts: Array = []
+	var left_p := Geometry2D.intersect_polygons(oct, halfplane.call(-off, 1.0))
+	var right_p := Geometry2D.intersect_polygons(oct, halfplane.call(off, -1.0))
+	var mid_a := Geometry2D.intersect_polygons(oct, halfplane.call(-off, -1.0))
+	var mid_p: Array = Geometry2D.intersect_polygons(mid_a[0], halfplane.call(off, 1.0)) if not mid_a.is_empty() else []
+	if not left_p.is_empty():
+		parts.append([left_p[0], Vector2(-gw * 0.55 * k, 0)])
+	if not mid_p.is_empty():
+		parts.append([mid_p[0], Vector2(0, -gh * k)])
+	if not right_p.is_empty():
+		parts.append([right_p[0], Vector2(gw * 0.55 * k, 0)])
+	for pr in parts:
+		if k >= 1.0:
+			break                                      # fully open: the parts are in the walls
+		var poly := PackedVector2Array()
+		for p in (pr[0] as PackedVector2Array):
+			poly.append(p + (pr[1] as Vector2))
+		var clipped := Geometry2D.intersect_polygons(poly, gap)
+		for cp in clipped:
+			draw_colored_polygon(cp, steel)
+			# mottled wear and a lit upper edge
+			var bb := Rect2(cp[0], Vector2.ZERO)
+			for q in cp:
+				bb = bb.expand(q)
+			for m in 7:
+				var mp := bb.position + Vector2(hash_f(m, int(d.get("seed", 1))) * bb.size.x, hash_f(m + 9, int(d.get("seed", 1))) * bb.size.y)
+				var mr := 1.5 + hash_f(m + 3, 5) * 2.5
+				if Geometry2D.is_point_in_polygon(mp, cp) and Geometry2D.is_point_in_polygon(mp + Vector2(mr, mr), cp) and Geometry2D.is_point_in_polygon(mp - Vector2(mr, mr), cp):
+					draw_circle(mp, mr, Color(0.34, 0.36, 0.41, 0.6))
+			var outl := cp.duplicate()
+			outl.append(outl[0])
+			draw_polyline(outl, Color(0.2, 0.21, 0.24), 1.0)
+	# the octagon's raised rim and the seams, while shut
+	if k < 0.02:
+		var ring := oct.duplicate()
+		ring.append(ring[0])
+		draw_polyline(ring, Color(0.56, 0.58, 0.62), 1.0)
+		for o in [-off, off]:
+			var sg: PackedVector2Array = seam.call(o)
+			var cut := Geometry2D.intersect_polyline_with_polygon(sg, oct)
+			for ln in cut:
+				draw_polyline(ln, Color(0.12, 0.12, 0.14), 1.5)
+				draw_polyline(PackedVector2Array([ln[0] + Vector2(1, 0), ln[1] + Vector2(1, 0)]), Color(0.55, 0.57, 0.6, 0.6), 1.0)
+		# a service hatch with two slots high on the plate (the wide one)
+		if wide:
+			draw_rect(Rect2(-gw * 0.36, top + 4, gw * 0.22, 6), Color(0.33, 0.35, 0.39))
+			draw_rect(Rect2(-gw * 0.36 + 2, top + 5, gw * 0.18, 1), Color(0.22, 0.23, 0.26))
+			draw_rect(Rect2(-gw * 0.36 + 2, top + 8, gw * 0.18, 1), Color(0.22, 0.23, 0.26))
+	# the lamp strips beside the frame: red, amber, white – the state lit
+	var state := 0 if String(d["state"]) != "open" else (1 if k < 1.0 else 2)
+	for lx in ([-gw * 0.5 - 9.0] if not wide else [-gw * 0.5 - 9.0, gw * 0.5 + 5.0]):
+		var sy0 := top + gh * 0.3
+		draw_rect(Rect2(lx, sy0, 4, 15), Color(0.08, 0.08, 0.09))
+		var cols := [Color(1.0, 0.2, 0.15), Color(1.0, 0.75, 0.15), Color(0.9, 0.95, 1.0)]
+		for li in 3:
+			var lit := li == state and (state != 1 or fposmod(t * 4.0, 1.0) < 0.6)
+			var lc: Color = cols[li] if li < 2 or state == 2 else Color(0.9, 0.95, 1.0)
+			if li == 2 and state == 2:
+				lc = Color(0.3, 1.0, 0.45)
+			draw_circle(Vector2(lx + 2, sy0 + 3 + li * 4.5), 1.4, lc if lit else lc.darkened(0.7))
+			if lit:
+				draw_circle(Vector2(lx + 2, sy0 + 3 + li * 4.5), 4.0, Color(lc, 0.25))
+
+
+static func hash_f(a: int, b: int) -> float:
+	return fposmod(sin(float(a) * 12.9898 + float(b) * 78.233) * 43758.5453, 1.0)
 
 
 ## 0.7.52.23 (Luz): the laser cage round the relic – four posts with glowing heads and red beams between them at three
