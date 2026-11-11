@@ -154,6 +154,7 @@ func _process(delta: float) -> void:
 				_test_foot_team(view)            # 0.7.52.20 – package 52a: the ground team
 				_test_foot_sneak(view)           # 0.7.52.21 – package 52b: sneaking
 				_test_foot_explore(view)         # 0.7.52.22 – package 52b: torch, hack, scan
+				_test_foot_vault(view)           # 0.7.52.23 – the debug vault
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9421,6 +9422,66 @@ func _test_foot_drones(view: SystemView) -> void:
 ## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
 ## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
 ## the arm raised.
+## 0.7.52.23 (Luz): the debug vault – a closed station room; the blast door sealed until the button behind the box's
+## flap opens it; the relic behind its laser cage cannot be scanned until the terminal switches the lasers off.
+func _test_foot_vault(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var e: String = Commands.execute({"type": "debug_vault"})
+	var g = main.ground
+	if g == null or e != "":
+		check(false, "0.7.52.23: the vault opens  [%s]" % e)
+		return
+	var VG = load("res://scripts/ground/vault_gen.gd")
+	var dr: Rect2i = VG.DOOR
+	var made_ok: bool = g.env.is_empty() and g.map.explore.size() == 5 and String(g.map.explore[0]["kind"]) == "blastdoor" \
+		and g.belt_tool("tl_cutter") != "" and g.belt_tool("tl_scanner") != "" and g.combat != null
+	var inside := Vector2(15, 7.0) * GroundMap.TILE + Vector2(0, 0)
+	var vault_p := Vector2(10, 9) * GroundMap.TILE
+	var shut_ok: bool = not GroundMap.walkable_t(g.map.t_at(dr.position.x, dr.position.y + 1)) and g.map.path(g.pilot.pos, vault_p).is_empty()
+	# the button behind the flap opens the door: through it there is a way now
+	g._cut_done(g.map.explore[1], "button")
+	var open_ok: bool = String(g.map.explore[0]["state"]) == "open" and GroundMap.walkable_t(g.map.t_at(dr.position.x, dr.position.y + 1)) \
+		and not g.map.path(g.pilot.pos, vault_p).is_empty()
+	# the cage: no scan through the lasers; the terminal switches them off; then it scans
+	g.pilot.pos = Vector2(15, 9.4) * GroundMap.TILE
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	var sk := -1
+	for b in gear.belt.size():
+		if not (gear.belt[b] as Dictionary).is_empty() and String(gear.belt[b]["id"]).begins_with("tl_scanner"):
+			sk = b
+	var caged: bool = g._scan_start(sk) and g._scan.is_empty()
+	g._hack_done(g.map.explore[4], "lasers")
+	var cage_ok: bool = caged and String(g.map.explore[2]["state"]) == "off" and g._scan_start(sk) and not g._scan.is_empty()
+	var rd := GameState.research_data
+	g._scan = {}
+	g.scan_done(g.map.explore[3])
+	cage_ok = cage_ok and GameState.research_data > rd and String(g.map.explore[3]["state"]) == "scanned"
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(made_ok and shut_ok and open_ok and cage_ok,
+		"0.7.52.23: the debug vault – a station room with air, the things and the tools; the blast door sealed, the button behind the flap opens a way; no scan through the laser cage, the terminal switches it off, then the relic scans  [%s]" % " ".join(PackedStringArray([str(made_ok), str(shut_ok), str(open_ok), str(cage_ok)])))
+
+
 ## 0.7.52.22 (package 52b): tools at work – a box cut open with the torch (a button or a terminal behind its one flap),
 ## a terminal hacked through its security grid (key, lock, core; traced: locked out), a tablet and a relic scanned.
 func _test_foot_explore(view: SystemView) -> void:

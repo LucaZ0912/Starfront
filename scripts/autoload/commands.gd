@@ -2617,6 +2617,35 @@ func _c_debug_daytime(c: Dictionary) -> String:
 ## {"type":"debug_gear", ...} – package 51: "give": id (+ "n") into the pockets; "fill_belt": every belt place full;
 ## "refill": health, energy, oxygen, ammunition full; "clear": empty pockets; "set": {health|energy|oxygen|ammo: percent};
 ## "suit_god": bool – the world outside does not hurt; "grenades": every belt place a stack of grenades (0.7.52.5).
+## {"type":"debug_vault"} – 0.7.52.23 (Luz): the debug vault, a closed room in a station: a sealed blast door with
+## a box to cut open beside it (the release button behind the flap), behind it a relic in a laser cage and a terminal
+## to switch the lasers off. A cutting torch and a scanner go onto your belt.
+func _c_debug_vault(_c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	if f.in_transit():
+		return "Not during a hyperspace jump."
+	var L := Universe.get_layout(f.system_id)
+	var body := {}
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b) and body.is_empty():
+			body = b
+	if body.is_empty():
+		return "No body here to hang the vault on."
+	var site := {"id": "%s_dbg_vault" % String(body["id"]), "kind": "crash", "lon": -0.3, "lat": -0.2, "name": "Debug Vault", "vault": true, "foes": []}
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	m.land_at(body, site)
+	var g = _ground()
+	if g == null:
+		return "Could not open the vault."
+	_c_debug_explore({"tools_only": true})
+	GameState.log_msg("[Debug] The vault – cut the box by the door, hack the terminal, scan the relic.", GameState.COL_WARN)
+	return ""
+
+
 ## {"type":"debug_explore"} – 0.7.52.22 (package 52b): a maintenance box with a button, one with a terminal, a
 ## terminal, a carved tablet and a relic round you; a cutting torch and a scanner onto your belt.
 func _c_debug_explore(_c: Dictionary) -> String:
@@ -2624,6 +2653,7 @@ func _c_debug_explore(_c: Dictionary) -> String:
 	if g == null:
 		return "Not on foot."
 	var p: Vector2 = g.pilot.pos
+	var tools_only := bool(_c.get("tools_only", false))
 	var put := func(off: Vector2) -> Vector2:
 		var q: Vector2 = p + off
 		for r in range(0, 80, 6):
@@ -2632,11 +2662,12 @@ func _c_debug_explore(_c: Dictionary) -> String:
 				if g.map.free_at(qq, 8.0):
 					return qq
 		return q
-	g.add_explore("panel", put.call(Vector2(-70, -40)), {"inside": "button"})
-	g.add_explore("panel", put.call(Vector2(-20, -60)), {"inside": "terminal", "actions": ["door", "power", "turrets", "cameras", "data"]})
-	g.add_explore("terminal", put.call(Vector2(40, -60)), {"actions": ["door", "power", "data"], "level": 2})
-	g.add_explore("tablet", put.call(Vector2(80, -20)))
-	g.add_explore("relic", put.call(Vector2(80, 30)))
+	if not tools_only:
+		g.add_explore("panel", put.call(Vector2(-70, -40)), {"inside": "button"})
+		g.add_explore("panel", put.call(Vector2(-20, -60)), {"inside": "terminal", "actions": ["door", "power", "turrets", "cameras", "data"]})
+		g.add_explore("terminal", put.call(Vector2(40, -60)), {"actions": ["door", "power", "data"], "level": 2})
+		g.add_explore("tablet", put.call(Vector2(80, -20)))
+		g.add_explore("relic", put.call(Vector2(80, 30)))
 	var gear = GameState.gear
 	var used: Array = []
 	for tool in ["tl_cutter:C", "tl_scanner:C"]:

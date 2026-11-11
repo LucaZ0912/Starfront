@@ -850,6 +850,7 @@ func _build_ground() -> void:
 	var rex := _row()                                               # 0.7.52.22: tools at work
 	rex.add_child(UI.label("Explore:", 12, UI.TEXT_DIM))
 	rex.add_child(UI.button("Box, terminal, tablet, relic here", func(): _cmd({"type": "debug_explore"})))
+	rex.add_child(UI.button("The vault (station room)", func(): _cmd({"type": "debug_vault"})))
 	var rtm := _row()                                               # 0.7.52.20: the ground team
 	rtm.add_child(UI.label("Team:", 12, UI.TEXT_DIM))
 	rtm.add_child(UI.button("Gunner + Engineer", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"]})))

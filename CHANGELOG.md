@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.23 – 2026-11-11
+
+**The debug vault (Luz).** Debug → ground combat → *Explore: The vault (station room)* takes you into a closed room
+inside a space station (air, no helmet needed), with a cutting torch and a scanner on your belt:
+- at the top of the room a sealed **blast door** – heavy leaves with yellow chevrons, its lock, red warning lights;
+- beside it a **maintenance box** (notched flap): cut it open, the **button** behind it opens the door – the leaves
+  slide into the walls, the lights turn green;
+- behind the door the vault: a **relic in a laser cage** (four posts, red beams at three heights, its red glow) – the
+  scanner cannot read it through the lasers;
+- at the side a **terminal**: hack it and choose **"Laser cage off"** – the beams and the glow go out; then **scan the
+  crystal**. The airlock at the south takes you back to your ship.
+- Smoke test group `foot_vault`.
+
 ## alpha 0.7.52.22 – 2026-11-11
 
 **Package 52b, part 2 – the cutting torch, hacking, scanning (Luz).**

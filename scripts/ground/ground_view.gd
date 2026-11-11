@@ -96,8 +96,10 @@ const ZOOM_NEAR := 1.5
 var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up) – a tap switches the view, holding ends it
 const TAB_HOLD := 0.35
 const ExploreNode = preload("res://scripts/ground/explore.gd")
+const VaultGen = preload("res://scripts/ground/vault_gen.gd")
 const CutGame = preload("res://scripts/ground/cut_game.gd")
 const HackGame = preload("res://scripts/ground/hack_game.gd")
+var _named_lights := {}
 var minigame: Control = null             # 0.7.52.22: the cutting torch or the hack, while it is open
 var _game_layer: CanvasLayer = null
 var _scan: Dictionary = {}               # 0.7.52.24: a scan running {i, t, need, key}
@@ -272,7 +274,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = SettleGen.build(station, _body, _site, _avail, _sys)
 	elif level == "landing":
 		var lsz := _ship_size()
-		if bool(_site.get("arena", false)):
+		if bool(_site.get("vault", false)):
+			map = VaultGen.build(_site)                               # 0.7.52.23: the debug vault, inside a station
+			env = {}
+		elif bool(_site.get("arena", false)):
 			map = ArenaGen.build(_body, _site, lsz.x, lsz.y)          # package 52: the debug arena
 		else:
 			map = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)
@@ -494,7 +499,7 @@ func zoom_step(d: int) -> void:
 ## Package 52: may weapons be used here? So far only in the debug arena (Luz: the real fights come once the system
 ## stands); never in the built-up parts of cities.
 func combat_allowed() -> bool:
-	return level == "landing" and bool(_site.get("arena", false))
+	return level == "landing" and (bool(_site.get("arena", false)) or bool(_site.get("vault", false)))
 
 
 func _slung() -> String:
@@ -806,8 +811,11 @@ func _build() -> void:
 			tint.position = Vector2.ZERO
 			tint.size = map.size_px() * GroundMap.SCALE
 		_world.add_child(tint)
+	_named_lights.clear()
 	for l in map.lights:
 		var lsp := _add_light(l, add_mat)
+		if l.has("id"):
+			_named_lights[String(l["id"])] = lsp           # 0.7.52.23: a light that can be switched (the laser cage's)
 		if is_town() and level in ["street", "settlement"]:
 			_city_lights.append([lsp, l, "street"])
 		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
@@ -1266,6 +1274,9 @@ func explore_use(z: Dictionary) -> bool:
 		"terminal":
 			_open_hack(d)
 			return true
+		"blastdoor":
+			_say_toast("Sealed – its release is in the maintenance box beside it." if String(d["state"]) != "open" else "Open.", 2.5)
+			return true
 		"tablet", "relic":
 			_say_toast("Hold the scanner's belt key here to scan it." if belt_tool("tl_scanner") != "" else "You need a scanner on your belt to read it.", 3.0)
 			return true
@@ -1346,7 +1357,15 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 		"door":
 			d["door_open"] = true
 			txt = "A door unlocks somewhere close – clunk."
+			if d.has("door"):
+				open_door(map.explore[int(d["door"])])          # 0.7.52.23: its blast door slides open
+				txt = "The blast door grinds open."
 			Audio.play("dock_clamp", "door released", -4.0)
+		"lasers":
+			if d.has("cage"):
+				cage_off(map.explore[int(d["cage"])])
+			txt = "The laser cage goes dark."
+			Audio.play("module_off", "lasers off", -4.0)
 		"power":
 			d["power_off"] = not bool(d.get("power_off", false))
 			txt = "The power goes %s." % ("off" if bool(d["power_off"]) else "back on")
@@ -1359,8 +1378,36 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 			var n := 4 + int(d.get("seed", 0)) % 5
 			GameState.research_data += n
 			txt = "Data downloaded – %d research data." % n
-	_say_toast(txt, 3.0)
-	log_event(txt, Color(0.45, 1.0, 0.7))
+	_say_toast(txt, 3.0)                               # (the toast goes into the event log too)
+
+
+## 0.7.52.23: a blast door opens – its gap walkable, the leaves slide into the walls.
+func open_door(d: Dictionary) -> void:
+	if String(d["state"]) == "open":
+		return
+	d["state"] = "open"
+	var tl: Array = d["tiles"]
+	map.fill(int(tl[0]), int(tl[1]), int(tl[2]), int(tl[3]), GroundMap.T.DOOR, 1)
+	map._astar = null
+	if combat != null:
+		combat._build_cover()
+
+
+## 0.7.52.23: the laser cage switched off – you may step up to what it guarded (the posts stay).
+func cage_off(d: Dictionary) -> void:
+	if String(d["state"]) == "off":
+		return
+	d["state"] = "off"
+	if _named_lights.has("cage") and is_instance_valid(_named_lights["cage"]):
+		(_named_lights["cage"] as Node2D).visible = false
+	var tl: Array = d["tiles"]
+	map.fill(int(tl[0]), int(tl[1]), int(tl[2]), int(tl[3]), GroundMap.T.FLOOR, 1)
+	for c in [Vector2i(int(tl[0]), int(tl[1])), Vector2i(int(tl[0]) + int(tl[2]) - 1, int(tl[1])), Vector2i(int(tl[0]), int(tl[1]) + int(tl[3]) - 1),
+			Vector2i(int(tl[0]) + int(tl[2]) - 1, int(tl[1]) + int(tl[3]) - 1)]:
+		map.set_t(c.x, c.y, GroundMap.T.BLOCK)
+	map._astar = null
+	if combat != null:
+		combat._build_cover()
 
 
 ## 0.7.52.24 (Luz): scanning – the scanner's belt key held at a tablet or a relic, standing still.
@@ -1378,6 +1425,10 @@ func _scan_start(n: int) -> bool:
 		return false
 	if String(map.explore[best]["state"]) == "scanned":
 		_say_toast("Already scanned.", 1.5)
+		return true
+	var cg = map.explore[best].get("cage")
+	if cg != null and String(map.explore[int(cg)]["state"]) != "off":
+		_say_toast("The laser cage is in the way – the beams scatter the scan. Switch it off first.", 3.0)
 		return true
 	_scan = {"i": best, "t": 0.0, "need": 3.0 * (1.0 - 0.04 * GameState.skill_level("science")), "key": n, "at": pilot.pos}
 	Audio.play("ui_click", "scan starts", -8.0)

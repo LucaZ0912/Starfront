@@ -7,7 +7,8 @@ extends Node2D
 
 const ChibiArtE = preload("res://scripts/ground/chibi_art.gd")
 const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "terminal": "Terminal – hack it",
-	"tablet": "Carved tablet – scan it (scanner on your belt)", "relic": "Relic – scan it (scanner on your belt)"}
+	"tablet": "Carved tablet – scan it (scanner on your belt)", "relic": "Relic – scan it (scanner on your belt)",
+	"blastdoor": "Blast door – sealed (its release is in the box beside it)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -20,6 +21,85 @@ var view                                    # the GroundView
 var i := 0                                  # its index in map.explore
 
 
+## 0.7.52.23 (Luz): a heavy blast door in a wall's gap – two leaves with chevrons, a seam, bolts, a frame with warning
+## lights; open, the leaves slide into the walls. Drawn in art px from the gap's bottom centre.
+func _draw_blastdoor(d: Dictionary, t: float) -> void:
+	var tl: Array = d["tiles"]
+	var gw := float(tl[2]) * 16.0
+	var gh := float(tl[3]) * 16.0
+	var top := -gh
+	var k := float(d.get("open_k", 0.0))
+	# the frame round the gap
+	draw_rect(Rect2(-gw * 0.5 - 4, top - 4, 4, gh + 4), Color(0.12, 0.13, 0.15))          # the frame's dark edge
+	draw_rect(Rect2(gw * 0.5, top - 4, 4, gh + 4), Color(0.12, 0.13, 0.15))
+	draw_rect(Rect2(-gw * 0.5 - 4, top - 4, gw + 8, 4), Color(0.12, 0.13, 0.15))
+	draw_rect(Rect2(-gw * 0.5 - 3, top - 3, 3, gh + 3), Color(0.45, 0.47, 0.5))
+	draw_rect(Rect2(gw * 0.5, top - 3, 3, gh + 3), Color(0.3, 0.32, 0.35))
+	draw_rect(Rect2(-gw * 0.5 - 3, top - 4, gw + 6, 3), Color(0.5, 0.52, 0.55))
+	# what is behind: the dark of the vault while it opens, the floor once it is open
+	draw_rect(Rect2(-gw * 0.5, top, gw, gh), Color(0.05, 0.06, 0.08, 1.0 - k))
+	# the leaves
+	var half := gw * 0.5 * (1.0 - k)
+	for side in [-1.0, 1.0]:
+		if half < 0.5:
+			continue
+		var x0 := -half if side < 0.0 else 0.0
+		var x0b := -gw * 0.5 if side < 0.0 else gw * 0.5 - half
+		var r := Rect2(x0b, top, half, gh)
+		draw_rect(r, Color(0.36, 0.38, 0.42))
+		draw_rect(Rect2(r.position, Vector2(r.size.x, 2)), Color(0.55, 0.57, 0.6))
+		# chevrons in yellow and black, slanting to the seam
+		var y := top + 8.0
+		while y < -6.0:
+			var pts := PackedVector2Array([Vector2(r.position.x, y), Vector2(r.end.x, y + 5.0 * side), Vector2(r.end.x, y + 5.0 * side + 3.0), Vector2(r.position.x, y + 3.0)])
+			draw_colored_polygon(pts, Color(0.95, 0.78, 0.15))
+			y += 8.0
+		draw_rect(Rect2(r.position.x, -6, r.size.x, 4), Color(0.2, 0.21, 0.24))
+		for by in [top + 4, -10.0]:
+			draw_circle(Vector2(r.position.x + r.size.x * 0.5, by), 1.2, Color(0.65, 0.67, 0.7))
+		x0 = x0
+	if k < 0.05:
+		draw_line(Vector2(0, top), Vector2(0, 0), Color(0.08, 0.08, 0.1), 1.5)                  # the seam
+		draw_rect(Rect2(-3, top + gh * 0.45, 6, 5), Color(0.15, 0.16, 0.18))                    # the lock
+		draw_rect(Rect2(-2, top + gh * 0.45 + 1, 4, 2), Color(1.0, 0.25, 0.2) if fposmod(t, 1.0) < 0.6 else Color(0.4, 0.1, 0.08))
+	# the warning lights over the door: red while sealed, green open, turning while it opens
+	for lx in [-gw * 0.5 - 2, gw * 0.5 + 2]:
+		var lc := Color(1.0, 0.25, 0.2) if String(d["state"]) != "open" else (Color(1.0, 0.75, 0.2) if k < 1.0 else Color(0.3, 1.0, 0.45))
+		var on := fposmod(t * (3.0 if k > 0.0 and k < 1.0 else 1.0), 1.0) < 0.6
+		draw_circle(Vector2(lx, top - 7), 2.5, lc if on else lc.darkened(0.6))
+		draw_circle(Vector2(lx, top - 7), 6.0, Color(lc, 0.2 if on else 0.05))
+
+
+## 0.7.52.23 (Luz): the laser cage round the relic – four posts with glowing heads and red beams between them at three
+## heights; off, the posts go dark and the beams are gone.
+func _draw_cage(d: Dictionary, t: float) -> void:
+	var tl: Array = d["tiles"]
+	var cw := float(tl[2]) * 16.0 - 8.0
+	var ch := float(tl[3]) * 16.0 - 8.0
+	var on := String(d["state"]) != "off"
+	var posts := [Vector2(-cw * 0.5, -ch), Vector2(cw * 0.5, -ch), Vector2(-cw * 0.5, 0), Vector2(cw * 0.5, 0)]
+	# the beams behind first (the far row), then the posts, then the near beams
+	if on:
+		for hgt in [6.0, 13.0, 20.0]:
+			var a := Color(1.0, 0.15, 0.1, 0.55 + 0.25 * sin(t * 13.0 + hgt))
+			for pair in [[0, 1], [0, 2], [1, 3]]:
+				var p0: Vector2 = posts[pair[0]] + Vector2(0, -hgt)
+				var p1: Vector2 = posts[pair[1]] + Vector2(0, -hgt)
+				draw_line(p0, p1, Color(1.0, 0.2, 0.15, 0.25), 3.0)
+				draw_line(p0, p1, a, 1.0)
+	for pp in posts:
+		draw_rect(Rect2(pp + Vector2(-2, -24), Vector2(4, 24)), Color(0.25, 0.26, 0.3))
+		draw_rect(Rect2(pp + Vector2(-2, -24), Vector2(1, 24)), Color(0.45, 0.47, 0.52))
+		draw_rect(Rect2(pp + Vector2(-3, -27), Vector2(6, 4)), Color(0.18, 0.19, 0.22))
+		draw_circle(pp + Vector2(0, -26), 1.8, Color(1.0, 0.3, 0.2) if on else Color(0.2, 0.2, 0.22))
+	if on:
+		for hgt2 in [6.0, 13.0, 20.0]:
+			var p2: Vector2 = posts[2] + Vector2(0, -hgt2)
+			var p3: Vector2 = posts[3] + Vector2(0, -hgt2)
+			draw_line(p2, p3, Color(1.0, 0.2, 0.15, 0.3), 3.0)
+			draw_line(p2, p3, Color(1.0, 0.45, 0.35, 0.8), 1.0)
+
+
 static func add(map: GroundMap, kind: String, pos: Vector2, extra: Dictionary = {}) -> Dictionary:
 	var d := {"kind": kind, "pos": pos, "state": "shut", "seed": randi() % 100000}
 	d.merge(extra, true)
@@ -30,12 +110,17 @@ static func add(map: GroundMap, kind: String, pos: Vector2, extra: Dictionary = 
 	if kind in ["panel", "terminal"]:
 		d["actions"] = d.get("actions", ["door", "power", "data"])
 	map.explore.append(d)
+	if bool(d.get("no_zone", false)):
+		return d
 	map.zones.append({"rect": Rect2(pos - Vector2(16, 10), Vector2(32, 24)), "kind": "explore", "id": "explore",
 		"i": map.explore.size() - 1, "title": String(TITLES.get(kind, kind))})
 	return d
 
 
-func _process(_d: float) -> void:
+func _process(delta: float) -> void:
+	var d: Dictionary = view.map.explore[i]
+	if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
+		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
 
 
@@ -85,6 +170,10 @@ func _draw() -> void:
 				draw_rect(Rect2(-6, -25 + ln2 * 4, 12 - (ln2 % 3) * 2, 1), Color(0.33, 0.29, 0.25))
 			if String(d["state"]) == "scanned":
 				draw_rect(Rect2(-8, -29, 16, 29), Color(0.35, 0.9, 1.0, 0.15))
+		"blastdoor":
+			_draw_blastdoor(d, t)
+		"cage":
+			_draw_cage(d, t)
 		"relic":
 			draw_rect(Rect2(-7, -8, 14, 8), Color(0.3, 0.27, 0.32))
 			draw_rect(Rect2(-7, -8, 14, 1), Color(0.45, 0.42, 0.48))

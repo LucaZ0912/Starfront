@@ -360,6 +360,9 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.23: `scripts/ground/vault_gen.gd` (VaultGen, `DOOR`, `CAGE`; site key `vault`), explore kinds `blastdoor`
+  (`tiles`, `open_k`) and `cage`, keys `door` / `cage` on a panel, relic or terminal, `no_zone`; `GroundView.open_door()`,
+  `cage_off()`, `_named_lights` (a light with an `id`); hack action `lasers`; command `debug_vault`; smoke group `foot_vault`.
 - 0.7.52.22 (package 52b): `scripts/ground/cut_game.gd` (CutGame: `SHAPES`, `shape_path()`, `step(delta, mv, burn)`,
   `cut_share()`, signal `finished`), `scripts/ground/hack_game.gd` (HackGame: grid, `move()`, tracers, `state`,
   `actions`, signal `finished`), `scripts/ground/explore.gd` (the things' nodes, `add()`, `INSCRIPTIONS`);
