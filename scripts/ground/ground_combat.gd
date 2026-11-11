@@ -1999,7 +1999,15 @@ func cloak(id: String) -> String:
 	for f in alive():
 		f["notice"] = 0.0
 	Audio.play("module_on", "short cloak", -4.0)
-	return "Cloaked – %d s unseen. Your weapons hold fire." % int(cloak_t)
+	# 0.7.52.26 (Luz): your team cloaks with you – those with a short cloak of their own, if it is ready
+	var with: Array = []
+	for a in allies_up():
+		if String(a["cloak_id"]) != "" and float(a["cloak_cd"]) <= 0.0:
+			var aq := GearData.quality(String(a["cloak_id"]))
+			a["cloak_t"] = float(CLOAK_TIME.get(aq, 2.0))
+			a["cloak_cd"] = float(a["cloak_t"]) + float(CLOAK_CD.get(aq, 30.0))
+			with.append(String(a["name"]))
+	return "Cloaked – %d s unseen. Your weapons hold fire.%s" % [int(cloak_t), ("  %s too." % " and ".join(PackedStringArray(with))) if not with.is_empty() else ""]
 
 
 func _cloak_step(delta: float) -> void:
@@ -2178,7 +2186,11 @@ func spawn_ally(m: Dictionary, i: int) -> Dictionary:
 		"order": "follow", "hold": Vector2.INF, "tgt": null, "cur": null, "goal": Vector2.INF, "path": PackedVector2Array(), "pi": 0,
 		"think": randf_range(0.0, 0.4), "regen_wait": 0.0, "dead": false, "down": false, "down_t": 0.0,
 		"ab": float(CrewData.ABILITIES.get(role, {}).get("cd", 30.0)) * 0.5, "quick_t": 0.0,
-		"stance": stance, "role": String(CrewData.STANCE_ROLE.get(stance, "rifleman")), "faction": "team", "lost_t": 0.0}
+		"stance": stance, "role": String(CrewData.STANCE_ROLE.get(stance, "rifleman")), "faction": "team", "lost_t": 0.0,
+		"cloak_id": "", "cloak_t": 0.0, "cloak_cd": 0.0}
+	for bi in mg["belt"]:                             # 0.7.52.26: a short cloak on their belt
+		if String(bi).begins_with("tl_cloak") and String(a["cloak_id"]) == "":
+			a["cloak_id"] = String(bi)
 	allies.append(a)
 	return a
 
@@ -2206,6 +2218,8 @@ func _foe_target(f: Dictionary) -> Variant:
 	if sight(w.pos, pilot_pos())["blocked"] or pilot_hidden():
 		bd = INF
 	for a in allies_up():
+		if float(a["cloak_t"]) > 0.0:
+			continue                                   # 0.7.52.26: cloaked
 		var ap: Vector2 = (a["w"] as Walker).pos
 		var dd := w.pos.distance_to(ap) * 1.25
 		if dd < bd and not sight(w.pos, ap)["blocked"]:
@@ -2218,7 +2232,7 @@ func _foe_target(f: Dictionary) -> Variant:
 func _sees_ally(f: Dictionary) -> bool:
 	var w: Walker = f["w"]
 	for a in allies_up():
-		if sneaking and a["order"] == "follow":
+		if (sneaking and a["order"] == "follow") or float(a["cloak_t"]) > 0.0:
 			continue
 		var ap: Vector2 = (a["w"] as Walker).pos
 		if w.pos.distance_to(ap) < float(f["sight"]) and not sight(w.pos, ap)["blocked"] and not smoke_between(w.pos, ap):
@@ -2435,6 +2449,13 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 		st["shield"] = minf(float(a["mx"]["shield"]), float(st["shield"]) + 2.0 * delta)
 	a["ab"] = maxf(0.0, float(a["ab"]) - delta)
 	a["quick_t"] = maxf(0.0, float(a["quick_t"]) - delta)
+	var cl_was := float(a["cloak_t"]) > 0.0
+	a["cloak_t"] = maxf(0.0, float(a["cloak_t"]) - delta)
+	a["cloak_cd"] = maxf(0.0, float(a["cloak_cd"]) - delta)
+	if float(a["cloak_t"]) > 0.0:
+		w.modulate = Color(0.6, 0.9, 1.0, 0.22 + 0.12 * sin(_t * 14.0 + float(a["i"])))
+	elif cl_was:
+		w.modulate = Color.WHITE
 	if view._collapsed:
 		w.moving = false
 		return
@@ -2478,7 +2499,7 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 	if not w.moving:
 		w.dir = _face(tp - w.pos)
 	var blocked: bool = sight(w.pos, tp)["blocked"] and not bool(wst.get("pierce", false))
-	if float(a["cool"]) <= 0.0 and not blocked and w.pos.distance_to(tp) <= reach:
+	if float(a["cool"]) <= 0.0 and not blocked and w.pos.distance_to(tp) <= reach and float(a["cloak_t"]) <= 0.0:
 		fire(a, t, wst)
 		var base := float(wst["charge"]) if wst.has("charge") else 1.0 / float(wst["rof"])
 		a["cool"] = base * randf_range(1.0, 1.4) + (0.3 if w.moving else 0.0)

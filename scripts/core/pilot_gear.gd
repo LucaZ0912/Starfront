@@ -569,6 +569,13 @@ static func member_gear(m: Dictionary) -> Dictionary:
 	var ws: Array = mg["weapons"]
 	while ws.size() < n:
 		ws.append("")
+	# 0.7.52.26 (Luz): their belt – tools they use with you (the short cloak), as many places as the suit's belt
+	if not mg.has("belt"):
+		mg["belt"] = []
+	var bt: Array = mg["belt"]
+	var nb := int(GearData.stats(String(mg["suit"])).get("belt", 1))
+	while bt.size() < nb:
+		bt.append("")
 	return mg
 
 
@@ -589,8 +596,15 @@ func member_equip(m: Dictionary, i: int) -> String:
 					off.append(String(ws[j]))
 			if free_places() + 1 < off.filter(func(o): return String(o) != "suit_civil:F").size():
 				return "Not enough room in your pockets for what comes off."
+			var nb2 := int(GearData.stats(id).get("belt", 1))
+			var bt0: Array = mg["belt"]
+			for j2 in range(nb2, bt0.size()):
+				if String(bt0[j2]) != "":
+					off.append(String(bt0[j2]))
+			bt0.resize(mini(bt0.size(), nb2))
 			_take(i, 1)
 			mg["suit"] = id
+			member_gear(m)
 			ws.resize(mini(ws.size(), n))
 			while ws.size() < n:
 				ws.append("")
@@ -610,7 +624,17 @@ func member_equip(m: Dictionary, i: int) -> String:
 			ws[at] = id
 			_take(i, 1)
 			return ""
-	return "Only suits and weapons for the team."
+		"belt":
+			if String(GearData.base(id).get("kind", "")) != "tool":
+				return "They only carry tools on their belt."
+			var bt: Array = mg["belt"]
+			var at2 := bt.find("")
+			if at2 < 0:
+				return "No free belt place on %s's suit." % String(m.get("name", "their"))
+			bt[at2] = id
+			_take(i, 1)
+			return ""
+	return "Only suits, weapons and tools for the team."
 
 
 ## Takes a member's piece back into your pockets ("suit": they get the plain civilian suit). "" or why not.
@@ -629,6 +653,13 @@ func member_unequip(m: Dictionary, where: String, idx: int) -> String:
 		mg["suit"] = "suit_civil:F"
 		member_gear(m)
 		ws.resize(int(GearData.stats("suit_civil:F").get("weapons", 1)))
+		return ""
+	if where == "belt":
+		var bt3: Array = mg["belt"]
+		if idx < 0 or idx >= bt3.size() or String(bt3[idx]) == "":
+			return "Nothing there."
+		_add_to(inv, String(bt3[idx]), 1)
+		bt3[idx] = ""
 		return ""
 	var ws2: Array = mg["weapons"]
 	if idx < 0 or idx >= ws2.size() or String(ws2[idx]) == "":

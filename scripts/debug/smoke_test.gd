@@ -9476,6 +9476,25 @@ func _test_foot_cloak(view: SystemView) -> void:
 		cb.step(0.05, Vector2.ZERO)
 		mine += cb.shots.filter(func(s2): return s2["res"]["from"] == null).size()
 	off_ok = off_ok and cb.pilot_hidden() and mine == 0             # cloaked, your weapons hold fire
+	# 0.7.52.26 (Luz): a member with a short cloak on its belt cloaks with you; one without does not
+	for i0 in gear.inv.size():
+		gear.inv[i0] = {}
+	gear.inv[0] = {"id": "tl_cloak:B", "n": 1}
+	var cm: Dictionary = GameState.new_crew("gunner", "C", "")
+	var given: String = gear.member_equip(cm, 0)
+	var plain: Dictionary = GameState.new_crew("engineer", "C", "")
+	var ca: Dictionary = cb.spawn_ally(cm, 0)
+	var cn: Dictionary = cb.spawn_ally(plain, 1)
+	cb.cloak_t = 0.0
+	cb.cloak_cd = 0.0
+	var cmsg: String = cb.cloak("tl_cloak:C")
+	var team_ok: bool = given == "" and String(ca["cloak_id"]) == "tl_cloak:B" and float(ca["cloak_t"]) > 0.0 and float(cn["cloak_t"]) == 0.0 \
+		and cmsg.contains(String(ca["name"])) and cb._foe_target(fo) != ca
+	var ally_shots := 0
+	for j2 in 5:
+		cb.step(0.05, Vector2.ZERO)
+		ally_shots += cb.shots.filter(func(s3): return s3["res"]["from"] == ca).size()
+	team_ok = team_ok and ally_shots == 0 and gear.member_unequip(cm, "belt", 0) == "" and gear.count("tl_cloak:B") == 1
 	# the drones on your suit outside a fight: up on C, back on C
 	gear.drones[0] = "dr_laser:C"
 	var bd = g.DroneBuddy.new()
@@ -9511,8 +9530,8 @@ func _test_foot_cloak(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(data_ok and on_ok and hidden_ok and off_ok and buddy_ok,
-		"0.7.52.25: the short cloak – F to A longer and sooner back; cloaked the foe neither shoots at you nor picks you; it drops and recharges; your weapons hold fire while cloaked; the drones outside a fight go up and dock again  [%s]" % " ".join(PackedStringArray([str(data_ok), str(on_ok), str(hidden_ok), str(off_ok), str(buddy_ok)])))
+	check(data_ok and on_ok and hidden_ok and off_ok and buddy_ok and team_ok,
+		"0.7.52.25: the short cloak – F to A longer and sooner back; cloaked the foe neither shoots at you nor picks you; it drops and recharges; your weapons hold fire while cloaked; the drones outside a fight go up and dock again; a member with a cloak on its belt cloaks with you  [%s]" % " ".join(PackedStringArray([str(data_ok), str(on_ok), str(hidden_ok), str(off_ok), str(buddy_ok), str(team_ok)])))
 
 
 ## 0.7.52.23 (Luz): the debug vault – a closed station room; the blast door sealed until the button behind the box's

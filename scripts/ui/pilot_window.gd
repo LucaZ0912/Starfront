@@ -393,6 +393,9 @@ func _gear_of_member(g, m: Dictionary) -> void:
 		"m_weapons":
 			if idx >= 0 and idx < (mg["weapons"] as Array).size():
 				id = String(mg["weapons"][idx])
+		"m_belt":
+			if idx >= 0 and idx < (mg["belt"] as Array).size():
+				id = String(mg["belt"][idx])
 		"inv":
 			if idx >= 0 and idx < g.inv.size():
 				id = String(g.inv[idx].get("id", ""))
@@ -401,7 +404,7 @@ func _gear_of_member(g, m: Dictionary) -> void:
 				id = String(g.locker(fit)[idx].get("id", ""))
 	if id == "":
 		left.add_child(UI.label("Select a piece", 17, COL))
-		left.add_child(UI.wrap_label("Suits and weapons in your pockets can go to %s." % String(m.get("name", "")).get_slice(" ", 0), 12, UI.TEXT_DIM, 400))
+		left.add_child(UI.wrap_label("Suits, weapons and tools in your pockets can go to %s." % String(m.get("name", "")).get_slice(" ", 0), 12, UI.TEXT_DIM, 400))
 	else:
 		var hd := UI.hbox(10)
 		left.add_child(hd)
@@ -414,8 +417,8 @@ func _gear_of_member(g, m: Dictionary) -> void:
 		var acts := UI.hbox(6)
 		left.add_child(acts)
 		match where:
-			"m_suit", "m_weapons":
-				acts.add_child(UI.button("Take back → pockets", func(): _gsel = {}; _gear_do(g.member_unequip(m, "suit" if where == "m_suit" else "weapons", idx))))
+			"m_suit", "m_weapons", "m_belt":
+				acts.add_child(UI.button("Take back → pockets", func(): _gsel = {}; _gear_do(g.member_unequip(m, {"m_suit": "suit", "m_weapons": "weapons", "m_belt": "belt"}[where], idx))))
 			"inv":
 				acts.add_child(UI.button("Give to %s" % String(m.get("name", "")).get_slice(" ", 0), func(): _gsel = {}; _gear_do(g.member_equip(m, idx))))
 				if fit != null:
@@ -434,6 +437,10 @@ func _gear_of_member(g, m: Dictionary) -> void:
 	var wflow := _gear_flow(right, "Weapons", "(%d/%d)" % [ws.filter(func(x): return String(x) != "").size(), ws.size()])
 	for i in ws.size():
 		wflow.add_child(_gear_tile(String(ws[i]), 1, "", "m_weapons", i, "empty"))
+	var bt: Array = mg["belt"]                              # 0.7.52.26: their belt – tools they use with you
+	var bflow := _gear_flow(right, "Belt  –  tools they use with you (short cloak)", "(%d/%d)" % [bt.filter(func(x): return String(x) != "").size(), bt.size()])
+	for i3 in bt.size():
+		bflow.add_child(_gear_tile(String(bt[i3]), 1, "", "m_belt", i3, "empty"))
 	var pflow := _gear_flow(right, "Your pockets", "(%d/%d)" % [GearData.INV_SLOTS - g.free_places(), GearData.INV_SLOTS])
 	for i2 in g.inv.size():
 		var p: Dictionary = g.inv[i2]

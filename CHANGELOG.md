@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.26 – 2026-11-11
+
+**Your team cloaks with you (Luz).** Members of your ground team now have a **belt** of their own (as many places as
+their suit's belt) for **tools** – given from your pockets on the Pilot window's Gear page, taken back the same way.
+When you switch on your short cloak, every member with a **Short Cloak on its belt** (and ready) cloaks with you, for
+the time of its own quality, then recharges like yours: foes cannot pick or see it, and it holds fire meanwhile.
+
 ## alpha 0.7.52.25 – 2026-11-11
 
 **One lamp on the blast doors, drones outside a fight, the short cloak (Luz).**
