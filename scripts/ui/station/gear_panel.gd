@@ -26,7 +26,7 @@ const CATS := {
 		["ft_life", "Life support & supply", "Air, energy, heat, rounds", ["ft_thermo", "ft_o2", "ft_battery", "ft_ammo"]],
 		["ft_drone", "Combat drones", "For a combat suit's drone place", ["dr_laser", "dr_kinetic", "dr_kamikaze"]]]],
 	"belt": ["Belt", "Tools, grenades, consumables", [
-		["bt_tool", "Tools", "Scanner, torch, mining laser", ["tl_scanner", "tl_cutter", "tl_mining"]],
+		["bt_tool", "Tools", "Scanner, torch, mining laser, short cloak", ["tl_scanner", "tl_cutter", "tl_mining", "tl_cloak"]],
 		["bt_grenade", "Grenades", "Frag, EMP, smoke, shield", ["gr_frag", "gr_emp", "gr_smoke", "gr_shield"]],
 		["bt_use", "Consumables", "Medkits, cells, air, ammunition, E-Breach", ["cs_medkit", "cs_stim", "cs_cell", "cs_o2", "cs_ammo", "cs_breach"]]]],
 }

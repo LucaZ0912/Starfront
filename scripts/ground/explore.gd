@@ -115,20 +115,17 @@ func _draw_blastdoor(d: Dictionary, t: float) -> void:
 			draw_rect(Rect2(-gw * 0.36, top + 4, gw * 0.22, 6), Color(0.33, 0.35, 0.39))
 			draw_rect(Rect2(-gw * 0.36 + 2, top + 5, gw * 0.18, 1), Color(0.22, 0.23, 0.26))
 			draw_rect(Rect2(-gw * 0.36 + 2, top + 8, gw * 0.18, 1), Color(0.22, 0.23, 0.26))
-	# the lamp strips beside the frame: red, amber, white – the state lit
+	# 0.7.52.25 (Luz): one lamp beside the frame – red shut, amber blinking while it opens, green open
 	var state := 0 if String(d["state"]) != "open" else (1 if k < 1.0 else 2)
+	var lc: Color = [Color(1.0, 0.2, 0.15), Color(1.0, 0.75, 0.15), Color(0.3, 1.0, 0.45)][state]
+	var lit := state != 1 or fposmod(t * 4.0, 1.0) < 0.6
 	for lx in ([-gw * 0.5 - 9.0] if not wide else [-gw * 0.5 - 9.0, gw * 0.5 + 5.0]):
-		var sy0 := top + gh * 0.3
-		draw_rect(Rect2(lx, sy0, 4, 15), Color(0.08, 0.08, 0.09))
-		var cols := [Color(1.0, 0.2, 0.15), Color(1.0, 0.75, 0.15), Color(0.9, 0.95, 1.0)]
-		for li in 3:
-			var lit := li == state and (state != 1 or fposmod(t * 4.0, 1.0) < 0.6)
-			var lc: Color = cols[li] if li < 2 or state == 2 else Color(0.9, 0.95, 1.0)
-			if li == 2 and state == 2:
-				lc = Color(0.3, 1.0, 0.45)
-			draw_circle(Vector2(lx + 2, sy0 + 3 + li * 4.5), 1.4, lc if lit else lc.darkened(0.7))
-			if lit:
-				draw_circle(Vector2(lx + 2, sy0 + 3 + li * 4.5), 4.0, Color(lc, 0.25))
+		var lp := Vector2(lx + 2, top + gh * 0.36)
+		draw_rect(Rect2(lp - Vector2(3, 3), Vector2(6, 6)), Color(0.08, 0.08, 0.09))
+		draw_rect(Rect2(lp - Vector2(3, 3), Vector2(6, 1)), Color(0.4, 0.42, 0.45))
+		draw_circle(lp, 2.0, lc if lit else lc.darkened(0.7))
+		if lit:
+			draw_circle(lp, 5.5, Color(lc, 0.22))
 
 
 static func hash_f(a: int, b: int) -> float:

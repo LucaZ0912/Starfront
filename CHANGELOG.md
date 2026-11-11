@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.25 – 2026-11-11
+
+**One lamp on the blast doors, drones outside a fight, the short cloak (Luz).**
+- **Blast doors:** one lamp beside the frame instead of the three – red shut, amber blinking while it opens, green open.
+- **Drones outside a fight:** they sit on your suit everywhere now (on the back, or at the upper arms on the Senate
+  armours), and **C / Shift+C** sends them up there too – they hover by you and follow you (no fighting where there is
+  no fight), the same key brings them back to their dock.
+- **Short Cloak** (new belt tool, Axiom Astronautics, qualities F–A, 2400 cr at C): on its belt key you are **unseen**
+  for a few seconds – **F 2 s, D 3, C 4, B 5, A 6** – foes lose you (they cannot shoot at you or pick you, unaware ones
+  cannot notice you; your team can still be shot), and **your weapons hold fire** meanwhile. Then it **recharges**:
+  **F 30 s, D 27, C 24, B 21, A 18**. The pilot shimmers half-seen; beside the dodges: "CLOAKED 3.2 s" / "cloak
+  recharging 20 s".
+- Smoke test group `foot_cloak`.
+
 ## alpha 0.7.52.24 – 2026-11-11
 
 **E-Breach, more belt places, new blast doors (Luz).**

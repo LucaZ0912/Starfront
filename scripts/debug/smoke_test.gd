@@ -155,6 +155,7 @@ func _process(delta: float) -> void:
 				_test_foot_sneak(view)           # 0.7.52.21 – package 52b: sneaking
 				_test_foot_explore(view)         # 0.7.52.22 – package 52b: torch, hack, scan
 				_test_foot_vault(view)           # 0.7.52.23 – the debug vault
+				_test_foot_cloak(view)           # 0.7.52.25 – the short cloak, drones outside a fight
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9422,6 +9423,98 @@ func _test_foot_drones(view: SystemView) -> void:
 ## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
 ## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
 ## the arm raised.
+## 0.7.52.25 (Luz): the short cloak – a few seconds unseen by its quality, then recharging; firing shows you. And
+## the drones on your suit outside a fight – up and back on C.
+func _test_foot_cloak(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var data_ok: bool = GD.all_ids().has("tl_cloak:A") and GD.all_ids().has("tl_cloak:F") \
+		and float(GroundCombat.CLOAK_TIME["A"]) > float(GroundCombat.CLOAK_TIME["F"]) and float(GroundCombat.CLOAK_CD["A"]) < float(GroundCombat.CLOAK_CD["F"])
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	gear.weapons[0] = "wp_rifle:C"
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "0.7.52.25: the arena opens")
+		return
+	gear.refill()
+	cb.step(0.05, Vector2.ZERO)
+	var q2: Vector2 = cb._free_near(cb.pilot_pos() + Vector2(0, -100))
+	for off in [Vector2(0, -100), Vector2(0, 100), Vector2(-100, 0), Vector2(100, 60), Vector2(-80, -80), Vector2(80, -80)]:
+		var qq: Vector2 = cb._free_near(cb.pilot_pos() + off)
+		if qq != Vector2.INF and not cb.sight(qq, cb.pilot_pos())["blocked"]:
+			q2 = qq
+			break
+	var fo: Dictionary = cb.spawn("bandit_rifleman", q2)
+	cb._wake(fo)
+	var m1: String = cb.cloak("tl_cloak:C")
+	var on_ok: bool = m1.contains("Cloaked") and is_equal_approx(cb.cloak_t, float(GroundCombat.CLOAK_TIME["C"])) and cb.pilot_hidden()
+	var at_you := 0
+	for i in 20:
+		cb.step(0.1, Vector2.ZERO)
+		for s in cb.shots:
+			if s["res"]["to"] == null and s["res"]["from"] == fo:
+				at_you += 1
+	var hidden_ok: bool = at_you == 0 and cb._foe_target(fo) == null and not cb.spots(fo, cb.pilot_pos())
+	# it drops, recharges, and firing shows you
+	cb.cloak_t = 0.05
+	cb.step(0.1, Vector2.ZERO)
+	var off_ok: bool = not cb.pilot_hidden() and cb.cloak_cd > 0.0 and cb.cloak("tl_cloak:C").contains("recharging") and g.pilot.modulate == Color.WHITE
+	cb.cloak_cd = 0.0
+	cb.cloak("tl_cloak:A")
+	cb.lock(fo)
+	cb.lock_t = 0.0
+	cb.pilot_cool = 0.0
+	cb.fight = true
+	var mine := 0
+	for j in 5:
+		cb.step(0.05, Vector2.ZERO)
+		mine += cb.shots.filter(func(s2): return s2["res"]["from"] == null).size()
+	off_ok = off_ok and cb.pilot_hidden() and mine == 0             # cloaked, your weapons hold fire
+	# the drones on your suit outside a fight: up on C, back on C
+	gear.drones[0] = "dr_laser:C"
+	var bd = g.DroneBuddy.new()
+	bd.view = g
+	g._world.add_child(bd)
+	bd._process(0.05)
+	var docked0: bool = String(bd.drones[0]["state"]) == "docked"
+	var up: String = bd.command(0)
+	for k in 20:
+		bd._process(0.05)
+	var buddy_ok: bool = docked0 and up.contains("up") and String(bd.drones[0]["state"]) == "hover" and (bd.drones[0]["pos"] as Vector2).distance_to(g.pilot.pos) < 40.0
+	bd.command(0)
+	for k2 in 60:
+		bd._process(0.05)
+	buddy_ok = buddy_ok and String(bd.drones[0]["state"]) == "docked"
+	bd.queue_free()
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(data_ok and on_ok and hidden_ok and off_ok and buddy_ok,
+		"0.7.52.25: the short cloak – F to A longer and sooner back; cloaked the foe neither shoots at you nor picks you; it drops and recharges; your weapons hold fire while cloaked; the drones outside a fight go up and dock again  [%s]" % " ".join(PackedStringArray([str(data_ok), str(on_ok), str(hidden_ok), str(off_ok), str(buddy_ok)])))
+
+
 ## 0.7.52.23 (Luz): the debug vault – a closed station room; the blast door sealed until the button behind the box's
 ## flap opens it; the relic behind its laser cage cannot be scanned until the terminal switches the lasers off.
 func _test_foot_vault(view: SystemView) -> void:

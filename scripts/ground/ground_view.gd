@@ -97,6 +97,8 @@ var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up
 const TAB_HOLD := 0.35
 const ExploreNode = preload("res://scripts/ground/explore.gd")
 const VaultGen = preload("res://scripts/ground/vault_gen.gd")
+const DroneBuddy = preload("res://scripts/ground/drone_buddy.gd")
+var buddy: Node2D = null                 # 0.7.52.25: your drones where there is no fight
 const CutGame = preload("res://scripts/ground/cut_game.gd")
 const HackGame = preload("res://scripts/ground/hack_game.gd")
 var _named_lights := {}
@@ -324,6 +326,13 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		combat_hud.combat = combat
 	_close_game()
 	_scan = {}
+	if buddy != null and is_instance_valid(buddy):
+		buddy.queue_free()
+	buddy = null
+	if combat == null:
+		buddy = DroneBuddy.new()                       # 0.7.52.25 (Luz): the drones on your suit outside a fight too
+		buddy.view = self
+		_world.add_child(buddy)
 	spawn_explore()                                   # 0.7.52.22: boxes, terminals, tablets, relics
 	_set_hint()
 	_space_view(_sys)
@@ -1188,6 +1197,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		use()
 	elif _ride.is_empty() and _touch < 0.0:
+		if buddy != null and combat == null:
+			for di in 2:                                   # 0.7.52.25: C / Shift+C – your drones up and back
+				if event.is_action_pressed("foot_drone" if di == 0 else "foot_drone_2", false, true):
+					get_viewport().set_input_as_handled()
+					_say_toast(buddy.command(di), 2.0)
+					return
 		for n in mini(4, GameState.gear.belt.size()):            # 0.7.52.9: the belt on its own (rebindable) keys
 			if event.is_action_pressed("foot_belt_%d" % (n + 1), false, false):
 				get_viewport().set_input_as_handled()
@@ -1210,6 +1225,9 @@ func use_belt(n: int) -> void:
 		var bid := String(b["id"])
 		if bid.begins_with("tl_scanner") and _scan_start(n):
 			return                                     # 0.7.52.24: scanning (hold the key)
+		if bid.begins_with("tl_cloak"):
+			_say_toast(combat.cloak(bid) if combat != null else "Nothing to hide from here.", 2.5)     # 0.7.52.25
+			return
 		if bid.begins_with("tl_cutter") and not zone.is_empty() and String(zone.get("kind", "")) == "explore":
 			explore_use(zone)                          # 0.7.52.22: the torch at a box
 			return

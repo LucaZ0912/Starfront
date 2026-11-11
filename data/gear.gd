@@ -138,6 +138,9 @@ const BELT := {
 		"desc": "Reads a place: who and what is here, what lies under the ground."},
 	"tl_cutter": {"name": "Cutting Torch", "kind": "tool", "maker": "Kanayama Heavy Industries", "strength": 1.0, "range": 40.0, "energy": 5.0, "price": 1600,
 		"desc": "Opens hatches and cuts salvage out of wrecks."},
+	# 0.7.52.25 (Luz): the short cloak – a few seconds unseen (by its quality), then it needs a while to work again
+	"tl_cloak": {"name": "Short Cloak", "kind": "tool", "maker": "Axiom Astronautics", "strength": 1.0, "range": 0.0, "energy": 0.0, "price": 2400,
+		"desc": "Bends the light round you for a few seconds – foes lose you, your weapons hold fire. Then it needs a while to recharge."},
 	"tl_mining": {"name": "Mining Laser", "kind": "tool", "maker": "Kanayama Heavy Industries", "strength": 1.0, "range": 60.0, "energy": 6.0, "price": 1900,
 		"desc": "Cuts ore and crystals out of the rock by hand."},
 	"cs_medkit": {"name": "Medkit", "kind": "use", "heal": 50.0, "stack": 4, "price": 150, "desc": "Patches the body up: +50 health."},

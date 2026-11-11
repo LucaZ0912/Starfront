@@ -77,7 +77,9 @@ var allies: Array = []                             # 0.7.52.20 (package 52a): yo
 var team_sel := 0                                  # whom the command wheel speaks to: 0, 1 a member, allies.size() all
 var wheel_open := false                            # the command wheel is up (V held): time runs slow
 var _team_made := false
-var sneaking := false                              # 0.7.52.21 (Luz): Ctrl – sneaking (they do not hear you, see you only in their view)
+var sneaking := false
+var cloak_t := 0.0                                 # 0.7.52.25 (Luz): seconds you are still unseen (the short cloak)
+var cloak_cd := 0.0                                # … and until it works again                              # 0.7.52.21 (Luz): Ctrl – sneaking (they do not hear you, see you only in their view)
 var reviving = null                                # the member you are bringing back (the use key held beside it)
 var revive_k := 0.0
 var arm_charge := 0.0                              # 0.7.52.14: the Red Arm Laser's charge (seconds of its `charge`)
@@ -457,6 +459,7 @@ func step(delta: float, move: Vector2) -> void:
 	_grenade_step(delta)
 	_drone_step(delta)
 	_arm_step(delta)
+	_cloak_step(delta)
 	# the weapon in the hands while fighting, facing the target when standing
 	var wid := weapon_id()
 	if fight and active != null and wid != "":
@@ -484,6 +487,8 @@ func _pilot_fire(delta: float) -> void:
 	pilot_cool = maxf(0.0, pilot_cool - delta)
 	if (not fight and not sneaking) or active == null or lock_t > 0.0 or dodge_t > 0.0 or pilot_cool > 0.0 or view._collapsed:
 		return
+	if cloak_t > 0.0:
+		return                                         # 0.7.52.25: cloaked, your weapons hold fire
 	var wid := weapon_id()
 	if wid == "":
 		return
@@ -763,6 +768,8 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	f["tp"] = pp
 	var dist := w.pos.distance_to(pp)
 	var sg := sight(w.pos, pp)
+	if tgt == null and pilot_hidden():
+		sg = {"blocked": true, "cover": false, "at": pp}          # 0.7.52.25: cloaked – it has lost you
 	if not f["aware"]:
 		if sneaking:
 			_watch(f, delta)                          # 0.7.52.21: only in its view, slowly noticing
@@ -1970,6 +1977,43 @@ func _arm_geometry(beam: Dictionary) -> void:
 	beam["runs"] = _beam_runs(a, b, muzzle, end)
 
 
+# ---------------------------------------------------------------- 0.7.52.25 (Luz): the short cloak
+
+const CLOAK_TIME := {"F": 2.0, "D": 3.0, "C": 4.0, "B": 5.0, "A": 6.0}
+const CLOAK_CD := {"F": 30.0, "D": 27.0, "C": 24.0, "B": 21.0, "A": 18.0}
+
+
+func pilot_hidden() -> bool:
+	return cloak_t > 0.0
+
+
+## The cloak on your belt switched on. Returns what to say.
+func cloak(id: String) -> String:
+	if cloak_t > 0.0:
+		return "You are cloaked already."
+	if cloak_cd > 0.0:
+		return "The cloak is recharging – %d s." % int(ceil(cloak_cd))
+	var q := GearData.quality(id)
+	cloak_t = float(CLOAK_TIME.get(q, 2.0))
+	cloak_cd = cloak_t + float(CLOAK_CD.get(q, 30.0))
+	for f in alive():
+		f["notice"] = 0.0
+	Audio.play("module_on", "short cloak", -4.0)
+	return "Cloaked – %d s unseen. Your weapons hold fire." % int(cloak_t)
+
+
+func _cloak_step(delta: float) -> void:
+	var was := cloak_t > 0.0
+	cloak_t = maxf(0.0, cloak_t - delta)
+	cloak_cd = maxf(0.0, cloak_cd - delta)
+	var p: Walker = view.pilot
+	if cloak_t > 0.0:
+		p.modulate = Color(0.6, 0.9, 1.0, 0.22 + 0.12 * sin(_t * 14.0))
+	elif was:
+		p.modulate = Color.WHITE
+		view._say_toast("The cloak drops – you can be seen.", 2.0)
+
+
 # ---------------------------------------------------------------- 0.7.52.21 (package 52b, Luz): sneaking
 
 const SNEAK_ATTACK := 2.0                         # your first shot on an unaware foe
@@ -2002,6 +2046,8 @@ func look_of(f: Dictionary) -> float:
 ## next to it)
 func spots(f: Dictionary, p: Vector2) -> bool:
 	var w: Walker = f["w"]
+	if pilot_hidden() and p == pilot_pos():
+		return false                                   # 0.7.52.25: cloaked
 	var d := w.pos.distance_to(p)
 	if d < CLOSE:
 		return true
@@ -2157,7 +2203,7 @@ func _foe_target(f: Dictionary) -> Variant:
 	var w: Walker = f["w"]
 	var best = null
 	var bd := w.pos.distance_to(pilot_pos())
-	if sight(w.pos, pilot_pos())["blocked"]:
+	if sight(w.pos, pilot_pos())["blocked"] or pilot_hidden():
 		bd = INF
 	for a in allies_up():
 		var ap: Vector2 = (a["w"] as Walker).pos
@@ -2603,7 +2649,7 @@ func _draw() -> void:
 	for sf in alive():
 		if String(sf["role"]) == "sniper" and sf["aware"] and float(sf["cool"]) < 0.9 and sf["state"] != "flee":
 			var sw: Walker = sf["w"]
-			if not sight(sw.pos, pilot_pos())["blocked"] and sw.aim != Vector2.INF:
+			if not sight(sw.pos, pilot_pos())["blocked"] and sw.aim != Vector2.INF and not pilot_hidden():
 				var k0 := 1.0 - clampf(float(sf["cool"]) / 0.9, 0.0, 1.0)
 				var m0 := sw.muzzle_art() * S
 				draw_line(m0, (pilot_pos() + CHEST) * S, Color(1.0, 0.15, 0.1, 0.25 + 0.55 * k0), 1.0 + 1.5 * k0)

@@ -96,6 +96,13 @@ static func _paint(img: Image, fam: String) -> void:
 			_r(img, 11, 7, 1, 5, Color(0.4, 1.0, 0.6))
 			_r(img, 8, 15, 3, 2, CYAN)
 			_r(img, 13, 15, 3, 2, Color(1.0, 0.7, 0.2))
+		"tl_cloak":                                        # 0.7.52.25: a disc with a shimmer round it
+			_r(img, 7, 7, 10, 10, DARK)
+			_r(img, 9, 9, 6, 6, Color(0.25, 0.3, 0.45))
+			_r(img, 11, 11, 2, 2, Color(0.75, 0.9, 1.0))
+			for k6 in 4:
+				_r(img, 4 + k6 * 5, 4 + (k6 % 2) * 15, 2, 1, Color(0.6, 0.85, 1.0, 0.8))
+				_r(img, 4 + (k6 % 2) * 15, 5 + k6 * 4, 1, 2, Color(0.6, 0.85, 1.0, 0.8))
 		"tl_cutter":
 			_r(img, 3, 12, 12, 5, STEEL)
 			_r(img, 3, 12, 12, 1, STEEL.lightened(0.3))

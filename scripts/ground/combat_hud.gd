@@ -257,6 +257,12 @@ func _charge_frame(r: Rect2, k: float) -> void:
 
 ## 0.7.52.13: the dodge charges under the suit's bars.
 func _draw_dodges(p: Vector2) -> void:
+	# 0.7.52.25: the short cloak beside the dodges – unseen for …, or recharging
+	if combat.cloak_t > 0.0 or combat.cloak_cd > 0.0:
+		var ct := ("CLOAKED  %.1f s" % combat.cloak_t) if combat.cloak_t > 0.0 else ("cloak recharging  %d s" % int(ceil(combat.cloak_cd)))
+		var cw := ThemeDB.fallback_font.get_string_size(ct, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0
+		draw_rect(Rect2(p + Vector2(150, 0), Vector2(cw, 20)), Color(0.0, 0.02, 0.06, 0.6))
+		_s(p + Vector2(157, 14), ct, Color(0.6, 0.9, 1.0) if combat.cloak_t > 0.0 else Color(0.6, 0.65, 0.72), 12)
 	var t := "%s  dodge" % Keybinds.key_text("foot_dodge")
 	var font := ThemeDB.fallback_font
 	var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
