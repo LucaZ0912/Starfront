@@ -95,6 +95,7 @@ const TAC_ZOOM_OUT := 0.5
 const ZOOM_NEAR := 1.5
 var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up) – a tap switches the view, holding ends it
 const TAB_HOLD := 0.35
+var _drone_held: Array = [-1.0, -1.0]   # 0.7.52.19: how long C / Shift+C is held over a kamikaze drone in the air (-1: up)
 var _warned := {}
 
 
@@ -988,6 +989,14 @@ func _process(delta: float) -> void:
 			if was < TAB_HOLD and _tab_held >= TAB_HOLD and combat.tactics != 0:
 				combat.tactics = 0                        # held: the tactical view goes off
 				Audio.play("ui_close", "tactical view off", -6.0)
+		for di in 2:                                     # 0.7.52.19 (Luz): held – the kamikaze drone comes back
+			if float(_drone_held[di]) >= 0.0:
+				_drone_held[di] = float(_drone_held[di]) + delta
+				if float(_drone_held[di]) >= TAB_HOLD:
+					_drone_held[di] = -1.0
+					var rmsg: String = combat.drone_recall(di)
+					if rmsg != "":
+						_say_toast(rmsg, 2.0)
 		var helm: bool = pilot_look()["helmet"]
 		if helm != bool(pilot.look.get("helmet", false)):
 			pilot.look = pilot_look()                    # 0.7.51.10: the helmet closes for the fight
@@ -1076,14 +1085,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			combat.nearest_target()                      # 0.7.52.9 (Luz): Shift+R – the nearest foe
 			return
-		if event.is_action_pressed("foot_drone", false, true):
-			get_viewport().set_input_as_handled()
-			_say_toast(combat.drone_command(), 2.0)              # 0.7.52.11
-			return
-		if event.is_action_pressed("foot_drone_2", false, true):
-			get_viewport().set_input_as_handled()
-			_say_toast(combat.drone_command(1), 2.0)             # 0.7.52.18: the second drone (Shift+C)
-			return
+		# 0.7.52.11 C, 0.7.52.18 Shift+C the second drone; 0.7.52.19 (Luz): over a kamikaze drone in the air a tap sends it,
+		# holding the key calls it back
+		for di in 2:
+			var act := "foot_drone" if di == 0 else "foot_drone_2"
+			if event.is_action_pressed(act, false, true):
+				get_viewport().set_input_as_handled()
+				if combat.drone_kamikaze_up(di):
+					_drone_held[di] = 0.0
+				else:
+					_say_toast(combat.drone_command(di), 2.0)
+				return
+		for di2 in 2:
+			if event.is_action_released("foot_drone" if di2 == 0 else "foot_drone_2", false) and float(_drone_held[di2]) >= 0.0:
+				get_viewport().set_input_as_handled()
+				_drone_held[di2] = -1.0
+				_say_toast(combat.drone_command(di2), 2.0)       # a tap: away at the target
+				return
 		if event.is_action_pressed("foot_grenade", false, false):
 			get_viewport().set_input_as_handled()
 			if not combat.grenade_down():

@@ -9366,6 +9366,14 @@ func _test_foot_drones(view: SystemView) -> void:
 	var kup: String = cb.drone_command()                  # the kamikaze: C to take off, C again to send it
 	for i10b in 8:
 		cb.step(0.1, Vector2.ZERO)
+	# 0.7.52.19 (Luz): holding C calls it back instead – docked again, then up once more
+	var rec_ok: bool = cb.drone_kamikaze_up(0) and cb.drone_recall(0).contains("back")
+	for i10c in 20:
+		cb.step(0.1, Vector2.ZERO)
+	rec_ok = rec_ok and String(cb.drone["state"]) == "docked" and not cb.drone_kamikaze_up(0)
+	cb.drone_command()
+	for i10d in 8:
+		cb.step(0.1, Vector2.ZERO)
 	cb.lock(foe)
 	var hk0 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
 	var hp_me: float = gear.health
@@ -9403,7 +9411,7 @@ func _test_foot_drones(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(data_ok and eq_ok and up_ok and laser_ok and kin_ok and down_ok and hit_d and kam_ok,
+	check(data_ok and eq_ok and up_ok and laser_ok and kin_ok and down_ok and hit_d and kam_ok and rec_ok,
 		"0.7.52.11: ground combat drones – the combat suits' drone place, quality F–A, more rounds and energy for every suit; the laser drone fights your target and overheats, C recalls it; the kinetic one flies back and reloads from the suit; shot down and rebuilt; foes' hits wear it down; the kamikaze dives on C and bursts, sparing you, with a long rebuild  [%s]" % " ".join(PackedStringArray([str(data_ok), str(eq_ok), str(up_ok), str(laser_ok), str(kin_ok), str(down_ok), str(hit_d), str(kam_ok)])))
 
 

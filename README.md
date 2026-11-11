@@ -360,6 +360,7 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.19: `GroundCombat.drone_kamikaze_up(i)`, `drone_recall(i)`; `GroundView._drone_held` (tap on release, held `TAB_HOLD`: back).
 - 0.7.52.18: suits `suit_mil_senate_eyes` / `suit_mil_senate_hand` (`faction` "assembly", `shoulder_drones`);
   `ChibiArt._senate`, `_senate_helmet`, `_senate_frame` (a bigger canvas `SENATE_PAD` for crest and cloak; `_px` clips to
   the image); `GroundCombat.drones` / `drone_rebuilds` / `drone_slot` with `pick_drone(i)` (the drone functions act on

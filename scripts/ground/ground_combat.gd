@@ -1493,6 +1493,23 @@ func drone_command(i: int = 0) -> String:
 	return msg
 
 
+## 0.7.52.19 (Luz): a kamikaze drone up in the air – its key held calls it back instead of sending it.
+func drone_kamikaze_up(i: int = 0) -> bool:
+	var d: Dictionary = drones[i] if i != drone_slot else drone
+	return not d.is_empty() and String(d["kind"]) == "kamikaze" and String(d["state"]) in ["launch", "hover"]
+
+
+func drone_recall(i: int = 0) -> String:
+	if not drone_kamikaze_up(i):
+		return ""
+	var keep := drone_slot
+	pick_drone(i)
+	drone["state"] = "dock"
+	var msg := "Kamikaze drone called back – switched off." + ("" if drone_places().size() < 2 else (" (1)" if i == 0 else " (2)"))
+	pick_drone(keep)
+	return msg
+
+
 func _drone_command() -> String:
 	var id := drone_id()
 	var nth := "" if drone_places().size() < 2 else (" (1)" if drone_slot == 0 else " (2)")
@@ -1506,7 +1523,7 @@ func _drone_command() -> String:
 	if stt == "docked":
 		_drone_up()
 		var key := Keybinds.key_text("foot_drone" if drone_slot == 0 else "foot_drone_2")
-		return ("Kamikaze drone up – %s again sends it at your target." % key if String(drone["kind"]) == "kamikaze" else "Drone up – it fights your target.") + nth
+		return ("Kamikaze drone up – tap %s again: at your target, hold it: back." % key if String(drone["kind"]) == "kamikaze" else "Drone up – it fights your target.") + nth
 	if stt in ["return", "reload"]:
 		drone["stay"] = not bool(drone["stay"])
 		return ("It stays docked after reloading." if bool(drone["stay"]) else "It takes off again after reloading.") + nth

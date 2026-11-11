@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.19 – 2026-11-11
+
+**Calling a kamikaze drone back (Luz).** While a kamikaze drone is up in the air, a tap on its key (C, or Shift+C for
+the second) still sends it at your target; **holding** the key calls it back to its dock, switched off.
+
 ## alpha 0.7.52.18 – 2026-11-11
 
 **The Assembly's Senate armours (Luz's idea, after the mockup she approved).**
