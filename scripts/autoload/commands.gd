@@ -2781,6 +2781,8 @@ func _c_debug_combat(c: Dictionary) -> String:
 		"tactics":                                     # 0.7.52.2: the tactical view – 0 off, 1 your sight, 2 the target's
 			cb.tactics = clampi(int(c.get("mode", 1)), 0, 2)
 			cb._vis = {}
+			if c.has("zoom"):                             # 0.7.52.8: the tactical view zoomed out (< 1) or not
+				g.tac_zoom = g.TAC_ZOOM_OUT if float(c["zoom"]) < 1.0 else 1.0
 		_:
 			return "Unknown combat debug."
 	return ""

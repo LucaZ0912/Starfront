@@ -41,6 +41,7 @@ const ACTIONS := [
 	{"id": "interact", "label": "Use (door, terminal, airlock)", "group": "On foot", "def": [{"k": KEY_E}]},
 	{"id": "foot_target", "label": "Fight: lock the next target", "group": "On foot", "def": [{"k": KEY_R}]},          # package 52 (0.7.52.2, Luz: R)
 	{"id": "foot_tactics", "label": "Fight: tactical view (tap: cover / the target's view, hold: off)", "group": "On foot", "def": [{"k": KEY_TAB}]},
+	{"id": "foot_zoom", "label": "Fight: tactical view zoomed out / back (also the mouse wheel)", "group": "On foot", "def": [{"k": KEY_Z}]},          # 0.7.52.8
 	{"id": "foot_dodge", "label": "Fight: dodge (a jump no shot hits)", "group": "On foot", "def": [{"k": KEY_SPACE}]},
 	{"id": "foot_swap", "label": "Fight: the other weapon in hand", "group": "On foot", "def": [{"k": KEY_Q}]},
 	{"id": "boost", "label": "Thrust burst (a few seconds of extra speed)", "group": "Ship commands", "def": [{"k": KEY_SHIFT}]},

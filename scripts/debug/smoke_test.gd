@@ -8941,6 +8941,14 @@ func _test_foot_combat(view: SystemView) -> void:
 	var t2: int = cb.tactics
 	cb.step(0.05, Vector2.ZERO)
 	tac_ok = tac_ok and t1 == 1 and t2 == 2 and cb._vis.get("rays") != null and bool(cb._vis["red"]) 		and is_equal_approx(float(cb._vis["reach"]), float(GD.stats(String(cb.tac_viewer()["weapon"]))["range"])) and Keybinds.key_text("foot_tactics") != Keybinds.key_text("foot_target")
+	# 0.7.52.8 (Luz): the tactical view zoomed out to half on its key / the wheel – only while it is open
+	Commands.execute({"type": "debug_combat", "do": "tactics", "mode": 1, "zoom": 0.5})
+	g._camera()
+	var z_out: float = g._world.scale.x
+	Commands.execute({"type": "debug_combat", "do": "tactics", "mode": 0})
+	g._camera()
+	tac_ok = tac_ok and is_equal_approx(z_out, 0.5) and is_equal_approx(g._world.scale.x, 1.0) and is_equal_approx(g.tac_zoom, 0.5) 		and InputMap.has_action("foot_zoom")
+	g.tac_zoom = 1.0
 	cb.tactics = 0
 	cb.unlock(other)
 	lock_ok = lock_ok and cb.locks.size() == 1 and cb.active == a1

@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.8 – 2026-11-11
+
+**The tactical view zoomed out on demand (Luz).** While the tactical view is open, **Z** or the mouse wheel (down)
+zooms the camera out to half – the whole reach of your weapon and the cover around it in sight; Z again or the wheel
+(up) brings it back. It eases in and out, goes back to normal when the view closes and is remembered for the next time.
+The legend shows the key; the key can be rebound ("On foot").
+
 ## alpha 0.7.52.7 – 2026-11-11
 
 **The tactical view in the other side's colours (Luz).** In your green view the shadows – where foes are covered from

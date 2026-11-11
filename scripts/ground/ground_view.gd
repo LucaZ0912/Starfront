@@ -87,6 +87,9 @@ var hud: SuitHud = null
 var _collapsed := false
 var combat: GroundCombat = null         # package 52: the fight on foot (where weapons are allowed)
 var combat_hud: CombatHud = null
+var zoom := 1.0                         # 0.7.52.8: the camera's zoom (1 = as always)
+var tac_zoom := 1.0                     # the tactical view's zoom: 1 or TAC_ZOOM_OUT (Luz: one step), kept for next time
+const TAC_ZOOM_OUT := 0.5
 var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up) – a tap switches the view, holding ends it
 const TAB_HOLD := 0.35
 var _warned := {}
@@ -417,9 +420,14 @@ func _collapse(reason: String = "") -> void:
 func _on_click(event: InputEvent) -> void:
 	if combat == null or not input_enabled or _collapsed or not (event is InputEventMouseButton) or not event.pressed:
 		return
+	# 0.7.52.8 (Luz): in the tactical view the mouse wheel zooms out to half (down) and back (up) – one step
+	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN or event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		if combat.tactics != 0:
+			tac_zoom = TAC_ZOOM_OUT if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else 1.0
+		return
 	if event.button_index != MOUSE_BUTTON_LEFT and event.button_index != MOUSE_BUTTON_RIGHT:
 		return
-	var f = combat.foe_at((event.position - _world.position) / GroundMap.SCALE)
+	var f = combat.foe_at((event.position - _world.position) / (GroundMap.SCALE * zoom))
 	if f == null:
 		return
 	if event.button_index == MOUSE_BUTTON_LEFT:
@@ -1016,6 +1024,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				combat.cycle_tactics()                    # a tap: your sight, the target's sight, yours …
 			_tab_held = -1.0
 			return
+		if event.is_action_pressed("foot_zoom", false, true) and combat.tactics != 0:
+			get_viewport().set_input_as_handled()
+			tac_zoom = 1.0 if tac_zoom < 1.0 else TAC_ZOOM_OUT         # 0.7.52.8: the same on its key
+			return
 		if event.is_action_pressed("foot_target", false, true):
 			get_viewport().set_input_as_handled()
 			combat.next_target()
@@ -1048,7 +1060,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## 0.7.52.5: where the mouse points on the map (art px).
 func mouse_art() -> Vector2:
-	return (get_viewport().get_mouse_position() - _world.position) / GroundMap.SCALE
+	return (get_viewport().get_mouse_position() - _world.position) / (GroundMap.SCALE * zoom)
 
 
 ## 0.7.51.3: a belt place on its number key.
@@ -1636,7 +1648,13 @@ func walk_to_zone(id: String) -> bool:
 
 func _camera(delta: float = -1.0) -> void:
 	var vs := get_viewport().get_visible_rect().size
-	var mp := map.size_px() * GroundMap.SCALE
+	# 0.7.52.8: zoomed out only while the tactical view is open, as far as chosen there; eased in and out
+	var zw := tac_zoom if combat != null and combat.tactics != 0 else 1.0
+	zoom = zw if delta < 0.0 else lerpf(zoom, zw, 1.0 - exp(-delta * 10.0))
+	if absf(zoom - zw) < 0.002:
+		zoom = zw
+	_world.scale = Vector2(zoom, zoom)
+	var mp := map.size_px() * GroundMap.SCALE * zoom
 	var c := pilot.position + Vector2(0, -24)
 	# 0.7.49.14: sitting on the hangar's bench, the camera glides over to the ship – a look at her
 	var at_ship := level == "hangar" and not _seat.is_empty() and map.ship_at != Vector2.INF
@@ -1647,7 +1665,7 @@ func _camera(delta: float = -1.0) -> void:
 	else:
 		var rate := 3.0 if at_ship or _cam_c.distance_to(c) > 120.0 else 14.0
 		_cam_c = _cam_c.lerp(c, 1.0 - exp(-delta * rate))
-	c = _cam_c
+	c = _cam_c * zoom
 	var off := vs * 0.5 - c
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - (1.0 / 60.0))
