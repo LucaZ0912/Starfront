@@ -36,7 +36,7 @@ static func build(site: Dictionary) -> GroundMap:
 		m.fill(dr.position.x, dr.position.y, dr.size.x, dr.size.y, GroundMap.T.BLOCK, 1)        # sealed (open: DOOR)
 	m.fill(CAGE.position.x, CAGE.position.y, CAGE.size.x, CAGE.size.y, GroundMap.T.BLOCK, 1)    # the lasers keep you out
 	for dc in DUCT:
-		m.set_t(int(dc[0]), int(dc[1]), GroundMap.T.BLOCK, 16)                                    # the shaft, its grille shut
+		m.set_t(int(dc[0]), int(dc[1]), m.t_at(int(dc[0]), int(dc[1])), 16)     # the shaft (0.7.52.28: wall until it is cut open)
 	# floors, stripes, pipes, screens and lamps
 	m.decals.append({"kind": "stripes", "x": 11, "y": 19, "w": 8, "h": 1})
 	m.decals.append({"kind": "stripes", "x": 13, "y": 29, "w": 4, "h": 1})
@@ -73,6 +73,6 @@ static func build(site: Dictionary) -> GroundMap:
 	ExploreNode.add(m, "relic", Vector2(15, 10.9) * TILE, {"cage": ci, "no_zone": true})
 	ExploreNode.add(m, "terminal", Vector2(20, 9.2) * TILE, {"actions": ["lasers", "door", "power", "data"], "cage": ci, "door": si, "seed": 77})
 	ExploreNode.add(m, "tablet", Vector2(15, 3.2) * TILE, {"seed": 3})
-	ExploreNode.add(m, "vent", Vector2(6.5, 19) * TILE, {"duct": DUCT, "label": "VENT-06", "seed": 606})        # 0.7.52.27
-	ExploreNode.add(m, "vent_end", Vector2(8, 11) * TILE, {"no_zone": true})
+	var vent := ExploreNode.add(m, "vent", Vector2(6.5, 19) * TILE, {"duct": DUCT, "label": "VENT-06", "seed": 606})        # 0.7.52.27
+	ExploreNode.add(m, "vent_end", Vector2(8, 11) * TILE, {"no_zone": true, "vent": m.explore.find(vent)})
 	return m

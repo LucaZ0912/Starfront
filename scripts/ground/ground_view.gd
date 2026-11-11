@@ -1450,6 +1450,7 @@ func open_vent(d: Dictionary) -> void:
 	d["state"] = "open"
 	for c in d.get("duct", []):
 		map.set_t(int(c[0]), int(c[1]), GroundMap.T.FLOOR, 16)
+	map.refresh_texture()                              # 0.7.52.28: the shaft shows only once it is open
 	map._astar = null
 	if combat != null:
 		combat._build_cover()

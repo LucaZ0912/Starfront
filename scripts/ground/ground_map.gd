@@ -131,6 +131,14 @@ func add_object(o: Dictionary, block: bool = true) -> void:
 
 # ---------------------------------------------------------------- The floor and the walls
 
+## 0.7.52.28: draw the floor and walls again (a shaft opened) – into the same texture.
+func refresh_texture() -> void:
+	if _tex == null:
+		return
+	_render()
+	(_tex as ImageTexture).update(_img)
+
+
 func texture() -> Texture2D:
 	if _tex == null:
 		_render()

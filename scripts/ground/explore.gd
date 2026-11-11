@@ -184,6 +184,15 @@ static func add(map: GroundMap, kind: String, pos: Vector2, extra: Dictionary = 
 
 func _process(delta: float) -> void:
 	var d: Dictionary = view.map.explore[i]
+	if String(d["kind"]) == "vent_end":
+		# 0.7.52.28 (Luz): the hatch flips open when you come to it from inside the shaft
+		var vi2 = d.get("vent")
+		var vent_open: bool = vi2 == null or String(view.map.explore[int(vi2)]["state"]) != "shut"
+		if vent_open and String(d["state"]) == "shut" and view.pilot.pos.distance_to((d["pos"] as Vector2) + Vector2(-8, -8)) < 22.0:
+			d["state"] = "open"
+			Audio.play("dock_clamp", "vent hatch flips open", -12.0)
+		if String(d["state"]) == "open":
+			d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 0.45)
 	if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
 		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
@@ -217,28 +226,41 @@ func _draw() -> void:
 			draw_circle(Vector2(6, -26), 1.0, Color(1.0, 0.25, 0.2) if fposmod(t, 1.2) < 0.9 else Color(0.3, 0.1, 0.1))
 		"vent":
 			# 0.7.52.27 (Luz): a ventilation shaft's grille in the wall – welded shut, or cut open into the dark duct
-			draw_rect(Rect2(-9, -27, 18, 16), Color(0.12, 0.13, 0.15))
+			# (0.7.52.28: low, flush with the floor)
+			draw_rect(Rect2(-9, -15, 18, 15), Color(0.12, 0.13, 0.15))
 			if String(d["state"]) == "shut":
-				draw_rect(Rect2(-8, -26, 16, 14), Color(0.42, 0.44, 0.48))
+				draw_rect(Rect2(-8, -14, 16, 14), Color(0.42, 0.44, 0.48))
 				for sl in 5:
-					draw_rect(Rect2(-7, -24.5 + sl * 2.6, 14, 1.4), Color(0.18, 0.19, 0.22))
-					draw_rect(Rect2(-7, -23.8 + sl * 2.6, 14, 0.6), Color(0.6, 0.62, 0.66))
+					draw_rect(Rect2(-7, -12.5 + sl * 2.6, 14, 1.4), Color(0.18, 0.19, 0.22))
+					draw_rect(Rect2(-7, -11.8 + sl * 2.6, 14, 0.6), Color(0.6, 0.62, 0.66))
 				for bx in [-7.0, 7.0]:
-					for by in [-25.0, -13.0]:
+					for by in [-13.0, -1.5]:
 						draw_circle(Vector2(bx, by), 0.7, Color(0.7, 0.72, 0.75))
 			else:
-				draw_rect(Rect2(-8, -26, 16, 14), Color(0.03, 0.03, 0.04))
-				draw_rect(Rect2(-6, -24, 12, 10), Color(0.06, 0.06, 0.07))
-				draw_rect(Rect2(-4, -22, 8, 6), Color(0.02, 0.02, 0.03))
-				draw_rect(Rect2(-8, -26, 16, 14), Color(1.0, 0.5, 0.2, 0.35), false, 0.6)
-			draw_string(ThemeDB.fallback_font, Vector2(-9, -29), "VENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.9, 0.85, 0.5, 0.8))
+				draw_rect(Rect2(-8, -14, 16, 14), Color(0.03, 0.03, 0.04))
+				draw_rect(Rect2(-6, -12, 12, 12), Color(0.06, 0.06, 0.07))
+				draw_rect(Rect2(-4, -10, 8, 10), Color(0.02, 0.02, 0.03))
+				draw_rect(Rect2(-8, -14, 16, 14), Color(1.0, 0.5, 0.2, 0.35), false, 0.6)
+			draw_string(ThemeDB.fallback_font, Vector2(-9, -17), "VENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.9, 0.85, 0.5, 0.8))
 		"vent_end":
-			# the shaft's other mouth: its grille knocked out, hanging open
-			draw_rect(Rect2(-16, -16, 3, 16), Color(0.32, 0.34, 0.38))
-			draw_rect(Rect2(-16, -16, 16, 2), Color(0.32, 0.34, 0.38))
-			draw_rect(Rect2(-16, -2, 16, 2), Color(0.32, 0.34, 0.38))
-			for sl2 in 4:
-				draw_rect(Rect2(-13 + sl2 * 3.5, -13, 1.2, 10), Color(0.2, 0.21, 0.24, 0.5))
+			# the shaft's other mouth: a hatch over its last stretch – unseen until the shaft is open; it flips open
+			# onto the floor as you come out (0.7.52.28)
+			var vi = d.get("vent")
+			if vi != null and String(view.map.explore[int(vi)]["state"]) == "shut":
+				pass
+			else:
+				var ok2 := float(d.get("open_k", 0.0))
+				var wv := 16.0 * cos(ok2 * PI)
+				if wv > 0.0:
+					draw_rect(Rect2(-wv, -16, wv, 16), Color(0.4, 0.42, 0.46))
+					for sl2 in 4:
+						draw_rect(Rect2(-wv + wv * (0.15 + sl2 * 0.2), -14, maxf(0.6, wv * 0.08), 12), Color(0.2, 0.21, 0.24))
+					draw_rect(Rect2(-wv, -16, wv, 16), Color(0.15, 0.16, 0.18), false, 0.6)
+				else:
+					draw_rect(Rect2(0, -16, -wv, 16), Color(0.28, 0.29, 0.32))
+					draw_rect(Rect2(0, -16, -wv, 16), Color(0.12, 0.13, 0.15), false, 0.6)
+					draw_rect(Rect2(0, -9, -wv * 0.3, 2), Color(0.5, 0.52, 0.56))
+				draw_rect(Rect2(-1, -16, 1.5, 16), Color(0.55, 0.57, 0.6))           # the hinge
 		"panel":
 			# a steel box on its post, conduits in, the flap, its light
 			draw_rect(Rect2(-1.5, -10, 3, 10), Color(0.25, 0.26, 0.29))

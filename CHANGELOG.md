@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.28 – 2026-11-11
+
+**The air shaft, finished (Luz).** The vent's grille sits low in the wall, **flush with the floor**. While it is
+shut the **shaft cannot be seen** – it is wall; cut open, the floor and walls are drawn again with the duct in them.
+At the shaft's other end a **hatch** lies over its mouth and **flips open onto the floor** as you crawl up to it.
+
 ## alpha 0.7.52.27 – 2026-11-11
 
 **The box on the wall, the air shaft (Luz).**
