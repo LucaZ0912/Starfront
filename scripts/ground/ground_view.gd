@@ -307,7 +307,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			if not bool(_site.get("poi", false)):
 				_city_site = _site
 				if is_city() and _town_kind == "maint":
-					_site = GameState.maint_sites.get(String(station.get("id", "")), GameState.city_poi(_sys, station))    # 0.7.53.9
+					var ms0 := GameState.maint_site_for(String(station.get("id", "")))         # 0.7.53.9 (53c: or a job's)
+					_site = ms0 if not ms0.is_empty() else GameState.city_poi(_sys, station)
 				else:
 					_site = GameState.city_poi(_sys, station) if is_city() else GameState.settle_poi(_sys, station)
 		elif _city_site != null:
@@ -669,6 +670,7 @@ func _turrets_step(delta: float) -> void:
 func raise_alarm() -> void:
 	if combat == null:
 		return
+	_site["alarmed"] = true                              # package 53c: a heist's rule
 	for d in map.explore:
 		if String(d["kind"]) == "alarm" and String(d["state"]) == "armed":
 			d["state"] = "ringing"
@@ -1586,6 +1588,7 @@ func _process(delta: float) -> void:
 		_hazards_step(delta)
 		_fuses_step(delta)
 		_drones_step(delta)
+		_mission_step(delta)
 		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:
@@ -2220,6 +2223,8 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 			var n := 4 + int(d.get("seed", 0)) % 5
 			GameState.research_data += n
 			txt = "Data downloaded – %d research data." % n
+			if level == "dungeon" and depth == PoiData.levels(String(_site.get("theme", "precursor"))) - 1:
+				_mission_event("data")                     # package 53c: the spy's goal
 	if txt != "" and not (what == "door" and d.has("door") and String(map.explore[int(d["door"])]["kind"]) == "ruin_gate"):
 		_say_toast(txt, 3.0)                           # (the toast goes into the event log too; the gate says its own)
 
@@ -2267,6 +2272,12 @@ func _loot(d: Dictionary) -> void:
 func _poi_target_done(d: Dictionary) -> void:
 	if not bool(_site.get("poi", false)):
 		return
+	if bool(_site.get("mission", false)):
+		_mission_event("target")                         # package 53c: the job pays at its giver
+		if bool(_site.get("goal_done", false)) or String(_site.get("goal", "")) in ["bounty_foot", "spy"]:
+			if String(_site.get("goal", "")) in ["bounty_foot", "spy"]:
+				_say_toast("Not what the job is about – but it is yours.", 2.5)
+			return
 	GameState.poi_use(String(_site.get("id", "")))
 	if String(_site.get("theme", "")) == "pirate":
 		var pay3 := 900 + int(d.get("seed", 0)) % 700              # 0.7.53.11: the Red Talons' hoard
@@ -2392,6 +2403,9 @@ func _poi_setup() -> void:
 	if not bool(_site.get("mission", false)) and level in ["landing", "alley", "minehead"] and not map.has_meta("shown") and not bool(_site.get("used", false)):
 		map.set_meta("shown", true)
 		call_deferred("_poi_window")
+	elif bool(_site.get("mission", false)) and not map.has_meta("shown") and (level in ["landing", "alley", "minehead"] or (level == "dungeon" and depth == 0 and String(_site.get("goal", "")) == "reactivate")):
+		map.set_meta("shown", true)
+		call_deferred("_mission_window")             # package 53c: the job's briefing
 
 
 ## What the minimap shows of a tile once seen.
@@ -2534,6 +2548,98 @@ func _poi_window() -> void:
 	_lift_menu = c
 	_lift_menu.set_meta("zone", {})
 	_lift_menu.set_meta("keys", keys)
+
+
+## Package 53c (Luz): arriving at a job's site – its briefing: what to do, what counts, what it pays.
+func _mission_window() -> void:
+	if _lift_menu != null:
+		return
+	var mm: Dictionary = {}
+	for m in GameState.missions:
+		if String(m.get("type", "")) == "ground" and String(m["site"]["id"]) == String(_site.get("id", "")):
+			mm = m
+	if mm.is_empty():
+		return
+	Audio.play("ui_open", "job briefing")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var gold := Color(0.95, 0.8, 0.3)
+	var p := UI.neon_panel(Color(gold, 0.9), Color(0.03, 0.04, 0.07, 0.97), 2)
+	p.custom_minimum_size = Vector2(680, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("BRIEFING – " + String(mm["title"]).to_upper(), 20, gold))
+	v.add_child(UI.label(String(mm["desc"]), 14, Color(0.92, 0.95, 1.0)))
+	var rules := {"relic": "Another raider crew will come for the relic – be quick.",
+		"salvage": "The flight recorder lies in the wreck's lower deck.",
+		"bounty_foot": "The captain is somewhere inside. When the alarm rings, they run.",
+		"heist": "The strongbox is behind the code door below. " + ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
+		"spy": "The data is in the deepest computer. Unseen, they pay a bonus.",
+		"reactivate": "Restart the reactor on the lowest level."}
+	v.add_child(UI.label(String(rules.get(String(_site.get("goal", "")), "")), 13, UI.TEXT_DIM))
+	v.add_child(UI.label("Pay: %s  •  danger: %s" % [GameData.fmt_credits(int(mm["reward"])), String(PoiData.DANGER.get(String(_site.get("danger", "yellow")), {}).get("name", ""))], 13, gold))
+	var go := func(): _close_lift_menu()
+	var b1 := UI.button("1.  Understood", go)
+	v.add_child(b1)
+	_lift_menu = c
+	_lift_menu.set_meta("zone", {})
+	_lift_menu.set_meta("keys", [go])
+
+
+## Package 53c: a job's goal reached at its site (or failed) – its rules: a heist's alarm, spying unseen.
+func _mission_event(kind: String) -> void:
+	if not bool(_site.get("mission", false)) or bool(_site.get("goal_done", false)):
+		return
+	var goal := String(_site.get("goal", ""))
+	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data"}
+	if String(want.get(goal, "")) != kind:
+		return
+	_site["goal_done"] = true
+	var mult := 1.0
+	var note := ""
+	if goal == "heist" and bool(_site.get("alarmed", false)):
+		if bool(_site.get("hard", false)):
+			GameState.poi_use(String(_site.get("id", "")))
+			GameState.ground_goal(_site, false, 1.0, "the alarm rang")
+			_say_toast("The alarm rang – the job is blown.", 4.0)
+			return
+		mult = 0.5
+		note = "an alarm rang: half pay"
+	if goal == "spy" and not bool(_site.get("seen", false)):
+		mult = 1.3
+		note = "unseen: bonus"
+	GameState.poi_use(String(_site.get("id", "")))
+	GameState.ground_goal(_site, true, mult, note)
+	_say_toast("Job done%s – report back for your pay." % ((" (" + note + ")") if note != "" else ""), 4.0)
+	Audio.play("lock_acquired", "job goal done", -2.0)
+
+
+## Package 53c: a job's site while you are in it – seen or not, the alarm, the captain fallen, the second raider crew.
+func _mission_step(delta: float) -> void:
+	if not bool(_site.get("mission", false)) or combat == null or level != "dungeon":
+		return
+	if combat.alive().any(func(f): return f["aware"]):
+		_site["seen"] = true
+	if map.explore.any(func(d): return String(d["kind"]) == "alarm" and String(d["state"]) == "ringing"):
+		_site["alarmed"] = true
+	var goal := String(_site.get("goal", ""))
+	if goal == "bounty_foot":
+		var th: Dictionary = PoiData.layer(String(_site.get("theme", "")), depth)
+		for f in combat.foes:
+			if f["dead"] and String(f["kind"]) == String(th.get("leader", "")):
+				_mission_event("leader")
+	if goal == "relic" and not bool(_site.get("goal_done", false)) and not bool(_site.get("raced", false)):
+		_site["race_t"] = float(_site.get("race_t", 0.0)) + delta
+		if float(_site["race_t"]) > 240.0:
+			_site["raced"] = true                          # the other crew arrives
+			for i in 3:
+				var sp: Vector2 = combat._free_near(map.spawn + Vector2(randf_range(-30, 30), randf_range(-10, 10)))
+				if sp != Vector2.INF:
+					var nf: Dictionary = combat.spawn(["bandit_scrapper", "bandit_rifleman", "bandit_gunner"][i], sp, "", "yellow")
+					combat._wake(nf)
+			_say_toast("Another raider crew is here – they are after the relic too!", 3.5)
 
 
 ## 0.7.52.23: a blast door opens – its gap walkable, the leaves slide into the walls.
@@ -2918,7 +3024,7 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
 	if is_city():                                                 # 0.7.53.3 (Luz): the way down into the sewers
 		lvls.append(["alley", "%d.  Back alley – a manhole down into the sewers" % (lvls.size() + 1)])
-	if is_city() and GameState.maint_sites.has(String(station.get("id", ""))):
+	if is_city() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
 		lvls.append(["maint", "%d.  Maintenance level – the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
 	var keys: Array = []
 	for lv in lvls:

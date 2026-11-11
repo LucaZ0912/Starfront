@@ -1598,6 +1598,8 @@ func accept_mission(m: Dictionary) -> String:
 	if bonus > 0.0:
 		m["reward"] = int(round(float(m["reward"]) * (1.0 + bonus)))
 		m["bonus"] = bonus
+	if String(m["type"]) == "ground" and String(m["goal"]) == "reactivate":
+		maint_sites[String(m["site"]["city"])] = m["site"]             # package 53c: the lift goes down there now
 	missions.append(m)
 	log_msg("Contract accepted: %s" % m["title"], COL_GOOD)
 	missions_changed.emit()
@@ -2024,13 +2026,19 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 func pois_for(system_id: int, body: Dictionary) -> Array:
 	const PoiData = preload("res://data/poi.gd")
 	var visit := int(poi_visits.get(str(system_id), 0))
+	var out: Array = []
+	for mm in missions:                                  # package 53c: the sites of your jobs on foot
+		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and String(mm["goal"]) != "reactivate":
+			var ms: Dictionary = mm["site"]
+			if int(ms["system"]) == system_id and String(ms["body"]) == String(body.get("id", "")) and not poi_used.has(String(ms["id"])):
+				out.append(ms)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("poi_%d_%d_%s_%d" % [system_id, visit, String(body.get("id", "")), Universe.seed_value])
 	if rng.randf() >= PoiData.MAP_CHANCE:
-		return []
+		return out
 	var id := "poi_%d_%d_%s" % [system_id, visit, String(body.get("id", ""))]
 	if poi_used.has(id):
-		return []
+		return out
 	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
 	var theme := "wreck" if rng.randf() < 0.4 else "precursor"           # 0.7.53.6: ruins or a crash site
 	var site := {"id": id, "name": PoiData.site_name(theme, rng), "kind": "crash" if theme == "wreck" else "ruins", "poi": true, "theme": theme,
@@ -2038,7 +2046,8 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	if theme == "wreck":
 		var hl: Array = PoiData.THEMES["wreck"]["hulls"]
 		site["hull"] = String(hl[rng.randi() % hl.size()])            # which ship came down
-	return [site]
+	out.append(site)
+	return out
 
 
 ## 0.7.53.3 (Luz, package 53b): a city's way down – the sewers behind its back alley, rolled anew each visit to the
@@ -2070,12 +2079,41 @@ func settle_poi(system_id: int, town: Dictionary) -> Dictionary:
 var maint_sites := {}
 
 
+## The site of a city's tunnels without power (debug, or a reactivation job) – {} none.
+func maint_site_for(city_id: String) -> Dictionary:
+	if maint_sites.has(city_id):
+		return maint_sites[city_id]
+	for mm in missions:
+		if String(mm.get("type", "")) == "ground" and String(mm["goal"]) == "reactivate" and int(mm["progress"]) < 1 and String(mm["site"].get("city", "")) == city_id:
+			return mm["site"]
+	return {}
+
+
 func maint_site(city: Dictionary, seed_n: int) -> Dictionary:
 	const PoiData = preload("res://data/poi.gd")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_n
 	return {"id": "maint_%s_%d" % [String(city.get("id", "")), seed_n], "name": PoiData.site_name("maint", rng), "kind": "maint", "poi": true,
 		"theme": "maint", "seed": seed_n, "danger": "green"}
+
+
+## Package 53c: a job on foot's goal reached at its site (or failed there). ok, a pay factor (heist with an alarm,
+## spying unseen).
+func ground_goal(site: Dictionary, ok: bool, pay_mult: float = 1.0, note: String = "") -> void:
+	for mm in missions:
+		if String(mm.get("type", "")) == "ground" and String(mm["site"]["id"]) == String(site.get("id", "")) and int(mm["progress"]) < 1:
+			if not ok:
+				missions.erase(mm)
+				log_msg("Contract failed: %s%s" % [mm["title"], (" – " + note) if note != "" else ""], COL_WARN)
+			else:
+				mm["progress"] = 1
+				mm["reward"] = int(round(float(mm["reward"]) * pay_mult))
+				log_msg("Contract objective complete: %s%s – report back to %s." % [mm["title"], (" – " + note) if note != "" else "",
+					Universe.find_station(int(mm["giver_system"]), String(mm["giver"])).get("name", "the issuing station")], COL_GOOD)
+			if String(mm["goal"]) == "reactivate":
+				maint_sites.erase(String(mm["site"].get("city", "")))
+			missions_changed.emit()
+			return
 
 
 func museum_find(id: String) -> void:

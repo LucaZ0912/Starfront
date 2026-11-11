@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.12 – 2026-11-11
+
+**Package 53c – jobs on foot (Luz).** About a third of the board's offers are now jobs on foot. Accepting one makes
+a site for it – on a body within two jumps (on its planet map) or, for a reactivation, under a city (its lift goes
+down to the maintenance tunnels). The goal is fixed; arriving, a **briefing** shows what to do, what counts and the
+pay. Done, the site is used up and the job is reported back at its giver for the pay.
+- **Relic race** (a Precursor ruin): read the relic – and be quick: after a few minutes another raider crew comes in.
+- **Salvage** (a crash site): bring back the flight recorder of a named ship.
+- **Bounty on foot** (a pirate base): bring down its captain.
+- **Heist** (a pirate base): empty the captain's strongbox – easy: an alarm halves the pay; hard: an alarm blows the
+  job (Luz).
+- **Espionage** (a crash site, a ruin or a pirate base): download the data from the deepest computer – a bonus if
+  nobody saw you.
+- **Reactivation** (a city's maintenance tunnels): restart the reactor.
+- The rescue (a prisoner who follows you) comes as its own step. The dealer's hideout under a city as a heist site too.
+- Debug: `debug_ground_job` (goal). Smoke test group `ground_jobs`.
+
 ## alpha 0.7.53.11 – 2026-11-11
 
 **Package 53c – the pirate base (Luz).** Theme sheet in Roadmap.md (Paket 53: Piratenbasis).

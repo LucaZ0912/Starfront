@@ -162,6 +162,7 @@ func _process(delta: float) -> void:
 				_test_mine(view)                 # package 53b – the old mine by a settlement
 				_test_maint(view)                # package 53c – the maintenance tunnels, the reactor
 				_test_pirate(view)               # package 53c – the pirate base
+				_test_ground_jobs(view)          # package 53c – jobs on foot
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -8879,6 +8880,7 @@ func _test_debug_shot() -> void:
 ## down yourself (the clinic), the codex.
 const FoeData52 = preload("res://data/foes.gd")
 const DungeonGen53 = preload("res://scripts/ground/dungeon_gen.gd")
+const PoiData_53 = preload("res://data/poi.gd")
 
 
 func _test_foot_combat(view: SystemView) -> void:
@@ -10325,6 +10327,108 @@ func _test_pirate(view: SystemView) -> void:
 	main._update_input()
 	check(out_ok and in_ok and low_ok and done_ok,
 		"53c: the pirate base – in a cliff: the hangar gate sealed until its terminal opens it, the side door, searchlights, a watchtower, guards outside; inside the hangar with a fighter standing in it (it blocks the floor – cover), the ramp down; below the captain's hoard behind a code door (turret, alarm), the command room opens it  [%s]" % " ".join(PackedStringArray([str(out_ok), str(in_ok), str(low_ok), str(done_ok)])))
+
+
+## Package 53c (Luz): jobs on foot – offered on the board, accepted: the site on the planet map with its briefing;
+## the goal reached there completes the job (report back for the pay); a hard heist fails with the alarm; a bounty
+## falls with its captain; a reactivation sends the city's lift down.
+func _test_ground_jobs(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	var m0 := GameState.missions.size()
+	# offers: some of the board's are jobs on foot
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5320
+	var L := Universe.get_layout(f.system_id)
+	var st0: Dictionary = L["stations"][0] if not L["stations"].is_empty() else {}
+	var grounds := 0
+	for i in 40:
+		var om: Dictionary = Missions.generate(f.system_id, st0, rng)
+		if String(om.get("type", "")) == "ground":
+			grounds += 1
+	var offer_ok: bool = grounds >= 4
+	# a relic race: accepted, its site on the map, the briefing, the relic read completes it, the pay at the giver
+	var res := {}
+	for goal in ["relic", "heist", "bounty_foot", "reactivate"]:
+		var e: String = Commands.execute({"type": "debug_ground_job", "goal": goal, "seed": 5321 + goal.length() * 7})
+		var mm: Dictionary = GameState.missions[-1] if GameState.missions.size() > 0 else {}
+		res[goal] = e == "" and String(mm.get("type", "")) == "ground" and String(mm.get("goal", "")) == goal
+		if not res[goal]:
+			continue
+		var site: Dictionary = mm["site"]
+		if goal == "reactivate":
+			res[goal] = not GameState.maint_site_for(String(site["city"])).is_empty()
+			GameState.abandon_mission(mm)
+			GameState.maint_sites.clear()
+			continue
+		var body: Dictionary = Universe.find_body(int(site["system"]), String(site["body"]))
+		var on_map: bool = GameState.pois_for(int(site["system"]), body).any(func(s): return String(s["id"]) == String(site["id"]))
+		f.docked_at = "land:" + String(body["id"])
+		main.land_at(body, site)
+		var g = main.ground
+		if g == null:
+			res[goal] = false
+			continue
+		g._mission_window()
+		var brief: bool = g._lift_menu != null
+		g._close_lift_menu()
+		var nlev: int = PoiData_53.levels(String(site["theme"]))
+		g.depth = nlev - 1
+		g.go_level("dungeon", "dungeon_in")
+		var ok := false
+		match goal:
+			"relic":
+				for dc in g.map.explore:
+					if String(dc["kind"]) == "crystals":
+						g.cage_off(dc)
+				for d in g.map.explore:
+					if String(d["kind"]) == "relic":
+						g.scan_done(d)
+				ok = int(mm["progress"]) >= 1
+				var cr0 := GameState.credits
+				ok = ok and GameState.turn_in_mission(mm, String(mm["giver"])) == "" and GameState.credits > cr0
+			"heist":
+				g._site["hard"] = true
+				g.raise_alarm()
+				g._site["alarmed"] = true
+				for d2 in g.map.explore:
+					if String(d2["kind"]) == "crate" and bool(d2.get("target", false)):
+						g._poi_target_done(d2)
+				ok = not GameState.missions.has(mm)              # the alarm blew the hard heist
+			"bounty_foot":
+				for fo in g.combat.foes:
+					if String(fo["kind"]) == "pirate_captain":
+						fo["dead"] = true
+				g._mission_step(0.1)
+				ok = int(mm["progress"]) >= 1
+				GameState.abandon_mission(mm)
+		res[goal] = on_map and brief and ok
+		main.close_deck(false)
+		main._close_planet_map()
+		f.docked_at = ""
+	while GameState.missions.size() > m0:
+		GameState.missions.pop_back()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(offer_ok and bool(res.get("relic", false)) and bool(res.get("heist", false)) and bool(res.get("bounty_foot", false)) and bool(res.get("reactivate", false)),
+		"53c: jobs on foot – on the board; accepted, the site on the planet map with its briefing; the relic read completes a relic race, paid at the giver; a hard heist blown by the alarm; a bounty done when its captain falls; a reactivation sends the city's lift down  [%s %s]" % [str(offer_ok), str(res)])
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

@@ -2665,6 +2665,31 @@ func _c_debug_poi(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_ground_job", "goal": relic/salvage/bounty_foot/heist/spy/reactivate} – package 53c: a job on foot
+## offered at the docked (or nearest) station and accepted at once.
+func _c_debug_ground_job(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No game running."
+	var st := docked_station()
+	if st.is_empty():
+		var L := Universe.get_layout(f.system_id)
+		if L["stations"].is_empty():
+			return "No station here to give the job."
+		st = L["stations"][0]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(c.get("seed", randi()))
+	var m := {"id": "dbg%d_%d" % [rng.randi(), Time.get_ticks_usec() % 100000], "giver": st["id"], "giver_system": f.system_id, "client": "Debug", "progress": 0, "item": "", "amount": 0,
+		"target_system": f.system_id, "target_station": "", "faction": String(st.get("faction", "")), "against": ""}
+	var gm := Missions.ground_offer(m, f.system_id, rng, String(c.get("goal", "relic")))
+	if gm.is_empty():
+		return "No place for that job near here."
+	var e := GameState.accept_mission(gm)
+	if e != "":
+		return e
+	return ""
+
+
 ## {"type":"debug_poi_reveal"} – package 53a: the whole site on the minimap.
 func _c_debug_poi_reveal(_c: Dictionary) -> String:
 	var g = _ground()

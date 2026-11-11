@@ -48,6 +48,10 @@ static func generate(system_id: int, station: Dictionary, rng: RandomNumberGener
 	var m := {"id": _new_id(), "giver": station["id"], "giver_system": system_id, "client": client,
 		"progress": 0, "item": "", "amount": 0, "target_system": system_id, "target_station": "",
 		"faction": String(station.get("faction", "")), "against": ""}
+	if rng.randf() < GROUND_CHANCE:
+		var gm := ground_offer(m, system_id, rng)               # package 53c: a job on foot
+		if not gm.is_empty():
+			return gm
 	if String(station.get("type", "")) == "trade" and rng.randf() < TRADE_ESCORT_CHANCE:
 		var esc := _escort_offer(m, system_id, station, rng, "")
 		if not esc.is_empty():
@@ -109,6 +113,103 @@ static func generate(system_id: int, station: Dictionary, rng: RandomNumberGener
 		"reward": 6000 + int((1.0 - float(Universe.systems[sid2]["security"])) * 9000),
 		"title": "Survey: anomaly in %s" % Universe.systems[sid2]["name"],
 		"desc": "Scan the %s system and analyse one anomaly with an analyzer. Bring the data home." % Universe.systems[sid2]["name"]}, true)
+	return m
+
+
+# ---------------------------------------------------------------- ground jobs (package 53c, Luz)
+# A job on foot at a site made for it: accepting it puts the site on a body's planet map (or, for a reactivation, the
+# city's lift goes down to its maintenance tunnels); the goal is fixed; done, the site is used up – report back.
+#   relic       – a Precursor ruin: get the relic first; another raider crew comes after a few minutes
+#   salvage     – a crash site: the flight recorder of a named ship
+#   bounty_foot – a pirate base: bring down its captain (it flees when the alarm rings)
+#   heist       – a pirate base: empty the captain's strongbox; easy – an alarm halves the pay, hard – it fails the job
+#   spy         – a crash site, a ruin or a pirate base: download the data from the deepest computer – a bonus unseen
+#   reactivate  – a city's maintenance tunnels: restart the reactor
+const GROUND_CHANCE := 0.3
+const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2]]
+const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint"}
+
+
+static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerator, kind: String = "") -> Dictionary:
+	const PoiData = preload("res://data/poi.gd")
+	if kind == "":
+		var tot := 0
+		for gk in GROUND_KINDS:
+			tot += int(gk[1])
+		var r := rng.randi() % tot
+		for gk2 in GROUND_KINDS:
+			r -= int(gk2[1])
+			if r < 0:
+				kind = String(gk2[0])
+				break
+	var theme: String = GROUND_THEME.get(kind, ["wreck", "precursor", "pirate"][rng.randi() % 3])
+	# where: a body (a city for a reactivation) within two jumps
+	var spots: Array = []
+	for sid in _systems_within(system_id, 2):
+		for b in Universe.get_layout(sid)["planets"] + Universe.get_layout(sid).get("moons", []):
+			if not Universe.landable(b):
+				continue
+			if kind == "reactivate":
+				for s in Universe.landing_sites(sid, b):
+					if String(s["kind"]) == "city":
+						spots.append([sid, b, s])
+			else:
+				spots.append([sid, b, {}])
+	if spots.is_empty():
+		return {}
+	var sp: Array = spots[rng.randi() % spots.size()]
+	var sid2: int = sp[0]
+	var body: Dictionary = sp[1]
+	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
+	var seed_n := rng.randi()
+	var site := {"id": "msn_%s" % String(m["id"]), "name": PoiData.site_name(theme, rng), "kind": String(PoiData.THEMES[theme]["kind"]), "poi": true,
+		"theme": theme, "seed": seed_n, "danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75),
+		"mission": true, "mission_id": String(m["id"]), "goal": kind, "system": sid2, "body": String(body["id"])}
+	if theme == "wreck":
+		var hl: Array = PoiData.THEMES["wreck"]["hulls"]
+		site["hull"] = String(hl[rng.randi() % hl.size()])
+	var hard := kind == "heist" and rng.randf() < 0.5
+	site["hard"] = hard
+	if kind == "reactivate":
+		site["city"] = Universe.city_id(body, sp[2])
+		site["city_name"] = String(sp[2].get("name", "the city"))
+	var jumps := Universe.find_path(system_id, sid2, 3).size()
+	var dmul: float = {"green": 1.0, "yellow": 1.4, "red": 2.0}[danger]
+	var where := "%s on %s (%s)" % [String(site["name"]), String(body.get("name", "?")), Universe.systems[sid2]["name"]]
+	var t := ""
+	var d := ""
+	var base := 6000
+	match kind:
+		"relic":
+			t = "Relic race: %s" % String(site["name"])
+			d = "A Precursor relic lies deep in %s. Raiders are after it too – get it first; another crew is on its way." % where
+			base = 9000
+		"salvage":
+			var hn: String = String(GameData.hulls.get(String(site.get("hull", "freighter")), {}).get("name", "freighter"))
+			t = "Salvage: the %s" % hn
+			d = "A %s came down – %s. Bring back its flight recorder." % [hn, where]
+			base = 7000
+		"bounty_foot":
+			t = "Bounty on foot: a Red Talon captain"
+			d = "The captain of the pirate base %s. Bring them down – they run when the alarm goes." % where
+			base = 11000
+		"heist":
+			t = "Heist%s: the Red Talons' hoard" % (" (hard)" if hard else "")
+			d = "Empty the captain's strongbox in %s. %s" % [where, "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
+			base = 14000 if hard else 10000
+		"spy":
+			t = "Espionage: data from %s" % String(site["name"])
+			d = "Download the data from the deepest computer in %s – a bonus if nobody sees you." % where
+			base = 8000
+		"reactivate":
+			t = "Reactivation: %s" % String(site["city_name"])
+			d = "The power is out in the maintenance tunnels under %s (%s). Restart the reactor on the lowest level – the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
+			base = 6500
+			danger = "green"
+			site["danger"] = "green"
+			dmul = 1.0
+	m.merge({"type": "ground", "goal": kind, "site": site, "target_system": sid2, "amount": 1,
+		"reward": int((base + jumps * 1500) * dmul), "title": t, "desc": d}, true)
 	return m
 
 
@@ -407,6 +508,8 @@ static func can_turn_in(m: Dictionary, fit: ShipFitting, station_id: String) -> 
 			return station_id == m["giver"] and float(fit.cargo.get(m["item"], 0.0)) >= float(m["amount"]) - 0.01
 		"bounty", "survey", "drone_trial":
 			return station_id == m["giver"] and int(m["progress"]) >= int(m["amount"])
+		"ground":
+			return station_id == m["giver"] and int(m["progress"]) >= 1           # package 53c
 		"relic":
 			return station_id == m["giver"] and int(m["progress"]) >= 1 and fit != null and float(fit.cargo.get("earth_relic", 0.0)) >= 0.99
 		"probe":
@@ -422,6 +525,13 @@ static func can_turn_in(m: Dictionary, fit: ShipFitting, station_id: String) -> 
 
 static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 	match String(m["type"]):
+		"ground":
+			if int(m["progress"]) >= 1:
+				return "Done – report back to %s" % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station")
+			var st: Dictionary = m["site"]
+			if String(m["goal"]) == "reactivate":
+				return "The maintenance tunnels under %s (%s) – take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
+			return "Go to %s on %s (%s) – it is on the planet map" % [String(st["name"]), String(Universe.find_body(int(st["system"]), String(st["body"])).get("name", "?")), Universe.systems[int(st["system"])]["name"]]
 		"escort":
 			if int(m["progress"]) >= 1:
 				return "Convoy delivered (%d / %d freighters, pay %d %%) – report at %s" % [int(m.get("arrived", 0)), int(m.get("freighters", 0)), int(round(100.0 * float(payout(m)) / maxf(float(m["reward"]), 1.0))), Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?")]
