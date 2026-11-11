@@ -260,6 +260,8 @@ func aim_geom(bob_px: float = 0.0) -> Dictionary:
 	var d := to if to.length() > 0.1 else Vector2.RIGHT
 	var flip := d.x < 0.0
 	var hand := chest + Vector2(3.0 * cs * (-1.0 if flip else 1.0), 1.0 * cs)
+	if aim_weapon == "wp_arm_laser":
+		hand = chest + Vector2(6.0 * cs * (-1.0 if flip else 1.0), -5.0 * cs)        # 0.7.52.14: raised from the shoulder
 	var art := WeaponArt.art(aim_weapon if aim_weapon != "" else "wp_" + aim_dtype)
 	var sc := Vector2(cs, -cs if flip else cs)
 	var ang := d.angle()

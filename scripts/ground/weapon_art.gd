@@ -168,6 +168,19 @@ static func _paint(f: String) -> Dictionary:
 			_r(img, 21, 7, 3, 1, Color(0.3, 0.28, 0.27))
 			grip = Vector2(11, 7)
 			muzzle = Vector2(32, 3)
+		"wp_arm_laser":              # 0.7.52.14: the Pathfinder's raised left arm – red plate, gold edge, the emitter
+			img = _blank(14, 7)
+			var rd := Color(0.66, 0.08, 0.1)
+			var gd := Color(0.95, 0.75, 0.3)
+			_part(img, 0, 1, 5, 5, rd.darkened(0.1))                  # the upper arm at the shoulder
+			_part(img, 5, 1, 7, 5, rd)                                 # the forearm bracer
+			_r(img, 5, 1, 7, 1, gd)                                    # its gold edge
+			_r(img, 6, 3, 5, 1, rd.darkened(0.35))
+			_part(img, 12, 2, 2, 3, Color(0.14, 0.14, 0.17))           # the glove
+			_r(img, 11, 4, 2, 1, Color(1.0, 0.3, 0.2))                 # the emitter glowing at the wrist
+			_p(img, 13, 3, Color(1.0, 0.55, 0.45))
+			grip = Vector2(1, 3)
+			muzzle = Vector2(14, 4)
 		"wp_launcher":               # Hadrian grenade launcher: olive drum, a fat tube, a sight frame
 			img = _blank(20, 9)
 			var ol := Color(0.4, 0.44, 0.32)

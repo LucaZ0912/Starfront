@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.14 – 2026-11-11
+
+**The Covenant's Pathfinder armour (Luz's idea, after the mockup she approved).**
+
+- **Pathfinder Armour** (Forge of Return): red plate edged in gold, close-fitting and straight-lined – a gold pointed
+  arch on the chest, a gold belt line and knee caps, a sleek helmet with a gold crest and a **pointed-arch visor** in
+  gold. Strong plate (armour 130 at C – more than the heavy combat suit), shield 45, normal walking speed; 3 weapon
+  places, 2 grenade places, 2 on the belt, 2 features – **no drone place** (the Covenant will not have them).
+- **The Red Arm Laser** sits in its first weapon place, built in: it cannot be taken off, it goes with the suit. A heavy
+  beam from the left forearm (120 damage at C) that **cuts through any cover**, even bulwarks and walls. Then it takes
+  **30 seconds** to charge – also while another weapon is in hand. Its tile's frame is drawn round in yellow as it
+  charges; full, it is ready. While it is the weapon in hand the pilot **raises the left arm** towards the target, the
+  beam leaves the emitter at the wrist.
+- **Only in the Covenant's lands** (its bigger stations and cities, and military ones) and **only for pilots it calls
+  Friendly**.
+- Smoke test group `foot_pathfinder`.
+
 ## alpha 0.7.52.13 – 2026-11-11
 
 **Tiles along the bottom, the events on the right, a closer zoom (Luz).**

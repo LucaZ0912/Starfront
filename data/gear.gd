@@ -65,6 +65,15 @@ const SUITS := {
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 9500,
 		"col": Color(0.86, 0.88, 0.9), "trim": Color(0.35, 0.75, 1.0),
 		"desc": "Marine issue: quick on its feet, a strong shield, two weapons at hand."},
+	# 0.7.52.14 (Luz): the Covenant's Pathfinder armour – red and gold, close-fitting, straight-lined; its own weapon,
+	# the Red Arm Laser, sits in its first weapon place (`builtin`); no drone place (the Covenant will not have them);
+	# sold only in the Covenant's lands, and only to pilots it calls Friendly
+	"suit_mil_pathfinder": {"name": "Pathfinder Armour", "maker": "Forge of Return", "faction": "covenant", "builtin": "wp_arm_laser",
+		"weapons": 3, "belt": 2, "grenades": 2, "features": 2,
+		"shield": 45.0, "armor": 130.0, "energy": 200.0, "oxygen": 25.0, "ammo": 260,
+		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 31000,
+		"col": Color(0.66, 0.08, 0.1), "trim": Color(0.95, 0.75, 0.3),
+		"desc": "The Covenant's pathfinders: red plate edged in gold, close-fitting and quick – and the Red Arm Laser on the left forearm."},
 	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 2, "grenades": 3, "drones": 1, "features": 3,
 		"shield": 70.0, "armor": 110.0, "energy": 230.0, "oxygen": 20.0, "ammo": 380,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
@@ -91,6 +100,11 @@ const WEAPONS := {
 		"range": 160.0, "spread": 0.3, "ammo": 1, "price": 2600, "desc": "Six slugs at once – devastating close up, useless far off."},
 	"wp_sniper": {"name": "Long Rail", "maker": "Forge of Return", "dtype": "kinetic", "damage": 60.0, "rof": 0.5,
 		"range": 820.0, "spread": 0.005, "ammo": 2, "price": 7800, "desc": "One shot, far away, through anything with plate."},
+	# 0.7.52.14 (Luz): built into the Pathfinder armour – never sold on its own. A heavy beam from the left forearm that
+	# cuts through any cover; `charge`: seconds to charge again (it charges while another weapon is in hand too)
+	"wp_arm_laser": {"name": "Red Arm Laser", "maker": "Forge of Return", "dtype": "optical", "damage": 120.0, "rof": 1.0,
+		"range": 450.0, "spread": 0.01, "charge": 30.0, "pierce": true, "builtin": true, "price": 0,
+		"desc": "The Pathfinder's own: a heavy beam from the left forearm that cuts through any cover – then 30 seconds to charge."},
 	"wp_launcher": {"name": "Grenade Launcher", "maker": "Hadrian Dynamics", "dtype": "explosive", "damage": 45.0, "rof": 0.6,
 		"range": 380.0, "spread": 0.06, "ammo": 4, "splash": 60.0, "price": 6400, "desc": "Lobbed shells that burst – best against what has no shield or plate left."},
 }
@@ -328,6 +342,8 @@ static func all_ids() -> Array:
 	var out: Array = []
 	for t in [SUITS, WEAPONS, FEATURES, DRONES]:
 		for f in t:
+			if (t[f] as Dictionary).get("builtin", false) is bool and bool((t[f] as Dictionary).get("builtin", false)):
+				continue                                      # 0.7.52.14: built into a suit, never on its own
 			for q in QUALITIES:
 				out.append("%s:%s" % [f, q])
 	for f2 in BELT:

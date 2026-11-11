@@ -130,6 +130,22 @@ const TILE_GAP := 6.0
 const GROUP_GAP := 22.0
 
 
+## 0.7.52.14 (Luz): the arm laser's tile – a yellow frame drawn round bit by bit as it charges; full: ready.
+func _charge_frame(r: Rect2, k: float) -> void:
+	var per := (r.size.x + r.size.y) * 2.0
+	var left := per * clampf(k, 0.0, 1.0)
+	var pts := [r.position, r.position + Vector2(r.size.x, 0), r.end, r.position + Vector2(0, r.size.y), r.position]
+	var col := Color(1.0, 0.85, 0.2) if k < 1.0 else Color(1.0, 0.9, 0.3, 0.75 + 0.25 * sin(Time.get_ticks_msec() * 0.008))
+	for i in 4:
+		var a0: Vector2 = pts[i]
+		var b0: Vector2 = pts[i + 1]
+		var seg := a0.distance_to(b0)
+		if left <= 0.0:
+			break
+		draw_line(a0, a0.lerp(b0, minf(1.0, left / seg)), col, 3.0)
+		left -= seg
+
+
 ## 0.7.52.13: the dodge charges under the suit's bars.
 func _draw_dodges(p: Vector2) -> void:
 	var t := "%s  dodge" % Keybinds.key_text("foot_dodge")
@@ -169,9 +185,14 @@ func _draw_tiles(vs: Vector2) -> void:
 			var st := GearData.stats(wid)
 			var act: bool = i == combat.weapon_i % ws.size()
 			var sub: String = ("%.1f en" % float(st["energy"])) if st.has("energy") else ("%d rd" % int(g.ammo))
+			var arm := bool(st.get("pierce", false))
+			if arm:
+				sub = "READY" if combat.arm_charge_k() >= 1.0 else "charging %d %%" % int(combat.arm_charge_k() * 100.0)
 			var barv: float = (g.energy / maxf(float(g.totals()["energy"]), 1.0)) if st.has("energy") else (float(g.ammo) / maxf(float(g.totals()["ammo"]), 1.0))
 			SuitHud.tile(self, Rect2(Vector2(x, y), TILE), GearIcons.icon(wid), "", String(st["name"]), sub,
-				Color(0.4, 1.0, 0.5) if act else Color(0.5, 0.55, 0.6, 0.5), barv, DT_COL[String(st.get("dtype", "kinetic"))])
+				Color(0.4, 1.0, 0.5) if act else Color(0.5, 0.55, 0.6, 0.5), -1.0 if arm else barv, DT_COL[String(st.get("dtype", "kinetic"))])
+			if arm:
+				_charge_frame(Rect2(Vector2(x, y), TILE).grow(-3.0), combat.arm_charge_k())
 			x += TILE.x + TILE_GAP
 		x += GROUP_GAP - TILE_GAP
 	# the grenades

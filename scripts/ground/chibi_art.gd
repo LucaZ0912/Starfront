@@ -42,7 +42,8 @@ static func frame(look: Dictionary, dir: int, f: int) -> Texture2D:
 	l["suit"] = String(look.get("suit", ""))             # 0.7.51.2: the suit (family) and, outside, its helmet
 	l["helmet"] = bool(look.get("helmet", false))
 	l["livery"] = String(look.get("livery", ""))            # 0.7.51.10: a power's colours on a combat suit
-	var key := "%s_%s%d%s_%d_%d" % [PilotArt._key(l), l["suit"], int(l["helmet"]), l["livery"], dir, f]
+	l["arm_up"] = bool(look.get("arm_up", false))            # 0.7.52.14: the Pathfinder's laser arm raised (drawn by the walker)
+	var key := "%s_%s%d%s_%d_%d%d" % [PilotArt._key(l), l["suit"], int(l["helmet"]), l["livery"], dir, f, int(l["arm_up"])]
 	if not _cache.has(key):
 		var img := _draw(l, 2 if dir == 3 else dir, f)
 		if dir == 3:
@@ -197,13 +198,20 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	else:
 		var al_l := al - 2 + (step if step > 0 else 0)
 		var al_r := al - 2 + (-step if step < 0 else 0)
-		_r(img, tx - ARM, torso_top + 1, ARM, al_l, c1.darkened(0.12))
-		_r(img, tx + tw, torso_top + 1, ARM, al_r, c1.darkened(0.3))
-		_r(img, tx - ARM, torso_top + 1, 1, al_l, c1.lightened(0.05))
-		_r(img, tx - ARM, torso_top + al / 2, ARM, 1, c1.darkened(0.25))
-		_r(img, tx + tw, torso_top + al / 2, ARM, 1, c1.darkened(0.4))
-		_r(img, tx - ARM, torso_top + 1 + al_l, ARM, 2, hand)
-		_r(img, tx + tw, torso_top + 1 + al_r, ARM, 2, hand.darkened(0.15))
+		var up := bool(l.get("arm_up", false)) and suit == "suit_mil_pathfinder"   # 0.7.52.14: the laser arm is raised
+		var hide_l := up and back
+		var hide_r := up and not back
+		if not hide_l:
+			_r(img, tx - ARM, torso_top + 1, ARM, al_l, c1.darkened(0.12))
+			_r(img, tx - ARM, torso_top + 1, 1, al_l, c1.lightened(0.05))
+			_r(img, tx - ARM, torso_top + al / 2, ARM, 1, c1.darkened(0.25))
+			_r(img, tx - ARM, torso_top + 1 + al_l, ARM, 2, hand)
+		if not hide_r:
+			_r(img, tx + tw, torso_top + 1, ARM, al_r, c1.darkened(0.3))
+			_r(img, tx + tw, torso_top + al / 2, ARM, 1, c1.darkened(0.4))
+			_r(img, tx + tw, torso_top + 1 + al_r, ARM, 2, hand.darkened(0.15))
+		if up:
+			_r(img, (tx + tw) if not back else (tx - ARM), torso_top, ARM, 3, c1.darkened(0.2))   # the shoulder only
 	# 0.7.51.2: the suit's life-support pack – on the back, its edge seen from the side
 	if not sd.is_empty() and not sitting:
 		var pk := c1.darkened(0.35)
@@ -219,6 +227,8 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 			_r(img, cx + sh, torso_top, 1, 2, pk)
 	if combat and not sitting:
 		_armour(img, plate, glow, heavy, cx, tx, tw, sh, torso_top, leg_top, feet, step, side, back)
+		if suit == "suit_mil_pathfinder":
+			_pathfinder(img, plate, glow, cx, tx, tw, sh, torso_top, leg_top, feet, step, side, back, dir, bool(l.get("arm_up", false)))
 	elif not sd.is_empty() and not sitting:
 		_suit_detail(img, suit, c1, c2, cx, tx, tw, sh, torso_top, leg_top, side, back)
 	# ---- neck and head
@@ -401,6 +411,91 @@ static func _armour(img: Image, plate: Color, glow: Color, heavy: bool, cx: int,
 		_px(img, tx + tw + pw - 2, torso_top - 10, glow)
 
 
+## 0.7.52.14 (Luz): the Pathfinder armour – red plate edged in gold, straight lines: gold edges on the pauldrons, a gold
+## pointed arch on the chest (the Covenant's arches), a gold belt line, gold knee caps; on the left forearm the Red Arm
+## Laser – a long red bracer with a glowing emitter.
+static func _pathfinder(img: Image, plate: Color, gold: Color, cx: int, tx: int, tw: int, sh: int, torso_top: int,
+		leg_top: int, feet: int, step: int, side: bool, back: bool, dir: int, arm_up: bool = false) -> void:
+	var red_glow := Color(1.0, 0.25, 0.2)
+	var dk := plate.darkened(0.35)
+	if side:
+		_r(img, cx - 2, torso_top - 1, 4, 1, gold)                                    # the pauldron's gold edge
+		_r(img, cx - 1, torso_top + 9, int(sh * 1.3), 1, gold.darkened(0.15))         # the belt line
+		var lx := cx - 1 + step * 2
+		_r(img, lx, leg_top + 7, 4, 1, gold)                                           # the knee cap
+		# the arm laser on the near forearm (facing left: the left arm is near)
+		if dir == 2 and not arm_up:
+			_r(img, cx - 4, torso_top + TORSO / 2, 3, 6, plate.darkened(0.1))
+			_r(img, cx - 4, torso_top + TORSO / 2, 1, 6, gold)
+			_px(img, cx - 4, torso_top + TORSO / 2 + 6, red_glow)
+		return
+	# pauldrons edged in gold
+	_r(img, tx - 3, torso_top - 1, 4, 1, gold)
+	_r(img, tx + tw - 1, torso_top - 1, 4, 1, gold.darkened(0.1))
+	if back:
+		_r(img, cx - 3, torso_top + 1, 6, 1, gold.darkened(0.1))                       # a gold bar over the pack
+		_r(img, tx + 1, torso_top + 9, tw - 2, 1, gold.darkened(0.2))
+	else:
+		# the gold pointed arch on the chest
+		_px(img, cx, torso_top + 1, gold.lightened(0.2))
+		_px(img, cx - 1, torso_top + 2, gold)
+		_px(img, cx + 1, torso_top + 2, gold)
+		_r(img, cx - 2, torso_top + 3, 1, 3, gold)
+		_r(img, cx + 2, torso_top + 3, 1, 3, gold.darkened(0.1))
+		_px(img, cx, torso_top + 4, red_glow.darkened(0.2))                            # its heart
+		_r(img, tx + 1, torso_top + 9, tw - 2, 1, gold)                                 # the belt line
+		_px(img, cx, torso_top + 9, gold.lightened(0.3))
+	# gold knee caps
+	var lw := maxi(3, sh - 1)
+	_r(img, cx - lw, leg_top + 7, lw, 1, gold)
+	_r(img, cx + 1, leg_top + 7, lw, 1, gold.darkened(0.15))
+	# the Red Arm Laser on the left forearm only (on the right of the picture when facing you, left from behind); the
+	# other forearm a plain plate without its light – raised to fire, the walker draws the laser arm itself
+	var ax := tx + tw if not back else tx - ARM
+	var ox := tx - ARM if not back else tx + tw
+	_r(img, ox, torso_top + TORSO / 2 + 1, ARM, 4, plate.darkened(0.12))               # the plain gauntlet, its light off
+	if arm_up:
+		return
+	_r(img, ax, torso_top + TORSO / 2 - 1, ARM, 6, plate.darkened(0.08))
+	_r(img, ax, torso_top + TORSO / 2 - 1, ARM, 1, gold)
+	_r(img, ax, torso_top + TORSO / 2 + 2, ARM, 1, dk)
+	_r(img, ax, torso_top + TORSO / 2 + 5, ARM, 1, red_glow)                           # its emitter at the wrist
+
+
+## 0.7.52.14 (Luz): the Pathfinder helmet – a sleek closed shell in red with a gold crest along the top, the visor a
+## pointed arch: dark glass framed in gold, rising to a point between the eyes; the cheek guards come down straight.
+static func _pathfinder_helmet(img: Image, plate: Color, gold: Color, hx: int, head_top: int, head_bot: int, ey: int,
+		side: bool, back: bool) -> void:
+	var gtop := head_top - 2
+	var gbot := head_bot + 1
+	for y in range(gtop, gbot + 1):
+		var cut := 2 if y == gtop else (1 if y == gtop + 1 else 0)
+		_r(img, hx - 1 + cut, y, HW + 2 - 2 * cut, 1, plate if y < ey + 1 else plate.darkened(0.15))
+	_r(img, hx, gtop, HW, 1, plate.lightened(0.25))
+	var dark := Color(0.04, 0.03, 0.05)
+	if back:
+		_r(img, hx + HW / 2, gtop, 1, gbot - gtop - 1, gold)                           # the crest down the back
+	elif side:
+		_r(img, hx - 1, gtop + 1, HW, 1, gold)                                         # the crest, side on
+		_r(img, hx - 2, ey - 2, 2, 4, gold)                                            # the visor's gold edge
+		_r(img, hx - 1, ey - 1, 2, 2, dark)
+		_r(img, hx - 1, ey + 2, 2, 2, plate.darkened(0.3))                             # the cheek guard
+	else:
+		_r(img, hx + HW / 2 - 1, gtop, 2, 2, gold)                                     # the crest at the brow
+		# the pointed-arch visor: wide at the eyes, rising to a point
+		_r(img, hx, ey - 1, HW, 2, gold)
+		_r(img, hx + 1, ey - 1, HW - 2, 1, dark)
+		_r(img, hx + 1, ey, HW - 2, 1, dark)
+		_r(img, hx + 2, ey - 2, HW - 4, 1, gold)
+		_r(img, hx + 3, ey - 2, HW - 6, 1, dark)
+		_px(img, hx + HW / 2 - 1, ey - 3, gold)
+		_px(img, hx + HW / 2, ey - 3, gold)
+		_r(img, hx - 1, ey + 1, 1, 3, plate.darkened(0.3))                             # the cheek guards, straight down
+		_r(img, hx + HW, ey + 1, 1, 3, plate.darkened(0.4))
+		_r(img, hx + HW / 2 - 1, ey + 2, 2, 2, plate.darkened(0.25))                   # the mouth grille
+	_r(img, hx - 1, gbot, HW + 2, 1, gold.darkened(0.3))                                # the neck seal in gold
+
+
 ## 0.7.51.10: what makes the other suits their own – the work suit's chest box and reflective bands, the survey suit's
 ## sensor pod and its cyan seams, the civilian suit's soft folds and its chest light.
 static func _suit_detail(img: Image, suit: String, c1: Color, c2: Color, cx: int, tx: int, tw: int, sh: int, torso_top: int,
@@ -432,6 +527,9 @@ static func _suit_detail(img: Image, suit: String, c1: Color, c2: Color, cx: int
 ## 0.7.51.10: the helmets by the suit.
 static func _helmet(img: Image, suit: String, c1: Color, c2: Color, plate: Color, glow: Color, hx: int, head_top: int,
 		head_bot: int, ey: int, side: bool, back: bool) -> void:
+	if suit == "suit_mil_pathfinder":
+		_pathfinder_helmet(img, plate, glow, hx, head_top, head_bot, ey, side, back)
+		return
 	if suit.begins_with("suit_mil"):
 		var heavy := suit == "suit_mil_heavy"
 		var gtop := head_top - 2

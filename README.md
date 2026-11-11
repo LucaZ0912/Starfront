@@ -352,6 +352,12 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.52.13: `SuitHud.tile(ci, rect, icon, key, name, sub, border, bar, bar_col)` (the belt as tiles), `CombatHud._draw_tiles`
   (weapons, grenades, drone), `_label`, `_draw_dodges`; `GroundView._log` / `log_event(text, col)` (bottom right;
   `_say_toast` and `GameState.message` go there), `near_zoom` / `ZOOM_NEAR` / `zoom_step(d)`.
+- 0.7.52.14: suit `suit_mil_pathfinder` (`faction`, `builtin` "wp_arm_laser"), weapon `wp_arm_laser` (`builtin`, `pierce`,
+  `charge`); `PilotGear._fit_slots` puts a suit's built-in weapon in the first place (it never goes to the pockets),
+  `unequip` refuses it; `GearShop.offer` – a power's own suit only in its lands; `gear_buy` – only for Friendly pilots;
+  `ChibiArt._pathfinder` / `_pathfinder_helmet`, look `arm_up`; `WeaponArt` "wp_arm_laser" (the raised arm),
+  `Walker.aim_geom` raises it from the shoulder; `GroundCombat.arm_charge`, `arm_laser_id()`, `arm_charge_k()`,
+  `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

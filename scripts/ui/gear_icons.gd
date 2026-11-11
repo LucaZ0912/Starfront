@@ -148,6 +148,13 @@ static func _paint(img: Image, fam: String) -> void:
 				_r(img, 2, 9, 2, 12, DARK)
 				_r(img, 20, 9, 2, 12, DARK)
 		# ---- features
+		"wp_arm_laser":                                    # 0.7.52.14: the red bracer with its emitter
+			_r(img, 4, 9, 14, 6, Color(0.66, 0.08, 0.1))
+			_r(img, 4, 9, 14, 1, Color(0.95, 0.75, 0.3))
+			_r(img, 6, 12, 10, 1, Color(0.4, 0.04, 0.06))
+			_r(img, 18, 10, 3, 4, DARK)
+			_r(img, 17, 13, 3, 1, Color(1.0, 0.35, 0.25))
+			_r(img, 20, 11, 2, 2, Color(1.0, 0.6, 0.5))
 		"dr_laser", "dr_kinetic", "dr_kamikaze":           # 0.7.52.11: a quadcopter from above
 			var body: Color = {"dr_laser": Color(0.9, 0.92, 0.95), "dr_kinetic": Color(0.4, 0.42, 0.46), "dr_kamikaze": Color(0.45, 0.5, 0.34)}[fam]
 			var trim: Color = {"dr_laser": CYAN, "dr_kinetic": Color(1.0, 0.72, 0.25), "dr_kamikaze": Color(1.0, 0.82, 0.15)}[fam]

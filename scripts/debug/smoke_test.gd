@@ -149,6 +149,7 @@ func _process(delta: float) -> void:
 				_test_foot_combat(view)          # package 52 – fights on foot
 				_test_foot_tactics(view)         # 0.7.52.5 – grenades, AI types, pirates and guards
 				_test_foot_drones(view)          # 0.7.52.11 – ground combat drones
+				_test_foot_pathfinder(view)      # 0.7.52.14 – the Covenant's Pathfinder armour
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9403,3 +9404,108 @@ func _test_foot_drones(view: SystemView) -> void:
 	main._update_input()
 	check(data_ok and eq_ok and up_ok and laser_ok and kin_ok and down_ok and hit_d and kam_ok,
 		"0.7.52.11: ground combat drones – the combat suits' drone place, quality F–A, more rounds and energy for every suit; the laser drone fights your target and overheats, C recalls it; the kinetic one flies back and reloads from the suit; shot down and rebuilt; foes' hits wear it down; the kamikaze dives on C and bursts, sparing you, with a long rebuild  [%s]" % " ".join(PackedStringArray([str(data_ok), str(eq_ok), str(up_ok), str(laser_ok), str(kin_ok), str(down_ok), str(hit_d), str(kam_ok)])))
+
+
+## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
+## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
+## the arm raised.
+func _test_foot_pathfinder(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var ps: Dictionary = GD.stats("suit_mil_pathfinder:C")
+	var data_ok: bool = int(ps.get("drones", 0)) == 0 and String(ps["builtin"]) == "wp_arm_laser" and float(ps["armor"]) > float(GD.stats("suit_mil_heavy:C")["armor"]) \
+		and not GD.all_ids().has("wp_arm_laser:C") and GD.all_ids().has("suit_mil_pathfinder:C") and float(GD.stats("wp_arm_laser:C")["charge"]) == 30.0
+	# putting it on: the laser in the first weapon place, what was there into the pockets; it does not come off alone
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	for i in gear.inv.size():
+		gear.inv[i] = {}
+	gear.weapons[0] = "wp_rifle:C"
+	gear.weapons[1] = "wp_laser_rifle:C"
+	gear.inv[0] = {"id": "suit_mil_pathfinder:B", "n": 1}
+	var e1: String = gear.equip_from_inv(0)
+	var eq_ok: bool = e1 == "" and String(gear.weapons[0]) == "wp_arm_laser:B" and gear.count("wp_rifle:C") == 1 and gear.drones.is_empty() \
+		and gear.unequip("weapons", 0) != "" and String(gear.weapons[0]) == "wp_arm_laser:B"
+	# taking it off: the laser goes with it, nowhere into the pockets
+	var li := -1
+	for i2 in gear.inv.size():
+		if not (gear.inv[i2] as Dictionary).is_empty() and String(gear.inv[i2]["id"]) == "suit_mil_light:C":
+			li = i2
+	var e2: String = gear.equip_from_inv(li) if li >= 0 else "no light suit"
+	eq_ok = eq_ok and e2 == "" and gear.count("wp_arm_laser:B") == 0 and not gear.weapons.has("wp_arm_laser:B")
+	# the shop: in the Covenant's lands only (bigger places)
+	var cov := {"id": "test_cov_gear", "faction": "covenant", "tier": 2, "type": "trade"}
+	var asm := {"id": "test_asm_gear", "faction": "assembly", "tier": 2, "type": "trade"}
+	var shop_ok: bool = GearShop.offer(cov).has("suit_mil_pathfinder") and not GearShop.offer(asm).has("suit_mil_pathfinder") and not GearShop.offer(cov).has("wp_arm_laser")
+	# the fight: the laser charges whatever is in hand and cuts through a bulwark
+	gear.suit = "suit_mil_pathfinder:C"
+	gear._fit_slots()
+	gear.weapons[1] = "wp_laser_rifle:C"
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "0.7.52.14: the arena opens")
+		return
+	gear.refill()
+	var bw = null
+	for ob in g.map.objects:
+		if String(ob["kind"]) == "bulwark" and int(ob["w"]) >= 3 and bw == null:
+			bw = ob
+	var fight_ok := false
+	var raise_ok := false
+	if bw != null:
+		var r := Rect2(Vector2(int(bw["x"]), int(bw["y"])) * 16.0, Vector2(int(bw["w"]), int(bw["h"])) * 16.0)
+		var me := Vector2(r.get_center().x, r.end.y + 30.0)
+		g.pilot.pos = me
+		g.pilot.position = me * GroundMap.SCALE
+		var fo: Dictionary = cb.spawn("bandit_rifleman", Vector2(r.get_center().x, r.position.y - 20.0))
+		cb._wake(fo)
+		cb.frozen = true
+		cb.step(0.05, Vector2.ZERO)
+		cb.lock(fo)
+		cb.lock_t = 0.0
+		cb.weapon_i = 1                                   # the laser rifle in hand: the arm laser charges anyway
+		cb.arm_charge = 0.0
+		for i3 in 10:
+			cb.step(0.1, Vector2.ZERO)
+		var charged: bool = cb.arm_charge > 0.9 and cb.sight(me, fo["w"].pos)["blocked"]
+		cb.weapon_i = 0                                   # the arm laser in hand, not yet charged: no beam
+		cb.step(0.05, Vector2.ZERO)
+		var none_yet: bool = not cb.shots.any(func(s): return String(s["kind"]) == "armbeam")
+		raise_ok = cb.arm_raised() and bool(g.pilot.look.get("arm_up", false)) and g.pilot.aim_weapon == "wp_arm_laser"
+		cb.arm_charge = 30.0
+		var h0 := float(fo["st"]["shield"]) + float(fo["st"]["armor"]) + float(fo["st"]["health"])
+		var hit := false
+		for tries in 6:
+			cb.arm_charge = 30.0
+			cb.pilot_cool = 0.0
+			cb.step(0.05, Vector2.ZERO)
+			hit = hit or float(fo["st"]["shield"]) + float(fo["st"]["armor"]) + float(fo["st"]["health"]) < h0
+			if hit:
+				break
+		fight_ok = charged and none_yet and hit and cb.arm_charge < 1.0 and cb.arm_charge_k() < 0.1
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(data_ok and eq_ok and shop_ok and fight_ok and raise_ok,
+		"0.7.52.14: the Pathfinder armour – no drone place, stronger plate; the Red Arm Laser in its first weapon place, staying with the suit; only in the Covenant's shops; the laser charges with another weapon in hand, its arm raised, cuts through a bulwark  [%s]" % " ".join(PackedStringArray([str(data_ok), str(eq_ok), str(shop_ok), str(fight_ok), str(raise_ok)])))

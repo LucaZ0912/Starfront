@@ -67,6 +67,8 @@ var clouds: Array = []
 var domes: Array = []
 var drone: Dictionary = {}                         # 0.7.52.11: your drone in the air ({} none)
 var drone_rebuild := 0.0                           # seconds until a new one is ready after it was shot down
+var arm_charge := 0.0                              # 0.7.52.14: the Red Arm Laser's charge (seconds of its `charge`)
+var _arm_up := false
 var camp_t := 0.0                                  # how long you have sat behind the same cover
 var _camp_at := Vector2.INF
 var tac_node: Node2D = null
@@ -331,10 +333,13 @@ func chance_at_foe(f) -> float:
 		return 0.0
 	var a := pilot_pos()
 	var b: Vector2 = (f["w"] as Walker).pos
+	var wst := GearData.stats(wid)
+	if bool(wst.get("pierce", false)):                    # 0.7.52.14: the arm laser cuts through – cover does not count
+		return clampf(GearData.hit_chance(wst, GameState.skill_level("firearms"), a.distance_to(b), false, (f["w"] as Walker).moving, int(f["athletics"]), false) * 1.15, 0.05, 0.97)
 	var sg := sight(a, b)
 	if sg["blocked"]:
 		return 0.0
-	var c := GearData.hit_chance(GearData.stats(wid), GameState.skill_level("firearms"), a.distance_to(b), sg["cover"], (f["w"] as Walker).moving, int(f["athletics"]), false)
+	var c := GearData.hit_chance(wst, GameState.skill_level("firearms"), a.distance_to(b), sg["cover"], (f["w"] as Walker).moving, int(f["athletics"]), false)
 	return c * (SMOKE_CUT if smoke_between(a, b) else 1.0)
 
 
@@ -429,6 +434,7 @@ func step(delta: float, move: Vector2) -> void:
 		gr_aim = _clamp_throw(view.mouse_art() if aim_at == Vector2.INF else aim_at)
 	_grenade_step(delta)
 	_drone_step(delta)
+	_arm_step(delta)
 	# the weapon in the hands while fighting, facing the target when standing
 	var wid := weapon_id()
 	if fight and active != null and wid != "":
@@ -461,6 +467,11 @@ func _pilot_fire(delta: float) -> void:
 		return
 	var w := GearData.stats(wid)
 	var tp: Vector2 = (active["w"] as Walker).pos
+	if bool(w.get("pierce", false)):
+		# 0.7.52.14: the Red Arm Laser – charged, in reach: it cuts through whatever lies between
+		if arm_charge >= float(w["charge"]) and pilot_pos().distance_to(tp) <= float(w["range"]):
+			_fire_arm(active, w)
+		return
 	if pilot_pos().distance_to(tp) > float(w["range"]) or sight(pilot_pos(), tp)["blocked"]:
 		return
 	var g = GameState.gear
@@ -1633,6 +1644,79 @@ func _draw_drone() -> void:
 		draw_circle(at, 6.0, Color(1.0, 0.6, 0.2, 0.8))
 
 
+# ---------------------------------------------------------------- 0.7.52.14: the Red Arm Laser
+
+## The arm laser on this suit ("" if none).
+func arm_laser_id() -> String:
+	for w in weapons():
+		if bool(GearData.base(String(w)).get("pierce", false)):
+			return String(w)
+	return ""
+
+
+## How far it has charged, 0..1 (1: ready).
+func arm_charge_k() -> float:
+	var id := arm_laser_id()
+	if id == "":
+		return 0.0
+	return clampf(arm_charge / float(GearData.stats(id)["charge"]), 0.0, 1.0)
+
+
+## The arm is raised while the arm laser is the weapon in hand in a fight.
+func arm_raised() -> bool:
+	return fight and active != null and arm_laser_id() != "" and weapon_id() == arm_laser_id()
+
+
+func _arm_step(delta: float) -> void:
+	var id := arm_laser_id()
+	if id != "":
+		arm_charge = minf(float(GearData.stats(id)["charge"]), arm_charge + delta)     # charging, whatever is in hand
+	var up := arm_raised()
+	if up != _arm_up:
+		_arm_up = up
+		view.pilot.look = view.pilot_look()
+
+
+## The beam: from the emitter at the raised wrist straight through any cover to the target; then it charges anew.
+func _fire_arm(f: Dictionary, w: Dictionary) -> void:
+	var a := pilot_pos()
+	var b: Vector2 = (f["w"] as Walker).pos
+	view.pilot.aim = b
+	view.pilot.aim_weapon = "wp_arm_laser"
+	var ch := chance_at_foe(f)
+	var res := {"to": f, "dmg": float(w["damage"]), "dtype": "optical", "splash": 0.0, "from": null}
+	var end: Vector2
+	if randf() < ch:
+		res["kind"] = "hit"
+		end = b + CHEST
+	else:
+		res["kind"] = "miss"
+		end = b + CHEST + (b - a).normalized().rotated(PI * 0.5) * randf_range(10.0, 18.0) * (1.0 if randf() < 0.5 else -1.0)
+	var muzzle: Vector2 = view.pilot.muzzle_art()
+	shots.append({"a": muzzle, "b": end, "t": 0.0, "life": 0.55, "kind": "armbeam", "col": Color(1.0, 0.3, 0.2), "res": res, "done": false})
+	_resolve(shots[-1])
+	# where it burns through cover: molten sparks
+	var n := int(a.distance_to(b) / 4.0)
+	var burnt := 0
+	var was := 0
+	for i in range(1, n):
+		var p := a.lerp(b, float(i) / n)
+		var c := cover_at(p)
+		if c != 0 and was == 0 and burnt < 4:
+			for k in 6:
+				sparks.append({"pos": p + CHEST, "vel": Vector2(randf_range(-80, 80), randf_range(-90, 10)), "t": 0.0, "col": Color(1.0, 0.6, 0.3)})
+			burnt += 1
+		was = c
+	arm_charge = 0.0
+	pilot_cool = 0.8
+	view._shake = maxf(view._shake, 0.15)
+	Audio.play("w_pulse", "the Red Arm Laser", 2.0)
+	GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
+	for o in alive():
+		if not o["aware"] and (o["w"] as Walker).pos.distance_to(a) < FoeData.HEAR:
+			_wake(o)
+
+
 # ---------------------------------------------------------------- effects
 
 func _fx_step(delta: float) -> void:
@@ -1640,7 +1724,7 @@ func _fx_step(delta: float) -> void:
 		s["t"] = float(s["t"]) + delta
 		if float(s["t"]) >= float(s["life"]):
 			_resolve(s)
-	shots = shots.filter(func(s): return float(s["t"]) < float(s["life"]) + (0.06 if s["kind"] == "beam" else 0.0))
+	shots = shots.filter(func(s): return float(s["t"]) < float(s["life"]) + (0.06 if s["kind"] == "beam" else 0.0))   # (armbeam fades over its life)
 	for fl in floaters:
 		fl["t"] = float(fl["t"]) + delta
 	floaters = floaters.filter(func(fl): return float(fl["t"]) < 1.1)
@@ -1730,6 +1814,12 @@ func _draw() -> void:
 				draw_line(a, b, Color(col3, 0.9 * fade), 3.0)
 				draw_line(a, b, Color(1, 1, 1, fade), 1.0)
 				draw_circle(a, 6.0, Color(col3, 0.8 * fade))
+			"armbeam":
+				var fk := 1.0 - clampf(float(s["t"]) / float(s["life"]), 0.0, 1.0)
+				draw_line(a, b, Color(1.0, 0.15, 0.1, 0.25 * fk), 18.0)
+				draw_line(a, b, Color(1.0, 0.3, 0.2, 0.75 * fk), 8.0)
+				draw_line(a, b, Color(1.0, 0.85, 0.75, fk), 3.0)
+				draw_circle(a, 8.0 * fk + 2.0, Color(1.0, 0.5, 0.35, 0.8 * fk))
 			"slug":
 				var k := clampf(float(s["t"]) / float(s["life"]), 0.0, 1.0)
 				var head := a.lerp(b, k)

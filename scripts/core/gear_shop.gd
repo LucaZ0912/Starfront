@@ -35,8 +35,14 @@ static func offer(st: Dictionary) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(st.get("id", "gear"))) + 51
 	var out := {}
+	var land := String(st.get("faction", ""))
+	if land == "" and sid >= 0 and sid < Universe.systems.size():
+		land = String(Universe.systems[sid].get("faction", ""))
 	for f in GearData.SUITS:
 		if small and not f in SMALL_SUITS:
+			continue
+		var own := String(GearData.SUITS[f].get("faction", ""))          # 0.7.52.14: a power's own armour
+		if own != "" and (own != land or not (military or tier >= 2 or bool(st.get("city", false)))):
 			continue
 		if f == "suit_mil_heavy" and not military:
 			continue
@@ -44,6 +50,8 @@ static func offer(st: Dictionary) -> Dictionary:
 			continue
 		out[f] = _qualities(rng, qmax)
 	for w in GearData.WEAPONS:
+		if bool(GearData.WEAPONS[w].get("builtin", false)):
+			continue
 		if small and not w in SMALL_WEAPONS:
 			continue
 		if w in HEAVY_WEAPONS and not (military or tier >= 3):

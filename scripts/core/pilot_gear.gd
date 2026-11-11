@@ -65,12 +65,26 @@ func _fit_slots() -> Array:
 		var arr: Array = get(k)
 		while arr.size() > int(want[k]):
 			var last = arr.pop_back()
+			if last is String and String(last) != "" and bool(GearData.base(String(last)).get("builtin", false)):
+				continue                                      # a built-in weapon goes with its suit
 			if last is String and String(last) != "":
 				spill.append({"id": last, "n": 1})
 			elif last is Dictionary and not (last as Dictionary).is_empty():
 				spill.append(last)
 		while arr.size() < int(want[k]):
 			arr.append({} if k in ["belt", "grenades"] else "")
+	# 0.7.52.14: a suit's built-in weapon sits in the first weapon place (what was there goes to the pockets); one from a
+	# suit taken off is simply gone with it
+	var bi := String(s.get("builtin", ""))
+	for wi in weapons.size():
+		var w := String(weapons[wi])
+		if w != "" and bool(GearData.base(w).get("builtin", false)) and (bi == "" or wi != 0):
+			weapons[wi] = ""
+	if bi != "" and not weapons.is_empty():
+		var bid := "%s:%s" % [bi, GearData.quality(suit)]
+		if String(weapons[0]) != "" and String(weapons[0]) != bid:
+			spill.append({"id": String(weapons[0]), "n": 1})
+		weapons[0] = bid
 	return spill
 
 
@@ -370,6 +384,8 @@ func equip_from_inv(i: int) -> String:
 			clamp_state()
 			return ""
 		"weapon", "feature", "drone":
+			if bool(GearData.base(id).get("builtin", false)):
+				return "That is built into a suit."
 			var arr: Array = weapons if GearData.kind(id) == "weapon" else (drones if GearData.kind(id) == "drone" else features)
 			var at := arr.find("")
 			if arr.is_empty() and arr == drones:
@@ -415,6 +431,8 @@ func unequip(slot_kind: String, idx: int) -> String:
 	var arr: Array = get(slot_kind)
 	if idx < 0 or idx >= arr.size():
 		return "No such slot."
+	if arr[idx] is String and String(arr[idx]) != "" and bool(GearData.base(String(arr[idx])).get("builtin", false)):
+		return "Built into the suit – it comes off with the suit."
 	var it = arr[idx]
 	var id := ""
 	var n := 1

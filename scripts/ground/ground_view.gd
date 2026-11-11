@@ -380,6 +380,7 @@ func pilot_look() -> Dictionary:
 	var lk: Dictionary = (GameState.pilot.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate()
 	lk["suit"] = ChibiArt.GearData.family(String(GameState.gear.suit))
 	lk["helmet"] = needs_helmet() or GameState.gear.helmet == "always" or GameState.gear.combat_t > 0.0   # 0.7.51.10
+	lk["arm_up"] = combat != null and combat.arm_raised()                          # 0.7.52.14: the laser arm raised
 	return lk
 
 

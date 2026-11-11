@@ -794,6 +794,9 @@ func _c_gear_buy(c: Dictionary) -> String:
 	var id := String(c.get("id", ""))
 	if not GearShop.GearData.valid(id) or not GearShop.sells(st, id):
 		return "Not on offer here."
+	var own := String(GearShop.GearData.base(id).get("faction", ""))      # 0.7.52.14: a power's armour – for its friends
+	if own != "" and not GameState.rep.at_least(own, "friendly"):
+		return "The %s sells its %s only to Friendly pilots (yours: %s)." % [FactionData.short_of(own), String(GearShop.GearData.base(id)["name"]), GameState.rep.tier_name(own)]
 	var price := GameState.rep.buy_price(GearShop.GearData.price(id), docked_faction())
 	if GameState.credits < price:
 		return "Not enough credits."
