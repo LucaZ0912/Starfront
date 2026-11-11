@@ -183,6 +183,37 @@ static func bonus_label(role: String, bonus: String) -> String:
 	return bonus
 
 
+# ---------------------------------------------------------------- package 52a: the ground team
+
+## 0.7.52.20 (Luz): up to two crew of the active ship come along on foot. They fight about as well as foes of their
+## quality – much weaker than you: their body (`TEAM_HEALTH`), their aim (`TEAM_FIREARMS`) and their damage share
+## (`TEAM_DAMAGE`, like the foes' `FoeData.DAMAGE`) by quality. Down, you can bring them back by holding the use key
+## beside them; left down too long (or behind), they die – a clinic brings them back for a fee (`REVIVE_FEE`).
+const TEAM_MAX := 2
+const TEAM_HEALTH := {"F": 55.0, "D": 65.0, "C": 75.0, "B": 85.0, "A": 95.0}
+const TEAM_FIREARMS := {"F": 1, "D": 2, "C": 3, "B": 4, "A": 5}
+const TEAM_ATHLETICS := {"F": 1, "D": 1, "C": 2, "B": 2, "A": 3}
+const TEAM_DAMAGE := {"F": 0.16, "D": 0.19, "C": 0.22, "B": 0.26, "A": 0.3}
+const TEAM_WEAPON := "wp_pistol:F"             # what a member without a weapon of its own carries
+const DOWN_TIME := 45.0                        # seconds down before a member dies
+const REVIVE_TIME := 2.5                       # seconds holding the use key beside a member down
+const REVIVE_FEE := {"F": 800, "D": 2000, "C": 6000, "B": 15000, "A": 40000}
+## How a member fights (set per member): aggressive – closes in; careful – in cover near you; flanking – round the side.
+const STANCES := {"aggressive": "Aggressive", "careful": "Careful", "flank": "Flanking"}
+const STANCE_ROLE := {"aggressive": "rusher", "careful": "rifleman", "flank": "flanker"}
+## The ability each profession brings into a fight (`cd`: seconds to charge again).
+const ABILITIES := {
+	"gunner": {"name": "Suppressing fire", "cd": 30.0, "text": "Pins its target down: for 6 s it stays put and hits far worse."},
+	"engineer": {"name": "Shield dome", "cd": 40.0, "text": "Sets up a shield dome where it stands, like the shield grenade."},
+	"science": {"name": "Scan", "cd": 35.0, "text": "Scans the foes near its target: for 10 s their cover does not count."},
+	"drone_op": {"name": "Jammer", "cd": 35.0, "text": "Jams the weapons of the foes round its target: for 4 s they cannot fire."},
+	"quartermaster": {"name": "Resupply", "cd": 45.0, "text": "Brings you ammunition and energy – a third of what your suit holds."},
+	"foreman": {"name": "Demolition charge", "cd": 30.0, "text": "Throws a blasting charge at its target."},
+	"copilot": {"name": "Flank run", "cd": 30.0, "text": "Sprints round to its target's open side; quicker and surer for 6 s."},
+	"wing_pilot": {"name": "Flank run", "cd": 30.0, "text": "Sprints round to its target's open side; quicker and surer for 6 s."},
+}
+
+
 ## Roles that some hull needs (required) – the others get their own skill tree tile.
 static func roles_required_by(hid: String) -> Array:
 	var out: Array = []

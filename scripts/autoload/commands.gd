@@ -785,6 +785,39 @@ func _c_clinic_heal(_c: Dictionary) -> String:
 	return ""
 
 
+## 0.7.52.20 (package 52a): crew that died on foot, on all your ships – [[ship, member], …].
+func dead_crew() -> Array:
+	var out: Array = []
+	for f in GameState.fleet:
+		for m in f.crew_members():
+			if bool(m.get("dead", false)):
+				out.append([f, m])
+	return out
+
+
+func revive_fee(m: Dictionary) -> int:
+	return int(CrewData.REVIVE_FEE.get(String(m.get("quality", "F")), 1000))
+
+
+## {"type":"clinic_revive", "id": crew id} – 0.7.52.20 (Luz): the clinic brings a crew member back who died on foot,
+## for a fee by their quality.
+func _c_clinic_revive(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	for pair in dead_crew():
+		var m: Dictionary = pair[1]
+		if int(m.get("id", -1)) == int(c.get("id", -2)):
+			var price := GameState.rep.buy_price(revive_fee(m), docked_faction())
+			if not GameState.spend(price):
+				return "Not enough credits."
+			m["dead"] = false
+			(pair[0] as ShipFitting).mark_dirty()
+			GameState.log_msg("%s is back – the clinic brought them round." % String(m.get("name", "")), GameState.COL_GOOD)
+			return ""
+	return "Nobody of that name lies here."
+
+
 ## Package 51: buys a piece of personal gear at the Gear shop – into the pockets.
 func _c_gear_buy(c: Dictionary) -> String:
 	var e := _need_service()
@@ -2790,6 +2823,30 @@ func _c_debug_combat(c: Dictionary) -> String:
 			cb.show_ai = bool(c.get("on", not cb.show_ai))
 		"hurt":
 			cb._hurt_pilot(float(c.get("amount", 30.0)), String(c.get("dtype", "kinetic")))
+		"team":                                        # 0.7.52.20: two test companions ("roles", "quality") – not of your crew
+			var roles: Array = c.get("roles", ["gunner", "engineer"])
+			for a0 in cb.allies:
+				(a0["w"] as Node).queue_free()
+			cb.allies.clear()
+			cb._team_made = true
+			for ri in mini(roles.size(), CrewData.TEAM_MAX):
+				var tm: Dictionary = GameState.new_crew(String(roles[ri]), String(c.get("quality", "C")), "")
+				tm["stance"] = String(c.get("stance", "careful"))
+				cb.spawn_ally(tm, ri)
+		"team_down":                                   # the first member standing goes down
+			for a1 in cb.allies_up():
+				cb._hurt_ally(a1, 99999.0, "explosive")
+				break
+		"team_revive":
+			for a2 in cb.allies:
+				cb.revive(a2)
+		"team_ready":                                  # their abilities ready at once
+			for a3 in cb.allies:
+				a3["ab"] = 0.0
+		"team_die":                                    # a member down dies at once
+			for a4 in cb.allies:
+				if a4["down"] and not a4["dead"]:
+					cb._ally_dies(a4)
 		"drone_kill":                                  # 0.7.52.11: your drone shot down
 			var keep: int = cb.drone_slot                    # 0.7.52.18: "place" 0 / 1
 			cb.pick_drone(int(c.get("place", 0)))

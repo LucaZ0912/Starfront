@@ -6,6 +6,7 @@ extends RefCounted
 ## A place is {} when empty, else {"id", "n"}.
 
 const GearData = preload("res://data/gear.gd")
+const CrewData = preload("res://data/crew.gd")
 const LOCKER_BY_SIZE := {1: 12, 2: 20, 3: 30}
 
 var suit := ""
@@ -28,6 +29,7 @@ var combat_t := 0.0                     # 0.7.51.10: seconds the pilot counts as
 var shield := 0.0                       # package 52: the suit's shield and armour as they are now (totals() has the most)
 var armor := 0.0
 var shield_wait := 0.0                  # seconds before the shield recovers after a hit
+var team: Array = []                    # 0.7.52.20 (package 52a): crew ids of the active ship coming along on foot (≤ 2)
 
 
 ## A new pilot: a civilian suit (F), a laser pistol, two medkits and an energy cell on the belt.
@@ -516,10 +518,130 @@ func fetch(j: int, fit) -> String:
 
 # ---------------------------------------------------------------- saving
 
+# ---------------------------------------------------------------- 0.7.52.20 (package 52a): the ground team
+
+## The crew of the active ship that comes along on foot (alive ones, in the order picked).
+func team_members() -> Array:
+	var out: Array = []
+	var f = GameState.active()
+	if f == null:
+		return out
+	for id in team:
+		for m in f.crew_members():
+			if int(m.get("id", -1)) == int(id) and not bool(m.get("dead", false)):
+				out.append(m)
+	return out
+
+
+## Takes a member along, or leaves it aboard. "" or why not.
+func team_toggle(m: Dictionary) -> String:
+	var id := int(m.get("id", -1))
+	if team.has(id):
+		team.erase(id)
+		return ""
+	if bool(m.get("dead", false)):
+		return "%s is dead – a clinic can bring them back." % String(m.get("name", "They"))
+	team = team.filter(func(t): return _team_aboard(int(t)))
+	if team.size() >= CrewData.TEAM_MAX:
+		return "At most %d come along." % CrewData.TEAM_MAX
+	team.append(id)
+	return ""
+
+
+func _team_aboard(id: int) -> bool:
+	var f = GameState.active()
+	if f == null:
+		return false
+	for m in f.crew_members():
+		if int(m.get("id", -1)) == id:
+			return true
+	return false
+
+
+## A member's own gear: {"suit": id, "weapons": [ids]} (made when first asked for).
+static func member_gear(m: Dictionary) -> Dictionary:
+	if not m.has("gear") or not (m["gear"] is Dictionary):
+		m["gear"] = {"suit": "suit_civil:F", "weapons": [""]}
+	var mg: Dictionary = m["gear"]
+	var n := int(GearData.stats(String(mg["suit"])).get("weapons", 1))
+	var ws: Array = mg["weapons"]
+	while ws.size() < n:
+		ws.append("")
+	return mg
+
+
+## Gives a member what lies in pocket i: a suit (the old one into your pockets, weapons that no longer fit too) or a
+## weapon into a free place. "" or why not.
+func member_equip(m: Dictionary, i: int) -> String:
+	if i < 0 or i >= inv.size() or (inv[i] as Dictionary).is_empty():
+		return "Nothing there."
+	var id := String(inv[i]["id"])
+	var mg := member_gear(m)
+	var ws: Array = mg["weapons"]
+	match GearData.kind(id):
+		"suit":
+			var n := int(GearData.stats(id).get("weapons", 1))
+			var off: Array = [String(mg["suit"])]
+			for j in range(n, ws.size()):
+				if String(ws[j]) != "":
+					off.append(String(ws[j]))
+			if free_places() + 1 < off.filter(func(o): return String(o) != "suit_civil:F").size():
+				return "Not enough room in your pockets for what comes off."
+			_take(i, 1)
+			mg["suit"] = id
+			ws.resize(mini(ws.size(), n))
+			while ws.size() < n:
+				ws.append("")
+			var b := String(GearData.base(id).get("builtin", ""))
+			if b != "":
+				ws[0] = b + ":" + GearData.quality(id)          # a suit's own weapon goes with it
+			for o in off:
+				if String(o) != "suit_civil:F" and not bool(GearData.base(String(o)).get("builtin", false)):   # their own plain suit stays theirs
+					_add_to(inv, String(o), 1)
+			return ""
+		"weapon":
+			if bool(GearData.base(id).get("builtin", false)):
+				return "That is built into a suit."
+			var at := ws.find("")
+			if at < 0:
+				return "No free weapon place on %s's suit." % String(m.get("name", "their"))
+			ws[at] = id
+			_take(i, 1)
+			return ""
+	return "Only suits and weapons for the team."
+
+
+## Takes a member's piece back into your pockets ("suit": they get the plain civilian suit). "" or why not.
+func member_unequip(m: Dictionary, where: String, idx: int) -> String:
+	var mg := member_gear(m)
+	if free_places() < 1:
+		return "No room in your pockets."
+	if where == "suit":
+		if GearData.family(String(mg["suit"])) == "suit_civil" and GearData.quality(String(mg["suit"])) == "F":
+			return "That is their own plain suit."
+		var ws: Array = mg["weapons"]
+		for j in ws.size():
+			if bool(GearData.base(String(ws[j])).get("builtin", false)):
+				ws[j] = ""
+		_add_to(inv, String(mg["suit"]), 1)
+		mg["suit"] = "suit_civil:F"
+		member_gear(m)
+		ws.resize(int(GearData.stats("suit_civil:F").get("weapons", 1)))
+		return ""
+	var ws2: Array = mg["weapons"]
+	if idx < 0 or idx >= ws2.size() or String(ws2[idx]) == "":
+		return "Nothing there."
+	if bool(GearData.base(String(ws2[idx])).get("builtin", false)):
+		return "That is built into the suit."
+	_add_to(inv, String(ws2[idx]), 1)
+	ws2[idx] = ""
+	return ""
+
+
 func to_dict() -> Dictionary:
 	return {"suit": suit, "weapons": weapons.duplicate(), "belt": belt.duplicate(true), "grenades": grenades.duplicate(true), "gr_sel": gr_sel, "drones": drones.duplicate(), "features": features.duplicate(),
 		"inv": inv.duplicate(true), "lockers": lockers.duplicate(true), "health": health, "energy": energy, "oxygen": oxygen, "ammo": ammo,
-		"helmet": helmet, "shield": shield, "armor": armor}
+		"helmet": helmet, "shield": shield, "armor": armor, "team": team.duplicate()}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -537,6 +659,7 @@ func from_dict(d: Dictionary) -> void:
 	while inv.size() < GearData.INV_SLOTS:
 		inv.append({})
 	lockers = (d.get("lockers", {}) as Dictionary).duplicate(true)
+	team = (d.get("team", []) as Array).duplicate()
 	helmet = "always" if String(d.get("helmet", "auto")) == "always" else "auto"
 	_fit_slots()
 	health = float(d.get("health", GearData.HEALTH))

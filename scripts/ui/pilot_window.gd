@@ -45,6 +45,7 @@ var _tiles := {}
 var _sel := ""
 var _tscroll := Vector2(-1, -1)
 var _gear_msg := ""
+var _gperson := -1                         # 0.7.52.20: whose gear is shown (-1 you, else a crew id of your ground team)
 
 
 func _ready() -> void:
@@ -155,6 +156,11 @@ var _gsel := {}                            # {"where": suit|weapons|belt|feature
 
 func _gear() -> void:
 	var g = GameState.gear
+	_team_row(g)
+	var gm := _gear_member(g)
+	if not gm.is_empty():
+		_gear_of_member(g, gm)
+		return
 	var t: Dictionary = g.totals()
 	var fit = _locker_fit()
 	var row := UI.hbox(16)
@@ -269,6 +275,175 @@ func _gear() -> void:
 	else:
 		right.add_child(UI.label("Locker", 17, COL))
 		right.add_child(UI.label("  The ship's locker is aboard – you are not.", 12, UI.TEXT_DIM))
+
+
+# ---- 0.7.52.20 (Luz, package 52a): the ground team – who comes along, their gear from your pockets
+
+## The member whose gear is shown ({} = you).
+func _gear_member(g) -> Dictionary:
+	if _gperson < 0:
+		return {}
+	var f := GameState.active()
+	if f != null:
+		for m in f.crew_members():
+			if int(m.get("id", -1)) == _gperson and g.team.has(_gperson):
+				return m
+	_gperson = -1
+	return {}
+
+
+## At the top of the Gear page: whose gear (you or a member of your team) and the crew aboard to take along.
+func _team_row(g) -> void:
+	var f := GameState.active()
+	var crew: Array = f.crew_members() if f != null else []
+	var row := UI.hbox(8)
+	body.add_child(row)
+	row.add_child(UI.label("GROUND TEAM", 15, COL))
+	row.add_child(UI.label("(%d/%d)" % [g.team.filter(func(t): return crew.any(func(m): return int(m.get("id", -1)) == int(t))).size(), CrewDataP.TEAM_MAX], 12, UI.TEXT_DIM))
+	if crew.is_empty():
+		row.add_child(UI.label("No crew aboard the active ship – hire some at a bar to take along on foot.", 12, UI.TEXT_DIM))
+	for m in crew:
+		var mid := int(m.get("id", -1))
+		var dead := bool(m.get("dead", false))
+		var on: bool = g.team.has(mid)
+		var b := UI.button(("✓ " if on else "+ ") + String(m.get("name", "")).get_slice(" ", 0) + (" (dead)" if dead else ""), func():
+			_gear_msg = g.team_toggle(m)
+			if not g.team.has(mid) and _gperson == mid:
+				_gperson = -1
+			Audio.play("ui_click" if _gear_msg == "" else "ui_error", "team")
+			rebuild())
+		b.toggle_mode = true
+		b.button_pressed = on
+		b.tooltip_text = "%s – %s %s. %s" % [String(m.get("name", "")), String(m.get("quality", "F")), CrewDataP.role_name(String(m.get("role", ""))),
+			"Click: stays aboard." if on else "Click: comes along on foot."]
+		row.add_child(b)
+	# whose gear
+	var who := UI.hbox(8)
+	body.add_child(who)
+	who.add_child(UI.label("GEAR OF", 15, COL))
+	var me := UI.button("You", func(): _gperson = -1; _gsel = {}; rebuild())
+	me.toggle_mode = true
+	me.button_pressed = _gperson < 0
+	who.add_child(me)
+	for tm in g.team_members():
+		var tid := int(tm.get("id", -1))
+		var tb := UI.button(String(tm.get("name", "")), func(): _gperson = tid; _gsel = {}; rebuild())
+		tb.toggle_mode = true
+		tb.button_pressed = _gperson == tid
+		who.add_child(tb)
+	body.add_child(HSeparator.new())
+
+
+## A member's gear: its figure in its suit, how it fights, its ability; on the right its suit and weapons, your
+## pockets (and the locker) – a piece from your pockets goes to them, theirs comes back into your pockets.
+func _gear_of_member(g, m: Dictionary) -> void:
+	var mg: Dictionary = PilotGear.member_gear(m)
+	var fit = _locker_fit()
+	var row := UI.hbox(16)
+	body.add_child(row)
+	var lp := UI.neon_panel(Color(COL, 0.35), Color(0.07, 0.05, 0.03, 0.95), 1)
+	lp.custom_minimum_size = Vector2(430, 0)
+	row.add_child(lp)
+	var left := UI.vbox(6)
+	lp.add_child(left)
+	var top := UI.hbox(12)
+	left.add_child(top)
+	var stage := PanelContainer.new()
+	stage.add_theme_stylebox_override("panel", UI.panel_style(Color(0.03, 0.03, 0.05), Color(COL, 0.25)))
+	stage.custom_minimum_size = Vector2(150, 200)
+	top.add_child(stage)
+	var look: Dictionary = (m.get("look", PilotArt.default_look()) as Dictionary).duplicate()
+	look["suit"] = GearData.family(String(mg["suit"]))
+	look["helmet"] = String(mg["suit"]).begins_with("suit_mil")
+	stage.add_child(UI.icon(ChibiArt.frame(look, 0, 0), 190))
+	var head := UI.vbox(3)
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	var q := String(m.get("quality", "F"))
+	head.add_child(UI.wrap_label(String(m.get("name", "")), 17, CrewDataP.QUALITY_COLORS.get(q, COL), 240))
+	head.add_child(UI.label("%s  •  %s %s" % [CrewDataP.role_name(String(m.get("role", ""))), q, String(CrewDataP.QUALITY_NAMES.get(q, ""))], 12, UI.TEXT_DIM))
+	var sst := GearData.stats(String(mg["suit"]))
+	head.add_child(UI.label("Shield %d  •  Armour %d  •  Body %d" % [int(sst.get("shield", 0)), int(sst.get("armor", 0)), int(CrewDataP.TEAM_HEALTH.get(q, 60))], 12, Color(0.88, 0.86, 0.8)))
+	head.add_child(UI.label("Aim %d  •  damage %d %%  (about as good as foes)" % [int(CrewDataP.TEAM_FIREARMS.get(q, 1)), int(float(CrewDataP.TEAM_DAMAGE.get(q, 0.2)) * 100.0)], 12, UI.TEXT_DIM))
+	var ab: Dictionary = CrewDataP.ABILITIES.get(String(m.get("role", "")), {})
+	if not ab.is_empty():
+		head.add_child(HSeparator.new())
+		head.add_child(UI.label("ABILITY – %s" % String(ab["name"]), 13, COL))
+		head.add_child(UI.wrap_label("%s  (every %d s)" % [String(ab["text"]), int(ab["cd"])], 12, Color(0.88, 0.86, 0.8), 240))
+	left.add_child(UI.label("HOW THEY FIGHT", 13, COL))
+	var sr := UI.hbox(6)
+	left.add_child(sr)
+	for sk in CrewDataP.STANCES:
+		var skey := String(sk)
+		var sb := UI.button(String(CrewDataP.STANCES[sk]), func(): m["stance"] = skey; _gear_do(""))
+		sb.toggle_mode = true
+		sb.button_pressed = String(m.get("stance", "careful")) == skey
+		sb.custom_minimum_size = Vector2(120, 28)
+		sb.tooltip_text = {"aggressive": "Closes in on the foe", "careful": "Fights from cover near you", "flank": "Runs round to the foe's open side"}[skey]
+		sr.add_child(sb)
+	left.add_child(UI.wrap_label("Without a weapon of their own they carry a slug pistol. Their rounds and energy are their own. Down in a fight, hold %s beside them to bring them back – if they die, a clinic brings them back for a fee." % Keybinds.key_text("interact"), 12, UI.TEXT_DIM, 400))
+	left.add_child(HSeparator.new())
+	# the piece picked
+	var where := String(_gsel.get("where", ""))
+	var idx := int(_gsel.get("idx", -1))
+	var id := ""
+	match where:
+		"m_suit":
+			id = String(mg["suit"])
+		"m_weapons":
+			if idx >= 0 and idx < (mg["weapons"] as Array).size():
+				id = String(mg["weapons"][idx])
+		"inv":
+			if idx >= 0 and idx < g.inv.size():
+				id = String(g.inv[idx].get("id", ""))
+		"locker":
+			if fit != null and idx >= 0 and idx < g.locker(fit).size():
+				id = String(g.locker(fit)[idx].get("id", ""))
+	if id == "":
+		left.add_child(UI.label("Select a piece", 17, COL))
+		left.add_child(UI.wrap_label("Suits and weapons in your pockets can go to %s." % String(m.get("name", "")).get_slice(" ", 0), 12, UI.TEXT_DIM, 400))
+	else:
+		var hd := UI.hbox(10)
+		left.add_child(hd)
+		hd.add_child(UI.icon(GearIcons.icon(id), 64))
+		var iq := GearData.quality(id)
+		hd.add_child(UI.wrap_label(GearData.display_name(id), 16, GameData.quality_color(iq) if iq != "" else COL, 320))
+		for ln in GearData.describe(id):
+			if String(ln) != "":
+				left.add_child(UI.wrap_label(String(ln), 12, Color(0.88, 0.86, 0.8), 400))
+		var acts := UI.hbox(6)
+		left.add_child(acts)
+		match where:
+			"m_suit", "m_weapons":
+				acts.add_child(UI.button("Take back → pockets", func(): _gsel = {}; _gear_do(g.member_unequip(m, "suit" if where == "m_suit" else "weapons", idx))))
+			"inv":
+				acts.add_child(UI.button("Give to %s" % String(m.get("name", "")).get_slice(" ", 0), func(): _gsel = {}; _gear_do(g.member_equip(m, idx))))
+				if fit != null:
+					acts.add_child(UI.button("→ Locker", func(): _gsel = {}; _gear_do(g.store(idx, fit))))
+			"locker":
+				acts.add_child(UI.button("← Into the pockets", func(): _gsel = {}; _gear_do(g.fetch(idx, fit))))
+	if _gear_msg != "":
+		left.add_child(UI.label(_gear_msg, 13, Color(1.0, 0.6, 0.4)))
+	# right: their suit and weapons, your pockets, the locker
+	var right := UI.vbox(8)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(right)
+	var sflow := _gear_flow(right, "%s's suit" % String(m.get("name", "")).get_slice(" ", 0), "")
+	sflow.add_child(_gear_tile(String(mg["suit"]), 1, "", "m_suit", 0, "Suit"))
+	var ws: Array = mg["weapons"]
+	var wflow := _gear_flow(right, "Weapons", "(%d/%d)" % [ws.filter(func(x): return String(x) != "").size(), ws.size()])
+	for i in ws.size():
+		wflow.add_child(_gear_tile(String(ws[i]), 1, "", "m_weapons", i, "empty"))
+	var pflow := _gear_flow(right, "Your pockets", "(%d/%d)" % [GearData.INV_SLOTS - g.free_places(), GearData.INV_SLOTS])
+	for i2 in g.inv.size():
+		var p: Dictionary = g.inv[i2]
+		pflow.add_child(_gear_tile(String(p.get("id", "")), int(p.get("n", 1)), "", "inv", i2, ""))
+	if fit != null:
+		var l: Array = g.locker(fit)
+		var lflow := _gear_flow(right, "Locker  –  %s" % fit.ship_name, "(%d/%d)" % [l.size() - g.free_places(l), l.size()])
+		for j in l.size():
+			var lpc: Dictionary = l[j]
+			lflow.add_child(_gear_tile(String(lpc.get("id", "")), int(lpc.get("n", 1)), "", "locker", j, ""))
 
 
 func _gear_flow(parent: VBoxContainer, title: String, count: String) -> HFlowContainer:

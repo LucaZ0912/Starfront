@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.20 – 2026-11-11
+
+**Package 52a – the ground team (Luz, after the mockup she approved).**
+
+- **Who comes along:** up to **two crew members of the active ship** – picked at the top of the Pilot window's Gear page.
+- **Their gear:** the same page shows each member's suit and weapons; suits and weapons go to them from your pockets
+  and come back the same way. Without a weapon they carry a slug pistol; their rounds and energy are their own.
+- **About as good as foes** (Luz: much weaker than you): body, aim and damage share by their quality (F–A).
+- **How they fight** (set per member): aggressive (close in), careful (cover near you), flanking (round the side).
+  They pick your target when they can see it, else the nearest foe; foes shoot at them too when they are much nearer.
+- **The command wheel on V:** a tap picks whom the orders go to (one member or all), holding V opens the wheel round
+  you (time runs slow) – *Follow me*, *Attack my target*, *Hold here*, *Ability*; letting go gives the order.
+- **Abilities by profession:** Gunner suppressing fire, Engineer shield dome, Science Officer scan (their cover stops
+  counting), Drone Operator jammer, Quartermaster resupply, Mining Foreman demolition charge, Co-Pilot flank run.
+- **Down and dead:** down in a fight, **hold E beside them** to bring them back (45 s). Left down too long or behind,
+  they die – a **clinic brings them back for a fee** by their quality; until then they are missing aboard as well.
+- **On screen:** their cards under your bars (portrait, profession, shield and body, order, the ability's ring), cyan
+  rings at their feet (apart from the foes' green), a flag where they hold.
+- Debug: Team buttons in the ground-combat section (two companions, one down, revive, abilities ready, down one dies);
+  smoke test group `foot_team`.
+
 ## alpha 0.7.52.19 – 2026-11-11
 
 **Calling a kamikaze drone back (Luz).** While a kamikaze drone is up in the air, a tap on its key (C, or Shift+C for

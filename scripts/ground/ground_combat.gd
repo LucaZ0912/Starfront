@@ -15,6 +15,7 @@ extends Node2D
 
 const GearData = preload("res://data/gear.gd")
 const FoeData = preload("res://data/foes.gd")
+const CrewData = preload("res://data/crew.gd")
 const S := GroundMap.SCALE
 const MAX_LOCKS := 3
 const CHEST := Vector2(0, -15)                    # where shots go and come from (art px above the feet)
@@ -72,6 +73,12 @@ var drone_rebuild := 0.0                           # seconds until a new one is 
 var drones: Array = [{}, {}]
 var drone_rebuilds: Array = [0.0, 0.0]
 var drone_slot := 0
+var allies: Array = []                             # 0.7.52.20 (package 52a): your ground team – {ally, m, w, st, order, …}
+var team_sel := 0                                  # whom the command wheel speaks to: 0, 1 a member, allies.size() all
+var wheel_open := false                            # the command wheel is up (V held): time runs slow
+var _team_made := false
+var reviving = null                                # the member you are bringing back (the use key held beside it)
+var revive_k := 0.0
 var arm_charge := 0.0                              # 0.7.52.14: the Red Arm Laser's charge (seconds of its `charge`)
 var _arm_up := false
 var camp_t := 0.0                                  # how long you have sat behind the same cover
@@ -344,7 +351,8 @@ func chance_at_foe(f) -> float:
 	var sg := sight(a, b)
 	if sg["blocked"]:
 		return 0.0
-	var c := GearData.hit_chance(wst, GameState.skill_level("firearms"), a.distance_to(b), sg["cover"], (f["w"] as Walker).moving, int(f["athletics"]), false)
+	var cov: bool = sg["cover"] and float(f.get("scan_t", 0.0)) <= 0.0          # 0.7.52.20: scanned – its cover does not count
+	var c := GearData.hit_chance(wst, GameState.skill_level("firearms"), a.distance_to(b), cov, (f["w"] as Walker).moving, int(f["athletics"]), false)
 	return c * (SMOKE_CUT if smoke_between(a, b) else 1.0)
 
 
@@ -363,6 +371,8 @@ func chance_at_pilot(f) -> float:
 		return 0.0
 	var c := GearData.hit_chance(GearData.stats(String(f["weapon"])), int(f["firearms"]), a.distance_to(b), sg["cover"], view.pilot.moving, GameState.skill_level("athletics"), GameState.gear.stim_t > 0.0)
 	c = minf(0.97, c * float(f.get("aim", 1.0)))          # 0.7.52.5: the sniper's eye
+	if float(f.get("supp", 0.0)) > 0.0:
+		c *= 0.4                                            # 0.7.52.20: suppressed by your gunner
 	return c * (SMOKE_CUT if smoke_between(a, b) else 1.0)
 
 
@@ -370,6 +380,9 @@ func chance_at_pilot(f) -> float:
 
 func step(delta: float, move: Vector2) -> void:
 	_t += delta
+	if not _team_made:
+		_team_made = true
+		spawn_team()                                 # 0.7.52.20: your ground team beside you
 	var g = GameState.gear
 	# dodging: the jump carries you; charges come back
 	if dodge_t > 0.0:
@@ -388,6 +401,8 @@ func step(delta: float, move: Vector2) -> void:
 		_foe_step(f, delta)
 		if f["aware"]:
 			aware_any = true
+	for al in allies:                                 # 0.7.52.20: your ground team
+		_ally_step(al, delta)
 	# the fight begins and ends
 	if aware_any and not fight:
 		fight = true
@@ -515,6 +530,11 @@ func fire(from, to, w: Dictionary) -> void:
 	if at_drone:
 		sg["cover"] = false                                          # it flies above low cover
 	var chance: float = chance_at_pilot(from) if to == null else (_chance_at_drone(from, b) if at_drone else chance_at_foe(to))
+	var team_shot: bool = (from != null and from.has("ally")) or (to != null and to.has("ally"))   # 0.7.52.20
+	if team_shot:
+		chance = _chance_between(from, to)
+		if float(to.get("scan_t", 0.0)) > 0.0 or bool(GearData.stats(String(from["weapon"])).get("pierce", false)):
+			sg["cover"] = false
 	var dome = dome_between(a, b)                         # 0.7.52.5: a shield dome round the target stops it
 	var open_chance := chance / (1.0 - GearData.COVER_CUT) if sg["cover"] else chance
 	var dtype := String(w.get("dtype", "kinetic"))
@@ -562,7 +582,7 @@ func fire(from, to, w: Dictionary) -> void:
 		Audio.play("w_pulse" if dtype == "optical" else ("w_rocket" if dtype == "explosive" else "w_autocannon"), "pilot fires on foot", -6.0)
 		GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
 	else:
-		Audio.play("w_pulse" if dtype == "optical" else ("w_rocket" if dtype == "explosive" else "w_autocannon"), "foe fires on foot", -12.0)
+		Audio.play("w_pulse" if dtype == "optical" else ("w_rocket" if dtype == "explosive" else "w_autocannon"), "team fires on foot" if from.has("ally") else "foe fires on foot", -12.0)
 
 
 ## A shot arrives: the hit is applied (a dodge at this moment turns it into a miss), or sparks where it stopped.
@@ -588,6 +608,8 @@ func _resolve(s: Dictionary) -> void:
 		"hit":
 			if to == null:
 				_hurt_pilot(float(res["dmg"]), String(res["dtype"]))
+			elif to.has("ally"):
+				_hurt_ally(to, float(res["dmg"]), String(res["dtype"]))     # 0.7.52.20
 			elif not to["dead"]:
 				_hurt_foe(to, float(res["dmg"]), String(res["dtype"]))
 				if res["from"] == null:
@@ -606,7 +628,7 @@ func _resolve(s: Dictionary) -> void:
 				dm["time"] = 0.0
 				floaters.append({"pos": (dm["pos"] as Vector2) + Vector2(0, -50), "text": "shield down", "col": Color(0.45, 0.9, 1.0), "t": 0.0})
 		"miss":
-			if to != null and res["from"] == null and not floaters.any(func(fl): return String(fl["text"]) == "miss" and float(fl["t"]) < 0.4):
+			if to != null and res["from"] == null and not to.has("is_drone") and not floaters.any(func(fl): return String(fl["text"]) == "miss" and float(fl["t"]) < 0.4):
 				floaters.append({"pos": (to["w"] as Walker).pos + Vector2(0, -34), "text": "miss", "col": Color(0.75, 0.75, 0.72), "t": 0.0})
 
 
@@ -625,6 +647,11 @@ func _explode(at: Vector2, r: float, dmg: float, dtype: String, from, spare_pilo
 		var k2 := blast_share(at, (f["w"] as Walker).pos, r)
 		if k2 > 0.0:
 			_hurt_foe(f, dmg * k2, dtype)
+	if not spare_pilot:
+		for al in allies_up():                          # 0.7.52.20: your team is hurt by foes' blasts
+			var k3 := blast_share(at, (al["w"] as Walker).pos, r)
+			if k3 > 0.0:
+				_hurt_ally(al, dmg * k3, dtype)
 
 
 ## 0.7.52.5: how much of a blast at `at` (radius r) reaches p – less further out, nothing behind high cover or inside a
@@ -720,11 +747,17 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	if frozen or view._collapsed:
 		w.moving = false
 		return
-	var pp := pilot_pos()
+	# 0.7.52.20: suppressed, scanned, jammed (your team's abilities) wear off
+	for key in ["supp", "scan_t", "jam_t"]:
+		if f.has(key):
+			f[key] = maxf(0.0, float(f[key]) - delta)
+	var tgt = _foe_target(f) if f["aware"] and not allies.is_empty() else null      # you – or a member of your team
+	var pp: Vector2 = pilot_pos() if tgt == null else (tgt["w"] as Walker).pos
+	f["tp"] = pp
 	var dist := w.pos.distance_to(pp)
 	var sg := sight(w.pos, pp)
 	if not f["aware"]:
-		if dist < float(f["sight"]) and not sg["blocked"] and not smoke_between(w.pos, pp):
+		if (dist < float(f["sight"]) and not sg["blocked"] and not smoke_between(w.pos, pp)) or _sees_ally(f):
 			_wake(f)
 		else:
 			w.moving = false
@@ -750,6 +783,9 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		f["pi"] = 0
 		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "flees", "col": Color(1.0, 0.8, 0.4), "t": 0.0})
 	f["think"] = float(f["think"]) - delta
+	if float(f.get("supp", 0.0)) > 0.0:
+		f["think"] = maxf(float(f["think"]), 0.2)        # suppressed: it stays down where it is
+		f["goal"] = Vector2.INF
 	if f["state"] != "flee" and float(f["think"]) <= 0.0:
 		f["think"] = randf_range(0.8, 1.4)
 		_decide(f, dist, sg, reach)
@@ -777,10 +813,12 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	w.aim = pp
 	if not w.moving:
 		w.dir = _face(pp - w.pos)
-	if float(f["cool"]) <= 0.0 and not sg["blocked"] and dist <= reach:
+	if float(f["cool"]) <= 0.0 and not sg["blocked"] and dist <= reach and float(f.get("jam_t", 0.0)) <= 0.0:
 		# 0.7.52.11 (Luz): when your drone is nearer than you, half the shots go at it
 		var near_d := _nearest_drone(w.pos)                        # 0.7.52.18: the nearer of your drones
-		if not near_d.is_empty() and w.pos.distance_to(near_d["pos"]) < dist and randf() < 0.5 and not sight(w.pos, near_d["pos"])["blocked"]:
+		if tgt != null:
+			fire(f, tgt, wst)                                      # 0.7.52.20: at a member of your team
+		elif not near_d.is_empty() and w.pos.distance_to(near_d["pos"]) < dist and randf() < 0.5 and not sight(w.pos, near_d["pos"])["blocked"]:
 			fire(f, near_d, wst)
 		else:
 			fire(f, null, wst)
@@ -793,7 +831,7 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	# 0.7.52.5: a grenade at you when you have dug in
 	f["gr_cool"] = float(f["gr_cool"]) - delta
 	var camp_need := FoeData.THROWER_CAMP if String(f["role"]) == "thrower" else FoeData.GRENADE_CAMP
-	if int(f["grenades"]) > 0 and float(f["gr_cool"]) <= 0.0 and camp_t >= camp_need and dist <= THROW_RANGE * 1.3 and dist > 40.0:
+	if tgt == null and int(f["grenades"]) > 0 and float(f["gr_cool"]) <= 0.0 and camp_t >= camp_need and dist <= THROW_RANGE * 1.3 and dist > 40.0:
 		var land := pp + Vector2(randf_range(-14, 14), randf_range(-10, 10))
 		throw_grenade(f, land, "gr_frag")
 		f["grenades"] = int(f["grenades"]) - 1
@@ -805,7 +843,7 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 ## distance – near their leader, if they have one.
 func _decide(f: Dictionary, dist: float, sg: Dictionary, reach: float) -> void:
 	var w: Walker = f["w"]
-	var pp := pilot_pos()
+	var pp: Vector2 = f.get("tp", pilot_pos())
 	var role := String(f["role"])
 	var rd: Dictionary = FoeData.ROLE.get(role, FoeData.ROLE["rifleman"])
 	if role == "rusher":
@@ -841,7 +879,7 @@ func _decide(f: Dictionary, dist: float, sg: Dictionary, reach: float) -> void:
 ## A flanker: somewhere at your side, off the line the others shoot along, where your cover does not cover you from it.
 func _decide_flank(f: Dictionary, dist: float, sg: Dictionary, reach: float) -> void:
 	var w: Walker = f["w"]
-	var pp := pilot_pos()
+	var pp: Vector2 = f.get("tp", pilot_pos())
 	var open_shot: bool = not sg["blocked"] and not sight(w.pos, pp)["cover"] and dist <= reach * 0.85
 	if open_shot and f["goal"] == Vector2.INF:
 		f["state"] = "fight"
@@ -934,7 +972,7 @@ func _cover_spot(p: Vector2, pp: Vector2, reach: float, pref: float, leader = nu
 
 ## Another foe stands or is going there.
 func _taken(c: Vector2) -> bool:
-	for f in alive():
+	for f in alive() + allies_up():
 		if (f["w"] as Walker).pos.distance_to(c) < 14.0 or (f["goal"] != Vector2.INF and (f["goal"] as Vector2).distance_to(c) < 14.0):
 			return true
 	return false
@@ -1272,7 +1310,7 @@ func _detonate(gr: Dictionary) -> void:
 	match String(gr["id"]):
 		"gr_frag":
 			var mult := float(from["dmg"]) / FoeData.DAMAGE * 0.25 if from != null else 1.0
-			_explode(at, r, float(st.get("damage", 60.0)) * mult, "explosive", from)
+			_explode(at, r, float(st.get("damage", 60.0)) * mult, "explosive", from, from != null and from.has("ally"))
 		"gr_emp":
 			booms.append({"pos": at, "r": r, "t": 0.0, "col": Color(0.45, 0.8, 1.0)})
 			Audio.play("shield_down", "EMP grenade", -4.0)
@@ -1917,6 +1955,469 @@ func _arm_geometry(beam: Dictionary) -> void:
 	beam["runs"] = _beam_runs(a, b, muzzle, end)
 
 
+# ---------------------------------------------------------------- 0.7.52.20 (package 52a): the ground team
+
+## Where each member keeps by you when following (art px from your feet).
+const TEAM_OFF := [Vector2(-24, 14), Vector2(24, 16)]
+const TEAM_COL := Color(0.35, 0.85, 1.0)          # your team's colour (rings, cards, orders)
+const WHEEL := ["follow", "attack", "hold", "ability"]          # the command wheel's fields: up, right, down, left
+const WHEEL_NAMES := {"follow": "Follow me", "attack": "Attack my target", "hold": "Hold here", "ability": "Ability"}
+
+
+## The crew that came along, as fighters next to you (made when the place is entered).
+func spawn_team() -> void:
+	for a in allies:
+		if is_instance_valid(a["w"]):
+			(a["w"] as Walker).queue_free()
+	allies.clear()
+	var ms: Array = GameState.gear.team_members()
+	for i in mini(ms.size(), CrewData.TEAM_MAX):
+		spawn_ally(ms[i], i)
+
+
+func spawn_ally(m: Dictionary, i: int) -> Dictionary:
+	var mg: Dictionary = PilotGear.member_gear(m)
+	var q := String(m.get("quality", "F"))
+	var suit_id := String(mg["suit"])
+	var sst := GearData.stats(suit_id)
+	var wid := ""
+	for wi in mg["weapons"]:
+		if String(wi) != "" and wid == "":
+			wid = String(wi)
+	if wid == "":
+		wid = CrewData.TEAM_WEAPON
+	var lk: Dictionary = (m.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate()
+	lk["suit"] = GearData.family(suit_id)
+	lk["helmet"] = suit_id.begins_with("suit_mil") or (view.needs_helmet() if view != null else false)
+	var p := _free_near(pilot_pos() + (TEAM_OFF[i % 2] as Vector2))
+	if p == Vector2.INF:
+		p = pilot_pos()
+	var w := Walker.new()
+	w.setup(map, lk, p, true)
+	w.stays = true
+	w.dir = 0
+	w.slung = String(GearData.base(wid).get("dtype", "kinetic"))
+	w.aim_dtype = w.slung
+	w.aim_weapon = GearData.family(wid)
+	view._sorted.add_child(w)
+	var hp := float(CrewData.TEAM_HEALTH.get(q, 60.0))
+	var stance := String(m.get("stance", "careful"))
+	var role := String(m.get("role", ""))
+	var a := {"ally": true, "i": i, "m": m, "w": w, "name": String(m.get("name", "Crew")).get_slice(" ", 0), "weapon": wid, "quality": q,
+		"st": {"shield": float(sst.get("shield", 0.0)), "armor": float(sst.get("armor", 0.0)), "health": hp},
+		"mx": {"shield": float(sst.get("shield", 0.0)), "armor": float(sst.get("armor", 0.0)), "health": hp},
+		"dmg": float(CrewData.TEAM_DAMAGE.get(q, 0.2)), "firearms": int(CrewData.TEAM_FIREARMS.get(q, 1)),
+		"athletics": int(CrewData.TEAM_ATHLETICS.get(q, 1)), "aim": 1.0, "rof": 1.0, "cool": 0.6, "state": "follow",
+		"order": "follow", "hold": Vector2.INF, "tgt": null, "cur": null, "goal": Vector2.INF, "path": PackedVector2Array(), "pi": 0,
+		"think": randf_range(0.0, 0.4), "regen_wait": 0.0, "dead": false, "down": false, "down_t": 0.0,
+		"ab": float(CrewData.ABILITIES.get(role, {}).get("cd", 30.0)) * 0.5, "quick_t": 0.0,
+		"stance": stance, "role": String(CrewData.STANCE_ROLE.get(stance, "rifleman")), "faction": "team", "lost_t": 0.0}
+	allies.append(a)
+	return a
+
+
+## The members standing (not down, not dead).
+func allies_up() -> Array:
+	return allies.filter(func(a): return not a["dead"] and not a["down"])
+
+
+func ability_of(a: Dictionary) -> Dictionary:
+	return CrewData.ABILITIES.get(String(a["m"].get("role", "")), {})
+
+
+## 0..1 how far its ability has charged.
+func ability_k(a: Dictionary) -> float:
+	var cd := float(ability_of(a).get("cd", 30.0))
+	return clampf(1.0 - float(a["ab"]) / maxf(cd, 0.1), 0.0, 1.0)
+
+
+## A foe picks whom to shoot: you – or a member of your team much nearer to it and in its sight.
+func _foe_target(f: Dictionary) -> Variant:
+	var w: Walker = f["w"]
+	var best = null
+	var bd := w.pos.distance_to(pilot_pos())
+	if sight(w.pos, pilot_pos())["blocked"]:
+		bd = INF
+	for a in allies_up():
+		var ap: Vector2 = (a["w"] as Walker).pos
+		var dd := w.pos.distance_to(ap) * 1.25
+		if dd < bd and not sight(w.pos, ap)["blocked"]:
+			bd = dd
+			best = a
+	return best
+
+
+## Does a foe see one of your team?
+func _sees_ally(f: Dictionary) -> bool:
+	var w: Walker = f["w"]
+	for a in allies_up():
+		var ap: Vector2 = (a["w"] as Walker).pos
+		if w.pos.distance_to(ap) < float(f["sight"]) and not sight(w.pos, ap)["blocked"] and not smoke_between(w.pos, ap):
+			return true
+	return false
+
+
+## The chance of a shot from `from` (a foe or a member) at `to` (a member or a foe) – like a foe's at you.
+func _chance_between(from: Dictionary, to: Dictionary) -> float:
+	var a: Vector2 = (from["w"] as Walker).pos
+	var b: Vector2 = (to["w"] as Walker).pos
+	var wst := GearData.stats(String(from["weapon"]))
+	var pierce := bool(wst.get("pierce", false))
+	var sg := sight(a, b)
+	if sg["blocked"] and not pierce:
+		return 0.0
+	var cov: bool = sg["cover"] and not pierce and float(to.get("scan_t", 0.0)) <= 0.0
+	var c := GearData.hit_chance(wst, int(from["firearms"]), a.distance_to(b), cov, (to["w"] as Walker).moving, int(to["athletics"]), false)
+	c = minf(0.97, c * float(from.get("aim", 1.0)) * (1.3 if float(from.get("quick_t", 0.0)) > 0.0 else 1.0))
+	if float(from.get("supp", 0.0)) > 0.0:
+		c *= 0.4
+	return c * (SMOKE_CUT if smoke_between(a, b) else 1.0)
+
+
+func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
+	if a["dead"] or a["down"]:
+		return
+	var out := GearData.apply_damage(a["st"], dmg, dtype)
+	a["regen_wait"] = GearData.SHIELD_WAIT
+	_number((a["w"] as Walker).pos, out)
+	if float(a["st"]["health"]) <= 0.0:
+		a["down"] = true
+		a["down_t"] = 0.0
+		a["state"] = "down"
+		a["goal"] = Vector2.INF
+		var w: Walker = a["w"]
+		w.down = true
+		w.moving = false
+		w.aim = Vector2.INF
+		w.z_index = -1
+		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "down", "col": Color(1.0, 0.6, 0.3), "t": 0.0})
+		view._say_toast("%s is down – hold %s beside them to bring them back (%d s)." % [String(a["name"]), Keybinds.key_text("interact"), int(CrewData.DOWN_TIME)], 3.5)
+		Audio.play("hit_hull", "team member down", -4.0)
+
+
+## A member down within reach of you (the nearest), or null.
+func revive_near() -> Variant:
+	var best = null
+	var bd := 26.0
+	for a in allies:
+		if a["down"] and not a["dead"]:
+			var dd := (a["w"] as Walker).pos.distance_to(pilot_pos())
+			if dd < bd:
+				bd = dd
+				best = a
+	return best
+
+
+## Back on its feet with a third of its body.
+func revive(a: Dictionary) -> void:
+	if a["dead"] or not a["down"]:
+		return
+	a["down"] = false
+	a["down_t"] = 0.0
+	a["state"] = "follow"
+	a["st"]["health"] = float(a["mx"]["health"]) * 0.35
+	var w: Walker = a["w"]
+	w.down = false
+	w.z_index = 0
+	floaters.append({"pos": w.pos + Vector2(0, -40), "text": "back up", "col": Color(0.45, 1.0, 0.6), "t": 0.0})
+	Audio.play("module_on", "team member revived", -4.0)
+
+
+func _ally_dies(a: Dictionary) -> void:
+	a["dead"] = true
+	a["down"] = true
+	a["m"]["dead"] = true
+	var w: Walker = a["w"]
+	w.modulate = Color(0.55, 0.55, 0.6)
+	floaters.append({"pos": w.pos + Vector2(0, -40), "text": "dead", "col": Color(1.0, 0.3, 0.3), "t": 0.0})
+	view._say_toast("%s has died. A clinic can bring them back – for a fee." % String(a["name"]), 4.0)
+	view.log_event("%s died on foot – a clinic can bring them back." % String(a["m"].get("name", a["name"])), Color(1.0, 0.5, 0.45))
+
+
+## Leaving the place: whoever is still down dies there.
+func leave() -> void:
+	for a in allies:
+		if a["down"] and not a["dead"]:
+			_ally_dies(a)
+
+
+## An order to one member (or to all: a = null). Returns what to say.
+func order(a, kind: String) -> String:
+	var who: Array = allies_up() if a == null else ([a] if not a["down"] and not a["dead"] else [])
+	if who.is_empty():
+		return "Nobody there to take the order." if a == null else "%s is down." % String(a["name"])
+	var said: Array = []
+	for m in who:
+		match kind:
+			"follow":
+				m["order"] = "follow"
+				m["hold"] = Vector2.INF
+				m["tgt"] = null
+				m["think"] = 0.0
+				said.append("%s follows you." % String(m["name"]))
+			"attack":
+				if active == null:
+					return "Lock a target first – they attack yours."
+				m["order"] = "attack"
+				m["tgt"] = active
+				m["hold"] = Vector2.INF
+				m["think"] = 0.0
+				said.append("%s attacks %s." % [String(m["name"]), String(active["name"])])
+			"hold":
+				m["order"] = "hold"
+				m["hold"] = (m["w"] as Walker).pos
+				m["goal"] = Vector2.INF
+				m["think"] = 0.0
+				said.append("%s holds there." % String(m["name"]))
+			"ability":
+				said.append(use_ability(m))
+	Audio.play("ui_click", "team order", -6.0)
+	return "  ".join(PackedStringArray(said))
+
+
+## The member's ability, by its profession.
+func use_ability(a: Dictionary) -> String:
+	if a["down"] or a["dead"]:
+		return "%s is down." % String(a["name"])
+	var ab := ability_of(a)
+	if ab.is_empty():
+		return "%s has no ability to use." % String(a["name"])
+	if float(a["ab"]) > 0.0:
+		return "%s: %s ready in %d s." % [String(a["name"]), String(ab["name"]), int(ceil(float(a["ab"])))]
+	var role := String(a["m"].get("role", ""))
+	var t = a["cur"] if a["cur"] != null and not a["cur"]["dead"] else active
+	if t != null and t["dead"]:
+		t = null
+	if t == null and not role in ["engineer", "quartermaster"]:
+		return "%s: no target for %s." % [String(a["name"]), String(ab["name"])]
+	var w: Walker = a["w"]
+	match role:
+		"gunner":
+			t["supp"] = 6.0
+			t["goal"] = Vector2.INF
+			floaters.append({"pos": (t["w"] as Walker).pos + Vector2(0, -46), "text": "suppressed", "col": Color(1.0, 0.8, 0.4), "t": 0.0})
+		"engineer":
+			var gs := GearData.stats("gr_shield:C")
+			domes.append({"pos": w.pos, "r": float(gs.get("radius", 60.0)) * 0.75, "hp": float(gs.get("shield", 120.0)), "mx": float(gs.get("shield", 120.0)),
+				"t": 0.0, "time": float(gs.get("time", 10.0))})
+		"science", "drone_op":
+			var key := "scan_t" if role == "science" else "jam_t"
+			var tp: Vector2 = (t["w"] as Walker).pos
+			for f in alive():
+				if (f["w"] as Walker).pos.distance_to(tp) < (160.0 if role == "science" else 110.0):
+					f[key] = 10.0 if role == "science" else 4.0
+					floaters.append({"pos": (f["w"] as Walker).pos + Vector2(0, -46), "text": "scanned" if role == "science" else "jammed",
+						"col": Color(0.45, 0.9, 1.0), "t": 0.0})
+					_wake(f)
+		"quartermaster":
+			var g = GameState.gear
+			var tt: Dictionary = g.totals()
+			g.ammo = mini(int(tt["ammo"]), int(g.ammo) + int(float(tt["ammo"]) / 3.0))
+			g.energy = minf(float(tt["energy"]), float(g.energy) + float(tt["energy"]) / 3.0)
+			floaters.append({"pos": pilot_pos() + Vector2(0, -46), "text": "resupplied", "col": Color(0.45, 1.0, 0.6), "t": 0.0})
+		"foreman":
+			throw_grenade(a, (t["w"] as Walker).pos, "gr_frag")
+		_:
+			a["quick_t"] = 6.0
+			a["order"] = "attack"
+			a["tgt"] = t
+			a["flank"] = true
+			a["think"] = 0.0
+	a["ab"] = float(ab["cd"])
+	Audio.play("module_on", "team ability", -4.0)
+	return "%s: %s!" % [String(a["name"]), String(ab["name"])]
+
+
+## Whom a member shoots: its ordered target, else yours (when it can see it), else the nearest foe it sees.
+func _ally_target(a: Dictionary) -> Variant:
+	var w: Walker = a["w"]
+	var reach := float(GearData.stats(String(a["weapon"]))["range"])
+	if a["tgt"] != null and not a["tgt"]["dead"]:
+		return a["tgt"]
+	if active != null and not active["dead"] and not sight(w.pos, (active["w"] as Walker).pos)["blocked"] \
+			and w.pos.distance_to((active["w"] as Walker).pos) <= reach * 1.2:
+		return active
+	var best = null
+	var bd := INF
+	for f in alive():
+		if not f["aware"]:
+			continue
+		var dd := w.pos.distance_to((f["w"] as Walker).pos)
+		if dd < bd and not sight(w.pos, (f["w"] as Walker).pos)["blocked"]:
+			bd = dd
+			best = f
+	if best == null and active != null and not active["dead"]:
+		best = active                                  # none in sight: it goes for yours
+	return best
+
+
+func _ally_step(a: Dictionary, delta: float) -> void:
+	if a["dead"]:
+		return
+	var w: Walker = a["w"]
+	if a["down"]:
+		a["down_t"] = float(a["down_t"]) + delta
+		if float(a["down_t"]) >= CrewData.DOWN_TIME:
+			_ally_dies(a)
+		return
+	var st: Dictionary = a["st"]
+	a["regen_wait"] = maxf(0.0, float(a["regen_wait"]) - delta)
+	if float(a["regen_wait"]) <= 0.0:
+		st["shield"] = minf(float(a["mx"]["shield"]), float(st["shield"]) + 2.0 * delta)
+	a["ab"] = maxf(0.0, float(a["ab"]) - delta)
+	a["quick_t"] = maxf(0.0, float(a["quick_t"]) - delta)
+	if view._collapsed:
+		w.moving = false
+		return
+	if a["tgt"] != null and a["tgt"]["dead"]:
+		a["tgt"] = null
+		if a["order"] == "attack":
+			a["order"] = "follow"
+	a["cur"] = _ally_target(a) if fight else null
+	var wst := GearData.stats(String(a["weapon"]))
+	var reach := float(wst["range"])
+	a["think"] = float(a["think"]) - delta
+	if float(a["think"]) <= 0.0:
+		a["think"] = randf_range(0.7, 1.2)
+		_ally_decide(a, reach)
+	# walking
+	var moved := false
+	if a["goal"] != Vector2.INF:
+		var path: PackedVector2Array = a["path"]
+		var pi := int(a["pi"])
+		if pi < path.size():
+			var to: Vector2 = path[pi] - w.pos
+			if to.length() < 3.0:
+				a["pi"] = pi + 1
+			else:
+				var run := (1.45 if a["state"] == "move" else 1.0) * (1.5 if float(a["quick_t"]) > 0.0 else 1.0)
+				moved = w.step(to.normalized(), delta, run)
+		else:
+			a["goal"] = Vector2.INF
+	if not moved:
+		w.moving = false
+	# shooting
+	a["cool"] = float(a["cool"]) - delta
+	var t = a["cur"]
+	if t == null:
+		w.aim = Vector2.INF
+		if not w.moving:
+			w.dir = view.pilot.dir
+		return
+	var tp: Vector2 = (t["w"] as Walker).pos
+	w.aim = tp
+	if not w.moving:
+		w.dir = _face(tp - w.pos)
+	var blocked: bool = sight(w.pos, tp)["blocked"] and not bool(wst.get("pierce", false))
+	if float(a["cool"]) <= 0.0 and not blocked and w.pos.distance_to(tp) <= reach:
+		fire(a, t, wst)
+		var base := float(wst["charge"]) if wst.has("charge") else 1.0 / float(wst["rof"])
+		a["cool"] = base * randf_range(1.0, 1.4) + (0.3 if w.moving else 0.0)
+
+
+## Where a member goes next – by its order and its way of fighting.
+func _ally_decide(a: Dictionary, reach: float) -> void:
+	var w: Walker = a["w"]
+	var pp := pilot_pos()
+	if a["order"] == "hold":
+		if (a["hold"] as Vector2).distance_to(w.pos) > 6.0:
+			_go(a, a["hold"], "move")
+		else:
+			a["state"] = "hold"
+		return
+	var anchor: Vector2 = pp + TEAM_OFF[int(a["i"]) % 2]
+	var t = a["cur"]
+	if t == null or (a["order"] == "follow" and w.pos.distance_to(pp) > 220.0):
+		# no fight (or strayed too far): back to its place beside you
+		if w.pos.distance_to(anchor) > 26.0:
+			_go(a, _free_near(anchor), "move" if w.pos.distance_to(anchor) > 60.0 else "follow")
+		return
+	var tp: Vector2 = (t["w"] as Walker).pos
+	var dist := w.pos.distance_to(tp)
+	var sg := sight(w.pos, tp)
+	if bool(a.get("flank", false)) or a["stance"] == "flank":
+		a["flank"] = false
+		var best := Vector2.INF
+		var bs := INF
+		for k in 8:
+			var q := _free_near(tp + (pp - tp).normalized().rotated((1.0 if k % 2 == 0 else -1.0) * randf_range(PI * 0.4, PI * 0.75)) * reach * randf_range(0.35, 0.6))
+			if q == Vector2.INF:
+				continue
+			var s2 := sight(q, tp)
+			if s2["blocked"] or s2["cover"]:
+				continue
+			var score := q.distance_to(w.pos) + randf() * 20.0
+			if score < bs:
+				bs = score
+				best = q
+		if best != Vector2.INF and (sg["blocked"] or sg["cover"] or dist > reach * 0.85):
+			_go(a, best, "move")
+		return
+	if a["stance"] == "aggressive":
+		if dist > reach * 0.5 or sg["blocked"]:
+			_go(a, _free_near(tp + (w.pos - tp).normalized().rotated(randf_range(-0.5, 0.5)) * reach * 0.45), "move")
+		return
+	# careful: in cover against the target, near you while following
+	var covered: bool = sight(tp, w.pos)["cover"]
+	if covered and not sg["blocked"] and dist <= reach * 0.95 and a["goal"] == Vector2.INF:
+		a["state"] = "cover"
+		return
+	if a["goal"] != Vector2.INF and a["state"] == "move":
+		return
+	var spot := _cover_spot(w.pos, tp, reach, 0.6, {"w": view.pilot} if a["order"] == "follow" else null, 8)
+	if spot != Vector2.INF:
+		_go(a, spot, "move")
+	elif dist > reach * 0.9 or sg["blocked"]:
+		_go(a, _free_near(tp + (w.pos - tp).normalized() * reach * 0.6), "move")
+
+
+## Which wheel field the mouse is over (by its angle round the centre; "" in the middle).
+static func wheel_pick(centre: Vector2, mouse: Vector2, inner: float = 46.0) -> String:
+	var d := mouse - centre
+	if d.length() < inner:
+		return ""
+	var ang := fposmod(d.angle() + PI * 0.5 + PI * 0.25, TAU)       # 0 = up, clockwise
+	return String(WHEEL[int(ang / (PI * 0.5)) % 4])
+
+
+func _draw_team() -> void:
+	var font := ThemeDB.fallback_font
+	var green := TEAM_COL                             # cyan: apart from the foes' green ring (easy)
+	for a in allies:
+		var w: Walker = a["w"]
+		var fp := w.pos * S + Vector2(0, -2)
+		var col := green if not a["down"] else (Color(1.0, 0.6, 0.3) if not a["dead"] else Color(0.5, 0.5, 0.5))
+		draw_set_transform(fp, 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, 26.0, 0.0, TAU, 40, Color(0.03, 0.03, 0.05, 0.7), 7.0)
+		draw_arc(Vector2.ZERO, 26.0, 0.0, TAU, 40, col, 3.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_string(font, w.pos * S + Vector2(-40, 22), String(a["name"]), HORIZONTAL_ALIGNMENT_CENTER, 80, 12, col)
+		if a["down"] and not a["dead"]:
+			# down: how long is left, and the revive filling up while you hold the key beside them
+			var left := 1.0 - float(a["down_t"]) / CrewData.DOWN_TIME
+			var c := w.pos * S + Vector2(0, -50)
+			draw_circle(c, 14.0, Color(0.03, 0.04, 0.08, 0.85))
+			draw_arc(c, 12.0, -PI / 2, -PI / 2 + TAU * left, 24, Color(1.0, 0.6, 0.3), 2.5)
+			if reviving == a:
+				draw_arc(c, 17.0, -PI / 2, -PI / 2 + TAU * revive_k, 24, green, 3.5)
+			draw_string(font, c + Vector2(-60, -20), "hold %s" % Keybinds.key_text("interact"), HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(1.0, 0.82, 0.35))
+			continue
+		if a["dead"]:
+			continue
+		# its order: a flag where it holds, a faint dashed line to the foe it was sent at
+		if a["order"] == "hold":
+			var hp: Vector2 = (a["hold"] as Vector2) * S + Vector2(18, 0)
+			draw_line(hp, hp + Vector2(0, -30), Color(0.85, 0.9, 1.0), 2.0)
+			draw_colored_polygon(PackedVector2Array([hp + Vector2(0, -30), hp + Vector2(14, -25), hp + Vector2(0, -20)]), green)
+		elif a["order"] == "attack" and a["tgt"] != null and not a["tgt"]["dead"]:
+			var p0 := (w.pos + CHEST) * S
+			var p1: Vector2 = (((a["tgt"]["w"] as Walker).pos) + CHEST) * S
+			var n := maxi(1, int(p0.distance_to(p1) / 14.0))
+			for j in n:
+				if j % 2 == 0:
+					draw_line(p0.lerp(p1, float(j) / n), p0.lerp(p1, float(j + 1) / n), Color(green, 0.45), 2.0)
+
+
 # ---------------------------------------------------------------- effects
 
 func _fx_step(delta: float) -> void:
@@ -1968,6 +2469,7 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var red := Color(1.0, 0.3, 0.3)
 	_draw_grenades()
+	_draw_team()
 	# 0.7.52.5: a sniper's red aiming line in the last moment before its shot – your cue to dodge
 	for sf in alive():
 		if String(sf["role"]) == "sniper" and sf["aware"] and float(sf["cool"]) < 0.9 and sf["state"] != "flee":

@@ -151,6 +151,7 @@ func _process(delta: float) -> void:
 				_test_foot_drones(view)          # 0.7.52.11 – ground combat drones
 				_test_foot_pathfinder(view)      # 0.7.52.14 – the Covenant's Pathfinder armour
 				_test_foot_senate(view)          # 0.7.52.18 – the Assembly's Senate armours
+				_test_foot_team(view)            # 0.7.52.20 – package 52a: the ground team
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9418,6 +9419,133 @@ func _test_foot_drones(view: SystemView) -> void:
 ## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
 ## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
 ## the arm raised.
+## 0.7.52.20 (package 52a): the ground team – up to two crew along, their gear from your pockets, their orders on the
+## command wheel, their abilities; foes shoot at them too; down they come back by your hand, dead only by a clinic.
+func _test_foot_team(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var CD = GroundCombat.CrewData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	# the wheel's fields by the mouse's side
+	var c0 := Vector2(500, 300)
+	var wheel_ok: bool = GroundCombat.wheel_pick(c0, c0 + Vector2(0, -90)) == "follow" and GroundCombat.wheel_pick(c0, c0 + Vector2(90, 0)) == "attack" \
+		and GroundCombat.wheel_pick(c0, c0 + Vector2(0, 90)) == "hold" and GroundCombat.wheel_pick(c0, c0 + Vector2(-90, 0)) == "ability" \
+		and GroundCombat.wheel_pick(c0, c0 + Vector2(10, 5)) == "" and Keybinds.key_text("foot_team") == "V"
+	# a member's gear from your pockets and back
+	var tm: Dictionary = GameState.new_crew("gunner", "C", "")
+	for i in gear.inv.size():
+		gear.inv[i] = {}
+	gear.inv[0] = {"id": "suit_mil_light:C", "n": 1}
+	gear.inv[1] = {"id": "wp_rifle:C", "n": 1}
+	var e1: String = gear.member_equip(tm, 0)
+	var e2: String = gear.member_equip(tm, 1)
+	var mg: Dictionary = PilotGear.member_gear(tm)
+	var gear_ok: bool = e1 == "" and e2 == "" and String(mg["suit"]) == "suit_mil_light:C" and (mg["weapons"] as Array).has("wp_rifle:C") \
+		and gear.count("wp_rifle:C") == 0
+	gear_ok = gear_ok and gear.count("suit_civil:F") == 0 and gear.member_unequip(tm, "weapons", (mg["weapons"] as Array).find("wp_rifle:C")) == "" and gear.count("wp_rifle:C") == 1
+	# dead crew give nothing until a clinic brings them back
+	var dm: Dictionary = GameState.new_crew("engineer", "D", "")
+	var bonus_on: bool = not GroundCombat.CrewData.ABILITIES.is_empty() and not load("res://scripts/core/crew.gd").effect(dm, "engineer").is_empty()
+	dm["dead"] = true
+	var dead_ok: bool = bonus_on and load("res://scripts/core/crew.gd").effect(dm, "engineer").is_empty() and Commands.revive_fee(dm) == int(CD.REVIVE_FEE["D"])
+	# the fight
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	gear.weapons[0] = "wp_rifle:C"
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": ["bandit_rifleman@green"]})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "0.7.52.20: the arena opens")
+		return
+	gear.refill()
+	Commands.suit_god = true
+	cb.step(0.05, Vector2.ZERO)
+	Commands.execute({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"], "quality": "C"})
+	var spawn_ok: bool = cb.allies.size() == 2 and cb.allies_up().size() == 2 and String(cb.allies[0]["m"]["role"]) == "gunner"
+	var foe: Dictionary = cb.alive()[0]
+	var fw: Walker = foe["w"]
+	# put the first member much nearer to the foe than you, in the open: the foe goes for it
+	var a0: Dictionary = cb.allies[0]
+	var a1: Dictionary = cb.allies[1]
+	var aw: Walker = a0["w"]
+	aw.pos = cb._free_near(fw.pos + Vector2(0, 70))
+	aw.position = aw.pos * GroundMap.SCALE
+	cb._wake(foe)
+	var tgt_ok: bool = cb._foe_target(foe) == a0
+	var h0 := float(a0["st"]["shield"]) + float(a0["st"]["armor"]) + float(a0["st"]["health"])
+	for k in 40:
+		cb.fire(foe, a0, GD.stats(String(foe["weapon"])))
+		cb.step(0.05, Vector2.ZERO)
+	var shot_at_ok: bool = float(a0["st"]["shield"]) + float(a0["st"]["armor"]) + float(a0["st"]["health"]) < h0 or a0["down"]
+	Commands.execute({"type": "debug_combat", "do": "team_revive"})
+	a0["st"]["health"] = float(a0["mx"]["health"])
+	# the team shoots the foe (it stands frozen) – you and they a little off it
+	cb.frozen = true
+	g.pilot.pos = cb._free_near(fw.pos + Vector2(0, 120))
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	for al in cb.allies:
+		(al["w"] as Walker).pos = cb._free_near(g.pilot.pos + Vector2(randf_range(-20, 20), 12))
+		(al["w"] as Walker).position = (al["w"] as Walker).pos * GroundMap.SCALE
+	cb.lock(foe)
+	var fh0 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
+	for k2 in 80:
+		cb.step(0.1, Vector2.ZERO)
+	var shoots_ok: bool = foe["dead"] or float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"]) < fh0
+	# orders: hold, attack, the abilities
+	var ho: String = cb.order(null, "hold")
+	var hold_ok: bool = ho.contains("holds") and String(a0["order"]) == "hold" and String(a1["order"]) == "hold" and (a1["hold"] as Vector2) != Vector2.INF
+	var order_ok := hold_ok
+	if not foe["dead"]:
+		cb.lock(foe)
+		order_ok = order_ok and cb.order(a0, "attack").contains("attacks") and a0["tgt"] == foe
+		Commands.execute({"type": "debug_combat", "do": "team_ready"})
+		var d0: int = cb.domes.size()
+		var m1: String = cb.order(a0, "ability")
+		var m2: String = cb.order(a1, "ability")
+		order_ok = order_ok and m1.contains("Suppressing") and float(foe.get("supp", 0.0)) > 0.0 and m2.contains("Shield dome") and cb.domes.size() == d0 + 1 \
+			and cb.order(a0, "ability").contains("ready in")
+	cb.order(null, "follow")
+	# down: back by your hand; left down: dead
+	Commands.execute({"type": "debug_combat", "do": "team_down"})
+	var downed: Dictionary = cb.allies[0] if cb.allies[0]["down"] else cb.allies[1]
+	g.pilot.pos = (downed["w"] as Walker).pos + Vector2(8, 0)
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	var down_ok: bool = downed["down"] and cb.allies_up().size() == 1 and cb.revive_near() == downed
+	cb.revive(downed)
+	down_ok = down_ok and not downed["down"] and float(downed["st"]["health"]) > 0.0 and cb.allies_up().size() == 2
+	Commands.execute({"type": "debug_combat", "do": "team_down"})
+	var gone: Dictionary = cb.allies[0] if cb.allies[0]["down"] else cb.allies[1]
+	gone["down_t"] = CD.DOWN_TIME - 0.05
+	cb.step(0.1, Vector2.ZERO)
+	down_ok = down_ok and gone["dead"] and bool(gone["m"]["dead"]) and cb.revive_near() == null
+	# back
+	Commands.suit_god = false
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	gear.team.clear()
+	main._update_input()
+	check(wheel_ok and gear_ok and dead_ok and spawn_ok and tgt_ok and shot_at_ok and shoots_ok and order_ok and down_ok,
+		"0.7.52.20: the ground team – the wheel's fields, a member's gear from your pockets and back; dead crew give nothing, the clinic's fee; two along; foes go for the nearer member and hurt it; the team shoots the foe; hold, attack, suppressing fire, shield dome; down and back by your hand, left down: dead  [%s]" % " ".join(PackedStringArray([str(wheel_ok), str(gear_ok), str(dead_ok), str(spawn_ok), str(tgt_ok), str(shot_at_ok), str(shoots_ok), str(order_ok), str(down_ok)])))
+
+
 ## 0.7.52.18: the Assembly's Senate armours – two drone places, the drones docked at the arms, the second on Shift+C,
 ## stronger shields; sold only in the Assembly's lands.
 func _test_foot_senate(view: SystemView) -> void:

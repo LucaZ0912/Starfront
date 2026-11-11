@@ -847,6 +847,14 @@ func _build_ground() -> void:
 		rdr.add_child(UI.button(String(dk[1]), func(): _cmd({"type": "debug_gear", "drone": dkk + ":" + String(dq.get_selected_metadata())})))
 	rdr.add_child(UI.button("Shoot it down", func(): _cmd({"type": "debug_combat", "do": "drone_kill"})))
 	rdr.add_child(UI.button("New one now", func(): _cmd({"type": "debug_combat", "do": "drone_ready"})))
+	var rtm := _row()                                               # 0.7.52.20: the ground team
+	rtm.add_child(UI.label("Team:", 12, UI.TEXT_DIM))
+	rtm.add_child(UI.button("Gunner + Engineer", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"]})))
+	rtm.add_child(UI.button("Science + Quartermaster", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["science", "quartermaster"]})))
+	rtm.add_child(UI.button("One down", func(): _cmd({"type": "debug_combat", "do": "team_down"})))
+	rtm.add_child(UI.button("Revive", func(): _cmd({"type": "debug_combat", "do": "team_revive"})))
+	rtm.add_child(UI.button("Abilities ready", func(): _cmd({"type": "debug_combat", "do": "team_ready"})))
+	rtm.add_child(UI.button("Down one dies", func(): _cmd({"type": "debug_combat", "do": "team_die"})))
 	var ra2 := _row()                                               # 0.7.52.4 (Luz): mixed strengths
 	ra2.add_child(UI.button("Arena: 2 green + 1 yellow", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
 		"foes": ["bandit_scrapper@green", "bandit_rifleman@green", "bandit_gunner@yellow"]})))

@@ -112,9 +112,109 @@ func _draw() -> void:
 		draw_rect(cr, Color(0.0, 0.06, 0.03, 0.7))
 		_s(cr.position + Vector2(7, 14), txt, col, 12)
 	_draw_dodges(Vector2(14, (suit_hud.bottom_y if suit_hud != null else 190.0) + (26.0 if combat.fight else 2.0)))
+	_draw_team((suit_hud.bottom_y if suit_hud != null else 190.0) + (54.0 if combat.fight else 30.0))
+	if combat.wheel_open:
+		_draw_wheel()
 	# 0.7.52.13 (Luz): tiles along the bottom, as in space – the weapons (the one in hand framed green), a little apart
 	# the grenades (the one in hand framed red), then the drone; Q, X and C go through them
 	_draw_tiles(vs)
+
+
+## 0.7.52.20 (Luz, package 52a): your ground team as cards under the suit's bars – portrait, name, profession and
+## quality, shield and body, its order, its ability charging in a ring (green: ready). The one the orders go to framed
+## bright; down: the time left to bring it back; dead: grey.
+func _draw_team(y0: float) -> void:
+	var green := GroundCombat.TEAM_COL
+	var CD = GroundCombat.CrewData
+	for i in combat.allies.size():
+		var a: Dictionary = combat.allies[i]
+		var m: Dictionary = a["m"]
+		var r := Rect2(Vector2(14, y0 + i * 84), Vector2(320, 76))
+		var sel: bool = combat.team_sel == i or combat.team_sel >= combat.allies.size()
+		var col := green if not a["down"] else (Color(1.0, 0.6, 0.3) if not a["dead"] else Color(0.5, 0.5, 0.52))
+		draw_rect(r, Color(0.03, 0.04, 0.08, 0.88))
+		draw_rect(r, Color(col, 0.95 if sel else 0.45), false, 2.0 if sel else 1.0)
+		var pr := Rect2(r.position + Vector2(6, 6), Vector2(64, 64))
+		draw_texture_rect(ChibiArt.PilotArt.portrait(m.get("look", {})), pr, false, Color(1, 1, 1) if not a["dead"] else Color(0.5, 0.5, 0.5))
+		draw_rect(pr, Color(0.3, 0.35, 0.4), false, 1.0)
+		_s(r.position + Vector2(78, 18), String(m.get("name", "")).left(22), Color(0.92, 0.95, 1.0), 13)
+		_s(r.position + Vector2(78, 32), "%s  ·  %s %s" % [CD.role_name(String(m.get("role", ""))), String(a["quality"]), String(CD.QUALITY_NAMES.get(String(a["quality"]), ""))], Color(0.7, 0.75, 0.8), 10)
+		var st: Dictionary = a["st"]
+		var mx: Dictionary = a["mx"]
+		_bar(r.position + Vector2(78, 39), 124, float(st["shield"]) / maxf(float(mx["shield"]), 0.001), Color(0.35, 0.8, 1.0))
+		_bar(r.position + Vector2(78, 47), 124, (float(st["armor"]) + float(st["health"])) / maxf(float(mx["armor"]) + float(mx["health"]), 0.001), Color(1.0, 0.35, 0.3))
+		var ord := "dead – a clinic can bring them back"
+		if not a["dead"] and a["down"]:
+			ord = "DOWN – hold %s beside them  (%d s)" % [Keybinds.key_text("interact"), int(ceil(CD.DOWN_TIME - float(a["down_t"])))]
+		elif not a["dead"]:
+			match String(a["order"]):
+				"hold":
+					ord = "Hold position"
+				"attack":
+					ord = "Attack: %s" % (String(a["tgt"]["name"]) if a["tgt"] != null else "your target")
+				_:
+					ord = "Follow you  ·  %s" % String(CD.STANCES.get(String(a["stance"]), ""))
+		_s(r.position + Vector2(78, 67), "▸ " + ord, col, 10)
+		# the ability: a ring that fills, its name under it
+		var ab: Dictionary = combat.ability_of(a)
+		if not ab.is_empty() and not a["dead"]:
+			var k := combat.ability_k(a)
+			var cc := r.position + Vector2(280, 28)
+			draw_circle(cc, 17.0, Color(0.08, 0.1, 0.14))
+			draw_arc(cc, 15.0, -PI / 2, -PI / 2 + TAU * k, 28, Color(1.0, 0.82, 0.35) if k < 1.0 else green, 3.0)
+			draw_string(ThemeDB.fallback_font, cc + Vector2(-17, 4), ("%d%%" % int(k * 100.0)) if k < 1.0 else "READY", HORIZONTAL_ALIGNMENT_CENTER, 34, 9, Color(0.9, 0.9, 0.9))
+			draw_string(ThemeDB.fallback_font, cc + Vector2(-44, 33), String(ab["name"]), HORIZONTAL_ALIGNMENT_CENTER, 84, 9, Color(0.75, 0.78, 0.82))
+	if not combat.allies.is_empty():
+		var who := "all" if combat.team_sel >= combat.allies.size() else String(combat.allies[combat.team_sel]["name"])
+		_label(Vector2(14, y0 + combat.allies.size() * 84 + 14), "%s  orders to: %s  (tap: next, hold: wheel)" % [Keybinds.key_text("foot_team"), who])
+
+
+## 0.7.52.20 (Luz): the command wheel round you while V is held – four fields (follow, attack your target, hold, the
+## ability); the one under the mouse lit; in its middle whom the order goes to. Letting go of V gives it.
+func _draw_wheel() -> void:
+	var green := GroundCombat.TEAM_COL
+	var vs := get_viewport_rect().size
+	draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
+	var c: Vector2 = combat.view.wheel_centre()
+	var r_in := 52.0
+	var r_out := 160.0
+	var pick := GroundCombat.wheel_pick(c, get_viewport().get_mouse_position(), r_in)
+	var all: bool = combat.team_sel >= combat.allies.size()
+	var who: Dictionary = {} if all else combat.allies[combat.team_sel]
+	for si in 4:
+		var kind := String(GroundCombat.WHEEL[si])
+		var mid := -PI / 2 + si * PI / 2
+		var on := kind == pick
+		var pts := PackedVector2Array()
+		for t in 13:
+			pts.append(c + Vector2.from_angle(mid - PI / 4 + 0.03 + (PI / 2 - 0.06) * t / 12.0) * r_out)
+		for t2 in 13:
+			pts.append(c + Vector2.from_angle(mid + PI / 4 - 0.03 - (PI / 2 - 0.06) * t2 / 12.0) * r_in)
+		draw_colored_polygon(pts, Color(0.1, 0.32, 0.45, 0.88) if on else Color(0.04, 0.06, 0.1, 0.72))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(green, 0.95) if on else Color(0.45, 0.55, 0.6, 0.7), 2.0 if on else 1.0)
+		var text := String(GroundCombat.WHEEL_NAMES[kind])
+		if kind == "ability":
+			if all:
+				text = "Abilities:\nall ready ones"
+			else:
+				var ab: Dictionary = combat.ability_of(who)
+				text = "Ability:\n%s" % String(ab.get("name", "none"))
+				if not ab.is_empty() and combat.ability_k(who) < 1.0:
+					text += "\n(%d s)" % int(ceil(float(who["ab"])))
+		var lines := text.split("\n")
+		var lp := c + Vector2.from_angle(mid) * (r_in + r_out) * 0.5
+		for li in lines.size():
+			draw_string(ThemeDB.fallback_font, lp + Vector2(-60, 4 + (li - (lines.size() - 1) * 0.5) * 15), lines[li], HORIZONTAL_ALIGNMENT_CENTER, 120, 13,
+				Color(1, 1, 1) if on else Color(0.8, 0.85, 0.9))
+	draw_circle(c, r_in - 4, Color(0.03, 0.04, 0.08, 0.95))
+	if all:
+		draw_string(ThemeDB.fallback_font, c + Vector2(-40, 5), "ALL", HORIZONTAL_ALIGNMENT_CENTER, 80, 16, green)
+	else:
+		draw_texture_rect(ChibiArt.PilotArt.portrait(who["m"].get("look", {})), Rect2(c - Vector2(28, 34), Vector2(56, 56)), false)
+		draw_string(ThemeDB.fallback_font, c + Vector2(-40, 38), String(who["name"]), HORIZONTAL_ALIGNMENT_CENTER, 80, 12, green)
+	draw_string(ThemeDB.fallback_font, c + Vector2(-320, -r_out - 22), "let go of %s: the order is given  ·  tap %s (wheel closed): whom" % [Keybinds.key_text("foot_team"), Keybinds.key_text("foot_team")],
+		HORIZONTAL_ALIGNMENT_CENTER, 640, 13, Color(1.0, 0.82, 0.35))
 
 
 ## A small label on a dark plate (readable on any ground) – its bottom left at p.

@@ -360,6 +360,14 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.20 (package 52a): `CrewData.TEAM_*`, `ABILITIES`, `STANCES`, `DOWN_TIME`, `REVIVE_FEE`; `PilotGear.team`,
+  `team_members()`, `team_toggle()`, `member_gear()` (static), `member_equip()`, `member_unequip()`; member keys `gear`,
+  `stance`, `dead` (`CrewCore.effect` gives nothing while dead); `GroundCombat.allies` (dicts with `ally`), `spawn_team()`,
+  `spawn_ally()`, `allies_up()`, `_ally_step`, `_ally_decide`, `_ally_target`, `_foe_target` (foes go for a much nearer
+  member; `f["tp"]`), `_chance_between`, `_hurt_ally`, `revive_near()`, `revive()`, `_ally_dies()`, `leave()`, `order()`,
+  `use_ability()` (foe keys `supp`, `scan_t`, `jam_t`), `wheel_pick()`, `TEAM_COL`; `GroundView._team_keys`,
+  `wheel_centre()`, `WHEEL_SLOW`; `CombatHud._draw_team`, `_draw_wheel`; keybind `foot_team` (V); `Commands.dead_crew()`,
+  `revive_fee()`, command `clinic_revive`; debug `debug_combat` `team`, `team_down`, `team_revive`, `team_ready`, `team_die`.
 - 0.7.52.19: `GroundCombat.drone_kamikaze_up(i)`, `drone_recall(i)`; `GroundView._drone_held` (tap on release, held `TAB_HOLD`: back).
 - 0.7.52.18: suits `suit_mil_senate_eyes` / `suit_mil_senate_hand` (`faction` "assembly", `shoulder_drones`);
   `ChibiArt._senate`, `_senate_helmet`, `_senate_frame` (a bigger canvas `SENATE_PAD` for crest and cloak; `_px` clips to

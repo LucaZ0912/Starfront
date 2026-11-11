@@ -95,6 +95,9 @@ const TAC_ZOOM_OUT := 0.5
 const ZOOM_NEAR := 1.5
 var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up) – a tap switches the view, holding ends it
 const TAB_HOLD := 0.35
+var _team_held := -1.0                  # 0.7.52.20: how long V is held (-1: up) – a tap picks whom, holding opens the wheel
+var _revive := -1.0                     # 0.7.52.20: how long the use key is held beside a member down (-1: not)
+const WHEEL_SLOW := 0.3                 # time runs at this pace while the command wheel is up
 var _drone_held: Array = [-1.0, -1.0]   # 0.7.52.19: how long C / Shift+C is held over a kamikaze drone in the air (-1: up)
 var _warned := {}
 
@@ -251,6 +254,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_touch = -1.0
 	_puffs.clear()
 	_dust = null
+	if combat != null and is_instance_valid(combat):
+		combat.leave()                                   # 0.7.52.20: who is still down there dies there
 	combat = null
 	if pilot != null and is_instance_valid(pilot):
 		pilot.aim = Vector2.INF
@@ -982,7 +987,8 @@ func _process(delta: float) -> void:
 	else:
 		pilot.moving = false
 	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
-		combat.step(delta, Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
+		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
+		_team_keys(delta)
 		if _tab_held >= 0.0:
 			var was := _tab_held
 			_tab_held += delta
@@ -1085,6 +1091,33 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			combat.nearest_target()                      # 0.7.52.9 (Luz): Shift+R – the nearest foe
 			return
+		# 0.7.52.20 (Luz): V – a tap picks whom the orders go to, held: the command wheel (time runs slow)
+		if event.is_action_pressed("foot_team", false, true):
+			get_viewport().set_input_as_handled()
+			if not combat.allies.is_empty():
+				_team_held = 0.0
+			else:
+				_say_toast("Nobody came along – pick your ground team in the Pilot window (Gear).", 2.5)
+			return
+		if event.is_action_released("foot_team", false) and _team_held >= 0.0:
+			get_viewport().set_input_as_handled()
+			if combat.wheel_open:
+				var pick := GroundCombat.wheel_pick(wheel_centre(), get_viewport().get_mouse_position())
+				combat.wheel_open = false
+				if pick != "":
+					var who = null if combat.team_sel >= combat.allies.size() else combat.allies[combat.team_sel]
+					_say_toast(combat.order(who, pick), 2.5)
+			else:
+				combat.team_sel = (combat.team_sel + 1) % (combat.allies.size() + 1)
+				_say_toast("Orders to: %s" % ("all" if combat.team_sel >= combat.allies.size() else String(combat.allies[combat.team_sel]["name"])), 1.5)
+			_team_held = -1.0
+			return
+		# 0.7.52.20: the use key held beside a member down brings them back
+		if event.is_action_pressed("interact", false, false) and combat.revive_near() != null:
+			get_viewport().set_input_as_handled()
+			_revive = 0.0
+			combat.reviving = combat.revive_near()
+			return
 		# 0.7.52.11 C, 0.7.52.18 Shift+C the second drone; 0.7.52.19 (Luz): over a kamikaze drone in the air a tap sends it,
 		# holding the key calls it back
 		for di in 2:
@@ -1150,6 +1183,35 @@ func use_belt(n: int) -> void:
 	if msg != "":
 		_say_toast(msg, 2.5)
 		Audio.play("ui_click", "belt")
+
+
+## 0.7.52.20: V held opens the wheel; the use key held beside a member down brings them back.
+func _team_keys(delta: float) -> void:
+	if _team_held >= 0.0:
+		_team_held += delta
+		if _team_held >= 0.2 and not combat.wheel_open:
+			combat.wheel_open = true
+			Audio.play("ui_open", "command wheel", -8.0)
+	if _revive >= 0.0:
+		var a = combat.reviving
+		if a == null or not Input.is_action_pressed("interact") or combat.revive_near() != a:
+			_revive = -1.0
+			combat.reviving = null
+			combat.revive_k = 0.0
+			return
+		_revive += delta
+		combat.revive_k = clampf(_revive / GroundCombat.CrewData.REVIVE_TIME, 0.0, 1.0)
+		if _revive >= GroundCombat.CrewData.REVIVE_TIME:
+			combat.revive(a)
+			_say_toast("%s is back on their feet." % String(a["name"]), 2.0)
+			_revive = -1.0
+			combat.reviving = null
+			combat.revive_k = 0.0
+
+
+## Where the command wheel sits on the screen: round you.
+func wheel_centre() -> Vector2:
+	return pilot.get_global_transform_with_canvas().origin + Vector2(0, -40)
 
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).

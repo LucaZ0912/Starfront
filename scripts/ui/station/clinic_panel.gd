@@ -18,6 +18,23 @@ func build() -> void:
 		add_child(b)
 	else:
 		add_child(UI.label("Nothing to treat – you are well.", 13, UI.TEXT_DIM))
+	# 0.7.52.20 (Luz): crew that died on foot – brought back here, for a fee by their quality
+	var dead: Array = Commands.dead_crew()
+	if not dead.is_empty():
+		section("YOUR CREW")
+		for pair in dead:
+			var m: Dictionary = pair[1]
+			var row := UI.hbox(8)
+			row.add_child(UI.icon(ChibiArt.PilotArt.portrait(m.get("look", {})), 40))
+			row.add_child(UI.label("%s  –  %s %s, aboard the %s  •  died on foot" % [String(m.get("name", "")), String(m.get("quality", "F")),
+				GroundCombat.CrewData.role_name(String(m.get("role", ""))), String((pair[0] as ShipFitting).ship_name)], 13, Color(1.0, 0.6, 0.5)))
+			row.add_child(UI.spacer())
+			var fee := buy_price(Commands.revive_fee(m))
+			var mid := int(m.get("id", -1))
+			var rb := UI.button("Bring them back – %s" % GameData.fmt_credits(fee), func(): run({"type": "clinic_revive", "id": mid}))
+			rb.disabled = GameState.credits < fee
+			row.add_child(rb)
+			add_child(row)
 	section("WHERE YOU WAKE")
 	add_child(UI.label("If your ship is lost, you wake in the clinic of the last station you docked at. If you fall on foot, you wake in the nearest city with a clinic – or, if there is none in the system, at the last station – and what was in your pockets is gone.", 13, UI.TEXT_DIM))
 	for c in get_children():

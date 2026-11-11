@@ -62,6 +62,8 @@ static func fits(m: Dictionary, role: String) -> bool:
 
 ## [bonus id, value in per cent] the member gives in a slot of this role ([] = none). security: of the system.
 static func effect(m: Dictionary, role: String, security: float = 1.0) -> Array:
+	if bool(m.get("dead", false)):
+		return []                                   # 0.7.52.20: fallen on foot – nothing until a clinic brings them back
 	var b := ""
 	var v := 0.0
 	if String(m.get("role", "")) == role:
