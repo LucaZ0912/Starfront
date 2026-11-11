@@ -360,6 +360,7 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.29: `GroundMap._duct_tile()` (a duct tile by its neighbours).
 - 0.7.52.28: `GroundMap.refresh_texture()`; duct tiles keep their wall until `open_vent`; `vent_end` key `vent`,
   `open_k` (the hatch flips open near you).
 - 0.7.52.27: panel key `wall` (set for a door's box); explore kinds `vent` (key `duct`: tiles) and `vent_end`;

@@ -403,13 +403,8 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px, py, TILE, TILE, gc)
 			for k in 8:
 				_px(px + int(hash2(x, y, k) * 15), py + int(hash2(y, x, k + 3) * 15), gc.darkened(0.25))
-		16:             # 0.7.52.27: an air duct – dark steel, ribs across, a rivet line
-			_rect(px, py, TILE, TILE, Color(0.14, 0.15, 0.17))
-			_rect(px + 2, py, TILE - 4, TILE, Color(0.2, 0.21, 0.24))
-			for k in 4:
-				_rect(px + 2, py + k * 4, TILE - 4, 1, Color(0.28, 0.3, 0.33))
-			_rect(px + 1, py, 1, TILE, Color(0.08, 0.08, 0.09))
-			_rect(px + TILE - 2, py, 1, TILE, Color(0.08, 0.08, 0.09))
+		16:             # 0.7.52.27: an air duct – dark steel, ribs across its run (0.7.52.28: walls on its closed sides)
+			_duct_tile(x, y, px, py)
 		10:             # water (a pool)
 			var wc := Color(0.2, 0.6, 0.8)
 			_rect(px, py, TILE, TILE, wc)
@@ -432,13 +427,50 @@ func _cap_tile(x: int, y: int, px: int, py: int) -> void:
 	var top: Color = pal["wall_top"]
 	_rect(px, py, TILE, TILE, top)
 	var below := t_at(x, y + 1)
-	if walkable_t(below) or below == T.BLOCK:
+	var duct_below: bool = y + 1 < h and floor_kind[(y + 1) * w + x] == 16 and walkable_t(below)
+	if duct_below:
+		pass                                                                      # 0.7.52.28: over a duct – its own rim
+	elif walkable_t(below) or below == T.BLOCK:
 		_rect(px, py + TILE - 4, TILE, 4, Color(pal["wall"]).darkened(0.05))      # the low face of a thin wall
 		var ac: Color = pal["accent"]
 		_rect(px, py + TILE - 2, TILE, 1, ac.darkened(0.2))                      # a neon strip along its foot
 		_rect(px, py + TILE - 1, TILE, 1, ac.lerp(Color.WHITE, 0.35))
 	if t_at(x, y - 1) != T.CAP:
 		_rect(px, py, TILE, 1, top.lightened(0.25))
+
+
+## 0.7.52.28 (Luz): a duct's tile – open towards the duct and rooms it joins, a wall rim on every other side; its ribs
+## run across the way it goes (both ways at a bend).
+func _duct_tile(x: int, y: int, px: int, py: int) -> void:
+	var base := Color(0.2, 0.21, 0.24)
+	_rect(px, py, TILE, TILE, base)
+	var open := {}
+	for dv in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+		var nx: int = x + dv.x
+		var ny: int = y + dv.y
+		var nt := t_at(nx, ny)
+		var duct: bool = nx >= 0 and ny >= 0 and nx < w and ny < h and floor_kind[ny * w + nx] == 16 and (walkable_t(nt) or nt == T.BLOCK)
+		open[dv] = duct or walkable_t(nt)
+	var horiz: bool = open[Vector2i(-1, 0)] or open[Vector2i(1, 0)]
+	var vert: bool = open[Vector2i(0, -1)] or open[Vector2i(0, 1)]
+	for k in 4:
+		if vert or not horiz:
+			_rect(px + 1, py + 2 + k * 4, TILE - 2, 1, Color(0.28, 0.3, 0.33))
+		if horiz:
+			_rect(px + 2 + k * 4, py + 1, 1, TILE - 2, Color(0.28, 0.3, 0.33))
+	var rim := Color(0.42, 0.44, 0.48)
+	var dark := Color(0.08, 0.08, 0.09)
+	if not open[Vector2i(0, -1)]:
+		_rect(px, py, TILE, 2, rim)
+		_rect(px, py + 2, TILE, 1, dark)
+	if not open[Vector2i(0, 1)]:
+		_rect(px, py + TILE - 2, TILE, 2, rim.darkened(0.3))
+	if not open[Vector2i(-1, 0)]:
+		_rect(px, py, 2, TILE, rim.darkened(0.1))
+		_rect(px + 2, py, 1, TILE, dark)
+	if not open[Vector2i(1, 0)]:
+		_rect(px + TILE - 2, py, 2, TILE, rim.darkened(0.25))
+		_rect(px + TILE - 3, py, 1, TILE, dark)
 
 
 ## The front face of a wall, lit, with a trim and a skirting board.

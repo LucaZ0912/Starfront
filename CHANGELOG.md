@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.29 – 2026-11-11
+
+**The shaft's bend (Luz).** A duct's tiles are now drawn by their neighbours: open where the duct goes on or a room
+joins, a wall rim (lit lip, dark shadow) on every other side, the ribs across the way it runs – both ways at a bend.
+No stray line through the bend any more, and the wall over a duct has no neon strip.
+
 ## alpha 0.7.52.28 – 2026-11-11
 
 **The air shaft, finished (Luz).** The vent's grille sits low in the wall, **flush with the floor**. While it is
