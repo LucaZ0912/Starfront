@@ -161,6 +161,7 @@ func _process(delta: float) -> void:
 				_test_wreck(view)                # package 53b – crash sites
 				_test_mine(view)                 # package 53b – the old mine by a settlement
 				_test_maint(view)                # package 53c – the maintenance tunnels, the reactor
+				_test_pirate(view)               # package 53c – the pirate base
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -10231,6 +10232,99 @@ func _test_maint(view: SystemView) -> void:
 	main._update_input()
 	check(lvl_ok and passive_ok and deep_ok and lit_ok and out_ok,
 		"53c: the maintenance tunnels – the city's lift goes down when the power is out; three levels, pipes, pipe bundles as cover, the service lift and the stairs; the drones mend things and leave you be until shot at; the crank door (slow, loud); the reactor restarted – every level lit, the city pays; back up by the service lift  [%s]" % " ".join(PackedStringArray([str(lvl_ok), str(passive_ok), str(deep_ok), str(lit_ok), str(out_ok)])))
+
+
+## 0.7.53.11 (Luz, package 53c): a pirate base in a cliff – the hangar gate (its terminal) and the side door (its code
+## lock), searchlights, guards outside; inside the hangar with a fighter of the game standing in it (it blocks, it is
+## cover), the ramp down, the captain's hoard behind its code door.
+func _test_pirate(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5311, "theme": "pirate"})
+	var g = main.ground
+	if g == null or e != "" or g.level != "landing":
+		check(false, "53c: the pirate base opens  [%s]" % e)
+		return
+	gear.refill()
+	g._close_lift_menu()
+	var gate: Dictionary = {}
+	var gterm: Dictionary = {}
+	for d in g.map.explore:
+		if String(d["kind"]) == "pirate_gate":
+			gate = d
+		elif String(d["kind"]) == "terminal":
+			gterm = d
+	var ins: Array = g.map.zones.filter(func(z): return String(z.get("kind", "")) == "dungeon_in")
+	var out_ok: bool = not gate.is_empty() and not gterm.is_empty() and ins.size() == 2 and _has_kind(g.map, "searchlight") \
+		and g.combat != null and g.combat.foes.size() >= 2 and g.map.objects.any(func(o): return String(o["kind"]) == "watchtower")
+	var zg: Dictionary = ins.filter(func(z): return int(z["gate"]) == g.map.explore.find(gate))[0]
+	g._arrive = 0.0
+	g.zone = zg
+	g.use()
+	out_ok = out_ok and g.level == "landing"
+	g._hack_done(gterm, "door")
+	out_ok = out_ok and String(gate["state"]) == "open"
+	g._arrive = 0.0
+	g.zone = zg
+	g.use()
+	if g.level != "dungeon" or g.combat == null:
+		check(false, "53c: into the pirate base  [%s]" % g.level)
+		return
+	gear.refill()
+	var pk: Dictionary = g.map.get_meta("parked", {})
+	var blocked := 0
+	if not pk.is_empty():
+		var c: Vector2 = pk["c"]
+		for y in range(int(c.y / 16) - 4, int(c.y / 16) + 5):
+			for x in range(int(c.x / 16) - 8, int(c.x / 16) + 9):
+				if g.map.t_at(x, y) == GroundMap.T.BLOCK:
+					blocked += 1
+	var in_ok: bool = g.map.style == "pirate" and not pk.is_empty() and blocked >= 15 and _has_kind(g.map, "ramp_down") \
+		and g.combat.foes.size() >= 3 and _has_kind(g.map, "turret") == false
+	# down the ramp: the hoard behind its code door
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_down")
+	g.use()
+	var box: Dictionary = {}
+	var ctrl: Dictionary = {}
+	for d2 in g.map.explore:
+		if String(d2["kind"]) == "crate" and bool(d2.get("target", false)):
+			box = d2
+		elif String(d2["kind"]) == "terminal" and (d2.get("actions", []) as Array).has("door"):
+			ctrl = d2
+	var bp: Vector2 = (box.get("pos", Vector2.ZERO) as Vector2) + Vector2(0, 14)
+	var low_ok: bool = g.depth == 1 and not box.is_empty() and not ctrl.is_empty() and _has_kind(g.map, "steel_door") and g.map.path(g.map.spawn, bp).is_empty() \
+		and _has_kind(g.map, "turret") and _has_kind(g.map, "alarm")
+	g._hack_done(ctrl, "door")
+	low_ok = low_ok and not g.map.path(g.map.spawn, bp).is_empty()
+	var cr0 := GameState.credits
+	g._loot(box)
+	g._poi_target_done(box)
+	var done_ok: bool = GameState.poi_used.has(String(g._site["id"])) and GameState.credits > cr0
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(out_ok and in_ok and low_ok and done_ok,
+		"53c: the pirate base – in a cliff: the hangar gate sealed until its terminal opens it, the side door, searchlights, a watchtower, guards outside; inside the hangar with a fighter standing in it (it blocks the floor – cover), the ramp down; below the captain's hoard behind a code door (turret, alarm), the command room opens it  [%s]" % " ".join(PackedStringArray([str(out_ok), str(in_ok), str(low_ok), str(done_ok)])))
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

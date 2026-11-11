@@ -639,6 +639,27 @@ func _steel_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px + 6, py + 5, 4, 4, Color(0.15, 0.12, 0.08))
 
 
+## 0.7.53.11 (Luz): a pirate base's wall – raw rock with steel plates welded on (their seams glowing dull), cables,
+## a red lamp now and then.
+func _pirate_face(x: int, y: int, px: int, py: int) -> void:
+	var top_row := t_at(x, y - 1) != T.FACE
+	var rock: Color = Color(pal["wall"])
+	for qy in 4:
+		for qx in 4:
+			_rect(px + qx * 4, py + qy * 4, 4, 4, rock.lerp(rock.darkened(0.3), hash2(x * 4 + qx, y * 4 + qy, 161)).darkened(0.1 if top_row else 0.0))
+	if hash2(x / 2, y, 162) < 0.55:
+		var pl := Color(0.38, 0.38, 0.4).lerp(Color(0.3, 0.3, 0.32), hash2(x, y, 163))
+		_rect(px + 1, py + 1, TILE - 2, TILE - 3, pl)
+		_rect(px + 1, py + 1, TILE - 2, 1, pl.lightened(0.25))
+		_rect(px + 1, py + TILE - 3, TILE - 2, 1, Color(0.6, 0.35, 0.15))               # a weld seam
+		for rv in [3, 12]:
+			_px(px + rv, py + 3, pl.lightened(0.35))
+	if top_row and x % 6 == 1:
+		_rect(px + 6, py + 1, 4, 2, Color(1.0, 0.25, 0.2))
+	if not top_row:
+		_rect(px, py + TILE - 2, TILE, 2, rock.darkened(0.45))
+
+
 ## 0.7.53.9 (Luz): a maintenance tunnel's wall – rough concrete, cracked and rust-stained, pipes everywhere: runs
 ## at several heights in several colours, drops, flanges, a valve wheel here and there, cables hanging in loops,
 ## red emergency lamps.
@@ -798,7 +819,7 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
-	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint"]:
+	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -889,6 +910,9 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 		return
 	if style == "maint":
 		_maint_face(x, y, px, py)
+		return
+	if style == "pirate":
+		_pirate_face(x, y, px, py)
 		return
 	if style == "alley":
 		_alley_face(x, y, px, py)
@@ -1320,6 +1344,24 @@ func _face_deco(d: Dictionary) -> void:
 	var pw := int(d.get("w", 1)) * TILE
 	var c: Color = d.get("col", pal["accent"])
 	match String(d["kind"]):
+		"skull_banner":
+			# 0.7.53.11: the Red Talons' banner – black, a skull, red claws
+			_rect(px, py - 2, pw, 40, Color(0.1, 0.09, 0.09))
+			var sx := px + pw / 2
+			for yy in 12:
+				for xx in 12:
+					if Vector2(xx - 5.5, yy - 5.5).length() < 6.0:
+						_px(sx - 6 + xx, py + 6 + yy, Color(0.9, 0.88, 0.8))
+			_rect(sx - 4, py + 10, 3, 3, Color(0.1, 0.09, 0.09))
+			_rect(sx + 1, py + 10, 3, 3, Color(0.1, 0.09, 0.09))
+			_rect(sx - 4, py + 19, 8, 2, Color(0.9, 0.88, 0.8))
+			for cl in 3:
+				_rect(px + 4 + cl * 6, py + 26, 2, 8, c)
+				_rect(pw + px - 8 - cl * 6, py + 26, 2, 8, c)
+		"graffiti":
+			for gi in pw / 3:
+				var gy := py + 4 + int(hash2(gi, int(d["x"]), 164) * 10)
+				_rect(px + gi * 3, gy, 3, 4 + int(hash2(gi, 2, 165) * 4), c.darkened(0.3))
 		"neon":
 			# 0.7.53.3: a neon sign in blocky letters on a dark board
 			var txt := String(d.get("text", "BAR"))

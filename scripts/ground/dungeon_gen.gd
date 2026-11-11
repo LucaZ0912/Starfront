@@ -249,8 +249,18 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var tablet_c := Vector2i(-1, -1)
 	if int(th.get("tablets", 0)) > 0 and spare.size() > 3 and last:
 		tablet_c = spare[3]
+	var hangar_c := Vector2i(-9, -9)
+	if bool(th.get("hangar", false)) and spare.size() > stores.size() + 2:
+		hangar_c = spare[stores.size() + 1]              # 0.7.53.11: the pirates' hangar
+	var cells_c := Vector2i(-9, -9)
+	if bool(th.get("cells", false)) and spare.size() > stores.size() + 3:
+		cells_c = spare[stores.size() + 2]               # 0.7.53.11: the cells
 	need.append(control)
 	need += stores
+	if hangar_c.x >= 0:
+		need.append(hangar_c)
+	if cells_c.x >= 0:
+		need.append(cells_c)
 	if tablet_c.x >= 0:
 		need.append(tablet_c)
 	var rooms := {}                                     # cell -> Rect2i (rooms and junctions alike)
@@ -267,6 +277,9 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			var h := rng.randi_range(int(th["room_h"][0]), mini(int(th["room_h"][1]), chh - 5))
 			if last and c == vault_c and String(th.get("target", "")) == "reactor":
 				h = mini(maxi(h, 9), chh - 5)
+			if c == hangar_c:
+				w = cw - 3                                   # 0.7.53.11: the hangar as big as its cell allows
+				h = chh - 5
 			var x: int = 2 + c.x * cw + rng.randi_range(1, maxi(1, cw - w - 1))
 			var y: int = 1 + c.y * chh + (SP if c.y >= 1 else 0) + 3 + rng.randi_range(0, maxi(0, chh - h - 5))
 			r = Rect2i(x, y, w, h)
@@ -359,6 +372,20 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 					var q := Vector2i(x1, y1)
 					if GroundMap.walkable_t(m.t_at(x1, y1)) and not before.has(q) and not dr.has_point(q):
 						flood_tiles.append([x1, y1, m.floor_kind[y1 * W + x1]])
+	if hangar_c.x >= 0:
+		# 0.7.53.11 (Luz): a fighter of the game standing in the hangar – it blocks the floor under it (high cover)
+		var hr: Rect2i = rooms[hangar_c]
+		var himg: Image = PixelArt.ship_texture("hornet", "pirate").get_image()
+		if himg.is_compressed():
+			himg.decompress()
+		var hsc := minf(hr.size.x * TILE * 0.6 / himg.get_width(), hr.size.y * TILE * 0.5 / himg.get_height())
+		var hcen := Vector2(hr.position.x + hr.size.x * 0.5, hr.position.y + hr.size.y * 0.55) * TILE
+		for ty in range(hr.position.y, hr.end.y):
+			for tx in range(hr.position.x, hr.end.x):
+				if parked_covers(himg, hcen, hsc, Vector2(tx + 0.5, ty + 0.5) * TILE):
+					m.set_t(tx, ty, T.BLOCK, rf)
+		m.set_meta("parked", {"hull": "hornet", "faction": "pirate", "c": hcen, "sc": hsc, "lift": 18})
+		m.decals.append({"kind": "stripes", "x": hr.position.x + 1, "y": hr.end.y - 1, "w": hr.size.x - 2, "h": 1})
 	var rubble_tiles: Array = []
 	var side_room := Rect2i()
 	if bool(th.get("rubble", false)):
@@ -421,6 +448,8 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		var up_kind := "ladder"
 		if String(th.get("descent", "")) == "stairs":
 			up_kind = "stairs_up" if depth > 0 else "service_lift"            # 0.7.53.9: stairwell door, the service lift
+		elif String(th.get("descent", "")) == "ramp":
+			up_kind = "stairs_up"                                             # 0.7.53.11: the way back up the ramp
 		ExploreNode.add(m, up_kind, Vector2(lx + 0.5, en.position.y) * TILE, {"no_zone": true, "up": true})
 		m.spawn = Vector2(lx + 0.5, en.position.y + 1.6) * TILE
 		m.zones.append({"rect": Rect2(Vector2(lx - 1.0, en.position.y) * TILE, Vector2(3.0, 1.4) * TILE), "kind": "dungeon_out" if depth == 0 else "dungeon_up",
@@ -447,7 +476,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		# the way down: a hatch in the far room's floor
 		var drr: Rect2i = rooms[down_c]
 		var hp := Vector2(drr.position.x + drr.size.x * 0.5, drr.position.y + drr.size.y * 0.5) * TILE
-		ExploreNode.add(m, {"hole": "deck_hole", "stairs": "stairs_down"}.get(String(th.get("descent", "")), "hatch"), hp, {"no_zone": true, "seed": rng.randi()})
+		ExploreNode.add(m, {"hole": "deck_hole", "stairs": "stairs_down", "ramp": "ramp_down"}.get(String(th.get("descent", "")), "hatch"), hp, {"no_zone": true, "seed": rng.randi()})
 		m.zones.append({"rect": Rect2(hp - Vector2(20, 14), Vector2(40, 30)), "kind": "dungeon_down", "id": "dungeon_down",
 			"title": "Climb down – deeper in", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(-100, -100)})
 		m.set_meta("down_front", hp + Vector2(0, 26))
@@ -495,6 +524,14 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "relic", rc * TILE, relic)
 			m.lights.append({"pos": rc * TILE, "r": 60.0, "col": th["light"], "a": 0.4, "flicker": true})
 			targets.append(["relic", "A relic signature – deep inside, behind an old door%s" % (", guarded by floating crystals" if ci >= 0 else "")])
+		elif String(th.get("target", "")) == "loot_room":
+			# 0.7.53.11: the captain's hoard – stacked crates of loot, a strongbox
+			for lc in 4:
+				ExploreNode.add(m, "crate", Vector2(vr.position.x + 2.0 + lc * 2.5, vr.position.y + 1.8) * TILE, {"seed": rng.randi(), "theme": theme, "welded": lc == 0})
+			ExploreNode.add(m, "crate", rc * TILE, {"target": true, "safe": true, "welded": true, "seed": rng.randi(), "theme": theme})
+			n_cache += 5
+			m.lights.append({"pos": rc * TILE, "r": 70.0, "col": Color(1.0, 0.75, 0.3), "a": 0.4})
+			targets.append(["loot_room", "The captain's hoard – behind a code door, the command room opens it"])
 		elif String(th.get("target", "")) == "reactor":
 			# 0.7.53.9 (Luz): the reactor – its pit in the middle of the room (it stands in the way), its panel before it
 			# (0.7.53.9 fix, Luz: the reactor in the room's middle, its panel wholly in the room)
@@ -692,6 +729,11 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			var arr: Rect2i = rooms[ars[rng.randi() % ars.size()]]
 			ExploreNode.add(m, "alarm", Vector2(_wall_spot(m, arr, arr.position.x + 3) + 0.5, arr.position.y) * TILE, {"wall": true, "state": "armed", "seed": rng.randi()})
 			targets.append(["alarm", "An alarm – cut its box before anyone rings it"])
+	if cells_c.x >= 0:
+		var clr: Rect2i = rooms[cells_c]
+		ExploreNode.add(m, "cells", Vector2(clr.position.x + clr.size.x * 0.5, clr.position.y + 2.0) * TILE, {"no_zone": true, "w": clr.size.x - 2, "seed": rng.randi()})
+		m.fill(clr.position.x + 1, clr.position.y, clr.size.x - 2, 2, T.BLOCK, rf)
+		targets.append(["cells", "Prisoners in cells – for a rescue, later"])
 	# ---- foes: in the guard rooms and – in the tunnels – at the junctions
 	var foes: Array = []
 	var tiers: Array = dg["tiers"]
@@ -977,6 +1019,104 @@ static func build_minehead(body: Dictionary, site: Dictionary) -> GroundMap:
 	m.zones.append({"rect": Rect2(Vector2(px, H - 2) * TILE, Vector2(4, 1.6) * TILE), "kind": "town_path", "id": "town_path",
 		"title": "The path back into town", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	return m
+
+
+# ---------------------------------------------------------------- outside: a pirate base in a cliff (0.7.53.11)
+
+## 0.7.53.11 (Luz): a pirate base built into a cliff in the north – a big hangar gate of welded plates under a skull
+## banner, a side door with its guard; watchtowers with searchlights sweeping the ground, a scrap fence with a gap,
+## gliders parked, fires in barrels, crates of loot. The hangar gate is sealed (hack its terminal); the side door has a
+## code lock (cut its box).
+static func build_cliff(body: Dictionary, site: Dictionary, ship_len: float, ship_beam: float) -> GroundMap:
+	var th := _theme(site)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(site.get("seed", 53)) + 19
+	var m := GroundMap.new()
+	_palette(m, body, th)
+	m.title = String(site.get("name", "Pirate base"))
+	m.hull_top = -60
+	var sl := clampi(int(ceil(ship_len / TILE)) + 4, 10, 40)
+	var sb := clampi(int(ceil(ship_beam / TILE)) + 4, 7, 20)
+	var W := maxi(70, sl + 46)
+	var H := maxi(44, sb + 32)
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.FLOOR, 13)
+	m.fill(0, H - 1, W, 1, T.BLOCK, 13)
+	m.fill(0, 0, 1, H, T.BLOCK, 13)
+	m.fill(W - 1, 0, 1, H, T.BLOCK, 13)
+	m.fill(0, 0, W, 6, T.CAP)
+	m.fill(0, 6, W, 5, T.FACE)
+	# the hangar gate (7 wide) and the side door
+	var gx := W / 2 - 4
+	m.fill(gx, 6, 7, 5, T.BLOCK, 22)
+	var gate := ExploreNode.add(m, "pirate_gate", Vector2(gx + 3.5, 11) * TILE, {"tiles": [gx, 6, 7, 5], "lock": "computer", "seed": rng.randi()})
+	var gi := m.explore.find(gate)
+	ExploreNode.add(m, "terminal", Vector2(gx + 9.5, 13.0) * TILE, {"actions": ["door"], "door": gi, "style": "", "seed": rng.randi()})
+	var sx := gx + 16
+	m.fill(sx, 8, 3, 3, T.BLOCK, 22)
+	var side := ExploreNode.add(m, "steel_door", Vector2(sx + 1.5, 11) * TILE, {"tiles": [sx, 8, 3, 3], "seed": rng.randi()})
+	var si := m.explore.find(side)
+	ExploreNode.add(m, "panel", Vector2(sx + 4.5, 11) * TILE, {"inside": "button", "door": si, "style": "hideout", "seed": rng.randi()})
+	for e in [[gx, 7, gi, "Through the hangar gate – inside"], [sx, 3, si, "Through the side door – inside"]]:
+		m.zones.append({"rect": Rect2(Vector2(int(e[0]), 10.6) * TILE, Vector2(int(e[1]), 1.6) * TILE), "kind": "dungeon_in", "id": "dungeon_in", "gate": e[2],
+			"title": String(e[3]), "col": Color(1.0, 0.35, 0.3), "sign": Vector2(-100, -100)})
+	m.set_meta("door_front", Vector2(gx + 3.5, 13.2) * TILE)
+	m.face_deco.append({"kind": "skull_banner", "x": gx + 2, "y": 6, "w": 3, "col": Color(0.9, 0.2, 0.15)})
+	m.face_deco.append({"kind": "graffiti", "x": 4, "y": 8, "w": 8, "col": Color(0.9, 0.3, 0.2)})
+	m.face_deco.append({"kind": "graffiti", "x": W - 14, "y": 7, "w": 8, "col": Color(0.3, 0.8, 0.9)})
+	# the pad, south-west
+	var px0 := 4
+	var py0 := H - sb - 5
+	m.fill(px0, py0, sl, sb, T.FLOOR, 14)
+	m.decals.append({"kind": "landing_pad", "x": px0, "y": py0, "w": sl, "h": sb, "col": Color(0.95, 0.8, 0.2), "n": 1})
+	m.pad_rects.append(Rect2(Vector2(px0, py0) * TILE, Vector2(sl, sb) * TILE))
+	var sc2 := Vector2(px0 + sl * 0.5, py0 + sb * 0.5)
+	m.ship_at = sc2 * TILE
+	var bx := int(sc2.x - ship_len / TILE * 0.5) + 1
+	var bw := maxi(2, int(ship_len / TILE) - 2)
+	var bh := maxi(1, int(ship_beam / TILE) - 1)
+	m.fill(bx, int(sc2.y - bh * 0.5), bw, bh, T.BLOCK, 14)
+	var rx := int(sc2.x) - 1
+	var ry := int(sc2.y + bh * 0.5)
+	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
+	m.spawn = Vector2(rx + 1.0, ry + 2.6) * TILE
+	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * TILE, Vector2(3, 3.2) * TILE), "kind": "exit", "id": "ship",
+		"title": "Up the ramp – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	# the scrap fence between, a gap where the road goes in
+	var fy := py0 - 4
+	for fx in range(2, W - 2, 2):
+		if absi(fx - (gx + 3)) < 4:
+			continue
+		m.add_object({"kind": "barrier", "x": fx, "y": fy, "w": 2, "h": 1, "col": Color(0.42, 0.38, 0.36)})
+	# watchtowers with searchlights, gliders, fires in barrels, crates of loot
+	for tw in [Vector2i(gx - 10, 15), Vector2i(gx + 22, 16)]:
+		m.add_object({"kind": "watchtower", "x": tw.x, "y": tw.y, "w": 2, "h": 2})
+		ExploreNode.add(m, "searchlight", Vector2(tw.x + 1, tw.y + 1) * TILE, {"no_zone": true, "seed": rng.randi(), "ang": rng.randf() * TAU})
+	for gl in 2:
+		m.add_object({"kind": "glider", "x": gx + 12 + gl * 5, "y": 20, "w": 4, "h": 2})
+	for fb in [Vector2i(gx - 3, 14), Vector2i(gx + 10, 15), Vector2i(8, 18)]:
+		m.add_object({"kind": "fire_barrel", "x": fb.x, "y": fb.y, "w": 1, "h": 1})
+		m.lights.append({"pos": (Vector2(fb) + Vector2(0.5, 0.2)) * TILE, "r": 50.0, "col": Color(1.0, 0.55, 0.2), "a": 0.45, "flicker": true})
+	m.add_object({"kind": "crates", "x": 10, "y": 22, "w": 2, "h": 1})
+	m.add_object({"kind": "crates", "x": W - 12, "y": 24, "w": 2, "h": 1})
+	# guards outside
+	var foes: Array = []
+	var dg: Dictionary = PoiData.DANGER.get(String(site.get("danger", "yellow")), PoiData.DANGER["yellow"])
+	for gp in [Vector2(sx + 1.5, 12.5), Vector2(gx - 9.5, 18.5), Vector2(gx + 14.5, 23.0)]:
+		if m.free_at(gp * TILE, 6.0):
+			m.foe_spawns.append(gp * TILE)
+			foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(dg["tiers"][0])])
+	m.set_meta("foes", foes)
+	m.lights.append({"pos": Vector2(gx + 3.5, 11) * TILE, "r": 70.0, "col": Color(1.0, 0.3, 0.22), "a": 0.35})
+	return m
+
+
+## 0.7.53.11 (Luz): a ship standing in a hangar – where its picture (at sc, its centre c) covers the ground.
+static func parked_covers(img: Image, c: Vector2, sc: float, p: Vector2) -> bool:
+	var q := (p - c) / sc + Vector2(img.get_width(), img.get_height()) * 0.5
+	if q.x < 0 or q.y < 0 or q.x >= img.get_width() or q.y >= img.get_height():
+		return false
+	return img.get_pixel(int(q.x), int(q.y)).a > 0.5
 
 
 # ---------------------------------------------------------------- outside: a crash site (0.7.53.6)

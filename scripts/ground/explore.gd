@@ -25,7 +25,8 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"vein": "Something glitters in the rock – cut it out (cutting torch)",
 	"rubble": "A fall of rock buries the drift – blast it (a frag grenade as a charge)",
 	"crank_door": "A security door – no power. Crank it open (E, takes a while, loud) – or its fuse box",
-	"fuse_box": "A fuse box – a fuse is missing. Put in a spare (E)"}
+	"fuse_box": "A fuse box – a fuse is missing. Put in a spare (E)",
+	"pirate_gate": "The hangar gate – sealed (its terminal beside it)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -444,10 +445,12 @@ func _process(delta: float) -> void:
 			Audio.play("dock_clamp", "vent hatch flips open", -12.0)
 		if String(d["state"]) == "open":
 			d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 0.45)
+	if String(d["kind"]) == "searchlight":
+		d["ang"] = float(d.get("ang", 0.0)) + delta * 0.6                       # 0.7.53.11: it sweeps
 	if String(d["kind"]) == "reactor" and String(d["state"]) == "on":
 		d["start"] = minf(1.0, float(d.get("start", 0.0)) + delta / 4.0)          # 0.7.53.9: it spins up
 		d["spin"] = float(d.get("spin", 0.0)) + delta * (0.3 + 3.0 * float(d["start"]))
-	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door", "bulkhead", "airlock", "crank_door"] and String(d["state"]) == "open":
+	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door", "bulkhead", "airlock", "crank_door", "pirate_gate"] and String(d["state"]) == "open":
 		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
 
@@ -458,7 +461,8 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
-		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble", "crank_door", "fuse_box", "reactor", "stairs_down", "stairs_up", "service_lift", "steam"]
+		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble", "crank_door", "fuse_box", "reactor", "stairs_down", "stairs_up", "service_lift", "steam", "pirate_gate", "searchlight",
+		"ramp_down", "cells"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -487,6 +491,51 @@ func _draw() -> void:
 					draw_line(cc, cc + Vector2(cos(a7), sin(a7)) * 6.0, Color(0.75, 0.15, 0.1), 1.0)
 		"reactor":
 			_draw_reactor(d, t)
+		"pirate_gate":
+			# 0.7.53.11: the hangar gate – two leaves of welded plates, hazard stripes along the top; they part sideways
+			var tl8: Array = d["tiles"]
+			var gw8 := float(tl8[2]) * 16.0
+			var gh8 := float(tl8[3]) * 16.0
+			var k8 := float(d.get("open_k", 0.0))
+			draw_rect(Rect2(-gw8 * 0.5, -gh8, gw8, gh8), Color(0.03, 0.03, 0.04))
+			var lw8 := gw8 * 0.5 * (1.0 - k8)
+			for lf in [-1, 1]:
+				var x0 := -gw8 * 0.5 if lf < 0 else gw8 * 0.5 - lw8
+				if lw8 > 0.5:
+					draw_rect(Rect2(x0, -gh8, lw8, gh8), Color(0.36, 0.37, 0.4))
+					for pr in int(gh8 / 10.0):
+						draw_rect(Rect2(x0, -gh8 + pr * 10, lw8, 1), Color(0.24, 0.24, 0.26))
+						draw_rect(Rect2(x0, -gh8 + pr * 10 + 5, lw8, 1), Color(0.6, 0.35, 0.15, 0.5))
+			for st in int(gw8 / 8.0):
+				draw_rect(Rect2(-gw8 * 0.5 + st * 8, -gh8 - 4, 5, 4), Color(0.95, 0.75, 0.1))
+			draw_circle(Vector2(0, -gh8 - 8), 2.0, Color(0.3, 1.0, 0.45) if String(d["state"]) == "open" else Color(1.0, 0.2, 0.15, 0.6 + 0.4 * sin(t * 3.0)))
+		"searchlight":
+			# 0.7.53.11: a searchlight on a watchtower – its cone sweeping the ground
+			var a9 := float(d.get("ang", 0.0))
+			var cone := PackedVector2Array([Vector2(0, -70)])
+			for cs in 9:
+				var ca := a9 - 0.3 + cs * 0.075
+				cone.append(Vector2(0, -70) + Vector2(cos(ca), sin(ca) * 0.6) * 150.0 + Vector2(0, 70))
+			draw_colored_polygon(cone, Color(1.0, 1.0, 0.85, 0.12 if not bool(d.get("seen", false)) else 0.22))
+		"ramp_down":
+			# 0.7.53.11: a cargo ramp down to the lower level – hazard stripes, its slope falling away
+			draw_rect(Rect2(-22, -12, 44, 26), Color(0.06, 0.06, 0.07))
+			for sl in 6:
+				draw_rect(Rect2(-20, -10 + sl * 4, 40, 3), Color(0.38, 0.38, 0.4).darkened(sl * 0.12))
+			for hz in 6:
+				draw_rect(Rect2(-22 + hz * 8, -14, 5, 3), Color(0.95, 0.75, 0.1))
+		"cells":
+			# 0.7.53.11: the cells – bars across the room's back, a bunk, a prisoner sitting hunched
+			var cw9 := float(d.get("w", 8)) * 16.0
+			draw_rect(Rect2(-cw9 * 0.5, -34, cw9, 34), Color(0.05, 0.05, 0.06, 0.6))
+			for cb in int(cw9 / 5.0):
+				draw_rect(Rect2(-cw9 * 0.5 + cb * 5, -34, 1.5, 34), Color(0.5, 0.5, 0.52))
+			for dv in range(1, 3):
+				draw_rect(Rect2(-cw9 * 0.5 + dv * cw9 / 3.0 - 1, -34, 2, 34), Color(0.3, 0.3, 0.32))
+			for pr in 2:
+				var pxp := -cw9 * 0.5 + (pr * 2 + 1) * cw9 / 6.0
+				draw_circle(Vector2(pxp, -16), 4.0, Color(0.6, 0.45, 0.35))
+				draw_rect(Rect2(pxp - 5, -12, 10, 9), Color(0.4, 0.38, 0.3))
 		"fuse_box":
 			# 0.7.53.9: a fuse box on the wall – a row of fuses, one gap (until you put one in); its light
 			draw_rect(Rect2(-9, -30, 18, 18), Color(0.1, 0.1, 0.1))

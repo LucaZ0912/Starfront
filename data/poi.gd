@@ -49,6 +49,25 @@ const THEMES := {
 		"names_b": ["Meridian", "Horizon", "Promise", "Tally", "Comet", "Harvest", "Wanderer", "Lantern"],
 		"hulls": ["freighter", "mule", "warden", "bastion", "hdy_goliath", "aur_boulevard", "hdy_maul", "iwakudaki"],
 		"layers": [{}, {}]},
+	# 0.7.53.11 (Luz, package 53c): a pirate base built into a cliff – the Red Talons: halls cut into the rock with
+	# modules welded in, a hangar with a fighter standing in it, barracks, stores, the command room, cells
+	"pirate": {"name": "Pirate base", "kind": "pirate", "style": "pirate", "room_floor": 22, "hall_floor": 22,
+		"floor": Color(0.29, 0.28, 0.29), "floor2": Color(0.25, 0.24, 0.25), "wall": Color(0.36, 0.3, 0.27),
+		"wall_top": Color(0.08, 0.07, 0.07), "trim": Color(0.4, 0.4, 0.42), "accent": Color(1.0, 0.25, 0.2),
+		"light": Color(1.0, 0.3, 0.22),
+		"door": "steel_door", "computer": "",
+		"foes": ["pirate_raider", "pirate_gunner", "pirate_grenadier", "pirate_raider", "pirate_sniper"], "leader": "pirate_captain",
+		"props": ["crates", "barrel", "barrier", "fire_barrel", "crates"],
+		"guard": "", "traps": "tripwire", "fog": false, "dark": Color(0.78, 0.62, 0.6), "outside": "cliff", "target": "loot_room",
+		"turret": true, "alarm": true, "hangar": true, "cells": true,
+		"tablets": 0, "vent": false, "descent": "ramp", "stores": [1, 2],
+		"cols": [3, 3], "rows": [2, 3], "cell_w": 26, "cell_h": 18, "room_w": [9, 14], "room_h": [7, 10], "room_chance": 0.95,
+		"corr": 3, "loops": [1, 2], "cover": [3, 5],
+		"loot": ["cs_ammo", "cs_medkit", "cs_cell", "gr_frag", "cs_breach"],
+		"credits": [200, 520], "research": [0, 0], "museum_chance": 0.0,
+		"names_a": ["Red", "Black", "Talon", "Rust", "Gallows", "Skull", "Broken"],
+		"names_b": ["Roost", "Nest", "Rock", "Hold", "Den", "Crag", "Perch"],
+		"layers": [{}, {"hangar": false}]},
 	# 0.7.53.9 (Luz, package 53c): the maintenance tunnels under a city – the power is out; down three levels to the
 	# reactor and start it again. Pipes and lines everywhere; the maintenance drones mend things (and leave you be)
 	"maint": {"name": "Maintenance tunnels", "kind": "maint", "style": "maint", "room_floor": 21, "hall_floor": 19,
@@ -168,6 +187,9 @@ const TARGETS := {
 	"find": {"col": Color(0.95, 0.85, 0.4), "needs": "get to the deepest chamber (its gate: the box beside it, or the old control) · cutting torch to cut it out", "gives": "a rare find for the Museum"},
 	"cage": {"col": Color(1.0, 0.75, 0.4), "needs": "power – start the generator", "gives": "the cage down to the deeper level"},
 	"rubble": {"col": Color(0.7, 0.6, 0.5), "needs": "a frag grenade as a charge – or a box of explosives nearby", "gives": "a buried side chamber – its cache"},
+	"loot_room": {"col": Color(1.0, 0.75, 0.3), "needs": "past the guards – the captain's hoard behind a code door (the command room opens it)", "gives": "the Red Talons' loot – credits, weapons, bounty data"},
+	"hangar": {"col": Color(0.6, 0.8, 1.0), "needs": "–", "gives": "a fighter standing in the hangar – good cover"},
+	"cells": {"col": Color(0.8, 0.8, 0.8), "needs": "–", "gives": "prisoners – a rescue mission, later"},
 	"reactor": {"col": Color(0.5, 0.9, 1.0), "needs": "down to the lowest level · E-Breach on the reactor's panel", "gives": "the power back – level by level the lights come on"},
 	"lift": {"col": Color(0.7, 0.5, 1.0), "needs": "E-Breach on their computer, or the cutting torch on a crystal panel", "gives": "the way down to the deeper level"},
 }
@@ -178,6 +200,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 	var a: String = th["names_a"][rng.randi() % th["names_a"].size()]
 	var b: String = th["names_b"][rng.randi() % th["names_b"].size()]
 	if String(th["kind"]) == "sewer":
+		return "%s %s" % [a, b]
+	if String(th["kind"]) == "pirate":
 		return "%s %s" % [a, b]
 	if String(th["kind"]) == "maint":
 		return "%s %s" % [a, b]

@@ -81,6 +81,12 @@ static func _rise(kind: String) -> int:
 			return 9
 		"container":                          # 0.7.53.6: a 6 m cargo container (2.6 m tall)
 			return 30
+		"watchtower":                         # 0.7.53.11: a pirates' watchtower on stilts (~8 m)
+			return 110
+		"glider":                             # 0.7.53.11: a pirate glider, parked
+			return 12
+		"fire_barrel":                        # 0.7.53.11: a barrel with a fire in it
+			return 14
 		"valve_box":                          # 0.7.53.9: a big valve housing – high cover
 			return 24
 		"cable_drum":                         # 0.7.53.9: a cable drum – low cover
@@ -522,6 +528,36 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 					_r(img, dx + 3 + bar * 5, lid_h + 2, 1, face_top - 4, Color(0.75, 0.75, 0.72))
 					_r(img, dx + 2 + bar * 5, lid_h + 12 + bar * 4, 3, 2, Color(0.85, 0.85, 0.8))
 			_ellipse(img, pw * 0.4, lid_h + 14, 6, 4, cc.darkened(0.35))
+		"watchtower":
+			# 0.7.53.11: four stilts of scrap, braces, a platform of plates with a rail, a roof
+			var tc := Color(0.38, 0.33, 0.28)
+			for lg in 2:
+				_r(img, 2 + lg * (pw - 6), fy - 76, 3, ph + 76, tc)
+				_r(img, 2 + lg * (pw - 6), fy - 76, 1, ph + 76, tc.lightened(0.2))
+			for br in 4:
+				var by := fy - 70 + br * 18
+				_r(img, 3, by, pw - 6, 1, tc.darkened(0.2))
+			_r(img, 0, fy - 100, pw, 24, Color(0.4, 0.38, 0.38))
+			_r(img, 0, fy - 100, pw, 2, Color(0.55, 0.52, 0.5))
+			_r(img, 0, fy - 80, pw, 4, Color(0.3, 0.28, 0.28))
+			_r(img, -2 + 2, fy - 110, pw, 8, Color(0.5, 0.15, 0.12))
+			_r(img, pw / 2 - 3, fy - 94, 6, 5, Color(0.95, 0.95, 0.85))
+		"glider":
+			# 0.7.53.11: a pirates' glider – a low hull, red flash, a cowl, two skids
+			_r(img, 2, fy - 4, pw - 4, ph + 2, Color(0.18, 0.16, 0.16))
+			_r(img, 2, fy - 4, pw - 4, 2, Color(0.3, 0.28, 0.28))
+			_r(img, 6, fy - 8, pw / 2, 5, Color(0.65, 0.15, 0.12))
+			_r(img, pw - 12, fy - 2, 9, 6, Color(0.25, 0.25, 0.27))
+			_ellipse(img, pw * 0.35, fy - 7, 5, 3, Color(0.4, 0.6, 0.75))
+			_r(img, 4, fy + ph - 2, pw - 8, 2, Color(0.12, 0.12, 0.13))
+		"fire_barrel":
+			# 0.7.53.11: an oil drum with a fire burning in it
+			var fbc := Color(0.32, 0.32, 0.36)
+			_r(img, 2, fy - 8, pw - 4, ph + 6, fbc)
+			_r(img, 2, fy - 4, pw - 4, 1, fbc.darkened(0.4))
+			_ellipse(img, pw * 0.5, fy - 8, (pw - 4) * 0.5, 3, Color(0.1, 0.08, 0.08))
+			for fl in 6:
+				_r(img, 4 + fl * 2, fy - 12 - fl % 3 * 2, 2, 4, [Color(1.0, 0.85, 0.3), Color(1.0, 0.5, 0.15), Color(0.9, 0.25, 0.1)][fl % 3])
 		"valve_box":
 			# 0.7.53.9: a valve housing on the floor – a grey box, pipes into the floor, a red wheel on top
 			var vb := Color(0.4, 0.42, 0.44)

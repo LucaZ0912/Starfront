@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.11 – 2026-11-11
+
+**Package 53c – the pirate base (Luz).** Theme sheet in Roadmap.md (Paket 53: Piratenbasis).
+- **Outside:** the base is built into a cliff in the north – a big **hangar gate** of welded plates under the Red
+  Talons' skull banner (sealed – hack its terminal) and a **side door** with a code lock (cut its box), graffiti;
+  **watchtowers** with **searchlights** sweeping the ground (caught in one, every guard comes for you), a scrap fence
+  with a gap, gliders parked, fires burning in barrels, crates of loot, guards.
+- **Inside:** halls cut into the rock, steel plates welded onto it, red lamps; pirates (raiders, gunners, grenadiers,
+  snipers, their captain). **The hangar** – a room as big as it gets – with **a Hornet of the game standing in it,
+  plastic** (Luz): its own outline and paint given volume and light, its side, its gear, its shadow; it blocks the
+  floor under it and is cover. **Cells** with prisoners (a rescue later). Fires in barrels, scrap barricades, crates.
+- **Two levels** joined by a cargo ramp; below, **the captain's hoard** behind a code door – a turret, an alarm; the
+  command room's computer opens it. The strongbox is the target.
+- Debug: *Site* with theme `pirate`. Smoke test group `pirate`.
+
 ## alpha 0.7.53.10 – 2026-11-11
 
 **The reactor room (Luz).** The reactor stands in the middle of its room, its panel wholly inside it; the reactor room
