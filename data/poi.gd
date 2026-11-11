@@ -51,7 +51,7 @@ const THEMES := {
 				"light": Color(1.0, 0.75, 0.45), "door": "steel_door", "computer": "dealer", "dark": Color(0.72, 0.66, 0.62),
 				"props": ["weapon_crate", "crates", "barrel", "weapon_crate", "barrier"], "canal": false, "flood": false,
 				"cols": [3, 4], "rows": [2, 3], "cell_w": 17, "cell_h": 14, "room_w": [8, 11], "room_h": [6, 8], "room_chance": 1.0,
-				"corr": 3, "loops": [1, 2], "cover": [3, 5],
+				"corr": 3, "loops": [1, 2], "cover": [3, 5], "turret": true, "alarm": true,
 				"loot": ["cs_ammo", "cs_ammo", "cs_medkit", "cs_cell", "cs_breach"]}]},
 }
 
@@ -100,6 +100,8 @@ const TARGETS := {
 	"dealer": {"col": Color(1.0, 0.7, 0.35), "needs": "E-Breach on the dealer's computer · the code door (its lock or a hack)", "gives": "the client list – credits now, bounties later"},
 	"water": {"col": Color(0.4, 0.8, 0.9), "needs": "a valve wheel or the pump control (E-Breach)", "gives": "a flooded way runs dry"},
 	"stash": {"col": Color(1.0, 0.8, 0.3), "needs": "cutting torch for the safe", "gives": "weapons, ammunition, credits"},
+	"turret": {"col": Color(1.0, 0.35, 0.3), "needs": "E-Breach on the control room's computer · an EMP grenade stuns it", "gives": "a way into the office that does not cut you down"},
+	"alarm": {"col": Color(1.0, 0.25, 0.2), "needs": "cutting torch on its box – before it rings", "gives": "no reinforcements"},
 	"lift": {"col": Color(0.7, 0.5, 1.0), "needs": "E-Breach on their computer, or the cutting torch on a crystal panel", "gives": "the way down to the deeper level"},
 }
 

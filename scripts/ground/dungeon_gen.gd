@@ -435,6 +435,11 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		var acts: Array = ["door", "data"]
 		if ci >= 0:
 			acts = ["door", "crystals", "data"]
+		if bool(th.get("turret", false)):
+			# 0.7.53.5 (Luz): a turret on the office wall – it covers the door; the control room's computer stops it
+			ExploreNode.add(m, "turret", Vector2(_wall_spot(m, vr, vr.end.x - 3) + 0.5, vr.position.y) * TILE, {"no_zone": true, "state": "on", "seed": rng.randi()})
+			acts = ["door", "turrets", "data"]
+			targets.append(["turret", "A turret guarding the office – its control room can switch it off"])
 		var term := {"actions": acts, "door": di, "seed": rng.randi(), "style": String(th.get("computer", "")), "level": 1 + int(String(site.get("danger", "yellow")) == "red")}
 		if ci >= 0:
 			term["cage"] = ci
@@ -520,6 +525,13 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				var vent := ExploreNode.add(m, "vent", Vector2(vx + 0.5, sr2.position.y) * TILE, {"duct": duct, "label": "VENT-%02d" % rng.randi_range(10, 99), "seed": rng.randi()})
 				ExploreNode.add(m, "vent_end", Vector2(tx + (1 if stp > 0 else 0), vr.position.y) * TILE, {"no_zone": true, "vent": m.explore.find(vent)})
 				vent_ok = true
+	# 0.7.53.5 (Luz): an alarm box on a guard room's wall – once it rings, the whole level comes for you
+	if bool(th.get("alarm", false)):
+		var ars: Array = cells.filter(func(c8): return is_room[c8] and role_of.get(c8, "") in ["", "approach"])
+		if not ars.is_empty():
+			var arr: Rect2i = rooms[ars[rng.randi() % ars.size()]]
+			ExploreNode.add(m, "alarm", Vector2(_wall_spot(m, arr, arr.position.x + 3) + 0.5, arr.position.y) * TILE, {"wall": true, "state": "armed", "seed": rng.randi()})
+			targets.append(["alarm", "An alarm – cut its box before anyone rings it"])
 	# ---- foes: in the guard rooms and – in the tunnels – at the junctions
 	var foes: Array = []
 	var tiers: Array = dg["tiers"]

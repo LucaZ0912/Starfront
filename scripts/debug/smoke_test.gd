@@ -9730,6 +9730,36 @@ func _test_sewer(view: SystemView) -> void:
 	var hide_ok: bool = g.depth == 1 and g.level == "dungeon" and g.map.style == "hideout" and not door.is_empty() and keypad and not target.is_empty() \
 		and not safe.is_empty() and (target.get("actions", []) as Array).has("list") and g.map.path(g.map.spawn, office_p).is_empty() \
 		and not (_zone_of(g.map, "dungeon_up") as Dictionary).is_empty() and g.combat.foes.size() >= 3
+	# 0.7.53.5 (Luz): the turret on the office wall and the alarm – it sees you, the alarm rings, more come; hacked off
+	var turret: Dictionary = {}
+	var alarm: Dictionary = {}
+	for d4 in g.map.explore:
+		if String(d4["kind"]) == "turret":
+			turret = d4
+		elif String(d4["kind"]) == "alarm":
+			alarm = d4
+	var tur_ok: bool = not turret.is_empty() and not alarm.is_empty() and String(alarm["state"]) == "armed" and (ctrl.get("actions", []) as Array).has("turrets")
+	if tur_ok:
+		var n_foes: int = g.combat.foes.size()
+		g.pilot.pos = (turret["pos"] as Vector2) + Vector2(0, 60)
+		Commands.suit_god = false
+		gear.refill()
+		var ns: int = g.combat.shots.size()
+		for ti in 8:
+			g._turrets_step(0.15)
+		tur_ok = bool(turret.get("seen", false)) and String(alarm["state"]) == "ringing" and g.combat.foes.size() == n_foes + 2 and g.combat.shots.size() > ns
+		g._hack_done(ctrl, "turrets")
+		var ns2: int = g.combat.shots.size()
+		for ti2 in 8:
+			g._turrets_step(0.15)
+		tur_ok = tur_ok and String(turret["state"]) == "off" and g.combat.shots.size() == ns2
+		# a cut alarm does not ring
+		alarm["state"] = "armed"
+		gear.belt[0] = {"id": "tl_cutter:C", "n": 1}
+		g.explore_use({"i": g.map.explore.find(alarm)})
+		var nf2: int = g.combat.foes.size()
+		g.raise_alarm()
+		tur_ok = tur_ok and String(alarm["state"]) == "cut" and g.combat.foes.size() == nf2
 	g._hack_done(ctrl, "door")
 	var cr0 := GameState.credits
 	g._hack_done(target, "list")
@@ -9800,8 +9830,8 @@ func _test_sewer(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(var_ok and alley_ok and sewer_ok and wade_ok and drain_ok and wire_ok and hide_ok and done_ok and up_ok and out_ok and city_ok,
-		"53b: every site rolled anew (and more cover); the back alley with its lift building and the manhole, the window; the sewers – canal, grating, a flooded tunnel to the way down, a valve and the pump control, tripwires, dark; wading is slow; the valve drains the tunnel; a tripwire goes off walked into, not sneaked over; down the ladder the dealer's hideout – steel door with code lock, the office (computer, safe); the door opened, the client list taken, the safe looted; back up (the water stays drained), out; used up; in a city the lift goes to the alley and back  [%s]" % " ".join(PackedStringArray([str(var_ok), str(alley_ok), str(sewer_ok), str(wade_ok), str(drain_ok), str(wire_ok), str(hide_ok), str(done_ok), str(up_ok), str(out_ok), str(city_ok)])))
+	check(var_ok and alley_ok and sewer_ok and wade_ok and drain_ok and wire_ok and hide_ok and tur_ok and done_ok and up_ok and out_ok and city_ok,
+		"53b: every site rolled anew (and more cover); the back alley with its lift building and the manhole, the window; the sewers – canal, grating, a flooded tunnel to the way down, a valve and the pump control, tripwires, dark; wading is slow; the valve drains the tunnel; a tripwire goes off walked into, not sneaked over; down the ladder the dealer's hideout – steel door with code lock, the office (computer, safe); the turret sees you, the alarm rings, two more come, the turret hacked off, a cut alarm stays quiet; the door opened, the client list taken, the safe looted; back up (the water stays drained), out; used up; in a city the lift goes to the alley and back  [%s]" % " ".join(PackedStringArray([str(var_ok), str(alley_ok), str(sewer_ok), str(wade_ok), str(drain_ok), str(wire_ok), str(hide_ok), str(tur_ok), str(done_ok), str(up_ok), str(out_ok), str(city_ok)])))
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

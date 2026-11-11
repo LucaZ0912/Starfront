@@ -564,6 +564,75 @@ func zoom_step(d: int) -> void:
 
 ## Package 52: may weapons be used here? So far only in the debug arena (Luz: the real fights come once the system
 ## stands); never in the built-up parts of cities.
+## 0.7.53.5 (Luz): turrets – on, they turn to you when they see you (in reach, not cloaked, nothing high between),
+## ring the alarm and fire bursts; low cover halves their aim, an EMP stuns them; off they hang still.
+const TURRET_REACH := 230.0
+const TURRET_ROF := 0.32
+func _turrets_step(delta: float) -> void:
+	for d in map.explore:
+		if String(d["kind"]) != "turret":
+			continue
+		d["flash"] = maxf(0.0, float(d.get("flash", 0.0)) - delta)
+		if String(d["state"]) != "on" or combat.emp_t > 0.0:
+			continue
+		var eye: Vector2 = (d["pos"] as Vector2) + Vector2(0, 10)
+		var pp: Vector2 = combat.pilot_pos()
+		if eye.distance_to(pp) > TURRET_REACH or combat.pilot_hidden() or bool(combat.sight(eye, pp)["blocked"]) or Commands.suit_god:
+			d["seen"] = false
+			continue
+		var want := ((pp + Vector2(0, -12)) - ((d["pos"] as Vector2) + Vector2(0, -26))).angle()
+		d["ang"] = lerp_angle(float(d.get("ang", PI * 0.5)), want, minf(1.0, delta * 6.0))
+		if not bool(d.get("seen", false)):
+			d["seen"] = true
+			d["cool"] = 0.6                               # it turns before it fires
+			_say_toast("A turret has you – get into cover!", 2.0)
+			raise_alarm()
+		d["cool"] = float(d.get("cool", 0.0)) - delta
+		if float(d["cool"]) > 0.0:
+			continue
+		d["cool"] = TURRET_ROF
+		d["flash"] = 0.06
+		var sg: Dictionary = combat.sight(eye, pp)
+		var chance := 0.42 * (0.45 if sg["cover"] else 1.0)
+		var muzzle: Vector2 = (d["pos"] as Vector2) + Vector2(0, -26) + Vector2.from_angle(float(d["ang"])) * 12.0
+		var res := {"to": null, "dmg": 7.0, "dtype": "kinetic", "splash": 0.0, "from": null}
+		var end: Vector2
+		if randf() < chance:
+			res["kind"] = "hit"
+			end = pp + Vector2(randf_range(-2, 2), -12 + randf_range(-3, 3))
+		elif sg["cover"]:
+			res["kind"] = "blocked"
+			end = (sg["at"] as Vector2) + Vector2(0, -6)
+		else:
+			res["kind"] = "miss"
+			end = pp + Vector2(randf_range(-26, 26), randf_range(-20, 8))
+		combat.shots.append({"a": muzzle, "b": end, "t": 0.0, "life": maxf(0.05, muzzle.distance_to(end) / 900.0), "kind": "slug",
+			"col": Color(1.0, 0.85, 0.4), "res": res, "done": false})
+		Audio.play("w_autocannon", "turret fires", -12.0)
+
+
+## 0.7.53.5 (Luz): the alarm – if the level has a box that is not cut, it rings: everyone here comes for you and two
+## more of them come in from the way you came.
+func raise_alarm() -> void:
+	if combat == null:
+		return
+	for d in map.explore:
+		if String(d["kind"]) == "alarm" and String(d["state"]) == "armed":
+			d["state"] = "ringing"
+			for f in combat.alive():
+				combat._wake(f)
+			var th: Dictionary = PoiData.layer(String(_site.get("theme", "precursor")), depth)
+			var dg: Dictionary = PoiData.DANGER.get(String(_site.get("danger", "yellow")), PoiData.DANGER["yellow"])
+			for i in 2:
+				var sp: Vector2 = combat._free_near(map.spawn + Vector2(randf_range(-30, 30), randf_range(0, 20)))
+				if sp != Vector2.INF:
+					var nf: Dictionary = combat.spawn(String(th["foes"][randi() % th["foes"].size()]), sp, "", String(dg["tiers"][randi() % (dg["tiers"] as Array).size()]))
+					combat._wake(nf)
+			_say_toast("ALARM! The whole place knows you are here – and more of them are coming.", 3.5)
+			Audio.play("warn", "alarm rings", 0.0)
+			return
+
+
 ## 0.7.53.4: the ancient lift by you ({} none).
 func _lift_here() -> Dictionary:
 	for d in map.explore:
@@ -617,6 +686,7 @@ func _wires_step(delta: float) -> void:
 			var d0: Dictionary = map.explore[int(k)]
 			_wires_t.erase(k)
 			combat._explode((d0["pos"] as Vector2) + Vector2(0, 6), 70.0, 55.0, "explosive", null)
+			raise_alarm()
 	for i in map.explore.size():
 		var d: Dictionary = map.explore[i]
 		if String(d["kind"]) != "tripwire" or String(d["state"]) != "shut":
@@ -1159,6 +1229,7 @@ func _process(delta: float) -> void:
 		pilot.moving = false
 	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
 		_wires_step(delta)
+		_turrets_step(delta)
 		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:
@@ -1494,6 +1565,19 @@ func explore_use(z: Dictionary) -> bool:
 						if (f["w"] as Walker).pos.distance_to(pilot.pos) < 360.0:
 							combat._wake(f)
 			return true
+		"alarm":
+			if String(d["state"]) == "cut":
+				_say_toast("Its wires hang loose – it will not ring.", 2.0)
+			elif String(d["state"]) == "ringing":
+				_say_toast("Too late – it is ringing.", 2.0)
+			elif belt_tool("tl_cutter") == "":
+				_say_toast("You need a cutting torch on your belt to cut its wires.", 2.5)
+			else:
+				d["state"] = "cut"                         # 0.7.53.5: quietly
+				GameState.skill_xp("engineering", 2.0)
+				_say_toast("You cut the alarm's wires – it will not ring now.", 2.5)
+				Audio.play("dock_clamp", "alarm cut", -10.0)
+			return true
 		"tripwire":
 			if String(d["state"]) == "shut":
 				d["state"] = "disarmed"                    # 0.7.53.3: carefully – the pin back in, the wire cut
@@ -1584,6 +1668,7 @@ func _hack_done(d: Dictionary, res: String) -> void:
 			d["locked_t"] = Time.get_ticks_msec() * 0.001 + 60.0
 			_say_toast("Traced – the alarm goes!", 3.0)
 			Audio.play("warn", "hack failed: alarm")
+			raise_alarm()                                  # 0.7.53.5: a real alarm, where there is one
 			if combat != null:
 				for f in combat.alive():
 					if (f["w"] as Walker).pos.distance_to(pilot.pos) < 600.0:
@@ -1646,6 +1731,9 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 			Audio.play("module_off" if bool(d["power_off"]) else "module_on", "power switched", -4.0)
 		"turrets":
 			txt = "The turrets power down."
+			for tu in map.explore:
+				if String(tu["kind"]) == "turret":
+					tu["state"] = "off"                        # 0.7.53.5
 		"cameras":
 			txt = "The cameras go blind."
 		"data":
@@ -1850,7 +1938,7 @@ func _draw_minimap() -> void:
 		var c: Color = {"relic": Color(0.85, 0.5, 1.0), "terminal": Color(0.3, 1.0, 0.6), "crate": Color(1.0, 0.8, 0.3), "blastdoor": Color(1.0, 0.35, 0.3),
 			"tablet": Color(0.6, 0.85, 1.0), "vent": Color(0.75, 0.6, 1.0), "hatch": Color(1.0, 0.7, 0.35), "ladder": Color(0.4, 1.0, 0.6),
 			"valve": Color(0.4, 0.8, 0.9), "rust_door": Color(1.0, 0.35, 0.3), "grate_door": Color(1.0, 0.35, 0.3), "steel_door": Color(1.0, 0.35, 0.3),
-			"tripwire": Color(1.0, 0.25, 0.2), "ancient_lift": Color(0.75, 0.55, 1.0)}.get(String(d["kind"]), Color(0, 0, 0, 0))
+			"tripwire": Color(1.0, 0.25, 0.2), "ancient_lift": Color(0.75, 0.55, 1.0), "turret": Color(1.0, 0.35, 0.3), "alarm": Color(1.0, 0.25, 0.2)}.get(String(d["kind"]), Color(0, 0, 0, 0))
 		if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
 			c = Color(0.3, 1.0, 0.45)
 		if String(d["state"]) in ["scanned", "open", "hacked"] and String(d["kind"]) != "blastdoor":

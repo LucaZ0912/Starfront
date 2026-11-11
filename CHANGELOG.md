@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.5 – 2026-11-11
+
+**The dealer's turret and alarm (Luz, package 53b).**
+- **A turret** hangs on the office wall and covers the room: when it sees you (in reach, not cloaked, nothing high in
+  the way) it turns, rings the alarm and fires bursts – low cover halves its aim, a dodge still works. An EMP stuns
+  it; the control room's computer switches it off ("Turrets off").
+- **An alarm box** on a guard room's wall: once it rings – the turret spots you, a hack is traced, a tripwire goes
+  off – everyone on the level comes for you and **two more** come in from the way you came. Cut its wires first
+  (cutting torch) and it stays quiet.
+
 ## alpha 0.7.53.4 – 2026-11-11
 
 **The Precursors' ancient lift (Luz).** A new point on every theme's sheet in Roadmap.md: **level change** – how you

@@ -16,7 +16,8 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"grate_door": "A rusted grate door – locked (its box beside it)",
 	"steel_door": "A steel door with a code lock – sealed",
 	"valve": "Valve wheel – turn it (E): the pumps drain the flooded tunnel",
-	"tripwire": "A tripwire – a grenade on the end of it. Disarm it (E)"}
+	"tripwire": "A tripwire – a grenade on the end of it. Disarm it (E)",
+	"alarm": "Alarm box – cut its wires (cutting torch) before it rings"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -398,7 +399,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
-		"manhole", "hatch", "tripwire", "ancient_lift"]
+		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -484,6 +485,36 @@ func _draw() -> void:
 				draw_rect(Rect2(-4, -10, 8, 10), Color(0.02, 0.02, 0.03))
 				draw_rect(Rect2(-8, -14, 16, 14), Color(1.0, 0.5, 0.2, 0.35), false, 0.6)
 			draw_string(ThemeDB.fallback_font, Vector2(-9, -17), "VENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.9, 0.85, 0.5, 0.8))
+		"turret":
+			# 0.7.53.5 (Luz): a turret on the wall – a housing on a bracket, twin barrels following you, a red eye
+			var on4 := String(d["state"]) == "on"
+			draw_rect(Rect2(-2, -40, 4, 10), Color(0.15, 0.15, 0.16))
+			draw_rect(Rect2(-9, -32, 18, 11), Color(0.2, 0.2, 0.22))
+			draw_rect(Rect2(-9, -32, 18, 2), Color(0.38, 0.38, 0.4))
+			var ang4 := float(d.get("ang", PI * 0.5))
+			var dir4 := Vector2(cos(ang4), sin(ang4) * 0.6)
+			for bo in [-1.5, 1.5]:
+				var b0: Vector2 = Vector2(0, -26) + dir4.orthogonal() * bo
+				draw_line(b0, b0 + dir4 * 11.0, Color(0.1, 0.1, 0.11), 1.6)
+			if float(d.get("flash", 0.0)) > 0.0:
+				draw_circle(Vector2(0, -26) + dir4 * 13.0, 2.5, Color(1.0, 0.85, 0.4))
+			draw_circle(Vector2(4, -29), 1.4, (Color(1.0, 0.2, 0.15) if fposmod(t, 0.8) < 0.6 else Color(0.5, 0.1, 0.1)) if on4 else Color(0.25, 0.25, 0.25))
+		"alarm":
+			# 0.7.53.5: an alarm box – a red housing, a siren lamp on top; ringing, the lamp spins red light
+			var st5 := String(d["state"])
+			draw_rect(Rect2(-6, -30, 12, 14), Color(0.08, 0.08, 0.09))
+			draw_rect(Rect2(-5, -29, 10, 12), Color(0.6, 0.12, 0.1) if st5 != "cut" else Color(0.3, 0.12, 0.1))
+			draw_rect(Rect2(-3, -26, 6, 3), Color(0.9, 0.85, 0.75))
+			draw_rect(Rect2(-3, -36, 6, 6), Color(0.5, 0.1, 0.08))
+			if st5 == "ringing":
+				var sp5 := t * 8.0
+				draw_circle(Vector2(0, -33), 4.0, Color(1.0, 0.2, 0.15))
+				draw_line(Vector2(0, -33), Vector2(0, -33) + Vector2(cos(sp5), sin(sp5) * 0.5) * 30.0, Color(1.0, 0.25, 0.2, 0.5), 3.0)
+			elif st5 == "cut":
+				for wi5 in 3:
+					draw_line(Vector2(-3 + wi5 * 3, -17), Vector2(-4 + wi5 * 3, -12), [Color(1, 0.3, 0.2), Color(0.3, 0.6, 1), Color(1, 0.85, 0.2)][wi5], 0.6)
+			else:
+				draw_circle(Vector2(0, -33), 1.2, Color(1.0, 0.3, 0.2, 0.5 + 0.3 * sin(t * 2.0)))
 		"keypad":
 			# 0.7.53.3: a code lock on the wall – a keypad, a red light (cut it open: the wires behind it)
 			draw_rect(Rect2(-6, -30, 12, 18), Color(0.08, 0.08, 0.09))
