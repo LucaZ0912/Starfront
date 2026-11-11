@@ -48,6 +48,7 @@ const ACTIONS := [
 	{"id": "foot_target_near", "label": "Fight: lock the foe nearest to you", "group": "On foot", "def": [{"k": KEY_R, "shift": true}]},   # 0.7.52.9
 	{"id": "foot_grenade", "label": "Fight: grenade (tap: next, hold: throw)", "group": "On foot", "def": [{"k": KEY_X}]},
 	{"id": "foot_drone", "label": "Fight: drone (kamikaze: dive, others: recall / send)", "group": "On foot", "def": [{"k": KEY_C}]},      # 0.7.52.11
+	{"id": "foot_sneak", "label": "On foot: sneak (on / off)", "group": "On foot", "def": [{"k": KEY_CTRL}]},   # 0.7.52.21
 	{"id": "foot_team", "label": "Fight: ground team (tap: whom, hold: command wheel)", "group": "On foot", "def": [{"k": KEY_V}]},   # 0.7.52.20
 	{"id": "foot_drone_2", "label": "Fight: second drone (Senate armours)", "group": "On foot", "def": [{"k": KEY_C, "shift": true}]},   # 0.7.52.18
 	{"id": "foot_tactics", "label": "Fight: tactical view (tap: switch, hold: off)", "group": "On foot", "def": [{"k": KEY_TAB}]},
@@ -216,7 +217,7 @@ static func desc_to_event(d: Dictionary) -> InputEvent:
 static func event_to_desc(ev: InputEvent) -> Dictionary:
 	if ev is InputEventKey:
 		var kc: int = (ev as InputEventKey).keycode
-		if kc in [KEY_CTRL, KEY_ALT, KEY_META, KEY_NONE]:      # 0.6.75.2: Shift may be bound (the thrust burst)
+		if kc in [KEY_ALT, KEY_META, KEY_NONE]:              # 0.7.52.21: Ctrl may be bound (sneaking)      # 0.6.75.2: Shift may be bound (the thrust burst)
 			return {}
 		if (ev as InputEventKey).shift_pressed and kc != KEY_SHIFT:
 			return {"k": kc, "shift": true}                  # 0.7.52.9: Shift+key

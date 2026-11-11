@@ -360,6 +360,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.21 (package 52b): `GroundCombat.sneaking`, `toggle_sneak()`, `look_of(f)` (foe keys `look0`, `look_ph`,
+  `notice`), `spots(f, p)`, `_watch`, `view_poly(f)`, `_draw_sneak`, `_draw_notice`, consts `SNEAK_ATTACK`, `SNEAK_RANGE`,
+  `VIEW_HALF`, `CLOSE`, `NOTICE_TIME`; `lock()` does not wake while sneaking; shot key `sneak`; `Walker.crouch`; keybind
+  `foot_sneak` (Ctrl; `Keybinds.event_to_desc` lets Ctrl be bound); smoke group `foot_sneak`.
 - 0.7.52.20 (package 52a): `CrewData.TEAM_*`, `ABILITIES`, `STANCES`, `DOWN_TIME`, `REVIVE_FEE`; `PilotGear.team`,
   `team_members()`, `team_toggle()`, `member_gear()` (static), `member_equip()`, `member_unequip()`; member keys `gear`,
   `stance`, `dead` (`CrewCore.effect` gives nothing while dead); `GroundCombat.allies` (dicts with `ally`), `spawn_team()`,

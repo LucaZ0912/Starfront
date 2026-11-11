@@ -66,8 +66,17 @@ func _draw() -> void:
 			_bar(r.position + Vector2(8, 40 + k * 7), 174, float(st[layer]) / maxf(float(mx[layer]), 0.001), COLS[k])
 			k += 1
 		x += 198
+	# 0.7.52.21 (Luz): sneaking – its own line
+	if combat.sneaking:
+		var sl := "SNEAKING – red: where they would spot you  •  low cover hides you  •  they do not hear you"
+		var sk := "%s: stand up  •  half speed  •  your first shot on an unaware foe: double damage  •  R: lock without being noticed" % Keybinds.key_text("foot_sneak")
+		var sw := maxf(font.get_string_size(sl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, font.get_string_size(sk, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x) + 20.0
+		var sr := Rect2(Vector2(vs.x * 0.5 - sw * 0.5, 82 if n > 0 else 12), Vector2(sw, 40))
+		_panel(sr, Color(0.65, 0.5, 1.0, 0.8))
+		_s(sr.position + Vector2(10, 17), sl, Color(0.8, 0.7, 1.0), 13)
+		_s(sr.position + Vector2(10, 33), sk, dim, 11)
 	# 0.7.52.2: the tactical view's line under the lock cards
-	if combat.tactics != 0:
+	elif combat.tactics != 0:
 		var tred := combat.tactics == 2
 		var who = combat.tac_viewer()
 		var line := "TACTICS – your sight: green you can hit, red is covered from you" if not tred else 			"TACTICS – %s's sight: red it sees you, green is safe from it" % (String(who["name"]) if who != null else "?")

@@ -982,8 +982,10 @@ func _process(delta: float) -> void:
 				_stand_up()
 		else:
 			var run := Input.is_action_pressed("foot_run")
+			if combat != null and combat.sneaking:
+				run = false                                 # 0.7.52.21: sneaking – half speed, no running
 			if combat == null or not combat.dodging():
-				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run))      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
+				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run) * (0.5 if combat != null and combat.sneaking else 1.0))      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
 	else:
 		pilot.moving = false
 	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
@@ -1090,6 +1092,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("foot_target_near", false, true):
 			get_viewport().set_input_as_handled()
 			combat.nearest_target()                      # 0.7.52.9 (Luz): Shift+R – the nearest foe
+			return
+		if event.is_action_pressed("foot_sneak", false, false):
+			get_viewport().set_input_as_handled()
+			_say_toast(combat.toggle_sneak(), 2.5)         # 0.7.52.21 (Luz): Ctrl – sneaking on / off
 			return
 		# 0.7.52.20 (Luz): V – a tap picks whom the orders go to, held: the command wheel (time runs slow)
 		if event.is_action_pressed("foot_team", false, true):

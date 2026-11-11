@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.21 – 2026-11-11
+
+**Package 52b, part 1 – sneaking (Luz, after the concept she approved).**
+
+- **Ctrl** switches sneaking on and off (rebindable – Ctrl can be bound now). Half speed, no running; you are drawn
+  low with a violet ring.
+- Unaware foes then do **not hear** you and **see you only in their view** – a cone that sways slowly as they look
+  about, shorter than their sight; **low cover hides you**, smoke too; right next to them they notice you anyway. In
+  their view they need a moment to spot you: over their heads "zz", then a yellow "?" filling up.
+- The tactical view shows in red **where they would spot you**, with a line on top.
+- **R** locks an unaware foe without it noticing, and you may open fire: **the first shot on an unaware foe does double
+  damage** ("sneak attack ×2"). Shots are heard as before.
+- Your team, following you, sneaks too and cannot be spotted.
+- Smoke test group `foot_sneak`.
+
 ## alpha 0.7.52.20 – 2026-11-11
 
 **Package 52a – the ground team (Luz, after the mockup she approved).**

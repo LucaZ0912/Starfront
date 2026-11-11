@@ -27,6 +27,7 @@ var aim := Vector2.INF             # package 52: in a fight – the weapon in th
 var aim_dtype := "kinetic"         # its damage type (the colour of the weapon)
 var aim_weapon := ""               # 0.7.52.3: the weapon's family (its picture, WeaponArt)
 var down := false                  # package 52: fallen in a fight – lies on the ground
+var crouch := false                # 0.7.52.21: sneaking – drawn low
 var _pp := 0
 const DRINK_TIME := 3.2
 var _t := 0.0
@@ -189,7 +190,11 @@ func _draw() -> void:
 	else:
 		if aim != Vector2.INF and not down and dir == 1:
 			_draw_aim(bob * s)                     # facing away: the weapon in front of the body, behind it for us
-		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
+		if crouch:                                  # 0.7.52.21: sneaking – low, bent
+			var cs2 := Vector2(size.x * 1.04, size.y * 0.86)
+			draw_texture_rect(tex, Rect2(Vector2(-cs2.x * 0.5, -cs2.y + bob * s), cs2), false, Color(0.88, 0.85, 0.95))
+		else:
+			draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
 	if aim != Vector2.INF and not sitting and not down:
 		if dir != 1:
 			_draw_aim(bob * s)

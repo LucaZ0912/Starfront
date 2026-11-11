@@ -77,6 +77,7 @@ var allies: Array = []                             # 0.7.52.20 (package 52a): yo
 var team_sel := 0                                  # whom the command wheel speaks to: 0, 1 a member, allies.size() all
 var wheel_open := false                            # the command wheel is up (V held): time runs slow
 var _team_made := false
+var sneaking := false                              # 0.7.52.21 (Luz): Ctrl – sneaking (they do not hear you, see you only in their view)
 var reviving = null                                # the member you are bringing back (the use key held beside it)
 var revive_k := 0.0
 var arm_charge := 0.0                              # 0.7.52.14: the Red Arm Laser's charge (seconds of its `charge`)
@@ -287,7 +288,8 @@ func lock(f) -> void:
 	if active != f:
 		active = f
 		lock_t = GearData.LOCK_TIME * (1.0 - 0.04 * GameState.skill_level("firearms"))
-	_wake(f)
+	if not sneaking:
+		_wake(f)                                      # 0.7.52.21: sneaking, it does not notice the lock
 	Audio.play("lock_acquired", "lock on foot", -6.0)
 
 
@@ -469,7 +471,7 @@ func step(delta: float, move: Vector2) -> void:
 	_tac_step(delta)
 	queue_redraw()
 	if tac_node != null:
-		tac_node.queue_redraw()
+		tac_node.queue_redraw()                       # (0.7.52.21: also the sneaking view)
 
 
 static func _face(d: Vector2) -> int:
@@ -480,7 +482,7 @@ static func _face(d: Vector2) -> int:
 
 func _pilot_fire(delta: float) -> void:
 	pilot_cool = maxf(0.0, pilot_cool - delta)
-	if not fight or active == null or lock_t > 0.0 or dodge_t > 0.0 or pilot_cool > 0.0 or view._collapsed:
+	if (not fight and not sneaking) or active == null or lock_t > 0.0 or dodge_t > 0.0 or pilot_cool > 0.0 or view._collapsed:
 		return
 	var wid := weapon_id()
 	if wid == "":
@@ -549,6 +551,9 @@ func fire(from, to, w: Dictionary) -> void:
 	for i in pellets:
 		var r := randf()
 		var res := {"to": to, "dmg": float(w["damage"]) * (float(from["dmg"]) if from != null else 1.0), "dtype": dtype, "splash": float(w.get("splash", 0.0)), "from": from}
+		if from == null and to != null and not at_drone and not to.has("ally") and not to["aware"]:
+			res["dmg"] = float(res["dmg"]) * SNEAK_ATTACK                 # 0.7.52.21 (Luz): unaware – double
+			res["sneak"] = true
 		var end: Vector2
 		if r < chance:
 			res["kind"] = "hit"
@@ -611,6 +616,8 @@ func _resolve(s: Dictionary) -> void:
 			elif to.has("ally"):
 				_hurt_ally(to, float(res["dmg"]), String(res["dtype"]))     # 0.7.52.20
 			elif not to["dead"]:
+				if res.has("sneak"):
+					floaters.append({"pos": (to["w"] as Walker).pos + Vector2(0, -52), "text": "sneak attack ×2", "col": Color(0.8, 0.6, 1.0), "t": 0.0})
 				_hurt_foe(to, float(res["dmg"]), String(res["dtype"]))
 				if res["from"] == null:
 					GameState.skill_xp("firearms", 1.0)
@@ -757,7 +764,12 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	var dist := w.pos.distance_to(pp)
 	var sg := sight(w.pos, pp)
 	if not f["aware"]:
-		if (dist < float(f["sight"]) and not sg["blocked"] and not smoke_between(w.pos, pp)) or _sees_ally(f):
+		if sneaking:
+			_watch(f, delta)                          # 0.7.52.21: only in its view, slowly noticing
+			if float(f.get("notice", 0.0)) >= 1.0:
+				_wake(f)
+				floaters.append({"pos": w.pos + Vector2(0, -46), "text": "spotted you!", "col": Color(1.0, 0.4, 0.3), "t": 0.0})
+		elif (dist < float(f["sight"]) and not sg["blocked"] and not smoke_between(w.pos, pp)) or _sees_ally(f):
 			_wake(f)
 		else:
 			w.moving = false
@@ -1131,7 +1143,10 @@ func _tac_step(delta: float) -> void:
 
 
 func _draw_tactics() -> void:
-	_draw_tactics_view()
+	if sneaking:
+		_draw_sneak()                                # 0.7.52.21: where they would spot you
+	else:
+		_draw_tactics_view()
 	# 0.7.52.4 (Luz): how strong each foe is – a coloured ring on the ground at its feet
 	for f in alive():
 		var col: Color = FoeData.TIERS[String(f.get("tier", "green"))]["col"]
@@ -1955,6 +1970,112 @@ func _arm_geometry(beam: Dictionary) -> void:
 	beam["runs"] = _beam_runs(a, b, muzzle, end)
 
 
+# ---------------------------------------------------------------- 0.7.52.21 (package 52b, Luz): sneaking
+
+const SNEAK_ATTACK := 2.0                         # your first shot on an unaware foe
+const SNEAK_RANGE := 0.6                          # share of its sight it spots you at when you sneak
+const VIEW_HALF := 0.9                            # half the angle of its view (radians)
+const CLOSE := 26.0                               # right next to it, it notices you anyway
+const NOTICE_TIME := 1.2                          # seconds in its view before it has spotted you
+
+
+## Sneaking on or off (Ctrl). Returns what to say.
+func toggle_sneak() -> String:
+	sneaking = not sneaking
+	view.pilot.crouch = sneaking
+	for a in allies:
+		(a["w"] as Walker).crouch = sneaking and a["order"] == "follow"
+	Audio.play("ui_click", "sneak", -10.0)
+	return "Sneaking – they do not hear you, and see you only in their view. %s: stand up." % Keybinds.key_text("foot_sneak") if sneaking else "You stand up."
+
+
+## Where an unaware foe looks: it turns its head slowly about the way it faces.
+func look_of(f: Dictionary) -> float:
+	if not f.has("look0"):
+		f["look0"] = randf() * TAU
+	if not f.has("look_ph"):
+		f["look_ph"] = randf() * TAU
+	return float(f["look0"]) + sin(_t * 0.45 + float(f["look_ph"])) * 0.8
+
+
+## Would a foe spot you at p now? (in its view and reach, not behind cover – low cover hides you – nor smoke; or right
+## next to it)
+func spots(f: Dictionary, p: Vector2) -> bool:
+	var w: Walker = f["w"]
+	var d := w.pos.distance_to(p)
+	if d < CLOSE:
+		return true
+	if d > float(f["sight"]) * SNEAK_RANGE:
+		return false
+	if absf(angle_difference(look_of(f), (p - w.pos).angle())) > VIEW_HALF:
+		return false
+	var sg := sight(w.pos, p)
+	return not sg["blocked"] and not sg["cover"] and not smoke_between(w.pos, p)
+
+
+func _watch(f: Dictionary, delta: float) -> void:
+	var w: Walker = f["w"]
+	w.dir = _face(Vector2.from_angle(look_of(f)))
+	var k := 1.0 / (NOTICE_TIME * (1.0 + 0.06 * GameState.skill_level("athletics")))
+	if spots(f, pilot_pos()):
+		f["notice"] = minf(1.0, float(f.get("notice", 0.0)) + delta * k)
+	else:
+		f["notice"] = maxf(0.0, float(f.get("notice", 0.0)) - delta * 0.4)
+
+
+## The area an unaware foe would spot you in: its view cut off by cover (low cover too – you are low).
+func view_poly(f: Dictionary) -> PackedVector2Array:
+	var w: Walker = f["w"]
+	var reach := float(f["sight"]) * SNEAK_RANGE
+	var face := look_of(f)
+	var pts := PackedVector2Array([w.pos])
+	var n := 28
+	for i in n + 1:
+		var dir := Vector2.from_angle(face - VIEW_HALF + 2.0 * VIEW_HALF * i / n)
+		var end := w.pos + dir * reach
+		var dd := 6.0
+		while dd < reach:
+			if cover_at(w.pos + dir * dd) != 0:
+				end = w.pos + dir * dd
+				break
+			dd += 3.0
+		pts.append(end)
+	return pts
+
+
+## Sneaking: the tactical view shows where each unaware foe would spot you, and over its head how far it has noticed you.
+func _draw_sneak() -> void:
+	var red := Color(1.0, 0.3, 0.25)
+	for f in alive():
+		if f["aware"]:
+			continue
+		var poly := view_poly(f)
+		var sp := PackedVector2Array()
+		for p in poly:
+			sp.append(p * S)
+		tac_node.draw_colored_polygon(sp, Color(red, 0.2))
+		sp.append(sp[0])
+		tac_node.draw_polyline(sp, Color(red, 0.7), 2.0)
+		var fp := (f["w"] as Walker).pos * S
+		tac_node.draw_set_transform(fp, 0.0, Vector2(1.0, 0.45))
+		tac_node.draw_arc(Vector2.ZERO, CLOSE * S, 0.0, TAU, 32, Color(red, 0.55), 2.0)
+		tac_node.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_notice(font: Font) -> void:
+	for f in alive():
+		if f["aware"]:
+			continue
+		var ep := (f["w"] as Walker).pos * S + Vector2(0, -ChibiArt.H * ChibiArt.CHAR_SCALE - 24)
+		var nk := float(f.get("notice", 0.0))
+		draw_circle(ep, 13.0, Color(0.03, 0.04, 0.08, 0.9))
+		if nk > 0.02:
+			draw_arc(ep, 11.0, -PI / 2, -PI / 2 + TAU * nk, 24, Color(1.0, 0.8, 0.25) if nk < 0.75 else Color(1.0, 0.4, 0.3), 3.0)
+			draw_string(font, ep + Vector2(-10, 6), "?", HORIZONTAL_ALIGNMENT_CENTER, 20, 16, Color(1.0, 0.8, 0.25))
+		else:
+			draw_string(font, ep + Vector2(-10, 5), "zz", HORIZONTAL_ALIGNMENT_CENTER, 20, 12, Color(0.6, 0.65, 0.7))
+
+
 # ---------------------------------------------------------------- 0.7.52.20 (package 52a): the ground team
 
 ## Where each member keeps by you when following (art px from your feet).
@@ -2047,10 +2168,12 @@ func _foe_target(f: Dictionary) -> Variant:
 	return best
 
 
-## Does a foe see one of your team?
+## Does a foe see one of your team? (0.7.52.21: not those sneaking behind you)
 func _sees_ally(f: Dictionary) -> bool:
 	var w: Walker = f["w"]
 	for a in allies_up():
+		if sneaking and a["order"] == "follow":
+			continue
 		var ap: Vector2 = (a["w"] as Walker).pos
 		if w.pos.distance_to(ap) < float(f["sight"]) and not sight(w.pos, ap)["blocked"] and not smoke_between(w.pos, ap):
 			return true
@@ -2470,6 +2593,12 @@ func _draw() -> void:
 	var red := Color(1.0, 0.3, 0.3)
 	_draw_grenades()
 	_draw_team()
+	if sneaking:
+		_draw_notice(font)
+		var pr := pilot_pos() * S + Vector2(0, -2)
+		draw_set_transform(pr, 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, Color(0.7, 0.55, 1.0, 0.9), 3.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# 0.7.52.5: a sniper's red aiming line in the last moment before its shot – your cue to dodge
 	for sf in alive():
 		if String(sf["role"]) == "sniper" and sf["aware"] and float(sf["cool"]) < 0.9 and sf["state"] != "flee":

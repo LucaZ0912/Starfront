@@ -152,6 +152,7 @@ func _process(delta: float) -> void:
 				_test_foot_pathfinder(view)      # 0.7.52.14 – the Covenant's Pathfinder armour
 				_test_foot_senate(view)          # 0.7.52.18 – the Assembly's Senate armours
 				_test_foot_team(view)            # 0.7.52.20 – package 52a: the ground team
+				_test_foot_sneak(view)           # 0.7.52.21 – package 52b: sneaking
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9419,6 +9420,103 @@ func _test_foot_drones(view: SystemView) -> void:
 ## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
 ## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
 ## the arm raised.
+## 0.7.52.21 (package 52b): sneaking – Ctrl on and off, half speed; an unaware foe sees you only in its view (not behind
+## low cover), noticing you over a moment; it does not notice your lock; your first shot on it does double damage.
+func _test_foot_sneak(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	gear.weapons[0] = "wp_rifle:C"
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "0.7.52.21: the arena opens")
+		return
+	gear.refill()
+	Commands.suit_god = true
+	cb.step(0.05, Vector2.ZERO)
+	var key_ok: bool = Keybinds.key_text("foot_sneak").to_lower().contains("ctrl")
+	var here: Vector2 = cb._free_near(g.pilot.pos + Vector2(0, 40))
+	var fo: Dictionary = cb.spawn("bandit_rifleman", cb._free_near(here + Vector2(110, 0)))
+	var fw: Walker = fo["w"]
+	var put := func(q: Vector2):
+		g.pilot.pos = q
+		g.pilot.position = q * GroundMap.SCALE
+	var look_at := func(ang: float):
+		fo["look0"] = ang
+		fo["look_ph"] = -cb._t * 0.45                      # sin(0) now: it looks that way
+	# sneaking: behind its back – not seen, no matter how long
+	var msg: String = cb.toggle_sneak()
+	var on_ok: bool = cb.sneaking and msg.contains("Sneaking") and g.pilot.crouch
+	put.call(cb._free_near(fw.pos + Vector2(-90, 0)))
+	look_at.call(0.0)                                        # it looks right, away from you
+	for i in 15:
+		look_at.call(0.0)
+		cb.step(0.1, Vector2.ZERO)
+	var back_ok: bool = not fo["aware"] and float(fo.get("notice", 0.0)) < 0.05 and not cb.spots(fo, cb.pilot_pos())
+	# your lock does not wake it; the first shot does double damage
+	cb.lock(fo)
+	var lock_ok: bool = not fo["aware"] and cb.active == fo
+	var w := GD.stats("wp_rifle:C")
+	var s0 := cb.shots.size()
+	cb.fire(null, fo, w)
+	var sneak_ok: bool = cb.shots.size() > s0 and is_equal_approx(float(cb.shots[-1]["res"]["dmg"]), float(w["damage"]) * GroundCombat.SNEAK_ATTACK)
+	cb.shots.clear()
+	cb.locks.clear()
+	cb.active = null
+	fo["aware"] = false
+	fo["state"] = "idle"
+	fo["notice"] = 0.0
+	# in front of it, in the open: it notices you after a moment, not at once
+	look_at.call(PI)                                         # it looks left, at you
+	cb.step(0.1, Vector2.ZERO)
+	var not_yet: bool = not fo["aware"] and float(fo.get("notice", 0.0)) > 0.0
+	for i2 in 30:
+		look_at.call(PI)
+		cb.step(0.1, Vector2.ZERO)
+	var seen_ok: bool = not_yet and fo["aware"]
+	# standing up: it would see you at once, all round
+	var msg2: String = cb.toggle_sneak()
+	var off_ok: bool = not cb.sneaking and msg2.contains("stand up") and not g.pilot.crouch
+	var q2: Vector2 = cb._free_near(cb.pilot_pos() + Vector2(0, -100))
+	for off in [Vector2(0, -100), Vector2(0, 100), Vector2(-100, 0), Vector2(100, 60), Vector2(-80, -80), Vector2(80, -80)]:
+		var qq: Vector2 = cb._free_near(cb.pilot_pos() + off)
+		if qq != Vector2.INF and not cb.sight(qq, cb.pilot_pos())["blocked"]:
+			q2 = qq
+			break
+	var fo2: Dictionary = cb.spawn("bandit_rifleman", q2)
+	fo2["look0"] = -PI * 0.5
+	cb.step(0.1, Vector2.ZERO)
+	off_ok = off_ok and fo2["aware"]
+	# back
+	Commands.suit_god = false
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(key_ok and on_ok and back_ok and lock_ok and sneak_ok and seen_ok and off_ok,
+		"0.7.52.21: sneaking – Ctrl on and off; behind its back it does not see you; your lock does not wake it, the first shot does double damage; in its view it notices you after a moment; standing it sees you at once  [%s]" % " ".join(PackedStringArray([str(key_ok), str(on_ok), str(back_ok), str(lock_ok), str(sneak_ok), str(seen_ok), str(off_ok)])))
+
+
 ## 0.7.52.20 (package 52a): the ground team – up to two crew along, their gear from your pockets, their orders on the
 ## command wheel, their abilities; foes shoot at them too; down they come back by your hand, dead only by a clinic.
 func _test_foot_team(view: SystemView) -> void:
