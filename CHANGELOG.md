@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.10 – 2026-11-11
+
+**Fix: ruins and crash sites in the approach without settlement pads.** Seen from above on the way down, a ruin or a
+crash site now shows only the one landing field the drone sets down on – not the four pads of a settlement.
+
 ## alpha 0.7.52.9 – 2026-11-11
 
 **Grenade places, the grenade on X, Shift+R, small bars over foes, softer radar colours, the controls in two tabs
