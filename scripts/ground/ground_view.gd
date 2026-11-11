@@ -105,7 +105,8 @@ var _poi_cache := {}                     # 0.7.53.2: the site's two maps while y
 var fog: Node2D = null
 var depth := 0                            # 0.7.53.3: the level of a site you are on (0 the top)
 var _city_site = null                     # 0.7.53.3: in a city, the site before the alley's sewers took its place
-var _wires_t := {}                        # 0.7.53.3: tripwires set off – index -> seconds to the blast
+var _wires_t := {}
+var _sink := {}                           # 0.7.53.4: riding the ancient lift – {"d", "t", "dir"}                        # 0.7.53.3: tripwires set off – index -> seconds to the blast
 var _mm: Control = null                  # package 53a: the minimap of a site (what you have seen)
 var _mm_img: Image = null
 var _mm_tex: ImageTexture = null
@@ -563,6 +564,38 @@ func zoom_step(d: int) -> void:
 
 ## Package 52: may weapons be used here? So far only in the debug arena (Luz: the real fights come once the system
 ## stands); never in the built-up parts of cities.
+## 0.7.53.4: the ancient lift by you ({} none).
+func _lift_here() -> Dictionary:
+	for d in map.explore:
+		if String(d["kind"]) == "ancient_lift" and (d["pos"] as Vector2).distance_to(pilot.pos) < 40.0:
+			return d
+	return {}
+
+
+## 0.7.53.4 (Luz): riding the ancient lift – onto the platform's middle, then it sinks (or rises) and you with it.
+func _sink_step(delta: float) -> void:
+	var d: Dictionary = _sink["d"]
+	_sink["t"] = float(_sink["t"]) + delta
+	var tt := float(_sink["t"])
+	var c: Vector2 = d["pos"]
+	if tt < 0.5:
+		pilot.step((c - pilot.pos).limit_length(1.0), delta, 0.8)
+		return
+	pilot.pos = c
+	var k := clampf((tt - 0.5) / 1.3, 0.0, 1.0)
+	d["sink"] = k
+	pilot.position = (c + Vector2(0, 14.0 * k)) * GroundMap.SCALE
+	pilot.modulate.a = 1.0 - k
+	if k >= 1.0:
+		var down := int(_sink["dir"]) > 0
+		d["sink"] = 0.0
+		_sink = {}
+		pilot.modulate.a = 1.0
+		depth = depth + 1 if down else maxi(0, depth - 1)
+		go_level("dungeon", "dungeon_down" if down else "dungeon_up")
+		_say_toast("The platform settles – level %d." % (depth + 1), 2.0)
+
+
 ## 0.7.53.3: wading through the sewer's canal is slow.
 func _wade() -> float:
 	if map == null or pilot == null:
@@ -1109,6 +1142,8 @@ func _process(delta: float) -> void:
 		pilot.step(Vector2.DOWN, delta, 0.8)
 	elif not _ride.is_empty():
 		_ride_step(delta)
+	elif not _sink.is_empty():
+		_sink_step(delta)
 	elif input_enabled and talk == null and _lift_menu == null and minigame == null:
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
 		if not _seat.is_empty():
@@ -1587,6 +1622,12 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 		"drain":
 			_drain(d.get("flood", []))                     # 0.7.53.3: the pumps run
 			txt = ""
+		"lift":
+			txt = "Somewhere in the ruin something wakes – the ancient lift hums, its crystals light up."
+			for al in map.explore:
+				if String(al["kind"]) == "ancient_lift" and String(al["state"]) == "dormant":
+					al["state"] = "active"                     # 0.7.53.4
+			Audio.play("module_on", "ancient lift wakes", -2.0)
 		"list":
 			txt = ""
 			_poi_target_done(d)                            # 0.7.53.3: the dealer's client list – the site's target
@@ -1809,7 +1850,7 @@ func _draw_minimap() -> void:
 		var c: Color = {"relic": Color(0.85, 0.5, 1.0), "terminal": Color(0.3, 1.0, 0.6), "crate": Color(1.0, 0.8, 0.3), "blastdoor": Color(1.0, 0.35, 0.3),
 			"tablet": Color(0.6, 0.85, 1.0), "vent": Color(0.75, 0.6, 1.0), "hatch": Color(1.0, 0.7, 0.35), "ladder": Color(0.4, 1.0, 0.6),
 			"valve": Color(0.4, 0.8, 0.9), "rust_door": Color(1.0, 0.35, 0.3), "grate_door": Color(1.0, 0.35, 0.3), "steel_door": Color(1.0, 0.35, 0.3),
-			"tripwire": Color(1.0, 0.25, 0.2)}.get(String(d["kind"]), Color(0, 0, 0, 0))
+			"tripwire": Color(1.0, 0.25, 0.2), "ancient_lift": Color(0.75, 0.55, 1.0)}.get(String(d["kind"]), Color(0, 0, 0, 0))
 		if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
 			c = Color(0.3, 1.0, 0.45)
 		if String(d["state"]) in ["scanned", "open", "hacked"] and String(d["kind"]) != "blastdoor":
@@ -2138,11 +2179,24 @@ func use(instant: bool = false) -> bool:
 			go_level("alley" if is_city() else "landing", "dungeon_out")           # 0.7.53.2: back out
 			return true
 		"dungeon_down":
+			var al := _lift_here()
+			if not al.is_empty():
+				if String(al["state"]) == "dormant":
+					_say_toast("The ancient lift sleeps – their computer can wake it, or a crystal panel somewhere on this level.", 3.5)
+					return true
+				_sink = {"d": al, "t": 0.0, "dir": 1}         # 0.7.53.4 (Luz): the platform sinks with you
+				Audio.play("dock_clamp", "ancient lift", -4.0)
+				return true
 			depth += 1                                   # 0.7.53.3: a level deeper
 			go_level("dungeon", "dungeon_down")
 			_say_toast("Down the ladder – level %d." % (depth + 1), 2.0)
 			return true
 		"dungeon_up":
+			var al2 := _lift_here()
+			if not al2.is_empty():
+				_sink = {"d": al2, "t": 0.0, "dir": -1}
+				Audio.play("dock_clamp", "ancient lift", -4.0)
+				return true
 			depth = maxi(0, depth - 1)
 			go_level("dungeon", "dungeon_up")
 			return true

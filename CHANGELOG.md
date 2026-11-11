@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.4 – 2026-11-11
+
+**The Precursors' ancient lift (Luz).** A new point on every theme's sheet in Roadmap.md: **level change** – how you
+get from one level to the next (the sewers: ladder and hatch).
+- **The Precursor ruins go two levels deep.** The way down is an **ancient lift**: a round iron platform set into the
+  floor in a rusted ring of glyphs, two obelisks with crystals beside it, a console before it.
+- **Sometimes it sleeps** (dust and cracks, dull crystals, a red glyph on the console): hack their computer ("Wake
+  the ancient lift") or cut open a crystal panel somewhere on the level. Woken, the glyphs glow, lightning leaps
+  between the crystals and a column of light stands over the platform.
+- **Riding it:** E on the platform – you step onto its middle and it sinks with you into the dark; below you arrive
+  on its twin, which takes you back up. The vault with the relic, the tablets and the crystal guardians lie on the
+  deeper level.
+- A level holds only so many foes now (green 8, yellow 11, red 14); the ruins always have two stores.
+
 ## alpha 0.7.53.3 – 2026-11-11
 
 **Package 53b, first part – levels, the structure per theme, and the city's way down: the sewers (Luz).**

@@ -238,11 +238,12 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var spare: Array = cells.filter(func(c): return not need.has(c))
 	_shuffle(spare, rng)
 	var control: Vector2i = spare[0]
-	var stores: Array = [spare[1]] if spare.size() > 1 else []
-	if spare.size() > 4 and rng.randf() < 0.6:
-		stores.append(spare[2])
+	var stores: Array = []
+	for si in rng.randi_range(int(th.get("stores", [1, 2])[0]), int(th.get("stores", [1, 2])[1])):
+		if spare.size() > si + 2:
+			stores.append(spare[1 + si])
 	var tablet_c := Vector2i(-1, -1)
-	if int(th.get("tablets", 0)) > 0 and spare.size() > 3:
+	if int(th.get("tablets", 0)) > 0 and spare.size() > 3 and last:
 		tablet_c = spare[3]
 	need.append(control)
 	need += stores
@@ -341,8 +342,16 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				_bridge(m, rooms[e3[0]], rooms[e3[1]], corr)
 	# ---- the way in (and out)
 	var en: Rect2i = rooms[entr_c]
+	var lift_way := String(th.get("descent", "hatch")) == "lift"
 	var out_ladder := String(th.get("outside", "ruin")) == "alley" or depth > 0
-	if out_ladder:
+	if depth > 0 and lift_way:
+		# 0.7.53.4 (Luz): you come down on the ancient lift – it takes you back up too
+		var lp0 := Vector2(en.position.x + en.size.x * 0.5, en.position.y + 3.2) * TILE
+		_ancient_lift(m, lp0, "active", rf)
+		m.spawn = lp0 + Vector2(0, 30)
+		m.zones.append({"rect": Rect2(lp0 - Vector2(20, 12), Vector2(40, 26)), "kind": "dungeon_up", "id": "dungeon_up",
+			"title": "The ancient lift – ride it back up", "col": Color(0.7, 0.5, 1.0), "sign": Vector2(-100, -100)})
+	elif out_ladder:
 		# a ladder on the entrance room's north wall: up to the street (or the level above)
 		var lx := _wall_spot(m, en, en.position.x + en.size.x / 2)
 		ExploreNode.add(m, "ladder", Vector2(lx + 0.5, en.position.y) * TILE, {"no_zone": true, "up": true})
@@ -356,7 +365,18 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		m.zones.append({"rect": Rect2(Vector2(en.position.x + en.size.x * 0.5 - 2, en.end.y - 1.0) * TILE, Vector2(4, 1.0) * TILE), "kind": "dungeon_out",
 			"id": "dungeon_out", "title": "Back out into the open", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 		m.decals.append({"kind": "stripes", "x": int(en.position.x + en.size.x * 0.5) - 2, "y": en.end.y - 1, "w": 4, "h": 1})
-	if not last:
+	var lift_i := -1
+	if not last and lift_way:
+		# 0.7.53.4 (Luz): the way down in the old ruins – an ancient lift; sometimes it sleeps and must be woken
+		var drl: Rect2i = rooms[down_c]
+		var lp := Vector2(drl.position.x + drl.size.x * 0.5, drl.position.y + drl.size.y * 0.5) * TILE
+		var lft := _ancient_lift(m, lp, "dormant" if rng.randf() < 0.55 else "active", rf)
+		lift_i = m.explore.find(lft)
+		m.zones.append({"rect": Rect2(lp - Vector2(20, 12), Vector2(40, 26)), "kind": "dungeon_down", "id": "dungeon_down",
+			"title": "The ancient lift – ride it down", "col": Color(0.7, 0.5, 1.0), "sign": Vector2(-100, -100)})
+		m.set_meta("down_front", lp + Vector2(0, 30))
+		m.lights.append({"pos": lp, "r": 60.0, "col": th["light"], "a": 0.3, "flicker": true})
+	elif not last:
 		# the way down: a hatch in the far room's floor
 		var drr: Rect2i = rooms[down_c]
 		var hp := Vector2(drr.position.x + drr.size.x * 0.5, drr.position.y + drr.size.y * 0.5) * TILE
@@ -419,6 +439,20 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		if ci >= 0:
 			term["cage"] = ci
 		ExploreNode.add(m, "terminal", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE, term)
+	elif lift_i >= 0:
+		# 0.7.53.4: their computer wakes the lift; so does a crystal panel somewhere else on the level
+		var dormant := String(m.explore[lift_i]["state"]) == "dormant"
+		ExploreNode.add(m, "terminal", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE,
+			{"actions": ["lift", "data"] if dormant else ["data"], "lift": lift_i, "seed": rng.randi(), "style": String(th.get("computer", "")), "level": 1})
+		if dormant:
+			var pcs: Array = cells.filter(func(c7): return is_room[c7] and c7 != down_c and c7 != control)
+			if not pcs.is_empty():
+				var pr: Rect2i = rooms[pcs[rng.randi() % pcs.size()]]
+				ExploreNode.add(m, "panel", Vector2(_wall_spot(m, pr, pr.position.x + pr.size.x - 3) + 0.5, pr.position.y) * TILE,
+					{"inside": "button", "effect": "lift", "lift": lift_i, "wall": true, "style": style, "seed": rng.randi(), "shape": "round"})
+			targets.append(["lift", "An ancient lift down – it sleeps; their computer or a crystal panel wakes it"])
+		else:
+			targets.append(["lift", "An ancient lift down – awake"])
 	else:
 		# the pump control drains the flooded way; a valve wheel beside the water does it by hand
 		var acts2: Array = ["drain", "data"] if not flood_tiles.is_empty() else ["data"]
@@ -495,6 +529,8 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		if not is_room.get(gc, false):
 			n_g = rng.randi_range(0, 2)
 		for gi in n_g:
+			if foes.size() >= int(dg.get("cap", 12)):
+				break                                           # 0.7.53.4: a level holds only so many
 			var p := (Vector2(gr.position.x + 1 + rng.randf() * maxf(1.0, gr.size.x - 2), gr.position.y + 1.2 + rng.randf() * maxf(0.5, gr.size.y - 2.4))) * TILE
 			if m.free_at(p, 6.0) and m.floor_kind[int(p.y / TILE) * W + int(p.x / TILE)] != 18:
 				m.foe_spawns.append(p)
@@ -558,6 +594,16 @@ static func site_targets(maps: Array) -> Array:
 	out.append(["caches", "%d supply caches, some welded shut" % n_cache])
 	out.append(["foes", "%d hostiles – and a leader by the inner door" % n_foes])
 	return out
+
+
+## 0.7.53.4 (Luz): the Precursors' ancient lift – a round platform in a ring of glyphs, two obelisks with crystals
+## beside it (they stand in the way), a console before it. "dormant" (wake it first) or "active".
+static func _ancient_lift(m: GroundMap, p: Vector2, state: String, fk: int) -> Dictionary:
+	var tx := int(p.x / TILE)
+	var ty := int(p.y / TILE)
+	for sx in [-2, 2]:
+		m.set_t(tx + sx, ty, T.BLOCK, fk)
+	return ExploreNode.add(m, "ancient_lift", p, {"no_zone": true, "state": state})
 
 
 ## A spot on a room's north wall (a whole face above it, not a way out), as near `want` as there is.

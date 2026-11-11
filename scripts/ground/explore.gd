@@ -229,6 +229,70 @@ func _draw_rust_door(d: Dictionary, t: float) -> void:
 	draw_circle(Vector2(gw * 0.5 + 6, top + gh * 0.4), 1.6, Color(lc, 0.5 + 0.4 * sin(t * 2.0)))
 
 
+## 0.7.53.4 (Luz): the Precursors' ancient lift – a round iron platform set into the floor in a rusted ring of glyphs,
+## two obelisks with crystals beside it, a console before it. Dormant: dust and cracks, dull crystals, a red glyph;
+## woken: the glyphs glow, arcs leap between the crystals, a column of light stands over it, motes rise. Riding it,
+## the platform (`sink` 0..1) goes down into the dark.
+func _draw_ancient_lift(d: Dictionary, t: float) -> void:
+	var s := GroundMap.SCALE
+	var on := String(d["state"]) != "dormant"
+	var sink := float(d.get("sink", 0.0))
+	var vi := Color(0.7, 0.5, 1.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.55) * s)
+	draw_circle(Vector2.ZERO, 30.0, Color(0, 0, 0, 0.35))
+	draw_circle(Vector2.ZERO, 27.0, Color(0.3, 0.21, 0.15))
+	draw_arc(Vector2.ZERO, 27.0, 0.0, TAU, 48, Color(0.45, 0.32, 0.22), 1.5)
+	for gi in 16:
+		var ga := gi * TAU / 16.0
+		var gp := Vector2(cos(ga), sin(ga)) * 23.5
+		var gc := vi if on else Color(0.3, 0.24, 0.32)
+		if on:
+			gc.a = 0.6 + 0.4 * sin(t * 3.0 + gi)
+		draw_line(gp - Vector2(sin(ga), -cos(ga)) * 1.6, gp + Vector2(sin(ga), -cos(ga)) * 1.6, gc, 1.2)
+	if sink > 0.0:
+		draw_circle(Vector2.ZERO, 20.0, Color(0.02, 0.01, 0.03))                       # the shaft opening as it goes down
+		draw_circle(Vector2.ZERO, 20.0 * (1.0 - sink * 0.5), Color(0.26, 0.2, 0.18).darkened(sink))
+	else:
+		draw_circle(Vector2.ZERO, 20.0, Color(0.22, 0.17, 0.14) if not on else Color(0.26, 0.2, 0.18))
+		for rr in [15.0, 10.0, 5.0]:
+			draw_arc(Vector2.ZERO, rr, 0.0, TAU, 40, Color(0.14, 0.1, 0.08), 1.0)
+	if not on:
+		for ds in 22:
+			draw_circle(Vector2(hash_f(ds, 41) * 36.0 - 18.0, hash_f(ds, 42) * 30.0 - 15.0), 0.9, Color(0.42, 0.36, 0.3))
+		draw_line(Vector2(-14, -6), Vector2(-4, 2), Color(0.06, 0.04, 0.03), 1.0)
+		draw_line(Vector2(-4, 2), Vector2(3, 0), Color(0.06, 0.04, 0.03), 1.0)
+	else:
+		draw_circle(Vector2.ZERO, 19.0, Color(vi, 0.18 + 0.06 * sin(t * 2.0)))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
+	for sx in [-34.0, 34.0]:
+		var base := Vector2(sx, 0)
+		draw_colored_polygon(PackedVector2Array([base + Vector2(-5, 3), base + Vector2(5, 3), base + Vector2(3, -34), base + Vector2(-3, -34)]), Color(0.38, 0.27, 0.19))
+		draw_line(base + Vector2(-5, 3), base + Vector2(-3, -34), Color(0.5, 0.36, 0.25), 1.0)
+		draw_line(base + Vector2(5, 3), base + Vector2(3, -34), Color(0.22, 0.15, 0.11), 1.0)
+		for gl in 3:
+			draw_line(base + Vector2(-1.5, -8 - gl * 8), base + Vector2(1.5, -10 - gl * 8), vi if on else Color(0.3, 0.22, 0.3), 0.8)
+		var cy := -42.0 + (sin(t * 1.8 + sx) * 1.5 if on else 0.0)
+		var cr := PackedVector2Array([base + Vector2(0, cy - 7), base + Vector2(4, cy), base + Vector2(0, cy + 6), base + Vector2(-4, cy)])
+		draw_colored_polygon(cr, Color(0.8, 0.6, 1.0) if on else Color(0.3, 0.26, 0.36))
+		draw_line(base + Vector2(0, cy - 7), base + Vector2(0, cy + 6), Color(1, 1, 1, 0.6) if on else Color(0.45, 0.4, 0.5), 0.6)
+		if on:
+			draw_circle(base + Vector2(0, cy), 9.0, Color(vi, 0.18))
+	if on:
+		draw_rect(Rect2(-18, -70, 36, 70), Color(vi, 0.1 + 0.04 * sin(t * 2.5) + 0.15 * sink))
+		draw_rect(Rect2(-12, -70, 24, 70), Color(0.85, 0.75, 1.0, 0.08))
+		var pts := PackedVector2Array()
+		for si in 13:
+			pts.append(Vector2(-34.0 + si * (68.0 / 12.0), -42.0 + (sin(t * 23.0 + si * 1.7) * 3.0 if si > 0 and si < 12 else 0.0)))
+		draw_polyline(pts, Color(0.85, 0.75, 1.0, 0.85), 0.8)
+		for mo in 10:
+			var ph := fposmod(t * 0.4 + mo * 0.1, 1.0)
+			draw_circle(Vector2(hash_f(mo, 43) * 30.0 - 15.0, -ph * 64.0), 0.9, Color(0.9, 0.8, 1.0, 1.0 - ph))
+	var cp := Vector2(0, 26)
+	draw_rect(Rect2(cp.x - 5, cp.y - 10, 10, 10), Color(0.34, 0.25, 0.18))
+	draw_rect(Rect2(cp.x - 6, cp.y - 12, 12, 3), Color(0.42, 0.31, 0.22))
+	draw_circle(cp + Vector2(0, -10.5), 2.0, Color(0.3, 1.0, 0.6) if on else Color(1.0, 0.3, 0.25, 0.6 + 0.4 * sin(t * 3.0)))
+
+
 ## 0.7.53.2 (Luz): the relic's guardians – crystals floating round it, lightning leaping between them; off, they sink
 ## to the floor and go dark.
 func _draw_crystals(d: Dictionary, t: float) -> void:
@@ -334,7 +398,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
-		"manhole", "hatch", "tripwire"]
+		"manhole", "hatch", "tripwire", "ancient_lift"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -353,6 +417,9 @@ func _draw() -> void:
 			_draw_gate(d, t)
 		"rust_door", "grate_door", "steel_door":
 			_draw_rust_door(d, t)
+		"ancient_lift":
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_draw_ancient_lift(d, t)
 		"crystals":
 			_draw_crystals(d, t)
 		"panel_rust":

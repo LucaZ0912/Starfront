@@ -25,7 +25,7 @@ const THEMES := {
 		"props": ["pillar_fallen", "pillar_fallen", "slab", "rock"],
 		"guard": "crystals", "traps": "emp", "fog": true, "outside": "ruin", "target": "relic", "tablets": 3, "vent": true,
 		"cols": [3, 4], "rows": [3, 3], "cell_w": 22, "cell_h": 17, "room_w": [10, 16], "room_h": [7, 10], "room_chance": 0.9,
-		"corr": 3, "loops": [1, 3], "cover": [3, 5], "layers": [{}],
+		"corr": 3, "loops": [1, 3], "cover": [3, 5], "layers": [{}, {}], "descent": "lift", "stores": [2, 2],
 		"loot": ["cs_medkit", "cs_cell", "cs_breach", "cs_ammo"],
 		"credits": [80, 300], "research": [3, 8], "museum_chance": 0.12,
 		"names_a": ["Kel", "Ath", "Vor", "Ush", "Tir", "Mae", "Oru", "Zan", "Ilo", "Quel"],
@@ -40,7 +40,7 @@ const THEMES := {
 		"props": ["pipe_bundle", "heap", "barrel", "pump", "pipe_bundle"],
 		"guard": "", "traps": "tripwire", "fog": false, "dark": Color(0.5, 0.55, 0.58), "outside": "alley", "target": "dealer",
 		"cols": [4, 5], "rows": [2, 3], "cell_w": 20, "cell_h": 16, "room_w": [8, 11], "room_h": [6, 8], "room_chance": 0.35,
-		"corr": 7, "canal": true, "loops": [1, 2], "cover": [2, 4], "flood": true,
+		"corr": 7, "canal": true, "loops": [1, 2], "cover": [2, 4], "flood": true, "descent": "hatch",
 		"loot": ["cs_medkit", "cs_cell", "cs_ammo", "cs_breach"],
 		"credits": [120, 380], "research": [0, 0], "museum_chance": 0.0,
 		"names_a": ["Old", "Low", "Deep", "Drain", "Gut", "Rat", "Grey", "Under"],
@@ -82,9 +82,9 @@ const MUSEUM_RELICS := {
 
 ## The danger of a site: the tiers of its foes (FoeData.TIERS), how many in a guard room, the leader's tier.
 const DANGER := {
-	"green": {"name": "green (easy)", "tiers": ["green", "green", "green"], "guards": [2, 3], "leader": "green"},
-	"yellow": {"name": "yellow (middling)", "tiers": ["green", "yellow", "yellow"], "guards": [2, 4], "leader": "yellow"},
-	"red": {"name": "red (dangerous)", "tiers": ["yellow", "red", "red"], "guards": [3, 4], "leader": "red"},
+	"green": {"name": "green (easy)", "tiers": ["green", "green", "green"], "guards": [2, 3], "leader": "green", "cap": 8},
+	"yellow": {"name": "yellow (middling)", "tiers": ["green", "yellow", "yellow"], "guards": [2, 4], "leader": "yellow", "cap": 11},
+	"red": {"name": "red (dangerous)", "tiers": ["yellow", "red", "red"], "guards": [3, 4], "leader": "red", "cap": 14},
 }
 
 ## How many sites a visit to a system may show: a chance per body you can land on.
@@ -100,6 +100,7 @@ const TARGETS := {
 	"dealer": {"col": Color(1.0, 0.7, 0.35), "needs": "E-Breach on the dealer's computer · the code door (its lock or a hack)", "gives": "the client list – credits now, bounties later"},
 	"water": {"col": Color(0.4, 0.8, 0.9), "needs": "a valve wheel or the pump control (E-Breach)", "gives": "a flooded way runs dry"},
 	"stash": {"col": Color(1.0, 0.8, 0.3), "needs": "cutting torch for the safe", "gives": "weapons, ammunition, credits"},
+	"lift": {"col": Color(0.7, 0.5, 1.0), "needs": "E-Breach on their computer, or the cutting torch on a crystal panel", "gives": "the way down to the deeper level"},
 }
 
 

@@ -9493,7 +9493,28 @@ func _test_poi(view: SystemView) -> void:
 		check(false, "53a: into the ruin  [%s]" % g.level)
 		return
 	gear.refill()
-	# inside: the Precursors' ruin
+	# 0.7.53.4 (Luz): the first level – the ancient lift down (woken first if it sleeps), the platform sinks
+	var lift: Dictionary = {}
+	for d9 in g.map.explore:
+		if String(d9["kind"]) == "ancient_lift":
+			lift = d9
+	var lift_ok: bool = not lift.is_empty() and not g.map.explore.any(func(x): return String(x["kind"]) == "relic") 		and not _zone_of(g.map, "dungeon_down").is_empty() and int(g.map.get_meta("poi")["levels"]) == 2
+	g.pilot.pos = (lift["pos"] as Vector2) + Vector2(0, 10)
+	g.zone = _zone_of(g.map, "dungeon_down")
+	g._arrive = 0.0
+	if String(lift["state"]) == "dormant":
+		g.use()
+		lift_ok = lift_ok and g._sink.is_empty()          # asleep: it will not go
+		g._explore_effect({}, "lift")
+	lift_ok = lift_ok and String(lift["state"]) == "active"
+	g.use()
+	lift_ok = lift_ok and not g._sink.is_empty()
+	for st in 10:
+		if not g._sink.is_empty():
+			g._sink_step(0.3)
+	lift_ok = lift_ok and g.depth == 1 and g.level == "dungeon" and g._sink.is_empty() and not _zone_of(g.map, "dungeon_up").is_empty()
+	gear.refill()
+	# inside: the Precursors' ruin (its deepest level)
 	var kinds := {}
 	for d in g.map.explore:
 		kinds[String(d["kind"])] = int(kinds.get(String(d["kind"]), 0)) + 1
@@ -9517,7 +9538,7 @@ func _test_poi(view: SystemView) -> void:
 					crate = d2
 	var panel_wall: bool = g.map.explore.any(func(x): return String(x["kind"]) == "panel" and bool(x.get("wall", false)))
 	var welded: bool = g.map.explore.any(func(x): return String(x["kind"]) == "crate" and bool(x.get("welded", false)))
-	var has_out: bool = g.map.zones.any(func(z1): return String(z1.get("kind", "")) == "dungeon_out")
+	var has_out: bool = g.map.zones.any(func(z1): return String(z1.get("kind", "")) == "dungeon_up")
 	var built_ok: bool = int(kinds.get("rust_door", 0)) == 1 and int(kinds.get("blastdoor", 0)) == 0 and int(kinds.get("crystals", 0)) == 1 and panel_wall \
 		and int(kinds.get("tablet", 0)) == 3 and int(kinds.get("crate", 0)) >= 4 and welded and bool(relic.get("target", false)) \
 		and g.combat.foes.size() >= 3 and g.map.has_meta("poi") and (g.map.get_meta("poi")["targets"] as Array).size() == 5 \
@@ -9560,6 +9581,7 @@ func _test_poi(view: SystemView) -> void:
 	emp_ok = emp_ok and GameState.museum_finds.size() == mf + 1
 	GameState.museum_finds.resize(mf)
 	# back out: in front of the gate, which stays open
+	g.depth = 0
 	g.go_level("landing", "dungeon_out")
 	var gate2: Dictionary = g._poi_gate()
 	var back_ok: bool = g.level == "landing" and String(gate2.get("state", "")) == "open" and g.pilot.pos.distance_to(gate2["pos"]) < 110.0
@@ -9582,8 +9604,8 @@ func _test_poi(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(map_ok and out_ok and built_ok and win_ok and wide_ok and shut_ok and open_ok and done_ok and loot_ok and emp_ok and back_ok,
-		"53a: sites to explore – ruins found per visit (the same within a visit, no fixed ruins); outside the ruin in the north with its gate shut (its panel opens it, fog); inside the Precursors' ruin: rust door, crystal guardians, 3 tablets, caches (one welded), the relic, raiders; the targets window and the minimap; ways three wide; the computer opens the door and puts the crystals down; the relic read uses the site up; a cache pays; the EMP trap; a Museum find; back out before the gate  [%s]" % " ".join(PackedStringArray([str(map_ok), str(out_ok), str(built_ok), str(win_ok), str(wide_ok), str(shut_ok), str(open_ok), str(done_ok), str(loot_ok), str(emp_ok), str(back_ok)])))
+	check(map_ok and out_ok and lift_ok and built_ok and win_ok and wide_ok and shut_ok and open_ok and done_ok and loot_ok and emp_ok and back_ok,
+		"53a: sites to explore – ruins found per visit (the same within a visit, no fixed ruins); outside the ruin in the north with its gate shut (its panel opens it, fog); the ancient lift down (woken if it sleeps); below the Precursors' ruin: rust door, crystal guardians, 3 tablets, caches (one welded), the relic, raiders; the targets window and the minimap; ways three wide; the computer opens the door and puts the crystals down; the relic read uses the site up; a cache pays; the EMP trap; a Museum find; back out before the gate  [%s]" % " ".join(PackedStringArray([str(map_ok), str(out_ok), str(lift_ok), str(built_ok), str(win_ok), str(wide_ok), str(shut_ok), str(open_ok), str(done_ok), str(loot_ok), str(emp_ok), str(back_ok)])))
 
 
 ## 0.7.53.3 (Luz, package 53b): a city's way down – the back alley (a lift building, a manhole), the sewers (long wide
