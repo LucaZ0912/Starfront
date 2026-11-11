@@ -49,6 +49,24 @@ const THEMES := {
 		"names_b": ["Meridian", "Horizon", "Promise", "Tally", "Comet", "Harvest", "Wanderer", "Lantern"],
 		"hulls": ["freighter", "mule", "warden", "bastion", "hdy_goliath", "aur_boulevard", "hdy_maul", "iwakudaki"],
 		"layers": [{}, {}]},
+	# 0.7.53.9 (Luz, package 53c): the maintenance tunnels under a city – the power is out; down three levels to the
+	# reactor and start it again. Pipes and lines everywhere; the maintenance drones mend things (and leave you be)
+	"maint": {"name": "Maintenance tunnels", "kind": "maint", "style": "maint", "room_floor": 21, "hall_floor": 19,
+		"floor": Color(0.3, 0.31, 0.3), "floor2": Color(0.26, 0.27, 0.26), "wall": Color(0.37, 0.37, 0.36),
+		"wall_top": Color(0.08, 0.08, 0.09), "trim": Color(0.85, 0.7, 0.15), "accent": Color(1.0, 0.25, 0.2),
+		"light": Color(1.0, 0.25, 0.2),
+		"door": "crank_door", "computer": "pump",
+		"foes": ["maint_drone"], "leader": "", "passive_foes": true,
+		"props": ["pipe_bundle", "pipe_bundle", "valve_box", "cable_drum", "barrel"],
+		"guard": "", "traps": "steam", "fog": false, "dark": Color(0.5, 0.38, 0.37), "outside": "lift", "target": "reactor",
+		"tablets": 0, "vent": false, "descent": "stairs", "stores": [1, 1],
+		"cols": [3, 4], "rows": [2, 3], "cell_w": 18, "cell_h": 15, "room_w": [8, 11], "room_h": [6, 8], "room_chance": 0.7,
+		"corr": 3, "loops": [1, 2], "cover": [3, 5],
+		"loot": ["cs_cell", "cs_medkit", "cs_breach"],
+		"credits": [60, 180], "research": [0, 0], "museum_chance": 0.0,
+		"names_a": ["Sector", "Service", "Utility", "Grid", "Line"],
+		"names_b": ["Seven", "Nine", "Twelve", "East", "West", "Deep", "Old"],
+		"layers": [{}, {}, {}]},
 	# 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine under its headframe: crooked, branching drifts,
 	# a few bigger chambers, the cage down to the deeper level; rare finds for the Museum
 	"mine": {"name": "Old mine", "kind": "mine_old", "style": "mine", "room_floor": 25, "hall_floor": 25,
@@ -150,6 +168,7 @@ const TARGETS := {
 	"find": {"col": Color(0.95, 0.85, 0.4), "needs": "get to the deepest chamber (its gate: the box beside it, or the old control) · cutting torch to cut it out", "gives": "a rare find for the Museum"},
 	"cage": {"col": Color(1.0, 0.75, 0.4), "needs": "power – start the generator", "gives": "the cage down to the deeper level"},
 	"rubble": {"col": Color(0.7, 0.6, 0.5), "needs": "a frag grenade as a charge – or a box of explosives nearby", "gives": "a buried side chamber – its cache"},
+	"reactor": {"col": Color(0.5, 0.9, 1.0), "needs": "down to the lowest level · E-Breach on the reactor's panel", "gives": "the power back – level by level the lights come on"},
 	"lift": {"col": Color(0.7, 0.5, 1.0), "needs": "E-Breach on their computer, or the cutting torch on a crystal panel", "gives": "the way down to the deeper level"},
 }
 
@@ -159,6 +178,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 	var a: String = th["names_a"][rng.randi() % th["names_a"].size()]
 	var b: String = th["names_b"][rng.randi() % th["names_b"].size()]
 	if String(th["kind"]) == "sewer":
+		return "%s %s" % [a, b]
+	if String(th["kind"]) == "maint":
 		return "%s %s" % [a, b]
 	if String(th["kind"]) == "mine_old":
 		return "The %s %s" % [a, b]

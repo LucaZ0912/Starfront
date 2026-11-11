@@ -639,6 +639,44 @@ func _steel_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px + 6, py + 5, 4, 4, Color(0.15, 0.12, 0.08))
 
 
+## 0.7.53.9 (Luz): a maintenance tunnel's wall – rough concrete, cracked and rust-stained, pipes everywhere: runs
+## at several heights in several colours, drops, flanges, a valve wheel here and there, cables hanging in loops,
+## red emergency lamps.
+func _maint_face(x: int, y: int, px: int, py: int) -> void:
+	var top_row := t_at(x, y - 1) != T.FACE
+	var base := Color(0.36, 0.36, 0.35).lerp(Color(0.3, 0.3, 0.29), hash2(x, y, 151))
+	_rect(px, py, TILE, TILE, base.darkened(0.1 if top_row else 0.0))
+	_rect(px, py + 8, TILE, 1, base.darkened(0.2))
+	if hash2(x, y, 152) < 0.2:
+		for k in 6:
+			_px(px + 4 + int(sin(k + x) * 1.5), py + 2 + k * 2, Color(0.12, 0.12, 0.12))      # a crack
+	if hash2(x, y, 153) < 0.25:
+		for k2 in 8:
+			_px(px + 9, py + 4 + k2, base.lerp(Color(0.45, 0.25, 0.12), 0.4))                 # a rust run
+	var pipes: Array = [[2, 4, Color(0.42, 0.36, 0.28)], [8, 3, Color(0.36, 0.42, 0.48)], [12, 2, Color(0.5, 0.3, 0.2)]] if top_row else [[3, 4, Color(0.45, 0.46, 0.48)], [9, 2, Color(0.4, 0.42, 0.4)]]
+	for pp in pipes:
+		var c: Color = pp[2]
+		_rect(px, py + int(pp[0]), TILE, int(pp[1]), c)
+		_rect(px, py + int(pp[0]), TILE, 1, c.lightened(0.3))
+		_rect(px, py + int(pp[0]) + int(pp[1]) - 1, TILE, 1, c.darkened(0.45))
+		if x % 7 == 3:
+			_rect(px + 6, py + int(pp[0]) - 1, 2, int(pp[1]) + 2, c.darkened(0.25))          # a flange
+	if x % 6 == 0:
+		var vc := Color(0.4, 0.42, 0.44)
+		_rect(px + 11, py, 3, TILE, vc)                                                      # a drop
+		_rect(px + 11, py, 1, TILE, vc.lightened(0.3))
+	if top_row and hash2(x, y, 154) < 0.1:
+		_rect(px + 3, py + 1, 6, 6, Color(0.65, 0.14, 0.1))                                   # a valve wheel
+		_rect(px + 5, py + 3, 2, 2, Color(0.1, 0.1, 0.1))
+	if not top_row and hash2(x, y, 155) < 0.3:
+		for t in TILE:
+			_px(px + t, py + 12 + int(sin(float(t) / TILE * PI) * 3.0), [Color(0.6, 0.15, 0.1), Color(0.15, 0.3, 0.6), Color(0.1, 0.1, 0.1)][x % 3])
+	if top_row and x % 5 == 2:
+		_rect(px + 6, py, 4, 2, Color(1.0, 0.25, 0.2))                                        # an emergency lamp
+	if not top_row:
+		_rect(px, py + TILE - 2, TILE, 2, Color(0.85, 0.7, 0.15).darkened(0.3))              # the yellow line at its foot
+
+
 ## 0.7.53.7 (Luz): a mine's wall – raw rock with ore glinting in it, timber props every few metres holding the roof
 ## (steel on the deeper level), a lamp cable along the top.
 func _mine_face(x: int, y: int, px: int, py: int) -> void:
@@ -760,7 +798,7 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
-	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine"]:
+	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -848,6 +886,9 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 		return
 	if style == "mine":
 		_mine_face(x, y, px, py)
+		return
+	if style == "maint":
+		_maint_face(x, y, px, py)
 		return
 	if style == "alley":
 		_alley_face(x, y, px, py)

@@ -81,6 +81,10 @@ static func _rise(kind: String) -> int:
 			return 9
 		"container":                          # 0.7.53.6: a 6 m cargo container (2.6 m tall)
 			return 30
+		"valve_box":                          # 0.7.53.9: a big valve housing – high cover
+			return 24
+		"cable_drum":                         # 0.7.53.9: a cable drum – low cover
+			return 10
 		"shaft_house":                        # 0.7.53.7: the shaft house with its headframe over it (~22 m)
 			return 170
 		"winding_house":
@@ -518,6 +522,23 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 					_r(img, dx + 3 + bar * 5, lid_h + 2, 1, face_top - 4, Color(0.75, 0.75, 0.72))
 					_r(img, dx + 2 + bar * 5, lid_h + 12 + bar * 4, 3, 2, Color(0.85, 0.85, 0.8))
 			_ellipse(img, pw * 0.4, lid_h + 14, 6, 4, cc.darkened(0.35))
+		"valve_box":
+			# 0.7.53.9: a valve housing on the floor – a grey box, pipes into the floor, a red wheel on top
+			var vb := Color(0.4, 0.42, 0.44)
+			_r(img, 1, fy - 18, pw - 2, ph + 16, vb)
+			_r(img, 1, fy - 18, pw - 2, 3, vb.lightened(0.25))
+			_r(img, pw - 3, fy - 18, 2, ph + 16, vb.darkened(0.35))
+			_ellipse(img, pw * 0.5, fy - 20, 6, 3, Color(0.65, 0.14, 0.1))
+			_ellipse(img, pw * 0.5, fy - 20, 3, 1.5, Color(0.1, 0.1, 0.1))
+			for pi in 2:
+				_r(img, 3 + pi * (pw - 10), fy + ph - 6, 4, 6, Color(0.36, 0.42, 0.48))
+			_r(img, 4, fy - 8, 8, 5, Color(0.85, 0.7, 0.15))
+		"cable_drum":
+			# 0.7.53.9: a wooden cable drum on its side, cable wound round it
+			_ellipse(img, pw * 0.5, fy + ph * 0.3, pw * 0.48, ph * 0.5 + 4, Color(0.45, 0.32, 0.2))
+			for cw in 4:
+				_r(img, 3, fy - 4 + cw * 3, pw - 6, 2, Color(0.15, 0.15, 0.16))
+			_ellipse(img, pw * 0.5, fy + ph * 0.3, 3, 3, Color(0.25, 0.18, 0.12))
 		"shaft_house":
 			# 0.7.53.7 (Luz): the old mine's shaft house – corrugated walls rusting, a pitched roof, and over it the
 			# headframe: two lattice legs, braces, the sheave wheel at the top, its ropes going down into the shaft

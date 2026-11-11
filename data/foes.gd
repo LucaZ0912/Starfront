@@ -46,6 +46,11 @@ const FOES := {
 	"pirate_captain": {"name": "Red Talon Captain", "faction": "pirates", "suit": "suit_mil_heavy", "weapon": "wp_laser_rifle", "quality": "C",
 		"health": 100.0, "firearms": 4, "athletics": 1, "role": "leader", "flee": 0.0, "bounty": 600, "c1": 0, "c2": 8, "helmet": true,
 		"livery": "pirate", "grenades": 2, "desc": "Heavy plate, a laser rifle, the crew around it. Bring it down and the rest break."},
+	# 0.7.53.9 (Luz): a maintenance drone – a bigger quadcopter in safety yellow with a tool arm; it mends things and
+	# leaves you be (passive) – until it is shot at; then its cutting laser turns on you
+	"maint_drone": {"name": "Maintenance Drone", "faction": "machines", "suit": "suit_work", "weapon": "wp_laser_pistol", "quality": "D",
+		"health": 45.0, "firearms": 2, "athletics": 3, "role": "flanker", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 8, "helmet": true,
+		"drone": true, "desc": "A maintenance drone – it mends pipes and lines with its laser. Shoot at it and it turns that laser on you."},
 	# 0.7.52.5: guards – the security of a place (only foes where weapons are allowed and you broke the law)
 	"guard_trooper": {"name": "Security Trooper", "faction": "guards", "suit": "suit_mil_light", "weapon": "wp_rifle", "quality": "D",
 		"health": 75.0, "firearms": 3, "athletics": 2, "role": "rifleman", "flee": 0.1, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
@@ -58,7 +63,7 @@ const FOES := {
 		"livery": "independent", "grenades": 2, "desc": "Leads the squad – and throws a grenade at anyone who digs in."},
 }
 const KINDS := ["bandit_scrapper", "bandit_rifleman", "bandit_gunner", "bandit_boss", "pirate_raider", "pirate_gunner",
-	"pirate_grenadier", "pirate_sniper", "pirate_captain", "guard_trooper", "guard_heavy", "guard_sergeant"]
+	"pirate_grenadier", "pirate_sniper", "pirate_captain", "guard_trooper", "guard_heavy", "guard_sergeant", "maint_drone"]
 const ROLES := ["rusher", "rifleman", "holder", "flanker", "thrower", "leader", "sniper"]
 ## How a role fights: `pref` – the share of its reach it keeps from you; `cover` – it seeks cover.
 const ROLE := {

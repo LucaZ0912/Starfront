@@ -19,7 +19,7 @@ const CrewData = preload("res://data/crew.gd")
 const S := GroundMap.SCALE
 const MAX_LOCKS := 3
 const CHEST := Vector2(0, -15)                    # where shots go and come from (art px above the feet)
-const LOW_KINDS := ["pillar_fallen", "slab", "pipe_bundle", "weapon_crate", "locker_down", "seats", "crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence"]
+const LOW_KINDS := ["pillar_fallen", "slab", "pipe_bundle", "cable_drum", "weapon_crate", "locker_down", "seats", "crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence"]
 const NO_KINDS := ["lamp_post", "signpost", "cable_pole", "banner", "holo_pillar", "plant", "shrub", "parasol", "flower_bed"]
 const LAYER_COL := {"shield": Color(0.45, 0.8, 1.0), "armor": Color(1.0, 0.8, 0.3), "health": Color(1.0, 0.35, 0.3)}
 
@@ -701,6 +701,7 @@ func _hurt_pilot(dmg: float, dtype: String) -> void:
 
 
 func _hurt_foe(f: Dictionary, dmg: float, dtype: String) -> void:
+	f["provoked"] = true                                 # 0.7.53.9: shot at, a passive one turns on you
 	var out := GearData.apply_damage(f["st"], dmg, dtype)
 	f["regen_wait"] = GearData.SHIELD_WAIT
 	_number((f["w"] as Walker).pos, out)
@@ -744,11 +745,15 @@ func _number(at: Vector2, out: Dictionary) -> void:
 func _wake(f: Dictionary) -> void:
 	if f["dead"] or f["aware"]:
 		return
+	if bool(f.get("passive", false)) and not bool(f.get("provoked", false)):
+		return                                          # 0.7.53.9: a maintenance drone leaves you be – until shot at
 	f["aware"] = true
 	f["think"] = 0.0
 	if f["state"] == "idle":
 		f["state"] = "engage"
 	for o in alive():                                   # it calls out to the others near it
+		if bool(o.get("passive", false)) and not bool(o.get("provoked", false)):
+			continue
 		if not o["aware"] and (o["w"] as Walker).pos.distance_to((f["w"] as Walker).pos) < 220.0:
 			o["aware"] = true
 			o["state"] = "engage"

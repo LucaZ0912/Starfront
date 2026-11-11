@@ -109,7 +109,10 @@ var _wires_t := {}
 var _sink := {}
 var _dark_rect: ColorRect = null           # 0.7.53.6: the level's darkness (the generator's power can change it)
 var _haz_t := {}                          # 0.7.53.6: hazards' cool-downs (shock conduits)
-var _fuses := {}                          # 0.7.53.7: charges and explosives about to go up – index -> seconds
+var _fuses := {}
+var _town_kind := ""                      # 0.7.53.9: in a city, the way down taken – "" (the alley's sewers) or "maint"
+var _drone_fx: Node2D = null              # 0.7.53.9: the maintenance drones drawn
+var _rep_spots: Array = []                # 0.7.53.9: where on the walls they mend things                          # 0.7.53.7: charges and explosives about to go up – index -> seconds
 const WreckShader = preload("res://shaders/wreck.gdshader")                           # 0.7.53.4: riding the ancient lift – {"d", "t", "dir"}                        # 0.7.53.3: tripwires set off – index -> seconds to the blast
 var _mm: Control = null                  # package 53a: the minimap of a site (what you have seen)
 var _mm_img: Image = null
@@ -302,7 +305,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		if level in ["alley", "dungeon", "minehead"]:
 			if not bool(_site.get("poi", false)):
 				_city_site = _site
-				_site = GameState.city_poi(_sys, station) if is_city() else GameState.settle_poi(_sys, station)
+				if is_city() and _town_kind == "maint":
+					_site = GameState.maint_sites.get(String(station.get("id", "")), GameState.city_poi(_sys, station))    # 0.7.53.9
+				else:
+					_site = GameState.city_poi(_sys, station) if is_city() else GameState.settle_poi(_sys, station)
 		elif _city_site != null:
 			_site = _city_site
 			_city_site = null
@@ -371,6 +377,11 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			var fe: Array = GroundCombat.FoeData.parse(String(flist[i]))         # "kind" or "kind@tier"
 			var nf: Dictionary = combat.spawn(String(fe[0]), map.foe_spawns[i], "", String(fe[1]))
 			nf["spawn_i"] = i
+			if bool(GroundCombat.FoeData.FOES.get(String(fe[0]), {}).get("drone", false)):
+				nf["drone"] = true                       # 0.7.53.9: a maintenance drone – drawn as one, it flies
+				(nf["w"] as Walker).visible = false
+			if map.has_meta("passive"):
+				nf["passive"] = true
 	if combat_hud != null:
 		combat_hud.combat = combat
 	_close_game()
@@ -397,6 +408,17 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		fog.plumes = map.get_meta("plumes")
 	if map.has_meta("wreck"):
 		_add_wreck(map.get_meta("wreck"))
+	_rep_spots = []
+	_drone_fx = null
+	if combat != null and combat.foes.any(func(f): return bool(f.get("drone", false))):
+		_drone_fx = Node2D.new()
+		_drone_fx.z_index = 8
+		_drone_fx.draw.connect(_draw_drones)
+		_world.add_child(_drone_fx)
+		for y in range(1, map.h):
+			for x in map.w:
+				if GroundMap.walkable_t(map.t_at(x, y)) and map.t_at(x, y - 1) == GroundMap.T.FACE:
+					_rep_spots.append(Vector2(x + 0.5, y + 0.6) * GroundMap.TILE)
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
@@ -708,6 +730,12 @@ func _hazards_step(delta: float) -> void:
 			combat.sparks.append({"pos": d["pos"], "vel": Vector2(0, -40), "t": 0.0, "col": Color(0.6, 0.85, 1.0)})
 			combat.floaters.append({"pos": pilot.pos + Vector2(0, -40), "text": "ZAP", "col": Color(0.6, 0.85, 1.0), "t": 0.0})
 			Audio.play("shield_down", "shock conduit", -6.0)
+		elif kd == "steam" and not _haz_t.has(i) and (d["pos"] as Vector2).distance_to(pilot.pos) < 16.0 \
+				and fposmod(Time.get_ticks_msec() * 0.001 + float(int(d.get("seed", 0)) % 9), 4.0) < 1.2:
+			_haz_t[i] = 1.0
+			if not Commands.suit_god:
+				combat._hurt_pilot(12.0, "kinetic")
+			combat.floaters.append({"pos": pilot.pos + Vector2(0, -40), "text": "steam!", "col": Color(0.9, 0.95, 1.0), "t": 0.0})
 		elif kd == "loose_rock" and String(d["state"]) == "shut" and (d["pos"] as Vector2).distance_to(pilot.pos) < 14.0 and not combat.sneaking:
 			d["state"] = "falling"                         # 0.7.53.7: a crack, dust – then the rock comes down
 			_fuses[i] = 0.7
@@ -721,8 +749,100 @@ func _hazards_step(delta: float) -> void:
 					_say_toast("Toxic gas – put your helmet on (Gear: helmet always) or get out of it.", 2.5)
 
 
+## 0.7.53.9 (Luz): the reactor restarted – it spins up, the lights come back on level by level.
+func _restart_reactor(d: Dictionary) -> void:
+	for r in map.explore:
+		if String(r["kind"]) == "reactor":
+			r["state"] = "on"
+			r["start"] = 0.0
+	var lit := Color(0.95, 0.95, 0.97)
+	for key in _poi_cache.keys():
+		if String(key).begins_with("dungeon_"):
+			(_poi_cache[key] as GroundMap).set_meta("dark", lit)
+	if _dark_rect != null and is_instance_valid(_dark_rect):
+		var tw := create_tween()
+		tw.tween_interval(2.5)
+		tw.tween_property(_dark_rect, "color", lit, 3.0)
+	Audio.play("module_on", "reactor restart", 0.0)
+	_poi_target_done(d)
+
+
+## 0.7.53.9 (Luz): maintenance drones – while they leave you be they fly from one spot on the walls to the next and
+## mend it with their beam; provoked, the fight takes them (they fly over everything, their walker unseen).
+func _drones_step(delta: float) -> void:
+	if _drone_fx == null:
+		return
+	for f in combat.alive():
+		if not bool(f.get("drone", false)):
+			continue
+		var w: Walker = f["w"]
+		f["bob"] = float(f.get("bob", randf() * TAU)) + delta * 3.0
+		if f["aware"] or _rep_spots.is_empty():
+			f["rep"] = 0.0
+			continue
+		var goal: Vector2 = f.get("rgoal", Vector2.INF)
+		if goal == Vector2.INF or (float(f.get("rep", 0.0)) <= 0.0 and w.pos.distance_to(goal) < 3.0 and f.has("mended")):
+			var home: Vector2 = f["home"]
+			var near: Array = _rep_spots.filter(func(p): return (p as Vector2).distance_to(home) < 180.0)
+			if near.is_empty():
+				near = _rep_spots
+			goal = near[randi() % near.size()]
+			f["rgoal"] = goal
+			f.erase("mended")
+		if w.pos.distance_to(goal) > 3.0:
+			w.pos = w.pos.move_toward(goal, 34.0 * delta)                 # it flies – over cover, straight
+			w.position = w.pos * GroundMap.SCALE
+			f["rep"] = 0.0
+		elif not f.has("mended"):
+			f["mended"] = true
+			f["rep"] = randf_range(2.5, 4.5)
+		else:
+			f["rep"] = maxf(0.0, float(f["rep"]) - delta)
+	_drone_fx.queue_redraw()
+
+
+## A maintenance drone: a quadcopter twice the size of yours in safety yellow, its rotors a blur, a tool arm; mending,
+## a cyan beam onto the wall and sparks; provoked, its light turns red.
+func _draw_drones() -> void:
+	var s := GroundMap.SCALE
+	var t := Time.get_ticks_msec() * 0.001
+	for f in combat.alive():
+		if not bool(f.get("drone", false)):
+			continue
+		var p: Vector2 = (f["w"] as Walker).pos
+		var hov := 30.0 + sin(float(f.get("bob", 0.0))) * 2.0
+		var c := (p - Vector2(0, hov)) * s
+		_drone_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		_drone_fx.draw_circle(p * s, 9.0 * s, Color(0, 0, 0, 0.3))
+		_drone_fx.draw_set_transform(c, 0.0, Vector2.ONE * s)
+		for rx in [-11.0, 11.0]:
+			for ry in [-6.0, 6.0]:
+				_drone_fx.draw_line(Vector2.ZERO, Vector2(rx, ry), Color(0.25, 0.25, 0.27), 1.5)
+				_drone_fx.draw_circle(Vector2(rx, ry), 5.0, Color(0.6, 0.62, 0.65, 0.35 + 0.15 * sin(t * 40.0 + rx)))
+				_drone_fx.draw_circle(Vector2(rx, ry), 1.2, Color(0.2, 0.2, 0.22))
+		_drone_fx.draw_rect(Rect2(-7, -5, 14, 10), Color(0.95, 0.75, 0.15))
+		_drone_fx.draw_rect(Rect2(-7, -5, 14, 2), Color(1.0, 0.88, 0.4))
+		for st in 3:
+			_drone_fx.draw_rect(Rect2(-6 + st * 5, 2, 3, 2), Color(0.1, 0.1, 0.1))
+		_drone_fx.draw_rect(Rect2(-1, 5, 2, 6), Color(0.3, 0.3, 0.32))
+		_drone_fx.draw_circle(Vector2(4, -3), 1.2, Color(1.0, 0.25, 0.2) if f["aware"] else Color(0.3, 1.0, 0.6))
+		if float(f.get("rep", 0.0)) > 0.0:
+			var to: Vector2 = (p + Vector2(0, -22)) * s
+			_drone_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_drone_fx.draw_line(c + Vector2(0, 11) * s, to, Color(0.6, 0.95, 1.0, 0.9), 2.0)
+			_drone_fx.draw_line(c + Vector2(0, 11) * s, to, Color(0.3, 0.7, 1.0, 0.35), 6.0)
+			for sp in 6:
+				var sa := hash(int(t * 20.0) + sp) % 628 / 100.0
+				_drone_fx.draw_line(to, to + Vector2(cos(sa), sin(sa)) * (4.0 + sp) * 2.0, Color(1.0, 0.85, 0.4), 1.5)
+		_drone_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 ## 0.7.53.7: charges and explosives burning down; loose rock coming down.
 func _fuses_step(delta: float) -> void:
+	for k0 in _fuses.keys():
+		var d0: Dictionary = map.explore[int(k0)]
+		if String(d0["kind"]) == "crank_door":
+			d0["crank"] = float(d0.get("crank", 0.0)) + delta * 6.0
 	for k in _fuses.keys():
 		_fuses[k] = float(_fuses[k]) - delta
 		if float(_fuses[k]) > 0.0:
@@ -744,6 +864,8 @@ func _fuses_step(delta: float) -> void:
 			"tnt":
 				d["state"] = "gone"
 				combat._explode(d["pos"], 80.0, 70.0, "explosive", null)
+			"crank_door":
+				open_door(d)                                  # 0.7.53.9: cranked open
 
 
 ## 0.7.53.7 (Luz): something blew up at `at` – boxes of explosives near it go up a moment later, rubble near it is
@@ -1439,6 +1561,7 @@ func _process(delta: float) -> void:
 		_turrets_step(delta)
 		_hazards_step(delta)
 		_fuses_step(delta)
+		_drones_step(delta)
 		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:
@@ -1790,6 +1913,30 @@ func explore_use(z: Dictionary) -> bool:
 		"generator":
 			_open_power_menu(d)
 			return true
+		"crank_door":
+			if String(d["state"]) == "open":
+				_say_toast("Open.", 1.2)
+			elif String(d["state"]) == "cranking":
+				_say_toast("Still cranking…", 1.2)
+			else:
+				d["state"] = "cranking"                    # 0.7.53.9 (Luz): by hand – slow and loud
+				_fuses[map.explore.find(d)] = 4.0
+				_say_toast("You crank the door open by hand – it takes a while, and it is loud.", 2.5)
+				Audio.play("dock_clamp", "crank door", -6.0)
+				if combat != null:
+					for f in combat.alive():
+						if (f["w"] as Walker).pos.distance_to(pilot.pos) < 300.0:
+							combat._wake(f)
+			return true
+		"fuse_box":
+			if String(d["state"]) == "open":
+				_say_toast("The fuse is in – the door has power.", 1.5)
+			else:
+				d["state"] = "open"                        # 0.7.53.9: a spare fuse from the box's own clip
+				if d.has("door"):
+					open_door(map.explore[int(d["door"])])
+				_say_toast("You put a spare fuse in – the door slides open.", 2.5)
+			return true
 		"mine_gen":
 			if String(d["state"]) == "open":
 				_say_toast("It runs – the cage has power.", 1.5)
@@ -1997,7 +2144,8 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 				open_door(dd2)                                  # 0.7.52.23: its blast door slides open
 				txt = {"ruin_gate": "The entrance grinds open – fog spills out.", "rust_door": "The old door shrieks open.",
 					"grate_door": "The grate swings open with a rusty squeal.", "steel_door": "The code lock blinks green – the steel door slides open.",
-					"bulkhead": "The bulkhead grinds open on the last of its power.", "airlock": "The airlock hisses – its hatch slides open."}.get(String(dd2["kind"]), "The blast door grinds open.")
+					"bulkhead": "The bulkhead grinds open on the last of its power.", "airlock": "The airlock hisses – its hatch slides open.",
+					"crank_door": "The security door slides open."}.get(String(dd2["kind"]), "The blast door grinds open.")
 			Audio.play("dock_clamp", "door released", -4.0)
 		"lasers":
 			if d.has("cage"):
@@ -2020,7 +2168,10 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 			Audio.play("module_on", "ancient lift wakes", -2.0)
 		"list":
 			txt = ""
-			_poi_target_done(d)                            # 0.7.53.3: the dealer's client list – the site's target
+			_poi_target_done(d)
+		"restart":
+			txt = ""
+			_restart_reactor(d)                            # 0.7.53.3: the dealer's client list – the site's target
 		"emp":
 			txt = "A trap! An EMP – shields, drones and energy weapons are down for a moment."
 			if combat != null:
@@ -2091,6 +2242,12 @@ func _poi_target_done(d: Dictionary) -> void:
 	if not bool(_site.get("poi", false)):
 		return
 	GameState.poi_use(String(_site.get("id", "")))
+	if String(_site.get("theme", "")) == "maint":
+		var pay2 := 600 + int(d.get("seed", 0)) % 400              # 0.7.53.9: the city pays for its power back
+		GameState.credits += pay2
+		_say_toast("The reactor hums – the power is back, level by level the lights come on. %d cr from the city. Back up when you like." % pay2, 6.0)
+		Audio.play("lock_acquired", "site target done", -2.0)
+		return
 	if String(_site.get("theme", "")) == "mine":
 		var list: Array = PoiData.MUSEUM_RELICS["mine"]
 		var mf := String(list[int(d.get("seed", 0)) % list.size()][0])            # 0.7.53.7: the mine's prize
@@ -2143,6 +2300,11 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 		var mo: GroundMap
 		if String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "alley":
 			mo = DungeonGen.build_alley(_body, _site)
+		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "lift":
+			mo = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)                      # 0.7.53.9: a field with a service hatch
+			mo.zones.append({"rect": Rect2(mo.spawn + Vector2(40, -30), Vector2(40, 30)), "kind": "dungeon_in", "id": "dungeon_in",
+				"title": "The service hatch – down into the tunnels", "col": Color(1.0, 0.75, 0.4), "sign": Vector2(-100, -100)})
+			mo.set_meta("door_front", mo.spawn + Vector2(60, 10))
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "minehead":
 			mo = DungeonGen.build_minehead(_body, _site)                                # 0.7.53.7
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "wreck":
@@ -2605,6 +2767,10 @@ func use(instant: bool = false) -> bool:
 			return true
 		"dungeon_out":
 			depth = 0
+			if is_city() and _town_kind == "maint":
+				_town_kind = ""
+				go_level("street", "lift")              # 0.7.53.9: the service lift back up
+				return true
 			go_level("alley" if is_city() else ("minehead" if is_town() else "landing"), "dungeon_out")           # 0.7.53.2: back out
 			return true
 		"mine_path":
@@ -2716,6 +2882,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
 	if is_city():                                                 # 0.7.53.3 (Luz): the way down into the sewers
 		lvls.append(["alley", "%d.  Back alley – a manhole down into the sewers" % (lvls.size() + 1)])
+	if is_city() and GameState.maint_sites.has(String(station.get("id", ""))):
+		lvls.append(["maint", "%d.  Maintenance level – the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
 	var keys: Array = []
 	for lv in lvls:
 		keys.append(func(): _choose_level(String(lv[0])))
@@ -2781,6 +2949,11 @@ func _choose_level(target: String) -> void:
 		return
 	var z: Dictionary = _lift_menu.get_meta("zone", {})
 	_close_lift_menu()
+	if target == "maint":
+		_town_kind = "maint"                             # 0.7.53.9: the lift goes straight down into the tunnels
+		depth = 0
+		go_level("dungeon", "dungeon_in")
+		return
 	if target != level or (target == "hangar" and _hangar_stale()):
 		_start_ride(z, target)
 

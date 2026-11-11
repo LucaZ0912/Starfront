@@ -403,7 +403,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var en: Rect2i = rooms[entr_c]
 	var lift_way := String(th.get("descent", "hatch")) in ["lift", "cage"]
 	var lift_kind := "cage" if String(th.get("descent", "")) == "cage" else "ancient_lift"
-	var out_ladder := String(th.get("outside", "ruin")) == "alley" or depth > 0
+	var out_ladder := String(th.get("outside", "ruin")) in ["alley", "lift"] or depth > 0
 	if depth > 0 and lift_way:
 		# 0.7.53.4 (Luz): you come down on the ancient lift – it takes you back up too
 		var lp0 := Vector2(en.position.x + en.size.x * 0.5, en.position.y + 3.2) * TILE
@@ -414,10 +414,13 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	elif out_ladder:
 		# a ladder on the entrance room's north wall: up to the street (or the level above)
 		var lx := _wall_spot(m, en, en.position.x + en.size.x / 2)
-		ExploreNode.add(m, "ladder", Vector2(lx + 0.5, en.position.y) * TILE, {"no_zone": true, "up": true})
+		var up_kind := "ladder"
+		if String(th.get("descent", "")) == "stairs":
+			up_kind = "stairs_up" if depth > 0 else "service_lift"            # 0.7.53.9: stairwell door, the service lift
+		ExploreNode.add(m, up_kind, Vector2(lx + 0.5, en.position.y) * TILE, {"no_zone": true, "up": true})
 		m.spawn = Vector2(lx + 0.5, en.position.y + 1.6) * TILE
 		m.zones.append({"rect": Rect2(Vector2(lx - 1.0, en.position.y) * TILE, Vector2(3.0, 1.4) * TILE), "kind": "dungeon_out" if depth == 0 else "dungeon_up",
-			"id": "dungeon_out" if depth == 0 else "dungeon_up", "title": "Climb the ladder – back up to the street" if depth == 0 else "Climb the ladder – back up",
+			"id": "dungeon_out" if depth == 0 else "dungeon_up", "title": ("The service lift – back up" if up_kind == "service_lift" else ("Up the stairs" if up_kind == "stairs_up" else ("Climb the ladder – back up to the street" if depth == 0 else "Climb the ladder – back up"))),
 			"col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 		m.lights.append({"pos": Vector2(lx + 0.5, en.position.y + 0.5) * TILE, "r": 70.0, "col": Color(0.85, 0.95, 1.0), "a": 0.4})
 	else:
@@ -440,7 +443,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		# the way down: a hatch in the far room's floor
 		var drr: Rect2i = rooms[down_c]
 		var hp := Vector2(drr.position.x + drr.size.x * 0.5, drr.position.y + drr.size.y * 0.5) * TILE
-		ExploreNode.add(m, "deck_hole" if String(th.get("descent", "")) == "hole" else "hatch", hp, {"no_zone": true, "seed": rng.randi()})
+		ExploreNode.add(m, {"hole": "deck_hole", "stairs": "stairs_down"}.get(String(th.get("descent", "")), "hatch"), hp, {"no_zone": true, "seed": rng.randi()})
 		m.zones.append({"rect": Rect2(hp - Vector2(20, 14), Vector2(40, 30)), "kind": "dungeon_down", "id": "dungeon_down",
 			"title": "Climb down – deeper in", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(-100, -100)})
 		m.set_meta("down_front", hp + Vector2(0, 26))
@@ -470,7 +473,10 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		var door := ExploreNode.add(m, String(th.get("door", "blastdoor")), Vector2(dx + 0.5, ap.position.y) * TILE,
 			{"tiles": [door_gap.position.x, door_gap.position.y, door_gap.size.x, door_gap.size.y], "seed": rng.randi()})
 		di = m.explore.find(door)
-		ExploreNode.add(m, "panel", Vector2(dx + 3.5, ap.position.y) * TILE, {"inside": "button", "door": di, "style": style, "seed": rng.randi()})
+		if String(th.get("door", "")) == "crank_door":
+			ExploreNode.add(m, "fuse_box", Vector2(dx + 3.5, ap.position.y) * TILE, {"door": di, "wall": true, "seed": rng.randi()})
+		else:
+			ExploreNode.add(m, "panel", Vector2(dx + 3.5, ap.position.y) * TILE, {"inside": "button", "door": di, "style": style, "seed": rng.randi()})
 		var rc := Vector2(vr.position.x + vr.size.x * 0.5, vr.position.y + vr.size.y * 0.5 + 0.4)
 		if String(th.get("target", "relic")) == "relic":
 			if String(th.get("guard", "")) == "crystals":
@@ -485,6 +491,13 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "relic", rc * TILE, relic)
 			m.lights.append({"pos": rc * TILE, "r": 60.0, "col": th["light"], "a": 0.4, "flicker": true})
 			targets.append(["relic", "A relic signature – deep inside, behind an old door%s" % (", guarded by floating crystals" if ci >= 0 else "")])
+		elif String(th.get("target", "")) == "reactor":
+			# 0.7.53.9 (Luz): the reactor – its pit in the middle of the room (it stands in the way), its panel before it
+			var rt := Rect2i(int(rc.x) - 3, int(rc.y) - 2, 6, 3)
+			m.fill(rt.position.x, rt.position.y, rt.size.x, rt.size.y, T.BLOCK, rf)
+			ExploreNode.add(m, "reactor", rc * TILE + Vector2(0, 8), {"no_zone": true, "tiles": [rt.position.x, rt.position.y, rt.size.x, rt.size.y]})
+			ExploreNode.add(m, "terminal", Vector2(rc.x - 4.5, rc.y + 2.2) * TILE, {"actions": ["restart"], "target": true, "style": "pump", "seed": rng.randi(), "level": 1})
+			targets.append(["reactor", "The reactor – on the lowest level; restart it at its panel"])
 		elif String(th.get("target", "")) == "find":
 			# 0.7.53.7 (Luz): a rare find in the rock of the deepest chamber – cut it out
 			ExploreNode.add(m, "vein", rc * TILE, {"target": true, "seed": rng.randi()})
@@ -582,6 +595,19 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "conduit", Vector2(sxp + 0.5, spine_r.position.y + rng.randi_range(1, 3) + 0.5) * TILE, {"no_zone": true, "seed": rng.randi()})
 		var gx := rng.randi_range(spine_r.position.x + 6, spine_r.end.x - 7)
 		ExploreNode.add(m, "gas", Vector2(gx + 0.5, spine_r.position.y + 2.5) * TILE, {"no_zone": true, "r": 34.0, "seed": rng.randi()})
+	elif String(th.get("traps", "")) == "steam":
+		var placed3 := 0
+		for e7 in edges:
+			if placed3 >= 3:
+				break
+			var spot3 := _wire_spot(m, rooms[e7[0]], rooms[e7[1]], corr)
+			if spot3.is_empty():
+				continue
+			var sp3: Vector2 = spot3["pos"]
+			var mid3: Vector2 = sp3 + (Vector2(0, TILE * 1.5) if bool(spot3["vertical"]) else Vector2(TILE * 1.5, 0))
+			ExploreNode.add(m, "steam" if placed3 % 2 == 0 else "conduit", mid3, {"no_zone": true, "seed": rng.randi()})
+			placed3 += 1
+		# fuse boxes: beside a crank door, a quicker way through it
 	elif String(th.get("traps", "")) == "mine":
 		var placed2 := 0
 		for e6 in edges:
@@ -674,12 +700,14 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			if m.free_at(p, 6.0) and m.floor_kind[int(p.y / TILE) * W + int(p.x / TILE)] != 18:
 				m.foe_spawns.append(p)
 				foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
-	if last:
+	if last and String(th.get("leader", "")) != "":
 		var lp := Vector2(dx + 0.5, ap.position.y + (2.5 if spine else 3.0)) * TILE
 		if m.free_at(lp, 6.0):
 			m.foe_spawns.append(lp)
 			foes.append("%s@%s" % [String(th["leader"]), String(dg["leader"])])
 	m.set_meta("foes", foes)
+	if bool(th.get("passive_foes", false)):
+		m.set_meta("passive", true)                      # 0.7.53.9: they leave you be – until shot at
 	# ---- cover (0.7.53.3, Luz: more of it – to go about it tactically) and lights
 	for c5 in cells:
 		var rr: Rect2i = rooms[c5]

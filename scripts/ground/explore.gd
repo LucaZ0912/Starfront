@@ -23,7 +23,9 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"generator": "The emergency generator – route its power (E)",
 	"mine_gen": "The old generator – start it (E)",
 	"vein": "Something glitters in the rock – cut it out (cutting torch)",
-	"rubble": "A fall of rock buries the drift – blast it (a frag grenade as a charge)"}
+	"rubble": "A fall of rock buries the drift – blast it (a frag grenade as a charge)",
+	"crank_door": "A security door – no power. Crank it open (E, takes a while, loud) – or its fuse box",
+	"fuse_box": "A fuse box – a fuse is missing. Put in a spare (E)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -219,6 +221,12 @@ func _draw_rust_door(d: Dictionary, t: float) -> void:
 			draw_rect(Rect2(rb.position.x, rb.end.y - 3, gw, 3), Color(0.03, 0.03, 0.04))
 			if fposmod(t * 1.3, 2.0) < 0.2:
 				draw_circle(Vector2(gw * 0.5 - 2, top + 4), 1.5, Color(1.0, 0.85, 0.4))
+	elif hh > 0.6 and String(d["kind"]) == "crank_door":
+		# 0.7.53.9: a security door, dead – grey leaves, a yellow band, its card reader dark
+		var rc7 := Rect2(-gw * 0.5, top, gw, hh)
+		draw_rect(rc7, Color(0.45, 0.47, 0.5))
+		draw_rect(Rect2(rc7.position.x, rc7.position.y + 10, gw, 3), Color(0.85, 0.7, 0.15))
+		draw_rect(Rect2(-0.5, rc7.position.y, 1, hh), Color(0.25, 0.25, 0.27))
 	elif hh > 0.6 and String(d["kind"]) == "steel_door":
 		# 0.7.53.3: the dealer's door – heavy steel, hazard bands, rivets
 		var rs2 := Rect2(-gw * 0.5, top, gw, hh)
@@ -310,6 +318,36 @@ func _draw_ancient_lift(d: Dictionary, t: float) -> void:
 	draw_rect(Rect2(cp.x - 5, cp.y - 10, 10, 10), Color(0.34, 0.25, 0.18))
 	draw_rect(Rect2(cp.x - 6, cp.y - 12, 12, 3), Color(0.42, 0.31, 0.22))
 	draw_circle(cp + Vector2(0, -10.5), 2.0, Color(0.3, 1.0, 0.6) if on else Color(1.0, 0.3, 0.25, 0.6 + 0.4 * sin(t * 3.0)))
+
+
+## 0.7.53.9 (Luz): the reactor – a round pit, three rings over it, the core in the middle. Off: dark, still, red;
+## starting (`start` 0..1): the rings turn faster, the core glows up, steam; running: bright, humming.
+func _draw_reactor(d: Dictionary, t: float) -> void:
+	var s := GroundMap.SCALE
+	var k := float(d.get("start", 1.0 if String(d["state"]) == "on" else 0.0))
+	var on := k > 0.0
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.56) * s)
+	draw_circle(Vector2.ZERO, 54.0, Color(0.2, 0.2, 0.22))
+	draw_circle(Vector2.ZERO, 50.0, Color(0.45, 0.46, 0.5))
+	draw_circle(Vector2.ZERO, 44.0, Color(0.06, 0.06, 0.08))
+	var spin := float(d.get("spin", 0.0))
+	for ri in 3:
+		var rr := 38.0 - ri * 10.0
+		for a in 48:
+			var ang := a * TAU / 48.0 + spin * (1.0 + ri * 0.6) * (1.0 if ri % 2 == 0 else -1.0)
+			var col := Color(0.85, 0.7, 0.15) if a % 8 == 0 else Color(0.55, 0.57, 0.6)
+			draw_circle(Vector2(cos(ang), sin(ang)) * rr, 1.3, col)
+	if on:
+		draw_circle(Vector2(0, -6), 13.0, Color(0.5, 0.9, 1.0, 0.35 + 0.65 * k))
+		draw_circle(Vector2(0, -6), 8.0 * k + 2.0, Color(0.9, 1.0, 1.0, k))
+	else:
+		draw_circle(Vector2(0, -6), 13.0, Color(0.15, 0.18, 0.2))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
+	if on:
+		for st in 12:
+			var ph := fposmod(t * 0.6 + st * 0.083, 1.0)
+			draw_circle(Vector2(sin(st * 2.3) * 12.0, -10.0 - ph * 60.0), 3.0 + ph * 4.0, Color(0.85, 0.95, 1.0, 0.25 * (1.0 - ph) * k))
+		draw_rect(Rect2(-6, -80, 12, 74), Color(0.5, 0.9, 1.0, 0.1 * k))
 
 
 ## 0.7.53.2 (Luz): the relic's guardians – crystals floating round it, lightning leaping between them; off, they sink
@@ -406,7 +444,10 @@ func _process(delta: float) -> void:
 			Audio.play("dock_clamp", "vent hatch flips open", -12.0)
 		if String(d["state"]) == "open":
 			d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 0.45)
-	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door", "bulkhead", "airlock"] and String(d["state"]) == "open":
+	if String(d["kind"]) == "reactor" and String(d["state"]) == "on":
+		d["start"] = minf(1.0, float(d.get("start", 0.0)) + delta / 4.0)          # 0.7.53.9: it spins up
+		d["spin"] = float(d.get("spin", 0.0)) + delta * (0.3 + 3.0 * float(d["start"]))
+	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door", "bulkhead", "airlock", "crank_door"] and String(d["state"]) == "open":
 		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
 
@@ -417,7 +458,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
-		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble"]
+		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble", "crank_door", "fuse_box", "reactor", "stairs_down", "stairs_up", "service_lift", "steam"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -434,8 +475,61 @@ func _draw() -> void:
 	match kk:
 		"ruin_gate":
 			_draw_gate(d, t)
-		"rust_door", "grate_door", "steel_door", "bulkhead":
+		"rust_door", "grate_door", "steel_door", "bulkhead", "crank_door":
 			_draw_rust_door(d, t)
+			if kk == "crank_door":
+				# its hand crank beside it – turning while it is being cranked
+				var cw := float(d.get("crank", 0.0))
+				var cc := Vector2(float(d["tiles"][2]) * 8.0 + 9.0, -20.0)
+				draw_arc(cc, 6.0, 0.0, TAU, 16, Color(0.75, 0.15, 0.1), 1.6)
+				for sp in 4:
+					var a7 := cw + sp * PI * 0.5
+					draw_line(cc, cc + Vector2(cos(a7), sin(a7)) * 6.0, Color(0.75, 0.15, 0.1), 1.0)
+		"reactor":
+			_draw_reactor(d, t)
+		"fuse_box":
+			# 0.7.53.9: a fuse box on the wall – a row of fuses, one gap (until you put one in); its light
+			draw_rect(Rect2(-9, -30, 18, 18), Color(0.1, 0.1, 0.1))
+			draw_rect(Rect2(-8, -29, 16, 16), Color(0.36, 0.38, 0.36))
+			draw_rect(Rect2(-6, -26, 12, 10), Color(0.08, 0.08, 0.09))
+			for fu in 4:
+				if fu != 2 or String(d["state"]) == "open":
+					draw_rect(Rect2(-5 + fu * 3, -25, 2, 8), Color(0.8, 0.75, 0.6))
+			draw_circle(Vector2(5, -14), 1.0, Color(0.3, 1.0, 0.45) if String(d["state"]) == "open" else Color(1.0, 0.2, 0.15))
+		"stairs_down":
+			# 0.7.53.9: an emergency stairwell going down – its railing, the steps falling away into the dark
+			draw_rect(Rect2(-18, -12, 36, 24), Color(0.05, 0.05, 0.06))
+			for stp in 5:
+				draw_rect(Rect2(-16, -10 + stp * 4.5, 32, 2.5), Color(0.4, 0.41, 0.4).darkened(stp * 0.15))
+			draw_rect(Rect2(-20, -14, 40, 2), Color(0.85, 0.7, 0.15))
+			draw_rect(Rect2(-20, -14, 2, 26), Color(0.85, 0.7, 0.15))
+			draw_rect(Rect2(18, -14, 2, 26), Color(0.85, 0.7, 0.15))
+			draw_rect(Rect2(-8, -22, 16, 6), Color(0.15, 0.6, 0.3))
+			draw_rect(Rect2(-6, -21, 3, 4), Color(0.9, 1.0, 0.9))
+		"stairs_up":
+			# 0.7.53.9: the stairwell door up – green exit sign over it
+			draw_rect(Rect2(-12, -34, 24, 34), Color(0.22, 0.24, 0.22))
+			draw_rect(Rect2(-10, -32, 20, 32), Color(0.38, 0.4, 0.38))
+			draw_rect(Rect2(-10, -42, 20, 7), Color(0.15, 0.6, 0.3))
+			draw_rect(Rect2(-8, -41, 3, 5), Color(0.9, 1.0, 0.9))
+			draw_rect(Rect2(5, -18, 3, 2), Color(0.7, 0.7, 0.7))
+		"service_lift":
+			# 0.7.53.9: the service lift the city's lift brought you down in – its doors, a call panel
+			draw_rect(Rect2(-16, -38, 32, 38), Color(0.18, 0.19, 0.21))
+			draw_rect(Rect2(-14, -36, 13, 36), Color(0.45, 0.47, 0.5))
+			draw_rect(Rect2(1, -36, 13, 36), Color(0.45, 0.47, 0.5))
+			draw_rect(Rect2(-16, -42, 32, 4), Color(0.85, 0.7, 0.15))
+			draw_rect(Rect2(18, -22, 5, 8), Color(0.12, 0.12, 0.14))
+			draw_circle(Vector2(20.5, -18), 1.2, Color(0.3, 1.0, 0.45))
+		"steam":
+			# 0.7.53.9: a split pipe venting steam now and then (it scalds you when it bursts)
+			draw_rect(Rect2(-10, -4, 20, 5), Color(0.42, 0.44, 0.46))
+			draw_rect(Rect2(-2, -6, 4, 9), Color(0.3, 0.3, 0.32))
+			var burst := fposmod(t + float(d.get("seed", 0) % 9), 4.0) < 1.2
+			if burst:
+				for sp3 in 14:
+					var ph3 := fposmod(t * 2.0 + sp3 * 0.07, 1.0)
+					draw_circle(Vector2(sin(sp3 * 1.9) * 6.0 * ph3, -6.0 - ph3 * 30.0), 3.0 + ph3 * 6.0, Color(0.9, 0.92, 0.95, 0.35 * (1.0 - ph3)))
 		"breach":
 			# 0.7.53.6 (Luz): a breach torn into the wreck's flank – plates bent outward, the dark inside, cables
 			# hanging, sparks; shut: a buckled plate wedged across it (cut it)

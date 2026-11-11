@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.9 – 2026-11-11
+
+**Package 53c, first part – the maintenance tunnels, the maintenance drones, the reactor (Luz).** Theme sheet in
+Roadmap.md (Paket 53: Wartungstunnel). The place for the coming mission "Reactivation".
+- **When a city's tunnels have lost their power** its lift offers the **maintenance level** and goes straight down
+  (the service lift takes you back up to the shopping street). For now the debug sets this up; missions will (53c).
+- **Three levels** joined by emergency stairwells (green exit signs); technical rooms on a grid. **Pipes everywhere**
+  (Luz): runs at several heights and colours along every wall, drops, flanges, valve wheels, cables hanging in loops,
+  cracks and rust, a yellow line at the walls' foot; only red emergency lamps. **Pipe bundles on their brackets across
+  the floor are cover**, valve housings high cover, cable drums low.
+- **Security doors without power:** crank them open by hand (slow and loud) – or put a spare fuse into the fuse box
+  beside one.
+- **Maintenance drones** (Luz): a quadcopter twice the size of yours in safety yellow, its rotors a blur, a tool arm.
+  While they leave you be they fly from spot to spot along the walls and mend it with a cyan beam and sparks; they
+  fly over everything. Shoot at one and it turns its cutting laser on you (its light goes red).
+- **Traps:** split pipes venting scalding steam now and then, live lines.
+- **The reactor** on the lowest level: a round pit, three rings, the core. Restart it at its panel (E-Breach): the
+  rings spin up, the core glows, steam rises – and the lights come back on, level by level. The city pays for it.
+- Debug: *Site* with theme `maint` (in a city: its tunnels lose their power and the lift goes down). Smoke test group `maint`.
+
 ## alpha 0.7.53.8 – 2026-11-11
 
 **The crash site's impact trench (Luz).** Behind the wreck lies the trench it ploughed coming down: as wide as much of

@@ -2648,6 +2648,14 @@ func _c_debug_poi(c: Dictionary) -> String:
 		site["hull"] = String(c.get("hull", PoiData.THEMES["wreck"]["hulls"][sd % (PoiData.THEMES["wreck"]["hulls"] as Array).size()]))
 	if c.has("gate"):
 		site["gate"] = String(c["gate"])                 # "open", "panel", "computer"
+	var g0 = _ground()
+	if theme == "maint" and g0 != null and g0.is_city():
+		# 0.7.53.9: in a city – its maintenance tunnels lose their power; the lift goes down
+		GameState.maint_sites[String(g0.station.get("id", ""))] = GameState.maint_site(g0.station, sd)
+		g0._town_kind = "maint"
+		g0.depth = 0
+		g0.go_level("dungeon", "dungeon_in")
+		return ""
 	_debug_leave_space(m)
 	f.docked_at = "land:" + String(body["id"])
 	m.land_at(body, site)

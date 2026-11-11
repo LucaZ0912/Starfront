@@ -160,6 +160,7 @@ func _process(delta: float) -> void:
 				_test_sewer(view)                # package 53b – the sewers, levels, the city's way down
 				_test_wreck(view)                # package 53b – crash sites
 				_test_mine(view)                 # package 53b – the old mine by a settlement
+				_test_maint(view)                # package 53c – the maintenance tunnels, the reactor
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -10117,6 +10118,119 @@ func _test_mine(view: SystemView) -> void:
 	main._update_input()
 	check(out_ok and lvl_ok and tnt_ok and cage_ok and deep_ok and find_ok and town_ok,
 		"53b: the old mine – the headframe and its chained gate; drifts with rails, the cage, explosives, traps; a blast sets the explosives off; the cage without power waits for the generator, then sinks; the deepest chamber's gate, the find for the Museum; from a settlement by the path at its edge and back  [%s]" % " ".join(PackedStringArray([str(out_ok), str(lvl_ok), str(tnt_ok), str(cage_ok), str(deep_ok), str(find_ok), str(town_ok)])))
+
+
+## 0.7.53.9 (Luz, package 53c): the maintenance tunnels under a city – the lift goes down when the power is out;
+## three levels by the stairs; pipes everywhere; the crank door and its fuse box; the maintenance drones mend things
+## and leave you be until shot at; steam; the reactor restarted lights it all.
+func _test_maint(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var L := Universe.get_layout(view.system_id)
+	var cbody := {}
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b) and Universe.landing_sites(view.system_id, b).any(func(s): return String(s["kind"]) == "city"):
+			cbody = b
+			break
+	if cbody.is_empty():
+		check(true, "53c: maintenance tunnels – no city here (skipped)")
+		return
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	var e1 := Commands.execute({"type": "debug_land", "body": String(cbody["id"]), "kind": "city"})
+	var g = main.ground
+	var no_lift: bool = e1 == "" and g != null and g.is_city()
+	if no_lift:
+		g._open_lift_menu({})
+		var n0: int = (g._lift_menu.get_meta("keys", []) as Array).size()
+		g._close_lift_menu()
+		GameState.maint_sites[String(g.station.get("id", ""))] = GameState.maint_site(g.station, 5309)
+		g._open_lift_menu({})
+		var n1: int = (g._lift_menu.get_meta("keys", []) as Array).size()
+		no_lift = n1 == n0 + 1
+		(g._lift_menu.get_meta("keys") as Array)[n1 - 1].call()
+	if g == null or g.level != "dungeon" or g.combat == null:
+		check(false, "53c: down the lift into the maintenance tunnels  [%s]" % (g.level if g != null else "?"))
+		return
+	gear.refill()
+	# level 1: the tunnels, the drones (passive), the crank door, steam
+	var drones: Array = g.combat.foes.filter(func(x): return bool(x.get("drone", false)))
+	var lvl_ok: bool = no_lift and g.map.style == "maint" and String(g._site.get("theme", "")) == "maint" and drones.size() >= 2 \
+		and drones.all(func(x): return bool(x.get("passive", false))) and _has_kind(g.map, "service_lift") and _has_kind(g.map, "stairs_down") \
+		and int(g.map.get_meta("poi")["levels"]) == 3 and g.map.objects.any(func(o): return String(o["kind"]) == "pipe_bundle")
+	# passive: seen, they keep mending; shot at, it turns on you
+	var d0: Dictionary = drones[0]
+	g.pilot.pos = (d0["w"] as Walker).pos + Vector2(40, 0)
+	for st in 10:
+		g.combat.step(0.1, Vector2.ZERO)
+		g._drones_step(0.1)
+	var passive_ok: bool = not d0["aware"]
+	g.combat._hurt_foe(d0, 1.0, "kinetic")
+	passive_ok = passive_ok and d0["aware"] and bool(d0["provoked"])
+	# down the stairs to level 3: the crank door, the fuse box, the reactor
+	g._arrive = 0.0
+	g.depth = 2
+	g.go_level("dungeon", "dungeon_down")
+	var crank: Dictionary = {}
+	var fuse: Dictionary = {}
+	var term: Dictionary = {}
+	var reactor: Dictionary = {}
+	for d in g.map.explore:
+		match String(d["kind"]):
+			"crank_door":
+				crank = d
+			"fuse_box":
+				fuse = d
+			"reactor":
+				reactor = d
+			"terminal":
+				if (d.get("actions", []) as Array).has("restart"):
+					term = d
+	var rp: Vector2 = (term.get("pos", Vector2.ZERO) as Vector2) + Vector2(0, -2)
+	var deep_ok: bool = not crank.is_empty() and not fuse.is_empty() and not reactor.is_empty() and not term.is_empty() and g.map.path(g.map.spawn, rp).is_empty() \
+		and _has_kind(g.map, "stairs_up")
+	g.explore_use({"i": g.map.explore.find(crank)})
+	var cranking: bool = String(crank["state"]) == "cranking"
+	for st2 in 6:
+		g._fuses_step(1.0)
+	deep_ok = deep_ok and cranking and String(crank["state"]) == "open" and not g.map.path(g.map.spawn, rp).is_empty()
+	# the reactor restarted: it spins up, every level lit, the site done
+	var cr0 := GameState.credits
+	g._hack_done(term, "restart")
+	var lit_ok: bool = String(reactor["state"]) == "on" and GameState.poi_used.has(String(g._site["id"])) and GameState.credits > cr0
+	for key in g._poi_cache.keys():
+		if String(key).begins_with("dungeon_"):
+			lit_ok = lit_ok and (g._poi_cache[key] as GroundMap).get_meta("dark", Color.BLACK).v > 0.9
+	# out by the service lift: back up on the street
+	g.depth = 0
+	g.go_level("dungeon", "dungeon_up")
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_out")
+	g.use()
+	var out_ok: bool = g.level == "street" and not bool(g._site.get("poi", false))
+	GameState.maint_sites.clear()
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(lvl_ok and passive_ok and deep_ok and lit_ok and out_ok,
+		"53c: the maintenance tunnels – the city's lift goes down when the power is out; three levels, pipes, pipe bundles as cover, the service lift and the stairs; the drones mend things and leave you be until shot at; the crank door (slow, loud); the reactor restarted – every level lit, the city pays; back up by the service lift  [%s]" % " ".join(PackedStringArray([str(lvl_ok), str(passive_ok), str(deep_ok), str(lit_ok), str(out_ok)])))
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

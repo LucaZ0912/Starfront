@@ -2066,6 +2066,18 @@ func settle_poi(system_id: int, town: Dictionary) -> Dictionary:
 		"danger": danger, "used": poi_used.has(id)}
 
 
+## 0.7.53.9 (Luz): cities whose maintenance tunnels have lost their power – city id -> the site (missions, 53c).
+var maint_sites := {}
+
+
+func maint_site(city: Dictionary, seed_n: int) -> Dictionary:
+	const PoiData = preload("res://data/poi.gd")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_n
+	return {"id": "maint_%s_%d" % [String(city.get("id", "")), seed_n], "name": PoiData.site_name("maint", rng), "kind": "maint", "poi": true,
+		"theme": "maint", "seed": seed_n, "danger": "green"}
+
+
 func museum_find(id: String) -> void:
 	museum_finds.append(id)
 	log_msg("A find for the Museum.", COL_GOOD)
