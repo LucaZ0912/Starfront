@@ -158,6 +158,7 @@ func _process(delta: float) -> void:
 				_test_foot_cloak(view)           # 0.7.52.25 – the short cloak, drones outside a fight
 				_test_poi(view)                  # package 53a – sites to explore
 				_test_sewer(view)                # package 53b – the sewers, levels, the city's way down
+				_test_wreck(view)                # package 53b – crash sites
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9832,6 +9833,142 @@ func _test_sewer(view: SystemView) -> void:
 	main._update_input()
 	check(var_ok and alley_ok and sewer_ok and wade_ok and drain_ok and wire_ok and hide_ok and tur_ok and done_ok and up_ok and out_ok and city_ok,
 		"53b: every site rolled anew (and more cover); the back alley with its lift building and the manhole, the window; the sewers – canal, grating, a flooded tunnel to the way down, a valve and the pump control, tripwires, dark; wading is slow; the valve drains the tunnel; a tripwire goes off walked into, not sneaked over; down the ladder the dealer's hideout – steel door with code lock, the office (computer, safe); the turret sees you, the alarm rings, two more come, the turret hacked off, a cut alarm stays quiet; the door opened, the client list taken, the safe looted; back up (the water stays drained), out; used up; in a city the lift goes to the alley and back  [%s]" % " ".join(PackedStringArray([str(var_ok), str(alley_ok), str(sewer_ok), str(wade_ok), str(drain_ok), str(wire_ok), str(hide_ok), str(tur_ok), str(done_ok), str(up_ok), str(out_ok), str(city_ok)])))
+
+
+## 0.7.53.6 (Luz, package 53b): a crash site – a real ship of the game come down at the ground's scale, its breach and
+## its airlock, inside a ship's decks (the main corridor, cabins, a hole down), the shock conduits and the gas, the
+## emergency generator that opens the jammed bulkhead, the flight recorder.
+func _test_wreck(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	# found on the map too: some visits show a crash site with its ship
+	var L := Universe.get_layout(f.system_id)
+	var v0 := int(GameState.poi_visits.get(str(f.system_id), 0))
+	var wrecks := 0
+	for vi in 30:
+		GameState.poi_visits[str(f.system_id)] = v0 + vi
+		for b in L["planets"] + L.get("moons", []):
+			if Universe.landable(b):
+				for s in GameState.pois_for(f.system_id, b):
+					if String(s["theme"]) == "wreck" and String(s["kind"]) == "crash" and s.has("hull"):
+						wrecks += 1
+	GameState.poi_visits[str(f.system_id)] = v0
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5306, "theme": "wreck", "hull": "freighter"})
+	var g = main.ground
+	if g == null or e != "" or g.level != "landing":
+		check(false, "53b: the crash site opens  [%s]" % e)
+		return
+	gear.refill()
+	g._close_lift_menu()
+	var breach: Dictionary = {}
+	var lock: Dictionary = {}
+	var lterm: Dictionary = {}
+	for d in g.map.explore:
+		match String(d["kind"]):
+			"breach":
+				breach = d
+			"airlock":
+				lock = d
+			"terminal":
+				lterm = d
+	var ins: Array = g.map.zones.filter(func(z): return String(z.get("kind", "")) == "dungeon_in" and z.has("gate"))
+	var hull_tiles := 0
+	for y in g.map.h:
+		for x in g.map.w:
+			if g.map.t_at(x, y) == GroundMap.T.BLOCK and g.map.floor_kind[y * g.map.w + x] == 13 and x > 1 and y > 1 and x < g.map.w - 2 and y < g.map.h - 2:
+				hull_tiles += 1
+	var w: Dictionary = g.map.get_meta("wreck", {})
+	var out_ok: bool = wrecks > 0 and not w.is_empty() and hull_tiles > 600 and not breach.is_empty() and not lock.is_empty() \
+		and ins.size() == 2 and g.map.objects.filter(func(o): return String(o["kind"]) == "container").size() >= 3 and g.combat != null \
+		and g.combat.foes.size() >= 2 and g.map.has_meta("plumes") and g.fog != null
+	# the airlock sealed: no way in; its terminal opens it
+	var zl: Dictionary = ins.filter(func(z): return int(z["gate"]) == g.map.explore.find(lock))[0]
+	g._arrive = 0.0
+	g.zone = zl
+	g.use()
+	out_ok = out_ok and g.level == "landing"
+	g._hack_done(lterm, "door")
+	out_ok = out_ok and String(lock["state"]) == "open"
+	g._arrive = 0.0
+	g.zone = zl
+	g.use()
+	if g.level != "dungeon" or g.combat == null:
+		check(false, "53b: into the wreck  [%s]" % g.level)
+		return
+	gear.refill()
+	# deck 1: the main corridor along the hull, cabins off it, the hole down, conduits and gas
+	var widest := 0
+	for y2 in g.map.h:
+		var run := 0
+		for x2 in g.map.w:
+			run = run + 1 if GroundMap.walkable_t(g.map.t_at(x2, y2)) or g.map.t_at(x2, y2) == GroundMap.T.BLOCK else 0
+			widest = maxi(widest, run)
+	var conduits: Array = g.map.explore.filter(func(d2): return String(d2["kind"]) == "conduit")
+	var deck_ok: bool = g.map.style == "ship" and widest >= g.map.w - 6 and _has_kind(g.map, "deck_hole") and _has_kind(g.map, "gas") \
+		and conduits.size() >= 2 and not _zone_of(g.map, "dungeon_down").is_empty() and g.map.has_meta("dark")
+	# a conduit shocks you
+	var hp0: float = gear.health + gear.armor + gear.shield
+	g.pilot.pos = conduits[0]["pos"]
+	g._hazards_step(0.05)
+	var shock_ok: bool = gear.health + gear.armor + gear.shield < hp0
+	gear.refill()
+	# down through the hole: deck 2 – the jammed bulkhead, the generator, the flight recorder
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_down")
+	g.use()
+	var bh: Dictionary = {}
+	var gen: Dictionary = {}
+	var bb: Dictionary = {}
+	for d3 in g.map.explore:
+		match String(d3["kind"]):
+			"bulkhead":
+				bh = d3
+			"generator":
+				gen = d3
+			"blackbox":
+				bb = d3
+	var bb_p: Vector2 = (bb.get("pos", Vector2.ZERO) as Vector2) + Vector2(0, 20)
+	var low_ok: bool = g.depth == 1 and not bh.is_empty() and not gen.is_empty() and not bb.is_empty() and bool(bb.get("target", false)) \
+		and g.map.path(g.map.spawn, bb_p).is_empty() and not _zone_of(g.map, "dungeon_up").is_empty()
+	g._route_power(gen, "doors")
+	low_ok = low_ok and String(bh["state"]) == "open" and not g.map.path(g.map.spawn, bb_p).is_empty() and g._dark_rect != null
+	var cr0 := GameState.credits
+	g.explore_use({"i": g.map.explore.find(bb)})
+	var done_ok: bool = String(bb["state"]) == "taken" and GameState.poi_used.has(String(g._site["id"])) and GameState.credits > cr0
+	# back up and out
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_up")
+	g.use()
+	var up_ok: bool = g.depth == 0 and g.level == "dungeon"
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_out")
+	g.use()
+	up_ok = up_ok and g.level == "landing" and g.map.has_meta("wreck")
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(out_ok and deck_ok and shock_ok and low_ok and done_ok and up_ok,
+		"53b: crash sites found on the map with their ship; the wreck at the ground's scale (a 92 m freighter), its breach and airlock, cargo containers, scavengers, smoke; the airlock sealed until its terminal opens it; inside the main corridor along the hull, the hole down, conduits that shock, gas; below the jammed bulkhead – the generator's power opens it; the flight recorder pays; back up and out  [%s]" % " ".join(PackedStringArray([str(out_ok), str(deck_ok), str(shock_ok), str(low_ok), str(done_ok), str(up_ok)])))
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

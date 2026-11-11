@@ -17,7 +17,10 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"steel_door": "A steel door with a code lock – sealed",
 	"valve": "Valve wheel – turn it (E): the pumps drain the flooded tunnel",
 	"tripwire": "A tripwire – a grenade on the end of it. Disarm it (E)",
-	"alarm": "Alarm box – cut its wires (cutting torch) before it rings"}
+	"alarm": "Alarm box – cut its wires (cutting torch) before it rings",
+	"bulkhead": "A jammed bulkhead – no power (its box beside it, or the emergency generator)",
+	"blackbox": "The flight recorder – pull it out (E)",
+	"generator": "The emergency generator – route its power (E)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -201,6 +204,18 @@ func _draw_rust_door(d: Dictionary, t: float) -> void:
 		draw_rect(Rect2(rg.position.x, rg.end.y - 2, gw, 2), Color(0.35, 0.27, 0.2))
 		if String(d["state"]) != "open":
 			draw_rect(Rect2(-2, top + gh * 0.5, 4, 5), Color(0.75, 0.62, 0.2))
+	elif hh > 0.6 and String(d["kind"]) == "bulkhead":
+		# 0.7.53.6: a ship's bulkhead, jammed – grey, hazard chevrons, a dark gap at its foot, sparks from its motor
+		var rb := Rect2(-gw * 0.5, top, gw, hh)
+		draw_rect(rb, Color(0.45, 0.47, 0.5))
+		draw_rect(Rect2(rb.position.x, rb.position.y, gw, 2), Color(0.62, 0.64, 0.67))
+		for ch in int(gw / 6.0):
+			draw_line(Vector2(rb.position.x + ch * 6, rb.end.y - 10), Vector2(rb.position.x + ch * 6 + 3, rb.end.y - 6), Color(0.95, 0.75, 0.1), 2.0)
+		draw_rect(Rect2(-0.5, rb.position.y, 1, hh), Color(0.25, 0.25, 0.27))
+		if String(d["state"]) != "open":
+			draw_rect(Rect2(rb.position.x, rb.end.y - 3, gw, 3), Color(0.03, 0.03, 0.04))
+			if fposmod(t * 1.3, 2.0) < 0.2:
+				draw_circle(Vector2(gw * 0.5 - 2, top + 4), 1.5, Color(1.0, 0.85, 0.4))
 	elif hh > 0.6 and String(d["kind"]) == "steel_door":
 		# 0.7.53.3: the dealer's door – heavy steel, hazard bands, rivets
 		var rs2 := Rect2(-gw * 0.5, top, gw, hh)
@@ -388,7 +403,7 @@ func _process(delta: float) -> void:
 			Audio.play("dock_clamp", "vent hatch flips open", -12.0)
 		if String(d["state"]) == "open":
 			d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 0.45)
-	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door"] and String(d["state"]) == "open":
+	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door", "bulkhead", "airlock"] and String(d["state"]) == "open":
 		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
 
@@ -399,7 +414,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * s)
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
-		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm"]
+		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -416,8 +431,92 @@ func _draw() -> void:
 	match kk:
 		"ruin_gate":
 			_draw_gate(d, t)
-		"rust_door", "grate_door", "steel_door":
+		"rust_door", "grate_door", "steel_door", "bulkhead":
 			_draw_rust_door(d, t)
+		"breach":
+			# 0.7.53.6 (Luz): a breach torn into the wreck's flank – plates bent outward, the dark inside, cables
+			# hanging, sparks; shut: a buckled plate wedged across it (cut it)
+			var pts := PackedVector2Array()
+			for bi in 16:
+				var ba := bi * TAU / 16.0
+				pts.append(Vector2(cos(ba) * (18.0 + hash_f(bi, 61) * 7.0), -16.0 + sin(ba) * (12.0 + hash_f(bi, 62) * 4.0)))
+			draw_colored_polygon(pts, Color(0.03, 0.03, 0.04))
+			for bj in 16:
+				var bo := (pts[bj] - Vector2(0, -16)).normalized()
+				draw_line(pts[bj], pts[bj] + bo * 3.0, Color(0.62, 0.62, 0.64), 1.5)
+			for cb in 4:
+				var cx := -9.0 + cb * 6.0
+				var cl := 10.0 + hash_f(cb, 63) * 8.0
+				draw_line(Vector2(cx, -26), Vector2(cx + sin(t * 1.3 + cb) * 1.2, -26 + cl), [Color(0.8, 0.2, 0.15), Color(0.2, 0.4, 0.8), Color(0.85, 0.75, 0.2), Color(0.3, 0.3, 0.3)][cb], 0.8)
+			if fposmod(t * 1.7, 2.3) < 0.25:
+				for sp in 6:
+					draw_circle(Vector2(8 + hash_f(sp, int(t * 10.0)) * 8, -22 + hash_f(int(t * 10.0), sp) * 10), 0.6, Color(1.0, 0.85, 0.4))
+			if String(d["state"]) == "shut":
+				draw_colored_polygon(PackedVector2Array([Vector2(-20, -24), Vector2(19, -30), Vector2(21, -6), Vector2(-18, -2)]), Color(0.45, 0.46, 0.5))
+				draw_line(Vector2(-20, -24), Vector2(19, -30), Color(0.65, 0.66, 0.7), 1.0)
+				draw_line(Vector2(-12, -14), Vector2(10, -18), Color(0.3, 0.3, 0.33), 0.8)
+		"airlock":
+			# 0.7.53.6: the emergency airlock in the hull – a hatch in a hazard frame, its light red until it opens
+			var ok5 := float(d.get("open_k", 0.0))
+			draw_rect(Rect2(-16, -36, 32, 36), Color(0.16, 0.16, 0.18))
+			draw_rect(Rect2(-13, -33, 26, 33), Color(0.03, 0.03, 0.04))
+			var lw := 13.0 * (1.0 - ok5)
+			draw_rect(Rect2(-13, -33, lw, 33), Color(0.5, 0.52, 0.55))
+			draw_rect(Rect2(13 - lw, -33, lw, 33), Color(0.5, 0.52, 0.55))
+			for st in 7:
+				draw_rect(Rect2(-16, -36 + st * 5, 3, 3), Color(0.95, 0.75, 0.1))
+				draw_rect(Rect2(13, -36 + st * 5, 3, 3), Color(0.95, 0.75, 0.1))
+			draw_rect(Rect2(-12, 0, 24, 3), Color(0.35, 0.35, 0.37))
+			draw_circle(Vector2(0, -39), 1.6, Color(0.3, 1.0, 0.45) if String(d["state"]) == "open" else Color(1.0, 0.2, 0.15, 0.6 + 0.4 * sin(t * 3.0)))
+		"blackbox":
+			# 0.7.53.6: the flight recorder – an orange armoured box bolted into a rack, its beacon blinking
+			if String(d["state"]) != "taken":
+				draw_rect(Rect2(-10, -14, 20, 14), Color(0.25, 0.25, 0.27))
+				draw_rect(Rect2(-7, -12, 14, 10), Color(0.95, 0.5, 0.12))
+				draw_rect(Rect2(-7, -12, 14, 2), Color(1.0, 0.65, 0.25))
+				draw_rect(Rect2(-5, -8, 10, 1), Color(0.2, 0.2, 0.2))
+				draw_circle(Vector2(5, -10), 1.0, Color(1.0, 1.0, 0.6) if fposmod(t, 1.0) < 0.5 else Color(0.5, 0.4, 0.1))
+			else:
+				draw_rect(Rect2(-10, -14, 20, 14), Color(0.25, 0.25, 0.27))
+				draw_rect(Rect2(-7, -12, 14, 10), Color(0.05, 0.05, 0.06))
+		"generator":
+			# 0.7.53.6: the emergency generator – a cabinet with three breakers and the bus it feeds
+			var to := String(d.get("route", "lights"))
+			draw_rect(Rect2(-12, -26, 24, 26), Color(0.1, 0.1, 0.1))
+			draw_rect(Rect2(-11, -25, 22, 25), Color(0.32, 0.34, 0.32))
+			draw_rect(Rect2(-11, -25, 22, 2), Color(0.45, 0.48, 0.45))
+			for sw in 3:
+				var on6 := (sw == 0 and to == "doors") or (sw == 1 and to == "lights")
+				draw_rect(Rect2(-8 + sw * 6, -20, 4, 8), Color(0.3, 1.0, 0.4) if on6 else Color(1.0, 0.25, 0.2))
+			draw_rect(Rect2(-8, -9, 16, 2), Color(1.0, 0.75, 0.2, 0.6 + 0.3 * sin(t * 6.0)))
+		"conduit":
+			# 0.7.53.6: an open conduit across the floor – live, sparking now and then (a shock if you step on it)
+			draw_rect(Rect2(-8, -2, 16, 4), Color(0.12, 0.12, 0.13))
+			draw_line(Vector2(-8, 0), Vector2(8, 0), Color(0.6, 0.6, 0.62), 0.8)
+			if fposmod(t * 2.1 + float(d.get("seed", 0) % 7), 1.6) < 0.35:
+				for sp2 in 5:
+					draw_line(Vector2(-4 + sp2 * 2, 0), Vector2(-6 + sp2 * 3 + hash_f(sp2, int(t * 20.0)) * 4, -4 - hash_f(int(t * 20.0), sp2) * 6), Color(0.6, 0.85, 1.0), 0.6)
+				draw_circle(Vector2.ZERO, 5.0, Color(0.5, 0.8, 1.0, 0.25))
+		"gas":
+			# 0.7.53.6: a gas leak – a green haze welling up from a split pipe
+			var r6 := float(d.get("r", 30.0))
+			for gp in 18:
+				var ga := hash_f(gp, 71) * TAU + t * 0.2
+				var gr := r6 * sqrt(hash_f(gp, 72)) * (0.8 + 0.2 * sin(t + gp))
+				draw_circle(Vector2(cos(ga) * gr, sin(ga) * gr * 0.6 - 4.0), 6.0 + hash_f(gp, 73) * 5.0, Color(0.5, 0.9, 0.3, 0.09))
+		"deck_hole":
+			# 0.7.53.6: the deck gave way – a hole into the deck below, torn plates round it, a rope ladder hanging down
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.6) * GroundMap.SCALE)
+			draw_circle(Vector2.ZERO, 22.0, Color(0.02, 0.02, 0.03))
+			for e in 14:
+				var ea := e * TAU / 14.0
+				draw_line(Vector2(cos(ea), sin(ea)) * 21.0, Vector2(cos(ea), sin(ea)) * (25.0 + hash_f(e, 74) * 4.0), Color(0.55, 0.56, 0.6), 2.0)
+			draw_circle(Vector2.ZERO, 14.0, Color(1.0, 0.4, 0.2, 0.12 + 0.04 * sin(t * 2.0)))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+			for rg in 4:
+				draw_rect(Rect2(-5, -6 + rg * 3.5, 10, 1), Color(0.6, 0.5, 0.35))
+			draw_line(Vector2(-5, -8), Vector2(-5, 6), Color(0.55, 0.45, 0.3), 0.8)
+			draw_line(Vector2(5, -8), Vector2(5, 6), Color(0.55, 0.45, 0.3), 0.8)
 		"ancient_lift":
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			_draw_ancient_lift(d, t)

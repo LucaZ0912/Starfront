@@ -2640,8 +2640,10 @@ func _c_debug_poi(c: Dictionary) -> String:
 	var sd := int(c.get("seed", randi()))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = sd
-	var site := {"id": "dbg_poi_%d" % sd, "name": PoiData.site_name(theme, rng), "kind": "ruins", "poi": true, "theme": theme, "seed": sd,
+	var site := {"id": "dbg_poi_%d" % sd, "name": PoiData.site_name(theme, rng), "kind": String(PoiData.THEMES[theme]["kind"]), "poi": true, "theme": theme, "seed": sd,
 		"danger": String(c.get("danger", "yellow")), "lon": 0.0, "lat": 0.0}
+	if theme == "wreck":
+		site["hull"] = String(c.get("hull", PoiData.THEMES["wreck"]["hulls"][sd % (PoiData.THEMES["wreck"]["hulls"] as Array).size()]))
 	if c.has("gate"):
 		site["gate"] = String(c["gate"])                 # "open", "panel", "computer"
 	_debug_leave_space(m)

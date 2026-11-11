@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.6 – 2026-11-11
+
+**Package 53b – crash sites (Luz).** Theme sheet in Roadmap.md (Paket 53: Absturzstelle).
+- **Found on the map** like the ruins: a visit may show a crash site instead – and which ship came down (a Longhaul,
+  a Mule, a Warden, a Bastion, a Goliath, a Boulevard, a Maul, an Iwakudaki).
+- **The wreck is a real ship of the game at the ground's real scale** (15 art px a metre – a 92 m freighter is wider
+  than the screen): its own picture, sampled smoothly and laid over with hull plates, seams, rivets, soot and burn
+  (`shaders/wreck.gdshader`); its shadow; its stern torn off and lying back along the furrow it ploughed. Fires and
+  smoke rising from it, craters and debris, its cargo strewn about – **6 m containers** (lid, ribbed side, door end
+  with its bars), one burst open – rocks, engine parts, a scavengers' camp with a buggy (and scavengers).
+- **Two ways in on its flank:** a **breach** (open, or a buckled plate wedged in it – cut it out) and the **emergency
+  airlock** set into the hull (its terminal on a post beside it – hack it).
+- **Inside – a ship's decks:** one long main corridor along the hull, the cabins off it; ship walls with bent and
+  scorched panels, torn-out cable bundles, hazard bands, red emergency lamps; deck plates torn up, scorched, foam and
+  glass; red, dim light. Cover: lockers fallen over, rows of seats, crates, barrels.
+- **Traps:** live conduits across the corridor shock you; a gas leak burns your lungs unless your helmet is on.
+- **Two decks:** the floor gave way – climb down through the hole; a ladder takes you back up.
+- On the lower deck the **flight recorder** behind a **jammed bulkhead** – cut its box, or route the **emergency
+  generator's power** to the bulkheads (the lights die then). The recorder is the target: its owners pay for it.
+- Debug: *Site* with theme `wreck` (and `hull`). Smoke test group `wreck`.
+
 ## alpha 0.7.53.5 – 2026-11-11
 
 **The dealer's turret and alarm (Luz, package 53b).**

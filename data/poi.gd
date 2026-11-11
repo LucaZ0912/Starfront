@@ -30,6 +30,25 @@ const THEMES := {
 		"credits": [80, 300], "research": [3, 8], "museum_chance": 0.12,
 		"names_a": ["Kel", "Ath", "Vor", "Ush", "Tir", "Mae", "Oru", "Zan", "Ilo", "Quel"],
 		"names_b": ["atha", "remn", "osh", "idra", "ukai", "erin", "amol", "esh", "ion", "uvar"]},
+	# 0.7.53.6 (Luz, package 53b): a crash site – a real ship of the game, come down; long main corridors along its
+	# hull, many small cabins, two decks (the floor gave way between them)
+	"wreck": {"name": "Crash site", "kind": "crash", "style": "ship", "room_floor": 24, "hall_floor": 24,
+		"floor": Color(0.33, 0.34, 0.36), "floor2": Color(0.29, 0.3, 0.32), "wall": Color(0.42, 0.43, 0.46),
+		"wall_top": Color(0.07, 0.07, 0.08), "trim": Color(0.2, 0.2, 0.22), "accent": Color(1.0, 0.3, 0.2),
+		"light": Color(1.0, 0.3, 0.22),
+		"door": "bulkhead", "computer": "ship",
+		"foes": ["bandit_scrapper", "bandit_rifleman", "bandit_gunner"], "leader": "bandit_boss",
+		"props": ["locker_down", "crates", "seats", "barrel", "locker_down", "seats"],
+		"guard": "", "traps": "shock", "fog": false, "dark": Color(0.78, 0.55, 0.52), "outside": "wreck", "target": "blackbox",
+		"tablets": 0, "vent": false, "descent": "hole", "spine": true, "stores": [1, 2],
+		"cols": [4, 6], "rows": [2, 2], "cell_w": 16, "cell_h": 14, "room_w": [6, 10], "room_h": [5, 7], "room_chance": 0.85,
+		"corr": 3, "loops": [0, 0], "cover": [2, 4],
+		"loot": ["cs_medkit", "cs_cell", "cs_ammo", "cs_breach"],
+		"credits": [150, 420], "research": [0, 2], "museum_chance": 0.0,
+		"names_a": ["Iron", "Long", "Far", "Grey", "Red", "Quiet", "Last", "Brave"],
+		"names_b": ["Meridian", "Horizon", "Promise", "Tally", "Comet", "Harvest", "Wanderer", "Lantern"],
+		"hulls": ["freighter", "mule", "warden", "bastion", "hdy_goliath", "aur_boulevard", "hdy_maul", "iwakudaki"],
+		"layers": [{}, {}]},
 	# 0.7.53.3 (Luz, package 53b): the way down from a city – the sewers, and deep in them an arms dealer's hideout
 	"sewer": {"name": "Sewers and a dealer's hideout", "kind": "sewer", "style": "sewer", "room_floor": 21, "hall_floor": 19,
 		"floor": Color(0.3, 0.31, 0.3), "floor2": Color(0.26, 0.27, 0.26), "wall": Color(0.38, 0.39, 0.37),
@@ -102,6 +121,8 @@ const TARGETS := {
 	"stash": {"col": Color(1.0, 0.8, 0.3), "needs": "cutting torch for the safe", "gives": "weapons, ammunition, credits"},
 	"turret": {"col": Color(1.0, 0.35, 0.3), "needs": "E-Breach on the control room's computer · an EMP grenade stuns it", "gives": "a way into the office that does not cut you down"},
 	"alarm": {"col": Color(1.0, 0.25, 0.2), "needs": "cutting torch on its box – before it rings", "gives": "no reinforcements"},
+	"blackbox": {"col": Color(1.0, 0.6, 0.2), "needs": "get to it – on the lower deck, behind a jammed bulkhead (emergency power or its box)", "gives": "the flight recorder – a reward from its owners"},
+	"power": {"col": Color(1.0, 0.85, 0.3), "needs": "the emergency generator – choose where its power goes", "gives": "the bulkheads open – or the lights come back"},
 	"lift": {"col": Color(0.7, 0.5, 1.0), "needs": "E-Breach on their computer, or the cutting torch on a crystal panel", "gives": "the way down to the deeper level"},
 }
 
@@ -112,6 +133,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 	var b: String = th["names_b"][rng.randi() % th["names_b"].size()]
 	if String(th["kind"]) == "sewer":
 		return "%s %s" % [a, b]
+	if String(th["kind"]) == "crash":
+		return "Wreck of the %s %s" % [a, b]
 	return "%s of %s-%s" % ["Ruin" if String(th["kind"]) == "ruins" else "Site", a, b.capitalize()]
 
 

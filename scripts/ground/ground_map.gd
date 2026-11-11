@@ -426,6 +426,28 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px + TILE - 1, py, 1, TILE, sp.darkened(0.3))
 			for dd in 3:
 				_rect(px + 3 + dd * 4, py + 4 + (dd % 2) * 5, 3, 1, sp.lightened(0.12))
+		24:             # 0.7.53.6: a wrecked ship's deck – plates, some torn up, scorch, foam, glass
+			var dp: Color = Color(pal["floor"]).lerp(Color(pal["floor2"]), hash2(x, y, 101))
+			_rect(px, py, TILE, TILE, dp)
+			_rect(px, py + TILE - 1, TILE, 1, dp.darkened(0.35))
+			_rect(px + TILE - 1, py, 1, TILE, dp.darkened(0.3))
+			_rect(px + 2, py + 2, 1, 1, dp.lightened(0.3))
+			_rect(px + TILE - 3, py + 2, 1, 1, dp.lightened(0.3))
+			var r24 := hash2(x, y, 102)
+			if r24 < 0.03:
+				_rect(px + 3, py + 4, 9, 7, Color(0.04, 0.04, 0.05))                 # a plate torn up: the dark below
+				_rect(px + 3, py + 3, 9, 1, dp.lightened(0.25))
+				_rect(px + 11, py + 4, 2, 6, dp.darkened(0.2))
+			elif r24 < 0.16:
+				for sk in 5:
+					_px(px + int(hash2(x, sk, 103) * 15), py + int(hash2(sk, y, 104) * 15), Color(0.12, 0.11, 0.11))   # scorch
+				_tint(px + 2, py + 3, 11, 9, Color(0, 0, 0), 0.25)
+			elif r24 < 0.22:
+				for fm in 6:
+					_rect(px + int(hash2(x, fm, 105) * 13), py + int(hash2(fm, y, 106) * 13), 2, 1, Color(0.85, 0.88, 0.9))     # foam
+			elif r24 < 0.27:
+				for gl in 3:
+					_px(px + int(hash2(x, gl, 107) * 15), py + int(hash2(gl, y, 108) * 15), Color(0.6, 0.85, 1.0))           # glass
 		23:             # 0.7.53.3: wet asphalt (a city's back alley)
 			for qy in 4:
 				for qx in 4:
@@ -597,6 +619,32 @@ func _steel_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px + 6, py + 5, 4, 4, Color(0.15, 0.12, 0.08))
 
 
+## 0.7.53.6: a wrecked ship's wall – its panels bent and scorched, a hazard band at the foot, cable bundles torn out.
+func _ship_face(x: int, y: int, px: int, py: int) -> void:
+	_steel_face(x, y, px, py)
+	var top_row := t_at(x, y - 1) != T.FACE
+	if top_row:
+		_rect(px, py + 2, TILE, 2, Color(0.22, 0.22, 0.24))                      # a conduit along the top
+		if hash2(x, y, 111) < 0.12:
+			_rect(px + 4, py + 4, 3, 2, Color(0.9, 0.2, 0.15))                    # a red emergency lamp
+	else:
+		for st in 4:
+			_rect(px + st * 4, py + TILE - 3, 2, 2, Color(0.9, 0.7, 0.1))       # hazard band
+	var r := hash2(x, y, 112)
+	if r < 0.14:
+		_tint(px, py, TILE, TILE, Color(0, 0, 0), 0.35)                          # scorched
+		for sk in 6:
+			_px(px + int(hash2(x, sk, 113) * 15), py + int(hash2(sk, y, 114) * 15), Color(0.1, 0.09, 0.09))
+	elif r < 0.24:
+		_rect(px + 3, py + 3, 10, 8, Color(0.06, 0.06, 0.07))                    # a panel torn off: cables
+		for cb in 3:
+			for cy in 6 + cb * 2:
+				_px(px + 5 + cb * 3 + int(sin(cy * 0.6 + cb) * 1.2), py + 4 + cy, [Color(0.8, 0.2, 0.15), Color(0.2, 0.4, 0.8), Color(0.85, 0.75, 0.2)][cb])
+	elif r < 0.3:
+		_rect(px + 2, py + 6, 12, 1, Color(pal["wall"]).lightened(0.2))          # a bent panel edge
+		_rect(px + 2, py + 7, 12, 2, Color(pal["wall"]).darkened(0.35))
+
+
 ## 0.7.53.3: a back alley's buildings: brick and concrete blocks, windows lit, pipes; the lift building's lobby front.
 func _alley_face(x: int, y: int, px: int, py: int) -> void:
 	var lob: Array = get_meta("lobby", [-1, -1])
@@ -664,7 +712,7 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
-	if style in ["precursor", "sewer", "hideout", "alley"]:
+	if style in ["precursor", "sewer", "hideout", "alley", "ship"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -747,6 +795,9 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 	if style == "hideout":
 		_steel_face(x, y, px, py)
 		return
+	if style == "ship":
+		_ship_face(x, y, px, py)
+		return
 	if style == "alley":
 		_alley_face(x, y, px, py)
 		return
@@ -793,6 +844,32 @@ func _decal(d: Dictionary) -> void:
 		"stripes":
 			for k in int(pw / 4):
 				_rect(px + k * 4, py + 1, 2, ph - 2, Color(0.95, 0.75, 0.1))
+		"furrow":
+			# 0.7.53.6: the furrow a ship ploughed coming down – torn earth, its edges thrown up
+			for yy in ph:
+				for xx in pw:
+					var e := 1.0 - absf(float(yy) / ph - 0.5) * 2.0
+					var base: Color = Color(pal.get("terrain_b", Color(0.5, 0.45, 0.35))).darkened(0.25 + 0.15 * e)
+					_px(px + xx, py + yy, base.lerp(base.darkened(0.2), hash2((px + xx) / 3, (py + yy) / 3, 115)))
+			_rect(px, py, pw, 2, Color(pal.get("terrain_c", Color(0.6, 0.55, 0.42))).lightened(0.1))
+			_rect(px, py + ph - 2, pw, 2, Color(pal.get("terrain_c", Color(0.6, 0.55, 0.42))).lightened(0.1))
+		"crater":
+			var cc := Vector2(px + pw * 0.5, py + ph * 0.5)
+			var rr := float(pw) * 0.5
+			for yy2 in range(-int(rr), int(rr) + 1):
+				for xx2 in range(-int(rr), int(rr) + 1):
+					var dd2 := Vector2(xx2, yy2 * 1.6).length() / rr
+					if dd2 < 1.0:
+						var tc: Color = Color(pal.get("terrain_b", Color(0.5, 0.45, 0.35)))
+						_px(int(cc.x) + xx2, int(cc.y) + yy2, tc.darkened(0.35 * (1.0 - dd2)) if dd2 < 0.8 else tc.lightened(0.12))
+		"debris":
+			var sd := int(d.get("seed", 0))
+			for k in 2 + sd % 3:
+				var dc := Color(0.45, 0.46, 0.5).darkened(hash2(sd, k, 116) * 0.5)
+				var dx := px + int(hash2(sd, k, 117) * 12)
+				var dy := py + int(hash2(k, sd, 118) * 12)
+				_rect(dx, dy, 3 + int(hash2(sd, k, 119) * 6), 2, dc)
+				_px(dx, dy, dc.lightened(0.3))
 		"rug":
 			_rect(px, py, pw, ph, c.darkened(0.35))
 			_rect(px + 2, py + 2, pw - 4, ph - 4, c.darkened(0.1))

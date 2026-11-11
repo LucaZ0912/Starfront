@@ -106,7 +106,10 @@ var fog: Node2D = null
 var depth := 0                            # 0.7.53.3: the level of a site you are on (0 the top)
 var _city_site = null                     # 0.7.53.3: in a city, the site before the alley's sewers took its place
 var _wires_t := {}
-var _sink := {}                           # 0.7.53.4: riding the ancient lift – {"d", "t", "dir"}                        # 0.7.53.3: tripwires set off – index -> seconds to the blast
+var _sink := {}
+var _dark_rect: ColorRect = null           # 0.7.53.6: the level's darkness (the generator's power can change it)
+var _haz_t := {}                          # 0.7.53.6: hazards' cool-downs (shock conduits)
+const WreckShader = preload("res://shaders/wreck.gdshader")                           # 0.7.53.4: riding the ancient lift – {"d", "t", "dir"}                        # 0.7.53.3: tripwires set off – index -> seconds to the blast
 var _mm: Control = null                  # package 53a: the minimap of a site (what you have seen)
 var _mm_img: Image = null
 var _mm_tex: ImageTexture = null
@@ -382,6 +385,14 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		fog.rects = map.get_meta("fog")
 		_world.add_child(fog)
 		_world.move_child(fog, _sorted.get_index())
+	if map.has_meta("plumes"):
+		if fog == null:
+			fog = FogNode.new()
+			_world.add_child(fog)
+			_world.move_child(fog, _sorted.get_index())
+		fog.plumes = map.get_meta("plumes")
+	if map.has_meta("wreck"):
+		_add_wreck(map.get_meta("wreck"))
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
@@ -631,6 +642,114 @@ func raise_alarm() -> void:
 			_say_toast("ALARM! The whole place knows you are here – and more of them are coming.", 3.5)
 			Audio.play("warn", "alarm rings", 0.0)
 			return
+
+
+## 0.7.53.6 (Luz): the wreck of a crash site – the ship's own picture at the ground's scale, shaded into hull plates
+## and burnt (shaders/wreck.gdshader); its shadow; the stern torn off and lying apart.
+func _add_wreck(w: Dictionary) -> void:
+	var tex: Texture2D = PixelArt.ship_texture(String(w["hull"]), "independent")
+	var sz := Vector2(tex.get_width(), tex.get_height())
+	for piece in [[w["c"], w["ang"], w["cut"]], [w["stern_c"], w["stern_ang"], w["stern_cut"]]]:
+		var sh := Sprite2D.new()
+		sh.texture = tex
+		sh.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		sh.modulate = Color(0, 0, 0, 0.45)
+		sh.position = ((piece[0] as Vector2) + Vector2(10, 16)) * GroundMap.SCALE
+		sh.rotation = float(piece[1])
+		sh.scale = Vector2.ONE * float(w["sc"]) * GroundMap.SCALE
+		var shm := ShaderMaterial.new()
+		shm.shader = WreckShader
+		shm.set_shader_parameter("px_size", sz)
+		shm.set_shader_parameter("art_per_px", float(w["sc"]))
+		shm.set_shader_parameter("burnt", 1.0)
+		shm.set_shader_parameter("cut", piece[2])
+		sh.material = shm
+		_world.add_child(sh)
+		_world.move_child(sh, _sorted.get_index())
+		var sp := Sprite2D.new()
+		sp.texture = tex
+		sp.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		sp.position = (piece[0] as Vector2) * GroundMap.SCALE
+		sp.rotation = float(piece[1])
+		sp.scale = Vector2.ONE * float(w["sc"]) * GroundMap.SCALE
+		var mat := ShaderMaterial.new()
+		mat.shader = WreckShader
+		mat.set_shader_parameter("px_size", sz)
+		mat.set_shader_parameter("art_per_px", float(w["sc"]))
+		mat.set_shader_parameter("burnt", float(w["burnt"]))
+		mat.set_shader_parameter("cut", piece[2])
+		sp.material = mat
+		_world.add_child(sp)
+		_world.move_child(sp, _sorted.get_index())
+
+
+## 0.7.53.6: a wreck's hazards – a live conduit shocks you when you step on it (now and then), a gas leak burns your
+## lungs unless your helmet is on.
+func _hazards_step(delta: float) -> void:
+	for k in _haz_t.keys():
+		_haz_t[k] = float(_haz_t[k]) - delta
+		if float(_haz_t[k]) <= 0.0:
+			_haz_t.erase(k)
+	for i in map.explore.size():
+		var d: Dictionary = map.explore[i]
+		var kd := String(d["kind"])
+		if kd == "conduit" and not _haz_t.has(i) and (d["pos"] as Vector2).distance_to(pilot.pos) < 10.0:
+			_haz_t[i] = 1.2
+			if not Commands.suit_god:
+				combat._hurt_pilot(16.0, "optical")
+			combat.sparks.append({"pos": d["pos"], "vel": Vector2(0, -40), "t": 0.0, "col": Color(0.6, 0.85, 1.0)})
+			combat.floaters.append({"pos": pilot.pos + Vector2(0, -40), "text": "ZAP", "col": Color(0.6, 0.85, 1.0), "t": 0.0})
+			Audio.play("shield_down", "shock conduit", -6.0)
+		elif kd == "gas" and (d["pos"] as Vector2).distance_to(pilot.pos) < float(d.get("r", 30.0)):
+			if GameState.gear.helmet != "always" and GameState.gear.combat_t <= 0.0 and not Commands.suit_god:
+				combat._hurt_pilot(4.0 * delta, "kinetic")
+				if not _haz_t.has(-1 - i):
+					_haz_t[-1 - i] = 4.0
+					_say_toast("Toxic gas – put your helmet on (Gear: helmet always) or get out of it.", 2.5)
+
+
+## 0.7.53.6 (Luz): the emergency generator – where its power goes.
+func _open_power_menu(d: Dictionary) -> void:
+	Audio.play("ui_open", "generator")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var p := UI.neon_panel(Color(1.0, 0.8, 0.3, 0.85), Color(0.05, 0.04, 0.03, 0.96), 2)
+	p.custom_minimum_size = Vector2(460, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("EMERGENCY POWER", 20, Color(1.0, 0.8, 0.3)))
+	v.add_child(UI.label("Barely enough for one – where does it go?", 13, UI.TEXT_DIM))
+	var opts := [["doors", "1.  The bulkheads – they open (the lights go out)"], ["lights", "2.  The lights – the bulkheads stay jammed"]]
+	var keys: Array = []
+	for o in opts:
+		var pick := func(): _route_power(d, String(o[0]))
+		var b := UI.button(String(o[1]), pick)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.disabled = String(d.get("route", "lights")) == String(o[0])
+		v.add_child(b)
+		keys.append(pick)
+	v.add_child(UI.button("Cancel [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", {})
+	_lift_menu.set_meta("keys", keys)
+
+
+func _route_power(d: Dictionary, to: String) -> void:
+	_close_lift_menu()
+	d["route"] = to
+	if to == "doors":
+		if d.has("door") and int(d["door"]) >= 0:
+			open_door(map.explore[int(d["door"])])
+		if _dark_rect != null and is_instance_valid(_dark_rect):
+			_dark_rect.color = Color(0.45, 0.28, 0.27)
+		_say_toast("The bulkheads groan open – and the lights die. Only the red emergency lamps now.", 3.5)
+	else:
+		if _dark_rect != null and is_instance_valid(_dark_rect):
+			_dark_rect.color = map.get_meta("dark", Color(0.78, 0.55, 0.52))
+		_say_toast("The lights flicker back on.", 2.0)
+	Audio.play("module_on", "power routed", -4.0)
 
 
 ## 0.7.53.4: the ancient lift by you ({} none).
@@ -1026,6 +1145,9 @@ func _build() -> void:
 		dk.size = (map.size_px() - Vector2(0, map.hull_top * GroundMap.TILE)) * GroundMap.SCALE
 		dk.z_index = 4
 		_world.add_child(dk)
+		_dark_rect = dk
+	if not map.has_meta("dark"):
+		_dark_rect = null
 	_named_lights.clear()
 	for l in map.lights:
 		var lsp := _add_light(l, add_mat)
@@ -1230,6 +1352,7 @@ func _process(delta: float) -> void:
 	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
 		_wires_step(delta)
 		_turrets_step(delta)
+		_hazards_step(delta)
 		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:
@@ -1551,6 +1674,39 @@ func explore_use(z: Dictionary) -> bool:
 			else:
 				_say_toast("Sealed – %s." % ("its panel is on the wall beside it (cutting torch)" if String(d["lock"]) == "panel" else "the computer by it opens it (E-Breach)"), 3.0)
 			return true
+		"breach":
+			if String(d["state"]) == "open":
+				_say_toast("Open – climb in.", 1.5)
+				return true
+			var t6 := belt_tool("tl_cutter")
+			if t6 == "":
+				_say_toast("A buckled plate is wedged in it – you need a cutting torch on your belt.", 3.0)
+				return true
+			var bg = CutGame.new()
+			bg.inside = "duct"
+			bg.shape = "notched"
+			bg.label = "HULL-%02d" % (int(d.get("seed", 0)) % 90 + 10)
+			bg.skill = GameState.skill_level("engineering")
+			bg.quality = float(ChibiArt.GearData.stats(t6).get("strength", 1.0))
+			bg.finished.connect(func(res: String): _cut_done(d, res))
+			_open_game(bg)
+			return true
+		"airlock":
+			_say_toast("Sealed – its terminal on the post beside it opens it (E-Breach)." if String(d["state"]) != "open" else "Open – go in.", 2.5)
+			return true
+		"blackbox":
+			if String(d["state"]) != "taken":
+				d["state"] = "taken"                        # 0.7.53.6 (Luz): the crash site's target
+				_poi_target_done(d)
+			else:
+				_say_toast("An empty rack.", 1.5)
+			return true
+		"generator":
+			_open_power_menu(d)
+			return true
+		"bulkhead":
+			_say_toast("Jammed – no power. The box beside it, or the emergency generator." if String(d["state"]) != "open" else "Open.", 2.5)
+			return true
 		"rust_door", "grate_door", "steel_door":
 			_say_toast("Sealed – its panel is beside it, or a computer somewhere opens it." if String(d["state"]) != "open" else "Open.", 2.5)
 			return true
@@ -1619,6 +1775,10 @@ func _cut_done(d: Dictionary, res: String) -> void:
 	d["state"] = "open"
 	if res == "loot":
 		_loot(d)
+		return
+	if String(d["kind"]) == "breach":
+		_say_toast("The plate drops away – the breach is open. Climb in.", 2.5)       # 0.7.53.6
+		Audio.play("dock_clamp", "breach cut open", -4.0)
 		return
 	if res == "duct":
 		open_vent(d)
@@ -1692,7 +1852,8 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 				var dd2: Dictionary = map.explore[int(d["door"])]
 				open_door(dd2)                                  # 0.7.52.23: its blast door slides open
 				txt = {"ruin_gate": "The entrance grinds open – fog spills out.", "rust_door": "The old door shrieks open.",
-					"grate_door": "The grate swings open with a rusty squeal.", "steel_door": "The code lock blinks green – the steel door slides open."}.get(String(dd2["kind"]), "The blast door grinds open.")
+					"grate_door": "The grate swings open with a rusty squeal.", "steel_door": "The code lock blinks green – the steel door slides open.",
+					"bulkhead": "The bulkhead grinds open on the last of its power.", "airlock": "The airlock hisses – its hatch slides open."}.get(String(dd2["kind"]), "The blast door grinds open.")
 			Audio.play("dock_clamp", "door released", -4.0)
 		"lasers":
 			if d.has("cage"):
@@ -1782,6 +1943,13 @@ func _poi_target_done(d: Dictionary) -> void:
 	if not bool(_site.get("poi", false)):
 		return
 	GameState.poi_use(String(_site.get("id", "")))
+	if String(_site.get("theme", "")) == "wreck":
+		var rw := 500 + int(d.get("seed", 0)) % 450              # 0.7.53.6: the flight recorder – its owners pay
+		GameState.credits += rw
+		GameState.research_data += 2
+		_say_toast("The flight recorder is yours – its owners pay %d cr for it. Back out when you like." % rw, 5.5)
+		Audio.play("lock_acquired", "site target done", -2.0)
+		return
 	if String(_site.get("theme", "")) == "sewer":
 		var pay := 400 + int(d.get("seed", 0)) % 500           # 0.7.53.3: the client list – sold on, or a bounty lead later
 		GameState.credits += pay
@@ -1818,6 +1986,8 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 		var mo: GroundMap
 		if String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "alley":
 			mo = DungeonGen.build_alley(_body, _site)
+		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "wreck":
+			mo = DungeonGen.build_wreck_outside(_body, _site, lsz.x, lsz.y)            # 0.7.53.6
 		else:
 			mo = DungeonGen.build_outside(_body, _site, lsz.x, lsz.y)
 		var info: Dictionary = (_poi_cache["dungeon_0"] as GroundMap).get_meta("poi").duplicate()
@@ -1938,7 +2108,9 @@ func _draw_minimap() -> void:
 		var c: Color = {"relic": Color(0.85, 0.5, 1.0), "terminal": Color(0.3, 1.0, 0.6), "crate": Color(1.0, 0.8, 0.3), "blastdoor": Color(1.0, 0.35, 0.3),
 			"tablet": Color(0.6, 0.85, 1.0), "vent": Color(0.75, 0.6, 1.0), "hatch": Color(1.0, 0.7, 0.35), "ladder": Color(0.4, 1.0, 0.6),
 			"valve": Color(0.4, 0.8, 0.9), "rust_door": Color(1.0, 0.35, 0.3), "grate_door": Color(1.0, 0.35, 0.3), "steel_door": Color(1.0, 0.35, 0.3),
-			"tripwire": Color(1.0, 0.25, 0.2), "ancient_lift": Color(0.75, 0.55, 1.0), "turret": Color(1.0, 0.35, 0.3), "alarm": Color(1.0, 0.25, 0.2)}.get(String(d["kind"]), Color(0, 0, 0, 0))
+			"tripwire": Color(1.0, 0.25, 0.2), "ancient_lift": Color(0.75, 0.55, 1.0), "turret": Color(1.0, 0.35, 0.3), "alarm": Color(1.0, 0.25, 0.2),
+			"blackbox": Color(1.0, 0.6, 0.2), "generator": Color(1.0, 0.85, 0.3), "deck_hole": Color(1.0, 0.7, 0.35), "breach": Color(0.4, 1.0, 0.6),
+			"airlock": Color(0.4, 1.0, 0.6), "bulkhead": Color(1.0, 0.35, 0.3), "conduit": Color(0.6, 0.85, 1.0), "gas": Color(0.5, 0.9, 0.3)}.get(String(d["kind"]), Color(0, 0, 0, 0))
 		if String(d["kind"]) == "blastdoor" and String(d["state"]) == "open":
 			c = Color(0.3, 1.0, 0.45)
 		if String(d["state"]) in ["scanned", "open", "hacked"] and String(d["kind"]) != "blastdoor":
@@ -2020,7 +2192,9 @@ func open_door(d: Dictionary) -> void:
 				z["title"] = "Go in"
 		_say_toast("The entrance grinds open – fog spills out.", 3.0)
 		Audio.play("dock_clamp", "ruin gate opens", -2.0)
-	var tl: Array = d["tiles"]
+	var tl: Array = d.get("tiles", [])
+	if tl.size() < 4:
+		return                                             # 0.7.53.6: the airlock – the way in is its zone
 	map.fill(int(tl[0]), int(tl[1]), int(tl[2]), int(tl[3]), GroundMap.T.DOOR, 1)
 	map._astar = null
 	if combat != null:
@@ -2254,6 +2428,12 @@ func use(instant: bool = false) -> bool:
 			return explore_use(zone)                     # 0.7.52.22
 		"dungeon_in":
 			var gate := _poi_gate()
+			if zone.has("gate"):
+				gate = map.explore[int(zone["gate"])]          # 0.7.53.6: the breach or the airlock of a wreck
+				if String(gate["state"]) != "open":
+					_say_toast("A buckled plate is wedged in the breach – cut it out (cutting torch)." if String(gate["kind"]) == "breach"
+						else "The airlock is sealed – its terminal on the post beside it opens it (E-Breach).", 3.0)
+					return true
 			if bool(_site.get("used", false)) or GameState.poi_used.has(String(_site.get("id", ""))):
 				_say_toast("Nothing more down there – the place is cleared out. Come back another time.", 3.0)
 			elif gate.is_empty() or String(gate["state"]) == "open":

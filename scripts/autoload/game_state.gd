@@ -2032,8 +2032,13 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	if poi_used.has(id):
 		return []
 	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
-	return [{"id": id, "name": PoiData.site_name("precursor", rng), "kind": "ruins", "poi": true, "theme": "precursor", "seed": rng.randi(),
-		"danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}]
+	var theme := "wreck" if rng.randf() < 0.4 else "precursor"           # 0.7.53.6: ruins or a crash site
+	var site := {"id": id, "name": PoiData.site_name(theme, rng), "kind": "crash" if theme == "wreck" else "ruins", "poi": true, "theme": theme,
+		"seed": rng.randi(), "danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}
+	if theme == "wreck":
+		var hl: Array = PoiData.THEMES["wreck"]["hulls"]
+		site["hull"] = String(hl[rng.randi() % hl.size()])            # which ship came down
+	return [site]
 
 
 ## 0.7.53.3 (Luz, package 53b): a city's way down – the sewers behind its back alley, rolled anew each visit to the

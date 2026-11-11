@@ -79,6 +79,10 @@ static func _rise(kind: String) -> int:
 			return 8
 		"pipe_bundle", "weapon_crate":        # 0.7.53.3: the sewer's and the hideout's low cover
 			return 9
+		"container":                          # 0.7.53.6: a 6 m cargo container (2.6 m tall)
+			return 30
+		"locker_down", "seats":               # 0.7.53.6: a ship's lockers fallen over, a row of seats – low cover
+			return 10
 		"pump":                               # 0.7.53.3: a big pump – high cover
 			return 26
 		"dune":
@@ -478,6 +482,55 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 4 + rb * (pw - 10) / 4, fy - 12, 1, 7, Color(0.5, 0.3, 0.18))
 			for rbl in 5:
 				_p(img, int(GroundMap.hash2(rbl, 9, 2) * pw), fy + ph - 2 + int(GroundMap.hash2(rbl, 9, 3) * 2), Color(0.42, 0.36, 0.3))
+		"container":
+			# 0.7.53.6 (Luz): a cargo container thrown out of the wreck – its lid from above (ribs across), its long
+			# side facing you (ribs), the door end with its bars – or sprung open, goods spilling
+			var cc: Color = o.get("col", Color(0.75, 0.35, 0.15))
+			var lid_h := ph
+			var face_top := rise
+			_r(img, 0, 0, pw, lid_h, cc.lightened(0.12))
+			for rb in range(3, pw - 2, 6):
+				_r(img, rb, 1, 2, lid_h - 2, cc.lightened(0.22))
+				_r(img, rb + 2, 1, 1, lid_h - 2, cc.darkened(0.05))
+			_r(img, 0, 0, pw, 2, cc.lightened(0.35))
+			_r(img, 0, 0, 2, lid_h, cc.lightened(0.3))
+			_r(img, 0, lid_h, pw, face_top, cc.darkened(0.12))
+			for rb2 in range(2, pw - 1, 4):
+				_r(img, rb2, lid_h + 1, 2, face_top - 2, cc.darkened(0.02))
+				_r(img, rb2 + 2, lid_h + 1, 1, face_top - 2, cc.darkened(0.32))
+			_r(img, 0, lid_h, pw, 2, cc.darkened(0.45))
+			_r(img, 0, lid_h + face_top - 3, pw, 3, cc.darkened(0.5))
+			_r(img, 8, lid_h + 8, 22, 8, Color(0.92, 0.92, 0.88))
+			_r(img, 10, lid_h + 10, 18, 1, cc.darkened(0.3))
+			_r(img, 10, lid_h + 13, 12, 1, cc.darkened(0.3))
+			var dx := pw - 12
+			_r(img, dx, lid_h, 12, face_top, cc.darkened(0.25))
+			if bool(o.get("open", false)):
+				_r(img, dx + 1, lid_h + 2, 10, face_top - 4, Color(0.03, 0.03, 0.04))
+			else:
+				for bar in 2:
+					_r(img, dx + 3 + bar * 5, lid_h + 2, 1, face_top - 4, Color(0.75, 0.75, 0.72))
+					_r(img, dx + 2 + bar * 5, lid_h + 12 + bar * 4, 3, 2, Color(0.85, 0.85, 0.8))
+			_ellipse(img, pw * 0.4, lid_h + 14, 6, 4, cc.darkened(0.35))
+		"locker_down":
+			# 0.7.53.6: a ship's locker fallen on its back – its doors to the sky, one sprung
+			var lc := Color(0.4, 0.45, 0.5)
+			_r(img, 1, fy - 6, pw - 2, ph + 2, lc)
+			_r(img, 1, fy - 6, pw - 2, 2, lc.lightened(0.25))
+			_r(img, pw / 2, fy - 6, 1, ph + 2, lc.darkened(0.35))
+			for sl in 3:
+				_r(img, 3, fy - 3 + sl * 2, pw / 2 - 5, 1, lc.darkened(0.25))
+			_r(img, pw / 2 + 2, fy - 4, pw / 2 - 5, ph - 2, Color(0.08, 0.08, 0.09))
+			_r(img, 1, fy + ph - 5, pw - 2, 3, lc.darkened(0.45))
+		"seats":
+			# 0.7.53.6: a row of seats torn loose – backs, belts dangling
+			for st in int(pw / 8):
+				var sx := 1 + st * 8
+				_r(img, sx, fy - 9, 7, 6, Color(0.3, 0.3, 0.42))
+				_r(img, sx, fy - 9, 7, 1, Color(0.42, 0.42, 0.55))
+				_r(img, sx, fy - 3, 7, 5, Color(0.36, 0.36, 0.5))
+				_r(img, sx + 3, fy - 3, 1, 6, Color(0.75, 0.6, 0.2))
+			_r(img, 0, fy + 2, pw, 2, Color(0.25, 0.25, 0.27))
 		"pipe_bundle":
 			# 0.7.53.3 (Luz): pipes run low along the floor, clamped together – cover in the sewers
 			for k in 3:

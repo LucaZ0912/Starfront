@@ -215,8 +215,10 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var chh := int(th["cell_h"])
 	var corr := int(th["corr"])
 	var canal := bool(th.get("canal", false))
+	var spine := bool(th.get("spine", false))       # 0.7.53.6: a ship – one long main corridor, the cabins off it
+	var SP := 9 if spine else 0                      # the spine's band: its wall's face, five tiles of floor, a margin
 	var W := cols * cw + 4
-	var H := rows * chh + 4
+	var H := rows * chh + 4 + SP
 	m.setup(W, H)
 	m.fill(0, 0, W, H, T.CAP)
 	# ---- the cells: where the entrance, the target or the way down lie; which are rooms
@@ -225,9 +227,11 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var vault_c := far_c
 	var appr_c := Vector2i(far_c.x, 1)
 	var down_c := far_c
+	if spine:
+		appr_c = Vector2i(-9, -9)                    # the spine is its approach
 	var need: Array = [entr_c]
 	if last:
-		need += [vault_c, appr_c]
+		need += [vault_c] if spine else [vault_c, appr_c]
 	else:
 		need.append(down_c)
 	var cells: Array = []
@@ -260,17 +264,21 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				w = mini(maxi(w, corr + 8), cw - 3)          # room for the ladder beside the way in from above
 			var h := rng.randi_range(int(th["room_h"][0]), mini(int(th["room_h"][1]), chh - 5))
 			var x: int = 2 + c.x * cw + rng.randi_range(1, maxi(1, cw - w - 1))
-			var y: int = 1 + c.y * chh + 3 + rng.randi_range(0, maxi(0, chh - h - 5))
+			var y: int = 1 + c.y * chh + (SP if c.y >= 1 else 0) + 3 + rng.randi_range(0, maxi(0, chh - h - 5))
 			r = Rect2i(x, y, w, h)
 		else:
 			var jx: int = 2 + c.x * cw + cw / 2 - corr / 2 + rng.randi_range(-2, 2)
-			var jy: int = 1 + c.y * chh + chh / 2 - corr / 2 + rng.randi_range(-1, 1)
+			var jy: int = 1 + c.y * chh + (SP if c.y >= 1 else 0) + chh / 2 - corr / 2 + rng.randi_range(-1, 1)
 			r = Rect2i(jx, jy, corr, corr)
 		rooms[c] = r
 		is_room[c] = room
 	var ap := Rect2i()
 	var vr := Rect2i()
-	if last:
+	var spine_r := Rect2i(2, 1 + chh + 3, W - 4, 5)
+	if last and spine:
+		ap = spine_r
+		vr = rooms[vault_c]
+	elif last:
 		ap = rooms[appr_c]
 		vr = rooms[vault_c]
 		vr.position.x = clampi(ap.position.x + ap.size.x / 2 - vr.size.x / 2, 2 + vault_c.x * cw + 1, mini(W - vr.size.x - 2, 2 + (vault_c.x + 1) * cw - vr.size.x))
@@ -279,6 +287,8 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var hf := int(th["hall_floor"])
 	for c2 in cells:
 		var r2: Rect2i = rooms[c2]
+		if spine and not is_room[c2]:
+			continue
 		m.fill(r2.position.x, r2.position.y, r2.size.x, r2.size.y, T.FLOOR, rf if is_room[c2] else hf)
 		if canal and not is_room[c2]:
 			m.fill(r2.position.x, r2.position.y + 2, r2.size.x, r2.size.y - 4, T.FLOOR, 18)      # the canals meet: a cross
@@ -287,6 +297,21 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var tree_cells: Array = cells.filter(func(c3): return c3 != (vault_c if last else down_c))
 	var edges: Array = []
 	var inn: Array = [entr_c]
+	if spine:
+		# the main corridor along the hull, each cabin joined to it straight up or down (the vault only by its door)
+		m.fill(spine_r.position.x, spine_r.position.y, spine_r.size.x, spine_r.size.y, T.FLOOR, hf)
+		for c9 in cells:
+			if not is_room[c9] or (last and c9 == vault_c):
+				continue
+			var r9: Rect2i = rooms[c9]
+			var cx9 := r9.position.x + r9.size.x / 2
+			var y_a := mini(r9.get_center().y, spine_r.get_center().y)
+			var y_b := maxi(r9.get_center().y, spine_r.get_center().y)
+			for y9 in range(y_a, y_b + 1):
+				for k9 in corr:
+					if not GroundMap.walkable_t(m.t_at(cx9 - corr / 2 + k9, y9)):
+						m.set_t(cx9 - corr / 2 + k9, y9, T.FLOOR, hf)
+		inn = tree_cells.duplicate()                 # (no tree to grow)
 	while inn.size() < tree_cells.size():
 		var cand: Array = []
 		for a in inn:
@@ -297,7 +322,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		var pick: Array = cand[rng.randi() % cand.size()]
 		edges.append(pick)
 		inn.append(pick[1])
-	for extra in rng.randi_range(int(th["loops"][0]), int(th["loops"][1])):
+	for extra in (0 if spine else rng.randi_range(int(th["loops"][0]), int(th["loops"][1]))):
 		var a2: Vector2i = tree_cells[rng.randi() % tree_cells.size()]
 		var b2: Vector2i = a2 + [Vector2i(1, 0), Vector2i(0, 1)][rng.randi() % 2]
 		if tree_cells.has(b2) and not edges.any(func(e): return (e[0] == a2 and e[1] == b2) or (e[0] == b2 and e[1] == a2)):
@@ -313,7 +338,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		dx = clampi(ap.position.x + ap.size.x / 2, vr.position.x + 2, vr.end.x - 3)
 		m.fill(dx - 1, vr.end.y, CORR, ap.position.y - vr.end.y, T.FLOOR, hf)
 		door_gap = Rect2i(dx - 1, ap.position.y - 3, CORR, 3)
-	else:
+	elif not spine:
 		var nb: Vector2i = Vector2i(down_c.x, down_c.y + 1)
 		if not tree_cells.has(nb):
 			nb = Vector2i(down_c.x + (1 if down_c.x == 0 else -1), down_c.y)
@@ -380,7 +405,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		# the way down: a hatch in the far room's floor
 		var drr: Rect2i = rooms[down_c]
 		var hp := Vector2(drr.position.x + drr.size.x * 0.5, drr.position.y + drr.size.y * 0.5) * TILE
-		ExploreNode.add(m, "hatch", hp, {"no_zone": true, "seed": rng.randi()})
+		ExploreNode.add(m, "deck_hole" if String(th.get("descent", "")) == "hole" else "hatch", hp, {"no_zone": true, "seed": rng.randi()})
 		m.zones.append({"rect": Rect2(hp - Vector2(20, 14), Vector2(40, 30)), "kind": "dungeon_down", "id": "dungeon_down",
 			"title": "Climb down – deeper in", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(-100, -100)})
 		m.set_meta("down_front", hp + Vector2(0, 26))
@@ -423,6 +448,13 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "relic", rc * TILE, relic)
 			m.lights.append({"pos": rc * TILE, "r": 60.0, "col": th["light"], "a": 0.4, "flicker": true})
 			targets.append(["relic", "A relic signature – deep inside, behind an old door%s" % (", guarded by floating crystals" if ci >= 0 else "")])
+		elif String(th.get("target", "")) == "blackbox":
+			# 0.7.53.6 (Luz): the flight recorder – orange, armoured, bolted into a rack in the ship's core
+			ExploreNode.add(m, "blackbox", rc * TILE, {"target": true, "seed": rng.randi()})
+			ExploreNode.add(m, "crate", Vector2(vr.end.x - 2.0, vr.position.y + 1.6) * TILE, {"welded": true, "seed": rng.randi(), "theme": theme})
+			n_cache += 1
+			m.lights.append({"pos": rc * TILE, "r": 60.0, "col": Color(1.0, 0.6, 0.2), "a": 0.45, "flicker": true})
+			targets.append(["blackbox", "The flight recorder – on the lower deck, behind a jammed bulkhead"])
 		else:
 			# the dealer's office: the computer with the client list, a rug, a desk, the safe
 			m.decals.append({"kind": "rug", "x": int(rc.x) - 3, "y": int(rc.y) - 1, "w": 6, "h": 3, "col": Color(0.55, 0.18, 0.13)})
@@ -440,10 +472,16 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "turret", Vector2(_wall_spot(m, vr, vr.end.x - 3) + 0.5, vr.position.y) * TILE, {"no_zone": true, "state": "on", "seed": rng.randi()})
 			acts = ["door", "turrets", "data"]
 			targets.append(["turret", "A turret guarding the office – its control room can switch it off"])
+		if String(th.get("computer", "")) == "ship":
+			# 0.7.53.6 (Luz): the emergency generator – route its power to the bulkheads (or the lights)
+			ExploreNode.add(m, "generator", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE, {"door": di, "seed": rng.randi()})
+			targets.append(["power", "The emergency generator – where its power goes"])
+			acts = []
 		var term := {"actions": acts, "door": di, "seed": rng.randi(), "style": String(th.get("computer", "")), "level": 1 + int(String(site.get("danger", "yellow")) == "red")}
 		if ci >= 0:
 			term["cage"] = ci
-		ExploreNode.add(m, "terminal", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE, term)
+		if not acts.is_empty():
+			ExploreNode.add(m, "terminal", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE, term)
 	elif lift_i >= 0:
 		# 0.7.53.4: their computer wakes the lift; so does a crystal panel somewhere else on the level
 		var dormant := String(m.explore[lift_i]["state"]) == "dormant"
@@ -485,6 +523,13 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			var trap := rng.randf() < 0.55
 			ExploreNode.add(m, "panel", Vector2(_wall_spot(m, prr, prr.position.x + 2) + 0.5, prr.position.y) * TILE, {"inside": "button", "effect": "emp" if trap else "cache",
 				"trap": trap, "wall": true, "style": style, "seed": rng.randi(), "shape": ["rounded", "hex", "arch"][rng.randi() % 3]})
+	elif String(th.get("traps", "")) == "shock" and spine:
+		# 0.7.53.6: open conduits sparking across the main corridor; a gas leak in it
+		for sk in rng.randi_range(2, 3):
+			var sxp := rng.randi_range(spine_r.position.x + 4, spine_r.end.x - 5)
+			ExploreNode.add(m, "conduit", Vector2(sxp + 0.5, spine_r.position.y + rng.randi_range(1, 3) + 0.5) * TILE, {"no_zone": true, "seed": rng.randi()})
+		var gx := rng.randi_range(spine_r.position.x + 6, spine_r.end.x - 7)
+		ExploreNode.add(m, "gas", Vector2(gx + 0.5, spine_r.position.y + 2.5) * TILE, {"no_zone": true, "r": 34.0, "seed": rng.randi()})
 	elif String(th.get("traps", "")) == "tripwire":
 		var placed := 0
 		for e4 in edges:
@@ -548,7 +593,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				m.foe_spawns.append(p)
 				foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
 	if last:
-		var lp := Vector2(dx + 0.5, ap.position.y + 3.0) * TILE
+		var lp := Vector2(dx + 0.5, ap.position.y + (2.5 if spine else 3.0)) * TILE
 		if m.free_at(lp, 6.0):
 			m.foe_spawns.append(lp)
 			foes.append("%s@%s" % [String(th["leader"]), String(dg["leader"])])
@@ -564,6 +609,9 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		if not is_room[c5]:
 			n_c = 1
 		_scatter_cover(m, th, rng, Rect2i(rr.position.x - (2 if not is_room[c5] else 0), rr.position.y, rr.size.x + (4 if not is_room[c5] else 0), rr.size.y), n_c, role_of.get(c5, "") == "entrance")
+	if spine:
+		for sg in cols * 2:
+			_scatter_cover(m, th, rng, Rect2i(spine_r.position.x + sg * (spine_r.size.x / (cols * 2)), spine_r.position.y, spine_r.size.x / (cols * 2), spine_r.size.y), 1, false)
 	# cover along the long ways too
 	for e5 in edges:
 		if rng.randf() < 0.7:
@@ -740,3 +788,183 @@ static func _faces(m: GroundMap) -> void:
 		for d in [1, 2]:
 			if m.t_at(p.x, p.y - d) == T.CAP:
 				m.set_t(p.x, p.y - d, T.FACE)
+
+
+# ---------------------------------------------------------------- outside: a crash site (0.7.53.6)
+
+const HullData53 = preload("res://data/hulls.gd")
+const ART_PER_M := 15.0                 # the ground's scale: about 15 art px a metre (BuildArt, 0.7.50.13)
+
+
+## Where a ship's picture ends on its south side at a share f of its length (0 stern, 1 nose), in art px.
+static func ship_edge(img: Image, c: Vector2, sc: float, ang: float, f: float) -> Vector2:
+	var sw := img.get_width()
+	var sh := img.get_height()
+	var sx := clampi(int(f * sw), 0, sw - 1)
+	var sy := sh - 1
+	while sy > 0 and img.get_pixel(sx, sy).a < 0.5:
+		sy -= 1
+	return c + (Vector2(sx + 0.5, sy + 0.5) * sc - Vector2(sw, sh) * sc * 0.5).rotated(ang)
+
+
+## Does a piece of the ship (centre c, turned ang, the share [cut) left out) cover the point p (art px)?
+static func ship_covers(img: Image, c: Vector2, sc: float, ang: float, cut: Vector2, p: Vector2) -> bool:
+	var sw := img.get_width()
+	var sh := img.get_height()
+	var q := ((p - c).rotated(-ang) + Vector2(sw, sh) * sc * 0.5) / sc
+	if q.x < 0 or q.y < 0 or q.x >= sw or q.y >= sh:
+		return false
+	var f := q.x / sw
+	if f >= cut.x and f < cut.y:
+		return false
+	return img.get_pixel(int(q.x), int(q.y)).a > 0.5
+
+
+## 0.7.53.6 (Luz): a crash site – a ship of the game come down in the north of the field, at the ground's real scale
+## (15 art px a metre: a 92 m freighter is wider than the screen), nose dug into the ground, its stern torn away and
+## lying back along the furrow it ploughed. Two ways in on its south flank: a breach (open, or a plate wedged in it –
+## cut it) and the emergency airlock (its terminal on a post – hack it). Its cargo strewn about – containers, one
+## burst open; fires, smoke, debris, craters; scavengers camped to the east.
+static func build_wreck_outside(body: Dictionary, site: Dictionary, ship_len: float, ship_beam: float) -> GroundMap:
+	var th := _theme(site)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(site.get("seed", 53)) + 13
+	var hull := String(site.get("hull", "freighter"))
+	var img: Image = PixelArt.ship_texture(hull, "independent").get_image()
+	if img.is_compressed():
+		img.decompress()
+	var sw := img.get_width()
+	var sh := img.get_height()
+	var length_m := float(HullData53.HULLS.get(hull, {}).get("length", 60))
+	var sc := length_m * ART_PER_M / sw
+	var L := sw * sc
+	var B := sh * sc
+	var m := GroundMap.new()
+	m.pal = DeckGen.palette_for_body(body).duplicate()
+	m.title = String(site.get("name", "Crash site"))
+	m.hull_top = -60
+	var W := int(L / TILE) + 34
+	var H := int(B / TILE) + 36
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.FLOOR, 13)
+	m.fill(0, H - 1, W, 1, T.BLOCK, 13)
+	m.fill(0, 0, 1, H, T.BLOCK, 13)
+	m.fill(W - 1, 0, 1, H, T.BLOCK, 13)
+	m.fill(0, 0, W, 1, T.BLOCK, 13)
+	var ang := rng.randf_range(-0.07, 0.07)
+	var c := Vector2(W * TILE * 0.56, 2.0 * TILE + B * 0.5 + 10.0)
+	var cut_f := rng.randf_range(0.1, 0.17)
+	var stern_ang := ang - rng.randf_range(0.25, 0.45)
+	# where it broke: the stern piece lies a little back from the break, turned away
+	var brk := c + Vector2(cut_f * L - L * 0.5, 0).rotated(ang)
+	var piece_mid := brk + Vector2(-cut_f * L * 0.5 - 50.0, 30.0)
+	var stern_c := piece_mid - Vector2(cut_f * L * 0.5 - L * 0.5, 0).rotated(stern_ang)
+	# what the hull stands on: blocked
+	for ty in H:
+		for tx in W:
+			var p := Vector2(tx + 0.5, ty + 0.5) * TILE
+			if ship_covers(img, c, sc, ang, Vector2(0.0, cut_f), p) or ship_covers(img, stern_c, sc, stern_ang, Vector2(cut_f, 1.01), p):
+				m.set_t(tx, ty, T.BLOCK, 13)
+	m.set_meta("wreck", {"hull": hull, "c": c, "sc": sc, "ang": ang, "cut": Vector2(0.0, cut_f), "stern_c": stern_c, "stern_ang": stern_ang,
+		"stern_cut": Vector2(cut_f, 1.01), "burnt": rng.randf_range(0.35, 0.55)})
+	# the furrow it ploughed, from the west to its stern; craters; debris; scorch
+	var fy := int(stern_c.y / TILE)
+	fy = int(piece_mid.y / TILE)
+	m.decals.append({"kind": "furrow", "x": 0, "y": fy - 2, "w": maxi(4, int(piece_mid.x / TILE) - 2), "h": 5})
+	for cr in 6:
+		m.decals.append({"kind": "crater", "x": rng.randi_range(4, W - 6), "y": rng.randi_range(int((c.y + B * 0.5) / TILE) + 3, H - 4), "w": rng.randi_range(2, 4), "h": 2})
+	for db in 120:
+		m.decals.append({"kind": "debris", "x": rng.randi_range(2, W - 3), "y": rng.randi_range(int((c.y + B * 0.4) / TILE), H - 3), "w": 1, "h": 1, "seed": rng.randi()})
+	# the pad, south-west, with the drone
+	var sl := clampi(int(ceil(ship_len / TILE)) + 4, 10, 40)
+	var sb := clampi(int(ceil(ship_beam / TILE)) + 4, 7, 20)
+	var px0 := 4
+	var py0 := H - sb - 5
+	m.fill(px0, py0, sl, sb, T.FLOOR, 14)
+	m.decals.append({"kind": "landing_pad", "x": px0, "y": py0, "w": sl, "h": sb, "col": Color(0.95, 0.8, 0.2), "n": 1})
+	m.pad_rects.append(Rect2(Vector2(px0, py0) * TILE, Vector2(sl, sb) * TILE))
+	var sc2 := Vector2(px0 + sl * 0.5, py0 + sb * 0.5)
+	m.ship_at = sc2 * TILE
+	var bx := int(sc2.x - ship_len / TILE * 0.5) + 1
+	var bw := maxi(2, int(ship_len / TILE) - 2)
+	var bh := maxi(1, int(ship_beam / TILE) - 1)
+	m.fill(bx, int(sc2.y - bh * 0.5), bw, bh, T.BLOCK, 14)
+	var rx := int(sc2.x) - 1
+	var ry := int(sc2.y + bh * 0.5)
+	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
+	m.spawn = Vector2(rx + 1.0, ry + 2.6) * TILE
+	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * TILE, Vector2(3, 3.2) * TILE), "kind": "exit", "id": "ship",
+		"title": "Up the ramp – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "fuel_point", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 1, "rise": 34})
+	m.zones.append({"rect": Rect2(Vector2(px0 + sl + 0.4, py0 + 1.0) * TILE, Vector2(3.2, 1.6) * TILE), "kind": "charge", "id": "charge",
+		"title": "Supply point – energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
+	# the ways in: the breach and the emergency airlock on its south flank
+	var bp := ship_edge(img, c, sc, ang, rng.randf_range(0.36, 0.46))
+	var ap := ship_edge(img, c, sc, ang, rng.randf_range(0.58, 0.7))
+	var breach := ExploreNode.add(m, "breach", bp, {"no_zone": true, "state": "open" if rng.randf() < 0.45 else "shut", "seed": rng.randi()})
+	var bi := m.explore.find(breach)
+	m.zones.append({"rect": Rect2(bp + Vector2(-26, -6), Vector2(52, 30)), "kind": "explore", "id": "explore", "i": bi, "title": "A breach in the hull"})
+	var lock := ExploreNode.add(m, "airlock", ap, {"no_zone": true, "seed": rng.randi(), "tiles": []})
+	var ai := m.explore.find(lock)
+	ExploreNode.add(m, "terminal", ap + Vector2(34, 22), {"actions": ["door"], "door": ai, "style": "ship", "seed": rng.randi()})
+	for e in [[bp, bi, "Through the breach – inside"], [ap, ai, "Through the airlock – inside"]]:
+		m.zones.append({"rect": Rect2((e[0] as Vector2) + Vector2(-20, -4), Vector2(40, 18)), "kind": "dungeon_in", "id": "dungeon_in", "gate": e[1],
+			"title": String(e[2]), "col": Color(1.0, 0.45, 0.35), "sign": Vector2(-100, -100)})
+	m.set_meta("door_front", bp + Vector2(0, 26))
+	# cargo: containers thrown out of its hold – one burst open, its goods spilled
+	var placed: Array = []
+	for ci in rng.randi_range(4, 6):
+		for tries in 12:
+			var ox := rng.randi_range(4, W - 10)
+			var oy := rng.randi_range(int((c.y + B * 0.5) / TILE) + 3, H - 6)
+			var ok := true
+			for yy in range(oy - 1, oy + 4):
+				for xx in range(ox - 1, ox + 8):
+					if not GroundMap.walkable_t(m.t_at(xx, yy)) or m.floor_kind[clampi(yy, 0, H - 1) * W + clampi(xx, 0, W - 1)] == 14:
+						ok = false
+			for pl in placed:
+				if absi(int(pl.x) - ox) < 10 and absi(int(pl.y) - oy) < 5:
+					ok = false
+			if ok:
+				var open := ci == 0
+				m.add_object({"kind": "container", "x": ox, "y": oy, "w": 6, "h": 2, "col": [Color(0.75, 0.35, 0.15), Color(0.2, 0.45, 0.6), Color(0.3, 0.55, 0.3), Color(0.6, 0.6, 0.62), Color(0.7, 0.6, 0.2)][ci % 5], "open": open})
+				if open:
+					m.add_object({"kind": "crates", "x": ox + 7, "y": oy + 1, "w": 2, "h": 1})
+				placed.append(Vector2i(ox, oy))
+				break
+	# rocks (cover), the scavengers' camp to the east
+	for rk in 10:
+		var rx2 := rng.randi_range(3, W - 4)
+		var ry2 := rng.randi_range(int((c.y + B * 0.5) / TILE) + 2, H - 3)
+		if GroundMap.walkable_t(m.t_at(rx2, ry2)) and GroundMap.walkable_t(m.t_at(rx2 + 1, ry2)) and m.floor_kind[ry2 * W + rx2] != 14:
+			m.add_object({"kind": "rock", "x": rx2, "y": ry2, "w": 2, "h": 1, "col": Color(0.45, 0.4, 0.34), "seed": rng.randi()})
+	var camp := Vector2i(W - 12, H - 10)
+	m.add_object({"kind": "rover", "x": camp.x, "y": camp.y, "w": 3, "h": 2})
+	m.add_object({"kind": "crates", "x": camp.x - 3, "y": camp.y + 2, "w": 2, "h": 1})
+	m.lights.append({"pos": Vector2(camp.x, camp.y + 2) * TILE, "r": 60.0, "col": Color(1.0, 0.8, 0.5), "a": 0.35})
+	var foes: Array = []
+	var dg: Dictionary = PoiData.DANGER.get(String(site.get("danger", "yellow")), PoiData.DANGER["yellow"])
+	for fi in rng.randi_range(2, 3):
+		var fp := Vector2(camp.x - 2 + fi * 2, camp.y + 4) * TILE
+		if m.free_at(fp, 6.0):
+			m.foe_spawns.append(fp)
+			foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(dg["tiers"][0])])
+	m.set_meta("foes", foes)
+	# fires along the hull, smoke rising
+	var plumes: Array = []
+	for fr in 4:
+		var fq := ship_edge(img, c, sc, ang, rng.randf_range(0.15, 0.85)) + Vector2(0, -rng.randf_range(20, B * 0.6))
+		plumes.append(fq)
+		m.lights.append({"pos": fq, "r": 50.0, "col": Color(1.0, 0.55, 0.2), "a": 0.45, "flicker": true})
+	plumes.append(piece_mid)
+	m.lights.append({"pos": piece_mid, "r": 50.0, "col": Color(1.0, 0.55, 0.2), "a": 0.45, "flicker": true})
+	# bigger pieces torn off it: engine parts, heaps of plating
+	for pc in 6:
+		var qx := rng.randi_range(4, W - 6)
+		var qy := rng.randi_range(int((c.y + B * 0.5) / TILE) + 2, H - 4)
+		if GroundMap.walkable_t(m.t_at(qx, qy)) and GroundMap.walkable_t(m.t_at(qx + 2, qy)) and m.floor_kind[qy * W + qx] != 14:
+			m.add_object({"kind": ["engine_part", "heap"][pc % 2], "x": qx, "y": qy, "w": 3 if pc % 2 == 0 else 2, "h": 1, "col": Color(0.45, 0.46, 0.5)})
+	m.set_meta("plumes", plumes)
+	m.lights.append({"pos": bp + Vector2(0, 12), "r": 50.0, "col": Color(1.0, 0.3, 0.2), "a": 0.35, "flicker": true})
+	m.lights.append({"pos": ap + Vector2(0, 8), "r": 40.0, "col": Color(1.0, 0.2, 0.15), "a": 0.35})
+	return m
