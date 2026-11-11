@@ -1055,40 +1055,51 @@ func _draw_tactics_view() -> void:
 	var reach: float = _vis["reach"]
 	var red: bool = _vis["red"]
 	var col := Color(1.0, 0.3, 0.28) if red else Color(0.35, 1.0, 0.55)
+	# 0.7.52.7 (Luz): the shadows in the other side's colour – in your view red where foes are covered from you, in a
+	# foe's view green where you are safe from it; the ground behind smoke yellow
+	var shade := Color(0.35, 1.0, 0.55) if red else Color(1.0, 0.3, 0.28)
+	var smoke_col := Color(1.0, 0.85, 0.2)
 	var c := from * S
-	# the dark disc: everything in reach – what is in sight lights up on it, the shadows stay dark
-	tac_node.draw_circle(c, reach * S, Color(0.0, 0.02, 0.01, 0.5) if not red else Color(0.04, 0.0, 0.0, 0.5))
+	# a dark disc under it all: the colours stand out on any ground
+	tac_node.draw_circle(c, reach * S, Color(0.0, 0.0, 0.0, 0.3))
 	var rays: Array = _vis["rays"]
 	var h := TAU / TAC_RAYS * 0.5
 	var fill := Color(col, 0.2)
 	var edges: Array = []                                   # the edges between rays – shared exactly, no seams
 	for j in rays.size() + 1:
 		edges.append(Vector2.from_angle(TAU * j / TAC_RAYS - h))
+	var sfill := Color(shade, 0.22)
 	for i in rays.size():
 		var d0: Vector2 = edges[i]
 		var d1: Vector2 = edges[i + 1]
+		var last := TAC_STEP
 		for seg in rays[i]:
 			var t0 := float(seg[0]) * S
 			var t1 := float(seg[1]) * S
+			if float(seg[0]) - last > 0.5:                          # the shadow before this stretch
+				tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * last * S, c + d1 * last * S, c + d1 * t0, c + d0 * t0]), sfill)
+			last = float(seg[1])
 			if seg.size() > 2 and bool(seg[2]):
-				# 0.7.52.6: behind smoke – grey, with a hatch every few rays: shots from here aim badly
-				tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), Color(0.9, 0.9, 0.86, 0.26))
+				# 0.7.52.6/7: behind smoke – yellow, with a hatch every few rays: shots through here aim badly
+				tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), Color(smoke_col, 0.24))
 				if i % 4 == 0:
 					var hd := (d0 + d1) * 0.5
 					var tt := t0 + fposmod(-t0, 24.0)
 					while tt < t1:
 						var hp0 := c + hd * tt
-						tac_node.draw_line(hp0, hp0 + hd.rotated(PI * 0.5) * 9.0, Color(0.95, 0.95, 0.92, 0.55), 1.5)
+						tac_node.draw_line(hp0, hp0 + hd.rotated(PI * 0.5) * 9.0, Color(smoke_col, 0.6), 1.5)
 						tt += 18.0
 				continue
 			tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * t0, c + d1 * t0, c + d1 * t1, c + d0 * t1]), fill)
+		if reach - last > 0.5:                                      # the shadow out to the reach
+			tac_node.draw_colored_polygon(PackedVector2Array([c + d0 * last * S, c + d1 * last * S, c + d1 * reach * S, c + d0 * reach * S]), sfill)
 	# the edges of the shadows: where a ray's sight ends short of the reach
 	for i2 in rays.size():
 		var segs: Array = rays[i2]
 		var a2 := TAU * i2 / TAC_RAYS
 		for seg2 in segs:
 			if float(seg2[1]) < reach - 1.0:
-				tac_node.draw_circle(c + Vector2.from_angle(a2) * float(seg2[1]) * S, 1.6, Color(col, 0.75))
+				tac_node.draw_circle(c + Vector2.from_angle(a2) * float(seg2[1]) * S, 1.6, Color(shade, 0.85))
 	# rings and the reach, as on the radar
 	for k in range(1, 4):
 		tac_node.draw_arc(c, reach * S * k / 4.0, 0.0, TAU, 96, Color(col, 0.14), 1.0)

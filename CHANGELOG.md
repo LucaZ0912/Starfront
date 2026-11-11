@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.7 – 2026-11-11
+
+**The tactical view in the other side's colours (Luz).** In your green view the shadows – where foes are covered from
+you – are now red; in a foe's red view the shadows – where you are safe from it – are green. The ground behind smoke
+shows yellow and hatched in both. Legend and codex follow.
+
 ## alpha 0.7.52.6 – 2026-11-11
 
 **Shield domes and smoke in the tactical view; the foe's view at its own weapon's reach (Luz).**

@@ -329,6 +329,8 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.52.6: `GroundCombat.cast` – rays end at shield domes seen from outside, stretches carry a smoke flag
   ([t0, t1, smoked], drawn grey and hatched); `dome_between(a, b)` – any shot from outside crossing a dome; the red view
   (`_tac_source`) at the foe's weapon's range.
+- 0.7.52.7: `_draw_tactics_view` draws the shadows (gaps between lit stretches, out to the reach) in the other side's colour
+  (`shade`), smoke stretches yellow.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.
