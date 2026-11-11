@@ -9971,6 +9971,8 @@ func _test_wreck(view: SystemView) -> void:
 	g.zone = _zone_of(g.map, "dungeon_out")
 	g.use()
 	up_ok = up_ok and g.level == "landing" and g.map.has_meta("wreck")
+	# 0.7.53.15 (Luz): out the way you came in – the airlock, not the breach; on the ground the ship's keys are locked
+	up_ok = up_ok and g.pilot.pos.distance_to((lock["pos"] as Vector2) + Vector2(0, 26)) < 2.0 and main.ship_keys_locked()
 	# back
 	main.close_deck(false)
 	main._close_planet_map()
@@ -9991,7 +9993,7 @@ func _test_wreck(view: SystemView) -> void:
 	gear.combat_t = 0.0
 	main._update_input()
 	check(out_ok and deck_ok and shock_ok and low_ok and done_ok and up_ok,
-		"53b: crash sites found on the map with their ship; the wreck at the ground's scale (a 92 m freighter), its breach and airlock, cargo containers, scavengers, smoke; the airlock sealed until its terminal opens it; inside the main corridor along the hull, the hole down, conduits that shock, gas; below the jammed bulkhead – the generator's power opens it; the flight recorder pays; back up and out  [%s]" % " ".join(PackedStringArray([str(out_ok), str(deck_ok), str(shock_ok), str(low_ok), str(done_ok), str(up_ok)])))
+		"53b: crash sites found on the map with their ship; the wreck at the ground's scale (a 92 m freighter), its breach and airlock, cargo containers, scavengers, smoke; the airlock sealed until its terminal opens it; inside the main corridor along the hull, the hole down, conduits that shock, gas; below the jammed bulkhead – the generator's power opens it; the flight recorder pays; back up and out by the airlock it went in by, the ship's keys locked on the ground  [%s]" % " ".join(PackedStringArray([str(out_ok), str(deck_ok), str(shock_ok), str(low_ok), str(done_ok), str(up_ok)])))
 
 
 ## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine: the headframe outside (its chained gate),

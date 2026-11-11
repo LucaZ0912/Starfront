@@ -2980,6 +2980,8 @@ func use(instant: bool = false) -> bool:
 			if bool(_site.get("used", false)) or GameState.poi_used.has(String(_site.get("id", ""))):
 				_say_toast("Nothing more down there – the place is cleared out. Come back another time.", 3.0)
 			elif gate.is_empty() or String(gate["state"]) == "open":
+				if zone.has("gate"):
+					map.set_meta("door_front", (gate["pos"] as Vector2) + Vector2(0, 26))   # 0.7.53.15 (Luz): out the way you came in
 				depth = 0
 				go_level("dungeon", "dungeon_in")          # 0.7.53.2: into the site
 			else:

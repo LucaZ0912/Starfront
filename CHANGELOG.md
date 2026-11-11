@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.15 – 2026-11-11
+
+**Fixes from play (Luz).**
+- **Combat drones fly** instead of jumping while you walk: they ease toward their place beside you with a speed of
+  their own, carried along at your walking pace (they used to switch between full speed and a hover lerp).
+- **The ship's keys are locked on the ground** – on foot, on the planet map, in the flight down and at a city's
+  hatch: thrust, camera levels, modules, drones, wingmen and the ship commands (G no longer docks you back into the
+  ship). The windows, Escape, saving and the debug menu still work.
+- **Out the way you came in:** leaving a site with two ways in (a wreck's breach and airlock, the pirate base's
+  gates) puts you outside the one you used – no longer always at the wreck's breach.
+
 ## alpha 0.7.53.14 – 2026-11-11
 
 **Balancing on foot and a buy-back screen when you go down (Luz).**

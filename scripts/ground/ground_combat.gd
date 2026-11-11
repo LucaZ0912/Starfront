@@ -1552,6 +1552,7 @@ func _drone_up() -> void:
 	drone["state"] = "launch"
 	drone["t"] = 0.0
 	drone["pos"] = _dock_at(drone_slot)
+	drone["vel"] = _drone_pv                               # 0.7.53.15: it leaves your back at your pace
 	drone["alt"] = 20.0 if shoulder_drones() else 16.0
 	Audio.play("drone_launch", "drone up from the back", -6.0)
 
@@ -1612,7 +1613,17 @@ func _drone_command() -> String:
 	return ("Drone back on your arm – switched off." if shoulder_drones() else "Drone back on your back – switched off.") + nth
 
 
+var _drone_pv := Vector2.ZERO                # 0.7.53.15: how fast you walk – the drones fly along with it
+var _drone_pp := Vector2.INF
+
+
 func _drone_step(delta: float) -> void:
+	var pp := pilot_pos()
+	if _drone_pp != Vector2.INF and delta > 0.0 and pp.distance_to(_drone_pp) < 40.0:
+		_drone_pv = _drone_pv.lerp((pp - _drone_pp) / delta, 1.0 - exp(-delta * 10.0))
+	else:
+		_drone_pv = Vector2.ZERO
+	_drone_pp = pp
 	var keep := drone_slot
 	for i in 2:
 		pick_drone(i)
@@ -1707,10 +1718,20 @@ func _drone_step_one(delta: float) -> void:
 				drone_rebuild = float(st["rebuild"])
 				return
 	# flying there
-	var spd := float(st.get("speed", 150.0)) * (1.0 if String(d["state"]) == "dive" else 1.0)
+	var spd := float(st.get("speed", 150.0))
 	var to: Vector2 = want - (d["pos"] as Vector2)
-	if to.length() > 0.5:
-		d["pos"] = (d["pos"] as Vector2) + to.limit_length(spd * delta) if to.length() > 8.0 or String(d["state"]) != "hover" else (d["pos"] as Vector2).lerp(want, 1.0 - exp(-delta * 6.0))
+	if String(d["state"]) == "dive":
+		d["pos"] = (d["pos"] as Vector2) + to.limit_length(spd * delta)
+	else:
+		# 0.7.53.15 (Luz): it flies – a velocity that eases toward where it wants to be, carried along at your walking
+		# speed (it used to jump between full speed and a hover lerp while you walked)
+		var want_v := (_drone_pv + to * 5.0).limit_length(spd + _drone_pv.length())
+		var v: Vector2 = d.get("vel", Vector2.ZERO)
+		v = v.lerp(want_v, 1.0 - exp(-delta * 7.0))
+		d["vel"] = v
+		d["pos"] = (d["pos"] as Vector2) + v * delta
+		if String(d["state"]) in ["dock", "return", "reload"] and to.length() < 5.0:
+			d["pos"] = (d["pos"] as Vector2).lerp(want, 1.0 - exp(-delta * 12.0))
 	d["alt"] = lerpf(float(d["alt"]), alt, 1.0 - exp(-delta * 5.0))
 	# 0.7.52.12 (Luz): it turns where it flies – and to its target when it fires
 	var mv: Vector2 = (d["pos"] as Vector2) - p0

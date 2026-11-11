@@ -647,6 +647,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	handle_input(event)
 
 
+## 0.7.53.15 (Luz): on foot, on the planet map, in the flight down or at a city's hatch the ship's keys (thrust, camera
+## levels, modules, drones, wingmen, ship commands such as G = dock) are locked – a key the ground does not use does
+## nothing there. The windows (map, ship menu, pilot, help), Escape, saving and the debug menu still work.
+func ship_keys_locked() -> bool:
+	return (ground != null and is_instance_valid(ground)) or (planet_map != null and is_instance_valid(planet_map)) \
+		or (flight != null and is_instance_valid(flight)) or (hatch != null and is_instance_valid(hatch))
+
+
 ## Game hotkeys via rebindable actions (see Keybinds / Settings → Controls).
 ## Also called by SystemView for a clean middle-mouse click (no drag).
 func handle_input(event: InputEvent) -> void:
@@ -691,6 +699,8 @@ func handle_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("debug_menu", false, true):
 		if Commands.cheats_enabled:
 			debug_menu.toggle()
+	elif ship_keys_locked():
+		return                                            # 0.7.53.15 (Luz): on the ground the ship's keys do nothing
 	elif event.is_action_pressed("boost", false, false) and view != null and view.player != null and is_instance_valid(view.player):
 		var be: String = view.player.boost_error()            # 0.6.75.2: the thrust burst (Shift – modifiers ignored)
 		if be == "":
