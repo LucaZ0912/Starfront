@@ -837,6 +837,16 @@ func _build_ground() -> void:
 		"foes": ["guard_trooper", "guard_trooper", "guard_heavy", "guard_sergeant@yellow"]})))
 	ra3.add_child(UI.button("Arena: one sniper", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(), "foes": ["pirate_sniper"]})))
 	ra3.add_child(UI.button("Fill the grenade places", func(): _cmd({"type": "debug_gear", "grenades": true})))
+	var rdr := _row()                                               # 0.7.52.11: drones
+	var dq := _option(GroundGear.QUALITIES, GroundGear.QUALITIES, 60)
+	dq.select(3)
+	rdr.add_child(UI.label("Drone:", 12, UI.TEXT_DIM))
+	rdr.add_child(dq)
+	for dk in [["dr_laser", "Laser"], ["dr_kinetic", "Kinetic"], ["dr_kamikaze", "Kamikaze"]]:
+		var dkk: String = dk[0]
+		rdr.add_child(UI.button(String(dk[1]), func(): _cmd({"type": "debug_gear", "drone": dkk + ":" + String(dq.get_selected_metadata())})))
+	rdr.add_child(UI.button("Shoot it down", func(): _cmd({"type": "debug_combat", "do": "drone_kill"})))
+	rdr.add_child(UI.button("New one now", func(): _cmd({"type": "debug_combat", "do": "drone_ready"})))
 	var ra2 := _row()                                               # 0.7.52.4 (Luz): mixed strengths
 	ra2.add_child(UI.button("Arena: 2 green + 1 yellow", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
 		"foes": ["bandit_scrapper@green", "bandit_rifleman@green", "bandit_gunner@yellow"]})))

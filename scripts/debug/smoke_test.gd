@@ -148,6 +148,7 @@ func _process(delta: float) -> void:
 				_test_debug_ground(view)         # 0.7.51.5 – the debug functions of packages 49–51
 				_test_foot_combat(view)          # package 52 – fights on foot
 				_test_foot_tactics(view)         # 0.7.52.5 – grenades, AI types, pirates and guards
+				_test_foot_drones(view)          # 0.7.52.11 – ground combat drones
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9245,3 +9246,131 @@ func _test_foot_tactics(view: SystemView) -> void:
 	main._update_input()
 	check(dbg_ok and frag_ok and emp_ok and smoke_ok and dome_ok and shelter_ok and look_ok and sniper_ok and morale_ok and thrower_ok and flank_ok,
 		"0.7.52.5: grenades (a frag thrown by hand hurts near more than far, EMP takes shields, smoke spoils aim, a shield dome stops fire and blasts from outside, high cover shelters); pirates and guards in their colours; the sniper's aim and slow fire; a fallen leader breaks its band; a thrower throws at you dug in; a flanker seeks your open side  [%s]" % " ".join(PackedStringArray([str(dbg_ok), str(frag_ok), str(emp_ok), str(smoke_ok), str(dome_ok), str(shelter_ok), str(look_ok), str(sniper_ok), str(morale_ok), str(thrower_ok), str(flank_ok)])))
+
+
+## 0.7.52.11: ground combat drones – the combat suits' drone place, quality F–A, laser (heat), kinetic (magazine, back
+## to reload from the suit), kamikaze (dives on C, a long rebuild), shot down and rebuilt, foes shooting at it.
+func _test_foot_drones(view: SystemView) -> void:
+	var GD = GearShop.GearData
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	# data: only the combat suits have a drone place; quality makes them better; more rounds and energy for every suit
+	var data_ok: bool = int(GD.stats("suit_mil_light:C").get("drones", 0)) == 1 and int(GD.stats("suit_mil_heavy:C").get("drones", 0)) == 1 \
+		and int(GD.stats("suit_civil:C").get("drones", 0)) == 0 and GD.DRONES.size() == 3 and GD.kind("dr_laser:C") == "drone" and GD.valid("dr_kamikaze:A") \
+		and int(GD.stats("dr_kinetic:A")["mag"]) > int(GD.stats("dr_kinetic:F")["mag"]) and float(GD.stats("dr_laser:A")["heat_max"]) > float(GD.stats("dr_laser:F")["heat_max"]) \
+		and float(GD.stats("dr_laser:A")["shield"]) > float(GD.stats("dr_laser:F")["shield"]) and float(GD.stats("dr_kamikaze:C")["rebuild"]) >= 2.0 * float(GD.stats("dr_laser:C")["rebuild"]) \
+		and int(GD.stats("suit_mil_light:C")["ammo"]) >= 200 and float(GD.stats("suit_civil:C")["energy"]) >= 130.0 and GD.all_ids().has("dr_laser:B")
+	# equipping: into the drone place of a combat suit, not on a civilian suit
+	gear.suit = "suit_civil:C"
+	gear._fit_slots()
+	for i in gear.inv.size():
+		gear.inv[i] = {}
+	gear.inv[0] = {"id": "dr_laser:C", "n": 1}
+	var civ_no: bool = gear.equip_from_inv(0) != "" and gear.drones.is_empty()
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	var eq_ok: bool = civ_no and gear.equip_from_inv(0) == "" and String(gear.drones[0]) == "dr_laser:C"
+	gear.weapons[0] = "wp_laser_rifle:C"
+	# the arena: the drone takes off from your back
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "0.7.52.11: the arena opens")
+		return
+	gear.refill()
+	Commands.suit_god = false
+	for i2 in 10:
+		cb.step(0.1, Vector2.ZERO)
+	var up_ok: bool = cb.drone_alive() and String(cb.drone["kind"]) == "laser" and String(cb.drone["state"]) == "hover" \
+		and (cb.drone["pos"] as Vector2).distance_to(g.pilot.pos) < 30.0
+	# the laser fights your target and heats up; overheated it stops until cool
+	var me: Vector2 = g.pilot.pos
+	var foe: Dictionary = cb.spawn("bandit_boss", cb._free_near(me + Vector2(70, 0)))
+	cb._wake(foe)
+	cb.frozen = true
+	cb.lock(foe)
+	cb.lock_t = 0.0
+	var h0 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
+	gear.weapons[0] = ""                                 # only the drone fires
+	gear.weapons[1] = ""
+	for i3 in 20:
+		cb.step(0.1, Vector2.ZERO)
+	var h1 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
+	var laser_ok: bool = cb.fight and h1 < h0 and float(cb.drone["heat"]) > 0.0
+	cb.drone["heat"] = 200.0
+	cb.drone["over"] = true
+	var shots0: int = cb.shots.size()
+	cb.step(0.1, Vector2.ZERO)
+	laser_ok = laser_ok and bool(cb.drone["over"]) and cb.shots.size() <= shots0
+	# recall with C: it waits at your back
+	var rmsg: String = cb.drone_command()
+	laser_ok = laser_ok and cb.drone_recalled and rmsg.contains("recalled")
+	cb.drone_command()
+	# the kinetic one: its magazine empty, it flies back and reloads from the suit
+	Commands.execute({"type": "debug_gear", "drone": "dr_kinetic:C"})
+	for i4 in 10:
+		cb.step(0.1, Vector2.ZERO)
+	var kin_ok: bool = cb.drone_alive() and String(cb.drone["kind"]) == "kinetic"
+	cb.drone["ammo"] = 1
+	var a0: int = gear.ammo
+	for i5 in 80:
+		cb.step(0.1, Vector2.ZERO)
+	kin_ok = kin_ok and String(cb.drone["state"]) in ["hover", "launch"] and int(cb.drone["ammo"]) > 1 and gear.ammo < a0
+	# shot down: a new one after its rebuild time
+	cb._hurt_drone(99999.0, "kinetic")
+	var down_ok: bool = String(cb.drone["state"]) == "down" and is_equal_approx(cb.drone_rebuild, float(GD.stats("dr_kinetic:C")["rebuild"]))
+	for i6 in 10:
+		cb.step(0.1, Vector2.ZERO)
+	down_ok = down_ok and cb.drone.is_empty() and cb.drone_rebuild > 0.0 and cb.drone_command().contains("rebuilt")
+	cb.drone_rebuild = 0.05
+	for i7 in 3:
+		cb.step(0.1, Vector2.ZERO)
+	down_ok = down_ok and cb.drone_alive()
+	# foes shoot at it: a hit wears it down
+	var sh0 := float(cb.drone["st"]["shield"]) + float(cb.drone["st"]["armor"])
+	cb.drone["regen_wait"] = 0.0
+	var hit_d := false
+	for i8 in 30:
+		cb.fire(foe, cb.drone, GD.stats("wp_rifle:C"))
+	for i9 in 5:
+		cb.step(0.1, Vector2.ZERO)
+	hit_d = not cb.drone_alive() or float(cb.drone["st"]["shield"]) + float(cb.drone["st"]["armor"]) < sh0
+	# the kamikaze: dives on C at your target, bursts there – and takes long to rebuild
+	Commands.execute({"type": "debug_gear", "drone": "dr_kamikaze:C"})
+	cb.drone = {}
+	cb.drone_rebuild = 0.0
+	for i10 in 10:
+		cb.step(0.1, Vector2.ZERO)
+	cb.lock(foe)
+	var hk0 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
+	var hp_me: float = gear.health
+	var kmsg: String = cb.drone_command()
+	for i11 in 30:
+		cb.step(0.1, Vector2.ZERO)
+		if cb.drone.is_empty():
+			break
+	var hk1 := float(foe["st"]["shield"]) + float(foe["st"]["armor"]) + float(foe["st"]["health"])
+	var kam_ok: bool = kmsg.contains("away") and cb.drone.is_empty() and (hk1 < hk0 or foe["dead"]) and is_equal_approx(gear.health, hp_me) \
+		and is_equal_approx(cb.drone_rebuild, float(GD.stats("dr_kamikaze:C")["rebuild"])) and g.combat_hud != null
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(data_ok and eq_ok and up_ok and laser_ok and kin_ok and down_ok and hit_d and kam_ok,
+		"0.7.52.11: ground combat drones – the combat suits' drone place, quality F–A, more rounds and energy for every suit; the laser drone fights your target and overheats, C recalls it; the kinetic one flies back and reloads from the suit; shot down and rebuilt; foes' hits wear it down; the kamikaze dives on C and bursts, sparing you, with a long rebuild  [%s]" % " ".join(PackedStringArray([str(data_ok), str(eq_ok), str(up_ok), str(laser_ok), str(kin_ok), str(down_ok), str(hit_d), str(kam_ok)])))

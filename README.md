@@ -338,6 +338,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   `grenade_aiming()` / `GR_HOLD`, `nearest_target()`, the bars over foes in `_draw`, softer `shade` / `smoke_col`;
   keys `foot_run`, `foot_belt_1..4`, `foot_target_near` (Shift+R), `foot_grenade` (X) – `Keybinds` descriptors take
   `shift`, `LAYOUT` 6; `KeybindPanel.tab` "space"/"ground" (`_set_tab`, `_shift_pending`, `_bind`).
+- 0.7.52.11: `GearData.DRONES` / `DRONE_KINDS` (kind "drone": laser heat/heat_max/cool, kinetic mag/reload, kamikaze
+  radius; shield, armor, rebuild, speed), suits' `drones` place; `PilotGear.drones`; `scripts/ground/drone_art.gd` –
+  `DroneArt.art(kind)` / `draw(ci, kind, at, hover, t)`; `GroundCombat.drone` {is_drone, id, kind, pos, alt, st, mx,
+  state launch/hover/return/reload/dive/down, heat, over, ammo …}, `drone_rebuild`, `drone_recalled`, `drone_id()`,
+  `drone_alive()`, `drone_command()`, `_drone_step`, `_drone_fire`, `_hurt_drone`, `_chance_at_drone`, `_draw_drone`;
+  `fire()` takes the drone as a target, `_explode(…, spare_pilot)`; `CombatHud._draw_drone_panel`; key `foot_drone` (C);
+  `debug_gear` {drone}, `debug_combat` do drone_kill / drone_ready; smoke group `foot_drones`.
 - `GroundMap.texture()` renders floors and walls once.
 - `obj_art.gd` – `ObjArt.make(o, pal)`: furniture sprites (tables, chairs, stools, counters, sofa, jukebox, plants …).
 - `chibi_art.gd` – `ChibiArt.frame(look, dir, f)`: small 16×24 figures from the portrait look, 4 directions × 3 frames.

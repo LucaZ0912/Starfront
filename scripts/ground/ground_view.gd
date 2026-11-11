@@ -1032,6 +1032,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			combat.nearest_target()                      # 0.7.52.9 (Luz): Shift+R – the nearest foe
 			return
+		if event.is_action_pressed("foot_drone", false, true):
+			get_viewport().set_input_as_handled()
+			_say_toast(combat.drone_command(), 2.0)              # 0.7.52.11
+			return
 		if event.is_action_pressed("foot_grenade", false, false):
 			get_viewport().set_input_as_handled()
 			if not combat.grenade_down():

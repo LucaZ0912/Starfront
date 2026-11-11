@@ -47,6 +47,7 @@ const ACTIONS := [
 	{"id": "foot_target", "label": "Fight: lock the next target", "group": "On foot", "def": [{"k": KEY_R}]},          # package 52 (0.7.52.2, Luz: R)
 	{"id": "foot_target_near", "label": "Fight: lock the foe nearest to you", "group": "On foot", "def": [{"k": KEY_R, "shift": true}]},   # 0.7.52.9
 	{"id": "foot_grenade", "label": "Fight: grenade (tap: next, hold: throw)", "group": "On foot", "def": [{"k": KEY_X}]},
+	{"id": "foot_drone", "label": "Fight: drone (kamikaze: dive, others: recall / send)", "group": "On foot", "def": [{"k": KEY_C}]},      # 0.7.52.11
 	{"id": "foot_tactics", "label": "Fight: tactical view (tap: switch, hold: off)", "group": "On foot", "def": [{"k": KEY_TAB}]},
 	{"id": "foot_zoom", "label": "Fight: tactical view zoom (or the wheel)", "group": "On foot", "def": [{"k": KEY_Z}]},          # 0.7.52.8
 	{"id": "foot_dodge", "label": "Fight: dodge (a jump no shot hits)", "group": "On foot", "def": [{"k": KEY_SPACE}]},

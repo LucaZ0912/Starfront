@@ -235,9 +235,11 @@ func _gear() -> void:
 	row.add_child(right)
 	var sflow := _gear_flow(right, "Suit", "")
 	sflow.add_child(_gear_tile(String(g.suit), 1, "", "suit", 0, "Suit"))
-	for sec in [["weapons", "Weapons"], ["grenades", "Grenades  –  %s switches, hold to throw" % Keybinds.key_text("foot_grenade")], ["belt", "Belt  –  keys 1–%d" % g.belt.size()], ["features", "Features"]]:
+	for sec in [["weapons", "Weapons"], ["grenades", "Grenades  –  %s switches, hold to throw" % Keybinds.key_text("foot_grenade")], ["belt", "Belt  –  keys 1–%d" % g.belt.size()], ["drones", "Drone  –  %s: its command" % Keybinds.key_text("foot_drone")], ["features", "Features"]]:
 		var key := String(sec[0])
 		var arr: Array = g.get(key)
+		if arr.is_empty() and key == "drones":
+			continue                                     # 0.7.52.11: only the combat suits have a drone place
 		var filled := 0
 		for it in arr:
 			if (it is Dictionary and not (it as Dictionary).is_empty()) or (it is String and String(it) != ""):
@@ -346,7 +348,7 @@ func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
 	match where:
 		"suit":
 			id = String(g.suit)
-		"weapons", "belt", "grenades", "features":
+		"weapons", "belt", "grenades", "drones", "features":
 			var arr: Array = g.get(where)
 			if idx >= 0 and idx < arr.size():
 				var it = arr[idx]
@@ -376,7 +378,7 @@ func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
 		hd.add_child(nv)
 		var q := GearData.quality(id)
 		nv.add_child(UI.wrap_label(GearData.display_name(id) + (" ×%d" % n if n > 1 else ""), 16, GameData.quality_color(q) if q != "" else COL, 320))
-		nv.add_child(UI.label(String({"suit": "Worn", "weapons": "Weapon slot %d" % (idx + 1), "belt": "Belt – key %d" % (idx + 1), "grenades": "Grenade place %d" % (idx + 1), "features": "Feature slot %d" % (idx + 1),
+		nv.add_child(UI.label(String({"suit": "Worn", "weapons": "Weapon slot %d" % (idx + 1), "belt": "Belt – key %d" % (idx + 1), "grenades": "Grenade place %d" % (idx + 1), "drones": "Drone place", "features": "Feature slot %d" % (idx + 1),
 			"inv": "In your pockets", "locker": "In the ship's locker"}.get(where, "")), 12, UI.TEXT_DIM))
 		for ln in GearData.describe(id):
 			if String(ln) != "":
@@ -386,7 +388,7 @@ func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
 		match where:
 			"suit":
 				left.add_child(UI.label("Put another suit on from your pockets.", 11, UI.TEXT_DIM))
-			"weapons", "belt", "grenades", "features":
+			"weapons", "belt", "grenades", "drones", "features":
 				acts.add_child(UI.button("Take off → pockets", func(): _gsel = {}; _gear_do(g.unequip(where, idx))))
 			"inv":
 				acts.add_child(UI.button("Put on", func(): _gsel = {}; _gear_do(g.equip_from_inv(idx))))

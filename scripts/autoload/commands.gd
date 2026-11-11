@@ -2601,6 +2601,14 @@ func _c_debug_gear(c: Dictionary) -> String:
 			g.grenades[i] = {"id": grs[i % grs.size()], "n": GD.stack_max(grs[i % grs.size()])}
 		g.gr_sel = 0
 		GameState.log_msg("[Debug] Grenade places filled.", GameState.COL_WARN)
+	if c.has("drone"):                                 # 0.7.52.11: a drone module straight into the drone place
+		var did := String(c["drone"])
+		if not GD.valid(did) or GD.kind(did) != "drone":
+			return "Unknown drone '%s'." % did
+		if g.drones.is_empty():
+			return "Only combat suits have a drone place."
+		g.drones[0] = did
+		GameState.log_msg("[Debug] %s in the drone place." % GD.display_name(did), GameState.COL_WARN)
 	if c.get("fill_belt", false):
 		for i in g.belt.size():
 			var fam: String = DEBUG_BELT[i % DEBUG_BELT.size()]
@@ -2779,6 +2787,11 @@ func _c_debug_combat(c: Dictionary) -> String:
 			cb.show_ai = bool(c.get("on", not cb.show_ai))
 		"hurt":
 			cb._hurt_pilot(float(c.get("amount", 30.0)), String(c.get("dtype", "kinetic")))
+		"drone_kill":                                  # 0.7.52.11: your drone shot down
+			cb._hurt_drone(99999.0, "kinetic")
+		"drone_ready":                                 # a new drone at once
+			cb.drone_rebuild = 0.0
+			cb.drone = {}
 		"tactics":                                     # 0.7.52.2: the tactical view – 0 off, 1 your sight, 2 the target's
 			cb.tactics = clampi(int(c.get("mode", 1)), 0, 2)
 			cb._vis = {}

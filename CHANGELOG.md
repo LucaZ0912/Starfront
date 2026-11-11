@@ -3,6 +3,30 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.11 – 2026-11-11
+
+**Ground combat drones (package 52.6, after the mockup Luz approved).**
+
+- **A drone place on both combat suits** for a drone module, quality F–A (more damage, heat it bears or rounds it
+  holds, shield and armour). In the Gear shop under Features → Combat drones, where combat suits are sold; on the gear
+  page a row of its own.
+- **They take off from your back** and hover at your shoulder – small quadcopters about 0.6 m across, spinning rotors,
+  a blinking light, a shadow on the ground.
+  - **Laser drone** (Axiom): fires at your target by itself; every shot heats it, full it must cool off.
+  - **Kinetic drone** (Hadrian): a quick slug gun; its magazine empty, it flies back to your back and **reloads from
+    your suit's rounds**.
+  - **Kamikaze drone** (Forge of Return): waits at your shoulder; **C** sends it diving at your target, where it bursts
+    (it spares you).
+- **C** – the drone's command (rebindable): the kamikaze dives, the others are called back to your back or sent out
+  again.
+- **Foes shoot at it** – half the time when it is nearer to them than you are. Shot down, it falls; **a new one** takes
+  off after 20 s (the kamikaze after 50 s).
+- A drone panel beside the weapons: what it does, shield, armour, heat or rounds, the time to a new one.
+- **More rounds and energy for every suit** (Luz): e.g. the light combat suit 240 rounds and 170 energy (was 160 /
+  120), the civilian suit 100 / 140 (was 60 / 100).
+- Debug (F12 → Ground → Combat): a laser, kinetic or kamikaze drone in any quality, shoot it down, a new one now.
+  Codex entry; smoke test group `foot_drones`.
+
 ## alpha 0.7.52.10 – 2026-11-11
 
 **Fix: ruins and crash sites in the approach without settlement pads.** Seen from above on the way down, a ruin or a

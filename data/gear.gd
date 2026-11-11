@@ -17,7 +17,7 @@ const Q := {
 	"F": {"perf": 0.7, "price": 0.5}, "E": {"perf": 0.8, "price": 0.68}, "D": {"perf": 0.9, "price": 0.84},
 	"C": {"perf": 1.0, "price": 1.0}, "B": {"perf": 1.15, "price": 1.45}, "A": {"perf": 1.3, "price": 2.1},
 }
-const KINDS := {"suit": "Suit", "weapon": "Weapon", "belt": "Belt", "feature": "Feature"}
+const KINDS := {"suit": "Suit", "weapon": "Weapon", "belt": "Belt", "feature": "Feature", "drone": "Drone"}
 const HAZARDS := ["heat", "cold", "toxic", "vacuum"]
 const HAZARD_NAMES := {"heat": "Heat", "cold": "Cold", "toxic": "Toxic air", "vacuum": "Vacuum"}
 const DAMAGE_NAMES := {"optical": "Optical", "kinetic": "Kinetic", "explosive": "Explosive"}
@@ -41,31 +41,32 @@ const LOCK_TIME := 0.6                 # seconds to lock a target (Firearms shor
 const SHOT_SPEED := 720.0              # slugs and shells, art px a second (lasers are at once)
 
 ## The suit classes. weapons / belt / grenades / features: slot counts (0.7.52.9, Luz: grenades have places of their
-## own, apart from the belt's consumables and tools – a light combat suit 2 + 3); shield, armor, energy, oxygen (minutes of breathing),
+## own, apart from the belt's consumables and tools – a light combat suit 2 + 3); drones: a drone place (0.7.52.11, the
+## combat suits); shield, armor, energy, oxygen (minutes of breathing),
 ## ammo: base values at quality C; env: protection 0..1 against each hazard; speed: walking speed ×.
 const SUITS := {
 	"suit_civil": {"name": "Civilian Spacesuit", "maker": "Earthworks", "weapons": 1, "belt": 2, "grenades": 1, "features": 1,
-		"shield": 20.0, "armor": 20.0, "energy": 100.0, "oxygen": 30.0, "ammo": 60,
+		"shield": 20.0, "armor": 20.0, "energy": 140.0, "oxygen": 30.0, "ammo": 100,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 1200,
 		"col": Color(0.92, 0.9, 0.85), "trim": Color(1.0, 0.55, 0.15),
 		"desc": "The suit everyone who flies owns: sealed against vacuum and bad air, a little shield, one holster."},
 	"suit_survey": {"name": "Survey Suit", "maker": "Axiom Astronautics", "weapons": 1, "belt": 3, "grenades": 1, "features": 2,
-		"shield": 28.0, "armor": 18.0, "energy": 150.0, "oxygen": 55.0, "ammo": 60,
+		"shield": 28.0, "armor": 18.0, "energy": 200.0, "oxygen": 55.0, "ammo": 100,
 		"env": {"heat": 0.9, "cold": 0.9, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.02, "price": 4200,
 		"col": Color(0.85, 0.9, 0.95), "trim": Color(0.35, 0.85, 1.0),
 		"desc": "For long walks on hostile worlds: the best life support, room for scanner and tools."},
 	"suit_work": {"name": "Work Suit", "maker": "Kanayama Heavy Industries", "weapons": 1, "belt": 4, "grenades": 1, "features": 1,
-		"shield": 18.0, "armor": 45.0, "energy": 120.0, "oxygen": 40.0, "ammo": 80,
+		"shield": 18.0, "armor": 45.0, "energy": 160.0, "oxygen": 40.0, "ammo": 130,
 		"env": {"heat": 0.8, "cold": 0.8, "toxic": 1.0, "vacuum": 1.0}, "speed": 0.95, "price": 3100,
 		"col": Color(0.95, 0.75, 0.2), "trim": Color(0.2, 0.2, 0.22),
 		"desc": "Mines, docks, wrecks: plated, heavy, four places on its belt for the tools of the trade."},
-	"suit_mil_light": {"name": "Light Combat Suit", "maker": "Hadrian Dynamics", "weapons": 2, "belt": 3, "grenades": 2, "features": 2,
-		"shield": 50.0, "armor": 45.0, "energy": 120.0, "oxygen": 25.0, "ammo": 160,
+	"suit_mil_light": {"name": "Light Combat Suit", "maker": "Hadrian Dynamics", "weapons": 2, "belt": 3, "grenades": 2, "drones": 1, "features": 2,
+		"shield": 50.0, "armor": 45.0, "energy": 170.0, "oxygen": 25.0, "ammo": 240,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 9500,
 		"col": Color(0.86, 0.88, 0.9), "trim": Color(0.35, 0.75, 1.0),
 		"desc": "Marine issue: quick on its feet, a strong shield, two weapons at hand."},
-	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 2, "grenades": 3, "features": 3,
-		"shield": 70.0, "armor": 110.0, "energy": 170.0, "oxygen": 20.0, "ammo": 260,
+	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 2, "grenades": 3, "drones": 1, "features": 3,
+		"shield": 70.0, "armor": 110.0, "energy": 230.0, "oxygen": 20.0, "ammo": 380,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
 		"col": Color(0.3, 0.32, 0.36), "trim": Color(1.0, 0.25, 0.2),
 		"desc": "A walking bunker: three weapons, heavy plate, a deep magazine – and slow, and short of air."},
@@ -134,6 +135,26 @@ const FEATURES := {
 	"ft_battery": {"name": "Battery Pack", "maker": "Concord Fleetworks", "energy": 80.0, "price": 1500, "desc": "More energy stored in the suit."},
 }
 
+## 0.7.52.11 (Luz): ground combat drones – a module for the combat suits' drone place, quality F–A (more damage, heat
+## or magazine, shield and armour). They take off from your back and hover at your shoulder.
+##   laser    – a small laser that fires at your target by itself; every shot heats it, full it must cool off
+##   kinetic  – a quick slug gun; its magazine empty, it flies back to your back and reloads from your suit's rounds
+##   kamikaze – waits at your shoulder; C sends it diving at your target, where it bursts
+## Shot down, a new one is ready after `rebuild` seconds (the kamikaze about 2.5× as long). heat / heat_max / cool:
+## heat a shot, how much it bears, cooling a second; mag: rounds; reload: seconds at your back; speed: art px a second.
+const DRONES := {
+	"dr_laser": {"name": "Laser Drone", "maker": "Axiom Astronautics", "kind": "laser", "dtype": "optical", "damage": 5.0, "rof": 3.0,
+		"range": 240.0, "spread": 0.04, "heat": 7.0, "heat_max": 100.0, "cool": 22.0, "shield": 22.0, "armor": 12.0, "rebuild": 20.0,
+		"speed": 150.0, "price": 3800, "desc": "A small laser at your shoulder that fires at your target by itself – until it has to cool off."},
+	"dr_kinetic": {"name": "Kinetic Drone", "maker": "Hadrian Dynamics", "kind": "kinetic", "dtype": "kinetic", "damage": 4.0, "rof": 7.0,
+		"range": 210.0, "spread": 0.1, "mag": 40, "reload": 3.0, "shield": 14.0, "armor": 26.0, "rebuild": 20.0,
+		"speed": 150.0, "price": 4200, "desc": "A rapid slug gun on rotors. Its magazine empty, it comes back and reloads from your suit."},
+	"dr_kamikaze": {"name": "Kamikaze Drone", "maker": "Forge of Return", "kind": "kamikaze", "dtype": "explosive", "damage": 75.0,
+		"radius": 55.0, "shield": 10.0, "armor": 10.0, "rebuild": 50.0, "speed": 300.0, "price": 3000,
+		"desc": "A charge with rotors. On your word (C) it dives at your target and bursts."},
+}
+const DRONE_KINDS := ["dr_laser", "dr_kinetic", "dr_kamikaze"]
+
 const INV_SLOTS := 12                 # the pilot's own pockets and pack
 
 ## 0.7.51.3: what each kind of world does to someone outside – breathable air (else the tank is used), and the
@@ -187,12 +208,14 @@ static func kind(id: String) -> String:
 		return "belt"
 	if FEATURES.has(f):
 		return "feature"
+	if DRONES.has(f):
+		return "drone"
 	return ""
 
 
 static func base(id: String) -> Dictionary:
 	var f := family(id)
-	for t in [SUITS, WEAPONS, BELT, FEATURES]:
+	for t in [SUITS, WEAPONS, BELT, FEATURES, DRONES]:
 		if (t as Dictionary).has(f):
 			return t[f]
 	return {}
@@ -200,7 +223,7 @@ static func base(id: String) -> Dictionary:
 
 static func has_quality(id: String) -> bool:
 	var k := kind(id)
-	return k in ["suit", "weapon", "feature"] or (k == "belt" and String(BELT[family(id)]["kind"]) == "tool")
+	return k in ["suit", "weapon", "feature", "drone"] or (k == "belt" and String(BELT[family(id)]["kind"]) == "tool")
 
 
 static func valid(id: String) -> bool:
@@ -220,9 +243,11 @@ static func stats(id: String) -> Dictionary:
 		return {}
 	var q := quality(id)
 	var perf: float = float(Q.get(q, Q["C"])["perf"]) if q != "" else 1.0
-	for k in ["shield", "armor", "energy", "oxygen", "damage", "shield_damage", "strength", "regen", "heal", "dash"]:
+	for k in ["shield", "armor", "energy", "oxygen", "damage", "shield_damage", "strength", "regen", "heal", "dash", "heat_max", "cool"]:
 		if b.has(k) and not (kind(id) == "weapon" and k == "energy") and not (kind(id) == "belt" and k == "energy" and String(b["kind"]) == "tool"):
 			b[k] = float(b[k]) * perf
+	if b.has("mag") and kind(id) == "drone":
+		b["mag"] = int(round(float(b["mag"]) * perf))
 	if b.has("ammo") and kind(id) in ["suit", "feature"]:
 		b["ammo"] = int(round(float(b["ammo"]) * perf))
 	if b.has("env") and kind(id) == "suit":
@@ -275,6 +300,16 @@ static func describe(id: String) -> Array:
 					lines.append("Tool · strength %.2f · range %d · %.0f energy a use" % [float(s["strength"]), int(s["range"]), float(s["energy"])])
 				"use":
 					lines.append("Consumable · up to %d in a belt place" % int(s["stack"]))
+		"drone":
+			var dt2 := String(s["dtype"])
+			match String(s["kind"]):
+				"laser":
+					lines.append("%s · %d dmg · %.1f shots/s · range %d · heats up: %d shots, then cools" % [DAMAGE_NAMES[dt2], int(s["damage"]), float(s["rof"]), int(s["range"]), int(float(s["heat_max"]) / float(s["heat"]))])
+				"kinetic":
+					lines.append("%s · %d dmg · %.1f shots/s · range %d · %d rounds, reloads from your suit" % [DAMAGE_NAMES[dt2], int(s["damage"]), float(s["rof"]), int(s["range"]), int(s["mag"])])
+				"kamikaze":
+					lines.append("%s · %d dmg · radius %d · dives on your target on command" % [DAMAGE_NAMES[dt2], int(s["damage"]), int(s["radius"])])
+			lines.append("Shield %d · Armour %d · a new one %d s after it is shot down" % [int(s["shield"]), int(s["armor"]), int(s["rebuild"])])
 		"feature":
 			var parts: Array = []
 			for k in ["shield", "armor", "energy", "oxygen", "ammo"]:
@@ -291,7 +326,7 @@ static func describe(id: String) -> Array:
 ## Every piece the Gear shop can sell, in every quality.
 static func all_ids() -> Array:
 	var out: Array = []
-	for t in [SUITS, WEAPONS, FEATURES]:
+	for t in [SUITS, WEAPONS, FEATURES, DRONES]:
 		for f in t:
 			for q in QUALITIES:
 				out.append("%s:%s" % [f, q])

@@ -13,6 +13,7 @@ var weapons: Array = []
 var belt: Array = []
 var grenades: Array = []                # 0.7.52.9 (Luz): the grenade places, apart from the belt
 var gr_sel := 0                         # the grenade in hand (an index into grenades; X switches)
+var drones: Array = []                  # 0.7.52.11: the combat suits' drone place (a module id, "" empty)
 var features: Array = []
 var inv: Array = []
 var lockers := {}                      # ship uid (String) -> Array of places
@@ -59,7 +60,7 @@ func refill() -> void:
 func _fit_slots() -> Array:
 	var s := GearData.stats(suit)
 	var spill: Array = []
-	var want := {"weapons": int(s.get("weapons", 1)), "belt": int(s.get("belt", 1)), "grenades": int(s.get("grenades", 0)), "features": int(s.get("features", 0))}
+	var want := {"weapons": int(s.get("weapons", 1)), "belt": int(s.get("belt", 1)), "grenades": int(s.get("grenades", 0)), "drones": int(s.get("drones", 0)), "features": int(s.get("features", 0))}
 	for k in want:
 		var arr: Array = get(k)
 		while arr.size() > int(want[k]):
@@ -350,7 +351,7 @@ func equip_from_inv(i: int) -> String:
 			# first: is there room in the pockets for the old suit and whatever no longer fits?
 			var s2 := GearData.stats(id)
 			var need := 1
-			for pair in [["weapons", int(s2["weapons"])], ["belt", int(s2["belt"])], ["grenades", int(s2.get("grenades", 0))], ["features", int(s2["features"])]]:
+			for pair in [["weapons", int(s2["weapons"])], ["belt", int(s2["belt"])], ["grenades", int(s2.get("grenades", 0))], ["drones", int(s2.get("drones", 0))], ["features", int(s2["features"])]]:
 				var arr2: Array = get(String(pair[0]))
 				for j in range(int(pair[1]), arr2.size()):
 					var it2 = arr2[j]
@@ -367,11 +368,13 @@ func equip_from_inv(i: int) -> String:
 				_add_to(inv, String(sp2["id"]), int(sp2["n"]))
 			clamp_state()
 			return ""
-		"weapon", "feature":
-			var arr: Array = weapons if GearData.kind(id) == "weapon" else features
+		"weapon", "feature", "drone":
+			var arr: Array = weapons if GearData.kind(id) == "weapon" else (drones if GearData.kind(id) == "drone" else features)
 			var at := arr.find("")
+			if arr.is_empty() and arr == drones:
+				return "Only combat suits have a drone place."
 			if at < 0:
-				return "No free %s slot on this suit." % ("weapon" if arr == weapons else "feature")
+				return "No free %s slot on this suit." % ("weapon" if arr == weapons else ("drone" if arr == drones else "feature"))
 			arr[at] = id
 			_take(i, 1)
 			clamp_state()
@@ -495,7 +498,7 @@ func fetch(j: int, fit) -> String:
 # ---------------------------------------------------------------- saving
 
 func to_dict() -> Dictionary:
-	return {"suit": suit, "weapons": weapons.duplicate(), "belt": belt.duplicate(true), "grenades": grenades.duplicate(true), "gr_sel": gr_sel, "features": features.duplicate(),
+	return {"suit": suit, "weapons": weapons.duplicate(), "belt": belt.duplicate(true), "grenades": grenades.duplicate(true), "gr_sel": gr_sel, "drones": drones.duplicate(), "features": features.duplicate(),
 		"inv": inv.duplicate(true), "lockers": lockers.duplicate(true), "health": health, "energy": energy, "oxygen": oxygen, "ammo": ammo,
 		"helmet": helmet, "shield": shield, "armor": armor}
 
@@ -509,6 +512,7 @@ func from_dict(d: Dictionary) -> void:
 	belt = (d.get("belt", []) as Array).duplicate(true)
 	grenades = (d.get("grenades", []) as Array).duplicate(true)
 	gr_sel = int(d.get("gr_sel", 0))
+	drones = (d.get("drones", []) as Array).duplicate()
 	features = (d.get("features", []) as Array).duplicate()
 	inv = (d.get("inv", []) as Array).duplicate(true)
 	while inv.size() < GearData.INV_SLOTS:

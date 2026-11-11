@@ -23,7 +23,8 @@ const CATS := {
 	"feature": ["Features", "The suit's modules", [
 		["ft_def", "Defence", "Shield and plate", ["ft_shield", "ft_plates"]],
 		["ft_move", "Movement", "Servos and thrust", ["ft_sprint", "ft_jets"]],
-		["ft_life", "Life support & supply", "Air, energy, heat, rounds", ["ft_thermo", "ft_o2", "ft_battery", "ft_ammo"]]]],
+		["ft_life", "Life support & supply", "Air, energy, heat, rounds", ["ft_thermo", "ft_o2", "ft_battery", "ft_ammo"]],
+		["ft_drone", "Combat drones", "For a combat suit's drone place", ["dr_laser", "dr_kinetic", "dr_kamikaze"]]]],
 	"belt": ["Belt", "Tools, grenades, consumables", [
 		["bt_tool", "Tools", "Scanner, torch, mining laser", ["tl_scanner", "tl_cutter", "tl_mining"]],
 		["bt_grenade", "Grenades", "Frag, EMP, smoke, shield", ["gr_frag", "gr_emp", "gr_smoke", "gr_shield"]],

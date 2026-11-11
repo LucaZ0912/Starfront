@@ -110,6 +110,7 @@ func _draw() -> void:
 		var cr := Rect2(Vector2(14, cy), Vector2(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14, 20))
 		draw_rect(cr, Color(0.0, 0.06, 0.03, 0.7))
 		_s(cr.position + Vector2(7, 14), txt, col, 12)
+	_draw_drone_panel(vs)
 	# the weapons, bottom right
 	var ws: Array = combat.weapons()
 	if ws.is_empty():
@@ -156,3 +157,42 @@ func _draw() -> void:
 			draw_arc(cc, 6.0, 0, TAU, 16, Color(0.45, 1.0, 0.6, 0.5), 1.5)
 			if fill > 0.0:
 				draw_arc(cc, 6.0, -PI / 2, -PI / 2 + TAU * fill, 16, Color(0.45, 1.0, 0.6), 3.0)
+
+
+
+## 0.7.52.11: the drone – its name, what it does, shield and armour, heat or rounds, the time to a new one.
+func _draw_drone_panel(vs: Vector2) -> void:
+	var id: String = combat.drone_id()
+	if id == "":
+		return
+	var dim := Color(0.7, 0.72, 0.76)
+	var st := GearData.stats(id)
+	var r := Rect2(Vector2(vs.x - 350 - 300, vs.y - 120), Vector2(290, 106))
+	_panel(r, Color(0.4, 0.95, 1.0, 0.7))
+	_s(r.position + Vector2(10, 18), "DRONE", dim, 11)
+	_s(r.position + Vector2(62, 18), GearData.display_name(id), Color(0.95, 0.95, 0.95), 14)
+	var d: Dictionary = combat.drone
+	var kind := String(st["kind"])
+	var cmd := "dive" if kind == "kamikaze" else ("send" if combat.drone_recalled else "recall")
+	_s(r.position + Vector2(220, 18), "%s %s" % [Keybinds.key_text("foot_drone"), cmd], Color(1.0, 0.82, 0.35), 12)
+	if not combat.drone_alive():
+		_s(r.position + Vector2(10, 46), "Shot down – a new one in %d s" % int(ceil(combat.drone_rebuild)), Color(1.0, 0.55, 0.4), 13)
+		var full := float(st["rebuild"])
+		_bar(r.position + Vector2(10, 58), 270, 1.0 - combat.drone_rebuild / maxf(full, 0.01), Color(0.45, 0.9, 1.0))
+		return
+	var state := String(d["state"])
+	var what: String = {"launch": "taking off", "hover": ("waiting at your back" if combat.drone_recalled else ("fighting your target" if combat.fight and combat.active != null else "at your shoulder")),
+		"return": "empty – flying back to reload", "reload": "reloading from your suit", "dive": "diving at the target!"}.get(state, state)
+	if kind == "kamikaze" and state == "hover":
+		what = "ready – %s to dive at your target" % Keybinds.key_text("foot_drone")
+	_s(r.position + Vector2(10, 36), what, dim, 11)
+	var rows: Array = [["Shield", float(d["st"]["shield"]) / maxf(float(d["mx"]["shield"]), 0.01), Color(0.35, 0.65, 1.0)],
+		["Armour", float(d["st"]["armor"]) / maxf(float(d["mx"]["armor"]), 0.01), Color(1.0, 0.8, 0.3)]]
+	if kind == "laser":
+		rows.append(["Heat", float(d["heat"]) / float(st["heat_max"]), Color(1.0, 0.3, 0.2) if bool(d["over"]) else Color(1.0, 0.55, 0.2)])
+	elif kind == "kinetic":
+		rows.append(["Rounds", float(d["ammo"]) / maxf(float(st["mag"]), 1.0), Color(0.85, 0.85, 0.8)])
+	for i in rows.size():
+		var y := r.position.y + 50 + i * 17
+		_s(Vector2(r.position.x + 10, y + 8), String(rows[i][0]), dim, 11)
+		_bar(Vector2(r.position.x + 64, y), 200, float(rows[i][1]), rows[i][2])

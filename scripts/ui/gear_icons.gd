@@ -148,6 +148,24 @@ static func _paint(img: Image, fam: String) -> void:
 				_r(img, 2, 9, 2, 12, DARK)
 				_r(img, 20, 9, 2, 12, DARK)
 		# ---- features
+		"dr_laser", "dr_kinetic", "dr_kamikaze":           # 0.7.52.11: a quadcopter from above
+			var body: Color = {"dr_laser": Color(0.9, 0.92, 0.95), "dr_kinetic": Color(0.4, 0.42, 0.46), "dr_kamikaze": Color(0.45, 0.5, 0.34)}[fam]
+			var trim: Color = {"dr_laser": CYAN, "dr_kinetic": Color(1.0, 0.72, 0.25), "dr_kamikaze": Color(1.0, 0.82, 0.15)}[fam]
+			for i in 7:
+				_p(img, 5 + i, 5 + i, DARK)
+				_p(img, 18 - i, 5 + i, DARK)
+				_p(img, 5 + i, 18 - i, DARK)
+				_p(img, 18 - i, 18 - i, DARK)
+			for c in [Vector2i(5, 5), Vector2i(18, 5), Vector2i(5, 18), Vector2i(18, 18)]:
+				_r(img, c.x - 3, c.y - 1, 7, 2, Color(0.75, 0.8, 0.85, 0.8))
+				_r(img, c.x - 1, c.y - 1, 2, 2, DARK)
+			_r(img, 9, 9, 6, 6, body)
+			_r(img, 9, 9, 6, 1, body.lightened(0.3))
+			_r(img, 10, 13, 4, 1, trim)
+			if fam == "dr_kamikaze":
+				_p(img, 11, 11, Color(1.0, 0.25, 0.2))
+			else:
+				_p(img, 11, 11, trim)
 		"ft_shield":
 			for k7 in 14:
 				var ww := 14 - maxi(0, k7 - 7) * 2

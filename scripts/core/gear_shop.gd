@@ -57,6 +57,10 @@ static func offer(st: Dictionary) -> Dictionary:
 		if rng.randf() < 0.25:
 			continue
 		out[ft] = _qualities(rng, qmax)
+	for dr in GearData.DRONES:                            # 0.7.52.11: drones where combat suits are sold
+		if small or not (military or tier >= 2 or bool(st.get("city", false))):
+			continue
+		out[dr] = _qualities(rng, qmax)
 	for b in GearData.BELT:
 		if String(GearData.BELT[b]["kind"]) == "tool":
 			out[b] = _qualities(rng, qmax)
