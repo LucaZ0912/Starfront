@@ -360,6 +360,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   `arm_raised()`, `_arm_step`, `_fire_arm` (shot kind "armbeam"); `CombatHud._charge_frame`; smoke group `foot_pathfinder`.
 - 0.7.52.15: sound `w_arm_laser` (tools/audio/make_placeholders.py, docs/audio/sound_list.md); the "armbeam" shot carries
   `cuts` (where it enters cover) – `_fx_step` sprays sparks there while it lasts, `_draw` makes them glow.
+- 0.7.52.22 (package 52b): `scripts/ground/cut_game.gd` (CutGame: `SHAPES`, `shape_path()`, `step(delta, mv, burn)`,
+  `cut_share()`, signal `finished`), `scripts/ground/hack_game.gd` (HackGame: grid, `move()`, tracers, `state`,
+  `actions`, signal `finished`), `scripts/ground/explore.gd` (the things' nodes, `add()`, `INSCRIPTIONS`);
+  `GroundMap.explore`; zone kind "explore"; `GroundView.spawn_explore()`, `add_explore()`, `belt_tool()`,
+  `explore_use()`, `_open_game()` / `_close_game()` (`minigame` takes the keys), `_cut_done`, `_open_hack`,
+  `_hack_done`, `_explore_effect`, `_scan_start` / `_scan_step` / `scan_done`; command `debug_explore`; smoke group
+  `foot_explore`.
 - 0.7.52.21 (package 52b): `GroundCombat.sneaking`, `toggle_sneak()`, `look_of(f)` (foe keys `look0`, `look_ph`,
   `notice`), `spots(f, p)`, `_watch`, `view_poly(f)`, `_draw_sneak`, `_draw_notice`, consts `SNEAK_ATTACK`, `SNEAK_RANGE`,
   `VIEW_HALF`, `CLOSE`, `NOTICE_TIME`; `lock()` does not wake while sneaking; shot key `sneak`; `Walker.crouch`; keybind

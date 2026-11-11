@@ -3,6 +3,31 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.22 – 2026-11-11
+
+**Package 52b, part 2 – the cutting torch, hacking, scanning (Luz).**
+
+- **Maintenance boxes:** with a cutting torch on your belt, E at a box opens it close up – a heavy steel housing
+  (frame and bevel, bolts, rivet seams, hinges, a handle, a vent, warning stripes, its plate and a blinking light,
+  conduits, rust streaks, a barcode). **One flap per box, each box its own shape** (rounded, hexagon, round, trapezoid,
+  notched, arched). **WASD** moves the torch, **Space** burns: on the line the cut glows and runs on, off it the plate
+  scorches and heats – too hot and the torch has to cool; the suit pays the energy. Cut all round, the flap falls
+  away and shows the **machinery behind it**: a recess with depth, a mounting plate, conduits, a heat sink, a relay,
+  fuses, a circuit board with chips and blinking LEDs, bundles of coloured wire with ties and tags – and either a
+  **button** in its striped collar (Space: press) or a **terminal** with its screen, keypad and jack (Space: jack in).
+  Engineering and the torch's quality widen the line and slow the heat.
+- **Hacking – the security grid:** your probe goes node by node with **WASD** from your jack to the **core**; red
+  **tracers** run their loops – touch one and the trace climbs, at three you are locked out and the alarm wakes the
+  foes near; the core sits behind a **lock** only the **gold key** opens; the clock runs. Electronics slows the tracers
+  and gives more time. Done, you choose with W/S and Space: open the door, power off/on, turrets off, cameras off,
+  download data (research data).
+- **Scanning:** at a carved tablet or a relic, **hold the scanner's belt key and stand still** – a beam sweeps it, a
+  ring fills (about 3 s, quicker with Science). Moving or letting go breaks it off. A tablet gives its inscription,
+  both give research data.
+- Doors, lights, turrets and cameras to work them on come with the places to explore (package 53); for now the debug
+  arena has them: Debug → ground combat → *Explore: box, terminal, tablet, relic here* (with a torch and a scanner).
+- Smoke test group `foot_explore`.
+
 ## alpha 0.7.52.21 – 2026-11-11
 
 **Package 52b, part 1 – sneaking (Luz, after the concept she approved).**

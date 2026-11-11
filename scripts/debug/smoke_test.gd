@@ -153,6 +153,7 @@ func _process(delta: float) -> void:
 				_test_foot_senate(view)          # 0.7.52.18 – the Assembly's Senate armours
 				_test_foot_team(view)            # 0.7.52.20 – package 52a: the ground team
 				_test_foot_sneak(view)           # 0.7.52.21 – package 52b: sneaking
+				_test_foot_explore(view)         # 0.7.52.22 – package 52b: torch, hack, scan
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -9420,6 +9421,148 @@ func _test_foot_drones(view: SystemView) -> void:
 ## 0.7.52.14: the Covenant's Pathfinder armour – no drone place, the Red Arm Laser built into its first weapon place
 ## (it stays with the suit), sold only in the Covenant's lands; the laser charges whatever is in hand, cuts through cover,
 ## the arm raised.
+## 0.7.52.22 (package 52b): tools at work – a box cut open with the torch (a button or a terminal behind its one flap),
+## a terminal hacked through its security grid (key, lock, core; traced: locked out), a tablet and a relic scanned.
+func _test_foot_explore(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	if g == null or g.combat == null:
+		check(false, "0.7.52.22: the arena opens")
+		return
+	gear.refill()
+	for i in gear.belt.size():
+		gear.belt[i] = {}
+	# without a torch the box stays shut
+	var e0: String = Commands.execute({"type": "debug_explore"})
+	var placed_ok: bool = e0 == "" and g.map.explore.size() == 5 and g.belt_tool("tl_cutter") != "" and g.belt_tool("tl_scanner") != ""
+	var box: Dictionary = g.map.explore[0]
+	var zi := -1
+	for zz in g.map.zones.size():
+		if String(g.map.zones[zz].get("kind", "")) == "explore" and int(g.map.zones[zz]["i"]) == 0:
+			zi = zz
+	var saved: Array = gear.belt.duplicate(true)
+	for i2 in gear.belt.size():
+		gear.belt[i2] = {}
+	g.explore_use(g.map.zones[zi])
+	var shut_ok: bool = g.minigame == null and String(box["state"]) == "shut"
+	gear.belt = saved
+	# the torch: the line cut all round (walked along it, burning) – the flap falls, the button is there
+	g.explore_use(g.map.zones[zi])
+	var cg = g.minigame
+	var cut_ok: bool = cg != null and cg.get_script() == g.CutGame and cg.path.size() > 20
+	var heat0: float = cg.heat if cg != null else 0.0
+	if cg != null:
+		cg.step(0.05, Vector2.ZERO, false)
+		for i3 in cg.path.size() + 2:
+			cg.torch = cg.path[i3 % cg.path.size()]
+			cg.heat = 0.0
+			cg.step(0.02, Vector2.ZERO, true)
+		cut_ok = cut_ok and cg.falling >= 0.0 and cg.cut_share() >= 0.98 and heat0 == 0.0
+		# off the line: it scorches and heats faster
+		var cg2 = g.CutGame.new()
+		cg2.shape = "hex"
+		g._open_game(cg2)
+		cg2.torch = Vector2(0, 0)
+		cg2.step(0.5, Vector2.ZERO, true)
+		cut_ok = cut_ok and cg2.heat > 0.15 and not cg2.scorch.is_empty() and cg2.cut_share() == 0.0
+		g._close_game()
+		g._cut_done(box, "button")
+	var btn_ok: bool = String(box["state"]) == "open" and bool(box.get("door_open", false)) and g.minigame == null
+	# every shape makes a closed line
+	var shapes_ok := true
+	for sh in g.CutGame.SHAPES:
+		var pts: PackedVector2Array = g.CutGame.shape_path(sh, Vector2(330, 250))
+		shapes_ok = shapes_ok and pts.size() > 30 and pts[0].distance_to(pts[-1]) < 12.0
+	# the hack: walk the grid to the key, through the lock to the core (no tracers in the way), then an action
+	var term: Dictionary = g.map.explore[2]
+	var rd0 := GameState.research_data
+	g._open_hack(term)
+	var hg = g.minigame
+	var hack_ok: bool = hg != null and hg.get_script() == g.HackGame
+	if hack_ok:
+		hg.tracers.clear()
+		var route: Array = _grid_route(hg, hg.entry, hg.key, false) + _grid_route(hg, hg.key, hg.core, true)
+		for st in route:
+			hg.move(st)
+		hack_ok = hg.state == "won" and hg.has_key
+		g._hack_done(term, "data")
+		hack_ok = hack_ok and GameState.research_data > rd0 and String(term["state"]) == "hacked" and g.minigame == null
+	# traced three times: locked out, the alarm
+	g._open_hack(term)
+	var hg2 = g.minigame
+	var lost_ok := false
+	if hg2 != null:
+		for k in hg2.trace_max:
+			hg2.immune = 0.0
+			hg2.tracers = [{"loop": [hg2.probe], "i": 0, "t": 0.0}]
+			hg2._check()
+		lost_ok = hg2.state == "lost"
+		g._hack_done(term, "fail")
+		lost_ok = lost_ok and float(term.get("locked_t", 0.0)) > Time.get_ticks_msec() * 0.001 and g.minigame == null
+	# scanning: the scanner's key at the tablet starts it, letting go breaks it off; done, research data and a page
+	var tab: Dictionary = g.map.explore[3]
+	g.pilot.pos = (tab["pos"] as Vector2) + Vector2(-20, 6)
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	var sk := -1
+	for b in gear.belt.size():
+		if not (gear.belt[b] as Dictionary).is_empty() and String(gear.belt[b]["id"]).begins_with("tl_scanner"):
+			sk = b
+	var scan_ok: bool = sk >= 0 and g._scan_start(sk) and not g._scan.is_empty() and int(g._scan["i"]) == 3
+	g._scan_step(0.1)                                        # the key is not held: broken off
+	scan_ok = scan_ok and g._scan.is_empty()
+	var rd1 := GameState.research_data
+	g.scan_done(tab)
+	scan_ok = scan_ok and String(tab["state"]) == "scanned" and GameState.research_data > rd1
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(placed_ok and shut_ok and cut_ok and btn_ok and shapes_ok and hack_ok and lost_ok and scan_ok,
+		"0.7.52.22: tools at work – the debug things placed with torch and scanner; no torch: shut; the line cut all round drops the flap, off it scorches and heats; the button opens; every flap shape closed; the hack through key, lock and core gives data; traced: locked out; the scan starts, breaks off, gives research data  [%s]" % " ".join(PackedStringArray([str(placed_ok), str(shut_ok), str(cut_ok), str(btn_ok), str(shapes_ok), str(hack_ok), str(lost_ok), str(scan_ok)])))
+
+
+## A shortest way through a hack grid (a list of steps), the lock open or not.
+func _grid_route(hg, a: Vector2i, b: Vector2i, keyed: bool) -> Array:
+	var prev := {a: a}
+	var q := [a]
+	while not q.is_empty():
+		var c: Vector2i = q.pop_front()
+		if c == b:
+			break
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if not prev.has(n) and (hg._free(n, keyed) or n == b):
+				prev[n] = c
+				q.append(n)
+	var steps: Array = []
+	var c2 := b
+	while prev.has(c2) and c2 != a:
+		steps.push_front(c2 - (prev[c2] as Vector2i))
+		c2 = prev[c2]
+	return steps
+
+
 ## 0.7.52.21 (package 52b): sneaking – Ctrl on and off, half speed; an unaware foe sees you only in its view (not behind
 ## low cover), noticing you over a moment; it does not notice your lock; your first shot on it does double damage.
 func _test_foot_sneak(view: SystemView) -> void:

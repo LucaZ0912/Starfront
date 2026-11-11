@@ -95,6 +95,12 @@ const TAC_ZOOM_OUT := 0.5
 const ZOOM_NEAR := 1.5
 var _tab_held := -1.0                   # 0.7.52.2: how long Tab is held (-1: up) – a tap switches the view, holding ends it
 const TAB_HOLD := 0.35
+const ExploreNode = preload("res://scripts/ground/explore.gd")
+const CutGame = preload("res://scripts/ground/cut_game.gd")
+const HackGame = preload("res://scripts/ground/hack_game.gd")
+var minigame: Control = null             # 0.7.52.22: the cutting torch or the hack, while it is open
+var _game_layer: CanvasLayer = null
+var _scan: Dictionary = {}               # 0.7.52.24: a scan running {i, t, need, key}
 var _team_held := -1.0                  # 0.7.52.20: how long V is held (-1: up) – a tap picks whom, holding opens the wheel
 var _revive := -1.0                     # 0.7.52.20: how long the use key is held beside a member down (-1: not)
 const WHEEL_SLOW := 0.3                 # time runs at this pace while the command wheel is up
@@ -311,6 +317,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			combat.spawn(String(fe[0]), map.foe_spawns[i], "", String(fe[1]))
 	if combat_hud != null:
 		combat_hud.combat = combat
+	_close_game()
+	_scan = {}
+	spawn_explore()                                   # 0.7.52.22: boxes, terminals, tablets, relics
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
@@ -950,6 +959,7 @@ func _apply_day(d: float, force: bool = false) -> void:
 
 
 func _process(delta: float) -> void:
+	_scan_step(delta)
 	_t += delta
 	for f in _flicker:
 		var ph: float = f[2]
@@ -975,7 +985,7 @@ func _process(delta: float) -> void:
 		pilot.step(Vector2.DOWN, delta, 0.8)
 	elif not _ride.is_empty():
 		_ride_step(delta)
-	elif input_enabled and talk == null and _lift_menu == null:
+	elif input_enabled and talk == null and _lift_menu == null and minigame == null:
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
 		if not _seat.is_empty():
 			if dir.length() > 0.3:
@@ -1045,6 +1055,8 @@ func _prompt_text(z: Dictionary) -> String:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if minigame != null:
+		return                                         # 0.7.52.22: the torch or the hack has the keys
 	if _lift_menu != null:
 		if event.is_action_pressed("menu_back", false, true):
 			get_viewport().set_input_as_handled()
@@ -1185,10 +1197,223 @@ func mouse_art() -> Vector2:
 
 ## 0.7.51.3: a belt place on its number key.
 func use_belt(n: int) -> void:
+	var b = GameState.gear.belt[n] if n < GameState.gear.belt.size() else {}
+	if b is Dictionary and not (b as Dictionary).is_empty():
+		var bid := String(b["id"])
+		if bid.begins_with("tl_scanner") and _scan_start(n):
+			return                                     # 0.7.52.24: scanning (hold the key)
+		if bid.begins_with("tl_cutter") and not zone.is_empty() and String(zone.get("kind", "")) == "explore":
+			explore_use(zone)                          # 0.7.52.22: the torch at a box
+			return
 	var msg: String = GameState.gear.use_belt(n)
 	if msg != "":
 		_say_toast(msg, 2.5)
 		Audio.play("ui_click", "belt")
+
+
+# ---------------------------------------------------------------- 0.7.52.22 (package 52b): tools at work
+
+## The things to work on placed in this map get their nodes (call after the map is built or a thing added).
+func spawn_explore() -> void:
+	for n in _sorted.get_children():
+		if n.has_meta("explore"):
+			n.queue_free()
+	for i in map.explore.size():
+		var nd := ExploreNode.new()
+		nd.view = self
+		nd.i = i
+		nd.set_meta("explore", true)
+		nd.position = (map.explore[i]["pos"] as Vector2) * GroundMap.SCALE
+		_sorted.add_child(nd)
+
+
+func add_explore(kind: String, pos: Vector2, extra: Dictionary = {}) -> Dictionary:
+	var d := ExploreNode.add(map, kind, pos, extra)
+	spawn_explore()
+	return d
+
+
+## The belt piece of a family ("tl_cutter") – its id, or "".
+func belt_tool(fam: String) -> String:
+	for b in GameState.gear.belt:
+		if b is Dictionary and not (b as Dictionary).is_empty() and String(b["id"]).begins_with(fam):
+			return String(b["id"])
+	return ""
+
+
+func explore_use(z: Dictionary) -> bool:
+	var d: Dictionary = map.explore[int(z["i"])]
+	match String(d["kind"]):
+		"panel":
+			if String(d["state"]) == "shut":
+				var tool := belt_tool("tl_cutter")
+				if tool == "":
+					_say_toast("It is welded shut – you need a cutting torch on your belt.", 3.0)
+					return true
+				var cg = CutGame.new()
+				cg.inside = String(d["inside"])
+				cg.shape = String(d["shape"])
+				cg.label = String(d["label"])
+				cg.skill = GameState.skill_level("engineering")
+				cg.quality = float(ChibiArt.GearData.stats(tool).get("strength", 1.0))
+				cg.finished.connect(func(res: String): _cut_done(d, res))
+				_open_game(cg)
+			elif String(d["inside"]) == "button":
+				_explore_effect(d, "door")
+			else:
+				_open_hack(d)
+			return true
+		"terminal":
+			_open_hack(d)
+			return true
+		"tablet", "relic":
+			_say_toast("Hold the scanner's belt key here to scan it." if belt_tool("tl_scanner") != "" else "You need a scanner on your belt to read it.", 3.0)
+			return true
+	return false
+
+
+func _open_game(g: Control) -> void:
+	_close_game()
+	_game_layer = CanvasLayer.new()
+	_game_layer.layer = 70
+	add_child(_game_layer)
+	minigame = g
+	_game_layer.add_child(g)
+	pilot.moving = false
+
+
+func _close_game() -> void:
+	if _game_layer != null and is_instance_valid(_game_layer):
+		_game_layer.queue_free()
+	_game_layer = null
+	minigame = null
+
+
+func _cut_done(d: Dictionary, res: String) -> void:
+	_close_game()
+	if res == "":
+		_say_toast("You leave the box – the cut is lost.", 2.0)
+		return
+	d["state"] = "open"
+	if res == "button":
+		_explore_effect(d, "door")
+	else:
+		_open_hack(d)
+
+
+func _open_hack(d: Dictionary) -> void:
+	if float(d.get("locked_t", 0.0)) > Time.get_ticks_msec() * 0.001:
+		_say_toast("Locked out – it will not let you in for a while.", 2.5)
+		return
+	if String(d.get("state", "")) == "hacked":
+		_say_toast("You are already in – it does what you told it.", 2.0)
+	var hg = HackGame.new()
+	hg.level = int(d.get("level", 1))
+	hg.skill = GameState.skill_level("electronics")
+	hg.actions = d.get("actions", ["door", "data"])
+	hg.title = "TERMINAL" if String(d["kind"]) == "terminal" else String(d.get("label", "TERMINAL"))
+	hg.seed_n = int(d.get("seed", 1)) + int(d.get("tries", 0))
+	hg.finished.connect(func(res: String): _hack_done(d, res))
+	_open_game(hg)
+
+
+func _hack_done(d: Dictionary, res: String) -> void:
+	_close_game()
+	d["tries"] = int(d.get("tries", 0)) + 1
+	match res:
+		"":
+			_say_toast("You pull out.", 1.5)
+		"fail":
+			d["locked_t"] = Time.get_ticks_msec() * 0.001 + 60.0
+			_say_toast("Traced – the alarm goes!", 3.0)
+			Audio.play("warn", "hack failed: alarm")
+			if combat != null:
+				for f in combat.alive():
+					if (f["w"] as Walker).pos.distance_to(pilot.pos) < 600.0:
+						combat._wake(f)
+		_:
+			d["state"] = "hacked" if String(d["kind"]) == "terminal" else d["state"]
+			d["hacked"] = true
+			GameState.skill_xp("electronics", 3.0)
+			_explore_effect(d, res)
+
+
+## What a button or a hacked terminal does. (0.7.52.22: the doors, lights, turrets and cameras of the places to
+## explore come with package 53 – here it is said and logged.)
+func _explore_effect(d: Dictionary, what: String) -> void:
+	var txt := ""
+	match what:
+		"door":
+			d["door_open"] = true
+			txt = "A door unlocks somewhere close – clunk."
+			Audio.play("dock_clamp", "door released", -4.0)
+		"power":
+			d["power_off"] = not bool(d.get("power_off", false))
+			txt = "The power goes %s." % ("off" if bool(d["power_off"]) else "back on")
+			Audio.play("module_off" if bool(d["power_off"]) else "module_on", "power switched", -4.0)
+		"turrets":
+			txt = "The turrets power down."
+		"cameras":
+			txt = "The cameras go blind."
+		"data":
+			var n := 4 + int(d.get("seed", 0)) % 5
+			GameState.research_data += n
+			txt = "Data downloaded – %d research data." % n
+	_say_toast(txt, 3.0)
+	log_event(txt, Color(0.45, 1.0, 0.7))
+
+
+## 0.7.52.24 (Luz): scanning – the scanner's belt key held at a tablet or a relic, standing still.
+func _scan_start(n: int) -> bool:
+	var best := -1
+	var bd := 46.0
+	for i in map.explore.size():
+		var d: Dictionary = map.explore[i]
+		if String(d["kind"]) in ["tablet", "relic"]:
+			var dd := (d["pos"] as Vector2).distance_to(pilot.pos)
+			if dd < bd:
+				bd = dd
+				best = i
+	if best < 0:
+		return false
+	if String(map.explore[best]["state"]) == "scanned":
+		_say_toast("Already scanned.", 1.5)
+		return true
+	_scan = {"i": best, "t": 0.0, "need": 3.0 * (1.0 - 0.04 * GameState.skill_level("science")), "key": n, "at": pilot.pos}
+	Audio.play("ui_click", "scan starts", -8.0)
+	return true
+
+
+func _scan_step(delta: float) -> void:
+	if _scan.is_empty():
+		return
+	var held := Input.is_action_pressed("foot_belt_%d" % (int(_scan["key"]) + 1))
+	if not held or pilot.pos.distance_to(_scan["at"]) > 3.0:
+		_say_toast("Scan broken off – hold the key and stand still.", 2.0)
+		_scan = {}
+		return
+	_scan["t"] = float(_scan["t"]) + delta
+	if float(_scan["t"]) >= float(_scan["need"]):
+		var d: Dictionary = map.explore[int(_scan["i"])]
+		_scan = {}
+		scan_done(d)
+
+
+func scan_done(d: Dictionary) -> void:
+	d["state"] = "scanned"
+	var n := 3 + int(d.get("seed", 0)) % 4 + (3 if String(d["kind"]) == "relic" else 0)
+	GameState.research_data += n
+	GameState.skill_xp("science", 3.0)
+	GameState.codex.event("scan_" + String(d["kind"]))
+	var txt := ""
+	if String(d["kind"]) == "tablet":
+		txt = String(ExploreNode.INSCRIPTIONS[int(d.get("seed", 0)) % ExploreNode.INSCRIPTIONS.size()])
+		_say_toast("The tablet reads: %s  (+%d research data)" % [txt, n], 6.0)
+	else:
+		txt = "A relic of the ones before – its lattice hums at a frequency nobody makes any more."
+		_say_toast("%s  (+%d research data)" % [txt, n], 5.0)
+	log_event("Scanned: %s  +%d research data" % [txt.left(80), n], Color(0.45, 0.9, 1.0))
+	Audio.play("lock_acquired", "scan done", -6.0)
 
 
 ## 0.7.52.20: V held opens the wheel; the use key held beside a member down brings them back.
@@ -1273,6 +1498,8 @@ func use(instant: bool = false) -> bool:
 		"service":
 			if String(zone.get("id", "")) == "bar" and _bartender != null:
 				return open_bartender()
+		"explore":
+			return explore_use(zone)                     # 0.7.52.22
 	Audio.play("ui_open", "on foot: use")
 	used.emit(zone)
 	return true

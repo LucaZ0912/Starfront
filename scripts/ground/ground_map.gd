@@ -15,6 +15,7 @@ var w := 0
 var h := 0
 var tiles := PackedInt32Array()
 var floor_kind := PackedInt32Array()          # 0 corridor, 1 shop, 2 lift, 3 bar wood, 4 carpet
+var explore: Array = []                       # 0.7.52.22 (package 52b): boxes, terminals, tablets, relics (scripts/ground/explore.gd)
 var zones: Array = []                         # {rect (art px), kind: service/exit/crew/label, id, title, col, sign}
 var objects: Array = []                       # furniture: {kind, x, y, w, h (tiles), col, …} – drawn by GroundView
 var decals: Array = []                        # flat things painted into the floor: {kind, x, y, w, h, col}
