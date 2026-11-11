@@ -110,7 +110,8 @@ var _sink := {}
 var _dark_rect: ColorRect = null           # 0.7.53.6: the level's darkness (the generator's power can change it)
 var _haz_t := {}                          # 0.7.53.6: hazards' cool-downs (shock conduits)
 var _fuses := {}
-var _town_kind := ""                      # 0.7.53.9: in a city, the way down taken – "" (the alley's sewers) or "maint"
+var _town_kind := ""
+var _hostage := {}                        # 53c (Luz): the prisoner you rescue – {look, hp, w (Walker)}                      # 0.7.53.9: in a city, the way down taken – "" (the alley's sewers) or "maint"
 var _drone_fx: Node2D = null              # 0.7.53.9: the maintenance drones drawn
 var _rep_spots: Array = []                # 0.7.53.9: where on the walls they mend things                          # 0.7.53.7: charges and explosives about to go up – index -> seconds
 const WreckShader = preload("res://shaders/wreck.gdshader")
@@ -432,6 +433,14 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			for x in map.w:
 				if GroundMap.walkable_t(map.t_at(x, y)) and map.t_at(x, y - 1) == GroundMap.T.FACE:
 					_rep_spots.append(Vector2(x + 0.5, y + 0.6) * GroundMap.TILE)
+	if not _hostage.is_empty():
+		_hostage.erase("w")
+		_spawn_hostage(pilot.pos + Vector2(14, 10))       # 53c: they came with you
+		if level in ["landing", "alley", "minehead"] and bool(_site.get("mission", false)):
+			_mission_event("rescued")
+			if _hostage.has("w"):
+				(_hostage["w"] as Walker).leave_to = map.spawn
+			_hostage = {}
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
@@ -793,6 +802,53 @@ func _restart_reactor(d: Dictionary) -> void:
 	_poi_target_done(d)
 
 
+## 53c (Luz): the rescued prisoner – a walker that follows you (along a path round walls), hurt by blasts.
+func _spawn_hostage(at: Vector2) -> void:
+	if _hostage.is_empty():
+		return
+	var w := Walker.new()
+	w.setup(map, _hostage["look"], at, false)
+	w.stays = true
+	_sorted.add_child(w)
+	_hostage["w"] = w
+	_hostage["repath"] = 0.0
+
+
+func _hostage_step(delta: float) -> void:
+	if _hostage.is_empty() or not _hostage.has("w") or not is_instance_valid(_hostage["w"]):
+		return
+	var w: Walker = _hostage["w"]
+	var d := w.pos.distance_to(pilot.pos)
+	_hostage["repath"] = float(_hostage["repath"]) - delta
+	if d < 26.0:
+		w.moving = false
+		return
+	if float(_hostage["repath"]) <= 0.0 or w._pi >= w._path.size():
+		w._path = map.path(w.pos, pilot.pos)
+		w._pi = 0
+		_hostage["repath"] = 0.5
+	w._follow(delta, 1.25 if d > 80.0 else 0.95)
+
+
+## 53c: a blast near the prisoner hurts them; at nothing they die – the rescue has failed.
+func _hostage_blast(at: Vector2, r: float) -> void:
+	if _hostage.is_empty() or not _hostage.has("w") or not is_instance_valid(_hostage["w"]):
+		return
+	var w: Walker = _hostage["w"]
+	var dd := w.pos.distance_to(at)
+	if dd >= r:
+		return
+	_hostage["hp"] = float(_hostage["hp"]) - 45.0 * (1.0 - dd / r)
+	if float(_hostage["hp"]) <= 0.0:
+		w.down = true
+		_hostage = {}
+		GameState.ground_goal(_site, false, 1.0, "the prisoner died")
+		_site["goal_done"] = true
+		_say_toast("The prisoner is dead – the rescue has failed.", 4.0)
+	else:
+		_say_toast("The prisoner is hurt! (%d %%)" % int(float(_hostage["hp"]) / 60.0 * 100.0), 2.0)
+
+
 ## 0.7.53.9 (Luz): maintenance drones – while they leave you be they fly from one spot on the walls to the next and
 ## mend it with their beam; provoked, the fight takes them (they fly over everything, their walker unseen).
 func _drones_step(delta: float) -> void:
@@ -892,6 +948,15 @@ func _fuses_step(delta: float) -> void:
 				combat._explode(d["pos"], 80.0, 70.0, "explosive", null)
 			"crank_door":
 				open_door(d)                                  # 0.7.53.9: cranked open
+			"cells":
+				d["state"] = "open"                           # 53c: the prisoner comes out
+				d["prisoner"] = false
+				var lk: Dictionary = ChibiArt.PilotArt.random_look()
+				lk["suit"] = "suit_civil"
+				_hostage = {"look": lk, "hp": 60.0}
+				_spawn_hostage((d["pos"] as Vector2) + Vector2(0, 20))
+				_say_toast("The lock gives – \"Get me out of here!\" They follow you. Keep them alive.", 3.5)
+				Audio.play("dock_clamp", "cell opened", -6.0)
 
 
 ## 0.7.53.7 (Luz): something blew up at `at` – boxes of explosives near it go up a moment later, rubble near it is
@@ -899,6 +964,7 @@ func _fuses_step(delta: float) -> void:
 func blast_near(at: Vector2, r: float) -> void:
 	if map == null:
 		return
+	_hostage_blast(at, r)                              # 53c: the prisoner
 	for i in map.explore.size():
 		var d: Dictionary = map.explore[i]
 		var dist := (d["pos"] as Vector2).distance_to(at)
@@ -1589,6 +1655,7 @@ func _process(delta: float) -> void:
 		_fuses_step(delta)
 		_drones_step(delta)
 		_mission_step(delta)
+		_hostage_step(delta)
 		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:
@@ -1940,6 +2007,16 @@ func explore_use(z: Dictionary) -> bool:
 		"generator":
 			_open_power_menu(d)
 			return true
+		"cells":
+			if not bool(d.get("prisoner", false)) or String(d["state"]) == "open":
+				_say_toast("Empty cells.", 1.2)
+			elif String(d["state"]) == "picking":
+				_say_toast("Still picking the lock…", 1.2)
+			else:
+				d["state"] = "picking"                     # 53c: a few seconds at the lock
+				_fuses[map.explore.find(d)] = 3.0
+				_say_toast("You work at the cell's lock…", 2.0)
+			return true
 		"crank_door":
 			if String(d["state"]) == "open":
 				_say_toast("Open.", 1.2)
@@ -2274,8 +2351,8 @@ func _poi_target_done(d: Dictionary) -> void:
 		return
 	if bool(_site.get("mission", false)):
 		_mission_event("target")                         # package 53c: the job pays at its giver
-		if bool(_site.get("goal_done", false)) or String(_site.get("goal", "")) in ["bounty_foot", "spy"]:
-			if String(_site.get("goal", "")) in ["bounty_foot", "spy"]:
+		if bool(_site.get("goal_done", false)) or String(_site.get("goal", "")) in ["bounty_foot", "spy", "rescue"]:
+			if String(_site.get("goal", "")) in ["bounty_foot", "spy", "rescue"]:
 				_say_toast("Not what the job is about – but it is yours.", 2.5)
 			return
 	GameState.poi_use(String(_site.get("id", "")))
@@ -2577,7 +2654,8 @@ func _mission_window() -> void:
 		"bounty_foot": "The captain is somewhere inside. When the alarm rings, they run.",
 		"heist": "The strongbox is behind the code door below. " + ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
 		"spy": "The data is in the deepest computer. Unseen, they pay a bonus.",
-		"reactivate": "Restart the reactor on the lowest level."}
+		"reactivate": "Restart the reactor on the lowest level.",
+		"rescue": "The prisoner is in the cells inside. Pick the lock; they follow you – bring them out alive."}
 	v.add_child(UI.label(String(rules.get(String(_site.get("goal", "")), "")), 13, UI.TEXT_DIM))
 	v.add_child(UI.label("Pay: %s  •  danger: %s" % [GameData.fmt_credits(int(mm["reward"])), String(PoiData.DANGER.get(String(_site.get("danger", "yellow")), {}).get("name", ""))], 13, gold))
 	var go := func(): _close_lift_menu()
@@ -2593,7 +2671,7 @@ func _mission_event(kind: String) -> void:
 	if not bool(_site.get("mission", false)) or bool(_site.get("goal_done", false)):
 		return
 	var goal := String(_site.get("goal", ""))
-	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data"}
+	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued"}
 	if String(want.get(goal, "")) != kind:
 		return
 	_site["goal_done"] = true

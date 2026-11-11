@@ -10353,7 +10353,7 @@ func _test_ground_jobs(view: SystemView) -> void:
 	var offer_ok: bool = grounds >= 4
 	# a relic race: accepted, its site on the map, the briefing, the relic read completes it, the pay at the giver
 	var res := {}
-	for goal in ["relic", "heist", "bounty_foot", "reactivate"]:
+	for goal in ["relic", "heist", "bounty_foot", "reactivate", "rescue"]:
 		var e: String = Commands.execute({"type": "debug_ground_job", "goal": goal, "seed": 5321 + goal.length() * 7})
 		var mm: Dictionary = GameState.missions[-1] if GameState.missions.size() > 0 else {}
 		res[goal] = e == "" and String(mm.get("type", "")) == "ground" and String(mm.get("goal", "")) == goal
@@ -10399,6 +10399,28 @@ func _test_ground_jobs(view: SystemView) -> void:
 					if String(d2["kind"]) == "crate" and bool(d2.get("target", false)):
 						g._poi_target_done(d2)
 				ok = not GameState.missions.has(mm)              # the alarm blew the hard heist
+			"rescue":
+				# 53c: the cell picked, the prisoner follows; hurt by a blast; out in the open the rescue is done
+				g.depth = 0
+				g.go_level("dungeon", "dungeon_in")
+				var cl: Dictionary = {}
+				for dcl in g.map.explore:
+					if String(dcl["kind"]) == "cells" and bool(dcl.get("prisoner", false)):
+						cl = dcl
+				if not cl.is_empty():
+					g.explore_use({"i": g.map.explore.find(cl)})
+					for stp in 4:
+						g._fuses_step(1.0)
+					var follows: bool = not g._hostage.is_empty() and g._hostage.has("w")
+					g.pilot.pos = (cl["pos"] as Vector2) + Vector2(0, 120)
+					for stp2 in 30:
+						g._hostage_step(0.1)
+					var near: bool = follows and (g._hostage["w"] as Walker).pos.distance_to(cl["pos"]) > 10.0
+					g._hostage_blast((g._hostage["w"] as Walker).pos + Vector2(10, 0), 40.0)
+					var hurt: bool = float(g._hostage.get("hp", 60.0)) < 60.0
+					g.go_level("landing", "dungeon_out")
+					ok = near and hurt and int(mm["progress"]) >= 1 and g._hostage.is_empty()
+				GameState.abandon_mission(mm)
 			"bounty_foot":
 				for fo in g.combat.foes:
 					if String(fo["kind"]) == "pirate_captain":
@@ -10427,8 +10449,8 @@ func _test_ground_jobs(view: SystemView) -> void:
 	gear.aboard()
 	gear.combat_t = 0.0
 	main._update_input()
-	check(offer_ok and bool(res.get("relic", false)) and bool(res.get("heist", false)) and bool(res.get("bounty_foot", false)) and bool(res.get("reactivate", false)),
-		"53c: jobs on foot – on the board; accepted, the site on the planet map with its briefing; the relic read completes a relic race, paid at the giver; a hard heist blown by the alarm; a bounty done when its captain falls; a reactivation sends the city's lift down  [%s %s]" % [str(offer_ok), str(res)])
+	check(offer_ok and bool(res.get("relic", false)) and bool(res.get("heist", false)) and bool(res.get("bounty_foot", false)) and bool(res.get("reactivate", false)) and bool(res.get("rescue", false)),
+		"53c: jobs on foot – on the board; accepted, the site on the planet map with its briefing; the relic read completes a relic race, paid at the giver; a hard heist blown by the alarm; a bounty done when its captain falls; a reactivation sends the city's lift down; a rescue – the cell picked, the prisoner follows, hurt by a blast, out in the open done  [%s %s]" % [str(offer_ok), str(res)])
 
 
 func _has_kind(m: GroundMap, k: String) -> bool:

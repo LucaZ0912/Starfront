@@ -126,8 +126,8 @@ static func generate(system_id: int, station: Dictionary, rng: RandomNumberGener
 #   spy         – a crash site, a ruin or a pirate base: download the data from the deepest computer – a bonus unseen
 #   reactivate  – a city's maintenance tunnels: restart the reactor
 const GROUND_CHANCE := 0.3
-const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2]]
-const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint"}
+const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2]]
+const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate"}
 
 
 static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerator, kind: String = "") -> Dictionary:
@@ -201,6 +201,12 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 			t = "Espionage: data from %s" % String(site["name"])
 			d = "Download the data from the deepest computer in %s – a bonus if nobody sees you." % where
 			base = 8000
+		"rescue":
+			var who: String = ["a freighter captain", "a surveyor", "a courier", "a doctor", "an engineer"][rng.randi() % 5]
+			site["prisoner"] = who
+			t = "Rescue: %s held by the Red Talons" % who
+			d = "The Red Talons hold %s in the cells of %s. Get them out alive – they follow you; explosions and traps hurt them too." % [who, where]
+			base = 12000
 		"reactivate":
 			t = "Reactivation: %s" % String(site["city_name"])
 			d = "The power is out in the maintenance tunnels under %s (%s). Restart the reactor on the lowest level – the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]

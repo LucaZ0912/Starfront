@@ -528,11 +528,19 @@ func _draw() -> void:
 			# 0.7.53.11: the cells – bars across the room's back, a bunk, a prisoner sitting hunched
 			var cw9 := float(d.get("w", 8)) * 16.0
 			draw_rect(Rect2(-cw9 * 0.5, -34, cw9, 34), Color(0.05, 0.05, 0.06, 0.6))
+			var freed := String(d.get("state", "")) == "open"     # 53c: the rescued prisoner's cell stands open, empty
 			for cb in int(cw9 / 5.0):
-				draw_rect(Rect2(-cw9 * 0.5 + cb * 5, -34, 1.5, 34), Color(0.5, 0.5, 0.52))
+				var bx := -cw9 * 0.5 + cb * 5
+				if freed and bx > -cw9 * 0.5 + cw9 / 9.0 and bx < -cw9 * 0.5 + cw9 * 2.0 / 9.0:
+					continue
+				draw_rect(Rect2(bx, -34, 1.5, 34), Color(0.5, 0.5, 0.52))
 			for dv in range(1, 3):
 				draw_rect(Rect2(-cw9 * 0.5 + dv * cw9 / 3.0 - 1, -34, 2, 34), Color(0.3, 0.3, 0.32))
+			if freed:
+				draw_rect(Rect2(-cw9 * 0.5 + cw9 / 9.0 - 2, -34, 2, 34), Color(0.62, 0.62, 0.64))   # the door swung aside
 			for pr in 2:
+				if freed and pr == 0:
+					continue
 				var pxp := -cw9 * 0.5 + (pr * 2 + 1) * cw9 / 6.0
 				draw_circle(Vector2(pxp, -16), 4.0, Color(0.6, 0.45, 0.35))
 				draw_rect(Rect2(pxp - 5, -12, 10, 9), Color(0.4, 0.38, 0.3))

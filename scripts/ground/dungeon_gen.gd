@@ -250,11 +250,17 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	if int(th.get("tablets", 0)) > 0 and spare.size() > 3 and last:
 		tablet_c = spare[3]
 	var hangar_c := Vector2i(-9, -9)
-	if bool(th.get("hangar", false)) and spare.size() > stores.size() + 2:
-		hangar_c = spare[stores.size() + 1]              # 0.7.53.11: the pirates' hangar
 	var cells_c := Vector2i(-9, -9)
-	if bool(th.get("cells", false)) and spare.size() > stores.size() + 3:
-		cells_c = spare[stores.size() + 2]               # 0.7.53.11: the cells
+	var rescue := String(site.get("goal", "")) == "rescue" and depth == 0
+	if rescue and bool(th.get("cells", false)) and spare.size() > stores.size() + 1:
+		cells_c = spare[stores.size() + 1]               # 53c: the prisoner's cells come first
+		if bool(th.get("hangar", false)) and spare.size() > stores.size() + 2:
+			hangar_c = spare[stores.size() + 2]
+	else:
+		if bool(th.get("hangar", false)) and spare.size() > stores.size() + 2:
+			hangar_c = spare[stores.size() + 1]          # 0.7.53.11: the pirates' hangar
+		if bool(th.get("cells", false)) and spare.size() > stores.size() + 3:
+			cells_c = spare[stores.size() + 2]           # 0.7.53.11: the cells
 	need.append(control)
 	need += stores
 	if hangar_c.x >= 0:
@@ -731,9 +737,16 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			targets.append(["alarm", "An alarm – cut its box before anyone rings it"])
 	if cells_c.x >= 0:
 		var clr: Rect2i = rooms[cells_c]
-		ExploreNode.add(m, "cells", Vector2(clr.position.x + clr.size.x * 0.5, clr.position.y + 2.0) * TILE, {"no_zone": true, "w": clr.size.x - 2, "seed": rng.randi()})
+		var cpos := Vector2(clr.position.x + clr.size.x * 0.5, clr.position.y + 2.0) * TILE
+		ExploreNode.add(m, "cells", cpos, {"no_zone": true, "w": clr.size.x - 2, "seed": rng.randi(), "prisoner": rescue})
 		m.fill(clr.position.x + 1, clr.position.y, clr.size.x - 2, 2, T.BLOCK, rf)
-		targets.append(["cells", "Prisoners in cells – for a rescue, later"])
+		if rescue:
+			# 53c (Luz): the prisoner of a rescue – pick the cell's lock (E)
+			m.zones.append({"rect": Rect2(cpos + Vector2(-30, -6), Vector2(60, 22)), "kind": "explore", "id": "explore", "i": m.explore.size() - 1,
+				"title": "The cell – pick its lock (E)"})
+			targets.append(["cells", "The prisoner – in the cells"])
+		else:
+			targets.append(["cells", "Prisoners in cells – for a rescue, later"])
 	# ---- foes: in the guard rooms and – in the tunnels – at the junctions
 	var foes: Array = []
 	var tiers: Array = dg["tiers"]

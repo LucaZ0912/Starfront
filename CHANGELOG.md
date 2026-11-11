@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.13 – 2026-11-11
+
+**Package 53c – rescue (Luz).** A new job on foot on the board: **Rescue** – the Red Talons hold someone (a freighter
+captain, a surveyor, a courier, a doctor, an engineer) in the cells of a pirate base. In a rescue the cells are always
+on the first level. Pick the cell's lock (E, a few seconds); the prisoner comes out and **follows you** on a path
+round the walls, on the stairs and the ramp too. Explosions hurt them (your own grenades as well) – if they die, the
+job fails. Bring them out to the landing field and the job is done; report back for the pay. The freed cell stands
+open and empty.
+
 ## alpha 0.7.53.12 – 2026-11-11
 
 **Package 53c – jobs on foot (Luz).** About a third of the board's offers are now jobs on foot. Accepting one makes
