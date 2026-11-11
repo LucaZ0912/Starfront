@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.52.17 – 2026-11-11
+
+**The arm laser's beam holds 2.5 seconds (Luz).** It stays on its target and follows it, burning in ten bursts (its
+120 damage shared out, a hit roll each); if the target falls it goes out early. The cut, the sparks and the hiding in
+cover move with it, and the deep hiss lasts as long.
+
 ## alpha 0.7.52.16 – 2026-11-11
 
 **The arm laser vanishes into the cover it cuts (Luz).** The beam now disappears where it enters a piece of cover and

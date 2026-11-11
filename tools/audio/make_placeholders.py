@@ -126,8 +126,9 @@ SOUNDS = {
     "w_rocket": lambda: mix(noise(0.5, 0.7, 0.8, 0.2, a=0.01, r=0.35), tone(0.2, 200, 90, "sine", 0.5, r=0.15)),
     # 0.7.52.15 (Luz): the Pathfinder's Red Arm Laser – a deep hiss: dark rushing noise that swells and dies, a low rumble
     # under it and a faint sizzle on top (the beam cutting)
-    "w_arm_laser": lambda: mix(noise(1.1, 0.9, 0.03, 0.06, a=0.04, r=0.55, curve=1.4), tone(1.0, 62, 44, "sine", 0.55, a=0.02, r=0.5),
-                               tone(1.0, 31, 26, "saw", 0.18, a=0.05, r=0.5), noise(0.9, 0.12, 0.35, 0.2, a=0.08, r=0.5, curve=2.0)),
+    # 0.7.52.17: holds 2.5 s like the beam
+    "w_arm_laser": lambda: mix(noise(2.7, 0.9, 0.03, 0.06, a=0.04, r=0.45, curve=1.4), tone(2.6, 62, 48, "sine", 0.55, a=0.02, r=0.4),
+                               tone(2.6, 31, 27, "saw", 0.18, a=0.05, r=0.4), noise(2.5, 0.12, 0.35, 0.2, a=0.08, r=0.4, curve=2.0)),
     # hits & destruction
     "hit_shield": lambda: mix(tone(0.3, 420, 260, "sine", 0.6, r=0.25, vib=0.08, vib_rate=30), noise(0.2, 0.2, 0.9, r=0.15)),
     "hit_armor": lambda: mix(noise(0.08, 0.9, 0.7, r=0.07), tone(0.3, 980, 900, "tri", 0.35, r=0.28), tone(0.3, 1530, wave_="sine", vol=0.2, r=0.25)),

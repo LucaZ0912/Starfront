@@ -9487,7 +9487,14 @@ func _test_foot_pathfinder(view: SystemView) -> void:
 			hit = hit or float(fo["st"]["shield"]) + float(fo["st"]["armor"]) + float(fo["st"]["health"]) < h0
 			if hit:
 				break
-		fight_ok = charged and none_yet and hit and cb.arm_charge < 1.0 and cb.arm_charge_k() < 0.1
+		# 0.7.52.17 (Luz): the beam holds 2.5 s – still burning after a second
+		var held := true
+		if not fo["dead"]:
+			cb.pilot_cool = 5.0
+			for j in 10:
+				cb.step(0.1, Vector2.ZERO)
+			held = fo["dead"] or cb.shots.any(func(s): return String(s["kind"]) == "armbeam")
+		fight_ok = charged and none_yet and hit and held and cb.arm_charge < 2.0
 	# back
 	main.close_deck(false)
 	main._close_planet_map()

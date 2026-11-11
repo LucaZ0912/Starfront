@@ -1721,20 +1721,52 @@ func _beam_runs(ga: Vector2, gb: Vector2, ma: Vector2, mb: Vector2) -> Array:
 ## The beam: from the emitter at the raised wrist straight through any cover to the target; then it charges anew.
 func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 	var a := pilot_pos()
+	var beam := {"kind": "armbeam", "t": 0.0, "life": ARM_HOLD, "col": Color(1.0, 0.3, 0.2), "done": true, "to": f,
+		"dmg": float(w["damage"]) / ARM_TICKS, "tick": 0.0, "ticks": ARM_TICKS, "off": Vector2.ZERO, "geo_t": 0.0,
+		"a": Vector2.ZERO, "b": Vector2.ZERO, "cuts": [], "runs": [], "dir": Vector2.RIGHT}
+	shots.append(beam)
+	_arm_tick(beam)                                       # the first burn at once
+	_arm_geometry(beam)
+	arm_charge = 0.0
+	pilot_cool = ARM_HOLD + 0.2
+	view._shake = maxf(view._shake, 0.15)
+	Audio.play("w_arm_laser", "the Red Arm Laser – a deep hiss", 0.0)
+	GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
+	for o in alive():
+		if not o["aware"] and (o["w"] as Walker).pos.distance_to(a) < FoeData.HEAR:
+			_wake(o)
+
+
+## 0.7.52.17 (Luz): the beam holds 2.5 s on its target, following it; its damage in burns, a chance roll each.
+const ARM_HOLD := 2.5
+const ARM_TICKS := 10
+
+
+func _arm_tick(beam: Dictionary) -> void:
+	var f = beam["to"]
+	if f == null or f["dead"] or int(beam["ticks"]) <= 0:
+		return
+	beam["ticks"] = int(beam["ticks"]) - 1
+	var a := pilot_pos()
 	var b: Vector2 = (f["w"] as Walker).pos
+	if randf() < chance_at_foe(f):
+		beam["off"] = Vector2.ZERO
+		_hurt_foe(f, float(beam["dmg"]), "optical")
+		GameState.skill_xp("firearms", 0.1)
+	else:
+		beam["off"] = (b - a).normalized().rotated(PI * 0.5) * randf_range(8.0, 16.0) * (1.0 if randf() < 0.5 else -1.0)
+
+
+## Where the beam runs now: from the raised wrist to the target (or just past it), its cuts into cover, the stretches
+## that show.
+func _arm_geometry(beam: Dictionary) -> void:
+	var f = beam["to"]
+	var a := pilot_pos()
+	var b: Vector2 = (f["w"] as Walker).pos if f != null else a
 	view.pilot.aim = b
 	view.pilot.aim_weapon = "wp_arm_laser"
-	var ch := chance_at_foe(f)
-	var res := {"to": f, "dmg": float(w["damage"]), "dtype": "optical", "splash": 0.0, "from": null}
-	var end: Vector2
-	if randf() < ch:
-		res["kind"] = "hit"
-		end = b + CHEST
-	else:
-		res["kind"] = "miss"
-		end = b + CHEST + (b - a).normalized().rotated(PI * 0.5) * randf_range(10.0, 18.0) * (1.0 if randf() < 0.5 else -1.0)
 	var muzzle: Vector2 = view.pilot.muzzle_art()
-	# where it cuts through cover (0.7.52.15, Luz): the points it enters each piece – sparks fly there while the beam lasts
+	var end: Vector2 = b + CHEST + (beam["off"] as Vector2)
 	var cuts: Array = []
 	var n := int(a.distance_to(b) / 4.0)
 	var was := 0
@@ -1744,17 +1776,11 @@ func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 		if c != 0 and was == 0 and cuts.size() < 4:
 			cuts.append(muzzle.lerp(end, float(i) / n))
 		was = c
-	shots.append({"a": muzzle, "b": end, "t": 0.0, "life": 0.7, "kind": "armbeam", "col": Color(1.0, 0.3, 0.2), "res": res, "done": false,
-		"cuts": cuts, "dir": (end - muzzle).normalized(), "runs": _beam_runs(a, b, muzzle, end)})
-	_resolve(shots[-1])
-	arm_charge = 0.0
-	pilot_cool = 0.8
-	view._shake = maxf(view._shake, 0.15)
-	Audio.play("w_arm_laser", "the Red Arm Laser – a deep hiss", 0.0)
-	GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
-	for o in alive():
-		if not o["aware"] and (o["w"] as Walker).pos.distance_to(a) < FoeData.HEAR:
-			_wake(o)
+	beam["a"] = muzzle
+	beam["b"] = end
+	beam["cuts"] = cuts
+	beam["dir"] = (end - muzzle).normalized()
+	beam["runs"] = _beam_runs(a, b, muzzle, end)
 
 
 # ---------------------------------------------------------------- effects
@@ -1762,7 +1788,20 @@ func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 func _fx_step(delta: float) -> void:
 	for s in shots:
 		s["t"] = float(s["t"]) + delta
-		if String(s["kind"]) == "armbeam" and float(s["t"]) < float(s["life"]) * 0.85:
+		if String(s["kind"]) == "armbeam":
+			# 0.7.52.17: it holds – burns at its pace, follows the target, goes out when the target falls
+			s["tick"] = float(s["tick"]) + delta
+			if float(s["tick"]) >= ARM_HOLD / ARM_TICKS:
+				s["tick"] = 0.0
+				_arm_tick(s)
+			var bt = s["to"]
+			if (bt == null or bt["dead"]) and float(s["t"]) < float(s["life"]) - 0.3:
+				s["t"] = float(s["life"]) - 0.3
+			s["geo_t"] = float(s["geo_t"]) - delta
+			if float(s["geo_t"]) <= 0.0 and bt != null and not bt["dead"]:
+				s["geo_t"] = 0.08
+				_arm_geometry(s)
+		if String(s["kind"]) == "armbeam" and float(s["t"]) < float(s["life"]) - 0.25:
 			# 0.7.52.15 (Luz): the beam cuts – a spray of sparks out of every piece of cover it goes through, thrown off to the
 			# sides and onwards, falling
 			var bd: Vector2 = s["dir"]
@@ -1865,7 +1904,7 @@ func _draw() -> void:
 				draw_line(a, b, Color(1, 1, 1, fade), 1.0)
 				draw_circle(a, 6.0, Color(col3, 0.8 * fade))
 			"armbeam":
-				var fk := 1.0 - clampf(float(s["t"]) / float(s["life"]), 0.0, 1.0)
+				var fk := clampf((float(s["life"]) - float(s["t"])) / 0.3, 0.0, 1.0) * (0.85 + 0.15 * sin(float(s["t"]) * 47.0))
 				for run in s.get("runs", [[0.0, 1.0]]):               # 0.7.52.16: hidden inside and behind the cover it cuts
 					var ra := a.lerp(b, float(run[0]))
 					var rb := a.lerp(b, float(run[1]))
