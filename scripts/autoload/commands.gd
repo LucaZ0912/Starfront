@@ -2742,7 +2742,7 @@ func _c_debug_mission(c: Dictionary) -> String:
 	return GameState.accept_mission(m)
 
 
-## {"type":"debug_museum", "to": "plaza"|"hall"|"basement" (go there: Durchbruch, a city on Curie), "fill": "none"|"half"|
+## {"type":"debug_museum", "to": "plaza"|"hall"|"minerals"|"first"|"second"|"basement" (go there: Durchbruch, a city on Curie), "fill": "none"|"half"|
 ##  "almost"|"all" (the cases), "finds": "some"|"all" (pieces into your pockets)} – 53e: the Museum in Curie.
 func _c_debug_museum(c: Dictionary) -> String:
 	var ids: Array = MuseumDataC.EXHIBITS.map(func(e): return String(e["id"]))
@@ -2768,10 +2768,10 @@ func _c_debug_museum(c: Dictionary) -> String:
 	var to := String(c.get("to", ""))
 	var g = _ground()
 	if to == "":
-		if g != null and String(g.level) in ["museum", "museum_down", "mplaza"]:
+		if g != null and String(g.level) in ["museum", "museum_min", "museum_1", "museum_2", "museum_down", "mplaza"]:
 			g.go_level(String(g.level), "museum_in" if String(g.level) != "mplaza" else "lift")     # the cases anew
 		return ""
-	if not to in ["plaza", "hall", "basement"]:
+	if not to in ["plaza", "hall", "minerals", "first", "second", "basement"]:
 		return "Unknown place in the Museum."
 	if g == null or not g.is_museum_city():
 		var sid := Universe.special_system("durchbruch")
@@ -2795,7 +2795,7 @@ func _c_debug_museum(c: Dictionary) -> String:
 		if g == null or not g.is_museum_city():
 			return "Not in a city on Curie."
 	g._close_lift_menu()
-	g.go_level({"plaza": "mplaza", "hall": "museum", "basement": "museum_down"}[to], "lift" if to == "plaza" else "museum_in")
+	g.go_level({"plaza": "mplaza", "hall": "museum", "minerals": "museum_min", "first": "museum_1", "second": "museum_2", "basement": "museum_down"}[to], "lift" if to == "plaza" else "museum_in")
 	return ""
 
 

@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.26 – 2026-11-12
+
+**The Museum – a room each (Luz).** The hall is built as in the mockup: above it, seen over the rail, the gallery in a
+U with the exhibitions' banners; in its middle the **grand stairs up to a gate** – through it the **first floor**, a
+room of its own (the Old World west, the Severance east), and there again the grand stairs up to the gate of the
+**second floor** (the Precursors). Under the gallery's wings **two arches**: west into the **minerals room** (its own
+room now), east the **stairs down** to the Dark Ones. The flights running sideways are gone; stairs down to the floor
+below lie at each upper room's south side.
+
 ## alpha 0.7.53.25 – 2026-11-12
 
 **Package 53e – the Museum in Curie (Luz).** In the city on Curie (Durchbruch) the lift goes up to a roof plaza with

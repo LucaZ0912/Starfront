@@ -629,6 +629,21 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 				var sx3 := px + k8 * 5 + 1
 				_rect(sx3, py, 5, TILE, st3.darkened(0.06 * (2 - k8) + 0.08 * (x - 2)))
 				_rect(sx3, py, 1, TILE, st3.lightened(0.1))
+		45:             # 0.7.53.26: the Museum's stairs down to the floor below – pale steps, each a little darker, a balustrade
+			var row3 := y - _run_top(x, y, 45)
+			for k9 in 3:
+				var sy3 := py + k9 * 5 + 1
+				var dc3 := Color(0.86, 0.85, 0.82).darkened(0.07 * (row3 * 3 + k9))
+				_rect(px, sy3, TILE, 5, dc3)
+				_rect(px, sy3, TILE, 1, dc3.lightened(0.12))
+				if x % 6 in [3, 4]:
+					_rect(px, sy3, TILE, 5, Color(0.5, 0.1, 0.13).darkened(0.07 * (row3 * 3 + k9)))
+			if x == 0 or floor_kind[y * w + x - 1] != 45:
+				_rect(px, py, 3, TILE, Color(0.92, 0.91, 0.88))
+				_rect(px + 1, py, 1, TILE, Color(0.85, 0.66, 0.3))
+			if x + 1 >= w or floor_kind[y * w + x + 1] != 45:
+				_rect(px + TILE - 3, py, 3, TILE, Color(0.92, 0.91, 0.88))
+				_rect(px + TILE - 2, py, 1, TILE, Color(0.85, 0.66, 0.3))
 		16:             # 0.7.52.27: an air duct – dark steel, ribs across its run (0.7.52.28: walls on its closed sides)
 			_duct_tile(x, y, px, py)
 		10:             # water (a pool)
@@ -1319,6 +1334,11 @@ func _decal(d: Dictionary) -> void:
 				var a3 := sp * TAU / 8.0
 				for t2 in 18:
 					_px(int(rc2.x + cos(a3) * t2 * 1.6), int(rc2.y + sin(a3) * t2 * 0.8), Color(0.85, 0.66, 0.3, 0.8))
+		"museum_arch_s":
+			# 0.7.53.26: an arch in a room's south wall – the way back to the hall
+			_rect(px, py, pw, 12, Color(0.86, 0.85, 0.82))
+			_rect(px + 3, py, pw - 6, 10, Color(0.95, 0.9, 0.78))
+			_rect(px, py, pw, 1, Color(0.85, 0.66, 0.3))
 		"museum_doors_s":
 			# 53e: the glass doors in the hall's south wall
 			_rect(px, py, pw, 10, Color(0.62, 0.78, 0.88))
@@ -1730,6 +1750,44 @@ func _face_deco(d: Dictionary) -> void:
 	var pw := int(d.get("w", 1)) * TILE
 	var c: Color = d.get("col", pal["accent"])
 	match String(d["kind"]):
+		"museum_gate":
+			# 0.7.53.26 (Luz): the gate at the top of the grand stairs – an arch of pale stone, a gold frieze, the leaves
+			# of bronze folded open, warm light from the floor beyond
+			var gh2 := int(d.get("rows", 3)) * TILE
+			_rect(px - 6, py, pw + 12, gh2, Color(0.93, 0.92, 0.89))
+			_rect(px - 6, py, pw + 12, 3, Color(0.85, 0.66, 0.3))
+			for yy6 in range(4, gh2):
+				var inset := maxi(0, 10 - yy6)
+				_rect(px + 2 + inset, py + yy6, pw - 4 - inset * 2, 1, Color(1.0, 0.9, 0.7).lerp(Color(0.98, 0.82, 0.55), float(yy6) / gh2))
+			_rect(px + 2, py + 10, 5, gh2 - 10, Color(0.5, 0.36, 0.2))
+			_rect(px + pw - 7, py + 10, 5, gh2 - 10, Color(0.5, 0.36, 0.2))
+			_rect(px + 3, py + 12, 1, gh2 - 14, Color(0.85, 0.66, 0.3))
+			_rect(px + pw - 4, py + 12, 1, gh2 - 14, Color(0.85, 0.66, 0.3))
+			for cl2 in [px - 6, px + pw + 2]:
+				_rect(cl2, py + 3, 4, gh2 - 3, Color(0.88, 0.87, 0.84))
+				_rect(cl2, py + 3, 1, gh2 - 3, Color(0.98, 0.97, 0.95))
+		"arch_min", "arch_down":
+			# 0.7.53.26 (Luz, as in the mockup): an arch under the gallery's wing – west the minerals (a case glowing in
+			# the room beyond), east the stairs going down to the Dark Ones (violet light from below)
+			var ah := 3 * TILE
+			var minr := String(d["kind"]) == "arch_min"
+			_rect(px, py + 8, pw, ah - 8, Color(0.12, 0.13, 0.16) if minr else Color(0.06, 0.05, 0.08))
+			for yy7 in 10:
+				var ins := int(pow((10.0 - yy7) / 10.0, 2.0) * pw * 0.3)
+				_rect(px + ins, py + yy7, pw - ins * 2, 1, Color(0.12, 0.13, 0.16) if minr else Color(0.06, 0.05, 0.08))
+			_rect(px, py + 2, pw, 1, Color(0.85, 0.66, 0.3))
+			if minr:
+				_rect(px + pw / 2 - 8, py + 20, 16, 28, Color(0.25, 0.3, 0.36))
+				_rect(px + pw / 2 - 7, py + 21, 14, 14, Color(0.6, 0.75, 0.85))
+				_rect(px + pw / 2 - 5, py + 23, 10, 10, Color(0.75, 0.55, 0.95))
+				_rect(px + pw / 2 - 7, py + 36, 14, 10, Color(0.9, 0.9, 0.91))
+			else:
+				for st5 in 6:
+					_rect(px + 4, py + 16 + st5 * 5, pw - 8, 5, Color(0.3, 0.27, 0.34).darkened(0.12 * st5))
+					_rect(px + 4, py + 16 + st5 * 5, pw - 8, 1, Color(0.42, 0.38, 0.48).darkened(0.12 * st5))
+				_rect(px + 4, py + ah - 3, pw - 8, 2, Color(0.62, 0.35, 1.0))
+			for cl3 in [px - 2, px + pw - 2]:
+				_rect(cl3, py + 6, 4, ah - 6, Color(0.9, 0.89, 0.86))
 		"museum_doors":
 			# 53e: the Museum's main doors, wide open – warm light from the hall, the leaves folded back
 			var dh := 3 * TILE

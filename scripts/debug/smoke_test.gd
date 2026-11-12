@@ -11010,23 +11010,40 @@ func _test_museum(view: SystemView) -> void:
 	g._arrive = 0.0
 	g.zone = zin
 	g.use()
-	var hall_ok: bool = g.level == "museum" and g.map.style == "museum"
-	# one map: from the doors up the grand stairs to the wings, on up to the second floor; the basement stairs
-	var m: GroundMap = g.map
-	var kinds := {}
-	for fk in m.floor_kind:
-		kinds[int(fk)] = true
-	var reach := func(t: Vector2) -> bool:
-		return not m.path(m.spawn, t * 16.0).is_empty()
-	var ways_ok: bool = kinds.has(34) and kinds.has(35) and kinds.has(36) and kinds.has(37) and kinds.has(38) and kinds.has(39) and kinds.has(41) and kinds.has(43) \
-		and reach.call(Vector2(10.5, 30.5)) and reach.call(Vector2(52.5, 30.5)) and reach.call(Vector2(32.5, 6.5)) and reach.call(Vector2(10.5, 55.5)) and reach.call(Vector2(52.5, 50.5)) \
-		and not reach.call(Vector2(32.5, 32.5))
-	var cases: Array = m.explore.filter(func(d): return String(d["kind"]) in ["vitrine", "niche"])
+	var hall_ok: bool = g.level == "museum" and g.map.style == "museum" and not _zone_of(g.map, "curator").is_empty() 		and g.map.people.size() >= 1 and g.map.objects.any(func(o): return String(o["kind"]) == "curator_desk") 		and g.map.face_deco.any(func(fd): return String(fd["kind"]) == "museum_gate") and g.map.face_deco.any(func(fd2): return String(fd2["kind"]) == "arch_min")
+	# 0.7.53.26 (Luz): each room its own map – the hall's gate up, its arches to the minerals and down; every way there and
+	# back, every room reached from where you come in
+	var go_of := func(mp: GroundMap, to: String) -> Dictionary:
+		for z0 in mp.zones:
+			if String(z0.get("kind", "")) == "museum_go" and String(z0["to"]) == to:
+				return z0
+		return {}
 	var case_ids := {}
-	for d in cases:
-		case_ids[String(d["exhibit"])] = true
-	hall_ok = hall_ok and case_ids.size() == 40 and not _zone_of(m, "curator").is_empty() and not _zone_of(m, "museum_down").is_empty() \
-		and m.people.size() >= 1 and m.objects.any(func(o): return String(o["kind"]) == "curator_desk")
+	var ways_ok := true
+	for leg in [["museum", "museum_min", 20], ["museum", "museum_1", 10], ["museum_1", "museum_2", 10], ["museum", "museum_down", 8]]:
+		if g.level != String(leg[0]):
+			g.go_level(String(leg[0]), "museum_in")
+		var zg: Dictionary = go_of.call(g.map, String(leg[1]))
+		var from_pos: Vector2 = g.pilot.pos
+		var ok_leg: bool = not zg.is_empty() and not g.map.path(g.map.spawn, (zg["rect"] as Rect2).get_center()).is_empty()
+		g._arrive = 0.0
+		g.zone = zg
+		g.use()
+		var cs: Array = g.map.explore.filter(func(d): return String(d["kind"]) in ["vitrine", "niche"])
+		for d0 in cs:
+			case_ids[String(d0["exhibit"])] = true
+		var back: Dictionary = go_of.call(g.map, String(leg[0]))
+		ok_leg = ok_leg and g.level == String(leg[1]) and cs.size() == int(leg[2]) and not back.is_empty() 			and not g.map.path(g.pilot.pos, (back["rect"] as Rect2).get_center()).is_empty()
+		if String(leg[1]) != "museum_down":
+			g._arrive = 0.0
+			g.zone = back
+			g.use()
+			ok_leg = ok_leg and g.level == String(leg[0]) and g.map.has_meta(String(back["at"]))
+		ways_ok = ways_ok and ok_leg
+	ways_ok = ways_ok and case_ids.size() == 48
+	g.go_level("museum_min", "from_hall")
+	var m: GroundMap = g.map
+	var cases: Array = m.explore.filter(func(d): return String(d["kind"]) in ["vitrine", "niche"])
 	# set a find into its case – once; looking at it then changes nothing
 	var gold: Dictionary = {}
 	for d2 in cases:
@@ -11045,8 +11062,9 @@ func _test_museum(view: SystemView) -> void:
 	g.use()
 	don_ok = don_ok and GameState.museum_donated.size() == 1 and GameState.museum_carried("mn_gold") == 1
 	# the curator: the spare nugget sold
+	g.go_level("museum", "from_min")
 	g._arrive = 0.0
-	g.zone = _zone_of(m, "curator")
+	g.zone = _zone_of(g.map, "curator")
 	g.use()
 	var cur_ok: bool = g._lift_menu != null
 	g._curator_sell("")
@@ -11054,7 +11072,7 @@ func _test_museum(view: SystemView) -> void:
 	g._close_lift_menu()
 	# the basement: the monolith's plinth empty – the Dark Ones' room full, its cast raised; their perk
 	g._arrive = 0.0
-	g.zone = _zone_of(m, "museum_down")
+	g.zone = go_of.call(g.map, "museum_down")
 	g.use()
 	var mono: Dictionary = {}
 	for d3 in g.map.explore:
@@ -11076,7 +11094,7 @@ func _test_museum(view: SystemView) -> void:
 			mono = d6
 	base_ok = base_ok and GameState.museum_perk("darkones") and String(mono.get("state", "")) == "up"
 	g._arrive = 0.0
-	g.zone = _zone_of(g.map, "museum_up")
+	g.zone = go_of.call(g.map, "museum")
 	g.use()
 	base_ok = base_ok and g.level == "museum"
 	# the Museum full: the Archivist Suit – its cloak and scanner built in, the cloak five times as long

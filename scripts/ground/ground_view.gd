@@ -359,7 +359,13 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	elif level == "mplaza":
 		map = MuseumGen.build_plaza(station, _body)                  # 53e (Luz): Curie's roof plaza with the Museum
 	elif level == "museum":
-		map = MuseumGen.build_main(station, _body)                   # 53e: the Museum – the hall and the floors above
+		map = MuseumGen.build_hall(station, _body)                   # 53e: the Museum's hall (0.7.53.26: each room its own map)
+	elif level == "museum_min":
+		map = MuseumGen.build_minerals(station, _body)
+	elif level == "museum_1":
+		map = MuseumGen.build_floor1(station, _body)
+	elif level == "museum_2":
+		map = MuseumGen.build_floor2(station, _body)
 	elif level == "museum_down":
 		map = MuseumGen.build_basement(station, _body)               # 53e: its basement, the Dark Ones
 	elif level == "minehead":
@@ -477,7 +483,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
-		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the halls", "museum_down": "the basement"}.get(level, "")]
+		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement"}.get(level, "")]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
@@ -490,6 +496,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_say_toast("You come to in the clinic of %s." % String(station.get("name", "the station")), 5.0)
 	elif arrive == "mine_path" and map.has_meta("mine_path_front"):
 		pilot.pos = map.get_meta("mine_path_front")      # 0.7.53.7: back into town from the old mine
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0
+	elif arrive.begins_with("from_") and map.has_meta(arrive):
+		pilot.pos = map.get_meta(arrive)                # 0.7.53.26: the Museum – where the way from that room comes in
 		pilot.position = pilot.pos * GroundMap.SCALE
 		pilot.dir = 0
 	elif arrive == "dungeon_up" and map.has_meta("down_front"):
@@ -1647,8 +1657,8 @@ func _build() -> void:
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
 	if level == "street":
 		n += 6                                        # a city's street is busy
-	if level in ["museum", "museum_down", "mplaza"]:
-		n = (3 if level != "museum" else 5) + GameState.museum_count() / (10 if level != "museum" else 4)   # 53e: the fuller, the busier
+	if level in ["museum", "museum_min", "museum_1", "museum_2", "museum_down", "mplaza"]:
+		n = (3 if level != "museum" else 4) + GameState.museum_count() / 8   # 53e: the fuller, the busier
 	for i in n:
 		if map.wander.is_empty():
 			break
@@ -3542,6 +3552,9 @@ func use(instant: bool = false) -> bool:
 			return true
 		"museum_in":
 			go_level("museum", "museum_in")                # 53e (Luz): into the Museum
+			return true
+		"museum_go":
+			go_level(String(zone["to"]), String(zone["at"]))     # 0.7.53.26: from one of its rooms to another
 			return true
 		"museum_out":
 			go_level("mplaza", "dungeon_out")              # 53e: out onto the roof plaza

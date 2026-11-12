@@ -2,11 +2,11 @@ extends RefCounted
 ## Package 53e (Luz, 12 Nov 2026): the Museum in the city on Curie – three maps.
 ##  * the roof plaza (`build_plaza`): up the lift, the city beyond the railing; an avenue of statues to the Museum's
 ##    white front with its columns, its glass dome on the roof and its doors open;
-##  * the Museum (`build_main`): ONE map for the ground floor and the floors above, joined by stairs (Luz: no level of
-##    their own) – the hall with the curator's desk, behind it the grand stairs up to a landing at half height, there
-##    parting left and right up to the first floor, a gallery in a U round the hall: the Old World west, the Severance
-##    east; from the gallery two flights rise to a second landing and one goes on up to the second floor, the
-##    Precursors'. Under the gallery's wings the minerals room (west) and the hall to the basement stairs (east);
+##  * the Museum's rooms, each a map of its own (0.7.53.26, Luz – after the mockup): the hall (`build_hall`) with the
+##    curator's desk, behind it the grand stairs up to the gate of the first floor, the gallery above as scenery, under
+##    its wings an arch west to the minerals (`build_minerals`) and one east with the stairs down; the first floor
+##    (`build_floor1`) – the Old World west, the Severance east, the grand stairs up to the gate of the second floor
+##    (`build_floor2`), the Precursors';
 ##  * the basement (`build_basement`): the Dark Ones – black glass walls with the reliefs of their ruins, a cast of a
 ##    membrane door, the cases in a ring round a round pool where a monolith's cast is raised once every piece of
 ##    theirs is there.
@@ -169,175 +169,223 @@ static func build_plaza(station: Dictionary, body: Dictionary) -> GroundMap:
 	return m
 
 
-# ---------------------------------------------------------------- the Museum: the hall and the floors above
+# ---------------------------------------------------------------- the Museum's rooms (0.7.53.26, Luz: one room each)
 
-static func build_main(station: Dictionary, body: Dictionary) -> GroundMap:
+## A way to another of the Museum's rooms: a zone on the floor; `at` names the map meta where you arrive there.
+static func _go(m: GroundMap, r: Rect2, to: String, at: String, title: String, col: Color, sign: Vector2 = Vector2(-100, -100)) -> void:
+	m.zones.append({"rect": Rect2(r.position * TILE, r.size * TILE), "kind": "museum_go", "id": "museum_go", "to": to, "at": at,
+		"title": title, "col": col, "sign": sign * TILE if sign.x >= 0.0 else sign})
+
+
+static func _room(station: Dictionary, body: Dictionary, W: int, H: int, fk: int) -> GroundMap:
 	var m := GroundMap.new()
 	_pal(m, body)
 	m.style = "museum"
 	m.title = "Museum of Curie"
 	m.hull_top = -9999
-	var W := 64
-	var H := 61
 	m.setup(W, H)
 	m.fill(0, 0, W, H, T.CAP)
-	# ---- the second floor: the Precursors (y 4–13), its back wall above, its front below – the stairs come up its middle
-	m.fill(2, 2, 60, 2, T.FACE)
-	m.fill(2, 4, 60, 10, T.FLOOR, 35)
-	m.fill(2, 14, 60, 2, T.FACE)
-	# ---- the first floor: the gallery band (x 22–41) between the wings – the Old World west, the Severance east
-	m.fill(2, 16, 20, 26, T.FLOOR, 35)
-	m.fill(42, 16, 20, 26, T.FLOOR, 35)
-	m.fill(22, 16, 20, 13, T.FLOOR, 35)
-	# the stairs to the second floor: two flights from the gallery to a landing, one on up through the floor's front
-	m.fill(29, 14, 6, 8, T.FLOOR, 36)
-	m.fill(30, 14, 4, 8, T.FLOOR, 37)
-	m.fill(28, 22, 8, 3, T.FLOOR, 35)
-	m.fill(23, 22, 5, 3, T.FLOOR, 38)
-	m.fill(23, 23, 5, 1, T.FLOOR, 39)
-	m.fill(36, 22, 5, 3, T.FLOOR, 38)
-	m.fill(36, 23, 5, 1, T.FLOOR, 39)
-	m.fill(23, 25, 18, 1, T.FACE)
-	_rail(m, 28, 16, 1, 6)
-	_rail(m, 35, 16, 1, 6)
-	_rail(m, 23, 21, 5, 1)
-	_rail(m, 36, 21, 5, 1)
-	# the gallery's edge over the hall, its front below
-	_rail(m, 22, 28, 20, 1)
-	m.fill(22, 29, 20, 2, T.FACE)
-	# ---- the hall (x 22–41, y 31–58): behind the stairs a strip nobody reaches
-	m.fill(22, 31, 20, 28, T.FLOOR, 34)
-	m.fill(22, 31, 20, 3, T.BLOCK, 34)
-	# the grand stairs: a landing at half height (y 34–36), flights left and right up to the wings, one down to the hall
-	m.fill(27, 34, 10, 3, T.FLOOR, 34)
-	m.fill(22, 34, 5, 3, T.FLOOR, 38)
-	m.fill(22, 35, 5, 1, T.FLOOR, 39)
-	m.fill(37, 34, 5, 3, T.FLOOR, 38)
-	m.fill(37, 35, 5, 1, T.FLOOR, 39)
-	m.fill(29, 37, 6, 9, T.FLOOR, 36)
-	m.fill(30, 37, 4, 9, T.FLOOR, 37)
-	m.fill(27, 37, 2, 1, T.FACE)
-	m.fill(35, 37, 2, 1, T.FACE)
-	m.fill(22, 37, 5, 2, T.FACE)
-	m.fill(37, 37, 5, 2, T.FACE)
-	_rail(m, 28, 38, 1, 7)
-	_rail(m, 35, 38, 1, 7)
-	_rail(m, 21, 29, 1, 5)                                     # the wings' edges over the hall – open where the flights arrive
-	_rail(m, 21, 37, 1, 5)
-	_rail(m, 42, 29, 1, 5)
-	_rail(m, 42, 37, 1, 5)
-	# ---- under the wings: their fronts; west the minerals room, east the hall to the basement stairs
-	m.fill(2, 42, 20, 2, T.FACE)
-	m.fill(42, 42, 20, 2, T.FACE)
-	m.fill(2, 44, 19, 15, T.FLOOR, 41)
-	m.fill(43, 44, 19, 15, T.FLOOR, 34)
-	m.fill(21, 49, 1, 4, T.FLOOR, 34)
-	m.fill(42, 49, 1, 4, T.FLOOR, 34)
-	# ---- the hall's furnishing: the curator's desk before the stairs, the runner from the doors, statues, busts, plants
-	m.fill(31, 52, 2, 7, T.FLOOR, 42)
-	m.decals.append({"kind": "rosette", "x": 29, "y": 53, "w": 6, "h": 3})
-	m.add_object({"kind": "curator_desk", "x": 28, "y": 50, "w": 8, "h": 1})
+	m.fill(1, 2, W - 2, 2, T.FACE)
+	m.fill(1, 4, W - 2, H - 6, T.FLOOR, fk)
+	return m
+
+
+## The hall (as in the mockup): above it, seen over the rail, the gallery of the first floor in a U – its front with
+## the exhibitions' banners and the Museum's name; in its middle the grand stairs up to the gate of the first floor;
+## under the gallery's wings two arches – west to the minerals, east the stairs down to the Dark Ones. Before the stairs
+## the curator's desk, statues either side, the runner to the doors.
+static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
+	var W := 36
+	var H := 25
+	var m := GroundMap.new()
+	_pal(m, body)
+	m.style = "museum"
+	m.title = "Museum of Curie"
+	m.hull_top = -9999
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.CAP)
+	# the gallery above (scenery – the first floor is a room of its own up the stairs)
+	m.fill(1, 1, W - 2, 4, T.BLOCK, 35)
+	m.fill(1, 5, 7, 5, T.BLOCK, 35)
+	m.fill(W - 8, 5, 7, 5, T.BLOCK, 35)
+	_rail(m, 8, 4, W - 16, 1)
+	_rail(m, 7, 5, 1, 5)
+	_rail(m, W - 8, 5, 1, 5)
+	m.add_object({"kind": "bust", "x": 3, "y": 2, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
+	m.add_object({"kind": "plant", "x": 11, "y": 2, "w": 1, "h": 1})
+	m.add_object({"kind": "plant", "x": W - 12, "y": 2, "w": 1, "h": 1})
+	m.add_object({"kind": "bust", "x": W - 4, "y": 2, "w": 1, "h": 1, "col": Color(0.6, 0.48, 0.4)})
+	m.add_object({"kind": "museum_bench", "x": 2, "y": 7, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": W - 5, "y": 7, "w": 3, "h": 1})
+	# its fronts: the band behind the stairs, the wings
+	m.fill(8, 5, W - 16, 3, T.FACE)
+	m.fill(1, 10, 7, 3, T.FACE)
+	m.fill(W - 8, 10, 7, 3, T.FACE)
+	m.fill(8, 8, W - 16, H - 10, T.FLOOR, 34)
+	m.fill(1, 13, 7, H - 15, T.FLOOR, 34)
+	m.fill(W - 8, 13, 7, H - 15, T.FLOOR, 34)
+	for bn in [[9, Color(0.35, 0.22, 0.12)], [11, Color(0.15, 0.22, 0.45)], [W - 12, Color(0.4, 0.25, 0.18)], [W - 10, Color(0.12, 0.1, 0.16)]]:
+		m.face_deco.append({"kind": "banner_m", "x": int(bn[0]), "y": 5, "w": 1, "col": bn[1]})
+	# the grand stairs up to the gate of the first floor
+	var sx := W / 2 - 3
+	m.fill(sx, 8, 6, 8, T.FLOOR, 36)
+	m.fill(sx + 1, 8, 4, 8, T.FLOOR, 37)
+	m.face_deco.append({"kind": "museum_gate", "x": sx, "y": 5, "w": 6})
+	_label(m, "MUSEUM OF CURIE", Vector2(W * 0.5, 4.6), Color(0.95, 0.8, 0.45))
+	_go(m, Rect2(sx, 8, 6, 1.2), "museum_1", "from_hall", "Up through the gate – the first floor: The Old World and The Severance", WARM)
+	m.set_meta("from_1", Vector2(W * 0.5, 9.6) * TILE)
+	m.lights.append({"pos": Vector2(W * 0.5, 7.0) * TILE, "r": 70.0, "col": WARM, "a": 0.4})
+	# the arches under the wings
+	m.face_deco.append({"kind": "arch_min", "x": 2, "y": 10, "w": 5})
+	_go(m, Rect2(2, 13, 5, 1.2), "museum_min", "from_hall", "Through the arch – Minerals", Color(0.6, 0.9, 1.0), Vector2(4.5, 9.6))
+	m.set_meta("from_min", Vector2(4.5, 14.6) * TILE)
+	m.lights.append({"pos": Vector2(4.5, 12.5) * TILE, "r": 50.0, "col": Color(0.75, 0.9, 1.0), "a": 0.45})
+	m.face_deco.append({"kind": "arch_down", "x": W - 7, "y": 10, "w": 5})
+	_go(m, Rect2(W - 7, 13, 5, 1.2), "museum_down", "museum_in", "Stairs down – The Dark Ones", VIO.lightened(0.3), Vector2(W - 4.5, 9.6))
+	m.set_meta("from_down", Vector2(W - 4.5, 14.6) * TILE)
+	m.lights.append({"pos": Vector2(W - 4.5, 12.5) * TILE, "r": 60.0, "col": VIO, "a": 0.55})
+	# the desk, the curator, statues, busts, plants, benches; the runner and the doors
+	m.add_object({"kind": "statue", "x": sx - 4, "y": 15, "w": 2, "h": 1, "seed": 74, "species": "suit_survey"})
+	m.add_object({"kind": "statue", "x": sx + 8, "y": 15, "w": 2, "h": 1, "seed": 75, "species": "suit_civil"})
+	m.add_object({"kind": "curator_desk", "x": sx - 1, "y": 18, "w": 8, "h": 1})
 	var cur := ChibiArt.PilotArt.random_look(_rng(station, 53))
 	cur["suit"] = ""
-	m.people.append({"pos": Vector2(32, 49.7) * TILE, "dir": 0, "role": "keeper", "look": cur})
-	m.zones.append({"rect": Rect2(Vector2(28, 51) * TILE, Vector2(8, 1.4) * TILE), "kind": "curator", "id": "curator",
+	m.people.append({"pos": Vector2(W * 0.5, 17.7) * TILE, "dir": 0, "role": "keeper", "look": cur})
+	m.zones.append({"rect": Rect2(Vector2(sx - 1, 19) * TILE, Vector2(8, 1.4) * TILE), "kind": "curator", "id": "curator",
 		"title": "The curator – donations, your finds, a hint (E)", "col": Color(1.0, 0.85, 0.5), "sign": Vector2(-100, -100)})
-	m.add_object({"kind": "statue", "x": 25, "y": 45, "w": 2, "h": 1, "seed": 74, "species": "suit_survey"})
-	m.add_object({"kind": "statue", "x": 37, "y": 45, "w": 2, "h": 1, "seed": 75, "species": "suit_civil"})
-	m.add_object({"kind": "bust", "x": 22, "y": 47, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
-	m.add_object({"kind": "bust", "x": 41, "y": 47, "w": 1, "h": 1, "col": Color(0.6, 0.48, 0.4)})
-	m.add_object({"kind": "plant", "x": 22, "y": 57, "w": 1, "h": 1})
-	m.add_object({"kind": "plant", "x": 41, "y": 57, "w": 1, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 23, "y": 53, "w": 3, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 38, "y": 53, "w": 3, "h": 1})
-	m.add_object({"kind": "terminal", "x": 26, "y": 56, "w": 1, "h": 1})
-	m.face_deco.append({"kind": "museum_sign", "x": 27, "y": 29, "w": 10})
-	for bn in [[23, Color(0.35, 0.22, 0.12)], [25, Color(0.15, 0.22, 0.45)], [38, Color(0.4, 0.25, 0.18)], [40, Color(0.12, 0.1, 0.16)]]:
-		m.face_deco.append({"kind": "banner_m", "x": int(bn[0]), "y": 29, "w": 1, "col": bn[1]})
-	m.decals.append({"kind": "museum_doors_s", "x": 30, "y": 59, "w": 4, "h": 1})
-	m.zones.append({"rect": Rect2(Vector2(30, 58) * TILE, Vector2(4, 1.0) * TILE), "kind": "museum_out", "id": "museum_out",
+	m.fill(W / 2 - 1, 20, 2, 3, T.FLOOR, 42)
+	m.decals.append({"kind": "rosette", "x": W / 2 - 3, "y": 20, "w": 6, "h": 3})
+	m.add_object({"kind": "bust", "x": 1, "y": 18, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
+	m.add_object({"kind": "bust", "x": W - 2, "y": 18, "w": 1, "h": 1, "col": Color(0.6, 0.48, 0.4)})
+	m.add_object({"kind": "plant", "x": 9, "y": 13, "w": 1, "h": 1})
+	m.add_object({"kind": "plant", "x": W - 10, "y": 13, "w": 1, "h": 1})
+	m.add_object({"kind": "plant", "x": 9, "y": 22, "w": 1, "h": 1})
+	m.add_object({"kind": "plant", "x": W - 10, "y": 22, "w": 1, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 3, "y": 21, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": W - 6, "y": 21, "w": 3, "h": 1})
+	m.add_object({"kind": "terminal", "x": 11, "y": 20, "w": 1, "h": 1})
+	m.decals.append({"kind": "museum_doors_s", "x": W / 2 - 2, "y": H - 2, "w": 4, "h": 1})
+	m.zones.append({"rect": Rect2(Vector2(W / 2 - 2, H - 3) * TILE, Vector2(4, 1.0) * TILE), "kind": "museum_out", "id": "museum_out",
 		"title": "Out onto the roof plaza", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
-	m.spawn = Vector2(32, 57.4) * TILE
-	m.lights.append({"pos": Vector2(32, 44) * TILE, "r": 220.0, "col": Color(1.0, 0.97, 0.9), "a": 0.25})   # the dome's daylight
-	m.lights.append({"pos": Vector2(32, 49) * TILE, "r": 60.0, "col": WARM, "a": 0.35})
-	# ---- the minerals room: the Giant Diamond on its dais in the middle, six cases in the wall, the rest spread about
+	m.spawn = Vector2(W * 0.5, H - 3.4) * TILE
+	m.lights.append({"pos": Vector2(W * 0.5, 15) * TILE, "r": 200.0, "col": Color(1.0, 0.97, 0.9), "a": 0.22})   # the dome's daylight
+	m.lights.append({"pos": Vector2(W * 0.5, 18) * TILE, "r": 60.0, "col": WARM, "a": 0.3})
+	for wp in [Vector2(W * 0.5 + 3, 21), Vector2(6, 16), Vector2(W - 6, 16), Vector2(12, 11), Vector2(W - 12, 11), Vector2(W * 0.5 - 4, 22)]:
+		if m.free_at(wp * TILE, 6.0):
+			m.wander.append(wp * TILE)
+	return m
+
+
+## The minerals room through the west arch: the Giant Diamond on its dais, six cases in the back wall, the rest spread.
+static func build_minerals(station: Dictionary, body: Dictionary) -> GroundMap:
+	var m := _room(station, body, 23, 20, 41)
 	var mn := _ids("minerals")
 	var wall_i := [1, 4, 7, 10, 13, 16]
-	var wall_x := [3, 6, 9, 12, 15, 18]
+	var wall_x := [2, 5, 8, 12, 15, 18]
 	for k in 6:
-		_niche(m, wall_x[k], 44, mn[wall_i[k]])
-	_case(m, 10, 50, mn[0], true)
+		_niche(m, wall_x[k], 4, mn[wall_i[k]])
+	m.set_meta("from_hall", Vector2(11.5, 16.4) * TILE)
+	_case(m, 10, 9, mn[0], true)
 	var free := [2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 19]
-	var spots := [Vector2i(3, 47), Vector2i(7, 46), Vector2i(14, 46), Vector2i(18, 47), Vector2i(6, 49), Vector2i(15, 49),
-		Vector2i(3, 53), Vector2i(7, 53), Vector2i(15, 53), Vector2i(18, 53), Vector2i(6, 56), Vector2i(11, 56), Vector2i(15, 56)]
+	var spots := [Vector2i(2, 7), Vector2i(6, 6), Vector2i(15, 6), Vector2i(19, 7), Vector2i(5, 9), Vector2i(16, 9),
+		Vector2i(2, 12), Vector2i(6, 13), Vector2i(15, 13), Vector2i(19, 12), Vector2i(3, 16), Vector2i(7, 16), Vector2i(16, 16)]
 	for k2 in free.size():
 		_case(m, spots[k2].x, spots[k2].y, mn[free[k2]])
-	m.add_object({"kind": "rope", "x": 9, "y": 53, "w": 5, "h": 1})
-	m.add_object({"kind": "statue", "x": 19, "y": 57, "w": 2, "h": 1, "seed": 78, "species": "suit_work"})
-	m.add_object({"kind": "geode_big", "x": 2, "y": 57, "w": 2, "h": 1})
-	m.add_object({"kind": "terminal", "x": 2, "y": 50, "w": 1, "h": 1})
-	_label(m, "MINERALS", Vector2(11, 42.7), Color(0.6, 0.9, 1.0))
-	m.lights.append({"pos": Vector2(11, 51) * TILE, "r": 200.0, "col": Color(0.85, 0.92, 1.0), "a": 0.2})
-	# ---- the Old World (west wing): the Pazz record in a shrine in the wall, a globe of Earth, the rest in cases
+	m.add_object({"kind": "rope", "x": 9, "y": 12, "w": 5, "h": 1})
+	m.add_object({"kind": "statue", "x": 19, "y": 16, "w": 2, "h": 1, "seed": 78, "species": "suit_work"})
+	m.add_object({"kind": "geode_big", "x": 1, "y": 9, "w": 2, "h": 1})
+	m.add_object({"kind": "terminal", "x": 21, "y": 9, "w": 1, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 10, "y": 15, "w": 3, "h": 1})
+	m.decals.append({"kind": "museum_arch_s", "x": 10, "y": 18, "w": 3, "h": 1})
+	_go(m, Rect2(10, 17, 3, 1.0), "museum", "from_min", "Back through the arch – the hall", Color(0.4, 1.0, 0.6))
+	m.spawn = m.get_meta("from_hall")
+	_label(m, "MINERALS", Vector2(11.5, 2.4), Color(0.6, 0.9, 1.0))
+	m.lights.append({"pos": Vector2(11.5, 10) * TILE, "r": 200.0, "col": Color(0.85, 0.92, 1.0), "a": 0.2})
+	for wp in [Vector2(11.5, 14), Vector2(4, 11), Vector2(19, 11)]:
+		if m.free_at(wp * TILE, 6.0):
+			m.wander.append(wp * TILE)
+	return m
+
+
+## The first floor: up from the hall's gate (the stairs down at its south); the Old World west, the Severance east; in
+## its middle the grand stairs up to the gate of the second floor.
+static func build_floor1(station: Dictionary, body: Dictionary) -> GroundMap:
+	var W := 44
+	var H := 23
+	var m := _room(station, body, W, H, 35)
+	var sx := W / 2 - 3
+	m.fill(sx, 4, 6, 6, T.FLOOR, 36)
+	m.fill(sx + 1, 4, 4, 6, T.FLOOR, 37)
+	m.face_deco.append({"kind": "museum_gate", "x": sx, "y": 2, "w": 6, "rows": 2})
+	_go(m, Rect2(sx, 4, 6, 1.2), "museum_2", "from_1", "Up through the gate – the second floor: The Precursors", WARM)
+	m.set_meta("from_2", Vector2(W * 0.5, 10.8) * TILE)
+	m.fill(sx, H - 5, 6, 3, T.FLOOR, 45)
+	_go(m, Rect2(sx, H - 4, 6, 2), "museum", "from_1", "Down the grand stairs – the hall", Color(0.4, 1.0, 0.6))
+	m.set_meta("from_hall", Vector2(W * 0.5, H - 6.0) * TILE)
+	m.spawn = m.get_meta("from_hall")
+	m.add_object({"kind": "plant", "x": sx - 1, "y": 4, "w": 1, "h": 1})
+	m.add_object({"kind": "plant", "x": sx + 6, "y": 4, "w": 1, "h": 1})
+	# the Old World (west)
 	var ow := _ids("oldworld")
-	_niche(m, 4, 16, ow[0])
-	_niche(m, 9, 16, ow[3])
-	m.add_object({"kind": "globe", "x": 14, "y": 20, "w": 2, "h": 1})
-	_case(m, 5, 24, ow[1])
-	_case(m, 11, 28, ow[2])
-	_case(m, 16, 24, ow[4])
-	m.add_object({"kind": "bust", "x": 18, "y": 18, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
-	m.add_object({"kind": "statue", "x": 4, "y": 33, "w": 2, "h": 1, "seed": 76, "species": "suit_civil"})
-	m.add_object({"kind": "museum_bench", "x": 9, "y": 35, "w": 3, "h": 1})
-	m.add_object({"kind": "plant", "x": 2, "y": 40, "w": 1, "h": 1})
-	_label(m, "THE OLD WORLD", Vector2(11, 14.7), Color(0.95, 0.75, 0.45))
-	m.lights.append({"pos": Vector2(5, 15) * TILE, "r": 40.0, "col": Color(1.0, 0.3, 0.6), "a": 0.45})      # the record's pink glow
-	m.lights.append({"pos": Vector2(11, 28) * TILE, "r": 170.0, "col": WARM, "a": 0.2})
-	# ---- the Severance (east wing): the Long Gate's shard in the middle, the fleet's ensign, the gate crew's memorial
+	_niche(m, 3, 4, ow[0])
+	_niche(m, 10, 4, ow[3])
+	m.add_object({"kind": "globe", "x": 14, "y": 7, "w": 2, "h": 1})
+	_case(m, 4, 10, ow[1])
+	_case(m, 10, 13, ow[2])
+	_case(m, 4, 16, ow[4])
+	m.add_object({"kind": "bust", "x": 16, "y": 12, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
+	m.add_object({"kind": "statue", "x": 1, "y": 19, "w": 2, "h": 1, "seed": 76, "species": "suit_civil"})
+	m.add_object({"kind": "museum_bench", "x": 10, "y": 19, "w": 3, "h": 1})
+	_label(m, "THE OLD WORLD", Vector2(9, 2.4), Color(0.95, 0.75, 0.45))
+	m.lights.append({"pos": Vector2(4, 3) * TILE, "r": 40.0, "col": Color(1.0, 0.3, 0.6), "a": 0.45})      # the record's pink glow
+	m.lights.append({"pos": Vector2(9, 12) * TILE, "r": 170.0, "col": WARM, "a": 0.2})
+	# the Severance (east)
 	var sv := _ids("severance")
-	_case(m, 50, 26, sv[0], true)
-	_niche(m, 46, 16, sv[2])
-	m.face_deco.append({"kind": "memorial", "x": 55, "y": 14, "w": 4})
-	_case(m, 44, 22, sv[1])
-	_case(m, 57, 22, sv[3])
-	_case(m, 45, 33, sv[4])
-	m.add_object({"kind": "statue", "x": 57, "y": 34, "w": 2, "h": 1, "seed": 77, "species": "suit_mil_light"})
-	m.add_object({"kind": "plant", "x": 61, "y": 40, "w": 1, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 50, "y": 37, "w": 3, "h": 1})
-	_label(m, "THE SEVERANCE", Vector2(52, 14.7), Color(0.55, 0.85, 1.0))
-	m.lights.append({"pos": Vector2(52, 28) * TILE, "r": 170.0, "col": Color(0.8, 0.9, 1.0), "a": 0.2})
-	# ---- the Precursors (second floor): the tablets in the back wall, the Heart-Core on its dais, the rest about
+	_case(m, 33, 9, sv[0], true)
+	_niche(m, 28, 4, sv[2])
+	m.face_deco.append({"kind": "memorial", "x": 36, "y": 2, "w": 4})
+	_case(m, 28, 14, sv[1])
+	_case(m, 39, 7, sv[3])
+	_case(m, 38, 15, sv[4])
+	m.add_object({"kind": "statue", "x": 41, "y": 19, "w": 2, "h": 1, "seed": 77, "species": "suit_mil_light"})
+	m.add_object({"kind": "museum_bench", "x": 31, "y": 19, "w": 3, "h": 1})
+	_label(m, "THE SEVERANCE", Vector2(34, 2.4), Color(0.55, 0.85, 1.0))
+	m.lights.append({"pos": Vector2(34, 12) * TILE, "r": 170.0, "col": Color(0.8, 0.9, 1.0), "a": 0.2})
+	for wp in [Vector2(8, 8), Vector2(12, 16), Vector2(30, 12), Vector2(36, 17), Vector2(W * 0.5, 13)]:
+		if m.free_at(wp * TILE, 6.0):
+			m.wander.append(wp * TILE)
+	return m
+
+
+## The second floor: the Precursors – their tablets in the back wall, the Heart-Core on its dais, the rest about.
+static func build_floor2(station: Dictionary, body: Dictionary) -> GroundMap:
+	var W := 44
+	var H := 19
+	var m := _room(station, body, W, H, 35)
+	var sx := W / 2 - 3
+	m.fill(sx, H - 5, 6, 3, T.FLOOR, 45)
+	_go(m, Rect2(sx, H - 4, 6, 2), "museum_1", "from_2", "Down the stairs – the first floor", Color(0.4, 1.0, 0.6))
+	m.set_meta("from_1", Vector2(W * 0.5, H - 6.0) * TILE)
+	m.spawn = m.get_meta("from_1")
 	var pr := _ids("precursors")
-	var tab_x := [5, 11, 17, 44, 50]
+	var tab_x := [3, 9, 15, 27, 33]
 	for k3 in 5:
 		_niche(m, tab_x[k3], 4, pr[5 + k3])
-	_case(m, 15, 8, pr[2], true)
-	_case(m, 6, 9, pr[0])
-	_case(m, 23, 8, pr[1])
-	_case(m, 40, 8, pr[3])
-	_case(m, 50, 9, pr[4])
-	m.add_object({"kind": "statue_precursor", "x": 26, "y": 12, "w": 2, "h": 1})
-	m.add_object({"kind": "statue_precursor", "x": 37, "y": 12, "w": 2, "h": 1})
-	m.add_object({"kind": "crystal", "x": 58, "y": 11, "w": 2, "h": 1, "col": Color(0.7, 0.55, 1.0)})
-	m.add_object({"kind": "crystal", "x": 3, "y": 12, "w": 2, "h": 1, "col": Color(0.45, 0.85, 1.0)})
-	m.add_object({"kind": "museum_bench", "x": 44, "y": 12, "w": 3, "h": 1})
-	_label(m, "THE PRECURSORS", Vector2(23, 2.7), Color(0.75, 0.6, 1.0))
-	m.lights.append({"pos": Vector2(32, 8) * TILE, "r": 300.0, "col": Color(0.95, 0.9, 1.0), "a": 0.18})
-	# ---- the hall to the basement (east, under the wing): the stairs down, roped, violet light from below
-	m.fill(50, 46, 4, 3, T.FLOOR, 43)
-	m.zones.append({"rect": Rect2(Vector2(50, 46) * TILE, Vector2(4, 3) * TILE), "kind": "museum_down", "id": "museum_down",
-		"title": "Stairs down – The Dark Ones", "col": VIO.lightened(0.3), "sign": Vector2(52, 45.4) * TILE})
-	m.set_meta("down_front", Vector2(52, 50.2) * TILE)
-	m.lights.append({"pos": Vector2(52, 47.5) * TILE, "r": 60.0, "col": VIO, "a": 0.55})
-	m.add_object({"kind": "rope", "x": 46, "y": 48, "w": 3, "h": 1})
-	m.add_object({"kind": "rope", "x": 55, "y": 48, "w": 3, "h": 1})
-	m.add_object({"kind": "ship_model", "x": 56, "y": 53, "w": 3, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 45, "y": 56, "w": 3, "h": 1})
-	m.add_object({"kind": "statue", "x": 59, "y": 57, "w": 2, "h": 1, "seed": 79, "species": "suit_mil_heavy"})
-	m.add_object({"kind": "plant", "x": 43, "y": 44, "w": 1, "h": 1})
-	# visitors: more the fuller it is (the view takes their number from the Museum), strolling in every part
-	for wp in [Vector2(32, 55), Vector2(25, 50), Vector2(39, 50), Vector2(11, 54), Vector2(52, 52), Vector2(11, 30), Vector2(52, 30),
-			Vector2(32, 18), Vector2(32, 10), Vector2(12, 8), Vector2(52, 6)]:
+	_case(m, 20, 7, pr[2], true)
+	_case(m, 5, 9, pr[0])
+	_case(m, 12, 12, pr[1])
+	_case(m, 30, 12, pr[3])
+	_case(m, 37, 9, pr[4])
+	m.add_object({"kind": "statue_precursor", "x": 15, "y": 8, "w": 2, "h": 1})
+	m.add_object({"kind": "statue_precursor", "x": 27, "y": 8, "w": 2, "h": 1})
+	m.add_object({"kind": "crystal", "x": 40, "y": 14, "w": 2, "h": 1, "col": Color(0.7, 0.55, 1.0)})
+	m.add_object({"kind": "crystal", "x": 2, "y": 14, "w": 2, "h": 1, "col": Color(0.45, 0.85, 1.0)})
+	m.add_object({"kind": "museum_bench", "x": 6, "y": 15, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 34, "y": 15, "w": 3, "h": 1})
+	m.add_object({"kind": "plant", "x": 40, "y": 4, "w": 1, "h": 1})
+	_label(m, "THE PRECURSORS", Vector2(W * 0.5, 2.4), Color(0.75, 0.6, 1.0))
+	m.lights.append({"pos": Vector2(W * 0.5, 9) * TILE, "r": 300.0, "col": Color(0.95, 0.9, 1.0), "a": 0.18})
+	for wp in [Vector2(9, 7), Vector2(16, 14), Vector2(28, 14), Vector2(35, 7)]:
 		if m.free_at(wp * TILE, 6.0):
 			m.wander.append(wp * TILE)
 	return m
@@ -368,8 +416,7 @@ static func build_basement(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.lights.append({"pos": Vector2(20, 4.2) * TILE, "r": 60.0, "col": VIO, "a": 0.55})
 	# the stairs up (west)
 	m.fill(2, 5, 3, 4, T.FLOOR, 44)
-	m.zones.append({"rect": Rect2(Vector2(2, 5) * TILE, Vector2(3, 4) * TILE), "kind": "museum_up", "id": "museum_up",
-		"title": "Stairs up – back to the hall", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(3.5, 4.6) * TILE})
+	_go(m, Rect2(2, 5, 3, 4), "museum", "from_down", "Stairs up – back to the hall", Color(0.4, 1.0, 0.6), Vector2(3.5, 4.6))
 	m.spawn = Vector2(6.0, 7.2) * TILE
 	m.lights.append({"pos": Vector2(3.5, 6.5) * TILE, "r": 46.0, "col": WARM, "a": 0.45})
 	# the round pool in the middle, grooves running in to it – and on its plinth the monolith's cast, once raised
