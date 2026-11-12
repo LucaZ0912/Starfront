@@ -157,12 +157,13 @@ static func build_plaza(station: Dictionary, body: Dictionary) -> GroundMap:
 	for tp in [Vector2i(KX + 2, 12), Vector2i(KX + 12, 12), Vector2i(KX + 2, 24)]:
 		m.add_object({"kind": "planter", "x": tp.x, "y": tp.y, "w": 3, "h": 1, "col": Color(0.78, 0.79, 0.82)})
 		m.add_object({"kind": "tree", "x": tp.x, "y": tp.y - 1, "w": 3, "h": 1, "rise": 72})
-	m.add_object({"kind": "bench", "x": 21, "y": 13, "w": 3, "h": 1})
-	m.add_object({"kind": "bench", "x": 21, "y": 24, "w": 3, "h": 1})
+	m.add_object({"kind": "bench", "x": 21, "y": 13, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "bench", "x": 21, "y": 24, "w": 3, "h": 1}, false)
 	m.add_object({"kind": "poster", "x": 34, "y": 23, "w": 1, "h": 1})
 	for lp in [Vector2i(14, 18), Vector2i(26, 18), Vector2i(34, 18), Vector2i(14, 22), Vector2i(26, 22)]:
 		m.add_object({"kind": "lamp_post", "x": lp.x, "y": lp.y, "w": 1, "h": 1})
 		m.lights.append({"pos": Vector2(lp.x + 0.5, lp.y) * TILE, "r": 60.0, "col": Color(1.0, 0.88, 0.65), "a": 0.35})
+	DeckGen._seats(m)
 	for wp in [Vector2(20, 18), Vector2(32, 21), Vector2(44, 20), Vector2(52, 21), Vector2(24, 15), Vector2(36, 25), Vector2(48, 24)]:
 		if m.free_at(wp * TILE, 6.0):
 			m.wander.append(wp * TILE)
@@ -209,14 +210,16 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.fill(1, 5, 7, 5, T.BLOCK, 35)
 	m.fill(W - 8, 5, 7, 5, T.BLOCK, 35)
 	_rail(m, 8, 4, W - 16, 1)
-	_rail(m, 7, 5, 1, 5)
-	_rail(m, W - 8, 5, 1, 5)
+	_rail(m, 7, 5, 1, 4)
+	_rail(m, W - 8, 5, 1, 4)
+	_rail(m, 1, 9, 7, 1)                                            # 0.7.53.28 (Luz): the wings' fronts railed, the sides flush with them
+	_rail(m, W - 8, 9, 7, 1)
 	m.add_object({"kind": "bust", "x": 3, "y": 2, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
 	m.add_object({"kind": "plant", "x": 11, "y": 2, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": W - 12, "y": 2, "w": 1, "h": 1})
 	m.add_object({"kind": "bust", "x": W - 4, "y": 2, "w": 1, "h": 1, "col": Color(0.6, 0.48, 0.4)})
-	m.add_object({"kind": "museum_bench", "x": 2, "y": 7, "w": 3, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": W - 5, "y": 7, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 2, "y": 7, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": W - 5, "y": 7, "w": 3, "h": 1}, false)
 	# its fronts: the band behind the stairs, the wings
 	m.fill(8, 5, W - 16, 3, T.FACE)
 	m.fill(1, 10, 7, 3, T.FACE)
@@ -237,11 +240,11 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.lights.append({"pos": Vector2(W * 0.5, 7.0) * TILE, "r": 70.0, "col": WARM, "a": 0.4})
 	# the arches under the wings
 	m.face_deco.append({"kind": "arch_min", "x": 2, "y": 10, "w": 5})
-	_go(m, Rect2(2, 13, 5, 1.2), "museum_min", "from_hall", "Through the arch – Minerals", Color(0.6, 0.9, 1.0), Vector2(4.5, 9.6))
+	_go(m, Rect2(2, 13, 5, 1.2), "museum_min", "from_hall", "Through the arch – Minerals", Color(0.6, 0.9, 1.0), Vector2(4.5, 10.45))
 	m.set_meta("from_min", Vector2(4.5, 14.6) * TILE)
 	m.lights.append({"pos": Vector2(4.5, 12.5) * TILE, "r": 50.0, "col": Color(0.75, 0.9, 1.0), "a": 0.45})
 	m.face_deco.append({"kind": "arch_down", "x": W - 7, "y": 10, "w": 5})
-	_go(m, Rect2(W - 7, 13, 5, 1.2), "museum_down", "museum_in", "Stairs down – The Dark Ones", VIO.lightened(0.3), Vector2(W - 4.5, 9.6))
+	_go(m, Rect2(W - 7, 13, 5, 1.2), "museum_down", "museum_in", "Stairs down – The Dark Ones", VIO.lightened(0.3), Vector2(W - 4.5, 10.45))
 	m.set_meta("from_down", Vector2(W - 4.5, 14.6) * TILE)
 	m.lights.append({"pos": Vector2(W - 4.5, 12.5) * TILE, "r": 60.0, "col": VIO, "a": 0.55})
 	# the desk, the curator, statues, busts, plants, benches; the runner and the doors
@@ -262,13 +265,21 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.add_object({"kind": "plant", "x": W - 10, "y": 13, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": 9, "y": 22, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": W - 10, "y": 22, "w": 1, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 3, "y": 21, "w": 3, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": W - 6, "y": 21, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 3, "y": 21, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": W - 6, "y": 21, "w": 3, "h": 1}, false)
 	m.add_object({"kind": "terminal", "x": 11, "y": 20, "w": 1, "h": 1})
 	m.decals.append({"kind": "museum_doors_s", "x": W / 2 - 2, "y": H - 2, "w": 4, "h": 1})
 	m.zones.append({"rect": Rect2(Vector2(W / 2 - 2, H - 3) * TILE, Vector2(4, 1.0) * TILE), "kind": "museum_out", "id": "museum_out",
 		"title": "Out onto the roof plaza", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	m.spawn = Vector2(W * 0.5, H - 3.4) * TILE
+	for gx in [W / 2 - 4, W / 2 + 3]:                                # 0.7.53.28 (Luz): two guards at the doors – no more
+		var gl := ChibiArt.PilotArt.random_look(_rng(station, 60 + gx))
+		gl["suit"] = "suit_mil_light"
+		gl["livery"] = "directorate"
+		gl["helmet"] = true
+		m.people.append({"pos": Vector2(gx + 0.5, H - 3.2) * TILE, "dir": 0, "role": "keeper", "look": gl})
+	m.set_meta("no_guards", true)
+	DeckGen._seats(m)
 	m.lights.append({"pos": Vector2(W * 0.5, 15) * TILE, "r": 200.0, "col": Color(1.0, 0.97, 0.9), "a": 0.22})   # the dome's daylight
 	m.lights.append({"pos": Vector2(W * 0.5, 18) * TILE, "r": 60.0, "col": WARM, "a": 0.3})
 	for wp in [Vector2(W * 0.5 + 3, 21), Vector2(6, 16), Vector2(W - 6, 16), Vector2(12, 11), Vector2(W - 12, 11), Vector2(W * 0.5 - 4, 22)]:
@@ -294,7 +305,7 @@ static func build_minerals(station: Dictionary, body: Dictionary) -> GroundMap:
 	for k2 in free.size():
 		_case(m, spots[k2].x, spots[k2].y, mn[free[k2]])
 	m.add_object({"kind": "rope", "x": 13, "y": 13, "w": 5, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 14, "y": 16, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 14, "y": 16, "w": 3, "h": 1}, false)
 	m.add_object({"kind": "statue", "x": 27, "y": 19, "w": 2, "h": 1, "seed": 78, "species": "suit_work"})
 	m.add_object({"kind": "geode_big", "x": 1, "y": 11, "w": 2, "h": 1})
 	m.add_object({"kind": "terminal", "x": 29, "y": 11, "w": 1, "h": 1})
@@ -307,6 +318,8 @@ static func build_minerals(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.set_meta("from_hall", Vector2(15.5, H - 3.6) * TILE)
 	m.spawn = m.get_meta("from_hall")
 	_label(m, "MINERALS", Vector2(15.5, 2.4), Color(0.6, 0.9, 1.0))
+	m.set_meta("no_guards", true)
+	DeckGen._seats(m)
 	m.lights.append({"pos": Vector2(15.5, 12) * TILE, "r": 240.0, "col": Color(0.85, 0.92, 1.0), "a": 0.2})
 	for wp in [Vector2(15.5, 18), Vector2(5, 13), Vector2(26, 13), Vector2(15, 8)]:
 		if m.free_at(wp * TILE, 6.0):
@@ -347,7 +360,7 @@ static func build_floor1(station: Dictionary, body: Dictionary) -> GroundMap:
 	_case(m, 4, 16, ow[4])
 	m.add_object({"kind": "bust", "x": 16, "y": 12, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
 	m.add_object({"kind": "statue", "x": 1, "y": 19, "w": 2, "h": 1, "seed": 76, "species": "suit_civil"})
-	m.add_object({"kind": "museum_bench", "x": 10, "y": 19, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 10, "y": 19, "w": 3, "h": 1}, false)
 	_label(m, "THE OLD WORLD", Vector2(9, 2.4), Color(0.95, 0.75, 0.45))
 	m.lights.append({"pos": Vector2(4, 3) * TILE, "r": 40.0, "col": Color(1.0, 0.3, 0.6), "a": 0.45})      # the record's pink glow
 	m.lights.append({"pos": Vector2(9, 12) * TILE, "r": 170.0, "col": WARM, "a": 0.2})
@@ -360,8 +373,10 @@ static func build_floor1(station: Dictionary, body: Dictionary) -> GroundMap:
 	_case(m, 39, 7, sv[3])
 	_case(m, 38, 15, sv[4])
 	m.add_object({"kind": "statue", "x": 41, "y": 19, "w": 2, "h": 1, "seed": 77, "species": "suit_mil_light"})
-	m.add_object({"kind": "museum_bench", "x": 31, "y": 19, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 31, "y": 19, "w": 3, "h": 1}, false)
 	_label(m, "THE SEVERANCE", Vector2(34, 2.4), Color(0.55, 0.85, 1.0))
+	m.set_meta("no_guards", true)
+	DeckGen._seats(m)
 	m.lights.append({"pos": Vector2(34, 12) * TILE, "r": 170.0, "col": Color(0.8, 0.9, 1.0), "a": 0.2})
 	for wp in [Vector2(8, 8), Vector2(12, 16), Vector2(30, 12), Vector2(36, 17), Vector2(W * 0.5, 13)]:
 		if m.free_at(wp * TILE, 6.0):
@@ -391,10 +406,12 @@ static func build_floor2(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.add_object({"kind": "statue_precursor", "x": 27, "y": 8, "w": 2, "h": 1})
 	m.add_object({"kind": "crystal", "x": 40, "y": 14, "w": 2, "h": 1, "col": Color(0.7, 0.55, 1.0)})
 	m.add_object({"kind": "crystal", "x": 2, "y": 14, "w": 2, "h": 1, "col": Color(0.45, 0.85, 1.0)})
-	m.add_object({"kind": "museum_bench", "x": 6, "y": 15, "w": 3, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 34, "y": 15, "w": 3, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 6, "y": 15, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": 34, "y": 15, "w": 3, "h": 1}, false)
 	m.add_object({"kind": "plant", "x": 40, "y": 4, "w": 1, "h": 1})
 	_label(m, "THE PRECURSORS", Vector2(W * 0.5, 2.4), Color(0.75, 0.6, 1.0))
+	m.set_meta("no_guards", true)
+	DeckGen._seats(m)
 	m.lights.append({"pos": Vector2(W * 0.5, 9) * TILE, "r": 300.0, "col": Color(0.95, 0.9, 1.0), "a": 0.18})
 	for wp in [Vector2(9, 7), Vector2(16, 14), Vector2(28, 14), Vector2(35, 7)]:
 		if m.free_at(wp * TILE, 6.0):
@@ -420,16 +437,17 @@ static func build_basement(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.fill(2, 4, 36, 18, T.FLOOR, 40)
 	m.set_meta("dark", Color(0.62, 0.58, 0.72))
 	# the reliefs of their ruins on the back wall, the cast of a membrane door between them
-	for rv in [[3, 0], [9, 1], [26, 2], [32, 3]]:
+	for rv in [[8, 0], [13, 1], [26, 2], [32, 3]]:
 		m.face_deco.append({"kind": "relief", "x": int(rv[0]), "y": 2, "w": 5, "v": int(rv[1])})
 		m.lights.append({"pos": Vector2(float(rv[0]) + 2.5, 4.4) * TILE, "r": 46.0, "col": VIO, "a": 0.45})
 	m.face_deco.append({"kind": "membrane_cast", "x": 18, "y": 2, "w": 4})
 	m.lights.append({"pos": Vector2(20, 4.2) * TILE, "r": 60.0, "col": VIO, "a": 0.55})
 	# the stairs up (west)
-	m.fill(2, 5, 3, 4, T.FLOOR, 44)
-	_go(m, Rect2(2, 5, 3, 4), "museum", "from_down", "Stairs up – back to the hall", Color(0.4, 1.0, 0.6), Vector2(3.5, 4.6))
-	m.spawn = Vector2(6.0, 7.2) * TILE
-	m.lights.append({"pos": Vector2(3.5, 6.5) * TILE, "r": 46.0, "col": WARM, "a": 0.45})
+	m.fill(3, 1, 4, 5, T.FLOOR, 36)                                  # 0.7.53.28 (Luz): a flight up into the back wall
+	m.fill(4, 1, 2, 5, T.FLOOR, 37)
+	_go(m, Rect2(3, 2, 4, 2.2), "museum", "from_down", "Stairs up – back to the hall", Color(0.4, 1.0, 0.6), Vector2(5, 0.6))
+	m.spawn = Vector2(5.0, 7.0) * TILE
+	m.lights.append({"pos": Vector2(5, 2.0) * TILE, "r": 60.0, "col": WARM, "a": 0.55})
 	# the round pool in the middle, grooves running in to it – and on its plinth the monolith's cast, once raised
 	m.decals.append({"kind": "ring_pool", "x": 14, "y": 9, "w": 12, "h": 7})
 	m.fill(19, 12, 2, 1, T.BLOCK)
@@ -454,6 +472,8 @@ static func build_basement(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.lights.append({"pos": Vector2(35.5, 19) * TILE, "r": 40.0, "col": Color(0.85, 0.8, 1.0), "a": 0.4})
 	m.lights.append({"pos": Vector2(20, 13) * TILE, "r": 260.0, "col": VIO, "a": 0.18})
 	_label(m, "THE DARK ONES", Vector2(20, 2.4), VIO.lightened(0.3))
+	m.set_meta("no_guards", true)
+	DeckGen._seats(m)
 	for wp in [Vector2(14, 10), Vector2(26, 10), Vector2(20, 17), Vector2(8, 15), Vector2(32, 15)]:
 		if m.free_at(wp * TILE, 6.0):
 			m.wander.append(wp * TILE)

@@ -33,6 +33,8 @@ const DRINK_TIME := 3.2
 var _t := 0.0
 var _walk := 0.0
 var _goal := Vector2.INF
+var _seat_z: Dictionary = {}        # 0.7.53.28 (Luz): the bench it is going to or sits on
+var _sit_t := 0.0
 var _wait := 0.0
 var _path := PackedVector2Array()
 var _pi := 0
@@ -87,6 +89,15 @@ func _process(delta: float) -> void:
 			queue_free()
 	elif npc and not patrol.is_empty() and not stays:
 		_patrol(delta)
+	elif npc and sitting and not _seat_z.is_empty():
+		_sit_t -= delta                                    # 0.7.53.28: sitting a while on a bench
+		if _sit_t <= 0.0:
+			sitting = false
+			_seat_z.erase("closed")
+			pos = (_seat_z["seat"] as Vector2) + Vector2(0, 10)
+			position = pos * GroundMap.SCALE
+			_seat_z = {}
+			_wait = randf_range(0.5, 2.0)
 	elif npc and not sitting and not stays and marker == "":
 		_wander(delta)
 	queue_redraw()
@@ -102,17 +113,37 @@ func _wander(delta: float) -> void:
 		if map.wander.is_empty():
 			return
 		_goal = map.wander[randi() % map.wander.size()]
+		if randf() < 0.3:                                    # 0.7.53.28 (Luz): now and then a free bench instead
+			var free: Array = map.zones.filter(func(z): return String(z.get("kind", "")) == "seat" and bool(z.get("npc_ok", false)) and String(z.get("closed", "")) == "" \
+				and map.free_at((z["seat"] as Vector2) + Vector2(0, 10), RADIUS))
+			if not free.is_empty():
+				_seat_z = free[randi() % free.size()]
+				_seat_z["closed"] = "taken"
+				_goal = (_seat_z["seat"] as Vector2) + Vector2(0, 10)
 		_path = map.path(pos, _goal)
 		_pi = 0
 		if _path.is_empty():
 			_goal = Vector2.INF
 			_wait = 1.0
+			if not _seat_z.is_empty():
+				_seat_z.erase("closed")                    # no way there – the bench is free again
+				_seat_z = {}
 			return
 	if not _follow(delta, 0.6):
 		_goal = Vector2.INF
 		_path = PackedVector2Array()
 		_wait = randf_range(1.5, 6.0)
 		moving = false
+		if not _seat_z.is_empty():
+			if pos.distance_to((_seat_z["seat"] as Vector2) + Vector2(0, 10)) < 12.0:
+				pos = _seat_z["seat"]                         # sits down
+				position = pos * GroundMap.SCALE
+				dir = int(_seat_z.get("dir", 0))
+				sitting = true
+				_sit_t = randf_range(8.0, 25.0)
+			else:
+				_seat_z.erase("closed")
+				_seat_z = {}
 
 
 ## 0.7.50.9: a guard walks the round – from one point to the next, a look about at each.

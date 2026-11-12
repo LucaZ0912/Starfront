@@ -1778,13 +1778,12 @@ func _face_deco(d: Dictionary) -> void:
 			# 0.7.53.26 (Luz, as in the mockup): an arch under the gallery's wing – west the minerals (a case glowing in
 			# the room beyond), east the stairs going down to the Dark Ones (violet light from below)
 			var ah := 3 * TILE
-			_rect(px, py + 8, pw, ah - 8, Color(0.03, 0.03, 0.04))
+			_rect(px, py + 22, pw, ah - 22, Color(0.03, 0.03, 0.04))     # 0.7.53.28: lower – the sign hangs above it
 			for yy7 in 10:
 				var ins := int(pow((10.0 - yy7) / 10.0, 2.0) * pw * 0.3)
-				_rect(px + ins, py + yy7, pw - ins * 2, 1, Color(0.03, 0.03, 0.04))
-			_rect(px, py + 2, pw, 1, Color(0.85, 0.66, 0.3))
+				_rect(px + ins, py + 12 + yy7, pw - ins * 2, 1, Color(0.03, 0.03, 0.04))
 			for cl3 in [px - 2, px + pw - 2]:
-				_rect(cl3, py + 6, 4, ah - 6, Color(0.9, 0.89, 0.86))
+				_rect(cl3, py + 18, 4, ah - 18, Color(0.9, 0.89, 0.86))
 		"museum_doors":
 			# 53e: the Museum's main doors, wide open – warm light from the hall, the leaves folded back
 			var dh := 3 * TILE

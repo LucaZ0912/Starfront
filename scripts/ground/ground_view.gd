@@ -1652,13 +1652,13 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
-	if is_town():
+	if is_town() and not map.has_meta("no_guards"):
 		_add_guards(rng)
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
 	if level == "street":
 		n += 6                                        # a city's street is busy
 	if level in ["museum", "museum_min", "museum_1", "museum_2", "museum_down", "mplaza"]:
-		n = (3 if level != "museum" else 4) + GameState.museum_count() / 8   # 53e: the fuller, the busier
+		n = (1 if level != "mplaza" else 3) + GameState.museum_count() / (8 if level == "museum" else 12)   # 53e: the fuller, the busier (0.7.53.28: few while it is empty)
 	for i in n:
 		if map.wander.is_empty():
 			break

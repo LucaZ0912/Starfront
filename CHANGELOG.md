@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.28 – 2026-11-12
+
+**The Museum – benches, guards, the details (Luz).**
+- **Benches you can sit on** – in the Museum and on the roof plaza (E). **People sit down by themselves** now and then
+  on a free bench or sofa, stay a while and walk on (everywhere in the game).
+- **Two guards at the Museum's doors** – no city guards walking its rooms. Fewer visitors while the cases are empty;
+  more the fuller it gets.
+- The hall: the **gallery's wings have a rail along their fronts**, the side rails end flush with it; the **signs hang
+  lower** on the wall, over the arches.
+- The basement's **stairs up** rise into the back wall like the grand stairs, lit from the hall above.
+
 ## alpha 0.7.53.27 – 2026-11-12
 
 **The Museum – polish (Luz).**

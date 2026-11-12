@@ -394,7 +394,7 @@ static func _dome_room(m: GroundMap, th: Dictionary, bx0: int, W: int, available
 		m.wander.append(Vector2(rng.randf_range(dx + 2, dx + 2 * R - 2), rng.randf_range(R + 6.5, COR_Y0 - 0.5)) * GroundMap.TILE)
 
 
-const SEATS := ["chair", "stool", "sofa", "bench", "lounger", "crate_seat"]
+const SEATS := ["chair", "stool", "sofa", "bench", "lounger", "crate_seat", "museum_bench"]
 
 
 ## Where someone sits on seat i of a seat object: just in front of it (drawn over it), raised onto it by the walker.
@@ -547,11 +547,12 @@ static func _seats(m: GroundMap) -> void:
 			if taken:
 				continue
 			var r := Rect2(sp + Vector2(-0.8, -0.9) * GroundMap.TILE, Vector2(1.6, 1.7) * GroundMap.TILE)
-			if k in ["sofa", "bench", "lounger"]:
+			if k in ["sofa", "bench", "lounger", "museum_bench"]:
 				r = Rect2(sp + Vector2(-0.5, -0.4) * GroundMap.TILE, Vector2(1.0, 1.4) * GroundMap.TILE)
 			m.zones.append({"rect": r, "kind": "seat", "id": "seat", "title": {"chair": "Sit down", "stool": "Sit at the bar",
-				"sofa": "Sit on the sofa", "bench": "Sit on the bench", "lounger": "Lie in the sun", "crate_seat": "Sit down"}[k],
-				"seat": sp, "dir": int(o.get("face", 0)), "sign": Vector2(-100, -100)})
+				"sofa": "Sit on the sofa", "bench": "Sit on the bench", "lounger": "Lie in the sun", "crate_seat": "Sit down", "museum_bench": "Sit on the bench"}[k],
+				"seat": sp, "dir": int(o.get("face", 0)), "sign": Vector2(-100, -100),
+				"npc_ok": k in ["sofa", "bench", "museum_bench"]})        # 0.7.53.28 (Luz): people sit down there by themselves too
 
 
 static func _svc(id: String) -> Dictionary:

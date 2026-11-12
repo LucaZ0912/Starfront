@@ -11010,7 +11010,7 @@ func _test_museum(view: SystemView) -> void:
 	g._arrive = 0.0
 	g.zone = zin
 	g.use()
-	var hall_ok: bool = g.level == "museum" and g.map.style == "museum" and not _zone_of(g.map, "curator").is_empty() 		and g.map.people.size() >= 1 and g.map.objects.any(func(o): return String(o["kind"]) == "curator_desk") 		and g.map.face_deco.any(func(fd): return String(fd["kind"]) == "museum_gate") and g.map.face_deco.any(func(fd2): return String(fd2["kind"]) == "arch_min")
+	var hall_ok: bool = g.level == "museum" and g.map.style == "museum" and not _zone_of(g.map, "curator").is_empty() 		and g.map.people.size() >= 1 and g.map.objects.any(func(o): return String(o["kind"]) == "curator_desk") 		and g.map.face_deco.any(func(fd): return String(fd["kind"]) == "museum_gate") and g.map.face_deco.any(func(fd2): return String(fd2["kind"]) == "arch_min") 		and not _zone_of(g.map, "seat").is_empty() and g.map.has_meta("no_guards") and g.people.filter(func(w): return w.guard).size() == 0
 	# 0.7.53.26 (Luz): each room its own map – the hall's gate up, its arches to the minerals and down; every way there and
 	# back, every room reached from where you come in
 	var go_of := func(mp: GroundMap, to: String) -> Dictionary:
