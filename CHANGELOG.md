@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.32 – 2026-11-12
+
+**The debug menu tidied up (Luz).** Every tab is now made of **sections that fold open and shut** (▸ / ▾) – shut at
+first, what you open stays open while the game runs; **Open all** / **Close all** at the top. The World tab is in a
+sensible order (travel, the special systems, the cluster and its bodies, economy and mining, pirates and ships); the
+Ground tab's long combat part is split into the arena, foes and the fight, drones and the team, tools, sites to
+explore and the Museum.
+
 ## alpha 0.7.53.31 – 2026-11-12
 
 **The Archivist Suit gets its own look (Luz).** A graphite undersuit with white accents, a chest rig of grey pouches

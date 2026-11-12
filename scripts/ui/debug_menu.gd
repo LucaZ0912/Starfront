@@ -18,6 +18,9 @@ var tab := 0
 var tab_buttons: Array = []
 var content: VBoxContainer
 var info: Label
+var _box: VBoxContainer                  # 0.7.53.32: the open section rows go into (or the tab itself)
+var _sec_keys: Array = []                # this tab's sections (for open all / close all)
+static var _open := {}                   # which sections are open, by tab and title – kept while the game runs
 var _god: CheckButton
 
 
@@ -53,6 +56,11 @@ func _ready() -> void:
 		b.custom_minimum_size = Vector2(84, 30)
 		tabs.add_child(b)
 		tab_buttons.append(b)
+	var tools := UI.hbox(6)                                       # 0.7.53.32: all sections of a tab at once
+	v.add_child(tools)
+	tools.add_child(UI.label("Sections:", 12, UI.TEXT_DIM))
+	tools.add_child(UI.button("Open all", func(): _all_sections(true)))
+	tools.add_child(UI.button("Close all", func(): _all_sections(false)))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 470)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -81,6 +89,8 @@ func _set_tab(i: int) -> void:
 	for k in tab_buttons.size():
 		tab_buttons[k].button_pressed = k == i
 	UI.clear(content)
+	_box = content
+	_sec_keys.clear()
 	match i:
 		0: _build_pilot()
 		1: _build_ship()
@@ -108,13 +118,48 @@ func _cmd(c: Dictionary) -> void:
 	Commands.execute(c)
 
 
+## 0.7.53.32 (Luz): a section that folds open and shut – its title a button (▸ shut, ▾ open); the rows after it go
+## into it until the next one. Shut by default; what you open stays open while the game runs.
 func _section(text: String) -> void:
-	content.add_child(UI.label(text, 14, COL))
+	var key_t := text
+	if text.begins_with("Pilot:") or text.begins_with("Bonuses at work"):
+		key_t = text.get_slice(":", 0).get_slice(" on ", 0)                    # a title that names the pilot or the ship
+	var key := "%d/%s" % [tab, key_t]
+	_sec_keys.append(key)
+	var opened: bool = bool(_open.get(key, false))
+	var b := UI.button(("▾  " if opened else "▸  ") + text, func(): pass)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.add_theme_color_override("font_color", COL)
+	b.add_theme_font_size_override("font_size", 14)
+	content.add_child(b)
+	var box := UI.vbox(8)
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_left", 14)
+	pad.add_child(box)
+	pad.visible = opened
+	content.add_child(pad)
+	for c in b.pressed.get_connections():
+		b.pressed.disconnect(c["callable"])
+	b.pressed.connect(_toggle_section.bind(pad, b, key, text))
+	_box = box
+
+
+func _toggle_section(pad: Control, b: Button, key: String, text: String) -> void:
+	pad.visible = not pad.visible
+	_open[key] = pad.visible
+	b.text = ("▾  " if pad.visible else "▸  ") + text
+	_fit_panel.call_deferred()
+
+
+func _all_sections(o: bool) -> void:
+	for k in _sec_keys:
+		_open[k] = o
+	_set_tab(tab)
 
 
 func _row() -> HBoxContainer:
 	var r := UI.hbox(6)
-	content.add_child(r)
+	_box.add_child(r)
 	return r
 
 
@@ -191,7 +236,7 @@ func _build_pilot() -> void:
 		b.toggle_mode = true
 		b.button_pressed = is_equal_approx(Engine.time_scale, x)
 		r3.add_child(b)
-	content.add_child(UI.wrap_label("Speed affects everything: flight, warp, combat, scanning, hyperspace jumps.", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Speed affects everything: flight, warp, combat, scanning, hyperspace jumps.", 12, UI.TEXT_DIM, 440))
 
 
 func _build_ship() -> void:
@@ -200,7 +245,7 @@ func _build_ship() -> void:
 	_god.text = "God mode (no damage)"
 	_god.button_pressed = Commands.god_mode
 	_god.toggled.connect(func(on): _cmd({"type": "debug_god", "on": on}))
-	content.add_child(_god)
+	_box.add_child(_god)
 	var r := _row()
 	r.add_child(UI.button("Refill everything", func(): _cmd({"type": "debug_refill"})))
 	r.add_child(UI.button("Empty cargo hold", func(): _cmd({"type": "debug_clear_cargo"})))
@@ -210,7 +255,7 @@ func _build_ship() -> void:
 	rp.add_child(UI.button("NPC carriers launch drones", func(): _cmd({"type": "debug_npc_drones"})))
 	var rx := _row()
 	rx.add_child(UI.button("+10 exotic matter (Threshold)", func(): _cmd({"type": "debug_exotic", "amount": 10})))
-	content.add_child(UI.wrap_label("Plays the S-ship launch of the Citadel's platform (animation only – the ship itself comes with part 5). Drones always use the small drone hatch behind it.", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Plays the S-ship launch of the Citadel's platform (animation only – the ship itself comes with part 5). Drones always use the small drone hatch behind it.", 12, UI.TEXT_DIM, 440))
 	_section("New ship (into the hangar)")
 	var ids: Array = GameData.hulls.keys()
 	var labels: Array = []
@@ -218,7 +263,7 @@ func _build_ship() -> void:
 		var h: Dictionary = GameData.hulls[hid]
 		labels.append("%s – %s (%s)" % [h["name"], h["class"], GameData.SIZE_NAMES[int(h["size"])]])
 	var hull := _option(ids, labels, 440)
-	content.add_child(hull)
+	_box.add_child(hull)
 	var fitted := CheckBox.new()
 	fitted.text = "Standard fit"
 	fitted.button_pressed = true
@@ -230,14 +275,14 @@ func _build_ship() -> void:
 	r2.add_child(board)
 	var give := func(): _cmd({"type": "debug_give_ship", "hull": hull.get_selected_metadata(), "fitted": fitted.button_pressed, "board": board.button_pressed})
 	r2.add_child(UI.button("Give ship", give))
-	content.add_child(UI.wrap_label("Goes to the hangar of the station you are docked at (otherwise the home station). The pirate hull Carrion Crow is included.", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Goes to the hangar of the station you are docked at (otherwise the home station). The pirate hull Carrion Crow is included.", 12, UI.TEXT_DIM, 440))
 	# package 31: crew
 	_section("Crew (package 31)")
 	var cfree := CheckButton.new()
 	cfree.text = "Ignore the required crew (undock without it)"
 	cfree.button_pressed = bool(GameState.pilot.get("crew_free", false))
 	cfree.toggled.connect(func(on): _cmd({"type": "debug_crew", "free": on}))
-	content.add_child(cfree)
+	_box.add_child(cfree)
 	var CD = preload("res://data/crew.gd")
 	var rc := _row()
 	var roles: Array = CD.hire_roles()
@@ -282,7 +327,7 @@ func _build_items() -> void:
 	for mid in mids:
 		mlabels.append("%s  [%s]" % [GameData.module_name(mid), GameData.SLOT_NAMES[GameData.modules[mid]["slot"]]])
 	var mod := _option(mids, mlabels, 440)
-	content.add_child(mod)
+	_box.add_child(mod)
 	var r := _row()
 	var cnt := _spin(1, 50, 1)
 	r.add_child(cnt)
@@ -298,52 +343,39 @@ func _build_items() -> void:
 	for cid in cids:
 		clabels.append(GameData.item_name(cid))
 	var com := _option(cids, clabels, 440)
-	content.add_child(com)
+	_box.add_child(com)
 	var r2 := _row()
 	var amt := _spin(1, 10000, 50)
 	r2.add_child(amt)
 	var give_com := func(): _cmd({"type": "debug_give_cargo", "item": com.get_selected_metadata(), "amount": amt.value})
 	r2.add_child(UI.button("Give commodity", give_com))
-	content.add_child(UI.wrap_label("Commodities respect cargo space – give yourself a Mule for big loads (Ship tab).", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Commodities respect cargo space – give yourself a Mule for big loads (Ship tab).", 12, UI.TEXT_DIM, 440))
 
 
 func _build_world() -> void:
 	# package 35: system scale, belts, loading
-	_section("System scale & loading (package 35)")
-	var mn = get_tree().current_scene
-	var wu = mn.get("warmup") if mn != null else null
-	content.add_child(UI.label("Last system built in %.0f ms  •  pictures made ahead: %d (last system %.0f ms, %d waiting)" % [
-		float(mn.get("last_load_ms")) if mn != null and mn.get("last_load_ms") != null else 0.0,
-		int(wu.made) if wu != null else 0, float(wu.last_ms) if wu != null else 0.0, int(wu.pending()) if wu != null else 0], 12, UI.TEXT_DIM))
-	var rb := _row()
-	rb.add_child(UI.button("Into the asteroid belt", func(): _cmd({"type": "debug_belt", "kind": "asteroid"})))
-	rb.add_child(UI.button("Into the Kuiper belt", func(): _cmd({"type": "debug_belt", "kind": "kuiper"})))
-	# package 36: moons and orbits
-	_section("Moons & orbits (package 36)")
-	var L36 := Universe.get_layout(GameState.current_system)
-	var by_type := {}
-	for m in L36.get("moons", []):
-		by_type[m["type"]] = int(by_type.get(m["type"], 0)) + 1
-	var mt_txt: Array = []
-	for mt in by_type:
-		mt_txt.append("%d %s" % [by_type[mt], Universe.body_type(String(mt))["name"]])     # 0.6.39.7: Vesper is a desert world
-	var at_moon := 0
-	for st in L36["stations"]:
-		at_moon += 1 if String(st.get("anchor", "")).begins_with("m") else 0
-	content.add_child(UI.label("This system: %d moons (%s) • %d stations at moons • %d moon fields" % [L36.get("moons", []).size(),
-		", ".join(mt_txt) if not mt_txt.is_empty() else "none", at_moon, L36["fields"].filter(func(f): return f.has("moon")).size()], 12, UI.TEXT_DIM))
-	var rm := _row()
-	rm.add_child(UI.button("To the next moon", func(): _cmd({"type": "debug_moon"})))
-	for mt in Universe.MOON_TYPES:
-		var mtk: String = mt
-		rm.add_child(UI.button(String(Universe.MOON_TYPES[mt]["name"]), func(): _cmd({"type": "debug_moon", "moon_type": mtk})))
-	var ro := _row()
-	ro.add_child(UI.button("Roll the orbits (as on arrival)", func(): _cmd({"type": "debug_roll_orbits"})))
-	# package 39a: Landfall, the Senate, entry permits
+	_section("Teleport (docks at the first station)")
+	var sys_ids: Array = []
+	for s in Universe.systems:
+		sys_ids.append(int(s["id"]))
+	sys_ids.sort_custom(func(a, b): return String(Universe.systems[a]["name"]) < String(Universe.systems[b]["name"]))
+	var sys_labels: Array = []
+	for sid in sys_ids:
+		var sd: Dictionary = Universe.systems[sid]
+		sys_labels.append("%s  (sec %.1f)%s" % [sd["name"], float(sd["security"]), "  ★ home" if sid == Universe.home_system else ""])
+	var sys := _option(sys_ids, sys_labels, 330)
+	var r := _row()
+	r.add_child(sys)
+	r.add_child(UI.button("Teleport", func(): _cmd({"type": "debug_teleport", "system": sys.get_selected_metadata()})))
+	_section("This system")
+	var r2 := _row()
+	r2.add_child(UI.button("Reveal anomalies", func(): _cmd({"type": "debug_reveal_anomalies"})))
+	r2.add_child(UI.button("Destroy all pirates", func(): _cmd({"type": "debug_kill_hostiles"})))
+	r2.add_child(UI.button("Summon notorious pirate", func(): _cmd({"type": "debug_notorious"})))
 	_section("Landfall & the Senate (package 39a)")
 	var lf39 := Universe.special_system("landfall")
 	var sen39 = GameState.senate
-	content.add_child(UI.label("Landfall: %s  •  permit: %s  •  bill: %s  •  laws: %d" % [
+	_box.add_child(UI.label("Landfall: %s  •  permit: %s  •  bill: %s  •  laws: %d" % [
 		"system %d" % lf39 if lf39 >= 0 else "none", "yes" if GameState.has_permit("assembly") else "no",
 		String(sen39.BILLS[sen39.bill["id"]]["name"]) if not sen39.bill.is_empty() else "none", sen39.laws.size()], 12, UI.TEXT_DIM))
 	var r39 := _row()
@@ -357,6 +389,38 @@ func _build_world() -> void:
 	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
 	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
 	# package 40: the new cluster
+	_section("Heimkehr & the Curia (package 39b)")
+	var cu39 = GameState.curia
+	_box.add_child(UI.label("Heimkehr: %s  •  permit: %s  •  edict: %s  •  blessed: %s" % [
+		"system %d" % Universe.special_system("heimkehr") if Universe.special_system("heimkehr") >= 0 else "none",
+		"yes" if GameState.has_permit("covenant") else "no",
+		String(cu39.EDICTS[cu39.edict["id"]]["name"]) if not cu39.edict.is_empty() else "none", "yes" if cu39.blessed() else "no"], 12, UI.TEXT_DIM))
+	var r39c := _row()
+	r39c.add_child(UI.button("To Heimkehr", func(): _cmd({"type": "debug_heimkehr"})))
+	r39c.add_child(UI.button("Give permit", func(): _cmd({"type": "debug_permit", "faction": "covenant", "on": true})))
+	r39c.add_child(UI.button("Take permit", func(): _cmd({"type": "debug_permit", "faction": "covenant", "on": false})))
+	r39c.add_child(UI.button("New edict", func(): _cmd({"type": "debug_edict"})))
+	r39c.add_child(UI.button("+3 relics", func(): _cmd({"type": "debug_relic", "n": 3})))
+	# package 38: planet types
+	_section("Durchbruch & the Research Exchange (package 39c)")
+	_box.add_child(UI.label("Durchbruch: %s  •  permit: %s  •  research data: %d  •  exotic matter: %d" % [
+		"system %d" % Universe.special_system("durchbruch") if Universe.special_system("durchbruch") >= 0 else "none",
+		"yes" if GameState.has_permit("directorate") else "no", GameState.research_data, GameState.exotic_matter], 12, UI.TEXT_DIM))
+	var r39d := _row()
+	r39d.add_child(UI.button("To Durchbruch", func(): _cmd({"type": "debug_durchbruch"})))
+	r39d.add_child(UI.button("Give permit", func(): _cmd({"type": "debug_permit", "faction": "directorate", "on": true})))
+	r39d.add_child(UI.button("Take permit", func(): _cmd({"type": "debug_permit", "faction": "directorate", "on": false})))
+	r39d.add_child(UI.button("+5 research data", func(): _cmd({"type": "debug_research", "n": 5})))
+	# package 39b: Heimkehr and the Curia
+	_section("Manufacturers' systems (package 39d)")
+	var r39e := _row()
+	for mk in Universe.MAKER_SYSTEMS:
+		var spk: String = Universe.MAKER_SYSTEMS[mk]
+		var sid39: int = Universe.special_system(spk)
+		var b39 := UI.button("To %s (%s%s)" % [Universe.SPECIAL_NAMES[spk], String(MakerData.MAKERS[mk]["tag"]), ", independent" if Universe.is_independent(sid39) else ""], func(): _cmd({"type": "debug_special", "special": spk}))
+		b39.disabled = sid39 < 0
+		r39e.add_child(b39)
+	# package 39c: Durchbruch and the Research Exchange
 	_section("The new cluster (package 40)")
 	var r40 := _row()
 	for p40 in [["rim", "To the Rim"], ["far", "To the Far Reaches"], ["veil", "To the Veil's edge"], ["fortress", "To a pirate fortress"]]:
@@ -375,6 +439,68 @@ func _build_world() -> void:
 			_cmd({"type": "debug_give_module", "module": mid40})))
 	r40c.add_child(UI.button("+5 Pre-Severance Tech", func(): _cmd({"type": "debug_give_cargo", "item": "old_tech", "amount": 5})))
 	# package 42: Wirtschaft 2.0
+	_section("System scale & loading (package 35)")
+	var mn = get_tree().current_scene
+	var wu = mn.get("warmup") if mn != null else null
+	_box.add_child(UI.label("Last system built in %.0f ms  •  pictures made ahead: %d (last system %.0f ms, %d waiting)" % [
+		float(mn.get("last_load_ms")) if mn != null and mn.get("last_load_ms") != null else 0.0,
+		int(wu.made) if wu != null else 0, float(wu.last_ms) if wu != null else 0.0, int(wu.pending()) if wu != null else 0], 12, UI.TEXT_DIM))
+	var rb := _row()
+	rb.add_child(UI.button("Into the asteroid belt", func(): _cmd({"type": "debug_belt", "kind": "asteroid"})))
+	rb.add_child(UI.button("Into the Kuiper belt", func(): _cmd({"type": "debug_belt", "kind": "kuiper"})))
+	# package 36: moons and orbits
+	_section("Moons & orbits (package 36)")
+	var L36 := Universe.get_layout(GameState.current_system)
+	var by_type := {}
+	for m in L36.get("moons", []):
+		by_type[m["type"]] = int(by_type.get(m["type"], 0)) + 1
+	var mt_txt: Array = []
+	for mt in by_type:
+		mt_txt.append("%d %s" % [by_type[mt], Universe.body_type(String(mt))["name"]])     # 0.6.39.7: Vesper is a desert world
+	var at_moon := 0
+	for st in L36["stations"]:
+		at_moon += 1 if String(st.get("anchor", "")).begins_with("m") else 0
+	_box.add_child(UI.label("This system: %d moons (%s) • %d stations at moons • %d moon fields" % [L36.get("moons", []).size(),
+		", ".join(mt_txt) if not mt_txt.is_empty() else "none", at_moon, L36["fields"].filter(func(f): return f.has("moon")).size()], 12, UI.TEXT_DIM))
+	var rm := _row()
+	rm.add_child(UI.button("To the next moon", func(): _cmd({"type": "debug_moon"})))
+	for mt in Universe.MOON_TYPES:
+		var mtk: String = mt
+		rm.add_child(UI.button(String(Universe.MOON_TYPES[mt]["name"]), func(): _cmd({"type": "debug_moon", "moon_type": mtk})))
+	var ro := _row()
+	ro.add_child(UI.button("Roll the orbits (as on arrival)", func(): _cmd({"type": "debug_roll_orbits"})))
+	# package 39a: Landfall, the Senate, entry permits
+	_section("Stars (package 37)")
+	var st_counts := {}
+	for s37 in Universe.systems:
+		var tid := String(Universe.STAR_TYPES[int(s37["star"])]["id"])
+		st_counts[tid] = int(st_counts.get(tid, 0)) + 1
+	var parts: Array = []
+	for t37 in Universe.STAR_TYPES:
+		parts.append("%s %d" % [t37["id"], int(st_counts.get(String(t37["id"]), 0))])
+	_box.add_child(UI.label("This system: %s  •  Cluster: %s" % [Universe.star_type(GameState.current_system)["name"], "  ".join(parts)], 12, UI.TEXT_DIM))
+	var rs1 := _row()
+	var rs2 := _row()
+	var si := 0
+	for t38 in Universe.STAR_TYPES:
+		var tid2 := String(t38["id"])
+		(rs1 if si < 6 else rs2).add_child(UI.button(tid2, func(): _cmd({"type": "debug_star", "star": tid2}), String(t38["name"])))
+		si += 1
+	rs2.add_child(UI.button("Coronal mass ejection (10 s countdown)", func(): _cmd({"type": "debug_cme"})))
+	_section("Planets (package 38)")
+	var L38 := Universe.get_layout(GameState.current_system)
+	var here: Array = []
+	for p38 in L38["planets"]:
+		here.append(String(Universe.PLANET_TYPES[String(p38["type"])]["name"]))
+	_box.add_child(UI.label("This system: %s  •  the test system shows every type in a row" % ", ".join(here), 12, UI.TEXT_DIM))
+	var rp1 := _row()
+	var rp2 := _row()
+	var pi38 := 0
+	for pt38 in Universe.PLANET_TYPES:
+		var ptk: String = pt38
+		(rp1 if pi38 < 6 else rp2).add_child(UI.button(String(Universe.PLANET_TYPES[pt38]["name"]), func(): _cmd({"type": "debug_planet", "planet_type": ptk})))
+		pi38 += 1
+	# package 37: star types
 	_section("Economy (package 42)")
 	var r42 := _row()
 	r42.add_child(UI.button("Economy here → log", func(): _cmd({"type": "debug_economy"})))
@@ -405,87 +531,6 @@ func _build_world() -> void:
 			_cmd({"type": "debug_give_cargo", "item": it41, "amount": 6})))
 	r41b.add_child(UI.button("Kujira → hangar", func(): _cmd({"type": "debug_give_ship", "hull": "kujira", "fitted": true, "board": false})))
 	# package 39d: the manufacturers' systems
-	_section("Manufacturers' systems (package 39d)")
-	var r39e := _row()
-	for mk in Universe.MAKER_SYSTEMS:
-		var spk: String = Universe.MAKER_SYSTEMS[mk]
-		var sid39: int = Universe.special_system(spk)
-		var b39 := UI.button("To %s (%s%s)" % [Universe.SPECIAL_NAMES[spk], String(MakerData.MAKERS[mk]["tag"]), ", independent" if Universe.is_independent(sid39) else ""], func(): _cmd({"type": "debug_special", "special": spk}))
-		b39.disabled = sid39 < 0
-		r39e.add_child(b39)
-	# package 39c: Durchbruch and the Research Exchange
-	_section("Durchbruch & the Research Exchange (package 39c)")
-	content.add_child(UI.label("Durchbruch: %s  •  permit: %s  •  research data: %d  •  exotic matter: %d" % [
-		"system %d" % Universe.special_system("durchbruch") if Universe.special_system("durchbruch") >= 0 else "none",
-		"yes" if GameState.has_permit("directorate") else "no", GameState.research_data, GameState.exotic_matter], 12, UI.TEXT_DIM))
-	var r39d := _row()
-	r39d.add_child(UI.button("To Durchbruch", func(): _cmd({"type": "debug_durchbruch"})))
-	r39d.add_child(UI.button("Give permit", func(): _cmd({"type": "debug_permit", "faction": "directorate", "on": true})))
-	r39d.add_child(UI.button("Take permit", func(): _cmd({"type": "debug_permit", "faction": "directorate", "on": false})))
-	r39d.add_child(UI.button("+5 research data", func(): _cmd({"type": "debug_research", "n": 5})))
-	# package 39b: Heimkehr and the Curia
-	_section("Heimkehr & the Curia (package 39b)")
-	var cu39 = GameState.curia
-	content.add_child(UI.label("Heimkehr: %s  •  permit: %s  •  edict: %s  •  blessed: %s" % [
-		"system %d" % Universe.special_system("heimkehr") if Universe.special_system("heimkehr") >= 0 else "none",
-		"yes" if GameState.has_permit("covenant") else "no",
-		String(cu39.EDICTS[cu39.edict["id"]]["name"]) if not cu39.edict.is_empty() else "none", "yes" if cu39.blessed() else "no"], 12, UI.TEXT_DIM))
-	var r39c := _row()
-	r39c.add_child(UI.button("To Heimkehr", func(): _cmd({"type": "debug_heimkehr"})))
-	r39c.add_child(UI.button("Give permit", func(): _cmd({"type": "debug_permit", "faction": "covenant", "on": true})))
-	r39c.add_child(UI.button("Take permit", func(): _cmd({"type": "debug_permit", "faction": "covenant", "on": false})))
-	r39c.add_child(UI.button("New edict", func(): _cmd({"type": "debug_edict"})))
-	r39c.add_child(UI.button("+3 relics", func(): _cmd({"type": "debug_relic", "n": 3})))
-	# package 38: planet types
-	_section("Planets (package 38)")
-	var L38 := Universe.get_layout(GameState.current_system)
-	var here: Array = []
-	for p38 in L38["planets"]:
-		here.append(String(Universe.PLANET_TYPES[String(p38["type"])]["name"]))
-	content.add_child(UI.label("This system: %s  •  the test system shows every type in a row" % ", ".join(here), 12, UI.TEXT_DIM))
-	var rp1 := _row()
-	var rp2 := _row()
-	var pi38 := 0
-	for pt38 in Universe.PLANET_TYPES:
-		var ptk: String = pt38
-		(rp1 if pi38 < 6 else rp2).add_child(UI.button(String(Universe.PLANET_TYPES[pt38]["name"]), func(): _cmd({"type": "debug_planet", "planet_type": ptk})))
-		pi38 += 1
-	# package 37: star types
-	_section("Stars (package 37)")
-	var st_counts := {}
-	for s37 in Universe.systems:
-		var tid := String(Universe.STAR_TYPES[int(s37["star"])]["id"])
-		st_counts[tid] = int(st_counts.get(tid, 0)) + 1
-	var parts: Array = []
-	for t37 in Universe.STAR_TYPES:
-		parts.append("%s %d" % [t37["id"], int(st_counts.get(String(t37["id"]), 0))])
-	content.add_child(UI.label("This system: %s  •  Cluster: %s" % [Universe.star_type(GameState.current_system)["name"], "  ".join(parts)], 12, UI.TEXT_DIM))
-	var rs1 := _row()
-	var rs2 := _row()
-	var si := 0
-	for t38 in Universe.STAR_TYPES:
-		var tid2 := String(t38["id"])
-		(rs1 if si < 6 else rs2).add_child(UI.button(tid2, func(): _cmd({"type": "debug_star", "star": tid2}), String(t38["name"])))
-		si += 1
-	rs2.add_child(UI.button("Coronal mass ejection (10 s countdown)", func(): _cmd({"type": "debug_cme"})))
-	_section("Teleport (docks at the first station)")
-	var sys_ids: Array = []
-	for s in Universe.systems:
-		sys_ids.append(int(s["id"]))
-	sys_ids.sort_custom(func(a, b): return String(Universe.systems[a]["name"]) < String(Universe.systems[b]["name"]))
-	var sys_labels: Array = []
-	for sid in sys_ids:
-		var sd: Dictionary = Universe.systems[sid]
-		sys_labels.append("%s  (sec %.1f)%s" % [sd["name"], float(sd["security"]), "  ★ home" if sid == Universe.home_system else ""])
-	var sys := _option(sys_ids, sys_labels, 330)
-	var r := _row()
-	r.add_child(sys)
-	r.add_child(UI.button("Teleport", func(): _cmd({"type": "debug_teleport", "system": sys.get_selected_metadata()})))
-	_section("This system")
-	var r2 := _row()
-	r2.add_child(UI.button("Reveal anomalies", func(): _cmd({"type": "debug_reveal_anomalies"})))
-	r2.add_child(UI.button("Destroy all pirates", func(): _cmd({"type": "debug_kill_hostiles"})))
-	r2.add_child(UI.button("Summon notorious pirate", func(): _cmd({"type": "debug_notorious"})))
 	_section("Station raid (5-star notorious pirate)")
 	var rr := _row()
 	rr.add_child(UI.button("Raid in 5 min (announced)", func(): _cmd({"type": "debug_raid", "warning": 300.0})))
@@ -513,7 +558,7 @@ func _build_world() -> void:
 	r3.add_child(UI.button("Spawn", func(): _cmd({"type": "debug_spawn", "preset": pre.get_selected_metadata(), "count": int(n.value), "gov": gsel.get_selected_metadata()})))
 	var r4 := _row()
 	r4.add_child(gsel)
-	content.add_child(UI.wrap_label("Government factions spawn neutral ships in their paint (patrol AI comes with package 11).", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Government factions spawn neutral ships in their paint (patrol AI comes with package 11).", 12, UI.TEXT_DIM, 440))
 	# package 25d: any loadout as a sparring partner (e.g. a Hadrian ship to test the reflective hull)
 	_section("Spawn any ship next to you")
 	var aids: Array = GameData.presets.keys()
@@ -523,7 +568,7 @@ func _build_world() -> void:
 		var hh: Dictionary = GameData.hulls[GameData.presets[aid]["hull"]]
 		alabels.append("%s – %s (%s)" % [aid, hh["name"], MakerData.MAKERS.get(String(hh.get("maker", "")), {}).get("tag", "PIR")])
 	var anyp := _option(aids, alabels, 440)
-	content.add_child(anyp)
+	_box.add_child(anyp)
 	var r5 := _row()
 	var hostile := CheckBox.new()
 	hostile.text = "Hostile (pirate)"
@@ -533,7 +578,7 @@ func _build_world() -> void:
 	r5.add_child(an)
 	r5.add_child(UI.button("Spawn", func(): _cmd({"type": "debug_spawn", "preset": anyp.get_selected_metadata(), "count": int(an.value),
 		"gov": "", "side": "pirate" if hostile.button_pressed else "neutral"})))
-	content.add_child(UI.wrap_label("Neutral ships just fly about; hostile ones attack you. Hadrian ships reflect part of the damage to their armour.", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Neutral ships just fly about; hostile ones attack you. Hadrian ships reflect part of the damage to their armour.", 12, UI.TEXT_DIM, 440))
 
 
 # ---------------------------------------------------------------- Package 28: the pilot
@@ -559,7 +604,7 @@ func _build_character() -> void:
 		var sp := _spin(1, 20, GameState.pilot_attr(String(at[0])))
 		r2.add_child(sp)
 		spins[at[0]] = sp
-	content.add_child(UI.button("Set attributes", func():
+	_box.add_child(UI.button("Set attributes", func():
 		var a := {}
 		for id in spins:
 			a[id] = int(spins[id].value)
@@ -587,7 +632,7 @@ func _build_character() -> void:
 	all_cb.text = "Unlock everything (all tiles and blueprints)"
 	all_cb.button_pressed = bool(GameState.pilot.get("tree_all", false))
 	all_cb.toggled.connect(func(on): _cmd({"type": "debug_tree", "all": on}))
-	content.add_child(all_cb)
+	_box.add_child(all_cb)
 	var rt := _row()
 	var tids: Array = TreeDataX.TILES.keys()
 	var tnames: Array = []
@@ -619,8 +664,8 @@ func _build_character() -> void:
 		var a1: Dictionary = f.stats()
 		for k in [["Speed", "speed"], ["Power output", "power_output"], ["DPS", "dps_total"], ["Warp speed", "warp_speed"], ["Fuel per jump", "jump_fuel"], ["Shield downtime", "shield_downtime"]]:
 			if a1.has(k[1]):
-				content.add_child(UI.label("%s: %.1f → %.1f" % [k[0], float(a0.get(k[1], 0.0)), float(a1[k[1]])], 12, UI.TEXT_DIM))
-		content.add_child(UI.label("Prices: buy −%.1f %%, sell +%.1f %%  •  contract rewards +%d %%  •  mining +%d %%  •  target locks −%d %%" % [
+				_box.add_child(UI.label("%s: %.1f → %.1f" % [k[0], float(a0.get(k[1], 0.0)), float(a1[k[1]])], 12, UI.TEXT_DIM))
+		_box.add_child(UI.label("Prices: buy −%.1f %%, sell +%.1f %%  •  contract rewards +%d %%  •  mining +%d %%  •  target locks −%d %%" % [
 			GameState.skill_bonus("trading") * 50.0, GameState.skill_bonus("trading") * 50.0, GameState.skill_level("negotiation"), GameState.skill_level("mining"), GameState.skill_level("gunnery")], 12, UI.TEXT_DIM))
 
 
@@ -665,14 +710,14 @@ func _build_audio() -> void:
 	flow.custom_minimum_size = Vector2(440, 0)
 	flow.add_theme_constant_override("h_separation", 4)
 	flow.add_theme_constant_override("v_separation", 4)
-	content.add_child(flow)
+	_box.add_child(flow)
 	for id in Audio.ids():
 		var sid: String = id
 		flow.add_child(UI.button(sid, func(): Audio.play(sid, "debug")))
-	content.add_child(UI.button("Stop all loops", func(): Audio.stop_all_loops()))
+	_box.add_child(UI.button("Stop all loops", func(): Audio.stop_all_loops()))
 	_section("Event log (newest first)")
 	_audio_log = UI.label("", 11, UI.TEXT_DIM)
-	content.add_child(_audio_log)
+	_box.add_child(_audio_log)
 
 
 func _update_audio_debug() -> void:
@@ -735,7 +780,7 @@ const SPACE_JOBS := [["courier", "Courier"], ["bounty", "Bounty"], ["mining", "S
 
 func _build_missions() -> void:
 	_section("Jobs on foot (packages 53c, 53d)")
-	content.add_child(UI.wrap_label("Accept: the job is yours – the site goes on the planet map (in a city: the way in from the city). Accept & go: straight down onto the site (not for city jobs).", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Accept: the job is yours – the site goes on the planet map (in a city: the way in from the city). Accept & go: straight down onto the site (not for city jobs).", 12, UI.TEXT_DIM, 560))
 	for gj in GROUND_JOBS:
 		var r := _row()
 		var goal: String = gj[0]
@@ -758,7 +803,7 @@ func _build_missions() -> void:
 	ra.add_child(UI.button("Complete all missions", func(): _cmd({"type": "debug_complete_missions"})))
 	ra.add_child(UI.button("New contracts on the board", func(): _cmd({"type": "debug_new_contracts"})))
 	_mission_note = UI.label("", 12, UI.TEXT_DIM)
-	content.add_child(_mission_note)
+	_box.add_child(_mission_note)
 
 
 var _mission_note: Label = null
@@ -784,7 +829,7 @@ func _note(e: String, ok: String) -> void:
 
 func _build_ground() -> void:
 	_ground_status = UI.label("", 12, UI.TEXT_DIM)
-	content.add_child(_ground_status)
+	_box.add_child(_ground_status)
 	_update_ground_status()
 	# package 49: on foot
 	_section("On foot – decks and levels (packages 49, 50)")
@@ -793,7 +838,7 @@ func _build_ground() -> void:
 	for lv in [["hangar", "Hangar"], ["commercial", "Commercial"], ["street", "Street"], ["tower", "Tower bar"], ["clinic", "Clinic"]]:
 		var lvk: String = lv[0]
 		r49.add_child(UI.button(String(lv[1]), func(): _cmd({"type": "debug_ground_level", "level": lvk})))
-	content.add_child(UI.wrap_label("The deck of the station you are docked at (in a city: its hangar). Levels: a station has hangar and commercial level, a city hangar, shopping street and tower bar.", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("The deck of the station you are docked at (in a city: its hangar). Levels: a station has hangar and commercial level, a city hangar, shopping street and tower bar.", 12, UI.TEXT_DIM, 560))
 	# package 50: landing
 	_section("Landing, cities, settlements (package 50)")
 	var L := Universe.get_layout(GameState.current_system)
@@ -806,7 +851,7 @@ func _build_ground() -> void:
 			bnames.append("%s – %s (cities %d, other places %d)" % [String(b["name"]), String(Universe.body_type(String(b["type"]))["name"]),
 				sites.filter(func(x): return String(x["kind"]) == "city").size(), sites.filter(func(x): return String(x["kind"]) != "city").size()])
 	if bids.is_empty():
-		content.add_child(UI.label("Nothing to land on in this system.", 12, UI.TEXT_DIM))
+		_box.add_child(UI.label("Nothing to land on in this system.", 12, UI.TEXT_DIM))
 	var body := _option(bids, bnames, 440)
 	var rb := _row()
 	rb.add_child(body)
@@ -832,7 +877,7 @@ func _build_ground() -> void:
 	for ph in PHASES:
 		var phk: String = ph[0]
 		rl2.add_child(UI.button(String(ph[1]), func(): _cmd({"type": "debug_daytime", "phase": phk})))
-	content.add_child(UI.wrap_label("Lands at once at the first place of that kind on the body – if there is none, or an economy is forced (settlements only), a debug place is added. 'World' shows the body as another world type (ground, bounds, air). The hour turns every world on until the place has it.", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Lands at once at the first place of that kind on the body – if there is none, or an economy is forced (settlements only), a debug place is added. 'World' shows the body as another world type (ground, bounds, air). The hour turns every world on until the place has it.", 12, UI.TEXT_DIM, 560))
 	# package 51: gear, the world outside, the clinic
 	_section("Gear, the world outside, the clinic (package 51)")
 	var fams: Array = []
@@ -872,7 +917,7 @@ func _build_ground() -> void:
 	inv.text = "Suit invulnerable (energy and oxygen still drain)"
 	inv.button_pressed = Commands.suit_god
 	inv.toggled.connect(func(on): _cmd({"type": "debug_gear", "suit_god": on}))
-	content.add_child(inv)
+	_box.add_child(inv)
 	var et: Array = _world_types("Outside: as the place is")
 	var esel := _option(et[0], et[1], 220)
 	var re := _row()
@@ -881,9 +926,9 @@ func _build_ground() -> void:
 	var rc := _row()
 	rc.add_child(UI.button("Collapse now", func(): _cmd({"type": "debug_collapse"})))
 	rc.add_child(UI.button("Wake in the clinic here", func(): _cmd({"type": "debug_wake_clinic"})))
-	content.add_child(UI.wrap_label("Collapse: on foot the body gives out – you wake in the nearest city's clinic (else the last station's), the pockets emptied. Wake in the clinic: of the station or city you are docked at.", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Collapse: on foot the body gives out – you wake in the nearest city's clinic (else the last station's), the pockets emptied. Wake in the clinic: of the station or city you are docked at.", 12, UI.TEXT_DIM, 560))
 	# package 52: fights on foot
-	_section("Combat on foot (package 52)")
+	_section("Combat on foot: the arena (package 52)")
 	var at: Array = _world_types("World: the body's own")
 	var aw := _option(at[0], at[1], 160)
 	var ra := _row()
@@ -897,61 +942,13 @@ func _build_ground() -> void:
 		"foes": ["guard_trooper", "guard_trooper", "guard_heavy", "guard_sergeant@yellow"]})))
 	ra3.add_child(UI.button("Arena: one sniper", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(), "foes": ["pirate_sniper"]})))
 	ra3.add_child(UI.button("Fill the grenade places", func(): _cmd({"type": "debug_gear", "grenades": true})))
-	var rdr := _row()                                               # 0.7.52.11: drones
-	var dq := _option(GroundGear.QUALITIES, GroundGear.QUALITIES, 60)
-	dq.select(3)
-	rdr.add_child(UI.label("Drone:", 12, UI.TEXT_DIM))
-	rdr.add_child(dq)
-	for dk in [["dr_laser", "Laser"], ["dr_kinetic", "Kinetic"], ["dr_kamikaze", "Kamikaze"]]:
-		var dkk: String = dk[0]
-		rdr.add_child(UI.button(String(dk[1]), func(): _cmd({"type": "debug_gear", "drone": dkk + ":" + String(dq.get_selected_metadata())})))
-	rdr.add_child(UI.button("Shoot it down", func(): _cmd({"type": "debug_combat", "do": "drone_kill"})))
-	rdr.add_child(UI.button("New one now", func(): _cmd({"type": "debug_combat", "do": "drone_ready"})))
-	var rex := _row()                                               # 0.7.52.22: tools at work
-	rex.add_child(UI.label("Explore:", 12, UI.TEXT_DIM))
-	rex.add_child(UI.button("Box, terminal, tablet, relic here", func(): _cmd({"type": "debug_explore"})))
-	rex.add_child(UI.button("The vault (station room)", func(): _cmd({"type": "debug_vault"})))
-	var rpo := _row()                                               # package 53a: generated sites
-	rpo.add_child(UI.label("Site (ruin):", 12, UI.TEXT_DIM))
-	for dz in [["green", "Green"], ["yellow", "Yellow"], ["red", "Red"]]:
-		var dzz: String = dz[0]
-		rpo.add_child(UI.button(String(dz[1]), func(): _cmd({"type": "debug_poi", "danger": dzz})))
-	rpo.add_child(UI.button("Reveal the map", func(): _cmd({"type": "debug_poi_reveal"})))
-	var rsw := _row()                                               # 0.7.53.3: the sewers under a city
-	rsw.add_child(UI.label("Site (sewer):", 12, UI.TEXT_DIM))
-	for dz2 in [["green", "Green"], ["yellow", "Yellow"], ["red", "Red"]]:
-		var dzz2: String = dz2[0]
-		rsw.add_child(UI.button(String(dz2[1]), func(): _cmd({"type": "debug_poi", "danger": dzz2, "theme": "sewer"})))
-	rsw.add_child(UI.button("Back alley (in a city)", func(): _cmd({"type": "debug_ground_level", "level": "alley"})))
-	var rmu := _row()                                               # 53e (Luz): the Museum in Curie
-	rmu.add_child(UI.label("Museum:", 12, UI.TEXT_DIM))
-	rmu.add_child(UI.button("Plaza", func(): _cmd({"type": "debug_museum", "to": "plaza"})))
-	rmu.add_child(UI.button("Hall", func(): _cmd({"type": "debug_museum", "to": "hall"})))
-	rmu.add_child(UI.button("Minerals", func(): _cmd({"type": "debug_museum", "to": "minerals"})))
-	rmu.add_child(UI.button("1st floor", func(): _cmd({"type": "debug_museum", "to": "first"})))
-	rmu.add_child(UI.button("2nd floor", func(): _cmd({"type": "debug_museum", "to": "second"})))
-	rmu.add_child(UI.button("Basement", func(): _cmd({"type": "debug_museum", "to": "basement"})))
-	rmu.add_child(UI.button("Finds: one of each room", func(): _cmd({"type": "debug_museum", "finds": "some"})))
-	rmu.add_child(UI.button("Finds: everything", func(): _cmd({"type": "debug_museum", "finds": "all"})))
-	var rmu2 := _row()
-	rmu2.add_child(UI.label("Museum cases:", 12, UI.TEXT_DIM))
-	rmu2.add_child(UI.button("Empty", func(): _cmd({"type": "debug_museum", "fill": "none"})))
-	rmu2.add_child(UI.button("Half", func(): _cmd({"type": "debug_museum", "fill": "half"})))
-	rmu2.add_child(UI.button("All but one", func(): _cmd({"type": "debug_museum", "fill": "almost"})))
-	rmu2.add_child(UI.button("Full", func(): _cmd({"type": "debug_museum", "fill": "all"})))
-	var rtm := _row()                                               # 0.7.52.20: the ground team
-	rtm.add_child(UI.label("Team:", 12, UI.TEXT_DIM))
-	rtm.add_child(UI.button("Gunner + Engineer", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"]})))
-	rtm.add_child(UI.button("Science + Quartermaster", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["science", "quartermaster"]})))
-	rtm.add_child(UI.button("One down", func(): _cmd({"type": "debug_combat", "do": "team_down"})))
-	rtm.add_child(UI.button("Revive", func(): _cmd({"type": "debug_combat", "do": "team_revive"})))
-	rtm.add_child(UI.button("Abilities ready", func(): _cmd({"type": "debug_combat", "do": "team_ready"})))
-	rtm.add_child(UI.button("Down one dies", func(): _cmd({"type": "debug_combat", "do": "team_die"})))
 	var ra2 := _row()                                               # 0.7.52.4 (Luz): mixed strengths
 	ra2.add_child(UI.button("Arena: 2 green + 1 yellow", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
 		"foes": ["bandit_scrapper@green", "bandit_rifleman@green", "bandit_gunner@yellow"]})))
 	ra2.add_child(UI.button("Arena: 2 yellow + 1 red", func(): _cmd({"type": "debug_arena", "world": aw.get_selected_metadata(),
 		"foes": ["bandit_scrapper@yellow", "bandit_rifleman@yellow", "bandit_boss@red"]})))
+	_box.add_child(UI.wrap_label("The arena: the landing drone on its pad, a field of cover (crates, barriers and rocks to shoot over; bulwarks you cannot see through), foes at the far side. R locks the next target, a click any, Space dodges, Q swaps the weapon, Tab the tactical view (tap: yours / the target's, hold: off). AI view: low cover amber, high cover red, sight lines (green clear, amber over cover, red blocked), each foe's state, layers and both hit chances. The suit's invulnerability (above) holds off shots too.", 12, UI.TEXT_DIM, 560))
+	_section("Combat on foot: foes and the fight")
 	var fk: Array = []
 	var fn: Array = []
 	for k in FoeData52.KINDS:
@@ -985,7 +982,60 @@ func _build_ground() -> void:
 		for lv2 in [0, 5, 10]:
 			var lvv: int = lv2
 			rh.add_child(UI.button("%s %d" % [skk.capitalize(), lvv], func(): _cmd({"type": "debug_skill", "skill": skk, "level": lvv})))
-	content.add_child(UI.wrap_label("The arena: the landing drone on its pad, a field of cover (crates, barriers and rocks to shoot over; bulwarks you cannot see through), foes at the far side. R locks the next target, a click any, Space dodges, Q swaps the weapon, Tab the tactical view (tap: yours / the target's, hold: off). AI view: low cover amber, high cover red, sight lines (green clear, amber over cover, red blocked), each foe's state, layers and both hit chances. The suit's invulnerability (above) holds off shots too.", 12, UI.TEXT_DIM, 560))
+	_section("Drones and the team (packages 52, 52a)")
+	var rdr := _row()                                               # 0.7.52.11: drones
+	var dq := _option(GroundGear.QUALITIES, GroundGear.QUALITIES, 60)
+	dq.select(3)
+	rdr.add_child(UI.label("Drone:", 12, UI.TEXT_DIM))
+	rdr.add_child(dq)
+	for dk in [["dr_laser", "Laser"], ["dr_kinetic", "Kinetic"], ["dr_kamikaze", "Kamikaze"]]:
+		var dkk: String = dk[0]
+		rdr.add_child(UI.button(String(dk[1]), func(): _cmd({"type": "debug_gear", "drone": dkk + ":" + String(dq.get_selected_metadata())})))
+	rdr.add_child(UI.button("Shoot it down", func(): _cmd({"type": "debug_combat", "do": "drone_kill"})))
+	rdr.add_child(UI.button("New one now", func(): _cmd({"type": "debug_combat", "do": "drone_ready"})))
+	var rtm := _row()                                               # 0.7.52.20: the ground team
+	rtm.add_child(UI.label("Team:", 12, UI.TEXT_DIM))
+	rtm.add_child(UI.button("Gunner + Engineer", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"]})))
+	rtm.add_child(UI.button("Science + Quartermaster", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["science", "quartermaster"]})))
+	rtm.add_child(UI.button("One down", func(): _cmd({"type": "debug_combat", "do": "team_down"})))
+	rtm.add_child(UI.button("Revive", func(): _cmd({"type": "debug_combat", "do": "team_revive"})))
+	rtm.add_child(UI.button("Abilities ready", func(): _cmd({"type": "debug_combat", "do": "team_ready"})))
+	rtm.add_child(UI.button("Down one dies", func(): _cmd({"type": "debug_combat", "do": "team_die"})))
+	_section("Tools at work (package 52b)")
+	var rex := _row()                                               # 0.7.52.22: tools at work
+	rex.add_child(UI.label("Explore:", 12, UI.TEXT_DIM))
+	rex.add_child(UI.button("Box, terminal, tablet, relic here", func(): _cmd({"type": "debug_explore"})))
+	rex.add_child(UI.button("The vault (station room)", func(): _cmd({"type": "debug_vault"})))
+	_section("Sites to explore (package 53)")
+	var rpo := _row()                                               # package 53a: generated sites
+	rpo.add_child(UI.label("Site (ruin):", 12, UI.TEXT_DIM))
+	for dz in [["green", "Green"], ["yellow", "Yellow"], ["red", "Red"]]:
+		var dzz: String = dz[0]
+		rpo.add_child(UI.button(String(dz[1]), func(): _cmd({"type": "debug_poi", "danger": dzz})))
+	rpo.add_child(UI.button("Reveal the map", func(): _cmd({"type": "debug_poi_reveal"})))
+	var rsw := _row()                                               # 0.7.53.3: the sewers under a city
+	rsw.add_child(UI.label("Site (sewer):", 12, UI.TEXT_DIM))
+	for dz2 in [["green", "Green"], ["yellow", "Yellow"], ["red", "Red"]]:
+		var dzz2: String = dz2[0]
+		rsw.add_child(UI.button(String(dz2[1]), func(): _cmd({"type": "debug_poi", "danger": dzz2, "theme": "sewer"})))
+	rsw.add_child(UI.button("Back alley (in a city)", func(): _cmd({"type": "debug_ground_level", "level": "alley"})))
+	_section("The Museum in Curie (package 53e)")
+	var rmu := _row()                                               # 53e (Luz): the Museum in Curie
+	rmu.add_child(UI.label("Museum:", 12, UI.TEXT_DIM))
+	rmu.add_child(UI.button("Plaza", func(): _cmd({"type": "debug_museum", "to": "plaza"})))
+	rmu.add_child(UI.button("Hall", func(): _cmd({"type": "debug_museum", "to": "hall"})))
+	rmu.add_child(UI.button("Minerals", func(): _cmd({"type": "debug_museum", "to": "minerals"})))
+	rmu.add_child(UI.button("1st floor", func(): _cmd({"type": "debug_museum", "to": "first"})))
+	rmu.add_child(UI.button("2nd floor", func(): _cmd({"type": "debug_museum", "to": "second"})))
+	rmu.add_child(UI.button("Basement", func(): _cmd({"type": "debug_museum", "to": "basement"})))
+	rmu.add_child(UI.button("Finds: one of each room", func(): _cmd({"type": "debug_museum", "finds": "some"})))
+	rmu.add_child(UI.button("Finds: everything", func(): _cmd({"type": "debug_museum", "finds": "all"})))
+	var rmu2 := _row()
+	rmu2.add_child(UI.label("Museum cases:", 12, UI.TEXT_DIM))
+	rmu2.add_child(UI.button("Empty", func(): _cmd({"type": "debug_museum", "fill": "none"})))
+	rmu2.add_child(UI.button("Half", func(): _cmd({"type": "debug_museum", "fill": "half"})))
+	rmu2.add_child(UI.button("All but one", func(): _cmd({"type": "debug_museum", "fill": "almost"})))
+	rmu2.add_child(UI.button("Full", func(): _cmd({"type": "debug_museum", "fill": "all"})))
 
 
 func _update_ground_status() -> void:
