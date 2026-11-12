@@ -28,6 +28,7 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"fuse_box": "A fuse box – a fuse is missing. Put in a spare (E)",
 	"pirate_gate": "The hangar gate – sealed (its terminal beside it)",
 	"keycard": "A key card – take it (E)",
+	"seal_panel": "Emergency bulkhead – seal the torn module (E)",
 	"vault_door": "The vault door – its lock wants a hack, then the drill (the terminal beside it)",
 	"service_door": "The back door – locked (its keypad or the terminal)"}
 const INSCRIPTIONS := [
@@ -469,7 +470,7 @@ func _draw() -> void:
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
 		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble", "crank_door", "fuse_box", "reactor", "stairs_down", "stairs_up", "service_lift", "steam", "pirate_gate", "searchlight",
-		"ramp_down", "cells", "power_socket", "camera", "vault_door", "service_door", "laser_gate"]
+		"ramp_down", "cells", "power_socket", "camera", "vault_door", "service_door", "laser_gate", "leak", "seal_panel"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -534,6 +535,19 @@ func _draw() -> void:
 		"cells":
 			# 0.7.53.11: the cells – bars across the room's back, a bunk, a prisoner sitting hunched
 			var cw9 := float(d.get("w", 8)) * 16.0
+			if String(d.get("style", "")) == "research":
+				# 0.7.53.20: a station's cold store – a sealed door with a frosted window, people huddled behind it
+				var opn := String(d.get("state", "")) == "open"
+				draw_rect(Rect2(-cw9 * 0.5, -34, cw9, 34), Color(0.78, 0.8, 0.84))
+				draw_rect(Rect2(-cw9 * 0.5, -34, cw9, 3), Color(0.95, 0.45, 0.2))
+				draw_rect(Rect2(-14, -30, 28, 30), Color(0.4, 0.42, 0.46) if not opn else Color(0.06, 0.06, 0.08))
+				if not opn:
+					draw_rect(Rect2(-9, -26, 18, 10), Color(0.55, 0.75, 0.88))
+					draw_circle(Vector2(-3, -19), 3.0, Color(0.6, 0.45, 0.35))
+					draw_circle(Vector2(4, -20), 3.0, Color(0.5, 0.38, 0.3))
+					for fr2 in 10:
+						draw_rect(Rect2(-9 + fr2 * 2, -26 + (fr2 % 3) * 3, 2, 1), Color(1, 1, 1, 0.5))
+				return
 			draw_rect(Rect2(-cw9 * 0.5, -34, cw9, 34), Color(0.05, 0.05, 0.06, 0.6))
 			var freed := String(d.get("state", "")) == "open"     # 53c: the rescued prisoner's cell stands open, empty
 			for cb in int(cw9 / 5.0):
@@ -551,6 +565,32 @@ func _draw() -> void:
 				var pxp := -cw9 * 0.5 + (pr * 2 + 1) * cw9 / 6.0
 				draw_circle(Vector2(pxp, -16), 4.0, Color(0.6, 0.45, 0.35))
 				draw_rect(Rect2(pxp - 5, -12, 10, 9), Color(0.4, 0.38, 0.3))
+		"leak":
+			# 0.7.53.20 (Luz): a module torn open – a ragged hole in the wall, the snow blowing in, frost on the floor;
+			# sealed: an emergency plate over it, hazard-striped
+			if String(d["state"]) == "open":
+				draw_circle(Vector2(0, -24), 13.0, Color(0.05, 0.05, 0.07))
+				for tk in 9:
+					var at := tk * TAU / 9.0
+					draw_rect(Rect2(Vector2(cos(at) * 13.0, -24.0 + sin(at) * 11.0) - Vector2(2, 1), Vector2(4, 3)), Color(0.82, 0.84, 0.88))
+				for sn in 26:
+					var ph := fposmod(t * 0.7 + sn * 0.137, 1.0)
+					var sx := sin(sn * 2.3) * 10.0 + (ph * 40.0) * sin(sn * 1.7)
+					draw_rect(Rect2(sx, -24.0 + ph * 60.0, 1.5, 1.5), Color(0.95, 0.97, 1.0, 1.0 - ph))
+				for fr in 16:
+					draw_rect(Rect2(sin(fr * 3.1) * 30.0, 6.0 + fr % 4 * 6.0, 6, 1), Color(0.85, 0.94, 1.0, 0.55))
+			else:
+				draw_rect(Rect2(-16, -40, 32, 32), Color(0.4, 0.42, 0.46))
+				for st in 6:
+					draw_rect(Rect2(-16 + st * 6, -40, 3, 32), Color(0.95, 0.75, 0.1, 0.8))
+				draw_rect(Rect2(-16, -40, 32, 2), Color(0.6, 0.62, 0.66))
+		"seal_panel":
+			# 0.7.53.20: the emergency bulkhead's panel – a red lever (down: sealed), its lamp
+			var sealed: bool = String(view.map.explore[int(d.get("leak", 0))]["state"]) != "open"
+			draw_rect(Rect2(-7, -30, 14, 18), Color(0.25, 0.26, 0.29))
+			draw_rect(Rect2(-6, -29, 12, 16), Color(0.75, 0.76, 0.8))
+			draw_rect(Rect2(-2, -27 if not sealed else -21, 4, 7), Color(0.85, 0.15, 0.1))
+			draw_circle(Vector2(4, -27), 1.2, Color(0.3, 1.0, 0.45) if sealed else Color(1.0, 0.2, 0.15, 0.6 + 0.4 * sin(t * 4.0)))
 		"camera":
 			# 0.7.53.19 (Luz): a security camera high on the wall, sweeping – its view a red cone on the floor (dark: off)
 			var on9 := String(d["state"]) == "on"

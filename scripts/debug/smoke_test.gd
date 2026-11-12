@@ -164,6 +164,7 @@ func _process(delta: float) -> void:
 				_test_pirate(view)               # package 53c – the pirate base
 				_test_ground_jobs(view)          # package 53c – jobs on foot
 				_test_corp(view)                 # package 53d – the corporate tower
+				_test_research(view)             # package 53d – the research station
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -10207,6 +10208,112 @@ func _test_corp(view: SystemView) -> void:
 	main._update_input()
 	check(plaza_ok and l1_ok and cam_ok and card_ok and down_ok and sec_ok and fire_ok and v_ok and pay_ok and jobs_ok and sp_ok,
 		"53d: the corporate tower – the roof plaza (lift, guarded doors, the back door behind its keypad or terminal); offices with cameras (seen: alarm) and a key card (the lift down wants it); the security centre switches cameras and light barriers off; the fire stairs ring the alarm; the vault door hacked then drilled, the main box pays; heist and spy jobs in a city's tower; a space contract by kind  [%s]" % " ".join(PackedStringArray([str(plaza_ok), str(l1_ok), str(cam_ok), str(card_ok), str(down_ok), str(sec_ok), str(fire_ok), str(v_ok), str(pay_ok), str(jobs_ok), str(sp_ok)])))
+
+
+## 0.7.53.20 (Luz, package 53d): the research station – outside its modules on stilts (the airlock, a torn module),
+## inside its own air: a torn module lets the world outside in until its bulkhead is sealed; the cold store with
+## people sealed in; the research computer below; the jobs: data recovery (on the map), a rescue of its researchers;
+## the planet map knows the sites of jobs that are no settlements.
+func _test_research(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	Commands.suit_god = true
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5420, "theme": "research"})
+	var g = main.ground
+	if g == null or e != "" or g.level != "landing":
+		check(false, "53d: the research station opens  [%s]" % e)
+		Commands.suit_god = false
+		return
+	g._close_lift_menu()
+	var lock: Dictionary = {}
+	var lterm: Dictionary = {}
+	for d in g.map.explore:
+		if String(d["kind"]) == "airlock":
+			lock = d
+		elif String(d["kind"]) == "terminal":
+			lterm = d
+	var ins: Array = g.map.zones.filter(func(z): return String(z.get("kind", "")) == "dungeon_in")
+	var out_ok: bool = g.map.style == "research" and g.map.has_meta("roofs") and not lock.is_empty() and ins.size() == 2 and _has_kind(g.map, "breach") \
+		and g.map.objects.any(func(o): return String(o["kind"]) == "dome") and g.map.objects.any(func(o2): return String(o2["kind"]) == "radio_mast")
+	g._explore_effect(lterm, "door")
+	var zl: Dictionary = ins.filter(func(z2): return int(z2["gate"]) == g.map.explore.find(lock))[0]
+	g._arrive = 0.0
+	g.zone = zl
+	g.use()
+	if g.level != "dungeon":
+		check(false, "53d: into the station  [%s %s]" % [str(out_ok), g.level])
+		Commands.suit_god = false
+		return
+	# inside: its own air; a torn module lets the world in until its bulkhead is sealed
+	g._out_env = {"breathable": false, "cold": 0.8, "heat": 0.0, "toxic": 0.0, "vacuum": 1.0}
+	var air_ok: bool = g.map.has_meta("pressurized") and g.env.is_empty() and _has_kind(g.map, "cells") and g.map.floor_kind.has(32)
+	var lz: Dictionary = {}
+	for z3 in g.map.zones:
+		if String(z3.get("kind", "")) == "leak":
+			lz = z3
+	var leak_ok := not lz.is_empty()
+	if leak_ok:
+		g.pilot.pos = (lz["rect"] as Rect2).get_center()
+		g._env_step(0.1)
+		leak_ok = not g.env.is_empty() and float(g.env.get("cold", 0.0)) > 0.5
+		var sp: Dictionary = {}
+		for d2 in g.map.explore:
+			if String(d2["kind"]) == "seal_panel" and int(d2["leak"]) == int(lz["i"]):
+				sp = d2
+		g.explore_use({"i": g.map.explore.find(sp)})
+		g._env_step(0.1)
+		leak_ok = leak_ok and not sp.is_empty() and String(g.map.explore[int(lz["i"])]["state"]) == "sealed" and g.env.is_empty()
+	# down: the research computer and its logs
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_down")
+	g.use()
+	var logs: Dictionary = {}
+	for d3 in g.map.explore:
+		if String(d3["kind"]) == "terminal" and "logs" in d3.get("actions", []):
+			logs = d3
+	var rd0: int = GameState.research_data
+	if not logs.is_empty():
+		g._explore_effect(logs, "logs")
+	var logs_ok: bool = g.depth == 1 and not logs.is_empty() and GameState.research_data >= rd0 + 10 and GameState.poi_used.has(String(g._site["id"]))
+	# the jobs: data recovery (on the planet map), a rescue of the researchers
+	var jobs_ok := true
+	var e2: String = Commands.execute({"type": "debug_ground_job", "goal": "recover", "seed": 5421})
+	var mm: Dictionary = GameState.missions[-1] if not GameState.missions.is_empty() else {}
+	var site: Dictionary = mm.get("site", {})
+	var body: Dictionary = Universe.find_body(int(site.get("system", 0)), String(site.get("body", "")))
+	jobs_ok = e2 == "" and String(site.get("theme", "")) == "research" and GameState.pois_for(int(site["system"]), body).has(site) \
+		and Universe.SITE_KINDS.has(String(site["kind"])) and Universe.SITE_KINDS.has("pirate")
+	GameState.abandon_mission(mm)
+	var e3: String = Commands.execute({"type": "debug_ground_job", "goal": "rescue", "variant": "research", "seed": 5422})
+	var mm2: Dictionary = GameState.missions[-1] if not GameState.missions.is_empty() else {}
+	jobs_ok = jobs_ok and e3 == "" and String(mm2["site"].get("theme", "")) == "research" and String(mm2["site"].get("prisoner", "")) == "a researcher"
+	GameState.abandon_mission(mm2)
+	# back
+	Commands.suit_god = false
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(out_ok and air_ok and leak_ok and logs_ok and jobs_ok,
+		"53d: the research station – modules on stilts, the airlock and a torn module; inside its own air, a torn module lets the cold in until its bulkhead is sealed; the cold store; the research logs below; data recovery on the map, a rescue of its researchers  [%s]" % " ".join(PackedStringArray([str(out_ok), str(air_ok), str(leak_ok), str(logs_ok), str(jobs_ok)])))
 
 ## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine: the headframe outside (its chained gate),
 ## the drifts with their rails, the cage without power (the generator), boxes of explosives that go up, the deepest

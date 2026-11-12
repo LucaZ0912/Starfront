@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.20 – 2026-11-12
+
+**Package 53d – the research station (Luz).** On harsh worlds (no air to breathe) a site on the planet map may now be
+a **research station**: white modules on stilts – their roofs seen from above, their walls a band of windows – a tube
+between them, a dome, the radio mast; looters' snow crawler and crates. Two ways in: the **airlock** (its terminal) or
+a **torn module** (open, or a buckled plate to cut). Inside, two levels:
+- Labs, quarters and stores joined by **long narrow tubes**; lab benches, cryo tanks, sample cabinets as cover; looters.
+- **Its own air** – but a **torn module** lets the world outside in (no air, the cold – the suit draws on its energy)
+  until you seal its **emergency bulkhead** at the panel beside it.
+- A **cold store** with researchers sealed in; toxic samples and a bursting cryo line as traps.
+- Below, in the sample store, the **research computer** – its logs are the prize (a lot of research data).
+- Jobs: **data recovery** (bring back the logs) and a **rescue** of its researchers (they follow you out).
+- Fix: the planet map knows the sites of jobs that are no settlements (a pirate base, a research station) – it could
+  not show them before; their approach shows only the landing field.
+- Debug tab Missions: rescue (pirate base / research station) and data recovery.
+
 ## alpha 0.7.53.19 – 2026-11-12
 
 **Package 53d – the corporate tower (Luz).** In every city the lift now goes up to a **roof plaza** as well: open to

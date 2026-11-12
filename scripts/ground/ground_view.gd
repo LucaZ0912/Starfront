@@ -112,6 +112,7 @@ var _haz_t := {}                          # 0.7.53.6: hazards' cool-downs (shock
 var _fuses := {}
 var _town_kind := ""
 var _hostage := {}
+var _out_env := {}                         # 0.7.53.20: a station's world outside – it comes in through a torn module
 var _socket := -1                          # 0.7.53.16: the power socket you charge at (explore index), -1 none                        # 53c (Luz): the prisoner you rescue – {look, hp, w (Walker)}                      # 0.7.53.9: in a city, the way down taken – "" (the alley's sewers) or "maint"
 var _drone_fx: Node2D = null              # 0.7.53.9: the maintenance drones drawn
 var _rep_spots: Array = []                # 0.7.53.9: where on the walls they mend things                          # 0.7.53.7: charges and explosives about to go up – index -> seconds
@@ -371,6 +372,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build(station, bar_only, GameState.bar_offers(station) if _avail.has("bar") else [], "tower")
 	else:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
+	_out_env = {}
+	if level == "dungeon" and map.has_meta("pressurized"):
+		_out_env = env                                 # 0.7.53.20 (Luz): inside the station its own air – but not in a torn module
+		env = {}
 	if level in ["landing", "settlement"] and _lander and map.ship_at != Vector2.INF:
 		_drone_ramp_zone()
 	var lift_title := "Lifts – Hangar · Shopping street · Tower bar" if is_city() else "Lifts – Hangar · Commercial level"
@@ -552,6 +557,16 @@ func needs_helmet() -> bool:
 	return not env.is_empty() and ChibiArt.GearData.needs_helmet(env)
 
 
+## 0.7.53.20: in a module torn open (its bulkhead not sealed)?
+func _in_leak() -> bool:
+	if pilot == null:
+		return false
+	for z in map.zones:
+		if String(z.get("kind", "")) == "leak" and (z["rect"] as Rect2).has_point(pilot.pos) and String(map.explore[int(z["i"])]["state"]) == "open":
+			return true
+	return false
+
+
 ## 0.7.51.3: under a roof – in a shop, the bar, a building's door (the suit rests there).
 func indoors() -> bool:
 	if env.is_empty():
@@ -562,6 +577,8 @@ func indoors() -> bool:
 
 ## A step outside for the suit: energy, air, what gets through; warnings; collapsing at the end.
 func _env_step(delta: float) -> void:
+	if map != null and map.has_meta("pressurized") and level == "dungeon":
+		env = _out_env if _in_leak() else {}           # 0.7.53.20 (Luz)
 	if hud != null:
 		hud.env = env
 		hud.indoors = indoors()
@@ -2118,6 +2135,15 @@ func explore_use(z: Dictionary) -> bool:
 		"generator":
 			_open_power_menu(d)
 			return true
+		"seal_panel":
+			var lkd: Dictionary = map.explore[int(d.get("leak", 0))]
+			if String(lkd["state"]) == "open":
+				lkd["state"] = "sealed"                    # 0.7.53.20 (Luz): the emergency bulkhead seals the torn module
+				_say_toast("The emergency plate slams over the hole – the air comes back, it warms up.", 3.0)
+				Audio.play("dock_clamp", "bulkhead sealed", -2.0)
+			else:
+				_say_toast("Sealed.", 1.2)
+			return true
 		"keycard":
 			if String(d["state"]) != "taken":
 				d["state"] = "taken"                       # 0.7.53.19 (Luz): the lifts' key card
@@ -2395,6 +2421,9 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 		"list":
 			txt = ""
 			_poi_target_done(d)
+		"logs":
+			txt = ""
+			_poi_target_done(d)                            # 0.7.53.20: the research station's logs
 		"restart":
 			txt = ""
 			_restart_reactor(d)                            # 0.7.53.3: the dealer's client list – the site's target
@@ -2508,6 +2537,13 @@ func _poi_target_done(d: Dictionary) -> void:
 		_say_toast("The captain's strongbox – %d cr and the Red Talons' bounty data. Get out before they regroup." % pay3, 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
+	if String(_site.get("theme", "")) == "research":
+		var pay5 := 500 + int(d.get("seed", 0)) % 400                # 0.7.53.20: the research logs
+		GameState.credits += pay5
+		GameState.research_data += 14
+		_say_toast("The research logs are yours – 14 research data, %d cr from a buyer. Back out when you like." % pay5, 5.5)
+		Audio.play("lock_acquired", "site target done", -2.0)
+		return
 	if String(_site.get("theme", "")) == "corp":
 		var pay4 := 1800 + int(d.get("seed", 0)) % 1200             # 0.7.53.19: the corporate vault
 		GameState.credits += pay4
@@ -2575,6 +2611,8 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 			mo = DungeonGen.build_alley(_body, _site)
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "plaza":
 			mo = DungeonGen.build_plaza(_body, _site)                                   # 0.7.53.19
+		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "station":
+			mo = DungeonGen.build_station_outside(_body, _site, lsz.x, lsz.y)          # 0.7.53.20
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "cliff":
 			mo = DungeonGen.build_cliff(_body, _site, lsz.x, lsz.y)                       # 0.7.53.11
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "lift":
@@ -2812,7 +2850,9 @@ func _mission_window() -> void:
 			+ ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
 		"spy": ("The data is in the security centre on the second level. " if String(_site.get("theme", "")) == "corp" else "The data is in the deepest computer. ") + "Unseen, they pay a bonus.",
 		"reactivate": "Restart the reactor on the lowest level.",
-		"rescue": "The prisoner is in the cells inside. Pick the lock; they follow you – bring them out alive."}
+		"recover": "The research computer is in the sample store below. Torn modules have no air and no warmth – seal their bulkheads.",
+		"rescue": ("The researchers are sealed into a cold store inside. Open it; they follow you – bring them out alive." if String(_site.get("theme", "")) == "research"
+			else "The prisoner is in the cells inside. Pick the lock; they follow you – bring them out alive.")}
 	v.add_child(UI.label(String(rules.get(String(_site.get("goal", "")), "")), 13, UI.TEXT_DIM))
 	v.add_child(UI.label("Pay: %s  •  danger: %s" % [GameData.fmt_credits(int(mm["reward"])), String(PoiData.DANGER.get(String(_site.get("danger", "yellow")), {}).get("name", ""))], 13, gold))
 	var go := func(): _close_lift_menu()
@@ -2828,7 +2868,7 @@ func _mission_event(kind: String) -> void:
 	if not bool(_site.get("mission", false)) or bool(_site.get("goal_done", false)):
 		return
 	var goal := String(_site.get("goal", ""))
-	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued"}
+	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued", "recover": "target"}
 	if String(want.get(goal, "")) != kind:
 		return
 	_site["goal_done"] = true

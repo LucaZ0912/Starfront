@@ -130,8 +130,8 @@ static func generate_ground(system_id: int, station: Dictionary, rng: RandomNumb
 		"progress": 0, "item": "", "amount": 0, "target_system": system_id, "target_station": "",
 		"faction": String(station.get("faction", "")), "against": ""}
 	return ground_offer(m, system_id, rng)
-const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2]]
-const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate"}
+const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2], ["recover", 2]]
+const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate", "recover": "research"}
 
 
 ## `variant` (debug, 0.7.53.19): the theme a heist or a spy job must use ("" rolled).
@@ -156,7 +156,9 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 		theme = "corp" if hr < 0.34 else ("sewer" if hr < 0.67 else "pirate")
 	elif kind == "spy" and hr < 0.4:
 		theme = "corp"
-	if variant != "" and kind in ["heist", "spy"]:
+	elif kind == "rescue" and hr < 0.4:
+		theme = "research"                             # 0.7.53.20 (Luz): researchers sealed in by looters
+	if variant != "" and kind in ["heist", "spy", "rescue"]:
 		theme = variant
 	var dealer := kind == "heist" and theme == "sewer"
 	var corp := theme == "corp"
@@ -237,11 +239,21 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 				d = "Download the data from the deepest computer in %s – a bonus if nobody sees you." % where
 				base = 8000
 		"rescue":
-			var who: String = ["a freighter captain", "a surveyor", "a courier", "a doctor", "an engineer"][rng.randi() % 5]
-			site["prisoner"] = who
-			t = "Rescue: %s held by the Red Talons" % who
-			d = "The Red Talons hold %s in the cells of %s. Get them out alive – they follow you; explosions and traps hurt them too." % [who, where]
-			base = 12000
+			if theme == "research":
+				site["prisoner"] = "a researcher"
+				t = "Rescue: the researchers of %s" % String(site["name"])
+				d = "Looters took %s; its researchers sealed themselves into a cold store. Get one of them out alive – they follow you; explosions and traps hurt them too." % where
+				base = 11000
+			else:
+				var who: String = ["a freighter captain", "a surveyor", "a courier", "a doctor", "an engineer"][rng.randi() % 5]
+				site["prisoner"] = who
+				t = "Rescue: %s held by the Red Talons" % who
+				d = "The Red Talons hold %s in the cells of %s. Get them out alive – they follow you; explosions and traps hurt them too." % [who, where]
+				base = 12000
+		"recover":
+			t = "Data recovery: %s" % String(site["name"])
+			d = "The research station %s fell silent – looters are inside. Bring back the research logs from its main computer." % where
+			base = 9000
 		"reactivate":
 			t = "Reactivation: %s" % String(site["city_name"])
 			d = "The power is out in the maintenance tunnels under %s (%s). Restart the reactor on the lowest level – the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]

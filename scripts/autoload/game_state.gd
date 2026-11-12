@@ -2103,7 +2103,10 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 		return out
 	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
 	var theme := "wreck" if rng.randf() < 0.4 else "precursor"           # 0.7.53.6: ruins or a crash site
-	var site := {"id": id, "name": PoiData.site_name(theme, rng), "kind": "crash" if theme == "wreck" else "ruins", "poi": true, "theme": theme,
+	const GearData53 = preload("res://data/gear.gd")
+	if not bool(GearData53.env_of(String(body.get("type", ""))).get("breathable", true)) and rng.randf() < 0.3:
+		theme = "research"                                               # 0.7.53.20: on a harsh world, a research station
+	var site := {"id": id, "name": PoiData.site_name(theme, rng), "kind": String(PoiData.THEMES[theme]["kind"]), "poi": true, "theme": theme,
 		"seed": rng.randi(), "danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}
 	if theme == "wreck":
 		var hl: Array = PoiData.THEMES["wreck"]["hulls"]

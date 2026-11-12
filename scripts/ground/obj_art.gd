@@ -143,6 +143,16 @@ static func _rise(kind: String) -> int:
 			return 30
 		"office_desk", "partition":         # 0.7.53.19 (Luz): an office desk with its screen, a low screen – low cover
 			return 12
+		"lab_bench":                        # 0.7.53.20 (Luz): a lab bench – low cover
+			return 12
+		"cryo_tank", "sample_cabinet":      # 0.7.53.20: a cryo tank, a sample cabinet – high cover
+			return 34
+		"dome":                             # 0.7.53.20: a station's dome (a greenhouse)
+			return 46
+		"radio_mast":                       # 0.7.53.20: its radio mast (~12 m)
+			return 170
+		"crawler":                          # 0.7.53.20: a snow crawler (~6 m)
+			return 30
 		"server_rack":                      # 0.7.53.19: a server cabinet (~2.2 m) – high cover
 			return 30
 		"pillar_corp":                      # 0.7.53.19: a lobby's square pillar up to the ceiling – high cover
@@ -282,6 +292,60 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 4, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
 			if pw > 32:
 				_r(img, pw / 2 - 1, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
+		"lab_bench":
+			# 0.7.53.20: a white lab bench, instruments on it, a monitor flickering, a cup left behind
+			var bl := fy + ph
+			_r(img, 1, bl - 14, pw - 2, 9, Color(0.86, 0.87, 0.9))
+			_r(img, 1, bl - 14, pw - 2, 1, Color(0.97, 0.97, 0.98))
+			_r(img, 1, bl - 5, pw - 2, 4, Color(0.55, 0.57, 0.6))
+			for eq in int(pw / 12):
+				_r(img, 3 + eq * 12, bl - 20, 8, 6, Color(0.3, 0.32, 0.36))
+				_r(img, 4 + eq * 12, bl - 19, 6, 3, [Color(0.3, 0.9, 0.6), Color(0.9, 0.3, 0.3), Color(0.3, 0.7, 1.0)][eq % 3])
+			_r(img, pw - 6, bl - 13, 3, 3, Color(0.95, 0.93, 0.88))
+		"cryo_tank":
+			# 0.7.53.20: a cryo tank – a glass cylinder lit blue, frost at its foot
+			var bc := fy + ph
+			_r(img, 3, bc - 44, pw - 6, 42, Color(0.32, 0.34, 0.38))
+			_r(img, 5, bc - 40, pw - 10, 34, Color(0.45, 0.75, 0.9))
+			_r(img, 7, bc - 38, 3, 30, Color(0.85, 0.97, 1.0))
+			_r(img, 3, bc - 46, pw - 6, 4, Color(0.55, 0.57, 0.62))
+			_r(img, 2, bc - 4, pw - 4, 3, Color(0.85, 0.92, 0.98))
+		"sample_cabinet":
+			# 0.7.53.20: a sample cabinet – white, rows of labelled drawers, a red light
+			var bs := fy + ph
+			_r(img, 1, bs - 40, pw - 2, 38, Color(0.84, 0.85, 0.88))
+			_r(img, 1, bs - 40, pw - 2, 5, Color(0.92, 0.93, 0.95))
+			for dr in range(bs - 32, bs - 6, 6):
+				_r(img, 4, dr, pw - 8, 4, Color(0.7, 0.72, 0.76))
+				_r(img, pw / 2 - 2, dr + 1, 4, 1, Color(0.35, 0.36, 0.4))
+			_p(img, pw - 5, bs - 37, Color(1.0, 0.25, 0.2))
+		"dome":
+			# 0.7.53.20: a dome – white panels, a lit window band, its little door
+			var bd := fy + ph
+			_ellipse(img, pw * 0.5, bd - 24, pw * 0.48, 26, Color(0.25, 0.27, 0.32))
+			_ellipse(img, pw * 0.5, bd - 24, pw * 0.46, 24, Color(0.78, 0.81, 0.86))
+			_ellipse(img, pw * 0.42, bd - 34, pw * 0.25, 12, Color(0.88, 0.9, 0.94))
+			for ln in 4:
+				_r(img, int(pw * 0.08), bd - 40 + ln * 9, int(pw * 0.84), 1, Color(0.6, 0.63, 0.68))
+			_r(img, int(pw * 0.15), bd - 14, int(pw * 0.7), 4, Color(0.3, 0.6, 0.35))       # green behind the glass
+			_r(img, int(pw * 0.5) - 5, bd - 12, 10, 12, Color(0.35, 0.37, 0.42))
+		"radio_mast":
+			# 0.7.53.20: a lattice radio mast, its red light on top
+			var bm := fy + ph
+			_r(img, pw / 2 - 1, bm - 170, 3, 170, Color(0.45, 0.47, 0.52))
+			for lt in range(bm - 168, bm, 10):
+				_r(img, 0, lt, pw, 1, Color(0.4, 0.42, 0.46))
+			_r(img, pw / 2 - 2, bm - 172, 5, 3, Color(1.0, 0.2, 0.15))
+		"crawler":
+			# 0.7.53.20: a snow crawler – tracks, an orange body, a cab
+			var bw := fy + ph
+			_r(img, 0, bw - 8, pw, 8, Color(0.14, 0.14, 0.16))
+			for tr in range(0, pw, 5):
+				_r(img, tr, bw - 8, 2, 8, Color(0.28, 0.28, 0.3))
+			_r(img, 2, bw - 30, pw - 4, 22, Color(0.85, 0.55, 0.15))
+			_r(img, 2, bw - 30, pw - 4, 3, Color(0.95, 0.7, 0.3))
+			_r(img, 6, bw - 40, int(pw * 0.45), 12, Color(0.25, 0.35, 0.45))
+			_r(img, 8, bw - 38, int(pw * 0.45) - 4, 6, Color(0.55, 0.75, 0.9))
 		"office_desk":
 			# 0.7.53.19: a white desk, its screen glowing, a keyboard, a cup; the chair before it
 			var b5 := fy + ph

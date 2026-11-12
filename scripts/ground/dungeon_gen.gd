@@ -190,6 +190,91 @@ static func build_alley(body: Dictionary, site: Dictionary) -> GroundMap:
 	return m
 
 
+# ---------------------------------------------------------------- outside: a research station (0.7.53.20)
+
+## 0.7.53.20 (Luz, package 53d): a research station on a harsh world – two white modules on stilts (their roofs seen
+## from above, their walls a band of windows), a tube between them, a dome, the radio mast; the airlock of the west
+## module (its terminal beside it) and a torn-open module in the east (the breach – open, or a plate to cut); the
+## looters' snow crawler, crates; the drone's pad in the south-west.
+static func build_station_outside(body: Dictionary, site: Dictionary, ship_len: float, ship_beam: float) -> GroundMap:
+	var th := _theme(site)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(site.get("seed", 53)) + 23
+	var m := GroundMap.new()
+	_palette(m, body, th)
+	m.set_meta("roofs", true)
+	m.title = String(site.get("name", "Research station"))
+	m.hull_top = -60
+	var sl := clampi(int(ceil(ship_len / TILE)) + 4, 10, 40)
+	var sb := clampi(int(ceil(ship_beam / TILE)) + 4, 7, 20)
+	var W := maxi(66, sl + 44)
+	var H := maxi(46, sb + 34)
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.FLOOR, 13)
+	m.fill(0, H - 1, W, 1, T.BLOCK, 13)
+	m.fill(0, 0, 1, H, T.BLOCK, 13)
+	m.fill(W - 1, 0, 1, H, T.BLOCK, 13)
+	m.fill(0, 0, W, 1, T.BLOCK, 13)
+	# the west module: roof rows 4–9, its wall four rows (the stilts the last)
+	var ax := 6
+	var aw := 18
+	m.fill(ax, 4, aw, 6, T.CAP)
+	m.fill(ax, 10, aw, 4, T.FACE)
+	# the tube to the east module
+	var bx := ax + aw + 8
+	m.fill(ax + aw, 6, 8, 2, T.CAP)
+	m.fill(ax + aw, 8, 8, 2, T.FACE)
+	# the east module, torn open
+	var bw := 18
+	m.fill(bx, 3, bw, 6, T.CAP)
+	m.fill(bx, 9, bw, 4, T.FACE)
+	# the airlock in the west module's wall, its terminal on a post beside it
+	var dx := ax + aw / 2
+	var lock := ExploreNode.add(m, "airlock", Vector2(dx + 0.5, 14) * TILE, {"no_zone": true, "seed": rng.randi(), "tiles": []})
+	var li := m.explore.find(lock)
+	ExploreNode.add(m, "terminal", Vector2(dx + 3.5, 15.4) * TILE, {"actions": ["door"], "door": li, "seed": rng.randi(), "level": 1})
+	# the breach in the east module's wall: open – or a buckled plate to cut away
+	var brx := bx + bw / 2
+	var breach := ExploreNode.add(m, "breach", Vector2(brx + 0.5, 13) * TILE, {"no_zone": true, "state": "open" if rng.randf() < 0.45 else "shut", "seed": rng.randi()})
+	var bi := m.explore.find(breach)
+	m.zones.append({"rect": Rect2(Vector2(brx + 0.5, 13) * TILE + Vector2(-26, -6), Vector2(52, 30)), "kind": "explore", "id": "explore", "i": bi, "title": "A module torn open"})
+	for e in [[Vector2(dx + 0.5, 14) * TILE, li, "Through the airlock – inside"], [Vector2(brx + 0.5, 13) * TILE, bi, "Through the torn module – inside"]]:
+		m.zones.append({"rect": Rect2((e[0] as Vector2) + Vector2(-20, -4), Vector2(40, 18)), "kind": "dungeon_in", "id": "dungeon_in", "gate": e[1],
+			"title": String(e[2]), "col": Color(1.0, 0.45, 0.35), "sign": Vector2(-100, -100)})
+	m.set_meta("door_front", Vector2(dx + 0.5, 15.6) * TILE)
+	# the dome, the radio mast, the looters' crawler, crates
+	m.add_object({"kind": "dome", "x": W - 14, "y": 20, "w": 9, "h": 4})
+	m.add_object({"kind": "radio_mast", "x": 2, "y": 16, "w": 2, "h": 1})
+	m.lights.append({"pos": Vector2(3, 16) * TILE + Vector2(0, -170), "r": 30.0, "col": Color(1.0, 0.2, 0.15), "a": 0.5, "flicker": true})
+	m.add_object({"kind": "crawler", "x": ax + aw + 2, "y": 22, "w": 6, "h": 3})
+	for cx in 3:
+		m.add_object({"kind": "crates", "x": bx + 3 + cx * 4, "y": 17 + (cx % 2) * 2, "w": 2, "h": 1})
+	for wl in range(ax + 2, bx + bw, 6):
+		m.lights.append({"pos": Vector2(wl, 12.5) * TILE, "r": 36.0, "col": Color(1.0, 0.85, 0.6), "a": 0.35})
+	# the pad, south-west, with the drone
+	var px0 := 4
+	var py0 := H - sb - 5
+	m.fill(px0, py0, sl, sb, T.FLOOR, 14)
+	m.decals.append({"kind": "landing_pad", "x": px0, "y": py0, "w": sl, "h": sb, "col": Color(0.95, 0.8, 0.2), "n": 1})
+	m.pad_rects.append(Rect2(Vector2(px0, py0) * TILE, Vector2(sl, sb) * TILE))
+	var sc := Vector2(px0 + sl * 0.5, py0 + sb * 0.5)
+	m.ship_at = sc * TILE
+	var sbx := int(sc.x - ship_len / TILE * 0.5) + 1
+	var sbw := maxi(2, int(ship_len / TILE) - 2)
+	var sbh := maxi(1, int(ship_beam / TILE) - 1)
+	m.fill(sbx, int(sc.y - sbh * 0.5), sbw, sbh, T.BLOCK, 14)
+	var rx := int(sc.x) - 1
+	var ry := int(sc.y + sbh * 0.5)
+	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
+	m.spawn = Vector2(rx + 1.0, ry + 2.6) * TILE
+	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * TILE, Vector2(3, 3.2) * TILE), "kind": "exit", "id": "ship",
+		"title": "Up the ramp – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "fuel_point", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 1, "rise": 34})
+	m.zones.append({"rect": Rect2(Vector2(px0 + sl + 0.4, py0 + 1.0) * TILE, Vector2(3.2, 1.6) * TILE), "kind": "charge", "id": "charge",
+		"title": "Supply point – energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
+	return m
+
+
 # ---------------------------------------------------------------- outside: a city's roof plaza (0.7.53.19)
 
 ## 0.7.53.19 (Luz, package 53d): up the lift to a roof plaza – open to the sky: the city beyond the railing with its
@@ -668,6 +753,14 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			n_cache += 5
 			m.lights.append({"pos": rc * TILE, "r": 70.0, "col": Color(1.0, 0.75, 0.3), "a": 0.4})
 			targets.append(["loot_room", "The captain's hoard – behind a code door, the command room opens it"])
+		elif String(th.get("target", "")) == "research_logs":
+			# 0.7.53.20 (Luz): the sample store – the research computer with the station's logs, cabinets of samples
+			ExploreNode.add(m, "terminal", Vector2(rc.x, rc.y - 0.6) * TILE, {"actions": ["logs"], "target": true, "seed": rng.randi(), "level": 1 + int(String(site.get("danger", "yellow")) == "red")})
+			for sc4 in 3:
+				ExploreNode.add(m, "crate", Vector2(vr.position.x + 2.0 + sc4 * 2.6, vr.position.y + 1.8) * TILE, {"seed": rng.randi(), "theme": theme, "welded": sc4 == 0})
+			n_cache += 3
+			m.lights.append({"pos": rc * TILE, "r": 70.0, "col": Color(0.5, 0.85, 1.0), "a": 0.45})
+			targets.append(["research_logs", "The research computer – its logs, in the sample store below"])
 		elif String(th.get("target", "")) == "corp_vault":
 			# 0.7.53.19 (Luz): the vault – shelves of strongboxes, the main one in the middle
 			for lc2 in 5:
@@ -835,6 +928,18 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			var tp := Vector2(r10.position.x + 1.5 + rng.randi_range(0, r10.size.x - 3), r10.position.y + 0.9) * TILE
 			ExploreNode.add(m, "tnt", tp, {"no_zone": true, "seed": rng.randi()})
 			tn += 1
+	elif String(th.get("traps", "")) == "lab":
+		var placed5 := 0
+		for e9 in edges:
+			if placed5 >= 3:
+				break
+			var spot5 := _wire_spot(m, rooms[e9[0]], rooms[e9[1]], corr)
+			if spot5.is_empty():
+				continue
+			var sp5: Vector2 = spot5["pos"]
+			var mid5: Vector2 = sp5 + (Vector2(0, TILE * 1.0) if bool(spot5["vertical"]) else Vector2(TILE * 1.0, 0))
+			ExploreNode.add(m, "gas" if placed5 != 1 else "steam", mid5, {"no_zone": true, "r": 24.0, "seed": rng.randi()})
+			placed5 += 1
 	elif String(th.get("traps", "")) == "beams" and bool(th.get("beams", false)):
 		# 0.7.53.19 (Luz): light barriers across the ways to the vault – crossed, they ring the alarm
 		var placed4 := 0
@@ -891,6 +996,25 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				var vent := ExploreNode.add(m, "vent", Vector2(vx + 0.5, sr2.position.y) * TILE, {"duct": duct, "label": "VENT-%02d" % rng.randi_range(10, 99), "seed": rng.randi()})
 				ExploreNode.add(m, "vent_end", Vector2(tx + (1 if stp > 0 else 0), vr.position.y) * TILE, {"no_zone": true, "vent": m.explore.find(vent)})
 				vent_ok = true
+	# 0.7.53.20 (Luz): a module or two torn open – the world outside comes in until its emergency bulkhead is sealed
+	if bool(th.get("pressurized", false)):
+		m.set_meta("pressurized", true)
+	if th.has("leaks"):
+		var lk_cells: Array = cells.filter(func(cl9): return is_room[cl9] and not role_of.get(cl9, "") in ["vault", "entrance"] and cl9 != cells_c)
+		_shuffle(lk_cells, rng)
+		var n_lk := rng.randi_range(int(th["leaks"][0]), int(th["leaks"][1]))
+		for lkc in lk_cells.slice(0, n_lk):
+			var lr: Rect2i = rooms[lkc]
+			var lx := _wall_spot(m, lr, lr.position.x + lr.size.x / 2)
+			var leak := ExploreNode.add(m, "leak", Vector2(lx + 0.5, lr.position.y) * TILE, {"no_zone": true, "wall": true, "state": "open", "seed": rng.randi(),
+				"rect": [lr.position.x, lr.position.y, lr.size.x, lr.size.y]})
+			var lki := m.explore.find(leak)
+			m.zones.append({"rect": Rect2(Vector2(lr.position) * TILE, Vector2(lr.size) * TILE), "kind": "leak", "id": "leak", "i": lki, "title": ""})
+			var sx2 := _wall_spot(m, lr, lr.position.x + 1)
+			if absi(sx2 - lx) < 3:
+				sx2 = _wall_spot(m, lr, lr.end.x - 2)
+			ExploreNode.add(m, "seal_panel", Vector2(sx2 + 0.5, lr.position.y) * TILE, {"wall": true, "leak": lki, "seed": rng.randi()})
+			targets.append(["leak", "A module torn open – no air, no warmth, until its bulkhead is sealed"])
 	# 0.7.53.19 (Luz): cameras on the rooms' walls, sweeping – seen, the alarm rings; the key card for the lifts
 	if th.has("cams"):
 		var cam_cells: Array = cells.filter(func(cc9): return is_room[cc9] and role_of.get(cc9, "") != "vault")
@@ -927,15 +1051,15 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	if cells_c.x >= 0:
 		var clr: Rect2i = rooms[cells_c]
 		var cpos := Vector2(clr.position.x + clr.size.x * 0.5, clr.position.y + 2.0) * TILE
-		ExploreNode.add(m, "cells", cpos, {"no_zone": true, "w": clr.size.x - 2, "seed": rng.randi(), "prisoner": rescue})
+		ExploreNode.add(m, "cells", cpos, {"no_zone": true, "w": clr.size.x - 2, "seed": rng.randi(), "prisoner": rescue, "style": String(th.get("style", ""))})
 		m.fill(clr.position.x + 1, clr.position.y, clr.size.x - 2, 2, T.BLOCK, rf)
 		if rescue:
 			# 53c (Luz): the prisoner of a rescue – pick the cell's lock (E)
 			m.zones.append({"rect": Rect2(cpos + Vector2(-30, -6), Vector2(60, 22)), "kind": "explore", "id": "explore", "i": m.explore.size() - 1,
 				"title": "The cell – pick its lock (E)"})
-			targets.append(["cells", "The prisoner – in the cells"])
+			targets.append(["cells", "The prisoner – in the cells" if String(th.get("style", "")) != "research" else "The researchers – sealed into a cold store"])
 		else:
-			targets.append(["cells", "Prisoners in cells – for a rescue, later"])
+			targets.append(["cells", "Prisoners in cells – for a rescue, later"] if String(th.get("style", "")) != "research" else ["shelter", "People sealed into a cold store"])
 	# ---- foes: in the guard rooms and – in the tunnels – at the junctions
 	var foes: Array = []
 	var tiers: Array = dg["tiers"]

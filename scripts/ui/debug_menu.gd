@@ -728,7 +728,7 @@ func _world_types(first: String) -> Array:
 const GROUND_JOBS := [["relic", "", "Relic race (ruin)"], ["salvage", "", "Salvage (crash site)"], ["bounty_foot", "", "Bounty on foot (pirate base)"],
 	["heist", "pirate", "Heist – pirate base"], ["heist", "sewer", "Heist – the dealer's safe (city)"], ["heist", "corp", "Heist – corporate vault (city)"],
 	["spy", "", "Espionage – a site"], ["spy", "corp", "Espionage – corporate tower (city)"], ["reactivate", "", "Reactivation (city tunnels)"],
-	["rescue", "", "Rescue (pirate base)"]]
+	["rescue", "pirate", "Rescue (pirate base)"], ["rescue", "research", "Rescue (research station)"], ["recover", "", "Data recovery (research station)"]]
 const SPACE_JOBS := [["courier", "Courier"], ["bounty", "Bounty"], ["mining", "Supply"], ["survey", "Survey"], ["escort", "Escort"],
 	["patrol", "Patrol"], ["smuggler", "Intercept"], ["hunt", "Hunt"], ["drone_trial", "Drone trial"], ["passenger", "Passengers"]]
 

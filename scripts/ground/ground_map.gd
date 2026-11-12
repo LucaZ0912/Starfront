@@ -494,6 +494,22 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px + TILE - 1, py, 1, TILE, ct.darkened(0.12))
 			for k in 4:
 				_px(px + int(hash2(x, y, k + 140) * 15), py + int(hash2(y, x, k + 141) * 15), ct.lightened(0.08))
+		31:             # 0.7.53.20 (Luz): a research module's rubber mats – dark, ribbed, a seam now and then
+			var rb: Color = Color(pal["floor"]).lerp(Color(pal["floor2"]), hash2(x, y, 181))
+			_rect(px, py, TILE, TILE, rb)
+			for k in 4:
+				_rect(px + 1, py + 2 + k * 4, TILE - 2, 1, rb.lightened(0.07))
+			_rect(px, py + TILE - 1, TILE, 1, rb.darkened(0.3))
+			_rect(px + TILE - 1, py, 1, TILE, rb.darkened(0.25))
+			if hash2(x, y, 182) < 0.05:
+				_rect(px + 3, py + 4, 6, 3, Color(0.85, 0.9, 0.95, 0.5))          # snow carried in
+		32:             # 0.7.53.20: a tube between modules – ribbed, grey-white, cable runs at its sides
+			var tb2 := Color(0.55, 0.57, 0.6).lerp(Color(0.5, 0.52, 0.55), hash2(x, y, 191))
+			_rect(px, py, TILE, TILE, tb2)
+			if (x + y) % 2 == 0:
+				_rect(px, py, TILE, 2, Color(0.72, 0.74, 0.78))
+				_rect(px, py, 2, TILE, Color(0.72, 0.74, 0.78))
+			_rect(px + 6, py + 6, 4, 4, tb2.darkened(0.15))
 		30:             # 0.7.53.19: a roof plaza's warm paving, laid in bond
 			var pv := Color(0.7, 0.66, 0.6).lerp(Color(0.64, 0.6, 0.55), hash2(x, y, 151))
 			_rect(px, py, TILE, TILE, pv)
@@ -838,6 +854,53 @@ func _corp_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px, py + TILE - 3, TILE, 1, Color(pal["trim"]).lightened(0.25))
 
 
+## 0.7.53.20 (Luz): a research module's wall – white panels, an orange stripe, a band of windows (inside: the snow
+## beyond them); outside, its lowest row the stilts it stands on.
+func _module_face(x: int, y: int, px: int, py: int) -> void:
+	var fy := y - _face_top(x, y)
+	var last := t_at(x, y + 1) != T.FACE
+	if last and has_meta("roofs"):
+		_rect(px, py, TILE, TILE, Color(pal.get("terrain_b", Color(0.5, 0.45, 0.35))).darkened(0.4))      # under the module: its shadow, the stilts
+		_rect(px, py, TILE, 6, Color(0.42, 0.44, 0.48))
+		if x % 4 == 1:
+			_rect(px + 6, py + 6, 3, TILE - 6, Color(0.3, 0.31, 0.35))
+		return
+	var wl: Color = Color(pal["wall"]).lerp(Color(pal["wall"]).darkened(0.06), hash2(x / 2, 0, 201))
+	_rect(px, py, TILE, TILE, wl)
+	if x % 3 == 0:
+		_rect(px, py, 1, TILE, wl.darkened(0.18))
+	if fy == 0:
+		_rect(px, py, TILE, 2, wl.lightened(0.1))
+		_rect(px, py + 3, TILE, 2, Color(pal["trim"]))                         # the orange stripe
+	if fy == 1:
+		_rect(px + 2, py + 3, 12, 9, Color(0.16, 0.2, 0.27))                   # a window
+		_rect(px + 2, py + 3, 12, 1, Color(0.6, 0.62, 0.66))
+		if has_meta("roofs"):
+			if hash2(x, y, 202) < 0.6:
+				_rect(px + 3, py + 4, 10, 7, Color(1.0, 0.85, 0.55).darkened(0.25))     # warm light inside
+		else:
+			for sn in 3:
+				_px(px + 3 + int(hash2(x, sn, 203) * 10), py + 4 + int(hash2(sn, x, 204) * 6), Color(0.9, 0.95, 1.0))    # the snow beyond
+	if last:
+		_rect(px, py + TILE - 3, TILE, 3, Color(0.45, 0.47, 0.52))
+
+
+## 0.7.53.20: a module's roof seen from above – light grey panels, a vent here and there.
+func _module_roof(x: int, y: int, px: int, py: int) -> void:
+	var rc := Color(0.66, 0.69, 0.74).lerp(Color(0.6, 0.63, 0.68), hash2(x / 2, y, 211))
+	_rect(px, py, TILE, TILE, rc)
+	if x % 2 == 0:
+		_rect(px, py, 1, TILE, rc.darkened(0.18))
+	if t_at(x, y - 1) != T.CAP:
+		_rect(px, py, TILE, 2, Color(0.22, 0.24, 0.3))
+	if t_at(x - 1, y) != T.CAP:
+		_rect(px, py, 2, TILE, Color(0.22, 0.24, 0.3))
+	if t_at(x + 1, y) != T.CAP:
+		_rect(px + TILE - 2, py, 2, TILE, Color(0.22, 0.24, 0.3))
+	if hash2(x, y, 212) < 0.06:
+		_rect(px + 3, py + 4, 9, 6, Color(0.4, 0.42, 0.46))                     # a vent
+
+
 ## 0.7.53.19: an office tower's glass front – blue-grey panes in a steel grid, the sky's sheen on them.
 func _tower_glass(x: int, y: int, px: int, py: int) -> void:
 	var gc := Color(0.3, 0.42, 0.55).lerp(Color(0.24, 0.34, 0.46), hash2(x, y, 171) * 0.5)
@@ -883,7 +946,10 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
-	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate", "corp", "plaza"]:
+	if style == "research" and has_meta("roofs"):
+		_module_roof(x, y, px, py)                     # 0.7.53.20: outside – the modules' roofs
+		return
+	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate", "corp", "plaza", "research"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -983,6 +1049,9 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 		return
 	if style == "corp":
 		_corp_face(x, y, px, py)
+		return
+	if style == "research":
+		_module_face(x, y, px, py)
 		return
 	if style == "plaza":
 		if x >= int(get_meta("tower_x", 9999)):

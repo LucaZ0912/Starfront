@@ -441,7 +441,7 @@ func _build_town() -> void:
 	rng.seed = hash(String(site.get("id", ""))) + 5
 	var kd := String(site.get("kind", "outpost"))
 	# the pads, two by two – 0.7.52.10 (fix): ruins and crash sites have only the one landing field, no settlement pads
-	if kd in ["ruins", "crash"]:
+	if kd in ["ruins", "crash", "pirate", "research_st"]:
 		_tp(PADS_AT, 0.42, TP.PAD, 0.0)
 	else:
 		for pi in 4:
@@ -450,6 +450,8 @@ func _build_town() -> void:
 		for i in 16:
 			_tp(Vector2(rng.randf_range(-3.0, 3.0), rng.randf_range(-2.5, 1.2)), rng.randf_range(0.25, 0.6), TP.RUIN, rng.randf())
 		return
+	if kd in ["pirate", "research_st"]:
+		return                                          # 0.7.53.20 (fix): a site of its own – no settlement round its pad
 	if kd == "crash":
 		var d0 := Vector2.from_angle(rng.randf() * TAU)
 		_road(Vector2(0, -1.0) - d0 * 0.5, Vector2(0, -1.0) + d0 * 3.5, 0.45, true)   # the furrow it ploughed

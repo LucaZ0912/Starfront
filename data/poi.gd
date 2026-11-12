@@ -130,6 +130,27 @@ const THEMES := {
 			{"room_floor": 21, "hall_floor": 21, "floor": Color(0.42, 0.43, 0.45), "floor2": Color(0.38, 0.39, 0.41),
 				"wall": Color(0.5, 0.51, 0.53), "trim": Color(0.35, 0.36, 0.38), "door": "vault_door", "keycard": false, "carpet_share": 0.0,
 				"props": ["server_rack", "barrier", "crates", "pillar_corp"], "cams": [2, 3], "beams": true, "dark": Color(0.8, 0.84, 0.9)}]},
+	# 0.7.53.20 (Luz, package 53d): a research station on a harsh world – white modules on stilts joined by long narrow
+	# tubes; labs, quarters, stores; looters have taken it. Some modules are torn open: no air, no warmth (the world
+	# outside comes in – the suit draws on its energy) until their emergency bulkhead is sealed. The research computer
+	# with its logs below, in the sample store.
+	"research": {"name": "Research station", "kind": "research_st", "style": "research", "room_floor": 31, "hall_floor": 32,
+		"floor": Color(0.3, 0.31, 0.33), "floor2": Color(0.27, 0.28, 0.3), "wall": Color(0.88, 0.89, 0.91),
+		"wall_top": Color(0.1, 0.11, 0.13), "trim": Color(0.95, 0.45, 0.2), "accent": Color(0.4, 0.85, 1.0),
+		"light": Color(0.85, 0.95, 1.0),
+		"door": "bulkhead", "computer": "",
+		"foes": ["bandit_scrapper", "bandit_rifleman", "bandit_gunner"], "leader": "bandit_boss",
+		"props": ["lab_bench", "cryo_tank", "crates", "sample_cabinet", "lab_bench"],
+		"guard": "", "traps": "lab", "fog": false, "dark": Color(0.82, 0.86, 0.92), "outside": "station", "target": "research_logs",
+		"pressurized": true, "leaks": [1, 1], "cells": true,
+		"tablets": 0, "vent": false, "descent": "hatch", "stores": [1, 2],
+		"cols": [3, 4], "rows": [2, 3], "cell_w": 20, "cell_h": 14, "room_w": [8, 12], "room_h": [6, 8], "room_chance": 0.85,
+		"corr": 2, "loops": [1, 2], "cover": [3, 5],
+		"loot": ["cs_medkit", "cs_cell", "cs_ammo", "cs_breach"],
+		"credits": [120, 360], "research": [6, 14], "museum_chance": 0.0,
+		"names_a": ["Frost", "Polar", "Deep", "Far", "Cold", "High", "Long", "Quiet"],
+		"names_b": ["Point", "Reach", "Watch", "Station", "Outlook", "Field", "Camp", "Base"],
+		"layers": [{}, {"room_floor": 21, "props": ["sample_cabinet", "crates", "cryo_tank", "crates"], "leaks": [0, 1]}]},
 	# 0.7.53.3 (Luz, package 53b): the way down from a city – the sewers, and deep in them an arms dealer's hideout
 	"sewer": {"name": "Sewers and a dealer's hideout", "kind": "sewer", "style": "sewer", "room_floor": 21, "hall_floor": 19,
 		"floor": Color(0.3, 0.31, 0.3), "floor2": Color(0.26, 0.27, 0.26), "wall": Color(0.38, 0.39, 0.37),
@@ -223,6 +244,9 @@ const TARGETS := {
 	"beams": {"col": Color(1.0, 0.2, 0.15), "needs": "do not cross them – the security centre switches them off", "gives": "no alarm"},
 	"keycard": {"col": Color(0.4, 0.85, 1.0), "needs": "find it – in an office", "gives": "the lifts down"},
 	"stairs": {"col": Color(1.0, 0.45, 0.35), "needs": "–", "gives": "a quick way down – but its door rings the alarm"},
+	"research_logs": {"col": Color(0.4, 0.85, 1.0), "needs": "down to the sample store · E-Breach on the research computer", "gives": "the station's research logs – a lot of research data"},
+	"leak": {"col": Color(0.6, 0.85, 1.0), "needs": "seal its emergency bulkhead (the panel by it)", "gives": "air and warmth back in that module"},
+	"shelter": {"col": Color(0.8, 0.8, 0.8), "needs": "–", "gives": "people sealed into a cold store – a rescue, maybe"},
 	"security": {"col": Color(0.4, 1.0, 0.6), "needs": "E-Breach on its computer", "gives": "cameras and light barriers off – and the company's data"},
 }
 
@@ -241,6 +265,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 		return "The %s %s" % [a, b]
 	if String(th["kind"]) == "corp":
 		return "%s %s Tower" % [a, b]
+	if String(th["kind"]) == "research_st":
+		return "%s %s" % [a, b]
 	if String(th["kind"]) == "crash":
 		return "Wreck of the %s %s" % [a, b]
 	return "%s of %s-%s" % ["Ruin" if String(th["kind"]) == "ruins" else "Site", a, b.capitalize()]

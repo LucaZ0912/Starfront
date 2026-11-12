@@ -3063,6 +3063,9 @@ const SITE_KINDS := {
 	"ruins": {"name": "Ruins", "icon": "◆", "col": Color(0.75, 0.55, 1.0), "text": "Older than the colonies, some say older than the Severance."},
 	"crash": {"name": "Crash site", "icon": "✖", "col": Color(1.0, 0.45, 0.35), "text": "A ship came down here. What it carried may still lie in the wreck."},
 	"research": {"name": "Research camp", "icon": "✚", "col": Color(0.45, 1.0, 0.6), "text": "Scientists in a few huts and many instruments."},
+	# 0.7.53.20: the sites of jobs and visits that are no settlements (fix: the planet map knows them)
+	"pirate": {"name": "Pirate base", "icon": "☠", "col": Color(1.0, 0.3, 0.25), "text": "A base cut into a cliff – the Red Talons hold it."},
+	"research_st": {"name": "Research station", "icon": "◎", "col": Color(0.5, 0.9, 1.0), "text": "White modules on stilts – it fell silent; looters are inside."},
 }
 const CITY_ENDS := ["Port", "Haven", "Landing", "Reach", "Crossing", "Heights", "Springs", "Falls", "Gate", "Hold"]
 const CITY_STARTS := ["New", "Fort", "Saint", "Old", "Upper", "Lower", "East", "West", "Port", ""]
