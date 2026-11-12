@@ -409,6 +409,10 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	m.hull_top = -60
 	var cols := rng.randi_range(int(th["cols"][0]), int(th["cols"][1]))
 	var rows := rng.randi_range(int(th["rows"][0]), int(th["rows"][1]))
+	var red := String(site.get("danger", "yellow")) == "red"
+	if red and not bool(th.get("spine", false)):
+		cols += 1                                        # 0.7.53.24 (Luz): a dangerous site is a bigger one
+		rows += 1 if rows < 3 else 0
 	var cw := int(th["cell_w"])
 	var chh := int(th["cell_h"])
 	var corr := int(th["corr"])
@@ -441,7 +445,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	_shuffle(spare, rng)
 	var control: Vector2i = spare[0]
 	var stores: Array = []
-	for si in rng.randi_range(int(th.get("stores", [1, 2])[0]), int(th.get("stores", [1, 2])[1])):
+	for si in rng.randi_range(int(th.get("stores", [1, 2])[0]), int(th.get("stores", [1, 2])[1])) + (1 if red else 0):
 		if spare.size() > si + 2:
 			stores.append(spare[1 + si])
 	var tablet_c := Vector2i(-1, -1)
@@ -629,7 +633,44 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 					break
 			if side_room.has_area():
 				break
+	# 0.7.53.24 (Luz): a hidden cache – a chamber behind a cracked wall on a level whose tablets or monolith tell of it
+	var hid_tiles: Array = []
+	var hid_room := Rect2i()
+	var hidden_ok := false
+	var hints := (last and tablet_c.x >= 0) or String(th.get("computer", "")) == "monolith"
+	if hints and not side_room.has_area():
+		for c12 in cells:
+			if hid_room.has_area() or not is_room[c12] or c12 == entr_c:
+				continue
+			var r12: Rect2i = rooms[c12]
+			for dir2 in [1, -1]:
+				var x2 := r12.end.x if dir2 == 1 else r12.position.x - 11
+				var y2 := r12.position.y + r12.size.y / 2 - 2
+				var ok2 := true
+				for yy in range(y2 - 3, y2 + 6):
+					for xx in (range(x2, x2 + 12) if dir2 == 1 else range(x2 - 1, x2 + 11)):
+						if m.t_at(xx, yy) != T.CAP:
+							ok2 = false
+				if ok2:
+					var sx2 := x2 if dir2 == 1 else x2 + 6
+					m.fill(sx2, y2 + 1, 5, 3, T.FLOOR, hf)
+					hid_room = Rect2i(x2 + (5 if dir2 == 1 else 0), y2, 6, 5)
+					m.fill(hid_room.position.x, hid_room.position.y, hid_room.size.x, hid_room.size.y, T.FLOOR, rf)
+					var hx := sx2 if dir2 == 1 else sx2 + 3
+					for hy in 3:
+						for hxx in 2:
+							hid_tiles.append([hx + hxx, y2 + 1 + hy])
+					break
 	_faces(m)
+	for ht in hid_tiles:
+		m.set_t(int(ht[0]), int(ht[1]), T.BLOCK, rf)
+	if not hid_tiles.is_empty():
+		var hw := ExploreNode.add(m, "cracked_wall", Vector2(float(hid_tiles[0][0]) + 1.0, float(hid_tiles[0][1]) + 3.0) * TILE, {"tiles": hid_tiles, "seed": rng.randi(), "no_zone": true})
+		m.set_meta("hidden_wall", m.explore.find(hw))
+		m.zones.append({"rect": Rect2(Vector2(float(hid_tiles[0][0]) - 1.0, float(hid_tiles[0][1])) * TILE, Vector2(4, 3) * TILE), "kind": "explore", "id": "explore",
+			"i": m.explore.find(hw), "title": "A cracked wall – it sounds hollow (a cutting torch gets through)"})
+		ExploreNode.add(m, "crate", Vector2(hid_room.position.x + 3, hid_room.position.y + 3.2) * TILE, {"seed": rng.randi(), "theme": theme, "museum": true, "hidden": true})
+		hidden_ok = true
 	for rt in rubble_tiles:
 		m.set_t(int(rt[0]), int(rt[1]), T.BLOCK, hf)
 	if not rubble_tiles.is_empty():
@@ -734,6 +775,8 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	var di := -1
 	var ci := -1
 	var targets: Array = targets_pre.duplicate()
+	if hidden_ok:
+		targets.append(["hidden", "Something is hidden on this level – the inscriptions may tell where"])
 	if not rubble_tiles.is_empty():
 		targets.append(["rubble", "A buried side drift – something was stored behind the fall"])
 	var n_cache := 0

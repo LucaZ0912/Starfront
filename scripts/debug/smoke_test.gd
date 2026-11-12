@@ -10398,6 +10398,27 @@ func _test_darkones(view: SystemView) -> void:
 		g.pilot.pos = glyph["pos"]
 		g._cams_step(0.1)
 		in_ok = in_ok and String(glyph["state"]) == "spent"
+	# 0.7.53.24 (Luz): a hidden cache – the monolith tells of it (a ? on the map), the cutting torch opens the cracked wall
+	var hid_ok := true
+	if g.map.has_meta("hidden_wall"):
+		var hw: Dictionary = g.map.explore[int(g.map.get_meta("hidden_wall"))]
+		g.scan_done(find.call("monolith"))
+		var hinted: bool = bool(hw.get("hinted", false))
+		var keep_b = gear.belt[0]
+		gear.belt[0] = {"id": "tl_cutter:C", "n": 1}
+		g.explore_use({"i": g.map.explore.find(hw)})
+		gear.belt[0] = keep_b
+		var t0: Array = hw["tiles"][0]
+		hid_ok = hinted and String(hw["state"]) == "open" and GroundMap.walkable_t(g.map.t_at(int(t0[0]), int(t0[1]))) 			and g.map.explore.any(func(dh): return String(dh["kind"]) == "crate" and bool(dh.get("hidden", false)))
+	else:
+		hid_ok = false
+	# 0.7.53.24: a dangerous site is a bigger one
+	var gm: GroundMap = DungeonGen53.build_inside({}, {"theme": "precursor", "seed": 777, "danger": "green"}, 0)
+	var rm: GroundMap = DungeonGen53.build_inside({}, {"theme": "precursor", "seed": 777, "danger": "red"}, 0)
+	var big_ok: bool = rm.w * rm.h > gm.w * gm.h
+	in_ok = in_ok and hid_ok and big_ok
+	if not (hid_ok and big_ok):
+		print("[SMOKE] hidden/big: ", hid_ok, " ", big_ok, " ", g.map.has_meta("hidden_wall"))
 	# the bottom: the membrane and its symbols, the sleeper, the relic
 	g.depth = 2
 	g.go_level("dungeon", "dungeon_down")
@@ -10444,7 +10465,7 @@ func _test_darkones(view: SystemView) -> void:
 	gear.combat_t = 0.0
 	main._update_input()
 	check(out_ok and wave_ok and vis_ok and in_ok and bot_ok and job_ok and Universe.SITE_KINDS.has("darkruin"),
-		"53d: the Dark Ones' ruin – the maw opens to its symbols in order (a wrong one: a wave; the monolith's vision tells the order); inside empty, monoliths, glyphs, a maw down; at the bottom the membrane, the sleeper, the relic for the Museum; the job finds the cult  [%s]" % " ".join(PackedStringArray([str(out_ok), str(wave_ok), str(vis_ok), str(in_ok), str(bot_ok), str(job_ok)])))
+		"53d: the Dark Ones' ruin – the maw opens to its symbols in order (a wrong one: a wave; the monolith's vision tells the order); inside empty, monoliths, glyphs, a maw down, a hidden cache the monolith tells of (behind a cracked wall); a red site is bigger; at the bottom the membrane, the sleeper, the relic for the Museum; the job finds the cult  [%s]" % " ".join(PackedStringArray([str(out_ok), str(wave_ok), str(vis_ok), str(in_ok), str(bot_ok), str(job_ok)])))
 
 ## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine: the headframe outside (its chained gate),
 ## the drifts with their rails, the cage without power (the generator), boxes of explosives that go up, the deepest

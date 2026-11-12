@@ -3,6 +3,16 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.24 – 2026-11-12
+
+**Package 53d – hidden caches and bigger sites (Luz).**
+- **Hidden caches:** on a level with carved tablets (the Precursors' vault level) or a monolith (the Dark Ones) a small
+  chamber may lie behind a **cracked wall**. Scanning the tablets or the monolith tells of it – it is marked on the
+  minimap with a **?**. A cutting torch gets through the wall; the cache behind it holds three times the credits and
+  most likely a find for the Museum.
+- **Bigger sites:** a site of red danger has one more column and row of rooms (where its shape allows) and one more
+  store.
+
 ## alpha 0.7.53.23 – 2026-11-12
 
 **Package 53d – the ruin of the Dark Ones (Luz).** Rare and far out (the Far Reaches, near the Veil), a site on the

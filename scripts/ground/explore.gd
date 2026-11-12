@@ -30,6 +30,7 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"keycard": "A key card – take it (E)",
 	"seal_panel": "Emergency bulkhead – seal the torn module (E)",
 	"symbol_pillar": "Symbol stones – touch the symbols in their order (E)",
+	"cracked_wall": "A cracked wall – it sounds hollow (a cutting torch gets through)",
 	"monolith": "A monolith – scan it (scanner on your belt)",
 	"membrane": "A membrane of living stone – sealed (the symbol stones beside it)",
 	"vault_door": "The vault door – its lock wants a hack, then the drill (the terminal beside it)",
@@ -640,6 +641,19 @@ func _draw() -> void:
 			for st2 in 6:
 				draw_rect(Rect2(-16 + st2 * 2, -6 - st2 * 6, 32 - st2 * 4, 5), Color(0.2, 0.18, 0.24).lightened(st2 * 0.04))
 				draw_rect(Rect2(-16 + st2 * 2, -6 - st2 * 6, 32 - st2 * 4, 1), Color(0.35, 0.32, 0.4))
+		"cracked_wall":
+			# 0.7.53.24 (Luz): a wall that is not quite a wall – cracks, a few stones loose, dust at its foot; cut, gone
+			if String(d.get("state", "")) != "open":
+				var tl4: Array = d["tiles"]
+				var x0 := (float(tl4[0][0]) * 16.0) - (d["pos"] as Vector2).x
+				var y0 := (float(tl4[0][1]) * 16.0) - (d["pos"] as Vector2).y
+				draw_rect(Rect2(x0, y0, 32, 48), Color(0.3, 0.28, 0.27))
+				for st4 in 9:
+					draw_rect(Rect2(x0 + (st4 % 3) * 11 + 1, y0 + (st4 / 3) * 16 + 2, 9, 13), Color(0.36, 0.34, 0.32).darkened(0.08 * (st4 % 2)))
+				for ck in 5:
+					var cx4 := x0 + 4 + ck * 6
+					draw_line(Vector2(cx4, y0 + 6), Vector2(cx4 + 4, y0 + 22 + ck * 3), Color(0.1, 0.09, 0.09), 1.0)
+				draw_rect(Rect2(x0 - 2, y0 + 46, 36, 3), Color(0.45, 0.42, 0.38, 0.7))
 		"glyph_trap":
 			# 0.7.53.23: a glyph on the floor, glowing faintly – spent, it is dark
 			if String(d.get("state", "")) != "spent":

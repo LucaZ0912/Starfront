@@ -2401,6 +2401,21 @@ func explore_use(z: Dictionary) -> bool:
 		"tablet", "relic", "monolith":
 			_say_toast("Hold the scanner's belt key here to scan it." if belt_tool("tl_scanner") != "" else "You need a scanner on your belt to read it.", 3.0)
 			return true
+		"cracked_wall":
+			if String(d["state"]) == "open":
+				return true
+			if belt_tool("tl_cutter") == "":
+				_say_toast("A cracked wall – it sounds hollow behind it. A cutting torch on your belt would get through.", 3.0)
+				return true
+			d["state"] = "open"                            # 0.7.53.24 (Luz): through the cracked wall – the hidden cache
+			for ht in d["tiles"]:
+				map.set_t(int(ht[0]), int(ht[1]), GroundMap.T.FLOOR, map.floor_kind[int(ht[1]) * map.w + int(ht[0])])
+			map._astar = null
+			if combat != null:
+				combat._build_cover()
+			_say_toast("The torch bites, the stones fall in – a hidden chamber behind them.", 3.0)
+			Audio.play("explosion_small", "wall falls in", -8.0)
+			return true
 		"symbol_pillar":
 			if String(d["state"]) == "open":
 				_say_toast("The signs glow – it is open.", 1.5)
@@ -2613,6 +2628,8 @@ func _loot(d: Dictionary) -> void:
 	var cr := rng.randi_range(int(th["credits"][0]), int(th["credits"][1]))
 	if bool(d.get("safe", false)):
 		cr *= 3                                          # 0.7.53.3: the dealer's safe
+	if bool(d.get("hidden", false)):
+		cr *= 3                                          # 0.7.53.24: a hidden cache
 	GameState.credits += cr
 	var got: Array = ["%d cr" % cr]
 	if th.has("research"):
@@ -2620,7 +2637,7 @@ func _loot(d: Dictionary) -> void:
 		GameState.research_data += rs
 		got.append("%d research data" % rs)                 # 0.7.53.2: scan data
 	var mr := PoiData.museum_roll(String(d.get("theme", _site.get("theme", "precursor"))), rng)
-	if mr == "" and bool(d.get("museum", false)) and rng.randf() < 0.5:
+	if mr == "" and bool(d.get("museum", false)) and rng.randf() < (0.8 if bool(d.get("hidden", false)) else 0.5):
 		var ml: Array = PoiData.MUSEUM_RELICS.get(String(d.get("theme", "")), [])
 		if not ml.is_empty():
 			mr = String(ml[rng.randi() % ml.size()][0])          # 0.7.53.7: the buried cache – half the time a find
@@ -2887,6 +2904,11 @@ func _draw_minimap() -> void:
 			c = c.darkened(0.5)
 		if c.a > 0.0:
 			_mm.draw_circle(r.position + p * sc / GroundMap.TILE, 2.6, c)
+	for d2 in map.explore:
+		if String(d2["kind"]) == "cracked_wall" and bool(d2.get("hinted", false)) and String(d2["state"]) != "open":
+			var hp: Vector2 = r.position + (d2["pos"] as Vector2) * sc / GroundMap.TILE
+			_mm.draw_circle(hp, 6.0, Color(0.1, 0.08, 0.02, 0.9))
+			_mm.draw_string(ThemeDB.fallback_font, hp + Vector2(-4, 5), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.85, 0.35))
 	var pp := r.position + pilot.pos * sc / GroundMap.TILE
 	_mm.draw_circle(pp, 3.5, Color(0.2, 0.2, 0.2))
 	_mm.draw_circle(pp, 2.5, Color(0.4, 1.0, 0.6))
@@ -3211,6 +3233,12 @@ func scan_done(d: Dictionary) -> void:
 	else:
 		txt = "A relic of the ones before – its lattice hums at a frequency nobody makes any more."
 		_say_toast("%s  (+%d research data)" % [txt, n], 5.0)
+	if String(d["kind"]) in ["tablet", "monolith"] and map.has_meta("hidden_wall"):
+		var hw: Dictionary = map.explore[int(map.get_meta("hidden_wall"))]
+		if not bool(hw.get("hinted", false)) and String(hw["state"]) != "open":
+			hw["hinted"] = true                            # 0.7.53.24 (Luz): it tells of a hollow behind a wall – a ? on the map
+			_say_toast("…and it tells of a hollow behind a cracked wall on this level – marked on your map (?).", 4.0)
+			log_event("A hidden chamber – marked on the map", Color(0.95, 0.8, 0.4))
 	log_event("Scanned: %s  +%d research data" % [txt.left(80), n], Color(0.45, 0.9, 1.0))
 	Audio.play("lock_acquired", "scan done", -6.0)
 

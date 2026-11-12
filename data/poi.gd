@@ -271,6 +271,7 @@ const TARGETS := {
 	"stairs": {"col": Color(1.0, 0.45, 0.35), "needs": "–", "gives": "a quick way down – but its door rings the alarm"},
 	"dark_relic": {"col": Color(0.62, 0.35, 1.0), "needs": "down to the bottom · the symbols of the membrane (a monolith's vision tells their order) · a scanner", "gives": "a relic of the Dark Ones – for the Museum"},
 	"monolith": {"col": Color(0.62, 0.35, 1.0), "needs": "a scanner", "gives": "a vision – the order of the symbols; research data"},
+	"hidden": {"col": Color(0.95, 0.8, 0.4), "needs": "scan the tablets or the monolith – they tell where · a cutting torch", "gives": "a hidden cache – more credits, likely a find for the Museum"},
 	"glyphs": {"col": Color(0.8, 0.5, 1.0), "needs": "step around them", "gives": "a wave of force if you do not"},
 	"sleeper": {"col": Color(0.5, 0.3, 0.7), "needs": "–", "gives": "something sleeps at the bottom"},
 	"research_logs": {"col": Color(0.4, 0.85, 1.0), "needs": "down to the sample store · E-Breach on the research computer", "gives": "the station's research logs – a lot of research data"},
