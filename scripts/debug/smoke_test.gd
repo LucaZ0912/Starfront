@@ -11041,38 +11041,44 @@ func _test_museum(view: SystemView) -> void:
 			ok_leg = ok_leg and g.level == String(leg[0]) and g.map.has_meta(String(back["at"]))
 		ways_ok = ways_ok and ok_leg
 	ways_ok = ways_ok and case_ids.size() == 48
-	g.go_level("museum_min", "from_hall")
-	var m: GroundMap = g.map
-	var cases: Array = m.explore.filter(func(d): return String(d["kind"]) in ["vitrine", "niche"])
-	# set a find into its case – once; looking at it then changes nothing
-	var gold: Dictionary = {}
-	for d2 in cases:
-		if String(d2["exhibit"]) == "mn_gold":
-			gold = d2
-	var gz: Dictionary = {}
-	for z in m.zones:
-		if String(z.get("kind", "")) == "explore" and int(z.get("i", -1)) == m.explore.find(gold):
-			gz = z
-	g._arrive = 0.0
-	g.zone = gz
-	g.use()
-	var don_ok: bool = GameState.museum_donated.has("mn_gold") and GameState.museum_carried("mn_gold") == 1 and GameState.credits == cr0 + 100 \
-		and String(gz["title"]).begins_with("Gold Nugget")
-	g.zone = gz
-	g.use()
-	don_ok = don_ok and GameState.museum_donated.size() == 1 and GameState.museum_carried("mn_gold") == 1
-	# the curator: the spare nugget sold
+	# 0.7.53.30 (Luz): the finds handed to the curator – a story for each, then off to the cases and back
 	g.go_level("museum", "from_min")
 	g._arrive = 0.0
 	g.zone = _zone_of(g.map, "curator")
 	g.use()
-	var cur_ok: bool = g.talk != null and String(g.talk._name.text).begins_with("Dr. ")
+	var don_ok: bool = g.talk != null and String(g.talk._name.text).begins_with("Dr. ")
+	if don_ok:
+		g._curator_give()
+	don_ok = don_ok and GameState.museum_donated.has("mn_gold") and GameState.museum_donated.has("do_mask") and GameState.museum_carried("mn_gold") == 1 		and GameState.credits == cr0 + 100 + 3000
+	for step in 4:
+		if g.talk != null:
+			g.talk.choose(0)
+	if g.talk != null:
+		g.talk.close()
+	don_ok = don_ok and g.talk == null and not g._cur_trip.is_empty() and ((g._cur_trip["w"] as Walker).goto_to != Vector2.INF or (g._cur_trip["w"] as Walker).goto_done)
+	# the curator: the spare nugget sold (once back at the desk)
+	g._cur_trip = {}
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "curator")
+	g.use()
+	var cur_ok: bool = g.talk != null
 	g._curator_sell("")
-	cur_ok = cur_ok and GameState.museum_carried("mn_gold") == 0 and GameState.credits == cr0 + 100 + 400 and GameState.museum_carried("do_mask") == 1
+	cur_ok = cur_ok and GameState.museum_carried("mn_gold") == 0 and GameState.credits == cr0 + 100 + 3000 + 400
 	if g.talk != null:
 		g.talk.close()
 	cur_ok = cur_ok and g.talk == null
+	# a filled case: its piece in a conversation box with its picture
+	g.go_level("museum_min", "from_hall")
+	var gold: Dictionary = {}
+	for d2 in g.map.explore:
+		if String(d2.get("exhibit", "")) == "mn_gold":
+			gold = d2
+	g.explore_use({"i": g.map.explore.find(gold)})
+	don_ok = don_ok and g.talk != null and g.talk.portrait_tex != null
+	if g.talk != null:
+		g.talk.close()
 	# the basement: the monolith's plinth empty – the Dark Ones' room full, its cast raised; their perk
+	g.go_level("museum", "from_min")
 	g._arrive = 0.0
 	g.zone = go_of.call(g.map, "museum_down")
 	g.use()
@@ -11080,16 +11086,10 @@ func _test_museum(view: SystemView) -> void:
 	for d3 in g.map.explore:
 		if String(d3["kind"]) == "monolith_cast":
 			mono = d3
-	var base_ok: bool = g.level == "museum_down" and g.map.style == "museum_dark" and String(mono.get("state", "")) == "empty" \
-		and g.map.explore.filter(func(d4): return String(d4["kind"]) == "vitrine").size() == 8 and not GameState.museum_perk("darkones")
+	var base_ok: bool = g.level == "museum_down" and g.map.style == "museum_dark" and String(mono.get("state", "")) == "empty" 		and g.map.explore.filter(func(d4): return String(d4["kind"]) == "vitrine").size() == 8 and not GameState.museum_perk("darkones")
 	for e3 in MD.of_room("darkones"):
-		if String(e3["id"]) != "do_mask":
+		if not GameState.museum_donated.has(String(e3["id"])):
 			GameState.museum_donated.append(String(e3["id"]))
-	var mask: Dictionary = {}
-	for d5 in g.map.explore:
-		if String(d5.get("exhibit", "")) == "do_mask":
-			mask = d5
-	g.explore_use({"i": g.map.explore.find(mask)})
 	g.go_level("museum_down", "museum_in")
 	for d6 in g.map.explore:
 		if String(d6["kind"]) == "monolith_cast":

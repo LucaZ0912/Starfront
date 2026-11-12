@@ -33,6 +33,8 @@ const DRINK_TIME := 3.2
 var _t := 0.0
 var _walk := 0.0
 var _goal := Vector2.INF
+var goto_to := Vector2.INF          # 0.7.53.30: sent somewhere (the curator to the cases) – it walks there and stops
+var goto_done := false
 var _seat_z: Dictionary = {}        # 0.7.53.28 (Luz): the bench it is going to or sits on
 var _sit_t := 0.0
 var _wait := 0.0
@@ -81,7 +83,20 @@ func step(d: Vector2, delta: float, speed_mult: float = 1.0) -> bool:
 func _process(delta: float) -> void:
 	_t += delta
 	drink_t = maxf(0.0, drink_t - delta)
-	if leave_to != Vector2.INF:
+	if goto_to != Vector2.INF:
+		if _path.is_empty() or goto_done:
+			_path = map.path(pos, goto_to)
+			_pi = 0
+			goto_done = false
+			if _path.is_empty():
+				goto_to = Vector2.INF
+				goto_done = true
+		if goto_to != Vector2.INF and (pos.distance_to(goto_to) < 6.0 or not _follow(delta, 0.8)):
+			goto_to = Vector2.INF
+			goto_done = true
+			moving = false
+			_path = PackedVector2Array()
+	elif leave_to != Vector2.INF:
 		if _path.is_empty():
 			_path = map.path(pos, leave_to)
 			_pi = 0

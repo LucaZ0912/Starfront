@@ -18,6 +18,7 @@ var _choice_panel: PanelContainer
 var _options: Array = []
 var _shown := 0.0
 var _hint: Label
+var portrait_tex: Texture2D = null      # 0.7.53.30 (Luz): a thing's picture instead of a face (the Museum's cases)
 
 
 func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
@@ -37,7 +38,7 @@ func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	frame.offset_bottom = -40
 	add_child(frame)
 	var por := TextureRect.new()
-	por.texture = PilotArt.portrait(look)
+	por.texture = portrait_tex if portrait_tex != null else PilotArt.portrait(look)
 	por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	por.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

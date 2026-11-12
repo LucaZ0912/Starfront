@@ -74,6 +74,7 @@ var _bartender: Walker = null
 var _skyline: CitySkyline = null        # 0.7.50.5: the view from a city's tower bar
 var _canyon: CityCanyon = null          # 0.7.50.6: the street canyon
 var _tint: ColorRect = null             # 0.7.50.8: the street's light (night darker, dusk warm)
+var _tint2: ColorRect = null            # 0.7.53.30: on the roof plaza – the Museum's roof beside the view, lit alike
 var _city_lights: Array = []            # [sprite, light, kind] – lights that follow the time of day
 var _city_body: Dictionary = {}
 var _day_t := 0.0
@@ -114,6 +115,8 @@ var _dark_rect: ColorRect = null           # 0.7.53.6: the level's darkness (the
 var _haz_t := {}                          # 0.7.53.6: hazards' cool-downs (shock conduits)
 var _fuses := {}
 var _town_kind := ""
+var _cur_trip: Dictionary = {}           # 0.7.53.30: the curator's round to the cases
+var _cur_pending: Array = []             # the rooms the curator has new pieces for
 var _hostage := {}
 var _out_env := {}                         # 0.7.53.20: a station's world outside – it comes in through a torn module
 var _socket := -1                          # 0.7.53.16: the power socket you charge at (explore index), -1 none                        # 53c (Luz): the prisoner you rescue – {look, hp, w (Walker)}                      # 0.7.53.9: in a city, the way down taken – "" (the alley's sewers) or "maint"
@@ -285,6 +288,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_canyon = null
 	_hatch_node = null
 	_tint = null
+	_tint2 = null
 	_city_lights.clear()
 	_cam_c = Vector2.INF
 	zone = {}
@@ -1693,6 +1697,13 @@ func _build() -> void:
 		elif level in ["plaza", "mplaza"]:              # 0.7.53.19: the roof plaza – not over the view of the city
 			tint.position = Vector2(0, map.window_rect.end.y) * GroundMap.TILE * GroundMap.SCALE
 			tint.size = Vector2(map.w, map.h - map.window_rect.end.y) * GroundMap.TILE * GroundMap.SCALE
+			if map.has_meta("museum_x"):
+				_tint2 = ColorRect.new()                 # 0.7.53.30: the Museum's roof above that line too
+				_tint2.material = mm
+				_tint2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				_tint2.position = Vector2(int(map.get_meta("museum_x")), 0) * GroundMap.TILE * GroundMap.SCALE
+				_tint2.size = Vector2(map.w - int(map.get_meta("museum_x")), map.window_rect.end.y) * GroundMap.TILE * GroundMap.SCALE
+				_world.add_child(_tint2)
 		_world.add_child(tint)
 	if map.has_meta("dark"):
 		var dk := ColorRect.new()                        # 0.7.53.3 (Luz): the sewers are dark – the lamps glow in it
@@ -1845,6 +1856,8 @@ func _apply_day(d: float, force: bool = false) -> void:
 		_canyon.set_day(d)
 	if _tint != null:
 		_tint.color = Color(0.58, 0.62, 0.82).lerp(Color.WHITE, smoothstep(0.0, 0.65, d)).lerp(Color(1.0, 0.78, 0.62), dk * 0.5)
+		if _tint2 != null and is_instance_valid(_tint2):
+			_tint2.color = _tint.color
 	for cl in _city_lights:
 		var sp: Sprite2D = cl[0]
 		var l: Dictionary = cl[1]
@@ -1886,6 +1899,7 @@ func _process(delta: float) -> void:
 	_update_dust(delta)
 	_env_step(delta)
 	_socket_step(delta)
+	_curator_step(delta)
 	if not _collapsed:
 		GameState.gear.health_step(delta)                # 0.7.53.16 (Luz): the body mends slowly, up to 75 %
 	if _hatch_node != null and is_instance_valid(_hatch_node):
@@ -2152,34 +2166,26 @@ func use_belt(n: int) -> void:
 
 # ---------------------------------------------------------------- 53e (Luz): the Museum in Curie
 
-## A case: look at its piece – or set in the one you carry (Stardew-style: you fill the cases yourself).
+## A case: its piece shown in a conversation box – its picture where a face would be, its story where the words are
+## (0.7.53.30, Luz). Empty: what belongs here and where such things are found – the curator sets the pieces in.
 func _museum_case(d: Dictionary) -> bool:
 	var id := String(d.get("exhibit", ""))
 	var e: Dictionary = MuseumData.get_exhibit(id)
 	var room := String(e.get("room", ""))
 	if GameState.museum_donated.has(id):
-		_say_toast("%s  (%s)  –  %s" % [String(e["name"]), String(e["rarity"]), String(e["text"])], 6.0)
+		if talk != null:
+			return true
+		talk = DialogueView.new()
+		talk.portrait_tex = ExhibitArtV.texture(id)
+		_ui.add_child(talk)
+		talk.open({}, String(e["name"]), "%s · %s" % [String(e["rarity"]).capitalize(), MuseumData.room_name(room)], MuseumData.RARITY[String(e["rarity"])]["col"])
+		talk.closed.connect(func(): talk = null)
+		talk.say(String(e["text"]), [["Close.", func(): talk.close()]])
 		return true
-	if not GameState.museum_finds.has(id):
-		_say_toast("An empty case – something of %s belongs here. %s" % [MuseumData.room_name(room).replace("The ", "the "), String(MuseumData.HINTS.get(room, ""))], 5.5)
+	if GameState.museum_finds.has(id):
+		_say_toast("An empty case – and you carry what belongs in it: %s. Bring it to the curator at the desk in the hall." % String(e["name"]), 5.0)
 		return true
-	var done_before := GameState.museum_room_done(room)
-	var err := GameState.museum_donate(id)
-	if err != "":
-		_say_toast(err, 2.5)
-		return true
-	MuseumGen.retitle(map)
-	zone = {}
-	Audio.play("lock_acquired", "museum: a piece set in its case", -4.0)
-	var msg := "You set %s into its case. The curator nods – %d cr for the Museum's thanks." % [String(e["name"]), MuseumData.price(id) / 4]
-	if GameState.museum_room_done(room) and not done_before:
-		msg += "  The room \"%s\" is complete: %s" % [MuseumData.room_name(room), String(MuseumData.PERKS[room])]
-		if room == "darkones":
-			msg += "  Downstairs, a monolith's cast is raised on its plinth."
-	if GameState.museum_donated.has("_suit") and GameState.museum_count() >= MuseumData.EXHIBITS.size():
-		msg += "  Every case is filled – the curator gives you the Archivist Suit."
-	_say_toast(msg, 7.0)
-	log_event("Into its case: %s" % String(e["name"]), Color(0.95, 0.8, 0.4))
+	_say_toast("An empty case – something of %s belongs here. %s" % [MuseumData.room_name(room).replace("The ", "the "), String(MuseumData.HINTS.get(room, ""))], 5.5)
 	return true
 
 
@@ -2188,12 +2194,15 @@ func _museum_case(d: Dictionary) -> bool:
 func _open_curator() -> void:
 	if talk != null:
 		return
+	if not _cur_trip.is_empty():
+		_say_toast("The curator is away – setting your finds into their cases. Back in a moment.", 3.0)
+		return
 	Audio.play("ui_open", "museum: the curator")
 	talk = DialogueView.new()
 	_ui.add_child(talk)
 	var look: Dictionary = map.get_meta("curator_look", ChibiArt.PilotArt.default_look())
 	talk.open(look, _curator_name(), "Curator · Museum of Curie", Color(0.95, 0.8, 0.45))
-	talk.closed.connect(func(): talk = null)
+	talk.closed.connect(_on_curator_closed)
 	var n := GameState.museum_count()
 	var greet := "Welcome to the Museum of Curie. %d of our %d cases are filled – every piece set in by the one who found it." % [n, MuseumData.EXHIBITS.size()]
 	if n == 0:
@@ -2210,8 +2219,137 @@ func _curator_name() -> String:
 
 
 func _curator_options() -> Array:
-	return [["How full is the Museum?", _curator_rooms], ["I have some finds.", _curator_finds],
-		["Where should I look for what is missing?", _curator_hint], ["Goodbye.", func(): talk.close()]]
+	var o: Array = []
+	if GameState.museum_finds.any(func(f): return not GameState.museum_donated.has(String(f))):
+		o.append(["I have something for the Museum!", _curator_give])              # 0.7.53.30 (Luz): handed over here
+	o.append(["How full is the Museum?", _curator_rooms])
+	o.append(["I have some finds to sell.", _curator_finds])
+	if MuseumData.ROOMS.any(func(r): return GameState.museum_room_done(String(r["id"]))):
+		o.append(["Rewards.", _curator_rewards])                                    # 0.7.53.30 (Luz): what a full room gives
+	o.append(["Where should I look for what is missing?", _curator_hint])
+	o.append(["Goodbye.", func(): talk.close()])
+	return o
+
+
+## 0.7.53.30 (Luz): you hand your finds to the curator – one of each the Museum lacks. Delighted, the curator tells you
+## about each in turn; when you part, off to the cases with them, and back to the desk.
+const CURATOR_JOY := ["Oh! Oh, look at this – the %s!", "And – no. Truly? The %s!", "The %s! I have only ever seen drawings.",
+	"Wonderful – the %s.", "Careful, careful… the %s!"]
+
+
+func _curator_give() -> void:
+	var give: Array = []
+	for f in GameState.museum_finds:
+		if not GameState.museum_donated.has(String(f)) and not give.has(String(f)):
+			give.append(String(f))
+	var done_before := {}
+	for r in MuseumData.ROOMS:
+		done_before[String(r["id"])] = GameState.museum_room_done(String(r["id"]))
+	var pay := 0
+	for id in give:
+		GameState.museum_donate(id)
+		pay += MuseumData.price(id) / 4
+		if not _cur_pending.has(MuseumData.room_of(id)):
+			_cur_pending.append(MuseumData.room_of(id))
+	Audio.play("lock_acquired", "museum: finds handed to the curator", -4.0)
+	var news: Array = []
+	for r2 in MuseumData.ROOMS:
+		if GameState.museum_room_done(String(r2["id"])) and not bool(done_before[String(r2["id"])]):
+			news.append(String(r2["id"]))
+	_curator_tell(give, 0, pay, news)
+
+
+func _curator_tell(give: Array, i: int, pay: int, news: Array) -> void:
+	var e: Dictionary = MuseumData.get_exhibit(String(give[i]))
+	var line: String = (String(CURATOR_JOY[i % CURATOR_JOY.size()]) % String(e["name"])) + "  " + String(e["text"])
+	if String(e["rarity"]) in ["rare", "legendary"]:
+		line += "  Do you know how rare this is? %s – I could weep." % String(e["rarity"]).capitalize()
+	if i < give.size() - 1:
+		talk.say(line, [["And this one…", func(): _curator_tell(give, i + 1, pay, news)]])
+		return
+	var end := "I will set them into their cases at once – they belong to everyone now. For your trouble: %s." % GameData.fmt_credits(pay)
+	if give.size() == 1:
+		end = "I will set it into its case at once. For your trouble: %s." % GameData.fmt_credits(pay)
+	for rid in news:
+		end += "  And with that %s is complete! %s" % [MuseumData.room_name(String(rid)), String(MuseumData.PERKS[String(rid)])]
+		if String(rid) == "darkones":
+			end += " The monolith's cast goes up downstairs."
+	if GameState.museum_count() >= MuseumData.EXHIBITS.size():
+		end += "  Every case is filled. Every one. Here – the Archivist Suit; it is yours."
+	talk.say(line, [["Tell me more later – thank you.", func(): talk.say(end, _curator_options())]])
+
+
+## 0.7.53.30 (Luz): what the full rooms give – and the suit, once every case is filled.
+func _curator_rewards() -> void:
+	var lines: Array = []
+	for r in MuseumData.ROOMS:
+		var rid := String(r["id"])
+		if GameState.museum_room_done(rid):
+			lines.append("%s – %s" % [String(r["name"]), String(MuseumData.PERKS[rid])])
+	if GameState.museum_count() >= MuseumData.EXHIBITS.size():
+		lines.append("The whole Museum – the Archivist Suit (in your pockets).")
+	else:
+		lines.append("Fill every case and the Museum gives you the Archivist Suit.")
+	talk.say("For every room that is complete the Museum thanks you:\n" + "\n".join(PackedStringArray(lines)), _curator_options())
+
+
+func _on_curator_closed() -> void:
+	talk = null
+	if not _cur_pending.is_empty() and level == "museum":
+		_curator_trip()
+
+
+## The curator's round: to the arch or the stairs of each room with a new piece, through it a moment, and back.
+func _curator_trip() -> void:
+	var cp: Vector2 = map.get_meta("curator_pos", Vector2.INF)
+	var w: Walker = null
+	for p in people:
+		if is_instance_valid(p) and (p as Walker).pos.distance_to(cp) < 8.0:
+			w = p
+	if w == null:
+		_cur_pending.clear()
+		return
+	var stops: Array = []
+	for rid in _cur_pending:
+		var key: String = {"minerals": "from_min", "darkones": "from_down"}.get(String(rid), "from_1")
+		var sp: Vector2 = map.get_meta(key, Vector2.INF)
+		if sp != Vector2.INF and not stops.has(sp):
+			stops.append(sp)
+	_cur_pending.clear()
+	_cur_trip = {"w": w, "stops": stops, "i": 0, "phase": "go", "t": 0.0, "home": cp}
+	w.goto_to = stops[0] if not stops.is_empty() else cp
+
+
+func _curator_step(delta: float) -> void:
+	if _cur_trip.is_empty():
+		return
+	var wv = _cur_trip["w"]
+	if not is_instance_valid(wv):
+		_cur_trip = {}                                   # left the hall meanwhile – the pieces are in their cases anyway
+		return
+	var w: Walker = wv
+	match String(_cur_trip["phase"]):
+		"go":
+			if w.goto_done or w.goto_to == Vector2.INF:
+				w.goto_done = false
+				if int(_cur_trip["i"]) < (_cur_trip["stops"] as Array).size():
+					w.visible = false                       # through the arch / up the stairs
+					_cur_trip["phase"] = "away"
+					_cur_trip["t"] = 3.5
+				else:
+					w.dir = 0
+					_cur_trip = {}                         # back at the desk
+		"away":
+			_cur_trip["t"] = float(_cur_trip["t"]) - delta
+			if float(_cur_trip["t"]) <= 0.0:
+				w.visible = true
+				_cur_trip["i"] = int(_cur_trip["i"]) + 1
+				_cur_trip["phase"] = "go"
+				var st: Array = _cur_trip["stops"]
+				w.goto_to = st[int(_cur_trip["i"])] if int(_cur_trip["i"]) < st.size() else _cur_trip["home"]
+
+
+
 
 
 func _curator_rooms() -> void:

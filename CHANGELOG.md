@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.30 – 2026-11-12
+
+**The Museum – the curator takes your finds (Luz).**
+- **Hand your finds to the curator:** "I have something for the Museum!" – delighted, the curator tells you about each
+  piece in turn (a little more breathless for the rare ones), pays the Museum's thanks and, once you part, walks off
+  through the arches and up the stairs to set them into their cases, then comes back to the desk.
+- **A filled case** opens a conversation box: the piece's picture where a face would be, its story where the words
+  are. An empty case tells what belongs there and where such things are found.
+- **"Rewards"** appears in the curator's talk as soon as a room is complete – what each full room gives, and the suit.
+- **Benches** by a wall face into the room – you sit with your back to the wall.
+- **The roof:** a marble parapet with urns on its corners, two raised marble attics with skylights, and a glass dome
+  with relief – lit from one side, its ribs and rings, a drum of columns, a lantern on top, its shadow on the roof; the
+  roof lit like the plaza at night.
+
 ## alpha 0.7.53.29 – 2026-11-12
 
 **Fix (Luz):** the Museum hall's side rails on the gallery's wings stand on the edge of the raised floor and run down to

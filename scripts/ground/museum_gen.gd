@@ -68,7 +68,7 @@ static func _title(m: GroundMap, d: Dictionary) -> void:
 	if GameState.museum_donated.has(id):
 		t = "%s – look at it (E)" % MuseumData.exhibit_name(id)
 	elif GameState.museum_finds.has(id):
-		t = "An empty case – you carry what belongs here: set in %s (E)" % MuseumData.exhibit_name(id)
+		t = "An empty case – you carry what belongs here: bring %s to the curator (E)" % MuseumData.exhibit_name(id)
 	else:
 		t = "An empty case – something of %s belongs here (E)" % MuseumData.room_name(MuseumData.room_of(id)).replace("The ", "the ")
 	for z in m.zones:
@@ -158,7 +158,7 @@ static func build_plaza(station: Dictionary, body: Dictionary) -> GroundMap:
 		m.add_object({"kind": "planter", "x": tp.x, "y": tp.y, "w": 3, "h": 1, "col": Color(0.78, 0.79, 0.82)})
 		m.add_object({"kind": "tree", "x": tp.x, "y": tp.y - 1, "w": 3, "h": 1, "rise": 72})
 	m.add_object({"kind": "bench", "x": 21, "y": 13, "w": 3, "h": 1}, false)
-	m.add_object({"kind": "bench", "x": 21, "y": 24, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "bench", "x": 21, "y": 24, "w": 3, "h": 1, "face": 1}, false)
 	m.add_object({"kind": "poster", "x": 34, "y": 23, "w": 1, "h": 1})
 	for lp in [Vector2i(14, 18), Vector2i(26, 18), Vector2i(34, 18), Vector2i(14, 22), Vector2i(26, 22)]:
 		m.add_object({"kind": "lamp_post", "x": lp.x, "y": lp.y, "w": 1, "h": 1})
@@ -255,6 +255,7 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	cur["suit"] = ""
 	m.people.append({"pos": Vector2(W * 0.5, 17.7) * TILE, "dir": 0, "role": "keeper", "look": cur})
 	m.set_meta("curator_look", cur)
+	m.set_meta("curator_pos", Vector2(W * 0.5, 17.7) * TILE)
 	m.zones.append({"rect": Rect2(Vector2(sx - 1, 19) * TILE, Vector2(8, 1.4) * TILE), "kind": "curator", "id": "curator",
 		"title": "The curator – donations, your finds, a hint (E)", "col": Color(1.0, 0.85, 0.5), "sign": Vector2(-100, -100)})
 	m.fill(W / 2 - 1, 20, 2, 3, T.FLOOR, 42)
@@ -265,8 +266,8 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.add_object({"kind": "plant", "x": W - 10, "y": 13, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": 9, "y": 22, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": W - 10, "y": 22, "w": 1, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 3, "y": 21, "w": 3, "h": 1}, false)
-	m.add_object({"kind": "museum_bench", "x": W - 6, "y": 21, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": 3, "y": 21, "w": 3, "h": 1, "face": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": W - 6, "y": 21, "w": 3, "h": 1, "face": 1}, false)
 	m.add_object({"kind": "terminal", "x": 11, "y": 20, "w": 1, "h": 1})
 	m.decals.append({"kind": "museum_doors_s", "x": W / 2 - 2, "y": H - 2, "w": 4, "h": 1})
 	m.zones.append({"rect": Rect2(Vector2(W / 2 - 2, H - 3) * TILE, Vector2(4, 1.0) * TILE), "kind": "museum_out", "id": "museum_out",
@@ -305,7 +306,7 @@ static func build_minerals(station: Dictionary, body: Dictionary) -> GroundMap:
 	for k2 in free.size():
 		_case(m, spots[k2].x, spots[k2].y, mn[free[k2]])
 	m.add_object({"kind": "rope", "x": 13, "y": 13, "w": 5, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 14, "y": 16, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": 14, "y": 16, "w": 3, "h": 1, "face": 1}, false)
 	m.add_object({"kind": "statue", "x": 27, "y": 19, "w": 2, "h": 1, "seed": 78, "species": "suit_work"})
 	m.add_object({"kind": "geode_big", "x": 1, "y": 11, "w": 2, "h": 1})
 	m.add_object({"kind": "terminal", "x": 29, "y": 11, "w": 1, "h": 1})
@@ -360,7 +361,7 @@ static func build_floor1(station: Dictionary, body: Dictionary) -> GroundMap:
 	_case(m, 4, 16, ow[4])
 	m.add_object({"kind": "bust", "x": 16, "y": 12, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
 	m.add_object({"kind": "statue", "x": 1, "y": 19, "w": 2, "h": 1, "seed": 76, "species": "suit_civil"})
-	m.add_object({"kind": "museum_bench", "x": 10, "y": 19, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": 10, "y": 19, "w": 3, "h": 1, "face": 1}, false)
 	_label(m, "THE OLD WORLD", Vector2(9, 2.4), Color(0.95, 0.75, 0.45))
 	m.lights.append({"pos": Vector2(4, 3) * TILE, "r": 40.0, "col": Color(1.0, 0.3, 0.6), "a": 0.45})      # the record's pink glow
 	m.lights.append({"pos": Vector2(9, 12) * TILE, "r": 170.0, "col": WARM, "a": 0.2})
@@ -373,7 +374,7 @@ static func build_floor1(station: Dictionary, body: Dictionary) -> GroundMap:
 	_case(m, 39, 7, sv[3])
 	_case(m, 38, 15, sv[4])
 	m.add_object({"kind": "statue", "x": 41, "y": 19, "w": 2, "h": 1, "seed": 77, "species": "suit_mil_light"})
-	m.add_object({"kind": "museum_bench", "x": 31, "y": 19, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": 31, "y": 19, "w": 3, "h": 1, "face": 1}, false)
 	_label(m, "THE SEVERANCE", Vector2(34, 2.4), Color(0.55, 0.85, 1.0))
 	m.set_meta("no_guards", true)
 	DeckGen._seats(m)
@@ -406,8 +407,8 @@ static func build_floor2(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.add_object({"kind": "statue_precursor", "x": 27, "y": 8, "w": 2, "h": 1})
 	m.add_object({"kind": "crystal", "x": 40, "y": 14, "w": 2, "h": 1, "col": Color(0.7, 0.55, 1.0)})
 	m.add_object({"kind": "crystal", "x": 2, "y": 14, "w": 2, "h": 1, "col": Color(0.45, 0.85, 1.0)})
-	m.add_object({"kind": "museum_bench", "x": 6, "y": 15, "w": 3, "h": 1}, false)
-	m.add_object({"kind": "museum_bench", "x": 34, "y": 15, "w": 3, "h": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": 6, "y": 15, "w": 3, "h": 1, "face": 1}, false)
+	m.add_object({"kind": "museum_bench", "x": 34, "y": 15, "w": 3, "h": 1, "face": 1}, false)
 	m.add_object({"kind": "plant", "x": 40, "y": 4, "w": 1, "h": 1})
 	_label(m, "THE PRECURSORS", Vector2(W * 0.5, 2.4), Color(0.75, 0.6, 1.0))
 	m.set_meta("no_guards", true)

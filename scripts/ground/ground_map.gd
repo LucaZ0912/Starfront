@@ -1298,21 +1298,90 @@ func _decal(d: Dictionary) -> void:
 	var c: Color = d.get("col", pal["accent"])
 	match String(d["kind"]):
 		"museum_roof":
-			# 53e: the Museum's roof seen from above – pale slabs, a parapet, the glass dome over the hall
-			_rect(px + 4, py + 4, pw - 8, ph - 8, Color(0.72, 0.7, 0.66))
-			for ry in range(py + 4, py + ph - 4, 10):
-				_rect(px + 4, ry, pw - 8, 1, Color(0.62, 0.6, 0.57))
-			_rect(px + 4, py + ph - 8, pw - 8, 4, Color(0.92, 0.91, 0.88))
-			var dc2 := Vector2(px + pw * 0.5, py + ph * 0.45)
-			for yy2 in range(-40, 41):
-				for xx2 in range(-48, 49):
-					var e2 := Vector2(xx2 / 48.0, yy2 / 40.0).length()
-					if e2 <= 1.0:
-						_px(int(dc2.x) + xx2, int(dc2.y) + yy2, Color(0.4, 0.42, 0.45) if e2 > 0.9 else Color(0.45, 0.62, 0.75).lerp(Color(0.6, 0.8, 0.92), 1.0 - e2))
-			for rib in 8:
-				var ang := rib * TAU / 8.0
-				for t in 44:
-					_px(int(dc2.x + cos(ang) * t), int(dc2.y + sin(ang) * t * 40.0 / 48.0), Color(0.78, 0.8, 0.82))
+			# 53e: the Museum's roof seen from above (0.7.53.30, Luz: with its relief) – pale slabs inside a marble parapet
+			# with urns on its corners, two raised marble attics with skylights, and the dome over the hall: a drum of
+			# columns, a glass dome lit from the upper left with its ribs, a lantern on its top, its shadow on the roof
+			var stn := Color(0.74, 0.72, 0.68)
+			_rect(px, py, pw, ph, Color(0.6, 0.58, 0.55))
+			_rect(px + 6, py + 6, pw - 12, ph - 12, stn)
+			for ry in range(py + 6, py + ph - 6, 12):
+				_rect(px + 6, ry, pw - 12, 1, stn.darkened(0.1))
+				for rx in range(px + 6 + (ry / 12 % 2) * 12, px + pw - 6, 24):
+					_rect(rx, ry, 1, 12, stn.darkened(0.08))
+			# the parapet: marble, lit on its inner north edge, a balustrade of dots, urns on the corners
+			for side in [[px, py, pw, 6], [px, py + ph - 6, pw, 6], [px, py, 6, ph], [px + pw - 6, py, 6, ph]]:
+				_rect(side[0], side[1], side[2], side[3], Color(0.93, 0.92, 0.89))
+			_rect(px + 6, py + 6, pw - 12, 2, Color(0.5, 0.48, 0.45))                  # the parapet's shadow on the roof
+			_rect(px + 6, py + 6, 2, ph - 12, Color(0.55, 0.53, 0.5))
+			for bx3 in range(px + 10, px + pw - 8, 6):
+				_rect(bx3, py + 2, 2, 2, Color(0.78, 0.77, 0.74))
+				_rect(bx3, py + ph - 4, 2, 2, Color(0.78, 0.77, 0.74))
+			for cn in [Vector2(px + 6, py + 6), Vector2(px + pw - 6, py + 6), Vector2(px + 6, py + ph - 6), Vector2(px + pw - 6, py + ph - 6)]:
+				_rect(int(cn.x) - 6, int(cn.y) - 6, 12, 12, Color(0.96, 0.95, 0.92))
+				_rect(int(cn.x) - 6, int(cn.y) + 4, 12, 2, Color(0.7, 0.68, 0.64))
+				for yy4 in range(-5, 3):
+					for xx4 in range(-4, 5):
+						if Vector2(xx4, yy4 + 1).length() < 4.2:
+							var lit := clampf(0.5 - xx4 * 0.08 - yy4 * 0.08, 0.0, 1.0)
+							_px(int(cn.x) + xx4, int(cn.y) + yy4 - 3, Color(0.62, 0.6, 0.56).lerp(Color(1, 1, 1), lit))
+			# two raised attics of marble left and right, a skylight in each
+			for at in [px + 22, px + pw - 22 - 64]:
+				_rect(at + 3, py + 30 + 3, 64, 40, Color(0.45, 0.43, 0.41))                 # its shadow
+				_rect(at, py + 30, 64, 40, Color(0.9, 0.89, 0.86))
+				_rect(at, py + 30, 64, 3, Color(1, 1, 1))
+				_rect(at, py + 66, 64, 4, Color(0.72, 0.7, 0.67))
+				_rect(at + 61, py + 30, 3, 40, Color(0.78, 0.77, 0.74))
+				_rect(at + 8, py + 40, 48, 18, Color(0.35, 0.5, 0.62))
+				for sk in range(at + 8, at + 56, 8):
+					_rect(sk, py + 40, 1, 18, Color(0.85, 0.87, 0.9))
+				_rect(at + 9, py + 41, 46, 2, Color(0.75, 0.88, 0.95))
+				_rect(at + 8, py + 49, 48, 1, Color(0.85, 0.87, 0.9))
+			# the dome: its shadow, the drum of columns, the glass dome, the lantern
+			var dc2 := Vector2(px + pw * 0.5, py + ph * 0.5 + 6)
+			for yy5 in range(-34, 40):
+				for xx5 in range(-58, 66):
+					if Vector2((xx5 - 8) / 60.0, (yy5 - 6) / 38.0).length() < 1.0:
+						var q5 := Vector2(dc2.x + xx5, dc2.y + yy5)
+						_px(int(q5.x), int(q5.y), _img.get_pixel(clampi(int(q5.x), 0, _img.get_width() - 1), clampi(int(q5.y), 0, _img.get_height() - 1)).darkened(0.18))
+			for yy6 in range(-30, 31):
+				for xx6 in range(-56, 57):
+					var e6 := Vector2(xx6 / 56.0, yy6 / 30.0).length()
+					if e6 <= 1.0:
+						var drum := Color(0.9, 0.89, 0.86).darkened(0.18 * clampf(xx6 / 56.0 + 0.3, 0.0, 1.0))
+						if e6 > 0.8 and yy6 > -6 and int(atan2(yy6, xx6) * 32.0 / TAU + 32.0) % 2 == 0:
+							drum = drum.darkened(0.3)                                        # the gaps between the drum's columns
+						if e6 > 0.97:
+							drum = drum.darkened(0.2)
+						_px(int(dc2.x) + xx6, int(dc2.y) + yy6, drum)
+			var rx6 := 48.0
+			var ry6 := 44.0
+			var top := Vector2(dc2.x, dc2.y - 16)
+			var ldir := Vector3(-0.55, -0.6, 0.58).normalized()
+			for yy7 in range(-int(ry6), int(ry6) + 1):
+				for xx7 in range(-int(rx6), int(rx6) + 1):
+					var nx := xx7 / rx6
+					var ny := yy7 / ry6
+					var r2 := nx * nx + ny * ny
+					if r2 > 1.0 or yy7 > 22:
+						continue
+					var nz := sqrt(1.0 - r2)
+					var lam := clampf(Vector3(nx, ny, nz).dot(ldir), 0.0, 1.0)
+					var glass := Color(0.22, 0.38, 0.5).lerp(Color(0.62, 0.82, 0.92), lam)
+					var lon := atan2(nx, nz)
+					if absf(fposmod(lon * 8.0 / PI + 0.5, 1.0) - 0.5) < 0.05 or absf(fposmod(asin(clampf(ny, -1.0, 1.0)) * 4.0 / PI + 0.5, 1.0) - 0.5) < 0.035:
+						glass = Color(0.8, 0.8, 0.82).lerp(Color(0.95, 0.95, 0.96), lam)     # its ribs and rings
+					if r2 > 0.9:
+						glass = glass.darkened(0.15)
+					var spec := pow(maxf(Vector3(nx, ny, nz).dot((ldir + Vector3(0, 0, 1)).normalized()), 0.0), 40.0)
+					_px(int(top.x) + xx7, int(top.y) + yy7, glass.lerp(Color(1, 1, 1), spec * 0.8))
+			# the lantern on its top
+			var lt2 := Vector2(top.x - 4, top.y - ry6 + 10)
+			for yy8 in range(-8, 9):
+				for xx8 in range(-9, 10):
+					if Vector2(xx8 / 9.0, yy8 / 8.0).length() <= 1.0:
+						_px(int(lt2.x) + xx8, int(lt2.y) + yy8, Color(0.95, 0.94, 0.91).darkened(0.25 * clampf(xx8 / 9.0 + 0.2, 0.0, 1.0)))
+			_rect(int(lt2.x) - 3, int(lt2.y) - 8, 6, 4, Color(0.85, 0.66, 0.3))
+			_rect(int(lt2.x) - 1, int(lt2.y) - 12, 2, 4, Color(0.95, 0.8, 0.45))
 		"steps":
 			# 53e: broad steps up to the Museum's doors
 			for sr in int(ph / 5):
