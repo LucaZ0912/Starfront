@@ -1519,8 +1519,14 @@ func _nearest_drone(p: Vector2) -> Dictionary:
 	return best
 
 
-## 0.7.52.18 (Luz): the Senate armours carry their drones at the shoulders, on the outside of the upper arms.
+## 0.7.52.18 (Luz): the Senate armours carry their drones at the shoulders, on the outside of the upper arms;
+## 0.7.53.33 (Luz): every suit does now – one drone on the right upper arm, the Senate's two on both.
 func shoulder_drones() -> bool:
+	return true
+
+
+## Two drone places, one on each arm (the Senate armours) – otherwise the one drone sits on the right arm.
+func both_arms() -> bool:
 	return bool(GearData.base(String(GameState.gear.suit)).get("shoulder_drones", false))
 
 
@@ -1529,7 +1535,7 @@ func _dock_at(i: int) -> Vector2:
 	if not shoulder_drones():
 		return pilot_pos() + Vector2(-1, -1)
 	var dir: int = view.pilot.dir
-	var left := i == 0                                       # place 1 on the left arm, place 2 on the right
+	var left := i == 0 and both_arms()                      # place 1 on the left arm, place 2 (or the only one) on the right
 	var x := 0.0
 	match dir:
 		0:
@@ -1841,7 +1847,7 @@ func _draw_drone_one() -> void:
 		# behind seen edge on, from the side the near one seen whole, the far one hidden behind you
 		var pw2: Walker = view.pilot
 		var cs2 := ChibiArt.CHAR_SCALE
-		var left := drone_slot == 0
+		var left := drone_slot == 0 and both_arms()
 		var bp2 := pw2.pos * S + Vector2(0, -ChibiArt.H * cs2 + 14.0 * cs2)
 		var near := (pw2.dir == 2 and left) or (pw2.dir == 3 and not left)
 		if pw2.dir in [2, 3] and not near:

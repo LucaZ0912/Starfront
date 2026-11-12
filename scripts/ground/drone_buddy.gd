@@ -23,6 +23,10 @@ func ids() -> Array:
 
 
 func shoulder() -> bool:
+	return true                                                 # 0.7.53.33 (Luz): every suit carries its drone on the arm
+
+
+func both_arms() -> bool:
 	return bool(GearDataB.base(String(GameState.gear.suit)).get("shoulder_drones", false))
 
 
@@ -32,10 +36,11 @@ func _dock_at(i: int) -> Vector2:
 		return p + Vector2(-1, -1)
 	var dir: int = view.pilot.dir
 	var x := 0.0
+	var left := i == 0 and both_arms()                          # the only drone: on the right arm
 	if dir == 0:
-		x = 6.0 if i == 0 else -6.0
+		x = 6.0 if left else -6.0
 	elif dir == 1:
-		x = -6.0 if i == 0 else 6.0
+		x = -6.0 if left else 6.0
 	return p + Vector2(x, -1)
 
 
@@ -116,7 +121,7 @@ func _draw() -> void:
 			continue
 		if String(d["state"]) == "docked":
 			if shoulder():
-				var left := i == 0
+				var left := i == 0 and both_arms()
 				var near := (pw.dir == 2 and left) or (pw.dir == 3 and not left)
 				if pw.dir in [2, 3] and not near:
 					continue

@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.33 – 2026-11-12
+
+**Drones on the arm (Luz).** Every suit now carries its switched-off drone on the outside of the **right upper arm**,
+as the Senate armours do (they keep one on each arm) – no longer on the back.
+
 ## alpha 0.7.53.32 – 2026-11-12
 
 **The debug menu tidied up (Luz).** Every tab is now made of **sections that fold open and shut** (▸ / ▾) – shut at
