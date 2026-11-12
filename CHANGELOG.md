@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.21 – 2026-11-12
+
+**Fix (Luz): trees.** A small tree's crown sits on its trunk now (it floated above it); crowns stay inside their
+picture (no flat edges). The roof plaza's trees are as wide as their planters and taller.
+
 ## alpha 0.7.53.20 – 2026-11-12
 
 **Package 53d – the research station (Luz).** On harsh worlds (no air to breathe) a site on the planet map may now be

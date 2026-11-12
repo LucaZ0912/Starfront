@@ -362,7 +362,7 @@ static func build_plaza(body: Dictionary, site: Dictionary) -> GroundMap:
 	m.lights.append({"pos": Vector2(mx, 17.5) * TILE, "r": 80.0, "col": Color(0.4, 0.85, 1.0), "a": 0.4})
 	for tp in [Vector2i(KX + 3, 12), Vector2i(TX - 6, 12), Vector2i(KX + 4, 23), Vector2i(TX - 7, 23)]:
 		m.add_object({"kind": "planter", "x": tp.x, "y": tp.y, "w": 3, "h": 1, "col": Color(0.78, 0.79, 0.82)})
-		m.add_object({"kind": "tree", "x": tp.x + 1, "y": tp.y - 1, "w": 1, "h": 1})
+		m.add_object({"kind": "tree", "x": tp.x, "y": tp.y - 1, "w": 3, "h": 1, "rise": 72})
 	for bp in [Vector2i(mx - 7, 20), Vector2i(mx + 4, 20), Vector2i(mx - 3, 13)]:
 		m.add_object({"kind": "bench", "x": bp.x, "y": bp.y, "w": 3, "h": 1})
 	for lp in [Vector2i(KX + 1, 11), Vector2i(mx - 1, 11), Vector2i(TX - 2, 11), Vector2i(KX + 1, 25), Vector2i(TX - 2, 25)]:

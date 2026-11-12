@@ -899,15 +899,17 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 						_r(img, pw / 2 - tw2 / 2 + 2 + bk2 * 2, total - th + 6 + bk2 * 9, 1, 6, trunk.darkened(0.2))
 					_r(img, pw / 2 - tw2 / 2 - 4, total - 4, 5, 4, trunk.darkened(0.1))
 					_r(img, pw / 2 + tw2 / 2 - 1, total - 4, 5, 4, trunk.darkened(0.1))
-					var crown_y := float(total - th) - float(fy) * 0.32
+					var crown_y := maxf(float(total - th) - float(fy) * 0.32, float(total - th) - 12.0 * ks)    # 0.7.53.21 (Luz): a small crown sits on its trunk
 					for k2 in 12:
-						var cx := pw * 0.5 + trng.randf_range(-pw * 0.32, pw * 0.32)
+						var rx1 := trng.randf_range(7.0, 11.0) * ks
+						var cx := clampf(pw * 0.5 + trng.randf_range(-pw * 0.32, pw * 0.32), rx1 + 1.0, pw - rx1 - 1.0)     # (inside the picture)
 						var cy2 := crown_y + trng.randf_range(-10.0, 8.0) * ks
-						_ellipse(img, cx, cy2 + 3.0 * ks, trng.randf_range(7.0, 11.0) * ks, trng.randf_range(6.0, 9.0) * ks, tc.darkened(0.3))
+						_ellipse(img, cx, cy2 + 3.0 * ks, rx1, trng.randf_range(6.0, 9.0) * ks, tc.darkened(0.3))
 					for k3 in 12:
-						var cx2 := pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.3)
+						var rx2 := trng.randf_range(6.0, 9.0) * ks
+						var cx2 := clampf(pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.3), rx2 + 1.0, pw - rx2 - 1.0)
 						var cy3 := crown_y + trng.randf_range(-12.0, 4.0) * ks
-						_ellipse(img, cx2, cy3, trng.randf_range(6.0, 9.0) * ks, trng.randf_range(5.0, 7.0) * ks, tc.lightened(trng.randf_range(-0.05, 0.08)))
+						_ellipse(img, cx2, cy3, rx2, trng.randf_range(5.0, 7.0) * ks, tc.lightened(trng.randf_range(-0.05, 0.08)))
 					for k4 in int(20 * ks):
 						_r(img, int(pw * 0.5 + trng.randf_range(-pw * 0.3, pw * 0.25)), int(crown_y + trng.randf_range(-14.0, 0.0) * ks), 2, 1, tc.lightened(0.3))
 					if bool(o.get("vines", false)):
