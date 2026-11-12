@@ -15,6 +15,7 @@ extends RefCounted
 ## the ways, extra loops, the cover per room; its `outside` ("ruin": a facade on the body's ground, "alley": a back
 ## alley of a city); its LAYERS – one per level, each may change any of the theme's keys (the sewer above, the dealer's
 ## hideout below). The last layer holds the target (`target`: "relic" or "dealer").
+const MuseumData = preload("res://data/museum.gd")
 const THEMES := {
 	"precursor": {"name": "Ruin of the Precursors", "kind": "ruins", "style": "precursor", "room_floor": 17, "hall_floor": 17,
 		"floor": Color(0.34, 0.25, 0.19), "floor2": Color(0.3, 0.22, 0.17), "wall": Color(0.44, 0.3, 0.21),
@@ -44,7 +45,7 @@ const THEMES := {
 		"cols": [4, 6], "rows": [2, 2], "cell_w": 16, "cell_h": 14, "room_w": [6, 10], "room_h": [5, 7], "room_chance": 0.85,
 		"corr": 3, "loops": [0, 0], "cover": [2, 4],
 		"loot": ["cs_medkit", "cs_cell", "cs_ammo", "cs_breach"],
-		"credits": [150, 420], "research": [0, 2], "museum_chance": 0.0,
+		"credits": [150, 420], "research": [0, 2], "museum_chance": 0.15,
 		"names_a": ["Iron", "Long", "Far", "Grey", "Red", "Quiet", "Last", "Brave"],
 		"names_b": ["Meridian", "Horizon", "Promise", "Tally", "Comet", "Harvest", "Wanderer", "Lantern"],
 		"hulls": ["freighter", "mule", "warden", "bastion", "hdy_goliath", "aur_boulevard", "hdy_maul", "iwakudaki"],
@@ -213,25 +214,6 @@ static func levels(theme: String) -> int:
 
 ## 0.7.53.2 (Luz): rare relics of the two vanished alien kinds – found in ruins, shown in the Museum (package 53e).
 ## 0.7.53.7 (Luz): and special mining finds from the old mines.
-const MUSEUM_RELICS := {
-	"mine": [["mn_diamond", "Giant Diamond", "A diamond the size of a fist – the miners who found it never came back up for it."],
-		["mn_geode", "Singing Geode", "Its crystals ring when the air moves."],
-		["mn_fossil", "Fossil in Ore", "Something lived in this rock before there was air on this world."],
-		["mn_meteor", "Iron Meteorite", "Fell here before the colonies, buried under a hundred metres of rock."],
-		["mn_gold", "Gold Nugget", "Heavy, warm-coloured, the size of an egg."]],
-	"precursor": [["pr_lens", "Precursor Lens", "A disc of fused crystal that bends light into words nobody reads."],
-		["pr_key", "Precursor Key-Rod", "A rod of rusted iron and living crystal – it hums near their doors."],
-		["pr_mask", "Precursor Mask", "A face, or what they thought a face should be."],
-		["pr_core", "Precursor Heart-Core", "Warm to the touch after an age in the dark."],
-		["pr_map", "Precursor Star Plate", "Stars engraved in iron – some of them are not there any more."],
-		["pr_idol", "Precursor Figurine", "Small, many-limbed, worn smooth by hands."]],
-	"darkones": [["do_shard", "Black Shard", "Glass as dark as a closed eye. It is cold, and it is never quite still."],
-		["do_coil", "Coiled Relic", "A spiral of bone-like stone that hums when nobody listens."],
-		["do_mask", "Sleeper's Mask", "Too wide for any face we know. The eyes are shut."],
-		["do_tablet", "Symbol Tablet", "Four signs, in an order that changes when you look away."]],
-}
-
-
 ## The danger of a site: the tiers of its foes (FoeData.TIERS), how many in a guard room, the leader's tier.
 const DANGER := {
 	"green": {"name": "green (easy)", "tiers": ["green", "green", "green"], "guards": [2, 3], "leader": "green", "cap": 8},
@@ -304,18 +286,22 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 	return "%s of %s-%s" % ["Ruin" if String(th["kind"]) == "ruins" else "Site", a, b.capitalize()]
 
 
-## A museum relic of a theme by a roll (or "" none).
-static func museum_roll(theme: String, rng: RandomNumberGenerator) -> String:
+## 53e: a find for the Museum from a site of a theme by a roll (or "" none) – an exhibit of the room the theme yields
+## (data/museum.gd), its rarity weighed; the tablets come from scans, not caches.
+static func museum_roll(theme: String, rng: RandomNumberGenerator, veil: bool = false) -> String:
 	var th: Dictionary = THEMES.get(theme, {})
-	var list: Array = MUSEUM_RELICS.get(theme, [])
-	if list.is_empty() or rng.randf() >= float(th.get("museum_chance", 0.0)):
+	if rng.randf() >= float(th.get("museum_chance", 0.0)):
 		return ""
-	return String(list[rng.randi() % list.size()][0])
+	return museum_pick(theme, rng, veil)
+
+
+## 53e: an exhibit of the room a theme yields, for certain ("" if the theme yields none).
+static func museum_pick(theme: String, rng: RandomNumberGenerator, veil: bool = false) -> String:
+	var room := MuseumData.room_for_theme(theme, veil)
+	if room == "":
+		return ""
+	return MuseumData.roll_kind(room, rng, 0, 2.0 if room == "minerals" and GameState.museum_perk("minerals") else 1.0)
 
 
 static func museum_name(id: String) -> String:
-	for th in MUSEUM_RELICS:
-		for r in MUSEUM_RELICS[th]:
-			if String(r[0]) == id:
-				return String(r[1])
-	return id
+	return MuseumData.exhibit_name(id)

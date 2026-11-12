@@ -2226,6 +2226,10 @@ func _mine(delta: float, t: Dictionary, node) -> bool:
 			var rare := _rare_ore_of(String(GameData.commodities.get(ore, {}).get("class", "")))
 			if rare != "" and fit.add_cargo(rare, 1.0) > 0.0:
 				GameState.log_msg("Prospector's Eye: 1 × %s found." % GameData.item_name(rare), GameState.COL_GOOD)
+		if randf() < 0.004 * delta and String(node.kind) == "asteroid":
+			var mrng := RandomNumberGenerator.new()                   # 53e (Luz): now and then a mineral for the Museum
+			mrng.randomize()
+			GameState.museum_find(preload("res://data/poi.gd").museum_pick("mine", mrng))
 	if faction == "player":
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
 		GameState.crew_learn("mined", added)    # package 31

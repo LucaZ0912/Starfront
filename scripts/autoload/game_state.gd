@@ -33,6 +33,7 @@ const OLD_GATE_TIME := 1.6
 const MISJUMP_OLD := 0.03
 const MISJUMP_PIRATE := 0.015
 const MISJUMP_DAMAGE := 0.15
+const MuseumData = preload("res://data/museum.gd")
 var misjumps := {}                  # ship uid -> true: this jump goes wrong (rolled at the start)
 var debug_misjump := false          # 40e: the next jump of the pilot's ship goes wrong (debug menu)
 var pending_arrival := {}           # for the view: how the active ship arrived ({kind: "gate" / "misjump", …})
@@ -129,7 +130,8 @@ var _prosper_t := 0.0             # package 42c: prosperity drifts back to its b
 var research_data := 0
 var poi_visits := {}                    # package 53a: system id (String) -> how often you have come (its sites change with it)
 var poi_used: Array = []                # sites whose target is done – gone
-var museum_finds: Array = []            # 0.7.53.2: relics (ids, data/poi.gd MUSEUM_RELICS) found for the Museum (53e)
+var museum_finds: Array = []            # 0.7.53.2: finds for the Museum carried (exhibit ids, data/museum.gd – 53e: each once per piece)
+var museum_donated: Array = []          # 53e: the exhibits in their cases at the Museum in Curie
 ## Package 51: the pilot's personal equipment – suit, weapons, belt, features, pockets, the ships' lockers.
 const PilotGearScript = preload("res://scripts/core/pilot_gear.gd")
 var gear = PilotGearScript.new()
@@ -525,7 +527,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
@@ -599,6 +601,7 @@ func from_dict(d: Dictionary) -> void:
 	poi_visits = (d.get("poi_visits", {}) as Dictionary).duplicate()
 	poi_used = (d.get("poi_used", []) as Array).duplicate()
 	museum_finds = (d.get("museum_finds", []) as Array).duplicate()
+	museum_donated = (d.get("museum_donated", []) as Array).duplicate()
 	if d.has("news"):
 		news.from_dict(d["news"])
 	else:
@@ -2069,7 +2072,7 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 		debug_misjump = false
 		misjumps[f.uid] = true
 	if style in ["old", "pirate"]:
-		if randf() < (MISJUMP_OLD if style == "old" else MISJUMP_PIRATE) * float(DRIVE_MISJUMP[drive_grade(f)]):
+		if randf() < (MISJUMP_OLD if style == "old" else MISJUMP_PIRATE) * float(DRIVE_MISJUMP[drive_grade(f)]) * (0.5 if museum_perk("severance") else 1.0):
 			misjumps[f.uid] = true
 		log_msg("The %s here is long past its last service – the jump takes longer, and its field is not to be trusted." % ("old gate" if style == "old" else "patched pirate gate"), COL_WARN)
 	f.transit = f.transit_total
@@ -2217,7 +2220,61 @@ func ground_goal(site: Dictionary, ok: bool, pay_mult: float = 1.0, note: String
 
 func museum_find(id: String) -> void:
 	museum_finds.append(id)
-	log_msg("A find for the Museum.", COL_GOOD)
+	var e: Dictionary = MuseumData.get_exhibit(id)
+	log_msg("A find for the Museum: %s (%s)%s." % [MuseumData.exhibit_name(id), String(e.get("rarity", "common")),
+		" – already shown there, worth %d cr to the curator" % MuseumData.price(id) if museum_donated.has(id) else ""], COL_GOOD)
+	codex.event("museum_find")
+
+
+## 53e (Luz): how many of a piece you carry.
+func museum_carried(id: String) -> int:
+	return museum_finds.count(id)
+
+
+## 53e: a find set into its case at the Museum – the curator pays a little for it. "" or why not.
+func museum_donate(id: String) -> String:
+	if museum_donated.has(id):
+		return "That case is filled already."
+	if not museum_finds.has(id):
+		return "You do not carry that piece."
+	museum_finds.erase(id)
+	museum_donated.append(id)
+	var room := MuseumData.room_of(id)
+	var bonus := MuseumData.price(id) / 4
+	credits += bonus
+	log_msg("Into its case: %s. The curator thanks you – %d cr." % [MuseumData.exhibit_name(id), bonus], COL_GOOD)
+	if museum_room_done(room):
+		log_msg("The room \"%s\" is complete! %s" % [MuseumData.room_name(room), String(MuseumData.PERKS[room])], COL_GOOD)
+	if museum_donated.size() >= MuseumData.EXHIBITS.size() and not museum_donated.has("_suit"):
+		museum_donated.append("_suit")
+		gear.add_item(MuseumData.SUIT_REWARD, 1)
+		log_msg("The Museum is full. The curator gives you the Archivist Suit – it is in your pockets.", COL_GOOD)
+	return ""
+
+
+## 53e: a piece you carry that is shown already, sold to the curator – its price by its rarity. The credits or 0.
+func museum_sell(id: String) -> int:
+	if not museum_finds.has(id) or not museum_donated.has(id):
+		return 0
+	museum_finds.erase(id)
+	var p := MuseumData.price(id)
+	credits += p
+	log_msg("Sold to the curator: %s – %d cr." % [MuseumData.exhibit_name(id), p], COL_GOOD)
+	return p
+
+
+func museum_room_done(room: String) -> bool:
+	var ids := MuseumData.of_room(room)
+	return not ids.is_empty() and ids.all(func(e): return museum_donated.has(String(e["id"])))
+
+
+## 53e: a complete room's reward (data/museum.gd PERKS).
+func museum_perk(room: String) -> bool:
+	return museum_room_done(room)
+
+
+func museum_count() -> int:
+	return museum_donated.filter(func(i): return String(i) != "_suit").size()
 
 
 func poi_use(id: String) -> void:

@@ -7,6 +7,9 @@ extends CanvasLayer
 
 signal used(zone: Dictionary)
 
+const MuseumData = preload("res://data/museum.gd")
+const MuseumGen = preload("res://scripts/ground/museum_gen.gd")
+const ExhibitArtV = preload("res://scripts/core/exhibit_art.gd")
 const LAYER := 12
 const BgShader = preload("res://shaders/background.gdshader")
 
@@ -353,6 +356,12 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = _poi_map("alley", Vector2.ZERO)                         # 0.7.53.3: a city's back alley
 	elif level == "plaza":
 		map = _poi_map("plaza", Vector2.ZERO)                         # 0.7.53.19: a city's roof plaza
+	elif level == "mplaza":
+		map = MuseumGen.build_plaza(station, _body)                  # 53e (Luz): Curie's roof plaza with the Museum
+	elif level == "museum":
+		map = MuseumGen.build_main(station, _body)                   # 53e: the Museum – the hall and the floors above
+	elif level == "museum_down":
+		map = MuseumGen.build_basement(station, _body)               # 53e: its basement, the Dark Ones
 	elif level == "minehead":
 		map = _poi_map("minehead", Vector2.ZERO)                      # 0.7.53.7: a settlement's old mine
 	elif level == "hangar":
@@ -382,7 +391,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
-		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza"]:
+		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza"]:
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
@@ -468,7 +477,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
-		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza"}.get(level, "")]
+		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the halls", "museum_down": "the basement"}.get(level, "")]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
@@ -940,9 +949,9 @@ func _touch_symbol(d: Dictionary, i: int) -> void:
 ## 0.7.53.23: a wave of force – hurts whoever stands near (you, foes alike).
 func _dark_wave(at: Vector2) -> void:
 	if combat != null:
-		combat._explode(at + Vector2(0, -4), 40.0, WAVE_DMG, "explosive", null)
+		combat._explode(at + Vector2(0, -4), 40.0, WAVE_DMG * (0.5 if GameState.museum_perk("darkones") else 1.0), "explosive", null)
 	elif not Commands.suit_god:
-		GameState.gear.health = maxf(1.0, GameState.gear.health - WAVE_DMG)
+		GameState.gear.health = maxf(1.0, GameState.gear.health - WAVE_DMG * (0.5 if GameState.museum_perk("darkones") else 1.0))
 	Audio.play("shield_down", "dark wave", 0.0)
 
 
@@ -1406,6 +1415,14 @@ func _outside_look(lk: Dictionary, rng: RandomNumberGenerator, guard_look: bool 
 	return l2
 
 
+## 53e (Luz): a city on Curie – its roof plaza holds the Museum.
+func is_museum_city() -> bool:
+	if not is_city():
+		return false
+	var b := Universe.find_body(_sys, String(station.get("body", ""))) if _sys >= 0 else {}
+	return String(b.get("name", "")) == "Curie"
+
+
 ## 0.7.50.5: in a city (a station on the ground)?
 func is_city() -> bool:
 	return bool(station.get("city", false))
@@ -1630,6 +1647,8 @@ func _build() -> void:
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
 	if level == "street":
 		n += 6                                        # a city's street is busy
+	if level in ["museum", "museum_down", "mplaza"]:
+		n = (3 if level != "museum" else 5) + GameState.museum_count() / (10 if level != "museum" else 4)   # 53e: the fuller, the busier
 	for i in n:
 		if map.wander.is_empty():
 			break
@@ -1648,7 +1667,7 @@ func _build() -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
 	# it (they hardly show); the tower bar's window lets in the sun by day
-	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza"]:
+	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza"]:
 		var tint := ColorRect.new()
 		_tint = tint
 		var mm := CanvasItemMaterial.new()
@@ -1661,7 +1680,7 @@ func _build() -> void:
 		if level in ["settlement", "alley", "minehead"]:  # all of it lies under the sky
 			tint.position = Vector2.ZERO
 			tint.size = map.size_px() * GroundMap.SCALE
-		elif level == "plaza":                            # 0.7.53.19: the roof plaza – not over the view of the city
+		elif level in ["plaza", "mplaza"]:              # 0.7.53.19: the roof plaza – not over the view of the city
 			tint.position = Vector2(0, map.window_rect.end.y) * GroundMap.TILE * GroundMap.SCALE
 			tint.size = Vector2(map.w, map.h - map.window_rect.end.y) * GroundMap.TILE * GroundMap.SCALE
 		_world.add_child(tint)
@@ -1684,7 +1703,7 @@ func _build() -> void:
 		var lsp := _add_light(l, add_mat)
 		if l.has("id"):
 			_named_lights[String(l["id"])] = lsp           # 0.7.52.23: a light that can be switched (the laser cage's)
-		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza"]:
+		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza"]:
 			_city_lights.append([lsp, l, "street"])
 		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
 			lsp.scale *= 1.4                           # the light through the glass: sun, sunset or night
@@ -2120,6 +2139,136 @@ func use_belt(n: int) -> void:
 		Audio.play("ui_click", "belt")
 
 
+
+# ---------------------------------------------------------------- 53e (Luz): the Museum in Curie
+
+## A case: look at its piece – or set in the one you carry (Stardew-style: you fill the cases yourself).
+func _museum_case(d: Dictionary) -> bool:
+	var id := String(d.get("exhibit", ""))
+	var e: Dictionary = MuseumData.get_exhibit(id)
+	var room := String(e.get("room", ""))
+	if GameState.museum_donated.has(id):
+		_say_toast("%s  (%s)  –  %s" % [String(e["name"]), String(e["rarity"]), String(e["text"])], 6.0)
+		return true
+	if not GameState.museum_finds.has(id):
+		_say_toast("An empty case – something of %s belongs here. %s" % [MuseumData.room_name(room).replace("The ", "the "), String(MuseumData.HINTS.get(room, ""))], 5.5)
+		return true
+	var done_before := GameState.museum_room_done(room)
+	var err := GameState.museum_donate(id)
+	if err != "":
+		_say_toast(err, 2.5)
+		return true
+	MuseumGen.retitle(map)
+	zone = {}
+	Audio.play("lock_acquired", "museum: a piece set in its case", -4.0)
+	var msg := "You set %s into its case. The curator nods – %d cr for the Museum's thanks." % [String(e["name"]), MuseumData.price(id) / 4]
+	if GameState.museum_room_done(room) and not done_before:
+		msg += "  The room \"%s\" is complete: %s" % [MuseumData.room_name(room), String(MuseumData.PERKS[room])]
+		if room == "darkones":
+			msg += "  Downstairs, a monolith's cast is raised on its plinth."
+	if GameState.museum_donated.has("_suit") and GameState.museum_count() >= MuseumData.EXHIBITS.size():
+		msg += "  Every case is filled – the curator gives you the Archivist Suit."
+	_say_toast(msg, 7.0)
+	log_event("Into its case: %s" % String(e["name"]), Color(0.95, 0.8, 0.4))
+	return true
+
+
+## The curator: how full the Museum is, your finds – sell the spare ones (shown already) – and a hint.
+func _open_curator() -> void:
+	Audio.play("ui_open", "museum: the curator")
+	_close_lift_menu()
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var p := UI.neon_panel(Color(0.95, 0.8, 0.45, 0.85), Color(0.05, 0.04, 0.03, 0.96), 2)
+	p.custom_minimum_size = Vector2(560, 0)
+	c.add_child(p)
+	var v := UI.vbox(6)
+	p.add_child(v)
+	v.add_child(UI.label("THE CURATOR", 20, Color(0.95, 0.8, 0.45)))
+	v.add_child(UI.label("\"%d of %d pieces in their cases. Every one you bring, you set in yourself – I only hold the keys.\"" % [GameState.museum_count(), MuseumData.EXHIBITS.size()], 13, UI.TEXT_DIM))
+	for r in MuseumData.ROOMS:
+		var rid := String(r["id"])
+		var have := MuseumData.of_room(rid).filter(func(e): return GameState.museum_donated.has(String(e["id"]))).size()
+		var tot := MuseumData.of_room(rid).size()
+		var done := have >= tot
+		v.add_child(UI.label("  %s – %d/%d%s" % [String(r["name"]), have, tot, ("   ✓ " + String(MuseumData.PERKS[rid])) if done else ""], 13,
+			Color(0.5, 1.0, 0.6) if done else Color(0.9, 0.93, 1.0)))
+	v.add_child(UI.label("YOUR FINDS", 15, Color(0.95, 0.8, 0.45)))
+	var keys: Array = []
+	var uniq: Array = []
+	for f in GameState.museum_finds:
+		if not uniq.has(String(f)):
+			uniq.append(String(f))
+	if uniq.is_empty():
+		v.add_child(UI.label("  You carry nothing for the Museum.", 13, UI.TEXT_DIM))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(540, mini(260, 34 * uniq.size() + 4))
+	var lv := UI.vbox(4)
+	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(lv)
+	if not uniq.is_empty():
+		v.add_child(sc)
+	var spare := 0
+	for id in uniq:
+		var e2: Dictionary = MuseumData.get_exhibit(id)
+		var n := GameState.museum_carried(id)
+		var row := UI.hbox(8)
+		var ic := TextureRect.new()
+		ic.texture = ExhibitArtV.texture(id)
+		ic.custom_minimum_size = Vector2(28, 28)
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		row.add_child(ic)
+		var rc: Color = MuseumData.RARITY[String(e2["rarity"])]["col"]
+		var shown: bool = GameState.museum_donated.has(id)
+		var lb := UI.label("%s ×%d  (%s)  –  %s" % [String(e2["name"]), n, String(e2["rarity"]),
+			"shown already" if shown else "set it in its case: %s" % MuseumData.room_name(String(e2["room"]))], 13, rc)
+		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(lb)
+		if shown:
+			spare += n * MuseumData.price(id)
+			var bid: String = id
+			row.add_child(UI.button("Sell one – %d cr" % MuseumData.price(id), func(): _curator_sell(bid)))
+		lv.add_child(row)
+	if spare > 0:
+		var b := UI.button("Sell every spare piece – %d cr" % spare, func(): _curator_sell(""))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		v.add_child(b)
+		keys.append(func(): _curator_sell(""))
+	var hb := UI.button("Ask for a hint – where to look for a missing piece", _curator_hint)
+	hb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	v.add_child(hb)
+	keys.append(_curator_hint)
+	v.add_child(UI.button("Thank you [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", zone)
+	_lift_menu.set_meta("keys", keys)
+
+
+func _curator_sell(id: String) -> void:
+	var got := 0
+	if id != "":
+		got = GameState.museum_sell(id)
+	else:
+		for f in GameState.museum_finds.duplicate():
+			if GameState.museum_donated.has(String(f)):
+				got += GameState.museum_sell(String(f))
+	if got > 0:
+		Audio.play("ui_buy", "museum: sold to the curator", -4.0)
+		_say_toast("The curator buys it for the Museum's stores – %d cr." % got, 3.0)
+	_open_curator()
+
+
+func _curator_hint() -> void:
+	var missing: Array = MuseumData.EXHIBITS.filter(func(e): return not GameState.museum_donated.has(String(e["id"])))
+	_close_lift_menu()
+	if missing.is_empty():
+		_say_toast("\"Nothing is missing. Nothing! Do you know how long I waited to say that?\"", 4.0)
+		return
+	var e: Dictionary = missing[randi() % missing.size()]
+	_say_toast("\"%s – the %s case is still empty. %s\"" % [String(e["name"]), MuseumData.room_name(String(e["room"])).replace("The ", ""), String(MuseumData.HINTS[String(e["room"])])], 7.0)
+
 # ---------------------------------------------------------------- 0.7.52.22 (package 52b): tools at work
 
 ## The things to work on placed in this map get their nodes (call after the map is built or a thing added).
@@ -2153,6 +2302,14 @@ func belt_tool(fam: String) -> String:
 func explore_use(z: Dictionary) -> bool:
 	var d: Dictionary = map.explore[int(z["i"])]
 	match String(d["kind"]):
+		"vitrine", "niche":
+			return _museum_case(d)
+		"monolith_cast":
+			if String(d.get("state", "")) == "up":
+				_say_toast("The cast of a monolith of the Dark Ones, raised now that every piece of theirs is here. Its signs glow faintly – the curator swears it was dark when it came.", 6.0)
+			else:
+				_say_toast("An empty plinth. The curator keeps it for the cast of a monolith – once every piece of the Dark Ones is in its case.", 4.5)
+			return true
 		"panel":
 			if String(d["state"]) == "shut":
 				var tool := belt_tool("tl_cutter")
@@ -2636,11 +2793,10 @@ func _loot(d: Dictionary) -> void:
 		var rs := rng.randi_range(int(th["research"][0]), int(th["research"][1]))
 		GameState.research_data += rs
 		got.append("%d research data" % rs)                 # 0.7.53.2: scan data
-	var mr := PoiData.museum_roll(String(d.get("theme", _site.get("theme", "precursor"))), rng)
+	var veil := Universe.is_veil(_sys)
+	var mr := PoiData.museum_roll(String(d.get("theme", _site.get("theme", "precursor"))), rng, veil)
 	if mr == "" and bool(d.get("museum", false)) and rng.randf() < (0.8 if bool(d.get("hidden", false)) else 0.5):
-		var ml: Array = PoiData.MUSEUM_RELICS.get(String(d.get("theme", "")), [])
-		if not ml.is_empty():
-			mr = String(ml[rng.randi() % ml.size()][0])          # 0.7.53.7: the buried cache – half the time a find
+		mr = PoiData.museum_pick(String(d.get("theme", "")), rng, veil)          # 0.7.53.7: the buried cache – half the time a find
 	if mr != "":
 		GameState.museum_find(mr)
 		got.append("a find for the Museum: %s" % PoiData.museum_name(mr))
@@ -2676,8 +2832,9 @@ func _poi_target_done(d: Dictionary) -> void:
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "darkones":
-		var dl: Array = PoiData.MUSEUM_RELICS["darkones"]
-		var dr := String(dl[int(d.get("seed", 0)) % dl.size()][0])      # 0.7.53.23: a relic of the Dark Ones
+		var drng := RandomNumberGenerator.new()
+		drng.seed = int(d.get("seed", 0)) + 23
+		var dr := PoiData.museum_pick("darkones", drng)                 # 0.7.53.23: a relic of the Dark Ones
 		GameState.museum_find(dr)
 		GameState.research_data += 12
 		_say_toast("You take it from the altar: %s – a find for the Museum. Below you, in the pit, something shifts in its sleep." % PoiData.museum_name(dr), 6.0)
@@ -2704,8 +2861,9 @@ func _poi_target_done(d: Dictionary) -> void:
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "mine":
-		var list: Array = PoiData.MUSEUM_RELICS["mine"]
-		var mf := String(list[int(d.get("seed", 0)) % list.size()][0])            # 0.7.53.7: the mine's prize
+		var mrng := RandomNumberGenerator.new()
+		mrng.seed = int(d.get("seed", 0)) + 7
+		var mf := PoiData.museum_pick("mine", mrng)                     # 0.7.53.7: the mine's prize
 		GameState.museum_find(mf)
 		var pay := 250 + int(d.get("seed", 0)) % 300
 		GameState.credits += pay
@@ -2731,7 +2889,7 @@ func _poi_target_done(d: Dictionary) -> void:
 	rng.seed = int(d.get("seed", 0)) + 99
 	var mr: String = PoiData.museum_roll(String(_site.get("theme", "precursor")), rng) if rng.randf() < 0.6 else ""
 	if mr == "" and rng.randf() < 0.25:
-		mr = String(PoiData.MUSEUM_RELICS.get(String(_site.get("theme", "precursor")), [[""]])[0][0])
+		mr = PoiData.museum_pick(String(_site.get("theme", "precursor")), rng, Universe.is_veil(_sys))
 	if mr != "":
 		GameState.museum_find(mr)
 	_say_toast("The relic read – the site's prize is yours (+%d research data)%s. Back to the ship when you like." % [n, (" – and a find for the Museum: %s" % PoiData.museum_name(mr)) if mr != "" else ""], 5.5)
@@ -3191,7 +3349,7 @@ func _scan_start(n: int) -> bool:
 	if cg != null and String(map.explore[int(cg)]["state"]) != "off":
 		_say_toast("The crystals' lightning scatters the scan – switch them off first." if String(map.explore[int(cg)]["kind"]) == "crystals" else "The laser cage is in the way – the beams scatter the scan. Switch it off first.", 3.0)
 		return true
-	_scan = {"i": best, "t": 0.0, "need": 3.0 * (1.0 - 0.04 * GameState.skill_level("science")), "key": n, "at": pilot.pos}
+	_scan = {"i": best, "t": 0.0, "need": 3.0 * (1.0 - 0.04 * GameState.skill_level("science")) * (0.67 if GameState.museum_perk("precursors") else 1.0), "key": n, "at": pilot.pos}
 	Audio.play("ui_click", "scan starts", -8.0)
 	return true
 
@@ -3239,6 +3397,16 @@ func scan_done(d: Dictionary) -> void:
 			hw["hinted"] = true                            # 0.7.53.24 (Luz): it tells of a hollow behind a wall – a ? on the map
 			_say_toast("…and it tells of a hollow behind a cracked wall on this level – marked on your map (?).", 4.0)
 			log_event("A hidden chamber – marked on the map", Color(0.95, 0.8, 0.4))
+	if String(d["kind"]) in ["tablet", "monolith"]:
+		# 53e (Luz): a scan of the Precursors' tablets or a monolith's vision – now and then a record for the Museum's tablets
+		var trng := RandomNumberGenerator.new()
+		trng.seed = int(d.get("seed", 0)) + 531
+		var troom := "darkones" if String(d["kind"]) == "monolith" else "precursors"
+		if trng.randf() < (0.5 if troom == "darkones" else 0.35):
+			var tid := MuseumData.roll_kind(troom, trng, 2)
+			if tid != "":
+				GameState.museum_find(tid)
+				_say_toast("Your scanner keeps a record of it – a find for the Museum: %s." % MuseumData.exhibit_name(tid), 4.0)
 	log_event("Scanned: %s  +%d research data" % [txt.left(80), n], Color(0.45, 0.9, 1.0))
 	Audio.play("lock_acquired", "scan done", -6.0)
 
@@ -3372,6 +3540,21 @@ func use(instant: bool = false) -> bool:
 				return true
 			go_level("alley" if is_city() else ("minehead" if is_town() else "landing"), "dungeon_out")           # 0.7.53.2: back out
 			return true
+		"museum_in":
+			go_level("museum", "museum_in")                # 53e (Luz): into the Museum
+			return true
+		"museum_out":
+			go_level("mplaza", "dungeon_out")              # 53e: out onto the roof plaza
+			return true
+		"museum_down":
+			go_level("museum_down", "museum_in")           # 53e: down to the Dark Ones
+			return true
+		"museum_up":
+			go_level("museum", "dungeon_up")               # 53e: back up to the hall
+			return true
+		"curator":
+			_open_curator()                                # 53e: the curator
+			return true
 		"mine_path":
 			go_level("minehead", "path")                 # 0.7.53.7 (Luz): to the old mine at the town's edge
 			return true
@@ -3487,7 +3670,9 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
 	if is_city():                                                 # 0.7.53.3 (Luz): the way down into the sewers
 		lvls.append(["alley", "%d.  Back alley – a manhole down into the sewers" % (lvls.size() + 1)])
-	if is_city():                                                 # 0.7.53.19 (Luz): up to the roof plaza
+	if is_museum_city():                                          # 53e (Luz): on Curie the roof plaza is the Museum's
+		lvls.append(["mplaza", "%d.  Roof plaza – the Museum of Curie" % (lvls.size() + 1)])
+	elif is_city():                                               # 0.7.53.19 (Luz): up to the roof plaza
 		var cs1 := GameState.corp_site_for(String(station.get("id", "")))
 		var cname := String((cs1 if not cs1.is_empty() else GameState.corp_poi(_sys, station)).get("name", "a corporate tower"))
 		lvls.append(["plaza", "%d.  Roof plaza – the %s" % [lvls.size() + 1, cname]])
@@ -3565,7 +3750,7 @@ func _choose_level(target: String) -> void:
 		return
 	if target == "plaza":
 		_town_kind = "corp"                              # 0.7.53.19: the corporate tower's plaza
-	elif target == "alley":
+	elif target in ["alley", "mplaza"]:
 		_town_kind = ""
 	if target != level or (target == "hangar" and _hangar_stale()):
 		_start_ride(z, target)

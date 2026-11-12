@@ -163,6 +163,30 @@ static func _rise(kind: String) -> int:
 			return 44
 		"glass_rail":                       # 0.7.53.19: the roof plaza's glass balustrade
 			return 12
+		"statue":                           # 53e (Luz): the Museum's statues – a figure of pale stone on a pedestal
+			return 44
+		"statue_precursor":                 # 53e: a Precursor in iron-stone, tall and thin
+			return 50
+		"bust":
+			return 30
+		"column":                           # 53e: a column of the Museum's portico (~3.3 m)
+			return 50
+		"curator_desk":                     # 53e: the curator's counter
+			return 16
+		"museum_bench", "rope", "m_rail":
+			return 8
+		"globe":
+			return 24
+		"geode_big":
+			return 26
+		"ship_model":
+			return 24
+		"poster":
+			return 26
+		"skull_cast":
+			return 16
+		"idol_cast":
+			return 40
 		"barrier":                  # package 52: cover – a low plated barricade (~1.3 m) and a high bulwark (~2.6 m)
 			return 8
 		"bulwark":
@@ -194,6 +218,182 @@ static func _ellipse(img: Image, cx: float, cy: float, rx: float, ry: float, c: 
 static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Color, wood: Color, metal: Color, o: Dictionary) -> void:
 	var fy := rise                     # top of the footprint in the picture
 	match kind:
+		"statue", "statue_precursor":
+			# 53e (Luz): a statue a little larger than life on a pedestal of pale stone
+			var stn := Color(0.86, 0.86, 0.88)
+			var pb := fy + ph
+			_r(img, 1, pb - 12, pw - 2, 12, stn.darkened(0.1))
+			_r(img, 1, pb - 12, pw - 2, 2, stn.lightened(0.1))
+			_r(img, 0, pb - 14, pw, 2, stn)
+			_r(img, pw / 2 - 5, pb - 7, 10, 2, stn.darkened(0.35))
+			var top := pb - 14
+			if kind == "statue":
+				var lrng := RandomNumberGenerator.new()
+				lrng.seed = 900 + int(o.get("seed", 1))
+				var lk: Dictionary = ChibiArt.PilotArt.random_look(lrng)
+				lk["suit"] = String(o.get("species", "suit_civil"))
+				lk["helmet"] = false
+				var fig: Image = ChibiArt.frame(lk, 0, 0).get_image()
+				fig.resize(14, 32, Image.INTERPOLATE_NEAREST)
+				for yy in fig.get_height():
+					for xx in fig.get_width():
+						var fc := fig.get_pixel(xx, yy)
+						if fc.a > 0.0:
+							var lum := fc.get_luminance()
+							_p(img, pw / 2 - 7 + xx, top - 32 + yy, Color(0.62, 0.62, 0.64).lerp(Color(0.97, 0.97, 0.98), clampf(lum * 1.2, 0.0, 1.0)))
+			else:
+				var ps := Color(0.62, 0.5, 0.42)                      # weathered iron-stone, crystal inlays
+				var cx := pw / 2
+				_ellipse(img, cx, top - 34, 3.5, 5.5, ps.lightened(0.1))
+				_r(img, cx - 1, top - 29, 3, 3, ps.darkened(0.1))
+				_r(img, cx - 4, top - 26, 9, 14, ps)
+				_r(img, cx - 4, top - 26, 2, 14, ps.lightened(0.15))
+				_r(img, cx - 7, top - 25, 2, 18, ps.darkened(0.15))
+				_r(img, cx + 6, top - 25, 2, 18, ps.darkened(0.2))
+				_r(img, cx - 3, top - 12, 3, 12, ps)
+				_r(img, cx + 1, top - 12, 3, 12, ps.darkened(0.1))
+				_r(img, cx - 2, top - 22, 5, 1, Color(0.7, 0.55, 1.0))
+				_p(img, cx, top - 36, Color(0.7, 0.55, 1.0))
+		"bust":
+			var bc: Color = o.get("col", Color(0.92, 0.9, 0.86))
+			var bb := fy + ph
+			_r(img, 3, bb - 16, pw - 6, 16, Color(0.86, 0.86, 0.88))
+			_r(img, 3, bb - 16, 2, 16, Color(0.95, 0.95, 0.96))
+			_r(img, 1, bb - 18, pw - 2, 3, Color(0.95, 0.95, 0.96))
+			_r(img, 3, bb - 23, pw - 6, 5, bc.darkened(0.1))
+			_ellipse(img, pw * 0.5, bb - 27, 4, 5, bc)
+			_p(img, pw / 2 - 2, bb - 28, bc.darkened(0.35))
+			_p(img, pw / 2 + 1, bb - 28, bc.darkened(0.35))
+		"column":
+			var cb := fy + ph
+			_r(img, 2, fy - rise, pw - 4, rise + ph, Color(0.9, 0.9, 0.91))
+			_r(img, 2, fy - rise, 2, rise + ph, Color(0.98, 0.98, 0.99))
+			_r(img, pw - 4, fy - rise, 2, rise + ph, Color(0.7, 0.71, 0.74))
+			for fl in [6, 9]:
+				_r(img, fl, fy - rise + 3, 1, rise + ph - 6, Color(0.8, 0.81, 0.84))
+			_r(img, 0, fy - rise, pw, 3, Color(0.96, 0.96, 0.97))
+			_r(img, 0, cb - 3, pw, 3, Color(0.8, 0.81, 0.84))
+		"curator_desk":
+			# 53e (Luz): the curator's counter – dark wood panels under a marble top, brass trim, the Museum's emblem;
+			# on it a holo terminal, a banker's lamp, books, a bell, a loupe over a stone, leaflets, a nameplate
+			var wd := Color(0.36, 0.22, 0.14)
+			var br := Color(0.85, 0.66, 0.3)
+			var db := fy + ph
+			_r(img, 0, db - 17, pw, 17, wd)
+			for pp in range(0, pw - 4, 14):
+				_r(img, pp + 2, db - 14, 10, 11, wd.lightened(0.08))
+				_r(img, pp + 2, db - 14, 10, 1, wd.lightened(0.2))
+			_r(img, 0, db - 18, pw, 1, br)
+			_r(img, 0, db - 24, pw, 6, Color(0.9, 0.89, 0.86))
+			_r(img, 0, db - 24, pw, 1, Color(1, 1, 1))
+			_ellipse(img, pw * 0.5, db - 9, 6, 6, br)
+			_ellipse(img, pw * 0.5, db - 9, 4.5, 4.5, Color(0.12, 0.15, 0.25))
+			_p(img, pw / 2, db - 9, br.lightened(0.4))
+			_r(img, 8, db - 33, 14, 9, Color(0.14, 0.15, 0.18))
+			_r(img, 9, db - 32, 12, 6, Color(0.3, 0.75, 0.95))
+			_r(img, 10, db - 31, 7, 1, Color(0.9, 1, 1))
+			_r(img, 36, db - 32, 2, 8, br)
+			_r(img, 32, db - 34, 10, 3, Color(0.15, 0.5, 0.3))
+			_r(img, 33, db - 31, 8, 1, Color(1.0, 0.92, 0.6))
+			for bk in 4:
+				_r(img, 52 + bk % 2, db - 27 - bk * 3, 12, 3, [Color(0.55, 0.2, 0.2), Color(0.2, 0.35, 0.55), Color(0.3, 0.45, 0.25), Color(0.6, 0.5, 0.25)][bk])
+			_ellipse(img, 76, db - 26, 2.5, 2.5, br)
+			_r(img, 84, db - 27, 6, 3, Color(0.5, 0.3, 0.7))
+			_ellipse(img, 89, db - 30, 3, 3, Color(0.75, 0.9, 1.0, 0.6))
+			_r(img, 100, db - 29, 10, 5, Color(0.9, 0.85, 0.7))
+			_r(img, int(pw * 0.5) - 8, db - 23, 16, 3, br.darkened(0.25))
+		"museum_bench":
+			var mb := fy + ph
+			_r(img, 1, mb - 10, pw - 2, 7, Color(0.45, 0.12, 0.15))
+			_r(img, 1, mb - 10, pw - 2, 2, Color(0.6, 0.2, 0.22))
+			for bt in range(4, pw - 4, 8):
+				_p(img, bt, mb - 6, Color(0.3, 0.06, 0.08))
+			_r(img, 3, mb - 3, 2, 3, wood)
+			_r(img, pw - 5, mb - 3, 2, 3, wood)
+		"rope":
+			# 53e: brass stanchions with a velvet rope sagging between
+			var rb := fy + ph
+			var posts := maxi(2, pw / 24 + 1)
+			for pi in posts:
+				var sx := 2 + int(float(pi) / (posts - 1) * (pw - 6))
+				_r(img, sx, rb - 12, 2, 12, Color(0.85, 0.66, 0.3))
+				_ellipse(img, sx + 1, rb - 13, 1.6, 1.6, Color(0.95, 0.8, 0.45))
+				if pi < posts - 1:
+					var ex := 2 + int(float(pi + 1) / (posts - 1) * (pw - 6))
+					for xx2 in range(sx + 2, ex):
+						var t := float(xx2 - sx) / (ex - sx)
+						_p(img, xx2, rb - 10 + int(sin(t * PI) * 3), c if o.has("col") else Color(0.5, 0.1, 0.13))
+		"m_rail":
+			# 53e: the galleries' balustrade – white stone, a brass rail
+			var mr := fy + ph
+			if ph > TILE:
+				_r(img, pw / 2 - 2, fy - 6, 4, ph + 6, Color(0.92, 0.91, 0.88))
+				_r(img, pw / 2 - 1, fy - 6, 1, ph + 6, Color(0.85, 0.66, 0.3))
+				for by2 in range(fy - 4, mr, 4):
+					_p(img, pw / 2 + 2, by2, Color(0.7, 0.68, 0.64))
+			else:
+				_r(img, 0, mr - 10, pw, 10, Color(0.86, 0.85, 0.82))
+				_r(img, 0, mr - 10, pw, 2, Color(0.95, 0.94, 0.91))
+				_r(img, 0, mr - 9, pw, 1, Color(0.85, 0.66, 0.3))
+				for bx2 in range(2, pw - 1, 5):
+					_r(img, bx2, mr - 7, 1, 5, Color(0.74, 0.72, 0.68))
+				_r(img, 0, mr - 2, pw, 2, Color(0.7, 0.68, 0.64))
+		"globe":
+			var gb := fy + ph
+			_r(img, pw / 2 - 2, gb - 12, 4, 12, wood)
+			_r(img, pw / 2 - 8, gb - 3, 16, 3, wood.lightened(0.1))
+			var gcx := pw * 0.5
+			var gcy := gb - 22.0
+			_ellipse(img, gcx, gcy, 10, 10, Color(0.2, 0.4, 0.75))
+			for blob in [[-4, -4, 4, 3], [3, 2, 3, 5], [-1, 6, 3, 2], [-6, 1, 2, 2]]:
+				_ellipse(img, gcx + blob[0], gcy + blob[1], blob[2], blob[3], Color(0.35, 0.6, 0.3))
+			for a in 40:
+				_p(img, int(gcx + cos(a * TAU / 40.0) * 11), int(gcy + sin(a * TAU / 40.0) * 11), Color(0.85, 0.66, 0.3))
+			_ellipse(img, gcx - 4, gcy - 4, 2, 2, Color(1, 1, 1, 0.5))
+		"geode_big":
+			# 53e: a huge uncut amethyst geode, split – a showpiece
+			var ggb := fy + ph
+			_ellipse(img, pw * 0.5, ggb - 18, pw * 0.48, 18, Color(0.45, 0.4, 0.38))
+			_ellipse(img, pw * 0.5, ggb - 17, pw * 0.36, 13, Color(0.25, 0.15, 0.32))
+			for cq in 30:
+				var a2 := cq * TAU / 30.0
+				var rr := 4.0 + (cq % 3) * 3.0
+				_r(img, int(pw * 0.5 + cos(a2) * rr * 1.3), int(ggb - 17 + sin(a2) * rr), 2, 3, Color(0.7, 0.5, 0.95).lerp(Color(0.95, 0.85, 1.0), (cq % 4) / 4.0))
+		"ship_model":
+			var sb := fy + ph
+			_r(img, 2, sb - 10, pw - 4, 10, Color(0.9, 0.89, 0.86))
+			_r(img, 2, sb - 10, pw - 4, 2, Color(1, 1, 1))
+			_r(img, pw / 2 - 1, sb - 18, 2, 8, Color(0.4, 0.4, 0.42))
+			_r(img, 6, sb - 25, pw - 12, 7, Color(0.38, 0.4, 0.46))
+			_r(img, 6, sb - 25, pw - 12, 2, Color(0.58, 0.6, 0.66))
+			_r(img, pw / 2 - 6, sb - 29, 12, 4, Color(0.48, 0.5, 0.56))
+			_r(img, 3, sb - 23, 3, 3, Color(0.5, 0.8, 1.0))
+		"poster":
+			var pb2 := fy + ph
+			_r(img, pw / 2 - 1, pb2 - 6, 2, 6, Color(0.3, 0.3, 0.32))
+			_r(img, 1, pb2 - 26, pw - 2, 20, Color(0.2, 0.2, 0.24))
+			_r(img, 2, pb2 - 25, pw - 4, 18, Color(0.15, 0.1, 0.25))
+			_r(img, 3, pb2 - 23, pw - 6, 7, Color(0.62, 0.35, 1.0))
+			_r(img, 3, pb2 - 13, pw - 6, 2, Color(0.95, 0.85, 0.6))
+		"skull_cast":
+			# 53e: the cast of a giant skull from the Dark Ones' ruins on a low plinth
+			var kb := fy + ph
+			_r(img, 0, kb - 6, pw, 6, Color(0.1, 0.09, 0.12))
+			_r(img, 0, kb - 6, pw, 1, Color(0.26, 0.22, 0.32))
+			_ellipse(img, pw * 0.55, kb - 12, 9, 6, Color(0.75, 0.71, 0.63))
+			_ellipse(img, pw * 0.5, kb - 13, 1.8, 1.8, Color(0.06, 0.05, 0.06))
+			_ellipse(img, pw * 0.62, kb - 13, 1.8, 1.8, Color(0.06, 0.05, 0.06))
+			_ellipse(img, pw * 0.72, kb - 11, 1.4, 1.4, Color(0.06, 0.05, 0.06))
+			for bn in 5:
+				_r(img, 2 + bn * 6, kb - 8 - (bn % 2), 7, 2, Color(0.7, 0.66, 0.58))
+		"idol_cast":
+			# 53e: the cast of one of their idols – tall, faceless, black, a violet line where the eyes would be
+			var ib := fy + ph
+			_r(img, 3, ib - 8, pw - 6, 8, Color(0.12, 0.1, 0.15))
+			for t3 in 32:
+				var ww := int(10 - absf(t3 - 13) * 0.35)
+				_r(img, pw / 2 - ww / 2, ib - 40 + t3, ww, 1, Color(0.2, 0.17, 0.26).lerp(Color(0.32, 0.27, 0.4), t3 / 32.0))
+			_r(img, pw / 2 - 4, ib - 33, 8, 1, Color(0.62, 0.35, 1.0))
 		"round_table":
 			_ellipse(img, pw * 0.5, fy + ph * 0.62, pw * 0.22, ph * 0.12, Color(0, 0, 0, 0.25))       # shadow
 			_r(img, int(pw * 0.5) - 2, fy + int(ph * 0.3), 4, int(ph * 0.35), wood.darkened(0.4))    # the leg

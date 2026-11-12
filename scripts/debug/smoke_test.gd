@@ -166,6 +166,7 @@ func _process(delta: float) -> void:
 				_test_corp(view)                 # package 53d – the corporate tower
 				_test_research(view)             # package 53d – the research station
 				_test_darkones(view)             # package 53d – the ruin of the Dark Ones
+				_test_museum(view)               # package 53e – the Museum in Curie
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -8920,6 +8921,7 @@ func _test_debug_shot() -> void:
 const FoeData52 = preload("res://data/foes.gd")
 const DungeonGen53 = preload("res://scripts/ground/dungeon_gen.gd")
 const PoiData_53 = preload("res://data/poi.gd")
+const GearData_53e = preload("res://data/gear.gd")
 
 
 func _test_foot_combat(view: SystemView) -> void:
@@ -10953,6 +10955,170 @@ func _test_ground_jobs(view: SystemView) -> void:
 
 func _has_kind(m: GroundMap, k: String) -> bool:
 	return m.explore.any(func(d): return String(d["kind"]) == k)
+
+
+
+## 53e (Luz): the Museum in Curie – 48 exhibits with their pictures and rarities; the roof plaza with its front, the
+## hall, the stairs up to the floors above (one map), the basement; setting a find into its case, the curator buying a
+## spare one; the monolith's cast once the Dark Ones' room is full; the Archivist Suit with its built-in tools.
+func _test_museum(view: SystemView) -> void:
+	var MD = load("res://data/museum.gd")
+	var EA = load("res://scripts/core/exhibit_art.gd")
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var finds0: Array = GameState.museum_finds.duplicate()
+	var don0: Array = GameState.museum_donated.duplicate()
+	var cr0: int = GameState.credits
+	# the data: 48 pieces in five rooms, each its own picture
+	var counts := {}
+	var ids := {}
+	var pics_ok := true
+	for e in MD.EXHIBITS:
+		counts[String(e["room"])] = int(counts.get(String(e["room"]), 0)) + 1
+		ids[String(e["id"])] = true
+		var im: Image = EA.image(String(e["id"]))
+		var opaque := 0
+		for yy in 24:
+			for xx in 24:
+				if im.get_pixel(xx, yy).a > 0.0:
+					opaque += 1
+		pics_ok = pics_ok and im.get_width() == 24 and opaque > 40 and MD.RARITY.has(String(e["rarity"]))
+	var data_ok: bool = MD.EXHIBITS.size() == 48 and ids.size() == 48 and pics_ok and counts.get("minerals", 0) == 20 and counts.get("oldworld", 0) == 5 \
+		and counts.get("severance", 0) == 5 and counts.get("precursors", 0) == 10 and counts.get("darkones", 0) == 8 and MD.price("ow_pazz") == 12000
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var rolls_ok := true
+	for k in 30:
+		var pr := PoiData_53.museum_pick("precursor", rng)
+		var wr := PoiData_53.museum_pick("wreck", rng, true)
+		rolls_ok = rolls_ok and pr.begins_with("pr_") and not MD.is_tablet(pr) and wr.begins_with("sv_")
+	# down to a city (any), then up to the Museum's plaza
+	var e1: String = Commands.execute({"type": "debug_land", "kind": "city"})
+	var g = main.ground
+	if g == null or e1 != "":
+		check(false, "53e: down to a city  [%s]" % e1)
+		return
+	g._close_lift_menu()
+	GameState.museum_finds = ["mn_gold", "mn_gold", "do_mask"]
+	GameState.museum_donated = []
+	g.go_level("mplaza", "lift")
+	var zin: Dictionary = _zone_of(g.map, "museum_in")
+	var plaza_ok: bool = g.level == "mplaza" and g.map.style == "plaza" and not zin.is_empty() and g.map.window_rect.size.x > 10 and g.map.has_meta("museum_x") \
+		and g.map.objects.filter(func(o): return String(o["kind"]) in ["statue", "statue_precursor"]).size() == 4 and g.map.objects.any(func(o): return String(o["kind"]) == "column")
+	g._arrive = 0.0
+	g.zone = zin
+	g.use()
+	var hall_ok: bool = g.level == "museum" and g.map.style == "museum"
+	# one map: from the doors up the grand stairs to the wings, on up to the second floor; the basement stairs
+	var m: GroundMap = g.map
+	var kinds := {}
+	for fk in m.floor_kind:
+		kinds[int(fk)] = true
+	var reach := func(t: Vector2) -> bool:
+		return not m.path(m.spawn, t * 16.0).is_empty()
+	var ways_ok: bool = kinds.has(34) and kinds.has(35) and kinds.has(36) and kinds.has(37) and kinds.has(38) and kinds.has(39) and kinds.has(41) and kinds.has(43) \
+		and reach.call(Vector2(10.5, 30.5)) and reach.call(Vector2(52.5, 30.5)) and reach.call(Vector2(32.5, 6.5)) and reach.call(Vector2(10.5, 55.5)) and reach.call(Vector2(52.5, 50.5)) \
+		and not reach.call(Vector2(32.5, 32.5))
+	var cases: Array = m.explore.filter(func(d): return String(d["kind"]) in ["vitrine", "niche"])
+	var case_ids := {}
+	for d in cases:
+		case_ids[String(d["exhibit"])] = true
+	hall_ok = hall_ok and case_ids.size() == 40 and not _zone_of(m, "curator").is_empty() and not _zone_of(m, "museum_down").is_empty() \
+		and m.people.size() >= 1 and m.objects.any(func(o): return String(o["kind"]) == "curator_desk")
+	# set a find into its case – once; looking at it then changes nothing
+	var gold: Dictionary = {}
+	for d2 in cases:
+		if String(d2["exhibit"]) == "mn_gold":
+			gold = d2
+	var gz: Dictionary = {}
+	for z in m.zones:
+		if String(z.get("kind", "")) == "explore" and int(z.get("i", -1)) == m.explore.find(gold):
+			gz = z
+	g._arrive = 0.0
+	g.zone = gz
+	g.use()
+	var don_ok: bool = GameState.museum_donated.has("mn_gold") and GameState.museum_carried("mn_gold") == 1 and GameState.credits == cr0 + 100 \
+		and String(gz["title"]).begins_with("Gold Nugget")
+	g.zone = gz
+	g.use()
+	don_ok = don_ok and GameState.museum_donated.size() == 1 and GameState.museum_carried("mn_gold") == 1
+	# the curator: the spare nugget sold
+	g._arrive = 0.0
+	g.zone = _zone_of(m, "curator")
+	g.use()
+	var cur_ok: bool = g._lift_menu != null
+	g._curator_sell("")
+	cur_ok = cur_ok and GameState.museum_carried("mn_gold") == 0 and GameState.credits == cr0 + 100 + 400 and GameState.museum_carried("do_mask") == 1
+	g._close_lift_menu()
+	# the basement: the monolith's plinth empty – the Dark Ones' room full, its cast raised; their perk
+	g._arrive = 0.0
+	g.zone = _zone_of(m, "museum_down")
+	g.use()
+	var mono: Dictionary = {}
+	for d3 in g.map.explore:
+		if String(d3["kind"]) == "monolith_cast":
+			mono = d3
+	var base_ok: bool = g.level == "museum_down" and g.map.style == "museum_dark" and String(mono.get("state", "")) == "empty" \
+		and g.map.explore.filter(func(d4): return String(d4["kind"]) == "vitrine").size() == 8 and not GameState.museum_perk("darkones")
+	for e3 in MD.of_room("darkones"):
+		if String(e3["id"]) != "do_mask":
+			GameState.museum_donated.append(String(e3["id"]))
+	var mask: Dictionary = {}
+	for d5 in g.map.explore:
+		if String(d5.get("exhibit", "")) == "do_mask":
+			mask = d5
+	g.explore_use({"i": g.map.explore.find(mask)})
+	g.go_level("museum_down", "museum_in")
+	for d6 in g.map.explore:
+		if String(d6["kind"]) == "monolith_cast":
+			mono = d6
+	base_ok = base_ok and GameState.museum_perk("darkones") and String(mono.get("state", "")) == "up"
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "museum_up")
+	g.use()
+	base_ok = base_ok and g.level == "museum"
+	# the Museum full: the Archivist Suit – its cloak and scanner built in, the cloak five times as long
+	var all_ids: Array = MD.EXHIBITS.map(func(e4): return String(e4["id"]))
+	GameState.museum_donated = all_ids.filter(func(i): return i != "ow_pazz")
+	GameState.museum_finds = ["ow_pazz"]
+	var inv0: Array = gear.inv.duplicate(true)
+	GameState.museum_donate("ow_pazz")
+	var has_suit := false
+	for it in gear.inv:
+		if it is Dictionary and String((it as Dictionary).get("id", "")) == "suit_archivist:A":
+			has_suit = true
+	gear.suit = "suit_archivist:A"
+	gear._fit_slots()
+	var suit_ok: bool = has_suit and GameState.museum_count() == 48 and gear.belt.size() == 7 and String(gear.belt[0].get("id", "")) == "tl_cloak:A" \
+		and String(gear.belt[1].get("id", "")) == "tl_scanner:A" and gear.unequip("belt", 0) != "" and float(GearData_53e.stats("suit_archivist:A").get("cloak_mul", 1.0)) == 5.0
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	suit_ok = suit_ok and not gear.belt.any(func(b): return b is Dictionary and bool((b as Dictionary).get("builtin", false)))
+	gear.inv = inv0
+	# back
+	GameState.museum_finds = finds0
+	GameState.museum_donated = don0
+	GameState.credits = cr0
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear._fit_slots()
+	gear.aboard()
+	main._update_input()
+	check(data_ok and rolls_ok and plaza_ok and hall_ok and ways_ok and don_ok and cur_ok and base_ok and suit_ok,
+		"53e: the Museum – 48 exhibits with pictures and rarities; the roof plaza with its front and statues; one map for the hall and the floors above, joined by stairs; a find set into its case, a spare one sold; the basement's monolith raised once the Dark Ones' room is full; the Archivist Suit  [%s]" % " ".join(PackedStringArray([str(data_ok), str(rolls_ok), str(plaza_ok), str(hall_ok), str(ways_ok), str(don_ok), str(cur_ok), str(base_ok), str(suit_ok)])))
 
 
 func _zone_of(m: GroundMap, k: String) -> Dictionary:

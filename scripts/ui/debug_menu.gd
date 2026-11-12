@@ -923,6 +923,19 @@ func _build_ground() -> void:
 		var dzz2: String = dz2[0]
 		rsw.add_child(UI.button(String(dz2[1]), func(): _cmd({"type": "debug_poi", "danger": dzz2, "theme": "sewer"})))
 	rsw.add_child(UI.button("Back alley (in a city)", func(): _cmd({"type": "debug_ground_level", "level": "alley"})))
+	var rmu := _row()                                               # 53e (Luz): the Museum in Curie
+	rmu.add_child(UI.label("Museum:", 12, UI.TEXT_DIM))
+	rmu.add_child(UI.button("Plaza", func(): _cmd({"type": "debug_museum", "to": "plaza"})))
+	rmu.add_child(UI.button("Hall", func(): _cmd({"type": "debug_museum", "to": "hall"})))
+	rmu.add_child(UI.button("Basement", func(): _cmd({"type": "debug_museum", "to": "basement"})))
+	rmu.add_child(UI.button("Finds: one of each room", func(): _cmd({"type": "debug_museum", "finds": "some"})))
+	rmu.add_child(UI.button("Finds: everything", func(): _cmd({"type": "debug_museum", "finds": "all"})))
+	var rmu2 := _row()
+	rmu2.add_child(UI.label("Museum cases:", 12, UI.TEXT_DIM))
+	rmu2.add_child(UI.button("Empty", func(): _cmd({"type": "debug_museum", "fill": "none"})))
+	rmu2.add_child(UI.button("Half", func(): _cmd({"type": "debug_museum", "fill": "half"})))
+	rmu2.add_child(UI.button("All but one", func(): _cmd({"type": "debug_museum", "fill": "almost"})))
+	rmu2.add_child(UI.button("Full", func(): _cmd({"type": "debug_museum", "fill": "all"})))
 	var rtm := _row()                                               # 0.7.52.20: the ground team
 	rtm.add_child(UI.label("Team:", 12, UI.TEXT_DIM))
 	rtm.add_child(UI.button("Gunner + Engineer", func(): _cmd({"type": "debug_combat", "do": "team", "roles": ["gunner", "engineer"]})))

@@ -1,4 +1,5 @@
 extends Node
+const MuseumDataC = preload("res://data/museum.gd")
 const PilotArtX = preload("res://scripts/core/pilot_art.gd")
 const PilotDataX = preload("res://data/pilot.gd")
 const SkillDataX = preload("res://data/skills.gd")
@@ -2739,6 +2740,63 @@ func _c_debug_mission(c: Dictionary) -> String:
 	if m.get("faction_job", false):
 		m["min_tier"] = "neutral"                     # (debug: no standing needed)
 	return GameState.accept_mission(m)
+
+
+## {"type":"debug_museum", "to": "plaza"|"hall"|"basement" (go there: Durchbruch, a city on Curie), "fill": "none"|"half"|
+##  "almost"|"all" (the cases), "finds": "some"|"all" (pieces into your pockets)} – 53e: the Museum in Curie.
+func _c_debug_museum(c: Dictionary) -> String:
+	var ids: Array = MuseumDataC.EXHIBITS.map(func(e): return String(e["id"]))
+	match String(c.get("fill", "")):
+		"none":
+			GameState.museum_donated.clear()
+		"half":
+			GameState.museum_donated = ids.filter(func(i): return ids.find(i) % 2 == 0)
+		"almost":
+			GameState.museum_donated = ids.filter(func(i): return i != "do_mask")
+			if not GameState.museum_finds.has("do_mask"):
+				GameState.museum_finds.append("do_mask")
+		"all":
+			GameState.museum_donated = ids.duplicate()
+	match String(c.get("finds", "")):
+		"some":
+			for r in MuseumDataC.ROOMS:
+				var ri: Array = MuseumDataC.of_room(String(r["id"]))
+				GameState.museum_finds.append(String(ri[randi() % ri.size()]["id"]))
+				GameState.museum_finds.append(String(ri[randi() % ri.size()]["id"]))
+		"all":
+			GameState.museum_finds.append_array(ids)
+	var to := String(c.get("to", ""))
+	var g = _ground()
+	if to == "":
+		if g != null and String(g.level) in ["museum", "museum_down", "mplaza"]:
+			g.go_level(String(g.level), "museum_in" if String(g.level) != "mplaza" else "lift")     # the cases anew
+		return ""
+	if not to in ["plaza", "hall", "basement"]:
+		return "Unknown place in the Museum."
+	if g == null or not g.is_museum_city():
+		var sid := Universe.special_system("durchbruch")
+		if sid < 0:
+			return "No Durchbruch in this cluster."
+		var f := _fit()
+		if f == null or f.system_id != sid:
+			var e := _c_debug_teleport({"system": sid})
+			if e != "":
+				return e
+		var body := {}
+		for p in Universe.get_layout(sid)["planets"]:
+			if String(p.get("name", "")) == "Curie":
+				body = p
+		if body.is_empty():
+			return "No Curie here."
+		var e2 := _c_debug_land({"body": String(body["id"]), "kind": "city"})
+		if e2 != "":
+			return e2
+		g = _ground()
+		if g == null or not g.is_museum_city():
+			return "Not in a city on Curie."
+	g._close_lift_menu()
+	g.go_level({"plaza": "mplaza", "hall": "museum", "basement": "museum_down"}[to], "lift" if to == "plaza" else "museum_in")
+	return ""
 
 
 ## {"type":"debug_poi_reveal"} – package 53a: the whole site on the minimap.

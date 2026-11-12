@@ -6,6 +6,8 @@ extends Node2D
 ## No class_name: preload it.
 
 const ChibiArtE = preload("res://scripts/ground/chibi_art.gd")
+const ExhibitArtE = preload("res://scripts/core/exhibit_art.gd")
+const MuseumDataE = preload("res://data/museum.gd")
 const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "terminal": "Terminal – hack it",
 	"tablet": "Carved tablet – scan it (scanner on your belt)", "relic": "Relic – scan it (scanner on your belt)",
 	"blastdoor": "Blast door – sealed (its release is in the box beside it)",
@@ -34,7 +36,8 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"monolith": "A monolith – scan it (scanner on your belt)",
 	"membrane": "A membrane of living stone – sealed (the symbol stones beside it)",
 	"vault_door": "The vault door – its lock wants a hack, then the drill (the terminal beside it)",
-	"service_door": "The back door – locked (its keypad or the terminal)"}
+	"service_door": "The back door – locked (its keypad or the terminal)",
+	"vitrine": "A display case", "niche": "A case in the wall", "monolith_cast": "A plinth"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -436,6 +439,73 @@ func _draw_cage(d: Dictionary, t: float) -> void:
 			draw_line(p2, p3, Color(1.0, 0.45, 0.35, 0.8), 1.0)
 
 
+
+## 53e (Luz): a display case – a pedestal, a glass box on it, the piece inside lit from above (its outline and a "?"
+## while the case is empty); a room's centrepiece stands on a round dais, its piece twice the size.
+func _draw_vitrine(d: Dictionary) -> void:
+	var id := String(d.get("exhibit", ""))
+	var dark := bool(d.get("dark", false))
+	var big := bool(d.get("big", false))
+	var filled: bool = GameState.museum_donated.has(id)
+	var ped := Color(0.2, 0.18, 0.22) if dark else Color(0.9, 0.9, 0.91)
+	var glass := Color(0.5, 0.4, 0.65, 0.16) if dark else Color(0.6, 0.75, 0.85, 0.18)
+	var rcol: Color = MuseumDataE.RARITY[String(MuseumDataE.get_exhibit(id).get("rarity", "common"))]["col"]
+	var tex: Texture2D = ExhibitArtE.texture(id)
+	if big:
+		draw_set_transform(Vector2(0, -4) * GroundMap.SCALE, 0.0, Vector2(1, 0.33) * GroundMap.SCALE)
+		draw_circle(Vector2.ZERO, 34.0, Color(0, 0, 0, 0.3))
+		draw_circle(Vector2(0, -8), 32.0, ped.darkened(0.1))
+		draw_circle(Vector2(0, -14), 29.0, ped)
+		draw_arc(Vector2(0, -14), 29.0, 0.0, TAU, 40, Color(0.62, 0.35, 1.0) if dark else Color(0.85, 0.66, 0.3), 1.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+		draw_rect(Rect2(-24, -30, 48, 22), ped.darkened(0.04))
+		draw_rect(Rect2(-24, -30, 48, 2), ped.lightened(0.12))
+		draw_rect(Rect2(-8, -20, 16, 5), Color(0.6, 0.46, 0.2) if filled else ped.darkened(0.25))
+		if filled:
+			draw_rect(Rect2(-8, -20, 16, 1), rcol)
+		draw_rect(Rect2(-23, -84, 46, 54), glass)
+		if filled:
+			draw_texture_rect(tex, Rect2(-24, -82, 48, 48), false)
+		else:
+			draw_texture_rect(tex, Rect2(-24, -82, 48, 48), false, Color(0.1, 0.1, 0.12, 0.35))
+			draw_string(ThemeDB.fallback_font, Vector2(-5, -50), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.85, 0.88, 0.95, 0.8))
+		draw_rect(Rect2(-23, -84, 46, 54), Color(0.85, 0.92, 0.98, 0.7), false, 1.0)
+		draw_line(Vector2(-19, -82), Vector2(-19, -62), Color(1, 1, 1, 0.35), 1.0)
+		return
+	draw_rect(Rect2(-16, -14, 32, 15), ped)
+	draw_rect(Rect2(-16, -14, 32, 2), ped.lightened(0.15))
+	draw_rect(Rect2(15, -14, 1, 15), ped.darkened(0.3))
+	draw_rect(Rect2(-5, -8, 10, 4), Color(0.6, 0.46, 0.2) if filled else ped.darkened(0.25))
+	if filled:
+		draw_rect(Rect2(-5, -8, 10, 1), rcol)
+	draw_rect(Rect2(-15, -44, 30, 30), glass)
+	if filled:
+		draw_texture_rect(tex, Rect2(-12, -41, 24, 24), false)
+	else:
+		draw_texture_rect(tex, Rect2(-12, -41, 24, 24), false, Color(0.1, 0.1, 0.12, 0.35))
+		draw_string(ThemeDB.fallback_font, Vector2(-3, -24), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.88, 0.95, 0.8))
+	draw_rect(Rect2(-15, -44, 30, 30), Color(0.85, 0.92, 0.98, 0.65) if not dark else Color(0.6, 0.5, 0.75, 0.65), false, 1.0)
+	draw_line(Vector2(-12, -42), Vector2(-12, -32), Color(1, 1, 1, 0.35), 1.0)
+
+
+## 53e: a case set into a wall – a lit recess behind glass, its frame of the wall's stone.
+func _draw_niche(d: Dictionary) -> void:
+	var id := String(d.get("exhibit", ""))
+	var dark := bool(d.get("dark", false))
+	var filled: bool = GameState.museum_donated.has(id)
+	var tex: Texture2D = ExhibitArtE.texture(id)
+	draw_rect(Rect2(-15, -31, 30, 28), Color(0.3, 0.26, 0.36) if dark else Color(0.94, 0.93, 0.9))
+	draw_rect(Rect2(-13, -29, 26, 24), Color(0.08, 0.06, 0.1) if dark else Color(0.2, 0.22, 0.26))
+	draw_rect(Rect2(-13, -29, 26, 2), Color(1, 0.95, 0.8, 0.3) if not dark else Color(0.62, 0.35, 1.0, 0.3))
+	if filled:
+		draw_texture_rect(tex, Rect2(-12, -29, 24, 24), false)
+		var rc2: Color = MuseumDataE.RARITY[String(MuseumDataE.get_exhibit(id).get("rarity", "common"))]["col"]
+		draw_rect(Rect2(-5, -4, 10, 1), rc2)
+	else:
+		draw_texture_rect(tex, Rect2(-12, -29, 24, 24), false, Color(0.1, 0.1, 0.12, 0.35))
+		draw_string(ThemeDB.fallback_font, Vector2(-3, -12), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.88, 0.95, 0.8))
+	draw_line(Vector2(-11, -28), Vector2(-11, -9), Color(1, 1, 1, 0.3), 1.0)
+
 static func add(map: GroundMap, kind: String, pos: Vector2, extra: Dictionary = {}) -> Dictionary:
 	var d := {"kind": kind, "pos": pos, "state": "shut", "seed": randi() % 100000}
 	d.merge(extra, true)
@@ -487,7 +557,7 @@ func _draw() -> void:
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
 		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble", "crank_door", "fuse_box", "reactor", "stairs_down", "stairs_up", "service_lift", "steam", "pirate_gate", "searchlight",
-		"ramp_down", "cells", "power_socket", "camera", "vault_door", "service_door", "laser_gate", "leak", "seal_panel", "membrane", "maw", "spiral_up", "sleeper"]
+		"ramp_down", "cells", "power_socket", "camera", "vault_door", "service_door", "laser_gate", "leak", "seal_panel", "membrane", "maw", "spiral_up", "sleeper", "niche"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -616,6 +686,26 @@ func _draw() -> void:
 						draw_colored_polygon(PackedVector2Array([Vector2(0, cy - 1), Vector2(3, cy + 2), Vector2(0, cy + 5), Vector2(-3, cy + 2)]), gc)
 					_:
 						draw_rect(Rect2(-2.5, cy, 5, 5), gc)
+		"vitrine":
+			_draw_vitrine(d)
+		"niche":
+			_draw_niche(d)
+		"monolith_cast":
+			# 53e (Luz): a low plinth in the basement's pool – once every piece of the Dark Ones is there, a monolith's cast on it
+			draw_rect(Rect2(-16, -8, 32, 8), Color(0.1, 0.09, 0.12))
+			draw_rect(Rect2(-16, -8, 32, 1), Color(0.3, 0.26, 0.38))
+			if String(d.get("state", "")) == "up":
+				draw_rect(Rect2(-10, -72, 20, 64), Color(0.05, 0.04, 0.07))
+				draw_rect(Rect2(-10, -72, 3, 64), Color(0.15, 0.13, 0.2))
+				draw_rect(Rect2(-10, -72, 20, 2), Color(0.2, 0.18, 0.26))
+				var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.002)
+				for row in 8:
+					for g in 2:
+						var gx := -6 + g * 7
+						var gy := -66 + row * 7
+						draw_rect(Rect2(gx, gy, 3 if (row + g) % 2 == 0 else 1, 1 if (row + g) % 2 == 0 else 4), Color(0.62, 0.35, 1.0, 0.4 + 0.5 * pulse * hash_f(row * 3 + g, 7)))
+			else:
+				draw_rect(Rect2(-6, -10, 12, 2), Color(0.62, 0.35, 1.0, 0.35))
 		"monolith":
 			# 0.7.53.23 (Luz): a monolith – a slab of black glassy stone, its signs in a column, glowing as it is scanned
 			var msc := String(d.get("state", "")) == "scanned"

@@ -97,6 +97,15 @@ const SUITS := {
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
 		"col": Color(0.3, 0.32, 0.36), "trim": Color(1.0, 0.25, 0.2),
 		"desc": "A walking bunker: three weapons, heavy plate, a deep magazine – and slow, and short of air."},
+	# 53e (Luz): the Museum's thanks when every case is filled – an explorer's suit: a short cloak built in that lasts
+	# five times as long, a scanner built in, the best life support, a deep energy store, a drone place, a long belt –
+	# and little shield or plate. Never sold (`faction` "museum").
+	"suit_archivist": {"name": "Archivist Suit", "maker": "Museum of Curie", "faction": "museum", "builtin_belt": ["tl_cloak", "tl_scanner"],
+		"cloak_mul": 5.0, "weapons": 1, "belt": 7, "grenades": 1, "drones": 1, "features": 2,
+		"shield": 20.0, "armor": 12.0, "energy": 520.0, "oxygen": 90.0, "ammo": 80,
+		"env": {"heat": 1.0, "cold": 1.0, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.06, "price": 60000,
+		"col": Color(0.88, 0.84, 0.72), "trim": Color(0.95, 0.72, 0.3),
+		"desc": "The Museum's thanks: a cloak and a scanner built in, the cloak lasting five times as long; air and energy for days, a long belt – but barely a shield."},
 }
 
 ## Weapons (no sizes for now): dtype, damage per shot, rof (shots/s), range (art px), spread (rad), pellets,

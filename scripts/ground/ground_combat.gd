@@ -2039,7 +2039,7 @@ func cloak(id: String) -> String:
 	if cloak_cd > 0.0:
 		return "The cloak is recharging – %d s." % int(ceil(cloak_cd))
 	var q := GearData.quality(id)
-	cloak_t = float(CLOAK_TIME.get(q, 2.0))
+	cloak_t = float(CLOAK_TIME.get(q, 2.0)) * float(GearData.stats(String(GameState.gear.suit)).get("cloak_mul", 1.0))    # 53e: the Archivist Suit's
 	cloak_cd = cloak_t + float(CLOAK_CD.get(q, 30.0))
 	for f in alive():
 		f["notice"] = 0.0

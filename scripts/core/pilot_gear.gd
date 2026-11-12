@@ -71,6 +71,8 @@ func _fit_slots() -> Array:
 			var last = arr.pop_back()
 			if last is String and String(last) != "" and bool(GearData.base(String(last)).get("builtin", false)):
 				continue                                      # a built-in weapon goes with its suit
+			if last is Dictionary and bool((last as Dictionary).get("builtin", false)):
+				continue                                      # 53e: so does a built-in tool
 			if last is String and String(last) != "":
 				spill.append({"id": last, "n": 1})
 			elif last is Dictionary and not (last as Dictionary).is_empty():
@@ -89,6 +91,21 @@ func _fit_slots() -> Array:
 		if String(weapons[0]) != "" and String(weapons[0]) != bid:
 			spill.append({"id": String(weapons[0]), "n": 1})
 		weapons[0] = bid
+	# 53e (Luz): a suit's built-in tools (the Archivist Suit's cloak and scanner) sit in its first belt places; those of
+	# a suit taken off are gone with it
+	var bb: Array = s.get("builtin_belt", [])
+	for k2 in belt.size():
+		var it = belt[k2]
+		if it is Dictionary and bool((it as Dictionary).get("builtin", false)) and (k2 >= bb.size() or not String(it["id"]).begins_with(String(bb[k2]) + ":")):
+			belt[k2] = {}
+	for k3 in mini(bb.size(), belt.size()):
+		var want_id := "%s:A" % String(bb[k3])
+		var cur = belt[k3]
+		if cur is Dictionary and String((cur as Dictionary).get("id", "")) == want_id and bool((cur as Dictionary).get("builtin", false)):
+			continue
+		if cur is Dictionary and not (cur as Dictionary).is_empty():
+			spill.append(cur)
+		belt[k3] = {"id": want_id, "n": 1, "builtin": true}
 	return spill
 
 
@@ -482,6 +499,8 @@ func unequip(slot_kind: String, idx: int) -> String:
 	if idx < 0 or idx >= arr.size():
 		return "No such slot."
 	if arr[idx] is String and String(arr[idx]) != "" and bool(GearData.base(String(arr[idx])).get("builtin", false)):
+		return "Built into the suit – it comes off with the suit."
+	if arr[idx] is Dictionary and bool((arr[idx] as Dictionary).get("builtin", false)):
 		return "Built into the suit – it comes off with the suit."
 	var it = arr[idx]
 	var id := ""

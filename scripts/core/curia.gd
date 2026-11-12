@@ -181,7 +181,7 @@ func give_relics(f: ShipFitting) -> String:
 	if n <= 0:
 		return "You carry no relics of Earth."
 	f.remove_cargo("earth_relic", float(n))
-	GameState.rep.change("covenant", RELIC_REP * n, "relics")
+	GameState.rep.change("covenant", RELIC_REP * n * (1.5 if GameState.museum_perk("oldworld") else 1.0), "relics")
 	blessing_until = minf(maxf(blessing_until, GameState.play_time) + BLESSING_TIME * n, GameState.play_time + BLESSING_MAX)
 	GameState.log_msg("%d relic%s of Earth laid in the Cathedral of Return – you are blessed: goods at Covenant stations −%d %%, sales +%d %% for %d min." % [n, "" if n == 1 else "s", int(round((1.0 - BLESSING_BUY) * 100.0)), int(round((BLESSING_SELL - 1.0) * 100.0)), minutes_left(blessing_until)], GameState.COL_GOOD)
 	return ""

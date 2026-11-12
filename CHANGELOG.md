@@ -3,6 +3,37 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.25 – 2026-11-12
+
+**Package 53e – the Museum in Curie (Luz).** In the city on Curie (Durchbruch) the lift goes up to a roof plaza with
+the **Museum**: an avenue of statues (a pilot, a soldier, a colonist – and a Precursor), a white front with columns,
+a glass dome over the hall, the doors open.
+- **48 exhibits in five rooms**, each with its **own picture**: Minerals (20), The Old World (5 – among them a vinyl
+  record of the punk band **Pazz**), The Severance (5), The Precursors (5 pieces and 5 tablets), The Dark Ones (5
+  pieces and 3 tablets). Each can be found **more than once** and some far more rarely than others (common,
+  uncommon, rare, legendary).
+- **One house, the floors joined by stairs** (no level of their own): the hall with the curator's desk, behind it
+  the grand stairs up to a landing at half height, parting left and right up to the **gallery** round the hall – the
+  Old World west, the Severance east; from the gallery two flights meet at a landing and one goes on up to the
+  **Precursors** on the second floor. Under the gallery the **minerals room** (the Giant Diamond on its dais, cases in
+  the wall, the rest spread out, a miner's statue, an amethyst geode) and the stairs down to the **basement of the
+  Dark Ones** – black glass walls with the **reliefs** of their ruins, the cast of a membrane door, the cases round a
+  round pool.
+- **You fill the cases yourself:** walk up to a case with its piece in your pockets and set it in (the curator pays
+  a quarter of its worth); an empty case shows its piece's outline and a "?". **The curator** shows how full each
+  room is, buys **spare pieces** (shown already) at their rarity's price (400 / 1 200 / 4 000 / 12 000 cr) and gives
+  **hints** where a missing piece is found. **Visitors** stroll about and stop before the filled cases – more, the
+  fuller the Museum.
+- **A full room gives a perk:** Minerals – rare minerals twice as often; Old World – more standing for relics of
+  Earth at the Covenant; Severance – old gates throw you off half as often; Precursors – scanning a third faster; Dark
+  Ones – waves and glyphs hurt half as much, and in the basement **a monolith's cast is raised** on its plinth.
+- **The whole Museum full:** the **Archivist Suit** – a cloak and a scanner built in (the cloak lasts five times as
+  long), the best life support, a deep energy store, a drone place, a long belt, little shield or plate.
+- **Where finds come from:** minerals now and then while mining asteroids and in the old mines; the Old World and
+  the Severance in wrecks (near the Veil the Severance's); the Precursors' and the Dark Ones' pieces in their ruins and
+  hidden caches; their **tablets** from scanning carved tablets and monoliths.
+- Debug (F12 → Ground): to the Museum (plaza, hall, basement), cases empty / half / all but one / full, finds.
+
 ## alpha 0.7.53.24 – 2026-11-12
 
 **Package 53d – hidden caches and bigger sites (Luz).**

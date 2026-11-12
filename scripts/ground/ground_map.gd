@@ -529,6 +529,106 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px, py + TILE - 1, TILE, 1, pv.darkened(0.14))
 			_rect(px + (0 if y % 2 == 0 else 8), py, 1, 7, pv.darkened(0.12))
 			_rect(px + (8 if y % 2 == 0 else 0), py + 8, 1, 7, pv.darkened(0.12))
+		34:             # 53e (Luz): the Museum's hall – pale marble in a chequer, fine veins
+			for q in 4:
+				var qx := (q % 2) * 8
+				var qy := (q / 2) * 8
+				var dark := ((x * 2 + q % 2) + (y * 2 + q / 2)) % 2 == 1
+				var mc := (Color(0.7, 0.66, 0.61) if dark else Color(0.86, 0.84, 0.8)).lerp(Color(0.6, 0.58, 0.55), hash2(x * 2 + q % 2, y * 2 + q / 2, 241) * 0.12)
+				_rect(px + qx, py + qy, 8, 8, mc)
+				_rect(px + qx, py + qy, 8, 1, mc.lightened(0.08))
+				if hash2(x * 2 + q % 2, y * 2 + q / 2, 242) < 0.4:
+					for t in 6:
+						_px(px + qx + 1 + t, py + qy + 2 + int(t * 0.7), mc.darkened(0.1))
+		35:             # 53e: the floors above – warm parquet in staggered planks
+			for row in 4:
+				var off := int(hash2(x, y * 4 + row, 243) * 16)
+				for k2 in 2:
+					var bx := (k2 * 16 - off)
+					var c := Color(0.62, 0.42, 0.26).lerp(Color(0.52, 0.34, 0.2), hash2(x * 2 + k2, y * 4 + row, 244))
+					_rect(px + maxi(bx, 0), py + row * 4, mini(bx + 16, TILE) - maxi(bx, 0), 4, c)
+					_rect(px + maxi(bx, 0), py + row * 4 + 3, mini(bx + 16, TILE) - maxi(bx, 0), 1, c.darkened(0.2))
+					if bx >= 0 and bx < TILE:
+						_rect(px + bx, py + row * 4, 1, 4, c.darkened(0.3))
+		36, 37:         # 53e: a flight of stairs rising to the north – pale stone steps; 37 with the red runner and its rods
+			var st := Color(0.86, 0.85, 0.82)
+			for k3 in 3:
+				var sy := py + k3 * 5 + 1
+				_rect(px, sy, TILE, 5, st.darkened(0.04 * k3))
+				_rect(px, sy, TILE, 1, st.lightened(0.1))
+				_rect(px, sy + 4, TILE, 1, st.darkened(0.14))
+				if fk == 37:
+					_rect(px, sy, TILE, 5, Color(0.5, 0.1, 0.13).darkened(0.05 * k3))
+					_rect(px, sy + 4, TILE, 1, Color(0.32, 0.05, 0.08))
+			if fk == 37 and floor_kind[y * w + x - 1] != 37:
+				_rect(px, py, 1, TILE, Color(0.85, 0.66, 0.3))
+			if fk == 37 and x + 1 < w and floor_kind[y * w + x + 1] != 37:
+				_rect(px + TILE - 1, py, 1, TILE, Color(0.85, 0.66, 0.3))
+			if fk == 36 and (x == 0 or not floor_kind[y * w + x - 1] in [36, 37]):
+				_rect(px, py, 3, TILE, Color(0.92, 0.91, 0.88))                      # its balustrade
+				_rect(px + 1, py, 1, TILE, Color(0.85, 0.66, 0.3))
+			if fk == 36 and (x + 1 >= w or not floor_kind[y * w + x + 1] in [36, 37]):
+				_rect(px + TILE - 3, py, 3, TILE, Color(0.92, 0.91, 0.88))
+				_rect(px + TILE - 2, py, 1, TILE, Color(0.85, 0.66, 0.3))
+		38, 39:         # 53e: a flight running east–west – the steps across it; 39 the runner along it
+			var st2 := Color(0.86, 0.85, 0.82)
+			for k4 in 3:
+				var sx := px + k4 * 5 + 1
+				_rect(sx, py, 5, TILE, st2.darkened(0.04 * k4))
+				_rect(sx, py, 1, TILE, st2.lightened(0.1))
+				_rect(sx + 4, py, 1, TILE, st2.darkened(0.12))
+			if fk == 39:
+				_rect(px, py + 1, TILE, 14, Color(0.5, 0.1, 0.13))
+				for k5 in 3:
+					_rect(px + k5 * 5 + 5, py + 1, 1, 14, Color(0.32, 0.05, 0.08))
+				_rect(px, py + 1, TILE, 1, Color(0.85, 0.66, 0.3))
+				_rect(px, py + 14, TILE, 1, Color(0.85, 0.66, 0.3))
+			if y > 0 and not floor_kind[(y - 1) * w + x] in [38, 39]:
+				_rect(px, py, TILE, 3, Color(0.92, 0.91, 0.88))                       # the balustrade along it
+				_rect(px, py + 1, TILE, 1, Color(0.85, 0.66, 0.3))
+			if y + 1 < h and not floor_kind[(y + 1) * w + x] in [38, 39]:
+				_rect(px, py + TILE - 3, TILE, 3, Color(0.92, 0.91, 0.88))
+				_rect(px, py + TILE - 2, TILE, 1, Color(0.85, 0.66, 0.3))
+		40:             # 53e: the Museum's basement – polished black stone, violet in its joints
+			var bs := Color(0.13, 0.12, 0.16).lerp(Color(0.1, 0.09, 0.12), hash2(x, y, 245))
+			_rect(px, py, TILE, TILE, bs)
+			_rect(px, py, TILE, 1, Color(0.2, 0.18, 0.25))
+			_rect(px, py, 1, TILE, Color(0.07, 0.06, 0.09))
+			if (x + y) % 5 == 0:
+				_px(px + 8, py + 8, Color(0.62, 0.35, 1.0, 0.8))
+			if hash2(x, y, 246) < 0.15:
+				_rect(px + 3, py + 4, 5, 1, Color(0.35, 0.3, 0.45))                     # the polish
+		41:             # 53e: the minerals room – dark slate in big squares
+			var sl := ((x / 2 + y / 2) % 2 == 0)
+			var sc := (Color(0.42, 0.44, 0.48) if sl else Color(0.33, 0.35, 0.39)).lerp(Color(0.3, 0.31, 0.34), hash2(x / 2, y / 2, 247) * 0.3)
+			_rect(px, py, TILE, TILE, sc)
+			if x % 2 == 0:
+				_rect(px, py, 1, TILE, sc.darkened(0.2))
+			if y % 2 == 0:
+				_rect(px, py, TILE, 1, sc.lightened(0.08))
+		42:             # 53e: the red runner from the doors to the desk
+			_rect(px, py, TILE, TILE, Color(0.5, 0.1, 0.13))
+			for k6 in 4:
+				_rect(px + 2 + k6 * 4, py + 3 + (k6 % 2) * 6, 2, 2, Color(0.58, 0.16, 0.18))
+			if floor_kind[y * w + x - 1] != 42:
+				_rect(px, py, 2, TILE, Color(0.85, 0.66, 0.3))
+			if x + 1 < w and floor_kind[y * w + x + 1] != 42:
+				_rect(px + TILE - 2, py, 2, TILE, Color(0.85, 0.66, 0.3))
+		43:             # 53e: stairs going down into the dark – each step darker, violet light from below
+			var row2 := y - _run_top(x, y, 43)
+			for k7 in 3:
+				var sy2 := py + k7 * 5 + 1
+				var dc := Color(0.5, 0.48, 0.52).darkened(0.15 * (row2 * 3 + k7))
+				_rect(px, sy2, TILE, 5, dc)
+				_rect(px, sy2, TILE, 1, dc.lightened(0.12))
+			if y + 1 < h and floor_kind[(y + 1) * w + x] != 43:
+				_rect(px, py + TILE - 3, TILE, 3, Color(0.62, 0.35, 1.0).darkened(0.2))
+		44:             # 53e: the basement's stairs up – pale steps rising to the west, lit from the hall above
+			var st3 := Color(0.82, 0.8, 0.76)
+			for k8 in 3:
+				var sx3 := px + k8 * 5 + 1
+				_rect(sx3, py, 5, TILE, st3.darkened(0.06 * (2 - k8) + 0.08 * (x - 2)))
+				_rect(sx3, py, 1, TILE, st3.lightened(0.1))
 		16:             # 0.7.52.27: an air duct – dark steel, ribs across its run (0.7.52.28: walls on its closed sides)
 			_duct_tile(x, y, px, py)
 		10:             # water (a pool)
@@ -961,6 +1061,34 @@ func _tower_glass(x: int, y: int, px: int, py: int) -> void:
 		_rect(px, py + TILE - 3, TILE, 3, Color(0.4, 0.42, 0.46))
 
 
+## 53e: the row a run of one floor kind starts at (counting up from this tile).
+func _run_top(x: int, y: int, fk: int) -> int:
+	var yy := y
+	while yy > 0 and floor_kind[(yy - 1) * w + x] == fk and walkable_t(t_at(x, yy - 1)):
+		yy -= 1
+	return yy
+
+
+## 53e (Luz): the Museum's walls – pale stone panels under a cornice with a gold line, a darker plinth at the foot.
+func _museum_face(x: int, y: int, px: int, py: int) -> void:
+	var fy := y - _face_top(x, y)
+	var last := t_at(x, y + 1) != T.FACE
+	var base := Color(0.84, 0.83, 0.8).lerp(Color(0.78, 0.77, 0.74), hash2(x / 2, 0, 251))
+	_rect(px, py, TILE, TILE, base)
+	if x % 2 == 0:
+		_rect(px, py, 1, TILE, base.darkened(0.18))
+	if fy == 0:
+		_rect(px, py, TILE, 4, Color(0.94, 0.93, 0.9))
+		_rect(px, py + 4, TILE, 1, base.darkened(0.3))
+		_rect(px, py + 2, TILE, 1, Color(0.85, 0.66, 0.3))
+	else:
+		_rect(px + 2, py + 1, TILE - 4, TILE - 5, base.lightened(0.04))          # a panel
+		_rect(px + 2, py + 1, TILE - 4, 1, base.lightened(0.12))
+	if last:
+		_rect(px, py + TILE - 3, TILE, 3, Color(0.55, 0.53, 0.5))
+		_rect(px, py + TILE - 3, TILE, 1, Color(0.7, 0.68, 0.64))
+
+
 ## How many face rows lie above this one.
 func _face_top(x: int, y: int) -> int:
 	var k := 0
@@ -993,7 +1121,7 @@ func _cap_tile(x: int, y: int, px: int, py: int) -> void:
 	if style == "research" and has_meta("roofs"):
 		_module_roof(x, y, px, py)                     # 0.7.53.20: outside – the modules' roofs
 		return
-	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate", "corp", "plaza", "research", "darkones"]:
+	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate", "corp", "plaza", "research", "darkones", "museum", "museum_dark"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -1097,8 +1225,14 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 	if style == "research":
 		_module_face(x, y, px, py)
 		return
-	if style == "darkones":
+	if style in ["darkones", "museum_dark"]:
 		_dark_face(x, y, px, py)
+		return
+	if style == "museum":
+		_museum_face(x, y, px, py)
+		return
+	if style == "plaza" and x >= int(get_meta("museum_x", 9999)):
+		_museum_face(x, y, px, py)                     # 53e: the Museum's front on Curie's roof plaza
 		return
 	if style == "plaza":
 		if x >= int(get_meta("tower_x", 9999)):
@@ -1148,6 +1282,67 @@ func _decal(d: Dictionary) -> void:
 	var ph := int(d.get("h", 1)) * TILE
 	var c: Color = d.get("col", pal["accent"])
 	match String(d["kind"]):
+		"museum_roof":
+			# 53e: the Museum's roof seen from above – pale slabs, a parapet, the glass dome over the hall
+			_rect(px + 4, py + 4, pw - 8, ph - 8, Color(0.72, 0.7, 0.66))
+			for ry in range(py + 4, py + ph - 4, 10):
+				_rect(px + 4, ry, pw - 8, 1, Color(0.62, 0.6, 0.57))
+			_rect(px + 4, py + ph - 8, pw - 8, 4, Color(0.92, 0.91, 0.88))
+			var dc2 := Vector2(px + pw * 0.5, py + ph * 0.45)
+			for yy2 in range(-40, 41):
+				for xx2 in range(-48, 49):
+					var e2 := Vector2(xx2 / 48.0, yy2 / 40.0).length()
+					if e2 <= 1.0:
+						_px(int(dc2.x) + xx2, int(dc2.y) + yy2, Color(0.4, 0.42, 0.45) if e2 > 0.9 else Color(0.45, 0.62, 0.75).lerp(Color(0.6, 0.8, 0.92), 1.0 - e2))
+			for rib in 8:
+				var ang := rib * TAU / 8.0
+				for t in 44:
+					_px(int(dc2.x + cos(ang) * t), int(dc2.y + sin(ang) * t * 40.0 / 48.0), Color(0.78, 0.8, 0.82))
+		"steps":
+			# 53e: broad steps up to the Museum's doors
+			for sr in int(ph / 5):
+				var sc2 := Color(0.88, 0.88, 0.9).darkened(0.05 * sr)
+				_rect(px, py + sr * 5, pw, 5, sc2)
+				_rect(px, py + sr * 5 + 4, pw, 1, sc2.darkened(0.3))
+		"path_m":
+			for pxx in range(0, pw, 24):
+				_rect(px + pxx, py + 4, 22, ph - 8, Color(0.62, 0.6, 0.56))
+				_rect(px + pxx, py + ph - 5, 22, 1, Color(0.5, 0.48, 0.45))
+		"rosette":
+			# 53e: a rosette of brass and dark stone let into the hall's floor
+			var rc2 := Vector2(px + pw * 0.5, py + ph * 0.5)
+			for ring in 3:
+				for a2 in 120:
+					var q2 := rc2 + Vector2(cos(a2 * TAU / 120.0) * (pw * 0.5 - ring * 14), sin(a2 * TAU / 120.0) * (ph * 0.5 - ring * 8))
+					_px(int(q2.x), int(q2.y), [Color(0.85, 0.66, 0.3), Color(0.35, 0.3, 0.45), Color(0.85, 0.66, 0.3)][ring])
+			for sp in 8:
+				var a3 := sp * TAU / 8.0
+				for t2 in 18:
+					_px(int(rc2.x + cos(a3) * t2 * 1.6), int(rc2.y + sin(a3) * t2 * 0.8), Color(0.85, 0.66, 0.3, 0.8))
+		"museum_doors_s":
+			# 53e: the glass doors in the hall's south wall
+			_rect(px, py, pw, 10, Color(0.62, 0.78, 0.88))
+			for dd in range(0, pw, 16):
+				_rect(px + dd, py, 1, 10, Color(0.85, 0.66, 0.3))
+				_rect(px + dd + 3, py + 1, 2, 8, Color(0.85, 0.95, 1.0))
+			_rect(px, py, pw, 2, Color(0.85, 0.66, 0.3))
+		"ring_pool":
+			# 53e: the basement's round pool – a ring of black glass, grooves running in, violet at its rim
+			var pc3 := Vector2(px + pw * 0.5, py + ph * 0.5)
+			for g in 12:
+				var a4 := g * TAU / 12.0
+				for t3 in 60:
+					var q3 := pc3 + Vector2(cos(a4) * (pw * 0.45 + t3 * 1.6), sin(a4) * (ph * 0.45 + t3 * 0.9))
+					_px(int(q3.x), int(q3.y), Color(0.05, 0.04, 0.06))
+					if t3 % 6 == 0:
+						_px(int(q3.x) + 1, int(q3.y), Color(0.62, 0.35, 1.0, 0.7))
+			for yy3 in range(-ph / 2, ph / 2 + 1):
+				for xx3 in range(-pw / 2, pw / 2 + 1):
+					var e3 := Vector2(float(xx3) / (pw * 0.5), float(yy3) / (ph * 0.5)).length()
+					if e3 <= 1.0:
+						_px(int(pc3.x) + xx3, int(pc3.y) + yy3, Color(0.07, 0.06, 0.09) if e3 > 0.86 else Color(0.11, 0.1, 0.14).lerp(Color(0.16, 0.13, 0.22), 1.0 - e3))
+						if absf(e3 - 0.93) < 0.02:
+							_px(int(pc3.x) + xx3, int(pc3.y) + yy3, Color(0.62, 0.35, 1.0))
 		"stripes":
 			for k in int(pw / 4):
 				_rect(px + k * 4, py + 1, 2, ph - 2, Color(0.95, 0.75, 0.1))
@@ -1535,6 +1730,88 @@ func _face_deco(d: Dictionary) -> void:
 	var pw := int(d.get("w", 1)) * TILE
 	var c: Color = d.get("col", pal["accent"])
 	match String(d["kind"]):
+		"museum_doors":
+			# 53e: the Museum's main doors, wide open – warm light from the hall, the leaves folded back
+			var dh := 3 * TILE
+			_rect(px - 4, py + 6, pw + 8, dh - 6, Color(0.55, 0.42, 0.25))
+			_rect(px, py + 10, pw, dh - 10, Color(0.98, 0.86, 0.62))
+			_rect(px + 4, py + 14, pw - 8, dh - 14, Color(1.0, 0.92, 0.72))
+			_rect(px - 4, py + 6, pw + 8, 2, Color(0.85, 0.66, 0.3))
+		"banner_m":
+			# 53e: a long banner of an exhibition hung from the cornice
+			_rect(px + 2, py + 2, 12, 2, Color(0.85, 0.66, 0.3))
+			_rect(px + 3, py + 4, 10, 26, c)
+			_rect(px + 3, py + 4, 1, 26, c.lightened(0.2))
+			for yy4 in 12:
+				for xx4 in 12:
+					if absf(Vector2(xx4 - 5.5, yy4 - 5.5).length() - 3.5) < 1.0:
+						_px(px + 2 + xx4, py + 6 + yy4, Color(0.95, 0.85, 0.6))
+			for k9 in 2:
+				_rect(px + 5, py + 21 + k9 * 3, 6, 1, Color(0.95, 0.85, 0.6))
+			_rect(px + 3, py + 30, 3, 3, c)
+			_rect(px + 10, py + 30, 3, 3, c)
+		"museum_sign":
+			# 53e: the Museum's name over the hall
+			_rect(px, py + 4, pw, 13, Color(0.12, 0.15, 0.25))
+			_rect(px, py + 4, pw, 1, Color(0.85, 0.66, 0.3))
+			_rect(px, py + 16, pw, 1, Color(0.6, 0.46, 0.2))
+			for lt in int(pw / 10):
+				_rect(px + 4 + lt * 10, py + 7, 6, 7, Color(0.95, 0.85, 0.6))
+		"memorial":
+			# 53e: the memorial to the Long Gate's crew – a dark slab, names in rows, a cyan line under them
+			_rect(px, py + 2, pw, 26, Color(0.12, 0.12, 0.14))
+			_rect(px, py + 2, pw, 1, Color(0.35, 0.36, 0.4))
+			for ln in 6:
+				_rect(px + 4, py + 6 + ln * 3, pw - 8 - (ln * 7) % 13, 1, Color(0.75, 0.75, 0.78))
+			_rect(px, py + 27, pw, 1, Color(0.45, 0.85, 1.0))
+		"membrane_cast":
+			# 53e: the cast of a membrane door of the Dark Ones
+			var mc2 := Vector2(px + pw * 0.5, py + 15)
+			for yy5 in range(-15, 16):
+				for xx5 in range(-28, 29):
+					var e5 := Vector2(xx5 / 28.0, yy5 / 15.0).length()
+					if e5 <= 1.0:
+						_px(int(mc2.x) + xx5, int(mc2.y) + yy5, Color(0.18, 0.08, 0.22) if e5 > 0.8 else Color(0.4, 0.18, 0.45).lerp(Color(0.3, 0.12, 0.36), e5))
+			for vn in 10:
+				var a5 := vn * TAU / 10.0
+				for t4 in 12:
+					_px(int(mc2.x + cos(a5) * t4 * 1.8), int(mc2.y + sin(a5) * t4), Color(0.55, 0.25, 0.6))
+		"relief":
+			# 53e: a relief like those in the Dark Ones' ruins – a frame of black glass, the picture in glowing grooves
+			_rect(px, py + 1, pw, 28, Color(0.2, 0.17, 0.26))
+			_rect(px + 2, py + 3, pw - 4, 24, Color(0.06, 0.05, 0.08))
+			var gc2 := Color(0.62, 0.35, 1.0, 0.9)
+			var mid := Vector2(px + pw * 0.5, py + 15)
+			match int(d.get("v", 0)):
+				0:   # the pantheon: figures in a ring, each with its sign
+					for k10 in 7:
+						var a6 := k10 * TAU / 7.0 - PI * 0.5
+						var fp := mid + Vector2(cos(a6) * pw * 0.32, sin(a6) * 8.5)
+						_rect(int(fp.x) - 1, int(fp.y) - 2, 3, 2, gc2)
+						_rect(int(fp.x), int(fp.y), 1, 4, gc2)
+					_rect(int(mid.x) - 2, int(mid.y) - 2, 4, 4, Color(0.85, 0.7, 1.0))
+				1:   # the bound: rows of the same figure, a chain through each row
+					for rw in 3:
+						for cl in int((pw - 8) / 7):
+							var fx := px + 5 + cl * 7
+							var fyy := py + 5 + rw * 7
+							_rect(fx, fyy, 2, 2, gc2)
+							_rect(fx, fyy + 2, 1, 3, gc2)
+						_rect(px + 3, py + 9 + rw * 7, pw - 6, 1, Color(0.7, 0.6, 0.8, 0.7))
+				2:   # the veil: a ring of darkness round the stars, figures kneeling towards it
+					for st4 in 12:
+						_px(px + 4 + int(hash2(st4, 1, 77) * (pw - 8)), py + 5 + int(hash2(st4, 2, 77) * 10), Color(0.95, 0.9, 1.0))
+					for a7 in 40:
+						_px(int(mid.x + cos(a7 * TAU / 40.0) * pw * 0.22), int(mid.y - 2 + sin(a7 * TAU / 40.0) * 5), gc2)
+					for kn in 5:
+						_rect(px + 7 + kn * int((pw - 14) / 4), py + 22, 3, 2, gc2)
+				_:   # veins round a closed eye
+					for t5 in 30:
+						_px(px + 6 + t5 * (pw - 12) / 30, int(mid.y + sin(t5 / 30.0 * PI) * -4), Color(0.85, 0.7, 1.0))
+					for v2 in 8:
+						var a8 := v2 * TAU / 8.0
+						for t6 in 8:
+							_px(int(mid.x + cos(a8) * (10 + t6 * 1.5)), int(mid.y + sin(a8) * (5 + t6 * 0.8)), Color(0.62, 0.35, 1.0, 0.6))
 		"skull_banner":
 			# 0.7.53.11: the Red Talons' banner – black, a skull, red claws
 			_rect(px, py - 2, pw, 40, Color(0.1, 0.09, 0.09))
