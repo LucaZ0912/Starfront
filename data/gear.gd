@@ -117,6 +117,11 @@ const WEAPONS := {
 		"range": 430.0, "spread": 0.02, "energy": 2.4, "price": 3200, "desc": "Long reach and steady – burns through shields."},
 	"wp_beam": {"name": "Cutting Beam", "maker": "Concord Fleetworks", "dtype": "optical", "damage": 4.0, "rof": 10.0,
 		"range": 200.0, "spread": 0.0, "energy": 0.6, "price": 4400, "desc": "A continuous beam at short range; melts shields, hungry for energy."},
+	# 53f (Luz): what creatures fight with – claws and teeth, close up (`melee`: no shot flies, a strike lands)
+	"wp_claws": {"name": "Claws", "maker": "–", "dtype": "kinetic", "damage": 40.0, "rof": 1.1, "range": 24.0, "spread": 0.0,
+		"ammo": 0, "price": 0, "builtin": true, "melee": true, "desc": "Claws and a terrible strength."},
+	"wp_bite": {"name": "Teeth", "maker": "–", "dtype": "kinetic", "damage": 16.0, "rof": 1.6, "range": 18.0, "spread": 0.0,
+		"ammo": 0, "price": 0, "builtin": true, "melee": true, "desc": "Small, quick, and many of them."},
 	"wp_pistol": {"name": "Slug Pistol", "maker": "Hadrian Dynamics", "dtype": "kinetic", "damage": 11.0, "rof": 2.0,
 		"range": 240.0, "spread": 0.05, "ammo": 1, "price": 700, "desc": "The sidearm of the frontier – hits hard on armour."},
 	"wp_smg": {"name": "Burst Gun", "maker": "Hadrian Dynamics", "dtype": "kinetic", "damage": 6.0, "rof": 8.0,

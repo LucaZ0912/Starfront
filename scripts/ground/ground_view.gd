@@ -3311,6 +3311,7 @@ func _mission_window() -> void:
 			+ ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
 		"spy": ("The data is in the security centre on the second level. " if String(_site.get("theme", "")) == "corp" else "The data is in the deepest computer. ") + "Unseen, they pay a bonus.",
 		"reactivate": "Restart the reactor on the lowest level.",
+		"pest": "The rats come in swarms – keep moving, keep your back free. Their brood mother is on the lowest level.",
 		"recover": "The research computer is in the sample store below. Torn modules have no air and no warmth – seal their bulkheads.",
 		"investigate": "The cult gathers at the bottom of the ruin. Find out what they are doing – and stop their priest. The symbols open the membranes; a monolith's vision tells their order.",
 		"rescue": ("The researchers are sealed into a cold store inside. Open it; they follow you – bring them out alive." if String(_site.get("theme", "")) == "research"
@@ -3330,7 +3331,7 @@ func _mission_event(kind: String) -> void:
 	if not bool(_site.get("mission", false)) or bool(_site.get("goal_done", false)):
 		return
 	var goal := String(_site.get("goal", ""))
-	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued", "recover": "target", "investigate": "leader"}
+	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued", "recover": "target", "investigate": "leader", "pest": "leader"}
 	if String(want.get(goal, "")) != kind:
 		return
 	_site["goal_done"] = true
@@ -3362,9 +3363,11 @@ func _mission_step(delta: float) -> void:
 	if map.explore.any(func(d): return String(d["kind"]) == "alarm" and String(d["state"]) == "ringing"):
 		_site["alarmed"] = true
 	var goal := String(_site.get("goal", ""))
-	if goal in ["bounty_foot", "investigate"]:
+	if goal in ["bounty_foot", "investigate", "pest"]:
 		var th: Dictionary = PoiData.layer(String(_site.get("theme", "")), depth)
 		var lk := String(th.get("cult_leader", "")) if bool(_site.get("cult", false)) else String(th.get("leader", ""))     # 0.7.53.23: the cult's priest
+		if goal == "pest":
+			lk = "rat_brood"                               # 53f: the rats' brood mother
 		for f in combat.foes:
 			if f["dead"] and String(f["kind"]) == lk:
 				_mission_event("leader")

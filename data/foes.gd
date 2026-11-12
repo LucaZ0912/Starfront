@@ -72,6 +72,38 @@ const FOES := {
 	"cult_priest": {"name": "Cult Priest", "faction": "cult", "suit": "suit_mil_heavy", "weapon": "wp_laser_rifle", "quality": "C",
 		"health": 100.0, "firearms": 4, "athletics": 1, "role": "leader", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 8, "helmet": true,
 		"livery": "cult", "grenades": 2, "desc": "Leads the rites at the bottom of the ruin. It knows what sleeps there."},
+	# 53f (Luz, package 53f): creatures and machines that are not people – `creature`: drawn by
+	# scripts/ground/creature_art.gd; no suit (`armor_v`/`shield_v` their own); `loot`: what they leave (credits for
+	# parts, research data for samples); `rise`: stands up once more after falling; `regen`: health a second while
+	# unhurt; `swarm`: comes with that many more of its kind; `chest`: where shots hit (art px above the feet)
+	"sec_robot": {"name": "Security Robot", "faction": "corp", "suit": "", "weapon": "wp_rifle", "quality": "C", "creature": "sec_robot",
+		"health": 70.0, "armor_v": 60.0, "shield_v": 15.0, "firearms": 3, "athletics": 1, "role": "rifleman", "flee": 0.0, "bounty": 0,
+		"c1": 0, "c2": 0, "helmet": false, "chest": -22.0, "loot": {"credits": [120, 260], "what": "salvaged parts"},
+		"desc": "A company's security robot – lanky, armoured, a rail carbine. It does not tire and it does not run."},
+	"pre_robot": {"name": "Precursor Keeper", "faction": "keepers", "suit": "", "weapon": "wp_laser_rifle", "quality": "C", "creature": "pre_robot",
+		"health": 85.0, "armor_v": 110.0, "shield_v": 10.0, "firearms": 3, "athletics": 1, "role": "holder", "flee": 0.0, "bounty": 0,
+		"c1": 0, "c2": 0, "helmet": false, "chest": -22.0, "loot": {"credits": [150, 320], "research": [3, 6], "what": "Precursor parts"},
+		"desc": "A machine of the Precursors that still keeps their halls. Blue while it waits – red once it has seen you."},
+	"necrotic": {"name": "Necrotic Husk", "faction": "darkones", "suit": "", "weapon": "wp_claws", "quality": "D", "creature": "necrotic",
+		"health": 90.0, "armor_v": 25.0, "shield_v": 0.0, "firearms": 3, "athletics": 2, "role": "rusher", "flee": 0.0, "bounty": 0,
+		"c1": 0, "c2": 0, "helmet": false, "chest": -18.0, "rise": 1, "regen": 3.0, "loot": {"research": [2, 4], "what": "a sample of it"},
+		"desc": "Black, cracked, glowing violet and steaming. It heals as long as you let it – and it gets up once more."},
+	"mut_rat": {"name": "Mutant Rat", "faction": "vermin", "suit": "", "weapon": "wp_bite", "quality": "E", "creature": "rat",
+		"health": 14.0, "armor_v": 0.0, "shield_v": 0.0, "firearms": 3, "athletics": 6, "role": "rusher", "flee": 0.0, "bounty": 0,
+		"c1": 0, "c2": 0, "helmet": false, "chest": -4.0, "swarm": 2,
+		"desc": "Big as a cat, bald in patches, red-eyed – they come in swarms."},
+	"rat_brood": {"name": "Brood Mother", "faction": "vermin", "suit": "", "weapon": "wp_claws", "quality": "D", "creature": "rat_brood",
+		"health": 100.0, "armor_v": 30.0, "shield_v": 0.0, "firearms": 3, "athletics": 3, "role": "rusher", "flee": 0.0, "bounty": 0,
+		"c1": 0, "c2": 0, "helmet": false, "chest": -8.0, "swarm": 3, "loot": {"research": [2, 4], "what": "a sample of it"},
+		"desc": "The mother of the swarm – the size of a dog, and never alone."},
+	"cave_crawler": {"name": "Cave Crawler", "faction": "vermin", "suit": "", "weapon": "wp_claws", "quality": "E", "creature": "crawler",
+		"health": 45.0, "armor_v": 35.0, "shield_v": 0.0, "firearms": 3, "athletics": 5, "role": "flanker", "flee": 0.0, "bounty": 0,
+		"c1": 0, "c2": 0, "helmet": false, "chest": -6.0, "loot": {"research": [1, 3], "what": "a sample of it"},
+		"desc": "Flat, six-legged, armoured – it comes out of the cracks and leaps at you."},
+	"specimen": {"name": "Escaped Specimen", "faction": "specimens", "suit": "", "weapon": "wp_claws", "quality": "D", "creature": "specimen",
+		"health": 55.0, "armor_v": 10.0, "shield_v": 0.0, "firearms": 3, "athletics": 7, "role": "flanker", "flee": 0.0, "bounty": 0,
+		"c1": 0, "c2": 0, "helmet": false, "chest": -10.0, "loot": {"research": [3, 6], "what": "a sample of it"},
+		"desc": "Something the researchers kept – pale, many-eyed, fast. Its collar is broken."},
 	# 0.7.52.5: guards – the security of a place (only foes where weapons are allowed and you broke the law)
 	"guard_trooper": {"name": "Security Trooper", "faction": "guards", "suit": "suit_mil_light", "weapon": "wp_rifle", "quality": "D",
 		"health": 75.0, "firearms": 3, "athletics": 2, "role": "rifleman", "flee": 0.1, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
@@ -85,7 +117,8 @@ const FOES := {
 }
 const KINDS := ["bandit_scrapper", "bandit_rifleman", "bandit_gunner", "bandit_boss", "pirate_raider", "pirate_gunner",
 	"pirate_grenadier", "pirate_sniper", "pirate_captain", "guard_trooper", "guard_heavy", "guard_sergeant", "maint_drone",
-	"corp_guard", "corp_marksman", "corp_chief", "cultist", "cult_zealot", "cult_priest"]
+	"corp_guard", "corp_marksman", "corp_chief", "cultist", "cult_zealot", "cult_priest",
+	"sec_robot", "pre_robot", "necrotic", "mut_rat", "rat_brood", "cave_crawler", "specimen"]
 const ROLES := ["rusher", "rifleman", "holder", "flanker", "thrower", "leader", "sniper"]
 ## How a role fights: `pref` – the share of its reach it keeps from you; `cover` – it seeks cover.
 const ROLE := {

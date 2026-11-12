@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.34 – 2026-11-12
+
+**Package 53f-1 – creatures and machines (Luz).** The places on foot get foes that are not people:
+- **Security robots** in the corporate towers – lanky, grey with sand-coloured plates, a red eye, a rail carbine;
+  armoured, they never run.
+- **Precursor keepers** in the ruins of the Precursors – dark machinery under glossy blue plates; once they have seen
+  you the blue turns **red**. A laser rifle and heavy armour.
+- **Necrotic husks** of the Dark Ones with the cult in their ruins – black, violet cracks and eyes, **steaming**; they
+  strike with their claws, **heal** while you leave them be and **get up once more** after falling.
+- **Mutant rats** in the sewers, in **swarms**; **cave crawlers** in the old mines that come out of the cracks;
+  **escaped specimens** in the research stations – fast, pale, many-eyed.
+- Creatures fight **close up** (claws, teeth – no shot flies, the strike lands in reach). They **join or replace** the
+  people of a place. Machines leave **salvaged parts** (credits), creatures **samples** (research data).
+- **New job "Rat plague":** under a city the sewers crawl with rats – both levels are sewers now; kill their **brood
+  mother** on the lowest level.
+- Debug: every creature in the foe list (F12 → Ground → Combat on foot), the rat plague job (F12 → Missions).
+
 ## alpha 0.7.53.33 – 2026-11-12
 
 **Drones on the arm (Luz).** Every suit now carries its switched-off drone on the outside of the **right upper arm**,

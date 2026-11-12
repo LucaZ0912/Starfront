@@ -167,6 +167,7 @@ func _process(delta: float) -> void:
 				_test_research(view)             # package 53d – the research station
 				_test_darkones(view)             # package 53d – the ruin of the Dark Ones
 				_test_museum(view)               # package 53e – the Museum in Curie
+				_test_creatures(view)            # package 53f – creatures and machines
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -11139,6 +11140,108 @@ func _test_museum(view: SystemView) -> void:
 	main._update_input()
 	check(data_ok and rolls_ok and plaza_ok and hall_ok and ways_ok and don_ok and cur_ok and base_ok and suit_ok,
 		"53e: the Museum – 48 exhibits with pictures and rarities; the roof plaza with its front and statues; one map for the hall and the floors above, joined by stairs; a find set into its case, a spare one sold; the basement's monolith raised once the Dark Ones' room is full; the Archivist Suit  [%s]" % " ".join(PackedStringArray([str(data_ok), str(rolls_ok), str(plaza_ok), str(hall_ok), str(ways_ok), str(don_ok), str(cur_ok), str(base_ok), str(suit_ok)])))
+
+
+
+## 53f (Luz): creatures and machines – their pictures; in a fight: a strike close up, the necrotic thing rising once
+## and healing, the Precursor robot's colour, what they leave; in the places: rats in swarms, robots in the ruins, the
+## rat plague job with its brood mother.
+func _test_creatures(view: SystemView) -> void:
+	var CA = load("res://scripts/ground/creature_art.gd")
+	var FD = load("res://data/foes.gd")
+	var art_ok := true
+	for kd in CA.KINDS:
+		for dr in 4:
+			var im: Image = CA.image(String(kd), dr, 1, true, 0.5)
+			var n := 0
+			for yy in im.get_height():
+				for xx in im.get_width():
+					if im.get_pixel(xx, yy).a > 0.5:
+						n += 1
+			art_ok = art_ok and n > 20
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	var e1: String = Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null:
+		check(false, "53f: the arena opens  [%s]" % e1)
+		return
+	gear.refill()
+	Commands.suit_god = false
+	var pp: Vector2 = cb.pilot_pos()
+	var nec: Dictionary = cb.spawn("necrotic", pp + Vector2(10, 0))
+	var rob: Dictionary = cb.spawn("pre_robot", pp + Vector2(120, 0))
+	var rat: Dictionary = cb.spawn("mut_rat", pp + Vector2(-10, 0))
+	var spawn_ok: bool = (nec["w"] as Walker).creature == "necrotic" and (rat["w"] as Walker).creature == "rat" and float(rob["st"]["armor"]) > 100.0 \
+		and float(rat["st"]["shield"]) == 0.0
+	# a strike close up hurts you (no shot flies)
+	var hp0: float = gear.health + gear.armor + gear.shield
+	var shots0: int = cb.shots.size()
+	for i in 12:
+		cb.fire(nec, null, GearData_53e.stats(String(nec["weapon"])))
+	var melee_ok: bool = gear.health + gear.armor + gear.shield < hp0 and cb.shots.size() == shots0
+	# the robot turns red once it has seen you
+	cb._wake(rob)
+	cb._creature_step(rob, 0.1)
+	var alert_ok: bool = (rob["w"] as Walker).alert
+	# the necrotic thing: down – and up again; down again for good – a sample of it
+	var rd0: int = GameState.research_data
+	cb._hurt_foe(nec, 9999.0, "explosive")
+	var rise_ok: bool = nec["dead"] and float(nec.get("rise_t", 0.0)) > 0.0 and GameState.research_data == rd0
+	cb._rise_step(nec, 3.1)
+	rise_ok = rise_ok and not nec["dead"] and float(nec["st"]["health"]) > 0.0
+	var h1: float = float(nec["st"]["health"])
+	nec["hp_wait"] = 0.0
+	cb._creature_step(nec, 1.0)
+	rise_ok = rise_ok and float(nec["st"]["health"]) > h1                    # it heals while left be
+	cb._hurt_foe(nec, 9999.0, "explosive")
+	cb._rise_step(nec, 5.0)
+	rise_ok = rise_ok and nec["dead"] and GameState.research_data > rd0
+	Commands.suit_god = true
+	# the places: rats in swarms in the sewers, keepers in the ruins, crawlers in the mine
+	var place_ok := true
+	var seen := {}
+	for sd in 6:
+		for th in ["sewer", "precursor", "mine", "research", "corp"]:
+			var mp: GroundMap = DungeonGen53.build_inside({}, {"theme": th, "seed": 9000 + sd * 31, "danger": "red"}, 0)
+			for fe in mp.get_meta("foes", []):
+				seen[String(fe).split("@")[0]] = true
+	place_ok = seen.has("mut_rat") and seen.has("pre_robot") and seen.has("cave_crawler") and seen.has("specimen") and seen.has("sec_robot") and seen.has("bandit_rifleman")
+	var pest_map: GroundMap = DungeonGen53.build_inside({}, {"theme": "sewer", "seed": 4242, "danger": "yellow", "pest": true}, 1)
+	var pf: Array = pest_map.get_meta("foes", [])
+	var pest_ok: bool = pest_map.style == "sewer" and pf.any(func(x): return String(x).begins_with("rat_brood")) and pf.filter(func(x): return String(x).begins_with("mut_rat")).size() >= 4 \
+		and not pf.any(func(x): return String(x).begins_with("bandit"))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var mm: Dictionary = Missions.ground_offer({"id": "t53f", "giver": "x", "giver_system": GameState.current_system}, GameState.current_system, rng, "pest")
+	pest_ok = pest_ok and (mm.is_empty() or (bool(mm["site"].get("pest", false)) and String(mm["site"]["theme"]) == "sewer" and mm["site"].has("city")))
+	# back
+	Commands.suit_god = false
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(art_ok and spawn_ok and melee_ok and alert_ok and rise_ok and place_ok and pest_ok,
+		"53f: creatures and machines – their pictures; a strike close up; the Precursor robot red once it sees you; the necrotic thing rises once, heals, leaves a sample; rats, keepers, crawlers, specimens and security robots in their places; the rat plague job with its brood mother  [%s]" % " ".join(PackedStringArray([str(art_ok), str(spawn_ok), str(melee_ok), str(alert_ok), str(rise_ok), str(place_ok), str(pest_ok)])))
 
 
 func _zone_of(m: GroundMap, k: String) -> Dictionary:

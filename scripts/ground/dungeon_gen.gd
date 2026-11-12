@@ -17,6 +17,7 @@ extends RefCounted
 ## tunnel to the way down (drained at the pumps) and tripwires across the ways.
 ## No class_name: preload it.
 
+const FoeDataG = preload("res://data/foes.gd")
 const PoiData = preload("res://data/poi.gd")
 const ExploreNode = preload("res://scripts/ground/explore.gd")
 const TILE := GroundMap.TILE
@@ -395,9 +396,23 @@ static func build_plaza(body: Dictionary, site: Dictionary) -> GroundMap:
 ## a spanning tree from the entrance and a loop or two more. The last level holds the target behind the theme's door
 ## (the vault above its approach); a level above it holds the way down at its far end (in the sewers: behind a
 ## flooded tunnel – a valve wheel or the pump control drains it).
+## 53f (Luz): a foe for a place – now and then (the theme's `creatures` share) one of its creatures instead of a person.
+static func _foe_pick(th: Dictionary, rng: RandomNumberGenerator) -> String:
+	var cr: Dictionary = th.get("creatures", {})
+	if not (cr.get("kinds", []) as Array).is_empty() and rng.randf() < float(cr.get("share", 0.0)):
+		return String(cr["kinds"][rng.randi() % cr["kinds"].size()])
+	return String(th["foes"][rng.randi() % th["foes"].size()])
+
+
 static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> GroundMap:
 	var theme := String(site.get("theme", "precursor"))
 	var th: Dictionary = PoiData.layer(theme, depth)
+	if bool(site.get("pest", false)):
+		# 53f (Luz): a rat plague – sewers on every level, rats everywhere, their brood mother at the bottom
+		th = PoiData.layer(theme, 0).duplicate(true)
+		th["foes"] = ["mut_rat"]
+		th["leader"] = "rat_brood"
+		th["creatures"] = {"kinds": [], "share": 0.0}
 	var nlev := PoiData.levels(theme)
 	var last := depth >= nlev - 1
 	var dg: Dictionary = PoiData.DANGER.get(String(site.get("danger", "yellow")), PoiData.DANGER["yellow"])
@@ -1190,12 +1205,12 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				continue
 			routes[m.foe_spawns.size()] = route
 			m.foe_spawns.append(route[0])
-			foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
+			foes.append("%s@%s" % [_foe_pick(th, rng), String(tiers[rng.randi() % tiers.size()])])
 		m.set_meta("routes", routes)
 		if bool(th.get("reinforce", false)):
 			var kinds: Array = []
 			for kn in {"green": 2, "yellow": 3, "red": 4}.get(String(site.get("danger", "yellow")), 3):
-				kinds.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
+				kinds.append("%s@%s" % [_foe_pick(th, rng), String(tiers[rng.randi() % tiers.size()])])
 			if last and String(th.get("leader", "")) != "":
 				kinds.append("%s@%s" % [String(th["leader"]), String(dg["leader"])])
 			m.set_meta("reinforce", {"at": m.get_meta("down_front") if depth == 0 and m.has_meta("down_front") else m.spawn, "kinds": kinds})
@@ -1211,12 +1226,23 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			var p := (Vector2(gr.position.x + 1 + rng.randf() * maxf(1.0, gr.size.x - 2), gr.position.y + 1.2 + rng.randf() * maxf(0.5, gr.size.y - 2.4))) * TILE
 			if m.free_at(p, 6.0) and m.floor_kind[int(p.y / TILE) * W + int(p.x / TILE)] != 18:
 				m.foe_spawns.append(p)
-				foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
+				var fk := _foe_pick(th, rng)
+				foes.append("%s@%s" % [fk, String(tiers[rng.randi() % tiers.size()])])
+				for sw in int(FoeDataG.FOES.get(fk, {}).get("swarm", 0)):           # 53f: rats come in swarms
+					var sp2 := p + Vector2(rng.randf_range(-14, 14), rng.randf_range(-8, 8))
+					if m.free_at(sp2, 4.0):
+						m.foe_spawns.append(sp2)
+						foes.append("%s@green" % fk)
 	if last and String(th.get("leader", "")) != "" and not th.has("patrols"):
 		var lp := Vector2(dx + 0.5, ap.position.y + (2.5 if spine else 3.0)) * TILE
 		if m.free_at(lp, 6.0):
 			m.foe_spawns.append(lp)
 			foes.append("%s@%s" % [String(th["leader"]), String(dg["leader"])])
+			for sw2 in int(FoeDataG.FOES.get(String(th["leader"]), {}).get("swarm", 0)):     # 53f: the brood mother's brood
+				var sp3 := lp + Vector2(rng.randf_range(-20, 20), rng.randf_range(4, 14))
+				if m.free_at(sp3, 4.0):
+					m.foe_spawns.append(sp3)
+					foes.append("mut_rat@%s" % String(tiers[rng.randi() % tiers.size()]))
 	m.set_meta("foes", foes)
 	if bool(th.get("passive_foes", false)):
 		m.set_meta("passive", true)                      # 0.7.53.9: they leave you be – until shot at
@@ -1616,7 +1642,7 @@ static func build_cliff(body: Dictionary, site: Dictionary, ship_len: float, shi
 	for gp in [Vector2(sx + 1.5, 12.5), Vector2(gx - 9.5, 18.5), Vector2(gx + 14.5, 23.0)]:
 		if m.free_at(gp * TILE, 6.0):
 			m.foe_spawns.append(gp * TILE)
-			foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(dg["tiers"][0])])
+			foes.append("%s@%s" % [_foe_pick(th, rng), String(dg["tiers"][0])])
 	m.set_meta("foes", foes)
 	m.lights.append({"pos": Vector2(gx + 3.5, 11) * TILE, "r": 70.0, "col": Color(1.0, 0.3, 0.22), "a": 0.35})
 	return m
@@ -1791,7 +1817,7 @@ static func build_wreck_outside(body: Dictionary, site: Dictionary, ship_len: fl
 		var fp := Vector2(camp.x - 2 + fi * 2, camp.y + 4) * TILE
 		if m.free_at(fp, 6.0):
 			m.foe_spawns.append(fp)
-			foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(dg["tiers"][0])])
+			foes.append("%s@%s" % [_foe_pick(th, rng), String(dg["tiers"][0])])
 	m.set_meta("foes", foes)
 	# fires along the hull, smoke rising
 	var plumes: Array = []

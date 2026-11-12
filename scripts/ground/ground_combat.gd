@@ -172,6 +172,8 @@ func spawn(kind: String, p: Vector2, quality: String = "", tier: String = "green
 	var q := quality if quality != "" else FoeData.tier_quality(String(d["quality"]), tier)
 	var hp := float(d.get("health", 60.0)) * float(td["health"])
 	var suit := GearData.stats(FoeData.suit_id(kind, q))
+	if d.has("creature"):
+		suit = {"shield": float(d.get("shield_v", 0.0)) * float(td["health"]), "armor": float(d.get("armor_v", 0.0)) * float(td["health"])}   # 53f
 	var lk: Dictionary = ChibiArt.PilotArt.random_look()
 	lk["outfit"] = 2
 	lk["color1"] = int(d["c1"])
@@ -189,6 +191,9 @@ func spawn(kind: String, p: Vector2, quality: String = "", tier: String = "green
 	w.slung = String(GearData.base(wid).get("dtype", "kinetic"))
 	w.aim_dtype = w.slung
 	w.aim_weapon = GearData.family(wid)
+	if d.has("creature"):
+		w.creature = String(d["creature"])            # 53f: drawn as itself, no weapon slung
+		w.slung = ""
 	view._sorted.add_child(w)
 	var f := {"id": _next_id, "w": w, "kind": kind, "name": String(d["name"]), "weapon": wid, "quality": q,
 		"st": {"shield": float(suit.get("shield", 0.0)), "armor": float(suit.get("armor", 0.0)), "health": hp},
@@ -198,7 +203,8 @@ func spawn(kind: String, p: Vector2, quality: String = "", tier: String = "green
 		"think": randf_range(0.0, 0.5), "regen_wait": 0.0, "role": String(d["role"]), "flee": float(d["flee"]),
 		"firearms": int(d["firearms"]) + int(td["firearms"]), "athletics": int(d["athletics"]), "out_t": 0.0, "home": p, "dead": false, "burst": 0,
 		"faction": String(d.get("faction", "")), "grenades": int(d.get("grenades", 0)), "gr_cool": randf_range(1.0, 3.0),
-		"aim": float(d.get("aim", 1.0)), "rof": float(d.get("rof", 1.0)), "sight": float(d.get("sight", FoeData.SIGHT)), "lost_t": 0.0}
+		"aim": float(d.get("aim", 1.0)), "rof": float(d.get("rof", 1.0)), "sight": float(d.get("sight", FoeData.SIGHT)), "lost_t": 0.0,
+		"chest": float(d.get("chest", CHEST.y)), "rise": int(d.get("rise", 0)), "regen": float(d.get("regen", 0.0)), "hp_wait": 0.0}
 	_next_id += 1
 	foes.append(f)
 	return f
@@ -402,7 +408,9 @@ func step(delta: float, move: Vector2) -> void:
 	var aware_any := false
 	for f in foes:
 		if f["dead"]:
+			_rise_step(f, delta)                          # 53f: a necrotic thing gets up once more
 			continue
+		_creature_step(f, delta)
 		_foe_step(f, delta)
 		if f["aware"]:
 			aware_any = true
@@ -535,7 +543,67 @@ func _out(msg: String) -> void:
 
 
 ## One shot (all its pellets) from `from` (null: the pilot) at `to` (null: the pilot) with weapon stats w.
+## 53f: a creature's own ways – healing while unhurt, the Precursor robot's colour by whether it has seen you.
+func _creature_step(f: Dictionary, delta: float) -> void:
+	var w: Walker = f["w"]
+	if w.creature == "":
+		return
+	w.alert = bool(f["aware"])
+	f["hp_wait"] = maxf(0.0, float(f.get("hp_wait", 0.0)) - delta)
+	if float(f.get("regen", 0.0)) > 0.0 and float(f["hp_wait"]) <= 0.0:
+		f["st"]["health"] = minf(float(f["mx"]["health"]), float(f["st"]["health"]) + float(f["regen"]) * delta)
+
+
+func _rise_step(f: Dictionary, delta: float) -> void:
+	if float(f.get("rise_t", 0.0)) <= 0.0:
+		return
+	f["rise_t"] = float(f["rise_t"]) - delta
+	if float(f["rise_t"]) > 0.0:
+		return
+	f["dead"] = false
+	f["state"] = "engage"
+	f["aware"] = true
+	f["st"]["health"] = float(f["mx"]["health"]) * 0.5
+	var w: Walker = f["w"]
+	w.down = false
+	w.z_index = 0
+	kills -= 1
+	floaters.append({"pos": w.pos + Vector2(0, -44), "text": "it rises again", "col": Color(0.75, 0.5, 1.0), "t": 0.0})
+	Audio.play("shield_down", "a necrotic thing rises", -6.0)
+
+
+## 53f: a strike close up – claws or teeth: no shot flies; in reach it lands (or not), the target flinches.
+func _melee(from: Dictionary, to, w: Dictionary) -> void:
+	var a: Vector2 = (from["w"] as Walker).pos
+	if to != null and to.has("is_drone"):
+		return
+	var b: Vector2 = pilot_pos() if to == null else (to["w"] as Walker).pos
+	if a.distance_to(b) > float(w["range"]) + 6.0:
+		return
+	var fw: Walker = from["w"]
+	fw.dir = (3 if b.x > a.x else 2) if absf(b.x - a.x) > absf(b.y - a.y) else (0 if b.y > a.y else 1)
+	var dmg := float(w["damage"]) * float(from["dmg"])
+	var at := b + Vector2(0, -12)
+	for i in 4:
+		sparks.append({"pos": at, "vel": Vector2(randf_range(-50, 50), randf_range(-40, 20)), "t": 0.0, "col": Color(1.0, 0.35, 0.3)})
+	Audio.play("shield_down", "a strike close up", -12.0)
+	if randf() > 0.8:
+		return
+	if to == null:
+		if dodge_t > 0.0:
+			floaters.append({"pos": pilot_pos() + Vector2(0, -34), "text": "dodged", "col": Color(0.6, 1.0, 0.7), "t": 0.0})
+			return
+		_hurt_pilot(dmg, String(w.get("dtype", "kinetic")))
+	elif to.has("ally"):
+		_hurt_ally(to, dmg, String(w.get("dtype", "kinetic")))
+	elif not to["dead"]:
+		_hurt_foe(to, dmg, String(w.get("dtype", "kinetic")))
+
+
 func fire(from, to, w: Dictionary) -> void:
+	if from != null and bool(w.get("melee", false)):
+		_melee(from, to, w)                               # 53f: claws and teeth
+		return
 	var a: Vector2 = pilot_pos() if from == null else (from["w"] as Walker).pos
 	var at_drone: bool = to != null and to.has("is_drone")          # 0.7.52.11: a foe shoots at your drone
 	var b: Vector2 = pilot_pos() if to == null else ((to["pos"] as Vector2) if at_drone else (to["w"] as Walker).pos)
@@ -568,7 +636,7 @@ func fire(from, to, w: Dictionary) -> void:
 		var end: Vector2
 		if r < chance:
 			res["kind"] = "hit"
-			end = b + (Vector2(0, -float(to["alt"])) if at_drone else CHEST) + Vector2(randf_range(-2, 2), randf_range(-3, 3))
+			end = b + (Vector2(0, -float(to["alt"])) if at_drone else (Vector2(0, float(to.get("chest", CHEST.y))) if to != null else CHEST)) + Vector2(randf_range(-2, 2), randf_range(-3, 3))
 		elif sg["cover"] and r < open_chance:
 			res["kind"] = "blocked"
 			end = (sg["at"] as Vector2) + Vector2(0, -6)
@@ -706,9 +774,15 @@ func _hurt_foe(f: Dictionary, dmg: float, dtype: String) -> void:
 	f["provoked"] = true                                 # 0.7.53.9: shot at, a passive one turns on you
 	var out := GearData.apply_damage(f["st"], dmg, dtype)
 	f["regen_wait"] = GearData.SHIELD_WAIT
+	f["hp_wait"] = 2.5                                   # 53f: a necrotic thing heals only while you leave it be
 	_number((f["w"] as Walker).pos, out)
 	_wake(f)
 	if float(f["st"]["health"]) <= 0.0:
+		if int(f.get("rise", 0)) > 0:
+			f["rise"] = int(f["rise"]) - 1
+			f["rise_t"] = 3.0                            # 53f: down – for now
+		else:
+			_loot(f)
 		f["dead"] = true
 		f["state"] = "down"
 		var w: Walker = f["w"]
@@ -727,6 +801,24 @@ func _hurt_foe(f: Dictionary, dmg: float, dtype: String) -> void:
 					broke += 1
 			if broke > 0:
 				view._say_toast("%s is down – the rest lose heart!" % String(f["name"]), 3.0)
+
+
+## 53f: what a creature or a machine leaves when it falls for good – credits for its parts, research data for samples.
+func _loot(f: Dictionary) -> void:
+	var d: Dictionary = FoeData.FOES.get(String(f["kind"]), {})
+	if not d.has("loot"):
+		return
+	var lt: Dictionary = d["loot"]
+	var got: Array = []
+	if lt.has("credits"):
+		var cr := randi_range(int(lt["credits"][0]), int(lt["credits"][1]))
+		GameState.credits += cr
+		got.append("%d cr" % cr)
+	if lt.has("research"):
+		var rs := randi_range(int(lt["research"][0]), int(lt["research"][1]))
+		GameState.research_data += rs
+		got.append("%d research data" % rs)
+	floaters.append({"pos": (f["w"] as Walker).pos + Vector2(0, -56), "text": "%s: %s" % [String(lt.get("what", "loot")), ", ".join(PackedStringArray(got))], "col": Color(0.95, 0.85, 0.4), "t": 0.0})
 
 
 func _number(at: Vector2, out: Dictionary) -> void:

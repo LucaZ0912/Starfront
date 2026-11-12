@@ -130,8 +130,8 @@ static func generate_ground(system_id: int, station: Dictionary, rng: RandomNumb
 		"progress": 0, "item": "", "amount": 0, "target_system": system_id, "target_station": "",
 		"faction": String(station.get("faction", "")), "against": ""}
 	return ground_offer(m, system_id, rng)
-const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2], ["recover", 2], ["investigate", 1]]
-const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate", "recover": "research", "investigate": "darkones"}
+const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2], ["recover", 2], ["investigate", 1], ["pest", 2]]
+const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate", "recover": "research", "investigate": "darkones", "pest": "sewer"}
 
 
 ## `variant` (debug, 0.7.53.19): the theme a heist or a spy job must use ("" rolled).
@@ -162,7 +162,7 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 		theme = variant
 	var dealer := kind == "heist" and theme == "sewer"
 	var corp := theme == "corp"
-	var in_city := kind == "reactivate" or dealer or corp
+	var in_city := kind == "reactivate" or dealer or corp or kind == "pest"
 	# where: a body (a city for a reactivation or the dealer's heist) within two jumps
 	var spots: Array = []
 	var far_only := kind == "investigate" and variant != "debug"       # 0.7.53.23 (Luz): the Dark Ones lie far out
@@ -253,6 +253,11 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 				t = "Rescue: %s held by the Red Talons" % who
 				d = "The Red Talons hold %s in the cells of %s. Get them out alive – they follow you; explosions and traps hurt them too." % [who, where]
 				base = 12000
+		"pest":
+			site["pest"] = true                            # 53f (Luz): a rat plague in the sewers under a city
+			t = "Rat plague: under %s" % String(site["city_name"])
+			d = "The sewers under %s (%s) are crawling with mutant rats – they come up the drains now. Go down through the manhole in the back alley and kill their brood mother on the lowest level." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
+			base = 7000
 		"investigate":
 			site["cult"] = true
 			t = "Strange happenings: %s" % String(site["name"])

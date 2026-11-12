@@ -33,6 +33,8 @@ const DRINK_TIME := 3.2
 var _t := 0.0
 var _walk := 0.0
 var _goal := Vector2.INF
+var creature := ""                   # 53f: a creature or machine (scripts/ground/creature_art.gd) instead of a figure
+var alert := false                   # 53f: it has seen you (the Precursor robot's blue turns red)
 var goto_to := Vector2.INF          # 0.7.53.30: sent somewhere (the curator to the cases) – it walks there and stops
 var goto_done := false
 var _seat_z: Dictionary = {}        # 0.7.53.28 (Luz): the bench it is going to or sits on
@@ -204,6 +206,9 @@ func _draw() -> void:
 	var f := 0
 	if moving:
 		f = 1 + int(_walk * 7.0) % 2
+	if creature != "":
+		_draw_creature(f)
+		return
 	var tex := ChibiArt.frame(look, dir, f)
 	if xray:
 		tex = ChibiArt.skeleton(dir, f)
@@ -294,6 +299,26 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(1.0, 0.85, 0.35))
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(0.15, 0.1, 0.05), false, 2.0)
 		draw_string(ThemeDB.fallback_font, Vector2(-4, y0 - 2), marker, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.2, 0.1, 0.05))
+
+
+## 53f: a creature or machine – its own picture, a shadow its width, fallen on its side.
+const CreatureArtW = preload("res://scripts/ground/creature_art.gd")
+
+func _draw_creature(f: int) -> void:
+	var s := GroundMap.SCALE
+	var tex: Texture2D = CreatureArtW.texture(creature, dir, f, alert, int(_t * 8.0) % 8)
+	var size := Vector2(tex.get_width(), tex.get_height()) * ChibiArt.CHAR_SCALE
+	draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
+	draw_circle(Vector2.ZERO, size.x * 0.32, Color(0, 0, 0, 0.3))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if down:
+		var side := -1.0 if dir == 2 else 1.0
+		if size.y > size.x:
+			draw_set_transform(Vector2(-size.y * 0.5 * side, -3.0 * s), PI * 0.5 * side, Vector2.ONE)
+		draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y), size), false, Color(0.5, 0.48, 0.5))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y), size), false)
 
 
 static func PilotArt_CLOTH(i: int) -> Color:
