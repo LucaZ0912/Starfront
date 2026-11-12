@@ -10106,6 +10106,24 @@ func _test_corp(view: SystemView) -> void:
 	g.zone = lift_z
 	g.use()
 	l1_ok = l1_ok and g.depth == 0                                    # no card yet
+	# 0.7.53.22 (Luz): one or two guards on their rounds – found out, more come up the lift
+	var routes: Dictionary = g.map.get_meta("routes", {})
+	var n_f: int = g.combat.foes.size()
+	var patrol_ok: bool = routes.size() >= 1 and routes.size() <= 2 and n_f == routes.size() and g.combat.foes.all(func(fq): return fq.has("route"))
+	if n_f > 0:
+		var pf: Dictionary = g.combat.foes[0]
+		var pw0: Vector2 = (pf["w"] as Walker).pos
+		for i0 in 40:
+			g.combat._patrol_step(pf, 0.1)
+		patrol_ok = patrol_ok and (pf["w"] as Walker).pos.distance_to(pw0) > 8.0
+		g.combat._wake(pf)
+		g._reinforce_step(0.1)
+		g._reinforce_step(GroundView.REINFORCE_DELAY + 0.5)
+		g._reinforce_step(0.1)
+		patrol_ok = patrol_ok and g.combat.foes.size() >= n_f + 2 and g.map.has_meta("reinforced")
+	l1_ok = l1_ok and patrol_ok
+	if not patrol_ok:
+		print("[SMOKE] corp patrols: ", routes.size(), " ", n_f, " ", g.combat.foes.size())
 	# a camera that sees you rings the alarm
 	Commands.suit_god = false
 	var cam: Dictionary = cams[0] if not cams.is_empty() else {}
@@ -10207,7 +10225,7 @@ func _test_corp(view: SystemView) -> void:
 	gear.combat_t = 0.0
 	main._update_input()
 	check(plaza_ok and l1_ok and cam_ok and card_ok and down_ok and sec_ok and fire_ok and v_ok and pay_ok and jobs_ok and sp_ok,
-		"53d: the corporate tower – the roof plaza (lift, guarded doors, the back door behind its keypad or terminal); offices with cameras (seen: alarm) and a key card (the lift down wants it); the security centre switches cameras and light barriers off; the fire stairs ring the alarm; the vault door hacked then drilled, the main box pays; heist and spy jobs in a city's tower; a space contract by kind  [%s]" % " ".join(PackedStringArray([str(plaza_ok), str(l1_ok), str(cam_ok), str(card_ok), str(down_ok), str(sec_ok), str(fire_ok), str(v_ok), str(pay_ok), str(jobs_ok), str(sp_ok)])))
+		"53d: the corporate tower – the roof plaza (lift, guarded doors, the back door behind its keypad or terminal); offices with one or two guards on their rounds (found out: more come up the lift), cameras (seen: alarm) and a key card (the lift down wants it); the security centre switches cameras and light barriers off; the fire stairs ring the alarm; the vault door hacked then drilled, the main box pays; heist and spy jobs in a city's tower; a space contract by kind  [%s]" % " ".join(PackedStringArray([str(plaza_ok), str(l1_ok), str(cam_ok), str(card_ok), str(down_ok), str(sec_ok), str(fire_ok), str(v_ok), str(pay_ok), str(jobs_ok), str(sp_ok)])))
 
 
 ## 0.7.53.20 (Luz, package 53d): the research station – outside its modules on stilts (the airlock, a torn module),

@@ -3,6 +3,14 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.22 – 2026-11-12
+
+**The corporate tower reworked for a real heist (Luz: it could not be done).** Each level holds only **one or two
+guards**, and they **walk their rounds** – from room to room along a path, a pause at each stop to look about; walking
+they look where they go. Once one of them finds you out, **security comes up the lift** a few seconds later (two,
+three or four guards by the danger; on the vault level with the head of security) – once per level. Cameras, light
+barriers and the alarm stay as they were.
+
 ## alpha 0.7.53.21 – 2026-11-12
 
 **Fix (Luz): trees.** A small tree's crown sits on its trunk now (it floated above it); crowns stay inside their

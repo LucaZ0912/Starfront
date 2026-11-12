@@ -399,6 +399,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			var fe: Array = GroundCombat.FoeData.parse(String(flist[i]))         # "kind" or "kind@tier"
 			var nf: Dictionary = combat.spawn(String(fe[0]), map.foe_spawns[i], "", String(fe[1]))
 			nf["spawn_i"] = i
+			var routes: Dictionary = map.get_meta("routes", {})
+			if routes.has(i):
+				nf["route"] = routes[i]                    # 0.7.53.22 (Luz): a guard on its rounds
+				nf["rt_i"] = 0
 			if bool(GroundCombat.FoeData.FOES.get(String(fe[0]), {}).get("drone", false)):
 				nf["drone"] = true                       # 0.7.53.9: a maintenance drone – drawn as one, it flies
 				(nf["w"] as Walker).visible = false
@@ -874,6 +878,39 @@ func _socket_step(delta: float) -> void:
 ## not behind a wall) it notices you within a moment – then it rings the alarm. A light barrier rings it as soon as you
 ## cross it (crouched or not). The security centre switches both off for the whole tower; an EMP blinds the cameras.
 const VAULT_DRILL := 20.0
+const REINFORCE_DELAY := 5.0
+
+
+## 0.7.53.22 (Luz): found out on a level of the tower – a few seconds later more guards come up the lift (once).
+func _reinforce_step(delta: float) -> void:
+	if not map.has_meta("reinforce") or map.has_meta("reinforced"):
+		return
+	var t := float(map.get_meta("reinf_t", -1.0))
+	if t < 0.0:
+		if combat.alive().any(func(f): return f["aware"] and not f.has("reinf")):
+			map.set_meta("reinf_t", REINFORCE_DELAY)
+			_say_toast("They have seen you – security is on its way up the lift!", 3.0)
+			Audio.play("warn", "reinforcements called", -2.0)
+		return
+	t -= delta
+	map.set_meta("reinf_t", t)
+	if t > 0.0:
+		return
+	map.set_meta("reinforced", true)
+	var rf: Dictionary = map.get_meta("reinforce")
+	var at: Vector2 = rf["at"]
+	var k := 0
+	for kd in rf["kinds"]:
+		var fe: Array = GroundCombat.FoeData.parse(String(kd))
+		var sp: Vector2 = combat._free_near(at + Vector2((k % 3 - 1) * 14.0, (k / 3) * 14.0))
+		k += 1
+		if sp == Vector2.INF:
+			continue
+		var nf: Dictionary = combat.spawn(String(fe[0]), sp, "", String(fe[1]))
+		nf["reinf"] = true
+		combat._wake(nf)
+	_say_toast("The lift doors open – security!", 2.5)
+	Audio.play("dock_clamp", "lift arrives", -2.0)
 const CAM_NOTICE := 0.8
 
 
@@ -1778,6 +1815,7 @@ func _process(delta: float) -> void:
 		_mission_step(delta)
 		_hostage_step(delta)
 		_cams_step(delta)
+		_reinforce_step(delta)
 		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:

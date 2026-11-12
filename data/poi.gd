@@ -116,7 +116,7 @@ const THEMES := {
 		"foes": ["corp_guard", "corp_guard", "corp_marksman"], "leader": "corp_chief",
 		"props": ["office_desk", "planter", "pillar_corp", "sofa", "office_desk", "partition"],
 		"guard": "", "traps": "beams", "fog": false, "dark": Color(0.9, 0.92, 0.96), "outside": "plaza", "target": "corp_vault",
-		"alarm": true, "cams": [2, 3], "keycard": true, "carpet_share": 0.55,
+		"alarm": true, "cams": [2, 3], "keycard": true, "carpet_share": 0.55, "patrols": [1, 2], "reinforce": true,
 		"tablets": 0, "vent": false, "descent": "keylift", "stores": [1, 2],
 		"cols": [3, 4], "rows": [2, 3], "cell_w": 20, "cell_h": 15, "room_w": [9, 13], "room_h": [6, 9], "room_chance": 0.95,
 		"corr": 3, "loops": [1, 2], "cover": [4, 6],

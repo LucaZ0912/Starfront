@@ -1063,6 +1063,33 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	# ---- foes: in the guard rooms and – in the tunnels – at the junctions
 	var foes: Array = []
 	var tiers: Array = dg["tiers"]
+	if th.has("patrols"):
+		# 0.7.53.22 (Luz): a corporate tower – only one or two guards on a level, walking their rounds from room to room;
+		# found out, more of them come up the lift
+		var stops: Array = cells.filter(func(cp9): return role_of.get(cp9, "") != "vault" and (cp9 != entr_c or depth > 0))
+		var routes := {}
+		for pg in rng.randi_range(int(th["patrols"][0]), int(th["patrols"][1])):
+			_shuffle(stops, rng)
+			var route: Array = []
+			for st9 in stops.slice(0, mini(4, stops.size())):
+				var r9: Rect2i = rooms[st9]
+				var q9 := Vector2(r9.position.x + r9.size.x * 0.5, r9.position.y + r9.size.y * 0.5 + 0.5) * TILE
+				if m.free_at(q9, 6.0):
+					route.append(q9)
+			if route.size() < 2:
+				continue
+			routes[m.foe_spawns.size()] = route
+			m.foe_spawns.append(route[0])
+			foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
+		m.set_meta("routes", routes)
+		if bool(th.get("reinforce", false)):
+			var kinds: Array = []
+			for kn in {"green": 2, "yellow": 3, "red": 4}.get(String(site.get("danger", "yellow")), 3):
+				kinds.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
+			if last and String(th.get("leader", "")) != "":
+				kinds.append("%s@%s" % [String(th["leader"]), String(dg["leader"])])
+			m.set_meta("reinforce", {"at": m.get_meta("down_front") if depth == 0 and m.has_meta("down_front") else m.spawn, "kinds": kinds})
+		guards = []
 	for gc in guards:
 		var gr: Rect2i = rooms[gc]
 		var n_g := rng.randi_range(int(dg["guards"][0]), int(dg["guards"][1]))
@@ -1075,7 +1102,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			if m.free_at(p, 6.0) and m.floor_kind[int(p.y / TILE) * W + int(p.x / TILE)] != 18:
 				m.foe_spawns.append(p)
 				foes.append("%s@%s" % [String(th["foes"][rng.randi() % th["foes"].size()]), String(tiers[rng.randi() % tiers.size()])])
-	if last and String(th.get("leader", "")) != "":
+	if last and String(th.get("leader", "")) != "" and not th.has("patrols"):
 		var lp := Vector2(dx + 0.5, ap.position.y + (2.5 if spine else 3.0)) * TILE
 		if m.free_at(lp, 6.0):
 			m.foe_spawns.append(lp)

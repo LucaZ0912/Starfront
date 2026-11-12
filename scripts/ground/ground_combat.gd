@@ -799,6 +799,9 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		if float(f.get("notice", 0.0)) >= 1.0 or heard or _sees_ally(f):
 			_wake(f)
 			floaters.append({"pos": w.pos + Vector2(0, -46), "text": "heard you!" if heard else "spotted you!", "col": Color(1.0, 0.4, 0.3), "t": 0.0})
+		elif f.has("route") and not frozen:
+			_patrol_step(f, delta)                      # 0.7.53.22 (Luz): a guard on its rounds
+			return
 		else:
 			w.moving = false
 			return
@@ -2112,11 +2115,43 @@ func toggle_sneak() -> String:
 
 ## Where an unaware foe looks: it turns its head slowly about the way it faces.
 func look_of(f: Dictionary) -> float:
+	if f.has("walk_a"):
+		# 0.7.53.22: a guard on its rounds looks where it walks – and looks about where it stops
+		return float(f["walk_a"]) + sin(_t * (0.9 if float(f.get("wait", 0.0)) > 0.0 else 0.6) + float(f.get("look_ph", 0.0))) * (1.0 if float(f.get("wait", 0.0)) > 0.0 else 0.3)
 	if not f.has("look0"):
 		f["look0"] = randf() * TAU
 	if not f.has("look_ph"):
 		f["look_ph"] = randf() * TAU
 	return float(f["look0"]) + sin(_t * 0.45 + float(f["look_ph"])) * 0.8
+
+
+## 0.7.53.22 (Luz): a guard walks its rounds – from point to point along a path, a pause at each to look about.
+func _patrol_step(f: Dictionary, delta: float) -> void:
+	var w: Walker = f["w"]
+	var route: Array = f["route"]
+	if float(f.get("wait", 0.0)) > 0.0:
+		f["wait"] = float(f["wait"]) - delta
+		w.moving = false
+		return
+	if w._pi >= w._path.size():
+		if bool(f.get("rt_go", false)):
+			f["rt_go"] = false
+			f["rt_i"] = (int(f.get("rt_i", 0)) + 1) % route.size()
+			f["wait"] = randf_range(1.5, 3.0)
+			w.moving = false
+			return
+		w._path = map.path(w.pos, route[int(f.get("rt_i", 0))])
+		w._pi = 0
+		f["rt_go"] = true
+		if w._path.is_empty():
+			f["rt_go"] = false
+			f["rt_i"] = (int(f.get("rt_i", 0)) + 1) % route.size()
+			return
+	var p0 := w.pos
+	w._follow(delta, 0.55)
+	var mv := w.pos - p0
+	if mv.length() > 0.05:
+		f["walk_a"] = lerp_angle(float(f.get("walk_a", mv.angle())), mv.angle(), minf(1.0, delta * 8.0))
 
 
 ## Would a foe spot you at p now? (in its view and reach, not behind cover – low cover hides you – nor smoke; or right
