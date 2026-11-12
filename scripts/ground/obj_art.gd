@@ -350,10 +350,17 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			# 53e: the galleries' balustrade – white stone, a brass rail
 			var mr := fy + ph
 			if ph > TILE:
-				_r(img, pw / 2 - 2, fy - 6, 4, ph + 6, Color(0.92, 0.91, 0.88))
-				_r(img, pw / 2 - 1, fy - 6, 1, ph + 6, Color(0.85, 0.66, 0.3))
-				for by2 in range(fy - 4, mr, 4):
-					_p(img, pw / 2 + 2, by2, Color(0.7, 0.68, 0.64))
+				# a rail running north–south: on the tiles' edge where `arch` says ("e"/"w"), else in the middle;
+				# 0.7.53.29: down to the bottom of its tiles, where the front rail of the same height ends
+				var ex := pw / 2 - 2
+				if String(o.get("arch", "")) == "e":
+					ex = pw - 4
+				elif String(o.get("arch", "")) == "w":
+					ex = 0
+				_r(img, ex, fy - 6, 4, ph + 6 - 2, Color(0.92, 0.91, 0.88))
+				_r(img, ex + 1, fy - 6, 1, ph + 6 - 2, Color(0.85, 0.66, 0.3))
+				for by2 in range(fy - 4, mr - 2, 4):
+					_p(img, ex + (3 if ex == 0 else 0), by2, Color(0.7, 0.68, 0.64))
 			else:
 				_r(img, 0, mr - 10, pw, 10, Color(0.86, 0.85, 0.82))
 				_r(img, 0, mr - 10, pw, 2, Color(0.95, 0.94, 0.91))

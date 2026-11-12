@@ -86,8 +86,8 @@ static func _ids(room: String) -> Array:
 	return MuseumData.of_room(room).map(func(e): return String(e["id"]))
 
 
-static func _rail(m: GroundMap, x: int, y: int, w: int, h: int) -> void:
-	m.add_object({"kind": "m_rail", "x": x, "y": y, "w": w, "h": h})
+static func _rail(m: GroundMap, x: int, y: int, w: int, h: int, edge: String = "") -> void:
+	m.add_object({"kind": "m_rail", "x": x, "y": y, "w": w, "h": h, "arch": edge})      # edge "e"/"w": on that side of its tiles
 
 
 static func _label(m: GroundMap, text: String, at: Vector2, col: Color) -> void:
@@ -210,8 +210,8 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.fill(1, 5, 7, 5, T.BLOCK, 35)
 	m.fill(W - 8, 5, 7, 5, T.BLOCK, 35)
 	_rail(m, 8, 4, W - 16, 1)
-	_rail(m, 7, 5, 1, 4)
-	_rail(m, W - 8, 5, 1, 4)
+	_rail(m, 7, 5, 1, 5, "e")                                        # 0.7.53.29 (Luz): on the edge of the wing, down to its front rail
+	_rail(m, W - 8, 5, 1, 5, "w")
 	_rail(m, 1, 9, 7, 1)                                            # 0.7.53.28 (Luz): the wings' fronts railed, the sides flush with them
 	_rail(m, W - 8, 9, 7, 1)
 	m.add_object({"kind": "bust", "x": 3, "y": 2, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})

@@ -3,6 +3,11 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.29 – 2026-11-12
+
+**Fix (Luz):** the Museum hall's side rails on the gallery's wings stand on the edge of the raised floor and run down to
+the front rail.
+
 ## alpha 0.7.53.28 – 2026-11-12
 
 **The Museum – benches, guards, the details (Luz).**
