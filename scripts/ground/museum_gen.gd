@@ -251,6 +251,7 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	var cur := ChibiArt.PilotArt.random_look(_rng(station, 53))
 	cur["suit"] = ""
 	m.people.append({"pos": Vector2(W * 0.5, 17.7) * TILE, "dir": 0, "role": "keeper", "look": cur})
+	m.set_meta("curator_look", cur)
 	m.zones.append({"rect": Rect2(Vector2(sx - 1, 19) * TILE, Vector2(8, 1.4) * TILE), "kind": "curator", "id": "curator",
 		"title": "The curator – donations, your finds, a hint (E)", "col": Color(1.0, 0.85, 0.5), "sign": Vector2(-100, -100)})
 	m.fill(W / 2 - 1, 20, 2, 3, T.FLOOR, 42)
@@ -278,33 +279,45 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 
 ## The minerals room through the west arch: the Giant Diamond on its dais, six cases in the back wall, the rest spread.
 static func build_minerals(station: Dictionary, body: Dictionary) -> GroundMap:
-	var m := _room(station, body, 23, 20, 41)
+	var W := 31
+	var H := 24
+	var m := _room(station, body, W, H, 41)
 	var mn := _ids("minerals")
 	var wall_i := [1, 4, 7, 10, 13, 16]
-	var wall_x := [2, 5, 8, 12, 15, 18]
+	var wall_x := [3, 7, 11, 18, 22, 26]
 	for k in 6:
 		_niche(m, wall_x[k], 4, mn[wall_i[k]])
-	m.set_meta("from_hall", Vector2(11.5, 16.4) * TILE)
-	_case(m, 10, 9, mn[0], true)
+	_case(m, 14, 10, mn[0], true)
 	var free := [2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 19]
-	var spots := [Vector2i(2, 7), Vector2i(6, 6), Vector2i(15, 6), Vector2i(19, 7), Vector2i(5, 9), Vector2i(16, 9),
-		Vector2i(2, 12), Vector2i(6, 13), Vector2i(15, 13), Vector2i(19, 12), Vector2i(3, 16), Vector2i(7, 16), Vector2i(16, 16)]
+	var spots := [Vector2i(3, 7), Vector2i(8, 7), Vector2i(21, 7), Vector2i(26, 7), Vector2i(6, 11), Vector2i(23, 11),
+		Vector2i(3, 15), Vector2i(9, 15), Vector2i(20, 15), Vector2i(26, 15), Vector2i(5, 19), Vector2i(18, 19), Vector2i(23, 19)]
 	for k2 in free.size():
 		_case(m, spots[k2].x, spots[k2].y, mn[free[k2]])
-	m.add_object({"kind": "rope", "x": 9, "y": 12, "w": 5, "h": 1})
-	m.add_object({"kind": "statue", "x": 19, "y": 16, "w": 2, "h": 1, "seed": 78, "species": "suit_work"})
-	m.add_object({"kind": "geode_big", "x": 1, "y": 9, "w": 2, "h": 1})
-	m.add_object({"kind": "terminal", "x": 21, "y": 9, "w": 1, "h": 1})
-	m.add_object({"kind": "museum_bench", "x": 10, "y": 15, "w": 3, "h": 1})
-	m.decals.append({"kind": "museum_arch_s", "x": 10, "y": 18, "w": 3, "h": 1})
-	_go(m, Rect2(10, 17, 3, 1.0), "museum", "from_min", "Back through the arch – the hall", Color(0.4, 1.0, 0.6))
+	m.add_object({"kind": "rope", "x": 13, "y": 13, "w": 5, "h": 1})
+	m.add_object({"kind": "museum_bench", "x": 14, "y": 16, "w": 3, "h": 1})
+	m.add_object({"kind": "statue", "x": 27, "y": 19, "w": 2, "h": 1, "seed": 78, "species": "suit_work"})
+	m.add_object({"kind": "geode_big", "x": 1, "y": 11, "w": 2, "h": 1})
+	m.add_object({"kind": "terminal", "x": 29, "y": 11, "w": 1, "h": 1})
+	# holographic pictures of mining ships on their projectors (Luz) - the KHI's miners in blue light
+	for hp in [[Vector2i(11, 6), "mogura"], [Vector2i(18, 6), "iwakudaki"], [Vector2i(11, 19), "kujira"]]:
+		var hv: Vector2i = hp[0]
+		m.add_object({"kind": "holo_ship", "x": hv.x, "y": hv.y, "w": 2, "h": 1, "species": String(hp[1])})
+		m.lights.append({"pos": Vector2(hv.x + 1.0, hv.y - 1.0) * TILE, "r": 40.0, "col": Color(0.4, 0.85, 1.0), "a": 0.35})
+	_exit(m, 14, H - 2, 3, "museum", "from_min", "Back out – the hall")
+	m.set_meta("from_hall", Vector2(15.5, H - 3.6) * TILE)
 	m.spawn = m.get_meta("from_hall")
-	_label(m, "MINERALS", Vector2(11.5, 2.4), Color(0.6, 0.9, 1.0))
-	m.lights.append({"pos": Vector2(11.5, 10) * TILE, "r": 200.0, "col": Color(0.85, 0.92, 1.0), "a": 0.2})
-	for wp in [Vector2(11.5, 14), Vector2(4, 11), Vector2(19, 11)]:
+	_label(m, "MINERALS", Vector2(15.5, 2.4), Color(0.6, 0.9, 1.0))
+	m.lights.append({"pos": Vector2(15.5, 12) * TILE, "r": 240.0, "col": Color(0.85, 0.92, 1.0), "a": 0.2})
+	for wp in [Vector2(15.5, 18), Vector2(5, 13), Vector2(26, 13), Vector2(15, 8)]:
 		if m.free_at(wp * TILE, 6.0):
 			m.wander.append(wp * TILE)
 	return m
+
+
+## A way out through a room's south wall - an opening, no steps (Luz): the zone on the floor row before it.
+static func _exit(m: GroundMap, x: int, y: int, w: int, to: String, at: String, title: String) -> void:
+	m.decals.append({"kind": "museum_exit", "x": x, "y": y, "w": w, "h": 1})
+	_go(m, Rect2(x, y - 1, w, 1.2), to, at, title, Color(0.4, 1.0, 0.6))
 
 
 ## The first floor: up from the hall's gate (the stairs down at its south); the Old World west, the Severance east; in
@@ -319,9 +332,8 @@ static func build_floor1(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.face_deco.append({"kind": "museum_gate", "x": sx, "y": 2, "w": 6, "rows": 2})
 	_go(m, Rect2(sx, 4, 6, 1.2), "museum_2", "from_1", "Up through the gate – the second floor: The Precursors", WARM)
 	m.set_meta("from_2", Vector2(W * 0.5, 10.8) * TILE)
-	m.fill(sx, H - 5, 6, 3, T.FLOOR, 45)
-	_go(m, Rect2(sx, H - 4, 6, 2), "museum", "from_1", "Down the grand stairs – the hall", Color(0.4, 1.0, 0.6))
-	m.set_meta("from_hall", Vector2(W * 0.5, H - 6.0) * TILE)
+	_exit(m, sx + 1, H - 2, 4, "museum", "from_1", "Down the grand stairs – the hall")
+	m.set_meta("from_hall", Vector2(W * 0.5, H - 3.8) * TILE)
 	m.spawn = m.get_meta("from_hall")
 	m.add_object({"kind": "plant", "x": sx - 1, "y": 4, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": sx + 6, "y": 4, "w": 1, "h": 1})
@@ -363,9 +375,8 @@ static func build_floor2(station: Dictionary, body: Dictionary) -> GroundMap:
 	var H := 19
 	var m := _room(station, body, W, H, 35)
 	var sx := W / 2 - 3
-	m.fill(sx, H - 5, 6, 3, T.FLOOR, 45)
-	_go(m, Rect2(sx, H - 4, 6, 2), "museum_1", "from_2", "Down the stairs – the first floor", Color(0.4, 1.0, 0.6))
-	m.set_meta("from_1", Vector2(W * 0.5, H - 6.0) * TILE)
+	_exit(m, sx + 1, H - 2, 4, "museum_1", "from_2", "Down the stairs – the first floor")
+	m.set_meta("from_1", Vector2(W * 0.5, H - 3.8) * TILE)
 	m.spawn = m.get_meta("from_1")
 	var pr := _ids("precursors")
 	var tab_x := [3, 9, 15, 27, 33]

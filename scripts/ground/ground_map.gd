@@ -1334,6 +1334,14 @@ func _decal(d: Dictionary) -> void:
 				var a3 := sp * TAU / 8.0
 				for t2 in 18:
 					_px(int(rc2.x + cos(a3) * t2 * 1.6), int(rc2.y + sin(a3) * t2 * 0.8), Color(0.85, 0.66, 0.3, 0.8))
+		"museum_exit":
+			# 0.7.53.27 (Luz): a way out through a room's south wall - an opening into the dark, pale jambs either side
+			_rect(px, py, pw, TILE, Color(0.03, 0.03, 0.04))
+			for gy in 6:
+				_rect(px, py + gy, pw, 1, Color(0.82, 0.81, 0.78).lerp(Color(0.03, 0.03, 0.04), 0.4 + gy * 0.1))
+			_rect(px - 3, py - 2, 3, TILE + 2, Color(0.92, 0.91, 0.88))
+			_rect(px + pw, py - 2, 3, TILE + 2, Color(0.8, 0.79, 0.76))
+			_rect(px - 3, py - 2, pw + 6, 1, Color(0.85, 0.66, 0.3))
 		"museum_arch_s":
 			# 0.7.53.26: an arch in a room's south wall – the way back to the hall
 			_rect(px, py, pw, 12, Color(0.86, 0.85, 0.82))
@@ -1770,22 +1778,11 @@ func _face_deco(d: Dictionary) -> void:
 			# 0.7.53.26 (Luz, as in the mockup): an arch under the gallery's wing – west the minerals (a case glowing in
 			# the room beyond), east the stairs going down to the Dark Ones (violet light from below)
 			var ah := 3 * TILE
-			var minr := String(d["kind"]) == "arch_min"
-			_rect(px, py + 8, pw, ah - 8, Color(0.12, 0.13, 0.16) if minr else Color(0.06, 0.05, 0.08))
+			_rect(px, py + 8, pw, ah - 8, Color(0.03, 0.03, 0.04))
 			for yy7 in 10:
 				var ins := int(pow((10.0 - yy7) / 10.0, 2.0) * pw * 0.3)
-				_rect(px + ins, py + yy7, pw - ins * 2, 1, Color(0.12, 0.13, 0.16) if minr else Color(0.06, 0.05, 0.08))
+				_rect(px + ins, py + yy7, pw - ins * 2, 1, Color(0.03, 0.03, 0.04))
 			_rect(px, py + 2, pw, 1, Color(0.85, 0.66, 0.3))
-			if minr:
-				_rect(px + pw / 2 - 8, py + 20, 16, 28, Color(0.25, 0.3, 0.36))
-				_rect(px + pw / 2 - 7, py + 21, 14, 14, Color(0.6, 0.75, 0.85))
-				_rect(px + pw / 2 - 5, py + 23, 10, 10, Color(0.75, 0.55, 0.95))
-				_rect(px + pw / 2 - 7, py + 36, 14, 10, Color(0.9, 0.9, 0.91))
-			else:
-				for st5 in 6:
-					_rect(px + 4, py + 16 + st5 * 5, pw - 8, 5, Color(0.3, 0.27, 0.34).darkened(0.12 * st5))
-					_rect(px + 4, py + 16 + st5 * 5, pw - 8, 1, Color(0.42, 0.38, 0.48).darkened(0.12 * st5))
-				_rect(px + 4, py + ah - 3, pw - 8, 2, Color(0.62, 0.35, 1.0))
 			for cl3 in [px - 2, px + pw - 2]:
 				_rect(cl3, py + 6, 4, ah - 6, Color(0.9, 0.89, 0.86))
 		"museum_doors":

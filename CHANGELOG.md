@@ -3,6 +3,17 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.27 – 2026-11-12
+
+**The Museum – polish (Luz).**
+- **The curator** now talks with you in a real conversation like the bartender, with her portrait: how full the Museum
+  is, your finds (sell the spare ones), a hint where to look for what is missing.
+- **The curator's desk** shows its marble top from above, the things on it standing on it.
+- The upper floors have **openings** in their south wall as the way back down instead of the start of a stair; the
+  minerals room leaves the same way.
+- The **arches** to the minerals and to the Dark Ones are simply dark.
+- The **minerals room** is bigger and has **holograms of mining ships** (Mogura, Iwakudaki, Kujira) on their projectors.
+
 ## alpha 0.7.53.26 – 2026-11-12
 
 **The Museum – a room each (Luz).** The hall is built as in the mockup: above it, seen over the rail, the gallery in a

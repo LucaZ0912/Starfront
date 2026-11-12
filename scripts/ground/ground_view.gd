@@ -2183,77 +2183,79 @@ func _museum_case(d: Dictionary) -> bool:
 	return true
 
 
-## The curator: how full the Museum is, your finds – sell the spare ones (shown already) – and a hint.
+## The curator (0.7.53.27, Luz: a real conversation like the bartender's, with a portrait): how full the Museum is,
+## your finds – sell the spare ones (shown already) – and a hint where to look for what is missing.
 func _open_curator() -> void:
+	if talk != null:
+		return
 	Audio.play("ui_open", "museum: the curator")
-	_close_lift_menu()
-	var c := CenterContainer.new()
-	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_ui.add_child(c)
-	var p := UI.neon_panel(Color(0.95, 0.8, 0.45, 0.85), Color(0.05, 0.04, 0.03, 0.96), 2)
-	p.custom_minimum_size = Vector2(560, 0)
-	c.add_child(p)
-	var v := UI.vbox(6)
-	p.add_child(v)
-	v.add_child(UI.label("THE CURATOR", 20, Color(0.95, 0.8, 0.45)))
-	v.add_child(UI.label("\"%d of %d pieces in their cases. Every one you bring, you set in yourself – I only hold the keys.\"" % [GameState.museum_count(), MuseumData.EXHIBITS.size()], 13, UI.TEXT_DIM))
+	talk = DialogueView.new()
+	_ui.add_child(talk)
+	var look: Dictionary = map.get_meta("curator_look", ChibiArt.PilotArt.default_look())
+	talk.open(look, _curator_name(), "Curator · Museum of Curie", Color(0.95, 0.8, 0.45))
+	talk.closed.connect(func(): talk = null)
+	var n := GameState.museum_count()
+	var greet := "Welcome to the Museum of Curie. %d of our %d cases are filled – every piece set in by the one who found it." % [n, MuseumData.EXHIBITS.size()]
+	if n == 0:
+		greet = "Welcome, welcome! The Museum of Curie – forty-eight cases, and every one of them empty. Bring us what you find out there, and set it in yourself. That is our custom."
+	elif n >= MuseumData.EXHIBITS.size():
+		greet = "Every case is filled. I still come in early, you know – just to look at them."
+	talk.say(greet, _curator_options())
+
+
+func _curator_name() -> String:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(station.get("id", ""))) + 531
+	return "Dr. " + String(CrewTalk.CrewData.FIRST_NAMES[rng.randi() % CrewTalk.CrewData.FIRST_NAMES.size()])
+
+
+func _curator_options() -> Array:
+	return [["How full is the Museum?", _curator_rooms], ["I have some finds.", _curator_finds],
+		["Where should I look for what is missing?", _curator_hint], ["Goodbye.", func(): talk.close()]]
+
+
+func _curator_rooms() -> void:
+	var lines: Array = []
 	for r in MuseumData.ROOMS:
 		var rid := String(r["id"])
 		var have := MuseumData.of_room(rid).filter(func(e): return GameState.museum_donated.has(String(e["id"]))).size()
 		var tot := MuseumData.of_room(rid).size()
-		var done := have >= tot
-		v.add_child(UI.label("  %s – %d/%d%s" % [String(r["name"]), have, tot, ("   ✓ " + String(MuseumData.PERKS[rid])) if done else ""], 13,
-			Color(0.5, 1.0, 0.6) if done else Color(0.9, 0.93, 1.0)))
-	v.add_child(UI.label("YOUR FINDS", 15, Color(0.95, 0.8, 0.45)))
-	var keys: Array = []
+		lines.append("%s: %d of %d%s" % [String(r["name"]), have, tot, ("  – complete! " + String(MuseumData.PERKS[rid])) if have >= tot else ""])
+	talk.say("
+".join(PackedStringArray(lines)), _curator_options())
+
+
+func _curator_finds() -> void:
 	var uniq: Array = []
 	for f in GameState.museum_finds:
 		if not uniq.has(String(f)):
 			uniq.append(String(f))
 	if uniq.is_empty():
-		v.add_child(UI.label("  You carry nothing for the Museum.", 13, UI.TEXT_DIM))
-	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(540, mini(260, 34 * uniq.size() + 4))
-	var lv := UI.vbox(4)
-	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(lv)
-	if not uniq.is_empty():
-		v.add_child(sc)
+		talk.say("You carry nothing for us just now. Out there, though – there is always something.", _curator_options())
+		return
+	var lines: Array = []
 	var spare := 0
+	var opts: Array = []
 	for id in uniq:
-		var e2: Dictionary = MuseumData.get_exhibit(id)
-		var n := GameState.museum_carried(id)
-		var row := UI.hbox(8)
-		var ic := TextureRect.new()
-		ic.texture = ExhibitArtV.texture(id)
-		ic.custom_minimum_size = Vector2(28, 28)
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		row.add_child(ic)
-		var rc: Color = MuseumData.RARITY[String(e2["rarity"])]["col"]
+		var e: Dictionary = MuseumData.get_exhibit(id)
+		var cnt := GameState.museum_carried(id)
 		var shown: bool = GameState.museum_donated.has(id)
-		var lb := UI.label("%s ×%d  (%s)  –  %s" % [String(e2["name"]), n, String(e2["rarity"]),
-			"shown already" if shown else "set it in its case: %s" % MuseumData.room_name(String(e2["room"]))], 13, rc)
-		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(lb)
+		if lines.size() < 8:
+			lines.append("%s ×%d (%s) – %s" % [String(e["name"]), cnt, String(e["rarity"]),
+				"we show one already" if shown else "its case is in %s: set it in yourself" % MuseumData.room_name(String(e["room"]))])
 		if shown:
-			spare += n * MuseumData.price(id)
-			var bid: String = id
-			row.add_child(UI.button("Sell one – %d cr" % MuseumData.price(id), func(): _curator_sell(bid)))
-		lv.add_child(row)
+			spare += cnt * MuseumData.price(id)
+			if opts.size() < 4:
+				var bid: String = id
+				opts.append(["Sell one %s – %s" % [String(e["name"]), GameData.fmt_credits(MuseumData.price(id))], func(): _curator_sell(bid)])
+	if uniq.size() > 8:
+		lines.append("…and %d more." % (uniq.size() - 8))
 	if spare > 0:
-		var b := UI.button("Sell every spare piece – %d cr" % spare, func(): _curator_sell(""))
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		v.add_child(b)
-		keys.append(func(): _curator_sell(""))
-	var hb := UI.button("Ask for a hint – where to look for a missing piece", _curator_hint)
-	hb.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	v.add_child(hb)
-	keys.append(_curator_hint)
-	v.add_child(UI.button("Thank you [Esc]", _close_lift_menu))
-	_lift_menu = c
-	_lift_menu.set_meta("zone", zone)
-	_lift_menu.set_meta("keys", keys)
+		opts.push_front(["Sell every spare piece – %s" % GameData.fmt_credits(spare), func(): _curator_sell("")])
+	opts.append(["Back.", func(): talk.say("Anything else?", _curator_options())])
+	talk.say("Let me see…
+" + "
+".join(PackedStringArray(lines)), opts)
 
 
 func _curator_sell(id: String) -> void:
@@ -2266,18 +2268,20 @@ func _curator_sell(id: String) -> void:
 				got += GameState.museum_sell(String(f))
 	if got > 0:
 		Audio.play("ui_buy", "museum: sold to the curator", -4.0)
-		_say_toast("The curator buys it for the Museum's stores – %d cr." % got, 3.0)
-	_open_curator()
+	if talk != null:
+		talk.say("For the Museum's stores – %s. Thank you." % GameData.fmt_credits(got) if got > 0 else "Nothing there we could take.", _curator_options())
 
 
 func _curator_hint() -> void:
 	var missing: Array = MuseumData.EXHIBITS.filter(func(e): return not GameState.museum_donated.has(String(e["id"])))
-	_close_lift_menu()
-	if missing.is_empty():
-		_say_toast("\"Nothing is missing. Nothing! Do you know how long I waited to say that?\"", 4.0)
-		return
-	var e: Dictionary = missing[randi() % missing.size()]
-	_say_toast("\"%s – the %s case is still empty. %s\"" % [String(e["name"]), MuseumData.room_name(String(e["room"])).replace("The ", ""), String(MuseumData.HINTS[String(e["room"])])], 7.0)
+	var txt := "Nothing is missing. Nothing! Do you know how long I waited to say that?"
+	if not missing.is_empty():
+		var e: Dictionary = missing[randi() % missing.size()]
+		txt = "%s – its case in %s is still empty. %s" % [String(e["name"]), MuseumData.room_name(String(e["room"])), String(MuseumData.HINTS[String(e["room"])])]
+	if talk != null:
+		talk.say(txt, _curator_options())
+	else:
+		_say_toast(txt, 7.0)
 
 # ---------------------------------------------------------------- 0.7.52.22 (package 52b): tools at work
 

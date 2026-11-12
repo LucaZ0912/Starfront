@@ -11066,10 +11066,12 @@ func _test_museum(view: SystemView) -> void:
 	g._arrive = 0.0
 	g.zone = _zone_of(g.map, "curator")
 	g.use()
-	var cur_ok: bool = g._lift_menu != null
+	var cur_ok: bool = g.talk != null and String(g.talk._name.text).begins_with("Dr. ")
 	g._curator_sell("")
 	cur_ok = cur_ok and GameState.museum_carried("mn_gold") == 0 and GameState.credits == cr0 + 100 + 400 and GameState.museum_carried("do_mask") == 1
-	g._close_lift_menu()
+	if g.talk != null:
+		g.talk.close()
+	cur_ok = cur_ok and g.talk == null
 	# the basement: the monolith's plinth empty – the Dark Ones' room full, its cast raised; their perk
 	g._arrive = 0.0
 	g.zone = go_of.call(g.map, "museum_down")

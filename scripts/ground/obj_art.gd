@@ -29,7 +29,8 @@ static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
 		BuildArt.paint(img, o, pw, ph + rise)
 	else:
 		_paint(img, String(o["kind"]), pw, ph, rise, c, wood, metal, o)
-	_outline(img)
+	if String(o["kind"]) != "holo_ship":
+		_outline(img)                                # 0.7.53.27: a hologram has no outline
 	var out := {"image": img, "rise": rise}
 	_cache[key] = out
 	return out
@@ -171,8 +172,8 @@ static func _rise(kind: String) -> int:
 			return 30
 		"column":                           # 53e: a column of the Museum's portico (~3.3 m)
 			return 50
-		"curator_desk":                     # 53e: the curator's counter
-			return 16
+		"curator_desk":                     # 53e: the curator's counter (0.7.53.27: its top seen from above)
+			return 30
 		"museum_bench", "rope", "m_rail":
 			return 8
 		"globe":
@@ -183,6 +184,8 @@ static func _rise(kind: String) -> int:
 			return 24
 		"poster":
 			return 26
+		"holo_ship":                        # 0.7.53.27 (Luz): a hologram of a mining ship over its projector
+			return 34
 		"skull_cast":
 			return 16
 		"idol_cast":
@@ -274,34 +277,54 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 0, fy - rise, pw, 3, Color(0.96, 0.96, 0.97))
 			_r(img, 0, cb - 3, pw, 3, Color(0.8, 0.81, 0.84))
 		"curator_desk":
-			# 53e (Luz): the curator's counter – dark wood panels under a marble top, brass trim, the Museum's emblem;
-			# on it a holo terminal, a banker's lamp, books, a bell, a loupe over a stone, leaflets, a nameplate
+			# 53e (Luz): the curator's counter – dark wood panels under a marble top seen from above (0.7.53.27: with its
+			# depth), brass trim, the Museum's emblem; on the top a holo terminal, a banker's lamp, books, a bell, a loupe
+			# over a stone, leaflets, a nameplate
 			var wd := Color(0.36, 0.22, 0.14)
 			var br := Color(0.85, 0.66, 0.3)
 			var db := fy + ph
-			_r(img, 0, db - 17, pw, 17, wd)
+			var top_y := db - 32                                # the top surface: 18 px deep
+			_r(img, 0, top_y, pw, 18, Color(0.9, 0.89, 0.86))
+			_r(img, 0, top_y, pw, 1, Color(1, 1, 1))
+			_r(img, 0, top_y, 2, 18, Color(0.82, 0.81, 0.78))
+			_r(img, pw - 2, top_y, 2, 18, Color(0.78, 0.77, 0.74))
+			for vn in 7:
+				for t in 5:
+					_p(img, 8 + vn * 17 + t, top_y + 4 + t + (vn % 3) * 2, Color(0.8, 0.79, 0.76))
+			_r(img, 0, top_y + 17, pw, 1, br)
+			_r(img, 0, db - 14, pw, 14, wd)                     # the front
 			for pp in range(0, pw - 4, 14):
-				_r(img, pp + 2, db - 14, 10, 11, wd.lightened(0.08))
-				_r(img, pp + 2, db - 14, 10, 1, wd.lightened(0.2))
-			_r(img, 0, db - 18, pw, 1, br)
-			_r(img, 0, db - 24, pw, 6, Color(0.9, 0.89, 0.86))
-			_r(img, 0, db - 24, pw, 1, Color(1, 1, 1))
-			_ellipse(img, pw * 0.5, db - 9, 6, 6, br)
-			_ellipse(img, pw * 0.5, db - 9, 4.5, 4.5, Color(0.12, 0.15, 0.25))
-			_p(img, pw / 2, db - 9, br.lightened(0.4))
-			_r(img, 8, db - 33, 14, 9, Color(0.14, 0.15, 0.18))
-			_r(img, 9, db - 32, 12, 6, Color(0.3, 0.75, 0.95))
-			_r(img, 10, db - 31, 7, 1, Color(0.9, 1, 1))
-			_r(img, 36, db - 32, 2, 8, br)
-			_r(img, 32, db - 34, 10, 3, Color(0.15, 0.5, 0.3))
-			_r(img, 33, db - 31, 8, 1, Color(1.0, 0.92, 0.6))
-			for bk in 4:
-				_r(img, 52 + bk % 2, db - 27 - bk * 3, 12, 3, [Color(0.55, 0.2, 0.2), Color(0.2, 0.35, 0.55), Color(0.3, 0.45, 0.25), Color(0.6, 0.5, 0.25)][bk])
-			_ellipse(img, 76, db - 26, 2.5, 2.5, br)
-			_r(img, 84, db - 27, 6, 3, Color(0.5, 0.3, 0.7))
-			_ellipse(img, 89, db - 30, 3, 3, Color(0.75, 0.9, 1.0, 0.6))
-			_r(img, 100, db - 29, 10, 5, Color(0.9, 0.85, 0.7))
-			_r(img, int(pw * 0.5) - 8, db - 23, 16, 3, br.darkened(0.25))
+				_r(img, pp + 2, db - 12, 10, 9, wd.lightened(0.08))
+				_r(img, pp + 2, db - 12, 10, 1, wd.lightened(0.2))
+			_r(img, 0, db - 2, pw, 2, wd.darkened(0.3))
+			_ellipse(img, pw * 0.5, db - 7, 5, 5, br)
+			_ellipse(img, pw * 0.5, db - 7, 3.5, 3.5, Color(0.12, 0.15, 0.25))
+			_p(img, pw / 2, db - 7, br.lightened(0.4))
+			# on the top (their feet on the surface, their bodies rising above it)
+			var ty := top_y + 10
+			_r(img, 8, ty - 13, 16, 11, Color(0.14, 0.15, 0.18))   # the terminal
+			_r(img, 9, ty - 12, 14, 8, Color(0.3, 0.75, 0.95))
+			_r(img, 10, ty - 11, 8, 1, Color(0.9, 1, 1))
+			_r(img, 10, ty - 9, 11, 1, Color(0.7, 0.9, 1))
+			_r(img, 14, ty - 2, 4, 3, Color(0.2, 0.2, 0.22))
+			_r(img, 27, ty + 1, 9, 4, Color(0.25, 0.25, 0.28))     # a keyboard
+			_r(img, 43, ty - 8, 2, 9, br)                          # the banker's lamp
+			_r(img, 39, ty - 11, 10, 4, Color(0.15, 0.5, 0.3))
+			_r(img, 39, ty - 11, 10, 1, Color(0.3, 0.75, 0.45))
+			_r(img, 40, ty - 7, 8, 1, Color(1.0, 0.92, 0.6))
+			_r(img, 41, ty + 1, 6, 2, br.darkened(0.2))
+			for bk in 4:                                           # books
+				_r(img, 56 + bk % 2, ty - bk * 3, 12, 3, [Color(0.55, 0.2, 0.2), Color(0.2, 0.35, 0.55), Color(0.3, 0.45, 0.25), Color(0.6, 0.5, 0.25)][bk])
+				_r(img, 56 + bk % 2, ty - bk * 3, 12, 1, Color(0.9, 0.88, 0.8))
+			_ellipse(img, 78, ty, 3, 3, br)                       # the bell
+			_r(img, 78, ty - 4, 1, 2, br.lightened(0.3))
+			_r(img, 86, ty, 7, 3, Color(0.5, 0.3, 0.7))             # a stone under a loupe
+			_ellipse(img, 91, ty - 3, 3, 3, Color(0.75, 0.9, 1.0, 0.6))
+			_r(img, 100, ty - 2, 10, 6, Color(0.9, 0.85, 0.7))       # leaflets
+			_r(img, 101, ty - 1, 8, 1, Color(0.3, 0.4, 0.7))
+			_r(img, 101, ty + 1, 8, 1, Color(0.7, 0.3, 0.3))
+			_r(img, int(pw * 0.5) - 9, top_y + 13, 18, 4, br.darkened(0.25))   # the nameplate at the front edge
+			_r(img, int(pw * 0.5) - 7, top_y + 14, 14, 1, Color(0.1, 0.08, 0.05))
 		"museum_bench":
 			var mb := fy + ph
 			_r(img, 1, mb - 10, pw - 2, 7, Color(0.45, 0.12, 0.15))
@@ -368,6 +391,32 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 6, sb - 25, pw - 12, 2, Color(0.58, 0.6, 0.66))
 			_r(img, pw / 2 - 6, sb - 29, 12, 4, Color(0.48, 0.5, 0.56))
 			_r(img, 3, sb - 23, 3, 3, Color(0.5, 0.8, 1.0))
+		"holo_ship":
+			# 0.7.53.27 (Luz): a ship of the game as a hologram - cyan, half see-through, scan lines - over a projector
+			var hb := fy + ph
+			_ellipse(img, pw * 0.5, hb - 4, pw * 0.42, 4, Color(0.14, 0.15, 0.18))
+			_ellipse(img, pw * 0.5, hb - 5, pw * 0.3, 2.5, Color(0.25, 0.27, 0.3))
+			_ellipse(img, pw * 0.5, hb - 6, 3, 1.5, Color(0.5, 0.95, 1.0))
+			for cy2 in range(hb - 26, hb - 6):
+				var spread := int((float(cy2 - (hb - 26)) / 20.0) * 4.0)
+				_p(img, pw / 2 - 2 - spread, cy2, Color(0.4, 0.9, 1.0, 0.15))
+				_p(img, pw / 2 + 2 + spread, cy2, Color(0.4, 0.9, 1.0, 0.15))
+			var tex: Texture2D = PixelArt.ship_texture(String(o.get("species", "mogura")), "player")
+			if tex != null:
+				var si: Image = tex.get_image()
+				si.convert(Image.FORMAT_RGBA8)
+				var sc3 := minf(float(pw - 2) / si.get_width(), 26.0 / si.get_height())
+				si.resize(maxi(1, int(si.get_width() * sc3)), maxi(1, int(si.get_height() * sc3)), Image.INTERPOLATE_BILINEAR)
+				var ox := (pw - si.get_width()) / 2
+				var oy := hb - 12 - si.get_height()
+				for yy3 in si.get_height():
+					for xx3 in si.get_width():
+						var sc4 := si.get_pixel(xx3, yy3)
+						if sc4.a > 0.3:
+							var lum2 := sc4.get_luminance()
+							var hc := Color(0.35, 0.85, 1.0).lerp(Color(0.85, 1.0, 1.0), lum2)
+							hc.a = 0.75 if (oy + yy3) % 3 != 0 else 0.4
+							_p(img, ox + xx3, oy + yy3, hc)
 		"poster":
 			var pb2 := fy + ph
 			_r(img, pw / 2 - 1, pb2 - 6, 2, 6, Color(0.3, 0.3, 0.32))
