@@ -474,6 +474,33 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 					_rect(px + qx * 4, py + qy * 4, 4, 4, Color(0.19, 0.19, 0.22).lerp(Color(0.14, 0.14, 0.17), hash2(x * 4 + qx, y * 4 + qy, 68)))
 			if hash2(x, y, 69) < 0.06:
 				_rect(px + 2, py + 6, 11, 3, Color(0.22, 0.17, 0.27))         # a puddle, the neon in it
+		28:             # 0.7.53.19 (Luz): a corporate lobby's pale stone – large slabs, a faint vein, polished
+			var ms: Color = Color(pal["floor"]).lerp(Color(pal["floor2"]), hash2(x / 2, y, 131) * 0.6)
+			_rect(px, py, TILE, TILE, ms)
+			if x % 2 == 0:
+				_rect(px, py, 1, TILE, ms.darkened(0.1))
+			if y % 2 == 0:
+				_rect(px, py, TILE, 1, ms.darkened(0.08))
+			if hash2(x, y, 132) < 0.3:
+				var vx := int(hash2(x, y, 133) * 10)
+				for vv in 6:
+					_px(px + vx + vv, py + 3 + int(sin(vv * 0.9 + x) * 2.0) + vv / 2, ms.darkened(0.12))
+			if hash2(x, y, 134) < 0.08:
+				_rect(px + 4, py + 4, 3, 1, Color(1, 1, 1, 0.5))                      # a gleam
+		29:             # 0.7.53.19: an office's carpet tiles, blue-grey
+			var ct := Color(0.3, 0.34, 0.42).lerp(Color(0.27, 0.31, 0.39), float((x + y) % 2) * 0.6)
+			_rect(px, py, TILE, TILE, ct)
+			_rect(px, py + TILE - 1, TILE, 1, ct.darkened(0.15))
+			_rect(px + TILE - 1, py, 1, TILE, ct.darkened(0.12))
+			for k in 4:
+				_px(px + int(hash2(x, y, k + 140) * 15), py + int(hash2(y, x, k + 141) * 15), ct.lightened(0.08))
+		30:             # 0.7.53.19: a roof plaza's warm paving, laid in bond
+			var pv := Color(0.7, 0.66, 0.6).lerp(Color(0.64, 0.6, 0.55), hash2(x, y, 151))
+			_rect(px, py, TILE, TILE, pv)
+			_rect(px, py + 7, TILE, 1, pv.darkened(0.14))
+			_rect(px, py + TILE - 1, TILE, 1, pv.darkened(0.14))
+			_rect(px + (0 if y % 2 == 0 else 8), py, 1, 7, pv.darkened(0.12))
+			_rect(px + (8 if y % 2 == 0 else 0), py + 8, 1, 7, pv.darkened(0.12))
 		16:             # 0.7.52.27: an air duct – dark steel, ribs across its run (0.7.52.28: walls on its closed sides)
 			_duct_tile(x, y, px, py)
 		10:             # water (a pool)
@@ -790,6 +817,43 @@ func _alley_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px, py + TILE - 2, TILE, 2, Color(0.15, 0.15, 0.17))
 
 
+## 0.7.53.19 (Luz): a corporate wall – white and grey panels, a gold line, now and then a screen or the company's
+## sign; low down a skirting of brushed steel.
+func _corp_face(x: int, y: int, px: int, py: int) -> void:
+	var wl: Color = Color(pal["wall"]).lerp(Color(pal["wall"]).darkened(0.08), hash2(x / 2, 0, 161))
+	_rect(px, py, TILE, TILE, wl)
+	if x % 2 == 0:
+		_rect(px, py, 1, TILE, wl.darkened(0.22))
+	var fy := y - _face_top(x, y)
+	if fy == 0:
+		_rect(px, py, TILE, 2, wl.lightened(0.15))
+		_rect(px, py + 5, TILE, 1, Color(pal["accent"]).darkened(0.1))            # the gold line
+	if fy == 1 and hash2(x / 3, y, 162) < 0.18 and x % 3 == 1:
+		_rect(px + 1, py + 2, 14, 9, Color(0.08, 0.09, 0.12))                        # a screen
+		_rect(px + 2, py + 3, 12, 7, Color(0.25, 0.5, 0.75))
+		_rect(px + 3, py + 4, 6, 1, Color(0.7, 0.9, 1.0))
+		_rect(px + 3, py + 6, 9, 1, Color(0.5, 0.75, 0.95))
+	if t_at(x, y + 1) != T.FACE:
+		_rect(px, py + TILE - 3, TILE, 3, Color(pal["trim"]))
+		_rect(px, py + TILE - 3, TILE, 1, Color(pal["trim"]).lightened(0.25))
+
+
+## 0.7.53.19: an office tower's glass front – blue-grey panes in a steel grid, the sky's sheen on them.
+func _tower_glass(x: int, y: int, px: int, py: int) -> void:
+	var gc := Color(0.3, 0.42, 0.55).lerp(Color(0.24, 0.34, 0.46), hash2(x, y, 171) * 0.5)
+	_rect(px, py, TILE, TILE, gc)
+	_rect(px, py, 1, TILE, Color(0.7, 0.73, 0.77))
+	_rect(px, py + 8, TILE, 1, Color(0.62, 0.65, 0.7))
+	_rect(px + 2, py + 1, 2, 6, gc.lightened(0.35))
+	_rect(px + 2, py + 9, 2, 6, gc.lightened(0.25))
+	if hash2(x, y, 172) < 0.35:
+		_rect(px + 6, py + 2, 7, 5, Color(0.95, 0.85, 0.6).darkened(0.25))       # a lit office behind the glass
+	if t_at(x, y - 1) != T.FACE:
+		_rect(px, py, TILE, 3, Color(0.75, 0.78, 0.82))
+	if t_at(x, y + 1) != T.FACE:
+		_rect(px, py + TILE - 3, TILE, 3, Color(0.4, 0.42, 0.46))
+
+
 ## How many face rows lie above this one.
 func _face_top(x: int, y: int) -> int:
 	var k := 0
@@ -819,7 +883,7 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
-	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate"]:
+	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate", "corp", "plaza"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -917,6 +981,15 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 	if style == "alley":
 		_alley_face(x, y, px, py)
 		return
+	if style == "corp":
+		_corp_face(x, y, px, py)
+		return
+	if style == "plaza":
+		if x >= int(get_meta("tower_x", 9999)):
+			_tower_glass(x, y, px, py)
+		else:
+			_corp_face(x, y, px, py)
+		return
 	var wl: Color = pal["wall"]
 	_rect(px, py, TILE, TILE, wl)
 	if t_at(x, y - 1) != T.FACE:
@@ -930,6 +1003,8 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 
 ## Glass: see-through (space behind), framed – thin mullions, a sill.
 func _glass_tile(x: int, y: int, px: int, py: int) -> void:
+	if has_meta("open_sky"):
+		return                                          # 0.7.53.19: the roof plaza – open to the sky, nothing in between
 	if under_glass >= 0:
 		_tint(px, py, TILE, TILE, Color(0.55, 0.75, 1.0), 0.1)        # the hangar shows through
 	else:

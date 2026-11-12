@@ -2125,6 +2125,28 @@ func city_poi(system_id: int, city: Dictionary) -> Dictionary:
 		"danger": danger, "used": poi_used.has(id)}
 
 
+## 0.7.53.19 (Luz, package 53d): a city's corporate tower – up the lift to its roof plaza, in by the back door; rolled
+## anew each visit (its company, its danger).
+func corp_poi(system_id: int, city: Dictionary) -> Dictionary:
+	const PoiData = preload("res://data/poi.gd")
+	var visit := int(poi_visits.get(str(system_id), 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("corp_%d_%d_%s_%d" % [system_id, visit, String(city.get("id", "")), Universe.seed_value])
+	var id := "corp_%d_%d_%s" % [system_id, visit, String(city.get("id", ""))]
+	var danger: String = ["yellow", "yellow", "red"][rng.randi() % 3]
+	return {"id": id, "name": PoiData.site_name("corp", rng), "kind": "corp", "poi": true, "theme": "corp", "seed": rng.randi(),
+		"danger": danger, "used": poi_used.has(id)}
+
+
+## 0.7.53.19: the corporate tower of a city when a job on foot goes there – that job's site, else {}.
+func corp_site_for(city_id: String) -> Dictionary:
+	for mm in missions:
+		var st: Dictionary = mm.get("site", {})
+		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and String(st.get("theme", "")) == "corp" and String(st.get("city", "")) == city_id:
+			return st
+	return {}
+
+
 ## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine under its headframe, rolled anew each visit.
 func settle_poi(system_id: int, town: Dictionary) -> Dictionary:
 	const PoiData = preload("res://data/poi.gd")

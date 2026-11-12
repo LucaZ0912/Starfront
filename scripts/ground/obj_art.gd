@@ -141,6 +141,14 @@ static func _rise(kind: String) -> int:
 			return 30
 		"med_cabinet":
 			return 30
+		"office_desk", "partition":         # 0.7.53.19 (Luz): an office desk with its screen, a low screen – low cover
+			return 12
+		"server_rack":                      # 0.7.53.19: a server cabinet (~2.2 m) – high cover
+			return 30
+		"pillar_corp":                      # 0.7.53.19: a lobby's square pillar up to the ceiling – high cover
+			return 44
+		"glass_rail":                       # 0.7.53.19: the roof plaza's glass balustrade
+			return 12
 		"barrier":                  # package 52: cover – a low plated barricade (~1.3 m) and a high bulwark (~2.6 m)
 			return 8
 		"bulwark":
@@ -274,6 +282,58 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 4, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
 			if pw > 32:
 				_r(img, pw / 2 - 1, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
+		"office_desk":
+			# 0.7.53.19: a white desk, its screen glowing, a keyboard, a cup; the chair before it
+			var b5 := fy + ph
+			_r(img, 1, b5 - 14, pw - 2, 9, Color(0.9, 0.91, 0.93))                 # the top
+			_r(img, 1, b5 - 14, pw - 2, 1, Color(1, 1, 1))
+			_r(img, 1, b5 - 5, pw - 2, 4, Color(0.62, 0.64, 0.68))                 # its front panel
+			_r(img, 6, b5 - 24, 12, 10, Color(0.12, 0.13, 0.15))                    # the screen
+			_r(img, 7, b5 - 23, 10, 7, Color(0.3, 0.6, 0.9))
+			_r(img, 8, b5 - 22, 5, 1, Color(0.75, 0.92, 1.0))
+			_r(img, 11, b5 - 14, 2, 1, Color(0.2, 0.2, 0.22))
+			_r(img, 20, b5 - 12, 7, 3, Color(0.2, 0.21, 0.24))                      # a keyboard
+			_r(img, pw - 7, b5 - 13, 3, 3, Color(0.95, 0.94, 0.9))                  # a cup
+		"partition":
+			# 0.7.53.19: a low office screen – fabric in a steel frame
+			var b6 := fy + ph
+			_r(img, 0, b6 - 18, pw, 14, Color(0.42, 0.46, 0.56))
+			_r(img, 0, b6 - 18, pw, 2, Color(0.6, 0.63, 0.7))
+			for k6 in int(pw / 8):
+				_r(img, k6 * 8 + 3, b6 - 15, 1, 10, Color(0.38, 0.42, 0.52))
+			_r(img, 0, b6 - 4, pw, 2, Color(0.55, 0.57, 0.6))
+			_r(img, 2, b6 - 2, 2, 2, Color(0.3, 0.31, 0.34))
+			_r(img, pw - 4, b6 - 2, 2, 2, Color(0.3, 0.31, 0.34))
+		"server_rack":
+			# 0.7.53.19: a server cabinet – dark, rows of blinking lights, a glass door
+			var b7 := fy + ph
+			_r(img, 1, b7 - 40, pw - 2, 38, Color(0.13, 0.14, 0.17))
+			_r(img, 1, b7 - 40, pw - 2, 6, Color(0.22, 0.23, 0.27))                # its top, seen from above
+			for ry in range(b7 - 32, b7 - 6, 4):
+				_r(img, 4, ry, pw - 8, 3, Color(0.2, 0.21, 0.25))
+				for lx2 in range(6, pw - 8, 5):
+					_p(img, lx2, ry + 1, [Color(0.3, 1.0, 0.5), Color(0.3, 0.8, 1.0), Color(1.0, 0.75, 0.3)][(lx2 + ry) % 3])
+			_r(img, pw / 2, b7 - 32, 1, 26, Color(0.3, 0.32, 0.36))
+			_r(img, 1, b7 - 3, pw - 2, 2, Color(0.08, 0.08, 0.1))
+		"pillar_corp":
+			# 0.7.53.19: a square lobby pillar – pale stone, a gold band, rising to the ceiling
+			var b8 := fy + ph
+			var pc8 := Color(0.86, 0.86, 0.88)
+			_r(img, 1, b8 - 56, pw - 2, 12, pc8.lightened(0.06))                    # its top (seen from above)
+			_r(img, 1, b8 - 44, pw - 2, 42, pc8.darkened(0.08))
+			_r(img, 1, b8 - 44, 2, 42, pc8.lightened(0.05))
+			_r(img, pw - 3, b8 - 44, 2, 42, pc8.darkened(0.25))
+			_r(img, 1, b8 - 30, pw - 2, 2, Color(0.95, 0.75, 0.3))
+			_r(img, 1, b8 - 4, pw - 2, 2, Color(0.55, 0.57, 0.6))
+		"glass_rail":
+			# 0.7.53.19: a glass balustrade – panes in a steel rail
+			var b9 := fy + ph
+			_r(img, 0, b9 - 18, pw, 14, Color(0.55, 0.72, 0.85, 0.55))
+			for k9 in range(0, pw, 24):
+				_r(img, k9, b9 - 18, 2, 16, Color(0.72, 0.75, 0.8))
+				_r(img, k9 + 6, b9 - 16, 2, 10, Color(0.9, 0.97, 1.0, 0.7))
+			_r(img, 0, b9 - 19, pw, 2, Color(0.85, 0.87, 0.9))
+			_r(img, 0, b9 - 4, pw, 2, Color(0.5, 0.52, 0.56))
 		"sofa":
 			var b4 := fy + ph
 			_r(img, 1, b4 - 24, pw - 2, 13, c.darkened(0.3))                    # the back

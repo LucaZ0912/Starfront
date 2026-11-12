@@ -163,6 +163,7 @@ func _process(delta: float) -> void:
 				_test_maint(view)                # package 53c – the maintenance tunnels, the reactor
 				_test_pirate(view)               # package 53c – the pirate base
 				_test_ground_jobs(view)          # package 53c – jobs on foot
+				_test_corp(view)                 # package 53d – the corporate tower
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -7859,7 +7860,7 @@ func _test_suit_looks() -> void:
 		l3["helmet"] = true
 		l3["livery"] = liv
 		lv[liv] = CA.frame(l3, 0, 0).get_image().get_data()
-	var liv_ok: bool = lv.size() == 5 and lv["covenant"] != lv["directorate"] and lv["assembly"] != lv["independent"] and lv["pirate"] != lv["independent"]      # 0.7.52.5: + the pirates
+	var liv_ok: bool = lv.size() == 6 and lv["covenant"] != lv["directorate"] and lv["assembly"] != lv["independent"] and lv["pirate"] != lv["independent"] 		and lv["corp"] != lv["independent"]      # 0.7.52.5: + the pirates; 0.7.53.19: + corporate security
 	# the helmet setting, saved and loaded
 	var g = GameState.gear
 	var was := String(g.helmet)
@@ -10042,6 +10043,171 @@ func _test_wreck(view: SystemView) -> void:
 		"53b: crash sites found on the map with their ship; the wreck at the ground's scale (a 92 m freighter), its breach and airlock, cargo containers, scavengers, smoke; the airlock sealed until its terminal opens it; inside the main corridor along the hull, the hole down, conduits that shock, gas; below the jammed bulkhead – the generator's power opens it; the flight recorder pays; back up and out by the airlock it went in by, the ship's keys locked on the ground; power sockets in the sites charge the suit while held  [%s]" % " ".join(PackedStringArray([str(out_ok), str(deck_ok), str(shock_ok), str(low_ok), str(done_ok), str(up_ok), str(sock_ok)])))
 
 
+
+## 0.7.53.19 (Luz, package 53d): the corporate tower – the roof plaza (the lift, the guarded main doors, the back door
+## behind its keypad or terminal); three levels: offices with cameras and a key card (the lift down wants it, the fire
+## stairs ring the alarm), the security centre (cameras and light barriers off), the vault (light barriers, the round
+## door hacked then drilled, the main box pays); city: the lift goes up to the plaza.
+func _test_corp(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	Commands.suit_god = true
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5419, "theme": "corp"})
+	var g = main.ground
+	if g == null or e != "" or g.level != "landing":
+		check(false, "53d: the corporate tower opens  [%s]" % e)
+		Commands.suit_god = false
+		return
+	g._close_lift_menu()
+	var door: Dictionary = {}
+	var opener: Dictionary = {}
+	for d in g.map.explore:
+		if String(d["kind"]) == "service_door":
+			door = d
+		elif String(d["kind"]) in ["panel", "terminal"] and int(d.get("door", -1)) >= 0:
+			opener = d
+	var zin: Dictionary = _zone_of(g.map, "dungeon_in")
+	var plaza_ok: bool = g.map.style == "plaza" and not door.is_empty() and not opener.is_empty() and not zin.is_empty() and g.map.window_rect.size.x > 10 \
+		and g.map.lifts.size() == 2 and g.map.people.size() >= 2 and g.map.objects.any(func(o): return String(o["kind"]) == "glass_rail")
+	g._arrive = 0.0
+	g.zone = zin
+	g.use()
+	plaza_ok = plaza_ok and g.level == "landing"                     # locked
+	g._explore_effect(opener, "door")
+	g._arrive = 0.0
+	g.zone = zin
+	g.use()
+	if g.level != "dungeon" or g.depth != 0:
+		check(false, "53d: into the tower  [%s %s]" % [str(plaza_ok), g.level])
+		Commands.suit_god = false
+		return
+	# level 1: offices, cameras, the key card; the lift down wants it
+	var cams: Array = g.map.explore.filter(func(d2): return String(d2["kind"]) == "camera")
+	var card: Dictionary = {}
+	for d3 in g.map.explore:
+		if String(d3["kind"]) == "keycard":
+			card = d3
+	var lift_z: Dictionary = {}
+	var fire_z: Dictionary = {}
+	for z in g.map.zones:
+		if String(z.get("kind", "")) == "dungeon_down":
+			if bool(z.get("need_card", false)):
+				lift_z = z
+			elif bool(z.get("fire_door", false)):
+				fire_z = z
+	var l1_ok: bool = cams.size() >= 1 and not card.is_empty() and not lift_z.is_empty() and g.map.floor_kind.has(28) \
+		and g.map.objects.any(func(o2): return String(o2["kind"]) in ["office_desk", "pillar_corp", "partition"])
+	g._arrive = 0.0
+	g.zone = lift_z
+	g.use()
+	l1_ok = l1_ok and g.depth == 0                                    # no card yet
+	# a camera that sees you rings the alarm
+	Commands.suit_god = false
+	var cam: Dictionary = cams[0] if not cams.is_empty() else {}
+	var cam_ok := false
+	if not cam.is_empty():
+		var eye: Vector2 = (cam["pos"] as Vector2) + Vector2(0, 4)
+		cam["ang"] = PI * 0.5
+		cam["base"] = PI * 0.5
+		g.pilot.pos = eye + Vector2(0, 40)
+		for i in 15:
+			cam["ang"] = PI * 0.5
+			g._cams_step(0.1)
+		cam_ok = bool(cam.get("raised", false)) and bool(g._site.get("alarmed", false))
+	Commands.suit_god = true
+	g._site["alarmed"] = false
+	g.explore_use({"i": g.map.explore.find(card)})
+	var card_ok: bool = bool(g._site.get("card", false)) and String(card["state"]) == "taken"
+	g._arrive = 0.0
+	g.zone = lift_z
+	g.use()
+	var down_ok: bool = g.depth == 1 and g.level == "dungeon"
+	# level 2: the security centre switches cameras and light barriers off for the tower
+	var sec: Dictionary = {}
+	for d4 in g.map.explore:
+		if String(d4["kind"]) == "terminal" and "cameras" in d4.get("actions", []):
+			sec = d4
+	var sec_ok: bool = not sec.is_empty() and g.map.floor_kind.has(29) == false or not sec.is_empty()
+	if not sec.is_empty():
+		g._explore_effect(sec, "cameras")
+		g._explore_effect(sec, "beams")
+	sec_ok = sec_ok and bool(g._site.get("cams_off", false)) and bool(g._site.get("beams_off", false)) \
+		and g.map.explore.filter(func(d5): return String(d5["kind"]) == "camera").all(func(d6): return String(d6["state"]) == "off")
+	# the fire stairs ring the alarm
+	var fz: Dictionary = {}
+	for z2 in g.map.zones:
+		if bool(z2.get("fire_door", false)):
+			fz = z2
+	g._arrive = 0.0
+	g.zone = fz
+	g.use()
+	var fire_ok: bool = not fz.is_empty() and g.depth == 2 and bool(g._site.get("alarmed", false))
+	# level 3: the vault – light barriers (off now), the round door: hacked, then drilled
+	var vd: Dictionary = {}
+	var vt: Dictionary = {}
+	var box: Dictionary = {}
+	for d7 in g.map.explore:
+		match String(d7["kind"]):
+			"vault_door":
+				vd = d7
+			"terminal":
+				if "vault" in d7.get("actions", []):
+					vt = d7
+			"crate":
+				if bool(d7.get("target", false)):
+					box = d7
+	var beams: Array = g.map.explore.filter(func(d8): return String(d8["kind"]) == "laser_gate")
+	g._cams_step(0.1)
+	var v_ok: bool = not vd.is_empty() and not vt.is_empty() and not box.is_empty() and beams.size() >= 1 and beams.all(func(b): return String(b["state"]) == "off")
+	g._explore_effect(vt, "vault")
+	var drilling: bool = String(vd["state"]) == "drilling" if not vd.is_empty() else false
+	for i2 in 22:
+		g._fuses_step(1.0)
+	v_ok = v_ok and drilling and String(vd["state"]) == "open"
+	var cr0 := GameState.credits
+	g._poi_target_done(box)
+	var pay_ok: bool = GameState.credits > cr0 + 1000 and GameState.poi_used.has(String(g._site["id"]))
+	# the jobs: a corporate heist and spying – their site under a city, not on the map
+	var jobs_ok := true
+	for vk in ["heist", "spy"]:
+		var e2: String = Commands.execute({"type": "debug_ground_job", "goal": vk, "variant": "corp", "seed": 5420 + vk.length()})
+		var mm: Dictionary = GameState.missions[-1] if not GameState.missions.is_empty() else {}
+		jobs_ok = jobs_ok and e2 == "" and String(mm["site"].get("theme", "")) == "corp" and mm["site"].has("city") \
+			and GameState.corp_site_for(String(mm["site"]["city"])) == mm["site"] and (vk != "heist" or bool(mm["site"].get("hard", false)))
+		GameState.abandon_mission(mm)
+	# the space contracts by kind (the debug tab's buttons)
+	var m0 := GameState.missions.size()
+	var sp_ok: bool = Commands.execute({"type": "debug_mission", "kind": "courier"}) == "" and GameState.missions.size() == m0 + 1 \
+		and String(GameState.missions[-1]["type"]) == "courier"
+	while GameState.missions.size() > m0:
+		GameState.abandon_mission(GameState.missions[-1])          # (its sealed cargo out of the hold again)
+	# back
+	Commands.suit_god = false
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(plaza_ok and l1_ok and cam_ok and card_ok and down_ok and sec_ok and fire_ok and v_ok and pay_ok and jobs_ok and sp_ok,
+		"53d: the corporate tower – the roof plaza (lift, guarded doors, the back door behind its keypad or terminal); offices with cameras (seen: alarm) and a key card (the lift down wants it); the security centre switches cameras and light barriers off; the fire stairs ring the alarm; the vault door hacked then drilled, the main box pays; heist and spy jobs in a city's tower; a space contract by kind  [%s]" % " ".join(PackedStringArray([str(plaza_ok), str(l1_ok), str(cam_ok), str(card_ok), str(down_ok), str(sec_ok), str(fire_ok), str(v_ok), str(pay_ok), str(jobs_ok), str(sp_ok)])))
+
 ## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine: the headframe outside (its chained gate),
 ## the drifts with their rails, the cage without power (the generator), boxes of explosives that go up, the deepest
 ## chamber's find for the Museum; from a real settlement by the path at its edge.
@@ -10424,14 +10590,9 @@ func _test_ground_jobs(view: SystemView) -> void:
 	for goal_k in ["relic", "heist", "heist_dealer", "bounty_foot", "reactivate", "rescue"]:
 		# 0.7.53.17 (Luz): a heist goes for the Red Talons' hoard or the dealer's safe under a city – rolled; take the one wanted
 		var goal: String = "heist" if goal_k == "heist_dealer" else goal_k
-		var e := ""
-		var mm: Dictionary = {}
-		for tr in 24:
-			e = Commands.execute({"type": "debug_ground_job", "goal": goal, "seed": 5321 + goal_k.length() * 7 + tr * 131})
-			mm = GameState.missions[-1] if GameState.missions.size() > 0 else {}
-			if goal != "heist" or e != "" or (String(mm["site"]["theme"]) == "sewer") == (goal_k == "heist_dealer"):
-				break
-			GameState.abandon_mission(mm)
+		var vr: String = {"heist": "pirate", "heist_dealer": "sewer"}.get(goal_k, "")
+		var e: String = Commands.execute({"type": "debug_ground_job", "goal": goal, "variant": vr, "seed": 5321 + goal_k.length() * 7})
+		var mm: Dictionary = GameState.missions[-1] if GameState.missions.size() > 0 else {}
 		res[goal_k] = e == "" and String(mm.get("type", "")) == "ground" and String(mm.get("goal", "")) == goal
 		if not res[goal_k]:
 			continue

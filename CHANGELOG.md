@@ -3,6 +3,28 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.19 – 2026-11-12
+
+**Package 53d – the corporate tower (Luz).** In every city the lift now goes up to a **roof plaza** as well: open to
+the sky – beyond the glass railing the city with its towers, the sun, speeders and drones (the tower bar's view) –
+pale paving, planters with trees, benches, lamps, a fountain, people strolling. At its east end stands the office
+tower of a corporation: its glass front with the company's name, the main doors guarded – and round the side, in a
+loading bay, its **back door** (a keypad to cut, or a terminal to hack). Inside, three levels:
+- **Offices** – pale stone and carpet, desks, pillars, sofas, planters and low screens as cover; **cameras** sweep the
+  rooms (seen for a moment: the alarm); a **key card** lies in one of the offices – the lift down wants it; the
+  **fire stairs** are quicker, but their door rings the alarm.
+- **Security level** – servers and the **security centre**: switch the cameras and the light barriers off (for the
+  whole tower), download the company's data.
+- **Vault level** – concrete, **light barriers** across the ways (crossed: the alarm), the **round vault door**: hack
+  its lock at the terminal, then the drill bites for 20 seconds (loud – the guards come); inside the strongboxes and
+  the main box (credits, the company's research data).
+- New foes: **corporate guards**, marksmen and the head of security, in navy plate with gold light.
+- Jobs: a heist can now go for a **corporate vault** (always hard – an alarm fails it), espionage for a tower's
+  **security centre**; both under a city, not on the planet map.
+- **Debug: a "Missions" tab** – a button for every job on foot (each heist and spy variant; "Accept & go" lands you
+  on the site) and for every kind of space contract, plus "complete all" and "new contracts".
+- Fix: the foes' view cones show only while sneaking or in the tactical view (since 0.7.53.18 they showed always).
+
 ## alpha 0.7.53.18 – 2026-11-11
 
 **Sneaking reworked (Luz: foes looking the other way, even in other rooms, noticed you at once).**

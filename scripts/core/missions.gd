@@ -134,7 +134,8 @@ const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist
 const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate"}
 
 
-static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerator, kind: String = "") -> Dictionary:
+## `variant` (debug, 0.7.53.19): the theme a heist or a spy job must use ("" rolled).
+static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerator, kind: String = "", variant: String = "") -> Dictionary:
 	const PoiData = preload("res://data/poi.gd")
 	if kind == "":
 		var tot := 0
@@ -147,11 +148,19 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 				kind = String(gk2[0])
 				break
 	var theme: String = GROUND_THEME.get(kind, ["wreck", "precursor", "pirate"][rng.randi() % 3])
-	# 0.7.53.17 (Luz): half the heists go for the dealer's safe in the sewers under a city (the back alley's manhole)
-	var dealer := kind == "heist" and rng.randf() < 0.5
-	if dealer:
-		theme = "sewer"
-	var in_city := kind == "reactivate" or dealer
+	# 0.7.53.17 (Luz): heists also go for the dealer's safe in the sewers under a city (the back alley's manhole);
+	# 0.7.53.19 (Luz): and for the vault of a city's corporate tower (always hard); spying too goes to a tower's
+	# security centre now and then
+	var hr := rng.randf()
+	if kind == "heist":
+		theme = "corp" if hr < 0.34 else ("sewer" if hr < 0.67 else "pirate")
+	elif kind == "spy" and hr < 0.4:
+		theme = "corp"
+	if variant != "" and kind in ["heist", "spy"]:
+		theme = variant
+	var dealer := kind == "heist" and theme == "sewer"
+	var corp := theme == "corp"
+	var in_city := kind == "reactivate" or dealer or corp
 	# where: a body (a city for a reactivation or the dealer's heist) within two jumps
 	var spots: Array = []
 	for sid in _systems_within(system_id, 2):
@@ -177,7 +186,7 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 	if theme == "wreck":
 		var hl: Array = PoiData.THEMES["wreck"]["hulls"]
 		site["hull"] = String(hl[rng.randi() % hl.size()])
-	var hard := kind == "heist" and rng.randf() < 0.5
+	var hard := kind == "heist" and (corp or rng.randf() < 0.5)
 	site["hard"] = hard
 	if in_city:
 		site["city"] = Universe.city_id(body, sp[2])
@@ -203,7 +212,12 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 			d = "The captain of the pirate base %s. Bring them down – they run when the alarm goes." % where
 			base = 11000
 		"heist":
-			if dealer:
+			if corp:
+				t = "Heist (hard): the vault of %s" % String(site["name"]).replace(" Tower", "")
+				d = "The vault of the %s in %s (%s) – the lift up to the roof plaza, in by the tower's back door. A key card for the lifts, cameras and light barriers; the vault at the bottom. Unseen – an alarm fails the job." % [
+					String(site["name"]), String(site["city_name"]), Universe.systems[sid2]["name"]]
+				base = 16000
+			elif dealer:
 				t = "Heist%s: the dealer's safe under %s" % [" (hard)" if hard else "", String(site["city_name"])]
 				d = "A weapons dealer keeps a safe full of money in the sewers under %s (%s) – the manhole in the back alley off the shopping street leads down. Cut it open in the dealer's office. %s" % [
 					String(site["city_name"]), Universe.systems[sid2]["name"], "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
@@ -213,9 +227,15 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 				d = "Empty the captain's strongbox in %s. %s" % [where, "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
 				base = 14000 if hard else 10000
 		"spy":
-			t = "Espionage: data from %s" % String(site["name"])
-			d = "Download the data from the deepest computer in %s – a bonus if nobody sees you." % where
-			base = 8000
+			if corp:
+				t = "Espionage: %s's data" % String(site["name"]).replace(" Tower", "")
+				d = "Download the data from the security centre of the %s in %s (%s) – the roof plaza, the back door, the second level. A bonus if nobody sees you." % [
+					String(site["name"]), String(site["city_name"]), Universe.systems[sid2]["name"]]
+				base = 9500
+			else:
+				t = "Espionage: data from %s" % String(site["name"])
+				d = "Download the data from the deepest computer in %s – a bonus if nobody sees you." % where
+				base = 8000
 		"rescue":
 			var who: String = ["a freighter captain", "a surveyor", "a courier", "a doctor", "an engineer"][rng.randi() % 5]
 			site["prisoner"] = who
@@ -552,6 +572,8 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 			var st: Dictionary = m["site"]
 			if String(m["goal"]) == "reactivate":
 				return "The maintenance tunnels under %s (%s) – take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
+			if st.has("city") and String(st.get("theme", "")) == "corp":
+				return "The %s in %s (%s) – the lift up to the roof plaza" % [String(st["name"]), String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
 			if st.has("city"):
 				return "The sewers under %s (%s) – the manhole in the back alley" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
 			return "Go to %s on %s (%s) – it is on the planet map" % [String(st["name"]), String(Universe.find_body(int(st["system"]), String(st["body"])).get("name", "?")), Universe.systems[int(st["system"])]["name"]]

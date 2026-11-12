@@ -190,6 +190,108 @@ static func build_alley(body: Dictionary, site: Dictionary) -> GroundMap:
 	return m
 
 
+# ---------------------------------------------------------------- outside: a city's roof plaza (0.7.53.19)
+
+## 0.7.53.19 (Luz, package 53d): up the lift to a roof plaza – open to the sky: the city beyond the railing with its
+## towers, the sun, speeders and drones (the tower bar's view); pale paving, planters with trees, benches, lamps, a
+## fountain; on the west the lift kiosk; at the east end the office tower of the corporation – its glass front, its
+## guarded main doors, and round the side in a loading bay its back door (a keypad – cut it, or hack the terminal).
+static func build_plaza(body: Dictionary, site: Dictionary) -> GroundMap:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(site.get("seed", 53)) + 19
+	var m := GroundMap.new()
+	m.pal = DeckGen.palette_for_body(body).duplicate()
+	m.pal["floor"] = Color(0.7, 0.66, 0.6)
+	m.pal["floor2"] = Color(0.64, 0.6, 0.55)
+	m.pal["wall"] = Color(0.86, 0.87, 0.89)
+	m.pal["wall_top"] = Color(0.12, 0.12, 0.15)
+	m.pal["trim"] = Color(0.55, 0.57, 0.6)
+	m.pal["accent"] = Color(0.95, 0.75, 0.3)
+	m.pal["frame"] = Color(0.6, 0.62, 0.66)
+	m.style = "plaza"
+	m.title = String(site.get("name", "Roof plaza"))
+	m.hull_top = -9999
+	var W := 62
+	var H := 28
+	var KX := 10                                      # the kiosk's east edge
+	var TX := W - 18                                  # the tower's west edge
+	var BX := W - 7                                   # the loading bay (the back door)
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.FLOOR, 30)
+	m.fill(0, H - 1, W, 1, T.BLOCK, 30)
+	m.fill(0, 0, 1, H, T.BLOCK, 30)
+	m.fill(W - 1, 0, 1, H, T.BLOCK, 30)
+	# the open view north: the city (drawn behind, like the tower bar's window), a glass railing along the edge
+	m.fill(KX, 0, TX - KX, 9, T.GLASS)
+	m.window_rect = Rect2(KX, 0, TX - KX, 9)
+	m.set_meta("open_sky", true)
+	m.add_object({"kind": "glass_rail", "x": KX, "y": 9, "w": TX - KX, "h": 1})
+	# the lift kiosk on the west
+	m.fill(0, 0, KX, 9, T.CAP)
+	m.fill(0, 9, KX, 4, T.FACE)
+	for lx0 in [2, 6]:
+		m.face_deco.append({"kind": "lift", "x": lx0, "y": 12, "w": 2, "col": Color(0.4, 1.0, 0.6)})
+		m.lifts.append({"x": lx0, "y": 12, "w": 2})
+	m.zones.append({"rect": Rect2(Vector2(2, 13) * TILE, Vector2(6, 1.4) * TILE), "kind": "lift", "id": "lift",
+		"title": "Lift – back down into the city", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(5, 10.2) * TILE})
+	m.spawn = Vector2(5.0, 14.6) * TILE
+	# the office tower at the east end: its roof, its glass front five rows tall
+	m.fill(TX, 0, W - TX, 14, T.CAP)
+	m.fill(TX, 14, BX - TX, 5, T.FACE)
+	m.set_meta("tower_x", TX)
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "corp_sign", "title": String(site.get("name", "Orison Holdings Tower")).replace(" Tower", "").to_upper(),
+		"col": Color(0.95, 0.75, 0.3), "sign": Vector2(TX + 5.5, 14.6) * TILE})
+	m.face_deco.append({"kind": "lift", "x": TX + 4, "y": 18, "w": 3, "col": Color(0.95, 0.85, 0.6)})       # the main doors (guarded)
+	m.lights.append({"pos": Vector2(TX + 5.5, 19.5) * TILE, "r": 70.0, "col": Color(1.0, 0.9, 0.7), "a": 0.45})
+	for gx in [TX + 2, TX + 8]:
+		var lk := ChibiArt.PilotArt.random_look(rng)
+		lk["suit"] = "suit_mil_light"
+		lk["livery"] = "corp"
+		lk["helmet"] = true
+		m.people.append({"pos": Vector2(gx + 0.5, 19.8) * TILE, "dir": 0, "role": "keeper", "look": lk})
+	m.zones.append({"rect": Rect2(Vector2(TX + 3, 19) * TILE, Vector2(5, 1.4) * TILE), "kind": "soon", "id": "front_doors",
+		"title": "The main doors – staff only, guarded. Round the side there is a back door.", "col": Color(1.0, 0.8, 0.4), "sign": Vector2(-100, -100)})
+	# the loading bay round the side: set back, its back door, a keypad, bins and crates
+	m.fill(BX, 0, W - 1 - BX, 9, T.CAP)
+	m.fill(BX, 9, W - 1 - BX, 4, T.FACE)
+	m.fill(BX - 1, 9, 1, 10, T.CAP)
+	var dxp := BX + 2
+	var lock: String = ["panel", "computer"][rng.randi() % 2]
+	var door := ExploreNode.add(m, "service_door", Vector2(dxp + 0.5, 13) * TILE, {"no_zone": true, "lock": lock, "seed": rng.randi(), "tiles": []})
+	var di := m.explore.find(door)
+	if lock == "panel":
+		ExploreNode.add(m, "panel", Vector2(dxp + 3.0, 12) * TILE, {"inside": "button", "door": di, "wall": true, "style": "corp", "shape": "rounded", "seed": rng.randi()})
+	else:
+		ExploreNode.add(m, "terminal", Vector2(dxp + 3.0, 14.4) * TILE, {"actions": ["door"], "door": di, "style": "corp", "seed": rng.randi(), "level": 1})
+	m.zones.append({"rect": Rect2(Vector2(dxp - 1, 13) * TILE, Vector2(3, 1.6) * TILE), "kind": "dungeon_in", "id": "dungeon_in", "gate": di,
+		"title": "The back door – into the tower", "col": Color(1.0, 0.45, 0.35), "sign": Vector2(-100, -100)})
+	m.set_meta("door_front", Vector2(dxp + 0.5, 15.2) * TILE)
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "deliveries", "title": "DELIVERIES", "col": Color(0.9, 0.9, 0.9),
+		"sign": Vector2(dxp + 0.5, 9.4) * TILE})
+	m.add_object({"kind": "trash", "x": BX, "y": 14, "w": 2, "h": 1})
+	m.add_object({"kind": "crates", "x": W - 3, "y": 16, "w": 2, "h": 1})
+	m.lights.append({"pos": Vector2(dxp + 0.5, 13.5) * TILE, "r": 40.0, "col": Color(1.0, 0.85, 0.6), "a": 0.4})
+	# the plaza: planters with trees, benches, lamps, a fountain in the middle
+	var mx := (KX + TX) / 2
+	m.add_object({"kind": "fountain", "x": mx - 2, "y": 17, "w": 4, "h": 2})
+	m.lights.append({"pos": Vector2(mx, 17.5) * TILE, "r": 80.0, "col": Color(0.4, 0.85, 1.0), "a": 0.4})
+	for tp in [Vector2i(KX + 3, 12), Vector2i(TX - 6, 12), Vector2i(KX + 4, 23), Vector2i(TX - 7, 23)]:
+		m.add_object({"kind": "planter", "x": tp.x, "y": tp.y, "w": 3, "h": 1, "col": Color(0.78, 0.79, 0.82)})
+		m.add_object({"kind": "tree", "x": tp.x + 1, "y": tp.y - 1, "w": 1, "h": 1})
+	for bp in [Vector2i(mx - 7, 20), Vector2i(mx + 4, 20), Vector2i(mx - 3, 13)]:
+		m.add_object({"kind": "bench", "x": bp.x, "y": bp.y, "w": 3, "h": 1})
+	for lp in [Vector2i(KX + 1, 11), Vector2i(mx - 1, 11), Vector2i(TX - 2, 11), Vector2i(KX + 1, 25), Vector2i(TX - 2, 25)]:
+		m.add_object({"kind": "lamp_post", "x": lp.x, "y": lp.y, "w": 1, "h": 1})
+		m.lights.append({"pos": Vector2(lp.x + 0.5, lp.y) * TILE, "r": 60.0, "col": Color(1.0, 0.88, 0.65), "a": 0.35})
+	# people stroll about
+	for wy in [14, 16, 21, 24]:
+		for wx in [KX + 6, mx - 5, mx + 5, TX - 4]:
+			var wp := Vector2(wx + 0.5, wy + 0.5) * TILE
+			if m.free_at(wp, 6.0):
+				m.wander.append(wp)
+	return m
+
+
 # ---------------------------------------------------------------- inside
 
 ## A site's level `depth` (0 the top), rolled from the theme's structure (data/poi.gd): a grid of cells, some rooms,
@@ -297,6 +399,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		is_room[c] = room
 	var ap := Rect2i()
 	var vr := Rect2i()
+	var targets_pre: Array = []
 	var spine_r := Rect2i(2, 1 + chh + 3, W - 4, 5)
 	if last and spine:
 		ap = spine_r
@@ -312,7 +415,10 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		var r2: Rect2i = rooms[c2]
 		if spine and not is_room[c2]:
 			continue
-		m.fill(r2.position.x, r2.position.y, r2.size.x, r2.size.y, T.FLOOR, rf if is_room[c2] else hf)
+		var rfk := rf
+		if is_room[c2] and float(th.get("carpet_share", 0.0)) > 0.0 and c2 != entr_c and rng.randf() < float(th.get("carpet_share", 0.0)):
+			rfk = 29                                       # 0.7.53.19: an office – carpet
+		m.fill(r2.position.x, r2.position.y, r2.size.x, r2.size.y, T.FLOOR, rfk if is_room[c2] else hf)
 		if canal and not is_room[c2]:
 			m.fill(r2.position.x, r2.position.y + 2, r2.size.x, r2.size.y - 4, T.FLOOR, 18)      # the canals meet: a cross
 			m.fill(r2.position.x + 2, r2.position.y, r2.size.x - 4, r2.size.y, T.FLOOR, 18)
@@ -456,6 +562,8 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			up_kind = "stairs_up" if depth > 0 else "service_lift"            # 0.7.53.9: stairwell door, the service lift
 		elif String(th.get("descent", "")) == "ramp":
 			up_kind = "stairs_up"                                             # 0.7.53.11: the way back up the ramp
+		elif String(th.get("descent", "")) == "keylift":
+			up_kind = "service_lift"                                          # 0.7.53.19: the tower's lift back up
 		ExploreNode.add(m, up_kind, Vector2(lx + 0.5, en.position.y) * TILE, {"no_zone": true, "up": true})
 		m.spawn = Vector2(lx + 0.5, en.position.y + 1.6) * TILE
 		m.zones.append({"rect": Rect2(Vector2(lx - 1.0, en.position.y) * TILE, Vector2(3.0, 1.4) * TILE), "kind": "dungeon_out" if depth == 0 else "dungeon_up",
@@ -465,7 +573,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	else:
 		m.spawn = Vector2(en.position.x + en.size.x * 0.5, en.end.y - 1.2) * TILE
 		m.zones.append({"rect": Rect2(Vector2(en.position.x + en.size.x * 0.5 - 2, en.end.y - 1.0) * TILE, Vector2(4, 1.0) * TILE), "kind": "dungeon_out",
-			"id": "dungeon_out", "title": "Back out into the open", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+			"id": "dungeon_out", "title": "The back door – out to the plaza" if theme == "corp" else "Back out into the open", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 		m.decals.append({"kind": "stripes", "x": int(en.position.x + en.size.x * 0.5) - 2, "y": en.end.y - 1, "w": 4, "h": 1})
 	var lift_i := -1
 	if not last and lift_way:
@@ -478,6 +586,24 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			"title": "The ancient lift – ride it down" if lift_kind == "ancient_lift" else "The cage – ride it down", "col": Color(0.7, 0.5, 1.0), "sign": Vector2(-100, -100)})
 		m.set_meta("down_front", lp + Vector2(0, 30))
 		m.lights.append({"pos": lp, "r": 60.0, "col": th["light"], "a": 0.3, "flicker": true})
+	elif not last and String(th.get("descent", "")) == "keylift":
+		# 0.7.53.19 (Luz): the tower's lift down – it wants a key card; the fire stairs in another room ring the alarm
+		var drk: Rect2i = rooms[down_c]
+		var kx := _wall_spot(m, drk, drk.position.x + drk.size.x / 2)
+		ExploreNode.add(m, "service_lift", Vector2(kx + 0.5, drk.position.y) * TILE, {"no_zone": true, "card": true})
+		m.zones.append({"rect": Rect2(Vector2(kx - 1.0, drk.position.y) * TILE, Vector2(3.0, 1.4) * TILE), "kind": "dungeon_down", "id": "dungeon_down",
+			"need_card": true, "title": "The lift down – it wants a key card", "col": Color(0.4, 0.85, 1.0), "sign": Vector2(-100, -100)})
+		m.set_meta("down_front", Vector2(kx + 0.5, drk.position.y + 1.6) * TILE)
+		var fcs: Array = cells.filter(func(cf): return is_room[cf] and not need.has(cf))
+		if fcs.is_empty():
+			fcs = cells.filter(func(cf2): return is_room[cf2] and cf2 != entr_c and cf2 != down_c)
+		if not fcs.is_empty():
+			var fr: Rect2i = rooms[fcs[rng.randi() % fcs.size()]]
+			var fx := _wall_spot(m, fr, fr.position.x + 2)
+			ExploreNode.add(m, "stairs_down", Vector2(fx + 0.5, fr.position.y) * TILE + Vector2(0, 14), {"no_zone": true, "fire": true, "seed": rng.randi()})
+			m.zones.append({"rect": Rect2(Vector2(fx - 1.0, fr.position.y) * TILE, Vector2(3.0, 2.0) * TILE), "kind": "dungeon_down", "id": "dungeon_down",
+				"fire_door": true, "title": "The fire stairs down – its door is alarmed", "col": Color(1.0, 0.4, 0.3), "sign": Vector2(-100, -100)})
+			targets_pre.append(["stairs", "The fire stairs – quick, but their door rings the alarm"])
 	elif not last:
 		# the way down: a hatch in the far room's floor
 		var drr: Rect2i = rooms[down_c]
@@ -502,7 +628,7 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	# ---- the things
 	var di := -1
 	var ci := -1
-	var targets: Array = []
+	var targets: Array = targets_pre.duplicate()
 	if not rubble_tiles.is_empty():
 		targets.append(["rubble", "A buried side drift – something was stored behind the fall"])
 	var n_cache := 0
@@ -514,6 +640,10 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 		di = m.explore.find(door)
 		if String(th.get("door", "")) == "crank_door":
 			ExploreNode.add(m, "fuse_box", Vector2(dx + 3.5, ap.position.y) * TILE, {"door": di, "wall": true, "seed": rng.randi()})
+		elif String(th.get("door", "")) == "vault_door":
+			# 0.7.53.19 (Luz): the vault's lock – hacked here, then the drill bites (it takes a while, and it is loud)
+			ExploreNode.add(m, "terminal", Vector2(dx + 4.5, ap.position.y + 1.4) * TILE, {"actions": ["vault"], "door": di, "style": "corp", "seed": rng.randi(),
+				"level": 2 + int(String(site.get("danger", "yellow")) == "red")})
 		else:
 			ExploreNode.add(m, "panel", Vector2(dx + 3.5, ap.position.y) * TILE, {"inside": "button", "door": di, "style": style, "seed": rng.randi()})
 		var rc := Vector2(vr.position.x + vr.size.x * 0.5, vr.position.y + vr.size.y * 0.5 + 0.4)
@@ -538,6 +668,14 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			n_cache += 5
 			m.lights.append({"pos": rc * TILE, "r": 70.0, "col": Color(1.0, 0.75, 0.3), "a": 0.4})
 			targets.append(["loot_room", "The captain's hoard – behind a code door, the command room opens it"])
+		elif String(th.get("target", "")) == "corp_vault":
+			# 0.7.53.19 (Luz): the vault – shelves of strongboxes, the main one in the middle
+			for lc2 in 5:
+				ExploreNode.add(m, "crate", Vector2(vr.position.x + 2.0 + lc2 * 2.4, vr.position.y + 1.8) * TILE, {"seed": rng.randi(), "theme": theme, "safe": lc2 == 2})
+			ExploreNode.add(m, "crate", rc * TILE, {"target": true, "safe": true, "welded": true, "seed": rng.randi(), "theme": theme})
+			n_cache += 6
+			m.lights.append({"pos": rc * TILE, "r": 80.0, "col": Color(0.95, 0.8, 0.45), "a": 0.45})
+			targets.append(["corp_vault", "The vault – at the bottom, behind the round door: hack its lock, then the drill"])
 		elif String(th.get("target", "")) == "reactor":
 			# 0.7.53.9 (Luz): the reactor – its pit in the middle of the room (it stands in the way), its panel before it
 			# (0.7.53.9 fix, Luz: the reactor in the room's middle, its panel wholly in the room)
@@ -586,6 +724,8 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "generator", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE, {"door": di, "seed": rng.randi()})
 			targets.append(["power", "The emergency generator – where its power goes"])
 			acts = []
+		if String(th.get("target", "")) == "corp_vault":
+			acts = ["data"]
 		var term := {"actions": acts, "door": di, "seed": rng.randi(), "style": String(th.get("computer", "")), "level": 1 + int(String(site.get("danger", "yellow")) == "red")}
 		if ci >= 0:
 			term["cage"] = ci
@@ -618,6 +758,9 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 	else:
 		# the pump control drains the flooded way; a valve wheel beside the water does it by hand
 		var acts2: Array = ["drain", "data"] if not flood_tiles.is_empty() else ["data"]
+		if bool(th.get("security", false)):
+			acts2 = ["cameras", "beams", "data"]                  # 0.7.53.19 (Luz): the security centre
+			targets.append(["security", "The security centre – cameras and light barriers off, the company's data"])
 		var pt := ExploreNode.add(m, "terminal", Vector2(cr.position.x + cr.size.x - 3, cr.position.y + 1.6) * TILE,
 			{"actions": acts2, "seed": rng.randi(), "style": String(th.get("computer", "")), "level": 1, "flood": flood_tiles})
 		if not flood_tiles.is_empty():
@@ -692,6 +835,22 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			var tp := Vector2(r10.position.x + 1.5 + rng.randi_range(0, r10.size.x - 3), r10.position.y + 0.9) * TILE
 			ExploreNode.add(m, "tnt", tp, {"no_zone": true, "seed": rng.randi()})
 			tn += 1
+	elif String(th.get("traps", "")) == "beams" and bool(th.get("beams", false)):
+		# 0.7.53.19 (Luz): light barriers across the ways to the vault – crossed, they ring the alarm
+		var placed4 := 0
+		for e8 in edges:
+			if placed4 >= 3:
+				break
+			var bs := _wire_spot(m, rooms[e8[0]], rooms[e8[1]], corr)
+			if bs.is_empty():
+				continue
+			ExploreNode.add(m, "laser_gate", bs["pos"], {"len": bs["len"], "vertical": bs["vertical"], "state": "on", "seed": rng.randi(), "no_zone": true})
+			placed4 += 1
+		if ap.has_area():
+			ExploreNode.add(m, "laser_gate", Vector2(ap.position.x, ap.position.y + ap.size.y * 0.5) * TILE, {"len": ap.size.x, "vertical": false, "state": "on", "seed": rng.randi(), "no_zone": true})
+			placed4 += 1
+		if placed4 > 0:
+			targets.append(["beams", "%d light barriers on the way to the vault" % placed4])
 	elif String(th.get("traps", "")) == "tripwire":
 		var placed := 0
 		for e4 in edges:
@@ -732,6 +891,32 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				var vent := ExploreNode.add(m, "vent", Vector2(vx + 0.5, sr2.position.y) * TILE, {"duct": duct, "label": "VENT-%02d" % rng.randi_range(10, 99), "seed": rng.randi()})
 				ExploreNode.add(m, "vent_end", Vector2(tx + (1 if stp > 0 else 0), vr.position.y) * TILE, {"no_zone": true, "vent": m.explore.find(vent)})
 				vent_ok = true
+	# 0.7.53.19 (Luz): cameras on the rooms' walls, sweeping – seen, the alarm rings; the key card for the lifts
+	if th.has("cams"):
+		var cam_cells: Array = cells.filter(func(cc9): return is_room[cc9] and role_of.get(cc9, "") != "vault")
+		_shuffle(cam_cells, rng)
+		var n_cam := rng.randi_range(int(th["cams"][0]), int(th["cams"][1]))
+		var made_cam := 0
+		for ccm in cam_cells:
+			if made_cam >= n_cam:
+				break
+			var rcm: Rect2i = rooms[ccm]
+			var cx2 := _wall_spot(m, rcm, rcm.position.x + (1 if rng.randf() < 0.5 else rcm.size.x - 2))
+			var cpm := Vector2(cx2 + 0.5, rcm.position.y) * TILE
+			if m.t_at(cx2, rcm.position.y - 1) != T.FACE or m.explore.any(func(d9): return (d9["pos"] as Vector2).distance_to(cpm) < 30.0):
+				continue
+			var base_a := PI * 0.5 + (0.45 if cx2 < rcm.position.x + rcm.size.x / 2 else -0.45)
+			ExploreNode.add(m, "camera", cpm, {"no_zone": true, "wall": true, "state": "on", "base": base_a, "seed": rng.randi()})
+			made_cam += 1
+		if made_cam > 0:
+			targets.append(["cameras", "%d cameras watching the rooms" % made_cam])
+	if bool(th.get("keycard", false)):
+		var kcs: Array = cells.filter(func(ck): return is_room[ck] and ck != entr_c and ck != down_c and ck != control)
+		if kcs.is_empty():
+			kcs = [control]
+		var kr: Rect2i = rooms[kcs[rng.randi() % kcs.size()]]
+		ExploreNode.add(m, "keycard", Vector2(kr.position.x + 1.5 + rng.randf() * maxf(1.0, kr.size.x - 3), kr.position.y + 1.6) * TILE, {"seed": rng.randi()})
+		targets.append(["keycard", "A key card for the lifts – somewhere in an office"])
 	# 0.7.53.5 (Luz): an alarm box on a guard room's wall – once it rings, the whole level comes for you
 	if bool(th.get("alarm", false)):
 		var ars: Array = cells.filter(func(c8): return is_room[c8] and role_of.get(c8, "") in ["", "approach"])
@@ -891,7 +1076,7 @@ static func _scatter_cover(m: GroundMap, th: Dictionary, rng: RandomNumberGenera
 		if placed >= n:
 			return
 		var kind: String = th["props"][rng.randi() % th["props"].size()]
-		var ow := 3 if kind in ["pillar_fallen", "pipe_bundle"] else 2
+		var ow := 3 if kind in ["pillar_fallen", "pipe_bundle", "partition"] else (1 if kind == "pillar_corp" else 2)
 		var ox := rng.randi_range(rr.position.x + 1, maxi(rr.position.x + 1, rr.end.x - 1 - ow))
 		var oy := rng.randi_range(rr.position.y + 2, maxi(rr.position.y + 2, rr.end.y - 2))
 		var ok := true
@@ -914,6 +1099,10 @@ static func _scatter_cover(m: GroundMap, th: Dictionary, rng: RandomNumberGenera
 		if kind == "rock":
 			o["col"] = (th["wall"] as Color).darkened(0.2)
 			o["seed"] = rng.randi()
+		elif kind == "sofa":
+			o["col"] = Color(0.25, 0.3, 0.42)                    # 0.7.53.19: a lobby's sofa
+		elif kind == "planter":
+			o["col"] = Color(0.78, 0.79, 0.82)
 		m.add_object(o)
 		placed += 1
 

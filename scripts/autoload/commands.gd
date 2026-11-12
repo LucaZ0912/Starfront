@@ -2688,13 +2688,57 @@ func _c_debug_ground_job(c: Dictionary) -> String:
 	rng.seed = int(c.get("seed", randi()))
 	var m := {"id": "dbg%d_%d" % [rng.randi(), Time.get_ticks_usec() % 100000], "giver": st["id"], "giver_system": f.system_id, "client": "Debug", "progress": 0, "item": "", "amount": 0,
 		"target_system": f.system_id, "target_station": "", "faction": String(st.get("faction", "")), "against": ""}
-	var gm := Missions.ground_offer(m, f.system_id, rng, String(c.get("goal", "relic")))
+	var gm := Missions.ground_offer(m, f.system_id, rng, String(c.get("goal", "relic")), String(c.get("variant", "")))
 	if gm.is_empty():
 		return "No place for that job near here."
 	var e := GameState.accept_mission(gm)
 	if e != "":
 		return e
+	var site: Dictionary = gm["site"]
+	if bool(c.get("go", false)) and not site.has("city"):
+		# 0.7.53.19 (debug): straight there – down onto the site (in a city the job's way in is taken from the city)
+		var body := Universe.find_body(int(site["system"]), String(site["body"]))
+		var mm = _main()
+		if mm != null and not body.is_empty():
+			f.docked_at = "land:" + String(body["id"])
+			mm.land_at(body, site)
 	return ""
+
+
+## {"type":"debug_mission", "kind": courier/bounty/mining/survey/escort/patrol/smuggler/hunt/drone_trial/passenger}
+## – 0.7.53.19 (Luz): a space contract of that kind from the docked (or nearest) station, accepted at once.
+func _c_debug_mission(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No game running."
+	var st := docked_station()
+	if st.is_empty():
+		var L := Universe.get_layout(f.system_id)
+		if L["stations"].is_empty():
+			return "No station here to give the contract."
+		st = L["stations"][0]
+	var kind := String(c.get("kind", "courier"))
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var faction_ok := String(st.get("faction", "")) in FactionData.POWERS
+	var m: Dictionary = {}
+	for i in 400:
+		var cand: Dictionary = {}
+		if kind == "passenger":
+			cand = Missions.generate_passenger(f.system_id, st, rng)
+		elif kind in ["patrol", "smuggler", "hunt", "drone_trial"] or (kind == "escort" and i % 2 == 0):
+			if faction_ok:
+				cand = Missions.generate_faction(f.system_id, st, rng)
+		else:
+			cand = Missions.generate(f.system_id, st, rng)
+		if String(cand.get("type", "")) == kind:
+			m = cand
+			break
+	if m.is_empty():
+		return "No %s contract can be made here%s." % [kind, " (a faction contract – needs a station of one of the powers)" if not faction_ok else ""]
+	if m.get("faction_job", false):
+		m["min_tier"] = "neutral"                     # (debug: no standing needed)
+	return GameState.accept_mission(m)
 
 
 ## {"type":"debug_poi_reveal"} – package 53a: the whole site on the minimap.

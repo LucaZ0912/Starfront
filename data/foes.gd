@@ -51,6 +51,17 @@ const FOES := {
 	"maint_drone": {"name": "Maintenance Drone", "faction": "machines", "suit": "suit_work", "weapon": "wp_laser_pistol", "quality": "D",
 		"health": 45.0, "firearms": 2, "athletics": 3, "role": "flanker", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 8, "helmet": true,
 		"drone": true, "desc": "A maintenance drone – it mends pipes and lines with its laser. Shoot at it and it turns that laser on you."},
+	# 0.7.53.19 (Luz, package 53d): a corporation's own security – navy plate with gold light, good gear, they keep
+	# to their rounds
+	"corp_guard": {"name": "Corporate Guard", "faction": "corp", "suit": "suit_mil_light", "weapon": "wp_rifle", "quality": "C",
+		"health": 75.0, "firearms": 3, "athletics": 2, "role": "rifleman", "flee": 0.1, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
+		"livery": "corp", "desc": "Company security – trained, well paid, a rail carbine and good plate."},
+	"corp_marksman": {"name": "Corporate Marksman", "faction": "corp", "suit": "suit_mil_light", "weapon": "wp_laser_rifle", "quality": "C",
+		"health": 70.0, "firearms": 4, "athletics": 1, "role": "holder", "flee": 0.1, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
+		"livery": "corp", "desc": "Holds a corner with a laser rifle – and does not miss often."},
+	"corp_chief": {"name": "Head of Security", "faction": "corp", "suit": "suit_mil_heavy", "weapon": "wp_laser_rifle", "quality": "B",
+		"health": 100.0, "firearms": 4, "athletics": 1, "role": "leader", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
+		"livery": "corp", "grenades": 2, "desc": "Heavy plate and a cool head – guards the vault in person."},
 	# 0.7.52.5: guards – the security of a place (only foes where weapons are allowed and you broke the law)
 	"guard_trooper": {"name": "Security Trooper", "faction": "guards", "suit": "suit_mil_light", "weapon": "wp_rifle", "quality": "D",
 		"health": 75.0, "firearms": 3, "athletics": 2, "role": "rifleman", "flee": 0.1, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
@@ -63,7 +74,8 @@ const FOES := {
 		"livery": "independent", "grenades": 2, "desc": "Leads the squad – and throws a grenade at anyone who digs in."},
 }
 const KINDS := ["bandit_scrapper", "bandit_rifleman", "bandit_gunner", "bandit_boss", "pirate_raider", "pirate_gunner",
-	"pirate_grenadier", "pirate_sniper", "pirate_captain", "guard_trooper", "guard_heavy", "guard_sergeant", "maint_drone"]
+	"pirate_grenadier", "pirate_sniper", "pirate_captain", "guard_trooper", "guard_heavy", "guard_sergeant", "maint_drone",
+	"corp_guard", "corp_marksman", "corp_chief"]
 const ROLES := ["rusher", "rifleman", "holder", "flanker", "thrower", "leader", "sniper"]
 ## How a role fights: `pref` – the share of its reach it keeps from you; `cover` – it seeks cover.
 const ROLE := {

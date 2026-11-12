@@ -19,7 +19,7 @@ const CrewData = preload("res://data/crew.gd")
 const S := GroundMap.SCALE
 const MAX_LOCKS := 3
 const CHEST := Vector2(0, -15)                    # where shots go and come from (art px above the feet)
-const LOW_KINDS := ["pillar_fallen", "slab", "pipe_bundle", "cable_drum", "weapon_crate", "locker_down", "seats", "crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence"]
+const LOW_KINDS := ["pillar_fallen", "slab", "pipe_bundle", "cable_drum", "weapon_crate", "locker_down", "seats", "crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence", "office_desk", "partition", "sofa", "planter"]
 const NO_KINDS := ["lamp_post", "signpost", "cable_pole", "banner", "holo_pillar", "plant", "shrub", "parasol", "flower_bed"]
 const LAYER_COL := {"shield": Color(0.45, 0.8, 1.0), "armor": Color(1.0, 0.8, 0.3), "health": Color(1.0, 0.35, 0.3)}
 
@@ -1171,7 +1171,8 @@ func _tac_step(delta: float) -> void:
 
 
 func _draw_tactics() -> void:
-	_draw_sneak()                                    # 0.7.52.21: where they would spot you (0.7.53.18: standing too)
+	if sneaking or tactics != 0:
+		_draw_sneak()                                # 0.7.52.21: where they would spot you (0.7.53.19 fix: standing – in the tactical view)
 	if not sneaking:
 		_draw_tactics_view()
 	# 0.7.52.4 (Luz): how strong each foe is – a coloured ring on the ground at its feet

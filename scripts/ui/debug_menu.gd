@@ -11,7 +11,7 @@ const TreeDataX = preload("res://data/skilltree.gd")
 const FactionData = preload("res://data/factions.gd")
 const MakerData = preload("res://data/manufacturers.gd")
 const COL := Color(0.55, 1.0, 0.35)   # terminal green
-const TABS := ["Pilot", "Ship", "Items", "World", "Audio", "Character", "Ground"]
+const TABS := ["Pilot", "Ship", "Items", "World", "Audio", "Character", "Ground", "Missions"]
 
 var panel: PanelContainer
 var tab := 0
@@ -89,6 +89,7 @@ func _set_tab(i: int) -> void:
 		4: _build_audio()
 		5: _build_character()
 		6: _build_ground()
+		7: _build_missions()
 	_fit_panel.call_deferred()
 
 
@@ -722,6 +723,65 @@ func _world_types(first: String) -> Array:
 
 
 ## Decks, landing, cities and settlements, the suit and the world outside, the clinic.
+## 0.7.53.19 (Luz): a button for every mission – the jobs on foot (each heist and spy variant) and the space contracts;
+## accepted at once from the docked (or nearest) station.
+const GROUND_JOBS := [["relic", "", "Relic race (ruin)"], ["salvage", "", "Salvage (crash site)"], ["bounty_foot", "", "Bounty on foot (pirate base)"],
+	["heist", "pirate", "Heist – pirate base"], ["heist", "sewer", "Heist – the dealer's safe (city)"], ["heist", "corp", "Heist – corporate vault (city)"],
+	["spy", "", "Espionage – a site"], ["spy", "corp", "Espionage – corporate tower (city)"], ["reactivate", "", "Reactivation (city tunnels)"],
+	["rescue", "", "Rescue (pirate base)"]]
+const SPACE_JOBS := [["courier", "Courier"], ["bounty", "Bounty"], ["mining", "Supply"], ["survey", "Survey"], ["escort", "Escort"],
+	["patrol", "Patrol"], ["smuggler", "Intercept"], ["hunt", "Hunt"], ["drone_trial", "Drone trial"], ["passenger", "Passengers"]]
+
+
+func _build_missions() -> void:
+	_section("Jobs on foot (packages 53c, 53d)")
+	content.add_child(UI.wrap_label("Accept: the job is yours – the site goes on the planet map (in a city: the way in from the city). Accept & go: straight down onto the site (not for city jobs).", 12, UI.TEXT_DIM, 560))
+	for gj in GROUND_JOBS:
+		var r := _row()
+		var goal: String = gj[0]
+		var variant: String = gj[1]
+		var lab := UI.label(String(gj[2]), 13, Color(0.9, 0.95, 1.0))
+		lab.custom_minimum_size = Vector2(300, 0)
+		r.add_child(lab)
+		r.add_child(UI.button("Accept", func(): _job(goal, variant, false)))
+		if not (variant in ["sewer", "corp"] or goal == "reactivate"):
+			r.add_child(UI.button("Accept & go", func(): _job(goal, variant, true)))
+	_section("Space contracts")
+	var row: HBoxContainer = null
+	for k in SPACE_JOBS.size():
+		if k % 5 == 0:
+			row = _row()
+		var kind: String = SPACE_JOBS[k][0]
+		row.add_child(UI.button(String(SPACE_JOBS[k][1]), func(): _space_job(kind)))
+	_section("All")
+	var ra := _row()
+	ra.add_child(UI.button("Complete all missions", func(): _cmd({"type": "debug_complete_missions"})))
+	ra.add_child(UI.button("New contracts on the board", func(): _cmd({"type": "debug_new_contracts"})))
+	_mission_note = UI.label("", 12, UI.TEXT_DIM)
+	content.add_child(_mission_note)
+
+
+var _mission_note: Label = null
+
+
+func _job(goal: String, variant: String, go: bool) -> void:
+	var e := Commands.execute({"type": "debug_ground_job", "goal": goal, "variant": variant, "go": go})
+	_note(e, "Accepted: %s" % (String(GameState.missions[-1]["title"]) if not GameState.missions.is_empty() else goal))
+	if go and e == "":
+		toggle()
+
+
+func _space_job(kind: String) -> void:
+	var e := Commands.execute({"type": "debug_mission", "kind": kind})
+	_note(e, "Accepted: %s" % (String(GameState.missions[-1]["title"]) if not GameState.missions.is_empty() else kind))
+
+
+func _note(e: String, ok: String) -> void:
+	if _mission_note != null and is_instance_valid(_mission_note):
+		_mission_note.text = e if e != "" else ok
+		_mission_note.add_theme_color_override("font_color", UI.BAD if e != "" else UI.GOOD)
+
+
 func _build_ground() -> void:
 	_ground_status = UI.label("", 12, UI.TEXT_DIM)
 	content.add_child(_ground_status)

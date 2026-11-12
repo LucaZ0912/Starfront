@@ -104,6 +104,32 @@ const THEMES := {
 		"names_a": ["Old", "Deep", "Lower", "North", "Black", "Rust", "Long", "Blind"],
 		"names_b": ["Shaft", "Seam", "Drift", "Pit", "Lode", "Vein", "Gallery", "Level"],
 		"layers": [{}, {}]},
+	# 0.7.53.19 (Luz, package 53d): a corporate tower in a city – up the lift to a roof plaza, in by the back door of the
+	# office tower: the lobby and the open-plan offices (pale stone, carpet, glass), the security level below (the
+	# security centre – cameras and light barriers off – the servers), the vault at the bottom (light barriers, the round
+	# vault door: hacked, then drilled). The lifts want a key card; the fire stairs ring the alarm.
+	"corp": {"name": "Corporate tower", "kind": "corp", "style": "corp", "room_floor": 28, "hall_floor": 28,
+		"floor": Color(0.8, 0.79, 0.76), "floor2": Color(0.74, 0.73, 0.7), "wall": Color(0.84, 0.85, 0.87),
+		"wall_top": Color(0.1, 0.1, 0.12), "trim": Color(0.55, 0.57, 0.6), "accent": Color(0.95, 0.75, 0.3),
+		"light": Color(0.95, 0.97, 1.0),
+		"door": "glass_door", "computer": "corp",
+		"foes": ["corp_guard", "corp_guard", "corp_marksman"], "leader": "corp_chief",
+		"props": ["office_desk", "planter", "pillar_corp", "sofa", "office_desk", "partition"],
+		"guard": "", "traps": "beams", "fog": false, "dark": Color(0.9, 0.92, 0.96), "outside": "plaza", "target": "corp_vault",
+		"alarm": true, "cams": [2, 3], "keycard": true, "carpet_share": 0.55,
+		"tablets": 0, "vent": false, "descent": "keylift", "stores": [1, 2],
+		"cols": [3, 4], "rows": [2, 3], "cell_w": 20, "cell_h": 15, "room_w": [9, 13], "room_h": [6, 9], "room_chance": 0.95,
+		"corr": 3, "loops": [1, 2], "cover": [4, 6],
+		"loot": ["cs_medkit", "cs_cell", "cs_breach", "cs_ammo"],
+		"credits": [250, 600], "research": [2, 6], "museum_chance": 0.0,
+		"names_a": ["Orison", "Halcyon", "Vantis", "Meridian", "Aurelian", "Kestrel", "Solace", "Argent"],
+		"names_b": ["Holdings", "Dynamics", "Capital", "Systems", "Group", "Trust"],
+		"layers": [{},
+			{"room_floor": 29, "hall_floor": 28, "security": true, "carpet_share": 0.0, "props": ["server_rack", "office_desk", "partition", "server_rack", "planter"],
+				"cams": [3, 4], "keycard": false},
+			{"room_floor": 21, "hall_floor": 21, "floor": Color(0.42, 0.43, 0.45), "floor2": Color(0.38, 0.39, 0.41),
+				"wall": Color(0.5, 0.51, 0.53), "trim": Color(0.35, 0.36, 0.38), "door": "vault_door", "keycard": false, "carpet_share": 0.0,
+				"props": ["server_rack", "barrier", "crates", "pillar_corp"], "cams": [2, 3], "beams": true, "dark": Color(0.8, 0.84, 0.9)}]},
 	# 0.7.53.3 (Luz, package 53b): the way down from a city – the sewers, and deep in them an arms dealer's hideout
 	"sewer": {"name": "Sewers and a dealer's hideout", "kind": "sewer", "style": "sewer", "room_floor": 21, "hall_floor": 19,
 		"floor": Color(0.3, 0.31, 0.3), "floor2": Color(0.26, 0.27, 0.26), "wall": Color(0.38, 0.39, 0.37),
@@ -192,6 +218,12 @@ const TARGETS := {
 	"cells": {"col": Color(0.8, 0.8, 0.8), "needs": "–", "gives": "prisoners – a rescue mission, later"},
 	"reactor": {"col": Color(0.5, 0.9, 1.0), "needs": "down to the lowest level · E-Breach on the reactor's panel", "gives": "the power back – level by level the lights come on"},
 	"lift": {"col": Color(0.7, 0.5, 1.0), "needs": "E-Breach on their computer, or the cutting torch on a crystal panel", "gives": "the way down to the deeper level"},
+	"corp_vault": {"col": Color(0.95, 0.75, 0.3), "needs": "down to the bottom (key card or the fire stairs) · E-Breach on the vault's lock, then hold out while the drill bites", "gives": "the vault – money, company data, rare parts"},
+	"cameras": {"col": Color(1.0, 0.35, 0.3), "needs": "keep out of their view – or switch them off in the security centre", "gives": "no alarm"},
+	"beams": {"col": Color(1.0, 0.2, 0.15), "needs": "do not cross them – the security centre switches them off", "gives": "no alarm"},
+	"keycard": {"col": Color(0.4, 0.85, 1.0), "needs": "find it – in an office", "gives": "the lifts down"},
+	"stairs": {"col": Color(1.0, 0.45, 0.35), "needs": "–", "gives": "a quick way down – but its door rings the alarm"},
+	"security": {"col": Color(0.4, 1.0, 0.6), "needs": "E-Breach on its computer", "gives": "cameras and light barriers off – and the company's data"},
 }
 
 
@@ -207,6 +239,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 		return "%s %s" % [a, b]
 	if String(th["kind"]) == "mine_old":
 		return "The %s %s" % [a, b]
+	if String(th["kind"]) == "corp":
+		return "%s %s Tower" % [a, b]
 	if String(th["kind"]) == "crash":
 		return "Wreck of the %s %s" % [a, b]
 	return "%s of %s-%s" % ["Ruin" if String(th["kind"]) == "ruins" else "Site", a, b.capitalize()]
