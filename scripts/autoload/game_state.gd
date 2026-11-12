@@ -2106,6 +2106,9 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	const GearData53 = preload("res://data/gear.gd")
 	if not bool(GearData53.env_of(String(body.get("type", ""))).get("breathable", true)) and rng.randf() < 0.3:
 		theme = "research"                                               # 0.7.53.20: on a harsh world, a research station
+	var sysd: Dictionary = Universe.systems[system_id] if system_id >= 0 and system_id < Universe.systems.size() else {}
+	if (bool(sysd.get("outer", false)) or bool(sysd.get("veil", false))) and rng.randf() < 0.2:
+		theme = "darkones"                                               # 0.7.53.23 (Luz): rare, far out – a ruin of the Dark Ones
 	var site := {"id": id, "name": PoiData.site_name(theme, rng), "kind": String(PoiData.THEMES[theme]["kind"]), "poi": true, "theme": theme,
 		"seed": rng.randi(), "danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}
 	if theme == "wreck":

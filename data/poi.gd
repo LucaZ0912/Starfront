@@ -130,6 +130,27 @@ const THEMES := {
 			{"room_floor": 21, "hall_floor": 21, "floor": Color(0.42, 0.43, 0.45), "floor2": Color(0.38, 0.39, 0.41),
 				"wall": Color(0.5, 0.51, 0.53), "trim": Color(0.35, 0.36, 0.38), "door": "vault_door", "keycard": false, "carpet_share": 0.0,
 				"props": ["server_rack", "barrier", "crates", "pillar_corp"], "cams": [2, 3], "beams": true, "dark": Color(0.8, 0.84, 0.9)}]},
+	# 0.7.53.23 (Luz, package 53d): a ruin of the Dark Ones – rare, far out (the Far Reaches, near the Veil). Grown
+	# rather than built: black glassy stone, veins of violet light, round chambers, ways that wind like veins; doors
+	# of membrane that open to symbols touched in the right order (a monolith's vision tells it); a maw in the floor
+	# down; at the bottom a vast pit – something sleeps there. Empty as a site; a job finds cultists in it.
+	"darkones": {"name": "Ruin of the Dark Ones", "kind": "darkruin", "style": "darkones", "room_floor": 33, "hall_floor": 33,
+		"floor": Color(0.25, 0.22, 0.28), "floor2": Color(0.21, 0.19, 0.24), "wall": Color(0.12, 0.1, 0.15),
+		"wall_top": Color(0.04, 0.03, 0.06), "trim": Color(0.3, 0.18, 0.4), "accent": Color(0.62, 0.35, 1.0),
+		"light": Color(0.62, 0.35, 1.0),
+		"door": "membrane", "computer": "monolith",
+		"foes": [], "leader": "", "cult_foes": ["cultist", "cultist", "cult_zealot"], "cult_leader": "cult_priest",
+		"props": ["obelisk", "bones", "altar", "obelisk_stand", "obelisk"],
+		"guard": "", "traps": "glyphs", "fog": true, "dark": Color(0.5, 0.46, 0.6), "outside": "ruin", "target": "dark_relic",
+		"round_rooms": true, "gate_lock": "symbols",
+		"tablets": 0, "vent": false, "descent": "maw", "stores": [1, 1],
+		"cols": [3, 4], "rows": [3, 3], "cell_w": 21, "cell_h": 16, "room_w": [9, 14], "room_h": [7, 10], "room_chance": 0.55,
+		"corr": 3, "loops": [1, 3], "cover": [2, 4],
+		"loot": ["cs_medkit", "cs_cell", "cs_breach"],
+		"credits": [60, 220], "research": [8, 16], "museum_chance": 0.25,
+		"names_a": ["The Hollow", "The Silent", "The Drowned", "The Coiled", "The Black", "The Sleeping"],
+		"names_b": ["Choir", "Spire", "Throat", "Vault", "Maw", "Cathedral"],
+		"layers": [{}, {}, {}]},
 	# 0.7.53.20 (Luz, package 53d): a research station on a harsh world – white modules on stilts joined by long narrow
 	# tubes; labs, quarters, stores; looters have taken it. Some modules are torn open: no air, no warmth (the world
 	# outside comes in – the suit draws on its energy) until their emergency bulkhead is sealed. The research computer
@@ -204,6 +225,10 @@ const MUSEUM_RELICS := {
 		["pr_core", "Precursor Heart-Core", "Warm to the touch after an age in the dark."],
 		["pr_map", "Precursor Star Plate", "Stars engraved in iron – some of them are not there any more."],
 		["pr_idol", "Precursor Figurine", "Small, many-limbed, worn smooth by hands."]],
+	"darkones": [["do_shard", "Black Shard", "Glass as dark as a closed eye. It is cold, and it is never quite still."],
+		["do_coil", "Coiled Relic", "A spiral of bone-like stone that hums when nobody listens."],
+		["do_mask", "Sleeper's Mask", "Too wide for any face we know. The eyes are shut."],
+		["do_tablet", "Symbol Tablet", "Four signs, in an order that changes when you look away."]],
 }
 
 
@@ -244,6 +269,10 @@ const TARGETS := {
 	"beams": {"col": Color(1.0, 0.2, 0.15), "needs": "do not cross them – the security centre switches them off", "gives": "no alarm"},
 	"keycard": {"col": Color(0.4, 0.85, 1.0), "needs": "find it – in an office", "gives": "the lifts down"},
 	"stairs": {"col": Color(1.0, 0.45, 0.35), "needs": "–", "gives": "a quick way down – but its door rings the alarm"},
+	"dark_relic": {"col": Color(0.62, 0.35, 1.0), "needs": "down to the bottom · the symbols of the membrane (a monolith's vision tells their order) · a scanner", "gives": "a relic of the Dark Ones – for the Museum"},
+	"monolith": {"col": Color(0.62, 0.35, 1.0), "needs": "a scanner", "gives": "a vision – the order of the symbols; research data"},
+	"glyphs": {"col": Color(0.8, 0.5, 1.0), "needs": "step around them", "gives": "a wave of force if you do not"},
+	"sleeper": {"col": Color(0.5, 0.3, 0.7), "needs": "–", "gives": "something sleeps at the bottom"},
 	"research_logs": {"col": Color(0.4, 0.85, 1.0), "needs": "down to the sample store · E-Breach on the research computer", "gives": "the station's research logs – a lot of research data"},
 	"leak": {"col": Color(0.6, 0.85, 1.0), "needs": "seal its emergency bulkhead (the panel by it)", "gives": "air and warmth back in that module"},
 	"shelter": {"col": Color(0.8, 0.8, 0.8), "needs": "–", "gives": "people sealed into a cold store – a rescue, maybe"},
@@ -265,6 +294,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 		return "The %s %s" % [a, b]
 	if String(th["kind"]) == "corp":
 		return "%s %s Tower" % [a, b]
+	if String(th["kind"]) == "darkruin":
+		return "%s %s" % [a, b]
 	if String(th["kind"]) == "research_st":
 		return "%s %s" % [a, b]
 	if String(th["kind"]) == "crash":

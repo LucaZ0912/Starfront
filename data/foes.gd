@@ -62,6 +62,16 @@ const FOES := {
 	"corp_chief": {"name": "Head of Security", "faction": "corp", "suit": "suit_mil_heavy", "weapon": "wp_laser_rifle", "quality": "B",
 		"health": 100.0, "firearms": 4, "athletics": 1, "role": "leader", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
 		"livery": "corp", "grenades": 2, "desc": "Heavy plate and a cool head – guards the vault in person."},
+	# 0.7.53.23 (Luz, package 53d): the cult in a ruin of the Dark Ones – robes over plate, violet light; they rush
+	"cultist": {"name": "Cultist", "faction": "cult", "suit": "suit_mil_light", "weapon": "wp_smg", "quality": "D",
+		"health": 65.0, "firearms": 2, "athletics": 4, "role": "rusher", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 8, "helmet": true,
+		"livery": "cult", "desc": "Robes over scavenged plate – it does not take cover, it comes for you."},
+	"cult_zealot": {"name": "Cult Zealot", "faction": "cult", "suit": "suit_mil_light", "weapon": "wp_pistol", "quality": "D",
+		"health": 60.0, "firearms": 2, "athletics": 3, "role": "thrower", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 8, "helmet": true,
+		"livery": "cult", "grenades": 4, "desc": "Chants as it throws – grenades, one after another."},
+	"cult_priest": {"name": "Cult Priest", "faction": "cult", "suit": "suit_mil_heavy", "weapon": "wp_laser_rifle", "quality": "C",
+		"health": 100.0, "firearms": 4, "athletics": 1, "role": "leader", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 8, "helmet": true,
+		"livery": "cult", "grenades": 2, "desc": "Leads the rites at the bottom of the ruin. It knows what sleeps there."},
 	# 0.7.52.5: guards – the security of a place (only foes where weapons are allowed and you broke the law)
 	"guard_trooper": {"name": "Security Trooper", "faction": "guards", "suit": "suit_mil_light", "weapon": "wp_rifle", "quality": "D",
 		"health": 75.0, "firearms": 3, "athletics": 2, "role": "rifleman", "flee": 0.1, "bounty": 0, "c1": 0, "c2": 5, "helmet": true,
@@ -75,7 +85,7 @@ const FOES := {
 }
 const KINDS := ["bandit_scrapper", "bandit_rifleman", "bandit_gunner", "bandit_boss", "pirate_raider", "pirate_gunner",
 	"pirate_grenadier", "pirate_sniper", "pirate_captain", "guard_trooper", "guard_heavy", "guard_sergeant", "maint_drone",
-	"corp_guard", "corp_marksman", "corp_chief"]
+	"corp_guard", "corp_marksman", "corp_chief", "cultist", "cult_zealot", "cult_priest"]
 const ROLES := ["rusher", "rifleman", "holder", "flanker", "thrower", "leader", "sniper"]
 ## How a role fights: `pref` – the share of its reach it keeps from you; `cover` – it seeks cover.
 const ROLE := {

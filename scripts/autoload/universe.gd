@@ -3066,6 +3066,7 @@ const SITE_KINDS := {
 	# 0.7.53.20: the sites of jobs and visits that are no settlements (fix: the planet map knows them)
 	"pirate": {"name": "Pirate base", "icon": "☠", "col": Color(1.0, 0.3, 0.25), "text": "A base cut into a cliff – the Red Talons hold it."},
 	"research_st": {"name": "Research station", "icon": "◎", "col": Color(0.5, 0.9, 1.0), "text": "White modules on stilts – it fell silent; looters are inside."},
+	"darkruin": {"name": "Strange ruin", "icon": "◈", "col": Color(0.62, 0.35, 1.0), "text": "Black stone that seems to have grown. Something hums beneath it."},
 }
 const CITY_ENDS := ["Port", "Haven", "Landing", "Reach", "Crossing", "Heights", "Springs", "Falls", "Gate", "Hold"]
 const CITY_STARTS := ["New", "Fort", "Saint", "Old", "Upper", "Lower", "East", "West", "Port", ""]

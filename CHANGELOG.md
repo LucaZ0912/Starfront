@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.23 – 2026-11-12
+
+**Package 53d – the ruin of the Dark Ones (Luz).** Rare and far out (the Far Reaches, near the Veil), a site on the
+planet map may now be a **strange ruin**: black glassy stone that seems grown rather than built, ribs, veins of violet
+light, carved signs. Its way in is a **maw** with lips of stone – it opens to **symbols touched in the right order** at
+the symbol stones beside it; a wrong one sends out a **wave of force** (and the order begins again). A **monolith**
+near it shows a vision when scanned – and in it the four signs, in their order.
+- Inside, three levels: **round chambers**, ways winding between them, fallen and standing obelisks, bones of
+  something vast, altars as cover; **glyphs** on the floor (step on one: a wave); monoliths with visions; a **maw in
+  the floor** down, stone steps winding back up.
+- At the bottom a **membrane** of living stone – its symbols again – and behind it a vast **pit with something
+  sleeping in it** (as a site only scenery; later a job will wake it – a boss). At the pit's edge on an altar a **relic
+  of the Dark Ones** for the Museum.
+- **Empty** as a site. The new job **"Strange happenings"** (far out) finds a **cult** in it – cultists who rush you,
+  zealots with grenades, their priest at the bottom: stop the priest.
+- Planet map: the new kind "Strange ruin"; debug tab Missions: the new job.
+
 ## alpha 0.7.53.22 – 2026-11-12
 
 **The corporate tower reworked for a real heist (Luz: it could not be done).** Each level holds only **one or two

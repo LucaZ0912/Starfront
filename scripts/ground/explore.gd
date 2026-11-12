@@ -29,6 +29,9 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"pirate_gate": "The hangar gate – sealed (its terminal beside it)",
 	"keycard": "A key card – take it (E)",
 	"seal_panel": "Emergency bulkhead – seal the torn module (E)",
+	"symbol_pillar": "Symbol stones – touch the symbols in their order (E)",
+	"monolith": "A monolith – scan it (scanner on your belt)",
+	"membrane": "A membrane of living stone – sealed (the symbol stones beside it)",
 	"vault_door": "The vault door – its lock wants a hack, then the drill (the terminal beside it)",
 	"service_door": "The back door – locked (its keypad or the terminal)"}
 const INSCRIPTIONS := [
@@ -162,6 +165,19 @@ func _draw_gate(d: Dictionary, t: float) -> void:
 	var tl: Array = d["tiles"]
 	var gw := float(tl[2]) * 16.0
 	var gh := float(tl[3]) * 16.0
+	if String(d.get("style", "")) == "darkones":
+		# 0.7.53.23 (Luz): the Dark Ones' way in – a maw, two lips of stone; inside a violet glow; open, the lips part
+		var k0 := float(d.get("open_k", 0.0))
+		draw_circle(Vector2(0, -gh * 0.55), gw * 0.65, Color(0.03, 0.02, 0.04))
+		draw_circle(Vector2(0, -gh * 0.55), gw * 0.4, Color(0.62, 0.35, 1.0, 0.2 + 0.25 * k0 + 0.1 * sin(t * 1.5)))
+		for lp in 2:
+			var sg := -1.0 if lp == 0 else 1.0
+			for st in 12:
+				var off := (gw * 0.55 + k0 * 10.0) * sg
+				draw_rect(Rect2(off - 3.0 + sg * st * 0.4 - 3.0 * (1 - lp), -gh + st * (gh / 12.0), 6, gh / 12.0 + 1), Color(0.16, 0.14, 0.2))
+		if k0 < 0.99:
+			draw_rect(Rect2(-gw * 0.5 * (1.0 - k0), -gh, gw * (1.0 - k0), gh), Color(0.1, 0.08, 0.13, 0.85))
+		return
 	var top := -gh
 	var k := float(d.get("open_k", 0.0))
 	var gl := 0.5 + 0.3 * sin(t * 2.0)
@@ -458,7 +474,7 @@ func _process(delta: float) -> void:
 		d["spin"] = float(d.get("spin", 0.0)) + delta * (0.3 + 3.0 * float(d["start"]))
 	if String(d["kind"]) == "camera" and String(d["state"]) == "on":
 		d["ang"] = float(d.get("base", PI * 0.5)) + sin(Time.get_ticks_msec() * 0.0006 + float(int(d.get("seed", 0)) % 7)) * 0.7     # 0.7.53.19: it sweeps
-	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door", "bulkhead", "airlock", "crank_door", "pirate_gate", "vault_door", "service_door"] and String(d["state"]) == "open":
+	if String(d["kind"]) in ["blastdoor", "rust_door", "ruin_gate", "grate_door", "steel_door", "bulkhead", "airlock", "crank_door", "pirate_gate", "vault_door", "service_door", "membrane"] and String(d["state"]) == "open":
 		d["open_k"] = minf(1.0, float(d.get("open_k", 0.0)) + delta / 1.4)       # 0.7.52.23: it slides apart
 	queue_redraw()
 
@@ -470,7 +486,7 @@ func _draw() -> void:
 	var t := Time.get_ticks_msec() * 0.001
 	var on_wall: bool = bool(d.get("wall", false)) or String(d["kind"]) in ["vent", "vent_end", "blastdoor", "rust_door", "ruin_gate", "crystals", "grate_door", "steel_door", "ladder", "valve",
 		"manhole", "hatch", "tripwire", "ancient_lift", "turret", "alarm", "breach", "airlock", "bulkhead", "conduit", "gas", "deck_hole", "cage", "loose_rock", "tnt", "mine_gate", "rubble", "crank_door", "fuse_box", "reactor", "stairs_down", "stairs_up", "service_lift", "steam", "pirate_gate", "searchlight",
-		"ramp_down", "cells", "power_socket", "camera", "vault_door", "service_door", "laser_gate", "leak", "seal_panel"]
+		"ramp_down", "cells", "power_socket", "camera", "vault_door", "service_door", "laser_gate", "leak", "seal_panel", "membrane", "maw", "spiral_up", "sleeper"]
 	if not on_wall:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1, 0.45) * s)
 		draw_circle(Vector2(0, 2), 9.0, Color(0, 0, 0, 0.3))
@@ -565,6 +581,93 @@ func _draw() -> void:
 				var pxp := -cw9 * 0.5 + (pr * 2 + 1) * cw9 / 6.0
 				draw_circle(Vector2(pxp, -16), 4.0, Color(0.6, 0.45, 0.35))
 				draw_rect(Rect2(pxp - 5, -12, 10, 9), Color(0.4, 0.38, 0.3))
+		"membrane":
+			# 0.7.53.23 (Luz): a membrane of living stone across the way – violet, veined, pulsing; open, it draws back
+			var tl9: Array = d["tiles"]
+			var gw9 := float(tl9[2]) * 16.0
+			var gh9 := float(tl9[3]) * 16.0
+			var k9 := float(d.get("open_k", 0.0))
+			draw_rect(Rect2(-gw9 * 0.5 - 3, -gh9 - 3, gw9 + 6, gh9 + 3), Color(0.16, 0.14, 0.2))
+			draw_rect(Rect2(-gw9 * 0.5, -gh9, gw9, gh9), Color(0.03, 0.02, 0.04))
+			if k9 < 1.0:
+				var mw := gw9 * (1.0 - k9)
+				draw_rect(Rect2(-mw * 0.5, -gh9, mw, gh9), Color(0.32, 0.15, 0.38))
+				for vn in 5:
+					var vx := -mw * 0.5 + (vn + 0.5) * mw / 5.0
+					for vy in int(gh9 / 3):
+						draw_rect(Rect2(vx + sin(vy * 0.6 + vn + t) * 2.0, -gh9 + vy * 3, 1, 3), Color(0.55, 0.28, 0.62))
+				draw_rect(Rect2(-mw * 0.5, -gh9, mw, gh9), Color(0.62, 0.35, 1.0, 0.1 + 0.08 * sin(t * 2.0)))
+		"symbol_pillar":
+			# 0.7.53.23 (Luz): the symbol stones – four signs in a pillar of black stone; touched ones glow
+			draw_rect(Rect2(-8, -40, 16, 40), Color(0.08, 0.07, 0.11))
+			draw_rect(Rect2(-8, -40, 16, 2), Color(0.25, 0.22, 0.3))
+			var seq: Array = d.get("seq", [])
+			for sy in 4:
+				var lit := seq.has(sy) or String(d.get("state", "")) == "open"
+				var gc := Color(0.62, 0.35, 1.0) if lit else Color(0.3, 0.2, 0.4)
+				var cy := -34.0 + sy * 8.0
+				match sy:
+					0:
+						draw_circle(Vector2(0, cy + 2), 2.2, gc)
+					1:
+						draw_colored_polygon(PackedVector2Array([Vector2(0, cy - 1), Vector2(3, cy + 4), Vector2(-3, cy + 4)]), gc)
+					2:
+						draw_colored_polygon(PackedVector2Array([Vector2(0, cy - 1), Vector2(3, cy + 2), Vector2(0, cy + 5), Vector2(-3, cy + 2)]), gc)
+					_:
+						draw_rect(Rect2(-2.5, cy, 5, 5), gc)
+		"monolith":
+			# 0.7.53.23 (Luz): a monolith – a slab of black glassy stone, its signs in a column, glowing as it is scanned
+			var msc := String(d.get("state", "")) == "scanned"
+			draw_rect(Rect2(-11, -64, 22, 64), Color(0.05, 0.04, 0.07))
+			draw_rect(Rect2(-11, -64, 3, 64), Color(0.15, 0.13, 0.2))
+			draw_rect(Rect2(-11, -64, 22, 2), Color(0.22, 0.2, 0.28))
+			for gy in range(-56, -6, 8):
+				var gl := Color(0.62, 0.35, 1.0, (0.9 if msc else 0.45) + 0.1 * sin(t * 2.0 + gy))
+				draw_rect(Rect2(-3, gy, 6, 1), gl)
+				draw_rect(Rect2(-1, gy - 2, 1, 5), gl)
+		"maw":
+			# 0.7.53.23: a maw in the floor – black, ringed with stone teeth, a faint violet glow far down
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5) * GroundMap.SCALE)
+			draw_circle(Vector2.ZERO, 22.0, Color(0.16, 0.14, 0.2))
+			draw_circle(Vector2.ZERO, 18.0, Color(0.02, 0.01, 0.03))
+			draw_circle(Vector2.ZERO, 8.0, Color(0.62, 0.35, 1.0, 0.15 + 0.08 * sin(t)))
+			for tk in 12:
+				var a := tk * TAU / 12.0
+				draw_rect(Rect2(Vector2(cos(a), sin(a)) * 19.0 - Vector2(1.5, 1.5), Vector2(3, 3)), Color(0.28, 0.25, 0.34))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+		"spiral_up":
+			# 0.7.53.23: stone steps winding up out of sight
+			for st2 in 6:
+				draw_rect(Rect2(-16 + st2 * 2, -6 - st2 * 6, 32 - st2 * 4, 5), Color(0.2, 0.18, 0.24).lightened(st2 * 0.04))
+				draw_rect(Rect2(-16 + st2 * 2, -6 - st2 * 6, 32 - st2 * 4, 1), Color(0.35, 0.32, 0.4))
+		"glyph_trap":
+			# 0.7.53.23: a glyph on the floor, glowing faintly – spent, it is dark
+			if String(d.get("state", "")) != "spent":
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5) * GroundMap.SCALE)
+				var gc2 := Color(0.62, 0.35, 1.0, 0.45 + 0.25 * sin(t * 2.5))
+				draw_arc(Vector2.ZERO, 12.0, 0.0, TAU, 24, gc2, 1.2)
+				draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 16, gc2, 1.0)
+				for sp in 3:
+					var a2 := sp * TAU / 3.0 + t * 0.2
+					draw_line(Vector2(cos(a2), sin(a2)) * 7.0, Vector2(cos(a2), sin(a2)) * 12.0, gc2, 1.0)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+		"sleeper":
+			# 0.7.53.23 (Luz): at the bottom, in the pit – something vast asleep: ridges of a back, folds, one closed eye
+			var slw := float(d.get("w", 10)) * 16.0
+			var slh := float(d.get("h", 4)) * 16.0
+			draw_rect(Rect2(-slw * 0.5, -slh, slw, slh), Color(0.01, 0.0, 0.02))
+			var breathe := sin(t * 0.5) * 1.5
+			for rd in 9:
+				var rx := -slw * 0.42 + rd * slw * 0.105
+				var hump := slh * (0.45 - absf(rd - 4) * 0.06)
+				draw_set_transform(Vector2(rx, -slh * 0.3 - breathe) * GroundMap.SCALE, 0.0, Vector2(1.0, 0.6) * GroundMap.SCALE)
+				draw_circle(Vector2.ZERO, hump + 1.0, Color(0.32, 0.2, 0.46))
+				draw_circle(Vector2(0, 1), hump, Color(0.08, 0.06, 0.11))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * GroundMap.SCALE)
+			for e9 in 24:
+				var ex := slw * 0.2 + e9 * 1.0
+				draw_rect(Rect2(ex, -slh * 0.32 + sin(e9 / 24.0 * PI) * -3.0 - breathe, 1, 1), Color(0.75, 0.45, 1.0, 0.9))
+			draw_rect(Rect2(-slw * 0.5, -slh, slw, 2), Color(0.25, 0.22, 0.3))
 		"leak":
 			# 0.7.53.20 (Luz): a module torn open – a ragged hole in the wall, the snow blowing in, frost on the floor;
 			# sealed: an emergency plate over it, hazard-striped
@@ -1176,6 +1279,14 @@ func _draw() -> void:
 		"cage":
 			_draw_cage(d, t)
 		"relic":
+			if String(d.get("style", "")) == "darkones":
+				# 0.7.53.23: a relic of the Dark Ones on its altar – a black shard, never quite still
+				draw_rect(Rect2(-10, -10, 20, 10), Color(0.09, 0.08, 0.12))
+				draw_rect(Rect2(-10, -10, 20, 2), Color(0.22, 0.2, 0.28))
+				var wob := sin(t * 1.3) * 1.5
+				draw_colored_polygon(PackedVector2Array([Vector2(0, -30 + wob), Vector2(5, -19), Vector2(0, -11), Vector2(-5, -19)]), Color(0.06, 0.05, 0.09))
+				draw_line(Vector2(0, -30 + wob), Vector2(0, -11), Color(0.62, 0.35, 1.0, 0.6 + 0.3 * sin(t * 2.0)), 1.0)
+				return
 			draw_rect(Rect2(-7, -8, 14, 8), Color(0.3, 0.27, 0.32))
 			draw_rect(Rect2(-7, -8, 14, 1), Color(0.45, 0.42, 0.48))
 			var glow := 0.6 + 0.4 * sin(t * 2.0)

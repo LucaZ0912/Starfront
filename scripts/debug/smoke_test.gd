@@ -165,6 +165,7 @@ func _process(delta: float) -> void:
 				_test_ground_jobs(view)          # package 53c – jobs on foot
 				_test_corp(view)                 # package 53d – the corporate tower
 				_test_research(view)             # package 53d – the research station
+				_test_darkones(view)             # package 53d – the ruin of the Dark Ones
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -7861,7 +7862,7 @@ func _test_suit_looks() -> void:
 		l3["helmet"] = true
 		l3["livery"] = liv
 		lv[liv] = CA.frame(l3, 0, 0).get_image().get_data()
-	var liv_ok: bool = lv.size() == 6 and lv["covenant"] != lv["directorate"] and lv["assembly"] != lv["independent"] and lv["pirate"] != lv["independent"] 		and lv["corp"] != lv["independent"]      # 0.7.52.5: + the pirates; 0.7.53.19: + corporate security
+	var liv_ok: bool = lv.size() == 7 and lv["covenant"] != lv["directorate"] and lv["assembly"] != lv["independent"] and lv["pirate"] != lv["independent"] 		and lv["corp"] != lv["independent"]      # 0.7.52.5: + the pirates; 0.7.53.19: + corporate security
 	# the helmet setting, saved and loaded
 	var g = GameState.gear
 	var was := String(g.helmet)
@@ -10198,12 +10199,16 @@ func _test_corp(view: SystemView) -> void:
 		jobs_ok = jobs_ok and e2 == "" and String(mm["site"].get("theme", "")) == "corp" and mm["site"].has("city") \
 			and GameState.corp_site_for(String(mm["site"]["city"])) == mm["site"] and (vk != "heist" or bool(mm["site"].get("hard", false)))
 		GameState.abandon_mission(mm)
-	# the space contracts by kind (the debug tab's buttons)
-	var m0 := GameState.missions.size()
-	var sp_ok: bool = Commands.execute({"type": "debug_mission", "kind": "courier"}) == "" and GameState.missions.size() == m0 + 1 \
-		and String(GameState.missions[-1]["type"]) == "courier"
-	while GameState.missions.size() > m0:
-		GameState.abandon_mission(GameState.missions[-1])          # (its sealed cargo out of the hold again)
+	# the space contracts by kind (the debug tab's buttons) – on a board of our own (other tests' contracts aside)
+	var keep_m: Array = GameState.missions.duplicate()
+	GameState.missions.clear()
+	var e_sp: String = Commands.execute({"type": "debug_mission", "kind": "bounty"})
+	var sp_ok: bool = e_sp == "" and GameState.missions.size() == 1 and String(GameState.missions[-1]["type"]) == "bounty"
+	if not sp_ok:
+		print("[SMOKE] debug_mission: ", e_sp)
+	while not GameState.missions.is_empty():
+		GameState.abandon_mission(GameState.missions[-1])
+	GameState.missions = keep_m
 	# back
 	Commands.suit_god = false
 	main.close_deck(false)
@@ -10332,6 +10337,114 @@ func _test_research(view: SystemView) -> void:
 	main._update_input()
 	check(out_ok and air_ok and leak_ok and logs_ok and jobs_ok,
 		"53d: the research station – modules on stilts, the airlock and a torn module; inside its own air, a torn module lets the cold in until its bulkhead is sealed; the cold store; the research logs below; data recovery on the map, a rescue of its researchers  [%s]" % " ".join(PackedStringArray([str(out_ok), str(air_ok), str(leak_ok), str(logs_ok), str(jobs_ok)])))
+
+
+## 0.7.53.23 (Luz, package 53d): the ruin of the Dark Ones – the maw opens to its symbols in order (a wrong one sends
+## a wave; the monolith's vision tells the order); inside empty, round chambers, monoliths, glyphs on the floor, a maw
+## down; at the bottom the membrane (its symbols), the pit with the sleeper, the relic for the Museum; the job finds
+## the cult in it.
+func _test_darkones(view: SystemView) -> void:
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	gear.suit = "suit_mil_light:C"
+	gear._fit_slots()
+	Commands.suit_god = true
+	var e: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 5423, "theme": "darkones"})
+	var g = main.ground
+	if g == null or e != "" or g.level != "landing":
+		check(false, "53d: the Dark Ones' ruin opens  [%s]" % e)
+		Commands.suit_god = false
+		return
+	g._close_lift_menu()
+	var find := func(kind: String) -> Dictionary:
+		for d in g.map.explore:
+			if String(d["kind"]) == kind:
+				return d
+		return {}
+	var pl: Dictionary = find.call("symbol_pillar")
+	var mono: Dictionary = find.call("monolith")
+	var gate: Dictionary = find.call("ruin_gate")
+	var out_ok: bool = not pl.is_empty() and not mono.is_empty() and String(gate.get("lock", "")) == "symbols" and g.map.style == "darkones"
+	# a wrong symbol: a wave, the order begins again
+	var order: Array = pl.get("order", [0, 1, 2, 3])
+	Commands.suit_god = false
+	gear.refill()
+	var hp0: float = gear.health + gear.armor + gear.shield
+	g._touch_symbol(pl, int(order[1]))
+	var wave_ok: bool = gear.health + gear.armor + gear.shield < hp0 and (pl.get("seq", []) as Array).is_empty()
+	Commands.suit_god = true
+	# the monolith's vision; then the right order opens the maw
+	var rd0: int = GameState.research_data
+	g.scan_done(mono)
+	var vis_ok: bool = String(mono["state"]) == "scanned" and GameState.research_data > rd0
+	for si in order:
+		g._touch_symbol(pl, int(si))
+	out_ok = out_ok and String(gate["state"]) == "open" and String(pl["state"]) == "open"
+	g._close_lift_menu()
+	g._arrive = 0.0
+	g.zone = _zone_of(g.map, "dungeon_in")
+	g.use()
+	if g.level != "dungeon":
+		check(false, "53d: into the Dark Ones' ruin  [%s %s %s %s]" % [str(out_ok), str(wave_ok), str(vis_ok), g.level])
+		Commands.suit_god = false
+		return
+	# inside: empty, monoliths, glyphs, the maw down
+	var glyph: Dictionary = find.call("glyph_trap")
+	var in_ok: bool = g.combat != null and g.combat.foes.is_empty() and not (find.call("monolith") as Dictionary).is_empty() and not (find.call("maw") as Dictionary).is_empty() \
+		and g.map.floor_kind.has(33)
+	if not glyph.is_empty():
+		g.pilot.pos = glyph["pos"]
+		g._cams_step(0.1)
+		in_ok = in_ok and String(glyph["state"]) == "spent"
+	# the bottom: the membrane and its symbols, the sleeper, the relic
+	g.depth = 2
+	g.go_level("dungeon", "dungeon_down")
+	var mem: Dictionary = find.call("membrane")
+	var pl2: Dictionary = find.call("symbol_pillar")
+	var relic: Dictionary = find.call("relic")
+	var bot_ok: bool = not mem.is_empty() and not pl2.is_empty() and not relic.is_empty() and not (find.call("sleeper") as Dictionary).is_empty()
+	if bot_ok:
+		for si2 in pl2["order"]:
+			g._touch_symbol(pl2, int(si2))
+		g._close_lift_menu()
+		bot_ok = String(mem["state"]) == "open"
+		var n_finds: int = GameState.museum_finds.size()
+		g.scan_done(relic)
+		bot_ok = bot_ok and GameState.poi_used.has(String(g._site["id"])) and GameState.museum_finds.size() > n_finds
+	# the job: the cult in a ruin
+	var e2: String = Commands.execute({"type": "debug_ground_job", "goal": "investigate", "variant": "debug", "seed": 5424})
+	var mm: Dictionary = GameState.missions[-1] if not GameState.missions.is_empty() else {}
+	var site: Dictionary = mm.get("site", {})
+	var job_ok: bool = e2 == "" and String(site.get("theme", "")) == "darkones" and bool(site.get("cult", false))
+	if job_ok:
+		var last_map: GroundMap = DungeonGen53.build_inside({}, site, 2)
+		var fl: Array = last_map.get_meta("foes", [])
+		job_ok = fl.size() >= 2 and fl.any(func(x): return String(x).begins_with("cult_priest"))
+	GameState.abandon_mission(mm)
+	# back
+	Commands.suit_god = false
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.suit = "suit_civil:F"
+	gear._fit_slots()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(out_ok and wave_ok and vis_ok and in_ok and bot_ok and job_ok and Universe.SITE_KINDS.has("darkruin"),
+		"53d: the Dark Ones' ruin – the maw opens to its symbols in order (a wrong one: a wave; the monolith's vision tells the order); inside empty, monoliths, glyphs, a maw down; at the bottom the membrane, the sleeper, the relic for the Museum; the job finds the cult  [%s]" % " ".join(PackedStringArray([str(out_ok), str(wave_ok), str(vis_ok), str(in_ok), str(bot_ok), str(job_ok)])))
 
 ## 0.7.53.7 (Luz, package 53b): a settlement's way down – the old mine: the headframe outside (its chained gate),
 ## the drifts with their rails, the cage without power (the generator), boxes of explosives that go up, the deepest

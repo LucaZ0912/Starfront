@@ -494,6 +494,18 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 			_rect(px + TILE - 1, py, 1, TILE, ct.darkened(0.12))
 			for k in 4:
 				_px(px + int(hash2(x, y, k + 140) * 15), py + int(hash2(y, x, k + 141) * 15), ct.lightened(0.08))
+		33:             # 0.7.53.23 (Luz): the Dark Ones' floor – dark stone, grooves running like channels, a glossy pool
+			var ds: Color = Color(pal["floor"]).lerp(Color(pal["floor2"]), hash2(x / 2, y / 2, 221))
+			_rect(px, py, TILE, TILE, ds)
+			for k in 3:
+				_px(px + int(hash2(x, y, 222 + k) * 15), py + int(hash2(y, x, 225 + k) * 15), ds.lightened(0.1))
+			if (x + y * 3) % 7 == 0:
+				_rect(px, py + 7, TILE, 1, Color(0.06, 0.05, 0.08))                  # a groove
+				if hash2(x, y, 228) < 0.3:
+					_px(px + 7, py + 7, Color(0.62, 0.35, 1.0))
+			if hash2(x, y, 229) < 0.04:
+				_rect(px + 3, py + 5, 9, 4, Color(0.05, 0.04, 0.07))                # a glossy pool
+				_rect(px + 4, py + 5, 4, 1, Color(0.45, 0.35, 0.6))
 		31:             # 0.7.53.20 (Luz): a research module's rubber mats – dark, ribbed, a seam now and then
 			var rb: Color = Color(pal["floor"]).lerp(Color(pal["floor2"]), hash2(x, y, 181))
 			_rect(px, py, TILE, TILE, rb)
@@ -854,6 +866,38 @@ func _corp_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px, py + TILE - 3, TILE, 1, Color(pal["trim"]).lightened(0.25))
 
 
+## 0.7.53.23 (Luz): the Dark Ones' wall – black glassy stone, grown rather than built: violet veins running down it,
+## carved signs glowing faintly, a glint here and there.
+func _dark_face(x: int, y: int, px: int, py: int) -> void:
+	var fy := y - _face_top(x, y)
+	var base := Color(0.1, 0.09, 0.13).lerp(Color(0.15, 0.13, 0.19), float(fy) * 0.25 + hash2(x / 2, y, 231) * 0.2)
+	_rect(px, py, TILE, TILE, base)
+	if fy == 0:
+		_rect(px, py, TILE, 2, Color(0.3, 0.27, 0.36))
+	if x % 3 == 0:
+		for vy in TILE:
+			_px(px + 6 + int(sin((y * TILE + vy) * 0.35 + x) * 2.0), py + vy, Color(0.3, 0.17, 0.42))   # a vein
+	if fy == 1 and hash2(x, y, 232) < 0.35:
+		var gk := int(hash2(x, y, 233) * 4)
+		var gc := Color(0.62, 0.35, 1.0, 0.85)
+		match gk:
+			0:
+				_rect(px + 4, py + 3, 1, 8, gc)
+				_rect(px + 5, py + 6, 5, 1, gc)
+			1:
+				_rect(px + 3, py + 5, 8, 1, gc)
+				_rect(px + 7, py + 3, 1, 8, gc)
+			2:
+				for k in 6:
+					_px(px + 3 + k, py + 3 + k, gc)
+			_:
+				_rect(px + 5, py + 4, 4, 4, gc)
+	if hash2(x, y, 234) < 0.08:
+		_rect(px + 10, py + 4, 2, 1, Color(0.6, 0.55, 0.8))                     # a glint
+	if t_at(x, y + 1) != T.FACE:
+		_rect(px, py + TILE - 3, TILE, 3, Color(0.06, 0.05, 0.08))
+
+
 ## 0.7.53.20 (Luz): a research module's wall – white panels, an orange stripe, a band of windows (inside: the snow
 ## beyond them); outside, its lowest row the stilts it stands on.
 func _module_face(x: int, y: int, px: int, py: int) -> void:
@@ -949,7 +993,7 @@ func _cap_tile(x: int, y: int, px: int, py: int) -> void:
 	if style == "research" and has_meta("roofs"):
 		_module_roof(x, y, px, py)                     # 0.7.53.20: outside – the modules' roofs
 		return
-	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate", "corp", "plaza", "research"]:
+	if style in ["precursor", "sewer", "hideout", "alley", "ship", "mine", "maint", "pirate", "corp", "plaza", "research", "darkones"]:
 		# the solid mass of the ruin: dark iron, barely a speck of rust – so the rooms read as rooms
 		var top0: Color = Color(pal["wall_top"]).lerp(Color(0.09, 0.07, 0.06), 0.5 + 0.3 * hash2(x, y, 51))
 		_rect(px, py, TILE, TILE, top0)
@@ -1052,6 +1096,9 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 		return
 	if style == "research":
 		_module_face(x, y, px, py)
+		return
+	if style == "darkones":
+		_dark_face(x, y, px, py)
 		return
 	if style == "plaza":
 		if x >= int(get_meta("tower_x", 9999)):

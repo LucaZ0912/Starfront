@@ -874,6 +874,78 @@ func _socket_step(delta: float) -> void:
 		Audio.play("ui_click", "socket arc", -14.0)
 
 
+## 0.7.53.23 (Luz, package 53d): the Dark Ones' symbols – touched in the right order a membrane opens; a wrong one
+## sends out a wave of force (and the order begins again). A monolith's vision tells the order.
+const SYMBOLS := [["●", "the Eye"], ["▲", "the Tooth"], ["◆", "the Coil"], ["■", "the Gate"]]
+const VISIONS := ["You stand under a sky without stars. Something breathes beneath the ground – slowly, for an age.",
+	"Figures in a ring, kneeling round a pit. None of them looks up. Something in the pit does.",
+	"A city of black glass, grown like coral. Its people sleep in the walls. They are dreaming of you.",
+	"The stars go out one by one, and the dark between them leans closer to listen.",
+	"A voice that is not a voice counts backwards. You do not know from what number."]
+const WAVE_DMG := 18.0
+
+
+func _symbol_menu(d: Dictionary) -> void:
+	_close_lift_menu()
+	Audio.play("ui_open", "symbol stones", -6.0)
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var vio := Color(0.62, 0.35, 1.0)
+	var p := UI.neon_panel(Color(vio, 0.9), Color(0.03, 0.02, 0.05, 0.96), 2)
+	p.custom_minimum_size = Vector2(420, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("THE SYMBOL STONES", 20, vio))
+	var seq: Array = d.get("seq", [])
+	v.add_child(UI.label("Touch the signs in their order.  %d of 4 glow." % seq.size(), 13, UI.TEXT_DIM))
+	var keys: Array = []
+	for i in 4:
+		var si := i
+		var lit := seq.has(i)
+		var b := UI.button("%d.  %s  %s%s" % [i + 1, SYMBOLS[i][0], SYMBOLS[i][1], "   (glowing)" if lit else ""], func(): _touch_symbol(d, si))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.disabled = lit
+		v.add_child(b)
+		keys.append(func(): _touch_symbol(d, si))
+	v.add_child(UI.button("Step back [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", {})
+	_lift_menu.set_meta("keys", keys)
+
+
+func _touch_symbol(d: Dictionary, i: int) -> void:
+	var seq: Array = d.get("seq", [])
+	var order: Array = d["order"]
+	if seq.size() < order.size() and int(order[seq.size()]) == i:
+		seq.append(i)
+		d["seq"] = seq
+		Audio.play("ui_click", "symbol touched", -4.0)
+		if seq.size() >= order.size():
+			d["state"] = "open"
+			_close_lift_menu()
+			open_door(map.explore[int(d["door"])])
+			_say_toast("The fourth sign burns – the stone draws back.", 3.0)
+			Audio.play("shield_down", "membrane opens", -2.0)
+			return
+		_symbol_menu(d)
+		return
+	d["seq"] = []
+	_close_lift_menu()
+	_dark_wave(pilot.pos)
+	_say_toast("Wrong – a wave of force rolls out of the stone! The signs go dark again.", 3.0)
+
+
+## 0.7.53.23: a wave of force – hurts whoever stands near (you, foes alike).
+func _dark_wave(at: Vector2) -> void:
+	if combat != null:
+		combat._explode(at + Vector2(0, -4), 40.0, WAVE_DMG, "explosive", null)
+	elif not Commands.suit_god:
+		GameState.gear.health = maxf(1.0, GameState.gear.health - WAVE_DMG)
+	Audio.play("shield_down", "dark wave", 0.0)
+
+
 ## 0.7.53.19 (Luz, package 53d): the corporate tower's cameras and light barriers. A camera sweeps; in its view (and
 ## not behind a wall) it notices you within a moment – then it rings the alarm. A light barrier rings it as soon as you
 ## cross it (crouched or not). The security centre switches both off for the whole tower; an EMP blinds the cameras.
@@ -935,6 +1007,11 @@ func _cams_step(delta: float) -> void:
 				_say_toast("A camera has you – the alarm!", 2.5)
 				Audio.play("warn", "camera alarm", -2.0)
 				raise_alarm()
+		elif kd == "glyph_trap":
+			if String(d.get("state", "")) != "spent" and (d["pos"] as Vector2).distance_to(pilot.pos) < 10.0:
+				d["state"] = "spent"                       # 0.7.53.23 (Luz): a glyph flares under your feet
+				_say_toast("A glyph flares under your feet – a wave of force!", 2.5)
+				_dark_wave(d["pos"])
 		elif kd == "laser_gate":
 			if beams_off and String(d["state"]) == "on":
 				d["state"] = "off"
@@ -2321,8 +2398,14 @@ func explore_use(z: Dictionary) -> bool:
 		"blastdoor":
 			_say_toast("Sealed – its release is in the maintenance box beside it." if String(d["state"]) != "open" else "Open.", 2.5)
 			return true
-		"tablet", "relic":
+		"tablet", "relic", "monolith":
 			_say_toast("Hold the scanner's belt key here to scan it." if belt_tool("tl_scanner") != "" else "You need a scanner on your belt to read it.", 3.0)
+			return true
+		"symbol_pillar":
+			if String(d["state"]) == "open":
+				_say_toast("The signs glow – it is open.", 1.5)
+			else:
+				_symbol_menu(d)                            # 0.7.53.23 (Luz): the symbol puzzle
 			return true
 	return false
 
@@ -2573,6 +2656,14 @@ func _poi_target_done(d: Dictionary) -> void:
 		var pay3 := 900 + int(d.get("seed", 0)) % 700              # 0.7.53.11: the Red Talons' hoard
 		GameState.credits += pay3
 		_say_toast("The captain's strongbox – %d cr and the Red Talons' bounty data. Get out before they regroup." % pay3, 5.5)
+		Audio.play("lock_acquired", "site target done", -2.0)
+		return
+	if String(_site.get("theme", "")) == "darkones":
+		var dl: Array = PoiData.MUSEUM_RELICS["darkones"]
+		var dr := String(dl[int(d.get("seed", 0)) % dl.size()][0])      # 0.7.53.23: a relic of the Dark Ones
+		GameState.museum_find(dr)
+		GameState.research_data += 12
+		_say_toast("You take it from the altar: %s – a find for the Museum. Below you, in the pit, something shifts in its sleep." % PoiData.museum_name(dr), 6.0)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "research":
@@ -2889,6 +2980,7 @@ func _mission_window() -> void:
 		"spy": ("The data is in the security centre on the second level. " if String(_site.get("theme", "")) == "corp" else "The data is in the deepest computer. ") + "Unseen, they pay a bonus.",
 		"reactivate": "Restart the reactor on the lowest level.",
 		"recover": "The research computer is in the sample store below. Torn modules have no air and no warmth – seal their bulkheads.",
+		"investigate": "The cult gathers at the bottom of the ruin. Find out what they are doing – and stop their priest. The symbols open the membranes; a monolith's vision tells their order.",
 		"rescue": ("The researchers are sealed into a cold store inside. Open it; they follow you – bring them out alive." if String(_site.get("theme", "")) == "research"
 			else "The prisoner is in the cells inside. Pick the lock; they follow you – bring them out alive.")}
 	v.add_child(UI.label(String(rules.get(String(_site.get("goal", "")), "")), 13, UI.TEXT_DIM))
@@ -2906,7 +2998,7 @@ func _mission_event(kind: String) -> void:
 	if not bool(_site.get("mission", false)) or bool(_site.get("goal_done", false)):
 		return
 	var goal := String(_site.get("goal", ""))
-	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued", "recover": "target"}
+	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued", "recover": "target", "investigate": "leader"}
 	if String(want.get(goal, "")) != kind:
 		return
 	_site["goal_done"] = true
@@ -2938,10 +3030,11 @@ func _mission_step(delta: float) -> void:
 	if map.explore.any(func(d): return String(d["kind"]) == "alarm" and String(d["state"]) == "ringing"):
 		_site["alarmed"] = true
 	var goal := String(_site.get("goal", ""))
-	if goal == "bounty_foot":
+	if goal in ["bounty_foot", "investigate"]:
 		var th: Dictionary = PoiData.layer(String(_site.get("theme", "")), depth)
+		var lk := String(th.get("cult_leader", "")) if bool(_site.get("cult", false)) else String(th.get("leader", ""))     # 0.7.53.23: the cult's priest
 		for f in combat.foes:
-			if f["dead"] and String(f["kind"]) == String(th.get("leader", "")):
+			if f["dead"] and String(f["kind"]) == lk:
 				_mission_event("leader")
 	if goal == "relic" and not bool(_site.get("goal_done", false)) and not bool(_site.get("raced", false)):
 		_site["race_t"] = float(_site.get("race_t", 0.0)) + delta
@@ -3062,7 +3155,7 @@ func _scan_start(n: int) -> bool:
 	var bd := 46.0
 	for i in map.explore.size():
 		var d: Dictionary = map.explore[i]
-		if String(d["kind"]) in ["tablet", "relic"]:
+		if String(d["kind"]) in ["tablet", "relic", "monolith"]:
 			var dd := (d["pos"] as Vector2).distance_to(pilot.pos)
 			if dd < bd:
 				bd = dd
@@ -3108,6 +3201,13 @@ func scan_done(d: Dictionary) -> void:
 	if String(d["kind"]) == "tablet":
 		txt = String(ExploreNode.INSCRIPTIONS[int(d.get("seed", 0)) % ExploreNode.INSCRIPTIONS.size()])
 		_say_toast("The tablet reads: %s  (+%d research data)" % [txt, n], 6.0)
+	elif String(d["kind"]) == "monolith":
+		# 0.7.53.23 (Luz): a vision – and in it the order of the symbols, where there are symbol stones on this map
+		txt = String(VISIONS[int(d.get("seed", 0)) % VISIONS.size()])
+		if map.has_meta("sym_order"):
+			var so: Array = map.get_meta("sym_order")
+			txt += "  In the vision four signs burn, one after another: %s." % "  ".join(PackedStringArray(so.map(func(i): return "%s %s" % [SYMBOLS[int(i)][0], SYMBOLS[int(i)][1]])))
+		_say_toast("%s  (+%d research data)" % [txt, n], 9.0)
 	else:
 		txt = "A relic of the ones before – its lattice hums at a frequency nobody makes any more."
 		_say_toast("%s  (+%d research data)" % [txt, n], 5.0)

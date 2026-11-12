@@ -145,6 +145,10 @@ static func _rise(kind: String) -> int:
 			return 12
 		"lab_bench":                        # 0.7.53.20 (Luz): a lab bench – low cover
 			return 12
+		"obelisk", "bones", "altar":        # 0.7.53.23 (Luz): a fallen obelisk, bones of something vast, an altar – low cover
+			return 12
+		"obelisk_stand":                    # 0.7.53.23: an obelisk still standing – high cover
+			return 52
 		"cryo_tank", "sample_cabinet":      # 0.7.53.20: a cryo tank, a sample cabinet – high cover
 			return 34
 		"dome":                             # 0.7.53.20: a station's dome (a greenhouse)
@@ -292,6 +296,44 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 4, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
 			if pw > 32:
 				_r(img, pw / 2 - 1, b3 - 5, 2, 5, Color(0.15, 0.15, 0.17))
+		"obelisk":
+			# 0.7.53.23: a fallen obelisk of black glassy stone, signs along it glowing faintly
+			var bo := fy + ph
+			_r(img, 0, bo - 14, pw, 12, Color(0.08, 0.07, 0.11))
+			_r(img, 0, bo - 14, pw, 3, Color(0.22, 0.2, 0.28))
+			for gk in range(4, pw - 6, 7):
+				_r(img, gk, bo - 9, 3, 1, Color(0.62, 0.35, 1.0))
+				_r(img, gk + 1, bo - 10, 1, 3, Color(0.62, 0.35, 1.0))
+			_r(img, pw - 7, bo - 18, 7, 16, Color(0.06, 0.05, 0.08))
+		"obelisk_stand":
+			# 0.7.53.23: a standing obelisk – tall, tapering, its signs in a column
+			var bt := fy + ph
+			for oy in 50:
+				var ow := int(lerpf(float(pw) - 2.0, float(pw) * 0.45, float(oy) / 50.0))
+				_r(img, (pw - ow) / 2, bt - 2 - oy, ow, 1, Color(0.08, 0.07, 0.11) if oy < 48 else Color(0.25, 0.22, 0.3))
+			_r(img, (pw - int(pw * 0.6)) / 2, bt - 50, 2, 48, Color(0.2, 0.18, 0.26))
+			for gy in range(bt - 44, bt - 6, 8):
+				_r(img, pw / 2 - 2, gy, 4, 1, Color(0.62, 0.35, 1.0))
+				_r(img, pw / 2 - 1, gy - 1, 1, 3, Color(0.62, 0.35, 1.0))
+		"bones":
+			# 0.7.53.23: the bones of something vast – ribs, a long bone, part of a skull too wide for any face
+			var bb := fy + ph
+			var bc := Color(0.72, 0.68, 0.6)
+			for rb in 4:
+				for t in 10:
+					_r(img, 3 + rb * 6 + int(sin(t * 0.3) * 2.0), bb - 4 - t, 2, 1, bc.darkened(0.1 * (t % 3)))
+			_r(img, 0, bb - 4, pw - 2, 3, bc.darkened(0.2))
+			_ellipse(img, pw - 7, bb - 10, 6, 5, bc)
+			_ellipse(img, pw - 9, bb - 11, 1.5, 1.5, Color(0.05, 0.04, 0.05))
+			_ellipse(img, pw - 5, bb - 11, 1.5, 1.5, Color(0.05, 0.04, 0.05))
+		"altar":
+			# 0.7.53.23: an altar block of black stone, a groove round its top, a sign glowing on its front
+			var ba := fy + ph
+			_r(img, 1, ba - 16, pw - 2, 14, Color(0.09, 0.08, 0.12))
+			_r(img, 1, ba - 16, pw - 2, 4, Color(0.22, 0.2, 0.28))
+			_r(img, 3, ba - 14, pw - 6, 1, Color(0.05, 0.04, 0.07))
+			_r(img, pw / 2 - 3, ba - 9, 6, 1, Color(0.62, 0.35, 1.0))
+			_r(img, pw / 2, ba - 11, 1, 5, Color(0.62, 0.35, 1.0))
 		"lab_bench":
 			# 0.7.53.20: a white lab bench, instruments on it, a monitor flickering, a cup left behind
 			var bl := fy + ph
