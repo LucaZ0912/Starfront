@@ -37,7 +37,8 @@ const TITLES := {"panel": "Maintenance box – cut it open (cutting torch)", "te
 	"membrane": "A membrane of living stone – sealed (the symbol stones beside it)",
 	"vault_door": "The vault door – its lock wants a hack, then the drill (the terminal beside it)",
 	"service_door": "The back door – locked (its keypad or the terminal)",
-	"vitrine": "A display case", "niche": "A case in the wall", "monolith_cast": "A plinth"}
+	"vitrine": "A display case", "niche": "A case in the wall", "monolith_cast": "A plinth",
+	"wild_find": "Something lies here – take it (E)"}
 const INSCRIPTIONS := [
 	"\"…the ninth gate was sealed when the sky went quiet. Those who stayed kept the lamps lit…\"",
 	"\"Here the builders counted the years by the turning of the red star – four hundred and twelve.\"",
@@ -982,6 +983,39 @@ func _draw() -> void:
 				draw_rect(Rect2(13, -36 + st * 5, 3, 3), Color(0.95, 0.75, 0.1))
 			draw_rect(Rect2(-12, 0, 24, 3), Color(0.35, 0.35, 0.37))
 			draw_circle(Vector2(0, -39), 1.6, Color(0.3, 1.0, 0.45) if String(d["state"]) == "open" else Color(1.0, 0.2, 0.15, 0.6 + 0.4 * sin(t * 3.0)))
+		"wild_find":
+			# 53f-2 (Luz): the find at the end of the wild – on the altar of the overgrown site, the crashed drone's cargo
+			# pod, the eggs in the nest under the ice
+			var taken := String(d["state"]) == "taken"
+			match String(d.get("style", "shrine")):
+				"shrine":
+					if not taken:
+						var gl := 0.6 + 0.4 * sin(t * 2.2)
+						draw_circle(Vector2(0, -24), 9.0, Color(0.7, 0.5, 1.0, 0.18 * gl))
+						draw_colored_polygon(PackedVector2Array([Vector2(0, -34), Vector2(5, -24), Vector2(0, -16), Vector2(-5, -24)]), Color(0.55, 0.4, 0.85))
+						draw_colored_polygon(PackedVector2Array([Vector2(0, -34), Vector2(5, -24), Vector2(0, -24)]), Color(0.8, 0.65, 1.0))
+						draw_rect(Rect2(-1, -27, 2, 2), Color(1.0, 0.95, 1.0, gl))
+				"pod":
+					draw_rect(Rect2(-12, -14, 24, 14), Color(0.2, 0.2, 0.22))
+					draw_rect(Rect2(-11, -13, 22, 12), Color(0.55, 0.57, 0.6))
+					draw_rect(Rect2(-11, -13, 22, 2), Color(0.72, 0.74, 0.78))
+					for st in 3:
+						draw_rect(Rect2(-9 + st * 7, -9, 5, 1), Color(0.95, 0.75, 0.1))
+					if taken:
+						draw_rect(Rect2(-9, -12, 18, 9), Color(0.05, 0.05, 0.06))
+					else:
+						draw_circle(Vector2(8, -11), 1.2, Color(1.0, 0.4, 0.2) if fposmod(t, 1.0) < 0.5 else Color(0.4, 0.15, 0.1))
+				"nest":
+					draw_circle(Vector2(0, -4), 14.0, Color(0.55, 0.6, 0.68))
+					draw_circle(Vector2(0, -5), 11.0, Color(0.3, 0.34, 0.42))
+					for tw in 10:
+						var a := tw * TAU / 10.0
+						draw_line(Vector2(cos(a) * 9, -4 + sin(a) * 5), Vector2(cos(a + 0.6) * 14, -4 + sin(a + 0.6) * 7), Color(0.6, 0.65, 0.72), 1.0)
+					if not taken:
+						for eg in 3:
+							var ep := Vector2(-6 + eg * 6, -7 + (eg % 2) * 2)
+							draw_circle(ep, 3.6, Color(0.88, 0.94, 1.0))
+							draw_circle(ep + Vector2(-1, -1), 1.2, Color(0.6, 0.95, 1.0, 0.6 + 0.4 * sin(t * 2.0 + eg)))
 		"blackbox":
 			# 0.7.53.6: the flight recorder – an orange armoured box bolted into a rack, its beacon blinking
 			if String(d["state"]) != "taken":

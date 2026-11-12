@@ -105,6 +105,8 @@ const DroneBuddy = preload("res://scripts/ground/drone_buddy.gd")
 const DungeonGen = preload("res://scripts/ground/dungeon_gen.gd")
 const PoiData = preload("res://data/poi.gd")
 const FogNode = preload("res://scripts/ground/fog.gd")
+const WildGen = preload("res://scripts/ground/wild_gen.gd")              # 53f-2 (Luz): the wild
+const WildWater = preload("res://shaders/wild_water.gdshader")
 var _poi_cache := {}                     # 0.7.53.2: the site's two maps while you are there (outside, inside – their state kept)
 var fog: Node2D = null
 var depth := 0                            # 0.7.53.3: the level of a site you are on (0 the top)
@@ -427,6 +429,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				(nf["w"] as Walker).visible = false
 			if map.has_meta("passive"):
 				nf["passive"] = true
+			if int(map.get_meta("alpha_i", -1)) == i:
+				nf["alpha"] = true                         # 53f-2: the beast a hunt is after – old, big, scarred
+				nf["name"] = "%s %s" % [["Old", "Scarred", "Great", "Grey"][int(_site.get("seed", 0)) % 4], String(nf["name"])]
+				(nf["w"] as Walker).marker = "!"
 	if combat_hud != null:
 		combat_hud.combat = combat
 	_close_game()
@@ -757,6 +763,33 @@ func raise_alarm() -> void:
 
 ## 0.7.53.6 (Luz): the wreck of a crash site – the ship's own picture at the ground's scale, shaded into hull plates
 ## and burnt (shaders/wreck.gdshader); its shadow; the stern torn off and lying apart.
+## 53f-2 (Luz): the water of the wild – a shader under the map: waves rolling in, the surf on the beach (its depth from
+## the shore, one texel a tile).
+func _add_wild_water() -> void:
+	var wd: Dictionary = map.get_meta("wild")
+	var look: Dictionary = map.get_meta("water", {})
+	var sdf: PackedFloat32Array = wd["sdf"]
+	var di := Image.create(map.w, map.h, false, Image.FORMAT_RF)
+	for y in map.h:
+		for x in map.w:
+			di.set_pixel(x, y, Color(clampf(sdf[y * map.w + x], -1.5, 24.0), 0, 0))
+	var mat := ShaderMaterial.new()
+	mat.shader = WildWater
+	mat.set_shader_parameter("depth_tex", ImageTexture.create_from_image(di))
+	mat.set_shader_parameter("art_size", map.size_px())
+	for key in ["shallow", "mid", "deep", "foam"]:
+		if look.has(key):
+			mat.set_shader_parameter(key, look[key])
+	mat.set_shader_parameter("waves", float(look.get("waves", 1.0)))
+	var wr := ColorRect.new()
+	wr.material = mat
+	wr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wr.size = map.size_px() * GroundMap.SCALE
+	if map.has_meta("tint"):
+		wr.modulate = map.get_meta("tint")
+	_world.add_child(wr)
+
+
 func _add_wreck(w: Dictionary) -> void:
 	var tex: Texture2D = PixelArt.ship_texture(String(w["hull"]), "independent")
 	var sz := Vector2(tex.get_width(), tex.get_height())
@@ -1545,10 +1578,14 @@ func _build() -> void:
 		rim.position = _hull.position
 		rim.size = Vector2(_hull.size.x * GroundMap.SCALE, GroundMap.SCALE)
 		_world.add_child(rim)
+	if map.has_meta("wild"):
+		_add_wild_water()                             # 53f-2 (Luz): the water lies under the map, the map leaves it clear
 	var spr := Sprite2D.new()
 	spr.texture = map.texture()
 	spr.centered = false
 	spr.scale = Vector2.ONE * GroundMap.SCALE
+	if map.has_meta("tint"):
+		spr.modulate = map.get_meta("tint")           # 53f-2: the world's light, as in the mockups
 	_world.add_child(spr)
 	var plights: PadLights = null
 	if not map.pad_rects.is_empty():
@@ -1636,6 +1673,8 @@ func _build() -> void:
 		var sdy: float = float(o.get("sort_dy", 0.0)) * GroundMap.TILE        # sorts lower, drawn in the same place
 		os.offset = Vector2(0, -img.get_height() - sdy)
 		os.position = Vector2(float(o["x"]) * GroundMap.TILE, float(int(o["y"]) + int(o.get("h", 1))) * GroundMap.TILE + sdy) * GroundMap.SCALE
+		if map.has_meta("tint"):
+			os.modulate = map.get_meta("tint")
 		_sorted.add_child(os)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", ""))) + 49
@@ -2549,6 +2588,13 @@ func explore_use(z: Dictionary) -> bool:
 		"airlock", "pirate_gate":
 			_say_toast("Sealed – its terminal beside it opens it (E-Breach)." if String(d["state"]) != "open" else "Open – go in.", 2.5)
 			return true
+		"wild_find":
+			if String(d["state"]) != "taken":
+				d["state"] = "taken"                        # 53f-2 (Luz): the find at the end of the wild
+				_poi_target_done(d)
+			else:
+				_say_toast("Nothing more here.", 1.5)
+			return true
 		"blackbox":
 			if String(d["state"]) != "taken":
 				d["state"] = "taken"                        # 0.7.53.6 (Luz): the crash site's target
@@ -2966,9 +3012,49 @@ func _loot(d: Dictionary) -> void:
 	_say_toast("Cache opened: %s." % ", ".join(PackedStringArray(got)), 3.5)
 
 
+## 53f-2 (Luz): the find at the end of the wild – a piece for the Museum from the Precursors' altar, the crashed
+## drone's cargo pod, the frost worm's eggs.
+func _wild_find(d: Dictionary) -> void:
+	var th: Dictionary = PoiData.THEMES.get(String(_site.get("theme", "wild_jungle")), PoiData.THEMES["wild_jungle"])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(d.get("seed", 0)) + 53
+	var got: Array = []
+	match String(d.get("style", "shrine")):
+		"shrine":
+			var mf := PoiData.museum_pick("precursor", rng)
+			if mf != "":
+				GameState.museum_find(mf)
+				got.append("a find for the Museum: %s" % PoiData.museum_name(mf))
+			var rs := rng.randi_range(int(th["research"][0]), int(th["research"][1]))
+			GameState.research_data += rs
+			got.append("%d research data" % rs)
+			_say_toast("Under the vines, on the altar: %s. Back to the ship when you like." % ", ".join(PackedStringArray(got)), 5.5)
+		"pod":
+			var cr := rng.randi_range(int(th["credits"][0]), int(th["credits"][1]))
+			GameState.credits += cr
+			got.append("%d cr" % cr)
+			for i in 2:
+				var id: String = th["loot"][rng.randi() % th["loot"].size()]
+				var n := rng.randi_range(1, 2)
+				if GameState.gear.add_item(id, n) < n:
+					got.append("%s ×%d" % [String(ChibiArt.GearData.base(id).get("name", id)), n])
+			_say_toast("The drone's cargo pod is whole – %s. Back to the ship when you like." % ", ".join(PackedStringArray(got)), 5.5)
+		"nest":
+			var ne := rng.randi_range(1, 2)
+			var left: int = GameState.gear.add_item("gd_egg", ne)
+			var rs2 := rng.randi_range(int(th["research"][0]), int(th["research"][1]))
+			GameState.research_data += rs2
+			_say_toast("Frost worm eggs, faintly glowing – %s, and %d research data. Back to the ship when you like." % [
+				("%d in your pockets" % (ne - left)) if left < ne else "no room in your pockets", rs2], 5.5)
+	Audio.play("lock_acquired", "site target done", -2.0)
+
+
 ## The site's target done: it is used up (it will be gone from the planet map); the way back is open.
 func _poi_target_done(d: Dictionary) -> void:
 	if not bool(_site.get("poi", false)):
+		return
+	if bool(_site.get("mission", false)) and String(_site.get("goal", "")) == "hunt":
+		_wild_find(d)                                     # 53f-2: a hunt's site – the find is yours, the hunt goes on
 		return
 	if bool(_site.get("mission", false)):
 		_mission_event("target")                         # package 53c: the job pays at its giver
@@ -2977,6 +3063,9 @@ func _poi_target_done(d: Dictionary) -> void:
 				_say_toast("Not what the job is about – but it is yours.", 2.5)
 			return
 	GameState.poi_use(String(_site.get("id", "")))
+	if String(_site.get("theme", "")).begins_with("wild_"):
+		_wild_find(d)                                     # 53f-2 (Luz)
+		return
 	if String(_site.get("theme", "")) == "pirate":
 		var pay3 := 900 + int(d.get("seed", 0)) % 700              # 0.7.53.11: the Red Talons' hoard
 		GameState.credits += pay3
@@ -3055,6 +3144,10 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 	if String(_poi_cache.get("site", "")) != sid:
 		_poi_cache = {"site": sid}
 	var theme := String(_site.get("theme", "precursor"))
+	if String(PoiData.THEMES.get(theme, {}).get("outside", "")) == "wild":
+		if not _poi_cache.has("outside"):
+			_poi_cache["outside"] = WildGen.build(_body, _site, lsz.x, lsz.y)      # 53f-2 (Luz): the wild – all outside
+		return _poi_cache["outside"]
 	var nlev := PoiData.levels(theme)
 	for dl in nlev:                                     # 0.7.53.3: every level, built once
 		if not _poi_cache.has("dungeon_%d" % dl):
@@ -3136,6 +3229,8 @@ func _poi_setup() -> void:
 
 ## What the minimap shows of a tile once seen.
 func _mm_col(x: int, y: int) -> Color:
+	if map.has_meta("wild"):
+		return WildGen.mm_col(map, x, y)                 # 53f-2
 	var t := map.t_at(x, y)
 	var fk := map.floor_kind[y * map.w + x]
 	if GroundMap.walkable_t(t) or t == GroundMap.T.BLOCK:
@@ -3268,7 +3363,7 @@ func _poi_window() -> void:
 		for z in map.zones:
 			if String(z.get("id", "")) == "ship":
 				_open_takeoff_menu(z)
-	var b1 := UI.button("1.  Go in", go)
+	var b1 := UI.button("1.  Set out" if bool(info.get("wild", false)) else "1.  Go in", go)
 	if level in ["alley", "minehead", "plaza"]:
 		back = func(): _close_lift_menu()
 	var b2 := UI.button("2.  Not now – back to the ship" if not level in ["alley", "minehead", "plaza"] else "2.  Not now", back)
@@ -3312,6 +3407,7 @@ func _mission_window() -> void:
 		"spy": ("The data is in the security centre on the second level. " if String(_site.get("theme", "")) == "corp" else "The data is in the deepest computer. ") + "Unseen, they pay a bonus.",
 		"reactivate": "Restart the reactor on the lowest level.",
 		"pest": "The rats come in swarms – keep moving, keep your back free. Their brood mother is on the lowest level.",
+		"hunt": ("The beast is marked (!) – it is old and strong. " if bool(_site.get("hunt_alpha", false)) else "") + "Hunters keep to their ground: step onto it and they come; leave it far enough behind and they let you go. Grazers run – sneak to get close. What you bring down: hides, meat, samples.",
 		"recover": "The research computer is in the sample store below. Torn modules have no air and no warmth – seal their bulkheads.",
 		"investigate": "The cult gathers at the bottom of the ruin. Find out what they are doing – and stop their priest. The symbols open the membranes; a monolith's vision tells their order.",
 		"rescue": ("The researchers are sealed into a cold store inside. Open it; they follow you – bring them out alive." if String(_site.get("theme", "")) == "research"
@@ -3331,7 +3427,7 @@ func _mission_event(kind: String) -> void:
 	if not bool(_site.get("mission", false)) or bool(_site.get("goal_done", false)):
 		return
 	var goal := String(_site.get("goal", ""))
-	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued", "recover": "target", "investigate": "leader", "pest": "leader"}
+	var want := {"relic": "target", "salvage": "target", "reactivate": "target", "heist": "target", "bounty_foot": "leader", "spy": "data", "rescue": "rescued", "recover": "target", "investigate": "leader", "pest": "leader", "hunt": "leader"}
 	if String(want.get(goal, "")) != kind:
 		return
 	_site["goal_done"] = true
@@ -3356,6 +3452,9 @@ func _mission_event(kind: String) -> void:
 
 ## Package 53c: a job's site while you are in it – seen or not, the alarm, the captain fallen, the second raider crew.
 func _mission_step(delta: float) -> void:
+	if bool(_site.get("mission", false)) and combat != null and level == "landing" and String(_site.get("goal", "")) == "hunt":
+		_hunt_step()                                     # 53f-2: a hunt in the wild
+		return
 	if not bool(_site.get("mission", false)) or combat == null or level != "dungeon":
 		return
 	if combat.alive().any(func(f): return f["aware"]):
@@ -3381,6 +3480,22 @@ func _mission_step(delta: float) -> void:
 					var nf: Dictionary = combat.spawn(["bandit_scrapper", "bandit_rifleman", "bandit_gunner"][i], sp, "", "yellow")
 					combat._wake(nf)
 			_say_toast("Another raider crew is here – they are after the relic too!", 3.5)
+
+
+## 53f-2 (Luz): a hunting job – the old beast brought down, or enough of its kind.
+func _hunt_step() -> void:
+	if bool(_site.get("goal_done", false)):
+		return
+	var kind := String(_site.get("hunt_kind", ""))
+	if bool(_site.get("hunt_alpha", false)):
+		for f in combat.foes:
+			if f["dead"] and bool(f.get("alpha", false)) and int(f.get("rise", 0)) <= 0:
+				_mission_event("leader")
+				return
+	else:
+		var n := combat.foes.filter(func(f): return f["dead"] and String(f["kind"]) == kind).size()
+		if n >= int(_site.get("hunt_n", 3)):
+			_mission_event("leader")
 
 
 ## 0.7.52.23: a blast door opens – its gap walkable, the leaves slide into the walls.

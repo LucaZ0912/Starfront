@@ -3,6 +3,34 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.35 – 2026-11-12
+
+**Package 53f-2 – the wild (Luz).** Jungle, ocean and ice worlds now have **wild country** to land in, hunt and explore,
+after Luz' approved mockups – painted at the ground's real scale, the whole site one great open map:
+- **Jungle path:** a rock wall with a **waterfall** in the north (no way up), **thorny thicket** round the other sides;
+  the creek from the falls' pool runs across the forest – cross at **fords of stepping stones**; winding paths, sunny
+  clearings, giant trees with crowns of many leaves (you walk behind them), ferns, flowers, fallen trunks as cover.
+  Beyond the creek an **overgrown site of the Precursors** – on its altar a find for the Museum.
+- **Coast and islands:** a chain of islands in the open sea – beaches, wet sand, tide pools, palms, driftwood,
+  **boardwalks** and sand bars between them; on the far island a **crashed landing drone in its crater**, still
+  smoking – its cargo pod may be whole.
+- **Ice field:** an ice cliff with a **cave** (a frost worm's nest, the eggs glowing), open black water with
+  **drifting floes**, **pressure ridges** of broken slabs, **crevasses** with bridges, cracks, glare ice, blocks of ice
+  as cover.
+- **Water that moves:** a shader under the map – waves rolling in, the **surf running up the beach** and back,
+  whitecaps far out; the creek and the polar water shimmer. Water and crevasses block the way, not the view.
+- **Animals** (Luz' ideas, own designs), all can be attacked: **peaceful** ones graze and wander and **run** – the
+  whole herd – when you come close (sneak to get near); **dangerous** ones guard their **ground**: step onto it and
+  they come, leave it far enough behind and they let you go; some **lie in wait** hidden (the lurker in the reeds, the
+  eel in the sand, the worm under the snow). Jungle: ridgeback grazers, glider lizards, quill hunters in threes, leaf
+  lurkers. Coast: shore crabs, armoured crabs, sand lurkers. Ice: snow tufts, frost bears, frost worms. The animals are
+  always seen from the side.
+- **Loot:** hides, pelts, crab shell, game meat, tissue samples go into your **pockets** (sold at a gear shop); the big
+  ones also put **Exotic Hides** and **Wild Game** into your ship's **hold** as cargo.
+- **Hunting jobs** on the board ("On foot"): bring down **the old beast** of a kind (marked, red) or **cull** a number
+  of them – on a jungle, ocean or ice world near.
+- Debug: F12 → Ground → Sites: The wild (jungle, coast, ice); F12 → Missions: Hunt.
+
 ## alpha 0.7.53.34 – 2026-11-12
 
 **Package 53f-1 – creatures and machines (Luz).** The places on foot get foes that are not people:

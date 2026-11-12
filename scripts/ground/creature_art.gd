@@ -14,9 +14,50 @@ const KINDS := {
 	"rat_brood": {"w": 30, "h": 17},
 	"crawler": {"w": 28, "h": 14},
 	"specimen": {"w": 26, "h": 20},
+	# 53f-2 (Luz): the wild animals - jungle, coast, ice
+	"grazer": {"w": 46, "h": 32},
+	"glider": {"w": 18, "h": 10},
+	"pack_hunter": {"w": 32, "h": 20},
+	"lurker": {"w": 36, "h": 17},
+	"shore_crab": {"w": 12, "h": 8},
+	"armor_crab": {"w": 34, "h": 21},
+	"sand_lurker": {"w": 24, "h": 20},
+	"furball": {"w": 18, "h": 13},
+	"frost_bear": {"w": 38, "h": 30},
+	"frost_worm": {"w": 28, "h": 24},
 }
 
 const VIO := Color(0.62, 0.35, 1.0)
+const ANIMALS := ["grazer", "glider", "pack_hunter", "lurker", "shore_crab", "armor_crab", "sand_lurker", "furball", "frost_bear", "frost_worm"]
+
+
+## 53f-2: volume for the animals – each column lit from above (lighter on top, darker at the belly), a fine mottled
+## texture, a glint in each eye-dark pixel's neighbour.
+static func _volume(img: Image) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	var src: Image = img.duplicate()
+	for x in w:
+		var top := -1
+		var bot := -1
+		for y in h:
+			if src.get_pixel(x, y).a > 0.3:
+				if top < 0:
+					top = y
+				bot = y
+		if top < 0:
+			continue
+		var span := maxf(1.0, float(bot - top))
+		for y2 in range(top, bot + 1):
+			var c := src.get_pixel(x, y2)
+			if c.a <= 0.3:
+				continue
+			var t := float(y2 - top) / span
+			var n := (fposmod(sin(float(x) * 12.9898 + float(y2) * 78.233) * 43758.5453, 1.0) - 0.5) * 0.09
+			var lum := 0.16 * pow(1.0 - t, 2.0) - 0.22 * pow(t, 2.0) + n
+			var c2 := c.lightened(lum) if lum > 0.0 else c.darkened(-lum)
+			c2.a = c.a
+			img.set_pixel(x, y2, c2)
 
 
 static var _cache := {}
@@ -58,6 +99,13 @@ static func image(kind: String, dir: int, f: int = 0, alert: bool = false, t: fl
 			_crawler(img, d, f)
 		"specimen":
 			_specimen(img, d, f)
+		"grazer", "glider", "pack_hunter", "lurker", "shore_crab", "armor_crab", "sand_lurker", "furball", "frost_bear", "frost_worm":
+			if d == 2:
+				_animal(img, kind, f, alert)
+			else:
+				_front_of(img, kind, d, f, alert)                        # towards you / away: the side picture turned
+	if kind in ANIMALS:
+		_volume(img)                                         # 53f-2 (Luz: more detail): lit from above, a texture
 	if dir == 3:
 		img.flip_x()
 	_rim(img)
@@ -448,3 +496,220 @@ static func _specimen(img: Image, dir: int, f: int) -> void:
 				_px(img, cx + int(e2[0]), H + int(e2[1]), Color(1.0, 0.85, 0.2))
 			_r(img, cx - 3, H - 12, 6, 1, Color(0.25, 0.27, 0.3))
 			_px(img, cx + 2, H - 11, Color(1.0, 0.3, 0.25))
+
+
+# ---------------------------------------------------------------- 53f-2: the wild animals (side on; turned for the front)
+
+static func _animal(img: Image, kind: String, f: int, alert: bool) -> void:
+	match kind:
+		"grazer":
+			_grazer(img, f, alert)
+		"glider":
+			_glider(img, f, alert)
+		"pack_hunter":
+			_pack_hunter(img, f, alert)
+		"lurker":
+			_lurker(img, f, alert)
+		"shore_crab":
+			_shore_crab(img, f, alert)
+		"armor_crab":
+			_armor_crab(img, f, alert)
+		"sand_lurker":
+			_sand_lurker(img, f, alert)
+		"furball":
+			_furball(img, f, alert)
+		"frost_bear":
+			_frost_bear(img, f, alert)
+		"frost_worm":
+			_frost_worm(img, f, alert)
+
+
+## Towards you or away: the side picture squeezed narrow and centred - a simple turn that reads at their size.
+static func _front_of(img: Image, kind: String, dir: int, f: int, alert: bool) -> void:
+	var side := Image.create(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8)
+	side.fill(Color(0, 0, 0, 0))
+	_animal(side, kind, f, alert)
+	var nw := maxi(6, int(img.get_width() * 0.5))
+	side.resize(nw, img.get_height(), Image.INTERPOLATE_NEAREST)
+	img.blend_rect(side, Rect2i(0, 0, nw, img.get_height()), Vector2i((img.get_width() - nw) / 2, 0))
+	if dir == 1:
+		for y in img.get_height():
+			for x in img.get_width():
+				var c := img.get_pixel(x, y)
+				if c.a > 0.0:
+					img.set_pixel(x, y, c.darkened(0.12))
+
+
+static func _legs(img: Image, xs: Array, top: int, h: int, c: Color, f: int) -> void:
+	for i in xs.size():
+		var lift := 1 if f != 0 and (i + f) % 2 == 0 else 0
+		_r(img, int(xs[i]), top, 2, h - lift, c if i % 2 == 0 else c.darkened(0.15))
+
+
+## The jungle's grazing herd: a big six-legged plant-eater, a long low neck, a ridge of plates down its back, pale
+## stripes on a green-brown hide, a small head with blunt tusks.
+static func _grazer(img: Image, f: int, alert: bool) -> void:
+	var hide := Color(0.36, 0.38, 0.22)
+	var dark := hide.darkened(0.35)
+	var H := img.get_height()
+	_legs(img, [14, 20, 26, 31, 37, 41], H - 11, 11, dark, f)
+	_ell(img, 28, H - 17, 15, 8, hide)
+	for st in 5:
+		_r(img, 18 + st * 5, H - 23, 2, 9, Color(0.62, 0.6, 0.42))
+	for pl in 6:
+		_r(img, 17 + pl * 4, H - 26 - (pl % 2), 3, 3, Color(0.5, 0.36, 0.22))
+	for nk in 9:
+		_r(img, 13 - nk, H - 20 + int(nk * 0.3), 3, 4, hide.lightened(0.04))
+	_ell(img, 4, H - 16, 4, 3, hide)
+	_px(img, 3, H - 17, Color(0.1, 0.1, 0.08))
+	_r(img, 1, H - 14, 2, 2, Color(0.9, 0.86, 0.72))
+	_r(img, 42, H - 18, 3, 2, dark)
+
+
+## A small glider lizard: orange membranes between its legs, a striped tail.
+static func _glider(img: Image, f: int, alert: bool) -> void:
+	var sk := Color(0.32, 0.5, 0.3)
+	var H := img.get_height()
+	var spread := 2 if f != 0 else 1
+	_r(img, 4, H - 6 - spread, 9, spread + 2, Color(0.95, 0.55, 0.2))
+	_ell(img, 8, H - 4, 5, 2, sk)
+	_ell(img, 2, H - 4, 2, 1.6, sk.lightened(0.1))
+	_px(img, 1, H - 5, Color(1.0, 0.9, 0.2))
+	for t in 5:
+		_px(img, 13 + t, H - 4 + (t % 2), sk if t % 2 == 0 else Color(0.85, 0.75, 0.3))
+	_px(img, 5, H - 1, sk.darkened(0.3))
+	_px(img, 11, H - 1, sk.darkened(0.3))
+
+
+## A pack hunter: lean, long-tailed, a crest of quills, dark green with a yellow eye - they hunt in threes.
+static func _pack_hunter(img: Image, f: int, alert: bool) -> void:
+	var sk := Color(0.18, 0.3, 0.2)
+	var H := img.get_height()
+	_legs(img, [10, 13, 20, 23], H - 8, 8, sk.darkened(0.3), f)
+	_ell(img, 16, H - 11, 9, 4, sk)
+	_r(img, 9, H - 9, 14, 1, Color(0.5, 0.55, 0.32))
+	for q in 6:
+		_r(img, 10 + q * 2, H - 16 - (q % 2) * 2, 1, 3 + (q % 2) * 2, Color(0.75, 0.3, 0.15) if alert else Color(0.5, 0.25, 0.15))
+	_ell(img, 5, H - 13, 4, 3, sk)
+	_r(img, 0, H - 13, 4, 2, sk.lightened(0.08))
+	_r(img, 0, H - 11, 4, 1, Color(0.9, 0.88, 0.8))
+	_px(img, 4, H - 14, Color(1.0, 0.85, 0.2))
+	for t in 8:
+		_px(img, 24 + t, H - 11 - int(t * 0.4), sk if t < 6 else sk.darkened(0.2))
+
+
+## The lurker: flat, wide-jawed, its hide mottled like the leaves - half seen until it moves (alert: plain to see).
+static func _lurker(img: Image, f: int, alert: bool) -> void:
+	var a := 1.0 if alert else 0.55
+	var H := img.get_height()
+	var g1 := Color(0.22, 0.4, 0.18, a)
+	var g2 := Color(0.35, 0.52, 0.22, a)
+	_legs(img, [8, 12, 24, 28], H - 5, 5, Color(0.15, 0.25, 0.12, a), f)
+	_ell(img, 18, H - 8, 14, 5, g1)
+	for m in 14:
+		_r(img, 6 + (m * 7) % 24, H - 12 + (m * 3) % 6, 3, 2, g2 if m % 2 == 0 else Color(0.18, 0.3, 0.14, a))
+	_ell(img, 4, H - 8, 5, 4, g1)
+	_r(img, 0, H - 7, 6, 2, Color(0.55, 0.15, 0.15, a))
+	_r(img, 0, H - 8, 6, 1, Color(0.95, 0.92, 0.8, a))
+	_px(img, 3, H - 11, Color(1.0, 0.75, 0.2, maxf(a, 0.8)))
+	for fr in 4:
+		_px(img, 6 + fr, H - 13 - fr % 2, Color(0.5, 0.65, 0.25, a))
+	_r(img, 31, H - 8, 5, 2, g1)
+
+
+## A beach crab - small, orange, it scuttles off sideways.
+static func _shore_crab(img: Image, f: int, alert: bool) -> void:
+	var sh := Color(0.9, 0.45, 0.2)
+	var H := img.get_height()
+	_ell(img, 6, H - 3, 4, 2.4, sh)
+	_px(img, 4, H - 6, Color(0.1, 0.1, 0.1))
+	_px(img, 7, H - 6, Color(0.1, 0.1, 0.1))
+	_r(img, 0, H - 5, 2, 2, sh.lightened(0.1))
+	_r(img, 10, H - 5, 2, 2, sh.lightened(0.1))
+	for l in 3:
+		_px(img, 2 + l * 3, H - 2 + (1 if f != 0 and l % 2 == 0 else 0), sh.darkened(0.3))
+
+
+## The armoured crab: as big as a hover-bike, a blue-grey shell with barnacles, one huge claw.
+static func _armor_crab(img: Image, f: int, alert: bool) -> void:
+	var sh := Color(0.32, 0.4, 0.5)
+	var H := img.get_height()
+	for l in 4:
+		var lx := 8 + l * 5
+		var lift := 1 if f != 0 and l % 2 == f % 2 else 0
+		_r(img, lx, H - 6 - lift, 2, 6 - lift, sh.darkened(0.35))
+		_px(img, lx - 1, H - 6 - lift, sh.darkened(0.35))
+	_ell(img, 18, H - 10, 13, 6, sh)
+	_ell(img, 16, H - 12, 9, 3, sh.lightened(0.12))
+	for b in 6:
+		_px(img, 9 + b * 3, H - 14 + (b % 2), Color(0.85, 0.85, 0.8))
+	_px(img, 7, H - 15, Color(0.1, 0.1, 0.12))
+	_r(img, 7, H - 14, 1, 2, sh.darkened(0.2))
+	_ell(img, 3, H - 11, 4, 4, sh.lightened(0.05))
+	_r(img, 0, H - 13, 3, 2, Color(0.75, 0.3, 0.25) if alert else sh.darkened(0.25))
+
+
+## The sand lurker: a ring-mouthed eel rearing from a mound of sand.
+static func _sand_lurker(img: Image, f: int, alert: bool) -> void:
+	var sand := Color(0.8, 0.72, 0.52)
+	var sk := Color(0.55, 0.45, 0.5)
+	var H := img.get_height()
+	_ell(img, 12, H - 3, 11, 3, sand)
+	var rise := 11 if alert else 4
+	for y in rise:
+		_r(img, 10 + int(sin(y * 0.4) * 1.5), H - 5 - y, 5, 1, sk if y % 3 else sk.darkened(0.2))
+	if alert:
+		_ell(img, 12, H - 6 - rise, 4, 3, sk.lightened(0.1))
+		_ell(img, 12, H - 6 - rise, 2.5, 2, Color(0.5, 0.1, 0.12))
+		for t in 6:
+			var a2 := t * TAU / 6.0
+			_px(img, int(12 + cos(a2) * 2.5), int(H - 6 - rise + sin(a2) * 2), Color(0.95, 0.92, 0.85))
+
+
+## A furball of the ice: round, shaggy, little horns, in small groups.
+static func _furball(img: Image, f: int, alert: bool) -> void:
+	var fur := Color(0.88, 0.84, 0.76)
+	var H := img.get_height()
+	_legs(img, [5, 11], H - 3, 3, Color(0.35, 0.3, 0.28), f)
+	_ell(img, 9, H - 7, 7, 5, fur)
+	for t in 8:
+		_px(img, 3 + t * 2, H - 12 + (t % 2), fur.darkened(0.12))
+	_ell(img, 3, H - 8, 3, 2.5, fur.lightened(0.04))
+	_px(img, 2, H - 9, Color(0.1, 0.1, 0.1))
+	_px(img, 1, H - 7, Color(0.35, 0.25, 0.25))
+	_px(img, 3, H - 11, Color(0.55, 0.48, 0.4))
+
+
+## The frost bear: big, white, pale blue plates down its back, a dark muzzle.
+static func _frost_bear(img: Image, f: int, alert: bool) -> void:
+	var fur := Color(0.9, 0.92, 0.95)
+	var H := img.get_height()
+	_legs(img, [9, 13, 25, 29], H - 9, 9, fur.darkened(0.2), f)
+	for l in [9, 13, 25, 29]:
+		_r(img, int(l) - 1, H - 2, 4, 2, fur.darkened(0.3))
+	_ell(img, 20, H - 15, 14, 8, fur)
+	for pl in 5:
+		_r(img, 13 + pl * 4, H - 23 + (pl % 2), 3, 3, Color(0.55, 0.7, 0.85))
+	_ell(img, 6, H - 16, 6, 5, fur)
+	_r(img, 0, H - 15, 4, 3, Color(0.25, 0.25, 0.3))
+	_px(img, 5, H - 18, Color(0.15, 0.2, 0.35) if not alert else Color(0.9, 0.2, 0.15))
+	_px(img, 8, H - 21, fur.darkened(0.15))
+
+
+## The frost worm: a pale blue segmented worm arching out of the snow, its mouth glowing.
+static func _frost_worm(img: Image, f: int, alert: bool) -> void:
+	var sk := Color(0.62, 0.78, 0.9)
+	var H := img.get_height()
+	_ell(img, 14, H - 2, 13, 2, Color(0.95, 0.97, 1.0))
+	if not alert:
+		for i in 14:                                                       # a low arch in the snow, waiting
+			var t := float(i) / 13.0
+			_ell(img, 4.0 + t * 18.0, float(H - 3) - sin(t * PI) * 6.0, 3, 3, sk if i % 2 == 0 else sk.darkened(0.12))
+		return
+	for i2 in 12:                                                          # rearing up out of the snow, swaying
+		var t2 := float(i2) / 11.0
+		var x2 := 12.0 + sin(t2 * PI * 1.4) * 4.0
+		var y2 := float(H - 3) - t2 * 17.0
+		_ell(img, x2, y2, 3.4 - t2 * 0.6, 3, sk if i2 % 2 == 0 else sk.darkened(0.12))
+	_ell(img, 12.0 + sin(PI * 1.4) * 4.0, H - 21, 3.5, 3, sk.lightened(0.1))
+	_ell(img, 12.0 + sin(PI * 1.4) * 4.0, H - 21, 2, 1.5, Color(0.5, 0.9, 1.0))

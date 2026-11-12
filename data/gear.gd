@@ -170,6 +170,17 @@ const BELT := {
 	"cs_ammo": {"name": "Ammunition Box", "kind": "use", "ammo": 60, "stack": 6, "price": 80, "desc": "Slugs and shells: +60 rounds."},
 }
 
+## 53f-2 (Luz): goods from the wild – they go in the pockets and are sold at a city's or a station's gear shop (half
+## the price, as all used things); the big animals' hides and meat go to the hold as cargo besides.
+const GOODS := {
+	"gd_hide": {"name": "Scaled Hide", "kind": "goods", "stack": 8, "price": 160, "desc": "A jungle beast's hide – scaled, tough, sought by tailors."},
+	"gd_pelt": {"name": "Frost Pelt", "kind": "goods", "stack": 8, "price": 220, "desc": "A thick white pelt from the ice – warm as nothing made."},
+	"gd_shell": {"name": "Crab Shell", "kind": "goods", "stack": 8, "price": 140, "desc": "A plate of armoured crab shell, barnacles and all."},
+	"gd_meat": {"name": "Game Meat", "kind": "goods", "stack": 12, "price": 50, "desc": "Fresh meat, sealed in a bag. The cooks in the cities pay for it."},
+	"gd_sample": {"name": "Tissue Sample", "kind": "goods", "stack": 12, "price": 120, "desc": "A sample in a vial – the labs pay for what lives out there."},
+	"gd_egg": {"name": "Frost Worm Egg", "kind": "goods", "stack": 4, "price": 1800, "desc": "A pale egg from a nest under the ice, faintly glowing. Rare."},
+}
+
 ## Features – the suit's modules (quality F–A). energy_rate: energy per minute while it works.
 const FEATURES := {
 	"ft_shield": {"name": "Shield Generator", "maker": "Concord Fleetworks", "shield": 40.0, "regen": 4.0, "energy_rate": 2.0, "price": 2800,
@@ -263,12 +274,14 @@ static func kind(id: String) -> String:
 		return "feature"
 	if DRONES.has(f):
 		return "drone"
+	if GOODS.has(f):
+		return "goods"                                    # 53f-2
 	return ""
 
 
 static func base(id: String) -> Dictionary:
 	var f := family(id)
-	for t in [SUITS, WEAPONS, BELT, FEATURES, DRONES]:
+	for t in [SUITS, WEAPONS, BELT, FEATURES, DRONES, GOODS]:
 		if (t as Dictionary).has(f):
 			return t[f]
 	return {}

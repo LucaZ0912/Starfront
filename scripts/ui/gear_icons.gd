@@ -117,6 +117,32 @@ static func _paint(img: Image, fam: String) -> void:
 			_r(img, 18, 13, 5, 2, Color(1.0, 0.3, 0.25))
 			_r(img, 6, 17, 3, 4, DARK)
 		# ---- belt: consumables
+		# 53f-2: goods from the wild
+		"gd_hide", "gd_pelt":
+			var hc := Color(0.45, 0.42, 0.22) if fam == "gd_hide" else Color(0.92, 0.94, 0.97)
+			_r(img, 5, 6, 14, 13, hc)
+			_r(img, 3, 5, 3, 3, hc)
+			_r(img, 18, 5, 3, 3, hc)
+			_r(img, 3, 17, 3, 3, hc)
+			_r(img, 18, 17, 3, 3, hc)
+			for st in 4:
+				_r(img, 7 + st * 3, 7, 1, 11, hc.darkened(0.25) if fam == "gd_hide" else Color(0.6, 0.72, 0.85))
+		"gd_shell":
+			_ball(img, 12, 13, 8, Color(0.36, 0.44, 0.55))
+			_ball(img, 11, 11, 5, Color(0.45, 0.55, 0.66))
+			for b2 in 4:
+				_p(img, 7 + b2 * 3, 8 + b2 % 2, Color(0.88, 0.88, 0.84))
+		"gd_meat":
+			_ball(img, 12, 12, 7, Color(0.75, 0.25, 0.25))
+			_ball(img, 11, 11, 4, Color(0.88, 0.45, 0.42))
+			_r(img, 16, 16, 6, 2, Color(0.92, 0.9, 0.85))
+		"gd_sample":
+			_r(img, 9, 3, 6, 3, Color(0.4, 0.42, 0.46))
+			_r(img, 9, 6, 6, 15, Color(0.75, 0.9, 0.95))
+			_r(img, 10, 11, 4, 9, Color(0.4, 0.85, 0.45))
+		"gd_egg":
+			_ball(img, 12, 13, 7, Color(0.85, 0.93, 1.0))
+			_ball(img, 11, 11, 3, Color(0.6, 0.95, 1.0))
 		"cs_medkit":
 			_r(img, 4, 7, 16, 12, Color(0.92, 0.92, 0.9))
 			_r(img, 9, 5, 6, 2, DARK)

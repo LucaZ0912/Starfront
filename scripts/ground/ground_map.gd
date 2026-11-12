@@ -184,6 +184,8 @@ func _render() -> void:
 					_glass_tile(x, y, px, py)
 	for rc in round_corners:
 		_round_corner(rc)
+	if style == "wild" and has_meta("wild"):
+		load("res://scripts/ground/wild_gen.gd").paint(self, _img)          # 53f-2 (Luz): jungle, coast, ice
 	for d in decals:
 		_decal(d)
 	for fd in face_deco:
@@ -307,6 +309,8 @@ func _shade_x(x: int, y: int, rw: int, rh: int, k: float) -> void:
 
 
 func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
+	if fk == 46:
+		return                                       # 53f-2: the wild – scripts/ground/wild_gen.gd paints it all
 	var f: Color = pal["floor"]
 	var f2: Color = pal["floor2"]
 	match fk:

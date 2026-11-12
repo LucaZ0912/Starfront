@@ -19,7 +19,7 @@ const CrewData = preload("res://data/crew.gd")
 const S := GroundMap.SCALE
 const MAX_LOCKS := 3
 const CHEST := Vector2(0, -15)                    # where shots go and come from (art px above the feet)
-const LOW_KINDS := ["pillar_fallen", "slab", "pipe_bundle", "cable_drum", "weapon_crate", "locker_down", "seats", "crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence", "office_desk", "partition", "sofa", "planter", "lab_bench", "obelisk", "bones", "altar"]
+const LOW_KINDS := ["wild_log", "driftwood", "ice_block", "wild_rock", "pillar_fallen", "slab", "pipe_bundle", "cable_drum", "weapon_crate", "locker_down", "seats", "crates", "barrel", "rock", "lava_rock", "barrier", "heap", "ore_cart", "crate_seat", "barrel_table", "engine_part", "trash", "dune", "fence", "office_desk", "partition", "sofa", "planter", "lab_bench", "obelisk", "bones", "altar"]
 const NO_KINDS := ["lamp_post", "signpost", "cable_pole", "banner", "holo_pillar", "plant", "shrub", "parasol", "flower_bed"]
 const LAYER_COL := {"shield": Color(0.45, 0.8, 1.0), "armor": Color(1.0, 0.8, 0.3), "health": Color(1.0, 0.35, 0.3)}
 
@@ -127,6 +127,14 @@ func _build_cover() -> void:
 			for xx in range(int(o["x"]), int(o["x"]) + int(o.get("w", 1))):
 				if xx >= 0 and yy >= 0 and xx < map.w and yy < map.h and not GroundMap.walkable_t(map.t_at(xx, yy)):
 					cover[yy * map.w + xx] = v
+	if map.has_meta("see"):
+		# 53f-2: the wild – water and crevasses block the way, not the view; a pressure ridge is low cover
+		var see: PackedByteArray = map.get_meta("see")
+		for i in mini(see.size(), cover.size()):
+			if see[i] == 1:
+				cover[i] = 0
+			elif see[i] == 2:
+				cover[i] = 1
 
 
 func cover_at(p: Vector2) -> int:
@@ -204,7 +212,8 @@ func spawn(kind: String, p: Vector2, quality: String = "", tier: String = "green
 		"firearms": int(d["firearms"]) + int(td["firearms"]), "athletics": int(d["athletics"]), "out_t": 0.0, "home": p, "dead": false, "burst": 0,
 		"faction": String(d.get("faction", "")), "grenades": int(d.get("grenades", 0)), "gr_cool": randf_range(1.0, 3.0),
 		"aim": float(d.get("aim", 1.0)), "rof": float(d.get("rof", 1.0)), "sight": float(d.get("sight", FoeData.SIGHT)), "lost_t": 0.0,
-		"chest": float(d.get("chest", CHEST.y)), "rise": int(d.get("rise", 0)), "regen": float(d.get("regen", 0.0)), "hp_wait": 0.0}
+		"chest": float(d.get("chest", CHEST.y)), "rise": int(d.get("rise", 0)), "regen": float(d.get("regen", 0.0)), "hp_wait": 0.0,
+		"wild": String(d.get("wild", "")), "terr": float(d.get("terr", 120.0)), "ambush": float(d.get("ambush", 0.0)), "rooted": bool(d.get("rooted", false))}
 	_next_id += 1
 	foes.append(f)
 	return f
@@ -411,7 +420,8 @@ func step(delta: float, move: Vector2) -> void:
 			_rise_step(f, delta)                          # 53f: a necrotic thing gets up once more
 			continue
 		_creature_step(f, delta)
-		_foe_step(f, delta)
+		if not _wild_step(f, delta):                     # 53f-2: the animals of the wild have their own ways
+			_foe_step(f, delta)
 		if f["aware"]:
 			aware_any = true
 	for al in allies:                                 # 0.7.52.20: your ground team
@@ -420,7 +430,8 @@ func step(delta: float, move: Vector2) -> void:
 	if aware_any and not fight:
 		fight = true
 		_end_t = 0.0
-		view._say_toast("Hostiles – they have seen you!", 2.5)
+		var beasts := alive().filter(func(o): return bool(o["aware"])).all(func(o): return String(o.get("wild", "")) != "")
+		view._say_toast("An animal attacks – it defends its ground!" if beasts else "Hostiles – they have seen you!", 2.5)
 		Audio.play("warn", "fight on foot")
 		GameState.codex.event("foot_fight")
 		if active == null:
@@ -552,6 +563,155 @@ func _creature_step(f: Dictionary, delta: float) -> void:
 	f["hp_wait"] = maxf(0.0, float(f.get("hp_wait", 0.0)) - delta)
 	if float(f.get("regen", 0.0)) > 0.0 and float(f["hp_wait"]) <= 0.0:
 		f["st"]["health"] = minf(float(f["mx"]["health"]), float(f["st"]["health"]) + float(f["regen"]) * delta)
+
+
+## 53f-2 (Luz): the animals of the wild. The peaceful ones ("flee") graze and wander about where they live and run
+## from you – the whole herd with them – when you come close (sneaking: much closer) or shoot; they never strike. The
+## dangerous ones ("territory") keep to their ground: they wander it, or lie hidden in it (`ambush`: the lurker in the
+## reeds, the eel in the sand, the worm under the snow) – step onto it and they come for you; leave it far enough
+## behind and they let you go. The rooted ones strike from where they are. Returns true when it moved the animal itself
+## (the fight's own AI does the rest).
+func _wild_step(f: Dictionary, delta: float) -> bool:
+	var mode := String(f.get("wild", ""))
+	if mode == "":
+		return false
+	var w: Walker = f["w"]
+	if frozen or view._collapsed:
+		w.moving = false
+		return true
+	var pp := pilot_pos()
+	var dist := w.pos.distance_to(pp)
+	var hidden := pilot_hidden()
+	if mode == "flee":
+		f["scare"] = maxf(0.0, float(f.get("scare", 0.0)) - delta)
+		var near := 45.0 if sneaking else (150.0 if Input.is_action_pressed("foot_run") else 95.0)
+		if (not hidden and dist < near) or bool(f.get("provoked", false)):
+			f["scare"] = maxf(float(f["scare"]), 6.0 if bool(f.get("provoked", false)) else 3.0)
+			f["provoked"] = false
+		if float(f["scare"]) > 0.0:
+			if f["state"] != "flee" or f["goal"] == Vector2.INF:
+				for o in alive():                             # the herd runs with it
+					if o != f and String(o["kind"]) == String(f["kind"]) and (o["w"] as Walker).pos.distance_to(w.pos) < 150.0:
+						o["scare"] = maxf(float(o.get("scare", 0.0)), 2.5)
+				_go(f, _wild_flee_spot(w.pos, pp), "flee")
+				if f["state"] == "flee" and not bool(f.get("fled_note", false)):
+					f["fled_note"] = true
+					floaters.append({"pos": w.pos + Vector2(0, -30), "text": "flees", "col": Color(0.85, 0.95, 0.7), "t": 0.0})
+			w.alert = true
+			if not _wild_walk(f, delta, 1.8):
+				f["goal"] = Vector2.INF
+		else:
+			if f["state"] == "flee":
+				f["state"] = "idle"
+				f["goal"] = Vector2.INF
+				f["fled_note"] = false
+			w.alert = false
+			_graze(f, delta, 0.45)
+		return true
+	# the dangerous ones: their ground round where they live
+	var home: Vector2 = f["home"]
+	var terr := float(f.get("terr", 120.0))
+	var amb := float(f.get("ambush", 0.0))
+	var rooted := bool(f.get("rooted", false))
+	if not f["aware"]:
+		w.alert = false
+		var wake := bool(f.get("provoked", false))
+		if not hidden and not wake:
+			if amb > 0.0:
+				wake = dist < amb * (0.55 if sneaking else 1.0)
+			else:
+				wake = pp.distance_to(home) < terr * (0.6 if sneaking else 1.0) and dist < terr * 1.4 and not sight(w.pos, pp)["blocked"]
+		if wake:
+			_wake(f)
+			floaters.append({"pos": w.pos + Vector2(0, -36), "text": "!", "col": Color(1.0, 0.4, 0.3), "t": 0.0})
+			if rooted:
+				Audio.play("shield_down", "something rears up", -8.0)
+			return rooted
+		if amb > 0.0 or rooted:
+			w.moving = false
+		else:
+			_graze(f, delta, 0.35)
+		return true
+	# aware: it lets you go once you have left its ground far enough behind (and you are not hurting it)
+	var gone := pp.distance_to(home) > terr * (2.0 if rooted else 2.6) or hidden
+	if gone and float(f.get("hp_wait", 0.0)) <= 0.0:
+		f["calm_t"] = float(f.get("calm_t", 0.0)) + delta
+		if float(f["calm_t"]) > (0.8 if rooted else 2.5):
+			f["aware"] = false
+			f["provoked"] = false
+			f["calm_t"] = 0.0
+			w.aim = Vector2.INF
+			_go(f, home, "idle")
+			floaters.append({"pos": w.pos + Vector2(0, -36), "text": "lets you go", "col": Color(0.8, 0.85, 0.7), "t": 0.0})
+			return true
+	else:
+		f["calm_t"] = 0.0
+	if not rooted:
+		return false
+	# rooted: it strikes from where it is
+	w.alert = true
+	w.moving = false
+	w.dir = _face(pp - w.pos)
+	f["cool"] = float(f["cool"]) - delta
+	var wst := GearData.stats(String(f["weapon"]))
+	if float(f["cool"]) <= 0.0 and dist <= float(wst["range"]) + 8.0 and not hidden:
+		fire(f, null, wst)
+		f["cool"] = 1.0 / (float(wst["rof"]) * float(f["rof"])) * randf_range(1.0, 1.4)
+	return true
+
+
+## Walking along its path; false when it has arrived (or cannot go on).
+func _wild_walk(f: Dictionary, delta: float, run: float) -> bool:
+	var w: Walker = f["w"]
+	if f["goal"] == Vector2.INF:
+		w.moving = false
+		return false
+	var path: PackedVector2Array = f["path"]
+	var pi := int(f["pi"])
+	if pi >= path.size():
+		f["goal"] = Vector2.INF
+		w.moving = false
+		return false
+	var to: Vector2 = path[pi] - w.pos
+	if to.length() < 3.0:
+		f["pi"] = pi + 1
+		return true
+	var moved := w.step(to.normalized(), delta, run)
+	if not moved:
+		w.moving = false
+	return true
+
+
+## Grazing, sniffing about: now and then a few steps somewhere near where it lives.
+func _graze(f: Dictionary, delta: float, run: float) -> void:
+	var w: Walker = f["w"]
+	if f["goal"] != Vector2.INF:
+		if not _wild_walk(f, delta, run):
+			f["graze_t"] = randf_range(2.0, 6.0)
+		return
+	w.moving = false
+	f["graze_t"] = float(f.get("graze_t", randf_range(1.0, 5.0))) - delta
+	if float(f["graze_t"]) > 0.0:
+		return
+	f["graze_t"] = randf_range(3.0, 8.0)
+	var home: Vector2 = f["home"]
+	for k in 6:
+		var q := home + Vector2(randf_range(-60, 60), randf_range(-40, 40))
+		if map.free_at(q, 5.0):
+			_go(f, q, "idle")
+			return
+
+
+## Where a frightened animal runs: away from you, a fair way, somewhere it can get to.
+func _wild_flee_spot(from: Vector2, pp: Vector2) -> Vector2:
+	var away := (from - pp).normalized()
+	if away == Vector2.ZERO:
+		away = Vector2.RIGHT.rotated(randf() * TAU)
+	for k in 14:
+		var q := from + away.rotated(randf_range(-0.9, 0.9)) * randf_range(120.0, 230.0)
+		if map.free_at(q, 5.0) and q.distance_to(pp) > from.distance_to(pp):
+			return q
+	return _flee_spot(from, pp)
 
 
 func _rise_step(f: Dictionary, delta: float) -> void:
@@ -818,6 +978,21 @@ func _loot(f: Dictionary) -> void:
 		var rs := randi_range(int(lt["research"][0]), int(lt["research"][1]))
 		GameState.research_data += rs
 		got.append("%d research data" % rs)
+	for it in lt.get("items", []):                        # 53f-2: hides, meat, samples into your pockets
+		var n := randi_range(int(it[1]), int(it[2]))
+		var left: int = GameState.gear.add_item(String(it[0]), n)
+		if left < n:
+			got.append("%s ×%d" % [String(GearData.base(String(it[0])).get("name", it[0])), n - left])
+		else:
+			got.append("no room for %s" % String(GearData.base(String(it[0])).get("name", it[0])))
+	var fit = GameState.active()
+	for cg in lt.get("cargo", []):                        # the big ones: hides and meat to the hold besides
+		if fit == null:
+			break
+		var t := float(randi_range(int(cg[1]), int(cg[2])))
+		var put := float(fit.add_cargo(String(cg[0]), t))
+		if put > 0.0:
+			got.append("%d t %s to the hold" % [int(round(put)), String(GameData.item_name(String(cg[0])))])
 	floaters.append({"pos": (f["w"] as Walker).pos + Vector2(0, -56), "text": "%s: %s" % [String(lt.get("what", "loot")), ", ".join(PackedStringArray(got))], "col": Color(0.95, 0.85, 0.4), "t": 0.0})
 
 
@@ -839,6 +1014,9 @@ func _number(at: Vector2, out: Dictionary) -> void:
 func _wake(f: Dictionary) -> void:
 	if f["dead"] or f["aware"]:
 		return
+	if String(f.get("wild", "")) == "flee":
+		f["scare"] = 6.0                                # 53f-2: a peaceful animal does not fight – it runs
+		return
 	if bool(f.get("passive", false)) and not bool(f.get("provoked", false)):
 		return                                          # 0.7.53.9: a maintenance drone leaves you be – until shot at
 	f["aware"] = true
@@ -848,6 +1026,8 @@ func _wake(f: Dictionary) -> void:
 	for o in alive():                                   # it calls out to the others near it
 		if bool(o.get("passive", false)) and not bool(o.get("provoked", false)):
 			continue
+		if String(o.get("wild", "")) == "flee" or (String(o.get("wild", "")) != "" and String(o["kind"]) != String(f["kind"])):
+			continue                                    # 53f-2: an animal answers only its own kind
 		var od := (o["w"] as Walker).pos.distance_to((f["w"] as Walker).pos)
 		if not o["aware"] and (od < 70.0 or (od < 220.0 and not sight((o["w"] as Walker).pos, (f["w"] as Walker).pos)["blocked"])):
 			o["aware"] = true                           # 0.7.53.18 (Luz): not through the walls into other rooms

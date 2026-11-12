@@ -3067,6 +3067,7 @@ const SITE_KINDS := {
 	"pirate": {"name": "Pirate base", "icon": "☠", "col": Color(1.0, 0.3, 0.25), "text": "A base cut into a cliff – the Red Talons hold it."},
 	"research_st": {"name": "Research station", "icon": "◎", "col": Color(0.5, 0.9, 1.0), "text": "White modules on stilts – it fell silent; looters are inside."},
 	"darkruin": {"name": "Strange ruin", "icon": "◈", "col": Color(0.62, 0.35, 1.0), "text": "Black stone that seems to have grown. Something hums beneath it."},
+	"wilds": {"name": "Wilderness", "icon": "♣", "col": Color(0.55, 0.95, 0.45), "text": "Wild country – animals to hunt, and something at the end of it."},     # 53f-2
 }
 const CITY_ENDS := ["Port", "Haven", "Landing", "Reach", "Crossing", "Heights", "Springs", "Falls", "Gate", "Hold"]
 const CITY_STARTS := ["New", "Fort", "Saint", "Old", "Upper", "Lower", "East", "West", "Port", ""]

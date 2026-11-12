@@ -8,6 +8,7 @@ const TILE := 16
 const OUT := Color(0.09, 0.07, 0.11)
 
 static var _cache := {}
+const WildArtO = preload("res://scripts/ground/wild_art.gd")
 
 
 ## {image, rise} for an object.
@@ -27,6 +28,8 @@ static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
 	var metal: Color = pal.get("wall", Color(0.6, 0.62, 0.68))
 	if String(o["kind"]) == "building":
 		BuildArt.paint(img, o, pw, ph + rise)
+	elif String(o["kind"]) in WildArtO.OBJ_KINDS:
+		WildArtO.paint_obj(o, img)                   # 53f-2 (Luz): trees, palms, trunks, ice, the crashed drone
 	else:
 		_paint(img, String(o["kind"]), pw, ph, rise, c, wood, metal, o)
 	if String(o["kind"]) != "holo_ship":

@@ -2112,6 +2112,9 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	var sysd: Dictionary = Universe.systems[system_id] if system_id >= 0 and system_id < Universe.systems.size() else {}
 	if (bool(sysd.get("outer", false)) or bool(sysd.get("veil", false))) and rng.randf() < 0.2:
 		theme = "darkones"                                               # 0.7.53.23 (Luz): rare, far out – a ruin of the Dark Ones
+	var wt := PoiData.wild_theme(String(body.get("type", "")))
+	if wt != "" and String(body.get("type", "")) != "terran" and rng.randf() < 0.55:
+		theme = wt                                                       # 53f-2 (Luz): jungle, ocean and ice worlds – the wild
 	var site := {"id": id, "name": PoiData.site_name(theme, rng), "kind": String(PoiData.THEMES[theme]["kind"]), "poi": true, "theme": theme,
 		"seed": rng.randi(), "danger": danger, "lon": rng.randf_range(-1.0, 1.0), "lat": rng.randf_range(-0.75, 0.75)}
 	if theme == "wreck":

@@ -168,6 +168,7 @@ func _process(delta: float) -> void:
 				_test_darkones(view)             # package 53d – the ruin of the Dark Ones
 				_test_museum(view)               # package 53e – the Museum in Curie
 				_test_creatures(view)            # package 53f – creatures and machines
+				_test_wild(view)                 # package 53f-2 – the wild
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -11242,6 +11243,133 @@ func _test_creatures(view: SystemView) -> void:
 	main._update_input()
 	check(art_ok and spawn_ok and melee_ok and alert_ok and rise_ok and place_ok and pest_ok,
 		"53f: creatures and machines – their pictures; a strike close up; the Precursor robot red once it sees you; the necrotic thing rises once, heals, leaves a sample; rats, keepers, crawlers, specimens and security robots in their places; the rat plague job with its brood mother  [%s]" % " ".join(PackedStringArray([str(art_ok), str(spawn_ok), str(melee_ok), str(alert_ok), str(rise_ok), str(place_ok), str(pest_ok)])))
+
+
+## 53f-2 (Luz): the wild – the three grounds (jungle, coast, ice): the way from the ship to the find; water and crevasses
+## block the way but not the view; the painter clears the water for the shader. On the ground: peaceful animals run
+## from you and never fight, hunters guard their ground and let you go when you leave it; what they leave goes to the
+## pockets and the hold; the find at the end; a hunting job; the goods in the gear shop.
+const WildGen53 = preload("res://scripts/ground/wild_gen.gd")
+
+func _test_wild(view: SystemView) -> void:
+	var GD = GearData_53e
+	var maps_ok := true
+	var notes: Array = []
+	for th in ["wild_jungle", "wild_coast", "wild_ice"]:
+		for sd in [101, 2024, 77777]:
+			var m: GroundMap = WildGen53.build({"type": "jungle", "id": "t"}, {"theme": th, "seed": sd, "danger": "yellow", "name": "T"}, 60.0, 30.0)
+			var finds: Array = m.explore.filter(func(d): return String(d["kind"]) == "wild_find")
+			var ok: bool = m.style == "wild" and m.has_meta("wild") and bool(m.get_meta("poi").get("wild", false)) and finds.size() == 1 \
+				and m.ship_at != Vector2.INF and m.free_at(m.spawn, 4.0) and (m.get_meta("foes", []) as Array).size() >= 8 \
+				and m.foe_spawns.size() == (m.get_meta("foes", []) as Array).size()
+			if ok:
+				ok = not m.path(m.spawn, (finds[0]["pos"] as Vector2) + Vector2(0, -2)).is_empty()     # the find can be reached
+			var see: PackedByteArray = m.get_meta("see")
+			ok = ok and (th == "wild_jungle" or see.has(1))
+			if not ok:
+				notes.append("%s/%d" % [th, sd])
+			maps_ok = maps_ok and ok
+	# the painter: water left clear for the shader, land painted
+	var mj: GroundMap = WildGen53.build({"type": "jungle", "id": "t"}, {"theme": "wild_coast", "seed": 5, "danger": "yellow"}, 60.0, 30.0)
+	var im: Image = mj.texture().get_image()
+	var paint_ok: bool = im.get_pixel(4, 4).a < 0.1 and im.get_pixelv(Vector2i(mj.spawn) + Vector2i(30, 30)).a > 0.9
+	var mt: Dictionary = WildGen53.WATER_LOOK
+	paint_ok = paint_ok and mt.has("coast") and ResourceLoader.exists("res://shaders/wild_water.gdshader")
+	# goods
+	var goods_ok: bool = GD.kind("gd_hide") == "goods" and GD.price("gd_pelt") > 0 and GD.valid("gd_egg") and load("res://scripts/ui/gear_icons.gd").icon("gd_meat") != null \
+		and GameData.commodities.has("exotic_hides") and GameData.commodities.has("game_meat")
+	# down onto a coast: the animals there
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var gear = GameState.gear
+	var e1: String = Commands.execute({"type": "debug_poi", "danger": "yellow", "seed": 31337, "theme": "wild_coast"})
+	var g = main.ground
+	var cb: GroundCombat = g.combat if g != null else null
+	if cb == null or g.map == null or not g.map.has_meta("wild"):
+		check(false, "53f-2: down to the wild  [%s]" % e1)
+		return
+	g._close_lift_menu()
+	Commands.suit_god = true
+	gear.refill()
+	var flee: Array = cb.foes.filter(func(o): return String(o.get("wild", "")) == "flee")
+	var terr: Array = cb.foes.filter(func(o): return String(o.get("wild", "")) == "territory" and not bool(o.get("rooted", false)))
+	var root: Array = cb.foes.filter(func(o): return bool(o.get("rooted", false)))
+	var ai_ok: bool = not flee.is_empty() and not terr.is_empty() and not root.is_empty()
+	if ai_ok:
+		# a peaceful one: you come close – it runs, and it never fights
+		var fa: Dictionary = flee[0]
+		g.pilot.pos = (fa["w"] as Walker).pos + Vector2(30, 0)
+		cb._wild_step(fa, 0.1)
+		ai_ok = String(fa["state"]) == "flee" and not bool(fa["aware"])
+		cb._hurt_foe(fa, 1.0, "kinetic")
+		ai_ok = ai_ok and not bool(fa["aware"]) and float(fa.get("scare", 0.0)) > 0.0
+		# a hunter: onto its ground – it comes; far away – it lets you go
+		var ta: Dictionary = terr[0]
+		g.pilot.pos = ta["home"] + Vector2(20, 0)
+		cb._wild_step(ta, 0.1)
+		var woke: bool = bool(ta["aware"])
+		g.pilot.pos = ta["home"] + Vector2(float(ta["terr"]) * 3.0 + 40.0, 0)
+		ta["hp_wait"] = 0.0
+		for i in 8:
+			cb._wild_step(ta, 0.5)
+		ai_ok = ai_ok and woke and not bool(ta["aware"])
+		# the one in the sand: hidden until you are right by it
+		var ra: Dictionary = root[0]
+		g.pilot.pos = (ra["w"] as Walker).pos + Vector2(140, 0)
+		cb._wild_step(ra, 0.1)
+		var hid: bool = not bool(ra["aware"])
+		g.pilot.pos = (ra["w"] as Walker).pos + Vector2(20, 0)
+		cb._wild_step(ra, 0.1)
+		ai_ok = ai_ok and hid and bool(ra["aware"])
+	# loot: a big one brought down – into the pockets and the hold
+	var big: Dictionary = cb.spawn("armor_crab", g.pilot.pos + Vector2(40, 0))
+	for ii in gear.inv.size():
+		gear.inv[ii] = {}
+	var cargo0: float = f.cargo_used() if f != null else 0.0
+	cb._hurt_foe(big, 99999.0, "explosive")
+	var loot_ok: bool = gear.inv.any(func(s): return not (s as Dictionary).is_empty() and String(s["id"]).begins_with("gd_")) and (f == null or f.cargo_used() > cargo0)
+	# the find at the end: the drone's cargo pod
+	var cr0: int = GameState.credits
+	var fd: Array = g.map.explore.filter(func(d): return String(d["kind"]) == "wild_find")
+	var find_ok: bool = fd.size() == 1 and String(fd[0]["style"]) == "pod"
+	if find_ok:
+		fd[0]["state"] = "taken"
+		g._poi_target_done(fd[0])
+		find_ok = GameState.credits > cr0
+	# the minimap knows the water
+	var mm_ok: bool = WildGen53.mm_col(g.map, 1, 1).b > 0.4
+	# a hunting job (where a jungle, ocean or ice world is near)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 53
+	var hm: Dictionary = Missions.ground_offer({"id": "t53f2", "giver": "x", "giver_system": GameState.current_system}, GameState.current_system, rng, "hunt")
+	var hunt_ok: bool = hm.is_empty() or (String(hm["site"]["theme"]).begins_with("wild_") and String(hm["site"].get("hunt_kind", "")) != "" and int(hm["site"]["hunt_n"]) >= 1)
+	var hs := {"theme": "wild_ice", "seed": 9, "danger": "red", "hunt_kind": "frost_bear", "hunt_n": 1, "hunt_alpha": true}
+	var hmap: GroundMap = WildGen53.build({"type": "ice", "id": "t"}, hs, 60.0, 30.0)
+	hunt_ok = hunt_ok and hmap.has_meta("alpha_i") and String(hmap.get_meta("foes")[int(hmap.get_meta("alpha_i"))]) == "frost_bear@red"
+	# back
+	for ii in gear.inv.size():
+		gear.inv[ii] = {}
+	Commands.suit_god = false
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	gear.aboard()
+	gear.combat_t = 0.0
+	main._update_input()
+	check(maps_ok and paint_ok and goods_ok and ai_ok and loot_ok and find_ok and mm_ok and hunt_ok,
+		"53f-2: the wild – jungle, coast and ice grounds (the find reachable from the ship, water seen across), painted with the water clear for the shader; grazers run and never fight, hunters guard their ground and let you go, the one in the sand waits hidden; hides and meat to pockets and hold; the drone's cargo pod; hunting jobs with the old beast  [%s]%s" % [
+			" ".join(PackedStringArray([str(maps_ok), str(paint_ok), str(goods_ok), str(ai_ok), str(loot_ok), str(find_ok), str(mm_ok), str(hunt_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
 
 
 func _zone_of(m: GroundMap, k: String) -> Dictionary:

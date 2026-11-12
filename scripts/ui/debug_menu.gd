@@ -773,7 +773,7 @@ func _world_types(first: String) -> Array:
 const GROUND_JOBS := [["relic", "", "Relic race (ruin)"], ["salvage", "", "Salvage (crash site)"], ["bounty_foot", "", "Bounty on foot (pirate base)"],
 	["heist", "pirate", "Heist – pirate base"], ["heist", "sewer", "Heist – the dealer's safe (city)"], ["heist", "corp", "Heist – corporate vault (city)"],
 	["spy", "", "Espionage – a site"], ["spy", "corp", "Espionage – corporate tower (city)"], ["reactivate", "", "Reactivation (city tunnels)"],
-	["rescue", "pirate", "Rescue (pirate base)"], ["rescue", "research", "Rescue (research station)"], ["recover", "", "Data recovery (research station)"], ["investigate", "debug", "Strange happenings (Dark Ones ruin)"], ["pest", "", "Rat plague (sewers)"]]
+	["rescue", "pirate", "Rescue (pirate base)"], ["rescue", "research", "Rescue (research station)"], ["recover", "", "Data recovery (research station)"], ["investigate", "debug", "Strange happenings (Dark Ones ruin)"], ["pest", "", "Rat plague (sewers)"], ["hunt", "", "Hunt (the wild)"]]
 const SPACE_JOBS := [["courier", "Courier"], ["bounty", "Bounty"], ["mining", "Supply"], ["survey", "Survey"], ["escort", "Escort"],
 	["patrol", "Patrol"], ["smuggler", "Intercept"], ["hunt", "Hunt"], ["drone_trial", "Drone trial"], ["passenger", "Passengers"]]
 
@@ -1019,6 +1019,11 @@ func _build_ground() -> void:
 		var dzz2: String = dz2[0]
 		rsw.add_child(UI.button(String(dz2[1]), func(): _cmd({"type": "debug_poi", "danger": dzz2, "theme": "sewer"})))
 	rsw.add_child(UI.button("Back alley (in a city)", func(): _cmd({"type": "debug_ground_level", "level": "alley"})))
+	var rwi := _row()                                               # 53f-2 (Luz): the wild
+	rwi.add_child(UI.label("The wild:", 12, UI.TEXT_DIM))
+	for wl in [["wild_jungle", "Jungle path"], ["wild_coast", "Coast and islands"], ["wild_ice", "Ice field"]]:
+		var wth: String = wl[0]
+		rwi.add_child(UI.button(String(wl[1]), func(): _cmd({"type": "debug_poi", "danger": "yellow", "theme": wth})))
 	_section("The Museum in Curie (package 53e)")
 	var rmu := _row()                                               # 53e (Luz): the Museum in Curie
 	rmu.add_child(UI.label("Museum:", 12, UI.TEXT_DIM))

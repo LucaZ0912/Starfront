@@ -2647,6 +2647,18 @@ func _c_debug_poi(c: Dictionary) -> String:
 	var theme := String(c.get("theme", "precursor"))
 	if not PoiData.THEMES.has(theme):
 		return "Unknown theme."
+	if theme.begins_with("wild_"):
+		# 53f-2: the wild wants its kind of world – one here, or the first body made into one for the test
+		var want: String = {"wild_jungle": "jungle", "wild_coast": "ocean", "wild_ice": "ice"}[theme]
+		var found := false
+		for b2 in L["planets"] + L.get("moons", []):
+			if Universe.landable(b2) and String(b2.get("type", "")) == want:
+				body = b2
+				found = true
+				break
+		if not found:
+			body = body.duplicate()
+			body["type"] = want
 	var sd := int(c.get("seed", randi()))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = sd

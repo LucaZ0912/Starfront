@@ -304,9 +304,17 @@ func _draw() -> void:
 ## 53f: a creature or machine – its own picture, a shadow its width, fallen on its side.
 const CreatureArtW = preload("res://scripts/ground/creature_art.gd")
 
+var _side := 2                     # 53f-2: an animal seen from the side it last turned to
+
 func _draw_creature(f: int) -> void:
 	var s := GroundMap.SCALE
-	var tex: Texture2D = CreatureArtW.texture(creature, dir, f, alert, int(_t * 8.0) % 8)
+	var dd := dir
+	if creature in CreatureArtW.ANIMALS:
+		if dir == 2 or dir == 3:
+			_side = dir
+		else:
+			dd = _side                                # (Luz: the wild animals always side on – they read best so)
+	var tex: Texture2D = CreatureArtW.texture(creature, dd, f, alert, int(_t * 8.0) % 8)
 	var size := Vector2(tex.get_width(), tex.get_height()) * ChibiArt.CHAR_SCALE
 	draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, size.x * 0.32, Color(0, 0, 0, 0.3))

@@ -196,7 +196,40 @@ const THEMES := {
 				"cols": [3, 4], "rows": [2, 3], "cell_w": 17, "cell_h": 14, "room_w": [8, 11], "room_h": [6, 8], "room_chance": 1.0,
 				"corr": 3, "loops": [1, 2], "cover": [3, 5], "turret": true, "alarm": true, "creatures": {"kinds": [], "share": 0.0},
 				"loot": ["cs_ammo", "cs_ammo", "cs_medkit", "cs_cell", "cs_breach"]}]},
+	# 53f-2 (Luz): the wild – great open grounds on jungle, ocean and ice worlds to hunt in and explore, a find at the
+	# end (scripts/ground/wild_gen.gd). No inside: the whole site is its outside. `animals`: [kind, how many, group].
+	"wild_jungle": {"name": "Jungle path", "kind": "wilds", "style": "wild", "biome": "jungle", "room_floor": 46, "hall_floor": 46,
+		"floor": Color(0.17, 0.24, 0.1), "floor2": Color(0.12, 0.17, 0.07), "wall": Color(0.42, 0.38, 0.32),
+		"wall_top": Color(0.06, 0.12, 0.05), "trim": Color(0.3, 0.22, 0.14), "accent": Color(0.7, 0.55, 1.0),
+		"light": Color(1.0, 0.95, 0.7), "door": "", "computer": "", "foes": [], "leader": "", "props": [],
+		"guard": "", "traps": "", "fog": false, "outside": "wild", "target": "shrine", "layers": [{}],
+		"animals": [["grazer", 4, "herd"], ["glider", 5, "solo"], ["pack_hunter", 3, "pack"], ["pack_hunter", 3, "pack"], ["lurker", 3, "solo"]],
+		"loot": ["cs_medkit", "cs_cell", "cs_ammo"], "credits": [80, 240], "research": [4, 9], "museum_chance": 0.0,
+		"names_a": ["Green", "Deep", "Old", "Mist", "Fern", "Long", "Howling", "Silent"],
+		"names_b": ["Trail", "Track", "Path", "Way", "Run", "Crossing", "Ford", "Hollow"]},
+	"wild_coast": {"name": "Coast and islands", "kind": "wilds", "style": "wild", "biome": "coast", "room_floor": 46, "hall_floor": 46,
+		"floor": Color(0.86, 0.78, 0.58), "floor2": Color(0.78, 0.7, 0.5), "wall": Color(0.5, 0.46, 0.4),
+		"wall_top": Color(0.3, 0.27, 0.23), "trim": Color(0.5, 0.36, 0.22), "accent": Color(1.0, 0.6, 0.3),
+		"light": Color(1.0, 0.96, 0.88), "door": "", "computer": "", "foes": [], "leader": "", "props": [],
+		"guard": "", "traps": "", "fog": false, "outside": "wild", "target": "pod", "layers": [{}],
+		"animals": [["shore_crab", 7, "solo"], ["armor_crab", 3, "solo"], ["sand_lurker", 4, "solo"]],
+		"loot": ["cs_medkit", "cs_cell", "cs_ammo", "cs_o2", "cs_breach"], "credits": [400, 900], "research": [1, 3], "museum_chance": 0.0,
+		"names_a": ["Salt", "White", "Gull", "Tide", "Coral", "Drift", "Bright", "Windward"],
+		"names_b": ["Isles", "Keys", "Shoals", "Reach", "Strand", "Banks", "Atoll", "Sound"]},
+	"wild_ice": {"name": "Ice field", "kind": "wilds", "style": "wild", "biome": "ice", "room_floor": 46, "hall_floor": 46,
+		"floor": Color(0.9, 0.94, 0.98), "floor2": Color(0.8, 0.86, 0.93), "wall": Color(0.62, 0.8, 0.94),
+		"wall_top": Color(0.45, 0.65, 0.85), "trim": Color(0.42, 0.44, 0.48), "accent": Color(0.5, 0.85, 1.0),
+		"light": Color(0.5, 0.85, 1.0), "door": "", "computer": "", "foes": [], "leader": "", "props": [],
+		"guard": "", "traps": "", "fog": false, "outside": "wild", "target": "nest", "layers": [{}],
+		"animals": [["furball", 4, "herd"], ["furball", 3, "herd"], ["frost_bear", 2, "solo"], ["frost_worm", 3, "solo"]],
+		"loot": ["cs_medkit", "cs_cell", "cs_o2"], "credits": [80, 200], "research": [6, 12], "museum_chance": 0.0,
+		"names_a": ["White", "Frost", "Glass", "Cold", "Pale", "Shiver", "Hoar", "Rime"],
+		"names_b": ["Field", "Shelf", "Waste", "Flats", "Expanse", "Glacier", "Plain", "Sheet"]},
 }
+
+## 53f-2: the wild theme for a kind of world ("" none).
+static func wild_theme(body_type: String) -> String:
+	return {"jungle": "wild_jungle", "ocean": "wild_coast", "ice": "wild_ice", "terran": "wild_jungle"}.get(body_type, "")
 
 
 ## A theme as it is on one level (0 the top): the theme's keys with the level's own on top.
@@ -260,6 +293,9 @@ const TARGETS := {
 	"leak": {"col": Color(0.6, 0.85, 1.0), "needs": "seal its emergency bulkhead (the panel by it)", "gives": "air and warmth back in that module"},
 	"shelter": {"col": Color(0.8, 0.8, 0.8), "needs": "–", "gives": "people sealed into a cold store – a rescue, maybe"},
 	"security": {"col": Color(0.4, 1.0, 0.6), "needs": "E-Breach on its computer", "gives": "cameras and light barriers off – and the company's data"},
+	# 53f-2 (Luz): the wild
+	"wild_find": {"col": Color(0.95, 0.85, 0.4), "needs": "find the way there – across the water, past the beasts", "gives": "a find at the end: for the Museum, a cargo pod, rare eggs"},
+	"animals": {"col": Color(0.6, 0.9, 0.45), "needs": "a weapon – or sneak past (grazers run, hunters guard their ground)", "gives": "hides, meat, samples – pockets and hold"},
 }
 
 
@@ -283,6 +319,8 @@ static func site_name(theme: String, rng: RandomNumberGenerator) -> String:
 		return "%s %s" % [a, b]
 	if String(th["kind"]) == "crash":
 		return "Wreck of the %s %s" % [a, b]
+	if String(th["kind"]) == "wilds":
+		return "%s %s" % [a, b]
 	return "%s of %s-%s" % ["Ruin" if String(th["kind"]) == "ruins" else "Site", a, b.capitalize()]
 
 

@@ -130,7 +130,9 @@ static func generate_ground(system_id: int, station: Dictionary, rng: RandomNumb
 		"progress": 0, "item": "", "amount": 0, "target_system": system_id, "target_station": "",
 		"faction": String(station.get("faction", "")), "against": ""}
 	return ground_offer(m, system_id, rng)
-const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2], ["recover", 2], ["investigate", 1], ["pest", 2]]
+const GROUND_KINDS := [["relic", 3], ["salvage", 3], ["bounty_foot", 2], ["heist", 2], ["spy", 2], ["reactivate", 2], ["rescue", 2], ["recover", 2], ["investigate", 1], ["pest", 2], ["hunt", 3]]
+## 53f-2 (Luz): what a hunt is after, by world – [kind, the old one (one, red) or a cull (how many)]
+const HUNT_KINDS := {"wild_jungle": ["pack_hunter", "lurker", "grazer"], "wild_coast": ["armor_crab", "sand_lurker"], "wild_ice": ["frost_bear", "frost_worm"]}
 const GROUND_THEME := {"relic": "precursor", "salvage": "wreck", "bounty_foot": "pirate", "heist": "pirate", "reactivate": "maint", "rescue": "pirate", "recover": "research", "investigate": "darkones", "pest": "sewer"}
 
 
@@ -166,11 +168,14 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 	# where: a body (a city for a reactivation or the dealer's heist) within two jumps
 	var spots: Array = []
 	var far_only := kind == "investigate" and variant != "debug"       # 0.7.53.23 (Luz): the Dark Ones lie far out
+	var wild := kind == "hunt"                                         # 53f-2: only on jungle, ocean and ice worlds
 	for sid in _systems_within(system_id, 4 if kind == "investigate" else 2):
 		if far_only and not (bool(Universe.systems[sid].get("outer", false)) or bool(Universe.systems[sid].get("veil", false))):
 			continue
 		for b in Universe.get_layout(sid)["planets"] + Universe.get_layout(sid).get("moons", []):
 			if not Universe.landable(b):
+				continue
+			if wild and (PoiData.wild_theme(String(b.get("type", ""))) == "" or String(b.get("type", "")) == "terran"):
 				continue
 			if in_city:
 				for s in Universe.landing_sites(sid, b):
@@ -183,6 +188,8 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 	var sp: Array = spots[rng.randi() % spots.size()]
 	var sid2: int = sp[0]
 	var body: Dictionary = sp[1]
+	if wild:
+		theme = PoiData.wild_theme(String(body.get("type", "")))
 	var danger: String = ["green", "yellow", "yellow", "red"][rng.randi() % 4]
 	var seed_n := rng.randi()
 	var site := {"id": "msn_%s" % String(m["id"]), "name": PoiData.site_name(theme, rng), "kind": String(PoiData.THEMES[theme]["kind"]), "poi": true,
@@ -253,6 +260,22 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 				t = "Rescue: %s held by the Red Talons" % who
 				d = "The Red Talons hold %s in the cells of %s. Get them out alive – they follow you; explosions and traps hurt them too." % [who, where]
 				base = 12000
+		"hunt":
+			# 53f-2 (Luz): a hunt in the wild – the old beast of a kind, or a cull of a kind that has grown too many
+			var hk: Array = HUNT_KINDS.get(theme, ["pack_hunter"])
+			var kd := String(hk[rng.randi() % hk.size()])
+			var nm := String(preload("res://data/foes.gd").FOES[kd]["name"])
+			site["hunt_kind"] = kd
+			site["hunt_alpha"] = kd != "grazer" and rng.randf() < 0.5
+			site["hunt_n"] = 1 if bool(site["hunt_alpha"]) else rng.randi_range(3, 5)
+			if bool(site["hunt_alpha"]):
+				t = "Hunt: the old %s" % nm
+				d = "An old %s has taken to the ground round %s – it has killed a survey team's dogs and nearly a surveyor. Bring it down." % [nm.to_lower(), where]
+				base = 8000
+			else:
+				t = "Cull: %d %ss" % [int(site["hunt_n"]), nm]
+				d = "The %ss at %s have grown too many for the colony's liking. Bring down %d of them – what you take from them is yours." % [nm.to_lower(), where, int(site["hunt_n"])]
+				base = 5500
 		"pest":
 			site["pest"] = true                            # 53f (Luz): a rat plague in the sewers under a city
 			t = "Rat plague: under %s" % String(site["city_name"])
