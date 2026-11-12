@@ -3,6 +3,13 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.31 – 2026-11-12
+
+**The Archivist Suit gets its own look (Luz).** A graphite undersuit with white accents, a chest rig of grey pouches
+on dark straps, one big shoulder plate, a teal pouch at the hip, knee pads and white straps on the boots – under a
+hood, a scarf and a slanting wrap of deep green cloth. Its helmet is a round mirrored glass inside the hood, and an
+antenna rises from the pack on its back, a red light at its tip.
+
 ## alpha 0.7.53.30 – 2026-11-12
 
 **The Museum – the curator takes your finds (Luz).**

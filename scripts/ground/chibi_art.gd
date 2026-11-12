@@ -347,6 +347,8 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	if senate:
 		return _senate_frame(img, suit, plate, glow, bool(l.get("helmet", false)), sitting, cx, tx, tw, torso_top, leg_top, hx,
 			head_top, side, back)
+	if suit == "suit_archivist":
+		return _archivist_frame(img, bool(l.get("helmet", false)), sitting, cx, tx, tw, torso_top, leg_top, hx, head_top, head_bot, ey, side, back)
 	return img
 
 
@@ -699,6 +701,8 @@ static func _suit_detail(img: Image, suit: String, c1: Color, c2: Color, cx: int
 				_px(img, cx + 1, torso_top + 3, Color(0.4, 1.0, 0.55))
 			_r(img, tx - 1, torso_top, 3, 2, c2)                                     # shoulder pads
 			_r(img, tx + tw - 2, torso_top, 3, 2, c2.darkened(0.15))
+		"suit_archivist":
+			_archivist(img, c1, c2, cx, tx, tw, sh, torso_top, leg_top, side, back)
 		"suit_survey":
 			if not back:
 				_r(img, tx + 1, torso_top + 1, 1, TORSO - 3, c2)                       # cyan seams
@@ -711,6 +715,160 @@ static func _suit_detail(img: Image, suit: String, c1: Color, c2: Color, cx: int
 			_r(img, tx, torso_top + 9, tw, 1, c2.darkened(0.1))
 
 
+## 0.7.53.31 (Luz, after her reference): the Archivist Suit – a graphite undersuit with white accents, a chest rig of
+## grey pouches on dark straps, one big shoulder plate, a teal pouch at the hip, knee pads, white straps on the boots.
+## Its hood, scarf and wrap of deep green cloth and the antenna on its back come on a bigger canvas (`_archivist_frame`).
+const ARCH_CLOTH := Color(0.12, 0.33, 0.27)
+const ARCH_PAD := Vector2i(3, 9)
+
+static func _archivist(img: Image, c1: Color, white: Color, cx: int, tx: int, tw: int, sh: int, torso_top: int, leg_top: int,
+		side: bool, back: bool) -> void:
+	var pouch := Color(0.45, 0.46, 0.47)
+	var strap := Color(0.07, 0.07, 0.08)
+	var knee := leg_top + 7
+	if not side and not back:
+		_r(img, tx + 1, torso_top, 1, 6, strap)                                         # straps over the shoulders
+		_r(img, tx + tw - 2, torso_top, 1, 6, strap)
+		_r(img, cx - 3, torso_top + 4, 7, 4, pouch.darkened(0.2))                       # the chest rig: three pouches
+		for p in 3:
+			_r(img, cx - 3 + p * 2 + (1 if p > 0 else 0), torso_top + 4, 2, 3, pouch.lightened(0.05 * p))
+			_px(img, cx - 3 + p * 2 + (1 if p > 0 else 0), torso_top + 4, pouch.lightened(0.25))
+		_r(img, cx - 3, torso_top + 7, 7, 1, strap)
+		_r(img, tx - 1, leg_top - 2, 2, 3, Color(0.3, 0.6, 0.62))                    # the teal pouch at the hip
+		_px(img, tx - 1, leg_top - 2, Color(0.5, 0.8, 0.8))
+		_r(img, tx + tw - 1, torso_top - 1, 4, 4, Color(0.2, 0.2, 0.22))              # the shoulder plate (her left)
+		_r(img, tx + tw - 1, torso_top - 1, 4, 1, Color(0.38, 0.38, 0.4))
+		_px(img, tx + tw + 2, torso_top + 2, Color(0.12, 0.12, 0.13))
+		_r(img, cx - 3, knee, 3, 2, pouch)                                               # knee pads
+		_r(img, cx + 1, knee, 3, 2, pouch.darkened(0.12))
+		_r(img, cx - 3, knee + 5, 1, 3, white.darkened(0.1))                            # white accents down the shins
+		_r(img, cx + 3, knee + 5, 1, 3, white.darkened(0.25))
+	elif back:
+		_r(img, tx - 1, torso_top - 1, 4, 4, Color(0.2, 0.2, 0.22))                      # the shoulder plate, from behind
+		_r(img, tx - 1, torso_top - 1, 4, 1, Color(0.38, 0.38, 0.4))
+		_r(img, cx - 3, torso_top + 8, 6, 1, strap)
+		_r(img, cx - 3, knee + 1, 2, 1, pouch.darkened(0.3))
+		_r(img, cx + 1, knee + 1, 2, 1, pouch.darkened(0.3))
+	else:
+		_r(img, cx - 2, torso_top + 4, 3, 4, pouch.darkened(0.15))                       # the rig, side on
+		_r(img, cx - 2, torso_top - 1, 4, 4, Color(0.2, 0.2, 0.22))                      # the shoulder plate
+		_r(img, cx - 2, torso_top - 1, 4, 1, Color(0.38, 0.38, 0.4))
+		_r(img, cx - 2, knee, 2, 2, pouch)
+		_r(img, cx - 2, knee + 5, 1, 3, white.darkened(0.15))
+	_r(img, tx, leg_top - 2, tw, 1, strap)                                               # the belt
+	var feet := H - 1
+	_r(img, cx - 4, feet - 1, 9, 1, white.darkened(0.05))                                  # white straps on the boots
+
+
+## The helmet: a round glass, mirrored – dark, the sky's glint and a warm reflection on it.
+static func _archivist_helmet(img: Image, hx: int, head_top: int, head_bot: int, ey: int, side: bool, back: bool) -> void:
+	var gtop := head_top - 2
+	var gbot := head_bot + 1
+	for y in range(gtop, gbot + 1):
+		var cut := 2 if y == gtop or y == gbot else (1 if y == gtop + 1 or y == gbot - 1 else 0)
+		_r(img, hx - 1 + cut, y, HW + 2 - 2 * cut, 1, Color(0.08, 0.09, 0.12))
+	if back:
+		return
+	var vx := hx + (0 if not side else -1)
+	_r(img, vx, ey - 3, 3 if not side else 2, 1, Color(0.5, 0.58, 0.72))                  # the sky's glint, top left
+	_px(img, vx, ey - 2, Color(0.5, 0.58, 0.72))
+	_px(img, vx + 1, ey - 2, Color(0.95, 0.97, 1.0))
+	if not side:
+		_px(img, hx + HW - 2, ey + 1, Color(0.95, 0.62, 0.3))                           # a warm light, low on the glass
+		_r(img, hx + 1, ey + 2, HW - 2, 1, Color(0.16, 0.17, 0.22))
+
+
+## The cloth and the antenna, on a bigger canvas: the hood up round the head (or the helmet's glass), the scarf wound
+## round the neck with an end hanging down the chest, the wrap from the belt down over the thighs, cut slanting; the
+## antenna rising from the pack on the back, a light at its tip.
+static func _archivist_frame(src: Image, helmet: bool, sitting: bool, cx: int, tx: int, tw: int, torso_top: int,
+		leg_top: int, hx: int, head_top: int, head_bot: int, ey: int, side: bool, back: bool) -> Image:
+	var px := ARCH_PAD.x
+	var py := ARCH_PAD.y
+	var img := Image.create(W + 2 * px, H + py, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	img.blit_rect(src, Rect2i(0, 0, W, H), Vector2i(px, py))
+	cx += px
+	tx += px
+	hx += px
+	torso_top += py
+	leg_top += py
+	head_top += py
+	head_bot += py
+	ey += py
+	var g := ARCH_CLOTH
+	var gd := g.darkened(0.35)
+	var gl := g.lightened(0.2)
+	# the antenna: from the pack up past the head – behind the figure from the front, over it from behind
+	var ax := cx + 3 if not side else cx + 4
+	var a_top := head_top - 7
+	var a_bot := torso_top + 2
+	for y in range(a_top, a_bot):
+		if back or img.get_pixel(ax, y).a < 0.1:
+			_px(img, ax, y, Color(0.62, 0.63, 0.66) if y > a_top + 1 else Color(0.8, 0.8, 0.82))
+	_px(img, ax, a_top - 1, Color(1.0, 0.3, 0.25))                                         # its light
+	if back:
+		_r(img, ax - 1, a_bot - 1, 3, 2, Color(0.75, 0.75, 0.73))                          # its base on the pack
+	# the wrap: from the belt down over the thighs, longer on one side
+	if not sitting:
+		var wy := leg_top - 2
+		for k in 7:
+			var y2 := wy + k
+			if side:
+				var w2 := 3 if k < 7 else 2
+				_r(img, cx - 2, y2, w2, 1, g if k % 4 != 3 else gd)
+				_px(img, cx - 2, y2, gl)
+			else:
+				var x0 := tx - 1
+				var x1 := tx + tw + 1 - int(k * 1.3)
+				if back:
+					x0 = tx - 1 + int(k * 1.3)
+					x1 = tx + tw + 1
+				if x1 > x0:
+					_r(img, x0, y2, x1 - x0, 1, g)
+					_px(img, x0, y2, gl if not back else gd)
+					_px(img, x1 - 1, y2, gd)
+					if k % 3 == 1:
+						_px(img, x0 + 2, y2, gd)                                           # its folds
+						_px(img, (x0 + x1) / 2 + 1, y2, gd)
+		_r(img, tx - 1, wy, tw + 2, 1, Color(0.07, 0.07, 0.08))                             # under the belt
+	# the scarf round the neck, an end down the chest
+	_r(img, tx, torso_top - 2, tw, 3, g)
+	_r(img, tx, torso_top - 2, tw, 1, gl)
+	_r(img, tx + 1, torso_top, tw - 2, 1, gd)
+	if not side and not back:
+		_r(img, cx - 4, torso_top + 1, 3, 4, g)                                             # its end over the rig
+		_px(img, cx - 4, torso_top + 4, gd)
+	elif back:
+		_r(img, cx - 2, torso_top + 1, 4, 2, g)
+	# the hood: up round the head – open in front for the face (or the helmet's glass)
+	var htop := head_top - 3
+	var hbot := head_bot + 1
+	for y3 in range(htop, hbot + 1):
+		var cut := 1 if y3 == htop else 0
+		var l0 := hx - 1 - (1 if helmet else 0) + cut
+		var r0 := hx + HW + 1 + (1 if helmet else 0) - cut
+		if back:
+			_r(img, l0, y3, r0 - l0, 1, g)
+			_px(img, l0, y3, gd)
+			if y3 > htop + 1 and (y3 - htop) % 3 == 0:
+				_px(img, cx, y3, gd)                                                       # a seam down the back
+		elif side:
+			_r(img, cx - 1, y3, r0 - cx + 1, 1, g)                                          # the hood over the back of the head
+			_px(img, cx - 1, y3, gl)
+			_px(img, r0 - 1, y3, gd)
+			if y3 < head_top:
+				_r(img, l0, y3, cx - l0, 1, g)
+		else:
+			if y3 < head_top - (2 if helmet else 1):
+				_r(img, l0, y3, r0 - l0, 1, g)                                             # over the top
+				_px(img, l0 + 2, y3, gl)
+			else:
+				_px(img, l0, y3, g)                                                         # its edge round the face
+				_px(img, r0 - 1, y3, gd)
+	return img
+
+
 ## 0.7.51.10: the helmets by the suit.
 static func _helmet(img: Image, suit: String, c1: Color, c2: Color, plate: Color, glow: Color, hx: int, head_top: int,
 		head_bot: int, ey: int, side: bool, back: bool) -> void:
@@ -719,6 +877,9 @@ static func _helmet(img: Image, suit: String, c1: Color, c2: Color, plate: Color
 		return
 	if suit.begins_with("suit_mil_senate"):
 		_senate_helmet(img, plate, glow, hx, head_top, head_bot, ey, side, back)
+		return
+	if suit == "suit_archivist":
+		_archivist_helmet(img, hx, head_top, head_bot, ey, side, back)
 		return
 	if suit.begins_with("suit_mil"):
 		var heavy := suit == "suit_mil_heavy"

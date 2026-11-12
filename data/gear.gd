@@ -104,7 +104,7 @@ const SUITS := {
 		"cloak_mul": 5.0, "weapons": 1, "belt": 7, "grenades": 1, "drones": 1, "features": 2,
 		"shield": 20.0, "armor": 12.0, "energy": 520.0, "oxygen": 90.0, "ammo": 80,
 		"env": {"heat": 1.0, "cold": 1.0, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.06, "price": 60000,
-		"col": Color(0.88, 0.84, 0.72), "trim": Color(0.95, 0.72, 0.3),
+		"col": Color(0.17, 0.17, 0.19), "trim": Color(0.86, 0.87, 0.86),
 		"desc": "The Museum's thanks: a cloak and a scanner built in, the cloak lasting five times as long; air and energy for days, a long belt – but barely a shield."},
 }
 
