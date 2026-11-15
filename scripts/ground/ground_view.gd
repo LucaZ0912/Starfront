@@ -2977,6 +2977,39 @@ func explore_use(z: Dictionary) -> bool:
 	return false
 
 
+## Package 54b (Luz): a bar game – first its lobby (mode, who plays, the stake), then the game; after it back to the lobby.
+const MinigameLobby = preload("res://scripts/ui/minigame_lobby.gd")
+const PoolGame = preload("res://scripts/ground/pool_game.gd")
+const DartsGame = preload("res://scripts/ground/darts_game.gd")
+const MinigameData = preload("res://data/minigames.gd")
+
+
+func open_minigame(game: String, place: Dictionary) -> void:
+	Audio.play("ui_open", "minigame lobby")
+	var streak := int(GameState.minigame_streak.get(game, 0))
+	var guests: Array = MinigameData.guests(String(place.get("id", "")), game, streak, int(GameState.play_time / 1800.0))
+	var crew: Array = []
+	var f := GameState.active()
+	if f != null:
+		for m in f.crew:
+			if (m as Dictionary).is_empty():
+				continue
+			crew.append({"id": "crew_%d" % int(m["id"]), "name": String(m["name"]), "job": "your %s" % String(m["role"]).replace("_", " "),
+				"stars": 2 + int(m["id"]) % 3, "line": "\"Off duty – let's play.\"", "kind": "crew"})
+	var lb = MinigameLobby.new()
+	lb.setup(game, place, guests, crew)
+	lb.closed.connect(func(): _close_game(); Audio.play("ui_close", "minigame lobby"))
+	lb.start.connect(func(cfg: Dictionary): _play_minigame(cfg, place))
+	_open_game(lb)
+
+
+func _play_minigame(cfg: Dictionary, place: Dictionary) -> void:
+	var g = DartsGame.new() if String(cfg["game"]) == "darts" else PoolGame.new()
+	g.setup(cfg)
+	g.finished.connect(func(_w: bool): open_minigame(String(cfg["game"]), place))
+	_open_game(g)
+
+
 func _open_game(g: Control) -> void:
 	_close_game()
 	_game_layer = CanvasLayer.new()
@@ -3953,6 +3986,12 @@ func use(instant: bool = false) -> bool:
 			return true
 		"souvenir":
 			_open_souvenir_menu(zone)
+			return true
+		"pool":
+			open_minigame("billiards", {"title": "The pool table – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
+			return true
+		"darts":
+			open_minigame("darts", {"title": "The dartboard – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
 			return true
 		"sight_info":
 			_say_toast(_sight_info(), 7.0)

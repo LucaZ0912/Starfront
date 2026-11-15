@@ -171,6 +171,8 @@ func _process(delta: float) -> void:
 				_test_wild(view)                 # package 53f-2 – the wild
 				_test_cloud(view)                # package 54 – the cloud cities
 				_test_sights54a(view)            # package 54a – the sights on the ground
+				_test_minigames54b(view)         # package 54b – the bar games
+				_test_darts54b(view)             # package 54b – darts
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12467,3 +12469,157 @@ func _test_sights54a(view: SystemView) -> void:
 		"54a: sights on the ground – falls, lagoon, ice cathedral, arches, lava terraces, crater, each with its viewpoint reached from the landing place, the stall and the holo; a photo paid once; souvenirs into the hold; the Skyring deck in the cloud cities; excursions (%d) seen at the viewpoint, shuttle runs (%d) down to a city's hangar; %d sights in the first systems  [%s]%s" % [
 			n_exc, n_sh, gsights, " ".join(PackedStringArray([str(data_ok), str(built_ok), str(photo_ok), str(tour_ok), str(souv_ok), str(ring_ok), str(sh_ok)])),
 			(" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+const MinigameT = preload("res://data/minigames.gd")
+const PoolGameT = preload("res://scripts/ground/pool_game.gd")
+
+
+## Package 54b (Luz): the bar games – stakes by the win streak, the lobby, billiards (the rack, the balls rolling and
+## stopping on the table, a straight shot pocketed, the rules: groups, fouls, the 8 too early).
+func _test_minigames54b(view: SystemView) -> void:
+	var notes: Array = []
+	# the stakes and the guests
+	var st_ok: bool = MinigameT.max_stake(0) == 200 and MinigameT.max_stake(9) == 200 and MinigameT.max_stake(10) == 1000 and MinigameT.max_stake(25) == 5000 and not bool(MinigameT.stakes(9).filter(func(s): return int(s[0]) == 500)[0][1]) and bool(MinigameT.stakes(10).filter(func(s): return int(s[0]) == 500)[0][1])
+	var g0: Array = MinigameT.guests("x", "billiards", 0, 3)
+	var g25: Array = MinigameT.guests("x", "billiards", 25, 3)
+	var guest_ok: bool = g0.size() >= 2 and g0 == MinigameT.guests("x", "billiards", 0, 3) and g0.all(func(g): return int(g["stars"]) <= 3) and g25.all(func(g): return int(g["stars"]) >= 3)
+	# the stake on the table, the pot to the winner, the streak
+	var keep_cr: int = GameState.credits
+	var keep_streak: Dictionary = GameState.minigame_streak.duplicate()
+	GameState.credits = 1000
+	GameState.minigame_streak["billiards"] = 3
+	var e_hi: String = Commands.execute({"type": "minigame_begin", "game": "billiards", "mode": "8ball", "stake": 500, "opponent": {"name": "T"}})
+	var e_ok: String = Commands.execute({"type": "minigame_begin", "game": "billiards", "mode": "8ball", "stake": 200, "opponent": {"name": "T"}})
+	var mid_cr: int = GameState.credits
+	Commands.execute({"type": "minigame_end", "won": true})
+	var won_ok: bool = e_hi != "" and e_ok == "" and mid_cr == 800 and GameState.credits == 1200 and int(GameState.minigame_streak["billiards"]) == 4
+	Commands.execute({"type": "minigame_begin", "game": "billiards", "mode": "8ball", "stake": 100, "opponent": {"name": "T"}})
+	Commands.execute({"type": "minigame_end", "won": false})
+	var lost_ok: bool = GameState.credits == 1100 and int(GameState.minigame_streak["billiards"]) == 0
+	# billiards
+	var pg = PoolGameT.new()
+	pg.setup({"mode": "8ball", "opponent": {"name": "Test Guest", "stars": 3}, "stake": 0})
+	var rack_ok: bool = pg.balls.size() == 16
+	pg.turn = 0
+	pg._take_shot(0.0, 1.0, Vector2.ZERO)                # the break
+	var n := 0
+	while pg.state == "roll" and n < 6000:
+		pg._physics(1.0 / 60.0)
+		if not pg._moving():
+			pg._shot_over()
+		n += 1
+	var inside := true
+	for b in pg.balls:
+		if not bool(b["in"]):
+			var p: Vector2 = b["p"]
+			inside = inside and p.x >= pg.FX0 and p.x <= pg.FX1 and p.y >= pg.FY0 and p.y <= pg.FY1
+	var spread := 0
+	for b2 in pg.balls:
+		if int(b2["n"]) != 0 and not bool(b2["in"]) and (b2["p"] as Vector2).x < pg.FX0 + (pg.FX1 - pg.FX0) * 0.6:
+			spread += 1
+	var break_ok: bool = n < 6000 and inside and pg.state != "roll"
+	# a straight shot into the corner pocket
+	pg.balls = [{"n": 0, "p": Vector2(200, 200), "v": Vector2.ZERO, "in": false}, {"n": 3, "p": Vector2(300, 150), "v": Vector2.ZERO, "in": false},
+		{"n": 8, "p": Vector2(150, 100), "v": Vector2.ZERO, "in": false}, {"n": 12, "p": Vector2(400, 230), "v": Vector2.ZERO, "in": false}]
+	pg.groups = ["solid", "stripe"]
+	pg.turn = 0
+	pg.state = "aim"
+	pg.break_shot = false
+	var plan: Dictionary = pg._ai_choose(Vector2(200, 200))
+	pg._before = [0, 3, 8, 12]
+	pg.shoot(float(plan["a"]), float(plan["pw"]), Vector2.ZERO)
+	n = 0
+	while pg.state == "roll" and n < 6000:
+		pg._physics(1.0 / 60.0)
+		if not pg._moving():
+			pg._shot_over()
+		n += 1
+	var pot_ok: bool = pg.balls.filter(func(b): return int(b["n"]) == 3)[0]["in"] and pg.turn == 0
+	# the 8 too early loses
+	pg.state = "aim"
+	pg._before = [0, 8, 12]
+	pg._potted = [8]
+	pg._first_hit = 8
+	GameState.credits = 1000
+	Commands.mg_session = {"game": "billiards", "mode": "8ball", "stake": 0, "opponent": {}}
+	pg.groups = ["stripe", "solid"]
+	pg._shot_over()
+	var early_ok: bool = pg.state == "over" and not pg.won
+	# a foul: hitting the other's ball first gives the ball in hand
+	var pg2 = PoolGameT.new()
+	pg2.setup({"mode": "8ball", "opponent": {"name": "Test", "stars": 2}, "stake": 0})
+	pg2.break_shot = false
+	pg2.groups = ["solid", "stripe"]
+	pg2.turn = 0
+	pg2._before = [0, 1, 9]
+	pg2._potted = []
+	pg2._first_hit = 9
+	pg2._shot_over()
+	var foul_ok: bool = pg2.turn == 1 and pg2.state in ["place_ai", "ai"]
+	pg.free()
+	pg2.free()
+	GameState.credits = keep_cr
+	GameState.minigame_streak = keep_streak
+	Commands.mg_session = {}
+	# the tables in the bars
+	var m := GroundMap.new()
+	m.setup(20, 20)
+	DeckGen._pool_table(m, 4, 4)
+	var table_ok: bool = m.zones.any(func(z): return String(z.get("kind", "")) == "pool") and m.objects.any(func(o): return String(o["kind"]) == "pool_table")
+	check(st_ok and guest_ok and won_ok and lost_ok and rack_ok and break_ok and pot_ok and early_ok and foul_ok and table_ok,
+		"54b: bar games – stakes by the win streak (low, medium from 10, high from 25), the guests stronger with it; the stake on the table, the pot to the winner, the streak ends on a loss; billiards: the rack, the break rolls out and stops on the table (%d balls in the far third), a straight shot pocketed, the 8 too early loses, a foul gives the ball in hand; pool tables in the bars  [%s]" % [
+			16 - spread, " ".join(PackedStringArray([str(st_ok), str(guest_ok), str(won_ok), str(lost_ok), str(rack_ok), str(break_ok), str(pot_ok), str(early_ok), str(foul_ok), str(table_ok)]))])
+
+
+const DartsGameT = preload("res://scripts/ground/darts_game.gd")
+
+
+## Package 54b (Luz): darts – the board scores right (bull, trebles, doubles, off the board), the guest aims at a finish,
+## a bust gives back the turn's points, checking out exactly wins; around the clock; a board on its stand in the bars.
+func _test_darts54b(view: SystemView) -> void:
+	var D = DartsGameT
+	var score_ok: bool = int(D.score_at(D.BC)[0]) == 50 and int(D.score_at(D.BC + Vector2(0, -7))[0]) == 25 \
+		and String(D.score_at(D.target(20, "T"))[1]) == "T20" and int(D.score_at(D.target(20, "T"))[0]) == 60 \
+		and String(D.score_at(D.target(16, "D"))[1]) == "D16" and int(D.score_at(D.target(19, "S"))[0]) == 19 \
+		and int(D.score_at(D.BC + Vector2(0, -110))[0]) == 0
+	var dg = D.new()
+	dg.setup({"mode": "301", "opponent": {"name": "Test Guest", "stars": 3}, "stake": 0})
+	var aim_ok: bool = String(D.score_at(dg.ai_aim(301))[1]) == "T20" and String(D.score_at(dg.ai_aim(32))[1]) == "D16" \
+		and String(D.score_at(dg.ai_aim(17))[1]) == "17" and String(D.score_at(dg.ai_aim(50))[1]) == "Bull"
+	# a bust: 10 left, a T20 – back to 10, the turn over
+	var keep_streak: Dictionary = GameState.minigame_streak.duplicate()
+	var keep_best: Dictionary = GameState.minigame_best.duplicate()
+	Commands.mg_session = {"game": "darts", "mode": "301", "stake": 0, "opponent": {}}
+	dg.turn = 0
+	dg.score = [10, 200]
+	dg.turn_start = 10
+	dg.darts_left = 3
+	dg._land(D.target(20, "T"))
+	var bust_ok: bool = int(dg.score[0]) == 10 and dg.darts_left == 0
+	# checking out exactly
+	dg.state = "aim"
+	dg.turn = 0
+	dg.score = [32, 200]
+	dg.darts_left = 3
+	dg._land(D.target(16, "D"))
+	var out_ok: bool = dg.state == "over" and dg.won
+	dg.free()
+	# around the clock: the 1, then on
+	var dc = D.new()
+	dc.setup({"mode": "clock", "opponent": {}, "stake": 0})
+	Commands.mg_session = {"game": "darts", "mode": "clock", "stake": 0, "opponent": {}}
+	dc._land(D.target(1, "T"))
+	dc._land(D.target(5, "S"))
+	var clock_ok: bool = dc.clock_target == 2 and dc.clock_darts == 2
+	dc.free()
+	GameState.minigame_streak = keep_streak
+	GameState.minigame_best = keep_best
+	Commands.mg_session = {}
+	var m := GroundMap.new()
+	m.setup(20, 20)
+	DeckGen._dart_board(m, 4, 4)
+	var board_ok: bool = m.zones.any(func(z): return String(z.get("kind", "")) == "darts") and m.objects.any(func(o): return String(o["kind"]) == "dart_board")
+	check(score_ok and aim_ok and bust_ok and out_ok and clock_ok and board_ok,
+		"54b: darts – the board scores right (bull 50, 25, T20 60, D16, off the board nothing), the guest aims at trebles and then a finish, a bust gives back the turn's points, checking out exactly wins, around the clock goes number by number; a dartboard on its stand in the mess and the canteen  [%s]" % [
+			" ".join(PackedStringArray([str(score_ok), str(aim_ok), str(bust_ok), str(out_ok), str(clock_ok), str(board_ok)]))])

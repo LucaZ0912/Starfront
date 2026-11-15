@@ -1052,6 +1052,24 @@ func _build_ground() -> void:
 	rc2.add_child(UI.button("Calm", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder"})))
 	rc2.add_child(UI.button("Rotor jammed (job)", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder", "job": true})))
 	_box.add_child(UI.wrap_label("Straight into a cloud city over a giant of this system (or a body seen as one). Every inhabited system's giants have 1–2 cities; the skyrail runs between Central and the Skyring.", 12, UI.TEXT_DIM, 560))
+	_section("Bar games (package 54b)")
+	var rbg := _row()
+	rbg.add_child(UI.label("Billiards:", 12, UI.TEXT_DIM))
+	rbg.add_child(UI.button("Open the lobby here", func(): _cmd({"type": "debug_minigame", "game": "billiards", "open": true})))
+	for sk in [0, 9, 10, 24, 25]:
+		var skk: int = sk
+		rbg.add_child(UI.button("Streak %d" % skk, func(): _cmd({"type": "debug_minigame", "game": "billiards", "streak": skk})))
+	rbg.add_child(UI.button("Win now", func(): _cmd({"type": "debug_minigame", "game": "billiards", "result": "win"})))
+	rbg.add_child(UI.button("Lose now", func(): _cmd({"type": "debug_minigame", "game": "billiards", "result": "lose"})))
+	var rdg := _row()
+	rdg.add_child(UI.label("Darts:", 12, UI.TEXT_DIM))
+	rdg.add_child(UI.button("Open the lobby here", func(): _cmd({"type": "debug_minigame", "game": "darts", "open": true})))
+	for sk2 in [0, 9, 10, 24, 25]:
+		var skk2: int = sk2
+		rdg.add_child(UI.button("Streak %d" % skk2, func(): _cmd({"type": "debug_minigame", "game": "darts", "streak": skk2})))
+	rdg.add_child(UI.button("Win now", func(): _cmd({"type": "debug_minigame", "game": "darts", "result": "win"})))
+	rdg.add_child(UI.button("Lose now", func(): _cmd({"type": "debug_minigame", "game": "darts", "result": "lose"})))
+	_box.add_child(UI.wrap_label("The dartboards stand in the mess halls and canteens (military, industry, shipyards). The pool tables stand in the dives (mining colonies, pirate havens) and the lounges (trade stations, ice refineries, many city bars). The streak sets the stakes: medium from 10 wins in a row, high from 25.", 12, UI.TEXT_DIM, 560))
 	_section("Sights on the ground (package 54a)")
 	var sgh := _option(["0.8", "0.42", "0.05"], ["Hour: day", "Hour: dusk", "Hour: night"], 120)
 	var rs0 := _row()

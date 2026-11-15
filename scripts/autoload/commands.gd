@@ -1993,6 +1993,91 @@ func _c_debug_tourists(_c: Dictionary) -> String:
 	return ""
 
 
+## Package 54b (Luz): the bar games. {"type":"minigame_begin", "game", "mode", "stake", "opponent"}: the stake goes on the
+## table (it must be open by your win streak and in your pocket); {"type":"minigame_end", "won": bool}: the winner takes
+## the pot, the streak grows or ends; {"type":"pool_shot", "angle", "power", "spin": [x, y]}: a shot at the pool table
+## (the game itself runs the balls – one command per shot, so a co-op player's shot can come the same way).
+const MinigameData = preload("res://data/minigames.gd")
+var mg_session := {}
+
+
+func _c_minigame_begin(c: Dictionary) -> String:
+	var game := String(c.get("game", ""))
+	if not MinigameData.GAMES.has(game):
+		return "Unknown game."
+	var stake := int(c.get("stake", 0))
+	var mode := String(c.get("mode", ""))
+	if MinigameData.solo(mode):
+		stake = 0
+	var streak := int(GameState.minigame_streak.get(game, 0))
+	if stake > MinigameData.max_stake(streak):
+		return "That stake opens with a longer win streak."
+	if stake > GameState.credits:
+		return "Not enough credits for that stake."
+	if stake > 0:
+		GameState.spend(stake)
+	mg_session = {"game": game, "mode": mode, "stake": stake, "opponent": c.get("opponent", {})}
+	return ""
+
+
+func _c_minigame_end(c: Dictionary) -> String:
+	if mg_session.is_empty():
+		return "No game running."
+	var game := String(mg_session["game"])
+	var stake := int(mg_session["stake"])
+	var won := bool(c.get("won", false))
+	if not MinigameData.solo(String(mg_session["mode"])):
+		var opp: Dictionary = mg_session.get("opponent", {})
+		var who := String(opp.get("name", "your opponent"))
+		if won:
+			GameState.credits += stake * 2
+			GameState.minigame_streak[game] = int(GameState.minigame_streak.get(game, 0)) + 1
+			GameState.minigame_wins[game] = int(GameState.minigame_wins.get(game, 0)) + 1
+			GameState.log_msg("%s: you beat %s%s – %d in a row." % [MinigameData.GAMES[game]["name"], who,
+				(" and take %d cr" % (stake * 2)) if stake > 0 else "", int(GameState.minigame_streak[game])], GameState.COL_GOOD)
+		else:
+			GameState.minigame_streak[game] = 0
+			GameState.log_msg("%s: %s wins%s. Your streak is over." % [MinigameData.GAMES[game]["name"], who,
+				(" – %d cr lost" % stake) if stake > 0 else ""], GameState.COL_WARN)
+	mg_session = {}
+	return ""
+
+
+func _c_pool_shot(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.minigame == null or not g.minigame.has_method("shoot"):
+		return "No pool game."
+	var sp: Array = c.get("spin", [0.0, 0.0])
+	g.minigame.shoot(float(c.get("angle", 0.0)), float(c.get("power", 0.5)), Vector2(float(sp[0]), float(sp[1])))
+	return ""
+
+
+## {"type":"dart_throw", "x", "y"} – package 54b: a dart at the board (art px on the board's picture).
+func _c_dart_throw(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.minigame == null or not g.minigame.has_method("throw_at"):
+		return "No darts game."
+	g.minigame.throw_at(Vector2(float(c.get("x", 0.0)), float(c.get("y", 0.0))))
+	return ""
+
+
+## {"type":"debug_minigame", "game", "streak": n} – package 54b: set the win streak; with "open": true the game's lobby
+## at once (wherever you are on foot); "result": "win"/"lose" ends the running game so.
+func _c_debug_minigame(c: Dictionary) -> String:
+	var game := String(c.get("game", "billiards"))
+	if c.has("streak"):
+		GameState.minigame_streak[game] = int(c["streak"])
+		GameState.log_msg("[Debug] %s: win streak %d." % [game, int(c["streak"])], GameState.COL_WARN)
+	var g = _ground()
+	if String(c.get("result", "")) != "" and g != null and g.minigame != null and g.minigame.has_method("finish"):
+		g.minigame.finish(String(c["result"]) == "win")
+	if bool(c.get("open", false)):
+		if g == null:
+			return "Only on foot."
+		g.open_minigame(game, {"title": "%s (debug)" % String(MinigameData.GAMES.get(game, {}).get("where", "The table")), "id": "debug_table"})
+	return ""
+
+
 ## {"type":"sight_tour"} – package 54a: you stepped up to a sight's viewpoint – the sightseers of an excursion aboard
 ## the ship you came in have seen it.
 func _c_sight_tour(_c: Dictionary) -> String:

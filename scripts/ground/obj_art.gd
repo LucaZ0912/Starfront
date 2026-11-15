@@ -73,6 +73,8 @@ static func _rise(kind: String) -> int:
 			return 34
 		"crystal":
 			return 22
+		"dart_board":                         # 54b: a dartboard on its stand
+			return 30
 		"greenhouse":
 			return 20
 		"rock", "lava_rock":
@@ -1545,6 +1547,19 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.5, fy + ph * 0.6, pw * 0.5, ph * 0.45 + 3.0, dc.darkened(0.12))
 			_ellipse(img, pw * 0.45, fy + ph * 0.5, pw * 0.42, ph * 0.35 + 2.0, dc)
 			_ellipse(img, pw * 0.35, fy + ph * 0.4, pw * 0.2, 2.0, dc.lightened(0.15))
+		"dart_board":               # 54b (Luz): a dartboard on a stand – the post, the round board with its rings, a chalk tally
+			var cx := pw * 0.5
+			var post := Color(0.25, 0.25, 0.28)
+			_r(img, int(cx) - 1, 10, 2, fy + ph - 12, post)
+			_ellipse(img, cx, fy + ph - 2.0, 5.0, 1.5, post.darkened(0.3))
+			_ellipse(img, cx, 9.0, 8.0, 8.0, Color(0.32, 0.18, 0.1))
+			_ellipse(img, cx, 9.0, 6.5, 6.5, Color(0.12, 0.12, 0.12))
+			_ellipse(img, cx, 9.0, 5.5, 5.5, Color(0.85, 0.15, 0.15))
+			_ellipse(img, cx, 9.0, 4.8, 4.8, Color(0.92, 0.86, 0.68))
+			_ellipse(img, cx, 9.0, 3.3, 3.3, Color(0.15, 0.6, 0.25))
+			_ellipse(img, cx, 9.0, 2.6, 2.6, Color(0.1, 0.1, 0.1))
+			_ellipse(img, cx, 9.0, 1.0, 1.0, Color(0.85, 0.15, 0.15))
+			_r(img, int(cx) + 4, 6, 1, 3, Color(0.3, 0.8, 1.0))
 		"crystal":                  # 54a: a cluster of crystals – six-sided prisms leaning out of a foot of rime, lit from the left
 			var ic: Color = o.get("col", Color(0.75, 0.9, 1.0))
 			var crng := RandomNumberGenerator.new()

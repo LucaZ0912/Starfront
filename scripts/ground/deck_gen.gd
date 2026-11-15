@@ -438,8 +438,26 @@ static func _prop_light(m: GroundMap, kind: String, at: Vector2) -> void:
 
 
 ## Round tables, a chair either side, a sofa and a rug – the classic lounge (trade hubs, ice refineries).
+## 54b (Luz): a dartboard on its stand, a lamp over it, the line to throw from (zone `darts`).
+static func _dart_board(m: GroundMap, x: int, y: int) -> void:
+	m.add_object({"kind": "dart_board", "x": x, "y": y, "w": 1, "h": 1})
+	m.lights.append({"pos": Vector2(x + 0.5, y + 0.2) * GroundMap.TILE, "r": 30.0, "col": Color(1.0, 0.9, 0.7), "a": 0.3})
+	m.decals.append({"kind": "guide", "x": x - 1, "y": y + 3, "w": 3, "h": 1, "col": Color(0.95, 0.8, 0.2)})
+	m.zones.append({"rect": Rect2(Vector2(x - 1.0, y + 1.0) * GroundMap.TILE, Vector2(3, 2.4) * GroundMap.TILE), "kind": "darts", "id": "darts",
+		"title": "Dartboard – play darts", "col": Color(1.0, 0.9, 0.6), "sign": Vector2(-100, -100)})
+
+
+## 54b (Luz): a pool table to play at – the table, its lamp, the place to stand and play (zone `pool`).
+static func _pool_table(m: GroundMap, x: int, y: int) -> void:
+	m.add_object({"kind": "pool_table", "x": x, "y": y, "w": 3, "h": 2})
+	m.lights.append({"pos": Vector2(x + 1.5, y + 1.2) * GroundMap.TILE, "r": 40.0, "col": Color(0.6, 1.0, 0.6), "a": 0.25})
+	m.zones.append({"rect": Rect2(Vector2(x - 0.5, y + 2.0) * GroundMap.TILE, Vector2(4, 1.3) * GroundMap.TILE), "kind": "pool", "id": "pool",
+		"title": "Pool table – play billiards", "col": Color(0.6, 1.0, 0.6), "sign": Vector2(-100, -100)})
+
+
 static func _bar_lounge(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNumberGenerator) -> void:
-	var tx := x0 + 2
+	_pool_table(m, x0 + 1, BAR_Y0 + 3)                 # 54b (Luz): the lounges have a pool table too
+	var tx := x0 + 7
 	var row := 0
 	while tx + 2 < x1:
 		var ty := BAR_Y0 + 2 + (0 if row % 2 == 0 else 4)
@@ -451,7 +469,7 @@ static func _bar_lounge(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNu
 		row += 1
 	m.add_object({"kind": "plant", "x": x0 - 1, "y": COR_Y0 - 1, "w": 1, "h": 1})
 	_seat(m, "sofa", x0, COR_Y0 - 2, 0, m.pal["carpet"], rng, 0.3, 3)
-	m.decals.append({"kind": "rug", "x": x0 + 4, "y": BAR_Y0 + 4, "w": 5, "h": 3, "col": m.pal["carpet"]})
+	m.decals.append({"kind": "rug", "x": x0 + 8, "y": BAR_Y0 + 4, "w": 5, "h": 3, "col": m.pal["carpet"]})
 
 
 ## Long tables with benches either side – a mess hall (military), a canteen (industry, shipyards), picnic tables
@@ -467,6 +485,8 @@ static func _bar_long(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNumb
 			m.lights.append({"pos": Vector2(tx + tw * 0.5, ty + 0.6) * GroundMap.TILE, "r": 40.0,
 				"col": Color(1.0, 0.95, 0.85) if style != "garden" else Color(1.0, 0.75, 0.45), "a": 0.2})
 		tx += tw + 2
+	if style in ["mess", "canteen"]:
+		_dart_board(m, x0 - 1, BAR_Y0 + 3)              # 54b (Luz): darts in the mess and the canteen
 	if style == "canteen":
 		for k in 2:
 			m.add_object({"kind": "vending", "x": x0 - 1 + k, "y": COR_Y0 - 1, "w": 1, "h": 1, "col": Color(0.4, 0.75, 1.0)})
@@ -492,8 +512,7 @@ static func _bar_cafe(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNumb
 
 ## A dive: a pool table, barrels for tables, crates to sit on (mining colonies, pirate havens).
 static func _bar_dive(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNumberGenerator) -> void:
-	m.add_object({"kind": "pool_table", "x": x0 + 1, "y": BAR_Y0 + 3, "w": 3, "h": 2})
-	m.lights.append({"pos": Vector2(x0 + 2.5, BAR_Y0 + 4.2) * GroundMap.TILE, "r": 40.0, "col": Color(0.6, 1.0, 0.6), "a": 0.25})
+	_pool_table(m, x0 + 1, BAR_Y0 + 3)
 	for ty in [BAR_Y0 + 2, BAR_Y0 + 6]:
 		var tx := x0 + 7 + (0 if ty == BAR_Y0 + 2 else 2)
 		while tx + 1 < x1:

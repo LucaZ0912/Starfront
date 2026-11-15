@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.6 – 2026-11-15
+
+**Package 54b, part 1 – bar games: billiards and darts (Luz).** What stands in the bars can be played now.
+- **A lobby before every game:** the mode, the seats – you and a guest of the bar (name, trade, strength, a line) or
+  one of your crew aboard; a seat for a co-op player is already there for later –, the stake, the rules, start.
+- **Stakes by the win streak:** low (up to 200 cr), from 10 wins in a row medium (up to 1000 cr), from 25 high (up to
+  5000 cr) – and the guests get better with it; a loss ends the streak; playing for nothing always works.
+- **Billiards** at the pool tables of the dives (mining colonies, pirate havens) and now the lounges too: the camera
+  down on the table (wooden rails, leather pockets, the lamp on the cloth), real balls – cushions, ball on ball,
+  follow, draw and side on the cue ball –, aim with the mouse (the aim line, the ghost ball, where the object ball
+  goes), hold for power, the right button for spin. 8-ball (groups, fouls, ball in hand, the 8 too early loses),
+  9-ball (lowest ball first, the 9 wins) or practice alone. The guest picks the best open shot and places the ball in
+  hand well, more or less accurately by strength, and comments on it.
+- **Darts** at a board on its stand in the mess halls and canteens: the camera on the board (sisal, wires, trebles and
+  doubles); 301 or 501 down to exactly nothing (below is a bust), or around the clock alone (your best kept). The hand
+  sways – less with Reflexes, more after drinks; hold the right button to hold your breath. The guest goes for the
+  trebles, then a finish.
+- Drinks at the bar make the cue wander and the hand sway.
+- Every shot and throw goes through the command bus (for co-op later). Debug: F12 → Ground → Bar games (open a lobby
+  anywhere on foot, set the streak, win or lose now). Smoke test groups `minigames54b`, `darts54b`.
+
 ## alpha 0.7.54.5 – 2026-11-15
 
 **Package 54a – sights on the ground, excursions and shuttles (Luz).** On most worlds of the right kind the planet map

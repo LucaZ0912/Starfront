@@ -128,6 +128,9 @@ var _permit_t := 0.0
 var _prosper_t := 0.0             # package 42c: prosperity drifts back to its base
 ## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
 var research_data := 0
+var minigame_streak := {}               # package 54b: game id -> wins in a row (sets the stakes and the guests' strength)
+var minigame_wins := {}                 # package 54b: game id -> wins in all
+var minigame_best := {}                 # package 54b: game id -> best score (Rock Hopper …)
 var sight_photos := {}                  # package 54a: "<sight id>:<event>" -> true – the photos you took at the sights
 var sight_visits := {}                  # sight id -> how often you came (the event changes with it)
 var poi_visits := {}                    # package 53a: system id (String) -> how often you have come (its sites change with it)
@@ -529,7 +532,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "minigame_streak": minigame_streak.duplicate(), "minigame_wins": minigame_wins.duplicate(), "minigame_best": minigame_best.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
@@ -602,6 +605,9 @@ func from_dict(d: Dictionary) -> void:
 	research_data = int(d.get("research_data", 0))
 	poi_visits = (d.get("poi_visits", {}) as Dictionary).duplicate()
 	sight_photos = (d.get("sight_photos", {}) as Dictionary).duplicate()
+	minigame_streak = (d.get("minigame_streak", {}) as Dictionary).duplicate()
+	minigame_wins = (d.get("minigame_wins", {}) as Dictionary).duplicate()
+	minigame_best = (d.get("minigame_best", {}) as Dictionary).duplicate()
 	sight_visits = (d.get("sight_visits", {}) as Dictionary).duplicate()
 	poi_used = (d.get("poi_used", []) as Array).duplicate()
 	museum_finds = (d.get("museum_finds", []) as Array).duplicate()
