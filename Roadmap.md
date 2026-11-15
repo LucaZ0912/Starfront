@@ -1968,6 +1968,25 @@ Probe). Beute: Häute, Fleisch, Proben – **sowohl** als Handelsware im Frachtr
 Taschen (in der Stadt verkaufen). **Jagdaufträge** am Brett („bring Häute“, „erlege den Räuber X“). Aussehen: eigene
 Entwürfe (keine Vorlagen).
 
+**54 – Wolkenstädte** (Steckbrief mit Luz abgestimmt, 15. Nov 2026; Vorlagen von Luz: runde Plattformen mit
+Ringpromenaden, grünen Terrassen und Türmen, darunter hängende Spindeln und Antriebe, Bahnen zwischen den Plattformen,
+rosa-orange Dunst – nur als Anregung, eigene Umsetzung):
+
+| Punkt | Wolkenstadt |
+| --- | --- |
+| Wo | an bewohnten Gasriesen 1–2 Städte, je nach Riesentyp: Gasriese – Gasernte und Handel; Eisriese – Forschung und Kühlung; Roter Gasriese – Industrie und Raffinerie; Toxischer Riese – kleine abgeschottete Außenposten |
+| Aufbau | mehrere schwebende Plattformen in einer Höhe: Landedeck mit Hangar, Hauptplattform mit Markt und Bar, Wohn- und Aussichtsring; darunter hängen Auftriebstanks, Antigrav-Rotoren und Spindeln |
+| Begehbar (Luz, 15. Nov 2026) | **wie die anderen Städte, nur im eigenen Design:** Landung in einem **Hangar**, von dort mit den **Aufzügen** zu einzelnen Ebenen – nicht die ganze Stadt, sondern z. B. die **Plaza mit Balkonen** über dem Wolkenmeer, die **Bahnhaltestelle** der Hängebahn, Laden- und Barebene. Alles im **echten Maßstab** (~15 Art-Pixel je Meter, angeschnitten statt verkleinert); die ganze Plattform sieht man nur aus der Ferne (Anflug, aus der Bahn) |
+| Hangar | **wie in den anderen Städten** (Galerie mit Aufzügen oben, das eigene Schiff unten in der Halle – der Aufbau zeigt die Größe der Schiffe gut), nur im Design der Wolkenstadt (Luz, 15. Nov 2026) |
+| Mockups | `mockup_54v2_plaza`, `mockup_54v2_bahnhof`, `mockup_54v2_fahrt` – Plaza und Hängebahn von Luz für gut befunden |
+| Verbindung | **Einschienen-Hängebahnen** zwischen den Plattformen – **betretbar und benutzbar**: Bahnhof auf jeder Plattform, in den Wagen einsteigen, die Fahrt mit Blick aufs Wolkenmeer (Vorbereitung für das Glücksspiel in Teil 8: dort auch ein Zug) |
+| Aussehen | Stil der jeweiligen Macht wie die Städte am Boden, angepasst an die Höhe (Assembly Glaskuppeln und Terrassen, Covenant Spitztürme, Directorate weiße Türme, Independent Neon und Gerüste) |
+| Gasriese sichtbar | man muss sehen, dass man **in der Atmosphäre eines echten Gasriesen** ist: Wolkenbänder in seinen Farben in mehreren Schichten unter den Plattformen, Tiefendunst, Gewitter und Wetterleuchten tief unten, ferne Plattformen im Dunst, der Himmel in der Farbe des Riesen, Sturmwirbel am Horizont |
+| Luft | meist giftig oder dünn (Anzug); manche Gasriesen haben in der Höhe der Stadt **atembare Luft bei Normaldruck** |
+| Ränder | Wind an den Rändern, Geländer – man fällt nicht hinunter |
+| Besonderes | Gasernte-Anlagen als Sondergebäude (Gas-Wirtschaft aus Paket 41); Aussichtsdecks als Sehenswürdigkeit (54a); **unter der Stadt** ein Ort zum Erkunden mit Waffen – die Wartungsebene mit den Auftriebsmotoren (wie die Kanalisation der Städte) |
+| Anflug | mit dem Schiff durch die Wolkendecken sinken, auf einem Landedeck am Plattformrand aufsetzen |
+
 **53c – Missions-POIs: Plan (Luz, 11. Nov 2026).** Bodenaufträge am Auftragsbrett; beim Annehmen entsteht ein eigener
 Einsatzort (dieses oder ein nahes System, ein Körper oder unter einer Stadt/Siedlung), auf der Planetenkarte markiert,
 mit festem Ziel und einem Auftrags-Briefing statt „mögliche Ziele“; danach verbraucht, ein ähnlicher Auftrag würfelt
