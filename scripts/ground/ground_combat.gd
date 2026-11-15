@@ -311,6 +311,17 @@ func lock(f) -> void:
 	Audio.play("lock_acquired", "lock on foot", -6.0)
 
 
+## 0.7.53.36 (Luz): a peaceful animal is no foe – never picked by R or Shift+R, no shot at it on its own (yours, your
+## drones', your team's) until you choose to hunt it (click it once more while it is your target).
+func peaceful(f) -> bool:
+	return f != null and String(f.get("wild", "")) == "flee" and not bool(f.get("hunted", false))
+
+
+func hunt(f) -> void:
+	if f != null:
+		f["hunted"] = true
+
+
 func unlock(f) -> void:
 	locks.erase(f)
 	if active == f:
@@ -320,9 +331,10 @@ func unlock(f) -> void:
 
 ## Tab: the next foe you can see, nearest first, after the active one.
 func next_target() -> void:
-	var seen := alive().filter(func(f): return not sight(pilot_pos(), (f["w"] as Walker).pos)["blocked"])
+	var foes2 := alive().filter(func(f): return not peaceful(f))
+	var seen := foes2.filter(func(f): return not sight(pilot_pos(), (f["w"] as Walker).pos)["blocked"])
 	if seen.is_empty():
-		seen = alive()
+		seen = foes2
 	if seen.is_empty():
 		return
 	seen.sort_custom(func(a, b): return pilot_pos().distance_to((a["w"] as Walker).pos) < pilot_pos().distance_to((b["w"] as Walker).pos))
@@ -335,6 +347,8 @@ func nearest_target() -> void:
 	var best = null
 	var bd := INF
 	for f in alive():
+		if peaceful(f):
+			continue
 		var dd := pilot_pos().distance_to((f["w"] as Walker).pos) + (400.0 if sight(pilot_pos(), (f["w"] as Walker).pos)["blocked"] else 0.0)
 		if dd < bd:
 			bd = dd
@@ -511,6 +525,8 @@ func _pilot_fire(delta: float) -> void:
 		return                                         # 0.7.52.25: cloaked, your weapons hold fire
 	if view.charging():
 		return                                         # 0.7.53.16 (Luz): charging at a socket – no shooting
+	if peaceful(active):
+		return                                         # 0.7.53.36 (Luz): a peaceful animal – only when you hunt it
 	var wid := weapon_id()
 	if wid == "":
 		return
@@ -1446,8 +1462,8 @@ func _tac_step(delta: float) -> void:
 
 
 func _draw_tactics() -> void:
-	if sneaking or tactics != 0:
-		_draw_sneak()                                # 0.7.52.21: where they would spot you (0.7.53.19 fix: standing – in the tactical view)
+	if sneaking:
+		_draw_sneak()                                # 0.7.53.36 (Luz): the view cones only while you sneak                                # 0.7.52.21: where they would spot you (0.7.53.19 fix: standing – in the tactical view)
 	if not sneaking:
 		_draw_tactics_view()
 	# 0.7.52.4 (Luz): how strong each foe is – a coloured ring on the ground at its feet
@@ -2031,7 +2047,7 @@ func _drone_step_one(delta: float) -> void:
 		face = mv.angle()
 	d["head"] = lerp_angle(float(d["head"]), face, 1.0 - exp(-delta * 8.0))
 	# fighting your target
-	if String(d["state"]) == "hover" and fight and active != null and String(d["kind"]) != "kamikaze" and float(d["cool"]) <= 0.0:
+	if String(d["state"]) == "hover" and fight and active != null and not peaceful(active) and String(d["kind"]) != "kamikaze" and float(d["cool"]) <= 0.0:
 		var tp: Vector2 = (active["w"] as Walker).pos
 		var dp: Vector2 = d["pos"]
 		if dp.distance_to(tp) <= float(st["range"]) and not sight(dp, tp)["blocked"]:
@@ -2484,8 +2500,8 @@ func view_poly(f: Dictionary) -> PackedVector2Array:
 func _draw_sneak() -> void:
 	var red := Color(1.0, 0.3, 0.25)
 	for f in alive():
-		if f["aware"]:
-			continue
+		if f["aware"] or String(f.get("wild", "")) != "":
+			continue                                 # (the animals go by nearness, not by a cone)
 		var poly := view_poly(f)
 		var sp := PackedVector2Array()
 		for p in poly:
@@ -2812,7 +2828,7 @@ func _ally_target(a: Dictionary) -> Variant:
 		if dd < bd and not sight(w.pos, (f["w"] as Walker).pos)["blocked"]:
 			bd = dd
 			best = f
-	if best == null and active != null and not active["dead"]:
+	if best == null and active != null and not active["dead"] and not peaceful(active):
 		best = active                                  # none in sight: it goes for yours
 	return best
 

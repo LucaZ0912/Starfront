@@ -667,6 +667,15 @@ func _on_click(event: InputEvent) -> void:
 	if f == null:
 		return
 	if event.button_index == MOUSE_BUTTON_LEFT:
+		if combat.peaceful(f):
+			# 0.7.53.36 (Luz): a peaceful animal – the first click only marks it, the second one hunts it
+			if combat.active == f:
+				combat.hunt(f)
+				_say_toast("You hunt the %s." % String(f["name"]).to_lower(), 2.0)
+			else:
+				combat.lock(f)
+				_say_toast("A peaceful animal – click it again to hunt it.", 2.5)
+			return
 		combat.lock(f)
 	else:
 		combat.unlock(f)

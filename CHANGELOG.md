@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.53.36 – 2026-11-15
+
+**Peaceful animals are not foes (Luz).** R and Shift+R never pick a peaceful animal, and no shot goes at one on its own
+– not yours, not your drones', not your team's. Click it to mark it; click it **again** to **hunt** it, then you fire
+as at any target. In the tactical view the **view cones** of the foes show **only while you sneak**.
+
 ## alpha 0.7.53.35 – 2026-11-12
 
 **Package 53f-2 – the wild (Luz).** Jungle, ocean and ice worlds now have **wild country** to land in, hunt and explore,

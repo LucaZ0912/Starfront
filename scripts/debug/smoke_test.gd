@@ -11322,6 +11322,25 @@ func _test_wild(view: SystemView) -> void:
 		g.pilot.pos = (ra["w"] as Walker).pos + Vector2(20, 0)
 		cb._wild_step(ra, 0.1)
 		ai_ok = ai_ok and hid and bool(ra["aware"])
+		# 0.7.53.36 (Luz): a peaceful animal is never picked by R, and no shot goes at it until you hunt it
+		var fb: Dictionary = flee[flee.size() - 1]
+		fb["provoked"] = false
+		fb.erase("hunted")
+		g.pilot.pos = (fb["w"] as Walker).pos + Vector2(40, 0)
+		cb.active = null
+		for k in 6:
+			cb.next_target()
+		var picked: bool = cb.active == fb
+		cb.lock(fb)
+		cb.lock_t = 0.0
+		cb.pilot_cool = 0.0
+		var n_shots: int = cb.shots.size()
+		var hp_b: float = float(fb["st"]["health"])
+		cb._pilot_fire(0.1)
+		ai_ok = ai_ok and cb.peaceful(fb) and not picked and cb.shots.size() == n_shots and float(fb["st"]["health"]) == hp_b
+		cb.hunt(fb)
+		ai_ok = ai_ok and not cb.peaceful(fb)
+		cb.unlock(fb)
 	# loot: a big one brought down – into the pockets and the hold
 	var big: Dictionary = cb.spawn("armor_crab", g.pilot.pos + Vector2(40, 0))
 	for ii in gear.inv.size():
@@ -11368,7 +11387,7 @@ func _test_wild(view: SystemView) -> void:
 	gear.combat_t = 0.0
 	main._update_input()
 	check(maps_ok and paint_ok and goods_ok and ai_ok and loot_ok and find_ok and mm_ok and hunt_ok,
-		"53f-2: the wild – jungle, coast and ice grounds (the find reachable from the ship, water seen across), painted with the water clear for the shader; grazers run and never fight, hunters guard their ground and let you go, the one in the sand waits hidden; hides and meat to pockets and hold; the drone's cargo pod; hunting jobs with the old beast  [%s]%s" % [
+		"53f-2: the wild – jungle, coast and ice grounds (the find reachable from the ship, water seen across), painted with the water clear for the shader; grazers run and never fight, hunters guard their ground and let you go, the one in the sand waits hidden; never picked by R nor shot at until you hunt them; hides and meat to pockets and hold; the drone's cargo pod; hunting jobs with the old beast  [%s]%s" % [
 			" ".join(PackedStringArray([str(maps_ok), str(paint_ok), str(goods_ok), str(ai_ok), str(loot_ok), str(find_ok), str(mm_ok), str(hunt_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
 
 
