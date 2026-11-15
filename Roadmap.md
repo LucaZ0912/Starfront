@@ -1938,7 +1938,7 @@ Coiled Relic, Sleeper's Mask, Undying Collar, Pantheon Idol; Tafeln: The Pantheo
 ihre Schrift ist nicht entziffert). Die bisherigen 15 Funde gehen darin auf (Spielstände dürfen brechen).
 
 **53f – Lebewesen** (mit Luz abgestimmt, 12. Nov 2026; Mockups `mockup_53f_*`). Nicht-menschliche Gegner – zuerst in den
-vorhandenen Orten (53f-1), dann die Tierwelt auf Planeten mit eigenen Orten (53f-2), der Schläfer als Boss mit eigenem
+vorhandenen Orten (53f-1), dann die Tierwelt auf Planeten mit eigenen Orten (53f-2), der Schläfer als Boss (15. Nov 2026 nach Teil 8 verschoben, Paket 65a) mit eigenem
 Auftrag später.
 
 | Wesen | Ort | Aussehen (nach Luz' Vorlagen, eigene Umsetzung) | Kampf | Beute |
@@ -2279,6 +2279,8 @@ Nummerierung schließt an Teil 7 an (dort bis Paket 54).
 | 63 | Neue Schiffe | das alte Earthworks-Schiff des Piloten (nicht mehr hergestellt; taucht später als 100-Millionen-Sammlerstück in den Nachrichten auf), besondere Casino-Schiffe, ein Rennschiff von Maison Aurelle |
 | 64 | Neue Missionsarten | _(Details offen)_ |
 | 65 | Neue Touristenziele | _(Details offen)_ – baut auf Tourismus (Paket 43) und Sehenswürdigkeiten (Paket 54) auf |
+| 65a | Bossgegner | (Luz, 15. Nov 2026) alle Bossgegner gesammelt und **in die Story eingebaut** – zuerst **der Schläfer** in der Grube am Grund der Ruine der Dark Ones (bisher Kulisse, 0.7.53.23); Kampfablauf (Phasen, Angriffe, Schwachstellen) und Balancing noch zu klären |
+| 65b | Dynamischer Krieg Covenant – Assembly | (Luz, 15. Nov 2026) der Krieg zwischen Covenant und Assembly als lebendiges System statt fester Grenzen – _Details folgen (Luz' Ideen)_ |
 
 **Paket 62a – Das Kolosseum (Idee Luz, 11. Nov 2026, spätere Sache):** eine Einrichtung im Casino-System für Bodenkämpfe.
 - **Einzug (bei allen Spielmodi):** Der Spieler betritt ein rundes Gebäude; hinter einer hohen Wand ragen die Zuschauerränge auf – **wie voll sie sind, hängt vom Fortschritt im jeweiligen Spielmodus ab**. Die Kamera zoomt wieder herunter, gegenüber öffnet sich das Tor, die Gegner treten ein. Dann eine kleine Animation: **die Porträts der Gegner VS das Porträt des Spielers**. Danach eine **Hologramm-Startanimation**, und die eigentliche Kampfkarte lädt – sie kann **viel größer als die Arena** sein, die Idee ist, dass das eine Form von **VR** ist.
@@ -2286,6 +2288,37 @@ Nummerierung schließt an Teil 7 an (dort bis Paket 54).
 - **Team-Deathmatch:** dasselbe, nur in einem **Team zu dritt gegen 3 starke Gegner**.
 - **Survivor-/Bullet-Hell-Modus** (wie Vampire Survivors) – ein verrückter Spielmodus aus Spaß.
 - Anmerkung Claude: die Gefahrenstufen grün/gelb/rot (0.7.52.4) passen dazu („ein starker, zwei schwache“), das Team-Deathmatch kann auf dem Bodenteam (Paket 52a) aufbauen.
+
+**Paket 65b – Dynamischer Krieg Covenant – Assembly (Ideen Luz, 15. Nov 2026; Steckbrief in Arbeit):**
+- **Kriegspunkte:** Covenant und Assembly sammeln laufend Kriegspunkte. Wie viele, hängt von ihrer **Wirtschaft** und
+  vom **Zutun der Spieler** ab.
+- **Kriege:** Sind genug Punkte da, beginnt ein Krieg um **1 oder 2 Sternsysteme**. **Feste Systeme** müssen erst
+  **destabilisiert** und dann **übernommen** werden; **umkämpfte Systeme** (die umstrittene Grenze, 0.6.40.7) lassen sich
+  **direkt übernehmen**.
+- **Schlachten zum Mitmachen** (Spielmodi):
+  - **Raumschlacht:** Man wird mit einem **Träger** in einer eigenen **Schlachtkarte** abgesetzt; je nach System kämpfen
+    **2 oder 3 Großkampfschiffe** und viele kleine. **150 Punkte** gewinnen; Großkampfschiffe fallen, wenn man ihre
+    **kleineren Teile zerschießt**. Wer stirbt, **spawnt im Träger** neu.
+  - **Bodenschlacht:** eigene Karten mit **Kommandoposten**. Gewonnen, wenn **alle Posten** genommen sind oder die
+    **Garnison des Gegners (150 Mann)** ausgeschaltet ist. Respawn an **eingenommenen Kommandoposten**.
+  - **Infiltrierung** (in noch **festen Systemen**): man schleicht oder kämpft sich in eine **gegnerische Basis** oder
+    ein **Großkampfschiff**, um **Informationen zu stehlen** – baut auf Schleichen, Hacken und den Missions-Orten
+    (Pakete 52b, 53) auf.
+- **Ränge:** Man steigt bei einer Macht im Rang auf und schaltet damit **Entscheidungen im Krieg** frei – **wer, wann
+  und wie** angegriffen wird – und **Boni**, die man wählen kann.
+
+Entscheidungen Luz (15. Nov 2026):
+1. **Zutun der Spieler** (Kriegspunkte): Aufträge für die Macht, Lieferungen von Kriegswaren (Munition, Waffenteile …),
+   Abschüsse von Piraten und Feinden, Siege in Schlachten – alles davon.
+2. **Destabilisieren** fester Systeme: durch **Infiltrierung** und zusätzlich **Sabotage-Aufträge**; danach entscheiden
+   Raum- oder Bodenschlacht die Übernahme.
+3. **Ohne Spieler** laufen Kriege weiter – mit einem ausgewürfelten Ausgang nach Stärke, der **sehr ausgewogen** sein
+   muss (keine Macht überrollt die andere).
+4. **Übernahme:** Stationen wechseln Fraktion, Stil und Wachen; Ruf und Zugang ändern sich; die Wirtschaft des Systems
+   schwächelt eine Zeit lang.
+5. **Seiten:** Man legt sich auf **eine** Macht fest – aber ohne Softlock bei der anderen (Handel, Andocken, Story und
+   ihre Schiffe/Module müssen erreichbar bleiben; wie genau, ist noch zu klären).
+6. **Dauer** eines Krieges und Ruhephase dazwischen: offen – wird beim Testen festgelegt.
 
 Wie immer: **jedes Paket mit eigenen Debug-Funktionen** – z. B. zu jedem Story-Schritt springen, Story-Flags setzen, Intro überspringen, direkt nach Beyond oder Fern teleportieren, Casino-Spiele mit festem Ausgang testen.
 
