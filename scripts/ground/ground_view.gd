@@ -1587,7 +1587,14 @@ func _space_view(sys_id: int) -> void:
 		var star := CityStyle.star_color(sys_id)
 		if _window.size.x > 0.0 and is_cloud():
 			var sky = CloudSea.CloudSky.new()               # package 54: the giant's sky through the glass
-			sky.setup(cloud_look(), _window.size, 0.45 if level == "ctrain" else 0.5, hash(String(station.get("id", ""))) + 21)
+			sky.setup(cloud_look(), _window.size, 0.45 if level == "ctrain" else 0.62, hash(String(station.get("id", ""))) + 21)
+			if level == "tower":
+				sky.bar = true                         # 0.7.54.4 (Luz): the city's towers, the cloud tops, the star
+				sky.style = CloudGen.key_for(station)
+				sky.star_col = star
+				sky.day = city_day()
+				sky.make_towers(hash(String(station.get("id", ""))) + 23)
+			sky.set_light(city_day())                  # (the hour from the start – _apply_day ran before the sky was there)
 			_sky.add_child(sky)
 			cloud_sky = sky
 			return

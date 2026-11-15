@@ -8,6 +8,7 @@ extends Node2D
 const SeaShader = preload("res://shaders/cloud_sea.gdshader")
 const ParkedArtC = preload("res://scripts/ground/parked_art.gd")
 const CloudGenC = preload("res://scripts/ground/cloud_gen.gd")
+const CloudArtS = preload("res://scripts/ui/cloud_flight_art.gd")
 const FREIGHT_ART := 4.0                # art px per unit of a hull's length – a great freighter at the berth (0.7.54.2)
 const SkyShader = preload("res://shaders/cloud_sky.gdshader")
 const S := GroundMap.SCALE
@@ -482,6 +483,13 @@ class CloudSky extends Node2D:
 	var _size := Vector2.ZERO
 	var _look: Dictionary = {}
 	var _plats: Array = []
+	# 0.7.54.4 (Luz): from the sky bar - the city's own towers in front of the clouds, the top of the cloud deck at the
+	# horizon and the star above it, veiled in thin clouds (by the hour)
+	var bar := false
+	var style := "assembly"
+	var day := 1.0
+	var star_col := Color(1.0, 0.95, 0.8)
+	var _towers: Array = []
 
 	func setup(look: Dictionary, size: Vector2, horizon: float, sd: int) -> void:
 		_look = look
@@ -515,6 +523,7 @@ class CloudSky extends Node2D:
 
 	func set_light(d: float) -> void:
 		_mat.set_shader_parameter("light", clampf(0.25 + d * 0.85, 0.0, 1.0))
+		day = d
 
 	func _process(_delta: float) -> void:
 		_mat.set_shader_parameter("scroll", scroll)
@@ -526,6 +535,9 @@ class CloudSky extends Node2D:
 		var a := _size / s
 		var hy := a.y * float(get_meta("horizon", 0.55))
 		var hz: Color = _look["haze"]
+		var lk := clampf(0.25 + day * 0.85, 0.0, 1.0)
+		if bar:
+			_draw_star(a, hy, hz, lk)
 		for pl in _plats:
 			var span := a.x + 160.0
 			var x := fposmod(float(pl["x"]) * span - scroll * float(pl["p"]) * 0.6, span) - 80.0
@@ -545,3 +557,110 @@ class CloudSky extends Node2D:
 				_fx.draw_rect(Rect2(tx, hy + 2.0 - th, 2.0 + float(t % 2) * 2.0, th), body.lightened(0.05))
 			for k in 3:
 				_fx.draw_rect(Rect2(x + (k - 1) * r * 0.4, hy + 3.0, 1.5, r * 0.5), body.darkened(0.1).lerp(hz, 0.3))
+		if bar:
+			_draw_towers(a, hz, lk)
+
+	## The city's towers seen from the bar: two rows, the far one smaller and hazier (after setup, bar = true).
+	func make_towers(sd: int) -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = sd
+		var a := _size / GroundMap.SCALE
+		_towers.clear()
+		for row in 2:
+			var x := rng.randf_range(-10.0, 20.0)
+			while x < a.x:
+				var w := rng.randf_range(14.0, 28.0) * (0.7 if row == 0 else 1.0)
+				var h := a.y * rng.randf_range(0.18, 0.46) * (0.75 if row == 0 else 1.0)
+				_towers.append({"x": x, "w": w, "h": h, "row": row, "sd": rng.randi() % 10000})
+				x += w + rng.randf_range(24.0, 80.0) * (0.7 if row == 0 else 1.0)       # gaps: the clouds between them
+
+	## The star above the cloud tops - high by day, low and red at dusk, gone at night (then a few stars); veiled in
+	## streaks of thin cloud. The top of the cloud deck along the horizon, lit on its upper edge.
+	func _draw_star(a: Vector2, hy: float, hz: Color, lk: float) -> void:
+		var low := 1.0 - clampf(day, 0.0, 1.0)
+		var sy := lerpf(hy * 0.3, hy - 3.0, low * low)
+		var sx := a.x * 0.68
+		var sc := star_col.lerp(Color(1.0, 0.45, 0.2), smoothstep(0.35, 0.85, low))
+		if day > 0.12:
+			for g in 5:
+				_fx.draw_circle(Vector2(sx, sy), 30.0 - g * 5.0, Color(sc, 0.06 + g * 0.05))
+			_fx.draw_circle(Vector2(sx, sy), 9.0, sc.lightened(0.4))
+			_fx.draw_circle(Vector2(sx, sy), 6.0, Color(1, 1, 1, 0.9))
+			for st in 4:                                              # veils of thin cloud across it
+				var y0 := sy - 8.0 + st * 6.0 + sin(Time.get_ticks_msec() / 4000.0 + st) * 1.5
+				_fx.draw_rect(Rect2(sx - 46.0 + st * 9.0, y0, 70.0 - st * 6.0, 2.0), Color(hz.lightened(0.15), 0.45))
+		else:
+			var rr := RandomNumberGenerator.new()
+			rr.seed = 7
+			for i in 40:
+				_fx.draw_rect(Rect2(rr.randf() * a.x, rr.randf() * hy * 0.85, 1.0, 1.0), Color(1, 1, 1, rr.randf_range(0.3, 0.9) * (1.0 - day * 6.0)))
+		# the cloud tops along the horizon: billows rising a little above it, lit on top
+		var top := Color(hz.lightened(0.2)) * Color(lk, lk, lk)
+		var body := Color(hz) * Color(lk * 0.95, lk * 0.95, lk)
+		for x in int(a.x) + 1:
+			var bump := 3.0 + 3.0 * absf(sin(float(x) * 0.09)) + 2.5 * absf(sin(float(x) * 0.031 + 1.7)) + 1.5 * sin(float(x) * 0.23)
+			var y0 := hy - bump
+			_fx.draw_rect(Rect2(x, y0, 1.0, hy + 4.0 - y0), body)
+			_fx.draw_rect(Rect2(x, y0, 1.0, 1.0), top)
+			if day < 0.5 and day > 0.12:
+				_fx.draw_rect(Rect2(x, y0, 1.0, 1.0), Color(1.0, 0.55, 0.3, 0.6))         # dusk on their tops
+
+	## The city's towers in front of the clouds, in its power's style: glass bands or golden windows, spires, crowns,
+	## antennas and neon; at night lit windows.
+	func _draw_towers(a: Vector2, hz: Color, lk: float) -> void:
+		var cols: Dictionary = CloudArtS.STYLE_COLS.get(style, CloudArtS.STYLE_COLS["assembly"])
+		var night := clampf(1.0 - day / 0.6, 0.0, 1.0)
+		for t in _towers:
+			var row := int(t["row"])
+			var x := float(t["x"])
+			var w := float(t["w"])
+			var h := float(t["h"])
+			var y := a.y - h
+			var fade := 0.45 if row == 0 else 0.12
+			var stone: Color = Color(cols["stone"]).lerp(hz, fade) * Color(lk, lk, lk)
+			var glass: Color = Color(cols["glass"]).lerp(hz, fade) * Color(lk, lk, lk)
+			var acc: Color = cols["accent"]
+			var rr := RandomNumberGenerator.new()
+			rr.seed = int(t["sd"])
+			_fx.draw_rect(Rect2(x, y, w, h), stone)
+			_fx.draw_rect(Rect2(x, y, 1.0, h), stone.lightened(0.15))
+			_fx.draw_rect(Rect2(x + w - 2.0, y, 2.0, h), stone.darkened(0.25))
+			var fy := y + 5.0
+			while fy < a.y - 2.0:
+				match style:
+					"covenant":
+						var wx := x + 2.0
+						while wx < x + w - 3.0:
+							var lit := night > 0.3 and rr.randf() < 0.7
+							_fx.draw_rect(Rect2(wx, fy, 2.0, 3.0), Color(1.0, 0.82, 0.45) if lit else glass.darkened(0.2))
+							wx += 4.0
+					"directorate":
+						_fx.draw_rect(Rect2(x + 1.0, fy, w - 2.0, 1.0), acc if night > 0.3 else acc.darkened(0.3))
+						_fx.draw_rect(Rect2(x + 1.0, fy + 1.0, w - 2.0, 2.0), Color(1.0, 0.9, 0.7) if night > 0.3 and rr.randf() < 0.5 else glass)
+					"independent":
+						var wx2 := x + 2.0
+						while wx2 < x + w - 3.0:
+							var on := night > 0.2 and rr.randf() < 0.6
+							_fx.draw_rect(Rect2(wx2, fy, 2.0, 2.0), (acc if rr.randf() < 0.4 else Color(0.55, 0.9, 1.0)) if on else glass)
+							wx2 += 3.0
+					_:
+						_fx.draw_rect(Rect2(x + 1.0, fy, w - 2.0, 3.0), Color(1.0, 0.88, 0.62) if night > 0.3 and rr.randf() < 0.55 else glass)
+						_fx.draw_rect(Rect2(x + 1.0, fy, w - 2.0, 1.0), glass.lightened(0.2))
+				fy += 6.0
+			match style:
+				"covenant":
+					var pts := PackedVector2Array([Vector2(x + w * 0.5 - 4.0, y), Vector2(x + w * 0.5 + 4.0, y), Vector2(x + w * 0.5, y - h * 0.3)])
+					_fx.draw_colored_polygon(pts, stone.darkened(0.1))
+					_fx.draw_rect(Rect2(x + w * 0.5 - 0.5, y - h * 0.3 - 3.0, 1.0, 3.0), Color(1.0, 0.8, 0.3))
+				"directorate":
+					for k in 3:
+						_fx.draw_rect(Rect2(x + w * 0.5 - 5.0 + k * 1.5, y - 2.0 - k * 2.0, 10.0 - k * 3.0, 2.0), acc if k == 2 else stone.lightened(0.1))
+				"independent":
+					_fx.draw_rect(Rect2(x + w * 0.5, y - 12.0, 1.0, 12.0), stone)
+					_fx.draw_rect(Rect2(x + w * 0.5 - 0.5, y - 13.0, 2.0, 2.0), Color(1.0, 0.3, 0.3))
+					_fx.draw_rect(Rect2(x + 2.0, y + 8.0, w - 4.0, 4.0), Color(acc, 0.9 if night > 0.2 else 0.5))
+				_:
+					_fx.draw_rect(Rect2(x + 1.0, y - 2.0, w - 2.0, 2.0), Color(0.4, 0.58, 0.3) * Color(lk, lk, lk))
+					if w > 20.0:
+						_fx.draw_circle(Vector2(x + w * 0.5, y - 2.0), w * 0.22, glass.lightened(0.25))
+

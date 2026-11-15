@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.4 – 2026-11-15
+
+**The view from the sky bar (Luz).** Through the bar's glass the city's own towers now stand in front of the clouds in
+two rows (the far one in the haze), in its power's style – glass bands, roof gardens and domes, the Covenant's golden
+windows and spires, the Directorate's green bands and hexagon crowns, the free city's antennas and neon. Along the
+horizon the top of the cloud deck rises in billows, lit on their tops; above it the star, veiled in streaks of thin
+cloud – high by day, low and red at dusk (the cloud tops glowing), gone at night, then stars, and the towers' windows
+lit. Fix: the bar's window took the hour only late (too bright at night).
+
 ## alpha 0.7.54.3 – 2026-11-15
 
 **Package 54 done – the approach, the underdeck, the powers' styles (Luz).**
