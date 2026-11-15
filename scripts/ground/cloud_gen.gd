@@ -226,11 +226,15 @@ static func build_plaza(station: Dictionary, available: Dictionary) -> GroundMap
 		m.add_object({"kind": "planter", "x": tx2, "y": P_FLOOR + 4, "w": 3, "h": 1, "col": Color(m.pal["wall"]).darkened(0.12)})
 		m.add_object({"kind": "tree", "x": tx2, "y": P_FLOOR + 3, "w": 3, "h": 1, "rise": 84, "seed": k2 * 7 + 3}, false)
 		k2 += 1
+	var sty := key_for(station)
 	for lx in range(px0 + 1 - o, W - 3, 8):
 		if lx < 1 or absi(lx - o) < 2 or absi(lx - (o + Wi - 1)) < 2:
 			continue
-		m.add_object({"kind": "lamp_post", "x": lx, "y": P_RAIL - 3, "w": 1, "h": 1, "rise": 60})
-		m.lights.append({"pos": Vector2(lx + 0.5, P_RAIL - 3.3) * TILE, "r": 64.0, "col": Color(1.0, 0.9, 0.7), "a": 0.32})
+		# 0.7.54.3 (Luz): the lamps in the power's style – the Covenant's lanterns, the free city's neon
+		var lk := "lantern" if sty == "covenant" else "lamp_post"
+		var lc := {"covenant": Color(1.0, 0.75, 0.35), "directorate": Color(0.75, 1.0, 0.85), "independent": Color(1.0, 0.35, 0.8)}.get(sty, Color(1.0, 0.9, 0.7)) as Color
+		m.add_object({"kind": lk, "x": lx, "y": P_RAIL - 3, "w": 1, "h": 1, "rise": 60, "col": lc})
+		m.lights.append({"pos": Vector2(lx + 0.5, P_RAIL - 3.3) * TILE, "r": 64.0, "col": lc, "a": 0.32, "flicker": sty == "independent" and lx % 3 == 0})
 		var bx := lx + 2
 		if bx + 3 < W - 1 and not (bx <= o and bx + 3 > o) and not (bx <= o + Wi - 1 and bx + 3 > o + Wi - 1):
 			DeckGen._seat(m, "bench", bx, P_RAIL - 1, 0, Color(0.55, 0.4, 0.26), rng, 0.4, 3)
@@ -243,6 +247,7 @@ static func build_plaza(station: Dictionary, available: Dictionary) -> GroundMap
 	var fl: Array = dk["flag"]
 	m.face_deco.append({"kind": String(dk["flag_kind"]), "x": lift_x - 1, "y": P_FRONT + 3, "w": 1, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})
 	m.face_deco.append({"kind": String(dk["flag_kind"]), "x": lift_x + 7, "y": P_FRONT + 3, "w": 1, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})
+	_plaza_style(m, sty, o, Wi, lift_x, cx, rng)
 	DeckGen._seats(m)
 	for k3 in 16:
 		var wp := Vector2(rng.randf_range(o + 2.5, o + Wi - 3.5), rng.randf_range(P_FLOOR + 1.2, P_RAIL - 1.4)) * TILE
@@ -250,6 +255,46 @@ static func build_plaza(station: Dictionary, available: Dictionary) -> GroundMap
 			m.wander.append(wp)
 	m.set_meta("spindles", _spindles(W, P_RIM + 2, rng))
 	return m
+
+
+## 0.7.54.3 (Luz): each power's plaza in its own detail – the fronts' style (pointed arches and golden glass of the
+## Covenant, the Directorate's white with hexagon glass and green bands, the free city's neon frames), and what stands
+## about: the Covenant's red banners on the pillars, the Directorate's green light lines in the floor, the free city's
+## stalls and holo adverts.
+static func _plaza_style(m: GroundMap, sty: String, o: int, Wi: int, lift_x: int, cafe_x: int, rng: RandomNumberGenerator) -> void:
+	for fd in m.face_deco:
+		if String(fd["kind"]) == "cloud_front":
+			fd["style"] = sty
+	match sty:
+		"covenant":
+			for o2 in m.objects:
+				if String(o2["kind"]) == "planter":
+					o2["col"] = Color(0.32, 0.2, 0.13)
+			for bx in range(o + 1, o + Wi - 1, 6):
+				if absi(bx - lift_x - 3) > 4 and bx < cafe_x - 1:
+					m.face_deco.append({"kind": "flag", "x": bx, "y": P_FRONT + 3, "w": 1, "col": Color(0.62, 0.08, 0.12), "col2": Color(1.0, 0.8, 0.3), "sign": "cross"})
+		"directorate":
+			for o3 in m.objects:
+				if String(o3["kind"]) == "planter":
+					o3["col"] = Color(0.95, 0.96, 0.96)
+			for gy in [P_FLOOR + 2, P_RAIL - 5]:
+				m.decals.append({"kind": "guide", "x": o + 1, "y": gy, "w": Wi - 2, "h": 1, "col": Color(0.3, 0.9, 0.55)})
+		"independent":
+			var ads := DeckGen.ADS.duplicate()
+			ads.shuffle()
+			var n := 0
+			for hx in range(o + 4, cafe_x - 2, 11):
+				if absi(hx - lift_x - 3) < 5:
+					continue
+				var ac: Color = [Color(0.3, 0.95, 1.0), Color(1.0, 0.3, 0.75), Color(0.75, 0.45, 1.0)][n % 3]
+				m.holos.append({"pos": Vector2(hx + 0.5, P_FRONT + 0.6) * TILE, "text": ads[n % ads.size()][0], "sub": ads[n % ads.size()][1], "col": ac})
+				n += 1
+			for sx in range(o + 6, cafe_x - 4, 13):
+				if absi(sx - lift_x - 3) < 6:
+					continue
+				var sy := P_FLOOR + 7
+				if m.free_at(Vector2(sx + 1, sy + 0.5) * TILE, 6.0):
+					m.add_object({"kind": "stall", "x": sx, "y": sy, "w": 2, "h": 1, "col": [Color(1.0, 0.3, 0.6), Color(0.3, 0.9, 1.0), Color(1.0, 0.75, 0.3)][rng.randi() % 3]})
 
 
 ## What the city lives on (for the information pillar).

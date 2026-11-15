@@ -11396,6 +11396,7 @@ func _test_wild(view: SystemView) -> void:
 ## the hangar's gate open to the sky; the plaza (its shops walked into, the lifts, seats people use, the deck going on
 ## beyond its ends), the giant's air; the skyrail – board at Central, the ride, the doors open at the Skyring, off.
 const CloudGen54T = preload("res://scripts/ground/cloud_gen.gd")
+const PoiData_54 = preload("res://data/poi.gd")
 
 func _test_cloud(view: SystemView) -> void:
 	var notes: Array = []
@@ -11488,14 +11489,53 @@ func _test_cloud(view: SystemView) -> void:
 	var wm: GroundMap = g.map
 	var cw: Rect2 = wm.get_meta("catwalk", Rect2())
 	var works_ok: bool = g.rail_stop == 2 and wm.has_meta("works") and wm.has_meta("intakes") and wm.has_meta("freighter") and g.clouds._freighter != null 		and not _zone_of(wm, "gas_exchange").is_empty() and _zone_of(wm, "board").size() > 0 		and wm.path(wm.spawn, Vector2(cw.position.x + 1.5, cw.end.y - 2.5) * 16.0).size() > 0
+	var gcargo: Dictionary = f.cargo.duplicate()
+	f.cargo.clear()                                    # (room in the hold, whatever earlier tests left there)
+	var gcred0: int = GameState.credits
+	GameState.credits = maxi(GameState.credits, 20000)
 	var gcred: int = GameState.credits
 	var gfree: float = f.cargo_free()
 	var gerr: String = Commands.execute({"type": "gas_buy", "item": "helium", "amount": 5})
 	works_ok = works_ok and gerr == "" and GameState.credits == gcred - 5 * Commands.gas_price("helium") and f.cargo_free() < gfree 		and Commands.execute({"type": "gas_buy", "item": "xenon", "amount": 5}) != ""
-	f.remove_cargo("helium", 5.0)
-	GameState.credits = gcred
+	f.cargo = gcargo
+	GameState.credits = gcred0
 	Commands.execute({"type": "debug_cloud", "giant": "gas", "level": "cstation", "stop": 2, "freighter": "no"})
 	works_ok = works_ok and not main.ground.map.has_meta("freighter")
+	# 0.7.54.3 (Luz): the powers' plazas in their own detail; the underdeck with its jammed rotor; the flight in
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "power": "covenant", "level": "cplaza"})
+	var cov: GroundMap = main.ground.map
+	var style_ok: bool = cov.face_deco.any(func(d): return String(d["kind"]) == "cloud_front" and String(d.get("style", "")) == "covenant") 		and cov.objects.any(func(o): return String(o["kind"]) == "lantern")
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "power": "independent", "level": "cplaza"})
+	style_ok = style_ok and not main.ground.map.holos.is_empty() and main.ground.map.objects.any(func(o): return String(o["kind"]) == "stall")
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "power": "assembly", "level": "cunder", "job": true})
+	g = main.ground
+	var und_ok: bool = g.level == "dungeon" and String(g._site.get("theme", "")) == "skymaint" and g.map.has_meta("clouds") and g.clouds != null and not g.env.is_empty()
+	g.depth = PoiData_54.levels("skymaint") - 1
+	g.go_level("dungeon", "dungeon_in")
+	var rot: Array = g.map.explore.filter(func(e): return String(e["kind"]) == "reactor")
+	und_ok = und_ok and rot.size() == 1 and bool(rot[0].get("rotor", false)) and String(rot[0]["state"]) != "on"
+	var uc: int = GameState.credits
+	if rot.size() == 1:
+		g._restart_reactor(rot[0])
+	und_ok = und_ok and GameState.credits > uc and String(rot[0]["state"]) == "on"
+	GameState.maint_sites.clear()
+	var lift_ok2 := false
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "level": "cplaza"})
+	main.ground._open_lift_menu(_zone_of(main.ground.map, "lift"))
+	lift_ok2 = (main.ground._lift_menu.get_meta("keys") as Array).size() >= 5
+	main.ground._close_lift_menu()
+	var fl := FlightScene.new()
+	main.add_child(fl)
+	var gb := Universe.debug_body_as(Universe.get_layout(GameState.current_system)["planets"][0], "gas")
+	gb["cloud_city"] = true
+	fl.open(gb, Universe.landing_sites(GameState.current_system, gb)[0])
+	var fly_ok: bool = fl.cloud and not fl.rising
+	fl._t = FlightScene.DURATION * 0.9
+	fl._update(0.1)
+	fl.queue_free()
+	works_ok = works_ok and style_ok and und_ok and lift_ok2 and fly_ok
+	if not (style_ok and und_ok and lift_ok2 and fly_ok):
+		notes.append("styles %s, underdeck %s, lift %s, flight %s" % [style_ok, und_ok, lift_ok2, fly_ok])
 	# back
 	main.close_deck(false)
 	main._close_planet_map()
@@ -11513,7 +11553,7 @@ func _test_cloud(view: SystemView) -> void:
 	GameState.gear.aboard()
 	main._update_input()
 	check(world_ok and look_ok and hangar_ok and lift_ok and plaza_ok and air_ok and st_ok and ride_ok and ring_ok and works_ok,
-		"54: cloud cities – 1–2 over the giants of inhabited systems (none far out), down only to them; the hangar's gate open to the sky; the plaza with walk-in shops, benches people sit on, the deck going on beyond its ends; the giant's air (suit or breathable); the skyrail: board at Central, the ride, the doors open at the Skyring, off onto its observation deck; the gas works as the third stop (the Gas Exchange sells the giant's gases, the catwalk, a freighter at the berth now and then)  [%s]%s" % [
+		"54: cloud cities – 1–2 over the giants of inhabited systems (none far out), down only to them; the hangar's gate open to the sky; the plaza with walk-in shops, benches people sit on, the deck going on beyond its ends; the giant's air (suit or breathable); the skyrail: board at Central, the ride, the doors open at the Skyring, off onto its observation deck; the gas works as the third stop (the Gas Exchange sells the giant's gases, the catwalk, a freighter at the berth now and then); the powers' plazas in detail, the underdeck with its jammed rotor, the flight in through the cloud decks  [%s]%s" % [
 			" ".join(PackedStringArray([str(world_ok), str(look_ok), str(hangar_ok), str(lift_ok), str(plaza_ok), str(air_ok), str(st_ok), str(ride_ok), str(ring_ok), str(works_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
 
 

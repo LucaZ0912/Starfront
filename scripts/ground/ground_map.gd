@@ -1181,6 +1181,41 @@ func _cloud_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px, py + TILE - 1, TILE, 1, Color(pal["trim"]).darkened(0.35))
 
 
+## 0.7.54.3 (Luz): the underdeck's solid parts are open air – only along a walkway's edge a rail of steel.
+func _sky_cap(x: int, y: int, px: int, py: int) -> void:
+	var rail := Color(0.62, 0.64, 0.68)
+	var yel := Color(0.95, 0.75, 0.2)
+	for dv in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
+		var nt := t_at(x + dv.x, y + dv.y)
+		if walkable_t(nt) or nt == T.BLOCK:
+			match dv:
+				Vector2i(0, -1):
+					_rect(px, py, TILE, 3, rail)
+					_rect(px, py + 3, TILE, 1, yel)
+				Vector2i(0, 1):
+					_rect(px, py + TILE - 4, TILE, 3, rail)
+					_rect(px, py + TILE - 1, TILE, 1, rail.darkened(0.4))
+				Vector2i(-1, 0):
+					_rect(px, py, 3, TILE, rail)
+				Vector2i(1, 0):
+					_rect(px + TILE - 3, py, 3, TILE, rail.darkened(0.15))
+	if x % 6 == 0 and y % 5 == 0:
+		_rect(px + 6, py + 6, 4, 4, Color(0.3, 0.31, 0.34))                   # a strut far below the deck
+
+
+func _sky_face(x: int, y: int, px: int, py: int) -> void:
+	var fy := y - _face_top(x, y)
+	var rail := Color(0.66, 0.68, 0.72)
+	if fy == 0:
+		_rect(px, py + 2, TILE, 2, rail)                                       # the handrail
+		_rect(px, py + 4, TILE, 1, rail.darkened(0.35))
+	_rect(px, py + 10, TILE, 1, rail.darkened(0.2))                            # a middle rail
+	if x % 2 == 0:
+		_rect(px + 1, py, 2, TILE, rail.darkened(0.1))                         # posts
+	if t_at(x, y + 1) != T.FACE:
+		_rect(px, py + TILE - 3, TILE, 3, Color(0.95, 0.75, 0.2))              # the kick plate, yellow
+
+
 ## How many face rows lie above this one.
 func _face_top(x: int, y: int) -> int:
 	var k := 0
@@ -1210,6 +1245,9 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
+	if style == "skymaint":
+		_sky_cap(x, y, px, py)                         # 0.7.54.3: under a cloud city – the void, rails at the edges
+		return
 	if style == "research" and has_meta("roofs"):
 		_module_roof(x, y, px, py)                     # 0.7.53.20: outside – the modules' roofs
 		return
@@ -1325,6 +1363,9 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 		return
 	if style.begins_with("cloud"):
 		_cloud_face(x, y, px, py)                      # package 54: a cloud city
+		return
+	if style == "skymaint":
+		_sky_face(x, y, px, py)                        # 0.7.54.3: a railing and a truss over the void
 		return
 	if style == "plaza" and x >= int(get_meta("museum_x", 9999)):
 		_museum_face(x, y, px, py)                     # 53e: the Museum's front on Curie's roof plaza
@@ -2141,6 +2182,7 @@ func _face_deco(d: Dictionary) -> void:
 			var fh2 := TILE * 3
 			var dxp := int(d.get("door", -1)) * TILE
 			var wl2: Color = pal["wall"]
+			var sty2 := String(d.get("style", "assembly"))           # 0.7.54.3 (Luz): the power's own fronts
 			for yy in fh2:
 				for xx in pw:
 					var ax := px + xx
@@ -2152,6 +2194,25 @@ func _face_deco(d: Dictionary) -> void:
 						c2 = Color(0.3, 0.42, 0.5).lerp(Color(0.58, 0.74, 0.82), float(yy - 9) / (fh2 - 12))
 						if fposmod(float(xx + yy) * 0.2, 6.0) < 0.8:
 							c2 = c2.lightened(0.16)
+						match sty2:
+							"covenant":
+								# golden glass under pointed arches: the bay's top rises to a point
+								var seg := 22
+								var lx3 := posmod(xx - 5, seg)
+								var peak := absf(float(lx3) - seg * 0.5) / (seg * 0.5)
+								if float(yy - 9) < peak * 7.0:
+									c2 = wl2.darkened(0.06)
+								else:
+									c2 = Color(0.55, 0.38, 0.16).lerp(Color(1.0, 0.82, 0.42), float(yy - 9) / (fh2 - 12))
+									if lx3 == 0:
+										c2 = wl2.darkened(0.25)
+							"directorate":
+								if (xx + (yy / 6) * 3) % 6 == 0 or yy % 6 == 0:
+									c2 = Color(0.82, 0.9, 0.9)                 # the hexagon glass's frames
+							"independent":
+								c2 = c2.darkened(0.35)
+								if xx == 5 or yy == 9 or xx == pw - 6 or yy == fh2 - 4:
+									c2 = c
 					_px(ax, py + yy, c2)
 			# goods on shelves behind the glass
 			for g in int(pw / 7):
@@ -2168,6 +2229,10 @@ func _face_deco(d: Dictionary) -> void:
 			# the sign over the door, its neon bar
 			_rect(px + 6, py + 1, pw - 12, 6, Color(0.12, 0.13, 0.16))
 			_rect(px + 8, py + 3, pw - 16, 2, c)
+			if sty2 == "directorate":
+				_rect(px, py + 7, pw, 1, Color(0.3, 0.9, 0.55))      # the green light band
+			elif sty2 == "covenant":
+				_rect(px, py + 7, pw, 1, Color(0.85, 0.66, 0.3))     # a gold frieze
 			_rect(px, py + fh2 - 2, pw, 2, Color(pal["trim"]))
 			if dxp >= 0:
 				_rect(dxp, py + 7, TILE * 2, 2, wl2.darkened(0.3))      # the lintel

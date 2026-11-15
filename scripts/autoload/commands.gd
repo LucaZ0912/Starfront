@@ -2647,7 +2647,7 @@ func _c_debug_cloud(c: Dictionary) -> String:
 	if pw != "" and not pw in DEBUG_POWERS:
 		return "Unknown power."
 	var lv := String(c.get("level", ""))
-	if lv != "" and not lv in ["hangar", "cplaza", "cstation", "ctrain", "tower"]:
+	if lv != "" and not lv in ["hangar", "cplaza", "cstation", "ctrain", "tower", "cunder"]:
 		return "Unknown level."
 	var L := Universe.get_layout(f.system_id)
 	var body := {}
@@ -2687,6 +2687,14 @@ func _c_debug_cloud(c: Dictionary) -> String:
 		st["debug_freighter"] = fr == "yes"
 	if lv == "ctrain":
 		g.rail_to = CloudGen54.others(g.rail_stop)[0]
+	if lv == "cunder":
+		g.go_level("cplaza", "lift")
+		if bool(c.get("job", false)):
+			GameState.maint_sites[String(st.get("id", ""))] = GameState.maint_site(st, int(c.get("seed", 77)))
+		g._town_kind = "maint"                           # 0.7.54.3: down under the deck
+		g.depth = 0
+		g.go_level("dungeon", "dungeon_in")
+		lv = ""
 	if lv != "" and lv != "hangar":
 		g.go_level(lv, "rail" if lv in ["ctrain", "cstation"] and int(c.get("stop", 0)) >= 1 else "lift")
 	GameState.log_msg("[Debug] Cloud city %s over %s." % [String(sites[0]["name"]), String(body["name"])], GameState.COL_WARN)
@@ -2791,7 +2799,7 @@ func _c_debug_poi(c: Dictionary) -> String:
 	if c.has("gate"):
 		site["gate"] = String(c["gate"])                 # "open", "panel", "computer"
 	var g0 = _ground()
-	if theme == "maint" and g0 != null and g0.is_city():
+	if theme in ["maint", "skymaint"] and g0 != null and g0.is_city():
 		# 0.7.53.9: in a city – its maintenance tunnels lose their power; the lift goes down
 		GameState.maint_sites[String(g0.station.get("id", ""))] = GameState.maint_site(g0.station, sd)
 		g0._town_kind = "maint"

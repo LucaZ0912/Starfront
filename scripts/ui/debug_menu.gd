@@ -1048,6 +1048,9 @@ func _build_ground() -> void:
 	rc2.add_child(UI.label("Skyrail:", 12, UI.TEXT_DIM))
 	rc2.add_child(UI.button("Arrive now", func(): _cmd({"type": "debug_skyrail", "action": "arrive"})))
 	rc2.add_child(UI.button("Show state", func(): _cmd({"type": "debug_skyrail", "action": "info"})))
+	rc2.add_child(UI.label("Underdeck:", 12, UI.TEXT_DIM))
+	rc2.add_child(UI.button("Calm", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder"})))
+	rc2.add_child(UI.button("Rotor jammed (job)", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder", "job": true})))
 	_box.add_child(UI.wrap_label("Straight into a cloud city over a giant of this system (or a body seen as one). Every inhabited system's giants have 1–2 cities; the skyrail runs between Central and the Skyring.", 12, UI.TEXT_DIM, 560))
 	_section("The Museum in Curie (package 53e)")
 	var rmu := _row()                                               # 53e (Luz): the Museum in Curie

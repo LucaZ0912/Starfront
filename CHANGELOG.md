@@ -3,6 +3,24 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.3 – 2026-11-15
+
+**Package 54 done – the approach, the underdeck, the powers' styles (Luz).**
+- **The flight in:** down to a cloud city you sink through the giant's **cloud decks** – lit billows in its colours,
+  the nearest passing over the ship – then below them the **city comes into view**: its platforms painted in pixel art
+  (paving, a promenade ring, green terraces, the buildings in the power's style with glass bands, roof gardens,
+  domes, spires or hexagon crowns, spindles, capsule lift tanks and rotor rings below), the skyrail between them with
+  its cars; the main platform grows until its **hangar gate** on the rim (a force field, landing lights) takes the ship
+  in. Out again the same way, backwards. **By the hour:** dusk and night darken it and light its windows, light bands,
+  neon and running lights.
+- **The underdeck:** the lifts go down under the deck – catwalks of grating between lift tanks and antigrav rotors,
+  rails over the open clouds below, maintenance drones; calm without a job. A new job **"Rotor restart"**: a lift
+  rotor jammed and the city lists – go down to the rotor hall and restart it at its console (weapons allowed).
+- **The powers' plazas in detail:** the Covenant's fronts with pointed arches and golden glass, red banners on the
+  pillars, lanterns; the Directorate's white with hexagon glass and green light bands in the floor; the free city's
+  neon-framed fronts, holo adverts and stalls; the Assembly's as before.
+- Debug (F12 → Ground → Cloud cities): "Underdeck – calm / rotor jammed (job)".
+
 ## alpha 0.7.54.2 – 2026-11-15
 
 **The gas works and the skyrail (Luz).**

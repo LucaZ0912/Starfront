@@ -173,8 +173,8 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 		if far_only and not (bool(Universe.systems[sid].get("outer", false)) or bool(Universe.systems[sid].get("veil", false))):
 			continue
 		for b in Universe.get_layout(sid)["planets"] + Universe.get_layout(sid).get("moons", []):
-			if not Universe.landable(b):
-				continue
+			if not Universe.landable(b) and not (kind == "reactivate" and Universe.can_land(b)):
+				continue                                   # 0.7.54.3: a cloud city's underdeck too
 			if wild and (PoiData.wild_theme(String(b.get("type", ""))) == "" or String(b.get("type", "")) == "terran"):
 				continue
 			if in_city:
@@ -203,6 +203,9 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 	if in_city:
 		site["city"] = Universe.city_id(body, sp[2])
 		site["city_name"] = String(sp[2].get("name", "the city"))
+	if kind == "reactivate" and Universe.is_giant(body):
+		site["theme"] = "skymaint"                     # 0.7.54.3 (Luz): a lift rotor jammed under a cloud city
+		site["name"] = PoiData.site_name("skymaint", rng)
 	var jumps := Universe.find_path(system_id, sid2, 3).size()
 	var dmul: float = {"green": 1.0, "yellow": 1.4, "red": 2.0}[danger]
 	var where := "%s on %s (%s)" % [String(site["name"]), String(body.get("name", "?")), Universe.systems[sid2]["name"]]
@@ -293,6 +296,9 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 		"reactivate":
 			t = "Reactivation: %s" % String(site["city_name"])
 			d = "The power is out in the maintenance tunnels under %s (%s). Restart the reactor on the lowest level – the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
+			if String(site["theme"]) == "skymaint":
+				t = "Rotor restart: %s" % String(site["city_name"])
+				d = "A lift rotor jammed under the deck of %s (%s) and the city is listing. Go down among the tanks and rotors and restart it at the rotor hall's console – the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
 			base = 6500
 			danger = "green"
 			site["danger"] = "green"
@@ -619,6 +625,8 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 				return "Done – report back to %s" % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station")
 			var st: Dictionary = m["site"]
 			if String(m["goal"]) == "reactivate":
+				if String(st.get("theme", "")) == "skymaint":
+					return "Under the deck of %s (%s) – take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
 				return "The maintenance tunnels under %s (%s) – take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
 			if st.has("city") and String(st.get("theme", "")) == "corp":
 				return "The %s in %s (%s) – the lift up to the roof plaza" % [String(st["name"]), String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]

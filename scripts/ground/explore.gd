@@ -365,6 +365,15 @@ func _draw_reactor(d: Dictionary, t: float) -> void:
 			var ang := a * TAU / 48.0 + spin * (1.0 + ri * 0.6) * (1.0 if ri % 2 == 0 else -1.0)
 			var col := Color(0.85, 0.7, 0.15) if a % 8 == 0 else Color(0.55, 0.57, 0.6)
 			draw_circle(Vector2(cos(ang), sin(ang)) * rr, 1.3, col)
+	if bool(d.get("rotor", false)):
+		# 0.7.54.3: under a cloud city – an antigrav rotor: six blades, its field glowing when it turns
+		for bl in 6:
+			var ba := bl * TAU / 6.0 + spin * 2.0
+			draw_line(Vector2.ZERO, Vector2(cos(ba), sin(ba)) * 42.0, Color(0.6, 0.62, 0.66), 4.0)
+		if on:
+			draw_arc(Vector2.ZERO, 46.0, 0.0, TAU, 40, Color(0.45, 0.85, 1.0, 0.6 * k), 4.0)
+		elif fposmod(t * 3.0, 1.0) < 0.3:
+			draw_circle(Vector2(cos(t * 7.0), sin(t * 5.0)) * 20.0, 3.0, Color(1.0, 0.8, 0.3))      # sparks: it is jammed
 	if on:
 		draw_circle(Vector2(0, -6), 13.0, Color(0.5, 0.9, 1.0, 0.35 + 0.65 * k))
 		draw_circle(Vector2(0, -6), 8.0 * k + 2.0, Color(0.9, 1.0, 1.0, k))

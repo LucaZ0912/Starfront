@@ -2198,8 +2198,18 @@ func maint_site(city: Dictionary, seed_n: int) -> Dictionary:
 	const PoiData = preload("res://data/poi.gd")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_n
-	return {"id": "maint_%s_%d" % [String(city.get("id", "")), seed_n], "name": PoiData.site_name("maint", rng), "kind": "maint", "poi": true,
-		"theme": "maint", "seed": seed_n, "danger": "green"}
+	var th := "skymaint" if bool(city.get("cloud", false)) else "maint"      # 0.7.54.3: under a cloud city's deck
+	return {"id": "maint_%s_%d" % [String(city.get("id", "")), seed_n], "name": PoiData.site_name(th, rng), "kind": "maint", "poi": true,
+		"theme": th, "seed": seed_n, "danger": "green"}
+
+
+## 0.7.54.3 (Luz): the underdeck of a cloud city when no job takes you there – calm: the rotors turning, workers and
+## drones about their work.
+func underdeck_site(city: Dictionary) -> Dictionary:
+	var st := maint_site(city, absi(hash(String(city.get("id", "")) + "_underdeck")) % 100000)
+	st["calm"] = true
+	st["id"] = "underdeck_" + String(city.get("id", ""))
+	return st
 
 
 ## Package 53c: a job on foot's goal reached at its site (or failed there). ok, a pay factor (heist with an alarm,

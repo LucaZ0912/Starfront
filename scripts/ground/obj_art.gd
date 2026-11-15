@@ -167,6 +167,12 @@ static func _rise(kind: String) -> int:
 			return 44
 		"glass_rail":                       # 0.7.53.19: the roof plaza's glass balustrade
 			return 12
+		"lift_tank":                        # 0.7.54.3: a lift tank hanging under the deck (as cover)
+			return 60
+		"rotor_ring":                       # 0.7.54.3: an antigrav rotor's ring set in the walkway
+			return 8
+		"lantern":                          # 0.7.54.3: the Covenant's lantern on its post
+			return 56
 		"gas_tank":                         # 0.7.54.2: a spherical gas tank on its legs (~5 m)
 			return 64
 		"compressor":                       # 0.7.54.2: a compressor block with fans on top
@@ -704,6 +710,34 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 3, b8 - 44, 2, 42, pc8.darkened(0.25))
 			_r(img, 1, b8 - 30, pw - 2, 2, Color(0.95, 0.75, 0.3))
 			_r(img, 1, b8 - 4, pw - 2, 2, Color(0.55, 0.57, 0.6))
+		"lift_tank":
+			var b16 := fy + ph
+			for yy in range(4, b16 - 2):
+				for xx in range(2, pw - 2):
+					var k16 := float(xx) / pw
+					var tc := Color(0.66, 0.68, 0.7).lerp(Color(0.32, 0.34, 0.38), k16)
+					if (yy - 4) % 20 == 0:
+						tc = tc.darkened(0.25)
+					img.set_pixel(xx, yy, tc)
+			_ellipse(img, pw / 2, 5, pw / 2 - 2, 4, Color(0.75, 0.77, 0.8))
+			_r(img, pw / 2 - 6, b16 / 2, 12, 3, Color(0.95, 0.75, 0.2))
+		"rotor_ring":
+			var cy16 := fy + ph / 2
+			_ellipse(img, pw / 2, cy16, pw / 2 - 1, ph / 2 - 1, Color(0.3, 0.31, 0.34))
+			_ellipse(img, pw / 2, cy16, pw / 2 - 5, ph / 2 - 4, Color(0.45, 0.85, 1.0, 0.55))
+			for bl in 6:
+				var ba := bl * TAU / 6.0
+				for tt in int(pw / 2 - 6):
+					img.set_pixel(int(pw / 2 + cos(ba) * tt), int(cy16 + sin(ba) * tt * float(ph) / pw), Color(0.6, 0.62, 0.66))
+		"lantern":
+			var b15 := fy + ph
+			_r(img, pw / 2 - 1, 10, 3, b15 - 12, Color(0.18, 0.14, 0.12))
+			_r(img, pw / 2 - 4, b15 - 4, 9, 3, Color(0.22, 0.17, 0.14))
+			_r(img, pw / 2 - 5, 2, 11, 12, Color(0.18, 0.14, 0.12))
+			_r(img, pw / 2 - 4, 4, 9, 8, c)
+			_r(img, pw / 2 - 1, 4, 3, 8, c.lightened(0.3))
+			_r(img, pw / 2 - 6, 1, 13, 2, Color(0.75, 0.58, 0.25))
+			_r(img, pw / 2 - 2, 0, 5, 1, Color(0.75, 0.58, 0.25))
 		"gas_tank":
 			var r := pw / 2 - 4
 			var cy := fy + ph - r - 6

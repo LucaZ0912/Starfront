@@ -291,6 +291,14 @@ func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false) -> voi
 ## Package 50b (0.7.50.5): the city's landing hatch – down: the ship sinks below the ground, then you are in the
 ## city's hangar; up: she rises out of it and climbs away.
 func _city_hatch(body: Dictionary, site: Dictionary, down: bool, dest: String = "orbit") -> void:
+	if Universe.is_giant(body):
+		# 0.7.54.3 (Luz): a cloud city has no hatch – the flight brought her in through the hangar's gate; out again
+		# the same way, up through the cloud decks
+		if down:
+			enter_city(body, site)
+		else:
+			_cloud_climb(body, site, dest)
+		return
 	if hatch != null and is_instance_valid(hatch):
 		hatch.queue_free()
 	hatch = CityHatch.new()
@@ -311,6 +319,22 @@ func _city_hatch(body: Dictionary, site: Dictionary, down: bool, dest: String = 
 				h.queue_free()
 			hatch = null
 			take_off(dest))
+	_update_input()
+
+
+func _cloud_climb(body: Dictionary, site: Dictionary, dest: String) -> void:
+	_close_planet_map()
+	flight = FlightScene.new()
+	add_child(flight)
+	flight.open_cloud(body, site, true)
+	flight.finished.connect(func():
+		var tw := fade(Color(0, 0, 0, 1), 0.35)
+		tw.finished.connect(func():
+			if flight != null and is_instance_valid(flight):
+				flight.queue_free()
+			flight = null
+			take_off(dest)
+			fade(Color(0, 0, 0, 0), 0.5)))
 	_update_input()
 
 

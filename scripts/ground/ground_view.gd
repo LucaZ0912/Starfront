@@ -330,7 +330,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		if level in ["alley", "dungeon", "minehead", "plaza"]:
 			# 0.7.53.19: straight from one of the city's sites to another (the alley's lift up to the plaza) – the city first
 			var want := "maint" if is_city() and _town_kind == "maint" else ("corp" if is_city() and _town_kind == "corp" else ("sewer" if is_city() else "mine"))
-			if bool(_site.get("poi", false)) and String(_site.get("theme", "")) != want and _city_site != null:
+			if bool(_site.get("poi", false)) and String(_site.get("theme", "")).trim_prefix("sky") != want and _city_site != null:
 				_site = _city_site
 				_city_site = null
 			if not bool(_site.get("poi", false)):
@@ -340,7 +340,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 					_site = cs0 if not cs0.is_empty() else GameState.corp_poi(_sys, station)
 				elif is_city() and _town_kind == "maint":
 					var ms0 := GameState.maint_site_for(String(station.get("id", "")))         # 0.7.53.9 (53c: or a job's)
-					_site = ms0 if not ms0.is_empty() else GameState.city_poi(_sys, station)
+					_site = ms0 if not ms0.is_empty() else (GameState.underdeck_site(station) if is_cloud() else GameState.city_poi(_sys, station))
 				elif is_city():
 					var hs0 := GameState.sewer_site_for(String(station.get("id", "")))      # 0.7.53.17: or a heist's
 					_site = hs0 if not hs0.is_empty() else GameState.city_poi(_sys, station)
@@ -352,6 +352,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	env = ChibiArt.GearData.env_of(String(_body.get("type", ""))) if level in ["landing", "settlement", "dungeon", "minehead"] and not is_city() else {}
 	if is_cloud() and level in ["cplaza", "cstation"]:
 		env = cloud_env()                              # package 54 (Luz): out on the deck – the giant's air
+	if is_cloud() and level == "dungeon" and String(_site.get("theme", "")) == "skymaint":
+		env = cloud_env()                              # 0.7.54.3: under the deck – open to the giant's air
 	_warned = {}
 	if level == "cplaza":
 		map = CloudGen.build_plaza(station, _avail)
@@ -932,6 +934,21 @@ func _restart_reactor(d: Dictionary) -> void:
 		tw.tween_property(_dark_rect, "color", lit, 3.0)
 	Audio.play("module_on", "reactor restart", 0.0)
 	_poi_target_done(d)
+
+
+## 0.7.54.3 (Luz): a cloud city's underdeck – open to the clouds below (the sea under the map), its walls only rails
+## and trusses; calm without a job: the rotors turning, the lights on.
+func _underdeck(m: GroundMap) -> void:
+	m.set_meta("clouds", true)
+	m.hull_top = -9999
+	for e in m.explore:
+		if String(e["kind"]) == "reactor":
+			e["rotor"] = true
+			if bool(_site.get("calm", false)):
+				e["state"] = "on"
+				e["start"] = 1.0
+	if bool(_site.get("calm", false)):
+		m.remove_meta("dark")
 
 
 ## 0.7.53.16 (Luz): charging at a power socket – while E is held and you stay by it, small arcs leap to the suit and
@@ -3201,6 +3218,12 @@ func _poi_target_done(d: Dictionary) -> void:
 		_say_toast("The vault's main box – %d cr and the company's research data. Now get out." % pay4, 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
+	if String(_site.get("theme", "")) == "skymaint":
+		var pay3 := 700 + int(d.get("seed", 0)) % 400              # 0.7.54.3: the rotor turns again
+		GameState.credits += pay3
+		_say_toast("The rotor spins up – its field takes hold, the deck above steadies. %d cr from the city. Back up when you like." % pay3, 6.0)
+		Audio.play("lock_acquired", "site target done", -2.0)
+		return
 	if String(_site.get("theme", "")) == "maint":
 		var pay2 := 600 + int(d.get("seed", 0)) % 400              # 0.7.53.9: the city pays for its power back
 		GameState.credits += pay2
@@ -3258,6 +3281,8 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 	for dl in nlev:                                     # 0.7.53.3: every level, built once
 		if not _poi_cache.has("dungeon_%d" % dl):
 			_poi_cache["dungeon_%d" % dl] = DungeonGen.build_inside(_body, _site, dl)
+			if theme == "skymaint":
+				_underdeck(_poi_cache["dungeon_%d" % dl])
 	if lv == "dungeon":
 		return _poi_cache["dungeon_%d" % clampi(depth, 0, nlev - 1)]
 	if not _poi_cache.has("outside"):
@@ -3511,7 +3536,7 @@ func _mission_window() -> void:
 			"corp": "The vault is at the bottom: a key card for the lifts (or the fire stairs – loud), cameras and light barriers (the security centre switches them off), then hack and drill the vault door. "}.get(String(_site.get("theme", "")), "The strongbox is behind the code door below. ")) \
 			+ ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
 		"spy": ("The data is in the security centre on the second level. " if String(_site.get("theme", "")) == "corp" else "The data is in the deepest computer. ") + "Unseen, they pay a bonus.",
-		"reactivate": "Restart the reactor on the lowest level.",
+		"reactivate": "Restart the jammed rotor at the console on the lowest level." if String(_site.get("theme", "")) == "skymaint" else "Restart the reactor on the lowest level.",
 		"pest": "The rats come in swarms – keep moving, keep your back free. Their brood mother is on the lowest level.",
 		"hunt": ("The beast is marked (!) – it is old and strong. " if bool(_site.get("hunt_alpha", false)) else "") + "Hunters keep to their ground: step onto it and they come; leave it far enough behind and they let you go. Grazers run – sneak to get close. What you bring down: hides, meat, samples.",
 		"recover": "The research computer is in the sample store below. Torn modules have no air and no warmth – seal their bulkheads.",
@@ -3923,7 +3948,7 @@ func use(instant: bool = false) -> bool:
 			depth = 0
 			if is_city() and _town_kind == "maint":
 				_town_kind = ""
-				go_level("street", "lift")              # 0.7.53.9: the service lift back up
+				go_level("cplaza" if is_cloud() else "street", "lift")              # 0.7.53.9: the service lift back up
 				return true
 			if is_city() and _town_kind == "corp":
 				go_level("plaza", "dungeon_out")        # 0.7.53.19: out by the back door
@@ -4076,6 +4101,9 @@ func _open_lift_menu(z: Dictionary) -> void:
 		var cs1 := GameState.corp_site_for(String(station.get("id", "")))
 		var cname := String((cs1 if not cs1.is_empty() else GameState.corp_poi(_sys, station)).get("name", "a corporate tower"))
 		lvls.append(["plaza", "%d.  Roof plaza – the %s" % [lvls.size() + 1, cname]])
+	if is_cloud():
+		var job := not GameState.maint_site_for(String(station.get("id", ""))).is_empty()
+		lvls.append(["maint", "%d.  Maintenance level – under the deck%s" % [lvls.size() + 1, " – a rotor is jammed" if job else ""]])     # 0.7.54.3
 	if is_city() and not is_cloud() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
 		lvls.append(["maint", "%d.  Maintenance level – the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
 	var keys: Array = []

@@ -50,6 +50,20 @@ const DRONE_M := 9.8                  # the drone picture's length (m)
 const DRONE_MIN_PX := 30.0            # it never gets smaller than this on screen
 var _ship_m := 30.0                   # her length (m)
 var _home_y := 0.58                   # where she flies (share of the screen height)
+# 0.7.54.3 (Luz, mockup_54h_anflug): down to a cloud city – through the giant's cloud decks, the city's platforms come
+# into view, she turns in through the hangar's gate at the main platform's rim; `rising`: the same the other way
+const CloudGenF = preload("res://scripts/ground/cloud_gen.gd")
+const SeaShaderF = preload("res://shaders/cloud_sea.gdshader")
+var cloud := false
+var rising := false
+var _cmat: ShaderMaterial = null
+var _cfx: Node2D = null
+var _clook: Dictionary = {}
+const CloudArtF = preload("res://scripts/ui/cloud_flight_art.gd")
+const DeckShaderF = preload("res://shaders/cloud_deck.gdshader")
+static var _plat_cache := {}
+var _plats_f: Array = []                # {spr, art, at (art px from the main platform's centre), main}
+var _decks: Array = []                  # [material, speed, offset]
 
 
 ## 0.7.50.15: the climb back up by the landing drone, caught by the ship.
@@ -59,6 +73,9 @@ func open_up(p_body: Dictionary, p_site: Dictionary) -> void:
 
 
 func open(p_body: Dictionary, p_site: Dictionary) -> void:
+	if Universe.is_giant(p_body) and not up:
+		open_cloud(p_body, p_site, false)
+		return
 	layer = 13
 	body = p_body
 	site = p_site
@@ -186,6 +203,9 @@ func _process(delta: float) -> void:
 
 
 func _update(delta: float) -> void:
+	if cloud:
+		_update_cloud(delta)
+		return
 	if up:
 		_update_up(delta)
 		return
@@ -232,6 +252,204 @@ func _update(delta: float) -> void:
 		_haze.color.a = lerpf(0.32, 0.04, k)
 	_place.queue_redraw()
 	_fx.queue_redraw()
+
+
+## 0.7.54.3: the flight to (or from, rising) a cloud city.
+func open_cloud(p_body: Dictionary, p_site: Dictionary, p_rising: bool) -> void:
+	layer = 13
+	body = p_body
+	site = p_site
+	cloud = true
+	rising = p_rising
+	lander = false
+	_vs = get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(1600, 900)
+	_clook = CloudGenF.giant_look(String(body.get("type", "gas")))
+	var city := Universe.city_station(GameState.current_system, body, site)
+	var cday := float(site.get("debug_day", city.get("day", 1.0)))          # (the debug menu / a test can set the hour)
+	var day := clampf(0.25 + cday * 0.85, 0.0, 1.0)
+	var bg := ColorRect.new()
+	bg.color = _clook["deep"]
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	# the sea of clouds far below
+	_cmat = ShaderMaterial.new()
+	_cmat.shader = SeaShaderF
+	var bands: Array = _clook["bands"]
+	for i in 5:
+		_cmat.set_shader_parameter("band%d" % i, bands[i])
+	_cmat.set_shader_parameter("deep", _clook["deep"])
+	_cmat.set_shader_parameter("haze", _clook["haze"])
+	_cmat.set_shader_parameter("flash_col", _clook["flash"])
+	_cmat.set_shader_parameter("px_per_art", 3.0)
+	_cmat.set_shader_parameter("origin", Vector2.ZERO)
+	_cmat.set_shader_parameter("vortex", Vector2(_vs.x / 3.0 * 0.78, _vs.y / 3.0 * 0.62))
+	_cmat.set_shader_parameter("light", day)
+	var sea := ColorRect.new()
+	sea.material = _cmat
+	sea.size = _vs
+	sea.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sea)
+	# the city: its platforms in pixel art (cached) – the main one with the hangar on its rim
+	var sid := String(city.get("id", ""))
+	var sty := CityStyle.key_for(city)
+	var sd := absi(hash(sid))
+	for pd in [["main", 230, true, Vector2.ZERO], ["ring", 105, false, Vector2(-620, 230)], ["works", 80, false, Vector2(560, 380)]]:
+		var key := "%s_%s_%s_%s_%d" % [sid, String(body.get("type", "")), pd[0], sty, int(day * 8.0)]
+		if not _plat_cache.has(key):
+			var art: Dictionary = CloudArtF.platform(int(pd[1]), sd + int(pd[1]), sty if pd[0] != "works" else "independent", _clook, bool(pd[2]), cday)
+			var im: Image = art["img"]
+			im.generate_mipmaps()
+			art["tex"] = ImageTexture.create_from_image(im)
+			_plat_cache[key] = art
+		var a2: Dictionary = _plat_cache[key]
+		var sp := Sprite2D.new()
+		sp.texture = a2["tex"]
+		sp.centered = false
+		sp.modulate.a = 0.0
+		add_child(sp)
+		_plats_f.append({"spr": sp, "art": a2, "at": pd[3], "main": bool(pd[2])})
+	_cfx = Node2D.new()
+	_cfx.draw.connect(_draw_cloud_fx)
+	add_child(_cfx)
+	# the ship, her shadow far down on the clouds
+	var f := GameState.active()
+	var tex: Texture2D = PixelArt.ship_texture(f.hull_id if f != null else "dragonfly", (f.gov if f.gov != "" else f.faction) if f != null else "player")
+	_shadow = Sprite2D.new()
+	_shadow.texture = tex
+	_shadow.rotation = -PI * 0.5
+	_shadow.modulate = Color(_clook["deep"], 0.3)
+	_shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_child(_shadow)
+	_ship = Sprite2D.new()
+	_ship.texture = tex
+	_ship.rotation = -PI * 0.5
+	_ship.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_ship_s = clampf(150.0 / maxf(tex.get_width(), 1.0), 2.0, 5.0)
+	_ship.scale = Vector2.ONE * _ship_s
+	_ship.position = _vs * Vector2(0.5, _home_y)
+	add_child(_ship)
+	_fx = Node2D.new()
+	add_child(_fx)
+	# the cloud decks you sink through: lit billows in the giant's colours, nearer ones faster and bigger
+	for i in 3:
+		var dm := ShaderMaterial.new()
+		dm.shader = DeckShaderF
+		dm.set_shader_parameter("art_size", _vs / 3.0)
+		dm.set_shader_parameter("scale", 1.0 + i * 0.7)
+		dm.set_shader_parameter("cover", 0.62 - i * 0.08)
+		dm.set_shader_parameter("seed", float(i * 17 + sd % 50))
+		var dk := lerpf(0.6, 1.0, day)
+		dm.set_shader_parameter("lit", Color(_clook["haze"]).lightened(0.25) * Color(dk, dk, dk))
+		dm.set_shader_parameter("mid", Color(bands[i]).lightened(0.12) * Color(dk, dk, dk))
+		dm.set_shader_parameter("shade", Color(bands[3]).darkened(0.1) * Color(dk, dk, dk))
+		if i == 2:
+			dm.set_shader_parameter("cover", 0.42)
+		var dr := ColorRect.new()
+		dr.material = dm
+		dr.size = _vs
+		dr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(dr)
+		if i < 2:
+			move_child(dr, _shadow.get_index())        # the farther decks under her – the nearest passes over her
+		_decks.append([dm, 120.0 + i * 140.0, Vector2(i * 300.0, i * 170.0)])
+	_haze = ColorRect.new()
+	_haze.color = Color(_clook["haze"], 0.3)
+	_haze.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_haze)
+	var title := UI.label("%s  ·  %s" % [String(site.get("name", "")), String(body.get("name", ""))], 20, UI.NEON_CYAN)
+	title.position = Vector2(30, 24)
+	add_child(title)
+	Audio.play("boost", "flight to a cloud city")
+	_update(0.0)
+
+
+## How far into the approach (0 high above … 1 at the gate) – the climb away runs it backwards.
+func _cloud_k() -> float:
+	var k := clampf(_t / DURATION, 0.0, 1.0)
+	return 1.0 - k if rising else k
+
+
+## The main platform's scale (screen px per art px) and where its gate is on the screen, k into the approach.
+func _approach(k: float) -> Array:
+	var e := smoothstep(0.2, 1.0, k)
+	var s := 0.1 * pow(36.0, e)
+	var home := _vs * Vector2(0.5, _home_y)
+	var gate := (_vs * Vector2(0.5, 0.02)).lerp(home + Vector2(0, -78), pow(e, 1.6))
+	return [s, gate]
+
+
+func _update_cloud(delta: float) -> void:
+	var k := _cloud_k()
+	var t := _t
+	_cmat.set_shader_parameter("cam", Vector2(0.0, -t * 55.0))            # she flies up the screen: the sea passes down
+	var home := _vs * Vector2(0.5, _home_y) + Vector2(sin(t * 1.3) * 6.0, sin(t * 2.1) * 3.0)
+	_ship.position = home
+	var sk := 1.0 - smoothstep(0.84, 1.0, k) * 0.6
+	_ship.scale = Vector2.ONE * _ship_s * sk
+	_ship.modulate.a = 1.0 - smoothstep(0.94, 1.0, k)
+	_shadow.scale = _ship.scale
+	_shadow.position = home + Vector2(60.0, 150.0) * (1.0 - k * 0.5)
+	_shadow.modulate.a = 0.3 * (1.0 - smoothstep(0.6, 0.8, k))
+	# the decks: thick at first, rushing past, gone once you are below them
+	for i in _decks.size():
+		var dd: Array = _decks[i]
+		var dm: ShaderMaterial = dd[0]
+		dd[2] = (dd[2] as Vector2) + Vector2(0.0, -float(dd[1]) * delta * (1.0 if not rising else 1.0))
+		dm.set_shader_parameter("offset", dd[2])
+		dm.set_shader_parameter("alpha", (1.0 - smoothstep(0.16 + i * 0.07, 0.34 + i * 0.07, k)) * (smoothstep(0.0, 0.04, k) if not rising else 1.0))
+	_haze.color.a = lerpf(0.3, 0.05, smoothstep(0.0, 0.5, k))
+	# the platforms: far off and small, growing as she closes in; the main one's gate comes down to meet her
+	var ap := _approach(k)
+	var s: float = ap[0]
+	var gate: Vector2 = ap[1]
+	var main_art: Dictionary = _plats_f[0]["art"]
+	var origin: Vector2 = gate - (main_art["gate"] as Vector2) * s            # the main image's top-left on screen
+	var vis := smoothstep(0.16, 0.3, k)
+	for pf in _plats_f:
+		var sp: Sprite2D = pf["spr"]
+		var art: Dictionary = pf["art"]
+		var c_world: Vector2 = (main_art["centre"] as Vector2) + (pf["at"] as Vector2)
+		sp.scale = Vector2.ONE * s
+		sp.position = origin + (c_world - (art["centre"] as Vector2)) * s
+		sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if s >= 1.4 else CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var haze_k := clampf(1.0 - s / 1.2, 0.0, 0.6)                          # far off: in the haze
+		sp.modulate = Color(Color.WHITE.lerp(Color(_clook["haze"]), haze_k), vis)
+	_cfx.queue_redraw()
+
+
+## The skyrail between the platforms (its beams, masts and a car on its way), the gate's landing lights blinking.
+func _draw_cloud_fx() -> void:
+	var k := _cloud_k()
+	if _plats_f.is_empty() or k < 0.16:
+		return
+	var ap := _approach(k)
+	var s: float = ap[0]
+	var gate: Vector2 = ap[1]
+	var main_art: Dictionary = _plats_f[0]["art"]
+	var origin: Vector2 = gate - (main_art["gate"] as Vector2) * s
+	var mc: Vector2 = origin + (main_art["centre"] as Vector2) * s
+	var a := smoothstep(0.16, 0.3, k)
+	var hz: Color = _clook["haze"]
+	for i in [1, 2]:
+		var pc: Vector2 = origin + ((main_art["centre"] as Vector2) + (_plats_f[i]["at"] as Vector2)) * s
+		var p0 := mc.lerp(pc, 0.3)
+		var p1 := mc.lerp(pc, 0.86)
+		var wd := maxf(1.0, 3.0 * s)
+		var col := Color(Color(0.72, 0.74, 0.78).lerp(hz, clampf(1.0 - s, 0.0, 0.5)), a)
+		_cfx.draw_line(p0 + Vector2(0, wd), p1 + Vector2(0, wd), Color(0, 0, 0, 0.25 * a), wd)
+		_cfx.draw_line(p0, p1, col, wd)
+		for m in 4:
+			var mp := p0.lerp(p1, (m + 1) / 5.0)
+			_cfx.draw_line(mp, mp + Vector2(0, 26.0 * s), Color(col, a * 0.8), maxf(1.0, wd * 0.6))
+		var cp := p0.lerp(p1, fposmod(_t * 0.12 + i * 0.4, 1.0))                # a car on its way
+		_cfx.draw_rect(Rect2(cp + Vector2(-9.0, 2.0) * s, Vector2(18.0, 5.0) * s), Color(Color(0.92, 0.93, 0.95), a))
+		_cfx.draw_rect(Rect2(cp + Vector2(-9.0, 5.0) * s, Vector2(18.0, 1.0) * s), Color(Color(0.95, 0.6, 0.2), a))
+	if k > 0.55:
+		for li in 6:
+			var blink := 0.5 + 0.5 * sin(_t * 8.0 - li * 0.9)
+			var lp := gate + Vector2(0, (14.0 + li * 9.0) * s)
+			_cfx.draw_rect(Rect2(lp - Vector2(1.5, 1.0) * s, Vector2(3.0, 2.0) * s), Color(1.0, 0.8, 0.3, blink * smoothstep(0.55, 0.7, k)))
 
 
 ## 0.7.50.15: up by the drone – the ground falls away below it, the clouds close in; the ship comes down over it
