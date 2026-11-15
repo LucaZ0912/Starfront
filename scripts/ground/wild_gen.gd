@@ -720,8 +720,12 @@ static func paint(m: GroundMap, img: Image) -> void:
 			_paint_coast(m, wd, p)
 		"ice":
 			_paint_ice(m, wd, p)
+		"arches", "lava", "crater":
+			pass                                         # 54a: the vistas paint all of it themselves
 		_:
 			_paint_jungle(m, wd, p)
+	if m.has_meta("sight_paint"):                    # 54a: a sight paints its own after (the ice cathedral's portal, …)
+		load("res://scripts/ground/sight_gen.gd").paint_extra(m, wd, p)
 
 
 ## Water and land at the pixel: the depth between the tiles, a little noise in the shore. Clears the water, paints a

@@ -3087,6 +3087,7 @@ const SITE_KINDS := {
 	"pirate": {"name": "Pirate base", "icon": "☠", "col": Color(1.0, 0.3, 0.25), "text": "A base cut into a cliff – the Red Talons hold it."},
 	"research_st": {"name": "Research station", "icon": "◎", "col": Color(0.5, 0.9, 1.0), "text": "White modules on stilts – it fell silent; looters are inside."},
 	"darkruin": {"name": "Strange ruin", "icon": "◈", "col": Color(0.62, 0.35, 1.0), "text": "Black stone that seems to have grown. Something hums beneath it."},
+	"sight": {"name": "Sight", "icon": "✦", "col": Color(1.0, 0.85, 0.5), "text": "A wonder of this world – a viewing terrace, a souvenir stall, sightseers. What you see there changes with the hour and from visit to visit."},     # 54a
 	"wilds": {"name": "Wilderness", "icon": "♣", "col": Color(0.55, 0.95, 0.45), "text": "Wild country – animals to hunt, and something at the end of it."},     # 53f-2
 }
 ## Package 54 (Luz): what the cloud cities of each kind of giant live on – and how many hang in its sky.
@@ -3116,6 +3117,7 @@ func cloud_sites(system_id: int, body: Dictionary, rng: RandomNumberGenerator) -
 	return out
 
 
+const SightGenU = preload("res://data/sights.gd")
 const CITY_ENDS := ["Port", "Haven", "Landing", "Reach", "Crossing", "Heights", "Springs", "Falls", "Gate", "Hold"]
 const CITY_STARTS := ["New", "Fort", "Saint", "Old", "Upper", "Lower", "East", "West", "Port", ""]
 
@@ -3168,6 +3170,15 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 			if ok:
 				break
 		out.append({"id": "%s_site_%d" % [String(body["id"]), i], "name": nm, "kind": kd, "lon": lon, "lat": lat})
+	# package 54a (Luz): a sight on the ground – on most worlds of the kinds that have one
+	var sth := String(SightGenU.THEME_OF.get(String(body.get("type", "")), ""))
+	if sth in SightGenU.READY:
+		var srng := RandomNumberGenerator.new()
+		srng.seed = hash("%d_%s_%d_sight" % [system_id, String(body["id"]), seed_value])
+		if srng.randf() < (0.8 if inhabited else 0.4):
+			var names: Array = SightGenU.SIGHTS[sth]["names"]
+			out.append({"id": "%s_sight" % String(body["id"]), "name": String(names[srng.randi() % names.size()]), "kind": "sight", "theme": sth,
+				"seed": srng.randi() % 100000, "lon": srng.randf_range(-0.9, 0.9), "lat": srng.randf_range(-0.7, 0.7)})
 	out.append_array(debug_sites.get(String(body["id"]), []))      # 0.7.51.5: places the debug menu added
 	out.append_array(GameState.pois_for(system_id, body))          # package 53a: a ruin to explore, this visit
 	return out

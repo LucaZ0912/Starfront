@@ -1638,6 +1638,33 @@ func _decal(d: Dictionary) -> void:
 			_rect(px, py, pw, ph, c.darkened(0.35))
 			_rect(px + 2, py + 2, pw - 4, ph - 4, c.darkened(0.1))
 			_rect(px + 4, py + 4, pw - 8, ph - 8, c.darkened(0.25))
+		"terrace":                 # 54a (Luz): a viewing terrace – big slabs of pale stone, a darker kerb, worn in the middle
+			for yy in ph:
+				for xx in pw:
+					var sx := (xx + (8 if (yy / 16) % 2 == 1 else 0)) / 16
+					var tc: Color = c.lerp(c.darkened(0.08), hash2(sx, yy / 16, 611))
+					if (xx + (8 if (yy / 16) % 2 == 1 else 0)) % 16 == 0 or yy % 16 == 0:
+						tc = c.darkened(0.16)
+					if hash2(px + xx, py + yy, 612) < 0.04:
+						tc = tc.darkened(0.06)
+					_img.set_pixel(px + xx, py + yy, tc)
+			_rect(px, py + ph - 3, pw, 3, c.darkened(0.3))
+			_rect(px, py, 2, ph, c.darkened(0.25))
+			_rect(px + pw - 2, py, 2, ph, c.darkened(0.3))
+		"plank_deck":              # 54a: a platform of planks out over the water, its edge beams and posts
+			for yy in ph:
+				for xx in pw:
+					var pc: Color = c if (yy / 4) % 2 == 0 else c.darkened(0.1)
+					if yy % 4 == 0:
+						pc = c.darkened(0.28)
+					if (xx + (yy / 4) * 13) % 48 == 0:
+						pc = pc.darkened(0.2)
+					_img.set_pixel(px + xx, py + yy, pc)
+			_rect(px, py + ph - 3, pw, 3, c.darkened(0.45))
+			_rect(px, py, 2, ph, c.darkened(0.4))
+			_rect(px + pw - 2, py, 2, ph, c.darkened(0.45))
+			for k in range(0, pw, 24):
+				_rect(px + k, py + ph, 3, 5, Color(0.25, 0.18, 0.12))
 		"cat_rail":                # 0.7.54.2: a catwalk's glass railings along both its sides, posts, the handrail lit
 			for side in [px + 2, px + pw - 4]:
 				_rect(side, py, 2, ph, Color(0.75, 0.9, 1.0, 0.5))

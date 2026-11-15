@@ -1545,17 +1545,41 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.5, fy + ph * 0.6, pw * 0.5, ph * 0.45 + 3.0, dc.darkened(0.12))
 			_ellipse(img, pw * 0.45, fy + ph * 0.5, pw * 0.42, ph * 0.35 + 2.0, dc)
 			_ellipse(img, pw * 0.35, fy + ph * 0.4, pw * 0.2, 2.0, dc.lightened(0.15))
-		"crystal":                  # shards of ice
+		"crystal":                  # 54a: a cluster of crystals – six-sided prisms leaning out of a foot of rime, lit from the left
 			var ic: Color = o.get("col", Color(0.75, 0.9, 1.0))
 			var crng := RandomNumberGenerator.new()
 			crng.seed = int(o.get("seed", 9))
-			_ellipse(img, pw * 0.5, fy + ph - 4.0, pw * 0.45, 4.0, Color(0.88, 0.93, 0.98))       # the snow at its foot
-			for k5 in crng.randi_range(2, 5):
-				var bx := crng.randi_range(1, pw - 6)
-				var hh := crng.randi_range(8, 24)
+			_ellipse(img, pw * 0.5, fy + ph - 4.0, pw * 0.5, 4.5, Color(0.88, 0.93, 0.98))       # the rime at its foot
+			_ellipse(img, pw * 0.5, fy + ph - 5.0, pw * 0.32, 2.5, ic.darkened(0.45))            # the stone they grow out of
+			var prisms: Array = []
+			for k5 in crng.randi_range(4, 7):
+				prisms.append([crng.randf_range(0.18, 0.82) * pw, crng.randi_range(int((fy + ph) * 0.35), fy + ph - 6), crng.randf_range(-0.35, 0.35), crng.randi_range(2, 4)])
+			prisms.sort_custom(func(a, b): return int(a[1]) > int(b[1]))      # the tall ones behind
+			for pr in prisms:
+				var bx := float(pr[0])
+				var hh := int(pr[1])
+				var lean := float(pr[2])
+				var hwid := int(pr[3])
 				for yy in hh:
-					var ww := maxi(1, int(5.0 * (1.0 - float(yy) / hh)))
-					_r(img, bx + 2 - ww / 2, fy + ph - 2 - yy, ww, 1, ic.lightened(0.2) if yy % 4 == 0 else ic)
+					var t := float(yy) / hh
+					var wv := hwid if t < 0.72 else maxi(0, int(round(hwid * (1.0 - t) / 0.28)))
+					var cxp := int(bx + lean * yy)
+					var y := fy + ph - 5 - yy
+					for xx in range(-wv - 1, wv + 2):
+						var cq: Color
+						if absi(xx) == wv + 1:
+							cq = ic.darkened(0.5)                                  # its outline
+						elif xx < 0:
+							cq = ic.lightened(0.38)                                # the lit face
+						elif xx == 0:
+							cq = ic.lightened(0.7)                                 # the edge between the faces
+						else:
+							cq = ic.darkened(0.12)                                 # the face in shade
+						if absi(xx) <= wv and yy % 7 == 3 and xx != 0:
+							cq = cq.lightened(0.15)                                 # a growth line
+						if xx == -1 and t > 0.15 and t < 0.6:
+							cq = Color(1, 1, 1)                                    # the light inside it
+						_r(img, cxp + xx, y, 1, 1, cq)
 		"house":                    # a settlement building: its roof seen from above, its front with a door and windows
 			var roof: Color = o.get("col", Color(0.4, 0.4, 0.45))
 			var wall: Color = o.get("col2", metal)

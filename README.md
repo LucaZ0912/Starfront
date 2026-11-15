@@ -369,6 +369,16 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.53.7: theme `mine` (`rails`, `rubble`, `descent` "cage"), `DungeonGen.build_minehead`, `_corridor(..., rails)`; `GameState.settle_poi`; SettleGen zone `mine_path` (meta `mine_path_front`); GroundView level `minehead`, `_fuses_step`, `blast_near`, `shot_lands` (called by GroundCombat), `_take_one`; ExploreNode `cage`, `mine_gen`, `vein`, `rubble`, `loose_rock`, `tnt`, `mine_gate`; floors 25–27, style `mine`, decal `rails`; ObjArt `shaft_house`, `winding_house`, `ore_bin`; `PoiData.MUSEUM_RELICS["mine"]`.
 - 0.7.53.9: theme `maint` (`descent` "stairs", `outside` "lift", `passive_foes`), FoeData `maint_drone` (`drone`), GroundCombat passive/provoked foes; GroundView `_town_kind`, `_drones_step`/`_draw_drones`, `_restart_reactor`, city lift level `maint`; `GameState.maint_sites`/`maint_site`; ExploreNode `crank_door`, `fuse_box`, `reactor` (`_draw_reactor`), `stairs_down`, `stairs_up`, `service_lift`, `steam`; style `maint`; ObjArt `valve_box`, `cable_drum`.
 - 0.7.53.11: theme `pirate` (`outside` "cliff", `hangar`, `cells`, `descent` "ramp", target `loot_room`), `DungeonGen.build_cliff`, `parked_covers`, map meta `parked`; `scripts/ground/parked_art.gd` (a ship made plastic: height from its outline, lit); ExploreNode `pirate_gate`, `searchlight`, `ramp_down`, `cells`; style `pirate`, face decos `skull_banner`, `graffiti`; ObjArt `watchtower`, `glider`, `fire_barrel`.
+- 0.7.54.5 (package 54a): `data/sights.gd` (pure data: `READY`, `THEME_OF` world type → sight, `SIGHTS` names, what,
+  souvenir, events {id: [text, when, weight, rare]}); `scripts/ground/sight_gen.gd` (`theme_for`, `event_for(theme,
+  id, visit, day)`, `build` → `_falls`, `_lagoon`, `_icecave`, `_vista` (arches, lava, crater: scenery north of row
+  `RIM`, the sky left clear), `_terrace`, `paint_extra` – WildGen.paint calls it for map meta `sight_paint`);
+  `scripts/ground/sight_fx.gd` (two layers: under the map – the lagoon's life, the vistas' sky; over it – the event,
+  camera flashes); map meta `sight` {theme, event, focus, id, …}, zones `viewpoint`, `sight_info`, `souvenir`;
+  site kind `sight` in `Universe.landing_sites`; `GameState.sight_photos`, `sight_visits`; Commands `sight_photo`,
+  `souvenir_buy`, `sight_tour`, `debug_sight`, `debug_excursion`, `debug_shuttle`, `debug_cloud` keys `sight_event`,
+  `sight_day`; commodities `souv_*`; `Missions.ground_sights`, `_excursion` (tour key `ground`), `generate_shuttle`;
+  CloudGen Skyring deck as sight `skyring`; ObjArt `crystal` reworked.
 - 0.7.54.4: `CloudSea.CloudSky` for the sky bar – `bar`, `style`, `day`, `star_col`, `make_towers(seed)`, `_draw_star`
   (the star, its veils, the cloud tops at the horizon), `_draw_towers` (by `CloudFlightArt.STYLE_COLS`); GroundView sets
   the sky's light at once.
@@ -562,6 +572,15 @@ Slanted, cosy top-down view since 0.7.49.2.
 - Galaxy map: `view_zoom` / `view_center`, `zoom_at`, `_to_map`; drag to pan. Below `OVERVIEW_ZOOM` (`is_overview`):
   no system names, territories always on, `_draw_faction_names` (at `faction_centres()`, stacked so they never
   overlap) and `_draw_ring_names` / `_arc_text` – the ring names along the ellipses.
+
+## Sights on the ground (phase 0.5 package 54a)
+
+On most jungle, ocean, ice, desert, lava and barren worlds (and moons of those kinds) the planet map shows a **sight**
+(✦). Land, walk to the viewing terrace and look out: the Glass Falls, the Coral Lagoon, the Ice Cathedral, the Red
+Arches, the Fire Terraces, the Great Crater – and in the cloud cities the Skyring deck. What is to be seen changes by
+visit and hour (rare views among them); at the railing **E** takes a photo (a travel magazine buys each new one), the
+holo shows your collection, the stall sells the place's souvenir. On the passenger board: **excursions** (land with the
+sightseers, step up to the viewpoint, bring them back) and **shuttle runs** between a station and a city's hangar.
 
 ## Tourist traffic (phase 0.5 package 43c)
 

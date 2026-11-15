@@ -170,6 +170,7 @@ func _process(delta: float) -> void:
 				_test_creatures(view)            # package 53f – creatures and machines
 				_test_wild(view)                 # package 53f-2 – the wild
 				_test_cloud(view)                # package 54 – the cloud cities
+				_test_sights54a(view)            # package 54a – the sights on the ground
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -4309,6 +4310,7 @@ func _test_aurelle(view: SystemView) -> void:
 	check(can and GameState.credits == cr0 + pay_m and not m in GameState.missions, "passengers disembark at their destination – paid per passenger and jump (%s, %d → %d, pay %d)" % [str(can), cr0, GameState.credits, pay_m])
 	var fac := String(biz[0]["faction"])
 	var rep0: float = GameState.rep.get_rep(fac) if fac != "" else 0.0
+	GameState.play_time += 5.0
 	biz[0]["expires"] = GameState.play_time - 1.0
 	GameState._update_passengers()
 	var late_ok: bool = not biz[0] in GameState.missions and (fac == "" or GameState.rep.get_rep(fac) < rep0)
@@ -7238,7 +7240,8 @@ func _test_tours43(view: SystemView) -> void:
 				resort_ok = resort_ok and String(U.find_station(int(m["target_system"]), String(m["target_station"])).get("type", "")) == "resort"
 			if m.has("tour"):
 				tours += 1
-				tour_ok = tour_ok and int(m["tour"]["system"]) != sid and String(m["target_station"]) == String(sts[0]["id"]) and not Missions.sight_place(m["tour"]).is_empty()
+				tour_ok = tour_ok and String(m["target_station"]) == String(sts[0]["id"]) and (bool(m["tour"].get("ground", false))      # 54a: excursions on the ground
+					or (int(m["tour"]["system"]) != sid and not Missions.sight_place(m["tour"]).is_empty()))
 		if tourists >= 3 and tours >= 3:
 			break
 	GameState.prosperity = keep
@@ -12343,3 +12346,124 @@ func _test_foot_pathfinder(view: SystemView) -> void:
 	main._update_input()
 	check(data_ok and eq_ok and shop_ok and fight_ok and raise_ok,
 		"0.7.52.14: the Pathfinder armour – no drone place, stronger plate; the Red Arm Laser in its first weapon place, staying with the suit; only in the Covenant's shops; the laser charges with another weapon in hand, its arm raised, cuts through a bulwark  [%s]" % " ".join(PackedStringArray([str(data_ok), str(eq_ok), str(shop_ok), str(fight_ok), str(raise_ok)])))
+
+
+const SightGenT = preload("res://scripts/ground/sight_gen.gd")
+
+## Package 54a (Luz): the sights on the ground – each kind built (the viewpoint reached from the landing place, the stall,
+## the information holo), photos (paid once each), souvenirs, the Skyring deck in the cloud cities, excursions (seen on
+## stepping up to the viewpoint) and shuttle runs between a station and a city.
+func _test_sights54a(view: SystemView) -> void:
+	var notes: Array = []
+	var SD = load("res://data/sights.gd")
+	var data_ok := true
+	for th in SD.SIGHTS:
+		var d: Dictionary = SD.SIGHTS[th]
+		data_ok = data_ok and GameData.commodities.has(String(d["souvenir"])) and not (d["events"] as Dictionary).is_empty()
+		for k in d["events"]:
+			data_ok = data_ok and String(d["events"][k][1]) in ["day", "dusk", "dawn", "night", "any"]
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var cr_keep: int = GameState.credits
+	var cargo_keep: Dictionary = f.cargo.duplicate()
+	var photos_keep: Dictionary = GameState.sight_photos.duplicate()
+	f.cargo.clear()
+	GameState.credits = 500000
+	var built_ok := true
+	var photo_ok := true
+	var tour_ok := true
+	var souv_ok := true
+	for th2 in SD.READY:
+		var e: String = Commands.execute({"type": "debug_sight", "theme": th2, "event": "", "day": 0.8})
+		var g = main.ground
+		if e != "" or g == null or g.map == null or not g.map.has_meta("sight"):
+			built_ok = false
+			notes.append("%s: %s" % [th2, e])
+			continue
+		var m: GroundMap = g.map
+		var sg: Dictionary = m.get_meta("sight")
+		var vp := _zone_of(m, "viewpoint")
+		var reach: bool = not vp.is_empty() and m.path(m.spawn, (vp["rect"] as Rect2).get_center()).size() > 0
+		var ok: bool = String(sg["theme"]) == th2 and String(sg["event"]) != "" and reach and not _zone_of(m, "souvenir").is_empty() and not _zone_of(m, "sight_info").is_empty()
+		built_ok = built_ok and ok
+		if not ok:
+			notes.append("%s: reach %s, event '%s'" % [th2, reach, String(sg["event"])])
+		# a photo: paid once
+		var c0: int = GameState.credits
+		var e1: String = Commands.execute({"type": "sight_photo"})
+		var c1: int = GameState.credits
+		var e2: String = Commands.execute({"type": "sight_photo"})
+		photo_ok = photo_ok and e1 == "" and c1 - c0 in [SightGenT.PHOTO_PAY, SightGenT.PHOTO_PAY_RARE] and e2 != "" and GameState.credits == c1
+		# an excursion aboard this ship: seen on stepping up to the viewpoint
+		var tm := {"id": "exc_test", "type": "passenger", "giver": "x", "giver_system": GameState.current_system, "amount": 2, "cabin": "bulk",
+			"target_system": GameState.current_system, "target_station": "x", "ship_uid": f.uid, "expires": GameState.play_time + 999.0, "time_limit": 999.0,
+			"reward": 100, "title": "Excursion (test)", "desc": "", "faction": "", "progress": 0, "cabin_slot": "",
+			"tour": {"system": GameState.current_system, "sight": String(sg["id"]), "name": "x", "body": "x", "kind": "ground", "t": 0.0, "done": false, "ground": true, "where": "x"}}
+		GameState.missions.append(tm)
+		Commands.execute({"type": "sight_tour"})
+		tour_ok = tour_ok and bool(tm["tour"]["done"])
+		GameState.missions.erase(tm)
+		# a souvenir
+		var item := String(SD.SIGHTS[th2]["souvenir"])
+		var n0 := float(f.cargo.get(item, 0.0))
+		var e3: String = Commands.execute({"type": "souvenir_buy", "amount": 2})
+		souv_ok = souv_ok and e3 == "" and float(f.cargo.get(item, 0.0)) >= n0 + 1.99
+		main.close_deck(false)
+		main._close_planet_map()
+	# the Skyring deck
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "level": "cstation", "stop": 1, "sight_event": "glory", "sight_day": 0.8})
+	var gs = main.ground
+	var ring_ok: bool = gs != null and gs.map != null and gs.map.has_meta("sight") and String(gs.map.get_meta("sight")["theme"]) == "skyring" \
+		and String(gs.map.get_meta("sight")["event"]) == "glory" and not _zone_of(gs.map, "viewpoint").is_empty() and not _zone_of(gs.map, "souvenir").is_empty()
+	if ring_ok:
+		var e4: String = Commands.execute({"type": "sight_photo"})
+		ring_ok = e4 == ""
+	main.close_deck(false)
+	main._close_planet_map()
+	# excursions and shuttles on the boards
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 54
+	var n_exc := 0
+	var n_sh := 0
+	var sh_ok := true
+	var gsights := 0
+	for sid in mini(Universe.systems.size(), 40):
+		if bool(Universe.systems[sid].get("outer", false)):
+			continue
+		gsights += Missions.ground_sights(sid).size()
+		var sts: Array = Universe.get_layout(sid)["stations"]
+		if sts.is_empty():
+			continue
+		for i in 4:
+			var t: Dictionary = Missions.generate_tour(sid, sts[0], rng)
+			if not t.is_empty() and bool(t["tour"].get("ground", false)):
+				n_exc += 1
+			var s: Dictionary = Missions.generate_shuttle(sid, sts[0], rng)
+			if not s.is_empty():
+				n_sh += 1
+				var tgt := String(s["target_station"])
+				var probe: Dictionary = s.duplicate()
+				probe["ship_uid"] = f.uid
+				sh_ok = sh_ok and tgt.begins_with("land:") and not Universe.find_station(sid, tgt).is_empty() and Missions.can_turn_in(probe, f, tgt)
+	# back
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	GameState.gear.aboard()
+	main._update_input()
+	f.cargo = cargo_keep
+	GameState.credits = cr_keep
+	GameState.sight_photos = photos_keep
+	check(data_ok and built_ok and photo_ok and tour_ok and souv_ok and ring_ok and gsights > 0 and n_exc > 0 and n_sh > 0 and sh_ok,
+		"54a: sights on the ground – falls, lagoon, ice cathedral, arches, lava terraces, crater, each with its viewpoint reached from the landing place, the stall and the holo; a photo paid once; souvenirs into the hold; the Skyring deck in the cloud cities; excursions (%d) seen at the viewpoint, shuttle runs (%d) down to a city's hangar; %d sights in the first systems  [%s]%s" % [
+			n_exc, n_sh, gsights, " ".join(PackedStringArray([str(data_ok), str(built_ok), str(photo_ok), str(tour_ok), str(souv_ok), str(ring_ok), str(sh_ok)])),
+			(" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

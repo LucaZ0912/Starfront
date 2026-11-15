@@ -128,6 +128,8 @@ var _permit_t := 0.0
 var _prosper_t := 0.0             # package 42c: prosperity drifts back to its base
 ## Package 39c: research data from analysed anomalies, sold at the Research Exchange (Meridian Sphere, Durchbruch).
 var research_data := 0
+var sight_photos := {}                  # package 54a: "<sight id>:<event>" -> true – the photos you took at the sights
+var sight_visits := {}                  # sight id -> how often you came (the event changes with it)
 var poi_visits := {}                    # package 53a: system id (String) -> how often you have come (its sites change with it)
 var poi_used: Array = []                # sites whose target is done – gone
 var museum_finds: Array = []            # 0.7.53.2: finds for the Museum carried (exhibit ids, data/museum.gd – 53e: each once per piece)
@@ -527,7 +529,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
@@ -599,6 +601,8 @@ func from_dict(d: Dictionary) -> void:
 	market_stock = (d.get("market_stock", {}) as Dictionary).duplicate(true)
 	research_data = int(d.get("research_data", 0))
 	poi_visits = (d.get("poi_visits", {}) as Dictionary).duplicate()
+	sight_photos = (d.get("sight_photos", {}) as Dictionary).duplicate()
+	sight_visits = (d.get("sight_visits", {}) as Dictionary).duplicate()
 	poi_used = (d.get("poi_used", []) as Array).duplicate()
 	museum_finds = (d.get("museum_finds", []) as Array).duplicate()
 	museum_donated = (d.get("museum_donated", []) as Array).duplicate()
@@ -2459,8 +2463,8 @@ func _update_tours(delta: float) -> void:
 		if String(m["type"]) != "passenger" or not m.has("tour") or int(m.get("ship_uid", -1)) != f.uid:
 			continue
 		var tr: Dictionary = m["tour"]
-		if bool(tr["done"]) or int(tr["system"]) != current_system:
-			continue
+		if bool(tr["done"]) or int(tr["system"]) != current_system or bool(tr.get("ground", false)):
+			continue                                 # (54a: an excursion is seen at the viewpoint on the ground)
 		var place := Missions.sight_place(tr)
 		if place.is_empty() or (pl.position as Vector2).distance_to(place["pos"]) > float(place["range"]):
 			continue

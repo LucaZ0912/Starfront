@@ -458,6 +458,20 @@ static func build_station(station: Dictionary, stop: int) -> GroundMap:
 					"title": "Look through the scope", "col": acc, "sign": Vector2(-100, -100)})
 		for bx2 in [ox + 4, ox + 11]:
 			DeckGen._seat(m, "bench", bx2, S_FLOOR + 3, 0, Color(0.55, 0.4, 0.26), rng, 0.4, 3)
+		# 54a (Luz): the deck is a sight – the railing a viewpoint for photos, the information holo, a souvenir stall
+		m.zones.append({"rect": Rect2(Vector2(ox + 0.5, S_EDGE - 1.4) * TILE, Vector2(W - ox - 2.0, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
+			"title": "The viewpoint – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+		m.add_object({"kind": "holo_pillar", "x": W - 4, "y": S_FLOOR + 1, "w": 1, "h": 1, "col": acc})
+		m.lights.append({"pos": Vector2(W - 3.5, S_FLOOR + 1.3) * TILE, "r": 40.0, "col": acc, "a": 0.35})
+		m.zones.append({"rect": Rect2(Vector2(W - 4.5, S_FLOOR + 1.5) * TILE, Vector2(2, 1.2) * TILE), "kind": "sight_info", "id": "sight_info",
+			"title": "Information – the Skyring Deck", "col": acc, "sign": Vector2(-100, -100)})
+		m.add_object({"kind": "stall", "x": ox + 14, "y": S_FLOOR, "w": 2, "h": 1, "col": Color(1.0, 0.6, 0.3)})
+		m.zones.append({"rect": Rect2(Vector2(ox + 13.0, S_FLOOR + 0.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
+			"title": "Souvenir stall", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(ox + 15, S_FLOOR - 0.4) * TILE})
+		m.set_meta("sight", {"theme": "skyring", "event": String(station.get("debug_sight_event", "")), "name": "The Skyring Deck",
+			"id": String(station.get("id", "")) + "_skyring", "focus": Vector2(ox + (W - ox) * 0.5, S_RIM + 6.0) * TILE,
+			"x0": float(ox * TILE), "x1": float(W * TILE), "void": float((S_RIM + 2) * TILE), "bottom": float(H * TILE)})
+		m.set_meta("tourists", 6)
 		m.spawn = m.get_meta("rail_front")
 	DeckGen._seats(m)
 	for k3 in 10:

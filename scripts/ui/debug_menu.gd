@@ -1052,6 +1052,31 @@ func _build_ground() -> void:
 	rc2.add_child(UI.button("Calm", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder"})))
 	rc2.add_child(UI.button("Rotor jammed (job)", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder", "job": true})))
 	_box.add_child(UI.wrap_label("Straight into a cloud city over a giant of this system (or a body seen as one). Every inhabited system's giants have 1–2 cities; the skyrail runs between Central and the Skyring.", 12, UI.TEXT_DIM, 560))
+	_section("Sights on the ground (package 54a)")
+	var sgh := _option(["0.8", "0.42", "0.05"], ["Hour: day", "Hour: dusk", "Hour: night"], 120)
+	var rs0 := _row()
+	rs0.add_child(sgh)
+	rs0.add_child(UI.button("Excursion aboard", func(): _cmd({"type": "debug_excursion"})))
+	rs0.add_child(UI.button("Shuttle run aboard", func(): _cmd({"type": "debug_shuttle"})))
+	rs0.add_child(UI.button("Excursion seen", func(): _cmd({"type": "debug_tour_view"})))
+	var SDm = load("res://data/sights.gd")
+	for th in ["falls", "lagoon", "icecave", "arches", "lava", "crater"]:
+		var rsg := _row()
+		rsg.add_child(UI.label(String(SDm.SIGHTS[th]["names"][0]) + ":", 12, UI.TEXT_DIM))
+		var thh: String = th
+		rsg.add_child(UI.button("By chance", func(): _cmd({"type": "debug_sight", "theme": thh, "day": float(sgh.get_selected_metadata())})))
+		for ev in SDm.SIGHTS[th]["events"]:
+			var evv: String = ev
+			rsg.add_child(UI.button(evv.capitalize(), func(): _cmd({"type": "debug_sight", "theme": thh, "event": evv, "day": float(sgh.get_selected_metadata())})))
+	var rsk := _row()
+	rsk.add_child(UI.label("Skyring deck:", 12, UI.TEXT_DIM))
+	for ev2 in SDm.SIGHTS["skyring"]["events"]:
+		var evs: String = ev2
+		rsk.add_child(UI.button(evs.capitalize(), func():
+			var dd := float(sgh.get_selected_metadata())
+			_cmd({"type": "debug_cloud", "level": "cstation", "stop": 1, "sight_event": evs, "sight_day": dd})
+			_cmd({"type": "debug_daytime", "phase": "day" if dd > 0.6 else ("dusk" if dd > 0.2 else "night")})))
+	_box.add_child(UI.wrap_label("Straight to a sight on a body of this system (seen as the right kind of world), with the event and the hour chosen; photos at the railing, souvenirs at the stall. Excursions are seen on stepping up to the viewpoint.", 12, UI.TEXT_DIM, 560))
 	_section("The Museum in Curie (package 53e)")
 	var rmu := _row()                                               # 53e (Luz): the Museum in Curie
 	rmu.add_child(UI.label("Museum:", 12, UI.TEXT_DIM))

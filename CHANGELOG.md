@@ -3,6 +3,41 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.5 – 2026-11-15
+
+**Package 54a – sights on the ground, excursions and shuttles (Luz).** On most worlds of the right kind the planet map
+now shows a **sight** (✦): land, walk from the landing place to its viewing terrace (glass railing, benches to sit on,
+viewing scopes, an information holo, a souvenir stall, other sightseers about) and look out.
+- **Six sights, one per kind of world, in great detail:** the **Glass Falls** on jungle worlds (a waterfall off a rock
+  wall into a pool, the creek running off, giant trees); the **Coral Lagoon** on ocean worlds (a beach with palms, the
+  turquoise lagoon in a ring of reef islets, corals and fish under the water, a jetty out to a viewing platform); the
+  **Ice Cathedral** on ice worlds and moons (a banded glacier wall, its portal and the nave behind – ice pillars, a
+  frozen waterfall glowing at its end –, a frozen lake as clear as glass, seracs, a crevasse with a bridge); the **Red
+  Arches** on desert worlds (mesas in the haze, three sandstone arches on the plain, a banded canyon at your feet with
+  a dry wash and cottonwoods); the **Fire Terraces** on lava worlds (a smoking volcano, basalt terraces with columns,
+  rivers of lava pouring over them, lava lakes, embers, glowing cracks at your feet); the **Great Crater** on barren
+  worlds and moons (the far rim against the black sky, the floor with its central peak, a fresh impact with rays, a
+  research outpost blinking far out).
+- **Worth coming back:** what is to be seen changes by visit and hour – a rainbow or a moonbow in the spray, morning
+  mist, fireflies, a herd come to drink; shoals of fish, glowing jellyfish at night, the sun going down over the reef,
+  a great sea creature passing; the ice glowing deep blue, an aurora mirrored in the lake, sun dogs, the ice singing;
+  the sun setting through the great arch, the stars, a dust devil, a sandstorm wall; fresh lava, the glow at night, a
+  lava fountain; the planet rising behind the crater's rim, the star field, long shadows, a meteor shower. The far
+  views have a real sky (the sun behind the mesas and through the arch, the planet behind the rim).
+- **Photos:** at the railing (E) you take a photo – a travel magazine buys each new one (150 cr, rare views 600 cr);
+  the holo tells you which you have. **Souvenirs:** a new ware for each place (Falls Spray Globes, …), sold well far
+  away in mining and military systems.
+- **The Skyring deck:** the observation deck at the cloud cities' Skyring stop is a sight too – a glory round the
+  city's shadow on the clouds, lightning deep in the clouds at night, gold at sunset, moonlight on the cloud tops, sky
+  floaters drifting past (rare); souvenir: Bottled Cloud.
+- **Excursions:** a new round trip on the passenger board – land with the sightseers at a sight (in this system or up
+  to three jumps off; or the Skyring deck), **stepping up to the viewpoint is enough**, then bring them back.
+- **Shuttle runs:** passengers from a station down to a city's hangar in the same system, or from a city up to a
+  station – short, quick, paid less per head.
+- The crystals on the ground are new: six-sided prisms lit from the side, with light inside.
+- Debug (F12 → Ground → Sights on the ground): each sight with each of its events and the hour, the Skyring deck's
+  events, an excursion or a shuttle run aboard, "excursion seen". Smoke test group `sights54a`.
+
 ## alpha 0.7.54.4 – 2026-11-15
 
 **The view from the sky bar (Luz).** Through the bar's glass the city's own towers now stand in front of the clouds in

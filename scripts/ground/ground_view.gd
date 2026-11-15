@@ -108,9 +108,13 @@ const FogNode = preload("res://scripts/ground/fog.gd")
 const WildGen = preload("res://scripts/ground/wild_gen.gd")              # 53f-2 (Luz): the wild
 const WildWater = preload("res://shaders/wild_water.gdshader")
 const CloudGen = preload("res://scripts/ground/cloud_gen.gd")              # package 54 (Luz): the cloud cities
+const SightGen = preload("res://scripts/ground/sight_gen.gd")              # 54a (Luz): the sights on the ground
+const SightFx = preload("res://scripts/ground/sight_fx.gd")
 const CloudSea = preload("res://scripts/ground/cloud_sea.gd")
 var rail_stop := 0                        # package 54: the skyrail's stop you are at (0 Central, 1 Skyring, 2 Harvester Deck)
 var rail_to := 1                          # 0.7.54.2: where the car you board goes
+var _sight_counted := {}                  # 54a: the sights this landing has counted as a visit
+var _at_view := false                                  # 54a: standing at a sight's viewpoint (an excursion counts on stepping up)
 var rail := {}                            # the ride under way: {t, v, to, arrived}
 var clouds: Node2D = null                 # the sea of clouds under the map
 var cloud_sky: Node2D = null              # the giant's sky in a window
@@ -373,6 +377,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		elif bool(_site.get("vault", false)):
 			map = VaultGen.build(_site)                               # 0.7.52.23: the debug vault, inside a station
 			env = {}
+		elif String(_site.get("kind", "")) == "sight":
+			map = SightGen.build(_body, _site, lsz, _sight_event())         # 54a (Luz): a sight
 		elif bool(_site.get("arena", false)):
 			map = ArenaGen.build(_body, _site, lsz.x, lsz.y)          # package 52: the debug arena
 		else:
@@ -1533,6 +1539,26 @@ func is_city() -> bool:
 	return bool(station.get("city", false))
 
 
+## 54a: this visit's event at the sight (counted once per landing).
+func _sight_event() -> String:
+	if _site.has("debug_event"):
+		return String(_site["debug_event"])
+	var sid := String(_site.get("id", ""))
+	var v := int(GameState.sight_visits.get(sid, 0))
+	return SightGen.event_for(String(_site.get("theme", "falls")), sid, v, sight_day())
+
+
+## How much daylight the sight has now (0 night … 1 day).
+func sight_day() -> float:
+	if _site.has("debug_day"):
+		return float(_site["debug_day"])
+	if is_cloud():
+		if station.has("debug_sight_day"):
+			return float(station["debug_sight_day"])
+		return CityStyle.daylight(station, cloud_body())
+	return CityStyle.daylight(_site, _body) if not _body.is_empty() else 1.0
+
+
 ## Package 54 (Luz): a cloud city over a gas giant?
 func is_cloud() -> bool:
 	return bool(station.get("cloud", false))
@@ -1677,6 +1703,15 @@ func _build() -> void:
 		_world.add_child(rim)
 	if map.has_meta("wild"):
 		_add_wild_water()                             # 53f-2 (Luz): the water lies under the map, the map leaves it clear
+	if map.has_meta("sight") and level == "landing":
+		var ufx = SightFx.new()                         # 54a: what lives in the water, under the map
+		ufx.setup(map.get_meta("sight"), sight_day())
+		ufx.under = true
+		_world.add_child(ufx)
+		var sid0 := String(_site.get("id", ""))
+		if not _sight_counted.has(sid0):
+			_sight_counted[sid0] = true
+			GameState.sight_visits[sid0] = int(GameState.sight_visits.get(sid0, 0)) + 1
 	if map.has_meta("clouds"):
 		clouds = CloudSea.new()                        # package 54 (Luz): the sea of clouds under the deck
 		clouds.setup(cloud_look(), map, hash(String(station.get("id", ""))) + 31)
@@ -1811,6 +1846,8 @@ func _build() -> void:
 	if is_town() and not map.has_meta("no_guards"):
 		_add_guards(rng)
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
+	if map.has_meta("tourists"):
+		n = int(map.get_meta("tourists"))             # 54a: sightseers at a sight
 	if level == "street":
 		n += 6                                        # a city's street is busy
 	if level in ["museum", "museum_min", "museum_1", "museum_2", "museum_down", "mplaza"]:
@@ -1889,6 +1926,32 @@ func _build() -> void:
 		if sp.x >= 0.0 and not z.get("vertical", false) and String(z.get("closed", "")) == "":
 			_add_light({"pos": sp + Vector2(0, 6), "r": 30.0, "col": z.get("col", Color.WHITE), "a": 0.3}, add_mat)
 	_world.add_child(_lights)
+	if map.has_meta("sight"):
+		var sgm: Dictionary = map.get_meta("sight")
+		if String(sgm.get("event", "")) == "" and level != "landing":
+			var sidc := String(sgm.get("id", ""))             # 54a: a sight in a city (the Skyring's deck): its event, its visits
+			if not _sight_counted.has(sidc):
+				_sight_counted[sidc] = true
+				GameState.sight_visits[sidc] = int(GameState.sight_visits.get(sidc, 0)) + 1
+			sgm["event"] = SightGen.event_for(String(sgm["theme"]), sidc, int(GameState.sight_visits.get(sidc, 0)), sight_day())
+		var d0 := sight_day()
+		var sfx = SightFx.new()                      # 54a (Luz): the spray, this visit's event, the camera flashes
+		sfx.setup(map.get_meta("sight"), d0)
+		sfx.view = self
+		sfx.z_index = 4
+		_world.add_child(sfx)
+		if String(map.get_meta("sight").get("theme", "")) == "lava":
+			d0 = maxf(d0, 0.5)                         # the lava lights its own night
+		if d0 < 0.75 and level == "landing":            # (a city's own light tells its hour)
+			var nt := ColorRect.new()                  # the hour over the place
+			var nm := CanvasItemMaterial.new()
+			nm.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+			nt.material = nm
+			nt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			nt.color = Color(0.32, 0.36, 0.55).lerp(Color.WHITE, clampf(d0 / 0.75, 0.0, 1.0)).lerp(Color(1.0, 0.8, 0.66), clampf(1.0 - absf(d0 - 0.4) * 4.0, 0.0, 1.0) * 0.4)
+			nt.size = map.size_px() * GroundMap.SCALE
+			nt.z_index = 3
+			_world.add_child(nt)
 	if map.has_meta("car_shell"):
 		var sf = CloudSea.CarShell.new()            # 0.7.54 (Luz): the car closed – its roof and side in front
 		sf.shell = map.get_meta("car_shell")
@@ -2133,6 +2196,10 @@ func _process(delta: float) -> void:
 		zone = {} if _seat.is_empty() else _seat
 	if zone.is_empty() and is_town() and _ride.is_empty() and talk == null and _near_guard() != null:
 		zone = {"kind": "guard", "id": "guard", "title": String(CityStyle.guards(station)["name"]), "rect": Rect2()}
+	var at_view := String(zone.get("kind", "")) == "viewpoint" and map.has_meta("sight")
+	if at_view and not _at_view:
+		Commands.execute({"type": "sight_tour"})          # 54a: an excursion's sightseers have seen it
+	_at_view = at_view
 	_camera(delta)
 	_prompt.text = "" if talk != null or talk_menu != null or _lift_menu != null else _prompt_text(zone)     # 0.7.52.13: events go to the log
 	_signs.queue_redraw()
@@ -3877,6 +3944,19 @@ func use(instant: bool = false) -> bool:
 		"gas_exchange":
 			_open_gas_menu(zone)                             # 0.7.54.2 (Luz): the gas works' counter
 			return true
+		"viewpoint":
+			var pe: String = Commands.execute({"type": "sight_photo"})        # 54a (Luz): a photo of what is to be seen
+			if pe != "":
+				_say_toast(pe, 2.5)
+			else:
+				Audio.play("lock_acquired", "photo", -6.0)
+			return true
+		"souvenir":
+			_open_souvenir_menu(zone)
+			return true
+		"sight_info":
+			_say_toast(_sight_info(), 7.0)
+			return true
 		"alight":
 			rail_stop = int(rail.get("to", 1 - rail_stop))
 			Audio.play("ui_open", "skyrail: off")
@@ -4302,6 +4382,53 @@ func _rail_step(delta: float) -> void:
 		Audio.play("ui_open", "skyrail: arrived")
 
 
+## 54a: the information holo – what the sight is, what is to be seen now, your photos of it.
+func _sight_info() -> String:
+	var sg: Dictionary = map.get_meta("sight")
+	var def: Dictionary = SightGen.SIGHTS[String(sg["theme"])]
+	var evs: Dictionary = def["events"]
+	var have := 0
+	for k in evs:
+		if GameState.sight_photos.has("%s:%s" % [String(sg["id"]), k]):
+			have += 1
+	var ev: Array = evs.get(String(sg["event"]), ["the view", "any", 1.0, false])
+	return "%s – %s. Now: %s. Your photos of it: %d of %d (some views only come by night, at dusk, or rarely)." % [
+		String(sg["name"]), String(def["what"]), String(ev[0]), have, evs.size()]
+
+
+## 54a: the souvenir stall.
+func _open_souvenir_menu(z: Dictionary) -> void:
+	Audio.play("ui_open", "souvenir stall")
+	_close_lift_menu()
+	var sg: Dictionary = map.get_meta("sight")
+	var item := String(SightGen.SIGHTS[String(sg["theme"])]["souvenir"])
+	var price := maxi(1, int(round(float(GameData.commodities[item]["price"]) * Commands.SOUVENIR_PRICE)))
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var p := UI.neon_panel(Color(1.0, 0.7, 0.35, 0.85), Color(0.03, 0.05, 0.06, 0.96), 2)
+	p.custom_minimum_size = Vector2(460, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("SOUVENIR STALL", 20, Color(1.0, 0.75, 0.4)))
+	var f := GameState.active()
+	v.add_child(UI.label("%s – %d cr each. They sell well far from here, in mining and military systems. Into your hold (%.0f m³ free) · %s cr" % [
+		GameData.item_name(item), price, f.cargo_free() if f != null else 0.0, str(GameState.credits)], 13, UI.TEXT_DIM))
+	var row := UI.hbox(8)
+	for amt in [5, 20, 50]:
+		var aa: int = amt
+		row.add_child(UI.button("Buy %d" % aa, func():
+			var e: String = Commands.execute({"type": "souvenir_buy", "amount": aa})
+			_say_toast(e if e != "" else "Bought %d %s." % [aa, GameData.item_name(item)], 3.0)
+			_open_souvenir_menu(z)))
+	v.add_child(row)
+	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", [])
+
+
 ## 0.7.54.2: the skyrail goes on to two stops – which?
 func _open_rail_menu(z: Dictionary) -> void:
 	Audio.play("ui_open", "skyrail: where to")
@@ -4725,6 +4852,11 @@ func _camera(delta: float = -1.0) -> void:
 	var at_ship := level == "hangar" and not _seat.is_empty() and map.ship_at != Vector2.INF
 	if at_ship:
 		c = map.ship_at * GroundMap.SCALE
+	elif map != null and map.has_meta("sight") and pilot != null and (not _seat.is_empty() or String(zone.get("kind", "")) == "viewpoint"):
+		# 54a: at the railing or on a bench the camera looks out at the view
+		var fo: Vector2 = map.get_meta("sight").get("focus", pilot.pos)
+		c = pilot.position.lerp(fo * GroundMap.SCALE, 0.62)
+		at_ship = true
 	if delta < 0.0 or _cam_c == Vector2.INF:
 		_cam_c = c
 	else:

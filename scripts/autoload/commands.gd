@@ -1993,6 +1993,33 @@ func _c_debug_tourists(_c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"sight_tour"} – package 54a: you stepped up to a sight's viewpoint – the sightseers of an excursion aboard
+## the ship you came in have seen it.
+func _c_sight_tour(_c: Dictionary) -> String:
+	var g = _ground()
+	var f := _fit()
+	if g == null or f == null or g.map == null or not g.map.has_meta("sight"):
+		return "No sight here."
+	var sid := String(g.map.get_meta("sight").get("id", ""))
+	var n := 0
+	for m in GameState.missions:
+		if String(m["type"]) != "passenger" or not m.has("tour") or int(m.get("ship_uid", -1)) != f.uid:
+			continue
+		var tr: Dictionary = m["tour"]
+		if bool(tr["done"]) or not bool(tr.get("ground", false)) or String(tr["sight"]) != sid:
+			continue
+		tr["done"] = true
+		tr["t"] = Missions.TOUR_VIEW
+		n += 1
+		GameState.log_msg("Your sightseers crowd the railing: %s. Now back to %s." % [String(tr["name"]),
+			Universe.find_station(int(m["target_system"]), String(m["target_station"])).get("name", "?")], GameState.COL_GOOD)
+	if n > 0:
+		Economy.change(GameState.current_system, 0.4, "tourists")
+		GameState.codex.event("tour")
+		GameState.missions_changed.emit()
+	return ""
+
+
 ## {"type":"debug_tour_view"} – package 43b: every round trip aboard has seen its sight
 func _c_debug_tour_view(_c: Dictionary) -> String:
 	var n := 0
@@ -2681,6 +2708,12 @@ func _c_debug_cloud(c: Dictionary) -> String:
 		return "Could not land."
 	if lv == "ctrain" or lv == "cstation":
 		g.rail_stop = clampi(int(c.get("stop", 0)), 0, 2)
+	st.erase("debug_sight_event")                         # 54a: the Skyring deck's event and hour
+	st.erase("debug_sight_day")
+	if String(c.get("sight_event", "")) != "":
+		st["debug_sight_event"] = String(c["sight_event"])
+	if c.has("sight_day"):
+		st["debug_sight_day"] = float(c["sight_day"])
 	var fr := String(c.get("freighter", ""))
 	st.erase("debug_freighter")
 	if fr != "":
@@ -2698,6 +2731,122 @@ func _c_debug_cloud(c: Dictionary) -> String:
 	if lv != "" and lv != "hangar":
 		g.go_level(lv, "rail" if lv in ["ctrain", "cstation"] and int(c.get("stop", 0)) >= 1 else "lift")
 	GameState.log_msg("[Debug] Cloud city %s over %s." % [String(sites[0]["name"]), String(body["name"])], GameState.COL_WARN)
+	return ""
+
+
+## Package 54a (Luz): at a sight – {"type":"sight_photo"}: a photo of what is to be seen now (a travel magazine buys a
+## new one); {"type":"souvenir_buy", "amount": int}: its souvenirs into the hold.
+const SightGenC = preload("res://scripts/ground/sight_gen.gd")
+const SOUVENIR_PRICE := 0.6                     # at the stall – a fraction of the market price
+
+
+func _c_sight_photo(_c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.map == null or not g.map.has_meta("sight"):
+		return "Nothing to photograph here."
+	var sg: Dictionary = g.map.get_meta("sight")
+	var key := "%s:%s" % [String(sg["id"]), String(sg["event"])]
+	if GameState.sight_photos.has(key):
+		return "You have that photo already."
+	GameState.sight_photos[key] = true
+	var ev: Array = SightGenC.SIGHTS[String(sg["theme"])]["events"].get(String(sg["event"]), ["the view", "any", 1.0, false])
+	var pay: int = SightGenC.PHOTO_PAY_RARE if bool(ev[3]) else SightGenC.PHOTO_PAY
+	GameState.credits += pay
+	GameState.log_msg("Photo: %s – %s%s. A travel magazine buys it: %d cr." % [String(sg["name"]), String(ev[0]), " (rare)" if bool(ev[3]) else "", pay], GameState.COL_GOOD)
+	return ""
+
+
+func _c_souvenir_buy(c: Dictionary) -> String:
+	var g = _ground()
+	var f := _fit()
+	if g == null or f == null or g.map == null or not g.map.has_meta("sight"):
+		return "No souvenir stall here."
+	var sg: Dictionary = g.map.get_meta("sight")
+	var item := String(SightGenC.SIGHTS[String(sg["theme"])]["souvenir"])
+	var price := maxi(1, int(round(float(GameData.commodities[item]["price"]) * SOUVENIR_PRICE)))
+	var room := int(floor(f.free_for(item) / GameData.item_volume(item)))
+	var amount := mini(mini(int(c.get("amount", 1)), room), GameState.credits / price)
+	if amount <= 0:
+		return "No room in the hold, or not enough credits."
+	GameState.spend(amount * price)
+	f.add_cargo(item, amount)
+	return ""
+
+
+## {"type":"debug_sight", "theme": falls/…, "event": "" or an event id} – package 54a: straight to a sight (on a body of
+## this system seen as the right kind of world).
+const DEBUG_SIGHT_WORLD := {"falls": "jungle", "lagoon": "ocean", "icecave": "ice", "arches": "desert", "lava": "lava", "crater": "barren"}
+func _c_debug_sight(c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	var th := String(c.get("theme", "falls"))
+	if not DEBUG_SIGHT_WORLD.has(th):
+		return "Unknown sight."
+	var L := Universe.get_layout(f.system_id)
+	var body := {}
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b):
+			body = Universe.debug_body_as(b, String(DEBUG_SIGHT_WORLD[th]))
+			break
+	if body.is_empty():
+		return "No body here."
+	var site := {"id": "%s_dbg_sight" % String(body["id"]), "name": String(SightGenC.SIGHTS[th]["names"][0]), "kind": "sight", "theme": th,
+		"seed": int(c.get("seed", 1234)), "lon": 0.0, "lat": 0.0}
+	if String(c.get("event", "")) != "":
+		site["debug_event"] = String(c["event"])
+	if c.has("day"):
+		site["debug_day"] = float(c["day"])
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	m.land_at(body, site)
+	return "" if _ground() != null else "Could not land."
+
+
+## {"type":"debug_excursion"} – package 54a: an excursion aboard the active ship, to a sight on the ground of this
+## system (or a Skyring deck), from the station you are at (or the first of this system); {"type":"debug_shuttle"}:
+## a shuttle run aboard, from here down to a city of this system.
+func _c_debug_excursion(_c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No game running."
+	var sid := GameState.current_system
+	var gs: Array = Missions.ground_sights(sid)
+	var sts: Array = Universe.get_layout(sid)["stations"]
+	if gs.is_empty() or sts.is_empty():
+		return "No sight on the ground (or no station) in this system."
+	var st: Dictionary = docked_station() if not docked_station().is_empty() else sts[0]
+	var m := Missions._excursion(sid, st, sid, gs[0], "bulk", 6, 0)
+	m["ship_uid"] = f.uid
+	m["expires"] = GameState.play_time + float(m["time_limit"])
+	GameState.missions.append(m)
+	GameState.missions_changed.emit()
+	GameState.log_msg("[Debug] Excursion aboard: %s – %s." % [String(gs[0]["name"]), String(gs[0]["where"])], GameState.COL_WARN)
+	return ""
+
+
+func _c_debug_shuttle(_c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No game running."
+	var sid := GameState.current_system
+	var sts: Array = Universe.get_layout(sid)["stations"]
+	var st: Dictionary = docked_station() if not docked_station().is_empty() else (sts[0] if not sts.is_empty() else {})
+	if st.is_empty():
+		return "No station here."
+	var rng := RandomNumberGenerator.new()
+	rng.seed = Time.get_ticks_msec()
+	var m := Missions.generate_shuttle(sid, st, rng)
+	if m.is_empty():
+		return "No city to fly to in this system."
+	m["cabin"] = "bulk"
+	m["amount"] = 6
+	m["ship_uid"] = f.uid
+	m["expires"] = GameState.play_time + float(m["time_limit"])
+	GameState.missions.append(m)
+	GameState.missions_changed.emit()
+	GameState.log_msg("[Debug] Shuttle run aboard: %s." % String(m["title"]), GameState.COL_WARN)
 	return ""
 
 

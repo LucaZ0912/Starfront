@@ -682,6 +682,9 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 			if m.has("tour") and not bool(m["tour"]["done"]) and float(m.get("expires", -1.0)) > 0.0:
 				var tl := maxf(0.0, float(m["expires"]) - GameState.play_time)
 				var tr: Dictionary = m["tour"]
+				if bool(tr.get("ground", false)):
+					return "Land with them at %s (%s, %s) and walk to the viewpoint – %d:%02d left" % [tr["name"], String(tr.get("where", "")),
+						Universe.systems[int(tr["system"])]["name"], int(tl) / 60, int(tl) % 60]
 				return "Show them %s in %s – stay close %d / %d s – %d:%02d left" % [tr["name"], Universe.systems[int(tr["system"])]["name"], int(tr["t"]), int(TOUR_VIEW), int(tl) / 60, int(tl) % 60]
 			if float(m.get("expires", -1.0)) < 0.0:
 				return "To %s (%s) – %d:%02d to get there" % [where, Universe.systems[int(m["target_system"])]["name"], int(m["time_limit"]) / 60, int(m["time_limit"]) % 60]
@@ -725,6 +728,10 @@ static func generate_passenger(system_id: int, station: Dictionary, rng: RandomN
 		var tour := generate_tour(system_id, station, rng)
 		if not tour.is_empty():
 			return tour
+	if rng.randf() < SHUTTLE_SHARE:
+		var sh := generate_shuttle(system_id, station, rng)            # package 54a: down to a city's hangar, or up from it
+		if not sh.is_empty():
+			return sh
 	var tourist := rng.randf() < TOURIST_SHARE + 0.08 * lv
 	var dests: Array = []
 	for sid in _systems_within(system_id, 4):
@@ -779,6 +786,12 @@ const TOURIST_SHARE := 0.12         # base share of tourist flights (+8 % per pr
 const TOURIST_PAY := 1.3
 const TOUR_VIEW := 45.0             # seconds near the sight
 const TOUR_JUMPS := 3
+const EXCURSION_TIME := 420.0       # package 54a: time on the ground for an excursion (land, walk to the viewpoint, back)
+const EXCURSION_PAY := 1.25
+const SHUTTLE_SHARE := 0.25         # share of passenger offers that are shuttle runs (station <-> city in the system)
+const SHUTTLE_TIME := 300.0
+const SHUTTLE_PAY := 0.8
+const SightData54 = preload("res://data/sights.gd")
 
 
 ## A round trip: tourists board here, see a sight in another system (up to three jumps) and come back here.
@@ -786,11 +799,15 @@ static func generate_tour(system_id: int, station: Dictionary, rng: RandomNumber
 	var cands: Array = []
 	var total := 0.0
 	for sid in _systems_within(system_id, TOUR_JUMPS):
-		if sid == system_id or Universe.find_path(system_id, sid, 3).is_empty():
+		if sid != system_id and Universe.find_path(system_id, sid, 3).is_empty():
 			continue
-		for sg in Tourism.sights(sid):
-			cands.append([sid, sg])
-			total += float(sg["appeal"])
+		if sid != system_id:
+			for sg in Tourism.sights(sid):
+				cands.append([sid, sg])
+				total += float(sg["appeal"])
+		for gs in ground_sights(sid):                                 # package 54a: excursions to the sights on the ground
+			cands.append([sid, gs])
+			total += float(gs["appeal"])
 	if cands.is_empty():
 		return {}
 	var r := rng.randf() * total
@@ -807,6 +824,8 @@ static func generate_tour(system_id: int, station: Dictionary, rng: RandomNumber
 	var c: Dictionary = CABIN_CLASSES[cls]
 	var amount := rng.randi_range(int(c["min"]), int(c["max"]))
 	var jumps := Universe.find_path(system_id, tsid, 3).size()
+	if sg2.has("ground"):
+		return _excursion(system_id, station, tsid, sg2, cls, amount, jumps)
 	var m := {"id": _new_id(), "type": "passenger", "giver": station["id"], "giver_system": system_id,
 		"client": "%s sightseers" % c["name"], "progress": 0, "item": "", "amount": amount, "cabin": cls,
 		"target_system": system_id, "target_station": station["id"], "jumps": jumps * 2,
@@ -819,6 +838,95 @@ static func generate_tour(system_id: int, station: Dictionary, rng: RandomNumber
 	m["desc"] = "Show %d %s sightseer%s %s in %s (%d jump%s): stay close for %d seconds, out of warp, then bring them back here. %s" % [
 		amount, String(c["name"]).to_lower(), "" if amount == 1 else "s", sg2["name"], Universe.systems[tsid]["name"], jumps, "" if jumps == 1 else "s",
 		int(TOUR_VIEW), "They fill bulk seats." if cls == "bulk" else "The group needs a %s cabin of its own." % String(c["name"]).to_lower()]
+	return m
+
+
+## Package 54a (Luz): the sights on the ground of a system and the Skyring decks of its cloud cities – as tour targets
+## {id, name, body, kind, appeal, ground, where}.
+static func ground_sights(sid: int) -> Array:
+	var out: Array = []
+	var L: Dictionary = Universe.get_layout(sid)
+	var bodies: Array = (L["planets"] as Array).duplicate()
+	bodies.append_array(L.get("moons", []))
+	for b in bodies:
+		var bt := String(b.get("type", ""))
+		if Universe.is_giant(b):
+			if not bool(b.get("cloud_city", false)):
+				continue
+			var cs: Array = Universe.landing_sites(sid, b)
+			if cs.is_empty():
+				continue
+			var city := Universe.city_station(sid, b, cs[0])
+			out.append({"id": String(city["id"]) + "_skyring", "name": "the Skyring Deck of %s" % String(city.get("name", "the cloud city")),
+				"body": String(b["id"]), "kind": "skyring", "appeal": 0.7, "ground": true, "where": String(city.get("name", "")),
+				"city": String(city["id"])})
+			continue
+		if not SightData54.THEME_OF.has(bt):
+			continue
+		for site in Universe.landing_sites(sid, b):
+			if String(site.get("kind", "")) == "sight":
+				out.append({"id": String(site["id"]), "name": String(site["name"]), "body": String(b["id"]), "kind": "ground", "appeal": 0.6,
+					"ground": true, "where": String(b.get("name", ""))})
+	return out
+
+
+## An excursion: the sightseers board here, you land with them at a sight (in this system or up to three jumps off),
+## take them to its viewpoint – entering it is enough – and bring them back here.
+static func _excursion(system_id: int, station: Dictionary, tsid: int, sg: Dictionary, cls: String, amount: int, jumps: int) -> Dictionary:
+	var c: Dictionary = CABIN_CLASSES[cls]
+	var legs := maxi(jumps * 2, 1)
+	var m := {"id": _new_id(), "type": "passenger", "giver": station["id"], "giver_system": system_id,
+		"client": "%s sightseers" % c["name"], "progress": 0, "item": "", "amount": amount, "cabin": cls,
+		"target_system": system_id, "target_station": station["id"], "jumps": jumps * 2,
+		"faction": String(station.get("faction", "")), "against": "", "ship_uid": -1, "expires": -1.0, "cabin_slot": "",
+		"time_limit": PASSENGER_TIME + PASSENGER_TIME_JUMP * jumps * 2 + EXCURSION_TIME,
+		"reward": int(round(float(c["pay"]) * amount * legs * EXCURSION_PAY * (1.0 + 0.15 * float(sg["appeal"])))),
+		"tour": {"system": tsid, "sight": String(sg["id"]), "name": String(sg["name"]), "body": String(sg["body"]),
+			"kind": String(sg["kind"]), "t": 0.0, "done": false, "ground": true, "where": String(sg["where"])}}
+	var on := ("in %s" % String(sg["where"])) if String(sg["kind"]) == "skyring" else ("on %s" % String(sg["where"]))
+	m["title"] = "Excursion: %d× %s to %s and back" % [amount, c["name"], sg["name"]]
+	m["desc"] = "Land with %d %s sightseer%s at %s %s (%s%s) and take them to its viewpoint, then bring them back here. %s" % [
+		amount, String(c["name"]).to_lower(), "" if amount == 1 else "s", sg["name"], on, Universe.systems[tsid]["name"],
+		"" if jumps == 0 else ", %d jump%s" % [jumps, "" if jumps == 1 else "s"],
+		"They fill bulk seats." if cls == "bulk" else "The group needs a %s cabin of its own." % String(c["name"]).to_lower()]
+	return m
+
+
+## Package 54a (Luz): a shuttle run – from a station down to the hangar of a city on a world of this system, or from
+## a city up to a station in orbit. Short, quick, paid less per head.
+static func generate_shuttle(system_id: int, station: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var L: Dictionary = Universe.get_layout(system_id)
+	var from_city := String(station["id"]).begins_with("land:")
+	var dests: Array = []
+	if from_city:
+		for st in L["stations"]:
+			dests.append(st)
+	else:
+		var bodies: Array = (L["planets"] as Array).duplicate()
+		bodies.append_array(L.get("moons", []))
+		for b in bodies:
+			for site in Universe.landing_sites(system_id, b):
+				if String(site.get("kind", "")) == "city":
+					var city := Universe.city_station(system_id, b, site)
+					dests.append(city)
+	dests = dests.filter(func(d): return String(d["id"]) != String(station["id"]))
+	if dests.is_empty():
+		return {}
+	var d: Dictionary = dests[rng.randi() % dests.size()]
+	var roll := rng.randf()
+	var cls := "luxury" if roll < 0.1 else ("business" if roll < 0.45 else "bulk")
+	var c: Dictionary = CABIN_CLASSES[cls]
+	var amount := rng.randi_range(int(c["min"]), int(c["max"]))
+	var m := {"id": _new_id(), "type": "passenger", "giver": station["id"], "giver_system": system_id,
+		"client": "%s shuttle passengers" % c["name"], "progress": 0, "item": "", "amount": amount, "cabin": cls,
+		"target_system": system_id, "target_station": String(d["id"]), "jumps": 0, "shuttle": true,
+		"faction": String(station.get("faction", "")), "against": "", "ship_uid": -1, "expires": -1.0, "cabin_slot": "",
+		"time_limit": SHUTTLE_TIME, "reward": int(round(float(c["pay"]) * amount * SHUTTLE_PAY)) + 60}
+	var dn := String(d.get("name", "?"))
+	m["title"] = "Shuttle: %d× %s %s %s" % [amount, c["name"], "up to" if from_city else "down to", dn]
+	m["desc"] = "%s %d %s passenger%s %s %s – %s. %s" % ["Fly" if from_city else "Take", amount, String(c["name"]).to_lower(), "" if amount == 1 else "s",
+		"up to" if from_city else "down to", dn, "a station in orbit" if from_city else "to the city's hangar",
+		"They fill bulk seats." if cls == "bulk" else "The group needs a %s cabin of its own." % String(c["name"]).to_lower()]
 	return m
 
 
