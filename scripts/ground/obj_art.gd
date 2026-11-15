@@ -167,6 +167,16 @@ static func _rise(kind: String) -> int:
 			return 44
 		"glass_rail":                       # 0.7.53.19: the roof plaza's glass balustrade
 			return 12
+		"gas_tank":                         # 0.7.54.2: a spherical gas tank on its legs (~5 m)
+			return 64
+		"compressor":                       # 0.7.54.2: a compressor block with fans on top
+			return 26
+		"gas_column":                       # 0.7.54.2: a separation column going up out of the picture
+			return 220
+		"gas_flare":                        # 0.7.54.2: the flare stack burning off what is left
+			return 110
+		"winch":                            # 0.7.54.2: an intake's winch at the edge
+			return 18
 		"scope":                            # package 54: a viewing scope on the observation deck (~1.4 m)
 			return 22
 		"car_pole":                         # package 54: a grab pole in the skyrail's car (floor to ceiling)
@@ -694,6 +704,64 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 3, b8 - 44, 2, 42, pc8.darkened(0.25))
 			_r(img, 1, b8 - 30, pw - 2, 2, Color(0.95, 0.75, 0.3))
 			_r(img, 1, b8 - 4, pw - 2, 2, Color(0.55, 0.57, 0.6))
+		"gas_tank":
+			var r := pw / 2 - 4
+			var cy := fy + ph - r - 6
+			var cx := pw / 2
+			for lg in [-0.7, -0.25, 0.25, 0.7]:
+				_r(img, cx + int(lg * r) - 2, cy, 4, fy + ph - cy - 2, Color(0.36, 0.37, 0.4))
+			for yy in range(-r, r):
+				for xx in range(-r, r):
+					var d := Vector2(xx + 0.5, yy + 0.5).length()
+					if d > r:
+						continue
+					var n := Vector3(xx, yy, sqrt(maxf(r * r - d * d, 0.0))).normalized()
+					var li := clampf(n.dot(Vector3(-0.5, -0.6, 0.62).normalized()), 0.0, 1.0)
+					var tc := Color(0.86, 0.86, 0.84).darkened(0.45).lerp(Color(0.95, 0.95, 0.93), li)
+					if absi(yy) < 1:
+						tc = tc.darkened(0.2)
+					img.set_pixel(cx + xx, cy + yy, tc)
+			_r(img, cx + r - 6, cy - r + 8, 2, r * 2 - 12, Color(0.3, 0.3, 0.32))
+			_r(img, cx - r / 3 - 2, cy - r / 2 - 2, 5, 5, Color(0.95, 0.95, 0.9))
+			_r(img, cx - r / 3, cy - r / 2, 1, 1, Color(1.0, 0.3, 0.2))
+		"compressor":
+			var b12 := fy + ph
+			_r(img, 0, fy - 22, pw, ph + 22, Color(0.5, 0.52, 0.48))
+			_r(img, 0, fy - 22, pw, 2, Color(0.66, 0.68, 0.64))
+			for f in int(pw / 18):
+				_ellipse(img, 9 + f * 18, fy - 12, 7, 3, Color(0.25, 0.26, 0.27))
+				_ellipse(img, 9 + f * 18, fy - 12, 2, 1, Color(0.5, 0.5, 0.5))
+			for yy2 in range(fy, b12 - 2, 4):
+				_r(img, 2, yy2, pw - 4, 1, Color(0.42, 0.44, 0.4))
+			_r(img, pw - 10, fy + 4, 6, 4, Color(0.15, 0.15, 0.17))
+			_r(img, pw - 9, fy + 5, 4, 2, Color(0.4, 1.0, 0.5))
+			_r(img, 4, fy + 2, 20, 4, Color(0.95, 0.75, 0.2))
+		"gas_column":
+			var b13 := fy + ph
+			for yy3 in range(0, b13 - 4):
+				for xx3 in pw:
+					var k3 := float(xx3) / pw
+					var cc := Color(0.72, 0.74, 0.76).lerp(Color(0.42, 0.44, 0.48), k3)
+					if yy3 % 26 == 0:
+						cc = cc.darkened(0.25)
+					img.set_pixel(xx3, yy3, cc)
+			for yy4 in range(10, b13 - 10, 40):
+				_r(img, 0, yy4, pw, 2, Color(0.95, 0.75, 0.2))
+			_r(img, 2, b13 - 6, pw - 4, 6, Color(0.36, 0.37, 0.4))
+		"gas_flare":
+			_r(img, pw / 2 - 3, 24, 6, fy + ph - 24, Color(0.42, 0.42, 0.45))
+			_r(img, pw / 2 - 3, 24, 1, fy + ph - 24, Color(0.6, 0.6, 0.62))
+			_r(img, pw / 2 - 6, fy + ph - 4, 12, 4, Color(0.3, 0.3, 0.32))
+			for fl in 12:
+				var fr := 6.0 - fl * 0.42
+				_ellipse(img, pw / 2 + int(sin(fl * 1.7) * 2.0), 22 - fl * 2, fr, fr, Color(1.0, 0.55 + fl * 0.03, 0.15 + fl * 0.02))
+		"winch":
+			var b14 := fy + ph
+			_r(img, 2, b14 - 16, pw - 4, 14, Color(0.4, 0.41, 0.44))
+			_r(img, 2, b14 - 16, pw - 4, 2, Color(0.62, 0.64, 0.68))
+			_ellipse(img, pw / 2, b14 - 9, pw / 2 - 6, 5, Color(0.55, 0.56, 0.58))
+			_ellipse(img, pw / 2, b14 - 9, pw / 2 - 10, 3, Color(0.3, 0.31, 0.33))
+			_r(img, 4, b14 - 4, pw - 8, 2, Color(0.95, 0.75, 0.2))
 		"scope":
 			# package 54: a viewing scope on its post – the barrel tilted out over the clouds, a coin slot
 			var b10 := fy + ph
@@ -704,8 +772,9 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 4, b10 - 24, 3, 5, Color(0.75, 0.9, 1.0))
 		"car_pole":
 			var b11 := fy + ph
-			_r(img, pw / 2 - 1, b11 - 40, 2, 38, Color(0.82, 0.83, 0.85))
-			_r(img, pw / 2 - 1, b11 - 40, 1, 38, Color(0.95, 0.96, 0.97))
+			_r(img, pw / 2 - 1, 0, 2, b11 - 2, Color(0.82, 0.83, 0.85))           # 0.7.54.2: floor to ceiling
+			_r(img, pw / 2 - 1, 0, 1, b11 - 2, Color(0.95, 0.96, 0.97))
+			_r(img, pw / 2 - 3, 0, 6, 3, Color(0.5, 0.52, 0.56))
 			_r(img, pw / 2 - 3, b11 - 3, 6, 2, Color(0.5, 0.52, 0.56))
 		"glass_rail":
 			# 0.7.53.19: a glass balustrade – panes in a steel rail

@@ -32,8 +32,8 @@ static func _bil(src: Image, q: Vector2) -> Color:
 	return Color(0, 0, 0, 0)
 
 
-static func make(hull: String, faction: String, sc: float, lift: int) -> Dictionary:
-	var key := "%s_%s_%.2f_%d" % [hull, faction, sc, lift]
+static func make(hull: String, faction: String, sc: float, lift: int, floating: bool = false) -> Dictionary:
+	var key := "%s_%s_%.2f_%d_%s" % [hull, faction, sc, lift, str(floating)]
 	if _cache.has(key):
 		return _cache[key]
 	var src: Image = PixelArt.ship_texture(hull, faction).get_image()
@@ -91,13 +91,13 @@ static func make(hull: String, faction: String, sc: float, lift: int) -> Diction
 			return 0.0
 		var d := minf(dist[y * W2 + x], RR) / RR
 		return sqrt(maxf(0.0, 1.0 - (1.0 - d) * (1.0 - d))) * RR
-	# its shadow on the floor
-	for y in H2:
+	# its shadow on the floor (0.7.54.2: not when it floats at a berth in the sky – no floor, no gear)
+	for y in (0 if floating else H2):
 		for x in W2:
 			if inside[y * W2 + x] == 1:
 				img.set_pixel(x + 12, y + lift + 12, Color(0, 0, 0, 0.45))
 	# the gear
-	for sp in [Vector2(0.3, 0.3), Vector2(0.3, 0.7), Vector2(0.75, 0.5)]:
+	for sp in ([] if floating else [Vector2(0.3, 0.3), Vector2(0.3, 0.7), Vector2(0.75, 0.5)]):
 		var gx := int(sp.x * W2)
 		var gy := int(sp.y * H2)
 		img.fill_rect(Rect2i(gx, gy, 4, lift + 4), Color(0.25, 0.25, 0.27))

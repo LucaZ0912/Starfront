@@ -11468,6 +11468,8 @@ func _test_cloud(view: SystemView) -> void:
 	g._arrive = 0.0
 	g.zone = boards[0] if not boards.is_empty() else {}
 	g.use()
+	var menu_ok: bool = g._lift_menu != null and (g._lift_menu.get_meta("keys") as Array).size() == 2      # 0.7.54.2: which way
+	g._board(1)
 	var ride_ok: bool = g.level == "ctrain" and g.map.has_meta("car_shell") and int(g.rail.get("to", -1)) == 1 and g.env.is_empty()
 	var al: Dictionary = _zone_of(g.map, "alight")
 	ride_ok = ride_ok and String(al.get("closed", "")) != ""
@@ -11478,8 +11480,22 @@ func _test_cloud(view: SystemView) -> void:
 	g._arrive = 0.0
 	g.zone = al
 	g.use()
-	var ring_ok: bool = g.level == "cstation" and g.rail_stop == 1 and g.map.lifts.is_empty() and not _zone_of(g.map, "scope").is_empty()
+	var ring_ok: bool = g.level == "cstation" and g.rail_stop == 1 and g.map.lifts.is_empty() and not _zone_of(g.map, "scope").is_empty() and menu_ok
 	Commands.execute({"type": "debug_skyrail", "action": "info"})
+	# 0.7.54.2 (Luz): the gas works – the third stop; the Gas Exchange; now and then a great freighter at the berth
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "level": "cstation", "stop": 2, "freighter": "yes"})
+	g = main.ground
+	var wm: GroundMap = g.map
+	var cw: Rect2 = wm.get_meta("catwalk", Rect2())
+	var works_ok: bool = g.rail_stop == 2 and wm.has_meta("works") and wm.has_meta("intakes") and wm.has_meta("freighter") and g.clouds._freighter != null 		and not _zone_of(wm, "gas_exchange").is_empty() and _zone_of(wm, "board").size() > 0 		and wm.path(wm.spawn, Vector2(cw.position.x + 1.5, cw.end.y - 2.5) * 16.0).size() > 0
+	var gcred: int = GameState.credits
+	var gfree: float = f.cargo_free()
+	var gerr: String = Commands.execute({"type": "gas_buy", "item": "helium", "amount": 5})
+	works_ok = works_ok and gerr == "" and GameState.credits == gcred - 5 * Commands.gas_price("helium") and f.cargo_free() < gfree 		and Commands.execute({"type": "gas_buy", "item": "xenon", "amount": 5}) != ""
+	f.remove_cargo("helium", 5.0)
+	GameState.credits = gcred
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "level": "cstation", "stop": 2, "freighter": "no"})
+	works_ok = works_ok and not main.ground.map.has_meta("freighter")
 	# back
 	main.close_deck(false)
 	main._close_planet_map()
@@ -11496,9 +11512,9 @@ func _test_cloud(view: SystemView) -> void:
 	Universe.debug_sites.clear()
 	GameState.gear.aboard()
 	main._update_input()
-	check(world_ok and look_ok and hangar_ok and lift_ok and plaza_ok and air_ok and st_ok and ride_ok and ring_ok,
-		"54: cloud cities – 1–2 over the giants of inhabited systems (none far out), down only to them; the hangar's gate open to the sky; the plaza with walk-in shops, benches people sit on, the deck going on beyond its ends; the giant's air (suit or breathable); the skyrail: board at Central, the ride, the doors open at the Skyring, off onto its observation deck  [%s]%s" % [
-			" ".join(PackedStringArray([str(world_ok), str(look_ok), str(hangar_ok), str(lift_ok), str(plaza_ok), str(air_ok), str(st_ok), str(ride_ok), str(ring_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+	check(world_ok and look_ok and hangar_ok and lift_ok and plaza_ok and air_ok and st_ok and ride_ok and ring_ok and works_ok,
+		"54: cloud cities – 1–2 over the giants of inhabited systems (none far out), down only to them; the hangar's gate open to the sky; the plaza with walk-in shops, benches people sit on, the deck going on beyond its ends; the giant's air (suit or breathable); the skyrail: board at Central, the ride, the doors open at the Skyring, off onto its observation deck; the gas works as the third stop (the Gas Exchange sells the giant's gases, the catwalk, a freighter at the berth now and then)  [%s]%s" % [
+			" ".join(PackedStringArray([str(world_ok), str(look_ok), str(hangar_ok), str(lift_ok), str(plaza_ok), str(air_ok), str(st_ok), str(ride_ok), str(ring_ok), str(works_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
 
 
 func _zone_of(m: GroundMap, k: String) -> Dictionary:

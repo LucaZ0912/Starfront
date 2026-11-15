@@ -2680,10 +2680,51 @@ func _c_debug_cloud(c: Dictionary) -> String:
 	if g == null:
 		return "Could not land."
 	if lv == "ctrain" or lv == "cstation":
-		g.rail_stop = clampi(int(c.get("stop", 0)), 0, 1)
+		g.rail_stop = clampi(int(c.get("stop", 0)), 0, 2)
+	var fr := String(c.get("freighter", ""))
+	st.erase("debug_freighter")
+	if fr != "":
+		st["debug_freighter"] = fr == "yes"
+	if lv == "ctrain":
+		g.rail_to = CloudGen54.others(g.rail_stop)[0]
 	if lv != "" and lv != "hangar":
-		g.go_level(lv, "rail" if lv in ["ctrain", "cstation"] and int(c.get("stop", 0)) == 1 else "lift")
+		g.go_level(lv, "rail" if lv in ["ctrain", "cstation"] and int(c.get("stop", 0)) >= 1 else "lift")
 	GameState.log_msg("[Debug] Cloud city %s over %s." % [String(sites[0]["name"]), String(body["name"])], GameState.COL_WARN)
+	return ""
+
+
+## 0.7.54.2 (Luz): the Gas Exchange at a cloud city's gas works – the giant's gases from the works, under the market.
+const GAS_DISCOUNT := 0.7
+
+
+func gas_offer(giant: String) -> Array:
+	return (Universe.GAS_YIELDS.get(giant, Universe.GAS_YIELDS["gas"]) as Dictionary).keys()
+
+
+func gas_price(item: String) -> int:
+	return maxi(1, int(round(float(GameData.commodities.get(item, {}).get("price", 10)) * GAS_DISCOUNT)))
+
+
+## {"type":"gas_buy", "item": String, "amount": int (-1 = fill the hold)} – at a cloud city's gas works.
+func _c_gas_buy(c: Dictionary) -> String:
+	var f := _fit()
+	var st := docked_station()
+	if f == null or not bool(st.get("cloud", false)):
+		return "Only at a cloud city's gas works."
+	var item := String(c.get("item", ""))
+	if not item in gas_offer(String(st.get("giant", "gas"))):
+		return "The works do not harvest that here."
+	var price := gas_price(item)
+	var room := int(floor(f.free_for(item) / GameData.item_volume(item)))
+	var amount := int(c.get("amount", 1))
+	if amount < 0:
+		amount = room
+	amount = mini(mini(amount, room), GameState.credits / price)
+	if amount <= 0:
+		return "No room in the hold, or not enough credits."
+	GameState.spend(amount * price)
+	f.add_cargo(item, amount)
+	GameState.count_stat("turnover", float(amount * price))
 	return ""
 
 

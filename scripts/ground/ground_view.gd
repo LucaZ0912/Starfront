@@ -109,7 +109,8 @@ const WildGen = preload("res://scripts/ground/wild_gen.gd")              # 53f-2
 const WildWater = preload("res://shaders/wild_water.gdshader")
 const CloudGen = preload("res://scripts/ground/cloud_gen.gd")              # package 54 (Luz): the cloud cities
 const CloudSea = preload("res://scripts/ground/cloud_sea.gd")
-var rail_stop := 0                        # package 54: the skyrail's stop you are at (0 Central, 1 Skyring)
+var rail_stop := 0                        # package 54: the skyrail's stop you are at (0 Central, 1 Skyring, 2 Harvester Deck)
+var rail_to := 1                          # 0.7.54.2: where the car you board goes
 var rail := {}                            # the ride under way: {t, v, to, arrived}
 var clouds: Node2D = null                 # the sea of clouds under the map
 var cloud_sky: Node2D = null              # the giant's sky in a window
@@ -357,8 +358,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	elif level == "cstation":
 		map = CloudGen.build_station(station, rail_stop)
 	elif level == "ctrain":
-		map = CloudGen.build_car(station, 1 - rail_stop)
-		rail = {"t": 0.0, "v": 0.0, "to": 1 - rail_stop, "arrived": false, "said": false}
+		if rail_to == rail_stop:
+			rail_to = CloudGen.others(rail_stop)[0]
+		map = CloudGen.build_car(station, rail_to)
+		rail = {"t": 0.0, "v": 0.0, "to": rail_to, "arrived": false, "said": false}
 	elif level == "settlement":
 		map = SettleGen.build(station, _body, _site, _avail, _sys)
 	elif level == "landing":
@@ -1766,6 +1769,9 @@ func _build() -> void:
 			lk = ChibiArt.PilotArt.random_look(rng)
 			if is_cloud() and String(p.get("role", "")) == "":
 				lk = _outside_look(lk, rng)              # package 54: out on the deck in the giant's air – suits too
+			elif String(p.get("role", "")) == "worker":
+				lk["suit"] = "suit_work"                 # 0.7.54.2: the gas works' crew in their work suits
+				lk["helmet"] = needs_helmet()
 		w.setup(map, lk, p["pos"], true)
 		w.dir = int(p.get("dir", 0))
 		w.sitting = bool(p.get("sit", false))
@@ -3834,8 +3840,10 @@ func use(instant: bool = false) -> bool:
 			_say_toast(String(zone["title"]), 3.0)
 			return true
 		"board":
-			Audio.play("ui_open", "skyrail: aboard")          # package 54 (Luz): into the skyrail's car
-			go_level("ctrain", "rail")
+			_open_rail_menu(zone)                            # package 54 (Luz): into the skyrail's car – 0.7.54.2: which way
+			return true
+		"gas_exchange":
+			_open_gas_menu(zone)                             # 0.7.54.2 (Luz): the gas works' counter
 			return true
 		"alight":
 			rail_stop = int(rail.get("to", 1 - rail_stop))
@@ -4053,7 +4061,7 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street – the shops"], ["tower", "3.  Tower bar – floor %d, a view over the city" % tower_floor()]]
 	if is_cloud():                                                # package 54 (Luz): the cloud city's levels
 		lvls = [["hangar", "1.  " + hname], ["cplaza", "2.  Plaza – shops, a café, the balcony over the clouds"],
-			["cstation", "3.  Skyrail station – the line to the %s" % CloudGen.STOPS[1]], ["tower", "4.  Sky bar – deck %d, the view over the clouds" % (tower_floor() / 10)]]
+			["cstation", "3.  Skyrail station – the line to the %s and the %s" % [CloudGen.STOPS[1], CloudGen.STOPS[2]]], ["tower", "4.  Sky bar – deck %d, the view over the clouds" % (tower_floor() / 10)]]
 	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
 		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
 	if is_cloud():
@@ -4225,18 +4233,20 @@ func _ride_step(delta: float) -> void:
 func _rail_step(delta: float) -> void:
 	if rail.is_empty():
 		return
+	if not rail.has("dist"):
+		# 0.7.54.2 (Luz): the car pulls out of one station and into the next – how far it runs, the two platforms
+		var dist := 0.0
+		var tt := 0.0
+		while tt < RAIL_RUN:
+			dist += rail_speed(tt + 0.005) * 0.01
+			tt += 0.01
+		rail["dist"] = dist
+		if clouds != null and is_instance_valid(clouds):
+			clouds.platforms = [{"x": CloudGen.C_X * GroundMap.TILE, "name": CloudGen.STOPS[rail_stop]}, {"x": CloudGen.C_X * GroundMap.TILE + dist, "name": CloudGen.STOPS[int(rail["to"])]}]
 	var t := float(rail["t"]) + delta
 	rail["t"] = t
 	var arr := RAIL_RUN
-	var v := 0.0
-	if t < 2.5:
-		v = 0.0
-	elif t < 8.0:
-		v = RAIL_V * smoothstep(2.5, 8.0, t)
-	elif t < arr - 6.0:
-		v = RAIL_V
-	elif t < arr:
-		v = RAIL_V * (1.0 - smoothstep(arr - 6.0, arr, t))
+	var v := rail_speed(t)
 	rail["v"] = v
 	if clouds != null and is_instance_valid(clouds):
 		clouds.scroll += v * delta
@@ -4248,6 +4258,8 @@ func _rail_step(delta: float) -> void:
 		Audio.play("ui_close", "skyrail: doors")
 	if not bool(rail["arrived"]) and t >= arr:
 		rail["arrived"] = true
+		if clouds != null and is_instance_valid(clouds):
+			clouds.scroll = float(rail["dist"])        # right at the next platform
 		for z in map.zones:
 			if String(z.get("kind", "")) == "alight":
 				z["closed"] = ""
@@ -4255,9 +4267,96 @@ func _rail_step(delta: float) -> void:
 		Audio.play("ui_open", "skyrail: arrived")
 
 
+## 0.7.54.2: the skyrail goes on to two stops – which?
+func _open_rail_menu(z: Dictionary) -> void:
+	Audio.play("ui_open", "skyrail: where to")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var p := UI.neon_panel(Color(0.95, 0.75, 0.3, 0.85), Color(0.03, 0.05, 0.06, 0.96), 2)
+	p.custom_minimum_size = Vector2(400, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("SKYRAIL", 20, Color(1.0, 0.8, 0.4)))
+	v.add_child(UI.label("From %s – where to?" % CloudGen.STOPS[rail_stop], 13, UI.TEXT_DIM))
+	var keys: Array = []
+	var n := 0
+	for d in CloudGen.others(rail_stop):
+		n += 1
+		var dd: int = d
+		var what: String = ["the main platform – lifts to the hangar, the plaza, the bar", "the outer ring – its observation deck", "the gas works – the Gas Exchange, the berth"][dd]
+		var b := UI.button("%d.  %s – %s" % [n, CloudGen.STOPS[dd], what], func(): _board(dd))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		v.add_child(b)
+		keys.append(func(): _board(dd))
+	v.add_child(UI.button("Cancel [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", keys)
+
+
+func _board(to: int) -> void:
+	_close_lift_menu()
+	rail_to = to
+	Audio.play("ui_open", "skyrail: aboard")
+	go_level("ctrain", "rail")
+
+
+## 0.7.54.2 (Luz): the Gas Exchange – the giant's gases straight from the works, cheaper than on a market; into the
+## hold of your ship in the hangar.
+func _open_gas_menu(z: Dictionary) -> void:
+	Audio.play("ui_open", "gas exchange")
+	_close_lift_menu()
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var p := UI.neon_panel(Color(1.0, 0.78, 0.3, 0.85), Color(0.03, 0.05, 0.06, 0.96), 2)
+	p.custom_minimum_size = Vector2(520, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("GAS EXCHANGE", 20, Color(1.0, 0.8, 0.4)))
+	var f := GameState.active()
+	v.add_child(UI.label("From the works of %s – %d %% under market price. Into the hold of your %s (%.0f m³ free) · %s cr" % [
+		String(station.get("name", "")), int(round((1.0 - Commands.GAS_DISCOUNT) * 100.0)), f.ship_name if f != null else "ship",
+		f.cargo_free() if f != null else 0.0, str(GameState.credits)], 13, UI.TEXT_DIM))
+	var keys: Array = []
+	for gid in Commands.gas_offer(String(station.get("giant", "gas"))):
+		var gg: String = gid
+		var row := UI.hbox(8)
+		row.add_child(UI.label("%s – %d cr" % [GameData.item_name(gg), Commands.gas_price(gg)], 14, Color(0.9, 0.95, 1.0)))
+		for amt in [10, 100, -1]:
+			var aa: int = amt
+			row.add_child(UI.button("Fill" if aa < 0 else "Buy %d" % aa, func():
+				var e: String = Commands.execute({"type": "gas_buy", "item": gg, "amount": aa})
+				_say_toast(e if e != "" else "Bought %s – it is pumped into your hold." % GameData.item_name(gg), 3.0)
+				_open_gas_menu(z)))
+		v.add_child(row)
+	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", keys)
+
+
+## The skyrail's speed t seconds after the doors shut (art px a second): standing, speeding up, running, slowing.
+func rail_speed(t: float) -> float:
+	if t < 2.5:
+		return 0.0
+	if t < 8.0:
+		return RAIL_V * smoothstep(2.5, 8.0, t)
+	if t < RAIL_RUN - 6.0:
+		return RAIL_V
+	if t < RAIL_RUN:
+		return RAIL_V * (1.0 - smoothstep(RAIL_RUN - 6.0, RAIL_RUN, t))
+	return 0.0
+
+
 ## Through the viewing scope on the observation deck.
 func _scope_text() -> String:
 	var b := cloud_body()
+	if map != null and map.has_meta("works"):
+		return "Far below, where the hoses vanish into the clouds, the harvest probes glow in a gap – drawing in the gas of %s." % String(b.get("name", "the giant"))
 	var bits := ["the other platforms far off in the haze", "a storm turning slowly far below", "lightning flickering deep in the clouds",
 		"a gas harvester skimming the bands", "the skyrail's beam running off into the haze"]
 	var i := int(Time.get_ticks_msec() / 4000) % bits.size()

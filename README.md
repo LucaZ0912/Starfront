@@ -369,6 +369,13 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.53.7: theme `mine` (`rails`, `rubble`, `descent` "cage"), `DungeonGen.build_minehead`, `_corridor(..., rails)`; `GameState.settle_poi`; SettleGen zone `mine_path` (meta `mine_path_front`); GroundView level `minehead`, `_fuses_step`, `blast_near`, `shot_lands` (called by GroundCombat), `_take_one`; ExploreNode `cage`, `mine_gen`, `vein`, `rubble`, `loose_rock`, `tnt`, `mine_gate`; floors 25–27, style `mine`, decal `rails`; ObjArt `shaft_house`, `winding_house`, `ore_bin`; `PoiData.MUSEUM_RELICS["mine"]`.
 - 0.7.53.9: theme `maint` (`descent` "stairs", `outside` "lift", `passive_foes`), FoeData `maint_drone` (`drone`), GroundCombat passive/provoked foes; GroundView `_town_kind`, `_drones_step`/`_draw_drones`, `_restart_reactor`, city lift level `maint`; `GameState.maint_sites`/`maint_site`; ExploreNode `crank_door`, `fuse_box`, `reactor` (`_draw_reactor`), `stairs_down`, `stairs_up`, `service_lift`, `steam`; style `maint`; ObjArt `valve_box`, `cable_drum`.
 - 0.7.53.11: theme `pirate` (`outside` "cliff", `hangar`, `cells`, `descent` "ramp", target `loot_room`), `DungeonGen.build_cliff`, `parked_covers`, map meta `parked`; `scripts/ground/parked_art.gd` (a ship made plastic: height from its outline, lit); ExploreNode `pirate_gate`, `searchlight`, `ramp_down`, `cells`; style `pirate`, face decos `skull_banner`, `graffiti`; ObjArt `watchtower`, `glider`, `fire_barrel`.
+- 0.7.54.2: `CloudGen.STOPS` has a third stop (Harvester Deck) – `others(stop)`, `build_station(…, 2)` →
+  `build_harvest` (meta `works`, `intakes`, `catwalk`, `berth`, `freighter`, `rim_y2`; zone `gas_exchange`; floor 50,
+  decals `cat_rail`, `pipe_steps`, face decos `control_window`, `exchange`; ObjArt `gas_tank`, `compressor`,
+  `gas_column`, `gas_flare`, `winch`), `freighter_in(station)` (each half hour of play, `debug_freighter`);
+  `ParkedArt.make(…, floating)`; CloudSea `_add_freighter`, intakes, `platforms` (the stations passing aboard,
+  `_draw_platform`), `CarShell.draw_bogie`; GroundView `rail_to`, `_open_rail_menu`/`_board`, `rail_speed`, `rail["dist"]`,
+  `_open_gas_menu`; Commands `gas_buy`, `gas_offer`, `gas_price`, `GAS_DISCOUNT`; `debug_cloud` stop 2 and `freighter`.
 - 0.7.54.1 (package 54, cloud cities): `Universe.is_giant`, `can_land` (descent beacons over giants with `cloud_city` –
   set in `_city_lights` for inhabited systems), `CLOUD_KINDS`, `cloud_sites` (1–2 sites, kind `city`, `cloud`);
   `city_station` marks `cloud` / `giant`. `scripts/ground/cloud_gen.gd` – `build_plaza` (shops `_shop_n` north of the

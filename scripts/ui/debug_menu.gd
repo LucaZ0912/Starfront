@@ -1029,16 +1029,18 @@ func _build_ground() -> void:
 	var cp := _option(["", "assembly", "covenant", "directorate", "independent"], ["Power: its own", "Assembly", "Covenant", "Directorate", "Independent"], 130)
 	var ca := _option(["", "breathable", "suit"], ["Air: its own", "Breathable", "Suit (thin/toxic)"], 130)
 	var ch := _option(["", "day", "dusk", "night", "dawn"], ["Hour: now", "Day", "Dusk", "Night", "Dawn"], 100)
+	var cf := _option(["", "yes", "no"], ["Freighter: by chance", "Freighter at berth", "Berth empty"], 150)
 	var rc0 := _row()
-	for o0 in [cg, cp, ca, ch]:
+	for o0 in [cg, cp, ca, ch, cf]:
 		rc0.add_child(o0)
 	var rc1 := _row()
 	rc1.add_child(UI.label("Go to:", 12, UI.TEXT_DIM))
-	for cl in [["hangar", "Hangar"], ["cplaza", "Plaza"], ["cstation", "Station (Central)"], ["cstation1", "Station (Skyring)"], ["ctrain", "In the car"], ["tower", "Sky bar"]]:
+	for cl in [["hangar", "Hangar"], ["cplaza", "Plaza"], ["cstation", "Station (Central)"], ["cstation1", "Station (Skyring)"], ["cstation2", "Gas works"], ["ctrain", "In the car"], ["tower", "Sky bar"]]:
 		var clv: String = cl[0]
 		rc1.add_child(UI.button(String(cl[1]), func():
 			var c := {"type": "debug_cloud", "giant": cg.get_selected_metadata(), "power": cp.get_selected_metadata(), "air": ca.get_selected_metadata(),
-				"level": "cstation" if clv == "cstation1" else clv, "stop": 1 if clv == "cstation1" else 0}
+				"level": "cstation" if clv.begins_with("cstation") else clv, "stop": {"cstation1": 1, "cstation2": 2}.get(clv, 0),
+				"freighter": cf.get_selected_metadata()}
 			_cmd(c)
 			if String(ch.get_selected_metadata()) != "":
 				_cmd({"type": "debug_daytime", "phase": ch.get_selected_metadata()})))

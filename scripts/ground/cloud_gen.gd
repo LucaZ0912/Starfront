@@ -21,7 +21,23 @@ const STYLE := {
 		"trim": Color(0.22, 0.23, 0.27), "seat": Color(0.75, 0.2, 0.55), "parasol": [Color(1.0, 0.3, 0.7), Color(0.3, 0.9, 1.0), Color(0.75, 0.45, 1.0)]},
 }
 const FRONT_NAMES := ["SKY CAFÉ", "UPDRAFT", "CIRRUS", "THE GONDOLA", "HIGH TEA", "ZEPHYR BAR"]
-const STOPS := ["Central", "Skyring"]          # the skyrail's two stops: the main platform and the outer ring
+const STOPS := ["Central", "Skyring", "Harvester Deck"]   # the skyrail's stops: the main platform, the outer ring, the gas works (0.7.54.2)
+
+
+## The other stops of the line, from this one.
+static func others(stop: int) -> Array:
+	var out: Array = []
+	for i in STOPS.size():
+		if i != stop:
+			out.append(i)
+	return out
+
+
+## Is a gas freighter at the berth now? Now and then (Luz) – each half hour of play a new roll; the debug menu can force it.
+static func freighter_in(station: Dictionary) -> bool:
+	if station.has("debug_freighter"):
+		return bool(station["debug_freighter"])
+	return absi(hash("%s_%d" % [String(station.get("id", "")), int(GameState.play_time / 1800.0)])) % 100 < 55
 
 ## Rows of the plaza
 const P_FRONT := 7                  # the shop fronts' cap (the shops lie north of it)
@@ -314,6 +330,8 @@ const S_RIM := S_EDGE + 1          # the platform's rim (a row) – the beam and
 ## the car's doors are; under the edge the beam and the car hanging from it, 20 m long, its doors open. stop 0 is the
 ## main platform (Central), 1 the outer ring (Skyring – its observation deck beside the platform).
 static func build_station(station: Dictionary, stop: int) -> GroundMap:
+	if stop == 2:
+		return build_harvest(station)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", "x"))) + 560 + stop
 	var m := GroundMap.new()
@@ -352,11 +370,11 @@ static func build_station(station: Dictionary, stop: int) -> GroundMap:
 	for g in gaps:
 		m.face_deco.append({"kind": "gangway", "x": g, "y": S_RIM, "w": 2, "col": Color(0.95, 0.8, 0.2)})
 		m.zones.append({"rect": Rect2(Vector2(g - 0.2, S_EDGE - 0.6) * TILE, Vector2(2.4, 1.6) * TILE), "kind": "board", "id": "board",
-			"title": "Board the skyrail – to %s" % STOPS[1 - stop], "col": acc, "sign": Vector2(-100, -100)})
+			"title": "Board the skyrail", "col": acc, "sign": Vector2(-100, -100)})
 	m.set_meta("rail_front", Vector2(gaps[1] + 1.0, S_EDGE - 1.0) * TILE)
 	# the hall's wall: the departures board, ticket machines, the doors to the staff rooms
-	m.face_deco.append({"kind": "departures", "x": 12, "y": S_TOP, "w": 8, "col": Color(1.0, 0.78, 0.3), "to": STOPS[1 - stop]})
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % STOPS[1 - stop],
+	m.face_deco.append({"kind": "departures", "x": 12, "y": S_TOP, "w": 8, "col": Color(1.0, 0.78, 0.3)})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % _dest_names(stop),
 		"col": Color(1.0, 0.8, 0.4), "sign": Vector2(16, S_TOP - 0.5) * TILE})
 	m.lights.append({"pos": Vector2(16, S_FLOOR + 0.5) * TILE, "r": 70.0, "col": Color(1.0, 0.8, 0.4), "a": 0.28})
 	for tm in 2:
@@ -405,6 +423,161 @@ static func build_station(station: Dictionary, stop: int) -> GroundMap:
 	return m
 
 
+static func _dest_names(stop: int) -> String:
+	var n: Array = []
+	for o in others(stop):
+		n.append(STOPS[o])
+	return " · ".join(PackedStringArray(n))
+
+
+# ---------------------------------------------------------------- 0.7.54.2: the gas works
+
+## Rows of the gas works' deck
+const G_RAIL := 23                 # the railing along its edge
+const G_RIM := 24                  # its rim (2 rows) – the intakes hang from it
+const G_X0 := 30                   # where the platform ends and the works begin
+const CAT_X := 60                  # the catwalk out over the void (4 wide)
+
+
+## The gas works (mockup_54g_anlage, _rand): the skyrail's third stop. The platform at the west (the car under its
+## edge); east of it the works' deck of steel – its wall with the control room's long window and the Gas Exchange's
+## counter, spherical tanks, compressors, a column going up out of the picture, a flare burning off what is left,
+## pipes, a yellow walkway; at its edge the winches, their intakes going down into the clouds to the harvest probes,
+## a catwalk 6 m out over the void; at the east end the berth where now and then (Luz) a great gas freighter lies.
+static func build_harvest(station: Dictionary) -> GroundMap:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(station.get("id", "x"))) + 590
+	var m := GroundMap.new()
+	_base(m, station, "%s – %s" % [String(station.get("name", "")), STOPS[2]])
+	m.style = "cloud_station"
+	m.remove_meta("few_guards")
+	m.set_meta("no_guards", true)
+	m.set_meta("works", true)
+	var W := 92
+	var H := G_RIM + 22
+	m.setup(W, H)
+	m.set_meta("rim_y", S_RIM)
+	var acc: Color = m.pal["accent"]
+	var yel := Color(0.95, 0.8, 0.2)
+	# the wall all along, the platform, the works' deck
+	m.fill(0, 0, W, S_TOP, T.CAP)
+	m.fill(1, S_TOP, W - 2, 3, T.FACE)
+	m.fill(0, 0, 1, S_RIM, T.CAP)
+	m.fill(W - 1, 0, 1, G_RIM, T.CAP)
+	m.fill(1, S_FLOOR, G_X0 - 1, S_EDGE - S_FLOOR + 1, T.FLOOR, 48)
+	m.fill(0, S_RIM, G_X0, 1, T.FACE)
+	m.fill(G_X0, S_FLOOR, W - G_X0 - 1, G_RAIL - S_FLOOR, T.FLOOR, 50)
+	m.fill(G_X0, S_EDGE + 1, 3, G_RAIL - S_EDGE - 1, T.CAP)                 # the pump house between platform and deck
+	m.fill(G_X0, G_RAIL, 3, 1, T.CAP)
+	m.fill(G_X0, G_RIM, W - G_X0, 2, T.FACE)
+	m.set_meta("rim_y2", [G_X0, G_RIM])
+	m.fill(G_X0 + 3, G_RAIL, W - G_X0 - 4, 1, T.BLOCK, 50)
+	m.add_object({"kind": "glass_rail", "x": G_X0 + 3, "y": G_RAIL, "w": CAT_X - G_X0 - 3, "h": 1}, false)
+	m.add_object({"kind": "glass_rail", "x": CAT_X + 4, "y": G_RAIL, "w": W - CAT_X - 5, "h": 1}, false)
+	# the platform: the car under its edge, the screen doors, the departures, a bench
+	var car_x := 5
+	m.set_meta("car", {"x": car_x * TILE, "y": (S_RIM + 1) * TILE, "len": CAR_LEN * TILE, "doors": CAR_DOORS, "open": true})
+	m.set_meta("beam_y", (S_RIM + 1) * TILE)
+	m.set_meta("beam_x1", G_X0 * TILE)
+	m.decals.append({"kind": "cloud_edge", "x": 1, "y": S_EDGE - 1, "w": G_X0 - 1, "h": 1, "col": yel})
+	var gaps: Array = []
+	for d in CAR_DOORS:
+		gaps.append(car_x + int(d))
+	var gx := 1
+	while gx < G_X0:
+		if gx in gaps:
+			gx += 2
+			continue
+		var gw := 1
+		while gx + gw < G_X0 and not (gx + gw) in gaps:
+			gw += 1
+		m.fill(gx, S_EDGE, gw, 1, T.BLOCK, 48)
+		m.add_object({"kind": "glass_rail", "x": gx, "y": S_EDGE, "w": gw, "h": 1}, false)
+		gx += gw
+	for g in gaps:
+		m.face_deco.append({"kind": "gangway", "x": g, "y": S_RIM, "w": 2, "col": yel})
+		m.zones.append({"rect": Rect2(Vector2(g - 0.2, S_EDGE - 0.6) * TILE, Vector2(2.4, 1.6) * TILE), "kind": "board", "id": "board",
+			"title": "Board the skyrail", "col": acc, "sign": Vector2(-100, -100)})
+	m.set_meta("rail_front", Vector2(gaps[1] + 1.0, S_EDGE - 1.0) * TILE)
+	m.spawn = m.get_meta("rail_front")
+	m.face_deco.append({"kind": "departures", "x": 9, "y": S_TOP, "w": 8, "col": Color(1.0, 0.78, 0.3)})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % _dest_names(2),
+		"col": Color(1.0, 0.8, 0.4), "sign": Vector2(13, S_TOP - 0.5) * TILE})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "stop", "title": "Skyrail · %s" % STOPS[2], "col": acc, "sign": Vector2(23, S_TOP + 1.2) * TILE})
+	DeckGen._seat(m, "bench", 19, S_FLOOR + 2, 0, Color(0.55, 0.4, 0.26), rng, 0.4, 3)
+	# the works' wall: the control room's long window, the Gas Exchange's counter, a door
+	m.face_deco.append({"kind": "control_window", "x": G_X0 + 4, "y": S_TOP, "w": 16, "col": Color(0.4, 0.9, 1.0)})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "ctrl", "title": "Control room", "col": Color(0.4, 0.9, 1.0), "sign": Vector2(G_X0 + 12, S_TOP - 0.5) * TILE})
+	var ex := G_X0 + 24
+	m.face_deco.append({"kind": "exchange", "x": ex, "y": S_TOP, "w": 6, "col": Color(1.0, 0.78, 0.3)})
+	m.zones.append({"rect": Rect2(Vector2(ex, S_FLOOR) * TILE, Vector2(6, 1.6) * TILE), "kind": "gas_exchange", "id": "gas_exchange",
+		"title": "Gas Exchange – the giant's gases from the works", "col": Color(1.0, 0.78, 0.3), "sign": Vector2(ex + 3, S_TOP - 0.5) * TILE})
+	m.lights.append({"pos": Vector2(ex + 3, S_FLOOR + 0.5) * TILE, "r": 60.0, "col": Color(1.0, 0.82, 0.5), "a": 0.35})
+	m.face_deco.append({"kind": "lift", "x": ex + 9, "y": S_TOP + 2, "w": 2, "col": Color(1.0, 0.6, 0.25)})
+	# the plant: tanks, compressors, the column, the flare, pipes and the walkway
+	m.add_object({"kind": "gas_tank", "x": G_X0 + 5, "y": S_FLOOR + 5, "w": 5, "h": 3})
+	m.add_object({"kind": "gas_tank", "x": G_X0 + 11, "y": S_FLOOR + 5, "w": 5, "h": 3})
+	m.add_object({"kind": "compressor", "x": G_X0 + 19, "y": S_FLOOR + 6, "w": 4, "h": 2})
+	m.add_object({"kind": "compressor", "x": G_X0 + 25, "y": S_FLOOR + 6, "w": 4, "h": 2})
+	m.add_object({"kind": "gas_column", "x": W - 12, "y": S_FLOOR + 3, "w": 2, "h": 2})
+	m.add_object({"kind": "gas_flare", "x": W - 5, "y": S_FLOOR + 1, "w": 2, "h": 1})
+	m.lights.append({"pos": Vector2(W - 4, S_FLOOR - 2.5) * TILE, "r": 110.0, "col": Color(1.0, 0.6, 0.25), "a": 0.45, "flicker": true})
+	for vx in [G_X0 + 20, W - 16]:
+		m.add_object({"kind": "valve_box", "x": vx, "y": S_FLOOR + 11, "w": 1, "h": 1})
+	m.decals.append({"kind": "piperun", "x": G_X0 + 3, "y": S_FLOOR + 10, "w": W - G_X0 - 6, "h": 1})
+	m.fill(G_X0 + 3, S_FLOOR + 10, W - G_X0 - 6, 1, T.BLOCK, 50)
+	for k in [S_FLOOR + 3, S_FLOOR + 13]:
+		m.decals.append({"kind": "guide", "x": G_X0 + 3, "y": k, "w": W - G_X0 - 5, "h": 1, "col": yel})
+	m.fill(G_X0 + 10, S_FLOOR + 10, 3, 1, T.FLOOR, 50)                           # steps over the pipes
+	m.fill(G_X0 + 40, S_FLOOR + 10, 3, 1, T.FLOOR, 50)
+	m.decals.append({"kind": "pipe_steps", "x": G_X0 + 10, "y": S_FLOOR + 10, "w": 3, "h": 1})
+	m.decals.append({"kind": "pipe_steps", "x": G_X0 + 40, "y": S_FLOOR + 10, "w": 3, "h": 1})
+	# the edge: winches, their intakes down into the clouds; the catwalk out over the void
+	var intakes: Array = []
+	for wx in [G_X0 + 6, G_X0 + 16, CAT_X - 3, CAT_X + 8]:
+		m.add_object({"kind": "winch", "x": wx, "y": G_RAIL - 1, "w": 3, "h": 1})
+		intakes.append([(wx + 1.5) * TILE, rng.randf_range(160.0, 240.0), rng.randf_range(12.0, 16.0)])
+	m.set_meta("intakes", {"y": (G_RIM + 2) * TILE, "list": intakes})
+	m.fill(CAT_X, G_RAIL, 4, 9, T.BLOCK, 50)
+	m.fill(CAT_X + 1, G_RAIL, 2, 8, T.FLOOR, 19)
+	m.fill(CAT_X, G_RAIL, 1, 9, T.BLOCK, 19)
+	m.fill(CAT_X + 3, G_RAIL, 1, 9, T.BLOCK, 19)
+	m.decals.append({"kind": "cat_rail", "x": CAT_X, "y": G_RAIL, "w": 4, "h": 9})
+	m.add_object({"kind": "glass_rail", "x": CAT_X, "y": G_RAIL + 8, "w": 4, "h": 1}, false)
+	m.add_object({"kind": "scope", "x": CAT_X + 1, "y": G_RAIL + 7, "w": 1, "h": 1, "col": acc})
+	m.zones.append({"rect": Rect2(Vector2(CAT_X + 0.6, G_RAIL + 6.0) * TILE, Vector2(2.8, 1.4) * TILE), "kind": "scope", "id": "scope",
+		"title": "Look down at the harvest probes", "col": acc, "sign": Vector2(-100, -100)})
+	m.set_meta("catwalk", Rect2(CAT_X, G_RAIL, 4, 9))
+	# the berth at the east end: clamps on the rim; now and then a great gas freighter lies there, loading
+	var bx := W - 16
+	m.face_deco.append({"kind": "gangway", "x": bx + 4, "y": G_RIM, "w": 3, "col": yel})
+	m.add_object({"kind": "glass_rail", "x": bx + 4, "y": G_RAIL, "w": 3, "h": 1}, false)
+	m.set_meta("berth", {"x": bx * TILE, "y": (G_RIM + 2) * TILE, "w": 14 * TILE})
+	if freighter_in(station):
+		var nm: String = ["Kujira", "Shiokaze", "Umihebi", "Ookami", "Fuyu-maru", "Akatsuki"][absi(hash(String(station.get("id", "")) + str(int(GameState.play_time / 1800.0)))) % 6]
+		m.set_meta("freighter", {"hull": "kujira", "name": nm, "x": (W - 14) * TILE, "y": (G_RIM + 2) * TILE})
+		m.zones.append({"rect": Rect2(), "kind": "label", "id": "freighter", "title": "Berth 1 – the gas freighter %s, loading" % nm, "col": yel,
+			"sign": Vector2(bx + 5.5, G_RAIL - 0.6) * TILE})
+		m.zones.append({"rect": Rect2(Vector2(bx + 4, G_RAIL - 1.4) * TILE, Vector2(3, 1.4) * TILE), "kind": "soon", "id": "freighter_ramp",
+			"title": "The %s's gangway – crew only. She takes on gas for the trade lanes." % nm, "col": yel, "sign": Vector2(-100, -100)})
+	else:
+		m.zones.append({"rect": Rect2(), "kind": "label", "id": "berth", "title": "Berth 1 – free", "col": yel, "sign": Vector2(bx + 5.5, G_RAIL - 0.6) * TILE})
+	# workers in their suits about the plant
+	for k2 in 4:
+		var lp := Vector2(rng.randf_range(G_X0 + 4, W - 8), rng.randf_range(S_FLOOR + 1.2, G_RAIL - 1.5)) * TILE
+		if m.free_at(lp, 6.0):
+			m.people.append({"pos": lp, "dir": rng.randi() % 4, "role": "worker"})
+	for lx in range(G_X0 + 4, W - 3, 8):
+		m.lights.append({"pos": Vector2(lx, S_FLOOR + 1.0) * TILE, "r": 70.0, "col": Color(1.0, 0.95, 0.8), "a": 0.2})
+	DeckGen._seats(m)
+	for k3 in 12:
+		var wp := Vector2(rng.randf_range(2.5, W - 4.0), rng.randf_range(S_FLOOR + 1.2, S_EDGE - 1.2)) * TILE
+		if m.free_at(wp, 6.0):
+			m.wander.append(wp)
+	m.set_meta("spindles", _spindles(G_X0, S_RIM + 1, rng))
+	return m
+
+
 # ---------------------------------------------------------------- the car
 
 ## Rows of the car
@@ -442,7 +615,7 @@ static func build_car(station: Dictionary, to_stop: int) -> GroundMap:
 	m.fill(C_X, C_SOUTH, CAR_LEN, 1, T.BLOCK, 49)
 	# 0.7.54 (Luz): the car closed – its roof and its side towards you drawn in front, the inside seen through the windows
 	m.set_meta("car_shell", {"x0": (C_X - 1) * TILE, "x1": (C_X + CAR_LEN + 1) * TILE, "top": C_TOP * TILE - 2,
-		"side": C_TOP * TILE + 12, "bottom": (C_SOUTH + 1) * TILE,
+		"side": C_TOP * TILE + 12, "bottom": (C_SOUTH + 1) * TILE, "beam": (C_TOP - 1) * TILE,
 		"door": Rect2((C_X + 9) * TILE, (C_TOP + 1) * TILE, 2 * TILE, 2 * TILE)})
 	m.set_meta("beam_y", (C_TOP - 1) * TILE)
 	m.set_meta("riding", true)
@@ -461,7 +634,7 @@ static func build_car(station: Dictionary, to_stop: int) -> GroundMap:
 			continue
 		DeckGen._seat(m, "chair", sx, C_FLOOR, 0, seat_c, rng, 0.3)
 	for pole in [C_X + 4, C_X + 15]:
-		m.add_object({"kind": "car_pole", "x": pole, "y": C_FLOOR + 2, "w": 1, "h": 1})
+		m.add_object({"kind": "car_pole", "x": pole, "y": C_FLOOR + 2, "w": 1, "h": 1, "rise": (C_FLOOR + 3 - C_TOP) * TILE - TILE - 10})     # 0.7.54.2 (Luz): up to the ceiling
 	m.lights.append({"pos": Vector2(C_X + CAR_LEN * 0.5, C_FLOOR + 1.0) * TILE, "r": 200.0, "col": Color(1.0, 0.93, 0.8), "a": 0.14})
 	DeckGen._seats(m)
 	for k in 6:

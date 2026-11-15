@@ -6,6 +6,9 @@ extends Node2D
 ## runs: the clouds, the platforms and the beam's masts pass by, each at its depth.
 
 const SeaShader = preload("res://shaders/cloud_sea.gdshader")
+const ParkedArtC = preload("res://scripts/ground/parked_art.gd")
+const CloudGenC = preload("res://scripts/ground/cloud_gen.gd")
+const FREIGHT_ART := 4.0                # art px per unit of a hull's length – a great freighter at the berth (0.7.54.2)
 const SkyShader = preload("res://shaders/cloud_sky.gdshader")
 const S := GroundMap.SCALE
 const DEEP_P := 0.12                    # how much the deep layer follows the view (it is far down)
@@ -15,6 +18,7 @@ var map: GroundMap
 var scroll := 0.0
 var light := 1.0
 var car_open := true                    # the station's car: doors open
+var platforms: Array = []               # 0.7.54.2: aboard – the stations' platforms the car leaves and comes to {x, name}
 var _rect: ColorRect
 var _mat: ShaderMaterial
 var _fx: Node2D
@@ -54,6 +58,8 @@ func setup(p_look: Dictionary, p_map: GroundMap, sd: int) -> void:
 	_fx = Node2D.new()
 	_fx.draw.connect(_draw_fx)
 	add_child(_fx)
+	if map.has_meta("freighter"):
+		_add_freighter(map.get_meta("freighter"))
 	# platforms far off in the haze: at their depth (p), their size
 	for i in 7:
 		var p := _rng.randf_range(0.2, 0.55)
@@ -101,6 +107,57 @@ func _process(delta: float) -> void:
 	_fx.queue_redraw()
 
 
+## 0.7.54.2 (Luz): a great gas freighter lying at the gas works' berth – the ship made plastic (ParkedArt, floating),
+## at its real size from the hull's length, nose to the east; its shadow on the clouds far below; the clamps holding
+## it and the loading hose from the rim.
+var _freighter: Sprite2D = null
+var _fr_rect := Rect2()
+
+
+func _add_freighter(fr: Dictionary) -> void:
+	var hull := String(fr.get("hull", "kujira"))
+	var tex := PixelArt.ship_texture(hull, "trade")
+	var ln := float(GameData.hulls.get(hull, {}).get("length", 116))
+	var want := ln * FREIGHT_ART
+	var sc := want / float(tex.get_width())
+	var art: Dictionary = ParkedArtC.make(hull, "trade", sc, 40, true)
+	var sh := Sprite2D.new()                    # its shadow far down on the clouds
+	sh.texture = art["tex"]
+	sh.centered = false
+	sh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sh.modulate = Color(look["deep"], 0.22)
+	sh.scale = Vector2.ONE * S
+	var tl := Vector2(float(fr["x"]) + (art["off"] as Vector2).x, float(fr["y"]) + 18.0)        # its top-left: just under the rim
+	sh.position = (tl + Vector2(70, 150)) * S
+	add_child(sh)
+	_freighter = Sprite2D.new()
+	_freighter.texture = art["tex"]
+	_freighter.centered = false
+	_freighter.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_freighter.scale = Vector2.ONE * S
+	_freighter.position = tl * S
+	add_child(_freighter)
+	var tsz: Vector2 = (art["tex"] as Texture2D).get_size()
+	_fr_rect = Rect2(tl, tsz)
+	var arms := Node2D.new()
+	arms.draw.connect(func() -> void:
+		arms.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * S)
+		if not map.has_meta("berth"):
+			return
+		var b: Dictionary = map.get_meta("berth")
+		var y0 := float(b["y"])
+		var top := maxf(_fr_rect.position.y + _fr_rect.size.y * 0.32, y0 + 24.0)
+		for ax in [float(b["x"]) + 24.0, float(b["x"]) + float(b["w"]) - 30.0]:
+			arms.draw_rect(Rect2(ax, y0, 10.0, top - y0), Color(0.45, 0.46, 0.5))
+			arms.draw_rect(Rect2(ax, y0, 2.0, top - y0), Color(0.7, 0.72, 0.76))
+			arms.draw_rect(Rect2(ax - 4.0, top - 4.0, 18.0, 8.0), Color(0.95, 0.75, 0.2))
+		var hx := float(b["x"]) + float(b["w"]) * 0.5
+		for yy in int(top - y0):
+			var sw := sin(float(yy) * 0.08) * 3.0
+			arms.draw_rect(Rect2(hx + sw - 4.0, y0 + yy, 8.0, 1.0), Color(0.25, 0.26, 0.28) if yy % 10 > 1 else Color(0.95, 0.7, 0.2)))
+	add_child(arms)
+
+
 ## A layer point's place in the world (art px) at depth p (1 = with the deck).
 func _at(q: Vector2, p: float) -> Vector2:
 	return q - Vector2(scroll * p, 0.0) + _cam * (1.0 - p)
@@ -140,11 +197,31 @@ func _draw_fx() -> void:
 				_fx.draw_rect(Rect2(sx - wd * 1.2, y0 + ln * 0.35, wd * 2.4, wd * 0.9), Color(0.4, 0.42, 0.46).lerp(hz, 0.3))       # a lift tank
 				_fx.draw_rect(Rect2(sx - wd * 1.2, y0 + ln * 0.35, wd * 2.4, 1.0), Color(0.6, 0.62, 0.66).lerp(hz, 0.3))
 			_fx.draw_rect(Rect2(sx - 1.0, y0 + ln - 3.0, 3.0, 2.0), Color(0.5, 0.85, 1.0, 0.85))
+	# 0.7.54.2: the gas works' intakes – thick hoses from the winches down into the clouds, swaying
+	if map.has_meta("intakes"):
+		var ik: Dictionary = map.get_meta("intakes")
+		var iy := float(ik["y"])
+		var tt := Time.get_ticks_msec() / 1000.0
+		for it in ik["list"]:
+			var ix := float(it[0])
+			var iln := float(it[1])
+			var iw := float(it[2])
+			for yy3 in int(iln):
+				var k3 := float(yy3) / iln
+				var sway := sin(float(yy3) * 0.035 + ix + tt * 0.6) * 6.0 * k3
+				var ww3 := maxf(2.0, iw * (1.0 - k3 * 0.55))
+				var c3 := Color(0.32, 0.33, 0.35).lerp(hz, k3 * 0.8)
+				if yy3 % 14 == 0:
+					c3 = Color(0.95, 0.7, 0.2).lerp(hz, k3 * 0.8)
+				_fx.draw_rect(Rect2(ix - ww3 * 0.5 + sway, iy + yy3, ww3, 1.0), c3)
+			_fx.draw_rect(Rect2(ix - 2.0 + sin(iln * 0.035 + ix + tt * 0.6) * 6.0, iy + iln - 2.0, 4.0, 2.0), Color(0.5, 0.9, 1.0, 0.8))
 	# the skyrail's beam: across the view, its joints and masts passing as the car runs
 	if map.has_meta("beam_y"):
 		var by := float(map.get_meta("beam_y"))
 		var x0 := _cam.x - 40.0
 		var x1 := _cam.x + _view.x + 40.0
+		if map.has_meta("beam_x1"):
+			x1 = minf(x1, float(map.get_meta("beam_x1")))            # the line ends at the gas works
 		_fx.draw_rect(Rect2(x0, by + 90.0 + _cam.y * 0.0, x1 - x0, 1.0), Color(dp, 0.22))                  # its shadow far below
 		_fx.draw_rect(Rect2(x0, by, x1 - x0, 6.0), Color(0.6, 0.62, 0.66))
 		_fx.draw_rect(Rect2(x0, by, x1 - x0, 1.0), Color(0.86, 0.88, 0.9))
@@ -162,9 +239,60 @@ func _draw_fx() -> void:
 				var k2 := float(yy2) / 150.0
 				_fx.draw_rect(Rect2(mx + 2.0 - (1.0 - k2) * 2.0, by + 6.0 + yy2, 8.0 - k2 * 3.0, 1.0), Color(0.36, 0.37, 0.41).lerp(hz, k2 * 0.8))
 			mx += 520.0
+	# 0.7.54.2 (Luz): aboard – the platform you left sliding away behind, the next one coming in
+	for pf in platforms:
+		_draw_platform(float(pf["x"]) - scroll)
 	# the car waiting at the platform: hanging from the beam, 20 m, its doors open
 	if map.has_meta("car"):
 		_draw_car(map.get_meta("car"))
+
+
+## A station's platform seen from the car under it (over the beam, x0: where the car's west end stands when it is in):
+## its pale floor, people waiting, the yellow line, the glass screens open at the doors, its rim with lights.
+func _draw_platform(x0: float) -> void:
+	var T := float(GroundMap.TILE)
+	var by := float(map.get_meta("beam_y", 64.0))
+	var rim := by - T
+	var ax := x0 - 9.0 * T                     # the platform runs on both sides of the car's place
+	var aw := 40.0 * T
+	if ax > _cam.x + _view.x + 20.0 or ax + aw < _cam.x - 20.0:
+		return
+	var top := minf(_cam.y - 4.0, rim - 3.0 * T)
+	for yy in range(int(top), int(rim), 4):
+		var row := int(floor(float(yy) / 30.0))
+		_fx.draw_rect(Rect2(ax, yy, aw, 4.0), Color(0.62, 0.64, 0.66) if row % 2 == 0 else Color(0.59, 0.61, 0.63))
+	for gx in range(0, int(aw), 32):
+		_fx.draw_rect(Rect2(ax + gx, top, 1.0, rim - top), Color(0.52, 0.54, 0.56))
+	var rr := RandomNumberGenerator.new()
+	rr.seed = int(x0) + 77
+	for p in 9:                                # people waiting, seen from above
+		var px := ax + rr.randf_range(10.0, aw - 10.0)
+		var py := rim - rr.randf_range(26.0, 40.0)
+		_fx.draw_rect(Rect2(px, py, 6.0, 9.0), Color.from_hsv(rr.randf(), 0.45, 0.55))
+		_fx.draw_rect(Rect2(px + 1.0, py - 4.0, 4.0, 4.0), Color(0.62, 0.45, 0.35))
+	_fx.draw_rect(Rect2(ax, rim - 21.0, aw, 5.0), Color(0.95, 0.8, 0.2))
+	var doors: Array = []
+	for d in CloudGenC.CAR_DOORS:
+		doors.append(x0 + float(d) * T)
+	var sx := ax
+	while sx < ax + aw:
+		var gap := false
+		for dx in doors:
+			if sx >= dx - 0.5 and sx < dx + 2.0 * T:
+				gap = true
+		if not gap:
+			_fx.draw_rect(Rect2(sx, rim - 16.0, 4.0, 14.0), Color(0.75, 0.9, 1.0, 0.45))
+			_fx.draw_rect(Rect2(sx, rim - 16.0, 4.0, 1.0), Color(0.92, 0.95, 1.0))
+		sx += 4.0
+	_fx.draw_rect(Rect2(ax, rim, aw, T), Color(0.5, 0.52, 0.56))
+	_fx.draw_rect(Rect2(ax, rim, aw, 2.0), Color(0.92, 0.93, 0.94))
+	_fx.draw_rect(Rect2(ax, rim + T - 1.0, aw, 1.0), Color(0.2, 0.2, 0.22))
+	for lx in range(8, int(aw), 32):
+		_fx.draw_rect(Rect2(ax + lx, rim + 7.0, 4.0, 2.0), Color(0.55, 0.9, 1.0))
+	for dx2 in doors:
+		_fx.draw_rect(Rect2(dx2, rim, 2.0 * T, T), Color(0.6, 0.62, 0.65))
+		_fx.draw_rect(Rect2(dx2, rim, 2.0 * T, 2.0), Color(0.95, 0.8, 0.2))
+	_fx.draw_rect(Rect2(ax, rim + T, aw, 3.0), Color(0, 0, 0, 0.25))
 
 
 func _far_platform(c: Vector2, r: float, sd: int, fade: float, hz: Color, dp: Color) -> void:
@@ -204,9 +332,7 @@ func _draw_car(car: Dictionary) -> void:
 	var T := float(GroundMap.TILE)
 	var rr := RandomNumberGenerator.new()
 	rr.seed = 54
-	# hangers from the beam, the roof seen from above, its vents
-	_fx.draw_rect(Rect2(cx + 6.0, cy - 1.0, 6.0, 4.0), Color(0.4, 0.42, 0.46))
-	_fx.draw_rect(Rect2(cx + ln - 12.0, cy - 1.0, 6.0, 4.0), Color(0.4, 0.42, 0.46))
+	# the roof seen from above, its vents; the car hangs from its running gear on the beam (drawn over it)
 	_fx.draw_rect(Rect2(cx, cy + 3.0, ln, 28.0), Color(0.88, 0.9, 0.92))
 	_fx.draw_rect(Rect2(cx, cy + 3.0, ln, 2.0), Color(1, 1, 1))
 	for v in 6:
@@ -244,19 +370,50 @@ func _draw_car(car: Dictionary) -> void:
 	_fx.draw_rect(Rect2(cx, sy + 30.0, ln, 2.0), Color(0.95, 0.6, 0.2))
 	_fx.draw_rect(Rect2(cx, sy + 40.0, ln, 2.0), Color(0.35, 0.36, 0.4))
 	_fx.draw_rect(Rect2(cx + 10.0, sy + 42.0, ln - 20.0, 4.0), Color(0, 0, 0, 0.18))
+	var bt := Time.get_ticks_msec() / 1000.0
+	for bx in [cx + ln * 0.2, cx + ln * 0.8]:
+		CarShell.draw_bogie(_fx, bx, float(map.get_meta("beam_y")), cy + 5.0, bt)
 
 
 ## 0.7.54 (Luz): the skyrail's car seen from outside while you ride in it – closed: the roof over it, its side towards
 ## you with big windows, through which you see inside (yourself, the seats, the people). `front` draws the body in
 ## front of the people; the back part (z under them) opens the doors in the far wall when the car has arrived.
 class CarShell extends Node2D:
+	## 0.7.54.2 (Luz): the car's running gear – a maglev bogie wrapped round the beam (its clamp jaws above and below the
+	## rail, field coils glowing and pulsing along it), a pylon down from it through a fairing into the roof. x: its
+	## middle; beam_y: the beam's top; roof_y: the roof's top (art px).
+	static func draw_bogie(ci: CanvasItem, x: float, beam_y: float, roof_y: float, t: float) -> void:
+		var w := 46.0
+		var dark := Color(0.26, 0.27, 0.31)
+		var body := Color(0.55, 0.57, 0.62)
+		var glow := Color(0.45, 0.9, 1.0)
+		# the clamp round the beam: a housing over it, jaws under it
+		ci.draw_rect(Rect2(x - w * 0.5, beam_y - 7.0, w, 7.0), body)
+		ci.draw_rect(Rect2(x - w * 0.5, beam_y - 7.0, w, 1.0), Color(0.8, 0.82, 0.86))
+		ci.draw_rect(Rect2(x - w * 0.5 + 3.0, beam_y - 9.0, w - 6.0, 2.0), dark)
+		ci.draw_rect(Rect2(x - w * 0.5, beam_y + 6.0, w, 4.0), dark)
+		ci.draw_rect(Rect2(x - w * 0.5, beam_y - 1.0, 3.0, 11.0), body.darkened(0.2))
+		ci.draw_rect(Rect2(x + w * 0.5 - 3.0, beam_y - 1.0, 3.0, 11.0), body.darkened(0.2))
+		# the field coils along the rail, pulsing one after the other
+		for k in 6:
+			var a := 0.45 + 0.55 * (0.5 + 0.5 * sin(t * 9.0 - k * 1.1))
+			ci.draw_rect(Rect2(x - w * 0.5 + 5.0 + k * 6.5, beam_y - 5.0, 4.0, 3.0), Color(glow, a))
+			ci.draw_rect(Rect2(x - w * 0.5 + 5.0 + k * 6.5, beam_y + 7.0, 4.0, 2.0), Color(glow, a * 0.8))
+		ci.draw_rect(Rect2(x - w * 0.5 - 2.0, beam_y + 1.0, w + 4.0, 2.0), Color(glow, 0.18))       # the field's glow on the rail
+		# the pylon down to the roof, its fairing
+		var py0 := beam_y + 10.0
+		if roof_y > py0:
+			ci.draw_rect(Rect2(x - 4.0, py0, 8.0, roof_y - py0), dark)
+			ci.draw_rect(Rect2(x - 4.0, py0, 2.0, roof_y - py0), body)
+		ci.draw_colored_polygon(PackedVector2Array([Vector2(x - 14.0, roof_y + 3.0), Vector2(x + 14.0, roof_y + 3.0), Vector2(x + 8.0, roof_y - 3.0), Vector2(x - 8.0, roof_y - 3.0)]), body.lightened(0.15))
+		ci.draw_rect(Rect2(x - 2.0, py0 + 1.0, 4.0, 2.0), Color(1.0, 0.45, 0.3, 0.6 + 0.4 * sin(t * 3.0)))
+
 	var shell: Dictionary = {}
 	var front := true
 	var view = null
 
 	func _process(_d: float) -> void:
-		if not front:
-			queue_redraw()
+		queue_redraw()
 
 	func _draw() -> void:
 		var s := GroundMap.SCALE
@@ -312,6 +469,9 @@ class CarShell extends Node2D:
 		draw_rect(Rect2(x0, wb + 5.0, x1 - x0, 2.0), Color(0.95, 0.6, 0.2))
 		draw_rect(Rect2(x0, y1 - 2.0, x1 - x0, 2.0), Color(0.35, 0.36, 0.4))
 		draw_rect(Rect2(x0 + 8.0, y1, x1 - x0 - 16.0, 4.0), Color(0, 0, 0, 0.18))
+		var tt := Time.get_ticks_msec() / 1000.0               # 0.7.54.2 (Luz): the running gear on the beam
+		for bx in [x0 + (x1 - x0) * 0.2, x0 + (x1 - x0) * 0.8]:
+			draw_bogie(self, bx, float(shell["beam"]), top, tt)
 
 
 ## The giant's sky through a window (the skyrail's car, the bar): drawn inside the window's opening.

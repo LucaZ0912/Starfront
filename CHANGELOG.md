@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.2 – 2026-11-15
+
+**The gas works and the skyrail (Luz).**
+- **The gas works – the skyrail's third stop (Harvester Deck):** the platform at its west end, then the works' deck of
+  steel with a yellow walkway – spherical tanks, compressors, a column going up out of the picture, a flare burning
+  off what is left, a pipe run with steps over it, the control room's long window, workers in their suits. At its
+  edge the winches let the **intakes** down into the clouds, swaying; a **catwalk** with glass railings goes 6 m out
+  over the void, a scope at its end looks down at the harvest probes.
+- **Gas Exchange:** at the works' counter the giant's own gases (a gas giant's hydrogen, helium and helium-3, an ice
+  giant's nitrogen, neon and xenon …) at 30 % under market price – 10, 100 or a full hold, straight into your ship.
+- **The berth:** now and then (a new roll every half hour of play) a great **KHI gas freighter** of the Kujira class
+  lies there under its own name – its round tanks huge beside the deck, held by clamps, a loading hose down to it;
+  otherwise "Berth 1 – free".
+- **The skyrail** now asks where to when you board – the line runs between Central, the Skyring and the gas works.
+  Aboard you see the car **pull out of the station** (the platform slides away behind) and **pull into the next**
+  (it comes in as the car slows; the doors stop right at the gap). The car hangs from two **maglev bogies** on the
+  beam – clamped round it, their field coils pulsing along it, a pylon down into the roof; the grab poles inside run
+  from the floor to the ceiling.
+- Debug (F12 → Ground → Cloud cities): "Gas works" and whether a freighter lies at the berth.
+
 ## alpha 0.7.54.1 – 2026-11-15
 
 **Package 54 – cloud cities (Luz).** Every gas giant of an inhabited system has **one or two cities hanging in its

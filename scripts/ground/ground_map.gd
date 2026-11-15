@@ -537,6 +537,18 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 				for k47 in 5:
 					_px(px + 3 + k47 * 2, py + 4 + int(hash2(x + k47, y, 543) * 6), pv2.darkened(0.05))
 			_rect(px + 1, py + 1, TILE - 2, 1, pv2.lightened(0.04))
+		50:             # 0.7.54.2: the gas works' deck – steel plates in a tread pattern, bolted, oil stains
+			var dp: Color = Color(0.42, 0.43, 0.42).lerp(Color(0.38, 0.39, 0.38), hash2(x / 2, y / 2, 551))
+			_rect(px, py, TILE, TILE, dp)
+			for k50 in range(2, TILE, 4):
+				_rect(px + (k50 % 8), py + k50, 3, 1, dp.lightened(0.07))
+			if x % 2 == 0:
+				_rect(px, py, 1, TILE, dp.darkened(0.2))
+			if y % 2 == 0:
+				_rect(px, py, TILE, 1, dp.darkened(0.2))
+				_px(px + 2, py + 2, dp.lightened(0.15))
+			if hash2(x, y, 552) < 0.08:
+				_rect(px + 4, py + 5, 6, 4, Color(0.2, 0.2, 0.2, 0.6))
 		48:             # package 54: the skyrail's platform – large pale tiles, 2 m, grooved joints
 			var pt2: Color = Color(0.62, 0.64, 0.66) if ((x / 2) + (y / 2)) % 2 == 0 else Color(0.58, 0.6, 0.62)
 			pt2 = pt2.lerp(f, 0.25)
@@ -1137,6 +1149,8 @@ func _museum_face(x: int, y: int, px: int, py: int) -> void:
 ## the deck's rim (meta rim_y) the platform's edge seen from the side: grey plates darkening downwards, running lights.
 func _cloud_face(x: int, y: int, px: int, py: int) -> void:
 	var ry := int(get_meta("rim_y", 9999))
+	if has_meta("rim_y2") and x >= int(get_meta("rim_y2")[0]):
+		ry = int(get_meta("rim_y2")[1])                # 0.7.54.2: the gas works' deck reaches further out
 	if y >= ry:
 		var k := y - ry
 		for yy in TILE:
@@ -1583,6 +1597,18 @@ func _decal(d: Dictionary) -> void:
 			_rect(px, py, pw, ph, c.darkened(0.35))
 			_rect(px + 2, py + 2, pw - 4, ph - 4, c.darkened(0.1))
 			_rect(px + 4, py + 4, pw - 8, ph - 8, c.darkened(0.25))
+		"cat_rail":                # 0.7.54.2: a catwalk's glass railings along both its sides, posts, the handrail lit
+			for side in [px + 2, px + pw - 4]:
+				_rect(side, py, 2, ph, Color(0.75, 0.9, 1.0, 0.5))
+				_rect(side, py, 1, ph, Color(0.92, 0.94, 0.96))
+				for k in range(0, ph, 24):
+					_rect(side - 1, py + k, 4, 3, Color(0.6, 0.62, 0.66))
+		"pipe_steps":              # 0.7.54.2: a little stair of grating over the pipe run, yellow edges
+			_rect(px, py, pw, ph, Color(0.36, 0.37, 0.38))
+			for k in range(0, ph, 4):
+				_rect(px, py + k, pw, 1, Color(0.5, 0.52, 0.54))
+			_rect(px, py, 2, ph, Color(0.95, 0.8, 0.2))
+			_rect(px + pw - 2, py, 2, ph, Color(0.95, 0.8, 0.2))
 		"cloud_edge":              # package 54: the platform's edge – the yellow safety line, studs along it
 			_rect(px, py + ph - 6, pw, 5, c)
 			_rect(px, py + ph - 6, pw, 1, c.lightened(0.3))
@@ -2183,6 +2209,27 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px, py + TILE - 2, pw, 2, c.darkened(0.3))
 			for k in range(2, pw, 4):
 				_rect(px + k, py + 4, 1, TILE - 8, Color(0.5, 0.52, 0.55))
+		"control_window":          # 0.7.54.2: the gas works' control room – a long window, consoles and screens behind it
+			var wh := TILE * 2
+			_rect(px, py + 6, pw, wh, Color(0.4, 0.42, 0.44))
+			for xx5 in range(2, pw - 2):
+				for yy5 in range(2, wh - 2):
+					var cw5 := Color(0.3, 0.42, 0.5).lerp(Color(0.5, 0.66, 0.74), float(yy5) / wh)
+					if xx5 % 42 < 2:
+						cw5 = Color(0.4, 0.42, 0.44)
+					_px(px + xx5, py + 6 + yy5, cw5)
+			for sc5 in range(8, pw - 20, 42):
+				_rect(px + sc5, py + 6 + wh - 12, 18, 6, c.darkened(0.2))
+				_rect(px + sc5 + 2, py + 6 + wh - 11, 14, 2, c.lightened(0.3))
+				_rect(px + sc5 + 2, py + 6 + wh - 6, 14, 4, Color(0.25, 0.27, 0.3))
+		"exchange":                # 0.7.54.2: the Gas Exchange's counter window – the price board, the slot
+			_rect(px, py + 2, pw, TILE * 3 - 4, Color(0.3, 0.32, 0.34))
+			_rect(px + 4, py + 6, pw - 8, TILE + 8, Color(0.07, 0.09, 0.12))
+			for row in 4:
+				_rect(px + 8, py + 9 + row * 6, int((pw - 16) * 0.55), 2, c)
+				_rect(px + 8 + int((pw - 16) * 0.62), py + 9 + row * 6, int((pw - 16) * 0.32), 2, Color(0.4, 1.0, 0.6))
+			_rect(px + 6, py + TILE * 2 + 4, pw - 12, 6, Color(0.5, 0.52, 0.55))
+			_rect(px + 6, py + TILE * 2 + 4, pw - 12, 1, Color(0.7, 0.72, 0.75))
 		"car_doors":               # package 54: the car's doors in its window wall – grey leaves, orange frame
 			_rect(px - 2, py, pw + 4, TILE * 2, c)
 			_rect(px, py + 2, pw / 2 - 1, TILE * 2 - 2, Color(0.72, 0.74, 0.78))
