@@ -239,6 +239,24 @@ const EXPOSURE_HURT := 1.2            # health a second per full hazard that get
 const SUFFOCATE := 3.0                # health a second without air
 
 
+## Package 54 (Luz): the air at a cloud city's height – per kind of giant; thin and cold over most (the tank), poison
+## over the toxic giants and in the red giants' smog; some gas giants have breathable air at normal pressure there.
+const CLOUD_ENV := {
+	"gas": {"breathable": false, "cold": 0.25}, "ice_giant": {"breathable": false, "cold": 0.75},
+	"red_gas": {"breathable": false, "heat": 0.25, "toxic": 0.35}, "toxic": {"breathable": false, "toxic": 0.9},
+}
+
+
+static func cloud_env(giant: String, breathable: bool) -> Dictionary:
+	var e: Dictionary = (CLOUD_ENV.get(giant, CLOUD_ENV["gas"]) as Dictionary).duplicate()
+	if breathable:
+		e = {"breathable": true, "cold": 0.1}
+	for h in HAZARDS:
+		if not e.has(h):
+			e[h] = 0.0
+	return e
+
+
 ## The world outside for a body: {breathable, heat, cold, toxic, vacuum}.
 static func env_of(body_type: String) -> Dictionary:
 	var e: Dictionary = (ENV.get(body_type, {"breathable": false, "vacuum": 1.0, "cold": 0.4}) as Dictionary).duplicate()

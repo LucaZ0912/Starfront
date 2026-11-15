@@ -3,6 +3,33 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.1 – 2026-11-15
+
+**Package 54 – cloud cities (Luz).** Every gas giant of an inhabited system has **one or two cities hanging in its
+clouds** – the descent beacon now leads to a giant too, and there you go down only to them. What they live on follows
+the giant: gas giants trade and harvest gas, ice giants research and cool, red giants refine, the toxic giants have
+small sealed outposts. Walked like the cities on the ground, in their own design and at real scale, after Luz'
+approved mockups:
+- **Hangar** as in the other cities – the gallery with the lifts, your ship down in the hall – its far wall a **gate
+  open to the sky**, a force field shimmering in it, the clouds beyond.
+- **Plaza with its balcony:** the shops' glass fronts between stone pillars (walked into as everywhere), the lifts in
+  the middle, trees in planters, lamps, a café with parasols; along the edge a glass railing and **benches looking out
+  over the clouds** (all of them seats, people sit down too); few guards. At its ends a hedge of planters – the
+  platform goes on beyond.
+- **Skyrail:** the station with its departures board, the yellow line and glass screens; the **suspended car**
+  waiting below the edge, its doors on the platform's side. Board it and **ride** – the doors shut, it speeds up, the
+  clouds, far platforms and the beam's masts pass by – to the **Skyring** with its observation deck and viewing
+  scopes. The car is closed: its roof and side with big windows, you see inside through them; the doors open at the
+  stop.
+- **Sky bar** (the tower bar) with the giant's sky in its windows.
+- **The giant all round:** a **sea of clouds** in the giant's colours under every deck – three layers moving with
+  depth, drifting in the wind, a **storm eddy**, **lightning** deep down, other platforms far off in the haze, struts
+  and lift tanks hanging under the deck's rim; day and night over it.
+- **The air:** thin and cold or poisonous on most giants (suit and helmet out on the deck, the townsfolk in suits
+  too), breathable at normal pressure over some gas giants.
+- Debug (F12 → Ground → Cloud cities): into a cloud city of any kind of giant and power, its air and hour, any level;
+  the skyrail arrives at once, its state.
+
 ## alpha 0.7.53.36 – 2026-11-15
 
 **Peaceful animals are not foes (Luz).** R and Shift+R never pick a peaceful animal, and no shot goes at one on its own

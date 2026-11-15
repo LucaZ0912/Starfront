@@ -1767,6 +1767,9 @@ func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Diction
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%s_%d_city" % [key, seed_value])
 	var type := String(CITY_TYPES.get(String(body.get("type", "")), "trade"))
+	var cloud := is_giant(body)                                       # package 54: a cloud city
+	if cloud:
+		type = String(CLOUD_KINDS.get(String(body.get("type", "")), CLOUD_KINDS["gas"])["type"])
 	var settle := String(site.get("kind", "city")) != "city"         # 0.7.50.10: a settlement (outpost, mine, camp)
 	if settle:
 		type = {"mine": "mining_colony", "research": "research"}.get(String(site.get("kind", "")), type)
@@ -1775,6 +1778,8 @@ func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Diction
 	var tier := 3 if has_atmosphere(body) and float(body.get("city", 0.0)) > 0.5 else 2
 	if settle:
 		tier = 1
+	if cloud:
+		tier = 1 if String(body.get("type", "")) == "toxic" else 2
 	var L := get_layout(system_id)
 	var pidx := int(body.get("planet", -1))
 	for i in L["planets"].size():
@@ -1789,6 +1794,9 @@ func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Diction
 		"body": String(body.get("id", "")), "site": String(site.get("id", "")),
 		"day": CityStyle.daylight(site, body),           # 0.7.50.6: on the day or the night side (0.7.50.7: now)
 		"lon": float(site.get("lon", 0.0)), "lat": float(site.get("lat", 0.0))}   # 0.7.50.8: where it lies – its day goes on
+	if cloud:
+		st["cloud"] = true                               # package 54: hangar, plaza, skyrail – over the clouds
+		st["giant"] = String(body.get("type", "gas"))
 	_add_faction_yard(st)
 	_cities[key] = st
 	return st
@@ -2490,6 +2498,9 @@ const CITY_WORLDS := ["terran", "ocean", "jungle"]
 
 func _city_lights(L: Dictionary, id: int) -> void:
 	var inhabited := has_stations(id)
+	for pc in L["planets"]:
+		if is_giant(pc) and not bool(systems[id].get("outer", false)):
+			pc["cloud_city"] = true                      # package 54 (Luz): an inhabited system's giants have cloud cities
 	var rich := Missions.wealthy(id)
 	for pi in L["planets"].size():
 		var p: Dictionary = L["planets"][pi]
@@ -3002,11 +3013,20 @@ func warp_targets(system_id: int) -> Array:
 
 # ---------------------------------------------------------------- package 50: landing
 
-## Can a ship land on this body? Every solid planet and moon – not the gas giants.
+## Can a ship land on this body? Every solid planet and moon – not the gas giants (they have cloud cities: can_land).
 static func landable(b: Dictionary) -> bool:
 	if b.get("dwarf_star", false):
 		return false
 	return float(body_type(String(b.get("type", ""))).get("gas", 0.0)) < 0.5
+
+
+## Package 54 (Luz): a gas giant of an inhabited system has its cloud cities – you go down to those (only to those).
+static func is_giant(b: Dictionary) -> bool:
+	return not b.get("dwarf_star", false) and float(body_type(String(b.get("type", ""))).get("gas", 0.0)) >= 0.5
+
+
+static func can_land(b: Dictionary) -> bool:
+	return landable(b) or (is_giant(b) and bool(b.get("cloud_city", false)))
 
 
 ## Has the body an atmosphere (heat shimmer on the way down)?
@@ -3020,7 +3040,7 @@ func descents(system_id: int) -> Array:
 	var L := get_layout(system_id)
 	var out: Array = []
 	for b in L["planets"] + L.get("moons", []):
-		if landable(b):
+		if can_land(b):
 			out.append({"id": "descent_%s" % b["id"], "name": "%s Descent Beacon" % b["name"], "pos": b["pos"], "body": b["id"],
 				"radius": 45.0})
 	return out
@@ -3069,6 +3089,33 @@ const SITE_KINDS := {
 	"darkruin": {"name": "Strange ruin", "icon": "◈", "col": Color(0.62, 0.35, 1.0), "text": "Black stone that seems to have grown. Something hums beneath it."},
 	"wilds": {"name": "Wilderness", "icon": "♣", "col": Color(0.55, 0.95, 0.45), "text": "Wild country – animals to hunt, and something at the end of it."},     # 53f-2
 }
+## Package 54 (Luz): what the cloud cities of each kind of giant live on – and how many hang in its sky.
+const CLOUD_KINDS := {
+	"gas": {"type": "trade", "n": [1, 2], "names": ["Skyport", "Cloudhaven", "Highmarket", "Windward", "Zephyr", "Aerie"], "what": "gas harvest and trade"},
+	"ice_giant": {"type": "research", "n": [1, 2], "names": ["Frostspire", "Coldwatch", "Halo Station", "Rime", "Aurora"], "what": "research and coolant works"},
+	"red_gas": {"type": "industry", "n": [1, 2], "names": ["Emberdeck", "Furnace Row", "Redline", "Cinderhold", "Foundry"], "what": "industry and refineries"},
+	"toxic": {"type": "research", "n": [1, 1], "names": ["Sealed Outpost", "Bulkhead", "Quarantine", "Lockdown"], "what": "a small sealed outpost"},
+}
+
+
+## The cloud cities of a gas giant (none in the empty systems far out): 1–2, named after the giant's kind.
+func cloud_sites(system_id: int, body: Dictionary, rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
+	if bool(body.get("cloud_city", false)):
+		var ck: Dictionary = CLOUD_KINDS.get(String(body.get("type", "")), CLOUD_KINDS["gas"])
+		var nr: Array = ck["n"]
+		var names: Array = (ck["names"] as Array).duplicate()
+		for i in rng.randi_range(int(nr[0]), int(nr[1])):
+			var nm: String = names.pop_at(rng.randi() % names.size())
+			if rng.randf() < 0.5:
+				nm = "%s %s" % [String(body["name"]).split(" ")[0], nm]
+			var lat := rng.randf_range(-0.6, 0.6) if i == 0 else (-0.45 if float(out[0]["lat"]) > 0.0 else 0.45)
+			out.append({"id": "%s_site_%d" % [String(body["id"]), i], "name": nm, "kind": "city", "cloud": true,
+				"lon": rng.randf_range(-0.9, 0.9), "lat": lat})
+	out.append_array(debug_sites.get(String(body["id"]), []))
+	return out
+
+
 const CITY_ENDS := ["Port", "Haven", "Landing", "Reach", "Crossing", "Heights", "Springs", "Falls", "Gate", "Hold"]
 const CITY_STARTS := ["New", "Fort", "Saint", "Old", "Upper", "Lower", "East", "West", "Port", ""]
 
@@ -3078,6 +3125,8 @@ const CITY_STARTS := ["New", "Fort", "Saint", "Old", "Upper", "Lower", "East", "
 func landing_sites(system_id: int, body: Dictionary) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%d_%s_%d" % [system_id, String(body["id"]), seed_value])
+	if is_giant(body):
+		return cloud_sites(system_id, body, rng)
 	var hab := has_atmosphere(body) and float(body_type(String(body["type"])).get("sea", 0.0)) > 0.0
 	var inhabited: bool = not systems[system_id].get("outer", false)
 	var cities := 0

@@ -169,6 +169,7 @@ func _process(delta: float) -> void:
 				_test_museum(view)               # package 53e – the Museum in Curie
 				_test_creatures(view)            # package 53f – creatures and machines
 				_test_wild(view)                 # package 53f-2 – the wild
+				_test_cloud(view)                # package 54 – the cloud cities
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -7895,7 +7896,7 @@ func _test_landing(view: SystemView) -> void:
 		if t["kind"] == "descent":
 			beacons += 1
 			var b := Universe.find_body(view.system_id, String(t["data"]["body"]))
-			gas_free = gas_free and Universe.landable(b)
+			gas_free = gas_free and (Universe.landable(b) or bool(b.get("cloud_city", false)))      # package 54: a giant only for its cloud cities
 	var node = null
 	for bid in view.descents:
 		node = view.descents[bid]
@@ -7950,7 +7951,7 @@ func _test_landing(view: SystemView) -> void:
 		guard += 1
 	var up: bool = f.docked_at == "" and p.visible and is_equal_approx(p.scale.x, 1.0) and main.ground == null and main.planet_map == null
 	check(cmd_ok and beacons >= 1 and gas_free and down and field and up and GameState.codex.unlocked.has("basics_landing"),
-		"50: %d descent beacons (none over a gas giant); down to %s, the planet map (%d places), landed at %s, back up to orbit" % [beacons, String(body.get("name", "?")), main.planet_map.sites.size() if main.planet_map != null else Universe.landing_sites(view.system_id, body).size(), String(site.get("name", "?"))])
+		"50: %d descent beacons (over a gas giant only for its cloud cities); down to %s, the planet map (%d places), landed at %s, back up to orbit" % [beacons, String(body.get("name", "?")), main.planet_map.sites.size() if main.planet_map != null else Universe.landing_sites(view.system_id, body).size(), String(site.get("name", "?"))])
 
 
 ## 0.7.50.15: down by the drone, its ramp folds down and you walk out; back aboard, the choice – orbit or the planet
@@ -11389,6 +11390,115 @@ func _test_wild(view: SystemView) -> void:
 	check(maps_ok and paint_ok and goods_ok and ai_ok and loot_ok and find_ok and mm_ok and hunt_ok,
 		"53f-2: the wild – jungle, coast and ice grounds (the find reachable from the ship, water seen across), painted with the water clear for the shader; grazers run and never fight, hunters guard their ground and let you go, the one in the sand waits hidden; never picked by R nor shot at until you hunt them; hides and meat to pockets and hold; the drone's cargo pod; hunting jobs with the old beast  [%s]%s" % [
 			" ".join(PackedStringArray([str(maps_ok), str(paint_ok), str(goods_ok), str(ai_ok), str(loot_ok), str(find_ok), str(mm_ok), str(hunt_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+## Package 54 (Luz): the cloud cities – giants of inhabited systems have 1–2 (none far out), you go down only to them;
+## the hangar's gate open to the sky; the plaza (its shops walked into, the lifts, seats people use, the deck going on
+## beyond its ends), the giant's air; the skyrail – board at Central, the ride, the doors open at the Skyring, off.
+const CloudGen54T = preload("res://scripts/ground/cloud_gen.gd")
+
+func _test_cloud(view: SystemView) -> void:
+	var notes: Array = []
+	# where they are
+	var world_ok := true
+	var n_in := 0
+	var n_out := 0
+	var sample: Array = []
+	var outers := 0
+	for sid0 in Universe.systems.size():
+		if bool(Universe.systems[sid0].get("outer", false)):
+			if outers < 8:
+				sample.append(sid0)
+				outers += 1
+		elif sample.size() - outers < 20:
+			sample.append(sid0)
+	for sid in sample:
+		for b in Universe.get_layout(sid)["planets"]:
+			if not Universe.is_giant(b):
+				continue
+			var cs: Array = Universe.landing_sites(sid, b)
+			if bool(Universe.systems[sid].get("outer", false)):
+				n_out += cs.size()
+				world_ok = world_ok and not Universe.can_land(b)
+			else:
+				n_in += 1
+				world_ok = world_ok and cs.size() >= 1 and cs.size() <= 2 and cs.all(func(x): return String(x["kind"]) == "city" and bool(x.get("cloud", false))) 					and Universe.can_land(b) and not Universe.landable(b)
+	world_ok = world_ok and n_in > 0 and n_out == 0
+	if not world_ok:
+		notes.append("giants %d in, %d sites out" % [n_in, n_out])
+	var look_ok := true
+	for gt in ["gas", "ice_giant", "red_gas", "toxic"]:
+		var lk: Dictionary = CloudGen54T.giant_look(gt)
+		look_ok = look_ok and (lk["bands"] as Array).size() == 5 and lk.has("haze") and lk.has("sky_top")
+		look_ok = look_ok and not bool(GearShop.GearData.cloud_env(gt, false)["breathable"]) and bool(GearShop.GearData.cloud_env(gt, true)["breathable"])
+	# down into one
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var e1: String = Commands.execute({"type": "debug_cloud", "giant": "gas", "power": "assembly", "air": "suit"})
+	var g = main.ground
+	if g == null or not g.is_cloud():
+		check(false, "54: into a cloud city  [%s]" % e1)
+		return
+	var hangar_ok: bool = g.level == "hangar" and g.map.has_meta("clouds") and g.map.face_deco.any(func(d): return String(d["kind"]) == "force_gate") 		and g.clouds != null and g.env.is_empty()
+	g._open_lift_menu(_zone_of(g.map, "lift"))
+	var lift_ok: bool = g._lift_menu != null and (g._lift_menu.get_meta("keys") as Array).size() >= 4
+	g._close_lift_menu()
+	# the plaza
+	g.go_level("cplaza", "lift")
+	var m: GroundMap = g.map
+	var shops: Array = m.zones.filter(func(z): return String(z.get("kind", "")) == "service")
+	var benches: Array = m.zones.filter(func(z): return String(z.get("kind", "")) == "seat" and bool(z.get("npc_ok", false)))
+	var o: int = CloudGen54T.PLAZA_MORE
+	var plaza_ok: bool = not shops.is_empty() and benches.size() >= 3 and not m.lifts.is_empty() and m.has_meta("spindles") 		and not m.free_at(Vector2(o - 3, 18) * 16.0) and m.free_at(m.spawn) and m.t_at(5, CloudGen54T.P_RAIL - 2) == GroundMap.T.BLOCK
+	var shop_in := true
+	for z in shops:
+		var r: Rect2 = z["rect"]
+		shop_in = shop_in and m.path(m.spawn, r.get_center()).size() > 0
+	plaza_ok = plaza_ok and shop_in
+	var air_ok: bool = not g.env.is_empty() and g.needs_helmet()
+	Commands.execute({"type": "debug_cloud", "giant": "gas", "air": "breathable", "level": "cplaza"})
+	g = main.ground
+	air_ok = air_ok and bool(g.env.get("breathable", false)) and not g.needs_helmet()
+	# the skyrail
+	g.rail_stop = 0
+	g.go_level("cstation", "lift")
+	var boards: Array = g.map.zones.filter(func(z): return String(z.get("kind", "")) == "board")
+	var st_ok: bool = boards.size() == 3 and g.map.has_meta("car") and not g.map.lifts.is_empty() 		and g.map.face_deco.filter(func(d): return String(d["kind"]) == "gangway").size() == 3
+	g._arrive = 0.0
+	g.zone = boards[0] if not boards.is_empty() else {}
+	g.use()
+	var ride_ok: bool = g.level == "ctrain" and g.map.has_meta("car_shell") and int(g.rail.get("to", -1)) == 1 and g.env.is_empty()
+	var al: Dictionary = _zone_of(g.map, "alight")
+	ride_ok = ride_ok and String(al.get("closed", "")) != ""
+	var sc0: float = g.clouds.scroll
+	for k in 400:
+		g._rail_step(0.1)
+	ride_ok = ride_ok and bool(g.rail["arrived"]) and String(al.get("closed", "x")) == "" and g.clouds.scroll > sc0 + 1000.0
+	g._arrive = 0.0
+	g.zone = al
+	g.use()
+	var ring_ok: bool = g.level == "cstation" and g.rail_stop == 1 and g.map.lifts.is_empty() and not _zone_of(g.map, "scope").is_empty()
+	Commands.execute({"type": "debug_skyrail", "action": "info"})
+	# back
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	GameState.gear.aboard()
+	main._update_input()
+	check(world_ok and look_ok and hangar_ok and lift_ok and plaza_ok and air_ok and st_ok and ride_ok and ring_ok,
+		"54: cloud cities – 1–2 over the giants of inhabited systems (none far out), down only to them; the hangar's gate open to the sky; the plaza with walk-in shops, benches people sit on, the deck going on beyond its ends; the giant's air (suit or breathable); the skyrail: board at Central, the ride, the doors open at the Skyring, off onto its observation deck  [%s]%s" % [
+			" ".join(PackedStringArray([str(world_ok), str(look_ok), str(hangar_ok), str(lift_ok), str(plaza_ok), str(air_ok), str(st_ok), str(ride_ok), str(ring_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
 
 
 func _zone_of(m: GroundMap, k: String) -> Dictionary:

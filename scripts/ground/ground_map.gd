@@ -526,6 +526,31 @@ func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
 				_rect(px, py, TILE, 2, Color(0.72, 0.74, 0.78))
 				_rect(px, py, 2, TILE, Color(0.72, 0.74, 0.78))
 			_rect(px + 6, py + 6, 4, 4, tb2.darkened(0.15))
+		47:             # package 54 (Luz): a cloud city's plaza – big slabs of its power's stone, a joint every 2 m, a faint vein
+			var pv2: Color = f.lerp(f2, hash2(x / 2, y / 2, 541))
+			_rect(px, py, TILE, TILE, pv2)
+			if x % 2 == 0:
+				_rect(px, py, 1, TILE, pv2.darkened(0.1))
+			if y % 2 == 0:
+				_rect(px, py, TILE, 1, pv2.darkened(0.1))
+			if hash2(x, y, 542) < 0.25:
+				for k47 in 5:
+					_px(px + 3 + k47 * 2, py + 4 + int(hash2(x + k47, y, 543) * 6), pv2.darkened(0.05))
+			_rect(px + 1, py + 1, TILE - 2, 1, pv2.lightened(0.04))
+		48:             # package 54: the skyrail's platform – large pale tiles, 2 m, grooved joints
+			var pt2: Color = Color(0.62, 0.64, 0.66) if ((x / 2) + (y / 2)) % 2 == 0 else Color(0.58, 0.6, 0.62)
+			pt2 = pt2.lerp(f, 0.25)
+			_rect(px, py, TILE, TILE, pt2)
+			if x % 2 == 0:
+				_rect(px, py, 1, TILE, pt2.darkened(0.12))
+			if y % 2 == 0:
+				_rect(px, py, TILE, 1, pt2.darkened(0.12))
+		49:             # package 54: the car's floor – rubber in a chequer, a dotted line down the aisle
+			for q49 in 4:
+				var c49: Color = f if ((x * 2 + q49 % 2) + (y * 2 + q49 / 2)) % 2 == 0 else f2
+				_rect(px + (q49 % 2) * 8, py + (q49 / 2) * 8, 8, 8, c49)
+			if y == 9 and x % 3 == 0:
+				_rect(px + 7, py + 8, 2, 2, Color(0.9, 0.9, 0.85))
 		30:             # 0.7.53.19: a roof plaza's warm paving, laid in bond
 			var pv := Color(0.7, 0.66, 0.6).lerp(Color(0.64, 0.6, 0.55), hash2(x, y, 151))
 			_rect(px, py, TILE, TILE, pv)
@@ -1108,6 +1133,40 @@ func _museum_face(x: int, y: int, px: int, py: int) -> void:
 		_rect(px, py + TILE - 3, TILE, 1, Color(0.7, 0.68, 0.64))
 
 
+## Package 54 (Luz): a cloud city's wall – its power's pale stone in tall panels with a lit band at the top; below
+## the deck's rim (meta rim_y) the platform's edge seen from the side: grey plates darkening downwards, running lights.
+func _cloud_face(x: int, y: int, px: int, py: int) -> void:
+	var ry := int(get_meta("rim_y", 9999))
+	if y >= ry:
+		var k := y - ry
+		for yy in TILE:
+			var t := float(k * TILE + yy) / float(TILE * 2)
+			var c := Color(0.52, 0.54, 0.58).lerp(Color(0.26, 0.27, 0.3), t)
+			if x % 3 == 0:
+				c = c.darkened(0.12)
+			_rect(px, py + yy, TILE, 1, c)
+		if k == 0:
+			_rect(px, py, TILE, 2, Color(0.92, 0.93, 0.94))
+			_rect(px, py + 2, TILE, 1, Color(0.4, 0.42, 0.46))
+			if x % 2 == 0:
+				_rect(px + 4, py + 7, 4, 2, Color(0.55, 0.9, 1.0))
+		else:
+			_rect(px, py + TILE - 1, TILE, 1, Color(0.18, 0.18, 0.2))
+		return
+	var wl: Color = pal["wall"]
+	var fy := y - _face_top(x, y)
+	var base := wl.lerp(wl.darkened(0.08), float(fy) / 3.0)
+	_rect(px, py, TILE, TILE, base)
+	if x % 2 == 0:
+		_rect(px, py, 1, TILE, base.darkened(0.1))
+	if fy == 0:
+		_rect(px, py, TILE, 2, wl.lightened(0.2))
+		_rect(px, py + 3, TILE, 1, Color(pal["accent"]).lerp(Color.WHITE, 0.4))
+	if t_at(x, y + 1) != T.FACE:
+		_rect(px, py + TILE - 3, TILE, 3, pal["trim"])
+		_rect(px, py + TILE - 1, TILE, 1, Color(pal["trim"]).darkened(0.35))
+
+
 ## How many face rows lie above this one.
 func _face_top(x: int, y: int) -> int:
 	var k := 0
@@ -1249,6 +1308,9 @@ func _face_tile(x: int, y: int, px: int, py: int) -> void:
 		return
 	if style == "museum":
 		_museum_face(x, y, px, py)
+		return
+	if style.begins_with("cloud"):
+		_cloud_face(x, y, px, py)                      # package 54: a cloud city
 		return
 	if style == "plaza" and x >= int(get_meta("museum_x", 9999)):
 		_museum_face(x, y, px, py)                     # 53e: the Museum's front on Curie's roof plaza
@@ -1521,6 +1583,15 @@ func _decal(d: Dictionary) -> void:
 			_rect(px, py, pw, ph, c.darkened(0.35))
 			_rect(px + 2, py + 2, pw - 4, ph - 4, c.darkened(0.1))
 			_rect(px + 4, py + 4, pw - 8, ph - 8, c.darkened(0.25))
+		"cloud_edge":              # package 54: the platform's edge – the yellow safety line, studs along it
+			_rect(px, py + ph - 6, pw, 5, c)
+			_rect(px, py + ph - 6, pw, 1, c.lightened(0.3))
+			for k in range(4, pw, 8):
+				_px(px + k, py + ph - 4, c.darkened(0.35))
+		"car_door":                # package 54: the car's doorway – orange marks on the floor before the doors
+			_rect(px, py, pw, 3, c)
+			for k in range(0, pw, 6):
+				_rect(px + k, py + 3, 3, 2, c.darkened(0.2))
 		"guide":
 			# a lit line set into the floor
 			_tint(px, py + ph / 2 - 3, pw, 1, c, 0.08)
@@ -2039,6 +2110,100 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px + 3, py + 2, pw - 6, 10, Color(0.1, 0.1, 0.12))
 			_rect(px + 4, py + 3, pw - 8, 8, c)
 			_rect(px + 5, py + 4, int((pw - 10) * 0.6), 2, c.lightened(0.5))
+		"cloud_front":             # package 54 (mockup_54v2_plaza): a shop's front in a cloud city – pillars of pale stone,
+			# glass 2.8 m high with goods behind it, the door (left open: the tiles), its sign lit above; 3 rows high
+			var fh2 := TILE * 3
+			var dxp := int(d.get("door", -1)) * TILE
+			var wl2: Color = pal["wall"]
+			for yy in fh2:
+				for xx in pw:
+					var ax := px + xx
+					if dxp >= 0 and ax >= dxp and ax < dxp + TILE * 2 and yy >= 9:
+						continue                             # the door: open
+					var c2: Color = wl2.lerp(wl2.darkened(0.1), float(yy) / fh2)
+					var pil := xx < 5 or xx >= pw - 5 or (dxp >= 0 and absi(ax - dxp) < 3) or (dxp >= 0 and absi(ax - (dxp + TILE * 2)) < 3)
+					if not pil and yy >= 9 and yy < fh2 - 3:
+						c2 = Color(0.3, 0.42, 0.5).lerp(Color(0.58, 0.74, 0.82), float(yy - 9) / (fh2 - 12))
+						if fposmod(float(xx + yy) * 0.2, 6.0) < 0.8:
+							c2 = c2.lightened(0.16)
+					_px(ax, py + yy, c2)
+			# goods on shelves behind the glass
+			for g in int(pw / 7):
+				var gx2 := px + 6 + g * 7
+				if dxp >= 0 and gx2 + 5 > dxp - 3 and gx2 < dxp + TILE * 2 + 3:
+					continue
+				if gx2 + 5 >= px + pw - 5:
+					break
+				var gc: Color = [Color(0.9, 0.5, 0.3), Color(0.4, 0.7, 0.9), Color(0.9, 0.85, 0.4), Color(0.6, 0.85, 0.5)][(g + int(d["x"])) % 4]
+				_rect(gx2, py + fh2 - 14, 5, 7, gc.darkened(0.15))
+				_rect(gx2, py + fh2 - 14, 5, 1, gc.lightened(0.2))
+			if not bool(d.get("cafe", false)):
+				_rect(px + 5, py + fh2 - 7, pw - 10, 2, Color(0.5, 0.45, 0.4))
+			# the sign over the door, its neon bar
+			_rect(px + 6, py + 1, pw - 12, 6, Color(0.12, 0.13, 0.16))
+			_rect(px + 8, py + 3, pw - 16, 2, c)
+			_rect(px, py + fh2 - 2, pw, 2, Color(pal["trim"]))
+			if dxp >= 0:
+				_rect(dxp, py + 7, TILE * 2, 2, wl2.darkened(0.3))      # the lintel
+		"cloud_lifts":             # package 54: the lift hall's recess – darker stone, a lit band, the city's name plate
+			_rect(px, py, pw, 8, Color(pal["wall"]).darkened(0.18))
+			_rect(px, py + 2, pw, 1, c)
+			_rect(px + pw / 2 - 18, py + 4, 36, 3, Color(0.12, 0.13, 0.16))
+			_rect(px + pw / 2 - 16, py + 5, 32, 1, c.lightened(0.3))
+		"departures":              # package 54: the departures board, 7 m – rows of amber times and blue names
+			var bh := TILE * 2 + 6
+			_rect(px, py + 2, pw, bh, Color(0.07, 0.09, 0.13))
+			_rect(px, py + 2, pw, 1, Color(0.3, 0.32, 0.36))
+			for row in 4:
+				_rect(px + 4, py + 6 + row * 7, int(pw * 0.55), 2, c if row % 2 == 0 else c.darkened(0.25))
+				_rect(px + int(pw * 0.62), py + 6 + row * 7, int(pw * 0.32), 2, Color(0.55, 0.9, 1.0))
+		"ticket":                  # package 54: a ticket machine on the wall, its screen green
+			_rect(px + 2, py - 14, TILE - 4, TILE + 12, Color(0.45, 0.48, 0.52))
+			_rect(px + 2, py - 14, TILE - 4, 1, Color(0.65, 0.68, 0.72))
+			_rect(px + 4, py - 11, TILE - 8, 7, c)
+			_rect(px + 5, py - 1, TILE - 10, 2, Color(0.15, 0.15, 0.17))
+		"cloud_sign":              # package 54: the station's name on the wall – a lit band
+			_rect(px, py + 2, pw, 10, Color(0.12, 0.13, 0.16))
+			_rect(px + 2, py + 4, pw - 4, 1, c)
+			_rect(px + 2, py + 10, pw - 4, 1, c)
+		"cloud_window":            # package 54: the observation deck's wall – tall glass, the giant's sky beyond (tinted)
+			var sk0: Color = d.get("sky0", Color(0.98, 0.9, 0.74))
+			var sk1: Color = d.get("sky1", Color(0.9, 0.72, 0.5))
+			for yy3 in range(2, TILE * 3 - 2):
+				for xx3 in pw:
+					var cw := sk0.lerp(sk1, float(yy3) / (TILE * 3))
+					if xx3 % 48 < 3:
+						cw = Color(0.75, 0.77, 0.8)
+					elif fposmod(float(xx3 - yy3) * 0.15, 7.0) < 0.9:
+						cw = cw.lightened(0.1)
+					_px(px + xx3, py + yy3, cw)
+		"gangway":                 # 0.7.54 (Luz): where the car's door meets the platform – a plate over the rim, yellow edges
+			_rect(px, py, pw, TILE, Color(0.6, 0.62, 0.65))
+			_rect(px, py, pw, 2, c)
+			_rect(px, py + TILE - 2, pw, 2, c.darkened(0.3))
+			for k in range(2, pw, 4):
+				_rect(px + k, py + 4, 1, TILE - 8, Color(0.5, 0.52, 0.55))
+		"car_doors":               # package 54: the car's doors in its window wall – grey leaves, orange frame
+			_rect(px - 2, py, pw + 4, TILE * 2, c)
+			_rect(px, py + 2, pw / 2 - 1, TILE * 2 - 2, Color(0.72, 0.74, 0.78))
+			_rect(px + pw / 2 + 1, py + 2, pw / 2 - 1, TILE * 2 - 2, Color(0.68, 0.7, 0.74))
+			_rect(px + 3, py + 6, pw / 2 - 7, 12, Color(0.55, 0.72, 0.85))
+			_rect(px + pw / 2 + 4, py + 6, pw / 2 - 7, 12, Color(0.55, 0.72, 0.85))
+		"car_board":               # package 54: the line's display over the doors
+			_rect(px + 4, py - 6, pw - 8, 5, Color(0.07, 0.09, 0.13))
+			_rect(px + 6, py - 4, pw - 12, 1, c)
+		"force_gate":              # package 54: the cloud hangar's gate – open to the sky, a force field shimmering in it
+			var gh3 := int(d.get("rows", 3)) * TILE
+			for yy4 in gh3:
+				for xx4 in pw:
+					if xx4 < 4 or xx4 >= pw - 4:
+						_px(px + xx4, py + yy4, Color(0.3, 0.32, 0.36))
+					elif (xx4 + yy4 * 3) % 11 == 0:
+						_px(px + xx4, py + yy4, Color(c.r, c.g, c.b, 0.35))
+					elif yy4 % 6 == 0:
+						_px(px + xx4, py + yy4, Color(c.r, c.g, c.b, 0.12))
+			_rect(px, py, pw, 3, Color(0.4, 0.42, 0.46))
+			_rect(px + 4, py + gh3 - 2, pw - 8, 2, c)
 		"storefront":              # 0.7.50.5: a shop's front in a city street – lit window, goods, door, awning
 			var fh := TILE * 2
 			_rect(px, py, pw, fh, Color(pal["wall"]).darkened(0.5))

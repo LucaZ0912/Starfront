@@ -167,6 +167,10 @@ static func _rise(kind: String) -> int:
 			return 44
 		"glass_rail":                       # 0.7.53.19: the roof plaza's glass balustrade
 			return 12
+		"scope":                            # package 54: a viewing scope on the observation deck (~1.4 m)
+			return 22
+		"car_pole":                         # package 54: a grab pole in the skyrail's car (floor to ceiling)
+			return 34
 		"statue":                           # 53e (Luz): the Museum's statues – a figure of pale stone on a pedestal
 			return 44
 		"statue_precursor":                 # 53e: a Precursor in iron-stone, tall and thin
@@ -690,6 +694,19 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 3, b8 - 44, 2, 42, pc8.darkened(0.25))
 			_r(img, 1, b8 - 30, pw - 2, 2, Color(0.95, 0.75, 0.3))
 			_r(img, 1, b8 - 4, pw - 2, 2, Color(0.55, 0.57, 0.6))
+		"scope":
+			# package 54: a viewing scope on its post – the barrel tilted out over the clouds, a coin slot
+			var b10 := fy + ph
+			_r(img, pw / 2 - 1, b10 - 18, 3, 16, Color(0.5, 0.52, 0.56))
+			_r(img, pw / 2 - 4, b10 - 3, 9, 3, Color(0.35, 0.36, 0.4))
+			_r(img, 2, b10 - 25, pw - 4, 7, c.darkened(0.35))
+			_r(img, 2, b10 - 25, pw - 4, 2, c.lightened(0.1))
+			_r(img, pw - 4, b10 - 24, 3, 5, Color(0.75, 0.9, 1.0))
+		"car_pole":
+			var b11 := fy + ph
+			_r(img, pw / 2 - 1, b11 - 40, 2, 38, Color(0.82, 0.83, 0.85))
+			_r(img, pw / 2 - 1, b11 - 40, 1, 38, Color(0.95, 0.96, 0.97))
+			_r(img, pw / 2 - 3, b11 - 3, 6, 2, Color(0.5, 0.52, 0.56))
 		"glass_rail":
 			# 0.7.53.19: a glass balustrade – panes in a steel rail
 			var b9 := fy + ph

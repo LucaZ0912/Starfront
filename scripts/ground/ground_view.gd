@@ -107,6 +107,14 @@ const PoiData = preload("res://data/poi.gd")
 const FogNode = preload("res://scripts/ground/fog.gd")
 const WildGen = preload("res://scripts/ground/wild_gen.gd")              # 53f-2 (Luz): the wild
 const WildWater = preload("res://shaders/wild_water.gdshader")
+const CloudGen = preload("res://scripts/ground/cloud_gen.gd")              # package 54 (Luz): the cloud cities
+const CloudSea = preload("res://scripts/ground/cloud_sea.gd")
+var rail_stop := 0                        # package 54: the skyrail's stop you are at (0 Central, 1 Skyring)
+var rail := {}                            # the ride under way: {t, v, to, arrived}
+var clouds: Node2D = null                 # the sea of clouds under the map
+var cloud_sky: Node2D = null              # the giant's sky in a window
+const RAIL_RUN := 30.0                    # seconds from door to door
+const RAIL_V := 260.0                     # art px a second at full speed (~17 m/s)
 var _poi_cache := {}                     # 0.7.53.2: the site's two maps while you are there (outside, inside – their state kept)
 var fog: Node2D = null
 var depth := 0                            # 0.7.53.3: the level of a site you are on (0 the top)
@@ -291,6 +299,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_hatch_node = null
 	_tint = null
 	_tint2 = null
+	clouds = null
+	cloud_sky = null
+	rail = {}
 	_city_lights.clear()
 	_cam_c = Vector2.INF
 	zone = {}
@@ -338,8 +349,17 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			_site = _city_site
 			_city_site = null
 	env = ChibiArt.GearData.env_of(String(_body.get("type", ""))) if level in ["landing", "settlement", "dungeon", "minehead"] and not is_city() else {}
+	if is_cloud() and level in ["cplaza", "cstation"]:
+		env = cloud_env()                              # package 54 (Luz): out on the deck – the giant's air
 	_warned = {}
-	if level == "settlement":
+	if level == "cplaza":
+		map = CloudGen.build_plaza(station, _avail)
+	elif level == "cstation":
+		map = CloudGen.build_station(station, rail_stop)
+	elif level == "ctrain":
+		map = CloudGen.build_car(station, 1 - rail_stop)
+		rail = {"t": 0.0, "v": 0.0, "to": 1 - rail_stop, "arrived": false, "said": false}
+	elif level == "settlement":
 		map = SettleGen.build(station, _body, _site, _avail, _sys)
 	elif level == "landing":
 		var lsz := _ship_size()
@@ -400,6 +420,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if level in ["landing", "settlement"] and _lander and map.ship_at != Vector2.INF:
 		_drone_ramp_zone()
 	var lift_title := "Lifts – Hangar · Shopping street · Tower bar" if is_city() else "Lifts – Hangar · Commercial level"
+	if is_cloud():
+		lift_title = "Lifts – Hangar · Plaza · Skyrail · Sky bar"           # package 54
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
@@ -493,7 +515,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
-		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement"}.get(level, "")]
+		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
+		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
+	if is_cloud() and level == "tower":
+		_title.text = "%s – Sky bar · deck %d" % [map.title, tower_floor() / 10]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
@@ -504,6 +529,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		pilot.position = pilot.pos * GroundMap.SCALE
 		pilot.dir = 0
 		_say_toast("You come to in the clinic of %s." % String(station.get("name", "the station")), 5.0)
+	elif arrive == "rail" and map.has_meta("rail_front"):
+		pilot.pos = map.get_meta("rail_front")          # package 54: off the car onto the platform, or into it
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0 if level == "ctrain" else 1
 	elif arrive == "mine_path" and map.has_meta("mine_path_front"):
 		pilot.pos = map.get_meta("mine_path_front")      # 0.7.53.7: back into town from the old mine
 		pilot.position = pilot.pos * GroundMap.SCALE
@@ -1484,6 +1513,32 @@ func is_city() -> bool:
 	return bool(station.get("city", false))
 
 
+## Package 54 (Luz): a cloud city over a gas giant?
+func is_cloud() -> bool:
+	return bool(station.get("cloud", false))
+
+
+## The giant the cloud city hangs over (its body) – {} if unknown.
+func cloud_body() -> Dictionary:
+	if not _body.is_empty():
+		return _body
+	return Universe.find_body(_sys, String(station.get("body", ""))) if _sys >= 0 else {}
+
+
+## The giant's colours for the clouds and the sky.
+func cloud_look() -> Dictionary:
+	return CloudGen.giant_look(String(station.get("giant", cloud_body().get("type", "gas"))))
+
+
+## The air out on the deck: thin or poisonous on most giants (the suit), breathable on some (Luz).
+func cloud_env() -> Dictionary:
+	var b := cloud_body()
+	var br := CloudGen.breathable(b)
+	if station.has("debug_air"):
+		br = String(station["debug_air"]) == "breathable"     # the debug menu's choice
+	return ChibiArt.GearData.cloud_env(String(station.get("giant", b.get("type", "gas"))), br)
+
+
 ## 0.7.50.10: in a city or a settlement – a place on the ground with people, guards and its own time of day.
 func is_town() -> bool:
 	return bool(station.get("city", false)) or bool(station.get("settlement", false))
@@ -1510,6 +1565,12 @@ func _space_view(sys_id: int) -> void:
 		var cst := CityStyle.of(station)
 		var dk := city_day()
 		var star := CityStyle.star_color(sys_id)
+		if _window.size.x > 0.0 and is_cloud():
+			var sky = CloudSea.CloudSky.new()               # package 54: the giant's sky through the glass
+			sky.setup(cloud_look(), _window.size, 0.45 if level == "ctrain" else 0.5, hash(String(station.get("id", ""))) + 21)
+			_sky.add_child(sky)
+			cloud_sky = sky
+			return
 		if _window.size.x > 0.0 and level == "street":
 			_canyon = CityCanyon.new()                 # 0.7.50.6: the street canyon above the shop fronts
 			_canyon.setup(_window.size, body, cst, dk, hash(String(station.get("id", ""))) + 11, star)
@@ -1589,6 +1650,11 @@ func _build() -> void:
 		_world.add_child(rim)
 	if map.has_meta("wild"):
 		_add_wild_water()                             # 53f-2 (Luz): the water lies under the map, the map leaves it clear
+	if map.has_meta("clouds"):
+		clouds = CloudSea.new()                        # package 54 (Luz): the sea of clouds under the deck
+		clouds.setup(cloud_look(), map, hash(String(station.get("id", ""))) + 31)
+		_world.add_child(clouds)
+		_world.move_child(clouds, 0)                   # under everything – the window's sky, the structure, the map
 	var spr := Sprite2D.new()
 	spr.texture = map.texture()
 	spr.centered = false
@@ -1664,6 +1730,12 @@ func _build() -> void:
 		_world.add_child(pt)
 		if plights != null:
 			plights.traffic = pt
+	if map.has_meta("car_shell"):
+		var sb = CloudSea.CarShell.new()            # 0.7.54 (Luz): the car's doors opening in its far wall
+		sb.shell = map.get_meta("car_shell")
+		sb.front = false
+		sb.view = self
+		_world.add_child(sb)
 	_lift_node = Node2D.new()
 	_lift_node.draw.connect(_draw_lifts)
 	_world.add_child(_lift_node)
@@ -1692,6 +1764,8 @@ func _build() -> void:
 		var lk: Dictionary = p.get("look", {})
 		if lk.is_empty():
 			lk = ChibiArt.PilotArt.random_look(rng)
+			if is_cloud() and String(p.get("role", "")) == "":
+				lk = _outside_look(lk, rng)              # package 54: out on the deck in the giant's air – suits too
 		w.setup(map, lk, p["pos"], true)
 		w.dir = int(p.get("dir", 0))
 		w.sitting = bool(p.get("sit", false))
@@ -1729,7 +1803,7 @@ func _build() -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
 	# it (they hardly show); the tower bar's window lets in the sun by day
-	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza"]:
+	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation"]:
 		var tint := ColorRect.new()
 		_tint = tint
 		var mm := CanvasItemMaterial.new()
@@ -1742,6 +1816,9 @@ func _build() -> void:
 		if level in ["settlement", "alley", "minehead"]:  # all of it lies under the sky
 			tint.position = Vector2.ZERO
 			tint.size = map.size_px() * GroundMap.SCALE
+		elif level in ["cplaza", "cstation"]:            # package 54: the deck – the clouds have their own light
+			tint.position = Vector2.ZERO
+			tint.size = Vector2(map.w, int(map.get_meta("rim_y", map.h)) + 2) * GroundMap.TILE * GroundMap.SCALE
 		elif level in ["plaza", "mplaza"]:              # 0.7.53.19: the roof plaza – not over the view of the city
 			tint.position = Vector2(0, map.window_rect.end.y) * GroundMap.TILE * GroundMap.SCALE
 			tint.size = Vector2(map.w, map.h - map.window_rect.end.y) * GroundMap.TILE * GroundMap.SCALE
@@ -1772,7 +1849,7 @@ func _build() -> void:
 		var lsp := _add_light(l, add_mat)
 		if l.has("id"):
 			_named_lights[String(l["id"])] = lsp           # 0.7.52.23: a light that can be switched (the laser cage's)
-		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza"]:
+		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation"]:
 			_city_lights.append([lsp, l, "street"])
 		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
 			lsp.scale *= 1.4                           # the light through the glass: sun, sunset or night
@@ -1782,6 +1859,11 @@ func _build() -> void:
 		if sp.x >= 0.0 and not z.get("vertical", false) and String(z.get("closed", "")) == "":
 			_add_light({"pos": sp + Vector2(0, 6), "r": 30.0, "col": z.get("col", Color.WHITE), "a": 0.3}, add_mat)
 	_world.add_child(_lights)
+	if map.has_meta("car_shell"):
+		var sf = CloudSea.CarShell.new()            # 0.7.54 (Luz): the car closed – its roof and side in front
+		sf.shell = map.get_meta("car_shell")
+		sf.z_index = 6
+		_world.add_child(sf)
 	if is_town():
 		_apply_day(city_day(), true)
 	_signs = Node2D.new()
@@ -1836,6 +1918,9 @@ func _add_guards(rng: RandomNumberGenerator) -> void:
 			posts.append(r.get_center() + Vector2(r.size.x * 0.5 + 10.0, 14.0))
 	var n_post := mini(posts.size(), 1 + int(round(sec * 2.0)))
 	var n_patrol := int(round(sec * 2.5)) + (1 if level == "street" else 0)
+	if map.has_meta("few_guards"):
+		n_post = mini(n_post, 1)                       # package 54 (Luz): few guards on the plaza
+		n_patrol = mini(n_patrol, 1)
 	var made := 0
 	for i in n_post + n_patrol:
 		var lk := ChibiArt.PilotArt.random_look(rng)
@@ -1902,6 +1987,10 @@ func _apply_day(d: float, force: bool = false) -> void:
 		_skyline.set_day(d, CityStyle.rising(station, _city_body) if not _city_body.is_empty() else false)
 	if _canyon != null:
 		_canyon.set_day(d)
+	if clouds != null and is_instance_valid(clouds):
+		clouds.set_light(d)                            # package 54: day and night over the giant
+	if cloud_sky != null and is_instance_valid(cloud_sky):
+		cloud_sky.set_light(d)
 	if _tint != null:
 		_tint.color = Color(0.58, 0.62, 0.82).lerp(Color.WHITE, smoothstep(0.0, 0.65, d)).lerp(Color(1.0, 0.78, 0.62), dk * 0.5)
 		if _tint2 != null and is_instance_valid(_tint2):
@@ -1941,6 +2030,8 @@ func _process(delta: float) -> void:
 		return
 	if level == "clinic":
 		_xray_step()
+	if level == "ctrain":
+		_rail_step(delta)
 	_toast_t = maxf(_toast_t - delta, 0.0)
 	if is_town():
 		_update_city_day(delta)
@@ -3742,6 +3833,18 @@ func use(instant: bool = false) -> bool:
 		"soon":
 			_say_toast(String(zone["title"]), 3.0)
 			return true
+		"board":
+			Audio.play("ui_open", "skyrail: aboard")          # package 54 (Luz): into the skyrail's car
+			go_level("ctrain", "rail")
+			return true
+		"alight":
+			rail_stop = int(rail.get("to", 1 - rail_stop))
+			Audio.play("ui_open", "skyrail: off")
+			go_level("cstation", "rail")
+			return true
+		"scope":
+			_say_toast(_scope_text(), 5.0)
+			return true
 		"socket":
 			var sd: Dictionary = map.explore[int(zone["i"])]
 			if float(sd.get("charge", 0.0)) <= 0.0:
@@ -3948,22 +4051,29 @@ func _open_lift_menu(z: Dictionary) -> void:
 	var lvls := [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level – shops and the bar"]]
 	if is_city():
 		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street – the shops"], ["tower", "3.  Tower bar – floor %d, a view over the city" % tower_floor()]]
+	if is_cloud():                                                # package 54 (Luz): the cloud city's levels
+		lvls = [["hangar", "1.  " + hname], ["cplaza", "2.  Plaza – shops, a café, the balcony over the clouds"],
+			["cstation", "3.  Skyrail station – the line to the %s" % CloudGen.STOPS[1]], ["tower", "4.  Sky bar – deck %d, the view over the clouds" % (tower_floor() / 10)]]
 	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
 		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
-	if is_city():                                                 # 0.7.53.3 (Luz): the way down into the sewers
+	if is_cloud():
+		pass
+	elif is_city():                                               # 0.7.53.3 (Luz): the way down into the sewers
 		lvls.append(["alley", "%d.  Back alley – a manhole down into the sewers" % (lvls.size() + 1)])
-	if is_museum_city():                                          # 53e (Luz): on Curie the roof plaza is the Museum's
+	if is_cloud():
+		pass
+	elif is_museum_city():                                        # 53e (Luz): on Curie the roof plaza is the Museum's
 		lvls.append(["mplaza", "%d.  Roof plaza – the Museum of Curie" % (lvls.size() + 1)])
 	elif is_city():                                               # 0.7.53.19 (Luz): up to the roof plaza
 		var cs1 := GameState.corp_site_for(String(station.get("id", "")))
 		var cname := String((cs1 if not cs1.is_empty() else GameState.corp_poi(_sys, station)).get("name", "a corporate tower"))
 		lvls.append(["plaza", "%d.  Roof plaza – the %s" % [lvls.size() + 1, cname]])
-	if is_city() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
+	if is_city() and not is_cloud() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
 		lvls.append(["maint", "%d.  Maintenance level – the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
 	var keys: Array = []
 	for lv in lvls:
 		keys.append(func(): _choose_level(String(lv[0])))
-		var here: bool = lv[0] == level and (lv[0] != "hangar" or not _hangar_stale())
+		var here: bool = lv[0] == level and (lv[0] != "hangar" or not _hangar_stale()) and (lv[0] != "cstation" or rail_stop == 0)
 		var b := UI.button(String(lv[1]) + ("   (you are here)" if here else ""), func(): _choose_level(String(lv[0])))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.disabled = here
@@ -4034,6 +4144,8 @@ func _choose_level(target: String) -> void:
 		_town_kind = "corp"                              # 0.7.53.19: the corporate tower's plaza
 	elif target in ["alley", "mplaza"]:
 		_town_kind = ""
+	if target == "cstation":
+		rail_stop = 0                                    # package 54: the lifts are on the main platform
 	if target != level or (target == "hangar" and _hangar_stale()):
 		_start_ride(z, target)
 
@@ -4106,6 +4218,50 @@ func _ride_step(delta: float) -> void:
 					go_level(target, "lift")
 				else:
 					used.emit(z)
+
+
+## Package 54 (Luz): the skyrail runs – the doors shut, it speeds up, runs, slows down, the doors open at the other
+## stop. The clouds, the platforms and the beam's masts pass by outside (scroll).
+func _rail_step(delta: float) -> void:
+	if rail.is_empty():
+		return
+	var t := float(rail["t"]) + delta
+	rail["t"] = t
+	var arr := RAIL_RUN
+	var v := 0.0
+	if t < 2.5:
+		v = 0.0
+	elif t < 8.0:
+		v = RAIL_V * smoothstep(2.5, 8.0, t)
+	elif t < arr - 6.0:
+		v = RAIL_V
+	elif t < arr:
+		v = RAIL_V * (1.0 - smoothstep(arr - 6.0, arr, t))
+	rail["v"] = v
+	if clouds != null and is_instance_valid(clouds):
+		clouds.scroll += v * delta
+	if cloud_sky != null and is_instance_valid(cloud_sky):
+		cloud_sky.scroll += v * delta
+	if not bool(rail["said"]) and t > 0.4:
+		rail["said"] = true
+		_say_toast("Doors closing. Next stop: %s." % CloudGen.STOPS[int(rail["to"])], 3.0)
+		Audio.play("ui_close", "skyrail: doors")
+	if not bool(rail["arrived"]) and t >= arr:
+		rail["arrived"] = true
+		for z in map.zones:
+			if String(z.get("kind", "")) == "alight":
+				z["closed"] = ""
+		_say_toast("%s. The doors open." % CloudGen.STOPS[int(rail["to"])], 3.0)
+		Audio.play("ui_open", "skyrail: arrived")
+
+
+## Through the viewing scope on the observation deck.
+func _scope_text() -> String:
+	var b := cloud_body()
+	var bits := ["the other platforms far off in the haze", "a storm turning slowly far below", "lightning flickering deep in the clouds",
+		"a gas harvester skimming the bands", "the skyrail's beam running off into the haze"]
+	var i := int(Time.get_ticks_msec() / 4000) % bits.size()
+	return "Through the scope: %s – the clouds of %s go down for thousands of kilometres." % [bits[i], String(b.get("name", "the giant"))]
 
 
 func _sit(z: Dictionary) -> void:

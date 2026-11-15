@@ -678,7 +678,16 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 	m.fill(x_h, 3, HW, HH, GroundMap.T.BLOCK, 11)
 	m.fill(x_h - 1, 1, 1, G + 1, GroundMap.T.CAP)
 	m.fill(x_h + HW, 1, 1, G + 1, GroundMap.T.CAP)
-	m.face_deco.append({"kind": "bay_door", "x": x_h + HW / 2 - 5, "y": 2, "w": 10, "col": m.pal["accent"]})
+	if station.get("cloud", false):
+		# package 54 (Luz): a cloud city's hangar – its far wall a gate open to the sky, a force field in it; above the
+		# hangar the open sky over the clouds (the view lays them under the map)
+		var gw := HW - 4
+		m.fill(x_h + 2, 0, gw, 3, GroundMap.T.VOID)
+		m.face_deco.append({"kind": "force_gate", "x": x_h + 2, "y": 0, "w": gw, "rows": 3, "col": Color(0.45, 0.85, 1.0)})
+		m.hull_top = 3
+		m.set_meta("clouds", true)
+	else:
+		m.face_deco.append({"kind": "bay_door", "x": x_h + HW / 2 - 5, "y": 2, "w": 10, "col": m.pal["accent"]})
 	m.decals.append({"kind": "bay", "x": x_h, "y": 3, "w": HW, "h": HH, "col": m.pal["accent"]})
 	m.decals.append({"kind": "pad", "x": x_h + 3, "y": 4, "w": HW - 6, "h": HH - 2, "col": Color(0.95, 0.8, 0.2)})
 	m.bay_rect = Rect2(x_h, 1, HW, G - 1)
@@ -737,7 +746,7 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 		var fl: Array = dk["flag"]
 		var fk := String(dk["flag_kind"])
 		for fx in [x_h + 2, x_h + HW / 2 - 9, x_h + HW / 2 + 7, x_h + HW - 4]:
-			if fx > x_h and fx < x_h + HW - 2:
+			if fx > x_h and fx < x_h + HW - 2 and not station.get("cloud", false):
 				m.face_deco.append({"kind": fk, "x": fx, "y": 2, "w": 2, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})
 		m.face_deco.append({"kind": fk, "x": 1, "y": G + 1, "w": 2, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})
 		m.face_deco.append({"kind": fk, "x": x_h + HW + 1 + 2, "y": G + 1, "w": 1, "col": fl[0], "col2": fl[1], "sign": dk.get("sign", "cross")})

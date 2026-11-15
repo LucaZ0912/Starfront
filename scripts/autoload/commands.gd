@@ -2511,7 +2511,7 @@ func _c_debug_descend(c: Dictionary) -> String:
 	if f.in_transit():
 		return "Not during a hyperspace jump."
 	var body := Universe.find_body(f.system_id, String(c.get("body", "")))
-	if body.is_empty() or not Universe.landable(body):
+	if body.is_empty() or not Universe.can_land(body):
 		return "No body to land on."
 	_debug_leave_space(m)
 	f.docked_at = "land:" + String(body["id"])
@@ -2546,7 +2546,7 @@ func _c_debug_land(c: Dictionary) -> String:
 		return "Unknown world type."
 	if not body.is_empty():
 		body = Universe.debug_body_as(body, wt)
-	if body.is_empty() or not Universe.landable(body):
+	if body.is_empty() or not Universe.can_land(body):
 		return "No body to land on here."
 	var eco := String(c.get("economy", "")) if kind in ["outpost", "mine", "research"] else ""
 	if eco != "" and not SettleGen.SPECIAL.has(eco):
@@ -2627,6 +2627,87 @@ func _c_debug_daytime(c: Dictionary) -> String:
 ## {"type":"debug_gear", ...} – package 51: "give": id (+ "n") into the pockets; "fill_belt": every belt place full;
 ## "refill": health, energy, oxygen, ammunition full; "clear": empty pockets; "set": {health|energy|oxygen|ammo: percent};
 ## "suit_god": bool – the world outside does not hurt; "grenades": every belt place a stack of grenades (0.7.52.5).
+## {"type":"debug_cloud", "giant": ""|gas|ice_giant|red_gas|toxic, "level": ""|hangar|cplaza|cstation|ctrain|tower,
+##  "stop": 0|1, "power": ""|assembly|covenant|directorate|independent, "air": ""|"breathable"|"suit"} – package 54:
+## straight into a cloud city of this system's giant (one of that kind if asked, or a body seen as one).
+const CloudGen54 = preload("res://scripts/ground/cloud_gen.gd")
+const DEBUG_GIANTS := ["gas", "ice_giant", "red_gas", "toxic"]
+const DEBUG_POWERS := ["assembly", "covenant", "directorate", "independent"]
+func _c_debug_cloud(c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	if f.in_transit():
+		return "Not during a hyperspace jump."
+	var want := String(c.get("giant", ""))
+	if want != "" and not want in DEBUG_GIANTS:
+		return "Unknown kind of giant."
+	var pw := String(c.get("power", ""))
+	if pw != "" and not pw in DEBUG_POWERS:
+		return "Unknown power."
+	var lv := String(c.get("level", ""))
+	if lv != "" and not lv in ["hangar", "cplaza", "cstation", "ctrain", "tower"]:
+		return "Unknown level."
+	var L := Universe.get_layout(f.system_id)
+	var body := {}
+	for b in L["planets"]:
+		if Universe.is_giant(b) and (want == "" or String(b["type"]) == want):
+			body = b
+			break
+	if body.is_empty():
+		for b2 in L["planets"]:
+			if not b2.get("dwarf_star", false):
+				body = Universe.debug_body_as(b2, want if want != "" else "gas")
+				break
+	if body.is_empty():
+		return "No body here."
+	body["cloud_city"] = true
+	var sites: Array = Universe.landing_sites(f.system_id, body)
+	if sites.is_empty():
+		return "No cloud city."
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	var st := Universe.city_station(f.system_id, body, sites[0])
+	if pw != "":
+		st["faction"] = pw
+	var air := String(c.get("air", ""))
+	st.erase("debug_air")
+	if air != "":
+		st["debug_air"] = air
+	m.enter_city(body, sites[0])
+	var g = _ground()
+	if g == null:
+		return "Could not land."
+	if lv == "ctrain" or lv == "cstation":
+		g.rail_stop = clampi(int(c.get("stop", 0)), 0, 1)
+	if lv != "" and lv != "hangar":
+		g.go_level(lv, "rail" if lv in ["ctrain", "cstation"] and int(c.get("stop", 0)) == 1 else "lift")
+	GameState.log_msg("[Debug] Cloud city %s over %s." % [String(sites[0]["name"]), String(body["name"])], GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_skyrail", "action": "arrive"|"info"} – package 54: the car arrives at once; or what the ride and
+## the cloud city are doing (to the log).
+func _c_debug_skyrail(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or not g.is_cloud():
+		return "Only in a cloud city."
+	match String(c.get("action", "info")):
+		"arrive":
+			if g.level != "ctrain" or g.rail.is_empty():
+				return "Not aboard the skyrail."
+			g.rail["t"] = maxf(float(g.rail["t"]), g.RAIL_RUN - 0.05)
+		"info":
+			var e: Dictionary = g.cloud_env()
+			GameState.log_msg("[Debug] %s over a %s – level %s, stop %s, ride %s, air %s" % [String(g.station.get("name", "")), String(g.station.get("giant", "")),
+				g.level, CloudGen54.STOPS[g.rail_stop], ("%.1f s, %.0f px/s" % [float(g.rail["t"]), float(g.rail["v"])]) if not g.rail.is_empty() else "–",
+				"breathable" if bool(e.get("breathable", false)) else "suit"], GameState.COL_WARN)
+		_:
+			return "Unknown action."
+	return ""
+
+
 ## {"type":"debug_poi", "danger": "green"|"yellow"|"red", "seed": int, "theme": "ruin"} – package 53a: down to a
 ## generated site on a body here (a new one each time unless a seed is given).
 func _c_debug_poi(c: Dictionary) -> String:
