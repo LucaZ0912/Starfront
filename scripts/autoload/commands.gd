@@ -2362,6 +2362,68 @@ func _c_debug_landfall(_c: Dictionary) -> String:
 	return _c_debug_teleport({"system": sid})
 
 
+## {"type":"debug_capital", "which": "senate", "level": "kplaza"|"senate"|"sgallery"} – package 54c: to Landfall and
+## down into Neo Kallipolis, straight to that level.
+func _c_debug_capital(c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	var which := String(c.get("which", "senate"))
+	if bool(c.get("here", false)):
+		# (for tests) the capital's places in a city of this system – no jump, the system view stays
+		var LH := Universe.get_layout(f.system_id)
+		for bh in LH["planets"] + LH.get("moons", []):
+			for sh in Universe.landing_sites(f.system_id, bh):
+				if String(sh.get("kind", "")) == "city":
+					var sd: Dictionary = sh.duplicate()
+					sd["capital"] = which
+					sd["id"] = String(sh.get("id", "city")) + "_" + which              # its own city – not one met before
+					_debug_leave_space(m)
+					f.docked_at = "land:" + String(bh["id"])
+					m.enter_city(bh, sd)
+					var gh = _ground()
+					if gh == null:
+						return "Could not land."
+					if String(c.get("level", "")) != "":
+						gh.go_level(String(c["level"]), "lift")
+					return ""
+		return "No city in this system."
+	var sp := "landfall" if which == "senate" else "heimkehr"
+	var sid := Universe.special_system(sp)
+	if sid < 0:
+		return "No such capital in this cluster."
+	if GameState.current_system != sid:
+		var e := _c_debug_teleport({"system": sid})
+		if e != "":
+			return e
+	var bname := "Agora" if which == "senate" else "Compline"
+	var L := Universe.get_layout(sid)
+	var body := {}
+	for b in L["planets"] + L.get("moons", []):
+		if String(b.get("name", "")) == bname:
+			body = b
+	if body.is_empty():
+		return "No %s here." % bname
+	var site := {}
+	for s2 in Universe.landing_sites(sid, body):
+		if String(s2.get("capital", "")) == which:
+			site = s2
+	if site.is_empty():
+		return "No capital city found."
+	_debug_leave_space(m)
+	f.docked_at = "land:" + String(body["id"])
+	m.enter_city(body, site)
+	var g = _ground()
+	if g == null:
+		return "Could not land."
+	var lv := String(c.get("level", ""))
+	if lv != "":
+		g.go_level(lv, "lift")
+	GameState.log_msg("[Debug] %s." % String(site["name"]), GameState.COL_WARN)
+	return ""
+
+
 ## {"type":"debug_permit", "faction": "assembly", "on": true|false} – give or take the entry permit
 func _c_debug_permit(c: Dictionary) -> String:
 	var f := String(c.get("faction", "assembly"))

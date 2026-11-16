@@ -9,6 +9,8 @@ signal used(zone: Dictionary)
 
 const MuseumData = preload("res://data/museum.gd")
 const MuseumGen = preload("res://scripts/ground/museum_gen.gd")
+const CapitalGen = preload("res://scripts/ground/capital_gen.gd")
+const SenateChamber = preload("res://scripts/ground/senate_chamber.gd")
 const ExhibitArtV = preload("res://scripts/core/exhibit_art.gd")
 const LAYER := 12
 const BgShader = preload("res://shaders/background.gdshader")
@@ -393,6 +395,12 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = _poi_map("alley", Vector2.ZERO)                         # 0.7.53.3: a city's back alley
 	elif level == "plaza":
 		map = _poi_map("plaza", Vector2.ZERO)                         # 0.7.53.19: a city's roof plaza
+	elif level == "kplaza":
+		map = CapitalGen.build_senate_plaza(station, _body)          # 54c (Luz): Neo Kallipolis – the Plaza of the Vote
+	elif level == "senate":
+		map = CapitalGen.build_senate_lobby(station, _body)          # 54c: the Senate's lobby
+	elif level == "sgallery":
+		map = CapitalGen.build_senate_gallery(station, _body)        # 54c: the gallery over the chamber
 	elif level == "mplaza":
 		map = MuseumGen.build_plaza(station, _body)                  # 53e (Luz): Curie's roof plaza with the Museum
 	elif level == "museum":
@@ -436,7 +444,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
-		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza"]:
+		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza"]:
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
@@ -525,7 +533,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level",
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis",
 		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
 		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
 	if is_cloud() and level == "tower":
@@ -1526,6 +1534,11 @@ func _outside_look(lk: Dictionary, rng: RandomNumberGenerator, guard_look: bool 
 	return l2
 
 
+## 54c (Luz): a capital's own city – "senate" (Neo Kallipolis) or "palace" (Aureola); "" elsewhere.
+func capital_kind() -> String:
+	return String(station.get("capital", "")) if is_city() else ""
+
+
 ## 53e (Luz): a city on Curie – its roof plaza holds the Museum.
 func is_museum_city() -> bool:
 	if not is_city():
@@ -1611,6 +1624,11 @@ func _space_view(sys_id: int) -> void:
 		var cst := CityStyle.of(station)
 		var dk := city_day()
 		var star := CityStyle.star_color(sys_id)
+		if _window.size.x > 0.0 and map.has_meta("senate_view"):
+			var ch = SenateChamber.new()                   # 54c (Luz): the plenary chamber far below the gallery
+			ch.setup(_window.size)
+			_sky.add_child(ch)
+			return
 		if _window.size.x > 0.0 and is_cloud():
 			var sky = CloudSea.CloudSky.new()               # package 54: the giant's sky through the glass
 			sky.setup(cloud_look(), _window.size, 0.45 if level == "ctrain" else 0.62, hash(String(station.get("id", ""))) + 21)
@@ -1843,7 +1861,7 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
-	if is_town() and not map.has_meta("no_guards"):
+	if is_town() and (not map.has_meta("no_guards") or map.has_meta("guard_posts")):
 		_add_guards(rng)
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
 	if map.has_meta("tourists"):
@@ -2011,6 +2029,10 @@ func _add_guards(rng: RandomNumberGenerator) -> void:
 			posts.append(r.get_center() + Vector2(r.size.x * 0.5 + 10.0, 14.0))
 	var n_post := mini(posts.size(), 1 + int(round(sec * 2.0)))
 	var n_patrol := int(round(sec * 2.5)) + (1 if level == "street" else 0)
+	if map.has_meta("guard_posts"):                    # 54c (Luz): guards at fixed posts only – the Senate's security arches
+		posts = (map.get_meta("guard_posts") as Array).duplicate()
+		n_post = posts.size()
+		n_patrol = 0
 	if map.has_meta("few_guards"):
 		n_post = mini(n_post, 1)                       # package 54 (Luz): few guards on the plaza
 		n_patrol = mini(n_patrol, 1)
@@ -2121,6 +2143,7 @@ func _process(delta: float) -> void:
 		(f[0] as Sprite2D).modulate.a = float(f[1]) * k
 	if pilot == null:
 		return
+	_scanner_step()
 	if level == "clinic":
 		_xray_step()
 	if level == "ctrain":
@@ -3989,6 +4012,12 @@ func use(instant: bool = false) -> bool:
 		"souvenir":
 			_open_souvenir_menu(zone)
 			return true
+		"senate_info":
+			_say_toast(_senate_info(), 7.0)                # 54c: the bill on the floor
+			return true
+		"party_office", "lobbyist", "senate_stand":
+			_open_senate_menu(String(zone["kind"]), zone)   # 54c (Luz): the Senate on foot
+			return true
 		"pool":
 			open_minigame("billiards", {"title": "The pool table – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
 			return true
@@ -4231,6 +4260,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 		pass
 	elif is_museum_city():                                        # 53e (Luz): on Curie the roof plaza is the Museum's
 		lvls.append(["mplaza", "%d.  Roof plaza – the Museum of Curie" % (lvls.size() + 1)])
+	elif capital_kind() == "senate":                              # 54c (Luz): Neo Kallipolis – the Plaza of the Vote, the Senate
+		lvls.append(["kplaza", "%d.  The Plaza of the Vote – the Senate of the Assembly" % (lvls.size() + 1)])
 	elif is_city():                                               # 0.7.53.19 (Luz): up to the roof plaza
 		var cs1 := GameState.corp_site_for(String(station.get("id", "")))
 		var cname := String((cs1 if not cs1.is_empty() else GameState.corp_poi(_sys, station)).get("name", "a corporate tower"))
@@ -4312,7 +4343,7 @@ func _choose_level(target: String) -> void:
 		return
 	if target == "plaza":
 		_town_kind = "corp"                              # 0.7.53.19: the corporate tower's plaza
-	elif target in ["alley", "mplaza"]:
+	elif target in ["alley", "mplaza", "kplaza"]:
 		_town_kind = ""
 	if target == "cstation":
 		rail_stop = 0                                    # package 54: the lifts are on the main platform
@@ -4441,6 +4472,104 @@ func _sight_info() -> String:
 	var ev: Array = evs.get(String(sg["event"]), ["the view", "any", 1.0, false])
 	return "%s – %s. Now: %s. Your photos of it: %d of %d (some views only come by night, at dusk, or rarely)." % [
 		String(sg["name"]), String(def["what"]), String(ev[0]), have, evs.size()]
+
+
+## 54c (Luz): a tone as you pass through a security arch (the Senate's lobby).
+var _in_scanner := false
+
+
+func _scanner_step() -> void:
+	if not map.has_meta("scanners"):
+		return
+	var inside := false
+	for r in map.get_meta("scanners"):
+		inside = inside or (r as Rect2).has_point(pilot.pos)
+	if inside and not _in_scanner:
+		Audio.play("scanner_pass", "senate: through the security arch", -3.0)
+	_in_scanner = inside
+
+
+## 54c (Luz): what the bill on the floor is, the polls, the laws in force.
+func _senate_info() -> String:
+	var sen = GameState.senate
+	var SC = preload("res://scripts/core/senate.gd")
+	if (sen.bill as Dictionary).is_empty():
+		return "No bill on the floor – the next comes up in about %d min." % maxi(1, sen.minutes_left(float(sen.next_t)))
+	var bd: Dictionary = SC.BILLS[sen.bill["id"]]
+	return "On the floor: %s – if it passes: + %s, − %s. Polls %d %% yes; the vote closes in %d min." % [bd["name"], bd["pro"], bd["con"],
+		int(round(sen.yes_chance() * 100.0)), sen.minutes_left(float(sen.bill["ends"]))]
+
+
+## 54c (Luz): the Senate on foot – the party office (a donation), the lobbyist (a bribe), the voting stand on the
+## gallery (your vote). Everything the window offers, through the same commands.
+func _open_senate_menu(kind: String, z: Dictionary) -> void:
+	Audio.play("ui_open", "senate: " + kind)
+	_close_lift_menu()
+	var sen = GameState.senate
+	var SC = preload("res://scripts/core/senate.gd")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var col := Color(0.45, 0.75, 1.0)
+	var p := UI.neon_panel(Color(col, 0.85), Color(0.03, 0.05, 0.08, 0.96), 2)
+	p.custom_minimum_size = Vector2(560, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	var title: String = {"party_office": "PARTY OFFICE", "lobbyist": "THE LOBBYIST", "senate_stand": "THE VOTING STAND"}[kind]
+	v.add_child(UI.label(title, 20, col))
+	var permit: bool = GameState.has_permit("assembly")
+	if (sen.bill as Dictionary).is_empty():
+		v.add_child(UI.label("No bill on the floor – the next comes up in about %d min." % maxi(1, sen.minutes_left(float(sen.next_t))), 14, UI.TEXT_DIM))
+	else:
+		var b: Dictionary = sen.bill
+		var bd: Dictionary = SC.BILLS[b["id"]]
+		v.add_child(UI.label(String(bd["name"]).to_upper(), 16, Color(0.95, 0.95, 1.0)))
+		v.add_child(UI.wrap_label("If it passes: + %s  •  − %s.  Polls %d %% yes – the vote closes in %d min." % [bd["pro"], bd["con"],
+			int(round(sen.yes_chance() * 100.0)), sen.minutes_left(float(b["ends"]))], 13, UI.TEXT_DIM, 520))
+		if not permit:
+			v.add_child(UI.label("Without an Assembly entry permit you may only watch.", 13, UI.BAD))
+		var row := UI.hbox(8)
+		v.add_child(row)
+		for side in ["yes", "no"]:
+			var sd: String = side
+			var btn: Button
+			match kind:
+				"party_office":
+					btn = UI.button("Donate %s to the %s campaign" % [GameData.fmt_credits(SC.DONATION_STEP), sd.to_upper()], func():
+						_senate_do({"type": "senate_donate", "side": sd}, kind, z))
+					btn.disabled = not permit or GameState.credits < SC.DONATION_STEP
+				"lobbyist":
+					btn = UI.button("Pay %s – make it %s" % [GameData.fmt_credits(sen.bribe_cost()), sd.to_upper()], func():
+						_senate_do({"type": "senate_bribe", "side": sd}, kind, z))
+					btn.disabled = not permit or GameState.credits < sen.bribe_cost() or not (b["bribe"] as Dictionary).is_empty()
+				_:
+					btn = UI.button("Vote %s" % sd.to_upper(), func(): _senate_do({"type": "senate_vote", "side": sd}, kind, z))
+					btn.toggle_mode = true
+					btn.button_pressed = String(b["vote"]) == sd
+					btn.disabled = not permit
+			row.add_child(btn)
+		match kind:
+			"party_office":
+				v.add_child(UI.label("Given so far: YES %s · NO %s – it sways the vote a little, never for certain." % [
+					GameData.fmt_credits(int(b["donated"].get("yes", 0))), GameData.fmt_credits(int(b["donated"].get("no", 0)))], 12, UI.TEXT_DIM))
+			"lobbyist":
+				if (b["bribe"] as Dictionary).is_empty():
+					v.add_child(UI.wrap_label("He smiles over his glass: \"The tellers are reasonable people. It settles the vote – unless it comes out (%d %%). Then the money's gone, and so is the Assembly's trust in you.\"" % int(SC.BRIBE_CAUGHT * 100.0), 13, UI.BAD, 520))
+				else:
+					v.add_child(UI.label("\"It's taken care of. Now – we never spoke.\"", 13, UI.BAD))
+			_:
+				v.add_child(UI.label("Your vote counts in the whole Assembly; the ballots from every system come together here.", 12, UI.TEXT_DIM))
+	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", [])
+
+
+func _senate_do(cmd: Dictionary, kind: String, z: Dictionary) -> void:
+	var e: String = Commands.execute(cmd)
+	_say_toast(e if e != "" else {"senate_donate": "Your donation is booked.", "senate_bribe": "A handshake. Nobody saw anything.", "senate_vote": "Your vote is cast."}.get(String(cmd["type"]), ""), 3.0)
+	_open_senate_menu(kind, z)
 
 
 ## 54a: the souvenir stall.
@@ -5002,9 +5131,17 @@ func _draw_signs() -> void:
 		var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 		var p: Vector2 = sp * s - Vector2(tw * 0.5, -2)
 		var plate := Rect2(p + Vector2(-10, -size - 3), Vector2(tw + 20, size + 11))
-		# two brackets into the wall, a dark backing plate, the neon tube text and frame
-		_signs.draw_rect(Rect2(plate.position + Vector2(8, -6), Vector2(3, 6)), Color(0.1, 0.1, 0.12))
-		_signs.draw_rect(Rect2(plate.end - Vector2(11, plate.size.y + 6), Vector2(3, 6)), Color(0.1, 0.1, 0.12))
+		if z.has("stand"):
+			# 54c (Luz): a sign standing on the floor – two slim posts of brushed metal down to their feet
+			var leg := float(z["stand"]) * s
+			for lx in [plate.position.x + 12.0, plate.end.x - 15.0]:
+				_signs.draw_rect(Rect2(Vector2(lx, plate.end.y), Vector2(3, leg)), Color(0.55, 0.57, 0.62))
+				_signs.draw_rect(Rect2(Vector2(lx, plate.end.y), Vector2(1, leg)), Color(0.85, 0.87, 0.9))
+				_signs.draw_rect(Rect2(Vector2(lx - 4, plate.end.y + leg - 2), Vector2(11, 3)), Color(0.3, 0.31, 0.35))
+		else:
+			# two brackets into the wall, a dark backing plate, the neon tube text and frame
+			_signs.draw_rect(Rect2(plate.position + Vector2(8, -6), Vector2(3, 6)), Color(0.1, 0.1, 0.12))
+			_signs.draw_rect(Rect2(plate.end - Vector2(11, plate.size.y + 6), Vector2(3, 6)), Color(0.1, 0.1, 0.12))
 		_signs.draw_rect(plate, Color(0.02, 0.02, 0.04, 0.9))
 		_neon_rect(plate.grow(-3), c, k * 0.8)
 		_neon_text(font, p, txt, size, c, k)

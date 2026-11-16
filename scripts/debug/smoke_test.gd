@@ -176,6 +176,7 @@ func _process(delta: float) -> void:
 				_test_rock54b(view)              # package 54b – Rock Hopper
 				_test_drift54b(view)             # package 54b – Drift
 				_test_tips54b(view)              # package 54b – tips and sounds
+				_test_capital54c(view)           # package 54c – Neo Kallipolis and the Senate
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12798,3 +12799,73 @@ func _test_tips54b(view: SystemView) -> void:
 	check(anom_ok and trade_ok and end_ok and snd_ok,
 		"54b: tips after a win with a stake – an anomaly near the guest's scanner caught (revealed now), a ware cheap here that pays well within two jumps; the bar games' own sounds (cue, balls, cushion, pocket, darts, cards, the arcade)  [%s]" % [
 			" ".join(PackedStringArray([str(anom_ok), str(trade_ok), str(end_ok), str(snd_ok)]))])
+
+
+const CapitalGenT = preload("res://scripts/ground/capital_gen.gd")
+
+
+## Package 54c (Luz): Neo Kallipolis on Agora – the capital city named, its lift up to the Plaza of the Vote, the
+## Senate's lobby (party office, lobbyist, the bill), the gallery over the chamber with the voting stand; the Senate
+## on foot through the same commands as the window.
+func _test_capital54c(view: SystemView) -> void:
+	var notes: Array = []
+	var lf := Universe.special_system("landfall")
+	var named := false
+	for b in Universe.get_layout(lf)["planets"]:
+		if String(b.get("name", "")) == "Agora":
+			for s in Universe.landing_sites(lf, b):
+				named = named or (String(s.get("name", "")) == "Neo Kallipolis" and String(s.get("capital", "")) == "senate")
+	var st := {"id": "test_cap", "name": "Neo Kallipolis", "faction": "assembly", "city": true, "capital": "senate", "type": "trade", "tier": 3}
+	var mp: GroundMap = CapitalGenT.build_senate_plaza(st, {})
+	var ml: GroundMap = CapitalGenT.build_senate_lobby(st, {})
+	var mg: GroundMap = CapitalGenT.build_senate_gallery(st, {})
+	var kinds := func(m: GroundMap) -> Array: return m.zones.map(func(z): return String(z.get("kind", "")))
+	var plaza_ok: bool = mp.zones.any(func(z): return String(z.get("to", "")) == "senate") and not mp.lifts.is_empty() and mp.free_at(mp.spawn) \
+		and mp.path(mp.spawn, mp.get_meta("from_senate")).size() > 0
+	var lobby_ok: bool = "party_office" in kinds.call(ml) and "lobbyist" in kinds.call(ml) and "senate_info" in kinds.call(ml) \
+		and ml.zones.any(func(z): return String(z.get("to", "")) == "sgallery") and ml.zones.any(func(z): return String(z.get("to", "")) == "kplaza") \
+		and ml.path(ml.get_meta("from_plaza"), ml.get_meta("from_gallery")).size() > 0
+	# (Luz) the only way in is through the security arches – the path from the doors runs through one; two guards posted
+	var through := false
+	for pt in ml.path(ml.get_meta("from_plaza"), ml.get_meta("from_gallery")):
+		for sr in ml.get_meta("scanners", []):
+			through = through or (sr as Rect2).grow(2.0).has_point(pt)
+	lobby_ok = lobby_ok and through and (ml.get_meta("guard_posts", []) as Array).size() == 2 and ResourceLoader.exists("res://assets/sfx/scanner_pass.wav")
+	var gal_ok: bool = mg.objects.filter(func(o): return String(o["kind"]) == "museum_bench").all(func(o): return int(o.get("face", 0)) == 1) and "senate_stand" in kinds.call(mg) and mg.has_meta("senate_view") and mg.window_rect.size.x > 0.0 and mg.path(mg.get_meta("from_lobby"), Vector2(18, 15.5) * 16.0).size() > 0
+	# down into the city, up to the gallery, a vote at the stand
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var keep_permit: bool = GameState.has_permit("assembly")
+	GameState.permits["assembly"] = true
+	GameState.senate.new_bill("")
+	var e: String = Commands.execute({"type": "debug_capital", "which": "senate", "level": "sgallery", "here": true})
+	var g = main.ground
+	var in_ok: bool = e == "" and g != null and g.level == "sgallery" and g.capital_kind() == "senate"
+	var vote_ok := false
+	if in_ok:
+		g._open_senate_menu("senate_stand", {})
+		var menu_ok: bool = g._lift_menu != null
+		g._close_lift_menu()
+		var ev: String = Commands.execute({"type": "senate_vote", "side": "yes"})
+		vote_ok = menu_ok and ev == "" and String(GameState.senate.bill.get("vote", "")) == "yes"
+	else:
+		notes.append("into Neo Kallipolis: '%s' level %s capital %s" % [e, str(g.level) if g != null else "-", str(g.capital_kind()) if g != null else "-"])
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	GameState.gear.aboard()
+	main._update_input()
+	if not keep_permit:
+		GameState.permits.erase("assembly")
+	check(named and plaza_ok and lobby_ok and gal_ok and in_ok and vote_ok,
+		"54c: Neo Kallipolis – the first city on Agora named so, the Plaza of the Vote (the lift, the Senate's doors), the lobby (party office, lobbyist, the bill, the stair to the gallery), the gallery over the chamber with the voting stand; a vote cast there  [%s]%s" % [
+			" ".join(PackedStringArray([str(named), str(plaza_ok), str(lobby_ok), str(gal_ok), str(in_ok), str(vote_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

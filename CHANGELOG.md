@@ -3,6 +3,29 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.10 – 2026-11-16
+
+**Package 54c, part 1 – Neo Kallipolis and the Senate (Luz).** The capitals get names and hand-built places: the first
+city on Agora (Landfall) is now **Neo Kallipolis**; its lift goes up to the Senate of the Assembly.
+- **The Plaza of the Vote:** the Senate as a sci-fi front – white composite, a curtain wall of blue glass, glass portal
+  doors under the Assembly's seal, banners of light, pylons with a glowing core, a broad lit stair flush with the front
+  and closed by cheek walls; on the roof the great faceted glass dome with its ring of light, solar arrays, masts. The
+  founders as holograms by the fountain (a bronze plaque on a stone), the civic wings in glass, the bill on a holo.
+- **The lobby:** the security arches are the only way in (glass barriers, a rope over the runner, a guard posted at each
+  arch, a tone as you pass through); the Assembly's seal in the floor under the bill's holo, a blue runner to the grand
+  stair, news screens, holo busts of speakers past, the founding exhibit (Agora, the first colony ship, the charter),
+  the information desk, waiting benches, visitors. The **party office** takes donations, the **lobbyist** on his sofa a
+  bribe – the same as the Senate window.
+- **The gallery** high over the plenary chamber, seen slanting through its glass panes: the hemicycle full of senators,
+  a hearing at the witness table, desk lights as votes come in, the great screen changing its picture every few
+  seconds with a flash (the witness, the bill and its polls, figures, the seal). The **voting stand** casts your vote;
+  the benches face the chamber.
+- New art: decals `senate_roof`, `steps_lit`, `senate_seal`; face decos `senate_front`, `senate_doors`, `holo_banner`,
+  `light_strip`; objects `pylon`, `holo_statue`, `scanner_gate`, `news_wall`, `plaque_stone`; standing signs. Sound
+  `scanner_pass` (placeholder). Debug: F12 → Ground → Capitals. Smoke test group `capital54c`.
+- Roadmap: 54c steckbrief agreed (Senate in Neo Kallipolis, the Palace in Aureola over Compline next); 54d (settlement
+  trade) moved to Teil 9 as 74a.
+
 ## alpha 0.7.54.9 – 2026-11-16
 
 **Package 54b done – tips and sounds (Luz).**

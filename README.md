@@ -369,6 +369,13 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.53.7: theme `mine` (`rails`, `rubble`, `descent` "cage"), `DungeonGen.build_minehead`, `_corridor(..., rails)`; `GameState.settle_poi`; SettleGen zone `mine_path` (meta `mine_path_front`); GroundView level `minehead`, `_fuses_step`, `blast_near`, `shot_lands` (called by GroundCombat), `_take_one`; ExploreNode `cage`, `mine_gen`, `vein`, `rubble`, `loose_rock`, `tnt`, `mine_gate`; floors 25–27, style `mine`, decal `rails`; ObjArt `shaft_house`, `winding_house`, `ore_bin`; `PoiData.MUSEUM_RELICS["mine"]`.
 - 0.7.53.9: theme `maint` (`descent` "stairs", `outside` "lift", `passive_foes`), FoeData `maint_drone` (`drone`), GroundCombat passive/provoked foes; GroundView `_town_kind`, `_drones_step`/`_draw_drones`, `_restart_reactor`, city lift level `maint`; `GameState.maint_sites`/`maint_site`; ExploreNode `crank_door`, `fuse_box`, `reactor` (`_draw_reactor`), `stairs_down`, `stairs_up`, `service_lift`, `steam`; style `maint`; ObjArt `valve_box`, `cable_drum`.
 - 0.7.53.11: theme `pirate` (`outside` "cliff", `hangar`, `cells`, `descent` "ramp", target `loot_room`), `DungeonGen.build_cliff`, `parked_covers`, map meta `parked`; `scripts/ground/parked_art.gd` (a ship made plastic: height from its outline, lit); ExploreNode `pirate_gate`, `searchlight`, `ramp_down`, `cells`; style `pirate`, face decos `skull_banner`, `graffiti`; ObjArt `watchtower`, `glider`, `fire_barrel`.
+- 0.7.54.10 (package 54c, part 1): `scripts/ground/capital_gen.gd` (`build_senate_plaza`, `build_senate_lobby`,
+  `build_senate_gallery`, `_stand_sign`), `scripts/ground/senate_chamber.gd` (the chamber drawn in the gallery's window,
+  map meta `senate_view`); Universe `CAPITAL_CITIES`, `_name_capital`, station key `capital`; GroundView levels `kplaza`,
+  `senate`, `sgallery`, `capital_kind()`, zones `senate_info`, `party_office`, `lobbyist`, `senate_stand`
+  (`_open_senate_menu` → `senate_donate`/`senate_bribe`/`senate_vote`), map metas `scanners` (`_scanner_step`) and
+  `guard_posts` (guards only there, even with `no_guards`), sign key `stand`; GroundMap `_mix`; Commands
+  `debug_capital`.
 - 0.7.54.9 (package 54b done): Commands `_mg_tip(who, rng)` (anomaly near → revealed, or a trade tip from
   `Market.buy_price`/`sell_price` within two jumps), `MG_TIP_CHANCE`, `mg_last_tip`; `minigame_end` key `tip` (forced, for
   tests); sounds `pool_cue`, `pool_ball`, `pool_cushion`, `pool_pocket`, `dart_throw`, `dart_hit`, `card_deal`,

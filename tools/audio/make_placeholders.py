@@ -175,6 +175,9 @@ SOUNDS = {
     "arcade_boom": lambda: mix(noise(0.45, 0.9, 0.5, 0.05, a=0.001, r=0.4, curve=1.5), tone(0.3, 140, 40, "square", 0.35, r=0.25)),
     "arcade_pickup": lambda: mix(tone(0.05, 1046, wave_="square", vol=0.25, r=0.02), tone(0.07, 1568, wave_="square", vol=0.25, r=0.04), at=[0, 0.045]),
     "arcade_bank": lambda: mix(*[tone(0.11, f, wave_="square", vol=0.25, r=0.05) for f in (523, 659, 784, 1047, 1319)], at=[0, 0.07, 0.14, 0.21, 0.28]),
+    # 54c (Luz): the Senate's security arch – a soft two-tone chime with a hum of the field
+    "scanner_pass": lambda: mix(tone(0.5, 120, wave_="sine", vol=0.25, a=0.05, r=0.3), tone(0.12, 1320, wave_="sine", vol=0.35, r=0.08),
+                                tone(0.2, 1760, wave_="sine", vol=0.35, r=0.15), at=[0, 0.05, 0.17]),
     "amb_space": lambda: loopify(mix(noise(32.0, 0.4, 0.01, a=0, r=0), tone(32.0, 41, wave_="sine", vol=0.12, a=0, r=0, vib=0.02, vib_rate=0.1),
                                      *[noise(0.3, 0.06, 0.6, r=0.25) for _ in range(12)], at=[0, 0] + [random.uniform(0, 31) for _ in range(12)]), 1.5),
 }

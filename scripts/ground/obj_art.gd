@@ -32,7 +32,7 @@ static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
 		WildArtO.paint_obj(o, img)                   # 53f-2 (Luz): trees, palms, trunks, ice, the crashed drone
 	else:
 		_paint(img, String(o["kind"]), pw, ph, rise, c, wood, metal, o)
-	if String(o["kind"]) != "holo_ship":
+	if not String(o["kind"]) in ["holo_ship", "holo_statue", "scanner_gate"]:
 		_outline(img)                                # 0.7.53.27: a hologram has no outline
 	var out := {"image": img, "rise": rise}
 	_cache[key] = out
@@ -217,11 +217,26 @@ static func _rise(kind: String) -> int:
 			return 16
 		"idol_cast":
 			return 40
+		"pylon":                            # 54c: a pylon of the Senate's front (~3.3 m)
+			return 50
+		"holo_statue":                      # 54c: a founder as a hologram
+			return 40
+		"scanner_gate":                     # 54c: the Senate's security arch (~2.6 m)
+			return 30
+		"plaque_stone":                     # 54c: a stone with a bronze plaque (~0.9 m)
+			return 10
+		"news_wall":                        # 54c: a news screen in the lobby
+			return 26
 		"barrier":                  # package 52: cover – a low plated barricade (~1.3 m) and a high bulwark (~2.6 m)
 			return 8
 		"bulwark":
 			return 30
 	return 6
+
+
+static func _hn(a: int, b: int) -> float:
+	var v := sin(float(a) * 12.9898 + float(b) * 78.233) * 43758.5453
+	return v - floor(v)
 
 
 static func _r(img: Image, x: int, y: int, w: int, h: int, c: Color) -> void:
@@ -284,6 +299,91 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, cx + 1, top - 12, 3, 12, ps.darkened(0.1))
 				_r(img, cx - 2, top - 22, 5, 1, Color(0.7, 0.55, 1.0))
 				_p(img, cx, top - 36, Color(0.7, 0.55, 1.0))
+		"pylon":
+			# 54c (Luz: more sci-fi): a pylon of the Senate's front – white composite, slimmer in its waist, a blue
+			# light in its groove, a lit cap
+			var pb3 := fy + ph
+			for yy in range(2, pb3):
+				var t := float(yy) / pb3
+				var hw := int(5.0 - sin(t * PI) * 1.5)
+				_r(img, pw / 2 - hw, yy, hw * 2, 1, Color(0.9, 0.91, 0.94))
+				_p(img, pw / 2 - hw, yy, Color(1, 1, 1))
+				_p(img, pw / 2 + hw - 1, yy, Color(0.68, 0.7, 0.75))
+			_r(img, pw / 2 - 1, 6, 2, pb3 - 12, Color(0.4, 0.82, 1.0))
+			_r(img, pw / 2, 6, 1, pb3 - 12, Color(0.8, 0.97, 1.0))
+			_r(img, pw / 2 - 6, 0, 12, 3, Color(0.95, 0.96, 0.98))
+			_r(img, pw / 2 - 5, 3, 10, 1, Color(0.45, 0.85, 1.0))
+			_r(img, pw / 2 - 7, pb3 - 4, 14, 4, Color(0.62, 0.64, 0.68))
+			_r(img, pw / 2 - 6, pb3 - 4, 12, 1, Color(0.45, 0.85, 1.0))
+		"holo_statue":
+			# 54c (Luz: more sci-fi): a founder as a hologram, larger than life, over a dark projector disc
+			var hb2 := fy + ph
+			_ellipse(img, pw * 0.5, hb2 - 5, pw * 0.42, 4.5, Color(0.16, 0.17, 0.2))
+			_ellipse(img, pw * 0.5, hb2 - 6, pw * 0.36, 3.0, Color(0.26, 0.28, 0.32))
+			_ellipse(img, pw * 0.5, hb2 - 6, pw * 0.26, 1.8, Color(0.45, 0.9, 1.0))
+			var lrng2 := RandomNumberGenerator.new()
+			lrng2.seed = 900 + int(o.get("seed", 1))
+			var lk2: Dictionary = ChibiArt.PilotArt.random_look(lrng2)
+			lk2["suit"] = String(o.get("species", "suit_civil"))
+			lk2["helmet"] = false
+			var fig2: Image = ChibiArt.frame(lk2, 0, 0).get_image()
+			fig2.resize(16, 36, Image.INTERPOLATE_NEAREST)
+			var top2 := hb2 - 8
+			for yy2 in fig2.get_height():
+				for xx2 in fig2.get_width():
+					var fc2 := fig2.get_pixel(xx2, yy2)
+					if fc2.a > 0.0:
+						var hcol := Color(0.3, 0.7, 1.0).lerp(Color(0.85, 1.0, 1.0), clampf(fc2.get_luminance() * 1.3, 0.0, 1.0))
+						hcol.a = 0.8 if (top2 - 36 + yy2) % 3 != 0 else 0.45
+						_p(img, pw / 2 - 8 + xx2, top2 - 36 + yy2, hcol)
+			for cy3 in range(top2 - 36, top2):
+				var spread2 := int(float(cy3 - (top2 - 36)) / 36.0 * 3.0)
+				_p(img, pw / 2 - 10 - spread2, cy3, Color(0.45, 0.9, 1.0, 0.18))
+				_p(img, pw / 2 + 9 + spread2, cy3, Color(0.45, 0.9, 1.0, 0.18))
+		"scanner_gate":
+			# 54c: the Senate's security arch – two posts and a beam of grey composite, a light field between them
+			var gb := fy + ph
+			_r(img, 0, 2, 4, gb - 2, Color(0.55, 0.57, 0.62))
+			_r(img, pw - 4, 2, 4, gb - 2, Color(0.48, 0.5, 0.55))
+			_r(img, 0, 0, pw, 5, Color(0.62, 0.64, 0.68))
+			_r(img, 0, 0, pw, 1, Color(0.85, 0.87, 0.9))
+			_r(img, 3, 6, 1, gb - 8, Color(0.4, 1.0, 0.6))
+			_r(img, pw - 4, 6, 1, gb - 8, Color(0.4, 1.0, 0.6))
+			_r(img, pw / 2 - 3, 2, 6, 1, Color(0.4, 1.0, 0.6))
+			for yy4 in range(6, gb - 2):
+				_r(img, 4, yy4, pw - 8, 1, Color(0.4, 1.0, 0.6, 0.07 if yy4 % 4 else 0.18))
+		"plaque_stone":
+			# 54c (Luz): THE FOUNDERS on a bronze plaque let into a rough block of grey stone, its top lit
+			var sb2 := fy + ph
+			var stn2 := Color(0.56, 0.56, 0.58)
+			for yy in range(sb2 - 22, sb2):
+				var ins2 := 2 if yy < sb2 - 19 else 0
+				_r(img, ins2 + int(_hn(yy, 3) * 2.0), yy, pw - ins2 * 2 - int(_hn(yy, 7) * 2.0), 1, stn2.darkened(0.12 if yy > sb2 - 12 else 0.0))
+			_r(img, 3, sb2 - 22, pw - 6, 3, stn2.lightened(0.18))
+			for sp2 in 9:
+				_p(img, 3 + int(_hn(sp2, 11) * (pw - 6)), sb2 - 16 + int(_hn(sp2, 13) * 14), stn2.darkened(0.25))
+			_r(img, 5, sb2 - 17, pw - 10, 9, Color(0.55, 0.38, 0.18))
+			_r(img, 6, sb2 - 16, pw - 12, 7, Color(0.78, 0.58, 0.28))
+			_r(img, 6, sb2 - 16, pw - 12, 1, Color(0.95, 0.8, 0.45))
+			for lt in range(8, pw - 8, 2):
+				_p(img, lt, sb2 - 13, Color(0.42, 0.28, 0.12))
+			for lt2 in range(10, pw - 10, 3):
+				_p(img, lt2, sb2 - 11, Color(0.5, 0.34, 0.15))
+		"news_wall":
+			# 54c: a free-standing news screen in the lobby – the Senate's channel: a speaker, a ticker running under it
+			var nb := fy + ph
+			_r(img, pw / 2 - 2, nb - 8, 4, 8, Color(0.3, 0.32, 0.36))
+			_r(img, pw / 2 - 8, nb - 3, 16, 3, Color(0.3, 0.32, 0.36))
+			_r(img, 0, 0, pw, nb - 8, Color(0.12, 0.13, 0.16))
+			_r(img, 2, 2, pw - 4, nb - 12, Color(0.08, 0.14, 0.26))
+			_r(img, 4, 4, 14, nb - 20, Color(0.2, 0.26, 0.36))
+			_ellipse(img, 11, 10, 4, 4, Color(0.78, 0.62, 0.5))
+			_r(img, 6, 15, 10, nb - 31, Color(0.2, 0.4, 0.8))
+			for k3 in 3:
+				_r(img, 22, 6 + k3 * 5, pw - 28 - k3 * 6, 2, Color(0.75, 0.85, 1.0) if k3 == 0 else Color(0.45, 0.6, 0.85))
+			_r(img, 2, nb - 16, pw - 4, 4, Color(0.85, 0.2, 0.25))
+			for tk in range(4, pw - 6, 7):
+				_r(img, tk, nb - 15, 4, 2, Color(1, 1, 1))
 		"bust":
 			var bc: Color = o.get("col", Color(0.92, 0.9, 0.86))
 			var bb := fy + ph

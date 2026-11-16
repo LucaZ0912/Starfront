@@ -168,6 +168,7 @@ Waffen klingen nach Schadensart: **optisch** hell, sirrend, **kinetisch** knalle
 | `arcade_boom` | Rock Hopper: Brocken birst, Schlepper verloren | 8-Bit-Rauschexplosion | 0,45 s | A |
 | `arcade_pickup` | Rock Hopper: Erz eingesammelt | Zwei kurze steigende Töne | 0,1 s | A |
 | `arcade_bank` | Rock Hopper: an der Raffinerie abgeliefert | Aufsteigendes Arpeggio | 0,4 s | A |
+| `scanner_pass` | Senat (54c): durch den Sicherheitsscanner | Leiser Zweiklang über dem Summen des Feldes | 0,5 s | B |
 
 ## 8. Warnungen & Bordcomputer (SFX/UI)
 

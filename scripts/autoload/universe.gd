@@ -1793,7 +1793,8 @@ func city_station(system_id: int, body: Dictionary, site: Dictionary) -> Diction
 		"city": not settle, "settlement": settle, "kind": String(site.get("kind", "city")),
 		"body": String(body.get("id", "")), "site": String(site.get("id", "")),
 		"day": CityStyle.daylight(site, body),           # 0.7.50.6: on the day or the night side (0.7.50.7: now)
-		"lon": float(site.get("lon", 0.0)), "lat": float(site.get("lat", 0.0))}   # 0.7.50.8: where it lies – its day goes on
+		"lon": float(site.get("lon", 0.0)), "lat": float(site.get("lat", 0.0)),   # 0.7.50.8: where it lies – its day goes on
+		"capital": String(site.get("capital", ""))}                              # 54c: "senate" / "palace" – a capital's own place
 	if cloud:
 		st["cloud"] = true                               # package 54: hangar, plaza, skyrail – over the clouds
 		st["giant"] = String(body.get("type", "gas"))
@@ -3181,7 +3182,24 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 				"seed": srng.randi() % 100000, "lon": srng.randf_range(-0.9, 0.9), "lat": srng.randf_range(-0.7, 0.7)})
 	out.append_array(debug_sites.get(String(body["id"]), []))      # 0.7.51.5: places the debug menu added
 	out.append_array(GameState.pois_for(system_id, body))          # package 53a: a ruin to explore, this visit
+	_name_capital(system_id, body, out)
 	return out
+
+
+## Package 54c (Luz): the capitals' hand-built cities – the first city on Agora (Landfall) is Neo Kallipolis with the
+## Senate; the first city over Compline (Heimkehr) is Aureola with the Hierarch's palace.
+const CAPITAL_CITIES := {"Agora": ["landfall", "Neo Kallipolis", "senate"], "Compline": ["heimkehr", "Aureola", "palace"]}
+
+
+func _name_capital(system_id: int, body: Dictionary, sites: Array) -> void:
+	var cc: Array = CAPITAL_CITIES.get(String(body.get("name", "")), [])
+	if cc.is_empty() or system_id != special_system(String(cc[0])):
+		return
+	for s in sites:
+		if String(s.get("kind", "")) == "city" and not s.has("debug"):
+			s["name"] = String(cc[1])
+			s["capital"] = String(cc[2])
+			return
 
 
 func warp_target(system_id: int, target_id: String) -> Dictionary:

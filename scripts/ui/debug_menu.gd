@@ -1052,6 +1052,15 @@ func _build_ground() -> void:
 	rc2.add_child(UI.button("Calm", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder"})))
 	rc2.add_child(UI.button("Rotor jammed (job)", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder", "job": true})))
 	_box.add_child(UI.wrap_label("Straight into a cloud city over a giant of this system (or a body seen as one). Every inhabited system's giants have 1–2 cities; the skyrail runs between Central and the Skyring.", 12, UI.TEXT_DIM, 560))
+	_section("Capitals (package 54c)")
+	var rcp := _row()
+	rcp.add_child(UI.label("Neo Kallipolis:", 12, UI.TEXT_DIM))
+	for cl in [["kplaza", "Plaza of the Vote"], ["senate", "Senate lobby"], ["sgallery", "Gallery"]]:
+		var clv: String = cl[0]
+		rcp.add_child(UI.button(String(cl[1]), func(): _cmd({"type": "debug_capital", "which": "senate", "level": clv})))
+	rcp.add_child(UI.button("New bill", func(): _cmd({"type": "debug_senate", "do": "new"})))
+	rcp.add_child(UI.button("Permit", func(): _cmd({"type": "debug_permit", "faction": "assembly", "on": true})))
+	_box.add_child(UI.wrap_label("Straight to Landfall and down into Neo Kallipolis on Agora – the Plaza of the Vote, the Senate's lobby (party office, lobbyist), the gallery over the chamber (the voting stand).", 12, UI.TEXT_DIM, 560))
 	_section("Bar games (package 54b)")
 	var rbg := _row()
 	rbg.add_child(UI.label("Billiards:", 12, UI.TEXT_DIM))

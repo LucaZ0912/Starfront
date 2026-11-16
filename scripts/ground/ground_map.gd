@@ -281,6 +281,15 @@ func hull_texture() -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
+## 54c: paint over what is there, by the colour's alpha.
+func _mix(x: int, y: int, rw: int, rh: int, c: Color) -> void:
+	for yy in range(y, y + rh):
+		for xx in range(x, x + rw):
+			if xx >= 0 and yy >= 0 and xx < _img.get_width() and yy < _img.get_height():
+				var o := _img.get_pixel(xx, yy)
+				_img.set_pixel(xx, yy, Color(o.lerp(Color(c.r, c.g, c.b), c.a), maxf(o.a, c.a)))
+
+
 func _tint(x: int, y: int, rw: int, rh: int, c: Color, k: float) -> void:
 	for yy in range(y, y + rh):
 		for xx in range(x, x + rw):
@@ -1503,6 +1512,124 @@ func _decal(d: Dictionary) -> void:
 						_px(int(lt2.x) + xx8, int(lt2.y) + yy8, Color(0.95, 0.94, 0.91).darkened(0.25 * clampf(xx8 / 9.0 + 0.2, 0.0, 1.0)))
 			_rect(int(lt2.x) - 3, int(lt2.y) - 8, 6, 4, Color(0.85, 0.66, 0.3))
 			_rect(int(lt2.x) - 1, int(lt2.y) - 12, 2, 4, Color(0.95, 0.8, 0.45))
+		"senate_roof":
+			# 54c (Luz: more sci-fi): the Senate's roof from above – graphite plates in a white composite rim with a light
+			# strip, solar arrays on its wings, vents, two masts with beacons, and the great faceted glass dome over the
+			# chamber, a ring of light round its foot and a spire on its top
+			var gr := Color(0.24, 0.26, 0.3)
+			_rect(px, py, pw, ph, gr.darkened(0.25))
+			_rect(px + 6, py + 6, pw - 12, ph - 12, gr)
+			for ry in range(py + 6, py + ph - 6, 16):
+				_rect(px + 6, ry, pw - 12, 1, gr.darkened(0.2))
+				for rx in range(px + 6 + (ry / 16 % 2) * 16, px + pw - 6, 32):
+					_rect(rx, ry, 1, 16, gr.darkened(0.15))
+			for side in [[px, py, pw, 6], [px, py + ph - 6, pw, 6], [px, py, 6, ph], [px + pw - 6, py, 6, ph]]:
+				_rect(side[0], side[1], side[2], side[3], Color(0.9, 0.92, 0.95))
+			_rect(px, py, pw, 1, Color(1, 1, 1))
+			_rect(px + 6, py + 6, pw - 12, 1, Color(0.4, 0.8, 1.0))                      # the rim's light strip
+			_rect(px + 6, py + ph - 7, pw - 12, 1, Color(0.4, 0.8, 1.0))
+			_rect(px + 6, py + 6, 1, ph - 12, Color(0.4, 0.8, 1.0))
+			_rect(px + pw - 7, py + 6, 1, ph - 12, Color(0.4, 0.8, 1.0))
+			# solar arrays on the wings
+			for sa in [px + 16, px + pw - 16 - 72]:
+				_rect(sa + 2, py + 22, 72, 52, Color(0.08, 0.09, 0.12))
+				_rect(sa, py + 20, 72, 52, Color(0.7, 0.72, 0.76))
+				for cy in 6:
+					for cx in 8:
+						_rect(sa + 2 + cx * 9, py + 22 + cy * 8, 8, 7, Color(0.12, 0.2, 0.42).lerp(Color(0.3, 0.45, 0.75), 0.25 if (cx + cy) % 3 == 0 else 0.0))
+						_rect(sa + 2 + cx * 9, py + 22 + cy * 8, 8, 1, Color(0.4, 0.55, 0.85))
+			# vents along the south edge
+			for vx in range(px + 20, px + pw - 30, 46):
+				_rect(vx, py + ph - 26, 22, 12, Color(0.55, 0.57, 0.62))
+				for vl in 5:
+					_rect(vx + 2, py + ph - 24 + vl * 2, 18, 1, Color(0.18, 0.19, 0.22))
+			# the dome: its shadow, its foot of white composite, the ring of light, the faceted glass, the spire
+			var dc2 := Vector2(px + pw * 0.5, py + ph * 0.5 + 6)
+			for yy5 in range(-34, 42):
+				for xx5 in range(-62, 70):
+					if Vector2((xx5 - 8) / 64.0, (yy5 - 6) / 40.0).length() < 1.0:
+						var q5 := Vector2(dc2.x + xx5, dc2.y + yy5)
+						_px(int(q5.x), int(q5.y), _img.get_pixel(clampi(int(q5.x), 0, _img.get_width() - 1), clampi(int(q5.y), 0, _img.get_height() - 1)).darkened(0.3))
+			for yy6 in range(-32, 33):
+				for xx6 in range(-60, 61):
+					var e6 := Vector2(xx6 / 60.0, yy6 / 32.0).length()
+					if e6 <= 1.0:
+						var foot := Color(0.92, 0.93, 0.96).darkened(0.2 * clampf(xx6 / 60.0 + 0.3, 0.0, 1.0))
+						if e6 > 0.86 and e6 < 0.93:
+							foot = Color(0.45, 0.85, 1.0)                                    # the ring of light
+						_px(int(dc2.x) + xx6, int(dc2.y) + yy6, foot)
+			var rx6 := 50.0
+			var ry6 := 46.0
+			var top := Vector2(dc2.x, dc2.y - 16)
+			var ldir := Vector3(-0.55, -0.6, 0.58).normalized()
+			for yy7 in range(-int(ry6), int(ry6) + 1):
+				for xx7 in range(-int(rx6), int(rx6) + 1):
+					var nx := xx7 / rx6
+					var ny := yy7 / ry6
+					var r2 := nx * nx + ny * ny
+					if r2 > 1.0 or yy7 > 22:
+						continue
+					var nz := sqrt(1.0 - r2)
+					var lon := atan2(nx, nz)
+					var lat := asin(clampf(ny, -1.0, 1.0))
+					var fi := int(floor(lon * 6.0 / PI)) * 7 + int(floor(lat * 5.0 / PI))      # a facet of its own tint
+					var lam := clampf(Vector3(nx, ny, nz).dot(ldir), 0.0, 1.0)
+					var glass := Color(0.08, 0.16, 0.3).lerp(Color(0.4, 0.68, 0.9), lam).lightened(0.08 * float(posmod(fi * 37, 5)) / 4.0)
+					if absf(fposmod(lon * 6.0 / PI, 1.0) - 0.5) > 0.46 or absf(fposmod(lat * 5.0 / PI, 1.0) - 0.5) > 0.45:
+						glass = Color(0.85, 0.88, 0.92).lerp(Color(1, 1, 1), lam)               # the white frame between facets
+					if r2 > 0.92:
+						glass = glass.darkened(0.2)
+					var spec := pow(maxf(Vector3(nx, ny, nz).dot((ldir + Vector3(0, 0, 1)).normalized()), 0.0), 40.0)
+					_px(int(top.x) + xx7, int(top.y) + yy7, glass.lerp(Color(1, 1, 1), spec * 0.8))
+			var sp := Vector2(top.x - 6, top.y - ry6 + 12)
+			_rect(int(sp.x) - 4, int(sp.y) - 2, 8, 6, Color(0.92, 0.93, 0.96))
+			_rect(int(sp.x) - 1, int(sp.y) - 20, 2, 18, Color(0.85, 0.87, 0.9))
+			_rect(int(sp.x) - 2, int(sp.y) - 22, 4, 3, Color(0.5, 0.9, 1.0))
+			# two masts with their beacons
+			for ms in [Vector2(px + 14, py + 12), Vector2(px + pw - 14, py + 12)]:
+				_rect(int(ms.x) - 3, int(ms.y) - 2, 6, 6, Color(0.6, 0.62, 0.66))
+				_rect(int(ms.x) - 1, int(ms.y) - 14, 2, 12, Color(0.75, 0.77, 0.8))
+				_rect(int(ms.x) - 2, int(ms.y) - 16, 4, 3, Color(1.0, 0.3, 0.25))
+		"steps_lit":
+			# 54c (Luz: more sci-fi): broad steps of white composite, a light strip along each tread
+			for sr in int(ph / 6):
+				var sc2 := Color(0.9, 0.91, 0.94).darkened(0.05 * sr)
+				_rect(px, py + sr * 6, pw, 6, sc2)
+				_mix(px, py + sr * 6 + 4, pw, 1, Color(0.45, 0.85, 1.0, 0.85))
+				_rect(px, py + sr * 6 + 5, pw, 1, sc2.darkened(0.35))
+			# (Luz: flush with the front, a proper end either side) – a cheek wall of composite on each side, its top lit,
+			# its front face down to the plaza, a light strip along it
+			for chx in [px, px + pw - 12]:
+				var inner: int = chx + 11 if chx == px else chx
+				_rect(chx, py - 2, 12, ph + 2, Color(0.95, 0.96, 0.98))
+				_rect(chx, py - 2, 12, 1, Color(1, 1, 1))
+				_rect(inner, py - 2, 1, ph + 2, Color(0.55, 0.57, 0.62))
+				_rect(inner + (1 if chx == px else -2), py, 2, ph, Color(0.3, 0.32, 0.38, 1.0).lerp(Color(0.85, 0.86, 0.9), 0.5))   # its shadow on the steps
+				_rect(chx + 5, py + 1, 2, ph - 4, Color(0.45, 0.85, 1.0))
+				_rect(chx, py + ph, 12, 8, Color(0.74, 0.76, 0.8))                         # its front face down to the plaza
+				_rect(chx, py + ph, 12, 1, Color(0.98, 0.98, 1.0))
+				_rect(chx + 2, py + ph + 3, 8, 2, Color(0.45, 0.85, 1.0))
+				_rect(chx, py + ph + 7, 12, 1, Color(0.45, 0.47, 0.52))
+		"senate_seal":
+			# 54c: the Assembly's seal let into the floor – rings of blue and white, eight gold stars, a light at its heart
+			var sc3 := Vector2(px + pw * 0.5, py + ph * 0.5)
+			for yy in range(-int(ph * 0.5), int(ph * 0.5) + 1):
+				for xx in range(-int(pw * 0.5), int(pw * 0.5) + 1):
+					var e := Vector2(xx / (pw * 0.5), yy / (ph * 0.5)).length()
+					if e > 1.0:
+						continue
+					var sc4 := Color(0.16, 0.3, 0.62)
+					if e > 0.9:
+						sc4 = Color(0.85, 0.66, 0.3)
+					elif e > 0.62 and e < 0.72:
+						sc4 = Color(0.92, 0.93, 0.96)
+					elif e < 0.3:
+						sc4 = Color(0.92, 0.93, 0.96) if e > 0.2 else Color(0.45, 0.8, 1.0)
+					_px(int(sc3.x) + xx, int(sc3.y) + yy, sc4)
+			for k in 8:
+				var a := k * TAU / 8.0
+				var sq := sc3 + Vector2(cos(a) * pw * 0.4, sin(a) * ph * 0.4)
+				_rect(int(sq.x) - 1, int(sq.y) - 1, 3, 3, Color(0.95, 0.8, 0.4))
 		"steps":
 			# 53e: broad steps up to the Museum's doors
 			for sr in int(ph / 5):
@@ -2029,6 +2156,68 @@ func _face_deco(d: Dictionary) -> void:
 			_rect(px, py + 10, pw, dh - 10, Color(0.98, 0.86, 0.62))
 			_rect(px + 4, py + 14, pw - 8, dh - 14, Color(1.0, 0.92, 0.72))
 			_rect(px - 4, py + 6, pw + 8, 2, Color(0.85, 0.66, 0.3))
+		"senate_front":
+			# 54c (Luz: more sci-fi): a front of white composite and a curtain wall of blue glass – mullions, reflections,
+			# a light band under its cornice, a plinth (rows: how many wall rows it covers)
+			var fh := int(d.get("rows", 3)) * TILE
+			_rect(px, py, pw, fh, Color(0.9, 0.91, 0.94))
+			_rect(px, py, pw, 2, Color(1, 1, 1))
+			_rect(px, py + 5, pw, 1, Color(0.45, 0.85, 1.0))
+			for yy in range(8, fh - 6):
+				for xx in pw:
+					var gc := Color(0.1, 0.2, 0.36).lerp(Color(0.3, 0.5, 0.72), float(fh - yy) / fh * 0.6)
+					if fposmod(float(xx + yy) * 0.12 + float(d["x"]) * 0.3, 9.0) < 1.2:
+						gc = gc.lightened(0.18)                              # a reflection running across
+					if xx % 16 == 0 or xx % 16 == 15:
+						gc = Color(0.82, 0.84, 0.88)
+					if (yy - 8) % 16 == 15:
+						gc = Color(0.7, 0.72, 0.76)
+					_px(px + xx, py + yy, gc)
+			_rect(px, py + fh - 6, pw, 6, Color(0.78, 0.8, 0.84))
+			_rect(px, py + fh - 6, pw, 1, Color(0.95, 0.96, 0.98))
+		"senate_doors":
+			# 54c: the Senate's portal – a tall frame of white composite edged with light, the glass leaves slid apart,
+			# the hall bright beyond, the Assembly's seal over it
+			var dh2 := 3 * TILE
+			_rect(px - 8, py, pw + 16, dh2, Color(0.95, 0.96, 0.98))
+			_rect(px - 8, py, pw + 16, 2, Color(1, 1, 1))
+			_rect(px - 5, py + 12, 1, dh2 - 12, Color(0.45, 0.85, 1.0))
+			_rect(px + pw + 4, py + 12, 1, dh2 - 12, Color(0.45, 0.85, 1.0))
+			_rect(px - 4, py + 12, pw + 8, 1, Color(0.45, 0.85, 1.0))
+			for yy2 in range(13, dh2):
+				_rect(px - 3, py + yy2, pw + 6, 1, Color(0.88, 0.94, 1.0).lerp(Color(1.0, 0.96, 0.88), float(yy2) / dh2))
+			_mix(px - 3, py + 13, 6, dh2 - 13, Color(0.4, 0.6, 0.78, 0.8))            # the leaves, slid aside
+			_mix(px + pw - 3, py + 13, 6, dh2 - 13, Color(0.4, 0.6, 0.78, 0.8))
+			_rect(px - 2, py + 14, 1, dh2 - 16, Color(0.85, 0.95, 1.0))
+			_rect(px + pw - 2, py + 14, 1, dh2 - 16, Color(0.85, 0.95, 1.0))
+			var sc5 := Vector2(px + pw * 0.5, py + 6)
+			for yy3 in range(-5, 6):
+				for xx3 in range(-5, 6):
+					var e3 := Vector2(xx3, yy3).length()
+					if e3 <= 5.0:
+						_px(int(sc5.x) + xx3, int(sc5.y) + yy3, Color(0.2, 0.4, 0.8) if e3 > 3.4 or e3 < 1.6 else Color(0.95, 0.95, 0.98))
+		"holo_banner":
+			# 54c (Luz: more sci-fi): a banner of light – an emitter under the cornice, the Assembly's blue projected
+			# below it, half see-through, its seal and scan lines
+			_rect(px + 1, py + 1, 14, 3, Color(0.2, 0.22, 0.26))
+			_rect(px + 7, py + 2, 2, 1, Color(0.6, 0.95, 1.0))
+			for yy4 in range(4, 34):
+				var hc := Color(c.lerp(Color(0.5, 0.85, 1.0), 0.3), 0.55 - float(yy4) / 34.0 * 0.25)
+				if yy4 % 3 == 0:
+					hc.a *= 0.5
+				_mix(px + 3, py + yy4, 10, 1, hc)
+			_mix(px + 3, py + 4, 1, 30, Color(0.7, 0.95, 1.0, 0.7))
+			_mix(px + 12, py + 4, 1, 30, Color(0.7, 0.95, 1.0, 0.7))
+			for yy5 in 12:
+				for xx5 in 12:
+					if absf(Vector2(xx5 - 5.5, yy5 - 5.5).length() - 3.5) < 1.0:
+						_mix(px + 2 + xx5, py + 9 + yy5, 1, 1, Color(0.92, 0.97, 1.0, 0.85))
+			for k9 in 2:
+				_mix(px + 5, py + 24 + k9 * 3, 6, 1, Color(0.92, 0.97, 1.0, 0.7))
+		"light_strip":
+			# 54c: a light strip along a wall
+			_mix(px, py + int(d.get("at", 30)), pw, 1, Color(c, 0.9))
+			_mix(px, py + int(d.get("at", 30)) + 1, pw, 1, Color(c, 0.3))
 		"banner_m":
 			# 53e: a long banner of an exhibition hung from the cornice
 			_rect(px + 2, py + 2, 12, 2, Color(0.85, 0.66, 0.3))
