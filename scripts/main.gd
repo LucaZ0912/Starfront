@@ -489,6 +489,7 @@ func nearest_clinic_city(sys: int, body_id: String = "") -> Dictionary:
 ## Back into the ship (open: show the station window again).
 func close_deck(open_window: bool = true) -> void:
 	if ground != null and is_instance_valid(ground):
+		ground.leave_ground()                          # review 7 W1/K2: the site's state kept, who is down stays down
 		ground.queue_free()
 	ground = null
 	if open_window:
@@ -649,6 +650,8 @@ func _on_station_docked(_station_id: String) -> void:
 
 ## Writes the live ship position back into its data before saving.
 func prepare_save() -> void:
+	if ground != null and is_instance_valid(ground):
+		ground.poi_save()                              # review 7 W1: what happened at the site goes into the save
 	if view != null and is_instance_valid(view):
 		view.sync_to_fits()
 

@@ -184,6 +184,7 @@ func _process(delta: float) -> void:
 				_test_control54c(view)           # package 54c – the Meridian Sphere's control room
 				_test_yards54c(view)             # package 54c – the yard galleries
 				_test_weather54e(view)           # package 54e – dynamic weather
+				_test_review7(view)              # review of Teil 7 – its fixes
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -13145,3 +13146,99 @@ func _test_weather54e(view: SystemView) -> void:
 	check(model_ok and snd_ok and map_ok and out_ok and in_none and cloud_ok and Weather.debug_kind == "",
 		"54e: dynamic weather – the same for a place and a time, by the world (none without air, gas storms over a giant), on the plaza rain with holo umbrellas (not the guards), lightning, its sound; none in the lobby; a gas storm on Aureola's platform in the giant's colours  [%s]%s" % [
 			" ".join(PackedStringArray([str(model_ok), str(snd_ok), str(map_ok), str(out_ok), str(in_none), str(cloud_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+## Review 7 (0.7.54.18): a site's state kept (W1) and restored – a crate stays open, the fallen stay down; stray fuse
+## and wire indices never throw (W2); new game empties the ground state (M1); the Archivist Suit never lost (M2); the
+## key card kept with the site (M3); an abandoned reactor job lets the city's tunnel go (K3); the ads fixed (K7).
+func _test_review7(_view: SystemView) -> void:
+	var notes: Array = []
+	# W1: a crate opened, a foe fallen – built again, still so
+	var sid := "rv7_site"
+	var site := {"id": sid, "theme": "precursor", "seed": 7707, "danger": "yellow"}
+	var keep_state: Dictionary = GameState.poi_state.duplicate(true)
+	GameState.poi_state.erase(sid)
+	var gv := GroundView.new()
+	var m1: GroundMap = DungeonGen53.build_inside({}, site, 0)
+	gv._poi_restore(m1, sid, "dungeon_0")
+	var ci := -1
+	for i in m1.explore.size():
+		if String(m1.explore[i]["kind"]) == "crate" and String(m1.explore[i]["state"]) == "shut":
+			ci = i
+			break
+	var w1 := ci >= 0
+	if w1:
+		m1.explore[ci]["state"] = "open"
+		m1.set_meta("dead", [0])
+		gv.map = m1
+		gv.poi_save()
+		var m2: GroundMap = DungeonGen53.build_inside({}, site, 0)
+		gv._poi_restore(m2, sid, "dungeon_0")
+		w1 = String(m2.explore[ci]["state"]) == "open" and (m2.get_meta("dead", []) as Array).has(0)
+		GameState.poi_use(sid)
+		w1 = w1 and not GameState.poi_state.has(sid)
+	else:
+		notes.append("no crate")
+	# W2: a stray index is dropped, not thrown on every frame
+	gv._fuses = {9999: 0.1}
+	gv._wires_t = {9998: 0.0}
+	gv._fuses_step(0.2)
+	var w2: bool = gv._fuses.is_empty()
+	gv.free()
+	# M3: the key card with the site
+	GameState.set_poi_flag("rv7_corp", "card")
+	var m3: bool = GameState.poi_flag("rv7_corp", "card") and not GameState.poi_flag("rv7_corp", "other")
+	GameState.poi_state = keep_state
+	# M1: the ground state emptied for a new pilot
+	var keep := {"pv": GameState.poi_visits.duplicate(), "pu": GameState.poi_used.duplicate(), "mf": GameState.museum_finds.duplicate(),
+		"md": GameState.museum_donated.duplicate(), "sp": GameState.sight_photos.duplicate(), "sv": GameState.sight_visits.duplicate(),
+		"ms": GameState.minigame_streak.duplicate(), "mw": GameState.minigame_wins.duplicate(), "mb": GameState.minigame_best.duplicate(),
+		"ps": GameState.poi_state.duplicate(true)}
+	GameState.museum_donated.append("x")
+	GameState.sight_photos["x"] = true
+	GameState.minigame_streak["x"] = 3
+	GameState.reset_ground_state()
+	var m1_ok: bool = GameState.museum_donated.is_empty() and GameState.sight_photos.is_empty() and GameState.minigame_streak.is_empty() \
+		and GameState.poi_used.is_empty() and GameState.poi_state.is_empty() and Weather.debug_kind == ""
+	# M2: the Archivist Suit with full pockets – into the locker, never lost
+	var MD = load("res://data/museum.gd")
+	var all_ids: Array = MD.EXHIBITS.map(func(e): return String(e["id"]))
+	GameState.museum_donated = all_ids.duplicate()
+	var keep_inv: Array = GameState.gear.inv.duplicate(true)
+	for k in GameState.gear.inv.size():
+		GameState.gear.inv[k] = {"id": "gd_medkit", "n": 99}
+	var lk: Array = GameState.gear.locker(GameState.active())
+	var keep_lk: Array = lk.duplicate(true)
+	var handed: bool = GameState.museum_give_suit()
+	var in_lk := false
+	for p in lk:
+		in_lk = in_lk or (not (p as Dictionary).is_empty() and String(p["id"]) == String(MD.SUIT_REWARD))
+	var m2: bool = (handed and in_lk and GameState.museum_donated.has("_suit")) or (not handed and not GameState.museum_donated.has("_suit"))
+	GameState.gear.inv = keep_inv
+	for j in lk.size():
+		lk[j] = keep_lk[j]
+	GameState.poi_visits = keep["pv"]
+	GameState.poi_used = keep["pu"]
+	GameState.museum_finds = keep["mf"]
+	GameState.museum_donated = keep["md"]
+	GameState.sight_photos = keep["sp"]
+	GameState.sight_visits = keep["sv"]
+	GameState.minigame_streak = keep["ms"]
+	GameState.minigame_wins = keep["mw"]
+	GameState.minigame_best = keep["mb"]
+	GameState.poi_state = keep["ps"]
+	# K3: an abandoned reactor job lets the city's tunnel go
+	var mj := {"type": "ground", "title": "Reactor test", "site": {"id": "rv7_maint", "city": "rv7_city"}, "progress": 0}
+	GameState.missions.append(mj)
+	GameState.maint_sites["rv7_city"] = mj["site"]
+	GameState.abandon_mission(mj)
+	var k3: bool = not GameState.maint_sites.has("rv7_city") and not GameState.missions.has(mj)
+	# K7: the map's own dice for the ads
+	var rng_a := RandomNumberGenerator.new()
+	rng_a.seed = 5
+	var rng_b := RandomNumberGenerator.new()
+	rng_b.seed = 5
+	var k7: bool = DeckGen.shuffled(DeckGen.ADS, rng_a) == DeckGen.shuffled(DeckGen.ADS, rng_b) and DeckGen.shuffled(DeckGen.ADS, rng_a).size() == DeckGen.ADS.size()
+	check(w1 and w2 and m3 and m1_ok and m2 and k3 and k7,
+		"review 7: a site's state kept (a crate stays open, the fallen stay down, gone with the site), stray fuses dropped, the key card kept, a new pilot's ground state empty, the Archivist Suit never lost, an abandoned reactor job lets the tunnel go, the ads by the map's dice  [%s]%s" % [
+			" ".join(PackedStringArray([str(w1), str(w2), str(m3), str(m1_ok), str(m2), str(k3), str(k7)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

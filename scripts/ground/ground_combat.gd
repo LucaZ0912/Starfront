@@ -2499,14 +2499,33 @@ func view_poly(f: Dictionary) -> PackedVector2Array:
 ## Sneaking: the tactical view shows where each unaware foe would spot you, and over its head how far it has noticed you.
 func _draw_sneak() -> void:
 	var red := Color(1.0, 0.3, 0.25)
+	var xf := tac_node.get_global_transform_with_canvas()
+	var vr := tac_node.get_viewport_rect()
+	var now := Time.get_ticks_msec()
 	for f in alive():
 		if f["aware"] or String(f.get("wild", "")) != "":
 			continue                                 # (the animals go by nearness, not by a cone)
-		var poly := view_poly(f)
+		var w: Walker = f["w"]
+		var reach := view_reach(f)
+		if not vr.grow(reach * S * absf(xf.get_scale().x)).has_point(xf * (w.pos * S)):
+			continue                                 # review 7 M4: off the screen – not drawn
+		# review 7 M4: the cone cast again only when the foe moved or turned, or every 0.25 s
+		var face := look_of(f)
+		if not f.has("vp") or (f["vp_at"] as Vector2).distance_to(w.pos) > 2.0 or absf(angle_difference(float(f["vp_face"]), face)) > 0.06 				or absf(float(f["vp_reach"]) - reach) > 1.0 or now - int(f["vp_t"]) > 250:
+			f["vp"] = view_poly(f)
+			f["vp_at"] = w.pos
+			f["vp_face"] = face
+			f["vp_reach"] = reach
+			f["vp_t"] = now
+		var poly: PackedVector2Array = f["vp"]
 		var sp := PackedVector2Array()
 		for p in poly:
 			sp.append(p * S)
-		tac_node.draw_colored_polygon(sp, Color(red, 0.2))
+		var area := 0.0
+		for pi in sp.size():
+			area += sp[pi].cross(sp[(pi + 1) % sp.size()])
+		if absf(area) > 40.0:                        # (facing a wall: nothing to fill – no failed triangulation)
+			tac_node.draw_colored_polygon(sp, Color(red, 0.2))
 		sp.append(sp[0])
 		tac_node.draw_polyline(sp, Color(red, 0.7), 2.0)
 		var fp := (f["w"] as Walker).pos * S

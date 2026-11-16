@@ -128,6 +128,7 @@ var clouds: Node2D = null                 # the sea of clouds under the map
 var cloud_sky: Node2D = null              # the giant's sky in a window
 const RAIL_RUN := 30.0                    # seconds from door to door
 const RAIL_V := 260.0                     # art px a second at full speed (~17 m/s)
+var _poi_caches := {}                    # review 7 W1: every site's cache while you are down (the alley's and the roof's side by side)
 var _poi_cache := {}                     # 0.7.53.2: the site's two maps while you are there (outside, inside – their state kept)
 var fog: Node2D = null
 var depth := 0                            # 0.7.53.3: the level of a site you are on (0 the top)
@@ -335,6 +336,17 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				if f0["dead"] and f0.has("spawn_i") and not dd.has(int(f0["spawn_i"])):
 					dd.append(int(f0["spawn_i"]))
 			map.set_meta("dead", dd)
+	poi_save()                                            # review 7 W1
+	if map != null:
+		map.set_meta("fuses", _fuses)                       # review 7 W2: the level's fuses stay with it – they burn on when you return
+		map.set_meta("wires", _wires_t)
+	_haz_t = {}
+	_socket = -1
+	_sink = {}
+	_team_held = -1.0                                     # review 7 K1: keys held stay behind
+	_tab_held = -1.0
+	_drone_held = [-1.0, -1.0]
+	_revive = -1.0
 	combat = null
 	if pilot != null and is_instance_valid(pilot):
 		pilot.aim = Vector2.INF
@@ -471,6 +483,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
+	_fuses = map.get_meta("fuses", {})                  # review 7 W2
+	_wires_t = map.get_meta("wires", {})
 	_build()
 	_setup_weather()
 	if combat_allowed():
@@ -1298,6 +1312,9 @@ func _draw_drones() -> void:
 
 ## 0.7.53.7: charges and explosives burning down; loose rock coming down.
 func _fuses_step(delta: float) -> void:
+	for kb in _fuses.keys():
+		if int(kb) < 0 or int(kb) >= map.explore.size():
+			_fuses.erase(kb)                                  # review 7 W2: never a stray index again
 	for k0 in _fuses.keys():
 		var d0: Dictionary = map.explore[int(k0)]
 		if String(d0["kind"]) == "crank_door":
@@ -1482,8 +1499,10 @@ func _wires_step(delta: float) -> void:
 	for k in _wires_t.keys():
 		_wires_t[k] = float(_wires_t[k]) - delta
 		if float(_wires_t[k]) <= 0.0:
-			var d0: Dictionary = map.explore[int(k)]
 			_wires_t.erase(k)
+			if int(k) < 0 or int(k) >= map.explore.size():
+				continue                                      # review 7 W2
+			var d0: Dictionary = map.explore[int(k)]
 			combat._explode((d0["pos"] as Vector2) + Vector2(0, 6), 70.0, 55.0, "explosive", null)
 			raise_alarm()
 	for i in map.explore.size():
@@ -2549,6 +2568,7 @@ func _open_curator() -> void:
 	if not _cur_trip.is_empty():
 		_say_toast("The curator is away – setting your finds into their cases. Back in a moment.", 3.0)
 		return
+	GameState.museum_give_suit()                      # review 7 M2: the suit she kept for you, once you have room
 	Audio.play("ui_open", "museum: the curator")
 	talk = DialogueView.new()
 	_ui.add_child(talk)
@@ -2931,6 +2951,7 @@ func explore_use(z: Dictionary) -> bool:
 			if String(d["state"]) != "taken":
 				d["state"] = "taken"                       # 0.7.53.19 (Luz): the lifts' key card
 				_site["card"] = true
+				GameState.set_poi_flag(String(_site.get("id", "")), "card")     # review 7 M3: kept with the site
 				_say_toast("A key card – the lifts down will take you now.", 3.0)
 				Audio.play("ui_buy", "key card", -6.0)
 			return true
@@ -3493,14 +3514,107 @@ func _poi_target_done(d: Dictionary) -> void:
 
 ## 0.7.53.2: the site's maps while you are there – built once (inside first: the window lists what is in it),
 ## kept, so doors stay open and the fallen stay down as you go in and out.
+## Review 7 W1: states a thing only passes through (a fuse burning, a lock being picked) – kept as they were before.
+const POI_PASSING := ["lit", "charged", "picking", "cranking", "drilling", "falling", "fired", "ringing"]
+const POI_KEEP := ["state", "pos", "prisoner", "drained", "crank"]
+
+
+## Review 7 W1: a site's level as it was left – the things in it (opened, taken, blown), the fallen, the minimap; the
+## doors, cages, vents and drained tunnels laid out again.
+func _poi_restore(m: GroundMap, sid: String, key: String) -> void:
+	m.set_meta("poi_key", [sid, key])
+	var ex0: Array = []
+	for d in m.explore:
+		ex0.append(String(d.get("state", "")))
+	m.set_meta("ex0", ex0)
+	if sid == "" or not GameState.poi_state.has(sid):
+		return
+	var saved: Dictionary = ((GameState.poi_state[sid] as Dictionary).get("maps", {}) as Dictionary).get(key, {})
+	if saved.is_empty():
+		return
+	var ex: Dictionary = saved.get("ex", {})
+	for ks in ex.keys():
+		var i := int(ks)
+		if i < 0 or i >= m.explore.size():
+			continue
+		var d: Dictionary = m.explore[i]
+		for fk in (ex[ks] as Dictionary).keys():
+			d[fk] = ex[ks][fk]
+		var st := String(d.get("state", ""))
+		var tl: Array = d.get("tiles", [])
+		if String(d["kind"]) == "crystals" and st == "off" and tl.size() >= 4:
+			m.fill(int(tl[0]), int(tl[1]), int(tl[2]), int(tl[3]), GroundMap.T.FLOOR)
+		elif st == "off" and tl.size() >= 4 and String(d["kind"]).contains("cage"):
+			m.fill(int(tl[0]), int(tl[1]), int(tl[2]), int(tl[3]), GroundMap.T.FLOOR, 1)
+			for c in [Vector2i(int(tl[0]), int(tl[1])), Vector2i(int(tl[0]) + int(tl[2]) - 1, int(tl[1])), Vector2i(int(tl[0]), int(tl[1]) + int(tl[3]) - 1),
+					Vector2i(int(tl[0]) + int(tl[2]) - 1, int(tl[1]) + int(tl[3]) - 1)]:
+				m.set_t(c.x, c.y, GroundMap.T.BLOCK)
+		elif st == "open" and tl.size() >= 4:
+			m.fill(int(tl[0]), int(tl[1]), int(tl[2]), int(tl[3]), GroundMap.T.DOOR, 1)
+		if st == "open" and d.has("duct"):
+			for c2 in d["duct"]:
+				m.set_t(int(c2[0]), int(c2[1]), GroundMap.T.FLOOR, 16)
+		if bool(d.get("drained", false)):
+			for t in d.get("flood", []):
+				if m.t_at(int(t[0]), int(t[1])) == GroundMap.T.BLOCK:
+					m.set_t(int(t[0]), int(t[1]), GroundMap.T.FLOOR, int(t[2]))
+	m.set_meta("dead", (saved.get("dead", []) as Array).duplicate())
+	if saved.has("seen"):
+		m.set_meta("seen", saved["seen"])
+	m.refresh_texture()
+	m._astar = null
+
+
+## Review 7 W1: what happened on the level you are on, kept in the game (called when you leave it, take off, save).
+func poi_save() -> void:
+	if map == null or not map.has_meta("poi_key"):
+		return
+	var pk: Array = map.get_meta("poi_key")
+	var sid := String(pk[0])
+	if sid == "":
+		return
+	var dd: Array = (map.get_meta("dead", []) as Array).duplicate()
+	if combat != null and is_instance_valid(combat):
+		for f0 in combat.foes:
+			if bool(f0.get("dead", false)) and f0.has("spawn_i") and not dd.has(int(f0["spawn_i"])):
+				dd.append(int(f0["spawn_i"]))
+	map.set_meta("dead", dd)
+	var ex0: Array = map.get_meta("ex0", [])
+	var ex := {}
+	for i in mini(map.explore.size(), ex0.size()):
+		var d: Dictionary = map.explore[i]
+		var e := {}
+		for fk in POI_KEEP:
+			if d.has(fk):
+				e[fk] = d[fk]
+		if POI_PASSING.has(String(d.get("state", ""))):
+			e["state"] = ex0[i]                                 # (W2) half done – as it was
+		ex[str(i)] = e
+	var rec := {"ex": ex, "dead": dd}
+	if _mm != null and map.has_meta("poi"):
+		rec["seen"] = poi_seen
+	elif map.has_meta("seen"):
+		rec["seen"] = map.get_meta("seen")
+	GameState.poi_site_state(sid, _sys)["maps"][String(pk[1])] = rec
+
+
+## Review 7 W1/K2: leaving the ground (taking off, the ship, a fall) – what happened here kept, who is still down dies.
+func leave_ground() -> void:
+	poi_save()
+	if combat != null and is_instance_valid(combat):
+		combat.leave()
+
+
 func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 	var sid := String(_site.get("id", ""))
 	if String(_poi_cache.get("site", "")) != sid:
-		_poi_cache = {"site": sid}
+		_poi_cache = _poi_caches.get(sid, {"site": sid})
+		_poi_caches[sid] = _poi_cache
 	var theme := String(_site.get("theme", "precursor"))
 	if String(PoiData.THEMES.get(theme, {}).get("outside", "")) == "wild":
 		if not _poi_cache.has("outside"):
 			_poi_cache["outside"] = WildGen.build(_body, _site, lsz.x, lsz.y)      # 53f-2 (Luz): the wild – all outside
+			_poi_restore(_poi_cache["outside"], sid, "outside")
 		return _poi_cache["outside"]
 	var nlev := PoiData.levels(theme)
 	for dl in nlev:                                     # 0.7.53.3: every level, built once
@@ -3508,6 +3622,7 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 			_poi_cache["dungeon_%d" % dl] = DungeonGen.build_inside(_body, _site, dl)
 			if theme == "skymaint":
 				_underdeck(_poi_cache["dungeon_%d" % dl])
+			_poi_restore(_poi_cache["dungeon_%d" % dl], sid, "dungeon_%d" % dl)
 	if lv == "dungeon":
 		return _poi_cache["dungeon_%d" % clampi(depth, 0, nlev - 1)]
 	if not _poi_cache.has("outside"):
@@ -3538,6 +3653,7 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 		info["targets"] = DungeonGen.site_targets(all)
 		mo.set_meta("poi", info)
 		_poi_cache["outside"] = mo
+		_poi_restore(mo, sid, "outside")
 	return _poi_cache["outside"]
 
 
@@ -4068,8 +4184,8 @@ func wheel_centre() -> Vector2:
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
 func use(instant: bool = false) -> bool:
-	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0:
-		return false
+	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty():
+		return false                                     # review 7 K1: not while the platform sinks
 	if not _seat.is_empty():
 		_stand_up()
 		return true
@@ -4259,7 +4375,7 @@ func use(instant: bool = false) -> bool:
 				_sink = {"d": al, "t": 0.0, "dir": 1}         # 0.7.53.4 (Luz): the platform sinks with you
 				Audio.play("dock_clamp", "ancient lift", -4.0)
 				return true
-			if bool(zone.get("need_card", false)) and not bool(_site.get("card", false)):
+			if bool(zone.get("need_card", false)) and not bool(_site.get("card", false)) and not GameState.poi_flag(String(_site.get("id", "")), "card"):
 				_say_toast("The lift wants a key card – look in the offices. Or the fire stairs (they ring the alarm).", 3.5)
 				return true                                  # 0.7.53.19 (Luz)
 			if bool(zone.get("fire_door", false)):
@@ -4835,7 +4951,7 @@ func _open_souvenir_menu(z: Dictionary) -> void:
 		var aa: int = amt
 		row.add_child(UI.button("Buy %d" % aa, func():
 			var e: String = Commands.execute({"type": "souvenir_buy", "amount": aa})
-			_say_toast(e if e != "" else "Bought %d %s." % [aa, GameData.item_name(item)], 3.0)
+			_say_toast(e if e != "" else ("Bought %d %s." % [Commands.souvenirs_bought, GameData.item_name(item)]) + (" – all there was room and money for." if Commands.souvenirs_bought < aa else ""), 3.0)
 			_open_souvenir_menu(z)))
 	v.add_child(row)
 	v.add_child(UI.button("Close [Esc]", _close_lift_menu))

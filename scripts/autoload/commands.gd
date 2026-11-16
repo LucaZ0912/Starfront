@@ -3024,7 +3024,9 @@ func _c_sight_photo(_c: Dictionary) -> String:
 	return ""
 
 
+var souvenirs_bought := 0              # review 7 K5: how many the last souvenir_buy really bought (the hold or the credits may cut it)
 func _c_souvenir_buy(c: Dictionary) -> String:
+	souvenirs_bought = 0
 	var g = _ground()
 	var f := _fit()
 	if g == null or f == null or g.map == null or not g.map.has_meta("sight"):
@@ -3038,6 +3040,7 @@ func _c_souvenir_buy(c: Dictionary) -> String:
 		return "No room in the hold, or not enough credits."
 	GameState.spend(amount * price)
 	f.add_cargo(item, amount)
+	souvenirs_bought = amount
 	return ""
 
 

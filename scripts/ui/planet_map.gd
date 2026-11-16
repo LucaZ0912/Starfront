@@ -140,7 +140,7 @@ func select(i: int) -> void:
 	var turn := CityStyle.minutes_to_turn(s, body)
 	_info.add_child(UI.label(("☀  Day there now" if dl > 0.5 else "☾  Night there now") + ("  ·  %s in about %d min" % ["sunset" if dl > 0.5 else "sunrise", turn] if turn > 0 else ""),
 		13, Color(1.0, 0.85, 0.45) if dl > 0.5 else Color(0.6, 0.7, 1.0)))
-	var wx := Weather.at(body, s)                         # 54e (Luz): the weather there now
+	var wx := _weather_of(s)                              # 54e (Luz): the weather there now
 	if String(wx["cls"]) != "":
 		_info.add_child(UI.label("Weather there: %s" % (String(wx["name"]) if float(wx["k"]) > 0.2 or String(wx["kind"]) == "clear" else "clearing up"), 13,
 			WEATHER_COL.get(String(wx["kind"]), UI.TEXT_DIM)))
@@ -159,7 +159,15 @@ func _process(delta: float) -> void:
 ## 54e: the colour a kind of weather is named in, and its clouds on the disc.
 const WEATHER_COL := {"clear": Color(1.0, 0.85, 0.45), "cloudy": Color(0.8, 0.84, 0.9), "rain": Color(0.55, 0.78, 1.0),
 	"storm": Color(0.7, 0.7, 1.0), "fog": Color(0.82, 0.85, 0.9), "snow": Color(0.9, 0.95, 1.0), "blizzard": Color(0.85, 0.95, 1.0),
-	"dust": Color(0.95, 0.75, 0.5), "sandstorm": Color(0.98, 0.68, 0.38), "ash": Color(0.75, 0.6, 0.55), "acid": Color(0.75, 1.0, 0.4)}
+	"dust": Color(0.95, 0.75, 0.5), "sandstorm": Color(0.98, 0.68, 0.38), "ash": Color(0.75, 0.6, 0.55), "acid": Color(0.75, 1.0, 0.4),
+	"gaswind": Color(0.95, 0.85, 0.65), "gasstorm": Color(0.85, 0.75, 1.0)}
+
+
+## The weather at a place – over a giant the cloud city's own, as on its deck (review 7 K4).
+func _weather_of(s: Dictionary) -> Dictionary:
+	if Universe.is_giant(body):
+		return Weather.at(body, {"id": Universe.city_id(body, s)}, true)
+	return Weather.at(body, s)
 
 
 ## 54e (Luz): the weather hinted on the planet – cloud fields over the places where it rains or snows, a storm's
@@ -167,7 +175,7 @@ const WEATHER_COL := {"clear": Color(1.0, 0.85, 0.45), "cloudy": Color(0.8, 0.84
 func _draw_weather() -> void:
 	for i in sites.size():
 		var s: Dictionary = sites[i]
-		var wx := Weather.at(body, s)
+		var wx := _weather_of(s)
 		var kd := String(wx["kind"])
 		var kk := float(wx["k"])
 		if String(wx["cls"]) == "" or _t < 0.7 + i * 0.22:
@@ -185,12 +193,14 @@ func _draw_weather() -> void:
 			col = Color(0.8, 0.95, 0.5)
 		elif kd == "storm":
 			col = Color(0.75, 0.78, 0.88)
-		var big := 1.4 if kd in ["storm", "blizzard", "sandstorm"] else 1.0
+		if kd in ["gaswind", "gasstorm"]:
+			col = Color(0.95, 0.85, 0.7)
+		var big := 1.4 if kd in ["storm", "blizzard", "sandstorm", "gasstorm"] else 1.0
 		for b in 9:
 			var a := float(b) * 2.4 + _t * 0.05
 			var q := p + Vector2(cos(a), sin(a) * 0.6) * (10.0 + float(b % 4) * 9.0) * big
 			_marks.draw_circle(q, (14.0 + float(b % 3) * 6.0) * big, Color(col, 0.07 * kk))
-		if kd in ["storm", "blizzard", "sandstorm"]:
+		if kd in ["storm", "blizzard", "sandstorm", "gasstorm"]:
 			for arm in 3:                                                   # the storm's spiral, turning
 				var pts := PackedVector2Array()
 				for t2 in 18:
@@ -220,12 +230,12 @@ func _icon_shape(c: Vector2, kd: String) -> void:
 			var d := Vector2.from_angle(a * TAU / 8.0)
 			_marks.draw_line(c + d * 6.5, c + d * 9.0, Color(1.0, 0.85, 0.3), 1.5)
 		return
-	if kd in ["dust", "sandstorm", "fog", "ash"]:
+	if kd in ["dust", "sandstorm", "fog", "ash", "gaswind"]:
 		var hc: Color = WEATHER_COL.get(kd, Color.WHITE)
 		for l in 3:
 			_marks.draw_line(c + Vector2(-7 + l * 2, -4 + l * 4), c + Vector2(7 + l * 2, -4 + l * 4), hc, 2.0)
 		return
-	var cc := Color(0.55, 0.58, 0.66) if kd == "storm" else Color(0.9, 0.92, 0.97)
+	var cc := Color(0.55, 0.58, 0.66) if kd in ["storm", "gasstorm"] else Color(0.9, 0.92, 0.97)
 	for o in [Vector2(-5, 0), Vector2(0, -3), Vector2(5, 0), Vector2(0, 2)]:
 		_marks.draw_circle(c + o, 4.5, Color(0.02, 0.02, 0.05, 0.6))
 	for o2 in [Vector2(-5, 0), Vector2(0, -3), Vector2(5, 0), Vector2(0, 2)]:
@@ -233,7 +243,7 @@ func _icon_shape(c: Vector2, kd: String) -> void:
 	if kd in ["rain", "storm", "acid"]:
 		for r in 3:
 			_marks.draw_line(c + Vector2(-5 + r * 5, 7), c + Vector2(-7 + r * 5, 11), Color(0.75, 1.0, 0.45) if kd == "acid" else Color(0.5, 0.75, 1.0), 1.5)
-	if kd == "storm":
+	if kd in ["storm", "gasstorm"]:
 		_marks.draw_polyline(PackedVector2Array([c + Vector2(1, 4), c + Vector2(-1, 8), c + Vector2(1, 8), c + Vector2(-1, 12)]), Color(1.0, 0.9, 0.3), 1.5)
 	if kd in ["snow", "blizzard"]:
 		for r2 in 3:

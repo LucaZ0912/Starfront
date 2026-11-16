@@ -53,6 +53,17 @@ const SHOP_W := 7
 const DOCK_TERMINALS := ["fuel", "repair", "drones", "munitions", "hangar"]
 const KIOSKS := ["news", "bulletin"]
 ## Holographic adverts in the corridor – made-up brands of the cluster.
+## Review 7 K7: a copy of `arr` shuffled with the map's own RNG (Fisher-Yates) – not the global dice.
+static func shuffled(arr: Array, rng: RandomNumberGenerator) -> Array:
+	var out := arr.duplicate()
+	for i in range(out.size() - 1, 0, -1):
+		var j := rng.randi() % (i + 1)
+		var t = out[i]
+		out[i] = out[j]
+		out[j] = t
+	return out
+
+
 const ADS := [["NEURO+", "think faster"], ["ORBITAL COLA", "taste the void"], ["SYNTH NOODLES", "hot · 24/7"],
 	["DREAMWARE", "sleep implants"], ["CHROME & SOUL", "body mods"], ["VOIDBANK", "your credits, safe"],
 	["STARLIGHT HOTEL", "rooms by the hour"], ["ZERO-G GYM", "lift nothing"], ["KAIJU TV", "live from the rim"]]
@@ -163,8 +174,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = [], 
 	# corridor dressing: lamp posts and plants on the south side, between the doors
 	var lx := bx0 + 2
 	var slot := 0
-	var ads := ADS.duplicate()
-	ads.shuffle()
+	var ads := shuffled(ADS, rng)                   # review 7 K7: the map's own dice – the same ads each time
 	var ad_cols := [Color(0.3, 0.95, 1.0), Color(1.0, 0.3, 0.75), Color(0.75, 0.45, 1.0), Color(0.45, 1.0, 0.55)]
 	# one thing per stretch of wall between two doors
 	var wall_spots: Array = []
@@ -1032,6 +1042,8 @@ static func build_landing(body: Dictionary, site: Dictionary, ship_len: float, s
 		"col": Universe.SITE_KINDS[kd]["col"], "sign": Vector2(-100, -100)})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "site_sign", "title": "%s  →" % String(site["name"]),
 		"col": Universe.SITE_KINDS[kd]["col"], "sign": Vector2(gx - 3, path_y - 1.2) * GroundMap.TILE})
+	var wrng := RandomNumberGenerator.new()                  # review 7 K7
+	wrng.seed = hash(String(site.get("id", site.get("name", ""))) + "_wander")
 	for k2 in 4:
-		m.wander.append(Vector2(randf_range(int(sc.x) + 2, W - 4), path_y + 1.0) * GroundMap.TILE)
+		m.wander.append(Vector2(wrng.randf_range(int(sc.x) + 2, W - 4), path_y + 1.0) * GroundMap.TILE)
 	return m

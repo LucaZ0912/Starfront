@@ -135,6 +135,9 @@ var sight_photos := {}                  # package 54a: "<sight id>:<event>" -> t
 var sight_visits := {}                  # sight id -> how often you came (the event changes with it)
 var poi_visits := {}                    # package 53a: system id (String) -> how often you have come (its sites change with it)
 var poi_used: Array = []                # sites whose target is done – gone
+## Review 7 W1: what happened at a site to explore – per site id {"sys", "maps": {level key: {"ex": {index: {state, pos …}},
+## "dead": [...], "seen": bytes}}, "flags": {...}} – kept while the site stands (until its target is done or the next visit).
+var poi_state := {}
 var museum_finds: Array = []            # 0.7.53.2: finds for the Museum carried (exhibit ids, data/museum.gd – 53e: each once per piece)
 var museum_donated: Array = []          # 53e: the exhibits in their cases at the Museum in Curie
 ## Package 51: the pilot's personal equipment – suit, weapons, belt, features, pockets, the ships' lockers.
@@ -221,6 +224,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	curia.reset()
 	permits.clear()
 	research_data = 0
+	reset_ground_state()                         # review 7 M1
 	fortress_broken.clear()
 	misjumps.clear()                             # review 6 K1
 	pending_arrival = {}
@@ -532,7 +536,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "minigame_streak": minigame_streak.duplicate(), "minigame_wins": minigame_wins.duplicate(), "minigame_best": minigame_best.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "minigame_streak": minigame_streak.duplicate(), "minigame_wins": minigame_wins.duplicate(), "minigame_best": minigame_best.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "poi_state": poi_state.duplicate(true), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
@@ -610,6 +614,8 @@ func from_dict(d: Dictionary) -> void:
 	minigame_best = (d.get("minigame_best", {}) as Dictionary).duplicate()
 	sight_visits = (d.get("sight_visits", {}) as Dictionary).duplicate()
 	poi_used = (d.get("poi_used", []) as Array).duplicate()
+	poi_state = (d.get("poi_state", {}) as Dictionary).duplicate(true)
+	maint_sites.clear()                                         # review 7 M1: not kept – the jobs give it back
 	museum_finds = (d.get("museum_finds", []) as Array).duplicate()
 	museum_donated = (d.get("museum_donated", []) as Array).duplicate()
 	if d.has("news"):
@@ -1713,6 +1719,10 @@ func _accept_passengers(m: Dictionary) -> String:
 
 func abandon_mission(m: Dictionary) -> void:
 	missions.erase(m)
+	if m.get("site") is Dictionary and (m["site"] as Dictionary).has("city"):
+		var cid := String(m["site"]["city"])                # review 7 K3: the city's lift no longer goes to the job's dark tunnel
+		if maint_sites.has(cid) and String((maint_sites[cid] as Dictionary).get("id", "")) == String(m["site"].get("id", "")):
+			maint_sites.erase(cid)
 	var f := active()
 	if m["type"] == "courier" and f != null:
 		f.remove_cargo("sealed_cargo", float(m["amount"]))
@@ -2268,11 +2278,26 @@ func museum_donate(id: String) -> String:
 	log_msg("Into its case: %s. The curator thanks you – %d cr." % [MuseumData.exhibit_name(id), bonus], COL_GOOD)
 	if museum_room_done(room):
 		log_msg("The room \"%s\" is complete! %s" % [MuseumData.room_name(room), String(MuseumData.PERKS[room])], COL_GOOD)
-	if museum_donated.size() >= MuseumData.EXHIBITS.size() and not museum_donated.has("_suit"):
-		museum_donated.append("_suit")
-		gear.add_item(MuseumData.SUIT_REWARD, 1)
-		log_msg("The Museum is full. The curator gives you the Archivist Suit – it is in your pockets.", COL_GOOD)
+	museum_give_suit()
 	return ""
+
+
+## 53e: the Museum full – the Archivist Suit for you; into the pockets, else the ship's locker, else the curator keeps it
+## until you have room (review 7 M2: it is never lost). True if handed over now.
+func museum_give_suit() -> bool:
+	if museum_donated.has("_suit") or museum_donated.size() < MuseumData.EXHIBITS.size():
+		return false
+	var where := "it is in your pockets"
+	var left := gear.add_item(MuseumData.SUIT_REWARD, 1)
+	if left > 0 and active() != null:
+		left = gear._add_to(gear.locker(active()), MuseumData.SUIT_REWARD, 1)
+		where = "your pockets are full, so it is in your ship's locker"
+	if left > 0:
+		log_msg("The Museum is full. The curator keeps the Archivist Suit for you until you have room – come back to her.", COL_WARN)
+		return false
+	museum_donated.append("_suit")
+	log_msg("The Museum is full. The curator gives you the Archivist Suit – %s." % where, COL_GOOD)
+	return true
 
 
 ## 53e: a piece you carry that is shown already, sold to the curator – its price by its rarity. The credits or 0.
@@ -2300,9 +2325,42 @@ func museum_count() -> int:
 	return museum_donated.filter(func(i): return String(i) != "_suit").size()
 
 
+## Review 7 M1: a new pilot starts on the ground with nothing of the last one (sites, Museum, photos, games).
+func reset_ground_state() -> void:
+	poi_visits.clear()
+	poi_used.clear()
+	poi_state.clear()
+	museum_finds.clear()
+	museum_donated.clear()
+	sight_photos.clear()
+	sight_visits.clear()
+	minigame_streak.clear()
+	minigame_wins.clear()
+	minigame_best.clear()
+	maint_sites.clear()
+	Weather.debug_kind = ""
+
+
 func poi_use(id: String) -> void:
 	if not poi_used.has(id):
 		poi_used.append(id)
+	poi_state.erase(id)                                  # review 7 W1: the site is gone – so is what happened there
+
+
+## Review 7 W1/M3: the state kept for a site (created on demand).
+func poi_site_state(id: String, sys: int = -1) -> Dictionary:
+	if not poi_state.has(id):
+		poi_state[id] = {"sys": sys if sys >= 0 else current_system, "maps": {}, "flags": {}}
+	return poi_state[id]
+
+
+## A flag of a site (the corporate tower's key card taken …).
+func poi_flag(id: String, flag: String) -> bool:
+	return bool(((poi_state.get(id, {}) as Dictionary).get("flags", {}) as Dictionary).get(flag, false))
+
+
+func set_poi_flag(id: String, flag: String) -> void:
+	poi_site_state(id)["flags"][flag] = true
 
 
 func _arrive(f: ShipFitting) -> void:
@@ -2329,6 +2387,9 @@ func _arrive(f: ShipFitting) -> void:
 	current_system = f.system_id
 	if f.uid == active_uid:
 		poi_visits[str(f.system_id)] = int(poi_visits.get(str(f.system_id), 0)) + 1     # package 53a: other sites this time
+		for pid in poi_state.keys():                     # review 7 W1: a new visit – the sites here are fresh
+			if int((poi_state[pid] as Dictionary).get("sys", -1)) == f.system_id:
+				poi_state.erase(pid)
 	if f.route.is_empty():
 		log_msg("%s arrived in %s." % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_GOOD)
 	ship_arrived_system.emit(f)

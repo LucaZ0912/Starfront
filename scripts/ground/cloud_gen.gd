@@ -281,8 +281,7 @@ static func _plaza_style(m: GroundMap, sty: String, o: int, Wi: int, lift_x: int
 			for gy in [P_FLOOR + 2, P_RAIL - 5]:
 				m.decals.append({"kind": "guide", "x": o + 1, "y": gy, "w": Wi - 2, "h": 1, "col": Color(0.3, 0.9, 0.55)})
 		"independent":
-			var ads := DeckGen.ADS.duplicate()
-			ads.shuffle()
+			var ads := DeckGen.shuffled(DeckGen.ADS, rng)          # review 7 K7
 			var n := 0
 			for hx in range(o + 4, cafe_x - 2, 11):
 				if absi(hx - lift_x - 3) < 5:

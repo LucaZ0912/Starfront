@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.18 – 2026-11-16
+
+**Review of Teil 7 – all findings fixed** (report `reviews/teil7_review.md`, made with Fable 5.2).
+- W1: what happened at a site to explore is kept – opened crates and doors, cages, vents, drained tunnels, the fallen,
+  the minimap – when you change level, take off and land again, go from the alley to the roof and back, or save and
+  load; it goes with the site (its target done, or the next visit to the system). No more loot over and over.
+- W2: fuses, tripwires and timers (lock picking, cranked doors, the vault drill) stay with their level and run on when
+  you come back – no script errors every frame, nothing hanging half done.
+- M1: a new game starts with an empty Museum, no photos, no streaks, no sites done.
+- M2: the Archivist Suit is never lost – pockets full, it goes into the ship's locker, else the curator keeps it for you.
+- M3: the corporate tower's key card stays taken when you leave the Roof Plaza.
+- M4: sneaking – the foes' view cones are cast again only when they move or turn, and not off the screen.
+- K1: keys held do not carry over into the next level; E does nothing while the platform sinks.
+- K2: a team member down dies when you take off, as when you change level.
+- K3: an abandoned reactor job no longer leaves the city's tunnels dark.
+- K4: the planet map shows the cloud cities' weather (gas winds, gas storms).
+- K5: the souvenir stall says how many you really bought.
+- K6: an audience with the Hierarch no longer overturns a petition the Curia has heard.
+- K7: a street's ads and a landing's walkers no longer change each visit.
+
 ## alpha 0.7.54.17 – 2026-11-16
 
 **Package 54e – dynamic weather (Luz).** Weather for everything out in the open – city streets and plazas,

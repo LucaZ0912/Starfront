@@ -200,6 +200,10 @@ func audience(what: String, id: String = "") -> String:
 		"edict":
 			if not EDICTS.has(id) or id == active_id():
 				return "That is no edict to ask for."
+			var pet := String(edict.get("petition", ""))
+			if pet != "" and pet != id and EDICTS.has(pet):
+				# review 7 K6: a petition heard by the Curia stands – the Hierarch does not undo it
+				return "Your petition for the %s stands already – the Hierarch will not overturn what his Curia has heard." % EDICTS[pet]["name"]
 			edict["petition"] = id
 			GameState.log_msg("The Hierarch has granted your request: the next edict will be the %s." % EDICTS[id]["name"], GameState.COL_GOOD)
 		"bless":
