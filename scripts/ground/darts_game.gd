@@ -46,6 +46,7 @@ var _rng := RandomNumberGenerator.new()
 var _board: ImageTexture
 var _ui := {}
 var _labels: Array = []
+var _pad_aim := Vector2.INF                        # package 80: the controller's aim (art px)
 
 
 func setup(cfg: Dictionary) -> void:
@@ -257,6 +258,8 @@ func _throw(p: Vector2) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	_pad_aim_step(dt)
+	_pad_poll()
 	msg_t = maxf(0.0, msg_t - dt)
 	if holding and breath > 0.0:
 		breath = maxf(0.0, breath - dt / 1.8)
@@ -311,7 +314,57 @@ func _origin() -> Vector2:
 
 
 func _art_mouse() -> Vector2:
+	if _pad_aim != Vector2.INF:
+		return _pad_aim
 	return (get_local_mouse_position() - _origin()) / _scale()
+
+
+## Package 80 (Luz): with the controller – the left stick moves the aim (the right stick finely), L1 held holds the
+## breath, L2 throws; ✕ after the game: back to the table. The game reads the sticks itself; whatever was moved last
+## aims – the sticks or the mouse.
+var _mouse_seen := Vector2.INF
+var pad_buttons := ["l1", "l2", "cross"]
+
+## Package 80: the controller's buttons read here each frame (pad_buttons) – the game does not wait for the context.
+var _pad_prev := {}
+
+
+func _pad_poll() -> void:
+	for b in pad_buttons:
+		var h := Pad.held(b)
+		if h != bool(_pad_prev.get(b, false)):
+			_pad_prev[b] = h
+			pad_button(b, h)
+
+
+func _pad_aim_step(dt: float) -> void:
+	var mp := get_local_mouse_position()
+	if _mouse_seen != Vector2.INF and mp.distance_to(_mouse_seen) > 1.5:
+		_pad_aim = Vector2.INF                     # the mouse moved: it aims again
+	_mouse_seen = mp
+	var l := Pad.left_stick()
+	var r := Pad.right_stick()
+	if l.length() < 0.1 and r.length() < 0.1:
+		return
+	if _pad_aim == Vector2.INF:
+		_pad_aim = BC
+	_pad_aim = (_pad_aim + (l * lerpf(20.0, 110.0, Pad.mg_aim) + r * lerpf(5.0, 30.0, Pad.mg_aim)) * dt).clamp(Vector2(4, 4), Vector2(AW - 4, AH - 4))
+
+
+func pad_button(b: String, pressed: bool) -> bool:
+	match b:
+		"l1":
+			holding = pressed
+			return true
+		"l2":
+			if pressed and state == "aim" and (turn == 0 or mode == "clock"):
+				_throw(_art_mouse() + _sway() + Vector2(_rng.randfn(0.0, 2.2), _rng.randfn(0.0, 2.2)))
+			return true
+		"cross":
+			if pressed and state == "over":
+				finished.emit(won)
+			return true
+	return false
 
 
 # ---------------------------------------------------------------- drawing

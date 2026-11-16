@@ -1175,7 +1175,7 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 		"move":
 			dest = order["pos"]
 			speed_factor = float(order.get("pace", 1.0))   # < 1: slow patrol beat
-			activity = "Flying" if speed_factor >= 1.0 else "Patrolling"
+			activity = "Flying" if speed_factor >= 1.0 or order.get("keys", false) else "Patrolling"
 			if position.distance_to(dest) < 25.0:
 				order = {"type": "idle"}
 		"attack":

@@ -600,7 +600,7 @@ func _wild_step(f: Dictionary, delta: float) -> bool:
 	var hidden := pilot_hidden()
 	if mode == "flee":
 		f["scare"] = maxf(0.0, float(f.get("scare", 0.0)) - delta)
-		var near := 45.0 if sneaking else (150.0 if Input.is_action_pressed("foot_run") else 95.0)
+		var near := 45.0 if sneaking else (150.0 if (Input.is_action_pressed("foot_run") or Pad.run_held()) else 95.0)
 		if (not hidden and dist < near) or bool(f.get("provoked", false)):
 			f["scare"] = maxf(float(f["scare"]), 6.0 if bool(f.get("provoked", false)) else 3.0)
 			f["provoked"] = false
@@ -900,6 +900,7 @@ func _explode(at: Vector2, r: float, dmg: float, dtype: String, from, spare_pilo
 	booms.append({"pos": at, "r": r, "t": 0.0})
 	Audio.play("explosion_small", "shell on foot", -4.0)
 	view._shake = 0.25
+	Pad.rumble(0.4, 0.8, 0.3)                           # package 80
 	var k := blast_share(at, pilot_pos(), r)
 	if k > 0.0 and not spare_pilot:
 		_hurt_pilot(dmg * k, dtype)
@@ -942,6 +943,7 @@ func _hurt_pilot(dmg: float, dtype: String) -> void:
 	_number(pilot_pos(), out)
 	Audio.play("hit_hull" if float(out["health"]) > 0.0 else ("hit_armor" if float(out["armor"]) > 0.0 else "hit_shield"), "hit on foot", -8.0)
 	view._shake = maxf(view._shake, 0.08)
+	Pad.rumble(0.5, 0.3, 0.15)                          # package 80: hit
 	if GameState.gear.health <= 0.0:
 		view._collapse("fight")
 
@@ -1082,7 +1084,7 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		var pd := w.pos.distance_to(pilot_pos())
 		var heard := false
 		if not sneaking and not pilot_hidden() and view.pilot.moving:
-			var nr := NOISE_RUN if Input.is_action_pressed("foot_run") else NOISE_WALK
+			var nr := NOISE_RUN if (Input.is_action_pressed("foot_run") or Pad.run_held()) else NOISE_WALK
 			heard = pd < (nr if not sight(w.pos, pilot_pos())["blocked"] else nr * 0.5)
 		if float(f.get("notice", 0.0)) >= 1.0 or heard or _sees_ally(f):
 			_wake(f)

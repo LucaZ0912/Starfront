@@ -186,6 +186,7 @@ func _process(delta: float) -> void:
 				_test_weather54e(view)           # package 54e – dynamic weather
 				_test_review7(view)              # review of Teil 7 – its fixes
 				_test_firegroups79(view)         # package 79 – fire groups
+				_test_pad80(view)                # package 80 – controller support
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -13289,3 +13290,206 @@ func _test_firegroups79(view: SystemView) -> void:
 	check(by_kind and multi and saved and out_ok and cleared and again and e_empty.contains("empty") and bar_ok and keys_ok and tab_ok,
 		"79: fire groups – by kind at first, a module in several groups, kept in the save, taken out again, cleared and by kind again; an empty group says so; a tile per group on the bar; keys 1–8; the Fire groups tab  [%s]%s" % [
 			" ".join(PackedStringArray([str(by_kind), str(multi), str(saved), str(out_ok), str(cleared), str(again), str(e_empty.contains("empty")), str(bar_ok), str(keys_ok), str(tab_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+## Package 80 (Luz): the controller – played by the test (Pad.sim_*): in space △ locks, L1 / R1 pick targets,
+## ← held + L1 is fire group 1 (not "next target"), □ held opens the action wheel and letting go does the field picked,
+## the left stick flies; the glyphs replace the keys while the controller is used (PlayStation and Xbox); in a menu the
+## D-pad moves the highlight; bindings change and come back; the settings page builds.
+func _test_pad80(view: SystemView) -> void:
+	var notes: Array = []
+	var keep_pers: bool = Pad.persist
+	Pad.persist = false
+	# (in the full run an earlier test may have left a window open – out of the way for this one, back after)
+	var hidden_menus: Array = []
+	for mn in get_tree().get_nodes_in_group("kbd_menu"):
+		if MenuNav._shown(mn) and (mn is CanvasItem or mn is CanvasLayer):
+			hidden_menus.append(mn)
+			mn.visible = false
+	if not hidden_menus.is_empty():
+		notes.append("(hid %s)" % ", ".join(PackedStringArray(hidden_menus.map(func(x): return String(x.name)))))
+	Pad.sim_on = true
+	Pad.using_pad = true
+	var dt := 1.0 / 60.0
+	var step := func(btns: Dictionary, frames: int = 1):
+		Pad.sim_btn = btns
+		for i in frames:
+			Pad._process(dt)
+	Pad.events.clear()
+	step.call({})
+	step.call({"triangle": true})
+	step.call({})
+	step.call({"l1": true})
+	step.call({})
+	var e1: Array = Pad.events.duplicate()
+	Pad.events.clear()
+	step.call({"left": true})
+	step.call({"left": true, "l1": true})
+	step.call({"left": true})
+	step.call({})
+	var e2: Array = Pad.events.duplicate()
+	var space_ok: bool = e1.has("cmd_lock") and e1.has("sel_target") and e2.has("module_1") and not e2.has("sel_target")
+	if not space_ok:
+		notes.append("space %s / %s (ctx %s)" % [e1, e2, Pad.context()])
+	# the action wheel
+	Pad.events.clear()
+	step.call({"square": true})
+	var opened: bool = Pad.wheel != null
+	Pad.sim_r = Vector2(0, -1)
+	step.call({"square": true}, 2)
+	Pad.sim_r = Vector2.ZERO
+	step.call({})
+	var wheel_ok: bool = opened and Pad.wheel == null and Pad.events.has("wheel:cmd_approach")
+	if not wheel_ok:
+		notes.append("wheel %s %s" % [opened, Pad.events])
+	# flying with the stick
+	Pad.sim_l = Vector2(1, 0)
+	var fly_ok: bool = view.key_direction().x > 0.5
+	Pad.sim_l = Vector2.ZERO
+	# glyphs
+	var keep_g: String = Pad.glyphs
+	Pad.glyphs = "ps"
+	var ps_ok: bool = Keybinds.key_text("cmd_lock") == "△" and Keybinds.key_text("module_1") == "← + L1"
+	Pad.glyphs = "xbox"
+	var xb_ok: bool = Keybinds.key_text("cmd_lock") == "Y" and Keybinds.key_text("boost") == "RT"
+	Pad.glyphs = keep_g
+	Pad.using_pad = false
+	var keys_back: bool = Keybinds.key_text("cmd_lock") == "R"
+	Pad.using_pad = true
+	# a menu: the D-pad moves the highlight, ◯ closes
+	main.open_ship_menu()
+	var m0: int = MenuNav.moves
+	step.call({"down": true})
+	step.call({})
+	var menu_ok: bool = Pad.context() == "menu" and MenuNav.moves > m0
+	main.ship_menu.close()
+	# rebinding: lock on ✕ instead, back to the defaults
+	Pad.set_binding("space", "cmd_lock", {"b": "cross"})
+	var lost: bool = Pad.binding("space", "interdict_hit").is_empty()
+	Pad.reset_binds()
+	var reb_ok: bool = lost and String(Pad.binding("space", "cmd_lock").get("b", "")) == "triangle"
+	# on foot: L2 alone is the first drone at once; □ held + L2 the second (Luz)
+	Pad.events.clear()
+	var keep_ctx_fn := Pad.binding("ground", "foot_drone_2")
+	reb_ok = reb_ok and String(keep_ctx_fn.get("hold", "")) == "square" and String(keep_ctx_fn.get("b", "")) == "l2" and not Pad._is_hold("ground", "l2") and not Pad._is_hold("ground", "r1")
+	# Orbit and System are maps (Luz): the stick does not fly, it picks the next object that way; the keys too
+	view.set_level(3)
+	Pad.sim_l = Vector2(1, 0)
+	var still: bool = view.key_direction() == Vector2.ZERO
+	Pad.events.clear()
+	step.call({})
+	Pad.sim_l = Vector2.ZERO
+	step.call({})
+	var picked: bool = Pad.events.any(func(e): return String(e).begins_with("map:")) and view.selected_id != ""
+	var map_ok: bool = still and picked
+	if not map_ok:
+		notes.append("map: still %s picked %s %s" % [still, picked, Pad.events])
+	view.select("")
+	view.set_level(0)
+	view.center_on_player()
+	# the planet map is a menu: the D-pad picks a place
+	var pmo := PlanetMap.new()
+	main.add_child(pmo)
+	var lb := Universe.get_layout(GameState.current_system)
+	var pbody: Dictionary = {}
+	for pb in lb["planets"]:
+		if Universe.landable(pb) and not Universe.landing_sites(GameState.current_system, pb).is_empty():
+			pbody = pb
+			break
+	var pm_ok := true
+	if not pbody.is_empty():
+		pmo.open(GameState.current_system, pbody)
+		pm_ok = MenuNav.active_menu() == pmo
+		var mv0: int = MenuNav.moves
+		step.call({"down": true})
+		step.call({})
+		pm_ok = pm_ok and MenuNav.moves > mv0
+	pmo.free()                               # (now – it is a menu while it stands)
+	map_ok = map_ok and pm_ok
+	if not pm_ok:
+		notes.append("planet map not a menu")
+	# the galaxy map: a menu whose stick picks systems; Options held: the window wheel (ship, pilot …)
+	main.toggle_galaxy()
+	var gal_ok: bool = Pad.context() == "menu" and MenuNav.active_menu() == main.galaxy
+	var s0: int = main.galaxy.selected_system
+	Pad.sim_l = Vector2(1, 0)
+	step.call({})
+	Pad.sim_l = Vector2.ZERO
+	step.call({})
+	gal_ok = gal_ok and main.galaxy.selected_system >= 0 and main.galaxy.selected_system != s0
+	main.galaxy.close()
+	step.call({"options": true}, 30)
+	var ww: bool = Pad.wheel != null and Pad.wheel.items.any(func(it): return String(it[1]) == "pilot_window")
+	step.call({"circle": true})
+	step.call({})
+	var wheel2_ok: bool = ww and Pad.wheel == null
+	map_ok = map_ok and gal_ok and wheel2_ok
+	if not (gal_ok and wheel2_ok):
+		notes.append("galaxy %s window wheel %s" % [gal_ok, wheel2_ok])
+	# the minigames: billiards (left stick aims, L2 charges and shoots), darts (stick aims, L2 throws), Rock Hopper
+	# (R2 thrust, ✕ drill), Drift (□ hold)
+	var p9 = PoolGameT.new()
+	p9.setup({"mode": "9ball", "opponent": {"name": "Test", "stars": 2}, "stake": 0})
+	var nums9: Array = p9.balls.map(func(b): return int(b["n"]))
+	nums9.sort()
+	var nine_ok: bool = nums9 == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+	p9.free()
+	if not nine_ok:
+		notes.append("9-ball rack %s" % str(nums9))
+	var pg = PoolGameT.new()
+	pg.setup({"mode": "practice", "opponent": {"name": "Test", "stars": 2}, "stake": 0})
+	main.add_child(pg)
+	pg.state = "aim"
+	pg.aim_a = 0.0
+	Pad.sim_l = Vector2(0, -1)
+	for i in 40:
+		pg._process(0.05)                          # (the game reads the stick itself)
+	Pad.sim_l = Vector2.ZERO
+	var aimed: bool = absf(angle_difference(pg.aim_a, -PI / 2.0)) < 0.2
+	pg.pad_button("l2", true)
+	var charged: bool = pg.charging
+	pg.power = 0.5
+	pg.pad_button("l2", false)
+	var pool_ok: bool = aimed and charged and not pg.charging
+	pg.free()
+	var dg = DartsGameT.new()
+	dg.setup({"mode": "301", "opponent": {"name": "Test", "stars": 2}, "stake": 0})
+	main.add_child(dg)
+	Pad.sim_l = Vector2(1, 0)
+	dg._process(1.0)
+	dg._process(1.0)
+	Pad.sim_l = Vector2.ZERO
+	var darts_ok: bool = dg._pad_aim.x > DartsGameT.BC.x + 20.0 and dg.pad_button("l2", true) and dg.pad_button("l1", true) and dg.holding
+	dg.free()
+	var rh = RockHopperT.new()
+	rh.setup({"place": {"id": "test_cab"}})
+	rh.pad_button("r2", true)
+	rh.pad_button("cross", true)
+	var hop_ok: bool = rh.pad_thrust and rh.lasering
+	rh.free()
+	var mg_ok: bool = pool_ok and darts_ok and hop_ok and nine_ok
+	if not mg_ok:
+		notes.append("minigames pool %s (aim %s charge %s) darts %s hopper %s" % [pool_ok, aimed, charged, darts_ok, hop_ok])
+	# the gear shop's big tiles are buttons (the keys and the controller reach them)
+	var art = load("res://scripts/ui/station/gear_panel.gd").ShopArt.new()
+	var shop_ok: bool = art is BaseButton
+	art.free()
+	map_ok = map_ok and shop_ok
+	if not shop_ok:
+		notes.append("gear shop tiles not buttons")
+	var cp := ControllerPanel.new()
+	main.add_child(cp)
+	var panel_ok: bool = cp.list.get_child_count() > 5
+	cp.queue_free()
+	Pad.sim_on = false
+	Pad.sim_btn = {}
+	Pad.using_pad = false
+	Pad.persist = keep_pers
+	for mn2 in hidden_menus:
+		if is_instance_valid(mn2):
+			mn2.visible = true
+	if view.selected_id != "":
+		view.select("")
+	check(space_ok and wheel_ok and fly_ok and ps_ok and xb_ok and keys_back and menu_ok and reb_ok and panel_ok and mg_ok and map_ok,
+		"80: controller – △ locks, L1 next target, ← held + L1 is fire group 1 (not the target), □ held: the action wheel (the stick picks, letting go does it), the stick flies; PlayStation and Xbox glyphs instead of the keys (the keys back with the keyboard); the D-pad in a menu; rebinding and defaults; Settings → Controller; billiards, darts and Rock Hopper by the controller; Orbit and System as maps (no flying, the stick picks), the planet map by the D-pad  [%s]%s" % [
+			" ".join(PackedStringArray([str(space_ok), str(wheel_ok), str(fly_ok), str(ps_ok), str(xb_ok), str(keys_back), str(menu_ok), str(reb_ok), str(panel_ok), str(mg_ok), str(map_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

@@ -236,8 +236,8 @@ func _input(event: InputEvent) -> void:
 		elif phase == "closed":
 			_fade_out()
 		get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.pressed and not event.echo:
-		_fade_out()
+	elif (event is InputEventKey or event is InputEventJoypadButton) and event.pressed and not event.is_echo():
+		_fade_out()                                   # package 80: any controller button skips too
 		get_viewport().set_input_as_handled()
 
 

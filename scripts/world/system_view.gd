@@ -1597,6 +1597,7 @@ var _shake_amp := 0.0
 
 
 func shake(t: float, amp_px: float) -> void:
+	Pad.rumble(0.3, clampf(amp_px / 25.0, 0.2, 1.0), t)     # package 80
 	_shake_t = maxf(_shake_t, t)
 	_shake_amp = maxf(_shake_amp, amp_px)
 
@@ -1619,9 +1620,10 @@ func _update_camera(delta: float) -> void:
 			move.x -= 1
 		if Input.is_action_pressed("cam_right"):
 			move.x += 1
-		if move != Vector2.ZERO:
+		var pv := Pad.camera()                         # package 80: the right stick
+		if move != Vector2.ZERO or pv != Vector2.ZERO:
 			follow = false
-			camera.position += move.normalized() * 900.0 * delta / camera.zoom.x
+			camera.position += (move.normalized() + pv) * 900.0 * delta / camera.zoom.x
 		_key_flight()
 	# Automatic zoom during warp: out, watch, back in
 	if player != null and is_instance_valid(player) and player.in_warp() and _warp_auto:
@@ -1635,6 +1637,13 @@ func _update_camera(delta: float) -> void:
 		elif p > 0.78:
 			k = 1.0 - smoothstep(0.78, 1.0, p)
 		_set_zoom(exp(lerpf(log(_warp_saved_zoom), log(far_zoom), k)))
+	if _map_to != Vector2.INF:
+		if follow or not is_map():
+			_map_to = Vector2.INF
+		else:
+			camera.position = camera.position.lerp(_map_to, 1.0 - exp(-delta * 6.0))     # package 80: gliding to the pick
+			if camera.position.distance_to(_map_to) < 1.0:
+				_map_to = Vector2.INF
 	if follow and player != null and is_instance_valid(player):
 		camera.position = player.position             # every level is centred on the ship (0.6.35.3)
 	camera.position = camera.position.limit_length(Universe.SYSTEM_RADIUS * 1.05)
@@ -1649,6 +1658,8 @@ func key_direction() -> Vector2:
 	var d := Vector2.ZERO
 	if MenuNav.menu_open():
 		return d                                # 0.5.28.2: the keys belong to the open menu
+	if is_map():
+		return d                                # package 80 (Luz): Orbit and System are maps – the ship does not fly here
 	if Input.is_action_pressed("ship_up"):
 		d.y -= 1
 	if Input.is_action_pressed("ship_down"):
@@ -1657,11 +1668,56 @@ func key_direction() -> Vector2:
 		d.x -= 1
 	if Input.is_action_pressed("ship_right"):
 		d.x += 1
+	d += Pad.flight()                             # package 80: the left stick (analog)
 	return d
 
 
 func _key_flight() -> void:
 	steer(key_direction())
+	if is_map() and not MenuNav.menu_open():
+		for spec in [["ship_up", Vector2.UP], ["ship_down", Vector2.DOWN], ["ship_left", Vector2.LEFT], ["ship_right", Vector2.RIGHT]]:
+			if Input.is_action_just_pressed(String(spec[0])):
+				map_flick(spec[1])                    # the keys pick the next object that way
+
+
+## Package 80 (Luz): the Orbit and the System view work like maps – no flying; the stick (or W A S D) picks the next
+## object in that direction from the one selected (or from your ship), and the camera glides to it.
+func is_map() -> bool:
+	return level >= 2
+
+
+var _map_to := Vector2.INF                       # where the camera glides on the map
+
+
+func map_flick(dir: Vector2) -> String:
+	if dir.length() < 0.1:
+		return ""
+	var from: Vector2 = player.position if player != null and is_instance_valid(player) else camera.position
+	var cur = find_object(selected_id) if selected_id != "" else null
+	if cur != null and is_instance_valid(cur):
+		from = cur.position
+	var best_id := ""
+	var best_s := INF
+	for id in by_id:
+		var n = by_id[id]
+		if n == null or not is_instance_valid(n) or not (n is Node2D) or String(id) == selected_id or not (n as Node2D).visible:
+			continue
+		var d: Vector2 = (n as Node2D).position - from
+		if d.length() < 1.0:
+			continue
+		var a := absf(d.angle_to(dir))
+		if a > 0.9:
+			continue
+		var sc := d.length() * (1.0 + a * 2.5)
+		if sc < best_s:
+			best_s = sc
+			best_id = String(id)
+	if best_id != "":
+		select(best_id)
+		follow = false
+		_map_to = (by_id[best_id] as Node2D).position
+		Audio.play("ui_click", "map pick", -8.0, 0.03)
+	return best_id
 
 
 ## Flies the pilot's ship in direction `d` (zero = release: brake).
@@ -2784,11 +2840,44 @@ func _draw_locks(o: Node2D, px: float) -> void:
 		o.draw_string(ThemeDB.fallback_font, Vector2.ZERO, "T%d%s" % [player.lock_number(l["key"]), (" ×%d" % mods) if mods > 0 else ""], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, c)
 		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+## Package 80 (Luz): on the Orbit and the System map the object picked gets a frame – corner brackets, gold, gently
+## pulsing, its name over it – the same size on screen at every zoom.
+func _draw_map_pick(o: Node2D, px: float) -> void:
+	if not is_map() or selected_id == "":
+		return
+	var sel = find_object(selected_id)
+	if sel == null or not is_instance_valid(sel) or not (sel is Node2D):
+		return
+	var c: Vector2 = (sel as Node2D).position
+	var rad := 0.0
+	if "radius" in sel:
+		rad = float(sel.radius)
+	var r := maxf(rad + 8.0 * px, 16.0 * px) * (1.0 + 0.06 * sin(_t * 4.0))
+	var k := 9.0 * px
+	var col := Color(1.0, 0.85, 0.35)
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			var corner: Vector2 = c + Vector2(sx * r, sy * r)
+			o.draw_line(corner, corner - Vector2(sx * k, 0.0), col, 2.5 * px)
+			o.draw_line(corner, corner - Vector2(0.0, sy * k), col, 2.5 * px)
+	o.draw_arc(c, r * 0.7, 0.0, TAU, 32, Color(col, 0.25), 1.5 * px)
+	var nm := ""
+	if "data" in sel and sel.data is Dictionary:
+		nm = String((sel.data as Dictionary).get("name", ""))
+	elif sel.has_method("display_name"):
+		nm = String(sel.display_name())
+	if nm != "":
+		o.draw_set_transform(c + Vector2(-r, -r - 8.0 * px), 0.0, Vector2(px, px))
+		o.draw_string(ThemeDB.fallback_font, Vector2.ZERO, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw_overlay() -> void:
 	var o := overlay
 	var z := camera.zoom.x
 	var px := 1.0 / z
 	_draw_locks(o, px)
+	_draw_map_pick(o, px)
 	var font := ThemeDB.fallback_font
 	var map_a := map_alpha()
 	# package 41: the harvest bands of the giants (dashed, a ring where it gets too hot)

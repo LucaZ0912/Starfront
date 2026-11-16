@@ -120,7 +120,7 @@ func _build() -> void:
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bot.add_child(sp)
 	bot.add_child(UI.button("Leave [Esc]", func(): closed.emit()))
-	var go := UI.button("START  ▶", func(): _start())
+	var go := UI.button("START  ▶" + ("   %s" % Pad.glyph("triangle") if Pad.using_pad else ""), func(): _start())
 	go.disabled = not practice and opponent.is_empty()
 	bot.add_child(go)
 	v.add_child(bot)
@@ -153,6 +153,19 @@ func _start() -> void:
 		Audio.play("ui_error", "minigame: " + e)
 		return
 	start.emit(cfg)
+
+
+## Package 80: with the controller △ starts the game straight away (as START does).
+func pad_button(b: String, pressed: bool) -> bool:
+	if b == "triangle":
+		if pressed and not _rules:
+			_start()
+		return true
+	return false
+
+
+func _enter_tree() -> void:
+	add_to_group("kbd_menu")                           # package 80: the lobby by the menus' rules (keys and controller)
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -114,7 +114,7 @@ func _finish() -> void:
 	_text.visible_characters = -1
 	if not _choice_panel.visible:
 		_choice_panel.visible = true
-		_hint.text = "1–%d answer  •  Esc leave" % _options.size()
+		_hint.text = ("%s answer  •  %s leave" % [Pad.glyph("cross"), Pad.glyph("circle")]) if Pad.using_pad else "1–%d answer  •  Esc leave" % _options.size()
 
 
 func is_typing() -> bool:
@@ -140,6 +140,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if k >= KEY_1 and k <= KEY_9:
 			get_viewport().set_input_as_handled()
 			choose(int(k - KEY_1))
+
+
+## Package 80: the controller – ✕ while the words come shows them at once; then the answers by the menus' rules.
+func pad_button(b: String, pressed: bool) -> bool:
+	if b == "cross" and pressed and is_typing():
+		_finish()
+		return true
+	return false
 
 
 func close() -> void:

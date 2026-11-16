@@ -135,7 +135,14 @@ func _show_settings() -> void:
 	var s := SettingsPanel.new()
 	s.closed.connect(_hide_overlay)
 	s.controls_requested.connect(_show_controls)
+	s.controller_requested.connect(_show_controller)
 	_show_overlay(s)
+
+
+func _show_controller() -> void:
+	var k := ControllerPanel.new()                   # package 80
+	k.closed.connect(_show_settings)
+	_show_overlay(k)
 
 
 func _show_controls() -> void:

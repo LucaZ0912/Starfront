@@ -707,7 +707,7 @@ func _env_step(delta: float) -> void:
 		return
 	var g = GameState.gear
 	var h0: float = g.health
-	var r: Dictionary = g.env_step(delta, env, Input.is_action_pressed("foot_run"))
+	var r: Dictionary = g.env_step(delta, env, (Input.is_action_pressed("foot_run") or Pad.run_held()))
 	if Commands.suit_god:
 		g.health = h0                                   # 0.7.51.5 (debug): the world outside does not hurt
 	if hud != null:
@@ -1650,6 +1650,11 @@ func weather_now() -> Dictionary:
 	return weather.w if weather != null and is_instance_valid(weather) else {}
 
 
+## Package 80 (Luz): a wheel of the controller or a menu over the ground (the pause menu, Settings …) – you do not walk.
+func background_locked() -> bool:
+	return Pad.wheel != null or MenuNav.menu_open()
+
+
 ## Package 54 (Luz): a cloud city over a gas giant?
 func is_cloud() -> bool:
 	return bool(station.get("cloud", false))
@@ -2241,6 +2246,9 @@ func _apply_day(d: float, force: bool = false) -> void:
 
 
 func _process(delta: float) -> void:
+	for mn in [_lift_menu, talk, talk_menu]:      # package 80 (Luz): every menu on foot by the menus' rules (keys, controller)
+		if mn != null and is_instance_valid(mn) and not (mn as Node).is_in_group("kbd_menu"):
+			(mn as Node).add_to_group("kbd_menu")
 	_scan_step(delta)
 	_duct_step()
 	if _mm != null and is_instance_valid(_mm):
@@ -2280,13 +2288,13 @@ func _process(delta: float) -> void:
 		_ride_step(delta)
 	elif not _sink.is_empty():
 		_sink_step(delta)
-	elif input_enabled and talk == null and _lift_menu == null and minigame == null:
+	elif input_enabled and talk == null and _lift_menu == null and minigame == null and not background_locked():
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
 		if not _seat.is_empty():
 			if dir.length() > 0.3:
 				_stand_up()
 		else:
-			var run := Input.is_action_pressed("foot_run")
+			var run := (Input.is_action_pressed("foot_run") or Pad.run_held())
 			if combat != null and combat.sneaking:
 				run = false                                 # 0.7.52.21: sneaking – half speed, no running
 			if combat == null or not combat.dodging():
@@ -2303,7 +2311,7 @@ func _process(delta: float) -> void:
 		_hostage_step(delta)
 		_cams_step(delta)
 		_reinforce_step(delta)
-		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled else Vector2.ZERO)
+		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled and not background_locked() else Vector2.ZERO)
 		_team_keys(delta)
 		if _tab_held >= 0.0:
 			var was := _tab_held
@@ -2512,6 +2520,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## 0.7.52.5: where the mouse points on the map (art px).
 func mouse_art() -> Vector2:
+	if Pad.using_pad and pilot != null and is_instance_valid(pilot):
+		# package 80: with the controller the "mouse" is ahead of you along the right stick (the grenade's aim)
+		return Pad.aim_point(pilot.pos, [Vector2(0, 1), Vector2(0, -1), Vector2(-1, 0), Vector2(1, 0)][clampi(pilot.dir, 0, 3)])
 	return (get_viewport().get_mouse_position() - _world.position) / (GroundMap.SCALE * zoom)
 
 

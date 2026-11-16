@@ -380,7 +380,7 @@ func _qcol(id: String) -> Color:
 
 ## A big picture tile: a lit showroom backdrop in the shop's colour, the goods on it, a bar along the foot with its
 ## icon, its title and what is here.
-class ShopArt extends Control:
+class ShopArt extends Button:             # package 80 (Luz): a button – the keys and the controller reach it
 	var kind := ""
 	var col := Color(1.0, 0.6, 0.2)
 	var title := ""
@@ -400,11 +400,16 @@ class ShopArt extends Control:
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		mouse_entered.connect(func(): _hover = true; queue_redraw())
 		mouse_exited.connect(func(): _hover = false; queue_redraw())
-
-	func _gui_input(e: InputEvent) -> void:
-		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and clicked.is_valid():
-			Audio.play("ui_click", "gear")
-			clicked.call()
+		focus_entered.connect(func(): _hover = true; queue_redraw())
+		focus_exited.connect(func(): _hover = false; queue_redraw())
+		flat = true
+		var none := StyleBoxEmpty.new()
+		for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			add_theme_stylebox_override(st, none)
+		pressed.connect(func():
+			if clicked.is_valid():
+				Audio.play("ui_click", "gear")
+				clicked.call())
 
 	func _draw() -> void:
 		var sz := size

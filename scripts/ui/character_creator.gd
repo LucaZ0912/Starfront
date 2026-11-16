@@ -43,6 +43,7 @@ func setup(p_mode: String, p_look: Dictionary = {}, p_attrs: Dictionary = {}, p_
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")                      # package 80: keys and controller
 	var sb := UI.panel_style(UI.NEON_BG, COL)
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(16)

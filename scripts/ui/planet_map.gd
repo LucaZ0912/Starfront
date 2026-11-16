@@ -25,6 +25,7 @@ var _t := 0.0
 
 func open(p_system: int, p_body: Dictionary) -> void:
 	layer = 11
+	add_to_group("kbd_menu")                      # package 80 (Luz): the list of places by the menus' rules – D-pad, ✕, ◯
 	system_id = p_system
 	body = p_body
 	sites = Universe.landing_sites(system_id, body)
@@ -152,6 +153,7 @@ func select(i: int) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_process_focus()
 	if _marks != null:
 		_marks.queue_redraw()
 
@@ -288,3 +290,20 @@ func _draw_marks() -> void:
 
 func close() -> void:
 	queue_free()
+
+
+## Package 80: back to orbit on Escape / ◯ (the button "Back to orbit").
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("menu_back", false, true):
+		get_viewport().set_input_as_handled()
+		back.emit()
+
+
+## The highlight follows the place picked with the controller or the keys.
+func _process_focus() -> void:
+	var f := get_viewport().gui_get_focus_owner()
+	if f == null or _list == null or not _list.is_ancestor_of(f):
+		return
+	var i := f.get_index()
+	if i != selected and i >= 0 and i < sites.size():
+		select(i)

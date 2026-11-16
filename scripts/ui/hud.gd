@@ -615,6 +615,56 @@ func _overview_click(t: Dictionary) -> void:
 		view.select(String(t["id"]))
 
 
+## Package 80 (Luz): the object picked (on the map, with the controller, with the mouse) is marked in the list on the
+## right too – gold, and the list scrolls to it.
+var _marked_id := "-"
+var _sel_style: StyleBoxFlat = null
+
+
+func _mark_selected() -> void:
+	if view == null:
+		return
+	var sid := String(view.selected_id)
+	if _sel_style == null:
+		_sel_style = StyleBoxFlat.new()
+		_sel_style.bg_color = Color(1.0, 0.85, 0.35, 0.18)
+		_sel_style.border_color = Color(1.0, 0.85, 0.35)
+		_sel_style.set_border_width_all(1)
+		_sel_style.set_corner_radius_all(2)
+	var hit: Button = null
+	for r in _overview_rows:
+		var b: Button = r["button"]
+		var on := String((r["target"] as Dictionary).get("id", "")) == sid and sid != ""
+		_mark(b, on)
+		if on:
+			hit = b
+	for uid in _contact_rows:
+		var b2: Button = _contact_rows[uid]
+		if not is_instance_valid(b2):
+			continue
+		var on2 := sid == "ship:%d" % int(uid)
+		_mark(b2, on2)
+		if on2:
+			hit = b2
+	if sid != _marked_id:
+		_marked_id = sid
+		if hit != null and hit.is_visible_in_tree():
+			var n: Node = hit.get_parent()
+			while n != null and not (n is ScrollContainer):
+				n = n.get_parent()
+			if n != null:
+				(n as ScrollContainer).ensure_control_visible(hit)
+
+
+func _mark(b: Button, on: bool) -> void:
+	if on:
+		b.add_theme_stylebox_override("normal", _sel_style)
+		b.add_theme_color_override("font_color", Color(1.0, 0.9, 0.55))
+	elif b.has_theme_stylebox_override("normal") and b.get_theme_stylebox("normal") == _sel_style:
+		b.remove_theme_stylebox_override("normal")
+		b.remove_theme_color_override("font_color")
+
+
 func _update_overview() -> void:
 	if view == null:
 		return
@@ -628,6 +678,7 @@ func _update_overview() -> void:
 		var d := pp.distance_to(t["pos"])
 		b.text = "%s %s   ·  %s" % [KIND_ICONS.get(t["kind"], "•"), t["name"], SystemView.fmt_dist(d)]
 		b.tooltip_text = "Warp" if d > Universe.warp_min_for(t) else "Approach"
+	_mark_selected()
 
 
 ## 0.6.35.15: the FPS display – updated four times a second; green, yellow below 50, red below 30.
@@ -910,6 +961,7 @@ func _set_bar(b: ProgressBar, v: float, vmax: float) -> void:
 func show_selected(id: String) -> void:
 	selected_id = id
 	_build_selected()
+	_mark_selected()                              # package 80: in the list on the right too
 
 
 # ================================================================ Command hotkeys

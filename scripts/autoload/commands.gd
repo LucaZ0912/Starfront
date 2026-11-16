@@ -150,7 +150,10 @@ func _c_key_steer(c: Dictionary) -> String:
 	var p = world.player
 	var d := Vector2(float(c.get("x", 0.0)), float(c.get("y", 0.0)))
 	if d != Vector2.ZERO:
-		p.set_order({"type": "move", "pos": p.position + d.normalized() * 6000.0, "keys": true})
+		var od := {"type": "move", "pos": p.position + d.normalized() * 6000.0, "keys": true}
+		if d.length() < 0.95:
+			od["pace"] = clampf(d.length(), 0.3, 1.0)       # package 80: the stick half way – half speed
+		p.set_order(od)
 	elif p.order.get("keys", false):
 		p.set_order({"type": "idle"})
 	return ""

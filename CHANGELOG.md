@@ -3,6 +3,36 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.80.1 – 2026-11-16
+
+**Package 80 – full controller support (Luz).** PlayStation (DualSense) and Xbox, by USB or Bluetooth; the glyphs
+follow the controller you hold (and the keys come back with the keyboard); the mouse hides while you play with it.
+- Flight: the left stick flies (half way – half speed), the right stick moves the camera; R2 thrust, L1 / R1 next
+  target / next hostile, △ lock, ◯ deselect, D-pad ↑↓ zoom; the fire groups: ← held + L1/R1/L2/R2 = 1–4, → held =
+  5–8 (shown over the bar while held); □ held: the action wheel (approach, follow, orbit, warp, dock / jump, drones,
+  wingmen); Options: tap pause, hold the window wheel (ship, pilot, galaxy map, station, help) – on foot too;
+  Touchpad: the list on the right. Prompts along the bottom.
+- Orbit and System are maps now: the ship does not fly there (keys too) – the stick (or W A S D) picks the next
+  object that way, the camera glides to it, a gold frame round it and the same row marked in the list; ✕ goes there.
+- On foot: walk with the stick (all the way: run), flick the right stick at a foe to lock it, ✕ use (hold: revive),
+  ◯ dodge, □ the other weapon, △ the team, L1 tactics, R1 next target, R2 grenade (the right stick aims), L2 the
+  drone, □ held + L2 the second drone, L3 sneak, D-pad the belt, Touchpad zoom.
+- Menus: D-pad or left stick, L1 / R1 tabs, ✕ confirm, ◯ back, right stick scrolls – now every window: the main
+  menu, the character creator, the planet map, the galaxy map (stick picks a system, ✕ sets the course), every
+  menu on foot (lifts, the Senate, the Curia, souvenirs …), talks and the crew at the bar, the gear shop's tiles.
+  The highlight stays in its row or column first and comes back to its place after a page is rebuilt.
+- The bar games: billiards (left stick aims, D-pad nudges, right stick spin, L2 held charges – letting go shoots),
+  darts (stick aims, L1 holds the breath, L2 throws), Rock Hopper (stick steers, R2 thrust, ✕ drill, □ beam), Drift
+  (D-pad, ✕ drift, □ hold, △ warp, ← → the card); the lobby by the menus' rules, △ starts.
+- Settings → Controller: on / off, glyphs (automatic, PlayStation, Xbox), dead zones, camera speed, flick, trigger
+  point, grenade and billiards/darts aim speed, invert, run by the stick, vibration and strength, every button
+  rebindable per context (also D-pad combinations), back to the defaults. Kept in user://controller.cfg.
+- Billiards: the aim line takes the cushion as the physics does (the ball leaves flatter; side spin bends it) and
+  shows one bank only; hard shots computed in finer steps (the contact point right); the 9-ball rack had two 1s and
+  no 4; the guests with 4 and 5 stars aim into the pocket's mouth, hit harder and pick the easiest pot.
+- Vibration on hits and explosions. The DualSense extras (adaptive triggers, haptics, lightbar, gyro) come in Teil 9
+  (package 71a).
+
 ## alpha 0.7.79.1 – 2026-11-16
 
 **Package 79 – fire groups (Luz).** The first part of the new combat controls in space, made to carry over to a

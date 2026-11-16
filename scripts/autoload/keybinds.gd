@@ -252,6 +252,11 @@ func label_of(id: String) -> String:
 
 ## Short text of the first binding, e.g. for "Ship [I]" buttons and tile hotkeys.
 func key_text(id: String) -> String:
+	var pad := get_node_or_null("/root/Pad")
+	if pad != null:
+		var pt: String = pad.action_text(id)             # package 80: the controller's button while you use it
+		if pt != "":
+			return pt
 	for d in binds.get(id, []):
 		if not d.is_empty():
 			return desc_text(d)
@@ -259,7 +264,10 @@ func key_text(id: String) -> String:
 
 
 ## Both bindings joined, e.g. "Space / Middle mouse".
-func keys_text(id: String) -> String:
+func keys_text(id: String, keys_only: bool = false) -> String:
+	var pad := get_node_or_null("/root/Pad")
+	if not keys_only and pad != null and String(pad.action_text(id)) != "":
+		return String(pad.action_text(id))
 	var parts: PackedStringArray = []
 	for d in binds.get(id, []):
 		if not d.is_empty():

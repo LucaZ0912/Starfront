@@ -73,17 +73,19 @@ func _ready() -> void:
 func rack() -> void:
 	balls.clear()
 	var foot := Vector2(FX0 + (FX1 - FX0) * 0.75, (FY0 + FY1) * 0.5)
-	var order: Array = []
 	if mode == "9ball":
-		order = [1, 2, 3, 9, 4, 5, 6, 7, 8]
 		var rows9 := [1, 2, 3, 2, 1]
 		var k := 0
 		var spots: Array = []
 		for r in rows9.size():
 			for i in rows9[r]:
 				spots.append(foot + Vector2(r * R * 1.75, (i - (rows9[r] - 1) * 0.5) * R * 2.02))
-		var mids := [1, 2, 3, 5, 6, 7, 8]
-		mids.shuffle()
+		var mids := [2, 3, 4, 5, 6, 7, 8]                 # (0.7.80: the 1 was in here too – two 1s, no 4)
+		for mi in range(mids.size() - 1, 0, -1):          # shuffled with the table's own dice
+			var mj := _rng.randi() % (mi + 1)
+			var mt = mids[mi]
+			mids[mi] = mids[mj]
+			mids[mj] = mt
 		var nums: Array = [1, mids[0], mids[1], mids[2], 9, mids[3], mids[4], mids[5], mids[6]]
 		for s in spots:
 			balls.append({"n": int(nums[k]), "p": s, "v": Vector2.ZERO, "in": false})
@@ -182,8 +184,15 @@ func shoot(angle: float, pw: float, sp: Vector2) -> void:
 
 
 func _physics(dt: float) -> void:
-	var h := dt / SUB
-	for s in SUB:
+	# 0.7.80 (Luz): so many steps that no ball moves more than half a pixel in one – the contact point (and with it
+	# where a ball goes) is right also on a hard shot
+	var vmax := 0.0
+	for b0 in balls:
+		if not bool(b0["in"]):
+			vmax = maxf(vmax, (b0["v"] as Vector2).length())
+	var steps := clampi(int(ceil(vmax * dt / 0.5)), SUB, 96)
+	var h := dt / steps
+	for s in steps:
 		for b in balls:
 			if bool(b["in"]):
 				continue
@@ -469,7 +478,7 @@ func _ai_step(dt: float) -> void:
 	if _ai_t < 0.45:
 		power = float(_ai_plan["pw"]) * clampf((0.45 - _ai_t) / 0.4, 0.0, 1.0)
 	if _ai_t <= 0.0:
-		var err := _rng.randfn(0.0, 0.055 - 0.0095 * stars)
+		var err := _rng.randfn(0.0, ai_error(stars))
 		_take_shot(float(_ai_plan["a"]) + err, float(_ai_plan["pw"]) * _rng.randf_range(0.92, 1.08), Vector2(0, float(_ai_plan.get("spin", 0.0))))
 
 
@@ -479,8 +488,14 @@ func _ai_choose(cp: Vector2) -> Dictionary:
 	var best_s := -1.0
 	for b in legal_targets(turn):
 		var tp: Vector2 = b["p"]
-		for pk in _pockets():
+		for pk0 in _pockets():
+			var pk := _pocket_mouth(pk0)                      # 0.7.80: into the mouth – not at the cushions beside it
+			if pk.distance_to(tp) < 1.0:
+				continue
 			var to_pk := (pk as Vector2) - tp
+			var side_pk: bool = absf((pk0 as Vector2).x - (FX0 + FX1) * 0.5) < 1.0
+			if side_pk and absf(to_pk.normalized().y) < 0.55:
+				continue                                         # a side pocket only takes a ball coming in fairly straight
 			var ghost := tp - to_pk.normalized() * R * 2.0
 			var to_g := ghost - cp
 			var cosc := to_g.normalized().dot(to_pk.normalized())
@@ -488,11 +503,11 @@ func _ai_choose(cp: Vector2) -> Dictionary:
 				continue
 			if not _clear(cp, ghost, [0, int(b["n"])]) or not _clear(tp, pk, [int(b["n"])]):
 				continue
-			var dist := to_g.length() + to_pk.length()
-			var s := cosc * cosc * 1000.0 / (dist + 60.0)
+			# 0.7.80 (Luz): the easiest pot – a straight cut, both distances short (the error grows with them)
+			var s := cosc * cosc * 100000.0 / ((to_g.length() + 30.0) * (to_pk.length() + 30.0))
 			if s > best_s:
 				best_s = s
-				var need := sqrt(2.0 * DECEL * (to_g.length() + to_pk.length() / maxf(cosc, 0.3) * 1.3)) + 80.0
+				var need := (sqrt(2.0 * DECEL * (to_g.length() + to_pk.length() / maxf(cosc, 0.3) * 1.3)) + 80.0) * 1.25
 				best = {"a": to_g.angle(), "pw": clampf((need - 60.0) / MAX_V, 0.15, 1.0), "spin": -0.3 if to_g.length() < 60.0 else 0.0}
 	if best.is_empty():                                # no clean pot: hit a legal ball at least
 		var lt := legal_targets(turn)
@@ -504,6 +519,19 @@ func _ai_choose(cp: Vector2) -> Dictionary:
 	if break_shot:
 		best = {"a": (Vector2(FX0 + (FX1 - FX0) * 0.75, (FY0 + FY1) * 0.5) - cp).angle() + _rng.randf_range(-0.02, 0.02), "pw": 1.0}
 	return best
+
+
+## 0.7.80: where a ball goes in – a little inside from the pocket's point, so its way there stays off the cushions.
+func _pocket_mouth(pk: Vector2) -> Vector2:
+	var mx := (FX0 + FX1) * 0.5
+	if absf(pk.x - mx) < 1.0:
+		return Vector2(mx, pk.y + (5.0 if pk.y < (FY0 + FY1) * 0.5 else -5.0))
+	return pk + Vector2(4.0 if pk.x < mx else -4.0, 4.0 if pk.y < (FY0 + FY1) * 0.5 else -4.0)
+
+
+## How far off the opponent's cue goes (radians, one sigma) by its stars – 0.7.80 (Luz): the strong ones really strong.
+func ai_error(stars: int) -> float:
+	return [0.045, 0.028, 0.016, 0.0065, 0.0035][clampi(stars, 1, 5) - 1]
 
 
 func _clear(a: Vector2, b: Vector2, skip: Array) -> bool:
@@ -543,6 +571,7 @@ func _take_shot(a: float, pw: float, sp: Vector2) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	_pad_poll()
 	msg_t = maxf(0.0, msg_t - dt)
 	match state:
 		"roll":
@@ -553,20 +582,29 @@ func _process(dt: float) -> void:
 			_ai_step(dt)
 		"aim":
 			if turn == 0 or mode == "practice":
+				_which_hand()
 				var m := _art_mouse()
 				var cp: Vector2 = _cue()["p"]
-				if m.distance_to(cp) > 2.0 and not spin_drag:
+				if _stick_hand:
+					_pad_aim_step(dt)                           # package 80: the controller's sticks
+				elif m.distance_to(cp) > 2.0 and not spin_drag:
 					aim_a = (m - cp).angle() + sin(_t * 2.1) * 0.05 * _alcohol()     # after a few drinks the cue wanders
 				if charging:
 					power = minf(1.0, power + dt * 0.9)
-				var kv := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
-				if kv.length() > 0.1:
-					spin = (spin + Vector2(kv.x, -kv.y) * dt * 1.5).limit_length(1.0)
+				if not _stick_hand:
+					var kv := Vector2(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)),
+						float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
+					if kv.length() > 0.1:
+						spin = (spin + Vector2(kv.x, -kv.y) * dt * 1.5).limit_length(1.0)
 		"place":
+			_which_hand()
 			var cb := _cue()
-			var q := _art_mouse().clamp(Vector2(FX0 + R, FY0 + R), Vector2(FX1 - R, FY1 - R))
-			if _spot_free(q):
-				cb["p"] = q
+			if _stick_hand:
+				_pad_aim_step(dt)
+			else:
+				var q := _art_mouse().clamp(Vector2(FX0 + R, FY0 + R), Vector2(FX1 - R, FY1 - R))
+				if _spot_free(q):
+					cb["p"] = q
 	_update_ui()
 	queue_redraw()
 
@@ -597,6 +635,81 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 	elif event is InputEventMouseMotion and spin_drag:
 		spin = (spin + Vector2((event as InputEventMouseMotion).relative.x, -(event as InputEventMouseMotion).relative.y) * 0.01).limit_length(1.0)
+
+
+## Package 80 (Luz): with the controller – the left stick aims the cue (the D-pad nudges it), the right stick sets
+## the spin, L2 held charges and letting go shoots; placing the cue ball: the left stick moves it, ✕ puts it down;
+## △ racks again (practice), ✕ after the game: back to the table. The game reads the sticks itself; whatever was
+## moved last aims – the sticks or the mouse.
+var _stick_hand := false
+var _mouse_seen := Vector2.INF
+var pad_buttons := ["l2", "left", "right", "cross", "triangle"]
+
+## Package 80: the controller's buttons read here each frame (pad_buttons) – the game does not wait for the context.
+var _pad_prev := {}
+
+
+func _pad_poll() -> void:
+	for b in pad_buttons:
+		var h := Pad.held(b)
+		if h != bool(_pad_prev.get(b, false)):
+			_pad_prev[b] = h
+			pad_button(b, h)
+
+
+func _which_hand() -> void:
+	var mp := get_local_mouse_position()
+	if _mouse_seen != Vector2.INF and mp.distance_to(_mouse_seen) > 1.5:
+		_stick_hand = false
+	_mouse_seen = mp
+	if Pad.left_stick().length() > 0.25 or Pad.right_stick().length() > 0.15:
+		_stick_hand = true
+
+
+func _pad_aim_step(dt: float) -> void:
+	var l := Pad.left_stick()
+	var r := Pad.right_stick()
+	if state == "aim" and (turn == 0 or mode == "practice"):
+		if l.length() > 0.3:
+			aim_a = lerp_angle(aim_a, l.angle(), 1.0 - exp(-dt * lerpf(0.6, 5.0, Pad.mg_aim) * l.length()))     # (Settings → Controller)
+		if r.length() > 0.15:
+			spin = Vector2(r.x, -r.y).limit_length(1.0)
+	elif state == "place" and l.length() > 0.1:
+		var cb := _cue()
+		var q: Vector2 = ((cb["p"] as Vector2) + l * 90.0 * dt).clamp(Vector2(FX0 + R, FY0 + R), Vector2(FX1 - R, FY1 - R))
+		if _spot_free(q):
+			cb["p"] = q
+
+
+func pad_button(b: String, pressed: bool) -> bool:
+	var mine := turn == 0 or mode == "practice"
+	match b:
+		"l2":
+			if state == "aim" and mine:
+				if pressed:
+					charging = true
+					power = 0.0
+				elif charging:
+					charging = false
+					if power > 0.03:
+						_take_shot(aim_a, power, spin)
+			return true
+		"left", "right":
+			if pressed and state == "aim" and mine:
+				aim_a += 0.003 * (-1.0 if b == "left" else 1.0)
+			return true
+		"cross":
+			if pressed and state == "place":
+				state = "aim"
+				_say("Ball placed – your shot.")
+			elif pressed and state == "over":
+				finished.emit(won)
+			return true
+		"triangle":
+			if pressed and mode == "practice" and state != "roll":
+				rack()
+			return true
+	return false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -636,10 +749,10 @@ func _draw() -> void:
 	var my_turn := (turn == 0 or mode == "practice")
 	# the aim help: to the first ball it would touch, the ghost ball, where the object ball goes
 	if state == "aim" and my_turn:
-		# 54b (Luz): the line goes on off the cushions too – up to two banks, fainter each time
+		# 54b (Luz): the line goes on off the cushions too – 0.7.80 (Luz): one bank only, fainter after it
 		var d := Vector2.RIGHT.rotated(aim_a)
 		var from := cp
-		for seg in 3:
+		for seg in 2:
 			var hit := _ray(from, d)
 			var end: Vector2 = hit["end"]
 			var a := 0.55 * (1.0 - seg * 0.28)
@@ -659,9 +772,12 @@ func _draw() -> void:
 			if _near_pocket(end):
 				break                                          # off into a pocket – no cushion there
 			if end.x <= FX0 + R + 0.01 or end.x >= FX1 - R - 0.01:
-				d.x = -d.x
+				d.x = -d.x * 0.76                          # 0.7.80 (Luz): as the cushion does – the ball leaves flatter
 			if end.y <= FY0 + R + 0.01 or end.y >= FY1 - R - 0.01:
-				d.y = -d.y
+				d.y = -d.y * 0.76
+			d = d.normalized()
+			if absf(spin.x) > 0.05:
+				d = d.rotated(spin.x * 0.22)               # side spin bends the rebound
 			draw_rect(Rect2(end.floor() - Vector2(1, 1), Vector2(2, 2)), Color(1, 1, 1, a))   # where it touches the cushion
 			from = end + d * 0.05
 	# the balls: shadow, then the ball

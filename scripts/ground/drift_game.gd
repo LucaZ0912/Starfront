@@ -271,6 +271,59 @@ func _gui_input(event: InputEvent) -> void:
 				return
 
 
+## Package 80 (Luz): with the controller – the D-pad moves between DRIFT, HOLD and WARP (✕ presses), or the face
+## buttons straight away (✕ drift · □ hold · △ warp); warping: ← → pick the card, ✕ swaps it, ◯ takes it back.
+var _pad_card := 0
+
+
+func pad_button(b: String, pressed: bool) -> bool:
+	if not pressed:
+		return b in ["up", "down", "left", "right", "cross", "square", "triangle"]
+	if state == "warp":
+		var hand: Array = players[0]["hand"]
+		match b:
+			"left", "right":
+				for k in hand.size():
+					_pad_card = (_pad_card + (1 if b == "right" else -1) + hand.size()) % hand.size()
+					if String(hand[_pad_card][1]) != "warp":
+						break
+				return true
+			"cross":
+				if _pad_card < hand.size() and String(hand[_pad_card][1]) != "warp":
+					_you("warp", _pad_card)
+				return true
+			"circle":
+				state = "play"
+				_say("No warp after all.")
+				return true
+		return true
+	if state == "over":
+		if b == "cross":
+			finished.emit(won)
+			return true
+		return false
+	if turn != 0 or state != "play":
+		return b != "circle"
+	match b:
+		"up", "down", "left", "right":
+			MenuNav.step(self, {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LEFT, "right": Vector2.RIGHT}[b])
+			return true
+		"cross":
+			var f := get_viewport().gui_get_focus_owner()
+			if f is BaseButton and is_ancestor_of(f):
+				(f as BaseButton).pressed.emit()
+			else:
+				_you("drift")
+			return true
+		"square":
+			_you("hold")
+			return true
+		"triangle":
+			_you("warp")
+			return true
+	return false
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu_back", false, true):
 		get_viewport().set_input_as_handled()
@@ -356,6 +409,8 @@ func _draw() -> void:
 			elif turn == i3:
 				line = line if line != "" else "thinking…"
 			draw_string(font, lp + Vector2(0, 22), line, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.45, 0.45) if String(p["state"]) == "burned" else Color(0.62, 0.66, 0.78))
+	if Pad.using_pad and state == "warp" and _pad_card < (players[0]["hand"] as Array).size():
+		draw_rect(_card_rect(0, _pad_card).grow(3), Color(1.0, 0.82, 0.35), false, 3.0)      # package 80: the card picked
 
 
 func _face(p: Vector2, card: Array, big: bool, glow: bool = false) -> void:
@@ -447,7 +502,8 @@ func _build_ui() -> void:
 		btn.custom_minimum_size = Vector2(200, 46)
 		row.add_child(btn)
 		_btns[id] = btn
-	var hint := UI.label("D: drift  •  H: hold  •  W: warp – then click the card to swap  •  Esc: fold", 15)
+	var hint := UI.label(("%s: drift  •  %s: hold  •  %s: warp – then ← → and %s for the card  •  %s: fold" % [Pad.glyph("cross"), Pad.glyph("square"), Pad.glyph("triangle"), Pad.glyph("cross"), Pad.glyph("circle")])
+		if Pad.using_pad else "D: drift  •  H: hold  •  W: warp – then click the card to swap  •  Esc: fold", 15)
 	hint.position = Vector2(vs.x * 0.5 - 330, vs.y - 40)
 	add_child(hint)
 

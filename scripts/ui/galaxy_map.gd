@@ -48,6 +48,7 @@ static var _centres_key := ""
 
 
 func _ready() -> void:
+	add_to_group("kbd_menu")                      # package 80 (Luz): its buttons by the menus' rules; the map by pad_stick
 	layer = 15
 	visible = false
 	var bg := ColorRect.new()
@@ -735,6 +736,74 @@ func _on_map_input(event: InputEvent) -> void:
 		if h != hover_system:
 			hover_system = h
 			map.queue_redraw()
+
+
+## Package 80 (Luz): with the controller – the left stick picks the next system that way (from the one selected, or
+## yours), the right stick moves the map, L1 / R1 zoom out / in, ✕ sets the course, □ shows the system; the D-pad
+## moves between the buttons, ◯ closes.
+var _pick_armed := true
+
+
+func pad_stick(l: Vector2, r: Vector2, dt: float) -> void:
+	if r.length() > 0.1:
+		view_center += r * 520.0 * dt / maxf(_scale(), 0.0001)
+		_clamp_view()
+		map.queue_redraw()
+	if l.length() < 0.35:
+		_pick_armed = true
+		return
+	if not _pick_armed or l.length() < 0.6:
+		return
+	_pick_armed = false
+	pick_towards(l)
+
+
+func pick_towards(dir: Vector2) -> int:
+	var from_id := selected_system if selected_system >= 0 else GameState.current_system
+	var from: Vector2 = _to_screen(Universe.systems[from_id]["pos"])
+	var best := -1
+	var best_s := INF
+	for i in Universe.systems.size():
+		if i == from_id:
+			continue
+		var d: Vector2 = _to_screen(Universe.systems[i]["pos"]) - from
+		if d.length() < 2.0:
+			continue
+		var a := absf(d.angle_to(dir))
+		if a > 0.8:
+			continue
+		var sc := d.length() * (1.0 + a * 2.5)
+		if sc < best_s:
+			best_s = sc
+			best = i
+	if best >= 0:
+		selected_system = best
+		var sp := _to_screen(Universe.systems[best]["pos"])
+		var mr := map.get_rect()
+		if mr.size.x < 130.0 or mr.size.y < 130.0 or not mr.grow(-60).has_point(sp):
+			view_center = Universe.systems[best]["pos"]
+			_clamp_view()
+		refresh()
+		Audio.play("ui_click", "galaxy pick", -8.0, 0.03)
+	return best
+
+
+func pad_button(b: String, pressed: bool) -> bool:
+	if not pressed:
+		return b in ["cross", "square", "l1", "r1"]
+	match b:
+		"cross":
+			if course_btn != null and not course_btn.disabled and course_btn.visible:
+				course_btn.pressed.emit()
+			return true
+		"square":
+			if view_btn != null and not view_btn.disabled and view_btn.visible:
+				view_btn.pressed.emit()
+			return true
+		"l1", "r1":
+			zoom_at(map.get_rect().get_center(), 1.0 / 1.25 if b == "l1" else 1.25)
+			return true
+	return false
 
 
 # ---------------------------------------------------------------- Route planning

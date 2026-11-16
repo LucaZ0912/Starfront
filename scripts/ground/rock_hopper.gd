@@ -34,6 +34,19 @@ var bits: Array = []                             # {p, v, t, col} – sparks and
 var state := "play"                              # play, over
 var lasering := false
 var beaming := false
+var pad_thrust := false                           # package 80: R2 held
+var pad_buttons := ["r2", "cross", "square"]
+
+## Package 80: the controller's buttons read here each frame (pad_buttons) – the game does not wait for the context.
+var _pad_prev := {}
+
+
+func _pad_poll() -> void:
+	for b in pad_buttons:
+		var h := Pad.held(b)
+		if h != bool(_pad_prev.get(b, false)):
+			_pad_prev[b] = h
+			pad_button(b, h)
 var msg := ""
 var msg_t := 0.0
 var _t := 0.0
@@ -146,10 +159,10 @@ func _tug_step(dt: float) -> void:
 	else:
 		_turn_key_t = maxf(0.0, _turn_key_t - dt)
 		var m := _art_mouse()
-		if _turn_key_t <= 0.0 and Rect2(SX0, SY0, SX1 - SX0, SY1 - SY0).has_point(m) and m.distance_to(tug["p"]) > 6.0:
+		if _turn_key_t <= 0.0 and not Pad.using_pad and Rect2(SX0, SY0, SX1 - SX0, SY1 - SY0).has_point(m) and m.distance_to(tug["p"]) > 6.0:
 			tug["a"] = lerp_angle(float(tug["a"]), (m - (tug["p"] as Vector2)).angle(), 1.0 - exp(-dt * 7.0))
 	var d := Vector2.RIGHT.rotated(float(tug["a"]))
-	var thrust := Input.is_action_pressed("walk_up") and fuel > 0.0
+	var thrust := (Input.is_action_pressed("walk_up") or pad_thrust) and fuel > 0.0
 	var v: Vector2 = tug["v"]
 	if thrust:
 		v += d * 130.0 * dt
@@ -313,6 +326,7 @@ func _say(t: String) -> void:
 # ---------------------------------------------------------------- input, loop
 
 func _process(dt: float) -> void:
+	_pad_poll()
 	step(dt)
 	_update_ui()
 	queue_redraw()
@@ -327,6 +341,26 @@ func _gui_input(event: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_RIGHT:
 			beaming = mb.pressed
 			accept_event()
+
+
+## Package 80 (Luz): with the controller – the left stick turns the tug (the InputMap's walk_left / walk_right), R2
+## thrusts, ✕ fires the drill laser, □ the tractor beam; ✕ after the game: back to the lobby.
+func pad_button(b: String, pressed: bool) -> bool:
+	match b:
+		"r2":
+			pad_thrust = pressed
+			return true
+		"cross":
+			if state == "over":
+				if pressed:
+					finished.emit(false)
+			else:
+				lasering = pressed
+			return true
+		"square":
+			beaming = pressed
+			return true
+	return false
 
 
 func _unhandled_input(event: InputEvent) -> void:

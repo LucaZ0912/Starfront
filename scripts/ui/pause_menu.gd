@@ -82,7 +82,15 @@ func _show_settings() -> void:
 	var s := SettingsPanel.new()
 	s.closed.connect(_back)
 	s.controls_requested.connect(_show_controls)
+	s.controller_requested.connect(_show_controller)
 	center.add_child(s)
+
+
+func _show_controller() -> void:
+	UI.clear(center)
+	var k := ControllerPanel.new()                   # package 80
+	k.closed.connect(_show_settings)
+	center.add_child(k)
 
 
 func _show_controls() -> void:

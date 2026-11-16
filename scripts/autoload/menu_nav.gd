@@ -10,6 +10,8 @@ const DIRS := {"menu_up": Vector2.UP, "menu_down": Vector2.DOWN, "menu_left": Ve
 	"ui_up": Vector2.UP, "ui_down": Vector2.DOWN, "ui_left": Vector2.LEFT, "ui_right": Vector2.RIGHT}
 
 var moves := 0                     # highlight moves (smoke test)
+var _last_menu: Node = null        # package 80: where the highlight was – it comes back there after the menu is rebuilt
+var _last_pos := Vector2.INF
 
 
 func _ready() -> void:
@@ -41,7 +43,7 @@ func _shown(m: Node) -> bool:
 		return m.visible
 	if m is CanvasItem:
 		return m.is_visible_in_tree()
-	return false
+	return m.is_inside_tree()                   # package 80: a plain node (the main menu) – there while it is in the tree
 
 
 func _layer_of(m: Node) -> int:
@@ -90,14 +92,56 @@ func step(menu: Node, dir: Vector2) -> void:
 		return
 	var nxt: Control = null
 	if not inside:
-		nxt = _first(cands)
+		nxt = _nearest(cands, _last_pos) if _last_menu == menu and _last_pos != Vector2.INF else _first(cands)
 	else:
 		nxt = _neighbour(cur, cands, dir)
 	if nxt == null:
 		return
+	_take(menu, nxt)
+
+
+func _take(menu: Node, nxt: Control) -> void:
 	nxt.grab_focus()
 	moves += 1
 	_scroll_to(nxt)
+	_last_menu = menu
+	_last_pos = _vrect(nxt).get_center()
+
+
+## Package 80: after a press that rebuilds the menu (a gear tile, a list) the highlight comes back to the control at
+## the same place – not to the top.
+func restore(menu: Node) -> void:
+	if menu == null or not is_instance_valid(menu) or _last_menu != menu or _last_pos == Vector2.INF:
+		return
+	var cur := get_viewport().gui_get_focus_owner()
+	if cur != null and (menu == cur or menu.is_ancestor_of(cur)) and cur.is_visible_in_tree():
+		return
+	var nxt := _nearest(_candidates(menu), _last_pos)
+	if nxt != null:
+		nxt.grab_focus()
+		_scroll_to(nxt)
+
+
+func _nearest(cands: Array, at: Vector2) -> Control:
+	var best: Control = null
+	var bd := INF
+	for c in cands:
+		var d := _vrect(c).get_center().distance_to(at)
+		if d < bd:
+			bd = d
+			best = c
+	return best
+
+
+## A control's place as if no list were scrolled – stable while the highlight scrolls lists along.
+func _vrect(c: Control) -> Rect2:
+	var r := c.get_global_rect()
+	var n := c.get_parent()
+	while n != null:
+		if n is ScrollContainer:
+			r.position += Vector2((n as ScrollContainer).scroll_horizontal, (n as ScrollContainer).scroll_vertical)
+		n = n.get_parent()
+	return r
 
 
 ## Every control of the menu that can take the highlight: buttons, sliders, fields – visible and enabled.
@@ -131,13 +175,18 @@ func _first(cands: Array) -> Control:
 
 ## The nearest control in the direction – straight ahead counts more than off to the side.
 func _neighbour(cur: Control, cands: Array, dir: Vector2) -> Control:
-	var from: Vector2 = cur.get_global_rect().get_center()
+	var from: Vector2 = _vrect(cur).get_center()
+	var cr := _vrect(cur)
 	var best: Control = null
 	var best_score := INF
+	var lane: Control = null                     # package 80: in the same row (or column) first – the nearest that way
+	var lane_d := INF
+	var cone: Control = null                     # package 80: within 45° of the direction first (the row, the column) –
+	var cone_score := INF                         # else e.g. "right" from the bottom row climbed to the row above
 	for c in cands:
 		if c == cur:
 			continue
-		var to: Vector2 = c.get_global_rect().get_center() - from
+		var to: Vector2 = _vrect(c).get_center() - from
 		var along := to.dot(dir)
 		if along <= 4.0:
 			continue
@@ -146,7 +195,17 @@ func _neighbour(cur: Control, cands: Array, dir: Vector2) -> Control:
 		if score < best_score:
 			best_score = score
 			best = c
-	return best
+		if side <= along and along + side * 3.0 < cone_score:
+			cone_score = along + side * 3.0
+			cone = c
+		var r := _vrect(c)
+		var overlap := (r.position.y < cr.end.y - 2.0 and r.end.y > cr.position.y + 2.0) if dir.y == 0.0 else (r.position.x < cr.end.x - 2.0 and r.end.x > cr.position.x + 2.0)
+		if overlap and along < lane_d:
+			lane_d = along
+			lane = c
+	if lane != null:
+		return lane
+	return cone if cone != null else best
 
 
 func _scroll_to(c: Control) -> void:

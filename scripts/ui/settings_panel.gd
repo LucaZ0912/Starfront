@@ -5,6 +5,7 @@ extends PanelContainer
 
 signal closed
 signal controls_requested
+signal controller_requested          # package 80: Settings → Controller
 
 
 func _ready() -> void:
@@ -61,6 +62,7 @@ func _ready() -> void:
 		vol_row.add_child(pct)
 	v.add_child(UI.label("Interface sounds follow the effects volume.", 12, UI.TEXT_DIM))
 	v.add_child(UI.menu_button("Controls …", func(): controls_requested.emit(), UI.NEON_CYAN, 480))
+	v.add_child(UI.menu_button("Controller …", func(): controller_requested.emit(), UI.NEON_CYAN, 480))
 
 
 func _change(key: String, value) -> void:
