@@ -11,6 +11,7 @@ const MuseumData = preload("res://data/museum.gd")
 const MuseumGen = preload("res://scripts/ground/museum_gen.gd")
 const CapitalGen = preload("res://scripts/ground/capital_gen.gd")
 const SenateChamber = preload("res://scripts/ground/senate_chamber.gd")
+const PalaceGen = preload("res://scripts/ground/palace_gen.gd")
 const ExhibitArtV = preload("res://scripts/core/exhibit_art.gd")
 const LAYER := 12
 const BgShader = preload("res://shaders/background.gdshader")
@@ -356,7 +357,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			_site = _city_site
 			_city_site = null
 	env = ChibiArt.GearData.env_of(String(_body.get("type", ""))) if level in ["landing", "settlement", "dungeon", "minehead"] and not is_city() else {}
-	if is_cloud() and level in ["cplaza", "cstation"]:
+	if is_cloud() and level in ["cplaza", "cstation", "pplaza"]:
 		env = cloud_env()                              # package 54 (Luz): out on the deck – the giant's air
 	if is_cloud() and level == "dungeon" and String(_site.get("theme", "")) == "skymaint":
 		env = cloud_env()                              # 0.7.54.3: under the deck – open to the giant's air
@@ -367,7 +368,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = CloudGen.build_station(station, rail_stop)
 	elif level == "ctrain":
 		if rail_to == rail_stop:
-			rail_to = CloudGen.others(rail_stop)[0]
+			rail_to = CloudGen.others(rail_stop, capital_kind() == "palace")[0]
 		map = CloudGen.build_car(station, rail_to)
 		rail = {"t": 0.0, "v": 0.0, "to": rail_to, "arrived": false, "said": false}
 	elif level == "settlement":
@@ -395,6 +396,12 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = _poi_map("alley", Vector2.ZERO)                         # 0.7.53.3: a city's back alley
 	elif level == "plaza":
 		map = _poi_map("plaza", Vector2.ZERO)                         # 0.7.53.19: a city's roof plaza
+	elif level == "pplaza":
+		map = PalaceGen.build_platform(station, _body)               # 54c (Luz): Aureola – the palace platform
+	elif level == "pnarthex":
+		map = PalaceGen.build_lobby(station, _body)                  # 54c: the palace's lobby, the Curia
+	elif level == "throne":
+		map = PalaceGen.build_throne(station, _body, GameState.rep.at_least("covenant", "allied"))   # 54c: the throne room
 	elif level == "kplaza":
 		map = CapitalGen.build_senate_plaza(station, _body)          # 54c (Luz): Neo Kallipolis – the Plaza of the Vote
 	elif level == "senate":
@@ -444,7 +451,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
-		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza"]:
+		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza", "pplaza"]:
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
@@ -533,7 +540,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis",
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "pnarthex": "Aureola", "throne": "Aureola",
 		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
 		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
 	if is_cloud() and level == "tower":
@@ -1888,7 +1895,7 @@ func _build() -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
 	# it (they hardly show); the tower bar's window lets in the sun by day
-	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation"]:
+	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation", "pplaza"]:
 		var tint := ColorRect.new()
 		_tint = tint
 		var mm := CanvasItemMaterial.new()
@@ -1901,7 +1908,7 @@ func _build() -> void:
 		if level in ["settlement", "alley", "minehead"]:  # all of it lies under the sky
 			tint.position = Vector2.ZERO
 			tint.size = map.size_px() * GroundMap.SCALE
-		elif level in ["cplaza", "cstation"]:            # package 54: the deck – the clouds have their own light
+		elif level in ["cplaza", "cstation", "pplaza"]:  # package 54: the deck – the clouds have their own light
 			tint.position = Vector2.ZERO
 			tint.size = Vector2(map.w, int(map.get_meta("rim_y", map.h)) + 2) * GroundMap.TILE * GroundMap.SCALE
 		elif level in ["plaza", "mplaza"]:              # 0.7.53.19: the roof plaza – not over the view of the city
@@ -1934,7 +1941,7 @@ func _build() -> void:
 		var lsp := _add_light(l, add_mat)
 		if l.has("id"):
 			_named_lights[String(l["id"])] = lsp           # 0.7.52.23: a light that can be switched (the laser cage's)
-		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation"]:
+		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation", "pplaza"]:
 			_city_lights.append([lsp, l, "street"])
 		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
 			lsp.scale *= 1.4                           # the light through the glass: sun, sunset or night
@@ -2045,6 +2052,8 @@ func _add_guards(rng: RandomNumberGenerator) -> void:
 		lk["headgear"] = 2 if rng.randf() < 0.7 else 1
 		# 0.7.51.10 (Luz): in a combat suit of their power's colours, the helmet on (a heavy one now and then at a post)
 		lk["suit"] = "suit_mil_heavy" if i < n_post and rng.randf() < 0.3 else "suit_mil_light"
+		if map.has_meta("guard_suit"):
+			lk["suit"] = String(map.get_meta("guard_suit"))     # 54c (Luz): the Hierarch's guard in gold and crimson
 		lk["livery"] = CityStyle.key_for(station)
 		lk["helmet"] = true
 		var w := Walker.new()
@@ -4018,6 +4027,12 @@ func use(instant: bool = false) -> bool:
 		"party_office", "lobbyist", "senate_stand":
 			_open_senate_menu(String(zone["kind"]), zone)   # 54c (Luz): the Senate on foot
 			return true
+		"curia_chancery", "relic_office", "audience":
+			_open_curia_menu(String(zone["kind"]), zone)    # 54c (Luz): the Curia on foot, the audience
+			return true
+		"audience_denied":
+			_say_toast("A templar lowers his halberd: \"Only the Allied of the Covenant may step before the Hierarch.\" (You: %s.)" % GameState.rep.tier_name("covenant"), 5.0)
+			return true
 		"pool":
 			open_minigame("billiards", {"title": "The pool table – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
 			return true
@@ -4122,6 +4137,8 @@ func use(instant: bool = false) -> bool:
 			go_level("museum", "museum_in")                # 53e (Luz): into the Museum
 			return true
 		"museum_go":
+			if zone.has("stop"):
+				rail_stop = int(zone["stop"])                 # 54c: through the passage into the palace's skyrail station
 			go_level(String(zone["to"]), String(zone["at"]))     # 0.7.53.26: from one of its rooms to another
 			return true
 		"museum_out":
@@ -4257,7 +4274,7 @@ func _open_lift_menu(z: Dictionary) -> void:
 	elif is_city():                                               # 0.7.53.3 (Luz): the way down into the sewers
 		lvls.append(["alley", "%d.  Back alley – a manhole down into the sewers" % (lvls.size() + 1)])
 	if is_cloud():
-		pass
+		pass                                                      # 54c (Luz): the palace is reached by the skyrail, not the lifts
 	elif is_museum_city():                                        # 53e (Luz): on Curie the roof plaza is the Museum's
 		lvls.append(["mplaza", "%d.  Roof plaza – the Museum of Curie" % (lvls.size() + 1)])
 	elif capital_kind() == "senate":                              # 54c (Luz): Neo Kallipolis – the Plaza of the Vote, the Senate
@@ -4343,7 +4360,7 @@ func _choose_level(target: String) -> void:
 		return
 	if target == "plaza":
 		_town_kind = "corp"                              # 0.7.53.19: the corporate tower's plaza
-	elif target in ["alley", "mplaza", "kplaza"]:
+	elif target in ["alley", "mplaza", "kplaza", "pplaza"]:
 		_town_kind = ""
 	if target == "cstation":
 		rail_stop = 0                                    # package 54: the lifts are on the main platform
@@ -4479,7 +4496,7 @@ var _in_scanner := false
 
 
 func _scanner_step() -> void:
-	if not map.has_meta("scanners"):
+	if map == null or not map.has_meta("scanners"):
 		return
 	var inside := false
 	for r in map.get_meta("scanners"):
@@ -4572,6 +4589,94 @@ func _senate_do(cmd: Dictionary, kind: String, z: Dictionary) -> void:
 	_open_senate_menu(kind, z)
 
 
+## 54c (Luz): the Curia on foot in the palace's lobby – the chancery (the edict, tithe, petition, indulgence), the relic
+## office (relics, the blessing) – and the audience with the Hierarch in the throne room (the Allied only). Everything
+## the Cathedral's window offers, through the same commands.
+func _open_curia_menu(kind: String, z: Dictionary) -> void:
+	Audio.play("ui_open", "curia: " + kind)
+	_close_lift_menu()
+	var cu = GameState.curia
+	var CU = preload("res://scripts/core/curia.gd")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var col := Color(1.0, 0.78, 0.4)
+	var p := UI.neon_panel(Color(col, 0.85), Color(0.08, 0.04, 0.03, 0.96), 2)
+	p.custom_minimum_size = Vector2(580, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label({"curia_chancery": "THE CURIA'S CHANCERY", "relic_office": "THE RELIC OFFICE", "audience": "THE HIERARCH"}[kind], 20, col))
+	var ed: Dictionary = cu.edict
+	var bd: Dictionary = CU.EDICTS.get(String(ed.get("id", "")), {})
+	match kind:
+		"curia_chancery":
+			if not bd.is_empty():
+				v.add_child(UI.label(String(bd["name"]).to_upper(), 16, Color(1.0, 0.95, 0.85)))
+				v.add_child(UI.wrap_label("\"%s\"  + %s  •  − %s.  Holds another %d min." % [bd["text"], bd["pro"], bd["con"], cu.minutes_left(float(ed["until"]))], 13, UI.TEXT_DIM, 540))
+			var row := UI.hbox(8)
+			v.add_child(row)
+			var bt := UI.button("Give a tithe – %s" % GameData.fmt_credits(CU.TITHE_STEP), func(): _curia_do({"type": "curia_tithe"}, kind, z))
+			bt.disabled = GameState.credits < CU.TITHE_STEP
+			row.add_child(bt)
+			var ic: int = cu.indulgence_cost()
+			var bi := UI.button("Indulgence – %s" % (GameData.fmt_credits(ic) if ic > 0 else "nothing to forgive"), func(): _curia_do({"type": "curia_indulgence"}, kind, z))
+			bi.disabled = ic <= 0 or GameState.credits < ic
+			row.add_child(bi)
+			v.add_child(UI.label("Tithed this edict: %s of %s for a petition." % [GameData.fmt_credits(int(ed.get("tithed", 0))), GameData.fmt_credits(CU.PETITION)], 12, UI.TEXT_DIM))
+			var row2 := UI.hbox(8)
+			v.add_child(row2)
+			for oid in ed.get("offer", []):
+				var od: String = oid
+				var bp := UI.button("Petition: %s" % String(CU.EDICTS[od]["name"]), func(): _curia_do({"type": "curia_petition", "edict": od}, kind, z))
+				bp.disabled = not cu.can_petition() or String(ed.get("petition", "")) != ""
+				row2.add_child(bp)
+			if String(ed.get("petition", "")) != "":
+				v.add_child(UI.label("Petitioned: the next edict will be the %s." % String(CU.EDICTS[ed["petition"]]["name"]), 12, UI.GOOD))
+		"relic_office":
+			var f := GameState.active()
+			var n := int(floor(float(f.cargo.get("earth_relic", 0.0)) + 0.001)) if f != null else 0
+			v.add_child(UI.wrap_label("The priest lifts his eyes from the ledger: \"Relics of Earth, found out there in the dark – each one brings the Return a step nearer.\"", 13, UI.TEXT_DIM, 540))
+			v.add_child(UI.label("Relics of Earth aboard your ship: %d" % n, 14, Color(1.0, 0.95, 0.85)))
+			var br := UI.button("Lay them in the shrine", func(): _curia_do({"type": "curia_relics"}, kind, z))
+			br.disabled = n <= 0
+			v.add_child(br)
+			v.add_child(UI.label(("Blessed for another %d min: goods at Covenant stations −10 %%, sales +5 %%." % cu.minutes_left(cu.blessing_until)) if cu.blessed() else "Not blessed.", 12, UI.GOOD if cu.blessed() else UI.TEXT_DIM))
+		"audience":
+			Commands.execute({"type": "curia_audience", "what": "greet"})
+			v.add_child(UI.wrap_label(cu.audience_words(), 13, Color(1.0, 0.92, 0.8), 540))
+			var used: bool = bool(ed.get("audience", false))
+			var row3 := HFlowContainer.new()
+			row3.add_theme_constant_override("h_separation", 8)
+			row3.add_theme_constant_override("v_separation", 6)
+			v.add_child(row3)
+			for eid in CU.EDICTS.keys():
+				if eid == String(ed.get("id", "")):
+					continue
+				var e2: String = eid
+				var be := UI.button(String(CU.EDICTS[e2]["name"]), func(): _curia_do({"type": "curia_audience", "what": "edict", "edict": e2}, kind, z))
+				be.tooltip_text = "+ %s, − %s" % [CU.EDICTS[e2]["pro"], CU.EDICTS[e2]["con"]]
+				be.disabled = used
+				row3.add_child(be)
+			var bb := UI.button("Ask for his blessing", func(): _curia_do({"type": "curia_audience", "what": "bless"}, kind, z))
+			bb.disabled = used
+			v.add_child(bb)
+			v.add_child(UI.wrap_label(("Once each edict: name the next edict yourself, or kneel for his blessing (%d min)." % int(CU.AUDIENCE_BLESSING / 60.0)) if not used else "You have been heard this edict – come again when the next is proclaimed.", 12, UI.TEXT_DIM, 540))
+			if cu.sealed:
+				v.add_child(UI.label("You bear the Hierarch's seal: indulgences at half price.", 12, UI.GOOD))
+	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", [])
+
+
+func _curia_do(cmd: Dictionary, kind: String, z: Dictionary) -> void:
+	var e: String = Commands.execute(cmd)
+	_say_toast(e if e != "" else {"curia_tithe": "Your tithe is received.", "curia_indulgence": "You are forgiven.", "curia_petition": "The Curia has heard you.",
+		"curia_relics": "The relics are laid in the shrine – you are blessed.", "curia_audience": "The Hierarch has spoken."}.get(String(cmd["type"]), ""), 3.0)
+	_open_curia_menu(kind, z)
+
+
 ## 54a: the souvenir stall.
 func _open_souvenir_menu(z: Dictionary) -> void:
 	Audio.play("ui_open", "souvenir stall")
@@ -4620,10 +4725,10 @@ func _open_rail_menu(z: Dictionary) -> void:
 	v.add_child(UI.label("From %s – where to?" % CloudGen.STOPS[rail_stop], 13, UI.TEXT_DIM))
 	var keys: Array = []
 	var n := 0
-	for d in CloudGen.others(rail_stop):
+	for d in CloudGen.others(rail_stop, capital_kind() == "palace"):
 		n += 1
 		var dd: int = d
-		var what: String = ["the main platform – lifts to the hangar, the plaza, the bar", "the outer ring – its observation deck", "the gas works – the Gas Exchange, the berth"][dd]
+		var what: String = ["the main platform – lifts to the hangar, the plaza, the bar", "the outer ring – its observation deck", "the gas works – the Gas Exchange, the berth", "the Hierarch's palace – its own station, the way across to the forecourt"][dd]
 		var b := UI.button("%d.  %s – %s" % [n, CloudGen.STOPS[dd], what], func(): _board(dd))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(b)

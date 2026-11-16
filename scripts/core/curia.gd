@@ -24,6 +24,13 @@ const BLESSING_MAX := 7200.0      # … at most two hours in hand
 const BLESSING_BUY := 0.9         # blessed: goods at Covenant stations −10 %, sales +5 %
 const BLESSING_SELL := 1.05
 const RELIC_FIND := 0.3           # chance that an analysed anomaly holds a relic of Earth
+const AUDIENCE_BLESSING := 2400.0  # 54c (Luz): an audience's blessing – 40 minutes
+const AUDIENCE_WORDS := [
+	"\"Every road the faithful travel bends towards home. You have walked far on it – the Church sees.\"",
+	"\"Earth waits behind the Severance as a mother waits at the door. We shall not keep her waiting for ever.\"",
+	"\"The Settled build their houses on sand. We build a fleet. Which of us, do you think, will see the dawn?\"",
+	"\"Look up – there, through the glass. Every morning the star rises over Compline, and every morning we are a day nearer.\"",
+	"\"The chaplain-admiral swore that no one would be left behind. I mean to keep her oath.\""]
 
 ## mods while the edict holds – buy / sell (prices at its stations), service (fuel and repairs), forge (Forge of
 ## Return ships), bounty (pirate bounties in its systems), patrols (> 1: one more patrol group in each of its systems).
@@ -47,23 +54,26 @@ const EDICTS := {
 var edict := {}                   # {id, until, tithed (credits this period), petition ("" or the edict asked for), offer [2 ids]}
 var history: Array = []           # newest first: {id, t}
 var blessing_until := 0.0
+var sealed := false               # 54c: the Hierarch's seal – given at the first audience: indulgences at half price
 
 
 func reset() -> void:
 	edict = {}
 	history.clear()
 	blessing_until = 0.0
+	sealed = false
 	proclaim()
 
 
 func to_dict() -> Dictionary:
-	return {"edict": edict.duplicate(true), "history": history.duplicate(true), "blessing": blessing_until}
+	return {"edict": edict.duplicate(true), "history": history.duplicate(true), "blessing": blessing_until, "sealed": sealed}
 
 
 func from_dict(d: Dictionary) -> void:
 	edict = d.get("edict", {}).duplicate(true)
 	history = d.get("history", []).duplicate(true)
 	blessing_until = float(d.get("blessing", 0.0))
+	sealed = bool(d.get("sealed", false))
 	if edict.is_empty():
 		proclaim()
 
@@ -158,7 +168,8 @@ func petition(id: String) -> String:
 
 func indulgence_cost() -> int:
 	var fine: int = GameState.law.fine("covenant")
-	return 0 if fine <= 0 else maxi(INDULGENCE_MIN, int(round(fine * INDULGENCE_MULT)))
+	var cost := 0 if fine <= 0 else maxi(INDULGENCE_MIN, int(round(fine * INDULGENCE_MULT)))
+	return cost / 2 if sealed else cost
 
 
 func indulgence() -> String:
@@ -171,6 +182,37 @@ func indulgence() -> String:
 	GameState.wanted_changed.emit("covenant", 0)
 	GameState.log_msg("Indulgence granted for %s – the Church forgives your crimes against the Covenant." % GameData.fmt_credits(cost), GameState.COL_GOOD)
 	return ""
+
+
+## 54c (Luz): the audience with the Hierarch – only the Allied of the Covenant. "greet": the first time, his seal;
+## "edict": name the next edict yourself; "bless": his blessing. Once each edict.
+func audience(what: String, id: String = "") -> String:
+	if not GameState.rep.at_least("covenant", "allied"):
+		return "Only the Allied of the Covenant may step before the Hierarch."
+	if what == "greet":
+		if not sealed:
+			sealed = true
+			GameState.log_msg("The Hierarch gives you his seal – the Church's indulgences at half price for you, for ever.", GameState.COL_GOOD)
+		return ""
+	if bool(edict.get("audience", false)):
+		return "You have been heard this edict already."
+	match what:
+		"edict":
+			if not EDICTS.has(id) or id == active_id():
+				return "That is no edict to ask for."
+			edict["petition"] = id
+			GameState.log_msg("The Hierarch has granted your request: the next edict will be the %s." % EDICTS[id]["name"], GameState.COL_GOOD)
+		"bless":
+			blessing_until = minf(maxf(blessing_until, GameState.play_time) + AUDIENCE_BLESSING, GameState.play_time + BLESSING_MAX)
+			GameState.log_msg("The Hierarch blesses you: goods at Covenant stations −%d %%, sales +%d %% for %d min." % [int(round((1.0 - BLESSING_BUY) * 100.0)), int(round((BLESSING_SELL - 1.0) * 100.0)), minutes_left(blessing_until)], GameState.COL_GOOD)
+		_:
+			return "?"
+	edict["audience"] = true
+	return ""
+
+
+func audience_words() -> String:
+	return AUDIENCE_WORDS[int(GameState.play_time / 600.0) % AUDIENCE_WORDS.size()]
 
 
 ## Hands in every relic of Earth aboard the docked ship.

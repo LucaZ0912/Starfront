@@ -177,6 +177,7 @@ func _process(delta: float) -> void:
 				_test_drift54b(view)             # package 54b – Drift
 				_test_tips54b(view)              # package 54b – tips and sounds
 				_test_capital54c(view)           # package 54c – Neo Kallipolis and the Senate
+				_test_palace54c(view)            # package 54c – Aureola and the Hierarch's palace
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12869,3 +12870,79 @@ func _test_capital54c(view: SystemView) -> void:
 	check(named and plaza_ok and lobby_ok and gal_ok and in_ok and vote_ok,
 		"54c: Neo Kallipolis – the first city on Agora named so, the Plaza of the Vote (the lift, the Senate's doors), the lobby (party office, lobbyist, the bill, the stair to the gallery), the gallery over the chamber with the voting stand; a vote cast there  [%s]%s" % [
 			" ".join(PackedStringArray([str(named), str(plaza_ok), str(lobby_ok), str(gal_ok), str(in_ok), str(vote_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+const PalaceGenT = preload("res://scripts/ground/palace_gen.gd")
+
+
+## Package 54c (Luz): Aureola over Compline – the cloud city named, the palace platform (round rim, the front, the
+## portal, the bridge back to the lifts), the lobby (the Curia's chancery and relic office, the guard posted), the throne
+## room (the rope and the guard unless Allied; the audience: the seal, an edict named, once each edict).
+func _test_palace54c(view: SystemView) -> void:
+	var notes: Array = []
+	var hk := Universe.special_system("heimkehr")
+	var named := false
+	for b in Universe.get_layout(hk)["planets"]:
+		if String(b.get("name", "")) == "Compline":
+			for s in Universe.landing_sites(hk, b):
+				named = named or (String(s.get("name", "")) == "Aureola" and String(s.get("capital", "")) == "palace")
+	var st := {"id": "test_pal", "name": "Aureola", "faction": "covenant", "city": true, "cloud": true, "capital": "palace", "type": "trade", "tier": 3}
+	var mp: GroundMap = PalaceGenT.build_platform(st, {"type": "gas_red"})
+	var ml: GroundMap = PalaceGenT.build_lobby(st, {})
+	var mt0: GroundMap = PalaceGenT.build_throne(st, {}, false)
+	var mt1: GroundMap = PalaceGenT.build_throne(st, {}, true)
+	var kinds := func(m: GroundMap) -> Array: return m.zones.map(func(z): return String(z.get("kind", "")))
+	var plat_ok: bool = mp.has_meta("rim_curve") and mp.zones.any(func(z): return String(z.get("to", "")) == "pnarthex") \
+		and mp.zones.any(func(z): return String(z.get("to", "")) == "cstation") and mp.path(mp.spawn, mp.get_meta("from_narthex")).size() > 0 \
+		and (mp.get_meta("guard_posts", []) as Array).size() >= 2 and mp.t_at(2, 70) == GroundMap.T.VOID
+	var lobby_ok: bool = "curia_chancery" in kinds.call(ml) and "relic_office" in kinds.call(ml) \
+		and ml.path(ml.get_meta("from_forecourt"), ml.get_meta("from_throne")).size() > 0 and (ml.get_meta("guard_posts", []) as Array).size() == 10
+	var throne_ok: bool = "audience_denied" in kinds.call(mt0) and not "audience" in kinds.call(mt0) and "audience" in kinds.call(mt1) \
+		and mt0.path(mt0.get_meta("from_narthex"), Vector2(20, 13.5) * 16.0).size() == 0 and mt1.path(mt1.get_meta("from_narthex"), Vector2(20, 13.5) * 16.0).size() > 0
+	# the audience: refused below Allied; the seal, an edict named, only once each edict
+	var cu = GameState.curia
+	var keep_rep: float = GameState.rep.get_rep("covenant")
+	var keep_cu: Dictionary = cu.to_dict()
+	Commands.execute({"type": "debug_rep", "faction": "covenant", "value": 0.0})
+	var e0: String = Commands.execute({"type": "curia_audience", "what": "bless"})
+	Commands.execute({"type": "debug_rep", "faction": "covenant", "value": 80.0})
+	cu.sealed = false
+	cu.edict.erase("audience")
+	var other: String = cu.EDICTS.keys().filter(func(k): return k != cu.active_id())[0]
+	var e1: String = Commands.execute({"type": "curia_audience", "what": "greet"})
+	var e2: String = Commands.execute({"type": "curia_audience", "what": "edict", "edict": other})
+	var e3: String = Commands.execute({"type": "curia_audience", "what": "bless"})
+	var aud_ok: bool = e0 != "" and e1 == "" and cu.sealed and e2 == "" and String(cu.edict.get("petition", "")) == other and e3 != ""
+	if not aud_ok:
+		notes.append("audience '%s' '%s' '%s' '%s'" % [e0, e1, e2, e3])
+	cu.from_dict(keep_cu)
+	Commands.execute({"type": "debug_rep", "faction": "covenant", "value": keep_rep})
+	# into the palace in a cloud city here (no jump): the lobby, its chancery menu
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var e: String = Commands.execute({"type": "debug_capital", "which": "palace", "level": "pnarthex", "here": true, "cloud": true})
+	var g = main.ground
+	var in_ok: bool = e == "No city in this system." or (e == "" and g != null and g.level == "pnarthex" and g.capital_kind() == "palace")
+	if e == "" and g != null and g.level == "pnarthex":
+		g._open_curia_menu("curia_chancery", {})
+		in_ok = in_ok and g._lift_menu != null
+		g._close_lift_menu()
+	elif not in_ok:
+		notes.append("into the palace: '%s'" % e)
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	GameState.gear.aboard()
+	main._update_input()
+	check(named and plat_ok and lobby_ok and throne_ok and aud_ok and in_ok,
+		"54c: Aureola – the cloud city over Compline named so, the palace platform (round rim, the front, the portal, the bridge to the lifts, the guard), the lobby (the Curia's chancery, the relic office, ten guards), the throne room (the rope unless Allied), the audience (refused below Allied; the seal, an edict named, once each edict)  [%s]%s" % [
+			" ".join(PackedStringArray([str(named), str(plat_ok), str(lobby_ok), str(throne_ok), str(aud_ok), str(in_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

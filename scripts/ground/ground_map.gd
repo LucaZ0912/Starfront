@@ -281,6 +281,24 @@ func hull_texture() -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
+const GOLD_M := Color(0.88, 0.68, 0.3)
+
+
+## 54c: a pointed lancet of stained glass, red and gold, its lead lines (w × h px from x, y).
+func _lancet_fd(x: int, y: int, w: int, h: int) -> void:
+	for yy in h:
+		for xx in w:
+			var dx := float(xx) + 0.5 - w * 0.5
+			var top := w * 0.9
+			if float(yy) < top and absf(dx) > (w * 0.5) * sqrt(maxf(0.0, 1.0 - pow((top - yy) / top, 2.0))) * 1.05:
+				continue
+			var c: Color = [Color(0.85, 0.2, 0.15), Color(0.95, 0.75, 0.3), Color(0.6, 0.1, 0.2), Color(0.95, 0.55, 0.2)][int(hash2((x + xx) / 4, (y + yy) / 5, 815) * 4.0) % 4]
+			if xx % 5 == 0 or yy % 7 == 0:
+				c = Color(0.2, 0.15, 0.12)
+			_px(x + xx, y + yy, c)
+	_rect(x - 2, y + h, w + 4, 3, Color(0.62, 0.56, 0.47))
+
+
 ## 54c: paint over what is there, by the colour's alpha.
 func _mix(x: int, y: int, rw: int, rh: int, c: Color) -> void:
 	for yy in range(y, y + rh):
@@ -1158,8 +1176,22 @@ func _museum_face(x: int, y: int, px: int, py: int) -> void:
 ## the deck's rim (meta rim_y) the platform's edge seen from the side: grey plates darkening downwards, running lights.
 func _cloud_face(x: int, y: int, px: int, py: int) -> void:
 	var ry := int(get_meta("rim_y", 9999))
+	if has_meta("rim_curve"):
+		var rc: Array = get_meta("rim_curve")
+		ry = int(rc[x]) + 1 if x >= 0 and x < rc.size() else 9999        # 54c: the palace platform's round rim
 	if has_meta("rim_y2") and x >= int(get_meta("rim_y2")[0]):
 		ry = int(get_meta("rim_y2")[1])                # 0.7.54.2: the gas works' deck reaches further out
+	if y >= ry and has_meta("rim_warm"):
+		var kw := y - ry                                # 54c: the palace platform's rim – warm stone, a gold line, lit windows
+		for yy in TILE:
+			var tw := float(kw * TILE + yy) / float(TILE * 3)
+			_rect(px, py + yy, TILE, 1, Color(0.72, 0.64, 0.54).lerp(Color(0.3, 0.2, 0.18), tw))
+		if kw == 0:
+			_rect(px, py, TILE, 2, Color(0.95, 0.9, 0.8))
+			_rect(px, py + 4, TILE, 1, Color(0.88, 0.68, 0.3))
+		if kw == 1 and x % 3 == 0:
+			_rect(px + 5, py + 4, 5, 4, Color(1.0, 0.75, 0.4))
+		return
 	if y >= ry:
 		var k := y - ry
 		for yy in TILE:
@@ -1630,6 +1662,79 @@ func _decal(d: Dictionary) -> void:
 				var a := k * TAU / 8.0
 				var sq := sc3 + Vector2(cos(a) * pw * 0.4, sin(a) * ph * 0.4)
 				_rect(int(sq.x) - 1, int(sq.y) - 1, 3, 3, Color(0.95, 0.8, 0.4))
+		"cov_rail":
+			# 54c: the palace platform's balustrade – pale stone with a gilded cap, its balusters (along a bridge: side on)
+			if d.has("side"):
+				var ox: int = [0, 5, 10][int(d.get("edge", 0)) + 1]          # along a bridge: in the middle; a deck's side: at its edge
+				_rect(px + ox, py, 6, TILE, Color(0.86, 0.8, 0.7))
+				_rect(px + ox, py, 2, TILE, Color(0.96, 0.92, 0.84))
+				_rect(px + ox + 2, py, 1, TILE, Color(0.88, 0.68, 0.3))
+				if py % (TILE * 2) == 0:
+					_rect(px + ox, py, 6, 3, Color(0.95, 0.9, 0.8))
+			else:
+				_rect(px, py + 6, TILE, 6, Color(0.84, 0.78, 0.68))
+				for bl in range(1, TILE, 4):
+					_rect(px + bl, py + 6, 2, 6, Color(0.72, 0.65, 0.55))
+				_rect(px, py + 3, TILE, 3, Color(0.95, 0.9, 0.8))
+				_rect(px, py + 3, TILE, 1, Color(0.88, 0.68, 0.3))
+				_rect(px, py + 12, TILE, 2, Color(0.55, 0.48, 0.4))
+		"cov_steps":
+			# 54c: broad steps of warm stone (dark: red-veined, the throne's dais)
+			for sr2 in int(ph / 6):
+				var sc3 := (Color(0.62, 0.32, 0.28) if d.has("dark") else Color(0.9, 0.85, 0.76)).darkened(0.04 * sr2)
+				_rect(px, py + sr2 * 6, pw, 6, sc3)
+				_rect(px, py + sr2 * 6, pw, 1, sc3.lightened(0.15))
+				_rect(px, py + sr2 * 6 + 5, pw, 1, sc3.darkened(0.3))
+			# (Luz) a proper end either side: a cheek wall of warm stone, its top lit and edged in gold, its front face below
+			var chc := Color(0.62, 0.34, 0.3) if d.has("dark") else Color(0.92, 0.86, 0.76)
+			for chx in [px, px + pw - 12]:
+				var inner: int = chx + 11 if chx == px else chx
+				_rect(chx, py - 2, 12, ph + 2, chc)
+				_rect(chx, py - 2, 12, 1, chc.lightened(0.2))
+				_rect(chx + 5, py, 2, ph - 2, Color(0.88, 0.68, 0.3))
+				_rect(inner, py - 2, 1, ph + 2, chc.darkened(0.35))
+				_rect(inner + (1 if chx == px else -2), py, 2, ph, chc.darkened(0.2))
+				_rect(chx, py + ph, 12, 8, chc.darkened(0.18))
+				_rect(chx, py + ph, 12, 1, chc.lightened(0.1))
+				_rect(chx, py + ph + 7, 12, 1, chc.darkened(0.45))
+		"sun_mosaic":
+			# 54c: the sun of the Return let into the forecourt – rings of gold and red stone, rays
+			var mc := Vector2(px + pw * 0.5, py + ph * 0.5)
+			for yy6 in range(-ph / 2, ph / 2 + 1):
+				for xx6 in range(-pw / 2, pw / 2 + 1):
+					var e6 := Vector2(xx6 / (pw * 0.5), yy6 / (ph * 0.5)).length()
+					if e6 > 1.0:
+						continue
+					var ang := atan2(yy6 * (pw / float(ph)), xx6)
+					var mcol := Color(0.86, 0.8, 0.7)
+					if fposmod(ang * 24.0 / TAU, 1.0) < 0.18 and e6 > 0.25:
+						mcol = Color(0.9, 0.72, 0.36)
+					if absf(e6 - 0.95) < 0.03 or absf(e6 - 0.6) < 0.025:
+						mcol = Color(0.62, 0.16, 0.14)
+					if e6 < 0.22:
+						mcol = Color(0.95, 0.78, 0.4) if e6 > 0.08 else Color(1.0, 0.92, 0.65)
+					_px(int(mc.x) + xx6, int(mc.y) + yy6, mcol)
+		"cov_plinth":
+			# 54c (Luz): the throne's plinth – raised 2 m: its top of red-veined stone edged in gold, its front face below
+			var top_h := ph - 10
+			_rect(px, py, pw, top_h, Color(0.66, 0.34, 0.3))
+			for vy in range(py + 3, py + top_h, 5):
+				_rect(px + 2, vy, pw - 4, 1, Color(0.6, 0.3, 0.26))
+			_rect(px, py, pw, 2, Color(0.88, 0.68, 0.3))
+			_rect(px, py + top_h - 2, pw, 2, Color(0.88, 0.68, 0.3))
+			_rect(px, py + top_h, pw, 10, Color(0.48, 0.22, 0.2))
+			_rect(px, py + top_h + 9, pw, 1, Color(0.3, 0.14, 0.12))
+			for pn in range(px + 6, px + pw - 4, 20):
+				_rect(pn, py + top_h + 2, 12, 6, Color(0.55, 0.26, 0.22))
+				_rect(pn, py + top_h + 2, 12, 1, Color(0.88, 0.68, 0.3))
+		"pool_red":
+			# 54c: a reflecting pool – a kerb of stone, the water dark red with the sky in it
+			_rect(px, py, pw, ph, Color(0.7, 0.63, 0.53))
+			_rect(px, py, pw, 2, Color(0.9, 0.84, 0.74))
+			_rect(px + 6, py + 6, pw - 12, ph - 12, Color(0.32, 0.1, 0.1))
+			for wl in range(py + 8, py + ph - 8, 4):
+				_rect(px + 8, wl, pw - 16, 1, Color(0.75, 0.32, 0.25))
+			_rect(px + 12, py + 10, pw / 3, 2, Color(1.0, 0.7, 0.5))
 		"steps":
 			# 53e: broad steps up to the Museum's doors
 			for sr in int(ph / 5):
@@ -2218,6 +2323,158 @@ func _face_deco(d: Dictionary) -> void:
 			# 54c: a light strip along a wall
 			_mix(px, py + int(d.get("at", 30)), pw, 1, Color(c, 0.9))
 			_mix(px, py + int(d.get("at", 30)) + 1, pw, 1, Color(c, 0.3))
+		"palace_front":
+			# 54c (Luz): the foot of the Hierarch's palace front (~60 m high; only its lowest 22 m in the map) – warm stone
+			# in courses, the two towers at its ends with their great lancets, piers with saints in niches, banners from
+			# far above, the portal 10 m wide with its stepped jambs and the bronze leaves folded open, the nave's glow
+			var fh := int(d.get("rows", 22)) * TILE
+			for yy in fh:
+				for xx in range(0, pw, 2):
+					var fc := Color(0.86, 0.8, 0.7).lerp(Color(0.78, 0.71, 0.6), hash2((px + xx) / 12, yy / 8, 811))
+					if yy % 8 == 0 or (xx + (yy / 8) * 14) % 36 == 0:
+						fc = fc.darkened(0.1)
+					_rect(px + xx, py + yy, 2, 1, fc)
+			var T2 := TILE
+			for tw in [0, pw - 22 * T2]:                                   # the towers: proud of the front, lighter
+				_rect(px + tw, py, 22 * T2, fh, Color(0.88, 0.82, 0.72))
+				for yy2 in range(0, fh, 8):
+					_rect(px + tw, py + yy2, 22 * T2, 1, Color(0.76, 0.69, 0.58))
+				_rect(px + tw, py, 4, fh, Color(0.96, 0.92, 0.84))
+				_rect(px + tw + 22 * T2 - 4, py, 4, fh, Color(0.66, 0.59, 0.49))
+				_lancet_fd(px + tw + 8 * T2, py, 6 * T2, fh - 70)
+				_rect(px + tw + 2 * T2, py + fh - 120, 18 * T2, 3, Color(0.7, 0.63, 0.52))
+			for lx in [24 * T2, 30 * T2, 61 * T2, 67 * T2]:                 # lancets between the towers and the piers
+				_lancet_fd(px + lx, py, 3 * T2, fh - 100)
+			var pc := px + 47 * T2                                          # the portal's middle
+			for side in [-1, 1]:                                            # the piers by the portal, a saint in each
+				var p0: int = pc - 11 * T2 if side < 0 else pc + 5 * T2
+				_rect(p0, py, 6 * T2, fh, Color(0.84, 0.77, 0.66))
+				_rect(p0, py, 6, fh, Color(0.95, 0.9, 0.8))
+				_rect(p0 + 6 * T2 - 6, py, 6, fh, Color(0.62, 0.55, 0.45))
+				for sh in range(p0 + 16, p0 + 6 * T2 - 8, 15):
+					_rect(sh, py, 1, fh - 20, Color(0.74, 0.67, 0.56))
+				var nx := p0 + 3 * T2 - 18
+				_rect(nx, py + fh - 120, 36, 76, Color(0.52, 0.45, 0.37))           # the niche
+				_rect(nx + 12, py + fh - 104, 12, 44, Color(0.86, 0.8, 0.7))        # the saint: robe, head, staff
+				_rect(nx + 12, py + fh - 104, 3, 44, Color(0.95, 0.9, 0.8))
+				for hy in range(-6, 7):
+					for hx in range(-6, 7):
+						if hx * hx + hy * hy <= 30:
+							_px(nx + 18 + hx, py + fh - 112 + hy, Color(0.88, 0.82, 0.72))
+				_rect(nx + 27, py + fh - 118, 2, 34, GOLD_M)
+				_mix(nx + 10, py + fh - 122, 16, 2, Color(1.0, 0.85, 0.5, 0.6))
+				_rect(nx - 4, py + fh - 44, 44, 14, Color(0.8, 0.74, 0.64))          # its plinth
+				_rect(nx - 4, py + fh - 44, 44, 2, Color(0.94, 0.88, 0.78))
+				var bx: int = p0 - 26 if side < 0 else p0 + 6 * T2 + 4
+				_rect(bx, py, 22, fh - 130, Color(0.62, 0.12, 0.12))                # a banner from far above
+				_rect(bx, py, 2, fh - 130, Color(0.75, 0.22, 0.2))
+				_rect(bx + 20, py, 2, fh - 130, Color(0.45, 0.08, 0.08))
+				for hy2 in range(-7, 8):
+					for hx2 in range(-7, 8):
+						if hx2 * hx2 + hy2 * hy2 <= 49:
+							_px(bx + 11 + hx2, py + fh - 175 + hy2, GOLD_M)
+				_rect(bx + 10, py + fh - 167, 3, 22, GOLD_M)
+				_rect(bx + 4, py + fh - 160, 15, 2, GOLD_M)
+				_rect(bx, py + fh - 130, 8, 6, Color(0.62, 0.12, 0.12))
+				_rect(bx + 14, py + fh - 130, 8, 6, Color(0.62, 0.12, 0.12))
+			# the portal: stepped jambs, the opening aglow, the bronze leaves edge-on
+			for jm in 4:
+				_rect(pc - 5 * T2 - 10 - jm * 8, py, 10, fh, Color(0.8, 0.73, 0.62).darkened(jm * 0.06))
+				_rect(pc + 5 * T2 + jm * 8, py, 10, fh, Color(0.72, 0.65, 0.54).darkened(jm * 0.06))
+			for yy3 in fh:
+				_rect(pc - 5 * T2, py + yy3, 10 * T2, 1, Color(1.0, 0.86, 0.55).lerp(Color(0.95, 0.62, 0.32), float(yy3) / fh))
+			for cn in 14:
+				_px(pc - 50 + cn * 8, py + 70 + (cn % 3) * 5, Color(1.0, 0.95, 0.7))
+			_rect(pc - 5 * T2, py, 22, fh, Color(0.62, 0.45, 0.2))
+			_rect(pc + 5 * T2 - 22, py, 22, fh, Color(0.55, 0.4, 0.18))
+			for rv in range(12, fh, 26):
+				_rect(pc - 5 * T2 + 3, py + rv, 16, 2, GOLD_M)
+				_rect(pc + 5 * T2 - 19, py + rv, 16, 2, GOLD_M)
+			# its foot: a moulding all along
+			_rect(px, py + fh - 14, pw, 14, Color(0.8, 0.74, 0.64))
+			_rect(px, py + fh - 14, pw, 2, Color(0.95, 0.9, 0.8))
+			_rect(px, py + fh - 2, pw, 2, Color(0.55, 0.49, 0.4))
+			_rect(pc - 5 * T2, py + fh - 14, 10 * T2, 14, Color(0.95, 0.65, 0.35))
+		"palace_gate":
+			# 54c: the inner doors to the throne room, 8 m wide – a pointed opening aglow, jambs, the bronze leaves open
+			var gh := int(d.get("rows", 6)) * TILE
+			_rect(px - 10, py, pw + 20, gh, Color(0.8, 0.73, 0.62))
+			for yy4 in gh:
+				var hw := int(pw * 0.5 * sqrt(clampf(float(yy4) / 30.0, 0.0, 1.0)))
+				_rect(px + pw / 2 - hw, py + yy4, hw * 2, 1, Color(1.0, 0.82, 0.5).lerp(Color(0.85, 0.45, 0.3), float(yy4) / gh))
+			_rect(px + 2, py + 20, 12, gh - 20, Color(0.6, 0.45, 0.2))
+			_rect(px + pw - 14, py + 20, 12, gh - 20, Color(0.55, 0.4, 0.18))
+			for rv2 in range(26, gh, 18):
+				_rect(px + 4, py + rv2, 8, 2, GOLD_M)
+				_rect(px + pw - 12, py + rv2, 8, 2, GOLD_M)
+		"cov_lancet":
+			_lancet_fd(px, py + 4, pw, int(d.get("rows", 6)) * TILE - 10)
+		"cov_banner":
+			var bh := int(d.get("rows", 5)) * TILE - 8
+			_rect(px - 2, py, 20, 3, GOLD_M)
+			_rect(px, py + 3, 16, bh, Color(0.62, 0.12, 0.12))
+			_rect(px, py + 3, 2, bh, Color(0.75, 0.22, 0.2))
+			for hy3 in range(-5, 6):
+				for hx3 in range(-5, 6):
+					if hx3 * hx3 + hy3 * hy3 <= 25:
+						_px(px + 8 + hx3, py + 20 + hy3, GOLD_M)
+			_rect(px + 7, py + 26, 3, 16, GOLD_M)
+			_rect(px + 3, py + 31, 11, 2, GOLD_M)
+			_rect(px, py + 3 + bh, 6, 5, Color(0.62, 0.12, 0.12))
+			_rect(px + 10, py + 3 + bh, 6, 5, Color(0.62, 0.12, 0.12))
+		"cov_pilaster":
+			var ph2 := int(d.get("rows", 9)) * TILE
+			_rect(px + 2, py, 12, ph2, Color(0.82, 0.75, 0.64))
+			_rect(px + 2, py, 3, ph2, Color(0.94, 0.88, 0.78))
+			_rect(px + 12, py, 2, ph2, Color(0.62, 0.55, 0.45))
+		"sun_halo":
+			# 54c (Luz): the sun of the Return in gilded rays on the wall behind the throne
+			var hh := int(d.get("rows", 3)) * TILE
+			var hc := Vector2(px + pw * 0.5, py + hh * 0.75)
+			for yy7 in hh:
+				for xx7 in pw:
+					var dv7 := Vector2(px + xx7, py + yy7) - hc
+					var r7 := dv7.length()
+					var a7 := atan2(dv7.y, dv7.x)
+					if r7 < 14.0:
+						_px(px + xx7, py + yy7, Color(1.0, 0.85, 0.5) if r7 < 10.0 else Color(0.88, 0.68, 0.3))
+					elif r7 < pw * 0.5 and fposmod(a7 * 24.0 / TAU, 1.0) < 0.3 and a7 < 0.0:
+						_px(px + xx7, py + yy7, Color(0.88, 0.68, 0.3).lerp(Color(0.62, 0.45, 0.18), r7 / (pw * 0.5)))
+		"edict_scroll":
+			# 54c: the edict in force on a lit scroll on the wall – parchment, gold rods, its lines
+			_rect(px + 4, py, pw - 8, 30, Color(0.95, 0.88, 0.7))
+			_rect(px, py - 2, pw, 3, GOLD_M)
+			_rect(px, py + 29, pw, 3, GOLD_M)
+			for ln in 5:
+				_rect(px + 10, py + 6 + ln * 4, pw - 20 - (ln % 3) * 12, 1, Color(0.4, 0.2, 0.12))
+			_rect(px + pw / 2 - 4, py + 26, 8, 3, Color(0.7, 0.12, 0.12))
+		"throne_window":
+			# 54c (Luz): the great window high in the back wall – exactly where the star rises over the red clouds of
+			# Compline; a pointed arch of tracery, the sky dark above and glowing at the horizon, the star half risen
+			var wh := int(d.get("rows", 9)) * TILE
+			_rect(px - 8, py, pw + 16, wh, Color(0.8, 0.73, 0.62))
+			for yy5 in wh:
+				for xx5 in pw:
+					var dx5 := float(xx5) + 0.5 - pw * 0.5
+					var top5 := pw * 0.55
+					if float(yy5) < top5 and absf(dx5) > (pw * 0.5 - 4) * sqrt(maxf(0.0, 1.0 - pow((top5 - yy5) / top5, 2.0))):
+						continue
+					if absf(dx5) > pw * 0.5 - 4:
+						continue
+					var sc := Color(0.12, 0.05, 0.12).lerp(Color(0.95, 0.45, 0.25), pow(float(yy5) / wh, 1.6))
+					var sr := Vector2(dx5, yy5 - wh * 0.72).length()
+					if sr < 18.0:
+						sc = Color(1.0, 0.96, 0.82)
+					elif sr < 50.0:
+						sc = sc.lerp(Color(1.0, 0.82, 0.5), pow(1.0 - (sr - 18.0) / 32.0, 2.0) * 0.8)
+					if yy5 > wh * 0.74:
+						var cl := hash2(xx5 / 6, yy5 / 3, 813) * 0.5 + hash2(xx5 / 14, yy5 / 5, 814) * 0.5
+						sc = Color(0.72, 0.2, 0.17).lerp(Color(1.0, 0.55, 0.35), clampf(cl * 1.3 - 0.15, 0.0, 1.0))
+						sc = sc.lerp(Color(1.0, 0.82, 0.5), clampf(1.0 - absf(dx5) / 70.0, 0.0, 1.0) * 0.35)
+					if xx5 % 56 == 0 or yy5 == int(wh * 0.5) or (yy5 > wh * 0.5 and xx5 % 28 == 0 and yy5 < wh * 0.6):
+						sc = Color(0.25, 0.2, 0.18)                                    # the tracery
+					_px(px + xx5, py + yy5, sc)
+			_rect(px - 8, py + wh - 6, pw + 16, 6, Color(0.7, 0.63, 0.52))
 		"banner_m":
 			# 53e: a long banner of an exhibition hung from the cornice
 			_rect(px + 2, py + 2, 12, 2, Color(0.85, 0.66, 0.3))

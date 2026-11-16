@@ -1061,6 +1061,15 @@ func _build_ground() -> void:
 	rcp.add_child(UI.button("New bill", func(): _cmd({"type": "debug_senate", "do": "new"})))
 	rcp.add_child(UI.button("Permit", func(): _cmd({"type": "debug_permit", "faction": "assembly", "on": true})))
 	_box.add_child(UI.wrap_label("Straight to Landfall and down into Neo Kallipolis on Agora – the Plaza of the Vote, the Senate's lobby (party office, lobbyist), the gallery over the chamber (the voting stand).", 12, UI.TEXT_DIM, 560))
+	var rau := _row()
+	rau.add_child(UI.label("Aureola:", 12, UI.TEXT_DIM))
+	rau.add_child(UI.button("Palace station", func(): _cmd({"type": "debug_capital", "which": "palace", "level": "cstation", "stop": 3})))
+	for pl in [["pplaza", "Palace platform"], ["pnarthex", "Palace lobby"], ["throne", "Throne room"]]:
+		var plv: String = pl[0]
+		rau.add_child(UI.button(String(pl[1]), func(): _cmd({"type": "debug_capital", "which": "palace", "level": plv})))
+	rau.add_child(UI.button("Covenant: Allied", func(): _cmd({"type": "debug_rep", "faction": "covenant", "value": 80.0})))
+	rau.add_child(UI.button("New edict", func(): _cmd({"type": "debug_edict", "edict": ""})))
+	_box.add_child(UI.wrap_label("Straight to Heimkehr and up into Aureola over Compline – the palace platform (forecourt, bridge), the lobby (the Curia's chancery, the relic office, the guard), the throne room (the audience: Allied only – re-enter it after changing standing).", 12, UI.TEXT_DIM, 560))
 	_section("Bar games (package 54b)")
 	var rbg := _row()
 	rbg.add_child(UI.label("Billiards:", 12, UI.TEXT_DIM))

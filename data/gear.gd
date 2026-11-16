@@ -97,6 +97,13 @@ const SUITS := {
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
 		"col": Color(0.3, 0.32, 0.36), "trim": Color(1.0, 0.25, 0.2),
 		"desc": "A walking bunker: three weapons, heavy plate, a deep magazine – and slow, and short of air."},
+	# 54c (Luz): the Hierarch's guard in Aureola – gilded plate, a long crimson cape (for now NPCs only: never sold,
+	# `faction` "hierarch").
+	"suit_mil_hierarch": {"name": "Hierarch's Guard Armour", "maker": "Forge of Return", "faction": "hierarch", "weapons": 2, "belt": 3,
+		"grenades": 2, "drones": 1, "features": 2, "shield": 60.0, "armor": 90.0, "energy": 280.0, "oxygen": 30.0, "ammo": 300,
+		"env": {"heat": 0.5, "cold": 0.5, "toxic": 1.0, "vacuum": 0.8}, "speed": 0.9, "price": 40000,
+		"col": Color(0.86, 0.66, 0.26), "trim": Color(0.75, 0.12, 0.12),
+		"desc": "The Hierarch's own guard: plate gilded like the throne it watches, a long cape of crimson."},
 	# 53e (Luz): the Museum's thanks when every case is filled – an explorer's suit: a short cloak built in that lasts
 	# five times as long, a scanner built in, the best life support, a deep energy store, a drone place, a long belt –
 	# and little shield or plate. Never sold (`faction` "museum").

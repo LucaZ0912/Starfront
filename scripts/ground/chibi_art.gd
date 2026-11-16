@@ -88,7 +88,7 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	var senate := suit.begins_with("suit_mil_senate")       # 0.7.52.18: the Assembly's Senate armours
 	var plate: Color = c1                     # 0.7.51.10: a combat suit – plates over a black undersuit, its lights
 	var glow: Color = c2
-	if combat and not senate and LIVERY.has(String(l.get("livery", ""))):
+	if combat and not senate and suit != "suit_mil_hierarch" and LIVERY.has(String(l.get("livery", ""))):
 		plate = LIVERY[String(l["livery"])][0]
 		glow = LIVERY[String(l["livery"])][1]
 	var hand := skin
@@ -349,7 +349,82 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 			head_top, side, back)
 	if suit == "suit_archivist":
 		return _archivist_frame(img, bool(l.get("helmet", false)), sitting, cx, tx, tw, torso_top, leg_top, hx, head_top, head_bot, ey, side, back)
+	if suit == "suit_mil_hierarch":
+		return _cape_frame(img, bool(l.get("helmet", false)), sitting, cx, tx, tw, torso_top, leg_top, hx, head_top, side, back)
 	return img
+
+## 54c (Luz): the Hierarch's guard – gilded plate (the suit's own colour, not a livery), a red crest on the helmet and a
+## long crimson cape with a gold hem down to the heels: behind the figure from the front (its edges either side), over
+## it from behind, trailing from the side.
+const CAPE_PAD := Vector2i(3, 4)
+const CAPE_RED := Color(0.62, 0.1, 0.1)
+
+static func _cape_frame(src: Image, helmet: bool, sitting: bool, cx: int, tx: int, tw: int, torso_top: int, leg_top: int,
+		hx: int, head_top: int, side: bool, back: bool) -> Image:
+	var px := CAPE_PAD.x
+	var py := CAPE_PAD.y
+	var img := Image.create(W + 2 * px, H + py, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	cx += px
+	tx += px
+	hx += px
+	torso_top += py
+	leg_top += py
+	head_top += py
+	var feet := H + py - 2
+	var red := CAPE_RED
+	var dk := red.darkened(0.35)
+	var gold := Color(0.95, 0.75, 0.3)
+	var c_top := torso_top - 1
+	var c_bot := feet - (1 if not sitting else 6)
+	# the cape behind (front and side views): drawn first, the figure over it
+	if not back:
+		for y in range(c_top, c_bot + 1):
+			var k := float(y - c_top) / float(maxi(1, c_bot - c_top))
+			if side:
+				var x0 := cx + 1
+				var x1 := cx + 4 + int(k * 3.0)
+				_r(img, x0, y, x1 - x0, 1, red if y % 5 != 0 else dk)
+				_px(img, x1 - 1, y, dk)
+			else:
+				var x0b := tx - 2 - int(k * 2.0)
+				var x1b := tx + tw + 2 + int(k * 2.0)
+				_r(img, x0b, y, x1b - x0b, 1, dk)
+				_px(img, x0b, y, red)
+				_px(img, x1b - 1, y, red)
+		if side:
+			_r(img, cx + 1, c_bot, 6, 1, gold)
+		else:
+			_r(img, tx - 4, c_bot, tw + 8, 1, gold)
+	img.blend_rect(src, Rect2i(0, 0, W, H), Vector2i(px, py))
+	# the cape over the figure from behind
+	if back:
+		for y2 in range(c_top, c_bot + 1):
+			var k2 := float(y2 - c_top) / float(maxi(1, c_bot - c_top))
+			var x0c := tx - 1 - int(k2 * 2.0)
+			var x1c := tx + tw + 1 + int(k2 * 2.0)
+			_r(img, x0c, y2, x1c - x0c, 1, red)
+			_px(img, x0c, y2, dk)
+			_px(img, x1c - 1, y2, dk)
+			if (y2 - c_top) % 6 == 3:
+				_px(img, cx - 2, y2, dk)                                                     # its folds
+				_px(img, cx + 2, y2, dk)
+		_r(img, tx - 3, c_bot, tw + 6, 1, gold)
+		_r(img, tx, c_top, tw, 1, gold)                                                         # the gold clasp line
+	elif not side:
+		_px(img, tx, torso_top, gold)                                                           # the clasps on the shoulders
+		_px(img, tx + tw - 1, torso_top, gold)
+	# the helmet's red crest
+	if helmet:
+		var cr := head_top - 3
+		if side:
+			_r(img, hx + 2, cr, 5, 2, red)
+			_r(img, hx + 6, cr + 1, 2, 3, dk)
+		else:
+			_r(img, cx - 1, cr - 1, 2, 4, red)
+			_px(img, cx - 1, cr - 1, red.lightened(0.25))
+	return img
+
 
 
 ## 0.7.51.10 (Luz: "the combat suits should look a lot more dangerous"): plates over the black undersuit – a chest

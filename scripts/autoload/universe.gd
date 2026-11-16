@@ -3129,7 +3129,9 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%d_%s_%d" % [system_id, String(body["id"]), seed_value])
 	if is_giant(body):
-		return cloud_sites(system_id, body, rng)
+		var cl := cloud_sites(system_id, body, rng)
+		_name_capital(system_id, body, cl)                         # 54c: Aureola over Compline
+		return cl
 	var hab := has_atmosphere(body) and float(body_type(String(body["type"])).get("sea", 0.0)) > 0.0
 	var inhabited: bool = not systems[system_id].get("outer", false)
 	var cities := 0

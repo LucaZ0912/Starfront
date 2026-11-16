@@ -223,6 +223,30 @@ static func _rise(kind: String) -> int:
 			return 40
 		"scanner_gate":                     # 54c: the Senate's security arch (~2.6 m)
 			return 30
+		"throne_small":                     # 54c (Luz): the Hierarch's throne at a man's size
+			return 34
+		"baldachin":                        # 54c: the canopy over the throne (~5 m)
+			return 64
+		"regalia_table":
+			return 10
+		"kneeler":
+			return 2
+		"font":
+			return 14
+		"lectern":
+			return 22
+		"brazier":                          # 54c: a fire bowl on a post (~1.5 m)
+			return 22
+		"tithe_chest":
+			return 8
+		"reliquary":                        # 54c: the relic shrine (~2.6 m)
+			return 36
+		"candle_rack":
+			return 10
+		"throne":                           # 54c: the Hierarch's throne (~3 m high back)
+			return 40
+		"candelabrum":                      # 54c: ~2.4 m
+			return 30
 		"plaque_stone":                     # 54c: a stone with a bronze plaque (~0.9 m)
 			return 10
 		"news_wall":                        # 54c: a news screen in the lobby
@@ -352,6 +376,154 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw / 2 - 3, 2, 6, 1, Color(0.4, 1.0, 0.6))
 			for yy4 in range(6, gb - 2):
 				_r(img, 4, yy4, pw - 8, 1, Color(0.4, 1.0, 0.6, 0.07 if yy4 % 4 else 0.18))
+		"throne_small":
+			# 54c (Luz): the Hierarch's throne at a man's size – a tall carved back of gilded wood, the sun on its crown, a
+			# crimson cushion and back panel with a gold border, carved arms ending in lions' heads, a footstool
+			var b30 := fy + ph
+			var gd := Color(0.88, 0.68, 0.3)
+			var gdd := Color(0.62, 0.45, 0.18)
+			_r(img, 4, 6, pw - 8, b30 - 10, gdd)                                 # the back's frame
+			_r(img, 5, 7, pw - 10, b30 - 12, gd)
+			_r(img, 8, 10, pw - 16, b30 - 22, Color(0.62, 0.12, 0.12))           # the crimson back panel
+			_r(img, 8, 10, 1, b30 - 22, Color(0.75, 0.22, 0.2))
+			for st in range(12, b30 - 14, 4):
+				_p(img, pw / 2, st, gd)                                            # a stitched line of gold
+			_ellipse(img, pw * 0.5, 5, 6, 5, gd)                                 # the sun on its crown, rays
+			_ellipse(img, pw * 0.5, 5, 3.5, 3, Color(1.0, 0.92, 0.65))
+			for ry in 8:
+				var a := ry * TAU / 8.0
+				_p(img, int(pw * 0.5 + cos(a) * 7.5), int(5 + sin(a) * 6.0), gd)
+			_r(img, 6, 6, 2, 3, gd)                                               # finials on its corners
+			_r(img, pw - 8, 6, 2, 3, gd)
+			_r(img, 2, b30 - 14, 7, 9, gd)                                        # the arms, lions' heads at their ends
+			_r(img, pw - 9, b30 - 14, 7, 9, gd)
+			_r(img, 2, b30 - 14, 7, 1, Color(1.0, 0.85, 0.5))
+			_r(img, pw - 9, b30 - 14, 7, 1, Color(1.0, 0.85, 0.5))
+			_ellipse(img, 4, b30 - 6, 2.5, 2, gdd)
+			_ellipse(img, pw - 5, b30 - 6, 2.5, 2, gdd)
+			_r(img, 8, b30 - 12, pw - 16, 5, Color(0.7, 0.15, 0.15))             # the cushion
+			_r(img, 8, b30 - 12, pw - 16, 1, Color(0.85, 0.3, 0.25))
+			_r(img, 7, b30 - 7, pw - 14, 5, gdd)                                  # the seat's front, carved
+			for cv in range(8, pw - 8, 3):
+				_p(img, cv, b30 - 5, gd)
+			_r(img, 9, b30 - 2, pw - 18, 2, Color(0.55, 0.12, 0.12))             # the footstool
+		"baldachin":
+			# 54c: the canopy over the throne – four gilded posts, a crimson valance with a gold fringe and the sun on it
+			var b31 := fy + ph
+			var gd2 := Color(0.88, 0.68, 0.3)
+			for pp in [1, pw - 4]:
+				_r(img, pp, 10, 3, b31 - 10, gd2.darkened(0.15))
+				_r(img, pp, 10, 1, b31 - 10, Color(1.0, 0.85, 0.5))
+				_ellipse(img, pp + 1.5, 9, 2.5, 2.5, gd2)
+			_r(img, 0, 0, pw, 4, Color(0.62, 0.12, 0.12))                         # the canopy's top, seen from above
+			_r(img, 0, 0, pw, 1, Color(0.8, 0.25, 0.2))
+			_r(img, 0, 4, pw, 7, Color(0.55, 0.1, 0.1))                          # the valance
+			for fr in range(0, pw, 2):
+				_r(img, fr, 11, 1, 2 + (fr / 2) % 2, gd2)                         # the fringe
+			_r(img, 0, 4, pw, 1, gd2)
+			_ellipse(img, pw * 0.5, 7, 3, 2.5, gd2)
+		"regalia_table":
+			# 54c: a small table draped in crimson, the regalia on it – the crown, the sceptre, the orb
+			var b32 := fy + ph
+			var gd3 := Color(0.88, 0.68, 0.3)
+			_r(img, 1, b32 - 12, pw - 2, 12, Color(0.55, 0.1, 0.1))
+			_r(img, 1, b32 - 12, pw - 2, 2, Color(0.75, 0.2, 0.18))
+			_r(img, 1, b32 - 3, pw - 2, 1, gd3)
+			_r(img, 3, b32 - 16, 6, 3, gd3)                                       # the crown
+			_p(img, 3, b32 - 17, gd3)
+			_p(img, 6, b32 - 18, gd3)
+			_p(img, 8, b32 - 17, gd3)
+			_p(img, 5, b32 - 15, Color(0.8, 0.15, 0.2))
+			_r(img, 11, b32 - 20, 1, 8, gd3)                                      # the sceptre
+			_ellipse(img, 11.5, b32 - 21, 1.5, 1.5, Color(1.0, 0.9, 0.6))
+			_ellipse(img, 13.5, b32 - 14, 2, 2, gd3)                              # the orb
+		"kneeler":
+			# 54c: a crimson kneeler with gold tassels before the throne
+			_r(img, 2, fy + 3, pw - 4, ph - 7, Color(0.62, 0.12, 0.12))
+			_r(img, 2, fy + 3, pw - 4, 2, Color(0.8, 0.25, 0.2))
+			_r(img, 2, fy + ph - 5, pw - 4, 1, Color(0.88, 0.68, 0.3))
+			_p(img, 2, fy + ph - 3, Color(0.88, 0.68, 0.3))
+			_p(img, pw - 3, fy + ph - 3, Color(0.88, 0.68, 0.3))
+		"font":
+			# 54c: a font of blessed water at the doors – a stone basin on a pedestal, the water lit
+			var b33 := fy + ph
+			_r(img, pw / 2 - 2, b33 - 10, 4, 10, Color(0.8, 0.74, 0.64))
+			_ellipse(img, pw * 0.5, b33 - 12, 7, 3.5, Color(0.86, 0.8, 0.7))
+			_ellipse(img, pw * 0.5, b33 - 12.5, 5, 2.2, Color(0.45, 0.7, 0.85))
+			_p(img, pw / 2 - 2, b33 - 13, Color(0.85, 0.95, 1.0))
+			_r(img, pw / 2 - 4, b33 - 2, 8, 2, Color(0.7, 0.64, 0.54))
+		"lectern":
+			# 54c: a lectern of dark wood, the Book of Return open on it, a gold ribbon
+			var b34 := fy + ph
+			_r(img, pw / 2 - 1, b34 - 12, 3, 12, Color(0.4, 0.26, 0.15))
+			_r(img, pw / 2 - 4, b34 - 2, 9, 2, Color(0.35, 0.22, 0.12))
+			_r(img, 2, b34 - 20, pw - 4, 8, Color(0.45, 0.3, 0.17))
+			_r(img, 3, b34 - 20, pw - 6, 6, Color(0.95, 0.9, 0.78))
+			_r(img, pw / 2, b34 - 20, 1, 6, Color(0.7, 0.62, 0.5))
+			for ln2 in 2:
+				_r(img, 4, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
+				_r(img, pw / 2 + 2, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
+			_r(img, pw / 2, b34 - 14, 1, 4, Color(0.88, 0.68, 0.3))
+		"brazier":
+			# 54c: a fire bowl on a post (~1.5 m) – iron, a bowl of bronze, the flame
+			var b20 := fy + ph
+			_ellipse(img, pw * 0.5, b20 - 3, 5, 2.5, Color(0.25, 0.2, 0.16))
+			_r(img, pw / 2 - 1, 8, 3, b20 - 10, Color(0.3, 0.24, 0.18))
+			_ellipse(img, pw * 0.5, 8, 7, 3.5, Color(0.55, 0.4, 0.18))
+			_ellipse(img, pw * 0.5, 7, 5, 2.2, Color(1.0, 0.65, 0.25))
+			_ellipse(img, pw * 0.5, 4, 3, 3, Color(1.0, 0.85, 0.45))
+			_r(img, pw / 2 - 1, 0, 2, 3, Color(1.0, 0.95, 0.7))
+		"tithe_chest":
+			# 54c: the tithe chest – dark wood bound in gold, a slot in its lid
+			var b21 := fy + ph
+			_r(img, 1, b21 - 14, pw - 2, 14, Color(0.42, 0.27, 0.15))
+			_r(img, 1, b21 - 16, pw - 2, 4, Color(0.55, 0.36, 0.2))
+			_r(img, 1, b21 - 12, pw - 2, 2, Color(0.88, 0.68, 0.3))
+			_r(img, pw / 2 - 3, b21 - 16, 6, 1, Color(0.1, 0.08, 0.06))
+			_r(img, pw / 2 - 1, b21 - 9, 2, 3, Color(0.88, 0.68, 0.3))
+		"reliquary":
+			# 54c: the relic office's shrine against the wall – gilded, glass panes, the relics glowing within
+			var b22 := fy + ph
+			_r(img, 0, b22 - 34, pw, 34, Color(0.55, 0.4, 0.2))
+			_r(img, 2, b22 - 40, pw - 4, 8, Color(0.88, 0.68, 0.3))
+			for gx2 in range(6, pw - 8, 14):
+				_r(img, gx2, b22 - 30, 10, 18, Color(1.0, 0.9, 0.55, 0.9))
+				_r(img, gx2 + 3, b22 - 24, 4, 8, Color(0.85, 0.75, 0.6))
+			_r(img, 0, b22 - 8, pw, 8, Color(0.42, 0.27, 0.15))
+			_r(img, 0, b22 - 8, pw, 2, Color(0.88, 0.68, 0.3))
+		"candle_rack":
+			# 54c: a rack of votive candles – iron, a row of flames
+			var b23 := fy + ph
+			_r(img, 1, b23 - 6, pw - 2, 3, Color(0.3, 0.24, 0.18))
+			_r(img, 2, b23 - 3, 2, 3, Color(0.25, 0.2, 0.15))
+			_r(img, pw - 4, b23 - 3, 2, 3, Color(0.25, 0.2, 0.15))
+			for cn2 in range(3, pw - 3, 5):
+				var chh := 4 + (cn2 % 3) * 2
+				_r(img, cn2, b23 - 6 - chh, 2, chh, Color(0.95, 0.92, 0.85))
+				_r(img, cn2, b23 - 9 - chh, 2, 3, Color(1.0, 0.8, 0.4))
+		"throne":
+			# 54c (Luz): the Hierarch's throne – a high back of gold and red, the sun on its crown, broad arms
+			var b24 := fy + ph
+			_r(img, 6, 0, pw - 12, b24 - 4, Color(0.75, 0.55, 0.22))
+			_r(img, 10, 6, pw - 20, b24 - 16, Color(0.62, 0.12, 0.12))
+			_r(img, 10, 6, 2, b24 - 16, Color(0.75, 0.22, 0.2))
+			_ellipse(img, pw * 0.5, 4, 8, 6, Color(0.88, 0.68, 0.3))
+			_ellipse(img, pw * 0.5, 4, 5, 4, Color(1.0, 0.92, 0.65))
+			_r(img, 2, b24 - 18, 10, 14, Color(0.88, 0.68, 0.3))
+			_r(img, pw - 12, b24 - 18, 10, 14, Color(0.88, 0.68, 0.3))
+			_r(img, 2, b24 - 18, 10, 2, Color(1.0, 0.85, 0.5))
+			_r(img, pw - 12, b24 - 18, 10, 2, Color(1.0, 0.85, 0.5))
+			_r(img, 4, b24 - 4, pw - 8, 4, Color(0.55, 0.4, 0.18))
+		"candelabrum":
+			# 54c: a tall candelabrum of gilded bronze by the throne (~2.4 m), five candles
+			var b25 := fy + ph
+			_r(img, pw / 2 - 1, 8, 3, b25 - 10, Color(0.75, 0.55, 0.22))
+			_ellipse(img, pw * 0.5, b25 - 2, 5, 2, Color(0.6, 0.45, 0.18))
+			_r(img, 1, 10, pw - 2, 2, Color(0.75, 0.55, 0.22))
+			for k5 in 5:
+				var cx5 := 1 + k5 * (pw - 3) / 4
+				_r(img, cx5, 4, 2, 6, Color(0.95, 0.92, 0.85))
+				_r(img, cx5, 1, 2, 3, Color(1.0, 0.8, 0.4))
 		"plaque_stone":
 			# 54c (Luz): THE FOUNDERS on a bronze plaque let into a rough block of grey stone, its top lit
 			var sb2 := fy + ph

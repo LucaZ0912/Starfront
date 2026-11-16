@@ -3,6 +3,30 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.11 – 2026-11-16
+
+**Package 54c, part 2 – Aureola and the Hierarch's palace (Luz).** The first cloud city over Compline (Heimkehr) is now
+**Aureola**; its skyrail has a fourth stop there, the palace's own station.
+- **The palace station:** built like the line's others, dressed like the palace – warm stone, lancets, banners,
+  braziers, saints; through the passage in its wall across the bridge to the palace platform.
+- **The palace platform:** a great disc over the red clouds at the one true scale, a gilded balustrade all round its rim
+  (its sides too), the warm stone face under it; the palace front 60 m high – near it you see only its foot: the portal
+  10 m wide with its bronze leaves, piers with saints in niches, banners from far above, the great stair with cheek
+  walls; the sun mosaic, braziers, two pools, the chaplain-admiral, lanterns, benches at the balustrade, pilgrims.
+- **The lobby:** the guard in two rows along the runner and at the inner doors; the **Curia's chancery** (the edict on a
+  scroll, tithe, petition, indulgence; the queue behind a rope), the **relic office** (relics laid in the shrine, the
+  blessing; candles, cases of relics of Earth), Earth on a globe, a lectern with the Book of Return, fonts, censers,
+  saints, pews, the sun mosaic, the windows' colours.
+- **The throne room:** the great window in the back wall – the star rising over the red clouds of Compline – the sun's
+  halo under it; the throne at a man's size, carved and gilded, on a plinth 2 m up under a canopy, the regalia beside
+  it, the Hierarch on it in crimson and gold; broad steps, candelabra, statues of the Hierarchs, pews for the court,
+  courtiers. Only the **Allied** of the Covenant may step up: below that a rope and the guard bar the way.
+- **The audience:** the first time the Hierarch's seal (indulgences at half price, for good); then once each edict name
+  the next edict yourself or kneel for his blessing (40 min); he speaks of the Return.
+- **The Hierarch's guard:** a new armour for NPCs only – gilded plate, a red crest, a long crimson cape with a gold hem.
+- Debug: F12 → Ground → Capitals → Aureola (the station, the platform, the lobby, the throne room, Allied, a new
+  edict). Smoke test group `palace54c`.
+
 ## alpha 0.7.54.10 – 2026-11-16
 
 **Package 54c, part 1 – Neo Kallipolis and the Senate (Luz).** The capitals get names and hand-built places: the first

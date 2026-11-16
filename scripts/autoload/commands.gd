@@ -1894,6 +1894,11 @@ func _c_curia_relics(_c: Dictionary) -> String:
 	return GameState.curia.give_relics(_fit())
 
 
+## {"type":"curia_audience", "what": "greet"|"edict"|"bless", "edict": id} – 54c (Luz): before the Hierarch
+func _c_curia_audience(c: Dictionary) -> String:
+	return GameState.curia.audience(String(c.get("what", "greet")), String(c.get("edict", "")))
+
+
 ## {"type":"exchange", "what": "data"|"sell_em"|"buy_em", "n": 1} – package 39c, the Research Exchange
 func _c_exchange(c: Dictionary) -> String:
 	return GameState.exchange(String(c.get("what", "data")), int(c.get("n", 1)))
@@ -2418,8 +2423,10 @@ func _c_debug_capital(c: Dictionary) -> String:
 	if g == null:
 		return "Could not land."
 	var lv := String(c.get("level", ""))
+	if c.has("stop"):
+		g.rail_stop = int(c["stop"])                     # 54c: the skyrail's palace stop
 	if lv != "":
-		g.go_level(lv, "lift")
+		g.go_level(lv, "rail" if lv == "cstation" else "lift")
 	GameState.log_msg("[Debug] %s." % String(site["name"]), GameState.COL_WARN)
 	return ""
 
@@ -2930,7 +2937,7 @@ func _c_debug_cloud(c: Dictionary) -> String:
 	if g == null:
 		return "Could not land."
 	if lv == "ctrain" or lv == "cstation":
-		g.rail_stop = clampi(int(c.get("stop", 0)), 0, 2)
+		g.rail_stop = clampi(int(c.get("stop", 0)), 0, 3)
 	st.erase("debug_sight_event")                         # 54a: the Skyring deck's event and hour
 	st.erase("debug_sight_day")
 	if String(c.get("sight_event", "")) != "":

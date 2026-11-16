@@ -8,6 +8,7 @@ extends RefCounted
 
 const T := GroundMap.T
 const TILE := GroundMap.TILE
+const PalaceGenC = preload("res://scripts/ground/palace_gen.gd")
 
 ## The look of each power at the height of the clouds (Leitlinien 3.3): floor, floor2, wall, accent, trim, seat.
 const STYLE := {
@@ -21,14 +22,14 @@ const STYLE := {
 		"trim": Color(0.22, 0.23, 0.27), "seat": Color(0.75, 0.2, 0.55), "parasol": [Color(1.0, 0.3, 0.7), Color(0.3, 0.9, 1.0), Color(0.75, 0.45, 1.0)]},
 }
 const FRONT_NAMES := ["SKY CAFÉ", "UPDRAFT", "CIRRUS", "THE GONDOLA", "HIGH TEA", "ZEPHYR BAR"]
-const STOPS := ["Central", "Skyring", "Harvester Deck"]   # the skyrail's stops: the main platform, the outer ring, the gas works (0.7.54.2)
+const STOPS := ["Central", "Skyring", "Harvester Deck", "The Palace"]   # 54c (Luz): Aureola's line also runs to the palace   # the skyrail's stops: the main platform, the outer ring, the gas works (0.7.54.2)
 
 
 ## The other stops of the line, from this one.
-static func others(stop: int) -> Array:
+static func others(stop: int, palace: bool = false) -> Array:
 	var out: Array = []
 	for i in STOPS.size():
-		if i != stop:
+		if i != stop and (i < 3 or palace):
 			out.append(i)
 	return out
 
@@ -377,6 +378,8 @@ const S_RIM := S_EDGE + 1          # the platform's rim (a row) – the beam and
 static func build_station(station: Dictionary, stop: int) -> GroundMap:
 	if stop == 2:
 		return build_harvest(station)
+	if stop == 3:
+		return PalaceGenC.build_station(station)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", "x"))) + 560 + stop
 	var m := GroundMap.new()
@@ -419,7 +422,7 @@ static func build_station(station: Dictionary, stop: int) -> GroundMap:
 	m.set_meta("rail_front", Vector2(gaps[1] + 1.0, S_EDGE - 1.0) * TILE)
 	# the hall's wall: the departures board, ticket machines, the doors to the staff rooms
 	m.face_deco.append({"kind": "departures", "x": 12, "y": S_TOP, "w": 8, "col": Color(1.0, 0.78, 0.3)})
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % _dest_names(stop),
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % _dest_names(stop, String(station.get("capital", "")) == "palace"),
 		"col": Color(1.0, 0.8, 0.4), "sign": Vector2(16, S_TOP - 0.5) * TILE})
 	m.lights.append({"pos": Vector2(16, S_FLOOR + 0.5) * TILE, "r": 70.0, "col": Color(1.0, 0.8, 0.4), "a": 0.28})
 	for tm in 2:
@@ -482,9 +485,9 @@ static func build_station(station: Dictionary, stop: int) -> GroundMap:
 	return m
 
 
-static func _dest_names(stop: int) -> String:
+static func _dest_names(stop: int, palace: bool = false) -> String:
 	var n: Array = []
-	for o in others(stop):
+	for o in others(stop, palace):
 		n.append(STOPS[o])
 	return " · ".join(PackedStringArray(n))
 
