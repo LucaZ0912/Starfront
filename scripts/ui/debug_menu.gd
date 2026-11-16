@@ -1068,6 +1068,11 @@ func _build_ground() -> void:
 	rvt.add_child(UI.button("The nave", func(): _cmd({"type": "debug_station_room", "room": "nave"})))
 	rvt.add_child(UI.label("Meridian Sphere:", 12, UI.TEXT_DIM))
 	rvt.add_child(UI.button("Control room", func(): _cmd({"type": "debug_station_room", "room": "control"})))
+	var ryd := _row()
+	ryd.add_child(UI.label("Yard galleries:", 12, UI.TEXT_DIM))
+	for yg in [["yard_concord", "Res Publica"], ["yard_forge", "Lux Aeterna"], ["yard_axiom", "Jump gates"]]:
+		var ygv: String = yg[0]
+		ryd.add_child(UI.button(String(yg[1]), func(): _cmd({"type": "debug_station_room", "room": ygv})))
 	var rau := _row()
 	rau.add_child(UI.label("Aureola:", 12, UI.TEXT_DIM))
 	rau.add_child(UI.button("Palace station", func(): _cmd({"type": "debug_capital", "which": "palace", "level": "cstation", "stop": 3})))

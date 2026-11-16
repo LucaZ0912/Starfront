@@ -16,6 +16,7 @@ const StationRooms = preload("res://scripts/ground/station_rooms.gd")
 const VoteShaft = preload("res://scripts/ground/vote_shaft.gd")
 const GateWindow = preload("res://scripts/ground/gate_window.gd")
 const SphereWindow = preload("res://scripts/ground/sphere_window.gd")
+const DockWindow = preload("res://scripts/ground/dock_window.gd")
 const ExhibitArtV = preload("res://scripts/core/exhibit_art.gd")
 const LAYER := 12
 const BgShader = preload("res://shaders/background.gdshader")
@@ -400,6 +401,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = _poi_map("alley", Vector2.ZERO)                         # 0.7.53.3: a city's back alley
 	elif level == "plaza":
 		map = _poi_map("plaza", Vector2.ZERO)                         # 0.7.53.19: a city's roof plaza
+	elif level == "ygallery":
+		map = StationRooms.build_yard_gallery(station)                # 54c (Luz): a capital's yard – the gallery at the dock
 	elif level == "control":
 		map = StationRooms.build_control(station)                     # 54c (Luz): the Meridian Sphere – the control room
 	elif level == "nave":
@@ -550,7 +553,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "pnarthex": "Aureola", "throne": "Aureola",
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "ygallery": "the gallery", "pnarthex": "Aureola", "throne": "Aureola",
 		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
 		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
 	if is_cloud() and level == "tower":
@@ -1633,6 +1636,14 @@ func tower_floor() -> int:
 ## Beyond the glass: the system's sky – its nebula, its star, the planet the station circles.
 ## In a city's tower bar (0.7.50.5): the city at night – towers, speeders, drones.
 func _space_view(sys_id: int) -> void:
+	if _window.size.x > 0.0 and map.has_meta("dock_view"):
+		_neb.material = null                               # 54c (Luz): the capital's great work in its dock
+		_neb.color = Color(0.02, 0.02, 0.05)
+		var dw = DockWindow.new()
+		dw.setup(_window.size, String(map.get_meta("dock_view")))
+		dw.sight = map.get_meta("sight", {})
+		_sky.add_child(dw)
+		return
 	if _window.size.x > 0.0 and map.has_meta("sphere_view"):
 		_neb.material = null                               # 54c (Luz): the star and the shell through the filter glass
 		_neb.color = Color(0.02, 0.02, 0.04)
@@ -4306,6 +4317,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 			["cstation", "3.  Skyrail station – the line to the %s and the %s" % [CloudGen.STOPS[1], CloudGen.STOPS[2]]], ["tower", "4.  Sky bar – deck %d, the view over the clouds" % (tower_floor() / 10)]]
 	if not is_town() and bool(station.get("senate", false)):     # 54c (Luz): The Vote – the gallery over the drone shaft
 		lvls.append(["vgallery", "%d.  The gallery over the drone shaft – the voting booths" % (lvls.size() + 1)])
+	if not is_town() and bool(station.get("capital_yard", false)):   # 54c (Luz): the gallery at the dock of the capital's work
+		lvls.append(["ygallery", "%d.  The gallery – %s in her dock" % [lvls.size() + 1, String(StationRooms.YARDS[StationRooms.yard_kind(station)][1])]])
 	if not is_town() and bool(station.get("exchange", false)):   # 54c (Luz): the Meridian Sphere – the control room
 		lvls.append(["control", "%d.  The control room – the star and the shell, the Research Exchange" % (lvls.size() + 1)])
 	if not is_town() and bool(station.get("curia", false)):      # 54c (Luz): the Cathedral of Return – the nave

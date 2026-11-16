@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.16 – 2026-11-16
+
+**Package 54c, part 7 – the galleries at the capitals' yards (Luz).** A level of its own in the lifts of Concord Yards,
+the Forge of Return and the Axiom Yards – the last of the special stations' rooms: package 54c done.
+- A long window onto the dock with the great work in it, drawn with its own art as it lies out there – the Res
+  Publica, the Lux Aeterna, three jump gates being built – gantries with work lights in front, welding sparks, drones.
+- The gallery in the power's colours: benches looking out, a model, information, a souvenir stall (Shipyard Rivet), the
+  power's guard (the Senate's, the Hierarch's).
+- A sight in each: events – the yard at work, a hull segment moved in on a tug (seen), a test of her drives (seen), a
+  change of shift, a probe jumping through a new gate (rare, seen). Excursion targets in all three capitals.
+- Debug: F12 → Ground → Capitals → Yard galleries. Smoke test group `yards54c`.
+
 ## alpha 0.7.54.15 – 2026-11-16
 
 **Package 54c, part 6 – the Meridian Sphere's control room (Luz).** A level of its own in the Meridian Sphere's lift.

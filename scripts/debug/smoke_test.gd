@@ -182,6 +182,7 @@ func _process(delta: float) -> void:
 				_test_vote54c(view)              # package 54c – The Vote's gallery
 				_test_nave54c(view)              # package 54c – the Cathedral's nave
 				_test_control54c(view)           # package 54c – the Meridian Sphere's control room
+				_test_yards54c(view)             # package 54c – the yard galleries
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -13040,3 +13041,24 @@ func _test_control54c(_view: SystemView) -> void:
 	GameState.credits = c0
 	var t_ok := Missions.ground_sights(Universe.special_system("durchbruch")).any(func(s): return String(s["id"]).ends_with("_control"))
 	check(map_ok and win_ok and ex_ok and t_ok, "54c: the Meridian Sphere's control room (the star and the shell, construction ships, consoles, the Research Exchange on foot, the sight), an excursion target  [%s %s %s %s]" % [map_ok, win_ok, ex_ok, t_ok])
+
+
+## Package 54c (Luz): the galleries at the capitals' yards – the work in its dock (the Res Publica, the Lux Aeterna,
+## the jump gates) through the window, benches, a model, the sight; each yard's an excursion target.
+func _test_yards54c(_view: SystemView) -> void:
+	var SR = load("res://scripts/ground/station_rooms.gd")
+	var DW = load("res://scripts/ground/dock_window.gd")
+	var ok := true
+	for art in ["concord_yards", "forge", "axiom_yards"]:
+		var m: GroundMap = SR.build_yard_gallery({"id": "test_" + art, "name": "Yard", "art": art, "capital_yard": true})
+		var kinds: Array = m.zones.map(func(z): return String(z.get("kind", "")))
+		ok = ok and "viewpoint" in kinds and "souvenir" in kinds and "lift" in kinds and String(m.get_meta("dock_view", "")) == art \
+			and m.path(m.spawn, Vector2(22, 11.5) * 16.0).size() > 0
+		var dw = DW.new()
+		dw.setup(Vector2(2112, 480), art)
+		ok = ok and dw._tex != null
+		dw.free()
+	var t_ok := true
+	for sp in ["landfall", "heimkehr", "durchbruch"]:
+		t_ok = t_ok and Missions.ground_sights(Universe.special_system(sp)).any(func(s): return String(s["id"]).ends_with("_yard"))
+	check(ok and t_ok, "54c: the galleries at the capitals' yards (the Res Publica, the Lux Aeterna, the jump gates in the window; the sight), excursion targets in all three capitals  [%s %s]" % [ok, t_ok])

@@ -2433,7 +2433,8 @@ func _c_debug_capital(c: Dictionary) -> String:
 
 ## {"type":"debug_station_room", "room": "vgallery"|"nave"} – 54c (Luz): to a special station's own room (The Vote's
 ## gallery, the Cathedral's nave)
-const DEBUG_ROOMS := {"vgallery": ["landfall", "senate"], "nave": ["heimkehr", "curia"], "control": ["durchbruch", "exchange"]}
+const DEBUG_ROOMS := {"vgallery": ["landfall", "senate"], "nave": ["heimkehr", "curia"], "control": ["durchbruch", "exchange"],
+	"yard_concord": ["landfall", "capital_yard", "ygallery"], "yard_forge": ["heimkehr", "capital_yard", "ygallery"], "yard_axiom": ["durchbruch", "capital_yard", "ygallery"]}
 func _c_debug_station_room(c: Dictionary) -> String:
 	var m = _main()
 	var f := _fit()
@@ -2464,7 +2465,7 @@ func _c_debug_station_room(c: Dictionary) -> String:
 	var g = _ground()
 	if g == null:
 		return "The deck did not open."
-	g.go_level(room, "lift")
+	g.go_level(String(DEBUG_ROOMS[room][2]) if (DEBUG_ROOMS[room] as Array).size() > 2 else room, "lift")
 	return ""
 
 

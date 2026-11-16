@@ -7,6 +7,8 @@ extends RefCounted
 ##   (GateWindow draws it), the altar, pews, the Curia's chancery and the relic shrine on foot, the guard in gold – a sight.
 ## - The Meridian Sphere (Durchbruch): the control room of the Dyson sphere (mockup_54c_leitwarte) – the star and the
 ##   shell through the filter glass (SphereWindow), tiers of consoles, the sphere's holo, the Research Exchange on foot.
+## - The galleries at the capitals' yards (Concord Yards, Forge of Return, Axiom Yards): the work in its dock through a long
+##   window (DockWindow – the Res Publica, the Lux Aeterna, the jump gates), benches, a model – sights.
 ## No class_name: preload it.
 
 const T := GroundMap.T
@@ -254,6 +256,76 @@ static func build_control(station: Dictionary) -> GroundMap:
 	m.lights.append({"pos": Vector2(W * 0.5, 0) * TILE, "r": 300.0, "col": Color(0.85, 0.92, 1.0), "a": 0.4})
 	DeckGen._seats(m)
 	for wp in [Vector2(6, 12), Vector2(38, 12), Vector2(5, 22), Vector2(39, 22), Vector2(14, 24), Vector2(30, 24)]:
+		if m.free_at(wp * TILE, 6.0):
+			m.wander.append(wp * TILE)
+	return m
+
+
+# ---------------------------------------------------------------- the galleries at the capitals' yards
+
+const YG_WIN := 10                  # the window's rows (0 … 9)
+## Per yard: its gallery's name, the work in its dock, the floor's colours, the accent, the guard's suit.
+const YARDS := {"concord_yards": ["Concord Yards", "the Res Publica", Color(0.84, 0.86, 0.9), Color(0.4, 0.68, 1.0), "suit_mil_senate_eyes"],
+	"forge": ["Forge of Return", "the Lux Aeterna", Color(0.82, 0.76, 0.66), Color(0.88, 0.68, 0.3), "suit_mil_hierarch"],
+	"axiom_yards": ["Axiom Yards", "the jump gates", Color(0.88, 0.9, 0.9), Color(0.4, 1.0, 0.6), ""]}
+
+static func yard_kind(station: Dictionary) -> String:
+	var a := String(station.get("art", ""))
+	return a if YARDS.has(a) else "concord_yards"
+
+
+static func build_yard_gallery(station: Dictionary) -> GroundMap:
+	var W := 44
+	var H := 24
+	var yk := yard_kind(station)
+	var yd: Array = YARDS[yk]
+	var acc: Color = yd[3]
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = yd[2]
+	m.pal["floor2"] = (yd[2] as Color).darkened(0.08)
+	m.pal["wall"] = Color(0.86, 0.88, 0.9)
+	m.pal["frame"] = Color(0.75, 0.78, 0.82)
+	m.pal["accent"] = acc
+	m.style = "museum"
+	m.title = String(yd[0])
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.CAP)
+	# the window onto the dock (DockWindow draws the work in it)
+	m.fill(0, 0, W, YG_WIN, T.GLASS)
+	m.window_rect = Rect2(0, 0, W, YG_WIN)
+	m.set_meta("dock_view", yk)
+	m.fill(0, YG_WIN, W, 1, T.BLOCK, 47)
+	m.decals.append({"kind": "light_band", "x": 0, "y": YG_WIN, "w": W, "h": 1, "col": acc})
+	m.fill(1, YG_WIN + 1, W - 2, H - YG_WIN - 3, T.FLOOR, 47)
+	# benches looking out, the model of the work, information, a souvenir stall
+	for bx in [4, 13, 26, 35]:
+		m.add_object({"kind": "museum_bench", "x": bx, "y": YG_WIN + 3, "w": 4, "h": 1, "face": 1}, false)
+	m.add_object({"kind": "ship_model", "x": W / 2 - 2, "y": YG_WIN + 7, "w": 4, "h": 1})
+	m.lights.append({"pos": Vector2(W * 0.5, YG_WIN + 6.5) * TILE, "r": 60.0, "col": acc, "a": 0.4})
+	m.add_object({"kind": "holo_pillar", "x": 3, "y": YG_WIN + 7, "w": 1, "h": 1, "col": acc})
+	_zone(m, Rect2(2, YG_WIN + 8, 3, 1.4), "sight_info", "Information – %s" % String(yd[1]), acc)
+	m.add_object({"kind": "stall", "x": W - 6, "y": YG_WIN + 7, "w": 2, "h": 1, "col": acc})
+	m.zones.append({"rect": Rect2(Vector2(W - 7, YG_WIN + 7.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
+		"title": "Souvenir stall", "col": acc, "sign": Vector2(W - 5, YG_WIN + 5.8) * TILE})
+	m.zones.append({"rect": Rect2(Vector2(2, YG_WIN + 1) * TILE, Vector2(W - 4, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
+		"title": "%s in her dock – take a photo" % String(yd[1]).capitalize() if yk != "axiom_yards" else "The gates – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+	m.set_meta("sight", {"theme": "yard", "event": "", "name": "%s – the gallery" % String(yd[0]), "id": String(station.get("id", "")) + "_yard",
+		"focus": Vector2(W * 0.5, 4.0) * TILE, "kind": yk})
+	# the lifts back; the power's guard
+	m.decals.append({"kind": "museum_exit", "x": W / 2 - 2, "y": H - 2, "w": 4, "h": 1})
+	m.zones.append({"rect": Rect2(Vector2(W / 2 - 2, H - 3) * TILE, Vector2(4, 1.2) * TILE), "kind": "lift", "id": "lift",
+		"title": "Lifts", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	m.spawn = Vector2(W * 0.5, H - 3.6) * TILE
+	if String(yd[4]) != "":
+		m.set_meta("guard_suit", String(yd[4]))
+		m.set_meta("guard_posts", [Vector2(9.0, H - 5.0) * TILE, Vector2(W - 9.0, H - 5.0) * TILE])
+	m.set_meta("tourists", 7)
+	m.lights.append({"pos": Vector2(W * 0.5, 2) * TILE, "r": 300.0, "col": Color(1.0, 0.97, 0.9), "a": 0.3})
+	DeckGen._seats(m)
+	for wp in [Vector2(8, 13), Vector2(22, 13), Vector2(36, 13), Vector2(10, 19), Vector2(34, 19), Vector2(22, 20)]:
 		if m.free_at(wp * TILE, 6.0):
 			m.wander.append(wp * TILE)
 	return m
