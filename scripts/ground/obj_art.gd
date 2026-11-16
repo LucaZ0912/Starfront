@@ -235,6 +235,8 @@ static func _rise(kind: String) -> int:
 			return 14
 		"lectern":
 			return 22
+		"vote_booth":                       # 54c: a voting booth at The Vote (~2.4 m)
+			return 30
 		"brazier":                          # 54c: a fire bowl on a post (~1.5 m)
 			return 22
 		"tithe_chest":
@@ -464,6 +466,19 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 4, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
 				_r(img, pw / 2 + 2, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
 			_r(img, pw / 2, b34 - 14, 1, 4, Color(0.88, 0.68, 0.3))
+		"vote_booth":
+			# 54c (Luz): a voting booth of frosted glass at The Vote – a blue frame, the screen inside, a curtain of light
+			var b40 := fy + ph
+			_r(img, 0, 2, pw, b40 - 2, Color(0.7, 0.78, 0.9, 0.55))
+			_r(img, 0, 0, pw, 3, Color(0.4, 0.68, 1.0))
+			_r(img, 0, 0, 2, b40, Color(0.62, 0.66, 0.74))
+			_r(img, pw - 2, 0, 2, b40, Color(0.5, 0.54, 0.62))
+			_r(img, pw / 2 - 8, 10, 16, 10, Color(0.08, 0.14, 0.3))
+			_r(img, pw / 2 - 7, 11, 14, 8, Color(0.25, 0.5, 0.95))
+			_r(img, pw / 2 - 5, 13, 4, 4, Color(0.4, 1.0, 0.6))
+			_r(img, pw / 2 + 1, 13, 4, 4, Color(1.0, 0.4, 0.4))
+			_r(img, pw / 2 - 1, 20, 2, b40 - 22, Color(0.5, 0.54, 0.62))
+			_r(img, 2, b40 - 3, pw - 4, 1, Color(0.4, 0.68, 1.0, 0.8))
 		"brazier":
 			# 54c: a fire bowl on a post (~1.5 m) – iron, a bowl of bronze, the flame
 			var b20 := fy + ph

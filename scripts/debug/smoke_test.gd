@@ -179,6 +179,7 @@ func _process(delta: float) -> void:
 				_test_capital54c(view)           # package 54c – Neo Kallipolis and the Senate
 				_test_palace54c(view)            # package 54c – Aureola and the Hierarch's palace
 				_test_sights54c(view)            # package 54c – the capitals' plazas as sights
+				_test_vote54c(view)              # package 54c – The Vote's gallery
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12976,3 +12977,22 @@ func _test_sights54c(_view: SystemView) -> void:
 	t3 = Missions.ground_sights(dsid).any(func(s): return String(s["id"]).ends_with("_mirror"))
 	ok_map = ok_map and mm_ok and t3
 	check(ok_map and t1 and t2, "54c: the capitals' plazas as sights – the Plaza of the Vote and the palace's forecourt (viewpoint, information, souvenirs), excursion targets in Landfall and Heimkehr; the Mirror Front on Curie (a vista, an excursion target)  [%s %s %s %s %s]" % [ok_map, t1, t2, mm_ok, t3])
+
+
+## Package 54c (Luz): The Vote's own room – the gallery over the drone shaft: the shaft in the window and under the
+## glass floor, the voting booths (the Senate's vote), the sight; reached from the station's lift, an excursion target.
+func _test_vote54c(_view: SystemView) -> void:
+	var SR = load("res://scripts/ground/station_rooms.gd")
+	var VS = load("res://scripts/ground/vote_shaft.gd")
+	var m: GroundMap = SR.build_vote_gallery({"id": "test_vote", "name": "The Vote", "senate": true})
+	var kinds: Array = m.zones.map(func(z): return String(z.get("kind", "")))
+	var booths := kinds.filter(func(k): return k == "senate_stand").size()
+	var map_ok: bool = booths == 3 and "viewpoint" in kinds and "souvenir" in kinds and "lift" in kinds and m.has_meta("shaft_view") \
+		and m.window_rect.size.x > 0.0 and m.has_meta("sight") and m.path(m.spawn, Vector2(20, 11.5) * 16.0).size() > 0
+	var vs = VS.new()
+	vs.setup(Vector2(1920, 624))
+	var shaft_ok: bool = vs._tex != null
+	vs.free()
+	var lsid := Universe.special_system("landfall")
+	var t_ok := Missions.ground_sights(lsid).any(func(s): return String(s["kind"]) == "station" and String(s["id"]).ends_with("_gallery"))
+	check(map_ok and shaft_ok and t_ok, "54c: The Vote – the gallery over the drone shaft (three voting booths, the viewpoint, souvenirs, the lift; the shaft drawn), an excursion target  [%s %s %s]" % [map_ok, shaft_ok, t_ok])

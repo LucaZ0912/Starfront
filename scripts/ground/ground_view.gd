@@ -12,6 +12,8 @@ const MuseumGen = preload("res://scripts/ground/museum_gen.gd")
 const CapitalGen = preload("res://scripts/ground/capital_gen.gd")
 const SenateChamber = preload("res://scripts/ground/senate_chamber.gd")
 const PalaceGen = preload("res://scripts/ground/palace_gen.gd")
+const StationRooms = preload("res://scripts/ground/station_rooms.gd")
+const VoteShaft = preload("res://scripts/ground/vote_shaft.gd")
 const ExhibitArtV = preload("res://scripts/core/exhibit_art.gd")
 const LAYER := 12
 const BgShader = preload("res://shaders/background.gdshader")
@@ -396,6 +398,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = _poi_map("alley", Vector2.ZERO)                         # 0.7.53.3: a city's back alley
 	elif level == "plaza":
 		map = _poi_map("plaza", Vector2.ZERO)                         # 0.7.53.19: a city's roof plaza
+	elif level == "vgallery":
+		map = StationRooms.build_vote_gallery(station)                # 54c (Luz): The Vote – the gallery over the drone shaft
 	elif level == "pplaza":
 		map = PalaceGen.build_platform(station, _body)               # 54c (Luz): Aureola – the palace platform
 	elif level == "pnarthex":
@@ -540,7 +544,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "pnarthex": "Aureola", "throne": "Aureola",
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "pnarthex": "Aureola", "throne": "Aureola",
 		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
 		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
 	if is_cloud() and level == "tower":
@@ -1623,6 +1627,14 @@ func tower_floor() -> int:
 ## Beyond the glass: the system's sky – its nebula, its star, the planet the station circles.
 ## In a city's tower bar (0.7.50.5): the city at night – towers, speeders, drones.
 func _space_view(sys_id: int) -> void:
+	if _window.size.x > 0.0 and map.has_meta("shaft_view"):
+		_neb.material = null                               # 54c (Luz): The Vote's drone shaft below the gallery
+		_neb.color = Color(0.02, 0.02, 0.05)
+		var vs = VoteShaft.new()
+		vs.setup(_window.size)
+		vs.sight = map.get_meta("sight", {})
+		_sky.add_child(vs)
+		return
 	if is_town():
 		_neb.material = null
 		_neb.color = Color(0.02, 0.02, 0.05)
@@ -1868,7 +1880,7 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
-	if is_town() and (not map.has_meta("no_guards") or map.has_meta("guard_posts")):
+	if (is_town() and not map.has_meta("no_guards")) or map.has_meta("guard_posts"):
 		_add_guards(rng)
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
 	if map.has_meta("tourists"):
@@ -4267,6 +4279,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 	if is_cloud():                                                # package 54 (Luz): the cloud city's levels
 		lvls = [["hangar", "1.  " + hname], ["cplaza", "2.  Plaza – shops, a café, the balcony over the clouds"],
 			["cstation", "3.  Skyrail station – the line to the %s and the %s" % [CloudGen.STOPS[1], CloudGen.STOPS[2]]], ["tower", "4.  Sky bar – deck %d, the view over the clouds" % (tower_floor() / 10)]]
+	if not is_town() and bool(station.get("senate", false)):     # 54c (Luz): The Vote – the gallery over the drone shaft
+		lvls.append(["vgallery", "%d.  The gallery over the drone shaft – the voting booths" % (lvls.size() + 1)])
 	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
 		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
 	if is_cloud():

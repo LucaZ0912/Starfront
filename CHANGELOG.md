@@ -3,6 +3,20 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.13 – 2026-11-16
+
+**Package 54c, part 4 – The Vote's gallery (Luz).** The first of the special stations' own rooms: a level of its own in
+The Vote's lift, the gallery over the drone shaft.
+- The shaft going down through the station's heart (its wall darkening into the depth, the frame's ribs, the decks'
+  lit windows), the blue beam rising, ballot drones spiralling up to the ports – and every few seconds a big one passing
+  close by the window; the tally as a holo over the shaft, live (the bill, yes and no, the systems reporting).
+- A strip of glass floor at the gallery's edge (the shaft below it), the railing, three voting booths of frosted glass
+  (your vote on the bill, as at the Senate's stand), the Assembly's guard.
+- A sight: the viewpoint at the railing, information, a souvenir stall (Ballot Drone Model); events – the drones
+  streaming, a vote closing with a swarm (seen), the beam flaring (seen), a quiet hour, every system at once (rare).
+  An excursion target.
+- Debug: F12 → Ground → Capitals → The Vote. Smoke test group `vote54c`.
+
 ## alpha 0.7.54.12 – 2026-11-16
 
 **Package 54c, part 3 – the capitals' sights (Luz).** The capitals' own places are now sights for tourists, and Curie

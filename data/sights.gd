@@ -46,6 +46,11 @@ const SIGHTS := {
 		"souvenir": "souv_mirror", "events": {"beams": ["the mirrors' beams sweeping over the fields", "day", 4.0, false],
 			"drones": ["a swarm of seed drones sowing the front", "day", 2.0, false], "sunset": ["the long shadows of the towers over the sand", "dusk", 3.0, false],
 			"stars": ["the mirrors crossing the night sky like slow stars", "night", 4.0, false], "rain": ["the first rain falling on the new fields", "any", 0.6, true]}},
+	# 54c (Luz): the special stations' rooms as sights – The Vote's gallery over the drone shaft
+	"vote": {"names": ["The Vote"], "what": "the gallery over The Vote's drone shaft, where the Assembly's ballots fly",
+		"souvenir": "souv_vote", "events": {"stream": ["the ballot drones streaming up to the relays", "any", 4.0, false],
+			"surge": ["a vote closing – a swarm of drones bursting up the shaft", "any", 1.5, false], "pulse": ["the beam flaring as a result goes out", "any", 2.0, false],
+			"quiet": ["a quiet hour, the shaft's lights reflected in the glass", "any", 2.0, false], "all": ["every system reporting at once", "any", 0.5, true]}},
 	"crater": {"names": ["The Great Crater", "Rimview", "Hollow Peak", "The Old Scar"], "what": "the rim of a great crater, the sky black above",
 		"souvenir": "souv_crater", "events": {"rise": ["the planet rising over the rim", "any", 3.0, false], "stars": ["the star field over the crater", "night", 3.0, false],
 			"shadow": ["the long shadows across the crater floor", "dusk", 2.0, false], "meteor": ["a meteor shower", "night", 0.6, true]}},

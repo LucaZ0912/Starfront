@@ -1714,6 +1714,12 @@ func _decal(d: Dictionary) -> void:
 					if e6 < 0.22:
 						mcol = Color(0.95, 0.78, 0.4) if e6 > 0.08 else Color(1.0, 0.92, 0.65)
 					_px(int(mc.x) + xx6, int(mc.y) + yy6, mcol)
+		"glass_floor":
+			# 54c (Luz): a floor of glass – what lies below shows through (the view under the map); its frame
+			for yy8 in ph:
+				for xx8 in pw:
+					var on_frame := xx8 % 48 == 0 or yy8 % 16 == 15 or yy8 == 0
+					_px(px + xx8, py + yy8, Color(0.72, 0.76, 0.82) if on_frame else Color(0.6, 0.8, 1.0, 0.18))
 		"cov_plinth":
 			# 54c (Luz): the throne's plinth – raised 2 m: its top of red-veined stone edged in gold, its front face below
 			var top_h := ph - 10

@@ -2431,6 +2431,39 @@ func _c_debug_capital(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_station_room", "room": "vgallery"} – 54c (Luz): to a special station's own room (The Vote's gallery)
+func _c_debug_station_room(c: Dictionary) -> String:
+	var m = _main()
+	var f := _fit()
+	if m == null or f == null:
+		return "No game running."
+	var room := String(c.get("room", "vgallery"))
+	var sid := Universe.special_system("landfall")
+	if GameState.current_system != sid:
+		var e := _c_debug_teleport({"system": sid})
+		if e != "":
+			return e
+	var st := {}
+	for s in Universe.get_layout(sid)["stations"]:
+		if bool(s.get("senate", false)):
+			st = s
+	if st.is_empty() or m.view == null:
+		return "No such station here."
+	f.docked_at = String(st["id"])
+	if m.station_panel.visible:
+		m.station_panel.close()
+	if m.view.stations.has(f.docked_at):
+		m.open_deck()
+	else:
+		GameState.gear.aboard()
+		m._open_ground_at(st)
+	var g = _ground()
+	if g == null:
+		return "The deck did not open."
+	g.go_level(room, "lift")
+	return ""
+
+
 ## {"type":"debug_permit", "faction": "assembly", "on": true|false} – give or take the entry permit
 func _c_debug_permit(c: Dictionary) -> String:
 	var f := String(c.get("faction", "assembly"))
