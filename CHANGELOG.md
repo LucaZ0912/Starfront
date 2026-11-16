@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.7 – 2026-11-16
+
+**Package 54b, part 2 – Rock Hopper, the arcade cabinet (Luz).** Two cabinets in the waystations' diners, one by the
+pool of the resorts' beach bars – a high score game, 1 credit a game.
+- Fly a mining tug through an asteroid field: the drill laser cracks the rocks (big ones split, small ones shatter),
+  the ore spills out, the tractor beam pulls it into the hold (6 nuggets). Only ore brought home to the refinery in the
+  middle counts – dock there slowly; a full hold counts double, and the tank is filled. Thrust, laser and beam burn
+  fuel. Lose a tug (a rock, a shot, an empty tank) and the hold spills; three tugs. From wave 3 pirate drones hunt you
+  (+100 each); every wave a bonus, more rocks, faster.
+- The cabinet's screen with its glow and scanlines; each cabinet keeps tonight's best – invented regulars and your
+  own scores there; your best overall too.
+- Debug: F12 → Ground → Bar games → Rock Hopper. Smoke test group `rock54b`.
+
 ## alpha 0.7.54.6 – 2026-11-15
 
 **Package 54b, part 1 – bar games: billiards and darts (Luz).** What stands in the bars can be played now.

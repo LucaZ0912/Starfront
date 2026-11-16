@@ -2014,9 +2014,13 @@ func _c_minigame_begin(c: Dictionary) -> String:
 		return "That stake opens with a longer win streak."
 	if stake > GameState.credits:
 		return "Not enough credits for that stake."
+	if mode == "arcade":
+		if GameState.credits < 1:
+			return "The cabinet wants a credit."
+		GameState.spend(1)                                  # 54b: 1 credit a game
 	if stake > 0:
 		GameState.spend(stake)
-	mg_session = {"game": game, "mode": mode, "stake": stake, "opponent": c.get("opponent", {})}
+	mg_session = {"game": game, "mode": mode, "stake": stake, "opponent": c.get("opponent", {}), "place": String(c.get("place", ""))}
 	return ""
 
 
@@ -2026,6 +2030,17 @@ func _c_minigame_end(c: Dictionary) -> String:
 	var game := String(mg_session["game"])
 	var stake := int(mg_session["stake"])
 	var won := bool(c.get("won", false))
+	if c.has("score"):                                       # 54b: an arcade score – your best, and the cabinet's list
+		var sc := int(c["score"])
+		if sc > int(GameState.minigame_best.get(game, 0)):
+			GameState.minigame_best[game] = sc
+		var key := "rh:" + String(mg_session.get("place", ""))
+		var lst: Array = (GameState.minigame_best.get(key, []) as Array).duplicate()
+		lst.append(sc)
+		lst.sort()
+		lst.reverse()
+		GameState.minigame_best[key] = lst.slice(0, 5)
+		GameState.log_msg("%s: %d ore banked." % [MinigameData.GAMES[game]["name"], sc], GameState.COL_GOOD)
 	if not MinigameData.solo(String(mg_session["mode"])):
 		var opp: Dictionary = mg_session.get("opponent", {})
 		var who := String(opp.get("name", "your opponent"))

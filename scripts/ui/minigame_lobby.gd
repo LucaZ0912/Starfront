@@ -76,8 +76,11 @@ func _build() -> void:
 	v.add_child(UI.label("PLAYERS", 13, UI.TEXT_DIM))
 	var seats := UI.hbox(12)
 	seats.add_child(_seat("You – %s" % String(GameState.pilot.get("name", "you")),
-		"Win streak %d at %s" % [_streak(), String(g["name"]).to_lower()], Color(0.5, 1.0, 0.6)))
-	if practice:
+		("Your best: %d" % int(GameState.minigame_best.get(game, 0))) if game == "rockhopper" else "Win streak %d at %s" % [_streak(), String(g["name"]).to_lower()], Color(0.5, 1.0, 0.6)))
+	if game == "rockhopper":
+		seats.add_child(_seat("The cabinet", "Tonight's best: %d  –  yours: %d" % [int((MG.arcade_board(String(place.get("id", "")), GameState.minigame_best)[0] as Array)[1]),
+			int(GameState.minigame_best.get("rockhopper", 0))], Color(1.0, 0.45, 0.75)))
+	elif practice:
 		seats.add_child(_seat("Nobody", "Practice – the table to yourself", UI.TEXT_DIM))
 	elif opponent.is_empty():
 		seats.add_child(_seat("Free seat", "Choose who plays below", UI.TEXT_DIM))
@@ -142,7 +145,8 @@ func _seat(title: String, sub: String, col: Color) -> Control:
 
 func _start() -> void:
 	var cfg := {"game": game, "mode": mode, "stake": 0 if MG.solo(mode) else stake, "opponent": {} if MG.solo(mode) else opponent}
-	var e: String = Commands.execute({"type": "minigame_begin", "game": game, "mode": mode, "stake": cfg["stake"], "opponent": cfg["opponent"]})
+	cfg["place"] = place
+	var e: String = Commands.execute({"type": "minigame_begin", "game": game, "mode": mode, "stake": cfg["stake"], "opponent": cfg["opponent"], "place": String(place.get("id", ""))})
 	if e != "":
 		Audio.play("ui_error", "minigame: " + e)
 		return

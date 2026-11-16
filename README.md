@@ -369,6 +369,10 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.53.7: theme `mine` (`rails`, `rubble`, `descent` "cage"), `DungeonGen.build_minehead`, `_corridor(..., rails)`; `GameState.settle_poi`; SettleGen zone `mine_path` (meta `mine_path_front`); GroundView level `minehead`, `_fuses_step`, `blast_near`, `shot_lands` (called by GroundCombat), `_take_one`; ExploreNode `cage`, `mine_gen`, `vein`, `rubble`, `loose_rock`, `tnt`, `mine_gate`; floors 25–27, style `mine`, decal `rails`; ObjArt `shaft_house`, `winding_house`, `ore_bin`; `PoiData.MUSEUM_RELICS["mine"]`.
 - 0.7.53.9: theme `maint` (`descent` "stairs", `outside` "lift", `passive_foes`), FoeData `maint_drone` (`drone`), GroundCombat passive/provoked foes; GroundView `_town_kind`, `_drones_step`/`_draw_drones`, `_restart_reactor`, city lift level `maint`; `GameState.maint_sites`/`maint_site`; ExploreNode `crank_door`, `fuse_box`, `reactor` (`_draw_reactor`), `stairs_down`, `stairs_up`, `service_lift`, `steam`; style `maint`; ObjArt `valve_box`, `cable_drum`.
 - 0.7.53.11: theme `pirate` (`outside` "cliff", `hangar`, `cells`, `descent` "ramp", target `loot_room`), `DungeonGen.build_cliff`, `parked_covers`, map meta `parked`; `scripts/ground/parked_art.gd` (a ship made plastic: height from its outline, lit); ExploreNode `pirate_gate`, `searchlight`, `ramp_down`, `cells`; style `pirate`, face decos `skull_banner`, `graffiti`; ObjArt `watchtower`, `glider`, `fire_barrel`.
+- 0.7.54.7 (package 54b, part 2): `scripts/ground/rock_hopper.gd` (Rock Hopper: `step(dt)`, `add_rock`, `_crack`,
+  `_laser_hit`, the refinery `centre()`, drones, `_game_over` → Commands `minigame_end` with `score`); `MinigameData`
+  game `rockhopper` (mode `arcade`, `arcade_board(place, best)`), `GameState.minigame_best` keys `rockhopper` and
+  `rh:<cabinet>`; zone `arcade` (`DeckGen._arcade`, ObjArt `arcade`) in the diner and the beach bar.
 - 0.7.54.6 (package 54b, part 1): `data/minigames.gd` (GAMES with modes and rules, TIERS by the win streak, `stakes`,
   `max_stake`, `guests(place, game, streak, hour)`, `solo(mode)`); `scripts/ui/minigame_lobby.gd` (signals `start(cfg)`,
   `closed`); `scripts/ground/pool_game.gd` (billiards: `rack`, `shoot(angle, power, spin)`, `_physics`, `_shot_over`
@@ -587,7 +591,9 @@ who plays (a guest of the bar or one of your crew; a seat for co-op comes later)
 your win streak at that game – medium from 10 wins in a row, high from 25 – and the guests get better with it.
 **Billiards:** mouse aims, hold the left button for power and let go, right button + drag (or WASD) for spin; 8-ball,
 9-ball or practice. **Darts:** the hand sways (Reflexes, drinks); hold the right button to hold your breath, click to
-throw; 301, 501 or around the clock.
+throw; 301, 501 or around the clock. **Rock Hopper** (the arcade cabinets in diners and beach bars, 1 cr a game): W thrust,
+mouse or A/D turn, left button the drill laser, right button the tractor beam – crack the rocks, haul the ore home to
+the refinery; the cabinet keeps tonight's best.
 
 ## Sights on the ground (phase 0.5 package 54a)
 

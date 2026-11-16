@@ -173,6 +173,7 @@ func _process(delta: float) -> void:
 				_test_sights54a(view)            # package 54a – the sights on the ground
 				_test_minigames54b(view)         # package 54b – the bar games
 				_test_darts54b(view)             # package 54b – darts
+				_test_rock54b(view)              # package 54b – Rock Hopper
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12623,3 +12624,65 @@ func _test_darts54b(view: SystemView) -> void:
 	check(score_ok and aim_ok and bust_ok and out_ok and clock_ok and board_ok,
 		"54b: darts – the board scores right (bull 50, 25, T20 60, D16, off the board nothing), the guest aims at trebles and then a finish, a bust gives back the turn's points, checking out exactly wins, around the clock goes number by number; a dartboard on its stand in the mess and the canteen  [%s]" % [
 			" ".join(PackedStringArray([str(score_ok), str(aim_ok), str(bust_ok), str(out_ok), str(clock_ok), str(board_ok)]))])
+
+
+const RockHopperT = preload("res://scripts/ground/rock_hopper.gd")
+
+
+## Package 54b (Luz): Rock Hopper – a game costs a credit; the waves of rocks; the drill cracks them (big ones split,
+## ore spills); the ore into the hold; banked at the refinery (a full hold double); a crash costs a tug and spills
+## the hold; the score into your best and the cabinet's list; a cabinet in the diners and beach bars.
+func _test_rock54b(view: SystemView) -> void:
+	var keep_cr: int = GameState.credits
+	var keep_best: Dictionary = GameState.minigame_best.duplicate()
+	GameState.credits = 10
+	var e0: String = Commands.execute({"type": "minigame_begin", "game": "rockhopper", "mode": "arcade", "stake": 0, "opponent": {}, "place": "test_cab"})
+	var coin_ok: bool = e0 == "" and GameState.credits == 9
+	var rh = RockHopperT.new()
+	rh.setup({"place": {"id": "test_cab"}})
+	var wave_ok: bool = rh.wave == 1 and rh.rocks.size() == 4 and rh.rocks.all(func(r): return (r["p"] as Vector2).distance_to(rh.centre()) >= 80.0)
+	var big: Dictionary = rh.rocks[0]
+	big["r"] = 20.0
+	big["vein"] = true
+	var n_rocks: int = rh.rocks.size()
+	rh._crack(big)
+	var crack_ok: bool = rh.rocks.size() == n_rocks + 1 and rh.nuggets.size() >= 1
+	# the ore in: a nugget at the tug
+	rh.tug["inv"] = 99.0
+	rh.rocks.clear()
+	rh.nuggets = [{"p": rh.tug["p"], "v": Vector2.ZERO, "t": 20.0}]
+	rh.step(0.016)
+	var in_ok: bool = rh.hold == 1 and rh.nuggets.is_empty()
+	# home: slow at the refinery – banked
+	rh.hold = 6
+	rh.score = 0
+	rh.add_rock(Vector2(100, 60), 15.0)                  # (a rock left, so no new wave comes)
+	rh.tug["p"] = rh.centre()
+	rh.tug["v"] = Vector2.ZERO
+	rh.step(0.016)
+	var bank_ok: bool = rh.hold == 0 and rh.score == 6 * rh.ORE * 2
+	# a crash: a tug lost, the hold spilled
+	rh.hold = 3
+	rh.tug["inv"] = 0.0
+	rh.tug["p"] = Vector2(300, 200)
+	rh.rocks = []
+	rh.add_rock(Vector2(300, 200), 18.0)
+	var t0: int = rh.tugs
+	rh.step(0.016)
+	var crash_ok: bool = rh.tugs == t0 - 1 and rh.hold == 0 and rh.nuggets.size() >= 3
+	# the score: your best and the cabinet's list
+	rh.score = 4321
+	rh._game_over()
+	var board: Array = MinigameT.arcade_board("test_cab", GameState.minigame_best)
+	var score_ok: bool = int(GameState.minigame_best.get("rockhopper", 0)) >= 4321 and board.any(func(r): return bool(r[2]) and int(r[1]) == 4321) and board.size() == 5
+	rh.free()
+	GameState.credits = keep_cr
+	GameState.minigame_best = keep_best
+	Commands.mg_session = {}
+	var m := GroundMap.new()
+	m.setup(20, 20)
+	DeckGen._arcade(m, 4, 4)
+	var cab_ok: bool = m.zones.any(func(z): return String(z.get("kind", "")) == "arcade") and m.objects.any(func(o): return String(o["kind"]) == "arcade")
+	check(coin_ok and wave_ok and crack_ok and in_ok and bank_ok and crash_ok and score_ok and cab_ok,
+		"54b: Rock Hopper – a credit a game, the first wave of rocks away from the refinery, the drill cracks a rock (it splits, ore spills), the ore into the hold, banked at the refinery (a full hold double), a crash costs a tug and spills the hold, the score into your best and the cabinet's list; cabinets in the diners and beach bars  [%s]" % [
+			" ".join(PackedStringArray([str(coin_ok), str(wave_ok), str(crack_ok), str(in_ok), str(bank_ok), str(crash_ok), str(score_ok), str(cab_ok)]))])

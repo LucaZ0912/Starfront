@@ -387,6 +387,8 @@ static func _dome_room(m: GroundMap, th: Dictionary, bx0: int, W: int, available
 		"id": "jukebox", "title": "Jukebox", "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "plant", "x": dx + 1, "y": COR_Y0 - 1, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": dx + 2 * R - 2, "y": COR_Y0 - 1, "w": 1, "h": 1})
+	_arcade(m, dx + 1, R + 3, 0)                         # 54b (Luz): two Rock Hopper cabinets in the diner
+	_arcade(m, dx + 2 * R - 2, R + 3, 1)
 	for k in 3:
 		m.lights.append({"pos": Vector2(dx + 3 + k * 5, R + 0.4) * GroundMap.TILE, "r": 48.0, "col": Color(0.45, 0.6, 1.0), "a": 0.14})
 	_place_crew(m, crew, rng, dx + 2, dx + 2 * R - 2, R + 2.5, COR_Y0 - 0.8)
@@ -445,6 +447,14 @@ static func _dart_board(m: GroundMap, x: int, y: int) -> void:
 	m.decals.append({"kind": "guide", "x": x - 1, "y": y + 3, "w": 3, "h": 1, "col": Color(0.95, 0.8, 0.2)})
 	m.zones.append({"rect": Rect2(Vector2(x - 1.0, y + 1.0) * GroundMap.TILE, Vector2(3, 2.4) * GroundMap.TILE), "kind": "darts", "id": "darts",
 		"title": "Dartboard – play darts", "col": Color(1.0, 0.9, 0.6), "sign": Vector2(-100, -100)})
+
+
+## 54b (Luz): a Rock Hopper cabinet against a wall – its screen glowing, the place to stand and play (zone `arcade`).
+static func _arcade(m: GroundMap, x: int, y: int, n: int = 0) -> void:
+	m.add_object({"kind": "arcade", "x": x, "y": y, "w": 1, "h": 1, "col": Color(1.0, 0.45, 0.75)})
+	m.lights.append({"pos": Vector2(x + 0.5, y + 0.6) * GroundMap.TILE, "r": 30.0, "col": Color(0.4, 1.0, 0.9), "a": 0.35, "flicker": true})
+	m.zones.append({"rect": Rect2(Vector2(x - 0.4, y + 1.0) * GroundMap.TILE, Vector2(1.8, 1.3) * GroundMap.TILE), "kind": "arcade", "id": "arcade", "n": n,
+		"title": "Rock Hopper – arcade cabinet", "col": Color(1.0, 0.45, 0.75), "sign": Vector2(-100, -100)})
 
 
 ## 54b (Luz): a pool table to play at – the table, its lamp, the place to stand and play (zone `pool`).
@@ -548,6 +558,7 @@ static func _bar_beach(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNum
 		tx += 5
 	m.add_object({"kind": "palm", "x": x0 - 1, "y": COR_Y0 - 1, "w": 1, "h": 1})
 	m.add_object({"kind": "palm", "x": px0 + pw, "y": COR_Y0 - 1, "w": 1, "h": 1})
+	_arcade(m, x0, BAR_Y0 + 2)                           # 54b (Luz): a Rock Hopper cabinet by the pool
 	m.add_object({"kind": "flower_bed", "x": x0, "y": COR_Y0 - 1, "w": 2, "h": 1})
 
 

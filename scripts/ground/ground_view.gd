@@ -2981,6 +2981,7 @@ func explore_use(z: Dictionary) -> bool:
 const MinigameLobby = preload("res://scripts/ui/minigame_lobby.gd")
 const PoolGame = preload("res://scripts/ground/pool_game.gd")
 const DartsGame = preload("res://scripts/ground/darts_game.gd")
+const RockHopper = preload("res://scripts/ground/rock_hopper.gd")
 const MinigameData = preload("res://data/minigames.gd")
 
 
@@ -3004,7 +3005,7 @@ func open_minigame(game: String, place: Dictionary) -> void:
 
 
 func _play_minigame(cfg: Dictionary, place: Dictionary) -> void:
-	var g = DartsGame.new() if String(cfg["game"]) == "darts" else PoolGame.new()
+	var g = {"darts": DartsGame, "rockhopper": RockHopper}.get(String(cfg["game"]), PoolGame).new()
 	g.setup(cfg)
 	g.finished.connect(func(_w: bool): open_minigame(String(cfg["game"]), place))
 	_open_game(g)
@@ -3989,6 +3990,9 @@ func use(instant: bool = false) -> bool:
 			return true
 		"pool":
 			open_minigame("billiards", {"title": "The pool table – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
+			return true
+		"arcade":
+			open_minigame("rockhopper", {"title": "The Rock Hopper cabinet – %s" % String(station.get("name", "the bar")), "id": "%s_%d" % [String(station.get("id", "bar")), int(zone.get("n", 0))]})
 			return true
 		"darts":
 			open_minigame("darts", {"title": "The dartboard – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})

@@ -14,6 +14,9 @@ const GAMES := {
 		"rules": {"301": "Both start at 301; each turn three darts, their points come off. Who gets down to exactly nothing first wins. Below nothing is a bust – the turn counts for nothing. The thin outer ring doubles, the inner ring triples; the bull is 50, the green ring round it 25.",
 			"501": "Like 301, from 501 – a longer game.",
 			"clock": "Alone: hit 1, then 2, … up to 20, then the bull. Doubles and trebles of the number count. As few darts as you can."}},
+	"rockhopper": {"name": "Rock Hopper", "where": "The arcade cabinet",
+		"modes": [["arcade", "Arcade – 1 credit a game"]],
+		"rules": {"arcade": "Fly the mining tug (W thrust, mouse or A/D to turn). The drill laser (left button) cracks the rocks – big ones split, small ones shatter – and spills their ore; the tractor beam (right button) pulls it into your hold. Only ore you bring home to the refinery in the middle counts – dock there slowly; a full hold counts double, and the tank is filled. Lose the tug and the hold spills. From wave 3 pirate drones hunt you. Three tugs."}},
 }
 
 ## The stake tiers: from how many wins in a row, the stakes on offer, the guests' strength (stars) then.
@@ -36,7 +39,27 @@ const LINES := ["\"Rack 'em up, spacer.\"", "\"Loser buys the next round.\"", "\
 
 ## A mode played alone (no opponent, no stake, no streak).
 static func solo(mode: String) -> bool:
-	return mode in ["practice", "clock"]
+	return mode in ["practice", "clock", "arcade"]
+
+
+const ARCADE_NAMES := ["JUNO", "VIK", "ODO", "AMA", "ZURI", "FEN", "KASI", "RHEA", "ESKO", "BRAM", "NIA", "TEVI"]
+
+
+## A cabinet's high score list tonight: invented regulars (by the place) and your own scores there – the best five,
+## each [name, score, yours].
+static func arcade_board(place_id: String, best: Dictionary) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("rh_%s" % place_id)
+	var rows: Array = []
+	var names := ARCADE_NAMES.duplicate()
+	for i in 5:
+		var nm: String = names.pop_at(rng.randi() % names.size())
+		rows.append([nm, int(round(rng.randf_range(900.0, 9000.0) / 50.0)) * 50, false])
+	var me := String(GameState.pilot.get("name", "YOU")).to_upper().left(4) if GameState.pilot is Dictionary else "YOU"
+	for sc in best.get("rh:" + place_id, []):
+		rows.append([me, int(sc), true])
+	rows.sort_custom(func(a, b): return int(a[1]) > int(b[1]))
+	return rows.slice(0, 5)
 
 
 static func tier(streak: int) -> int:

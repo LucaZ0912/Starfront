@@ -75,6 +75,8 @@ static func _rise(kind: String) -> int:
 			return 22
 		"dart_board":                         # 54b: a dartboard on its stand
 			return 30
+		"arcade":                             # 54b: an arcade cabinet
+			return 26
 		"greenhouse":
 			return 20
 		"rock", "lava_rock":
@@ -1547,6 +1549,23 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_ellipse(img, pw * 0.5, fy + ph * 0.6, pw * 0.5, ph * 0.45 + 3.0, dc.darkened(0.12))
 			_ellipse(img, pw * 0.45, fy + ph * 0.5, pw * 0.42, ph * 0.35 + 2.0, dc)
 			_ellipse(img, pw * 0.35, fy + ph * 0.4, pw * 0.2, 2.0, dc.lightened(0.15))
+		"arcade":                   # 54b (Luz): the Rock Hopper cabinet – dark sides, the lit marquee, the glowing screen, the controls
+			var cab := Color(0.14, 0.1, 0.16)
+			_r(img, 1, 2, pw - 2, fy + ph - 3, cab)
+			_r(img, 1, 2, 2, fy + ph - 3, cab.lightened(0.12))
+			_r(img, pw - 3, 2, 2, fy + ph - 3, cab.darkened(0.3))
+			_r(img, 3, 3, pw - 6, 4, c)                           # the marquee
+			_r(img, 4, 4, pw - 8, 1, c.lightened(0.4))
+			_r(img, 3, 9, pw - 6, 9, Color(0.02, 0.03, 0.06))      # the screen
+			_r(img, 5, 12, 2, 2, Color(1.0, 0.75, 0.2))
+			_r(img, 9, 14, 3, 2, Color(0.6, 0.55, 0.7))
+			_r(img, 7, 11, 1, 1, Color(0.4, 1.0, 0.9))
+			for sy in range(9, 18, 2):
+				_r(img, 3, sy, pw - 6, 1, Color(0.4, 1.0, 0.9, 0.12))
+			_r(img, 2, 19, pw - 4, 4, cab.lightened(0.18))           # the control panel
+			_r(img, 4, 20, 2, 2, Color(0.9, 0.9, 0.95))
+			_r(img, 9, 20, 2, 2, Color(1.0, 0.3, 0.3))
+			_r(img, 12, 20, 2, 2, Color(0.4, 1.0, 0.9))
 		"dart_board":               # 54b (Luz): a dartboard on a stand – the post, the round board with its rings, a chalk tally
 			var cx := pw * 0.5
 			var post := Color(0.25, 0.25, 0.28)
