@@ -169,6 +169,9 @@ Waffen klingen nach Schadensart: **optisch** hell, sirrend, **kinetisch** knalle
 | `arcade_pickup` | Rock Hopper: Erz eingesammelt | Zwei kurze steigende Töne | 0,1 s | A |
 | `arcade_bank` | Rock Hopper: an der Raffinerie abgeliefert | Aufsteigendes Arpeggio | 0,4 s | A |
 | `scanner_pass` | Senat (54c): durch den Sicherheitsscanner | Leiser Zweiklang über dem Summen des Feldes | 0,5 s | B |
+| `amb_rain` | Wetter (54e): Regen, Gewitter, saurer Regen draußen (Schleife) | Rauschen mit einzelnen Tropfen darin | 12 s Loop | B |
+| `amb_wind` | Wetter (54e): Schneesturm, Sandsturm, Gaswinde/Gassturm der Wolkenstädte (Schleife) | Böiger, an- und abschwellender Wind | 12 s Loop | B |
+| `thunder` | Wetter (54e): Donner nach einem Blitz | Knall und langes, tiefes Grollen | 3 s | B |
 
 ## 8. Warnungen & Bordcomputer (SFX/UI)
 

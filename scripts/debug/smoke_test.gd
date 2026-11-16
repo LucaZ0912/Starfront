@@ -183,6 +183,7 @@ func _process(delta: float) -> void:
 				_test_nave54c(view)              # package 54c – the Cathedral's nave
 				_test_control54c(view)           # package 54c – the Meridian Sphere's control room
 				_test_yards54c(view)             # package 54c – the yard galleries
+				_test_weather54e(view)           # package 54e – dynamic weather
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -13062,3 +13063,85 @@ func _test_yards54c(_view: SystemView) -> void:
 	for sp in ["landfall", "heimkehr", "durchbruch"]:
 		t_ok = t_ok and Missions.ground_sights(Universe.special_system(sp)).any(func(s): return String(s["id"]).ends_with("_yard"))
 	check(ok and t_ok, "54c: the galleries at the capitals' yards (the Res Publica, the Lux Aeterna, the jump gates in the window; the sight), excursion targets in all three capitals  [%s %s]" % [ok, t_ok])
+
+
+## Package 54e (Luz): dynamic weather – the model (the same for a region and a time, by the world's type, nothing without
+## air, the gas storms over a giant), the effects outdoors only (a city's plaza: rain with umbrellas, lightning; the Senate's
+## lobby: none), a cloud city's deck in a gas storm in the giant's colours; the sounds; the planet map's places.
+func _test_weather54e(view: SystemView) -> void:
+	var notes: Array = []
+	var terran := {"name": "Testworld", "type": "terran"}
+	var a1 := Weather.at(terran, {"lon": 0.3, "lat": 0.1}, false, 1000.0)
+	var a2 := Weather.at(terran, {"lon": 0.3, "lat": 0.1}, false, 1000.0)
+	var seen := {}
+	for sp in 300:
+		var wx := Weather.at(terran, {"lon": 0.3, "lat": 0.1}, false, sp * Weather.SPELL + 100.0)
+		seen[String(wx["kind"])] = true
+	var green: Array = Weather.TABLE["green"].map(func(e): return String(e[0]))
+	var model_ok: bool = a1["kind"] == a2["kind"] and seen.size() >= 4 and seen.keys().all(func(k): return k in green) 		and String(Weather.at({"name": "Rock", "type": "barren"}, {})["cls"]) == "" and String(Weather.at({"name": "Ice", "type": "ice"}, {})["cls"]) == "ice" 		and String(Weather.at({"name": "Giant", "type": "gas"}, {"id": "c1"}, true)["cls"]) == "cloud"
+	if not model_ok:
+		notes.append("model: %s %s seen %s ice %s" % [a1, a2, seen.keys(), Weather.at({"name": "Ice", "type": "ice"}, {})])
+	var snd_ok: bool = ResourceLoader.exists("res://assets/sfx/amb_rain.wav") and ResourceLoader.exists("res://assets/sfx/amb_wind.wav") 		and ResourceLoader.exists("res://assets/sfx/thunder.wav") and "amb_rain" in Audio.LOOPS
+	# the planet map: every place has its weather
+	var map_ok := true
+	var lf := Universe.special_system("landfall")
+	for b in Universe.get_layout(lf)["planets"]:
+		for s0 in Universe.landing_sites(lf, b):
+			map_ok = map_ok and Weather.at(b, s0).has("kind")
+	# out on the Plaza of the Vote: rain, the umbrellas up; lightning; indoors none
+	var f := GameState.active()
+	var p := view.player
+	var pos0: Vector2 = p.position
+	var e: String = Commands.execute({"type": "debug_capital", "which": "senate", "level": "kplaza", "here": true})
+	var g = main.ground
+	var out_ok := false
+	var in_none := false
+	if e == "" and g != null and g.level == "kplaza":
+		Commands.execute({"type": "debug_weather", "kind": "rain"})
+		var fx = g.weather
+		if fx != null:
+			for w0 in g.people:
+				if is_instance_valid(w0):
+					w0.umbrella = move_toward(w0.umbrella, 1.0 if w0.umbrella_on else 0.0, 1.0)     # (as its frames would)
+			var umb: bool = g.people.any(func(w): return is_instance_valid(w) and w.npc and not w.guard and w.umbrella > 0.5)
+			var guard_dry: bool = g.people.all(func(w): return not is_instance_valid(w) or not w.guard or not w.umbrella_on)
+			Commands.execute({"type": "debug_weather", "kind": "storm", "strike": true})
+			out_ok = String(fx.kind()) == "storm" and fx.strikes > 0 and umb and guard_dry and Audio.loop_playing("weather_rain")
+			if not out_ok:
+				notes.append("plaza: kind %s strikes %d umb %s guard_dry %s rain %s" % [fx.kind(), fx.strikes, umb, guard_dry, Audio.loop_playing("weather_rain")])
+		else:
+			notes.append("no weather on the plaza")
+		g.go_level("senate", "plaza")
+		in_none = g.weather == null and not Audio.loop_playing("weather_rain")
+	else:
+		notes.append("plaza: '%s'" % e)
+	main.close_deck(false)
+	# a cloud city's deck in a gas storm – the giant's colours
+	var cloud_ok := false
+	var e2: String = Commands.execute({"type": "debug_capital", "which": "palace", "level": "pplaza", "here": true, "cloud": true})
+	var g2 = main.ground
+	if e2 == "" and g2 != null and g2.level == "pplaza":
+		Commands.execute({"type": "debug_weather", "kind": "gasstorm", "strike": true})
+		var fx2 = g2.weather
+		cloud_ok = fx2 != null and fx2.cloud and fx2.kind() == "gasstorm" and (fx2.look.get("bands", []) as Array).size() > 0 and fx2.strikes > 0
+		if not cloud_ok:
+			notes.append("cloud: %s" % (fx2.kind() if fx2 != null else "no fx"))
+	else:
+		notes.append("cloud deck: '%s'" % e2)
+	Commands.execute({"type": "debug_weather", "kind": ""})
+	main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	f.docked_at = ""
+	p.visible = true
+	p.scale = Vector2.ONE
+	p.position = pos0
+	p.order = {"type": "idle"}
+	GameState.gear.aboard()
+	main._update_input()
+	check(model_ok and snd_ok and map_ok and out_ok and in_none and cloud_ok and Weather.debug_kind == "",
+		"54e: dynamic weather – the same for a place and a time, by the world (none without air, gas storms over a giant), on the plaza rain with holo umbrellas (not the guards), lightning, its sound; none in the lobby; a gas storm on Aureola's platform in the giant's colours  [%s]%s" % [
+			" ".join(PackedStringArray([str(model_ok), str(snd_ok), str(map_ok), str(out_ok), str(in_none), str(cloud_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

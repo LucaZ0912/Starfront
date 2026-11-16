@@ -1052,6 +1052,18 @@ func _build_ground() -> void:
 	rc2.add_child(UI.button("Calm", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder"})))
 	rc2.add_child(UI.button("Rotor jammed (job)", func(): _cmd({"type": "debug_cloud", "giant": cg.get_selected_metadata(), "level": "cunder", "job": true})))
 	_box.add_child(UI.wrap_label("Straight into a cloud city over a giant of this system (or a body seen as one). Every inhabited system's giants have 1–2 cities; the skyrail runs between Central and the Skyring.", 12, UI.TEXT_DIM, 560))
+	_section("Weather (package 54e)")
+	var rw := _row()
+	rw.add_child(UI.button("World's own", func(): _cmd({"type": "debug_weather", "kind": ""})))
+	for wk in ["cloudy", "rain", "storm", "fog", "snow", "blizzard", "dust", "sandstorm", "ash", "acid"]:
+		var wkv: String = wk
+		rw.add_child(UI.button(String(Weather.NAMES[wk][0]), func(): _cmd({"type": "debug_weather", "kind": wkv})))
+	var rw2 := _row()
+	rw2.add_child(UI.label("Cloud cities:", 12, UI.TEXT_DIM))
+	rw2.add_child(UI.button("Gas winds", func(): _cmd({"type": "debug_weather", "kind": "gaswind"})))
+	rw2.add_child(UI.button("Gas storm", func(): _cmd({"type": "debug_weather", "kind": "gasstorm"})))
+	rw2.add_child(UI.button("Lightning now", func(): _cmd({"type": "debug_weather", "strike": true})))
+	_box.add_child(UI.wrap_label("Forces the weather on foot outdoors (city streets and plazas, settlements, sites, sights, a cloud city's deck) on every world with air, until set back to the world's own. Only to look at.", 12, UI.TEXT_DIM, 560))
 	_section("Capitals (package 54c)")
 	var rcp := _row()
 	rcp.add_child(UI.label("Neo Kallipolis:", 12, UI.TEXT_DIM))

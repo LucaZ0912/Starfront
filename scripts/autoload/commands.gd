@@ -3041,6 +3041,25 @@ func _c_souvenir_buy(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_weather", "kind": "" (the world's own) | "rain" | "storm" | … , "strike": true} – 54e (Luz): the
+## weather on foot, forced (on every world with air until set back); a bolt of lightning now.
+func _c_debug_weather(c: Dictionary) -> String:
+	var kd := String(c.get("kind", Weather.debug_kind))
+	if kd != "" and not Weather.NAMES.has(kd):
+		return "Unknown weather."
+	Weather.debug_kind = kd
+	var g = _ground()
+	if g != null and g.weather != null and is_instance_valid(g.weather):
+		g.weather.w = Weather.at(g.weather.body, g.weather.place, g.weather.cloud)
+		g.weather._apply()
+		g.weather._people()
+		g.weather._sound()
+		if bool(c.get("strike", false)):
+			g.weather.strike()
+	GameState.log_msg("[Debug] Weather: %s." % (String(Weather.NAMES[kd][0]) if kd != "" else "the world's own"), GameState.COL_WARN)
+	return ""
+
+
 ## {"type":"debug_sight", "theme": falls/…, "event": "" or an event id} – package 54a: straight to a sight (on a body of
 ## this system seen as the right kind of world).
 const DEBUG_SIGHT_WORLD := {"falls": "jungle", "lagoon": "ocean", "icecave": "ice", "arches": "desert", "lava": "lava", "crater": "barren", "mirror": "terran"}

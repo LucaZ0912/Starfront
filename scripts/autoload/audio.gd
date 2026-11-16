@@ -12,7 +12,7 @@ extends Node
 const BUSES := ["Music", "Ambience", "SFX", "UI"]
 const BUS_OF := {"amb_": "Ambience", "mus_": "Music", "ui_": "UI", "buy": "UI", "sell": "UI", "notify": "UI", "warn": "UI",
 	"mission_": "UI"}
-const LOOPS := ["engine_loop", "w_beam_loop", "mining_loop", "alarm_hull", "amb_space", "cme_alarm"]
+const LOOPS := ["engine_loop", "w_beam_loop", "mining_loop", "alarm_hull", "amb_space", "cme_alarm", "amb_rain", "amb_wind"]
 const HEAR_RANGE := 9000.0        # km: sounds further from the camera are not heard
 const VOICES := 24                # one-shot players in the pool
 const SAME_ID_GAP := 0.045        # seconds: the same sound does not start again faster than this

@@ -178,6 +178,13 @@ SOUNDS = {
     # 54c (Luz): the Senate's security arch – a soft two-tone chime with a hum of the field
     "scanner_pass": lambda: mix(tone(0.5, 120, wave_="sine", vol=0.25, a=0.05, r=0.3), tone(0.12, 1320, wave_="sine", vol=0.35, r=0.08),
                                 tone(0.2, 1760, wave_="sine", vol=0.35, r=0.15), at=[0, 0.05, 0.17]),
+    # 54e (Luz): the weather – rain hissing with drops in it, a gusting wind, a roll of thunder
+    "amb_rain": lambda: loopify(mix(noise(12.0, 0.45, 0.35, a=0, r=0), noise(12.0, 0.25, 0.08, a=0, r=0),
+                                    *[noise(0.03, 0.25, 0.7, r=0.025) for _ in range(160)], at=[0, 0] + [random.uniform(0, 11.9) for _ in range(160)]), 1.0),
+    "amb_wind": lambda: loopify(mix(*[noise(3.0, 0.4, 0.03, 0.06, a=1.2, r=1.4) for _ in range(6)], noise(12.0, 0.15, 0.02, a=0, r=0),
+                                    at=[i * 2.0 for i in range(6)] + [0]), 1.5),
+    "thunder": lambda: mix(noise(0.15, 0.9, 0.5, 0.1, a=0.002, r=0.12), noise(3.2, 0.8, 0.03, 0.008, a=0.05, r=2.6, curve=1.6),
+                           tone(2.5, 48, 30, "sine", 0.35, a=0.05, r=2.0), at=[0, 0.05, 0.08]),
     "amb_space": lambda: loopify(mix(noise(32.0, 0.4, 0.01, a=0, r=0), tone(32.0, 41, wave_="sine", vol=0.12, a=0, r=0, vib=0.02, vib_rate=0.1),
                                      *[noise(0.3, 0.06, 0.6, r=0.25) for _ in range(12)], at=[0, 0] + [random.uniform(0, 31) for _ in range(12)]), 1.5),
 }
@@ -188,5 +195,5 @@ if __name__ == "__main__":
     for name, make in SOUNDS.items():
         if only and name not in only:
             continue
-        save(name, make(), 0.6 if name in ("amb_space", "engine_loop") else 0.85)
+        save(name, make(), 0.6 if name in ("amb_space", "engine_loop", "amb_rain", "amb_wind") else 0.85)
     print("%d placeholder sounds written to assets/sfx/" % (len(only) if only else len(SOUNDS)))

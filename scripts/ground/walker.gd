@@ -27,6 +27,8 @@ var aim := Vector2.INF             # package 52: in a fight – the weapon in th
 var aim_dtype := "kinetic"         # its damage type (the colour of the weapon)
 var aim_weapon := ""               # 0.7.52.3: the weapon's family (its picture, WeaponArt)
 var down := false                  # package 52: fallen in a fight – lies on the ground
+var umbrella_on := false           # 54e (Luz): it rains – the holo umbrella up
+var umbrella := 0.0                # 0 folded … 1 open
 var crouch := false                # 0.7.52.21: sneaking – drawn low
 var _pp := 0
 const DRINK_TIME := 3.2
@@ -85,6 +87,7 @@ func step(d: Vector2, delta: float, speed_mult: float = 1.0) -> bool:
 func _process(delta: float) -> void:
 	_t += delta
 	drink_t = maxf(0.0, drink_t - delta)
+	umbrella = move_toward(umbrella, 1.0 if umbrella_on and not down else 0.0, delta * 2.5)
 	if goto_to != Vector2.INF:
 		if _path.is_empty() or goto_done:
 			_path = map.path(pos, goto_to)
@@ -294,11 +297,46 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(gx - 3, gy - 8), Vector2(6, 9)), Color(0.06, 0.05, 0.08))
 		draw_rect(Rect2(Vector2(gx - 2, gy - 7), Vector2(4, 7)), drink_col)
 		draw_rect(Rect2(Vector2(gx - 2, gy - 7), Vector2(4, 2)), Color(0.95, 0.95, 0.9))
+	if umbrella > 0.0:
+		_draw_umbrella(size, bob * s)
 	if marker != "":
 		var y0 := -size.y - 10.0 + sin(_t * 3.0) * 3.0
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(1.0, 0.85, 0.35))
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(0.15, 0.1, 0.05), false, 2.0)
 		draw_string(ThemeDB.fallback_font, Vector2(-4, y0 - 2), marker, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.2, 0.1, 0.05))
+
+
+## 54e (Luz): a holographic umbrella – a dome of cyan light over the head, its rim brighter, a thin shaft of light down
+## to the hand, the rain bouncing off it in sparks; it unfolds from the hand.
+func _draw_umbrella(size: Vector2, bob: float) -> void:
+	var cs := ChibiArt.CHAR_SCALE
+	var u := ease(umbrella, 0.5)
+	var lift := SIT_LIFT * GroundMap.SCALE if sitting else -bob
+	var hx := (-6.0 if dir == 2 else (4.0 if dir == 3 else 5.0)) * cs
+	var hand := Vector2(hx, -(ChibiArt.H - 24) * cs - lift)
+	var base := Vector2(hx * 0.35, -size.y - 1.0 * cs - lift)
+	base = hand.lerp(base, u)
+	var rx := 15.0 * cs * u
+	var ry := 8.0 * cs * (0.3 + 0.7 * u)
+	var pts := PackedVector2Array()
+	for i in 17:
+		var a := PI + PI * float(i) / 16.0
+		pts.append(base + Vector2(cos(a) * rx, sin(a) * ry))
+	if rx > 1.0:
+		draw_colored_polygon(pts, Color(0.45, 0.95, 1.0, 0.2 + 0.04 * sin(_t * 5.0)))
+		draw_polyline(pts, Color(0.6, 1.0, 1.0, 0.75), 1.5)
+		var x := -rx
+		while x <= rx:
+			draw_rect(Rect2(base + Vector2(x - 1, -1), Vector2(2, 2)), Color(0.75, 1.0, 1.0, 0.9))
+			x += 2.0 * cs
+		draw_line(base + Vector2(0, -ry), base, Color(0.6, 1.0, 1.0, 0.25), 1.0)
+		for sp in 4:                                            # the rain bouncing off it
+			var ph := fposmod(_t * 3.0 + sp * 0.27 + pos.x * 0.013, 1.0)
+			var a2 := PI + PI * (0.15 + 0.7 * fposmod(sp * 0.37 + floor(_t * 3.0 + sp * 0.27) * 0.61, 1.0))
+			var q := base + Vector2(cos(a2) * rx, sin(a2) * ry) + Vector2((sp % 2 * 2 - 1) * ph * 6.0, -ph * 5.0)
+			draw_rect(Rect2(q, Vector2(2, 2)), Color(1, 1, 1, 0.9 * (1.0 - ph)))
+	draw_line(base, hand, Color(0.5, 0.95, 1.0, 0.65), 1.5)
+	draw_rect(Rect2(hand - Vector2(1.5, 1.5), Vector2(3, 3)), Color(0.25, 0.3, 0.35))
 
 
 ## 53f: a creature or machine – its own picture, a shadow its width, fallen on its side.

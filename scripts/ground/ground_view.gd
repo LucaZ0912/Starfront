@@ -164,6 +164,9 @@ var _revive := -1.0                     # 0.7.52.20: how long the use key is hel
 const WHEEL_SLOW := 0.3                 # time runs at this pace while the command wheel is up
 var _drone_held: Array = [-1.0, -1.0]   # 0.7.52.19: how long C / Shift+C is held over a kamikaze drone in the air (-1: up)
 var _warned := {}
+var weather: WeatherFx = null             # 54e (Luz): the weather over an outdoor map
+## 54e: the levels out in the open – where the weather reaches
+const WEATHER_LEVELS := ["landing", "settlement", "street", "alley", "plaza", "minehead", "mplaza", "kplaza", "cplaza", "cstation", "pplaza"]
 
 
 func _ready() -> void:
@@ -469,6 +472,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
 	_build()
+	_setup_weather()
 	if combat_allowed():
 		combat = GroundCombat.new()                   # package 52: weapons allowed here
 		combat.setup(self, map)
@@ -1590,6 +1594,41 @@ func sight_day() -> float:
 			return float(station["debug_sight_day"])
 		return CityStyle.daylight(station, cloud_body())
 	return CityStyle.daylight(_site, _body) if not _body.is_empty() else 1.0
+
+
+## 54e (Luz): the weather over the level – out in the open on a world with air (a city's street and plazas, a
+## settlement, a site's outside, a sight, a cloud city's deck). Only to look at.
+func _setup_weather() -> void:
+	if weather != null and is_instance_valid(weather):
+		weather.stop_sound()
+		weather.queue_free()
+	weather = null
+	if not level in WEATHER_LEVELS:
+		return
+	if level == "landing" and (bool(_site.get("vault", false)) or bool(_site.get("arena", false))):
+		return
+	var cl := is_cloud()
+	var b: Dictionary = cloud_body() if cl else (_city_body if is_town() and not _city_body.is_empty() else _body)
+	var plc: Dictionary = station if is_town() or cl else _site
+	var wn := Weather.at(b, plc, cl)
+	if String(wn["cls"]) == "":
+		return
+	weather = WeatherFx.new()
+	weather.view = self
+	weather.w = wn
+	weather.body = b
+	weather.place = plc
+	weather.cloud = cl
+	if cl:
+		weather.look = cloud_look()
+	weather.z_index = 20                              # over the world and its neon signs, under the panels
+	add_child(weather)
+	move_child(weather, _ui.get_index())
+
+
+## The weather where you stand ({} indoors or where there is none).
+func weather_now() -> Dictionary:
+	return weather.w if weather != null and is_instance_valid(weather) else {}
 
 
 ## Package 54 (Luz): a cloud city over a gas giant?

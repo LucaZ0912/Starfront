@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.17 – 2026-11-16
+
+**Package 54e – dynamic weather (Luz).** Weather for everything out in the open – city streets and plazas,
+settlements, the outside of sites, the wild, sights, a cloud city's deck. Only to look at for now: nothing changes what
+you see of foes, your suit or sneaking.
+- Each region of a world has its own weather, a spell of about six minutes of play that sets in and clears slowly;
+  places close together share it. What can come depends on the world: rain, thunderstorms, fog and overcast on green
+  worlds, snow and blizzards on ice, dust and sandstorms with dust devils in the desert, ash with rising embers on lava
+  worlds – none where there is no air.
+- The cloud cities get the giant's own gas: gas winds, and in a gas storm long torn veils in the giant's colours racing
+  across the deck, lightning lighting the clouds from within, thunder after it.
+- The light dims and tints, haze drifts with the wind, rain splashes on the ground; a bolt flashes over the street.
+- People put up holo umbrellas when it rains or storms – a dome of cyan light, the rain bouncing off it (not the
+  guards, not you).
+- The planet map hints at it: cloud fields over the places where it rains or snows, a storm's spiral turning, an icon
+  beside every place (a sun, at night the moon) and the weather there in the place's info.
+- Placeholder sounds: rain, wind, thunder. Debug menu: "Weather (package 54e)" – force any weather, back to the world's
+  own, lightning now.
+
 ## alpha 0.7.54.16 – 2026-11-16
 
 **Package 54c, part 7 – the galleries at the capitals' yards (Luz).** A level of its own in the lifts of Concord Yards,
