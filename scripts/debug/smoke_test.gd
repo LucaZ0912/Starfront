@@ -180,6 +180,7 @@ func _process(delta: float) -> void:
 				_test_palace54c(view)            # package 54c – Aureola and the Hierarch's palace
 				_test_sights54c(view)            # package 54c – the capitals' plazas as sights
 				_test_vote54c(view)              # package 54c – The Vote's gallery
+				_test_nave54c(view)              # package 54c – the Cathedral's nave
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12996,3 +12997,21 @@ func _test_vote54c(_view: SystemView) -> void:
 	var lsid := Universe.special_system("landfall")
 	var t_ok := Missions.ground_sights(lsid).any(func(s): return String(s["kind"]) == "station" and String(s["id"]).ends_with("_gallery"))
 	check(map_ok and shaft_ok and t_ok, "54c: The Vote – the gallery over the drone shaft (three voting booths, the viewpoint, souvenirs, the lift; the shaft drawn), an excursion target  [%s %s %s]" % [map_ok, shaft_ok, t_ok])
+
+
+## Package 54c (Luz): the Cathedral of Return's nave – the great window with the Pilgrim Gate, the altar, the Curia on
+## foot (chancery, relic shrine), the guard in gold, the sight; an excursion target.
+func _test_nave54c(_view: SystemView) -> void:
+	var SR = load("res://scripts/ground/station_rooms.gd")
+	var GW = load("res://scripts/ground/gate_window.gd")
+	var m: GroundMap = SR.build_nave({"id": "test_cath", "name": "Cathedral of Return", "curia": true})
+	var kinds: Array = m.zones.map(func(z): return String(z.get("kind", "")))
+	var map_ok: bool = "curia_chancery" in kinds and "relic_office" in kinds and "viewpoint" in kinds and "souvenir" in kinds and "lift" in kinds \
+		and m.has_meta("gate_view") and m.window_rect.size.x > 0.0 and String(m.get_meta("guard_suit", "")) == "suit_mil_hierarch" \
+		and m.path(m.spawn, Vector2(20, 13.5) * 16.0).size() > 0
+	var gw = GW.new()
+	gw.setup(Vector2(768, 384))
+	var win_ok: bool = gw._gate != null
+	gw.free()
+	var t_ok := Missions.ground_sights(Universe.special_system("heimkehr")).any(func(s): return String(s["id"]).ends_with("_nave"))
+	check(map_ok and win_ok and t_ok, "54c: the Cathedral of Return's nave (the Pilgrim Gate in the window, the altar, the chancery and the relic shrine, the guard in gold, the sight), an excursion target  [%s %s %s]" % [map_ok, win_ok, t_ok])

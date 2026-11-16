@@ -852,6 +852,9 @@ static func ground_sights(sid: int) -> Array:
 		if bool(st0.get("senate", false)):
 			out.append({"id": String(st0["id"]) + "_gallery", "name": "the gallery of The Vote", "body": String(st0.get("body", "")),
 				"kind": "station", "appeal": 0.8, "ground": true, "where": String(st0.get("name", "")), "station": String(st0["id"])})
+		if bool(st0.get("curia", false)):
+			out.append({"id": String(st0["id"]) + "_nave", "name": "the nave of the Cathedral of Return", "body": String(st0.get("body", "")),
+				"kind": "station", "appeal": 0.8, "ground": true, "where": String(st0.get("name", "")), "station": String(st0["id"])})
 	for b in bodies:
 		var bt := String(b.get("type", ""))
 		for cs0 in Universe.landing_sites(sid, b):                    # 54c (Luz): the capitals' plazas are sights too

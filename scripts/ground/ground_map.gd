@@ -2446,6 +2446,24 @@ func _face_deco(d: Dictionary) -> void:
 						_px(px + xx7, py + yy7, Color(1.0, 0.85, 0.5) if r7 < 10.0 else Color(0.88, 0.68, 0.3))
 					elif r7 < pw * 0.5 and fposmod(a7 * 24.0 / TAU, 1.0) < 0.3 and a7 < 0.0:
 						_px(px + xx7, py + yy7, Color(0.88, 0.68, 0.3).lerp(Color(0.62, 0.45, 0.18), r7 / (pw * 0.5)))
+		"nave_window":
+			# 54c (Luz): the Cathedral's great window – a pointed arch in the wall, open (the view behind it shows through:
+			# space and the Pilgrim Gate), its tracery and a gilded frame
+			var nh := int(d.get("rows", 8)) * TILE
+			for yy9 in nh:
+				for xx9 in pw:
+					var dx9 := float(xx9) + 0.5 - pw * 0.5
+					var top9 := pw * 0.55
+					var inside := absf(dx9) < pw * 0.5 - 6 and not (float(yy9) < top9 and absf(dx9) > (pw * 0.5 - 6) * sqrt(maxf(0.0, 1.0 - pow((top9 - yy9) / top9, 2.0))))
+					if inside and yy9 < nh - 6:
+						var tracery := xx9 % 32 == 16 or yy9 == int(nh * 0.55)
+						_px(px + xx9, py + yy9, Color(0.25, 0.2, 0.18) if tracery else Color(0, 0, 0, 0))
+					elif inside:
+						_px(px + xx9, py + yy9, Color(0.7, 0.63, 0.52))
+			for yy10 in nh:
+				var dx10 := (pw * 0.5 - 6) * sqrt(maxf(0.0, 1.0 - pow((pw * 0.55 - yy10) / (pw * 0.55), 2.0))) if yy10 < pw * 0.55 else pw * 0.5 - 6
+				_px(int(px + pw * 0.5 - dx10) - 1, py + yy10, GOLD_M)
+				_px(int(px + pw * 0.5 + dx10), py + yy10, GOLD_M)
 		"edict_scroll":
 			# 54c: the edict in force on a lit scroll on the wall – parchment, gold rods, its lines
 			_rect(px + 4, py, pw - 8, 30, Color(0.95, 0.88, 0.7))

@@ -1064,6 +1064,8 @@ func _build_ground() -> void:
 	var rvt := _row()
 	rvt.add_child(UI.label("The Vote:", 12, UI.TEXT_DIM))
 	rvt.add_child(UI.button("Gallery over the shaft", func(): _cmd({"type": "debug_station_room", "room": "vgallery"})))
+	rvt.add_child(UI.label("Cathedral of Return:", 12, UI.TEXT_DIM))
+	rvt.add_child(UI.button("The nave", func(): _cmd({"type": "debug_station_room", "room": "nave"})))
 	var rau := _row()
 	rau.add_child(UI.label("Aureola:", 12, UI.TEXT_DIM))
 	rau.add_child(UI.button("Palace station", func(): _cmd({"type": "debug_capital", "which": "palace", "level": "cstation", "stop": 3})))

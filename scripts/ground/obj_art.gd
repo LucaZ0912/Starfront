@@ -235,6 +235,8 @@ static func _rise(kind: String) -> int:
 			return 14
 		"lectern":
 			return 22
+		"altar_cov":                        # 54c: the Cathedral's altar (~1.1 m)
+			return 16
 		"vote_booth":                       # 54c: a voting booth at The Vote (~2.4 m)
 			return 30
 		"brazier":                          # 54c: a fire bowl on a post (~1.5 m)
@@ -466,6 +468,21 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 4, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
 				_r(img, pw / 2 + 2, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
 			_r(img, pw / 2, b34 - 14, 1, 4, Color(0.88, 0.68, 0.3))
+		"altar_cov":
+			# 54c: the altar of the Cathedral of Return – white stone, a gold border, the sun of the Return on its front, a
+			# white cloth with candles on it
+			var b41 := fy + ph
+			_r(img, 1, b41 - 16, pw - 2, 16, Color(0.92, 0.88, 0.8))
+			_r(img, 1, b41 - 16, pw - 2, 2, Color(1, 1, 1))
+			_r(img, 1, b41 - 3, pw - 2, 3, Color(0.7, 0.64, 0.54))
+			_r(img, 3, b41 - 14, pw - 6, 1, Color(0.88, 0.68, 0.3))
+			_ellipse(img, pw * 0.5, b41 - 8, 5, 4, Color(0.88, 0.68, 0.3))
+			_ellipse(img, pw * 0.5, b41 - 8, 3, 2.5, Color(1.0, 0.9, 0.6))
+			_r(img, 4, b41 - 22, pw - 8, 6, Color(0.96, 0.95, 0.92))
+			_r(img, 4, b41 - 22, pw - 8, 1, Color(1, 1, 1))
+			for cnd in range(8, pw - 8, 10):
+				_r(img, cnd, b41 - 28, 2, 6, Color(0.95, 0.92, 0.85))
+				_r(img, cnd, b41 - 30, 2, 2, Color(1.0, 0.8, 0.4))
 		"vote_booth":
 			# 54c (Luz): a voting booth of frosted glass at The Vote – a blue frame, the screen inside, a curtain of light
 			var b40 := fy + ph

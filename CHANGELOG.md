@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.14 – 2026-11-16
+
+**Package 54c, part 5 – the Cathedral's nave (Luz).** A level of its own in the Cathedral of Return's lift.
+- The great pointed window onto space with the Pilgrim Gate in it exactly as it stands out there (its own art: the
+  ring, the twelve spires, the stained bands, the lights), its beam reaching out towards home, the stars twinkling.
+- The altar on its steps, candelabra, lancets, banners; the nave with its runner, pews, columns, censers, the windows'
+  colours on the floor, pilgrims; the Curia on foot – the chancery (edict, tithe, petition, indulgence) and the relic
+  shrine; the Hierarch's guard in gold.
+- A sight: the viewpoint before the altar, information at a lectern, a souvenir stall (Pilgrim's Candle); events – a
+  mass, the choir, a pilgrim ship jumping through the gate (seen), new pilgrims, the gate's light falling (rare, seen).
+  An excursion target.
+- Debug: F12 → Ground → Capitals → Cathedral of Return. Smoke test group `nave54c`.
+
 ## alpha 0.7.54.13 – 2026-11-16
 
 **Package 54c, part 4 – The Vote's gallery (Luz).** The first of the special stations' own rooms: a level of its own in

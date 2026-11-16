@@ -2431,21 +2431,25 @@ func _c_debug_capital(c: Dictionary) -> String:
 	return ""
 
 
-## {"type":"debug_station_room", "room": "vgallery"} – 54c (Luz): to a special station's own room (The Vote's gallery)
+## {"type":"debug_station_room", "room": "vgallery"|"nave"} – 54c (Luz): to a special station's own room (The Vote's
+## gallery, the Cathedral's nave)
+const DEBUG_ROOMS := {"vgallery": ["landfall", "senate"], "nave": ["heimkehr", "curia"]}
 func _c_debug_station_room(c: Dictionary) -> String:
 	var m = _main()
 	var f := _fit()
 	if m == null or f == null:
 		return "No game running."
 	var room := String(c.get("room", "vgallery"))
-	var sid := Universe.special_system("landfall")
+	if not DEBUG_ROOMS.has(room):
+		return "No such room."
+	var sid := Universe.special_system(String(DEBUG_ROOMS[room][0]))
 	if GameState.current_system != sid:
 		var e := _c_debug_teleport({"system": sid})
 		if e != "":
 			return e
 	var st := {}
 	for s in Universe.get_layout(sid)["stations"]:
-		if bool(s.get("senate", false)):
+		if bool(s.get(String(DEBUG_ROOMS[room][1]), false)):
 			st = s
 	if st.is_empty() or m.view == null:
 		return "No such station here."
