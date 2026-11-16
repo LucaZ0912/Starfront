@@ -117,6 +117,9 @@ var codex = CodexStateScript.new()
 ## Package 39a: the Senate of the Assembly (bills, votes, laws in force) – see scripts/core/senate.gd.
 const SenateScript = preload("res://scripts/core/senate.gd")
 var senate = SenateScript.new()
+## Package 55: the story – missions, steps, flags, the journal (scripts/core/story.gd).
+const StoryScript = preload("res://scripts/core/story.gd")
+var story = StoryScript.new()
 ## Package 39b: the Curia of the Covenant (edicts, tithes, indulgences, relics) – see scripts/core/curia.gd.
 const CuriaScript = preload("res://scripts/core/curia.gd")
 var curia = CuriaScript.new()
@@ -222,6 +225,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	codex.reset()
 	senate.reset()
 	curia.reset()
+	story.reset()                                # package 55
 	permits.clear()
 	research_data = 0
 	reset_ground_state()                         # review 7 M1
@@ -536,7 +540,7 @@ func to_dict() -> Dictionary:
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
-		"senate": senate.to_dict(), "curia": curia.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "minigame_streak": minigame_streak.duplicate(), "minigame_wins": minigame_wins.duplicate(), "minigame_best": minigame_best.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "poi_state": poi_state.duplicate(true), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
+		"senate": senate.to_dict(), "curia": curia.to_dict(), "story": story.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "minigame_streak": minigame_streak.duplicate(), "minigame_wins": minigame_wins.duplicate(), "minigame_best": minigame_best.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "poi_state": poi_state.duplicate(true), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
@@ -599,6 +603,10 @@ func from_dict(d: Dictionary) -> void:
 		senate.from_dict(d["senate"])
 	else:
 		senate.reset()
+	if d.has("story"):
+		story.from_dict(d["story"])                  # package 55
+	else:
+		story.reset()
 	if d.has("curia"):
 		curia.from_dict(d["curia"])
 	else:
@@ -2387,6 +2395,7 @@ func _arrive(f: ShipFitting) -> void:
 	current_system = f.system_id
 	if f.uid == active_uid:
 		poi_visits[str(f.system_id)] = int(poi_visits.get(str(f.system_id), 0)) + 1     # package 53a: other sites this time
+		story.event("jump", {"system": f.system_id})          # package 55
 		for pid in poi_state.keys():                     # review 7 W1: a new visit – the sites here are fresh
 			if int((poi_state[pid] as Dictionary).get("sys", -1)) == f.system_id:
 				poi_state.erase(pid)

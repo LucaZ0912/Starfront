@@ -369,6 +369,11 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.53.7: theme `mine` (`rails`, `rubble`, `descent` "cage"), `DungeonGen.build_minehead`, `_corridor(..., rails)`; `GameState.settle_poi`; SettleGen zone `mine_path` (meta `mine_path_front`); GroundView level `minehead`, `_fuses_step`, `blast_near`, `shot_lands` (called by GroundCombat), `_take_one`; ExploreNode `cage`, `mine_gen`, `vein`, `rubble`, `loose_rock`, `tnt`, `mine_gate`; floors 25–27, style `mine`, decal `rails`; ObjArt `shaft_house`, `winding_house`, `ore_bin`; `PoiData.MUSEUM_RELICS["mine"]`.
 - 0.7.53.9: theme `maint` (`descent` "stairs", `outside` "lift", `passive_foes`), FoeData `maint_drone` (`drone`), GroundCombat passive/provoked foes; GroundView `_town_kind`, `_drones_step`/`_draw_drones`, `_restart_reactor`, city lift level `maint`; `GameState.maint_sites`/`maint_site`; ExploreNode `crank_door`, `fuse_box`, `reactor` (`_draw_reactor`), `stairs_down`, `stairs_up`, `service_lift`, `steam`; style `maint`; ObjArt `valve_box`, `cable_drum`.
 - 0.7.53.11: theme `pirate` (`outside` "cliff", `hangar`, `cells`, `descent` "ramp", target `loot_room`), `DungeonGen.build_cliff`, `parked_covers`, map meta `parked`; `scripts/ground/parked_art.gd` (a ship made plastic: height from its outline, lit); ExploreNode `pirate_gate`, `searchlight`, `ramp_down`, `cells`; style `pirate`, face decos `skull_banner`, `graffiti`; ObjArt `watchtower`, `glider`, `fire_barrel`.
+- 0.8.55.1 (package 55): data/story.gd (`MISSIONS`, `CHARACTERS`, `DIALOGUES`, `TIPS`, `SECRETS`), scripts/core/story.gd
+  (`GameState.story`: `start`, `event`, `set_flag`, `tip`, `find_secret`, `track`, `keys`, `goal_lines`, signals `show`
+  and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
+  pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
+  (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
 - 0.7.80.1 (package 80): autoload `Pad` (scripts/autoload/pad.gd: devices, glyphs, settings and bindings in
   user://controller.cfg, contexts space/ground/menu/minigame, combinations, `pad_button`/`pad_stick`/`pad_buttons` of
   games and menus, the wheels `scripts/ui/pad_wheel.gd`, the prompts `scripts/ui/pad_hint.gd`, `rumble`, test

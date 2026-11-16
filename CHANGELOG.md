@@ -3,6 +3,25 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.55.1 – 2026-11-16
+
+**Teil 8 begins – package 55: the story's framework (Luz).** What the story will run on (the story itself comes with
+packages 56–59).
+- The story as data (data/story.gd): missions (story and side missions) of steps, each with goals – dock, get near,
+  lock, jump, talk, a story flag – and what happens when a step starts and ends (a dialogue, a radio call, a tip, a
+  flag, credits, a secret, a target picked); characters with portraits, dialogues whose answers set story flags,
+  tips, secrets. Kept in the save.
+- A dialogue pauses the game (portrait, typed lines, answers – keys 1–9, mouse or controller); a radio call comes in
+  flight at the top, typed, the game goes on, one after the other; a tip over the module bar ("Got it", "No more
+  tips"; keys and controller buttons named in its text).
+- The tracked mission's next goals: in space over the ship's panel, on foot under the suit's bars; in space a gold
+  diamond on the target with its distance, an arrow at the edge when it is off the screen.
+- The journal (Pilot window → Journal, key O; in the controller's window wheel): Story, Side missions, Tips, Secrets;
+  missions as long tiles, on the right the mission picked – its steps and goals, what was said (with portraits),
+  track it or stop tracking.
+- Dan T. Rogue (Luz) speaks for the first time – in the test mission from the debug menu (Missions → Story): a
+  dialogue, a radio call and a tip, a station marked (get within 4,000 km), dock there, credits and a test secret.
+
 ## alpha 0.7.80.1 – 2026-11-16
 
 **Package 80 – full controller support (Luz).** PlayStation (DualSense) and Xbox, by USB or Bluetooth; the glyphs

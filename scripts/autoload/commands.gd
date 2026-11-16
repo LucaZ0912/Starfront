@@ -534,6 +534,50 @@ func _c_fire_group_clear(_c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"story_track", "id": mission id or ""} – package 55: the mission whose goals show over the ship's panel.
+func _c_story_track(c: Dictionary) -> String:
+	GameState.story.track(String(c.get("id", "")))
+	return ""
+
+
+## {"type":"story_tips", "on": bool} – package 55: tips on or off.
+func _c_story_tips(c: Dictionary) -> String:
+	GameState.story.tips_off = not bool(c.get("on", true))
+	GameState.story.changed.emit()
+	return ""
+
+
+## {"type":"debug_story", "do": "start" | "step" | "flag" | "reset" | "tip" | "radio" | "next", "id", "step", "name"}
+## – package 55: the story by hand: start a mission (at a step), jump to a step, set a flag, a tip, a radio call, the
+## step done at once, everything back.
+func _c_debug_story(c: Dictionary) -> String:
+	var st = GameState.story
+	var mid := String(c.get("id", "debug_test"))
+	match String(c.get("do", "start")):
+		"start":
+			return st.start(mid, int(c.get("step", 0)))
+		"step":
+			if not st.running(mid):
+				return st.start(mid, int(c.get("step", 0)))
+			st._enter(mid, int(c.get("step", 0)))
+		"next":
+			if not st.running(mid):
+				return "Not running."
+			for g in st.step_data(mid).get("goals", []):
+				st._meet(mid, String(g["id"]))
+		"flag":
+			st.set_flag(String(c.get("name", "debug_flag")), c.get("value", true))
+		"tip":
+			st.tips_seen.erase(String(c.get("tip", "tip_fire_groups")))
+			st.tip(String(c.get("tip", "tip_fire_groups")))
+		"radio":
+			st.show.emit("radio", {"who": "dan", "text": "Radio check – one, two. Can you hear me, pilot?", "mission": ""})
+		"reset":
+			st.reset()
+	GameState.log_msg("[Debug] Story: %s." % String(c.get("do", "start")), GameState.COL_WARN)
+	return ""
+
+
 ## {"type":"course", "to": <system id>} – plot a hyperspace route and start travelling.
 func _c_course(c: Dictionary) -> String:
 	var f := _fit()

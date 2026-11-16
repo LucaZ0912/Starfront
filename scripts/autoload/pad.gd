@@ -789,7 +789,7 @@ func _flick_step() -> void:
 const ACTION_ITEMS := [["Approach", "cmd_approach"], ["Follow", "cmd_follow"], ["Orbit 400 km", "orbit"], ["Warp to", "cmd_warp"],
 	["Dock · jump", "dock_jump"], ["Drones out", "drone_launch_all"], ["Drones back", "drone_recall"], ["Wingmen: attack", "wing_attack"]]
 const WINDOW_ITEMS := [["Ship", "ship_menu"], ["Pilot · character", "pilot_window"], ["Galaxy map", "galaxy_map"], ["Station", "station"],
-	["Help", "help"], ["Wingmen: passive", "wing_passive"]]
+	["Help", "help"], ["Journal", "journal"]]
 
 
 func _open_wheel(which: String, btn: String) -> void:

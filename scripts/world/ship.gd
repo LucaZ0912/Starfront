@@ -2336,6 +2336,8 @@ func add_lock(node) -> String:
 		return "No line of sight – %s is in the radar shadow of %s." % [node_name(node), bl.title()]
 	locks.append({"key": key, "node": node, "progress": 0.0})
 	active_lock = key                  # a new lock becomes the active target
+	if view != null and self == view.player:
+		GameState.story.event("lock", {"id": key})       # package 55
 	_relock.erase(key)
 	_mlog("Locking %s … (%.1f s)" % [node_name(node), _lock_duration(node, fit.stats())])
 	return ""

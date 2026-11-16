@@ -187,6 +187,7 @@ func _process(delta: float) -> void:
 				_test_review7(view)              # review of Teil 7 – its fixes
 				_test_firegroups79(view)         # package 79 – fire groups
 				_test_pad80(view)                # package 80 – controller support
+				_test_story55(view)              # package 55 – the story's framework
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -13493,3 +13494,59 @@ func _test_pad80(view: SystemView) -> void:
 	check(space_ok and wheel_ok and fly_ok and ps_ok and xb_ok and keys_back and menu_ok and reb_ok and panel_ok and mg_ok and map_ok,
 		"80: controller – △ locks, L1 next target, ← held + L1 is fire group 1 (not the target), □ held: the action wheel (the stick picks, letting go does it), the stick flies; PlayStation and Xbox glyphs instead of the keys (the keys back with the keyboard); the D-pad in a menu; rebinding and defaults; Settings → Controller; billiards, darts and Rock Hopper by the controller; Orbit and System as maps (no flying, the stick picks), the planet map by the D-pad  [%s]%s" % [
 			" ".join(PackedStringArray([str(space_ok), str(wheel_ok), str(fly_ok), str(ps_ok), str(xb_ok), str(keys_back), str(menu_ok), str(reb_ok), str(panel_ok), str(mg_ok), str(map_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+## Package 55 (Luz): the story's framework – the test mission from the debug menu: a dialogue with Dan (the game
+## pauses, an answer sets a flag), then a radio call, a tip and a marked station (fly near – dock), credits and a
+## secret at the end; the tracker, the journal's four tabs, the save, keys in texts.
+func _test_story55(view: SystemView) -> void:
+	var notes: Array = []
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var cr0: int = GameState.credits
+	st.reset()
+	var e: String = Commands.execute({"type": "debug_story", "do": "start", "id": "debug_test"})
+	var ui: StoryUI = main.story_ui
+	var dlg_ok: bool = e == "" and ui.dialogue != null and get_tree().paused and st.step_index("debug_test") == 0
+	ui.choose(1)                                       # "I know how this works." – sets a flag
+	ui.choose(0)
+	dlg_ok = dlg_ok and ui.dialogue == null and not get_tree().paused and bool(st.flags.get("test_confident", false)) and st.step_index("debug_test") == 1
+	var target: String = String(st.missions["debug_test"]["target"])
+	var fly_ok: bool = target != "" and st.tips_seen.has("tip_objective") and st.tracked == "debug_test" and ui.marker_targets().has(target)
+	st.event("near", {"id": target, "km": 6000.0})
+	var far_ok: bool = st.step_index("debug_test") == 1
+	st.event("near", {"id": target, "km": 3000.0})
+	var near_ok: bool = far_ok and st.step_index("debug_test") == 2
+	st.event("dock", {"id": "some_other_station"})
+	var wrong_ok: bool = st.step_index("debug_test") == 2
+	st.event("dock", {"id": target})
+	var done_ok: bool = wrong_ok and not st.running("debug_test") and st.done.has("debug_test") and st.secrets.has("test_secret") and GameState.credits == cr0 + 1000
+	var log_ok: bool = true
+	# save and load
+	st.start("debug_test")
+	ui.choose(0)
+	ui.choose(0)
+	var d: Dictionary = st.to_dict()
+	var st2 = load("res://scripts/core/story.gd").new()
+	st2.from_dict(d)
+	var save_ok: bool = st2.step_index("debug_test") == 1 and st2.secrets.has("test_secret") and st2.tracked == "debug_test" and (st2.missions["debug_test"]["log"] as Array).size() >= 2
+	# the journal's four tabs build
+	main.open_journal()
+	var pw = main.pilot_window
+	var jr_ok: bool = pw.visible and pw.tab == pw.TAB_JOURNAL
+	for js in ["story", "side", "tips", "secrets"]:
+		pw.jsub = js
+		pw.jsel = ""
+		pw.rebuild()
+		jr_ok = jr_ok and pw.body.get_child_count() >= 2
+	pw.jsub = "story"
+	pw.close()
+	var keys_ok: bool = st.keys("press {key:module_1} now") == "press %s now" % Keybinds.key_text("module_1")
+	ui.close_tip()
+	st.from_dict(keep)
+	GameState.credits = cr0
+	if not (dlg_ok and fly_ok and near_ok and done_ok and save_ok and jr_ok and keys_ok):
+		notes.append("target %s step %d tracked %s" % [target, st.step_index("debug_test"), st.tracked])
+	check(dlg_ok and fly_ok and near_ok and done_ok and log_ok and save_ok and jr_ok and keys_ok,
+		"55: the story's framework – the test mission: a dialogue (paused, an answer sets a flag), a tip, a marked station (near – not from afar – then dock there, not elsewhere), credits and a secret; tracked; kept in the save; the journal's four tabs; keys in texts  [%s]%s" % [
+			" ".join(PackedStringArray([str(dlg_ok), str(fly_ok), str(near_ok), str(done_ok), str(save_ok), str(jr_ok), str(keys_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

@@ -7,6 +7,7 @@ extends Node
 
 var view: SystemView
 var hud: HUD
+var story_ui: StoryUI
 var galaxy: GalaxyMap
 var station_panel: StationUI
 var ship_menu: ShipMenu
@@ -31,6 +32,9 @@ func _ready() -> void:
 	SaveGame.start_pending()
 	hud = HUD.new()
 	add_child(hud)
+	story_ui = StoryUI.new()                          # package 55: dialogues, radio calls, tips, the tracked mission
+	story_ui.main = self
+	add_child(story_ui)
 	galaxy = GalaxyMap.new()
 	add_child(galaxy)
 	station_panel = StationUI.new()
@@ -641,6 +645,7 @@ func open_station() -> void:
 
 
 func _on_station_docked(_station_id: String) -> void:
+	GameState.story.event("dock", {"id": _station_id})        # package 55
 	if not station_panel.visible and not galaxy.visible:
 		open_station()
 	SaveGame.autosave.call_deferred()
@@ -695,6 +700,8 @@ func handle_input(event: InputEvent) -> void:
 		toggle_ship_menu()
 	elif event.is_action_pressed("pilot_window", false, true):
 		toggle_pilot_window()
+	elif event.is_action_pressed("journal", false, true):
+		open_journal()
 	elif event.is_action_pressed("station", false, true):
 		if ground != null and is_instance_valid(ground):
 			return                                         # 0.7.49.13: on foot, the station is around you
@@ -819,3 +826,13 @@ func _process(delta: float) -> void:
 		var tw := create_tween()
 		tw.tween_property(lay.get_child(0), "modulate:a", 0.0, 0.35)
 		tw.tween_callback(lay.queue_free)
+
+
+## Package 55: the journal – the pilot window on its Journal tab (again: closed).
+func open_journal() -> void:
+	if pilot_window.visible and pilot_window.tab == pilot_window.TAB_JOURNAL:
+		pilot_window.close()
+		return
+	if not pilot_window.visible:
+		toggle_pilot_window()
+	pilot_window._set_tab(pilot_window.TAB_JOURNAL)

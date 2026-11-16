@@ -17,12 +17,14 @@ const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const PilotData = preload("res://data/pilot.gd")
 const SkillData = preload("res://data/skills.gd")
 const COL := Color(1.0, 0.82, 0.35)
-const TABS := ["Pilot", "Skills", "Perks", "Skill tree", "Gear"]
+const TABS := ["Pilot", "Skills", "Perks", "Skill tree", "Gear", "Journal"]
 const TAB_PILOT := 0
 const TAB_SKILLS := 1
 const TAB_PERKS := 2
 const TAB_TREE := 3
 const TAB_GEAR := 4
+const TAB_JOURNAL := 5                    # package 55 (Luz)
+const StoryData = preload("res://data/story.gd")
 const GearData = preload("res://data/gear.gd")
 const GearIcons = preload("res://scripts/ui/gear_icons.gd")
 const SUBS := ["Info", "Standings", "Codex", "Collection"]
@@ -33,6 +35,8 @@ const CodexView = preload("res://scripts/ui/codex_view.gd")
 const TreeData = preload("res://data/skilltree.gd")
 
 var tab := 0
+var jsub := "story"                        # the journal's tab: story · side · tips · secrets
+var jsel := ""                             # the mission (or tip, secret) picked
 var sub := 0                              # Pilot tab: 0 Info, 1 Standings, 2 Codex, 3 Collection
 var coll_cat := "perks"                   # Collection: the category shown (0.5.34.3)
 var tab_buttons: Array = []
@@ -131,6 +135,7 @@ func rebuild() -> void:
 		TAB_PERKS: _perks()
 		TAB_TREE: _tree()
 		TAB_GEAR: _gear()
+		TAB_JOURNAL: _journal()
 
 
 # ---- package 51: gear
@@ -1408,3 +1413,196 @@ func _stat_card(parent: Control, title: String, rows: Array) -> void:
 
 func _n(x: float) -> String:
 	return GameData.fmt_credits(int(x)).trim_suffix(" cr") if absf(x) >= 1000.0 else str(int(x))
+
+
+# ---------------------------------------------------------------- package 55 (Luz): the journal
+
+const J_SUBS := [["story", "STORY", Color(1.0, 0.82, 0.35)], ["side", "SIDE MISSIONS", Color(0.4, 0.8, 1.0)],
+	["tips", "TIPS", Color(0.4, 1.0, 0.6)], ["secrets", "SECRETS", Color(0.8, 0.5, 1.0)]]
+
+
+func _journal() -> void:
+	var st = GameState.story
+	var subs := UI.hbox(6)
+	body.add_child(subs)
+	for js in J_SUBS:
+		var key: String = js[0]
+		var b := UI.button(String(js[1]), func():
+			jsub = key
+			jsel = ""
+			rebuild())
+		b.toggle_mode = true
+		b.button_pressed = jsub == key
+		b.custom_minimum_size = Vector2(190, 30)
+		b.add_theme_color_override("font_color", js[2])
+		subs.add_child(b)
+	var row := UI.hbox(16)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(row)
+	var left := UI.vbox(8)
+	left.custom_minimum_size = Vector2(460, 0)
+	row.add_child(left)
+	var rp := UI.neon_panel(Color(COL, 0.5), Color(0.04, 0.06, 0.11, 0.95), 1)
+	rp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rp.custom_minimum_size = Vector2(0, 560)
+	row.add_child(rp)
+	var right := UI.vbox(8)
+	rp.add_child(right)
+	match jsub:
+		"story", "side":
+			_j_missions(left, right, jsub)
+		"tips":
+			_j_tips(left, right)
+		"secrets":
+			_j_secrets(left, right)
+
+
+func _j_tile(parent: Control, id: String, title: String, sub: String, prog: float, col: Color, tracked: bool, done: bool) -> void:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(450, 74)
+	b.toggle_mode = true
+	b.button_pressed = jsel == id
+	var sb := UI.panel_style(Color(0.06, 0.08, 0.13, 0.96) if jsel == id else Color(0.04, 0.05, 0.09, 0.9), col if jsel == id else Color(col, 0.35))
+	sb.set_border_width_all(2 if jsel == id else 1)
+	for stn in ["normal", "hover", "pressed", "hover_pressed"]:
+		b.add_theme_stylebox_override(stn, sb)
+	b.pressed.connect(func():
+		jsel = id
+		rebuild())
+	parent.add_child(b)
+	var v := UI.vbox(3)
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 10
+	v.offset_top = 6
+	v.offset_right = -10
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var h := UI.hbox(8)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(h)
+	var tl := UI.label(title, 15, Color(0.6, 0.85, 0.65) if done else Color.WHITE)
+	tl.custom_minimum_size = Vector2(320, 0)
+	h.add_child(tl)
+	if tracked:
+		h.add_child(UI.label("◆ TRACKED", 11, COL))
+	v.add_child(UI.label(sub, 12, UI.TEXT_DIM))
+	var bar := UI.bar(col, 420)
+	bar.custom_minimum_size = Vector2(420, 5)
+	bar.max_value = 1.0
+	bar.value = prog
+	v.add_child(bar)
+	for c in v.find_children("*", "Control", true, false):
+		(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> void:
+	var st = GameState.story
+	var col: Color = J_SUBS[0][2] if kind == "story" else J_SUBS[1][2]
+	var ids: Array = []
+	for mid in st.missions:
+		if String(st.mission_data(mid).get("kind", "story")) == kind:
+			ids.append(mid)
+	for mid2 in st.done:
+		if String(st.mission_data(mid2).get("kind", "story")) == kind and not ids.has(mid2):
+			ids.append(mid2)
+	if ids.is_empty():
+		left.add_child(UI.wrap_label("No %s yet." % ("story missions" if kind == "story" else "side missions"), 13, UI.TEXT_DIM, 440))
+		right.add_child(UI.wrap_label("Missions appear here once they begin. Track one to see its next goals over your ship's panel (on foot: under your suit's bars).", 13, UI.TEXT_DIM, 900))
+		return
+	if jsel == "" or not ids.has(jsel):
+		jsel = String(ids[0])
+	for mid3 in ids:
+		var md: Dictionary = st.mission_data(mid3)
+		var steps: Array = md.get("steps", [])
+		var fin: bool = st.done.has(mid3) and not st.running(mid3)
+		var i: int = steps.size() if fin else st.step_index(mid3)
+		_j_tile(left, mid3, String(md.get("title", mid3)), "%s · %s" % [String(md.get("chapter", "")), "done" if fin else "step %d of %d" % [i + 1, steps.size()]],
+			float(i) / maxf(steps.size(), 1), Color(0.5, 0.85, 0.6) if fin else col, st.tracked == mid3, fin)
+	left.add_child(UI.label("Chapters to come stay hidden until you reach them.", 12, UI.TEXT_DIM))
+	# right: the mission picked
+	var md2: Dictionary = st.mission_data(jsel)
+	var running: bool = st.running(jsel)
+	var th := UI.hbox(12)
+	right.add_child(th)
+	var tt := UI.label(String(md2.get("title", jsel)), 22, Color.WHITE)
+	tt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	th.add_child(tt)
+	if running:
+		var trk := UI.button("◆ Tracked – stop tracking" if st.tracked == jsel else "◇ Track this mission", func():
+			Commands.execute({"type": "story_track", "id": "" if GameState.story.tracked == jsel else jsel})
+			rebuild())
+		trk.add_theme_color_override("font_color", COL)
+		th.add_child(trk)
+	right.add_child(UI.wrap_label(String(md2.get("desc", "")), 14, Color(0.85, 0.88, 0.95), 900))
+	right.add_child(UI.label("STEPS", 13, COL))
+	var steps2: Array = md2.get("steps", [])
+	var cur: int = st.step_index(jsel) if running else steps2.size()
+	for k in steps2.size():
+		var s: Dictionary = steps2[k]
+		if k < cur:
+			right.add_child(UI.label("✓  " + String(s["title"]), 14, Color(0.6, 0.85, 0.65)))
+		elif k == cur:
+			right.add_child(UI.label("▸  " + String(s["title"]), 15, Color.WHITE))
+			right.add_child(UI.wrap_label("      " + GameState.story.keys(String(s.get("text", ""))), 13, Color(0.75, 0.8, 0.9), 880))
+			var parts: PackedStringArray = []
+			for gl in st.goal_lines(jsel):
+				parts.append(("✓ " if gl[1] else "▸ ") + String(gl[0]))
+			right.add_child(UI.label("      " + "     ".join(parts), 13, Color(0.75, 0.9, 0.8)))
+		else:
+			right.add_child(UI.label("·  " + String(s["title"]), 14, Color(0.6, 0.65, 0.75)))
+	var log: Array = (st.missions.get(jsel, {}) as Dictionary).get("log", [])
+	if not log.is_empty():
+		right.add_child(UI.label("", 4))
+		right.add_child(UI.label("WHAT WAS SAID", 13, COL))
+		for e in log.slice(maxi(0, log.size() - 6)):
+			var who := String(e["who"])
+			var c: Dictionary = StoryData.CHARACTERS.get(who, {})
+			var line := UI.hbox(10)
+			right.add_child(line)
+			if who != "you" and not c.is_empty():
+				var fr := UI.neon_panel(c.get("col", COL), Color(0.05, 0.06, 0.1), 2)
+				line.add_child(fr)
+				var tr := TextureRect.new()
+				tr.texture = PilotArt.portrait(GameState.story.look_of(who))
+				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+				tr.custom_minimum_size = Vector2(52, 52)
+				fr.add_child(tr)
+			var nm := "You" if who == "you" else String(c.get("name", who))
+			var said := GameState.story.keys(String(e["text"]))
+			if not said.begins_with("\""):
+				said = "\"%s\"" % said
+			line.add_child(UI.wrap_label("%s%s: %s" % [nm, " (radio)" if bool(e.get("radio", false)) else "", said], 13, Color(0.85, 0.88, 0.95), 820))
+
+
+func _j_tips(left: VBoxContainer, right: VBoxContainer) -> void:
+	var st = GameState.story
+	var col: Color = J_SUBS[2][2]
+	if st.tips_seen.is_empty():
+		left.add_child(UI.wrap_label("No tips yet – they come as you play.", 13, UI.TEXT_DIM, 440))
+	for id in st.tips_seen:
+		_j_tile(left, id, String(StoryData.TIPS[id]["title"]), "tip", 1.0, col, false, false)
+	right.add_child(UI.label("TIPS", 13, col))
+	var tg := UI.button("Tips: %s" % ("off – switch on" if st.tips_off else "on – switch off"), func():
+		Commands.execute({"type": "story_tips", "on": GameState.story.tips_off})
+		rebuild())
+	right.add_child(tg)
+	if jsel != "" and StoryData.TIPS.has(jsel):
+		right.add_child(UI.label(String(StoryData.TIPS[jsel]["title"]), 22, Color.WHITE))
+		right.add_child(UI.wrap_label(GameState.story.keys(String(StoryData.TIPS[jsel]["text"])), 14, Color(0.85, 0.88, 0.95), 900))
+
+
+func _j_secrets(left: VBoxContainer, right: VBoxContainer) -> void:
+	var st = GameState.story
+	var col: Color = J_SUBS[3][2]
+	var all: Array = StoryData.SECRETS.keys().filter(func(k): return not bool(StoryData.SECRETS[k].get("debug_only", false)) or st.secrets.has(k))
+	for id in all:
+		var found: bool = st.secrets.has(id)
+		_j_tile(left, id if found else "", String(StoryData.SECRETS[id]["title"]) if found else "???", "found" if found else "not found yet", 1.0 if found else 0.0, col, false, false)
+	right.add_child(UI.label("SECRETS  %d of %d" % [st.secrets.size(), StoryData.SECRETS.size()], 13, col))
+	if jsel != "" and st.secrets.has(jsel):
+		right.add_child(UI.label(String(StoryData.SECRETS[jsel]["title"]), 22, Color.WHITE))
+		right.add_child(UI.wrap_label(String(StoryData.SECRETS[jsel]["text"]), 14, Color(0.85, 0.88, 0.95), 900))
+	else:
+		right.add_child(UI.wrap_label("Hidden places, odd finds, things few pilots ever see. Each one you find is kept here.", 13, UI.TEXT_DIM, 900))

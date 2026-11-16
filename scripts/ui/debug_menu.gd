@@ -779,6 +779,19 @@ const SPACE_JOBS := [["courier", "Courier"], ["bounty", "Bounty"], ["mining", "S
 
 
 func _build_missions() -> void:
+	_section("Story (package 55)")
+	var rst := _row()
+	rst.add_child(UI.button("Start the test mission", func(): _cmd({"type": "debug_story", "do": "start", "id": "debug_test"})))
+	for si in 3:
+		var sv: int = si
+		rst.add_child(UI.button("Step %d" % (si + 1), func(): _cmd({"type": "debug_story", "do": "step", "id": "debug_test", "step": sv})))
+	rst.add_child(UI.button("Step done", func(): _cmd({"type": "debug_story", "do": "next", "id": "debug_test"})))
+	var rst2 := _row()
+	rst2.add_child(UI.button("Radio call", func(): _cmd({"type": "debug_story", "do": "radio"})))
+	rst2.add_child(UI.button("A tip", func(): _cmd({"type": "debug_story", "do": "tip", "tip": "tip_fire_groups"})))
+	rst2.add_child(UI.button("Set flag \"debug_flag\"", func(): _cmd({"type": "debug_story", "do": "flag", "name": "debug_flag"})))
+	rst2.add_child(UI.button("Reset the story", func(): _cmd({"type": "debug_story", "do": "reset"})))
+	_box.add_child(UI.wrap_label("The story's framework: the test mission (a dialogue with Dan, a radio call, a tip, a marked station to fly to and dock at). The journal: Pilot window → Journal (O).", 12, UI.TEXT_DIM, 560))
 	_section("Jobs on foot (packages 53c, 53d)")
 	_box.add_child(UI.wrap_label("Accept: the job is yours – the site goes on the planet map (in a city: the way in from the city). Accept & go: straight down onto the site (not for city jobs).", 12, UI.TEXT_DIM, 560))
 	for gj in GROUND_JOBS:
