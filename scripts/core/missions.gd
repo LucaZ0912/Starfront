@@ -852,6 +852,9 @@ static func ground_sights(sid: int) -> Array:
 		if bool(st0.get("senate", false)):
 			out.append({"id": String(st0["id"]) + "_gallery", "name": "the gallery of The Vote", "body": String(st0.get("body", "")),
 				"kind": "station", "appeal": 0.8, "ground": true, "where": String(st0.get("name", "")), "station": String(st0["id"])})
+		if bool(st0.get("exchange", false)):
+			out.append({"id": String(st0["id"]) + "_control", "name": "the control room of the Meridian Sphere", "body": String(st0.get("body", "")),
+				"kind": "station", "appeal": 0.8, "ground": true, "where": String(st0.get("name", "")), "station": String(st0["id"])})
 		if bool(st0.get("curia", false)):
 			out.append({"id": String(st0["id"]) + "_nave", "name": "the nave of the Cathedral of Return", "body": String(st0.get("body", "")),
 				"kind": "station", "appeal": 0.8, "ground": true, "where": String(st0.get("name", "")), "station": String(st0["id"])})

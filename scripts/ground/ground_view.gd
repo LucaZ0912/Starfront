@@ -15,6 +15,7 @@ const PalaceGen = preload("res://scripts/ground/palace_gen.gd")
 const StationRooms = preload("res://scripts/ground/station_rooms.gd")
 const VoteShaft = preload("res://scripts/ground/vote_shaft.gd")
 const GateWindow = preload("res://scripts/ground/gate_window.gd")
+const SphereWindow = preload("res://scripts/ground/sphere_window.gd")
 const ExhibitArtV = preload("res://scripts/core/exhibit_art.gd")
 const LAYER := 12
 const BgShader = preload("res://shaders/background.gdshader")
@@ -399,6 +400,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = _poi_map("alley", Vector2.ZERO)                         # 0.7.53.3: a city's back alley
 	elif level == "plaza":
 		map = _poi_map("plaza", Vector2.ZERO)                         # 0.7.53.19: a city's roof plaza
+	elif level == "control":
+		map = StationRooms.build_control(station)                     # 54c (Luz): the Meridian Sphere – the control room
 	elif level == "nave":
 		map = StationRooms.build_nave(station)                        # 54c (Luz): the Cathedral of Return – the nave
 	elif level == "vgallery":
@@ -547,7 +550,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_poi_setup()                                      # package 53a: the minimap, the targets window
 	_set_hint()
 	_space_view(_sys)
-	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "pnarthex": "Aureola", "throne": "Aureola",
+	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "pnarthex": "Aureola", "throne": "Aureola",
 		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
 		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
 	if is_cloud() and level == "tower":
@@ -1630,6 +1633,14 @@ func tower_floor() -> int:
 ## Beyond the glass: the system's sky – its nebula, its star, the planet the station circles.
 ## In a city's tower bar (0.7.50.5): the city at night – towers, speeders, drones.
 func _space_view(sys_id: int) -> void:
+	if _window.size.x > 0.0 and map.has_meta("sphere_view"):
+		_neb.material = null                               # 54c (Luz): the star and the shell through the filter glass
+		_neb.color = Color(0.02, 0.02, 0.04)
+		var sw = SphereWindow.new()
+		sw.setup(_window.size, CityStyle.star_color(sys_id))
+		sw.sight = map.get_meta("sight", {})
+		_sky.add_child(sw)
+		return
 	if _window.size.x > 0.0 and map.has_meta("gate_view"):
 		_neb.material = null                               # 54c (Luz): the Pilgrim Gate in the nave's great window
 		_neb.color = Color(0.02, 0.02, 0.06)
@@ -4053,6 +4064,9 @@ func use(instant: bool = false) -> bool:
 		"curia_chancery", "relic_office", "audience":
 			_open_curia_menu(String(zone["kind"]), zone)    # 54c (Luz): the Curia on foot, the audience
 			return true
+		"exchange_desk":
+			_open_exchange_menu(zone)                       # 54c (Luz): the Research Exchange on foot
+			return true
 		"audience_denied":
 			_say_toast("A templar lowers his halberd: \"Only the Allied of the Covenant may step before the Hierarch.\" (You: %s.)" % GameState.rep.tier_name("covenant"), 5.0)
 			return true
@@ -4292,6 +4306,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 			["cstation", "3.  Skyrail station – the line to the %s and the %s" % [CloudGen.STOPS[1], CloudGen.STOPS[2]]], ["tower", "4.  Sky bar – deck %d, the view over the clouds" % (tower_floor() / 10)]]
 	if not is_town() and bool(station.get("senate", false)):     # 54c (Luz): The Vote – the gallery over the drone shaft
 		lvls.append(["vgallery", "%d.  The gallery over the drone shaft – the voting booths" % (lvls.size() + 1)])
+	if not is_town() and bool(station.get("exchange", false)):   # 54c (Luz): the Meridian Sphere – the control room
+		lvls.append(["control", "%d.  The control room – the star and the shell, the Research Exchange" % (lvls.size() + 1)])
 	if not is_town() and bool(station.get("curia", false)):      # 54c (Luz): the Cathedral of Return – the nave
 		lvls.append(["nave", "%d.  The nave – the altar, the Curia, the Pilgrim Gate in the window" % (lvls.size() + 1)])
 	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
@@ -4702,6 +4718,45 @@ func _curia_do(cmd: Dictionary, kind: String, z: Dictionary) -> void:
 	_say_toast(e if e != "" else {"curia_tithe": "Your tithe is received.", "curia_indulgence": "You are forgiven.", "curia_petition": "The Curia has heard you.",
 		"curia_relics": "The relics are laid in the shrine – you are blessed.", "curia_audience": "The Hierarch has spoken."}.get(String(cmd["type"]), ""), 3.0)
 	_open_curia_menu(kind, z)
+
+
+## 54c (Luz): the Research Exchange on foot in the Meridian Sphere's control room – the same as its window.
+func _open_exchange_menu(z: Dictionary) -> void:
+	Audio.play("ui_open", "exchange desk")
+	_close_lift_menu()
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var col := Color(0.4, 1.0, 0.6)
+	var p := UI.neon_panel(Color(col, 0.85), Color(0.03, 0.06, 0.05, 0.96), 2)
+	p.custom_minimum_size = Vector2(540, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("THE RESEARCH EXCHANGE", 20, col))
+	v.add_child(UI.wrap_label("The Directorate pays for what you find out there: research data from analysed anomalies, and exotic matter. It sells exotic matter only to its Allied.", 13, UI.TEXT_DIM, 500))
+	v.add_child(UI.label("Research data: %d set%s  •  Exotic matter: %d" % [GameState.research_data, "" if GameState.research_data == 1 else "s", GameState.exotic_matter], 14, Color(0.9, 1.0, 0.95)))
+	var row := UI.hbox(8)
+	v.add_child(row)
+	var b1 := UI.button("Sell all data – %s" % GameData.fmt_credits(GameState.research_data * GameState.DATA_PRICE), func(): _exchange_do({"type": "exchange", "what": "data"}, z))
+	b1.disabled = GameState.research_data <= 0
+	row.add_child(b1)
+	var b2 := UI.button("Sell 1 exotic matter – %s" % GameData.fmt_credits(GameState.EM_SELL), func(): _exchange_do({"type": "exchange", "what": "sell_em", "n": 1}, z))
+	b2.disabled = GameState.exotic_matter < 1
+	row.add_child(b2)
+	var b3 := UI.button("Buy 1 exotic matter – %s" % GameData.fmt_credits(GameState.EM_BUY), func(): _exchange_do({"type": "exchange", "what": "buy_em", "n": 1}, z))
+	b3.disabled = not GameState.rep.at_least("directorate", "allied") or GameState.credits < GameState.EM_BUY
+	v.add_child(b3)
+	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
+	_lift_menu = c
+	_lift_menu.set_meta("zone", z)
+	_lift_menu.set_meta("keys", [])
+
+
+func _exchange_do(cmd: Dictionary, z: Dictionary) -> void:
+	var e: String = Commands.execute(cmd)
+	_say_toast(e if e != "" else "Done.", 3.0)
+	_open_exchange_menu(z)
 
 
 ## 54a: the souvenir stall.

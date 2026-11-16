@@ -167,6 +167,7 @@ const COMMODITIES := {
 	# package 54a (Luz): souvenirs of the sights on the ground – bought at the sight's stall, sold best far away
 	"souv_senate": {"name": "Glass Senate", "price": 110, "volume": 0.2, "category": "goods", "econ": "tourism", "wants": ["mining", "military", "industry", "research"], "trade_only": true},
 	"souv_palace": {"name": "Sun of Return Pendant", "price": 140, "volume": 0.1, "category": "goods", "econ": "tourism", "wants": ["mining", "military", "industry", "research"], "trade_only": true},
+	"souv_sphere": {"name": "Collector Cell Keyring", "price": 110, "volume": 0.1, "category": "goods", "econ": "tourism", "wants": ["mining", "military", "industry", "research"], "trade_only": true},
 	"souv_nave": {"name": "Pilgrim's Candle", "price": 80, "volume": 0.1, "category": "goods", "econ": "tourism", "wants": ["mining", "military", "industry", "research"], "trade_only": true},
 	"souv_vote": {"name": "Ballot Drone Model", "price": 100, "volume": 0.2, "category": "goods", "econ": "tourism", "wants": ["mining", "military", "industry", "research"], "trade_only": true},
 	"souv_mirror": {"name": "Mirror Shard", "price": 120, "volume": 0.1, "category": "goods", "econ": "tourism", "wants": ["mining", "military", "industry", "research"], "trade_only": true},
@@ -260,7 +261,7 @@ const GOODS_CATEGORY := {
 	"hand_tools": "industrial", "robots": "industrial", "ground_vehicles": "industrial", "prefab_habitats": "industrial", "salvage": "industrial",
 	"consumer_goods": "consumer", "textiles": "consumer", "exotic_hides": "consumer", "furniture": "consumer", "consumer_electronics": "consumer",
 	"holo_films": "consumer", "souvenirs": "consumer",
-	"souv_nave": "consumer", "souv_vote": "consumer", "souv_mirror": "consumer", "souv_senate": "consumer", "souv_palace": "consumer", "souv_cloud": "consumer", "souv_falls": "consumer", "souv_lagoon": "consumer", "souv_ice": "consumer", "souv_arches": "consumer", "souv_lava": "consumer", "souv_crater": "consumer",
+	"souv_sphere": "consumer", "souv_nave": "consumer", "souv_vote": "consumer", "souv_mirror": "consumer", "souv_senate": "consumer", "souv_palace": "consumer", "souv_cloud": "consumer", "souv_falls": "consumer", "souv_lagoon": "consumer", "souv_ice": "consumer", "souv_arches": "consumer", "souv_lava": "consumer", "souv_crater": "consumer",
 	"electronics": "hightech", "computers": "hightech", "medicine": "hightech", "medical_equipment": "hightech", "nanites": "hightech",
 	"implants": "hightech", "ai_cores": "hightech", "lab_equipment": "hightech", "holo_displays": "hightech",
 	"research_data": "science", "star_charts": "science", "prototypes": "science", "gene_samples": "science", "exotic_specimens": "science", "old_tech": "science",

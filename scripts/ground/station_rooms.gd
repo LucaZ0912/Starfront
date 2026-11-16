@@ -5,6 +5,8 @@ extends RefCounted
 ##   bill, as at the Senate's stand), information, a souvenir stall – a sight.
 ## - The Cathedral of Return (Heimkehr): the nave (mockup_54c_kathedrale) – the great window with the Pilgrim Gate
 ##   (GateWindow draws it), the altar, pews, the Curia's chancery and the relic shrine on foot, the guard in gold – a sight.
+## - The Meridian Sphere (Durchbruch): the control room of the Dyson sphere (mockup_54c_leitwarte) – the star and the
+##   shell through the filter glass (SphereWindow), tiers of consoles, the sphere's holo, the Research Exchange on foot.
 ## No class_name: preload it.
 
 const T := GroundMap.T
@@ -178,6 +180,80 @@ static func build_nave(station: Dictionary) -> GroundMap:
 	m.lights.append({"pos": Vector2(W * 0.5, 20) * TILE, "r": 260.0, "col": WARM, "a": 0.22})
 	DeckGen._seats(m)
 	for wp in [Vector2(5, 15), Vector2(34, 15), Vector2(5, 24), Vector2(34, 24), Vector2(20, 27), Vector2(9, 28)]:
+		if m.free_at(wp * TILE, 6.0):
+			m.wander.append(wp * TILE)
+	return m
+
+
+# ---------------------------------------------------------------- the Meridian Sphere: the control room
+
+const CR_WIN := 9                   # the window's rows (0 … 8); the room below
+
+static func build_control(station: Dictionary) -> GroundMap:
+	var W := 44
+	var H := 28
+	var GREEN := Color(0.4, 1.0, 0.6)
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.86, 0.88, 0.87)
+	m.pal["floor2"] = Color(0.78, 0.8, 0.8)
+	m.pal["wall"] = Color(0.88, 0.9, 0.9)
+	m.pal["frame"] = Color(0.88, 0.9, 0.9)
+	m.pal["accent"] = GREEN
+	m.style = "museum"
+	m.title = "Meridian Sphere"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.CAP)
+	# the window front: the star through the filter glass, the shell, the construction ships (SphereWindow draws them)
+	m.fill(0, 0, W, CR_WIN, T.GLASS)
+	m.window_rect = Rect2(0, 0, W, CR_WIN)
+	m.set_meta("sphere_view", true)
+	m.fill(0, CR_WIN, W, 1, T.BLOCK, 47)
+	m.decals.append({"kind": "light_band", "x": 0, "y": CR_WIN, "w": W, "h": 1, "col": GREEN})
+	m.fill(1, CR_WIN + 1, W - 2, H - CR_WIN - 3, T.FLOOR, 47)
+	# three tiers of consoles facing the window, technicians at them
+	for tier in 3:
+		var ty := CR_WIN + 3 + tier * 4
+		var w := 30 - tier * 4
+		var x0 := W / 2 - w / 2
+		m.add_object({"kind": "console_row", "x": x0, "y": ty, "w": w, "h": 1})
+		for cs in range(x0 + 2, x0 + w - 1, 4):
+			if (cs + tier) % 3 != 0:
+				m.add_object({"kind": "stool", "x": cs, "y": ty + 1, "w": 1, "h": 1}, false)
+				m.people.append({"pos": Vector2(cs + 0.5, ty + 1.45) * TILE, "dir": 1, "role": "keeper", "sit": true})
+		m.lights.append({"pos": Vector2(W * 0.5, ty) * TILE, "r": 120.0, "col": GREEN, "a": 0.15})
+	# the sphere's holo in the middle below the tiers
+	m.add_object({"kind": "sphere_holo", "x": W / 2 - 1, "y": H - 5, "w": 2, "h": 1}, false)
+	m.fill(W / 2 - 1, H - 5, 2, 1, T.BLOCK, 47)
+	m.lights.append({"pos": Vector2(W * 0.5, H - 7) * TILE, "r": 70.0, "col": GREEN, "a": 0.45})
+	# the Research Exchange's counter in the west: data, exotic matter
+	m.add_object({"kind": "counter", "x": 2, "y": H - 9, "w": 6, "h": 1})
+	m.add_object({"kind": "holo_pillar", "x": 1, "y": H - 10, "w": 1, "h": 1, "col": GREEN})
+	m.people.append({"pos": Vector2(5.0, H - 9.6) * TILE, "dir": 0, "role": "keeper"})
+	_zone(m, Rect2(2, H - 8, 6, 1.6), "exchange_desk", "The Research Exchange – data and exotic matter", GREEN)
+	# a sight: the viewpoint along the window, information, a souvenir stall; benches
+	m.zones.append({"rect": Rect2(Vector2(2, CR_WIN + 1) * TILE, Vector2(W - 4, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
+		"title": "The star and the shell – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "holo_pillar", "x": W - 3, "y": H - 10, "w": 1, "h": 1, "col": GREEN})
+	_zone(m, Rect2(W - 4, H - 9, 3, 1.4), "sight_info", "Information – the Meridian Sphere", GREEN)
+	m.add_object({"kind": "stall", "x": W - 7, "y": H - 5, "w": 2, "h": 1, "col": GREEN})
+	m.zones.append({"rect": Rect2(Vector2(W - 8, H - 4.4) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
+		"title": "Souvenir stall", "col": GREEN, "sign": Vector2(W - 6, H - 6.2) * TILE})
+	for bb in [Vector2i(3, CR_WIN + 2), Vector2i(W - 6, CR_WIN + 2)]:
+		m.add_object({"kind": "museum_bench", "x": bb.x, "y": bb.y, "w": 3, "h": 1, "face": 1}, false)
+	m.set_meta("sight", {"theme": "sphere", "event": "", "name": "The Meridian Sphere", "id": String(station.get("id", "")) + "_control",
+		"focus": Vector2(W * 0.5, 3.0) * TILE})
+	# the lifts back
+	m.decals.append({"kind": "museum_exit", "x": W / 2 - 2, "y": H - 2, "w": 4, "h": 1})
+	m.zones.append({"rect": Rect2(Vector2(W / 2 - 2, H - 3) * TILE, Vector2(4, 1.2) * TILE), "kind": "lift", "id": "lift",
+		"title": "Lifts", "col": GREEN, "sign": Vector2(-100, -100)})
+	m.spawn = Vector2(W * 0.5, H - 3.6) * TILE
+	m.set_meta("tourists", 4)
+	m.lights.append({"pos": Vector2(W * 0.5, 0) * TILE, "r": 300.0, "col": Color(0.85, 0.92, 1.0), "a": 0.4})
+	DeckGen._seats(m)
+	for wp in [Vector2(6, 12), Vector2(38, 12), Vector2(5, 22), Vector2(39, 22), Vector2(14, 24), Vector2(30, 24)]:
 		if m.free_at(wp * TILE, 6.0):
 			m.wander.append(wp * TILE)
 	return m

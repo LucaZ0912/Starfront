@@ -1714,6 +1714,12 @@ func _decal(d: Dictionary) -> void:
 					if e6 < 0.22:
 						mcol = Color(0.95, 0.78, 0.4) if e6 > 0.08 else Color(1.0, 0.92, 0.65)
 					_px(int(mc.x) + xx6, int(mc.y) + yy6, mcol)
+		"light_band":
+			# 54c: a sill under a window front – pale composite, a light band along it
+			_rect(px, py, pw, TILE, Color(0.84, 0.86, 0.88))
+			_rect(px, py, pw, 2, Color(0.95, 0.96, 0.97))
+			_rect(px, py + 5, pw, 2, c)
+			_rect(px, py + TILE - 2, pw, 2, Color(0.6, 0.62, 0.64))
 		"glass_floor":
 			# 54c (Luz): a floor of glass – what lies below shows through (the view under the map); its frame
 			for yy8 in ph:

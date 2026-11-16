@@ -2433,7 +2433,7 @@ func _c_debug_capital(c: Dictionary) -> String:
 
 ## {"type":"debug_station_room", "room": "vgallery"|"nave"} – 54c (Luz): to a special station's own room (The Vote's
 ## gallery, the Cathedral's nave)
-const DEBUG_ROOMS := {"vgallery": ["landfall", "senate"], "nave": ["heimkehr", "curia"]}
+const DEBUG_ROOMS := {"vgallery": ["landfall", "senate"], "nave": ["heimkehr", "curia"], "control": ["durchbruch", "exchange"]}
 func _c_debug_station_room(c: Dictionary) -> String:
 	var m = _main()
 	var f := _fit()

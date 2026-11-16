@@ -181,6 +181,7 @@ func _process(delta: float) -> void:
 				_test_sights54c(view)            # package 54c – the capitals' plazas as sights
 				_test_vote54c(view)              # package 54c – The Vote's gallery
 				_test_nave54c(view)              # package 54c – the Cathedral's nave
+				_test_control54c(view)           # package 54c – the Meridian Sphere's control room
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -13015,3 +13016,27 @@ func _test_nave54c(_view: SystemView) -> void:
 	gw.free()
 	var t_ok := Missions.ground_sights(Universe.special_system("heimkehr")).any(func(s): return String(s["id"]).ends_with("_nave"))
 	check(map_ok and win_ok and t_ok, "54c: the Cathedral of Return's nave (the Pilgrim Gate in the window, the altar, the chancery and the relic shrine, the guard in gold, the sight), an excursion target  [%s %s %s]" % [map_ok, win_ok, t_ok])
+
+
+## Package 54c (Luz): the Meridian Sphere's control room – the star (its own colour) and the shell with construction
+## ships in the window, the consoles with technicians, the Research Exchange on foot, the sight; an excursion target.
+func _test_control54c(_view: SystemView) -> void:
+	var SR = load("res://scripts/ground/station_rooms.gd")
+	var SW = load("res://scripts/ground/sphere_window.gd")
+	var m: GroundMap = SR.build_control({"id": "test_sphere", "name": "Meridian Sphere", "exchange": true})
+	var kinds: Array = m.zones.map(func(z): return String(z.get("kind", "")))
+	var map_ok: bool = "exchange_desk" in kinds and "viewpoint" in kinds and "souvenir" in kinds and "lift" in kinds and m.has_meta("sphere_view") \
+		and m.people.any(func(p): return bool(p.get("sit", false))) and m.path(m.spawn, Vector2(22, 10.5) * 16.0).size() > 0
+	var sw = SW.new()
+	sw.setup(Vector2(2112, 432), Color(0.8, 0.88, 1.0))
+	var win_ok: bool = sw._tex != null
+	sw.free()
+	var d0 := GameState.research_data
+	var c0 := GameState.credits
+	GameState.research_data = 2
+	var e: String = Commands.execute({"type": "exchange", "what": "data"})
+	var ex_ok: bool = e == "" and GameState.research_data == 0 and GameState.credits > c0
+	GameState.research_data = d0
+	GameState.credits = c0
+	var t_ok := Missions.ground_sights(Universe.special_system("durchbruch")).any(func(s): return String(s["id"]).ends_with("_control"))
+	check(map_ok and win_ok and ex_ok and t_ok, "54c: the Meridian Sphere's control room (the star and the shell, construction ships, consoles, the Research Exchange on foot, the sight), an excursion target  [%s %s %s %s]" % [map_ok, win_ok, ex_ok, t_ok])

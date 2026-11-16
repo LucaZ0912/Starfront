@@ -32,7 +32,7 @@ static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
 		WildArtO.paint_obj(o, img)                   # 53f-2 (Luz): trees, palms, trunks, ice, the crashed drone
 	else:
 		_paint(img, String(o["kind"]), pw, ph, rise, c, wood, metal, o)
-	if not String(o["kind"]) in ["holo_ship", "holo_statue", "scanner_gate"]:
+	if not String(o["kind"]) in ["holo_ship", "holo_statue", "scanner_gate", "sphere_holo"]:
 		_outline(img)                                # 0.7.53.27: a hologram has no outline
 	var out := {"image": img, "rise": rise}
 	_cache[key] = out
@@ -235,6 +235,10 @@ static func _rise(kind: String) -> int:
 			return 14
 		"lectern":
 			return 22
+		"console_row":                      # 54c: a tier of consoles in the control room (~1.2 m)
+			return 12
+		"sphere_holo":                      # 54c: the Dyson sphere as a holo (~2 m)
+			return 26
 		"altar_cov":                        # 54c: the Cathedral's altar (~1.1 m)
 			return 16
 		"vote_booth":                       # 54c: a voting booth at The Vote (~2.4 m)
@@ -468,6 +472,33 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 4, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
 				_r(img, pw / 2 + 2, b34 - 18 + ln2 * 2, 3, 1, Color(0.5, 0.4, 0.3))
 			_r(img, pw / 2, b34 - 14, 1, 4, Color(0.88, 0.68, 0.3))
+		"console_row":
+			# 54c (Luz): a tier of consoles facing the window – a dark desk with a green edge, screens in a row
+			var b42 := fy + ph
+			_r(img, 0, b42 - 10, pw, 10, Color(0.22, 0.25, 0.28))
+			_r(img, 0, b42 - 10, pw, 2, Color(0.4, 1.0, 0.6))
+			_r(img, 0, b42 - 2, pw, 2, Color(0.12, 0.14, 0.16))
+			var si := 0
+			for sx2 in range(4, pw - 12, 16):
+				# the screens face the window (and the technicians): we see their backs, their glow round the edges
+				var gcol: Color = [Color(0.25, 0.7, 0.45), Color(0.8, 0.55, 0.25), Color(0.3, 0.6, 0.85)][si % 3]
+				_r(img, sx2 - 1, b42 - 23, 14, 1, Color(gcol, 0.6))
+				_r(img, sx2, b42 - 22, 12, 10, Color(0.16, 0.18, 0.2))
+				_r(img, sx2, b42 - 22, 12, 1, Color(0.3, 0.32, 0.36))
+				_r(img, sx2 + 5, b42 - 12, 2, 2, Color(0.12, 0.13, 0.15))
+				si += 1
+		"sphere_holo":
+			# 54c: the sphere as a holo over its projector – rings of green light round a small bright star
+			var b43 := fy + ph
+			_ellipse(img, pw * 0.5, b43 - 4, pw * 0.4, 3, Color(0.2, 0.22, 0.25))
+			_ellipse(img, pw * 0.5, b43 - 5, 3, 1.5, Color(0.5, 1.0, 0.7))
+			var hc2 := Vector2(pw * 0.5, b43 - 22)
+			for rg in 3:
+				for t2 in 60:
+					var a5 := t2 * TAU / 60.0
+					var q5 := hc2 + Vector2(cos(a5) * 13.0, sin(a5) * 13.0 * (0.3 + rg * 0.3)).rotated(rg * 0.6)
+					_p(img, int(q5.x), int(q5.y), Color(0.5, 1.0, 0.7, 0.75))
+			_ellipse(img, hc2.x, hc2.y, 3.5, 3.5, Color(0.9, 0.95, 1.0))
 		"altar_cov":
 			# 54c: the altar of the Cathedral of Return – white stone, a gold border, the sun of the Return on its front, a
 			# white cloth with candles on it

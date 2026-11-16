@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.15 – 2026-11-16
+
+**Package 54c, part 6 – the Meridian Sphere's control room (Luz).** A level of its own in the Meridian Sphere's lift.
+- The window front of filter glass: the star of Durchbruch in its own colour (an A star – white-blue), its granules and
+  a prominence; the shell's frame rings with the honeycomb of collectors; construction ships working along the rings,
+  a collector held on an arm, welding sparks; drones.
+- Three tiers of consoles facing the window, technicians at them on stools; the sphere's holo; the Research Exchange
+  on foot (data, exotic matter – as at the station's window).
+- A sight: the viewpoint at the window, information, a souvenir stall (Collector Cell Keyring); events – collectors
+  going in, a new field (more ships), a solar storm (the prominence great), a change of shift, a flare (rare: the
+  glass darkening). An excursion target.
+- Debug: F12 → Ground → Capitals → Meridian Sphere. Smoke test group `control54c`.
+
 ## alpha 0.7.54.14 – 2026-11-16
 
 **Package 54c, part 5 – the Cathedral's nave (Luz).** A level of its own in the Cathedral of Return's lift.
