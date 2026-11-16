@@ -457,6 +457,12 @@ static func _arcade(m: GroundMap, x: int, y: int, n: int = 0) -> void:
 		"title": "Rock Hopper – arcade cabinet", "col": Color(1.0, 0.45, 0.75), "sign": Vector2(-100, -100)})
 
 
+## 54b (Luz): a table where Drift is played – a card zone beside it (zone `drift`), a lamp low over it.
+static func _drift_zone(m: GroundMap, rect: Rect2) -> void:
+	m.zones.append({"rect": rect, "kind": "drift", "id": "drift", "title": "Card table – play Drift", "col": Color(0.85, 0.45, 1.0), "sign": Vector2(-100, -100)})
+	m.lights.append({"pos": rect.get_center(), "r": 34.0, "col": Color(0.85, 0.55, 1.0), "a": 0.2})
+
+
 ## 54b (Luz): a pool table to play at – the table, its lamp, the place to stand and play (zone `pool`).
 static func _pool_table(m: GroundMap, x: int, y: int) -> void:
 	m.add_object({"kind": "pool_table", "x": x, "y": y, "w": 3, "h": 2})
@@ -469,6 +475,7 @@ static func _bar_lounge(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNu
 	_pool_table(m, x0 + 1, BAR_Y0 + 3)                 # 54b (Luz): the lounges have a pool table too
 	var tx := x0 + 7
 	var row := 0
+	_drift_zone(m, Rect2(Vector2(tx - 0.5, BAR_Y0 + 4.0) * GroundMap.TILE, Vector2(3, 1.3) * GroundMap.TILE))   # Drift at the first table
 	while tx + 2 < x1:
 		var ty := BAR_Y0 + 2 + (0 if row % 2 == 0 else 4)
 		m.add_object({"kind": "round_table", "x": tx, "y": ty, "w": 2, "h": 2})
@@ -496,7 +503,9 @@ static func _bar_long(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNumb
 				"col": Color(1.0, 0.95, 0.85) if style != "garden" else Color(1.0, 0.75, 0.45), "a": 0.2})
 		tx += tw + 2
 	if style in ["mess", "canteen"]:
-		_dart_board(m, x0 - 1, BAR_Y0 + 3)              # 54b (Luz): darts in the mess and the canteen
+		_dart_board(m, x0 - 1, BAR_Y0 + 3)
+	if style == "garden":
+		_drift_zone(m, Rect2(Vector2(x0 - 0.8, BAR_Y0 + 1.5) * GroundMap.TILE, Vector2(1.6, 2.0) * GroundMap.TILE))   # Drift at a picnic table              # 54b (Luz): darts in the mess and the canteen
 	if style == "canteen":
 		for k in 2:
 			m.add_object({"kind": "vending", "x": x0 - 1 + k, "y": COR_Y0 - 1, "w": 1, "h": 1, "col": Color(0.4, 0.75, 1.0)})

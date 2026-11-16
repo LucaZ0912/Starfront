@@ -146,6 +146,8 @@ func _seat(title: String, sub: String, col: Color) -> Control:
 func _start() -> void:
 	var cfg := {"game": game, "mode": mode, "stake": 0 if MG.solo(mode) else stake, "opponent": {} if MG.solo(mode) else opponent}
 	cfg["place"] = place
+	if game == "drift" and not MG.solo(mode):                 # two more guests sit down at the card table
+		cfg["others"] = guests.filter(func(gu): return opponent.is_empty() or String(gu["id"]) != String(opponent["id"])).slice(0, 2)
 	var e: String = Commands.execute({"type": "minigame_begin", "game": game, "mode": mode, "stake": cfg["stake"], "opponent": cfg["opponent"], "place": String(place.get("id", ""))})
 	if e != "":
 		Audio.play("ui_error", "minigame: " + e)

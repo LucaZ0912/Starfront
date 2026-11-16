@@ -2045,11 +2045,11 @@ func _c_minigame_end(c: Dictionary) -> String:
 		var opp: Dictionary = mg_session.get("opponent", {})
 		var who := String(opp.get("name", "your opponent"))
 		if won:
-			GameState.credits += stake * 2
+			GameState.credits += int(c.get("pot", stake * 2))           # (Drift: the pot, shared on a tie)
 			GameState.minigame_streak[game] = int(GameState.minigame_streak.get(game, 0)) + 1
 			GameState.minigame_wins[game] = int(GameState.minigame_wins.get(game, 0)) + 1
 			GameState.log_msg("%s: you beat %s%s – %d in a row." % [MinigameData.GAMES[game]["name"], who,
-				(" and take %d cr" % (stake * 2)) if stake > 0 else "", int(GameState.minigame_streak[game])], GameState.COL_GOOD)
+				(" and take %d cr" % int(c.get("pot", stake * 2))) if stake > 0 else "", int(GameState.minigame_streak[game])], GameState.COL_GOOD)
 		else:
 			GameState.minigame_streak[game] = 0
 			GameState.log_msg("%s: %s wins%s. Your streak is over." % [MinigameData.GAMES[game]["name"], who,
@@ -2064,6 +2064,15 @@ func _c_pool_shot(c: Dictionary) -> String:
 		return "No pool game."
 	var sp: Array = c.get("spin", [0.0, 0.0])
 	g.minigame.shoot(float(c.get("angle", 0.0)), float(c.get("power", 0.5)), Vector2(float(sp[0]), float(sp[1])))
+	return ""
+
+
+## {"type":"drift_move", "move": "drift"|"hold"|"warp", "card": i} – package 54b: a move at the Drift table.
+func _c_drift_move(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.minigame == null or not g.minigame.has_method("ai_choice"):
+		return "No Drift game."
+	g.minigame.move(String(c.get("move", "hold")), int(c.get("card", -1)))
 	return ""
 
 

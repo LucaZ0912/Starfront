@@ -3,6 +3,18 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.8 – 2026-11-16
+
+**Package 54b, part 3 – Drift, the card game (Luz).** At a card table in the lounges and the garden bars: you and two
+or three guests of the bar (the one you choose in the lobby, others sit down too).
+- Cards 1–10 in four suits (comets, moons, suns, nebulae) and four Warp cards worth nothing. Two cards each; in turn
+  draw (drift) or hold – over 21 burns out. Closest to 21 takes the pot of everyone's stakes (shared on a tie); hit
+  exactly 21 – a Singularity – and you win at once. A Warp swaps one of your cards for the deck's top one.
+- The guests' first card lies face down until the showdown; they draw low and hold high (the better ones sooner), and
+  warp a low card away. Stakes and win streak as at the other bar games.
+- Every move goes through the command bus (`drift_move`). Debug: F12 → Ground → Bar games → Drift. Smoke test group
+  `drift54b`. All four bar games of package 54b are in.
+
 ## alpha 0.7.54.7 – 2026-11-16
 
 **Package 54b, part 2 – Rock Hopper, the arcade cabinet (Luz).** Two cabinets in the waystations' diners, one by the

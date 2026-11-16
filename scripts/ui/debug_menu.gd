@@ -1061,6 +1061,14 @@ func _build_ground() -> void:
 		rbg.add_child(UI.button("Streak %d" % skk, func(): _cmd({"type": "debug_minigame", "game": "billiards", "streak": skk})))
 	rbg.add_child(UI.button("Win now", func(): _cmd({"type": "debug_minigame", "game": "billiards", "result": "win"})))
 	rbg.add_child(UI.button("Lose now", func(): _cmd({"type": "debug_minigame", "game": "billiards", "result": "lose"})))
+	var rdft := _row()
+	rdft.add_child(UI.label("Drift:", 12, UI.TEXT_DIM))
+	rdft.add_child(UI.button("Open the lobby here", func(): _cmd({"type": "debug_minigame", "game": "drift", "open": true})))
+	for sk3 in [0, 9, 10, 25]:
+		var skk3: int = sk3
+		rdft.add_child(UI.button("Streak %d" % skk3, func(): _cmd({"type": "debug_minigame", "game": "drift", "streak": skk3})))
+	rdft.add_child(UI.button("Win now", func(): _cmd({"type": "debug_minigame", "game": "drift", "result": "win"})))
+	rdft.add_child(UI.button("Lose now", func(): _cmd({"type": "debug_minigame", "game": "drift", "result": "lose"})))
 	var rrh := _row()
 	rrh.add_child(UI.label("Rock Hopper:", 12, UI.TEXT_DIM))
 	rrh.add_child(UI.button("Open the cabinet here", func(): _cmd({"type": "debug_minigame", "game": "rockhopper", "open": true})))

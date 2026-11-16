@@ -174,6 +174,7 @@ func _process(delta: float) -> void:
 				_test_minigames54b(view)         # package 54b – the bar games
 				_test_darts54b(view)             # package 54b – darts
 				_test_rock54b(view)              # package 54b – Rock Hopper
+				_test_drift54b(view)             # package 54b – Drift
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12686,3 +12687,65 @@ func _test_rock54b(view: SystemView) -> void:
 	check(coin_ok and wave_ok and crack_ok and in_ok and bank_ok and crash_ok and score_ok and cab_ok,
 		"54b: Rock Hopper – a credit a game, the first wave of rocks away from the refinery, the drill cracks a rock (it splits, ore spills), the ore into the hold, banked at the refinery (a full hold double), a crash costs a tug and spills the hold, the score into your best and the cabinet's list; cabinets in the diners and beach bars  [%s]" % [
 			" ".join(PackedStringArray([str(coin_ok), str(wave_ok), str(crack_ok), str(in_ok), str(bank_ok), str(crash_ok), str(score_ok), str(cab_ok)]))])
+
+
+const DriftGameT = preload("res://scripts/ground/drift_game.gd")
+
+
+## Package 54b (Luz): Drift – the deck (1–10 in four suits, four Warps), two cards each, drifting over 21 burns out,
+## a Warp swaps a card for the deck's top one, the guests hold by their strength, closest to 21 takes the pot (shared
+## on a tie), a card table in the lounges.
+func _test_drift54b(view: SystemView) -> void:
+	var D = DriftGameT
+	var keep_cr: int = GameState.credits
+	var keep_streak: Dictionary = GameState.minigame_streak.duplicate()
+	var dg = D.new()
+	dg.setup({"stake": 0, "opponent": {"name": "Test A", "job": "x", "stars": 3}, "others": [{"name": "Test B", "job": "y", "stars": 1}]})
+	var n_cards: int = dg.deck.size() + dg.players.size() * 2
+	var deal_ok: bool = dg.players.size() == 3 and n_cards == 44 and dg.players.all(func(p): return (p["hand"] as Array).size() == 2)
+	# burning out
+	dg.state = "play"
+	dg.turn = 0
+	dg.players[0]["hand"] = [[10, "sun"], [9, "moon"]]
+	dg.players[0]["state"] = "play"
+	dg.deck.append([5, "comet"])
+	dg.move("drift")
+	var burn_ok: bool = String(dg.players[0]["state"]) == "burned" and dg.turn != 0
+	# the Warp: a 2 swapped for the deck's top 9
+	dg.state = "play"
+	dg.turn = 1
+	dg.players[1]["hand"] = [[2, "sun"], [0, "warp"], [6, "moon"]]
+	dg.players[1]["state"] = "play"
+	dg.deck.append([9, "nebula"])
+	dg.move("warp", 0)
+	var warp_ok: bool = D.total(dg.players[1]) == 15 and not D.has_warp(dg.players[1]) and (dg.players[1]["hand"] as Array).size() == 2
+	# the guests: draw low, hold high, the better ones sooner
+	var ai_ok: bool = D.ai_choice({"hand": [[5, "sun"], [6, "moon"]], "stars": 3}) == "drift" and D.ai_choice({"hand": [[10, "sun"], [9, "moon"]], "stars": 1}) == "hold" \
+		and D.ai_choice({"hand": [[2, "sun"], [0, "warp"], [8, "moon"]], "stars": 2}) == "warp"
+	dg.free()
+	# the showdown: a tie shares the pot
+	GameState.credits = 1000
+	GameState.minigame_streak["drift"] = 0
+	Commands.execute({"type": "minigame_begin", "game": "drift", "mode": "drift", "stake": 100, "opponent": {"name": "T"}})
+	var d2 = D.new()
+	d2.setup({"stake": 100, "opponent": {"name": "T", "job": "x", "stars": 2}, "others": [{"name": "U", "job": "y", "stars": 2}]})
+	d2.players[0]["hand"] = [[10, "sun"], [10, "moon"]]
+	d2.players[1]["hand"] = [[10, "comet"], [10, "nebula"]]
+	d2.players[2]["hand"] = [[9, "comet"], [8, "nebula"]]
+	for p in d2.players:
+		p["state"] = "hold"
+	d2.state = "play"
+	d2.turn = 3
+	d2._next()
+	var pot_ok: bool = d2.state == "over" and d2.won and d2.winners.size() == 2 and GameState.credits == 900 + 150 and int(GameState.minigame_streak["drift"]) == 1
+	d2.free()
+	GameState.credits = keep_cr
+	GameState.minigame_streak = keep_streak
+	Commands.mg_session = {}
+	var m := GroundMap.new()
+	m.setup(20, 20)
+	DeckGen._drift_zone(m, Rect2(32, 32, 48, 20))
+	var table_ok: bool = m.zones.any(func(z): return String(z.get("kind", "")) == "drift")
+	check(deal_ok and burn_ok and warp_ok and ai_ok and pot_ok and table_ok,
+		"54b: Drift – 44 cards (1–10 in four suits, four Warps), two each; over 21 burns out; a Warp swaps a card for the deck's top one; the guests draw low, hold high, warp a low card away; closest to 21 takes the pot, a tie shares it; card tables in the lounges and garden bars  [%s]" % [
+			" ".join(PackedStringArray([str(deal_ok), str(burn_ok), str(warp_ok), str(ai_ok), str(pot_ok), str(table_ok)]))])
