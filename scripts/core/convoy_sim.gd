@@ -37,6 +37,8 @@ func reset() -> void:
 func target_count() -> int:
 	var w := 0.0
 	for s in Universe.systems:
+		if s.get("pocket", false):
+			continue
 		for pe in s.get("stations_plan", []):
 			w += float(pe[1]) * (2.0 if pe[0] == "trade" else 0.5)
 	return clampi(int(w / 3.0), 8, 30)
@@ -110,6 +112,8 @@ func _make() -> Dictionary:
 	var pool: Array = []
 	var total := 0.0
 	for s in Universe.systems:
+		if s.get("pocket", false):
+			continue                                   # package 57: no route out of Beyond's pocket
 		var plan: Array = s.get("stations_plan", [])
 		for i in plan.size():
 			var w := float(plan[i][1]) * (3.0 if plan[i][0] == "trade" else 1.0) * (0.7 + 0.15 * Economy.level(int(s["id"])))     # 42c

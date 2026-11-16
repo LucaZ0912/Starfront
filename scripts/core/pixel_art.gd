@@ -899,6 +899,8 @@ static func asteroid_texture(seed_v: int, size: int, ore: String) -> Texture2D:
 ## icy = light, translucent rim, cracks and sparkles. Cached; seeds are bucketed into
 ## 8 variants per shape so a dense field reuses textures.
 static func asteroid_sprite(cls: String, shape: String, seed_v: int, px: int, ore: String) -> Texture2D:
+	if shape == "scrap":
+		return scrap_sprite(seed_v, px, ore)                  # package 57: hull scrap of the Gold Fleet
 	var variant := posmod(seed_v, 8)
 	px = clampi(int(round(px / 4.0)) * 4, 8, 48)
 	var key := "ast2_%s_%s_%d_%d_%s" % [cls, shape, variant, px, ore]
@@ -1005,6 +1007,77 @@ static func asteroid_sprite(cls: String, shape: String, seed_v: int, px: int, or
 	var pal: Array = ore_palette(ore)
 	var colors := {"1": pal[0], "2": pal[1], "3": pal[2], "4": pal[3], "x": pal[4], "w": Color(1, 1, 1, 0.95), "e": Color(pal[3], 0.55)}
 	_cache[key] = ImageTexture.create_from_image(grid_to_image(rows, colors, cls != "icy"))
+	return _cache[key]
+
+
+## Package 57: a piece of a Gold Fleet hull, mined like rock – a torn plate in dusty tan with its seams, a rib or two
+## of bare steel across it, rust, holes, a scrap of the gold trim, glints of the ore it is worth. Cached like rock.
+static func scrap_sprite(seed_v: int, px: int, ore: String) -> Texture2D:
+	var variant := posmod(seed_v, 8)
+	px = clampi(int(round(px / 4.0)) * 4, 8, 48)
+	var key := "scrap_%d_%d_%s" % [variant, px, ore]
+	if _cache.has(key):
+		return _cache[key]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = variant * 6131 + px * 17 + 57
+	var c := px / 2.0
+	var R := px * 0.46
+	var rot := rng.randf() * TAU
+	var stretch := rng.randf_range(0.5, 0.8)
+	var pts := PackedVector2Array()
+	var k := rng.randi_range(6, 9)
+	for i in k:
+		var a2 := TAU * (i + rng.randf_range(-0.3, 0.3)) / k
+		pts.append(Vector2(cos(a2), sin(a2) * stretch).rotated(rot) * R * rng.randf_range(0.55, 1.0))
+	var plate := [Color(0.3, 0.27, 0.22), Color(0.5, 0.45, 0.37), Color(0.68, 0.62, 0.52)]
+	var steel := [Color(0.27, 0.27, 0.28), Color(0.44, 0.44, 0.45), Color(0.63, 0.63, 0.64)]
+	var rust := [Color(0.3, 0.15, 0.09), Color(0.5, 0.27, 0.16)]
+	var gold := Color(0.75, 0.62, 0.2)
+	var pal: Array = ore_palette(ore)
+	var seam := rng.randi_range(4, 6)
+	var rib_a := rot + PI * 0.5
+	var rib_off := [rng.randf_range(-R * 0.4, R * 0.4), rng.randf_range(-R * 0.4, R * 0.4)]
+	var trim := rng.randf_range(-R * 0.3, R * 0.3)
+	var holes: Array = []
+	for h in rng.randi_range(0, 2):
+		holes.append([Vector2(c, c) + Vector2(rng.randf_range(-R, R), rng.randf_range(-R, R)) * 0.45, rng.randf_range(0.8, maxf(1.0, px * 0.07))])
+	var img := Image.create(px, px, false, Image.FORMAT_RGBA8)
+	var inside := func(x: int, y: int) -> bool:
+		if x < 0 or y < 0 or x >= px or y >= px:
+			return false
+		var q := Vector2(x + 0.5 - c, y + 0.5 - c)
+		if not Geometry2D.is_point_in_polygon(q, pts):
+			return false
+		for h2 in holes:
+			if Vector2(x + 0.5, y + 0.5).distance_to(h2[0]) < h2[1]:
+				return false
+		return true
+	for y in px:
+		for x in px:
+			if not inside.call(x, y):
+				continue
+			var edge: bool = not inside.call(x - 1, y) or not inside.call(x + 1, y) or not inside.call(x, y - 1) or not inside.call(x, y + 1)
+			if edge:
+				img.set_pixel(x, y, Color(0.05, 0.06, 0.09))
+				continue
+			var q2 := Vector2(x + 0.5 - c, y + 0.5 - c).rotated(-rot)
+			var light := (-(x - c) - (y - c)) / (R * 1.6)
+			var tone := 1 if absf(light) < 0.3 else (2 if light > 0.0 else 0)
+			var col: Color = plate[tone]
+			if posmod(int(floor(q2.x)), seam) == 0 or posmod(int(floor(q2.y)), seam + 2) == 0:
+				col = plate[maxi(tone - 1, 0)]
+			if sin(q2.x * 0.7 + variant) * cos(q2.y * 0.9) > 0.55:
+				col = rust[1 if tone > 0 else 0]
+			var along := Vector2(x + 0.5 - c, y + 0.5 - c).rotated(-rib_a)
+			for ro in rib_off:
+				if absf(along.y - float(ro)) < 0.8:
+					col = steel[tone]
+			if absf(q2.y - trim) < 0.6 and q2.x > 0.0:
+				col = gold
+			if rng.randf() < 0.035 and tone > 0:
+				col = pal[4]                                         # a glint of the ore it is worth
+			img.set_pixel(x, y, col)
+	_cache[key] = ImageTexture.create_from_image(img)
 	return _cache[key]
 
 

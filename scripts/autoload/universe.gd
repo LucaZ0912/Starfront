@@ -221,6 +221,7 @@ func generate(p_seed: int) -> void:
 	_assign_stars()                                   # package 37
 	_name_systems()                                   # package 40: inhabited – German names, the rest catalogue / explorers
 	_mark_veil()                                      # package 40c: the outermost systems touch the Veil
+	_place_pocket()                                   # package 57: Beyond and its two neighbours, apart in the Veil
 
 
 # ---------------------------------------------------------------- Package 40: the cluster
@@ -438,17 +439,19 @@ func _name_systems() -> void:
 ## faction -> special system id (its capital)
 const SPECIAL_CAPITALS := {"assembly": "landfall", "covenant": "heimkehr", "directorate": "durchbruch"}
 const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr", "durchbruch": "Durchbruch",
-	"altwerft": "Altwerft", "erzhalde": "Erzhalde", "perlmutt": "Perlmutt", "schwarzwacht": "Schwarzwacht"}
+	"altwerft": "Altwerft", "erzhalde": "Erzhalde", "perlmutt": "Perlmutt", "schwarzwacht": "Schwarzwacht",
+	"beyond": "Beyond", "driftwood": "Driftwood", "hollow": "Hollow"}
 ## 39d: the systems of the private manufacturers – Earthworks always in the Assembly's space, the others independent
 ## (no power holds them; yellow on the galaxy map). Their bodies are random, their yard is the maker's own.
 const MAKER_SYSTEMS := {"earthworks": "altwerft", "khi": "erzhalde", "aurelle": "perlmutt", "hadrian": "schwarzwacht"}
 const INDEPENDENT_SECURITY := 0.75
-const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG", "durchbruch": "A"}
+const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG", "durchbruch": "A", "beyond": "G", "driftwood": "K", "hollow": "M"}
 ## The fixed stations of a special system (type, tier) – their place and look come from SPECIAL_STATIONS.
 const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]], "heimkehr": [["trade", 3], ["shipyard", 3]],
 	"durchbruch": [["research", 3], ["shipyard", 3], ["research", 2]],
 	"altwerft": [["shipyard", 3], ["trade", 2]], "erzhalde": [["shipyard", 3], ["industry", 2]],
-	"perlmutt": [["shipyard", 3], ["trade", 3]], "schwarzwacht": [["shipyard", 3], ["military", 2]]}
+	"perlmutt": [["shipyard", 3], ["trade", 3]], "schwarzwacht": [["shipyard", 3], ["military", 2]],
+	"beyond": [["trade", 1]]}
 ## Fixed planets: type, orbit (km, before the scale), radius (km), ring, city lights; moons per planet: [name, type, radius].
 const SPECIAL_BODIES := {
 	"landfall": [
@@ -473,6 +476,13 @@ const SPECIAL_BODIES := {
 			"moons": [["Meitner", "moon_ice", 5000.0], ["Bohr", "moon_rock", 3600.0]]},
 		{"name": "Kepler", "type": "ice_giant", "orbit": 1500000.0, "radius": 24000.0, "seed": 81.0, "ring": true},
 	],
+	# package 57 (Luz): Beyond – a G star; an ocean world with one city; an ice giant whose ice moon Dan's store orbits
+	"beyond": [
+		{"name": "Cinder", "type": "lava", "orbit": 290000.0, "radius": 5200.0, "seed": 17.0},
+		{"name": "Brine", "type": "ocean", "orbit": 640000.0, "radius": 10500.0, "seed": 41.0, "pocket_city": 1},
+		{"name": "Hush", "type": "ice_giant", "orbit": 1420000.0, "radius": 30000.0, "seed": 77.0,
+			"moons": [["Rime", "moon_ice", 5400.0]]},
+	],
 }
 ## Fixed stations: name, art (landmark look), the body they orbit ("p1" / "m3_0"), distance, extra keys.
 const SPECIAL_STATIONS := {
@@ -494,6 +504,7 @@ const SPECIAL_STATIONS := {
 	"erzhalde": [{"name": "Kanayama Works", "art": "khi_yard", "body": "#1", "dist": 30000.0, "maker": "khi"}],
 	"perlmutt": [{"name": "Atelier Aurelle", "art": "aur_yard", "body": "#1", "dist": 30000.0, "maker": "aurelle"}],
 	"schwarzwacht": [{"name": "Hadrian Foundry", "art": "hdy_yard", "body": "#1", "dist": 30000.0, "maker": "hadrian"}],
+	"beyond": [{"name": "Dan's Dusty Duty Store", "art": "dusty_duty", "body": "Rime", "dist": 16000.0, "dan": true}],     # package 57
 }
 ## 39c: the Dyson sphere round Durchbruch's star – its radius (km) and the frame rings of the shell:
 ## [rotation, flattening (seen from above), share already built, where the built arc begins (0–1)]
@@ -584,6 +595,96 @@ func _place_makers() -> void:
 		chosen.append(pick)
 
 
+# ---------------------------------------------------------------- Package 57: Beyond
+
+## Package 57 (Luz): Beyond and its two neighbours – a pocket of three systems a little inside the Veil, apart from
+## the Cluster: gates only among the three, none to the Cluster. Made after everything else, so the Cluster (its ids,
+## territories, stations) stays as it was; the rest of the game leaves the pocket alone (convoys, roamers, missions).
+const POCKET := ["beyond", "driftwood", "hollow"]
+const POCKET_R := [2.85, 2.75, 2.65, 2.55]   # × the core ellipse – well out of the Far Reaches (2.1–2.22), in the Veil
+const POCKET_SECURITY := {"beyond": 0.55, "driftwood": 0.45, "hollow": 0.45}
+
+
+func _place_pocket() -> void:
+	var c := MAP_SIZE * 0.5
+	var far: Array = systems.filter(func(s): return s.get("outer", false))
+	# the farthest ring out that still fits on the map (in its corners), there the spot furthest from the Far Reaches
+	var p0 := Vector2(MAP_SIZE.x - 260.0, 260.0)
+	var best_d := -1.0
+	for pr in POCKET_R:
+		for k in 120:
+			var a := k * TAU / 120.0
+			var p := c + Vector2(cos(a) * CORE_R.x, sin(a) * CORE_R.y) * float(pr)
+			if p.x < 170.0 or p.y < 170.0 or p.x > MAP_SIZE.x - 170.0 or p.y > MAP_SIZE.y - 170.0:
+				continue
+			var dmin := INF
+			for s in far:
+				dmin = minf(dmin, (s["pos"] as Vector2).distance_to(p))
+			if dmin > best_d:
+				best_d = dmin
+				p0 = p
+		if best_d > 0.0:
+			break
+	var out := (p0 - c).normalized()
+	var side := out.orthogonal()
+	# a triangle: Beyond furthest out, its two neighbours further in
+	var spots := {"beyond": p0 + out * 45.0, "driftwood": p0 - out * 40.0 - side * 72.0, "hollow": p0 - out * 40.0 + side * 72.0}
+	var ids := {}
+	for sp in POCKET:
+		var sid := systems.size()
+		systems.append({
+			"id": sid, "name": SPECIAL_NAMES[sp], "pos": spots[sp], "security": float(POCKET_SECURITY[sp]),
+			"star": star_index(String(SPECIAL_STARS[sp])), "links": {}, "belt": true, "constellation": -2,
+			"pocket": true, "veil": true, "special": sp, "faction": "", "claimants": [], "independent": true,
+			"capital": false, "core_dist": 0, "haven_tier": 0,
+			"stations_plan": (SPECIAL_PLANS[sp] as Array).duplicate(true) if SPECIAL_PLANS.has(sp) else [],
+		})
+		ids[sp] = sid
+	_link(ids["beyond"], ids["driftwood"])
+	_link(ids["beyond"], ids["hollow"])
+	_link(ids["driftwood"], ids["hollow"])
+
+
+## Package 57: one of the three systems of the pocket round Beyond.
+func is_pocket(sid: int) -> bool:
+	return sid >= 0 and sid < systems.size() and bool(systems[sid].get("pocket", false))
+
+
+## Package 57 (Luz): the Gold Fleet's dead – wrecks as big as planets, drifting where the battle left them: in Beyond
+## one of each kind (freighter, tanker, ark, escort), in Driftwood two. Scenery like the planets (not places to visit
+## yet); each a kind, how far it is already taken apart (0–2), its size (half its length, km) and its heading.
+const GOLD_WRECK_KINDS := ["freighter", "tanker", "ark", "escort"]
+const GOLD_WRECK_NAMES := ["GFS Bountiful", "GFS Gilded Promise", "GFS Saint Aurum", "GFS Sovereign", "GFS Golden Mean",
+	"GFS Full Measure"]
+
+
+func _gold_wrecks(L: Dictionary, id: int, used: Array) -> void:
+	var sp := special_of(id)
+	if not sp in ["beyond", "driftwood"]:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 57057 + id * 811 + 57
+	var n := 4 if sp == "beyond" else 2
+	var out: Array = []
+	for k in n:
+		var pos := _free_spot(rng, used, 1100000.0, 5200000.0)
+		for tries in 40:
+			var ok := true
+			for p in L["planets"]:
+				ok = ok and (p["pos"] as Vector2).distance_to(pos) > float(p["radius"]) * 8.0 + 200000.0
+			for o in out:
+				ok = ok and (o["pos"] as Vector2).distance_to(pos) > 700000.0
+			if ok:
+				break
+			pos = _free_spot(rng, used, 1100000.0, 5200000.0)
+		used.append(pos)
+		var kind: String = GOLD_WRECK_KINDS[k % 4] if sp == "beyond" else GOLD_WRECK_KINDS[rng.randi() % 4]
+		out.append({"id": "gw_%d" % k, "name": GOLD_WRECK_NAMES[(k + (0 if sp == "beyond" else 4)) % GOLD_WRECK_NAMES.size()],
+			"type": "gold_wreck", "kind": kind, "stage": rng.randi() % 3, "pos": pos, "radius": rng.randf_range(9000.0, 15000.0),
+			"rot": rng.randf() * TAU, "seed": GOLD_WRECK_KINDS.find(kind) + 4 * rng.randi_range(1, 400)})
+	L["gold_wrecks"] = out
+
+
 func _make_special(sid: int, sp: String) -> void:
 	systems[sid]["special"] = sp
 	systems[sid]["name"] = SPECIAL_NAMES[sp]
@@ -657,6 +758,8 @@ func _special_planets(L: Dictionary, id: int, sp: String) -> void:
 			L["planets"].back()["city_style"] = float(d["city_style"])
 		if d.get("terraform", false):
 			L["planets"].back()["terraform"] = true            # 39c: Curie, half green, half desert
+		if d.has("pocket_city"):
+			L["planets"].back()["pocket_city"] = int(d["pocket_city"])      # package 57: Brine's one city
 		i += 1
 
 
@@ -1378,7 +1481,7 @@ func system_profile_raw(sid: int) -> Dictionary:
 		"pickets": mini(L["gates"].size(), 3) if ctl in FactionData.POWERS else 0,
 		"patrol_groups": patrol_groups, "patrol_size": patrol_size, "patrol_quality": patrol_q,
 		"convoy_weight": trade * 2.0 + (tiers - trade) * 0.5,
-		"pirates": int(round((1.0 - sec) * 5.5)),
+		"pirates": 0 if sys.get("pocket", false) else int(round((1.0 - sec) * 5.5)),     # 57: no raiders in Beyond's pocket (the story brings its own)
 	}
 
 
@@ -2175,11 +2278,16 @@ func _generate_layout(id: int) -> Dictionary:
 		var cls: String = FIELD_CLASSES[rng.randi() % FIELD_CLASSES.size()]
 		if b == nf - 1 and need_icy and not has_icy:
 			cls = "icy"          # an Ice Refinery always has an icy field nearby
+		var wreck_field := (cls != "icy" or b < 2) and _has_wreck_belt(L)        # at least two fields in the wreck belt
+		if wreck_field:
+			cls = "metallic"                             # package 57: the Gold Fleet's ships were steel
 		has_icy = has_icy or cls == "icy"
 		var center := _field_spot(L, cls, frost, used, rng)
 		var mix := _field_mix(cls, sec, rng)
 		var fid := "f%d" % b
 		_make_field(L, fid, b, cls, mix, center, rng)
+		if wreck_field:
+			_make_wreck_field(L, fid)
 	# Hidden anomalies (must be scanned down)
 	for k in rng.randi_range(2, 4):
 		var diff := lerpf(8.0, 40.0, 1.0 - sec) + rng.randf_range(0.0, 10.0)
@@ -2205,6 +2313,7 @@ func _generate_layout(id: int) -> Dictionary:
 	_wreck_sites(L, id, used)                         # package 40c: old battlefields and pre-Severance derelicts
 	_veil_rifts(L, id, used)                          # package 40c: tears at the edge of the Veil
 	_hazards(L, id, used)                             # package 40d: radiation, ion storms, old minefields
+	_gold_wrecks(L, id, used)                         # package 57: the Gold Fleet's wrecks, big as planets
 	for co0 in L.get("colossi", []):
 		if co0.has("deep_amount"):
 			co0["deep0"] = co0["deep_amount"]             # review 6 W1: what it held when made (saves only the change)
@@ -2500,14 +2609,16 @@ const CITY_WORLDS := ["terran", "ocean", "jungle"]
 func _city_lights(L: Dictionary, id: int) -> void:
 	var inhabited := has_stations(id)
 	for pc in L["planets"]:
-		if is_giant(pc) and not bool(systems[id].get("outer", false)):
+		if is_giant(pc) and not bool(systems[id].get("outer", false)) and not is_pocket(id):
 			pc["cloud_city"] = true                      # package 54 (Luz): an inhabited system's giants have cloud cities
 	var rich := Missions.wealthy(id)
 	for pi in L["planets"].size():
 		var p: Dictionary = L["planets"][pi]
 		var t := String(p["type"])
-		if inhabited and t in CITY_WORLDS:
+		if inhabited and t in CITY_WORLDS and not is_pocket(id):
 			p["city"] = clampf(0.55 + (0.3 if rich else 0.0) + float(systems[id].get("security", 0.5)) * 0.2, 0.0, 1.0)
+		if p.has("pocket_city"):
+			p["city"] = 0.35                              # package 57: Brine – one city's lights
 		if p.has("city_fixed"):
 			p["city"] = float(p["city_fixed"])            # package 39: Agora shines brightest
 	for st in L["stations"]:
@@ -2529,8 +2640,8 @@ func _add_waystation(L: Dictionary, id: int) -> void:
 	rng.seed = seed_value * 52711 + id * 3301 + 11
 	if L["gates"].is_empty() or L["planets"].is_empty() or rng.randf() > WAYSTATION_SHARE:
 		return
-	if systems[id].get("outer", false) or systems[id].get("fortress", false):
-		return                                          # 40e: nobody keeps a rest stop in the Far Reaches or under a fortress's guns
+	if systems[id].get("outer", false) or systems[id].get("fortress", false) or is_pocket(id):
+		return                                          # 40e: nobody keeps a rest stop in the Far Reaches or under a fortress's guns (57: nor in Beyond)
 	var g: Dictionary = L["gates"][rng.randi() % L["gates"].size()]
 	var gp: Vector2 = g["pos"]
 	var pos := gp * rng.randf_range(0.5, 0.75) + gp.normalized().orthogonal() * rng.randf_range(-60000.0, 60000.0) * SCALE
@@ -2605,7 +2716,7 @@ func resort_appeal(L: Dictionary, id: int) -> Dictionary:
 func _add_resort(L: Dictionary, id: int) -> void:
 	var sys: Dictionary = systems[id]
 	var sp := String(sys.get("special", ""))
-	if (sys.get("stations_plan", []) as Array).is_empty() and not sp in RESORT_SPECIALS:
+	if (sys.get("stations_plan", []) as Array).is_empty() and not sp in RESORT_SPECIALS or sys.get("pocket", false):
 		return                                          # nobody lives here to run a resort
 	if L["planets"].is_empty():
 		return
@@ -2732,11 +2843,24 @@ func _place_colossi(L: Dictionary, id: int, sec: float) -> void:
 			var shapes_c: Array = ColossusShape.shapes_for(cls)
 			var shape: String = shapes_c[rng.randi() % shapes_c.size()]
 			var poly := ColossusShape.generate(shape, R, rng)
+			var cname := "Colossus %s-%d" % [COLOSSUS_PREFIX[rng.randi() % COLOSSUS_PREFIX.size()], rng.randi_range(2, 98)]
+			var wk := {}
+			if f.get("wreck", false):
+				# package 57 (Luz): a section torn off a Gold Fleet ship – her outline from her picture's geometry
+				wk = {"wreck": rng.randi() % 12, "stage": rng.randi() % 3, "rot": rng.randf() * TAU}
+				poly = wreck_colossus_poly(int(wk["wreck"]), int(wk["stage"]), R, float(wk["rot"]))
+				shape = "wreck"
+				var taken: Array = L["colossi"].map(func(o): return String(o["name"]))
+				for tries in 8:                               # no two sections with the same name in a system
+					cname = "%s (%s)" % [WRECK_SHIP_NAMES[rng.randi() % WRECK_SHIP_NAMES.size()], StationArt.PIECE_PARTS[int(wk["wreck"]) / 4]]
+					if not cname in taken:
+						break
 			var col := {
-				"id": "col_%d" % n, "name": "Colossus %s-%d" % [COLOSSUS_PREFIX[rng.randi() % COLOSSUS_PREFIX.size()], rng.randi_range(2, 98)],
+				"id": "col_%d" % n, "name": cname,
 				"class": cls, "ore": _roll_ore(mix, rng), "pos": pos, "radius": R, "shape": shape, "poly": poly,
 				"seed": rng.randi(), "field": f["id"],
 			}
+			col.merge(wk)
 			# 0.6.35.5: a colossus can be mined – a huge deposit of two ores of its field
 			var cmix := {String(col["ore"]): 1.0}
 			if mix.size() > 1:
@@ -2762,9 +2886,37 @@ func _place_colossi(L: Dictionary, id: int, sec: float) -> void:
 					ast["radius"] = rng.randf_range(25.0, 60.0)
 				ast["pos"] = pos + sp + sp.normalized() * (float(ast["radius"]) + rng.randf_range(40.0, 260.0))
 				ast["near"] = col["name"]
+				if col.has("wreck"):
+					ast["shape"] = "scrap"
 				ast["amount"] = float(ast["amount"]) * 1.4
 				L["asteroids"].append(ast)
 	_clear_colossi(L)
+
+
+## Package 57: Gold Fleet ships whose sections drift in the wreck belts (wreck colossi).
+const WRECK_SHIP_NAMES := ["GFS Bountiful", "GFS Gilded Promise", "GFS Saint Aurum", "GFS Sovereign", "GFS Golden Mean",
+	"GFS Full Measure", "GFS Plenty", "GFS Midas Touch", "GFS Hallmark", "GFS Fair Exchange", "GFS Gold Standard",
+	"GFS Tithe", "GFS Rich Harvest", "GFS Sterling", "GFS Dividend", "GFS Promised Land"]
+
+
+## The outline (km round her centre) of a wreck colossus: variant 0–11, stage 0–2, her greatest reach R, turned by rot.
+static func wreck_colossus_poly(vi: int, stage: int, R: float, rot: float) -> PackedVector2Array:
+	var src := StationArt.piece_outline(vi, stage)
+	var far := 1.0
+	for p in src:
+		far = maxf(far, p.length())
+	var out := PackedVector2Array()
+	for p in src:
+		out.append((p * (R / far)).rotated(rot))
+	return out
+
+
+## Km per art pixel of a wreck colossus' picture (its outline's farthest point is R).
+static func wreck_colossus_scale(d: Dictionary) -> float:
+	var far := 1.0
+	for p in StationArt.piece_outline(int(d["wreck"]), int(d.get("stage", 0))):
+		far = maxf(far, p.length())
+	return float(d["radius"]) / far
 
 
 ## Removes asteroids and debris that would sit inside a colossus.
@@ -2885,15 +3037,42 @@ func _make_belts(L: Dictionary, id: int) -> Array:
 				r = (float(planets[i - 1]["orbit"]) + float(planets[i]["orbit"])) * 0.5
 				break
 		out.append({"kind": "asteroid", "r": r, "w": rng.randf_range(0.05, 0.08) * SYSTEM_RADIUS, "cls": "stony", "seed": rng.randi()})
+	if special_of(id) in ["beyond", "driftwood"]:
+		# package 57 (Luz): no asteroid belt – a belt of the Gold Fleet's wreckage (between the ocean world and the giant)
+		out = out.filter(func(b): return String(b["kind"]) != "asteroid")
+		var wr := 0.5 * SYSTEM_RADIUS
+		if L["planets"].size() >= 3:
+			wr = (float(L["planets"][1]["orbit"]) + float(L["planets"][2]["orbit"])) * 0.5
+		out.append({"kind": "wreck", "r": wr, "w": 0.06 * SYSTEM_RADIUS, "cls": "metallic", "seed": rng.randi()})
 	if rng.randf() < KUIPER_SHARE:
 		out.append({"kind": "kuiper", "r": rng.randf_range(0.82, 0.86) * SYSTEM_RADIUS, "w": rng.randf_range(0.05, 0.07) * SYSTEM_RADIUS, "cls": "icy", "seed": rng.randi()})
 	return out
 
 
+## Package 57: a system whose asteroid belt is the Gold Fleet's wreckage (Beyond, Driftwood).
+func _has_wreck_belt(L: Dictionary) -> bool:
+	for bt in L.get("belts", []):
+		if String(bt["kind"]) == "wreck":
+			return true
+	return false
+
+
+## Package 57 (Luz): a field in the wreck belt – its rocks are scrap of the Gold Fleet's hulls (mined like rock), its
+## colossi sections torn off her ships (see _place_colossi).
+func _make_wreck_field(L: Dictionary, fid: String) -> void:
+	for f in L["fields"]:
+		if String(f["id"]) == fid:
+			f["wreck"] = true
+			f["name"] = String(f["name"]).replace("Asteroid Field", "Wreck Field").replace("Metallic, ", "")
+	for a in L["asteroids"]:
+		if String(a.get("field", "")) == fid:
+			a["shape"] = "scrap"
+
+
 ## Where a field of a class lies: metal and stone in the asteroid belt, ice in the Kuiper belt – otherwise in the
 ## old orbital bands. Keeps away from everything else placed so far.
 func _field_spot(L: Dictionary, cls: String, frost: float, used: Array, rng: RandomNumberGenerator) -> Vector2:
-	var want := "kuiper" if cls == "icy" else "asteroid"
+	var want := "kuiper" if cls == "icy" else ("wreck" if _has_wreck_belt(L) else "asteroid")
 	for bt in L.get("belts", []):
 		if String(bt["kind"]) == want:
 			return _free_spot(rng, used, float(bt["r"]) - float(bt["w"]) * 0.7, float(bt["r"]) + float(bt["w"]) * 0.7)
@@ -3002,6 +3181,8 @@ func warp_targets(system_id: int) -> Array:
 			out.append({"id": an["id"], "kind": "anomaly", "name": an["name"], "pos": an["pos"], "land": 2200.0, "data": an})
 	for ws in L.get("sites", []):                  # package 40c
 		out.append({"id": ws["id"], "kind": "site", "name": ws["name"], "pos": ws["pos"], "land": float(ws["radius"]) * 0.6, "data": ws})
+	for gw in L.get("gold_wrecks", []):            # package 57: the Gold Fleet's wrecks – you can fly there and look
+		out.append({"id": gw["id"], "kind": "gold_wreck", "name": "%s (wreck)" % gw["name"], "pos": gw["pos"], "land": float(gw["radius"]) * 1.4, "data": gw})
 	for hz in L.get("hazards", []):                # package 40d: you arrive at the edge, not inside
 		out.append({"id": hz["id"], "kind": "hazard", "name": hz["name"], "pos": hz["pos"], "land": float(hz["radius"]) * 1.25, "data": hz})
 	for ds in descents(system_id):                 # package 50: descent beacons over the bodies you can land on
@@ -3139,6 +3320,9 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 		cities = (rng.randi_range(1, 3) if hab else (1 if rng.randf() < 0.35 else 0))
 		if float(body.get("city", 0.0)) > 0.5:
 			cities += 1
+	if is_pocket(system_id):
+		cities = int(body.get("pocket_city", 0))          # package 57 (Luz): in the pocket only Brine has a city
+		inhabited = cities > 0
 	var kinds: Array = []
 	for i in cities:
 		kinds.append("city")

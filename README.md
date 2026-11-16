@@ -374,6 +374,14 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.57.1 (package 57): Universe `POCKET`, `_place_pocket`, `is_pocket`, Beyond's bodies and Dan's station in the
+  SPECIAL_* tables, `_gold_wrecks` (layout `gold_wrecks`), the wreck belt (`_has_wreck_belt`, `_make_wreck_field`,
+  field `wreck`, asteroid shape "scrap"), wreck colossi (`wreck`, `stage`, `rot`; `wreck_colossus_poly`,
+  `wreck_colossus_scale`, `WRECK_SHIP_NAMES`); StationArt `dusty_duty`, `gold_colossus`, `wreck_piece` (`_gold_ship`,
+  `piece_geom`, `piece_tears`, `piece_outline` – the collision outline from the same geometry, `hit_profile`), material
+  `STEEL`, baking on the WorkerThreadPool (`prebuild`, `is_ready`, `reap` – SystemView waits in `_exit_tree`);
+  `Celestial.make_wreck_colossus_sprite`, `PixelArt.scrap_sprite`; commands `debug_gold_wreck`,
+  `debug_wreck_colossus`; smoke group `beyond57`.
 - 0.7.80.1 (package 80): autoload `Pad` (scripts/autoload/pad.gd: devices, glyphs, settings and bindings in
   user://controller.cfg, contexts space/ground/menu/minigame, combinations, `pad_button`/`pad_stick`/`pad_buttons` of
   games and menus, the wheels `scripts/ui/pad_wheel.gd`, the prompts `scripts/ui/pad_hint.gd`, `rumble`, test
@@ -571,6 +579,14 @@ Slanted, cosy top-down view since 0.7.49.2.
   the station's planet), y-sorted furniture and people, signs, prompt; signal `used(zone)` (service / crew / exit).
 - `main.gd`: `open_deck()` (from `StationUI.walk_requested`), `close_deck()`, `_on_deck_use`, `_check_deck` (closes the
   deck when the ship is no longer docked there). Keys: `walk_*`, `interact` in the "On foot" group – `Keybinds._context`.
+
+## Beyond – the pocket in the Veil (phase 1 package 57)
+- Out in the Veil, apart from the Cluster: Beyond, Driftwood and Hollow, linked only among themselves. Beyond has Dan's
+  Dusty Duty Store round the icy moon Rime (Hush, an ice giant), Brine (an ocean world with one city) and Cinder.
+- The Gold Fleet's wrecks lie there big as planets (Beyond, Driftwood). The wreck belt holds Wreck Fields: wreck
+  colossi – sections of Gold Fleet ships, obstacles and cover like the rock colossi, minable with a mining laser – and
+  hull scrap mined like asteroids.
+- Debug: F12 → World → Beyond (package 57).
 
 ## Thrust burst (0.6.75.2)
 

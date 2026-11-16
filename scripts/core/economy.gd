@@ -146,7 +146,7 @@ static func _compute(sid: int) -> Dictionary:
 	for f in L["fields"]:
 		_add(scores, factors, FIELD_WEIGHTS.get(String(f.get("class", "stony")), {}), 1.0, String(f["name"]))
 	for b in L.get("belts", []):
-		_add(scores, factors, BELT_WEIGHTS.get(String(b["kind"]), {}), 1.0, "Kuiper belt" if String(b["kind"]) == "kuiper" else "Asteroid belt")
+		_add(scores, factors, BELT_WEIGHTS.get(String(b["kind"]), {}), 1.0, {"kuiper": "Kuiper belt", "wreck": "Wreck belt"}.get(String(b["kind"]), "Asteroid belt"))
 	for st in L["stations"]:
 		_add(scores, factors, STATION_WEIGHTS.get(String(st["type"]), {}), float(st.get("tier", 1)), String(st["name"]))
 	var sp := Universe.special_of(sid)

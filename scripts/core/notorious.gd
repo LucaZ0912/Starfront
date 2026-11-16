@@ -213,7 +213,7 @@ func _random_haunt(lawless_only: bool) -> int:
 	var out: Array = []
 	for s in Universe.systems:
 		var id := int(s["id"])
-		if not is_home(id) and (not lawless_only or lawless(id)):
+		if not is_home(id) and (not lawless_only or lawless(id)) and not Universe.is_pocket(id):
 			out.append(id)
 	return out[randi() % out.size()] if not out.is_empty() else 0
 

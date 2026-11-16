@@ -2072,6 +2072,70 @@ func _c_debug_special(c: Dictionary) -> String:
 	return _c_debug_teleport({"system": sid})
 
 
+## {"type":"debug_gold_wreck"} – package 57: out of the dock, next to the next wreck of the Gold Fleet in this system
+var _debug_gw_i := -1
+
+
+func _c_debug_gold_wreck(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var gws: Array = Universe.get_layout(GameState.current_system).get("gold_wrecks", [])
+	if gws.is_empty():
+		return "No wreck of the Gold Fleet here – they lie in Beyond and Driftwood."
+	_debug_gw_i = (_debug_gw_i + 1) % gws.size()
+	var gw: Dictionary = gws[_debug_gw_i]
+	var f := _fit()
+	var mn = get_tree().current_scene
+	if mn != null and "station_panel" in mn and mn.station_panel.visible:
+		mn.station_panel.close()
+	if f.docked_at != "" and world.player != null:
+		world.player.undock()
+	f.docked_at = ""
+	var p: Vector2 = (gw["pos"] as Vector2) + Vector2.from_angle(float(gw["rot"]) + PI * 0.5) * float(gw["radius"]) * 1.3
+	world.player.position = p
+	f.position = p
+	world.player.order = {"type": "idle"}
+	world.center_on_player()
+	GameState.log_msg("[Debug] Next to the %s – %s, stage %d (%d of %d)." % [gw["name"], gw["kind"], int(gw["stage"]), _debug_gw_i + 1, gws.size()], GameState.COL_WARN)
+	return ""
+
+
+## {"type":"debug_wreck_colossus"} – package 57: out of the dock, next to the next wreck colossus (a section of a Gold
+## Fleet ship in the wreck belt) of this system, cycling through them
+var _debug_wc_i := -1
+
+
+func _c_debug_wreck_colossus(_c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var wcs: Array = Universe.get_layout(GameState.current_system).get("colossi", []).filter(func(co): return co.has("wreck"))
+	if wcs.is_empty():
+		return "No wreck colossus here – they lie in the wreck belts of Beyond and Driftwood."
+	_debug_wc_i = (_debug_wc_i + 1) % wcs.size()
+	var co: Dictionary = wcs[_debug_wc_i]
+	var f := _fit()
+	var mn = get_tree().current_scene
+	if mn != null and "station_panel" in mn and mn.station_panel.visible:
+		mn.station_panel.close()
+	if f.docked_at != "" and world.player != null:
+		world.player.undock()
+	f.docked_at = ""
+	# beside her, a little off her flank
+	var side := Vector2.from_angle(float(co["rot"]) + PI * 0.5)
+	var t := 0.0
+	while t < float(co["radius"]) and ColossusShape.contains(co["poly"], side * t):
+		t += 20.0
+	var p: Vector2 = (co["pos"] as Vector2) + side * (t + 250.0)
+	world.player.position = p
+	f.position = p
+	world.player.order = {"type": "idle"}
+	world.center_on_player()
+	GameState.log_msg("[Debug] Next to %s – stage %d (%d of %d)." % [co["name"], int(co.get("stage", 0)), _debug_wc_i + 1, wcs.size()], GameState.COL_WARN)
+	return ""
+
+
 ## {"type":"debug_prosperity", "delta": 20} – package 42: the prosperity of the current system up or down
 func _c_debug_prosperity(c: Dictionary) -> String:
 	var sid := GameState.current_system

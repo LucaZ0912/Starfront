@@ -115,6 +115,8 @@ static func colossus_poly(d: Dictionary) -> PackedVector2Array:
 
 ## Colossal asteroid as a shader sprite (see shaders/colossus.gdshader).
 static func make_colossus_sprite(d: Dictionary) -> Sprite2D:
+	if d.has("wreck"):
+		return make_wreck_colossus_sprite(d)
 	var spr := Sprite2D.new()
 	spr.texture = PixelArt.white()
 	var R := float(d["radius"])
@@ -151,6 +153,24 @@ static func make_colossus_sprite(d: Dictionary) -> Sprite2D:
 		pts.append(Vector2.ZERO)
 	mat.set_shader_parameter("poly", pts)
 	spr.material = mat
+	return spr
+
+
+## Package 57: a wreck colossus – her picture (StationArt "wreck_piece"), scaled so her outline is her km, turned. The
+## picture is big: made on a worker thread, put on when ready (_process) – her outline blocks from the start.
+static func wreck_art(d: Dictionary) -> Dictionary:
+	return {"art": "wreck_piece", "tier": int(d.get("stage", 0)) + 1, "seed": int(d["wreck"])}
+
+
+static func make_wreck_colossus_sprite(d: Dictionary) -> Sprite2D:
+	var spr := Sprite2D.new()
+	if StationArt.is_ready(wreck_art(d)):
+		spr.texture = StationArt.build(wreck_art(d))["texture"]
+	else:
+		StationArt.prebuild([wreck_art(d)])
+	spr.scale = Vector2.ONE * Universe.wreck_colossus_scale(d)
+	spr.rotation = float(d.get("rot", 0.0))
+	spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return spr
 
 
@@ -277,6 +297,10 @@ static func make_lens_sprite() -> Sprite2D:
 func title() -> String:
 	match kind:
 		"asteroid":
+			if String(data.get("shape", "")) == "scrap":           # package 57: hull scrap of the Gold Fleet
+				if not is_prospected():
+					return "%s Hull Scrap" % String(data.get("size", "")).capitalize()
+				return "%s Hull Scrap (%s)" % [String(data.get("size", "")).capitalize(), GameData.item_name(data["ore"])]
 			if not is_prospected():
 				return "%s %s Asteroid" % [String(data.get("size", "")).capitalize(), String(data.get("class", "")).capitalize()]
 			return "%s Asteroid (%s)" % [String(data.get("size", "")).capitalize(), GameData.item_name(data["ore"])]
@@ -475,6 +499,8 @@ func _process(delta: float) -> void:
 			rotation += float(data.get("spin", 0.0)) * delta
 		return
 	if kind == "colossus":
+		if _col_sprite.texture == null and data.has("wreck") and StationArt.is_ready(wreck_art(data)):
+			_col_sprite.texture = StationArt.build(wreck_art(data))["texture"]
 		# turn see-through while the player's ship is underneath
 		var want := 1.0
 		if view != null and view.player != null and is_instance_valid(view.player):
@@ -487,7 +513,8 @@ func _process(delta: float) -> void:
 		if visible and view != null:
 			var quad := radius * 2.0 / COLOSSUS_BODY
 			var px := clampf(quad * float(view.camera.zoom.x) / PixelArt.SCALE, 48.0, 1600.0)
-			(_col_sprite.material as ShaderMaterial).set_shader_parameter("pixels", floorf(px))
+			if _col_sprite.material != null:                     # package 57: a wreck colossus is a picture, no shader
+				(_col_sprite.material as ShaderMaterial).set_shader_parameter("pixels", floorf(px))
 		return
 	if kind == "wreck":
 		data["life"] = float(data["life"]) - delta

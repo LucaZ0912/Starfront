@@ -453,6 +453,32 @@ func _make_bodies() -> void:
 		bodies.append({"data": b, "sky": sky_spr, "map": map_spr, "star": is_star,
 			"quad": float(look["quad"]) if is_star else _quad_factor(b, false),
 			"r_vis": float(look["vis_r"]) if is_star else float(b["radius"]), "kind": String(look.get("kind", ""))})
+	# package 57 (Luz): the Gold Fleet's wrecks, big as planets – in the sky and on the map like the planets
+	for gw in layout.get("gold_wrecks", []):
+		var gs := _gold_wreck_sprite(gw)
+		var gm := _gold_wreck_sprite(gw)
+		sky.add_child(gs)
+		gm.position = gw["pos"]
+		body_layer.add_child(gm)
+		bodies.append({"data": gw, "sky": gs, "map": gm, "star": false, "quad": GOLD_WRECK_QUAD, "r_vis": float(gw["radius"]),
+			"kind": "gold_wreck"})
+
+
+## Package 57: the picture is 1/0.4 × half her length across (StationArt "gold_colossus").
+const GOLD_WRECK_QUAD := 2.0 / 0.8
+
+
+## A planet-sized wreck: an empty holder (scaled like a planet's 64 px quad) with her picture inside, turned to her heading.
+func _gold_wreck_sprite(gw: Dictionary) -> Sprite2D:
+	var holder := Sprite2D.new()
+	var pic := Sprite2D.new()
+	var tex: Texture2D = StationArt.build({"art": "gold_colossus", "tier": int(gw.get("stage", 0)) + 1, "seed": int(gw.get("seed", 0))})["texture"]
+	pic.texture = tex
+	pic.scale = Vector2.ONE * 64.0 / float(tex.get_width())
+	pic.rotation = float(gw.get("rot", 0.0))
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	holder.add_child(pic)
+	return holder
 
 
 ## 0.6.37.2: an additive white glow (radius 64 texture px) – a neutron star's core.
@@ -1219,6 +1245,7 @@ func _end_raid(outcome: String) -> void:
 
 func _exit_tree() -> void:
 	Audio.stop_all_loops()                     # package 28a
+	StationArt.reap(true)                      # package 57: wait for the wreck colossi's pictures still being made
 	# leaving the system during a live raid: the cluster simulation takes over again
 	if not raid_live.is_empty():
 		var cap: Dictionary = GameState.notorious.get_captain(String(raid_live["cap"]))
@@ -2640,6 +2667,8 @@ func _draw_belts_map(o: Node2D, px: float, map_a: float) -> void:
 				pts.append(p + Vector2.from_angle(a + PI * 0.5) * 1.0)
 			_belt_pts[i] = pts
 		var col := Color(0.62, 0.78, 1.0, 0.35 * map_a) if String(bt["kind"]) == "kuiper" else Color(0.85, 0.72, 0.55, 0.35 * map_a)
+		if String(bt["kind"]) == "wreck":
+			col = Color(0.95, 0.72, 0.3, 0.42 * map_a)            # package 57: the Gold Fleet's wreckage, gold and rust
 		# the dashes are scaled with the zoom so every grain stays a few pixels
 		var pts2: PackedVector2Array = _belt_pts[i]
 		var cached: Array = _belt_sized.get(i, [])
@@ -2675,6 +2704,7 @@ func _draw_belt_background(a: float) -> void:
 			continue                                        # zoomed out too far for scenery
 		var cls := String(bt["cls"])
 		var shapes: Array = Universe.SHAPES_BY_CLASS[cls]
+		var wreckage := String(bt["kind"]) == "wreck"          # package 57: hull plates and pieces of ships, not rock
 		for cx in range(c0.x, c1.x + 1):
 			for cy in range(c0.y, c1.y + 1):
 				var h := hash(Vector3i(cx, cy, int(bt.get("seed", 0)) % 100000))
@@ -2686,9 +2716,13 @@ func _draw_belt_background(a: float) -> void:
 					var r := rng.randf_range(20.0, 70.0) if rng.randf() < 0.9 else rng.randf_range(90.0, 180.0)
 					var pos := cp + (q - bg)
 					var tex := PixelArt.asteroid_sprite(cls, String(shapes[rng.randi() % shapes.size()]), rng.randi(), int(r / 2.2), {"metallic": "iron_ore", "stony": "silicate_rock"}.get(cls, "water_ice"))
+					var tint := Color(0.45, 0.45, 0.5, a * 0.75)
+					if wreckage and rng.randf() < 0.75:
+						tex = PixelArt.wreck_texture(rng.randi_range(1, 40))
+						tint = Color(0.62, 0.55, 0.45, a * 0.8)
 					var sz := Vector2(tex.get_width(), tex.get_height()) * (r * 2.0 / tex.get_width())
 					debris_layer.draw_set_transform(pos, rng.randf() * TAU + _t * rng.randf_range(-0.05, 0.05), Vector2.ONE)
-					debris_layer.draw_texture_rect(tex, Rect2(-sz * 0.5, sz), false, Color(0.45, 0.45, 0.5, a * 0.75))
+					debris_layer.draw_texture_rect(tex, Rect2(-sz * 0.5, sz), false, tint)
 	debris_layer.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 

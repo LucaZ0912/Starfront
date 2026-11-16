@@ -438,6 +438,13 @@ func _build_world() -> void:
 		for mid40 in ["o_rad_ward:1:A", "o_ion_ward:1:A"]:
 			_cmd({"type": "debug_give_module", "module": mid40})))
 	r40c.add_child(UI.button("+5 Pre-Severance Tech", func(): _cmd({"type": "debug_give_cargo", "item": "old_tech", "amount": 5})))
+	_section("Beyond (package 57)")
+	var r57 := _row()
+	r57.add_child(UI.button("To Beyond (at Dan's)", func(): _cmd({"type": "debug_special", "special": "beyond"})))
+	r57.add_child(UI.button("To Driftwood", func(): _cmd({"type": "debug_special", "special": "driftwood"})))
+	r57.add_child(UI.button("To Hollow", func(): _cmd({"type": "debug_special", "special": "hollow"})))
+	r57.add_child(UI.button("Next to a Gold Fleet wreck", func(): _cmd({"type": "debug_gold_wreck"})))
+	r57.add_child(UI.button("Next to a wreck colossus", func(): _cmd({"type": "debug_wreck_colossus"})))
 	# package 42: Wirtschaft 2.0
 	_section("System scale & loading (package 35)")
 	var mn = get_tree().current_scene

@@ -16,7 +16,7 @@ const BAY_W := 46.0                               # hangar bay width / depth (ar
 const BAY_D := 50.0
 
 enum {NONE, HULL, DARK, ACC, GLASS, SOLAR, GREEN, TANK, RUST, HANGAR, TRUSS, HOT, ICE, NEON, PANEL, ROCK, GUN, MARK, STAIN, CRYST,
-	LAND, FOREST, WATER, TOWN, ROOF}                  # package 43: a landscape under glass
+	LAND, FOREST, WATER, TOWN, ROOF, STEEL}             # package 57: STEEL – bare steel (wreck frames)                  # package 43: a landscape under glass
 enum {P_FLAT, P_PLATES, P_WINDOWS, P_CYL, P_SOLAR, P_TRUSS, P_HAZARD, P_ARMOR, P_BLOCK, P_RIBS, P_BAY, P_GIRDER}
 enum {D_FLAT, D_DOME, D_TANK, D_GREEN, D_DISH, D_COOL, D_HUB, D_TURRET, D_ROCK, D_HOTTOWER}
 
@@ -48,8 +48,79 @@ static func build(data: Dictionary) -> Dictionary:
 	var key := "%s_%d_%d" % [t, tr, sd]
 	if _cache.has(key):
 		return _cache[key]
+	var a: StationArt
+	var img: Image
+	_img_lock.lock()
+	var baked: Array = _images.get(key, [])
+	_images.erase(key)
+	_img_lock.unlock()
+	if not baked.is_empty():
+		a = baked[0]                                   # package 57: made on a worker thread (prebuild)
+		img = baked[1]
+	else:
+		a = StationArt.new()
+		a._setup(t, tr, sd)
+		a._draw_art(t)
+		img = a._render()
+	return _finish(key, a, img)
+
+
+## Package 57: the big pictures (wreck colossi) made on worker threads ahead of time – build() then only makes the
+## texture. `list` = the dictionaries build() would get.
+static var _img_lock := Mutex.new()
+static var _images := {}                 # key -> [StationArt, Image]
+static var _pending := {}                # keys handed to a worker (main thread only)
+static var _tasks: Array = []            # WorkerThreadPool task ids not yet waited for (every task must be)
+
+
+static func _key_of(data: Dictionary) -> String:
+	return "%s_%d_%d" % [String(data.get("art", data.get("type", "trade"))), clampi(int(data.get("tier", 1)), 1, 3), int(data.get("seed", 1))]
+
+
+static func prebuild(list: Array) -> void:
+	for d in list:
+		var key := _key_of(d)
+		if _cache.has(key) or _pending.has(key):
+			continue
+		_pending[key] = true
+		var dd: Dictionary = d.duplicate()
+		_tasks.append(WorkerThreadPool.add_task(func() -> void: _bake(key, dd)))
+
+
+## Waits for the finished workers (all of them with all = true, e.g. before quitting) – Godot wants every task waited for.
+static func reap(all: bool = false) -> void:
+	for id in _tasks.duplicate():
+		if all or WorkerThreadPool.is_task_completed(id):
+			WorkerThreadPool.wait_for_task_completion(id)
+			_tasks.erase(id)
+
+
+static func _bake(key: String, data: Dictionary) -> void:
 	var a := StationArt.new()
-	a._setup(t, tr, sd)
+	var t: String = data.get("art", data.get("type", "trade"))
+	a._setup(t, clampi(int(data.get("tier", 1)), 1, 3), int(data.get("seed", 1)))
+	a._draw_art(t)
+	var img := a._render()
+	_img_lock.lock()
+	_images[key] = [a, img]
+	_img_lock.unlock()
+
+
+## True when build() is cheap now (made already, or made on a worker).
+static func is_ready(data: Dictionary) -> bool:
+	if not _tasks.is_empty():
+		reap()
+	var key := _key_of(data)
+	if _cache.has(key):
+		return true
+	_img_lock.lock()
+	var r := _images.has(key)
+	_img_lock.unlock()
+	return r
+
+
+func _draw_art(t: String) -> void:
+	var a := self
 	match t:
 		"trade":
 			a._trade()
@@ -107,6 +178,14 @@ static func build(data: Dictionary) -> Dictionary:
 			a._hdy_yard()
 		"weapon_platform":
 			a._weapon_platform()
+		"dusty_duty":
+			a._dusty_duty()                          # package 57 (Luz): Dan's Dusty Duty Store in Beyond
+		"gold_colossus":
+			a._gold_colossus()                       # 57: one wreck of the Gold Fleet, big as a planet (kind by seed, stage by tier)
+		"wreck_piece":
+			a._wreck_piece()                         # 57: a wreck colossus – a torn-off section of a Gold Fleet ship
+		"gold_wrecks":
+			a._gold_wreck_sheet()                    # 57: every kind of Gold Fleet wreck at every stage (to look at)
 		"resort", "resort_ring", "resort_star", "resort_fun":
 			if a.tier >= 3:
 				a._resort_habitat()                # package 43: the great habitat ring
@@ -114,7 +193,9 @@ static func build(data: Dictionary) -> Dictionary:
 				a._resort_biosphere()              # … the smaller ones a biosphere
 		_:
 			a._trade()
-	var img := a._render()
+
+
+static func _finish(key: String, a: StationArt, img: Image) -> Dictionary:
 	var out := {
 		"texture": ImageTexture.create_from_image(img), "size": a.n * PX, "radius": a.n * PX * 0.45,
 		"bays": [], "lights": [], "turrets": [], "neons": [], "vents": [], "pads": [],
@@ -778,11 +859,12 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 560,
 	"cathedral": 520, "pilgrim_gate": 300, "forge": 460, "lux_aeterna": 600,
 	"dyson_hub": 480, "mirror": 170, "gate_frame": 190, "axiom_yards": 440,
-	"ew_yard": 460, "khi_yard": 480, "aur_yard": 480, "hdy_yard": 460, "weapon_platform": 170}
+	"ew_yard": 460, "khi_yard": 480, "aur_yard": 480, "hdy_yard": 460, "weapon_platform": 170, "dusty_duty": 640, "gold_wrecks": 720, "gold_colossus": 640, "wreck_piece": 640}
 const COVENANT_ARTS := {"cathedral": true, "pilgrim_gate": true, "forge": true, "lux_aeterna": true}
 const DIRECTORATE_ARTS := {"dyson_hub": true, "mirror": true, "gate_frame": true, "axiom_yards": true}
 const MAKER_ACC := {"ew_yard": Color(0.45, 0.75, 1.0), "khi_yard": Color(1.0, 0.82, 0.15), "aur_yard": Color(1.0, 0.82, 0.45),
-	"hdy_yard": Color(1.0, 0.15, 0.12), "weapon_platform": Color(1.0, 0.15, 0.12)}
+	"hdy_yard": Color(1.0, 0.15, 0.12), "weapon_platform": Color(1.0, 0.15, 0.12), "dusty_duty": Color(1.0, 0.58, 0.18), "gold_wrecks": Color(1.0, 0.58, 0.18),
+	"gold_colossus": Color(1.0, 0.58, 0.18), "wreck_piece": Color(1.0, 0.58, 0.18)}
 const ASSEMBLY_ARTS := {"vote": true, "vote_relay": true, "concord_yards": true, "res_publica": true}
 const VOTE_RELAY_ANGLE := 0.4                       # where the first relay lies (Universe._special_structures)
 
@@ -1738,6 +1820,772 @@ func _fortress() -> void:
 		light(P(n * rng.randf_range(0.05, 0.42), rng.randf() * TAU), Color(1.0, 0.1, 0.1), rng.randf_range(0.6, 2.2), rng.randf() < 0.5)
 
 
+## Package 57 (Luz): Dan's Dusty Duty Store – the scrapyard over Beyond's ice moon. Rustic, patched together from old
+## modules round a battered hub; long working cranes reach out on lattice booms, and from their claws hang great
+## wrecks of the Gold Fleet being taken apart – hulls opened to the ribs, sparks where the cutters work, slabs of plate
+## already cut loose; a smelter glowing, scrap heaps and containers, a dish, a hangar mouth, Dan's sign.
+func _dusty_duty() -> void:
+	var hub := Vector2(c, c)
+	# the cranes first (lowest): long lattice booms out to the wrecks
+	var cranes := [[-2.55, 0.29], [-0.6, 0.3], [0.75, 0.27], [2.1, 0.29]]
+	for k in cranes.size():
+		var ang := float(cranes[k][0])
+		var reach := n * float(cranes[k][1])
+		var root := hub + Vector2.from_angle(ang) * n * 0.1
+		var tip := hub + Vector2.from_angle(ang) * reach
+		var sideb := Vector2.from_angle(ang).orthogonal()
+		seg(root, tip, 4.5, HULL, 10.0, P_GIRDER)                     # the boom: a girder …
+		seg(root + sideb * 6.0, tip + sideb * 4.0, 1.2, TRUSS, 9.0)     # … with its lattice either side
+		seg(root - sideb * 6.0, tip - sideb * 4.0, 1.2, TRUSS, 9.0)
+		var blen := root.distance_to(tip)
+		for bq in int(blen / 12.0):
+			var bp := root.lerp(tip, (bq + 0.5) * 12.0 / blen)
+			seg(bp + sideb * 5.5, bp - sideb * 5.5, 0.8, TRUSS, 9.5)
+		box(root.lerp(tip, 0.62), ang, 6.0, 6.5, PANEL, 13.0, P_HAZARD)  # the trolley
+		light(root.lerp(tip, 0.62), Color(1.0, 0.75, 0.3), 1.4, true)
+		# the wreck at the claw: a Gold Fleet hull, opened to the ribs, a cut slab beside it
+		var w_ang := ang + (1.2 if k % 2 == 0 else -1.2)
+		var wc := tip + Vector2.from_angle(ang) * n * 0.07
+		var wl := n * (0.13 if k % 2 == 0 else 0.11)
+		var ww := n * 0.042
+		_gold_wreck(wc, w_ang, wl, ww, ["freighter", "tanker", "ark", "escort"][k], [0, 1, 2, 1][k])
+		# the claw: two jaws round the hull
+		for sd in [-1.0, 1.0]:
+			var jaw := tip + Vector2.from_angle(ang + sd * 0.6) * 9.0
+			seg(tip, jaw, 2.2, GUN, 14.0)
+		disc(tip, 5.0, PANEL, 14.0, D_HUB)
+		light(tip, Color(1.0, 0.7, 0.2), 1.0)
+		for sp in 3:
+			vent(wc + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(4.0, wl * 0.6), "spark", 2.0)
+		# the crane's counterweight and cab at its root
+		box(root - Vector2.from_angle(ang) * 8.0, ang, 8.0, 7.0, PANEL, 13.0, P_PLATES)
+		light(root, Color(1.0, 0.55, 0.15), 0.6, true)
+	# the hub: patched modules round a battered core
+	for k in 7:
+		var a2 := k * TAU / 7.0 + rng.randf_range(-0.25, 0.25)
+		var p := hub + Vector2.from_angle(a2) * n * rng.randf_range(0.07, 0.12)
+		box(p, a2 + rng.randf_range(-0.5, 0.5), n * rng.randf_range(0.04, 0.07), n * rng.randf_range(0.022, 0.035), [HULL, PANEL, RUST, HULL][k % 4], 11.0 + rng.randf() * 3.0, [P_PLATES, P_WINDOWS, P_PLATES, P_ARMOR][k % 4])
+		if k % 3 == 0:
+			erase_disc(p + Vector2.from_angle(rng.randf() * TAU) * 4.0, rng.randf_range(1.5, 2.5))
+	disc(hub, n * 0.075, HULL, 14.0, D_HUB)
+	disc(hub, n * 0.045, RUST, 17.0, D_DOME)
+	disc(hub, n * 0.018, ACC, 20.0, D_DOME)
+	# the smelter: a short tower glowing at its mouth, smoke
+	var sm := hub + Vector2.from_angle(1.45) * n * 0.14
+	disc(sm, 11.0, DARK, 16.0, D_HOTTOWER)
+	disc(sm, 5.0, HOT, 20.0, D_DOME)
+	vent(sm, "smoke", 5.0)
+	vent(sm + Vector2(3, 0), "glow", 3.0)
+	# scrap heaps and containers
+	for k in 22:
+		var cp := hub + Vector2.from_angle(rng.randf() * TAU) * n * rng.randf_range(0.12, 0.22)
+		box(cp, rng.randf() * PI, rng.randf_range(2.5, 5.0), rng.randf_range(1.5, 3.0), [RUST, PANEL, DARK, HULL, ACC][rng.randi() % 5], 8.0 + rng.randf() * 3.0)
+	for k in 3:
+		disc(hub + Vector2.from_angle(-1.0 + k * 0.9) * n * 0.18, rng.randf_range(6.0, 9.0), RUST, 9.0, D_ROCK)
+	# a dish, tanks
+	disc(hub + Vector2.from_angle(-1.9) * n * 0.13, 10.0, TANK, 14.0, D_DISH)
+	for k in 2:
+		disc(hub + Vector2.from_angle(0.2 + k * 0.35) * n * 0.16, 6.0, TANK, 13.0, D_TANK)
+	# the hangar mouth, the sign
+	var bang := -1.25
+	box(hub + Vector2.from_angle(bang) * (n * 0.12 - 14.0), bang, 22.0, 27.0, PANEL, 11.0, P_PLATES)
+	add_bay(bang, n * 0.12 + 3.0, 12.0)
+	var pn := hub + Vector2.from_angle(2.75) * n * 0.1
+	box(pn, 0.3, 20.0, 3.5, DARK, 18.0)
+	box(pn, 0.3, 19.0, 2.4, NEON, 19.0)
+	neons.append({"pos": pn - Vector2(c, c), "ang": 0.3, "len": 38.0, "wid": 4.0})
+	for k in 8:
+		light(hub + Vector2.from_angle(rng.randf() * TAU) * n * rng.randf_range(0.05, 0.2), Color(1.0, 0.65, 0.25), rng.randf_range(0.4, 1.6), rng.randf() < 0.3)
+
+
+## A wreck of the Gold Fleet (package 57, Luz: many more details and variety) – four kinds of Earth ship, each taken
+## apart to a different stage (0 fresh off the field, 1 half cut, 2 stripped to the frame):
+##   freighter – a long blunt hull, container racks, a bridge tower aft, three dead engine bells
+##   tanker    – a spine with great round tanks, one burst open
+##   ark       – a colony ship: a core, a broken habitat ring, smashed greenhouse domes
+##   escort    – an angular warship: armour plates, dead turrets, a flight deck with its markings
+## Everywhere: the Gold Fleet's gold trim and hull numbers, windows, scorch and holes, cut lines, scaffolding, debris.
+func _gold_wreck(p: Vector2, ang: float, hl: float, hw: float, kind: String = "", stage: int = -1) -> void:
+	if kind == "":
+		kind = ["freighter", "tanker", "ark", "escort"][rng.randi() % 4]
+	if stage < 0:
+		stage = rng.randi() % 3
+	var d := Vector2.from_angle(ang)
+	var s := d.orthogonal()
+	var at := func(u: float, v: float) -> Vector2: return p + d * hl * u + s * hw * v
+	match kind:
+		"freighter":
+			var pts := PackedVector2Array([at.call(1.0, 0.55), at.call(0.92, 0.9), at.call(-0.6, 0.95), at.call(-0.75, 0.75)])
+			_ragged_stern(pts, at, -0.75, -0.95, 7)
+			pts.append_array(PackedVector2Array([at.call(-0.75, -0.75), at.call(-0.6, -0.95), at.call(0.92, -0.9), at.call(1.0, -0.55)]))
+			poly(pts, HULL, 11.0, 2.5, 8)
+			# container racks along the deck, some still loaded
+			for rk in 6:
+				var u := 0.75 - rk * 0.2
+				for side in [-1.0, 1.0]:
+					var cpos: Vector2 = at.call(u, side * 0.45)
+					if stage == 2 and rk % 2 == 0:
+						seg(cpos - d * hl * 0.08, cpos + d * hl * 0.08, 1.0, TRUSS, 14.0)
+						continue
+					box(cpos, ang, hl * 0.08, hw * 0.32, [RUST, PANEL, ACC, HULL, MARK][rng.randi() % 5], 14.0 + rng.randf() * 2.0, P_PLATES)
+			# the bridge tower aft, its windows
+			box(at.call(-0.42, 0.0), ang, hl * 0.1, hw * 0.55, PANEL, 17.0, P_WINDOWS)
+			# three dead engine bells at the stern
+			for e in 3:
+				disc(at.call(-0.7, -0.5 + e * 0.5), hw * 0.22, DARK, 13.0, D_DOME)
+				disc(at.call(-0.7, -0.5 + e * 0.5), hw * 0.1, GUN, 14.0, D_FLAT)
+		"tanker":
+			seg(at.call(1.0, 0.0), at.call(-0.85, 0.0), hw * 0.28, HULL, 11.0, P_GIRDER)
+			box(at.call(0.9, 0.0), ang, hl * 0.1, hw * 0.5, HULL, 14.0, P_ARMOR)     # the bow block
+			for tk in 4:
+				var tp: Vector2 = at.call(0.62 - tk * 0.42, 0.0)
+				var burst := tk == 1 + rng.randi() % 2
+				if stage == 2 and tk % 2 == 1:
+					ring(tp, hw * 0.75, hw * 0.85, TRUSS, 12.0, false, 12)     # only the tank's frame left
+					continue
+				disc(tp, hw * 0.85, TANK, 13.0, D_TANK)
+				ring(tp, hw * 0.78, hw * 0.86, MARK, 15.0, false, 20)
+				if burst:
+					erase_disc(tp + s * hw * 0.3, hw * 0.45)
+					ring(tp + s * hw * 0.3, hw * 0.42, hw * 0.52, RUST, 14.0, false, 10)
+			box(at.call(-0.8, 0.0), ang, hl * 0.08, hw * 0.45, PANEL, 15.0, P_WINDOWS)
+		"ark":
+			seg(at.call(0.95, 0.0), at.call(-0.9, 0.0), hw * 0.42, HULL, 12.0, P_CYL)
+			# the habitat ring round the middle, broken open on one side
+			var rc: Vector2 = at.call(0.05, 0.0)
+			ring(rc, hw * 1.25, hw * 1.55, HULL, 13.0, true, 18)
+			for cut in 3:
+				erase_disc(rc + Vector2.from_angle(ang + 2.2 + cut * 0.35) * hw * 1.4, hw * 0.35)
+			for sp2 in 4:
+				var a2 := ang + sp2 * PI * 0.5 + 0.4
+				seg(rc + Vector2.from_angle(a2) * hw * 0.45, rc + Vector2.from_angle(a2) * hw * 1.25, 1.2, TRUSS, 12.5)
+			# greenhouse domes, smashed (dead plants, black glass)
+			for dm in 3:
+				var dp: Vector2 = at.call(0.65 - dm * 0.22, (0.5 if dm % 2 == 0 else -0.5))
+				disc(dp, hw * 0.26, GREEN if stage == 0 and dm == 0 else DARK, 14.0, D_GREEN)
+				erase_disc(dp + Vector2(1.5, -1.0), hw * 0.08)
+			disc(at.call(-0.82, 0.0), hw * 0.4, PANEL, 14.0, D_HUB)
+		"escort":
+			var ep := PackedVector2Array([at.call(1.0, 0.0), at.call(0.35, 0.75), at.call(-0.55, 1.0), at.call(-0.75, 0.6)])
+			_ragged_stern(ep, at, -0.75, -0.9, 5)
+			ep.append_array(PackedVector2Array([at.call(-0.75, -0.6), at.call(-0.55, -1.0), at.call(0.35, -0.75)]))
+			poly(ep, HULL, 11.0, 3.0, 0)
+			for pl in 5:
+				box(at.call(0.5 - pl * 0.24, 0.42), ang, hl * 0.1, hw * 0.16, PANEL, 13.5, P_ARMOR)
+				box(at.call(0.5 - pl * 0.24, -0.42), ang, hl * 0.1, hw * 0.16, PANEL, 13.5, P_ARMOR)
+			# the flight deck down the middle, its markings
+			box(at.call(0.05, 0.0), ang, hl * 0.55, hw * 0.16, DARK, 14.0)
+			for mk in 8:
+				box(at.call(0.5 - mk * 0.13, 0.0), ang, hl * 0.025, 0.6, MARK, 15.0)
+			for tu in 3:
+				disc(at.call(0.6 - tu * 0.45, 0.72 if tu % 2 == 0 else -0.72), hw * 0.13, GUN, 15.0, D_TURRET)
+	# the Gold Fleet's gold trim and her hull number
+	seg(at.call(0.7, 0.9 if kind != "escort" else 0.55), at.call(-0.55, 0.92 if kind != "escort" else 0.95), 1.0, MARK, 16.0)
+	seg(at.call(0.7, -0.9 if kind != "escort" else -0.55), at.call(-0.55, -0.92 if kind != "escort" else -0.95), 1.0, MARK, 16.0)
+	for dg in 3:
+		box(at.call(0.3 + dg * 0.06, 0.68), ang, 1.2, 2.0, MARK, 16.0)
+	# windows down her flanks (dark – no one home)
+	for wn in 12:
+		var wu := 0.6 - wn * 0.1
+		box(at.call(wu, 0.78 if kind != "escort" else 0.6), ang, 0.8, 0.6, DARK, 16.0, P_FLAT, true)
+		box(at.call(wu, -0.78 if kind != "escort" else -0.6), ang, 0.8, 0.6, DARK, 16.0, P_FLAT, true)
+	# how far she is taken apart: an open section to the ribs (wider the further), scaffolding, cut lines, sparks
+	var open_l: float = [0.12, 0.3, 0.55][stage]
+	box(at.call(-0.05, 0.0), ang, hl * open_l, hw * 0.8, DARK, 13.0, P_RIBS, true)
+	if stage >= 1:
+		for sc in 4:
+			var sp: Vector2 = at.call(-0.05 + (sc - 1.5) * open_l * 0.6, 1.15)
+			seg(sp, sp - s * hw * 2.3, 0.8, TRUSS, 17.0)
+		seg(at.call(-0.05 - open_l, 1.15), at.call(-0.05 + open_l, 1.15), 0.8, TRUSS, 17.0)
+		seg(at.call(-0.05 - open_l, -1.15), at.call(-0.05 + open_l, -1.15), 0.8, TRUSS, 17.0)
+	for cl in 3 + stage * 2:
+		var cu := rng.randf_range(-0.6, 0.6)
+		for dash in 5:
+			box(at.call(cu, -0.7 + dash * 0.35), ang + PI * 0.5, 1.2, 0.4, HOT if stage > 0 and dash % 2 == 0 else RUST, 17.0, P_FLAT, true)
+	# scorch and holes from the battle, more of them the older the wound
+	for hk in 4 + stage:
+		var hp: Vector2 = at.call(rng.randf_range(-0.8, 0.8), rng.randf_range(-0.85, 0.85))
+		disc(hp, rng.randf_range(2.0, 4.5), DARK, 14.0, D_FLAT)
+		if rng.randf() < 0.6:
+			erase_disc(hp, rng.randf_range(1.2, 2.6))
+	# a broken mast or antenna, debris drifting round her
+	seg(at.call(0.55, 0.0), at.call(0.55, 0.0) + Vector2.from_angle(ang + rng.randf_range(0.8, 2.3)) * hw * 1.1, 0.7, TRUSS, 18.0)
+	for db in 6 + stage * 3:
+		var dbp: Vector2 = at.call(rng.randf_range(-1.1, 1.1), rng.randf_range(1.3, 2.4) * (1.0 if rng.randf() < 0.5 else -1.0))
+		box(dbp, rng.randf() * PI, rng.randf_range(1.5, 4.0), rng.randf_range(1.0, 2.0), [HULL, RUST, PANEL, MARK][rng.randi() % 4], 9.0)
+	# a slab of plate already cut loose, drifting beside her
+	if stage >= 1:
+		var slab: Vector2 = at.call(-0.3, 2.0)
+		box(slab, ang + rng.randf_range(-0.4, 0.4), hl * 0.16, hw * 0.3, HULL, 10.0, P_PLATES)
+		box(slab, ang, hl * 0.14, 0.8, MARK, 11.0)
+
+
+## Package 57: a sheet of every wreck kind (rows) at every stage (columns) – for reviewing them (debug).
+func _gold_wreck_sheet() -> void:
+	var kinds := ["freighter", "tanker", "ark", "escort"]
+	for r in 4:
+		for st in 3:
+			_gold_wreck(Vector2(n * (0.2 + st * 0.3), n * (0.13 + r * 0.245)), 0.0, n * 0.11, n * 0.036, kinds[r], st)
+
+
+## Package 57: one wreck of the Gold Fleet filling the picture – drawn as a planet-sized body in Beyond's sky. The kind
+## comes from the seed (seed % 4: freighter, tanker, ark, escort), how far she is taken apart from the tier (1–3).
+func _gold_colossus() -> void:
+	var kinds := ["freighter", "tanker", "ark", "escort"]
+	_gold_ship(kinds[posmod(int(rng.seed), 4)], 3, tier - 1)
+
+
+## Package 57: a wreck colossus – seed % 12 is the variant (kind = % 4: freighter, tanker, ark, escort; part = / 4:
+## 0 stern, 1 middle, 2 bow), tier 1–3 how far she is taken apart.
+func _wreck_piece() -> void:
+	var vi := posmod(int(rng.seed), 12)
+	_gold_ship(SHIP_KINDS[vi % 4], vi / 4, tier - 1, piece_tears(vi, tier - 1))
+
+
+const SHIP_KINDS := ["freighter", "tanker", "ark", "escort"]
+const PIECE_N := 640                       # canvas size of a wreck colossus (LANDMARK_SIZE["wreck_piece"])
+const PIECE_PARTS := ["stern", "midsection", "bow"]
+
+
+## Where a part of her lies on the canvas: the window of s she covers (sm = its middle), hl = half its length in
+## pixels, k = pixels per unit of s, hp = her half-width in pixels.
+static func piece_geom(kind: String, part: int, nn: int) -> Dictionary:
+	var win: Vector2 = [Vector2(-1.04, -0.22), Vector2(-0.42, 0.42), Vector2(0.22, 1.04), Vector2(-1.08, 1.08)][part]
+	var hl := nn * (0.4 if part == 3 else 0.42)
+	var k := hl / ((win.y - win.x) * 0.5)
+	var hws: float = {"freighter": 0.15, "tanker": 0.13, "ark": 0.14, "escort": 0.17}[kind]
+	return {"sm": (win.x + win.y) * 0.5, "hl": hl, "k": k, "hp": hws * k}
+
+
+## The tears of a wreck colossus (variant vi, stage) – fixed by its own seed, so her outline (Universe: collision,
+## radar shadow) and her picture agree without drawing her.
+static func piece_tears(vi: int, stage: int) -> Dictionary:
+	var part := vi / 4
+	var g := piece_geom(SHIP_KINDS[vi % 4], part, PIECE_N)
+	var r := RandomNumberGenerator.new()
+	r.seed = 5701 + vi * 97 + stage * 13
+	var tears := {}
+	if part in [0, 1]:
+		tears[1] = tear_line(r, float(g["hl"]) * 0.88, float(g["hp"]))
+	if part in [1, 2]:
+		tears[-1] = tear_line(r, float(g["hl"]) * 0.88, float(g["hp"]))
+	return tears
+
+
+static var _outlines := {}
+
+
+## The outline of a wreck colossus in art pixels round the canvas centre (96 points, star-shaped from the centre):
+## her hull by its profile, her natural ends (the engine bells aft), cut back to the ragged tears. Cached.
+static func piece_outline(vi: int, stage: int) -> PackedVector2Array:
+	var key := "%d_%d" % [vi, stage]
+	if _outlines.has(key):
+		return _outlines[key]
+	var kind: String = SHIP_KINDS[vi % 4]
+	var part := vi / 4
+	var g := piece_geom(kind, part, PIECE_N)
+	var sm: float = g["sm"]
+	var k: float = g["k"]
+	var hp: float = g["hp"]
+	var tears := piece_tears(vi, stage)
+	var x_lo := (-1.06 - sm) * k if part == 0 else -PIECE_N * 0.5
+	var x_hi := (1.0 - sm) * k if part == 2 else PIECE_N * 0.5
+	var inside := func(p: Vector2) -> bool:
+		if p.x < x_lo or p.x > x_hi:
+			return false
+		var s2 := sm + p.x / k
+		if absf(p.y) > hit_profile(kind, maxf(s2, -1.0), hp / k) * hp * (0.9 if s2 < -1.0 else 1.0):
+			return false
+		for sd in tears:
+			if p.x * sd > tear_at(tears[sd], p.y, hp):
+				return false
+		return true
+	var out := PackedVector2Array()
+	for i in 96:
+		var d := Vector2.from_angle(TAU * i / 96.0)
+		var t := 0.0
+		while t < PIECE_N * 0.5 and inside.call(d * (t + 2.0)):
+			t += 2.0
+		out.append(d * maxf(t, 4.0))
+	_outlines[key] = out
+	return out
+
+
+## The ragged edge where a stern was torn off: points from v0 to v1 across the hull, in and out.
+func _ragged_stern(pts: PackedVector2Array, at: Callable, u: float, _u2: float, teeth: int) -> void:
+	for jk in teeth + 1:
+		var t := float(jk) / teeth
+		var depth := u - (0.08 if jk % 2 == 0 else 0.22) - rng.randf_range(0.0, 0.08)
+		pts.append(at.call(depth, 0.75 - 1.5 * t))
+
+
+## Package 57 (Luz: more detail – scaffolding, bare steel, real ship structures; ragged torn edges, not clean cuts): a
+## Gold Fleet ship built like a real hull, shown whole (a planet-sized wreck, part 3) or one torn-off section of her
+## (a wreck colossus: part 0 stern, 1 middle, 2 bow). Bottom to top: a deck grating inside, longerons, ribs and
+## bulkheads of bare steel, plating over it with plates missing in patches (more the further she is taken apart and
+## near the tears) so the frame shows, her own structures on top, battle holes and scorch, the salvagers' scaffolding
+## and cut lines, and the torn ends – ragged, with girders, ribs, cables and peeled plates sticking out.
+## Ship coordinates: s along her (-1 stern … 1 bow), v across in half-widths.
+func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) -> void:
+	var g := piece_geom(kind, part, n)
+	var sm: float = g["sm"]
+	var hl: float = g["hl"]
+	var k: float = g["k"]                                          # pixels per unit of s
+	var hp: float = g["hp"]                                        # her half-width in pixels
+	var S := func(s: float, v: float) -> Vector2: return Vector2(c + (s - sm) * k, c + v * hp)
+	var vis := func(s: float) -> bool: return absf((s - sm) * k) < n * 0.62
+	var x2s := func(x: float) -> float: return sm + (x - c) / k
+	var steel := STEEL
+	# the torn ends (in pixels from the centre along her): +1 forward, -1 aft
+	var tears := tears_in.duplicate()                              # a wreck colossus: the same tears as her outline
+	if part == 3 and kind in ["freighter", "escort"] and stage >= 1:
+		tears[-1] = tear_line(rng, hl * 0.93, hp)                   # her stern torn off
+	var plate_pat := P_ARMOR if kind == "escort" else P_PLATES
+	# --- 1. the deck grating inside her hull
+	for x in n:
+		var s: float = x2s.call(x + 0.5)
+		if s < -1.0 or s > 1.0:
+			continue
+		var w := ship_profile(kind, s) * hp
+		for y in range(int(c - w), int(c + w) + 1):
+			var deck := posmod(x, 7) == 0 or posmod(y, 7) == 0
+			_put(x, y, TRUSS if deck else DARK, 3.0 if deck else 2.0)
+	# --- 2. the frame of bare steel: longerons along her, ribs across, a bulkhead every fourth rib
+	for lv in [-0.97, -0.62, -0.25, 0.25, 0.62, 0.97]:
+		var prev := Vector2.INF
+		for i in 81:
+			var s: float = -1.0 + i * 0.025
+			if not vis.call(s):
+				prev = Vector2.INF
+				continue
+			var q: Vector2 = S.call(s, lv * ship_profile(kind, s))
+			if prev != Vector2.INF:
+				seg(prev, q, 1.6 if absf(lv) > 0.9 else 1.3, steel, 8.0, P_GIRDER)
+			prev = q
+	var rib := 0
+	var x0 := int(S.call(-1.0, 0.0).x)
+	for x in range(maxi(x0, 0), mini(int(S.call(1.0, 0.0).x), n), 6):
+		var w2 := ship_profile(kind, x2s.call(x)) * hp
+		rib += 1
+		var bulk := posmod(x - x0, 48) < 6
+		seg(Vector2(x, c - w2 * 0.98), Vector2(x, c + w2 * 0.98), 2.0 if bulk else 0.8, steel, 9.0 if bulk else 7.0, P_GIRDER if bulk else P_FLAT)
+	# --- 3. plating, plates missing in patches (the frame shows), more near the tears and the further she is taken apart
+	var miss: float = [0.06, 0.22, 0.5][stage]
+	var patch: float = [0.8, 0.66, 0.52][stage]
+	for px in range(0, n, 20):
+		for py in range(int(c - hp * 1.05), int(c + hp * 1.05), 13):
+			var pc := Vector2(px + 10.0, py + 6.5)
+			var s2: float = x2s.call(pc.x)
+			if s2 < -1.0 or s2 > 1.0 or absf(pc.y - c) > ship_profile(kind, s2) * hp:
+				continue
+			var p_miss := miss
+			for sd in tears:
+				var gap: float = tear_at(tears[sd], pc.y - c, hp) - (pc.x - c) * sd
+				if gap < hl * 0.3:
+					p_miss += 0.6 * (1.0 - maxf(gap, 0.0) / (hl * 0.3))
+			if rng.randf() < p_miss or _vn(pc.x / 46.0, pc.y / 46.0, 5) > patch:
+				if rng.randf() < 0.12:
+					box(pc + Vector2(rng.randf_range(-4, 4), rng.randf_range(-3, 3)), rng.randf_range(-0.6, 0.6), 7.0, 4.5, HULL, 10.5, P_PLATES)   # a plate hanging loose
+				continue
+			var pm: int = [HULL, HULL, HULL, HULL, HULL, PANEL, steel, HULL][rng.randi() % 8]
+			box(pc, rng.randf_range(-0.03, 0.03), 9.6, 6.2, pm, 12.0 + rng.randf() * 0.5, plate_pat)
+	# trim the plating to her outline (plates hang over the edge otherwise)
+	for x in n:
+		var s3: float = x2s.call(x + 0.5)
+		var w3 := ship_profile(kind, s3) * hp if s3 >= -1.0 and s3 <= 1.0 else -1.0
+		for y in n:
+			if absf(y + 0.5 - c) > w3 + 0.5 and mat[y * n + x] != NONE:
+				_put(x, y, NONE, -1.0, true)
+	# the Gold Fleet's gold trim, only where the plates are still on
+	for x in n:
+		var s4: float = x2s.call(x + 0.5)
+		if s4 < -0.95 or s4 > 0.95:
+			continue
+		var w4 := ship_profile(kind, s4) * hp
+		for tv in [-0.82, 0.82]:
+			var ty := int(c + tv * w4)
+			if _m(x, ty) in [HULL, PANEL, steel]:
+				_put(x, ty, MARK, 14.0)
+	# --- 4. her own structures
+	match kind:
+		"freighter":
+			_ship_engines(S, vis, k, hp, [-0.6, 0.0, 0.6], 0.3)
+			if vis.call(-0.94):
+				box(S.call(-0.95, 0.0), 0.0, 0.025 * k, hp * 0.95, steel, 15.0, P_TRUSS)      # thrust frame
+			if vis.call(-0.82):
+				disc(S.call(-0.82, 0.0), hp * 0.38, PANEL, 15.0, D_HUB)                          # reactor
+			for rs in [-0.74, -0.62]:
+				_radiator(S, vis, rs, hp, k, 1.95)
+			if vis.call(-0.5):
+				box(S.call(-0.5, 0.0), 0.0, 0.045 * k, hp * 0.62, HULL, 17.0, P_WINDOWS)          # the bridge tower
+				box(S.call(-0.5, 0.0), 0.0, 0.03 * k, hp * 0.4, PANEL, 19.0, P_WINDOWS)
+				seg(S.call(-0.5, -0.3), S.call(-0.42, -1.25), 0.8, steel, 21.0)                 # antenna mast, bent
+				disc(S.call(-0.44, 0.72), hp * 0.18, TANK, 16.0, D_DISH)
+			var rk := 0
+			for i in 12:
+				var cs := -0.36 + i * 0.095
+				if not vis.call(cs):
+					continue
+				rk += 1
+				box(S.call(cs, 0.0), 0.0, 0.042 * k, hp * 0.92, steel, 13.5, P_TRUSS)            # the rack
+				for cv in [-0.72, -0.4, 0.4, 0.72]:
+					if rng.randf() < [0.15, 0.4, 0.75][stage]:
+						continue
+					box(S.call(cs, cv), 0.0, 0.036 * k, hp * 0.14, [RUST, PANEL, ACC, HULL, MARK, steel][rng.randi() % 6], 15.0 + rng.randf(), P_PLATES)
+			if vis.call(-0.38):
+				seg(S.call(-0.38, 0.0), S.call(0.78, 0.0), hp * 0.07, steel, 14.5, P_GIRDER)   # the spine walkway
+			if vis.call(0.86):
+				box(S.call(0.84, 0.0), 0.0, 0.03 * k, hp * 0.42, HULL, 16.0, P_WINDOWS)          # the command deck
+				box(S.call(0.9, 0.0), 0.0, 0.015 * k, hp * 0.3, PANEL, 17.0, P_WINDOWS)
+				ring(S.call(0.98, 0.0), hp * 0.12, hp * 0.2, steel, 17.0, false, 8)              # docking collar
+				for sd2 in [-1.0, 1.0]:
+					seg(S.call(0.76, 0.55 * sd2), S.call(0.68, 1.15 * sd2), 1.6, steel, 18.0, P_GIRDER)   # cargo cranes
+					light(S.call(0.97, 0.45 * sd2), Color(1.0, 0.3, 0.2), 0.8)
+		"tanker":
+			_ship_engines(S, vis, k, hp, [-0.45, 0.45], 0.35)
+			if vis.call(-0.72):
+				box(S.call(-0.72, 0.0), 0.0, 0.05 * k, hp * 0.62, PANEL, 15.0, P_BLOCK)          # pump house
+				box(S.call(-0.62, 0.0), 0.0, 0.03 * k, hp * 0.45, HULL, 18.0, P_WINDOWS)          # bridge
+			for sd3 in [-1.0, 1.0]:
+				var a0: Vector2 = S.call(-0.6, 0.42 * sd3)
+				var a1: Vector2 = S.call(0.86, 0.42 * sd3)
+				seg(a0, a1, 1.2, steel, 13.0)
+				seg(a0 + Vector2(0, 3.0 * sd3), a1 + Vector2(0, 3.0 * sd3), 0.9, RUST, 13.0)
+			var burst := rng.randi() % 5
+			for i in 5:
+				var ts := -0.48 + i * 0.29
+				if not vis.call(ts):
+					continue
+				var tp: Vector2 = S.call(ts, 0.0)
+				var tr := hp * 0.98
+				ring(tp, tr, tr + 3.0, steel, 13.0, false, 12)                                  # the cradle
+				for st in 4:
+					var sa := PI * 0.25 + st * PI * 0.5
+					seg(tp + Vector2.from_angle(sa) * tr * 0.4, tp + Vector2.from_angle(sa) * (tr + 2.0), 1.2, steel, 13.5, P_GIRDER)
+				if stage == 2 and i % 2 == 1:
+					continue                                                                     # only the cradle left
+				disc(tp, tr * 0.93, TANK, 14.0, D_TANK)
+				ring(tp, tr * 0.86, tr * 0.93, MARK, 15.5, false, 24)
+				if i == burst:
+					var bp := tp + Vector2(rng.randf_range(-0.3, 0.3), rng.randf_range(-0.4, 0.4)) * tr
+					erase_disc(bp, tr * 0.5)
+					for sh in 9:
+						var sa2 := rng.randf() * TAU
+						box(bp + Vector2.from_angle(sa2) * tr * rng.randf_range(0.45, 0.6), sa2 + PI * 0.5, rng.randf_range(2.0, 5.0), 1.2, TANK, 14.5)
+			if vis.call(0.92):
+				box(S.call(0.93, 0.0), 0.0, 0.05 * k, hp * 0.55, HULL, 15.0, P_ARMOR)          # bow block
+				seg(S.call(0.97, 0.0), S.call(1.1, 0.0), 1.5, steel, 16.0, P_GIRDER)            # mooring boom
+		"ark":
+			_ship_engines(S, vis, k, hp, [-0.65, -0.22, 0.22, 0.65], 0.22)
+			if vis.call(-0.86):
+				disc(S.call(-0.86, 0.0), hp * 0.62, PANEL, 15.0, D_HUB)                        # the shielded reactor
+				ring(S.call(-0.86, 0.0), hp * 0.62, hp * 0.7, steel, 16.0, false, 16)
+			for ms in [-0.62, -0.5, -0.38, 0.28, 0.4, 0.52, 0.64]:
+				if vis.call(ms):
+					for sd4 in [-1.0, 1.0]:
+						box(S.call(ms, 0.72 * sd4), 0.0, 0.045 * k, hp * 0.2, HULL, 14.0, P_WINDOWS)   # hab modules
+			if vis.call(0.0):
+				var rc: Vector2 = S.call(-0.05, 0.0)
+				var r0 := hp * 1.75
+				ring(rc, r0, r0 + hp * 0.32, HULL, 15.0, true, 28)                              # the habitat ring
+				ring(rc, r0 - 2.0, r0, steel, 15.5, false, 28)
+				for sp in 6:
+					var spa := sp * TAU / 6.0 + 0.3
+					box(rc + Vector2.from_angle(spa) * (r0 * 0.55 + hp * 0.25), spa, r0 * 0.45, 2.6, steel, 14.5, P_TRUSS)
+				for br in 2 + stage:                                                             # broken open
+					var ba := rng.randf() * TAU
+					_erase_arc(rc, r0 - 3.0, r0 + hp * 0.34, ba, ba + rng.randf_range(0.25, 0.6))
+			for ds in [0.3, 0.46, 0.62]:
+				if vis.call(ds):
+					var dp: Vector2 = S.call(ds, -0.72 if ds != 0.46 else 0.72)
+					var smashed := rng.randf() < 0.5 + stage * 0.2
+					disc(dp, hp * 0.26, DARK if smashed else GREEN, 16.0, D_GREEN)
+					if smashed:
+						for sh2 in 4:
+							erase_disc(dp + Vector2.from_angle(rng.randf() * TAU) * hp * 0.12, hp * 0.07)
+			if vis.call(0.9):
+				disc(S.call(0.92, 0.0), hp * 0.66, HULL, 16.0, D_DOME)                         # the bow shield
+				seg(S.call(0.92, 0.0), S.call(1.06, -0.35), 0.9, steel, 22.0)                  # comm mast
+				disc(S.call(0.82, 0.6), hp * 0.2, TANK, 18.0, D_DISH)
+		"escort":
+			_ship_engines(S, vis, k, hp, [-0.7, -0.25, 0.25, 0.7], 0.22)
+			_radiator(S, vis, -0.82, hp, k, 1.55)
+			for bs in range(8):
+				var as_ := -0.85 + bs * 0.2
+				if vis.call(as_):
+					for sd5 in [-1.0, 1.0]:
+						box(S.call(as_, 0.86 * sd5 * ship_profile(kind, as_)), 0.0, 0.08 * k, hp * 0.1 * ship_profile(kind, as_), HULL, 14.5, P_ARMOR)   # armour belts
+			if vis.call(-0.62):
+				box(S.call(-0.62, 0.0), 0.0, 0.04 * k, hp * 0.3, PANEL, 18.0, P_WINDOWS)          # the bridge
+			if vis.call(-0.2):
+				box(S.call(-0.2, 0.0), 0.0, 0.25 * k, hp * 0.22, steel, 16.0)                    # the flight deck, its rims
+				box(S.call(-0.2, 0.0), 0.0, 0.25 * k - 1.5, hp * 0.22 - 1.5, DARK, 16.5)
+				for mk in 14:
+					box(S.call(-0.43 + mk * 0.035, 0.0), 0.0, 0.006 * k, 0.6, MARK, 17.0)
+				ring(S.call(-0.3, 0.0), hp * 0.11, hp * 0.14, MARK, 17.0, false, 12)
+				ring(S.call(-0.08, 0.0), hp * 0.11, hp * 0.14, MARK, 17.0, false, 12)
+			for ti in 6:
+				var tsx := -0.55 + ti * 0.24
+				var tv := (0.5 if ti % 2 == 0 else -0.5) * ship_profile(kind, tsx)
+				if vis.call(tsx):
+					var tp2: Vector2 = S.call(tsx, tv)
+					ring(tp2, hp * 0.17, hp * 0.22, steel, 17.0, false, 10)
+					if rng.randf() < 0.8 - stage * 0.2:
+						disc(tp2, hp * 0.17, GUN, 17.5, D_TURRET)
+						var tdir := Vector2.from_angle(rng.randf_range(-0.7, 0.7))
+						box(tp2 + tdir * hp * 0.1, tdir.angle(), hp * 0.12, hp * 0.1, GUN, 19.0, P_ARMOR)
+						for bb in [-1.0, 1.0]:
+							seg(tp2 + tdir.orthogonal() * bb * 2.2 + tdir * hp * 0.15, tp2 + tdir.orthogonal() * bb * 2.2 + tdir * hp * 0.55, 0.9, GUN, 20.0, P_CYL)
+					else:
+						disc(tp2, hp * 0.17, DARK, 15.0)
+						erase_disc(tp2, hp * 0.09)
+			if vis.call(0.32):
+				var mc: Vector2 = S.call(0.32, 0.0)
+				box(mc, 0.0, 0.07 * k, hp * 0.26, steel, 15.0, P_PLATES)                          # missile cells: a grid of hatches
+				var cw2 := 0.07 * k
+				var chh := hp * 0.26
+				for hx in range(int(-cw2) + 3, int(cw2) - 2, 5):
+					for hy in range(int(-chh) + 3, int(chh) - 2, 5):
+						if rng.randf() < 0.12 + stage * 0.15:
+							box(mc + Vector2(hx, hy), 0.0, 1.6, 1.6, DARK, 15.8)              # an open hatch
+						else:
+							box(mc + Vector2(hx, hy), 0.0, 1.6, 1.6, PANEL, 16.0, P_ARMOR)
+			if vis.call(0.8):
+				seg(S.call(0.55, 0.0), S.call(1.12, 0.0), hp * 0.08, GUN, 17.0, P_CYL)           # the spinal gun
+				disc(S.call(0.74, 0.0), hp * 0.14, TANK, 18.0, D_DOME)                          # sensor blister
+	# airlocks and hull numbers
+	for al in 10:
+		var als := -0.9 + al * 0.2
+		if vis.call(als):
+			for sd6 in [-1.0, 1.0]:
+				var ap: Vector2 = S.call(als, 0.93 * sd6 * ship_profile(kind, als))
+				if _m(int(ap.x), int(ap.y)) in [HULL, PANEL]:
+					box(ap, 0.0, 2.0, 1.4, DARK, 15.0)
+	for hn in [-0.68, 0.62]:
+		if vis.call(hn):
+			for dg in 3:
+				box(S.call(hn, 0.55) + Vector2(dg * 5.0, 0.0), 0.0, 1.5, 3.0, MARK, 16.0)
+	# --- 5. battle holes through her decks, scorch
+	for hk in 3 + stage * 2:
+		var hpnt := Vector2(rng.randf_range(n * 0.12, n * 0.88), c + rng.randf_range(-0.8, 0.8) * hp)
+		disc(hpnt, rng.randf_range(7.0, 14.0), DARK, 12.9, D_FLAT)
+		if rng.randf() < 0.65:
+			var hr := rng.randf_range(3.0, 8.0)
+			erase_disc(hpnt, hr)
+			seg(hpnt + Vector2(-hr - 2, rng.randf_range(-2, 2)), hpnt + Vector2(hr * 0.3, rng.randf_range(-hr, hr)), 0.8, steel, 8.0)   # a rib across the hole, bent
+	# --- 6. the salvagers: scaffolding, cut lines with sparks (from stage 1)
+	if stage >= 1:
+		var placed := 0
+		for sc in 60:
+			if placed >= 3 + stage * 3:
+				break
+			var sp2 := Vector2(rng.randf_range(n * 0.12, n * 0.88), c + rng.randf_range(-0.85, 0.85) * hp)
+			if _m(int(sp2.x), int(sp2.y)) == NONE:
+				continue
+			placed += 1
+			var vert := rng.randf() < 0.5
+			var la := rng.randf_range(14.0, 36.0)
+			_scaffold(sp2, PI * 0.5 if vert else 0.0, la, 4.5, 20.0)
+			var cross := sp2 + (Vector2(0, la * 0.6) if vert else Vector2(la * 0.6, 0))
+			_scaffold(cross, 0.0 if vert else PI * 0.5, rng.randf_range(8.0, 16.0), 3.5, 21.0)
+			box(sp2, 0.0, 3.0, 3.0, PANEL, 22.0, P_PLATES)                               # a work cabin
+			light(sp2, Color(1.0, 0.7, 0.25), 1.2)
+			if rng.randf() < 0.5:
+				seg(sp2, sp2 + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(12.0, 30.0), 0.8, steel, 22.5)   # a crane jib
+		for cl in 2 + stage * 2:
+			var cx := rng.randf_range(n * 0.15, n * 0.85)
+			var cw := ship_profile(kind, x2s.call(cx)) * hp
+			for dash in int(cw / 3.0):
+				var cy := c - cw + dash * 6.0
+				box(Vector2(cx, cy), 0.0, 0.6, 1.4, HOT if dash % 2 == 0 else RUST, 16.5, P_FLAT, true)
+			vent(Vector2(cx, c + rng.randf_range(-0.6, 0.6) * cw), "spark", 2.0)
+	# --- 7. the tears: everything beyond the ragged line goes, then what sticks out of it
+	for sd7 in tears:
+		var tl: Array = tears[sd7]
+		for y in n:
+			var lim := tear_at(tl, y + 0.5 - c, hp)
+			for x in n:
+				if (x + 0.5 - c) * sd7 > lim:
+					_put(x, y, NONE, -1.0, true)
+		var edge := func(v: float) -> Vector2: return Vector2(c + tear_at(tl, v * hp, hp) * sd7, c + v * hp)
+		# longerons sticking out, some bent
+		for lv2 in [-0.97, -0.62, -0.25, 0.25, 0.62, 0.97]:
+			if rng.randf() < 0.25:
+				continue
+			var a: Vector2 = edge.call(lv2 * 0.98) - Vector2(4.0 * sd7, 0.0)
+			var l1 := rng.randf_range(8.0, 30.0)
+			var b := a + Vector2(sd7, rng.randf_range(-0.15, 0.15)).normalized() * l1
+			seg(a, b, 1.4, steel, 9.0, P_GIRDER)
+			if rng.randf() < 0.55:
+				seg(b, b + Vector2.from_angle((0.0 if sd7 > 0 else PI) + rng.randf_range(-1.2, 1.2)) * rng.randf_range(6.0, 20.0), 1.1, steel, 9.0)
+		# ribs and deck beams torn and twisted
+		for rb in 6 + stage * 2:
+			var v2 := rng.randf_range(-0.95, 0.95)
+			var a2: Vector2 = edge.call(v2) - Vector2(rng.randf_range(2.0, 10.0) * sd7, 0.0)
+			seg(a2, a2 + Vector2.from_angle((0.0 if sd7 > 0 else PI) + rng.randf_range(-1.4, 1.4)) * rng.randf_range(6.0, 22.0), 0.8, steel, 8.5)
+		# cables hanging out
+		for cb in 7:
+			var p0: Vector2 = edge.call(rng.randf_range(-0.85, 0.85))
+			var dirc := Vector2(sd7, rng.randf_range(-0.6, 0.6)).normalized()
+			var cm: int = [DARK, RUST, MARK, DARK][rng.randi() % 4]
+			for st2 in 4:
+				var p1 := p0 + dirc * rng.randf_range(5.0, 10.0)
+				seg(p0, p1, 0.5, cm, 10.0)
+				p0 = p1
+				dirc = dirc.rotated(rng.randf_range(-0.6, 0.6))
+		# plates peeled back, hanging off the edge
+		for pl in 6 + stage * 2:
+			var pp: Vector2 = edge.call(rng.randf_range(-0.95, 0.95)) + Vector2(rng.randf_range(-2.0, 7.0) * sd7, 0.0)
+			box(pp, rng.randf_range(-0.9, 0.9), rng.randf_range(4.0, 9.0), rng.randf_range(2.5, 5.0), [HULL, HULL, steel, PANEL][rng.randi() % 4], 11.0, P_PLATES)
+		# debris drifting off
+		for db in 14 + stage * 6:
+			var dp2: Vector2 = edge.call(rng.randf_range(-1.3, 1.3)) + Vector2(rng.randf_range(10.0, 60.0) * sd7, 0.0)
+			box(dp2, rng.randf() * PI, rng.randf_range(1.0, 4.0), rng.randf_range(0.8, 2.0), [HULL, RUST, steel, PANEL, MARK][rng.randi() % 5], 6.0)
+	# --- 8. bits of her drifting alongside
+	for db2 in 8 + stage * 4:
+		var side := 1.0 if rng.randf() < 0.5 else -1.0
+		var dp3 := Vector2(rng.randf_range(n * 0.1, n * 0.9), c + side * rng.randf_range(1.25, 2.1) * hp)
+		box(dp3, rng.randf() * PI, rng.randf_range(1.5, 5.0), rng.randf_range(1.0, 2.5), [HULL, RUST, steel, PANEL][rng.randi() % 4], 6.0, P_PLATES)
+
+
+## Her half-width (in half-widths) at s – each kind its own silhouette.
+static func ship_profile(kind: String, s: float) -> float:
+	match kind:
+		"freighter":
+			if s > 0.8:
+				return 0.5 + 0.5 * sqrt(maxf(0.0, 1.0 - pow((s - 0.8) / 0.2, 2.0)))
+			if s < -0.94:
+				return 0.82
+			return 1.0 if s < -0.4 or s > -0.32 else 0.9
+		"tanker":
+			if s < -0.78:
+				return 0.8
+			if s > 0.88:
+				return 0.6
+			return 0.36
+		"ark":
+			if s < -0.78:
+				return 0.88
+			if s > 0.82:
+				return 0.72
+			return 0.5
+		"escort":
+			if s < -0.86:
+				return 0.88
+			var w := lerpf(1.0, 0.16, clampf((s + 0.35) / 1.35, 0.0, 1.0))
+			return w - (0.07 if posmod(int(floor((s + 1.0) * 9.0)), 2) == 0 else 0.0)
+	return 1.0
+
+
+## Her half-width for collision: the hull's profile and what stands out of it – a tanker's tanks, an ark's hab modules
+## (her habitat ring and the thin radiators are left out). hws = her half-width in units of s.
+static func hit_profile(kind: String, s: float, hws: float) -> float:
+	var w := ship_profile(kind, s)
+	match kind:
+		"tanker":
+			for i in 5:
+				var ds := (s - (-0.48 + i * 0.29)) / hws         # tank centres as drawn in _gold_ship
+				if absf(ds) < 0.98:
+					w = maxf(w, sqrt(0.98 * 0.98 - ds * ds))
+		"ark":
+			if (s > -0.68 and s < -0.32) or (s > 0.22 and s < 0.7):
+				w = maxf(w, 0.92)
+	return w
+
+
+## A ragged tear across her, as pixel offsets from the centre along her, per row across (from -1.6 to 1.6 half-widths):
+## the break runs slanted, with a couple of great bites and tongues of hull, and small teeth all along.
+static func tear_line(rng: RandomNumberGenerator, base: float, hp: float) -> Array:
+	var out: Array = []
+	var slant := rng.randf_range(-0.55, 0.55) * hp
+	var bites: Array = []
+	for bt in rng.randi_range(2, 4):
+		bites.append([rng.randf_range(-1.0, 1.0), rng.randf_range(0.12, 0.35), rng.randf_range(-hp * 0.9, hp * 0.45)])
+	var off := 0.0
+	for i in 72:
+		var v := -1.6 + 3.2 * i / 71.0
+		off = clampf(off + rng.randf_range(-3.5, 3.5), -hp * 0.12, hp * 0.12)
+		var o := base + slant * v * 0.6 + off
+		for bt2 in bites:
+			var d := (v - float(bt2[0])) / float(bt2[1])
+			if absf(d) < 1.0:
+				o += float(bt2[2]) * (1.0 - d * d)
+		if rng.randf() < 0.25:
+			o += rng.randf_range(-7.0, 5.0)                    # small teeth
+		out.append(o)
+	return out
+
+
+static func tear_at(tl: Array, dy: float, hp: float) -> float:
+	var idx := clampi(int((dy / hp + 1.6) / 3.2 * float(tl.size() - 1)), 0, tl.size() - 1)
+	return float(tl[idx])
+
+
+## Dead engine bells at her stern: from above, a flaring bell in rings with seams, actuator struts, the gimbal mount.
+func _ship_engines(S: Callable, vis: Callable, k: float, hp: float, vs: Array, r: float) -> void:
+	if not vis.call(-1.0):
+		return
+	for v in vs:
+		var a: Vector2 = S.call(-0.965, v)
+		var b: Vector2 = S.call(-1.08, v)
+		var w0 := hp * r * 0.45
+		var w1 := hp * r
+		box(a + Vector2(2.0, 0), 0.0, 3.0, w0 * 1.3, PANEL, 15.0, P_PLATES)                # the gimbal mount
+		var steps := 6
+		for st in steps:
+			var t := (st + 0.5) / steps
+			var q := a.lerp(b, t)
+			var wq := lerpf(w0, w1, pow(t, 0.7))
+			box(q, 0.0, absf(b.x - a.x) / steps * 0.5 + 0.5, wq, STEEL, 15.0 + (1.0 - absf(t - 0.5)) * 1.5, P_CYL)
+			seg(q + Vector2(absf(b.x - a.x) / steps * 0.5, -wq), q + Vector2(absf(b.x - a.x) / steps * 0.5, wq), 0.5, DARK, 17.0)
+		for sd in [-1.0, 1.0]:
+			seg(a + Vector2(2.0, w0 * 1.2 * sd), a.lerp(b, 0.5) + Vector2(0, lerpf(w0, w1, 0.5) * sd), 0.7, GUN, 18.0)   # actuators
+		box(b + Vector2(-0.5, 0), 0.0, 1.0, w1 * 0.92, DARK, 18.0)                          # the cold throat
+
+
+## The salvagers' scaffolding: two yellow rails with cross braces, centre p, along ang, half length l, half width w.
+func _scaffold(p: Vector2, ang: float, l: float, w: float, h: float) -> void:
+	var d := Vector2.from_angle(ang)
+	var o := d.orthogonal() * w
+	seg(p - d * l + o, p + d * l + o, 0.6, ACC, h)
+	seg(p - d * l - o, p + d * l - o, 0.6, ACC, h)
+	var cnt := int(l * 2.0 / (w * 2.0))
+	for i in cnt + 1:
+		var q := p - d * l + d * (l * 2.0) * (float(i) / maxf(cnt, 1))
+		seg(q + o, q - o, 0.5, ACC, h)
+		if i < cnt:
+			var q2 := p - d * l + d * (l * 2.0) * (float(i + 1) / cnt)
+			seg(q + o, q2 - o, 0.4, ACC, h - 0.2)
+
+
+## A radiator wing out to both sides at s: a spar, the panels, some torn off.
+func _radiator(S: Callable, vis: Callable, s: float, hp: float, k: float, reach: float) -> void:
+	if not vis.call(s):
+		return
+	for sd in [-1.0, 1.0]:
+		var a: Vector2 = S.call(s, 0.9 * sd)
+		var b: Vector2 = S.call(s, reach * sd)
+		seg(a, b, 1.2, STEEL, 13.0, P_GIRDER)
+		var panels := int(absf(b.y - a.y) / 9.0)
+		for pn in panels:
+			if rng.randf() < 0.3:
+				continue
+			box(a.lerp(b, (pn + 0.5) / panels), 0.0, 0.022 * k, 4.0, TANK, 12.5, P_PLATES)
+
+
+## Erases a stretch of a ring (between two angles) – a habitat ring broken open.
+func _erase_arc(p: Vector2, r0: float, r1: float, a0: float, a1: float) -> void:
+	for y in range(int(p.y - r1) - 1, int(p.y + r1) + 2):
+		for x in range(int(p.x - r1) - 1, int(p.x + r1) + 2):
+			var d := Vector2(x + 0.5, y + 0.5) - p
+			var l := d.length()
+			if l < r0 or l > r1:
+				continue
+			var a := fposmod(d.angle() - a0, TAU)
+			if a <= a1 - a0:
+				_put(x, y, NONE, -1.0, true)
+
+
 func _haven() -> void:
 	# a cluster of patched-together wrecks around a scrap core
 	var parts := 4 + tier
@@ -1887,6 +2735,12 @@ func _palettes() -> Dictionary:
 	if RESORT_ACC.has(type):
 		hull = [Color(0.56, 0.53, 0.5), Color(0.83, 0.8, 0.76), Color(0.98, 0.96, 0.93)]        # package 43: ivory …
 		panel = [Color(0.5, 0.36, 0.14), Color(0.8, 0.62, 0.28), Color(1.0, 0.85, 0.5)]        # … and gold
+	if type in ["dusty_duty", "gold_wrecks", "gold_colossus", "wreck_piece"]:
+		hull = [Color(0.3, 0.27, 0.22), Color(0.5, 0.45, 0.37), Color(0.68, 0.62, 0.52)]      # 57: weathered, dusty tan
+		panel = [Color(0.34, 0.17, 0.08), Color(0.56, 0.3, 0.14), Color(0.74, 0.46, 0.24)]      # rust-orange patches
+	var tank := [Color(0.55, 0.56, 0.6), Color(0.78, 0.79, 0.82), Color(0.95, 0.96, 0.98)]
+	if type in ["gold_wrecks", "gold_colossus", "wreck_piece"]:
+		tank = [Color(0.4, 0.37, 0.32), Color(0.62, 0.57, 0.48), Color(0.78, 0.72, 0.6)]        # 57: tanks dulled by decades of dust
 	if type in ["pirate_haven", "pirate_fortress"]:
 		hull = [Color(0.22, 0.22, 0.25), Color(0.38, 0.38, 0.42), Color(0.55, 0.55, 0.58)]
 	elif type == "military":
@@ -1900,7 +2754,7 @@ func _palettes() -> Dictionary:
 		GLASS: [Color(0.9, 0.8, 0.45), acc.lerp(Color(1.0, 0.92, 0.6), 0.6), Color(1.0, 0.97, 0.85)],
 		SOLAR: [Color(0.06, 0.1, 0.26), Color(0.12, 0.2, 0.46), Color(0.3, 0.45, 0.8)],
 		GREEN: [Color(0.1, 0.3, 0.14), Color(0.2, 0.55, 0.26), Color(0.55, 0.92, 0.5)],
-		TANK: [Color(0.55, 0.56, 0.6), Color(0.78, 0.79, 0.82), Color(0.95, 0.96, 0.98)],
+		TANK: tank,
 		RUST: [Color(0.3, 0.15, 0.09), Color(0.5, 0.27, 0.16), Color(0.68, 0.42, 0.26)],
 		HANGAR: [Color(0.05, 0.05, 0.08), Color(0.05, 0.05, 0.08), Color(0.05, 0.05, 0.08)],
 		TRUSS: [Color(0.24, 0.26, 0.31), Color(0.38, 0.41, 0.48), Color(0.55, 0.59, 0.67)],
@@ -1915,4 +2769,5 @@ func _palettes() -> Dictionary:
 		TOWN: [Color(0.5, 0.47, 0.44), Color(0.74, 0.72, 0.68), Color(0.93, 0.92, 0.88)],
 		ROOF: [Color(0.36, 0.5, 0.58), Color(0.52, 0.68, 0.76), Color(0.7, 0.84, 0.9)],
 		GUN: [Color(0.2, 0.21, 0.24), Color(0.34, 0.36, 0.4), Color(0.5, 0.52, 0.58)],
+		STEEL: [Color(0.27, 0.27, 0.28), Color(0.44, 0.44, 0.45), Color(0.63, 0.63, 0.64)],
 	}

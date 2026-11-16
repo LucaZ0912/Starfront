@@ -3,6 +3,31 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.57.1 – 2026-11-17
+
+**Package 57 – Beyond, a system outside the Cluster (Luz; built before 56, the intro plays there).**
+- A pocket in the Veil, well out beyond the Far Reaches: three systems in a triangle – **Beyond** (G star),
+  **Driftwood** (K) and **Hollow** (M) – with gates only among the three, none to the Cluster; independent, no pirates,
+  no convoys, no notorious captains.
+- Beyond: Cinder (lava), Brine (an ocean world with one city), Hush (an ice giant) with its icy moon Rime – round Rime
+  **Dan's Dusty Duty Store**, a new, rustic station: long working cranes with big ship wrecks hanging in them, being cut
+  up.
+- **The Gold Fleet's wrecks, big as planets** (4 in Beyond, 2 in Driftwood): freighters, tankers, arks and escorts,
+  freshly torn, half cut up or stripped to the frame – in the sky and on the map like planets.
+- **The wreck belt** instead of an asteroid belt (Beyond and Driftwood): on the map gold and rust, plates and pieces of
+  ships drifting in it. At least two **Wreck Fields** per system, always metallic (the Gold Fleet's ships were steel):
+  - **Wreck colossi** – sections torn off Gold Fleet ships (stern, midsection or bow of a freighter, tanker, ark or
+    escort; 12 variants in 3 stages: torn hull, scaffolding and cutting lines of salvage crews, bare frame), 400–1,500
+    km, each with a ship's name ("GFS Tithe (midsection)"). They play like the rock colossi: fly round them, radar
+    shadow, they block sight, locks and shots, see-through over you; prospect them, mine their steel with a mining
+    laser, sometimes deep ore for the Deep Core Drill. The shape you hit is the picture's (torn edges, tanks and modules
+    included; the ark's habitat ring and thin radiators are not).
+  - **Hull scrap** – the small pieces of these fields (torn plates with seams, ribs, rust and gold trim), mined like
+    asteroids.
+- The big wreck pictures are made in the background when you arrive; the collision is there at once.
+- Debug (F12 → World → Beyond): to Beyond (at Dan's), Driftwood, Hollow; next to a Gold Fleet wreck; next to a wreck
+  colossus. Smoke group `beyond57`.
+
 ## alpha 0.8.55.1 – 2026-11-16
 
 **Teil 8 begins – package 55: the story's framework (Luz).** What the story will run on (the story itself comes with

@@ -11,7 +11,7 @@ signal pilot_window_requested          # package 29
 signal pilot_tab_requested(tab: int)   # 0.5.30.5: the hint opens the skill tree or the perks
 
 const FactionData = preload("res://data/factions.gd")
-const KIND_ICONS := {"star": "☀", "planet": "●", "moon": "◐", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖", "pod": "✚", "descent": "▼"}
+const KIND_ICONS := {"star": "☀", "planet": "●", "moon": "◐", "station": "■", "gate": "◎", "field": "⁘", "anomaly": "◆", "colossus": "⬢", "haven": "✖", "pod": "✚", "descent": "▼", "gold_wreck": "▬"}
 
 var view: SystemView
 var credits_label: Label
@@ -76,7 +76,7 @@ var survey_text: RichTextLabel
 ## range = target out of reach, energy = capacitor too low, power = its priority group is shut down
 const BUILTIN_COLOR := Color(1.0, 0.72, 0.2)   # frame of modules built into the hull (package 25a)
 const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.5), "other": Color(1.0, 0.92, 0.25), "range": Color(1.0, 0.55, 0.2), "wait": Color(0.95, 0.85, 0.55), "energy": Color(0.7, 0.45, 1.0), "power": Color(1.0, 0.3, 0.25)}
-const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven", "pod": "Escape pod", "descent": "Descent beacon"}
+const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven", "pod": "Escape pod", "descent": "Descent beacon", "gold_wreck": "Wreck of the Gold Fleet"}
 
 
 func _ready() -> void:
@@ -1222,8 +1222,14 @@ func _update_selected() -> void:
 	if d.is_empty():
 		show_selected("")
 		return
-	var t := "%s  •  %s" % [KIND_NAMES.get(d["kind"], d["kind"]), SystemView.fmt_dist(view._player_pos().distance_to(d["pos"]))]
 	var n = d.get("node")
+	var kname: String = KIND_NAMES.get(d["kind"], d["kind"])
+	if n != null and not (n is Ship) and "data" in n and n.data is Dictionary:
+		if n.data.has("wreck"):
+			kname = "Wreck colossus"                     # package 57
+		elif String(n.data.get("shape", "")) == "scrap":
+			kname = "Hull scrap"
+	var t := "%s  •  %s" % [kname, SystemView.fmt_dist(view._player_pos().distance_to(d["pos"]))]
 	if n is Ship:
 		t += "\nShield %.0f  •  Armor %.0f  •  Structure %.0f" % [n.fit.shield, n.fit.armor, n.fit.structure]
 		if status_flags(n) != "":
@@ -1235,13 +1241,21 @@ func _update_selected() -> void:
 		if n.faction != "player":
 			t += "\n" + (n.warrant_text() if n.warrant_known else "Bounty: unknown – lock it and use a Warrant Scanner")
 	elif n != null and d["kind"] == "asteroid":
-		t += "\n%s %s asteroid" % [String(n.data.get("size", "")).capitalize(), String(n.data.get("class", "")).capitalize()]
+		if String(n.data.get("shape", "")) == "scrap":
+			t += "\n%s hull scrap of the Gold Fleet" % String(n.data.get("size", "")).capitalize()     # package 57
+		else:
+			t += "\n%s %s asteroid" % [String(n.data.get("size", "")).capitalize(), String(n.data.get("class", "")).capitalize()]
 		if String(n.data.get("field", "")) == "":
 			t += "  •  loose rock" + (" near %s" % n.data["near"] if n.data.has("near") else "")
 		if n.is_prospected():
 			t += "\n%s" % n.composition_text()
 		else:
 			t += "\nComposition unknown – lock it and use a Prospector Scanner"
+	elif n != null and d["kind"] == "colossus" and n.data.has("wreck"):
+		# package 57: a section torn off a Gold Fleet ship
+		t += "\nGold Fleet %s, %s – %s  •  %s long" % [StationArt.SHIP_KINDS[int(n.data["wreck"]) % 4], StationArt.PIECE_PARTS[int(n.data["wreck"]) / 4],
+			["freshly torn off", "half cut up", "stripped to the frame"][int(n.data.get("stage", 0))], SystemView.fmt_dist(ColossusShape.length_km(n.poly))]
+		t += "\nObstacle and cover: casts a radar shadow – ships behind it cannot be seen, locked or shot. Her steel can be mined with a mining laser."
 	elif n != null and d["kind"] == "colossus":
 		t += "\n%s colossus, %s  •  %s long" % [String(n.data["class"]).capitalize(), ColossusShape.SHAPE_NAMES.get(String(n.data.get("shape", "")), "irregular"), SystemView.fmt_dist(ColossusShape.length_km(n.poly))]
 		t += "\nObstacle and cover: casts a radar shadow – ships behind it cannot be seen, locked or shot. Mineable rock on its rim."

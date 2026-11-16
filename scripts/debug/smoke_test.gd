@@ -188,6 +188,7 @@ func _process(delta: float) -> void:
 				_test_firegroups79(view)         # package 79 – fire groups
 				_test_pad80(view)                # package 80 – controller support
 				_test_story55(view)              # package 55 – the story's framework
+				_test_beyond57(view)             # package 57 – Beyond
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -7336,6 +7337,8 @@ func _test_cluster40(view: SystemView) -> void:
 	var outer := 0
 	var outer_ok := true
 	for sy in U.systems:
+		if sy.get("pocket", false):
+			continue                                         # package 57: Beyond's pocket is a world of its own (_test_beyond57)
 		var sid: int = sy["id"]
 		var lived: bool = U.has_stations(sid) or int(sy.get("haven_tier", 0)) > 0 or sy.get("fortress", false)
 		var catalog: bool = not (String(sy["name"]) in U.SYSTEM_NAMES) and String(sy.get("special", "")) == ""
@@ -7400,6 +7403,8 @@ func _test_rim40c(_view: SystemView) -> void:
 	var cnt_rim := 0
 	var cnt_core := 0
 	for sy in U.systems:
+		if sy.get("pocket", false):
+			continue                                         # package 57: Beyond's pocket is a world of its own (_test_beyond57)
 		var sid: int = sy["id"]
 		var L: Dictionary = U.get_layout(sid)
 		if sy.get("belt", false):
@@ -13499,6 +13504,127 @@ func _test_pad80(view: SystemView) -> void:
 ## Package 55 (Luz): the story's framework – the test mission from the debug menu: a dialogue with Dan (the game
 ## pauses, an answer sets a flag), then a radio call, a tip and a marked station (fly near – dock), credits and a
 ## secret at the end; the tracker, the journal's four tabs, the save, keys in texts.
+## Package 57 (Luz): Beyond – a pocket of three systems in the Veil, apart from the Cluster; its bodies, Dan's store, the
+## wreck belt and the Gold Fleet's wrecks as big as planets.
+func _test_beyond57(_view: SystemView) -> void:
+	var U = Universe
+	var ids := {}
+	for sp in U.POCKET:
+		ids[sp] = U.special_system(sp)
+	var all_in: bool = int(ids["beyond"]) >= 0 and int(ids["driftwood"]) >= 0 and int(ids["hollow"]) >= 0
+	# gates only among the three, none to the Cluster; out in the Veil, apart from the Far Reaches
+	var apart_ok := all_in
+	var far_d := INF
+	if all_in:
+		for sp2 in ids:
+			var s: Dictionary = U.systems[ids[sp2]]
+			var links: Array = (s["links"] as Dictionary).keys()
+			apart_ok = apart_ok and links.size() == 2 and U.is_pocket(int(ids[sp2])) and s.get("veil", false) and U.is_independent(int(ids[sp2]))
+			for l in links:
+				apart_ok = apart_ok and U.is_pocket(int(l))
+			apart_ok = apart_ok and U.find_path(U.home_system, int(ids[sp2]), 3).is_empty()
+			var p: Vector2 = s["pos"]
+			apart_ok = apart_ok and p.x > 0.0 and p.y > 0.0 and p.x < U.MAP_SIZE.x and p.y < U.MAP_SIZE.y
+			for o in U.systems:
+				if o.get("outer", false):
+					far_d = minf(far_d, (o["pos"] as Vector2).distance_to(p))
+	apart_ok = apart_ok and far_d > 250.0
+	check(apart_ok, "57: Beyond, Driftwood and Hollow – a pocket in the Veil, gates only among the three, none to the Cluster, independent (%.0f map units from the Far Reaches)" % far_d)
+	if not all_in:
+		return
+	# Beyond's bodies: a G star, Brine (ocean, one city), Hush (ice giant) with its ice moon Rime – Dan's store round it
+	var L: Dictionary = U.get_layout(int(ids["beyond"]))
+	var by_name := {}
+	for b in L["planets"] + L.get("moons", []):
+		by_name[String(b["name"])] = b
+	var star_ok: bool = String(L["star"].get("star_id", "")) == "G"
+	var brine: Dictionary = by_name.get("Brine", {})
+	var cities := 0
+	if not brine.is_empty():
+		for site in U.landing_sites(int(ids["beyond"]), brine):
+			cities += int(String(site["kind"]) == "city")
+	var others := 0
+	for b2 in L["planets"] + L.get("moons", []):
+		if String(b2.get("name", "")) != "Brine" and U.landable(b2):
+			for site2 in U.landing_sites(int(ids["beyond"]), b2):
+				others += int(String(site2["kind"]) == "city")
+	var body_ok: bool = star_ok and String(brine.get("type", "")) == "ocean" and cities == 1 and others == 0 		and String(by_name.get("Hush", {}).get("type", "")) == "ice_giant" and String(by_name.get("Rime", {}).get("type", "")) == "moon_ice"
+	var dan := {}
+	for st in L["stations"]:
+		if String(st.get("art", "")) == "dusty_duty":
+			dan = st
+	var dan_ok: bool = not dan.is_empty() and String(dan["name"]) == "Dan's Dusty Duty Store" and String(dan.get("anchor", "")) == String(by_name.get("Rime", {}).get("id", "?")) 		and L["stations"].size() == 1 and dan.has("market")
+	var art: Dictionary = StationArt.build(dan) if not dan.is_empty() else {}
+	dan_ok = dan_ok and not art.is_empty() and (art["bays"] as Array).size() >= 1
+	# the wreck belt instead of the asteroid belt; the Gold Fleet's wrecks – four kinds in Beyond, two in Driftwood
+	var kinds := {}
+	for bt in L["belts"]:
+		kinds[String(bt["kind"])] = true
+	var belt_ok: bool = kinds.has("wreck") and not kinds.has("asteroid") and U.get_layout(int(ids["driftwood"]))["belts"].any(func(x): return String(x["kind"]) == "wreck")
+	var gw: Array = L.get("gold_wrecks", [])
+	var gk := {}
+	for w in gw:
+		gk[String(w["kind"])] = true
+	var tex_ok := true
+	for kd in 4:
+		for stg in 3:
+			var t: Dictionary = StationArt.build({"art": "gold_colossus", "tier": stg + 1, "seed": kd + 4 * 7})
+			tex_ok = tex_ok and (t["texture"] as Texture2D).get_width() == 640
+	var warp_n := 0
+	for wt in U.warp_targets(int(ids["beyond"])):
+		warp_n += int(String(wt["kind"]) == "gold_wreck")
+	var wreck_ok: bool = gw.size() == 4 and gk.size() == 4 and U.get_layout(int(ids["driftwood"])).get("gold_wrecks", []).size() == 2 		and U.get_layout(int(ids["hollow"])).get("gold_wrecks", []).is_empty() and tex_ok and warp_n == 4
+	# the rest of the game leaves the pocket alone: no raiders, no convoys, no waystation
+	var quiet_ok: bool = int(U.system_profile_raw(int(ids["beyond"]))["pirates"]) == 0
+	for st2 in L["stations"]:
+		quiet_ok = quiet_ok and String(st2["type"]) != "waystation"
+	var cv_ok := true
+	if GameState.convoys != null:
+		for cv in GameState.convoys.convoys:
+			cv_ok = cv_ok and not U.is_pocket(int(cv["src"])) and not U.is_pocket(int(cv["dst"]))
+	var no_wreck_msg: String = Commands.execute({"type": "debug_gold_wreck"}) if not U.is_pocket(GameState.current_system) else "x"
+	check(body_ok and dan_ok and belt_ok and wreck_ok and quiet_ok and cv_ok and no_wreck_msg != "",
+		"57: Beyond – a G star, Brine (ocean, its one city), Hush (ice giant) and its ice moon Rime with Dan's Dusty Duty Store; a wreck belt, no asteroid belt; the Gold Fleet's wrecks (4 kinds in Beyond, 2 in Driftwood, warp targets, 640 px pictures); no raiders, no convoys  [%s]" % 		" ".join(PackedStringArray([str(body_ok), str(dan_ok), str(belt_ok), str(wreck_ok), str(quiet_ok), str(cv_ok), str(no_wreck_msg != "")])))
+	# package 57 (Luz): the wreck belt's fields – wreck colossi (sections torn off Gold Fleet ships) and hull scrap, mined
+	var wf: Array = L["fields"].filter(func(f): return f.get("wreck", false))
+	var wcs: Array = L["colossi"].filter(func(co): return co.has("wreck"))
+	var scrap := 0
+	for a in L["asteroids"]:
+		scrap += int(String(a["shape"]) == "scrap")
+	var wc_ok: bool = wf.size() >= 2 and wcs.size() >= 4 and scrap > 100
+	for f2 in wf:
+		wc_ok = wc_ok and String(f2["class"]) == "metallic" and String(f2["name"]).begins_with("Wreck Field")
+	var wnames := {}
+	for co in wcs:
+		wc_ok = wc_ok and (co["poly"] as PackedVector2Array).size() == 96 and float(co["amount"]) > 10000.0 and ColossusShape.contains(co["poly"], Vector2.ZERO) \
+			and float(co["radius"]) >= 400.0 and float(co["radius"]) <= 1500.0
+		wnames[String(co["name"])] = true
+	wc_ok = wc_ok and wnames.size() == wcs.size()
+	# her outline matches her picture: points inside the outline are hull (opaque) – 12 variants
+	var wart_ok := true
+	for vi in 12:
+		var img: Image = (StationArt.build({"art": "wreck_piece", "tier": 2, "seed": vi})["texture"] as Texture2D).get_image()
+		var hit := 0
+		var tot := 0
+		for p in StationArt.piece_outline(vi, 1):
+			for f3 in [0.3, 0.6, 0.85]:
+				tot += 1
+				hit += int(img.get_pixelv(p * f3 + Vector2(320, 320)).a > 0.5)
+		wart_ok = wart_ok and img.get_width() == 640 and float(hit) / tot > 0.7
+	var cel_ok := false
+	if not wcs.is_empty():
+		var cel := Celestial.new()
+		cel.setup("colossus", wcs[0])
+		cel_ok = cel._col_sprite != null and cel._col_sprite.material == null and cel.poly.size() == 96 and cel.title() == String(wcs[0]["name"])
+		cel.free()
+	var stex: Texture2D = PixelArt.asteroid_sprite("metallic", "scrap", 3, 40, "iron_ore")
+	var wmsg: String = Commands.execute({"type": "debug_wreck_colossus"}) if not U.is_pocket(GameState.current_system) else "x"
+	check(wc_ok and wart_ok and cel_ok and stex.get_width() == 40 and wmsg != "",
+		"57: the wreck belt – metallic Wreck Fields, wreck colossi (sections of Gold Fleet ships: outline matches the picture, deposit, unique names) and hull scrap  [%s]" % \
+		" ".join(PackedStringArray([str(wc_ok), str(wart_ok), str(cel_ok), str(stex.get_width() == 40), str(wmsg != ""),
+			"fields %d colossi %d scrap %d names %d" % [wf.size(), wcs.size(), scrap, wnames.size()]])))
+
+
 func _test_story55(view: SystemView) -> void:
 	var notes: Array = []
 	var st = GameState.story
