@@ -466,6 +466,71 @@ func _c_toggle_module(c: Dictionary) -> String:
 	return p.set_module_active(slot, not bool(p.module_on.get(slot, false)))
 
 
+## {"type":"fire_group", "group": 1–8} – package 79 (Luz): switches a whole fire group – any module of it off (or on
+## another target than the active one): all on, at the active target; else all off.
+func _c_fire_group(c: Dictionary) -> String:
+	var e := _need_world()
+	if e != "":
+		return e
+	var g := int(c.get("group", 0))
+	var p: Ship = world.player
+	var slots: Array = p.fit.group_slots(g)
+	if slots.is_empty():
+		return "Fire group %d is empty – set it in Ship → Modules → Fire groups." % g
+	var on_all := true
+	for s0 in slots:
+		if not bool(p.module_on.get(s0, false)) or _moves_to_active(p, s0):
+			on_all = false
+	var err := ""
+	for s1 in slots:
+		var r := ""
+		if on_all:
+			r = p.set_module_active(s1, false)
+		elif not bool(p.module_on.get(s1, false)):
+			r = p.set_module_active(s1, true)
+		elif _moves_to_active(p, s1):
+			r = p.retarget(s1)
+		if r != "" and err == "":
+			err = r
+	return err
+
+
+func _moves_to_active(p: Ship, slot: String) -> bool:
+	if not bool(p.module_on.get(slot, false)) or p.locked_node() == null or String(p.module_target.get(slot, "")) == p.active_lock:
+		return false
+	var e2 := p.find_module(slot)
+	return not e2.is_empty() and e2["kind"] in ["weapon", "tool"] and p.module_target_error(e2, p.locked_node()) == ""
+
+
+## {"type":"fire_group_set", "slot": String, "group": 1–8, "on": bool} / {"type":"fire_group_auto"} /
+## {"type":"fire_group_clear"} – package 79: the active ship's fire groups, set by hand, by kind, or emptied.
+func _c_fire_group_set(c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No active ship."
+	var g := int(c.get("group", 0))
+	if g < 1 or g > ShipFitting.FIRE_GROUPS:
+		return "No such fire group."
+	f.set_fire_group(String(c.get("slot", "")), g, bool(c.get("on", true)))
+	return ""
+
+
+func _c_fire_group_auto(_c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No active ship."
+	f.auto_fire_groups()
+	return ""
+
+
+func _c_fire_group_clear(_c: Dictionary) -> String:
+	var f := _fit()
+	if f == null:
+		return "No active ship."
+	f.clear_fire_groups()
+	return ""
+
+
 ## {"type":"course", "to": <system id>} – plot a hyperspace route and start travelling.
 func _c_course(c: Dictionary) -> String:
 	var f := _fit()

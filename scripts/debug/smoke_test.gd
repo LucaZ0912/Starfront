@@ -185,6 +185,7 @@ func _process(delta: float) -> void:
 				_test_yards54c(view)             # package 54c – the yard galleries
 				_test_weather54e(view)           # package 54e – dynamic weather
 				_test_review7(view)              # review of Teil 7 – its fixes
+				_test_firegroups79(view)         # package 79 – fire groups
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -13242,3 +13243,49 @@ func _test_review7(_view: SystemView) -> void:
 	check(w1 and w2 and m3 and m1_ok and m2 and k3 and k7,
 		"review 7: a site's state kept (a crate stays open, the fallen stay down, gone with the site), stray fuses dropped, the key card kept, a new pilot's ground state empty, the Archivist Suit never lost, an abandoned reactor job lets the tunnel go, the ads by the map's dice  [%s]%s" % [
 			" ".join(PackedStringArray([str(w1), str(w2), str(m3), str(m1_ok), str(m2), str(k3), str(k7)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+## Package 79 (Luz): fire groups – by kind at first (each kind of weapon its group, tools 5, actives 6), a module in
+## several groups, kept in the save; the command switches a whole group (an empty one says so); keys 1–8 only; the
+## module bar a tile per group; the Fire groups tab builds.
+func _test_firegroups79(view: SystemView) -> void:
+	var notes: Array = []
+	var fm := GameState.create_from_preset("std_hdy_maul", "player")
+	var g1: Array = fm.group_slots(1)
+	var g3: Array = fm.group_slots(3)
+	var by_kind: bool = g1.size() == 2 and fm.group_slots(2).size() == 1 and g3.size() == 2 and not fm.fg_custom
+	if not by_kind:
+		notes.append("by kind: %s %s %s" % [g1, fm.group_slots(2), g3])
+	fm.set_fire_group(String(g1[0]) if not g1.is_empty() else "weapon_0", 8, true)
+	var multi: bool = fm.fg_custom and not g1.is_empty() and fm.groups_of(String(g1[0])) == [1, 8] and fm.group_slots(8).size() == 1 and fm.group_slots(1).size() == 2
+	var back := ShipFitting.from_dict(fm.to_dict())
+	var saved: bool = back.fg_custom and not g1.is_empty() and back.groups_of(String(g1[0])) == [1, 8]
+	fm.set_fire_group(String(g1[0]) if not g1.is_empty() else "weapon_0", 1, false)
+	var out_ok: bool = not g1.is_empty() and fm.groups_of(String(g1[0])) == [8] and fm.group_slots(1).size() == 1
+	fm.clear_fire_groups()
+	var cleared: bool = fm.group_slots(1).is_empty() and fm.fg_custom
+	fm.auto_fire_groups()
+	var again: bool = fm.group_slots(1).size() == 2 and not fm.fg_custom
+	# the player's ship: the command, the bar, the tab
+	var pf: ShipFitting = view.player.fit
+	var keep_g: Dictionary = pf.fire_groups.duplicate(true)
+	var keep_c: bool = pf.fg_custom
+	pf.clear_fire_groups()
+	var e_empty: String = Commands.execute({"type": "fire_group", "group": 3})
+	pf.auto_fire_groups()
+	main.hud._module_sig = ""
+	main.hud._update_modules()
+	var bar_ok: bool = main.hud._group_tiles.size() == ShipFitting.FIRE_GROUPS or pf.active_modules().is_empty()
+	var keys_ok: bool = InputMap.has_action("module_8") and not InputMap.has_action("module_9")
+	main.open_ship_menu()
+	main.ship_menu.mod_view = "groups"
+	main.ship_menu.open(view, 1)
+	var tab_ok: bool = main.ship_menu.visible
+	main.ship_menu.mod_view = "fitting"
+	main.ship_menu.close()
+	pf.fire_groups = keep_g
+	pf.fg_custom = keep_c
+	main.hud._module_sig = ""
+	check(by_kind and multi and saved and out_ok and cleared and again and e_empty.contains("empty") and bar_ok and keys_ok and tab_ok,
+		"79: fire groups – by kind at first, a module in several groups, kept in the save, taken out again, cleared and by kind again; an empty group says so; a tile per group on the bar; keys 1–8; the Fire groups tab  [%s]%s" % [
+			" ".join(PackedStringArray([str(by_kind), str(multi), str(saved), str(out_ok), str(cleared), str(again), str(e_empty.contains("empty")), str(bar_ok), str(keys_ok), str(tab_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])

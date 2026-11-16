@@ -24,6 +24,8 @@ var refinery_on := true                    # package 25a: built-in refinery swit
 var factory_on := true                     # package 25b: built-in factory runs its queue
 var mine_choice := {}                      # review W5: mine launcher slot -> {"type": mine id, "fuse": seconds}
 var held_on := {}                          # review W5: modules that stay switched on (point defence, auto mode, pulse)
+var fire_groups := {}                      # package 79 (Luz): slot -> fire groups (1–8) it is in – a module may be in several
+var fg_custom := false                     # the groups set by hand (else: assigned by kind, fire_groups_auto())
 var market_open := false                   # package 25b: on-board market open for traders
 var market_offers := {}                    # item -> {amount, price}
 var crew: Array = []                       # package 31: one entry per crew slot of the hull ({} = empty), see data/crew.gd
@@ -281,7 +283,7 @@ const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "carg
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
 	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities", "wormhole_ready",
 	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers",
-	"mine_choice", "held_on", "crew", "platform_ship", "platform_lost", "platform_out", "platform_stance"]
+	"mine_choice", "held_on", "fire_groups", "fg_custom", "crew", "platform_ship", "platform_lost", "platform_out", "platform_stance"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -931,6 +933,75 @@ func active_modules() -> Array:
 	for a in s["actives"]:
 		out.append({"slot": a["slot"], "kind": "self", "data": a})
 	return out
+
+
+# ---------------------------------------------------------------- package 79 (Luz): fire groups
+
+const FIRE_GROUPS := 8
+
+
+## Fire groups by kind (until set by hand): each kind of weapon its own group 1–3, the built-in auto mode 4, tools 5,
+## active modules 6, point defence and mine launchers 7.
+func fire_groups_auto() -> Dictionary:
+	var out := {}
+	var wids: Array = []
+	for e in active_modules():
+		var slot := String(e["slot"])
+		match String(e["kind"]):
+			"weapon":
+				var id := String(e["data"].get("id", ""))
+				if not wids.has(id):
+					wids.append(id)
+				out[slot] = [mini(wids.find(id) + 1, 3)]
+			"self":
+				out[slot] = [4] if String(e["data"].get("active", "")) == "auto_fire" else [6]
+			"tool":
+				out[slot] = [5]
+			_:
+				out[slot] = [7]
+	return out
+
+
+## The fire groups a module is in (by hand, else by kind).
+func groups_of(slot: String) -> Array:
+	if fg_custom:
+		return fire_groups.get(slot, [])
+	return fire_groups_auto().get(slot, [])
+
+
+## The modules of a fire group, in the bar's order.
+func group_slots(g: int) -> Array:
+	var out: Array = []
+	var auto := {} if fg_custom else fire_groups_auto()
+	for e in active_modules():
+		var gs: Array = fire_groups.get(e["slot"], []) if fg_custom else auto.get(e["slot"], [])
+		if gs.has(g):
+			out.append(e["slot"])
+	return out
+
+
+## Puts a module into a group or takes it out (the first change by hand starts from the groups by kind).
+func set_fire_group(slot: String, g: int, on: bool) -> void:
+	if not fg_custom:
+		fire_groups = fire_groups_auto()
+		fg_custom = true
+	var gs: Array = fire_groups.get(slot, [])
+	if on and not gs.has(g):
+		gs.append(g)
+		gs.sort()
+	elif not on:
+		gs.erase(g)
+	fire_groups[slot] = gs
+
+
+func clear_fire_groups() -> void:
+	fire_groups = {}
+	fg_custom = true
+
+
+func auto_fire_groups() -> void:
+	fire_groups = {}
+	fg_custom = false
 
 
 func has_tool(tool: String) -> bool:

@@ -371,7 +371,7 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 [color=#7fd8ff]Click an object[/color] (or an overview entry): it appears in the panel top right with its actions –
    Warp to • Approach • Orbit • Keep at range • Lock target • Dock • Jump
 [color=#7fd8ff]Lock targets[/color]: locked targets appear top centre – click one to make it the active target
-[color=#7fd8ff]Module bar[/color] (bottom centre): click a tile or press [b]{module_1} … {module_9}[/b] to switch a module on/off.
+[color=#7fd8ff]Module bar[/color] (bottom centre): one tile per fire group – click it or press [b]{module_1} … {module_8}[/b] to switch all its modules on/off (set the groups in Ship → Modules → Fire groups).
    Weapons need a locked hostile ship, mining lasers an asteroid, analysers an anomaly, salvagers a wreck.
    Tile border: green = working on the active target, yellow = working on another target, orange = out of range, purple = not enough energy, red = no power.
 [color=#7fd8ff]Click empty space[/color]: sublight flight (slow – the system is huge)
@@ -1624,71 +1624,112 @@ func _ally_card_input(ev: InputEvent, id: String) -> void:
 
 # ================================================================ Module bar (bottom centre)
 
+## Package 79 (Luz): the fire groups' colours.
+const FIRE_COLORS := [Color(1.0, 0.45, 0.35), Color(1.0, 0.7, 0.3), Color(0.95, 0.9, 0.35), Color(0.45, 1.0, 0.5),
+	Color(0.35, 0.9, 1.0), Color(0.45, 0.6, 1.0), Color(0.8, 0.5, 1.0), Color(1.0, 0.5, 0.85)]
+
+var _group_tiles := {}                  # package 79: fire group (1–8) -> its tile
+
+
+## Package 79 (Luz): the module bar by fire groups – a tile per group (1–8, its key), the modules in it switched
+## together; modules in no group are not shown. `module_slots` keeps every module you switch on (in order).
 func _update_modules() -> void:
 	var p = view.player if view != null else null
 	var f := GameState.active()
 	var mods: Array = f.active_modules() if (f != null and p != null and is_instance_valid(p)) else []
+	var groups := {}
 	var sig := ""
 	for e in mods:
 		sig += "%s=%s;" % [e["slot"], e["data"]["id"]]
+	for g in ShipFitting.FIRE_GROUPS:
+		groups[g + 1] = f.group_slots(g + 1) if not mods.is_empty() else []
+		sig += "%d:%s;" % [g + 1, ",".join(PackedStringArray(groups[g + 1]))]
 	if sig != _module_sig:
 		_module_sig = sig
 		UI.clear(module_bar)
 		_module_tiles.clear()
+		_group_tiles.clear()
 		module_slots.clear()
 		for e in mods:
-			_make_module_tile(e, module_slots.size())
 			module_slots.append(e["slot"])
-	for e in mods:
-		var t: Dictionary = _module_tiles.get(e["slot"], {})
-		if t.is_empty():
-			continue
-		var state: String = p.module_state.get(e["slot"], "off")
-		var on: bool = p.module_on.get(e["slot"], false)
-		if not on:
-			state = "off"
-		elif state == "on" and e["kind"] in ["weapon", "tool"] and p.module_target.has(e["slot"]) and String(p.module_target[e["slot"]]) != p.active_lock:
-			state = "other"      # multi-focus: running on a target that is not the active one
+		var any := false
+		for g2 in groups:
+			any = any or not (groups[g2] as Array).is_empty()
+		if any:
+			for g3 in ShipFitting.FIRE_GROUPS:
+				_make_group_tile(g3 + 1, groups[g3 + 1], mods)
+	for g4 in _group_tiles:
+		var t: Dictionary = _group_tiles[g4]
+		var slots: Array = groups.get(g4, [])
+		var state := "off"
+		var on_any := false
+		var prog := 0.0
+		var tns: Array = []
+		for slot in slots:
+			if not p.module_on.get(slot, false):
+				continue
+			on_any = true
+			var e1: Dictionary = {}
+			for e0 in mods:
+				if e0["slot"] == slot:
+					e1 = e0
+			var st: String = p.module_state.get(slot, "off")
+			if st == "on" and not e1.is_empty() and e1["kind"] in ["weapon", "tool"] and p.module_target.has(slot) and String(p.module_target[slot]) != p.active_lock:
+				st = "other"      # multi-focus: running on a target that is not the active one
+			if state in ["off", "on"]:
+				state = st
+			prog = maxf(prog, p.cycle_progress(slot))
+			if not e1.is_empty() and e1["kind"] in ["weapon", "tool"]:
+				var tn := p.lock_number(String(p.module_target.get(slot, "")))
+				if tn > 0 and not tns.has(tn):
+					tns.append(tn)
 		var sb: StyleBoxFlat = t["style"]
-		sb.border_color = STATE_COLORS[state]
-		sb.set_border_width_all(2 if on else 1)
-		sb.bg_color = Color(STATE_COLORS[state].darkened(0.8), 0.92) if on else Color(0.03, 0.04, 0.08, 0.9)
+		var gc: Color = FIRE_COLORS[g4 - 1]
+		sb.border_color = STATE_COLORS[state] if on_any else Color(gc, 0.45)
+		sb.set_border_width_all(3 if on_any else 2)
+		sb.bg_color = Color(STATE_COLORS[state].darkened(0.8), 0.92) if on_any else Color(0.03, 0.04, 0.08, 0.9)
 		var bar: ProgressBar = t["bar"]
 		bar.max_value = 1.0
-		bar.value = p.cycle_progress(e["slot"]) if on else 0.0
-		# multi-focus (package 22): which lock this module works on
-		var tn := p.lock_number(String(p.module_target.get(e["slot"], ""))) if on and e["kind"] in ["weapon", "tool"] else 0
-		t["tgt"].text = (" T%d" % tn) if tn > 0 else ""
+		bar.value = prog if on_any else 0.0
+		tns.sort()
+		t["tgt"].text = " ".join(PackedStringArray(tns.map(func(n): return "T%d" % n)))
 
 
-func _make_module_tile(e: Dictionary, idx: int) -> void:
-	var d: Dictionary = e["data"]
-	var slot: String = e["slot"]
+func _make_group_tile(g: int, slots: Array, mods: Array) -> void:
+	var gc: Color = FIRE_COLORS[g - 1]
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(74, 72)
-	var sb := UI.panel_style(Color(0.03, 0.04, 0.08, 0.9), STATE_COLORS["off"])
-	sb.set_corner_radius_all(2)
+	var sb := UI.panel_style(Color(0.03, 0.04, 0.08, 0.9), Color(gc, 0.45))
+	sb.set_corner_radius_all(3)
 	for st in ["normal", "hover", "pressed"]:
 		b.add_theme_stylebox_override(st, sb)
-	var info := "%s\nRange %s" % [d["name"], SystemView.fmt_dist(float(d.get("range", 0.0)))]
-	if e["kind"] == "weapon":
-		info += "  •  %.0f dmg / %.2f s  •  %s energy" % [float(d["damage"]), float(d["cooldown"]), str(d["energy"])]
-	elif e["kind"] == "pd":
-		info += "  •  point defense: switch on – shoots down hostile missiles and mines (%d %%)" % int(minf(float(d["intercept"]), 0.95) * 100.0)
-	elif e["kind"] == "mine":
-		info = "%s\nClick: lay a mine  •  Right-click: mine type and timer" % d["name"]
-	b.tooltip_text = info + ("\nKey: %s" % Keybinds.key_text("module_%d" % (idx + 1)) if idx < 9 else "")
-	b.pressed.connect(func(): Commands.execute({"type": "toggle_module", "slot": slot}))
-	if e["kind"] == "mine":
+	var names: Array = []
+	var short: Array = []                               # the bar's tile: the short names ("Railgun ×2")
+	var first: Dictionary = {}
+	var mine := ""
+	for slot in slots:
+		for e in mods:
+			if e["slot"] == slot:
+				names.append(String(e["data"]["name"]))
+				short.append(String(e["data"].get("base_name", e["data"]["name"])))
+				if first.is_empty():
+					first = e
+				if e["kind"] == "mine" and mine == "":
+					mine = slot
+	b.tooltip_text = ("Fire group %d – key %s\n%s" % [g, Keybinds.key_text("module_%d" % g), "\n".join(PackedStringArray(names))]) if not names.is_empty() \
+		else "Fire group %d is empty – set it in Ship → Modules → Fire groups." % g
+	if mine != "":
+		b.tooltip_text += "\nRight-click: mine type and timer"
 		b.gui_input.connect(func(ev):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT:
-				_mine_menu(b, slot))
+				_mine_menu(b, mine))
+	b.pressed.connect(func(): activate_index(g - 1))
 	module_bar.add_child(b)
 	var v := UI.vbox(1)
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 5
-	v.offset_right = -5
+	v.offset_left = 4
+	v.offset_right = -4
 	v.offset_top = 3
 	v.offset_bottom = -4
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1696,42 +1737,36 @@ func _make_module_tile(e: Dictionary, idx: int) -> void:
 	var top := UI.hbox(2)
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(top)
-	var key := UI.label(Keybinds.key_text("module_%d" % (idx + 1)) if idx < 9 else "", 11, Color(0.8, 0.85, 1.0))
+	var key := UI.label(Keybinds.key_text("module_%d" % g), 12, gc)
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(key)
-	var tl := UI.label("", 11, Color(1.0, 0.8, 0.3))
+	var tl := UI.label("", 10, Color(1.0, 0.8, 0.3))
 	tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(tl)
 	top.add_child(UI.spacer())
-	var ic := UI.icon(PixelArt.module_icon(d["id"]), 30)
-	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(ic)
-	var nm := UI.label(String(d["name"]), 10, Color(0.85, 0.9, 1.0))
+	if not first.is_empty():
+		var ic := UI.icon(PixelArt.module_icon(first["data"]["id"]), 30)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		top.add_child(ic)
+	var nm_text := "empty"
+	if short.size() == 1:
+		nm_text = String(short[0])
+	elif short.size() > 1:
+		nm_text = ("%s ×%d" % [short[0], short.size()]) if short.count(short[0]) == short.size() else "%d modules" % short.size()
+	var nm := UI.label(nm_text, 10, Color(0.85, 0.9, 1.0) if not names.is_empty() else UI.TEXT_DIM)
 	nm.clip_text = true
-	nm.custom_minimum_size = Vector2(62, 0)
+	nm.custom_minimum_size = Vector2(64, 0)
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(nm)
-	var bar := UI.bar(STATE_COLORS["on"], 62)
-	bar.custom_minimum_size = Vector2(62, 4)
+	var bar := UI.bar(STATE_COLORS["on"], 64)
+	bar.custom_minimum_size = Vector2(64, 4)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(bar)
-	if d.get("builtin", false):
-		# built into the hull (package 25a): an inner gold frame
-		var fr := Panel.new()
-		var fs := StyleBoxFlat.new()
-		fs.draw_center = false
-		fs.border_color = BUILTIN_COLOR
-		fs.set_border_width_all(2)
-		fr.add_theme_stylebox_override("panel", fs)
-		fr.set_anchors_preset(Control.PRESET_FULL_RECT)
-		fr.offset_left = 3
-		fr.offset_top = 3
-		fr.offset_right = -3
-		fr.offset_bottom = -3
-		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(fr)
-		b.tooltip_text += "\nBuilt into the hull"
-	_module_tiles[slot] = {"button": b, "style": sb, "bar": bar, "tgt": tl}
+	var tile := {"button": b, "style": sb, "bar": bar, "tgt": tl, "group": g}
+	_group_tiles[g] = tile
+	for slot2 in slots:
+		if not _module_tiles.has(slot2):
+			_module_tiles[slot2] = tile                 # a module's tile: its first group's
 
 
 ## Mine launcher (package 20): pick the mine type (with the number in the hold) and the timer.
@@ -1764,9 +1799,8 @@ func _mine_menu(anchor: Control, slot: String) -> void:
 	pm.popup()
 
 
-## Hotkeys 1–9
+## Keys 1–8 (package 79): the fire groups.
 func activate_index(i: int) -> void:
-	if i < module_slots.size():
-		Commands.execute({"type": "toggle_module", "slot": module_slots[i]})
-	else:
-		GameState.log_msg("Module key %d (%s): no activatable module in that position (you have %d)." % [i + 1, Keybinds.key_text("module_%d" % (i + 1)), module_slots.size()], GameState.COL_WARN)
+	var e := Commands.execute({"type": "fire_group", "group": i + 1})
+	if e != "":
+		GameState.log_msg(e, GameState.COL_WARN)

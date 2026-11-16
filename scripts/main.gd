@@ -746,9 +746,9 @@ func handle_input(event: InputEvent) -> void:
 					else:
 						view.set_level(i)
 				return
-		for i in 9:
+		for i in ShipFitting.FIRE_GROUPS:
 			if event.is_action_pressed("module_%d" % (i + 1), false, true):
-				hud.activate_index(i)
+				hud.activate_index(i)                     # package 79: keys 1–8 – the fire groups
 				return
 		if event.is_action_pressed("drone_launch", false, true) and view != null and not in_hyperspace:
 			Commands.execute({"type": "drone_launch", "count": 1})

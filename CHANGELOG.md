@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.79.1 – 2026-11-16
+
+**Package 79 – fire groups (Luz).** The first part of the new combat controls in space, made to carry over to a
+controller later.
+- Ship → Modules → **Fire groups**, a new tab: every module you switch on in a fight, with the fire groups 1–8 it is in
+  – a module may be in several. Left: what is in which group with its key, "Assign by kind" and "Clear all groups".
+- Until you change them, the groups follow the kind: each kind of weapon its own group 1–3, the auto mode 4, tools 5,
+  active modules 6, point defence and mines 7. Kept per ship in the save.
+- The module bar shows one tile per fire group (its key, the first module's icon, "Railgun ×2", the cycle, T1/T2);
+  modules in no group are not on it.
+- Keys 1–8 switch a whole group: any module of it off (or on another target) – all on at the active target; else all
+  off. An empty group says where to set it. Key 9 is free.
+
 ## alpha 0.7.54.18 – 2026-11-16
 
 **Review of Teil 7 – all findings fixed** (report `reviews/teil7_review.md`, made with Fable 5.2).

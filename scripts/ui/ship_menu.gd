@@ -382,7 +382,7 @@ func _news_card(box: Control) -> void:
 func _build_modules() -> void:
 	var sw := UI.hbox(4)
 	content.add_child(sw)
-	var views: Array = [["fitting", "FITTING"], ["power", "POWER MANAGEMENT"]]
+	var views: Array = [["fitting", "FITTING"], ["power", "POWER MANAGEMENT"], ["groups", "FIRE GROUPS"]]     # package 79
 	if not fit.crew_slots().is_empty():
 		views.append(["crew", "CREW  %d / %d" % [fit.crew_members().size(), fit.crew_slots().size()]])     # package 31
 	elif mod_view == "crew":
@@ -396,6 +396,9 @@ func _build_modules() -> void:
 		sw.add_child(b)
 	if mod_view == "power":
 		_build_power()
+		return
+	if mod_view == "groups":
+		_build_fire_groups()
 		return
 	if mod_view == "crew":
 		_build_crew()
@@ -499,6 +502,116 @@ func _crew_cmd(c: Dictionary) -> void:
 	Commands.execute(c)
 	crew_sel = -1
 	rebuild()
+
+
+# ---------------------------------------------------------------- Fire groups (package 79, Luz)
+
+## Every module you switch on in a fight, each with the fire groups 1–8 it is in (a module may be in several); the keys
+## switch a whole group. Left: what is in which group, the keys, "by kind" and "clear".
+func _build_fire_groups() -> void:
+	var body := UI.hbox(16)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(body)
+	var lp := UI.neon_panel(Color(UI.NEON_CYAN, 0.3), Color(0.05, 0.07, 0.12, 0.95), 1)
+	lp.custom_minimum_size = Vector2(420, 0)
+	body.add_child(lp)
+	var left := UI.vbox(6)
+	lp.add_child(left)
+	left.add_child(UI.label("Fire groups", 20, UI.NEON_CYAN))
+	left.add_child(UI.wrap_label("Every module you switch on in a fight can go into fire groups 1 to 8 – a module may be in several. One key switches the whole group: all its modules on (at the active target), or all off again. Modules in no group are not on the module bar. Modules that only run (hull, engine, reactor …) are not listed.", 13, UI.TEXT_DIM, 390))
+	left.add_child(UI.label("", 4))
+	var mods: Array = fit.active_modules()
+	for g in ShipFitting.FIRE_GROUPS:
+		var row := UI.hbox(8)
+		left.add_child(row)
+		var chip := UI.label(" %d " % (g + 1), 15, Color(0.02, 0.03, 0.06))
+		var cs := StyleBoxFlat.new()
+		cs.bg_color = HUD.FIRE_COLORS[g]
+		cs.set_corner_radius_all(4)
+		chip.add_theme_stylebox_override("normal", cs)
+		chip.custom_minimum_size = Vector2(28, 24)
+		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_child(chip)
+		row.add_child(UI.label("key %s" % Keybinds.key_text("module_%d" % (g + 1)), 12, Color(0.8, 0.85, 1.0)))
+		var names: Array = []
+		for slot in fit.group_slots(g + 1):
+			for e in mods:
+				if e["slot"] == slot:
+					names.append(String(e["data"]["name"]))
+		var sum := "—"
+		if names.size() == 1:
+			sum = String(names[0])
+		elif names.size() > 1:
+			sum = ("%s ×%d" % [names[0], names.size()]) if names.count(names[0]) == names.size() else ", ".join(PackedStringArray(names))
+		var sl := UI.label(sum, 12, HUD.FIRE_COLORS[g] if not names.is_empty() else UI.TEXT_DIM)
+		sl.clip_text = true
+		sl.custom_minimum_size = Vector2(290, 0)
+		row.add_child(sl)
+	left.add_child(UI.label("", 4))
+	left.add_child(UI.wrap_label("Until you change them, the groups follow the kind: each kind of weapon its own group 1–3, the auto mode 4, tools 5, active modules 6, point defence and mines 7.", 12, UI.TEXT_DIM, 390))
+	left.add_child(UI.button("Assign by kind (weapons 1–3, defence 5–6)", func():
+		Commands.execute({"type": "fire_group_auto"})
+		rebuild()))
+	left.add_child(UI.button("Clear all groups", func():
+		Commands.execute({"type": "fire_group_clear"})
+		rebuild()))
+	var rs := ScrollContainer.new()
+	rs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(rs)
+	var right := UI.vbox(6)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rs.add_child(right)
+	right.add_child(UI.label("Modules you switch on  (%s)" % fit.ship_name, 18, UI.NEON_CYAN))
+	right.add_child(UI.label("click a number to put the module into that group – click it again to take it out", 12, UI.TEXT_DIM))
+	if mods.is_empty():
+		right.add_child(UI.label("This ship has no modules to switch on.", 14, UI.TEXT_DIM))
+		return
+	for e2 in mods:
+		var slot2: String = e2["slot"]
+		var gs: Array = fit.groups_of(slot2)
+		var card := UI.panel(Color(0.04, 0.07, 0.12))
+		var cst := UI.panel_style(Color(0.04, 0.07, 0.12), Color(HUD.FIRE_COLORS[int(gs[0]) - 1], 0.55) if not gs.is_empty() else Color(0.2, 0.25, 0.35))
+		cst.set_corner_radius_all(3)
+		card.add_theme_stylebox_override("panel", cst)
+		right.add_child(card)
+		var r := UI.hbox(10)
+		card.add_child(r)
+		r.add_child(UI.icon(PixelArt.module_icon(String(e2["data"]["id"])), 40))
+		var nv := UI.vbox(0)
+		nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(nv)
+		nv.add_child(UI.label(String(e2["data"]["name"]), 15, Color.WHITE))
+		nv.add_child(UI.label(_slot_name(slot2), 12, UI.TEXT_DIM))
+		for g2 in ShipFitting.FIRE_GROUPS:
+			var gn := g2 + 1
+			var on := gs.has(gn)
+			var gb := Button.new()
+			gb.text = str(gn)
+			gb.focus_mode = Control.FOCUS_NONE
+			gb.custom_minimum_size = Vector2(44, 34)
+			var bs := UI.panel_style(Color(HUD.FIRE_COLORS[g2], 0.9) if on else Color(0.07, 0.1, 0.16), HUD.FIRE_COLORS[g2] if on else Color(0.3, 0.35, 0.45))
+			bs.set_corner_radius_all(4)
+			for stn in ["normal", "hover", "pressed"]:
+				gb.add_theme_stylebox_override(stn, bs)
+			gb.add_theme_color_override("font_color", Color(0.02, 0.03, 0.06) if on else Color(0.6, 0.65, 0.75))
+			gb.add_theme_color_override("font_hover_color", Color(0.02, 0.03, 0.06) if on else Color.WHITE)
+			gb.add_theme_font_size_override("font_size", 16)
+			gb.tooltip_text = ("Take it out of fire group %d" if on else "Put it into fire group %d") % gn
+			gb.pressed.connect(func():
+				Commands.execute({"type": "fire_group_set", "slot": slot2, "group": gn, "on": not on})
+				rebuild())
+			r.add_child(gb)
+
+
+## The name of a slot for the fire groups' list ("Weapon 2", "Tool 1", "Built in" …).
+func _slot_name(slot: String) -> String:
+	if slot.begins_with("builtin"):
+		return "Built into the hull"
+	var parts := slot.split("_")
+	if parts.size() == 2 and parts[1].is_valid_int():
+		return "%s %d" % [parts[0].capitalize(), int(parts[1]) + 1]
+	return slot.capitalize()
 
 
 # ---------------------------------------------------------------- Power management (package 21)
