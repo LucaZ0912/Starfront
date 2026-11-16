@@ -139,6 +139,16 @@ static func build_platform(station: Dictionary, body: Dictionary) -> GroundMap:
 		Vector2(px - 8.5, FRONT_ROWS + 3.4) * TILE, Vector2(px + 18.5, FRONT_ROWS + 3.4) * TILE])
 	m.set_meta("tourists", 10)
 	m.set_meta("open_sky", true)
+	# 54c (Luz): the forecourt is a sight – the viewpoint before the stair, a plaque with the palace's story, a stall
+	m.zones.append({"rect": Rect2(Vector2(cx - 12, FRONT_ROWS + 5) * TILE, Vector2(24, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
+		"title": "The palace – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "plaque_stone", "x": cx - 20, "y": 30, "w": 2, "h": 1})
+	_zone(m, Rect2(cx - 21, 31, 4, 1.4), "sight_info", "Information – the Palace of the Hierarch", Color(1.0, 0.9, 0.5))
+	m.add_object({"kind": "stall", "x": cx + 18, "y": 30, "w": 2, "h": 1, "col": Color(0.85, 0.2, 0.15)})
+	m.zones.append({"rect": Rect2(Vector2(cx + 17, 30.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
+		"title": "Souvenir stall", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(cx + 19, 29.2) * TILE})
+	m.set_meta("sight", {"theme": "palace", "event": "", "name": "The Palace of the Hierarch", "id": String(station.get("id", "")) + "_palace",
+		"focus": Vector2(cx, 40) * TILE})
 	DeckGen._seats(m)
 	for wp in [Vector2(cx - 12, 30), Vector2(cx + 12, 30), Vector2(cx - 20, 46), Vector2(cx + 18, 46), Vector2(cx - 8, 58), Vector2(cx + 8, 58),
 			Vector2(cx - 30, 32), Vector2(cx + 32, 32), Vector2(cx, 70), Vector2(cx - 40, 40), Vector2(cx + 40, 40)]:

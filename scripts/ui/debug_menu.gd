@@ -1108,7 +1108,7 @@ func _build_ground() -> void:
 	rs0.add_child(UI.button("Shuttle run aboard", func(): _cmd({"type": "debug_shuttle"})))
 	rs0.add_child(UI.button("Excursion seen", func(): _cmd({"type": "debug_tour_view"})))
 	var SDm = load("res://data/sights.gd")
-	for th in ["falls", "lagoon", "icecave", "arches", "lava", "crater"]:
+	for th in ["falls", "lagoon", "icecave", "arches", "lava", "crater", "mirror"]:
 		var rsg := _row()
 		rsg.add_child(UI.label(String(SDm.SIGHTS[th]["names"][0]) + ":", 12, UI.TEXT_DIM))
 		var thh: String = th

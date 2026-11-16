@@ -720,7 +720,7 @@ static func paint(m: GroundMap, img: Image) -> void:
 			_paint_coast(m, wd, p)
 		"ice":
 			_paint_ice(m, wd, p)
-		"arches", "lava", "crater":
+		"arches", "lava", "crater", "mirror":
 			pass                                         # 54a: the vistas paint all of it themselves
 		_:
 			_paint_jungle(m, wd, p)

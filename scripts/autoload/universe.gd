@@ -3182,6 +3182,9 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 			var names: Array = SightGenU.SIGHTS[sth]["names"]
 			out.append({"id": "%s_sight" % String(body["id"]), "name": String(names[srng.randi() % names.size()]), "kind": "sight", "theme": sth,
 				"seed": srng.randi() % 100000, "lon": srng.randf_range(-0.9, 0.9), "lat": srng.randf_range(-0.7, 0.7)})
+	if String(body.get("name", "")) == "Curie" and system_id == special_system("durchbruch"):
+		out.append({"id": "%s_mirror" % String(body["id"]), "name": "The Mirror Front", "kind": "sight", "theme": "mirror",    # 54c (Luz)
+			"seed": 4242, "lon": 0.15, "lat": -0.2})
 	out.append_array(debug_sites.get(String(body["id"]), []))      # 0.7.51.5: places the debug menu added
 	out.append_array(GameState.pois_for(system_id, body))          # package 53a: a ruin to explore, this visit
 	_name_capital(system_id, body, out)

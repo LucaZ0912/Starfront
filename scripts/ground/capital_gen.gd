@@ -105,6 +105,16 @@ static func build_senate_plaza(station: Dictionary, body: Dictionary) -> GroundM
 	m.add_object({"kind": "holo_pillar", "x": 44, "y": 20, "w": 1, "h": 1, "col": Color(0.45, 0.75, 1.0)})
 	_zone(m, Rect2(43, 21, 3, 1.4), "senate_info", "The bill on the floor", Color(0.45, 0.75, 1.0))
 	m.lights.append({"pos": Vector2(44.5, 20.5) * TILE, "r": 40.0, "col": Color(0.45, 0.75, 1.0), "a": 0.35})
+	# 54c (Luz): the plaza is a sight – the viewpoint at the foot of the stair, information, a souvenir stall
+	m.zones.append({"rect": Rect2(Vector2(SX + 3, 19.0) * TILE, Vector2(SW - 6, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
+		"title": "The Senate – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "holo_pillar", "x": 20, "y": 20, "w": 1, "h": 1, "col": Color(1.0, 0.9, 0.5)})
+	_zone(m, Rect2(19, 21, 3, 1.4), "sight_info", "Information – the Plaza of the Vote", Color(1.0, 0.9, 0.5))
+	m.add_object({"kind": "stall", "x": 55, "y": 20, "w": 2, "h": 1, "col": Color(0.4, 0.65, 1.0)})
+	m.zones.append({"rect": Rect2(Vector2(54, 20.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
+		"title": "Souvenir stall", "col": Color(0.5, 0.75, 1.0), "sign": Vector2(56, 19.2) * TILE})
+	m.set_meta("sight", {"theme": "senate", "event": "", "name": "The Plaza of the Vote", "id": String(station.get("id", "")) + "_senate",
+		"focus": Vector2(dx + 2, 12) * TILE})
 	DeckGen._seats(m)
 	for wp in [Vector2(14, 22), Vector2(26, 21), Vector2(40, 21), Vector2(52, 23), Vector2(22, 27), Vector2(44, 27), Vector2(30, 31), Vector2(56, 30)]:
 		if m.free_at(wp * TILE, 6.0):

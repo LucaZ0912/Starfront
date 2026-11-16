@@ -850,6 +850,12 @@ static func ground_sights(sid: int) -> Array:
 	bodies.append_array(L.get("moons", []))
 	for b in bodies:
 		var bt := String(b.get("type", ""))
+		for cs0 in Universe.landing_sites(sid, b):                    # 54c (Luz): the capitals' plazas are sights too
+			var cap := String(cs0.get("capital", ""))
+			if cap != "":
+				var cc := Universe.city_station(sid, b, cs0)
+				out.append({"id": String(cc["id"]) + "_" + cap, "name": "the Plaza of the Vote" if cap == "senate" else "the Palace of the Hierarch",
+					"body": String(b["id"]), "kind": "capital", "appeal": 0.9, "ground": true, "where": String(cc.get("name", "")), "city": String(cc["id"])})
 		if Universe.is_giant(b):
 			if not bool(b.get("cloud_city", false)):
 				continue
@@ -883,7 +889,7 @@ static func _excursion(system_id: int, station: Dictionary, tsid: int, sg: Dicti
 		"reward": int(round(float(c["pay"]) * amount * legs * EXCURSION_PAY * (1.0 + 0.15 * float(sg["appeal"])))),
 		"tour": {"system": tsid, "sight": String(sg["id"]), "name": String(sg["name"]), "body": String(sg["body"]),
 			"kind": String(sg["kind"]), "t": 0.0, "done": false, "ground": true, "where": String(sg["where"])}}
-	var on := ("in %s" % String(sg["where"])) if String(sg["kind"]) == "skyring" else ("on %s" % String(sg["where"]))
+	var on := ("in %s" % String(sg["where"])) if String(sg["kind"]) in ["skyring", "capital"] else ("on %s" % String(sg["where"]))
 	m["title"] = "Excursion: %d× %s to %s and back" % [amount, c["name"], sg["name"]]
 	m["desc"] = "Land with %d %s sightseer%s at %s %s (%s%s) and take them to its viewpoint, then bring them back here. %s" % [
 		amount, String(c["name"]).to_lower(), "" if amount == 1 else "s", sg["name"], on, Universe.systems[tsid]["name"],

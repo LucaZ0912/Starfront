@@ -178,6 +178,7 @@ func _process(delta: float) -> void:
 				_test_tips54b(view)              # package 54b – tips and sounds
 				_test_capital54c(view)           # package 54c – Neo Kallipolis and the Senate
 				_test_palace54c(view)            # package 54c – Aureola and the Hierarch's palace
+				_test_sights54c(view)            # package 54c – the capitals' plazas as sights
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12946,3 +12947,32 @@ func _test_palace54c(view: SystemView) -> void:
 	check(named and plat_ok and lobby_ok and throne_ok and aud_ok and in_ok,
 		"54c: Aureola – the cloud city over Compline named so, the palace platform (round rim, the front, the portal, the bridge to the lifts, the guard), the lobby (the Curia's chancery, the relic office, ten guards), the throne room (the rope unless Allied), the audience (refused below Allied; the seal, an edict named, once each edict)  [%s]%s" % [
 			" ".join(PackedStringArray([str(named), str(plat_ok), str(lobby_ok), str(throne_ok), str(aud_ok), str(in_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+## Package 54c (Luz): the capitals' plazas are sights – the Plaza of the Vote and the palace's forecourt: their sight
+## (theme, viewpoint, information, a souvenir stall), and both among the excursion targets of their systems.
+func _test_sights54c(_view: SystemView) -> void:
+	var st := {"id": "test_cap", "name": "X", "faction": "assembly", "city": true, "capital": "senate", "type": "trade", "tier": 3}
+	var mp: GroundMap = CapitalGenT.build_senate_plaza(st, {})
+	var mq: GroundMap = PalaceGenT.build_platform(st, {"type": "gas_red"})
+	var ok_map := true
+	for m in [mp, mq]:
+		var kinds: Array = m.zones.map(func(z): return String(z.get("kind", "")))
+		ok_map = ok_map and m.has_meta("sight") and "viewpoint" in kinds and "sight_info" in kinds and "souvenir" in kinds \
+			and GameData.commodities.has(String(SightGenT.SIGHTS[String(m.get_meta("sight")["theme"])]["souvenir"]))
+	var t1 := Missions.ground_sights(Universe.special_system("landfall")).any(func(s): return String(s["kind"]) == "capital" and String(s["id"]).ends_with("_senate"))
+	var t2 := Missions.ground_sights(Universe.special_system("heimkehr")).any(func(s): return String(s["kind"]) == "capital" and String(s["id"]).ends_with("_palace"))
+	# the Mirror Front on Curie: its site, its map (a vista: viewpoint, information, souvenirs), an excursion target
+	var dsid := Universe.special_system("durchbruch")
+	var t3 := false
+	var mm_ok := false
+	for b in Universe.get_layout(dsid)["planets"]:
+		if String(b.get("name", "")) == "Curie":
+			for s0 in Universe.landing_sites(dsid, b):
+				if String(s0.get("theme", "")) == "mirror":
+					var mm: GroundMap = SightGenT.build(b, s0, Vector2(120, 80), "beams")
+					var kz: Array = mm.zones.map(func(z): return String(z.get("kind", "")))
+					mm_ok = mm.has_meta("sight") and String(mm.get_meta("sight")["theme"]) == "mirror" and "viewpoint" in kz and "souvenir" in kz
+	t3 = Missions.ground_sights(dsid).any(func(s): return String(s["id"]).ends_with("_mirror"))
+	ok_map = ok_map and mm_ok and t3
+	check(ok_map and t1 and t2, "54c: the capitals' plazas as sights – the Plaza of the Vote and the palace's forecourt (viewpoint, information, souvenirs), excursion targets in Landfall and Heimkehr; the Mirror Front on Curie (a vista, an excursion target)  [%s %s %s %s %s]" % [ok_map, t1, t2, mm_ok, t3])

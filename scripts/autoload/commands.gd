@@ -3005,7 +3005,7 @@ func _c_souvenir_buy(c: Dictionary) -> String:
 
 ## {"type":"debug_sight", "theme": falls/…, "event": "" or an event id} – package 54a: straight to a sight (on a body of
 ## this system seen as the right kind of world).
-const DEBUG_SIGHT_WORLD := {"falls": "jungle", "lagoon": "ocean", "icecave": "ice", "arches": "desert", "lava": "lava", "crater": "barren"}
+const DEBUG_SIGHT_WORLD := {"falls": "jungle", "lagoon": "ocean", "icecave": "ice", "arches": "desert", "lava": "lava", "crater": "barren", "mirror": "terran"}
 func _c_debug_sight(c: Dictionary) -> String:
 	var m = _main()
 	var f := _fit()

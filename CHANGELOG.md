@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.12 – 2026-11-16
+
+**Package 54c, part 3 – the capitals' sights (Luz).** The capitals' own places are now sights for tourists, and Curie
+has the Mirror Front (the Founders' Terrace and the Pilgrims' Ridge are dropped – the plazas take their place).
+- **The Plaza of the Vote** (Neo Kallipolis) and **the Palace of the Hierarch** (Aureola): a viewpoint for photos (at the
+  foot of the Senate's stair, before the palace's stair), information, a souvenir stall (Glass Senate, Sun of Return
+  Pendant); events by visit and hour – the session letting out, a demonstration, the flag lowered, the front lit at
+  night, a drone show of the founders (rare; seen); the changing of the guard, pilgrims on the mosaic, the star going
+  down red, a vigil of candles (seen), the Hierarch's procession (rare). Both are excursion targets.
+- **The Mirror Front** on Curie (Durchbruch): a terrace on the ridge where the new fields meet the old desert – the
+  parcels, tracks and shining channels, the churned line with the Institute's towers, the orbital mirrors in the sky
+  and their beams slanting onto the fields; events: the beams sweeping, seed drones, the towers' long shadows, the
+  mirrors crossing the night like slow stars, the first rain (rare). Souvenir: a Mirror Shard. An excursion target.
+- Debug: F12 → Ground → Sights → The Mirror Front. Smoke test group `sights54c`.
+
 ## alpha 0.7.54.11 – 2026-11-16
 
 **Package 54c, part 2 – Aureola and the Hierarch's palace (Luz).** The first cloud city over Compline (Heimkehr) is now

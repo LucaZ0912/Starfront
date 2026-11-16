@@ -49,7 +49,7 @@ func _draw() -> void:
 		match String(sight.get("theme", "")):
 			"lagoon":
 				_lagoon(ev)
-			"arches", "lava", "crater":
+			"arches", "lava", "crater", "mirror":
 				_sky(ev)
 		return
 	match String(sight.get("theme", "")):
@@ -67,6 +67,12 @@ func _draw() -> void:
 			_crater_over(ev)
 		"skyring":
 			_skyring(ev)
+		"senate":
+			_senate(ev)
+		"mirror":
+			_mirror_over(ev)
+		"palace":
+			_palace(ev)
 	for f in _flashes:
 		var a := 1.0 - float(f[1]) / 0.25
 		var p: Vector2 = f[0]
@@ -360,7 +366,7 @@ func _sky(ev: String) -> void:
 	var h := hz + 4.0
 	var theme := String(sight.get("theme", ""))
 	match theme:
-		"arches":
+		"arches", "mirror":
 			var sunset := ev == "sunset" or (day > 0.25 and day < 0.55)
 			if day < 0.25:
 				_grad(Color(0.02, 0.02, 0.07), Color(0.04, 0.05, 0.12), Color(0.12, 0.1, 0.2), h, w)
@@ -548,6 +554,80 @@ func _crater_over(ev: String) -> void:
 
 
 ## 54a: the Skyring deck – over the clouds below the deck, east of the skyrail's car: this visit's event.
+## 54c (Luz): the capitals – at night a drone show over the Senate (the founders drawn in light, changing), a vigil
+## of candles on the palace's forecourt.
+func _senate(ev: String) -> void:
+	var c: Vector2 = sight.get("focus", Vector2.ZERO)
+	if ev == "drones":
+		var n := 60
+		var shape := int(_t / 6.0) % 3
+		for i in n:
+			var a := i * TAU / n
+			var tgt: Vector2
+			match shape:
+				0:
+					tgt = Vector2(cos(a) * 80.0, sin(a) * 40.0)                     # the Assembly's ring
+				1:
+					tgt = Vector2((i % 3 - 1) * 60.0 + cos(a * 3.0) * 12.0, -sin(a * 3.0) * 30.0)    # three founders
+				_:
+					tgt = Vector2((float(i) / n - 0.5) * 200.0, sin(float(i) * 0.6 + _t) * 14.0)       # a wave
+			var q := c + tgt + Vector2(sin(_t * 1.3 + i) * 2.0, cos(_t * 1.1 + i) * 2.0)
+			var col: Color = [Color(0.4, 0.7, 1.0), Color(1.0, 1.0, 1.0), Color(1.0, 0.85, 0.4)][i % 3]
+			draw_circle(q, 3.0, Color(col, 0.25))
+			draw_circle(q, 1.2, col)
+
+
+## 54c (Luz): the Mirror Front – the orbital mirrors glinting in the sky (at night slow stars crossing it), their beams
+## falling slanting through the haze onto the fields; by the event the beams sweeping, seed drones over the front, rain.
+func _mirror_over(ev: String) -> void:
+	var hz := float(sight.get("hz", 150.0))
+	var w := float(sight.get("w", 1056.0))
+	var rim := float(sight.get("rim", 368.0))
+	var night := day < 0.25
+	for mi in 14:
+		var mx := fposmod((mi + 0.5) / 14.0 * w + (_hh(mi, 70) - 0.5) * 40.0 + _t * (2.0 if night else 0.4), w)
+		var my := hz - 62.0 + _hh(mi, 71) * 48.0                     # low enough to be seen from the terrace
+		var gl := 0.6 + 0.4 * sin(_t * 1.3 + mi)
+		var mc := Vector2(mx, my)
+		draw_circle(mc, 14.0, Color(1.0, 1.0, 0.85, (0.22 if night else 0.12) * gl))             # its glare
+		draw_circle(mc, 7.0, Color(1.0, 1.0, 0.9, (0.4 if night else 0.2) * gl))
+		var hx := PackedVector2Array()                                                        # the mirror: a hexagon of panels
+		for v in 6:
+			hx.append(mc + Vector2(cos(v * TAU / 6.0 + 0.3), sin(v * TAU / 6.0 + 0.3) * 0.6) * 5.0)
+		draw_colored_polygon(hx, Color(0.85, 0.92, 1.0, 0.95) if not night else Color(1, 1, 1, gl))
+		draw_line(mc + Vector2(-5, 0), mc + Vector2(5, 0), Color(0.5, 0.6, 0.75, 0.8), 1.0)
+		draw_rect(Rect2(mc + Vector2(-9, -0.5), Vector2(18, 1)), Color(1, 1, 1, 0.7 * gl))    # a glint across
+		if not night and mi % 2 == 0:
+			var sweep := sin(_t * 0.3 + mi) * (60.0 if ev == "beams" else 12.0)
+			var foot := Vector2(w * 0.12 + mi * w * 0.05 + sweep, hz + 40.0 + _hh(mi, 72) * (rim - hz - 70.0))
+			var pts := PackedVector2Array([Vector2(mx - 2, my), Vector2(mx + 2, my), foot + Vector2(14, 0), foot + Vector2(-14, 0)])
+			draw_colored_polygon(pts, Color(1.0, 0.98, 0.85, 0.09 if ev != "beams" else 0.16))
+			draw_circle(foot, 16.0, Color(1.0, 1.0, 0.8, 0.12))
+	match ev:
+		"drones":                                                         # seed drones sweeping over the front
+			for d in 24:
+				var q := Vector2(fposmod(w * 0.4 + _hh(d, 73) * 160.0 + _t * 18.0, w), hz + 30.0 + _hh(d, 74) * 120.0 + sin(_t * 2.0 + d) * 3.0)
+				draw_rect(Rect2(q, Vector2(2, 1)), Color(0.2, 0.22, 0.25))
+				draw_rect(Rect2(q + Vector2(0, 2), Vector2(1, 1)), Color(0.4, 1.0, 0.6, 0.8))
+		"rain":                                                           # rain falling on the new fields
+			for cl in 18:                                                 # the rain clouds, soft
+				draw_circle(Vector2(_hh(cl, 77) * w * 0.55, hz - 30.0 + _hh(cl, 78) * 26.0), 26.0 + _hh(cl, 79) * 20.0, Color(0.5, 0.55, 0.62, 0.16))
+			for r in 140:
+				var q2 := Vector2(_hh(r, 75) * w * 0.5, fposmod(hz - 40.0 + _hh(r, 76) * 200.0 + _t * 140.0, rim - hz + 40.0) + hz - 40.0)
+				draw_line(q2, q2 + Vector2(-1, 5), Color(0.75, 0.82, 0.92, 0.5), 1.0)
+
+
+func _palace(ev: String) -> void:
+	var c: Vector2 = sight.get("focus", Vector2.ZERO)
+	if ev == "vigil":
+		for i in 70:
+			var q := c + Vector2((_hh(i, 1) - 0.5) * 420.0, (_hh(i, 2) - 0.5) * 220.0)
+			var fl := 0.7 + 0.3 * sin(_t * 9.0 + i * 1.7)
+			draw_circle(q, 5.0, Color(1.0, 0.7, 0.3, 0.12 * fl))
+			draw_rect(Rect2(q + Vector2(-0.5, 0), Vector2(1, 3)), Color(0.95, 0.92, 0.85))
+			draw_circle(q + Vector2(0, -1), 1.1 * fl, Color(1.0, 0.85, 0.4))
+
+
 func _skyring(ev: String) -> void:
 	var x0 := float(sight.get("x0", 0.0))
 	var x1 := float(sight.get("x1", 900.0))

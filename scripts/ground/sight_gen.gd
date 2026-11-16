@@ -52,7 +52,7 @@ static func build(body: Dictionary, site: Dictionary, lsz: Vector2, event: Strin
 			return _lagoon(body, site, lsz, event)
 		"icecave":
 			return _icecave(body, site, lsz, event)
-		"arches", "lava", "crater":
+		"arches", "lava", "crater", "mirror":
 			return _vista(body, site, lsz, event, theme)
 		_:
 			return _falls(body, site, lsz, event)
@@ -641,6 +641,7 @@ static func _paint_icecave(m: GroundMap, wd: Dictionary, p) -> void:
 const VISTA := {
 	"arches": {"seed": 57, "hz": 150.0, "stone": Color(0.82, 0.68, 0.54), "tint": Color(1.0, 0.96, 0.92), "rock": Color(0.66, 0.36, 0.24), "name": "The Red Arches"},
 	"lava": {"seed": 58, "hz": 150.0, "stone": Color(0.42, 0.4, 0.4), "tint": Color(1.0, 0.94, 0.9), "rock": Color(0.2, 0.18, 0.18), "name": "The Fire Terraces"},
+	"mirror": {"seed": 61, "hz": 150.0, "stone": Color(0.92, 0.93, 0.92), "tint": Color(1.0, 1.0, 0.98), "rock": Color(0.7, 0.55, 0.4), "name": "The Mirror Front"},
 	"crater": {"seed": 59, "hz": 150.0, "stone": Color(0.62, 0.63, 0.66), "tint": Color(1.0, 1.0, 1.0), "rock": Color(0.46, 0.45, 0.46), "name": "The Great Crater"},
 }
 const RIM := 23                                     # the edge's row: the terrace's railing stands on it
@@ -793,9 +794,11 @@ static func _paint_vista(m: GroundMap, wd: Dictionary, p) -> void:
 			p.tile_ground(Color(0.8, 0.5, 0.32), Color(0.72, 0.43, 0.27), 901, 2)
 		"lava":
 			p.tile_ground(Color(0.17, 0.155, 0.16), Color(0.23, 0.2, 0.2), 902, 2)
+		"mirror":
+			p.tile_ground(Color(0.78, 0.6, 0.42), Color(0.7, 0.53, 0.36), 904, 2)
 		_:
 			p.tile_ground(Color(0.52, 0.52, 0.54), Color(0.43, 0.43, 0.46), 903, 2)
-	_near_ground(m, wd, p, theme)
+	_near_ground(m, wd, p, "arches" if theme == "mirror" else theme)
 	# the view: the sky left clear for the layer under the map, the far land painted
 	var clear := Color(0, 0, 0, 0)
 	p.img.fill_rect(Rect2i(0, 0, W, int(rim)), clear)
@@ -804,6 +807,8 @@ static func _paint_vista(m: GroundMap, wd: Dictionary, p) -> void:
 			_pv_arches(m, wd, p, W, hz, rim, sd)
 		"lava":
 			_pv_lava(m, wd, p, W, hz, rim, sd)
+		"mirror":
+			_pv_mirror(m, wd, p, W, hz, rim, sd)
 		_:
 			_pv_crater(m, wd, p, W, hz, rim, sd)
 	# the edge itself: its lip lit, the drop's shadow just under it
@@ -1053,6 +1058,48 @@ static func _peak_h(dx: float) -> float:
 
 
 # ---- the lava: the volcano far off, the terraces stepping down to us, the rivers of lava over them
+
+## 54c (Luz): the Mirror Front's view – far below the new fields in their strips, green, with the irrigation channels
+## shining, on one side; the old desert on the other; the churned line of the front between them, the Institute's
+## terraforming towers along it, white with a green light; hazy towards the horizon.
+static func _pv_mirror(m: GroundMap, wd: Dictionary, p, W: int, hz: float, rim: float, sd: int) -> void:
+	var haze := Color(0.95, 0.88, 0.76)
+	for y in range(int(hz), int(rim)):
+		var k := (float(y) - hz) / (rim - hz)
+		var front := W * 0.46 + sin(y * 0.05) * 22.0 + (y - hz) * 0.9
+		var strip := 6.0 + k * 22.0
+		for x in W:
+			var c: Color
+			if float(x) < front:
+				var pw2 := strip * 2.4                                         # parcels, wider and deeper the nearer
+				var ph2 := maxf(3.0, strip * 0.55)
+				var col := int(floor(x / pw2))
+				var row := int(floor((y - hz) / ph2))
+				var fi := (col * 7 + row * 3 + int(WildArt.h(col, row, sd) * 3.0)) % 4
+				c = [Color(0.36, 0.56, 0.26), Color(0.44, 0.64, 0.3), Color(0.3, 0.5, 0.22), Color(0.55, 0.62, 0.3)][fi]
+				if fmod(float(y) - hz, ph2) < 1.0:
+					c = Color(0.62, 0.55, 0.4)                                   # a track between the parcels
+				elif fmod(float(x), pw2) < 1.0 and col % 3 == 0:
+					c = Color(0.55, 0.75, 0.88)                                  # an irrigation channel shining
+			else:
+				c = Color(0.84, 0.64, 0.42).lerp(Color(0.72, 0.5, 0.32), WildArt.h(x / 9, y / 4, sd))
+				if float(x) - front < 5.0 + k * 6.0:
+					c = Color(0.6, 0.52, 0.36)                                   # the churned line
+			p.P(x, y, c.lerp(haze, (1.0 - k) * 0.55))
+	for t in 8:                                                          # the towers along the front, nearer ones bigger
+		var ty := hz + 10.0 + t * 22.0
+		if ty > rim - 10.0:
+			break
+		var tx := W * 0.46 + sin(ty * 0.05) * 22.0 + (ty - hz) * 0.9 + 4.0
+		var th := 14.0 + t * 6.0
+		var tw := 2 + t / 2
+		var tc := Color(0.92, 0.94, 0.94).lerp(haze, 0.5 - t * 0.05)
+		for yy in int(th):
+			for xx in tw:
+				p.P(int(tx) + xx, int(ty - th) + yy, tc if xx < tw - 1 else tc.darkened(0.15))
+		p.P(int(tx), int(ty - th), Color(0.4, 1.0, 0.6))
+		p.P(int(tx) + 1, int(ty - th), Color(0.4, 1.0, 0.6))
+
 
 static func _pv_lava(m: GroundMap, wd: Dictionary, p, W: int, hz: float, rim: float, sd: int) -> void:
 	var steps: Array = wd["steps"]
