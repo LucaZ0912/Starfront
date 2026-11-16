@@ -369,6 +369,11 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.7.53.7: theme `mine` (`rails`, `rubble`, `descent` "cage"), `DungeonGen.build_minehead`, `_corridor(..., rails)`; `GameState.settle_poi`; SettleGen zone `mine_path` (meta `mine_path_front`); GroundView level `minehead`, `_fuses_step`, `blast_near`, `shot_lands` (called by GroundCombat), `_take_one`; ExploreNode `cage`, `mine_gen`, `vein`, `rubble`, `loose_rock`, `tnt`, `mine_gate`; floors 25–27, style `mine`, decal `rails`; ObjArt `shaft_house`, `winding_house`, `ore_bin`; `PoiData.MUSEUM_RELICS["mine"]`.
 - 0.7.53.9: theme `maint` (`descent` "stairs", `outside` "lift", `passive_foes`), FoeData `maint_drone` (`drone`), GroundCombat passive/provoked foes; GroundView `_town_kind`, `_drones_step`/`_draw_drones`, `_restart_reactor`, city lift level `maint`; `GameState.maint_sites`/`maint_site`; ExploreNode `crank_door`, `fuse_box`, `reactor` (`_draw_reactor`), `stairs_down`, `stairs_up`, `service_lift`, `steam`; style `maint`; ObjArt `valve_box`, `cable_drum`.
 - 0.7.53.11: theme `pirate` (`outside` "cliff", `hangar`, `cells`, `descent` "ramp", target `loot_room`), `DungeonGen.build_cliff`, `parked_covers`, map meta `parked`; `scripts/ground/parked_art.gd` (a ship made plastic: height from its outline, lit); ExploreNode `pirate_gate`, `searchlight`, `ramp_down`, `cells`; style `pirate`, face decos `skull_banner`, `graffiti`; ObjArt `watchtower`, `glider`, `fire_barrel`.
+- 0.7.54.9 (package 54b done): Commands `_mg_tip(who, rng)` (anomaly near → revealed, or a trade tip from
+  `Market.buy_price`/`sell_price` within two jumps), `MG_TIP_CHANCE`, `mg_last_tip`; `minigame_end` key `tip` (forced, for
+  tests); sounds `pool_cue`, `pool_ball`, `pool_cushion`, `pool_pocket`, `dart_throw`, `dart_hit`, `card_deal`,
+  `card_shuffle`, `arcade_coin`, `arcade_laser`, `arcade_boom`, `arcade_pickup`, `arcade_bank`
+  (`python tools/audio/make_placeholders.py <ids>` makes only those).
 - 0.7.54.8 (package 54b, part 3): `scripts/ground/drift_game.gd` (Drift: `deal`, `move(what, card)`, `total`,
   `has_warp`, `ai_choice`, `_showdown` → `minigame_end` with `pot`); zone `drift` (`DeckGen._drift_zone`, lounges and
   garden bars); the lobby seats `others` at the card table; Commands `drift_move`.

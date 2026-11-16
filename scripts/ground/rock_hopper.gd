@@ -49,6 +49,7 @@ func setup(cfg: Dictionary) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_cab = ImageTexture.create_from_image(_paint_cabinet())
+	Audio.play("arcade_coin", "rock hopper: a credit in", -4.0)
 	_new_tug()
 	tug["inv"] = 0.0
 	_next_wave()
@@ -162,6 +163,8 @@ func _tug_step(dt: float) -> void:
 	# the drill laser: the first rock (or drone) along the beam
 	if lasering and fuel > 0.0:
 		fuel -= 0.02 * dt
+		if fposmod(_t, 0.16) < dt:
+			Audio.play("arcade_laser", "rock hopper: drill", -14.0, 0.05)
 		var hit := _laser_hit()
 		if not hit.is_empty():
 			var tgt: Dictionary = hit["t"]
@@ -185,7 +188,7 @@ func _tug_step(dt: float) -> void:
 			if hold < HOLD:
 				hold += 1
 				nuggets.erase(n2)
-				Audio.play("ui_click", "rock hopper: ore in", -10.0, 0.2)
+				Audio.play("arcade_pickup", "rock hopper: ore in", -8.0, 0.05)
 			elif msg_t <= 0.0:
 				_say("HOLD FULL – bank it at the refinery")
 	# home: docked slow at the refinery, the hold banked, the tank filled
@@ -195,7 +198,7 @@ func _tug_step(dt: float) -> void:
 			score += gain
 			_say("BANKED %d ORE  +%d%s" % [hold, gain, "  (FULL HOLD ×2)" if hold == HOLD else ""])
 			hold = 0
-			Audio.play("buy", "rock hopper: banked", -6.0)
+			Audio.play("arcade_bank", "rock hopper: banked", -4.0)
 		fuel = minf(1.0, fuel + dt * 0.8)
 	fuel = maxf(0.0, fuel)
 	# crashes
@@ -243,7 +246,7 @@ func _crack(r: Dictionary) -> void:
 	var p: Vector2 = r["p"]
 	var rad := float(r["r"])
 	score += 10
-	Audio.play("explosion_small", "rock hopper: rock cracks", -16.0)
+	Audio.play("arcade_boom", "rock hopper: rock cracks", -10.0, 0.15)
 	for i in 10:
 		bits.append({"p": p, "v": Vector2.RIGHT.rotated(_rng.randf() * TAU) * _rng.randf_range(20, 60), "t": 0.5, "col": Color(0.7, 0.62, 0.8)})
 	if rad > 11.0:
@@ -272,7 +275,7 @@ func _drone_down(dr: Dictionary) -> void:
 	drones.erase(dr)
 	score += 100
 	_say("DRONE DOWN  +100")
-	Audio.play("explosion_small", "rock hopper: drone down", -10.0)
+	Audio.play("arcade_boom", "rock hopper: drone down", -6.0, 0.2)
 	for i in 12:
 		bits.append({"p": dr["p"], "v": Vector2.RIGHT.rotated(_rng.randf() * TAU) * _rng.randf_range(20, 70), "t": 0.5, "col": Color(1.0, 0.35, 0.4)})
 
@@ -284,7 +287,7 @@ func _lose_tug(why: String) -> void:
 			nuggets.append({"p": tug["p"], "v": Vector2.RIGHT.rotated(_rng.randf() * TAU) * _rng.randf_range(15, 40), "t": 12.0})
 	hold = 0
 	_say("%s – %s" % [why, "%d TUGS LEFT" % tugs if tugs > 0 else "GAME OVER"])
-	Audio.play("explosion_small", "rock hopper: tug lost", -4.0)
+	Audio.play("arcade_boom", "rock hopper: tug lost", -1.0, 0.0)
 	for i in 18:
 		bits.append({"p": tug["p"], "v": Vector2.RIGHT.rotated(_rng.randf() * TAU) * _rng.randf_range(20, 80), "t": 0.7, "col": Color(1.0, 0.75, 0.2)})
 	tug["dead_t"] = 1.6

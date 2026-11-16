@@ -175,6 +175,7 @@ func _process(delta: float) -> void:
 				_test_darts54b(view)             # package 54b – darts
 				_test_rock54b(view)              # package 54b – Rock Hopper
 				_test_drift54b(view)             # package 54b – Drift
+				_test_tips54b(view)              # package 54b – tips and sounds
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -12749,3 +12750,51 @@ func _test_drift54b(view: SystemView) -> void:
 	check(deal_ok and burn_ok and warp_ok and ai_ok and pot_ok and table_ok,
 		"54b: Drift – 44 cards (1–10 in four suits, four Warps), two each; over 21 burns out; a Warp swaps a card for the deck's top one; the guests draw low, hold high, warp a low card away; closest to 21 takes the pot, a tie shares it; card tables in the lounges and garden bars  [%s]" % [
 			" ".join(PackedStringArray([str(deal_ok), str(burn_ok), str(warp_ok), str(ai_ok), str(pot_ok), str(table_ok)]))])
+
+
+## Package 54b (Luz): what the loser lets slip – an anomaly near (revealed by it), where a ware is cheap and where it
+## pays (real prices); a win with a stake brings one now and then; the bar games' own sounds.
+func _test_tips54b(view: SystemView) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5454
+	# an anomaly near, hidden – the guest's scanner caught it
+	var L: Dictionary = Universe.get_layout(GameState.current_system)
+	var an: Dictionary = {}
+	for a in L["anomalies"]:
+		an = a
+		break
+	var anom_ok := false
+	var trade_ok := false
+	var keep_rev := true
+	if not an.is_empty():
+		keep_rev = bool(an["revealed"])
+	for i in 16:
+		if not an.is_empty() and not anom_ok:
+			an["revealed"] = false
+		var t: String = Commands._mg_tip("Test", rng)
+		if t.contains("scanner") and not an.is_empty() and bool(an["revealed"]):
+			anom_ok = true
+		if t.contains("is cheap at"):
+			trade_ok = true
+		if anom_ok and trade_ok:
+			break
+	if not an.is_empty():
+		an["revealed"] = keep_rev
+	# a win with a stake, the tip forced
+	var keep_cr: int = GameState.credits
+	var keep_streak: Dictionary = GameState.minigame_streak.duplicate()
+	GameState.credits = 1000
+	Commands.execute({"type": "minigame_begin", "game": "billiards", "mode": "8ball", "stake": 50, "opponent": {"name": "Rusty Vell"}})
+	Commands.execute({"type": "minigame_end", "won": true, "tip": true})
+	var end_ok: bool = Commands.mg_last_tip != "" and Commands.mg_last_tip.begins_with("Rusty")
+	GameState.credits = keep_cr
+	GameState.minigame_streak = keep_streak
+	Commands.mg_session = {}
+	# the sounds
+	var snd_ok := true
+	for id in ["pool_cue", "pool_ball", "pool_cushion", "pool_pocket", "dart_throw", "dart_hit", "card_deal", "card_shuffle",
+			"arcade_coin", "arcade_laser", "arcade_boom", "arcade_pickup", "arcade_bank"]:
+		snd_ok = snd_ok and Audio.stream(id) != null
+	check(anom_ok and trade_ok and end_ok and snd_ok,
+		"54b: tips after a win with a stake – an anomaly near the guest's scanner caught (revealed now), a ware cheap here that pays well within two jumps; the bar games' own sounds (cue, balls, cushion, pocket, darts, cards, the arcade)  [%s]" % [
+			" ".join(PackedStringArray([str(anom_ok), str(trade_ok), str(end_ok), str(snd_ok)]))])

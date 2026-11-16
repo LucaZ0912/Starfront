@@ -1,9 +1,10 @@
 """Synthesises the placeholder sounds of priority A (package 28a) – rough sketches after the descriptions in
 docs/audio/sound_list.md, meant to be replaced one by one by real sounds with the same file name.
 Mono WAV, 22,050 Hz, 16 bit, into assets/sfx/. Pure Python (no numpy needed).
-Run: python tools/audio/make_placeholders.py
+Run: python tools/audio/make_placeholders.py            (all of them)
+     python tools/audio/make_placeholders.py pool_ball …  (only these – the others, maybe real sounds by now, stay)
 """
-import math, os, random, struct, wave
+import math, os, random, struct, sys, wave
 
 RATE = 22050
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "sfx")
@@ -159,12 +160,30 @@ SOUNDS = {
     "warn": lambda: mix(tone(0.15, 1047, wave_="square", vol=0.25, r=0.08), tone(0.2, 1047, wave_="square", vol=0.25, r=0.12), at=[0, 0.18]),
     "alarm_hull": lambda: loopify(mix(tone(0.55, 330, 300, "saw", 0.35, a=0.02, r=0.2), tone(0.55, 330, 300, "saw", 0.35, a=0.02, r=0.2), at=[0, 0.55]), 0.05),
     # atmosphere
+    # 54b (Luz): the bar games
+    "pool_cue": lambda: mix(tone(0.07, 700, 420, "tri", 0.7, a=0.001, r=0.05), noise(0.03, 0.5, 0.5, r=0.025)),
+    "pool_ball": lambda: mix(tone(0.06, 2600, 2300, "sine", 0.6, a=0.0005, r=0.05, curve=2), tone(0.05, 3900, wave_="sine", vol=0.2, r=0.04, curve=2),
+                             noise(0.015, 0.4, 0.9, r=0.012)),
+    "pool_cushion": lambda: mix(noise(0.08, 0.6, 0.08, r=0.07), tone(0.1, 150, 110, "sine", 0.5, r=0.08)),
+    "pool_pocket": lambda: mix(tone(0.14, 110, 70, "sine", 0.7, r=0.12), noise(0.45, 0.35, 0.15, 0.05, a=0.03, r=0.3), at=[0, 0.05]),
+    "dart_throw": lambda: noise(0.2, 0.5, 0.1, 0.5, a=0.06, r=0.12),
+    "dart_hit": lambda: mix(noise(0.04, 0.9, 0.35, r=0.035), tone(0.09, 320, 210, "tri", 0.5, r=0.07)),
+    "card_deal": lambda: mix(noise(0.07, 0.6, 0.8, 0.4, a=0.002, r=0.05), tone(0.03, 900, 600, "sine", 0.15, r=0.02)),
+    "card_shuffle": lambda: mix(*[noise(0.05, 0.5, 0.7, r=0.04) for _ in range(9)], at=[i * 0.055 for i in range(9)]),
+    "arcade_coin": lambda: mix(tone(0.08, 988, wave_="square", vol=0.3, r=0.02), tone(0.25, 1319, wave_="square", vol=0.3, r=0.18), at=[0, 0.08]),
+    "arcade_laser": lambda: tone(0.12, 1500, 500, "square", 0.3, a=0.001, r=0.06),
+    "arcade_boom": lambda: mix(noise(0.45, 0.9, 0.5, 0.05, a=0.001, r=0.4, curve=1.5), tone(0.3, 140, 40, "square", 0.35, r=0.25)),
+    "arcade_pickup": lambda: mix(tone(0.05, 1046, wave_="square", vol=0.25, r=0.02), tone(0.07, 1568, wave_="square", vol=0.25, r=0.04), at=[0, 0.045]),
+    "arcade_bank": lambda: mix(*[tone(0.11, f, wave_="square", vol=0.25, r=0.05) for f in (523, 659, 784, 1047, 1319)], at=[0, 0.07, 0.14, 0.21, 0.28]),
     "amb_space": lambda: loopify(mix(noise(32.0, 0.4, 0.01, a=0, r=0), tone(32.0, 41, wave_="sine", vol=0.12, a=0, r=0, vib=0.02, vib_rate=0.1),
                                      *[noise(0.3, 0.06, 0.6, r=0.25) for _ in range(12)], at=[0, 0] + [random.uniform(0, 31) for _ in range(12)]), 1.5),
 }
 
 
 if __name__ == "__main__":
+    only = sys.argv[1:]
     for name, make in SOUNDS.items():
+        if only and name not in only:
+            continue
         save(name, make(), 0.6 if name in ("amb_space", "engine_loop") else 0.85)
-    print("%d placeholder sounds written to assets/sfx/" % len(SOUNDS))
+    print("%d placeholder sounds written to assets/sfx/" % (len(only) if only else len(SOUNDS)))

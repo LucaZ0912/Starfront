@@ -64,6 +64,7 @@ func deal() -> void:
 	for w in 4:
 		deck.append([0, "warp"])
 	deck.shuffle()
+	Audio.play("card_shuffle", "drift: shuffle and deal", -6.0)
 	for p in players:
 		p["hand"] = [_draw_card(), _draw_card()]
 		p["state"] = "play"
@@ -112,7 +113,7 @@ func move(what: String, card: int = -1) -> void:
 	match what:
 		"drift":
 			p["hand"].append(_draw_card())
-			Audio.play("ui_click", "drift: a card", -8.0, 0.2)
+			Audio.play("card_deal", "drift: a card", -4.0, 0.15)
 			if total(p) == 21:
 				_showdown([turn], "Singularity!")
 			elif total(p) > 21:
@@ -479,4 +480,6 @@ func _show_result(share: int) -> void:
 	if stake > 0:
 		v.add_child(UI.label(("+%d cr" % share) if won else ("−%d cr" % stake), 18, Color(1.0, 0.85, 0.4)))
 	v.add_child(UI.label("Win streak: %d" % int(GameState.minigame_streak.get("drift", 0)), 14, Color(0.9, 0.93, 1.0)))
+	if won and Commands.mg_last_tip != "":
+		v.add_child(UI.wrap_label(Commands.mg_last_tip, 14, Color(0.6, 0.95, 1.0), 430))      # 54b: what the loser let slip
 	v.add_child(UI.button("Back to the table [Esc]", func(): finished.emit(won)))

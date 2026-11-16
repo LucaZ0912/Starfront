@@ -1998,7 +1998,52 @@ func _c_debug_tourists(_c: Dictionary) -> String:
 ## the pot, the streak grows or ends; {"type":"pool_shot", "angle", "power", "spin": [x, y]}: a shot at the pool table
 ## (the game itself runs the balls – one command per shot, so a co-op player's shot can come the same way).
 const MinigameData = preload("res://data/minigames.gd")
+const MG_TIP_CHANCE := 0.35                 # a win with a stake: now and then the loser lets something slip
 var mg_session := {}
+var mg_last_tip := ""
+
+
+## 54b (Luz): a tip from the guest you beat – an anomaly near by their scanner caught (it is revealed now), or where a
+## ware is cheap and where it pays well (real prices, within two jumps). "" if nothing comes to mind.
+func _mg_tip(who: String, rng: RandomNumberGenerator) -> String:
+	var sid := GameState.current_system
+	var kinds := ["anomaly", "trade"]
+	if rng.randf() < 0.5:
+		kinds.reverse()
+	for k in kinds:
+		if k == "anomaly":
+			for s2 in Missions._systems_within(sid, 2):
+				for an in Universe.get_layout(s2)["anomalies"]:
+					if not bool(an["revealed"]):
+						an["revealed"] = true
+						GameState.anomaly_revealed.emit(s2, String(an["id"]))
+						return "%s leans in: \"Out in %s my scanner caught something the others miss – %s. Worth a look.\"" % [who, Universe.systems[s2]["name"], String(an["name"])]
+		else:
+			var near: Array = Missions._systems_within(sid, 2)
+			var here: Array = (Universe.get_layout(sid)["stations"] as Array).slice(0, 5)
+			var cids: Array = GameData.commodities.keys().filter(func(c): return Market.on_market(String(c)))
+			cids.shuffle()
+			var best := 1.3
+			var out := ""
+			for cid in cids.slice(0, 24):
+				for st in here:
+					var a := Universe.find_station(sid, String(st["id"]))
+					var bp := Market.buy_price(a, String(cid))
+					if bp <= 0:
+						continue
+					for s3 in near:
+						for st2 in (Universe.get_layout(int(s3))["stations"] as Array).slice(0, 4):
+							if String(st2["id"]) == String(st["id"]):
+								continue
+							var b := Universe.find_station(int(s3), String(st2["id"]))
+							var sp := Market.sell_price(b, String(cid))
+							if sp / float(bp) > best:
+								best = sp / float(bp)
+								out = "%s, quietly: \"%s is cheap at %s – %d cr. At %s (%s) they pay %d for it.\"" % [who, GameData.item_name(String(cid)),
+									String(a.get("name", "?")), bp, String(b.get("name", "?")), Universe.systems[int(s3)]["name"], int(sp)]
+			if out != "":
+				return out
+	return ""
 
 
 func _c_minigame_begin(c: Dictionary) -> String:
@@ -2044,8 +2089,15 @@ func _c_minigame_end(c: Dictionary) -> String:
 	if not MinigameData.solo(String(mg_session["mode"])):
 		var opp: Dictionary = mg_session.get("opponent", {})
 		var who := String(opp.get("name", "your opponent"))
+		mg_last_tip = ""
 		if won:
 			GameState.credits += int(c.get("pot", stake * 2))           # (Drift: the pot, shared on a tie)
+			var trng := RandomNumberGenerator.new()
+			trng.randomize()
+			if stake > 0 and (trng.randf() < MG_TIP_CHANCE or bool(c.get("tip", false))):
+				mg_last_tip = _mg_tip(who.split(",")[0].split(" ")[0].replace("\"", ""), trng)
+				if mg_last_tip != "":
+					GameState.log_msg(mg_last_tip, GameState.COL_GOOD)
 			GameState.minigame_streak[game] = int(GameState.minigame_streak.get(game, 0)) + 1
 			GameState.minigame_wins[game] = int(GameState.minigame_wins.get(game, 0)) + 1
 			GameState.log_msg("%s: you beat %s%s – %d in a row." % [MinigameData.GAMES[game]["name"], who,

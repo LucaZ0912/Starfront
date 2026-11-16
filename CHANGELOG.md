@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.7.54.9 – 2026-11-16
+
+**Package 54b done – tips and sounds (Luz).**
+- **Tips:** beat a guest for a stake and now and then (about one win in three) they let something slip – an anomaly
+  near by that their scanner caught (it shows on your map now), or a ware that is cheap at a station here and pays well
+  within two jumps (real prices of the moment). In the log and on the result panel.
+- **Sounds:** the bar games have their own now – the cue's tock, balls clacking, the cushion, a ball dropping into the
+  pocket; the dart's whoosh and thud; cards dealt and shuffled; the arcade's coin, drill laser, 8-bit explosions, ore
+  picked up and banked (placeholders in `assets/sfx/`, in the sound list).
+- Billiards: the aim line goes on off the cushions (up to two banks, fainter each time). Darts: aiming is harder – the
+  hand sways about a ring's width even when steady, holding your breath steadies it less and not for as long, and the
+  release scatters a little (Luz).
+- `tools/audio/make_placeholders.py` can now make only the sounds named (the others, maybe real sounds by now, stay).
+- Smoke test group `tips54b`.
+
 ## alpha 0.7.54.8 – 2026-11-16
 
 **Package 54b, part 3 – Drift, the card game (Luz).** At a card table in the lounges and the garden bars: you and two

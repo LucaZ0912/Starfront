@@ -178,7 +178,7 @@ func shoot(angle: float, pw: float, sp: Vector2) -> void:
 	_first_hit = -1
 	_potted = []
 	state = "roll"
-	Audio.play("ui_click", "pool: shot", -6.0 + pw * 6.0, 0.15)
+	Audio.play("pool_cue", "pool: shot", -6.0 + pw * 6.0, 0.1)
 
 
 func _physics(dt: float) -> void:
@@ -220,7 +220,7 @@ func _physics(dt: float) -> void:
 							if not _cue_touched:
 								_cue_touched = true      # follow or draw on the first contact
 								cue_b["v"] = (cue_b["v"] as Vector2) + _shot_dir * _cue_spin.y * rel * 0.55
-						Audio.play("ui_click", "pool: balls", -14.0 + minf(rel / 60.0, 10.0), 0.3)
+						Audio.play("pool_ball", "pool: balls", -16.0 + minf(rel / 50.0, 14.0), 0.15)
 		# the cushions and the pockets
 		for b2 in on:
 			var p: Vector2 = b2["p"]
@@ -229,7 +229,7 @@ func _physics(dt: float) -> void:
 				b2["in"] = true
 				b2["v"] = Vector2.ZERO
 				_potted.append(int(b2["n"]))
-				Audio.play("ui_close", "pool: pocketed", -8.0)
+				Audio.play("pool_pocket", "pool: pocketed", -4.0)
 				continue
 			if _near_pocket(p):
 				continue
@@ -251,6 +251,8 @@ func _physics(dt: float) -> void:
 				p.y = FY1 - R
 				v2.y = -v2.y * 0.76
 				hit = true
+			if hit and v2.length() > 40.0:
+				Audio.play("pool_cushion", "pool: cushion", -18.0 + minf(v2.length() / 60.0, 10.0), 0.1)
 			if hit and int(b2["n"]) == 0 and absf(_cue_spin.x) > 0.05:
 				v2 = v2.rotated(_cue_spin.x * 0.22)          # side spin bends the rebound
 				_cue_spin.x *= 0.5
@@ -634,21 +636,34 @@ func _draw() -> void:
 	var my_turn := (turn == 0 or mode == "practice")
 	# the aim help: to the first ball it would touch, the ghost ball, where the object ball goes
 	if state == "aim" and my_turn:
+		# 54b (Luz): the line goes on off the cushions too – up to two banks, fainter each time
 		var d := Vector2.RIGHT.rotated(aim_a)
-		var hit := _ray(cp, d)
-		var end: Vector2 = hit["end"]
-		var n := int(cp.distance_to(end) / 3.0)
-		for i in n:
-			if i % 2 == 0:
-				var q := cp + d * (R + i * 3.0)
-				draw_rect(Rect2(q.floor(), Vector2(1, 1)), Color(1, 1, 1, 0.55))
-		if hit.has("ball"):
-			draw_arc(end, R, 0.0, TAU, 20, Color(1, 1, 1, 0.7), 1.0)
-			var tp: Vector2 = hit["ball"]
-			var od := (tp - end).normalized()
-			for k in 10:
-				if k % 2 == 0:
-					draw_rect(Rect2((tp + od * (R + 1.0 + k * 2.6)).floor(), Vector2(1, 1)), Color(1.0, 0.9, 0.4, 0.7))
+		var from := cp
+		for seg in 3:
+			var hit := _ray(from, d)
+			var end: Vector2 = hit["end"]
+			var a := 0.55 * (1.0 - seg * 0.28)
+			var n := int(from.distance_to(end) / 3.0)
+			for i in n:
+				if i % 2 == 0:
+					var q := from + d * ((R if seg == 0 else 0.0) + i * 3.0)
+					draw_rect(Rect2(q.floor(), Vector2(1, 1)), Color(1, 1, 1, a))
+			if hit.has("ball"):
+				draw_arc(end, R, 0.0, TAU, 20, Color(1, 1, 1, a + 0.15), 1.0)
+				var tp: Vector2 = hit["ball"]
+				var od := (tp - end).normalized()
+				for k in 10:
+					if k % 2 == 0:
+						draw_rect(Rect2((tp + od * (R + 1.0 + k * 2.6)).floor(), Vector2(1, 1)), Color(1.0, 0.9, 0.4, 0.7))
+				break
+			if _near_pocket(end):
+				break                                          # off into a pocket – no cushion there
+			if end.x <= FX0 + R + 0.01 or end.x >= FX1 - R - 0.01:
+				d.x = -d.x
+			if end.y <= FY0 + R + 0.01 or end.y >= FY1 - R - 0.01:
+				d.y = -d.y
+			draw_rect(Rect2(end.floor() - Vector2(1, 1), Vector2(2, 2)), Color(1, 1, 1, a))   # where it touches the cushion
+			from = end + d * 0.05
 	# the balls: shadow, then the ball
 	for b in _on_table():
 		var p: Vector2 = b["p"]
@@ -809,6 +824,8 @@ func _show_result() -> void:
 		if stake > 0:
 			v.add_child(UI.label(("+%d cr" % stake) if won else ("−%d cr" % stake), 18, Color(1.0, 0.85, 0.4)))
 		v.add_child(UI.label("Win streak: %d" % int(GameState.minigame_streak.get("billiards", 0)), 14, Color(0.9, 0.93, 1.0)))
+		if won and Commands.mg_last_tip != "":
+			v.add_child(UI.wrap_label(Commands.mg_last_tip, 14, Color(0.6, 0.95, 1.0), 430))      # 54b: what the loser let slip
 	v.add_child(UI.button("Back to the table [Esc]", func(): finished.emit(won)))
 
 

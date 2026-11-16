@@ -151,6 +151,24 @@ Waffen klingen nach Schadensart: **optisch** hell, sirrend, **kinetisch** knalle
 | `standing_down` | Ansehen sinkt | Kleiner Moll-Akkord | 0,5 s | C |
 | `map_open` | Galaxiekarte öffnen | Weites holografisches Aufblenden | 0,5 s | B |
 
+## 7b. Kneipenspiele (Paket 54b, Luz)
+
+| ID | Ereignis | Klangvorschlag | Länge | Prio |
+| --- | --- | --- | --- | --- |
+| `pool_cue` | Billard: Stoß mit dem Queue | Kurzes, hölzernes „Tock“ | 0,07 s | A |
+| `pool_ball` | Billard: Kugel trifft Kugel | Helles, hartes Klacken | 0,06 s | A |
+| `pool_cushion` | Billard: Kugel an die Bande | Dumpfer, weicher Schlag | 0,1 s | A |
+| `pool_pocket` | Billard: Kugel fällt in die Tasche | Tiefes Plumpsen, dann Rollen im Netz | 0,5 s | A |
+| `dart_throw` | Darts: Wurf | Kurzes Luftzischen | 0,2 s | A |
+| `dart_hit` | Darts: Pfeil steckt | Dumpfes „Tschack“ in Sisal | 0,1 s | A |
+| `card_deal` | Drift: Karte ziehen | Kurzes Kartenschnippen | 0,07 s | A |
+| `card_shuffle` | Drift: Mischen und Geben | Schnelles Rattern von Karten | 0,5 s | A |
+| `arcade_coin` | Rock Hopper: Münze rein | 8-Bit-„Pling-Pling“ | 0,3 s | A |
+| `arcade_laser` | Rock Hopper: Bohrlaser | Fallender Rechteckton | 0,12 s | A |
+| `arcade_boom` | Rock Hopper: Brocken birst, Schlepper verloren | 8-Bit-Rauschexplosion | 0,45 s | A |
+| `arcade_pickup` | Rock Hopper: Erz eingesammelt | Zwei kurze steigende Töne | 0,1 s | A |
+| `arcade_bank` | Rock Hopper: an der Raffinerie abgeliefert | Aufsteigendes Arpeggio | 0,4 s | A |
+
 ## 8. Warnungen & Bordcomputer (SFX/UI)
 
 | ID | Ereignis | Klangvorschlag | Länge | Prio |

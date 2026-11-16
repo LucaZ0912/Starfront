@@ -111,8 +111,8 @@ static func target(v: int, ring: String) -> Vector2:
 ## How far the hand sways now (art px).
 func sway_amp() -> float:
 	var refl := GameState.pilot_attr("reflexes")
-	var a := 9.0 - refl * 1.2 + _alcohol() * 14.0
-	return maxf(1.5, a) * (0.25 if holding and breath > 0.0 else 1.0)
+	var a := 16.0 - refl * 1.6 + _alcohol() * 14.0                 # 54b (Luz): harder – even a steady hand sways a ring's width
+	return maxf(4.0, a) * (0.45 if holding and breath > 0.0 else 1.0)
 
 
 func _alcohol() -> float:
@@ -123,7 +123,7 @@ func _alcohol() -> float:
 
 func _sway() -> Vector2:
 	var a := sway_amp()
-	return Vector2(sin(_t * 1.7) + 0.4 * sin(_t * 4.3), sin(_t * 2.3 + 0.6) + 0.3 * sin(_t * 5.1)) * a
+	return Vector2(sin(_t * 2.1) + 0.45 * sin(_t * 5.3), sin(_t * 2.7 + 0.6) + 0.35 * sin(_t * 6.1)) * a
 
 
 ## A throw (from the command bus): the dart flies to p.
@@ -132,14 +132,14 @@ func throw_at(p: Vector2) -> void:
 		return
 	flying = {"from": p + Vector2(40, 120), "to": p, "t": 0.0, "who": turn}
 	state = "fly"
-	Audio.play("ui_click", "darts: throw", -10.0, 0.2)
+	Audio.play("dart_throw", "darts: throw", -6.0, 0.15)
 
 
 func _land(p: Vector2) -> void:
 	var sc := score_at(p)
 	stuck.append([p, turn])
 	darts_left -= 1
-	Audio.play("ui_click", "darts: thud", -4.0, 0.1)
+	Audio.play("dart_hit", "darts: thud", -2.0, 0.1)
 	if mode == "clock":
 		clock_darts += 1
 		var want := clock_target
@@ -259,7 +259,7 @@ func _process(dt: float) -> void:
 	_t += dt
 	msg_t = maxf(0.0, msg_t - dt)
 	if holding and breath > 0.0:
-		breath = maxf(0.0, breath - dt / 2.5)
+		breath = maxf(0.0, breath - dt / 1.8)
 	elif not holding:
 		breath = minf(1.0, breath + dt / 4.0)
 	match state:
@@ -287,7 +287,7 @@ func _gui_input(event: InputEvent) -> void:
 			holding = mb.pressed
 			accept_event()
 		elif mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed and state == "aim" and (turn == 0 or mode == "clock"):
-			var p := _art_mouse() + _sway() + Vector2(_rng.randfn(0.0, 1.2), _rng.randfn(0.0, 1.2))
+			var p := _art_mouse() + _sway() + Vector2(_rng.randfn(0.0, 2.2), _rng.randfn(0.0, 2.2))     # the release is never quite clean
 			_throw(p)
 			accept_event()
 
@@ -445,6 +445,8 @@ func _show_result() -> void:
 		if stake > 0:
 			v.add_child(UI.label(("+%d cr" % stake) if won else ("−%d cr" % stake), 18, Color(1.0, 0.85, 0.4)))
 		v.add_child(UI.label("Win streak: %d" % int(GameState.minigame_streak.get("darts", 0)), 14, Color(0.9, 0.93, 1.0)))
+		if won and Commands.mg_last_tip != "":
+			v.add_child(UI.wrap_label(Commands.mg_last_tip, 14, Color(0.6, 0.95, 1.0), 430))      # 54b: what the loser let slip
 	v.add_child(UI.button("Back to the board [Esc]", func(): finished.emit(won)))
 
 
