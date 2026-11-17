@@ -20,8 +20,16 @@ extends RefCounted
 ## Who speaks: name, what they are, the colour of their frame, the look of their portrait (PilotArt.random_look with
 ## this seed, then the fields given).
 const CHARACTERS := {
-	"dan": {"name": "Dan T. Rogue", "sub": "Salvage master · Beyond Yard", "col": Color(1.0, 0.65, 0.3), "seed": 7731,
-		"look": {"beard": 2, "scar": 1}},
+	# package 56 (Luz): an older, broad man, Black, with an eye patch
+	"dan": {"name": "Dan T. Rogue", "sub": "Salvage master · Dan's Dusty Duty Store", "col": Color(1.0, 0.65, 0.3), "seed": 7731,
+		"look": {"body": 2, "skin": 6, "hair": 1, "hair_color": 6, "beard": 3, "brows": 2, "scar": 0, "headgear": 4, "implant": 0,
+			"tattoo": 0, "outfit": 1, "color1": 9, "color2": 0, "freckles": 0}},
+	# package 56: the medic of Dan's station (name a placeholder until Luz picks one)
+	"doc": {"name": "Dr. Vesna Kalu", "sub": "Medic · Dan's Dusty Duty Store", "col": Color(0.45, 1.0, 0.75), "seed": 5612,
+		"look": {"body": 1, "skin": 3, "hair": 8, "hair_color": 6, "eyes": 2, "brows": 1, "beard": 0, "scar": 0, "freckles": 0,
+			"outfit": 0, "color1": 3, "color2": 5, "implant": 1, "tattoo": 0, "headgear": 1}},
+	# package 56: the computer of the pilot's old Earthworks 190SL – a hologram (shown whenever the ship's computer speaks)
+	"ship_ai": {"name": "Ship computer", "sub": "Earthworks 190SL", "col": Color(0.4, 0.9, 1.0), "holo": true},
 }
 
 ## Dialogues: lines one after the other; a line's answers lead on ("next": the line's index, -1: the end) and may set

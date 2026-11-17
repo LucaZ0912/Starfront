@@ -51,7 +51,7 @@ var _tree_set := false
 
 func _ready() -> void:
 	main = get_parent()
-	print("[SMOKE] Sternenfront alpha %s" % ProjectSettings.get_setting("application/config/version", "?"))
+	print("[SMOKE] Spacefarer: Beyond the Veil alpha %s" % ProjectSettings.get_setting("application/config/version", "?"))
 	SaveGame.settings["autosave"] = false   # don't touch the player's autosave slot
 	Keybinds.persist = false                 # don't touch the player's key bindings
 	GameState.codex.persist = false          # don't touch the player's cross-game codex
@@ -189,6 +189,7 @@ func _process(delta: float) -> void:
 				_test_pad80(view)                # package 80 – controller support
 				_test_story55(view)              # package 55 – the story's framework
 				_test_beyond57(view)             # package 57 – Beyond
+				_test_intro56(view)              # package 56 – the intro, sequence 1
 				# the fight happens outside the station's no-fire zone
 				var st0: Celestial = view.stations.values()[0]
 				view.player.position = st0.position + Vector2(float(st0.data["zone"]) + 4000.0, 0.0)
@@ -864,7 +865,7 @@ func _test_station(sp: StationUI) -> void:
 	var look0: Dictionary = GameState.pilot["look"].duplicate()
 	var attrs0: Dictionary = GameState.pilot["attrs"].duplicate()
 	var nl: Dictionary = look0.duplicate()
-	nl["hair"] = (int(look0["hair"]) + 1) % 9
+	nl["hair"] = (int(look0["hair"]) + 1) % 10
 	var cr_l := GameState.credits
 	var el: String = Commands.execute({"type": "pilot_look", "look": nl})
 	check(el == "" and int(GameState.pilot["look"]["hair"]) == int(nl["hair"]) and GameState.credits == cr_l - Commands.look_price() and GameState.pilot["attrs"] == attrs0,
@@ -5514,7 +5515,7 @@ func _test_pilot() -> void:
 	var opts := 0
 	for o in PA.OPTIONS:
 		opts += (o[2] as Array).size()
-	check(ia.get_width() == 48 and ia.get_height() == 48 and ia.get_data() != ib.get_data() and sa.get_width() == 16 and PA.OPTIONS.size() == 15,
+	check(ia.get_width() == 48 and ia.get_height() == 48 and ia.get_data() != ib.get_data() and sa.get_width() == 16 and PA.OPTIONS.size() == 18,
 		"construction kit: a 48 x 48 portrait and a 16 x 16 figure from the same %d options (%d choices)" % [PA.OPTIONS.size(), opts])
 	check(String(GameState.pilot.get("name", "")) == GameState.pilot_name and PD.attrs_error(GameState.pilot["attrs"]) == "" and GameState.to_dict().has("pilot_data"),
 		"the pilot is part of the game and the save (%s)" % GameState.pilot_title())
@@ -5527,7 +5528,7 @@ func _test_pilot() -> void:
 		cc._attr(id, 1)
 	cc._step("hair", 1)
 	var res: Dictionary = cc.result()
-	check(e0 != "" and cc.error() == "" and PD.spent(res["attrs"]) == 8 and int(res["look"]["hair"]) == (int(la["hair"]) + 1) % 9 and String(res["name"]) == "Testa",
+	check(e0 != "" and cc.error() == "" and PD.spent(res["attrs"]) == 8 and int(res["look"]["hair"]) == (int(la["hair"]) + 1) % 10 and String(res["name"]) == "Testa",
 		"character creation: looks, name and attributes – launch only with all 8 points handed out")
 	cc.queue_free()
 	# debug: a random pilot, attributes beyond the limits
@@ -13506,6 +13507,132 @@ func _test_pad80(view: SystemView) -> void:
 ## secret at the end; the tracker, the journal's four tabs, the save, keys in texts.
 ## Package 57 (Luz): Beyond – a pocket of three systems in the Veil, apart from the Cluster; its bodies, Dan's store, the
 ## wreck belt and the Gold Fleet's wrecks as big as planets.
+## Package 56: the intro's first sequence – Earth with her continents, the Expansion's ships whole, the Long Gate,
+## the shots in order (the narrator's box typed, a press finishes the line, the next goes on), the Veil, the white-out;
+## hold-to-skip; New Game starts with it.
+func _test_intro56(_view: SystemView) -> void:
+	var E = load("res://scripts/core/earth_art.gd")
+	var earth_ok: bool = E.land_at(10.0, 50.0) == 1 and E.land_at(-30.0, 30.0) == 0 and E.land_at(15.0, 25.0) == 2 		and E.land_at(0.0, -80.0) == 3 and E.land_at(-100.0, 40.0) == 1 and E.land_at(-60.0, -10.0) == 1 and E.land_at(135.0, -25.0) != 0 		and E.land_at(-150.0, 0.0) == 0 and E.land_at(80.0, 0.0) == 0
+	var et: Texture2D = E.texture(64, 12.0, 22.0)
+	earth_ok = earth_ok and et.get_width() == 64
+	# the ships as they left Earth: no holes – their hull is whole (count the opaque pixels against a wreck of hers)
+	var whole: Image = StationArt.build({"art": "gold_ship_new", "tier": 1, "seed": 2 + 4 * 3})["texture"].get_image()
+	var wreck: Image = StationArt.build({"art": "gold_colossus", "tier": 3, "seed": 2 + 4 * 3})["texture"].get_image()
+	var cnt := func(im: Image) -> int:
+		var nn := 0
+		for y in range(0, im.get_height(), 2):
+			for x in range(0, im.get_width(), 2):
+				if im.get_pixel(x, y).a > 0.5:
+					nn += 1
+		return nn
+	var ships_ok: bool = int(cnt.call(whole)) > int(cnt.call(wreck))
+	var craft: Texture2D = StationArt.build({"art": "gold_ship_small", "tier": 1, "seed": 0})["texture"]
+	ships_ok = ships_ok and craft.get_width() == 96 and int(cnt.call(craft.get_image())) > 300           # Luz: the small craft
+	var gate: Texture2D = StationArt.build({"art": "long_gate", "tier": 1, "seed": 1})["texture"]
+	var gate_ok: bool = gate.get_width() == 720 and gate.get_image().get_pixel(360, 360).a < 0.1 and gate.get_image().get_pixel(360 + 266, 360).a > 0.5
+	# the shots
+	var ticks := func() -> int: return Audio.events.filter(func(e): return String(e.get("id", "")) == "ui_type").size()
+	Audio.events.clear()
+	var tick0: int = ticks.call()
+	var intro = load("res://scripts/ui/intro_one.gd").new()
+	main.add_child(intro)
+	var looks := []
+	var typed_ok := true
+	for i in 6:
+		looks.append(String(intro.SHOTS[intro.shot]["look"]))
+		while intro.t < float(intro.SHOTS[intro.shot].get("delay", 0.6)) + 0.3:
+			intro._process(0.1)                           # the box comes, the typing starts
+		intro._advance()                                  # finishes the typing …
+		typed_ok = typed_ok and int(intro.typed) == String(intro.SHOTS[intro.shot]["text"]).length()
+		intro._advance()                                  # … and goes on
+	var order_ok: bool = looks == ["black", "earth", "ships", "gate", "jump", "veil"] and intro.ending
+	var veil_ok: bool = intro._veil.visible and intro._tunnel.visible and (intro._tunnel.material as ShaderMaterial).get_shader_parameter("speed") in [null, 1.5]   # Luz: no faster tunnel
+	intro._title_start()                                 # the title card (Luz): the Veil from the middle, the name
+	for f2 in 60:
+		intro._process(0.1)
+	var title_ok: bool = intro.title and intro.TITLE_MAIN == "SPACEFARER" and intro.TITLE_SUB == "BEYOND THE VEIL" and not intro._tunnel.visible and float((intro._veil.material as ShaderMaterial).get_shader_parameter("centre")) == 1.0 and not intro._done
+	for f3 in 70:
+		intro._process(0.1)
+	title_ok = title_ok and not intro._done                   # Luz: the card waits for the player …
+	intro.title_continue()
+	for f5 in 20:
+		intro._process(0.1)
+	title_ok = title_ok and intro._done                       # … then goes dark and on
+	veil_ok = veil_ok and title_ok
+	intro.queue_free()
+	# on its own timing (Luz): the shots move on by themselves – Earth and the stars stay up into the ships' shot
+	var intro3 = load("res://scripts/ui/intro_one.gd").new()
+	main.add_child(intro3)
+	var guard3 := 0
+	while intro3.shot < 2 and guard3 < 3000:
+		guard3 += 1
+		intro3._process(0.05)
+	for f4 in 20:
+		intro3._process(0.05)
+	var timing_ok: bool = intro3.shot == 2 and intro3._stars.modulate.a > 0.99 and intro3._earth != null and intro3._earth.modulate.a > 0.99
+	intro3.queue_free()
+	var intro2 = load("res://scripts/ui/intro_one.gd").new()
+	main.add_child(intro2)
+	intro2._process(0.1)
+	intro2.skip()
+	var skip_ok: bool = intro2.ending and timing_ok
+	intro2.queue_free()
+	var menu_ok: bool = load("res://scripts/ui/main_menu.gd").get_script_constant_map().has("IntroOneScript") 		and load("res://scripts/ui/main_menu.gd").get_script_constant_map().has("IntroTwoScript")
+	# sequence 2: the portal, the 190SL, the Mayday, the computer (a hologram), Dan, the tow
+	var tick1: int = ticks.call()
+	Audio.events.clear()
+	var two = load("res://scripts/ui/intro_two.gd").new()
+	main.add_child(two)
+	var seen := []
+	var whos := []
+	var guard := 0
+	var alarm_fades := true
+	while not two.ending and guard < 4000:
+		guard += 1
+		if String(two.STEPS[two.step]["look"]) == "computer" and two.t > 3.0:
+			alarm_fades = alarm_fades and two.alarm_vol == 0.0              # Luz: faded out once the first box is up
+		var sd2: Dictionary = two.STEPS[two.step]
+		if seen.is_empty() or seen.back() != String(sd2["look"]):
+			seen.append(String(sd2["look"]))
+		if sd2.has("text") and (whos.is_empty() or whos.back() != String(sd2["who"]) + String(sd2["text"]).left(6)):
+			whos.append(String(sd2["who"]) + String(sd2["text"]).left(6))
+		two.step_time(0.1)
+	var two_ok: bool = seen == ["pan", "portal", "ejected", "computer", "black", "dan", "approach", "tow", "away"] and two.ending 		and whos.size() == 8 and two.sl_on and two.dan_on and two.beam > 0.9 and alarm_fades 		and tick1 == tick0 and int(ticks.call()) > 0          # Luz: the typing tick only when someone speaks (not the narrator)
+	var holo_ok: bool = load("res://scripts/core/story.gd").portrait_of("ship_ai").get_width() == 48 		and bool(load("res://data/story.gd").CHARACTERS["ship_ai"].get("holo", false)) 		and int(load("res://scripts/core/story.gd").look_of("dan")["headgear"]) == 4 and PixelArt.rust_texture("kanayama").get_width() > 0
+	two.queue_free()
+	# sequence 3: the medic in the dark, the ceiling lights, white – then the creator as the med-scanner
+	var three = load("res://scripts/ui/intro_three.gd").new()
+	main.add_child(three)
+	Audio.events.clear()
+	var lines3 := 0
+	var last3 := -1
+	var guard4 := 0
+	while not three.ending and guard4 < 3000:
+		guard4 += 1
+		if three.step != last3 and three.step < three.STEPS.size() and three.STEPS[three.step].has("text"):
+			lines3 += 1
+		last3 = three.step
+		three.step_time(0.1)
+	var three_ok: bool = three.ending and lines3 == 2 and three.scroll > 100.0 and bool(three._done) \
+		and int(three.ticks) > 0 and String(load("res://data/story.gd").CHARACTERS["doc"]["name"]) != ""
+	var scan = load("res://scripts/ui/character_creator.gd").new()
+	scan.setup("new", {}, {}, "Testa")
+	main.add_child(scan)
+	scan._step("hair", 1)
+	scan._attr("strength", 1)
+	var scan_ok: bool = scan._bed != null and scan._bars.size() == 5 and int(scan._bars["strength"].value) == 4 \
+		and Dictionary(scan._bed.look).get("hair", -1) == scan.look["hair"] and scan._values.size() == 18 and scan._sprite == null
+	scan.queue_free()
+	var studio = load("res://scripts/ui/character_creator.gd").new()
+	studio.setup("look", {}, {}, "Testa")
+	main.add_child(studio)
+	scan_ok = scan_ok and studio._sprite != null and studio._sprite.texture.get_height() == 40        # the figure on foot, not the old one
+	studio.queue_free()
+	menu_ok = menu_ok and two_ok and holo_ok and three_ok and scan_ok and load("res://scripts/ui/main_menu.gd").get_script_constant_map().has("IntroThreeScript")
+	check(earth_ok and ships_ok and gate_ok and order_ok and typed_ok and veil_ok and skip_ok and menu_ok,
+		"56: the intro's first sequence – Earth with her continents, the Expansion's ships whole, the Long Gate; black → Earth → ships → the gate → the jump → the Veil and the Mayday → white-out; a press finishes the line, the next goes on; hold to skip; New Game starts with it, then sequence 2 – the wreck field, the portal, the burning 190SL, the Mayday, the ship's computer as a hologram, Dan in his rust-coloured Kanayama-maru, the tow; sequence 3 – the medic, the ceiling lights, the med-scanner  [%s]" % [[earth_ok, ships_ok, gate_ok, order_ok, typed_ok, veil_ok, skip_ok, menu_ok]])
+
+
 func _test_beyond57(_view: SystemView) -> void:
 	var U = Universe
 	var ids := {}

@@ -180,6 +180,12 @@ func _draw_art(t: String) -> void:
 			a._weapon_platform()
 		"dusty_duty":
 			a._dusty_duty()                          # package 57 (Luz): Dan's Dusty Duty Store in Beyond
+		"long_gate":
+			a._long_gate()                           # 56: the Long Gate as it stood in the Expansion – Earth's road out
+		"gold_ship_small":
+			a._gold_craft()                          # 56: the fleet's small craft (the pilot's among them)
+		"gold_ship_new":
+			a._gold_ship(["freighter", "tanker", "ark", "escort"][posmod(int(a.rng.seed), 4)], 3, -1)   # 56: as she left Earth
 		"gold_colossus":
 			a._gold_colossus()                       # 57: one wreck of the Gold Fleet, big as a planet (kind by seed, stage by tier)
 		"wreck_piece":
@@ -859,12 +865,12 @@ func _hull_frame(mid: Vector2, sgn: float, hl: float, hw: float) -> void:
 const LANDMARK_SIZE := {"vote": 540, "vote_relay": 120, "concord_yards": 440, "res_publica": 560,
 	"cathedral": 520, "pilgrim_gate": 300, "forge": 460, "lux_aeterna": 600,
 	"dyson_hub": 480, "mirror": 170, "gate_frame": 190, "axiom_yards": 440,
-	"ew_yard": 460, "khi_yard": 480, "aur_yard": 480, "hdy_yard": 460, "weapon_platform": 170, "dusty_duty": 640, "gold_wrecks": 720, "gold_colossus": 640, "wreck_piece": 640}
+	"ew_yard": 460, "khi_yard": 480, "aur_yard": 480, "hdy_yard": 460, "weapon_platform": 170, "dusty_duty": 640, "gold_wrecks": 720, "gold_colossus": 640, "wreck_piece": 640, "gold_ship_new": 640, "long_gate": 720, "gold_ship_small": 96}
 const COVENANT_ARTS := {"cathedral": true, "pilgrim_gate": true, "forge": true, "lux_aeterna": true}
 const DIRECTORATE_ARTS := {"dyson_hub": true, "mirror": true, "gate_frame": true, "axiom_yards": true}
 const MAKER_ACC := {"ew_yard": Color(0.45, 0.75, 1.0), "khi_yard": Color(1.0, 0.82, 0.15), "aur_yard": Color(1.0, 0.82, 0.45),
 	"hdy_yard": Color(1.0, 0.15, 0.12), "weapon_platform": Color(1.0, 0.15, 0.12), "dusty_duty": Color(1.0, 0.58, 0.18), "gold_wrecks": Color(1.0, 0.58, 0.18),
-	"gold_colossus": Color(1.0, 0.58, 0.18), "wreck_piece": Color(1.0, 0.58, 0.18)}
+	"gold_colossus": Color(1.0, 0.58, 0.18), "wreck_piece": Color(1.0, 0.58, 0.18), "gold_ship_new": Color(1.0, 0.7, 0.25), "long_gate": Color(0.45, 0.75, 1.0), "gold_ship_small": Color(1.0, 0.7, 0.25)}
 const ASSEMBLY_ARTS := {"vote": true, "vote_relay": true, "concord_yards": true, "res_publica": true}
 const VOTE_RELAY_ANGLE := 0.4                       # where the first relay lies (Universe._special_structures)
 
@@ -2035,6 +2041,91 @@ func _gold_colossus() -> void:
 	_gold_ship(kinds[posmod(int(rng.seed), 4)], 3, tier - 1)
 
 
+## Package 56: the Long Gate in its day – a ring wider than any gate of the Cluster: armoured segments round a bright
+## inner rim, eight field emitters pointing inward (their tips glow), struts out to beacon pods, gold trim, four
+## control stations on the rim. Its field is drawn by the intro itself.
+func _long_gate() -> void:
+	var ctr := Vector2(c, c)
+	var R0 := n * 0.33
+	var R1 := n * 0.41
+	ring(ctr, R0, R1, HULL, 2.0, false, 48)
+	for kk in 48:
+		var a := kk * TAU / 48.0 + PI / 48.0
+		var o := Vector2.from_angle(a)
+		box(ctr + o * (R0 + R1) * 0.5, a + PI * 0.5, n * 0.021, (R1 - R0) * 0.44, HULL if kk % 2 == 0 else PANEL, 25.0, P_ARMOR)
+		if kk % 3 == 1:
+			box(ctr + o * (R1 - 7.0), a + PI * 0.5, n * 0.012, 5.0, PANEL, 29.0, P_PLATES)        # housings on the outer edge
+			box(ctr + o * (R0 + 8.0), a + PI * 0.5, n * 0.008, 3.0, DARK, 28.0, P_RIBS)
+	ring(ctr, (R0 + R1) * 0.5 - 1.5, (R0 + R1) * 0.5 + 1.5, DARK, 27.0, false, 96)       # a conduit round it
+	ring(ctr, R0 - 7.0, R0 + 3.0, STEEL, 27.5, true, 96)                                # the inner rim, lit windows
+	ring(ctr, R1 - 3.5, R1 - 0.5, MARK, 30.0, false, 96)                                # gold trim
+	ring(ctr, R0 + 3.0, R0 + 5.0, MARK, 30.0, false, 96)
+	for e in 8:
+		var a2 := e * TAU / 8.0
+		var o2 := Vector2.from_angle(a2)
+		box(ctr + o2 * (R0 + R1) * 0.5, a2 + PI * 0.5, 5.0, (R1 - R0) * 0.5, MARK, 30.5, P_PLATES)   # gold band across
+		box(ctr + o2 * (R0 - 14.0), a2, 18.0, 12.0, DARK, 29.0, P_PLATES)             # field emitter
+		box(ctr + o2 * (R0 - 26.0), a2, 8.0, 7.0, STEEL, 30.0, P_GIRDER)
+		box(ctr + o2 * (R0 - 34.0), a2, 4.0, 5.0, ACC, 32.0)                            # its glowing tip
+		light(ctr + o2 * (R0 - 36.0), Color(0.5, 0.85, 1.0), 0.8)
+		seg(ctr + o2 * R1, ctr + o2 * (R1 + n * 0.06), 3.0, STEEL, 11.0, P_GIRDER)     # strut
+		disc(ctr + o2 * (R1 + n * 0.07), 8.0, PANEL, 13.0, D_DOME)                      # beacon pod
+		light(ctr + o2 * (R1 + n * 0.07), Color(1.0, 0.35, 0.3), 1.2, true)
+	for st in 4:
+		var a3 := st * TAU / 4.0 + PI / 4.0
+		var o3 := Vector2.from_angle(a3)
+		box(ctr + o3 * (R1 + 14.0), a3 + PI * 0.5, 30.0, 13.0, HULL, 26.0, P_WINDOWS)   # control station
+		box(ctr + o3 * (R1 + 28.0), a3 + PI * 0.5, 16.0, 7.0, PANEL, 29.0, P_PLATES)
+		disc(ctr + o3 * (R1 + 30.0) + Vector2.from_angle(a3 + PI * 0.5) * 18.0, 6.0, TANK, 30.0, D_DISH)
+		seg(ctr + o3 * (R1 + 34.0), ctr + o3 * (R1 + 50.0), 1.0, STEEL, 20.0)            # antenna
+		light(ctr + o3 * (R1 + 50.0), Color(0.6, 1.0, 0.7), 1.0)
+
+
+## Package 56: a small craft of the Expansion's fleets – a charter scout or courier beside the giants (the pilot flew
+## one): a broad white hull pointing right, gold stripes, a glass canopy, two engine pods on short wings, radiator
+## fins, a sensor mast. seed % 2: the scout (slim, swept wings) or the courier (blunt, a cargo spine).
+func _gold_craft() -> void:
+	var courier := posmod(int(rng.seed), 2) == 1
+	var y0 := c
+	var nose := c + n * 0.4
+	var tail := c - n * 0.36
+	var hw := n * (0.1 if courier else 0.085)
+	var body := PackedVector2Array([Vector2(tail, y0 - hw), Vector2(c + n * 0.12, y0 - hw), Vector2(nose, y0 - hw * (0.45 if courier else 0.15)),
+		Vector2(nose, y0 + hw * (0.45 if courier else 0.15)), Vector2(c + n * 0.12, y0 + hw), Vector2(tail, y0 + hw)])
+	for sd in [-1.0, 1.0]:
+		# the wing and its engine pod
+		var root_x := c - n * 0.12
+		var wing := PackedVector2Array([Vector2(root_x + n * 0.14, y0 + hw * 0.8 * sd), Vector2(root_x - n * (0.02 if courier else 0.1), y0 + n * 0.27 * sd),
+			Vector2(root_x - n * (0.16 if courier else 0.22), y0 + n * 0.27 * sd), Vector2(root_x - n * 0.12, y0 + hw * 0.8 * sd)])
+		poly(wing, PANEL, 8.0, 2.0, 0)
+		var pod := Vector2(root_x - n * (0.12 if courier else 0.17), y0 + n * 0.25 * sd)
+		box(pod, 0.0, n * 0.11, n * 0.045, HULL, 12.0, P_CYL)
+		box(pod + Vector2(n * 0.1, 0), 0.0, n * 0.02, n * 0.035, MARK, 13.0)               # gold nose ring of the pod
+		box(pod - Vector2(n * 0.13, 0), 0.0, n * 0.025, n * 0.05, STEEL, 13.0, P_CYL)      # its bell
+		box(pod - Vector2(n * 0.15, 0), 0.0, 1.0, n * 0.04, DARK, 14.0)
+		box(Vector2(c - n * 0.02, y0 + (hw + n * 0.03) * sd), 0.0, n * 0.07, n * 0.012, STEEL, 9.0, P_RIBS)   # radiator fin
+	poly(body, HULL, 10.0, 3.0, 0)
+	box(Vector2(c - n * 0.05, y0), 0.0, n * 0.3, hw * 0.16, MARK, 14.0)                  # gold stripe along her
+	for sd2 in [-1.0, 1.0]:
+		box(Vector2(c - n * 0.1, y0 + hw * 0.62 * sd2), 0.0, n * 0.2, 0.8, MARK, 13.5)
+	if courier:
+		box(Vector2(c - n * 0.08, y0), 0.0, n * 0.2, hw * 0.55, PANEL, 13.0, P_PLATES)    # the cargo spine
+	disc(Vector2(nose - n * (0.13 if courier else 0.1), y0), hw * 0.55, GLASS, 13.0, D_DOME) # canopy
+	box(Vector2(tail + n * 0.02, y0), 0.0, n * 0.03, hw * 0.75, STEEL, 13.0, P_CYL)        # main engine
+	box(Vector2(tail - n * 0.01, y0), 0.0, 1.0, hw * 0.6, DARK, 14.0)
+	seg(Vector2(c - n * 0.2, y0 - hw * 0.3), Vector2(c - n * 0.26, y0 - hw * 1.4), 0.5, STEEL, 16.0)   # sensor mast
+	light(Vector2(c - n * 0.26, y0 - hw * 1.4), Color(1.0, 0.35, 0.3), 1.2, true)
+	if tier >= 2:
+		# the 190SL out of the portal (package 56): scorched, plates torn away, a wing tip gone, the mast bent
+		for sc in 9:
+			var sp := Vector2(c + rng.randf_range(-n * 0.3, n * 0.3), y0 + rng.randf_range(-hw, hw))
+			box(sp, rng.randf() * PI, rng.randf_range(2.0, 5.0), rng.randf_range(1.5, 3.0), [RUST, DARK, STAIN][sc % 3], 17.0 + rng.randf(), P_FLAT, true)
+		for hk in 3:
+			erase_disc(Vector2(c + rng.randf_range(-n * 0.2, n * 0.25), y0 + rng.randf_range(-hw * 0.9, hw * 0.9)), rng.randf_range(1.5, 3.0))
+		erase_disc(Vector2(c - n * (0.22 if courier else 0.3), y0 + n * 0.27), n * 0.07)            # a wing tip torn off
+		box(Vector2(c - n * 0.05, y0), 0.3, n * 0.06, 1.2, HOT, 18.0, P_FLAT, true)                 # glowing tear
+
+
 ## Package 57: a wreck colossus – seed % 12 is the variant (kind = % 4: freighter, tanker, ark, escort; part = / 4:
 ## 0 stern, 1 middle, 2 bow), tier 1–3 how far she is taken apart.
 func _wreck_piece() -> void:
@@ -2126,7 +2217,9 @@ func _ragged_stern(pts: PackedVector2Array, at: Callable, u: float, _u2: float, 
 ## near the tears) so the frame shows, her own structures on top, battle holes and scorch, the salvagers' scaffolding
 ## and cut lines, and the torn ends – ragged, with girders, ribs, cables and peeled plates sticking out.
 ## Ship coordinates: s along her (-1 stern … 1 bow), v across in half-widths.
-func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) -> void:
+func _gold_ship(kind: String, part: int, stage_in: int, tears_in: Dictionary = {}) -> void:
+	var fresh := stage_in < 0                                      # package 56: as she left Earth – whole, no scars
+	var stage := maxi(stage_in, 0)
 	var g := piece_geom(kind, part, n)
 	var sm: float = g["sm"]
 	var hl: float = g["hl"]
@@ -2170,8 +2263,8 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 		var bulk := posmod(x - x0, 48) < 6
 		seg(Vector2(x, c - w2 * 0.98), Vector2(x, c + w2 * 0.98), 2.0 if bulk else 0.8, steel, 9.0 if bulk else 7.0, P_GIRDER if bulk else P_FLAT)
 	# --- 3. plating, plates missing in patches (the frame shows), more near the tears and the further she is taken apart
-	var miss: float = [0.06, 0.22, 0.5][stage]
-	var patch: float = [0.8, 0.66, 0.52][stage]
+	var miss: float = 0.0 if fresh else [0.06, 0.22, 0.5][stage]
+	var patch: float = 9.0 if fresh else [0.8, 0.66, 0.52][stage]
 	for px in range(0, n, 20):
 		for py in range(int(c - hp * 1.05), int(c + hp * 1.05), 13):
 			var pc := Vector2(px + 10.0, py + 6.5)
@@ -2229,7 +2322,7 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 				rk += 1
 				box(S.call(cs, 0.0), 0.0, 0.042 * k, hp * 0.92, steel, 13.5, P_TRUSS)            # the rack
 				for cv in [-0.72, -0.4, 0.4, 0.72]:
-					if rng.randf() < [0.15, 0.4, 0.75][stage]:
+					if rng.randf() < (0.0 if fresh else [0.15, 0.4, 0.75][stage]):
 						continue
 					box(S.call(cs, cv), 0.0, 0.036 * k, hp * 0.14, [RUST, PANEL, ACC, HULL, MARK, steel][rng.randi() % 6], 15.0 + rng.randf(), P_PLATES)
 			if vis.call(-0.38):
@@ -2266,7 +2359,7 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 					continue                                                                     # only the cradle left
 				disc(tp, tr * 0.93, TANK, 14.0, D_TANK)
 				ring(tp, tr * 0.86, tr * 0.93, MARK, 15.5, false, 24)
-				if i == burst:
+				if i == burst and not fresh:
 					var bp := tp + Vector2(rng.randf_range(-0.3, 0.3), rng.randf_range(-0.4, 0.4)) * tr
 					erase_disc(bp, tr * 0.5)
 					for sh in 9:
@@ -2292,13 +2385,13 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 				for sp in 6:
 					var spa := sp * TAU / 6.0 + 0.3
 					box(rc + Vector2.from_angle(spa) * (r0 * 0.55 + hp * 0.25), spa, r0 * 0.45, 2.6, steel, 14.5, P_TRUSS)
-				for br in 2 + stage:                                                             # broken open
+				for br in (0 if fresh else 2 + stage):                                                             # broken open
 					var ba := rng.randf() * TAU
 					_erase_arc(rc, r0 - 3.0, r0 + hp * 0.34, ba, ba + rng.randf_range(0.25, 0.6))
 			for ds in [0.3, 0.46, 0.62]:
 				if vis.call(ds):
 					var dp: Vector2 = S.call(ds, -0.72 if ds != 0.46 else 0.72)
-					var smashed := rng.randf() < 0.5 + stage * 0.2
+					var smashed := not fresh and rng.randf() < 0.5 + stage * 0.2
 					disc(dp, hp * 0.26, DARK if smashed else GREEN, 16.0, D_GREEN)
 					if smashed:
 						for sh2 in 4:
@@ -2330,7 +2423,7 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 				if vis.call(tsx):
 					var tp2: Vector2 = S.call(tsx, tv)
 					ring(tp2, hp * 0.17, hp * 0.22, steel, 17.0, false, 10)
-					if rng.randf() < 0.8 - stage * 0.2:
+					if fresh or rng.randf() < 0.8 - stage * 0.2:
 						disc(tp2, hp * 0.17, GUN, 17.5, D_TURRET)
 						var tdir := Vector2.from_angle(rng.randf_range(-0.7, 0.7))
 						box(tp2 + tdir * hp * 0.1, tdir.angle(), hp * 0.12, hp * 0.1, GUN, 19.0, P_ARMOR)
@@ -2346,7 +2439,7 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 				var chh := hp * 0.26
 				for hx in range(int(-cw2) + 3, int(cw2) - 2, 5):
 					for hy in range(int(-chh) + 3, int(chh) - 2, 5):
-						if rng.randf() < 0.12 + stage * 0.15:
+						if not fresh and rng.randf() < 0.12 + stage * 0.15:
 							box(mc + Vector2(hx, hy), 0.0, 1.6, 1.6, DARK, 15.8)              # an open hatch
 						else:
 							box(mc + Vector2(hx, hy), 0.0, 1.6, 1.6, PANEL, 16.0, P_ARMOR)
@@ -2366,7 +2459,7 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 			for dg in 3:
 				box(S.call(hn, 0.55) + Vector2(dg * 5.0, 0.0), 0.0, 1.5, 3.0, MARK, 16.0)
 	# --- 5. battle holes through her decks, scorch
-	for hk in 3 + stage * 2:
+	for hk in (0 if fresh else 3 + stage * 2):
 		var hpnt := Vector2(rng.randf_range(n * 0.12, n * 0.88), c + rng.randf_range(-0.8, 0.8) * hp)
 		disc(hpnt, rng.randf_range(7.0, 14.0), DARK, 12.9, D_FLAT)
 		if rng.randf() < 0.65:
@@ -2442,7 +2535,7 @@ func _gold_ship(kind: String, part: int, stage: int, tears_in: Dictionary = {}) 
 			var dp2: Vector2 = edge.call(rng.randf_range(-1.3, 1.3)) + Vector2(rng.randf_range(10.0, 60.0) * sd7, 0.0)
 			box(dp2, rng.randf() * PI, rng.randf_range(1.0, 4.0), rng.randf_range(0.8, 2.0), [HULL, RUST, steel, PANEL, MARK][rng.randi() % 5], 6.0)
 	# --- 8. bits of her drifting alongside
-	for db2 in 8 + stage * 4:
+	for db2 in (0 if fresh else 8 + stage * 4):
 		var side := 1.0 if rng.randf() < 0.5 else -1.0
 		var dp3 := Vector2(rng.randf_range(n * 0.1, n * 0.9), c + side * rng.randf_range(1.25, 2.1) * hp)
 		box(dp3, rng.randf() * PI, rng.randf_range(1.5, 5.0), rng.randf_range(1.0, 2.5), [HULL, RUST, steel, PANEL][rng.randi() % 4], 6.0, P_PLATES)
@@ -2738,6 +2831,12 @@ func _palettes() -> Dictionary:
 	if type in ["dusty_duty", "gold_wrecks", "gold_colossus", "wreck_piece"]:
 		hull = [Color(0.3, 0.27, 0.22), Color(0.5, 0.45, 0.37), Color(0.68, 0.62, 0.52)]      # 57: weathered, dusty tan
 		panel = [Color(0.34, 0.17, 0.08), Color(0.56, 0.3, 0.14), Color(0.74, 0.46, 0.24)]      # rust-orange patches
+	if type == "long_gate":
+		hull = [Color(0.36, 0.37, 0.41), Color(0.6, 0.61, 0.66), Color(0.82, 0.83, 0.87)]       # 56: Earth's steel, unworn
+		panel = [Color(0.2, 0.24, 0.32), Color(0.34, 0.4, 0.5), Color(0.5, 0.58, 0.7)]
+	if type in ["gold_ship_new", "gold_ship_small"]:
+		hull = [Color(0.5, 0.5, 0.52), Color(0.78, 0.78, 0.8), Color(0.95, 0.95, 0.97)]         # 56: fresh from the yards of Earth
+		panel = [Color(0.3, 0.33, 0.4), Color(0.48, 0.52, 0.6), Color(0.68, 0.72, 0.8)]
 	var tank := [Color(0.55, 0.56, 0.6), Color(0.78, 0.79, 0.82), Color(0.95, 0.96, 0.98)]
 	if type in ["gold_wrecks", "gold_colossus", "wreck_piece"]:
 		tank = [Color(0.4, 0.37, 0.32), Color(0.62, 0.57, 0.48), Color(0.78, 0.72, 0.6)]        # 57: tanks dulled by decades of dust

@@ -1563,7 +1563,7 @@ func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> voi
 				var fr := UI.neon_panel(c.get("col", COL), Color(0.05, 0.06, 0.1), 2)
 				line.add_child(fr)
 				var tr := TextureRect.new()
-				tr.texture = PilotArt.portrait(GameState.story.look_of(who))
+				tr.texture = GameState.story.portrait_of(who)
 				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 				tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

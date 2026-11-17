@@ -109,7 +109,7 @@ const ENTRIES := {
 		"text": "Round the core runs the Rim – constellations of a few systems each, close together and joined among themselves, with only one or two routes to their neighbours and into the core. No power claims them. Free settlements keep small outposts here, the pirates hold fortresses, and the rock is richer than anywhere in the core.\n\nBeyond the Rim lie the Far Reaches: a second ring of constellations, reached only through the Rim, where nobody lives at all. Their gates are old, their security nil, their dangers many – and at their outer edge the Veil begins.",
 		"see": ["cluster_battlefields", "cluster_fortresses", "cluster_veil_edge"]},
 	"cluster_veil": {"cat": "cluster", "title": "The Veil", "unlock": "jump",
-		"text": "A belt of unstable hyperspace around the Cluster. Every long-range jump since the Severance has ended there – ships that tried to cross it were never heard from again. The Meridian Directorate's Project Bridge searches for a way through.",
+		"text": "Before the Severance, \"the Veil\" was simply what pilots called the long dark between the Cluster and Earth – the empty reaches the Long Gate spanned. Since then the name has meant something else: a belt of unstable hyperspace around the Cluster. Every long-range jump since the Severance has ended there – ships that tried to cross it were never heard from again. The Meridian Directorate's Project Bridge searches for a way through.",
 		"see": ["hist_severance", "fac_directorate"]},
 	"cluster_long_gate": {"cat": "cluster", "title": "The Long Gate", "unlock": "jump",
 		"text": "Once the only route between the Cluster and Earth. Its wreckage still drifts in a rim system – a reminder, a relic, and to some a promise.",

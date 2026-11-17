@@ -52,6 +52,9 @@ const FACTION := {
 		"a": Color(0.84, 0.63, 0.22), "f": Color(0.7, 0.9, 1.0)},
 	"pirate": {"h": Color(0.56, 0.42, 0.35), "H": Color(0.74, 0.58, 0.46), "d": Color(0.38, 0.27, 0.23), "D": Color(0.24, 0.17, 0.15),
 		"a": Color(0.95, 0.22, 0.18), "f": Color(1.0, 0.55, 0.2)},
+	# package 56: Dan's ships – rust brown and orange like his station
+	"dan": {"h": Color(0.5, 0.33, 0.2), "H": Color(0.7, 0.48, 0.28), "d": Color(0.34, 0.21, 0.13), "D": Color(0.2, 0.13, 0.09),
+		"a": Color(1.0, 0.55, 0.15), "f": Color(1.0, 0.75, 0.35)},
 	"neutral": {"h": Color(0.66, 0.64, 0.56), "H": Color(0.86, 0.84, 0.74), "d": Color(0.45, 0.43, 0.37), "D": Color(0.3, 0.29, 0.25),
 		"a": Color(1.0, 0.85, 0.3), "f": Color(1.0, 0.85, 0.5)},
 }
@@ -254,6 +257,26 @@ static func white() -> Texture2D:
 
 
 # ---------------------------------------------------------------- Ships
+
+## Package 56: a hull in Dan's colours – the maker's yellow and orange turned to rust brown and orange, with patches.
+static func rust_texture(hull_id: String) -> Texture2D:
+	var key := "rust_" + hull_id
+	if _cache.has(key):
+		return _cache[key]
+	var img := ship_texture(hull_id, "dan").get_image()
+	img.convert(Image.FORMAT_RGBA8)
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			if c.a < 0.1 or c.s <= 0.35 or c.h <= 0.07 or c.h >= 0.2:
+				continue
+			var patch := sin(x * 0.7 + y * 0.3) + sin(x * 0.23 - y * 0.9) > 0.9
+			var nc := Color.from_hsv(0.075 if patch else 0.055, c.s * (0.9 if patch else 0.72), c.v * (0.78 if patch else 0.55))
+			nc.a = c.a
+			img.set_pixel(x, y, nc)
+	_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
 
 ## frame >= 0: animation frame of an animated hull (see anim_frames()).
 static func ship_texture(hull_id: String, faction: String, frame: int = -1) -> Texture2D:

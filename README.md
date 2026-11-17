@@ -1,4 +1,6 @@
-# Sternenfront
+# Spacefarer: Beyond the Veil
+
+_(Until 17 Nov 2026 the game was called Sternenfront.)_
 
 2D space game for **Godot 4.3+** (GDScript, no external assets – pixel art and shaders are generated at runtime).
 Mouse control like Dark Orbit, a galaxy of star systems linked by hyperspace routes like EVE,
@@ -374,6 +376,14 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.56.1 (package 56, part 1): `scripts/ui/intro_one.gd` (sequence 1 + the title card: `SHOTS`, `title_continue`,
+  `skip`), `intro_two.gd` (`STEPS`, `step_time`), `intro_three.gd`; `scripts/core/earth_art.gd` (Earth from continent
+  outlines, `world_at` for an Earth-like world), `scripts/core/holo_art.gd` (a ship computer's hologram),
+  `shaders/veil_edge.gdshader` (`amount`, `centre`); StationArt `gold_ship_new`, `gold_ship_small` (tier 2 damaged),
+  `long_gate`; `PixelArt.rust_texture`; story characters `doc`, `ship_ai` (`holo`), `Story.portrait_of`; the creator's
+  scanner (`_build_scan`, ScanBed, Vitals, AttrBar); `ChibiArt.HAIR_MAPS` / `_hair`; PilotArt `LIPSTICK`, `BLUSH`,
+  `EYE_MAKEUP`, hair "Sidecut", headgear "Eye patch"; sound `ui_type`; main menu `BACKDROPS` (`force_backdrop`);
+  smoke group `intro56`.
 - 0.8.57.1 (package 57): Universe `POCKET`, `_place_pocket`, `is_pocket`, Beyond's bodies and Dan's station in the
   SPECIAL_* tables, `_gold_wrecks` (layout `gold_wrecks`), the wreck belt (`_has_wreck_belt`, `_make_wreck_field`,
   field `wreck`, asteroid shape "scrap"), wreck colossi (`wreck`, `stage`, `rot`; `wreck_colossus_poly`,
@@ -579,6 +589,14 @@ Slanted, cosy top-down view since 0.7.49.2.
   the station's planet), y-sorted furniture and people, signs, prompt; signal `used(zone)` (service / crew / exit).
 - `main.gd`: `open_deck()` (from `StationUI.walk_requested`), `close_deck()`, `_on_deck_use`, `_check_deck` (closes the
   deck when the ship is no longer docked there). Keys: `walk_*`, `interact` in the "On foot" group – `Keybinds._context`.
+
+## The intro (phase 1 package 56)
+- New Game starts with the story: sequence 1 (the memory – Earth, the Expansion's fleets, the Long Gate, the Veil,
+  the Mayday), the title card (waits for a key), sequence 2 (Beyond – the portal, the burning Earthworks 190SL, the
+  ship's computer as a hologram, Dan tows her away), sequence 3 (the medic, ceiling lights) – then the character
+  creator as Dan's medical scanner. On their own timing; hold Esc (Options) to skip.
+- Looks: hairstyles drawn per view on foot, the sidecut, make-up (lipstick, blush, eye make-up), the eye patch.
+- Main menu: one of four scenes at random. Debug: F12 → World → Intro (package 56).
 
 ## Beyond – the pocket in the Veil (phase 1 package 57)
 - Out in the Veil, apart from the Cluster: Beyond, Driftwood and Hollow, linked only among themselves. Beyond has Dan's
@@ -1337,7 +1355,7 @@ they are stored in `user://keybinds.cfg`. "Reset to defaults" restores the table
 A clean middle-mouse click (no drag) re-centres the camera on your ship (same as Space).
 
 ## Saving & loading
-- Saves live in `user://saves/*.sav` (Windows: `%APPDATA%\Godot\app_userdata\Sternenfront\saves`).
+- Saves live in `user://saves/*.sav` (Windows: `%APPDATA%\Godot\app_userdata\Spacefarer- Beyond the Veil\saves`).
 - Format: Godot text (`var_to_str`), versioned. The galaxy is regenerated from its seed; only
   changes are stored (pilot, fleet, storage, contracts, asteroid deposits, anomaly progress).
 - Autosave when docking and when arriving in a system (can be turned off in Settings).

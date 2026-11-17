@@ -97,7 +97,7 @@ func _ready() -> void:
 	_show_loading()
 	load_system(GameState.current_system)
 	if is_new:
-		GameState.log_msg("Welcome to Sternenfront, %s! Press H for controls." % GameState.pilot_name, GameState.COL_GOOD)
+		GameState.log_msg("Welcome to Spacefarer, %s! Press H for controls." % GameState.pilot_name, GameState.COL_GOOD)
 		if Universe.test_mode:
 			GameState.log_msg("TEST SYSTEM: every station, planet and asteroid type. Saving is disabled. F12 = debug menu.", GameState.COL_WARN)
 		GameState.log_msg("Tip: click an object in the overview on the right to warp there.")
@@ -798,7 +798,7 @@ func _show_loading() -> void:
 	bg.add_child(c)
 	var v := UI.vbox(14)
 	c.add_child(v)
-	var t := UI.label("STERNENFRONT", 40, UI.NEON_CYAN)
+	var t := UI.label("SPACEFARER", 40, UI.NEON_CYAN)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 	var s2 := UI.label("Entering %s …" % Universe.systems[GameState.current_system]["name"], 16, UI.TEXT_DIM)

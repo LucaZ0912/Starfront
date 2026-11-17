@@ -1,4 +1,4 @@
-# Sternenfront – Leitlinien
+# Spacefarer: Beyond the Veil – Leitlinien
 
 Verbindliche Grundsätze für jede Arbeit am Spiel. **Zu Beginn jedes Pakets lesen**, jedes Ergebnis (Screenshot,
 Oberfläche, Mechanik) **vor dem Zeigen dagegen prüfen**. Wird ein Grundsatz neu festgelegt oder geändert, kommt er

@@ -1,7 +1,36 @@
-# Sternenfront – Changelog
+# Spacefarer: Beyond the Veil – Changelog
 
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
+
+## alpha 0.8.56.1 – 2026-11-17
+
+**Package 56, part 1 – the intro begins; the game's new name (Luz).** The game is now called **Spacefarer: Beyond
+the Veil** (until now Sternenfront) – the main menu, the window, the loading screen, the help, the docs; saves and
+settings were copied to the new user folder.
+- **New Game starts with the story.** Sequence 1 – the memory: black, the narrator's box; Earth fades in (drawn with
+  her real continents, clouds and the lights of her cities); the giant ships of the Expansion leave her with their
+  small craft around them (the Gold Fleet as it was: whole, white and gold); the Long Gate; the jump; the Veil creeps
+  in from the edges until it has eaten the picture, the Mayday; white-out.
+- **The title card:** out of the white into the dark, the Veil spreading from the middle, then SPACEFARER – Beyond the
+  Veil; it waits for a key ("Press any button to continue").
+- **Sequence 2 – Beyond:** the camera pans through a wreck field (the Gold Fleet's giants behind, wreck colossi,
+  scrap); a violet portal, then the Earthworks 190SL – burning, spinning; the pilot's Mayday; the ship's computer (a
+  hologram – always when the ship's computer speaks); black; Dan comes in his rust-coloured Kanayama-maru, finds her –
+  a life sign on board, life support running out – and tows her away.
+- **Sequence 3 – the medic:** ceiling lights pass over in the dark (a stretcher rushed down a corridor), the station's
+  medic (Dr. Vesna Kalu – a placeholder name) speaks; white-out; then the **character creator as Dan's medical
+  scanner**: the body on the scan bed with a scan line, facial reconstruction, the looks grouped, vitals, identity
+  "for the record", the physical and psychological assessment, the galaxy seed small.
+- The sequences run on their own timing (lines are not clicked away), a soft typing tick when someone speaks; hold
+  Esc (Options) to skip; resizing the window keeps them whole.
+- **Looks:** every hairstyle redrawn on foot (front, side, back – light and shade); a new hairstyle, the **sidecut**
+  (portrait and figure); **make-up** – lipstick, blush, eye make-up; the eye patch (Dan) also on the figure; the image
+  studio shows the figure on foot instead of the old one from above. Dan is an older, broad man with an eye patch.
+- **Main menu:** a random scene – an Earth-like world under a G star, a red gas giant before a red supergiant, a
+  Directorate ship before a neutron star, a lone black hole; buttons in a sci-fi look.
+- Lore: before the Severance "the Veil" was what pilots called the space between the Cluster and Earth (codex).
+- Debug (F12 → World → Intro): play sequence 1, 2, 3; open the med-scanner. Smoke group `intro56`.
 
 ## alpha 0.8.57.1 – 2026-11-17
 

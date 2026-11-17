@@ -438,6 +438,30 @@ func _build_world() -> void:
 		for mid40 in ["o_rad_ward:1:A", "o_ion_ward:1:A"]:
 			_cmd({"type": "debug_give_module", "module": mid40})))
 	r40c.add_child(UI.button("+5 Pre-Severance Tech", func(): _cmd({"type": "debug_give_cargo", "item": "old_tech", "amount": 5})))
+	_section("Intro (package 56)")
+	var r56 := _row()
+	r56.add_child(UI.button("Play sequence 1 (the memory)", func():
+		close()
+		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_one.gd").new())))
+	r56.add_child(UI.button("Play sequence 2 (Beyond, Dan)", func():
+		close()
+		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_two.gd").new())))
+	r56.add_child(UI.button("Play sequence 3 (the medic)", func():
+		close()
+		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_three.gd").new())))
+	r56.add_child(UI.button("Open the med-scanner", func():
+		close()
+		var lay := CanvasLayer.new()
+		lay.layer = 95
+		var cen := CenterContainer.new()
+		cen.set_anchors_preset(Control.PRESET_FULL_RECT)
+		lay.add_child(cen)
+		var cc = preload("res://scripts/ui/character_creator.gd").new()
+		cc.setup("new", GameState.pilot.get("look", {}), {}, GameState.pilot_name)
+		cc.cancelled.connect(lay.queue_free)
+		cc.done.connect(func(_d): lay.queue_free())
+		cen.add_child(cc)
+		get_tree().current_scene.add_child(lay)))
 	_section("Beyond (package 57)")
 	var r57 := _row()
 	r57.add_child(UI.button("To Beyond (at Dan's)", func(): _cmd({"type": "debug_special", "special": "beyond"})))

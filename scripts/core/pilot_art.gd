@@ -13,7 +13,7 @@ const BODIES := ["Slim", "Average", "Broad"]
 const SKINS := [Color8(255, 226, 200), Color8(243, 199, 160), Color8(226, 174, 128), Color8(199, 137, 92),
 	Color8(161, 106, 68), Color8(122, 80, 52), Color8(88, 58, 40), Color8(214, 214, 222)]
 const SKIN_NAMES := ["Porcelain", "Fair", "Light", "Tan", "Olive brown", "Brown", "Dark", "Ashen"]
-const HAIRS := ["Bald", "Buzz cut", "Short", "Side part", "Long", "Ponytail", "Mohawk", "Curls", "Bun"]
+const HAIRS := ["Bald", "Buzz cut", "Short", "Side part", "Long", "Ponytail", "Mohawk", "Curls", "Bun", "Sidecut"]
 const HAIR_COLORS := [Color8(30, 26, 28), Color8(70, 44, 30), Color8(120, 78, 44), Color8(150, 62, 34), Color8(222, 186, 108),
 	Color8(236, 230, 210), Color8(140, 140, 146), Color8(250, 250, 250), Color8(255, 70, 170), Color8(60, 220, 240)]
 const HAIR_COLOR_NAMES := ["Black", "Dark brown", "Brown", "Auburn", "Blond", "Platinum", "Grey", "White", "Neon pink", "Cyan"]
@@ -30,7 +30,14 @@ const CLOTH_NAMES := ["Graphite", "Slate", "Steel", "White", "Navy", "Sky", "For
 	"Gold", "Violet", "Neon pink", "Neon cyan"]
 const IMPLANTS := ["None", "Cyber eye", "Jaw plate", "Temple circuits"]
 const TATTOOS := ["None", "Cheek lines", "Forehead mark", "Neck lines"]
-const HEADGEAR := ["None", "Headset", "Visor", "Glasses"]
+const HEADGEAR := ["None", "Headset", "Visor", "Glasses", "Eye patch"]
+## Package 56 (Luz): make-up – lipstick, blush, eye make-up
+const LIPSTICK := ["None", "Red", "Berry", "Nude", "Black", "Neon pink"]
+const LIP_COLORS := [Color(0, 0, 0, 0), Color(0.78, 0.1, 0.16), Color(0.5, 0.1, 0.3), Color(0.78, 0.5, 0.45), Color(0.12, 0.08, 0.12),
+	Color(1.0, 0.25, 0.7)]
+const BLUSH := ["None", "Soft", "Rosy"]
+const EYE_MAKEUP := ["None", "Eyeliner", "Smoky", "Neon"]
+const MAKEUP_KEYS := ["lipstick", "blush", "eye_makeup"]
 
 ## Every option of the kit: key, label, list of names (its length is the number of choices).
 const OPTIONS := [
@@ -39,6 +46,7 @@ const OPTIONS := [
 	["freckles", "Freckles", ["No", "Yes"]], ["outfit", "Outfit", OUTFITS], ["color1", "Main colour", CLOTH_NAMES],
 	["color2", "Accent colour", CLOTH_NAMES], ["implant", "Implant", IMPLANTS], ["tattoo", "Tattoo", TATTOOS],
 	["headgear", "Headgear", HEADGEAR],
+	["lipstick", "Lipstick", LIPSTICK], ["blush", "Blush", BLUSH], ["eye_makeup", "Eye make-up", EYE_MAKEUP],
 ]
 
 static var _cache := {}
@@ -46,7 +54,7 @@ static var _cache := {}
 
 static func default_look() -> Dictionary:
 	return {"body": 1, "skin": 2, "hair": 2, "hair_color": 1, "eyes": 0, "brows": 1, "beard": 0, "scar": 0, "freckles": 0,
-		"outfit": 0, "color1": 0, "color2": 5, "implant": 0, "tattoo": 0, "headgear": 0}
+		"outfit": 0, "color1": 0, "color2": 5, "implant": 0, "tattoo": 0, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}
 
 
 ## A random look (crews and mercenaries later; the "Random" button of the creator).
@@ -56,13 +64,19 @@ static func random_look(rng: RandomNumberGenerator = null) -> Dictionary:
 		rng.randomize()
 	var l := {}
 	for o in OPTIONS:
-		l[o[0]] = rng.randi() % (o[2] as Array).size()
+		if not o[0] in MAKEUP_KEYS:
+			l[o[0]] = rng.randi() % (o[2] as Array).size()
 	# extras stay rarer than the basics
 	for k in ["scar", "implant", "tattoo", "headgear"]:
 		if rng.randf() < 0.6:
 			l[k] = 0
 	if rng.randf() < 0.5:
 		l["beard"] = 0
+	# package 56: make-up drawn after the rest (so the looks seeded before stay the same), now and then
+	for mk in MAKEUP_KEYS:
+		var n: int = {"lipstick": LIPSTICK, "blush": BLUSH, "eye_makeup": EYE_MAKEUP}[mk].size()
+		var roll := rng.randi() % n
+		l[mk] = roll if rng.randf() < 0.35 else 0
 	return l
 
 
@@ -117,6 +131,13 @@ static func portrait_image(l: Dictionary) -> Image:
 			_rect(img, 33, 30, 2, 4, hair.darkened(0.35))
 		7:
 			_curls(img, cx, hy - 3.0, 14.0, hair)
+		9:   # sidecut (package 56): the long side's back layer, falling past the shoulder to the chest
+			for y in range(12, 44):
+				var tb := (y - 11) / 33.0
+				var outer := 13.4 - 2.4 * sin(tb * PI * 0.85) + maxf(0.0, tb - 0.78) * 16.0
+				for x in range(11, 21):
+					if x >= outer and x <= 19:
+						img.set_pixel(x, y, hair.darkened(0.26) if x % 3 == 0 else hair.darkened(0.16))
 	# body and outfit
 	_body(img, l, c1, c2, skin)
 	# neck
@@ -222,8 +243,33 @@ static func _face(img: Image, l: Dictionary, skin: Color, hair: Color) -> void:
 	img.set_pixel(23, 24, skin.darkened(0.35))
 	img.set_pixel(25, 24, skin.darkened(0.3))
 	var lip := skin.lerp(Color(0.6, 0.2, 0.2), 0.45)
+	if int(l.get("lipstick", 0)) > 0:
+		lip = LIP_COLORS[int(l["lipstick"])]                    # package 56: lipstick
 	_rect(img, 22, 26, 5, 1, lip.darkened(0.25))
 	_rect(img, 23, 27, 3, 1, lip)
+	if int(l.get("lipstick", 0)) > 0:
+		img.set_pixel(24, 27, lip.lightened(0.25))              # a little shine
+	# package 56: blush on the cheeks
+	if int(l.get("blush", 0)) > 0:
+		var bk := 0.22 if int(l["blush"]) == 1 else 0.38
+		for p in [[18, 23], [19, 23], [20, 23], [19, 24], [28, 23], [29, 23], [30, 23], [29, 24]]:
+			img.set_pixel(p[0], p[1], img.get_pixel(p[0], p[1]).lerp(Color(0.95, 0.35, 0.45), bk))
+	# package 56: eye make-up – a winged liner, a smoky shade, or neon shadow
+	match int(l.get("eye_makeup", 0)):
+		1:
+			for e in [19, 27]:
+				_rect(img, e - 1, 19, 4, 1, Color(0.06, 0.05, 0.07))
+			img.set_pixel(17, 18, Color(0.06, 0.05, 0.07))
+			img.set_pixel(30, 18, Color(0.06, 0.05, 0.07))
+		2:
+			for e in [19, 27]:
+				for p in [[e - 1, 18], [e, 18], [e + 1, 18], [e + 2, 18], [e - 1, 19], [e + 2, 19], [e - 1, 20], [e + 3, 19]]:
+					img.set_pixel(p[0], p[1], img.get_pixel(p[0], p[1]).lerp(Color(0.2, 0.16, 0.24), 0.6))
+				_rect(img, e, 19, 2, 1, Color(0.08, 0.06, 0.1))
+		3:
+			for e in [19, 27]:
+				for p in [[e - 1, 18], [e, 18], [e + 1, 18], [e + 2, 18], [e + 3, 18], [e - 1, 19], [e + 2, 19]]:
+					img.set_pixel(p[0], p[1], img.get_pixel(p[0], p[1]).lerp(Color(0.3, 0.95, 1.0) if p[1] == 18 else Color(1.0, 0.3, 0.8), 0.6))
 	if int(l["freckles"]) == 1:
 		for p in [[18, 23], [20, 24], [19, 22], [28, 23], [30, 24], [29, 22]]:
 			img.set_pixel(p[0], p[1], skin.darkened(0.25))
@@ -297,6 +343,43 @@ static func _hair_front(img: Image, l: Dictionary, hair: Color, skin: Color, cx:
 			for y in range(2, 14):
 				var w := 2 if y < 5 else 3
 				_rect(img, 24 - w, y, w * 2, 1, hair if y % 2 == 0 else dark)
+		9:   # sidecut (package 56, Luz): her left side shaved (on the right here), the hair swept over from a parting
+			# above her left temple, down across the forehead and long past her right cheek to the chest
+			# the shaved side: only the scalp above the temple – an even, very short layer of hair with a soft edge,
+			# never on the face (Luz: it looked burnt when the stubble reached the cheek)
+			for y in range(8, 16):
+				for x in range(26, 35):
+					if _in_ellipse(x, y, cx, hy, rx + 0.4, ry + 0.4) and not _in_ellipse(x, y, cx, hy + 3.5, rx - 0.6, ry - 2.0):
+						var k := 0.5 if y < 14 else 0.3
+						img.set_pixel(x, y, skin.lerp(hair, k).darkened(0.05 if (x + y) % 5 == 0 else 0.0))
+			for y in range(5, 18):
+				for x in range(12, 29):
+					var fringe := 17.5 - (x - 13) * 0.5            # the swept edge: low at her right, up to the parting
+					if y <= fringe and _in_ellipse(x, y, cx - 1.0, hy - 0.5, rx + 1.6, ry + 1.6):
+						var c := hair
+						if int(floor(y + (x - 13) * 0.5)) % 4 == 0:
+							c = hair.lightened(0.16)                 # strands along the sweep, catching the light
+						elif y > fringe - 1.0 or x > 26:
+							c = hair.darkened(0.22)
+						img.set_pixel(x, y, c)
+			# the long side (Luz: rounder) – a soft curve that swells by the cheek and tapers to a rounded tip on the chest;
+			# the edges blend half a pixel so the outline is not stepped
+			for y in range(11, 45):
+				var t := (y - 11) / 33.0
+				var outer := 14.2 - 2.4 * sin(t * PI * 0.85) + maxf(0.0, t - 0.78) * 16.0
+				var inner := 19.5 - 1.6 * t - 0.6 * sin(t * PI) - maxf(0.0, t - 0.82) * 14.0
+				if inner - outer < 0.8:
+					continue
+				for x in range(int(floor(outer)), int(ceil(inner)) + 1):
+					var cover := clampf(minf(x + 1.0 - outer, inner - x), 0.0, 1.0)
+					if cover <= 0.0:
+						continue
+					var c2 := hair if (x - int(outer)) % 3 != 1 else hair.darkened(0.12)      # straight strands down
+					if x - outer < 1.0:
+						c2 = hair.darkened(0.28)
+					elif inner - x < 1.6 and y % 5 == 0:
+						c2 = hair.lightened(0.16)
+					img.set_pixel(x, y, img.get_pixel(x, y).lerp(c2, cover))
 		7:   # curls: the cloud in front, framing the face
 			for y in range(4, 17):
 				for x in range(9, 40):
@@ -373,6 +456,15 @@ static func _extras(img: Image, l: Dictionary, skin: Color) -> void:
 				_rect(img, e, 18, 1, 5, fc)
 				_rect(img, e + 4, 18, 1, 5, fc)
 			_rect(img, 23, 19, 3, 1, Color(0.15, 0.15, 0.18))
+		4:   # eye patch (package 56: Dan) over the right eye, its strap across the head
+			var pc := Color(0.08, 0.08, 0.09)
+			for x in range(13, 35):
+				var y := int(round(14.0 + (float(x) - 13.0) * 0.27))
+				if x < 18 or x > 23:
+					img.set_pixel(x, y, Color(0.12, 0.11, 0.1))
+			_rect(img, 18, 17, 6, 6, pc)
+			_rect(img, 19, 23, 4, 1, pc)
+			img.set_pixel(19, 18, Color(0.3, 0.3, 0.32))
 
 
 # ================================================================ Top-down sprite (16 x 16, part 7)

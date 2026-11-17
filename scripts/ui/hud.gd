@@ -363,7 +363,7 @@ func _ready() -> void:
 	GameState.fleet_changed.connect(rebuild_ship_panel)
 
 
-const HELP_TEXT := """[b]Sternenfront – Controls[/b]
+const HELP_TEXT := """[b]Spacefarer – Controls[/b]
 
 You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped there.
 

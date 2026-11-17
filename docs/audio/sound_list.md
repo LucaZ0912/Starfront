@@ -1,4 +1,4 @@
-# Sternenfront – Soundliste für Paket 28a (Audio-Grundgerüst)
+# Spacefarer – Soundliste für Paket 28a (Audio-Grundgerüst)
 
 Stand 7. Nov 2026, Entwurf zum Abstimmen. Die **ID** ist der Dateiname und der Schlüssel im Code
 (`sfx/<id>.ogg`).
@@ -145,6 +145,7 @@ Waffen klingen nach Schadensart: **optisch** hell, sirrend, **kinetisch** knalle
 | `mission_complete` | Auftrag erfüllt | Kurzer, aufsteigender Jingle (3–4 Töne) | 1 s | A |
 | `mission_failed` | Auftrag gescheitert | Absteigender, gedämpfter Jingle | 1 s | B |
 | `notify` | Neue Meldung im Log | Dezentes Glöckchen | 0,3 s | A |
+| `ui_type` | Textfenster schreibt (Intro, Story) | Leises, kurzes Tick je paar Buchstaben | 0,035 s | A |
 | `warn` | Warnung im Log | Etwas schärferes Doppel-Pling | 0,4 s | A |
 | `codex_entry` | Neuer Codex-Eintrag | Geheimnisvolles, kurzes Glitzern | 0,6 s | B |
 | `standing_up` | Ansehen steigt | Kleiner positiver Akkord | 0,5 s | C |

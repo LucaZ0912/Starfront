@@ -71,6 +71,7 @@ func _next_dialogue() -> void:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dlg_layer.add_child(dim)
 	dialogue = DialogueViewS.new()
+	dialogue.portrait_tex = GameState.story.portrait_of(who)
 	dialogue.add_to_group("kbd_menu")
 	_dlg_layer.add_child(dialogue)
 	dialogue.open(GameState.story.look_of(who), String(c.get("name", who)), String(c.get("sub", "")), c.get("col", GOLD))
@@ -140,7 +141,7 @@ func _show_radio(d: Dictionary) -> void:
 	var fr := UI.neon_panel(col, Color(0.05, 0.06, 0.1), 2)
 	h.add_child(fr)
 	var tr := TextureRect.new()
-	tr.texture = PilotArt.portrait(GameState.story.look_of(who))
+	tr.texture = GameState.story.portrait_of(who)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

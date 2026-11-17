@@ -282,6 +282,14 @@ func goal_lines(mid: String) -> Array:
 	return out
 
 
+## A character's portrait: a pilot's face, or a hologram for a ship's computer (package 56).
+static func portrait_of(who: String) -> Texture2D:
+	var c: Dictionary = Data.CHARACTERS.get(who, {})
+	if c.get("holo", false):
+		return load("res://scripts/core/holo_art.gd").portrait(c.get("col", Color(0.4, 0.9, 1.0)))
+	return PilotArt.portrait(look_of(who))
+
+
 ## The look of a character's portrait.
 static func look_of(who: String) -> Dictionary:
 	var c: Dictionary = Data.CHARACTERS.get(who, {})

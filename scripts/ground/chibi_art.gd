@@ -45,6 +45,7 @@ static func frame(look: Dictionary, dir: int, f: int) -> Texture2D:
 	l["helmet"] = bool(look.get("helmet", false))
 	l["livery"] = String(look.get("livery", ""))            # 0.7.51.10: a power's colours on a combat suit
 	l["arm_up"] = bool(look.get("arm_up", false))            # 0.7.52.14: the Pathfinder's laser arm raised (drawn by the walker)
+	l["mirror"] = dir == 3                                   # package 56: the sidecut shows its long side facing right
 	var key := "%s_%s%d%s_%d_%d%d" % [PilotArt._key(l), l["suit"], int(l["helmet"]), l["livery"], dir, f, int(l["arm_up"])]
 	if not _cache.has(key):
 		var img := _draw(l, 2 if dir == 3 else dir, f)
@@ -249,17 +250,7 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	if back:
 		# from behind: the hair (or a bald head with a shine)
 		if not bald:
-			_r(img, hx, head_top - 1, HW, HH - 1, hair)
-			_r(img, hx + 1, head_top - 2, HW - 2, 1, hair)
-			_r(img, hx + 1, head_top - 1, HW / 2, 1, hair.lightened(0.22))
-			if hs in [4, 5]:
-				_r(img, hx, head_top + HH - 2, HW, 5 if hs == 4 else 2, hair.darkened(0.1))
-				if hs == 5:
-					_r(img, cx - 1, head_top + HH, 2, 5, hair.darkened(0.15))
-			if hs == 8:
-				_r(img, cx - 2, head_top - 4, 4, 3, hair.darkened(0.15))
-			if hs == 6:
-				_r(img, cx - 1, head_top - 4, 2, 3, hair)
+			_hair(img, hs, "b", hx, head_top, hair, skin)          # package 56: drawn per style, with light and shade
 		else:
 			_px(img, hx + 2, head_top + 1, skin.lightened(0.3))
 	elif side:
@@ -269,21 +260,16 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 		_px(img, hx + 1, ey + 2, skin.darkened(0.35))
 		_px(img, hx + HW / 2 + 1, ey + 1, skin.darkened(0.25))            # ear
 		if not bald:
-			_r(img, hx + 1, head_top - 2, HW - 1, 3, hair)
-			_r(img, hx + HW / 2, head_top - 1, HW / 2 + 1, HH / 2 + 1, hair)
-			_r(img, hx + 2, head_top - 2, HW / 2, 1, hair.lightened(0.22))
-			if hs in [4, 5]:
-				_r(img, hx + HW - 1, head_top + 2, 2, HH + (3 if hs == 4 else 0), hair.darkened(0.1))
-			if hs == 5:
-				_r(img, hx + HW + 1, head_top + 2, 2, 4, hair.darkened(0.15))
-			if hs == 6:
-				_r(img, hx + 2, head_top - 4, HW - 3, 2, hair)
-			if hs == 8:
-				_r(img, hx + HW - 2, head_top - 3, 3, 3, hair.darkened(0.15))
+			_hair(img, hs, "s2" if bool(l.get("mirror", false)) else "s", hx, head_top, hair, skin)
 		if int(l["beard"]) in [2, 3]:
 			_r(img, hx, ey + 2, HW / 2, HH - HH / 2 - 2, hair)
 		if int(l["headgear"]) == 2:
 			_r(img, hx - 1, ey - 1, 3, 2, Color(0.3, 0.85, 1.0))
+		if int(l["headgear"]) == 4 and bool(l.get("mirror", false)):     # facing right: the patched right eye shows
+			_r(img, hx, ey - 1, 2, 2, Color(0.06, 0.06, 0.07))                # the eye patch, seen from its side
+			_r(img, hx + 2, ey - 2, HW - 2, 1, Color(0.12, 0.11, 0.1))
+		elif int(l["headgear"]) == 4:
+			_r(img, hx + 1, ey - 2, HW - 1, 1, Color(0.12, 0.11, 0.1))         # only the strap from the other side
 	else:
 		_px(img, cx - 2, ey, Color(0.95, 0.95, 0.95))
 		_px(img, cx - 1, ey, eye.darkened(0.2))
@@ -292,7 +278,17 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 		_r(img, cx - 2, ey - 1, 2, 1, hair.darkened(0.1))                # brows
 		_r(img, cx + 1, ey - 1, 2, 1, hair.darkened(0.1))
 		_px(img, cx, ey + 1, skin.darkened(0.2))                          # nose
-		_r(img, cx - 1, ey + 2, 3, 1, skin.darkened(0.35))                # mouth
+		_r(img, cx - 1, ey + 2, 3, 1, skin.darkened(0.35) if int(l.get("lipstick", 0)) == 0 else PilotArt.LIP_COLORS[int(l["lipstick"])])   # mouth (56: lipstick)
+		if int(l.get("blush", 0)) > 0:
+			_px(img, cx - 3, ey + 1, skin.lerp(Color(0.95, 0.35, 0.45), 0.3 if int(l["blush"]) == 1 else 0.5))
+			_px(img, cx + 3, ey + 1, skin.lerp(Color(0.95, 0.35, 0.45), 0.3 if int(l["blush"]) == 1 else 0.5))
+		match int(l.get("eye_makeup", 0)):
+			1, 2:
+				_px(img, cx - 3, ey, Color(0.08, 0.06, 0.1))             # the liner's wing
+				_px(img, cx + 3, ey, Color(0.08, 0.06, 0.1))
+			3:
+				_px(img, cx - 3, ey, Color(1.0, 0.3, 0.8))
+				_px(img, cx + 3, ey, Color(1.0, 0.3, 0.8))
 		if int(l["freckles"]) == 1:
 			_px(img, cx - 3, ey + 1, Color(0.75, 0.45, 0.3))
 			_px(img, cx + 3, ey + 1, Color(0.75, 0.45, 0.3))
@@ -308,26 +304,7 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 			4:
 				_r(img, cx - 2, ey + 1, 5, 1, hair)
 		if not bald:
-			_r(img, hx, head_top - 1, HW, 3, hair)
-			_r(img, hx + 1, head_top - 2, HW - 2, 1, hair)
-			_r(img, hx + 1, head_top - 2, HW / 2 - 1, 1, hair.lightened(0.25))
-			_r(img, hx - 1, head_top, 1, HH / 2, hair.darkened(0.1))
-			_r(img, hx + HW, head_top, 1, HH / 2, hair.darkened(0.2))
-			if hs == 1:
-				_r(img, hx, head_top + 1, HW, 1, skin)                    # buzz cut: only a cap of hair
-			if hs in [2, 3, 7]:
-				_r(img, hx + (0 if hs == 3 else 2), head_top + 1, HW / 2, 1, hair)
-			if hs in [4, 5]:
-				_r(img, hx - 1, head_top, 1, HH + (4 if hs == 4 else 1), hair.darkened(0.1))
-				_r(img, hx + HW, head_top, 1, HH + (4 if hs == 4 else 1), hair.darkened(0.2))
-			if hs == 6:
-				_r(img, hx, head_top - 1, HW, 2, skin)
-				_r(img, cx - 1, head_top - 4, 2, 5, hair)
-			if hs == 7:
-				for k in 4:
-					_px(img, hx + k * 2, head_top - 2, hair.lightened(0.15))
-			if hs == 8:
-				_r(img, cx - 2, head_top - 4, 4, 2, hair.darkened(0.15))
+			_hair(img, hs, "f", hx, head_top, hair, skin)
 		match int(l["headgear"]):
 			1:
 				_r(img, hx - 1, ey - 1, 1, 3, Color(0.25, 0.25, 0.3))
@@ -337,6 +314,9 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 			3:
 				_r(img, cx - 3, ey, 2, 1, Color(0.8, 0.9, 1.0, 0.8))
 				_r(img, cx + 1, ey, 2, 1, Color(0.8, 0.9, 1.0, 0.8))
+			4:   # package 56: the eye patch (Dan) – over the right eye, its strap across the head
+				_r(img, hx, ey - 2, HW, 1, Color(0.12, 0.11, 0.1))
+				_r(img, cx - 2, ey - 1, 2, 2, Color(0.06, 0.06, 0.07))
 		if int(l["implant"]) == 1:
 			_px(img, cx + 1, ey, Color(1.0, 0.25, 0.25))
 	# 0.7.51.2: the helmet – outside, where it is needed (0.7.51.10: or always, as the pilot wants it); its kind by the
@@ -1135,3 +1115,78 @@ static func _outline(img: Image) -> void:
 				if q.x >= 0 and q.y >= 0 and q.x < W and q.y < H and src.get_pixel(q.x, q.y).a > 0.5:
 					img.set_pixel(x, y, OUTLINE)
 					break
+
+
+## Package 56 (Luz): the hair on foot, drawn pixel by pixel for each style and view – "f" from the front, "s" from the
+## side (facing left; the face at the left), "b" from behind, "s2" the side seen when facing right (only where the
+## two sides differ: the sidecut). Each map is 9 columns (the head's 7 and one either side) and starts 4 rows above
+## the head. "#" hair, "+" its light, "-" its shade, "b" a shaved stubble (hair over skin), "." nothing.
+const HAIR_MAPS := {
+	1: {   # buzz cut
+		"f": ["", "", "", "..bbbbb..", ".bbbbbbb.", ".b.....b."],
+		"s": ["", "", "", "..bbbbb..", ".bbbbbbb.", "...bbbbb.", ".....bb.."],
+		"b": ["", "", "", "..bbbbb..", ".bbbbbbb.", ".bbbbbbb.", ".bbbbbbb.", "..bbbbb.."]},
+	2: {   # short
+		"f": ["", "", "..-###-..", ".-#++##-.", "-##+####-", ".##+###-.", ".#.##..#.", ".#.....#."],
+		"s": ["", "", "..-##-...", ".-#++##-.", ".#+####-.", "..#####-.", "....###-.", ".....##.."],
+		"b": ["", "", "..-###-..", ".-#++##-.", ".#+####-.", ".#######.", ".##-####.", ".-#####-.", "..-###-.."]},
+	3: {   # side part
+		"f": ["", "", "...###-..", "..#++##-.", ".#++####-", ".####-##-", ".###...#.", ".#.....#."],
+		"s": ["", "", "..-##-...", ".-#++##-.", "-#+####-.", ".#.####-.", "....###-.", ".....##.."],
+		"b": ["", "", "..-###-..", ".-#++##-.", ".#+####-.", ".#######.", ".###-###.", ".-#####-.", "..-###-.."]},
+	4: {   # long
+		"f": ["", "", "..-###-..", ".-#++##-.", "-##++###-", "-###-###-", "##.....##", "##.....##", "#-.....-#", "#-.....-#",
+			"##.....##", "-#.....#-", "-#.....#-", ".-.....-."],
+		"s": ["", "", "..-##-...", ".-#++##-.", ".#+#####-", "..######-", "....####-", ".....###-", ".....####", ".....####",
+			".....###-", ".....###-", "......##-", "......-#."],
+		"b": ["", "", "..-###-..", ".-#++##-.", "-##+####-", "-#######-", "-###-###-", "-#######-", "-##-####-", "-#######-",
+			"-###-##--", ".-#####-.", ".-##-##-.", "..-###-.."]},
+	5: {   # ponytail
+		"f": ["", "", "...---...", "..#++##..", ".##+###-.", ".##...##.", ".#.....#."],
+		"s": ["", "", "", ".-#++#-..", ".#+####-.", "..#####-#", "....###-#", ".....##.#", "........#", "........-"],
+		"b": ["", "", "", ".-#++##-.", ".#+####-.", ".###-##-.", ".#######.", "..-#+#-..", "...#+#...", "...###...",
+			"...-#-...", "....#...."]},
+	6: {   # mohawk
+		"f": ["....#....", "...#+#...", "...#+#...", "..b#+#b..", ".bb#+#bb.", ".b..#..b."],
+		"s": ["...-#-...", "..-#+#-..", ".-#+##-..", ".bb#+#bb.", ".bbbbbbb.", "...bbbb.."],
+		"b": ["....#....", "...#+#...", "...#+#...", ".bb#+#bb.", ".bb#+#bb.", ".bb###bb.", ".bbb#bbb.", ".bbbbbbb.", "..bbbbb.."]},
+	7: {   # curls
+		"f": ["", "..-#-#-..", ".-#+#+#-.", "-#+#+#+#-", "#+#-#-#+#", "##+#-#+##", "#-.....-#", "-#.....#-", ".-.....-."],
+		"s": ["", "..-#-#-..", ".-#+#+#-.", "-#+#+#+#-", "-#-#+#+#-", "..#+#-##-", "....#+#-.", ".....#-.."],
+		"b": ["", "..-#-#-..", ".-#+#+#-.", "-#+#+#+#-", "#+#-#-#+#", "##+#+#+##", "#-#+#-#-#", "-#+#+#+#-", ".-#-#-#-."]},
+	8: {   # bun
+		"f": ["...-#-...", "...#+#...", "...-#-...", "..-###-..", ".-#++##-.", ".##...##.", ".#.....#."],
+		"s": ["", "......-#-", "..-##-#+#", ".-#++##-.", ".#+####-.", "..#####..", "....###.."],
+		"b": ["...-#-...", "...#+#...", "...-#-...", ".-#++##-.", ".#+####-.", ".#######.", ".###-###.", ".-#####-.", "..-###-.."]},
+	9: {   # sidecut (Luz): the left side shaved short, the right side long to the chest, swept over
+		"f": ["", "", ".-###-...", "-#++##-..", "##++###b.", "###-#.bb.", "##.....b.", "##.......", "#-.......", "##.......",
+			"##.......", "#-.......", "##.......", "-#.......", ".-......."],
+		"s": ["", "", "..-##-...", ".-#++#-..", ".#+##bbb.", "..#bbbbb.", "....bbb.."],
+		"s2": ["", "", "..-##-...", ".-#++##-.", "-#+#####-", "-#######-", "-#..####-", "##...###.", "#-...###.", "##....##.",
+			"#-....#..", "##.......", "-#......."],
+		"b": ["", "", "..-###-..", ".-#++##-.", ".bb+####-", ".bb#####-", ".bbb####-", ".bbb####-", "..bb####-", "......###",
+			"......##-", "......###", "......##-", ".......#-"]},
+}
+
+
+static func _hair(img: Image, hs: int, view: String, hx: int, head_top: int, hair: Color, skin: Color) -> void:
+	var maps: Dictionary = HAIR_MAPS.get(hs, {})
+	var rows: Array = maps.get(view, maps.get("s", [])) if view == "s2" else maps.get(view, [])
+	var light := hair.lightened(0.24)
+	var shade := hair.darkened(0.28)
+	var stub := hair.lerp(skin, 0.55)
+	for r in rows.size():
+		var row := String(rows[r])
+		for c in row.length():
+			var ch := row[c]
+			if ch == ".":
+				continue
+			var col: Color = hair
+			match ch:
+				"+":
+					col = light
+				"-":
+					col = shade
+				"b":
+					col = stub
+			_px(img, hx - 1 + c, head_top - 4 + r, col)

@@ -156,6 +156,8 @@ SOUNDS = {
     "buy": lambda: mix(tone(0.12, 1568, wave_="square", vol=0.25, r=0.05), tone(0.3, 2093, wave_="sine", vol=0.4, r=0.25), at=[0, 0.08]),
     "sell": lambda: mix(tone(0.12, 1175, wave_="square", vol=0.25, r=0.05), tone(0.3, 1568, wave_="sine", vol=0.4, r=0.25), at=[0, 0.08]),
     "mission_complete": lambda: mix(*[tone(0.35, f, wave_="tri", vol=0.4, r=0.2) for f in (523, 659, 784, 1047)], at=[0, 0.12, 0.24, 0.36]),
+    # package 56: the soft tick of a text box typing its line (one every couple of letters)
+    "ui_type": lambda: mix(tone(0.035, 1900, 1500, wave_="sine", vol=0.3, a=0.001, r=0.03, curve=2), noise(0.02, 0.08, 0.35, a=0.0, r=0.018, curve=2)),
     "notify": lambda: mix(tone(0.3, 1319, wave_="sine", vol=0.4, r=0.25, curve=2), tone(0.25, 1976, wave_="sine", vol=0.15, r=0.2, curve=2)),
     "warn": lambda: mix(tone(0.15, 1047, wave_="square", vol=0.25, r=0.08), tone(0.2, 1047, wave_="square", vol=0.25, r=0.12), at=[0, 0.18]),
     "alarm_hull": lambda: loopify(mix(tone(0.55, 330, 300, "saw", 0.35, a=0.02, r=0.2), tone(0.55, 330, 300, "saw", 0.35, a=0.02, r=0.2), at=[0, 0.55]), 0.05),
