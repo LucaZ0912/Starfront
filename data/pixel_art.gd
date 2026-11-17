@@ -59,6 +59,14 @@ const SHIPS := {
 		"edhhhc.",
 		"edhhhCc",
 	],
+	# package 56: Dan's training drone – the drone grown sturdier in his rust, a KHI hazard stripe, a shield
+	# emitter (blue), the laser on the centre line and the mining laser's two prongs (orange tips)
+	"dan_drone": [
+		"....SS........",
+		"..ddhhd...gzz.",
+		"eddhhhhhhhgg..",
+		"edhYxYxhhaahww",
+	],
 	# 0.4.25.40: Axiom's cloak drone – graphite with a cyan light line and a white leading edge
 	"drone_cloak": [
 		"...56..",

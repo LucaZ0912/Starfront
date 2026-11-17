@@ -104,12 +104,16 @@ func set_speaker(tex: Texture2D, who: String, sub: String, col: Color) -> void:
 		_frame.add_theme_stylebox_override("panel", sb)
 
 
-## Says a line; options: [[label, Callable], …] – your possible answers.
-func say(text: String, options: Array) -> void:
+var _cont := Callable()                 # package 56 (Luz): a line without answers – a press (✕, click, E) goes on
+
+
+## Says a line; options: [[label, Callable], …] – your possible answers; or none and `cont`, called on a press.
+func say(text: String, options: Array, cont: Callable = Callable()) -> void:
 	_text.text = text
 	_text.visible_characters = 0
 	_shown = 0.0
 	_options = options
+	_cont = cont
 	UI.clear(_choices)
 	for i in options.size():
 		var o: Array = options[i]
@@ -124,14 +128,23 @@ func _process(delta: float) -> void:
 	if _text == null:
 		return
 	if _text.visible_characters >= 0 and _text.visible_characters < _text.text.length():
+		var before := int(_shown)
 		_shown += delta * TYPE_SPEED
 		_text.visible_characters = int(_shown)
+		# package 56 (Luz): the soft tick while someone speaks – as in the intro's scenes
+		for ci in range(before, mini(int(_shown), _text.text.length())):
+			if ci % 2 == 0 and _text.text[ci] != " ":
+				Audio.play("ui_type", "", -10.0, 0.08)
+				break
 	else:
 		_finish()
 
 
 func _finish() -> void:
 	_text.visible_characters = -1
+	if _cont.is_valid():
+		_hint.text = ("%s go on" % Pad.glyph("cross")) if Pad.using_pad else "Click, E or Space – go on"
+		return
 	if not _choice_panel.visible:
 		_choice_panel.visible = true
 		_hint.text = ("%s answer  •  %s leave" % [Pad.glyph("cross"), Pad.glyph("circle")]) if Pad.using_pad else "1–%d answer  •  Esc leave" % _options.size()
@@ -141,8 +154,18 @@ func is_typing() -> bool:
 	return _text.visible_characters >= 0 and _text.visible_characters < _text.text.length()
 
 
-## Picks answer i (0-based) – also for the smoke test.
+func _go_on() -> void:
+	var c := _cont
+	_cont = Callable()
+	c.call()
+
+
+## Picks answer i (0-based) – also for the smoke test (a line without answers: goes on).
 func choose(i: int) -> void:
+	if _cont.is_valid():
+		_finish()
+		_go_on()
+		return
 	if i >= 0 and i < _options.size():
 		_finish()
 		(_options[i][1] as Callable).call()
@@ -151,9 +174,12 @@ func choose(i: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not event.is_pressed() or event.is_echo():
 		return
-	if event.is_action_pressed("interact") or (event is InputEventKey and (event as InputEventKey).keycode == KEY_SPACE):
+	if event.is_action_pressed("interact") or (event is InputEventKey and (event as InputEventKey).keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]):
 		get_viewport().set_input_as_handled()
-		_finish()
+		if _cont.is_valid() and not is_typing():
+			_go_on()
+		else:
+			_finish()
 		return
 	if event is InputEventKey:
 		var k := (event as InputEventKey).keycode
@@ -162,10 +188,25 @@ func _unhandled_input(event: InputEvent) -> void:
 			choose(int(k - KEY_1))
 
 
+## Package 56: a click goes on (a line without answers) – or shows the whole line at once.
+func _input(event: InputEvent) -> void:
+	if not visible or not _cont.is_valid():
+		return
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		if is_typing():
+			_finish()
+		else:
+			_go_on()
+
+
 ## Package 80: the controller – ✕ while the words come shows them at once; then the answers by the menus' rules.
 func pad_button(b: String, pressed: bool) -> bool:
 	if b == "cross" and pressed and is_typing():
 		_finish()
+		return true
+	if b == "cross" and pressed and _cont.is_valid():
+		_go_on()                                      # package 56: a line without answers – on
 		return true
 	return false
 

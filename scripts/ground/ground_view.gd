@@ -634,6 +634,8 @@ const HANGAR_ART := 3.5                 # art px per pixel of the ship's picture
 func _ship_tex() -> Texture2D:
 	if level in ["landing", "settlement"] and _lander:
 		return FlightScene.lander_texture()
+	if String(story_mode.get("ship_art", "")) != "":
+		return PixelArt.rust_texture(String(story_mode["ship_art"]))       # package 56: Old Betty in Dan's hangar
 	var f := GameState.active()
 	if f == null:
 		return PixelArt.ship_texture("dragonfly", "player")
@@ -1564,6 +1566,7 @@ func _story_map() -> void:
 		return
 	if bool(story_mode.get("quiet", false)):
 		map.people = map.people.filter(func(p): return String(p.get("role", "")) == "bartender" and bool(story_mode.get("keep_bartender", false)))
+		map.zones = map.zones.filter(func(z): return String(z.get("kind", "")) != "crew")      # nobody looking for a post
 	var lv: Dictionary = (story_mode.get("levels", {}) as Dictionary).get(level, {})
 	var bx := int((lv.get("bed", [-99]) as Array)[0])
 	for o in map.objects:
@@ -1573,17 +1576,29 @@ func _story_map() -> void:
 			o["awake"] = bool(lv.get("awake", false))
 		elif String(o.get("kind", "")) == "med_bed_occ" and bool(story_mode.get("quiet", false)):
 			o["kind"] = "med_bed"                         # the other beds empty – nobody else here
+	if String(story_mode.get("ship_title", "")) != "":
+		for zs in map.zones:
+			if String(zs.get("id", "")) == "ship":
+				zs["title"] = String(story_mode["ship_title"])
 	for sp in lv.get("people", []):
 		var who := String(sp["who"])
-		var at: Vector2 = (sp["pos"] as Vector2) * GroundMap.TILE
+		var at: Vector2 = (sp.get("pos", Vector2.ZERO) as Vector2) * GroundMap.TILE
+		if sp.has("at_ship"):                                       # package 56: beside the stairs up to the ship
+			for zs2 in map.zones:
+				if String(zs2.get("id", "")) == "ship":
+					at = (zs2["rect"] as Rect2).get_center() + (sp["at_ship"] as Vector2) * GroundMap.TILE
 		map.people.append({"pos": at, "dir": int(sp.get("dir", 0)), "role": "keeper",
 			"look": StoryS.look_of(who), "story": who, "marker": String(sp.get("marker", ""))})
-		if String(sp.get("marker", "")) != "":
+		if String(sp.get("marker", "")) != "" or bool(sp.get("talk", false)):         # "talk": to speak to, no marker
 			var nm := String((StoryS.Data.CHARACTERS.get(who, {}) as Dictionary).get("name", who))
 			map.zones.append({"rect": Rect2(at - Vector2(26, 22), Vector2(52, 44)), "kind": "story", "id": who, "title": nm,
 				"col": Color(1.0, 0.82, 0.35), "sign": Vector2(-100, -100)})
 	if lv.has("spawn"):
 		map.spawn = (lv["spawn"] as Vector2) * GroundMap.TILE
+	if lv.has("spawn_ship"):                                        # package 56: beside the stairs up to the ship
+		for zs3 in map.zones:
+			if String(zs3.get("id", "")) == "ship":
+				map.spawn = (zs3["rect"] as Rect2).get_center() + (lv["spawn_ship"] as Vector2) * GroundMap.TILE
 
 
 ## 0.7.51.4: where you wake – inside the clinic, by its beds (INF: no clinic here).
@@ -4352,6 +4367,9 @@ func use(instant: bool = false) -> bool:
 			_open_lift_menu(zone)
 			return true
 		"exit":
+			if String(story_mode.get("ship_talk", "")) != "" and String(zone.get("id", "")) == "ship":
+				story_talk.emit(String(story_mode["ship_talk"]))             # package 56: the story's ship – Old Betty
+				return true
 			if _hangar_stale():
 				_say_toast("The %s is stored here now – your active ship stands in %s. Take the lift." % [_stored_name(), _active_hangar()])
 				return false
@@ -4562,19 +4580,22 @@ func _open_lift_menu(z: Dictionary) -> void:
 	if is_city() and not is_cloud() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
 		lvls.append(["maint", "%d.  Maintenance level – the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
 	var only := String(story_mode.get("lift_only", ""))
+	var onlys := only.split(",", false)
 	if only != "":
-		# package 56 (Luz): in the story only one level opens – the rest greyed out
-		lvls = [["hangar", "1.  Hangar"], ["commercial", "2.  " + String(story_mode.get("lift_label", "Bar"))], ["clinic", "3.  Infirmary"]]
+		# package 56 (Luz): in the story only these levels open – the rest greyed out
+		var lab: Dictionary = story_mode.get("lift_labels", {})
+		lvls = [["hangar", "1.  " + String(lab.get("hangar", "Hangar"))], ["commercial", "2.  " + String(story_mode.get("lift_label", lab.get("commercial", "Bar")))],
+			["clinic", "3.  " + String(lab.get("clinic", "Infirmary"))]]
 	var keys: Array = []
 	for lv in lvls:
-		if only != "" and lv[0] != only:
+		if only != "" and not String(lv[0]) in onlys:
 			keys.append(func(): pass)                                  # package 56: greyed out – no key opens it
 		else:
 			keys.append(func(): _choose_level(String(lv[0])))
 		var here: bool = lv[0] == level and (lv[0] != "hangar" or not _hangar_stale()) and (lv[0] != "cstation" or rail_stop == 0)
 		var b := UI.button(String(lv[1]) + ("   (you are here)" if here else ""), func(): _choose_level(String(lv[0])))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.disabled = here or (only != "" and lv[0] != only)
+		b.disabled = here or (only != "" and not String(lv[0]) in onlys)
 		v.add_child(b)
 	v.add_child(UI.button("Cancel [Esc]", _close_lift_menu))
 	_lift_menu = c

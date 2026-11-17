@@ -4,7 +4,8 @@ extends RefCounted
 ## their answers (which set story flags), the tips and the secrets. The story itself comes with packages 56–59; for
 ## now only a test mission, started from the debug menu.
 ##
-## A mission: {title, kind: "story" | "side", chapter, desc, debug_only, steps: [step, …]}
+## A mission: {title, kind: "story" | "side", chapter, desc, debug_only, lessons, steps: [step, …]} – "lessons": the
+## journal keeps every step's text, also the ones done (the flight training).
 ## A step: {id, title, text, goals: [goal, …], on_start: [action, …], on_done: [action, …]}
 ## A goal: {id, kind, label, …} – kinds:
 ##   "dock"   at a station: "target" (an object id, "@target" the step's target, "" any)
@@ -15,7 +16,9 @@ extends RefCounted
 ##   "flag"   story flag "flag" set
 ## An action: {do: "dialogue" (id) | "radio" (who, text) | "tip" (id) | "flag" (name, value) | "credits" (n) |
 ##   "secret" (id) | "target" ("nearest_station")}
-## Text may name keys: {key:action_id} – shown as the key (or the controller's button) bound to it.
+## Text may name keys: {key:action_id} – shown as the key (or the controller's button) bound to it; {move}, {zoom},
+## {views} and {journal} say how to fly, zoom, change the view and open the journal – with the keys or the controller,
+## whichever is in use. A line without answers goes on with a press – to the next line or to its "next" (-1: the end).
 
 ## Who speaks: name, what they are, the colour of their frame, the look of their portrait (PilotArt.random_look with
 ## this seed, then the fields given).
@@ -49,7 +52,32 @@ const DIALOGUES := {
 	]},
 	"intro_doc": {"who": "doc", "lines": [
 		{"text": "Careful! Yes – just like that. That looks good already. You should be able to move freely around the station. But take it easy for now, okay?",
-			"answers": [["\"Thanks for patching me up, Doc.\"", -1, []]]},
+			"answers": [["\"Thanks for patching me up, Doc.\"", 1, []]]},
+		{"text": "No problem – that's my job."},
+	]},
+	"intro_doc_again": {"who": "doc", "lines": [
+		{"text": "Oh? Anything else? Dan's waiting up in the bar. Just take the turbolift."},
+	]},
+	# package 56 (Luz): Dan in the bar while the flight training waits – what you can ask him
+	"dan_help": {"who": "dan", "lines": [
+		{"text": "Can I help you with anything else?",
+			"answers": [["\"What is this place again?\"", 1, []], ["\"What about my ship?\"", 3, []], ["\"Where was I going again?\"", 4, []],
+				["\"Pool?\"", 5, []], ["\"That's all, thanks.\"", -1, []]]},
+		{"text": "This is Dan's Dusty Duty Store! My very own wreck-breaking business, right here in Beyond!",
+			"answers": [["\"Beyond?\"", 2, []], ["\"Something else…\"", 0, []]]},
+		{"text": "Beyond is the beating heart of a tiny little cluster outside the real Cluster. I'll tell you more once we've finished your training.", "next": 0},
+		{"text": "Oh, yeah… I'm sorry, but she's done for. Everything on her is broken, and the rest is so old I can barely work out how that technology ever ran. I'll get rid of the wreck for you. Free of charge, of course!", "next": 0},
+		{"text": "Just down to the hangar. Take the turbolift – you can't miss it.", "next": 0},
+		{"text": "Sure, go play a round. Some folks are keen to bet their credits on it, too – but you'll have to earn a few first, I reckon.", "next": 0},
+	]},
+	# package 56, sequence 5 (Luz): the flight training with one of Dan's drones
+	"tut_start": {"who": "dan", "lines": [
+		{"text": "Ready? Then hop in – Betty's warmed up.",
+			"answers": [["Start the flight training", -1, ["tut_go", true]], ["Not yet", -1, []]]},
+	]},
+	"tut_hangar_back": {"who": "dan", "lines": [
+		{"text": "There are a few more things I need to talk to you about."},
+		{"text": "Come to the bar when you're ready, yeah?"},
 	]},
 	"intro_dan_bar": {"who": "dan", "lines": [
 		{"text": "Ah – you're looking fit again!",
@@ -63,8 +91,10 @@ const DIALOGUES := {
 		{"text": "It's 12,900 HE. I think a hyperdrive failure threw you almost three hundred years into the future."},
 		{"who": "you", "text": "…"},
 		{"text": "Okay – that's a lot to take in. How about we take your mind off it? I had a look at your cockpit. Seems not that much has changed – but your pilot licence expired a while ago. Want to brush up on the basics?",
-			"answers": [["\"Yes, that'd be good.\"  (flight tutorial)", -1, ["flight_tutorial", true], "Yes, that'd be good – show me what's new."],
+			"answers": [["\"Yes, that'd be good.\"  (flight tutorial)", 9, ["flight_tutorial", true], "Yes, that'd be good – show me what's new."],
 				["\"No, I'll manage.\"  (skip the tutorial)", -1, ["flight_tutorial", false], "No, I'll manage. Flying is flying."]]},
+		{"text": "Alright – I've still got a few remote-controlled drones. We'll start with those."},
+		{"text": "Come to my hangar whenever you're ready. No rush, though – have a drink, or play a round of pool."},
 	]},
 	"test_hello": {"who": "dan", "lines": [
 		{"text": "So the debug menu sent you. Good – this is a test of the story's framework: dialogues, radio calls, tips, goals and the journal.",
@@ -90,6 +120,43 @@ const SECRETS := {
 
 ## The missions.
 const MISSIONS := {
+	# package 56, sequence 5 (Luz): the flight training – flown with one of Dan's drones from Old Betty in a wreck field;
+	# the flags are set by scripts/ground/intro_five.gd (it watches the drone), the targets too
+	"flight_training": {"title": "Flight training", "kind": "story", "lessons": true, "chapter": "Prologue · Dan's drones",
+		"desc": "Dan lends you one of his remote drones and takes you out to a wreck field in Old Betty to brush up on the basics. Every lesson stays here to read again.",
+		"steps": [
+			{"id": "journal", "title": "The journal", "text": "Dan's calls, your missions and every lesson are kept in the journal – {journal}. The mission you track shows its next goals over your ship's panel; a gold diamond marks its target.",
+				"goals": [{"id": "open", "kind": "flag", "flag": "tut_journal", "label": "open the journal"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "Before we start – everything I tell you goes into your journal. Open it: {journal}. Have a look, then close it again."}]},
+			{"id": "fly", "title": "Flying", "text": "Fly with {move}. The drone flies the way you point it and stops when you let go. Take a lap round Old Betty.",
+				"goals": [{"id": "lap", "kind": "flag", "flag": "tut_lap", "label": "a lap round Old Betty"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "Good. Now – she's all yours. Fly with {move}. Take a lap round Betty, get a feel for her."}]},
+			{"id": "views", "title": "Zoom and the views", "text": "Zoom with {zoom} – each step is one of the views. Combat: close – for fighting and mining. Recon: as far as your sensors reach. Orbit: the moons round a planet. System: the whole system as a map – the ship doesn't fly while it's open. {views}",
+				"goals": [{"id": "recon", "kind": "flag", "flag": "tut_recon", "label": "Recon"}, {"id": "system", "kind": "flag", "flag": "tut_system", "label": "System map"},
+					{"id": "combat", "kind": "flag", "flag": "tut_combat", "label": "back to Combat"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "Nice flying. Now the views – zoom out with {zoom}, all the way to the System map, then back down to Combat."}],
+				"on_done": [{"do": "radio", "who": "dan", "text": "One more thing: warp and the gates are locked. The drone only listens to Betty, and her signal doesn't reach that far."}]},
+			{"id": "mine", "title": "Mining", "text": "Pick a piece of scrap: {key:sel_target} steps through the targets in sensor range – or click one. Lock it with {key:cmd_lock}, then switch on the mining laser – it sits in fire group 5: press {key:module_5}. Stay close – the laser reaches 320 km.",
+				"goals": [{"id": "mined", "kind": "flag", "flag": "tut_mined", "label": "fill the hold with scrap"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "Normally you'd have to put your modules into fire groups yourself – you'll find that in the Ship menu, under Modules. I've done it for you already: the mining laser is on {key:module_5}, and if you need to defend yourself, the guns are on {key:module_1}."},
+					{"do": "radio", "who": "dan", "text": "See the scrap I marked? Cut me a load of it. And keep your eyes open – pirates sometimes hang around here."}]},
+			{"id": "unload", "title": "Unloading", "text": "Fly back to Old Betty – close to her, the drone's hold empties into hers.",
+				"goals": [{"id": "betty", "kind": "near", "target": "@target", "km": 600.0, "label": "back to Old Betty"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "Hold's full? Good. Bring it to Betty – get close and I'll take it off you."}]},
+			{"id": "far", "title": "Another load", "text": "Dan sent you to a wreck colossus further out for the next load – its plating is worth more.",
+				"goals": [{"id": "wreck", "kind": "flag", "flag": "tut_ambush", "label": "fly to the wreck colossus"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "Nice haul. Now the big one out there – that colossus. Its plating's worth a lot more."}]},
+			{"id": "lock", "title": "Pirates!", "text": "Two pirates came out from behind the wreck. Lock one: {key:sel_hostile} picks the next hostile ship, {key:cmd_lock} locks it.",
+				"goals": [{"id": "locked", "kind": "flag", "flag": "tut_locked", "label": "lock a pirate"}]},
+			{"id": "fire", "title": "Fight back", "text": "Your laser sits in fire group 1 – press {key:module_1} to fire at the locked target. Keep moving: a moving target is harder to hit. The shield takes the first hits and comes back while you aren't hit.",
+				"goals": [{"id": "hit", "kind": "flag", "flag": "tut_hit", "label": "hit a pirate"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "Locked on. Now fire – {key:module_1}! And keep moving!"}]},
+			{"id": "finish", "title": "Drive them off", "text": "Shoot one of them down – the other will run.",
+				"goals": [{"id": "over", "kind": "flag", "flag": "tut_fight_over", "label": "drive the pirates off"}],
+				"on_start": [{"do": "radio", "who": "dan", "text": "That's it – keep at it! Bring one down and the other will think twice."}]},
+			{"id": "home", "title": "Home", "text": "Dan takes you back to his station in Old Betty. Everything else is explained in the codex – in the Pilot menu.",
+				"goals": [{"id": "home", "kind": "flag", "flag": "tut_home", "label": "back at the station"}]},
+		]},
 	"debug_test": {"title": "Framework test", "kind": "story", "chapter": "Debug · package 55", "debug_only": true,
 		"desc": "A short test of the story's framework: a dialogue, a radio call, a tip, a goal with its marker, docking. Started from the debug menu.",
 		"steps": [

@@ -454,6 +454,12 @@ func _build_world() -> void:
 		_cmd({"type": "debug_special", "special": "beyond"})
 		var mn4 = get_tree().current_scene
 		mn4.get_tree().create_timer(1.0).timeout.connect(func(): mn4._start_intro_four())))
+	r56.add_child(UI.button("Play sequence 5 (the flight training)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		GameState.story.flags["flight_tutorial"] = true
+		var mn5 = get_tree().current_scene
+		mn5.get_tree().create_timer(1.0).timeout.connect(func(): mn5._start_intro_five("hangar"))))
 	r56.add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()

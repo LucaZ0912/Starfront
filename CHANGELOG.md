@@ -3,6 +3,35 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.3 – 2026-11-17
+
+**Package 56, part 3 – sequence 5: the flight training (Luz).** Chosen in the bar, it is flown with one of Dan's drones.
+- **Dan's station before it:** Dan's two lines in the bar (drones; come to the hangar – have a drink, a round of pool);
+  Dan at the bar's window, to be asked a few things (the store, Beyond, your ship, where to go, pool); the lift to the
+  bar and the hangar; Old Betty in the bay, "Start the flight training?" at her stairs. The medic answers your thanks
+  and can be asked again. Nobody for hire in the story's bar.
+- **Out:** you ride in Old Betty as in your own ship – the camera, the radar, your icon, the warp tunnel and its sound;
+  she aligns and warps to the nearest wreck field; the drone rolls down her flight deck like her own drones.
+- **The drone:** Dan's rust-brown remote drone (new art, a hazard stripe, a shield, two lasers, a mining laser, about
+  600 km/s, sturdier than a drone); your own ship waits in Dan's hangar meanwhile.
+- **The lessons** (story mission "Flight training", every lesson kept in the journal; Dan's radio calls name the keys
+  or the controller's buttons, whichever is in use): the journal, a lap round Betty, zoom and the views (one view after
+  the other, Dan says what each is for), the fire groups, mining the marked scrap, unloading at Betty, a load from a
+  colossus further out. Warp and the gates locked; too far from Betty – a warning, then the drone is lost and a new one
+  comes out. No pirates of their own meanwhile.
+- **The ambush:** in the Combat view the camera swings to two pirates coming out from behind the colossus; lock, fire,
+  drive them off – at first they barely hurt you. One down: the other runs. The drone shot down: the camera back to
+  Betty, the pirates leave. Dan explains the pirates, "Let's pack up" – black, back in the hangar; Dan wants a word in
+  the bar – speaking to him there begins sequence 6 (with the next part).
+- **Dialogues:** no "(go on)" any more – a line without answers goes on with ✕, a click, E or Space; the soft typing tick
+  while someone speaks.
+- **New game:** no credits at the start; the name preset is "Spacefarer".
+- **Controller:** while the window wheel or a menu is open the stick sets no new course (and only again once let go);
+  orders given before fly on.
+- **Hull alarm:** much quieter, and only in a fight.
+- The gold marker also shows a mission step's own target. Saved in the middle of the flight, it starts again at Betty's
+  stairs. Debug (F12 → World → Intro): play sequence 5. Smoke group `intro56e` (also in the full run).
+
 ## alpha 0.8.56.2 – 2026-11-17
 
 **Package 56, part 2 – sequence 4: Dan's station (Luz).** After the med-scanner the game begins in Beyond, docked at

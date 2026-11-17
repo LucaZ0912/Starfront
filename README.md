@@ -376,6 +376,14 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.56.3 (package 56, part 3): `scripts/ground/intro_five.gd` (sequence 5: phases `deck`, `ask`, `out`, `launch`,
+  `lessons`, `ambush`, `fight`, `debrief`/`down`, `home_*`, `back`; static `tidy()` gives the drone back); story mission
+  `flight_training` (`lessons`: done steps keep their text), dialogues `tut_start`, `dan_help`, `intro_doc_again`,
+  `tut_hangar_back`, a line's `next`; Story.keys `{move}`, `{zoom}`, `{views}`, `{journal}`; hull and preset
+  `dan_drone` / `tut_dan_drone`; Ship `story_spare` + signal `spared`, `align_scale`; SystemView `story_cam`,
+  `story_follow`, `story_leash`, `story_zoom`, the pad latch; GroundView story_mode `lift_only` (a list), `lift_labels`,
+  `ship_art`, `ship_talk`, `ship_title`, people `at_ship`/`talk`, `spawn_ship`, no crew zones when quiet; DialogueView
+  `say(text, [], cont)`; PixelArt `use_rust`; smoke group `intro56e`.
 - 0.8.56.2 (package 56, part 2): `scripts/ground/intro_four.gd` (sequence 4: phases `bed1` … `talk4`, `begin`,
   `_skip_to_walk`); GroundView `story_mode` (`quiet`, `hide_pilot`, `lift_only`, `levels` with `bed`, `awake`,
   `people`, `spawn`), `story_people`, `story_cam`, signal `story_talk`, zone kind `story`; `main._start_intro_four`;
@@ -604,6 +612,8 @@ Slanted, cosy top-down view since 0.7.49.2.
   creator as Dan's medical scanner. On their own timing; hold Esc (Options) to skip.
 - Sequence 4 (Dan's station): the infirmary – asleep, "a few weeks later" awake, "a few days later" on your feet; the lift
   only to the bar, Dan at the window; the talk ends with the choice of the flight tutorial.
+- Sequence 5 (the flight training): in Old Betty to a wreck field, flying Dan's remote drone – the journal, flying, the
+  views, fire groups, mining, unloading, an ambush by two pirates; every lesson kept in the journal.
 - Looks: hairstyles drawn per view on foot, the sidecut, make-up (lipstick, blush, eye make-up), the eye patch; Visage
   Clinics in the scanner's style.
 - Main menu: one of four scenes at random. Debug: F12 → World → Intro (package 56).

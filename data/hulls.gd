@@ -63,6 +63,16 @@ const HULLS := {
 		"shape": "drone", "length": 8,
 		"desc": "Axiom drone that cloaks together with its ship.",
 	},
+	# package 56 (Luz): Dan's training drone – the drone grown sturdier, flown by remote from Old Betty in the flight
+	# training (sequence 5); a shield, two lasers, a mining laser; no hyperdrive, no drones of its own; never sold
+	"dan_drone": {
+		"name": "Training Drone", "class": "Remote Drone", "size": 1, "price": 0, "buyable": false, "drone_only": true,
+		"structure": 420, "mass": 240, "signature": 14, "cargo": 6,
+		"slots": {"weapon": 2, "tool": 1, "optional": 1},
+		"slot_sizes": {"weapon": [1, 1], "tool": [1], "optional": [1], "hull": 1, "engine": 3, "reactor": 2, "distributor": 2, "tank": 1, "hyperdrive": 1, "sensors": 2, "hangar": 0},
+		"drones": 0, "shape": "drone", "length": 14, "speed_mult": 1.466,          # Luz: about 600 km/s
+		"desc": "One of Dan's remote drones – rust brown, a hazard stripe, sturdier than most.",
+	},
 	"dragonfly": {
 		"maker": "earthworks", "name": "Dragonfly", "class": "Scout Corvette", "size": 1, "price": 9000, "buyable": true,
 		"structure": 350, "mass": 600, "signature": 25, "cargo": 15,

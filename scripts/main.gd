@@ -110,6 +110,12 @@ func _ready() -> void:
 			_on_descended.call_deferred(f.docked_at.substr(5).split("|")[0])      # package 50: still down on a planet
 		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) in ["four", "four_walk"]:
 			_start_intro_four.call_deferred()             # package 56: saved in the middle of sequence 4 – it starts again
+		elif String(GameState.story.flags.get("intro_stage", "")) in ["five", "five_fly"]:
+			if String(GameState.story.flags["intro_stage"]) == "five_fly":
+				load("res://scripts/ground/intro_five.gd").tidy()     # saved in the flight training: the drone back to Dan
+			_start_intro_five.call_deferred("hangar")      # package 56: sequence 5 starts again at Betty's stairs
+		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) == "five_back":
+			_start_intro_five.call_deferred("back")        # Dan waits in the bar
 		elif f != null and f.docked_at != "":
 			open_station.call_deferred()
 
@@ -510,6 +516,27 @@ func _start_intro_four() -> void:
 	i4.main = self
 	add_child(i4)
 	i4.begin()
+
+
+## Package 56: sequence 5 – the flight training (scripts/ground/intro_five.gd); where: "bar", "hangar" or "back".
+func _start_intro_five(where: String = "hangar") -> void:
+	if loading != null and is_instance_valid(loading):
+		get_tree().create_timer(0.3).timeout.connect(_start_intro_five.bind(where))
+		return
+	var f := GameState.active()
+	if f == null or f.docked_at == "":
+		return
+	if ground == null or not is_instance_valid(ground):
+		open_deck()
+	if ground == null:
+		return
+	for n in get_children():
+		if n.get_script() == load("res://scripts/ground/intro_five.gd"):
+			n.queue_free()
+	var i5 = load("res://scripts/ground/intro_five.gd").new()
+	i5.main = self
+	add_child(i5)
+	i5.begin(where)
 
 
 func close_deck(open_window: bool = true) -> void:

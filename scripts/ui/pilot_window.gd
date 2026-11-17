@@ -1423,6 +1423,8 @@ const J_SUBS := [["story", "STORY", Color(1.0, 0.82, 0.35)], ["side", "SIDE MISS
 
 func _journal() -> void:
 	var st = GameState.story
+	if String(st.step_data("flight_training").get("id", "")) == "journal" and not st.flags.has("tut_journal"):
+		st.set_flag.call_deferred("tut_journal")         # package 56: the flight training's first lesson – the journal opened
 	var subs := UI.hbox(6)
 	body.add_child(subs)
 	for js in J_SUBS:
@@ -1541,6 +1543,8 @@ func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> voi
 		var s: Dictionary = steps2[k]
 		if k < cur:
 			right.add_child(UI.label("✓  " + String(s["title"]), 14, Color(0.6, 0.85, 0.65)))
+			if bool(md2.get("lessons", false)):          # package 56: every lesson stays here to read again
+				right.add_child(UI.wrap_label("      " + GameState.story.keys(String(s.get("text", ""))), 13, Color(0.7, 0.75, 0.82), 880))
 		elif k == cur:
 			right.add_child(UI.label("▸  " + String(s["title"]), 15, Color.WHITE))
 			right.add_child(UI.wrap_label("      " + GameState.story.keys(String(s.get("text", ""))), 13, Color(0.75, 0.8, 0.9), 880))

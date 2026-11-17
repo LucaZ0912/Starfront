@@ -246,6 +246,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 		for st0 in Universe.get_layout(current_system)["stations"]:
 			if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
 				home_station = st0
+		credits = 0                                     # package 56 (Luz): out of the Veil with nothing
 	var a := create_from_preset("std_dragonfly", "player")
 	a.ship_name = "Dragonfly »Pathfinder«"
 	a.system_id = current_system

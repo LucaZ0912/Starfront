@@ -92,8 +92,10 @@ func _line(i: int) -> void:
 		var ans: Array = a
 		opts.append([String(ans[0]), func(): _answer(ans)])
 	if opts.is_empty():
-		var nxt := i + 1 if i + 1 < (dd["lines"] as Array).size() else -1     # package 56: on to the next line
-		opts.append(["(go on)", func(): _answer(["", nxt, []])])
+		# package 56: no answers – a press goes on to the next line (or the line's "next"; -1: the end)
+		var nxt := int(ln.get("next", i + 1 if i + 1 < (dd["lines"] as Array).size() else -1))
+		dialogue.say(GameState.story.keys(String(ln["text"])), [], func(): _answer(["", nxt, []]))
+		return
 	dialogue.say(GameState.story.keys(String(ln["text"])), opts)
 
 
@@ -125,7 +127,7 @@ func _answer(ans: Array) -> void:
 		(_dlg["said"] as Array).append(["you", String(ans[3])])
 		_speaker("you")
 		var nxt := int(ans[1])
-		dialogue.say(GameState.story.keys(String(ans[3])), [["(go on)", func(): _answer(["", nxt, []])]])
+		dialogue.say(GameState.story.keys(String(ans[3])), [], func(): _answer(["", nxt, []]))
 		return
 	if String(ans[0]) != "":
 		(_dlg["said"] as Array).append(["you", String(ans[0])])
@@ -275,6 +277,9 @@ func marker_targets() -> Array:
 		var t: String = st.goal_target(st.tracked, g)
 		if t != "" and not out.has(t):
 			out.append(t)
+	var mt := String(m.get("target", ""))
+	if out.is_empty() and mt != "":
+		out.append(mt)                                     # package 56: the step's target, marked (the scrap to cut)
 	return out
 
 
@@ -293,6 +298,10 @@ func _draw_marker() -> void:
 		if v.player != null and is_instance_valid(v.player):
 			dkm = (n as Node2D).position.distance_to(v.player.position)
 		var nm: String = String(n.data.get("name", t)) if "data" in n and n.data is Dictionary else t
+		if n is Ship:
+			nm = (n as Ship).fit.ship_name                    # package 56: Old Betty
+		elif n.has_method("title"):
+			nm = String(n.title())                            # the scrap to cut, the colossus
 		var inside := Rect2(Vector2(30, 30), vs - Vector2(60, 60)).has_point(p)
 		if inside:
 			var pts := PackedVector2Array([p + Vector2(0, -16), p + Vector2(16, 0), p + Vector2(0, 16), p + Vector2(-16, 0), p + Vector2(0, -16)])

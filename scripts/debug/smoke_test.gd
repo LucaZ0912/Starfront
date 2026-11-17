@@ -85,7 +85,7 @@ func _run_only(view: SystemView) -> void:
 		elif argc == 0:
 			await call(fn)
 		else:
-			await call(fn, view)
+			await call(fn, main.view if main.view != null and is_instance_valid(main.view) else view)     # a group before may have built a new one
 	print("[SMOKE] DONE – failures: %d %s" % [failures.size(), str(failures)])
 	get_tree().quit(1 if failures.size() > 0 else 0)
 
@@ -698,6 +698,7 @@ func _process(delta: float) -> void:
 				_intro4_done = true                     # package 56: sequence 4 on Dan's deck (it goes to Beyond – the teleport home follows)
 				_shooting = true
 				await _test_intro56d(view)
+				await _test_intro56e(main.view)          # sequence 4 built a new view (Beyond)
 				_shooting = false
 				timer = 0.0
 				return
@@ -13572,10 +13573,260 @@ func _test_intro56d(_view: SystemView) -> void:
 				g.story_talk.emit("dan")
 	var flow_ok: bool = phases.has("talk1") and phases.has("black1") and phases.has("wake") and phases.has("black2") and phases.has("walk") 		and phases.has("talk4") and String(GameState.story.flags.get("intro_stage", "")) == "five" and bool(GameState.story.flags.get("flight_tutorial", false))
 	var talk_ok: bool = speakers.has("Dan T. Rogue") and speakers.has("Dr. Vesna Kalu") and speakers.has(GameState.pilot_name)
-	check(bed_ok and flow_ok and talk_ok and lift_ok and g.story_mode.is_empty(),
+	for c5 in main.get_children():
+		if c5.get_script() != null and String(c5.get_script().resource_path).ends_with("intro_five.gd"):
+			lift_ok = lift_ok and String(c5.phase) == "deck"          # sequence 5 waits: Dan in the hangar
+			c5.queue_free()
+	check(bed_ok and flow_ok and talk_ok and lift_ok and String(g.story_mode.get("ship_art", "")) == "kanayama",
 		"56: sequence 4 – the pilot asleep in the infirmary of Dan's station, Dan and the medic by the bed; a few weeks later the waking, a few days later on their feet; the lift only to the bar (the rest greyed out), the bar empty, Dan at the window; the talk with the speaker changing and the pilot's own lines, the flight tutorial chosen  [%s]" % [[bed_ok, flow_ok, talk_ok, lift_ok, phases]])
 	GameState.story.flags = keep_flags
 	main.close_deck(false)
+
+
+## Package 56: sequence 5 – the flight training. Dan in the hangar by Old Betty (the lift to the bar and the hangar),
+## the question at the stairs; Betty pulls away, the drone at the wreck field (your ship waits in the hangar); the
+## lessons one after the other (a lap, the views, mining, unloading, the far colossus), warp locked, the leash; the
+## ambush, the fight (lock, hit, one down – the other runs); home: your ship back, the drone gone, Dan in the hangar,
+## then in the bar – speaking to him: sequence 6. The journal's Flight training tab keeps the lessons.
+func _test_intro56e(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep_flags: Dictionary = st.flags.duplicate(true)
+	var keep_missions: Dictionary = st.missions.duplicate(true)
+	var keep_done: Array = st.done.duplicate()
+	var keep_tracked: String = st.tracked
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+		await get_tree().process_frame
+	st.flags["flight_tutorial"] = true
+	var own_uid: int = GameState.active_uid
+	var fleet_n: int = GameState.fleet.size()
+	main._start_intro_five("hangar")
+	var i5 = null
+	for w in 600:
+		await get_tree().process_frame
+		for c in main.get_children():
+			if c.get_script() != null and String(c.get_script().resource_path).ends_with("intro_five.gd") and not c.is_queued_for_deletion():
+				i5 = c
+		if i5 != null:
+			break
+	var g = main.ground
+	var ui = main.story_ui
+	var hangar_ok: bool = i5 != null and g != null and g.level == "hangar" and not g.story_people.has("dan") and g._ship_spr != null 		and g._ship_spr.texture == PixelArt.rust_texture("kanayama") and String(st.flags.get("intro_stage", "")) == "five"
+	g._open_lift_menu({})
+	var btns: Array = []
+	for b2 in g._lift_menu.find_children("*", "Button", true, false):
+		btns.append([String(b2.text), b2.disabled])
+	g._close_lift_menu()
+	hangar_ok = hangar_ok and btns.size() >= 4 and String(btns[0][0]).begins_with("1.  Hangar") and not btns[1][1] and btns[2][1]
+	# the bar: Dan at the window, to be asked a few things; nobody looking for a post
+	g.go_level("commercial", "lift")
+	await get_tree().process_frame
+	var bar_ok: bool = g.story_people.has("dan") and not g.map.zones.any(func(z): return String(z.get("kind", "")) == "crew")
+	g.story_talk.emit("dan")
+	await get_tree().process_frame
+	bar_ok = bar_ok and ui.dialogue != null and String(ui._dlg.get("id", "")) == "dan_help"
+	if ui.dialogue != null:
+		ui.dialogue._finish()
+		ui.dialogue.choose(1)                        # "What about my ship?"
+		ui.dialogue._finish()
+		ui.dialogue.choose(0)                        # (on – back to the question)
+		bar_ok = bar_ok and int(ui._dlg.get("line", -1)) == 0
+		ui.dialogue._finish()
+		ui.dialogue.choose(4)                        # "That's all, thanks."
+	bar_ok = bar_ok and ui.dialogue == null and i5.phase == "deck"
+	g.go_level("hangar", "story")
+	await get_tree().process_frame
+	hangar_ok = hangar_ok and bar_ok
+	# the stairs: "Not yet" first – nothing happens; then "Start"
+	g.story_talk.emit("ship")
+	await get_tree().process_frame
+	var ask_ok: bool = ui.dialogue != null
+	if ui.dialogue != null:
+		ui.dialogue._finish()
+		ui.dialogue.choose(1)
+	for i in 5:
+		await get_tree().process_frame
+	ask_ok = ask_ok and i5.phase == "deck"
+	g.story_talk.emit("ship")
+	await get_tree().process_frame
+	if ui.dialogue != null:
+		ui.dialogue._finish()
+		ui.dialogue.choose(0)
+	var phases := []
+	var betty_out := false
+	for fr in 400:
+		await get_tree().process_frame
+		if phases.is_empty() or phases.back() != i5.phase:
+			phases.append(i5.phase)
+		if i5.phase == "out" and i5._valid(i5.betty):
+			betty_out = true
+		if i5.phase == "out" and i5.t > 1.0:
+			i5._skip()
+		if i5.phase == "lessons":
+			break
+	var v = main.view
+	var p: Ship = v.player
+	var drone_ok: bool = betty_out and i5.phase == "lessons" and p != null and p.fit.hull_id == "dan_drone" and GameState.active_uid != own_uid 		and GameState.get_fit(own_uid) != null and GameState.get_fit(own_uid).docked_at != "" and v.story_leash and p.story_spare 		and st.running("flight_training") and st.step_data("flight_training").get("id", "") == "journal" and i5._valid(i5.betty) and main.ground == null
+	# no pirates of their own: one spawned now is gone again
+	var stray: Ship = v.spawn_npc("pirate_raider_laser", p.position + Vector2(3000, 0), "pirate")
+	for i in 40:
+		await get_tree().process_frame
+	drone_ok = drone_ok and not is_instance_valid(stray)
+	# the first lesson: the journal
+	main.open_journal()
+	for i in 3:
+		await get_tree().process_frame
+	main.pilot_window.close()
+	for i in 3:
+		await get_tree().process_frame
+	drone_ok = drone_ok and st.step_data("flight_training").get("id", "") == "fly"
+	# warp locked
+	var wt: Array = Universe.warp_targets(GameState.current_system)
+	if not wt.is_empty():
+		v.command_target(wt[0], {})
+	var leash_ok: bool = String(p.order.get("type", "")) != "warp"
+	# a lap round Betty
+	var bp: Vector2 = i5.betty.position
+	for k in 26:
+		p.position = bp + Vector2.from_angle(k * TAU / 24.0) * 1500.0
+		await get_tree().process_frame
+	var lap_ok: bool = st.step_data("flight_training").get("id", "") == "views"
+	# the views one after the other – the zoom waits while Dan explains each (jumping from Combat to System is refused)
+	v.set_level(3)
+	await get_tree().process_frame
+	var zoom_ok: bool = v.level <= 1
+	for lv in [1, 2, 3, 2, 1, 0]:
+		for i in 60:
+			ui._radio_q.clear()
+			if ui._radio != null:
+				ui._radio_t = 0.0
+			await get_tree().process_frame
+			if v.story_zoom != "locked":
+				break
+		v.set_level(lv)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		zoom_ok = zoom_ok and v.level == lv
+	await get_tree().process_frame
+	lap_ok = lap_ok and zoom_ok and i5._views_said.size() == 4
+	await get_tree().process_frame
+	var views_ok: bool = st.step_data("flight_training").get("id", "") == "mine" and String(st.missions["flight_training"]["target"]) != "" 		and ui.marker_targets().has(String(st.missions["flight_training"]["target"]))
+	# mining: a full hold
+	p.fit.cargo = {String(i5.field.get("ore", "iron_ore")): 6.0}
+	for i in 3:
+		await get_tree().process_frame
+	var mine_ok: bool = st.step_data("flight_training").get("id", "") == "unload"
+	await get_tree().process_frame
+	mine_ok = mine_ok and String(st.missions["flight_training"]["target"]) == "ship:%d" % i5.betty.fit.uid and v.find_object("ship:%d" % i5.betty.fit.uid) == i5.betty
+	p.position = i5.betty.position + Vector2(300, 0)
+	for i in 3000:
+		await get_tree().process_frame
+		if st.step_data("flight_training").get("id", "") == "far":
+			break
+	for i in 3:
+		await get_tree().process_frame
+	var unload_ok: bool = st.step_data("flight_training").get("id", "") == "far" and p.fit.cargo.is_empty()
+	# the leash: too far – a warning, then a new drone by Betty
+	var warn_at: float = i5.arrival.distance_to(i5.far_col["pos"]) + float(i5.far_col.get("radius", 1000.0)) + i5.WARN_MARGIN
+	var dirx: Vector2 = (i5.betty.position - (i5.far_col["pos"] as Vector2)).normalized()
+	p.position = i5.betty.position + dirx * (warn_at + 500.0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var warned: bool = i5._warned
+	p.position = i5.betty.position + dirx * (warn_at + i5.LOST_MARGIN)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	leash_ok = leash_ok and warned and p.position.distance_to(i5.betty.position) < 900.0
+	# the far colossus: the ambush
+	p.position = (i5.far_col["pos"] as Vector2) + dirx * (float(i5.far_col.get("radius", 1000.0)) + 1500.0)
+	for i in 3:
+		await get_tree().process_frame
+	var amb_ok: bool = i5.phase == "ambush" and i5.pirates.size() == 2 and not v.input_enabled
+	for i in 20:
+		await get_tree().process_frame
+	amb_ok = amb_ok and v.story_cam != Vector2.INF
+	i5._skip()
+	await get_tree().process_frame
+	amb_ok = amb_ok and i5.phase == "fight" and st.step_data("flight_training").get("id", "") == "lock" and v.story_cam == Vector2.INF and v.input_enabled
+	var pr0: Ship = i5.pirates[0]
+	var weak_ok: bool = not pr0.fit.modules.has("weapon_1") and String(pr0.order.get("type", "")) == "attack" and is_equal_approx(p.toughness, i5.SPARE_START)
+	pr0.position = p.position + Vector2(450, 0)              # out from behind the wreck (no radar shadow)
+	p.add_lock(pr0)
+	for i in 3:
+		await get_tree().process_frame
+	var fight_ok: bool = st.step_data("flight_training").get("id", "") == "fire"
+	pr0.last_attacker = p
+	for i in 3:
+		await get_tree().process_frame
+	fight_ok = fight_ok and st.step_data("flight_training").get("id", "") == "finish" and is_equal_approx(p.toughness, i5.SPARE_LATER)
+	# the drone spared: a blow that would kill it leaves it at 1 – the training's own ending takes over (tested: the win)
+	var s0: float = p.fit.structure
+	p.take_damage(99999.0, "kinetic", null)
+	var spare_ok: bool = p.fit.structure >= 1.0 and not p.dying and i5.phase == "down"
+	# (back to the win for the rest of the test)
+	i5._phase("fight")
+	p.visible = true
+	p.fit.structure = s0
+	pr0.take_damage(99999.0, "kinetic", p)
+	for i in 3:
+		await get_tree().process_frame
+	var won_ok: bool = i5.won and i5.phase == "debrief" and st.step_data("flight_training").get("id", "") == "home" 		and (not i5._valid(i5.pirates[1]) or i5.pirates[1].fleeing or String(i5.pirates[1].order.get("type", "")) == "warp")
+	i5._said.clear()
+	ui._radio_q.clear()
+	if ui._radio != null:
+		ui._radio_t = 0.0
+	for i in 3:
+		await get_tree().process_frame
+	p.position = i5.betty.position + Vector2(200, 0)
+	for fr2 in 6000:
+		await get_tree().process_frame
+		if phases.back() != i5.phase:
+			phases.append(i5.phase)
+		if i5.phase == "home_talk":
+			break
+	g = main.ground
+	var home_ok: bool = i5.phase == "home_talk" and GameState.active_uid == own_uid and GameState.fleet.size() == fleet_n 		and not GameState.fleet.any(func(f): return f.hull_id == "dan_drone") and g != null and g.level == "hangar" and g.story_people.has("dan") 		and st.done.has("flight_training") and not st.running("flight_training") and String(st.flags.get("intro_stage", "")) == "five_back"
+	for fr3 in 6000:
+		await get_tree().process_frame
+		if ui.dialogue != null:
+			ui.dialogue._finish()
+			ui.dialogue.choose(0)
+		if i5.phase == "back":
+			break
+	g.go_level("commercial", "lift")
+	for i in 5:
+		await get_tree().process_frame
+	home_ok = home_ok and i5.phase == "back" and g.story_people.has("dan")
+	g.story_talk.emit("dan")
+	await get_tree().process_frame
+	var six_ok: bool = String(st.flags.get("intro_stage", "")) == "six" and g.story_mode.is_empty() and (not is_instance_valid(i5) or i5.is_queued_for_deletion())
+	# the journal: the Flight training tab with every lesson
+	main.open_journal()
+	var pw = main.pilot_window
+	pw.jsub = "story"
+	pw.jsel = "flight_training"
+	pw.rebuild()
+	var texts := ""
+	for l in pw.body.find_children("*", "Label", true, false):
+		texts += String(l.text) + "\n"
+	var journal_ok: bool = texts.contains("Flight training") and texts.contains("The journal") and texts.contains("Mining") and texts.contains("Drive them off") and texts.contains("fire group 5") 		and not texts.contains("FLIGHT TRAINING")
+	pw.jsub = "story"
+	pw.close()
+	check(hangar_ok and ask_ok and drone_ok and lap_ok and views_ok and mine_ok and unload_ok and leash_ok and amb_ok and weak_ok and fight_ok and spare_ok and won_ok and home_ok and six_ok and journal_ok,
+		"56: sequence 5 – the flight training: Old Betty in the hangar, the question at her stairs; Dan in the bar to ask (nobody for hire); the drone at the wreck field (your ship waits), no pirates of its own; the journal first, a lap, the views, mining (the scrap marked), unloading, warp locked, the leash; the ambush, lock, hit, one down – the other runs (the drone spared); home – your ship back, Dan in the hangar, then the bar (sequence 6); the lessons kept in the journal  [%s]" % \
+		[[hangar_ok, ask_ok, drone_ok, lap_ok, views_ok, mine_ok, unload_ok, leash_ok, amb_ok, weak_ok, fight_ok, spare_ok, won_ok, home_ok, six_ok, journal_ok, phases]])
+	st.flags = keep_flags
+	st.missions = keep_missions
+	st.done = keep_done
+	st.tracked = keep_tracked
+	st.changed.emit()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
 
 
 ## Package 56: the intro's first sequence – Earth with her continents, the Expansion's ships whole, the Long Gate,

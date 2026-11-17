@@ -3,6 +3,11 @@ extends RefCounted
 ## "pirate_*" loadouts are used for NPC pirates.
 
 const PRESETS := {
+	# package 56: Dan's training drone (the flight training) – shield, two pulse lasers, mining laser, no hyperdrive
+	"tut_dan_drone": {"hull": "dan_drone", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_basic_s", "reactor": "rea_fission_s",
+		"tank": "tank_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse_s", "weapon_1": "w_pulse_s", "tool_0": "t_mining_s", "optional_0": "o_shield_s"}},
 	"std_dragonfly": {"hull": "dragonfly", "modules": {
 		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_basic_s", "reactor": "rea_fission_s",
 		"tank": "tank_s", "hyperdrive": "hyp_c1_s", "sensors": "sen_basic_s",

@@ -24,7 +24,7 @@ var mode := "new"
 var look: Dictionary = {}
 var attrs: Dictionary = {}
 var price := 0
-var pilot_name := "Lefty"
+var pilot_name := "Spacefarer"
 var callsign := ""
 var seed_text := ""
 
@@ -42,7 +42,7 @@ var _bed: Control                       # package 56: the scan bed (draws the fi
 var _bars := {}                         # attribute -> its bar
 
 
-func setup(p_mode: String, p_look: Dictionary = {}, p_attrs: Dictionary = {}, p_name: String = "Lefty", p_price: int = 0) -> void:
+func setup(p_mode: String, p_look: Dictionary = {}, p_attrs: Dictionary = {}, p_name: String = "Spacefarer", p_price: int = 0) -> void:
 	mode = p_mode
 	look = PilotArt.clean(p_look) if not p_look.is_empty() else PilotArt.random_look()
 	attrs = p_attrs.duplicate() if not p_attrs.is_empty() else PilotData.base_attrs()

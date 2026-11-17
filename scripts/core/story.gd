@@ -262,6 +262,19 @@ func track(mid: String) -> void:
 ## A text with {key:action} replaced by the key (or the controller's button) bound to it.
 static func keys(text: String) -> String:
 	var out := text
+	# package 56 (Luz): how to fly, zoom and change the view – said for the keys or the controller, whichever is in use
+	var pad: bool = Pad.enabled and Pad.using_pad
+	if out.contains("{move}"):
+		out = out.replace("{move}", "the left stick" if pad else "%s %s %s %s" % [Keybinds.key_text("ship_up"), Keybinds.key_text("ship_left"),
+			Keybinds.key_text("ship_down"), Keybinds.key_text("ship_right")])
+	if out.contains("{zoom}"):
+		out = out.replace("{zoom}", ("%s / %s on the d-pad" % [Keybinds.key_text("pad_zoom_in"), Keybinds.key_text("pad_zoom_out")]) if pad else "the mouse wheel")
+	if out.contains("{journal}"):
+		out = out.replace("{journal}", ("hold %s for the window wheel and pick Journal" % Pad.glyph("options")) if pad else "press %s" % Keybinds.key_text("journal"))
+	if out.contains("{views}"):
+		out = out.replace("{views}", "Each press of %s or %s is one view further." % [Keybinds.key_text("pad_zoom_in"), Keybinds.key_text("pad_zoom_out")] if pad
+			else "Straight to one: %s Combat, %s Recon, %s Orbit, %s System." % [Keybinds.key_text("zoom_combat"), Keybinds.key_text("zoom_recon"),
+				Keybinds.key_text("zoom_orbit"), Keybinds.key_text("zoom_system")])
 	var i := out.find("{key:")
 	while i >= 0:
 		var j := out.find("}", i)

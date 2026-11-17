@@ -72,6 +72,12 @@ var player: Ship = null
 var hovered = null
 var input_enabled := true
 var follow := true
+var story_cam := Vector2.INF     # package 56: where the camera looks in a story scene (INF: as usual)
+var story_follow: Ship = null    # package 56: the ship you ride in (Old Betty) – the camera, the radar, your icon, the warp tunnel
+var story_leash := false         # package 56: the flight training – no warp, no gates (the drone's signal)
+var _leash_said := -99.0
+var _pad_latch := false
+var story_zoom := ""             # package 56: the zoom lesson – "step": one level at a time; "locked": no change (Dan talks)          # package 56: the stick held over from the controller's wheel – ignored until let go
 
 var _zoom := 0.6
 var _min_zoom := 0.0002
@@ -1604,6 +1610,10 @@ func map_alpha() -> float:
 
 func set_level(l: int) -> void:
 	l = clampi(l, 0, 3)
+	if story_zoom == "locked":
+		return                                         # package 56: Dan is still explaining this view
+	if story_zoom == "step":
+		l = clampi(l, level - 1, level + 1)            # package 56: one view after the other
 	# 0.6.36.2: no Orbit level during a warp – the wheel skips it, the key is refused
 	if l == 2 and player != null and is_instance_valid(player) and player.in_warp():
 		l = 1 if level >= 2 else 3                      # zooming in from the map → Recon, out → System
@@ -1653,9 +1663,10 @@ func _update_camera(delta: float) -> void:
 			camera.position += (move.normalized() + pv) * 900.0 * delta / camera.zoom.x
 		_key_flight()
 	# Automatic zoom during warp: out, watch, back in
-	if player != null and is_instance_valid(player) and player.in_warp() and _warp_auto:
-		var p := player.warp_progress()
-		var dist := (player.warp["from"] as Vector2).distance_to(player.warp["to"])
+	var wship: Ship = player
+	if wship != null and is_instance_valid(wship) and wship.in_warp() and _warp_auto:
+		var p := wship.warp_progress()
+		var dist := (wship.warp["from"] as Vector2).distance_to(wship.warp["to"])
 		var vs := get_viewport_rect().size
 		var far_zoom := clampf(minf(vs.x, vs.y) / (dist * 1.4), _min_zoom, _warp_saved_zoom)
 		var k := 1.0
@@ -1673,6 +1684,10 @@ func _update_camera(delta: float) -> void:
 				_map_to = Vector2.INF
 	if follow and player != null and is_instance_valid(player):
 		camera.position = player.position             # every level is centred on the ship (0.6.35.3)
+	if story_cam != Vector2.INF:
+		camera.position = story_cam                   # package 56: a story scene
+	if story_follow != null and is_instance_valid(story_follow):
+		camera.position = story_follow.position
 	camera.position = camera.position.limit_length(Universe.SYSTEM_RADIUS * 1.05)
 
 
@@ -1684,6 +1699,7 @@ var _key_flying := false
 func key_direction() -> Vector2:
 	var d := Vector2.ZERO
 	if MenuNav.menu_open():
+		_pad_latch = true
 		return d                                # 0.5.28.2: the keys belong to the open menu
 	if is_map():
 		return d                                # package 80 (Luz): Orbit and System are maps – the ship does not fly here
@@ -1695,7 +1711,17 @@ func key_direction() -> Vector2:
 		d.x -= 1
 	if Input.is_action_pressed("ship_right"):
 		d.x += 1
-	d += Pad.flight()                             # package 80: the left stick (analog)
+	# package 56 (Luz): while the controller's wheel is open the stick picks there – no new course; after it closes the
+	# stick counts again only once it has been let go (orders given before – a click, approach – fly on meanwhile)
+	var pf: Vector2 = Pad.flight()
+	if Pad.wheel != null and is_instance_valid(Pad.wheel):
+		_pad_latch = true
+		return Vector2.ZERO
+	if _pad_latch:
+		if pf.length() < 0.15:
+			_pad_latch = false
+		pf = Vector2.ZERO
+	d += pf
 	return d
 
 
@@ -2533,6 +2559,12 @@ func command_target(t: Dictionary, then: Dictionary) -> void:
 	if player == null or t.is_empty():
 		return
 	var dest := player.warp_destination(t)
+	if story_leash and player.position.distance_to(dest) > Universe.warp_min_for(t):
+		# package 56: the flight training – the drone only listens to Old Betty
+		if GameState.play_time - _leash_said > 8.0:
+			_leash_said = GameState.play_time
+			GameState.story.show.emit("radio", {"who": "dan", "text": "Whoa – no warping with my drone. She'd lose Betty's signal.", "mission": ""})
+		return
 	if player.position.distance_to(dest) > Universe.warp_min_for(t):
 		player.set_order({"type": "warp", "target": t, "then": then})
 		GameState.log_msg("Aligning for warp → %s" % t["name"])
@@ -3042,6 +3074,17 @@ func _draw_overlay() -> void:
 	var radar_a := mark_a * sky_alpha()
 	if radar_a > 0.01 and player != null and is_instance_valid(player) and not player.is_docked() and not player.in_warp():
 		_draw_radar(o, player.position, px, radar_a)          # 0.6.35.8: no radar during a warp
+	# package 56: aboard Old Betty (your own ship waits docked) – her ride is yours: radar, icon, the warp tunnel
+	var sf: Ship = story_follow if story_follow != null and is_instance_valid(story_follow) and not story_follow.dying else null
+	if sf != null and (player == null or not is_instance_valid(player) or player.is_docked()):
+		if radar_a > 0.01 and not sf.in_warp() and player != null and is_instance_valid(player):
+			_draw_radar(o, sf.position, px, radar_a)
+		if sf.in_warp():
+			_draw_warp_tunnel(o, sf, px)
+		if mark_a > 0.01:
+			_draw_player_icon(o, sf.position, sf.heading, px, mark_a)
+		if sf.in_warp():
+			_dashed(o, sf.position, sf.warp["to"], Color(0.6, 0.9, 1.0, 0.7), px)
 	# Own ship as an icon (recon + system)
 	if player != null and is_instance_valid(player) and not player.is_docked():
 		var pp := player.position
@@ -3347,8 +3390,10 @@ func _update_audio() -> void:
 	var hull_low := false
 	if p_ok and not player.is_docked():
 		var st: Dictionary = player.fit.stats()
-		hull_low = player.fit.structure < float(st["structure_max"]) * 0.25
-	Audio.loop("alarm", "alarm_hull", hull_low, 0.6)
+		# Luz: only in a fight (firing, being hit, a hostile target – the last 5 s) and much quieter; not for a drone lost
+		# in the story
+		hull_low = player.fit.structure < float(st["structure_max"]) * 0.25 and player.visible and player.combat_t > 0.0
+	Audio.loop("alarm", "alarm_hull", hull_low, 0.18)
 	Audio.loop("space", "amb_space", true, 0.5)
 
 
@@ -3445,6 +3490,8 @@ func emergency_key() -> bool:
 
 
 func on_warp_started(ship: Ship) -> void:
+	if ship == story_follow:
+		Audio.play("warp_enter", "warp (aboard)")         # package 56: Old Betty's warp, as if it were yours
 	if ship == player:
 		Audio.play("warp_enter", "warp")                  # package 28a
 		stow_all_drones(ship, true)
@@ -3458,6 +3505,8 @@ func on_warp_started(ship: Ship) -> void:
 
 
 func on_warp_finished(ship: Ship) -> void:
+	if ship == story_follow:
+		Audio.play("warp_exit", "warp end (aboard)")
 	if ship == player:
 		GameState.skill_xp("piloting", 5.0)       # package 29
 		GameState.count_stat("warps")             # package 30

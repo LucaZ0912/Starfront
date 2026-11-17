@@ -258,6 +258,13 @@ static func white() -> Texture2D:
 
 # ---------------------------------------------------------------- Ships
 
+## Package 56: a ship of Dan's flies in rust – its pictures in `paint` (every frame) become the rust picture.
+static func use_rust(hull_id: String, paint: String) -> void:
+	var rt := rust_texture(hull_id)
+	for fr in range(-1, 16):
+		_cache["ship_%s_%s_%d" % [hull_id, paint, fr]] = rt
+
+
 ## Package 56: a hull in Dan's colours – the maker's yellow and orange turned to rust brown and orange, with patches.
 static func rust_texture(hull_id: String) -> Texture2D:
 	var key := "rust_" + hull_id

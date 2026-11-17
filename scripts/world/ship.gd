@@ -6,6 +6,7 @@ extends Node2D
 ## once a target is locked, in range and there is enough capacitor energy.
 
 signal destroyed(ship: Ship)
+signal spared(ship: Ship)            # package 56: a ship the story keeps (story_spare) took a blow that would have killed it
 
 var fit: ShipFitting
 var view: Node                  # SystemView
@@ -38,6 +39,8 @@ var notorious_id := ""           # notorious pirate captain (package 15)
 var special := ""                # its trait: shield_breaker, never_alone, iron_hide, ghost, overcharged, regenerator
 var escort_of = null             # escort: the captain it protects
 var toughness := 1.0             # damage taken is multiplied by this (captains: by stars)
+var story_spare := false         # package 56: never destroyed – it stays at 1 structure and `spared` is emitted
+var align_scale := 1.0           # package 56: × the warp alignment time (Old Betty in the story aligns quickly)
 var raiding := false             # raiding a station: ignores no-fire zones (5-star captains)
 var _distress_t := -1000.0       # last distress call (package 16)
 var smuggler_mission := ""       # smuggler of an intercept contract (package 17)
@@ -759,7 +762,7 @@ func _redraw_if_seen() -> void:
 		visible = not tiny
 	if tiny:
 		return
-	if manual or not tool_beams.is_empty() or SystemView.on_screen_at(position, radius * 3.0 + 600.0):
+	if manual or not tool_beams.is_empty() or SystemView.on_screen_at(position, radius * 3.0 + 600.0) or (view != null and "story_follow" in view and view.story_follow == self):
 		queue_redraw()
 
 
@@ -1540,7 +1543,7 @@ func align_time() -> float:
 			t *= 0.7                                         # package 30
 	if is_traffic():
 		t = maxf(t * 2.5, 6.0)       # civilians and patrols take their time before warping
-	return t
+	return t * align_scale
 
 
 ## Civilian traffic and patrols (not pirates, not the player).
@@ -2064,6 +2067,10 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 		Audio.play_at("hit_shield", position, "hit shield")
 	hit_flash = 0.12
 	_show_damage(sh0 - fit.shield, hull0 - (fit.armor + maxf(fit.structure, 0.0)))
+	if fit.structure <= 0.0 and story_spare:
+		fit.structure = 1.0
+		spared.emit(self)
+		return
 	if fit.structure <= 0.0:
 		_die(attacker)
 		return

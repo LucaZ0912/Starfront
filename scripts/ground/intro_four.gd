@@ -15,7 +15,7 @@ const DAN_BED := Vector2(13.7, 23.6)
 const DOC_BED := Vector2(10.4, 24.6)
 const STAND := Vector2(13.4, 24.8)         # the pilot on their feet beside the bed
 const DOC_STAND := Vector2(15.2, 24.4)
-const WINDOW := Vector2(18.0, 8.6)         # Dan at the bar's window
+const WINDOW := Vector2(20.6, 8.6)         # Dan at the bar's window (between the barrels)
 const SKIP_HOLD := 1.2
 
 var main: Node
@@ -138,18 +138,21 @@ func _process(delta: float) -> void:
 		"talk4":
 			if _talk_done():
 				_phase("done")
-				GameState.story.set_flag("intro_stage", "five" if bool(GameState.story.flags.get("flight_tutorial", false)) else "six")
-				g.story_mode = {}
-				g.input_enabled = true
 				var tut := bool(GameState.story.flags.get("flight_tutorial", false))
-				GameState.log_msg("[Story] %s – sequence %d comes with the next part of the intro." % ["The flight tutorial" if tut else "Straight on", 5 if tut else 6], GameState.COL_WARN)
+				if tut:
+					main._start_intro_five("bar")             # sequence 5: the flight training (scripts/ground/intro_five.gd)
+				else:
+					GameState.story.set_flag("intro_stage", "six")
+					g.story_mode = {}
+					g.input_enabled = true
+					GameState.log_msg("[Story] Straight on – sequence 6 comes with the next part of the intro.", GameState.COL_WARN)
 				finished.emit()
 				queue_free()
 
 
 ## The pilot on their feet beside the bed, the medic with them.
 func _standing(g) -> void:
-	g.story_mode = _mode({"clinic": {"people": [{"who": "doc", "pos": DOC_STAND, "dir": 2}], "spawn": STAND},
+	g.story_mode = _mode({"clinic": {"people": [{"who": "doc", "pos": DOC_STAND, "dir": 2, "talk": true}], "spawn": STAND},
 		"commercial": {"people": [{"who": "dan", "pos": WINDOW, "dir": 1, "marker": "!"}]}}, false)
 	g.go_level("clinic", "story")
 	g.pilot.dir = 3
@@ -181,6 +184,8 @@ func _skip_to_walk() -> void:
 func _on_story_talk(who: String) -> void:
 	if who == "dan" and phase == "walk":
 		_talk("intro_dan_bar", "talk4")
+	elif who == "doc" and phase == "walk":
+		GameState.story.show.emit("dialogue", {"id": "intro_doc_again", "mission": ""})     # Luz: she can be asked again
 
 
 func _talk(id: String, next: String) -> void:
