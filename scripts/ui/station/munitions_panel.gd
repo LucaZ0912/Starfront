@@ -12,7 +12,7 @@ func build() -> void:
 	var offer := Munitions.offer(station)
 	var sid := Market.system_of(station)
 	section("MUNITIONS FOR %s" % f.ship_name.to_upper())
-	add_child(UI.label("Economy: %s  •  %s – military systems stock everything and sell it cheaply, industrial ones the common kinds, high-tech ones the electronic ones." % [Economy.label(sid), Economy.level_name(sid)], 12, UI.TEXT_DIM))
+	add_child(UI.label("Economy: %s  •  %s; military systems stock everything and sell it cheaply, industrial ones the common kinds, high-tech ones the electronic ones." % [Economy.label(sid), Economy.level_name(sid)], 12, UI.TEXT_DIM))
 	standing_line()
 	cargo_line()
 	var grid := GridContainer.new()

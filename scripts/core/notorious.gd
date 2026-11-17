@@ -47,7 +47,7 @@ const TRAITS := {
 	"shield_breaker": {"name": "Shield Breaker", "desc": "Its weapons tear through shields (+60 % damage while the target's shield holds)."},
 	"never_alone": {"name": "Never Alone", "desc": "Always flies with two extra escorts."},
 	"iron_hide": {"name": "Iron Hide", "desc": "Takes 40 % less damage."},
-	"ghost": {"name": "Ghost", "desc": "Hard to lock on – target locks take 2.5× as long."},
+	"ghost": {"name": "Ghost", "desc": "Hard to lock on: target locks take 2.5× as long."},
 	"overcharged": {"name": "Overcharged", "desc": "Its weapons cycle 40 % faster."},
 	"regenerator": {"name": "Regenerator", "desc": "Shields regenerate three times as fast and armour repairs itself."},
 }
@@ -243,7 +243,7 @@ func update(player_system: int) -> void:
 		if int(c["stars"]) < 5 and now - float(c["star_t"]) >= STAR_TIME:
 			c["star_t"] = now
 			_set_stars(c, int(c["stars"]) + 1)
-			_news("%s grows bolder – now %s with %d escorts." % [title(c), stars_text(c), (c["escorts"] as Array).size()])
+			_news("%s grows bolder: now %s with %d escorts." % [title(c), stars_text(c), (c["escorts"] as Array).size()])
 		_update_raid(c, now, player_system)
 		if now < float(c["next_move"]) or not (c["raid"] as Dictionary).is_empty():
 			continue
@@ -278,7 +278,7 @@ func _update_raid(c: Dictionary, now: float, player_system: int) -> void:
 	if String(r["state"]) == "planned" and now >= float(r["start"]):
 		r["state"] = "active"
 		_news("%s's raid on %s has begun!" % [title(c), r["name"]], "alert", int(c["system"]))
-		GameState.log_msg("SWX ALERT: the raid on %s in %s has begun – %s is attacking!" % [r["name"], Universe.systems[int(c["system"])]["name"], title(c)], GameState.COL_BAD)
+		GameState.log_msg("SWX ALERT: the raid on %s in %s has begun, %s is attacking!" % [r["name"], Universe.systems[int(c["system"])]["name"], title(c)], GameState.COL_BAD)
 	if String(r["state"]) == "active" and now >= float(r["until"]) and not bool(r.get("live", false)):
 		if int(c["system"]) == player_system:
 			return               # the pilot is there: SystemView decides
@@ -313,8 +313,8 @@ func start_raid(c: Dictionary, st: Dictionary, now: float, warning: float = -1.0
 	var sys: String = Universe.systems[int(c["system"])]["name"]
 	var when := ("in %d minutes" % int(round(w / 60.0))) if w >= 60.0 else "now"
 	GameState.codex.event("raid")
-	_news("RAID ALERT: %s is preparing to raid %s in %s – the attack begins %s!" % [title(c), st["name"], sys, when], "alert", int(c["system"]))
-	GameState.log_msg("SWX ALERT: %s (%s) is gathering for a raid on %s in %s – the attack begins %s!" % [title(c), stars_text(c), st["name"], sys, when], GameState.COL_BAD)
+	_news("RAID ALERT: %s is preparing to raid %s in %s, the attack begins %s!" % [title(c), st["name"], sys, when], "alert", int(c["system"]))
+	GameState.log_msg("SWX ALERT: %s (%s) is gathering for a raid on %s in %s, the attack begins %s!" % [title(c), stars_text(c), st["name"], sys, when], GameState.COL_BAD)
 
 
 ## The station fell: bounty +100,000 cr, one star turns red, the station goes offline.
@@ -327,7 +327,7 @@ func raid_won(c: Dictionary) -> void:
 	c["raid"] = {}
 	if not st.is_empty():
 		GameState.stations.knock_out(st, int(c["system"]))
-	_news("%s overran %s in %s – the station is offline." % [title(c), r.get("name", "a station"), Universe.systems[int(c["system"])]["name"]], "alert", int(c["system"]))
+	_news("%s overran %s in %s: the station is offline." % [title(c), r.get("name", "a station"), Universe.systems[int(c["system"])]["name"]], "alert", int(c["system"]))
 	GameState.log_msg("SWX ALERT: %s has overrun %s in %s! Its bounty rises by %s." % [title(c), r.get("name", "a station"), Universe.systems[int(c["system"])]["name"], GameData.fmt_credits(RAID_PRIZE)], GameState.COL_BAD)
 
 
@@ -342,7 +342,7 @@ func raid_repelled(c: Dictionary, fled: bool) -> void:
 		c["next_move"] = GameState.play_time + HIDE_TIME + randf_range(MOVE_MIN, MOVE_MAX)
 		_news("%s was driven off from %s in %s and has gone into hiding." % [title(c), r.get("name", "a station"), where], "alert")
 	else:
-		_news("%s gave up the raid on %s in %s – the station held." % [title(c), r.get("name", "a station"), where], "alert")
+		_news("%s gave up the raid on %s in %s: the station held." % [title(c), r.get("name", "a station"), where], "alert")
 		c["next_move"] = GameState.play_time + 60.0
 
 

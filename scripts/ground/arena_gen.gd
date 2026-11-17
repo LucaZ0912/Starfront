@@ -40,13 +40,13 @@ static func build(body: Dictionary, site: Dictionary, ship_len: float, ship_beam
 	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
 	m.spawn = Vector2(rx + 1.0, ry + 2.6) * TILE
 	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * TILE, Vector2(3, 3.2) * TILE), "kind": "exit", "id": "ship",
-		"title": "Up the ramp – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Up the ramp: take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	for k in range(0, sl + 1, 4):
 		m.lights.append({"pos": Vector2(px0 + k, py0) * TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35, "flicker": k % 8 == 0})
 		m.lights.append({"pos": Vector2(px0 + k, py0 + sb) * TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35})
 	m.add_object({"kind": "fuel_point", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 1, "rise": 34})
 	m.zones.append({"rect": Rect2(Vector2(px0 + sl + 0.4, py0 + 1.0) * TILE, Vector2(3.2, 1.6) * TILE), "kind": "charge", "id": "charge",
-		"title": "Supply point – energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
+		"title": "Supply point: energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "arena_sign", "title": "DEBUG ARENA  →",
 		"col": Color(1.0, 0.45, 0.35), "sign": Vector2(px0 + sl + 1, py0 + sb + 1.5) * TILE})
 	# the field of cover, cell by cell

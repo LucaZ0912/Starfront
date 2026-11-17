@@ -57,7 +57,7 @@ func build() -> void:
 		return
 	var bonus: float = GameState.rep.contract_bonus(sf)
 	if bonus > 0.0:
-		add_child(UI.label("Standing with the %s: %s – contracts from this station pay +%d %%." % [FactionData.name_of(sf), GameState.rep.tier_name(sf), int(round(bonus * 100.0))], 13, GameState.rep.tier(sf)["color"]))
+		add_child(UI.label("Standing with the %s: %s; contracts from this station pay +%d %%." % [FactionData.name_of(sf), GameState.rep.tier_name(sf), int(round(bonus * 100.0))], 13, GameState.rep.tier(sf)["color"]))
 	for m in GameState.offers_for(GameState.current_system, station):
 		var mm: Dictionary = m
 		var row := _card(mm, "Client: %s" % mm["client"] + (("   •   for the %s" % FactionData.short_of(String(mm.get("faction", "")))) if String(mm.get("faction", "")) != "" else ""), bonus)
@@ -90,7 +90,7 @@ func _build_ground() -> void:
 	if closed != "":
 		add_child(UI.label(closed, 14, UI.BAD))
 		return
-	add_child(UI.label("Ruins, wrecks, pirate bases, a city's tunnels – the site goes on the planet map when you accept; the goal is set, the pay waits here.", 12, UI.TEXT_DIM))
+	add_child(UI.label("Ruins, wrecks, pirate bases, a city's tunnels: the site goes on the planet map when you accept; the goal is set, the pay waits here.", 12, UI.TEXT_DIM))
 	var bonus: float = GameState.rep.contract_bonus(sf)
 	var offs := GameState.ground_offers_for(GameState.current_system, station)
 	if offs.is_empty():
@@ -124,7 +124,7 @@ func _build_passengers() -> void:
 		add_child(UI.label(closed, 14, UI.BAD))
 		return
 	if f != null:
-		add_child(UI.label("%s – cabins: %s" % [f.ship_name, Missions.cabins_text(f)], 13, Color(0.95, 0.88, 0.65)))
+		add_child(UI.label("%s, cabins: %s" % [f.ship_name, Missions.cabins_text(f)], 13, Color(0.95, 0.88, 0.65)))
 		var lp := float(f.hull().get("luxury_pay", 1.0))
 		if lp != 1.0:
 			add_child(UI.label("%s: luxury contracts pay %+d %%." % [f.hull()["name"], int(round((lp - 1.0) * 100.0))], 13, UI.GOLD if lp > 1.0 else UI.TEXT_DIM))
@@ -196,7 +196,7 @@ func _faction_jobs() -> void:
 	head.add_child(UI.icon(CrestArt.texture(sf), 26))
 	head.add_child(UI.label("FACTION CONTRACTS – %s" % FactionData.name_of(sf).to_upper(), 16, FactionData.color_of(sf)))
 	head.add_child(UI.label("your standing: %s" % GameState.rep.tier_name(sf), 13, GameState.rep.tier(sf)["color"]))
-	add_child(UI.label("Issued by the government itself – they need standing and raise it more than ordinary work (+%.0f)." % Missions.FACTION_REP, 12, UI.TEXT_DIM))
+	add_child(UI.label("Issued by the government itself: they need standing and raise it more than ordinary work (+%.0f)." % Missions.FACTION_REP, 12, UI.TEXT_DIM))
 	var bonus: float = GameState.rep.contract_bonus(sf)
 	for m in GameState.faction_offers_for(GameState.current_system, station):
 		var mm: Dictionary = m

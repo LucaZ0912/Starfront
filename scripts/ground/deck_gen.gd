@@ -161,7 +161,7 @@ static func build(station: Dictionary, available: Dictionary, crew: Array = [], 
 	m.decals.append({"kind": "mat", "x": 1, "y": ly + 3, "w": 5, "h": 1, "col": m.pal["accent"]})
 	m.spawn = Vector2(3.5, ly + 4.6) * GroundMap.TILE
 	m.zones.append({"rect": Rect2(Vector2(1, ly + 3) * GroundMap.TILE, Vector2(5, 1.4) * GroundMap.TILE), "kind": "lift", "id": "lift",
-		"title": "Lifts – Hangar · Commercial level", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(3.5, ly + 0.7) * GroundMap.TILE})
+		"title": "Lifts: Hangar · Commercial level", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(3.5, ly + 0.7) * GroundMap.TILE})
 	var kx := 2
 	for k in KIOSKS:
 		if available.has(k):
@@ -462,7 +462,7 @@ static func _dart_board(m: GroundMap, x: int, y: int) -> void:
 	m.lights.append({"pos": Vector2(x + 0.5, y + 0.2) * GroundMap.TILE, "r": 30.0, "col": Color(1.0, 0.9, 0.7), "a": 0.3})
 	m.decals.append({"kind": "guide", "x": x - 1, "y": y + 3, "w": 3, "h": 1, "col": Color(0.95, 0.8, 0.2)})
 	m.zones.append({"rect": Rect2(Vector2(x - 1.0, y + 1.0) * GroundMap.TILE, Vector2(3, 2.4) * GroundMap.TILE), "kind": "darts", "id": "darts",
-		"title": "Dartboard – play darts", "col": Color(1.0, 0.9, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Dartboard: play darts", "col": Color(1.0, 0.9, 0.6), "sign": Vector2(-100, -100)})
 
 
 ## 54b (Luz): a Rock Hopper cabinet against a wall – its screen glowing, the place to stand and play (zone `arcade`).
@@ -470,12 +470,12 @@ static func _arcade(m: GroundMap, x: int, y: int, n: int = 0) -> void:
 	m.add_object({"kind": "arcade", "x": x, "y": y, "w": 1, "h": 1, "col": Color(1.0, 0.45, 0.75)})
 	m.lights.append({"pos": Vector2(x + 0.5, y + 0.6) * GroundMap.TILE, "r": 30.0, "col": Color(0.4, 1.0, 0.9), "a": 0.35, "flicker": true})
 	m.zones.append({"rect": Rect2(Vector2(x - 0.4, y + 1.0) * GroundMap.TILE, Vector2(1.8, 1.3) * GroundMap.TILE), "kind": "arcade", "id": "arcade", "n": n,
-		"title": "Rock Hopper – arcade cabinet", "col": Color(1.0, 0.45, 0.75), "sign": Vector2(-100, -100)})
+		"title": "Rock Hopper: arcade cabinet", "col": Color(1.0, 0.45, 0.75), "sign": Vector2(-100, -100)})
 
 
 ## 54b (Luz): a table where Drift is played – a card zone beside it (zone `drift`), a lamp low over it.
 static func _drift_zone(m: GroundMap, rect: Rect2) -> void:
-	m.zones.append({"rect": rect, "kind": "drift", "id": "drift", "title": "Card table – play Drift", "col": Color(0.85, 0.45, 1.0), "sign": Vector2(-100, -100)})
+	m.zones.append({"rect": rect, "kind": "drift", "id": "drift", "title": "Card table: play Drift", "col": Color(0.85, 0.45, 1.0), "sign": Vector2(-100, -100)})
 	m.lights.append({"pos": rect.get_center(), "r": 34.0, "col": Color(0.85, 0.55, 1.0), "a": 0.2})
 
 
@@ -484,7 +484,7 @@ static func _pool_table(m: GroundMap, x: int, y: int) -> void:
 	m.add_object({"kind": "pool_table", "x": x, "y": y, "w": 3, "h": 2})
 	m.lights.append({"pos": Vector2(x + 1.5, y + 1.2) * GroundMap.TILE, "r": 40.0, "col": Color(0.6, 1.0, 0.6), "a": 0.25})
 	m.zones.append({"rect": Rect2(Vector2(x - 0.5, y + 2.0) * GroundMap.TILE, Vector2(4, 1.3) * GroundMap.TILE), "kind": "pool", "id": "pool",
-		"title": "Pool table – play billiards", "col": Color(0.6, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Pool table: play billiards", "col": Color(0.6, 1.0, 0.6), "sign": Vector2(-100, -100)})
 
 
 static func _bar_lounge(m: GroundMap, x0: int, x1: int, sc: Color, rng: RandomNumberGenerator) -> void:
@@ -769,13 +769,13 @@ static func build_hangar(station: Dictionary, ship_len: float, ship_beam: float,
 
 	m.spawn = Vector2(2.6, G + 3.5) * GroundMap.TILE
 	m.zones.append({"rect": Rect2(Vector2(1, G + 2) * GroundMap.TILE, Vector2(2.2, 3) * GroundMap.TILE), "kind": "exit", "id": "ship",
-		"title": "Stairs down – back aboard your ship", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Stairs down: back aboard your ship", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	var lx0 := x_h + HW + 1
 	for k in 2:
 		m.face_deco.append({"kind": "lift", "x": lx0 + k * 3, "y": G + 1, "w": 2, "col": Color(0.4, 1.0, 0.6)})
 		m.lifts.append({"x": lx0 + k * 3, "y": G + 1, "w": 2})
 	m.zones.append({"rect": Rect2(Vector2(lx0, G + 2) * GroundMap.TILE, Vector2(5, 1.4) * GroundMap.TILE), "kind": "lift", "id": "lift",
-		"title": "Lifts – Hangar · Commercial level", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Lifts: Hangar · Commercial level", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "hangar_sign", "title": "Hangar %02d" % hangar_no(station, uid),
 		"col": m.pal["accent"], "sign": Vector2(x_h + HW * 0.5, G + 0.45) * GroundMap.TILE})
 	# the ship lies in the middle of the bay, nose to the east
@@ -1024,14 +1024,14 @@ static func build_landing(body: Dictionary, site: Dictionary, ship_len: float, s
 	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
 	m.spawn = Vector2(rx + 1.0, ry + 2.6) * GroundMap.TILE
 	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * GroundMap.TILE, Vector2(3, 3.2) * GroundMap.TILE), "kind": "exit", "id": "ship",
-		"title": "Up the ramp – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Up the ramp: take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	# lights round the pad, a fuel tank, crates
 	for k in range(0, sl + 1, 4):
 		m.lights.append({"pos": Vector2(px0 + k, py0) * GroundMap.TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35, "flicker": k % 8 == 0})
 		m.lights.append({"pos": Vector2(px0 + k, py0 + sb) * GroundMap.TILE, "r": 22.0, "col": Color(1.0, 0.75, 0.3), "a": 0.35})
 	m.add_object({"kind": "fuel_point", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 1, "rise": 34})
 	m.zones.append({"rect": Rect2(Vector2(px0 + sl + 0.4, py0 + 1.0) * GroundMap.TILE, Vector2(3.2, 1.6) * GroundMap.TILE), "kind": "charge", "id": "charge",
-		"title": "Supply point – energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})   # 0.7.51.3
+		"title": "Supply point: energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})   # 0.7.51.3
 	m.add_object({"kind": "crates", "x": px0 + sl + 1, "y": py0 + sb - 1, "w": 2, "h": 1})
 	m.add_object({"kind": "lamp_post", "x": px0 + sl + 1, "y": py0 + sb + 2, "w": 1, "h": 1, "col": Color(1.0, 0.8, 0.4)})
 	m.lights.append({"pos": Vector2(px0 + sl + 1.5, py0 + sb + 2.3) * GroundMap.TILE, "r": 44.0, "col": Color(1.0, 0.85, 0.5), "a": 0.35})

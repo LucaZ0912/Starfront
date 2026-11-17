@@ -102,14 +102,14 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 		m.add_object({"kind": "fuel_point", "x": px + PAD.x - 2, "y": py - 1, "w": 2, "h": 1, "rise": 34})
 		# 0.7.51.3: it charges suits too – energy and oxygen
 		m.zones.append({"rect": Rect2(Vector2(px + PAD.x - 2.6, py - 0.1) * GroundMap.TILE, Vector2(3.2, 1.5) * GroundMap.TILE), "kind": "charge", "id": "charge_%d" % i,
-			"title": "Supply point – energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
+			"title": "Supply point: energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
 	# your landing drone on pad 1, its ramp to the south (the view lays the way in and out along it)
 	m.ship_at = m.pads[0]
 	var p0: Vector2 = m.pads[0] / GroundMap.TILE
 	m.fill(int(p0.x) - 4, int(p0.y) - 2, 9, 4, GroundMap.T.BLOCK, 14)
 	m.spawn = Vector2(p0.x, p0.y + 4.3) * GroundMap.TILE
 	m.zones.append({"rect": Rect2(Vector2(p0.x - 1.7, p0.y + 1.8) * GroundMap.TILE, Vector2(3.4, 3.2) * GroundMap.TILE), "kind": "exit", "id": "ship",
-		"title": "Board the landing drone – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Board the landing drone: take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	# the street, from the pads to the far end
 	var street_kind := 14 if CityStyle.key_for(station) in ["assembly", "directorate"] else 15
 	m.fill(B + 1, STREET_Y, TW - B, STREET_H, GroundMap.T.FLOOR, street_kind)
@@ -144,7 +144,7 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 	var skey := CityStyle.key_for(station)
 	m.add_object(_building(_arch(skey, bk, rng, true), bx, by - 1, 12, 3, 2, skey, rng, lamp, 80))
 	m.zones.append({"rect": Rect2(Vector2(bx + 3, by + 2) * GroundMap.TILE, Vector2(3, 1.6) * GroundMap.TILE), "kind": "service", "id": String(sp[1]),
-		"title": String(sp[0]).capitalize() + "  –  " + {"mining": "ore straight from the mine", "agri": "food from its fields", "research": "samples and data", "industry": "parts from its shops",
+		"title": String(sp[0]).capitalize() + ": " + {"mining": "ore straight from the mine", "agri": "food from its fields", "research": "samples and data", "industry": "parts from its shops",
 			"refinery": "refined goods", "chemistry": "chemicals from the plant", "hightech": "tech from the lab", "military": "sign on crew", "tourism": "rooms and views"}.get(eco, "what the place makes"),
 		"corp": "", "col": Color(1.0, 0.8, 0.3), "closed": String(available.get(String(sp[1]), "")),
 		"sign": Vector2(-100, -100)})
@@ -225,7 +225,7 @@ static func build(station: Dictionary, body: Dictionary, site: Dictionary, avail
 			break
 	m.fill(mx, 0, 3, B, GroundMap.T.FLOOR, 15)
 	m.zones.append({"rect": Rect2(Vector2(mx, B - 1) * GroundMap.TILE, Vector2(3, 1.6) * GroundMap.TILE), "kind": "mine_path", "id": "mine_path",
-		"title": "A path north – to the old mine", "col": Color(1.0, 0.75, 0.4), "sign": Vector2(-100, -100)})
+		"title": "A path north: to the old mine", "col": Color(1.0, 0.75, 0.4), "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "signpost", "x": mx + 3, "y": B, "w": 1, "h": 1})
 	m.set_meta("mine_path_front", Vector2(mx + 1.5, B + 1.4) * GroundMap.TILE)
 	# what bounds it: the world

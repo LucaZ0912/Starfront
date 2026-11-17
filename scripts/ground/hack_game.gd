@@ -244,8 +244,8 @@ func _draw() -> void:
 	# scan lines
 	for y in range(int(r.position.y) + 2, int(r.end.y), 4):
 		draw_line(Vector2(r.position.x + 2, y), Vector2(r.end.x - 2, y), Color(g, 0.025), 1.0)
-	_s(r.position + Vector2(18, 30), "%s  •  SECURITY GRID %d – run your probe to the core" % [title, level], g, 17)
-	_s(r.position + Vector2(18, 52), "WASD: one node at a time  •  red tracers run their loops – touch one and the trace climbs  •  the gold key opens the lock  •  Esc: pull out", Color(0.75, 0.78, 0.82), 12)
+	_s(r.position + Vector2(18, 30), "%s  •  SECURITY GRID %d: run your probe to the core" % [title, level], g, 17)
+	_s(r.position + Vector2(18, 52), "WASD: one node at a time  •  red tracers run their loops; touch one and the trace climbs  •  the gold key opens the lock  •  Esc: pull out", Color(0.75, 0.78, 0.82), 12)
 	_o = r.position + Vector2(140, 120)
 	# links
 	for y2 in ROWS:
@@ -323,7 +323,7 @@ func _draw() -> void:
 		var mr := Rect2(r.position + Vector2(r.size.x * 0.5 - 200, 170), Vector2(400, 60 + actions.size() * 34))
 		draw_rect(mr, Color(0.02, 0.08, 0.07, 0.97))
 		draw_rect(mr, g, false, 2.0)
-		_s(mr.position + Vector2(16, 28), "ACCESS GRANTED – what now?", g, 15)
+		_s(mr.position + Vector2(16, 28), "ACCESS GRANTED: what now?", g, 15)
 		for i5 in actions.size():
 			var rr := Rect2(mr.position + Vector2(16, 42 + i5 * 34), Vector2(368, 28))
 			if i5 == sel:

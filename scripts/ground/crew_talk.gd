@@ -77,14 +77,14 @@ static func greeting(m: Dictionary) -> String:
 	var first := String(m.get("name", "?")).split(" ")[0]
 	match String(m["quality"]):
 		"F":
-			return "Oh – hi! Are you a captain? I'm %s. I just finished my training as a %s, and I'm ready. Really ready." % [first, role]
+			return "Oh, hi! Are you a captain? I'm %s. I just finished my training as a %s, and I'm ready. Really ready." % [first, role]
 		"D":
-			return "Evening, captain. %s, %s. I've done a few runs already – are you looking for hands?" % [first, role]
+			return "Evening, captain. %s, %s. I've done a few runs already: are you looking for hands?" % [first, role]
 		"C":
-			return "Captain. Name's %s. Word at the bar is you might need a %s – I've been around." % [first, role]
+			return "Captain. Name's %s. Word at the bar is you might need a %s: I've been around." % [first, role]
 		"B":
-			return "So you're the one with the ship. %s – %s, many years of it. I've flown with worse crews, I'm sure. What do you need?" % [first, role]
-	return "Sit down, captain. I'm %s, and I don't come cheap – but you won't find a better %s on this station." % [first, role]
+			return "So you're the one with the ship. %s: %s, many years of it. I've flown with worse crews, I'm sure. What do you need?" % [first, role]
+	return "Sit down, captain. I'm %s, and I don't come cheap, but you won't find a better %s on this station." % [first, role]
 
 
 func _first() -> String:
@@ -110,47 +110,47 @@ func _menu() -> void:
 	var price := int(offer["price"])
 	var hr := UI.hbox(8)
 	_buttons.add_child(hr)
-	hr.add_child(UI.button("Sign on – crew quarters here (%s)" % GameData.fmt_credits(price), func(): _hire(false)))
+	hr.add_child(UI.button("Sign on: crew quarters here (%s)" % GameData.fmt_credits(price), func(): _hire(false)))
 	var f = _ship()
 	if f != null:
-		hr.add_child(UI.button("Sign on – onto the %s (%s)" % [f.ship_name, GameData.fmt_credits(price)], func(): _hire(true)))
+		hr.add_child(UI.button("Sign on: onto the %s (%s)" % [f.ship_name, GameData.fmt_credits(price)], func(): _hire(true)))
 	_buttons.add_child(UI.button("Goodbye. [Esc]", _close))
 
 
 func _ask_role() -> void:
 	var m: Dictionary = offer["m"]
 	var r: Dictionary = CrewData.ROLES[String(m["role"])]
-	var s := "I'm a %s. On your ship I'd see to %s – that's +%.1f %% for you, and it grows as I do. I learn from %s." % [
+	var s := "I'm a %s. On your ship I'd see to %s: that's +%.1f %% for you, and it grows as I do. I learn from %s." % [
 		r["name"], CrewData.bonus_label(String(m["role"]), String(m["bonus"])).to_lower(), float(m["value"]), r["learns"]]
 	if String(m.get("role2", "")) != "":
-		s += " And I've got a second trade: %s – %s +%.1f %%." % [CrewData.role_name(String(m["role2"])), CrewData.bonus_label(String(m["role2"]), String(m["bonus2"])).to_lower(), float(m["value2"])]
+		s += " And I've got a second trade: %s, %s +%.1f %%." % [CrewData.role_name(String(m["role2"])), CrewData.bonus_label(String(m["role2"]), String(m["bonus2"])).to_lower(), float(m["value2"])]
 	_reply("What do you do on a ship?", s)
 
 
 func _ask_skill() -> void:
 	var m: Dictionary = offer["m"]
 	var q := String(m["quality"])
-	var s := "Right now? %s. That's %s work – %s." % [CrewCore.line(m), CrewData.QUALITY_NAMES.get(q, q).to_lower(),
+	var s := "Right now? %s. That's %s work: %s." % [CrewCore.line(m), CrewData.QUALITY_NAMES.get(q, q).to_lower(),
 		{"F": "everyone starts somewhere", "D": "solid, nothing fancy", "C": "I know my trade", "B": "few do it better", "A": "the best there is"}.get(q, "")]
 	var nq := CrewCore.next_quality(q)
 	if nq != "":
 		s += " Give me time and %s, and I'll be %s." % [CrewData.ROLES[String(m["role"])]["learns"], CrewData.QUALITY_NAMES.get(nq, nq).to_lower()]
 	var pk := String(m.get("perk", ""))
 	if pk != "" and CrewData.PERKS.has(pk):
-		s += " Oh – and one more thing: %s. %s" % [CrewData.PERKS[pk]["name"], CrewData.PERKS[pk]["text"]]
+		s += " Oh, and one more thing: %s. %s" % [CrewData.PERKS[pk]["name"], CrewData.PERKS[pk]["text"]]
 	_reply("How good are you?", s)
 
 
 func _ask_price() -> void:
 	var m: Dictionary = offer["m"]
-	var s := "%s to sign on. After that %.2f %% of what the ship earns – sales, bounties, contracts." % [GameData.fmt_credits(int(offer["price"])), CrewCore.share_of(m) * 100.0]
+	var s := "%s to sign on. After that %.2f %% of what the ship earns: sales, bounties, contracts." % [GameData.fmt_credits(int(offer["price"])), CrewCore.share_of(m) * 100.0]
 	if GameState.credits < int(offer["price"]):
 		s += " …Which, no offence, captain, looks like more than you've got right now."
 	_reply("What would you cost?", s)
 
 
 func _ask_record() -> void:
-	_reply("Show me your record.", "Here – all of it. Read it twice if you like.")
+	_reply("Show me your record.", "Here, all of it. Read it twice if you like.")
 	_extra.add_child(CrewCard.card(offer["m"], [], "", UI.TEXT_DIM, 700))
 
 
@@ -161,7 +161,7 @@ func _hire(onto_ship: bool) -> void:
 		cmd["ship"] = f.uid
 	var err := Commands.execute(cmd)
 	if err != "":
-		_reply("You're hired.", "Not so fast, captain – %s" % err.to_lower() if err.length() > 1 else err)
+		_reply("You're hired.", "Not so fast, captain: %s" % err.to_lower() if err.length() > 1 else err)
 		_menu()
 		return
 	done = true

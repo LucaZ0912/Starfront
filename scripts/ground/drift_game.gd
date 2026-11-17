@@ -80,7 +80,7 @@ func deal() -> void:
 	if not sing.is_empty():
 		_showdown(sing, "Singularity!")
 		return
-	_say("Your turn – drift or hold.")
+	_say("Your turn: drift or hold.")
 
 
 func _draw_card() -> Array:
@@ -177,7 +177,7 @@ func _showdown(win: Array, why: String) -> void:
 	var pot := stake * players.size()
 	var share := pot / maxi(win.size(), 1)
 	if win.is_empty():
-		_say("Everyone burned out – the house keeps the pot.")
+		_say("Everyone burned out: the house keeps the pot.")
 	else:
 		_say("%s%s %s with %d%s." % [why + " " if why != "" else "", ", ".join(names), "wins" if win.size() == 1 else "share the pot", total(players[win[0]]),
 			("" if stake <= 0 else " – %d cr" % share)])
@@ -492,7 +492,7 @@ func _build_ui() -> void:
 	var streak := int(GameState.minigame_streak.get("drift", 0))
 	v2.add_child(UI.label("Pot %d cr" % (stake * players.size()) if stake > 0 else "No stake", 22, Color(1.0, 0.85, 0.4)))
 	v2.add_child(UI.label("%d at the table × %d cr" % [players.size(), stake], 15))
-	v2.add_child(UI.label("Win streak %d – %s stakes (up to %d cr)" % [streak, String(MG.TIERS[MG.tier(streak)]["name"]), MG.max_stake(streak)], 13, UI.TEXT_DIM))
+	v2.add_child(UI.label("Win streak %d: %s stakes (up to %d cr)" % [streak, String(MG.TIERS[MG.tier(streak)]["name"]), MG.max_stake(streak)], 13, UI.TEXT_DIM))
 	var row := UI.hbox(16)
 	row.position = Vector2(vs.x * 0.5 - 330, vs.y - 108)
 	add_child(row)
@@ -502,8 +502,8 @@ func _build_ui() -> void:
 		btn.custom_minimum_size = Vector2(200, 46)
 		row.add_child(btn)
 		_btns[id] = btn
-	var hint := UI.label(("%s: drift  •  %s: hold  •  %s: warp – then ← → and %s for the card  •  %s: fold" % [Pad.glyph("cross"), Pad.glyph("square"), Pad.glyph("triangle"), Pad.glyph("cross"), Pad.glyph("circle")])
-		if Pad.using_pad else "D: drift  •  H: hold  •  W: warp – then click the card to swap  •  Esc: fold", 15)
+	var hint := UI.label(("%s: drift  •  %s: hold  •  %s: warp, then ← → and %s for the card  •  %s: fold" % [Pad.glyph("cross"), Pad.glyph("square"), Pad.glyph("triangle"), Pad.glyph("cross"), Pad.glyph("circle")])
+		if Pad.using_pad else "D: drift  •  H: hold  •  W: warp, then click the card to swap  •  Esc: fold", 15)
 	hint.position = Vector2(vs.x * 0.5 - 330, vs.y - 40)
 	add_child(hint)
 
@@ -513,8 +513,8 @@ func _update_ui() -> void:
 		return
 	var me: Dictionary = players[0]
 	_ui["hand"].text = "Your hand: %d%s" % [total(me), "  – BURNED OUT" if String(me["state"]) == "burned" else ""]
-	_ui["warp"].text = "Warp held – swap a card with the deck's top" if has_warp(me) else ""
-	_ui["msg"].text = msg if msg_t > 0.0 else ("Your turn – drift or hold." if turn == 0 and state == "play" else "")
+	_ui["warp"].text = "Warp held: swap a card with the deck's top" if has_warp(me) else ""
+	_ui["msg"].text = msg if msg_t > 0.0 else ("Your turn: drift or hold." if turn == 0 and state == "play" else "")
 	var mine := turn == 0 and state == "play"
 	(_btns["drift"] as Button).disabled = not mine
 	(_btns["hold"] as Button).disabled = not mine

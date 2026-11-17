@@ -119,6 +119,9 @@ func say(text: String, options: Array, cont: Callable = Callable()) -> void:
 		var o: Array = options[i]
 		var b := UI.button("%d.  %s" % [i + 1, o[0]], o[1])
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if o.size() > 2:
+			b.add_theme_color_override("font_color", o[2])        # package 56: an answer that moves the story on (gold)
+			b.add_theme_color_override("font_hover_color", (o[2] as Color).lightened(0.25))
 		_choices.add_child(b)
 	_choice_panel.visible = false
 	_hint.text = ""
@@ -143,7 +146,7 @@ func _process(delta: float) -> void:
 func _finish() -> void:
 	_text.visible_characters = -1
 	if _cont.is_valid():
-		_hint.text = ("%s go on" % Pad.glyph("cross")) if Pad.using_pad else "Click, E or Space – go on"
+		_hint.text = ("%s go on" % Pad.glyph("cross")) if Pad.using_pad else "Click, E or Space: go on"
 		return
 	if not _choice_panel.visible:
 		_choice_panel.visible = true

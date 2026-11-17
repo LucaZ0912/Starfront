@@ -431,8 +431,8 @@ func info_text() -> String:
 			return t
 		"haven":
 			if data.get("fortress", false):
-				return "%s\nPirate Fortress – hostile\nHeavy guns and a garrison. Destroy the garrison to break it: bounty %s." % [data["name"], GameData.fmt_credits(int(data.get("bounty", 0)))]
-			return "%s\nPirate Haven – hostile\nIts guns fire on anyone who comes close.\nDocking requires pirate reputation (later)." % data["name"]
+				return "%s\nPirate Fortress: hostile\nHeavy guns and a garrison. Destroy the garrison to break it: bounty %s." % [data["name"], GameData.fmt_credits(int(data.get("bounty", 0)))]
+			return "%s\nPirate Haven: hostile\nIts guns fire on anyone who comes close.\nDocking requires pirate reputation (later)." % data["name"]
 		"hazard":
 			match String(data.get("kind", "")):
 				"radiation":
@@ -440,16 +440,16 @@ func info_text() -> String:
 				"ion_storm":
 					return "%s\nRadar jammed, lightning knocks out systems. It drifts." % data["name"]
 				"minefield":
-					return "%s\nOld mines – they go off against anyone." % data["name"]
+					return "%s\nOld mines: they go off against anyone." % data["name"]
 		"gate":
 			var to: int = data["to"]
 			var sec: float = Universe.systems[to]["security"]
 			return "%s\nDestination security: %.1f\nClick: hyperspace jump" % [data["name"], sec]
 		"asteroid":
 			if kind == "colossus" and is_depleted():
-				return "%s\nMined out – empty" % title()
+				return "%s\nMined out: empty" % title()
 			if not is_prospected():
-				return "%s\nComposition unknown – lock it and use a Prospector Scanner\nClick: select (lock it and use a mining laser)" % title()
+				return "%s\nComposition unknown: lock it and use a Prospector Scanner\nClick: select (lock it and use a mining laser)" % title()
 			return "%s\nDeposit: %s\nClick: select (lock it and use a mining laser)" % [title(), deposit_text()]
 		"anomaly":
 			if data["done"]:
@@ -467,7 +467,7 @@ func info_text() -> String:
 		"descent":
 			var b := Universe.find_body(int(view.system_id) if view != null else GameState.current_system, String(data["body"]))
 			return "%s\nDescent to %s%s\nClick: fly there and descend" % [data["name"], String(b.get("name", "?")),
-				" – mind the heat on the way down" if Universe.has_atmosphere(b) else ""]
+				", mind the heat on the way down" if Universe.has_atmosphere(b) else ""]
 	return title()
 
 

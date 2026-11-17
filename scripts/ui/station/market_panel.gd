@@ -84,7 +84,7 @@ func build() -> void:
 		var name_col := UI.GOOD if role == "produce" else (UI.GOLD if role == "consume" else Color(0.9, 0.93, 1.0))
 		var nl := UI.label(c["name"], 14, name_col)
 		nl.tooltip_text = "%s  •  %.1f m³ per unit%s%s" % [_sector_text(cid), float(c["volume"]),
-			"\nLuxury – wanted in wealthy and rich systems" if Market.is_flag(cid, "lux") else "",
+			"\nLuxury: wanted in wealthy and rich systems" if Market.is_flag(cid, "lux") else "",
 			"\nNeeded everywhere" if Market.is_flag(cid, "basic") else ""]
 		nl.mouse_filter = Control.MOUSE_FILTER_STOP
 		grid.add_child(nl)

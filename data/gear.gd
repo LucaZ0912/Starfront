@@ -76,7 +76,7 @@ const SUITS := {
 		"shield": 45.0, "armor": 130.0, "energy": 260.0, "oxygen": 25.0, "ammo": 260,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 31000,
 		"col": Color(0.66, 0.08, 0.1), "trim": Color(0.95, 0.75, 0.3),
-		"desc": "The Covenant's pathfinders: red plate edged in gold, close-fitting and quick – and the Red Arm Laser on the left forearm."},
+		"desc": "The Covenant's pathfinders: red plate edged in gold, close-fitting and quick, and the Red Arm Laser on the left forearm."},
 	# 0.7.52.18 (Luz): the Assembly's Senate armours – blue plate with white sweeping lines, a crest on the helmet; two
 	# drone places, both drones carried on the shoulders (the second flown with Shift+C); stronger shields; sold only
 	# in the Assembly's lands, only to pilots it calls Friendly
@@ -85,18 +85,18 @@ const SUITS := {
 		"shield": 80.0, "armor": 50.0, "energy": 250.0, "oxygen": 25.0, "ammo": 240,
 		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.05, "price": 27000,
 		"col": Color(0.42, 0.53, 0.93), "trim": Color(0.93, 0.95, 1.0),
-		"desc": "The Senate's scouts: light blue-and-white plate, a short crest, a strong shield – and two drones riding on the shoulders."},
+		"desc": "The Senate's scouts: light blue-and-white plate, a short crest, a strong shield, and two drones riding on the shoulders."},
 	"suit_mil_senate_hand": {"name": "Hand of the Senate", "maker": "Concord Fleetworks", "faction": "assembly", "shoulder_drones": true,
 		"weapons": 3, "belt": 4, "grenades": 3, "drones": 2, "features": 3,
 		"shield": 110.0, "armor": 115.0, "energy": 310.0, "oxygen": 20.0, "ammo": 360,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.85, "price": 36000,
 		"col": Color(0.3, 0.38, 0.75), "trim": Color(0.93, 0.95, 1.0),
-		"desc": "The Senate's guard: heavy deep-blue plate, a cloak down one side, a tall crest, the strongest shield – and two drones on the shoulders."},
+		"desc": "The Senate's guard: heavy deep-blue plate, a cloak down one side, a tall crest, the strongest shield, and two drones on the shoulders."},
 	"suit_mil_heavy": {"name": "Heavy Combat Suit", "maker": "Hadrian Dynamics", "weapons": 3, "belt": 4, "grenades": 3, "drones": 1, "features": 3,
 		"shield": 70.0, "armor": 110.0, "energy": 300.0, "oxygen": 20.0, "ammo": 380,
 		"env": {"heat": 0.45, "cold": 0.45, "toxic": 1.0, "vacuum": 0.85}, "speed": 0.82, "price": 23000,
 		"col": Color(0.3, 0.32, 0.36), "trim": Color(1.0, 0.25, 0.2),
-		"desc": "A walking bunker: three weapons, heavy plate, a deep magazine – and slow, and short of air."},
+		"desc": "A walking bunker: three weapons, heavy plate, a deep magazine, and slow, and short of air."},
 	# 54c (Luz): the Hierarch's guard in Aureola – gilded plate, a long crimson cape (for now NPCs only: never sold,
 	# `faction` "hierarch").
 	"suit_mil_hierarch": {"name": "Hierarch's Guard Armour", "maker": "Forge of Return", "faction": "hierarch", "weapons": 2, "belt": 3,
@@ -112,16 +112,16 @@ const SUITS := {
 		"shield": 20.0, "armor": 12.0, "energy": 520.0, "oxygen": 90.0, "ammo": 80,
 		"env": {"heat": 1.0, "cold": 1.0, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.06, "price": 60000,
 		"col": Color(0.17, 0.17, 0.19), "trim": Color(0.86, 0.87, 0.86),
-		"desc": "The Museum's thanks: a cloak and a scanner built in, the cloak lasting five times as long; air and energy for days, a long belt – but barely a shield."},
+		"desc": "The Museum's thanks: a cloak and a scanner built in, the cloak lasting five times as long; air and energy for days, a long belt, but barely a shield."},
 }
 
 ## Weapons (no sizes for now): dtype, damage per shot, rof (shots/s), range (art px), spread (rad), pellets,
 ## energy (per shot, optical) or ammo (per shot, kinetic and explosive), splash (radius).
 const WEAPONS := {
 	"wp_laser_pistol": {"name": "Laser Pistol", "maker": "Axiom Astronautics", "dtype": "optical", "damage": 8.0, "rof": 3.0,
-		"range": 260.0, "spread": 0.03, "energy": 1.4, "price": 900, "desc": "Quick, accurate, no magazine – it drinks the suit's energy."},
+		"range": 260.0, "spread": 0.03, "energy": 1.4, "price": 900, "desc": "Quick, accurate, no magazine: it drinks the suit's energy."},
 	"wp_laser_rifle": {"name": "Laser Rifle", "maker": "Axiom Astronautics", "dtype": "optical", "damage": 14.0, "rof": 2.5,
-		"range": 430.0, "spread": 0.02, "energy": 2.4, "price": 3200, "desc": "Long reach and steady – burns through shields."},
+		"range": 430.0, "spread": 0.02, "energy": 2.4, "price": 3200, "desc": "Long reach and steady: burns through shields."},
 	"wp_beam": {"name": "Cutting Beam", "maker": "Concord Fleetworks", "dtype": "optical", "damage": 4.0, "rof": 10.0,
 		"range": 200.0, "spread": 0.0, "energy": 0.6, "price": 4400, "desc": "A continuous beam at short range; melts shields, hungry for energy."},
 	# 53f (Luz): what creatures fight with – claws and teeth, close up (`melee`: no shot flies, a strike lands)
@@ -130,28 +130,28 @@ const WEAPONS := {
 	"wp_bite": {"name": "Teeth", "maker": "–", "dtype": "kinetic", "damage": 16.0, "rof": 1.6, "range": 18.0, "spread": 0.0,
 		"ammo": 0, "price": 0, "builtin": true, "melee": true, "desc": "Small, quick, and many of them."},
 	"wp_pistol": {"name": "Slug Pistol", "maker": "Hadrian Dynamics", "dtype": "kinetic", "damage": 11.0, "rof": 2.0,
-		"range": 240.0, "spread": 0.05, "ammo": 1, "price": 700, "desc": "The sidearm of the frontier – hits hard on armour."},
+		"range": 240.0, "spread": 0.05, "ammo": 1, "price": 700, "desc": "The sidearm of the frontier: hits hard on armour."},
 	"wp_smg": {"name": "Burst Gun", "maker": "Hadrian Dynamics", "dtype": "kinetic", "damage": 6.0, "rof": 8.0,
 		"range": 200.0, "spread": 0.12, "ammo": 1, "price": 2100, "desc": "A hail of slugs at close range; empties a magazine fast."},
 	"wp_rifle": {"name": "Rail Carbine", "maker": "Hadrian Dynamics", "dtype": "kinetic", "damage": 17.0, "rof": 2.8,
 		"range": 460.0, "spread": 0.03, "ammo": 1, "price": 3600, "desc": "The marine's rifle: punches through plate."},
 	"wp_shotgun": {"name": "Scatter Gun", "maker": "Forge of Return", "dtype": "kinetic", "damage": 7.0, "pellets": 6, "rof": 1.0,
-		"range": 160.0, "spread": 0.3, "ammo": 1, "price": 2600, "desc": "Six slugs at once – devastating close up, useless far off."},
+		"range": 160.0, "spread": 0.3, "ammo": 1, "price": 2600, "desc": "Six slugs at once: devastating close up, useless far off."},
 	"wp_sniper": {"name": "Long Rail", "maker": "Forge of Return", "dtype": "kinetic", "damage": 60.0, "rof": 0.5,
 		"range": 820.0, "spread": 0.005, "ammo": 2, "price": 7800, "desc": "One shot, far away, through anything with plate."},
 	# 0.7.52.14 (Luz): built into the Pathfinder armour – never sold on its own. A heavy beam from the left forearm that
 	# cuts through any cover; `charge`: seconds to charge again (it charges while another weapon is in hand too)
 	"wp_arm_laser": {"name": "Red Arm Laser", "maker": "Forge of Return", "dtype": "optical", "damage": 120.0, "rof": 1.0,
 		"range": 450.0, "spread": 0.01, "charge": 30.0, "pierce": true, "builtin": true, "price": 0,
-		"desc": "The Pathfinder's own: a heavy beam from the left forearm that cuts through any cover – then 30 seconds to charge."},
+		"desc": "The Pathfinder's own: a heavy beam from the left forearm that cuts through any cover, then 30 seconds to charge."},
 	"wp_launcher": {"name": "Grenade Launcher", "maker": "Hadrian Dynamics", "dtype": "explosive", "damage": 45.0, "rof": 0.6,
-		"range": 380.0, "spread": 0.06, "ammo": 4, "splash": 60.0, "price": 6400, "desc": "Lobbed shells that burst – best against what has no shield or plate left."},
+		"range": 380.0, "spread": 0.06, "ammo": 4, "splash": 60.0, "price": 6400, "desc": "Lobbed shells that burst: best against what has no shield or plate left."},
 }
 
 ## Belt items. kind: grenade (thrown, stack), tool (quality, uses energy), use (consumable, stack). Stacks up to `stack`.
 const BELT := {
 	"gr_frag": {"name": "Frag Grenade", "kind": "grenade", "dtype": "explosive", "damage": 60.0, "radius": 70.0, "stack": 10, "price": 180,
-		"desc": "Splinters all round – hurts what has no shield left."},
+		"desc": "Splinters all round: hurts what has no shield left."},
 	"gr_emp": {"name": "EMP Grenade", "kind": "grenade", "dtype": "optical", "damage": 0.0, "shield_damage": 90.0, "radius": 80.0, "stack": 10, "price": 260,
 		"desc": "Knocks shields down in a wide burst; harmless to the body."},
 	"gr_smoke": {"name": "Smoke Grenade", "kind": "grenade", "radius": 90.0, "time": 8.0, "stack": 10, "price": 90,
@@ -164,7 +164,7 @@ const BELT := {
 		"desc": "Opens hatches and cuts salvage out of wrecks."},
 	# 0.7.52.25 (Luz): the short cloak – a few seconds unseen (by its quality), then it needs a while to work again
 	"tl_cloak": {"name": "Short Cloak", "kind": "tool", "maker": "Axiom Astronautics", "strength": 1.0, "range": 0.0, "energy": 0.0, "price": 2400,
-		"desc": "Bends the light round you for a few seconds – foes lose you, your weapons hold fire. Then it needs a while to recharge."},
+		"desc": "Bends the light round you for a few seconds: foes lose you, your weapons hold fire. Then it needs a while to recharge."},
 	"tl_mining": {"name": "Mining Laser", "kind": "tool", "maker": "Kanayama Heavy Industries", "strength": 1.0, "range": 60.0, "energy": 6.0, "price": 1900,
 		"desc": "Cuts ore and crystals out of the rock by hand."},
 	"cs_medkit": {"name": "Medkit", "kind": "use", "heal": 50.0, "stack": 4, "price": 150, "desc": "Patches the body up: +50 health."},
@@ -180,18 +180,18 @@ const BELT := {
 ## 53f-2 (Luz): goods from the wild – they go in the pockets and are sold at a city's or a station's gear shop (half
 ## the price, as all used things); the big animals' hides and meat go to the hold as cargo besides.
 const GOODS := {
-	"gd_hide": {"name": "Scaled Hide", "kind": "goods", "stack": 8, "price": 160, "desc": "A jungle beast's hide – scaled, tough, sought by tailors."},
-	"gd_pelt": {"name": "Frost Pelt", "kind": "goods", "stack": 8, "price": 220, "desc": "A thick white pelt from the ice – warm as nothing made."},
+	"gd_hide": {"name": "Scaled Hide", "kind": "goods", "stack": 8, "price": 160, "desc": "A jungle beast's hide: scaled, tough, sought by tailors."},
+	"gd_pelt": {"name": "Frost Pelt", "kind": "goods", "stack": 8, "price": 220, "desc": "A thick white pelt from the ice: warm as nothing made."},
 	"gd_shell": {"name": "Crab Shell", "kind": "goods", "stack": 8, "price": 140, "desc": "A plate of armoured crab shell, barnacles and all."},
 	"gd_meat": {"name": "Game Meat", "kind": "goods", "stack": 12, "price": 50, "desc": "Fresh meat, sealed in a bag. The cooks in the cities pay for it."},
-	"gd_sample": {"name": "Tissue Sample", "kind": "goods", "stack": 12, "price": 120, "desc": "A sample in a vial – the labs pay for what lives out there."},
+	"gd_sample": {"name": "Tissue Sample", "kind": "goods", "stack": 12, "price": 120, "desc": "A sample in a vial: the labs pay for what lives out there."},
 	"gd_egg": {"name": "Frost Worm Egg", "kind": "goods", "stack": 4, "price": 1800, "desc": "A pale egg from a nest under the ice, faintly glowing. Rare."},
 }
 
 ## Features – the suit's modules (quality F–A). energy_rate: energy per minute while it works.
 const FEATURES := {
 	"ft_shield": {"name": "Shield Generator", "maker": "Concord Fleetworks", "shield": 40.0, "regen": 4.0, "energy_rate": 2.0, "price": 2800,
-		"desc": "A stronger shield that recovers faster – for a steady draw on the suit's energy."},
+		"desc": "A stronger shield that recovers faster, for a steady draw on the suit's energy."},
 	"ft_plates": {"name": "Armour Plates", "maker": "Hadrian Dynamics", "armor": 35.0, "speed": 0.95, "price": 1900,
 		"desc": "More plate over chest and legs; a little slower."},
 	"ft_sprint": {"name": "Sprint Booster", "maker": "Maison Aurelle", "sprint": 1.3, "energy_rate": 6.0, "price": 2300,
@@ -199,7 +199,7 @@ const FEATURES := {
 	"ft_jets": {"name": "Jump Jets", "maker": "Axiom Astronautics", "dash": 1.6, "dash_energy": 8.0, "price": 3600,
 		"desc": "A burst of thrust: every dodge takes you further (×1.6), for a little of the suit's energy."},
 	"ft_thermo": {"name": "Temperature Regulator", "maker": "Earthworks", "env": {"heat": 0.3, "cold": 0.3}, "price": 1700,
-		"desc": "Keeps heat and cold out – the life support needs less."},
+		"desc": "Keeps heat and cold out: the life support needs less."},
 	"ft_o2": {"name": "Oxygen Reserve", "maker": "Earthworks", "oxygen": 30.0, "price": 1200, "desc": "A second tank: +30 minutes of air."},
 	"ft_ammo": {"name": "Ammunition Pack", "maker": "Hadrian Dynamics", "ammo": 120, "price": 1100, "desc": "More rounds and shells carried."},
 	"ft_battery": {"name": "Battery Pack", "maker": "Concord Fleetworks", "energy": 80.0, "price": 1500, "desc": "More energy stored in the suit."},
@@ -215,7 +215,7 @@ const FEATURES := {
 const DRONES := {
 	"dr_laser": {"name": "Laser Drone", "maker": "Axiom Astronautics", "kind": "laser", "dtype": "optical", "damage": 5.0, "rof": 3.0,
 		"range": 240.0, "spread": 0.04, "heat": 7.0, "heat_max": 100.0, "cool": 22.0, "shield": 22.0, "armor": 12.0, "rebuild": 20.0,
-		"speed": 150.0, "price": 3800, "desc": "A small laser at your shoulder that fires at your target by itself – until it has to cool off."},
+		"speed": 150.0, "price": 3800, "desc": "A small laser at your shoulder that fires at your target by itself, until it has to cool off."},
 	"dr_kinetic": {"name": "Kinetic Drone", "maker": "Hadrian Dynamics", "kind": "kinetic", "dtype": "kinetic", "damage": 4.0, "rof": 7.0,
 		"range": 210.0, "spread": 0.1, "mag": 40, "reload": 3.0, "shield": 14.0, "armor": 26.0, "rebuild": 20.0,
 		"speed": 150.0, "price": 4200, "desc": "A rapid slug gun on rotors. Its magazine empty, it comes back and reloads from your suit."},

@@ -46,7 +46,7 @@ static func card(m: Dictionary, buttons: Array = [], head: String = "", head_col
 		bar.max_value = float(CrewData.XP_NEED[q])
 		bar.value = float(m.get("xp", 0.0))
 		xr.add_child(bar)
-		xr.add_child(UI.label("to %s – learns from %s" % [nq, CrewData.ROLES[String(m["role"])]["learns"]], 10, UI.TEXT_DIM))
+		xr.add_child(UI.label("to %s: learns from %s" % [nq, CrewData.ROLES[String(m["role"])]["learns"]], 10, UI.TEXT_DIM))
 	v.add_child(UI.label("Share of income %.2f %%" % (CrewCore.share_of(m) * 100.0), 10, UI.TEXT_DIM))
 	if not buttons.is_empty():
 		var bv := UI.vbox(4)

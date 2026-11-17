@@ -71,7 +71,7 @@ const HULLS := {
 		"slots": {"weapon": 2, "tool": 1, "optional": 1},
 		"slot_sizes": {"weapon": [1, 1], "tool": [1], "optional": [1], "hull": 1, "engine": 3, "reactor": 2, "distributor": 2, "tank": 1, "hyperdrive": 1, "sensors": 2, "hangar": 0},
 		"drones": 0, "shape": "drone", "length": 14, "speed_mult": 1.466,          # Luz: about 600 km/s
-		"desc": "One of Dan's remote drones – rust brown, a hazard stripe, sturdier than most.",
+		"desc": "One of Dan's remote drones: rust brown, a hazard stripe, sturdier than most.",
 	},
 	"dragonfly": {
 		"maker": "earthworks", "name": "Dragonfly", "class": "Scout Corvette", "size": 1, "price": 9000, "buyable": true,
@@ -146,7 +146,7 @@ const HULLS := {
 		"hatches": {"drones": [6, 8, 4, 3]}, "hatch_overlay": true,
 		"ore_cargo": 60, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
 		"refinery": {"rate": 0.15, "eff": 0.7, "power": 8}, "builtin": ["refinery", "prospect"],
-		"desc": "\"Mole\" – KHI's small miner with its own refinery, ore hold and prospector. Tough and slow.",
+		"desc": "\"Mole\": KHI's small miner with its own refinery, ore hold and prospector. Tough and slow.",
 	},
 	"anaguma": {
 		"maker": "khi", "name": "Anaguma", "class": "Mining Frigate", "size": 2, "price": 120000, "buyable": true,
@@ -157,7 +157,7 @@ const HULLS := {
 		"hatches": {"drones": [18, 10, 6, 5]}, "hatch_overlay": true,
 		"ore_cargo": 300, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
 		"refinery": {"rate": 0.4, "eff": 0.8, "power": 16}, "builtin": ["refinery", "prospect"],
-		"desc": "\"Badger\" – takes strip miners and ice harvesters, a big ore hold and a better refinery.",
+		"desc": "\"Badger\": takes strip miners and ice harvesters, a big ore hold and a better refinery.",
 	},
 	"iwakudaki": {
 		"maker": "khi", "name": "Iwakudaki", "class": "Mining Barge", "size": 3, "price": 420000, "buyable": true,
@@ -168,7 +168,7 @@ const HULLS := {
 		"hatches": {"drones": [26, 11, 8, 7]}, "hatch_overlay": true,
 		"ore_cargo": 900, "mining_bonus": 0.10, "turn_mult": 0.75, "align_mult": 1.4,
 		"refinery": {"rate": 1.0, "eff": 0.9, "power": 32}, "builtin": ["refinery", "prospect"],
-		"desc": "\"Rock breaker\" – KHI's heavy mining barge: four big tool slots, a huge ore hold, a strong refinery.",
+		"desc": "\"Rock breaker\"; KHI's heavy mining barge: four big tool slots, a huge ore hold, a strong refinery.",
 	},
 	"kanayama": {
 		"maker": "khi", "name": "Kanayama-maru", "class": "Heavy Industry Ship", "size": 3, "price": 950000, "buyable": true,
@@ -193,7 +193,7 @@ const HULLS := {
 		"hatches": {"drones": [98, 12, 6, 7]}, "hatch_overlay": true,
 		"gas_cargo": 1600, "heat_resist": 0.6, "turn_mult": 0.65, "align_mult": 1.6,
 		"builtin": ["gas"],
-		"desc": "\"Whale\" – KHI's gas freighter: three great round tanks (1,600 m³ of gas), a gas scoop under the drone hatch, the bridge raised on the nose and a hull that bears the heat deep in a giant's harvest band.",
+		"desc": "\"Whale\"; KHI's gas freighter: three great round tanks (1,600 m³ of gas), a gas scoop under the drone hatch, the bridge raised on the nose and a hull that bears the heat deep in a giant's harvest band.",
 	},
 	# ---------------- Axiom Astronautics (package 25g, Meridian Directorate) ----------------
 	"axa_parallax": {
@@ -205,7 +205,7 @@ const HULLS := {
 		"hatches": {"drones": [21, 5, 4, 3]}, "hatch_overlay": true,
 		"sensor_mult": 1.25, "signature_mult": 0.75, "power_mult": 0.85, "builtin": ["cloak"], "anomaly_finder": 4,
 		"cloak": {"energy_rate": 5.0, "power": 8.0},
-		"desc": "Axiom's research ship: keen sensors, a low signature, a cloaking device – and it marks every system within four jumps that still hides undiscovered anomalies.",
+		"desc": "Axiom's research ship: keen sensors, a low signature, a cloaking device, and it marks every system within four jumps that still hides undiscovered anomalies.",
 	},
 	"axa_threshold": {
 		"maker": "axiom", "name": "Threshold", "class": "Jump Ship (Prototype)", "size": 3, "price": 980000, "buyable": true, "min_tier": "allied",
@@ -217,7 +217,7 @@ const HULLS := {
 		"sensor_mult": 1.25, "signature_mult": 0.75, "power_mult": 0.85, "builtin": ["cloak"],
 		"cloak": {"energy_rate": 18.0, "power": 30.0},
 		"wormhole": {"max": 8, "cooldown": 120.0, "fail": 0.12},
-		"desc": "Axiom's prototype jump ship: an artificial black hole in its round core opens a small wormhole – it jumps without a gate, up to eight jumps far, for one unit of exotic matter per jump. Not through the Veil.",
+		"desc": "Axiom's prototype jump ship: an artificial black hole in its round core opens a small wormhole; it jumps without a gate, up to eight jumps far, for one unit of exotic matter per jump. Not through the Veil.",
 	},
 	# ---------------- Forge of Return (package 25f, Covenant of Return) ----------------
 	"for_acolyte": {
@@ -244,7 +244,7 @@ const HULLS := {
 		"drones": 0, "shape": "for_cathedral", "length": 124, "reactor_mult": 2.2, "spike_fx": true,
 		"builtin": ["drone_pulse", "auto_fire"],
 		"drone_pulse": {"range": 5000.0, "interval": 30.0, "stun": 15.0, "energy": 420.0, "power": 45.0},
-		"desc": "A fortress of faith: crimson battlements full of crystal batteries around a radiant nave with stained glass, a rose window at the bow, a golden halo over the sanctuary. Eight hardpoints – with crystals in all of them one mighty lance –, a huge reactor, an anti-drone pulse and an auto mode for its lasers.",
+		"desc": "A fortress of faith: crimson battlements full of crystal batteries around a radiant nave with stained glass, a rose window at the bow, a golden halo over the sanctuary. Eight hardpoints (with crystals in all of them, one mighty lance), a huge reactor, an anti-drone pulse and an auto mode for its lasers.",
 	},
 	# ---------------- Concord Fleetworks (package 25e, Cluster Assembly) ----------------
 	"cfw_demos": {
@@ -255,7 +255,7 @@ const HULLS := {
 		"drones": 3, "shape": "cfw_demos", "length": 37,
 		"shield_mult": 1.6, "shield_down_mult": 3.0, "weapon_dmg_mult": 0.5, "drone_mult": 2.0, "npc_drones": true, "stripe_fx": true,
 		"hatches": {"drones": [12, 1, 6, 2], "drones_2": [12, 12, 6, 2]},
-		"desc": "\"The people\" – the Assembly's small militia carrier: three drones with double strength and range from two hangar doors, good shields, light guns, little armour.",
+		"desc": "\"The people\"; the Assembly's small militia carrier: three drones with double strength and range from two hangar doors, good shields, light guns, little armour.",
 	},
 	"cfw_quirinus": {
 		"maker": "concord", "name": "Quirinus", "class": "Patrol Carrier", "size": 2, "price": 150000, "buyable": true, "min_tier": "friendly",
@@ -277,7 +277,7 @@ const HULLS := {
 		"drone_paint": "assembly_drone", "stripe_fx": true, "launch_glow": true,
 		"arms": {"body": "cfw_concordia_body", "art": "cfw_concordia_wing", "frames": 6, "shift": [4, 4]},
 		"hatches": {"drones": [20, 4, 10, 3], "drones_2": [20, 24, 10, 3], "drones_3": [40, 4, 10, 3], "drones_4": [40, 24, 10, 3], "drones_5": [60, 4, 10, 3], "drones_6": [60, 24, 10, 3]},
-		"desc": "The Assembly's flagship: a long fleet carrier – the only ship that controls eleven drones, in Assembly blue, launched from six hangar doors at once. One big gun, keen sensors, very strong shields.",
+		"desc": "The Assembly's flagship: a long fleet carrier; the only ship that controls eleven drones, in Assembly blue, launched from six hangar doors at once. One big gun, keen sensors, very strong shields.",
 	},
 	# ---------------- Hadrian Dynamics (package 25d) ----------------
 	"hdy_talon": {
@@ -320,7 +320,7 @@ const HULLS := {
 		"reflect": 0.20, "res_bonus": {"explosive": 0.2}, "work_mult": 0.5, "heavy_missiles": true, "small_ship_bay": true,
 		"hatches": {"platform": [43, 12, 15, 13], "drones": [20, 14, 8, 9]},
 		"builtin": ["pd"], "yard_rule": "military",
-		"desc": "A small fleet carrier – a fortress with nine drones, built-in point defence and a reflective hull (20 %). Sold only at military stations and the biggest yards.",
+		"desc": "A small fleet carrier: a fortress with nine drones, built-in point defence and a reflective hull (20 %). Sold only at military stations and the biggest yards.",
 	},
 	# ---------------- Maison Aurelle (package 25c) ----------------
 	"aur_pearl": {
@@ -331,7 +331,7 @@ const HULLS := {
 		"drones": 0, "shape": "aur_pearl", "length": 34,
 		"speed_mult": 1.35, "align_mult": 0.8, "shield_mult": 1.2,
 		"afterburner": {"boost": 1.5, "energy_rate": 6, "power": 6}, "builtin": ["afterburner"],
-		"desc": "Maison Aurelle's small luxury yacht – extremely fast, takes luxury suites, a built-in afterburner.",
+		"desc": "Maison Aurelle's small luxury yacht: extremely fast, takes luxury suites, a built-in afterburner.",
 	},
 	"aur_boulevard": {
 		"maker": "aurelle", "name": "Boulevard", "class": "Passenger Liner", "size": 2, "price": 120000, "buyable": true,
@@ -352,7 +352,7 @@ const HULLS := {
 		"drones": 0, "shape": "aur_opal", "length": 58,
 		"speed_mult": 1.45, "align_mult": 0.8, "shield_mult": 1.25,
 		"afterburner": {"boost": 1.45, "energy_rate": 12, "power": 12}, "builtin": ["afterburner"],
-		"desc": "A medium luxury liner with a glass lounge – extremely fast for its size, luxury suites, a built-in afterburner.",
+		"desc": "A medium luxury liner with a glass lounge: extremely fast for its size, luxury suites, a built-in afterburner.",
 	},
 	"aur_empress": {
 		"maker": "aurelle", "name": "Empress", "class": "Megaliner", "size": 3, "price": 650000, "buyable": true,

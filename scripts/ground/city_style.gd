@@ -93,9 +93,9 @@ const DECK := {
 ## what they say.
 const GUARDS := {
 	"independent": {"c1": 0, "c2": 13, "name": "Contract security",
-		"lines": ["Contract security. Don't make me file a report.", "Keep it holstered, pilot – the city pays us to keep the peace.", "Trouble? Not on my street."]},
+		"lines": ["Contract security. Don't make me file a report.", "Keep it holstered, pilot: the city pays us to keep the peace.", "Trouble? Not on my street."]},
 	"assembly": {"c1": 4, "c2": 3, "name": "City militia",
-		"lines": ["Militia on duty – the city is safe, citizen.", "Weapons stay holstered in the city. The Assembly voted on it.", "Need directions? The lifts take you anywhere."]},
+		"lines": ["Militia on duty: the city is safe, citizen.", "Weapons stay holstered in the city. The Assembly voted on it.", "Need directions? The lifts take you anywhere."]},
 	"covenant": {"c1": 8, "c2": 10, "name": "Wardens of the Road",
 		"lines": ["The road leads home. Walk it in peace.", "No blade, no gun drawn within these walls.", "The Hierarch's peace holds here, pilgrim."]},
 	"directorate": {"c1": 3, "c2": 6, "name": "Civic order",

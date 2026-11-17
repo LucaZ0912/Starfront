@@ -277,7 +277,7 @@ static func opens_text(id: String) -> String:
 	for r2 in roles:
 		parts.append("crew: %s" % CD2.role_name(String(r2)))
 	if u.has("wingmen"):
-		parts.append("wingmen – pilots for hire at The Bar")
+		parts.append("wingmen: pilots for hire at The Bar")
 	if u.has("weapon_size"):
 		parts.append("weapons of size %d" % int(u["weapon_size"]))
 	if u.has("size"):

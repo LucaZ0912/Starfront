@@ -33,7 +33,7 @@ func build() -> void:
 		var row2 := UI.hbox(8)
 		add_child(row2)
 		var pet := String(cu.edict.get("petition", ""))
-		row2.add_child(UI.label("Petition the Hierarch for the next edict:" if pet == "" else "Your petition is heard – next: %s" % CuriaCore.EDICTS[pet]["name"], 13, UI.GOOD))
+		row2.add_child(UI.label("Petition the Hierarch for the next edict:" if pet == "" else "Your petition is heard, next: %s" % CuriaCore.EDICTS[pet]["name"], 13, UI.GOOD))
 		for id in cu.edict.get("offer", []):
 			var eid: String = id
 			var pb := UI.button(String(CuriaCore.EDICTS[eid]["name"]), func(): run({"type": "curia_petition", "edict": eid}))
@@ -64,6 +64,6 @@ func build() -> void:
 	rb.disabled = have <= 0
 	row4.add_child(rb)
 	if cu.blessed():
-		add_child(UI.label("You are blessed – %d min left." % cu.minutes_left(float(cu.blessing_until)), 13, UI.GOOD))
+		add_child(UI.label("You are blessed: %d min left." % cu.minutes_left(float(cu.blessing_until)), 13, UI.GOOD))
 	else:
-		add_child(UI.label("Relics turn up in anomalies – analyse them anywhere in the Cluster.", 12, UI.TEXT_DIM))
+		add_child(UI.label("Relics turn up in anomalies: analyse them anywhere in the Cluster.", 12, UI.TEXT_DIM))

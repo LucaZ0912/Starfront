@@ -120,14 +120,14 @@ func hunted_by(f: String) -> bool:
 
 func contracts_error(f: String) -> String:
 	if f != "" and level(f) >= 2:
-		return "BlackLedger posts no contracts for you here – you are %s by the %s." % [level_name(f).to_lower(), FactionData.name_of(f)]
+		return "BlackLedger posts no contracts for you here: you are %s by the %s." % [level_name(f).to_lower(), FactionData.name_of(f)]
 	return ""
 
 
 func dock_error(st: Dictionary) -> String:
 	var f := String(st.get("faction", ""))
 	if f != "" and String(st.get("type", "")) != "pirate_haven" and level(f) >= 3:
-		return "%s refuses docking – you are MOST WANTED by the %s. Let it cool down (−1 every %d min) or pay your fine elsewhere." % [st.get("name", "The station"), FactionData.name_of(f), int(DECAY_TIME / 60.0)]
+		return "%s refuses docking: you are MOST WANTED by the %s. Let it cool down (−1 every %d min) or pay your fine elsewhere." % [st.get("name", "The station"), FactionData.name_of(f), int(DECAY_TIME / 60.0)]
 	return ""
 
 
@@ -155,7 +155,7 @@ func offence(f: String, crime: String, what: String = "") -> void:
 	r["last"] = GameState.play_time
 	records[f] = r
 	var lv1 := level(f)
-	GameState.log_msg("%s: crime recorded – %s. Status: %s (%d)." % [FactionData.name_of(f), what if what != "" else crime.replace("_", " "), level_name(f), points(f)], GameState.COL_BAD)
+	GameState.log_msg("%s: crime recorded, %s. Status: %s (%d)." % [FactionData.name_of(f), what if what != "" else crime.replace("_", " "), level_name(f), points(f)], GameState.COL_BAD)
 	if lv1 > lv0:
 		GameState.log_msg(_level_message(f), GameState.COL_BAD)
 	GameState.wanted_changed.emit(f, lv1)
@@ -169,7 +169,7 @@ func pay_fine(f: String) -> int:
 	if not GameState.spend(amount):
 		return -1
 	records.erase(f)
-	GameState.log_msg("Sable Writ Exchange: fine of %s paid – your record with the %s is clean." % [GameData.fmt_credits(amount), FactionData.name_of(f)], GameState.COL_GOOD)
+	GameState.log_msg("Sable Writ Exchange: fine of %s paid; your record with the %s is clean." % [GameData.fmt_credits(amount), FactionData.name_of(f)], GameState.COL_GOOD)
 	GameState.wanted_changed.emit(f, 0)
 	return amount
 
@@ -178,9 +178,9 @@ func _level_message(f: String) -> String:
 	var n := FactionData.name_of(f)
 	match String(level_info(f)["id"]):
 		"suspect":
-			return "You are now a SUSPECT in %s space – its patrols will attack you." % n
+			return "You are now a SUSPECT in %s space: its patrols will attack you." % n
 		"wanted":
-			return "You are now WANTED by the %s – no contracts at its stations." % n
+			return "You are now WANTED by the %s: no contracts at its stations." % n
 		"most_wanted":
-			return "You are now MOST WANTED by the %s – its stations refuse you." % n
+			return "You are now MOST WANTED by the %s: its stations refuse you." % n
 	return ""

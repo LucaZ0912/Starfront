@@ -34,7 +34,7 @@ static func build_senate_plaza(station: Dictionary, body: Dictionary) -> GroundM
 	m.pal["floor"] = Color(0.86, 0.85, 0.82)
 	m.pal["floor2"] = Color(0.74, 0.73, 0.7)
 	m.style = "plaza"
-	m.title = "Neo Kallipolis – Plaza of the Vote"
+	m.title = "Neo Kallipolis: Plaza of the Vote"
 	m.hull_top = -9999
 	var W := 66
 	var H := 34
@@ -51,7 +51,7 @@ static func build_senate_plaza(station: Dictionary, body: Dictionary) -> GroundM
 		m.face_deco.append({"kind": "lift", "x": lx0, "y": 12, "w": 2, "col": Color(0.4, 1.0, 0.6)})
 		m.lifts.append({"x": lx0, "y": 12, "w": 2})
 	m.zones.append({"rect": Rect2(Vector2(1, 13) * TILE, Vector2(6, 1.4) * TILE), "kind": "lift", "id": "lift",
-		"title": "Lift – back down into the city", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(4.5, 10.2) * TILE})
+		"title": "Lift: back down into the city", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(4.5, 10.2) * TILE})
 	m.spawn = Vector2(4.5, 14.6) * TILE
 	# the civic buildings either side of the Senate: white, their glass bands, the Assembly's banners
 	for wing in [[KX, 18], [48, W]]:
@@ -107,9 +107,9 @@ static func build_senate_plaza(station: Dictionary, body: Dictionary) -> GroundM
 	m.lights.append({"pos": Vector2(44.5, 20.5) * TILE, "r": 40.0, "col": Color(0.45, 0.75, 1.0), "a": 0.35})
 	# 54c (Luz): the plaza is a sight – the viewpoint at the foot of the stair, information, a souvenir stall
 	m.zones.append({"rect": Rect2(Vector2(SX + 3, 19.0) * TILE, Vector2(SW - 6, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-		"title": "The Senate – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+		"title": "The Senate: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "holo_pillar", "x": 20, "y": 20, "w": 1, "h": 1, "col": Color(1.0, 0.9, 0.5)})
-	_zone(m, Rect2(19, 21, 3, 1.4), "sight_info", "Information – the Plaza of the Vote", Color(1.0, 0.9, 0.5))
+	_zone(m, Rect2(19, 21, 3, 1.4), "sight_info", "Information: the Plaza of the Vote", Color(1.0, 0.9, 0.5))
 	m.add_object({"kind": "stall", "x": 55, "y": 20, "w": 2, "h": 1, "col": Color(0.4, 0.65, 1.0)})
 	m.zones.append({"rect": Rect2(Vector2(54, 20.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 		"title": "Souvenir stall", "col": Color(0.5, 0.75, 1.0), "sign": Vector2(56, 19.2) * TILE})
@@ -132,7 +132,7 @@ static func build_senate_lobby(station: Dictionary, body: Dictionary) -> GroundM
 	var m := GroundMap.new()
 	MuseumGen._pal(m, body)
 	m.style = "museum"
-	m.title = "The Senate – lobby"
+	m.title = "The Senate: lobby"
 	m.hull_top = -9999
 	m.set_meta("no_guards", true)
 	m.setup(W, H)
@@ -151,7 +151,7 @@ static func build_senate_lobby(station: Dictionary, body: Dictionary) -> GroundM
 	m.fill(sx + 1, 5, 4, 5, T.FLOOR, 37)
 	m.face_deco.append({"kind": "museum_gate", "x": sx, "y": 2, "w": 6})
 	MuseumGen._label(m, "TO THE GALLERY", Vector2(W * 0.5, 1.6), Color(0.95, 0.85, 0.55))
-	_go(m, Rect2(sx, 5, 6, 1.2), "sgallery", "from_lobby", "Up the stairs – the gallery over the chamber", WARM)
+	_go(m, Rect2(sx, 5, 6, 1.2), "sgallery", "from_lobby", "Up the stairs: the gallery over the chamber", WARM)
 	m.set_meta("from_gallery", Vector2(W * 0.5, 7.0) * TILE)
 	for bx in [sx - 3, sx + 7]:
 		m.add_object({"kind": "holo_bust", "x": bx, "y": 5, "w": 2, "h": 1, "col": cyan})        # speakers past
@@ -171,7 +171,7 @@ static func build_senate_lobby(station: Dictionary, body: Dictionary) -> GroundM
 	m.add_object({"kind": "news_wall", "x": 9, "y": 7, "w": 3, "h": 1})
 	m.people.append({"pos": Vector2(4.5, 8.4) * TILE, "dir": 1, "role": "keeper"})
 	m.people.append({"pos": Vector2(6.5, 8.4) * TILE, "dir": 1, "role": "keeper"})
-	_zone(m, Rect2(2, 10, 6, 1.6), "party_office", "Party office – a donation to a campaign", Color(0.95, 0.8, 0.35))
+	_zone(m, Rect2(2, 10, 6, 1.6), "party_office", "Party office: a donation to a campaign", Color(0.95, 0.8, 0.35))
 	m.lights.append({"pos": Vector2(5, 9) * TILE, "r": 60.0, "col": Color(1.0, 0.85, 0.45), "a": 0.4})
 	for ch in [2, 7]:
 		m.add_object({"kind": "chair", "x": ch, "y": 12, "w": 1, "h": 1})
@@ -246,7 +246,7 @@ static func build_senate_gallery(station: Dictionary, body: Dictionary) -> Groun
 	var m := GroundMap.new()
 	MuseumGen._pal(m, body)
 	m.style = "museum"
-	m.title = "The Senate – gallery"
+	m.title = "The Senate: gallery"
 	m.hull_top = -9999
 	m.set_meta("no_guards", true)
 	m.setup(W, H)
@@ -262,11 +262,11 @@ static func build_senate_gallery(station: Dictionary, body: Dictionary) -> Groun
 	var vx := W / 2 - 2
 	m.add_object({"kind": "terminal", "x": vx, "y": GAL_Y + 1, "w": 4, "h": 1, "col": Color(0.4, 1.0, 0.6)})
 	m.fill(vx, GAL_Y + 1, 4, 1, T.BLOCK, 34)
-	_zone(m, Rect2(vx - 0.5, GAL_Y + 2, 5, 1.4), "senate_stand", "The voting stand – your vote on the bill", Color(0.4, 1.0, 0.6))
+	_zone(m, Rect2(vx - 0.5, GAL_Y + 2, 5, 1.4), "senate_stand", "The voting stand: your vote on the bill", Color(0.4, 1.0, 0.6))
 	m.lights.append({"pos": Vector2(W * 0.5, GAL_Y + 1.5) * TILE, "r": 50.0, "col": Color(0.6, 1.0, 0.7), "a": 0.4})
 	for bx in [3, 9, W - 12, W - 6]:
 		m.add_object({"kind": "museum_bench", "x": bx, "y": GAL_Y + 2, "w": 3, "h": 1, "face": 1}, false)    # (Luz) facing the chamber
-	MuseumGen._exit(m, W / 2 - 2, H - 2, 4, "senate", "from_gallery", "Down the stairs – back to the lobby")
+	MuseumGen._exit(m, W / 2 - 2, H - 2, 4, "senate", "from_gallery", "Down the stairs: back to the lobby")
 	m.set_meta("from_lobby", Vector2(W * 0.5, H - 3.5) * TILE)
 	m.lights.append({"pos": Vector2(W * 0.5, GAL_Y + 3) * TILE, "r": 200.0, "col": WARM, "a": 0.2})
 	DeckGen._seats(m)

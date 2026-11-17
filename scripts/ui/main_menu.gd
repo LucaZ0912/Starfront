@@ -200,7 +200,7 @@ func _build_menu() -> void:
 	if Commands.cheats_enabled:
 		var tb := _menu_button(n, "Test System (Debug)", func(): SaveGame.start_test(), UI.GOLD)
 		n += 1
-		tb.tooltip_text = "One system with every station, planet and asteroid type – no gates, no saving.\nThe normal game is not affected."
+		tb.tooltip_text = "One system with every station, planet and asteroid type: no gates, no saving.\nThe normal game is not affected."
 		menu_box.add_child(tb)
 	menu_box.add_child(_menu_button(n, "Codex", _show_codex))
 	menu_box.add_child(_menu_button(n + 1, "Settings", _show_settings))

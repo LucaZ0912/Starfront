@@ -207,7 +207,7 @@ const ABILITIES := {
 	"engineer": {"name": "Shield dome", "cd": 40.0, "text": "Sets up a shield dome where it stands, like the shield grenade."},
 	"science": {"name": "Scan", "cd": 35.0, "text": "Scans the foes near its target: for 10 s their cover does not count."},
 	"drone_op": {"name": "Jammer", "cd": 35.0, "text": "Jams the weapons of the foes round its target: for 4 s they cannot fire."},
-	"quartermaster": {"name": "Resupply", "cd": 45.0, "text": "Brings you ammunition and energy – a third of what your suit holds."},
+	"quartermaster": {"name": "Resupply", "cd": 45.0, "text": "Brings you ammunition and energy: a third of what your suit holds."},
 	"foreman": {"name": "Demolition charge", "cd": 30.0, "text": "Throws a blasting charge at its target."},
 	"copilot": {"name": "Flank run", "cd": 30.0, "text": "Sprints round to its target's open side; quicker and surer for 6 s."},
 	"wing_pilot": {"name": "Flank run", "cd": 30.0, "text": "Sprints round to its target's open side; quicker and surer for 6 s."},

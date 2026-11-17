@@ -55,7 +55,7 @@ static func rim_at(x: int) -> int:
 
 static func build_platform(station: Dictionary, body: Dictionary) -> GroundMap:
 	var m := GroundMap.new()
-	CloudGenP._base(m, station, "Aureola – the Palace of the Hierarch")
+	CloudGenP._base(m, station, "Aureola: the Palace of the Hierarch")
 	m.remove_meta("few_guards")
 	m.pal["floor"] = Color(0.86, 0.8, 0.7)                        # warm pale stone (the mockup), not the plaza's own
 	m.pal["floor2"] = Color(0.78, 0.72, 0.62)
@@ -130,7 +130,7 @@ static func build_platform(station: Dictionary, body: Dictionary) -> GroundMap:
 		m.decals.append({"kind": "cov_rail", "x": b0 + 6, "y": yb, "w": 1, "h": 1, "side": true})
 	m.decals = m.decals.filter(func(d): return not (String(d["kind"]) == "cov_rail" and not d.has("side") and int(d["x"]) >= b0 and int(d["x"]) < b0 + 6))
 	m.zones.append({"rect": Rect2(Vector2(b0, PH - 2) * TILE, Vector2(6, 1.6) * TILE), "kind": "museum_go", "id": "capital_go", "to": "cstation",
-		"at": "from_palace", "stop": 3, "title": "Over the bridge – the palace's skyrail station", "col": Color(1.0, 0.8, 0.45), "sign": Vector2(-100, -100)})
+		"at": "from_palace", "stop": 3, "title": "Over the bridge: the palace's skyrail station", "col": Color(1.0, 0.8, 0.45), "sign": Vector2(-100, -100)})
 	m.set_meta("from_station", Vector2(cx, PH - 3.5) * TILE)
 	m.spawn = Vector2(cx, PH - 3.5) * TILE
 	# the guard at the portal; pilgrims
@@ -141,9 +141,9 @@ static func build_platform(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.set_meta("open_sky", true)
 	# 54c (Luz): the forecourt is a sight – the viewpoint before the stair, a plaque with the palace's story, a stall
 	m.zones.append({"rect": Rect2(Vector2(cx - 12, FRONT_ROWS + 5) * TILE, Vector2(24, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-		"title": "The palace – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+		"title": "The palace: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "plaque_stone", "x": cx - 20, "y": 30, "w": 2, "h": 1})
-	_zone(m, Rect2(cx - 21, 31, 4, 1.4), "sight_info", "Information – the Palace of the Hierarch", Color(1.0, 0.9, 0.5))
+	_zone(m, Rect2(cx - 21, 31, 4, 1.4), "sight_info", "Information: the Palace of the Hierarch", Color(1.0, 0.9, 0.5))
 	m.add_object({"kind": "stall", "x": cx + 18, "y": 30, "w": 2, "h": 1, "col": Color(0.85, 0.2, 0.15)})
 	m.zones.append({"rect": Rect2(Vector2(cx + 17, 30.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 		"title": "Souvenir stall", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(cx + 19, 29.2) * TILE})
@@ -168,7 +168,7 @@ static func build_lobby(station: Dictionary, body: Dictionary) -> GroundMap:
 	var m := GroundMap.new()
 	_warm_pal(m, body)
 	m.style = "museum"
-	m.title = "The Palace – the lobby"
+	m.title = "The Palace: the lobby"
 	m.hull_top = -9999
 	m.set_meta("no_guards", true)
 	m.setup(W, H)
@@ -201,7 +201,7 @@ static func build_lobby(station: Dictionary, body: Dictionary) -> GroundMap:
 		m.people.append({"pos": Vector2(3.5 + ck * 2.0, 10.4) * TILE, "dir": 0, "role": "keeper"})
 	m.add_object({"kind": "tithe_chest", "x": 10, "y": 11, "w": 1, "h": 1})
 	m.add_object({"kind": "lectern", "x": 1, "y": 8, "w": 1, "h": 1})
-	_zone(m, Rect2(2, 12, 9, 1.6), "curia_chancery", "The Curia's chancery – tithe, petition, indulgence", GOLD)
+	_zone(m, Rect2(2, 12, 9, 1.6), "curia_chancery", "The Curia's chancery: tithe, petition, indulgence", GOLD)
 	m.add_object({"kind": "rope", "x": 2, "y": 15, "w": 8, "h": 1}, false)
 	m.lights.append({"pos": Vector2(4.5, 5) * TILE, "r": 80.0, "col": Color(1.0, 0.9, 0.6), "a": 0.4})
 	# the relic office in the east: the shrine, the priest at his counter, racks of candles, cases with relics of Earth
@@ -210,7 +210,7 @@ static func build_lobby(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.people.append({"pos": Vector2(W - 6.5, 10.4) * TILE, "dir": 0, "role": "keeper"})
 	m.add_object({"kind": "candle_rack", "x": W - 10, "y": 14, "w": 4, "h": 1})
 	m.add_object({"kind": "candle_rack", "x": W - 5, "y": 14, "w": 4, "h": 1})
-	_zone(m, Rect2(W - 10, 12, 7, 1.6), "relic_office", "The relic office – relics of Earth, a blessing", GOLD)
+	_zone(m, Rect2(W - 10, 12, 7, 1.6), "relic_office", "The relic office: relics of Earth, a blessing", GOLD)
 	for dc in [W - 10, W - 7, W - 4]:
 		m.add_object({"kind": "display", "x": dc, "y": 18, "w": 2, "h": 1, "col": Color(1.0, 0.85, 0.5)})
 	_stand_sign(m, "RELICS OF EARTH", Vector2(W - 6, 20.2), Color(1.0, 0.85, 0.55))
@@ -274,7 +274,7 @@ static func build_throne(station: Dictionary, body: Dictionary, allied: bool) ->
 	var m := GroundMap.new()
 	_warm_pal(m, body)
 	m.style = "museum"
-	m.title = "The Palace – the throne room"
+	m.title = "The Palace: the throne room"
 	m.hull_top = -9999
 	m.set_meta("no_guards", true)
 	m.setup(W, H)
@@ -317,7 +317,7 @@ static func build_throne(station: Dictionary, body: Dictionary, allied: bool) ->
 	m.set_meta("guard_suit", "suit_mil_hierarch")
 	if allied:
 		m.add_object({"kind": "kneeler", "x": cx - 1, "y": DAIS_Y + 2, "w": 2, "h": 1}, false)
-		_zone(m, Rect2(cx - 3, DAIS_Y + 2, 6, 1.6), "audience", "Kneel before the Hierarch – an audience", GOLD)
+		_zone(m, Rect2(cx - 3, DAIS_Y + 2, 6, 1.6), "audience", "Kneel before the Hierarch: an audience", GOLD)
 		m.set_meta("guard_posts", [Vector2(9.5, foot + 0.6) * TILE, Vector2(W - 9.5, foot + 0.6) * TILE,
 			Vector2(cx - 6.0, DAIS_Y + 2.6) * TILE, Vector2(cx + 6.0, DAIS_Y + 2.6) * TILE])
 	else:
@@ -361,7 +361,7 @@ static func build_station(station: Dictionary) -> GroundMap:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", "x"))) + 593
 	var m := GroundMap.new()
-	C._base(m, station, "%s – The Palace" % String(station.get("name", "Aureola")))
+	C._base(m, station, "%s: The Palace" % String(station.get("name", "Aureola")))
 	m.remove_meta("few_guards")
 	m.style = "cloud_station"
 	m.pal["floor"] = Color(0.86, 0.8, 0.7)
@@ -410,14 +410,14 @@ static func build_station(station: Dictionary) -> GroundMap:
 	for lx in [4, 22, 28]:
 		m.face_deco.append({"kind": "cov_lancet", "x": lx, "y": C.S_TOP, "w": 2, "rows": 3})
 	m.face_deco.append({"kind": "departures", "x": 10, "y": C.S_TOP, "w": 8, "col": Color(1.0, 0.78, 0.3)})
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % C._dest_names(3, true),
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures: %s every 6 min" % C._dest_names(3, true),
 		"col": Color(1.0, 0.8, 0.4), "sign": Vector2(14, C.S_TOP - 0.5) * TILE})
 	m.face_deco.append({"kind": "palace_gate", "x": gx, "y": C.S_TOP, "w": 6, "rows": 3})
 	for bn in [gx - 2, gx + 7]:
 		m.face_deco.append({"kind": "cov_banner", "x": bn, "y": C.S_TOP, "w": 1, "rows": 3})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "stop", "title": "Skyrail · The Palace of the Hierarch", "col": GOLD,
 		"sign": Vector2(gx + 3, C.S_TOP - 0.5) * TILE})
-	_go(m, Rect2(gx + 1, C.S_FLOOR, 4, 1.2), "pplaza", "from_station", "Through the passage – across to the palace", WARM)
+	_go(m, Rect2(gx + 1, C.S_FLOOR, 4, 1.2), "pplaza", "from_station", "Through the passage: across to the palace", WARM)
 	m.set_meta("from_palace", Vector2(gx + 3, C.S_FLOOR + 1.8) * TILE)
 	m.lights.append({"pos": Vector2(gx + 3, C.S_TOP + 1) * TILE, "r": 110.0, "col": Color(1.0, 0.8, 0.5), "a": 0.5})
 	m.decals.append({"kind": "rug", "x": gx + 1, "y": C.S_FLOOR, "w": 4, "h": C.S_EDGE - C.S_FLOOR - 1, "col": CRED.lightened(0.15)})

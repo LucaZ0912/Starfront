@@ -53,7 +53,7 @@ func status(st_id: String) -> Dictionary:
 	var e: Dictionary = down[st_id]
 	if GameState.play_time >= float(e["until"]):
 		down.erase(st_id)
-		GameState.news.add("%s is back online – its crews finished the repairs." % e["name"], "world", int(e["system"]))
+		GameState.news.add("%s is back online: its crews finished the repairs." % e["name"], "world", int(e["system"]))
 		return {}
 	return e
 
@@ -67,7 +67,7 @@ func down_error(st: Dictionary) -> String:
 	var e := status(String(st.get("id", "")))
 	if e.is_empty():
 		return ""
-	return "%s is offline after a pirate raid (%d min left) – only relief deliveries are accepted." % [e["name"], int(ceil((float(e["until"]) - GameState.play_time) / 60.0))]
+	return "%s is offline after a pirate raid (%d min left), only relief deliveries are accepted." % [e["name"], int(ceil((float(e["until"]) - GameState.play_time) / 60.0))]
 
 
 func missing(st_id: String, item: String) -> int:

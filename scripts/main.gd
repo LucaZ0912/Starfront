@@ -116,6 +116,8 @@ func _ready() -> void:
 			_start_intro_five.call_deferred("hangar")      # package 56: sequence 5 starts again at Betty's stairs
 		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) == "five_back":
 			_start_intro_five.call_deferred("back")        # Dan waits in the bar
+		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) == "six":
+			_start_intro_six.call_deferred("load")         # sequence 6: Dan in the bar
 		elif f != null and f.docked_at != "":
 			open_station.call_deferred()
 
@@ -364,7 +366,7 @@ func enter_city(body: Dictionary, site: Dictionary) -> void:
 	f.docked_at = String(city["id"])
 	Economy.prepare_station(city, GameState.current_system)
 	_open_ground_at(city)
-	GameState.log_msg("Landed in %s on %s – your ship is in the city's hangars." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
+	GameState.log_msg("Landed in %s on %s: your ship is in the city's hangars." % [String(site["name"]), String(body["name"])], GameState.COL_GOOD)
 	GameState.codex.event("city")
 
 
@@ -468,8 +470,8 @@ func _fallen(reason: String = "") -> void:
 	if not city.is_empty():
 		f.docked_at = String(city["id"])
 		Economy.prepare_station(city, sys)
-		GameState.log_msg(how + " They found you and brought you to %s – your ship waits in its hangar." % String(city.get("name", "the city")), GameState.COL_BAD)
-		GameState.fall_open(String(city.get("name", "the city")), "Found and brought to its clinic – your ship waits in its hangar.")     # 0.7.53.14
+		GameState.log_msg(how + " They found you and brought you to %s: your ship waits in its hangar." % String(city.get("name", "the city")), GameState.COL_BAD)
+		GameState.fall_open(String(city.get("name", "the city")), "Found and brought to its clinic: your ship waits in its hangar.")     # 0.7.53.14
 		_wake_at(city)
 		return
 	var st := GameState._respawn_station()
@@ -479,8 +481,8 @@ func _fallen(reason: String = "") -> void:
 	if view != null and is_instance_valid(view) and view.player != null and is_instance_valid(view.player):
 		view.player.queue_free()
 		view.player = null
-	GameState.log_msg(how + " There is no clinic in this system – they flew you and your ship to %s." % String(st.get("name", "the station")), GameState.COL_BAD)
-	GameState.fall_open(String(st.get("name", "the station")), "No clinic in that system – they flew you and your ship here.")     # 0.7.53.14
+	GameState.log_msg(how + " There is no clinic in this system: they flew you and your ship to %s." % String(st.get("name", "the station")), GameState.COL_BAD)
+	GameState.fall_open(String(st.get("name", "the station")), "No clinic in that system: they flew you and your ship here.")     # 0.7.53.14
 	GameState.wake_pending = true
 	GameState.active_changed.emit()
 	_wake_after_loss.call_deferred()
@@ -537,6 +539,27 @@ func _start_intro_five(where: String = "hangar") -> void:
 	i5.main = self
 	add_child(i5)
 	i5.begin(where)
+
+
+## Package 56: sequence 6 – Dan in the bar, his deal (scripts/ground/intro_six.gd); where: "bar", "talk" or "load".
+func _start_intro_six(where: String = "load") -> void:
+	if loading != null and is_instance_valid(loading):
+		get_tree().create_timer(0.3).timeout.connect(_start_intro_six.bind(where))
+		return
+	var f := GameState.active()
+	if f == null or f.docked_at == "":
+		return
+	if ground == null or not is_instance_valid(ground):
+		open_deck()
+	if ground == null:
+		return
+	for n in get_children():
+		if n.get_script() == load("res://scripts/ground/intro_six.gd"):
+			n.queue_free()
+	var i6 = load("res://scripts/ground/intro_six.gd").new()
+	i6.main = self
+	add_child(i6)
+	i6.begin(where)
 
 
 func close_deck(open_window: bool = true) -> void:

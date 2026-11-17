@@ -169,7 +169,7 @@ func _build_person(parent: Control) -> void:
 		box.add_child(UI.wrap_label(String(at[2]), 11, UI.TEXT_DIM, 340))
 	if mode != "new":
 		return
-	box.add_child(UI.label("GALAXY SEED – the same seed, the same galaxy", 12, COL))
+	box.add_child(UI.label("GALAXY SEED: the same seed, the same galaxy", 12, COL))
 	var sr := UI.hbox(6)
 	box.add_child(sr)
 	_seed_edit = LineEdit.new()

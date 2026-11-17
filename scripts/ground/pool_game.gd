@@ -304,7 +304,7 @@ func _shot_over() -> void:
 			_respot_cue()
 		state = "aim"
 		if _on_table().size() <= 1:
-			_say("Table cleared – R racks again.")
+			_say("Table cleared: R racks again.")
 		return
 	var who := turn
 	var cue_in := _potted.has(0)
@@ -338,7 +338,7 @@ func _shot_over() -> void:
 	if mode != "9ball" and potted_obj.has(8):
 		var ok := not foul and String(groups[who]) != "" and _group_cleared_before(who)
 		var subj := "You sink" if who == 0 else "%s sinks" % _opp_name()
-		_end((who == 0) == ok, ("%s the 8 – game." if ok else "%s the 8 too early (or with a foul) – game lost.") % subj)
+		_end((who == 0) == ok, ("%s the 8: game." if ok else "%s the 8 too early (or with a foul): game lost.") % subj)
 		return
 	# groups
 	if mode != "9ball" and String(groups[who]) == "" and not foul and not potted_obj.is_empty():
@@ -359,7 +359,7 @@ func _shot_over() -> void:
 		_respot_cue()
 	if foul:
 		turn = 1 - turn
-		_say("Foul – %s." % ("ball in hand for you" if turn == 0 else "ball in hand for %s" % _opp_name()))
+		_say("Foul: %s." % ("ball in hand for you" if turn == 0 else "ball in hand for %s" % _opp_name()))
 		state = "place" if turn == 0 else "place_ai"
 	elif keep:
 		state = "aim"
@@ -616,7 +616,7 @@ func _gui_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
 		if state == "place" and mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 			state = "aim"
-			_say("Ball placed – your shot.")
+			_say("Ball placed: your shot.")
 			accept_event()
 			return
 		if state != "aim" or (turn != 0 and mode != "practice"):
@@ -701,7 +701,7 @@ func pad_button(b: String, pressed: bool) -> bool:
 		"cross":
 			if pressed and state == "place":
 				state = "aim"
-				_say("Ball placed – your shot.")
+				_say("Ball placed: your shot.")
 			elif pressed and state == "over":
 				finished.emit(won)
 			return true
@@ -862,7 +862,7 @@ func _build_ui() -> void:
 	tr.add_child(v2)
 	var streak := int(GameState.minigame_streak.get("billiards", 0))
 	v2.add_child(UI.label("Stake %d cr" % stake if stake > 0 else ("No stake" if mode != "practice" else "Practice"), 20, Color(1.0, 0.85, 0.4)))
-	v2.add_child(UI.label("Win streak %d – %s stakes (up to %d cr)" % [streak, String(MG.TIERS[MG.tier(streak)]["name"]), MG.max_stake(streak)], 14, Color(0.9, 0.93, 1.0)))
+	v2.add_child(UI.label("Win streak %d: %s stakes (up to %d cr)" % [streak, String(MG.TIERS[MG.tier(streak)]["name"]), MG.max_stake(streak)], 14, Color(0.9, 0.93, 1.0)))
 	v2.add_child(UI.label("medium from 10 wins, high from 25", 12, UI.TEXT_DIM))
 	var hint := UI.label("Mouse: aim  •  hold left button: power, let go: shoot  •  right button + drag (or WASD): spin  •  Esc: concede" + ("  •  R: rack again" if mode == "practice" else ""), 15)
 	hint.position = Vector2(get_viewport_rect().size.x * 0.5 - 420, get_viewport_rect().size.y - 40)
@@ -890,7 +890,7 @@ func _update_ui() -> void:
 		return
 	var names := {"8ball": "8-BALL", "9ball": "9-BALL", "practice": "PRACTICE"}
 	if mode == "practice":
-		_ui["title"].text = "PRACTICE – the table to yourself"
+		_ui["title"].text = "PRACTICE: the table to yourself"
 		_ui["groups"].text = "%d balls left" % (_on_table().size() - 1)
 	else:
 		_ui["title"].text = "%s   vs %s, %s  %s" % [names[mode], opponent.get("name", "?"), opponent.get("job", ""), MG.stars_text(int(opponent.get("stars", 3)))]
@@ -900,7 +900,7 @@ func _update_ui() -> void:
 			_ui["groups"].text = "You: %s      %s: %s" % [_group_text(0), _opp_name(), _group_text(1)]
 	var t := msg if msg_t > 0.0 else ("Your shot" if turn == 0 or mode == "practice" else "%s's shot" % _opp_name())
 	if state == "place":
-		t = "Ball in hand – place the cue ball (click)"
+		t = "Ball in hand: place the cue ball (click)"
 	if not _ui.has("msg"):
 		return
 	_ui["msg"].text = t

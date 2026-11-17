@@ -68,7 +68,7 @@ func _draw() -> void:
 		x += 198
 	# 0.7.52.21 (Luz): sneaking – its own line
 	if combat.sneaking:
-		var sl := "SNEAKING – red: where they would spot you  •  low cover hides you  •  they do not hear you"
+		var sl := "SNEAKING  •  red: where they would spot you  •  low cover hides you  •  they do not hear you"
 		var sk := "%s: stand up  •  half speed  •  your first shot on an unaware foe: double damage  •  R: lock without being noticed" % Keybinds.key_text("foot_sneak")
 		var sw := maxf(font.get_string_size(sl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, font.get_string_size(sk, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x) + 20.0
 		var sr := Rect2(Vector2(vs.x * 0.5 - sw * 0.5, 82 if n > 0 else 12), Vector2(sw, 40))
@@ -79,7 +79,7 @@ func _draw() -> void:
 	elif combat.tactics != 0:
 		var tred := combat.tactics == 2
 		var who = combat.tac_viewer()
-		var line := "TACTICS – your sight: green you can hit, red is covered from you" if not tred else 			"TACTICS – %s's sight: red it sees you, green is safe from it" % (String(who["name"]) if who != null else "?")
+		var line := "TACTICS  •  your sight: green you can hit, red is covered from you" if not tred else 			"TACTICS  •  %s's sight: red it sees you, green is safe from it" % (String(who["name"]) if who != null else "?")
 		var you := ""
 		if tred and who != null and combat._vis.get("rays") != null:
 			you = "  •  you are %s" % ("IN ITS SIGHT" if combat.lit_in(combat._vis["rays"], combat._vis["from"], combat.pilot_pos()) else "safe from it")
@@ -105,17 +105,17 @@ func _draw() -> void:
 				near = f2
 		var line2 := "%s not locked, %d m" % [String(near["name"]), int(nd / 15.0)] if near != null else ("%d down" % combat.kills if combat.kills > 0 else "all of them locked")
 		_s(fr.position + Vector2(10, 36), line2.left(34), Color(1.0, 0.75, 0.4), 11)
-		_s(fr.position + Vector2(10, 53), "helmet sealed – fight", dim, 11)
+		_s(fr.position + Vector2(10, 53), "helmet sealed: fight", dim, 11)
 	# the cover line under the suit's bars
 	if combat.fight:
 		var cy := (suit_hud.bottom_y if suit_hud != null else 190.0) + 2.0
-		var txt := "OUT IN THE OPEN – find cover"
+		var txt := "OUT IN THE OPEN: find cover"
 		var col := Color(1.0, 0.6, 0.45)
 		if combat.in_cover == 2:
-			txt = "IN COVER – incoming hits −%d%%" % int(GearData.COVER_CUT * 100.0)
+			txt = "IN COVER: incoming hits −%d%%" % int(GearData.COVER_CUT * 100.0)
 			col = Color(0.45, 1.0, 0.6)
 		elif combat.in_cover == 1:
-			txt = "PARTLY IN COVER – not from every side"
+			txt = "PARTLY IN COVER, not from every side"
 			col = Color(0.85, 1.0, 0.45)
 		var cr := Rect2(Vector2(14, cy), Vector2(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14, 20))
 		draw_rect(cr, Color(0.0, 0.06, 0.03, 0.7))
@@ -152,9 +152,9 @@ func _draw_team(y0: float) -> void:
 		var mx: Dictionary = a["mx"]
 		_bar(r.position + Vector2(78, 39), 124, float(st["shield"]) / maxf(float(mx["shield"]), 0.001), Color(0.35, 0.8, 1.0))
 		_bar(r.position + Vector2(78, 47), 124, (float(st["armor"]) + float(st["health"])) / maxf(float(mx["armor"]) + float(mx["health"]), 0.001), Color(1.0, 0.35, 0.3))
-		var ord := "dead – a clinic can bring them back"
+		var ord := "dead: a clinic can bring them back"
 		if not a["dead"] and a["down"]:
-			ord = "DOWN – hold %s beside them  (%d s)" % [Keybinds.key_text("interact"), int(ceil(CD.DOWN_TIME - float(a["down_t"])))]
+			ord = "DOWN: hold %s beside them  (%d s)" % [Keybinds.key_text("interact"), int(ceil(CD.DOWN_TIME - float(a["down_t"])))]
 		elif not a["dead"]:
 			match String(a["order"]):
 				"hold":
@@ -315,7 +315,7 @@ func _draw_tiles(vs: Vector2) -> void:
 		x += GROUP_GAP - TILE_GAP
 	# the grenades
 	if not gr.is_empty():
-		_label(Vector2(x, y - 4), "%s  grenade – hold: throw" % Keybinds.key_text("foot_grenade"))
+		_label(Vector2(x, y - 4), "%s  grenade, hold: throw" % Keybinds.key_text("foot_grenade"))
 		g.grenade()
 		for j in gr.size():
 			var p: Dictionary = gr[j]

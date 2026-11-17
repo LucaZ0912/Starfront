@@ -445,7 +445,7 @@ func step(delta: float, move: Vector2) -> void:
 		fight = true
 		_end_t = 0.0
 		var beasts := alive().filter(func(o): return bool(o["aware"])).all(func(o): return String(o.get("wild", "")) != "")
-		view._say_toast("An animal attacks – it defends its ground!" if beasts else "Hostiles – they have seen you!", 2.5)
+		view._say_toast("An animal attacks: it defends its ground!" if beasts else "Hostiles: they have seen you!", 2.5)
 		Audio.play("warn", "fight on foot")
 		GameState.codex.event("foot_fight")
 		if active == null:
@@ -544,13 +544,13 @@ func _pilot_fire(delta: float) -> void:
 	var g = GameState.gear
 	if w.has("energy"):
 		if g.energy < float(w["energy"]):
-			_out("Suit energy too low for the %s – an energy cell, or Q for another weapon." % String(w["name"]))
+			_out("Suit energy too low for the %s: an energy cell, or Q for another weapon." % String(w["name"]))
 			return
 		g.energy -= float(w["energy"])
 	else:
 		var need := int(w.get("ammo", 1))
 		if g.ammo < need:
-			_out("Out of ammunition – an ammunition box, or Q for another weapon.")
+			_out("Out of ammunition: an ammunition box, or Q for another weapon.")
 			return
 		g.ammo -= need
 	_out_warned = false
@@ -978,7 +978,7 @@ func _hurt_foe(f: Dictionary, dmg: float, dtype: String) -> void:
 					o["flee"] = minf(0.9, float(o["flee"]) + FoeData.MORALE_BREAK)
 					broke += 1
 			if broke > 0:
-				view._say_toast("%s is down – the rest lose heart!" % String(f["name"]), 3.0)
+				view._say_toast("%s is down: the rest lose heart!" % String(f["name"]), 3.0)
 
 
 ## 53f: what a creature or a machine leaves when it falls for good – credits for its parts, research data for samples.
@@ -1751,7 +1751,7 @@ func _draw_grenades() -> void:
 			draw_set_transform(pilot_pos() * S, 0.0, Vector2(1.0, 0.55))
 			draw_arc(Vector2.ZERO, THROW_RANGE * S, 0.0, TAU, 64, Color(1.0, 0.6, 0.25, 0.3), 1.5)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-			_txt(b2 - Vector2(0, rr2 * 0.55 + 10), "%s – let go to throw" % String(gst["name"]), Color(1.0, 0.7, 0.35), 12)
+			_txt(b2 - Vector2(0, rr2 * 0.55 + 10), "%s: let go to throw" % String(gst["name"]), Color(1.0, 0.7, 0.35), 12)
 
 
 ## Smoke clouds drawn over the people (they hide in them): soft grey puffs that swell and thin out.
@@ -1886,7 +1886,7 @@ func drone_recall(i: int = 0) -> String:
 	var keep := drone_slot
 	pick_drone(i)
 	drone["state"] = "dock"
-	var msg := "Kamikaze drone called back – switched off." + ("" if drone_places().size() < 2 else (" (1)" if i == 0 else " (2)"))
+	var msg := "Kamikaze drone called back: switched off." + ("" if drone_places().size() < 2 else (" (1)" if i == 0 else " (2)"))
 	pick_drone(keep)
 	return msg
 
@@ -1899,25 +1899,25 @@ func _drone_command() -> String:
 	if id == "":
 		return "No drone in your drone place."
 	if not drone_alive():
-		return "Your drone is being rebuilt – a new one in %d s." % int(ceil(drone_rebuild))
+		return "Your drone is being rebuilt: a new one in %d s." % int(ceil(drone_rebuild))
 	var stt := String(drone["state"])
 	if stt == "docked":
 		_drone_up()
 		var key := Keybinds.key_text("foot_drone" if drone_slot == 0 else "foot_drone_2")
-		return ("Kamikaze drone up – tap %s again: at your target, hold it: back." % key if String(drone["kind"]) == "kamikaze" else "Drone up – it fights your target.") + nth
+		return ("Kamikaze drone up. Tap %s again: at your target, hold it: back." % key if String(drone["kind"]) == "kamikaze" else "Drone up: it fights your target.") + nth
 	if stt in ["return", "reload"]:
 		drone["stay"] = not bool(drone["stay"])
 		return ("It stays docked after reloading." if bool(drone["stay"]) else "It takes off again after reloading.") + nth
 	if String(drone["kind"]) == "kamikaze":
 		if active == null:
-			return "Lock a target first – the drone dives at it."
+			return "Lock a target first: the drone dives at it."
 		drone["state"] = "dive"
 		drone["dive_f"] = active
 		drone["dive"] = (active["w"] as Walker).pos
 		Audio.play("w_rocket", "kamikaze drone dives", -4.0)
 		return "Kamikaze drone away!"
 	drone["state"] = "dock"
-	return ("Drone back on your arm – switched off." if shoulder_drones() else "Drone back on your back – switched off.") + nth
+	return ("Drone back on your arm: switched off." if shoulder_drones() else "Drone back on your back: switched off.") + nth
 
 
 var _drone_pv := Vector2.ZERO                # 0.7.53.15: how fast you walk – the drones fly along with it
@@ -2117,7 +2117,7 @@ func _hurt_drone_one(dmg: float, dtype: String) -> void:
 	if float(drone["st"]["shield"]) + float(drone["st"]["armor"]) <= 0.01:
 		drone["state"] = "down"
 		drone_rebuild = float(GearData.stats(String(drone["id"]))["rebuild"])
-		view._say_toast("Your drone is down – a new one in %d s." % int(drone_rebuild), 2.5)
+		view._say_toast("Your drone is down: a new one in %d s." % int(drone_rebuild), 2.5)
 		Audio.play("explosion_small", "drone down", -8.0)
 
 
@@ -2265,7 +2265,7 @@ func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 	arm_charge = 0.0
 	pilot_cool = ARM_HOLD + 0.2
 	view._shake = maxf(view._shake, 0.15)
-	Audio.play("w_arm_laser", "the Red Arm Laser – a deep hiss", 0.0)
+	Audio.play("w_arm_laser", "the Red Arm Laser: a deep hiss", 0.0)
 	GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
 	for o in alive():
 		if not o["aware"] and (o["w"] as Walker).pos.distance_to(a) < FoeData.HEAR:
@@ -2333,7 +2333,7 @@ func cloak(id: String) -> String:
 	if cloak_t > 0.0:
 		return "You are cloaked already."
 	if cloak_cd > 0.0:
-		return "The cloak is recharging – %d s." % int(ceil(cloak_cd))
+		return "The cloak is recharging: %d s." % int(ceil(cloak_cd))
 	var q := GearData.quality(id)
 	cloak_t = float(CLOAK_TIME.get(q, 2.0)) * float(GearData.stats(String(GameState.gear.suit)).get("cloak_mul", 1.0))    # 53e: the Archivist Suit's
 	cloak_cd = cloak_t + float(CLOAK_CD.get(q, 30.0))
@@ -2348,7 +2348,7 @@ func cloak(id: String) -> String:
 			a["cloak_t"] = float(CLOAK_TIME.get(aq, 2.0))
 			a["cloak_cd"] = float(a["cloak_t"]) + float(CLOAK_CD.get(aq, 30.0))
 			with.append(String(a["name"]))
-	return "Cloaked – %d s unseen. Your weapons hold fire.%s" % [int(cloak_t), ("  %s too." % " and ".join(PackedStringArray(with))) if not with.is_empty() else ""]
+	return "Cloaked: %d s unseen. Your weapons hold fire.%s" % [int(cloak_t), ("  %s too." % " and ".join(PackedStringArray(with))) if not with.is_empty() else ""]
 
 
 ## 0.7.53.2: an EMP goes off: your shield and your team's are gone, your drones come back to you, your energy
@@ -2379,7 +2379,7 @@ func _cloak_step(delta: float) -> void:
 		p.modulate = Color(0.6, 0.9, 1.0, 0.22 + 0.12 * sin(_t * 14.0))
 	elif was:
 		p.modulate = Color.WHITE
-		view._say_toast("The cloak drops – you can be seen.", 2.0)
+		view._say_toast("The cloak drops: you can be seen.", 2.0)
 
 
 # ---------------------------------------------------------------- 0.7.52.21 (package 52b, Luz): sneaking
@@ -2406,7 +2406,7 @@ func toggle_sneak() -> String:
 	for a in allies:
 		(a["w"] as Walker).crouch = sneaking and a["order"] == "follow"
 	Audio.play("ui_click", "sneak", -10.0)
-	return "Sneaking – they do not hear you, and see you only in their view. %s: stand up." % Keybinds.key_text("foot_sneak") if sneaking else "You stand up."
+	return "Sneaking: they do not hear you, and see you only in their view. %s: stand up." % Keybinds.key_text("foot_sneak") if sneaking else "You stand up."
 
 
 ## Where an unaware foe looks: it turns its head slowly about the way it faces.
@@ -2694,7 +2694,7 @@ func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
 		w.aim = Vector2.INF
 		w.z_index = -1
 		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "down", "col": Color(1.0, 0.6, 0.3), "t": 0.0})
-		view._say_toast("%s is down – hold %s beside them to bring them back (%d s)." % [String(a["name"]), Keybinds.key_text("interact"), int(CrewData.DOWN_TIME)], 3.5)
+		view._say_toast("%s is down: hold %s beside them to bring them back (%d s)." % [String(a["name"]), Keybinds.key_text("interact"), int(CrewData.DOWN_TIME)], 3.5)
 		Audio.play("hit_hull", "team member down", -4.0)
 
 
@@ -2733,8 +2733,8 @@ func _ally_dies(a: Dictionary) -> void:
 	var w: Walker = a["w"]
 	w.modulate = Color(0.55, 0.55, 0.6)
 	floaters.append({"pos": w.pos + Vector2(0, -40), "text": "dead", "col": Color(1.0, 0.3, 0.3), "t": 0.0})
-	view._say_toast("%s has died. A clinic can bring them back – for a fee." % String(a["name"]), 4.0)
-	view.log_event("%s died on foot – a clinic can bring them back." % String(a["m"].get("name", a["name"])), Color(1.0, 0.5, 0.45))
+	view._say_toast("%s has died. A clinic can bring them back, for a fee." % String(a["name"]), 4.0)
+	view.log_event("%s died on foot: a clinic can bring them back." % String(a["m"].get("name", a["name"])), Color(1.0, 0.5, 0.45))
 
 
 ## Leaving the place: whoever is still down dies there.
@@ -2760,7 +2760,7 @@ func order(a, kind: String) -> String:
 				said.append("%s follows you." % String(m["name"]))
 			"attack":
 				if active == null:
-					return "Lock a target first – they attack yours."
+					return "Lock a target first: they attack yours."
 				m["order"] = "attack"
 				m["tgt"] = active
 				m["hold"] = Vector2.INF

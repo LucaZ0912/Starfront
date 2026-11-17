@@ -322,9 +322,9 @@ func on_jump(s: Ship, next: int) -> void:
 				if GameState.can_jump(pl.fit, next) == "":
 					pl.fit.route = [next]
 					pl.set_order({"type": "travel"})
-					GameState.log_msg("The convoy jumps to %s – you follow." % Universe.systems[next]["name"], GameState.COL_INFO)
+					GameState.log_msg("The convoy jumps to %s: you follow." % Universe.systems[next]["name"], GameState.COL_INFO)
 				else:
-					GameState.log_msg("The convoy jumped to %s – you cannot follow: %s" % [Universe.systems[next]["name"], GameState.can_jump(pl.fit, next)], GameState.COL_WARN)
+					GameState.log_msg("The convoy jumped to %s, you cannot follow: %s" % [Universe.systems[next]["name"], GameState.can_jump(pl.fit, next)], GameState.COL_WARN)
 				break
 	for id in convoys.keys():
 		var e: Dictionary = convoys[id]
@@ -504,7 +504,7 @@ func _spawn_tourist(kind: String, midway: bool) -> void:
 		s = _spawn_docked(preset, String(resort["id"]), "civilian", gov, name)
 	if s == null:
 		return
-	s.activity = "Sightseeing – %s" % sg["name"]
+	s.activity = "Sightseeing: %s" % sg["name"]
 	var e := {"ship": s, "kind": kind, "resort": String(resort.get("id", "")), "sight": String(sg["body"]), "name": String(sg["name"]),
 		"state": state, "t": randf_range(VIEW_TIME.x, VIEW_TIME.y)}
 	if state == "to_sight":
@@ -1193,7 +1193,7 @@ func _update_convoys() -> void:
 		if e.get("refollow", false) and _alive(leader) and view.player != null and is_instance_valid(view.player) and not view.player.in_warp() and not view.player.is_docked():
 			e["refollow"] = false
 			view.player.set_order({"type": "follow", "node": leader, "r": 800.0})
-			GameState.log_msg("You are with %s again – following." % ConvoySimScript.label(e["c"]), GameState.COL_INFO)
+			GameState.log_msg("You are with %s again: following." % ConvoySimScript.label(e["c"]), GameState.COL_INFO)
 		# escorts engage pirates, everyone else keeps formation and follows into warp
 		for i in alive.size():
 			var s3: Ship = alive[i]
@@ -1267,7 +1267,7 @@ func on_attacked(victim: Ship, attacker: Ship) -> void:
 	if is_convoy:
 		GameState.news.radio("Convoy under attack near %s!" % where, sid, victim.position)
 	elif victim.faction == "patrol":
-		GameState.news.radio("%s under fire near %s – requesting support!" % [victim.display_name(), where], sid, victim.position)
+		GameState.news.radio("%s under fire near %s: requesting support!" % [victim.display_name(), where], sid, victim.position)
 	else:
 		GameState.news.radio("Mayday! %s under attack near %s!" % [victim.display_name(), where], sid, victim.position)
 	_scatter(victim.position, attacker)
@@ -1377,7 +1377,7 @@ func _update_faction_jobs(dt: float) -> void:
 					m["progress_t"] = float(m["progress_t"]) + dt
 					if float(m["progress_t"]) >= float(m["amount"]):
 						m["progress"] = 1
-						GameState.log_msg("Patrol flown with the %s – report back to the issuing station." % FactionData.short_of(String(m["faction"])), GameState.COL_GOOD)
+						GameState.log_msg("Patrol flown with the %s: report back to the issuing station." % FactionData.short_of(String(m["faction"])), GameState.COL_GOOD)
 						GameState.missions_changed.emit()
 						release_mission_patrol(mg)
 			"smuggler":
@@ -1427,7 +1427,7 @@ func _ballot_thieves() -> void:
 			p.home = pl.position
 			p.set_order({"type": "attack", "target": pl})
 			view.spawn_fx(Fx.flash(p.position, Color(1.0, 0.4, 0.3), p.radius * 3.0))
-		GameState.log_msg("Ballot thieves! %d ships drop out of warp – they want the ballot cores." % n, GameState.COL_WARN)
+		GameState.log_msg("Ballot thieves! %d ships drop out of warp: they want the ballot cores." % n, GameState.COL_WARN)
 		GameState.news.radio("Pirates try to seize ballots bound for The Vote!", sid, pl.position)
 
 
@@ -1504,8 +1504,8 @@ func _check_gather(e: Dictionary, leader: Ship) -> void:
 func depart_gathered(e: Dictionary) -> void:
 	e["gather"] = false
 	e["c"]["gathering"] = false
-	GameState.news.radio("Convoy departing – stay close!", sid)
-	GameState.log_msg("%s sets off for %s – stay with it." % [ConvoySimScript.label(e["c"]), Universe.systems[int(e["c"]["dst"])]["name"]], GameState.COL_GOOD)
+	GameState.news.radio("Convoy departing: stay close!", sid)
+	GameState.log_msg("%s sets off for %s: stay with it." % [ConvoySimScript.label(e["c"]), Universe.systems[int(e["c"]["dst"])]["name"]], GameState.COL_GOOD)
 	_plan_ambush(e)
 	_order_convoy(e)
 
@@ -1531,7 +1531,7 @@ func _gate_ambush(e: Dictionary, ships: Array, pos: Vector2) -> void:
 		p.home = pos
 		if not ships.is_empty():
 			p.set_order({"type": "attack", "target": ships[randi() % ships.size()]})
-	GameState.news.radio("Pirates were waiting at the gate – the convoy is under attack!", sid, pos)
+	GameState.news.radio("Pirates were waiting at the gate: the convoy is under attack!", sid, pos)
 	GameState.log_msg("Ambush at the gate! %d pirates were lying in wait for the convoy." % n, GameState.COL_BAD)
 
 
@@ -1565,10 +1565,10 @@ func pull_out_of_warp(e: Dictionary, leader: Ship) -> void:
 		p.home = leader.position
 		p.set_order({"type": "attack", "target": dropped[randi() % dropped.size()]})
 		view.spawn_fx(Fx.flash(p.position, Color(1.0, 0.4, 0.3), p.radius * 3.0))
-	GameState.news.radio("Convoy pulled out of warp near %s – pirates closing in!" % where, sid, leader.position)
+	GameState.news.radio("Convoy pulled out of warp near %s: pirates closing in!" % where, sid, leader.position)
 	var pl = view.player
 	if pl != null and is_instance_valid(pl) and pl in dropped:
-		GameState.log_msg("Interdicted! Pirates pulled the convoy – and you – out of warp. %d pirates attack." % k, GameState.COL_BAD)
+		GameState.log_msg("Interdicted! Pirates pulled the convoy, and you, out of warp. %d pirates attack." % k, GameState.COL_BAD)
 	elif pl != null and is_instance_valid(pl):
 		GameState.log_msg("Pirates pulled your convoy out of warp near %s!" % where, GameState.COL_BAD)
 
@@ -1638,7 +1638,7 @@ func _convoy_hold(e: Dictionary, leader: Ship) -> void:
 		e["held"] = true
 		e["held_t"] = 0.0
 		leader.set_order({"type": "idle"})
-		GameState.news.radio("Convoy holding position – pirates nearby!", sid, leader.position)
+		GameState.news.radio("Convoy holding position: pirates nearby!", sid, leader.position)
 		return
 	if threat:
 		e["held_t"] = 0.0
@@ -1649,7 +1649,7 @@ func _convoy_hold(e: Dictionary, leader: Ship) -> void:
 	if not pilot_with(e, leader) and float(e["held_t"]) < HOLD_TIMEOUT:
 		return
 	e["held"] = false
-	GameState.news.radio("All clear – convoy resuming its course.", sid, leader.position)
+	GameState.news.radio("All clear: convoy resuming its course.", sid, leader.position)
 	_order_convoy(e)
 
 
@@ -1663,7 +1663,7 @@ func _announce_warp(e: Dictionary, leader: Ship) -> void:
 	if e.get("warp_said", "") == where:
 		return
 	e["warp_said"] = where
-	GameState.news.radio("Convoy aligning for warp to %s – stay close!" % where, sid)
+	GameState.news.radio("Convoy aligning for warp to %s: stay close!" % where, sid)
 
 
 # ---------------------------------------------------------------- Mission patrols (package 17)
@@ -1728,8 +1728,8 @@ func _check_patrol_gather(g: Dictionary, leader: Ship) -> void:
 		return
 	g["gather"] = false
 	g["on_beat"] = false
-	GameState.news.radio("Patrol departing – stay close!", sid)
-	GameState.log_msg("The %s patrol sets off on its rounds – stay with it." % FactionData.short_of(String(g["gov"])), GameState.COL_GOOD)
+	GameState.news.radio("Patrol departing: stay close!", sid)
+	GameState.log_msg("The %s patrol sets off on its rounds: stay with it." % FactionData.short_of(String(g["gov"])), GameState.COL_GOOD)
 	_next_waypoint(g, leader)
 
 

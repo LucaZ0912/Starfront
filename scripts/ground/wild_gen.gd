@@ -102,12 +102,12 @@ static func build(body: Dictionary, site: Dictionary, ship_len: float, ship_beam
 	var dg: Dictionary = PoiData.DANGER.get(String(site.get("danger", "yellow")), PoiData.DANGER["yellow"])
 	var foes: Array = m.get_meta("foes", [])
 	var n_pred := foes.filter(func(x): return String(FoeDataW.FOES.get(String(x).split("@")[0], {}).get("wild", "")) == "territory").size()
-	var goal: String = {"jungle": "An overgrown site of the Precursors beyond the creek – something lies on its altar",
-		"coast": "A landing drone came down on the far island – its cargo pod may be whole",
-		"ice": "A cave in the ice cliff – a nest, and in it something glows"}.get(biome, "")
+	var goal: String = {"jungle": "An overgrown site of the Precursors beyond the creek: something lies on its altar",
+		"coast": "A landing drone came down on the far island: its cargo pod may be whole",
+		"ice": "A cave in the ice cliff: a nest, and in it something glows"}.get(biome, "")
 	m.set_meta("poi", {"name": String(site.get("name", "")), "theme": theme, "theme_name": String(th["name"]), "levels": 1, "minutes": 20,
 		"danger": String(site.get("danger", "yellow")), "danger_name": String(dg["name"]), "depth": 0, "wild": true,
-		"targets": [["wild_find", goal], ["animals", "%d animals – %d that defend their ground" % [foes.size(), n_pred]]]})
+		"targets": [["wild_find", goal], ["animals", "%d animals: %d that defend their ground" % [foes.size(), n_pred]]]})
 	return m
 
 
@@ -256,10 +256,10 @@ static func _ship(m: GroundMap, wd: Dictionary, sl: int, sb: int, ship_len: floa
 	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
 	m.spawn = Vector2(rx + 1.0, ry + 2.6) * TILE
 	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * TILE, Vector2(3, 3.2) * TILE), "kind": "exit", "id": "ship",
-		"title": "Up the ramp – take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Up the ramp: take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "fuel_point", "x": px0 + sl + 1, "y": py0, "w": 2, "h": 1, "rise": 34})
 	m.zones.append({"rect": Rect2(Vector2(px0 + sl + 0.4, py0 + 1.0) * TILE, Vector2(3.2, 1.6) * TILE), "kind": "charge", "id": "charge",
-		"title": "Supply point – energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
+		"title": "Supply point: energy, oxygen and ammunition", "col": Color(0.35, 0.95, 1.0), "sign": Vector2(-100, -100)})
 
 
 # ---------------------------------------------------------------- the jungle

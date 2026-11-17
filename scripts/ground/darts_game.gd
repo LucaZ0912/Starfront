@@ -156,7 +156,7 @@ func _land(p: Vector2) -> void:
 				var best := int(GameState.minigame_best.get("darts_clock", 999))
 				if clock_darts < best:
 					GameState.minigame_best["darts_clock"] = clock_darts
-				_end(true, "Round the clock in %d darts%s." % [clock_darts, " – a new best" if clock_darts < best else ""])
+				_end(true, "Round the clock in %d darts%s." % [clock_darts, ", a new best" if clock_darts < best else ""])
 				return
 		_after_dart()
 		return
@@ -440,7 +440,7 @@ func _build_ui() -> void:
 	tr.add_child(v2)
 	var streak := int(GameState.minigame_streak.get("darts", 0))
 	v2.add_child(UI.label("Stake %d cr" % stake if stake > 0 else ("No stake" if mode != "clock" else "Practice"), 20, Color(1.0, 0.85, 0.4)))
-	v2.add_child(UI.label("Win streak %d – %s stakes (up to %d cr)" % [streak, String(MG.TIERS[MG.tier(streak)]["name"]), MG.max_stake(streak)], 14, Color(0.9, 0.93, 1.0)))
+	v2.add_child(UI.label("Win streak %d: %s stakes (up to %d cr)" % [streak, String(MG.TIERS[MG.tier(streak)]["name"]), MG.max_stake(streak)], 14, Color(0.9, 0.93, 1.0)))
 	v2.add_child(UI.label("medium from 10 wins, high from 25", 12, UI.TEXT_DIM))
 	var hp := UI.neon_panel(Color(0.35, 0.95, 1.0), Color(0.03, 0.05, 0.06, 0.88), 2)
 	hp.custom_minimum_size = Vector2(400, 0)
@@ -450,7 +450,7 @@ func _build_ui() -> void:
 	hp.add_child(v3)
 	v3.add_child(UI.label("STEADY HAND", 13, UI.TEXT_DIM))
 	var refl := GameState.pilot_attr("reflexes")
-	v3.add_child(UI.label("Reflexes %d – the sway is %s" % [refl, "small" if refl >= 4 else ("moderate" if refl >= 2 else "big")], 15))
+	v3.add_child(UI.label("Reflexes %d: the sway is %s" % [refl, "small" if refl >= 4 else ("moderate" if refl >= 2 else "big")], 15))
 	_ui["drunk"] = UI.label("", 15, Color(1.0, 0.7, 0.4))
 	_ui["breath"] = UI.label("", 15, Color(0.35, 0.95, 1.0))
 	v3.add_child(_ui["drunk"])
@@ -464,7 +464,7 @@ func _update_ui() -> void:
 	if not _ui.has("title"):
 		return
 	if mode == "clock":
-		_ui["title"].text = "AROUND THE CLOCK – alone"
+		_ui["title"].text = "AROUND THE CLOCK: alone"
 		_ui["me"].text = "→ %s" % ("Bull" if clock_target > 20 else str(clock_target))
 		_ui["opp"].text = ""
 		_ui["turn"].text = "Darts thrown: %d   (best: %s)" % [clock_darts, str(GameState.minigame_best.get("darts_clock", "–"))]
@@ -476,7 +476,7 @@ func _update_ui() -> void:
 	_ui["last"].text = ("%s last: %s" % [_opp_name(), last_opp]) if last_opp != "" else ""
 	_ui["msg"].text = msg if msg_t > 0.0 else ""
 	var al := _alcohol()
-	_ui["drunk"].text = "Sober – a steady hand" if al < 0.05 else ("A drink or two – a little wobbly" if al < 0.4 else "Had a few – the board swims")
+	_ui["drunk"].text = "Sober: a steady hand" if al < 0.05 else ("A drink or two: a little wobbly" if al < 0.4 else "Had a few: the board swims")
 	_ui["breath"].text = "Breath: " + "▮".repeat(int(round(breath * 8))) + "▯".repeat(8 - int(round(breath * 8)))
 
 

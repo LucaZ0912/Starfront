@@ -8,21 +8,21 @@ extends RefCounted
 
 const ECONOMIES := {
 	"agri": {"name": "Agriculture", "color": Color(0.5, 0.9, 0.35),
-		"text": "Food, water and everything that grows – ocean and jungle worlds, ice giants and the agricultural stations."},
+		"text": "Food, water and everything that grows: ocean and jungle worlds, ice giants and the agricultural stations."},
 	"mining": {"name": "Mining", "color": Color(0.85, 0.62, 0.38),
 		"text": "Ore and gas: metal worlds, barren rock, asteroid fields and belts, the giants and the mining colonies."},
 	"industry": {"name": "Industry", "color": Color(0.95, 0.78, 0.3),
-		"text": "Factories and yards: machines, parts and consumer goods – industrial complexes and shipyards, energy from gas giants."},
+		"text": "Factories and yards: machines, parts and consumer goods; industrial complexes and shipyards, energy from gas giants."},
 	"refinery": {"name": "Refining", "color": Color(1.0, 0.5, 0.25),
-		"text": "Smelters and refineries: metals, fuels and processed ice – lava worlds, metal-rich fields and ice refineries."},
+		"text": "Smelters and refineries: metals, fuels and processed ice; lava worlds, metal-rich fields and ice refineries."},
 	"chemistry": {"name": "Chemistry", "color": Color(0.7, 0.95, 0.3),
 		"text": "Plastics, acids and reagents from the haze of red and toxic giants and from volcanic moons."},
 	"hightech": {"name": "High-Tech", "color": Color(0.35, 0.85, 1.0),
 		"text": "Electronics, optics and medicine: earthlike worlds with their universities, research stations and yards."},
 	"research": {"name": "Research", "color": Color(0.7, 0.55, 1.0),
-		"text": "Laboratories and observatories – research stations, strange moons and the edge of the system."},
+		"text": "Laboratories and observatories: research stations, strange moons and the edge of the system."},
 	"military": {"name": "Military", "color": Color(1.0, 0.35, 0.35),
-		"text": "Garrisons, armouries and naval yards – military outposts and the yards that build warships."},
+		"text": "Garrisons, armouries and naval yards: military outposts and the yards that build warships."},
 	"tourism": {"name": "Tourism", "color": Color(1.0, 0.55, 0.85),
 		"text": "Visitors and their money: earthlike and ocean worlds, famous sights and the capitals (expanded in package 43)."},
 }
@@ -273,9 +273,9 @@ static func change(sid: int, d: float, why: String = "") -> void:
 	if lv1 != lv0:
 		var nm := String(Universe.systems[sid]["name"])
 		if lv1 > lv0:
-			GameState.news.add("%s is on the rise – the system is %s now%s." % [nm, LEVELS[lv1].to_lower(), (" (" + why + ")") if why != "" else ""], "world", sid)
+			GameState.news.add("%s is on the rise: the system is %s now%s." % [nm, LEVELS[lv1].to_lower(), (" (" + why + ")") if why != "" else ""], "world", sid)
 		else:
-			GameState.news.add("Hard times in %s – the system is %s now%s." % [nm, LEVELS[lv1].to_lower(), (" (" + why + ")") if why != "" else ""], "world", sid)
+			GameState.news.add("Hard times in %s: the system is %s now%s." % [nm, LEVELS[lv1].to_lower(), (" (" + why + ")") if why != "" else ""], "world", sid)
 
 
 ## Over time every changed system drifts back towards its base prosperity (called every `dt` seconds of play).

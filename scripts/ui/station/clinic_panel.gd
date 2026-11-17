@@ -13,11 +13,11 @@ func build() -> void:
 	add_child(UI.label("Health %d / %d" % [int(g.health), int(GearData.HEALTH)], 15, Color(1.0, 0.55, 0.5) if missing > 0.5 else Color(0.6, 1.0, 0.65)))
 	if missing > 0.5:
 		var price := buy_price(Commands.clinic_price())
-		var b := UI.button("Treat me – %s" % GameData.fmt_credits(price), func(): run({"type": "clinic_heal"}))
+		var b := UI.button("Treat me: %s" % GameData.fmt_credits(price), func(): run({"type": "clinic_heal"}))
 		b.disabled = GameState.credits < price
 		add_child(b)
 	else:
-		add_child(UI.label("Nothing to treat – you are well.", 13, UI.TEXT_DIM))
+		add_child(UI.label("Nothing to treat: you are well.", 13, UI.TEXT_DIM))
 	# 0.7.52.20 (Luz): crew that died on foot – brought back here, for a fee by their quality
 	var dead: Array = Commands.dead_crew()
 	if not dead.is_empty():
@@ -31,12 +31,12 @@ func build() -> void:
 			row.add_child(UI.spacer())
 			var fee := buy_price(Commands.revive_fee(m))
 			var mid := int(m.get("id", -1))
-			var rb := UI.button("Bring them back – %s" % GameData.fmt_credits(fee), func(): run({"type": "clinic_revive", "id": mid}))
+			var rb := UI.button("Bring them back: %s" % GameData.fmt_credits(fee), func(): run({"type": "clinic_revive", "id": mid}))
 			rb.disabled = GameState.credits < fee
 			row.add_child(rb)
 			add_child(row)
 	section("WHERE YOU WAKE")
-	add_child(UI.label("If your ship is lost, you wake in the clinic of the last station you docked at. If you fall on foot, you wake in the nearest city with a clinic – or, if there is none in the system, at the last station – and what was in your pockets is gone.", 13, UI.TEXT_DIM))
+	add_child(UI.label("If your ship is lost, you wake in the clinic of the last station you docked at. If you fall on foot, you wake in the nearest city with a clinic, or, if there is none in the system, at the last station, and what was in your pockets is gone.", 13, UI.TEXT_DIM))
 	for c in get_children():
 		if c is Label:
 			(c as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

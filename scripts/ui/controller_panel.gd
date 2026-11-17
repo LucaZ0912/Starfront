@@ -55,8 +55,8 @@ func _ready() -> void:
 		gr.add_child(b)
 	left.add_child(UI.label("", 4))
 	left.add_child(UI.label("SENSITIVITY", 13, UI.NEON_CYAN))
-	for s in [["Left stick – dead zone", "dead_l", 0.0, 0.5], ["Right stick – dead zone", "dead_r", 0.0, 0.5], ["Camera speed (right stick)", "cam_speed", 0.0, 1.0],
-			["Flick to lock – how far", "flick", 0.3, 0.95], ["Triggers – press point (L2 / R2)", "trigger", 0.05, 0.9], ["Grenade aim speed", "aim_speed", 0.0, 1.0], ["Billiards & darts – aim speed", "mg_aim", 0.0, 1.0]]:
+	for s in [["Left stick: dead zone", "dead_l", 0.0, 0.5], ["Right stick: dead zone", "dead_r", 0.0, 0.5], ["Camera speed (right stick)", "cam_speed", 0.0, 1.0],
+			["Flick to lock: how far", "flick", 0.3, 0.95], ["Triggers: press point (L2 / R2)", "trigger", 0.05, 0.9], ["Grenade aim speed", "aim_speed", 0.0, 1.0], ["Billiards & darts: aim speed", "mg_aim", 0.0, 1.0]]:
 		_slider(left, s[0], s[1], s[2], s[3])
 	_check(left, "Invert the camera (up / down)", "invert", "")
 	_check(left, "Run when the stick is pushed all the way", "run_full", "")
@@ -144,7 +144,7 @@ func _refresh() -> void:
 	if _dev == null:
 		return
 	var dn := Pad.device_name()
-	_dev.text = ("Connected: %s – the glyphs follow the controller you hold" % dn) if dn != "" else "No controller connected – plug one in (USB) or pair it (Bluetooth)."
+	_dev.text = ("Connected: %s; the glyphs follow the controller you hold" % dn) if dn != "" else "No controller connected: plug one in (USB) or pair it (Bluetooth)."
 	for c in find_children("*", "Button", true, false):
 		if (c as Node).has_meta("glyph"):
 			(c as Button).set_pressed_no_signal(Pad.glyphs == String(c.get_meta("glyph")))
@@ -178,7 +178,7 @@ func _build() -> void:
 		var cap := Pad.capture == key
 		var bt := UI.button("press a button …" if cap else Pad.binding_text(Pad.binding(tab, id)), func():
 			Pad.capture = key
-			status.text = "Press the new button for \"%s\" (hold a D-pad direction, L2, R1 or □ first for a combination) – %s: cancel" % [String(a[1]), Pad.glyph("options")]
+			status.text = "Press the new button for \"%s\" (hold a D-pad direction, L2, R1 or □ first for a combination), %s: cancel" % [String(a[1]), Pad.glyph("options")]
 			_build())
 		bt.custom_minimum_size = Vector2(150, 28)
 		if cap:

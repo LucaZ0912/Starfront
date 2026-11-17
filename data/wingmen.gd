@@ -28,11 +28,11 @@ const LEASH := 9000.0                # km from the ship they fly with – they d
 const TRAITS := {
 	"brave": {"name": "Daredevil", "text": "Chases enemies further and keeps fighting longer."},
 	"cautious": {"name": "Cautious", "text": "Falls back into formation when the shield drops below half."},
-	"disciplined": {"name": "Disciplined", "text": "Sticks exactly to the order – never strays from the target you gave."},
+	"disciplined": {"name": "Disciplined", "text": "Sticks exactly to the order: never strays from the target you gave."},
 	"hothead": {"name": "Hothead", "text": "Now and then opens fire on its own even when told to be defensive."},
 	"sharpshooter": {"name": "Sharpshooter", "text": "Keeps its distance and fights at long range."},
 	"loyal": {"name": "Loyal", "text": "Goes first for whoever attacks you."},
-	"greedy": {"name": "Greedy", "text": "Salvages wrecks nearby between fights – the loot goes into your hold."},
+	"greedy": {"name": "Greedy", "text": "Salvages wrecks nearby between fights: the loot goes into your hold."},
 }
 const TRAIT_PAIRS_FORBIDDEN := [["brave", "cautious"], ["disciplined", "hothead"]]
 const STANCES := {"aggressive": "Aggressive", "defensive": "Defensive", "passive": "Passive"}

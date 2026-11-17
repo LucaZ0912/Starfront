@@ -105,7 +105,7 @@ static func warp_min_for(t: Dictionary) -> float:
 ## and red supergiants far more often, 0.6.37.6).
 const STAR_TYPES := [
 	{"id": "O", "name": "Class O Blue Star", "kind": "main", "color": Color(0.5, 0.62, 1.0), "color2": Color(0.85, 0.92, 1.0), "radius": 150000.0, "lum": 8.0, "frost": 1.35, "weight": 2.0, "land": 2.5, "flares": true, "cme": true, "cme_rate": 0.5, "r_sun": "10", "m_sun": "30", "temp": "35,000 K",
-		"text": "Rare blue giants of the main sequence – blinding, hot and short-lived. A few million years, then they end in a supernova."},
+		"text": "Rare blue giants of the main sequence: blinding, hot and short-lived. A few million years, then they end in a supernova."},
 	{"id": "B", "name": "Class B Blue-White Star", "kind": "main", "color": Color(0.62, 0.75, 1.0), "color2": Color(0.92, 0.96, 1.0), "radius": 115000.0, "lum": 4.0, "frost": 1.25, "weight": 3.0, "land": 2.5, "flares": true, "cme": true, "cme_rate": 0.5, "r_sun": "4", "m_sun": "8", "temp": "18,000 K",
 		"text": "Hot blue-white stars. Their light carries far: the frost line lies a long way out and solar collectors run at full power."},
 	{"id": "A", "name": "Class A White Star", "kind": "main", "color": Color(0.85, 0.9, 1.0), "color2": Color(1.0, 1.0, 1.0), "radius": 85000.0, "lum": 2.0, "frost": 1.15, "weight": 5.0, "land": 2.5, "flares": true, "cme": true, "cme_rate": 0.6, "r_sun": "1.8", "m_sun": "2", "temp": "8,500 K",
@@ -113,11 +113,11 @@ const STAR_TYPES := [
 	{"id": "F", "name": "Class F Yellow-White Star", "kind": "main", "color": Color(1.0, 0.95, 0.75), "color2": Color(1.0, 1.0, 0.95), "radius": 70000.0, "lum": 1.4, "frost": 1.07, "weight": 8.0, "land": 2.5, "flares": true, "cme": true, "cme_rate": 0.8, "r_sun": "1.3", "m_sun": "1.3", "temp": "6,700 K",
 		"text": "Yellow-white stars, a little hotter and brighter than a sun like Sol."},
 	{"id": "G", "name": "Class G Yellow Dwarf", "kind": "main", "color": Color(1.0, 0.82, 0.38), "color2": Color(1.0, 0.97, 0.8), "radius": 60000.0, "lum": 1.0, "frost": 1.0, "weight": 15.0, "land": 2.5, "flares": true, "cme": true, "cme_rate": 1.0, "r_sun": "1", "m_sun": "1", "temp": "5,800 K",
-		"text": "Yellow dwarfs like Sol, the sun of Earth. Calm, long-lived – the kind of star humanity was born under."},
+		"text": "Yellow dwarfs like Sol, the sun of Earth. Calm, long-lived: the kind of star humanity was born under."},
 	{"id": "K", "name": "Class K Orange Dwarf", "kind": "main", "color": Color(1.0, 0.6, 0.25), "color2": Color(1.0, 0.88, 0.6), "radius": 50000.0, "lum": 0.6, "frost": 0.9, "weight": 20.0, "land": 2.5, "flares": true, "cme": true, "cme_rate": 1.3, "r_sun": "0.8", "m_sun": "0.75", "temp": "4,500 K",
 		"text": "Orange dwarfs: smaller and cooler than Sol, and they burn for tens of billions of years."},
 	{"id": "M", "name": "Class M Red Dwarf", "kind": "main", "color": Color(0.95, 0.32, 0.18), "color2": Color(1.0, 0.7, 0.45), "radius": 38000.0, "lum": 0.3, "frost": 0.8, "weight": 30.0, "land": 2.5, "flares": true, "cme": true, "cme_rate": 2.2, "r_sun": "0.4", "m_sun": "0.3", "temp": "3,200 K",
-		"text": "Red dwarfs – the most common stars of all. Dim and cool, and fond of sudden flares."},
+		"text": "Red dwarfs: the most common stars of all. Dim and cool, and fond of sudden flares."},
 	{"id": "BD", "name": "Brown Dwarf", "kind": "brown", "color": Color(0.78, 0.28, 0.58), "color2": Color(1.0, 0.6, 0.85), "radius": 28000.0, "lum": 0.05, "frost": 0.6, "weight": 6.0, "land": 2.5, "flares": false, "cme": false, "cme_rate": 0.0, "r_sun": "0.1", "m_sun": "0.05", "temp": "1,500 K",
 		"text": "A failed star: too light to ignite hydrogen in its core. It glows a dull pink from the heat of its own contraction and gives hardly any light."},
 	{"id": "RSG", "name": "Red Supergiant", "kind": "giant", "color": Color(0.95, 0.28, 0.1), "color2": Color(1.0, 0.62, 0.3), "radius": 600000.0, "lum": 6.0, "frost": 1.3, "weight": 4.0, "land": 1.6, "flares": true, "cme": true, "cme_rate": 2.5, "r_sun": "800", "m_sun": "15", "temp": "3,600 K",
@@ -127,7 +127,7 @@ const STAR_TYPES := [
 	{"id": "NS", "name": "Neutron Star", "kind": "neutron", "color": Color(0.5, 0.6, 1.0), "color2": Color(0.45, 1.0, 0.95), "radius": 6000.0, "lum": 0.1, "frost": 0.6, "weight": 2.0, "land": 5.0, "flares": false, "cme": false, "cme_rate": 0.0, "r_sun": "0.000015", "m_sun": "1.4", "temp": "600,000 K",
 		"text": "The collapsed core of a giant star: twenty kilometres of matter heavier than anything else, spinning, wrapped in a magnetic field so strong its lines of force glow. Two jets sweep round like the beam of a lighthouse."},
 	{"id": "BH", "name": "Black Hole", "kind": "blackhole", "color": Color(1.0, 0.5, 0.15), "color2": Color(1.0, 0.92, 0.7), "radius": 12000.0, "lum": 0.0, "frost": 0.6, "weight": 2.0, "land": 10.0, "flares": false, "cme": false, "cme_rate": 0.0, "r_sun": "0.00004", "m_sun": "10", "temp": "—",
-		"text": "Nothing comes back from beyond the event horizon, not even light. Gas circles it in a glowing accretion disc, the far side bent over the hole by its gravity. Close in, it pulls ships in – and crushes what crosses the horizon."},
+		"text": "Nothing comes back from beyond the event horizon, not even light. Gas circles it in a glowing accretion disc, the far side bent over the hole by its gravity. Close in, it pulls ships in, and crushes what crosses the horizon."},
 ]
 
 
@@ -1338,16 +1338,16 @@ func territory_text(sid: int) -> String:
 	if f != "":
 		var t := FactionData.name_of(f)
 		if FactionData.FACTIONS[f]["kind"] == "pirate":
-			t = "Pirate territory – " + t
+			t = "Pirate territory: " + t
 		if systems[sid].get("capital", false):
 			t += " (capital)" if FactionData.FACTIONS[f]["kind"] == "power" else " (stronghold)"
 		return t
 	var cl := claimants(sid)
 	if cl.is_empty():
 		if is_outer(sid):
-			return "Unclaimed – the Far Reaches"  # the outer ring beyond the Rim
+			return "Unclaimed: the Far Reaches"  # the outer ring beyond the Rim
 		if is_belt(sid) and not is_independent(sid):
-			return "Unclaimed – the Rim"          # package 40: the wild ring round the core
+			return "Unclaimed: the Rim"          # package 40: the wild ring round the core
 		return "Independent"
 	var names: PackedStringArray = []
 	for c in cl:
@@ -1547,7 +1547,7 @@ func build_test_layout() -> Dictionary:
 		var big := float(PLANET_TYPES[pt].get("big", 1.0)) > 1.5
 		var pos := Vector2.from_angle(-PI * 0.5 + i * TAU / ptypes.size()) * 600000.0
 		L["planets"].append({
-			"id": "p%d" % i, "name": "Testfeld %d – %s" % [i + 1, PLANET_TYPES[pt]["name"]], "type": pt,
+			"id": "p%d" % i, "name": "Testfeld %d: %s" % [i + 1, PLANET_TYPES[pt]["name"]], "type": pt,
 			"orbit": pos.length(), "pos": pos, "radius": 22000.0 if big else 9000.0, "city": 0.8 if pt in CITY_WORLDS else 0.0,
 			"seed": 10.0 + i * 7.0, "ring": big,
 		})
@@ -1571,7 +1571,7 @@ func build_test_layout() -> Dictionary:
 			var pos2 := Vector2.from_angle(PI * 0.5 + i * TAU / n_types) * float(TEST_RING[tier - 1])
 			L["stations"].append({
 				"id": "st_0_%d" % L["stations"].size(), "planet": 0,
-				"name": "Testfeld – %s (T%d)" % [CommodityData.STATION_TYPES[type]["name"], tier],
+				"name": "Testfeld: %s (T%d)" % [CommodityData.STATION_TYPES[type]["name"], tier],
 				"type": type, "tier": tier, "pos": pos2,
 				"market": _make_market(type, rng), "shop": _make_shop(type, tier, rng), "shipyard": _make_shipyard(type, tier, true),
 				"seed": 1000 + i * 37, "zone": NO_FIRE_ZONE[tier - 1],
@@ -1589,7 +1589,7 @@ func build_test_layout() -> Dictionary:
 	for wt in [1, 2, 3]:
 		L["stations"].append({
 			"id": "st_0_%d" % L["stations"].size(), "planet": 0,
-			"name": "Testfeld – Waystation (T%d)" % wt, "type": "waystation", "tier": wt,
+			"name": "Testfeld: Waystation (T%d)" % wt, "type": "waystation", "tier": wt,
 			"pos": Vector2.from_angle(-PI * 0.5 + 0.25 * wt) * 1300000.0,
 			"market": _make_market("waystation", rng), "shop": [], "shipyard": [],
 			"seed": 2000 + wt, "zone": NO_FIRE_ZONE[wt - 1], "faction": FactionData.POWERS[wt % 3],
@@ -1929,10 +1929,10 @@ func find_city(system_id: int, cid: String) -> Dictionary:
 const PLANET_TYPES := {
 	"terran": {"name": "Terran", "a": Color(0.13, 0.28, 0.58), "b": Color(0.3, 0.55, 0.28), "c": Color(0.6, 0.56, 0.42), "atmo": Color(0.5, 0.75, 1.0, 0.8), "gas": 0.0,
 		"sea": 0.5, "clouds": 0.55, "caps": 0.6, "cloud": Color(1, 1, 1), "big": 1.0,
-		"r_earth": "1", "m_earth": "1", "temp": "15 °C", "text": "Oceans, continents, clouds and ice at the poles – the kind of world humanity was made for, and the first it settles. On the night side the cities shine."},
+		"r_earth": "1", "m_earth": "1", "temp": "15 °C", "text": "Oceans, continents, clouds and ice at the poles: the kind of world humanity was made for, and the first it settles. On the night side the cities shine."},
 	"ocean": {"name": "Ocean World", "a": Color(0.06, 0.2, 0.5), "b": Color(0.2, 0.5, 0.42), "c": Color(0.85, 0.82, 0.62), "atmo": Color(0.45, 0.72, 1.0, 0.85), "gas": 0.0,
 		"sea": 0.8, "clouds": 0.75, "caps": 0.45, "cloud": Color(1, 1, 1), "big": 1.15,
-		"r_earth": "1.3", "m_earth": "2", "temp": "17 °C", "text": "Water to the horizon and beyond – only chains of islands break the surface. Floating towns and island cities; dense clouds and storms."},
+		"r_earth": "1.3", "m_earth": "2", "temp": "17 °C", "text": "Water to the horizon and beyond, only chains of islands break the surface. Floating towns and island cities; dense clouds and storms."},
 	"jungle": {"name": "Jungle World", "a": Color(0.08, 0.26, 0.4), "b": Color(0.12, 0.42, 0.14), "c": Color(0.3, 0.58, 0.22), "atmo": Color(0.55, 0.9, 0.7, 0.8), "gas": 0.0,
 		"sea": 0.32, "clouds": 0.85, "caps": 0.15, "cloud": Color(0.95, 1.0, 0.96), "big": 1.0,
 		"r_earth": "1.05", "m_earth": "1.1", "temp": "28 °C", "text": "Hot, wet and green from pole to pole. Rain clouds hang over endless forests; the settlements cling to the rivers and coasts."},
@@ -1944,10 +1944,10 @@ const PLANET_TYPES := {
 		"r_earth": "0.8", "m_earth": "0.5", "temp": "−75 °C", "text": "A world buried under kilometres of ice, crossed by blue cracks. Under the ice there may be oceans."},
 	"lava": {"name": "Lava World", "a": Color(1.0, 0.45, 0.1), "b": Color(0.28, 0.13, 0.1), "c": Color(0.15, 0.08, 0.07), "atmo": Color(1.0, 0.4, 0.2, 0.5), "gas": 0.0,
 		"sea": 0.0, "clouds": 0.0, "lava": 1.0, "big": 1.0,
-		"r_earth": "1.1", "m_earth": "1.3", "temp": "900 °C", "text": "So close to its star that the rock melts. Rivers of lava glow through a black crust – on the night side too."},
+		"r_earth": "1.1", "m_earth": "1.3", "temp": "900 °C", "text": "So close to its star that the rock melts. Rivers of lava glow through a black crust: on the night side too."},
 	"barren": {"name": "Barren Rock", "a": Color(0.33, 0.32, 0.34), "b": Color(0.48, 0.47, 0.47), "c": Color(0.64, 0.62, 0.6), "atmo": Color(0.0, 0.0, 0.0, 0.0), "gas": 0.0,
 		"sea": 0.0, "clouds": 0.0, "craters": 1.0, "big": 1.0,
-		"r_earth": "0.4", "m_earth": "0.1", "temp": "−60 °C", "text": "No air, no water – only rock and the craters of four billion years of impacts. Good for mines, bad for everything else."},
+		"r_earth": "0.4", "m_earth": "0.1", "temp": "−60 °C", "text": "No air, no water, only rock and the craters of four billion years of impacts. Good for mines, bad for everything else."},
 	"gas": {"name": "Gas Giant", "a": Color(0.68, 0.48, 0.32), "b": Color(0.86, 0.7, 0.5), "c": Color(0.96, 0.9, 0.76), "atmo": Color(1.0, 0.85, 0.6, 0.4), "gas": 1.0,
 		"storms": 1.0, "big": 2.6,
 		"r_earth": "11", "m_earth": "318", "temp": "−110 °C", "text": "A giant of hydrogen and helium without a surface: bands of cloud racing round it, storms bigger than whole worlds."},
@@ -1964,7 +1964,7 @@ const PLANET_TYPES := {
 	# package 42: the metal world – ore lies open at the surface (mining)
 	"metal": {"name": "Metal World", "a": Color(0.2, 0.2, 0.23), "b": Color(0.38, 0.36, 0.37), "c": Color(0.55, 0.47, 0.4), "atmo": Color(0.85, 0.75, 0.65, 0.18), "gas": 0.0,
 		"sea": 0.0, "clouds": 0.08, "cloud": Color(0.8, 0.75, 0.7), "craters": 0.45, "metal": 1.0, "big": 1.0,
-		"r_earth": "0.95", "m_earth": "1.9", "temp": "60 °C", "text": "A dense iron world whose crust is laced with ore: veins of copper and silver run open at the surface and glint in the sun. Prospectors' paradise – the whole planet is one mine."},
+		"r_earth": "0.95", "m_earth": "1.9", "temp": "60 °C", "text": "A dense iron world whose crust is laced with ore: veins of copper and silver run open at the surface and glint in the sun. Prospectors' paradise: the whole planet is one mine."},
 	"dwarf": {"name": "Dwarf Planet", "a": Color(0.42, 0.36, 0.32), "b": Color(0.62, 0.55, 0.5), "c": Color(0.9, 0.88, 0.86), "atmo": Color(0.0, 0.0, 0.0, 0.0), "gas": 0.0,
 		"sea": 0.0, "caps": 0.0, "craters": 0.8, "big": 1.0,
 		"r_earth": "0.18", "m_earth": "0.002", "temp": "−230 °C", "text": "Too small to clear its orbit: a little world of rock and frozen nitrogen far out in the Kuiper belt. Waystations like its quiet."},
@@ -1978,16 +1978,16 @@ const DWARF_WAYSTATION := 0.4
 ## far bigger than colossi (3,000–7,800 km radius, at most two thirds of their planet), no radar shadow. "cls" = rock class of a field next to the moon.
 const MOON_TYPES := {
 	"moon_rock": {"name": "Rocky Moon", "a": Color(0.3, 0.29, 0.3), "b": Color(0.46, 0.45, 0.44), "c": Color(0.63, 0.61, 0.59),
-		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 0.0, "glow": 0.0, "cls": "stony", "r_earth": "0.27", "m_earth": "0.012", "temp": "−20 °C", "text": "A grey ball of rock covered in craters – most moons look like this.",
+		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 0.0, "glow": 0.0, "cls": "stony", "r_earth": "0.27", "m_earth": "0.012", "temp": "−20 °C", "text": "A grey ball of rock covered in craters: most moons look like this.",
 		"r": Vector2(3000, 6000)},
 	"moon_ice": {"name": "Ice Moon", "a": Color(0.5, 0.62, 0.76), "b": Color(0.78, 0.86, 0.94), "c": Color(0.97, 0.98, 1.0),
-		"atmo": Color(0.8, 0.9, 1.0, 0.25), "gas": 0.0, "craters": 0.55, "lumpy": 0.0, "glow": 0.0, "cls": "icy", "r_earth": "0.25", "m_earth": "0.008", "temp": "−160 °C", "text": "A shell of ice over a frozen – or hidden liquid – sea; cracks run across its face.",
+		"atmo": Color(0.8, 0.9, 1.0, 0.25), "gas": 0.0, "craters": 0.55, "lumpy": 0.0, "glow": 0.0, "cls": "icy", "r_earth": "0.25", "m_earth": "0.008", "temp": "−160 °C", "text": "A shell of ice over a frozen, or hidden liquid, sea; cracks run across its face.",
 		"r": Vector2(3000, 6500)},
 	"moon_volcanic": {"name": "Volcanic Moon", "a": Color(0.92, 0.74, 0.26), "b": Color(0.78, 0.46, 0.16), "c": Color(0.24, 0.14, 0.09),
 		"atmo": Color(1.0, 0.65, 0.3, 0.22), "gas": 0.0, "craters": 0.0, "lumpy": 0.0, "glow": 1.0, "cls": "metallic", "r_earth": "0.29", "m_earth": "0.015", "temp": "−130 °C", "text": "Squeezed by its planet's tides until its insides melt: sulphur volcanoes glow on its surface.",
 		"r": Vector2(3500, 6500)},
 	"moon_captured": {"name": "Captured Asteroid", "a": Color(0.2, 0.18, 0.17), "b": Color(0.3, 0.27, 0.25), "c": Color(0.43, 0.4, 0.37),
-		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 1.0, "glow": 0.0, "cls": "metallic", "r_earth": "0.03", "m_earth": "0.00001", "temp": "−80 °C", "text": "Not a true moon but an asteroid its planet caught – lumpy, dark and scarred.",
+		"atmo": Color(0, 0, 0, 0), "gas": 0.0, "craters": 1.0, "lumpy": 1.0, "glow": 0.0, "cls": "metallic", "r_earth": "0.03", "m_earth": "0.00001", "temp": "−80 °C", "text": "Not a true moon but an asteroid its planet caught: lumpy, dark and scarred.",
 		"r": Vector2(3000, 4500)},
 }
 const MOON_LETTERS := ["a", "b", "c", "d"]
@@ -2427,7 +2427,7 @@ func _derelict(L: Dictionary, id: int, used: Array, rng: RandomNumberGenerator) 
 	used.append(pos)
 	var ship: String = RELIC_SHIPS[rng.randi() % RELIC_SHIPS.size()]
 	var site := {"id": "site_r", "kind": "derelict", "pos": pos, "radius": 4200.0, "ship": ship,
-		"name": "Pre-Severance Derelict – %s" % ship, "seed": rng.randi(), "wrecks": []}
+		"name": "Pre-Severance Derelict: %s" % ship, "seed": rng.randi(), "wrecks": []}
 	var loot := {}
 	var has_relic := rng.randf() < 0.4
 	if has_relic:
@@ -3189,7 +3189,7 @@ func warp_targets(system_id: int) -> Array:
 		out.append({"id": ds["id"], "kind": "descent", "name": ds["name"], "pos": ds["pos"], "land": 700.0, "data": ds})
 	for pod in GameState.pods:                     # package 31a: escape pods with crew waiting for rescue
 		if int(pod["system"]) == system_id:
-			out.append({"id": pod["id"], "kind": "pod", "name": "Escape pod – %d crew" % (pod["crew"] as Array).size(), "pos": pod["pos"], "land": 900.0, "data": pod})
+			out.append({"id": pod["id"], "kind": "pod", "name": "Escape pod: %d crew" % (pod["crew"] as Array).size(), "pos": pod["pos"], "land": 900.0, "data": pod})
 	return out
 
 
@@ -3259,18 +3259,18 @@ func debug_body_as(body: Dictionary, world_type: String) -> Dictionary:
 
 
 const SITE_KINDS := {
-	"city": {"name": "City", "icon": "■", "col": Color(1.0, 0.85, 0.35), "text": "Streets, shops, a landing field, people – a city like a station on the ground."},
+	"city": {"name": "City", "icon": "■", "col": Color(1.0, 0.85, 0.35), "text": "Streets, shops, a landing field, people: a city like a station on the ground."},
 	"outpost": {"name": "Outpost", "icon": "▲", "col": Color(0.45, 0.85, 1.0), "text": "A handful of domes and a pad: a trader, fuel, a bar if you are lucky."},
 	"mine": {"name": "Mine", "icon": "⛏", "col": Color(0.85, 0.6, 0.35), "text": "Shafts and conveyor belts, ore for those who dig it."},
 	"ruins": {"name": "Ruins", "icon": "◆", "col": Color(0.75, 0.55, 1.0), "text": "Older than the colonies, some say older than the Severance."},
 	"crash": {"name": "Crash site", "icon": "✖", "col": Color(1.0, 0.45, 0.35), "text": "A ship came down here. What it carried may still lie in the wreck."},
 	"research": {"name": "Research camp", "icon": "✚", "col": Color(0.45, 1.0, 0.6), "text": "Scientists in a few huts and many instruments."},
 	# 0.7.53.20: the sites of jobs and visits that are no settlements (fix: the planet map knows them)
-	"pirate": {"name": "Pirate base", "icon": "☠", "col": Color(1.0, 0.3, 0.25), "text": "A base cut into a cliff – the Red Talons hold it."},
-	"research_st": {"name": "Research station", "icon": "◎", "col": Color(0.5, 0.9, 1.0), "text": "White modules on stilts – it fell silent; looters are inside."},
+	"pirate": {"name": "Pirate base", "icon": "☠", "col": Color(1.0, 0.3, 0.25), "text": "A base cut into a cliff: the Red Talons hold it."},
+	"research_st": {"name": "Research station", "icon": "◎", "col": Color(0.5, 0.9, 1.0), "text": "White modules on stilts: it fell silent; looters are inside."},
 	"darkruin": {"name": "Strange ruin", "icon": "◈", "col": Color(0.62, 0.35, 1.0), "text": "Black stone that seems to have grown. Something hums beneath it."},
-	"sight": {"name": "Sight", "icon": "✦", "col": Color(1.0, 0.85, 0.5), "text": "A wonder of this world – a viewing terrace, a souvenir stall, sightseers. What you see there changes with the hour and from visit to visit."},     # 54a
-	"wilds": {"name": "Wilderness", "icon": "♣", "col": Color(0.55, 0.95, 0.45), "text": "Wild country – animals to hunt, and something at the end of it."},     # 53f-2
+	"sight": {"name": "Sight", "icon": "✦", "col": Color(1.0, 0.85, 0.5), "text": "A wonder of this world: a viewing terrace, a souvenir stall, sightseers. What you see there changes with the hour and from visit to visit."},     # 54a
+	"wilds": {"name": "Wilderness", "icon": "♣", "col": Color(0.55, 0.95, 0.45), "text": "Wild country: animals to hunt, and something at the end of it."},     # 53f-2
 }
 ## Package 54 (Luz): what the cloud cities of each kind of giant live on – and how many hang in its sky.
 const CLOUD_KINDS := {

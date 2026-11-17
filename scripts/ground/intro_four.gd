@@ -57,7 +57,7 @@ func ground():
 
 ## The story's settings on the deck for a phase.
 func _mode(levels: Dictionary, hide_pilot: bool) -> Dictionary:
-	return {"quiet": true, "hide_pilot": hide_pilot, "lift_only": "commercial", "lift_label": "Bar – Dan wants to see you",
+	return {"quiet": true, "hide_pilot": hide_pilot, "lift_only": "commercial", "lift_label": "Bar: Dan wants to see you",
 		"levels": levels}
 
 
@@ -142,10 +142,9 @@ func _process(delta: float) -> void:
 				if tut:
 					main._start_intro_five("bar")             # sequence 5: the flight training (scripts/ground/intro_five.gd)
 				else:
-					GameState.story.set_flag("intro_stage", "six")
-					g.story_mode = {}
-					g.input_enabled = true
-					GameState.log_msg("[Story] Straight on – sequence 6 comes with the next part of the intro.", GameState.COL_WARN)
+					# Luz: straight on – Dan has more to talk about; the prologue's last step, "Talk to Dan" (sequence 6)
+					GameState.story.goto_step("prologue", 3)
+					main._start_intro_six("bar")
 				finished.emit()
 				queue_free()
 
@@ -166,6 +165,8 @@ func _free_walk(g) -> void:
 	g.story_cam = Vector2.INF
 	g.input_enabled = true
 	GameState.story.set_flag("intro_stage", "four_walk")
+	if not GameState.story.running("prologue") and not GameState.story.done.has("prologue"):
+		GameState.story.start("prologue")              # Luz: "talk to Dan in the bar" – in the tracker and the journal
 	if not g.story_talk.is_connected(_on_story_talk):
 		g.story_talk.connect(_on_story_talk)
 

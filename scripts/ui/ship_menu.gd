@@ -6,18 +6,18 @@ extends CanvasLayer
 ##               when docked, modules can be swapped with station storage; POWER MANAGEMENT; CREW (package 31)
 ##   Ship      – complete ship statistics
 ##   Inventory – cargo hold (+ station storage when docked)
-##   Transactions – sub-tabs: accepted contracts, bond wallet (bounty bonds, phase 0.5 package 9)
+##   (Transactions – contracts and bonds – moved to the journal in 0.8.56.3: scripts/ui/transactions_view.gd)
 ##   (Standing and Codex moved to the Pilot window in 0.5.30.5)
 
 signal closed
 
 const CATEGORIES := [
 	["Core", "core"], ["Weapons", "weapon"], ["Tools", "tool"], ["Optional", "optional"],
-	["Drone hangar – equipment for all drones", "drone"],
+	["Drone hangar: equipment for all drones", "drone"],
 ]
-const TABS := ["Info", "Modules", "Ship", "Inventory", "Transactions", "Industry", "Market"]
-const TAB_INDUSTRY := 5
-const TAB_MARKET := 6
+const TABS := ["Info", "Modules", "Ship", "Inventory", "Industry", "Market"]
+const TAB_INDUSTRY := 4
+const TAB_MARKET := 5
 const CodexView = preload("res://scripts/ui/codex_view.gd")
 const FactionData = preload("res://data/factions.gd")
 
@@ -26,10 +26,8 @@ var fit: ShipFitting
 var tab := 0
 var selected_slot := ""
 var selected_store := ""
-var sub_tab := 0                  # Transactions: 0 = contracts, 1 = bonds
 var mod_view := "fitting"         # Modules tab: "fitting" | "power" (package 21)
 const GROUP_COLORS := {1: Color(0.35, 0.85, 1.0), 2: Color(0.4, 1.0, 0.5), 3: Color(1.0, 0.8, 0.3), 4: Color(1.0, 0.5, 0.35)}
-var _abandon_armed := ""
 
 var title_label: Label
 var sub_label: Label
@@ -155,7 +153,7 @@ func rebuild() -> void:
 	ship_icon.texture = PixelArt.ship_texture(fit.hull_id, "player")
 	title_label.text = fit.ship_name
 	sub_label.text = "%s %s  •  %s  •  size %s  •  %s" % [h["class"], h["name"], _maker_name(h), GameData.SIZE_NAMES[int(h["size"])], fit.location_text()]
-	status_label.text = "Docked – modules can be swapped with station storage." if _docked() else "In space – fitting can only be changed while docked."
+	status_label.text = "Docked: modules can be swapped with station storage." if _docked() else "In space: fitting can only be changed while docked."
 	# Industry and Market only for ships that have a factory / an on-board market (package 25b)
 	tab_buttons[TAB_INDUSTRY].visible = h.has("factory")
 	tab_buttons[TAB_MARKET].visible = h.has("market")
@@ -174,10 +172,8 @@ func rebuild() -> void:
 		3:
 			_build_inventory()
 		4:
-			_build_transactions()
-		5:
 			_build_industry()
-		6:
+		5:
 			_build_market(_scroll())
 
 
@@ -194,12 +190,12 @@ func _build_industry() -> void:
 
 func _build_factory(box: VBoxContainer) -> void:
 	box.add_child(UI.label("FACTORY", 18, UI.NEON_CYAN))
-	box.add_child(UI.wrap_label("Builds modules (like an industrial complex, up to size 7) and drones from the materials in your cargo hold. Every job takes time and only progresses while the factory is switched on (module bar) and this is your active ship, out in space – not while docked or parked. Finished modules go into the cargo hold, drones into the hangar.", 12, UI.TEXT_DIM, 900))
+	box.add_child(UI.wrap_label("Builds modules (like an industrial complex, up to size 7) and drones from the materials in your cargo hold. Every job takes time and only progresses while the factory is switched on (module bar) and this is your active ship, out in space, not while docked or parked. Finished modules go into the cargo hold, drones into the hangar.", 12, UI.TEXT_DIM, 900))
 	var q: Array = GameState.ship_jobs(fit.uid)
 	box.add_child(UI.label("Factory %s  •  %d job%s queued" % ["running" if fit.factory_on else "switched off", q.size(), "" if q.size() == 1 else "s"], 13, UI.GOOD if fit.factory_on else UI.GOLD))
 	for j in q:
 		var nm := "Drone" if j["item"] == "drone" else GameData.module_name(String(j["item"]))
-		box.add_child(UI.label("  • %s – %d s left" % [nm, int(ceil(maxf(float(j["left"]), 0.0)))], 12, Color(1.0, 0.85, 0.5)))
+		box.add_child(UI.label("  • %s: %d s left" % [nm, int(ceil(maxf(float(j["left"]), 0.0)))], 12, Color(1.0, 0.85, 0.5)))
 	var tabs := UI.hbox(4)
 	box.add_child(tabs)
 	for fspec in FACTORY_FILTERS:
@@ -240,7 +236,7 @@ func _build_factory(box: VBoxContainer) -> void:
 
 func _build_market(box: VBoxContainer) -> void:
 	box.add_child(UI.label("ON-BOARD MARKET", 18, UI.NEON_CYAN))
-	box.add_child(UI.wrap_label("Offer goods from your hold at your own price. While the market is open (module bar) and the ship stands still in space, traders of the system fly over and buy – if your price is fair. Large offers attract pirates.", 12, UI.TEXT_DIM, 900))
+	box.add_child(UI.wrap_label("Offer goods from your hold at your own price. While the market is open (module bar) and the ship stands still in space, traders of the system fly over and buy, if your price is fair. Large offers attract pirates.", 12, UI.TEXT_DIM, 900))
 	var total := 0
 	for k in fit.market_offers:
 		total += int(fit.market_offers[k]["amount"]) * int(fit.market_offers[k]["price"])
@@ -448,7 +444,7 @@ func _build_crew() -> void:
 	ls.add_child(left)
 	var miss := fit.crew_missing()
 	left.add_child(UI.label("CREW OF THE %s" % fit.ship_name.to_upper(), 15, UI.NEON_CYAN))
-	left.add_child(UI.label("Required posts missing: %s – the ship cannot undock." % miss if miss != "" else "Every required post is filled.", 13, UI.BAD if miss != "" else UI.GOOD))
+	left.add_child(UI.label("Required posts missing: %s, the ship cannot undock." % miss if miss != "" else "Every required post is filled.", 13, UI.BAD if miss != "" else UI.GOOD))
 	left.add_child(UI.label("Share of income (sales, bounties, contract rewards): %.2f %%  •  paid so far %s" % [fit.crew_share() * 100.0, GameData.fmt_credits(int(GameState.stats.get("crew_paid", 0)))], 12, UI.TEXT_DIM))
 	var sl := fit.crew_slots()
 	var dock := _docked()
@@ -518,7 +514,7 @@ func _build_fire_groups() -> void:
 	var left := UI.vbox(6)
 	lp.add_child(left)
 	left.add_child(UI.label("Fire groups", 20, UI.NEON_CYAN))
-	left.add_child(UI.wrap_label("Every module you switch on in a fight can go into fire groups 1 to 8 – a module may be in several. One key switches the whole group: all its modules on (at the active target), or all off again. Modules in no group are not on the module bar. Modules that only run (hull, engine, reactor …) are not listed.", 13, UI.TEXT_DIM, 390))
+	left.add_child(UI.wrap_label("Every module you switch on in a fight can go into fire groups 1 to 8: a module may be in several. One key switches the whole group: all its modules on (at the active target), or all off again. Modules in no group are not on the module bar. Modules that only run (hull, engine, reactor …) are not listed.", 13, UI.TEXT_DIM, 390))
 	left.add_child(UI.label("", 4))
 	var mods: Array = fit.active_modules()
 	for g in ShipFitting.FIRE_GROUPS:
@@ -563,7 +559,7 @@ func _build_fire_groups() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rs.add_child(right)
 	right.add_child(UI.label("Modules you switch on  (%s)" % fit.ship_name, 18, UI.NEON_CYAN))
-	right.add_child(UI.label("click a number to put the module into that group – click it again to take it out", 12, UI.TEXT_DIM))
+	right.add_child(UI.label("click a number to put the module into that group: click it again to take it out", 12, UI.TEXT_DIM))
 	if mods.is_empty():
 		right.add_child(UI.label("This ship has no modules to switch on.", 14, UI.TEXT_DIM))
 		return
@@ -655,7 +651,7 @@ func _build_power() -> void:
 	var s := fit.stats()
 	var avail := float(s["power_available"])
 	box.add_child(UI.label("POWER MANAGEMENT", 18, UI.NEON_CYAN))
-	box.add_child(UI.wrap_label("The reactor output is a hard limit. Passive modules (core equipment, passive optional modules, scanners) always draw power; weapons and active modules only while they are in use. If the demand exceeds the output, priority group 4 shuts down first, then group 3, then group 2 – group 1 stays on (if it alone is too much, everything is throttled).", 12, UI.TEXT_DIM, 900))
+	box.add_child(UI.wrap_label("The reactor output is a hard limit. Passive modules (core equipment, passive optional modules, scanners) always draw power; weapons and active modules only while they are in use. If the demand exceeds the output, priority group 4 shuts down first, then group 3, then group 2: group 1 stays on (if it alone is too much, everything is throttled).", 12, UI.TEXT_DIM, 900))
 	var bar := PowerBar.new()
 	bar.groups = s["power_groups"]
 	bar.available = avail
@@ -732,7 +728,7 @@ func _plan_text(plan: Dictionary) -> String:
 	if not gs.is_empty():
 		t = "group %s shut down%s" % [", ".join(PackedStringArray(gs.map(func(x): return str(x)))), " (demand %.0f of %.0f MW)" % [float(plan["requested"]), float(plan["available"])]]
 	if float(plan["throttle"]) < 1.0:
-		t += ("; " if t != "" else "") + "group 1 alone exceeds the output – all systems at %d %%" % int(float(plan["throttle"]) * 100.0)
+		t += ("; " if t != "" else "") + "group 1 alone exceeds the output: all systems at %d %%" % int(float(plan["throttle"]) * 100.0)
 	return t
 
 
@@ -752,7 +748,7 @@ func _build_module_details(left: VBoxContainer) -> void:
 			left.add_child(UI.label(GameData.slot_label(selected_slot), 18, UI.NEON_CYAN))
 			left.add_child(UI.label("Empty slot", 14, UI.TEXT_DIM))
 			if selected_slot in GameData.CORE_SLOTS:
-				left.add_child(UI.label("Core equipment missing – the ship is impaired!", 12, UI.BAD))
+				left.add_child(UI.label("Core equipment missing: the ship is impaired!", 12, UI.BAD))
 			left.add_child(UI.wrap_label("Docked: pick a matching module from storage on the right." if _docked() else "Dock at a station to fit modules.", 12, UI.TEXT_DIM, 380))
 			return
 		_module_details(left, mid, GameData.slot_label(selected_slot))
@@ -770,7 +766,7 @@ func _build_module_details(left: VBoxContainer) -> void:
 		"DPS: %.1f" % s["dps_total"],
 	])
 	if float(s["power_passive"]) + float(s["power_active_max"]) > float(s["power_available"]):
-		left.add_child(UI.label("More power than the reactor gives – see POWER MANAGEMENT for what shuts down.", 12, UI.GOLD))
+		left.add_child(UI.label("More power than the reactor gives: see POWER MANAGEMENT for what shuts down.", 12, UI.GOLD))
 
 
 func _module_details(left: VBoxContainer, mid: String, where: String) -> void:
@@ -820,7 +816,7 @@ func _build_module_tiles(right: VBoxContainer) -> void:
 				selected_slot = key
 				selected_store = ""
 				rebuild()
-			var tip := "%s – takes modules up to size %d" % [GameData.slot_label(key), mx] + ("" if mid == "" else "\n" + GameData.module_name(mid))
+			var tip := "%s: takes modules up to size %d" % [GameData.slot_label(key), mx] + ("" if mid == "" else "\n" + GameData.module_name(mid))
 			flow.add_child(_tile(mid, caption, key == selected_slot and selected_store == "", on_slot, tip))
 		right.add_child(HSeparator.new())
 	var builtins := fit.builtin_modules()
@@ -836,7 +832,7 @@ func _build_module_tiles(right: VBoxContainer) -> void:
 		var store := GameState.storage_of(fit.docked_at)
 		var title := "Station storage"
 		if selected_slot != "":
-			title += " – fits %s" % GameData.slot_label(selected_slot)
+			title += ", fits %s" % GameData.slot_label(selected_slot)
 		right.add_child(UI.label(title, 17, UI.GOLD))
 		var flow := HFlowContainer.new()
 		flow.add_theme_constant_override("h_separation", 8)
@@ -866,7 +862,7 @@ func _builtin_tile(d: Dictionary) -> Control:
 	p.add_theme_stylebox_override("panel", st)
 	p.custom_minimum_size = Vector2(76, 76)
 	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var tip := "%s – built into the hull, cannot be removed" % d["name"]
+	var tip := "%s: built into the hull, cannot be removed" % d["name"]
 	if String(d.get("active", "")) == "refinery":
 		tip += "\nRefines ore from the hold: %.2f units/s at %d %% yield, %.0f MW while switched on (module bar)" % [float(d["rate"]), int(float(d["eff"]) * 100.0), float(d["power"])]
 	p.tooltip_text = tip
@@ -951,7 +947,7 @@ func _build_ship() -> void:
 			names.append(GameData.SLOT_NAMES[k])
 		box.add_child(UI.label("Missing core equipment: %s" % ", ".join(PackedStringArray(names)), 13, UI.BAD))
 	if not fit.power_off.is_empty():
-		box.add_child(UI.label("Power overload – priority groups shut down: %s" % str(fit.power_off.keys()), 13, UI.BAD))
+		box.add_child(UI.label("Power overload; priority groups shut down: %s" % str(fit.power_off.keys()), 13, UI.BAD))
 	var res: Dictionary = s["res"]
 	var dps: Dictionary = s["dps"]
 	var h := fit.hull()
@@ -1014,7 +1010,7 @@ func _build_ship() -> void:
 		var r := UI.hbox(6)
 		wc.add_child(r)
 		r.add_child(UI.icon(PixelArt.module_icon(w["id"]), 24))
-		r.add_child(UI.label("%s – %.0f dmg, %.0f km, %.1f DPS" % [w["name"], float(w["damage"]), float(w["range"]), float(w["damage"]) / float(w["cooldown"])], 12, GameData.DAMAGE_COLORS[w["damage_type"]]))
+		r.add_child(UI.label("%s: %.0f dmg, %.0f km, %.1f DPS" % [w["name"], float(w["damage"]), float(w["range"]), float(w["damage"]) / float(w["cooldown"])], 12, GameData.DAMAGE_COLORS[w["damage_type"]]))
 	for t in s["tools"]:
 		var r := UI.hbox(6)
 		wc.add_child(r)
@@ -1036,7 +1032,7 @@ func _extra_holds(c: Control) -> void:
 		gb.value = fit.gas_tank_used()
 		c.add_child(gb)
 	if fit.gas_in_racks() > 0.0:
-		c.add_child(UI.label("Gas in the cargo racks: %.1f m³ – takes twice the room there (%.1f m³)%s" % [fit.gas_in_racks(), fit.gas_in_racks() * fit.GAS_RACK_MULT,
+		c.add_child(UI.label("Gas in the cargo racks: %.1f m³; takes twice the room there (%.1f m³)%s" % [fit.gas_in_racks(), fit.gas_in_racks() * fit.GAS_RACK_MULT,
 			"" if gmax > 0.0 else "  •  gas tanks hold it at its own volume"], 12, UI.GOLD))
 	var rs := fit.rad_split()
 	if rmax > 0.0:
@@ -1047,7 +1043,7 @@ func _extra_holds(c: Control) -> void:
 		c.add_child(rb)
 	var over := float(rs["ore_over"]) + float(rs["other_over"])
 	if over > 0.0:
-		c.add_child(UI.label("☢ %.1f m³ of radioactive goods outside shielded racks – the crew is exposed" % over, 12, UI.BAD))
+		c.add_child(UI.label("☢ %.1f m³ of radioactive goods outside shielded racks: the crew is exposed" % over, 12, UI.BAD))
 
 
 func _volume_text(item: String, amount: float) -> String:
@@ -1140,144 +1136,3 @@ func _jettison(item: String) -> void:
 	rebuild()
 
 
-# ================================================================ Transactions
-
-const MISSION_COLORS := {"courier": Color(0.4, 0.85, 1.0), "bounty": Color(1.0, 0.35, 0.35), "mining": Color(1.0, 0.75, 0.3), "survey": Color(0.8, 0.5, 1.0)}
-const MISSION_LABELS := {"courier": "COURIER", "bounty": "BOUNTY", "mining": "SUPPLY", "survey": "SURVEY"}
-
-
-func _build_transactions() -> void:
-	var bar := UI.hbox(4)
-	content.add_child(bar)
-	var subs := ["Contracts (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS], "Bonds (%d)" % GameState.bonds.size()]
-	for i in subs.size():
-		var idx := i
-		var b := UI.button(subs[i], func():
-			sub_tab = idx
-			_abandon_armed = ""
-			rebuild())
-		b.toggle_mode = true
-		b.button_pressed = i == sub_tab
-		b.custom_minimum_size = Vector2(200, 30)
-		bar.add_child(b)
-	if sub_tab == 0:
-		_build_contracts()
-	else:
-		_build_bonds()
-
-
-func _build_contracts() -> void:
-	var box := _scroll()
-	if GameState.missions.is_empty():
-		var c := _card(box, "NO ACTIVE CONTRACTS")
-		c.add_child(UI.wrap_label("Contracts are offered on the BlackLedger bulletin boards of the stations. You can hold up to %d at a time." % GameState.MAX_ACTIVE_MISSIONS, 13, UI.TEXT_DIM, 900))
-		return
-	var total := 0
-	for m in GameState.missions:
-		total += int(m["reward"])
-		var col: Color = MISSION_COLORS.get(String(m["type"]), Color.WHITE)
-		var p := UI.neon_panel(Color(col, 0.55), Color(0.05, 0.07, 0.12, 0.95), 1)
-		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		box.add_child(p)
-		var v := UI.vbox(4)
-		p.add_child(v)
-		var head := UI.hbox(10)
-		v.add_child(head)
-		head.add_child(UI.label(MISSION_LABELS.get(String(m["type"]), "?"), 13, col))
-		head.add_child(UI.label(m["title"], 16))
-		head.add_child(UI.spacer())
-		head.add_child(UI.label(GameData.fmt_credits(int(m["reward"])), 16, UI.GOLD))
-		v.add_child(UI.wrap_label(m.get("desc", ""), 13, UI.TEXT_DIM, 1100))
-		var giver := Universe.find_station(int(m["giver_system"]), String(m["giver"]))
-		var lines: Array = ["Client: %s  •  issued at %s (%s)" % [m.get("client", "?"), giver.get("name", "?"), Universe.systems[int(m["giver_system"])]["name"]]]
-		var turn_in: String = giver.get("name", "?")
-		var dest_sys := int(m["giver_system"])
-		if m["type"] == "courier":
-			turn_in = Universe.find_station(int(m["target_system"]), String(m["target_station"])).get("name", "?")
-			dest_sys = int(m["target_system"])
-		lines.append("Progress: %s" % Missions.progress_text(m, fit))
-		lines.append("Hand in at: %s (%s)" % [turn_in, Universe.systems[dest_sys]["name"]])
-		_kv(v, lines)
-		var row := UI.hbox(8)
-		v.add_child(row)
-		var work_sys := int(m["target_system"])
-		if work_sys != fit.system_id:
-			var ws := work_sys
-			row.add_child(UI.button("Course to %s" % Universe.systems[ws]["name"], func(): _course(ws)))
-		if dest_sys != fit.system_id and dest_sys != work_sys:
-			var ds := dest_sys
-			row.add_child(UI.button("Course to %s (hand in)" % Universe.systems[ds]["name"], func(): _course(ds)))
-		row.add_child(UI.spacer())
-		var mid: String = m["id"]
-		var armed := _abandon_armed == mid
-		var ab := UI.button("Really abandon?" if armed else "Abandon", func(): _abandon(mid), "Cancel this contract (click twice)")
-		if armed:
-			ab.add_theme_color_override("font_color", UI.NEON_PINK)
-		row.add_child(ab)
-	box.add_child(UI.label("Total rewards on offer: %s" % GameData.fmt_credits(total), 14, UI.GOLD))
-
-
-func _course(sid: int) -> void:
-	var err := Commands.execute({"type": "course", "to": sid})
-	GameState.log_msg(err if err != "" else "Course set to %s." % Universe.systems[sid]["name"], GameState.COL_WARN if err != "" else GameState.COL_GOOD)
-	rebuild()
-
-
-func _abandon(mid: String) -> void:
-	if _abandon_armed != mid:
-		_abandon_armed = mid
-		rebuild()
-		return
-	_abandon_armed = ""
-	Commands.execute({"type": "mission_abandon", "id": mid})
-	rebuild()
-
-
-func _build_bonds() -> void:
-	var box := _scroll()
-	var head := _card(box, "BOND WALLET")
-	var st := Commands.docked_station()
-	var here: Array = GameState.bonds_redeemable_at(st, fit.system_id) if not st.is_empty() else GameState.bonds_redeemable_in(fit.system_id)
-	var here_sum := 0
-	for b in here:
-		here_sum += int(b["amount"])
-	_kv(head, [
-		"Bonds held: %d  •  total value %s" % [GameState.bonds.size(), GameData.fmt_credits(GameState.bonds_total())],
-		"Redeemable %s: %d (%s)" % ["at this station" if not st.is_empty() else "in this system", here.size(), GameData.fmt_credits(here_sum)],
-		"Cleared by the Sable Writ Exchange [SWX] – \"Every head has a price.\"",
-	])
-	head.add_child(UI.wrap_label("Bounties are put out by the three powers – the one holding the system, in pirate space the nearest one – and paid as bonds. A bond is redeemed at the Bond Office of ANY station of the issuing faction. Bonds belong to you, survive the loss of your ship and never expire.", 13, UI.TEXT_DIM, 1100))
-	var list := _card(box, "BONDS")
-	var hdr := UI.hbox(12)
-	list.add_child(hdr)
-	for col in [["Issuer", 170], ["Target", 300], ["Amount", 120], ["Issued", 230], ["Redeem at", 300]]:
-		var l := UI.label(col[0], 13, UI.ACCENT)
-		l.custom_minimum_size = Vector2(col[1], 0)
-		hdr.add_child(l)
-	if GameState.bonds.is_empty():
-		list.add_child(UI.label("No bonds yet – destroy wanted pirates (a Warrant Scanner shows who is wanted).", 13, UI.TEXT_DIM))
-	var sorted: Array = GameState.bonds.duplicate()
-	sorted.sort_custom(func(x, y): return int(x in here) > int(y in here))
-	for b in sorted:
-		var r := UI.hbox(12)
-		list.add_child(r)
-		var f := String(b.get("faction", ""))
-		var ok: bool = b in here
-		var who := UI.hbox(6)
-		who.custom_minimum_size = Vector2(170, 0)
-		if f != "":
-			who.add_child(UI.icon(CrestArt.texture(f), 20))
-		who.add_child(UI.label(FactionData.short_of(f) if f != "" else "(old bond)", 13, FactionData.color_of(f) if f != "" else UI.TEXT_DIM))
-		r.add_child(who)
-		var where: String = ("here" + (" (dock at a station)" if fit.docked_at == "" else "")) if ok else GameState.bond_where(b, fit.system_id)
-		var cells := [[String(b.get("target", "?")), 300, Color(0.9, 0.93, 1.0)],
-			[GameData.fmt_credits(int(b.get("amount", 0))), 120, UI.GOLD],
-			["%s  •  %s" % [Universe.systems[int(b["system"])]["name"], SaveGame.fmt_time(float(b.get("time", 0.0)))], 230, UI.TEXT_DIM],
-			[where, 300, UI.GOOD if ok else UI.TEXT_DIM]]
-		for c in cells:
-			var l2 := UI.label(String(c[0]), 13, c[2])
-			l2.custom_minimum_size = Vector2(c[1], 0)
-			r.add_child(l2)
-		if not ok:
-			var tgt_sys: int = GameState.faction_office_system(f, fit.system_id) if f != "" else int(b.get("redeem", b["system"]))
-			r.add_child(UI.button("Course", func(): _course(tgt_sys)))

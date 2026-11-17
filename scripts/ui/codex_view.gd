@@ -99,7 +99,7 @@ func _build_list() -> void:
 					b.add_theme_color_override("font_color", UI.GOLD)
 				_list.add_child(b)
 			else:
-				var l := UI.label("   ???  – not discovered yet", 13, Color(0.45, 0.48, 0.55))
+				var l := UI.label("   ???  (not discovered yet)", 13, Color(0.45, 0.48, 0.55))
 				_list.add_child(l)
 
 

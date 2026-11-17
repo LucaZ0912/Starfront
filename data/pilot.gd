@@ -10,7 +10,7 @@ const LOOK_PRICE := 2500           # changing the looks at a station's image stu
 
 ## id, name in the game, what it is good for
 const ATTRS := [
-	["strength", "Strength", "Endurance, mining craft – and fighting on foot later (part 7)."],
+	["strength", "Strength", "Endurance, mining craft, and fighting on foot later (part 7)."],
 	["dexterity", "Dexterity", "Fine control: flying, repairs, hand weapons."],
 	["intelligence", "Intelligence", "Technology, science, navigation, electronics."],
 	["charisma", "Charisma", "Trade, negotiation, leading a crew and mercenaries."],

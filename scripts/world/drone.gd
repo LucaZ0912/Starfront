@@ -541,7 +541,7 @@ func _lost(why: String) -> void:
 	if carrier != null and is_instance_valid(carrier):
 		carrier.fit.drones.erase(rec)
 		if carrier == view.player:
-			GameState.log_msg("Drone lost – %s." % why, GameState.COL_WARN)
+			GameState.log_msg("Drone lost: %s." % why, GameState.COL_WARN)
 	view.spawn_fx(Fx.explosion(position, 25.0, Color(1.0, 0.7, 0.3)))
 	queue_free()
 

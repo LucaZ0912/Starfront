@@ -8,30 +8,30 @@ const CORPS := {
 	"dwt": {
 		"name": "Driftwood Taverns", "tag": "DWT", "color": Color(1.0, 0.62, 0.3),
 		"slogan": "Every crew starts with a round.",
-		"desc": "A bar on every station that matters, older than most of them. Spacers between posts drink, talk and wait here – and captains who need hands know where to look.",
+		"desc": "A bar on every station that matters, older than most of them. Spacers between posts drink, talk and wait here, and captains who need hands know where to look.",
 	},
 	# package 51: the clinics – where pilots are patched up, and where they wake
 	"mhc": {
 		"name": "Mercy Hall", "tag": "MHC", "color": Color(1.0, 0.45, 0.45),
 		"slogan": "We have seen worse.",
-		"desc": "Clinics on every station and in every city: they patch you up – and take in who was found outside.",
+		"desc": "Clinics on every station and in every city: they patch you up, and take in who was found outside.",
 	},
 	# package 51: the Gear shops – suits, sidearms, tools for the pilot on foot
 	"fkt": {
 		"name": "Fieldkit Outfitters", "tag": "FKT", "color": Color(0.55, 0.9, 0.45),
 		"slogan": "Dressed for every world.",
-		"desc": "Suits, sidearms, tools and air for the pilot outside the ship – at every station and town worth landing at.",
+		"desc": "Suits, sidearms, tools and air for the pilot outside the ship: at every station and town worth landing at.",
 	},
 	# package 28: the image studios – new looks for pilots
 	"vsg": {
 		"name": "Visage Clinics", "tag": "VSG", "color": Color(1.0, 0.55, 0.85),
 		"slogan": "Be who you look like.",
-		"desc": "Hair, skin, implants, tattoos, clothes – the Visage studios redo a pilot's whole look in an afternoon. What is under the skin stays yours.",
+		"desc": "Hair, skin, implants, tattoos, clothes: the Visage studios redo a pilot's whole look in an afternoon. What is under the skin stays yours.",
 	},
 	"hwd": {
 		"name": "Hivewright Drone Works", "tag": "HWD", "color": Color(0.55, 1.0, 0.6),
 		"slogan": "Many hands, one mind.",
-		"desc": "Builds the autonomous drones of the Cluster and services them at every station. Their fuel cells are sealed – a drone flies until it is empty.",
+		"desc": "Builds the autonomous drones of the Cluster and services them at every station. Their fuel cells are sealed: a drone flies until it is empty.",
 	},
 	"kvx": {
 		"name": "Kessler-Vance Exchange", "tag": "KVX", "color": Color(1.0, 0.78, 0.25),
@@ -42,19 +42,19 @@ const CORPS := {
 	"sen": {
 		"name": "Senate of the Assembly", "tag": "SEN", "color": Color(0.42, 0.66, 1.0),
 		"slogan": "The Cluster is home.",
-		"desc": "Every citizen votes on every law. In The Vote the ballots from all over the Assembly come together – and some say not every vote is cast for free.",
+		"desc": "Every citizen votes on every law. In The Vote the ballots from all over the Assembly come together, and some say not every vote is cast for free.",
 	},
 	# package 39b: not a corporation – the Church of Return, in the Cathedral of Return
 	"cur": {
 		"name": "Curia of the Hierarch", "tag": "CUR", "color": Color(1.0, 0.72, 0.28),
 		"slogan": "The road leads home.",
-		"desc": "The Hierarch proclaims, the Curia administers: edicts, tithes, indulgences – and the relics of Earth, laid in the Cathedral of Return.",
+		"desc": "The Hierarch proclaims, the Curia administers: edicts, tithes, indulgences, and the relics of Earth, laid in the Cathedral of Return.",
 	},
 	# package 39c: not a corporation – the Directorate's research council, in the Meridian Sphere
 	"rex": {
 		"name": "Meridian Research Council", "tag": "MRC", "color": Color(0.35, 0.95, 0.6),
 		"slogan": "Measure twice. Cross once.",
-		"desc": "Buys what pilots learn out there – anomaly data, exotic matter – and, to those it trusts most, sells exotic matter back.",
+		"desc": "Buys what pilots learn out there (anomaly data, exotic matter) and, to those it trusts most, sells exotic matter back.",
 	},
 	"lnn": {
 		"name": "Lumen Newsnet", "tag": "LNN", "color": Color(0.55, 0.9, 1.0),
@@ -74,17 +74,17 @@ const CORPS := {
 	"syn": {
 		"name": "Synapse Armaments", "tag": "SYN", "color": Color(1.0, 0.3, 0.45),
 		"slogan": "Upgrade or be upgraded.",
-		"desc": "Weapons, plating, drives – if it bolts onto a ship, Synapse sells it.",
+		"desc": "Weapons, plating, drives: if it bolts onto a ship, Synapse sells it.",
 	},
 	"cmc": {
 		"name": "Crucible Metallurgy Combine", "tag": "CMC", "color": Color(1.0, 0.5, 0.15),
 		"slogan": "We melt what you mine.",
-		"desc": "Runs the refineries. Yield depends on the station's equipment – and on CMC's mood.",
+		"desc": "Runs the refineries. Yield depends on the station's equipment, and on CMC's mood.",
 	},
 	"mlf": {
 		"name": "Molten Lotus Fabrication", "tag": "MLF", "color": Color(0.9, 0.35, 1.0),
 		"slogan": "From raw ore to raw power.",
-		"desc": "Licensed fabricators that turn materials into modules – for a fee, of course.",
+		"desc": "Licensed fabricators that turn materials into modules, for a fee, of course.",
 	},
 	"blc": {
 		"name": "BlackLedger Contracts", "tag": "BLC", "color": Color(0.4, 1.0, 0.55),
@@ -99,7 +99,7 @@ const CORPS := {
 	"obx": {
 		"name": "Obsidian Ordnance", "tag": "OBX", "color": Color(1.0, 0.55, 0.3),
 		"slogan": "Every shot accounted for.",
-		"desc": "Stocks the munitions of the Cluster – mines today, whatever needs reloading tomorrow. Cheapest where the navy buys.",
+		"desc": "Stocks the munitions of the Cluster: mines today, whatever needs reloading tomorrow. Cheapest where the navy buys.",
 	},
 	"pyre": {
 		"name": "Pyre Fuel Syndicate", "tag": "PYRE", "color": Color(1.0, 0.4, 0.2),

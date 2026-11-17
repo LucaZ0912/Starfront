@@ -33,7 +33,7 @@ const BILLS := {
 	"militia": {"name": "Militia Mobilisation Act", "text": "Calls up the militias and puts a premium on every pirate.",
 		"pro": "bounties in Assembly space +30 %, an extra patrol in every system", "con": "a militia levy: goods +4 %",
 		"mods": {"bounty": 1.3, "patrols": 2.0, "buy": 1.04}},
-	"yards": {"name": "Shipyard Subsidy Act", "text": "Public money for Concord Fleetworks – the fleet must grow.",
+	"yards": {"name": "Shipyard Subsidy Act", "text": "Public money for Concord Fleetworks: the fleet must grow.",
 		"pro": "Concord ships −15 %", "con": "fuel and repairs +15 %",
 		"mods": {"concord": 0.85, "service": 1.15}},
 	"fuel": {"name": "Fuel Relief Act", "text": "Caps what the depots may charge for fuel and repairs.",
@@ -93,7 +93,7 @@ func new_bill(id: String = "") -> void:
 		id = pool[randi() % pool.size()]
 	bill = {"id": id, "ends": GameState.play_time + randf_range(VOTE_MIN, VOTE_MAX), "base": randf_range(0.35, 0.65),
 		"vote": "", "donated": {"yes": 0, "no": 0}, "bribe": {}}
-	GameState.news.add("The Assembly votes on the %s – %s" % [BILLS[id]["name"], BILLS[id]["text"]], "world", Universe.special_system("landfall"))
+	GameState.news.add("The Assembly votes on the %s: %s" % [BILLS[id]["name"], BILLS[id]["text"]], "world", Universe.special_system("landfall"))
 
 
 func in_force(id: String) -> bool:
@@ -176,7 +176,7 @@ func resolve(force_caught: int = -1) -> Dictionary:
 		if caught:
 			GameState.rep.change("assembly", -BRIBE_REP, "bribery")
 			GameState.news.add("SCANDAL: a pilot tried to buy votes on the %s. The Senate has seized %s." % [bd["name"], GameData.fmt_credits(int(br["cost"]))], "world", lf)
-			GameState.log_msg("Your bribe came out – the money is gone and the Assembly will not forget it.", GameState.COL_BAD)
+			GameState.log_msg("Your bribe came out: the money is gone and the Assembly will not forget it.", GameState.COL_BAD)
 		else:
 			passed = String(br["side"]) == "yes"
 	var share := snappedf(yes_chance() * 100.0 + randf_range(-6.0, 6.0), 0.1)
@@ -186,7 +186,7 @@ func resolve(force_caught: int = -1) -> Dictionary:
 	if passed:
 		laws = laws.filter(func(l): return l["id"] != b["id"])
 		laws.append({"id": b["id"], "until": GameState.play_time + LAW_TIME})
-		GameState.news.add("The Assembly passed the %s (%.0f %% yes) – %s, %s, for the next hour." % [bd["name"], share, bd["pro"], bd["con"]], "world", lf)
+		GameState.news.add("The Assembly passed the %s (%.0f %% yes): %s, %s, for the next hour." % [bd["name"], share, bd["pro"], bd["con"]], "world", lf)
 	else:
 		GameState.news.add("The Assembly rejected the %s (%.0f %% yes)." % [bd["name"], share], "world", lf)
 	var mine := String(b["vote"])

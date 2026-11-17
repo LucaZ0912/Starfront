@@ -479,7 +479,7 @@ func _c_fire_group(c: Dictionary) -> String:
 	var p: Ship = world.player
 	var slots: Array = p.fit.group_slots(g)
 	if slots.is_empty():
-		return "Fire group %d is empty – set it in Ship → Modules → Fire groups." % g
+		return "Fire group %d is empty: set it in Ship → Modules → Fire groups." % g
 	var on_all := true
 	for s0 in slots:
 		if not bool(p.module_on.get(s0, false)) or _moves_to_active(p, s0):
@@ -571,7 +571,7 @@ func _c_debug_story(c: Dictionary) -> String:
 			st.tips_seen.erase(String(c.get("tip", "tip_fire_groups")))
 			st.tip(String(c.get("tip", "tip_fire_groups")))
 		"radio":
-			st.show.emit("radio", {"who": "dan", "text": "Radio check – one, two. Can you hear me, pilot?", "mission": ""})
+			st.show.emit("radio", {"who": "dan", "text": "Radio check: one, two. Can you hear me, pilot?", "mission": ""})
 		"reset":
 			st.reset()
 	GameState.log_msg("[Debug] Story: %s." % String(c.get("do", "start")), GameState.COL_WARN)
@@ -616,7 +616,7 @@ func _c_undock(_c: Dictionary) -> String:
 		return e
 	var te := GameState.hull_tree_error(String(_fit().hull_id))   # 0.5.30.2: bought freely, flown with the tile
 	if te != "":
-		return "The %s cannot undock yet – %s" % [_fit().hull()["name"], te]
+		return "The %s cannot undock yet: %s" % [_fit().hull()["name"], te]
 	var ce := GameState.crew_error(_fit())                           # package 31: the required crew
 	if ce != "":
 		return ce
@@ -652,7 +652,7 @@ func _c_pilot_look(c: Dictionary) -> String:
 	if not GameState.spend(price):
 		return "Not enough credits (%s)." % GameData.fmt_credits(price)
 	GameState.pilot["look"] = PilotArtX.clean(c.get("look", {}))
-	GameState.log_msg("New looks – %s paid to the image studio." % GameData.fmt_credits(price), GameState.COL_GOOD)
+	GameState.log_msg("New looks: %s paid to the image studio." % GameData.fmt_credits(price), GameState.COL_GOOD)
 	return ""
 
 
@@ -786,7 +786,7 @@ func _c_ship_buy(c: Dictionary) -> String:
 	f.position = st["pos"]
 	GameState.add_ship(f)
 	GameState.crew_fill_required(f)                        # package 31: the required posts come with rookies
-	GameState.log_msg("%s purchased – waiting in the hangar (Hangar → Board)." % f.ship_name, GameState.COL_GOOD)
+	GameState.log_msg("%s purchased: waiting in the hangar (Hangar → Board)." % f.ship_name, GameState.COL_GOOD)
 	return ""
 
 
@@ -804,7 +804,7 @@ func _c_fit_module(c: Dictionary) -> String:
 	if why != "":
 		return why
 	if Missions.cabin_in_use(f, slot):
-		return "Passengers are using this cabin – deliver them first."
+		return "Passengers are using this cabin: deliver them first."
 	if not GameState.storage_remove(f.docked_at, mid):
 		return "%s is not in station storage." % GameData.module_name(mid)
 	var prev := f.set_module(slot, mid)
@@ -822,7 +822,7 @@ func _c_unfit_module(c: Dictionary) -> String:
 		return e
 	var f := _fit()
 	if Missions.cabin_in_use(f, String(c["slot"])):
-		return "Passengers are using this cabin – deliver them first."
+		return "Passengers are using this cabin: deliver them first."
 	var prev := f.set_module(String(c["slot"]), "")
 	if prev == "":
 		return "That slot is empty."
@@ -838,7 +838,7 @@ func _c_jettison(c: Dictionary) -> String:
 	if f == null or not f.cargo.has(item):
 		return "Nothing to jettison."
 	if item == "sealed_cargo":
-		return "Sealed cargo cannot be jettisoned – abandon the contract instead."
+		return "Sealed cargo cannot be jettisoned: abandon the contract instead."
 	f.cargo.erase(item)
 	GameState.log_msg("Jettisoned %s." % GameData.item_name(item), GameState.COL_WARN)
 	return ""
@@ -894,7 +894,7 @@ func _c_clinic_heal(_c: Dictionary) -> String:
 	if not GameState.spend(price):
 		return "Not enough credits."
 	GameState.gear.health = 100.0
-	GameState.log_msg("Treated at the clinic – you feel well again.", GameState.COL_GOOD)
+	GameState.log_msg("Treated at the clinic: you feel well again.", GameState.COL_GOOD)
 	return ""
 
 
@@ -926,7 +926,7 @@ func _c_clinic_revive(c: Dictionary) -> String:
 				return "Not enough credits."
 			m["dead"] = false
 			(pair[0] as ShipFitting).mark_dirty()
-			GameState.log_msg("%s is back – the clinic brought them round." % String(m.get("name", "")), GameState.COL_GOOD)
+			GameState.log_msg("%s is back: the clinic brought them round." % String(m.get("name", "")), GameState.COL_GOOD)
 			return ""
 	return "Nobody of that name lies here."
 
@@ -947,7 +947,7 @@ func _c_gear_buy(c: Dictionary) -> String:
 	if GameState.credits < price:
 		return "Not enough credits."
 	if GameState.gear.free_places() == 0 and GameState.gear.count(id) % GearShop.GearData.stack_max(id) == 0:
-		return "Your pockets are full – sell something or store it in the ship's locker."
+		return "Your pockets are full: sell something or store it in the ship's locker."
 	if GameState.gear.add_item(id, 1) > 0:
 		return "Your pockets are full."
 	GameState.spend(price)
@@ -1131,7 +1131,7 @@ func _c_wing_attack(_c: Dictionary) -> String:
 		return e
 	var t = world.player.locked_node()
 	if t == null or not is_instance_valid(t) or not (t is Ship) or t == world.player:
-		return "Lock a ship first – the wingmen attack your active target."
+		return "Lock a ship first: the wingmen attack your active target."
 	for ct in GameState.wingmen:
 		if ct["stance"] == "passive":
 			ct["stance"] = "defensive"
@@ -1156,7 +1156,7 @@ func _c_platform_load(c: Dictionary) -> String:
 	if not cit.hull().get("hatches", {}).has("platform"):
 		return "The active ship has no launch platform."
 	if not cit.platform_ship.is_empty():
-		return "The platform is taken – unload it first."
+		return "The platform is taken: unload it first."
 	var s := _fleet_ship(int(c["uid"]))
 	if s == null or s == cit or s.docked_at != cit.docked_at:
 		return "That ship is not in this hangar."
@@ -1200,11 +1200,11 @@ func _c_platform_launch(_c: Dictionary) -> String:
 		return e
 	var cit := _fit()
 	if cit.platform_ship.is_empty():
-		return "Nothing on the platform – put a Hadrian S ship on it in the hangar." if cit.platform_lost.is_empty() else "The platform ship was destroyed – recall it at a station's hangar."
+		return "Nothing on the platform: put a Hadrian S ship on it in the hangar." if cit.platform_lost.is_empty() else "The platform ship was destroyed: recall it at a station's hangar."
 	if cit.platform_out:
 		return "The platform ship is already out."
 	if GameState.platform_pilot(cit).is_empty():
-		return "No platform pilot aboard – a Co-Pilot with the perk Wingman flies it."
+		return "No platform pilot aboard: a Co-Pilot with the perk Wingman flies it."
 	cit.platform_out = true
 	world.player.launch_platform()
 	world.launch_platform_ship()
@@ -1448,7 +1448,7 @@ func _c_module_buy_fit(c: Dictionary) -> String:
 	if why != "":
 		return why
 	if Missions.cabin_in_use(f, String(c["slot"])):
-		return "Passengers are using this cabin – deliver them first."
+		return "Passengers are using this cabin: deliver them first."
 	var e2 := _c_module_buy({"module": c["module"]})
 	if e2 != "":
 		return e2
@@ -1500,7 +1500,7 @@ func _c_build(c: Dictionary) -> String:
 		return fe
 	var err := Industry.build(_fit(), docked_station(), mid)
 	if err == "":
-		GameState.log_msg("Molten Lotus started: %s – ready in %d s (then in station storage)." % [GameData.module_name(Industry.last_built), int(Industry.build_time(mid))], GameState.COL_GOOD)
+		GameState.log_msg("Molten Lotus started: %s; ready in %d s (then in station storage)." % [GameData.module_name(Industry.last_built), int(Industry.build_time(mid))], GameState.COL_GOOD)
 	return err
 
 
@@ -1801,7 +1801,7 @@ func _c_debug_give_ship(c: Dictionary) -> String:
 		if cur != null and cur.docked_at == sid:
 			GameState.set_active(f.uid)
 		else:
-			return "Ship delivered – dock at %s to board it." % st["name"]
+			return "Ship delivered: dock at %s to board it." % st["name"]
 	return ""
 
 
@@ -2082,7 +2082,7 @@ func _c_debug_gold_wreck(_c: Dictionary) -> String:
 		return e
 	var gws: Array = Universe.get_layout(GameState.current_system).get("gold_wrecks", [])
 	if gws.is_empty():
-		return "No wreck of the Gold Fleet here – they lie in Beyond and Driftwood."
+		return "No wreck of the Gold Fleet here: they lie in Beyond and Driftwood."
 	_debug_gw_i = (_debug_gw_i + 1) % gws.size()
 	var gw: Dictionary = gws[_debug_gw_i]
 	var f := _fit()
@@ -2097,7 +2097,7 @@ func _c_debug_gold_wreck(_c: Dictionary) -> String:
 	f.position = p
 	world.player.order = {"type": "idle"}
 	world.center_on_player()
-	GameState.log_msg("[Debug] Next to the %s – %s, stage %d (%d of %d)." % [gw["name"], gw["kind"], int(gw["stage"]), _debug_gw_i + 1, gws.size()], GameState.COL_WARN)
+	GameState.log_msg("[Debug] Next to the %s: %s, stage %d (%d of %d)." % [gw["name"], gw["kind"], int(gw["stage"]), _debug_gw_i + 1, gws.size()], GameState.COL_WARN)
 	return ""
 
 
@@ -2112,7 +2112,7 @@ func _c_debug_wreck_colossus(_c: Dictionary) -> String:
 		return e
 	var wcs: Array = Universe.get_layout(GameState.current_system).get("colossi", []).filter(func(co): return co.has("wreck"))
 	if wcs.is_empty():
-		return "No wreck colossus here – they lie in the wreck belts of Beyond and Driftwood."
+		return "No wreck colossus here: they lie in the wreck belts of Beyond and Driftwood."
 	_debug_wc_i = (_debug_wc_i + 1) % wcs.size()
 	var co: Dictionary = wcs[_debug_wc_i]
 	var f := _fit()
@@ -2132,7 +2132,7 @@ func _c_debug_wreck_colossus(_c: Dictionary) -> String:
 	f.position = p
 	world.player.order = {"type": "idle"}
 	world.center_on_player()
-	GameState.log_msg("[Debug] Next to %s – stage %d (%d of %d)." % [co["name"], int(co.get("stage", 0)), _debug_wc_i + 1, wcs.size()], GameState.COL_WARN)
+	GameState.log_msg("[Debug] Next to %s: stage %d (%d of %d)." % [co["name"], int(co.get("stage", 0)), _debug_wc_i + 1, wcs.size()], GameState.COL_WARN)
 	return ""
 
 
@@ -2140,7 +2140,7 @@ func _c_debug_wreck_colossus(_c: Dictionary) -> String:
 func _c_debug_prosperity(c: Dictionary) -> String:
 	var sid := GameState.current_system
 	Economy.change(sid, float(c.get("delta", 20)), "debug")
-	GameState.log_msg("[Debug] %s: prosperity %d – %s." % [Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
+	GameState.log_msg("[Debug] %s: prosperity %d, %s." % [Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
 	return ""
 
 
@@ -2158,7 +2158,7 @@ func _c_debug_market_age(c: Dictionary) -> String:
 func _c_debug_prosperity_drift(c: Dictionary) -> String:
 	Economy.drift(float(c.get("hours", 1)) * 3600.0)
 	var sid := GameState.current_system
-	GameState.log_msg("[Debug] Prosperity drifted %.0f h – %s: %d (%s)." % [float(c.get("hours", 1)), Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
+	GameState.log_msg("[Debug] Prosperity drifted %.0f h, %s: %d (%s)." % [float(c.get("hours", 1)), Universe.systems[sid]["name"], int(Economy.prosperity(sid)), Economy.level_name(sid)])
 	return ""
 
 
@@ -2198,7 +2198,7 @@ func _mg_tip(who: String, rng: RandomNumberGenerator) -> String:
 					if not bool(an["revealed"]):
 						an["revealed"] = true
 						GameState.anomaly_revealed.emit(s2, String(an["id"]))
-						return "%s leans in: \"Out in %s my scanner caught something the others miss – %s. Worth a look.\"" % [who, Universe.systems[s2]["name"], String(an["name"])]
+						return "%s leans in: \"Out in %s my scanner caught something the others miss, %s. Worth a look.\"" % [who, Universe.systems[s2]["name"], String(an["name"])]
 		else:
 			var near: Array = Missions._systems_within(sid, 2)
 			var here: Array = (Universe.get_layout(sid)["stations"] as Array).slice(0, 5)
@@ -2220,7 +2220,7 @@ func _mg_tip(who: String, rng: RandomNumberGenerator) -> String:
 							var sp := Market.sell_price(b, String(cid))
 							if sp / float(bp) > best:
 								best = sp / float(bp)
-								out = "%s, quietly: \"%s is cheap at %s – %d cr. At %s (%s) they pay %d for it.\"" % [who, GameData.item_name(String(cid)),
+								out = "%s, quietly: \"%s is cheap at %s, %d cr. At %s (%s) they pay %d for it.\"" % [who, GameData.item_name(String(cid)),
 									String(a.get("name", "?")), bp, String(b.get("name", "?")), Universe.systems[int(s3)]["name"], int(sp)]
 			if out != "":
 				return out
@@ -2281,12 +2281,12 @@ func _c_minigame_end(c: Dictionary) -> String:
 					GameState.log_msg(mg_last_tip, GameState.COL_GOOD)
 			GameState.minigame_streak[game] = int(GameState.minigame_streak.get(game, 0)) + 1
 			GameState.minigame_wins[game] = int(GameState.minigame_wins.get(game, 0)) + 1
-			GameState.log_msg("%s: you beat %s%s – %d in a row." % [MinigameData.GAMES[game]["name"], who,
+			GameState.log_msg("%s: you beat %s%s, %d in a row." % [MinigameData.GAMES[game]["name"], who,
 				(" and take %d cr" % int(c.get("pot", stake * 2))) if stake > 0 else "", int(GameState.minigame_streak[game])], GameState.COL_GOOD)
 		else:
 			GameState.minigame_streak[game] = 0
 			GameState.log_msg("%s: %s wins%s. Your streak is over." % [MinigameData.GAMES[game]["name"], who,
-				(" – %d cr lost" % stake) if stake > 0 else ""], GameState.COL_WARN)
+				(", %d cr lost" % stake) if stake > 0 else ""], GameState.COL_WARN)
 	mg_session = {}
 	return ""
 
@@ -2384,7 +2384,7 @@ func _c_debug_economy(_c: Dictionary) -> String:
 	keys.sort_custom(func(a, b): return float(ec["scores"][a]) > float(ec["scores"][b]))
 	for e in keys:
 		parts.append("%s %.1f" % [Economy.name_of(e), float(ec["scores"][e])])
-	GameState.log_msg("[Debug] %s: %s, %s (%d) – %s" % [Universe.systems[sid]["name"], Economy.label(sid), Economy.level_name(sid), int(Economy.prosperity(sid)), ", ".join(PackedStringArray(parts))])
+	GameState.log_msg("[Debug] %s: %s, %s (%d), %s" % [Universe.systems[sid]["name"], Economy.label(sid), Economy.level_name(sid), int(Economy.prosperity(sid)), ", ".join(PackedStringArray(parts))])
 	return ""
 
 
@@ -2461,7 +2461,7 @@ func _c_debug_p40(c: Dictionary) -> String:
 		f0.position = hits[i][1]
 		world.player.order = {"type": "idle"}
 		world.center_on_player()
-		GameState.log_msg("[Debug] %s (%d of %d) – in this system." % [want.capitalize(), i + 1, hits.size()], GameState.COL_WARN)
+		GameState.log_msg("[Debug] %s (%d of %d): in this system." % [want.capitalize(), i + 1, hits.size()], GameState.COL_WARN)
 		return ""
 	var e := _c_debug_teleport({"system": hits[i][0]})
 	if e != "":
@@ -2498,10 +2498,10 @@ func _c_debug_fortress(c: Dictionary) -> String:
 		return "No pirate fortress in this system."
 	if String(c.get("do", "break")) == "break":
 		GameState.fortress_broken[str(sid)] = GameState.play_time + GameState.FORTRESS_REBUILD
-		GameState.log_msg("[Debug] The fortress is broken – its guns are silent for %d min." % int(GameState.FORTRESS_REBUILD / 60.0), GameState.COL_WARN)
+		GameState.log_msg("[Debug] The fortress is broken: its guns are silent for %d min." % int(GameState.FORTRESS_REBUILD / 60.0), GameState.COL_WARN)
 	else:
 		GameState.fortress_broken.erase(str(sid))
-		GameState.log_msg("[Debug] The fortress is rebuilt – its garrison returns the next time you arrive.", GameState.COL_WARN)
+		GameState.log_msg("[Debug] The fortress is rebuilt: its garrison returns the next time you arrive.", GameState.COL_WARN)
 	return ""
 
 
@@ -2851,7 +2851,7 @@ func _c_debug_complete_missions(_c: Dictionary) -> String:
 		if m["type"] == "mining" and f != null:
 			f.cargo[m["item"]] = maxf(float(f.cargo.get(m["item"], 0.0)), float(m["amount"]))
 	GameState.missions_changed.emit()
-	GameState.log_msg("[Debug] Contract objectives complete – turn them in at the issuing station.", GameState.COL_WARN)
+	GameState.log_msg("[Debug] Contract objectives complete: turn them in at the issuing station.", GameState.COL_WARN)
 	return ""
 
 
@@ -2938,7 +2938,7 @@ func _c_debug_deck(_c: Dictionary) -> String:
 	if st.is_empty():
 		return "Dock at a station (or land in a city) first."
 	if bool(st.get("settlement", false)):
-		return "A settlement has no deck – you are already outside."
+		return "A settlement has no deck: you are already outside."
 	if m.station_panel.visible:
 		m.station_panel.close()
 	if m.view != null and m.view.stations.has(f.docked_at):
@@ -3196,7 +3196,7 @@ func _c_sight_photo(_c: Dictionary) -> String:
 	var ev: Array = SightGenC.SIGHTS[String(sg["theme"])]["events"].get(String(sg["event"]), ["the view", "any", 1.0, false])
 	var pay: int = SightGenC.PHOTO_PAY_RARE if bool(ev[3]) else SightGenC.PHOTO_PAY
 	GameState.credits += pay
-	GameState.log_msg("Photo: %s – %s%s. A travel magazine buys it: %d cr." % [String(sg["name"]), String(ev[0]), " (rare)" if bool(ev[3]) else "", pay], GameState.COL_GOOD)
+	GameState.log_msg("Photo: %s, %s%s. A travel magazine buys it: %d cr." % [String(sg["name"]), String(ev[0]), " (rare)" if bool(ev[3]) else "", pay], GameState.COL_GOOD)
 	return ""
 
 
@@ -3288,7 +3288,7 @@ func _c_debug_excursion(_c: Dictionary) -> String:
 	m["expires"] = GameState.play_time + float(m["time_limit"])
 	GameState.missions.append(m)
 	GameState.missions_changed.emit()
-	GameState.log_msg("[Debug] Excursion aboard: %s – %s." % [String(gs[0]["name"]), String(gs[0]["where"])], GameState.COL_WARN)
+	GameState.log_msg("[Debug] Excursion aboard: %s, %s." % [String(gs[0]["name"]), String(gs[0]["where"])], GameState.COL_WARN)
 	return ""
 
 
@@ -3364,7 +3364,7 @@ func _c_debug_skyrail(c: Dictionary) -> String:
 			g.rail["t"] = maxf(float(g.rail["t"]), g.RAIL_RUN - 0.05)
 		"info":
 			var e: Dictionary = g.cloud_env()
-			GameState.log_msg("[Debug] %s over a %s – level %s, stop %s, ride %s, air %s" % [String(g.station.get("name", "")), String(g.station.get("giant", "")),
+			GameState.log_msg("[Debug] %s over a %s: level %s, stop %s, ride %s, air %s" % [String(g.station.get("name", "")), String(g.station.get("giant", "")),
 				g.level, CloudGen54.STOPS[g.rail_stop], ("%.1f s, %.0f px/s" % [float(g.rail["t"]), float(g.rail["v"])]) if not g.rail.is_empty() else "–",
 				"breathable" if bool(e.get("breathable", false)) else "suit"], GameState.COL_WARN)
 		_:
@@ -3493,7 +3493,7 @@ func _c_debug_mission(c: Dictionary) -> String:
 			m = cand
 			break
 	if m.is_empty():
-		return "No %s contract can be made here%s." % [kind, " (a faction contract – needs a station of one of the powers)" if not faction_ok else ""]
+		return "No %s contract can be made here%s." % [kind, " (a faction contract: needs a station of one of the powers)" if not faction_ok else ""]
 	if m.get("faction_job", false):
 		m["min_tier"] = "neutral"                     # (debug: no standing needed)
 	return GameState.accept_mission(m)
@@ -3594,7 +3594,7 @@ func _c_debug_vault(_c: Dictionary) -> String:
 	if g == null:
 		return "Could not open the vault."
 	_c_debug_explore({"tools_only": true})
-	GameState.log_msg("[Debug] The vault – cut the box by the door, hack the terminal, scan the relic.", GameState.COL_WARN)
+	GameState.log_msg("[Debug] The vault: cut the box by the door, hack the terminal, scan the relic.", GameState.COL_WARN)
 	return ""
 
 
@@ -3780,7 +3780,7 @@ func _c_debug_arena(c: Dictionary) -> String:
 	m.land_at(body, site)
 	if _ground() == null or _ground().combat == null:
 		return "Could not open the arena."
-	GameState.log_msg("[Debug] Arena on %s – %d foes." % [String(body["name"]), kinds.size()], GameState.COL_WARN)
+	GameState.log_msg("[Debug] Arena on %s: %d foes." % [String(body["name"]), kinds.size()], GameState.COL_WARN)
 	return ""
 
 
@@ -3789,7 +3789,7 @@ func _c_debug_arena(c: Dictionary) -> String:
 func _c_debug_foe(c: Dictionary) -> String:
 	var g = _ground()
 	if g == null or g.combat == null:
-		return "No fight possible here – open the arena first."
+		return "No fight possible here: open the arena first."
 	var kind := String(c.get("kind", "bandit_rifleman"))
 	if not FoeData.FOES.has(kind):
 		return "Unknown foe '%s'." % kind

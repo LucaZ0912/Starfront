@@ -22,7 +22,7 @@ const WARN_MARGIN := 7000.0                 # beyond the far colossus: Dan warns
 const LOST_MARGIN := 12000.0                # … and here the signal is gone
 const SPARE_START := 0.12                   # damage taken while the pirates are only a lesson
 const SPARE_LATER := 0.55                   # after the lesson: they can win (the drone is not the pilot's life)
-const CLOSING := ["That was good work for a start! You should have the basics down. Everything else is explained in your codex – in the Pilot menu.",
+const CLOSING := ["That was good work for a start! You should have the basics down. Everything else is explained in your codex, in the Pilot menu.",
 	"Let's pack up."]
 
 var main: Node
@@ -50,10 +50,10 @@ var _warp_t := 0.0
 var _sweep_t := 0.0
 var _views_said := {}
 const VIEW_TALK := {
-	1: "This is Recon – your radar. It shows you everything worth knowing: resources to mine, friends and foes. But watch out – big objects can block your view.",
-	2: "Orbit: the moons round a planet, to find your way near one. Like the System map, it's a map – the drone doesn't fly while it's open.",
-	3: "And the System map – the whole system at a glance. From here you'd pick where to warp. Not with my drone, though.",
-	0: "Back in close – Combat. That's where you fly, fight and mine.",
+	1: "This is Recon, your radar. It shows you everything worth knowing: resources to mine, friends and foes. But watch out, big objects can block your view.",
+	2: "Orbit: the moons round a planet, to find your way near one. Like the System map, it's a map. The drone doesn't fly while it's open.",
+	3: "And the System map: the whole system at a glance. From here you'd pick where to warp. Not with my drone, though.",
+	0: "Back in close: Combat. That's where you fly, fight and mine.",
 }
 var _layer: CanvasLayer
 var _hint: Label
@@ -89,8 +89,8 @@ func _phase(p: String) -> void:
 ## training); Dan at the bar's window – he can be asked a few things.
 func _mode_ready() -> Dictionary:
 	return {"quiet": true, "keep_bartender": true, "lift_only": "commercial,hangar",
-		"lift_labels": {"hangar": "Hangar – Old Betty", "commercial": "Bar"},
-		"ship_art": "kanayama", "ship_talk": "ship", "ship_title": "Old Betty – the flight training",
+		"lift_labels": {"hangar": "Hangar: Old Betty", "commercial": "Bar"},
+		"ship_art": "kanayama", "ship_talk": "ship", "ship_title": "Old Betty: the flight training",
 		"levels": {"commercial": {"people": [{"who": "dan", "pos": WINDOW, "dir": 1, "talk": true}]}, "hangar": {"people": []}}}
 
 
@@ -99,7 +99,7 @@ func _mode_back(dan_in_hangar: bool) -> Dictionary:
 	var lv := {"commercial": {"people": [] if dan_in_hangar else [{"who": "dan", "pos": WINDOW, "dir": 1, "marker": "!"}]}}
 	lv["hangar"] = {"spawn_ship": PILOT_SHIP, "people": [{"who": "dan", "at_ship": DAN_SHIP, "dir": 1}] if dan_in_hangar else []}
 	return {"quiet": true, "keep_bartender": true, "lift_only": "commercial,hangar",
-		"lift_labels": {"hangar": "Hangar – Old Betty", "commercial": "Bar – Dan wants a word"}, "ship_art": "kanayama",
+		"lift_labels": {"hangar": "Hangar: Old Betty", "commercial": "Bar: Dan wants a word"}, "ship_art": "kanayama",
 		"ship_title": "Old Betty", "ship_talk": "betty", "levels": lv}
 
 
@@ -307,7 +307,7 @@ func _setup_out() -> void:
 	_out_cam = start
 	_out_dir = out
 	main.fade(Color(0, 0, 0, 0), 1.0)
-	_radio("Hold on tight – we're off to the wreck field. It's not far.")
+	_radio("Hold on tight, we're off to the wreck field. It's not far.")
 	_phase("out")
 
 
@@ -542,7 +542,7 @@ func _lessons(delta: float) -> void:
 		_drone_lost()
 	elif far > warn and not _warned:
 		_warned = true
-		_radio("You're about to lose contact with Betty – turn back!")
+		_radio("You're about to lose contact with Betty. Turn back!")
 	elif far < warn * 0.85:
 		_warned = false
 
@@ -560,7 +560,7 @@ func _drone_lost() -> void:
 	p.fit.cargo = {}
 	v.center_on_player()
 	_warned = false
-	_radio("Lost her signal – she's scrap now. Here, I'm sending out another one. Stay close this time.")
+	_radio("Lost her signal, she's scrap now. Here, I'm sending out another one. Stay close this time.")
 
 
 # ---------------------------------------------------------------- the ambush
@@ -615,7 +615,7 @@ func _ambush_step() -> void:
 	else:
 		v.story_cam = mid.lerp(v.player.position, smoothstep(4.4, 5.6, t))
 	if t > 1.6 and t - get_process_delta_time() <= 1.6:
-		_radio("Contacts – two of them, behind that wreck! Pirates!")
+		_radio("Contacts! Two of them, behind that wreck! Pirates!")
 	if t > 5.8:
 		_ambush_done()
 
@@ -632,7 +632,7 @@ func _ambush_done() -> void:
 	v.input_enabled = true
 	main._update_input()
 	GameState.story.set_flag("tut_ambush")
-	_radio("Lock on to one of them – %s, then %s!" % [Keybinds.key_text("sel_hostile"), Keybinds.key_text("cmd_lock")])
+	_radio("Lock on to one of them: %s, then %s!" % [Keybinds.key_text("sel_hostile"), Keybinds.key_text("cmd_lock")])
 	_phase("fight")
 
 
@@ -645,7 +645,7 @@ func _on_pirate_down(_s) -> void:
 		if not st.flags.has(fl):
 			st.set_flag(fl)
 	_send_off()
-	_said = ["Pirates. Clans of them, out here in the Veil and all over the Cluster. They pick on anything that looks easy – miners, haulers, lone pilots.",
+	_said = ["Pirates. Clans of them, out here in the Veil and all over the Cluster. They pick on anything that looks easy: miners, haulers, lone pilots.",
 		"Most of them run once it turns ugly. Keep your shields up, keep moving, and don't wander off alone with a full hold."] + CLOSING
 	_radio("Ha! Look at that one run. Not bad for someone three hundred years out of practice.")
 	_radio(_said.pop_front())
@@ -683,9 +683,9 @@ func _on_drone_down(_s) -> void:
 		if not st.flags.has(fl):
 			st.set_flag(fl)
 	_send_off()
-	_said = ["Pirates. Clans of them, out here in the Veil and all over the Cluster. They pick on anything that looks easy – miners, haulers, lone pilots.",
-		"Most of them run once they've got what they came for – or once it turns ugly. Keep your shields up, keep moving, and don't wander off alone with a full hold."] + CLOSING
-	_radio("Well – that's what drones are for. Better her than you.")
+	_said = ["Pirates. Clans of them, out here in the Veil and all over the Cluster. They pick on anything that looks easy: miners, haulers, lone pilots.",
+		"Most of them run once they've got what they came for, or once it turns ugly. Keep your shields up, keep moving, and don't wander off alone with a full hold."] + CLOSING
+	_radio("Well, that's what drones are for. Better her than you.")
 	_phase("down")
 
 
@@ -750,12 +750,8 @@ static func tidy() -> void:
 
 ## Dan spoken to in the bar: sequence 6 begins (with the next part of the intro).
 func _finish() -> void:
-	var g = ground()
 	GameState.story.set_flag("intro_stage", "six")
-	if g != null:
-		g.story_mode = {}
-		g.input_enabled = true
-	GameState.log_msg("[Story] Sequence 6 comes with the next part of the intro.", GameState.COL_WARN)
+	main._start_intro_six("talk")                          # sequence 6: Dan's menu at once (scripts/ground/intro_six.gd)
 	_phase("done")
 	finished.emit()
 	queue_free()

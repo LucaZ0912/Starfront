@@ -302,7 +302,7 @@ func decloak(why: String) -> void:
 		return
 	module_on["builtin_cloak"] = false
 	module_state["builtin_cloak"] = "off"
-	_mlog("Cloak off – %s used: you are visible again." % why, GameState.COL_WARN)
+	_mlog("Cloak off (%s used), you are visible again." % why, GameState.COL_WARN)
 
 
 func in_warp() -> bool:
@@ -354,7 +354,7 @@ func faction_color() -> Color:
 func set_order(o: Dictionary) -> void:
 	if in_warp():
 		if faction == "player":
-			GameState.log_msg("In warp – the order will be executed on arrival.", GameState.COL_WARN)
+			GameState.log_msg("In warp: the order will be executed on arrival.", GameState.COL_WARN)
 		warp["then"] = o
 		return
 	if is_docked():
@@ -800,7 +800,7 @@ func shield_collapse(t: float = -1.0) -> void:
 	var dt := t if t >= 0.0 else float(s["shield_downtime"])
 	if dt > shield_down:
 		shield_down = dt
-	_mlog("Shields collapsed – back online in %d s (at 50 %%)." % int(ceil(shield_down)), GameState.COL_BAD)
+	_mlog("Shields collapsed: back online in %d s (at 50 %%)." % int(ceil(shield_down)), GameState.COL_BAD)
 
 
 ## EMP (mine): capacitor drained, shield down, modules dead for `t` seconds.
@@ -1075,7 +1075,7 @@ func _start_fleeing(attacker) -> void:
 			o.set_order({"type": "attack", "target": attacker})
 			n += 1
 	if view != null and view.player != null and is_instance_valid(view.player) and view.player.position.distance_to(position) < 80000.0:
-		GameState.log_msg("%s breaks off and calls for help%s!" % [display_name(), (" – %d pirate%s answer" % [n, "" if n == 1 else "s"]) if n > 0 else ""], GameState.COL_WARN)
+		GameState.log_msg("%s breaks off and calls for help%s!" % [display_name(), (", %d pirate%s answer" % [n, "" if n == 1 else "s"]) if n > 0 else ""], GameState.COL_WARN)
 
 
 func _flee_point() -> Vector2:
@@ -1260,7 +1260,7 @@ func _update_movement(delta: float, s: Dictionary) -> void:
 				if warp_disrupted <= 0.0:
 					_follow_warp(fn, float(fn.warp["T"]) - float(fn.warp["t"]), fn.warp["to"], String(fn.warp.get("name", fn.display_name())))
 					return
-				activity = "Warp drive disrupted – cannot follow %s" % fn.display_name()
+				activity = "Warp drive disrupted: cannot follow %s" % fn.display_name()
 			else:
 				var fr := float(order.get("r", 800.0))
 				var gap: float = position.distance_to(fn.position)
@@ -1690,7 +1690,7 @@ var cme_t := 0.0
 const TUMBLE_TIME := 3.0
 const TUMBLE_TURNS := 3.0
 var tumble_t := 0.0
-var tumble_text := "Emergency shutdown – tumbling"       # package 40b: or thrown out of a failed gate jump
+var tumble_text := "Emergency shutdown: tumbling"       # package 40b: or thrown out of a failed gate jump
 
 
 func emergency_drop() -> void:
@@ -1721,7 +1721,7 @@ func _tumble(delta: float) -> void:
 	tumble_t = maxf(0.0, tumble_t - delta)
 	activity = tumble_text
 	if tumble_t <= 0.0:
-		tumble_text = "Emergency shutdown – tumbling"
+		tumble_text = "Emergency shutdown: tumbling"
 	fit.position = position
 	fit.rotation = heading
 	queue_redraw()
@@ -1932,7 +1932,7 @@ func _run_gas(delta: float, slot: String, d: Dictionary) -> void:
 	var depth := float(band["depth"])
 	var storm: bool = band.get("storm", false)
 	if not _gas_in and faction == "player":
-		_mlog("%s: in the harvest band of %s%s – keep moving; the deeper, the more gas (and heat)." % [d["name"], band["name"], " – a storm is raging" if storm else ""], GameState.COL_GOOD)
+		_mlog("%s: in the harvest band of %s%s; keep moving; the deeper, the more gas (and heat)." % [d["name"], band["name"], ", a storm is raging" if storm else ""], GameState.COL_GOOD)
 	_gas_in = true
 	module_state[slot] = "on"
 	var vmax := maxf(float(fit.stats()["speed"]), 1.0)
@@ -1957,7 +1957,7 @@ func _run_gas(delta: float, slot: String, d: Dictionary) -> void:
 		GameState.stats["mined"] = float(GameState.stats["mined"]) + added
 		GameState.skill_xp("mining", 0.2 * added)
 		GameState.codex.event("gas")
-		activity = "Harvesting gas – %s" % band["name"]
+		activity = "Harvesting gas: %s" % band["name"]
 	# heat and pressure below the upper half of the band
 	_gas_heat = clampf((depth - 0.45) / 0.55, 0.0, 1.0)
 	if depth > 0.45:
@@ -2009,7 +2009,7 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 		# review K2: a hit (mine, blast) shakes the cloak off
 		module_on["builtin_cloak"] = false
 		module_state["builtin_cloak"] = "off"
-		_mlog("Cloak off – hit: you are visible again.", GameState.COL_WARN)
+		_mlog("Cloak off (hit), you are visible again.", GameState.COL_WARN)
 	if faction == "player" and Commands.god_mode:
 		return
 	amount *= toughness               # captains are tougher than ordinary pirates (by stars)
@@ -2340,7 +2340,7 @@ func add_lock(node) -> String:
 		return ("Out of sensor range (%s)." % SystemView.fmt_dist(sr)) + (" Your radar is jammed." if jammed_t > 0.0 else "")
 	var bl = view.blocker(position, node.position) if "colossi" in view else null
 	if bl != null:
-		return "No line of sight – %s is in the radar shadow of %s." % [node_name(node), bl.title()]
+		return "No line of sight: %s is in the radar shadow of %s." % [node_name(node), bl.title()]
 	locks.append({"key": key, "node": node, "progress": 0.0})
 	active_lock = key                  # a new lock becomes the active target
 	if view != null and self == view.player:
@@ -2379,7 +2379,7 @@ func retarget(slot: String) -> String:
 		return "No complete lock to switch to."
 	var err := module_target_error(e, node)
 	if err != "":
-		return "%s: %s is not a valid target – %s" % [e["data"]["name"], node_name(node), err]
+		return "%s: %s is not a valid target, %s" % [e["data"]["name"], node_name(node), err]
 	module_target[slot] = active_lock
 	scan_jobs.erase(slot)
 	_mlog("%s → %s" % [e["data"]["name"], node_name(node)])
@@ -2397,7 +2397,7 @@ func _remember_lock(key: String, n) -> void:
 
 func _relock_note(key: String) -> String:
 	var m := modules_on(key)
-	return (" – %d module%s wait and resume when it is back" % [m, "" if m == 1 else "s"]) if m > 0 else ""
+	return (", %d module%s wait and resume when it is back" % [m, "" if m == 1 else "s"]) if m > 0 else ""
 
 
 func _update_relock(sr: float) -> void:
@@ -2418,7 +2418,7 @@ func _update_relock(sr: float) -> void:
 		elif r.get("active", false) or active_lock == "":
 			active_lock = key
 		_relock.erase(key)
-		_mlog("%s back in sensor range – locking it again." % node_name(n), GameState.COL_INFO)
+		_mlog("%s back in sensor range: locking it again." % node_name(n), GameState.COL_INFO)
 
 
 ## Modules on `key` that wait for it: lost out of range (re-lock pending) or still locking.
@@ -2455,16 +2455,16 @@ func _update_locks(delta: float, s: Dictionary) -> void:
 		var n = l["node"]
 		var shadow = view.blocker(position, n.position) if (lockable(n) and "colossi" in view) else null
 		if shadow != null:
-			_mlog("Lock on %s lost – hidden behind %s (radar shadow)%s." % [node_name(n), shadow.title(), _relock_note(l["key"])], GameState.COL_WARN)
+			_mlog("Lock on %s lost: hidden behind %s (radar shadow)%s." % [node_name(n), shadow.title(), _relock_note(l["key"])], GameState.COL_WARN)
 			_remember_lock(l["key"], n)
 			continue
 		if not lockable(n) or position.distance_to(n.position) > sr * 1.25:
 			if n == null or not is_instance_valid(n) or (n is Ship and n.dying):
-				_mlog("Target destroyed – lock released.")
+				_mlog("Target destroyed: lock released.")
 			elif not lockable(n):
 				_mlog("Lock on %s released (nothing left to target)." % node_name(n))
 			else:
-				_mlog("Lock on %s broken – out of sensor range (%s)%s." % [node_name(n), SystemView.fmt_dist(sr * 1.25), _relock_note(l["key"])], GameState.COL_WARN)
+				_mlog("Lock on %s broken: out of sensor range (%s)%s." % [node_name(n), SystemView.fmt_dist(sr * 1.25), _relock_note(l["key"])], GameState.COL_WARN)
 				_remember_lock(l["key"], n)
 				continue
 			remove_lock(l["key"])
@@ -2513,7 +2513,7 @@ func module_target_error(e: Dictionary, node) -> String:
 			if node == null or node is Ship or not node.kind in ["asteroid", "colossus"]:
 				return "%s needs a locked asteroid." % d["name"]
 			if String(d.get("tool", "")) == "mining" and node.is_depleted():
-				return "Nothing left to mine – the %s is empty." % ("colossus" if node.kind == "colossus" else "asteroid")
+				return "Nothing left to mine: the %s is empty." % ("colossus" if node.kind == "colossus" else "asteroid")
 		"deepdrill":
 			if node == null or node is Ship or node.kind != "colossus":
 				return "%s needs a locked colossus." % d["name"]
@@ -2551,7 +2551,7 @@ static func node_name(n) -> String:
 func _switch_off(slot: String, d: Dictionary, why: String) -> void:
 	module_on[slot] = false
 	module_state[slot] = "off"
-	_mlog("%s switched off – %s." % [d["name"], why], GameState.COL_WARN)
+	_mlog("%s switched off: %s." % [d["name"], why], GameState.COL_WARN)
 
 
 func find_module(slot: String) -> Dictionary:
@@ -2574,18 +2574,18 @@ func _set_module_active(slot: String, on: bool) -> String:
 		return "No activatable module in that slot."
 	var d: Dictionary = e["data"]
 	if on and emp_t > 0.0:
-		return "EMP – all modules are dead for another %d s." % int(ceil(emp_t))
+		return "EMP: all modules are dead for another %d s." % int(ceil(emp_t))
 	if on and e["kind"] == "mine":
 		return lay_mine(slot, d)
 	if e["kind"] == "pd":
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
 		_keep_on(slot, on)
-		_mlog("%s %s." % [d["name"], "on – shooting down missiles and mines in range" if on else "off"])
+		_mlog("%s %s." % [d["name"], "on: shooting down missiles and mines in range" if on else "off"])
 		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) == "cloak":
 		if on and cme_t > 0.0:
-			return "%s: the CME's plasma still clings to the hull – no cloak for another %d s." % [d["name"], int(ceil(cme_t))]
+			return "%s: the CME's plasma still clings to the hull; no cloak for another %d s." % [d["name"], int(ceil(cme_t))]
 		if on and fit.capacitor < float(d["energy_rate"]):
 			return "%s: not enough energy." % d["name"]
 		if on:
@@ -2595,7 +2595,7 @@ func _set_module_active(slot: String, on: bool) -> String:
 				module_state[k] = "off"
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
-		_mlog("%s %s." % [d["name"], "on – you are invisible; using a weapon, tool or module ends it" if on else "off – you are visible again"])
+		_mlog("%s %s." % [d["name"], "on: you are invisible; using a weapon, tool or module ends it" if on else "off: you are visible again"])
 		return ""
 	if on and cloaked():
 		# 0.4.25.40: a weapon, tool or module that really switches on ends the cloak (one that is refused –
@@ -2618,20 +2618,20 @@ func _set_module_active(slot: String, on: bool) -> String:
 			for l in locks:
 				if l.get("node") != null and is_instance_valid(l["node"]) and l["node"] is Ship:
 					auto_targets.append(l["node"])
-		_mlog("%s %s." % [d["name"], ("on – the focus lasers fire at up to %d enemies%s" % [int(d.get("targets", 6)), (" and the %d locked targets" % auto_targets.size()) if not auto_targets.is_empty() else ""]) if on else "off"])
+		_mlog("%s %s." % [d["name"], ("on: the focus lasers fire at up to %d enemies%s" % [int(d.get("targets", 6)), (" and the %d locked targets" % auto_targets.size()) if not auto_targets.is_empty() else ""]) if on else "off"])
 		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) == "drone_pulse":
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
 		_keep_on(slot, on)
-		_mlog("%s %s." % [d["name"], ("on – a pulse every %d s knocks out every drone within %s, friend or foe" % [int(d["interval"]), SystemView.fmt_dist(float(d["range"]))]) if on else "off"])
+		_mlog("%s %s." % [d["name"], ("on: a pulse every %d s knocks out every drone within %s, friend or foe" % [int(d["interval"]), SystemView.fmt_dist(float(d["range"]))]) if on else "off"])
 		return ""
 	if e["kind"] == "self" and String(d.get("active", "")) in ["refinery", "factory", "market"]:
 		_set_builtin_on(String(d["active"]), on)
 		module_on[slot] = on
 		module_state[slot] = "on" if on else "off"
-		var what := {"refinery": "running – ore from the hold is refined bit by bit", "factory": "running – works through its queue (Ship menu → Industry)",
-			"market": "open – traders in the system come to buy (Ship menu → Market)"}
+		var what := {"refinery": "running: ore from the hold is refined bit by bit", "factory": "running: works through its queue (Ship menu → Industry)",
+			"market": "open: traders in the system come to buy (Ship menu → Market)"}
 		_mlog("%s %s." % [d["name"], what[d["active"]] if on else "switched off"])
 		return ""
 	if on and e["kind"] == "self":
@@ -2646,17 +2646,17 @@ func _set_module_active(slot: String, on: bool) -> String:
 	if on and e["kind"] == "tool" and d["tool"] == "interdict":
 		return _start_interdict(slot, d)
 	if not on and e["kind"] == "tool" and d["tool"] == "interdict" and module_on.get(slot, false):
-		return "%s: the interdiction is running – finish the timing game." % d["name"]
+		return "%s: the interdiction is running. Finish the timing game." % d["name"]
 	if on:
 		var node = locked_node()
 		if node == null and active_lock != "":
 			var i := lock_index(active_lock)
-			return "%s: still locking %s (%d%%) – wait for the lock to complete." % [d["name"], node_name(locks[i]["node"]), int(float(locks[i]["progress"]) * 100.0)]
+			return "%s: still locking %s (%d%%); wait for the lock to complete." % [d["name"], node_name(locks[i]["node"]), int(float(locks[i]["progress"]) * 100.0)]
 		var err := module_target_error(e, node)
 		if err != "":
 			if node == null:
-				return "%s: no target locked – click an object and choose \"Lock target\"." % d["name"]
-			return "%s: %s is not a valid target – %s" % [d["name"], node_name(node), err]
+				return "%s: no target locked; click an object and choose \"Lock target\"." % d["name"]
+			return "%s: %s is not a valid target, %s" % [d["name"], node_name(node), err]
 		if e["kind"] == "tool" and d["tool"] in ["prospect", "warrant", "cargo_scan"]:
 			if fit.capacitor < float(d.get("energy", 0)):
 				return "%s: not enough energy (needs %s, capacitor %.0f)." % [d["name"], str(d["energy"]), fit.capacitor]
@@ -2666,7 +2666,7 @@ func _set_module_active(slot: String, on: bool) -> String:
 		module_state[slot] = "on"
 		module_target[slot] = active_lock      # multi-focus: it keeps this target (package 22)
 		if not fit.is_powered(slot):
-			_mlog("%s: priority group %d is shut down (power overload) – it starts once there is power." % [d["name"], fit.priority_of(slot)], GameState.COL_WARN)
+			_mlog("%s: priority group %d is shut down (power overload); it starts once there is power." % [d["name"], fit.priority_of(slot)], GameState.COL_WARN)
 		var tgt = node
 		if e["kind"] == "tool" and d["tool"] == "repair" and (tgt == null or not (tgt is Ship) or hostile(self, tgt)):
 			tgt = self
@@ -2674,18 +2674,18 @@ func _set_module_active(slot: String, on: bool) -> String:
 			tgt = self                             # package 41: no target – the band of a giant
 		var msg := "%s activated → %s" % [d["name"], "your own ship" if tgt == self else node_name(tgt)]
 		if e["kind"] == "tool" and tgt != self and not (tgt is Ship) and tgt.kind == "asteroid" and mining_mult(d, String(tgt.data["ore"])) < 1.0:
-			msg += "  (ice: mining lasers only work at %d%% – an ice harvester is far better)" % int(ICE_LASER_MULT * 100.0)
+			msg += "  (ice: mining lasers only work at %d%%; an ice harvester is far better)" % int(ICE_LASER_MULT * 100.0)
 		if tgt != self:
 			var dist := position.distance_to(tgt.position)
 			if dist > float(d["range"]):
-				msg += "  (out of range: %s, range %s – starts when you get closer)" % [SystemView.fmt_dist(dist), SystemView.fmt_dist(float(d["range"]))]
+				msg += "  (out of range: %s, range %s; starts when you get closer)" % [SystemView.fmt_dist(dist), SystemView.fmt_dist(float(d["range"]))]
 				module_state[slot] = "range"
 		_mlog(msg)
 		if e["kind"] == "weapon" and view != null and view.has_method("warn_zone"):
 			view.warn_zone(node)
 		if e["kind"] == "weapon" and node is Ship and not node.hostile_to_player():
 			var gov: String = node.fit.gov
-			_mlog("Warning: %s is not hostile%s." % [node.display_name(), (" – attacking it costs standing with the %s and its comrades will fight back" % FactionData.name_of(gov)) if gov != "" else ""], GameState.COL_WARN)
+			_mlog("Warning: %s is not hostile%s." % [node.display_name(), (", attacking it costs standing with the %s and its comrades will fight back" % FactionData.name_of(gov)) if gov != "" else ""], GameState.COL_WARN)
 	else:
 		module_on[slot] = false
 		module_state[slot] = "off"
@@ -2752,11 +2752,11 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 		var prev: String = module_state.get(slot, "off")
 		if tgt != self and position.distance_to(tgt.position) > float(d["range"]):
 			if prev != "range":
-				_mlog("%s: %s out of range (%s, range %s) – waiting." % [d["name"], node_name(tgt), SystemView.fmt_dist(position.distance_to(tgt.position)), SystemView.fmt_dist(float(d["range"]))], GameState.COL_WARN)
+				_mlog("%s: %s out of range (%s, range %s), waiting." % [d["name"], node_name(tgt), SystemView.fmt_dist(position.distance_to(tgt.position)), SystemView.fmt_dist(float(d["range"]))], GameState.COL_WARN)
 			module_state[slot] = "range"
 			continue
 		if prev == "range":
-			_mlog("%s: %s in range – working." % [d["name"], node_name(tgt)])
+			_mlog("%s: %s in range, working." % [d["name"], node_name(tgt)])
 		module_state[slot] = "on"
 		if e["kind"] == "weapon":
 			if order.get("type", "idle") == "idle":
@@ -2765,7 +2765,7 @@ func _update_modules(delta: float, s: Dictionary) -> void:
 				continue
 			if fit.capacitor < float(d["energy"]):
 				if prev != "energy":
-					_mlog("%s: not enough energy (needs %s, capacitor %.0f) – waiting for recharge." % [d["name"], str(d["energy"]), fit.capacitor], GameState.COL_WARN)
+					_mlog("%s: not enough energy (needs %s, capacitor %.0f), waiting for recharge." % [d["name"], str(d["energy"]), fit.capacitor], GameState.COL_WARN)
 				module_state[slot] = "energy"
 				continue
 			fit.capacitor -= float(d["energy"])
@@ -2824,7 +2824,7 @@ func _start_interdict(slot: String, d: Dictionary) -> String:
 		return "%s: an interdiction is already running." % d["name"]
 	var tgt = view.find_object(view.selected_id)
 	if tgt == null or not (tgt is Ship) or tgt == self:
-		return "%s: select a ship in warp first – click it in space or in the Contacts list (tab next to the overview)." % d["name"]
+		return "%s: select a ship in warp first; click it in space or in the Contacts list (tab next to the overview)." % d["name"]
 	if not tgt.in_warp():
 		return "%s: %s is not in warp." % [d["name"], tgt.display_name()]
 	var dist := position.distance_to(tgt.position)
@@ -2847,10 +2847,10 @@ func _start_survey(slot: String, d: Dictionary) -> String:
 	var info: Dictionary = view.describe(sel) if sel != "" else {}
 	var kind := String(info.get("kind", ""))
 	if not kind in SURVEY_KINDS:
-		return "%s: select a place first – click an asteroid field, planet, anomaly, gate or station (overview or system map), then switch the scanner on." % d["name"]
+		return "%s: select a place first; click an asteroid field, planet, anomaly, gate or station (overview or system map), then switch the scanner on." % d["name"]
 	var dist := position.distance_to(info["pos"])
 	if dist > float(d["range"]):
-		return "%s: %s is out of survey range (%s away, range %s – a Survey Range Amplifier or a bigger array reaches further)." % [d["name"], info["name"], SystemView.fmt_dist(dist), SystemView.fmt_dist(float(d["range"]))]
+		return "%s: %s is out of survey range (%s away, range %s; a Survey Range Amplifier or a bigger array reaches further)." % [d["name"], info["name"], SystemView.fmt_dist(dist), SystemView.fmt_dist(float(d["range"]))]
 	if fit.capacitor < float(d["energy"]):
 		return "%s: not enough energy (needs %s, capacitor %.0f)." % [d["name"], str(d["energy"]), fit.capacitor]
 	fit.capacitor -= float(d["energy"])
@@ -2860,7 +2860,7 @@ func _start_survey(slot: String, d: Dictionary) -> String:
 	module_state[slot] = "on"
 	if view.player == self:
 		Audio.play("scan_ping", "survey")                 # package 28a
-	_mlog("%s: surveying %s (%s away) – %.0f s …" % [d["name"], info["name"], SystemView.fmt_dist(dist), float(d["scan_time"])])
+	_mlog("%s: surveying %s (%s away), %.0f s …" % [d["name"], info["name"], SystemView.fmt_dist(dist), float(d["scan_time"])])
 	return ""
 
 
@@ -2882,7 +2882,7 @@ func _run_survey(delta: float, slot: String, d: Dictionary) -> void:
 		view.complete_survey(job)
 		if view.player == self:
 			GameState.skill_xp("science", 6.0)
-		_mlog("%s: survey of %s complete – results are in the survey window." % [d["name"], job["name"]], GameState.COL_GOOD)
+		_mlog("%s: survey of %s complete; results are in the survey window." % [d["name"], job["name"]], GameState.COL_GOOD)
 
 
 ## Prospector / warrant scan on the locked target. Returns false when finished.
@@ -2899,7 +2899,7 @@ func _run_scan(delta: float, slot: String, d: Dictionary, tgt) -> bool:
 	if d["tool"] == "prospect":
 		tgt.data["prospected"] = minf(float(tgt.data.get("prospected", 1.0)), float(d["accuracy"]))
 		tgt.queue_redraw()
-		_mlog("Prospector: %s – %s" % [tgt.title(), tgt.composition_text()], GameState.COL_GOOD)
+		_mlog("Prospector: %s, %s" % [tgt.title(), tgt.composition_text()], GameState.COL_GOOD)
 	elif d["tool"] == "cargo_scan":
 		if faction == "player":
 			GameState.count_stat("scans")          # package 30
@@ -2927,7 +2927,7 @@ func _run_active(delta: float, slot: String, d: Dictionary) -> void:
 		if fit.capacitor < cc:
 			module_on[slot] = false
 			module_state[slot] = "off"
-			_mlog("%s: capacitor empty – you are visible again." % d["name"], GameState.COL_WARN)
+			_mlog("%s: capacitor empty, you are visible again." % d["name"], GameState.COL_WARN)
 			return
 		fit.capacitor -= cc
 		module_state[slot] = "on"
@@ -2955,7 +2955,7 @@ func _run_active(delta: float, slot: String, d: Dictionary) -> void:
 func warrant_text() -> String:
 	if bounty > 0:
 		var by := bounty_by if bounty_by != "" else GameState.rep.issuer(fit.system_id)
-		return "Warrant: %s has a bounty of %s from the %s – bond redeemable at %s.%s" % [display_name(), GameData.fmt_credits(bounty), FactionData.name_of(by), GameState.bond_where({"faction": by}, fit.system_id), _arch_text()]
+		return "Warrant: %s has a bounty of %s from the %s, bond redeemable at %s.%s" % [display_name(), GameData.fmt_credits(bounty), FactionData.name_of(by), GameState.bond_where({"faction": by}, fit.system_id), _arch_text()]
 	return "Warrant: no bounty on %s.%s" % [display_name(), _arch_text()]
 
 
@@ -2963,7 +2963,7 @@ func warrant_text() -> String:
 func _arch_text() -> String:
 	if not ArchData.ARCHETYPES.has(archetype):
 		return ""
-	return "  Archetype: %s – %s" % [ArchData.name_of(archetype), ArchData.ARCHETYPES[archetype]["hint"]]
+	return "  Archetype: %s, %s" % [ArchData.name_of(archetype), ArchData.ARCHETYPES[archetype]["hint"]]
 
 
 ## Repair beam on one ship (manual). Returns false when nothing is left to repair.
@@ -3418,7 +3418,7 @@ func _cloak_drain(delta: float) -> void:
 	if fit.capacitor < cc:
 		module_on["builtin_cloak"] = false
 		module_state["builtin_cloak"] = "off"
-		_mlog("%s: capacitor empty – you are visible again." % String(d.get("name", "Cloak")), GameState.COL_WARN)
+		_mlog("%s: capacitor empty, you are visible again." % String(d.get("name", "Cloak")), GameState.COL_WARN)
 		return
 	fit.capacitor -= cc
 
@@ -3708,7 +3708,7 @@ func _update_power() -> bool:
 			if not plan["off"].has(g2):
 				GameState.log_msg("Power restored: priority group %d back online." % int(g2), GameState.COL_GOOD)
 		if fit.throttle < 1.0 and thr0 >= 1.0:
-			GameState.log_msg("Group 1 alone exceeds the reactor – all systems at %d %%." % int(fit.throttle * 100.0), GameState.COL_BAD)
+			GameState.log_msg("Group 1 alone exceeds the reactor: all systems at %d %%." % int(fit.throttle * 100.0), GameState.COL_BAD)
 	return true
 
 
@@ -3849,7 +3849,7 @@ func lay_mine(slot: String, d: Dictionary) -> String:
 	if view == null or not view.has_method("lay_mine"):
 		return "No system."
 	if not fit.is_powered(slot):
-		return "%s: no power – priority group %d is shut down (overload)." % [d["name"], fit.priority_of(slot)]
+		return "%s: no power; priority group %d is shut down (overload)." % [d["name"], fit.priority_of(slot)]
 	var ch: Dictionary = mine_choice.get(slot, {})
 	var mtype := String(ch.get("type", ""))
 	if mtype == "" or float(fit.cargo.get(mtype, 0.0)) < 1.0:
@@ -3859,12 +3859,12 @@ func lay_mine(slot: String, d: Dictionary) -> String:
 				mtype = k
 				break
 	if mtype == "":
-		return "%s: no mines in your cargo hold – military outposts, shipyards and pirate havens sell them." % d["name"]
+		return "%s: no mines in your cargo hold; military outposts, shipyards and pirate havens sell them." % d["name"]
 	if float(module_timers.get(slot, 0.0)) > 0.0:
 		return "%s: reloading (%.1f s)." % [d["name"], float(module_timers[slot])]
 	var cap := maxi(int(round(float(d["max_mines"]))), 1)
 	if view.mines_of(self, slot) >= cap:
-		return "%s: %d mines already out (maximum %d) – they go off or disappear after %d min." % [d["name"], cap, cap, int(GameData.MINE_LIFE / 60.0)]
+		return "%s: %d mines already out (maximum %d); they go off or disappear after %d min." % [d["name"], cap, cap, int(GameData.MINE_LIFE / 60.0)]
 	if fit.capacitor < float(d["energy"]):
 		return "%s: not enough energy (needs %s)." % [d["name"], str(d["energy"])]
 	fit.capacitor -= float(d["energy"])
@@ -3872,7 +3872,7 @@ func lay_mine(slot: String, d: Dictionary) -> String:
 	fit.remove_cargo(mtype, 1.0)
 	var fuse := float(ch.get("fuse", 10.0))
 	view.lay_mine(self, mtype, slot, fuse, 1.0 + 0.25 * (int(d["size"]) - 1))
-	_mlog("%s: %s laid%s (%d left in the hold)." % [d["name"], GameData.MINES[mtype]["name"], (" – goes off in %d s" % int(fuse)) if mtype == "mine_timer" else "", int(fit.cargo.get(mtype, 0.0))])
+	_mlog("%s: %s laid%s (%d left in the hold)." % [d["name"], GameData.MINES[mtype]["name"], (", goes off in %d s" % int(fuse)) if mtype == "mine_timer" else "", int(fit.cargo.get(mtype, 0.0))])
 	return ""
 
 
@@ -3922,8 +3922,8 @@ func manifest_text() -> String:
 			parts.append("%d × %s" % [int(fit.cargo[cid]), GameData.item_name(cid)])
 	var t := ", ".join(PackedStringArray(parts)) if not parts.is_empty() else "empty hold"
 	if unregistered:
-		return "%s carries UNREGISTERED cargo – no manifest: %s." % [display_name(), t]
-	return "%s – manifest: %s." % [display_name(), t]
+		return "%s carries UNREGISTERED cargo, no manifest: %s." % [display_name(), t]
+	return "%s, manifest: %s." % [display_name(), t]
 
 
 func _repair(delta: float, t: Dictionary) -> void:
@@ -4239,13 +4239,13 @@ func info_text() -> String:
 	var s := fit.stats()
 	var who: String = {"player": "Your ship", "pirate": "Pirate", "neutral": "Neutral", "civilian": "Civilian", "patrol": "Patrol"}.get(faction, faction)
 	if fit.gov != "":
-		who += " (%s – your standing: %s)" % [FactionData.name_of(fit.gov), GameState.rep.tier_name(fit.gov)]
+		who += " (%s, your standing: %s)" % [FactionData.name_of(fit.gov), GameState.rep.tier_name(fit.gov)]
 	if faction != "player" and hostile_to_player():
 		who += " – HOSTILE"
 	if convoy_lead and escort_mark:
-		who += " – %s LEAD (the others follow it)" % escort_kind.to_upper()
+		who += ", %s LEAD (the others follow it)" % escort_kind.to_upper()
 	elif escort_mark:
-		who += " – your %s" % escort_kind
+		who += ", your %s" % escort_kind
 	if warrant_known and archetype != "":
 		who += " – %s" % ArchData.name_of(archetype)
 	if fleeing:
@@ -4254,7 +4254,7 @@ func info_text() -> String:
 	t += "Shield %.0f/%.0f  Armor %.0f/%.0f  Structure %.0f/%.0f\n" % [fit.shield, s["shield_max"], fit.armor, s["armor_max"], fit.structure, s["structure_max"]]
 	t += "DPS: opt %.0f / kin %.0f / exp %.0f" % [s["dps"]["optical"], s["dps"]["kinetic"], s["dps"]["explosive"]]
 	if shield_down > 0.0:
-		t += "\nShield down – back in %d s" % int(ceil(shield_down))
+		t += "\nShield down: back in %d s" % int(ceil(shield_down))
 	if cargo_known:
 		t += "\n" + manifest_text()
 	if activity != "":

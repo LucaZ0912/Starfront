@@ -19,12 +19,12 @@ const STEPS := [
 	{"look": "ejected", "who": "pilot", "text": "Mayday… please… I need help… the oxygen is running low…", "delay": 2.6},
 	{"look": "computer", "who": "ship_ai", "text": "Pilot unconscious. Activating emergency protocol. Emergency life support online. Time remaining: 9 minutes 55 seconds.", "delay": 1.2},
 	{"look": "black", "hold": 1.6},
-	{"look": "dan", "who": "dan", "text": "Somewhere around here – that's where that strange signal came from…", "delay": 2.4},
-	{"look": "approach", "who": "dan", "text": "Oh wow – that's an almost completely intact classic!", "delay": 4.0},
+	{"look": "dan", "who": "dan", "text": "Somewhere around here, that's where that strange signal came from…", "delay": 2.4},
+	{"look": "approach", "who": "dan", "text": "Oh wow, that's an almost completely intact classic!", "delay": 4.0},
 	{"look": "approach", "who": "ship_ai", "text": "One life sign registered on board.", "delay": 0.8},
 	{"look": "approach", "who": "dan", "text": "What!? That can't be one of my crew! And I've got no pirate ships on my scope.", "delay": 0.6},
 	{"look": "approach", "who": "ship_ai", "text": "Wreck life-support limit reached in 4 minutes and 30 seconds.", "delay": 0.8},
-	{"look": "tow", "who": "dan", "text": "Oh damn. Well then – let's tow this old crate to the station.", "delay": 0.8},
+	{"look": "tow", "who": "dan", "text": "Oh damn. Well then, let's tow this old crate to the station.", "delay": 0.8},
 	{"look": "away", "hold": 4.8},
 ]
 const TYPE_RATE := 32.0                     # Luz: calm, about a fifth quicker than first tried

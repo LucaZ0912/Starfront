@@ -11,12 +11,12 @@ const ARCHETYPES := {
 	"raider": {
 		"name": "Raider", "weight": 3.0, "range": 0.6, "speed": 1.25,
 		"presets": ["pirate_raider_laser", "pirate_raider_hornet", "pirate_raider_hornet"],
-		"hint": "Fast hit-and-run attacker – strikes, breaks off, comes back.",
+		"hint": "Fast hit-and-run attacker: strikes, breaks off, comes back.",
 	},
 	"brawler": {
 		"name": "Brawler", "weight": 2.0, "range": 0.3, "speed": 1.0,
 		"presets": ["pirate_raider_rocket", "pirate_hornet", "pirate_brawler_warden"],
-		"hint": "Heavily armoured, autocannons – closes in for a knife fight.",
+		"hint": "Heavily armoured, autocannons: closes in for a knife fight.",
 	},
 	"sniper": {
 		"name": "Sniper", "weight": 2.0, "range": 0.95, "speed": 1.1,
@@ -26,7 +26,7 @@ const ARCHETYPES := {
 	"ambusher": {
 		"name": "Ambusher", "weight": 1.5, "range": 0.5, "speed": 1.15,
 		"presets": ["pirate_ambusher_crow", "pirate_ambusher_hornet", "pirate_ambusher_hornet"],
-		"hint": "Lies in wait in the rocks or in a colossus' radar shadow – its first volley hits hard.",
+		"hint": "Lies in wait in the rocks or in a colossus' radar shadow: its first volley hits hard.",
 	},
 	"leech": {
 		"name": "Leech", "weight": 1.0, "range": 0.7, "speed": 1.0,

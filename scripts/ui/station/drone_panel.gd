@@ -12,7 +12,7 @@ func build() -> void:
 	var room := int(s["drone_storage"])
 	section("DRONE HANGAR OF %s" % f.ship_name.to_upper())
 	if room <= 0:
-		add_child(UI.label("This ship has no drone hangar fitted – fit one in the ship menu (Modules → Core).", 13, UI.BAD))
+		add_child(UI.label("This ship has no drone hangar fitted: fit one in the ship menu (Modules → Core).", 13, UI.BAD))
 		return
 	var hm: String = f.get_module("hangar")
 	add_child(UI.label("%s  •  %d / %d drones stored  •  up to %d out at once (%s)" % [GameData.module_name(hm), f.drones.size(), room, int(s["drones_max"]), f.hull()["name"]], 13, Color(0.85, 0.9, 1.0)))
@@ -36,7 +36,7 @@ func build() -> void:
 	row.add_child(rb)
 	section("STORED DRONES")
 	if f.drones.is_empty():
-		add_child(UI.label("No drones – buy some above.", 13, UI.TEXT_DIM))
+		add_child(UI.label("No drones: buy some above.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 16)

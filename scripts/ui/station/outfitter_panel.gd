@@ -43,7 +43,7 @@ func build() -> void:
 	if cat == "storage":
 		_storage_view(main)
 	elif f == null:
-		main.add_child(UI.label("No ship of yours is docked here – only your storage can be used.", 14, UI.BAD))
+		main.add_child(UI.label("No ship of yours is docked here, only your storage can be used.", 14, UI.BAD))
 	else:
 		_slot_list(main, f)
 		_choice(main, f)

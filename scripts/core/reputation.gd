@@ -148,9 +148,9 @@ func dock_error(st: Dictionary) -> String:
 	if String(st.get("type", "")) == "pirate_haven":
 		if f != "" and at_least(f, "friendly"):
 			return ""
-		return "%s refuses docking – the %s only let in pilots they trust (Friendly standing, yours: %s)." % [st.get("name", "The haven"), FactionData.name_of(f), tier_name(f)]
+		return "%s refuses docking; the %s only let in pilots they trust (Friendly standing, yours: %s)." % [st.get("name", "The haven"), FactionData.name_of(f), tier_name(f)]
 	if f != "" and tier_id(f) == "nemesis":
-		return "%s refuses docking – you are an arch-enemy of the %s." % [st.get("name", "The station"), FactionData.name_of(f)]
+		return "%s refuses docking: you are an arch-enemy of the %s." % [st.get("name", "The station"), FactionData.name_of(f)]
 	return GameState.law.dock_error(st)
 
 
@@ -178,19 +178,19 @@ func sell_price(base: float, f: String) -> float:
 ## Text for station panels: "Standing with the Cluster Assembly: Friendly – prices −5 %, sales +3 %".
 func price_note(f: String) -> String:
 	if f == "" or not values.has(f):
-		return "Free port – prices are the same for everyone."
+		return "Free port: prices are the same for everyone."
 	var b := price_factor(f, "buy")
 	var s := price_factor(f, "sell")
 	var txt := "Standing with the %s: %s" % [FactionData.name_of(f), tier_name(f)]
 	if is_equal_approx(b, 1.0) and is_equal_approx(s, 1.0):
-		return txt + " – standard prices."
-	return txt + " – purchases %+d %%, sales %+d %%." % [int(round((b - 1.0) * 100.0)), int(round((s - 1.0) * 100.0))]
+		return txt + ", standard prices."
+	return txt + ", purchases %+d %%, sales %+d %%." % [int(round((b - 1.0) * 100.0)), int(round((s - 1.0) * 100.0))]
 
 
 ## Why BlackLedger posts no contracts for you here ("" = it does).
 func contracts_error(f: String) -> String:
 	if f != "" and values.has(f) and tier_index(f) <= 1:
-		return "BlackLedger posts no contracts for you here – the %s considers you %s." % [FactionData.name_of(f), tier_name(f).to_lower()]
+		return "BlackLedger posts no contracts for you here: the %s considers you %s." % [FactionData.name_of(f), tier_name(f).to_lower()]
 	return GameState.law.contracts_error(f)
 
 
@@ -206,7 +206,7 @@ func module_error(st: Dictionary, mid: String) -> String:
 		return ""
 	if at_least(f, "friendly"):
 		return ""
-	return "Military-grade gear – the %s sells it only to Friendly pilots (yours: %s)." % [FactionData.short_of(f), tier_name(f)]
+	return "Military-grade gear; the %s sells it only to Friendly pilots (yours: %s)." % [FactionData.short_of(f), tier_name(f)]
 
 
 ## Which power puts the bounty on a pirate in system `sid` (package 13): the power holding the
@@ -262,11 +262,11 @@ func _tier_message(f: String, up: bool) -> String:
 		"hostile":
 			return ("The %s now considers you HOSTILE: its pirates and havens will attack you." if pirate else "The %s now considers you HOSTILE: its patrols attack you on sight and prices rise.") % n
 		"neutral":
-			return ("Your standing with the %s is NEUTRAL – its pirates still attack you." if pirate else "Your standing with the %s is NEUTRAL – its patrols may scan your ship.") % n
+			return ("Your standing with the %s is NEUTRAL: its pirates still attack you." if pirate else "Your standing with the %s is NEUTRAL: its patrols may scan your ship.") % n
 		"friendly":
 			return ("The %s now counts you as FRIENDLY: its pirates leave you alone and its havens let you dock." if pirate else "The %s now counts you as FRIENDLY: better prices, better contracts, military gear.") % n
 		"allied":
-			return "You are now ALLIED with the %s – its best prices and contracts are yours." % n
+			return "You are now ALLIED with the %s: its best prices and contracts are yours." % n
 	return "Standing with the %s changed." % n
 
 

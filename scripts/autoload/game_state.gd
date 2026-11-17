@@ -400,7 +400,7 @@ func tree_unlock(id: String) -> String:
 	if not tile_ready(id):
 		return "%s: the achievements are not met yet." % TreeData.TILES[id]["name"]
 	pilot["tree"].append(id)
-	log_msg("Skill tree: %s – %s now usable." % [TreeData.TILES[id]["name"], TreeData.opens_text(id)], COL_GOOD)
+	log_msg("Skill tree: %s, %s now usable." % [TreeData.TILES[id]["name"], TreeData.opens_text(id)], COL_GOOD)
 	for f in fleet:
 		f.mark_dirty()                               # locked modules come online
 	skills_changed.emit()
@@ -477,7 +477,7 @@ func perk_error(id: String) -> String:
 	if String(p["skill"]) != "" and skill_level(String(p["skill"])) < int(p["lvl"]):
 		return "Needs %s %d." % [SkillData.info(String(p["skill"]))[1], int(p["lvl"])]
 	if int(pilot.get("perk_points", 0)) <= 0:
-		return "No perk point left – every pilot level brings one."
+		return "No perk point left: every pilot level brings one."
 	return ""
 
 
@@ -489,7 +489,7 @@ func perk_take(id: String) -> String:
 	pilot["perk_points"] = int(pilot["perk_points"]) - 1
 	for f in fleet:
 		f.mark_dirty()
-	log_msg("Perk taken: %s – %s." % [TreeData.PERKS[id]["name"], TreeData.PERKS[id]["effect"]], COL_GOOD)
+	log_msg("Perk taken: %s, %s." % [TreeData.PERKS[id]["name"], TreeData.PERKS[id]["effect"]], COL_GOOD)
 	skills_changed.emit()
 	return ""
 
@@ -522,7 +522,7 @@ func _pilot_xp(gain: float) -> void:
 		pilot["perk_points"] = int(pilot.get("perk_points", 0)) + 1
 		rose = true
 	if rose:
-		log_msg("Pilot level %d! A perk point to spend – Pilot window [%s] → Perks." % [int(pilot["level"]), Keybinds.key_text("pilot_window")], COL_GOOD)
+		log_msg("Pilot level %d! A perk point to spend: Pilot window [%s] → Perks." % [int(pilot["level"]), Keybinds.key_text("pilot_window")], COL_GOOD)
 		skills_changed.emit()
 
 
@@ -681,8 +681,8 @@ func migrate_to_current_cluster(old_version: int = 1) -> void:
 	current_system = home
 	var why := "The star cluster has grown to %d systems." % Universe.systems.size()
 	if old_version >= 2:
-		why = "The Cluster is now divided among its factions – territories and security levels have changed."
-	load_note = "%s Your ships and station storage were moved to %s%s." % [why, hs["name"], (" – %d open contract(s) were cancelled" % lost) if lost > 0 else ""]
+		why = "The Cluster is now divided among its factions: territories and security levels have changed."
+	load_note = "%s Your ships and station storage were moved to %s%s." % [why, hs["name"], (", %d open contract(s) were cancelled" % lost) if lost > 0 else ""]
 	fleet_changed.emit()
 	missions_changed.emit()
 
@@ -778,7 +778,7 @@ func bond_where(b: Dictionary, from: int) -> String:
 	var f := String(b.get("faction", ""))
 	if f == "":
 		return Universe.systems[int(b.get("redeem", b.get("system", 0)))]["name"]
-	return "any %s station – nearest: %s" % [FactionData.short_of(f), Universe.systems[faction_office_system(f, from)]["name"]]
+	return "any %s station, nearest: %s" % [FactionData.short_of(f), Universe.systems[faction_office_system(f, from)]["name"]]
 
 
 func bonds_total() -> int:
@@ -959,7 +959,7 @@ func _lose_active(f: ShipFitting) -> void:
 		var pod := {"id": "pod%d" % _pod_seq, "system": f.system_id, "pos": f.position, "crew": alive}
 		_pod_seq += 1
 		pods.append(pod)
-		log_msg("%d crew member%s reached an escape pod – pick them up before the signal fades (%s)." % [alive.size(), "" if alive.size() == 1 else "s", ", ".join(PackedStringArray(alive.map(func(e): return String(e["m"]["name"]))))], COL_WARN)
+		log_msg("%d crew member%s reached an escape pod: pick them up before the signal fades (%s)." % [alive.size(), "" if alive.size() == 1 else "s", ", ".join(PackedStringArray(alive.map(func(e): return String(e["m"]["name"]))))], COL_WARN)
 		pods_changed.emit()
 	# the offer: buy the ship back (hull, modules, drones – the crew is handled by the pods)
 	var snap := f.to_dict()
@@ -1074,7 +1074,7 @@ func loss_decide(accept: bool) -> String:
 	active_uid = f.uid
 	fleet.erase(beginner)
 	loss_offer = {}
-	log_msg("Aegis Mutual hands you the rebuilt %s for %s%s." % [f.ship_name, GameData.fmt_credits(int(o["price"])), " – the cargo insurance brought the whole hold back" if bool(o.get("insured", false)) else ""], COL_GOOD)
+	log_msg("Aegis Mutual hands you the rebuilt %s for %s%s." % [f.ship_name, GameData.fmt_credits(int(o["price"])), ", the cargo insurance brought the whole hold back" if bool(o.get("insured", false)) else ""], COL_GOOD)
 	active_changed.emit()
 	fleet_changed.emit()
 	return ""
@@ -1087,7 +1087,7 @@ func pods_tick() -> void:
 		for e in (pod["crew"] as Array).duplicate():
 			if play_time >= float(e["until"]):
 				pod["crew"].erase(e)
-				log_msg("The signal of %s's escape pod has faded – lost." % e["m"]["name"], COL_BAD)
+				log_msg("The signal of %s's escape pod has faded: lost." % e["m"]["name"], COL_BAD)
 				changed = true
 		if (pod["crew"] as Array).is_empty():
 			pods.erase(pod)
@@ -1115,7 +1115,7 @@ func pod_pickup(pod_id: String, f: ShipFitting) -> int:
 			if not placed:
 				rescued.append(m)
 			n += 1
-			log_msg("%s rescued%s." % [m["name"], " – back at the post" if placed else " – rides along to the next station"], COL_GOOD)
+			log_msg("%s rescued%s." % [m["name"], ", back at the post" if placed else ", rides along to the next station"], COL_GOOD)
 		pods.erase(pod)
 		pods_changed.emit()
 		Audio.play("mission_complete", "pod rescued")
@@ -1192,11 +1192,11 @@ func platform_lost(citadel: ShipFitting, pos: Vector2) -> void:
 			if _rng.randf() < p:
 				pods.append({"id": "pod%d" % _pod_seq, "system": citadel.system_id, "pos": pos, "crew": [{"m": m, "until": play_time + float(CrewData.POD_TIME.get(String(m["quality"]), 300.0))}]})
 				_pod_seq += 1
-				log_msg("%s got out of the %s – the escape pod waits for pick-up." % [m["name"], citadel.platform_lost["ship_name"]], COL_WARN)
+				log_msg("%s got out of the %s: the escape pod waits for pick-up." % [m["name"], citadel.platform_lost["ship_name"]], COL_WARN)
 				pods_changed.emit()
 			else:
 				log_msg("%s went down with the %s." % [m["name"], citadel.platform_lost["ship_name"]], COL_BAD)
-	log_msg("The platform ship %s was destroyed – at a station it can be recalled for 10 %% of its value." % citadel.platform_lost["ship_name"], COL_BAD)
+	log_msg("The platform ship %s was destroyed: at a station it can be recalled for 10 %% of its value." % citadel.platform_lost["ship_name"], COL_BAD)
 	citadel.mark_dirty()
 
 
@@ -1212,7 +1212,7 @@ func crew_error(f: ShipFitting) -> String:
 	if f == null or bool(pilot.get("crew_free", false)):
 		return ""
 	var miss := f.crew_missing()
-	return "" if miss == "" else "Crew missing: %s – hire at a bar (The Bar) or move crew in the ship menu (Modules → Crew)." % miss
+	return "" if miss == "" else "Crew missing: %s; hire at a bar (The Bar) or move crew in the ship menu (Modules → Crew)." % miss
 
 
 ## The crew of the active ship (or of the ship that earned it – review K3) takes its share of an income; returns
@@ -1252,7 +1252,7 @@ func crew_learn(metric_id: String, n: float) -> void:
 			var nq := CrewCore.learn(m, n * float(r[1]), _rng)
 			if nq != "":
 				f.mark_dirty()
-				log_msg("%s (%s) rises to quality %s – %s." % [m["name"], CrewData.role_name(role), nq, CrewCore.line(m)], COL_GOOD)
+				log_msg("%s (%s) rises to quality %s: %s." % [m["name"], CrewData.role_name(role), nq, CrewCore.line(m)], COL_GOOD)
 				Audio.play("mission_complete", "crew step up")
 
 
@@ -1381,7 +1381,7 @@ func wing_hire_error() -> String:
 	if not bool(pilot.get("tree_all", false)) and not tile_open("wing_command"):
 		return "Skill tree: open \"Wing Command\" first (Pilot window)."
 	if wingmen.size() >= wing_max():
-		return "No room for another wingman (%d at once%s)." % [wing_max(), "" if wing_max() >= WingData.MAX else " – Leadership %d allows %d" % [WingData.LEADERSHIP_FOR_TWO, WingData.MAX]]
+		return "No room for another wingman (%d at once%s)." % [wing_max(), "" if wing_max() >= WingData.MAX else ", Leadership %d allows %d" % [WingData.LEADERSHIP_FOR_TWO, WingData.MAX]]
 	return ""
 
 
@@ -1389,7 +1389,7 @@ func wing_hire(w: Dictionary, minutes: int) -> void:
 	wingmen.append({"w": w, "until": play_time + float(minutes) * 60.0, "stance": "defensive", "minutes": minutes})
 	codex.event("wingmen")
 	skill_xp("leadership", 10.0)
-	log_msg("%s (%s, %s) flies with you for %d minutes – share %d %% of the income." % [w["name"], w["level"], String(w["ship"]["ship_name"]),
+	log_msg("%s (%s, %s) flies with you for %d minutes: share %d %% of the income." % [w["name"], w["level"], String(w["ship"]["ship_name"]),
 		minutes, int(round(float(WingData.SHARE[String(w["level"])]) * 100.0))], COL_GOOD)
 	wingmen_changed.emit()
 
@@ -1406,7 +1406,7 @@ func wing_tick() -> void:
 	for c in wingmen.duplicate():
 		if play_time >= float(c["until"]):
 			wingmen.erase(c)
-			log_msg("%s: \"Contract's up – good flying with you, CMDR.\" The %s leaves the formation." % [c["w"]["name"], c["w"]["ship"]["ship_name"]], COL_INFO)
+			log_msg("%s: \"Contract's up; good flying with you, CMDR.\" The %s leaves the formation." % [c["w"]["name"], c["w"]["ship"]["ship_name"]], COL_INFO)
 			wingmen_changed.emit()
 
 
@@ -1416,7 +1416,7 @@ func wing_lost(id: int) -> void:
 	if c.is_empty():
 		return
 	wingmen.erase(c)
-	log_msg("%s was killed – the %s is gone, the contract ends." % [c["w"]["name"], c["w"]["ship"]["ship_name"]], COL_BAD)
+	log_msg("%s was killed: the %s is gone, the contract ends." % [c["w"]["name"], c["w"]["ship"]["ship_name"]], COL_BAD)
 	wingmen_changed.emit()
 
 
@@ -1650,11 +1650,11 @@ func faction_job_error(m: Dictionary) -> String:
 		if c.is_empty() or not c["alive"]:
 			return "That captain is already dead."
 	if m["type"] == "drone_trial" and (active() == null or active().drones.is_empty()):
-		return "A field trial needs drones – fly a carrier with a drone hangar."
+		return "A field trial needs drones: fly a carrier with a drone hangar."
 	if m.get("ballot", false) and not has_permit("assembly"):
-		return "The ballots go to Landfall – you need the Assembly's entry permit."
+		return "The ballots go to Landfall: you need the Assembly's entry permit."
 	if m.get("to_capital", false) and not has_permit(String(m["faction"])):
-		return "This goes to the capital – you need the %s's entry permit." % FactionData.short_of(String(m["faction"]))
+		return "This goes to the capital: you need the %s's entry permit." % FactionData.short_of(String(m["faction"]))
 	return ""
 
 
@@ -1673,14 +1673,14 @@ func accept_mission(m: Dictionary) -> String:
 			if cv.is_empty():
 				return "No route for the convoy."
 			m["convoy"] = int(cv["id"])
-			log_msg("The convoy gathers outside %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km) – it sets off once you are with it." % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station"), COL_INFO)
+			log_msg("The convoy gathers outside %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km): it sets off once you are with it." % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station"), COL_INFO)
 		"smuggler":
 			m["expires"] = play_time + Missions.SMUGGLER_TIME
 		"courier":
 			if m.get("ballot", false):
 				m["expires"] = play_time + float(m.get("time_limit", 900.0))
 		"patrol":
-			log_msg("The %s patrol waits for you at %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km) – it sets off once you are with it." % [FactionData.short_of(String(m["faction"])), m.get("meet", {}).get("name", "the station")], COL_INFO)
+			log_msg("The %s patrol waits for you at %s (marked green). Select its lead ship and press Follow (or fly within 1,000 km): it sets off once you are with it." % [FactionData.short_of(String(m["faction"])), m.get("meet", {}).get("name", "the station")], COL_INFO)
 	var fkey: String = String(m["giver"]) + "#f"
 	if offers.has(fkey):
 		offers[fkey].erase(m)
@@ -1796,7 +1796,7 @@ func notify_target(captain_id: String, smuggler_mission: String) -> void:
 			continue
 		if (m["type"] == "hunt" and captain_id != "" and String(m["captain"]) == captain_id) or (m["type"] == "smuggler" and smuggler_mission != "" and String(m["id"]) == smuggler_mission):
 			m["progress"] = 1
-			log_msg("Contract objective complete: %s – report back to %s." % [m["title"], Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the issuing station")], COL_GOOD)
+			log_msg("Contract objective complete: %s, report back to %s." % [m["title"], Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the issuing station")], COL_GOOD)
 			missions_changed.emit()
 
 
@@ -1805,7 +1805,7 @@ func fail_mission(m: Dictionary, why: String, rep_loss: float = 2.0) -> void:
 	if not m in missions:
 		return
 	missions.erase(m)
-	log_msg("Contract failed: %s – %s" % [m["title"], why], COL_BAD)
+	log_msg("Contract failed: %s, %s" % [m["title"], why], COL_BAD)
 	if has_perk("fine_print"):
 		rep_loss *= 0.5                          # package 30
 	rep.change(String(m.get("faction", "")), -rep_loss, "contract failed")
@@ -1851,7 +1851,7 @@ func _update_faction_jobs(delta: float) -> void:
 					m["progress_t"] = float(m.get("progress_t", 0.0)) + delta
 					if float(m["progress_t"]) >= PROBE_TIME:
 						m["progress"] = 1
-						log_msg("Measurements complete – return to the issuing station.", COL_GOOD)
+						log_msg("Measurements complete: return to the issuing station.", COL_GOOD)
 						missions_changed.emit()
 			"courier":
 				if m.get("ballot", false) and play_time >= float(m.get("expires", INF)):     # package 39a
@@ -1878,7 +1878,7 @@ func exchange(what: String, n: int = 1) -> String:
 	match what:
 		"data":
 			if research_data <= 0:
-				return "You have no research data – analyse anomalies."
+				return "You have no research data: analyse anomalies."
 			var k := research_data
 			research_data = 0
 			add_credits(k * DATA_PRICE)
@@ -1910,7 +1910,7 @@ func _find_relic(system_id: int) -> void:
 	if jobs.is_empty() and randf() >= curia.RELIC_FIND:
 		return
 	if f.cargo_free() < GameData.item_volume("earth_relic"):
-		log_msg("The anomaly held a relic of Earth – but your hold is full.", COL_WARN)
+		log_msg("The anomaly held a relic of Earth, but your hold is full.", COL_WARN)
 		return
 	f.add_cargo("earth_relic", 1.0)
 	for m in jobs:
@@ -1928,7 +1928,7 @@ func notify_drone_kill(system_id: int) -> void:
 		if m["type"] == "drone_trial" and int(m["progress"]) < int(m["amount"]):
 			m["progress"] = int(m["progress"]) + 1
 			if int(m["progress"]) >= int(m["amount"]):
-				log_msg("Field trial complete – report back to the Concord Yards.", COL_GOOD)
+				log_msg("Field trial complete: report back to the Concord Yards.", COL_GOOD)
 			missions_changed.emit()
 
 
@@ -1952,7 +1952,7 @@ func notify(event: String, system_id: int) -> void:
 				m["progress"] = int(m["progress"]) + 1
 				changed = true
 				if int(m["progress"]) >= int(m["amount"]):
-					log_msg("Contract objective complete: %s – return to the issuing station." % m["title"], COL_GOOD)
+					log_msg("Contract objective complete: %s; return to the issuing station." % m["title"], COL_GOOD)
 	if changed:
 		missions_changed.emit()
 
@@ -1988,7 +1988,7 @@ func wormhole_error(f: ShipFitting, to_id: int) -> String:
 	if f.docked_at != "" or f.in_transit():
 		return "Undock first."
 	if bool(Universe.systems[to_id].get("veil", false)):
-		return "The Veil cannot be reached by wormhole – that is left to Project Bridge."
+		return "The Veil cannot be reached by wormhole: that is left to Project Bridge."
 	if entry_error(to_id) != "":
 		return entry_error(to_id)
 	var dist := Universe.find_path(f.system_id, to_id, 3).size()
@@ -1999,7 +1999,7 @@ func wormhole_error(f: ShipFitting, to_id: int) -> String:
 	if exotic_matter < dist:
 		return "Not enough exotic matter: %d needed, %d in stock." % [dist, exotic_matter]
 	if play_time < f.wormhole_ready:
-		return "The core is still recovering – %d s." % int(ceil(f.wormhole_ready - play_time))
+		return "The core is still recovering: %d s." % int(ceil(f.wormhole_ready - play_time))
 	return ""
 
 
@@ -2042,7 +2042,7 @@ func check_permits() -> void:
 			continue
 		if not permits.has(f) and rep.at_least(f, "friendly"):
 			permits[f] = true
-			log_msg("The %s grants you an entry permit to %s – its gates will let you through." % [FactionData.name_of(f), Universe.systems[sid]["name"]], COL_GOOD)
+			log_msg("The %s grants you an entry permit to %s: its gates will let you through." % [FactionData.name_of(f), Universe.systems[sid]["name"]], COL_GOOD)
 			codex.event("permit")
 		elif permits.has(f) and rep.tier_id(f) == "nemesis":
 			permits.erase(f)
@@ -2058,7 +2058,7 @@ func entry_error(sid: int) -> String:
 	var f := Universe.special_faction(sid)
 	if f == "" or has_permit(f):
 		return ""
-	return "%s is closed – the %s lets in only pilots with an entry permit (Friendly standing, yours: %s)." % [Universe.systems[sid]["name"], FactionData.name_of(f), rep.tier_name(f)]
+	return "%s is closed; the %s lets in only pilots with an entry permit (Friendly standing, yours: %s)." % [Universe.systems[sid]["name"], FactionData.name_of(f), rep.tier_name(f)]
 
 
 func can_jump(f: ShipFitting, to_id: int) -> String:
@@ -2113,7 +2113,7 @@ func begin_jump(f: ShipFitting, to_id: int) -> bool:
 	if style in ["old", "pirate"]:
 		if randf() < (MISJUMP_OLD if style == "old" else MISJUMP_PIRATE) * float(DRIVE_MISJUMP[drive_grade(f)]) * (0.5 if museum_perk("severance") else 1.0):
 			misjumps[f.uid] = true
-		log_msg("The %s here is long past its last service – the jump takes longer, and its field is not to be trusted." % ("old gate" if style == "old" else "patched pirate gate"), COL_WARN)
+		log_msg("The %s here is long past its last service: the jump takes longer, and its field is not to be trusted." % ("old gate" if style == "old" else "patched pirate gate"), COL_WARN)
 	f.transit = f.transit_total
 	f.docked_at = ""
 	stats["jumps"] = int(stats["jumps"]) + 1
@@ -2262,7 +2262,7 @@ func ground_goal(site: Dictionary, ok: bool, pay_mult: float = 1.0, note: String
 			else:
 				mm["progress"] = 1
 				mm["reward"] = int(round(float(mm["reward"]) * pay_mult))
-				log_msg("Contract objective complete: %s%s – report back to %s." % [mm["title"], (" – " + note) if note != "" else "",
+				log_msg("Contract objective complete: %s%s, report back to %s." % [mm["title"], (" – " + note) if note != "" else "",
 					Universe.find_station(int(mm["giver_system"]), String(mm["giver"])).get("name", "the issuing station")], COL_GOOD)
 			if String(mm["goal"]) == "reactivate":
 				maint_sites.erase(String(mm["site"].get("city", "")))
@@ -2274,7 +2274,7 @@ func museum_find(id: String) -> void:
 	museum_finds.append(id)
 	var e: Dictionary = MuseumData.get_exhibit(id)
 	log_msg("A find for the Museum: %s (%s)%s." % [MuseumData.exhibit_name(id), String(e.get("rarity", "common")),
-		" – already shown there, worth %d cr to the curator" % MuseumData.price(id) if museum_donated.has(id) else ""], COL_GOOD)
+		", already shown there, worth %d cr to the curator" % MuseumData.price(id) if museum_donated.has(id) else ""], COL_GOOD)
 	codex.event("museum_find")
 
 
@@ -2294,7 +2294,7 @@ func museum_donate(id: String) -> String:
 	var room := MuseumData.room_of(id)
 	var bonus := MuseumData.price(id) / 4
 	credits += bonus
-	log_msg("Into its case: %s. The curator thanks you – %d cr." % [MuseumData.exhibit_name(id), bonus], COL_GOOD)
+	log_msg("Into its case: %s. The curator thanks you: %d cr." % [MuseumData.exhibit_name(id), bonus], COL_GOOD)
 	if museum_room_done(room):
 		log_msg("The room \"%s\" is complete! %s" % [MuseumData.room_name(room), String(MuseumData.PERKS[room])], COL_GOOD)
 	museum_give_suit()
@@ -2312,10 +2312,10 @@ func museum_give_suit() -> bool:
 		left = gear._add_to(gear.locker(active()), MuseumData.SUIT_REWARD, 1)
 		where = "your pockets are full, so it is in your ship's locker"
 	if left > 0:
-		log_msg("The Museum is full. The curator keeps the Archivist Suit for you until you have room – come back to her.", COL_WARN)
+		log_msg("The Museum is full. The curator keeps the Archivist Suit for you until you have room: come back to her.", COL_WARN)
 		return false
 	museum_donated.append("_suit")
-	log_msg("The Museum is full. The curator gives you the Archivist Suit – %s." % where, COL_GOOD)
+	log_msg("The Museum is full. The curator gives you the Archivist Suit: %s." % where, COL_GOOD)
 	return true
 
 
@@ -2326,7 +2326,7 @@ func museum_sell(id: String) -> int:
 	museum_finds.erase(id)
 	var p := MuseumData.price(id)
 	credits += p
-	log_msg("Sold to the curator: %s – %d cr." % [MuseumData.exhibit_name(id), p], COL_GOOD)
+	log_msg("Sold to the curator: %s, %d cr." % [MuseumData.exhibit_name(id), p], COL_GOOD)
 	return p
 
 
@@ -2430,7 +2430,7 @@ func _misjump(f: ShipFitting, from_id: int) -> void:
 	var a := minf(f.armor, dmg)
 	f.armor -= a
 	f.structure = maxf(f.structure - (dmg - a), minf(f.structure, float(s["structure_max"]) * 0.25))      # review 6 M3: never heals
-	log_msg("The field of the gate at %s broke down mid-jump – %s is flung out somewhere in %s and took damage." % [Universe.systems[from_id]["name"], f.ship_name, Universe.systems[f.system_id]["name"]], COL_BAD)
+	log_msg("The field of the gate at %s broke down mid-jump: %s is flung out somewhere in %s and took damage." % [Universe.systems[from_id]["name"], f.ship_name, Universe.systems[f.system_id]["name"]], COL_BAD)
 	if f.uid == active_uid:
 		pending_arrival = {"kind": "misjump", "from": from_id}
 	codex.event("misjump")
@@ -2456,7 +2456,7 @@ func _arrive_wormhole(f: ShipFitting, force_fail: int = -1) -> void:
 			spots.append(fl["pos"])
 		spots.append(Vector2.from_angle(randf() * TAU) * randf_range(400000.0, 1600000.0) * Universe.SCALE)
 		f.position = spots[randi() % spots.size()] + Vector2.from_angle(randf() * TAU) * randf_range(0.0, 3000.0)
-		log_msg("The wormhole collapsed early – %s is thrown out somewhere in %s!" % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_WARN)
+		log_msg("The wormhole collapsed early: %s is thrown out somewhere in %s!" % [f.ship_name, Universe.systems[f.system_id]["name"]], COL_WARN)
 	elif not L["stations"].is_empty():
 		var st: Dictionary = L["stations"][randi() % L["stations"].size()]
 		f.position = (st["pos"] as Vector2) + Vector2.from_angle(randf() * TAU) * 6000.0
@@ -2480,7 +2480,7 @@ func _advance_station_jobs(delta: float) -> void:
 			storage_add(String(j["station"]), String(j["item"]))
 			stats["built"] = int(stats.get("built", 0)) + 1
 			skill_xp("engineering", 10.0)
-			log_msg("Manufacturing finished: %s – in storage at %s." % [GameData.module_name(String(j["item"])), String(j.get("station_name", "the station"))], COL_GOOD)
+			log_msg("Manufacturing finished: %s, in storage at %s." % [GameData.module_name(String(j["item"])), String(j.get("station_name", "the station"))], COL_GOOD)
 
 
 ## Station jobs at `station_id` (for the manufacturing panel).
@@ -2560,7 +2560,7 @@ func _update_tours(delta: float) -> void:
 		tr["t"] = float(tr["t"]) + delta
 		if float(tr["t"]) >= Missions.TOUR_VIEW:
 			tr["done"] = true
-			log_msg("They have seen %s – back to %s." % [tr["name"], Universe.find_station(int(m["target_system"]), String(m["target_station"])).get("name", "?")], COL_GOOD)
+			log_msg("They have seen %s: back to %s." % [tr["name"], Universe.find_station(int(m["target_system"]), String(m["target_station"])).get("name", "?")], COL_GOOD)
 			Economy.change(current_system, 0.4, "tourists")
 			codex.event("tour")
 			missions_changed.emit()
@@ -2582,7 +2582,7 @@ func _scan_system(f: ShipFitting, delta: float) -> void:
 		an["scan"] = float(an["scan"]) + float(tool["strength"]) * float(f.stats()["scan_strength"]) * delta * 0.5
 		if float(an["scan"]) >= float(an["difficulty"]):
 			an["revealed"] = true
-			log_msg("Scanner: anomaly detected – %s" % an["name"], COL_GOOD)
+			log_msg("Scanner: anomaly detected, %s" % an["name"], COL_GOOD)
 			anomaly_revealed.emit(f.system_id, an["id"])
 
 

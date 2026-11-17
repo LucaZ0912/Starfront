@@ -25,7 +25,7 @@ func build() -> void:
 	var row3 := UI.hbox(8)
 	add_child(row3)
 	var allied: bool = GameState.rep.at_least("directorate", "allied")
-	row3.add_child(UI.label("Buy exotic matter: %s per unit%s" % [GameData.fmt_credits(GameState.EM_BUY), "" if allied else " – only for Allied pilots"], 13, UI.GOLD if allied else UI.TEXT_DIM))
+	row3.add_child(UI.label("Buy exotic matter: %s per unit%s" % [GameData.fmt_credits(GameState.EM_BUY), "" if allied else ", only for Allied pilots"], 13, UI.GOLD if allied else UI.TEXT_DIM))
 	var b1 := UI.button("Buy 1", func(): run({"type": "exchange", "what": "buy_em", "n": 1}))
 	b1.disabled = not allied or GameState.credits < GameState.EM_BUY
 	row3.add_child(b1)

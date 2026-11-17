@@ -699,6 +699,7 @@ func _process(delta: float) -> void:
 				_shooting = true
 				await _test_intro56d(view)
 				await _test_intro56e(main.view)          # sequence 4 built a new view (Beyond)
+				await _test_intro56f(main.view)
 				_shooting = false
 				timer = 0.0
 				return
@@ -949,12 +950,16 @@ func _test_station(sp: StationUI) -> void:
 	for i in sm.TABS.size():
 		sm.open(main.view, i)
 		check(sm.visible and sm.content.get_child_count() > 0, "ship menu tab '%s'" % sm.TABS[i])
-	sm.sub_tab = 1
-	sm.open(main.view, 4)
-	check(sm.content.get_child_count() > 1, "transactions: bond wallet")
-	sm.sub_tab = 0
-	sm.open(main.view, 4)
-	check(sm.content.get_child_count() > 1, "transactions: contracts (%d)" % GameState.missions.size())
+	# package 56: the transactions are a tab of the journal now
+	var TV = load("res://scripts/ui/transactions_view.gd")
+	var tv = TV.new()
+	TV.sub_tab = 1
+	tv.rebuild()
+	check(tv.get_child_count() > 1, "transactions (journal): bond wallet")
+	TV.sub_tab = 0
+	tv.rebuild()
+	check(tv.get_child_count() > 1, "transactions (journal): contracts (%d)" % GameState.missions.size())
+	tv.free()
 	sm.open(main.view, 1)
 	var wpn := hornet.get_module("weapon_1")
 	sm.selected_slot = "weapon_1"
@@ -7358,7 +7363,7 @@ func _test_cluster40(view: SystemView) -> void:
 			name_ok = name_ok and catalog
 		if sy.get("outer", false):
 			outer += 1
-			outer_ok = outer_ok and not lived and float(sy["security"]) <= 0.15 and U.territory_text(sid) == "Unclaimed – the Far Reaches"
+			outer_ok = outer_ok and not lived and float(sy["security"]) <= 0.15 and U.territory_text(sid) == "Unclaimed: the Far Reaches"
 			for nb0 in sy["links"]:
 				outer_ok = outer_ok and U.is_belt(nb0)               # reached only through the Rim
 		if sy.get("belt", false):
@@ -7392,8 +7397,8 @@ func _test_cluster40(view: SystemView) -> void:
 	main.galaxy.view_zoom = z0
 	main.galaxy.close()
 	check(over, "40a: zoomed right out the galaxy map is an overview – no system names, the territories named, the Rim and the Far Reaches written along their rings")
-	check(z0 > 1.0 and zoomed and back.distance_to(at) < 1.0 and U.territory_text(_belt_empty()) == "Unclaimed – the Rim",
-		"40a: the galaxy map opens zoomed in on the current system, zooms towards the pointer and pans; the ring is 'Unclaimed – the Rim'")
+	check(z0 > 1.0 and zoomed and back.distance_to(at) < 1.0 and U.territory_text(_belt_empty()) == "Unclaimed: the Rim",
+		"40a: the galaxy map opens zoomed in on the current system, zooms towards the pointer and pans; the ring is 'Unclaimed: the Rim'")
 
 
 ## Package 40c: the content of the Rim – rich rock, old battlefields, pre-Severance derelicts, the edge of the Veil.
@@ -8208,7 +8213,7 @@ func _test_settlement(view: SystemView, body: Dictionary, sites_all: Array) -> v
 	for z in g.map.zones:
 		if String(z.get("kind", "")) == "service":
 			shops += 1
-			if String(z["title"]).contains("–"):
+			if String(z["title"]).contains(":"):
 				special = String(z["title"])
 	var traffic = null
 	for ch in g._world.get_children():
@@ -13522,6 +13527,9 @@ func _test_pad80(view: SystemView) -> void:
 ## pilot's own lines after the answers – ends with the choice of the flight tutorial (a story flag).
 func _test_intro56d(_view: SystemView) -> void:
 	var keep_flags: Dictionary = GameState.story.flags.duplicate(true)
+	var keep_story: Dictionary = GameState.story.to_dict()
+	GameState.story.missions.erase("prologue")
+	GameState.story.done.erase("prologue")
 	Commands.cheats_enabled = true
 	Commands.execute({"type": "debug_special", "special": "beyond"})
 	for i in 30:
@@ -13571,7 +13579,8 @@ func _test_intro56d(_view: SystemView) -> void:
 			if walk_t == 40:
 				lift_ok = lift_ok and g.story_people.has("dan") and g.people.size() == 1
 				g.story_talk.emit("dan")
-	var flow_ok: bool = phases.has("talk1") and phases.has("black1") and phases.has("wake") and phases.has("black2") and phases.has("walk") 		and phases.has("talk4") and String(GameState.story.flags.get("intro_stage", "")) == "five" and bool(GameState.story.flags.get("flight_tutorial", false))
+	var pro_ok: bool = GameState.story.running("prologue") and GameState.story.step_data("prologue").get("id", "") == "hangar"
+	var flow_ok: bool = pro_ok and phases.has("talk1") and phases.has("black1") and phases.has("wake") and phases.has("black2") and phases.has("walk") 		and phases.has("talk4") and String(GameState.story.flags.get("intro_stage", "")) == "five" and bool(GameState.story.flags.get("flight_tutorial", false))
 	var talk_ok: bool = speakers.has("Dan T. Rogue") and speakers.has("Dr. Vesna Kalu") and speakers.has(GameState.pilot_name)
 	for c5 in main.get_children():
 		if c5.get_script() != null and String(c5.get_script().resource_path).ends_with("intro_five.gd"):
@@ -13579,8 +13588,110 @@ func _test_intro56d(_view: SystemView) -> void:
 			c5.queue_free()
 	check(bed_ok and flow_ok and talk_ok and lift_ok and String(g.story_mode.get("ship_art", "")) == "kanayama",
 		"56: sequence 4 – the pilot asleep in the infirmary of Dan's station, Dan and the medic by the bed; a few weeks later the waking, a few days later on their feet; the lift only to the bar (the rest greyed out), the bar empty, Dan at the window; the talk with the speaker changing and the pilot's own lines, the flight tutorial chosen  [%s]" % [[bed_ok, flow_ok, talk_ok, lift_ok, phases]])
+	GameState.story.from_dict(keep_story)
 	GameState.story.flags = keep_flags
 	main.close_deck(false)
+
+
+## Package 56: sequence 6, part 1 – Dan's deal. The quiet bar, Dan's menu with the gold "You wanted to talk to me."
+## (the prologue done, "A Ticket to the Cluster" begun); the two questions in either order, then "And what do you
+## suggest?" only after both; the deal – no: black, the bar busy (nobody for hire), the regulars say no to work, Dan's
+## menu with "I've thought it over" (gold); yes: the ticket's next step (the ship in the hangar).
+func _test_intro56f(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+		await get_tree().process_frame
+	for fl in ["dan_deal_yes", "dan_deal_no", "dan_q_stuck", "dan_q_licence", "prologue_bar"]:
+		st.flags.erase(fl)
+	st.missions.erase("prologue")
+	st.done.erase("prologue")
+	st.missions.erase("ticket")
+	st.done.erase("ticket")
+	st.start("prologue", 3)
+	main._start_intro_six("bar")
+	var i6 = null
+	for w in 600:
+		await get_tree().process_frame
+		for c in main.get_children():
+			if c.get_script() != null and String(c.get_script().resource_path).ends_with("intro_six.gd") and not c.is_queued_for_deletion():
+				i6 = c
+		if i6 != null and main.ground != null:
+			break
+	var g = main.ground
+	var ui = main.story_ui
+	var quiet_ok: bool = i6 != null and g != null and g.level == "commercial" and g.story_people.has("dan") and not g.story_people.has("patron_a") \
+		and not g.map.zones.any(func(z): return String(z.get("kind", "")) == "crew") and String(st.flags.get("intro_stage", "")) == "six"
+	# the talk: answers picked by their words; returns the labels offered at the questions
+	var talk := func(picks: Array) -> Array:
+		var seen: Array = []
+		var k := 0
+		for n in 80:
+			await get_tree().process_frame
+			if ui.dialogue == null:
+				break
+			ui.dialogue._finish()
+			var ans: Array = ui._dlg.get("answers", [])
+			if ans.is_empty():
+				ui.choose(0)
+				continue
+			seen.append(ans.map(func(a): return String(a[0])))
+			var idx := 0
+			if k < picks.size():
+				for j in ans.size():
+					if String(ans[j][0]).contains(String(picks[k])):
+						idx = j
+				k += 1
+			ui.choose(idx)
+		return seen
+	g.story_talk.emit("dan")
+	await get_tree().process_frame
+	var menu0: Array = (ui._dlg.get("answers", []) as Array).map(func(a): return String(a[0]))
+	var gold_ok: bool = String(menu0[0]).contains("You wanted to talk to me") and not menu0.any(func(l): return String(l).contains("thought it over")) \
+		and not menu0.any(func(l): return String(l).contains("Where was I going"))
+	var seen: Array = await talk.call(["talk to me", "Pilot licence", "Stuck", "suggest", "catch", "look like", "How long", "What?", "No."])
+	# after "Pilot licence?" only "Stuck?" (not "suggest"); after both, only "suggest"
+	var order_ok: bool = seen.size() >= 4 and (seen[2] as Array) == ["\"Stuck?\""] and (seen[3] as Array) == ["\"And what do you suggest?\""]
+	await get_tree().process_frame
+	var mis_ok: bool = st.done.has("prologue") and st.running("ticket") and st.step_data("ticket").get("id", "") == "deal" and bool(st.flags.get("dan_deal_no", false))
+	for w2 in 400:
+		await get_tree().process_frame
+		if i6.phase == "bar" and g.story_mode.get("no_crew", false):
+			break
+	var busy_ok: bool = bool(g.story_mode.get("no_crew", false)) and g.story_people.has("patron_a") and g.story_people.has("dan") \
+		and not g.map.zones.any(func(z): return String(z.get("kind", "")) == "crew") and g.map.zones.any(func(z): return String(z.get("kind", "")) == "story" and String(z.get("id", "")) == "patron_b")
+	g.story_talk.emit("patron_b")
+	await get_tree().process_frame
+	var ask_ok: bool = ui.dialogue != null and String(ui._dlg.get("id", "")) == "patron_b"
+	await talk.call([])
+	# changed mind: the gold answer, the question again – yes
+	g.story_talk.emit("dan")
+	await get_tree().process_frame
+	var menu1: Array = (ui._dlg.get("answers", []) as Array).map(func(a): return String(a[0]))
+	gold_ok = gold_ok and String(menu1[0]).contains("thought it over") and not menu1.any(func(l): return String(l).contains("talk to me"))
+	await talk.call(["thought it over", "Yes"])
+	for w3 in 400:
+		await get_tree().process_frame
+		if i6.phase == "bar":
+			break
+	await get_tree().process_frame
+	var yes_ok: bool = bool(st.flags.get("dan_deal_yes", false)) and st.step_data("ticket").get("id", "") == "ship" \
+		and not g.map.zones.any(func(z): return String(z.get("kind", "")) == "story" and String(z.get("id", "")) == "patron_b")
+	check(quiet_ok and gold_ok and order_ok and mis_ok and busy_ok and ask_ok and yes_ok,
+		"56: sequence 6 – Dan's deal: the quiet bar, the gold \"You wanted to talk to me.\" (prologue done, the ticket begun); the two questions either way round, then the suggestion; no – black, the bar busy (nobody for hire), the regulars say no; \"I've thought it over\" (gold), yes – the ship in the hangar next  [%s]" % \
+		[[quiet_ok, gold_ok, order_ok, mis_ok, busy_ok, ask_ok, yes_ok, seen.size()]])
+	st.from_dict(keep)
+	for c2 in main.get_children():
+		if c2.get_script() != null and String(c2.get_script().resource_path).ends_with("intro_six.gd"):
+			c2.queue_free()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
 
 
 ## Package 56: sequence 5 – the flight training. Dan in the hangar by Old Betty (the lift to the bar and the hangar),
@@ -13603,6 +13714,9 @@ func _test_intro56e(_view: SystemView) -> void:
 		main.close_deck(false)
 		await get_tree().process_frame
 	st.flags["flight_tutorial"] = true
+	st.missions.erase("prologue")
+	st.done.erase("prologue")
+	st.start("prologue", 1)                           # the prologue waits at "Old Betty" (sequence 4 started it)
 	var own_uid: int = GameState.active_uid
 	var fleet_n: int = GameState.fleet.size()
 	main._start_intro_five("hangar")
@@ -13804,17 +13918,36 @@ func _test_intro56e(_view: SystemView) -> void:
 	home_ok = home_ok and i5.phase == "back" and g.story_people.has("dan")
 	g.story_talk.emit("dan")
 	await get_tree().process_frame
-	var six_ok: bool = String(st.flags.get("intro_stage", "")) == "six" and g.story_mode.is_empty() and (not is_instance_valid(i5) or i5.is_queued_for_deletion())
+	await get_tree().process_frame
+	# sequence 6 takes over: Dan's menu at once, the prologue at its last step ("Talk to Dan")
+	var six_ok: bool = String(st.flags.get("intro_stage", "")) == "six" and (not is_instance_valid(i5) or i5.is_queued_for_deletion()) \
+		and ui.dialogue != null and String(ui._dlg.get("id", "")) == "dan_help" and st.running("prologue") and st.step_data("prologue").get("id", "") == "word" \
+		and (st.done_log.get("flight_training", []) as Array).size() >= 5
+	if ui.dialogue != null:
+		ui.dialogue._finish()
+		ui.choose((ui._dlg.get("answers", []) as Array).size() - 1)       # "That's all, thanks."
+	for c6 in main.get_children():
+		if c6.get_script() != null and String(c6.get_script().resource_path).ends_with("intro_six.gd"):
+			c6.queue_free()
 	# the journal: the Flight training tab with every lesson
 	main.open_journal()
 	var pw = main.pilot_window
-	pw.jsub = "story"
+	pw.jsub = "completed"
 	pw.jsel = "flight_training"
 	pw.rebuild()
 	var texts := ""
 	for l in pw.body.find_children("*", "Label", true, false):
 		texts += String(l.text) + "\n"
-	var journal_ok: bool = texts.contains("Flight training") and texts.contains("The journal") and texts.contains("Mining") and texts.contains("Drive them off") and texts.contains("fire group 5") 		and not texts.contains("FLIGHT TRAINING")
+	pw.jsub = "transactions"
+	pw.jsel = ""
+	pw.rebuild()
+	var tr_texts := ""
+	for b3 in pw.body.find_children("*", "Button", true, false):
+		tr_texts += String(b3.text) + "\n"
+	if not (tr_texts.contains("Contracts (") and tr_texts.contains("Bonds (") and tr_texts.contains("TRANSACTIONS")):
+		texts += "NO-TRANSACTIONS"
+	var journal_ok: bool = texts.contains("Flight training") and texts.contains("The journal") and texts.contains("Mining") and texts.contains("Drive them off") and texts.contains("fire group 5") 		and not texts.contains("FLIGHT TRAINING") and texts.contains("WHAT WAS SAID") and not texts.contains("NO-TRANSACTIONS") \
+		and not main.ship_menu.TABS.has("Transactions")
 	pw.jsub = "story"
 	pw.close()
 	check(hangar_ok and ask_ok and drone_ok and lap_ok and views_ok and mine_ok and unload_ok and leash_ok and amb_ok and weak_ok and fight_ok and spare_ok and won_ok and home_ok and six_ok and journal_ok,

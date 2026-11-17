@@ -15,9 +15,9 @@ const SHOTS := [
 	{"look": "black", "text": "The Age of Expansion had begun!"},
 	{"look": "earth", "text": "Earth had grown too small for us, and the explorer's spirit of humankind drew us into the deepest depths of space.", "delay": 1.6},
 	{"look": "ships", "text": "We broke through the Veil."},
-	{"look": "gate", "text": "I was part of an expedition, somewhere around the year 12,600. They called us heroes – the future of humankind. But we knew we were expendable. We knew we would never see that pale blue dot again.", "delay": 1.2},
-	{"look": "jump", "text": "What they didn't tell us about were the dangers – and what was waiting for us out there.", "delay": 2.2},
-	{"look": "veil", "text": "Mayday! Mayday! Something's wrong – the readings are going crazy! AAAAAAAH—", "delay": 1.6, "red": true, "min": 7.4},
+	{"look": "gate", "text": "I was part of an expedition, somewhere around the year 12,600. They called us heroes, the future of humankind. But we knew we were expendable. We knew we would never see that pale blue dot again.", "delay": 1.2},
+	{"look": "jump", "text": "What they didn't tell us about were the dangers, and what was waiting for us out there.", "delay": 2.2},
+	{"look": "veil", "text": "Mayday! Mayday! Something's wrong! The readings are going crazy! AAAAAAAH—", "delay": 1.6, "red": true, "min": 7.4},
 ]
 const TYPE_RATE := 32.0               # characters a second (the Mayday faster) – Luz: calm, but not too slow
 const SKIP_HOLD := 1.2

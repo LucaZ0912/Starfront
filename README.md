@@ -376,6 +376,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.56.4 (package 56, part 4): `scripts/ground/intro_six.gd` (sequence 6, part 1: `begin("bar"|"talk"|"load")`,
+  `_mode()`, phases `bar`, `talking`, `fade`); `main._start_intro_six`, flag `intro_stage` "six"; story missions
+  `prologue` and `ticket`, characters `patron_a/b/c`, dialogue answers' 5th entry (`if`, `not`, `gold`), Story
+  `done_log`, `complete`, `goto_step`, action `start`; StoryUI `answer_ok`; GroundView story_mode `no_crew`;
+  `scripts/ui/transactions_view.gd` (from the ship menu into the journal); pilot window journal tabs `transactions`
+  and `completed`; smoke group `intro56f`.
 - 0.8.56.3 (package 56, part 3): `scripts/ground/intro_five.gd` (sequence 5: phases `deck`, `ask`, `out`, `launch`,
   `lessons`, `ambush`, `fight`, `debrief`/`down`, `home_*`, `back`; static `tidy()` gives the drone back); story mission
   `flight_training` (`lessons`: done steps keep their text), dialogues `tut_start`, `dan_help`, `intro_doc_again`,

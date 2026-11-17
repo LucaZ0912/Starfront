@@ -19,7 +19,7 @@ func build() -> void:
 	add_child(head)
 	if sf != "":
 		head.add_child(UI.icon(CrestArt.texture(sf), 34))
-	head.add_child(UI.wrap_label(("The Sable Writ Exchange clears the bounties of the %s here: every bond it issued is paid at any of its stations." % FactionData.name_of(sf)) if sf != "" else "This free port has no government – the Sable Writ Exchange only pays old bonds issued in this system.", 13, UI.TEXT_DIM, 860))
+	head.add_child(UI.wrap_label(("The Sable Writ Exchange clears the bounties of the %s here: every bond it issued is paid at any of its stations." % FactionData.name_of(sf)) if sf != "" else "This free port has no government: the Sable Writ Exchange only pays old bonds issued in this system.", 13, UI.TEXT_DIM, 860))
 	_record(sf)
 	_wanted_posters(sid)
 	section("REDEEMABLE HERE  –  %d bond%s, %s" % [here.size(), "" if here.size() == 1 else "s", GameData.fmt_credits(here_sum)])
@@ -59,7 +59,7 @@ func build() -> void:
 			if k != "":
 				row2.add_child(UI.icon(CrestArt.texture(k), 22))
 			var who: String = ("%s bonds" % FactionData.short_of(k)) if k != "" else "Older bonds"
-			row2.add_child(UI.label("%s – %d, %s  •  redeem at %s" % [who, int(other[k][0]), GameData.fmt_credits(int(other[k][1])), GameState.bond_where(other[k][2], sid)], 13, Color(0.85, 0.88, 0.95)))
+			row2.add_child(UI.label("%s: %d, %s  •  redeem at %s" % [who, int(other[k][0]), GameData.fmt_credits(int(other[k][1])), GameState.bond_where(other[k][2], sid)], 13, Color(0.85, 0.88, 0.95)))
 
 
 ## The pilot's criminal record with this station's faction, with the fine (package 13).
@@ -156,7 +156,7 @@ static func wanted_poster(c: Dictionary, sid: int = -1, course = null) -> Contro
 	stars.autowrap_mode = TextServer.AUTOWRAP_OFF
 	stars.add_theme_font_size_override("normal_font_size", 22)
 	stars.text = "[center][color=#9e1f14]%s[/color][color=#3d210f]%s[/color][color=#a8916a]%s[/color][/center]" % ["★".repeat(r), "★".repeat(n - r), "☆".repeat(5 - n)]
-	stars.tooltip_text = "Danger %d of 5 – more stars: more escorts, a tougher captain.%s" % [n, (" Red stars: stations overrun.") if r > 0 else ""]
+	stars.tooltip_text = "Danger %d of 5; more stars: more escorts, a tougher captain.%s" % [n, (" Red stars: stations overrun.") if r > 0 else ""]
 	v.add_child(stars)
 	v.add_child(_ink(String(c["name"]).to_upper(), 18))
 	v.add_child(_ink("»%s«" % c["nick"], 14))
@@ -190,7 +190,7 @@ static func wanted_poster(c: Dictionary, sid: int = -1, course = null) -> Contro
 	if not (c.get("raid", {}) as Dictionary).is_empty() and String(c["raid"].get("state", "")) == "active":
 		v.add_child(_ink("RAIDING %s" % String(c["raid"]["name"]).to_upper(), 12, INK_RED))
 	if NotoriousData.is_hidden(c):
-		v.add_child(_ink("In hiding – whereabouts unknown.", 11))
+		v.add_child(_ink("In hiding: whereabouts unknown.", 11))
 		return box
 	var where := int(c["system"])
 	if sid >= 0 and where >= 0:

@@ -88,9 +88,17 @@ func _line(i: int) -> void:
 	_speaker(who)
 	(_dlg["said"] as Array).append([who, String(ln["text"])])
 	var opts: Array = []
+	var shown: Array = []
 	for a in ln.get("answers", []):
 		var ans: Array = a
-		opts.append([String(ans[0]), func(): _answer(ans)])
+		if not answer_ok(ans):
+			continue                                          # package 56: an answer only when its story flags say so
+		shown.append(ans)
+		var o := [String(ans[0]), func(): _answer(ans)]
+		if ans.size() > 4 and bool((ans[4] as Dictionary).get("gold", false)):
+			o.append(GOLD)                                    # package 56 (Luz): it moves the story on – in gold
+		opts.append(o)
+	_dlg["answers"] = shown
 	if opts.is_empty():
 		# package 56: no answers – a press goes on to the next line (or the line's "next"; -1: the end)
 		var nxt := int(ln.get("next", i + 1 if i + 1 < (dd["lines"] as Array).size() else -1))
@@ -110,11 +118,38 @@ func _speaker(who: String) -> void:
 	dialogue.set_speaker(GameState.story.portrait_of(who), String(c.get("name", who)), String(c.get("sub", "")), c.get("col", GOLD))
 
 
-## An answer: its flag set, on to its line (or the end).
+## Package 56: whether an answer is offered – its 5th entry {"if": [[flag, value], …] (one of them), "not": [flag, …]
+## (none of them set)}; value true: the flag set at all.
+static func answer_ok(ans: Array) -> bool:
+	if ans.size() < 5:
+		return true
+	var c: Dictionary = ans[4]
+	var fl: Dictionary = GameState.story.flags
+	if c.has("if"):
+		var any := false
+		for pair in c["if"]:
+			var v = fl.get(String(pair[0]), null)
+			if v == null:
+				continue
+			if typeof(pair[1]) == TYPE_BOOL:
+				any = any or bool(v) == bool(pair[1])
+			else:
+				any = any or (typeof(v) == typeof(pair[1]) and v == pair[1])
+		if not any:
+			return false
+	for nf in c.get("not", []):
+		var nv = fl.get(String(nf), null)
+		if nv != null and not (typeof(nv) == TYPE_BOOL and not nv):
+			return false
+	return true
+
+
+## An answer (of those shown): its flag set, on to its line (or the end).
 func choose(i: int) -> void:
-	var dd: Dictionary = Data.DIALOGUES[String(_dlg["id"])]
-	var ln: Dictionary = (dd["lines"] as Array)[int(_dlg["line"])]
-	var ans: Array = (ln.get("answers", []) as Array)
+	var ans: Array = _dlg.get("answers", [])
+	if dialogue != null and ans.is_empty():
+		dialogue.choose(0)                                    # a line without answers: on
+		return
 	_answer(ans[i] if i < ans.size() else ["", -1, []])
 
 
@@ -126,6 +161,7 @@ func _answer(ans: Array) -> void:
 		# package 56 (Luz): the pilot says it out loud – the answer at length, with their own face
 		(_dlg["said"] as Array).append(["you", String(ans[3])])
 		_speaker("you")
+		_dlg["answers"] = []                                  # a press goes on (no answers to pick here)
 		var nxt := int(ans[1])
 		dialogue.say(GameState.story.keys(String(ans[3])), [], func(): _answer(["", nxt, []]))
 		return

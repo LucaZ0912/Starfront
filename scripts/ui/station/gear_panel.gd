@@ -13,13 +13,13 @@ const GearIcons = preload("res://scripts/ui/gear_icons.gd")
 
 ## category → [title, [[group key, title, line, families …]]]
 const CATS := {
-	"suit": ["Suits", "Spacesuits – the pilot's hull", [
+	"suit": ["Suits", "Spacesuits: the pilot's hull", [
 		["suit_plain", "Civilian & work", "Sealed, light, long life support", ["suit_civil", "suit_work", "suit_survey"]],
 		["suit_combat", "Combat", "Shield, plate, more weapons", ["suit_mil_light", "suit_mil_heavy"]]]],
 	"weapon": ["Weapons", "Sidearms, rifles, heavy weapons", [
-		["wp_optical", "Lasers", "Optical – strong on shields, on suit energy", ["wp_laser_pistol", "wp_laser_rifle", "wp_beam"]],
-		["wp_kinetic", "Slug guns", "Kinetic – strong on armour, on ammunition", ["wp_pistol", "wp_smg", "wp_rifle", "wp_shotgun", "wp_sniper"]],
-		["wp_explosive", "Explosive", "Splash – strong on the body", ["wp_launcher"]]]],
+		["wp_optical", "Lasers", "Optical: strong on shields, on suit energy", ["wp_laser_pistol", "wp_laser_rifle", "wp_beam"]],
+		["wp_kinetic", "Slug guns", "Kinetic: strong on armour, on ammunition", ["wp_pistol", "wp_smg", "wp_rifle", "wp_shotgun", "wp_sniper"]],
+		["wp_explosive", "Explosive", "Splash: strong on the body", ["wp_launcher"]]]],
 	"feature": ["Features", "The suit's modules", [
 		["ft_def", "Defence", "Shield and plate", ["ft_shield", "ft_plates"]],
 		["ft_move", "Movement", "Servos and thrust", ["ft_sprint", "ft_jets"]],
@@ -103,7 +103,7 @@ func _front(o: Dictionary, g) -> void:
 	sb.disabled = n == 0
 	var r := UI.hbox(8)
 	r.add_child(sb)
-	r.add_child(UI.label("What you buy goes into your pockets – put it on in the Pilot window, Gear tab [%s]." % Keybinds.key_text("pilot_window"), 12, UI.TEXT_DIM))
+	r.add_child(UI.label("What you buy goes into your pockets: put it on in the Pilot window, Gear tab [%s]." % Keybinds.key_text("pilot_window"), 12, UI.TEXT_DIM))
 	add_child(r)
 
 
@@ -202,7 +202,7 @@ func _list(o: Dictionary) -> void:
 		any = true
 		add_child(_row(String(f), o[f], heads))
 	if not any:
-		add_child(UI.label("Nothing of this kind here – try a bigger station or a military system.", 13, UI.TEXT_DIM))
+		add_child(UI.label("Nothing of this kind here: try a bigger station or a military system.", 13, UI.TEXT_DIM))
 
 
 func _row(f: String, qs: Array, heads: Array) -> Control:
@@ -250,7 +250,7 @@ func _row(f: String, qs: Array, heads: Array) -> Control:
 			if not qs.has(q):
 				qb.text = "%s\n–" % q
 				qb.disabled = true
-				qb.tooltip_text = "Quality %s – not sold here" % q
+				qb.tooltip_text = "Quality %s, not sold here" % q
 			else:
 				var id := GearShop.id_of(f, String(q))
 				var price := buy_price(GearData.price(id))

@@ -4,7 +4,7 @@ extends StationServicePanel
 
 func build() -> void:
 	UI.clear(self)
-	add_child(UI.label("Ships in this hangar – you always fly exactly one.", 13, UI.TEXT_DIM))
+	add_child(UI.label("Ships in this hangar: you always fly exactly one.", 13, UI.TEXT_DIM))
 	for f in GameState.hangar(station["id"]):
 		var fit_: ShipFitting = f
 		var box := UI.neon_panel(Color(corp_color(), 0.5), Color(0.04, 0.05, 0.09, 0.9), 1)
@@ -37,7 +37,7 @@ func build() -> void:
 			row.add_child(UI.button("Board", board))
 	_platform()
 	if GameState.hangar(station["id"]).size() <= 1:
-		add_child(UI.label("Buy more ships at a shipyard – Hadal Orbital Yards delivers them here.", 12, UI.TEXT_DIM))
+		add_child(UI.label("Buy more ships at a shipyard: Hadal Orbital Yards delivers them here.", 12, UI.TEXT_DIM))
 
 
 ## Package 33: the Citadel's launch platform – which Hadrian S ship stands on it, put one on, take it off, recall a lost one.
@@ -47,7 +47,7 @@ func _platform() -> void:
 		return
 	section("LAUNCH PLATFORM OF THE %s" % cit.ship_name.to_upper())
 	var pp := GameState.platform_pilot(cit)
-	add_child(UI.label(("Platform pilot: %s (%s)" % [pp["name"], pp["quality"]]) if not pp.is_empty() else "No platform pilot – a Co-Pilot with the perk Wingman flies the platform ship (crew post in Modules → Crew).", 13, UI.GOOD if not pp.is_empty() else UI.BAD))
+	add_child(UI.label(("Platform pilot: %s (%s)" % [pp["name"], pp["quality"]]) if not pp.is_empty() else "No platform pilot: a Co-Pilot with the perk Wingman flies the platform ship (crew post in Modules → Crew).", 13, UI.GOOD if not pp.is_empty() else UI.BAD))
 	if not cit.platform_ship.is_empty():
 		var r := UI.hbox(12)
 		add_child(r)
@@ -57,7 +57,7 @@ func _platform() -> void:
 		return
 	if not cit.platform_lost.is_empty():
 		var price := GameState.platform_recall_price(cit)
-		var b := UI.button("Recall the destroyed %s – %s (10 %%)" % [cit.platform_lost["ship_name"], GameData.fmt_credits(price)], func(): run({"type": "platform_rebuy"}))
+		var b := UI.button("Recall the destroyed %s: %s (10 %%)" % [cit.platform_lost["ship_name"], GameData.fmt_credits(price)], func(): run({"type": "platform_rebuy"}))
 		b.disabled = GameState.credits < price
 		add_child(b)
 	var any := false
@@ -69,4 +69,4 @@ func _platform() -> void:
 		var uid := s.uid
 		add_child(UI.button("Put the %s on the platform" % s.ship_name, func(): run({"type": "platform_load", "uid": uid})))
 	if not any and cit.platform_lost.is_empty():
-		add_child(UI.label("Any Hadrian Dynamics S ship in this hangar can stand on the platform – fit it as you like first.", 12, UI.TEXT_DIM))
+		add_child(UI.label("Any Hadrian Dynamics S ship in this hangar can stand on the platform: fit it as you like first.", 12, UI.TEXT_DIM))

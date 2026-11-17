@@ -34,6 +34,9 @@ Stand: Entwurf vom 11. Nov 2026 (Claude), zur Korrektur durch Luz.
 - Einzelspieler zuerst, alles **koop-tauglich** gebaut (Zustand in Daten, Änderungen über `Commands.execute`, die
   Oberfläche zeigt nur an).
 - **Spieltexte englisch**, Sternsystem-Namen deutsch; Antworten an Luz auf Deutsch.
+- **Kaum Gedankenstriche (–) in Spieltexten** (Luz, 17. Nov 2026): Dialoge, Funksprüche, Missionen, Tipps und andere
+  Texte lieber mit Komma, Punkt, Doppelpunkt oder Klammer; der Strich nur, wo nichts anderes passt (etwa in Titeln
+  wie „Station – Hangar“ oder Bereichen wie „1–8“).
 - Alte Spielstände müssen nicht ladbar bleiben (Alpha); nie eine Mechanik deswegen einschränken.
 
 ## 3. Aussehen

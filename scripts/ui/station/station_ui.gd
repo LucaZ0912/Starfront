@@ -209,7 +209,7 @@ func service_available(svc: Dictionary) -> String:
 		"munitions":
 			return "" if not Munitions.offer(station).is_empty() else "No munitions stocked here (the system's economy)"
 		"clinic":
-			return "" if not station.get("settlement", false) else "No clinic in a settlement – the cities and stations have one"
+			return "" if not station.get("settlement", false) else "No clinic in a settlement: the cities and stations have one"
 	return ""
 
 
@@ -548,7 +548,7 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	if sf != "":
 		v.add_child(UI.label("%s  •  your standing: %s (%+.0f)" % [FactionData.name_of(sf), GameState.rep.tier_name(sf), GameState.rep.get_rep(sf)], 13, FactionData.color_of(sf)))
 	else:
-		v.add_child(UI.label("Free port – no faction", 13, UI.TEXT_DIM))
+		v.add_child(UI.label("Free port: no faction", 13, UI.TEXT_DIM))
 	var t := station_type()
 	# package 42/43: the system's economy and what this market makes and wants (from its stocks' roles)
 	var prod: Array = []
@@ -609,8 +609,8 @@ func _relief_panel(parent: Control) -> void:
 	parent.add_child(box)
 	var v := UI.vbox(6)
 	box.add_child(v)
-	v.add_child(UI.label("RELIEF EFFORT – the station needs supplies to come back online", 16, UI.BAD))
-	v.add_child(UI.wrap_label("Deliver any amount: every unit pays %d× its base price. When everything has arrived the station reopens at once – bonus %s and standing with the %s. Otherwise its crews need %d more minutes." % [int(GameState.stations.PRICE_MULT), GameData.fmt_credits(GameState.stations.BONUS_PER_TIER * int(e["tier"])), FactionData.name_of(String(e["faction"])), int(ceil((float(e["until"]) - GameState.play_time) / 60.0))], 13, UI.TEXT_DIM, 360))
+	v.add_child(UI.label("RELIEF EFFORT: the station needs supplies to come back online", 16, UI.BAD))
+	v.add_child(UI.wrap_label("Deliver any amount: every unit pays %d× its base price. When everything has arrived the station reopens at once: bonus %s and standing with the %s. Otherwise its crews need %d more minutes." % [int(GameState.stations.PRICE_MULT), GameData.fmt_credits(GameState.stations.BONUS_PER_TIER * int(e["tier"])), FactionData.name_of(String(e["faction"])), int(ceil((float(e["until"]) - GameState.play_time) / 60.0))], 13, UI.TEXT_DIM, 360))
 	var f := fit()
 	for item in e["need"]:
 		var it: String = item

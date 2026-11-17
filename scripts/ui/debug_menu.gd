@@ -255,7 +255,7 @@ func _build_ship() -> void:
 	rp.add_child(UI.button("NPC carriers launch drones", func(): _cmd({"type": "debug_npc_drones"})))
 	var rx := _row()
 	rx.add_child(UI.button("+10 exotic matter (Threshold)", func(): _cmd({"type": "debug_exotic", "amount": 10})))
-	_box.add_child(UI.wrap_label("Plays the S-ship launch of the Citadel's platform (animation only – the ship itself comes with part 5). Drones always use the small drone hatch behind it.", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Plays the S-ship launch of the Citadel's platform (animation only: the ship itself comes with part 5). Drones always use the small drone hatch behind it.", 12, UI.TEXT_DIM, 440))
 	_section("New ship (into the hangar)")
 	var ids: Array = GameData.hulls.keys()
 	var labels: Array = []
@@ -349,7 +349,7 @@ func _build_items() -> void:
 	r2.add_child(amt)
 	var give_com := func(): _cmd({"type": "debug_give_cargo", "item": com.get_selected_metadata(), "amount": amt.value})
 	r2.add_child(UI.button("Give commodity", give_com))
-	_box.add_child(UI.wrap_label("Commodities respect cargo space – give yourself a Mule for big loads (Ship tab).", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("Commodities respect cargo space: give yourself a Mule for big loads (Ship tab).", 12, UI.TEXT_DIM, 440))
 
 
 func _build_world() -> void:
@@ -386,8 +386,8 @@ func _build_world() -> void:
 	var r39b := _row()
 	r39b.add_child(UI.button("New bill", func(): _cmd({"type": "debug_senate", "do": "new"})))
 	r39b.add_child(UI.button("Vote now", func(): _cmd({"type": "debug_senate", "do": "resolve"})))
-	r39b.add_child(UI.button("Vote now – bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
-	r39b.add_child(UI.button("Vote now – bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
+	r39b.add_child(UI.button("Vote now: bribe found out", func(): _cmd({"type": "debug_senate", "do": "caught"})))
+	r39b.add_child(UI.button("Vote now: bribe works", func(): _cmd({"type": "debug_senate", "do": "clean"})))
 	# package 40: the new cluster
 	_section("Heimkehr & the Curia (package 39b)")
 	var cu39 = GameState.curia
@@ -460,6 +460,15 @@ func _build_world() -> void:
 		GameState.story.flags["flight_tutorial"] = true
 		var mn5 = get_tree().current_scene
 		mn5.get_tree().create_timer(1.0).timeout.connect(func(): mn5._start_intro_five("hangar"))))
+	r56.add_child(UI.button("Play sequence 6 (Dan's deal)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		for fl in ["dan_deal_yes", "dan_deal_no", "dan_q_stuck", "dan_q_licence"]:
+			GameState.story.flags.erase(fl)
+		if not GameState.story.running("prologue"):
+			GameState.story.start("prologue", 3)
+		var mn6 = get_tree().current_scene
+		mn6.get_tree().create_timer(1.0).timeout.connect(func(): mn6._start_intro_six("bar"))))
 	r56.add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()
@@ -636,7 +645,7 @@ func _build_character() -> void:
 	r.add_child(UI.button("Random pilot", func():
 		_cmd({"type": "debug_pilot", "random": true})
 		_set_tab(5)))
-	_section("Attributes (free – 1 to 20, beyond the starting limits)")
+	_section("Attributes (free: 1 to 20, beyond the starting limits)")
 	var spins := {}
 	for at in PilotDataX.ATTRS:
 		var r2 := _row()
@@ -813,8 +822,8 @@ func _world_types(first: String) -> Array:
 ## 0.7.53.19 (Luz): a button for every mission – the jobs on foot (each heist and spy variant) and the space contracts;
 ## accepted at once from the docked (or nearest) station.
 const GROUND_JOBS := [["relic", "", "Relic race (ruin)"], ["salvage", "", "Salvage (crash site)"], ["bounty_foot", "", "Bounty on foot (pirate base)"],
-	["heist", "pirate", "Heist – pirate base"], ["heist", "sewer", "Heist – the dealer's safe (city)"], ["heist", "corp", "Heist – corporate vault (city)"],
-	["spy", "", "Espionage – a site"], ["spy", "corp", "Espionage – corporate tower (city)"], ["reactivate", "", "Reactivation (city tunnels)"],
+	["heist", "pirate", "Heist: pirate base"], ["heist", "sewer", "Heist: the dealer's safe (city)"], ["heist", "corp", "Heist: corporate vault (city)"],
+	["spy", "", "Espionage: a site"], ["spy", "corp", "Espionage: corporate tower (city)"], ["reactivate", "", "Reactivation (city tunnels)"],
 	["rescue", "pirate", "Rescue (pirate base)"], ["rescue", "research", "Rescue (research station)"], ["recover", "", "Data recovery (research station)"], ["investigate", "debug", "Strange happenings (Dark Ones ruin)"], ["pest", "", "Rat plague (sewers)"], ["hunt", "", "Hunt (the wild)"]]
 const SPACE_JOBS := [["courier", "Courier"], ["bounty", "Bounty"], ["mining", "Supply"], ["survey", "Survey"], ["escort", "Escort"],
 	["patrol", "Patrol"], ["smuggler", "Intercept"], ["hunt", "Hunt"], ["drone_trial", "Drone trial"], ["passenger", "Passengers"]]
@@ -835,7 +844,7 @@ func _build_missions() -> void:
 	rst2.add_child(UI.button("Reset the story", func(): _cmd({"type": "debug_story", "do": "reset"})))
 	_box.add_child(UI.wrap_label("The story's framework: the test mission (a dialogue with Dan, a radio call, a tip, a marked station to fly to and dock at). The journal: Pilot window → Journal (O).", 12, UI.TEXT_DIM, 560))
 	_section("Jobs on foot (packages 53c, 53d)")
-	_box.add_child(UI.wrap_label("Accept: the job is yours – the site goes on the planet map (in a city: the way in from the city). Accept & go: straight down onto the site (not for city jobs).", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Accept: the job is yours; the site goes on the planet map (in a city: the way in from the city). Accept & go: straight down onto the site (not for city jobs).", 12, UI.TEXT_DIM, 560))
 	for gj in GROUND_JOBS:
 		var r := _row()
 		var goal: String = gj[0]
@@ -887,7 +896,7 @@ func _build_ground() -> void:
 	_box.add_child(_ground_status)
 	_update_ground_status()
 	# package 49: on foot
-	_section("On foot – decks and levels (packages 49, 50)")
+	_section("On foot: decks and levels (packages 49, 50)")
 	var r49 := _row()
 	r49.add_child(UI.button("Open the deck here", func(): _cmd({"type": "debug_deck"})))
 	for lv in [["hangar", "Hangar"], ["commercial", "Commercial"], ["street", "Street"], ["tower", "Tower bar"], ["clinic", "Clinic"]]:
@@ -903,7 +912,7 @@ func _build_ground() -> void:
 		if Universe.landable(b):
 			bids.append(String(b["id"]))
 			var sites: Array = Universe.landing_sites(GameState.current_system, b)
-			bnames.append("%s – %s (cities %d, other places %d)" % [String(b["name"]), String(Universe.body_type(String(b["type"]))["name"]),
+			bnames.append("%s: %s (cities %d, other places %d)" % [String(b["name"]), String(Universe.body_type(String(b["type"]))["name"]),
 				sites.filter(func(x): return String(x["kind"]) == "city").size(), sites.filter(func(x): return String(x["kind"]) != "city").size()])
 	if bids.is_empty():
 		_box.add_child(UI.label("Nothing to land on in this system.", 12, UI.TEXT_DIM))
@@ -932,7 +941,7 @@ func _build_ground() -> void:
 	for ph in PHASES:
 		var phk: String = ph[0]
 		rl2.add_child(UI.button(String(ph[1]), func(): _cmd({"type": "debug_daytime", "phase": phk})))
-	_box.add_child(UI.wrap_label("Lands at once at the first place of that kind on the body – if there is none, or an economy is forced (settlements only), a debug place is added. 'World' shows the body as another world type (ground, bounds, air). The hour turns every world on until the place has it.", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Lands at once at the first place of that kind on the body, if there is none, or an economy is forced (settlements only), a debug place is added. 'World' shows the body as another world type (ground, bounds, air). The hour turns every world on until the place has it.", 12, UI.TEXT_DIM, 560))
 	# package 51: gear, the world outside, the clinic
 	_section("Gear, the world outside, the clinic (package 51)")
 	var fams: Array = []
@@ -981,7 +990,7 @@ func _build_ground() -> void:
 	var rc := _row()
 	rc.add_child(UI.button("Collapse now", func(): _cmd({"type": "debug_collapse"})))
 	rc.add_child(UI.button("Wake in the clinic here", func(): _cmd({"type": "debug_wake_clinic"})))
-	_box.add_child(UI.wrap_label("Collapse: on foot the body gives out – you wake in the nearest city's clinic (else the last station's), the pockets emptied. Wake in the clinic: of the station or city you are docked at.", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Collapse: on foot the body gives out; you wake in the nearest city's clinic (else the last station's), the pockets emptied. Wake in the clinic: of the station or city you are docked at.", 12, UI.TEXT_DIM, 560))
 	# package 52: fights on foot
 	_section("Combat on foot: the arena (package 52)")
 	var at: Array = _world_types("World: the body's own")
@@ -1127,7 +1136,7 @@ func _build_ground() -> void:
 		rcp.add_child(UI.button(String(cl[1]), func(): _cmd({"type": "debug_capital", "which": "senate", "level": clv})))
 	rcp.add_child(UI.button("New bill", func(): _cmd({"type": "debug_senate", "do": "new"})))
 	rcp.add_child(UI.button("Permit", func(): _cmd({"type": "debug_permit", "faction": "assembly", "on": true})))
-	_box.add_child(UI.wrap_label("Straight to Landfall and down into Neo Kallipolis on Agora – the Plaza of the Vote, the Senate's lobby (party office, lobbyist), the gallery over the chamber (the voting stand).", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Straight to Landfall and down into Neo Kallipolis on Agora: the Plaza of the Vote, the Senate's lobby (party office, lobbyist), the gallery over the chamber (the voting stand).", 12, UI.TEXT_DIM, 560))
 	var rvt := _row()
 	rvt.add_child(UI.label("The Vote:", 12, UI.TEXT_DIM))
 	rvt.add_child(UI.button("Gallery over the shaft", func(): _cmd({"type": "debug_station_room", "room": "vgallery"})))
@@ -1148,7 +1157,7 @@ func _build_ground() -> void:
 		rau.add_child(UI.button(String(pl[1]), func(): _cmd({"type": "debug_capital", "which": "palace", "level": plv})))
 	rau.add_child(UI.button("Covenant: Allied", func(): _cmd({"type": "debug_rep", "faction": "covenant", "value": 80.0})))
 	rau.add_child(UI.button("New edict", func(): _cmd({"type": "debug_edict", "edict": ""})))
-	_box.add_child(UI.wrap_label("Straight to Heimkehr and up into Aureola over Compline – the palace platform (forecourt, bridge), the lobby (the Curia's chancery, the relic office, the guard), the throne room (the audience: Allied only – re-enter it after changing standing).", 12, UI.TEXT_DIM, 560))
+	_box.add_child(UI.wrap_label("Straight to Heimkehr and up into Aureola over Compline, the palace platform (forecourt, bridge), the lobby (the Curia's chancery, the relic office, the guard), the throne room (the audience: Allied only, re-enter it after changing standing).", 12, UI.TEXT_DIM, 560))
 	_section("Bar games (package 54b)")
 	var rbg := _row()
 	rbg.add_child(UI.label("Billiards:", 12, UI.TEXT_DIM))
@@ -1236,7 +1245,7 @@ func _update_ground_status() -> void:
 		for h in GroundGear.HAZARDS:
 			if float(gv.env.get(h, 0.0)) > 0.0:
 				hz.append("%s %d%%" % [GroundGear.HAZARD_NAMES[h], int(float(gv.env[h]) * 100.0)])
-		where = "on foot: %s – %s  •  outside: %s" % [String(gv.station.get("name", "?")), gv.level,
+		where = "on foot: %s, %s  •  outside: %s" % [String(gv.station.get("name", "?")), gv.level,
 			"indoors" if gv.env.is_empty() else (("air " if bool(gv.env.get("breathable", true)) else "no air ") + ", ".join(hz))]
 		if gv.is_town():
 			where += "  •  daylight %d %%" % int(gv.city_day() * 100.0)

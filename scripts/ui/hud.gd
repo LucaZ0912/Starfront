@@ -363,31 +363,31 @@ func _ready() -> void:
 	GameState.fleet_changed.connect(rebuild_ship_panel)
 
 
-const HELP_TEXT := """[b]Spacefarer – Controls[/b]
+const HELP_TEXT := """[b]Spacefarer: Controls[/b]
 
 You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped there.
 
 [color=#7fd8ff]Mouse wheel / {zoom_combat}, {zoom_recon}, {zoom_orbit}, {zoom_system}[/color]: zoom levels Combat → Recon → Orbit (a planet and its moons; not in warp) → System
 [color=#7fd8ff]Click an object[/color] (or an overview entry): it appears in the panel top right with its actions –
    Warp to • Approach • Orbit • Keep at range • Lock target • Dock • Jump
-[color=#7fd8ff]Lock targets[/color]: locked targets appear top centre – click one to make it the active target
-[color=#7fd8ff]Module bar[/color] (bottom centre): one tile per fire group – click it or press [b]{module_1} … {module_8}[/b] to switch all its modules on/off (set the groups in Ship → Modules → Fire groups).
+[color=#7fd8ff]Lock targets[/color]: locked targets appear top centre; click one to make it the active target
+[color=#7fd8ff]Module bar[/color] (bottom centre): one tile per fire group; click it or press [b]{module_1} … {module_8}[/b] to switch all its modules on/off (set the groups in Ship → Modules → Fire groups).
    Weapons need a locked hostile ship, mining lasers an asteroid, analysers an anomaly, salvagers a wreck.
    Tile border: green = working on the active target, yellow = working on another target, orange = out of range, purple = not enough energy, red = no power.
-[color=#7fd8ff]Click empty space[/color]: sublight flight (slow – the system is huge)
+[color=#7fd8ff]Click empty space[/color]: sublight flight (slow, the system is huge)
 
 {ship_up}{ship_left}{ship_down}{ship_right}: fly the ship in that direction (release: stop)
 {cam_up}{cam_left}{cam_down}{cam_right} / drag middle mouse: pan camera • {cam_center}: back to ship
 {sel_target}: cycle targets in sensor range • {sel_hostile} / {sel_friend}: cycle hostile / friendly ships • {sel_station}: nearby station • {cmd_lock}: lock / unlock
 [color=#7fd8ff]Multi-focus[/color]: every weapon and tool keeps the target that was active when you switched it on (T1, T2 … on its tile).
-   Make another lock active and switch more modules on – press a running module's key to move it to the active target.
+   Make another lock active and switch more modules on: press a running module's key to move it to the active target.
 {cmd_approach} approach • {cmd_warp} warp (in warp: twice within 5 s = emergency shutdown) • {cmd_jump} jump • {cmd_dock} dock • {cmd_follow} follow (the selected object)
-[color=#7fd8ff]Drones[/color]: {drone_launch} launch one, {drone_recall} recall (a key for "launch all" can be set in Settings → Controls) – role and behaviour in the drone window (top left). They fly into the hangar for warps and jumps and out again afterwards.
+[color=#7fd8ff]Drones[/color]: {drone_launch} launch one, {drone_recall} recall (a key for "launch all" can be set in Settings → Controls): role and behaviour in the drone window (top left). They fly into the hangar for warps and jumps and out again afterwards.
 {ship_menu}: ship menu • {station}: station • {galaxy_map}: galaxy map • {menu_back}: close / pause menu
 {quicksave} / {quickload}: quicksave / quickload • {debug_menu}: debug menu • All keys: Settings → Controls
 
 [b]Tips[/b]
-• Pirates attack you on their own – lock them and switch your weapons on.
+• Pirates attack you on their own: lock them and switch your weapons on.
 • Scanners sweep the whole system passively and reveal hidden anomalies.
 • Optical → strong vs shields, kinetic → armor, explosive → structure.
 • Any jump drive takes any route; a bigger drive (Mk II, Mk III) jumps faster.
@@ -582,7 +582,7 @@ func _update_contacts() -> void:
 		UI.clear(contacts_box)
 		_contact_rows.clear()
 		if view.player_jammed():
-			contacts_box.add_child(UI.label("RADAR JAMMED – only ships within %s show up." % SystemView.fmt_dist(view.JAM_VISIBLE), 12, Color(1.0, 0.45, 0.4)))
+			contacts_box.add_child(UI.label("RADAR JAMMED: only ships within %s show up." % SystemView.fmt_dist(view.JAM_VISIBLE), 12, Color(1.0, 0.45, 0.4)))
 		if ships.is_empty():
 			contacts_box.add_child(UI.label("No other ships in this system.", 12, UI.TEXT_DIM))
 		for n3 in ships:
@@ -607,7 +607,7 @@ func _update_contacts() -> void:
 		var warp_mark := "⇢ " if n4.in_warp() else "▲ "
 		b2.text = "%s%s  ·  %s  ·  %s" % [warp_mark, n4.display_name(), role, SystemView.fmt_dist(pp.distance_to(n4.position))]
 		b2.add_theme_color_override("font_color", col)
-		b2.tooltip_text = n4.info_text() + ("\nIn warp – a Warp Interdictor can pull it out." if n4.in_warp() else "")
+		b2.tooltip_text = n4.info_text() + ("\nIn warp: a Warp Interdictor can pull it out." if n4.in_warp() else "")
 
 
 func _overview_click(t: Dictionary) -> void:
@@ -721,7 +721,7 @@ func radiation_banner() -> Dictionary:
 	var v := f.unshielded_rad()
 	if v <= 0.001:
 		return {}
-	return {"text": "RADIATION – UNSHIELDED CARGO", "sub": "%.1f m³ of radioactive goods outside shielded cargo racks – the crew is exposed. Fit shielded racks or get rid of it." % v, "k": 1.0}
+	return {"text": "RADIATION – UNSHIELDED CARGO", "sub": "%.1f m³ of radioactive goods outside shielded cargo racks: the crew is exposed. Fit shielded racks or get rid of it." % v, "k": 1.0}
 
 
 func _update_cme_banner(delta: float) -> void:
@@ -787,7 +787,7 @@ func _process(delta: float) -> void:
 	var s := f.stats()
 	var act := ""
 	if f.in_transit():
-		act = "In hyperspace – %d s" % int(ceil(f.transit))
+		act = "In hyperspace: %d s" % int(ceil(f.transit))
 	elif view != null and view.player != null and is_instance_valid(view.player):
 		act = view.player.activity
 		var tgt = view.player.target
@@ -865,7 +865,7 @@ func show_survey(r: Dictionary) -> void:
 	for row in r["ores"]:
 		var cls: String = GameData.commodities.get(row[0], {}).get("class", "")
 		var col: Color = SystemView.FIELD_COLORS.get(cls, Color.WHITE)
-		t += "  [color=#%s]■[/color] %s – %d units%s\n" % [col.to_html(false), GameData.item_name(row[0]), int(row[2]), (" (main ore of %d)" % int(row[1])) if int(row[1]) > 0 else ""]
+		t += "  [color=#%s]■[/color] %s: %d units%s\n" % [col.to_html(false), GameData.item_name(row[0]), int(row[2]), (" (main ore of %d)" % int(row[1])) if int(row[1]) > 0 else ""]
 	t += "[color=#ffd070]Ships:[/color]\n"
 	if r["ships"].is_empty():
 		t += "  none\n"
@@ -873,7 +873,7 @@ func show_survey(r: Dictionary) -> void:
 		var hostile := String(k).ends_with("Pirate")
 		t += "  [color=#%s]%d× %s[/color]\n" % ["ff7060" if hostile else "c0d0e0", int(r["ships"][k]), k]
 	t += "[color=#ffd070]Wrecks:[/color] %d   [color=#ffd070]Colossi:[/color] %d\n" % [int(r["wrecks"]), int(r["colossi"])]
-	t += "[color=#8090a0][font_size=11]Snapshot – it goes out of date after %d minutes. Also shown in the selection panel of the place.[/font_size][/color]" % int(Ship.SURVEY_STALE / 60.0)
+	t += "[color=#8090a0][font_size=11]Snapshot: it goes out of date after %d minutes. Also shown in the selection panel of the place.[/font_size][/color]" % int(Ship.SURVEY_STALE / 60.0)
 	survey_text.text = t
 	survey_panel.visible = true
 
@@ -881,7 +881,7 @@ func show_survey(r: Dictionary) -> void:
 func _on_codex_unlocked(id: String) -> void:
 	var title := String(GameState.codex.all[id]["title"])
 	if GameState.play_time < _codex_until and codex_label.text != "":
-		codex_label.text = "📖 New Codex entries – open Ship [%s] → Codex" % Keybinds.key_text("ship_menu")
+		codex_label.text = "📖 New Codex entries: open Ship [%s] → Codex" % Keybinds.key_text("ship_menu")
 	else:
 		codex_label.text = "📖 New Codex entry: %s  –  Ship [%s] → Codex" % [title, Keybinds.key_text("ship_menu")]
 	_codex_until = GameState.play_time + 6.0
@@ -919,17 +919,17 @@ func _update_zone_label() -> void:
 	var p = view.player if view != null else null
 	if p != null and is_instance_valid(p) and not p.is_docked():
 		if view.is_aggressor(p):
-			text = "⚠ AGGRESSOR – station defence batteries are firing at you (%d s)" % int(ceil(view.aggro_left(p)))
+			text = "⚠ AGGRESSOR: station defence batteries are firing at you (%d s)" % int(ceil(view.aggro_left(p)))
 			col = Color(1.0, 0.35, 0.3)
 		else:
 			for hv in view.havens:
 				if is_instance_valid(hv) and hv.position.distance_to(p.position) < SystemView.HAVEN_RANGE * 1.5:
-					text = "⚠ %s – pirate guns in range" % hv.title()
+					text = "⚠ %s: pirate guns in range" % hv.title()
 					col = Color(1.0, 0.35, 0.3)
 			if text == "":
 				var st = view.zone_station(p.position)
 				if st != null:
-					text = "NO-FIRE ZONE · %s – opening fire makes the station defend itself" % st.title()
+					text = "NO-FIRE ZONE · %s: opening fire makes the station defend itself" % st.title()
 	if _warn_text != "" and GameState.play_time < _warn_until:
 		text = "⚠ " + _warn_text if text == "" else "⚠ " + _warn_text + "\n" + text
 		col = Color(1.0, 0.35, 0.3)
@@ -1187,10 +1187,10 @@ func _build_selected() -> void:
 					have = true
 					break
 		if not have:
-			ri.add_child(UI.label("In warp – a Warp Interdictor could stop it.", 12, UI.TEXT_DIM))
+			ri.add_child(UI.label("In warp: a Warp Interdictor could stop it.", 12, UI.TEXT_DIM))
 	if has_node and kind == "ship" and d["node"].escort_mark:
 		var fol: bool = view.player != null and is_instance_valid(view.player) and String(view.player.order.get("type", "")) == "follow" and view.player.order.get("node") == d["node"]
-		var fb := UI.button("Following" if fol else "Follow", func(): _cmd({"type": "follow", "id": id}), "Stay with this ship – also in warp and through gates\n" + _hk("cmd_follow"))
+		var fb := UI.button("Following" if fol else "Follow", func(): _cmd({"type": "follow", "id": id}), "Stay with this ship: also in warp and through gates\n" + _hk("cmd_follow"))
 		fb.disabled = fol
 		r1.add_child(fb)
 	if has_node and kind in ["ship", "asteroid", "wreck", "anomaly", "colossus"]:
@@ -1239,7 +1239,7 @@ func _update_selected() -> void:
 		if n.in_warp():
 			t += "\nIn warp → %s%s" % [n.warp.get("name", "?"), "  (frozen by an interdictor)" if n.warp_frozen else ""]
 		if n.faction != "player":
-			t += "\n" + (n.warrant_text() if n.warrant_known else "Bounty: unknown – lock it and use a Warrant Scanner")
+			t += "\n" + (n.warrant_text() if n.warrant_known else "Bounty: unknown; lock it and use a Warrant Scanner")
 	elif n != null and d["kind"] == "asteroid":
 		if String(n.data.get("shape", "")) == "scrap":
 			t += "\n%s hull scrap of the Gold Fleet" % String(n.data.get("size", "")).capitalize()     # package 57
@@ -1250,15 +1250,15 @@ func _update_selected() -> void:
 		if n.is_prospected():
 			t += "\n%s" % n.composition_text()
 		else:
-			t += "\nComposition unknown – lock it and use a Prospector Scanner"
+			t += "\nComposition unknown: lock it and use a Prospector Scanner"
 	elif n != null and d["kind"] == "colossus" and n.data.has("wreck"):
 		# package 57: a section torn off a Gold Fleet ship
-		t += "\nGold Fleet %s, %s – %s  •  %s long" % [StationArt.SHIP_KINDS[int(n.data["wreck"]) % 4], StationArt.PIECE_PARTS[int(n.data["wreck"]) / 4],
+		t += "\nGold Fleet %s, %s: %s  •  %s long" % [StationArt.SHIP_KINDS[int(n.data["wreck"]) % 4], StationArt.PIECE_PARTS[int(n.data["wreck"]) / 4],
 			["freshly torn off", "half cut up", "stripped to the frame"][int(n.data.get("stage", 0))], SystemView.fmt_dist(ColossusShape.length_km(n.poly))]
-		t += "\nObstacle and cover: casts a radar shadow – ships behind it cannot be seen, locked or shot. Her steel can be mined with a mining laser."
+		t += "\nObstacle and cover: casts a radar shadow; ships behind it cannot be seen, locked or shot. Her steel can be mined with a mining laser."
 	elif n != null and d["kind"] == "colossus":
 		t += "\n%s colossus, %s  •  %s long" % [String(n.data["class"]).capitalize(), ColossusShape.SHAPE_NAMES.get(String(n.data.get("shape", "")), "irregular"), SystemView.fmt_dist(ColossusShape.length_km(n.poly))]
-		t += "\nObstacle and cover: casts a radar shadow – ships behind it cannot be seen, locked or shot. Mineable rock on its rim."
+		t += "\nObstacle and cover: casts a radar shadow; ships behind it cannot be seen, locked or shot. Mineable rock on its rim."
 	elif d["kind"] == "field":
 		var fd: Dictionary = Universe.warp_target(view.system_id, selected_id).get("data", {})
 		var names: PackedStringArray = []
@@ -1329,7 +1329,7 @@ func _make_lock_card(l: Dictionary) -> void:
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.custom_minimum_size = Vector2(150, 0)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.tooltip_text = "Click: make active target – modules switched on now work on it; press a running module's key to move it here"
+	panel.tooltip_text = "Click: make active target; modules switched on now work on it; press a running module's key to move it here"
 	panel.gui_input.connect(func(ev): _lock_card_input(ev, key))
 	lock_bar.add_child(panel)
 	var v := UI.vbox(2)
@@ -1388,9 +1388,9 @@ const DRONE_ROLE_UI := [["combat", "Combat", "w_kinetic"], ["mining", "Mining", 
 const DRONE_MODE_NAMES := {"defend": "Defend", "attack": "Attack target", "fire_at_will": "Fire at will", "rest": "Rest",
 	"auto": "Auto", "target": "Work on target", "allies": "Allies only", "self": "Self only"}
 const DRONE_MODE_TIPS := {
-	"defend": "Attack ships that attacked you or that you attacked – they pick the target themselves",
+	"defend": "Attack ships that attacked you or that you attacked: they pick the target themselves",
 	"attack": "Attack your active locked target (idle in formation without one)",
-	"fire_at_will": "Attack every ship nearby – hostiles AND civilians (allies spared). Attacking the innocent is a crime!",
+	"fire_at_will": "Attack every ship nearby: hostiles AND civilians (allies spared). Attacking the innocent is a crime!",
 	"rest": "Stay in formation, even during a fight",
 	"auto": "Mining: find asteroids, mine and deliver the ore (5 m³ per trip). Repair: you, allies and neutral ships in range",
 	"target": "Work only on your active locked target",
@@ -1510,7 +1510,7 @@ func _build_wing_panel() -> void:
 		var prow := UI.vbox(1)
 		_wing_box.add_child(prow)
 		if cit.platform_ship.is_empty():
-			prow.add_child(UI.label("PLATFORM: %s destroyed – recall at a hangar" % cit.platform_lost["ship_name"], 11, UI.BAD))
+			prow.add_child(UI.label("PLATFORM: %s destroyed, recall at a hangar" % cit.platform_lost["ship_name"], 11, UI.BAD))
 			return
 		var pt := UI.hbox(4)
 		prow.add_child(pt)
@@ -1541,7 +1541,7 @@ func _build_drone_panel(p, out: Array) -> void:
 		# folded: one line and the launch button
 		var lb := UI.button("Launch [%s]" % Keybinds.key_text("drone_launch"), func(): Commands.execute({"type": "drone_launch", "count": 1}))
 		lb.disabled = f.drones_in_hangar() == 0
-		lb.tooltip_text = "Launch drones – the window opens with their controls" if f.drones_in_hangar() > 0 else "No drones in the hangar – the Drone Bay at stations sells them"
+		lb.tooltip_text = "Launch drones: the window opens with their controls" if f.drones_in_hangar() > 0 else "No drones in the hangar: the Drone Bay at stations sells them"
 		_drone_box.add_child(lb)
 		return
 	var roles := UI.hbox(3)
@@ -1783,8 +1783,8 @@ func _make_group_tile(g: int, slots: Array, mods: Array) -> void:
 					first = e
 				if e["kind"] == "mine" and mine == "":
 					mine = slot
-	b.tooltip_text = ("Fire group %d – key %s\n%s" % [g, Keybinds.key_text("module_%d" % g), "\n".join(PackedStringArray(names))]) if not names.is_empty() \
-		else "Fire group %d is empty – set it in Ship → Modules → Fire groups." % g
+	b.tooltip_text = ("Fire group %d: key %s\n%s" % [g, Keybinds.key_text("module_%d" % g), "\n".join(PackedStringArray(names))]) if not names.is_empty() \
+		else "Fire group %d is empty: set it in Ship → Modules → Fire groups." % g
 	if mine != "":
 		b.tooltip_text += "\nRight-click: mine type and timer"
 		b.gui_input.connect(func(ev):

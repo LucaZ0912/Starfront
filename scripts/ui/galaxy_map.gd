@@ -123,7 +123,7 @@ func _ready() -> void:
 	view_btn.visible = false
 	sv.add_child(HSeparator.new())
 	# package 42: the economies of the systems (main and secondary) – click to highlight
-	sv.add_child(UI.label("Economies – click to highlight", 14, UI.ACCENT))
+	sv.add_child(UI.label("Economies: click to highlight", 14, UI.ACCENT))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 4)
@@ -164,7 +164,7 @@ func _ready() -> void:
 		var fl := UI.label(FactionData.short_of(fid), 11, FactionData.color_of(fid))
 		row.add_child(fl)
 		var fd: Dictionary = FactionData.FACTIONS[fid]
-		row.tooltip_text = "%s – %s\n\"%s\"%s" % [fd["name"], fd["gov"], fd["motto"], "" if fd["territory"] else "\nNo territory – appears as pirates anywhere"]
+		row.tooltip_text = "%s – %s\n\"%s\"%s" % [fd["name"], fd["gov"], fd["motto"], "" if fd["territory"] else "\nNo territory: appears as pirates anywhere"]
 		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		fg.add_child(row)
 	# 39d: independent systems
@@ -174,7 +174,7 @@ func _ready() -> void:
 	isw.custom_minimum_size = Vector2(12, 12)
 	irow.add_child(isw)
 	irow.add_child(UI.label("Independent", 11, INDEPENDENT_COLOR))
-	irow.tooltip_text = "Independent systems – no power holds them (the private manufacturers' homes)"
+	irow.tooltip_text = "Independent systems: no power holds them (the private manufacturers' homes)"
 	irow.mouse_filter = Control.MOUSE_FILTER_PASS
 	fg.add_child(irow)
 	sv.add_child(HSeparator.new())
@@ -238,7 +238,7 @@ func _view_selected() -> void:
 func open(p_transit: bool = false) -> void:
 	transit_mode = p_transit
 	visible = true
-	title_label.text = "Hyperspace – Star Map" if transit_mode else "Galaxy Map"
+	title_label.text = "Hyperspace: Star Map" if transit_mode else "Galaxy Map"
 	if selected_system < 0:
 		selected_system = GameState.current_system
 	# package 40: open close in round the current system
@@ -844,7 +844,7 @@ func _update_info() -> void:
 	t += "Control: %s\n" % territory_bbcode(selected_system)
 	var cap_f := Universe.special_faction(selected_system)       # package 39: a closed capital
 	if cap_f != "":
-		t += "[color=#7fe0a0]Capital – your entry permit opens its gates[/color]\n" if GameState.has_permit(cap_f) else "[color=#ff7060]Capital – closed: entry permit needed (Friendly standing)[/color]\n"
+		t += "[color=#7fe0a0]Capital: your entry permit opens its gates[/color]\n" if GameState.has_permit(cap_f) else "[color=#ff7060]Capital, closed: entry permit needed (Friendly standing)[/color]\n"
 	# package 42: economy and prosperity
 	var eco := Economy.of(selected_system)
 	var ecol := Economy.color_of(eco["main"]).to_html(false)
@@ -884,7 +884,7 @@ func _update_info() -> void:
 		var hc := (PixelArt.STATION_ACCENT.get(String(st["type"]), Color.WHITE) as Color).to_html(false)
 		var sf := String(st.get("faction", ""))
 		var owner_txt := "[color=#%s]%s[/color]" % [FactionData.color_of(sf).to_html(false), FactionData.short_of(sf) if sf != "" else "free port"]
-		t += "[color=#%s]■[/color] %s [color=#a0a8b8](tier %d)%s[/color] %s\n" % [hc, st["name"], int(st["tier"]), " – shipyard" if not st["shipyard"].is_empty() else "", owner_txt]
+		t += "[color=#%s]■[/color] %s [color=#a0a8b8](tier %d)%s[/color] %s\n" % [hc, st["name"], int(st["tier"]), ", shipyard" if not st["shipyard"].is_empty() else "", owner_txt]
 		if st.has("market"):
 			# package 42b: what the market makes and wants (from the system's economy and the station)
 			var mk_made: Array = []
@@ -898,12 +898,12 @@ func _update_info() -> void:
 						mk_want.append(cid)
 			t += "[font_size=11][color=#90e0a0]  sells: %s[/color]\n[color=#e0c080]  buys: %s[/color][/font_size]\n" % [_goods(mk_made), _goods(mk_want)]
 	for ph in L.get("havens", []):
-		t += "[color=#ff4050]◆ %s – Pirate Haven (tier %d), hostile[/color] [color=#%s]%s[/color]\n" % [ph["name"], int(ph["tier"]), FactionData.color_of(String(ph.get("faction", ""))).to_html(false), FactionData.short_of(String(ph.get("faction", "")))]
+		t += "[color=#ff4050]◆ %s: Pirate Haven (tier %d), hostile[/color] [color=#%s]%s[/color]\n" % [ph["name"], int(ph["tier"]), FactionData.color_of(String(ph.get("faction", ""))).to_html(false), FactionData.short_of(String(ph.get("faction", "")))]
 	for c in (GameState.notorious.alive_in(selected_system) if GameState.notorious != null else []):
 		var rtxt := ""
 		if not (c.get("raid", {}) as Dictionary).is_empty():
-			rtxt = (" – [color=#ff5050]raiding %s[/color]" if String(c["raid"]["state"]) == "active" else " – [color=#ff9050]raid on %s announced[/color]") % c["raid"]["name"]
-		t += "[color=#ff5050]☠ Notorious: %s[/color] %s – %s, bounty %s%s [color=#a0a8b8](last seen %s)[/color]\n" % [NotoriousData.title(c), NotoriousData.stars_bbcode(c), NotoriousData.trait_name(c), GameData.fmt_credits(int(c["bounty"])), rtxt, SaveGame.fmt_time(float(c["seen"]))]
+			rtxt = (", [color=#ff5050]raiding %s[/color]" if String(c["raid"]["state"]) == "active" else ", [color=#ff9050]raid on %s announced[/color]") % c["raid"]["name"]
+		t += "[color=#ff5050]☠ Notorious: %s[/color] %s, %s, bounty %s%s [color=#a0a8b8](last seen %s)[/color]\n" % [NotoriousData.title(c), NotoriousData.stars_bbcode(c), NotoriousData.trait_name(c), GameData.fmt_credits(int(c["bounty"])), rtxt, SaveGame.fmt_time(float(c["seen"]))]
 	t += "Routes: "
 	var routes: Array = []
 	for nb in s["links"]:
@@ -988,7 +988,7 @@ func _rebuild_fleet() -> void:
 			status = " ⇒ %s" % Universe.systems[int(f.route.back())]["name"]
 		var mark := "▶ " if f.uid == GameState.active_uid else "   "
 		var b := UI.button("%s%s – %s%s" % [mark, f.ship_name, f.location_text(), status], func(): pass)
-		b.tooltip_text = "Active ship" if f.uid == GameState.active_uid else "Parked in a hangar – swap ships there"
+		b.tooltip_text = "Active ship" if f.uid == GameState.active_uid else "Parked in a hangar: swap ships there"
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.clip_text = true
 		fleet_box.add_child(b)

@@ -58,7 +58,7 @@ func command(i: int) -> String:
 		d["t"] = 0.0
 		d["pos"] = _dock_at(i)
 		Audio.play("drone_launch", "drone up outside a fight", -8.0)
-		return "Drone up – it follows you."
+		return "Drone up: it follows you."
 	d["state"] = "dock"
 	return "Drone back on your %s." % ("arm" if shoulder() else "back")
 

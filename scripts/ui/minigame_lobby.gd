@@ -81,12 +81,12 @@ func _build() -> void:
 		seats.add_child(_seat("The cabinet", "Tonight's best: %d  –  yours: %d" % [int((MG.arcade_board(String(place.get("id", "")), GameState.minigame_best)[0] as Array)[1]),
 			int(GameState.minigame_best.get("rockhopper", 0))], Color(1.0, 0.45, 0.75)))
 	elif practice:
-		seats.add_child(_seat("Nobody", "Practice – the table to yourself", UI.TEXT_DIM))
+		seats.add_child(_seat("Nobody", "Practice: the table to yourself", UI.TEXT_DIM))
 	elif opponent.is_empty():
 		seats.add_child(_seat("Free seat", "Choose who plays below", UI.TEXT_DIM))
 	else:
 		seats.add_child(_seat("%s, %s  %s" % [opponent["name"], opponent["job"], MG.stars_text(int(opponent["stars"]))],
-			"Chosen – %s" % String(opponent.get("line", "")), Color(1.0, 0.8, 0.3)))
+			"Chosen: %s" % String(opponent.get("line", "")), Color(1.0, 0.8, 0.3)))
 	v.add_child(seats)
 	if not practice:
 		v.add_child(UI.label("Who else is here:", 13, UI.TEXT_DIM))
@@ -97,7 +97,7 @@ func _build() -> void:
 				"guest" if String(pp["kind"]) == "guest" else "crew aboard"], func(): opponent = pp; _build())
 			row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			v.add_child(row)
-		var coop := UI.button("Co-op player – join with a friend in co-op (later)", func(): pass)
+		var coop := UI.button("Co-op player: join with a friend in co-op (later)", func(): pass)
 		coop.disabled = true
 		coop.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(coop)
@@ -112,7 +112,7 @@ func _build() -> void:
 			rs.add_child(b2)
 		v.add_child(rs)
 		var t := MG.tier(_streak())
-		v.add_child(UI.label("Win streak %d – %s stakes up to %d cr  (medium from 10 wins in a row, high from 25 – the guests get better too)" % [
+		v.add_child(UI.label("Win streak %d, %s stakes up to %d cr  (medium from 10 wins in a row, high from 25, the guests get better too)" % [
 			_streak(), String(MG.TIERS[t]["name"]), MG.max_stake(_streak())], 13, UI.TEXT_DIM))
 	var bot := UI.hbox(10)
 	bot.add_child(UI.button("Rules", func(): _rules = true; _build()))

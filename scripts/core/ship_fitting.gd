@@ -131,7 +131,7 @@ func can_fit(key: String, module_id: String) -> String:
 	if mx <= 0:
 		return "This hull has no such slot"
 	if int(m["size"]) > mx:
-		return "Too large – this slot takes modules up to size %d" % mx
+		return "Too large: this slot takes modules up to size %d" % mx
 	if m.get("notorious_only", false):
 		return "Only notorious pirate captains can use this"
 	if m.get("aurelle_only", false) and String(hull().get("maker", "")) != "aurelle":

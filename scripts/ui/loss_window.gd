@@ -171,7 +171,7 @@ func _place_tile(grid: Control) -> void:
 	v.add_child(UI.label(String(st.get("name", "")), 13, UI.TEXT_DIM))
 	if not st.is_empty():
 		_big_pic(v, StationArt.build(st)["texture"])
-	v.add_child(UI.wrap_label("The last station you docked at – you are here now, in the Dragonfly »Second Chance«.", 12, UI.TEXT_DIM, 380))
+	v.add_child(UI.wrap_label("The last station you docked at: you are here now, in the Dragonfly »Second Chance«.", 12, UI.TEXT_DIM, 380))
 
 
 func _crew_tile(grid: Control) -> void:
@@ -182,18 +182,18 @@ func _crew_tile(grid: Control) -> void:
 		v.add_child(UI.label("You flew alone.", 13, UI.TEXT_DIM))
 		return
 	for a in alive:
-		v.add_child(UI.wrap_label("✚ %s  (%s, %s) – pod signal %d:%02d" % [a[0], a[2], a[1], int(a[3]) / 60, int(a[3]) % 60], 13, UI.GOOD, 380))
+		v.add_child(UI.wrap_label("✚ %s  (%s, %s): pod signal %d:%02d" % [a[0], a[2], a[1], int(a[3]) / 60, int(a[3]) % 60], 13, UI.GOOD, 380))
 	for d in dead:
-		v.add_child(UI.wrap_label("✖ %s  (%s, %s) – did not make it" % [d[0], d[2], d[1]], 13, UI.BAD, 380))
+		v.add_child(UI.wrap_label("✖ %s  (%s, %s): did not make it" % [d[0], d[2], d[1]], 13, UI.BAD, 380))
 	if not alive.is_empty():
-		v.add_child(UI.wrap_label("The pod drifts at the wreck – warp to it from the overview of that system and fly close to take it aboard.", 12, UI.TEXT_DIM, 380))
+		v.add_child(UI.wrap_label("The pod drifts at the wreck: warp to it from the overview of that system and fly close to take it aboard.", 12, UI.TEXT_DIM, 380))
 
 
 func _loss_tile(grid: Control) -> void:
 	var cargo: Dictionary = offer.get("cargo", {})
 	var insured := bool(offer.get("insured", false))
 	var cv := int(offer.get("cargo_value", 0))
-	var v := _tile(grid, Color(1.0, 0.85, 0.35), "CARGO & LOSSES", ("insured – comes back with the ship" if insured else "cargo lost: %s" % GameData.fmt_credits(cv)) if not cargo.is_empty() else "the hold was empty", false)
+	var v := _tile(grid, Color(1.0, 0.85, 0.35), "CARGO & LOSSES", ("insured: comes back with the ship" if insured else "cargo lost: %s" % GameData.fmt_credits(cv)) if not cargo.is_empty() else "the hold was empty", false)
 	if cargo.is_empty():
 		v.add_child(UI.label("Nothing in the hold.", 13, UI.TEXT_DIM))
 	var n := 0
@@ -204,7 +204,7 @@ func _loss_tile(grid: Control) -> void:
 		v.add_child(UI.label("%s ×%s" % [GameData.item_name(String(item)), str(snappedf(float(cargo[item]), 0.1))], 13, UI.GOOD if insured else Color(1.0, 0.75, 0.6)))
 		n += 1
 	if insured:
-		v.add_child(UI.wrap_label("★ Cargo Insurance aboard – rebuilt, the ship brings the whole hold back.", 12, UI.GOLD, 380))
+		v.add_child(UI.wrap_label("★ Cargo Insurance aboard: rebuilt, the ship brings the whole hold back.", 12, UI.GOLD, 380))
 	v.add_child(UI.wrap_label("If you take the starter ship instead, ship, modules, drones and cargo are gone.", 12, UI.TEXT_DIM, 380))
 
 
@@ -235,8 +235,8 @@ func _locker_tile(grid: Control) -> void:
 		for p in GameState.gear.lockers[k]:
 			if not (p as Dictionary).is_empty():
 				n += 1
-	var v := _tile(grid, Color(0.55, 1.0, 0.6), "LOCKER", "%d places in use – safe aboard" % n if n > 0 else "empty", false)
-	v.add_child(UI.wrap_label("What lies in your ship's locker was never with you – it stays yours and is not part of the price.", 13, UI.GOOD, 380))
+	var v := _tile(grid, Color(0.55, 1.0, 0.6), "LOCKER", "%d places in use: safe aboard" % n if n > 0 else "empty", false)
+	v.add_child(UI.wrap_label("What lies in your ship's locker was never with you: it stays yours and is not part of the price.", 13, UI.GOOD, 380))
 
 
 func _carried_tile(grid: Control) -> void:
@@ -271,8 +271,8 @@ func _costs(body: Control) -> void:
 		_cost_row(v, "HULL (10 %)", int(offer.get("hull_cost", 0)), UI.TEXT_DIM, ACC)
 		_cost_row(v, "MODULES AND DRONES (10 %)", int(offer.get("modules_cost", 0)), UI.TEXT_DIM, ACC)
 		if bool(offer.get("agent", false)):
-			v.add_child(UI.label("★ Insurance Agent aboard – 5 % off, already counted", 12, UI.GOLD))
-		v.add_child(UI.wrap_label("Crew is not part of the price – they come back from the pod.", 12, UI.TEXT_DIM, 380))
+			v.add_child(UI.label("★ Insurance Agent aboard: 5 % off, already counted", 12, UI.GOLD))
+		v.add_child(UI.wrap_label("Crew is not part of the price: they come back from the pod.", 12, UI.TEXT_DIM, 380))
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sp)
@@ -345,9 +345,9 @@ func _ask_starter() -> void:
 	p.add_child(v)
 	v.add_child(UI.label("ARE YOU SURE?", 22, COL))
 	if _foot():
-		v.add_child(UI.wrap_label("You keep the basic kit. Your %s, your weapons and everything you carried are gone for good – Aegis Mutual will not ask again." % ChibiArt.GearData.display_name(String(offer.get("suit", ""))), 14, Color(0.95, 0.9, 0.9), 520))
+		v.add_child(UI.wrap_label("You keep the basic kit. Your %s, your weapons and everything you carried are gone for good: Aegis Mutual will not ask again." % ChibiArt.GearData.display_name(String(offer.get("suit", ""))), 14, Color(0.95, 0.9, 0.9), 520))
 	else:
-		v.add_child(UI.wrap_label("You keep the Dragonfly »Second Chance«. The %s with all its modules, drones and cargo is gone for good – Aegis Mutual will not ask again." % offer["name"], 14, Color(0.95, 0.9, 0.9), 520))
+		v.add_child(UI.wrap_label("You keep the Dragonfly »Second Chance«. The %s with all its modules, drones and cargo is gone for good: Aegis Mutual will not ask again." % offer["name"], 14, Color(0.95, 0.9, 0.9), 520))
 	var r := UI.hbox(12)
 	v.add_child(r)
 	r.add_child(_big_button("YES, TAKE THE BASIC KIT" if _foot() else "YES, TAKE THE STARTER SHIP", COL, func(): _decide(false)))

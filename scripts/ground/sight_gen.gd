@@ -1277,12 +1277,12 @@ static func _terrace(m: GroundMap, site: Dictionary, x0: int, y0: int, x1: int, 
 	m.add_object({"kind": "holo_pillar", "x": hx, "y": y0 + 5, "w": 1, "h": 1, "col": acc})
 	m.lights.append({"pos": Vector2(hx + 0.5, y0 + 5.3) * TILE, "r": 40.0, "col": acc, "a": 0.35})
 	m.zones.append({"rect": Rect2(Vector2(hx - 0.5, y0 + 5.5) * TILE, Vector2(2, 1.2) * TILE), "kind": "sight_info", "id": "sight_info",
-		"title": "Information – %s" % String(site.get("name", "")), "col": acc, "sign": Vector2(-100, -100)})
+		"title": "Information: %s" % String(site.get("name", "")), "col": acc, "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "stall", "x": x1 - 2, "y": y1 - 1, "w": 2, "h": 1, "col": Color(1.0, 0.6, 0.3)})
 	m.zones.append({"rect": Rect2(Vector2(x1 - 3.0, y1 - 1.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 		"title": "Souvenir stall", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(x1 - 1, y1 - 2.2) * TILE})
 	m.zones.append({"rect": Rect2(Vector2(x0 + 0.5, y0 + 0.8) * TILE, Vector2(x1 - x0, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-		"title": "The viewpoint – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+		"title": "The viewpoint: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "sight_name", "title": String(site.get("name", "")), "col": Color(1.0, 0.9, 0.6),
 		"sign": Vector2(hx + 0.5, y1 + 0.6) * TILE})
 	for lx in [x0, x1]:

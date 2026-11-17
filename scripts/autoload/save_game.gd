@@ -102,7 +102,7 @@ func apply_save(slot: String) -> String:
 		return "Save '%s' not found or damaged." % slot
 	if int(data.get("version", 1)) < VERSION:
 		# alpha rule: no migrations that would hold back reworks (see Roadmap → Arbeitsweise)
-		return "'%s' was saved by an older alpha (before the module rework) and can no longer be loaded – please start a new game." % slot
+		return "'%s' was saved by an older alpha (before the module rework) and can no longer be loaded: please start a new game." % slot
 	if int(data["world"].get("version", 1)) < Universe.GALAXY_VERSION:
 		# made with an older (smaller) star cluster: build the current one and move the pilot there
 		Universe.generate(int(data["world"]["seed"]))

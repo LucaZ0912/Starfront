@@ -15,7 +15,7 @@ func build() -> void:
 	var f := fit()
 	var offers: Array = GameState.bar_offers(station)
 	var left := CrewData.BAR_REFRESH - (GameState.play_time - float(GameState.bar.get(String(station["id"]), {}).get("t", 0.0)))
-	add_child(UI.wrap_label("Captains find their crews over a glass. Everyone here is looking for a post – hire them into the crew quarters of this station or straight onto a free post of the %s. The faces change in about %d minutes." % [f.ship_name, int(ceil(left / 60.0))], 13, UI.TEXT_DIM, 1100))
+	add_child(UI.wrap_label("Captains find their crews over a glass. Everyone here is looking for a post: hire them into the crew quarters of this station or straight onto a free post of the %s. The faces change in about %d minutes." % [f.ship_name, int(ceil(left / 60.0))], 13, UI.TEXT_DIM, 1100))
 	var miss := f.crew_missing()
 	if miss != "":
 		add_child(UI.label("Your %s still needs: %s" % [f.ship_name, miss], 13, UI.BAD))
@@ -42,7 +42,7 @@ func build() -> void:
 		var poor := GameState.credits < price
 		var te := GameState.crew_role_error(String(m["role"]))
 		grid.add_child(CrewCard.card(m, [
-			["Hire – %s" % GameData.fmt_credits(price), func(): run({"type": "crew_hire", "index": idx}), poor, "Into the crew quarters of this station"],
+			["Hire: %s" % GameData.fmt_credits(price), func(): run({"type": "crew_hire", "index": idx}), poor, "Into the crew quarters of this station"],
 			["Hire onto the %s" % f.ship_name, func(): run({"type": "crew_hire", "index": idx, "ship": f.uid}), poor or not free_post or te != "",
 				te if te != "" else ("" if free_post else "No free %s post on this ship" % CrewData.role_name(String(m["role"])))],
 		], "", UI.TEXT_DIM, 540))
@@ -120,7 +120,7 @@ func _pilot_card(w: Dictionary, idx: int, he: String) -> Control:
 	for d in WingData.DURATIONS:
 		var minutes := int(d[0])
 		var price := GameState.wing_price(w, minutes)
-		var b := UI.button("%d min – %s" % [minutes, GameData.fmt_credits(price)], func(): run({"type": "wing_hire", "index": idx, "minutes": minutes}))
+		var b := UI.button("%d min: %s" % [minutes, GameData.fmt_credits(price)], func(): run({"type": "wing_hire", "index": idx, "minutes": minutes}))
 		b.disabled = he != "" or GameState.credits < price
 		b.tooltip_text = he
 		bv.add_child(b)
@@ -134,13 +134,13 @@ func _contract_card(c: Dictionary) -> Control:
 	p.add_child(row)
 	row.add_child(UI.icon(PilotArt.portrait(w["look"]), 48))
 	var left := maxf(0.0, float(c["until"]) - GameState.play_time)
-	row.add_child(UI.label("%s (%s) – %s – %d:%02d left" % [w["name"], w["level"], w["ship"]["ship_name"], int(left) / 60, int(left) % 60], 14))
+	row.add_child(UI.label("%s (%s), %s, %d:%02d left" % [w["name"], w["level"], w["ship"]["ship_name"], int(left) / 60, int(left) % 60], 14))
 	row.add_child(UI.spacer())
 	var id := int(w["id"])
 	for d in WingData.DURATIONS:
 		var minutes := int(d[0])
 		var price := GameState.wing_price(w, minutes)
-		var b := UI.button("+%d min – %s" % [minutes, GameData.fmt_credits(price)], func(): run({"type": "wing_extend", "id": id, "minutes": minutes}))
+		var b := UI.button("+%d min: %s" % [minutes, GameData.fmt_credits(price)], func(): run({"type": "wing_extend", "id": id, "minutes": minutes}))
 		b.disabled = GameState.credits < price
 		row.add_child(b)
 	row.add_child(UI.button("End contract", func(): run({"type": "wing_dismiss", "id": id})))

@@ -279,7 +279,7 @@ func _gear() -> void:
 			lflow.add_child(_gear_tile(String(lpc.get("id", "")), int(lpc.get("n", 1)), "", "locker", j, ""))
 	else:
 		right.add_child(UI.label("Locker", 17, COL))
-		right.add_child(UI.label("  The ship's locker is aboard – you are not.", 12, UI.TEXT_DIM))
+		right.add_child(UI.label("  The ship's locker is aboard, you are not.", 12, UI.TEXT_DIM))
 
 
 # ---- 0.7.52.20 (Luz, package 52a): the ground team – who comes along, their gear from your pockets
@@ -306,7 +306,7 @@ func _team_row(g) -> void:
 	row.add_child(UI.label("GROUND TEAM", 15, COL))
 	row.add_child(UI.label("(%d/%d)" % [g.team.filter(func(t): return crew.any(func(m): return int(m.get("id", -1)) == int(t))).size(), CrewDataP.TEAM_MAX], 12, UI.TEXT_DIM))
 	if crew.is_empty():
-		row.add_child(UI.label("No crew aboard the active ship – hire some at a bar to take along on foot.", 12, UI.TEXT_DIM))
+		row.add_child(UI.label("No crew aboard the active ship: hire some at a bar to take along on foot.", 12, UI.TEXT_DIM))
 	for m in crew:
 		var mid := int(m.get("id", -1))
 		var dead := bool(m.get("dead", false))
@@ -386,7 +386,7 @@ func _gear_of_member(g, m: Dictionary) -> void:
 		sb.custom_minimum_size = Vector2(120, 28)
 		sb.tooltip_text = {"aggressive": "Closes in on the foe", "careful": "Fights from cover near you", "flank": "Runs round to the foe's open side"}[skey]
 		sr.add_child(sb)
-	left.add_child(UI.wrap_label("Without a weapon of their own they carry a slug pistol. Their rounds and energy are their own. Down in a fight, hold %s beside them to bring them back – if they die, a clinic brings them back for a fee." % Keybinds.key_text("interact"), 12, UI.TEXT_DIM, 400))
+	left.add_child(UI.wrap_label("Without a weapon of their own they carry a slug pistol. Their rounds and energy are their own. Down in a fight, hold %s beside them to bring them back. If they die, a clinic brings them back for a fee." % Keybinds.key_text("interact"), 12, UI.TEXT_DIM, 400))
 	left.add_child(HSeparator.new())
 	# the piece picked
 	var where := String(_gsel.get("where", ""))
@@ -565,7 +565,7 @@ func _gear_sel_detail(left: VBoxContainer, g, fit) -> void:
 		hd.add_child(nv)
 		var q := GearData.quality(id)
 		nv.add_child(UI.wrap_label(GearData.display_name(id) + (" ×%d" % n if n > 1 else ""), 16, GameData.quality_color(q) if q != "" else COL, 320))
-		nv.add_child(UI.label(String({"suit": "Worn", "weapons": "Weapon slot %d" % (idx + 1), "belt": "Belt – key %d" % (idx + 1), "grenades": "Grenade place %d" % (idx + 1), "drones": "Drone place", "features": "Feature slot %d" % (idx + 1),
+		nv.add_child(UI.label(String({"suit": "Worn", "weapons": "Weapon slot %d" % (idx + 1), "belt": "Belt: key %d" % (idx + 1), "grenades": "Grenade place %d" % (idx + 1), "drones": "Drone place", "features": "Feature slot %d" % (idx + 1),
 			"inv": "In your pockets", "locker": "In the ship's locker"}.get(where, "")), 12, UI.TEXT_DIM))
 		for ln in GearData.describe(id):
 			if String(ln) != "":
@@ -677,7 +677,7 @@ func _level_bar(parent: Control) -> void:
 
 func _perks() -> void:
 	_level_bar(body)
-	body.add_child(UI.label("Every pilot level brings a perk point. Spend it on any perk below – some need a skill level first.", 13, UI.TEXT_DIM))
+	body.add_child(UI.label("Every pilot level brings a perk point. Spend it on any perk below: some need a skill level first.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 12)
@@ -745,7 +745,7 @@ func _tree() -> void:
 	var nt := GameState.tiles_ready().size()
 	var top := UI.hbox(14)
 	body.add_child(top)
-	top.add_child(UI.label("Tiles open by doing – meet the achievements, then confirm. Everything can be bought; with the tile it can be used.", 12, UI.TEXT_DIM))
+	top.add_child(UI.label("Tiles open by doing: meet the achievements, then confirm. Everything can be bought; with the tile it can be used.", 12, UI.TEXT_DIM))
 	top.add_child(UI.spacer())
 	if nt > 0:
 		top.add_child(UI.label("%d tile%s ready to open" % [nt, "" if nt == 1 else "s"], 13, UI.GOOD))
@@ -878,7 +878,7 @@ func _tree_tile(id: String) -> Button:
 		st = "✓ open" if not root else "✓ the trunk of every career"
 		sc = Color(COL, 0.75)
 	elif ready:
-		st = "READY – open it"
+		st = "READY: open it"
 		sc = UI.GOOD
 	elif not pre_ok:
 		st = "locked"
@@ -1150,7 +1150,7 @@ func _collection() -> void:
 		"notorious":
 			right.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
 			if killed.is_empty():
-				right.add_child(UI.label("None yet – their wanted posters hang in every Bond Office.", 12, UI.TEXT_DIM))
+				right.add_child(UI.label("None yet: their wanted posters hang in every Bond Office.", 12, UI.TEXT_DIM))
 				return
 			var pf := HFlowContainer.new()
 			pf.add_theme_constant_override("h_separation", 12)
@@ -1160,7 +1160,7 @@ func _collection() -> void:
 				pf.add_child(BondPanel.wanted_poster(killed[k]))
 		_:
 			right.add_child(UI.label("CREW PERKS  %d / %d" % [have.size(), CrewDataP.PERKS.size()], 16, COL))
-			right.add_child(UI.label("A perk counts once a crew member with it serves you – aboard, on the platform or in the crew quarters. Perks are very rare.", 12, UI.TEXT_DIM))
+			right.add_child(UI.label("A perk counts once a crew member with it serves you: aboard, on the platform or in the crew quarters. Perks are very rare.", 12, UI.TEXT_DIM))
 			var k := _coll_scale()
 			var flow := _coll_flow(right, 230.0 * k)
 			for p in CrewDataP.PERKS:
@@ -1418,7 +1418,9 @@ func _n(x: float) -> String:
 # ---------------------------------------------------------------- package 55 (Luz): the journal
 
 const J_SUBS := [["story", "STORY", Color(1.0, 0.82, 0.35)], ["side", "SIDE MISSIONS", Color(0.4, 0.8, 1.0)],
+	["transactions", "TRANSACTIONS", Color(1.0, 0.65, 0.35)], ["completed", "COMPLETED", Color(0.5, 0.85, 0.6)],
 	["tips", "TIPS", Color(0.4, 1.0, 0.6)], ["secrets", "SECRETS", Color(0.8, 0.5, 1.0)]]
+const TransactionsView = preload("res://scripts/ui/transactions_view.gd")
 
 
 func _journal() -> void:
@@ -1438,6 +1440,13 @@ func _journal() -> void:
 		b.custom_minimum_size = Vector2(190, 30)
 		b.add_theme_color_override("font_color", js[2])
 		subs.add_child(b)
+	if jsub == "transactions":
+		# package 56 (Luz): the contracts and the bond wallet live here now (until 0.8.56.3 in the ship menu)
+		var tv = TransactionsView.new()
+		tv.custom_minimum_size = Vector2(0, 600)
+		body.add_child(tv)
+		tv.rebuild()
+		return
 	var row := UI.hbox(16)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(row)
@@ -1448,10 +1457,14 @@ func _journal() -> void:
 	rp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rp.custom_minimum_size = Vector2(0, 560)
 	row.add_child(rp)
+	var rsc := ScrollContainer.new()                     # package 56: a finished mission's whole talk can be long
+	rsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rp.add_child(rsc)
 	var right := UI.vbox(8)
-	rp.add_child(right)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rsc.add_child(right)
 	match jsub:
-		"story", "side":
+		"story", "side", "completed":
 			_j_missions(left, right, jsub)
 		"tips":
 			_j_tips(left, right)
@@ -1499,16 +1512,20 @@ func _j_tile(parent: Control, id: String, title: String, sub: String, prog: floa
 
 func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> void:
 	var st = GameState.story
-	var col: Color = J_SUBS[0][2] if kind == "story" else J_SUBS[1][2]
+	var col: Color = {"story": J_SUBS[0][2], "side": J_SUBS[1][2], "completed": J_SUBS[3][2]}[kind]
 	var ids: Array = []
-	for mid in st.missions:
-		if String(st.mission_data(mid).get("kind", "story")) == kind:
-			ids.append(mid)
-	for mid2 in st.done:
-		if String(st.mission_data(mid2).get("kind", "story")) == kind and not ids.has(mid2):
-			ids.append(mid2)
+	if kind == "completed":
+		# package 56 (Luz): the missions done – story and side – to look back on, with all that was said
+		for mid0 in st.done:
+			if not st.running(mid0) and not st.mission_data(mid0).is_empty():
+				ids.append(mid0)
+		ids.reverse()                                    # the latest first
+	else:
+		for mid in st.missions:
+			if String(st.mission_data(mid).get("kind", "story")) == kind:
+				ids.append(mid)
 	if ids.is_empty():
-		left.add_child(UI.wrap_label("No %s yet." % ("story missions" if kind == "story" else "side missions"), 13, UI.TEXT_DIM, 440))
+		left.add_child(UI.wrap_label("No %s yet." % {"story": "story missions", "side": "side missions", "completed": "missions completed"}[kind], 13, UI.TEXT_DIM, 440))
 		right.add_child(UI.wrap_label("Missions appear here once they begin. Track one to see its next goals over your ship's panel (on foot: under your suit's bars).", 13, UI.TEXT_DIM, 900))
 		return
 	if jsel == "" or not ids.has(jsel):
@@ -1530,7 +1547,7 @@ func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> voi
 	tt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	th.add_child(tt)
 	if running:
-		var trk := UI.button("◆ Tracked – stop tracking" if st.tracked == jsel else "◇ Track this mission", func():
+		var trk := UI.button("◆ Tracked: stop tracking" if st.tracked == jsel else "◇ Track this mission", func():
 			Commands.execute({"type": "story_track", "id": "" if GameState.story.tracked == jsel else jsel})
 			rebuild())
 		trk.add_theme_color_override("font_color", COL)
@@ -1554,11 +1571,11 @@ func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> voi
 			right.add_child(UI.label("      " + "     ".join(parts), 13, Color(0.75, 0.9, 0.8)))
 		else:
 			right.add_child(UI.label("·  " + String(s["title"]), 14, Color(0.6, 0.65, 0.75)))
-	var log: Array = (st.missions.get(jsel, {}) as Dictionary).get("log", [])
+	var log: Array = (st.missions.get(jsel, {}) as Dictionary).get("log", []) if running else st.done_log.get(jsel, [])
 	if not log.is_empty():
 		right.add_child(UI.label("", 4))
 		right.add_child(UI.label("WHAT WAS SAID", 13, COL))
-		for e in log.slice(maxi(0, log.size() - 6)):
+		for e in (log.slice(maxi(0, log.size() - 6)) if running else log):
 			var who := String(e["who"])
 			var c: Dictionary = StoryData.CHARACTERS.get(who, {})
 			var line := UI.hbox(10)
@@ -1584,11 +1601,11 @@ func _j_tips(left: VBoxContainer, right: VBoxContainer) -> void:
 	var st = GameState.story
 	var col: Color = J_SUBS[2][2]
 	if st.tips_seen.is_empty():
-		left.add_child(UI.wrap_label("No tips yet – they come as you play.", 13, UI.TEXT_DIM, 440))
+		left.add_child(UI.wrap_label("No tips yet: they come as you play.", 13, UI.TEXT_DIM, 440))
 	for id in st.tips_seen:
 		_j_tile(left, id, String(StoryData.TIPS[id]["title"]), "tip", 1.0, col, false, false)
 	right.add_child(UI.label("TIPS", 13, col))
-	var tg := UI.button("Tips: %s" % ("off – switch on" if st.tips_off else "on – switch off"), func():
+	var tg := UI.button("Tips: %s" % ("off: switch on" if st.tips_off else "on: switch off"), func():
 		Commands.execute({"type": "story_tips", "on": GameState.story.tips_off})
 		rebuild())
 	right.add_child(tg)

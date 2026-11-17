@@ -18,6 +18,7 @@ var tracked := ""             # the mission whose goals show over the ship's pan
 var tips_seen: Array = []
 var tips_off := false
 var secrets: Array = []
+var done_log := {}            # package 56 (Luz): what was said in a finished mission – the journal's Completed tab
 
 
 func reset() -> void:
@@ -28,12 +29,14 @@ func reset() -> void:
 	tips_seen = []
 	tips_off = false
 	secrets = []
+	done_log = {}
 	changed.emit()
 
 
 func to_dict() -> Dictionary:
 	return {"missions": missions.duplicate(true), "done": done.duplicate(), "flags": flags.duplicate(true), "tracked": tracked,
-		"tips_seen": tips_seen.duplicate(), "tips_off": tips_off, "secrets": secrets.duplicate()}
+		"tips_seen": tips_seen.duplicate(), "tips_off": tips_off, "secrets": secrets.duplicate(),
+		"done_log": done_log.duplicate(true)}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -44,6 +47,7 @@ func from_dict(d: Dictionary) -> void:
 	tips_seen = (d.get("tips_seen", []) as Array).duplicate()
 	tips_off = bool(d.get("tips_off", false))
 	secrets = (d.get("secrets", []) as Array).duplicate()
+	done_log = (d.get("done_log", {}) as Dictionary).duplicate(true)
 	changed.emit()
 
 
@@ -85,7 +89,7 @@ func _enter(mid: String, i: int) -> void:
 	m["step"] = i
 	m["goals"] = {}
 	var st: Dictionary = (mission_data(mid)["steps"] as Array)[i]
-	GameState.log_msg("Story: %s – %s" % [String(mission_data(mid)["title"]), String(st["title"])], Color(1.0, 0.82, 0.35))
+	GameState.log_msg("Story: %s, %s" % [String(mission_data(mid)["title"]), String(st["title"])], Color(1.0, 0.82, 0.35))
 	_run(mid, st.get("on_start", []))
 	changed.emit()
 	# a goal met already (a flag set before, standing at the target)
@@ -115,6 +119,9 @@ func _run(mid: String, actions: Array) -> void:
 				find_secret(String(a["id"]))
 			"target":
 				missions[mid]["target"] = _pick_target(String(a.get("what", "")))
+			"start":
+				if not running(String(a["id"])) and not done.has(String(a["id"])):
+					start.call_deferred(String(a["id"]))          # package 56: one mission leads to the next
 
 
 ## The object a step points at (for the goals "@target" and the marker).
@@ -176,15 +183,28 @@ func _next(mid: String) -> void:
 	var steps: Array = mission_data(mid)["steps"]
 	var i := step_index(mid) + 1
 	if i >= steps.size():
+		complete(mid)
+		return
+	_enter(mid, i)
+
+
+## Package 56: a running mission on to step i (the steps between skipped).
+func goto_step(mid: String, i: int) -> void:
+	if missions.has(mid):
+		_enter(mid, clampi(i, 0, (mission_data(mid)["steps"] as Array).size() - 1))
+
+
+## A mission finished (its last step done – or the story moved past it): what was said is kept for the journal.
+func complete(mid: String) -> void:
+	if missions.has(mid):
+		done_log[mid] = (missions[mid].get("log", []) as Array).duplicate(true)
 		missions.erase(mid)
 		if not done.has(mid):
 			done.append(mid)
-		GameState.log_msg("Story: %s – done." % String(mission_data(mid)["title"]), GameState.COL_GOOD)
+		GameState.log_msg("Story: %s, done." % String(mission_data(mid)["title"]), GameState.COL_GOOD)
 		if tracked == mid:
 			tracked = String(missions.keys()[0]) if not missions.is_empty() else ""
 		changed.emit()
-		return
-	_enter(mid, i)
 
 
 ## Something happened in the game – the goals waiting for it are met.

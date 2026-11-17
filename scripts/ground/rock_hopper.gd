@@ -87,7 +87,7 @@ func _next_wave() -> void:
 		score += 250 * (wave - 1)
 		_say("WAVE %d  +%d" % [wave, 250 * (wave - 1)])
 	else:
-		_say("WAVE 1 – crack them, haul the ore home")
+		_say("WAVE 1: crack them, haul the ore home")
 	for i in 3 + wave:
 		var p := centre()
 		while p.distance_to(centre()) < 80.0:
@@ -203,7 +203,7 @@ func _tug_step(dt: float) -> void:
 				nuggets.erase(n2)
 				Audio.play("arcade_pickup", "rock hopper: ore in", -8.0, 0.05)
 			elif msg_t <= 0.0:
-				_say("HOLD FULL – bank it at the refinery")
+				_say("HOLD FULL: bank it at the refinery")
 	# home: docked slow at the refinery, the hold banked, the tank filled
 	if (tug["p"] as Vector2).distance_to(centre()) < 21.0 and v.length() < 45.0:
 		if hold > 0:

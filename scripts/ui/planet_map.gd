@@ -82,7 +82,7 @@ func open(p_system: int, p_body: Dictionary) -> void:
 	_root.add_child(tl)
 	var bt := Universe.body_type(String(body["type"]))
 	var sub := UI.label("%s  ·  %s  ·  %s" % [String(bt.get("name", "")), String(bt.get("temp", "")),
-		"atmosphere – mind the heat on the way down" if Universe.has_atmosphere(body) else "no atmosphere"], 14, UI.TEXT_DIM)
+		"atmosphere: mind the heat on the way down" if Universe.has_atmosphere(body) else "no atmosphere"], 14, UI.TEXT_DIM)
 	sub.position = Vector2(32, 58)
 	_root.add_child(sub)
 	# the list of places

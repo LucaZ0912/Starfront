@@ -72,7 +72,7 @@ static func _standing_effects(fid: String) -> String:
 		if FactionData.FACTIONS[fid]["territory"]:
 			lines.append("Its Pirate Havens %s." % ("let you dock" if r.at_least(fid, "friendly") else "refuse docking and shoot (needs Friendly)"))
 		else:
-			lines.append("Owns no havens – roams as pirates and mercenaries.")
+			lines.append("Owns no havens: roams as pirates and mercenaries.")
 	else:
 		lines.append({"attack": "Its patrols attack you.", "scan": "Its patrols scan your ship.", "ignore": "Its patrols ignore you."}[r.patrol_attitude(fid)])
 		lines.append("Docking refused." if (r.tier_id(fid) == "nemesis" or GameState.law.level(fid) >= 3) else "Docking allowed.")

@@ -242,7 +242,7 @@ static func build_plaza(station: Dictionary, available: Dictionary) -> GroundMap
 	m.add_object({"kind": "holo_pillar", "x": lift_x + 9, "y": P_FLOOR + 3, "w": 1, "h": 1, "col": acc})
 	m.lights.append({"pos": Vector2(lift_x + 9.5, P_FLOOR + 3.3) * TILE, "r": 40.0, "col": acc, "a": 0.35})
 	m.zones.append({"rect": Rect2(Vector2(lift_x + 8.5, P_FLOOR + 3.5) * TILE, Vector2(2, 1.2) * TILE), "kind": "soon", "id": "info",
-		"title": "Information – %s, %s" % [String(station.get("name", "")), _what(station)], "col": acc, "sign": Vector2(-100, -100)})
+		"title": "Information: %s, %s" % [String(station.get("name", "")), _what(station)], "col": acc, "sign": Vector2(-100, -100)})
 	# the power's flags on the pillars between the shops
 	var dk: Dictionary = CityStyle.deck(station)
 	var fl: Array = dk["flag"]
@@ -421,7 +421,7 @@ static func build_station(station: Dictionary, stop: int) -> GroundMap:
 	m.set_meta("rail_front", Vector2(gaps[1] + 1.0, S_EDGE - 1.0) * TILE)
 	# the hall's wall: the departures board, ticket machines, the doors to the staff rooms
 	m.face_deco.append({"kind": "departures", "x": 12, "y": S_TOP, "w": 8, "col": Color(1.0, 0.78, 0.3)})
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % _dest_names(stop, String(station.get("capital", "")) == "palace"),
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures: %s every 6 min" % _dest_names(stop, String(station.get("capital", "")) == "palace"),
 		"col": Color(1.0, 0.8, 0.4), "sign": Vector2(16, S_TOP - 0.5) * TILE})
 	m.lights.append({"pos": Vector2(16, S_FLOOR + 0.5) * TILE, "r": 70.0, "col": Color(1.0, 0.8, 0.4), "a": 0.28})
 	for tm in 2:
@@ -462,11 +462,11 @@ static func build_station(station: Dictionary, stop: int) -> GroundMap:
 			DeckGen._seat(m, "bench", bx2, S_FLOOR + 3, 0, Color(0.55, 0.4, 0.26), rng, 0.4, 3)
 		# 54a (Luz): the deck is a sight – the railing a viewpoint for photos, the information holo, a souvenir stall
 		m.zones.append({"rect": Rect2(Vector2(ox + 0.5, S_EDGE - 1.4) * TILE, Vector2(W - ox - 2.0, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-			"title": "The viewpoint – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+			"title": "The viewpoint: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
 		m.add_object({"kind": "holo_pillar", "x": W - 4, "y": S_FLOOR + 1, "w": 1, "h": 1, "col": acc})
 		m.lights.append({"pos": Vector2(W - 3.5, S_FLOOR + 1.3) * TILE, "r": 40.0, "col": acc, "a": 0.35})
 		m.zones.append({"rect": Rect2(Vector2(W - 4.5, S_FLOOR + 1.5) * TILE, Vector2(2, 1.2) * TILE), "kind": "sight_info", "id": "sight_info",
-			"title": "Information – the Skyring Deck", "col": acc, "sign": Vector2(-100, -100)})
+			"title": "Information: the Skyring Deck", "col": acc, "sign": Vector2(-100, -100)})
 		m.add_object({"kind": "stall", "x": ox + 14, "y": S_FLOOR, "w": 2, "h": 1, "col": Color(1.0, 0.6, 0.3)})
 		m.zones.append({"rect": Rect2(Vector2(ox + 13.0, S_FLOOR + 0.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 			"title": "Souvenir stall", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(ox + 15, S_FLOOR - 0.4) * TILE})
@@ -562,7 +562,7 @@ static func build_harvest(station: Dictionary) -> GroundMap:
 	m.set_meta("rail_front", Vector2(gaps[1] + 1.0, S_EDGE - 1.0) * TILE)
 	m.spawn = m.get_meta("rail_front")
 	m.face_deco.append({"kind": "departures", "x": 9, "y": S_TOP, "w": 8, "col": Color(1.0, 0.78, 0.3)})
-	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures – %s every 6 min" % _dest_names(2),
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "dep", "title": "Departures: %s every 6 min" % _dest_names(2),
 		"col": Color(1.0, 0.8, 0.4), "sign": Vector2(13, S_TOP - 0.5) * TILE})
 	m.zones.append({"rect": Rect2(), "kind": "label", "id": "stop", "title": "Skyrail · %s" % STOPS[2], "col": acc, "sign": Vector2(23, S_TOP + 1.2) * TILE})
 	DeckGen._seat(m, "bench", 19, S_FLOOR + 2, 0, Color(0.55, 0.4, 0.26), rng, 0.4, 3)
@@ -572,7 +572,7 @@ static func build_harvest(station: Dictionary) -> GroundMap:
 	var ex := G_X0 + 24
 	m.face_deco.append({"kind": "exchange", "x": ex, "y": S_TOP, "w": 6, "col": Color(1.0, 0.78, 0.3)})
 	m.zones.append({"rect": Rect2(Vector2(ex, S_FLOOR) * TILE, Vector2(6, 1.6) * TILE), "kind": "gas_exchange", "id": "gas_exchange",
-		"title": "Gas Exchange – the giant's gases from the works", "col": Color(1.0, 0.78, 0.3), "sign": Vector2(ex + 3, S_TOP - 0.5) * TILE})
+		"title": "Gas Exchange: the giant's gases from the works", "col": Color(1.0, 0.78, 0.3), "sign": Vector2(ex + 3, S_TOP - 0.5) * TILE})
 	m.lights.append({"pos": Vector2(ex + 3, S_FLOOR + 0.5) * TILE, "r": 60.0, "col": Color(1.0, 0.82, 0.5), "a": 0.35})
 	m.face_deco.append({"kind": "lift", "x": ex + 9, "y": S_TOP + 2, "w": 2, "col": Color(1.0, 0.6, 0.25)})
 	# the plant: tanks, compressors, the column, the flare, pipes and the walkway
@@ -617,12 +617,12 @@ static func build_harvest(station: Dictionary) -> GroundMap:
 	if freighter_in(station):
 		var nm: String = ["Kujira", "Shiokaze", "Umihebi", "Ookami", "Fuyu-maru", "Akatsuki"][absi(hash(String(station.get("id", "")) + str(int(GameState.play_time / 1800.0)))) % 6]
 		m.set_meta("freighter", {"hull": "kujira", "name": nm, "x": (W - 14) * TILE, "y": (G_RIM + 2) * TILE})
-		m.zones.append({"rect": Rect2(), "kind": "label", "id": "freighter", "title": "Berth 1 – the gas freighter %s, loading" % nm, "col": yel,
+		m.zones.append({"rect": Rect2(), "kind": "label", "id": "freighter", "title": "Berth 1: the gas freighter %s, loading" % nm, "col": yel,
 			"sign": Vector2(bx + 5.5, G_RAIL - 0.6) * TILE})
 		m.zones.append({"rect": Rect2(Vector2(bx + 4, G_RAIL - 1.4) * TILE, Vector2(3, 1.4) * TILE), "kind": "soon", "id": "freighter_ramp",
-			"title": "The %s's gangway – crew only. She takes on gas for the trade lanes." % nm, "col": yel, "sign": Vector2(-100, -100)})
+			"title": "The %s's gangway: crew only. She takes on gas for the trade lanes." % nm, "col": yel, "sign": Vector2(-100, -100)})
 	else:
-		m.zones.append({"rect": Rect2(), "kind": "label", "id": "berth", "title": "Berth 1 – free", "col": yel, "sign": Vector2(bx + 5.5, G_RAIL - 0.6) * TILE})
+		m.zones.append({"rect": Rect2(), "kind": "label", "id": "berth", "title": "Berth 1: free", "col": yel, "sign": Vector2(bx + 5.5, G_RAIL - 0.6) * TILE})
 	# workers in their suits about the plant
 	for k2 in 4:
 		var lp := Vector2(rng.randf_range(G_X0 + 4, W - 8), rng.randf_range(S_FLOOR + 1.2, G_RAIL - 1.5)) * TILE
@@ -655,7 +655,7 @@ static func build_car(station: Dictionary, to_stop: int) -> GroundMap:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", "x"))) + 580
 	var m := GroundMap.new()
-	_base(m, station, "Skyrail – to %s" % STOPS[to_stop])
+	_base(m, station, "Skyrail: to %s" % STOPS[to_stop])
 	m.style = "cloud_car"
 	m.pal["floor"] = Color(0.42, 0.44, 0.48)
 	m.pal["floor2"] = Color(0.39, 0.41, 0.45)
@@ -685,8 +685,8 @@ static func build_car(station: Dictionary, to_stop: int) -> GroundMap:
 	m.face_deco.append({"kind": "car_doors", "x": dmid, "y": C_TOP + 1, "w": 2, "col": Color(0.95, 0.6, 0.2)})
 	m.face_deco.append({"kind": "car_board", "x": dmid, "y": C_TOP + 1, "w": 2, "col": Color(1.0, 0.78, 0.3)})
 	m.zones.append({"rect": Rect2(Vector2(dmid - 0.3, C_FLOOR - 0.1) * TILE, Vector2(2.6, 1.4) * TILE), "kind": "alight", "id": "alight",
-		"title": "Get off – %s" % STOPS[to_stop], "col": Color(0.95, 0.65, 0.25), "sign": Vector2(-100, -100),
-		"closed": "The doors are shut – the car is running."})
+		"title": "Get off: %s" % STOPS[to_stop], "col": Color(0.95, 0.65, 0.25), "sign": Vector2(-100, -100),
+		"closed": "The doors are shut: the car is running."})
 	m.set_meta("rail_front", Vector2(dmid + 1.0, C_FLOOR + 1.2) * TILE)
 	m.spawn = m.get_meta("rail_front")
 	var seat_c := Color(0.25, 0.42, 0.62)

@@ -83,7 +83,7 @@ func open(p_body: Dictionary, p_site: Dictionary, p_down: bool = true) -> void:
 	var title := UI.label("%s  ·  Landing hatch %d" % [String(site.get("name", "")), hatch_no], 20, UI.NEON_CYAN)
 	title.position = Vector2(30, 24)
 	add_child(title)
-	var sub := UI.label(("Down below the city – the ship is taken into its hangars" if down else "Up out of the city") + ("  ·  day" if day > 0.5 else "  ·  night"), 13, UI.TEXT_DIM)
+	var sub := UI.label(("Down below the city: the ship is taken into its hangars" if down else "Up out of the city") + ("  ·  day" if day > 0.5 else "  ·  night"), 13, UI.TEXT_DIM)
 	sub.position = Vector2(32, 54)
 	add_child(sub)
 	Audio.play("boost", "landing hatch")

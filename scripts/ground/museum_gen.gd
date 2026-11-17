@@ -66,11 +66,11 @@ static func _title(m: GroundMap, d: Dictionary) -> void:
 	var id := String(d["exhibit"])
 	var t := ""
 	if GameState.museum_donated.has(id):
-		t = "%s – look at it (E)" % MuseumData.exhibit_name(id)
+		t = "%s: look at it (E)" % MuseumData.exhibit_name(id)
 	elif GameState.museum_finds.has(id):
-		t = "An empty case – you carry what belongs here: bring %s to the curator (E)" % MuseumData.exhibit_name(id)
+		t = "An empty case. You carry what belongs here: bring %s to the curator (E)" % MuseumData.exhibit_name(id)
 	else:
-		t = "An empty case – something of %s belongs here (E)" % MuseumData.room_name(MuseumData.room_of(id)).replace("The ", "the ")
+		t = "An empty case: something of %s belongs here (E)" % MuseumData.room_name(MuseumData.room_of(id)).replace("The ", "the ")
 	for z in m.zones:
 		if String(z.get("kind", "")) == "explore" and int(z.get("i", -1)) == m.explore.find(d):
 			z["title"] = t
@@ -126,7 +126,7 @@ static func build_plaza(station: Dictionary, body: Dictionary) -> GroundMap:
 		m.face_deco.append({"kind": "lift", "x": lx0, "y": 12, "w": 2, "col": Color(0.4, 1.0, 0.6)})
 		m.lifts.append({"x": lx0, "y": 12, "w": 2})
 	m.zones.append({"rect": Rect2(Vector2(2, 13) * TILE, Vector2(6, 1.4) * TILE), "kind": "lift", "id": "lift",
-		"title": "Lift – back down into the city", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(5, 10.2) * TILE})
+		"title": "Lift: back down into the city", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(5, 10.2) * TILE})
 	m.spawn = Vector2(5.0, 14.6) * TILE
 	# the Museum: its roof with the glass dome over the hall, its front – white stone, columns, the doors open
 	m.fill(MX, 0, W - MX, 14, T.CAP)
@@ -235,16 +235,16 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.fill(sx + 1, 8, 4, 8, T.FLOOR, 37)
 	m.face_deco.append({"kind": "museum_gate", "x": sx, "y": 5, "w": 6})
 	_label(m, "MUSEUM OF CURIE", Vector2(W * 0.5, 4.6), Color(0.95, 0.8, 0.45))
-	_go(m, Rect2(sx, 8, 6, 1.2), "museum_1", "from_hall", "Up through the gate – the first floor: The Old World and The Severance", WARM)
+	_go(m, Rect2(sx, 8, 6, 1.2), "museum_1", "from_hall", "Up through the gate to the first floor: The Old World and The Severance", WARM)
 	m.set_meta("from_1", Vector2(W * 0.5, 9.6) * TILE)
 	m.lights.append({"pos": Vector2(W * 0.5, 7.0) * TILE, "r": 70.0, "col": WARM, "a": 0.4})
 	# the arches under the wings
 	m.face_deco.append({"kind": "arch_min", "x": 2, "y": 10, "w": 5})
-	_go(m, Rect2(2, 13, 5, 1.2), "museum_min", "from_hall", "Through the arch – Minerals", Color(0.6, 0.9, 1.0), Vector2(4.5, 10.45))
+	_go(m, Rect2(2, 13, 5, 1.2), "museum_min", "from_hall", "Through the arch: Minerals", Color(0.6, 0.9, 1.0), Vector2(4.5, 10.45))
 	m.set_meta("from_min", Vector2(4.5, 14.6) * TILE)
 	m.lights.append({"pos": Vector2(4.5, 12.5) * TILE, "r": 50.0, "col": Color(0.75, 0.9, 1.0), "a": 0.45})
 	m.face_deco.append({"kind": "arch_down", "x": W - 7, "y": 10, "w": 5})
-	_go(m, Rect2(W - 7, 13, 5, 1.2), "museum_down", "museum_in", "Stairs down – The Dark Ones", VIO.lightened(0.3), Vector2(W - 4.5, 10.45))
+	_go(m, Rect2(W - 7, 13, 5, 1.2), "museum_down", "museum_in", "Stairs down: The Dark Ones", VIO.lightened(0.3), Vector2(W - 4.5, 10.45))
 	m.set_meta("from_down", Vector2(W - 4.5, 14.6) * TILE)
 	m.lights.append({"pos": Vector2(W - 4.5, 12.5) * TILE, "r": 60.0, "col": VIO, "a": 0.55})
 	# the desk, the curator, statues, busts, plants, benches; the runner and the doors
@@ -257,7 +257,7 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.set_meta("curator_look", cur)
 	m.set_meta("curator_pos", Vector2(W * 0.5, 17.7) * TILE)
 	m.zones.append({"rect": Rect2(Vector2(sx - 1, 19) * TILE, Vector2(8, 1.4) * TILE), "kind": "curator", "id": "curator",
-		"title": "The curator – donations, your finds, a hint (E)", "col": Color(1.0, 0.85, 0.5), "sign": Vector2(-100, -100)})
+		"title": "The curator: donations, your finds, a hint (E)", "col": Color(1.0, 0.85, 0.5), "sign": Vector2(-100, -100)})
 	m.fill(W / 2 - 1, 20, 2, 3, T.FLOOR, 42)
 	m.decals.append({"kind": "rosette", "x": W / 2 - 3, "y": 20, "w": 6, "h": 3})
 	m.add_object({"kind": "bust", "x": 1, "y": 18, "w": 1, "h": 1, "col": Color(0.92, 0.9, 0.86)})
@@ -315,7 +315,7 @@ static func build_minerals(station: Dictionary, body: Dictionary) -> GroundMap:
 		var hv: Vector2i = hp[0]
 		m.add_object({"kind": "holo_ship", "x": hv.x, "y": hv.y, "w": 2, "h": 1, "species": String(hp[1])})
 		m.lights.append({"pos": Vector2(hv.x + 1.0, hv.y - 1.0) * TILE, "r": 40.0, "col": Color(0.4, 0.85, 1.0), "a": 0.35})
-	_exit(m, 14, H - 2, 3, "museum", "from_min", "Back out – the hall")
+	_exit(m, 14, H - 2, 3, "museum", "from_min", "Back out: the hall")
 	m.set_meta("from_hall", Vector2(15.5, H - 3.6) * TILE)
 	m.spawn = m.get_meta("from_hall")
 	_label(m, "MINERALS", Vector2(15.5, 2.4), Color(0.6, 0.9, 1.0))
@@ -344,9 +344,9 @@ static func build_floor1(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.fill(sx, 4, 6, 6, T.FLOOR, 36)
 	m.fill(sx + 1, 4, 4, 6, T.FLOOR, 37)
 	m.face_deco.append({"kind": "museum_gate", "x": sx, "y": 2, "w": 6, "rows": 2})
-	_go(m, Rect2(sx, 4, 6, 1.2), "museum_2", "from_1", "Up through the gate – the second floor: The Precursors", WARM)
+	_go(m, Rect2(sx, 4, 6, 1.2), "museum_2", "from_1", "Up through the gate to the second floor: The Precursors", WARM)
 	m.set_meta("from_2", Vector2(W * 0.5, 10.8) * TILE)
-	_exit(m, sx + 1, H - 2, 4, "museum", "from_1", "Down the grand stairs – the hall")
+	_exit(m, sx + 1, H - 2, 4, "museum", "from_1", "Down the grand stairs: the hall")
 	m.set_meta("from_hall", Vector2(W * 0.5, H - 3.8) * TILE)
 	m.spawn = m.get_meta("from_hall")
 	m.add_object({"kind": "plant", "x": sx - 1, "y": 4, "w": 1, "h": 1})
@@ -391,7 +391,7 @@ static func build_floor2(station: Dictionary, body: Dictionary) -> GroundMap:
 	var H := 19
 	var m := _room(station, body, W, H, 35)
 	var sx := W / 2 - 3
-	_exit(m, sx + 1, H - 2, 4, "museum_1", "from_2", "Down the stairs – the first floor")
+	_exit(m, sx + 1, H - 2, 4, "museum_1", "from_2", "Down the stairs: the first floor")
 	m.set_meta("from_1", Vector2(W * 0.5, H - 3.8) * TILE)
 	m.spawn = m.get_meta("from_1")
 	var pr := _ids("precursors")
@@ -446,7 +446,7 @@ static func build_basement(station: Dictionary, body: Dictionary) -> GroundMap:
 	# the stairs up (west)
 	m.fill(3, 1, 4, 5, T.FLOOR, 36)                                  # 0.7.53.28 (Luz): a flight up into the back wall
 	m.fill(4, 1, 2, 5, T.FLOOR, 37)
-	_go(m, Rect2(3, 2, 4, 2.2), "museum", "from_down", "Stairs up – back to the hall", Color(0.4, 1.0, 0.6), Vector2(5, 0.6))
+	_go(m, Rect2(3, 2, 4, 2.2), "museum", "from_down", "Stairs up: back to the hall", Color(0.4, 1.0, 0.6), Vector2(5, 0.6))
 	m.spawn = Vector2(5.0, 7.0) * TILE
 	m.lights.append({"pos": Vector2(5, 2.0) * TILE, "r": 60.0, "col": WARM, "a": 0.55})
 	# the round pool in the middle, grooves running in to it – and on its plinth the monolith's cast, once raised
@@ -456,8 +456,8 @@ static func build_basement(station: Dictionary, body: Dictionary) -> GroundMap:
 	var mono := ExploreNodeM.add(m, "monolith_cast", Vector2(20, 13) * TILE, {"state": "up" if done else "empty"})
 	for z in m.zones:
 		if int(z.get("i", -1)) == m.explore.find(mono):
-			z["title"] = "The cast of a monolith – raised now that every piece of the Dark Ones is here (E)" if done \
-				else "An empty plinth – kept for a monolith's cast, once every piece of the Dark Ones is here"
+			z["title"] = "The cast of a monolith: raised now that every piece of the Dark Ones is here (E)" if done \
+				else "An empty plinth: kept for a monolith's cast, once every piece of the Dark Ones is here"
 	if done:
 		m.lights.append({"pos": Vector2(20, 10.5) * TILE, "r": 80.0, "col": VIO, "a": 0.6})
 	# the cases round the pool

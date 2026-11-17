@@ -26,10 +26,10 @@ const BLESSING_SELL := 1.05
 const RELIC_FIND := 0.3           # chance that an analysed anomaly holds a relic of Earth
 const AUDIENCE_BLESSING := 2400.0  # 54c (Luz): an audience's blessing – 40 minutes
 const AUDIENCE_WORDS := [
-	"\"Every road the faithful travel bends towards home. You have walked far on it – the Church sees.\"",
+	"\"Every road the faithful travel bends towards home. You have walked far on it: the Church sees.\"",
 	"\"Earth waits behind the Severance as a mother waits at the door. We shall not keep her waiting for ever.\"",
 	"\"The Settled build their houses on sand. We build a fleet. Which of us, do you think, will see the dawn?\"",
-	"\"Look up – there, through the glass. Every morning the star rises over Compline, and every morning we are a day nearer.\"",
+	"\"Look up. There, through the glass. Every morning the star rises over Compline, and every morning we are a day nearer.\"",
 	"\"The chaplain-admiral swore that no one would be left behind. I mean to keep her oath.\""]
 
 ## mods while the edict holds – buy / sell (prices at its stations), service (fuel and repairs), forge (Forge of
@@ -40,7 +40,7 @@ const EDICTS := {
 	"crusade": {"name": "Edict of the Crusade", "text": "The faithful shall cleanse the void of raiders.",
 		"pro": "bounties in Covenant space +35 %, an extra patrol in every system", "con": "a war tithe: goods +4 %",
 		"mods": {"bounty": 1.35, "patrols": 2.0, "buy": 1.04}},
-	"forge": {"name": "Edict of the Forge", "text": "Every hand to the Forge – the fleet that leads us home must grow.",
+	"forge": {"name": "Edict of the Forge", "text": "Every hand to the Forge: the fleet that leads us home must grow.",
 		"pro": "Forge of Return ships −15 %", "con": "fuel and repairs +12 %", "mods": {"forge": 0.85, "service": 1.12}},
 	"austerity": {"name": "Edict of Humility", "text": "Let no one profit from the road home.",
 		"pro": "goods −6 %", "con": "what you sell earns 6 % less", "mods": {"buy": 0.94, "sell": 0.94}},
@@ -98,7 +98,7 @@ func proclaim(id: String = "") -> void:
 		history.pop_back()
 	if GameState.news != null:
 		var bd: Dictionary = EDICTS[id]
-		GameState.news.add("The Hierarch proclaims the %s: %s – %s; %s." % [bd["name"], bd["text"], bd["pro"], bd["con"]], "world", Universe.special_system("heimkehr"))
+		GameState.news.add("The Hierarch proclaims the %s: %s, %s; %s." % [bd["name"], bd["text"], bd["pro"], bd["con"]], "world", Universe.special_system("heimkehr"))
 
 
 func _offer(cur: String) -> Array:
@@ -175,12 +175,12 @@ func indulgence_cost() -> int:
 func indulgence() -> String:
 	var cost := indulgence_cost()
 	if cost <= 0:
-		return "You have nothing to be forgiven – your record with the Covenant is clean."
+		return "You have nothing to be forgiven: your record with the Covenant is clean."
 	if not GameState.spend(cost):
 		return "Not enough credits."
 	GameState.law.records.erase("covenant")
 	GameState.wanted_changed.emit("covenant", 0)
-	GameState.log_msg("Indulgence granted for %s – the Church forgives your crimes against the Covenant." % GameData.fmt_credits(cost), GameState.COL_GOOD)
+	GameState.log_msg("Indulgence granted for %s: the Church forgives your crimes against the Covenant." % GameData.fmt_credits(cost), GameState.COL_GOOD)
 	return ""
 
 
@@ -192,7 +192,7 @@ func audience(what: String, id: String = "") -> String:
 	if what == "greet":
 		if not sealed:
 			sealed = true
-			GameState.log_msg("The Hierarch gives you his seal – the Church's indulgences at half price for you, for ever.", GameState.COL_GOOD)
+			GameState.log_msg("The Hierarch gives you his seal: the Church's indulgences at half price for you, for ever.", GameState.COL_GOOD)
 		return ""
 	if bool(edict.get("audience", false)):
 		return "You have been heard this edict already."
@@ -203,7 +203,7 @@ func audience(what: String, id: String = "") -> String:
 			var pet := String(edict.get("petition", ""))
 			if pet != "" and pet != id and EDICTS.has(pet):
 				# review 7 K6: a petition heard by the Curia stands – the Hierarch does not undo it
-				return "Your petition for the %s stands already – the Hierarch will not overturn what his Curia has heard." % EDICTS[pet]["name"]
+				return "Your petition for the %s stands already: the Hierarch will not overturn what his Curia has heard." % EDICTS[pet]["name"]
 			edict["petition"] = id
 			GameState.log_msg("The Hierarch has granted your request: the next edict will be the %s." % EDICTS[id]["name"], GameState.COL_GOOD)
 		"bless":
@@ -229,5 +229,5 @@ func give_relics(f: ShipFitting) -> String:
 	f.remove_cargo("earth_relic", float(n))
 	GameState.rep.change("covenant", RELIC_REP * n * (1.5 if GameState.museum_perk("oldworld") else 1.0), "relics")
 	blessing_until = minf(maxf(blessing_until, GameState.play_time) + BLESSING_TIME * n, GameState.play_time + BLESSING_MAX)
-	GameState.log_msg("%d relic%s of Earth laid in the Cathedral of Return – you are blessed: goods at Covenant stations −%d %%, sales +%d %% for %d min." % [n, "" if n == 1 else "s", int(round((1.0 - BLESSING_BUY) * 100.0)), int(round((BLESSING_SELL - 1.0) * 100.0)), minutes_left(blessing_until)], GameState.COL_GOOD)
+	GameState.log_msg("%d relic%s of Earth laid in the Cathedral of Return; you are blessed: goods at Covenant stations −%d %%, sales +%d %% for %d min." % [n, "" if n == 1 else "s", int(round((1.0 - BLESSING_BUY) * 100.0)), int(round((BLESSING_SELL - 1.0) * 100.0)), minutes_left(blessing_until)], GameState.COL_GOOD)
 	return ""

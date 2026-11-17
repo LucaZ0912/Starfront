@@ -215,53 +215,53 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 	match kind:
 		"relic":
 			t = "Relic race: %s" % String(site["name"])
-			d = "A Precursor relic lies deep in %s. Raiders are after it too – get it first; another crew is on its way." % where
+			d = "A Precursor relic lies deep in %s. Raiders are after it too: get it first; another crew is on its way." % where
 			base = 9000
 		"salvage":
 			var hn: String = String(GameData.hulls.get(String(site.get("hull", "freighter")), {}).get("name", "freighter"))
 			t = "Salvage: the %s" % hn
-			d = "A %s came down – %s. Bring back its flight recorder." % [hn, where]
+			d = "A %s came down: %s. Bring back its flight recorder." % [hn, where]
 			base = 7000
 		"bounty_foot":
 			t = "Bounty on foot: a Red Talon captain"
-			d = "The captain of the pirate base %s. Bring them down – they run when the alarm goes." % where
+			d = "The captain of the pirate base %s. Bring them down: they run when the alarm goes." % where
 			base = 11000
 		"heist":
 			if corp:
 				t = "Heist (hard): the vault of %s" % String(site["name"]).replace(" Tower", "")
-				d = "The vault of the %s in %s (%s) – the lift up to the roof plaza, in by the tower's back door. A key card for the lifts, cameras and light barriers; the vault at the bottom. Unseen – an alarm fails the job." % [
+				d = "The vault of the %s in %s (%s): the lift up to the roof plaza, in by the tower's back door. A key card for the lifts, cameras and light barriers; the vault at the bottom. Unseen: an alarm fails the job." % [
 					String(site["name"]), String(site["city_name"]), Universe.systems[sid2]["name"]]
 				base = 16000
 			elif dealer:
 				t = "Heist%s: the dealer's safe under %s" % [" (hard)" if hard else "", String(site["city_name"])]
-				d = "A weapons dealer keeps a safe full of money in the sewers under %s (%s) – the manhole in the back alley off the shopping street leads down. Cut it open in the dealer's office. %s" % [
-					String(site["city_name"]), Universe.systems[sid2]["name"], "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
+				d = "A weapons dealer keeps a safe full of money in the sewers under %s (%s): the manhole in the back alley off the shopping street leads down. Cut it open in the dealer's office. %s" % [
+					String(site["city_name"]), Universe.systems[sid2]["name"], "Unseen: an alarm fails the job." if hard else "An alarm halves the pay."]
 				base = 12000 if hard else 8500
 			else:
 				t = "Heist%s: the Red Talons' hoard" % (" (hard)" if hard else "")
-				d = "Empty the captain's strongbox in %s. %s" % [where, "Unseen – an alarm fails the job." if hard else "An alarm halves the pay."]
+				d = "Empty the captain's strongbox in %s. %s" % [where, "Unseen: an alarm fails the job." if hard else "An alarm halves the pay."]
 				base = 14000 if hard else 10000
 		"spy":
 			if corp:
 				t = "Espionage: %s's data" % String(site["name"]).replace(" Tower", "")
-				d = "Download the data from the security centre of the %s in %s (%s) – the roof plaza, the back door, the second level. A bonus if nobody sees you." % [
+				d = "Download the data from the security centre of the %s in %s (%s): the roof plaza, the back door, the second level. A bonus if nobody sees you." % [
 					String(site["name"]), String(site["city_name"]), Universe.systems[sid2]["name"]]
 				base = 9500
 			else:
 				t = "Espionage: data from %s" % String(site["name"])
-				d = "Download the data from the deepest computer in %s – a bonus if nobody sees you." % where
+				d = "Download the data from the deepest computer in %s: a bonus if nobody sees you." % where
 				base = 8000
 		"rescue":
 			if theme == "research":
 				site["prisoner"] = "a researcher"
 				t = "Rescue: the researchers of %s" % String(site["name"])
-				d = "Looters took %s; its researchers sealed themselves into a cold store. Get one of them out alive – they follow you; explosions and traps hurt them too." % where
+				d = "Looters took %s; its researchers sealed themselves into a cold store. Get one of them out alive: they follow you; explosions and traps hurt them too." % where
 				base = 11000
 			else:
 				var who: String = ["a freighter captain", "a surveyor", "a courier", "a doctor", "an engineer"][rng.randi() % 5]
 				site["prisoner"] = who
 				t = "Rescue: %s held by the Red Talons" % who
-				d = "The Red Talons hold %s in the cells of %s. Get them out alive – they follow you; explosions and traps hurt them too." % [who, where]
+				d = "The Red Talons hold %s in the cells of %s. Get them out alive: they follow you; explosions and traps hurt them too." % [who, where]
 				base = 12000
 		"hunt":
 			# 53f-2 (Luz): a hunt in the wild – the old beast of a kind, or a cull of a kind that has grown too many
@@ -273,32 +273,32 @@ static func ground_offer(m: Dictionary, system_id: int, rng: RandomNumberGenerat
 			site["hunt_n"] = 1 if bool(site["hunt_alpha"]) else rng.randi_range(3, 5)
 			if bool(site["hunt_alpha"]):
 				t = "Hunt: the old %s" % nm
-				d = "An old %s has taken to the ground round %s – it has killed a survey team's dogs and nearly a surveyor. Bring it down." % [nm.to_lower(), where]
+				d = "An old %s has taken to the ground round %s: it has killed a survey team's dogs and nearly a surveyor. Bring it down." % [nm.to_lower(), where]
 				base = 8000
 			else:
 				t = "Cull: %d %ss" % [int(site["hunt_n"]), nm]
-				d = "The %ss at %s have grown too many for the colony's liking. Bring down %d of them – what you take from them is yours." % [nm.to_lower(), where, int(site["hunt_n"])]
+				d = "The %ss at %s have grown too many for the colony's liking. Bring down %d of them: what you take from them is yours." % [nm.to_lower(), where, int(site["hunt_n"])]
 				base = 5500
 		"pest":
 			site["pest"] = true                            # 53f (Luz): a rat plague in the sewers under a city
 			t = "Rat plague: under %s" % String(site["city_name"])
-			d = "The sewers under %s (%s) are crawling with mutant rats – they come up the drains now. Go down through the manhole in the back alley and kill their brood mother on the lowest level." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
+			d = "The sewers under %s (%s) are crawling with mutant rats: they come up the drains now. Go down through the manhole in the back alley and kill their brood mother on the lowest level." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
 			base = 7000
 		"investigate":
 			site["cult"] = true
 			t = "Strange happenings: %s" % String(site["name"])
-			d = "Lights in an old ruin – %s – and people from the nearby colonies gone missing. Go and see what is going on there, and put an end to it." % where
+			d = "Lights in an old ruin, %s, and people from the nearby colonies gone missing. Go and see what is going on there, and put an end to it." % where
 			base = 15000
 		"recover":
 			t = "Data recovery: %s" % String(site["name"])
-			d = "The research station %s fell silent – looters are inside. Bring back the research logs from its main computer." % where
+			d = "The research station %s fell silent: looters are inside. Bring back the research logs from its main computer." % where
 			base = 9000
 		"reactivate":
 			t = "Reactivation: %s" % String(site["city_name"])
-			d = "The power is out in the maintenance tunnels under %s (%s). Restart the reactor on the lowest level – the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
+			d = "The power is out in the maintenance tunnels under %s (%s). Restart the reactor on the lowest level: the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
 			if String(site["theme"]) == "skymaint":
 				t = "Rotor restart: %s" % String(site["city_name"])
-				d = "A lift rotor jammed under the deck of %s (%s) and the city is listing. Go down among the tanks and rotors and restart it at the rotor hall's console – the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
+				d = "A lift rotor jammed under the deck of %s (%s) and the city is listing. Go down among the tanks and rotors and restart it at the rotor hall's console: the city's lift takes you down." % [String(site["city_name"]), Universe.systems[sid2]["name"]]
 			base = 6500
 			danger = "green"
 			site["danger"] = "green"
@@ -384,7 +384,7 @@ static func generate_faction(system_id: int, station: Dictionary, rng: RandomNum
 		m.merge({"type": "smuggler", "target_system": tsys, "against": "hollow_crown", "expires": -1.0, "spawned": false,
 			"reward": 9000 + int((1.0 - float(Universe.systems[tsys]["security"])) * 8000),
 			"title": "Intercept: smuggler in %s" % Universe.systems[tsys]["name"],
-			"desc": "A Hollow Crown runner is expected in %s within %d minutes. Find the unregistered hauler and destroy it before it reaches a gate – a Warp Interdictor helps." % [Universe.systems[tsys]["name"], int(SMUGGLER_TIME / 60.0)]}, true)
+			"desc": "A Hollow Crown runner is expected in %s within %d minutes. Find the unregistered hauler and destroy it before it reaches a gate: a Warp Interdictor helps." % [Universe.systems[tsys]["name"], int(SMUGGLER_TIME / 60.0)]}, true)
 		return m
 	# patrol: its own patrol group meets the pilot at this station or at a named place in the system
 	var meet := {"id": String(station["id"]), "name": String(station["name"])}
@@ -400,7 +400,7 @@ static func generate_faction(system_id: int, station: Dictionary, rng: RandomNum
 	m.merge({"type": "patrol", "amount": int(PATROL_TIME), "progress_t": 0.0, "meet": meet,
 		"reward": 4500 + int((1.0 - float(Universe.systems[system_id]["security"])) * 6000),
 		"title": "Patrol: fly with the %s" % FactionData.short_of(f),
-		"desc": "A %s patrol waits for you at %s (%s). Join it – follow its lead ship – and fly its rounds for %d minutes (stay within %s). Help it if it gets into a fight." % [FactionData.short_of(f), meet["name"], Universe.systems[system_id]["name"], int(PATROL_TIME / 60.0), "10,000 km"]}, true)
+		"desc": "A %s patrol waits for you at %s (%s). Join it, follow its lead ship, and fly its rounds for %d minutes (stay within %s). Help it if it gets into a fight." % [FactionData.short_of(f), meet["name"], Universe.systems[system_id]["name"], int(PATROL_TIME / 60.0), "10,000 km"]}, true)
 	return m
 
 
@@ -429,7 +429,7 @@ static func _directorate_special(m: Dictionary, system_id: int, station: Diction
 		var n := rng.randi_range(2, 4)
 		m.merge({"type": "exotic", "min_tier": "friendly", "amount": n, "reward": n * 16000,
 			"title": "Exotic matter: %d units for the Meridian Sphere" % n,
-			"desc": "The Sphere's engineers need %d units of exotic matter. It is found in rare anomalies – analyse them – and brought here." % n}, true)
+			"desc": "The Sphere's engineers need %d units of exotic matter. It is found in rare anomalies (analyse them) and brought here." % n}, true)
 		return m
 	if String(station.get("art", "")) == "axiom_yards":
 		if rng.randf() >= DURCHBRUCH_CHANCE:
@@ -445,7 +445,7 @@ static func _directorate_special(m: Dictionary, system_id: int, station: Diction
 		escort_fill(m, system_id, dests[rng.randi() % dests.size()], 1, "directorate")
 		m["min_tier"] = "friendly"
 		m["title"] = "Test flight: escort an Axiom prototype to %s" % Universe.systems[int(m["target_system"])]["name"]
-		m["desc"] = "A prototype from the Axiom Yards makes its first long flight. Stay with it – at least %d %% of the way – and see that it arrives. Pirates would love to take it apart." % int(ESCORT_SHARE * 100.0)
+		m["desc"] = "A prototype from the Axiom Yards makes its first long flight. Stay with it, at least %d %% of the way, and see that it arrives. Pirates would love to take it apart." % int(ESCORT_SHARE * 100.0)
 		return m
 	if rng.randf() >= DIRECTORATE_CHANCE:
 		return {}
@@ -460,7 +460,7 @@ static func _directorate_special(m: Dictionary, system_id: int, station: Diction
 	m.merge({"type": "probe", "target_system": best, "amount": 1, "progress_t": 0.0,
 		"reward": 6000 + int((1.0 - low) * 12000),
 		"title": "Measurement probe in %s" % Universe.systems[best]["name"],
-		"desc": "Fly to %s and let the probe measure – stay in the system, out in space, for %d minutes. Then bring the data back here." % [Universe.systems[best]["name"], int(GameState.PROBE_TIME / 60.0)]}, true)
+		"desc": "Fly to %s and let the probe measure: stay in the system, out in space, for %d minutes. Then bring the data back here." % [Universe.systems[best]["name"], int(GameState.PROBE_TIME / 60.0)]}, true)
 	return m
 
 
@@ -508,13 +508,13 @@ static func _covenant_special(m: Dictionary, system_id: int, station: Dictionary
 		m["min_tier"] = "friendly"
 		m["to_capital"] = true
 		m["title"] = "Pilgrims: a convoy of the faithful to the Cathedral of Return"
-		m["desc"] = "Pilgrim ships leave this station for Heimkehr (%d jump%s). Keep them safe on the road home – at least %d %% of the way. You are paid per ship that arrives." % [jumps, "" if jumps == 1 else "s", int(ESCORT_SHARE * 100.0)]
+		m["desc"] = "Pilgrim ships leave this station for Heimkehr (%d jump%s). Keep them safe on the road home: at least %d %% of the way. You are paid per ship that arrives." % [jumps, "" if jumps == 1 else "s", int(ESCORT_SHARE * 100.0)]
 		return m
 	var amount := rng.randi_range(4, 10)
 	m.merge({"type": "courier", "min_tier": "friendly", "to_capital": true, "target_system": hk, "target_station": forge["id"],
 		"item": "sealed_cargo", "amount": amount, "reward": 4000 + jumps * 3000 + amount * 350,
 		"title": "Crystal transport: raw focus crystals to the Forge of Return",
-		"desc": "%d crates of raw focus crystals for the Forge of Return in Heimkehr (%d jump%s). Handle them gently – they are worth more than your ship." % [amount, jumps, "" if jumps == 1 else "s"]}, true)
+		"desc": "%d crates of raw focus crystals for the Forge of Return in Heimkehr (%d jump%s). Handle them gently: they are worth more than your ship." % [amount, jumps, "" if jumps == 1 else "s"]}, true)
 	return m
 
 
@@ -526,7 +526,7 @@ static func _assembly_special(m: Dictionary, system_id: int, station: Dictionary
 		m.merge({"type": "drone_trial", "min_tier": "friendly", "amount": n, "drone_trial": true,
 			"reward": 9000 + n * 3500,
 			"title": "Field trial: %d pirates by drone" % n,
-			"desc": "Concord Fleetworks wants combat data from the field. Let your drones destroy %d pirate ships anywhere in Assembly space – your own guns do not count. A drone carrier is a must." % n}, true)
+			"desc": "Concord Fleetworks wants combat data from the field. Let your drones destroy %d pirate ships anywhere in Assembly space: your own guns do not count. A drone carrier is a must." % n}, true)
 		return m
 	var lf := Universe.special_system("landfall")
 	if lf < 0 or lf == system_id or rng.randf() >= BALLOT_CHANCE:
@@ -546,7 +546,7 @@ static func _assembly_special(m: Dictionary, system_id: int, station: Dictionary
 		"item": "sealed_cargo", "amount": amount, "time_limit": limit,
 		"reward": 5000 + jumps * 3500 + amount * 400,
 		"title": "Ballot courier: the votes of %s to The Vote" % Universe.systems[system_id]["name"],
-		"desc": "%d sealed ballot cores must reach The Vote in Landfall (%d jump%s) before the polls close – %d:%02d from the moment you take them. Somebody always wants to know – or change – what is inside: expect thieves on the way." % [amount, jumps, "" if jumps == 1 else "s", int(limit) / 60, int(limit) % 60]}, true)
+		"desc": "%d sealed ballot cores must reach The Vote in Landfall (%d jump%s) before the polls close: %d:%02d from the moment you take them. Somebody always wants to know, or change, what is inside: expect thieves on the way." % [amount, jumps, "" if jumps == 1 else "s", int(limit) / 60, int(limit) % 60]}, true)
 	return m
 
 
@@ -579,7 +579,7 @@ static func escort_fill(m: Dictionary, system_id: int, d: Array, n: int, gov: St
 		"freighters": n, "arrived": -1, "convoy_gov": gov,
 		"reward": int((4000 + jumps * 3500 + danger * 8000) * (0.6 + 0.25 * n)),
 		"title": "Escort: %s convoy (%d freighters) to %s" % [size_word, n, Universe.systems[d[0]]["name"]],
-		"desc": "A %s with %d freighters leaves this station for %s (%s, %d jump%s). Stay with it – at least %d %% of the way. You are paid per freighter that arrives.%s" % [who, n, d[1]["name"], Universe.systems[d[0]]["name"], jumps, "" if jumps == 1 else "s", int(ESCORT_SHARE * 100.0), "" if gov != "" else " It has no escort of its own – you are its only protection."]}, true)
+		"desc": "A %s with %d freighters leaves this station for %s (%s, %d jump%s). Stay with it: at least %d %% of the way. You are paid per freighter that arrives.%s" % [who, n, d[1]["name"], Universe.systems[d[0]]["name"], jumps, "" if jumps == 1 else "s", int(ESCORT_SHARE * 100.0), "" if gov != "" else " It has no escort of its own: you are its only protection."]}, true)
 	return m
 
 
@@ -622,52 +622,52 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 	match String(m["type"]):
 		"ground":
 			if int(m["progress"]) >= 1:
-				return "Done – report back to %s" % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station")
+				return "Done: report back to %s" % Universe.find_station(int(m["giver_system"]), String(m["giver"])).get("name", "the station")
 			var st: Dictionary = m["site"]
 			if String(m["goal"]) == "reactivate":
 				if String(st.get("theme", "")) == "skymaint":
-					return "Under the deck of %s (%s) – take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
-				return "The maintenance tunnels under %s (%s) – take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
+					return "Under the deck of %s (%s): take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
+				return "The maintenance tunnels under %s (%s): take the city's lift down" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
 			if st.has("city") and String(st.get("theme", "")) == "corp":
-				return "The %s in %s (%s) – the lift up to the roof plaza" % [String(st["name"]), String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
+				return "The %s in %s (%s): the lift up to the roof plaza" % [String(st["name"]), String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
 			if st.has("city"):
-				return "The sewers under %s (%s) – the manhole in the back alley" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
-			return "Go to %s on %s (%s) – it is on the planet map" % [String(st["name"]), String(Universe.find_body(int(st["system"]), String(st["body"])).get("name", "?")), Universe.systems[int(st["system"])]["name"]]
+				return "The sewers under %s (%s): the manhole in the back alley" % [String(st.get("city_name", "")), Universe.systems[int(st["system"])]["name"]]
+			return "Go to %s on %s (%s): it is on the planet map" % [String(st["name"]), String(Universe.find_body(int(st["system"]), String(st["body"])).get("name", "?")), Universe.systems[int(st["system"])]["name"]]
 		"escort":
 			if int(m["progress"]) >= 1:
-				return "Convoy delivered (%d / %d freighters, pay %d %%) – report at %s" % [int(m.get("arrived", 0)), int(m.get("freighters", 0)), int(round(100.0 * float(payout(m)) / maxf(float(m["reward"]), 1.0))), Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?")]
+				return "Convoy delivered (%d / %d freighters, pay %d %%): report at %s" % [int(m.get("arrived", 0)), int(m.get("freighters", 0)), int(round(100.0 * float(payout(m)) / maxf(float(m["reward"]), 1.0))), Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?")]
 			var share := float(m["with_t"]) / maxf(float(m["total_t"]), 1.0)
-			return "Escort the convoy to %s – with it %d %% of the way" % [Universe.systems[int(m["target_system"])]["name"], int(share * 100.0)]
+			return "Escort the convoy to %s, with it %d %% of the way" % [Universe.systems[int(m["target_system"])]["name"], int(share * 100.0)]
 		"patrol":
 			if int(m["progress"]) >= 1:
-				return "Patrol flown – report back"
+				return "Patrol flown: report back"
 			if float(m["progress_t"]) <= 0.0 and m.has("meet"):
 				return "Meet the %s patrol at %s, then fly with it (%d:00)" % [FactionData.short_of(String(m["faction"])), m["meet"]["name"], int(m["amount"]) / 60]
 			return "Fly with the %s patrol: %d:%02d / %d:00" % [FactionData.short_of(String(m["faction"])), int(m["progress_t"]) / 60, int(m["progress_t"]) % 60, int(m["amount"]) / 60]
 		"hunt":
 			if int(m["progress"]) >= 1:
-				return "Target destroyed – report back"
+				return "Target destroyed: report back"
 			var c: Dictionary = GameState.notorious.get_captain(String(m["captain"]))
-			return "Destroy %s – last seen in %s" % [NotoriousTitle.title(c), Universe.systems[int(c["system"])]["name"]] if not c.is_empty() else "Target gone"
+			return "Destroy %s: last seen in %s" % [NotoriousTitle.title(c), Universe.systems[int(c["system"])]["name"]] if not c.is_empty() else "Target gone"
 		"smuggler":
 			if int(m["progress"]) >= 1:
-				return "Smuggler destroyed – report back"
+				return "Smuggler destroyed: report back"
 			if float(m["expires"]) > 0.0:
 				var left := maxf(0.0, float(m["expires"]) - GameState.play_time)
-				return "Intercept the smuggler in %s – %d:%02d left" % [Universe.systems[int(m["target_system"])]["name"], int(left) / 60, int(left) % 60]
+				return "Intercept the smuggler in %s: %d:%02d left" % [Universe.systems[int(m["target_system"])]["name"], int(left) / 60, int(left) % 60]
 			return "Intercept the smuggler in %s" % Universe.systems[int(m["target_system"])]["name"]
 		"courier":
 			if m.get("ballot", false) and float(m.get("expires", -1.0)) > 0.0:
 				var left2 := maxf(0.0, float(m["expires"]) - GameState.play_time)
-				return "Ballots to %s (Landfall) – %d:%02d until the polls close" % [Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?"), int(left2) / 60, int(left2) % 60]
+				return "Ballots to %s (Landfall): %d:%02d until the polls close" % [Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?"), int(left2) / 60, int(left2) % 60]
 			return "Deliver to %s" % Universe.find_station(int(m["target_system"]), m["target_station"]).get("name", "?")
 		"drone_trial":
 			return "%d / %d pirates destroyed by your drones in Assembly space" % [int(m["progress"]), int(m["amount"])]
 		"relic":
-			return "Relic found – bring it to the Cathedral of Return" if int(m["progress"]) >= 1 else "Analyse an anomaly in %s" % Universe.systems[int(m["target_system"])]["name"]
+			return "Relic found: bring it to the Cathedral of Return" if int(m["progress"]) >= 1 else "Analyse an anomaly in %s" % Universe.systems[int(m["target_system"])]["name"]
 		"probe":
 			if int(m["progress"]) >= 1:
-				return "Measurements complete – report back"
+				return "Measurements complete: report back"
 			return "Measure in %s: %d:%02d / %d:00" % [Universe.systems[int(m["target_system"])]["name"], int(m.get("progress_t", 0.0)) / 60, int(m.get("progress_t", 0.0)) % 60, int(GameState.PROBE_TIME / 60.0)]
 		"exotic":
 			return "%d / %d exotic matter in stock" % [mini(GameState.exotic_matter, int(m["amount"])), int(m["amount"])]
@@ -683,14 +683,14 @@ static func progress_text(m: Dictionary, fit: ShipFitting) -> String:
 				var tl := maxf(0.0, float(m["expires"]) - GameState.play_time)
 				var tr: Dictionary = m["tour"]
 				if bool(tr.get("ground", false)):
-					return "Land with them at %s (%s, %s) and walk to the viewpoint – %d:%02d left" % [tr["name"], String(tr.get("where", "")),
+					return "Land with them at %s (%s, %s) and walk to the viewpoint: %d:%02d left" % [tr["name"], String(tr.get("where", "")),
 						Universe.systems[int(tr["system"])]["name"], int(tl) / 60, int(tl) % 60]
-				return "Show them %s in %s – stay close %d / %d s – %d:%02d left" % [tr["name"], Universe.systems[int(tr["system"])]["name"], int(tr["t"]), int(TOUR_VIEW), int(tl) / 60, int(tl) % 60]
+				return "Show them %s in %s, stay close %d / %d s, %d:%02d left" % [tr["name"], Universe.systems[int(tr["system"])]["name"], int(tr["t"]), int(TOUR_VIEW), int(tl) / 60, int(tl) % 60]
 			if float(m.get("expires", -1.0)) < 0.0:
-				return "To %s (%s) – %d:%02d to get there" % [where, Universe.systems[int(m["target_system"])]["name"], int(m["time_limit"]) / 60, int(m["time_limit"]) % 60]
+				return "To %s (%s): %d:%02d to get there" % [where, Universe.systems[int(m["target_system"])]["name"], int(m["time_limit"]) / 60, int(m["time_limit"]) % 60]
 			var left := maxf(0.0, float(m["expires"]) - GameState.play_time)
 			var aboard := GameState.get_fit(int(m.get("ship_uid", -1)))
-			return "Take them to %s (%s) – %d:%02d left%s" % [where, Universe.systems[int(m["target_system"])]["name"], int(left) / 60, int(left) % 60,
+			return "Take them to %s (%s): %d:%02d left%s" % [where, Universe.systems[int(m["target_system"])]["name"], int(left) / 60, int(left) % 60,
 				("   •   aboard %s" % aboard.ship_name) if aboard != null and fit != null and aboard.uid != fit.uid else ""]
 	return ""
 
@@ -943,7 +943,7 @@ static func generate_shuttle(system_id: int, station: Dictionary, rng: RandomNum
 		"time_limit": SHUTTLE_TIME, "reward": int(round(float(c["pay"]) * amount * SHUTTLE_PAY)) + 60}
 	var dn := String(d.get("name", "?"))
 	m["title"] = "Shuttle: %d× %s %s %s" % [amount, c["name"], "up to" if from_city else "down to", dn]
-	m["desc"] = "%s %d %s passenger%s %s %s – %s. %s" % ["Fly" if from_city else "Take", amount, String(c["name"]).to_lower(), "" if amount == 1 else "s",
+	m["desc"] = "%s %d %s passenger%s %s %s: %s. %s" % ["Fly" if from_city else "Take", amount, String(c["name"]).to_lower(), "" if amount == 1 else "s",
 		"up to" if from_city else "down to", dn, "a station in orbit" if from_city else "to the city's hangar",
 		"They fill bulk seats." if cls == "bulk" else "The group needs a %s cabin of its own." % String(c["name"]).to_lower()]
 	return m

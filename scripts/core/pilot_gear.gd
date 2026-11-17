@@ -299,11 +299,11 @@ func use_belt(i: int) -> String:
 				belt[i] = {}
 			return "%s used." % String(s["name"])
 		"grenade":
-			return "%s – hold its key to aim, let go to throw (only where you may fight)." % String(s["name"])
+			return "%s: hold its key to aim, let go to throw (only where you may fight)." % String(s["name"])
 		"tool":
-			return "%s – its work comes with the places to explore." % String(s["name"])
+			return "%s: its work comes with the places to explore." % String(s["name"])
 		"breach":
-			return "%s – use a terminal (E) to jack it in and hack." % String(s["name"])
+			return "%s: use a terminal (E) to jack it in and hack." % String(s["name"])
 	return ""
 
 
@@ -499,9 +499,9 @@ func unequip(slot_kind: String, idx: int) -> String:
 	if idx < 0 or idx >= arr.size():
 		return "No such slot."
 	if arr[idx] is String and String(arr[idx]) != "" and bool(GearData.base(String(arr[idx])).get("builtin", false)):
-		return "Built into the suit – it comes off with the suit."
+		return "Built into the suit: it comes off with the suit."
 	if arr[idx] is Dictionary and bool((arr[idx] as Dictionary).get("builtin", false)):
-		return "Built into the suit – it comes off with the suit."
+		return "Built into the suit: it comes off with the suit."
 	var it = arr[idx]
 	var id := ""
 	var n := 1
@@ -607,7 +607,7 @@ func team_toggle(m: Dictionary) -> String:
 		team.erase(id)
 		return ""
 	if bool(m.get("dead", false)):
-		return "%s is dead – a clinic can bring them back." % String(m.get("name", "They"))
+		return "%s is dead: a clinic can bring them back." % String(m.get("name", "They"))
 	team = team.filter(func(t): return _team_aboard(int(t)))
 	if team.size() >= CrewData.TEAM_MAX:
 		return "At most %d come along." % CrewData.TEAM_MAX

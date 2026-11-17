@@ -6,20 +6,20 @@ extends RefCounted
 const GAMES := {
 	"billiards": {"name": "Billiards", "where": "The pool table",
 		"modes": [["8ball", "8-Ball"], ["9ball", "9-Ball"], ["practice", "Practice (alone)"]],
-		"rules": {"8ball": "Break, then one of you takes the solids (1–7), the other the stripes (9–15) – whoever pockets first chooses. Pocket all of yours, then the black 8. Fouls (the cue ball in a pocket, hitting the other's ball first, hitting nothing) give the other player the ball in hand. The 8 too early, or with a foul, loses.",
-			"9ball": "Always hit the lowest ball on the table first. Whatever you pocket that way, you keep shooting. Whoever pockets the 9 legally wins – even early, on a combination. A foul gives the ball in hand.",
+		"rules": {"8ball": "Break, then one of you takes the solids (1–7), the other the stripes (9–15): whoever pockets first chooses. Pocket all of yours, then the black 8. Fouls (the cue ball in a pocket, hitting the other's ball first, hitting nothing) give the other player the ball in hand. The 8 too early, or with a foul, loses.",
+			"9ball": "Always hit the lowest ball on the table first. Whatever you pocket that way, you keep shooting. Whoever pockets the 9 legally wins, even early, on a combination. A foul gives the ball in hand.",
 			"practice": "The table to yourself: no turns, no fouls. R racks again."}},
 	"darts": {"name": "Darts", "where": "The dartboard",
 		"modes": [["301", "301"], ["501", "501"], ["clock", "Around the clock (alone)"]],
-		"rules": {"301": "Both start at 301; each turn three darts, their points come off. Who gets down to exactly nothing first wins. Below nothing is a bust – the turn counts for nothing. The thin outer ring doubles, the inner ring triples; the bull is 50, the green ring round it 25.",
-			"501": "Like 301, from 501 – a longer game.",
+		"rules": {"301": "Both start at 301; each turn three darts, their points come off. Who gets down to exactly nothing first wins. Below nothing is a bust: the turn counts for nothing. The thin outer ring doubles, the inner ring triples; the bull is 50, the green ring round it 25.",
+			"501": "Like 301, from 501: a longer game.",
 			"clock": "Alone: hit 1, then 2, … up to 20, then the bull. Doubles and trebles of the number count. As few darts as you can."}},
 	"drift": {"name": "Drift", "where": "The card table",
-		"modes": [["drift", "Drift – you and the table"]],
-		"rules": {"drift": "Cards 1–10 in four suits (comets, moons, suns, nebulae) and four Warp cards worth nothing. Everyone gets two cards; in turn you draw (drift) or hold – over 21 you burn out. Closest to 21 takes the pot (everyone's stake); hit exactly 21 – a Singularity – and you win at once. A Warp in your hand swaps one of your cards for the deck's top one, then goes to the discard."}},
+		"modes": [["drift", "Drift: you and the table"]],
+		"rules": {"drift": "Cards 1–10 in four suits (comets, moons, suns, nebulae) and four Warp cards worth nothing. Everyone gets two cards; in turn you draw (drift) or hold: over 21 you burn out. Closest to 21 takes the pot (everyone's stake); hit exactly 21 (a Singularity) and you win at once. A Warp in your hand swaps one of your cards for the deck's top one, then goes to the discard."}},
 	"rockhopper": {"name": "Rock Hopper", "where": "The arcade cabinet",
-		"modes": [["arcade", "Arcade – 1 credit a game"]],
-		"rules": {"arcade": "Fly the mining tug (W thrust, mouse or A/D to turn). The drill laser (left button) cracks the rocks – big ones split, small ones shatter – and spills their ore; the tractor beam (right button) pulls it into your hold. Only ore you bring home to the refinery in the middle counts – dock there slowly; a full hold counts double, and the tank is filled. Lose the tug and the hold spills. From wave 3 pirate drones hunt you. Three tugs."}},
+		"modes": [["arcade", "Arcade: 1 credit a game"]],
+		"rules": {"arcade": "Fly the mining tug (W thrust, mouse or A/D to turn). The drill laser (left button) cracks the rocks (big ones split, small ones shatter) and spills their ore; the tractor beam (right button) pulls it into your hold. Only ore you bring home to the refinery in the middle counts: dock there slowly; a full hold counts double, and the tank is filled. Lose the tug and the hold spills. From wave 3 pirate drones hunt you. Three tugs."}},
 }
 
 ## The stake tiers: from how many wins in a row, the stakes on offer, the guests' strength (stars) then.
@@ -37,7 +37,7 @@ const NICK := ["Snake", "Chalk", "Lucky", "Doc", "Ace", "Rail", "Spin", "Bank"]
 const JOBS := ["miner", "freighter pilot", "smuggler", "dock worker", "mechanic", "trader", "medic", "drone wrangler", "prospector",
 	"ex-marine", "courier", "cook"]
 const LINES := ["\"Rack 'em up, spacer.\"", "\"Loser buys the next round.\"", "\"Don't cry when I clear the table.\"", "\"I've got time.\"",
-	"\"Go easy on me – long shift.\"", "\"Haven't lost here since the last refit.\"", "\"You break.\"", "\"Let's see that hand of yours.\""]
+	"\"Go easy on me, long shift.\"", "\"Haven't lost here since the last refit.\"", "\"You break.\"", "\"Let's see that hand of yours.\""]
 
 
 ## A mode played alone (no opponent, no stake, no streak).

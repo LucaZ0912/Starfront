@@ -17,13 +17,13 @@ func build() -> void:
 			active.append(int(k))
 	section("BOUNTY CAMPAIGNS")
 	if active.is_empty():
-		add_child(UI.label("No campaign running – bounties are at their usual level.", 13, UI.TEXT_DIM))
+		add_child(UI.label("No campaign running: bounties are at their usual level.", 13, UI.TEXT_DIM))
 	for k2 in active:
 		var c: Dictionary = camps[k2]
 		var row := UI.hbox(10)
 		add_child(row)
 		row.add_child(UI.icon(CrestArt.texture(String(c["faction"])), 22))
-		row.add_child(UI.label("%s: +%d %% on pirate bounties in %s – %d min left" % [FactionData.short_of(String(c["faction"])), int(round((float(c["mult"]) - 1.0) * 100.0)), Universe.systems[k2]["name"], int(ceil((float(c["until"]) - GameState.play_time) / 60.0))], 13, UI.GOLD))
+		row.add_child(UI.label("%s: +%d %% on pirate bounties in %s, %d min left" % [FactionData.short_of(String(c["faction"])), int(round((float(c["mult"]) - 1.0) * 100.0)), Universe.systems[k2]["name"], int(ceil((float(c["until"]) - GameState.play_time) / 60.0))], 13, UI.GOLD))
 	var tabs := UI.hbox(4)
 	add_child(tabs)
 	for spec in [["all", "Everything"], ["alert", "Raids"], ["world", "Cluster news"], ["radio", "Radio (this system)"]]:

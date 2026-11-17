@@ -258,7 +258,7 @@ func _set_hint() -> void:
 	elif level == "landing":
 		back = "her ramp takes you back aboard"
 	elif is_city():
-		back = "the lifts lead to the hangar – your ship and the way up"
+		back = "the lifts lead to the hangar: your ship and the way up"
 	_hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
 		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
 		Keybinds.key_text("foot_run"), Keybinds.key_text("interact"), back]
@@ -417,7 +417,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		if _lander:
 			for zl in map.zones:
 				if String(zl.get("id", "")) == "ship":
-					zl["title"] = "Board the landing drone – back up to your ship"
+					zl["title"] = "Board the landing drone: back up to your ship"
 	elif level == "dungeon":
 		map = _poi_map("dungeon", Vector2.ZERO)                       # 0.7.53.2: inside the site (0.7.53.3: its level `depth`)
 	elif level == "alley":
@@ -482,16 +482,16 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		env = {}
 	if level in ["landing", "settlement"] and _lander and map.ship_at != Vector2.INF:
 		_drone_ramp_zone()
-	var lift_title := "Lifts – Hangar · Shopping street · Tower bar" if is_city() else "Lifts – Hangar · Commercial level"
+	var lift_title := "Lifts: Hangar · Shopping street · Tower bar" if is_city() else "Lifts: Hangar · Commercial level"
 	if is_cloud():
-		lift_title = "Lifts – Hangar · Plaza · Skyrail · Sky bar"           # package 54
+		lift_title = "Lifts: Hangar · Plaza · Skyrail · Sky bar"           # package 54
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
 		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza", "pplaza"]:
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
-			zc["title"] = "Stairs down – aboard your ship and up through the hatch"
+			zc["title"] = "Stairs down: aboard your ship and up through the hatch"
 	_fuses = map.get_meta("fuses", {})                  # review 7 W2
 	_wires_t = map.get_meta("wires", {})
 	_build()
@@ -581,10 +581,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "ygallery": "the gallery", "pnarthex": "Aureola", "throne": "Aureola",
-		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic – Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
+		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic: Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
 		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
 	if is_cloud() and level == "tower":
-		_title.text = "%s – Sky bar · deck %d" % [map.title, tower_floor() / 10]
+		_title.text = "%s: Sky bar · deck %d" % [map.title, tower_floor() / 10]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
 	if arrive == "touchdown" and _ship_spr != null:
 		_touch = 0.0                                   # she comes down onto the pad, then you walk down the ramp
@@ -660,7 +660,7 @@ func _drone_ramp_zone() -> void:
 	for z in map.zones:
 		if String(z.get("id", "")) == "ship":
 			z["rect"] = Rect2(Vector2(top.x - 1.7 * GroundMap.TILE, top.y - 4.0), Vector2(3.4 * GroundMap.TILE, foot.y - top.y + 1.4 * GroundMap.TILE))
-			z["title"] = "Board the landing drone – take off"
+			z["title"] = "Board the landing drone: take off"
 
 
 func _drone_ramp_top() -> Vector2:
@@ -724,9 +724,9 @@ func _env_step(delta: float) -> void:
 	if hud != null:
 		hud.exposure = float(r["exposure"])
 	var t: Dictionary = g.totals()
-	for w in [["energy", g.energy / maxf(float(t["energy"]), 1.0), "Suit energy low – find a supply point or use an energy cell."],
-			["oxygen", g.oxygen / maxf(float(t["oxygen"]), 1.0) if not bool(env.get("breathable", true)) else 1.0, "Oxygen low – back to the drone, a supply point or a cartridge."],
-			["health", g.health / ChibiArt.GearData.HEALTH, "You are badly hurt – a medkit, or get under a roof."]]:
+	for w in [["energy", g.energy / maxf(float(t["energy"]), 1.0), "Suit energy low: find a supply point or use an energy cell."],
+			["oxygen", g.oxygen / maxf(float(t["oxygen"]), 1.0) if not bool(env.get("breathable", true)) else 1.0, "Oxygen low: back to the drone, a supply point or a cartridge."],
+			["health", g.health / ChibiArt.GearData.HEALTH, "You are badly hurt: a medkit, or get under a roof."]]:
 		var k := String(w[0])
 		if float(w[1]) < 0.25 and not _warned.has(k):
 			_warned[k] = true
@@ -771,7 +771,7 @@ func _on_click(event: InputEvent) -> void:
 				_say_toast("You hunt the %s." % String(f["name"]).to_lower(), 2.0)
 			else:
 				combat.lock(f)
-				_say_toast("A peaceful animal – click it again to hunt it.", 2.5)
+				_say_toast("A peaceful animal: click it again to hunt it.", 2.5)
 			return
 		combat.lock(f)
 	else:
@@ -818,7 +818,7 @@ func _turrets_step(delta: float) -> void:
 		if not bool(d.get("seen", false)):
 			d["seen"] = true
 			d["cool"] = 0.6                               # it turns before it fires
-			_say_toast("A turret has you – get into cover!", 2.0)
+			_say_toast("A turret has you. Get into cover!", 2.0)
 			raise_alarm()
 		d["cool"] = float(d.get("cool", 0.0)) - delta
 		if float(d["cool"]) > 0.0:
@@ -862,7 +862,7 @@ func raise_alarm() -> void:
 				if sp != Vector2.INF:
 					var nf: Dictionary = combat.spawn(String(th["foes"][randi() % th["foes"].size()]), sp, "", String(dg["tiers"][randi() % (dg["tiers"] as Array).size()]))
 					combat._wake(nf)
-			_say_toast("ALARM! The whole place knows you are here – and more of them are coming.", 3.5)
+			_say_toast("ALARM! The whole place knows you are here, and more of them are coming.", 3.5)
 			Audio.play("warn", "alarm rings", 0.0)
 			return
 
@@ -958,7 +958,7 @@ func _hazards_step(delta: float) -> void:
 			d["seen"] = seen
 			if seen and not bool(d.get("raised", false)):
 				d["raised"] = true                              # 0.7.53.11: caught in the light – the guards come
-				_say_toast("Caught in the searchlight – they know you are here!", 2.5)
+				_say_toast("Caught in the searchlight: they know you are here!", 2.5)
 				Audio.play("warn", "searchlight", -2.0)
 				for f in combat.alive():
 					combat._wake(f)
@@ -971,14 +971,14 @@ func _hazards_step(delta: float) -> void:
 		elif kd == "loose_rock" and String(d["state"]) == "shut" and (d["pos"] as Vector2).distance_to(pilot.pos) < 14.0 and not combat.sneaking:
 			d["state"] = "falling"                         # 0.7.53.7: a crack, dust – then the rock comes down
 			_fuses[i] = 0.7
-			_say_toast("A crack overhead – move!", 1.2)
+			_say_toast("A crack overhead. Move!", 1.2)
 			Audio.play("warn", "rockfall", -4.0)
 		elif kd == "gas" and (d["pos"] as Vector2).distance_to(pilot.pos) < float(d.get("r", 30.0)):
 			if GameState.gear.helmet != "always" and GameState.gear.combat_t <= 0.0 and not Commands.suit_god:
 				combat._hurt_pilot(4.0 * delta, "kinetic")
 				if not _haz_t.has(-1 - i):
 					_haz_t[-1 - i] = 4.0
-					_say_toast("Toxic gas – put your helmet on (Gear: helmet always) or get out of it.", 2.5)
+					_say_toast("Toxic gas! Put your helmet on (Gear: helmet always) or get out of it.", 2.5)
 
 
 ## 0.7.53.9 (Luz): the reactor restarted – it spins up, the lights come back on level by level.
@@ -1038,7 +1038,7 @@ func _socket_step(delta: float) -> void:
 		if not sd.is_empty():
 			sd.erase("arc")
 			if g.energy >= mx - 0.01:
-				_say_toast("Charged – the suit's energy is full.", 1.5)
+				_say_toast("Charged: the suit's energy is full.", 1.5)
 			elif float(sd.get("charge", 0.0)) <= 0.0:
 				_say_toast("The socket is drawn dry.", 1.5)
 		_socket = -1
@@ -1054,7 +1054,7 @@ func _socket_step(delta: float) -> void:
 ## 0.7.53.23 (Luz, package 53d): the Dark Ones' symbols – touched in the right order a membrane opens; a wrong one
 ## sends out a wave of force (and the order begins again). A monolith's vision tells the order.
 const SYMBOLS := [["●", "the Eye"], ["▲", "the Tooth"], ["◆", "the Coil"], ["■", "the Gate"]]
-const VISIONS := ["You stand under a sky without stars. Something breathes beneath the ground – slowly, for an age.",
+const VISIONS := ["You stand under a sky without stars. Something breathes beneath the ground: slowly, for an age.",
 	"Figures in a ring, kneeling round a pit. None of them looks up. Something in the pit does.",
 	"A city of black glass, grown like coral. Its people sleep in the walls. They are dreaming of you.",
 	"The stars go out one by one, and the dark between them leans closer to listen.",
@@ -1103,7 +1103,7 @@ func _touch_symbol(d: Dictionary, i: int) -> void:
 			d["state"] = "open"
 			_close_lift_menu()
 			open_door(map.explore[int(d["door"])])
-			_say_toast("The fourth sign burns – the stone draws back.", 3.0)
+			_say_toast("The fourth sign burns: the stone draws back.", 3.0)
 			Audio.play("shield_down", "membrane opens", -2.0)
 			return
 		_symbol_menu(d)
@@ -1111,7 +1111,7 @@ func _touch_symbol(d: Dictionary, i: int) -> void:
 	d["seq"] = []
 	_close_lift_menu()
 	_dark_wave(pilot.pos)
-	_say_toast("Wrong – a wave of force rolls out of the stone! The signs go dark again.", 3.0)
+	_say_toast("Wrong! A wave of force rolls out of the stone! The signs go dark again.", 3.0)
 
 
 ## 0.7.53.23: a wave of force – hurts whoever stands near (you, foes alike).
@@ -1138,7 +1138,7 @@ func _reinforce_step(delta: float) -> void:
 	if t < 0.0:
 		if combat.alive().any(func(f): return f["aware"] and not f.has("reinf")):
 			map.set_meta("reinf_t", REINFORCE_DELAY)
-			_say_toast("They have seen you – security is on its way up the lift!", 3.0)
+			_say_toast("They have seen you: security is on its way up the lift!", 3.0)
 			Audio.play("warn", "reinforcements called", -2.0)
 		return
 	t -= delta
@@ -1158,7 +1158,7 @@ func _reinforce_step(delta: float) -> void:
 		var nf: Dictionary = combat.spawn(String(fe[0]), sp, "", String(fe[1]))
 		nf["reinf"] = true
 		combat._wake(nf)
-	_say_toast("The lift doors open – security!", 2.5)
+	_say_toast("The lift doors open. Security!", 2.5)
 	Audio.play("dock_clamp", "lift arrives", -2.0)
 const CAM_NOTICE := 0.8
 
@@ -1181,13 +1181,13 @@ func _cams_step(delta: float) -> void:
 			d["notice"] = clampf(float(d.get("notice", 0.0)) + (delta / CAM_NOTICE if seen else -delta * 0.5), 0.0, 1.0)
 			if float(d["notice"]) >= 1.0 and not bool(d.get("raised", false)):
 				d["raised"] = true
-				_say_toast("A camera has you – the alarm!", 2.5)
+				_say_toast("A camera has you. The alarm!", 2.5)
 				Audio.play("warn", "camera alarm", -2.0)
 				raise_alarm()
 		elif kd == "glyph_trap":
 			if String(d.get("state", "")) != "spent" and (d["pos"] as Vector2).distance_to(pilot.pos) < 10.0:
 				d["state"] = "spent"                       # 0.7.53.23 (Luz): a glyph flares under your feet
-				_say_toast("A glyph flares under your feet – a wave of force!", 2.5)
+				_say_toast("A glyph flares under your feet: a wave of force!", 2.5)
 				_dark_wave(d["pos"])
 		elif kd == "laser_gate":
 			if beams_off and String(d["state"]) == "on":
@@ -1199,7 +1199,7 @@ func _cams_step(delta: float) -> void:
 			var b: Vector2 = a + (Vector2(0, ln) if bool(d.get("vertical", true)) else Vector2(ln, 0))
 			if Geometry2D.get_closest_point_to_segment(pilot.pos, a, b).distance_to(pilot.pos) < 4.0:
 				d["state"] = "tripped"
-				_say_toast("You broke a light barrier – the alarm!", 2.5)
+				_say_toast("You broke a light barrier. The alarm!", 2.5)
 				Audio.play("warn", "light barrier", -2.0)
 				raise_alarm()
 
@@ -1246,7 +1246,7 @@ func _hostage_blast(at: Vector2, r: float) -> void:
 		_hostage = {}
 		GameState.ground_goal(_site, false, 1.0, "the prisoner died")
 		_site["goal_done"] = true
-		_say_toast("The prisoner is dead – the rescue has failed.", 4.0)
+		_say_toast("The prisoner is dead: the rescue has failed.", 4.0)
 	else:
 		_say_toast("The prisoner is hurt! (%d %%)" % int(float(_hostage["hp"]) / 60.0 * 100.0), 2.0)
 
@@ -1355,7 +1355,7 @@ func _fuses_step(delta: float) -> void:
 				open_door(d)                                  # 0.7.53.9: cranked open
 			"vault_door":
 				open_door(d)                                  # 0.7.53.19: the drill is through
-				_say_toast("The drill is through – the vault door swings aside.", 3.0)
+				_say_toast("The drill is through: the vault door swings aside.", 3.0)
 				Audio.play("dock_clamp", "vault opens", 0.0)
 			"cells":
 				d["state"] = "open"                           # 53c: the prisoner comes out
@@ -1364,7 +1364,7 @@ func _fuses_step(delta: float) -> void:
 				lk["suit"] = "suit_civil"
 				_hostage = {"look": lk, "hp": 60.0}
 				_spawn_hostage((d["pos"] as Vector2) + Vector2(0, 20))
-				_say_toast("The lock gives – \"Get me out of here!\" They follow you. Keep them alive.", 3.5)
+				_say_toast("The lock gives: \"Get me out of here!\" They follow you. Keep them alive.", 3.5)
 				Audio.play("dock_clamp", "cell opened", -6.0)
 
 
@@ -1389,7 +1389,7 @@ func blast_near(at: Vector2, r: float) -> void:
 			map._astar = null
 			if combat != null:
 				combat._build_cover()
-			_say_toast("The rubble is blown away – the drift is open.", 2.5)
+			_say_toast("The rubble is blown away: the drift is open.", 2.5)
 
 
 ## 0.7.53.7: one of a thing out of your grenade places, belt or pockets.
@@ -1428,8 +1428,8 @@ func _open_power_menu(d: Dictionary) -> void:
 	var v := UI.vbox(8)
 	p.add_child(v)
 	v.add_child(UI.label("EMERGENCY POWER", 20, Color(1.0, 0.8, 0.3)))
-	v.add_child(UI.label("Barely enough for one – where does it go?", 13, UI.TEXT_DIM))
-	var opts := [["doors", "1.  The bulkheads – they open (the lights go out)"], ["lights", "2.  The lights – the bulkheads stay jammed"]]
+	v.add_child(UI.label("Barely enough for one. Where does it go?", 13, UI.TEXT_DIM))
+	var opts := [["doors", "1.  The bulkheads: they open (the lights go out)"], ["lights", "2.  The lights: the bulkheads stay jammed"]]
 	var keys: Array = []
 	for o in opts:
 		var pick := func(): _route_power(d, String(o[0]))
@@ -1452,7 +1452,7 @@ func _route_power(d: Dictionary, to: String) -> void:
 			open_door(map.explore[int(d["door"])])
 		if _dark_rect != null and is_instance_valid(_dark_rect):
 			_dark_rect.color = Color(0.45, 0.28, 0.27)
-		_say_toast("The bulkheads groan open – and the lights die. Only the red emergency lamps now.", 3.5)
+		_say_toast("The bulkheads groan open, and the lights die. Only the red emergency lamps now.", 3.5)
 	else:
 		if _dark_rect != null and is_instance_valid(_dark_rect):
 			_dark_rect.color = map.get_meta("dark", Color(0.78, 0.55, 0.52))
@@ -1489,7 +1489,7 @@ func _sink_step(delta: float) -> void:
 		pilot.modulate.a = 1.0
 		depth = depth + 1 if down else maxi(0, depth - 1)
 		go_level("dungeon", "dungeon_down" if down else "dungeon_up")
-		_say_toast("The platform settles – level %d." % (depth + 1), 2.0)
+		_say_toast("The platform settles: level %d." % (depth + 1), 2.0)
 
 
 ## 0.7.53.3: wading through the sewer's canal is slow.
@@ -1526,7 +1526,7 @@ func _wires_step(delta: float) -> void:
 		if Geometry2D.get_closest_point_to_segment(pilot.pos, a, b).distance_to(pilot.pos) < 4.0 and not combat.sneaking:
 			d["state"] = "fired"
 			_wires_t[i] = 0.6
-			_say_toast("Click – a tripwire!", 1.5)
+			_say_toast("Click! A tripwire!", 1.5)
 			Audio.play("warn", "tripwire", -2.0)
 
 
@@ -1567,6 +1567,10 @@ func _story_map() -> void:
 	if bool(story_mode.get("quiet", false)):
 		map.people = map.people.filter(func(p): return String(p.get("role", "")) == "bartender" and bool(story_mode.get("keep_bartender", false)))
 		map.zones = map.zones.filter(func(z): return String(z.get("kind", "")) != "crew")      # nobody looking for a post
+	elif bool(story_mode.get("no_crew", false)):
+		# package 56: the bar busy again – but nobody looking for a post (you have no ship to take them on)
+		map.people = map.people.filter(func(p): return String(p.get("role", "")) != "crew")
+		map.zones = map.zones.filter(func(z): return String(z.get("kind", "")) != "crew")
 	var lv: Dictionary = (story_mode.get("levels", {}) as Dictionary).get(level, {})
 	var bx := int((lv.get("bed", [-99]) as Array)[0])
 	for o in map.objects:
@@ -2421,21 +2425,21 @@ func _prompt_text(z: Dictionary) -> String:
 		"socket":                                       # 0.7.53.16
 			var sk: Dictionary = map.explore[int(z["i"])]
 			if float(sk.get("charge", 0.0)) <= 0.0:
-				return "A power socket – drawn dry"
+				return "A power socket: drawn dry"
 			return ("Charging…  %d / %d" % [int(GameState.gear.energy), int(GameState.gear.totals()["energy"])]) if charging() \
-				else "[hold %s] Power socket – charge the suit (%d left in it)" % [key, int(sk["charge"])]
+				else "[hold %s] Power socket: charge the suit (%d left in it)" % [key, int(sk["charge"])]
 		"crew":
-			return "[%s] Talk to %s – looking for a post" % [key, z["title"]]
+			return "[%s] Talk to %s: looking for a post" % [key, z["title"]]
 		"story":
 			return "[%s] Talk to %s" % [key, z["title"]]             # package 56
 		"seat":
 			return "[%s] Stand up" % key if not _seat.is_empty() else "[%s] %s" % [key, z["title"]]
 		"guard":
-			return "[%s] %s – weapons stay holstered in the city" % [key, z["title"]]
+			return "[%s] %s: weapons stay holstered in the city" % [key, z["title"]]
 		"jukebox":
-			return "[%s] Jukebox – %s" % [key, ("next track (now: %s)" % Jukebox.track_name(track)) if track >= 0 else "play some music"]
+			return "[%s] Jukebox: %s" % [key, ("next track (now: %s)" % Jukebox.track_name(track)) if track >= 0 else "play some music"]
 	if String(z.get("closed", "")) != "":
-		return "%s – closed: %s" % [z["title"], z["closed"]]
+		return "%s, closed: %s" % [z["title"], z["closed"]]
 	return "[%s] %s%s" % [key, z["title"], ("  –  " + String(z["corp"])) if String(z.get("corp", "")) != "" else ""]
 
 
@@ -2500,7 +2504,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not combat.allies.is_empty():
 				_team_held = 0.0
 			else:
-				_say_toast("Nobody came along – pick your ground team in the Pilot window (Gear).", 2.5)
+				_say_toast("Nobody came along: pick your ground team in the Pilot window (Gear).", 2.5)
 			return
 		if event.is_action_released("foot_team", false) and _team_held >= 0.0:
 			get_viewport().set_input_as_handled()
@@ -2578,7 +2582,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 		if event.is_action_pressed("foot_grenade", false, false):
 			get_viewport().set_input_as_handled()
-			_say_toast("No fighting here – the grenades stay on your suit.", 2.5)
+			_say_toast("No fighting here: the grenades stay on your suit.", 2.5)
 
 
 ## 0.7.52.5: where the mouse points on the map (art px).
@@ -2628,9 +2632,9 @@ func _museum_case(d: Dictionary) -> bool:
 		talk.say(String(e["text"]), [["Close.", func(): talk.close()]])
 		return true
 	if GameState.museum_finds.has(id):
-		_say_toast("An empty case – and you carry what belongs in it: %s. Bring it to the curator at the desk in the hall." % String(e["name"]), 5.0)
+		_say_toast("An empty case, and you carry what belongs in it: %s. Bring it to the curator at the desk in the hall." % String(e["name"]), 5.0)
 		return true
-	_say_toast("An empty case – something of %s belongs here. %s" % [MuseumData.room_name(room).replace("The ", "the "), String(MuseumData.HINTS.get(room, ""))], 5.5)
+	_say_toast("An empty case: something of %s belongs here. %s" % [MuseumData.room_name(room).replace("The ", "the "), String(MuseumData.HINTS.get(room, ""))], 5.5)
 	return true
 
 
@@ -2640,7 +2644,7 @@ func _open_curator() -> void:
 	if talk != null:
 		return
 	if not _cur_trip.is_empty():
-		_say_toast("The curator is away – setting your finds into their cases. Back in a moment.", 3.0)
+		_say_toast("The curator is away: setting your finds into their cases. Back in a moment.", 3.0)
 		return
 	GameState.museum_give_suit()                      # review 7 M2: the suit she kept for you, once you have room
 	Audio.play("ui_open", "museum: the curator")
@@ -2650,11 +2654,11 @@ func _open_curator() -> void:
 	talk.open(look, _curator_name(), "Curator · Museum of Curie", Color(0.95, 0.8, 0.45))
 	talk.closed.connect(_on_curator_closed)
 	var n := GameState.museum_count()
-	var greet := "Welcome to the Museum of Curie. %d of our %d cases are filled – every piece set in by the one who found it." % [n, MuseumData.EXHIBITS.size()]
+	var greet := "Welcome to the Museum of Curie. %d of our %d cases are filled: every piece set in by the one who found it." % [n, MuseumData.EXHIBITS.size()]
 	if n == 0:
-		greet = "Welcome, welcome! The Museum of Curie – forty-eight cases, and every one of them empty. Bring us what you find out there, and set it in yourself. That is our custom."
+		greet = "Welcome, welcome! The Museum of Curie: forty-eight cases, and every one of them empty. Bring us what you find out there, and set it in yourself. That is our custom."
 	elif n >= MuseumData.EXHIBITS.size():
-		greet = "Every case is filled. I still come in early, you know – just to look at them."
+		greet = "Every case is filled. I still come in early, you know, just to look at them."
 	talk.say(greet, _curator_options())
 
 
@@ -2679,8 +2683,8 @@ func _curator_options() -> Array:
 
 ## 0.7.53.30 (Luz): you hand your finds to the curator – one of each the Museum lacks. Delighted, the curator tells you
 ## about each in turn; when you part, off to the cases with them, and back to the desk.
-const CURATOR_JOY := ["Oh! Oh, look at this – the %s!", "And – no. Truly? The %s!", "The %s! I have only ever seen drawings.",
-	"Wonderful – the %s.", "Careful, careful… the %s!"]
+const CURATOR_JOY := ["Oh! Oh, look at this: the %s!", "And… no. Truly? The %s!", "The %s! I have only ever seen drawings.",
+	"Wonderful: the %s.", "Careful, careful… the %s!"]
 
 
 func _curator_give() -> void:
@@ -2709,11 +2713,11 @@ func _curator_tell(give: Array, i: int, pay: int, news: Array) -> void:
 	var e: Dictionary = MuseumData.get_exhibit(String(give[i]))
 	var line: String = (String(CURATOR_JOY[i % CURATOR_JOY.size()]) % String(e["name"])) + "  " + String(e["text"])
 	if String(e["rarity"]) in ["rare", "legendary"]:
-		line += "  Do you know how rare this is? %s – I could weep." % String(e["rarity"]).capitalize()
+		line += "  Do you know how rare this is? %s. I could weep." % String(e["rarity"]).capitalize()
 	if i < give.size() - 1:
 		talk.say(line, [["And this one…", func(): _curator_tell(give, i + 1, pay, news)]])
 		return
-	var end := "I will set them into their cases at once – they belong to everyone now. For your trouble: %s." % GameData.fmt_credits(pay)
+	var end := "I will set them into their cases at once: they belong to everyone now. For your trouble: %s." % GameData.fmt_credits(pay)
 	if give.size() == 1:
 		end = "I will set it into its case at once. For your trouble: %s." % GameData.fmt_credits(pay)
 	for rid in news:
@@ -2721,8 +2725,8 @@ func _curator_tell(give: Array, i: int, pay: int, news: Array) -> void:
 		if String(rid) == "darkones":
 			end += " The monolith's cast goes up downstairs."
 	if GameState.museum_count() >= MuseumData.EXHIBITS.size():
-		end += "  Every case is filled. Every one. Here – the Archivist Suit; it is yours."
-	talk.say(line, [["Tell me more later – thank you.", func(): talk.say(end, _curator_options())]])
+		end += "  Every case is filled. Every one. Here: the Archivist Suit; it is yours."
+	talk.say(line, [["Tell me more later: thank you.", func(): talk.say(end, _curator_options())]])
 
 
 ## 0.7.53.30 (Luz): what the full rooms give – and the suit, once every case is filled.
@@ -2733,7 +2737,7 @@ func _curator_rewards() -> void:
 		if GameState.museum_room_done(rid):
 			lines.append("%s – %s" % [String(r["name"]), String(MuseumData.PERKS[rid])])
 	if GameState.museum_count() >= MuseumData.EXHIBITS.size():
-		lines.append("The whole Museum – the Archivist Suit (in your pockets).")
+		lines.append("The whole Museum: the Archivist Suit (in your pockets).")
 	else:
 		lines.append("Fill every case and the Museum gives you the Archivist Suit.")
 	talk.say("For every room that is complete the Museum thanks you:\n" + "\n".join(PackedStringArray(lines)), _curator_options())
@@ -2804,7 +2808,7 @@ func _curator_rooms() -> void:
 		var rid := String(r["id"])
 		var have := MuseumData.of_room(rid).filter(func(e): return GameState.museum_donated.has(String(e["id"]))).size()
 		var tot := MuseumData.of_room(rid).size()
-		lines.append("%s: %d of %d%s" % [String(r["name"]), have, tot, ("  – complete! " + String(MuseumData.PERKS[rid])) if have >= tot else ""])
+		lines.append("%s: %d of %d%s" % [String(r["name"]), have, tot, (", complete!" + String(MuseumData.PERKS[rid])) if have >= tot else ""])
 	talk.say("
 ".join(PackedStringArray(lines)), _curator_options())
 
@@ -2815,7 +2819,7 @@ func _curator_finds() -> void:
 		if not uniq.has(String(f)):
 			uniq.append(String(f))
 	if uniq.is_empty():
-		talk.say("You carry nothing for us just now. Out there, though – there is always something.", _curator_options())
+		talk.say("You carry nothing for us just now. Out there, though, there is always something.", _curator_options())
 		return
 	var lines: Array = []
 	var spare := 0
@@ -2831,11 +2835,11 @@ func _curator_finds() -> void:
 			spare += cnt * MuseumData.price(id)
 			if opts.size() < 4:
 				var bid: String = id
-				opts.append(["Sell one %s – %s" % [String(e["name"]), GameData.fmt_credits(MuseumData.price(id))], func(): _curator_sell(bid)])
+				opts.append(["Sell one %s: %s" % [String(e["name"]), GameData.fmt_credits(MuseumData.price(id))], func(): _curator_sell(bid)])
 	if uniq.size() > 8:
 		lines.append("…and %d more." % (uniq.size() - 8))
 	if spare > 0:
-		opts.push_front(["Sell every spare piece – %s" % GameData.fmt_credits(spare), func(): _curator_sell("")])
+		opts.push_front(["Sell every spare piece: %s" % GameData.fmt_credits(spare), func(): _curator_sell("")])
 	opts.append(["Back.", func(): talk.say("Anything else?", _curator_options())])
 	talk.say("Let me see…
 " + "
@@ -2853,7 +2857,7 @@ func _curator_sell(id: String) -> void:
 	if got > 0:
 		Audio.play("ui_buy", "museum: sold to the curator", -4.0)
 	if talk != null:
-		talk.say("For the Museum's stores – %s. Thank you." % GameData.fmt_credits(got) if got > 0 else "Nothing there we could take.", _curator_options())
+		talk.say("For the Museum's stores: %s. Thank you." % GameData.fmt_credits(got) if got > 0 else "Nothing there we could take.", _curator_options())
 
 
 func _curator_hint() -> void:
@@ -2861,7 +2865,7 @@ func _curator_hint() -> void:
 	var txt := "Nothing is missing. Nothing! Do you know how long I waited to say that?"
 	if not missing.is_empty():
 		var e: Dictionary = missing[randi() % missing.size()]
-		txt = "%s – its case in %s is still empty. %s" % [String(e["name"]), MuseumData.room_name(String(e["room"])), String(MuseumData.HINTS[String(e["room"])])]
+		txt = "%s: its case in %s is still empty. %s" % [String(e["name"]), MuseumData.room_name(String(e["room"])), String(MuseumData.HINTS[String(e["room"])])]
 	if talk != null:
 		talk.say(txt, _curator_options())
 	else:
@@ -2904,15 +2908,15 @@ func explore_use(z: Dictionary) -> bool:
 			return _museum_case(d)
 		"monolith_cast":
 			if String(d.get("state", "")) == "up":
-				_say_toast("The cast of a monolith of the Dark Ones, raised now that every piece of theirs is here. Its signs glow faintly – the curator swears it was dark when it came.", 6.0)
+				_say_toast("The cast of a monolith of the Dark Ones, raised now that every piece of theirs is here. Its signs glow faintly: the curator swears it was dark when it came.", 6.0)
 			else:
-				_say_toast("An empty plinth. The curator keeps it for the cast of a monolith – once every piece of the Dark Ones is in its case.", 4.5)
+				_say_toast("An empty plinth. The curator keeps it for the cast of a monolith: once every piece of the Dark Ones is in its case.", 4.5)
 			return true
 		"panel":
 			if String(d["state"]) == "shut":
 				var tool := belt_tool("tl_cutter")
 				if tool == "":
-					_say_toast("It is welded shut – you need a cutting torch on your belt.", 3.0)
+					_say_toast("It is welded shut: you need a cutting torch on your belt.", 3.0)
 					return true
 				var cg = CutGame.new()
 				cg.inside = String(d["inside"])
@@ -2932,11 +2936,11 @@ func explore_use(z: Dictionary) -> bool:
 			return true
 		"vent":
 			if String(d["state"]) != "shut":
-				_say_toast("The shaft is open – crawl in.", 2.0)
+				_say_toast("The shaft is open: crawl in.", 2.0)
 				return true
 			var tool2 := belt_tool("tl_cutter")
 			if tool2 == "":
-				_say_toast("The grille is welded shut – you need a cutting torch on your belt.", 3.0)
+				_say_toast("The grille is welded shut: you need a cutting torch on your belt.", 3.0)
 				return true
 			var vg = CutGame.new()
 			vg.inside = "duct"
@@ -2954,7 +2958,7 @@ func explore_use(z: Dictionary) -> bool:
 			if bool(d.get("welded", false)):
 				var t3 := belt_tool("tl_cutter")
 				if t3 == "":
-					_say_toast("Welded shut – you need a cutting torch on your belt.", 3.0)
+					_say_toast("Welded shut: you need a cutting torch on your belt.", 3.0)
 					return true
 				var lg = CutGame.new()
 				lg.inside = "loot"
@@ -2969,19 +2973,19 @@ func explore_use(z: Dictionary) -> bool:
 			return true
 		"ruin_gate":
 			if String(d["state"]) == "open":
-				_say_toast("Open – go in.", 1.5)
+				_say_toast("Open: go in.", 1.5)
 			elif String(d.get("lock", "open")) == "open":
 				open_door(d)                               # it gives way to a push
 			else:
-				_say_toast("Sealed – %s." % ("its panel is on the wall beside it (cutting torch)" if String(d["lock"]) == "panel" else "the computer by it opens it (E-Breach)"), 3.0)
+				_say_toast("Sealed: %s." % ("its panel is on the wall beside it (cutting torch)" if String(d["lock"]) == "panel" else "the computer by it opens it (E-Breach)"), 3.0)
 			return true
 		"breach":
 			if String(d["state"]) == "open":
-				_say_toast("Open – climb in.", 1.5)
+				_say_toast("Open: climb in.", 1.5)
 				return true
 			var t6 := belt_tool("tl_cutter")
 			if t6 == "":
-				_say_toast("A buckled plate is wedged in it – you need a cutting torch on your belt.", 3.0)
+				_say_toast("A buckled plate is wedged in it: you need a cutting torch on your belt.", 3.0)
 				return true
 			var bg = CutGame.new()
 			bg.inside = "duct"
@@ -2993,7 +2997,7 @@ func explore_use(z: Dictionary) -> bool:
 			_open_game(bg)
 			return true
 		"airlock", "pirate_gate":
-			_say_toast("Sealed – its terminal beside it opens it (E-Breach)." if String(d["state"]) != "open" else "Open – go in.", 2.5)
+			_say_toast("Sealed: its terminal beside it opens it (E-Breach)." if String(d["state"]) != "open" else "Open: go in.", 2.5)
 			return true
 		"wild_find":
 			if String(d["state"]) != "taken":
@@ -3016,7 +3020,7 @@ func explore_use(z: Dictionary) -> bool:
 			var lkd: Dictionary = map.explore[int(d.get("leak", 0))]
 			if String(lkd["state"]) == "open":
 				lkd["state"] = "sealed"                    # 0.7.53.20 (Luz): the emergency bulkhead seals the torn module
-				_say_toast("The emergency plate slams over the hole – the air comes back, it warms up.", 3.0)
+				_say_toast("The emergency plate slams over the hole: the air comes back, it warms up.", 3.0)
 				Audio.play("dock_clamp", "bulkhead sealed", -2.0)
 			else:
 				_say_toast("Sealed.", 1.2)
@@ -3026,12 +3030,12 @@ func explore_use(z: Dictionary) -> bool:
 				d["state"] = "taken"                       # 0.7.53.19 (Luz): the lifts' key card
 				_site["card"] = true
 				GameState.set_poi_flag(String(_site.get("id", "")), "card")     # review 7 M3: kept with the site
-				_say_toast("A key card – the lifts down will take you now.", 3.0)
+				_say_toast("A key card: the lifts down will take you now.", 3.0)
 				Audio.play("ui_buy", "key card", -6.0)
 			return true
 		"vault_door":
-			_say_toast({"shut": "The vault door – its lock wants a hack at the terminal beside it, then the drill.",
-				"drilling": "The drill is biting – hold out.", "open": "Open."}.get(String(d["state"]), ""), 2.5)
+			_say_toast({"shut": "The vault door: its lock wants a hack at the terminal beside it, then the drill.",
+				"drilling": "The drill is biting: hold out.", "open": "Open."}.get(String(d["state"]), ""), 2.5)
 			return true
 		"cells":
 			if not bool(d.get("prisoner", false)) or String(d["state"]) == "open":
@@ -3051,7 +3055,7 @@ func explore_use(z: Dictionary) -> bool:
 			else:
 				d["state"] = "cranking"                    # 0.7.53.9 (Luz): by hand – slow and loud
 				_fuses[map.explore.find(d)] = 4.0
-				_say_toast("You crank the door open by hand – it takes a while, and it is loud.", 2.5)
+				_say_toast("You crank the door open by hand: it takes a while, and it is loud.", 2.5)
 				Audio.play("dock_clamp", "crank door", -6.0)
 				if combat != null:
 					for f in combat.alive():
@@ -3060,21 +3064,21 @@ func explore_use(z: Dictionary) -> bool:
 			return true
 		"fuse_box":
 			if String(d["state"]) == "open":
-				_say_toast("The fuse is in – the door has power.", 1.5)
+				_say_toast("The fuse is in: the door has power.", 1.5)
 			else:
 				d["state"] = "open"                        # 0.7.53.9: a spare fuse from the box's own clip
 				if d.has("door"):
 					open_door(map.explore[int(d["door"])])
-				_say_toast("You put a spare fuse in – the door slides open.", 2.5)
+				_say_toast("You put a spare fuse in: the door slides open.", 2.5)
 			return true
 		"mine_gen":
 			if String(d["state"]) == "open":
-				_say_toast("It runs – the cage has power.", 1.5)
+				_say_toast("It runs: the cage has power.", 1.5)
 			else:
 				d["state"] = "open"                        # 0.7.53.7 (Luz): pull the cord – loud
 				if d.has("lift"):
 					map.explore[int(d["lift"])]["state"] = "active"
-				_say_toast("The generator coughs, then roars – the cage's lamp turns green. Everyone down here heard that.", 3.0)
+				_say_toast("The generator coughs, then roars: the cage's lamp turns green. Everyone down here heard that.", 3.0)
 				Audio.play("module_on", "mine generator", 0.0)
 				if combat != null:
 					for f in combat.alive():
@@ -3083,11 +3087,11 @@ func explore_use(z: Dictionary) -> bool:
 			return true
 		"mine_gate":
 			if String(d["state"]) == "open":
-				_say_toast("Open – go down.", 1.5)
+				_say_toast("Open: go down.", 1.5)
 				return true
 			var t7 := belt_tool("tl_cutter")
 			if t7 == "":
-				_say_toast("Chained shut – you need a cutting torch on your belt.", 3.0)
+				_say_toast("Chained shut: you need a cutting torch on your belt.", 3.0)
 				return true
 			var mg = CutGame.new()
 			mg.inside = "duct"
@@ -3102,7 +3106,7 @@ func explore_use(z: Dictionary) -> bool:
 			if String(d["state"]) == "taken":
 				_say_toast("Only an empty socket in the rock.", 1.5)
 			elif belt_tool("tl_cutter") == "":
-				_say_toast("Set in solid rock – you need a cutting torch to cut it out.", 2.5)
+				_say_toast("Set in solid rock: you need a cutting torch to cut it out.", 2.5)
 			else:
 				d["state"] = "taken"                       # 0.7.53.7 (Luz): the mine's target
 				_poi_target_done(d)
@@ -3111,25 +3115,25 @@ func explore_use(z: Dictionary) -> bool:
 			if String(d["state"]) == "open":
 				return true
 			if String(d["state"]) == "charged":
-				_say_toast("The charge is set – get back!", 1.5)
+				_say_toast("The charge is set. Get back!", 1.5)
 				return true
 			if GameState.gear.count("gr_frag") <= 0:
-				_say_toast("You need a frag grenade as a charge – or set off a box of explosives near it.", 3.0)
+				_say_toast("You need a frag grenade as a charge, or set off a box of explosives near it.", 3.0)
 				return true
 			_take_one("gr_frag")
 			d["state"] = "charged"
 			_fuses[map.explore.find(d)] = 3.0
-			_say_toast("Charge set – three seconds. Get back!", 2.0)
+			_say_toast("Charge set: three seconds. Get back!", 2.0)
 			return true
 		"bulkhead":
-			_say_toast("Jammed – no power. The box beside it, or the emergency generator." if String(d["state"]) != "open" else "Open.", 2.5)
+			_say_toast("Jammed: no power. The box beside it, or the emergency generator." if String(d["state"]) != "open" else "Open.", 2.5)
 			return true
 		"rust_door", "grate_door", "steel_door":
-			_say_toast("Sealed – its panel is beside it, or a computer somewhere opens it." if String(d["state"]) != "open" else "Open.", 2.5)
+			_say_toast("Sealed: its panel is beside it, or a computer somewhere opens it." if String(d["state"]) != "open" else "Open.", 2.5)
 			return true
 		"valve":
 			if String(d["state"]) == "open":
-				_say_toast("Turned all the way – the tunnel is drained.", 2.0)
+				_say_toast("Turned all the way: the tunnel is drained.", 2.0)
 			else:
 				d["state"] = "open"                        # 0.7.53.3: by hand – loud: the pipes bang and knock
 				_drain(d.get("flood", []))
@@ -3140,15 +3144,15 @@ func explore_use(z: Dictionary) -> bool:
 			return true
 		"alarm":
 			if String(d["state"]) == "cut":
-				_say_toast("Its wires hang loose – it will not ring.", 2.0)
+				_say_toast("Its wires hang loose: it will not ring.", 2.0)
 			elif String(d["state"]) == "ringing":
-				_say_toast("Too late – it is ringing.", 2.0)
+				_say_toast("Too late: it is ringing.", 2.0)
 			elif belt_tool("tl_cutter") == "":
 				_say_toast("You need a cutting torch on your belt to cut its wires.", 2.5)
 			else:
 				d["state"] = "cut"                         # 0.7.53.5: quietly
 				GameState.skill_xp("engineering", 2.0)
-				_say_toast("You cut the alarm's wires – it will not ring now.", 2.5)
+				_say_toast("You cut the alarm's wires: it will not ring now.", 2.5)
 				Audio.play("dock_clamp", "alarm cut", -10.0)
 			return true
 		"tripwire":
@@ -3156,10 +3160,10 @@ func explore_use(z: Dictionary) -> bool:
 				d["state"] = "disarmed"                    # 0.7.53.3: carefully – the pin back in, the wire cut
 				GameState.skill_xp("engineering", 2.0)
 				var left: int = GameState.gear.add_item("gr_frag", 1)
-				_say_toast("Disarmed – you cut the wire%s." % (" and keep its grenade" if left == 0 else ""), 2.5)
+				_say_toast("Disarmed: you cut the wire%s." % (" and keep its grenade" if left == 0 else ""), 2.5)
 			return true
 		"blastdoor":
-			_say_toast("Sealed – its release is in the maintenance box beside it." if String(d["state"]) != "open" else "Open.", 2.5)
+			_say_toast("Sealed: its release is in the maintenance box beside it." if String(d["state"]) != "open" else "Open.", 2.5)
 			return true
 		"tablet", "relic", "monolith":
 			_say_toast("Hold the scanner's belt key here to scan it." if belt_tool("tl_scanner") != "" else "You need a scanner on your belt to read it.", 3.0)
@@ -3168,7 +3172,7 @@ func explore_use(z: Dictionary) -> bool:
 			if String(d["state"]) == "open":
 				return true
 			if belt_tool("tl_cutter") == "":
-				_say_toast("A cracked wall – it sounds hollow behind it. A cutting torch on your belt would get through.", 3.0)
+				_say_toast("A cracked wall: it sounds hollow behind it. A cutting torch on your belt would get through.", 3.0)
 				return true
 			d["state"] = "open"                            # 0.7.53.24 (Luz): through the cracked wall – the hidden cache
 			for ht in d["tiles"]:
@@ -3176,12 +3180,12 @@ func explore_use(z: Dictionary) -> bool:
 			map._astar = null
 			if combat != null:
 				combat._build_cover()
-			_say_toast("The torch bites, the stones fall in – a hidden chamber behind them.", 3.0)
+			_say_toast("The torch bites, the stones fall in: a hidden chamber behind them.", 3.0)
 			Audio.play("explosion_small", "wall falls in", -8.0)
 			return true
 		"symbol_pillar":
 			if String(d["state"]) == "open":
-				_say_toast("The signs glow – it is open.", 1.5)
+				_say_toast("The signs glow: it is open.", 1.5)
 			else:
 				_symbol_menu(d)                            # 0.7.53.23 (Luz): the symbol puzzle
 			return true
@@ -3208,7 +3212,7 @@ func open_minigame(game: String, place: Dictionary) -> void:
 			if (m as Dictionary).is_empty():
 				continue
 			crew.append({"id": "crew_%d" % int(m["id"]), "name": String(m["name"]), "job": "your %s" % String(m["role"]).replace("_", " "),
-				"stars": 2 + int(m["id"]) % 3, "line": "\"Off duty – let's play.\"", "kind": "crew"})
+				"stars": 2 + int(m["id"]) % 3, "line": "\"Off duty. Let's play.\"", "kind": "crew"})
 	var lb = MinigameLobby.new()
 	lb.setup(game, place, guests, crew)
 	lb.closed.connect(func(): _close_game(); Audio.play("ui_close", "minigame lobby"))
@@ -3243,18 +3247,18 @@ func _close_game() -> void:
 func _cut_done(d: Dictionary, res: String) -> void:
 	_close_game()
 	if res == "":
-		_say_toast("You leave the box – the cut is lost.", 2.0)
+		_say_toast("You leave the box: the cut is lost.", 2.0)
 		return
 	d["state"] = "open"
 	if res == "loot":
 		_loot(d)
 		return
 	if String(d["kind"]) == "mine_gate":
-		_say_toast("The chain parts – the gate swings open.", 2.5)                       # 0.7.53.7
+		_say_toast("The chain parts: the gate swings open.", 2.5)                       # 0.7.53.7
 		Audio.play("dock_clamp", "mine gate cut", -4.0)
 		return
 	if String(d["kind"]) == "breach":
-		_say_toast("The plate drops away – the breach is open. Climb in.", 2.5)       # 0.7.53.6
+		_say_toast("The plate drops away: the breach is open. Climb in.", 2.5)       # 0.7.53.6
 		Audio.play("dock_clamp", "breach cut open", -4.0)
 		return
 	if res == "duct":
@@ -3268,7 +3272,7 @@ func _cut_done(d: Dictionary, res: String) -> void:
 
 func _open_hack(d: Dictionary) -> void:
 	if float(d.get("locked_t", 0.0)) > Time.get_ticks_msec() * 0.001:
-		_say_toast("Locked out – it will not let you in for a while.", 2.5)
+		_say_toast("Locked out: it will not let you in for a while.", 2.5)
 		return
 	# 0.7.52.24 (Luz): it takes an E-Breach from your belt – used up with the try
 	var bi := -1
@@ -3284,7 +3288,7 @@ func _open_hack(d: Dictionary) -> void:
 	if int(bp["n"]) <= 0:
 		GameState.gear.belt[bi] = {}
 	if String(d.get("state", "")) == "hacked":
-		_say_toast("You are already in – it does what you told it.", 2.0)
+		_say_toast("You are already in: it does what you told it.", 2.0)
 	var hg = HackGame.new()
 	hg.level = int(d.get("level", 1))
 	hg.skill = GameState.skill_level("electronics")
@@ -3303,7 +3307,7 @@ func _hack_done(d: Dictionary, res: String) -> void:
 			_say_toast("You pull out.", 1.5)
 		"fail":
 			d["locked_t"] = Time.get_ticks_msec() * 0.001 + 60.0
-			_say_toast("Traced – the alarm goes!", 3.0)
+			_say_toast("Traced: the alarm goes!", 3.0)
 			Audio.play("warn", "hack failed: alarm")
 			raise_alarm()                                  # 0.7.53.5: a real alarm, where there is one
 			if combat != null:
@@ -3324,13 +3328,13 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 	match what:
 		"door":
 			d["door_open"] = true
-			txt = "A door unlocks somewhere close – clunk."
+			txt = "A door unlocks somewhere close. Clunk."
 			if d.has("door"):
 				var dd2: Dictionary = map.explore[int(d["door"])]
 				open_door(dd2)                                  # 0.7.52.23: its blast door slides open
-				txt = {"ruin_gate": "The entrance grinds open – fog spills out.", "rust_door": "The old door shrieks open.",
-					"grate_door": "The grate swings open with a rusty squeal.", "steel_door": "The code lock blinks green – the steel door slides open.",
-					"bulkhead": "The bulkhead grinds open on the last of its power.", "airlock": "The airlock hisses – its hatch slides open.",
+				txt = {"ruin_gate": "The entrance grinds open: fog spills out.", "rust_door": "The old door shrieks open.",
+					"grate_door": "The grate swings open with a rusty squeal.", "steel_door": "The code lock blinks green: the steel door slides open.",
+					"bulkhead": "The bulkhead grinds open on the last of its power.", "airlock": "The airlock hisses: its hatch slides open.",
 					"crank_door": "The security door slides open.", "pirate_gate": "The hangar gate grinds apart."}.get(String(dd2["kind"]), "The blast door grinds open.")
 			Audio.play("dock_clamp", "door released", -4.0)
 		"lasers":
@@ -3341,13 +3345,13 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 		"crystals":
 			if d.has("cage"):
 				cage_off(map.explore[int(d["cage"])])
-			txt = "The crystals sink to the floor – their lightning dies."
+			txt = "The crystals sink to the floor: their lightning dies."
 			Audio.play("shield_down", "crystal guardians off", -4.0)
 		"drain":
 			_drain(d.get("flood", []))                     # 0.7.53.3: the pumps run
 			txt = ""
 		"lift":
-			txt = "Somewhere in the ruin something wakes – the ancient lift hums, its crystals light up."
+			txt = "Somewhere in the ruin something wakes: the ancient lift hums, its crystals light up."
 			for al in map.explore:
 				if String(al["kind"]) == "ancient_lift" and String(al["state"]) == "dormant":
 					al["state"] = "active"                     # 0.7.53.4
@@ -3362,14 +3366,14 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 			txt = ""
 			_restart_reactor(d)                            # 0.7.53.3: the dealer's client list – the site's target
 		"emp":
-			txt = "A trap! An EMP – shields, drones and energy weapons are down for a moment."
+			txt = "A trap! An EMP: shields, drones and energy weapons are down for a moment."
 			if combat != null:
 				combat.emp(GroundCombat.EMP_TIME)
 			Audio.play("shield_down", "EMP trap", 0.0)
 		"cache":
 			var cr := 40 + int(d.get("seed", 0)) % 120
 			GameState.credits += cr
-			txt = "Behind the flap: a forgotten stash – %d cr." % cr
+			txt = "Behind the flap: a forgotten stash, %d cr." % cr
 		"power":
 			d["power_off"] = not bool(d.get("power_off", false))
 			txt = "The power goes %s." % ("off" if bool(d["power_off"]) else "back on")
@@ -3380,14 +3384,14 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 				if String(tu["kind"]) == "turret":
 					tu["state"] = "off"                        # 0.7.53.5
 		"cameras":
-			txt = "The cameras go blind – on every level."
+			txt = "The cameras go blind: on every level."
 			_site["cams_off"] = true                       # 0.7.53.19 (Luz)
 			for cm in map.explore:
 				if String(cm["kind"]) == "camera":
 					cm["state"] = "off"
 			Audio.play("module_off", "cameras off", -4.0)
 		"beams":
-			txt = "The light barriers go dark – on every level."
+			txt = "The light barriers go dark: on every level."
 			_site["beams_off"] = true                      # 0.7.53.19 (Luz)
 			for lb in map.explore:
 				if String(lb["kind"]) == "laser_gate":
@@ -3404,11 +3408,11 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 							if (f["w"] as Walker).pos.distance_to(vd["pos"]) < 360.0:
 								combat._wake(f)
 					Audio.play("w_autocannon", "vault drill", -8.0)
-			txt = "The lock gives – the drill bites into the vault door. Hold out (%d s)." % int(VAULT_DRILL)
+			txt = "The lock gives: the drill bites into the vault door. Hold out (%d s)." % int(VAULT_DRILL)
 		"data":
 			var n := 4 + int(d.get("seed", 0)) % 5
 			GameState.research_data += n
-			txt = "Data downloaded – %d research data." % n
+			txt = "Data downloaded: %d research data." % n
 			if level == "dungeon" and (depth == PoiData.levels(String(_site.get("theme", "precursor"))) - 1 or (String(_site.get("theme", "")) == "corp" and depth == 1)):
 				_mission_event("data")                     # package 53c: the spy's goal (0.7.53.19: a tower's – the security centre)
 	if txt != "" and not (what == "door" and d.has("door") and String(map.explore[int(d["door"])]["kind"]) == "ruin_gate"):
@@ -3481,13 +3485,13 @@ func _wild_find(d: Dictionary) -> void:
 				var n := rng.randi_range(1, 2)
 				if GameState.gear.add_item(id, n) < n:
 					got.append("%s ×%d" % [String(ChibiArt.GearData.base(id).get("name", id)), n])
-			_say_toast("The drone's cargo pod is whole – %s. Back to the ship when you like." % ", ".join(PackedStringArray(got)), 5.5)
+			_say_toast("The drone's cargo pod is whole: %s. Back to the ship when you like." % ", ".join(PackedStringArray(got)), 5.5)
 		"nest":
 			var ne := rng.randi_range(1, 2)
 			var left: int = GameState.gear.add_item("gd_egg", ne)
 			var rs2 := rng.randi_range(int(th["research"][0]), int(th["research"][1]))
 			GameState.research_data += rs2
-			_say_toast("Frost worm eggs, faintly glowing – %s, and %d research data. Back to the ship when you like." % [
+			_say_toast("Frost worm eggs, faintly glowing: %s, and %d research data. Back to the ship when you like." % [
 				("%d in your pockets" % (ne - left)) if left < ne else "no room in your pockets", rs2], 5.5)
 	Audio.play("lock_acquired", "site target done", -2.0)
 
@@ -3503,7 +3507,7 @@ func _poi_target_done(d: Dictionary) -> void:
 		_mission_event("target")                         # package 53c: the job pays at its giver
 		if bool(_site.get("goal_done", false)) or String(_site.get("goal", "")) in ["bounty_foot", "spy", "rescue"]:
 			if String(_site.get("goal", "")) in ["bounty_foot", "spy", "rescue"]:
-				_say_toast("Not what the job is about – but it is yours.", 2.5)
+				_say_toast("Not what the job is about, but it is yours.", 2.5)
 			return
 	GameState.poi_use(String(_site.get("id", "")))
 	if String(_site.get("theme", "")).begins_with("wild_"):
@@ -3512,7 +3516,7 @@ func _poi_target_done(d: Dictionary) -> void:
 	if String(_site.get("theme", "")) == "pirate":
 		var pay3 := 900 + int(d.get("seed", 0)) % 700              # 0.7.53.11: the Red Talons' hoard
 		GameState.credits += pay3
-		_say_toast("The captain's strongbox – %d cr and the Red Talons' bounty data. Get out before they regroup." % pay3, 5.5)
+		_say_toast("The captain's strongbox: %d cr and the Red Talons' bounty data. Get out before they regroup." % pay3, 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "darkones":
@@ -3521,33 +3525,33 @@ func _poi_target_done(d: Dictionary) -> void:
 		var dr := PoiData.museum_pick("darkones", drng)                 # 0.7.53.23: a relic of the Dark Ones
 		GameState.museum_find(dr)
 		GameState.research_data += 12
-		_say_toast("You take it from the altar: %s – a find for the Museum. Below you, in the pit, something shifts in its sleep." % PoiData.museum_name(dr), 6.0)
+		_say_toast("You take it from the altar: %s, a find for the Museum. Below you, in the pit, something shifts in its sleep." % PoiData.museum_name(dr), 6.0)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "research":
 		var pay5 := 500 + int(d.get("seed", 0)) % 400                # 0.7.53.20: the research logs
 		GameState.credits += pay5
 		GameState.research_data += 14
-		_say_toast("The research logs are yours – 14 research data, %d cr from a buyer. Back out when you like." % pay5, 5.5)
+		_say_toast("The research logs are yours: 14 research data, %d cr from a buyer. Back out when you like." % pay5, 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "corp":
 		var pay4 := 1800 + int(d.get("seed", 0)) % 1200             # 0.7.53.19: the corporate vault
 		GameState.credits += pay4
 		GameState.research_data += 6
-		_say_toast("The vault's main box – %d cr and the company's research data. Now get out." % pay4, 5.5)
+		_say_toast("The vault's main box: %d cr and the company's research data. Now get out." % pay4, 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "skymaint":
 		var pay3 := 700 + int(d.get("seed", 0)) % 400              # 0.7.54.3: the rotor turns again
 		GameState.credits += pay3
-		_say_toast("The rotor spins up – its field takes hold, the deck above steadies. %d cr from the city. Back up when you like." % pay3, 6.0)
+		_say_toast("The rotor spins up: its field takes hold, the deck above steadies. %d cr from the city. Back up when you like." % pay3, 6.0)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "maint":
 		var pay2 := 600 + int(d.get("seed", 0)) % 400              # 0.7.53.9: the city pays for its power back
 		GameState.credits += pay2
-		_say_toast("The reactor hums – the power is back, level by level the lights come on. %d cr from the city. Back up when you like." % pay2, 6.0)
+		_say_toast("The reactor hums: the power is back, level by level the lights come on. %d cr from the city. Back up when you like." % pay2, 6.0)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "mine":
@@ -3557,20 +3561,20 @@ func _poi_target_done(d: Dictionary) -> void:
 		GameState.museum_find(mf)
 		var pay := 250 + int(d.get("seed", 0)) % 300
 		GameState.credits += pay
-		_say_toast("You cut it out of the rock: %s – a find for the Museum (and %d cr in ore besides). Back up when you like." % [PoiData.museum_name(mf), pay], 5.5)
+		_say_toast("You cut it out of the rock: %s, a find for the Museum (and %d cr in ore besides). Back up when you like." % [PoiData.museum_name(mf), pay], 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "wreck":
 		var rw := 500 + int(d.get("seed", 0)) % 450              # 0.7.53.6: the flight recorder – its owners pay
 		GameState.credits += rw
 		GameState.research_data += 2
-		_say_toast("The flight recorder is yours – its owners pay %d cr for it. Back out when you like." % rw, 5.5)
+		_say_toast("The flight recorder is yours: its owners pay %d cr for it. Back out when you like." % rw, 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	if String(_site.get("theme", "")) == "sewer":
 		var pay := 400 + int(d.get("seed", 0)) % 500           # 0.7.53.3: the client list – sold on, or a bounty lead later
 		GameState.credits += pay
-		_say_toast("The client list is yours – names, drops, debts. Worth %d cr to the right people. Back up when you like." % pay, 5.5)
+		_say_toast("The client list is yours: names, drops, debts. Worth %d cr to the right people. Back up when you like." % pay, 5.5)
 		Audio.play("lock_acquired", "site target done", -2.0)
 		return
 	var n := 6 + int(d.get("seed", 0)) % 6
@@ -3582,7 +3586,7 @@ func _poi_target_done(d: Dictionary) -> void:
 		mr = PoiData.museum_pick(String(_site.get("theme", "precursor")), rng, Universe.is_veil(_sys))
 	if mr != "":
 		GameState.museum_find(mr)
-	_say_toast("The relic read – the site's prize is yours (+%d research data)%s. Back to the ship when you like." % [n, (" – and a find for the Museum: %s" % PoiData.museum_name(mr)) if mr != "" else ""], 5.5)
+	_say_toast("The relic read: the site's prize is yours (+%d research data)%s. Back to the ship when you like." % [n, (", and a find for the Museum: %s" % PoiData.museum_name(mr)) if mr != "" else ""], 5.5)
 	Audio.play("lock_acquired", "site target done", -2.0)
 
 
@@ -3712,7 +3716,7 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "lift":
 			mo = DeckGen.build_landing(_body, _site, lsz.x, lsz.y)                      # 0.7.53.9: a field with a service hatch
 			mo.zones.append({"rect": Rect2(mo.spawn + Vector2(40, -30), Vector2(40, 30)), "kind": "dungeon_in", "id": "dungeon_in",
-				"title": "The service hatch – down into the tunnels", "col": Color(1.0, 0.75, 0.4), "sign": Vector2(-100, -100)})
+				"title": "The service hatch: down into the tunnels", "col": Color(1.0, 0.75, 0.4), "sign": Vector2(-100, -100)})
 			mo.set_meta("door_front", mo.spawn + Vector2(60, 10))
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "minehead":
 			mo = DungeonGen.build_minehead(_body, _site)                                # 0.7.53.7
@@ -3912,7 +3916,7 @@ func _poi_window() -> void:
 	var b1 := UI.button("1.  Set out" if bool(info.get("wild", false)) else "1.  Go in", go)
 	if level in ["alley", "minehead", "plaza"]:
 		back = func(): _close_lift_menu()
-	var b2 := UI.button("2.  Not now – back to the ship" if not level in ["alley", "minehead", "plaza"] else "2.  Not now", back)
+	var b2 := UI.button("2.  Not now: back to the ship" if not level in ["alley", "minehead", "plaza"] else "2.  Not now", back)
 	v.add_child(b1)
 	v.add_child(b2)
 	keys.append(go)
@@ -3944,20 +3948,20 @@ func _mission_window() -> void:
 	p.add_child(v)
 	v.add_child(UI.label("BRIEFING – " + String(mm["title"]).to_upper(), 20, gold))
 	v.add_child(UI.label(String(mm["desc"]), 14, Color(0.92, 0.95, 1.0)))
-	var rules := {"relic": "Another raider crew will come for the relic – be quick.",
+	var rules := {"relic": "Another raider crew will come for the relic: be quick.",
 		"salvage": "The flight recorder lies in the wreck's lower deck.",
 		"bounty_foot": "The captain is somewhere inside. When the alarm rings, they run.",
-		"heist": ({"sewer": "The dealer's safe is in the office behind a code door – cut it open (cutting torch); a turret guards it. ",
-			"corp": "The vault is at the bottom: a key card for the lifts (or the fire stairs – loud), cameras and light barriers (the security centre switches them off), then hack and drill the vault door. "}.get(String(_site.get("theme", "")), "The strongbox is behind the code door below. ")) \
+		"heist": ({"sewer": "The dealer's safe is in the office behind a code door: cut it open (cutting torch); a turret guards it. ",
+			"corp": "The vault is at the bottom: a key card for the lifts (or the fire stairs, loud), cameras and light barriers (the security centre switches them off), then hack and drill the vault door. "}.get(String(_site.get("theme", "")), "The strongbox is behind the code door below. ")) \
 			+ ("An alarm fails the job." if bool(_site.get("hard", false)) else "An alarm halves the pay."),
 		"spy": ("The data is in the security centre on the second level. " if String(_site.get("theme", "")) == "corp" else "The data is in the deepest computer. ") + "Unseen, they pay a bonus.",
 		"reactivate": "Restart the jammed rotor at the console on the lowest level." if String(_site.get("theme", "")) == "skymaint" else "Restart the reactor on the lowest level.",
-		"pest": "The rats come in swarms – keep moving, keep your back free. Their brood mother is on the lowest level.",
-		"hunt": ("The beast is marked (!) – it is old and strong. " if bool(_site.get("hunt_alpha", false)) else "") + "Hunters keep to their ground: step onto it and they come; leave it far enough behind and they let you go. Grazers run – sneak to get close. What you bring down: hides, meat, samples.",
-		"recover": "The research computer is in the sample store below. Torn modules have no air and no warmth – seal their bulkheads.",
-		"investigate": "The cult gathers at the bottom of the ruin. Find out what they are doing – and stop their priest. The symbols open the membranes; a monolith's vision tells their order.",
-		"rescue": ("The researchers are sealed into a cold store inside. Open it; they follow you – bring them out alive." if String(_site.get("theme", "")) == "research"
-			else "The prisoner is in the cells inside. Pick the lock; they follow you – bring them out alive.")}
+		"pest": "The rats come in swarms: keep moving, keep your back free. Their brood mother is on the lowest level.",
+		"hunt": ("The beast is marked (!): it is old and strong. " if bool(_site.get("hunt_alpha", false)) else "") + "Hunters keep to their ground: step onto it and they come; leave it far enough behind and they let you go. Grazers run: sneak to get close. What you bring down: hides, meat, samples.",
+		"recover": "The research computer is in the sample store below. Torn modules have no air and no warmth: seal their bulkheads.",
+		"investigate": "The cult gathers at the bottom of the ruin. Find out what they are doing, and stop their priest. The symbols open the membranes; a monolith's vision tells their order.",
+		"rescue": ("The researchers are sealed into a cold store inside. Open it; they follow you: bring them out alive." if String(_site.get("theme", "")) == "research"
+			else "The prisoner is in the cells inside. Pick the lock; they follow you: bring them out alive.")}
 	v.add_child(UI.label(String(rules.get(String(_site.get("goal", "")), "")), 13, UI.TEXT_DIM))
 	v.add_child(UI.label("Pay: %s  •  danger: %s" % [GameData.fmt_credits(int(mm["reward"])), String(PoiData.DANGER.get(String(_site.get("danger", "yellow")), {}).get("name", ""))], 13, gold))
 	var go := func(): _close_lift_menu()
@@ -3983,7 +3987,7 @@ func _mission_event(kind: String) -> void:
 		if bool(_site.get("hard", false)):
 			GameState.poi_use(String(_site.get("id", "")))
 			GameState.ground_goal(_site, false, 1.0, "the alarm rang")
-			_say_toast("The alarm rang – the job is blown.", 4.0)
+			_say_toast("The alarm rang: the job is blown.", 4.0)
 			return
 		mult = 0.5
 		note = "an alarm rang: half pay"
@@ -3992,7 +3996,7 @@ func _mission_event(kind: String) -> void:
 		note = "unseen: bonus"
 	GameState.poi_use(String(_site.get("id", "")))
 	GameState.ground_goal(_site, true, mult, note)
-	_say_toast("Job done%s – report back for your pay." % ((" (" + note + ")") if note != "" else ""), 4.0)
+	_say_toast("Job done%s: report back for your pay." % ((" (" + note + ")") if note != "" else ""), 4.0)
 	Audio.play("lock_acquired", "job goal done", -2.0)
 
 
@@ -4025,7 +4029,7 @@ func _mission_step(delta: float) -> void:
 				if sp != Vector2.INF:
 					var nf: Dictionary = combat.spawn(["bandit_scrapper", "bandit_rifleman", "bandit_gunner"][i], sp, "", "yellow")
 					combat._wake(nf)
-			_say_toast("Another raider crew is here – they are after the relic too!", 3.5)
+			_say_toast("Another raider crew is here: they are after the relic too!", 3.5)
 
 
 ## 53f-2 (Luz): a hunting job – the old beast brought down, or enough of its kind.
@@ -4055,7 +4059,7 @@ func open_door(d: Dictionary) -> void:
 		for z in map.zones:
 			if String(z.get("kind", "")) == "dungeon_in":
 				z["title"] = "Go in"
-		_say_toast("The entrance grinds open – fog spills out.", 3.0)
+		_say_toast("The entrance grinds open: fog spills out.", 3.0)
 		Audio.play("dock_clamp", "ruin gate opens", -2.0)
 	var tl: Array = d.get("tiles", [])
 	if tl.size() < 4:
@@ -4086,7 +4090,7 @@ func _drain(tiles: Array) -> void:
 	map._astar = null
 	if combat != null:
 		combat._build_cover()
-	_say_toast("The pumps thunder – the water runs off. The flooded tunnel is clear.", 3.0)
+	_say_toast("The pumps thunder: the water runs off. The flooded tunnel is clear.", 3.0)
 	Audio.play("undock_release", "tunnel drained", -4.0)
 
 
@@ -4099,7 +4103,7 @@ func open_vent(d: Dictionary) -> void:
 	map._astar = null
 	if combat != null:
 		combat._build_cover()
-	_say_toast("The grille drops – the shaft is open. Crawl in.", 2.5)
+	_say_toast("The grille drops: the shaft is open. Crawl in.", 2.5)
 
 
 ## In a duct you go on all fours: sneaking (and back up when you are out).
@@ -4115,7 +4119,7 @@ func _duct_step() -> void:
 	if in_duct and not combat.sneaking:
 		combat.toggle_sneak()
 		_duct_sneak = true
-		_say_toast("You crawl into the shaft – low and quiet.", 2.0)
+		_say_toast("You crawl into the shaft: low and quiet.", 2.0)
 	elif not in_duct and _duct_sneak:
 		_duct_sneak = false
 		if combat.sneaking:
@@ -4163,7 +4167,7 @@ func _scan_start(n: int) -> bool:
 		return true
 	var cg = map.explore[best].get("cage")
 	if cg != null and String(map.explore[int(cg)]["state"]) != "off":
-		_say_toast("The crystals' lightning scatters the scan – switch them off first." if String(map.explore[int(cg)]["kind"]) == "crystals" else "The laser cage is in the way – the beams scatter the scan. Switch it off first.", 3.0)
+		_say_toast("The crystals' lightning scatters the scan: switch them off first." if String(map.explore[int(cg)]["kind"]) == "crystals" else "The laser cage is in the way: the beams scatter the scan. Switch it off first.", 3.0)
 		return true
 	_scan = {"i": best, "t": 0.0, "need": 3.0 * (1.0 - 0.04 * GameState.skill_level("science")) * (0.67 if GameState.museum_perk("precursors") else 1.0), "key": n, "at": pilot.pos}
 	Audio.play("ui_click", "scan starts", -8.0)
@@ -4175,7 +4179,7 @@ func _scan_step(delta: float) -> void:
 		return
 	var held := Input.is_action_pressed("foot_belt_%d" % (int(_scan["key"]) + 1))
 	if not held or pilot.pos.distance_to(_scan["at"]) > 3.0:
-		_say_toast("Scan broken off – hold the key and stand still.", 2.0)
+		_say_toast("Scan broken off: hold the key and stand still.", 2.0)
 		_scan = {}
 		return
 	_scan["t"] = float(_scan["t"]) + delta
@@ -4205,14 +4209,14 @@ func scan_done(d: Dictionary) -> void:
 			txt += "  In the vision four signs burn, one after another: %s." % "  ".join(PackedStringArray(so.map(func(i): return "%s %s" % [SYMBOLS[int(i)][0], SYMBOLS[int(i)][1]])))
 		_say_toast("%s  (+%d research data)" % [txt, n], 9.0)
 	else:
-		txt = "A relic of the ones before – its lattice hums at a frequency nobody makes any more."
+		txt = "A relic of the ones before: its lattice hums at a frequency nobody makes any more."
 		_say_toast("%s  (+%d research data)" % [txt, n], 5.0)
 	if String(d["kind"]) in ["tablet", "monolith"] and map.has_meta("hidden_wall"):
 		var hw: Dictionary = map.explore[int(map.get_meta("hidden_wall"))]
 		if not bool(hw.get("hinted", false)) and String(hw["state"]) != "open":
 			hw["hinted"] = true                            # 0.7.53.24 (Luz): it tells of a hollow behind a wall – a ? on the map
-			_say_toast("…and it tells of a hollow behind a cracked wall on this level – marked on your map (?).", 4.0)
-			log_event("A hidden chamber – marked on the map", Color(0.95, 0.8, 0.4))
+			_say_toast("…and it tells of a hollow behind a cracked wall on this level: marked on your map (?).", 4.0)
+			log_event("A hidden chamber: marked on the map", Color(0.95, 0.8, 0.4))
 	if String(d["kind"]) in ["tablet", "monolith"]:
 		# 53e (Luz): a scan of the Precursors' tablets or a monolith's vision – now and then a record for the Museum's tablets
 		var trng := RandomNumberGenerator.new()
@@ -4222,7 +4226,7 @@ func scan_done(d: Dictionary) -> void:
 			var tid := MuseumData.roll_kind(troom, trng, 2)
 			if tid != "":
 				GameState.museum_find(tid)
-				_say_toast("Your scanner keeps a record of it – a find for the Museum: %s." % MuseumData.exhibit_name(tid), 4.0)
+				_say_toast("Your scanner keeps a record of it, a find for the Museum: %s." % MuseumData.exhibit_name(tid), 4.0)
 	log_event("Scanned: %s  +%d research data" % [txt.left(80), n], Color(0.45, 0.9, 1.0))
 	Audio.play("lock_acquired", "scan done", -6.0)
 
@@ -4314,16 +4318,16 @@ func use(instant: bool = false) -> bool:
 			_say_toast("A templar lowers his halberd: \"Only the Allied of the Covenant may step before the Hierarch.\" (You: %s.)" % GameState.rep.tier_name("covenant"), 5.0)
 			return true
 		"pool":
-			open_minigame("billiards", {"title": "The pool table – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
+			open_minigame("billiards", {"title": "The pool table: %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
 			return true
 		"drift":
-			open_minigame("drift", {"title": "The card table – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
+			open_minigame("drift", {"title": "The card table: %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
 			return true
 		"arcade":
-			open_minigame("rockhopper", {"title": "The Rock Hopper cabinet – %s" % String(station.get("name", "the bar")), "id": "%s_%d" % [String(station.get("id", "bar")), int(zone.get("n", 0))]})
+			open_minigame("rockhopper", {"title": "The Rock Hopper cabinet: %s" % String(station.get("name", "the bar")), "id": "%s_%d" % [String(station.get("id", "bar")), int(zone.get("n", 0))]})
 			return true
 		"darts":
-			open_minigame("darts", {"title": "The dartboard – %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
+			open_minigame("darts", {"title": "The dartboard: %s" % String(station.get("name", "the bar")), "id": String(station.get("id", "bar"))})
 			return true
 		"sight_info":
 			_say_toast(_sight_info(), 7.0)
@@ -4339,7 +4343,7 @@ func use(instant: bool = false) -> bool:
 		"socket":
 			var sd: Dictionary = map.explore[int(zone["i"])]
 			if float(sd.get("charge", 0.0)) <= 0.0:
-				_say_toast("The socket is dead – drawn dry.", 2.0)
+				_say_toast("The socket is dead: drawn dry.", 2.0)
 			elif GameState.gear.energy >= float(GameState.gear.totals()["energy"]) - 0.5:
 				_say_toast("The suit's energy is full.", 1.5)
 			else:
@@ -4348,7 +4352,7 @@ func use(instant: bool = false) -> bool:
 			return true
 		"charge":
 			GameState.gear.charge()                   # 0.7.51.3: energy and oxygen full again (0.7.52.12: and the rounds)
-			_say_toast("Supplied – energy, oxygen and ammunition are full.", 2.5)
+			_say_toast("Supplied: energy, oxygen and ammunition are full.", 2.5)
 			Audio.play("dock_clamp", "charging point")
 			return true
 		"guard":
@@ -4371,7 +4375,7 @@ func use(instant: bool = false) -> bool:
 				story_talk.emit(String(story_mode["ship_talk"]))             # package 56: the story's ship – Old Betty
 				return true
 			if _hangar_stale():
-				_say_toast("The %s is stored here now – your active ship stands in %s. Take the lift." % [_stored_name(), _active_hangar()])
+				_say_toast("The %s is stored here now: your active ship stands in %s. Take the lift." % [_stored_name(), _active_hangar()])
 				return false
 			if not instant:
 				if level in ["landing", "settlement"] or is_city():
@@ -4389,14 +4393,14 @@ func use(instant: bool = false) -> bool:
 			if zone.has("gate"):
 				gate = map.explore[int(zone["gate"])]          # 0.7.53.6: the breach or the airlock of a wreck
 				if String(gate["state"]) != "open":
-					_say_toast({"breach": "A buckled plate is wedged in the breach – cut it out (cutting torch).",
-						"mine_gate": "The gate is chained shut – cut the chain (cutting torch).",
-						"pirate_gate": "The hangar gate is sealed – its terminal beside it opens it (E-Breach).",
-						"steel_door": "A code lock – cut its box beside the door (cutting torch).",
-					"service_door": "The back door is locked – its keypad beside it (cutting torch) or the terminal (E-Breach)."}.get(String(gate["kind"]), "The airlock is sealed – its terminal on the post beside it opens it (E-Breach)."), 3.0)
+					_say_toast({"breach": "A buckled plate is wedged in the breach: cut it out (cutting torch).",
+						"mine_gate": "The gate is chained shut: cut the chain (cutting torch).",
+						"pirate_gate": "The hangar gate is sealed: its terminal beside it opens it (E-Breach).",
+						"steel_door": "A code lock: cut its box beside the door (cutting torch).",
+					"service_door": "The back door is locked: its keypad beside it (cutting torch) or the terminal (E-Breach)."}.get(String(gate["kind"]), "The airlock is sealed: its terminal on the post beside it opens it (E-Breach)."), 3.0)
 					return true
 			if bool(_site.get("used", false)) or GameState.poi_used.has(String(_site.get("id", ""))):
-				_say_toast("Nothing more down there – the place is cleared out. Come back another time.", 3.0)
+				_say_toast("Nothing more down there: the place is cleared out. Come back another time.", 3.0)
 			elif gate.is_empty() or String(gate["state"]) == "open":
 				if zone.has("gate"):
 					map.set_meta("door_front", (gate["pos"] as Vector2) + Vector2(0, 26))   # 0.7.53.15 (Luz): out the way you came in
@@ -4449,21 +4453,21 @@ func use(instant: bool = false) -> bool:
 			var al := _lift_here()
 			if not al.is_empty():
 				if String(al["state"]) == "dormant":
-					_say_toast("The cage has no power – start the old generator by the mine's control." if String(al["kind"]) == "cage"
-						else "The ancient lift sleeps – their computer can wake it, or a crystal panel somewhere on this level.", 3.5)
+					_say_toast("The cage has no power: start the old generator by the mine's control." if String(al["kind"]) == "cage"
+						else "The ancient lift sleeps: their computer can wake it, or a crystal panel somewhere on this level.", 3.5)
 					return true
 				_sink = {"d": al, "t": 0.0, "dir": 1}         # 0.7.53.4 (Luz): the platform sinks with you
 				Audio.play("dock_clamp", "ancient lift", -4.0)
 				return true
 			if bool(zone.get("need_card", false)) and not bool(_site.get("card", false)) and not GameState.poi_flag(String(_site.get("id", "")), "card"):
-				_say_toast("The lift wants a key card – look in the offices. Or the fire stairs (they ring the alarm).", 3.5)
+				_say_toast("The lift wants a key card: look in the offices. Or the fire stairs (they ring the alarm).", 3.5)
 				return true                                  # 0.7.53.19 (Luz)
 			if bool(zone.get("fire_door", false)):
 				_say_toast("The fire door's alarm goes off!", 2.5)
 				raise_alarm()
 			depth += 1                                   # 0.7.53.3: a level deeper
 			go_level("dungeon", "dungeon_down")
-			_say_toast("Down the ladder – level %d." % (depth + 1), 2.0)
+			_say_toast("Down the ladder: level %d." % (depth + 1), 2.0)
 			return true
 		"dungeon_up":
 			var al2 := _lift_here()
@@ -4543,42 +4547,42 @@ func _open_lift_menu(z: Dictionary) -> void:
 	v.add_child(UI.label("LIFT", 20, Color(0.4, 1.0, 0.6)))
 	v.add_child(UI.label("Which level?", 13, UI.TEXT_DIM))
 	var af := GameState.active()
-	var hname := "Hangar %02d – your %s" % [DeckGen.hangar_no(station, af.uid if af != null else 0), af.ship_name if af != null else "ship"]
-	var lvls := [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level – shops and the bar"]]
+	var hname := "Hangar %02d: your %s" % [DeckGen.hangar_no(station, af.uid if af != null else 0), af.ship_name if af != null else "ship"]
+	var lvls := [["hangar", "1.  " + hname], ["commercial", "2.  Commercial level: shops and the bar"]]
 	if is_city():
-		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street – the shops"], ["tower", "3.  Tower bar – floor %d, a view over the city" % tower_floor()]]
+		lvls = [["hangar", "1.  " + hname], ["street", "2.  Shopping street: the shops"], ["tower", "3.  Tower bar: floor %d, a view over the city" % tower_floor()]]
 	if is_cloud():                                                # package 54 (Luz): the cloud city's levels
-		lvls = [["hangar", "1.  " + hname], ["cplaza", "2.  Plaza – shops, a café, the balcony over the clouds"],
-			["cstation", "3.  Skyrail station – the line to the %s and the %s" % [CloudGen.STOPS[1], CloudGen.STOPS[2]]], ["tower", "4.  Sky bar – deck %d, the view over the clouds" % (tower_floor() / 10)]]
+		lvls = [["hangar", "1.  " + hname], ["cplaza", "2.  Plaza: shops, a café, the balcony over the clouds"],
+			["cstation", "3.  Skyrail station: the line to the %s and the %s" % [CloudGen.STOPS[1], CloudGen.STOPS[2]]], ["tower", "4.  Sky bar: deck %d, the view over the clouds" % (tower_floor() / 10)]]
 	if not is_town() and bool(station.get("senate", false)):     # 54c (Luz): The Vote – the gallery over the drone shaft
-		lvls.append(["vgallery", "%d.  The gallery over the drone shaft – the voting booths" % (lvls.size() + 1)])
+		lvls.append(["vgallery", "%d.  The gallery over the drone shaft: the voting booths" % (lvls.size() + 1)])
 	if not is_town() and bool(station.get("capital_yard", false)):   # 54c (Luz): the gallery at the dock of the capital's work
-		lvls.append(["ygallery", "%d.  The gallery – %s in her dock" % [lvls.size() + 1, String(StationRooms.YARDS[StationRooms.yard_kind(station)][1])]])
+		lvls.append(["ygallery", "%d.  The gallery: %s in her dock" % [lvls.size() + 1, String(StationRooms.YARDS[StationRooms.yard_kind(station)][1])]])
 	if not is_town() and bool(station.get("exchange", false)):   # 54c (Luz): the Meridian Sphere – the control room
-		lvls.append(["control", "%d.  The control room – the star and the shell, the Research Exchange" % (lvls.size() + 1)])
+		lvls.append(["control", "%d.  The control room: the star and the shell, the Research Exchange" % (lvls.size() + 1)])
 	if not is_town() and bool(station.get("curia", false)):      # 54c (Luz): the Cathedral of Return – the nave
-		lvls.append(["nave", "%d.  The nave – the altar, the Curia, the Pilgrim Gate in the window" % (lvls.size() + 1)])
+		lvls.append(["nave", "%d.  The nave: the altar, the Curia, the Pilgrim Gate in the window" % (lvls.size() + 1)])
 	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
-		lvls.append(["clinic", "%d.  Clinic – Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
+		lvls.append(["clinic", "%d.  Clinic: Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
 	if is_cloud():
 		pass
 	elif is_city():                                               # 0.7.53.3 (Luz): the way down into the sewers
-		lvls.append(["alley", "%d.  Back alley – a manhole down into the sewers" % (lvls.size() + 1)])
+		lvls.append(["alley", "%d.  Back alley: a manhole down into the sewers" % (lvls.size() + 1)])
 	if is_cloud():
 		pass                                                      # 54c (Luz): the palace is reached by the skyrail, not the lifts
 	elif is_museum_city():                                        # 53e (Luz): on Curie the roof plaza is the Museum's
-		lvls.append(["mplaza", "%d.  Roof plaza – the Museum of Curie" % (lvls.size() + 1)])
+		lvls.append(["mplaza", "%d.  Roof plaza: the Museum of Curie" % (lvls.size() + 1)])
 	elif capital_kind() == "senate":                              # 54c (Luz): Neo Kallipolis – the Plaza of the Vote, the Senate
-		lvls.append(["kplaza", "%d.  The Plaza of the Vote – the Senate of the Assembly" % (lvls.size() + 1)])
+		lvls.append(["kplaza", "%d.  The Plaza of the Vote: the Senate of the Assembly" % (lvls.size() + 1)])
 	elif is_city():                                               # 0.7.53.19 (Luz): up to the roof plaza
 		var cs1 := GameState.corp_site_for(String(station.get("id", "")))
 		var cname := String((cs1 if not cs1.is_empty() else GameState.corp_poi(_sys, station)).get("name", "a corporate tower"))
-		lvls.append(["plaza", "%d.  Roof plaza – the %s" % [lvls.size() + 1, cname]])
+		lvls.append(["plaza", "%d.  Roof plaza: the %s" % [lvls.size() + 1, cname]])
 	if is_cloud():
 		var job := not GameState.maint_site_for(String(station.get("id", ""))).is_empty()
-		lvls.append(["maint", "%d.  Maintenance level – under the deck%s" % [lvls.size() + 1, " – a rotor is jammed" if job else ""]])     # 0.7.54.3
+		lvls.append(["maint", "%d.  Maintenance level: under the deck%s" % [lvls.size() + 1, ", a rotor is jammed" if job else ""]])     # 0.7.54.3
 	if is_city() and not is_cloud() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
-		lvls.append(["maint", "%d.  Maintenance level – the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
+		lvls.append(["maint", "%d.  Maintenance level: the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
 	var only := String(story_mode.get("lift_only", ""))
 	var onlys := only.split(",", false)
 	if only != "":
@@ -4618,9 +4622,9 @@ func _open_takeoff_menu(z: Dictionary) -> void:
 	var bname := String(_body.get("name", ""))
 	if bname == "":
 		bname = String(Universe.find_body(GameState.current_system, String(station.get("body", ""))).get("name", "the planet"))
-	v.add_child(UI.label("Aboard the landing drone – where to?" if _lander else "Aboard your ship and up through the hatch – where to?", 13, UI.TEXT_DIM))
-	var opts := [["orbit", "1.  Back to orbit" + (" – the drone docks with your ship" if _lander else "")],
-		["map", "2.  To the planet map – another place on %s" % bname]]
+	v.add_child(UI.label("Aboard the landing drone. Where to?" if _lander else "Aboard your ship and up through the hatch. Where to?", 13, UI.TEXT_DIM))
+	var opts := [["orbit", "1.  Back to orbit" + (", the drone docks with your ship" if _lander else "")],
+		["map", "2.  To the planet map: another place on %s" % bname]]
 	var keys: Array = []
 	for o in opts:
 		var b := UI.button(String(o[1]), func(): _choose_takeoff(String(o[0])))
@@ -4788,7 +4792,7 @@ func _sight_info() -> String:
 		if GameState.sight_photos.has("%s:%s" % [String(sg["id"]), k]):
 			have += 1
 	var ev: Array = evs.get(String(sg["event"]), ["the view", "any", 1.0, false])
-	return "%s – %s. Now: %s. Your photos of it: %d of %d (some views only come by night, at dusk, or rarely)." % [
+	return "%s: %s. Now: %s. Your photos of it: %d of %d (some views only come by night, at dusk, or rarely)." % [
 		String(sg["name"]), String(def["what"]), String(ev[0]), have, evs.size()]
 
 
@@ -4812,9 +4816,9 @@ func _senate_info() -> String:
 	var sen = GameState.senate
 	var SC = preload("res://scripts/core/senate.gd")
 	if (sen.bill as Dictionary).is_empty():
-		return "No bill on the floor – the next comes up in about %d min." % maxi(1, sen.minutes_left(float(sen.next_t)))
+		return "No bill on the floor: the next comes up in about %d min." % maxi(1, sen.minutes_left(float(sen.next_t)))
 	var bd: Dictionary = SC.BILLS[sen.bill["id"]]
-	return "On the floor: %s – if it passes: + %s, − %s. Polls %d %% yes; the vote closes in %d min." % [bd["name"], bd["pro"], bd["con"],
+	return "On the floor: %s, if it passes: + %s, − %s. Polls %d %% yes; the vote closes in %d min." % [bd["name"], bd["pro"], bd["con"],
 		int(round(sen.yes_chance() * 100.0)), sen.minutes_left(float(sen.bill["ends"]))]
 
 
@@ -4838,12 +4842,12 @@ func _open_senate_menu(kind: String, z: Dictionary) -> void:
 	v.add_child(UI.label(title, 20, col))
 	var permit: bool = GameState.has_permit("assembly")
 	if (sen.bill as Dictionary).is_empty():
-		v.add_child(UI.label("No bill on the floor – the next comes up in about %d min." % maxi(1, sen.minutes_left(float(sen.next_t))), 14, UI.TEXT_DIM))
+		v.add_child(UI.label("No bill on the floor: the next comes up in about %d min." % maxi(1, sen.minutes_left(float(sen.next_t))), 14, UI.TEXT_DIM))
 	else:
 		var b: Dictionary = sen.bill
 		var bd: Dictionary = SC.BILLS[b["id"]]
 		v.add_child(UI.label(String(bd["name"]).to_upper(), 16, Color(0.95, 0.95, 1.0)))
-		v.add_child(UI.wrap_label("If it passes: + %s  •  − %s.  Polls %d %% yes – the vote closes in %d min." % [bd["pro"], bd["con"],
+		v.add_child(UI.wrap_label("If it passes: + %s  •  − %s.  Polls %d %% yes: the vote closes in %d min." % [bd["pro"], bd["con"],
 			int(round(sen.yes_chance() * 100.0)), sen.minutes_left(float(b["ends"]))], 13, UI.TEXT_DIM, 520))
 		if not permit:
 			v.add_child(UI.label("Without an Assembly entry permit you may only watch.", 13, UI.BAD))
@@ -4858,7 +4862,7 @@ func _open_senate_menu(kind: String, z: Dictionary) -> void:
 						_senate_do({"type": "senate_donate", "side": sd}, kind, z))
 					btn.disabled = not permit or GameState.credits < SC.DONATION_STEP
 				"lobbyist":
-					btn = UI.button("Pay %s – make it %s" % [GameData.fmt_credits(sen.bribe_cost()), sd.to_upper()], func():
+					btn = UI.button("Pay %s: make it %s" % [GameData.fmt_credits(sen.bribe_cost()), sd.to_upper()], func():
 						_senate_do({"type": "senate_bribe", "side": sd}, kind, z))
 					btn.disabled = not permit or GameState.credits < sen.bribe_cost() or not (b["bribe"] as Dictionary).is_empty()
 				_:
@@ -4869,13 +4873,13 @@ func _open_senate_menu(kind: String, z: Dictionary) -> void:
 			row.add_child(btn)
 		match kind:
 			"party_office":
-				v.add_child(UI.label("Given so far: YES %s · NO %s – it sways the vote a little, never for certain." % [
+				v.add_child(UI.label("Given so far: YES %s · NO %s; it sways the vote a little, never for certain." % [
 					GameData.fmt_credits(int(b["donated"].get("yes", 0))), GameData.fmt_credits(int(b["donated"].get("no", 0)))], 12, UI.TEXT_DIM))
 			"lobbyist":
 				if (b["bribe"] as Dictionary).is_empty():
-					v.add_child(UI.wrap_label("He smiles over his glass: \"The tellers are reasonable people. It settles the vote – unless it comes out (%d %%). Then the money's gone, and so is the Assembly's trust in you.\"" % int(SC.BRIBE_CAUGHT * 100.0), 13, UI.BAD, 520))
+					v.add_child(UI.wrap_label("He smiles over his glass: \"The tellers are reasonable people. It settles the vote, unless it comes out (%d %%). Then the money's gone, and so is the Assembly's trust in you.\"" % int(SC.BRIBE_CAUGHT * 100.0), 13, UI.BAD, 520))
 				else:
-					v.add_child(UI.label("\"It's taken care of. Now – we never spoke.\"", 13, UI.BAD))
+					v.add_child(UI.label("\"It's taken care of. Now, we never spoke.\"", 13, UI.BAD))
 			_:
 				v.add_child(UI.label("Your vote counts in the whole Assembly; the ballots from every system come together here.", 12, UI.TEXT_DIM))
 	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
@@ -4917,11 +4921,11 @@ func _open_curia_menu(kind: String, z: Dictionary) -> void:
 				v.add_child(UI.wrap_label("\"%s\"  + %s  •  − %s.  Holds another %d min." % [bd["text"], bd["pro"], bd["con"], cu.minutes_left(float(ed["until"]))], 13, UI.TEXT_DIM, 540))
 			var row := UI.hbox(8)
 			v.add_child(row)
-			var bt := UI.button("Give a tithe – %s" % GameData.fmt_credits(CU.TITHE_STEP), func(): _curia_do({"type": "curia_tithe"}, kind, z))
+			var bt := UI.button("Give a tithe: %s" % GameData.fmt_credits(CU.TITHE_STEP), func(): _curia_do({"type": "curia_tithe"}, kind, z))
 			bt.disabled = GameState.credits < CU.TITHE_STEP
 			row.add_child(bt)
 			var ic: int = cu.indulgence_cost()
-			var bi := UI.button("Indulgence – %s" % (GameData.fmt_credits(ic) if ic > 0 else "nothing to forgive"), func(): _curia_do({"type": "curia_indulgence"}, kind, z))
+			var bi := UI.button("Indulgence: %s" % (GameData.fmt_credits(ic) if ic > 0 else "nothing to forgive"), func(): _curia_do({"type": "curia_indulgence"}, kind, z))
 			bi.disabled = ic <= 0 or GameState.credits < ic
 			row.add_child(bi)
 			v.add_child(UI.label("Tithed this edict: %s of %s for a petition." % [GameData.fmt_credits(int(ed.get("tithed", 0))), GameData.fmt_credits(CU.PETITION)], 12, UI.TEXT_DIM))
@@ -4937,7 +4941,7 @@ func _open_curia_menu(kind: String, z: Dictionary) -> void:
 		"relic_office":
 			var f := GameState.active()
 			var n := int(floor(float(f.cargo.get("earth_relic", 0.0)) + 0.001)) if f != null else 0
-			v.add_child(UI.wrap_label("The priest lifts his eyes from the ledger: \"Relics of Earth, found out there in the dark – each one brings the Return a step nearer.\"", 13, UI.TEXT_DIM, 540))
+			v.add_child(UI.wrap_label("The priest lifts his eyes from the ledger: \"Relics of Earth, found out there in the dark; each one brings the Return a step nearer.\"", 13, UI.TEXT_DIM, 540))
 			v.add_child(UI.label("Relics of Earth aboard your ship: %d" % n, 14, Color(1.0, 0.95, 0.85)))
 			var br := UI.button("Lay them in the shrine", func(): _curia_do({"type": "curia_relics"}, kind, z))
 			br.disabled = n <= 0
@@ -4962,7 +4966,7 @@ func _open_curia_menu(kind: String, z: Dictionary) -> void:
 			var bb := UI.button("Ask for his blessing", func(): _curia_do({"type": "curia_audience", "what": "bless"}, kind, z))
 			bb.disabled = used
 			v.add_child(bb)
-			v.add_child(UI.wrap_label(("Once each edict: name the next edict yourself, or kneel for his blessing (%d min)." % int(CU.AUDIENCE_BLESSING / 60.0)) if not used else "You have been heard this edict – come again when the next is proclaimed.", 12, UI.TEXT_DIM, 540))
+			v.add_child(UI.wrap_label(("Once each edict: name the next edict yourself, or kneel for his blessing (%d min)." % int(CU.AUDIENCE_BLESSING / 60.0)) if not used else "You have been heard this edict: come again when the next is proclaimed.", 12, UI.TEXT_DIM, 540))
 			if cu.sealed:
 				v.add_child(UI.label("You bear the Hierarch's seal: indulgences at half price.", 12, UI.GOOD))
 	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
@@ -4974,7 +4978,7 @@ func _open_curia_menu(kind: String, z: Dictionary) -> void:
 func _curia_do(cmd: Dictionary, kind: String, z: Dictionary) -> void:
 	var e: String = Commands.execute(cmd)
 	_say_toast(e if e != "" else {"curia_tithe": "Your tithe is received.", "curia_indulgence": "You are forgiven.", "curia_petition": "The Curia has heard you.",
-		"curia_relics": "The relics are laid in the shrine – you are blessed.", "curia_audience": "The Hierarch has spoken."}.get(String(cmd["type"]), ""), 3.0)
+		"curia_relics": "The relics are laid in the shrine: you are blessed.", "curia_audience": "The Hierarch has spoken."}.get(String(cmd["type"]), ""), 3.0)
 	_open_curia_menu(kind, z)
 
 
@@ -4996,13 +5000,13 @@ func _open_exchange_menu(z: Dictionary) -> void:
 	v.add_child(UI.label("Research data: %d set%s  •  Exotic matter: %d" % [GameState.research_data, "" if GameState.research_data == 1 else "s", GameState.exotic_matter], 14, Color(0.9, 1.0, 0.95)))
 	var row := UI.hbox(8)
 	v.add_child(row)
-	var b1 := UI.button("Sell all data – %s" % GameData.fmt_credits(GameState.research_data * GameState.DATA_PRICE), func(): _exchange_do({"type": "exchange", "what": "data"}, z))
+	var b1 := UI.button("Sell all data: %s" % GameData.fmt_credits(GameState.research_data * GameState.DATA_PRICE), func(): _exchange_do({"type": "exchange", "what": "data"}, z))
 	b1.disabled = GameState.research_data <= 0
 	row.add_child(b1)
-	var b2 := UI.button("Sell 1 exotic matter – %s" % GameData.fmt_credits(GameState.EM_SELL), func(): _exchange_do({"type": "exchange", "what": "sell_em", "n": 1}, z))
+	var b2 := UI.button("Sell 1 exotic matter: %s" % GameData.fmt_credits(GameState.EM_SELL), func(): _exchange_do({"type": "exchange", "what": "sell_em", "n": 1}, z))
 	b2.disabled = GameState.exotic_matter < 1
 	row.add_child(b2)
-	var b3 := UI.button("Buy 1 exotic matter – %s" % GameData.fmt_credits(GameState.EM_BUY), func(): _exchange_do({"type": "exchange", "what": "buy_em", "n": 1}, z))
+	var b3 := UI.button("Buy 1 exotic matter: %s" % GameData.fmt_credits(GameState.EM_BUY), func(): _exchange_do({"type": "exchange", "what": "buy_em", "n": 1}, z))
 	b3.disabled = not GameState.rep.at_least("directorate", "allied") or GameState.credits < GameState.EM_BUY
 	v.add_child(b3)
 	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
@@ -5034,14 +5038,14 @@ func _open_souvenir_menu(z: Dictionary) -> void:
 	p.add_child(v)
 	v.add_child(UI.label("SOUVENIR STALL", 20, Color(1.0, 0.75, 0.4)))
 	var f := GameState.active()
-	v.add_child(UI.label("%s – %d cr each. They sell well far from here, in mining and military systems. Into your hold (%.0f m³ free) · %s cr" % [
+	v.add_child(UI.label("%s: %d cr each. They sell well far from here, in mining and military systems. Into your hold (%.0f m³ free) · %s cr" % [
 		GameData.item_name(item), price, f.cargo_free() if f != null else 0.0, str(GameState.credits)], 13, UI.TEXT_DIM))
 	var row := UI.hbox(8)
 	for amt in [5, 20, 50]:
 		var aa: int = amt
 		row.add_child(UI.button("Buy %d" % aa, func():
 			var e: String = Commands.execute({"type": "souvenir_buy", "amount": aa})
-			_say_toast(e if e != "" else ("Bought %d %s." % [Commands.souvenirs_bought, GameData.item_name(item)]) + (" – all there was room and money for." if Commands.souvenirs_bought < aa else ""), 3.0)
+			_say_toast(e if e != "" else ("Bought %d %s." % [Commands.souvenirs_bought, GameData.item_name(item)]) + (", all there was room and money for." if Commands.souvenirs_bought < aa else ""), 3.0)
 			_open_souvenir_menu(z)))
 	v.add_child(row)
 	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
@@ -5062,13 +5066,13 @@ func _open_rail_menu(z: Dictionary) -> void:
 	var v := UI.vbox(8)
 	p.add_child(v)
 	v.add_child(UI.label("SKYRAIL", 20, Color(1.0, 0.8, 0.4)))
-	v.add_child(UI.label("From %s – where to?" % CloudGen.STOPS[rail_stop], 13, UI.TEXT_DIM))
+	v.add_child(UI.label("From %s, where to?" % CloudGen.STOPS[rail_stop], 13, UI.TEXT_DIM))
 	var keys: Array = []
 	var n := 0
 	for d in CloudGen.others(rail_stop, capital_kind() == "palace"):
 		n += 1
 		var dd: int = d
-		var what: String = ["the main platform – lifts to the hangar, the plaza, the bar", "the outer ring – its observation deck", "the gas works – the Gas Exchange, the berth", "the Hierarch's palace – its own station, the way across to the forecourt"][dd]
+		var what: String = ["the main platform: lifts to the hangar, the plaza, the bar", "the outer ring: its observation deck", "the gas works: the Gas Exchange, the berth", "the Hierarch's palace: its own station, the way across to the forecourt"][dd]
 		var b := UI.button("%d.  %s – %s" % [n, CloudGen.STOPS[dd], what], func(): _board(dd))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(b)
@@ -5101,7 +5105,7 @@ func _open_gas_menu(z: Dictionary) -> void:
 	p.add_child(v)
 	v.add_child(UI.label("GAS EXCHANGE", 20, Color(1.0, 0.8, 0.4)))
 	var f := GameState.active()
-	v.add_child(UI.label("From the works of %s – %d %% under market price. Into the hold of your %s (%.0f m³ free) · %s cr" % [
+	v.add_child(UI.label("From the works of %s: %d %% under market price. Into the hold of your %s (%.0f m³ free) · %s cr" % [
 		String(station.get("name", "")), int(round((1.0 - Commands.GAS_DISCOUNT) * 100.0)), f.ship_name if f != null else "ship",
 		f.cargo_free() if f != null else 0.0, str(GameState.credits)], 13, UI.TEXT_DIM))
 	var keys: Array = []
@@ -5113,7 +5117,7 @@ func _open_gas_menu(z: Dictionary) -> void:
 			var aa: int = amt
 			row.add_child(UI.button("Fill" if aa < 0 else "Buy %d" % aa, func():
 				var e: String = Commands.execute({"type": "gas_buy", "item": gg, "amount": aa})
-				_say_toast(e if e != "" else "Bought %s – it is pumped into your hold." % GameData.item_name(gg), 3.0)
+				_say_toast(e if e != "" else "Bought %s: it is pumped into your hold." % GameData.item_name(gg), 3.0)
 				_open_gas_menu(z)))
 		v.add_child(row)
 	v.add_child(UI.button("Close [Esc]", _close_lift_menu))
@@ -5139,11 +5143,11 @@ func rail_speed(t: float) -> float:
 func _scope_text() -> String:
 	var b := cloud_body()
 	if map != null and map.has_meta("works"):
-		return "Far below, where the hoses vanish into the clouds, the harvest probes glow in a gap – drawing in the gas of %s." % String(b.get("name", "the giant"))
+		return "Far below, where the hoses vanish into the clouds, the harvest probes glow in a gap: drawing in the gas of %s." % String(b.get("name", "the giant"))
 	var bits := ["the other platforms far off in the haze", "a storm turning slowly far below", "lightning flickering deep in the clouds",
 		"a gas harvester skimming the bands", "the skyrail's beam running off into the haze"]
 	var i := int(Time.get_ticks_msec() / 4000) % bits.size()
-	return "Through the scope: %s – the clouds of %s go down for thousands of kilometres." % [bits[i], String(b.get("name", "the giant"))]
+	return "Through the scope: %s; the clouds of %s go down for thousands of kilometres." % [bits[i], String(b.get("name", "the giant"))]
 
 
 func _sit(z: Dictionary) -> void:
@@ -5208,7 +5212,7 @@ func open_talk(z: Dictionary) -> bool:
 func _talk_options() -> Array:
 	if _talk_hired:
 		return [["Goodbye.", func(): talk.close()]]
-	return [["Info – tell me about yourself.", talk_info], ["Goodbye.", func(): talk.close()]]
+	return [["Info: tell me about yourself.", talk_info], ["Goodbye.", func(): talk.close()]]
 
 
 ## "Info": the questions about trade, skill and price, the record, signing on.
@@ -5304,7 +5308,7 @@ func _draw_dust() -> void:
 ## Back from a service window: if the active ship changed (the hangar service), say where it stands now.
 func on_service_closed() -> void:
 	if level == "hangar" and _hangar_stale():
-		_say_toast("Your active ship, the %s, stands in %s – the lift takes you there." % [GameState.active().ship_name, _active_hangar()], 6.0)
+		_say_toast("Your active ship, the %s, stands in %s: the lift takes you there." % [GameState.active().ship_name, _active_hangar()], 6.0)
 
 
 func _hangar_stale() -> bool:
@@ -5340,7 +5344,7 @@ const DRINKS := [
 	["Nebula Ale", 8, 0.15, Color(0.95, 0.7, 0.25)],
 	["Pulsar Punch", 14, 0.25, Color(1.0, 0.35, 0.55)],
 	["Void Whisky", 25, 0.35, Color(0.75, 0.45, 0.15)],
-	["Orbital Cola – no alcohol", 4, 0.0, Color(0.35, 0.18, 0.1)],
+	["Orbital Cola: no alcohol", 4, 0.0, Color(0.35, 0.18, 0.1)],
 ]
 const BAR_TALK := [
 	"Saw a hauler come in yesterday with half a moon stuck to its hull. Pilot swore it followed him.",
@@ -5353,7 +5357,7 @@ const BAR_TALK := [
 	"Rumour has it the Veil whispers if you park close enough. I asked it for a tip once. Nothing.",
 	"Miners tip best. Traders talk most. Pirates do both, and then they shoot someone.",
 	"The jukebox only knows three songs. So do I, after a long shift.",
-	"Keep an eye on the bounty board – the big names don't stay big for long.",
+	"Keep an eye on the bounty board: the big names don't stay big for long.",
 	"Old gates are slow, but they get you there. Mostly. Usually. Eventually.",
 	"I had a robot bartender once. Made perfect drinks. Terrible listener.",
 	"Word is a derelict from before the Severance drifts near a battlefield out there. Full of old tech, they say. And full of something else, they also say.",

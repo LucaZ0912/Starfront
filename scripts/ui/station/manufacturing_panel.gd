@@ -21,7 +21,7 @@ func build() -> void:
 	if not q.is_empty():
 		section("IN PRODUCTION")
 		for j in q:
-			add_child(UI.label("%s – %d s left" % [GameData.module_name(String(j["item"])), int(ceil(float(j["left"])))], 13, UI.GOLD))
+			add_child(UI.label("%s: %d s left" % [GameData.module_name(String(j["item"])), int(ceil(float(j["left"])))], 13, UI.GOLD))
 	_components(f)                                   # package 41
 	var list := Industry.buildable(station)
 	if list.is_empty():

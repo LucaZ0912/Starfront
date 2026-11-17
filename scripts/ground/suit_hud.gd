@@ -63,27 +63,27 @@ func _draw() -> void:
 			if float(env.get(h, 0.0)) > 0.0:
 				# 0.7.53.14: with energy everything is kept out – beyond the suit's protection at a cost in energy
 				var beyond := float(env[h]) * (1.0 - float(t["env"][h]))
-				var tail := " – kept out"
+				var tail := ", kept out"
 				if g.energy <= 0.0:
-					tail = " – gets through"
+					tail = ", gets through"
 				elif beyond > 0.01:
-					tail = " – kept out, drains energy"
+					tail = ", kept out, drains energy"
 				parts.append("%s %d%%%s" % [GearData.HAZARD_NAMES[h], int(float(env[h]) * 100.0), tail])
 		if bool(env.get("breathable", true)) and parts.is_empty():
 			parts.append("The air is good to breathe")
 		elif not bool(env.get("breathable", true)):
-			parts.append("No air to breathe – on the tank")
+			parts.append("No air to breathe: on the tank")
 		var hc := Color(1.0, 0.55, 0.4) if exposure > 0.01 else Color(0.6, 0.95, 0.65)
 		for line in parts:
 			draw_rect(Rect2(Vector2(x, y), Vector2(font.get_string_size(String(line), HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14, 18)), Color(0.0, 0.0, 0.03, 0.55))
 			draw_string(font, Vector2(x + 7, y + 13), String(line), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, hc)
 			y += 19
 		if g.energy <= 0.0:
-			draw_string(font, Vector2(x + 7, y + 14), "SUIT ENERGY EMPTY – life support off", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.3, 0.3) if fposmod(_t * 2.0, 1.0) < 0.6 else Color(1.0, 0.7, 0.4))
+			draw_string(font, Vector2(x + 7, y + 14), "SUIT ENERGY EMPTY: life support off", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.3, 0.3) if fposmod(_t * 2.0, 1.0) < 0.6 else Color(1.0, 0.7, 0.4))
 		if g.energy <= 0.0:
 			y += 20
 	elif indoors and not env.is_empty():
-		draw_string(font, Vector2(x + 4, y + 13), "Indoors – the suit rests", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.6, 0.95, 0.65))
+		draw_string(font, Vector2(x + 4, y + 13), "Indoors: the suit rests", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.6, 0.95, 0.65))
 		y += 18
 	bottom_y = y
 	# the belt along the bottom left – 0.7.52.13: tiles as in space (its places on 1, 2, 3 …)

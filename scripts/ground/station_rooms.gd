@@ -36,7 +36,7 @@ static func build_vote_gallery(station: Dictionary) -> GroundMap:
 	m.pal["wall"] = Color(0.86, 0.88, 0.92)
 	m.pal["accent"] = BLUE
 	m.style = "museum"
-	m.title = "The Vote – the gallery"
+	m.title = "The Vote: the gallery"
 	m.hull_top = -9999
 	m.set_meta("no_guards", true)
 	m.setup(W, H)
@@ -56,13 +56,13 @@ static func build_vote_gallery(station: Dictionary) -> GroundMap:
 	for bk in 3:
 		var bx := 11 + bk * 7
 		m.add_object({"kind": "vote_booth", "x": bx, "y": by, "w": 3, "h": 1})
-		_zone(m, Rect2(bx - 0.5, by + 1, 4, 1.4), "senate_stand", "A voting booth – your vote on the bill", Color(0.4, 1.0, 0.6))
+		_zone(m, Rect2(bx - 0.5, by + 1, 4, 1.4), "senate_stand", "A voting booth: your vote on the bill", Color(0.4, 1.0, 0.6))
 		m.lights.append({"pos": Vector2(bx + 1.5, by) * TILE, "r": 40.0, "col": BLUE, "a": 0.35})
 	# a sight: the viewpoint along the railing, information, a souvenir stall; benches facing the shaft
 	m.zones.append({"rect": Rect2(Vector2(3, VG_RAIL + 1) * TILE, Vector2(W - 6, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-		"title": "The shaft – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+		"title": "The shaft: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "holo_pillar", "x": 4, "y": by, "w": 1, "h": 1, "col": BLUE})
-	_zone(m, Rect2(3, by + 1, 3, 1.4), "sight_info", "Information – The Vote", BLUE)
+	_zone(m, Rect2(3, by + 1, 3, 1.4), "sight_info", "Information: The Vote", BLUE)
 	m.add_object({"kind": "stall", "x": W - 6, "y": by, "w": 2, "h": 1, "col": BLUE})
 	m.zones.append({"rect": Rect2(Vector2(W - 7, by + 0.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 		"title": "Souvenir stall", "col": BLUE, "sign": Vector2(W - 5, by - 1.2) * TILE})
@@ -145,20 +145,20 @@ static func build_nave(station: Dictionary) -> GroundMap:
 		m.people.append({"pos": Vector2(2.5 + ck * 2.5, ay + 2.4) * TILE, "dir": 0, "role": "keeper"})
 	m.add_object({"kind": "tithe_chest", "x": 7, "y": ay + 3, "w": 1, "h": 1})
 	m.zones.append({"rect": Rect2(Vector2(1, ay + 4) * TILE, Vector2(7, 1.6) * TILE), "kind": "curia_chancery", "id": "curia_chancery",
-		"title": "The Curia's chancery – tithe, petition, indulgence", "col": GOLD, "sign": Vector2(-100, -100)})
+		"title": "The Curia's chancery: tithe, petition, indulgence", "col": GOLD, "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "reliquary", "x": W - 7, "y": ay, "w": 5, "h": 1})
 	m.add_object({"kind": "candle_rack", "x": W - 7, "y": ay + 3, "w": 5, "h": 1})
 	m.people.append({"pos": Vector2(W - 4.5, ay + 1.6) * TILE, "dir": 0, "role": "keeper"})
 	m.zones.append({"rect": Rect2(Vector2(W - 8, ay + 1.4) * TILE, Vector2(7, 1.4) * TILE), "kind": "relic_office", "id": "relic_office",
-		"title": "The relic shrine – relics of Earth, a blessing", "col": GOLD, "sign": Vector2(-100, -100)})
+		"title": "The relic shrine: relics of Earth, a blessing", "col": GOLD, "sign": Vector2(-100, -100)})
 	m.lights.append({"pos": Vector2(W - 4.5, ay + 1) * TILE, "r": 80.0, "col": Color(1.0, 0.85, 0.5), "a": 0.55, "flicker": true})
 	m.lights.append({"pos": Vector2(4, ay + 3) * TILE, "r": 70.0, "col": Color(1.0, 0.9, 0.6), "a": 0.4})
 	# a sight: the viewpoint before the altar (the gate in the window), information, a souvenir stall
 	m.zones.append({"rect": Rect2(Vector2(W / 2 - 6, ay + 3) * TILE, Vector2(12, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-		"title": "The Pilgrim Gate – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+		"title": "The Pilgrim Gate: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "lectern", "x": 3, "y": H - 6, "w": 1, "h": 1})
 	m.zones.append({"rect": Rect2(Vector2(2, H - 5) * TILE, Vector2(3, 1.4) * TILE), "kind": "sight_info", "id": "sight_info",
-		"title": "Information – the Cathedral of Return", "col": GOLD, "sign": Vector2(-100, -100)})
+		"title": "Information: the Cathedral of Return", "col": GOLD, "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "stall", "x": W - 5, "y": H - 6, "w": 2, "h": 1, "col": CRED})
 	m.zones.append({"rect": Rect2(Vector2(W - 6, H - 5.4) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 		"title": "Souvenir stall", "col": Color(1.0, 0.7, 0.35), "sign": Vector2(W - 4, H - 7.2) * TILE})
@@ -234,12 +234,12 @@ static func build_control(station: Dictionary) -> GroundMap:
 	m.add_object({"kind": "counter", "x": 2, "y": H - 9, "w": 6, "h": 1})
 	m.add_object({"kind": "holo_pillar", "x": 1, "y": H - 10, "w": 1, "h": 1, "col": GREEN})
 	m.people.append({"pos": Vector2(5.0, H - 9.6) * TILE, "dir": 0, "role": "keeper"})
-	_zone(m, Rect2(2, H - 8, 6, 1.6), "exchange_desk", "The Research Exchange – data and exotic matter", GREEN)
+	_zone(m, Rect2(2, H - 8, 6, 1.6), "exchange_desk", "The Research Exchange: data and exotic matter", GREEN)
 	# a sight: the viewpoint along the window, information, a souvenir stall; benches
 	m.zones.append({"rect": Rect2(Vector2(2, CR_WIN + 1) * TILE, Vector2(W - 4, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-		"title": "The star and the shell – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+		"title": "The star and the shell: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
 	m.add_object({"kind": "holo_pillar", "x": W - 3, "y": H - 10, "w": 1, "h": 1, "col": GREEN})
-	_zone(m, Rect2(W - 4, H - 9, 3, 1.4), "sight_info", "Information – the Meridian Sphere", GREEN)
+	_zone(m, Rect2(W - 4, H - 9, 3, 1.4), "sight_info", "Information: the Meridian Sphere", GREEN)
 	m.add_object({"kind": "stall", "x": W - 7, "y": H - 5, "w": 2, "h": 1, "col": GREEN})
 	m.zones.append({"rect": Rect2(Vector2(W - 8, H - 4.4) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 		"title": "Souvenir stall", "col": GREEN, "sign": Vector2(W - 6, H - 6.2) * TILE})
@@ -306,13 +306,13 @@ static func build_yard_gallery(station: Dictionary) -> GroundMap:
 	m.add_object({"kind": "ship_model", "x": W / 2 - 2, "y": YG_WIN + 7, "w": 4, "h": 1})
 	m.lights.append({"pos": Vector2(W * 0.5, YG_WIN + 6.5) * TILE, "r": 60.0, "col": acc, "a": 0.4})
 	m.add_object({"kind": "holo_pillar", "x": 3, "y": YG_WIN + 7, "w": 1, "h": 1, "col": acc})
-	_zone(m, Rect2(2, YG_WIN + 8, 3, 1.4), "sight_info", "Information – %s" % String(yd[1]), acc)
+	_zone(m, Rect2(2, YG_WIN + 8, 3, 1.4), "sight_info", "Information: %s" % String(yd[1]), acc)
 	m.add_object({"kind": "stall", "x": W - 6, "y": YG_WIN + 7, "w": 2, "h": 1, "col": acc})
 	m.zones.append({"rect": Rect2(Vector2(W - 7, YG_WIN + 7.6) * TILE, Vector2(4, 1.6) * TILE), "kind": "souvenir", "id": "souvenir",
 		"title": "Souvenir stall", "col": acc, "sign": Vector2(W - 5, YG_WIN + 5.8) * TILE})
 	m.zones.append({"rect": Rect2(Vector2(2, YG_WIN + 1) * TILE, Vector2(W - 4, 1.4) * TILE), "kind": "viewpoint", "id": "viewpoint",
-		"title": "%s in her dock – take a photo" % String(yd[1]).capitalize() if yk != "axiom_yards" else "The gates – take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
-	m.set_meta("sight", {"theme": "yard", "event": "", "name": "%s – the gallery" % String(yd[0]), "id": String(station.get("id", "")) + "_yard",
+		"title": "%s in her dock: take a photo" % String(yd[1]).capitalize() if yk != "axiom_yards" else "The gates: take a photo", "col": Color(1.0, 0.9, 0.5), "sign": Vector2(-100, -100)})
+	m.set_meta("sight", {"theme": "yard", "event": "", "name": "%s: the gallery" % String(yd[0]), "id": String(station.get("id", "")) + "_yard",
 		"focus": Vector2(W * 0.5, 4.0) * TILE, "kind": yk})
 	# the lifts back; the power's guard
 	m.decals.append({"kind": "museum_exit", "x": W / 2 - 2, "y": H - 2, "w": 4, "h": 1})

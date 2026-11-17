@@ -3,6 +3,28 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.4 – 2026-11-17
+
+**Package 56, part 4: sequence 6, part 1 (Dan's deal), the journal reworked, and far fewer dashes (Luz).**
+- **Sequence 6, Dan's deal:** after the flight training (or straight after sequence 4 if you skip it) Dan waits at the
+  bar's window. His menu has a gold answer, "You wanted to talk to me.", which ends the prologue and starts the story
+  mission "A Ticket to the Cluster": no ship, no licence, stuck in Beyond ("Stuck?" and "Pilot licence?" in either
+  order, then "And what do you suggest?"); a friend of Dan's could take you to the Cluster, for a price; Dan's deal is a
+  ship, gear and a few jobs, about three years of them. Yes or no; then black, and the bar is busy again (nobody for
+  hire). Said no: three regulars (Hob Karst, Mira Teague, Ossen Vale) turn you down when asked for work, and Dan's menu
+  has "About your deal: I've thought it over." (gold). Said yes: a small ship waits in the hangar (part 2 comes next).
+  Skipping the training, Dan now answers "Confident, are we? …" and asks you to come over when you're ready.
+- **The prologue in the journal:** "Talk to Dan in the bar", the hangar, the training and "Talk to Dan" are steps of
+  the story mission "Prologue"; one mission can start the next.
+- **Journal:** a new tab "Completed" lists finished missions, latest first, with their full log; Story and Side
+  missions show only running ones. Transactions (bounties, contracts, bonds) moved from the ship menu into the
+  journal; the ship menu keeps Info, Modules, Ship, Inventory, Industry and Market.
+- **Dialogues:** answers can depend on story flags and be shown in gold.
+- **Texts:** about 90 % of the dashes (–) in game texts are gone, replaced by commas, colons, periods or parentheses
+  (dialogues, radio calls, missions, tips, logs, the codex, descriptions, signs). Titles, ranges such as 1–8 and the
+  empty-value mark keep theirs. New guideline in Leitlinien.md.
+- **Roadmap:** the Teil 8 table is whole again (a blank line had split it after package 57).
+
 ## alpha 0.8.56.3 – 2026-11-17
 
 **Package 56, part 3 – sequence 5: the flight training (Luz).** Chosen in the bar, it is flown with one of Dan's drones.

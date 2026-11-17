@@ -200,7 +200,7 @@ func _update_cme(delta: float) -> void:
 		if t >= CME_WARN:
 			_cme["phase"] = "burst"
 			_cme["t"] = 0.0
-			GameState.log_msg("The coronal mass ejection has broken loose – the shockwave is on its way.", GameState.COL_WARN)
+			GameState.log_msg("The coronal mass ejection has broken loose: the shockwave is on its way.", GameState.COL_WARN)
 		return
 	_set_star_param("cme_t", t / CME_ERUPT if t < CME_ERUPT else -1.0)
 	var star_r := float(layout["star"]["radius"])
@@ -234,7 +234,7 @@ func cme_banner() -> Dictionary:
 		var left := CME_WARN - t
 		if left > CME_BANNER:
 			return {}
-		return {"text": "! ENERGY SPIKE DETECTED ON THE STAR !", "sub": "Coronal mass ejection in %d s – brace for the shockwave" % int(ceil(left)), "k": 1.0}
+		return {"text": "! ENERGY SPIKE DETECTED ON THE STAR !", "sub": "Coronal mass ejection in %d s: brace for the shockwave" % int(ceil(left)), "k": 1.0}
 	if t < 4.0:
 		return {"text": "! CORONAL MASS EJECTION !", "sub": "Shockwave on its way through the system", "k": 1.0 - smoothstep(2.5, 4.0, t)}
 	return {}
@@ -265,7 +265,7 @@ func start_cme(at_once: bool = false) -> void:
 	_set_star_param("cme_ang", float(_cme["ang"]))
 	GameState.codex.event("cme")
 	if not at_once:
-		GameState.log_msg("SOLAR ALERT: a coronal mass ejection is building on %s – shockwave in %d s. Shields and sensors will falter."
+		GameState.log_msg("SOLAR ALERT: a coronal mass ejection is building on %s, shockwave in %d s. Shields and sensors will falter."
 			% [layout["star"]["name"], int(CME_WARN)], GameState.COL_WARN)
 
 
@@ -277,14 +277,14 @@ func _cme_hit(ship: Ship, d: float, star_r: float) -> void:
 		return
 	if ship.in_warp():
 		if ship == player:
-			GameState.log_msg("The shockwave tears you out of warp – emergency shutdown!", GameState.COL_BAD)
+			GameState.log_msg("The shockwave tears you out of warp: emergency shutdown!", GameState.COL_BAD)
 		ship.emergency_drop()
 	ship.cme_t = 20.0
 	if ship.cloaked():
 		ship.module_on["builtin_cloak"] = false
 		ship.module_state["builtin_cloak"] = "off"
 		if ship == player:
-			GameState.log_msg("The plasma clings to the hull – the cloak fails for 20 s.", GameState.COL_BAD)
+			GameState.log_msg("The plasma clings to the hull: the cloak fails for 20 s.", GameState.COL_BAD)
 	var close := d < star_r * 25.0
 	if close:
 		ship.shield_collapse(5.0)
@@ -294,7 +294,7 @@ func _cme_hit(ship: Ship, d: float, star_r: float) -> void:
 		ship.jammed_t = maxf(ship.jammed_t, 7.0)
 	if ship == player:
 		spawn_fx(Fx.flash(ship.position, Color(1.0, 0.6, 0.3), ship.radius * 12.0))
-		GameState.log_msg("The CME shockwave hits – %s" % ("shields down, sensors blind." if close else "shields weakened, sensors jammed."), GameState.COL_BAD)
+		GameState.log_msg("The CME shockwave hits: %s" % ("shields down, sensors blind." if close else "shields weakened, sensors jammed."), GameState.COL_BAD)
 
 
 func _set_star_param(key: String, value) -> void:
@@ -388,7 +388,7 @@ func apply_gravity(ship: Ship, delta: float) -> void:
 	ship.position -= ship.position / d * pull * delta
 	if ship == player and not _bh_warned and d < R * 8.0:
 		_bh_warned = true
-		GameState.log_msg("GRAVITY WELL: the black hole is pulling you in – full thrust away from it!", GameState.COL_BAD)
+		GameState.log_msg("GRAVITY WELL: the black hole is pulling you in; full thrust away from it!", GameState.COL_BAD)
 
 
 ## Codex (package 18): what this system shows the pilot.
@@ -799,7 +799,7 @@ func _wing_salvage(n: Ship, lead) -> bool:
 				got.append("%s ×%d" % [GameData.item_name(String(item)), int(put)])
 		best.data["salvage"] = 100.0
 		best.data["loot"] = {}
-		GameState.log_msg("%s salvaged %s%s." % [n.display_name(), best.data["name"], (" – into your hold: " + ", ".join(PackedStringArray(got))) if not got.is_empty() else " – your hold had no room"], GameState.COL_GOOD)
+		GameState.log_msg("%s salvaged %s%s." % [n.display_name(), best.data["name"], (", into your hold: " + ", ".join(PackedStringArray(got))) if not got.is_empty() else ", your hold had no room"], GameState.COL_GOOD)
 		n.set_order({"type": "follow", "node": lead, "r": 700.0})
 		return true
 	if String(n.order.get("type", "")) != "approach" or n.order.get("node") != best:
@@ -894,7 +894,7 @@ func _arrival_now(a: Dictionary) -> void:
 			spawn_fx(Fx.flash(player.position, Color(0.7, 0.35, 1.0), maxf(player.radius * 10.0, 300.0)))
 			player.velocity = Vector2.from_angle(randf() * TAU) * 1300.0
 			player.tumble_t = player.TUMBLE_TIME
-			player.tumble_text = "Thrown out of a failed jump – tumbling"
+			player.tumble_text = "Thrown out of a failed jump: tumbling"
 			player.hit_flash = 0.4
 			for i in 5:
 				spawn_fx(Fx.smoke(player.position + Vector2.from_angle(randf() * TAU) * player.radius, player.velocity * 0.3 + Vector2.from_angle(randf() * TAU) * 80.0, 8.0 + player.radius * 0.1))
@@ -1098,7 +1098,7 @@ func _try_begin_raid() -> void:
 			s._wander = Vector2.ZERO
 			if s.position.distance_to(st.position) > 30000.0 and not wt.is_empty():
 				s.set_order({"type": "warp", "target": wt, "then": {}})
-		GameState.log_msg("RAID: %s attacks %s – the station's hull and turrets are under fire!" % [NotoriousData.title(c), st.title()], GameState.COL_BAD)
+		GameState.log_msg("RAID: %s attacks %s; the station's hull and turrets are under fire!" % [NotoriousData.title(c), st.title()], GameState.COL_BAD)
 		return
 
 
@@ -1138,7 +1138,7 @@ func _update_raid(delta: float) -> void:
 	# about to lose: the captain flees and hides
 	var ls := lead.fit.stats()
 	if lead.notorious_id != "" and lead.fit.armor + lead.fit.structure < (float(ls["armor_max"]) + float(ls["structure_max"])) * FLEE_AT:
-		GameState.log_msg("%s is badly hurt and breaks off the raid on %s – the pirates flee!" % [lead.display_name(), st.title()], GameState.COL_GOOD)
+		GameState.log_msg("%s is badly hurt and breaks off the raid on %s: the pirates flee!" % [lead.display_name(), st.title()], GameState.COL_GOOD)
 		GameState.notorious.raid_repelled(cap, true)
 		for s in group:
 			s.raiding = false
@@ -1192,7 +1192,7 @@ func _update_raid(delta: float) -> void:
 		_end_raid("won")
 		return
 	if GameState.play_time >= float(r.get("until", 0.0)):
-		GameState.log_msg("%s holds out – %s gives up the raid." % [st.title(), NotoriousData.title(cap)], GameState.COL_GOOD)
+		GameState.log_msg("%s holds out: %s gives up the raid." % [st.title(), NotoriousData.title(cap)], GameState.COL_GOOD)
 		GameState.notorious.raid_repelled(cap, false)
 		_end_raid("held")
 
@@ -2129,9 +2129,9 @@ func order_follow(id: String) -> String:
 	if traffic != null:
 		GameState.follow_convoy = traffic.convoy_of(n)
 	if n.escort_kind == "patrol":
-		GameState.log_msg("Following the %s – you stay with the patrol, in warp too." % n.display_name(), GameState.COL_INFO)
+		GameState.log_msg("Following the %s: you stay with the patrol, in warp too." % n.display_name(), GameState.COL_INFO)
 		return ""
-	GameState.log_msg("Following %s – you stay with it, in warp too." % n.display_name(), GameState.COL_INFO)
+	GameState.log_msg("Following %s: you stay with it, in warp too." % n.display_name(), GameState.COL_INFO)
 	return ""
 
 
@@ -2370,7 +2370,7 @@ func launch_drones(c, n: int = -1) -> String:
 		if not r.get("out", false) and float(r.get("fuel", 0.0)) > 0.0:
 			cands.append(r)
 	if cands.is_empty():
-		return "No drones in the hangar – the drone service at stations sells them."
+		return "No drones in the hangar: the drone service at stations sells them."
 	cands.sort_custom(func(a, b): return float(a["fuel"]) > float(b["fuel"]))
 	var count := mini(free, cands.size())
 	if n > 0:
@@ -2383,7 +2383,7 @@ func launch_drones(c, n: int = -1) -> String:
 		d.setup_drone(c, r2, self, -_npc_counter, f.drones.find(r2) + 1)
 		ship_layer.add_child(d)
 	if c == player:
-		GameState.log_msg("%d drone%s launched – %s." % [count, "" if count == 1 else "s", ROLE_NAMES.get(f.drone_role, f.drone_role)], GameState.COL_INFO)
+		GameState.log_msg("%d drone%s launched: %s." % [count, "" if count == 1 else "s", ROLE_NAMES.get(f.drone_role, f.drone_role)], GameState.COL_INFO)
 	if c == player:
 		Audio.play("drone_launch", "drones launched")      # package 28a
 	return ""
@@ -2498,9 +2498,9 @@ func announce_lead(ship: Ship, kind: String, where: String) -> void:
 	if not led:
 		return
 	if kind == "jump":
-		GameState.log_msg("%s: Spooling jump drive – jumping to %s. Stay with me." % [ship.display_name(), where], GameState.COL_INFO)
+		GameState.log_msg("%s: Spooling jump drive, jumping to %s. Stay with me." % [ship.display_name(), where], GameState.COL_INFO)
 	else:
-		GameState.log_msg("%s: Aligning for warp to %s – hold formation." % [ship.display_name(), where], GameState.COL_INFO)
+		GameState.log_msg("%s: Aligning for warp to %s, hold formation." % [ship.display_name(), where], GameState.COL_INFO)
 
 
 ## Allied ships travelling with the pilot: convoys and patrols under the pilot's protection (marked
@@ -2529,7 +2529,7 @@ func order_warp(id: String) -> String:
 	if t.is_empty():
 		t = {"id": id, "kind": d["kind"], "name": d["name"], "pos": d["pos"], "land": 1500.0}
 	if player.position.distance_to(player.warp_destination(t)) <= Universe.warp_min_for(t):
-		return "Too close to warp – approach instead."
+		return "Too close to warp: approach instead."
 	command_target(t, {})
 	return ""
 
@@ -2563,7 +2563,7 @@ func command_target(t: Dictionary, then: Dictionary) -> void:
 		# package 56: the flight training – the drone only listens to Old Betty
 		if GameState.play_time - _leash_said > 8.0:
 			_leash_said = GameState.play_time
-			GameState.story.show.emit("radio", {"who": "dan", "text": "Whoa – no warping with my drone. She'd lose Betty's signal.", "mission": ""})
+			GameState.story.show.emit("radio", {"who": "dan", "text": "Whoa, no warping with my drone. She'd lose Betty's signal.", "mission": ""})
 		return
 	if player.position.distance_to(dest) > Universe.warp_min_for(t):
 		player.set_order({"type": "warp", "target": t, "then": then})
@@ -2589,7 +2589,7 @@ func command_celestial(c: Celestial) -> void:
 			var to := int(c.data["to"])
 			var err := GameState.can_jump(player.fit, to)
 			if err != "":
-				GameState.warn("Jump to %s not possible: %s%s" % [Universe.systems[to]["name"], err, " – refuel at a station's Fuel Depot." if err.begins_with("Not enough fuel") else "."])
+				GameState.warn("Jump to %s not possible: %s%s" % [Universe.systems[to]["name"], err, ", refuel at a station's Fuel Depot." if err.begins_with("Not enough fuel") else "."])
 				command_target(Universe.warp_target(system_id, c.data["id"]), {})
 			else:
 				player.fit.route = [to]
@@ -3481,7 +3481,7 @@ func emergency_key() -> bool:
 		return false
 	if _t <= _emergency_until:
 		_emergency_until = -1.0
-		GameState.log_msg("Emergency shutdown – dropping out of warp!", GameState.COL_BAD)
+		GameState.log_msg("Emergency shutdown: dropping out of warp!", GameState.COL_BAD)
 		player.emergency_drop()
 		return true
 	_emergency_until = _t + EMERGENCY_WINDOW
@@ -3955,7 +3955,7 @@ func drone_pulse(src: Ship, radius: float, stun: float) -> int:
 			d.stun_white = false
 			n += 1
 	if src == player or (player != null and is_instance_valid(player) and player.position.distance_to(src.position) < radius * 1.5):
-		GameState.log_msg("%s: anti-drone pulse – %d drone%s knocked out for %d s." % [src.display_name(), n, "" if n == 1 else "s", int(stun)], GameState.COL_WARN)
+		GameState.log_msg("%s: anti-drone pulse; %d drone%s knocked out for %d s." % [src.display_name(), n, "" if n == 1 else "s", int(stun)], GameState.COL_WARN)
 	return n
 
 
@@ -4011,9 +4011,9 @@ func _check_zone_fire(shooter: Ship, target: Ship) -> void:
 		var sf := String(st.data.get("faction", ""))
 		GameState.law.offence(sf if sf != "" else GameState.law.authority(system_id), "zone_fire", "weapons fire in the no-fire zone of %s" % st.title())
 	if shooter == player:
-		GameState.log_msg("%s: weapons fire inside the no-fire zone – the station's defence batteries are engaging you!" % st.title(), GameState.COL_BAD)
+		GameState.log_msg("%s: weapons fire inside the no-fire zone; the station's defence batteries are engaging you!" % st.title(), GameState.COL_BAD)
 	elif player != null and is_instance_valid(player) and player.position.distance_to(shooter.position) < 60000.0:
-		GameState.log_msg("%s opened fire inside the no-fire zone of %s – station defence engaging." % [shooter.display_name(), st.title()], GameState.COL_WARN)
+		GameState.log_msg("%s opened fire inside the no-fire zone of %s: station defence engaging." % [shooter.display_name(), st.title()], GameState.COL_WARN)
 
 
 ## Warning before the player's weapons go active inside a zone.
@@ -4099,8 +4099,8 @@ func _garrison_lost(ship: Ship, killer) -> void:
 	GameState.fortress_broken[str(system_id)] = GameState.play_time + GameState.FORTRESS_REBUILD
 	var amount := int(hv.data.get("bounty", Universe.FORTRESS_BOUNTY))
 	var bond := GameState.add_bond(system_id, String(hv.data["name"]), amount, GameState.rep.issuer(system_id))
-	GameState.log_msg("FORTRESS BROKEN: the garrison of %s is gone and its guns fall silent. Bounty bond from the %s: %s – redeem it at %s." % [hv.data["name"], FactionData.name_of(String(bond["faction"])), GameData.fmt_credits(amount), GameState.bond_where(bond, system_id)], GameState.COL_GOOD)
-	GameState.news.radio("%s broken – the pirate fortress in %s has lost its garrison." % [hv.data["name"], Universe.systems[system_id]["name"]], system_id, hv.position)
+	GameState.log_msg("FORTRESS BROKEN: the garrison of %s is gone and its guns fall silent. Bounty bond from the %s: %s, redeem it at %s." % [hv.data["name"], FactionData.name_of(String(bond["faction"])), GameData.fmt_credits(amount), GameState.bond_where(bond, system_id)], GameState.COL_GOOD)
+	GameState.news.radio("%s broken: the pirate fortress in %s has lost its garrison." % [hv.data["name"], Universe.systems[system_id]["name"]], system_id, hv.position)
 	GameState.codex.event("fortress")
 	spawn_fx(Fx.explosion(hv.position, hv.radius * 0.6, Color(1.0, 0.5, 0.2)))
 
@@ -4154,9 +4154,9 @@ func _hazard_tick(dt: float) -> void:
 		if player_in:
 			hazard_here = k
 			if not _hz_inside.get(hz["id"], false):
-				var msg := {"radiation": "RADIATION ZONE – your shields are draining; once they are gone the hull burns.",
-					"ion_storm": "ION STORM – radar jammed, lightning strikes knock out your systems.",
-					"minefield": "OLD MINEFIELD – mines of a forgotten war, armed against anyone. Fly with care or clear a path."}
+				var msg := {"radiation": "RADIATION ZONE: your shields are draining; once they are gone the hull burns.",
+					"ion_storm": "ION STORM: radar jammed, lightning strikes knock out your systems.",
+					"minefield": "OLD MINEFIELD: mines of a forgotten war, armed against anyone. Fly with care or clear a path."}
 				GameState.log_msg(String(msg[k]), GameState.COL_BAD)
 				GameState.codex.event({"radiation": "hz_radiation", "ion_storm": "hz_ion", "minefield": "hz_mines"}[k])
 		_hz_inside[hz["id"]] = player_in
@@ -4166,9 +4166,9 @@ func _hazard_tick(dt: float) -> void:
 func hazard_banner() -> Dictionary:
 	match hazard_here:
 		"radiation":
-			return {"text": "RADIATION ZONE", "sub": "Shields draining – then the hull burns. Get out.", "k": 1.0}
+			return {"text": "RADIATION ZONE", "sub": "Shields draining, then the hull burns. Get out.", "k": 1.0}
 		"ion_storm":
-			return {"text": "ION STORM", "sub": "Radar jammed, lightning strikes – systems may cut out.", "k": 0.8}
+			return {"text": "ION STORM", "sub": "Radar jammed, lightning strikes: systems may cut out.", "k": 0.8}
 	return {}
 
 
@@ -4209,7 +4209,7 @@ func _update_defence(delta: float) -> void:
 			continue
 		if tgt == player and _t - _haven_warned > 20.0:
 			_haven_warned = _t
-			GameState.log_msg("%s: the pirate guns are firing at you – keep %s away!" % [hv.title(), fmt_dist(HAVEN_RANGE)], GameState.COL_BAD)
+			GameState.log_msg("%s: the pirate guns are firing at you. Keep %s away!" % [hv.title(), fmt_dist(HAVEN_RANGE)], GameState.COL_BAD)
 		_turrets_fire(hv, tgt, (18.0 + 10.0 * float(hv.data.get("tier", 2))) * (2.2 if fort else 1.0), Color(1.0, 0.35, 0.3), delta, 2.0 if fort else 2.6)
 
 
@@ -4343,7 +4343,7 @@ func start_interdict(ship: Ship, target: Ship, slot: String, d: Dictionary) -> v
 	add_child(game)
 	game.finished.connect(_finish_interdict)
 	_interdict = {"ship": ship, "target": target, "slot": slot, "data": d, "game": game}
-	GameState.log_msg("%s locks onto %s – it is frozen in warp. Hit the timing window while you close in!" % [d["name"], target.display_name()], GameState.COL_WARN)
+	GameState.log_msg("%s locks onto %s: it is frozen in warp. Hit the timing window while you close in!" % [d["name"], target.display_name()], GameState.COL_WARN)
 
 
 func _finish_interdict(success: bool) -> void:
@@ -4367,7 +4367,7 @@ func _finish_interdict(success: bool) -> void:
 		tgt.order = {"type": "idle"}
 		tgt.warp_disrupted = 45.0
 		spawn_fx(Fx.flash(tgt.position, Color(0.6, 0.85, 1.0), tgt.radius * 4.0))
-		GameState.log_msg("%s: %s was pulled out of warp – its warp drive is disrupted for 45 s." % [d["name"], tgt.display_name()], GameState.COL_GOOD)
+		GameState.log_msg("%s: %s was pulled out of warp; its warp drive is disrupted for 45 s." % [d["name"], tgt.display_name()], GameState.COL_GOOD)
 		if ship == player and tgt.faction in ["civilian", "patrol"] and not tgt.hostile_to_player():
 			GameState.law.offence(GameState.law.authority(system_id, tgt.fit.gov), "interdict", "%s pulled out of warp" % tgt.display_name())
 	else:
@@ -4431,7 +4431,7 @@ func on_ship_destroyed(ship: Ship, _killer) -> void:
 	if ship.notorious_id != "":
 		var by_player: bool = _killer is Ship and is_instance_valid(_killer) and _killer.faction == "player"
 		GameState.notorious.on_killed(ship.notorious_id, by_player)
-		GameState.log_msg("NOTORIOUS PIRATE DOWN: %s has been destroyed%s." % [ship.display_name(), "" if by_player else " – but not by you"], GameState.COL_GOOD if by_player else GameState.COL_WARN)
+		GameState.log_msg("NOTORIOUS PIRATE DOWN: %s has been destroyed%s." % [ship.display_name(), "" if by_player else ", but not by you"], GameState.COL_GOOD if by_player else GameState.COL_WARN)
 	if _killer is Ship and is_instance_valid(_killer) and _killer.faction == "player":
 		GameState.rep.on_kill(ship.fit.gov, ship.faction, int(ship.fit.hull().get("size", 1)), ship.display_name())
 		if ship.innocent and ship.faction in ["civilian", "patrol"]:
@@ -4445,9 +4445,9 @@ func on_ship_destroyed(ship: Ship, _killer) -> void:
 		GameState.notify("kill", system_id)
 		if ship.bounty > 0:
 			var bond := GameState.add_bond(system_id, ship.display_name(), ship.bounty, ship.bounty_by)
-			GameState.log_msg("%s destroyed. Bounty bond from the %s: %s – redeem it at %s." % [ship.display_name(), FactionData.name_of(String(bond["faction"])), GameData.fmt_credits(ship.bounty), GameState.bond_where(bond, system_id)], GameState.COL_GOOD)
+			GameState.log_msg("%s destroyed. Bounty bond from the %s: %s, redeem it at %s." % [ship.display_name(), FactionData.name_of(String(bond["faction"])), GameData.fmt_credits(ship.bounty), GameState.bond_where(bond, system_id)], GameState.COL_GOOD)
 		else:
-			GameState.log_msg("%s destroyed – there was no bounty on its head." % ship.display_name(), GameState.COL_INFO)
+			GameState.log_msg("%s destroyed: there was no bounty on its head." % ship.display_name(), GameState.COL_INFO)
 	elif player != null and is_instance_valid(player) and player.position.distance_to(ship.position) < 60000.0:
 		GameState.log_msg("%s was destroyed by station defence." % ship.display_name(), GameState.COL_INFO)
 	var loot := {"salvage": randi_range(3, 10)}
@@ -4524,7 +4524,7 @@ func _lawful_wreck(ship: Ship, killer) -> void:
 		"pos": ship.position, "loot": loot, "salvage": 0.0, "life": 600.0,
 	})
 	if killer is Ship and is_instance_valid(killer) and killer.faction == "pirate":
-		GameState.news.radio("%s lost near %s – pirates destroyed it." % [ship.display_name(), landmark(ship.position)], system_id, ship.position)
+		GameState.news.radio("%s lost near %s: pirates destroyed it." % [ship.display_name(), landmark(ship.position)], system_id, ship.position)
 
 
 # ---------------------------------------------------------------- package 50: down to the surface and back
@@ -4667,15 +4667,15 @@ func on_ship_docked(ship: Ship, st_node: Celestial) -> void:
 			var sum := 0
 			for b in here:
 				sum += int(b["amount"])
-			GameState.log_msg("You hold %d bond%s worth %s that can be redeemed here – visit the Bond Office." % [here.size(), "" if here.size() == 1 else "s", GameData.fmt_credits(sum)], GameState.COL_GOOD)
+			GameState.log_msg("You hold %d bond%s worth %s that can be redeemed here: visit the Bond Office." % [here.size(), "" if here.size() == 1 else "s", GameData.fmt_credits(sum)], GameState.COL_GOOD)
 		station_docked.emit(st_node.data["id"])
 
 
 ## Package 40c: at the edge of the Veil the sensors see things – a ship's outline that is not there, an echo, a voice.
 var _veil_t := 20.0
-const VEIL_ECHOES := ["Sensor echo bearing %d° – a hull, then nothing.", "A carrier signal on an old frequency, then static.",
+const VEIL_ECHOES := ["Sensor echo bearing %d°: a hull, then nothing.", "A carrier signal on an old frequency, then static.",
 	"The hull creaks. The instruments say nothing touched it.", "Your own transponder answers back, three seconds late.",
-	"A contact in the overview for half a second – then gone.", "Faint voices on the comm band, in no language the computer knows."]
+	"A contact in the overview for half a second, then gone.", "Faint voices on the comm band, in no language the computer knows."]
 
 
 func _veil_tick(delta: float) -> void:
@@ -4722,7 +4722,7 @@ func complete_anomaly(node: Celestial, ship: Ship) -> void:
 		var em := randi_range(2, 4)
 		GameState.exotic_matter += em
 		GameState.count_stat("exotic", float(em))        # package 30
-		text += " – and %d units of exotic matter (now %d)" % [em, GameState.exotic_matter]
+		text += ", and %d units of exotic matter (now %d)" % [em, GameState.exotic_matter]
 	GameState.log_msg(text, GameState.COL_GOOD)
 	var sec: float = Universe.systems[system_id]["security"]
 	if randf() < 0.2 + (1.0 - sec) * 0.35:
@@ -4765,7 +4765,7 @@ func complete_salvage(node: Celestial, ship: Ship) -> void:
 			if float(node.data["loot"][k2]) <= 0.001:
 				node.data["loot"].erase(k2)
 		if ship.faction == "player":
-			GameState.log_msg("The cargo hold is full – the rest stays in the %s. Make room and salvage it again." % node.data.get("name", "wreck"), GameState.COL_WARN)
+			GameState.log_msg("The cargo hold is full: the rest stays in the %s. Make room and salvage it again." % node.data.get("name", "wreck"), GameState.COL_WARN)
 		return
 	if fixed:
 		node.data["salvaged"] = true                   # package 40c: a fixed wreck – gone for good

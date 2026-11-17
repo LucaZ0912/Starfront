@@ -58,7 +58,7 @@ static func build(site: Dictionary) -> GroundMap:
 	# the airlock you came by (back to your ship)
 	m.spawn = Vector2(15, 27.5) * TILE
 	m.zones.append({"rect": Rect2(Vector2(13, 28.6) * TILE, Vector2(4, 1.4) * TILE), "kind": "exit", "id": "ship",
-		"title": "Airlock – back to your ship", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+		"title": "Airlock: back to your ship", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
 	# the things: the doors, the box beside the wide one (the button behind the flap), the cage, the relic, the
 	# terminal (lasers, the small door), the tablet in the niche
 	var door := ExploreNode.add(m, "blastdoor", Vector2(DOOR.position.x + DOOR.size.x * 0.5, DOOR.end.y) * TILE,

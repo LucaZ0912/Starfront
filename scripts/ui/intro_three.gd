@@ -11,7 +11,7 @@ const StoryData = preload("res://data/story.gd")
 const STEPS := [
 	{"look": "dark", "hold": 1.4},
 	{"look": "lights", "who": "doc", "text": "We have to hurry if we want to save this one.", "delay": 1.6},
-	{"look": "lights", "who": "doc", "text": "Full body scan, facial reconstruction – and all physical and mental data.", "delay": 0.6},
+	{"look": "lights", "who": "doc", "text": "Full body scan, facial reconstruction, and all physical and mental data.", "delay": 0.6},
 	{"look": "white", "hold": 1.8},
 ]
 const TYPE_RATE := 32.0

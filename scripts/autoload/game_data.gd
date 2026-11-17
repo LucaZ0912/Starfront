@@ -49,7 +49,7 @@ const MINES := {
 	"mine_proximity": {"name": "Proximity Mine", "trigger": 280.0, "damage": 210.0, "splash": 170.0, "color": Color(1.0, 0.45, 0.25),
 		"text": "explodes when a hostile ship comes within 280 km (armed after 3 s)"},
 	"mine_timer": {"name": "Timed Mine", "damage": 360.0, "splash": 240.0, "color": Color(1.0, 0.8, 0.3),
-		"text": "explodes after the time set on the launcher – hits everything hostile in its blast"},
+		"text": "explodes after the time set on the launcher: hits everything hostile in its blast"},
 	"mine_jammer": {"name": "Jammer Mine", "trigger": 6000.0, "jam_time": 45.0, "color": Color(0.7, 0.5, 1.0),
 		"text": "jams the radar of hostile ships within 6,000 km for 45 s"},
 	"mine_emp": {"name": "EMP Mine", "trigger": 320.0, "splash": 650.0, "emp_time": 8.0, "color": Color(0.4, 0.85, 1.0),
@@ -225,7 +225,7 @@ func module_summary(id: String) -> String:
 func module_summary_lines(id: String) -> Array:
 	var m: Dictionary = modules[id]
 	var parts: Array = []
-	parts.append("%s – %s, size %d, quality %s" % [m["base_name"], SLOT_NAMES[m["slot"]], int(m["size"]), m["quality"]])
+	parts.append("%s: %s, size %d, quality %s" % [m["base_name"], SLOT_NAMES[m["slot"]], int(m["size"]), m["quality"]])
 	var desc := ModuleDesc.of(String(m.get("family", "")))      # package 27: a short description
 	if desc != "":
 		parts.append(desc)
@@ -263,23 +263,23 @@ func module_summary_lines(id: String) -> Array:
 		for cls in m["mining_bonus"]:
 			parts.append("Mining rate +%d%% on %s asteroids" % [int(float(m["mining_bonus"][cls]) * 100.0), String(cls)])
 	if m.has("active"):
-		parts.append("Active module – switch it on in the module bar (uses energy while on)")
+		parts.append("Active module: switch it on in the module bar (uses energy while on)")
 	if m["slot"] == "hangar":
-		parts.append("Holds your drones – the quality gives more room; how many fly at once depends on the ship")
+		parts.append("Holds your drones: the quality gives more room; how many fly at once depends on the ship")
 	if m["slot"] == "drone":
-		parts.append("Fits the bonus slot of the drone hangar – works for all your drones")
+		parts.append("Fits the bonus slot of the drone hangar: works for all your drones")
 	if m.get("d_cloak", false):
 		parts.append("Your drones become Axiom cloak drones: they cloak together with the ship (only ships with a cloaking device)")
 	if m.has("shield_kind"):
-		parts.append("Shield type: %s – after a collapse it stays down for a while (longer for big, high-capacity and low-quality shields), then restarts at 50 %%" % SHIELD_KINDS[m["shield_kind"]]["name"])
+		parts.append("Shield type: %s, after a collapse it stays down for a while (longer for big, high-capacity and low-quality shields), then restarts at 50 %%" % SHIELD_KINDS[m["shield_kind"]]["name"])
 	if m.get("pd", false):
-		parts.append("Point defense – switched on, it shoots down hostile missiles, torpedoes and mines by itself")
+		parts.append("Point defense: switched on, it shoots down hostile missiles, torpedoes and mines by itself")
 	if m.get("mines", false):
-		parts.append("Lays mines from your cargo hold – right-click its tile to pick the mine type and the timer")
+		parts.append("Lays mines from your cargo hold: right-click its tile to pick the mine type and the timer")
 	if m.get("active", "") == "jammer":
 		parts.append("Hostile ships in range lose their radar picture and cannot lock you from afar")
 	if m.has("solar"):
-		parts.append("Refuels while you are in space – fastest close to the star, little in the outer system")
+		parts.append("Refuels while you are in space: fastest close to the star, little in the outer system")
 	if m.get("tool", "") == "shield_transfer":
 		parts.append("Charges the shield of a locked friendly ship from your capacitor (not from your shield); shortens its shield downtime")
 	if m.get("tool", "") == "cargo_scan":
