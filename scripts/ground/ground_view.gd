@@ -6,6 +6,7 @@ extends CanvasLayer
 ## (the system's own star and the station's planet) beyond the window front.
 
 signal used(zone: Dictionary)
+signal story_talk(who: String)             # package 56: the pilot speaks to one of the story's people
 
 const MuseumData = preload("res://data/museum.gd")
 const MuseumGen = preload("res://scripts/ground/museum_gen.gd")
@@ -58,6 +59,13 @@ var _log: RichTextLabel = null           # 0.7.52.13: the event log on the right
 var _toast_t := 0.0
 var level := ""                         # 0.7.49.8: "hangar" or "commercial"
 var _avail: Dictionary = {}
+## Package 56: the story on foot – {"quiet": no strangers, "hide_pilot": the pilot is in a bed, "lift_only": the one
+## level the lift goes to (the rest greyed out), "lift_label", "levels": {level: {"bed": [x, y], "awake": bool,
+## "people": [{"who", "pos" (tiles), "dir"}]}}}. Set by the intro (scripts/ground/intro_four.gd).
+var story_mode: Dictionary = {}
+var story_people := {}
+var story_cam := Vector2.INF            # package 56: where the camera looks in a story scene (art px; INF: the pilot)
+const StoryS = preload("res://scripts/core/story.gd")                  # who -> Walker of the story on this level
 var _crew: Array = []
 var _sys := -1
 var _lift_menu: Control = null
@@ -467,6 +475,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build(station, bar_only, GameState.bar_offers(station) if _avail.has("bar") else [], "tower")
 	else:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
+	_story_map()                                      # package 56: the story's changes to the level
 	_out_env = {}
 	if level == "dungeon" and map.has_meta("pressurized"):
 		_out_env = env                                 # 0.7.53.20 (Luz): inside the station its own air – but not in a torn module
@@ -1547,6 +1556,36 @@ func _xray_step() -> void:
 			Audio.play("ui_click", "clinic scanner")
 
 
+## Package 56: the story's changes to the level just built – the strangers gone, the bed with the pilot in it, the
+## story's people where they stand.
+func _story_map() -> void:
+	story_people.clear()
+	if story_mode.is_empty():
+		return
+	if bool(story_mode.get("quiet", false)):
+		map.people = map.people.filter(func(p): return String(p.get("role", "")) == "bartender" and bool(story_mode.get("keep_bartender", false)))
+	var lv: Dictionary = (story_mode.get("levels", {}) as Dictionary).get(level, {})
+	var bx := int((lv.get("bed", [-99]) as Array)[0])
+	for o in map.objects:
+		if String(o.get("kind", "")) in ["med_bed", "med_bed_occ"] and int(o["x"]) == bx:
+			o["kind"] = "med_bed_occ"
+			o["patient"] = ChibiArt.PilotArt.clean(GameState.pilot.get("look", {}))
+			o["awake"] = bool(lv.get("awake", false))
+		elif String(o.get("kind", "")) == "med_bed_occ" and bool(story_mode.get("quiet", false)):
+			o["kind"] = "med_bed"                         # the other beds empty – nobody else here
+	for sp in lv.get("people", []):
+		var who := String(sp["who"])
+		var at: Vector2 = (sp["pos"] as Vector2) * GroundMap.TILE
+		map.people.append({"pos": at, "dir": int(sp.get("dir", 0)), "role": "keeper",
+			"look": StoryS.look_of(who), "story": who, "marker": String(sp.get("marker", ""))})
+		if String(sp.get("marker", "")) != "":
+			var nm := String((StoryS.Data.CHARACTERS.get(who, {}) as Dictionary).get("name", who))
+			map.zones.append({"rect": Rect2(at - Vector2(26, 22), Vector2(52, 44)), "kind": "story", "id": who, "title": nm,
+				"col": Color(1.0, 0.82, 0.35), "sign": Vector2(-100, -100)})
+	if lv.has("spawn"):
+		map.spawn = (lv["spawn"] as Vector2) * GroundMap.TILE
+
+
 ## 0.7.51.4: where you wake – inside the clinic, by its beds (INF: no clinic here).
 func _clinic_spot() -> Vector2:
 	for zw in map.zones:                                          # 0.7.51.11: beside a bed in the recovery room
@@ -1976,6 +2015,9 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
+		if p.has("story"):
+			story_people[String(p["story"])] = w             # package 56: one of the story's people
+			w.marker = String(p.get("marker", ""))
 	if (is_town() and not map.has_meta("no_guards")) or map.has_meta("guard_posts"):
 		_add_guards(rng)
 	var n := 5 + int(station.get("tier", 1)) * 2 if level in ["commercial", "street", "tower", "settlement"] else 2
@@ -1985,6 +2027,8 @@ func _build() -> void:
 		n += 6                                        # a city's street is busy
 	if level in ["museum", "museum_min", "museum_1", "museum_2", "museum_down", "mplaza"]:
 		n = (1 if level != "mplaza" else 3) + GameState.museum_count() / (8 if level == "museum" else 12)   # 53e: the fuller, the busier (0.7.53.28: few while it is empty)
+	if bool(story_mode.get("quiet", false)):
+		n = 0                                         # package 56: the station empty for the story
 	for i in n:
 		if map.wander.is_empty():
 			break
@@ -1996,6 +2040,8 @@ func _build() -> void:
 	pilot.setup(map, pilot_look(), map.spawn, false)
 	pilot.slung = _slung()
 	_sorted.add_child(pilot)
+	if bool(story_mode.get("hide_pilot", false)):
+		pilot.visible = false                         # package 56: the pilot lies in the bed
 	# light: lamps, neon, the window – added on top, the deck a little darker round them
 	_lights = Node2D.new()
 	_lights.z_index = 5
@@ -2365,6 +2411,8 @@ func _prompt_text(z: Dictionary) -> String:
 				else "[hold %s] Power socket – charge the suit (%d left in it)" % [key, int(sk["charge"])]
 		"crew":
 			return "[%s] Talk to %s – looking for a post" % [key, z["title"]]
+		"story":
+			return "[%s] Talk to %s" % [key, z["title"]]             # package 56
 		"seat":
 			return "[%s] Stand up" % key if not _seat.is_empty() else "[%s] %s" % [key, z["title"]]
 		"guard":
@@ -4213,6 +4261,9 @@ func use(instant: bool = false) -> bool:
 			return true
 		"crew":
 			return open_talk(zone)
+		"story":
+			story_talk.emit(String(zone["id"]))                       # package 56: the story's own conversation
+			return true
 		"soon":
 			_say_toast(String(zone["title"]), 3.0)
 			return true
@@ -4510,13 +4561,20 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls.append(["maint", "%d.  Maintenance level – under the deck%s" % [lvls.size() + 1, " – a rotor is jammed" if job else ""]])     # 0.7.54.3
 	if is_city() and not is_cloud() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
 		lvls.append(["maint", "%d.  Maintenance level – the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
+	var only := String(story_mode.get("lift_only", ""))
+	if only != "":
+		# package 56 (Luz): in the story only one level opens – the rest greyed out
+		lvls = [["hangar", "1.  Hangar"], ["commercial", "2.  " + String(story_mode.get("lift_label", "Bar"))], ["clinic", "3.  Infirmary"]]
 	var keys: Array = []
 	for lv in lvls:
-		keys.append(func(): _choose_level(String(lv[0])))
+		if only != "" and lv[0] != only:
+			keys.append(func(): pass)                                  # package 56: greyed out – no key opens it
+		else:
+			keys.append(func(): _choose_level(String(lv[0])))
 		var here: bool = lv[0] == level and (lv[0] != "hangar" or not _hangar_stale()) and (lv[0] != "cstation" or rail_stop == 0)
 		var b := UI.button(String(lv[1]) + ("   (you are here)" if here else ""), func(): _choose_level(String(lv[0])))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.disabled = here
+		b.disabled = here or (only != "" and lv[0] != only)
 		v.add_child(b)
 	v.add_child(UI.button("Cancel [Esc]", _close_lift_menu))
 	_lift_menu = c
@@ -5392,7 +5450,10 @@ func _camera(delta: float = -1.0) -> void:
 	var c := pilot.position + Vector2(0, -24)
 	# 0.7.49.14: sitting on the hangar's bench, the camera glides over to the ship – a look at her
 	var at_ship := level == "hangar" and not _seat.is_empty() and map.ship_at != Vector2.INF
-	if at_ship:
+	if story_cam != Vector2.INF:
+		c = story_cam * GroundMap.SCALE                   # package 56: the story's camera (a scene round a bed)
+		at_ship = true
+	elif at_ship:
 		c = map.ship_at * GroundMap.SCALE
 	elif map != null and map.has_meta("sight") and pilot != null and (not _seat.is_empty() or String(zone.get("kind", "")) == "viewpoint"):
 		# 54a: at the railing or on a bench the camera looks out at the view

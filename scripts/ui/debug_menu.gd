@@ -449,6 +449,11 @@ func _build_world() -> void:
 	r56.add_child(UI.button("Play sequence 3 (the medic)", func():
 		close()
 		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_three.gd").new())))
+	r56.add_child(UI.button("Play sequence 4 (Dan's infirmary, the bar)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn4 = get_tree().current_scene
+		mn4.get_tree().create_timer(1.0).timeout.connect(func(): mn4._start_intro_four())))
 	r56.add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()

@@ -285,7 +285,9 @@ func _show_creator() -> void:
 	var cc = CharacterCreatorScript.new()
 	cc.setup("new")
 	cc.cancelled.connect(_hide_overlay)
-	cc.done.connect(func(d: Dictionary): SaveGame.start_new(String(d["name"]), int(d["seed"]), d))
+	cc.done.connect(func(d: Dictionary):
+		d["intro"] = true                               # package 56: the story goes on at Dan's station
+		SaveGame.start_new(String(d["name"]), int(d["seed"]), d))
 	_show_overlay(cc)
 
 

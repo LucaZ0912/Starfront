@@ -84,14 +84,28 @@ func _line(i: int) -> void:
 	var dd: Dictionary = Data.DIALOGUES[String(_dlg["id"])]
 	var ln: Dictionary = (dd["lines"] as Array)[i]
 	_dlg["line"] = i
-	(_dlg["said"] as Array).append([String(_dlg["who"]), String(ln["text"])])
+	var who := String(ln.get("who", _dlg["who"]))
+	_speaker(who)
+	(_dlg["said"] as Array).append([who, String(ln["text"])])
 	var opts: Array = []
 	for a in ln.get("answers", []):
 		var ans: Array = a
 		opts.append([String(ans[0]), func(): _answer(ans)])
 	if opts.is_empty():
-		opts.append(["(go on)", func(): _answer(["", -1, []])])
+		var nxt := i + 1 if i + 1 < (dd["lines"] as Array).size() else -1     # package 56: on to the next line
+		opts.append(["(go on)", func(): _answer(["", nxt, []])])
 	dialogue.say(GameState.story.keys(String(ln["text"])), opts)
+
+
+## Package 56: who speaks the line – one of the story's people, or the pilot ("you", their own face).
+func _speaker(who: String) -> void:
+	if dialogue == null:
+		return
+	if who == "you":
+		dialogue.set_speaker(PilotArt.portrait(GameState.pilot.get("look", {})), GameState.pilot_name, "", Color(0.45, 0.85, 1.0))
+		return
+	var c: Dictionary = Data.CHARACTERS.get(who, {})
+	dialogue.set_speaker(GameState.story.portrait_of(who), String(c.get("name", who)), String(c.get("sub", "")), c.get("col", GOLD))
 
 
 ## An answer: its flag set, on to its line (or the end).
@@ -103,11 +117,18 @@ func choose(i: int) -> void:
 
 
 func _answer(ans: Array) -> void:
-	if String(ans[0]) != "":
-		(_dlg["said"] as Array).append(["you", String(ans[0])])
 	var fl: Array = ans[2] if ans.size() > 2 else []
 	if fl.size() >= 2:
 		GameState.story.set_flag(String(fl[0]), fl[1])
+	if ans.size() > 3 and String(ans[3]) != "":
+		# package 56 (Luz): the pilot says it out loud – the answer at length, with their own face
+		(_dlg["said"] as Array).append(["you", String(ans[3])])
+		_speaker("you")
+		var nxt := int(ans[1])
+		dialogue.say(GameState.story.keys(String(ans[3])), [["(go on)", func(): _answer(["", nxt, []])]])
+		return
+	if String(ans[0]) != "":
+		(_dlg["said"] as Array).append(["you", String(ans[0])])
 	if int(ans[1]) >= 0:
 		_line(int(ans[1]))
 		return

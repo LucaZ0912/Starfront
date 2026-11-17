@@ -19,6 +19,8 @@ var _options: Array = []
 var _shown := 0.0
 var _hint: Label
 var portrait_tex: Texture2D = null      # 0.7.53.30 (Luz): a thing's picture instead of a face (the Museum's cases)
+var _por: TextureRect                   # package 56: kept, so the speaker can change (the pilot answering)
+var _frame: PanelContainer
 
 
 func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
@@ -37,7 +39,9 @@ func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	frame.offset_top = -40 - 330
 	frame.offset_bottom = -40
 	add_child(frame)
+	_frame = frame
 	var por := TextureRect.new()
+	_por = por
 	por.texture = portrait_tex if portrait_tex != null else PilotArt.portrait(look)
 	por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -82,6 +86,22 @@ func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	_choices = UI.vbox(4)
 	_choices.custom_minimum_size = Vector2(320, 0)
 	_choice_panel.add_child(_choices)
+
+
+## Package 56: someone else speaks now – the portrait, the name and the frame's colour change.
+func set_speaker(tex: Texture2D, who: String, sub: String, col: Color) -> void:
+	if _por != null:
+		_por.texture = tex
+	if _name != null:
+		_name.text = who
+		_name.add_theme_color_override("font_color", col)
+	if _sub != null:
+		_sub.text = sub
+	if _frame != null:
+		var sb := (_frame.get_theme_stylebox("panel") as StyleBoxFlat).duplicate() as StyleBoxFlat
+		sb.border_color = Color(col, 0.9)
+		sb.shadow_color = Color(col, 0.35)
+		_frame.add_theme_stylebox_override("panel", sb)
 
 
 ## Says a line; options: [[label, Callable], …] – your possible answers.

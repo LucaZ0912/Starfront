@@ -96,7 +96,9 @@ func _ready() -> void:
 	warmup.queue_layouts()                          # package 42c: all systems behind the loading screen
 	_show_loading()
 	load_system(GameState.current_system)
-	if is_new:
+	if is_new and String(GameState.story.flags.get("intro_stage", "")) == "four":
+		_start_intro_four.call_deferred()                 # package 56: the story goes on – Dan's infirmary
+	elif is_new:
 		GameState.log_msg("Welcome to Spacefarer, %s! Press H for controls." % GameState.pilot_name, GameState.COL_GOOD)
 		if Universe.test_mode:
 			GameState.log_msg("TEST SYSTEM: every station, planet and asteroid type. Saving is disabled. F12 = debug menu.", GameState.COL_WARN)
@@ -106,6 +108,8 @@ func _ready() -> void:
 		var f := GameState.active()
 		if f != null and f.docked_at.begins_with("land:"):
 			_on_descended.call_deferred(f.docked_at.substr(5).split("|")[0])      # package 50: still down on a planet
+		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) in ["four", "four_walk"]:
+			_start_intro_four.call_deferred()             # package 56: saved in the middle of sequence 4 – it starts again
 		elif f != null and f.docked_at != "":
 			open_station.call_deferred()
 
@@ -491,6 +495,23 @@ func nearest_clinic_city(sys: int, body_id: String = "") -> Dictionary:
 
 
 ## Back into the ship (open: show the station window again).
+## Package 56: sequence 4 – onto the deck of Dan's station, into the infirmary (scripts/ground/intro_four.gd).
+func _start_intro_four() -> void:
+	if loading != null and is_instance_valid(loading):
+		get_tree().create_timer(0.3).timeout.connect(_start_intro_four)     # after the loading screen
+		return
+	var f := GameState.active()
+	if f == null or f.docked_at == "":
+		return
+	open_deck()
+	if ground == null:
+		return
+	var i4 = load("res://scripts/ground/intro_four.gd").new()
+	i4.main = self
+	add_child(i4)
+	i4.begin()
+
+
 func close_deck(open_window: bool = true) -> void:
 	if ground != null and is_instance_valid(ground):
 		ground.leave_ground()                          # review 7 W1/K2: the site's state kept, who is down stays down

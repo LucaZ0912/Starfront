@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.2 – 2026-11-17
+
+**Package 56, part 2 – sequence 4: Dan's station (Luz).** After the med-scanner the game begins in Beyond, docked at
+Dan's Dusty Duty Store.
+- **The infirmary:** white; the pilot asleep in a bed (their own skin and hair), Dan and the medic beside it – the
+  medic can't make sense of the readings. "A few weeks later": the pilot wakes, Dan introduces himself (Dan T. Rogue)
+  and asks them to the bar. "A few days later": on their feet, the medic lets them go.
+- **The walk:** the lift shows every level but only the bar can be chosen (the rest greyed out); Dan's station has a
+  deck of its own – rust brown, an orange light, the dive bar with its pool table – empty; Dan at the window.
+- **The talk:** lines can change speaker within a conversation, the pilot's own lines with their own portrait, and
+  after an answer the pilot says it at length; who the pilot is, the UN of Earth, the year (12,900 HE); it ends with
+  the choice of the flight tutorial (story flag `flight_tutorial`) – sequence 5 or 6 follows with the next part.
+- Hold Esc (Options) to skip the scenes in the infirmary (not the talk). Saved in the middle, it starts again at the
+  bed.
+- **Visage Clinics** in the scanner's style: the face, the new look as a hologram, the options round it, the price.
+- Debug (F12 → World → Intro): play sequence 4. Smoke group `intro56d` (also in the full run).
+
 ## alpha 0.8.56.1 – 2026-11-17
 
 **Package 56, part 1 – the intro begins; the game's new name (Luz).** The game is now called **Spacefarer: Beyond

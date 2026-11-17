@@ -19,6 +19,8 @@ const PALETTES := {
 	"shipyard": [Color(0.29, 0.3, 0.33), Color(0.33, 0.34, 0.37), Color(0.38, 0.38, 0.4), Color(0.44, 0.3, 0.18), Color(0.3, 0.28, 0.2), Color(0.56, 0.58, 0.62), Color(1.0, 0.85, 0.2)],
 	"pirate_haven": [Color(0.17, 0.15, 0.16), Color(0.2, 0.18, 0.19), Color(0.24, 0.2, 0.2), Color(0.32, 0.2, 0.14), Color(0.3, 0.1, 0.16), Color(0.36, 0.3, 0.29), Color(1.0, 0.2, 0.35)],
 	"waystation": [Color(0.3, 0.32, 0.36), Color(0.34, 0.36, 0.4), Color(0.44, 0.42, 0.4), Color(0.5, 0.3, 0.2), Color(0.6, 0.15, 0.2), Color(0.86, 0.84, 0.78), Color(0.3, 0.95, 1.0)],
+	# package 56 (Luz): Dan's Dusty Duty Store – rust brown plating, worn wood, an orange light
+	"dusty": [Color(0.3, 0.24, 0.19), Color(0.34, 0.27, 0.21), Color(0.4, 0.31, 0.23), Color(0.46, 0.28, 0.15), Color(0.36, 0.2, 0.13), Color(0.5, 0.4, 0.31), Color(1.0, 0.6, 0.2)],
 	"resort": [Color(0.7, 0.65, 0.56), Color(0.75, 0.7, 0.6), Color(0.78, 0.72, 0.62), Color(0.55, 0.38, 0.22), Color(0.55, 0.3, 0.32), Color(0.93, 0.89, 0.81), Color(1.0, 0.82, 0.4)],
 }
 ## 0.7.49.7: each station type its own deck – how its bar is furnished (style), its floors, how round the window
@@ -44,6 +46,8 @@ const THEMES := {
 		"props": ["palm", "fountain", "flower_bed", "lamp_post", "palm", "holo"], "seat": Color(0.95, 0.5, 0.35)},
 	"waystation": {"bar": "diner", "floor": 12, "corner": 8, "cor_floor": 0, "deco": ["plant"],
 		"props": ["lamp_post", "vending", "holo", "plant"], "seat": Color(0.85, 0.2, 0.25)},
+	"dusty": {"bar": "dive", "floor": 9, "corner": 3, "cor_floor": 8, "deco": ["barrel", "crates"],
+		"props": ["ore_cart", "lamp_post", "barrel", "crates", "pipes"], "seat": Color(0.52, 0.3, 0.16)},
 	"pirate_haven": {"bar": "dive", "floor": 9, "corner": 2, "cor_floor": 9, "deco": ["barrel", "cage"],
 		"props": ["barrel", "trash", "holo", "cage", "holo"], "seat": Color(0.4, 0.18, 0.2)},
 }
@@ -87,6 +91,8 @@ static func palette_for(station: Dictionary) -> Dictionary:
 		return {"floor": cp[0], "floor2": cp[1], "shop_floor": cp[2], "wood": cp[3], "carpet": cp[4], "wall": cw,
 			"wall_top": cw.darkened(0.55), "trim": cw.darkened(0.35), "frame": cw.darkened(0.25), "accent": cp[6], "type": "city_" + CityStyle.key_for(station)}
 	var t := String(station.get("type", "trade"))
+	if bool(station.get("dan", false)) or String(station.get("art", "")) == "dusty_duty":
+		t = "dusty"                                     # package 56: Dan's station has a deck of its own
 	if t.begins_with("resort") or String(station.get("art", "")).begins_with("resort"):
 		t = "resort"
 	var p: Array = PALETTES.get(t, PALETTES["trade"])

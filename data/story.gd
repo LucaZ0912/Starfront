@@ -35,6 +35,37 @@ const CHARACTERS := {
 ## Dialogues: lines one after the other; a line's answers lead on ("next": the line's index, -1: the end) and may set
 ## a story flag ("flag": [name, value]).
 const DIALOGUES := {
+	# package 56, sequence 4 (Luz): Dan's infirmary and his bar. A line may name its speaker ("who"; "you" is the pilot);
+	# an answer's 4th entry is what the pilot then says at length.
+	"intro_bed": {"who": "doc", "lines": [
+		{"text": "We did what we could, but I just can't make sense of a lot of these readings. For now all we can do is wait."},
+		{"who": "dan", "text": "Alright. Let me know as soon as anything changes."},
+	]},
+	"intro_wake": {"who": "dan", "lines": [
+		{"who": "you", "text": "Mmmmh…"},
+		{"text": "Ah – finally, you're awake. We thought that was it for you. Your suit had at least as many holes as your ship."},
+		{"text": "I'm Dan – Dan T. Rogue. I run this little operation here. Nice to meet you."},
+		{"text": "You should rest a bit more. When you're fit, come see me in the bar. Just take the turbolift."},
+	]},
+	"intro_doc": {"who": "doc", "lines": [
+		{"text": "Careful! Yes – just like that. That looks good already. You should be able to move freely around the station. But take it easy for now, okay?",
+			"answers": [["\"Thanks for patching me up, Doc.\"", -1, []]]},
+	]},
+	"intro_dan_bar": {"who": "dan", "lines": [
+		{"text": "Ah – you're looking fit again!",
+			"answers": [["\"Thanks for saving me.\"", 1, [], "Thank you for saving me. I really thought that was it."]]},
+		{"text": "Ah, don't mention it. Your ship wasn't so lucky, I'm afraid. But tell me – how did you come by a ship like that?",
+			"answers": [["\"It was issued to me.\"", 2, [], "What do you mean? The UN issued it to me. Who else?"]]},
+		{"text": "UN? As in United Nations? As in the United Nations of Earth?"},
+		{"who": "you", "text": "Yes…?"},
+		{"text": "Oh. Uhm… what year do you think it is?"},
+		{"who": "you", "text": "Around 12,600 HE… I don't know exactly. I don't know how long I was out."},
+		{"text": "It's 12,900 HE. I think a hyperdrive failure threw you almost three hundred years into the future."},
+		{"who": "you", "text": "…"},
+		{"text": "Okay – that's a lot to take in. How about we take your mind off it? I had a look at your cockpit. Seems not that much has changed – but your pilot licence expired a while ago. Want to brush up on the basics?",
+			"answers": [["\"Yes, that'd be good.\"  (flight tutorial)", -1, ["flight_tutorial", true], "Yes, that'd be good – show me what's new."],
+				["\"No, I'll manage.\"  (skip the tutorial)", -1, ["flight_tutorial", false], "No, I'll manage. Flying is flying."]]},
+	]},
 	"test_hello": {"who": "dan", "lines": [
 		{"text": "So the debug menu sent you. Good – this is a test of the story's framework: dialogues, radio calls, tips, goals and the journal.",
 			"answers": [["\"What do I do?\"", 1, []], ["\"I know how this works.\"", 2, ["test_confident", true]]]},

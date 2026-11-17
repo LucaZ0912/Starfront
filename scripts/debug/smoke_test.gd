@@ -42,6 +42,7 @@ var patrol: Array = []
 var min_col_dist := INF
 var behind_target := Vector2.ZERO
 var weapons_on := false
+var _intro4_done := false
 var _shooting := false             # waiting for a screenshot (optional, --shots)
 var _shot_done := false
 
@@ -692,8 +693,15 @@ func _process(delta: float) -> void:
 				Commands.execute({"type": "debug_god", "on": false})
 				_next()
 		9:
-			if timer > 1.5:
+			if not _intro4_done and timer > 1.5:
 				check(view.pirate_count() == 0, "debug: all pirates destroyed")
+				_intro4_done = true                     # package 56: sequence 4 on Dan's deck (it goes to Beyond – the teleport home follows)
+				_shooting = true
+				await _test_intro56d(view)
+				_shooting = false
+				timer = 0.0
+				return
+			if timer > 1.5:
 				check(Commands.execute({"type": "debug_teleport", "system": Universe.home_system}) == "", "debug: teleport home")
 				_next()
 		10:
@@ -13507,6 +13515,69 @@ func _test_pad80(view: SystemView) -> void:
 ## secret at the end; the tracker, the journal's four tabs, the save, keys in texts.
 ## Package 57 (Luz): Beyond – a pocket of three systems in the Veil, apart from the Cluster; its bodies, Dan's store, the
 ## wreck belt and the Gold Fleet's wrecks as big as planets.
+## Package 56, sequence 4: a new game with the story starts docked at Dan's station in Beyond; the infirmary (the
+## pilot in the bed, Dan and the medic), "A few weeks later", the waking, "A few days later", on their feet; then the
+## lift only to the bar (the rest greyed out), the bar empty, Dan at the window; the talk – the speaker changing, the
+## pilot's own lines after the answers – ends with the choice of the flight tutorial (a story flag).
+func _test_intro56d(_view: SystemView) -> void:
+	var keep_flags: Dictionary = GameState.story.flags.duplicate(true)
+	Commands.cheats_enabled = true
+	Commands.execute({"type": "debug_special", "special": "beyond"})
+	for i in 30:
+		await get_tree().process_frame
+	main._start_intro_four()
+	var i4 = null
+	for w in 600:
+		await get_tree().process_frame
+		for c in main.get_children():
+			if c.get_script() != null and String(c.get_script().resource_path).ends_with("intro_four.gd"):
+				i4 = c
+		if i4 != null:
+			break
+	var g = main.ground
+	var bed_ok: bool = i4 != null and g != null and g.level == "clinic" and not g.pilot.visible and g.story_people.has("dan") and g.story_people.has("doc")
+	var occupied := 0
+	for o in g.map.objects:
+		if String(o.get("kind", "")) == "med_bed_occ":
+			occupied += 1
+			bed_ok = bed_ok and not (o.get("patient", {}) as Dictionary).is_empty()
+	bed_ok = bed_ok and occupied == 1
+	var phases := []
+	var speakers := {}
+	var lift_ok := false
+	var walk_t := 0
+	for fr in 8000:
+		await get_tree().process_frame
+		if i4 == null or not is_instance_valid(i4):
+			break
+		if phases.is_empty() or phases.back() != i4.phase:
+			phases.append(i4.phase)
+		var ui = main.story_ui
+		if ui.dialogue != null:
+			speakers[String(ui.dialogue._name.text)] = true
+			ui.dialogue._finish()
+			ui.dialogue.choose(0)
+		elif i4.phase == "walk":
+			walk_t += 1
+			if walk_t == 5:
+				g._open_lift_menu({})
+				var btns: Array = []
+				for b2 in g._lift_menu.find_children("*", "Button", true, false):
+					btns.append([String(b2.text), b2.disabled])
+				lift_ok = btns.size() >= 4 and btns[0][1] and not btns[1][1] and String(btns[1][0]).begins_with("2.  Bar")
+				g._close_lift_menu()
+				g.go_level("commercial", "lift")
+			if walk_t == 40:
+				lift_ok = lift_ok and g.story_people.has("dan") and g.people.size() == 1
+				g.story_talk.emit("dan")
+	var flow_ok: bool = phases.has("talk1") and phases.has("black1") and phases.has("wake") and phases.has("black2") and phases.has("walk") 		and phases.has("talk4") and String(GameState.story.flags.get("intro_stage", "")) == "five" and bool(GameState.story.flags.get("flight_tutorial", false))
+	var talk_ok: bool = speakers.has("Dan T. Rogue") and speakers.has("Dr. Vesna Kalu") and speakers.has(GameState.pilot_name)
+	check(bed_ok and flow_ok and talk_ok and lift_ok and g.story_mode.is_empty(),
+		"56: sequence 4 – the pilot asleep in the infirmary of Dan's station, Dan and the medic by the bed; a few weeks later the waking, a few days later on their feet; the lift only to the bar (the rest greyed out), the bar empty, Dan at the window; the talk with the speaker changing and the pilot's own lines, the flight tutorial chosen  [%s]" % [[bed_ok, flow_ok, talk_ok, lift_ok, phases]])
+	GameState.story.flags = keep_flags
+	main.close_deck(false)
+
+
 ## Package 56: the intro's first sequence – Earth with her continents, the Expansion's ships whole, the Long Gate,
 ## the shots in order (the narrator's box typed, a press finishes the line, the next goes on), the Veil, the white-out;
 ## hold-to-skip; New Game starts with it.
@@ -13626,7 +13697,10 @@ func _test_intro56(_view: SystemView) -> void:
 	var studio = load("res://scripts/ui/character_creator.gd").new()
 	studio.setup("look", {}, {}, "Testa")
 	main.add_child(studio)
-	scan_ok = scan_ok and studio._sprite != null and studio._sprite.texture.get_height() == 40        # the figure on foot, not the old one
+	studio.look["lipstick"] = 0                              # a random look may wear lipstick already
+	studio._step("lipstick", 1)
+	scan_ok = scan_ok and studio._bed != null and bool(studio._bed.projection) and studio._values.size() == 18 \
+		and int(studio.result()["look"]["lipstick"]) == 1 and studio.error() == ""            # Visage: the restyle in the scanner's style
 	studio.queue_free()
 	menu_ok = menu_ok and two_ok and holo_ok and three_ok and scan_ok and load("res://scripts/ui/main_menu.gd").get_script_constant_map().has("IntroThreeScript")
 	check(earth_ok and ships_ok and gate_ok and order_ok and typed_ok and veil_ok and skip_ok and menu_ok,

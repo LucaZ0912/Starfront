@@ -57,6 +57,10 @@ func _ready() -> void:
 		_build_scan()
 		_refresh()
 		return
+	if mode == "look":
+		_build_restyle()                          # package 56 (Luz): Visage Clinics in the scanner's style
+		_refresh()
+		return
 	var sb := UI.panel_style(UI.NEON_BG, COL)
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(16)
@@ -427,7 +431,8 @@ class ScanGrid extends Control:
 class ScanBed extends Control:
 	var look: Dictionary = {}
 	var t := 0.0
-	const CY := Color(0.35, 0.95, 1.0)
+	var CY := Color(0.35, 0.95, 1.0)
+	var projection := false                     # Visage: a hologram of the new look instead of the scan
 
 	func _process(delta: float) -> void:
 		t += delta
@@ -452,6 +457,16 @@ class ScanBed extends Control:
 		draw_rect(Rect2(0, sy - 26, bed.size.x, 26), Color(CY, 0.07))
 		draw_line(Vector2(-6, sy), Vector2(bed.size.x + 6, sy), Color(CY, 0.9), 3.0)
 		var font := get_theme_default_font()
+		if projection:
+			# the projector's rings at the feet and light rising, scan lines drifting through the figure
+			for i in 3:
+				var rr := fs.x * (0.55 + i * 0.18)
+				draw_arc(Vector2(fp.x + fs.x * 0.5, fp.y + fs.y + 6.0), rr, PI, TAU, 32, Color(CY, 0.5 - i * 0.12), 2.0)
+			for i in 14:
+				var yy := fp.y + fposmod(i * 37.0 + t * 30.0, fs.y)
+				draw_line(Vector2(fp.x - 10, yy), Vector2(fp.x + fs.x + 10, yy), Color(CY, 0.08), 2.0)
+			draw_string(font, Vector2(0, size.y - 22), "HOLO PROJECTION  ·  YOUR NEW LOOK", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, CY)
+			return
 		var prog := clampf(t / 9.0, 0.0, 1.0)
 		for m in [[0.12, "CRANIUM"], [0.42, "THORAX"], [0.78, "LIMBS"]]:
 			var yy: float = fp.y + fs.y * float(m[0])
@@ -498,3 +513,74 @@ class AttrBar extends Control:
 		var cw := (size.x - (n - 1) * 5.0) / n
 		for i in n:
 			draw_rect(Rect2(i * (cw + 5.0), 2, cw, size.y - 4), Color(0.35, 0.95, 1.0) if i < value else Color(0.35, 0.95, 1.0, 0.12))
+
+
+
+# ---------------------------------------------------------------- package 56: Visage Clinics – restyling
+
+func _build_restyle() -> void:
+	var pink := Color(1.0, 0.55, 0.85)
+	custom_minimum_size = Vector2(1080, 0)
+	var sb := UI.panel_style(Color(0.04, 0.02, 0.06, 0.99), Color(pink, 0.6))
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(0)
+	sb.set_content_margin_all(16)
+	add_theme_stylebox_override("panel", sb)
+	var v := UI.vbox(8)
+	add_child(v)
+	var head := UI.hbox(14)
+	v.add_child(head)
+	head.add_child(UI.label("VISAGE CLINICS", 24, pink))
+	head.add_child(UI.label("·  RESTYLE  ·  what is under the skin stays yours", 14, UI.TEXT_DIM))
+	head.add_child(UI.spacer())
+	head.add_child(UI.label(GameData.fmt_credits(price), 18, UI.GOLD))
+	var line := ColorRect.new()
+	line.color = Color(pink, 0.4)
+	line.custom_minimum_size = Vector2(0, 1)
+	v.add_child(line)
+	var cols := UI.hbox(22)
+	v.add_child(cols)
+	var left := UI.vbox(2)
+	left.custom_minimum_size = Vector2(340, 0)
+	cols.add_child(left)
+	var fr := PanelContainer.new()
+	fr.add_theme_stylebox_override("panel", _flat(Color(0.06, 0.03, 0.08), Color(pink, 0.7)))
+	fr.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	left.add_child(fr)
+	_portrait = TextureRect.new()
+	_portrait.custom_minimum_size = Vector2(170, 170)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	fr.add_child(_portrait)
+	var fl := UI.hbox(8)
+	left.add_child(fl)
+	fl.add_child(UI.label("YOUR NEW FACE", 13, pink))
+	fl.add_child(UI.spacer())
+	fl.add_child(UI.button("Random", func():
+		look = PilotArt.random_look()
+		_refresh()))
+	for g in [GROUPS[1], GROUPS[2]]:
+		left.add_child(UI.label(String(g[0]), 12, Color(pink, 0.8)))
+		for key in g[1]:
+			_kit_row(left, String(key))
+	_bed = ScanBed.new()
+	_bed.CY = pink
+	_bed.projection = true
+	_bed.custom_minimum_size = Vector2(280, 480)
+	cols.add_child(_bed)
+	var right := UI.vbox(2)
+	right.custom_minimum_size = Vector2(340, 0)
+	cols.add_child(right)
+	for g in [GROUPS[0], GROUPS[3], MAKEUP_GROUP]:
+		right.add_child(UI.label(String(g[0]), 12, Color(pink, 0.8)))
+		for key in g[1]:
+			_kit_row(right, String(key))
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(fill)
+	_err = UI.label("", 13, UI.BAD)
+	right.add_child(_err)
+	_go = UI.menu_button("RESTYLE  ·  %s  ▸" % GameData.fmt_credits(price), _finish, pink, 340)
+	right.add_child(_go)
+	right.add_child(UI.button("Back", func(): cancelled.emit()))

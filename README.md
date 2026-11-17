@@ -376,6 +376,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.56.2 (package 56, part 2): `scripts/ground/intro_four.gd` (sequence 4: phases `bed1` … `talk4`, `begin`,
+  `_skip_to_walk`); GroundView `story_mode` (`quiet`, `hide_pilot`, `lift_only`, `levels` with `bed`, `awake`,
+  `people`, `spawn`), `story_people`, `story_cam`, signal `story_talk`, zone kind `story`; `main._start_intro_four`;
+  GameState.new_game with `intro` (Beyond, docked at Dan's, flag `intro_stage`); DeckGen palette/theme `dusty`;
+  ObjArt `med_bed_occ` with `patient`/`awake`; DialogueView `set_speaker`; story dialogues with a line's `who`
+  ("you" = the pilot) and an answer's 4th entry (said at length); the creator's `_build_restyle`; smoke group
+  `intro56d`.
 - 0.8.56.1 (package 56, part 1): `scripts/ui/intro_one.gd` (sequence 1 + the title card: `SHOTS`, `title_continue`,
   `skip`), `intro_two.gd` (`STEPS`, `step_time`), `intro_three.gd`; `scripts/core/earth_art.gd` (Earth from continent
   outlines, `world_at` for an Earth-like world), `scripts/core/holo_art.gd` (a ship computer's hologram),
@@ -595,7 +602,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   the Mayday), the title card (waits for a key), sequence 2 (Beyond – the portal, the burning Earthworks 190SL, the
   ship's computer as a hologram, Dan tows her away), sequence 3 (the medic, ceiling lights) – then the character
   creator as Dan's medical scanner. On their own timing; hold Esc (Options) to skip.
-- Looks: hairstyles drawn per view on foot, the sidecut, make-up (lipstick, blush, eye make-up), the eye patch.
+- Sequence 4 (Dan's station): the infirmary – asleep, "a few weeks later" awake, "a few days later" on your feet; the lift
+  only to the bar, Dan at the window; the talk ends with the choice of the flight tutorial.
+- Looks: hairstyles drawn per view on foot, the sidecut, make-up (lipstick, blush, eye make-up), the eye patch; Visage
+  Clinics in the scanner's style.
 - Main menu: one of four scenes at random. Debug: F12 → World → Intro (package 56).
 
 ## Beyond – the pocket in the Veil (phase 1 package 57)

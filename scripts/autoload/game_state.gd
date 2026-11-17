@@ -239,11 +239,21 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 		notorious.setup()
 	current_system = Universe.home_system
 	var home_station: Dictionary = Universe.get_layout(current_system)["stations"][0]
+	var intro := bool(p_data.get("intro", false)) and not test_system and Universe.special_system("beyond") >= 0
+	if intro:
+		# package 56: the story begins in Beyond, docked at Dan's Dusty Duty Store (sequence 4 on its deck)
+		current_system = Universe.special_system("beyond")
+		for st0 in Universe.get_layout(current_system)["stations"]:
+			if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+				home_station = st0
 	var a := create_from_preset("std_dragonfly", "player")
 	a.ship_name = "Dragonfly »Pathfinder«"
 	a.system_id = current_system
 	a.position = (home_station["pos"] as Vector2) + Vector2(400.0, 150.0)
 	a.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
+	if intro:
+		a.docked_at = String(home_station["id"])
+		story.set_flag("intro_stage", "four")
 	add_ship(a)
 	active_uid = a.uid
 	last_station = {"system": current_system, "id": String(home_station["id"])}

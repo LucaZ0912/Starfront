@@ -13,7 +13,7 @@ const WildArtO = preload("res://scripts/ground/wild_art.gd")
 
 ## {image, rise} for an object.
 static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
-	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", "")) + str(o.get("seed", "")) + String(o.get("arch", "")) + String(o.get("species", ""))]
+	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", "")) + str(o.get("seed", "")) + String(o.get("arch", "")) + String(o.get("species", "")) + str(o.get("patient", "")) + str(o.get("awake", ""))]
 	if _cache.has(key):
 		return _cache[key]
 	var pw := int(o.get("w", 1)) * TILE
@@ -1244,10 +1244,23 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 2, fy + 2, pw - 4, 5, Color(0.96, 0.97, 0.98))
 			var skin: Color = [Color(0.95, 0.8, 0.68), Color(0.78, 0.58, 0.42), Color(0.5, 0.34, 0.24), Color(0.88, 0.72, 0.58)][prng.randi() % 4]
 			var hair: Color = [Color(0.2, 0.15, 0.1), Color(0.55, 0.35, 0.2), Color(0.85, 0.75, 0.45), Color(0.15, 0.15, 0.17)][prng.randi() % 4]
+			var pat: Dictionary = o.get("patient", {})              # package 56: the pilot in the bed – their own colours
+			if not pat.is_empty():
+				var PAo = load("res://scripts/core/pilot_art.gd")
+				skin = PAo.SKINS[int(pat.get("skin", 2)) % PAo.SKINS.size()]
+				hair = PAo.HAIR_COLORS[int(pat.get("hair_color", 1)) % PAo.HAIR_COLORS.size()]
+				if int(pat.get("hair", 2)) == 0:
+					hair = skin.darkened(0.08)
 			_ellipse(img, pw * 0.5, fy + 8.0, 5.0, 4.5, skin)                                 # the head on the pillow
 			_r(img, pw / 2 - 5, fy + 3, 10, 3, hair)
-			_r(img, pw / 2 - 2, fy + 8, 1, 1, Color(0.2, 0.15, 0.15))                        # eyes shut
-			_r(img, pw / 2 + 1, fy + 8, 1, 1, Color(0.2, 0.15, 0.15))
+			if bool(o.get("awake", false)):
+				_r(img, pw / 2 - 2, fy + 7, 1, 2, Color(0.95, 0.95, 0.95))                    # 56: eyes open
+				_r(img, pw / 2 + 1, fy + 7, 1, 2, Color(0.95, 0.95, 0.95))
+				_r(img, pw / 2 - 2, fy + 8, 1, 1, Color(0.2, 0.25, 0.4))
+				_r(img, pw / 2 + 1, fy + 8, 1, 1, Color(0.2, 0.25, 0.4))
+			else:
+				_r(img, pw / 2 - 2, fy + 8, 1, 1, Color(0.2, 0.15, 0.15))                    # eyes shut
+				_r(img, pw / 2 + 1, fy + 8, 1, 1, Color(0.2, 0.15, 0.15))
 			_r(img, 3, fy + 13, pw - 6, ph - 18, Color(0.62, 0.8, 0.97))                    # the sheet over them
 			_r(img, 3, fy + 13, pw - 6, 2, Color(0.85, 0.93, 1.0))
 			_r(img, 5, fy + 15, 3, 6, skin)                                                 # an arm on the sheet
