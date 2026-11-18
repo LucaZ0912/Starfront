@@ -1535,7 +1535,7 @@ func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> voi
 		var steps: Array = md.get("steps", [])
 		var fin: bool = st.done.has(mid3) and not st.running(mid3)
 		var i: int = steps.size() if fin else st.step_index(mid3)
-		_j_tile(left, mid3, String(md.get("title", mid3)), "%s · %s" % [String(md.get("chapter", "")), "done" if fin else "step %d of %d" % [i + 1, steps.size()]],
+		_j_tile(left, mid3, String(md.get("title", mid3)), "%s · %s" % [String(md.get("chapter", "")), "done" if fin else "step %d" % (i + 1)],
 			float(i) / maxf(steps.size(), 1), Color(0.5, 0.85, 0.6) if fin else col, st.tracked == mid3, fin)
 	left.add_child(UI.label("Chapters to come stay hidden until you reach them.", 12, UI.TEXT_DIM))
 	# right: the mission picked
@@ -1569,8 +1569,7 @@ func _j_missions(left: VBoxContainer, right: VBoxContainer, kind: String) -> voi
 			for gl in st.goal_lines(jsel):
 				parts.append(("✓ " if gl[1] else "▸ ") + String(gl[0]))
 			right.add_child(UI.label("      " + "     ".join(parts), 13, Color(0.75, 0.9, 0.8)))
-		else:
-			right.add_child(UI.label("·  " + String(s["title"]), 14, Color(0.6, 0.65, 0.75)))
+		# Luz, 18 Nov 2026: the steps still to come stay hidden (no spoilers) – only what is known shows
 	var log: Array = (st.missions.get(jsel, {}) as Dictionary).get("log", []) if running else st.done_log.get(jsel, [])
 	if not log.is_empty():
 		right.add_child(UI.label("", 4))

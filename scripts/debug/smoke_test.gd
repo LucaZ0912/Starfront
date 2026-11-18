@@ -702,6 +702,7 @@ func _process(delta: float) -> void:
 				await _test_intro56e(main.view)          # sequence 4 built a new view (Beyond)
 				await _test_intro56f(main.view)
 				await _test_w58a(main.view)              # package 58: Little Darling and the guided tour
+				await _test_w58b(main.view)              # package 58, part 2: the wreck field, the drone, scrap home
 				_shooting = false
 				timer = 0.0
 				return
@@ -5841,6 +5842,18 @@ func _test_crew() -> void:
 	# the bar: offers, hire into the quarters, onto a post, dismiss
 	var bar_ok := true
 	var st := Commands.docked_station()
+	# package 58: in the story nobody signs on until it opens crew ("crew_open"); a game without the story is free
+	var keep_flags: Dictionary = GameState.story.flags.duplicate()
+	var lock_ok := true
+	if not st.is_empty():
+		GameState.story.flags["intro_stage"] = "58"
+		GameState.story.flags.erase("crew_open")
+		lock_ok = GameState.bar_offers(st).is_empty() and Commands.execute({"type": "crew_hire", "index": 0}) != ""
+		GameState.story.flags["crew_open"] = true
+		lock_ok = lock_ok and not GameState.bar_offers(st).is_empty()
+		GameState.story.flags.erase("intro_stage")
+		lock_ok = lock_ok and not GameState.bar_offers(st).is_empty()
+	check(lock_ok, "58: in the story nobody for hire at the bars until it opens crew; free again with \"crew_open\" or without the story")
 	if not st.is_empty():
 		GameState.credits = 10000000
 		var offers: Array = GameState.bar_offers(st)
@@ -5851,6 +5864,7 @@ func _test_crew() -> void:
 		var e2 := Commands.execute({"type": "crew_dismiss", "member": int(hired.get("id", -1))})
 		bar_ok = n0 >= 4 and n0 <= 8 and e1 == "" and not hired.is_empty() and e2 == "" and GameState.quarters_of(String(st["id"])).size() == q0 and GameState.bar_offers(st).size() == n0 - 1
 	check(bar_ok, "The Bar: 4–8 people looking for work, hire into the crew quarters, dismiss")
+	GameState.story.flags = keep_flags
 	GameState.fleet.erase(mule)
 	GameState.set_pilot(keep)
 	GameState.credits = keep_credits
@@ -13373,6 +13387,44 @@ func _test_pad80(view: SystemView) -> void:
 	var wheel_ok: bool = opened and Pad.wheel == null and Pad.events.has("wheel:cmd_approach")
 	if not wheel_ok:
 		notes.append("wheel %s %s" % [opened, Pad.events])
+	# package 58: ◯ tapped deselects, ◯ held opens the drone wheel (launch, recall, the job, how it works)
+	var df := GameState.active()
+	var keep_dr: Array = df.drones.duplicate(true)
+	var keep_role := String(df.drone_role)
+	if df.drones.is_empty():
+		df.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+	df.drone_role = "combat"
+	var sel_any := ""
+	if view.selected_id == "":
+		var Ld: Dictionary = Universe.get_layout(GameState.current_system)
+		if not (Ld["stations"] as Array).is_empty():
+			view.select(String(Ld["stations"][0]["id"]))
+	sel_any = String(view.selected_id)
+	step.call({"circle": true})
+	step.call({})
+	var tap_ok: bool = Pad.wheel == null and (sel_any == "" or String(view.selected_id) == "")
+	step.call({"circle": true}, 30)
+	var dw = Pad.wheel
+	var dw_ok: bool = dw != null and (dw.items as Array).any(func(it): return String(it[1]) == "dw:role:mining") 		and (dw.items as Array).any(func(it): return String(it[1]) == "dw:mode:defend" and bool(it[2]))
+	if dw != null:
+		var mi := -1
+		for ii in (dw.items as Array).size():
+			if String(dw.items[ii][1]) == "dw:role:mining":
+				mi = ii
+		Pad.sim_r = Vector2.from_angle(-PI / 2.0 + mi * TAU / (dw.items as Array).size())
+		step.call({"circle": true}, 2)
+		Pad.sim_r = Vector2.ZERO
+		step.call({})
+	var role_ok: bool = Pad.wheel == null and df.drone_role == "mining"
+	step.call({"circle": true}, 30)
+	step.call({"circle": true, "cross": true})
+	step.call({})
+	var cancel_ok: bool = Pad.wheel == null and df.drone_role == "mining"
+	df.drones = keep_dr
+	df.drone_role = keep_role
+	wheel_ok = wheel_ok and tap_ok and dw_ok and role_ok and cancel_ok
+	if not (tap_ok and dw_ok and role_ok and cancel_ok):
+		notes.append("drone wheel: tap %s open %s role %s cancel %s" % [tap_ok, dw_ok, role_ok, cancel_ok])
 	# flying with the stick
 	Pad.sim_l = Vector2(1, 0)
 	var fly_ok: bool = view.key_direction().x > 0.5
@@ -13610,6 +13662,8 @@ func _test_intro56d(_view: SystemView) -> void:
 func _test_intro56f(_view: SystemView) -> void:
 	var st = GameState.story
 	var keep: Dictionary = st.to_dict()
+	var keep_fleet6: Array = GameState.fleet.duplicate()
+	var keep_active6 := GameState.active_uid
 	Commands.cheats_enabled = true
 	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
 		Commands.execute({"type": "debug_special", "special": "beyond"})
@@ -13691,7 +13745,7 @@ func _test_intro56f(_view: SystemView) -> void:
 		if i6.phase == "bar":
 			break
 	await get_tree().process_frame
-	var yes_ok: bool = bool(st.flags.get("dan_deal_yes", false)) and st.step_data("ticket").get("id", "") == "ship" \
+	var yes_ok: bool = bool(st.flags.get("dan_deal_yes", false)) and st.step_data("ticket").get("id", "") == "work" and st.running("darling") and st.step_data("darling").get("id", "") == "board" \
 		and not g.map.zones.any(func(z): return String(z.get("kind", "")) == "story" and String(z.get("id", "")) == "patron_b")
 	check(quiet_ok and gold_ok and order_ok and mis_ok and busy_ok and ask_ok and yes_ok,
 		"56: sequence 6 – Dan's deal: the quiet bar, the gold \"You wanted to talk to me.\" (prologue done, the ticket begun); the two questions either way round, then the suggestion; no – black, the bar busy (nobody for hire), the regulars say no; \"I've thought it over\" (gold), yes – the ship in the hangar next  [%s]" % \
@@ -13700,6 +13754,8 @@ func _test_intro56f(_view: SystemView) -> void:
 	for c2 in main.get_children():
 		if c2.get_script() != null and (String(c2.get_script().resource_path).ends_with("intro_six.gd") or String(c2.get_script().resource_path).ends_with("dan_work.gd") 				or String(c2.get_script().resource_path).ends_with("guided_tour.gd")):
 			c2.queue_free()                                # the yes started package 58's controller: it goes too
+	GameState.fleet = keep_fleet6                          # … and Little Darling with it
+	GameState.active_uid = keep_active6
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 
@@ -14513,6 +14569,7 @@ func _test_w58a(_view: SystemView) -> void:
 	st.flags["dan_deal_yes"] = true
 	st.start("ticket")
 	st.goto_step("ticket", 1)
+	st.start("darling")                              # (the deal starts it: "Working for Dan", board the ship first)
 	GameState.credits = 0
 	main._start_dan_work("yes")
 	var w = null
@@ -14674,3 +14731,193 @@ func _test_w58a(_view: SystemView) -> void:
 	GameState.credits = keep_cr
 	GameState.pilot["tree"] = keep_tree
 	GameState.pilot["tree_all"] = keep_all
+
+
+## Package 58, part 2 (Luz): Dan lends the drone a mining laser and a gun; his call to warp to the marked wreck field
+## stays until you are there; there the guided tour over the drone panel (launch, its jobs, mining, how, fuel and
+## recall – flying keys allowed where the task asks); twenty units of scrap; home to Dan: the scrap taken, 2,000 cr,
+## his dialogue, the mission on to its next part.
+## Only for a render (--only=padshot, windowed): the drone wheel open, Mining picked.
+func _test_padshot(_view: SystemView) -> void:
+	for i in 900:
+		if i > 60 and (main.loading == null or not is_instance_valid(main.loading)):
+			break
+		await get_tree().process_frame
+	for i in 30:
+		await get_tree().process_frame
+	var f := GameState.active()
+	if f.drones.is_empty():
+		f.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+	f.drone_role = "mining"
+	Pad.using_pad = true
+	Pad._open_wheel("drones", "circle")
+	Pad.wheel.sel = 3
+	for i in 10:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://Claude outputs/drone_wheel_58.png")
+	Pad._close_wheel(false)
+	Pad.using_pad = false
+
+
+func _test_w58b(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+		await get_tree().process_frame
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	if GameState.active().docked_at == "":
+		# (already in that system but out of the dock – after the controller test: the warp there docks nowhere)
+		GameState.active().docked_at = String(Universe.get_layout(GameState.current_system)["stations"][0]["id"])
+	var dan_st := GameState.active().docked_at
+	for fl in ["w58_phase", "w58_atfield", "w58_drones", "w58_mined", "w58_delivered", "w58_base", "w58_part3"]:
+		st.flags.erase(fl)
+	st.missions.erase("darling")
+	st.done.erase("darling")
+	st.flags["dan_deal_yes"] = true
+	main.station_panel.close()                       # part 1 is skipped here: no station window, no tour
+	main._start_dan_work("yes")
+	var w = null
+	for c in main.get_children():
+		if c.get_script() != null and String(c.get_script().resource_path).ends_with("dan_work.gd"):
+			w = c
+	var ld: ShipFitting = GameState.active()
+	ld.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}]
+	for fl2 in ["ticket_ship", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone"]:
+		st.flags[fl2] = true
+	st.start("darling")
+	for i in 3:
+		await get_tree().process_frame
+	w._set_phase("part2")
+	if w.tour != null and is_instance_valid(w.tour):
+		w.tour.queue_free()
+	w.tour = null
+	w._part2_start()
+	var su = main.story_ui
+	for i in 3:
+		await get_tree().process_frame
+	var gear_ok: bool = ld.get_module("dtool_0") == "t_mining:1:B" and String(ld.lent.get("dtool_0", "")) == "t_mining:1:B" and not ld.stats()["drone_tool"].is_empty() and ld.get_module("dweapon_0") == "w_pulse:1:B" and ld.get_module("dbonus_0") == "dr_shield:1:B" \
+		and st.step_data("darling").get("id", "") == "salvage" and w._field.has("pos") and String(st.missions["darling"].get("target", "")) != ""
+	var call_ok: bool = (su._radio != null and String(su._radio_d.get("until_flag", "")) == "w58_atfield") or su._radio_q.any(func(d): return String(d.get("until_flag", "")) == "w58_atfield")
+	# out to the field
+	var ue := Commands.execute({"type": "undock"})
+	for i in 10:
+		await get_tree().process_frame
+	var v: SystemView = main.view
+	# out of the dock: the field glows gold in the overview, Dan shows how to warp there (Luz, 18 Nov 2026)
+	var fid := String(w._field["id"])
+	for i in 400:                                    # (the overview marks its rows a few times a second)
+		if w.tour != null:
+			break
+		await get_tree().process_frame
+	var wt = w.tour
+	var ovb = main.hud.tour_targets.get("ov_" + fid)
+	var wdbg := "key %s" % (String(wt.step().get("key", "")) if wt != null else "-")
+	var warp_ok: bool = wt != null and String(wt.step().get("key", "")) == "ov_" + fid and ovb != null and is_instance_valid(ovb) and String(ovb.text).contains("objective") 		and String(st.missions["darling"].get("target", "")) == fid
+	if wt != null:
+		if OS.get_environment("W58_SHOTS") != "":
+			for f9 in 60:
+				await get_tree().process_frame
+			main.story_ui.radio_finish_typing()
+			await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58_warp_overview.png")
+		main.story_ui.radio_finish_typing()
+		wt._wait = 0.0
+		wt.tour_confirm()
+		for i in 3:
+			await get_tree().process_frame
+		for i in 20:
+			if is_instance_valid(wt) and String(wt.step().get("key", "")) == "warp_button":
+				break
+			if is_instance_valid(wt) and wt.is_task():
+				v.select(fid)
+			wt._wait = 0.0
+			await get_tree().process_frame
+		wdbg += " then %s sel %s" % [String(wt.step().get("key", "")) if is_instance_valid(wt) else "freed", v.selected_id]
+		warp_ok = warp_ok and is_instance_valid(wt) and String(wt.step().get("key", "")) == "warp_button" and main.hud.tour_targets.has("warp_button")
+		wt.queue_free()
+		w.tour = null
+	check(warp_ok, "58: out of the dock the marked wreck field glows gold in the overview; Dan shows how to warp (the overview, picking it, Warp to)  [%s %s %s]" % [wt != null, ovb != null and is_instance_valid(ovb), wdbg])
+	for i in 40:
+		if w.tour != null:
+			break
+		v.player.position = (w._field["pos"] as Vector2) + Vector2(800, 0)       # (the undock flight lets go after a moment)
+		v.player.velocity = Vector2.ZERO
+		await get_tree().process_frame
+	var tour = w.tour
+	var field_ok: bool = bool(st.flags.get("w58_atfield", false)) and tour != null and tour.running() and String(tour.step()["key"]) == "drone_panel" and tour.is_task() \
+		and st.step_data("darling").get("id", "") == "drones"
+	var le := Commands.execute({"type": "drone_launch", "count": 1})
+	var steps := 0
+	for n in 30:
+		if tour == null or not is_instance_valid(tour) or not tour.running():
+			break
+		tour._wait = 0.0
+		if tour.is_task():
+			if String(tour.step().get("hint", "")).contains("mining"):
+				Commands.execute({"type": "drone_role", "role": "mining"})
+		else:
+			su.radio_finish_typing()
+			await get_tree().process_frame
+			if OS.get_environment("W58_SHOTS") != "" and tour.i in [1, 3]:
+				for f7 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58_drones_%d.png" % tour.i)
+			tour._wait = 0.0
+			tour.tour_confirm()
+			steps += 1
+		await get_tree().process_frame
+	if OS.get_environment("W58_SHOTS") != "":
+		for f8 in 10:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58_drones_after.png")
+	var drones_ok: bool = steps >= 3 and ld.drone_role == "mining" and bool(st.flags.get("w58_drones", false)) and String(st.flags.get("w58_phase", "")) == "mine" \
+		and st.step_data("darling").get("id", "") == "mine"
+	# twenty units of scrap
+	var some_ore := ""
+	for fd in Universe.get_layout(GameState.current_system)["fields"]:
+		if String(fd["id"]) == String(w._field["id"]):
+			some_ore = String(fd.get("ore", "iron_ore"))
+	ld.cargo[some_ore] = float(ld.cargo.get(some_ore, 0.0)) + 21.0
+	for i in 4:
+		await get_tree().process_frame
+	var mined_ok: bool = bool(st.flags.get("w58_mined", false)) and String(st.flags.get("w58_phase", "")) == "home" and String(st.missions["darling"].get("target", "")) == dan_st
+	# home: docked at Dan's
+	Commands.execute({"type": "drone_recall"})
+	for dd in v.drones_of(v.player):
+		v.stow_drone(dd)
+	var cr0 := GameState.credits
+	ld.docked_at = dan_st
+	main.open_station()
+	for i in 6:
+		await get_tree().process_frame
+	var home_ok: bool = bool(st.flags.get("w58_delivered", false)) and w._units(ld) == 0.0 and GameState.credits == cr0 + 2000 and main.story_ui.dialogue != null \
+		and String(main.story_ui._dlg.get("id", "")) == "dan_scrap" and st.step_data("darling").get("id", "") == "next"
+	check(gear_ok and call_ok and field_ok and drones_ok and mined_ok and home_ok,
+		"58: part 2 – the drone's lent gear, Dan's call to the marked wreck field (it waits), the guided tour over the drone panel (launch, jobs, mining, how, fuel and recall), twenty units of scrap, home to Dan: the scrap taken, 2,000 cr, his dialogue  [%s %s %s %s %s %s]" % [gear_ok, call_ok, field_ok, drones_ok, mined_ok, home_ok])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	if w != null and is_instance_valid(w):
+		if w.tour != null and is_instance_valid(w.tour):
+			w.tour.queue_free()
+		w.queue_free()
+	main.station_panel.close()
+	st.from_dict(keep)
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	GameState.pilot["tree"] = keep_tree
+	main.story_ui._radio_q.clear()

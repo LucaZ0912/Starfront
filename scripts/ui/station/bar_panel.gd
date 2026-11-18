@@ -22,7 +22,8 @@ func build() -> void:
 	add_child(UI.label("Waiting in the crew quarters here: %d   •   Balance %s" % [GameState.quarters_of(String(station["id"])).size(), GameData.fmt_credits(GameState.credits)], 13, UI.GOLD))
 	section("AT THE BAR TONIGHT")
 	if offers.is_empty():
-		add_child(UI.label("Nobody left looking for work. Come back later.", 13, UI.TEXT_DIM))
+		var lk := GameState.crew_hire_locked()                  # package 58: the story keeps crew back for now
+		add_child(UI.label(lk if lk != "" else "Nobody left looking for work. Come back later.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
 	var wide: bool = get_viewport().get_visible_rect().size.x >= 1500.0      # window rework: one column on small screens
 	grid.columns = 2 if wide else 1

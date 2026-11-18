@@ -50,7 +50,15 @@ func _ready() -> void:
 func _on_show(kind: String, data: Dictionary) -> void:
 	match kind:
 		"radio":
-			_radio_q.append(data)
+			if bool(data.get("now", false)):
+				# package 58: the guided tour's call comes at once – before any waiting, the one shown gives way
+				_radio_q.push_front(data)
+				if _radio != null and is_instance_valid(_radio):
+					_radio.queue_free()
+					_radio = null
+					_radio_d = {}
+			else:
+				_radio_q.append(data)
 		"dialogue":
 			_dlg_q.append(data)
 			if dialogue == null:
@@ -406,17 +414,30 @@ func _draw_marker() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	for t in marker_targets():
 		var n = v.find_object(t)
-		if n == null or not is_instance_valid(n) or not (n is CanvasItem):
-			continue
-		var p: Vector2 = (n as CanvasItem).get_global_transform_with_canvas().origin
+		var p := Vector2.ZERO
 		var dkm := 0.0
-		if v.player != null and is_instance_valid(v.player):
-			dkm = (n as Node2D).position.distance_to(v.player.position)
-		var nm: String = String(n.data.get("name", t)) if "data" in n and n.data is Dictionary else t
-		if n is Ship:
-			nm = (n as Ship).fit.ship_name                    # package 56: Old Betty
-		elif n.has_method("title"):
-			nm = String(n.title())                            # the scrap to cut, the colossus
+		var nm: String = String(t)
+		if n == null or not is_instance_valid(n) or not (n is CanvasItem):
+			# package 58: a field (it has no node of its own) – its middle from the system's layout
+			var fd := {}
+			for f0 in (v.layout.get("fields", []) as Array):
+				if String(f0["id"]) == t:
+					fd = f0
+			if fd.is_empty():
+				continue
+			p = v.get_global_transform_with_canvas() * (fd["pos"] as Vector2)
+			if v.player != null and is_instance_valid(v.player):
+				dkm = (fd["pos"] as Vector2).distance_to(v.player.position)
+			nm = String(fd.get("name", t))
+		else:
+			p = (n as CanvasItem).get_global_transform_with_canvas().origin
+			if v.player != null and is_instance_valid(v.player):
+				dkm = (n as Node2D).position.distance_to(v.player.position)
+			nm = String(n.data.get("name", t)) if "data" in n and n.data is Dictionary else t
+			if n is Ship:
+				nm = (n as Ship).fit.ship_name                    # package 56: Old Betty
+			elif n.has_method("title"):
+				nm = String(n.title())                            # the scrap to cut, the colossus
 		var inside := Rect2(Vector2(30, 30), vs - Vector2(60, 60)).has_point(p)
 		if inside:
 			var pts := PackedVector2Array([p + Vector2(0, -16), p + Vector2(16, 0), p + Vector2(0, 16), p + Vector2(-16, 0), p + Vector2(0, -16)])

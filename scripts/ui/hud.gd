@@ -60,6 +60,7 @@ var _wing_rows: Array = []
 const WingDataH = preload("res://data/wingmen.gd")
 var _drone_sig := ""
 var _drone_rows: Array = []       # [{drone, fuel bar, hull bar}]
+var tour_targets := {}            # package 58: parts a guided tour frames ("drone_panel", "drone_roles", …)
 var _ally_cards := {}             # ship -> {style, info, bars}
 var _ally_sig := ""
 var _lock_cards := {}             # key -> {panel, style, info, bars}
@@ -625,6 +626,7 @@ func _mark_selected() -> void:
 	if view == null:
 		return
 	var sid := String(view.selected_id)
+	_mark_objectives()
 	if _sel_style == null:
 		_sel_style = StyleBoxFlat.new()
 		_sel_style.bg_color = Color(1.0, 0.85, 0.35, 0.18)
@@ -656,7 +658,41 @@ func _mark_selected() -> void:
 				(n as ScrollContainer).ensure_control_visible(hit)
 
 
+## Luz, 18 Nov 2026: the tracked mission's targets glow gold in the overview, with a ◆ – brighter than a selection.
+var _obj_style: StyleBoxFlat = null
+
+
+func _mark_objectives() -> void:
+	var main = get_tree().current_scene
+	var objs: Array = main.story_ui.marker_targets() if main != null and main.get("story_ui") != null else []
+	if _obj_style == null:
+		_obj_style = StyleBoxFlat.new()
+		_obj_style.bg_color = Color(1.0, 0.78, 0.15, 0.55)
+		_obj_style.border_color = Color(1.0, 0.92, 0.45)
+		_obj_style.set_border_width_all(2)
+		_obj_style.set_corner_radius_all(2)
+	for r in _overview_rows:
+		var b: Button = r["button"]
+		var id := String((r["target"] as Dictionary).get("id", ""))
+		var on := id != "" and id in objs
+		if on:
+			b.add_theme_stylebox_override("normal", _obj_style)
+			b.add_theme_stylebox_override("hover", _obj_style)
+			b.add_theme_color_override("font_color", Color(1.0, 1.0, 0.85))
+			b.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 0.9))
+			if not b.text.begins_with("◆"):
+				b.text = "◆ " + b.text + "   ◆ objective"
+			tour_targets["ov_" + id] = b
+		elif b.has_theme_stylebox_override("normal") and b.get_theme_stylebox("normal") == _obj_style:
+			b.remove_theme_stylebox_override("normal")
+			b.remove_theme_stylebox_override("hover")
+			b.remove_theme_color_override("font_color")
+			b.remove_theme_color_override("font_hover_color")
+
+
 func _mark(b: Button, on: bool) -> void:
+	if b.has_theme_stylebox_override("normal") and b.get_theme_stylebox("normal") == _obj_style:
+		return                                           # an objective stays gold (it is marked brighter)
 	if on:
 		b.add_theme_stylebox_override("normal", _sel_style)
 		b.add_theme_color_override("font_color", Color(1.0, 0.9, 0.55))
@@ -1158,7 +1194,9 @@ func _build_selected() -> void:
 	var r1 := UI.hbox(4)
 	sel_box.add_child(r1)
 	if far or kind in ["planet", "star", "field"]:
-		r1.add_child(UI.button("Warp to", func(): _cmd({"type": "warp_to", "id": id}), _hk("cmd_warp")))
+		var wb := UI.button("Warp to", func(): _cmd({"type": "warp_to", "id": id}), _hk("cmd_warp"))
+		r1.add_child(wb)
+		tour_targets["warp_button"] = wb                     # package 58: the guided tour points at it
 	r1.add_child(UI.button("Approach", func(): _cmd({"type": "approach", "id": id}), _hk("cmd_approach")))
 	if kind in ["station", "haven"]:
 		r1.add_child(UI.button("Dock", func(): _cmd({"type": "dock", "id": id}), _hk("cmd_dock")))
@@ -1531,6 +1569,7 @@ func _build_wing_panel() -> void:
 func _build_drone_panel(p, out: Array) -> void:
 	UI.clear(_drone_box)
 	_drone_rows.clear()
+	tour_targets["drone_panel"] = drone_panel
 	var f: ShipFitting = p.fit
 	var st := f.stats()
 	var head := UI.hbox(6)
@@ -1546,6 +1585,7 @@ func _build_drone_panel(p, out: Array) -> void:
 		return
 	var roles := UI.hbox(3)
 	_drone_box.add_child(roles)
+	tour_targets["drone_roles"] = roles
 	for spec in DRONE_ROLE_UI:
 		var rid: String = spec[0]
 		var b := Button.new()
@@ -1564,6 +1604,7 @@ func _build_drone_panel(p, out: Array) -> void:
 	var mg := GridContainer.new()
 	mg.columns = 2
 	_drone_box.add_child(mg)
+	tour_targets["drone_modes"] = mg
 	for m in modes:
 		var mid: String = m
 		var mb := UI.button(DRONE_MODE_NAMES.get(mid, mid), func(): Commands.execute({"type": "drone_mode", "mode": mid}), DRONE_MODE_TIPS.get(mid, ""))

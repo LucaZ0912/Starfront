@@ -106,6 +106,16 @@ const DIALOGUES := {
 		{"text": "Alright! There's a small ship waiting for you in the hangar. It's got some gear in it already, but a few things still need fitting. Climb aboard and I'll explain how it works. Then we'll see.", "next": -1},
 		{"text": "Fair enough. You're still welcome here, of course. Maybe you'll find someone else to take you on. But hardly anyone here has a ship to give away, and without a licence nobody'll take you on as crew either. Come and see me if you change your mind.", "next": -1},
 	]},
+	# package 58, part 2 (Luz): the first load of scrap at Dan's
+	"dan_scrap": {"who": "dan", "lines": [
+		{"text": "Let's see what you've brought me."},
+		{"text": "Hm. Not bad for a first run. Gold Fleet steel, still good for something after three hundred years. Like some people I know.",
+			"answers": [["\"Very funny.\"", 2, [], "Ha. Very funny. So what's it worth?"], ["\"Thanks, I think.\"", 2, [], "I'll take that as a compliment. What's it worth?"]]},
+		{"text": "Two thousand. Don't spend it all on drinks. Well, maybe on one."},
+		{"text": "Next time it won't be rocks. I've got a few people who need things moved around Beyond, and they pay better than scrap does.",
+			"answers": [["\"I'm listening.\"", 4, [], "I'm listening. Who are they?"]]},
+		{"text": "Later. Get some rest first, have a look around. Come and see me when you're ready.", "next": -1},
+	]},
 	# package 56, sequence 6 (Luz): the bar busy again – asked for work, they say no (you have no licence)
 	"patron_a": {"who": "patron_a", "lines": [
 		{"who": "you", "text": "Got any work for a pilot?"},
@@ -190,19 +200,19 @@ const MISSIONS := {
 		"desc": "No ship, no licence, and stuck in Beyond. Dan knows someone who could get you to the Cluster, for a price. His deal: give him a hand and earn your ticket.",
 		"steps": [
 			{"id": "deal", "title": "Dan's deal", "text": "Dan offered you a ship, gear and a few jobs (about three years of them) to earn your ticket to the Cluster. Talk to him in the bar once you've made up your mind.",
-				"goals": [{"id": "yes", "kind": "flag", "flag": "dan_deal_yes", "label": "take Dan's deal"}]},
-			{"id": "ship", "title": "Little Darling", "text": "Little Darling, a small KHI miner in Dan's rust, waits for you in his hangar. She has some gear already, but a few things still need fitting. Climb aboard, Dan will explain.",
-				"goals": [{"id": "board", "kind": "flag", "flag": "ticket_ship", "label": "board Little Darling in the hangar"}],
-				"on_done": [{"do": "start", "id": "darling"}]},
+				"goals": [{"id": "yes", "kind": "flag", "flag": "dan_deal_yes", "label": "take Dan's deal"}],
+				"on_done": [{"do": "start", "id": "darling"}]},                # Luz: "Working for Dan" in the journal at once
 			{"id": "work", "title": "Working for Dan", "text": "About three years of work for Dan, then his friend takes you to the Cluster. The jobs come one by one; each pays a little.",
 				"goals": [{"id": "paid", "kind": "flag", "flag": "ticket_paid", "label": "earn your ticket"}]},
 		]},
 	# package 58, part 1 (Luz): Little Darling – Dan shows you the station window and the Outfitter (a guided tour),
 	# you fit the lasers he left in storage and buy a drone with his advance. The flags come from
 	# scripts/ground/dan_work.gd; the wreck field follows in part 2.
-	"darling": {"title": "Little Darling", "kind": "story", "chapter": "Chapter 1 · Working for Dan",
-		"desc": "Dan's first job for you: get to know Little Darling and kit her out.",
+	"darling": {"title": "Working for Dan", "kind": "story", "chapter": "Chapter 1 · Working for Dan",
+		"desc": "Dan gives you a ship and the first jobs. Get to know Little Darling, kit her out and earn your keep.",
 		"steps": [
+			{"id": "board", "title": "Little Darling", "text": "Board the ship Dan lends you: Little Darling, a small KHI miner in his rust, waits in his hangar. She has some gear already, but a few things still need fitting. Climb aboard, Dan will explain.",
+				"goals": [{"id": "board", "kind": "flag", "flag": "ticket_ship", "label": "board the ship Dan gives you"}]},
 			{"id": "station", "title": "The station window", "text": "Dan walks you through the station window: you, the news, your ship and her services, the station and its services. Then he wants you in the Outfitter.",
 				"goals": [{"id": "tour", "kind": "flag", "flag": "w58_tour1", "label": "follow Dan's tour, open the Outfitter"}]},
 			{"id": "fit", "title": "Teeth for her", "text": "Dan left a mining laser and a pulse laser in your storage. Fit the mining laser into a tool slot and the pulse laser into the weapon slot.",
@@ -213,8 +223,18 @@ const MISSIONS := {
 				"on_start": [{"do": "credits", "n": 2500}],
 				"on_done": [{"do": "credits", "n": 1000},
 					{"do": "radio", "who": "dan", "text": "There she is. Your first ship in three hundred years, give or take. A thousand on top, for listening so nicely. Now let's earn that advance back."}]},
-			{"id": "salvage", "title": "Salvage", "text": "Fly out to a wreck field and bring back what you can cut loose. (Package 58, part 2: comes next.)",
-				"goals": [{"id": "wreck", "kind": "flag", "flag": "w58_wreck", "label": "salvage in a wreck field"}]},
+			# package 58, part 2 (Luz): the wreck field, the drone's controls, scrap home to Dan
+			{"id": "salvage", "title": "To the wreck field", "text": "Undock and warp to the wreck field Dan marked: pick it in the overview on the right, or on the map.",
+				"goals": [{"id": "field", "kind": "flag", "flag": "w58_atfield", "label": "fly to the marked wreck field"}]},
+			{"id": "drones", "title": "Your drone", "text": "Dan explains your drone's controls: launching it, its jobs, how it goes about them, its fuel and recalling it.",
+				"goals": [{"id": "drones", "kind": "flag", "flag": "w58_drones", "label": "launch your drone, set it to mining"}]},
+			{"id": "mine", "title": "Cut scrap", "text": "Lock a piece of Gold Fleet scrap, switch the mining laser on and let the drone help. Twenty units will do.",
+				"goals": [{"id": "mined", "kind": "flag", "flag": "w58_mined", "label": "cut 20 units of scrap"}]},
+			{"id": "home", "title": "Back to Dan", "text": "Recall the drone and bring the scrap home to Dan's Dusty Duty Store.",
+				"goals": [{"id": "home", "kind": "flag", "flag": "w58_delivered", "label": "bring the scrap to Dan"}],
+				"on_done": [{"do": "credits", "n": 2000}]},
+			{"id": "next", "title": "More work", "text": "Dan has a few people who need things moved around Beyond. (Package 58, part 3: comes next.)",
+				"goals": [{"id": "next", "kind": "flag", "flag": "w58_part3", "label": "see Dan about the next job"}]},
 		]},
 	# package 56, sequence 5 (Luz): the flight training – flown with one of Dan's drones from Old Betty in a wreck field;
 	# the flags are set by scripts/ground/intro_five.gd (it watches the drone), the targets too

@@ -1287,6 +1287,9 @@ func _c_crew_hire(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":
 		return e
+	var lk := GameState.crew_hire_locked()
+	if lk != "":
+		return lk
 	var st := docked_station()
 	var offers: Array = GameState.bar_offers(st)
 	var i := int(c.get("index", -1))

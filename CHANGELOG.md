@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.58.2 – 2026-11-18
+
+**Package 58, part 2: the wreck field and the drone's controls (Luz).**
+- **Working for Dan in the journal at once:** the deal taken, the story mission "Working for Dan" starts with its
+  first point "board the ship Dan gives you". The journal shows only the steps you know (no spoilers of what comes).
+- **Drone gear:** Little Darling's drone hangar comes with a laser, a mining laser and a shield upgrade (Dan's, lent).
+- **To the wreck field:** Dan marks the wreck field nearest his station. It glows gold in the overview ("◆ objective"),
+  the marker on screen points at it, and out of the dock Dan shows how to warp (the overview, picking it, Warp to).
+- **The drone's controls:** in the field a guided tour over the drone panel (launch, its jobs, mining, how it works,
+  fuel and recall); then twenty units of scrap with the mining laser and the drone; home to Dan: the scrap handed
+  over, 2,000 cr and his dialogue. Part 3 (the contact on Brine and the escort) comes next.
+- **Drone wheel on the controller:** in space ◯ tapped still deselects; ◯ held opens a ring with Launch, Recall,
+  Combat, Mining, Repair and the ways of the current job (the job and its way now marked in gold); the stick picks,
+  letting go does it, ✕ cancels. The controller's wheels grow with big screens.
+- **No crew yet:** in the story the bars have nobody for hire until the story opens crew (a game without the story
+  is not held back).
+
 ## alpha 0.8.58.1 – 2026-11-18
 
 **Package 58, part 1: working for Dan begins (Luz).** Package 56 (the intro) is complete; this is the second part

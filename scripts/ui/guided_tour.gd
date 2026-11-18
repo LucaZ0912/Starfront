@@ -76,7 +76,7 @@ func next() -> void:
 		add_to_group("kbd_menu")
 	var hint := String(s.get("hint", "")) if is_task() else "Continue ▸  click  •  E  •  ✕"
 	GameState.story.show.emit("radio", {"who": String(s.get("who", "dan")), "text": String(s["text"]), "mission": String(s.get("mission", "")),
-		"until": func(): return not is_instance_valid(self) or i != me, "hint": hint})
+		"until": func(): return not is_instance_valid(self) or i != me, "hint": hint, "now": true})
 	step_changed.emit(i)
 
 
@@ -154,6 +154,9 @@ func _input(event: InputEvent) -> void:
 			return
 		if event is InputEventJoypadButton or event is InputEventJoypadMotion or event is InputEventAction:
 			return
+		for a3 in step().get("allow", []):
+			if InputMap.has_action(String(a3)) and event.is_action(String(a3)):
+				return                                        # what the task asks for (launching the drone …)
 		for a2 in ["menu_up", "menu_down", "menu_left", "menu_right", "ui_up", "ui_down", "ui_left", "ui_right", "ui_accept", "menu_prev_tab", "menu_next_tab"]:
 			if InputMap.has_action(a2) and event.is_action(a2):
 				return

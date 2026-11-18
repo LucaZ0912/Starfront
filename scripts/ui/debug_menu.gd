@@ -463,8 +463,11 @@ func _build_world() -> void:
 	r56.add_child(UI.button("Play sequence 6 (Dan's deal)", func():
 		close()
 		_cmd({"type": "debug_special", "special": "beyond"})
-		for fl in ["dan_deal_yes", "dan_deal_no", "dan_q_stuck", "dan_q_licence"]:
+		for fl in ["dan_deal_yes", "dan_deal_no", "dan_q_stuck", "dan_q_licence", "prologue_bar"]:
 			GameState.story.flags.erase(fl)
+		for m6 in ["ticket", "darling"]:
+			GameState.story.missions.erase(m6)
+			GameState.story.done.erase(m6)
 		if not GameState.story.running("prologue"):
 			GameState.story.start("prologue", 3)
 		var mn6 = get_tree().current_scene

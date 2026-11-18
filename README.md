@@ -382,6 +382,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   (saved); PixelArt `paint_key`, `fleet_texture`; StoryUI `radio_held` (`until_flag`, `until_step`, `until`),
   `radio_scale`, `radio_avoid`, `radio_typing`, `radio_finish_typing`, its own layer 30; Traffic `_convoy_call`;
   character `convoy_pilot`; mission `darling`; main `_start_dan_work`; smoke group `w58a`.
+- 0.8.58.2 (package 58, part 2): dan_work phases `part2` → `drones` → `mine` → `home` → `part3` (`_pick_field`,
+  `_warp_steps`, `_drone_steps`, `SCRAP_GOAL`); HUD `tour_targets` (`drone_panel`, `drone_roles`, `drone_modes`,
+  `warp_button`, `ov_<id>`), `_mark_objectives`; Pad drone wheel (◯ held: `_circ_t`, `_drone_items`, ids `dw:…`);
+  `GameState.crew_hire_locked()` (flag `crew_open`); smoke groups `w58b`, `padshot` (render only).
 - 0.8.56.10: Kit `bar_tile`, `tile_row`, `amount_block`, `MineGlyph`, `picture(..., max_px)`; DronePanel `pick`,
   ServicePanel `pick_uid`, MunitionsPanel `pick`.
 - 0.8.56.9: BondPanel.wanted_poster(c, sid, course, width) scales by `_k`; the restyle (`_build_restyle`) sizes the

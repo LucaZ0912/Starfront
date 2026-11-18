@@ -1446,8 +1446,18 @@ func crew_role_error(role: String) -> String:
 	return "Skill tree: %s needs \"%s\" first." % [CrewData.role_name(role), TreeData.TILES[where]["name"] if where != "" else "?"]
 
 
-## The bar of a station: offers made anew every BAR_REFRESH seconds.
+## Package 58 (Luz): in the story nobody signs on as crew yet: until the story opens it (the flag "crew_open"), the
+## bars have nobody for hire. A game without the story (no "intro_stage") is not held back.
+func crew_hire_locked() -> String:
+	if story == null or not story.flags.has("intro_stage") or bool(story.flags.get("crew_open", false)):
+		return ""
+	return "Nobody here signs on with you yet: a captain without a name hires no crew."
+
+
+## The bar of a station: offers made anew every BAR_REFRESH seconds (none while the story keeps crew back).
 func bar_offers(st: Dictionary) -> Array:
+	if crew_hire_locked() != "":
+		return []
 	var sid := String(st["id"])
 	var e: Dictionary = bar.get(sid, {})
 	if e.is_empty() or play_time - float(e.get("t", 0.0)) >= CrewData.BAR_REFRESH:

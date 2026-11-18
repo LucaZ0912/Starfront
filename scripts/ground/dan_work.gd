@@ -4,12 +4,16 @@ extends Node
 ## Boarding her opens the station window: a guided tour of it (scripts/ui/guided_tour.gd), then of the Outfitter;
 ## fitting the mining laser and the pulse laser Dan left in storage; back in the station window, a drone bought with
 ## Dan's advance. The wreck field (part 2), the contact on Brine and the escort (part 3) come next.
-## The story flag "w58_phase" keeps where it stands: "board" → "tour1" → "tour2" → "part2".
+## Part 2: undock and warp to the wreck field Dan marks; there he explains the drone's controls (a guided tour over the
+## drone panel); twenty units of scrap cut with the mining laser and the drone; home to Dan, who pays 2,000 cr.
+## The story flag "w58_phase" keeps where it stands: "board" → "tour1" → "tour2" → "part2" → "drones" → "mine" →
+## "home" → "part3".
 
 const GuidedTour = preload("res://scripts/ui/guided_tour.gd")
 const TreeData = preload("res://data/skilltree.gd")
 const MID := "darling"
 const SHIP_NAME := "Little Darling"
+const SCRAP_GOAL := 20.0                     # units of scrap for the first run
 
 var main: Node
 var phase := ""
@@ -40,6 +44,7 @@ static func give_ship(station_id: String) -> ShipFitting:
 			mods["optional_0"] = "o_shield:%d:A" % sz        # the strongest shield that fits
 			break
 	var f := GameState.create_fit("mogura", mods, "player")
+	_fit_drone_gear(f, mods)                                # Luz: her drone hangar comes with a laser, a mining laser, a shield
 	f.ship_name = SHIP_NAME
 	f.paint = "dan_rust"
 	f.lent = mods.duplicate()                               # Dan's gear works on his licence while it stays in her
@@ -50,7 +55,8 @@ static func give_ship(station_id: String) -> ShipFitting:
 	var old: Array = GameState.fleet.duplicate()
 	GameState.add_ship(f)
 	GameState.crew_fill_required(f)
-	GameState.active_uid = f.uid
+	if not GameState.set_active(f.uid):                   # she is your ship now (the view swaps the player too)
+		GameState.active_uid = f.uid
 	for o in old:
 		if o.hull_id == "dragonfly" and o.docked_at == station_id:
 			GameState.fleet.erase(o)
@@ -85,16 +91,37 @@ func station_ui():
 ## where: "yes" (just taken the deal), "load" (a save in part 1).
 func begin(where: String) -> void:
 	GameState.story.set_flag("intro_stage", "58")
+	_ensure_missions()
 	phase = String(flags().get("w58_phase", "board"))
 	if where == "yes":
 		var f := GameState.active()
+		GameState.story.set_flag("w58_dan_st", f.docked_at if f != null else "")
 		give_ship(f.docked_at if f != null else "")
 		phase = "board"
 		GameState.story.set_flag("w58_phase", phase)
+	GameState.story.flags.erase("w58_warp_told")             # the warp tour comes again after a load (if still due)
 	if phase in ["tour1"]:
 		phase = "board"                                     # a tour starts again from its beginning
 	elif phase == "tour2":
 		phase = "fit"
+	elif phase == "drones":
+		phase = "part2"
+	if phase in ["part2", "mine", "home"]:
+		_part2_calls.call_deferred()
+
+
+## The deal taken: "A Ticket to the Cluster" at "Working for Dan", and the mission "Working for Dan" running – also
+## when a save or the debug menu came here another way (Luz: it must be in the journal at once).
+static func _ensure_missions() -> void:
+	var st = GameState.story
+	if not st.running("ticket") and not st.done.has("ticket"):
+		st.start("ticket")
+	if st.running("ticket") and st.step_data("ticket").get("id", "") == "deal":
+		st.goto_step("ticket", 1)
+	if not st.running(MID) and not st.done.has(MID):
+		st.start(MID)
+	if st.running(MID):
+		st.tracked = MID
 
 
 func _set_phase(p: String) -> void:
@@ -130,6 +157,35 @@ func _process(_delta: float) -> void:
 			if sp.visible and sp.current_service == "outfitter" and tour == null:
 				_set_phase("tour2")
 				_start_tour(_outfitter_steps())
+		"part2":
+			var v = main.view
+			# out of the dock: Dan shows how to warp there (once)
+			if tour == null and not bool(flags().get("w58_warp_told", false)) and v != null and is_instance_valid(v) and v.player != null \
+					and is_instance_valid(v.player) and f.docked_at == "" and not v.player.in_warp() and not _field.is_empty() \
+					and v.player.position.distance_to(_field["pos"]) > float(_field.get("radius", 12000.0)) * 1.15 \
+					and main.hud != null and main.hud.tour_targets.has("ov_" + String(_field["id"])):
+				GameState.story.set_flag("w58_warp_told", true)
+				_start_tour(_warp_steps(), true)
+			if tour == null and v != null and is_instance_valid(v) and v.player != null and is_instance_valid(v.player) and f.docked_at == "" \
+					and not v.player.in_warp() and not _field.is_empty() \
+					and v.player.position.distance_to(_field["pos"]) < float(_field.get("radius", 12000.0)) * 1.15:
+				GameState.story.set_flag("w58_atfield", true)
+				_set_phase("drones")
+				_start_tour(_drone_steps(), true)
+		"mine":
+			if _units(f) - float(flags().get("w58_base", 0.0)) >= SCRAP_GOAL:
+				GameState.story.set_flag("w58_mined", true)
+				_set_phase("home")
+				_part2_calls()
+		"home":
+			if f.docked_at == String(flags().get("w58_dan_st", "")) and sp.visible:
+				for item in f.cargo.keys():
+					if _scrap_kind(String(item)):
+						f.remove_cargo(String(item), float(f.cargo[item]))
+				GameState.story.set_flag("w58_delivered", true)
+				_set_phase("part3")
+				GameState.story.show.emit("dialogue", {"id": "dan_scrap", "mission": MID})
+				GameState.log_msg("[Story] Package 58, part 3 (the contact on Brine and the escort) comes with the next part.", GameState.COL_WARN)
 
 
 static func _has_family(f: ShipFitting, slot_type: String, fam: String) -> bool:
@@ -139,17 +195,26 @@ static func _has_family(f: ShipFitting, slot_type: String, fam: String) -> bool:
 	return false
 
 
-func _start_tour(steps: Array) -> void:
+func _start_tour(steps: Array, flight: bool = false) -> void:
 	for n in main.get_children():
 		if n.get_script() == GuidedTour:
 			n.queue_free()                                 # never two tours at once
+	_flight = flight
 	tour = GuidedTour.new()
 	main.add_child(tour)
 	tour.finished.connect(_tour_done)
 	tour.start(steps, func(key): return _target(key), main.story_ui)
 
 
+var _flight := false
+var _field := {}
+
+
 func _target(key: String) -> Control:
+	if _flight:
+		var hud = main.hud
+		var h = hud.tour_targets.get(key, null) if hud != null else null
+		return h if h != null and is_instance_valid(h) and (h as Control).is_visible_in_tree() else null
 	var sp = station_ui()
 	if sp == null or not sp.visible:
 		return null
@@ -170,7 +235,119 @@ func _tour_done() -> void:
 		"tour2":
 			GameState.story.set_flag("w58_tour2", true)
 			_set_phase("part2")
-			GameState.log_msg("[Story] Package 58, part 2 (the wreck field and the drone controls) comes with the next part.", GameState.COL_WARN)
+			_part2_start()
+		"drones":
+			GameState.story.set_flag("w58_drones", true)
+			GameState.story.set_flag("w58_base", _units(darling()))
+			_set_phase("mine")
+			_part2_calls()
+
+
+# ---- part 2: the wreck field
+
+## Units of scrap in the hold: ore, what the refinery made of it, salvage.
+static func _units(f: ShipFitting) -> float:
+	if f == null:
+		return 0.0
+	var n := 0.0
+	for item in f.cargo:
+		if _scrap_kind(String(item)):
+			n += float(f.cargo[item])
+	return n
+
+
+static func _scrap_kind(item: String) -> bool:
+	return String(GameData.commodities.get(item, {}).get("category", "")) in ["ore", "refined", "loot"]
+
+
+## The wreck field nearest Dan's station; its marker on a colossus there (or the scrap nearest its middle).
+func _pick_field() -> void:
+	var L: Dictionary = Universe.get_layout(GameState.current_system)
+	var dan := String(flags().get("w58_dan_st", ""))
+	var from := Vector2.ZERO
+	for st in L["stations"]:
+		if String(st["id"]) == dan:
+			from = st["pos"]
+	var best := INF
+	for fd in L["fields"]:
+		if bool(fd.get("wreck", false)) and (fd["pos"] as Vector2).distance_to(from) < best:
+			best = (fd["pos"] as Vector2).distance_to(from)
+			_field = fd
+	if _field.is_empty():
+		return
+	if GameState.story.missions.has(MID):
+		GameState.story.missions[MID]["target"] = String(_field["id"])      # the field itself: gold in the overview
+
+
+## Her drone hangar's gear (Luz, 18 Nov 2026): a laser, a mining laser and a shield emitter for the drones – Dan's,
+## lent on his licence. `lent` (if given) gets the modules too.
+static func _fit_drone_gear(f: ShipFitting, lent = null) -> void:
+	for k in f.slot_keys():
+		var t := ShipFitting.slot_type(String(k))
+		var m: String = {"dweapon": "w_pulse:1:B", "dtool": "t_mining:1:B", "dbonus": "dr_shield:1:B"}.get(t, "")
+		if m != "" and f.get_module(String(k)) == "" and GameData.modules.has(m) and f.can_fit(String(k), m) == "":
+			f.modules[k] = m
+			f.lent[k] = m
+			if lent is Dictionary:
+				lent[k] = m
+	f.mark_dirty()
+
+
+## Part 2 begins (after the drone): the drone gear checked (older saves), the wreck field marked.
+func _part2_start() -> void:
+	var f := darling()
+	if f != null:
+		_fit_drone_gear(f)
+	_part2_calls()
+
+
+## The call (and the marker) for where part 2 stands – it stays until that is done.
+func _part2_calls() -> void:
+	if _field.is_empty():
+		_pick_field()
+	var st = GameState.story
+	match phase:
+		"part2":
+			st.show.emit("radio", {"who": "dan", "text": "Right then, time to earn that advance back. Her drone hangar fits out every drone she carries: a little gun, a mining laser and a shield, all on my licence. Now undock and warp to the wreck field I've marked: pick it in the overview on the right, or on the map.",
+				"mission": MID, "until_flag": "w58_atfield", "hint": "warp to the marked wreck field"})
+		"mine":
+			st.show.emit("radio", {"who": "dan", "text": "Now fill her up. Lock a piece of Gold Fleet scrap, switch the mining laser on, and let the drone help. Twenty units will do. And keep an eye out: pirates like scrap too.",
+				"mission": MID, "until_flag": "w58_mined", "hint": "cut 20 units of scrap"})
+		"home":
+			if st.missions.has(MID):
+				st.missions[MID]["target"] = String(flags().get("w58_dan_st", ""))
+			st.show.emit("radio", {"who": "dan", "text": "That'll do nicely. Recall the drone, {key:drone_recall}, and bring it all home to me.",
+				"mission": MID, "until_flag": "w58_delivered", "hint": "bring the scrap to Dan's Dusty Duty Store"})
+
+
+## Out of the dock (Luz, 18 Nov 2026): how to warp – the field in the overview (gold), picked, then "Warp to".
+func _warp_steps() -> Array:
+	var v = main.view
+	var fid := String(_field.get("id", ""))
+	return [
+		{"key": "ov_" + fid, "title": "The overview", "text": "Out we go. On the right, the overview: everything in this system you can fly to, nearest first. The field I want is the one glowing gold."},
+		{"key": "ov_" + fid, "title": "Pick it", "text": "Click it. It shows up in the panel above, with what you can do there.",
+			"task": func(): return v != null and is_instance_valid(v) and String(v.selected_id) == fid, "hint": "click the wreck field in the overview"},
+		{"key": "warp_button", "title": "Warp", "text": "Now Warp to. The ship turns, picks up speed and jumps across the system in a few seconds. Anything further than about 40,000 km, you warp. Closer, you fly or approach.",
+			"task": func(): return v != null and is_instance_valid(v) and v.player != null and is_instance_valid(v.player) and v.player.in_warp(), "hint": "warp to the wreck field", "allow": ["cmd_warp"]},
+	]
+
+
+## Dan explains the drone's controls over its panel (top left) – in the wreck field.
+func _drone_steps() -> Array:
+	var f := darling()
+	var pad: bool = Pad.enabled and Pad.using_pad          # the controller: the drone wheel (◯ held)
+	var v = main.view
+	return [
+		{"key": "drone_panel", "title": "Your drone", "text": "Here we are. Before you start cutting: your drone. Top left, its panel. Launch it: the button, or {key:drone_launch}." if not pad
+			else "Here we are. Before you start cutting: your drone. Top left, its panel. On the controller it's all in the drone wheel: hold %s, push the stick to Launch and let go." % Pad.glyph("circle"),
+			"task": func(): return v != null and is_instance_valid(v) and v.player != null and not v.drones_of(v.player).is_empty(), "hint": "launch your drone", "allow": ["drone_launch"]},
+		{"key": "drone_roles", "title": "Its jobs", "text": "Those are its jobs: combat, mining, repair. It does one at a time, and it does it on its own."},
+		{"key": "drone_roles", "title": "Mining", "text": "Mining, of course. Set it to mining." if not pad else "Mining, of course. Set it to mining: the same wheel, %s held, Mining." % Pad.glyph("circle"),
+			"task": func(): return f != null and f.drone_role == "mining", "hint": "set the drone to mining"},
+		{"key": "drone_modes", "title": "How it works", "text": "And how it goes about it: on Auto it picks rock near you by itself, on Target it cuts what you've locked, and Rest brings it back to your side."},
+		{"key": "drone_panel", "title": "Fuel and recall", "text": "Below, its fuel and hull. The fuel cell is sealed: when it's empty the drone comes home, and an empty one's worth less. Recall it before you warp, {key:drone_recall}, or it stays behind."},
+	]
 
 
 func _station_steps() -> Array:

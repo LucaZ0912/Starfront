@@ -33,7 +33,7 @@ const ACTIONS := [
 	["sel_hostile", "Next hostile ship", "space", {"b": "r1"}],
 	["cmd_lock", "Lock / unlock the selected target", "space", {"b": "triangle"}],
 	["pad_wheel", "Action wheel (hold)", "space", {"b": "square"}],
-	["pad_deselect", "Deselect", "space", {"b": "circle"}],
+	["pad_deselect", "Deselect (tap) · drone wheel (hold)", "space", {"b": "circle"}],
 	["interdict_hit", "Interdictor: the timing window", "space", {"b": "cross"}],
 	["module_1", "Fire group 1", "space", {"hold": "left", "b": "l1"}],
 	["module_2", "Fire group 2", "space", {"hold": "left", "b": "r1"}],
@@ -106,6 +106,7 @@ var _rep := {}                      # menu direction -> seconds until it repeats
 var _stick_dir := Vector2.ZERO      # the left stick's menu direction last frame
 var _flick_armed := true
 var _opt_t := -1.0                  # how long Options is held (-1: up)
+var _circ_t := -1.0                 # package 58: how long ◯ is held in space (tap: deselect, held: the drone wheel)
 var list_mode := false              # the list on the right is being picked from
 var _list_i := 0
 var wheel: Control = null           # the action / window wheel while it is open
@@ -280,6 +281,8 @@ func action_text(id: String) -> String:
 	if not enabled or not using_pad:
 		return ""
 	var ctx := context()
+	if id in ["drone_launch", "drone_recall", "drone_launch_all"] and ctx in ["space", "menu"]:
+		return glyph(_btn_of("space", "pad_deselect", "circle")) + " held"        # package 58: the drone wheel
 	for c in [ctx, "space" if ctx == "menu" else ctx, "menu"]:
 		var b := binding(c, id)
 		if not b.is_empty():
@@ -443,6 +446,10 @@ func _process(delta: float) -> void:
 		_opt_t += delta
 		if _opt_t > 0.35 and wheel == null and ctx in ["space", "ground"]:
 			_open_wheel("windows", "options")
+	if _circ_t >= 0.0:
+		_circ_t += delta
+		if _circ_t > 0.3 and wheel == null and ctx == "space" and _has_drones():
+			_open_wheel("drones", _btn_of("space", "pad_deselect", "circle"))
 	var own_stick = _pad_target(ctx)
 	if (ctx == "menu" or list_mode) and not (own_stick != null and own_stick.has_method("pad_stick")):
 		_menu_stick(delta, ctx)
@@ -465,8 +472,9 @@ func _press(b: String, ctx: String, now: Dictionary) -> void:
 		_list_press(b)
 		return
 	if wheel != null:
-		if b == "circle":
-			_close_wheel(false)
+		if (b == "circle" and _wheel_btn != "circle") or (b == "cross" and _wheel_btn == "circle"):
+			_close_wheel(false)                             # (the drone wheel is on ◯ itself: ✕ cancels it)
+			_circ_t = -1.0
 		return
 	var c2 := "ground" if ctx == "minigame" else ctx
 	if ctx == "space" and b == "cross" and _on_map():
@@ -527,6 +535,15 @@ func _release(b: String, ctx: String) -> void:
 	if wheel != null and b == _wheel_btn:
 		_close_wheel(true)
 		_opt_t = -1.0
+		_circ_t = -1.0
+		_active.erase(b)
+		return
+	if _circ_t >= 0.0 and b == _btn_of("space", "pad_deselect", "circle"):
+		_circ_t = -1.0                                    # let go before the wheel: a tap, deselect
+		_active.erase(b)
+		var m0 := _main()
+		if m0 != null and m0.view != null and String(m0.view.selected_id) != "":
+			m0.view.select("")
 		return
 	if b == "options" and _opt_t >= 0.0:
 		var short := _opt_t <= 0.35
@@ -643,8 +660,7 @@ func _special(ctx: String, id: String, m) -> void:
 			if menu2 != null:
 				MenuNav.step(menu2, {"pad_up": Vector2.UP, "pad_down": Vector2.DOWN, "pad_left": Vector2.LEFT, "pad_right": Vector2.RIGHT}[id])
 		"pad_deselect":
-			if m != null and m.view != null and String(m.view.selected_id) != "":
-				m.view.select("")
+			_circ_t = 0.0                                      # let go: deselect; held: the drone wheel
 		"pad_zoom_in", "pad_zoom_out":
 			if m != null and m.view != null:
 				var lv: int = clampi(int(m.view.level) + (-1 if id == "pad_zoom_in" else 1), 0, 3)
@@ -801,10 +817,42 @@ func _open_wheel(which: String, btn: String) -> void:
 	_wheel_layer.layer = 90
 	add_child(_wheel_layer)
 	wheel = load("res://scripts/ui/pad_wheel.gd").new()
-	wheel.items = ACTION_ITEMS if which == "actions" else WINDOW_ITEMS
-	wheel.title = glyph("square") + " held" if which == "actions" else glyph("options") + " held"
+	wheel.items = ACTION_ITEMS if which == "actions" else (_drone_items() if which == "drones" else WINDOW_ITEMS)
+	wheel.title = glyph(btn) + " held"
+	if which == "drones":
+		wheel.title = glyph(btn) + " drones"
 	_wheel_layer.add_child(wheel)
 	_wheel_btn = btn
+
+
+## Package 58 (Luz): the drone wheel (◯ held in space) – what the drone panel (top left) does: launch, recall, the
+## job (combat · mining · repair) and how it goes about it; the job and the way it works now are marked.
+func _drone_items() -> Array:
+	var f := GameState.active()
+	var role := String(f.drone_role) if f != null else "combat"
+	var mode := String(f.drone_modes.get(role, "")) if f != null else ""
+	var out: Array = [["Launch", "dw:launch"], ["Recall", "dw:recall"]]
+	for r in [["combat", "Combat"], ["mining", "Mining"], ["repair", "Repair"]]:
+		out.append([r[1], "dw:role:" + r[0], r[0] == role])
+	var names: Dictionary = HUD.DRONE_MODE_NAMES
+	for md in Commands.DRONE_ROLES.get(role, []):
+		out.append([String(names.get(md, md)), "dw:mode:" + String(md), String(md) == mode])
+	return out
+
+
+## Has the ship drones (in the hangar or out)?
+func _has_drones() -> bool:
+	var f := GameState.active()
+	if f != null and not f.drones.is_empty():
+		return true
+	var m := _main()
+	return m != null and m.view != null and m.view.player != null and is_instance_valid(m.view.player) and not m.view.drones_of(m.view.player).is_empty()
+
+
+## The button an action is on now (rebinding), or the default.
+func _btn_of(ctx: String, id: String, def: String) -> String:
+	var b := binding(ctx, id)
+	return String(b.get("b", def)) if not b.is_empty() and not b.has("hold") else def
 
 
 func _close_wheel(do_it: bool) -> void:
@@ -819,6 +867,19 @@ func _close_wheel(do_it: bool) -> void:
 		return
 	events.append("wheel:" + choice)
 	var m := _main()
+	if choice.begins_with("dw:"):
+		var p := choice.split(":")
+		var cmd := {"type": "drone_" + p[1]}
+		if p[1] == "role":
+			cmd["role"] = p[2]
+		elif p[1] == "mode":
+			cmd["mode"] = p[2]
+		elif p[1] == "launch":
+			cmd["count"] = 1
+		var e0 := Commands.execute(cmd)
+		if e0 != "":
+			GameState.log_msg(e0, GameState.COL_WARN)
+		return
 	match choice:
 		"orbit":
 			if m != null and m.view != null and String(m.view.selected_id) != "":
