@@ -1483,8 +1483,35 @@ func _c_refine(c: Dictionary) -> String:
 	var ore: String = c["ore"]
 	var err := Industry.refine(_fit(), docked_station(), ore)
 	if err == "":
-		GameState.log_msg("Crucible refined your %s." % GameData.item_name(ore), GameState.COL_GOOD)
+		GameState.log_msg("Crucible took your %s; refining, then ready to collect here." % GameData.item_name(ore), GameState.COL_GOOD)
 	return err
+
+
+## {"type":"job_collect", "id": int (-1 = everything ready here), "lane": "" | "refinery" | "fab"} – finished
+## refined goods and components into the hold (Luz, 18 Nov 2026).
+func _c_job_collect(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var st := docked_station()
+	var f := _fit()
+	var id := int(c.get("id", -1))
+	var got := 0.0
+	var any := false
+	for j in GameState.jobs_ready(String(st["id"]), String(c.get("lane", ""))):
+		if id >= 0 and int(j.get("id", 0)) != id:
+			continue
+		any = true
+		var name := GameData.item_name(String(j["out_id"]))
+		var n := GameState.collect_job(f, j)
+		got += n
+		if n > 0.0:
+			GameState.log_msg("Collected %.0f %s into the hold." % [n, name], GameState.COL_GOOD)
+	if not any:
+		return "Nothing ready to collect."
+	if got <= 0.0:
+		return "No room in the cargo hold."
+	return ""
 
 
 ## {"type":"build", "module": String}
@@ -1500,7 +1527,7 @@ func _c_build(c: Dictionary) -> String:
 		return fe
 	var err := Industry.build(_fit(), docked_station(), mid)
 	if err == "":
-		GameState.log_msg("Molten Lotus started: %s; ready in %d s (then in station storage)." % [GameData.module_name(Industry.last_built), int(Industry.build_time(mid))], GameState.COL_GOOD)
+		GameState.log_msg("Molten Lotus started: %s; ready in %s (then in station storage)." % [GameData.module_name(Industry.last_built), Industry.fmt_secs(Industry.station_build_time(mid))], GameState.COL_GOOD)
 	return err
 
 

@@ -57,6 +57,52 @@ const COMPONENTS := {
 }
 const COMPONENT_FEE := 0.08
 
+## Production times (Luz, 18 Nov 2026): the station's refinery works as fast as the Kanayama-maru's (3 units of ore a
+## second for an average good), its fabricators a little faster than her factory; dearer products take longer.
+const REFINE_RATE := 3.0                 # units of ore a second (the Kanayama-maru's refinery)
+const REFINE_REF_PRICE := 100.0          # a refined good of this price refines at the plain rate
+const STATION_FAB_SPEED := 1.25          # station fabricators against a ship's factory
+const COMPONENT_REF_PRICE := 2500.0      # a component of this price takes as long as a size-1 module
+
+
+## How much longer a unit of `ore` takes to refine than the plain rate (by what it becomes).
+static func refine_factor(ore: String) -> float:
+	var out := String(GameData.commodities[ore].get("refines_to", ""))
+	var price := float(GameData.commodities.get(out, {}).get("price", REFINE_REF_PRICE))
+	return clampf(sqrt(maxf(price, 1.0) / REFINE_REF_PRICE), 0.5, 3.0)
+
+
+## Seconds the station's refinery needs for `amount` units of `ore`.
+static func refine_time(ore: String, amount: float) -> float:
+	return maxf(2.0, amount / REFINE_RATE * refine_factor(ore))
+
+
+## Seconds the station's fabricators need for `n` of a component.
+static func component_time(item: String, n: int) -> float:
+	var price := float(GameData.commodities[item]["price"])
+	return maxf(2.0, BUILD_TIME_BASE * pow(price / COMPONENT_REF_PRICE, 0.8) * n / STATION_FAB_SPEED)
+
+
+## "45 s", "3 min 20 s", "1 h 05 min".
+static func fmt_secs(t: float) -> String:
+	var s := int(ceil(maxf(t, 0.0)))
+	if s < 60:
+		return "%d s" % s
+	if s < 3600:
+		return "%d min %02d s" % [s / 60, s % 60]
+	return "%d h %02d min" % [s / 3600, (s % 3600) / 60]
+
+
+## A new station job in `lane` ("refinery" / "fab"): it waits behind the others of its lane at this station.
+static func queue_station_job(station: Dictionary, lane: String, job: Dictionary) -> void:
+	job["kind"] = "station"
+	job["station"] = String(station["id"])
+	job["station_name"] = String(station.get("name", ""))
+	job["lane"] = lane
+	job["left"] = float(job["total"])
+	job["id"] = GameState.next_job_id()
+	GameState.jobs.append(job)
+
 
 static func can_fabricate_here(station: Dictionary) -> bool:
 	return not station_type(station).get("manufacturing", []).is_empty()
@@ -88,13 +134,10 @@ static func fabricate(fit: ShipFitting, station: Dictionary, item: String, n: in
 		return "Not enough credits for the fee."
 	for inp in COMPONENTS[item]:
 		fit.remove_cargo(inp, float(COMPONENTS[item][inp]) * n)
-	var made := fit.add_cargo(item, float(n))
-	if made < float(n):
-		# no room for all of it: give back the materials of the rest
-		for inp2 in COMPONENTS[item]:
-			fit.add_cargo(inp2, float(COMPONENTS[item][inp2]) * (n - made))
-	GameState.log_msg("Fabricated %d × %s (fee %s)." % [int(made), GameData.item_name(item), GameData.fmt_credits(fee)], GameState.COL_GOOD)
-	GameState.stats["built"] = int(GameState.stats["built"]) + int(made)
+	# it takes time; the components wait at this station to be collected (Luz, 18 Nov 2026)
+	var t := component_time(item, n)
+	queue_station_job(station, "fab", {"type": "component", "item": item, "out_id": item, "out": float(n), "n": n, "total": t})
+	GameState.log_msg("Molten Lotus started %d × %s (fee %s); ready in %s, to collect here." % [n, GameData.item_name(item), GameData.fmt_credits(fee), fmt_secs(t)], GameState.COL_GOOD)
 	return ""
 
 
@@ -160,7 +203,8 @@ static func refine(fit: ShipFitting, station: Dictionary, ore: String) -> String
 	if not GameState.spend(int(q["fee"])):
 		return "Not enough credits."
 	fit.remove_cargo(ore, have)
-	fit.cargo[q["out_id"]] = float(fit.cargo.get(q["out_id"], 0.0)) + float(q["out"])
+	# it takes time; the refined goods wait at this station to be collected (Luz, 18 Nov 2026)
+	queue_station_job(station, "refinery", {"type": "refine", "item": ore, "n": int(have), "out_id": String(q["out_id"]), "out": float(q["out"]), "total": refine_time(ore, have)})
 	GameState.stats["refined"] = int(GameState.stats.get("refined", 0)) + int(have)
 	GameState.count_stat("refined_station", float(have))             # package 30
 	GameState.skill_xp("mining", 0.15 * float(have))
@@ -287,7 +331,12 @@ static func build(fit: ShipFitting, station: Dictionary, module_id: String) -> S
 	for k in rec["materials"]:
 		fit.remove_cargo(k, float(rec["materials"][k]))
 	var made := roll_quality(module_id)
-	var t := build_time(module_id)
-	GameState.jobs.append({"kind": "station", "station": String(station["id"]), "station_name": String(station.get("name", "")), "item": made, "total": t, "left": t})
+	var t := station_build_time(module_id)
+	queue_station_job(station, "fab", {"type": "module", "item": made, "total": t})
 	last_built = made
 	return ""
+
+
+## Station fabricators are a little faster than a ship's factory (Luz, 18 Nov 2026).
+static func station_build_time(module_id: String) -> float:
+	return build_time(module_id) / STATION_FAB_SPEED

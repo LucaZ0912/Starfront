@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.8 – 2026-11-18
+
+**Station windows, part 3: Refinery and Manufacturing, and production takes time (Luz).**
+- **Production times:** a station's refinery works as fast as the Kanayama-maru's (3 units of ore a second for an
+  average good); dearer refined goods take longer, aboard ships too. Station fabricators are 25 % faster than a
+  ship's factory; components take longer the dearer they are. Every station has a queue for its refinery and one for
+  its fabricators: one job at a time, the rest wait (modules no longer all run at once). Refined goods and
+  components wait at the station and are collected into the hold there; modules still go into station storage.
+- **Refinery:** tabs Refine and In production. The refinery's yields as bars and the cargo hold on top; your ore as
+  tiles on the left; on the right the picked kind (ore → refined goods), yield, time, fee, its worth here, "Refine
+  all" and "Refine everything"; a note instead of an empty page when the hold has no ore.
+- **Manufacturing:** tabs Components, Modules and In production; recipes as tiles (green "ready ×n" when the hold
+  has the materials, grey "missing"); on the right the materials as bars, fee, time, "Make 1 / Make all" or "Build";
+  the modules chosen by kind in a drop-down.
+- **In production:** the job running now, big, with its progress and time left; the queue with when each is done;
+  what is ready to collect, per job or all at once. It follows the clock.
+
 ## alpha 0.8.56.7 – 2026-11-18
 
 **Station windows, part 2: the Market (Luz).**

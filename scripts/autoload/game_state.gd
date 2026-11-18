@@ -2470,22 +2470,82 @@ func _arrive_wormhole(f: ShipFitting, force_fail: int = -1) -> void:
 var jobs: Array = []
 
 
+## Luz, 18 Nov 2026: a station's refinery and its fabricators each work through their own queue (lane), one job at a
+## time, the rest waiting; time left over from a finished job goes to the next. Modules go into station storage;
+## refined goods and components wait at the station until they are collected (collect_job).
 func _advance_station_jobs(delta: float) -> void:
-	for j in jobs.duplicate():
-		if j["kind"] != "station":
-			continue
-		j["left"] = float(j["left"]) - delta
-		if float(j["left"]) <= 0.0:
-			jobs.erase(j)
-			storage_add(String(j["station"]), String(j["item"]))
-			stats["built"] = int(stats.get("built", 0)) + 1
-			skill_xp("engineering", 10.0)
-			log_msg("Manufacturing finished: %s, in storage at %s." % [GameData.module_name(String(j["item"])), String(j.get("station_name", "the station"))], COL_GOOD)
+	var lanes := {}
+	for j in jobs:
+		if j["kind"] == "station" and not bool(j.get("done", false)):
+			var key := String(j["station"]) + "|" + job_lane(j)
+			if not lanes.has(key):
+				lanes[key] = []
+			lanes[key].append(j)
+	for key in lanes:
+		var dt := delta
+		for j in lanes[key]:
+			var use := minf(dt, float(j["left"]))
+			j["left"] = float(j["left"]) - use
+			dt -= use
+			if float(j["left"]) <= 0.0:
+				_finish_station_job(j)
+			if dt <= 0.0:
+				break
 
 
-## Station jobs at `station_id` (for the manufacturing panel).
-func jobs_at(station_id: String) -> Array:
-	return jobs.filter(func(j): return j["kind"] == "station" and String(j["station"]) == station_id)
+func _finish_station_job(j: Dictionary) -> void:
+	var where := String(j.get("station_name", "the station"))
+	if String(j.get("type", "module")) == "module":
+		jobs.erase(j)
+		storage_add(String(j["station"]), String(j["item"]))
+		stats["built"] = int(stats.get("built", 0)) + 1
+		skill_xp("engineering", 10.0)
+		log_msg("Manufacturing finished: %s, in storage at %s." % [GameData.module_name(String(j["item"])), where], COL_GOOD)
+		return
+	j["done"] = true
+	j["left"] = 0.0
+	if String(j["type"]) == "component":
+		stats["built"] = int(stats.get("built", 0)) + int(j.get("n", 1))
+		skill_xp("engineering", 2.0 * float(j.get("n", 1)))
+	log_msg("Ready to collect at %s: %.0f %s." % [where, float(j["out"]), GameData.item_name(String(j["out_id"]))], COL_GOOD)
+
+
+## A station job's queue: "refinery" or "fab" (older module jobs have none: "fab").
+static func job_lane(j: Dictionary) -> String:
+	return String(j.get("lane", "fab"))
+
+
+func next_job_id() -> int:
+	var m := 0
+	for j in jobs:
+		m = maxi(m, int(j.get("id", 0)))
+	return m + 1
+
+
+## Station jobs at `station_id`, in queue order; `lane` "" = both queues.
+func jobs_at(station_id: String, lane: String = "") -> Array:
+	return jobs.filter(func(j): return j["kind"] == "station" and String(j["station"]) == station_id and (lane == "" or job_lane(j) == lane))
+
+
+## Finished goods waiting at `station_id` (refined goods, components).
+func jobs_ready(station_id: String, lane: String = "") -> Array:
+	return jobs_at(station_id, lane).filter(func(j): return bool(j.get("done", false)))
+
+
+## Takes a finished job's goods into `fit`'s hold, as much as fits; returns how much was taken.
+func collect_job(fit: ShipFitting, j: Dictionary) -> float:
+	if not bool(j.get("done", false)):
+		return 0.0
+	var id := String(j["out_id"])
+	var room := floorf(fit.free_for(id) / maxf(GameData.item_volume(id), 0.0001) + 0.0001)
+	var take := minf(float(j["out"]), room)
+	if take <= 0.0:
+		return 0.0
+	fit.add_cargo(id, take)
+	j["out"] = float(j["out"]) - take
+	if float(j["out"]) < 0.001:
+		jobs.erase(j)
+	return take
 
 
 ## Factory jobs of ship `uid`, in order.

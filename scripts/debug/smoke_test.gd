@@ -869,7 +869,9 @@ func _test_station(sp: StationUI) -> void:
 	# Refining a new ice type at this station (trade hub refines all classes)
 	var hf := GameState.active()
 	hf.cargo["water_ice"] = 10.0
-	check(Commands.execute({"type": "refine", "ore": "water_ice"}) == "" and float(hf.cargo.get("water", 0.0)) > 0.0, "ice refines into purified water")
+	var ice_q: bool = Commands.execute({"type": "refine", "ore": "water_ice"}) == "" and float(hf.cargo.get("water", 0.0)) == 0.0     # Luz, 18 Nov 2026: it takes time
+	GameState._advance_station_jobs(9999.0)
+	check(ice_q and Commands.execute({"type": "job_collect", "id": -1}) == "" and float(hf.cargo.get("water", 0.0)) > 0.0, "ice refines into purified water (after a while, collected at the station)")
 	hf.cargo.erase("water")
 	sp.show_concourse(false)
 	# package 28: new looks at the image studio – the price is paid, the attributes stay
@@ -913,6 +915,8 @@ func _test_station(sp: StationUI) -> void:
 	hornet.cargo["iron_ore"] = 20.0
 	if Industry.refinery_yield(station) > 0.0:
 		var err := Commands.execute({"type": "refine", "ore": "iron_ore"})
+		GameState._advance_station_jobs(9999.0)
+		Commands.execute({"type": "job_collect", "id": -1})
 		check(err == "" and hornet.cargo.get("iron_ore", 0.0) < 1.0 and hornet.cargo.get("iron_ingot", 0.0) > 0.0, "refinery turned ore into ingots (%s)" % err)
 	# Manufacturing
 	var bl := Industry.buildable(station)
@@ -8675,6 +8679,10 @@ func _test_mining41(view: SystemView) -> void:
 		var cr0 := GameState.credits
 		GameState.credits = 100000
 		var err := Industry.fabricate(g, st, "circuits", 5)
+		var job: Dictionary = GameState.jobs_at(String(st["id"]), "fab").back() if not GameState.jobs_at(String(st["id"]), "fab").is_empty() else {}
+		GameState._advance_station_jobs(9999.0)
+		if not job.is_empty():
+			GameState.collect_job(g, job)
 		var comp_ok: bool = err == "" and is_equal_approx(float(g.cargo.get("circuits", 0.0)), 2.0) and float(g.cargo.get("copper", 0.0)) < 0.01
 		GameState.credits = cr0
 		check(comp_ok, "41: components from refined materials at a station's fabricators (2 circuit boards from 6 copper and 4 silicon)")
@@ -14358,11 +14366,46 @@ func _test_stationwin(view: SystemView) -> void:
 		sp.rebuild()
 		market_ok = market_ok and sp._panel._rows.keys().all(func(c): return Market.category_of(c) == "metals")
 	MK.filter = "local"
+	# Luz, 18 Nov 2026: refining and components take time, one job after the other per queue; collected at the station
+	var keep_jobs: Array = GameState.jobs.duplicate(true)
+	GameState.jobs.clear()
+	f.cargo.clear()
+	f.mark_dirty()
+	var two: Array = []                                    # two kinds this refinery takes (the station differs in the full run)
+	for o in Industry.ores():
+		if Industry.ore_yield(best, o) > 0.0 and two.size() < 2:
+			two.append(o)
+	var sid2 := String(best["id"])
+	var prod_ok := true
+	var steps := ""
+	if two.size() == 2:
+		f.cargo[two[0]] = 30.0
+		f.cargo[two[1]] = 9.0
+		Commands.execute({"type": "refine", "ore": two[0]})
+		Commands.execute({"type": "refine", "ore": two[1]})
+		var q2: Array = GameState.jobs_at(sid2, "refinery")
+		var t1 := float(q2[0]["total"]) if q2.size() == 2 else 0.0
+		prod_ok = q2.size() == 2 and is_equal_approx(t1, Industry.refine_time(two[0], 30.0)) and float(f.cargo.get(two[0], 0.0)) == 0.0
+		steps += "q%s " % prod_ok
+		GameState._advance_station_jobs(t1 * 0.5)
+		prod_ok = prod_ok and float(q2[1]["left"]) == float(q2[1]["total"])                 # the second one waits
+		GameState._advance_station_jobs(t1 * 0.5 + 0.5)
+		prod_ok = prod_ok and bool(q2[0].get("done", false)) and float(q2[1]["left"]) < float(q2[1]["total"])   # leftover time goes on
+		steps += "w%s " % prod_ok
+		GameState._advance_station_jobs(9999.0)
+		var outs: Array = q2.map(func(j): return String(j["out_id"]))
+		Commands.execute({"type": "job_collect", "id": -1})
+		prod_ok = prod_ok and outs.all(func(o): return float(f.cargo.get(o, 0.0)) > 0.0)
+		steps += "c%s" % prod_ok
+	prod_ok = prod_ok and Industry.refine_factor("platinum_ore") > Industry.refine_factor("iron_ore") if GameData.commodities.has("platinum_ore") else prod_ok
+	prod_ok = prod_ok and Industry.station_build_time("o_cargo:1:C") < Industry.build_time("o_cargo:1:C") and Industry.component_time("fusion_cells", 1) > Industry.component_time("circuits", 1)
+	GameState.jobs = keep_jobs
 	f.cargo = keep_cargo
 	f.mark_dirty()
 	GameState.credits = keep_cr
 	sp.close()
 	f.docked_at = keep_dock
+	check(prod_ok, "[%s] refining and components take time (the refinery as fast as the Kanayama-maru's, dearer goods longer; the fabricators a little faster than a ship's factory), one job after the other per queue, collected at the station" % steps)
 	check(wide.is_empty() and yard_ok and hangar_ok and market_ok,
 		"window rework: no station window wider than the screen %s; the shipyard's picked ship on top and its tiles below, size and role filters, Q / E through them; the hangar with the ships here first, then those elsewhere; the market's list, the picked good, buying, the category filter  [%s %s %s]" % [str(wide), yard_ok, hangar_ok, market_ok])
 

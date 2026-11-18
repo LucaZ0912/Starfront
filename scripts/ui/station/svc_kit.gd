@@ -162,62 +162,8 @@ static func strip(parent: Control, items: Array, sel: int, col: Color, cb: Calla
 	sc.add_child(tiles)
 	var picked: Control = null
 	for i in items.size():
-		var it: Dictionary = items[i]
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(th * 1.3, th)
-		b.focus_mode = Control.FOCUS_ALL
+		var b := tile(items[i], i == sel, col, Vector2(th * 1.3, th), cb.bind(i))
 		var on := i == sel
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(col, 0.16) if on else Color(1, 1, 1, 0.035)
-		sb.border_color = col if on else Color(1, 1, 1, 0.16)
-		sb.set_border_width_all(2 if on else 1)
-		var hv := sb.duplicate()
-		hv.bg_color = Color(col, 0.22)
-		hv.border_color = Color(col, 0.8)
-		b.add_theme_stylebox_override("normal", sb)
-		b.add_theme_stylebox_override("hover", hv)
-		b.add_theme_stylebox_override("focus", hv)
-		b.add_theme_stylebox_override("pressed", hv)
-		var idx := i
-		b.pressed.connect(func(): cb.call(idx))
-		UI.click_sound(b)
-		var v := UI.vbox(0)
-		v.set_anchors_preset(Control.PRESET_FULL_RECT)
-		v.offset_left = 6
-		v.offset_right = -6
-		v.offset_top = 4
-		v.offset_bottom = -4
-		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(v)
-		var ic := TextureRect.new()
-		ic.texture = it.get("tex")
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var top := UI.hbox(4)
-		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(top)
-		var lk := UI.label(("🔒 " + String(it["lock"])) if String(it.get("lock", "")) != "" else "", 10, UI.BAD)
-		lk.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		top.add_child(lk)
-		var tg := UI.label(String(it.get("tag", "")), 10, col)
-		tg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		top.add_child(tg)
-		v.add_child(ic)
-		var nm := UI.label(String(it.get("name", "")), 12)
-		nm.clip_text = true
-		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(nm)
-		var su := UI.label(String(it.get("sub", "")), 11, it.get("sub_col", UI.GOLD))
-		su.clip_text = true
-		su.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(su)
-		if bool(it.get("dim", false)):
-			b.modulate = Color(1, 1, 1, 0.55)
 		tiles.add_child(b)
 		if on:
 			picked = b
@@ -229,6 +175,257 @@ static func strip(parent: Control, items: Array, sel: int, col: Color, cb: Calla
 		# keep the pick in view (once the strip has its size)
 		sc.ready.connect(func(): sc.ensure_control_visible.call_deferred(picked), CONNECT_ONE_SHOT)
 	return row
+
+
+## One tile: `it` {tex | node, name, sub, sub_col, tag, lock, note, note_col, dim}; `go` runs on a click.
+static func tile(it: Dictionary, on: bool, col: Color, sz: Vector2, go: Callable) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = sz
+	b.focus_mode = Control.FOCUS_ALL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(col, 0.16) if on else Color(1, 1, 1, 0.035)
+	sb.border_color = col if on else Color(1, 1, 1, 0.16)
+	sb.set_border_width_all(2 if on else 1)
+	var hv := sb.duplicate()
+	hv.bg_color = Color(col, 0.22)
+	hv.border_color = Color(col, 0.8)
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("hover", hv)
+	b.add_theme_stylebox_override("focus", hv)
+	b.add_theme_stylebox_override("pressed", hv)
+	b.pressed.connect(go)
+	UI.click_sound(b)
+	var v := UI.vbox(0)
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 6
+	v.offset_right = -6
+	v.offset_top = 4
+	v.offset_bottom = -4
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var top := UI.hbox(4)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(top)
+	var note := ("🔒 " + String(it["lock"])) if String(it.get("lock", "")) != "" else String(it.get("note", ""))
+	var lk := UI.label(note, 10, it.get("note_col", UI.BAD))
+	lk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lk.clip_text = true
+	top.add_child(lk)
+	var tg := UI.label(String(it.get("tag", "")), 10, col)
+	tg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(tg)
+	var ic: Control
+	if it.has("node"):
+		ic = it["node"]
+	else:
+		var tr := TextureRect.new()
+		tr.texture = it.get("tex")
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic = tr
+	ic.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(ic)
+	var nm := UI.label(String(it.get("name", "")), 12)
+	nm.clip_text = true
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(nm)
+	var su := UI.label(String(it.get("sub", "")), 11, it.get("sub_col", UI.GOLD))
+	su.clip_text = true
+	su.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(su)
+	if bool(it.get("dim", false)):
+		b.modulate = Color(1, 1, 1, 0.5)
+	return b
+
+
+## Tiles in a scrolling grid `h` high (columns by the width it gets); returns the grid.
+static func grid(parent: Control, items: Array, sel: int, col: Color, cb: Callable, h: float, tile_sz: Vector2 = Vector2(150, 132)) -> GridContainer:
+	var box := UI.neon_panel(Color(1, 1, 1, 0.12), Color(0.02, 0.02, 0.05, 0.6), 1)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.custom_minimum_size = Vector2(0, h)
+	parent.add_child(box)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER      # the grid's width must not push the window
+	box.add_child(sc)
+	var g := GridContainer.new()
+	g.add_theme_constant_override("h_separation", 10)
+	g.add_theme_constant_override("v_separation", 10)
+	sc.add_child(g)
+	var fit_cols := func():
+		var c := maxi(1, int((sc.size.x - 14.0 + 10.0) / (tile_sz.x + 10.0)))
+		if c != g.columns:
+			g.columns = c
+	sc.resized.connect(fit_cols)
+	var vw := parent.get_viewport().get_visible_rect().size.x
+	g.columns = maxi(1, int((vw * 0.55 - 60.0) / (tile_sz.x + 10.0)))
+	for i in items.size():
+		g.add_child(tile(items[i], i == sel, col, tile_sz, cb.bind(i)))
+	return g
+
+
+## The cargo hold as a bar with its numbers.
+static func cargo_bar(parent: Control, f: ShipFitting) -> void:
+	var cmax := maxf(float(f.stats()["cargo_max"]), 1.0)
+	parent.add_child(UI.label("Cargo hold", 12, UI.TEXT_DIM))
+	var bar := UI.bar(UI.NEON_CYAN, 150)
+	bar.max_value = cmax
+	bar.value = f.cargo_used()
+	bar.custom_minimum_size = Vector2(150, 8)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	parent.add_child(bar)
+	parent.add_child(UI.label("%.0f / %.0f m³" % [f.cargo_used(), cmax], 13))
+
+
+## What a station job makes, as text ("120 Titanium Ore → 50 Titanium Ingots", "4 Circuit Boards", a module).
+static func job_text(j: Dictionary) -> String:
+	match String(j.get("type", "module")):
+		"refine":
+			return "%d %s  →  %.0f %s" % [int(j.get("n", 0)), GameData.item_name(String(j["item"])), float(j["out"]), GameData.item_name(String(j["out_id"]))]
+		"component":
+			return "%.0f × %s" % [float(j["out"]), GameData.item_name(String(j["out_id"]))]
+	return GameData.module_name(String(j["item"]))
+
+
+## The "In production" tab (Luz, 18 Nov 2026): the job running now, big, with its progress; the queue behind it;
+## what is ready to collect. `run(cmd)` sends a command (and refreshes the window).
+static func production(parent: Control, station_id: String, lane: String, col: Color, run: Callable, h: float) -> void:
+	var jobs: Array = GameState.jobs_at(station_id, lane)
+	var waiting: Array = jobs.filter(func(j): return not bool(j.get("done", false)))
+	var ready: Array = jobs.filter(func(j): return bool(j.get("done", false)))
+	var row := UI.hbox(12)
+	row.custom_minimum_size = Vector2(0, h)
+	parent.add_child(row)
+	# now and next
+	var lbox := UI.neon_panel(Color(col, 0.6), Color(col.darkened(0.88), 0.85), 1)
+	lbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbox.size_flags_stretch_ratio = 1.4
+	row.add_child(lbox)
+	var lsc := ScrollContainer.new()
+	lsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lbox.add_child(lsc)
+	var lv := UI.vbox(10)
+	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lsc.add_child(lv)
+	lv.add_child(UI.label("NOW", 12, UI.TEXT_DIM))
+	if waiting.is_empty():
+		lv.add_child(UI.label("Nothing in production. Start a job in the other tab.", 15, UI.TEXT_DIM))
+	else:
+		var j: Dictionary = waiting[0]
+		var nr := UI.hbox(14)
+		lv.add_child(nr)
+		nr.add_child(_job_pic(j, 64))
+		var nv := UI.vbox(4)
+		nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nr.add_child(nv)
+		nv.add_child(UI.label(job_text(j), 20, col))
+		var tot := maxf(float(j["total"]), 0.01)
+		var bar := UI.bar(col, 300)
+		bar.max_value = tot
+		bar.value = tot - float(j["left"])
+		bar.custom_minimum_size = Vector2(0, 12)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nv.add_child(bar)
+		nv.add_child(UI.label("%d %%  •  %s left of %s" % [int(100.0 * (1.0 - float(j["left"]) / tot)), Industry.fmt_secs(float(j["left"])), Industry.fmt_secs(tot)], 13))
+		var line := ColorRect.new()
+		line.color = Color(1, 1, 1, 0.1)
+		line.custom_minimum_size = Vector2(0, 1)
+		lv.add_child(line)
+		lv.add_child(UI.label("WAITING (%d)" % (waiting.size() - 1), 12, UI.TEXT_DIM))
+		if waiting.size() == 1:
+			lv.add_child(UI.label("Nothing else in the queue.", 13, UI.TEXT_DIM))
+		var at := float(j["left"])
+		for k in range(1, waiting.size()):
+			var w: Dictionary = waiting[k]
+			at += float(w["left"])
+			var wr := UI.hbox(10)
+			lv.add_child(wr)
+			wr.add_child(UI.label("%d." % k, 13, UI.TEXT_DIM))
+			wr.add_child(_job_pic(w, 26))
+			var wl := UI.label(job_text(w), 13)
+			wl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			wl.clip_text = true
+			wr.add_child(wl)
+			wr.add_child(UI.label(Industry.fmt_secs(float(w["total"])), 12, UI.TEXT_DIM))
+			wr.add_child(UI.label("done in %s" % Industry.fmt_secs(at), 12, col))
+	# ready to collect
+	var rbox := UI.neon_panel(Color(UI.GOOD, 0.5), Color(0.02, 0.06, 0.04, 0.85), 1)
+	rbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(rbox)
+	var rsc := ScrollContainer.new()
+	rsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rbox.add_child(rsc)
+	var rv := UI.vbox(8)
+	rv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rsc.add_child(rv)
+	var rh := UI.hbox(8)
+	rv.add_child(rh)
+	var rt := UI.label("READY TO COLLECT", 12, UI.GOOD)
+	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rh.add_child(rt)
+	if not ready.is_empty():
+		rh.add_child(UI.button("Collect all", func(): run.call({"type": "job_collect", "id": -1, "lane": lane})))
+	if lane == "fab":
+		rv.add_child(UI.label("Modules go straight into this station's storage; components wait here.", 11, UI.TEXT_DIM))
+	if ready.is_empty():
+		rv.add_child(UI.label("Nothing finished yet.", 13, UI.TEXT_DIM))
+	for j in ready:
+		var rr := UI.hbox(10)
+		rv.add_child(rr)
+		rr.add_child(_job_pic(j, 30))
+		var nl := UI.label("%.0f %s" % [float(j["out"]), GameData.item_name(String(j["out_id"]))], 14, UI.GOOD)
+		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nl.clip_text = true
+		rr.add_child(nl)
+		rr.add_child(UI.label("%.1f m³" % (float(j["out"]) * GameData.item_volume(String(j["out_id"]))), 12, UI.TEXT_DIM))
+		var jid := int(j.get("id", 0))
+		rr.add_child(UI.button("Collect", func(): run.call({"type": "job_collect", "id": jid})))
+
+
+static func _job_pic(j: Dictionary, sz: float) -> Control:
+	if String(j.get("type", "module")) == "module":
+		return UI.icon(PixelArt.module_icon(String(j["item"])), sz)
+	var ing := Ingot.new(good_color(String(j["out_id"])))
+	ing.custom_minimum_size = Vector2(sz * 1.3, sz)
+	return ing
+
+
+## A refined good or component drawn as a bar of metal in its own colour (there are no pictures for them).
+class Ingot extends Control:
+	var col := Color.WHITE
+
+	func _init(c: Color = Color.WHITE) -> void:
+		col = c
+		custom_minimum_size = Vector2(40, 24)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		var w := minf(size.x * 0.7, size.y * 2.4)
+		var h := w * 0.42
+		var c := size * 0.5
+		var top := PackedVector2Array([c + Vector2(-w * 0.36, -h * 0.5), c + Vector2(w * 0.36, -h * 0.5), c + Vector2(w * 0.5, h * 0.5), c + Vector2(-w * 0.5, h * 0.5)])
+		draw_colored_polygon(top, col.darkened(0.25))
+		draw_colored_polygon(PackedVector2Array([top[0], top[1], c + Vector2(w * 0.42, -h * 0.1), c + Vector2(-w * 0.42, -h * 0.1)]), col.lightened(0.2))
+		draw_polyline(PackedVector2Array([top[0], top[1], top[2], top[3], top[0]]), col.darkened(0.6), 2.0)
+
+
+## A colour for a refined good or component (from its name; ices and water blue).
+static func good_color(id: String) -> Color:
+	var n := id.to_lower()
+	if n.contains("water") or n.contains("ice") or n.contains("nitrogen") or n.contains("coolant") or n.contains("oxygen"):
+		return Color(0.6, 0.85, 1.0)
+	if n.contains("gold"):
+		return Color(1.0, 0.82, 0.35)
+	if n.contains("copper"):
+		return Color(0.95, 0.6, 0.35)
+	if n.contains("iron") or n.contains("steel"):
+		return Color(0.72, 0.62, 0.58)
+	var h := float(hash(id) % 1000) / 1000.0
+	return Color.from_hsv(h, 0.35, 0.9)
 
 
 ## The faint grid with a glow behind a picture.

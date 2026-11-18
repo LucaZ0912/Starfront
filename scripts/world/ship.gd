@@ -3057,7 +3057,7 @@ func _refine(delta: float, slot: String, d: Dictionary) -> void:
 		return
 	var c: Dictionary = GameData.commodities[ore]
 	var prod: String = c["refines_to"]
-	var amount := minf(float(d["rate"]) * delta, float(fit.cargo[ore]))
+	var amount := minf(float(d["rate"]) * delta / Industry.refine_factor(ore), float(fit.cargo[ore]))      # dearer goods take longer (as at a station)
 	var out := amount * float(c["yield"]) * float(d["eff"])
 	if fit.free_for(prod) < out * GameData.item_volume(prod):
 		module_state[slot] = "wait"      # no room for the product – waiting
