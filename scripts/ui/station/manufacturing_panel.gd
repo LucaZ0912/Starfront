@@ -40,8 +40,10 @@ func build() -> void:
 		nm.mouse_filter = Control.MOUSE_FILTER_PASS
 		info.add_child(nm)
 		info.add_child(UI.label("Market price %s" % GameData.fmt_credits(int(GameData.modules[mid]["price"])), 11, UI.TEXT_DIM))
-		var mats := UI.hbox(10)
-		mats.custom_minimum_size = Vector2(520, 0)
+		var mats := HFlowContainer.new()                     # window rework: the materials wrap on small screens
+		mats.add_theme_constant_override("h_separation", 10)
+		mats.custom_minimum_size = Vector2(260, 0)
+		mats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(mats)
 		for k in rec["materials"]:
 			var need := int(rec["materials"][k])
@@ -62,7 +64,7 @@ func _build(mid: String) -> void:
 func _components(f: ShipFitting) -> void:
 	section("COMPONENTS")
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = 2 if get_viewport().get_visible_rect().size.x >= 1500.0 else 1
 	grid.add_theme_constant_override("h_separation", 18)
 	grid.add_theme_constant_override("v_separation", 6)
 	add_child(grid)

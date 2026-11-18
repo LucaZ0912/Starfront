@@ -3,6 +3,22 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.6 – 2026-11-18
+
+**Station windows, part 1: the window fits the screen; Shipyard and Hangar rebuilt (Luz).** Before sequence 6, part 2
+the old station windows get reworked, one at a time.
+- **The window:** never wider than the screen; its margins follow the screen size, lines too long wrap, the station's
+  name gives way first (the buttons stay whole). Fixed: after the shipyard (a long hull description) every window
+  stayed too wide and "Close" slid off the screen. The Bar shows one column of cards on small screens, Manufacturing
+  wraps its materials. Checked at 1280×720, 1600×900 and 1920×1080.
+- **Shipyard:** on top the picked ship, a big picture on the left (maker, size), on the right its name and crest,
+  class, description, eight values with the standard fit, slots, what it needs (standing, skill tree), the price and
+  the two buy buttons. Below filters by size and role and a strip of small tiles, browsed with Q / E, the arrows or a
+  click; locked ships show a lock.
+- **Hangar:** the same layout: the picked ship with bars for armour, structure, fuel and cargo, its values and fitted
+  modules, rename, board, "Fit it at the Outfitter"; the strip shows the ships here first, then those elsewhere
+  (greyed, with where they stand). The Citadel's launch platform stays below.
+
 ## alpha 0.8.56.5 – 2026-11-18
 
 **Answers said out loud (Luz).** In the main story nearly every answer you pick is now followed by your character

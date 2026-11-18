@@ -697,6 +697,7 @@ func _process(delta: float) -> void:
 				check(view.pirate_count() == 0, "debug: all pirates destroyed")
 				_intro4_done = true                     # package 56: sequence 4 on Dan's deck (it goes to Beyond – the teleport home follows)
 				_shooting = true
+				await _test_stationwin(view)             # window rework (needs frames for the sizes to settle)
 				await _test_intro56d(view)
 				await _test_intro56e(main.view)          # sequence 4 built a new view (Beyond)
 				await _test_intro56f(main.view)
@@ -14269,3 +14270,87 @@ func _test_story55(view: SystemView) -> void:
 	check(dlg_ok and fly_ok and near_ok and done_ok and log_ok and save_ok and jr_ok and keys_ok,
 		"55: the story's framework – the test mission: a dialogue (paused, an answer sets a flag), a tip, a marked station (near – not from afar – then dock there, not elsewhere), credits and a secret; tracked; kept in the save; the journal's four tabs; keys in texts  [%s]%s" % [
 			" ".join(PackedStringArray([str(dlg_ok), str(fly_ok), str(near_ok), str(done_ok), str(save_ok), str(jr_ok), str(keys_ok)])), (" " + ", ".join(PackedStringArray(notes))) if not notes.is_empty() else ""])
+
+
+## Window rework (Luz, 18 Nov 2026): no station window is wider than the screen (a long line wraps, the window
+## shrinks back after a wide one); the shipyard and the hangar – the picked ship on top, the tile strip below,
+## filters by size and role, Q / E stepping through; ships elsewhere in the hangar's strip.
+func _test_stationwin(view: SystemView) -> void:
+	var SY = load("res://scripts/ui/station/shipyard_panel.gd")
+	var HG = load("res://scripts/ui/station/hangar_panel.gd")
+	var best: Dictionary = view.layout["stations"][0]
+	for st in view.layout["stations"]:
+		if (st.get("services", []) as Array).size() > (best.get("services", []) as Array).size() or (best["shipyard"].is_empty() and not st["shipyard"].is_empty()):
+			best = st
+	var f := GameState.active()
+	var keep_dock := f.docked_at
+	f.docked_at = String(best["id"])
+	var sp: StationUI = main.station_panel
+	var scr: Vector2 = get_viewport().get_visible_rect().size
+	var wide: Array = []
+	sp.open(best, view)
+	for svc in GameData.services:
+		if sp.service_available(svc) != "":
+			continue
+		sp.open_service(String(svc["id"]))
+		for fr in 3:
+			await get_tree().process_frame
+		if sp.win.get_combined_minimum_size().x > 1260.0:          # the smallest screen supported: 1280
+			wide.append("%s %.0f" % [svc["id"], sp.win.get_combined_minimum_size().x])
+			if "--why" in OS.get_cmdline_user_args():
+				_wide_walk(sp.win, 0, 1100.0)
+	SY.size_f = "all"
+	SY.role_f = "all"
+	SY.pick = ""
+	sp.open_service("shipyard")
+	var p = sp._panel
+	var list: Array = p._hulls()
+	var first: String = SY.pick
+	sp.menu_tab(1)
+	var stepped: bool = list.size() < 2 or SY.pick == list[1]
+	var tiles := 0
+	for b in sp._panel.find_children("*", "Button", true, false):
+		if (b as Button).custom_minimum_size.y >= 90.0 and (b as Button).custom_minimum_size.x > 100.0:
+			tiles += 1
+	SY.size_f = "1"
+	sp.rebuild()
+	var small_only: bool = sp._panel._hulls().all(func(h): return int(GameData.hulls[h]["size"]) == 1)
+	SY.size_f = "all"
+	SY.role_f = "mining"
+	sp.rebuild()
+	var mining_ok: bool = sp._panel._hulls().all(func(h): return SY.role_of(GameData.hulls[h]) == "mining") and SY.role_of(GameData.hulls["drillhead"]) == "mining" and SY.role_of(GameData.hulls["mule"]) == "trade"
+	SY.role_f = "all"
+	var yard_ok: bool = first == list[0] and stepped and tiles == list.size() and small_only and mining_ok
+	# the hangar: the ships here first, then the rest (greyed)
+	var other := GameState.create_fit("dragonfly", {}, "player")
+	other.ship_name = "Elsewhere Test"
+	other.docked_at = "nowhere"
+	other.system_id = GameState.current_system
+	GameState.add_ship(other)
+	HG.pick_uid = -1
+	sp.open_service("hangar")
+	var ships: Array = sp._panel._ships()
+	var hangar_ok: bool = HG.pick_uid == f.uid and ships.back() == other and ships.size() == GameState.fleet.size()
+	sp.menu_tab(5)
+	hangar_ok = hangar_ok and HG.pick_uid == other.uid
+	GameState.fleet.erase(other)
+	HG.pick_uid = -1
+	sp.close()
+	f.docked_at = keep_dock
+	check(wide.is_empty() and yard_ok and hangar_ok,
+		"window rework: no station window wider than the screen %s; the shipyard's picked ship on top and its tiles below, size and role filters, Q / E through them; the hangar with the ships here first, then those elsewhere  [%s %s]" % [str(wide), yard_ok, hangar_ok])
+
+
+## Window rework: which controls make a window too wide (with --why).
+func _wide_walk(n: Node, d: int, lim: float) -> void:
+	for c in n.get_children():
+		if c is Control:
+			var w: float = (c as Control).get_combined_minimum_size().x
+			if w > lim:
+				var extra := ""
+				if c is Label:
+					extra = " text=" + (c as Label).text.left(60)
+				elif c is Button:
+					extra = " btn=" + (c as Button).text.left(40)
+				print("[WIDE] %s%s min %.0f%s" % ["  ".repeat(d), c.get_class(), w, extra])
+				_wide_walk(c, d + 1, lim)

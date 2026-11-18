@@ -15,7 +15,7 @@ func build() -> void:
 	var f := fit()
 	var offers: Array = GameState.bar_offers(station)
 	var left := CrewData.BAR_REFRESH - (GameState.play_time - float(GameState.bar.get(String(station["id"]), {}).get("t", 0.0)))
-	add_child(UI.wrap_label("Captains find their crews over a glass. Everyone here is looking for a post: hire them into the crew quarters of this station or straight onto a free post of the %s. The faces change in about %d minutes." % [f.ship_name, int(ceil(left / 60.0))], 13, UI.TEXT_DIM, 1100))
+	add_child(UI.wrap_label("Captains find their crews over a glass. Everyone here is looking for a post: hire them into the crew quarters of this station or straight onto a free post of the %s. The faces change in about %d minutes." % [f.ship_name, int(ceil(left / 60.0))], 13, UI.TEXT_DIM, minf(1100.0, ui.line_limit())))
 	var miss := f.crew_missing()
 	if miss != "":
 		add_child(UI.label("Your %s still needs: %s" % [f.ship_name, miss], 13, UI.BAD))
@@ -24,7 +24,8 @@ func build() -> void:
 	if offers.is_empty():
 		add_child(UI.label("Nobody left looking for work. Come back later.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
-	grid.columns = 2
+	var wide: bool = get_viewport().get_visible_rect().size.x >= 1500.0      # window rework: one column on small screens
+	grid.columns = 2 if wide else 1
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -45,7 +46,7 @@ func build() -> void:
 			["Hire: %s" % GameData.fmt_credits(price), func(): run({"type": "crew_hire", "index": idx}), poor, "Into the crew quarters of this station"],
 			["Hire onto the %s" % f.ship_name, func(): run({"type": "crew_hire", "index": idx, "ship": f.uid}), poor or not free_post or te != "",
 				te if te != "" else ("" if free_post else "No free %s post on this ship" % CrewData.role_name(String(m["role"])))],
-		], "", UI.TEXT_DIM, 540))
+		], "", UI.TEXT_DIM, 540.0 if wide else minf(540.0, ui.line_limit())))
 	_wingmen()                                   # package 33
 
 
@@ -58,7 +59,7 @@ const PilotArt = preload("res://scripts/core/pilot_art.gd")
 func _wingmen() -> void:
 	section("PILOTS FOR HIRE – WINGMEN")
 	var he := GameState.wing_hire_error()
-	add_child(UI.wrap_label("A wingman flies with you in their own ship until the contract runs out: up front the price for the time, then a share of your income (sales, bounties, contract rewards). Orders in the WINGMEN panel at the top left. Leadership makes them better and cheaper.", 13, UI.TEXT_DIM, 1100))
+	add_child(UI.wrap_label("A wingman flies with you in their own ship until the contract runs out: up front the price for the time, then a share of your income (sales, bounties, contract rewards). Orders in the WINGMEN panel at the top left. Leadership makes them better and cheaper.", 13, UI.TEXT_DIM, minf(1100.0, ui.line_limit())))
 	if he != "":
 		add_child(UI.label(he, 13, UI.BAD))
 	var pilots: Array = GameState.bar_pilots(station)
@@ -89,7 +90,7 @@ func _pilot_card(w: Dictionary, idx: int, he: String) -> Control:
 	var tr: Array = []
 	for t in w["traits"]:
 		tr.append("%s – %s" % [WingData.TRAITS[t]["name"], WingData.TRAITS[t]["text"]])
-	v.add_child(UI.wrap_label("★ " + "\n★ ".join(PackedStringArray(tr)), 12, UI.GOLD, 620))
+	v.add_child(UI.wrap_label("★ " + "\n★ ".join(PackedStringArray(tr)), 12, UI.GOLD, minf(620.0, ui.line_limit() * 0.5)))
 	v.add_child(UI.label("Share of your income: %d %%" % int(round(float(WingData.SHARE[String(w["level"])]) * (1.0 - GameState.wing_leadership()) * 100.0)), 12, UI.TEXT_DIM))
 	# the ship and its loadout
 	var sv := UI.vbox(2)

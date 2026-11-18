@@ -69,7 +69,11 @@ func _ready() -> void:
 	names.add_child(title_label)
 	sub_label = UI.label("", 13, UI.TEXT_DIM)
 	names.add_child(sub_label)
-	head.add_child(UI.spacer())
+	# the names give way first when the screen is narrow (the buttons stay whole)
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for nl in [crumb_label, title_label, sub_label]:
+		nl.clip_text = true
+		nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	credits_label = UI.label("", 18, UI.GOLD)
 	head.add_child(credits_label)
 	_head_btns.append(UI.button("Ship [%s]" % Keybinds.key_text("ship_menu"), func(): ship_menu_requested.emit()))
@@ -87,6 +91,43 @@ func _ready() -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(body)
 	GameState.credits_changed.connect(func(_v): _update_header())
+	get_viewport().size_changed.connect(fit_window)
+
+
+## Window rework (Luz, 18 Nov 2026): the window never outgrows the screen. The margins follow the screen size,
+## and after every build lines too long for it wrap (so one long text can no longer push the window off the screen,
+## and the window shrinks back when the next service is narrower).
+func fit_window() -> void:
+	if win == null:
+		return
+	var scr := get_viewport().get_visible_rect().size
+	var mx := clampf(scr.x * 0.03, 10.0, 50.0)          # setting the offsets again also undoes a grown size
+	win.offset_left = mx
+	win.offset_right = -mx
+	win.offset_top = clampf(scr.y * 0.045, 8.0, 40.0)
+	win.offset_bottom = -clampf(scr.y * 0.033, 8.0, 30.0)
+
+
+## The widest a single line may be before it wraps.
+func line_limit() -> float:
+	return maxf(320.0, (get_viewport().get_visible_rect().size.x - 140.0) * 0.6)
+
+
+## Labels wider than the window allows wrap (they keep a sensible width instead of collapsing).
+func tame(n: Node, lim: float = -1.0) -> void:
+	if lim < 0.0:
+		lim = line_limit()
+	for c in n.get_children():
+		if c is Label and (c as Label).autowrap_mode == TextServer.AUTOWRAP_OFF and not (c as Label).clip_text 				and (c as Label).get_combined_minimum_size().x > lim:
+			(c as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			(c as Label).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			(c as Label).custom_minimum_size.x = minf(lim * 0.5, 420.0)
+		tame(c, lim)
+
+
+func _settle() -> void:
+	tame(body)
+	fit_window()
 
 
 func open(p_station: Dictionary, p_view: SystemView) -> void:
@@ -99,6 +140,7 @@ func open(p_station: Dictionary, p_view: SystemView) -> void:
 	for hb in _head_btns:
 		hb.visible = not on_foot
 	show_concourse(true)
+	fit_window()
 	# Intro: window fades/slides in
 	win.modulate.a = 0.0
 	win.position.y += 30
@@ -168,6 +210,7 @@ func rebuild() -> void:
 		show_concourse(false)
 	elif _panel != null and _panel.has_method("build"):
 		_panel.build()
+	_settle()
 
 
 func _report_turn_ins() -> void:
@@ -247,6 +290,7 @@ func show_concourse(animate: bool = false) -> void:
 	_ship_column(_column(cols, UI.NEON_CYAN, 1.1), tiles)
 	_station_column(_column(cols, Color(0.7, 0.55, 1.0), 1.15, false), tiles)
 	concourse_tiles = tiles.size()
+	_settle()
 	if animate:
 		var k := 0
 		for tile in tiles:
@@ -684,7 +728,10 @@ func open_service(svc_id: String) -> void:
 	var bv := UI.vbox(0)
 	bh.add_child(bv)
 	bv.add_child(UI.label("%s  —  %s" % [String(svc["title"]).to_upper(), c["name"]], 18, col))
-	bv.add_child(UI.label("“%s”   %s" % [c["slogan"], c["desc"]], 12, UI.TEXT_DIM))
+	bv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var bdesc := UI.label("“%s”   %s" % [c["slogan"], c["desc"]], 12, UI.TEXT_DIM)
+	bdesc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bv.add_child(bdesc)
 	# Panel
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -695,6 +742,7 @@ func open_service(svc_id: String) -> void:
 	scroll.add_child(_panel)
 	_panel.setup(self, svc)
 	_panel.build()
+	_settle()
 	_panel.modulate.a = 0.0
 	_panel.create_tween().tween_property(_panel, "modulate:a", 1.0, 0.25)
 
