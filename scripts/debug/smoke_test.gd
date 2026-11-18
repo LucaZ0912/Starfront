@@ -14335,10 +14335,36 @@ func _test_stationwin(view: SystemView) -> void:
 	hangar_ok = hangar_ok and HG.pick_uid == other.uid
 	GameState.fleet.erase(other)
 	HG.pick_uid = -1
+	# the market: a list and the picked good's card; buying with the slider's amount; the drop-downs set the filter
+	var MK = load("res://scripts/ui/station/market_panel.gd")
+	MK.filter = "all"
+	sp.open_service("market")
+	var mp = sp._panel
+	var good := ""
+	for cid in mp._sorted_goods():
+		if Market.buy_price(best, cid) > 0 and GameData.item_volume(cid) <= 1.0 and good == "":
+			good = cid
+	var market_ok: bool = good != "" and mp._rows.size() > 10
+	var keep_cr := GameState.credits
+	var keep_cargo: Dictionary = f.cargo.duplicate()
+	GameState.credits = 1000000
+	if good != "":
+		mp._pick(good)
+		var mb: int = mp.max_buy(good)
+		var had := float(f.cargo.get(good, 0.0))
+		mp._buy(good, 3)
+		market_ok = market_ok and mb >= 3 and float(f.cargo.get(good, 0.0)) == had + 3.0 and MK.pick == good
+		MK.filter = "cat:metals"
+		sp.rebuild()
+		market_ok = market_ok and sp._panel._rows.keys().all(func(c): return Market.category_of(c) == "metals")
+	MK.filter = "local"
+	f.cargo = keep_cargo
+	f.mark_dirty()
+	GameState.credits = keep_cr
 	sp.close()
 	f.docked_at = keep_dock
-	check(wide.is_empty() and yard_ok and hangar_ok,
-		"window rework: no station window wider than the screen %s; the shipyard's picked ship on top and its tiles below, size and role filters, Q / E through them; the hangar with the ships here first, then those elsewhere  [%s %s]" % [str(wide), yard_ok, hangar_ok])
+	check(wide.is_empty() and yard_ok and hangar_ok and market_ok,
+		"window rework: no station window wider than the screen %s; the shipyard's picked ship on top and its tiles below, size and role filters, Q / E through them; the hangar with the ships here first, then those elsewhere; the market's list, the picked good, buying, the category filter  [%s %s %s]" % [str(wide), yard_ok, hangar_ok, market_ok])
 
 
 ## Window rework: which controls make a window too wide (with --why).

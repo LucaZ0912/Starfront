@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.7 – 2026-11-18
+
+**Station windows, part 2: the Market (Luz).**
+- One line on top: the economy and its level, how many goods are made and wanted here, your standing, the cargo hold
+  as a bar.
+- The filters in one row: Local trade, In hold, All; the category and the economy ("Made by") as drop-downs instead of
+  25 buttons. Q / E still steps through all of them.
+- On the left the goods as a list (category headings, "made here" green, "wanted" gold, stock, both prices, what you
+  carry, m³ per unit); a click or W / S picks one.
+- On the right the picked good: both prices, its stock with a bar, what you carry, the best price nearby (Market
+  Insider), and buying and selling with a slider and a number (the total shown as you go) instead of +1 / +10 / +100.
+  "Max" buys what the stock, your credits and the free space allow; "All" sells everything.
+
 ## alpha 0.8.56.6 – 2026-11-18
 
 **Station windows, part 1: the window fits the screen; Shipyard and Hangar rebuilt (Luz).** Before sequence 6, part 2

@@ -376,6 +376,8 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.56.7: MarketPanel rebuilt (static `filter`, `pick`; `_rows`, `_pick`, `_show_card`, `max_buy`, `_trade_block`
+  with HSlider + SpinBox); smoke `stationwin` buys through it.
 - 0.8.56.6: `scripts/ui/station/svc_kit.gd` (window building blocks: `picture`, `detail`, `stats`, `tags`, `chips`,
   `strip`); StationUI `fit_window`, `line_limit`, `tame` (long labels wrap after every build); Shipyard static
   `size_f`, `role_f`, `pick`, `role_of`, Hangar `pick_uid`, both with `menu_tab`; smoke group `stationwin`.
