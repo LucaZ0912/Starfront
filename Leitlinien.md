@@ -37,6 +37,9 @@ Stand: Entwurf vom 11. Nov 2026 (Claude), zur Korrektur durch Luz.
 - **Kaum Gedankenstriche (–) in Spieltexten** (Luz, 17. Nov 2026): Dialoge, Funksprüche, Missionen, Tipps und andere
   Texte lieber mit Komma, Punkt, Doppelpunkt oder Klammer; der Strich nur, wo nichts anderes passt (etwa in Titeln
   wie „Station – Hangar“ oder Bereichen wie „1–8“).
+- **Antworten in der Hauptstory werden ausgesprochen** (Luz, 17. Nov 2026): Auf eine gewählte Antwort folgt fast
+  immer die ausführliche Fassung, die die Spielfigur selbst sagt (4. Eintrag einer Antwort). Gibt Luz sie nicht vor,
+  wird sie passend geschrieben. In Nebenmissionen ist das nicht so wichtig.
 - Alte Spielstände müssen nicht ladbar bleiben (Alpha); nie eine Mechanik deswegen einschränken.
 
 ## 3. Aussehen

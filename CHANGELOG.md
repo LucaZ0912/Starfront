@@ -3,6 +3,12 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.5 – 2026-11-18
+
+**Answers said out loud (Luz).** In the main story nearly every answer you pick is now followed by your character
+saying it at length: every answer in Dan's talks (his menu, the deal) and to the medic. New guideline in
+Leitlinien.md: main-story answers get a spoken version, written to fit when none is given; side missions need not.
+
 ## alpha 0.8.56.4 – 2026-11-17
 
 **Package 56, part 4: sequence 6, part 1 (Dan's deal), the journal reworked, and far fewer dashes (Luz).**

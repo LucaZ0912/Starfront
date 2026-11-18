@@ -13748,10 +13748,15 @@ func _test_intro56e(_view: SystemView) -> void:
 		ui.dialogue._finish()
 		ui.dialogue.choose(1)                        # "What about my ship?"
 		ui.dialogue._finish()
+		ui.dialogue.choose(0)                        # (the pilot asks it at length)
+		ui.dialogue._finish()
 		ui.dialogue.choose(0)                        # (on – back to the question)
 		bar_ok = bar_ok and int(ui._dlg.get("line", -1)) == 0
 		ui.dialogue._finish()
 		ui.dialogue.choose(4)                        # "That's all, thanks."
+		if ui.dialogue != null:
+			ui.dialogue._finish()
+			ui.dialogue.choose(0)                    # (said at length)
 	bar_ok = bar_ok and ui.dialogue == null and i5.phase == "deck"
 	g.go_level("hangar", "story")
 	await get_tree().process_frame
@@ -13926,6 +13931,9 @@ func _test_intro56e(_view: SystemView) -> void:
 	if ui.dialogue != null:
 		ui.dialogue._finish()
 		ui.choose((ui._dlg.get("answers", []) as Array).size() - 1)       # "That's all, thanks."
+		if ui.dialogue != null:
+			ui.dialogue._finish()
+			ui.choose(0)                                                  # (said at length)
 	for c6 in main.get_children():
 		if c6.get_script() != null and String(c6.get_script().resource_path).ends_with("intro_six.gd"):
 			c6.queue_free()

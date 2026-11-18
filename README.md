@@ -376,6 +376,8 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.56.5: every answer in `dan_help` and `intro_doc` has its 4th entry (said at length); smoke `intro56e`
+  goes on past the spoken lines.
 - 0.8.56.4 (package 56, part 4): `scripts/ground/intro_six.gd` (sequence 6, part 1: `begin("bar"|"talk"|"load")`,
   `_mode()`, phases `bar`, `talking`, `fade`); `main._start_intro_six`, flag `intro_stage` "six"; story missions
   `prologue` and `ticket`, characters `patron_a/b/c`, dialogue answers' 5th entry (`if`, `not`, `gold`), Story
