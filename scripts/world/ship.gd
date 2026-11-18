@@ -152,6 +152,8 @@ func setup(p_fit: ShipFitting, p_view: Node) -> void:
 	view = p_view
 	faction = fit.faction
 	paint = fit.gov if fit.gov != "" else faction
+	if fit.paint != "" and faction == "player":
+		paint = PixelArt.paint_key(fit)                  # package 58: Little Darling in Dan's rust
 	position = fit.position
 	heading = fit.rotation
 	var tex := PixelArt.ship_texture(fit.hull_id, paint)

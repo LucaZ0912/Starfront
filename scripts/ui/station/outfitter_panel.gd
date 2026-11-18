@@ -40,6 +40,7 @@ func build() -> void:
 	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(main)
 	_rail(main)
+	ui.tour_targets["of_rail"] = main.get_child(0)
 	if cat == "storage":
 		_storage_view(main)
 	elif f == null:
@@ -47,8 +48,12 @@ func build() -> void:
 	else:
 		_slot_list(main, f)
 		_choice(main, f)
+		ui.tour_targets["of_slots"] = main.get_child(1)
+		ui.tour_targets["of_choice"] = main.get_child(2)
+	ui.tour_targets["of_main"] = main
 	if f != null:
 		_footer(f)
+		ui.tour_targets["of_specs"] = get_child(get_child_count() - 1)
 
 
 # ---- the category rail
@@ -63,6 +68,7 @@ func _rail(parent: Control) -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size = Vector2(96, 72)
 		b.tooltip_text = c[1]
+		ui.tour_targets["of_cat_" + id] = b                     # package 58: the guided tour
 		var col := corp_color()
 		for st in ["normal", "hover", "pressed"]:
 			var sb := UI.panel_style(Color(col.darkened(0.6), 0.95) if on else Color(0.05, 0.03, 0.1, 0.95), Color(col, 0.95 if on or st == "hover" else 0.35))
@@ -202,11 +208,8 @@ func _choice(parent: Control, f: ShipFitting) -> void:
 	for smid in GameState.storage_of(station["id"]):
 		if GameData.modules.has(smid) and String(GameData.modules[smid]["slot"]) == _module_slot(t):
 			stored.append(smid)
-	if not stored.is_empty() and (fam == "" or core):
-		inner.add_child(UI.label("IN YOUR STORAGE HERE", 12, UI.TEXT_DIM))
-		var sf := _flow(inner)
-		for smid2 in stored:
-			_variant_tile(sf, f, String(smid2), true)
+	if fam != "" and not core:
+		stored = stored.filter(func(x): return String(GameData.modules[x]["family"]) == fam)
 	if stock.is_empty():
 		inner.add_child(UI.label("The outfitter has nothing for this slot.", 13, UI.TEXT_DIM))
 	elif core or fam != "":
@@ -225,6 +228,17 @@ func _choice(parent: Control, f: ShipFitting) -> void:
 		var ff := _flow(inner)
 		for fm3 in stock:
 			_family_tile(ff, f, String(fm3), stock[fm3])
+	# Luz, 18 Nov 2026: what lies in your storage here, below what can be bought, at every step – a click fits it
+	if not stored.is_empty():
+		var line := ColorRect.new()
+		line.color = Color(UI.GOOD, 0.3)
+		line.custom_minimum_size = Vector2(0, 1)
+		inner.add_child(line)
+		inner.add_child(UI.label("IN YOUR STORAGE HERE  •  no cost, pick one and fit it", 12, UI.GOOD))
+		var sf := _flow(inner)
+		ui.tour_targets["of_stored"] = sf
+		for smid2 in stored:
+			_variant_tile(sf, f, String(smid2), true)
 	if pick != "":
 		_detail(box, f)
 

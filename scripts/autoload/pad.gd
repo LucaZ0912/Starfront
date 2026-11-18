@@ -620,6 +620,9 @@ func _special(ctx: String, id: String, m) -> void:
 	match id:
 		"pad_confirm":
 			var menu := MenuNav.active_menu()
+			if menu != null and menu.has_method("tour_confirm"):
+				menu.tour_confirm()                                 # package 58: the guided tour goes on
+				return
 			var focus := get_viewport().gui_get_focus_owner()
 			if menu != null and (focus == null or not (menu == focus or menu.is_ancestor_of(focus))):
 				MenuNav.step(menu, Vector2.DOWN)                 # nothing highlighted yet: the first

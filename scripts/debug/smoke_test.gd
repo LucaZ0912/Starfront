@@ -701,6 +701,7 @@ func _process(delta: float) -> void:
 				await _test_intro56d(view)
 				await _test_intro56e(main.view)          # sequence 4 built a new view (Beyond)
 				await _test_intro56f(main.view)
+				await _test_w58a(main.view)              # package 58: Little Darling and the guided tour
 				_shooting = false
 				timer = 0.0
 				return
@@ -13697,8 +13698,8 @@ func _test_intro56f(_view: SystemView) -> void:
 		[[quiet_ok, gold_ok, order_ok, mis_ok, busy_ok, ask_ok, yes_ok, seen.size()]])
 	st.from_dict(keep)
 	for c2 in main.get_children():
-		if c2.get_script() != null and String(c2.get_script().resource_path).ends_with("intro_six.gd"):
-			c2.queue_free()
+		if c2.get_script() != null and (String(c2.get_script().resource_path).ends_with("intro_six.gd") or String(c2.get_script().resource_path).ends_with("dan_work.gd") 				or String(c2.get_script().resource_path).ends_with("guided_tour.gd")):
+			c2.queue_free()                                # the yes started package 58's controller: it goes too
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 
@@ -14430,6 +14431,27 @@ func _test_stationwin(view: SystemView) -> void:
 		Commands.execute({"type": "munitions_buy", "item": mid2, "amount": 3})
 		svc_ok = svc_ok and int(f.cargo.get(mid2, 0.0)) == 3 and sp._panel.find_children("*", "HSlider", true, false).size() >= 1
 	f.drones = keep_drones
+	# Luz, 18 Nov 2026: a radio call can stay until something is done, and it shows over the station window
+	var su = main.story_ui
+	su._radio_q.clear()
+	if su._radio != null:
+		su._radio.queue_free()
+		su._radio = null
+	GameState.story.flags.erase("radio_test_done")
+	GameState.story.show.emit("radio", {"who": "dan", "text": "Fit the mining laser, then come back.", "mission": "", "until_flag": "radio_test_done", "hint": "fit the mining laser"})
+	su._radio_step(0.1)
+	su._radio_step(60.0)
+	var held: bool = su._radio != null and is_instance_valid(su._radio) and su._radio_hint.text.contains("fit the mining laser")
+	var over: bool = su._radio_layer.layer > sp.layer and not is_equal_approx(su._radio.position.y, 72.0)       # at the bottom while the window is open
+	GameState.story.flags["radio_test_done"] = true
+	su._radio_step(0.1)
+	var gone: bool = su._radio == null
+	GameState.story.flags.erase("radio_test_done")
+	GameState.story.show.emit("radio", {"who": "dan", "text": "Plain call.", "mission": ""})
+	su._radio_step(0.1)
+	su._radio_step(60.0)
+	var plain_gone: bool = su._radio == null
+	check(held and over and gone and plain_gone, "a radio call can stay until something is done (here a flag), then goes; it shows over the station window, at the bottom while one is open; a plain call still goes by itself  [%s %s %s %s]" % [held, over, gone, plain_gone])
 	check(svc_ok, "window rework: the drone bay (buying with a slider), the repair bay (the picked ship, repaired fully), the munitions depot (the picked mine, bought)")
 	f.cargo = keep_cargo
 	f.mark_dirty()
@@ -14454,3 +14476,201 @@ func _wide_walk(n: Node, d: int, lim: float) -> void:
 					extra = " btn=" + (c as Button).text.left(40)
 				print("[WIDE] %s%s min %.0f%s" % ["  ".repeat(d), c.get_class(), w, extra])
 				_wide_walk(c, d + 1, lim)
+
+
+## Package 58, part 1 (Luz): Little Darling (a Mogura in Dan's rust, core modules B, the strongest shield, the lasers
+## in storage, the tiles open), boarding her starts the guided tour of the station window – each step waits for a
+## confirm and locks the menus – then the task "open the Outfitter", its own tour, fitting both lasers, back, the
+## Drone Bay, a drone bought with Dan's advance; the mission "Little Darling" through to the salvage step.
+func _test_w58a(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var keep_all = GameState.pilot.get("tree_all", false)
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+		await get_tree().process_frame
+	GameState.pilot["tree_all"] = false
+	var shots := OS.get_environment("W58_SHOTS") != ""
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var sid := GameState.active().docked_at
+	for fl in ["ticket_ship", "w58_phase", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone", "w58_wreck"]:
+		st.flags.erase(fl)
+	for m in ["ticket", "darling"]:
+		st.missions.erase(m)
+		st.done.erase(m)
+	st.flags["dan_deal_yes"] = true
+	st.start("ticket")
+	st.goto_step("ticket", 1)
+	GameState.credits = 0
+	main._start_dan_work("yes")
+	var w = null
+	for c in main.get_children():
+		if c.get_script() != null and String(c.get_script().resource_path).ends_with("dan_work.gd"):
+			w = c
+	var ld: ShipFitting = GameState.active()
+	var core_b := true
+	for k in GameData.CORE_SLOTS:
+		var m2 := ld.get_module(k)
+		if m2 != "" and not m2.ends_with(":B"):
+			core_b = false
+	var ship_ok: bool = w != null and ld.ship_name == "Little Darling" and ld.hull_id == "mogura" and ld.paint == "dan_rust" and core_b \
+		and ld.get_module("optional_0").begins_with("o_shield:") and ld.get_module("optional_0").ends_with(":A") and ld.get_module("hangar") != "" \
+		and int(GameState.storage_of(sid).get("t_mining:1:C", 0)) >= 1 and int(GameState.storage_of(sid).get("w_pulse:1:C", 0)) >= 1 \
+		and GameState.hull_tree_error("mogura") == "" and not GameState.fleet.any(func(o): return o.hull_id == "dragonfly" and o.docked_at == sid) \
+		and PixelArt.fleet_texture(ld) != PixelArt.ship_texture("mogura", "player") and float(ld.stats()["shield_max"]) > 0.0     # Dan's lent shield works
+	# boarding: the station window opens, the tour begins
+	main.open_station()
+	var sp: StationUI = main.station_panel
+	for i in 6:
+		await get_tree().process_frame
+	var tour = w.tour if w != null else null
+	var tour_ok: bool = tour != null and tour.running() and tour.menu_nav_blocked() and MenuNav.active_menu() == tour and bool(st.flags.get("ticket_ship", false)) \
+		and st.running("darling") and st.step_data("darling").get("id", "") == "station"
+	var su = main.story_ui
+	var steps_seen := 0
+	for n in 12:
+		if tour == null or not is_instance_valid(tour) or tour.is_task():
+			break
+		for f2 in 4:
+			await get_tree().process_frame
+		if shots and tour.i == 2:
+			for f3 in 60:
+				await get_tree().process_frame
+			su.radio_finish_typing()
+			await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58_tour_ship.png")
+		su.radio_finish_typing()
+		await get_tree().process_frame
+		tour._wait = 0.0
+		tour.tour_confirm()                       # the call shown in full, the next step
+		steps_seen += 1
+	tour_ok = tour_ok and steps_seen == 6 and tour.is_task() and String(tour.step()["key"]) == "tile_outfitter"
+	# Escape is swallowed while the tour runs
+	var esc := InputEventAction.new()
+	esc.action = "menu_back"
+	esc.pressed = true
+	tour._input(esc)
+	tour_ok = tour_ok and sp.visible
+	if shots:
+		await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58_task_outfitter.png")
+	# with the controller (Luz, 18 Nov 2026): in a task the window's menu takes the pad again, the highlight kept
+	# inside the frame – the D-pad and ✕ open the Outfitter
+	var keep_pad: bool = Pad.using_pad
+	Pad.using_pad = true
+	var pad_menu_ok: bool = MenuNav.active_menu() == sp
+	MenuNav.step(sp, Vector2.UP)
+	for i in 3:
+		await get_tree().process_frame
+	var fo := get_viewport().gui_get_focus_owner()
+	pad_menu_ok = pad_menu_ok and fo != null and fo == sp.tour_targets.get("tile_outfitter")
+	Pad._special("menu", "pad_confirm", main)
+	for i in 6:
+		if tour != null and is_instance_valid(tour):
+			tour._wait = 0.0
+		await get_tree().process_frame
+	Pad.using_pad = keep_pad
+	pad_menu_ok = pad_menu_ok and sp.current_service == "outfitter"      # ✕ on the pad pressed the framed tile
+	check(pad_menu_ok, "58: in a task of the guided tour the controller works: the highlight kept inside the frame, ✕ opens the Outfitter")
+	if sp.current_service != "outfitter":
+		sp.open_service("outfitter")
+		for i in 6:
+			if tour != null and is_instance_valid(tour):
+				tour._wait = 0.0
+			await get_tree().process_frame
+	var t2 = w.tour
+	var of_ok: bool = t2 != null and t2 != tour and t2.running() and String(t2.step()["key"]) == "of_rail" and bool(st.flags.get("w58_tour1", false)) \
+		and st.step_data("darling").get("id", "") == "fit"
+	for n2 in 8:
+		if t2 == null or not is_instance_valid(t2) or t2.is_task():
+			break
+		for f4 in 3:
+			await get_tree().process_frame
+		if shots and t2.i in [0, 2]:
+			for f5 in 60:
+				await get_tree().process_frame
+			su.radio_finish_typing()
+			await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58_outfitter_%d.png" % t2.i)
+		su.radio_finish_typing()
+		await get_tree().process_frame
+		t2._wait = 0.0
+		t2.tour_confirm()
+	of_ok = of_ok and t2.is_task() and String(t2.step().get("hint", "")).contains("mining")
+	# the mining laser from storage shows below what can be bought, also inside a kind (Luz, 18 Nov 2026)
+	var OP = load("res://scripts/ui/station/outfitter_panel.gd")
+	OP.cat = "tool"
+	sp.rebuild()
+	sp._panel._set_slot("tool_0")
+	sp._panel._set_fam("t_mining")
+	await get_tree().process_frame
+	of_ok = of_ok and sp.tour_targets.has("of_stored") and is_instance_valid(sp.tour_targets["of_stored"]) and (sp.tour_targets["of_stored"] as Control).get_child_count() >= 1
+	if shots:
+		for f6 in 60:
+			await get_tree().process_frame
+		su.radio_finish_typing()
+		await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58_stored.png")
+	var tool_slot := ""
+	for k2 in ld.slot_keys():
+		if ShipFitting.slot_type(String(k2)) == "tool" and ld.get_module(String(k2)) == "" and tool_slot == "":
+			tool_slot = String(k2)
+	var e1 := Commands.execute({"type": "fit_module", "slot": tool_slot, "module": "t_mining:1:C"})
+	var e2 := Commands.execute({"type": "fit_module", "slot": "weapon_0", "module": "w_pulse:1:C"})
+	for i in 6:
+		await get_tree().process_frame
+	var fit_ok: bool = e1 == "" and e2 == "" and bool(st.flags.get("w58_mining", false)) and bool(st.flags.get("w58_weapon", false)) \
+		and GameState.credits == 2500 and st.step_data("darling").get("id", "") == "drone"
+	for hop in ["", "concourse", "drones"]:
+		if hop == "concourse":
+			sp.show_concourse(false)
+		elif hop == "drones":
+			sp.open_service("drones")
+		for i in 4:
+			if t2 != null and is_instance_valid(t2):
+				t2._wait = 0.0                 # the short pause between steps is real time; frames here are quick
+			await get_tree().process_frame
+	fit_ok = fit_ok and t2 != null and is_instance_valid(t2) and String(t2.step()["key"]) == "body"
+	var e3 := Commands.execute({"type": "drone_buy", "amount": 1})
+	for i in 8:
+		if t2 != null and is_instance_valid(t2):
+			t2._wait = 0.0
+		await get_tree().process_frame
+	var done_ok: bool = e3 == "" and ld.drones.size() == 1 and bool(st.flags.get("w58_drone", false)) and (w.tour == null) \
+		and st.step_data("darling").get("id", "") == "salvage" and GameState.credits == 2500 - Commands.drone_price() + 1000 \
+		and String(st.flags.get("w58_phase", "")) == "part2" and MenuNav.active_menu() != t2
+	# a convoy under contract calls its escort over the radio when attacked (not an ambient one)
+	var tr = main.view.traffic
+	var q0: int = su._radio_q.size()
+	tr._convoy_call({"c": {"mission": "m1"}}, "Test call.", true)
+	tr._convoy_call({"c": {}}, "Not this one.", true)
+	var calls: Array = su._radio_q.slice(q0)
+	var convoy_ok: bool = calls.size() == 1 and String(calls[0]["who"]) == "convoy_pilot"
+	su._radio_q.resize(q0)
+	check(convoy_ok, "58: the lead pilot of a convoy you escort calls you over the radio when it is attacked")
+	check(ship_ok and tour_ok and of_ok and fit_ok and done_ok,
+		"58: Little Darling (Mogura in Dan's rust, core B, the strongest shield, lasers in storage); the guided tour of the station window (confirm per step, menus locked, Escape swallowed), the task to open the Outfitter, its tour, both lasers fitted, the Drone Bay and a drone with Dan's advance  [%s %s %s %s %s]" % [ship_ok, tour_ok, of_ok, fit_ok, done_ok])
+	# tidy up
+	if w != null and is_instance_valid(w):
+		if w.tour != null and is_instance_valid(w.tour):
+			w.tour.queue_free()
+		w.queue_free()
+	sp.close()
+	st.from_dict(keep)
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	GameState.pilot["tree"] = keep_tree
+	GameState.pilot["tree_all"] = keep_all

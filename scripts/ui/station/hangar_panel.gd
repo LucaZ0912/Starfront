@@ -54,7 +54,7 @@ func build() -> void:
 		var f: ShipFitting = ships[i]
 		var here := i < here_n
 		var sub := "● active" if f.uid == GameState.active_uid else ("parked here" if here else _where(f))
-		items.append({"tex": PixelArt.ship_texture(f.hull_id, "player"), "name": f.ship_name, "sub": sub,
+		items.append({"tex": PixelArt.fleet_texture(f), "name": f.ship_name, "sub": sub,
 			"sub_col": UI.GOOD if f.uid == GameState.active_uid else UI.TEXT_DIM, "tag": GameData.SIZE_NAMES.get(int(f.hull()["size"]), "XL"), "dim": not here})
 	Kit.strip(self, items, sel, col, func(i): pick_uid = (ships[i] as ShipFitting).uid; refresh_all())
 	if here_n <= 1:
@@ -77,7 +77,7 @@ func _top(f: ShipFitting, col: Color, here: bool) -> void:
 	var h: Dictionary = f.hull()
 	var maker: Dictionary = MakerData.MAKERS.get(String(h.get("maker", "")), {})
 	var active := f.uid == GameState.active_uid
-	var pic := Kit.picture(PixelArt.ship_texture(f.hull_id, "player"), col, Kit.pic_height(self),
+	var pic := Kit.picture(PixelArt.fleet_texture(f), col, Kit.pic_height(self),
 		"%s  •  %s" % [maker.get("name", "?"), h["class"]], "SIZE " + String(GameData.SIZE_NAMES.get(int(h["size"]), "XL")))
 	var info := Kit.detail(self, pic)
 	var nv := UI.vbox(0)

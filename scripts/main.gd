@@ -118,6 +118,12 @@ func _ready() -> void:
 			_start_intro_five.call_deferred("back")        # Dan waits in the bar
 		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) == "six":
 			_start_intro_six.call_deferred("load")         # sequence 6: Dan in the bar
+		elif f != null and String(GameState.story.flags.get("intro_stage", "")) == "58":
+			_start_dan_work.call_deferred("load")          # package 58: working for Dan
+			if f.docked_at != "" and String(GameState.story.flags.get("w58_phase", "board")) == "board":
+				_start_intro_six.call_deferred("load")     # Little Darling waits in the hangar – on foot in the bar
+			elif f.docked_at != "":
+				open_station.call_deferred()
 		elif f != null and f.docked_at != "":
 			open_station.call_deferred()
 
@@ -560,6 +566,18 @@ func _start_intro_six(where: String = "load") -> void:
 	i6.main = self
 	add_child(i6)
 	i6.begin(where)
+
+
+## Package 58: working for Dan (scripts/ground/dan_work.gd); where: "yes" (the deal just taken) or "load".
+func _start_dan_work(where: String = "load") -> void:
+	for n in get_children():
+		if n.get_script() == load("res://scripts/ground/dan_work.gd") or n.get_script() == load("res://scripts/ui/guided_tour.gd"):
+			n.queue_free()                                # an old controller and its tour go
+	var w = load("res://scripts/ground/dan_work.gd").new()
+	w.main = self
+	set_meta("dan_work", w)                              # only the newest controller works
+	add_child(w)
+	w.begin(where)
 
 
 func close_deck(open_window: bool = true) -> void:

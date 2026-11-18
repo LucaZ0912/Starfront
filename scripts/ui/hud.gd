@@ -481,7 +481,7 @@ func rebuild_ship_panel() -> void:
 	var head := UI.hbox(8)
 	ship_box.add_child(head)
 	var icon := TextureRect.new()
-	icon.texture = PixelArt.ship_texture(f.hull_id, "player")
+	icon.texture = PixelArt.fleet_texture(f)
 	icon.custom_minimum_size = Vector2(56, 40)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

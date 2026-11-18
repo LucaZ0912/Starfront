@@ -33,6 +33,8 @@ const CHARACTERS := {
 			"outfit": 0, "color1": 3, "color2": 5, "implant": 1, "tattoo": 0, "headgear": 1}},
 	# package 56: the computer of the pilot's old Earthworks 190SL – a hologram (shown whenever the ship's computer speaks)
 	"ship_ai": {"name": "Ship computer", "sub": "Earthworks 190SL", "col": Color(0.4, 0.9, 1.0), "holo": true},
+	# package 58 (Luz): the lead pilot of a convoy you escort calls when it is attacked
+	"convoy_pilot": {"name": "Convoy lead", "sub": "Freighter captain", "col": Color(0.7, 0.85, 1.0), "seed": 2207},
 	# package 56, sequence 6: regulars of Dan's bar
 	"patron_a": {"name": "Hob Karst", "sub": "Scrap hauler", "col": Color(0.75, 0.8, 0.9), "seed": 3307},
 	"patron_b": {"name": "Mira Teague", "sub": "Mechanic", "col": Color(0.75, 0.8, 0.9), "seed": 9124},
@@ -189,8 +191,30 @@ const MISSIONS := {
 		"steps": [
 			{"id": "deal", "title": "Dan's deal", "text": "Dan offered you a ship, gear and a few jobs (about three years of them) to earn your ticket to the Cluster. Talk to him in the bar once you've made up your mind.",
 				"goals": [{"id": "yes", "kind": "flag", "flag": "dan_deal_yes", "label": "take Dan's deal"}]},
-			{"id": "ship", "title": "A small ship", "text": "A small ship waits for you in Dan's hangar. It has some gear already, but a few things still need fitting. Climb aboard, Dan will explain.",
-				"goals": [{"id": "board", "kind": "flag", "flag": "ticket_ship", "label": "board the ship in the hangar"}]},
+			{"id": "ship", "title": "Little Darling", "text": "Little Darling, a small KHI miner in Dan's rust, waits for you in his hangar. She has some gear already, but a few things still need fitting. Climb aboard, Dan will explain.",
+				"goals": [{"id": "board", "kind": "flag", "flag": "ticket_ship", "label": "board Little Darling in the hangar"}],
+				"on_done": [{"do": "start", "id": "darling"}]},
+			{"id": "work", "title": "Working for Dan", "text": "About three years of work for Dan, then his friend takes you to the Cluster. The jobs come one by one; each pays a little.",
+				"goals": [{"id": "paid", "kind": "flag", "flag": "ticket_paid", "label": "earn your ticket"}]},
+		]},
+	# package 58, part 1 (Luz): Little Darling – Dan shows you the station window and the Outfitter (a guided tour),
+	# you fit the lasers he left in storage and buy a drone with his advance. The flags come from
+	# scripts/ground/dan_work.gd; the wreck field follows in part 2.
+	"darling": {"title": "Little Darling", "kind": "story", "chapter": "Chapter 1 · Working for Dan",
+		"desc": "Dan's first job for you: get to know Little Darling and kit her out.",
+		"steps": [
+			{"id": "station", "title": "The station window", "text": "Dan walks you through the station window: you, the news, your ship and her services, the station and its services. Then he wants you in the Outfitter.",
+				"goals": [{"id": "tour", "kind": "flag", "flag": "w58_tour1", "label": "follow Dan's tour, open the Outfitter"}]},
+			{"id": "fit", "title": "Teeth for her", "text": "Dan left a mining laser and a pulse laser in your storage. Fit the mining laser into a tool slot and the pulse laser into the weapon slot.",
+				"goals": [{"id": "mining", "kind": "flag", "flag": "w58_mining", "label": "fit the mining laser"},
+					{"id": "weapon", "kind": "flag", "flag": "w58_weapon", "label": "fit the pulse laser"}]},
+			{"id": "drone", "title": "A drone of your own", "text": "Dan advanced you 2,500 credits. Back in the station window, buy a drone at the Drone Bay.",
+				"goals": [{"id": "drone", "kind": "flag", "flag": "w58_drone", "label": "buy a drone"}],
+				"on_start": [{"do": "credits", "n": 2500}],
+				"on_done": [{"do": "credits", "n": 1000},
+					{"do": "radio", "who": "dan", "text": "There she is. Your first ship in three hundred years, give or take. A thousand on top, for listening so nicely. Now let's earn that advance back."}]},
+			{"id": "salvage", "title": "Salvage", "text": "Fly out to a wreck field and bring back what you can cut loose. (Package 58, part 2: comes next.)",
+				"goals": [{"id": "wreck", "kind": "flag", "flag": "w58_wreck", "label": "salvage in a wreck field"}]},
 		]},
 	# package 56, sequence 5 (Luz): the flight training – flown with one of Dan's drones from Old Betty in a wreck field;
 	# the flags are set by scripts/ground/intro_five.gd (it watches the drone), the targets too

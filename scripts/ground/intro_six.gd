@@ -38,8 +38,9 @@ func _mode() -> Dictionary:
 	var ask: bool = bool(_flags().get("dan_deal_no", false)) and not bool(_flags().get("dan_deal_yes", false))
 	for p in PATRONS:
 		people.append({"who": p[0], "pos": p[1], "dir": p[2], "talk": ask})
-	return {"no_crew": true, "lift_only": "commercial", "lift_label": "Bar",
-		"lift_labels": {"hangar": "Hangar: the next part" if bool(_flags().get("dan_deal_yes", false)) else "Hangar"},
+	var lifts := "commercial,hangar" if bool(_flags().get("dan_deal_yes", false)) else "commercial"   # package 58: Little Darling waits
+	return {"no_crew": true, "lift_only": lifts, "lift_label": "Bar",
+		"lift_labels": {"hangar": "Hangar: Little Darling" if bool(_flags().get("dan_deal_yes", false)) else "Hangar"},
 		"levels": {"commercial": {"people": people, "spawn": WINDOW + Vector2(-1.2, 2.2)}}}
 
 
@@ -50,7 +51,8 @@ func begin(where: String) -> void:
 		return
 	if not g.story_talk.is_connected(_on_story_talk):
 		g.story_talk.connect(_on_story_talk)
-	GameState.story.set_flag("intro_stage", "six")
+	if String(GameState.story.flags.get("intro_stage", "")) != "58":
+		GameState.story.set_flag("intro_stage", "six")
 	g.story_mode = _mode()
 	if where == "load" or g.level != "commercial":
 		g.go_level("commercial", "story")
@@ -110,4 +112,4 @@ func _process(delta: float) -> void:
 				g.input_enabled = true
 				phase = "bar"
 				if bool(_flags().get("dan_deal_yes", false)):
-					GameState.log_msg("[Story] Sequence 6, part 2 (the small ship in the hangar) comes with the next part.", GameState.COL_WARN)
+					main._start_dan_work("yes")              # package 58: Little Darling waits in the hangar

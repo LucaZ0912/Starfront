@@ -258,6 +258,21 @@ static func white() -> Texture2D:
 
 # ---------------------------------------------------------------- Ships
 
+## Package 58: the paint of one of the player's ships ("player", or its own like Dan's rust), ready to draw.
+static func paint_key(f) -> String:
+	var p := String(f.paint)
+	if p == "":
+		return "player"
+	if p == "dan_rust" and not _cache.has("ship_%s_dan_rust_-1" % f.hull_id):
+		use_rust(String(f.hull_id), "dan_rust")
+	return p
+
+
+## The picture of one of the player's ships (its own paint if it has one).
+static func fleet_texture(f) -> Texture2D:
+	return ship_texture(String(f.hull_id), paint_key(f))
+
+
 ## Package 56: a ship of Dan's flies in rust – its pictures in `paint` (every frame) become the rust picture.
 static func use_rust(hull_id: String, paint: String) -> void:
 	var rt := rust_texture(hull_id)

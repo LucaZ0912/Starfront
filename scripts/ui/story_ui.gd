@@ -17,6 +17,10 @@ var _radio: PanelContainer = null
 var _radio_text: Label = null
 var _radio_t := 0.0
 var _radio_shown := 0.0
+var _radio_d := {}                      # the call shown (its "until" conditions)
+var _radio_hint: Label = null
+var _radio_layer: CanvasLayer = null    # Luz, 18 Nov 2026: over the windows (the station's too), under dialogues
+var radio_avoid := Rect2()              # package 58: a part of the screen the call must not cover (the guided tour's frame)
 var _tip: PanelContainer = null
 var _tracker: PanelContainer = null
 var _tracker_box: VBoxContainer = null
@@ -34,6 +38,10 @@ func _ready() -> void:
 	_marker = Node2D.new()
 	_marker.draw.connect(_draw_marker)
 	add_child(_marker)
+	_radio_layer = CanvasLayer.new()
+	_radio_layer.layer = 30
+	_radio_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_radio_layer)
 	GameState.story.show.connect(_on_show)
 	GameState.story.changed.connect(_refresh_tracker)
 	_refresh_tracker()
@@ -191,10 +199,11 @@ func _show_radio(d: Dictionary) -> void:
 	var who := String(d.get("who", ""))
 	var c: Dictionary = Data.CHARACTERS.get(who, {})
 	var col: Color = c.get("col", GOLD)
-	_radio = UI.neon_panel(col, Color(0.03, 0.04, 0.08, 0.93), 2)
-	_radio.position = Vector2(470, 72)
+	_radio = UI.neon_panel(col, Color(0.03, 0.04, 0.08, 0.95), 2)
 	_radio.custom_minimum_size = Vector2(660, 0)
-	add_child(_radio)
+	_radio.mouse_filter = Control.MOUSE_FILTER_IGNORE        # clicks go through to the window below
+	_radio_layer.add_child(_radio)
+	_radio_d = d
 	var h := UI.hbox(12)
 	_radio.add_child(h)
 	var fr := UI.neon_panel(col, Color(0.05, 0.06, 0.1), 2)
@@ -215,8 +224,13 @@ func _show_radio(d: Dictionary) -> void:
 	_radio_text = UI.wrap_label("\"%s\"" % GameState.story.keys(String(d["text"])), 14, Color(0.94, 0.95, 1.0), 520)
 	_radio_text.visible_characters = 0
 	v.add_child(_radio_text)
-	v.add_child(UI.label("past calls in the journal (%s)" % Keybinds.key_text("journal"), 11, UI.TEXT_DIM))
+	_radio_hint = UI.label("past calls in the journal (%s)" % Keybinds.key_text("journal"), 11, UI.TEXT_DIM)
+	v.add_child(_radio_hint)
+	for c2 in _radio.find_children("*", "Control", true, false):
+		(c2 as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_radio_t = 4.0 + String(d["text"]).length() / 22.0
+	_radio.scale = Vector2.ONE * radio_scale()
+	_place_radio()
 	_radio_shown = 0.0
 	Audio.play("notify", "radio call", -6.0)
 
@@ -229,9 +243,74 @@ func _radio_step(dt: float) -> void:
 	_radio_shown += dt * 40.0
 	_radio_text.visible_characters = int(_radio_shown)
 	_radio_t -= dt
-	if _radio_t <= 0.0:
+	_place_radio()
+	# a call that waited for something goes the moment it is done (package 58: the guided tour's steps)
+	if _radio_d.has("until") and not radio_held(_radio_d):
 		_radio.queue_free()
 		_radio = null
+		_radio_d = {}
+		return
+	if _radio_t > 0.0:
+		return
+	# a call that waits for something stays (Luz, 18 Nov 2026) – until it is done, or the next call comes
+	if radio_held(_radio_d) and _radio_q.is_empty():
+		var h := String(_radio_d.get("hint", ""))
+		_radio_hint.text = ("◌ %s" % h) if h != "" else "◌ stays until it is done  •  past calls in the journal (%s)" % Keybinds.key_text("journal")
+		_radio_hint.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
+		return
+	_radio.queue_free()
+	_radio = null
+	_radio_d = {}
+
+
+## Whether a call still waits for what it asks: a flag set ("until_flag"), its step over ("until_step"), or a
+## code condition ("until": a Callable giving true when done).
+func radio_held(d: Dictionary) -> bool:
+	var st = GameState.story
+	if String(d.get("until_flag", "")) != "" and not bool(st.flags.get(String(d["until_flag"]), false)):
+		return true
+	if bool(d.get("until_step", false)):
+		var mid := String(d.get("mission", ""))
+		if st.running(mid) and st.step_index(mid) == int(d.get("step", -1)):
+			return true
+	var u = d.get("until", null)
+	if u is Callable and (u as Callable).is_valid() and not bool((u as Callable).call()):
+		return true
+	return false
+
+
+## Top centre in flight; at the bottom while a station window is open (so it covers none of its buttons).
+func _place_radio() -> void:
+	if _radio == null:
+		return
+	var vs := get_viewport().get_visible_rect().size
+	var sz := _radio.get_combined_minimum_size() * _radio.scale
+	var low := false
+	var m := get_tree().current_scene
+	if m != null and m.get("station_panel") != null and is_instance_valid(m.station_panel) and m.station_panel.visible:
+		low = true
+	var y := vs.y - sz.y - 30.0 if low else 72.0
+	if radio_avoid.size != Vector2.ZERO and Rect2(Vector2((vs.x - sz.x) * 0.5, y), sz).intersects(radio_avoid):
+		y = 72.0 if low else vs.y - sz.y - 30.0                   # the other end of the screen
+		if Rect2(Vector2((vs.x - sz.x) * 0.5, y), sz).intersects(radio_avoid):
+			y = clampf(radio_avoid.end.y + 12.0, 72.0, vs.y - sz.y - 10.0) if radio_avoid.end.y + sz.y + 20.0 < vs.y else maxf(10.0, radio_avoid.position.y - sz.y - 12.0)
+	_radio.position = Vector2(roundf((vs.x - sz.x) * 0.5), y)
+
+
+## Luz, 18 Nov 2026: on big screens the call grows with the screen (it stays readable).
+func radio_scale() -> float:
+	return clampf(get_viewport().get_visible_rect().size.y / 900.0, 1.0, 2.4)
+
+
+## Package 58: the call still typing? (a confirm first shows all of it)
+func radio_typing() -> bool:
+	return _radio != null and _radio_text != null and _radio_text.visible_characters >= 0 and _radio_text.visible_characters < _radio_text.get_total_character_count()
+
+
+func radio_finish_typing() -> void:
+	if _radio_text != null:
+		_radio_shown = 99999.0
+		_radio_text.visible_characters = -1
 
 
 # ---------------------------------------------------------------- tips

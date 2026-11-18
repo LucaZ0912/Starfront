@@ -376,6 +376,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.58.1 (package 58, part 1): `scripts/ground/dan_work.gd` (phases `board` → `tour1` → `tour2` → `part2`, flag
+  `w58_phase`; static `give_ship`), `scripts/ui/guided_tour.gd` (steps with `key`, `title`, `text`, `task`, `hint`;
+  `tour_confirm`, layer 28, `menu_nav_blocked`); StationUI `tour_targets`, `_box_of`; ShipFitting `paint`, `lent`
+  (saved); PixelArt `paint_key`, `fleet_texture`; StoryUI `radio_held` (`until_flag`, `until_step`, `until`),
+  `radio_scale`, `radio_avoid`, `radio_typing`, `radio_finish_typing`, its own layer 30; Traffic `_convoy_call`;
+  character `convoy_pilot`; mission `darling`; main `_start_dan_work`; smoke group `w58a`.
 - 0.8.56.10: Kit `bar_tile`, `tile_row`, `amount_block`, `MineGlyph`, `picture(..., max_px)`; DronePanel `pick`,
   ServicePanel `pick_uid`, MunitionsPanel `pick`.
 - 0.8.56.9: BondPanel.wanted_poster(c, sid, course, width) scales by `_k`; the restyle (`_build_restyle`) sizes the

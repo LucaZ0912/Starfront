@@ -66,7 +66,7 @@ func _top(f: ShipFitting, mode: String, col: Color) -> void:
 	var h: Dictionary = f.hull()
 	var s := f.stats()
 	var active := f.uid == GameState.active_uid
-	var pic := Kit.picture(PixelArt.ship_texture(f.hull_id, "player"), col, Kit.pic_height(self),
+	var pic := Kit.picture(PixelArt.fleet_texture(f), col, Kit.pic_height(self),
 		"%s  •  %s" % [MakerData.MAKERS.get(String(h.get("maker", "")), {}).get("name", "?"), h["class"]], "SIZE " + String(GameData.SIZE_NAMES.get(int(h["size"]), "XL")))
 	var info := Kit.detail(self, pic)
 	var nv := UI.vbox(0)

@@ -106,7 +106,9 @@ func _run(mid: String, actions: Array) -> void:
 			"radio":
 				var who := String(a.get("who", ""))
 				_say(mid, who, String(a["text"]), true)
-				show.emit("radio", {"who": who, "text": String(a["text"]), "mission": mid})
+				# Luz, 18 Nov 2026: a call can stay until something is done – a flag ("until_flag") or this step ("until_step")
+				show.emit("radio", {"who": who, "text": String(a["text"]), "mission": mid, "until_flag": String(a.get("until_flag", "")),
+					"until_step": bool(a.get("until_step", false)), "step": step_index(mid), "hint": String(a.get("hint", ""))})
 			"tip":
 				tip(String(a["id"]))
 			"flag":

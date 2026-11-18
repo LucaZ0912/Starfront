@@ -3,6 +3,31 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.58.1 – 2026-11-18
+
+**Package 58, part 1: working for Dan begins (Luz).** Package 56 (the intro) is complete; this is the second part
+of sequence 6.
+- **Little Darling:** Dan's deal taken, he gives you the smallest KHI ship, a Mogura in his rust colours: every core
+  module at quality B, a drone hangar and the strongest shield that fits. His gear is lent: it works without the
+  skill tree while it stays fitted. The tree's tiles for her, her lasers and drones open; the Dragonfly of the start
+  goes (you came out of the Veil with nothing). The lift: "Hangar: Little Darling". Ships can now carry their own
+  paint (saved).
+- **The guided tour (new):** boarding her opens the station window and Dan explains it: the part explained framed in
+  gold and pulsing, the rest dimmed, a tag "3 / 7 • YOUR SHIP"; his radio call stays in front of the window until
+  you confirm (a click, E, Space, Enter or ✕; the first press shows all of the call). Meanwhile the menus are locked.
+  A task lets clicks through to the framed part only; the window's menu takes the keys and the controller again,
+  the highlight kept inside the frame; leaving stays locked.
+- **The steps:** the station window in six parts, "open the Outfitter", the Outfitter in four parts, fitting the
+  mining laser and the pulse laser Dan left in storage, back to the station window, 2,500 cr advance, the Drone Bay,
+  a drone bought; 1,000 cr. The mission "Little Darling" waits at "Salvage" (part 2).
+- **Radio calls:** a call can stay until something is done (a flag, its step, or a condition) and shows what it
+  waits for; it goes the moment that is done, or when the next call comes. Calls show over every window, at the
+  bottom while a station window is open (or wherever they cover nothing being explained), and grow with big screens.
+- **Escort missions:** the lead pilot of a convoy you escort calls you over the radio when it is attacked (at the
+  gate, pulled out of warp, under fire).
+- **Outfitter:** what lies in your storage here shows below what can be bought, in every view (also inside a kind
+  of module), in green: no cost, pick and fit.
+
 ## alpha 0.8.56.10 – 2026-11-18
 
 **Station windows, part 5: Drone Bay, Repair Bay / Fuel Depot and Munitions Depot (Luz).** With it every station

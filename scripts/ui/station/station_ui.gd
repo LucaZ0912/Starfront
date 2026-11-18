@@ -260,6 +260,7 @@ func service_available(svc: Dictionary) -> String:
 ## from the news column).
 const SHIP_SERVICES := ["fuel", "repair", "drones", "munitions", "outfitter", "hangar"]
 var concourse_tiles := 0          # tiles built in the last concourse (smoke test)
+var tour_targets := {}            # package 58: the parts a guided tour frames ("cmdr", "ship", "ship_services", …)
 
 
 ## Package 27: the concourse in three columns – commander and news on the left, the docked ship with its
@@ -285,10 +286,19 @@ func show_concourse(animate: bool = false) -> void:
 	left.size_flags_stretch_ratio = 0.95
 	cols.add_child(left)
 	var tiles: Array = []
-	_cmdr_column(_column(left, UI.NEON_PINK, 1.0), tiles)
-	_news_column(_column(left, Color(1.0, 0.8, 0.4), 1.25), tiles)
-	_ship_column(_column(cols, UI.NEON_CYAN, 1.1), tiles)
-	_station_column(_column(cols, Color(0.7, 0.55, 1.0), 1.15, false), tiles)
+	tour_targets.clear()
+	var cv := _column(left, UI.NEON_PINK, 1.0)
+	_cmdr_column(cv, tiles)
+	var nv := _column(left, Color(1.0, 0.8, 0.4), 1.25)
+	_news_column(nv, tiles)
+	var sv := _column(cols, UI.NEON_CYAN, 1.1)
+	_ship_column(sv, tiles)
+	var stv := _column(cols, Color(0.7, 0.55, 1.0), 1.15, false)
+	_station_column(stv, tiles)
+	tour_targets["cmdr"] = _box_of(cv)
+	tour_targets["news"] = _box_of(nv)
+	tour_targets["ship"] = _box_of(sv)
+	tour_targets["station"] = _box_of(stv)
 	concourse_tiles = tiles.size()
 	_settle()
 	if animate:
@@ -300,6 +310,14 @@ func show_concourse(animate: bool = false) -> void:
 			tw.tween_interval(0.1 + k * 0.05)
 			tw.tween_method(_set_tile_alpha.bind(tile), 0.0, 1.0, 0.25)
 			k += 1
+
+
+## The framed panel round a column's content box (package 58: what a tour frames).
+static func _box_of(v: Control) -> Control:
+	var p := v.get_parent()
+	if p is ScrollContainer:
+		p = p.get_parent()
+	return p as Control
 
 
 ## A framed column (or column part) that scrolls if it runs long; returns its content box.
@@ -385,13 +403,12 @@ func _svc(id: String) -> Dictionary:
 
 
 ## A service tile (opens its panel), run by its corporation.
-func _service_tile(v: Control, svc: Dictionary, tiles: Array, square: bool = false) -> void:
+func _service_tile(v: Control, svc: Dictionary, tiles: Array, square: bool = false) -> Button:
 	var c: Dictionary = GameData.corp(svc["corp"])
 	var sid: String = svc["id"]
 	if square:
-		_square_tile(v, String(svc["icon"]), String(svc["title"]), "%s  [%s]" % [c["name"], c["tag"]], c["color"], func(): open_service(sid), service_available(svc), tiles)
-		return
-	_long_tile(v, String(svc["icon"]), String(svc["title"]), "%s  [%s]" % [c["name"], c["tag"]], c["color"], func(): open_service(sid), service_available(svc), tiles)
+		return _square_tile(v, String(svc["icon"]), String(svc["title"]), "%s  [%s]" % [c["name"], c["tag"]], c["color"], func(): open_service(sid), service_available(svc), tiles)
+	return _long_tile(v, String(svc["icon"]), String(svc["title"]), "%s  [%s]" % [c["name"], c["tag"]], c["color"], func(): open_service(sid), service_available(svc), tiles)
 
 
 ## 0.5.31.2: a squarer tile for the station services – a big icon above, title and corporation below.
@@ -520,7 +537,7 @@ func _ship_column(v: VBoxContainer, tiles: Array) -> void:
 		v.add_child(UI.label(f.ship_name, 18, UI.NEON_CYAN))
 		v.add_child(UI.label("%s  •  %s  •  Size %s" % [String(h["name"]), String(h.get("class", "")), ["", "S", "M", "L"][clampi(int(h.get("size", 1)), 1, 3)]], 12, UI.TEXT_DIM))
 		var shot := TextureRect.new()
-		shot.texture = PixelArt.ship_texture(f.hull_id, "player")
+		shot.texture = PixelArt.fleet_texture(f)
 		shot.custom_minimum_size = Vector2(0, 104)
 		shot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		shot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -549,6 +566,10 @@ func _ship_column(v: VBoxContainer, tiles: Array) -> void:
 			pl.custom_minimum_size = Vector2(70, 0)
 			hr.add_child(pl)
 	_head(v, "SHIP SERVICES", col)
+	var outer := v
+	v = UI.vbox(6)                                   # package 58: the services in a box of their own (a tour frames it)
+	outer.add_child(v)
+	tour_targets["ship_services"] = v
 	var fuel_svc := _svc("fuel")
 	var rep_svc := _svc("repair")
 	if f != null:
@@ -562,7 +583,7 @@ func _ship_column(v: VBoxContainer, tiles: Array) -> void:
 		_long_tile(v, "t_repair", "Repair all" + ("  (%s)" % GameData.fmt_credits(rc) if rc > 0 else "  (at full health)"), String(GameData.corp(rep_svc["corp"])["name"]),
 			GameData.corp(rep_svc["corp"])["color"], func(): _quick("repair", uid), why_r if why_r != "" else ("" if rc > 0 else "No damage"), tiles)
 	for sid in ["drones", "munitions", "outfitter", "hangar"]:
-		_service_tile(v, _svc(sid), tiles)
+		tour_targets["tile_" + sid] = _service_tile(v, _svc(sid), tiles)
 
 
 ## Refuel / repair straight from the concourse.
@@ -627,6 +648,7 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	ssc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	ssc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_child(ssc)
+	tour_targets["station_services"] = ssc
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 8)
@@ -724,6 +746,7 @@ func open_service(svc_id: String) -> void:
 		bh.add_child(UI.button("‹ Back to the deck", close))
 	else:
 		bh.add_child(UI.button("‹ Concourse", func(): show_concourse(true)))
+	tour_targets["back"] = bh.get_child(0)                 # package 58: the guided tour points at it
 	bh.add_child(UI.icon(PixelArt.icon_texture(svc["icon"]), 40))
 	var bv := UI.vbox(0)
 	bh.add_child(bv)

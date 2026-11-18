@@ -12,6 +12,8 @@ var ship_name := ""
 var hull_id := ""
 var faction := "player"
 var gov := ""              # government / pirate faction of an NPC (paint, name) – not saved
+var paint := ""            # package 58: a ship of the player's in other colours ("dan_rust": Dan's rust) – saved
+var lent := {}             # package 58: {slot: module} lent gear (Dan's) – works without the skill tree while it stays fitted
 var modules := {}          # slot_key -> module_id  (slot_key: "engine", "weapon_0", "tool_1", ...)
 var priorities := {}       # slot_key -> power priority group 1–4 (package 21; missing = default)
 var power_off := {}        # runtime: priority groups shut down by an overload (group -> true)
@@ -283,7 +285,7 @@ const SAVE_FIELDS := ["uid", "ship_name", "hull_id", "faction", "modules", "carg
 	"shield", "capacitor", "fuel", "system_id", "position", "rotation", "docked_at", "route", "stance",
 	"transit_kind", "transit_to", "transit_from", "transit", "transit_total", "priorities", "wormhole_ready",
 	"drones", "drone_role", "drone_modes", "refinery_on", "factory_on", "market_open", "market_offers",
-	"mine_choice", "held_on", "fire_groups", "fg_custom", "crew", "platform_ship", "platform_lost", "platform_out", "platform_stance"]
+	"mine_choice", "held_on", "fire_groups", "fg_custom", "crew", "platform_ship", "platform_lost", "platform_out", "platform_stance", "paint", "lent"]
 
 
 ## Plain data (ids, numbers, strings, vectors) – used by save games and later the network.
@@ -352,7 +354,7 @@ func _compute() -> Dictionary:
 			continue
 		var m: Dictionary = GameData.modules[mid]
 		s["mass"] += float(m.get("mass", 0))
-		if not (key in GameData.CORE_SLOTS) and _tree_locked(mid):
+		if not (key in GameData.CORE_SLOTS) and _tree_locked(mid) and String(lent.get(key, "")) != mid:
 			s["locked"].append(key)
 			continue                     # 0.5.30.2: the skill tree – bought, fitted, but offline
 		if slot_type(key) in GameData.DRONE_SLOTS:

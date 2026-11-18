@@ -150,7 +150,7 @@ func rebuild() -> void:
 	if fit == null:
 		return
 	var h := fit.hull()
-	ship_icon.texture = PixelArt.ship_texture(fit.hull_id, "player")
+	ship_icon.texture = PixelArt.fleet_texture(fit)
 	title_label.text = fit.ship_name
 	sub_label.text = "%s %s  •  %s  •  size %s  •  %s" % [h["class"], h["name"], _maker_name(h), GameData.SIZE_NAMES[int(h["size"])], fit.location_text()]
 	status_label.text = "Docked: modules can be swapped with station storage." if _docked() else "In space: fitting can only be changed while docked."
@@ -355,7 +355,7 @@ func _build_info() -> void:
 	for f in GameState.fleet:
 		var r := UI.hbox(12)
 		fl.add_child(r)
-		r.add_child(UI.icon(PixelArt.ship_texture(f.hull_id, "player"), 32))
+		r.add_child(UI.icon(PixelArt.fleet_texture(f), 32))
 		r.add_child(UI.label(("▶ " if f.uid == GameState.active_uid else "   ") + f.ship_name, 14, UI.GOOD if f.uid == GameState.active_uid else Color(0.9, 0.93, 1.0)))
 		r.add_child(UI.spacer())
 		r.add_child(UI.label(f.location_text(), 13, UI.TEXT_DIM))
@@ -1134,5 +1134,3 @@ func _station_name(st_id: String) -> String:
 func _jettison(item: String) -> void:
 	Commands.execute({"type": "jettison", "item": item})
 	rebuild()
-
-

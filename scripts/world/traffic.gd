@@ -1263,7 +1263,10 @@ func on_attacked(victim: Ship, attacker: Ship) -> void:
 	var where: String = view.landmark(victim.position)
 	var is_convoy := false
 	for cid in convoys:
-		is_convoy = is_convoy or (convoys[cid]["ships"] as Array).has(victim)
+		if (convoys[cid]["ships"] as Array).has(victim):
+			is_convoy = true
+			_convoy_call(convoys[cid], ["We're taking fire near %s! Escort, where are you?" % where, "Pirates on us near %s, they're going for the freighters! Need cover, now!" % where,
+				"Hull's getting hit, near %s. Get them off us, escort!" % where][randi() % 3])
 	if is_convoy:
 		GameState.news.radio("Convoy under attack near %s!" % where, sid, victim.position)
 	elif victim.faction == "patrol":
@@ -1520,6 +1523,18 @@ func _plan_ambush(e: Dictionary) -> void:
 
 
 ## Pirates lying in wait at the gate through which the escorted convoy arrives.
+## Package 58 (Luz): the lead pilot of a convoy you escort calls you over the radio when it is attacked (not more
+## than every 25 s, unless `urgent`).
+func _convoy_call(e: Dictionary, text: String, urgent: bool = false) -> void:
+	if not (e.get("c", {}) as Dictionary).has("mission"):
+		return                                           # only a convoy you escort under contract calls you
+	var now := GameState.play_time
+	if not urgent and now - float(e.get("call_t", -999.0)) < 25.0:
+		return
+	e["call_t"] = now
+	GameState.story.show.emit("radio", {"who": "convoy_pilot", "text": text, "mission": ""})
+
+
 func _gate_ambush(e: Dictionary, ships: Array, pos: Vector2) -> void:
 	var sec := float(Universe.systems[sid]["security"])
 	if randf() > 0.25 + (1.0 - sec) * 0.4 and not e["c"].get("force_ambush", false):
@@ -1532,6 +1547,7 @@ func _gate_ambush(e: Dictionary, ships: Array, pos: Vector2) -> void:
 		if not ships.is_empty():
 			p.set_order({"type": "attack", "target": ships[randi() % ships.size()]})
 	GameState.news.radio("Pirates were waiting at the gate: the convoy is under attack!", sid, pos)
+	_convoy_call(e, "Contacts at the gate, %d of them! It's an ambush. Escort, we need you here, now!" % n, true)
 	GameState.log_msg("Ambush at the gate! %d pirates were lying in wait for the convoy." % n, GameState.COL_BAD)
 
 
@@ -1566,6 +1582,7 @@ func pull_out_of_warp(e: Dictionary, leader: Ship) -> void:
 		p.set_order({"type": "attack", "target": dropped[randi() % dropped.size()]})
 		view.spawn_fx(Fx.flash(p.position, Color(1.0, 0.4, 0.3), p.radius * 3.0))
 	GameState.news.radio("Convoy pulled out of warp near %s: pirates closing in!" % where, sid, leader.position)
+	_convoy_call(e, "Mayday, they've pulled us out of warp near %s! %d pirates closing in. Escort, cover us!" % [where, k], true)
 	var pl = view.player
 	if pl != null and is_instance_valid(pl) and pl in dropped:
 		GameState.log_msg("Interdicted! Pirates pulled the convoy, and you, out of warp. %d pirates attack." % k, GameState.COL_BAD)
