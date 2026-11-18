@@ -3,6 +3,19 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.10 – 2026-11-18
+
+**Station windows, part 5: Drone Bay, Repair Bay / Fuel Depot and Munitions Depot (Luz).** With it every station
+window on the list is reworked.
+- **Drone Bay:** the drone on top with all its values, buying with a slider, repairing the hulls; every stored drone
+  as a tile with its fuel and hull and its worth (a click picks it to sell); up to three free places dashed, then
+  "+ n more free places"; a clear note when the ship has no drone hangar.
+- **Repair Bay / Fuel Depot:** one layout for both: the picked ship big with thick bars (armour and structure, or
+  fuel), what is missing, the price and one button "Repair fully" / "Refuel fully"; every ship in the hangar as a
+  tile with its bars and cost, and "… all".
+- **Munitions Depot:** your launchers, the economy and the hold on top; the mines as tiles ("fits ✓", grey when not
+  stocked); the picked one with what it does, its price, what you carry, buying and selling back with a slider.
+
 ## alpha 0.8.56.9 – 2026-11-18
 
 **Station windows, part 4: Bond Office and Image Studio follow the screen size (Luz).**

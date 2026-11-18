@@ -14400,6 +14400,37 @@ func _test_stationwin(view: SystemView) -> void:
 	prod_ok = prod_ok and Industry.refine_factor("platinum_ore") > Industry.refine_factor("iron_ore") if GameData.commodities.has("platinum_ore") else prod_ok
 	prod_ok = prod_ok and Industry.station_build_time("o_cargo:1:C") < Industry.build_time("o_cargo:1:C") and Industry.component_time("fusion_cells", 1) > Industry.component_time("circuits", 1)
 	GameState.jobs = keep_jobs
+	# the drone bay, repair / fuel and the munitions depot (window rework, part 5)
+	var keep_drones: Array = f.drones.duplicate(true)
+	var svc_ok := true
+	GameState.credits = 1000000
+	f.cargo.clear()
+	f.mark_dirty()
+	sp.open_service("drones")
+	if int(f.stats()["drone_storage"]) > f.drones.size():
+		var nd := f.drones.size()
+		Commands.execute({"type": "drone_buy", "amount": 1})
+		sp.rebuild()
+		svc_ok = svc_ok and f.drones.size() == nd + 1 and sp._panel.find_children("*", "HSlider", true, false).size() >= 1
+	var SV = load("res://scripts/ui/station/service_panel.gd")
+	SV.pick_uid = -1
+	f.armor = 1.0
+	sp.open_service("repair")
+	var cost_r := Commands.service_cost("repair", f)
+	svc_ok = svc_ok and SV.pick_uid == f.uid and cost_r > 0
+	sp._panel._apply(f.uid)
+	svc_ok = svc_ok and Commands.service_cost("repair", f) == 0
+	var MU = load("res://scripts/ui/station/munitions_panel.gd")
+	sp.open_service("munitions")
+	var off := Munitions.offer(best)
+	if not off.is_empty():
+		var mid2: String = off.keys()[0]
+		MU.pick = mid2
+		sp.rebuild()
+		Commands.execute({"type": "munitions_buy", "item": mid2, "amount": 3})
+		svc_ok = svc_ok and int(f.cargo.get(mid2, 0.0)) == 3 and sp._panel.find_children("*", "HSlider", true, false).size() >= 1
+	f.drones = keep_drones
+	check(svc_ok, "window rework: the drone bay (buying with a slider), the repair bay (the picked ship, repaired fully), the munitions depot (the picked mine, bought)")
 	f.cargo = keep_cargo
 	f.mark_dirty()
 	GameState.credits = keep_cr

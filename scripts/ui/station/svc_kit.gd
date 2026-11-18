@@ -12,7 +12,8 @@ static func pic_height(node: Control) -> float:
 
 
 ## A framed picture panel with a faint grid and a glow in `col`; `tex` scaled up crisp. Corner notes top left / right.
-static func picture(tex: Texture2D, col: Color, h: float, note_l: String = "", note_r: String = "") -> PanelContainer:
+## `max_px` > 0: a small picture (a drone) is drawn at most that big instead of filling the panel.
+static func picture(tex: Texture2D, col: Color, h: float, note_l: String = "", note_r: String = "", max_px: float = 0.0) -> PanelContainer:
 	var box := UI.neon_panel(Color(col, 0.45), Color(0.03, 0.03, 0.07, 0.95), 1)
 	box.custom_minimum_size = Vector2(h * 1.25, h)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -30,6 +31,13 @@ static func picture(tex: Texture2D, col: Color, h: float, note_l: String = "", n
 	tr.offset_right = -h * 0.14
 	tr.offset_top = h * 0.16
 	tr.offset_bottom = -h * 0.12
+	if max_px > 0.0:
+		tr.set_anchors_preset(Control.PRESET_CENTER)
+		tr.custom_minimum_size = Vector2(max_px, max_px)
+		tr.offset_left = -max_px * 0.5
+		tr.offset_right = max_px * 0.5
+		tr.offset_top = -max_px * 0.5
+		tr.offset_bottom = max_px * 0.5
 	grid.add_child(tr)
 	var notes := UI.hbox(8)
 	notes.set_anchors_preset(Control.PRESET_TOP_WIDE)
@@ -391,6 +399,129 @@ static func _job_pic(j: Dictionary, sz: float) -> Control:
 	var ing := Ingot.new(good_color(String(j["out_id"])))
 	ing.custom_minimum_size = Vector2(sz * 1.3, sz)
 	return ing
+
+
+## A tile with bars: `bars` [[label, fraction, colour], …], `foot` a line below (with `foot_col`); `go` on a click.
+static func bar_tile(title: String, bars: Array, foot: String, foot_col: Color, on: bool, col: Color, sz: Vector2, go: Callable) -> Button:
+	var b := tile({"name": "", "sub": ""}, on, col, sz, go)
+	var v: VBoxContainer = b.get_child(0)
+	UI.clear(v)
+	v.add_theme_constant_override("separation", 2)
+	var t := UI.label(title, 13)
+	t.clip_text = true
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(t)
+	for e in bars:
+		var l := UI.label(String(e[0]), 11, UI.TEXT_DIM)
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(l)
+		var br := UI.bar(e[2], 100)
+		br.max_value = 1.0
+		br.value = clampf(float(e[1]), 0.0, 1.0)
+		br.custom_minimum_size = Vector2(0, 6)
+		br.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(br)
+	var sp := Control.new()
+	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(sp)
+	var fl := UI.label(foot, 11, foot_col)
+	fl.clip_text = true
+	fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(fl)
+	return b
+
+
+## A row of tiles side by side (no scrolling needed for a few); returns the row.
+static func tile_row(parent: Control, tiles: Array) -> HFlowContainer:
+	var r := HFlowContainer.new()
+	r.add_theme_constant_override("h_separation", 8)
+	r.add_theme_constant_override("v_separation", 8)
+	parent.add_child(r)
+	for t in tiles:
+		r.add_child(t)
+	return r
+
+
+## A buy / sell block: a slider with a number and a max button, the total, the button. `total(n)`, `label(n)` give
+## the texts, `go(n)` runs it. Returns the block.
+static func amount_block(parent: Control, title: String, mx: int, n0: int, col: Color, total: Callable, label: Callable, go: Callable, max_text: String, note: String = "") -> VBoxContainer:
+	var v := UI.vbox(6)
+	parent.add_child(v)
+	var line := ColorRect.new()
+	line.color = Color(1, 1, 1, 0.1)
+	line.custom_minimum_size = Vector2(0, 1)
+	v.add_child(line)
+	v.add_child(UI.label(title, 12, UI.TEXT_DIM))
+	var sr := UI.hbox(8)
+	v.add_child(sr)
+	var sl := HSlider.new()
+	sl.min_value = 0
+	sl.max_value = maxi(mx, 1)
+	sl.step = 1
+	sl.value = n0
+	sl.editable = mx > 0
+	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sr.add_child(sl)
+	var sp := SpinBox.new()
+	sp.max_value = maxi(mx, 0)
+	sp.value = n0
+	sp.editable = mx > 0
+	sp.custom_minimum_size = Vector2(80, 0)
+	sr.add_child(sp)
+	var mxb := UI.button(max_text, func(): sl.value = mx)
+	mxb.disabled = mx <= 0
+	sr.add_child(mxb)
+	var tr := UI.hbox(8)
+	v.add_child(tr)
+	var tl := UI.label(total.call(n0), 13, col)
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tl.clip_text = true
+	tr.add_child(tl)
+	var n_now := [n0]
+	var gb := UI.button(label.call(n0), func(): go.call(n_now[0]))
+	gb.disabled = mx <= 0 or n0 <= 0
+	tr.add_child(gb)
+	var sync := func(val: float):
+		var n := int(val)
+		n_now[0] = n
+		if int(sl.value) != n:
+			sl.set_value_no_signal(n)
+		if int(sp.value) != n:
+			sp.set_value_no_signal(n)
+		tl.text = total.call(n)
+		gb.text = label.call(n)
+		gb.disabled = mx <= 0 or n <= 0
+	sl.value_changed.connect(sync)
+	sp.value_changed.connect(sync)
+	if note != "":
+		var nl := UI.label(note, 11, UI.TEXT_DIM)
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(nl)
+	return v
+
+
+## A mine drawn in its colour (munitions have no pictures).
+class MineGlyph extends Control:
+	var col := Color.WHITE
+
+	func _init(c: Color = Color.WHITE) -> void:
+		col = c
+		custom_minimum_size = Vector2(40, 40)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * 0.3
+		for k in 8:
+			var a := k * TAU / 8.0
+			draw_line(c + Vector2.from_angle(a) * r * 0.9, c + Vector2.from_angle(a) * r * 1.35, Color(0.55, 0.5, 0.48), maxf(2.0, r * 0.14))
+		draw_circle(c, r, Color(0.3, 0.26, 0.24))
+		draw_circle(c, r * 0.78, Color(0.42, 0.37, 0.34))
+		draw_circle(c, r * 0.3, col)
+		draw_circle(c, r * 0.16, col.lightened(0.5))
 
 
 ## A refined good or component drawn as a bar of metal in its own colour (there are no pictures for them).
