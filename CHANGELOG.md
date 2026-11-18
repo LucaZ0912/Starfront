@@ -3,6 +3,15 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.56.9 – 2026-11-18
+
+**Station windows, part 4: Bond Office and Image Studio follow the screen size (Luz).**
+- **Bond Office:** as many wanted posters in a row as fit, each 230 to 300 wide, the writing and the mugshot growing
+  with them (three a row at 1280, four from 1600). Your record and the bonds to redeem now come first, the posters
+  below. The note on top wraps on small screens.
+- **Image Studio:** no fixed width of 1,080 any more; the portrait and the hologram follow the screen's height; the
+  three columns stay together in the middle and the gaps grow on wide screens.
+
 ## alpha 0.8.56.8 – 2026-11-18
 
 **Station windows, part 3: Refinery and Manufacturing, and production takes time (Luz).**

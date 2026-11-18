@@ -520,7 +520,10 @@ class AttrBar extends Control:
 
 func _build_restyle() -> void:
 	var pink := Color(1.0, 0.55, 0.85)
-	custom_minimum_size = Vector2(1080, 0)
+	# window rework (Luz, 18 Nov 2026): the columns share the width, the portrait and the hologram follow the height
+	var sh := get_viewport().get_visible_rect().size.y
+	var holo_h := clampf(sh - 330.0, 300.0, 600.0)
+	custom_minimum_size = Vector2(0, 0)
 	var sb := UI.panel_style(Color(0.04, 0.02, 0.06, 0.99), Color(pink, 0.6))
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(0)
@@ -538,7 +541,8 @@ func _build_restyle() -> void:
 	line.color = Color(pink, 0.4)
 	line.custom_minimum_size = Vector2(0, 1)
 	v.add_child(line)
-	var cols := UI.hbox(22)
+	var cols := UI.hbox(maxi(22, int((get_viewport().get_visible_rect().size.x - 1300.0) * 0.2)))
+	cols.alignment = BoxContainer.ALIGNMENT_CENTER                  # the three columns stay together, centred
 	v.add_child(cols)
 	var left := UI.vbox(2)
 	left.custom_minimum_size = Vector2(340, 0)
@@ -548,7 +552,8 @@ func _build_restyle() -> void:
 	fr.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left.add_child(fr)
 	_portrait = TextureRect.new()
-	_portrait.custom_minimum_size = Vector2(170, 170)
+	var ps := clampf(sh * 0.19, 110.0, 190.0)
+	_portrait.custom_minimum_size = Vector2(ps, ps)
 	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -567,7 +572,8 @@ func _build_restyle() -> void:
 	_bed = ScanBed.new()
 	_bed.CY = pink
 	_bed.projection = true
-	_bed.custom_minimum_size = Vector2(280, 480)
+	_bed.custom_minimum_size = Vector2(holo_h * 0.58, holo_h)
+	_bed.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	cols.add_child(_bed)
 	var right := UI.vbox(2)
 	right.custom_minimum_size = Vector2(340, 0)

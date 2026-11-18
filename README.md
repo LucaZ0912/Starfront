@@ -376,6 +376,8 @@ Slanted, cosy top-down view since 0.7.49.2.
   and `changed`; events from docking, jumps, locks and "near" goals), `StoryUI` (scripts/ui/story_ui.gd: dialogue with
   pause, radio, tips, tracker, marker), the pilot window's Journal tab (`TAB_JOURNAL`, `jsub`, `jsel`), key `journal`
   (O), commands `story_track`, `story_tips`, `debug_story`; smoke group `story55`.
+- 0.8.56.9: BondPanel.wanted_poster(c, sid, course, width) scales by `_k`; the restyle (`_build_restyle`) sizes the
+  portrait and the hologram by the screen.
 - 0.8.56.8: Industry `REFINE_RATE`, `refine_factor`, `refine_time`, `component_time`, `station_build_time`,
   `queue_station_job`, `fmt_secs`; station jobs carry `lane` ("refinery" / "fab"), `type` ("refine" / "component" /
   "module"), `out_id`, `out`, `done`, `id`; GameState `_advance_station_jobs` (one job per lane, leftover time goes

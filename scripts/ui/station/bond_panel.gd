@@ -19,9 +19,8 @@ func build() -> void:
 	add_child(head)
 	if sf != "":
 		head.add_child(UI.icon(CrestArt.texture(sf), 34))
-	head.add_child(UI.wrap_label(("The Sable Writ Exchange clears the bounties of the %s here: every bond it issued is paid at any of its stations." % FactionData.name_of(sf)) if sf != "" else "This free port has no government: the Sable Writ Exchange only pays old bonds issued in this system.", 13, UI.TEXT_DIM, 860))
+	head.add_child(UI.wrap_label(("The Sable Writ Exchange clears the bounties of the %s here: every bond it issued is paid at any of its stations." % FactionData.name_of(sf)) if sf != "" else "This free port has no government: the Sable Writ Exchange only pays old bonds issued in this system.", 13, UI.TEXT_DIM, minf(860.0, ui.line_limit())))
 	_record(sf)
-	_wanted_posters(sid)
 	section("REDEEMABLE HERE  –  %d bond%s, %s" % [here.size(), "" if here.size() == 1 else "s", GameData.fmt_credits(here_sum)])
 	if here.is_empty():
 		add_child(UI.label("No bonds for this office.", 13, UI.TEXT_DIM))
@@ -60,6 +59,7 @@ func build() -> void:
 				row2.add_child(UI.icon(CrestArt.texture(k), 22))
 			var who: String = ("%s bonds" % FactionData.short_of(k)) if k != "" else "Older bonds"
 			row2.add_child(UI.label("%s: %d, %s  •  redeem at %s" % [who, int(other[k][0]), GameData.fmt_credits(int(other[k][1])), GameState.bond_where(other[k][2], sid)], 13, Color(0.85, 0.88, 0.95)))
+	_wanted_posters(sid)                         # window rework: below what you can redeem (Luz, 18 Nov 2026)
 
 
 ## The pilot's criminal record with this station's faction, with the fine (package 13).
@@ -90,8 +90,14 @@ func _wanted_posters(sid: int) -> void:
 	flow.add_theme_constant_override("h_separation", 14)
 	flow.add_theme_constant_override("v_separation", 14)
 	add_child(flow)
+	# as many posters in a row as fit, each between 230 and 300 wide (window rework, Luz 18 Nov 2026)
+	var avail := ui.win.size.x - 70.0
+	var n := maxi(1, int((avail + 14.0) / 314.0))
+	if n < 4 and avail >= 4.0 * 230.0 + 42.0:
+		n = 4
+	var w := clampf((avail - 14.0 * (n - 1)) / n, 230.0, 300.0)
 	for c in N.captains:
-		flow.add_child(wanted_poster(c, sid, func(w): _course(w)))
+		flow.add_child(wanted_poster(c, sid, func(w2): _course(w2), w))
 
 
 const PAPER := Color(0.87, 0.77, 0.56)
@@ -99,8 +105,11 @@ const INK := Color(0.24, 0.13, 0.06)
 const INK_RED := Color(0.62, 0.12, 0.08)
 
 
+static var _k := 1.0                   # the poster's scale (its width / 300)
+
+
 static func _ink(text: String, size: int, col: Color = INK) -> Label:
-	var l := UI.label(text, size, col)
+	var l := UI.label(text, maxi(9, int(round(size * _k))), col)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
 	return l
@@ -108,11 +117,12 @@ static func _ink(text: String, size: int, col: Color = INK) -> Label:
 
 ## A Wild West wanted poster: WANTED, the mugshot, the stars, DEAD OR ALIVE, the reward, the ship and its escort.
 ## Also used by the collection (destroyed captains). course: Callable(system) for "Set course" (or null).
-static func wanted_poster(c: Dictionary, sid: int = -1, course = null) -> Control:
+static func wanted_poster(c: Dictionary, sid: int = -1, course = null, width: float = 300.0) -> Control:
 	NotoriousData.ensure_character(c)
+	_k = width / 300.0
 	var alive: bool = bool(c.get("alive", true))
 	var box := PanelContainer.new()
-	box.custom_minimum_size = Vector2(300, 0)
+	box.custom_minimum_size = Vector2(width, 0)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = PAPER if alive else PAPER.darkened(0.35)
 	sb.border_color = INK.lightened(0.15)
@@ -140,7 +150,7 @@ static func wanted_poster(c: Dictionary, sid: int = -1, course = null) -> Contro
 	v.add_child(fr)
 	var por := TextureRect.new()
 	por.texture = load("res://scripts/core/pilot_art.gd").portrait(c["look"])
-	por.custom_minimum_size = Vector2(132, 132)
+	por.custom_minimum_size = Vector2(132, 132) * _k
 	por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	por.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
