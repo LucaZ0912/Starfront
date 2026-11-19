@@ -5,6 +5,7 @@ const MakerData = preload("res://data/manufacturers.gd")
 ## station hangars and can only be switched there.
 
 signal credits_changed(value: int)
+signal slept(station_id: String)                 # package 58: a night in the quarters (the story listens)
 signal message(text: String, color: Color)
 signal fleet_changed
 signal active_changed                    # a different ship is now active
@@ -63,6 +64,12 @@ var _next_uid := 1
 ## (station_id -> {"t": play time made, "offers": [{"m": member, "price": cr}]}).
 var crew_quarters := {}
 var bar := {}
+## Package 58 (Luz): rooms rented in the quarters – station id -> {"room": index, "size", "free": paid by someone else,
+## "keep": stays after a night (Dan's room)}.
+var lodging := {}
+## Package 58 (Luz): the story may catch the loss of your ship (a tutorial's mission) – (fit) -> true: handled, no
+## game over (you wake at Dan's instead).
+var story_guard: Callable = Callable()
 var _crew_seq := 1
 ## Package 31a: where the pilot comes back ({"system", "id"} of the last station docked at), escape pods drifting
 ## in space ([{"id", "system", "pos", "crew": [{"m", "until"}]}]), the open buy-back offer, crew rescued from pods
@@ -217,6 +224,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	jobs.clear()
 	missions.clear()
 	offers.clear()
+	lodging.clear()
 	bonds.clear()
 	rep.reset()
 	law.reset()
@@ -553,7 +561,7 @@ func to_dict() -> Dictionary:
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
 		"senate": senate.to_dict(), "curia": curia.to_dict(), "story": story.to_dict(), "permits": permits.duplicate(), "research_data": research_data, "poi_visits": poi_visits.duplicate(), "sight_photos": sight_photos.duplicate(), "minigame_streak": minigame_streak.duplicate(), "minigame_wins": minigame_wins.duplicate(), "minigame_best": minigame_best.duplicate(), "sight_visits": sight_visits.duplicate(), "poi_used": poi_used.duplicate(), "poi_state": poi_state.duplicate(true), "museum_finds": museum_finds.duplicate(), "museum_donated": museum_donated.duplicate(),
 		"prosperity": _saved_prosperity(), "market_stock": market_stock.duplicate(true),
-		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq,
+		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq, "lodging": lodging.duplicate(true),
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 		"collection": collection.duplicate(true), "gear": gear.to_dict(),
@@ -589,6 +597,7 @@ func from_dict(d: Dictionary) -> void:
 	_next_uid = int(d["next_uid"])
 	crew_quarters = d.get("crew_quarters", {}).duplicate(true)
 	bar = d.get("bar", {}).duplicate(true)
+	lodging = d.get("lodging", {}).duplicate(true)
 	_crew_seq = int(d.get("crew_seq", 1))
 	last_station = d.get("last_station", {}).duplicate()
 	pods = d.get("pods", []).duplicate(true)
@@ -912,6 +921,8 @@ func net_worth() -> int:
 
 
 func on_player_ship_lost(f: ShipFitting) -> void:
+	if f.uid == active_uid and story_guard.is_valid() and bool(story_guard.call(f)):
+		return                                       # package 58: the story takes over (no game over)
 	fleet.erase(f)
 	jobs = jobs.filter(func(j): return String(j.get("kind", "")) != "ship" or int(j.get("uid", 0)) != f.uid)   # review K4
 	log_msg("%s was destroyed!" % f.ship_name, COL_BAD)

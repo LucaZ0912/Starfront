@@ -1788,6 +1788,21 @@ func steer(d: Vector2) -> void:
 		Commands.execute({"type": "key_steer", "x": 0.0, "y": 0.0})
 
 
+## Package 58 (Luz): the camera moved away from your ship (by the stick or the mouse) – the screen's middle is then a
+## point of its own: marked, and the targeting (L1 / R1, the keys) goes by nearness to it.
+func cam_off_ship() -> bool:
+	if follow or player == null or not is_instance_valid(player) or camera == null:
+		return false                                     # (following the ship – also when it lags a little at speed)
+	return (camera.position - player.position).length() * camera.zoom.x > 60.0
+
+
+## Where the targeting measures from: the screen's middle while the camera is off the ship, else the ship.
+func target_ref() -> Vector2:
+	if cam_off_ship():
+		return camera.position
+	return player.position if player != null and is_instance_valid(player) else Vector2.ZERO
+
+
 func center_on_player() -> void:
 	follow = true
 	if player != null and is_instance_valid(player):

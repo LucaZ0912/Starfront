@@ -386,6 +386,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   `_warp_steps`, `_drone_steps`, `SCRAP_GOAL`); HUD `tour_targets` (`drone_panel`, `drone_roles`, `drone_modes`,
   `warp_button`, `ov_<id>`), `_mark_objectives`; Pad drone wheel (◯ held: `_circ_t`, `_drone_items`, ids `dw:…`);
   `GameState.crew_hire_locked()` (flag `crew_open`); smoke groups `w58b`, `padshot` (render only).
+- 0.8.58.3 (package 58, parts 3–4): dan_work phases `rest` → `part3` → `brine` → `convoy` → `call` → `back` → `party`
+  → `maul` → `crew` → `contact` (`ground_mode`, `_story_rescue` via `GameState.story_guard`, `_three_months`,
+  `_give_maul`, `_crew_tour`); story mission `fight`; `scripts/ground/quarters_gen.gd` (`rooms`, `build`, `RoomDoor`,
+  `CleanBot`), `scripts/ground/sleeper.gd`, commands `room_rent` / `room_sleep`, `GameState.lodging` / `slept`;
+  walker `dancing`, `bubble`; ChibiArt frames 4/5 (lying); `PixelArt.rundown_texture` (paint `ossa_rust`); traffic
+  `story_ambush`, `caller`; SystemView `cam_off_ship`, `target_ref`; main `ask_city_takeoff`; ship menu
+  `tour_targets`; smoke groups `w58c`, `w58d`, `q58`, `cam58`.
 - 0.8.56.10: Kit `bar_tile`, `tile_row`, `amount_block`, `MineGlyph`, `picture(..., max_px)`; DronePanel `pick`,
   ServicePanel `pick_uid`, MunitionsPanel `pick`.
 - 0.8.56.9: BondPanel.wanted_poster(c, sid, course, width) scales by `_k`; the restyle (`_build_restyle`) sizes the

@@ -200,10 +200,17 @@ func _on_descent_ending(atmo: bool) -> void:
 ## Gets out of the ship and walks the deck of the station it is docked at.
 func open_deck() -> void:
 	var f := GameState.active()
-	if f == null or f.docked_at == "" or view == null or not view.stations.has(f.docked_at):
+	if f == null or f.docked_at == "" or view == null:
 		return
+	var st: Dictionary = view.stations[f.docked_at].data if view.stations.has(f.docked_at) else {}
+	if st.is_empty() and not f.docked_at.begins_with("land:"):
+		return
+	if st.is_empty():
+		st = Commands.docked_station()                 # package 58: a city – its deck again from its window
+		if st.is_empty() or not bool(st.get("city", false)):
+			return
 	GameState.gear.aboard()
-	_open_ground_at(view.stations[f.docked_at].data)
+	_open_ground_at(st)
 
 
 ## Which of a station's (or city's, or settlement's) services there are – id -> "" or why it is closed.
@@ -227,6 +234,9 @@ func _open_ground_at(st: Dictionary) -> void:
 	ground = GroundView.new()
 	ground.name = "Ground"
 	add_child(ground)
+	var dw = get_meta("dan_work", null)
+	if dw != null and is_instance_valid(dw) and dw.has_method("ground_mode"):
+		ground.story_mode = dw.ground_mode(st)          # package 58: Dan in his bar, Ossa Kell at your ship on Brine
 	ground.setup_station(st, avail, GameState.bar_offers(st) if avail.has("bar") else [], GameState.current_system)
 	ground.used.connect(_on_deck_use)
 	GameState.codex.event("on_foot")
@@ -601,10 +611,10 @@ func _on_deck_use(z: Dictionary) -> void:
 					drone_up(ground._body, ground._site, dest)       # 0.7.50.15: the drone climbs, the ship catches it
 				else:
 					take_off(dest)
-			elif ground != null and is_instance_valid(ground) and ground.station.get("city", false):
+			elif ground != null and is_instance_valid(ground) and ground.station.get("city", false) and z.has("dest"):
 				leave_city(dest)
 			else:
-				close_deck(true)
+				close_deck(true)                         # package 58 (Luz): a city's stairs too – its window opens
 		"service", "crew":
 			var f := GameState.active()
 			var st: Dictionary = Commands.docked_station() if f != null and f.docked_at != "" else {}
@@ -724,12 +734,69 @@ func _on_active_changed() -> void:
 
 func open_station() -> void:
 	var f := GameState.active()
-	if f == null or f.docked_at == "" or view == null or not view.stations.has(f.docked_at):
+	if f == null or f.docked_at == "" or view == null:
+		return
+	var st: Dictionary = view.stations[f.docked_at].data if view.stations.has(f.docked_at) else {}
+	if st.is_empty() and f.docked_at.begins_with("land:"):
+		var cst := Commands.docked_station()             # package 58 (Luz): a city's window, aboard in its hangar
+		if bool(cst.get("city", false)):
+			st = cst
+	if st.is_empty():
 		return
 	galaxy.close()
 	ship_menu.close()
 	station_panel.on_foot = false
-	station_panel.open(view.stations[f.docked_at].data, view)
+	station_panel.open(st, view)
+	_update_input()
+
+
+## Package 58 (Luz): undocking in a city – up to orbit, or to the planet map for another place.
+var _takeoff_layer: CanvasLayer = null
+
+
+func ask_city_takeoff() -> void:
+	var st := Commands.docked_station()
+	station_panel.close()
+	if _takeoff_layer != null and is_instance_valid(_takeoff_layer):
+		_takeoff_layer.queue_free()
+	_takeoff_layer = CanvasLayer.new()
+	_takeoff_layer.layer = 26
+	add_child(_takeoff_layer)
+	Audio.play("ui_open", "city: take off")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_takeoff_layer.add_child(c)
+	var p := UI.neon_panel(Color(0.4, 1.0, 0.6, 0.85), Color(0.03, 0.05, 0.06, 0.96), 2)
+	p.custom_minimum_size = Vector2(440, 0)
+	c.add_child(p)
+	p.add_to_group("kbd_menu")
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label("TAKE OFF", 20, Color(0.4, 1.0, 0.6)))
+	var bname := String(Universe.find_body(GameState.current_system, String(st.get("body", ""))).get("name", "the planet"))
+	v.add_child(UI.label("Out of %s, up through the hatch. Where to?" % String(st.get("name", "the city")), 13, UI.TEXT_DIM))
+	var go := func(dest: String):
+		_takeoff_layer.queue_free()
+		_takeoff_layer = null
+		leave_city(dest)
+	var b1 := UI.button("1.  Back to orbit", go.bind("orbit"))
+	b1.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	v.add_child(b1)
+	var b2 := UI.button("2.  To the planet map: another place on %s" % bname, go.bind("map"))
+	b2.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	v.add_child(b2)
+	v.add_child(UI.button("Stay [Esc]", func():
+		_takeoff_layer.queue_free()
+		_takeoff_layer = null
+		open_station()))
+	var esc := _EscCatcher.new()                       # Esc / ◯: stay
+	esc.on_esc = func():
+		if _takeoff_layer != null and is_instance_valid(_takeoff_layer):
+			_takeoff_layer.queue_free()
+			_takeoff_layer = null
+			open_station()
+	_takeoff_layer.add_child(esc)
+	b1.grab_focus()
 	_update_input()
 
 
@@ -925,3 +992,14 @@ func open_journal() -> void:
 	if not pilot_window.visible:
 		toggle_pilot_window()
 	pilot_window._set_tab(pilot_window.TAB_JOURNAL)
+
+
+## Package 58: Esc (or ◯ in a menu) closes a small window – the city's take-off question.
+class _EscCatcher extends Node:
+	var on_esc: Callable
+
+	func _input(e: InputEvent) -> void:
+		if e.is_action_pressed("menu_back") or e.is_action_pressed("ui_cancel") or (e is InputEventKey and e.pressed and not e.echo and (e as InputEventKey).keycode == KEY_ESCAPE):
+			get_viewport().set_input_as_handled()
+			if on_esc.is_valid():
+				on_esc.call()

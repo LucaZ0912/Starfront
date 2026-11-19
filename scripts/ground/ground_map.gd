@@ -152,6 +152,16 @@ func _px(x: int, y: int, c: Color) -> void:
 		_img.set_pixel(x, y, c)
 
 
+## Package 58: small digits (3 × 5 pixels each) – a room's number.
+func _digits(x: int, y: int, txt: String, c: Color) -> void:
+	for di in txt.length():
+		var g: Array = DIGITS.get(txt[di], DIGITS["0"])
+		for gy in 5:
+			for gx in 3:
+				if String(g[gy])[gx] == "1":
+					_px(x + di * 4 + gx, y + gy, c)
+
+
 func _rect(x: int, y: int, rw: int, rh: int, c: Color) -> void:
 	var r := Rect2i(x, y, rw, rh).intersection(Rect2i(0, 0, _img.get_width(), _img.get_height()))
 	if r.size.x > 0 and r.size.y > 0:
@@ -2140,6 +2150,13 @@ func _decal(d: Dictionary) -> void:
 				_rect(px + pw - (k + 1) * 4, py, 1, ph, sc.lightened(0.25))
 			_rect(px, py, pw, 1, c)
 			_rect(px, py + ph - 1, pw, 1, c)
+		"room_door_s":
+			# package 58: a closed room south of the corridor – its door in the wall's top edge, the number on the floor
+			if not bool(d.get("open", false)):
+				_rect(px, py + ph - 3, pw, 3, Color(0.24, 0.22, 0.3))
+				_rect(px + pw / 2 - 1, py + ph - 3, 2, 3, Color(0.14, 0.13, 0.18))
+			_rect(px + pw - 5, py + ph - 3, 3, 2, c)
+			_digits(px + 6, py + ph - 10, str(int(d.get("no", 0))), Color(0.7, 0.68, 0.76))
 		"mat":
 			_rect(px + 2, py + 3, pw - 4, ph - 6, Color(0.16, 0.14, 0.16))
 			for k in int((pw - 6) / 3):
@@ -2615,6 +2632,25 @@ func _face_deco(d: Dictionary) -> void:
 						if String(rows[gy])[gx] == "1":
 							_rect(cx0 + gx * 3, py + 4 + gy * 3, 2, 2, c)
 				cx0 += 12
+		"room_door":
+			# package 58 (Luz): a closed room in the quarters – a sliding door, its number, a red lamp: you can't see in
+			var dc := Color(0.24, 0.22, 0.3)
+			_rect(px, py - TILE, pw, TILE * 2, Color(0.12, 0.11, 0.15))
+			_rect(px + 2, py - TILE + 2, pw - 4, TILE * 2 - 2, dc)
+			_rect(px + pw / 2 - 1, py - TILE + 2, 2, TILE * 2 - 2, dc.darkened(0.35))
+			_rect(px + 2, py - TILE + 2, pw - 4, 1, dc.lightened(0.25))
+			_rect(px + 4, py - TILE + 5, pw - 8, 7, Color(0.08, 0.08, 0.1))
+			_digits(px + 6, py - TILE + 6, str(int(d.get("no", 0))), Color(0.95, 0.92, 0.85))
+			_rect(px + pw - 6, py - TILE + 15, 3, 3, c)
+			_rect(px + pw - 7, py - TILE + 14, 5, 5, Color(c, 0.25))
+		"room_plate":
+			# the number beside an open door (green: yours, amber: being cleaned, gold: the penthouse)
+			_rect(px + 2, py - TILE + 4, pw - 4, 10, Color(0.08, 0.08, 0.1))
+			if String(d.get("text", "")) != "":
+				_rect(px + 4, py - TILE + 6, pw - 8, 6, c.darkened(0.2))
+			else:
+				_digits(px + 2, py - TILE + 6, str(int(d.get("no", 0))), Color(0.95, 0.92, 0.85))
+			_rect(px + 6, py - TILE + 15, 4, 3, c)
 		"lamp":
 			_rect(px + 6, py + 3, 4, 4, c.lightened(0.3))
 			_rect(px + 5, py + 7, 6, 1, Color(pal["wall"]).darkened(0.3))

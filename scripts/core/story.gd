@@ -71,6 +71,13 @@ func step_data(mid: String) -> Dictionary:
 	return steps[i] if i >= 0 and i < steps.size() else {}
 
 
+## A mission one before it leads to (deferred): only if it has not been started meanwhile (package 58: else the
+## started one would begin again from its first step).
+func _start_next(mid: String) -> void:
+	if not running(mid) and not done.has(mid):
+		start(mid)
+
+
 ## Starts a mission at its first step (or `at`); tracked if nothing else is.
 func start(mid: String, at: int = 0) -> String:
 	var md := mission_data(mid)
@@ -123,7 +130,7 @@ func _run(mid: String, actions: Array) -> void:
 				missions[mid]["target"] = _pick_target(String(a.get("what", "")))
 			"start":
 				if not running(String(a["id"])) and not done.has(String(a["id"])):
-					start.call_deferred(String(a["id"]))          # package 56: one mission leads to the next
+					_start_next.call_deferred(String(a["id"]))    # package 56: one mission leads to the next
 
 
 ## The object a step points at (for the goals "@target" and the marker).

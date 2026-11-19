@@ -1516,6 +1516,11 @@ func depart_gathered(e: Dictionary) -> void:
 ## Pirates may pull the escorted convoy out of warp somewhere on its way through this system.
 func _plan_ambush(e: Dictionary) -> void:
 	var c: Dictionary = e["c"]
+	if c.get("no_ambush", false):
+		return                                           # package 58: the story's convoy was attacked once – enough
+	if int(c.get("story_ambush", 0)) > 0:
+		e["pull_at"] = 0.45                              # package 58: Ossa's haulers are pulled out of warp halfway
+		return
 	var sec := float(Universe.systems[sid]["security"])
 	var chance := (0.3 if int(c["src"]) == sid else 0.4) + (1.0 - sec) * 0.45
 	if randf() < chance or c.get("force_ambush", false):
@@ -1532,10 +1537,12 @@ func _convoy_call(e: Dictionary, text: String, urgent: bool = false) -> void:
 	if not urgent and now - float(e.get("call_t", -999.0)) < 25.0:
 		return
 	e["call_t"] = now
-	GameState.story.show.emit("radio", {"who": "convoy_pilot", "text": text, "mission": ""})
+	GameState.story.show.emit("radio", {"who": String(e["c"].get("caller", "convoy_pilot")), "text": text, "mission": "", "now": urgent})
 
 
 func _gate_ambush(e: Dictionary, ships: Array, pos: Vector2) -> void:
+	if e["c"].get("no_ambush", false) or int(e["c"].get("story_ambush", 0)) > 0:
+		return                                           # package 58: the story's convoy – only its own ambush
 	var sec := float(Universe.systems[sid]["security"])
 	if randf() > 0.25 + (1.0 - sec) * 0.4 and not e["c"].get("force_ambush", false):
 		return
@@ -1575,12 +1582,23 @@ func pull_out_of_warp(e: Dictionary, leader: Ship) -> void:
 			n2.position = leader.position + Vector2.from_angle(k0 * 2.4) * (500.0 + k0 * 250.0)
 		n2.drop_out_of_warp(15.0)
 	var where: String = view.landmark(leader.position)
-	var k := randi_range(3, 4)
+	var c9: Dictionary = e["c"]
+	var story_k := int(c9.get("story_ambush", 0))
+	var k := story_k if story_k > 0 else randi_range(3, 4)
+	var spawned: Array = []
 	for i in k:
 		var p: Ship = view.spawn_npc(view._pirate_preset(), leader.position + Vector2.from_angle(randf() * TAU) * randf_range(3000.0, 5000.0))
 		p.home = leader.position
 		p.set_order({"type": "attack", "target": dropped[randi() % dropped.size()]})
 		view.spawn_fx(Fx.flash(p.position, Color(1.0, 0.4, 0.3), p.radius * 3.0))
+		spawned.append(p)
+	if story_k > 0:
+		# package 58: the story's ambush – once; the story learns of it (its flag) and watches the pirates
+		c9.erase("story_ambush")
+		c9["no_ambush"] = true
+		e["ambushers"] = spawned
+		if String(c9.get("story_flag", "")) != "":
+			GameState.story.set_flag(String(c9["story_flag"]), true)
 	GameState.news.radio("Convoy pulled out of warp near %s: pirates closing in!" % where, sid, leader.position)
 	_convoy_call(e, "Mayday, they've pulled us out of warp near %s! %d pirates closing in. Escort, cover us!" % [where, k], true)
 	var pl = view.player

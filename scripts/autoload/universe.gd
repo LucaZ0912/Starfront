@@ -2638,9 +2638,10 @@ const WAYSTATION_SHARE := 0.75
 func _add_waystation(L: Dictionary, id: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value * 52711 + id * 3301 + 11
-	if L["gates"].is_empty() or L["planets"].is_empty() or rng.randf() > WAYSTATION_SHARE:
+	var drift: bool = special_of(id) == "driftwood"     # package 58 (Luz): Driftwood has its waystation (Ossa's haulers go there)
+	if L["gates"].is_empty() or L["planets"].is_empty() or (rng.randf() > WAYSTATION_SHARE and not drift):
 		return
-	if systems[id].get("outer", false) or systems[id].get("fortress", false) or is_pocket(id):
+	if systems[id].get("outer", false) or systems[id].get("fortress", false) or (is_pocket(id) and not drift):
 		return                                          # 40e: nobody keeps a rest stop in the Far Reaches or under a fortress's guns (57: nor in Beyond)
 	var g: Dictionary = L["gates"][rng.randi() % L["gates"].size()]
 	var gp: Vector2 = g["pos"]
@@ -3339,6 +3340,8 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 		if kd == "city":
 			var st: String = CITY_STARTS[rng.randi() % CITY_STARTS.size()]
 			nm = ("%s %s" % [st, String(body["name"]).split(" ")[0]]).strip_edges() if rng.randf() < 0.5 else "%s %s" % [String(body["name"]).split(" ")[0], CITY_ENDS[rng.randi() % CITY_ENDS.size()]]
+			if is_pocket(system_id) and String(body["name"]) == "Brine":
+				nm = "Upper Brine"                               # package 58 (Luz): the story's city – always this name
 		else:
 			nm = "%s %s-%d" % [SITE_KINDS[kd]["name"], ["Kilo", "Delta", "Echo", "Sierra", "Tango", "Vega", "Orion", "Lima"][rng.randi() % 8], rng.randi_range(2, 19)]
 		if nm in used:

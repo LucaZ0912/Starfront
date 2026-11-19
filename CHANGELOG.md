@@ -3,6 +3,32 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.58.3 – 2026-11-19
+
+**Package 58, parts 3 and 4: Ossa Kell, the escort, the quarters, three months later (Luz).**
+- **Part 3:** after the scrap Dan gives you a free room upstairs (sleep there once), then the job in his bar: Ossa Kell
+  of Kell Freight meets you at your ship in **Upper Brine** (Brine's city, now always this name). Her two haulers go
+  from Dan's store to the new **Driftwood Waystation** as a real escort contract (3,000 cr), pulled out of warp once
+  by two pirates (Ossa and Dan on the radio). Dan lends better gear (a laser A, two armour plates A). Docked in
+  Driftwood: paid, then Dan's radio call.
+- **Part 4:** docked at Dan's, black and the pilot's thoughts ("Three months later"), a party in Dan's bar (people
+  dancing, his toast for you in speech bubbles, cheers), then the two of you on the bar stools talking about the
+  pirates (the camera close); you wake in your room. **"Taking the Fight to Them"**: Ossa in Upper Brine's shopping
+  street gives you her **Maul**, very well fitted (shield, five guns, armour repairer, drones), in a new run-down
+  orange paint, with **Rook Varga** (gunner A, Old Hand) and a guided tour of the crew window.
+- **The quarters (new):** a level by the lift on stations and in cities: the lift room, a lobby with the concierge,
+  a corridor of numbered rooms (small, medium, luxury; a penthouse lift for later). Closed rooms hide behind their
+  doors; one is being cleaned by a robot; your room's door slides open as you come. Renting at the desk, a locker
+  with your gear, a night in the bed: the pilot shown lying in it, the planets of the system elsewhere, new contracts
+  and bar faces. The pilot is shown as themselves in every bed (also the clinic bed of the intro).
+- **Shot down while working for Dan:** no game over, you wake in Dan's clinic; an escort starts again on undocking.
+- **Controls:** the camera moved off the ship marks the screen's middle; L1 / R1 then pick by nearness to it, from at
+  least 5,000 km, stations, gates and descent beacons too.
+- **Cities:** the stairs to your ship open the city's window; "Undock" asks: orbit or the planet map.
+- **Radio calls** that only point the way are said once (explanations and tasks stay); ships warping along with you
+  are drawn moving again; a deferred mission start no longer restarts a running mission.
+- Roadmap: translation planned as package 71b in part 9; story mission rules in the guidelines (4a).
+
 ## alpha 0.8.58.2 – 2026-11-18
 
 **Package 58, part 2: the wreck field and the drone's controls (Luz).**

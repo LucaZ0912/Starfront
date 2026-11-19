@@ -86,6 +86,12 @@ func _ready() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	# package 58 (Luz): the screen's middle marked while the camera is off the ship (the targeting goes by it)
+	_mid_mark = Control.new()
+	_mid_mark.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_mid_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mid_mark.draw.connect(_draw_mid_mark)
+	root.add_child(_mid_mark)
 
 	# --- Top bar
 	var top := UI.panel()
@@ -781,7 +787,24 @@ func _update_cme_banner(delta: float) -> void:
 	cme_banner.modulate.a = float(b["k"]) * (0.72 + 0.28 * absf(sin(_cme_pulse * 3.2)))
 
 
+var _mid_mark: Control = null
+
+
+func _draw_mid_mark() -> void:
+	if view == null or not is_instance_valid(view) or not view.cam_off_ship() or view.level >= 2:
+		return
+	var c := _mid_mark.get_viewport_rect().size * 0.5
+	var k := clampf(_mid_mark.get_viewport_rect().size.y / 900.0, 1.0, 2.4)
+	var col := Color(1.0, 0.82, 0.35, 0.85)
+	_mid_mark.draw_circle(c, 2.5 * k, col)
+	_mid_mark.draw_arc(c, 11.0 * k, 0.0, TAU, 32, Color(col, 0.55), 1.5 * k)
+	for d in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+		_mid_mark.draw_line(c + d * 15.0 * k, c + d * 22.0 * k, Color(col, 0.7), 1.5 * k)
+
+
 func _process(delta: float) -> void:
+	if _mid_mark != null:
+		_mid_mark.queue_redraw()
 	_update_fps(delta)
 	_update_cme_banner(delta)
 	if hover_panel.visible:
@@ -1076,6 +1099,7 @@ func hotkey_command(action: String) -> String:
 
 const HOSTILE_SELECT_RANGE := 50000.0
 const STATION_SELECT_RANGE := 5000.0
+const TARGET_RANGE := 5000.0           # package 58 (Luz): L1 / R1 pick from this far at least (stations too)
 
 
 ## Targeting keys (package 22): cycles through what is within sensor range, nearest first –
@@ -1083,7 +1107,7 @@ const STATION_SELECT_RANGE := 5000.0
 ## are not hostile). Hostile / friendly ships further out (up to 50,000 km) when none is in range.
 func select_next(kind: String) -> String:
 	var p = view.player
-	var sr: float = p.lock_range(p.fit.stats())
+	var sr: float = maxf(p.lock_range(p.fit.stats()), TARGET_RANGE)
 	var list := _target_candidates(p, kind, sr)
 	if list.is_empty() and kind != "all":
 		list = _target_candidates(p, kind, HOSTILE_SELECT_RANGE)
@@ -1094,10 +1118,14 @@ func select_next(kind: String) -> String:
 		return e
 	# ships first (nearest first), then asteroids, wrecks and anomalies; with nothing selected it
 	# starts again with the nearest ship
+	var ref: Vector2 = view.target_ref()          # package 58 (Luz): the screen's middle while the camera is off the ship
+	var off: bool = view.cam_off_ship()
+	var edge := func(n) -> float:                 # to its core: a station under the middle comes first, not the rock beside it
+		return maxf(ref.distance_to(n.position) - (float(n.radius) * 0.6 if not (n is Ship) else 0.0), 0.0)      # (a ship right there still wins)
 	list.sort_custom(func(a, b):
-		if (a is Ship) != (b is Ship):
-			return a is Ship
-		return p.position.distance_squared_to(a.position) < p.position.distance_squared_to(b.position))
+		if not off and (a is Ship) != (b is Ship):
+			return a is Ship                          # (by the ship: ships first, as before)
+		return edge.call(a) < edge.call(b))
 	var cur = view.find_object(selected_id) if selected_id != "" else null
 	var i := list.find(cur)
 	var nxt = list[(i + 1) % list.size()]
@@ -1117,6 +1145,10 @@ func _target_candidates(p, kind: String, rng: float) -> Array:
 		for c in view.celestials:
 			if is_instance_valid(c) and Ship.lockable(c) and p.position.distance_to(c.position) <= rng:
 				out.append(c)
+		# package 58 (Luz): stations, havens, gates and descent beacons too (to their edge)
+		for s0 in view.stations.values() + view.havens + view.gates.values() + view.descents.values():
+			if s0 != null and is_instance_valid(s0) and not s0 in out and maxf(p.position.distance_to(s0.position) - float(s0.radius), 0.0) <= rng:
+				out.append(s0)
 	return out
 
 
@@ -1149,10 +1181,11 @@ func select_near_station() -> String:
 func _nearest_hostile(p):
 	var sr := float(p.fit.stats()["sensor_range"])
 	var best = null
-	var bd := sr
+	var bd := INF
+	var ref: Vector2 = view.target_ref()          # package 58: nearest to the screen's middle while the camera is off the ship
 	for n in view.ship_layer.get_children():
-		if n is Ship and n != p and not n.dying and not n.in_warp() and n.hostile_to_player():
-			var dd: float = p.position.distance_to(n.position)
+		if n is Ship and n != p and not n.dying and not n.in_warp() and n.hostile_to_player() and p.position.distance_to(n.position) <= sr:
+			var dd: float = ref.distance_to(n.position)
 			if dd <= bd:
 				bd = dd
 				best = n

@@ -30,6 +30,9 @@ var down := false                  # package 52: fallen in a fight – lies on t
 var umbrella_on := false           # 54e (Luz): it rains – the holo umbrella up
 var umbrella := 0.0                # 0 folded … 1 open
 var crouch := false                # 0.7.52.21: sneaking – drawn low
+var dancing := false               # package 58 (Luz): at a party – bobbing, swaying, stepping, turning now and then
+var bubble := ""                   # package 58: a line said over the head (the toast, the cheers)
+var bubble_t := 0.0
 var _pp := 0
 const DRINK_TIME := 3.2
 var _t := 0.0
@@ -86,6 +89,10 @@ func step(d: Vector2, delta: float, speed_mult: float = 1.0) -> bool:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if bubble_t > 0.0:
+		bubble_t = maxf(0.0, bubble_t - delta)
+	if dancing:
+		queue_redraw()
 	drink_t = maxf(0.0, drink_t - delta)
 	umbrella = move_toward(umbrella, 1.0 if umbrella_on and not down else 0.0, delta * 2.5)
 	if goto_to != Vector2.INF:
@@ -209,6 +216,10 @@ func _draw() -> void:
 	var f := 0
 	if moving:
 		f = 1 + int(_walk * 7.0) % 2
+	var ph := _t * 6.5 + pos.x * 0.07
+	if dancing and not moving and not sitting:
+		f = 1 + int(ph / PI) % 2                                   # stepping on the beat
+		dir = [0, 0, 2, 0, 0, 3][int(_t * 0.9 + pos.y * 0.01) % 6]   # turning now and then
 	if creature != "":
 		_draw_creature(f)
 		return
@@ -228,6 +239,8 @@ func _draw() -> void:
 	var bob := 0.0
 	if not moving and not sitting:
 		bob = round(sin(_t * 2.2) * 0.4) * ChibiArt.CHAR_SCALE / s     # breathing
+	if dancing and not moving and not sitting:
+		bob = -absf(sin(ph)) * 1.8                                   # bouncing
 	# a soft shadow at the feet
 	if not sitting:
 		draw_set_transform(Vector2(0, -1.0 * s), 0.0, Vector2(1.0, 0.45))
@@ -247,6 +260,10 @@ func _draw() -> void:
 		if crouch:                                  # 0.7.52.21: sneaking – low, bent
 			var cs2 := Vector2(size.x * 1.04, size.y * 0.86)
 			draw_texture_rect(tex, Rect2(Vector2(-cs2.x * 0.5, -cs2.y + bob * s), cs2), false, Color(0.88, 0.85, 0.95))
+		elif dancing:
+			draw_set_transform(Vector2.ZERO, sin(ph * 0.5) * 0.13, Vector2.ONE)     # swaying from the feet
+			draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
 			draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
 	if aim != Vector2.INF and not sitting and not down:
@@ -299,6 +316,18 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(gx - 2, gy - 7), Vector2(4, 2)), Color(0.95, 0.95, 0.9))
 	if umbrella > 0.0:
 		_draw_umbrella(size, bob * s)
+	if bubble_t > 0.0 and bubble != "":
+		# package 58: a speech bubble over the head
+		var font := ThemeDB.fallback_font
+		var fs := 15
+		var tw := font.get_string_size(bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var by := -size.y - 30.0 - (SIT_LIFT * s if sitting else 0.0)
+		var a := clampf(bubble_t * 3.0, 0.0, 1.0)
+		var r := Rect2(Vector2(-tw * 0.5 - 8, by - 22), Vector2(tw + 16, 26))
+		draw_rect(r, Color(0.97, 0.96, 0.92, 0.95 * a))
+		draw_rect(r, Color(0.1, 0.08, 0.12, a), false, 2.0)
+		draw_colored_polygon(PackedVector2Array([Vector2(-5, by + 4), Vector2(5, by + 4), Vector2(0, by + 11)]), Color(0.97, 0.96, 0.92, 0.95 * a))
+		draw_string(font, Vector2(-tw * 0.5, by - 4), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.12, 0.1, 0.14, a))
 	if marker != "":
 		var y0 := -size.y - 10.0 + sin(_t * 3.0) * 3.0
 		draw_rect(Rect2(Vector2(-9, y0 - 18), Vector2(18, 20)), Color(1.0, 0.85, 0.35))

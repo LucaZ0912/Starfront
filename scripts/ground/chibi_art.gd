@@ -5,7 +5,8 @@ extends RefCounted
 ## light – cyan from the left, pink from the right, as if lit by the station's signs. Drawn at CHAR_SCALE screen px
 ## per pixel (finer than the deck's ×3, so they stand as tall as the doors allow).
 ## Directions: 0 down (towards the viewer), 1 up (away), 2 left, 3 right (mirrored).
-## Frames: 0 standing, 1 and 2 walking, 3 sitting.
+## Frames: 0 standing, 1 and 2 walking, 3 sitting, 4 lying in bed asleep (seen from above: the front, eyes shut),
+## 5 lying awake (package 58, Luz: the character shown in the bed).
 
 const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const GearData = preload("res://data/gear.gd")
@@ -111,7 +112,7 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	if not sd.is_empty():
 		pants = c1.darkened(0.12) if not combat else c1
 		boot = plate.darkened(0.45) if combat else Color(0.25, 0.26, 0.3)
-	var step := 0 if f == 0 or f == 3 else (1 if f == 1 else -1)
+	var step := 0 if f == 0 or f >= 3 else (1 if f == 1 else -1)
 	var side := dir == 2
 	var back := dir == 1
 	# ---- legs and boots
@@ -271,10 +272,14 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 		elif int(l["headgear"]) == 4:
 			_r(img, hx + 1, ey - 2, HW - 1, 1, Color(0.12, 0.11, 0.1))         # only the strap from the other side
 	else:
-		_px(img, cx - 2, ey, Color(0.95, 0.95, 0.95))
-		_px(img, cx - 1, ey, eye.darkened(0.2))
-		_px(img, cx + 1, ey, eye.darkened(0.2))
-		_px(img, cx + 2, ey, Color(0.95, 0.95, 0.95))
+		if f == 4:
+			_r(img, cx - 2, ey, 2, 1, skin.darkened(0.4))                # package 58: asleep – the eyes shut
+			_r(img, cx + 1, ey, 2, 1, skin.darkened(0.4))
+		else:
+			_px(img, cx - 2, ey, Color(0.95, 0.95, 0.95))
+			_px(img, cx - 1, ey, eye.darkened(0.2))
+			_px(img, cx + 1, ey, eye.darkened(0.2))
+			_px(img, cx + 2, ey, Color(0.95, 0.95, 0.95))
 		_r(img, cx - 2, ey - 1, 2, 1, hair.darkened(0.1))                # brows
 		_r(img, cx + 1, ey - 1, 2, 1, hair.darkened(0.1))
 		_px(img, cx, ey + 1, skin.darkened(0.2))                          # nose

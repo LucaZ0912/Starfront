@@ -472,6 +472,31 @@ func _build_world() -> void:
 			GameState.story.start("prologue", 3)
 		var mn6 = get_tree().current_scene
 		mn6.get_tree().create_timer(1.0).timeout.connect(func(): mn6._start_intro_six("bar"))))
+	r56.add_child(UI.button("Play package 58, part 3 (Ossa Kell, the escort)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn7 = get_tree().current_scene
+		mn7.get_tree().create_timer(1.0).timeout.connect(func():
+			var st7 = GameState.story
+			st7.flags["dan_deal_yes"] = true
+			for fl7 in ["ticket_ship", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone", "w58_atfield", "w58_drones", "w58_mined", "w58_delivered"]:
+				st7.flags[fl7] = true
+			for fl8 in st7.flags.keys():
+				if String(fl8) in ["w58_job", "w58_ossa", "w58_lent2", "w58_contract", "w58_departed", "w58_ambush", "w58_ambush_won", "w58_arrived", "w58_escorted", "w58_called", "w58_back"]:
+					st7.flags.erase(fl8)
+			mn7._start_dan_work("yes")
+			var w7 = mn7.get_meta("dan_work")
+			if not st7.running("darling"):
+				st7.start("darling")
+			st7.goto_step("darling", 9)
+			st7.tracked = "darling"
+			if w7.tour != null and is_instance_valid(w7.tour):
+				w7.tour.queue_free()
+			w7.tour = null
+			w7._set_phase("part3")
+			w7._give_room()                                  # (Dan's room upstairs, as after the scrap)
+			w7._part3_calls()
+			mn7.open_station())))
 	r56.add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()

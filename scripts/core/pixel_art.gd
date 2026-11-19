@@ -265,6 +265,10 @@ static func paint_key(f) -> String:
 		return "player"
 	if p == "dan_rust" and not _cache.has("ship_%s_dan_rust_-1" % f.hull_id):
 		use_rust(String(f.hull_id), "dan_rust")
+	if p == "ossa_rust" and not _cache.has("ship_%s_ossa_rust_-1" % f.hull_id):
+		var rt := rundown_texture(String(f.hull_id))
+		for fr in range(-1, 16):
+			_cache["ship_%s_ossa_rust_%d" % [f.hull_id, fr]] = rt
 	return p
 
 
@@ -294,6 +298,48 @@ static func rust_texture(hull_id: String) -> Texture2D:
 				continue
 			var patch := sin(x * 0.7 + y * 0.3) + sin(x * 0.23 - y * 0.9) > 0.9
 			var nc := Color.from_hsv(0.075 if patch else 0.055, c.s * (0.9 if patch else 0.72), c.v * (0.78 if patch else 0.55))
+			nc.a = c.a
+			img.set_pixel(x, y, nc)
+	_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
+
+## Package 58 (Luz): a run-down ship in orange – for a hull of any colour (Ossa's Maul is Hadrian grey): the hull's
+## plates turned to faded orange and rust brown by their brightness, a few mismatched plates in dull primer grey,
+## scorch marks and light scratches; the lights (engines, lamps: strong colours) stay as they are.
+static func rundown_texture(hull_id: String) -> Texture2D:
+	var key := "rundown_" + hull_id
+	if _cache.has(key):
+		return _cache[key]
+	var img := ship_texture(hull_id, "player").get_image()
+	img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	var h := img.get_height()
+	for y in h:
+		for x in w:
+			var c := img.get_pixel(x, y)
+			if c.a < 0.1 or c.v < 0.08:
+				continue                                         # the outline and the void stay
+			if c.s > 0.45 and c.v > 0.5:
+				continue                                         # a light: engines, lamps, windows
+			var v := c.v
+			# plates of ~6 px: each a little its own; some are old primer, some scorched
+			var px := int(x / 6)
+			var py := int(y / 5)
+			var hsh := fposmod(sin(px * 12.9898 + py * 78.233) * 43758.5453, 1.0)
+			var nc: Color
+			if hsh < 0.12:
+				nc = Color.from_hsv(0.16, 0.12, clampf(v * 0.85 + 0.05, 0.0, 1.0))        # a primer plate, grey-olive
+			elif hsh < 0.2:
+				nc = Color.from_hsv(0.05, 0.55, v * 0.45)                                # scorched
+			else:
+				var hue := 0.065 + (hsh - 0.5) * 0.03
+				nc = Color.from_hsv(hue, lerpf(0.75, 0.55, v), clampf(v * 1.05 + 0.04, 0.0, 1.0))   # faded orange
+			# scratches: thin light lines across, rust runs down
+			if fposmod(float(x) * 0.37 + float(y) * 1.13, 9.0) < 0.35 and v > 0.25:
+				nc = nc.lightened(0.28)
+			elif fposmod(float(x) * 2.1 + float(y) * 0.07, 7.0) < 0.5 and hsh > 0.6:
+				nc = Color.from_hsv(0.04, 0.7, nc.v * 0.7)
 			nc.a = c.a
 			img.set_pixel(x, y, nc)
 	_cache[key] = ImageTexture.create_from_image(img)

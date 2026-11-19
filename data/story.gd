@@ -35,6 +35,16 @@ const CHARACTERS := {
 	"ship_ai": {"name": "Ship computer", "sub": "Earthworks 190SL", "col": Color(0.4, 0.9, 1.0), "holo": true},
 	# package 58 (Luz): the lead pilot of a convoy you escort calls when it is attacked
 	"convoy_pilot": {"name": "Convoy lead", "sub": "Freighter captain", "col": Color(0.7, 0.85, 1.0), "seed": 2207},
+	# package 58, part 3 (Luz): the client of the first escort – Kell Freight, two old haulers out of Upper Brine
+	# (Luz: reworked) a weathered freight boss in her fifties: grey ponytail, a headset (she flies the lead hauler herself),
+	# an old scar on the cheek, an olive work jacket
+	"ossa": {"name": "Ossa Kell", "sub": "Kell Freight · Upper Brine", "col": Color(0.45, 0.9, 0.85), "seed": 6143,
+		"look": {"body": 1, "skin": 4, "hair": 5, "hair_color": 6, "eyes": 4, "brows": 1, "beard": 0, "scar": 1, "freckles": 0,
+			"outfit": 1, "color1": 7, "color2": 0, "implant": 0, "tattoo": 0, "headgear": 1, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	# package 58, part 3: Dan on the radio (his face, the call's header) – the call at the end of the escort
+	"dan_radio": {"name": "Dan T. Rogue", "sub": "◉ Radio call · Dan's Dusty Duty Store", "col": Color(1.0, 0.65, 0.3), "seed": 7731,
+		"look": {"body": 2, "skin": 6, "hair": 1, "hair_color": 6, "beard": 3, "brows": 2, "scar": 0, "headgear": 4, "implant": 0,
+			"tattoo": 0, "outfit": 1, "color1": 9, "color2": 0, "freckles": 0}},
 	# package 56, sequence 6: regulars of Dan's bar
 	"patron_a": {"name": "Hob Karst", "sub": "Scrap hauler", "col": Color(0.75, 0.8, 0.9), "seed": 3307},
 	"patron_b": {"name": "Mira Teague", "sub": "Mechanic", "col": Color(0.75, 0.8, 0.9), "seed": 9124},
@@ -114,7 +124,92 @@ const DIALOGUES := {
 		{"text": "Two thousand. Don't spend it all on drinks. Well, maybe on one."},
 		{"text": "Next time it won't be rocks. I've got a few people who need things moved around Beyond, and they pay better than scrap does.",
 			"answers": [["\"I'm listening.\"", 4, [], "I'm listening. Who are they?"]]},
-		{"text": "Later. Get some rest first, have a look around. Come and see me when you're ready.", "next": -1},
+		{"text": "Later. Get some rest first. I've put you in one of my rooms upstairs, on the house: take the lift up to the Quarters. Come and find me in the bar when you're up.", "next": -1},
+	]},
+	# package 58, part 3 (Luz): Dan's next job, in his bar – Ossa Kell's run to Driftwood needs an escort
+	"dan_job": {"who": "dan", "lines": [
+		{"text": "There you are. Slept it off? Good, because I've got work for you. Proper work, with credits at the end.",
+			"answers": [["\"Let's hear it.\"", 1, [], "I'm rested and I'm listening. What's the job?"]]},
+		{"text": "Ossa Kell. She runs Kell Freight out of Brine: two old haulers and a lot of stubbornness. She buys my scrap and sells it on in Driftwood."},
+		{"text": "Only lately the pirates have taken a liking to her runs. Two haulers lost this year. Now she won't fly without an escort, and nobody out here does escorts.",
+			"answers": [["\"So I'm the escort.\"", 3, [], "And let me guess: I'm the escort now."],
+				["\"Pirates? In Little Darling?\"", 3, [], "Pirates? You want me to take on pirates in a mining ship?"]]},
+		{"text": "You're what I've got. And Little Darling's tougher than she looks. Like her pilot."},
+		{"text": "My boys put a better laser in her and some armour plating. On loan, like the rest. Don't scratch it.",
+			"answers": [["\"Where do I find Ossa?\"", 5, ["w58_job", true], "Fine, I'll do it. Where do I find this Ossa Kell?", {"gold": true}]]},
+		{"text": "Upper Brine, the city down on Brine. Land there and she'll meet you at your ship in the hangar. And be nice: she pays on time, which makes her the only one out here who does.", "next": -1},
+	]},
+	"dan_rest": {"who": "dan", "lines": [
+		{"text": "You look like a wreck I wouldn't buy. Bed first, work later. Your room's upstairs, the Quarters.", "next": -1},
+	]},
+	# package 58, part 4 (Luz): three months later – the party, then Dan and you at the bar
+	"dan_party": {"who": "dan", "lines": [
+		{"text": "*Sigh…*"},
+		{"who": "you", "text": "That's a pretty worried face for a party."},
+		{"text": "Don't get me wrong, the last few months have been fantastic. We've rarely had business this steady. But…"},
+		{"who": "you", "text": "The pirates…?"},
+		{"text": "No matter how many you shoot down, there seem to be more of them every time."},
+		{"who": "you", "text": "And they're getting better organised."},
+		{"text": "…"},
+		{"who": "you", "text": "Instead of only ever defending ourselves, we should take the fight to them."},
+		{"text": "Oh yeah? And who's supposed to do that? You'd have to be completely out of your mind to…"},
+		{"who": "you", "text": "…"},
+		{"text": "No. You've earned your name as \"Spacefarer\" fair and square, but I don't want to lose my best employee… and certainly not a friend."},
+		{"who": "you", "text": "We can't keep going like this forever."},
+		{"text": "You're right."},
+		{"who": "you", "text": "Give me a proper ship and some gear, and I'll take care of the pirates."},
+		{"text": "I'll let Ossa know. She's got a Maul. A pretty patched-up old thing, but it'll do out here."},
+		{"text": "Then you should talk to a friend of mine in Driftwood. He might know how to track the pirates down. I'll send you the contacts once you've got the Maul."},
+		{"text": "But tonight you're the star of the party. Have a few more, and we'll see tomorrow.", "next": -1},
+	]},
+	# package 58, part 4: Ossa hands you her Maul (in Upper Brine's shopping street)
+	"ossa_maul": {"who": "ossa", "lines": [
+		{"text": "There's our pirate hunter. Dan told me everything. Mad, the lot of you."},
+		{"text": "So. The Maul. Hadrian built her as a gunboat, the pirates shot her full of holes, and I patched her up. Twice.",
+			"answers": [["\"Will she hold?\"", 2, [], "Will she hold together out there, Ossa?"],
+				["\"Twice?\"", 2, [], "Twice? That's not exactly reassuring."]]},
+		{"text": "Better than she looks. A strong shield, real guns, a drone bay with drones in it, and a repair system that patches her up while you fly. I didn't skimp. You'll need all of it."},
+		{"text": "And she doesn't fly herself. Rook Varga comes along as your gunner: the best I ever had, and he hates pirates more than I do. Don't get him killed.",
+			"answers": [["\"Thank you, Ossa.\"", 4, ["w58_maul", true], "Thank you, Ossa. I'll bring her back in one piece. Mostly.", {"gold": true}]]},
+		{"text": "Bring yourself back, that's enough. Now, you've never flown with a crew, have you? Let me show you how that works.", "next": -1},
+	]},
+	# package 58 (Luz): shot down while working for Dan – you wake in his clinic, no game over
+	"dan_wake": {"who": "dan", "lines": [
+		{"text": "Easy, easy. You're back in my clinic. My boys fished you out of what was left of the cockpit. Doc says you'll live."},
+		{"text": "And Little Darling? Patched up, again. She's taken worse. So what are you still lying around here for?",
+			"answers": [["\"The convoy…\"", 2, [], "The convoy… what happened to Ossa's haulers?", {"if": [["w58_phase", "convoy"]]}],
+				["\"Back to work.\"", 3, [], "Alright, alright. I'm getting up. Back to work."]]},
+		{"text": "Ossa's waiting outside my store with what she's got left, and she's not happy. Get back in Little Darling. The moment you undock, we try that again.", "next": -1},
+		{"text": "That's the spirit. She's waiting for you in the hangar.", "next": -1},
+	]},
+	"dan_busy": {"who": "dan", "lines": [
+		{"text": "Don't keep Ossa waiting. Brine's the blue one. I'll call you if I need you.", "next": -1},
+	]},
+	"ossa_meet": {"who": "ossa", "lines": [
+		{"text": "You'll be Dan's new pilot. The one he fished out of the Veil.",
+			"answers": [["\"Word gets around.\"", 1, [], "Word travels fast around here, it seems."],
+				["\"And you're Ossa Kell.\"", 7, [], "And you must be Ossa Kell. Dan sends his regards."]]},
+		{"text": "Beyond is small. Three systems, one bar worth the name and a lot of wrecks. Everybody knows everything."},
+		{"text": "Here's the job. My two haulers are taking on Dan's scrap at his store. They go through the gate to the Driftwood Waystation. You fly with them and keep the pirates off.",
+			"answers": [["\"How bad are the pirates?\"", 3, [], "How bad are we talking? Dan said you lost two haulers this year."],
+				["\"What does it pay?\"", 4, [], "And what's in it for me?"]]},
+		{"text": "Bad enough. They don't wait at the gates. They pull you out of warp halfway and swarm you. Two or three of them, old fighters, cheap guns, no patience.", "next": 4},
+		{"text": "Three thousand when my haulers dock in Driftwood. Not a credit before. Dan says you're good for it.", "next": 5},
+		{"text": "My lead hauler waits outside Dan's store, marked green. Come alongside, or select her and follow, and we set off. Stay close in warp: if they pull us out, you come out with us.",
+			"answers": [["\"Let's go.\"", 6, ["w58_ossa", true], "Alright. I'll meet your haulers at Dan's store. Let's get your cargo to Driftwood.", {"gold": true}]]},
+		{"text": "Good. I fly the lead myself, so you'll hear from me. Don't be late.", "next": -1},
+		# 7 – (Luz) her own answer when you name her
+		{"text": "That's me. Owner, captain and the only one still fool enough to fly for Kell Freight. Dan's regards usually come with a bill, so let's hear what he's sent me.", "next": 2},
+	]},
+	# package 58, part 3 (Luz): the escort done, Dan calls – angry about the pirates, then: come back
+	"dan_end": {"who": "dan_radio", "lines": [
+		{"text": "Darling? Ossa just called. You made it, good. But pirates again! That's the third time this month!"},
+		{"text": "Do they have any idea what they're doing to business out here? Nobody hauls scrap that gets shot at. Nobody buys scrap that never arrives. And who's left sitting on the scrap? Me!",
+			"answers": [["\"We handled it.\"", 2, [], "We handled it, Dan. Both haulers made it in one piece."],
+				["\"They won't stop, will they?\"", 2, [], "They won't stop, will they? Not as long as there's something out here to take."]]},
+		{"text": "Yeah, yeah. You did good out there. Don't let it go to your head."},
+		{"text": "That's enough for now. You've earned yourself a drink, and little Darling needs some love. Come on back.",
+			"answers": [["\"On my way.\"", -1, ["w58_called", true], "On my way, Dan. Keep a glass cold for me.", {"gold": true}]]},
 	]},
 	# package 56, sequence 6 (Luz): the bar busy again – asked for work, they say no (you have no licence)
 	"patron_a": {"who": "patron_a", "lines": [
@@ -233,8 +328,29 @@ const MISSIONS := {
 			{"id": "home", "title": "Back to Dan", "text": "Recall the drone and bring the scrap home to Dan's Dusty Duty Store.",
 				"goals": [{"id": "home", "kind": "flag", "flag": "w58_delivered", "label": "bring the scrap to Dan"}],
 				"on_done": [{"do": "credits", "n": 2000}]},
-			{"id": "next", "title": "More work", "text": "Dan has a few people who need things moved around Beyond. (Package 58, part 3: comes next.)",
-				"goals": [{"id": "next", "kind": "flag", "flag": "w58_part3", "label": "see Dan about the next job"}]},
+			# package 58 (Luz): a room in Dan's quarters, free – sleep there once
+			{"id": "rest", "title": "A room upstairs", "text": "Dan put you in one of his rooms, on the house. Take the lift up to the Quarters, find your room (its lamp is green) and sleep in your bed.",
+				"goals": [{"id": "slept", "kind": "flag", "flag": "w58_slept", "label": "sleep in your room in Dan's quarters"}]},
+			# package 58, part 3 (Luz): Ossa Kell on Brine, the escort to Driftwood, Dan's call, home
+			{"id": "next", "title": "More work", "text": "Dan has a few people who need things moved around Beyond. Rest a little, then see him in his bar.",
+				"goals": [{"id": "job", "kind": "flag", "flag": "w58_job", "label": "talk to Dan in his bar"}]},
+			{"id": "brine", "title": "Upper Brine", "text": "Dan's client is Ossa Kell of Kell Freight. Fly to Brine, descend and land in Upper Brine: she meets you at your ship in the city's hangar. Dan lent you a better laser and armour plating for the job.",
+				"goals": [{"id": "ossa", "kind": "flag", "flag": "w58_ossa", "label": "meet Ossa Kell in Upper Brine"}]},
+			{"id": "escort", "title": "Kell Freight", "text": "Ossa's two haulers take on Dan's scrap at his store. Meet them outside, follow the lead hauler, and see them safely through the gate to the Driftwood Waystation. Pirates like to pull convoys out of warp: stay close.",
+				"goals": [{"id": "escort", "kind": "flag", "flag": "w58_escorted", "label": "escort Ossa's haulers to the Driftwood Waystation"}]},
+			{"id": "call", "title": "Dan calls", "text": "Ossa paid. Dan is on the radio.",
+				"goals": [{"id": "call", "kind": "flag", "flag": "w58_called", "label": "answer Dan's call"}]},
+			{"id": "back", "title": "Home to Dan", "text": "That's enough for now. You've earned a drink, and Little Darling needs some love. Fly back to Dan's Dusty Duty Store.",
+				"goals": [{"id": "back", "kind": "flag", "flag": "w58_back", "label": "fly back to Dan's store"}]},
+		]},
+	# package 58, part 4 (Luz): after the party – the Maul from Ossa, then Dan's friend in Driftwood, the pirates' station
+	"fight": {"title": "Taking the Fight to Them", "kind": "story", "chapter": "Chapter 1 · Working for Dan",
+		"desc": "The pirates around Beyond keep getting bolder. Dan's best employee wants to take the fight to them.",
+		"steps": [
+			{"id": "maul", "title": "The Maul", "text": "Dan has talked to Ossa: she gives you her Maul, a patched-up gunboat. Fly to Brine, land in Upper Brine and find Ossa in the shopping street.",
+				"goals": [{"id": "maul", "kind": "flag", "flag": "w58_maul", "label": "pick up the Maul from Ossa in Upper Brine"}]},
+			{"id": "contact", "title": "A friend in Driftwood", "text": "Dan sends you the contact of a friend in Driftwood who might know how to track the pirates down. (Package 58: comes with the next part.)",
+				"goals": [{"id": "contact", "kind": "flag", "flag": "w58_contact", "label": "talk to Dan's friend in Driftwood"}]},
 		]},
 	# package 56, sequence 5 (Luz): the flight training – flown with one of Dan's drones from Old Betty in a wreck field;
 	# the flags are set by scripts/ground/intro_five.gd (it watches the drone), the targets too

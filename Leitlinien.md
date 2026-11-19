@@ -82,6 +82,33 @@ Stand: Entwurf vom 11. Nov 2026 (Claude), zur Korrektur durch Luz.
 - **Läden** sind begehbar; ihre Fenster öffnen das Dienst-Fenster wie an der Station.
 - **Sortimente folgen der Wirtschaft** (Qualität nach Stufe, Wohlstand, Hightech; Militärgüter in Militärsystemen).
 
+## 4a. Story-Missionen (Luz, 18. Nov 2026; Muster aus Paket 56 und 58)
+
+- **Jede Story-Mission hat Dialoge und Funksprüche**, von Claude geschrieben, wenn Luz sie nicht vorgibt. Auf eine
+  gewählte Antwort folgt die ausgesprochene Fassung (siehe 2.).
+- **Die Mission steht sofort im Journal**, sobald sie im Spiel beginnt (etwa direkt nach dem Gespräch), mit dem
+  ersten Schritt als klarer Handlung („board the ship Dan gives you“). Das Journal zeigt **nur bekannte Schritte**:
+  keine kommenden Punkte, keine Spoiler.
+- **Funksprüche führen durch den Auftrag.** Nur Erklärungen (wie was wofür im Menü) und echte Aufgaben bleiben
+  stehen; ein bloßer Wegweiser („geh ins Zimmer“, „komm in die Bar“) kommt **einmal** (Luz, 18. Nov 2026). Ein
+  Funkspruch, der eine Aufgabe stellt, **bleibt stehen, bis sie erledigt ist** (`until_flag`, `until_step` oder eine Bedingung) und zeigt, worauf er wartet. Er steht vor jedem
+  Fenster, rückt aus dem Weg, wenn er etwas Erklärtes verdecken würde, und wächst mit großen Bildschirmen. Was
+  sofort gesagt werden muss, kommt mit `"now"` nach vorn.
+- **Questmarker:** Das Ziel des verfolgten Schritts ist auf dem Bildschirm markiert und leuchtet in der Übersicht
+  **gold mit ◆ objective** (heller als eine Auswahl); auch Felder und Orte ohne eigenes Objekt bekommen den Marker.
+  Wechselt das Ziel (etwa „zurück zu Dan“), wechselt der Marker mit.
+- **Neues wird gezeigt, nicht nur erklärt:** Bedienungen, die eine Mission zum ersten Mal braucht (Fenster, Warp,
+  Drohnen …), erklärt eine **geführte Tour**: das Erklärte gold umrahmt, der Rest abgedunkelt, Funkspruch dazu.
+  Lese-Schritte warten auf Bestätigung (Klick, E, Leertaste, Enter, ✕), Aufgaben-Schritte lassen nur das Umrahmte
+  zu und gehen von selbst weiter. **Tastatur und Controller** werden beide erklärt (die Texte nennen die Taste bzw.
+  den Knopf des Geräts in Gebrauch).
+- **Gestellte Ausrüstung ist geliehen** (`lent`): sie funktioniert ohne Skilltree, solange sie verbaut bleibt.
+- **Was die Story noch nicht freigibt, bleibt gesperrt** (etwa Crew anheuern bis `crew_open`), mit einem Satz, warum.
+- **Belohnungen** in Story-Aufträgen am Anfang 1.000–3.000 cr je Auftrag.
+- **Zustand in Story-Flags** (Phase, erledigte Teile); nach dem Laden setzt der Ablauf am letzten sicheren Punkt
+  wieder an, laufende Touren beginnen von vorn.
+- **Debug:** jede Sequenz lässt sich im Debug-Menü (F12) starten und zurücksetzen.
+
 ## 5. Offene Punkte aus diesem Durchgang
 
 - [x] ~~Debug-Funktionen für die Pakete 49–51 fehlen noch (Landen, Städte, Siedlungen, Ausrüstung, Umwelt, Klinik).~~ Erledigt in 0.7.51.5 (F12 → Ground).

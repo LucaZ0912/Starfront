@@ -167,6 +167,11 @@ func close() -> void:
 
 
 func undock() -> void:
+	if bool(station.get("city", false)):
+		var mn = get_tree().current_scene
+		if mn != null and mn.has_method("ask_city_takeoff"):
+			mn.ask_city_takeoff()                         # package 58 (Luz): from a city – orbit or the planet map
+			return
 	if fit() != null:
 		Commands.execute({"type": "undock"})
 	close()

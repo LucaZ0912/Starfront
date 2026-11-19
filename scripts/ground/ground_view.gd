@@ -65,6 +65,7 @@ var _avail: Dictionary = {}
 var story_mode: Dictionary = {}
 var story_people := {}
 var story_cam := Vector2.INF            # package 56: where the camera looks in a story scene (art px; INF: the pilot)
+var story_zoom := 0.0                   # package 58: the story's zoom in a scene (0: as always) – the toast, the bar
 const StoryS = preload("res://scripts/core/story.gd")                  # who -> Walker of the story on this level
 var _crew: Array = []
 var _sys := -1
@@ -163,6 +164,14 @@ var _mm_tile := Vector2i(-99, -99)
 var poi_seen: PackedByteArray = PackedByteArray()
 var buddy: Node2D = null                 # 0.7.52.25: your drones where there is no fight
 const CutGame = preload("res://scripts/ground/cut_game.gd")
+const QuartersGen = preload("res://scripts/ground/quarters_gen.gd")       # package 58 (Luz): the quarters
+var _q_sleep := 0                        # 0 up · 1 asleep in your bed · 2 just woken
+var _q_room := -1                        # the room you slept in stays open until you leave the level
+var _keep_pos := Vector2.INF             # arrive "keep": where you stood (the level rebuilt round you)
+var _q_rebuild := false
+var _sleeping := false
+var _sleepers: Array = []               # package 58: the pilot lying in a bed (drawn as themselves)
+const SleeperNode = preload("res://scripts/ground/sleeper.gd")
 const HackGame = preload("res://scripts/ground/hack_game.gd")
 var _named_lights := {}
 var minigame: Control = null             # 0.7.52.22: the cutting torch or the hack, while it is open
@@ -305,6 +314,9 @@ func setup_settlement(p_body: Dictionary, p_site: Dictionary, town: Dictionary, 
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
+	if p_level != "quarters":
+		_q_room = -1                                    # package 58: your room closes behind you
+		_q_sleep = 0
 	if map != null and _mm != null and map.has_meta("poi"):
 		map.set_meta("seen", poi_seen)                  # 0.7.53.3: the minimap of the level you leave stays
 	for c in _world.get_children():
@@ -467,6 +479,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build(station, _avail, [], "street")
 	elif level == "clinic":
 		map = DeckGen.build_clinic(station, _avail)                 # 0.7.51.11: Mercy Hall, a level of its own
+	elif level == "quarters":
+		map = QuartersGen.build(station, _q_rented(), _q_sleep)      # package 58 (Luz): rooms by the night
 	elif level == "tower":
 		var bar_only := {}
 		for k in ["bar", "news", "bulletin"]:
@@ -476,6 +490,14 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	else:
 		map = DeckGen.build(station, _avail, GameState.bar_offers(station) if _avail.has("bar") else [])
 	_story_map()                                      # package 56: the story's changes to the level
+	# package 58 (Luz): the pilot in a bed is drawn as themselves (their figure, the blanket over it) – the bed empty
+	_sleepers = []
+	for ob in map.objects:
+		if String(ob.get("kind", "")) in ["q_bed", "med_bed_occ"] and not (ob.get("patient", {}) as Dictionary).is_empty():
+			_sleepers.append({"o": ob, "look": ob["patient"], "awake": bool(ob.get("awake", false))})
+			ob.erase("patient")
+			if String(ob["kind"]) == "med_bed_occ":
+				ob["kind"] = "med_bed"
 	_out_env = {}
 	if level == "dungeon" and map.has_meta("pressurized"):
 		_out_env = env                                 # 0.7.53.20 (Luz): inside the station its own air – but not in a torn module
@@ -558,6 +580,19 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		ps.scale = Vector2.ONE * GroundMap.SCALE
 		_world.add_child(ps)
 		_world.move_child(ps, _sorted.get_index())
+	for sl in _sleepers:
+		var sn = SleeperNode.new()
+		sn.setup(sl["o"], sl["look"], sl["awake"])
+		_sorted.add_child(sn)
+	if map.has_meta("my_door"):
+		var rd = QuartersGen.RoomDoor.new()               # package 58 (Luz): your room's door slides open by you
+		rd.view = self
+		rd.setup(map.get_meta("my_door"))
+		_sorted.add_child(rd)
+	if map.has_meta("clean_bot"):
+		var cb = QuartersGen.CleanBot.new()               # package 58: the robot cleaning one of the rooms
+		cb.area = map.get_meta("clean_bot")
+		_sorted.add_child(cb)
 	_rep_spots = []
 	_drone_fx = null
 	if combat != null and combat.foes.any(func(f): return bool(f.get("drone", false))):
@@ -578,10 +613,11 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				(_hostage["w"] as Walker).leave_to = map.spawn
 			_hostage = {}
 	_poi_setup()                                      # package 53a: the minimap, the targets window
+	_q_room_box()                                     # package 58: your room, by the quest tracker
 	_set_hint()
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "ygallery": "the gallery", "pnarthex": "Aureola", "throne": "Aureola",
-		"street": "Shopping street", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic: Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
+		"street": "Shopping street", "quarters": "Quarters", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic: Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
 		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
 	if is_cloud() and level == "tower":
 		_title.text = "%s: Sky bar · deck %d" % [map.title, tower_floor() / 10]
@@ -615,6 +651,15 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		pilot.pos = map.get_meta("door_front")          # 0.7.53.2: back out through the ruin's entrance
 		pilot.position = pilot.pos * GroundMap.SCALE
 		pilot.dir = 0
+	elif arrive == "keep" and _keep_pos != Vector2.INF:
+		pilot.pos = _keep_pos                            # package 58: the quarters rebuilt round you (a room rented)
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0
+	elif arrive == "bed" and map.has_meta("bed_front"):
+		pilot.pos = map.get_meta("bed_front")            # package 58: beside your bed (in it while you sleep)
+		pilot.position = pilot.pos * GroundMap.SCALE
+		pilot.dir = 0
+		pilot.visible = _q_sleep == 0
 	elif arrive == "lift" and not map.lifts.is_empty():
 		_arrive_lift = 0
 		var l0: Dictionary = map.lifts[0]
@@ -639,6 +684,8 @@ func _ship_tex() -> Texture2D:
 	var f := GameState.active()
 	if f == null:
 		return PixelArt.ship_texture("dragonfly", "player")
+	if String(f.paint) != "":
+		return PixelArt.fleet_texture(f)                  # package 58: her own paint (Dan's rust, Ossa's run-down orange)
 	return PixelArt.ship_texture(f.hull_id, f.gov if f.gov != "" else f.faction)
 
 
@@ -1558,6 +1605,25 @@ func _xray_step() -> void:
 			Audio.play("ui_click", "clinic scanner")
 
 
+## Package 58: a walkable spot near `cen` (tiles) within `spread` tiles, clear of the others taken – art px.
+func _free_spot(cen: Vector2, spread: float, seed_n: int, taken: Array) -> Vector2:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5801 + seed_n * 37
+	for t in 60:
+		var p := cen + (Vector2.from_angle(rng.randf() * TAU) * rng.randf() * spread if spread > 0.0 and t > 0 else Vector2.ZERO)
+		if t > 0 and spread <= 0.0:
+			p = cen + Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-1.5, 1.5))
+		var tx := int(floor(p.x))
+		var ty := int(floor(p.y))
+		if tx < 1 or ty < 1 or tx >= map.w - 1 or ty >= map.h - 1 or not GroundMap.walkable_t(map.t_at(tx, ty)):
+			continue
+		var px := p * GroundMap.TILE
+		if taken.any(func(q): return (q as Vector2).distance_to(px) < GroundMap.TILE * 0.9):
+			continue
+		return px
+	return cen * GroundMap.TILE
+
+
 ## Package 56: the story's changes to the level just built – the strangers gone, the bed with the pilot in it, the
 ## story's people where they stand.
 func _story_map() -> void:
@@ -1584,15 +1650,22 @@ func _story_map() -> void:
 		for zs in map.zones:
 			if String(zs.get("id", "")) == "ship":
 				zs["title"] = String(story_mode["ship_title"])
+	var taken: Array = []
 	for sp in lv.get("people", []):
 		var who := String(sp["who"])
 		var at: Vector2 = (sp.get("pos", Vector2.ZERO) as Vector2) * GroundMap.TILE
+		if sp.has("near") or sp.has("near_spawn"):
+			# package 58: a free place near a point (tiles) – or near where you come in – for a crowd (the party)
+			var cen: Vector2 = (sp["near"] as Vector2) if sp.has("near") else map.spawn / GroundMap.TILE + (sp["near_spawn"] as Vector2)
+			at = _free_spot(cen, float(sp.get("spread", 0.0)), int(sp.get("seed", taken.size())), taken)
+			taken.append(at)
 		if sp.has("at_ship"):                                       # package 56: beside the stairs up to the ship
 			for zs2 in map.zones:
 				if String(zs2.get("id", "")) == "ship":
 					at = (zs2["rect"] as Rect2).get_center() + (sp["at_ship"] as Vector2) * GroundMap.TILE
 		map.people.append({"pos": at, "dir": int(sp.get("dir", 0)), "role": "keeper",
-			"look": StoryS.look_of(who), "story": who, "marker": String(sp.get("marker", ""))})
+			"look": sp.get("look", StoryS.look_of(who)), "story": who, "marker": String(sp.get("marker", "")),
+			"dance": bool(sp.get("dance", false)), "sit": bool(sp.get("sit", false))})
 		if String(sp.get("marker", "")) != "" or bool(sp.get("talk", false)):         # "talk": to speak to, no marker
 			var nm := String((StoryS.Data.CHARACTERS.get(who, {}) as Dictionary).get("name", who))
 			map.zones.append({"rect": Rect2(at - Vector2(26, 22), Vector2(52, 44)), "kind": "story", "id": who, "title": nm,
@@ -2034,6 +2107,7 @@ func _build() -> void:
 			w.set_meta("crew", int(p.get("crew", -1)))
 		_sorted.add_child(w)
 		people.append(w)
+		w.dancing = bool(p.get("dance", false))           # package 58: the party
 		if p.has("story"):
 			story_people[String(p["story"])] = w             # package 56: one of the story's people
 			w.marker = String(p.get("marker", ""))
@@ -2316,6 +2390,7 @@ func _process(delta: float) -> void:
 			(mn as Node).add_to_group("kbd_menu")
 	_scan_step(delta)
 	_duct_step()
+	_place_room_box()
 	if _mm != null and is_instance_valid(_mm):
 		_poi_reveal()                                  # package 53a: the minimap fills in
 		_mm.queue_redraw()
@@ -2636,6 +2711,158 @@ func _museum_case(d: Dictionary) -> bool:
 		return true
 	_say_toast("An empty case: something of %s belongs here. %s" % [MuseumData.room_name(room).replace("The ", "the "), String(MuseumData.HINTS.get(room, ""))], 5.5)
 	return true
+
+
+# ---------------------------------------------------------------- package 58 (Luz): the quarters
+
+## Your room on this level: the one rented here, or the one you slept in (until you leave the level).
+func _q_rented() -> int:
+	var lod: Dictionary = GameState.lodging.get(String(station.get("id", "")), {})
+	if not lod.is_empty():
+		return int(lod["room"])
+	return _q_room
+
+
+## The concierge: a room for the night in three sizes (or yours already).
+func _open_concierge() -> void:
+	if talk != null:
+		return
+	Audio.play("ui_open", "quarters: the concierge")
+	talk = DialogueView.new()
+	_ui.add_child(talk)
+	talk.open(map.get_meta("concierge_look", ChibiArt.PilotArt.default_look()), "Concierge", "Quarters · %s" % String(station.get("name", "")), QuartersGen.COL)
+	talk.closed.connect(func():
+		talk = null
+		if _q_rebuild:
+			_q_rebuild = false
+			_q_rebuild_here())
+	var lod: Dictionary = GameState.lodging.get(String(station.get("id", "")), {})
+	if not lod.is_empty():
+		var no := int(QuartersGen.room(station, int(lod["room"])).get("no", 0))
+		var whose := " It's on the house." if bool(lod.get("free", false)) else ""
+		talk.say("Room %d is yours, along the corridor: its lamp is green and the door knows you.%s Sleep well." % [no, whose], _concierge_options(true))
+		return
+	talk.say("Welcome to the quarters. A room for the night? Small, medium, or our luxury suites.", _concierge_options(false))
+
+
+func _concierge_options(have: bool) -> Array:
+	var opts: Array = []
+	if not have:
+		for s in QuartersGen.ORDER:
+			var sz: Dictionary = QuartersGen.SIZES[s]
+			opts.append(["%s, %s: %s." % [String(sz["name"]), GameData.fmt_credits(QuartersGen.price(station, s)), String(sz["what"])], _q_rent.bind(s)])
+		opts.append(["The penthouse?", func(): talk.say("The penthouse is let to our residents only, I'm afraid. Perhaps one day.", _concierge_options(false))])
+	opts.append(["Thank you." if have else "No, thank you.", func(): talk.close()])
+	return opts
+
+
+func _q_rent(size: String) -> void:
+	var e := Commands.execute({"type": "room_rent", "size": size})
+	if e != "":
+		talk.say(e, _concierge_options(false))
+		return
+	_q_rebuild = true
+	var lod: Dictionary = GameState.lodging.get(String(station.get("id", "")), {})
+	talk.say("Room %d, along the corridor. Its lamp is green now: the door opens for you. Sleep well." % int(QuartersGen.room(station, int(lod.get("room", -1))).get("no", 0)), [["Thank you.", func(): talk.close()]])
+
+
+## The level built again round you (the room you rented opens).
+func _q_rebuild_here() -> void:
+	_keep_pos = pilot.pos
+	go_level("quarters", "keep")
+
+
+## A night in your bed: lying down (you in the bed, the light low), black, "Some hours later…", awake, up.
+func _q_sleep_begin() -> void:
+	if _sleeping or talk != null:
+		return
+	_sleeping = true
+	input_enabled = false
+	var mn = get_tree().current_scene
+	_q_room = _q_rented()
+	Audio.play("ui_click", "quarters: lie down", -6.0)
+	if mn != null and mn.has_method("fade"):
+		await mn.fade(Color(0, 0, 0, 1), 0.7).finished
+	_q_sleep = 1
+	go_level("quarters", "bed")
+	pilot.visible = false
+	if mn != null and mn.has_method("fade"):
+		mn.fade(Color(0, 0, 0, 0), 0.9)
+	_say_toast("You lie down. The station hums somewhere far below, and your eyes close…", 3.0)
+	await get_tree().create_timer(2.8).timeout
+	if mn != null and mn.has_method("fade"):
+		await mn.fade(Color(0, 0, 0, 1), 1.0).finished
+	Commands.execute({"type": "room_sleep"})
+	var card := _night_card("Some hours later…")
+	await get_tree().create_timer(2.2).timeout
+	card.queue_free()
+	_q_sleep = 2
+	go_level("quarters", "bed")
+	pilot.visible = false
+	if mn != null and mn.has_method("fade"):
+		mn.fade(Color(0, 0, 0, 0), 1.0)
+	await get_tree().create_timer(1.8).timeout
+	if mn != null and mn.has_method("fade"):
+		await mn.fade(Color(0, 0, 0, 1), 0.4).finished
+	_q_sleep = 0
+	go_level("quarters", "bed")
+	pilot.visible = true
+	if mn != null and mn.has_method("fade"):
+		mn.fade(Color(0, 0, 0, 0), 0.5)
+	_say_toast("Rested. Outside the planets have moved on, the stations have new work and the bars new faces.", 4.0)
+	input_enabled = true
+	_sleeping = false
+
+
+var _room_box: PanelContainer = null
+
+
+## Package 58 (Luz): on the quarters' level with a room – its number and size by the quest tracker (no sign over it).
+func _q_room_box() -> void:
+	if _room_box != null and is_instance_valid(_room_box):
+		_room_box.queue_free()
+	_room_box = null
+	if level != "quarters" or not map.has_meta("my_door"):
+		return
+	var d: Dictionary = map.get_meta("my_door")
+	var lod: Dictionary = GameState.lodging.get(String(station.get("id", "")), {})
+	_room_box = UI.panel(Color(0.03, 0.04, 0.07, 0.86))
+	_room_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := UI.vbox(2)
+	_room_box.add_child(v)
+	v.add_child(UI.label("◆ YOUR ROOM", 12, Color(0.4, 1.0, 0.55)))
+	v.add_child(UI.label("Room %d · %s" % [int(d["no"]), String(QuartersGen.SIZES[String(d["size"])]["name"])], 14, Color.WHITE))
+	var side := "the corridor's upper side" if bool(d["north"]) else "the corridor's lower side"
+	var note := "on the house" if bool(lod.get("free", false)) else ("for tonight" if not lod.is_empty() else "until you leave")
+	v.add_child(UI.label("%s, %s · %s" % ["its lamp green", side, note], 11, UI.TEXT_DIM))
+	v.add_child(UI.label("‣ the bed inside: sleep", 11, UI.TEXT_DIM))
+	_ui.add_child(_room_box)
+	_place_room_box()
+
+
+func _place_room_box() -> void:
+	if _room_box == null or not is_instance_valid(_room_box):
+		return
+	var y := 214.0
+	var su = get_tree().current_scene.get("story_ui") if get_tree().current_scene != null else null
+	var tr = su._tracker if su != null and su.get("_tracker") != null else null
+	if tr != null and is_instance_valid(tr) and (tr as Control).visible:
+		y = (tr as Control).position.y + (tr as Control).size.y + 8.0
+	_room_box.position = Vector2(14, y)
+
+
+## A line in the middle of the black (over the fade).
+func _night_card(text: String) -> CanvasLayer:
+	var cl := CanvasLayer.new()
+	cl.layer = 41
+	add_child(cl)
+	var lb := UI.label(text, 30, Color(0.85, 0.82, 1.0))
+	lb.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lb.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	lb.grow_vertical = Control.GROW_DIRECTION_BOTH
+	cl.add_child(lb)
+	return cl
 
 
 ## The curator (0.7.53.27, Luz: a real conversation like the bartender's, with a portrait): how full the Museum is,
@@ -4378,10 +4605,10 @@ func use(instant: bool = false) -> bool:
 				_say_toast("The %s is stored here now: your active ship stands in %s. Take the lift." % [_stored_name(), _active_hangar()])
 				return false
 			if not instant:
-				if level in ["landing", "settlement"] or is_city():
+				if level in ["landing", "settlement"]:
 					_open_takeoff_menu(zone)              # 0.7.50.15 (Luz): up to orbit – or to the planet map
 				else:
-					_start_ride(zone, "", -1)
+					_start_ride(zone, "", -1)            # package 58 (Luz): in a city too – aboard, the city's window opens
 				return true
 		"service":
 			if String(zone.get("id", "")) == "bar" and _bartender != null:
@@ -4439,6 +4666,23 @@ func use(instant: bool = false) -> bool:
 			return true
 		"curator":
 			_open_curator()                                # 53e: the curator
+			return true
+		"q_desk":
+			_open_concierge()                              # package 58: rent a room
+			return true
+		"q_bed":
+			_q_sleep_begin()                               # package 58: a night in your bed
+			return true
+		"q_door":
+			_say_toast("Room %d: someone's in. A small sign glows: do not disturb." % int(zone.get("no", 0)), 2.5)
+			return true
+		"q_locker":
+			var mn9 = get_tree().current_scene                 # package 58 (Luz): the locker – your gear
+			if mn9 != null and mn9.has_method("toggle_pilot_window"):
+				mn9.toggle_pilot_window(int(mn9.pilot_window.get_script().TAB_GEAR))
+			return true
+		"q_penthouse":
+			_say_toast("The penthouse lift: residents only. Its panel stays dark for you.", 2.5)
 			return true
 		"mine_path":
 			go_level("minehead", "path")                 # 0.7.53.7 (Luz): to the old mine at the town's edge
@@ -4564,6 +4808,9 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls.append(["nave", "%d.  The nave: the altar, the Curia, the Pilgrim Gate in the window" % (lvls.size() + 1)])
 	if _avail.has("clinic"):                                      # 0.7.51.11: the clinic, its own level
 		lvls.append(["clinic", "%d.  Clinic: Mercy Hall, treatment and recovery" % (lvls.size() + 1)])
+	if QuartersGen.has_quarters(station):                         # package 58 (Luz): the quarters, rooms by the night
+		var lod: Dictionary = GameState.lodging.get(String(station.get("id", "")), {})
+		lvls.append(["quarters", "%d.  Quarters: rooms by the night%s" % [lvls.size() + 1, (", room %d is yours" % int(QuartersGen.room(station, int(lod["room"])).get("no", 0))) if not lod.is_empty() else ""]])
 	if is_cloud():
 		pass
 	elif is_city():                                               # 0.7.53.3 (Luz): the way down into the sewers
@@ -5467,6 +5714,8 @@ func _camera(delta: float = -1.0) -> void:
 	var vs := get_viewport().get_visible_rect().size
 	# 0.7.52.8: zoomed out only while the tactical view is open, as far as chosen there; eased in and out
 	var zw := (tac_zoom if combat.tactics != 0 else near_zoom) if combat != null else 1.0
+	if story_zoom > 0.0:
+		zw = story_zoom
 	zoom = zw if delta < 0.0 else lerpf(zoom, zw, 1.0 - exp(-delta * 10.0))
 	if absf(zoom - zw) < 0.002:
 		zoom = zw

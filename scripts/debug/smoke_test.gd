@@ -703,6 +703,10 @@ func _process(delta: float) -> void:
 				await _test_intro56f(main.view)
 				await _test_w58a(main.view)              # package 58: Little Darling and the guided tour
 				await _test_w58b(main.view)              # package 58, part 2: the wreck field, the drone, scrap home
+				await _test_w58c(main.view)              # package 58, part 3: Ossa Kell, the escort to Driftwood, Dan's call
+				await _test_q58(main.view)               # package 58: the quarters, rooms by the night
+				await _test_cam58(main.view)             # package 58: the camera off the ship – targeting by the screen's middle
+				await _test_w58d(main.view)              # package 58, part 4: three months later, the party, the Maul
 				_shooting = false
 				timer = 0.0
 				return
@@ -13607,12 +13611,12 @@ func _test_intro56d(_view: SystemView) -> void:
 			break
 	var g = main.ground
 	var bed_ok: bool = i4 != null and g != null and g.level == "clinic" and not g.pilot.visible and g.story_people.has("dan") and g.story_people.has("doc")
-	var occupied := 0
-	for o in g.map.objects:
-		if String(o.get("kind", "")) == "med_bed_occ":
-			occupied += 1
-			bed_ok = bed_ok and not (o.get("patient", {}) as Dictionary).is_empty()
-	bed_ok = bed_ok and occupied == 1
+	# package 58 (Luz): the pilot lies in the bed as themselves (one sleeper, the bed empty under them)
+	bed_ok = bed_ok and g._sleepers.size() == 1 and not (g._sleepers[0]["look"] as Dictionary).is_empty() and String(g._sleepers[0]["o"]["kind"]) == "med_bed"
+	if OS.get_environment("I4_SHOTS") != "":
+		for f8 in 40:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/intro4_bed_58.png")
 	var phases := []
 	var speakers := {}
 	var lift_ok := false
@@ -14710,12 +14714,13 @@ func _test_w58a(_view: SystemView) -> void:
 		and String(st.flags.get("w58_phase", "")) == "part2" and MenuNav.active_menu() != t2
 	# a convoy under contract calls its escort over the radio when attacked (not an ambient one)
 	var tr = main.view.traffic
-	var q0: int = su._radio_q.size()
 	tr._convoy_call({"c": {"mission": "m1"}}, "Test call.", true)
 	tr._convoy_call({"c": {}}, "Not this one.", true)
-	var calls: Array = su._radio_q.slice(q0)
-	var convoy_ok: bool = calls.size() == 1 and String(calls[0]["who"]) == "convoy_pilot"
-	su._radio_q.resize(q0)
+	var calls: Array = su._radio_q.duplicate()
+	if su._radio != null:
+		calls.append(su._radio_d)
+	var convoy_ok: bool = calls.filter(func(d): return String(d.get("text", "")) == "Test call." and String(d.get("who", "")) == "convoy_pilot").size() == 1 		and not calls.any(func(d): return String(d.get("text", "")) == "Not this one.")      # (urgent: at the front – package 58)
+	su._radio_q = su._radio_q.filter(func(d): return String(d.get("text", "")) != "Test call.")
 	check(convoy_ok, "58: the lead pilot of a convoy you escort calls you over the radio when it is attacked")
 	check(ship_ok and tour_ok and of_ok and fit_ok and done_ok,
 		"58: Little Darling (Mogura in Dan's rust, core B, the strongest shield, lasers in storage); the guided tour of the station window (confirm per step, menus locked, Escape swallowed), the task to open the Outfitter, its tour, both lasers fitted, the Drone Bay and a drone with Dan's advance  [%s %s %s %s %s]" % [ship_ok, tour_ok, of_ok, fit_ok, done_ok])
@@ -14757,6 +14762,735 @@ func _test_padshot(_view: SystemView) -> void:
 	get_viewport().get_texture().get_image().save_png("res://Claude outputs/drone_wheel_58.png")
 	Pad._close_wheel(false)
 	Pad.using_pad = false
+
+
+## Package 58, part 4 (Luz): docked at Dan's after the escort – black and the lines, the party (dancing, the toast in
+## bubbles), the talk at the bar, awake in your room; "Taking the Fight to Them": Ossa in Upper Brine's street, the Maul.
+func _test_w58d(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
+	var shots := OS.get_environment("W58D_SHOTS") != ""
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	if GameState.active().docked_at == "":
+		GameState.active().docked_at = String(Universe.get_layout(GameState.current_system)["stations"][0]["id"])
+	var dan_st := GameState.active().docked_at
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w58_"):
+			st.flags.erase(fl)
+	for mid in ["darling", "fight"]:
+		st.missions.erase(mid)
+		st.done.erase(mid)
+	st.flags["dan_deal_yes"] = true
+	main.station_panel.close()
+	main._start_dan_work("yes")
+	var w = main.get_meta("dan_work")
+	w.quick = true
+	if w.tour != null and is_instance_valid(w.tour):
+		w.tour.queue_free()
+	w.tour = null
+	for fl2 in ["ticket_ship", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone", "w58_atfield", "w58_drones", "w58_mined", "w58_delivered", "w58_slept", "w58_job", "w58_ossa", "w58_escorted", "w58_called"]:
+		st.flags[fl2] = true
+	st.start("darling")
+	for si in (st.mission_data("darling")["steps"] as Array).size():
+		if String(st.mission_data("darling")["steps"][si]["id"]) == "back":
+			st.goto_step("darling", si)
+	w._give_room()
+	w._set_phase("back")
+	main.open_station()
+	# the party: wait for it, look at it, then the talk at the bar
+	var t0 := Time.get_ticks_msec()
+	var party_ok := false
+	var danced := 0
+	var dlg_ok := false
+	var shot_party := false
+	var shot_cards := 0
+	while Time.get_ticks_msec() - t0 < 40000:
+		await get_tree().process_frame
+		if shots and shot_cards < 2:
+			for cl in main.get_children():
+				if cl is CanvasLayer and (cl as CanvasLayer).layer == 45:
+					for lb in cl.get_children():
+						if lb is Label and (lb as Label).modulate.a > 0.35 and ((shot_cards == 0) == ((lb as Label).text == "Three months later")):
+							get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58d_card%d.png" % shot_cards)
+							shot_cards += 1
+		var g = main.ground
+		if g != null and is_instance_valid(g) and g.level == "commercial" and w.phase == "party":
+			var n := 0
+			danced = 0
+			for key in g.story_people:
+				n += 1
+				if g.story_people[key].dancing:
+					danced += 1
+			party_ok = party_ok or (n >= 14 and danced >= 6 and g.story_people.has("dan") and g.story_people.has("ossa"))
+			var dn = g.story_people.get("dan", null)
+			if shots and not shot_party and dn != null and dn.bubble_t > 0.5 and String(dn.bubble).begins_with("To "):
+				for f8 in 25:
+					await get_tree().process_frame
+				main._fade.color.a = 0.0
+				shot_party = true
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58d_party.png")
+		if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "dan_party":
+			dlg_ok = true
+			if shots:
+				main.story_ui._dlg_layer.visible = false          # (the scene itself, without the dialogue's dimming)
+				for f8 in 30:
+					await get_tree().process_frame
+				main._fade.color.a = 0.0                          # (the fade in is held by the dialogue's pause in the quick test)
+				await get_tree().process_frame
+				await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58d_bar.png")
+				main.story_ui._dlg_layer.visible = true
+			main.story_ui._close_dialogue()
+		if w.phase == "maul" and main.ground != null and main.ground.level == "quarters" and main.ground.input_enabled and main.ground.pilot.visible:
+			break
+	var morning_ok: bool = w.phase == "maul" and st.done.has("darling") and st.running("fight") and st.step_data("fight").get("id", "") == "maul" \
+		and String(st.missions["fight"].get("target", "")) == w._brine_id() and main.ground != null and main.ground.level == "quarters"
+	# Upper Brine: Ossa in the shopping street
+	main.close_deck(false)
+	main.station_panel.close()
+	var body: Dictionary = Universe.find_body(GameState.current_system, w._brine_id())
+	var site := {}
+	for s0 in Universe.landing_sites(GameState.current_system, body):
+		if String(s0["kind"]) == "city":
+			site = s0
+	var ossa_ok := false
+	if not site.is_empty():
+		main.enter_city(body, site)
+		for i in 6:
+			await get_tree().process_frame
+		if main.ground != null:
+			main.ground.go_level("street", "lift")
+			for i in 6:
+				await get_tree().process_frame
+			ossa_ok = main.ground.story_people.has("ossa") and String(site["name"]) == "Upper Brine"
+			if shots and ossa_ok:
+				var ow = main.ground.story_people["ossa"]
+				main.ground.pilot.pos = ow.pos + Vector2(-30, 10)
+				main.ground.pilot.position = main.ground.pilot.pos * GroundMap.SCALE
+				for f8 in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58d_ossa.png")
+			main.ground.story_talk.emit("ossa")
+			for i in 3:
+				await get_tree().process_frame
+			ossa_ok = ossa_ok and main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "ossa_maul"
+	st.set_flag("w58_maul", true)
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	for i in 6:
+		await get_tree().process_frame
+	# Ossa's crew tour over the ship menu (Modules → Crew): Rook Varga
+	var crew_ok: bool = main.ship_menu.visible and main.ship_menu.mod_view == "crew" and w.tour != null and is_instance_valid(w.tour) and w._target("sm_member") != null
+	if shots:
+		for f8 in 30:
+			if w.tour != null and is_instance_valid(w.tour):
+				w.tour._wait = 1.0
+			await get_tree().process_frame
+		if w.tour != null and is_instance_valid(w.tour):
+			w.tour._wait = 0.0
+			w.tour.tour_confirm()
+			w.tour.tour_confirm()
+			for f9 in 30:
+				if w.tour != null and is_instance_valid(w.tour):
+					w.tour._wait = 1.0
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58d_crew.png")
+	var steps_n := 0
+	for i in 400:
+		if w.tour == null or not is_instance_valid(w.tour):
+			break
+		w.tour._wait = 0.0
+		if main.story_ui.radio_typing():
+			main.story_ui.radio_finish_typing()
+		w.tour.tour_confirm()
+		steps_n += 1
+		await get_tree().process_frame
+	for i in 4:
+		await get_tree().process_frame
+	var mf := GameState.active()
+	var rook_ok := false
+	for i9 in mf.crew_slots().size():
+		if String(mf.crew_at(i9).get("name", "")) == "Rook Varga" and String(mf.crew_at(i9).get("quality", "")) == "A":
+			rook_ok = true
+	crew_ok = crew_ok and rook_ok and w.phase == "contact" and PixelArt.paint_key(mf) == "ossa_rust"
+	main.ship_menu.close()
+	main._update_input()
+	var ms: Dictionary = mf.stats()
+	var maul_ok: bool = mf.ship_name == "Maul" and mf.hull_id == "hdy_maul" and mf.modules.values().has("o_shield:5:A") and mf.modules.values().has("o_armorrep:4:A") \
+		and mf.drones.size() >= 1 and (ms.get("offline", []) as Array).is_empty() and w.darling().docked_at == dan_st and w.phase == "contact" \
+		and st.step_data("fight").get("id", "") == "contact" and mf.crew_missing() == ""
+	if shots and main.ground != null:
+		main.ground.go_level("hangar", "stairs")
+		for f8 in 40:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58d_maul.png")
+	if not maul_ok:
+		print("W58D maul: ", mf.ship_name, " ", mf.modules, " offline ", ms.get("offline", []), " darl ", w.darling().docked_at, " ph ", w.phase, " crew ", mf.crew_missing())
+	check(party_ok and dlg_ok and morning_ok and ossa_ok and maul_ok,
+		"58: part 4 – docked at Dan's: the lines in the black, the party (dancing, the toast), the talk at the bar, awake in your room; \"Taking the Fight to Them\": Ossa in Upper Brine's street, the Maul (shield A, armour repairer, drones, a gunner)  [%s %s %s %s %s · %d dancing]" % [party_ok, dlg_ok, morning_ok, ossa_ok, maul_ok, danced])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	main.remove_meta("dan_work")
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	st.from_dict(keep)
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	GameState.pilot["tree"] = keep_tree
+	GameState.lodging = keep_lod
+	main.story_ui._radio_q.clear()
+
+
+## Package 58 (Luz): the camera off the ship – the screen's middle marked, L1 / R1 (the targeting) by nearness to it.
+func _test_cam58(_view: SystemView) -> void:
+	var v = main.view
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	var f := GameState.active()
+	if f.docked_at != "":
+		Commands.execute({"type": "undock"})
+		for i in 120:
+			await get_tree().process_frame
+			if v.player != null and is_instance_valid(v.player) and not v.player.is_docked():
+				break
+	v = main.view
+	var ok := false
+	var detail := ""
+	if v.player != null and is_instance_valid(v.player):
+		v.set_level(0)
+		var pp: Vector2 = v.player.position
+		var away := Vector2.RIGHT                   # (away from the nearest station: its edge would win, rightly)
+		var nsd := INF
+		for s8 in v.stations.values() + v.descents.values() + v.gates.values():
+			if is_instance_valid(s8) and s8.position.distance_to(pp) < nsd:
+				nsd = s8.position.distance_to(pp)
+				away = (pp - s8.position).normalized() if s8.position != pp else Vector2.RIGHT
+		var off := away * minf(v.player.lock_range(v.player.fit.stats()) * 0.6, 600.0)
+		var a = v.spawn_npc("civ_freighter", pp + Vector2(-300, 0))           # near the ship
+		var b = v.spawn_npc("civ_freighter", pp + off + Vector2(40, 0))       # near the screen's middle
+		for i in 3:
+			await get_tree().process_frame
+		v.center_on_player()
+		var centred: bool = not v.cam_off_ship()
+		main.hud.select_next("all")
+		var first_near := String(v.selected_id) == Ship.object_key(a)
+		v.select("")
+		v.follow = false
+		v.camera.position = pp + off
+		await get_tree().process_frame
+		var off_ok: bool = v.cam_off_ship() and v.target_ref() == v.camera.position
+		main.hud.select_next("all")
+		var mid_pick := String(v.selected_id) == Ship.object_key(b)
+		if OS.get_environment("CAM58_SHOTS") != "":
+			for f8 in 30:
+				v.follow = false
+				v.camera.position = pp + off
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/cam58_mid.png")
+		# (Luz) the camera over a station: L1 picks the station, not a rock beside it
+		var st_pick := true
+		var sn = null
+		var sbd := INF
+		for s9 in v.stations.values():
+			if is_instance_valid(s9) and s9.position.distance_to(pp) < sbd:
+				sbd = s9.position.distance_to(pp)
+				sn = s9
+		if sn != null and sbd < 4500.0:
+			v.select("")
+			v.follow = false
+			v.camera.position = sn.position + Vector2(20, 0)
+			await get_tree().process_frame
+			main.hud.select_next("all")
+			st_pick = String(v.selected_id) == String(sn.data["id"])
+		# (Luz) a descent beacon under the screen's middle: L1 picks it
+		var bc_pick := true
+		var bn = null
+		var bbd := INF
+		for d9 in v.descents.values():
+			if is_instance_valid(d9) and d9.position.distance_to(pp) < bbd:
+				bbd = d9.position.distance_to(pp)
+				bn = d9
+		if bn != null and bbd < 4800.0:
+			v.select("")
+			v.follow = false
+			v.camera.position = bn.position
+			await get_tree().process_frame
+			main.hud.select_next("all")
+			bc_pick = String(v.selected_id) == String(bn.data["id"])
+		ok = centred and first_near and off_ok and mid_pick and st_pick and bc_pick
+		detail = "%s %s %s %s %s (lock %.0f, zoom %.3f)" % [centred, first_near, off_ok, mid_pick, st_pick, v.player.lock_range(v.player.fit.stats()), v.camera.zoom.x]
+		v.select("")
+		v.center_on_player()
+		for n in [a, b]:
+			if is_instance_valid(n):
+				n.queue_free()
+	check(ok, "58: the camera off the ship – the screen's middle marked, the targeting (L1 / R1) by nearness to it; centred again: by the ship  [%s]" % detail)
+	# (Luz) a city: the stairs to the ship open the city's window; "Undock" asks: orbit or the planet map
+	var city_ok := false
+	var cd := ""
+	var f9 := GameState.active()
+	var keep_dock := f9.docked_at
+	var cbody := {}
+	var csite := {}
+	for pl9 in Universe.get_layout(GameState.current_system)["planets"]:
+		for s9 in Universe.landing_sites(GameState.current_system, pl9):
+			if String(s9["kind"]) == "city" and csite.is_empty():
+				cbody = pl9
+				csite = s9
+	if not csite.is_empty():
+		main.enter_city(cbody, csite)
+		for i in 6:
+			await get_tree().process_frame
+		var g9 = main.ground
+		var ship_z := {}
+		for z9 in g9.map.zones:
+			if String(z9.get("kind", "")) == "exit" and String(z9.get("id", "")) == "ship":
+				ship_z = z9
+		if not ship_z.is_empty():
+			g9.zone = ship_z
+			g9._arrive = 0.0
+			g9.use()
+			for i in 400:
+				await get_tree().process_frame
+				if main.ground == null or not is_instance_valid(main.ground):
+					break
+		var win_ok: bool = (main.ground == null or not is_instance_valid(main.ground)) and main.station_panel.visible and bool(main.station_panel.station.get("city", false))
+		main.station_panel.undock()
+		await get_tree().process_frame
+		var ask_ok: bool = main._takeoff_layer != null and is_instance_valid(main._takeoff_layer) and not main.station_panel.visible and f9.docked_at.begins_with("land:")
+		var ev := InputEventKey.new()
+		ev.keycode = KEY_ESCAPE
+		ev.pressed = true
+		Input.parse_input_event(ev)
+		for i in 3:
+			await get_tree().process_frame
+		var stay_ok: bool = (main._takeoff_layer == null or not is_instance_valid(main._takeoff_layer)) and main.station_panel.visible
+		main.station_panel.close()
+		main.open_deck()
+		await get_tree().process_frame
+		var deck_ok: bool = main.ground != null and is_instance_valid(main.ground) and main.ground.is_city()
+		city_ok = win_ok and ask_ok and stay_ok and deck_ok
+		cd = "%s %s %s %s" % [win_ok, ask_ok, stay_ok, deck_ok]
+		if main.ground != null and is_instance_valid(main.ground):
+			main.close_deck(false)
+		main.station_panel.close()
+	else:
+		city_ok = true
+		cd = "(no city here)"
+	f9.docked_at = keep_dock
+	check(city_ok, "58: a city – its stairs to the ship open the city's window; \"Undock\" asks: orbit or the planet map (Esc: stay); its deck again from the window  [%s]" % cd)
+
+
+## Package 58 (Luz): the quarters – a level by the lift; rooms in three sizes, closed doors hide them, one being
+## cleaned; renting one opens it; a night in the bed: the orbits rolled, new contracts and bar faces, the room given
+## back; Dan's free room in the story (sleep there, then he waits in the bar).
+func _test_q58(_view: SystemView) -> void:
+	var keep_cr := GameState.credits
+	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
+	if GameState.active().docked_at == "" or Commands.docked_station().is_empty():
+		Commands.cheats_enabled = true
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+		for wl in 600:
+			if main.loading == null or not is_instance_valid(main.loading):
+				break
+			await get_tree().process_frame
+	var f := GameState.active()
+	if f.docked_at == "":
+		f.docked_at = String(Universe.get_layout(GameState.current_system)["stations"][0]["id"])
+	var st := Commands.docked_station()
+	var sid := String(st["id"])
+	GameState.lodging.erase(sid)
+	var QG = load("res://scripts/ground/quarters_gen.gd")
+	var rs: Array = QG.rooms(st)
+	var sizes_ok: bool = rs.size() >= 8 and QG.ORDER.all(func(s): return rs.any(func(r): return String(r["size"]) == s)) \
+		and rs.any(func(r): return String(r["side"]) == "s") and QG.rooms(st) == rs
+	main.station_panel.close()
+	main.open_deck()
+	for i in 4:
+		await get_tree().process_frame
+	var g = main.ground
+	var lvl_ok := false
+	var closed_ok := false
+	var robot_ok := false
+	if g != null:
+		g.go_level("quarters", "lift")
+		for i in 4:
+			await get_tree().process_frame
+		lvl_ok = g.level == "quarters" and g.map.zones.any(func(z): return String(z["kind"]) == "q_desk") and g.map.zones.any(func(z): return String(z["kind"]) == "q_penthouse")
+		closed_ok = g.map.face_deco.filter(func(d): return String(d["kind"]) == "room_door").size() >= 3 and not g.map.zones.any(func(z): return String(z["kind"]) == "q_bed")
+		robot_ok = g.map.has_meta("clean_bot")
+		if OS.get_environment("Q58_SHOTS") != "":
+			for f8 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/q58_lobby.png")
+	# rent a medium room
+	GameState.credits = 5000
+	var e1 := Commands.execute({"type": "room_rent", "size": "medium"})
+	var lod: Dictionary = GameState.lodging.get(sid, {})
+	var rent_ok: bool = e1 == "" and not lod.is_empty() and String(lod["size"]) == "medium" and GameState.credits == 5000 - QG.price(st, "medium") \
+		and String(QG.room(st, int(lod["room"]))["size"]) == "medium"
+	if g != null:
+		g._q_rebuild_here()
+		for i in 3:
+			await get_tree().process_frame
+		rent_ok = rent_ok and g.map.zones.any(func(z): return String(z["kind"]) == "q_bed") and g.map.has_meta("bed_front")
+		# the locker opens your gear (the pilot window's gear tab)
+		var lz: Array = g.map.zones.filter(func(z): return String(z["kind"]) == "q_locker")
+		var gear_ok := false
+		if not lz.is_empty():
+			g.zone = lz[0]
+			g._arrive = 0.0
+			g.use()
+			gear_ok = main.pilot_window.visible and int(main.pilot_window.tab) == int(main.pilot_window.get_script().TAB_GEAR)
+			main.pilot_window.close()
+			main._update_input()
+		rent_ok = rent_ok and gear_ok
+	if OS.get_environment("Q58_SHOTS") != "" and g != null:
+		g.pilot.pos = (g.map.get_meta("room_door_front") as Vector2)
+		g.pilot.position = g.pilot.pos * GroundMap.SCALE
+		for f8 in 30:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/q58_corridor.png")
+		g.pilot.pos = (g.map.get_meta("bed_front") as Vector2)
+		g.pilot.position = g.pilot.pos * GroundMap.SCALE
+		for f8 in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/q58_room.png")
+		g._q_sleep = 1
+		g._q_room = int(lod.get("room", -1))
+		g.go_level("quarters", "bed")
+		g.pilot.visible = false
+		for f8 in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/q58_asleep.png")
+		# a room below the corridor: its number on the inside of the door, and on the floor by it
+		var keep_room := int(lod.get("room", -1))
+		for r9 in rs:
+			if String(r9["side"]) == "s" and int(r9["i"]) != QG.clean_room(st, -1):
+				GameState.lodging[sid]["room"] = int(r9["i"])
+				break
+		g._q_sleep = 0
+		g._q_room = -1
+		g.go_level("quarters", "lift")
+		g.pilot.pos = (g.map.get_meta("bed_front") as Vector2)
+		g.pilot.position = g.pilot.pos * GroundMap.SCALE
+		for f8 in 40:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/q58_south.png")
+		GameState.lodging[sid]["room"] = keep_room
+		g._q_sleep = 0
+		g.go_level("quarters", "bed")
+		g.pilot.visible = true
+	# the night in the bed itself: lying down, black, "Some hours later…", awake, up – the room still open round you
+	var scene_ok := true
+	if g != null:
+		var room_i := int(lod.get("room", -1))
+		g._q_sleep_begin()
+		var t_s := Time.get_ticks_msec()
+		var saw_asleep := false
+		while g._sleeping and Time.get_ticks_msec() - t_s < 15000:
+			await get_tree().process_frame
+			saw_asleep = saw_asleep or (g._q_sleep == 1 and not g.pilot.visible)
+		scene_ok = saw_asleep and not g._sleeping and g.input_enabled and g.pilot.visible and g._q_sleep == 0 and not GameState.lodging.has(sid) 			and g._q_room == room_i and g.map.zones.any(func(z): return String(z["kind"]) == "q_bed")
+		Commands.execute({"type": "room_rent", "size": "small"})
+	# a night: the orbits, the contracts, the bars; the room given back
+	GameState.offers["test_q58"] = [{"x": 1}]
+	GameState.bar["test_q58"] = {"t": 0.0, "offers": []}
+	var ph0 = Universe.orbit_phase.get(GameState.current_system, null)
+	var slept_ids: Array = []
+	var cb := func(s9): slept_ids.append(s9)
+	GameState.slept.connect(cb)
+	var e2 := Commands.execute({"type": "room_sleep"})
+	for i in 3:
+		await get_tree().process_frame
+	GameState.slept.disconnect(cb)
+	var sleep_ok: bool = e2 == "" and not GameState.offers.has("test_q58") and not GameState.bar.has("test_q58") and not GameState.lodging.has(sid) \
+		and slept_ids == [sid] and Universe.orbit_phase.get(GameState.current_system, null) != ph0 and Commands.execute({"type": "room_sleep"}) != ""
+	# a free room to keep (Dan's) stays after the night
+	GameState.lodging[sid] = {"room": 0, "size": String(rs[0]["size"]), "free": true, "keep": true}
+	Commands.execute({"type": "room_sleep"})
+	var keep_ok: bool = GameState.lodging.has(sid)
+	check(sizes_ok and lvl_ok and closed_ok and robot_ok and rent_ok and scene_ok and sleep_ok and keep_ok,
+		"58: the quarters – a level by the lift: the concierge's desk, rooms in three sizes on both sides (the same every visit), closed doors hide them, one being cleaned, the penthouse lift; a medium room rented opens with its bed; a night: the orbits rolled, new contracts and bar faces, the room given back (Dan's free one kept)  [%s %s %s %s %s %s %s %s]" % [sizes_ok, lvl_ok, closed_ok, robot_ok, rent_ok, scene_ok, sleep_ok, keep_ok])
+	GameState.lodging = keep_lod
+	GameState.credits = keep_cr
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+
+
+## Package 58, part 3: Dan's job in his bar (the loan), Ossa Kell at your ship in Upper Brine, her haulers as an escort
+## contract to the Driftwood Waystation, the ambush once (radio calls), paid in Driftwood, Dan's call, home.
+func _test_w58c(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var keep_missions: Array = GameState.missions.duplicate()
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	if GameState.active().docked_at == "":
+		GameState.active().docked_at = String(Universe.get_layout(GameState.current_system)["stations"][0]["id"])
+	var dan_st := GameState.active().docked_at
+	# Driftwood has its waystation now
+	var ws: Dictionary = load("res://scripts/ground/dan_work.gd")._waystation()
+	var ws_ok: bool = not ws.is_empty() and String(ws.get("name", "")).begins_with("Driftwood")
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w58_"):
+			st.flags.erase(fl)
+	st.missions.erase("darling")
+	st.done.erase("darling")
+	st.flags["dan_deal_yes"] = true
+	main.station_panel.close()
+	main._start_dan_work("yes")
+	var w = main.get_meta("dan_work")
+	var ld: ShipFitting = GameState.active()
+	st.start("darling")
+	st.goto_step("darling", 9)                       # "More work": see Dan in his bar (after the night in his room)
+	for fl2 in ["ticket_ship", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone", "w58_atfield", "w58_drones", "w58_mined", "w58_delivered"]:
+		st.flags[fl2] = true
+	if w.tour != null and is_instance_valid(w.tour):
+		w.tour.queue_free()
+	w.tour = null
+	w._set_phase("part3")
+	w._part3_calls()
+	main.open_station()
+	for i in 3:
+		await get_tree().process_frame
+	var target0 := String(st.missions["darling"].get("target", ""))
+	# Dan in his bar (the deck asks the story)
+	var gm: Dictionary = w.ground_mode(Universe.find_station(GameState.current_system, dan_st))
+	var dan_ok: bool = (((gm.get("levels", {}) as Dictionary).get("commercial", {}) as Dictionary).get("people", []) as Array).any(func(p): return String(p["who"]) == "dan") \
+		and target0 == dan_st and st.step_data("darling").get("id", "") == "next"
+	main.open_deck()
+	for i in 4:
+		await get_tree().process_frame
+	if main.ground != null:
+		main.ground.go_level("commercial", "lift")
+		for i in 4:
+			await get_tree().process_frame
+	dan_ok = dan_ok and main.ground != null and main.ground.story_people.has("dan")
+	if main.ground != null:
+		main.ground.story_talk.emit("dan")
+	for i in 3:
+		await get_tree().process_frame
+	var job_dlg: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "dan_job"
+	if OS.get_environment("W58_SHOTS") != "":
+		for f8 in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58c_dan_bar.png")
+	st.set_flag("w58_job", true)
+	main.story_ui._close_dialogue()
+	for i in 4:
+		await get_tree().process_frame
+	var gear_ok: bool = w.phase == "brine" and ld.get_module("weapon_0") == "w_pulse:1:A" and String(ld.lent.get("weapon_0", "")) == "w_pulse:1:A" \
+		and ld.modules.values().any(func(m): return String(m).begins_with("o_armor:")) and st.step_data("darling").get("id", "") == "brine" \
+		and String(st.missions["darling"].get("target", "")) == w._brine_id()
+	var brine_call: bool = (main.story_ui._radio != null and String(main.story_ui._radio_d.get("until_flag", "")) == "w58_ossa") or main.story_ui._radio_q.any(func(d): return String(d.get("until_flag", "")) == "w58_ossa")
+	# Upper Brine: Ossa Kell beside your ship in the city's hangar
+	main.close_deck(false)
+	main.station_panel.close()
+	var body: Dictionary = Universe.find_body(GameState.current_system, w._brine_id())
+	var site := {}
+	for s0 in Universe.landing_sites(GameState.current_system, body):
+		if String(s0["kind"]) == "city":
+			site = s0
+	var ossa_ok := false
+	if not site.is_empty():
+		main.enter_city(body, site)
+		for i in 6:
+			await get_tree().process_frame
+		ossa_ok = main.ground != null and main.ground.level == "hangar" and main.ground.story_people.has("ossa")
+		if OS.get_environment("W58_SHOTS") != "":
+			for f8 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58c_hangar.png")
+		if main.ground != null:
+			main.ground.story_talk.emit("ossa")
+		for i in 3:
+			await get_tree().process_frame
+		ossa_ok = ossa_ok and main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "ossa_meet"
+		if OS.get_environment("W58_SHOTS") != "":
+			for f8 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58c_ossa.png")
+	st.set_flag("w58_ossa", true)
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	main.close_deck(false)
+	ld.docked_at = dan_st
+	main.open_station()
+	for i in 6:
+		await get_tree().process_frame
+	# the contract: two haulers from Dan's store to the Driftwood Waystation, 3,000 cr, one ambush, Ossa calls
+	var m: Dictionary = w._contract()
+	var c: Dictionary = GameState.convoys.find(int(m.get("convoy", -1))) if not m.is_empty() else {}
+	var contract_ok: bool = w.phase == "convoy" and not m.is_empty() and int(m["reward"]) == 3000 and String(m["target_station"]) == String(ws.get("id", "")) \
+		and int(c.get("story_ambush", 0)) == 2 and String(c.get("caller", "")) == "ossa" and st.step_data("darling").get("id", "") == "escort"
+	var v = main.view
+	var e: Dictionary = v.traffic.convoys.get(int(m.get("convoy", -1)), {}) if not m.is_empty() else {}
+	var amb_ok := false
+	if not e.is_empty():
+		v.traffic.depart_gathered(e)
+		for i in 3:
+			await get_tree().process_frame
+		var leader = e.get("leader")
+		amb_ok = bool(st.flags.get("w58_departed", false)) and float(e.get("pull_at", -1.0)) > 0.0 and leader != null
+		if leader != null:
+			v.traffic.pull_out_of_warp(e, leader)
+		amb_ok = amb_ok and (e.get("ambushers", []) as Array).size() == 2 and bool(st.flags.get("w58_ambush", false)) and bool(c.get("no_ambush", false))
+		w._amb_t = 3.5
+		for i in 3:
+			await get_tree().process_frame
+		amb_ok = amb_ok and bool(st.flags.get("w58_ambush_dan", false))
+		for p in e.get("ambushers", []):
+			if is_instance_valid(p):
+				p.queue_free()
+		for i in 4:
+			await get_tree().process_frame
+		amb_ok = amb_ok and bool(st.flags.get("w58_ambush_won", false))
+	# delivered: docked at the waystation, paid; Dan calls
+	var cr0 := GameState.credits
+	if not m.is_empty():
+		m["progress"] = 1
+		m["arrived"] = 2
+	for i in 3:
+		await get_tree().process_frame
+	var arrived_ok: bool = bool(st.flags.get("w58_arrived", false))
+	main.station_panel.close()
+	ld.docked_at = String(ws.get("id", ""))
+	main.station_panel.visible = true                 # (the station window of Driftwood's waystation, as if docked)
+	for i in 4:
+		await get_tree().process_frame
+	var paid_ok: bool = bool(st.flags.get("w58_escorted", false)) and GameState.credits >= cr0 + 3000 and not m in GameState.missions and w.phase == "call"
+	var t_call := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t_call < 6000:
+		await get_tree().process_frame
+		if main.story_ui.dialogue != null:
+			break
+	var call_ok: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "dan_end"
+	if OS.get_environment("W58_SHOTS") != "":
+		for f8 in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58c_dan_call.png")
+	st.set_flag("w58_called", true)
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	main.station_panel.visible = false
+	for i in 3:
+		await get_tree().process_frame
+	var back_ok: bool = w.phase == "back" and String(st.missions["darling"].get("target", "")) == dan_st
+	ld.docked_at = dan_st
+	w.quick = true                                   # (part 4 runs from here: the party, quickly)
+	main.open_station()
+	var t_p := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t_p < 40000:
+		await get_tree().process_frame
+		if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "dan_party":
+			main.story_ui._close_dialogue()
+		if w.phase == "maul" and main.ground != null and main.ground.level == "quarters" and main.ground.input_enabled:
+			break
+	back_ok = back_ok and w.phase == "maul" and st.done.has("darling")
+	# shot down in the escort (Luz): no game over – towed home, awake in Dan's clinic, he talks; undock: it starts again
+	main.station_panel.close()
+	for fl9 in ["w58_escorted", "w58_called", "w58_back"]:
+		st.flags.erase(fl9)
+	st.start("darling")
+	for si in (st.mission_data("darling")["steps"] as Array).size():
+		if String(st.mission_data("darling")["steps"][si]["id"]) == "escort":
+			st.goto_step("darling", si)
+	w._set_phase("convoy")
+	var m2: Dictionary = w._make_contract()
+	var lost_n := GameState.fleet.size()
+	GameState.on_player_ship_lost(ld)
+	var t_r := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t_r < 6000:
+		await get_tree().process_frame
+		if main.story_ui.dialogue != null:
+			break
+	var rescue_ok: bool = GameState.fleet.size() == lost_n and ld in GameState.fleet and ld.docked_at == dan_st and not m2 in GameState.missions 		and bool(st.flags.get("w58_retry", false)) and not main.loss_window.visible and main.ground != null and main.story_ui.dialogue != null 		and String(main.story_ui._dlg.get("id", "")) == "dan_wake" and ld.structure >= float(ld.stats()["structure_max"]) - 0.01 		and ld.modules.values().has("o_armor:2:A")
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	ld.docked_at = ""
+	for i in 4:
+		await get_tree().process_frame
+	rescue_ok = rescue_ok and not bool(st.flags.get("w58_retry", false)) and not w._contract().is_empty()
+	if not w._contract().is_empty():
+		var m3: Dictionary = w._contract()
+		var c3: Dictionary = GameState.convoys.find(int(m3.get("convoy", -1)))
+		GameState.convoys.convoys.erase(c3)
+		GameState.missions.erase(m3)
+	ld.docked_at = dan_st
+	back_ok = back_ok and rescue_ok
+	if not rescue_ok:
+		print("W58C rescue: ", ld in GameState.fleet, " ", ld.docked_at, " ", st.flags.get("w58_retry", "-"), " dlg ", main.story_ui._dlg.get("id", ""))
+	check(ws_ok and dan_ok and job_dlg and gear_ok and brine_call and ossa_ok and contract_ok and amb_ok and arrived_ok and paid_ok and call_ok and back_ok,
+		"58: part 3 – Driftwood's waystation; Dan in his bar with the job (a better laser and armour plating lent); Ossa Kell at your ship in Upper Brine; her haulers as an escort contract (3,000 cr), pulled out of warp once (two pirates, Dan and Ossa on the radio); paid in Driftwood, Dan's call, home  [%s %s %s %s %s %s %s %s %s %s %s %s]" % [ws_ok, dan_ok, job_dlg, gear_ok, brine_call, ossa_ok, contract_ok, amb_ok, arrived_ok, paid_ok, call_ok, back_ok])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	if not c.is_empty():
+		GameState.convoys.convoys.erase(c)
+	if not e.is_empty():
+		for s9 in e.get("ships", []):
+			if is_instance_valid(s9):
+				s9.queue_free()
+		if is_instance_valid(main.view) and main.view.traffic != null:
+			main.view.traffic.convoys.erase(int(c.get("id", -1)))
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	main.remove_meta("dan_work")
+	main.station_panel.close()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	st.from_dict(keep)
+	GameState.missions = keep_missions
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	GameState.pilot["tree"] = keep_tree
+	main.story_ui._radio_q.clear()
 
 
 func _test_w58b(_view: SystemView) -> void:
@@ -14904,7 +15638,14 @@ func _test_w58b(_view: SystemView) -> void:
 	for i in 6:
 		await get_tree().process_frame
 	var home_ok: bool = bool(st.flags.get("w58_delivered", false)) and w._units(ld) == 0.0 and GameState.credits == cr0 + 2000 and main.story_ui.dialogue != null \
-		and String(main.story_ui._dlg.get("id", "")) == "dan_scrap" and st.step_data("darling").get("id", "") == "next"
+		and String(main.story_ui._dlg.get("id", "")) == "dan_scrap" and st.step_data("darling").get("id", "") == "rest" \
+		and bool((GameState.lodging.get(dan_st, {}) as Dictionary).get("free", false))
+	# the night in Dan's room: then he waits in the bar (Luz)
+	GameState.slept.emit(dan_st)
+	for i in 3:
+		await get_tree().process_frame
+	home_ok = home_ok and bool(st.flags.get("w58_slept", false)) and String(st.flags.get("w58_phase", "")) == "part3" and st.step_data("darling").get("id", "") == "next"
+	GameState.lodging.erase(dan_st)
 	check(gear_ok and call_ok and field_ok and drones_ok and mined_ok and home_ok,
 		"58: part 2 – the drone's lent gear, Dan's call to the marked wreck field (it waits), the guided tour over the drone panel (launch, jobs, mining, how, fuel and recall), twenty units of scrap, home to Dan: the scrap taken, 2,000 cr, his dialogue  [%s %s %s %s %s %s]" % [gear_ok, call_ok, field_ok, drones_ok, mined_ok, home_ok])
 	# tidy up

@@ -27,6 +27,7 @@ var tab := 0
 var selected_slot := ""
 var selected_store := ""
 var mod_view := "fitting"         # Modules tab: "fitting" | "power" (package 21)
+var tour_targets := {}            # package 58: parts a guided tour frames (the crew: posts, a member, the share, quarters)
 const GROUP_COLORS := {1: Color(0.35, 0.85, 1.0), 2: Color(0.4, 1.0, 0.5), 3: Color(1.0, 0.8, 0.3), 4: Color(1.0, 0.5, 0.35)}
 
 var title_label: Label
@@ -390,6 +391,8 @@ func _build_modules() -> void:
 		b.button_pressed = mod_view == key
 		b.custom_minimum_size = Vector2(200, 30)
 		sw.add_child(b)
+		if key == "crew":
+			tour_targets["sm_crew_tab"] = b
 	if mod_view == "power":
 		_build_power()
 		return
@@ -431,6 +434,7 @@ var crew_sel := -1                 # the post picked for the next assignment
 
 
 func _build_crew() -> void:
+	tour_targets.erase("sm_member")
 	var body := UI.hbox(16)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(body)
@@ -445,7 +449,10 @@ func _build_crew() -> void:
 	var miss := fit.crew_missing()
 	left.add_child(UI.label("CREW OF THE %s" % fit.ship_name.to_upper(), 15, UI.NEON_CYAN))
 	left.add_child(UI.label("Required posts missing: %s, the ship cannot undock." % miss if miss != "" else "Every required post is filled.", 13, UI.BAD if miss != "" else UI.GOOD))
-	left.add_child(UI.label("Share of income (sales, bounties, contract rewards): %.2f %%  •  paid so far %s" % [fit.crew_share() * 100.0, GameData.fmt_credits(int(GameState.stats.get("crew_paid", 0)))], 12, UI.TEXT_DIM))
+	var share_l := UI.label("Share of income (sales, bounties, contract rewards): %.2f %%  •  paid so far %s" % [fit.crew_share() * 100.0, GameData.fmt_credits(int(GameState.stats.get("crew_paid", 0)))], 12, UI.TEXT_DIM)
+	left.add_child(share_l)
+	tour_targets["sm_share"] = share_l
+	tour_targets["sm_posts"] = ls
 	var sl := fit.crew_slots()
 	var dock := _docked()
 	for i in sl.size():
@@ -462,12 +469,16 @@ func _build_crew() -> void:
 				ep.get_child(0).get_child(1).add_child(UI.label(te, 11, Color(1.0, 0.7, 0.3)))
 			left.add_child(ep)
 		else:
-			left.add_child(CrewCard.card(m, [pick_b, ["To quarters", func(): _crew_cmd({"type": "crew_unassign", "ship": fit.uid, "slot": idx}), not dock]],
-				"%s%s%s" % [CrewData.role_name(role), "  •  REQUIRED" if req else "", "  •  picked" if picked else ""], UI.GOLD if picked else UI.TEXT_DIM))
+			var cc := CrewCard.card(m, [pick_b, ["To quarters", func(): _crew_cmd({"type": "crew_unassign", "ship": fit.uid, "slot": idx}), not dock]],
+				"%s%s%s" % [CrewData.role_name(role), "  •  REQUIRED" if req else "", "  •  picked" if picked else ""], UI.GOLD if picked else UI.TEXT_DIM)
+			left.add_child(cc)
+			if not tour_targets.has("sm_member") or bool(m.get("story", false)):
+				tour_targets["sm_member"] = cc
 	# the crew quarters of the station
 	var rp := UI.neon_panel(Color(UI.NEON_CYAN, 0.3), Color(0.05, 0.07, 0.12, 0.95), 1)
 	rp.custom_minimum_size = Vector2(560, 0)
 	body.add_child(rp)
+	tour_targets["sm_quarters"] = rp
 	var rs := ScrollContainer.new()
 	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	rp.add_child(rs)

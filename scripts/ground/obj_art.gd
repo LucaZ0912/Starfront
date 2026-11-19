@@ -139,7 +139,7 @@ static func _rise(kind: String) -> int:
 			return 14
 		"stool", "railing":
 			return 6
-		"med_bed", "med_bed_occ":
+		"med_bed", "med_bed_occ", "q_bed":
 			return 14
 		"med_pod":
 			return 44
@@ -1273,6 +1273,43 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 4, fy - 4, 1, 4, metal.darkened(0.3))
 			_r(img, 1, fy - 12, 1, 14, Color(0.55, 0.58, 0.62))                           # the drip on its stand
 			_r(img, 0, fy - 12, 3, 4, Color(0.8, 0.92, 1.0, 0.85))
+		"q_bed":                    # package 58 (Luz): a bed in the quarters – a padded headboard, pillows, a blanket in
+			# the room's colour; unmade while the robot cleans; with the pilot in it while they sleep (eyes shut, or open)
+			var frame := Color(0.2, 0.18, 0.24)
+			_r(img, 0, fy - 6, pw, 8, frame)                                                  # the headboard
+			_r(img, 1, fy - 5, pw - 2, 5, c.darkened(0.45))
+			for hx in range(3, pw - 2, 5):
+				_r(img, hx, fy - 4, 1, 3, c.darkened(0.25))
+			_r(img, 1, fy, pw - 2, ph - 2, frame.lightened(0.15))
+			_r(img, 2, fy + 1, pw - 4, ph - 5, Color(0.92, 0.92, 0.95))                      # the sheet
+			var pillows := 1 if pw < 40 else 2
+			for pi in pillows:
+				var pxw := (pw - 6) / pillows
+				_r(img, 3 + pi * (pxw + 1), fy + 2, pxw - 1, 5, Color(0.98, 0.98, 1.0))
+				_r(img, 3 + pi * (pxw + 1), fy + 6, pxw - 1, 1, Color(0.8, 0.8, 0.86))
+			var pat2: Dictionary = o.get("patient", {})
+			if not pat2.is_empty():
+				var PAq = load("res://scripts/core/pilot_art.gd")
+				var sk2: Color = PAq.SKINS[int(pat2.get("skin", 2)) % PAq.SKINS.size()]
+				var hr2: Color = PAq.HAIR_COLORS[int(pat2.get("hair_color", 1)) % PAq.HAIR_COLORS.size()]
+				if int(pat2.get("hair", 2)) == 0:
+					hr2 = sk2.darkened(0.08)
+				_ellipse(img, pw * 0.5, fy + 7.0, 5.0, 4.5, sk2)
+				_r(img, pw / 2 - 5, fy + 2, 10, 3, hr2)
+				if bool(o.get("awake", false)):
+					_r(img, pw / 2 - 2, fy + 6, 1, 2, Color(0.95, 0.95, 0.95))
+					_r(img, pw / 2 + 1, fy + 6, 1, 2, Color(0.95, 0.95, 0.95))
+				else:
+					_r(img, pw / 2 - 2, fy + 7, 1, 1, Color(0.2, 0.15, 0.15))
+					_r(img, pw / 2 + 1, fy + 7, 1, 1, Color(0.2, 0.15, 0.15))
+			if bool(o.get("unmade", false)):
+				_r(img, 3, fy + 12, pw - 8, ph - 18, c.darkened(0.1))                       # the blanket thrown back
+				_r(img, pw - 7, fy + 10, 5, ph - 14, c.darkened(0.3))
+			else:
+				_r(img, 2, fy + (11 if not pat2.is_empty() else 9), pw - 4, ph - (16 if not pat2.is_empty() else 14), c)     # the blanket
+				_r(img, 2, fy + (11 if not pat2.is_empty() else 9), pw - 4, 2, c.lightened(0.3))
+			_r(img, 1, fy + ph - 4, 2, 3, frame.darkened(0.3))
+			_r(img, pw - 3, fy + ph - 4, 2, 3, frame.darkened(0.3))
 		"med_pod":                  # 0.7.51.11: the auto-surgeon – a capsule under a glass lid, its arm over it, lit
 			c = Color(0.4, 0.9, 1.0)
 			_r(img, 2, fy + 2, pw - 4, ph - 4, Color(0.86, 0.88, 0.9))

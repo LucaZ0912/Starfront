@@ -764,7 +764,9 @@ func _redraw_if_seen() -> void:
 		visible = not tiny
 	if tiny:
 		return
-	if manual or not tool_beams.is_empty() or SystemView.on_screen_at(position, radius * 3.0 + 600.0) or (view != null and "story_follow" in view and view.story_follow == self):
+	# (package 58, Luz: in warp the camera races ahead of last frame's screen rect – a ship warping along with you
+	# would stand still as a picture: ships in warp always redraw, there are only ever a few)
+	if manual or in_warp() or not tool_beams.is_empty() or SystemView.on_screen_at(position, radius * 3.0 + 600.0) or (view != null and "story_follow" in view and view.story_follow == self):
 		queue_redraw()
 
 

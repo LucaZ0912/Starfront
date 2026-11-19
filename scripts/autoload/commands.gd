@@ -2713,6 +2713,54 @@ func _c_debug_vote_beam(_c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"room_rent", "size": small|medium|luxury} – package 58: a room in the quarters for one night.
+func _c_room_rent(c: Dictionary) -> String:
+	var st := docked_station()
+	if st.is_empty():
+		return "You must be docked at a station."
+	var QG = load("res://scripts/ground/quarters_gen.gd")
+	if not QG.has_quarters(st):
+		return "There are no quarters here."
+	var size := String(c.get("size", ""))
+	if not QG.SIZES.has(size):
+		return "No such room."
+	var sid := String(st["id"])
+	var cur: Dictionary = GameState.lodging.get(sid, {})
+	if not cur.is_empty() and String(cur.get("size", "")) == size:
+		return "You have a %s here already." % String(QG.SIZES[size]["name"]).to_lower()
+	var i: int = QG.room_for(st, size)
+	if i < 0:
+		return "No %s free tonight." % String(QG.SIZES[size]["name"]).to_lower()
+	var p: int = QG.price(st, size)
+	if not GameState.spend(p):
+		return "Not enough credits: a %s costs %s." % [String(QG.SIZES[size]["name"]).to_lower(), GameData.fmt_credits(p)]
+	GameState.lodging[sid] = {"room": i, "size": size, "free": false, "keep": false}
+	GameState.log_msg("Room %d rented for the night (%s)." % [int(QG.room(st, i)["no"]), GameData.fmt_credits(p)], GameState.COL_GOOD)
+	return ""
+
+
+## {"type":"room_sleep"} – package 58: a night in your room: the planets of this system stand elsewhere on their
+## orbits, the stations have new contracts and the bars new faces; a paid room is given back.
+func _c_room_sleep(_c: Dictionary) -> String:
+	var st := docked_station()
+	var sid := String(st.get("id", ""))
+	if st.is_empty() or not GameState.lodging.has(sid):
+		return "You have no room here."
+	var f := _fit()
+	if f != null and GameState._may_roll_orbits(f):
+		Universe.roll_orbits(GameState.current_system)
+		var mn = world.get_tree().current_scene if world != null and is_instance_valid(world) else null
+		if mn != null and mn.has_method("load_system"):
+			mn.load_system(GameState.current_system)
+	GameState.offers.clear()                                   # new contracts everywhere
+	GameState.bar.clear()                                      # new faces in the bars
+	if not bool((GameState.lodging[sid] as Dictionary).get("keep", false)):
+		GameState.lodging.erase(sid)
+	GameState.slept.emit(sid)
+	GameState.log_msg("You slept through the night. Rested.", GameState.COL_GOOD)
+	return ""
+
+
 ## {"type":"debug_roll_orbits"} – package 36: planets and moons to new places on their orbits, as on arriving by jump
 ## (the ship stays where it is).
 func _c_debug_roll_orbits(_c: Dictionary) -> String:
