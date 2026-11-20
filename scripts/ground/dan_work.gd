@@ -16,6 +16,9 @@ extends Node
 ## Dan's bar (dancing, his toast in speech bubbles, cheers), then Dan and you at the bar (the pirates, the Maul, a
 ## friend in Driftwood); black, you wake in your room. "Taking the Fight to Them": Ossa in Upper Brine's shopping
 ## street gives you her Maul, well fitted.
+## Part 5 (Luz): Silas Marr in the Driftwood Waystation's diner; his Bastion, the Stubborn Hope, goes out to a quiet
+## asteroid field and unfolds the Listener (an animation on the ship) – three waves of pirates come for it; the sweep
+## done, their base lies in Hollow. Phases "contact" → "follow" → "listen" → "found".
 
 const GuidedTour = preload("res://scripts/ui/guided_tour.gd")
 const TreeData = preload("res://data/skilltree.gd")
@@ -141,6 +144,10 @@ func begin(where: String) -> void:
 	if phase == "crew":
 		_crew_started = true                             # a save in the middle of Ossa's crew tour: it is over
 		_crew_done.call_deferred()
+	if phase == "listen":
+		_set_phase("follow")                             # a save in the middle of the sweep: from the start again
+	if phase == "follow":
+		_follow_calls.call_deferred()
 	if not GameState.slept.is_connected(_on_slept):
 		GameState.slept.connect(_on_slept)
 	GameState.story_guard = _story_rescue                 # (Luz) shot down while working for Dan: no game over
@@ -174,7 +181,9 @@ func _process(_delta: float) -> void:
 		return
 	var f := darling()
 	if f == null:
-		return
+		f = GameState.active()                             # (later parts: whatever you fly)
+		if f == null or not phase in ["contact", "follow", "listen", "found", "maul", "crew"]:
+			return
 	# the fitting goals follow what is fitted (whatever the order)
 	if GameState.story.running(MID):
 		if not bool(flags().get("w58_mining", false)) and _has_family(f, "tool", "t_mining"):
@@ -225,6 +234,8 @@ func _process(_delta: float) -> void:
 				_part3_calls()
 		"rest", "part3", "brine", "convoy", "call", "back", "maul", "crew", "contact":
 			_part3_step(f, sp)
+		"follow", "listen":
+			_listen_step()
 
 
 static func _has_family(f: ShipFitting, slot_type: String, fam: String) -> bool:
@@ -386,8 +397,10 @@ func ground_mode(st: Dictionary) -> Dictionary:
 	var sid := String(st.get("id", ""))
 	if sid == String(flags().get("w58_dan_st", "")) and phase == "party":
 		return _party_mode()
+	if phase == "contact" and sid == String(_waystation().get("id", "-")):
+		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
-		return {"levels": {"street": {"people": [{"who": "ossa", "near_spawn": Vector2(12.0, 2.0), "spread": 3.0, "dir": 0, "marker": "!"}]}}}
+		return {"levels": {"street": {"people": [{"who": "ossa", "near_obj": "lamp_post", "off": Vector2(1.5, 0.8), "near_spawn": Vector2(12.0, 2.0), "spread": 2.0, "dir": 0, "marker": "!"}]}}}
 	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact"]:
 		var dan := {"who": "dan", "pos": IntroSix.WINDOW, "dir": 1, "talk": true}
 		if phase == "part3":
@@ -804,7 +817,343 @@ func _crew_done() -> void:
 		return
 	_set_phase("contact")
 	GameState.story.show.emit("radio", {"who": "dan", "text": "Ossa says you've got the Maul, and Rook with her. Good. Now listen: these aren't scrap haulers you're going after. You come back to me in one piece, you hear? I've sent you the contact of a friend in Driftwood. He'll be expecting you.", "mission": FIGHT})
-	GameState.log_msg("[Story] Package 58 continues with the next part (Dan's friend in Driftwood).", GameState.COL_WARN)
+	var stf = GameState.story
+	if stf.running(FIGHT):
+		stf.missions[FIGHT]["target"] = String(_waystation().get("id", ""))
+
+
+# ---- part 5: the Listener
+
+const ListenerFx = preload("res://scripts/world/listener_fx.gd")
+const HOPE_NAME := "Stubborn Hope"
+const LISTEN_TIME := 150.0                # seconds for the whole sweep
+const WAVES := [[15.0, 1], [40.0, 2], [70.0, 2]]     # [at %, light pirates]; (Luz) one Maul with every wave, never two
+const SETTLE_TIME := 9.0                  # (Luz) out of the warp she flies on a little before she stops
+const COUNTDOWN := 5.0                    # then the Listener powers up: "starts in 5 s"
+var _hope = null
+var _hope_wait := 0.0                   # (Luz) she waits 10 s after undocking, unless you already follow her
+var _fx = null
+var _listen := 0.0
+var _waves := 0
+var _pirates: Array = []
+var _bar_layer: CanvasLayer = null
+var _bar: ProgressBar = null
+var _bar_label: Label = null
+var _respawn_t := 0.0
+var _away_said := false
+var _settle := -1.0                     # < 0: not there yet; > 0: flying on into the field; 0: counting down
+var _count := 0.0
+var _clear_t := 0.0
+
+
+## The asteroid field Silas listens from: a quiet one in Driftwood (not a wreck belt), nearest the waystation.
+func _listen_field() -> Dictionary:
+	var dsid := Universe.special_system("driftwood")
+	var L: Dictionary = Universe.get_layout(dsid)
+	var ws := _waystation()
+	var from: Vector2 = ws.get("pos", Vector2.ZERO)
+	var best := {}
+	var bd := INF
+	for fd in L.get("fields", []):
+		var d := (fd["pos"] as Vector2).distance_to(from)
+		if bool(fd.get("wreck", false)):
+			d += 1e9                                       # a rock field first
+		if d < bd:
+			bd = d
+			best = fd
+	return best
+
+
+func _follow_calls() -> void:
+	var st = GameState.story
+	var fd := _listen_field()
+	if st.running(FIGHT) and not fd.is_empty():
+		st.missions[FIGHT]["target"] = String(fd["id"])
+	st.show.emit("radio", {"who": "silas", "text": "I'm taking the Hope out. Undock, and follow me to the field I've marked. Stay close: the Bastion's slow, but she's not quiet.",
+		"mission": FIGHT, "until_flag": "w58_atlisten", "hint": "follow the Stubborn Hope to the asteroid field"})
+
+
+## Out in Driftwood, undocked: Silas's Bastion – spawned by the waystation, off to the field; then the sweep.
+func _listen_step() -> void:
+	var v = main.view
+	if v == null or not is_instance_valid(v) or GameState.current_system != Universe.special_system("driftwood"):
+		if phase == "listen":
+			_listen_abort(false)
+		return
+	var pl = v.player
+	if pl == null or not is_instance_valid(pl) or GameState.active().docked_at != "":
+		return
+	var dt := get_process_delta_time()
+	if _hope == null or not is_instance_valid(_hope) or _hope.dying:
+		if phase == "listen":
+			_listen_abort(true)
+			return
+		_respawn_t -= dt
+		if _respawn_t > 0.0:
+			return
+		_spawn_hope()
+		return
+	var fd := _listen_field()
+	if phase == "follow":
+		if _hope_wait > 0.0:
+			_hope_wait -= dt
+			if String(pl.order.get("type", "")) == "follow" and pl.order.get("node") == _hope:
+				_hope_wait = 0.0
+			if _hope_wait > 0.0:
+				return
+		if not _hope.in_warp() and String(_hope.order.get("type", "idle")) in ["idle", "move"] and _hope.position.distance_to(fd["pos"]) > float(fd.get("radius", 12000.0)):
+			v.traffic.go(_hope, String(fd["id"]))
+		_clear_t -= dt
+		if _clear_t <= 0.0:
+			_clear_t = 1.0
+			_clear_field(fd)
+		if _settle >= 0.0:
+			_settle_step(dt)
+			return
+		if not _hope.in_warp() and _hope.position.distance_to(fd["pos"]) < float(fd.get("radius", 12000.0)) * 1.1 and pl.position.distance_to(_hope.position) < 9000.0 and not pl.in_warp():
+			_settle_start(fd)
+		return
+	# the sweep
+	var s: Dictionary = _hope.fit.stats()
+	var hull := float(_hope.fit.structure) / maxf(float(s["structure_max"]), 1.0)
+	if hull < 0.15:
+		_listen_abort(true)
+		return
+	_clear_t -= dt
+	if _clear_t <= 0.0:
+		_clear_t = 1.0
+		_clear_field(fd)
+	var near: bool = pl.position.distance_to(_hope.position) < 14000.0
+	if near:
+		_away_said = false
+		_listen = minf(_listen + dt * 100.0 / (LISTEN_TIME * (0.05 if quick else 1.0)), 100.0)
+	elif not _away_said:
+		_away_said = true
+		GameState.story.show.emit("radio", {"who": "silas", "text": "Where are you going? I can't hold them off on my own! Get back here!", "mission": FIGHT, "now": true})
+	while _waves < WAVES.size() and _listen >= float(WAVES[_waves][0]):
+		_wave(_waves)
+		_waves += 1
+	_pirates = _pirates.filter(func(p): return p != null and is_instance_valid(p) and not p.dying)
+	if _listen >= 100.0 and _waves >= WAVES.size() and _pirates.is_empty():
+		_listen_done()
+		return
+	if _listen >= 100.0 and not _pirates.is_empty():
+		_listen = 99.5                                    # the last of them first
+	_update_bar(hull)
+
+
+func _spawn_hope() -> void:
+	var v = main.view
+	var ws := _waystation()
+	var at: Vector2 = (ws.get("pos", v.player.position) as Vector2) + Vector2(2400, -1600)
+	_hope = v.spawn_npc("std_bastion", at, "civilian", "")
+	_hope.fit.ship_name = HOPE_NAME
+	# (Luz) she doesn't fight: no guns, no drones – it's on you to keep them off her
+	for k in _hope.fit.modules.keys():
+		var stp := ShipFitting.slot_type(String(k))
+		var md: Dictionary = GameData.modules.get(String(_hope.fit.modules[k]), {})
+		if stp in ["weapon", "dweapon", "dtool", "dbonus"] or String(md.get("slot", "")) == "hangar":
+			_hope.fit.modules.erase(k)
+	_hope.fit.drones.clear()
+	_hope.fit.mark_dirty()
+	_hope.escort_mark = true
+	_hope.set_meta("story_hope", true)
+	_waves = 0
+	_listen = 0.0
+	_hope.set_order({"type": "idle"})
+	_hope_wait = 0.0 if quick else 10.0         # she sets off in 10 s, or as soon as you follow her
+	GameState.log_msg("The Stubborn Hope undocks: follow her to the field.", GameState.COL_INFO)
+
+
+## (Luz) the field is theirs alone: no traffic, no pirates lying in wait. Whoever is in it (and out of your sight) is
+## taken away, and kept away while Silas is out there.
+func _clear_field(fd: Dictionary) -> void:
+	var v = main.view
+	if fd.is_empty() or v == null or v.player == null:
+		return
+	var r := float(fd.get("radius", 12000.0)) * 1.5
+	for n in get_tree().get_nodes_in_group("ships"):
+		if not (n is Ship) or n == _hope or n.is_drone or n.dying or String(n.faction) == "player" or _pirates.has(n):
+			continue
+		if (n.position as Vector2).distance_to(fd["pos"]) < r and (n.position as Vector2).distance_to(v.player.position) > 6000.0:
+			n.queue_free()
+
+
+## Out of the warp: she flies on a little into the field, then stops; Silas calls, the countdown runs.
+func _settle_start(fd: Dictionary) -> void:
+	_settle = SETTLE_TIME * (0.05 if quick else 1.0)
+	var to: Vector2 = (fd["pos"] as Vector2) - _hope.position
+	var dist: float = clampf(to.length(), 1500.0, 3500.0)
+	var dir: Vector2 = to.normalized() if to.length() > 1.0 else Vector2.RIGHT
+	_hope.set_order({"type": "move", "pos": _hope.position + dir * dist})
+
+
+func _settle_step(dt: float) -> void:
+	if _settle > 0.0:
+		_settle -= dt
+		if _settle > 0.0:
+			return
+		_settle = 0.0
+		_hope.set_order({"type": "idle"})
+		_count = COUNTDOWN * (0.05 if quick else 1.0)
+		GameState.story.show.emit("radio", {"who": "silas", "text": "This looks like a good spot. Nobody on my scope. I hope you're ready.", "mission": FIGHT, "now": true})
+		_fx = ListenerFx.new()
+		_fx.ship = _hope
+		_hope.add_child(_fx)
+		_show_bar(true)
+	_count -= dt
+	if _bar_label != null and is_instance_valid(_bar_label):
+		_bar_label.text = "THE LISTENER · powering up   ·   starts in %d s" % int(ceil(maxf(_count, 0.0)))
+	if _count <= 0.0:
+		_listen_start()
+
+
+func _listen_start() -> void:
+	_set_phase("listen")
+	_settle = -1.0
+	GameState.story.set_flag("w58_atlisten", true)
+	_hope.set_order({"type": "idle"})
+	_listen = 0.0
+	_waves = 0
+	_pirates = []
+	if _fx == null or not is_instance_valid(_fx):
+		_fx = ListenerFx.new()
+		_fx.ship = _hope
+		_hope.add_child(_fx)
+	var st = GameState.story
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = ""                # (no marker on the dish: the bar on top shows how it goes)
+	st.show.emit("radio", {"who": "silas", "text": "The Listener is live. Every pirate in the system can hear us now, so keep your eyes open.", "mission": FIGHT, "now": true})
+	_show_bar(true)
+
+
+## A wave: two or three pirates from one side, out for the Bastion (the last with a heavy one).
+func _wave(i: int) -> void:
+	var v = main.view
+	var n := int(WAVES[i][1])
+	var dir := Vector2.from_angle(randf() * TAU)
+	var lines := ["Contacts! Two of them, and one is a Maul, like yours. Keep them off the dish!",
+		"More of them, from the other side, with another Maul. They really don't like being listened to.",
+		"Here comes the next lot, Maul and all. This is their last try: hold on!"]
+	for k in n + 1:
+		var heavy: bool = k == n
+		var p = v.spawn_npc("pirate_hdy_maul" if heavy else _light_pirate(), _hope.position + dir.rotated(randf_range(-0.5, 0.5)) * randf_range(4500.0, 6000.0))
+		p.home = _hope.position
+		p.set_order({"type": "attack", "target": _hope})
+		v.spawn_fx(Fx.flash(p.position, Color(1.0, 0.4, 0.3), p.radius * 3.0))
+		_pirates.append(p)
+	GameState.story.show.emit("radio", {"who": "silas", "text": String(lines[mini(i, lines.size() - 1)]), "mission": FIGHT, "now": true})
+	if i == 1:
+		get_tree().create_timer(4.0 * (0.05 if quick else 1.0)).timeout.connect(func():
+			GameState.story.show.emit("radio", {"who": "dan", "text": "Silas, you old fool, you said quiet! Spacefarer, you keep him breathing, you hear me?", "mission": FIGHT}))
+
+
+## A light pirate for a wave: one of the small archetype ships, never a heavy Hadrian copy.
+func _light_pirate() -> String:
+	var A = load("res://data/pirate_archetypes.gd")
+	var arch: String = String(A.pick(1.0)[0])
+	var pr: Array = A.ARCHETYPES[arch]["presets"]
+	return String(pr[randi() % mini(2, pr.size())])
+
+
+func _listen_done() -> void:
+	GameState.story.set_flag("w58_listened", true)
+	_set_phase("found")
+	_show_bar(false)
+	if _fx != null and is_instance_valid(_fx):
+		_fx.active = false
+	GameState.story.show.emit("radio", {"who": "silas", "text": "Got them! All that chatter comes from one place: an old station in Hollow, right under the Hollow Crown's nose. I'm sending you the coordinates. Thank you, Spacefarer. Dan was right about you.", "mission": FIGHT, "now": true})
+	var h = _hope
+	get_tree().create_timer(8.0 * (0.05 if quick else 1.0)).timeout.connect(func(): _hope_leave(h))
+	GameState.log_msg("[Story] Package 58 continues with the next part (the pirates' base in Hollow).", GameState.COL_WARN)
+
+
+## The sweep broken off: the Bastion badly hit (or gone) – Silas pulls out; he'll wait at the waystation again.
+func _listen_abort(said: bool) -> void:
+	_set_phase("follow")
+	_settle = -1.0
+	_show_bar(false)
+	_listen = 0.0
+	_waves = 0
+	_respawn_t = 25.0 * (0.05 if quick else 1.0)
+	GameState.story.flags.erase("w58_atlisten")
+	var st = GameState.story
+	if st.running(FIGHT):
+		for si in (st.mission_data(FIGHT)["steps"] as Array).size():
+			if String(st.mission_data(FIGHT)["steps"][si]["id"]) == "follow":
+				st.goto_step(FIGHT, si)
+				break
+	var h = _hope
+	_hope = null
+	if h != null and is_instance_valid(h) and not h.dying:
+		if _fx != null and is_instance_valid(_fx):
+			_fx.active = false
+		get_tree().create_timer(2.5 * (0.05 if quick else 1.0)).timeout.connect(func(): _hope_leave(h))
+	if said:
+		st.show.emit("radio", {"who": "silas", "text": "I'm hit, badly! Pulling out before they finish the job. Meet me back at the waystation, we'll try again.", "mission": FIGHT, "now": true})
+	_follow_calls.call_deferred()
+
+
+## (Luz) the Hope doesn't just vanish: she aligns and warps off home to the waystation, and is gone once she's
+## out of the warp (or out of sight).
+func _hope_leave(h) -> void:
+	if h == null or not is_instance_valid(h) or h.dying or main.view == null:
+		return
+	var ws := _waystation()
+	h.set_meta("hope_leaving", true)
+	if not ws.is_empty():
+		main.view.traffic.go(h, String(ws.get("id", "")))
+	_hope_leave_tick(h, 0)
+
+
+func _hope_leave_tick(h, n: int) -> void:
+	if h == null or not is_instance_valid(h) or h.dying:
+		return
+	var pl = main.view.player if main.view != null else null
+	var far: bool = pl == null or not is_instance_valid(pl) or pl.position.distance_to(h.position) > 30000.0
+	if h.in_warp():
+		h.set_meta("hope_warped", true)
+	var landed: bool = bool(h.get_meta("hope_warped", false)) and not h.in_warp()      # through the warp: home
+	if far or landed or n > 90:
+		h.queue_free()
+		return
+	get_tree().create_timer(1.0 * (0.05 if quick else 1.0)).timeout.connect(func(): _hope_leave_tick(h, n + 1))
+
+
+func _show_bar(on: bool) -> void:
+	if not on:
+		if _bar_layer != null and is_instance_valid(_bar_layer):
+			_bar_layer.queue_free()
+		_bar_layer = null
+		return
+	if _bar_layer != null and is_instance_valid(_bar_layer):
+		return
+	_bar_layer = CanvasLayer.new()
+	_bar_layer.layer = 11
+	main.add_child(_bar_layer)
+	var k := clampf(main.get_viewport().get_visible_rect().size.y / 900.0, 1.0, 2.4)
+	var p := UI.neon_panel(Color(0.45, 0.9, 1.0, 0.8), Color(0.03, 0.05, 0.08, 0.92), 2)
+	p.custom_minimum_size = Vector2(420 * k, 0)
+	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	p.position = Vector2(-210 * k, 250 * k)
+	_bar_layer.add_child(p)
+	var vb := UI.vbox(4)
+	p.add_child(vb)
+	_bar_label = UI.label("THE LISTENER · signal sweep 0 %", int(14 * k), Color(0.45, 0.9, 1.0))
+	vb.add_child(_bar_label)
+	_bar = ProgressBar.new()
+	_bar.show_percentage = false
+	_bar.custom_minimum_size = Vector2(0, 14 * k)
+	vb.add_child(_bar)
+
+
+func _update_bar(hull: float) -> void:
+	if _bar == null or not is_instance_valid(_bar):
+		_show_bar(true)
+	if _bar == null:
+		return
+	_bar.value = _listen
+	_bar_label.text = "THE LISTENER · signal sweep %d %%   ·   Stubborn Hope hull %d %%" % [int(_listen), int(hull * 100.0)]
 
 
 ## Dan's room for you: a medium one in his quarters, on the house, yours to keep.
@@ -844,6 +1193,9 @@ func _on_talk(who: String) -> void:
 				GameState.story.show.emit("dialogue", {"id": "ossa_meet", "mission": MID})
 			elif phase == "maul":
 				GameState.story.show.emit("dialogue", {"id": "ossa_maul", "mission": FIGHT})
+		"silas":
+			if phase == "contact":
+				GameState.story.show.emit("dialogue", {"id": "silas_meet", "mission": FIGHT})
 
 
 ## Dan's loan for the escort: a better laser (the Mogura has one weapon slot) and armour plating.
@@ -1041,6 +1393,10 @@ func _part3_step(f: ShipFitting, sp) -> void:
 		"crew":
 			if tour == null and _crew_started:
 				_crew_done()
+		"contact":
+			if bool(fl.get("w58_contact", false)) and main.story_ui.dialogue == null:
+				_set_phase("follow")
+				_follow_calls()
 
 
 ## The pirates of the story's ambush: none left (dead or gone).

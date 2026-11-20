@@ -3,6 +3,23 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.58.4 – 2026-11-20
+
+**Package 58, part 5: Silas Marr and the Listener (Luz).**
+- **Silas Marr**, Dan's old friend, waits in the diner of the Driftwood Waystation. His Bastion, the **Stubborn Hope**,
+  undocks and waits 10 s (or sets off at once when you follow her), then warps to a quiet asteroid field. The field is
+  cleared of traffic and pirates while he is out there.
+- Out of the warp she flies on a little, stops, and Silas calls ("a good spot"); the bar shows **"powering up, starts
+  in 5 s"** while the **Listener** unfolds (antenna arms, a turning dish, light arcs, pulses across the field).
+- **Three waves** of pirates come for her, each with **one Maul** and light pirates (one, then two, then two). The
+  Hope doesn't fight (no guns, no drones). The sweep runs only while you stay near; badly hit, Silas pulls out and you
+  meet him at the waystation again. Done: 3,000 cr, the pirates' base lies in Hollow. The Hope warps off home.
+- **Fixes:** a beam weapon's shot (its looping sound played once) no longer hums on forever; drones changing role no
+  longer crash on a target from the old role; the run-down paint shows on approach, takeoff and the city hatch too;
+  Ossa is found in Upper Brine's street after loading a landed save; the story debug buttons in their own tab
+  (F12 → Story).
+- Steckbrief for parts 6 to 8 (the preparation, the relay on the ground, the strike) written.
+
 ## alpha 0.8.58.3 – 2026-11-19
 
 **Package 58, parts 3 and 4: Ossa Kell, the escort, the quarters, three months later (Luz).**

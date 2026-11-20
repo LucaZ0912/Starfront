@@ -1621,6 +1621,22 @@ func _free_spot(cen: Vector2, spread: float, seed_n: int, taken: Array) -> Vecto
 		if taken.any(func(q): return (q as Vector2).distance_to(px) < GroundMap.TILE * 0.9):
 			continue
 		return px
+	# (Luz: Ossa was missing) every station's street is its own – no free spot near there: the nearest walkable tile,
+	# searched ring by ring outwards, so nobody ends up inside a wall
+	var c0 := Vector2i(int(floor(cen.x)), int(floor(cen.y)))
+	for r in range(1, 40):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var tx2 := c0.x + dx
+				var ty2 := c0.y + dy
+				if tx2 < 1 or ty2 < 1 or tx2 >= map.w - 1 or ty2 >= map.h - 1 or not GroundMap.walkable_t(map.t_at(tx2, ty2)):
+					continue
+				var px2 := (Vector2(tx2, ty2) + Vector2(0.5, 0.6)) * GroundMap.TILE
+				if taken.any(func(q): return (q as Vector2).distance_to(px2) < GroundMap.TILE * 0.9):
+					continue
+				return px2
 	return cen * GroundMap.TILE
 
 
@@ -1654,6 +1670,13 @@ func _story_map() -> void:
 	for sp in lv.get("people", []):
 		var who := String(sp["who"])
 		var at: Vector2 = (sp.get("pos", Vector2.ZERO) as Vector2) * GroundMap.TILE
+		if sp.has("near_obj"):
+			# package 58: beside an object of the level (the diner's jukebox) – wherever this station has it
+			for o9 in map.objects:
+				if String(o9.get("kind", "")) == String(sp["near_obj"]):
+					sp = sp.duplicate()
+					sp["near"] = Vector2(float(o9["x"]), float(o9["y"])) + (sp.get("off", Vector2.ZERO) as Vector2)
+					break
 		if sp.has("near") or sp.has("near_spawn"):
 			# package 58: a free place near a point (tiles) – or near where you come in – for a crowd (the party)
 			var cen: Vector2 = (sp["near"] as Vector2) if sp.has("near") else map.spawn / GroundMap.TILE + (sp["near_spawn"] as Vector2)

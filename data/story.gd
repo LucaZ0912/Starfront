@@ -41,6 +41,10 @@ const CHARACTERS := {
 	"ossa": {"name": "Ossa Kell", "sub": "Kell Freight · Upper Brine", "col": Color(0.45, 0.9, 0.85), "seed": 6143,
 		"look": {"body": 1, "skin": 4, "hair": 5, "hair_color": 6, "eyes": 4, "brows": 1, "beard": 0, "scar": 1, "freckles": 0,
 			"outfit": 1, "color1": 7, "color2": 0, "implant": 0, "tattoo": 0, "headgear": 1, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	# package 58, part 5 (Luz): Dan's friend in Driftwood – a tinkerer with a Bastion and a device that listens
+	"silas": {"name": "Silas Marr", "sub": "Engineer · the Stubborn Hope", "col": Color(0.55, 0.75, 1.0), "seed": 4419,
+		"look": {"body": 0, "skin": 2, "hair": 3, "hair_color": 7, "eyes": 3, "brows": 1, "beard": 4, "scar": 0, "freckles": 1,
+			"outfit": 3, "color1": 1, "color2": 5, "implant": 3, "tattoo": 0, "headgear": 3, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
 	# package 58, part 3: Dan on the radio (his face, the call's header) – the call at the end of the escort
 	"dan_radio": {"name": "Dan T. Rogue", "sub": "◉ Radio call · Dan's Dusty Duty Store", "col": Color(1.0, 0.65, 0.3), "seed": 7731,
 		"look": {"body": 2, "skin": 6, "hair": 1, "hair_color": 6, "beard": 3, "brows": 2, "scar": 0, "headgear": 4, "implant": 0,
@@ -172,6 +176,22 @@ const DIALOGUES := {
 		{"text": "And she doesn't fly herself. Rook Varga comes along as your gunner: the best I ever had, and he hates pirates more than I do. Don't get him killed.",
 			"answers": [["\"Thank you, Ossa.\"", 4, ["w58_maul", true], "Thank you, Ossa. I'll bring her back in one piece. Mostly.", {"gold": true}]]},
 		{"text": "Bring yourself back, that's enough. Now, you've never flown with a crew, have you? Let me show you how that works.", "next": -1},
+	]},
+	# package 58, part 5 (Luz): Silas Marr in the Driftwood Waystation's diner – the Listener
+	"silas_meet": {"who": "silas", "lines": [
+		{"text": "Ah. Dan's pirate hunter. Sit, sit. The coffee here is terrible, but it's hot."},
+		{"text": "Silas Marr. Dan and I go back a long way. Further than either of us likes to admit.",
+			"answers": [["\"Dan says you can find them.\"", 2, [], "Dan says you might know how to find the pirates."],
+				["\"How do you know Dan?\"", 7, [], "How do you two know each other?"]]},
+		{"text": "Find them? I built something better than a map. I call it the Listener. Every pirate out here talks: to their friends, to their base, to their mothers. The Listener hears all of it."},
+		{"text": "Give it enough time and it works out where all that chatter comes from. Their nest.",
+			"answers": [["\"Where's the catch?\"", 4, [], "There's always a catch out here. What is it?"]]},
+		{"text": "The catch is that listening is loud. The moment I switch it on, every pirate in range hears that someone is listening. And they'll come to switch it off. With guns."},
+		{"text": "So. I take the Stubborn Hope out to a quiet asteroid field, unfold the Listener, and you keep them off me until it's done. A few minutes, three waves, maybe four. Dan says you're good.",
+			"answers": [["\"I'll keep them off you.\"", 6, ["w58_contact", true], "Then let's do it. You listen, I'll keep them off you.", {"gold": true}]]},
+		{"text": "Good. I'm docked outside. Follow me when I undock and stay close. And Spacefarer? Don't let them near the dish.", "next": -1},
+		# 7 – how Silas knows Dan
+		{"text": "We salvaged the same wreck once, from both ends, and met in the middle with our cutters drawn. Two days later we were sharing a bottle. That was twenty years ago.", "next": 2},
 	]},
 	# package 58 (Luz): shot down while working for Dan – you wake in his clinic, no game over
 	"dan_wake": {"who": "dan", "lines": [
@@ -349,8 +369,16 @@ const MISSIONS := {
 		"steps": [
 			{"id": "maul", "title": "The Maul", "text": "Dan has talked to Ossa: she gives you her Maul, a patched-up gunboat. Fly to Brine, land in Upper Brine and find Ossa in the shopping street.",
 				"goals": [{"id": "maul", "kind": "flag", "flag": "w58_maul", "label": "pick up the Maul from Ossa in Upper Brine"}]},
-			{"id": "contact", "title": "A friend in Driftwood", "text": "Dan sends you the contact of a friend in Driftwood who might know how to track the pirates down. (Package 58: comes with the next part.)",
-				"goals": [{"id": "contact", "kind": "flag", "flag": "w58_contact", "label": "talk to Dan's friend in Driftwood"}]},
+			{"id": "contact", "title": "A friend in Driftwood", "text": "Dan's friend Silas Marr might know how to track the pirates down. He's waiting in the diner of the Driftwood Waystation.",
+				"goals": [{"id": "contact", "kind": "flag", "flag": "w58_contact", "label": "meet Silas Marr in the Driftwood Waystation's diner"}]},
+			# package 58, part 5 (Luz): the Listener – escort Silas's Bastion, defend it while it listens
+			{"id": "follow", "title": "The Stubborn Hope", "text": "Silas takes his Bastion, the Stubborn Hope, out to a quiet asteroid field in Driftwood. Follow him there.",
+				"goals": [{"id": "follow", "kind": "flag", "flag": "w58_atlisten", "label": "follow the Stubborn Hope to the asteroid field"}]},
+			{"id": "listen", "title": "The Listener", "text": "Silas has unfolded the Listener. Every pirate in range has heard it: keep them off the Stubborn Hope until the sweep is done.",
+				"goals": [{"id": "listen", "kind": "flag", "flag": "w58_listened", "label": "defend the Stubborn Hope until the sweep is done"}],
+				"on_done": [{"do": "credits", "n": 3000}]},
+			{"id": "base", "title": "The nest", "text": "The Listener found it: the pirates' base lies in Hollow. (Package 58, part 6: comes with the next part.)",
+				"goals": [{"id": "base", "kind": "flag", "flag": "w58_base_down", "label": "destroy the pirates' base in Hollow"}]},
 		]},
 	# package 56, sequence 5 (Luz): the flight training – flown with one of Dan's drones from Old Betty in a wreck field;
 	# the flags are set by scripts/ground/intro_five.gd (it watches the drone), the targets too

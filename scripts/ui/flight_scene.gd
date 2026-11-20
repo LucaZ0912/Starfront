@@ -105,7 +105,7 @@ func open(p_body: Dictionary, p_site: Dictionary) -> void:
 	add_child(_place)
 	# the ship's shadow on the ground, the ship, the heat and flame
 	var f := GameState.active()
-	var tex: Texture2D = PixelArt.ship_texture(f.hull_id if f != null else "dragonfly", (f.gov if f.gov != "" else f.faction) if f != null else "player")
+	var tex: Texture2D = (PixelArt.fleet_texture(f) if f != null and String(f.paint) != "" else PixelArt.ship_texture(f.hull_id if f != null else "dragonfly", (f.gov if f.gov != "" else f.faction) if f != null else "player"))
 	_shadow = Sprite2D.new()
 	_shadow.texture = tex
 	_shadow.rotation = -PI * 0.5
@@ -313,7 +313,7 @@ func open_cloud(p_body: Dictionary, p_site: Dictionary, p_rising: bool) -> void:
 	add_child(_cfx)
 	# the ship, her shadow far down on the clouds
 	var f := GameState.active()
-	var tex: Texture2D = PixelArt.ship_texture(f.hull_id if f != null else "dragonfly", (f.gov if f.gov != "" else f.faction) if f != null else "player")
+	var tex: Texture2D = (PixelArt.fleet_texture(f) if f != null and String(f.paint) != "" else PixelArt.ship_texture(f.hull_id if f != null else "dragonfly", (f.gov if f.gov != "" else f.faction) if f != null else "player"))
 	_shadow = Sprite2D.new()
 	_shadow.texture = tex
 	_shadow.rotation = -PI * 0.5

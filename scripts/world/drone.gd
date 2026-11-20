@@ -182,7 +182,14 @@ func _mode() -> String:
 	return String(carrier.fit.drone_modes.get(carrier.fit.drone_role, "rest"))
 
 
+var _role := ""                    # the role `work` was picked for
+
+
 func _behave(delta: float) -> Vector2:
+	# (Luz: switched to combat mid-fight, the drone still held a ship from another role and crashed on it)
+	if String(carrier.fit.drone_role) != _role:
+		_role = String(carrier.fit.drone_role)
+		work = null
 	match String(carrier.fit.drone_role):
 		"combat":
 			return _combat(delta)
@@ -300,7 +307,7 @@ func _mining(delta: float) -> Vector2:
 	if mode == "target":
 		var t = carrier.locked_node()
 		work = t if (t != null and not (t is Ship) and t.kind == "asteroid" and not t.is_depleted() and _in_reach(t)) else null
-	elif work == null or not is_instance_valid(work) or work.is_depleted() or not _in_reach(work):
+	elif work == null or not is_instance_valid(work) or work is Ship or work.is_depleted() or not _in_reach(work):
 		work = _nearest_asteroid()
 	if work == null:
 		return _deliver_or(_formation())

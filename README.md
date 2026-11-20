@@ -393,6 +393,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   walker `dancing`, `bubble`; ChibiArt frames 4/5 (lying); `PixelArt.rundown_texture` (paint `ossa_rust`); traffic
   `story_ambush`, `caller`; SystemView `cam_off_ship`, `target_ref`; main `ask_city_takeoff`; ship menu
   `tour_targets`; smoke groups `w58c`, `w58d`, `q58`, `cam58`.
+- 0.8.58.4 (package 58, part 5): dan_work phases `contact` → `follow` → `listen` → `found` (`_listen_field`,
+  `_spawn_hope`, `_hope_wait`, `_clear_field`, `_settle_start` / `_settle_step`, `_listen_start`, `_wave`,
+  `_light_pirate`, `_hope_leave`, `WAVES`); `scripts/world/listener_fx.gd`; character `silas`, dialogue `silas_meet`;
+  `Audio.stream_once` (loop sounds as one-shots); Drone `_role` (target reset on a role change); debug tab Story;
+  smoke group `w58e`.
 - 0.8.56.10: Kit `bar_tile`, `tile_row`, `amount_block`, `MineGlyph`, `picture(..., max_px)`; DronePanel `pick`,
   ServicePanel `pick_uid`, MunitionsPanel `pick`.
 - 0.8.56.9: BondPanel.wanted_poster(c, sid, course, width) scales by `_k`; the restyle (`_build_restyle`) sizes the

@@ -84,6 +84,27 @@ func stream(id: String) -> AudioStream:
 	return s
 
 
+## Package 58: a looping sound played once (a beam weapon's shot): the file as it is, without its loop.
+var _once := {}
+
+
+func stream_once(id: String) -> AudioStream:
+	if _once.has(id):
+		return _once[id]
+	var s: AudioStream = null
+	for ext in ["ogg", "wav", "mp3"]:
+		var path := "res://assets/sfx/%s.%s" % [id, ext]
+		if ResourceLoader.exists(path):
+			s = (load(path) as AudioStream).duplicate()
+			break
+	if s is AudioStreamWAV:
+		s.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	elif s is AudioStreamOggVorbis or s is AudioStreamMP3:
+		s.loop = false
+	_once[id] = s
+	return s
+
+
 func bus_of(id: String) -> String:
 	for k in BUS_OF:
 		if id.begins_with(k):
@@ -121,7 +142,7 @@ func listener() -> Vector2:
 
 
 func _start(id: String, event: String, vol_db: float, pitch_spread: float) -> void:
-	var s := stream(id)
+	var s := stream(id) if not id in LOOPS else stream_once(id)      # (Luz: a beam's loop as a shot rang on forever)
 	if s == null:
 		return
 	var now := Time.get_ticks_msec() / 1000.0

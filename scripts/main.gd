@@ -108,6 +108,8 @@ func _ready() -> void:
 		var f := GameState.active()
 		if f != null and f.docked_at.begins_with("land:"):
 			_on_descended.call_deferred(f.docked_at.substr(5).split("|")[0])      # package 50: still down on a planet
+			if String(GameState.story.flags.get("intro_stage", "")) == "58":
+				_start_dan_work.call_deferred("load")      # package 58 (Luz: Ossa was missing): the story runs down here too
 		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) in ["four", "four_walk"]:
 			_start_intro_four.call_deferred()             # package 56: saved in the middle of sequence 4 – it starts again
 		elif String(GameState.story.flags.get("intro_stage", "")) in ["five", "five_fly"]:

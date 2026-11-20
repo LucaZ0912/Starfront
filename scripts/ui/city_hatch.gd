@@ -54,7 +54,7 @@ func open(p_body: Dictionary, p_site: Dictionary, p_down: bool = true) -> void:
 	bg.z_index = -3
 	add_child(bg)
 	var f := GameState.active()
-	var tex: Texture2D = PixelArt.ship_texture(f.hull_id if f != null else "dragonfly", (f.gov if f.gov != "" else f.faction) if f != null else "player")
+	var tex: Texture2D = (PixelArt.fleet_texture(f) if f != null and String(f.paint) != "" else PixelArt.ship_texture(f.hull_id if f != null else "dragonfly", (f.gov if f.gov != "" else f.faction) if f != null else "player"))
 	_ship_s = clampf(minf(380.0 / maxf(tex.get_width(), 1.0), 260.0 / maxf(tex.get_height(), 1.0)), 2.0, 7.0)
 	var ssz := Vector2(tex.get_width(), tex.get_height()) * _ship_s
 	var hs := Vector2(maxf(ssz.x + 120.0, 420.0), maxf(ssz.y + 110.0, 260.0))

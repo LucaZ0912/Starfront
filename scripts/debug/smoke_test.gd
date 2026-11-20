@@ -707,6 +707,7 @@ func _process(delta: float) -> void:
 				await _test_q58(main.view)               # package 58: the quarters, rooms by the night
 				await _test_cam58(main.view)             # package 58: the camera off the ship – targeting by the screen's middle
 				await _test_w58d(main.view)              # package 58, part 4: three months later, the party, the Maul
+				await _test_w58e(main.view)              # package 58, part 5: Silas, the Listener, the waves
 				_shooting = false
 				timer = 0.0
 				return
@@ -14764,6 +14765,189 @@ func _test_padshot(_view: SystemView) -> void:
 	Pad.using_pad = false
 
 
+## Package 58, part 5 (Luz): Silas Marr in the Driftwood Waystation's diner; his Bastion to the asteroid field, the
+## Listener unfolded, three waves of pirates (a heavy one at the end); the sweep done (3,000 cr), the base in Hollow;
+## the Bastion badly hit: Silas pulls out, the step goes back to following him.
+func _test_w58e(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var shots := OS.get_environment("W58E_SHOTS") != ""
+	Commands.cheats_enabled = true
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	Commands.execute({"type": "debug_special", "special": "driftwood"})
+	for i in 30:
+		await get_tree().process_frame
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var f := GameState.active()
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w58_"):
+			st.flags.erase(fl)
+	for mid in ["darling", "fight"]:
+		st.missions.erase(mid)
+		st.done.erase(mid)
+	main._start_dan_work("load")
+	var w = main.get_meta("dan_work")
+	w.quick = true
+	var ws: Dictionary = w._waystation()
+	if f.docked_at == "":
+		f.docked_at = String(ws.get("id", ""))
+	var ws_dock: bool = f.docked_at == String(ws.get("id", "-"))
+	st.start("fight")
+	for si in (st.mission_data("fight")["steps"] as Array).size():
+		if String(st.mission_data("fight")["steps"][si]["id"]) == "contact":
+			st.goto_step("fight", si)
+	st.tracked = "fight"
+	w._set_phase("contact")
+	# the diner: Silas
+	main.open_deck()
+	for i in 4:
+		await get_tree().process_frame
+	var silas_ok := false
+	if main.ground != null:
+		main.ground.go_level("commercial", "lift")
+		for i in 4:
+			await get_tree().process_frame
+		silas_ok = main.ground.story_people.has("silas")
+		if shots and silas_ok:
+			main.ground.pilot.pos = main.ground.story_people["silas"].pos + Vector2(-30, 12)
+			main.ground.pilot.position = main.ground.pilot.pos * GroundMap.SCALE
+			for f8 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58e_diner.png")
+		main.ground.story_talk.emit("silas")
+		for i in 3:
+			await get_tree().process_frame
+		silas_ok = silas_ok and main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "silas_meet"
+	st.set_flag("w58_contact", true)
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	main.close_deck(false)
+	main.station_panel.close()
+	for i in 4:
+		await get_tree().process_frame
+	var follow_ok: bool = w.phase == "follow" and st.step_data("fight").get("id", "") == "follow"
+	# out: the Stubborn Hope
+	Commands.execute({"type": "undock"})
+	var v = main.view
+	for i in 400:
+		await get_tree().process_frame
+		if w._hope != null and is_instance_valid(w._hope):
+			break
+	var hope = w._hope
+	var hope_ok: bool = hope != null and is_instance_valid(hope) and hope.fit.ship_name == "Stubborn Hope" and hope.fit.hull_id == "bastion" and hope.fit.drones.is_empty() and not hope.fit.modules.keys().any(func(k): return String(k).begins_with("weapon_"))
+	var once = Audio.stream_once("w_beam_loop")
+	hope_ok = hope_ok and once != null and not (once is AudioStreamWAV and once.loop_mode != AudioStreamWAV.LOOP_DISABLED) and not (not (once is AudioStreamWAV) and bool(once.get("loop")))
+	var fd: Dictionary = w._listen_field()
+	var listen_ok := false
+	var waves_ok := false
+	var heavy := false
+	var done_ok := false
+	if hope_ok and not fd.is_empty():
+		hope.drop_out_of_warp(0.0) if hope.in_warp() else null
+		hope.position = fd["pos"]
+		hope.set_order({"type": "idle"})
+		var settle_seen := false
+		for i in 150:
+			v.player.position = (fd["pos"] as Vector2) + Vector2(1500, 0)
+			v.player.velocity = Vector2.ZERO
+			await get_tree().process_frame
+			settle_seen = settle_seen or w._settle >= 0.0
+			if w.phase == "listen":
+				break
+		listen_ok = settle_seen and w.phase == "listen" and w._fx != null and is_instance_valid(w._fx) and w._bar != null and bool(st.flags.get("w58_atlisten", false))
+		var cr0 := GameState.credits
+		var shot_w := false
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < 30000:
+			await get_tree().process_frame
+			if is_instance_valid(w._hope) and v.player != null and is_instance_valid(v.player):
+				v.player.position = w._hope.position + Vector2(1500, 0)       # (the test stays by her)
+				v.player.velocity = Vector2.ZERO
+			for p in w._pirates:
+				if is_instance_valid(p) and p.fit.hull_id == "hdy_maul":
+					heavy = true
+			if shots and not shot_w and w._waves >= 2 and w._fx != null and is_instance_valid(w._fx) and w._fx.unfold > 0.9:
+				shot_w = true
+				w.quick = false
+				for f8 in 90:
+					if is_instance_valid(w._hope):
+						v.player.position = w._hope.position + Vector2(1500, 0)
+						v.follow = false
+						v.camera.position = w._hope.position
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58e_listen.png")
+				var big := get_viewport().get_texture().get_image()
+				var cs := big.get_size()
+				var crop := big.get_region(Rect2i(cs.x / 2 - cs.x / 8, cs.y / 2 - cs.y / 8, cs.x / 4, cs.y / 4))
+				crop.resize(cs.x, cs.y, Image.INTERPOLATE_NEAREST)
+				crop.save_png("res://Claude outputs/w58e_listen_close.png")
+				w.quick = true
+			for p2 in w._pirates:
+				if is_instance_valid(p2) and Time.get_ticks_msec() % 3 == 0:
+					p2.queue_free()                   # (the test shoots them down)
+			if w.phase == "found":
+				break
+		var light_ok := true
+		for li in 200:
+			light_ok = light_ok and not String(w._light_pirate()).contains("hdy")
+		waves_ok = w._waves == 3 and heavy and light_ok
+		done_ok = w.phase == "found" and bool(st.flags.get("w58_listened", false)) and st.step_data("fight").get("id", "") == "base" and GameState.credits >= cr0 + 3000
+		var hl = w._hope
+		for i9 in 90:
+			await get_tree().process_frame
+			if is_instance_valid(hl) and (hl.in_warp() or String(hl.order.get("type", "")) == "warp"):
+				break
+		done_ok = done_ok and is_instance_valid(hl) and (hl.in_warp() or String(hl.order.get("type", "")) == "warp")      # (she warps off, Luz)
+	# broken off: the Bastion badly hit
+	var abort_ok := false
+	w._set_phase("follow")
+	w._respawn_t = 0.0
+	w._hope = null
+	for i in 60:
+		await get_tree().process_frame
+		if w._hope != null and is_instance_valid(w._hope):
+			break
+	if w._hope != null and is_instance_valid(w._hope):
+		w._hope.position = fd["pos"]
+		w._hope.set_order({"type": "idle"})
+		for i in 150:
+			v.player.position = (fd["pos"] as Vector2) + Vector2(1500, 0)
+			await get_tree().process_frame
+			if w.phase == "listen":
+				break
+		w._hope.fit.structure = 1.0
+		for i in 6:
+			await get_tree().process_frame
+		abort_ok = w.phase == "follow" and not bool(st.flags.get("w58_atlisten", false)) and w._hope == null
+	check(ws_dock and silas_ok and follow_ok and hope_ok and listen_ok and waves_ok and done_ok and abort_ok,
+		"58: part 5 – Silas Marr in the Driftwood Waystation's diner, his Bastion to the asteroid field, an empty field, the Hope flies on, a good spot, the 5 s countdown, three waves of pirates (one Maul each), the sweep done (3,000 cr, the base in Hollow); badly hit: Silas pulls out, follow him again  [%s %s %s %s %s %s %s %s]" % [ws_dock, silas_ok, follow_ok, hope_ok, listen_ok, waves_ok, done_ok, abort_ok])
+	# tidy up
+	for p3 in w._pirates:
+		if is_instance_valid(p3):
+			p3.queue_free()
+	w._show_bar(false)
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	if main.has_meta("dan_work"):
+		main.remove_meta("dan_work")
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	st.from_dict(keep)
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	main.story_ui._radio_q.clear()
+
+
 ## Package 58, part 4 (Luz): docked at Dan's after the escort – black and the lines, the party (dancing, the toast in
 ## bubbles), the talk at the bar, awake in your room; "Taking the Fight to Them": Ossa in Upper Brine's street, the Maul.
 func _test_w58d(_view: SystemView) -> void:
@@ -14948,7 +15132,8 @@ func _test_w58d(_view: SystemView) -> void:
 		main.story_ui._close_dialogue()
 	if w != null and is_instance_valid(w):
 		w.queue_free()
-	main.remove_meta("dan_work")
+	if main.has_meta("dan_work"):
+		main.remove_meta("dan_work")
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 	main.station_panel.close()
@@ -15480,7 +15665,8 @@ func _test_w58c(_view: SystemView) -> void:
 			main.view.traffic.convoys.erase(int(c.get("id", -1)))
 	if w != null and is_instance_valid(w):
 		w.queue_free()
-	main.remove_meta("dan_work")
+	if main.has_meta("dan_work"):
+		main.remove_meta("dan_work")
 	main.station_panel.close()
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)

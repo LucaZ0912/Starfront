@@ -11,7 +11,7 @@ const TreeDataX = preload("res://data/skilltree.gd")
 const FactionData = preload("res://data/factions.gd")
 const MakerData = preload("res://data/manufacturers.gd")
 const COL := Color(0.55, 1.0, 0.35)   # terminal green
-const TABS := ["Pilot", "Ship", "Items", "World", "Audio", "Character", "Ground", "Missions"]
+const TABS := ["Pilot", "Ship", "Items", "World", "Audio", "Character", "Ground", "Missions", "Story"]
 
 var panel: PanelContainer
 var tab := 0
@@ -100,6 +100,7 @@ func _set_tab(i: int) -> void:
 		5: _build_character()
 		6: _build_ground()
 		7: _build_missions()
+		8: _build_story()
 	_fit_panel.call_deferred()
 
 
@@ -438,78 +439,6 @@ func _build_world() -> void:
 		for mid40 in ["o_rad_ward:1:A", "o_ion_ward:1:A"]:
 			_cmd({"type": "debug_give_module", "module": mid40})))
 	r40c.add_child(UI.button("+5 Pre-Severance Tech", func(): _cmd({"type": "debug_give_cargo", "item": "old_tech", "amount": 5})))
-	_section("Intro (package 56)")
-	var r56 := _row()
-	r56.add_child(UI.button("Play sequence 1 (the memory)", func():
-		close()
-		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_one.gd").new())))
-	r56.add_child(UI.button("Play sequence 2 (Beyond, Dan)", func():
-		close()
-		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_two.gd").new())))
-	r56.add_child(UI.button("Play sequence 3 (the medic)", func():
-		close()
-		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_three.gd").new())))
-	r56.add_child(UI.button("Play sequence 4 (Dan's infirmary, the bar)", func():
-		close()
-		_cmd({"type": "debug_special", "special": "beyond"})
-		var mn4 = get_tree().current_scene
-		mn4.get_tree().create_timer(1.0).timeout.connect(func(): mn4._start_intro_four())))
-	r56.add_child(UI.button("Play sequence 5 (the flight training)", func():
-		close()
-		_cmd({"type": "debug_special", "special": "beyond"})
-		GameState.story.flags["flight_tutorial"] = true
-		var mn5 = get_tree().current_scene
-		mn5.get_tree().create_timer(1.0).timeout.connect(func(): mn5._start_intro_five("hangar"))))
-	r56.add_child(UI.button("Play sequence 6 (Dan's deal)", func():
-		close()
-		_cmd({"type": "debug_special", "special": "beyond"})
-		for fl in ["dan_deal_yes", "dan_deal_no", "dan_q_stuck", "dan_q_licence", "prologue_bar"]:
-			GameState.story.flags.erase(fl)
-		for m6 in ["ticket", "darling"]:
-			GameState.story.missions.erase(m6)
-			GameState.story.done.erase(m6)
-		if not GameState.story.running("prologue"):
-			GameState.story.start("prologue", 3)
-		var mn6 = get_tree().current_scene
-		mn6.get_tree().create_timer(1.0).timeout.connect(func(): mn6._start_intro_six("bar"))))
-	r56.add_child(UI.button("Play package 58, part 3 (Ossa Kell, the escort)", func():
-		close()
-		_cmd({"type": "debug_special", "special": "beyond"})
-		var mn7 = get_tree().current_scene
-		mn7.get_tree().create_timer(1.0).timeout.connect(func():
-			var st7 = GameState.story
-			st7.flags["dan_deal_yes"] = true
-			for fl7 in ["ticket_ship", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone", "w58_atfield", "w58_drones", "w58_mined", "w58_delivered"]:
-				st7.flags[fl7] = true
-			for fl8 in st7.flags.keys():
-				if String(fl8) in ["w58_job", "w58_ossa", "w58_lent2", "w58_contract", "w58_departed", "w58_ambush", "w58_ambush_won", "w58_arrived", "w58_escorted", "w58_called", "w58_back"]:
-					st7.flags.erase(fl8)
-			mn7._start_dan_work("yes")
-			var w7 = mn7.get_meta("dan_work")
-			if not st7.running("darling"):
-				st7.start("darling")
-			st7.goto_step("darling", 9)
-			st7.tracked = "darling"
-			if w7.tour != null and is_instance_valid(w7.tour):
-				w7.tour.queue_free()
-			w7.tour = null
-			w7._set_phase("part3")
-			w7._give_room()                                  # (Dan's room upstairs, as after the scrap)
-			w7._part3_calls()
-			mn7.open_station())))
-	r56.add_child(UI.button("Open the med-scanner", func():
-		close()
-		var lay := CanvasLayer.new()
-		lay.layer = 95
-		var cen := CenterContainer.new()
-		cen.set_anchors_preset(Control.PRESET_FULL_RECT)
-		lay.add_child(cen)
-		var cc = preload("res://scripts/ui/character_creator.gd").new()
-		cc.setup("new", GameState.pilot.get("look", {}), {}, GameState.pilot_name)
-		cc.cancelled.connect(lay.queue_free)
-		cc.done.connect(func(_d): lay.queue_free())
-		cen.add_child(cc)
-		get_tree().current_scene.add_child(lay)))
 	_section("Beyond (package 57)")
 	var r57 := _row()
 	r57.add_child(UI.button("To Beyond (at Dan's)", func(): _cmd({"type": "debug_special", "special": "beyond"})))
@@ -917,6 +846,126 @@ func _note(e: String, ok: String) -> void:
 	if _mission_note != null and is_instance_valid(_mission_note):
 		_mission_note.text = e if e != "" else ok
 		_mission_note.add_theme_color_override("font_color", UI.BAD if e != "" else UI.GOOD)
+
+
+## Package 58 (Luz): the story's sequences in a tab of their own – one button per line (a row of them ran off the
+## screen before).
+func _build_story() -> void:
+	_section("Intro (package 56) and Working for Dan (package 58)")
+	_row().add_child(UI.button("Play sequence 1 (the memory)", func():
+		close()
+		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_one.gd").new())))
+	_row().add_child(UI.button("Play sequence 2 (Beyond, Dan)", func():
+		close()
+		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_two.gd").new())))
+	_row().add_child(UI.button("Play sequence 3 (the medic)", func():
+		close()
+		get_tree().current_scene.add_child(preload("res://scripts/ui/intro_three.gd").new())))
+	_row().add_child(UI.button("Play sequence 4 (Dan's infirmary, the bar)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn4 = get_tree().current_scene
+		mn4.get_tree().create_timer(1.0).timeout.connect(func(): mn4._start_intro_four())))
+	_row().add_child(UI.button("Play sequence 5 (the flight training)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		GameState.story.flags["flight_tutorial"] = true
+		var mn5 = get_tree().current_scene
+		mn5.get_tree().create_timer(1.0).timeout.connect(func(): mn5._start_intro_five("hangar"))))
+	_row().add_child(UI.button("Play sequence 6 (Dan's deal)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		for fl in ["dan_deal_yes", "dan_deal_no", "dan_q_stuck", "dan_q_licence", "prologue_bar"]:
+			GameState.story.flags.erase(fl)
+		for m6 in ["ticket", "darling"]:
+			GameState.story.missions.erase(m6)
+			GameState.story.done.erase(m6)
+		if not GameState.story.running("prologue"):
+			GameState.story.start("prologue", 3)
+		var mn6 = get_tree().current_scene
+		mn6.get_tree().create_timer(1.0).timeout.connect(func(): mn6._start_intro_six("bar"))))
+	_row().add_child(UI.button("Play package 58, part 3 (Ossa Kell, the escort)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn7 = get_tree().current_scene
+		mn7.get_tree().create_timer(1.0).timeout.connect(func():
+			var st7 = GameState.story
+			st7.flags["dan_deal_yes"] = true
+			for fl7 in ["ticket_ship", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone", "w58_atfield", "w58_drones", "w58_mined", "w58_delivered"]:
+				st7.flags[fl7] = true
+			for fl8 in st7.flags.keys():
+				if String(fl8) in ["w58_job", "w58_ossa", "w58_lent2", "w58_contract", "w58_departed", "w58_ambush", "w58_ambush_won", "w58_arrived", "w58_escorted", "w58_called", "w58_back"]:
+					st7.flags.erase(fl8)
+			mn7._start_dan_work("yes")
+			var w7 = mn7.get_meta("dan_work")
+			if not st7.running("darling"):
+				st7.start("darling")
+			st7.goto_step("darling", 9)
+			st7.tracked = "darling"
+			if w7.tour != null and is_instance_valid(w7.tour):
+				w7.tour.queue_free()
+			w7.tour = null
+			w7._set_phase("part3")
+			w7._give_room()                                  # (Dan's room upstairs, as after the scrap)
+			w7._part3_calls()
+			mn7.open_station())))
+	_row().add_child(UI.button("Play package 58, part 4 (three months later, the party, the Maul)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn9 = get_tree().current_scene
+		mn9.get_tree().create_timer(1.0).timeout.connect(func():
+			var st9 = GameState.story
+			st9.flags["dan_deal_yes"] = true
+			for fl9 in ["ticket_ship", "w58_tour1", "w58_tour2", "w58_mining", "w58_weapon", "w58_drone", "w58_atfield", "w58_drones", "w58_mined", "w58_delivered", "w58_slept", "w58_job", "w58_ossa", "w58_escorted", "w58_called"]:
+				st9.flags[fl9] = true
+			for fl10 in ["w58_back", "w58_maul", "w58_contact"]:
+				st9.flags.erase(fl10)
+			mn9._start_dan_work("yes")
+			var w9 = mn9.get_meta("dan_work")
+			if w9.tour != null and is_instance_valid(w9.tour):
+				w9.tour.queue_free()
+			w9.tour = null
+			st9.done.erase("darling")
+			if not st9.running("darling"):
+				st9.start("darling")
+			for si9 in (st9.mission_data("darling")["steps"] as Array).size():
+				if String(st9.mission_data("darling")["steps"][si9]["id"]) == "back":
+					st9.goto_step("darling", si9)
+			w9._give_room()
+			w9._set_phase("back")
+			mn9.open_station())))
+	_row().add_child(UI.button("Play package 58, part 5 (Silas, the Listener)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "driftwood"})
+		var mn8 = get_tree().current_scene
+		mn8.get_tree().create_timer(1.0).timeout.connect(func():
+			var st8 = GameState.story
+			for fl8 in ["w58_contact", "w58_atlisten", "w58_listened"]:
+				st8.flags.erase(fl8)
+			st8.flags["w58_maul"] = true
+			mn8._start_dan_work("load")
+			var w8 = mn8.get_meta("dan_work")
+			if not st8.running("fight"):
+				st8.start("fight")
+			for si8 in (st8.mission_data("fight")["steps"] as Array).size():
+				if String(st8.mission_data("fight")["steps"][si8]["id"]) == "contact":
+					st8.goto_step("fight", si8)
+			st8.tracked = "fight"
+			w8._set_phase("contact")
+			mn8.open_station())))
+	_row().add_child(UI.button("Open the med-scanner", func():
+		close()
+		var lay := CanvasLayer.new()
+		lay.layer = 95
+		var cen := CenterContainer.new()
+		cen.set_anchors_preset(Control.PRESET_FULL_RECT)
+		lay.add_child(cen)
+		var cc = preload("res://scripts/ui/character_creator.gd").new()
+		cc.setup("new", GameState.pilot.get("look", {}), {}, GameState.pilot_name)
+		cc.cancelled.connect(lay.queue_free)
+		cc.done.connect(func(_d): lay.queue_free())
+		cen.add_child(cc)
+		get_tree().current_scene.add_child(lay)))
 
 
 func _build_ground() -> void:
