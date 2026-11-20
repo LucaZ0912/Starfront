@@ -167,6 +167,8 @@ static func _rise(kind: String) -> int:
 			return 30
 		"server_rack":                      # 0.7.53.19: a server cabinet (~2.2 m) – high cover
 			return 30
+		"computer_wall":                    # package 58, part 7: the relay's wall of computers (~2.6 m)
+			return 40
 		"pillar_corp":                      # 0.7.53.19: a lobby's square pillar up to the ceiling – high cover
 			return 44
 		"glass_rail":                       # 0.7.53.19: the roof plaza's glass balustrade
@@ -1039,6 +1041,34 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 					_p(img, lx2, ry + 1, [Color(0.3, 1.0, 0.5), Color(0.3, 0.8, 1.0), Color(1.0, 0.75, 0.3)][(lx2 + ry) % 3])
 			_r(img, pw / 2, b7 - 32, 1, 26, Color(0.3, 0.32, 0.36))
 			_r(img, 1, b7 - 3, pw - 2, 2, Color(0.08, 0.08, 0.1))
+		"computer_wall":
+			# package 58, part 7 (Luz): the relay's computer wall – cabinets of blinking lights the whole width, in the
+			# middle a big screen: the cluster's map with the pirates' traffic (red lines to one point), a waveform
+			var b9 := fy + ph
+			_r(img, 0, b9 - 52, pw, 50, Color(0.11, 0.12, 0.15))
+			_r(img, 0, b9 - 52, pw, 7, Color(0.2, 0.21, 0.25))                     # its top
+			for cx9 in range(2, pw - 8, 10):
+				_r(img, cx9, b9 - 43, 8, 38, Color(0.15, 0.16, 0.2))
+				for ry9 in range(b9 - 40, b9 - 8, 4):
+					for lx9 in range(cx9 + 1, cx9 + 7, 2):
+						if (lx9 * 7 + ry9 * 3 + int(o.get("seed", 0))) % 5 != 0:
+							_p(img, lx9, ry9, [Color(0.3, 1.0, 0.5), Color(0.3, 0.8, 1.0), Color(1.0, 0.75, 0.3), Color(1.0, 0.3, 0.25)][(lx9 + ry9) % 4])
+			var sw := mini(pw - 20, 64)
+			var sx := (pw - sw) / 2
+			_r(img, sx - 2, b9 - 48, sw + 4, 34, Color(0.05, 0.05, 0.07))
+			_r(img, sx, b9 - 46, sw, 30, Color(0.06, 0.1, 0.14))
+			var hub := Vector2(sx + sw * 0.62, b9 - 33)
+			for k9 in 9:
+				var a9 := Vector2(sx + 3 + (k9 * 23 + int(o.get("seed", 0))) % (sw - 6), b9 - 44 + (k9 * 11) % 26)
+				var n9 := int(a9.distance_to(hub) / 2.0)
+				for t9 in n9:
+					var q9 := a9.lerp(hub, float(t9) / float(maxi(n9, 1)))
+					_p(img, int(q9.x), int(q9.y), Color(1.0, 0.3, 0.25, 0.8))
+				_p(img, int(a9.x), int(a9.y), Color(1.0, 0.85, 0.5))
+			_r(img, int(hub.x) - 1, int(hub.y) - 1, 3, 3, Color(1.0, 0.2, 0.15))
+			for wx in sw - 4:
+				_p(img, sx + 2 + wx, b9 - 20 + int(sin(wx * 0.6) * 2.0), Color(0.3, 1.0, 0.6))
+			_r(img, 0, b9 - 3, pw, 2, Color(0.06, 0.06, 0.08))
 		"pillar_corp":
 			# 0.7.53.19: a square lobby pillar – pale stone, a gold band, rising to the ceiling
 			var b8 := fy + ph

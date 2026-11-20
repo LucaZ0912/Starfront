@@ -9,13 +9,14 @@ signal finished(result: String)          # an action id, "fail" (locked out), ""
 
 const COLS := 9
 const ROWS := 6
-const ACTION_NAMES := {"restart": "Restart the reactor", "lift": "Wake the ancient lift", "list": "Copy the client list", "drain": "Pumps: drain the flooded tunnel", "crystals": "Crystal guardians off", "lasers": "Laser cage off", "door": "Open the door", "power": "Power off / on", "turrets": "Turrets off", "cameras": "Cameras off", "data": "Download data", "beams": "Light barriers off", "vault": "Vault lock: open it for the drill", "logs": "Copy the research logs"}
+const ACTION_NAMES := {"restart": "Restart the reactor", "lift": "Wake the ancient lift", "list": "Copy the client list", "drain": "Pumps: drain the flooded tunnel", "crystals": "Crystal guardians off", "lasers": "Laser cage off", "door": "Open the door", "power": "Power off / on", "turrets": "Turrets off", "cameras": "Cameras off", "data": "Download data", "beams": "Light barriers off", "vault": "Vault lock: open it for the drill", "logs": "Copy the research logs", "coords": "Data core: download everything", "overload": "Transmitter: overload it"}
 
 var level := 1                           # 1..3 – tracers and their pace
 var skill := 0                           # Electronics
 var actions: Array = ["door", "data"]
 var title := "TERMINAL"
 var seed_n := 0
+var start_won := false                   # 0.8.58.6: already in (hacked before) – straight to the choice, no grid
 
 var walls := {}                          # Vector2i -> true
 var entry := Vector2i(0, ROWS - 1)
@@ -37,6 +38,7 @@ var t := 0.0
 var _o := Vector2.ZERO
 var _step := Vector2(82, 84)
 var _hold := 0.0
+var _last_dv := Vector2i.ZERO            # the way pushed last frame (a new push steps at once)
 var _flash := 0.0
 
 
@@ -49,6 +51,9 @@ func _ready() -> void:
 	_build()
 	probe = entry
 	trail = [entry]
+	if start_won:
+		state = "won"
+		probe = core
 	Audio.play("ui_open", "terminal: jacked in", -6.0)
 
 
@@ -176,24 +181,41 @@ func _process(delta: float) -> void:
 				tr["t"] = 0.0
 				tr["i"] = (int(tr["i"]) + 1) % (tr["loop"] as Array).size()
 		_check()
-		# held keys repeat
-		var dv := Vector2i.ZERO
-		if Input.is_action_pressed("walk_up"):
-			dv = Vector2i(0, -1)
-		elif Input.is_action_pressed("walk_down"):
-			dv = Vector2i(0, 1)
-		elif Input.is_action_pressed("walk_left"):
-			dv = Vector2i(-1, 0)
-		elif Input.is_action_pressed("walk_right"):
-			dv = Vector2i(1, 0)
-		if dv != Vector2i.ZERO:
+	# 0.8.58.6 (Luz: it hung with the controller): keys, stick and d-pad alike – a step the moment you push, then
+	# again while held; the choice at the end the same way
+	var dv := _dir_now()
+	if state == "run" or state == "won":
+		if dv != Vector2i.ZERO and dv != _last_dv:
+			_hold = 0.0
+			_step_dir(dv)
+		elif dv != Vector2i.ZERO:
 			_hold += delta
-			if _hold >= 0.22:
-				_hold = 0.1
-				move(dv)
+			if _hold >= 0.26:
+				_hold = 0.13
+				_step_dir(dv)
 		else:
 			_hold = 0.0
+	_last_dv = dv
 	queue_redraw()
+
+
+## The way pushed now: the stronger axis (a stick held a little diagonal still goes one way).
+func _dir_now() -> Vector2i:
+	var x := Input.get_action_strength("walk_right") - Input.get_action_strength("walk_left")
+	var y := Input.get_action_strength("walk_down") - Input.get_action_strength("walk_up")
+	if maxf(absf(x), absf(y)) < 0.45:
+		return Vector2i.ZERO
+	if absf(x) >= absf(y):
+		return Vector2i(1 if x > 0.0 else -1, 0)
+	return Vector2i(0, 1 if y > 0.0 else -1)
+
+
+func _step_dir(dv: Vector2i) -> void:
+	if state == "run":
+		move(dv)
+	elif state == "won" and dv.y != 0:
+		sel = posmod(sel + dv.y, actions.size())
+		Audio.play("ui_click", "hack: choose", -14.0)
 
 
 func _input(event: InputEvent) -> void:
@@ -201,23 +223,14 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		finished.emit("" if state != "lost" else "fail")
 		return
-	if not (event is InputEventKey) or not event.is_pressed() or event.is_echo():
-		if event is InputEventKey:
-			get_viewport().set_input_as_handled()
+	# (the ways go by _process: keys, stick and d-pad alike; here only the button that confirms – a key, or the
+	# controller's ✕ that comes as an action)
+	if event is InputEventKey or event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		get_viewport().set_input_as_handled()
+	if not event.is_pressed() or event.is_echo():
 		return
-	get_viewport().set_input_as_handled()
-	if state == "run":
-		for pair in [["walk_up", Vector2i(0, -1)], ["walk_down", Vector2i(0, 1)], ["walk_left", Vector2i(-1, 0)], ["walk_right", Vector2i(1, 0)]]:
-			if event.is_action_pressed(String(pair[0]), false, false):
-				_hold = 0.0
-				move(pair[1])
-				return
-	elif state == "won":
-		if event.is_action_pressed("walk_up", false, false):
-			sel = posmod(sel - 1, actions.size())
-		elif event.is_action_pressed("walk_down", false, false):
-			sel = posmod(sel + 1, actions.size())
-		elif event.is_action_pressed("foot_dodge", false, false) or event.is_action_pressed("interact", false, false):
+	if state == "won":
+		if event.is_action_pressed("foot_dodge", false, false) or event.is_action_pressed("interact", false, false):
 			finished.emit(String(actions[sel]))
 	elif state == "lost":
 		if event.is_action_pressed("foot_dodge", false, false) or event.is_action_pressed("interact", false, false):

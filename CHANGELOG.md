@@ -3,6 +3,31 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.58.6 – 2026-11-20
+
+**Package 58, part 7: the relay station (Luz).**
+- **The relay** stands on a cold world in Hollow, marked on the map (the gold marker now finds planets and moons too).
+  Silas marks it, Rook comes along in the ground team; land the drone far to the south of it, among the rocks.
+- **The landing:** the drone comes down, you stay inside. Rook: "Wait. Stay inside, I'll handle this." Two guards
+  come round the drone to the ramp; Rook walks down ("Don't shoot the delivery"), talks them into signing for power
+  cells the boss never ordered, and puts both down with a shock baton. Then you come out.
+- **The compound:** radio masts, domes, a fenced block. Loud: the gate under a turret (its terminal opens the gate or
+  switches the turrets off). Quiet: a welded maintenance hatch on the east side (the cutting torch). Inside, two
+  levels with cameras, tripwires and **air shafts** (cut the grille, crawl past the guards).
+- **The relay room** at the bottom: a great wall of computers with the pirates' routes on its screen. Hack the
+  **data core** first (the coordinates of their base), then **overload the transmitter**: lightning jumps across the
+  wall, the alarm goes, a 45 s countdown, more of them on the stairs and outside. Back to the drone and up: 2,500 cr,
+  Dan on the radio, on to "The strike" (part 8).
+- **Fallen on foot:** Rook drags you back, you wake at Dan's with the lent gear kept; the relay starts fresh.
+- **Turrets** can be locked (R) and shot to pieces. **Tripwires** warn you when you come close (sneak over, or disarm
+  with E from a little further off); one set off is heard nearby but rings no alarm. A terminal hacked once stays
+  open (no new E-Breach); Ossa lends five E-Breaches.
+- **Fixes:** the sneak round of the simulation no longer restarts at once (the guards see your team only in their
+  cone; the round starts low); Rook no longer waits by the lift after the training; the hacking grid works with the
+  stick and ✕ (a step the moment you push); a grenade with the controller lands where the stick aimed it; the quest
+  tracker on foot sits bottom left (no longer over the team); no "Go in" window at a story's place.
+- Debug: F12 → Story → "Play package 58, part 7".
+
 ## alpha 0.8.58.5 – 2026-11-20
 
 **Package 58, part 6: the preparation (Luz).**

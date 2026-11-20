@@ -398,6 +398,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   `_light_pirate`, `_hope_leave`, `WAVES`); `scripts/world/listener_fx.gd`; character `silas`, dialogue `silas_meet`;
   `Audio.stream_once` (loop sounds as one-shots); Drone `_role` (target reset on a role change); debug tab Story;
   smoke group `w58e`.
+- 0.8.58.6 (package 58, part 7): dan_work phase `relay` → `strike` (`_relay_body`, `_relay_site`, `_relay_begin`,
+  `_relay_step`, `_relay_intro` with `_intro_walk` / `_intro_zap`, `_overload_fx` / `_OverloadFx`, `_foot_rescue`);
+  POI theme `relay` (`DungeonGen.build_relay_outside`, target `relay` with `computer_wall`, `_air_shaft`);
+  `GameState.story_foot_guard`, story sites in `pois_for`; turrets as fixed foes (`_turret_target`); tripwire warning;
+  `HackGame.start_won` and pad input; the story marker over planets (`Universe.warp_target`); smoke groups `relay58`,
+  `w58g`, `hackpad`, `grmove`.
 - 0.8.58.5 (package 58, part 6): dan_work phases `report` → `brief` → `gear` → `sim` → `relay` (`_briefing`,
   `_brief_stage`, `_brief_action`, `_shot_first`, `_lend_ground_gear`, `LENT_GEAR`, `_gear_tour`, `_sim_start`,
   `_sim_step` with stages fight / to_start / sneak / ask / free, `SNEAK_GUARDS`); `scripts/ground/pool_fx.gd`;

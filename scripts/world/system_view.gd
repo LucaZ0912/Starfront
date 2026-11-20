@@ -4599,7 +4599,7 @@ func start_ascent(body_id: String) -> void:
 
 
 func _update_descent(delta: float) -> void:
-	var sh: Ship = _descent["ship"]
+	var sh = _descent["ship"]                           # (untyped: it may be freed meanwhile – a jump, a teleport)
 	var fx: DescentFx = _descent["fx"]
 	if sh == null or not is_instance_valid(sh):
 		if fx != null and is_instance_valid(fx):

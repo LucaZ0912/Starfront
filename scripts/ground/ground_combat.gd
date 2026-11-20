@@ -62,6 +62,7 @@ const THROW_RANGE := 190.0
 var gr_hold := -1                                  # the belt place being aimed (-1: none)
 var gr_held := 0.0
 var gr_aim := Vector2.ZERO                         # where it would land (art px)
+var _gr_off := Vector2.INF                         # 0.8.58.6: the controller's aim, kept when the stick springs back
 var aim_at := Vector2.INF                          # debug / tests: aim there instead of at the mouse
 var grenades: Array = []
 var clouds: Array = []
@@ -489,7 +490,7 @@ func step(delta: float, move: Vector2) -> void:
 		_camp_at = pilot_pos()
 	if gr_hold >= 0:
 		gr_held += delta
-		gr_aim = _clamp_throw(view.mouse_art() if aim_at == Vector2.INF else aim_at)
+		gr_aim = _grenade_aim()
 	_grenade_step(delta)
 	_drone_step(delta)
 	_arm_step(delta)
@@ -1044,10 +1045,11 @@ func _wake(f: Dictionary) -> void:
 		return
 	if bool(f.get("passive", false)) and not bool(f.get("provoked", false)):
 		return                                          # 0.7.53.9: a maintenance drone leaves you be – until shot at
-	f["aware"] = true
-	f["think"] = 0.0
-	if f["state"] == "idle":
-		f["state"] = "engage"
+	if not bool(f.get("fixed", false)):                 # (a turret's target stays as it is; the shots are heard)
+		f["aware"] = true
+		f["think"] = 0.0
+		if f["state"] == "idle":
+			f["state"] = "engage"
 	for o in alive():                                   # it calls out to the others near it
 		if bool(o.get("passive", false)) and not bool(o.get("provoked", false)):
 			continue
@@ -1065,6 +1067,9 @@ func _wake(f: Dictionary) -> void:
 func _foe_step(f: Dictionary, delta: float) -> void:
 	var w: Walker = f["w"]
 	var st: Dictionary = f["st"]
+	if bool(f.get("fixed", false)):
+		w.moving = false                                 # 0.8.58.6 (Luz): a turret's target – it neither walks nor shoots itself
+		return
 	# the shield recovers after a while
 	f["regen_wait"] = maxf(0.0, float(f["regen_wait"]) - delta)
 	if float(f["regen_wait"]) <= 0.0:
@@ -1095,7 +1100,8 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 			heard = pd < (nr if not sight(w.pos, pilot_pos())["blocked"] else nr * 0.5)
 		if float(f.get("notice", 0.0)) >= 1.0 or heard or _sees_ally(f):
 			_wake(f)
-			floaters.append({"pos": w.pos + Vector2(0, -46), "text": "heard you!" if heard else "spotted you!", "col": Color(1.0, 0.4, 0.3), "t": 0.0})
+			if f["aware"]:                               # (a passive one stays calm: no call every frame)
+				floaters.append({"pos": w.pos + Vector2(0, -46), "text": "heard you!" if heard else "spotted you!", "col": Color(1.0, 0.4, 0.3), "t": 0.0})
 		elif f.has("route") and not frozen:
 			_patrol_step(f, delta)                      # 0.7.53.22 (Luz): a guard on its rounds
 			return
@@ -1577,8 +1583,25 @@ func grenade_down() -> bool:
 		return false
 	gr_hold = int(GameState.gear.gr_sel)
 	gr_held = 0.0
-	gr_aim = _clamp_throw(view.mouse_art() if aim_at == Vector2.INF else aim_at)
+	_gr_off = Vector2.INF
+	gr_aim = _grenade_aim()
 	return true
+
+
+## Where the grenade in hand would land now. 0.8.58.6 (Luz: walking, it landed elsewhere than the mark): with the
+## controller the aim is kept where the right stick last pushed it – it no longer jumps to just ahead of you (the way
+## you walk) the moment the stick springs back as you let go.
+func _grenade_aim() -> Vector2:
+	if aim_at != Vector2.INF:
+		return _clamp_throw(aim_at)
+	if Pad.using_pad:
+		var r: Vector2 = Pad.right_stick()
+		if r.length() > 0.2:
+			_gr_off = r * lerpf(70.0, 160.0, Pad.aim_speed)
+		elif _gr_off == Vector2.INF:
+			_gr_off = [Vector2(0, 1), Vector2(0, -1), Vector2(-1, 0), Vector2(1, 0)][clampi(view.pilot.dir, 0, 3)] * 80.0
+		return _clamp_throw(pilot_pos() + _gr_off)
+	return _clamp_throw(view.mouse_art())
 
 
 ## Is the grenade being aimed (X held long enough)?
@@ -1600,6 +1623,8 @@ func grenade_up() -> String:
 	if p.is_empty():
 		return ""
 	var id := String(p["id"])
+	if not Pad.using_pad:
+		gr_aim = _grenade_aim()                          # (the mouse right now, not a frame ago)
 	throw_grenade(null, gr_aim, id)
 	p["n"] = int(p["n"]) - 1
 	if int(p["n"]) <= 0:
@@ -2128,6 +2153,8 @@ func _hurt_drone_one(dmg: float, dtype: String) -> void:
 
 
 func _draw_drone() -> void:
+	if not view.pilot.visible:
+		return                                           # (in a scene, still aboard: the drone with you)
 	var keep := drone_slot
 	for i in 2:
 		pick_drone(i)
@@ -2661,7 +2688,10 @@ func _sees_ally(f: Dictionary) -> bool:
 		if (sneaking and a["order"] == "follow") or float(a["cloak_t"]) > 0.0:
 			continue
 		var ap: Vector2 = (a["w"] as Walker).pos
-		if w.pos.distance_to(ap) < float(f["sight"]) and not sight(w.pos, ap)["blocked"] and not smoke_between(w.pos, ap):
+		# 0.8.58.6 (Luz): only where it looks, like you – not all round (the sneak round woke at once on Rook)
+		if w.pos.distance_to(ap) >= CLOSE and absf(angle_difference(look_of(f), (ap - w.pos).angle())) > VIEW_HALF:
+			continue
+		if w.pos.distance_to(ap) < float(f["sight"]) * 0.85 and not sight(w.pos, ap)["blocked"] and not smoke_between(w.pos, ap):
 			return true
 	return false
 
@@ -3001,6 +3031,8 @@ func _draw_team() -> void:
 	var green := TEAM_COL                             # cyan: apart from the foes' green ring (easy)
 	for a in allies:
 		var w: Walker = a["w"]
+		if not w.visible:
+			continue                                     # (in a scene, still aboard: no ring, no name)
 		var fp := w.pos * S + Vector2(0, -2)
 		var col := green if not a["down"] else (Color(1.0, 0.6, 0.3) if not a["dead"] else Color(0.5, 0.5, 0.5))
 		draw_set_transform(fp, 0.0, Vector2(1.0, 0.45))

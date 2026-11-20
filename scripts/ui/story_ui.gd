@@ -386,10 +386,12 @@ func _place_tracker() -> void:
 		return
 	var on_foot: bool = main != null and main.ground != null and is_instance_valid(main.ground)
 	_tracker.visible = GameState.running and dialogue == null
+	var vs := get_viewport().get_visible_rect().size
 	if on_foot:
-		_tracker.position = Vector2(14, 214)                    # under the suit's bars
+		# 0.8.58.6 (Luz: it covered the team): bottom left, over the belt – the top left is the suit's, the cover's
+		# and the team's
+		_tracker.position = Vector2(14, vs.y - 104 - _tracker.size.y)
 	else:
-		var vs := get_viewport().get_visible_rect().size
 		_tracker.position = Vector2(10, vs.y - 252 - _tracker.size.y)     # over the ship's panel
 
 
@@ -424,11 +426,8 @@ func _draw_marker() -> void:
 		var dkm := 0.0
 		var nm: String = String(t)
 		if n == null or not is_instance_valid(n) or not (n is CanvasItem):
-			# package 58: a field (it has no node of its own) – its middle from the system's layout
-			var fd := {}
-			for f0 in (v.layout.get("fields", []) as Array):
-				if String(f0["id"]) == t:
-					fd = f0
+			# package 58: a field or a planet / moon (no node of its own) – its place from the system's layout
+			var fd: Dictionary = Universe.warp_target(int(v.system_id), String(t))
 			if fd.is_empty():
 				continue
 			p = v.get_global_transform_with_canvas() * (fd["pos"] as Vector2)

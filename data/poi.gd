@@ -69,6 +69,25 @@ const THEMES := {
 		"names_a": ["Red", "Black", "Talon", "Rust", "Gallows", "Skull", "Broken"],
 		"names_b": ["Roost", "Nest", "Rock", "Hold", "Den", "Crag", "Perch"],
 		"layers": [{}, {"hangar": false}]},
+	# package 58, part 7 (Luz): the pirates' relay station in Hollow – the pirate base's look, outside a compound with
+	# its mast, a gate with a turret and a welded maintenance hatch; two levels; at the bottom the relay room: the
+	# data core to hack (the coordinates of their base) and the transmitter to overload
+	"relay": {"name": "Relay station", "kind": "pirate", "style": "pirate", "room_floor": 22, "hall_floor": 22,
+		"floor": Color(0.29, 0.28, 0.29), "floor2": Color(0.25, 0.24, 0.25), "wall": Color(0.36, 0.3, 0.27),
+		"wall_top": Color(0.08, 0.07, 0.07), "trim": Color(0.4, 0.4, 0.42), "accent": Color(1.0, 0.25, 0.2),
+		"light": Color(1.0, 0.3, 0.22),
+		"door": "steel_door", "computer": "",
+		"foes": ["pirate_raider", "pirate_gunner", "pirate_raider", "pirate_sniper"], "leader": "pirate_captain",
+		"props": ["crates", "barrel", "barrier", "fire_barrel", "crates"],
+		"guard": "", "traps": "tripwire", "fog": false, "dark": Color(0.78, 0.62, 0.6), "outside": "relay", "target": "relay",
+		"turret": true, "alarm": true, "hangar": false, "cells": false,
+		"tablets": 0, "vent": true, "descent": "ramp", "stores": [1, 1],
+		"cols": [3, 3], "rows": [2, 2], "cell_w": 24, "cell_h": 17, "room_w": [9, 13], "room_h": [7, 9], "room_chance": 0.95,
+		"corr": 3, "loops": [1, 1], "cover": [3, 4],
+		"loot": ["cs_ammo", "cs_medkit", "cs_cell", "gr_frag", "cs_breach"],
+		"credits": [150, 400], "research": [0, 0], "museum_chance": 0.0,
+		"names_a": ["Relay"], "names_b": ["Station"],
+		"layers": [{}, {}]},
 	# 0.7.53.9 (Luz, package 53c): the maintenance tunnels under a city – the power is out; down three levels to the
 	# reactor and start it again. Pipes and lines everywhere; the maintenance drones mend things (and leave you be)
 	"maint": {"name": "Maintenance tunnels", "kind": "maint", "style": "maint", "room_floor": 21, "hall_floor": 19,
@@ -277,6 +296,7 @@ const MAP_CHANCE := 0.35
 
 ## A target in a site, shown in the "possible targets" window: its colour, what it needs, what it gives.
 const TARGETS := {
+	"relay": {"col": Color(1.0, 0.82, 0.29), "needs": "E-Breach on the data core · then the transmitter's panel", "gives": "the coordinates of their base; their radio goes dead"},
 	"relic": {"col": Color(0.8, 0.5, 1.0), "needs": "scanner · cutting torch or E-Breach (or the air shaft)", "gives": "the site's prize: research data; rarely one of the alien relics (Museum)"},
 	"tablets": {"col": Color(0.6, 0.85, 1.0), "needs": "scanner", "gives": "research data, the site's story"},
 	"caches": {"col": Color(1.0, 0.8, 0.3), "needs": "cutting torch for the welded ones", "gives": "credits, supplies, gear"},

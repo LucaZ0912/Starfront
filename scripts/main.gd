@@ -475,6 +475,8 @@ func _wake_after_loss() -> void:
 ## taken to its hangar – or, if there is none, to the last station (the ship with you). What was in the pockets is
 ## gone.
 func _fallen(reason: String = "") -> void:
+	if GameState.story_foot_guard.is_valid() and bool(GameState.story_foot_guard.call(reason)):
+		return                                           # package 58, part 7: the story takes care of it
 	var f := GameState.active()
 	GameState.gear.fall()
 	var sys := GameState.current_system

@@ -154,8 +154,13 @@ func begin(where: String) -> void:
 		_after_briefing.call_deferred()                  # a save in the middle of the briefing: it is over
 	elif phase == "gear":
 		get_tree().create_timer(1.5).timeout.connect(_gear_tour)       # the gear tour from the start again
-	if phase in ["report", "gear", "sim", "relay"]:
+	if phase in ["report", "gear", "sim", "relay", "strike"]:
 		_rook_look()
+	if phase == "relay":
+		_relay_begin.call_deferred()                     # (the site on its world again; a try under way starts fresh)
+		for fl7 in ["w58_relay_intro", "w58_coords", "w58_overload"]:
+			GameState.story.flags.erase(fl7)
+	GameState.story_foot_guard = _foot_rescue
 	if not GameState.slept.is_connected(_on_slept):
 		GameState.slept.connect(_on_slept)
 	GameState.story_guard = _story_rescue                 # (Luz) shot down while working for Dan: no game over
@@ -190,7 +195,7 @@ func _process(_delta: float) -> void:
 	var f := darling()
 	if f == null:
 		f = GameState.active()                             # (later parts: whatever you fly)
-		if f == null or not phase in ["contact", "follow", "listen", "found", "maul", "crew", "report", "brief", "gear", "sim", "relay"]:
+		if f == null or not phase in ["contact", "follow", "listen", "found", "maul", "crew", "report", "brief", "gear", "sim", "relay", "strike"]:
 			return
 	# the fitting goals follow what is fitted (whatever the order)
 	if GameState.story.running(MID):
@@ -258,6 +263,8 @@ func _process(_delta: float) -> void:
 				GameState.story.flags.erase("w58_sim_go")
 				_sim_start()
 			_sim_step()
+		"relay":
+			_relay_step()
 
 
 static func _has_family(f: ShipFitting, slot_type: String, fam: String) -> bool:
@@ -432,7 +439,7 @@ func ground_mode(st: Dictionary) -> Dictionary:
 		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
 		return {"levels": {"street": {"people": [{"who": "ossa", "near_obj": "lamp_post", "off": Vector2(1.5, 0.8), "near_spawn": Vector2(12.0, 2.0), "spread": 2.0, "dir": 0, "marker": "!"}]}}}
-	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact", "follow", "listen", "found", "report", "gear", "sim", "relay"]:
+	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact", "follow", "listen", "found", "report", "gear", "sim", "relay", "strike"]:
 		var dan := {"who": "dan", "pos": IntroSix.WINDOW, "dir": 1, "talk": true}
 		if phase in ["part3", "report"]:
 			dan["marker"] = "!"
@@ -1524,7 +1531,7 @@ const PoolFx = preload("res://scripts/ground/pool_fx.gd")
 ## Ossa's loan for the ground (lent: it goes back after the strike, see part 8): a light combat suit, two weapons,
 ## the cutting torch, E-Breach spikes, medkits, grenades and a laser drone – all at quality A.
 const LENT_GEAR := {"suit": "suit_mil_light:A", "weapons": ["wp_laser_rifle:A", "wp_pistol:A"],
-	"belt": [{"id": "tl_cutter:A", "n": 1}, {"id": "cs_breach", "n": 3}, {"id": "cs_medkit", "n": 3}, {"id": "cs_cell", "n": 2}],
+	"belt": [{"id": "tl_cutter:A", "n": 1}, {"id": "cs_breach", "n": 5}, {"id": "cs_medkit", "n": 3}, {"id": "cs_cell", "n": 2}],
 	"grenades": [{"id": "gr_frag", "n": 3}, {"id": "gr_smoke", "n": 2}], "drones": ["dr_laser:A"], "features": ["ft_shield:A", "ft_thermo:A"]}
 ## The simulation's rounds: the foes ("kind@tier") and whether they start unaware (round 2: sneak up on them).
 const SIM_ROUNDS := [[["bandit_rifleman@green", "bandit_scrapper@green", "bandit_scrapper@green"], false],
@@ -1902,6 +1909,8 @@ func _sim_sneak(g) -> void:
 			aw.pos = g.pilot.pos + Vector2(-GroundMap.TILE * 1.2, GroundMap.TILE * (1.0 if k % 2 == 0 else -1.0))
 			aw.position = aw.pos * GroundMap.SCALE
 		k += 1
+	if not g.combat.sneaking:
+		g.combat.toggle_sneak()                          # (Luz: the round starts low, you and the team)
 	var kinds: Array = SIM_ROUNDS[1][0]
 	for i in SNEAK_GUARDS.size():
 		var fe: Array = GroundCombat.FoeData.parse(String(kinds[i % kinds.size()]))
@@ -1996,9 +2005,484 @@ func _sim_done() -> void:
 	await main.fade(Color(0, 0, 0, 1), 0.6).finished
 	if g != null and is_instance_valid(g):
 		GameState.gear.refill()
+		g.story_mode = ground_mode(g.station)            # (Luz) Rook comes along now: no longer waiting by the lift
 		g.go_level("hangar", "stairs")
 	main.fade(Color(0, 0, 0, 0), 0.8)
+	_relay_begin()
+
+
+# ---- part 7: the relay (Luz, 20 Nov 2026)
+
+const RELAY_PAY := 2500
+var _relay_intro_on := false
+var _relay_said := {}
+var _overload_t := -1.0                 # the transmitter's countdown once overloaded (s; < 0: not yet)
+var _ol_layer: CanvasLayer = null
+var _ol_label: Label = null
+var _ol_fx = null                       # the lightning over the wall of computers while it overloads
+
+
+## The world the relay stands on: a cold one in Hollow (ice first), landable, not a giant.
+static func _relay_body() -> Dictionary:
+	var sid := Universe.special_system("hollow")
+	var L: Dictionary = Universe.get_layout(sid)
+	var best := {}
+	for b in L["planets"] + L.get("moons", []):
+		if not Universe.landable(b) or Universe.is_giant(b):
+			continue
+		if String(b.get("type", "")) in ["ice", "moon_ice"]:
+			return b
+		if best.is_empty():
+			best = b
+	return best
+
+
+## The relay's site on that world (a new id after each failed try: the place is fresh again).
+func _relay_site() -> Dictionary:
+	var b := _relay_body()
+	var n := int(flags().get("w58_relay_try", 0))
+	return {"id": "story_relay_%d" % n, "name": "Relay Station", "kind": "pirate", "poi": true, "theme": "relay", "seed": 58007,
+		"danger": "yellow", "lon": 0.35, "lat": 0.25, "system": Universe.special_system("hollow"), "body": String(b.get("id", "")), "story": "relay"}
+
+
+## On to the relay: its site on the map of its world, the marker on that world, Rook and Silas on the radio.
+func _relay_begin() -> void:
 	var st = GameState.story
+	st.set_flag("w58_relay_site", _relay_site())
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = String(_relay_body().get("id", ""))
+		st.changed.emit()
+	var rk := _rook()
+	if not rk.is_empty() and not GameState.gear.team.has(int(rk.get("id", -1))):
+		GameState.gear.team_toggle(rk)                    # Rook goes down with you
+	st.show.emit("radio", {"who": "silas", "text": "I've marked the relay for you: on %s, in Hollow. Land the drone a good way off and go in on foot. I'll be in orbit, listening." % String(_relay_body().get("name", "a cold world")),
+		"mission": FIGHT})
+
+
+func _relay_step() -> void:
+	var g = main.ground
+	var st = GameState.story
+	var fl := flags()
+	var on_site: bool = g != null and is_instance_valid(g) and String(g._site.get("story", "")) == "relay"
+	if on_site and String(g.level) == "landing" and not bool(fl.get("w58_relay_intro", false)) and not _relay_intro_on and g.combat != null:
+		_relay_intro(g)
+		return
+	if on_site:
+		if String(g.level) == "dungeon" and int(g.depth) == 0 and _say_once("in"):
+			_rook_says("Inside. Their data core should be at the bottom. Watch for cameras and tripwires: sneak over a wire ({key:foot_sneak}) or cut it ({key:interact}). One alarm and the whole place wakes up. And look for the air shafts: cut a grille open and we crawl right past them.")
+		if String(g.level) == "dungeon" and int(g.depth) == 1 and _say_once("down"):
+			st.show.emit("radio", {"who": "silas", "text": "The relay room's on your level, I can hear it humming. Hack their data core first, then the transmitter. Not the other way round.", "mission": FIGHT})
+		if bool(g._site.get("alarmed", false)) and not bool(fl.get("w58_overload", false)) and _say_once("alarm"):
+			st.show.emit("radio", {"who": "silas", "text": "They know you're in there! Move, before the whole nest comes down on you!", "mission": FIGHT, "now": true})
+		if bool(fl.get("w58_coords", false)) and _say_once("coords"):
+			st.show.emit("radio", {"who": "silas", "text": "That's it, that's their base! I've got the coordinates. Now overload the transmitter and get out of there.", "mission": FIGHT, "now": true})
+		if bool(fl.get("w58_overload", false)) and _say_once("overload"):
+			_overload_t = 45.0 * (0.1 if quick else 1.0)
+			_rook_says("That's our cue. Back to the drone, now!")
+			_reinforce(g, g.map.spawn, 3)
+			_show_overload(true)
+		if bool(fl.get("w58_overload", false)) and String(g.level) == "landing" and _say_once("out"):
+			_reinforce(g, (g.map.get_meta("door_front", g.map.spawn) as Vector2) + Vector2(0, GroundMap.TILE * 3), 3)
+			st.show.emit("radio", {"who": "silas", "text": "More of them coming round the compound! Run for the drone!", "mission": FIGHT, "now": true})
+	if _overload_t > 0.0 and on_site and String(g.level) == "dungeon" and int(g.depth) == 1:
+		_overload_fx(g)                                  # (Luz) lightning over the computers
+	if _overload_t > 0.0:
+		_overload_t -= get_process_delta_time()
+		if _ol_label != null and is_instance_valid(_ol_label):
+			_ol_label.text = "TRANSMITTER OVERLOAD  ·  %d s" % int(ceil(maxf(_overload_t, 0.0)))
+		if _overload_t <= 0.0:
+			_overload_t = 0.0
+			_show_overload(false)
+			if g != null and is_instance_valid(g):
+				g._shake = maxf(g._shake, 0.6)
+			Audio.play("explosion_large", "the transmitter blows", 0.0)
+			st.show.emit("radio", {"who": "silas", "text": "And there goes their radio. Beautiful. Every pirate out there just went deaf.", "mission": FIGHT})
+	# up and away with the coordinates: done
+	var f := GameState.active()
+	if bool(fl.get("w58_overload", false)) and not on_site and f != null and not f.docked_at.begins_with("land:") and (g == null or not is_instance_valid(g)):
+		_relay_done()
+
+
+func _say_once(key: String) -> bool:
+	if _relay_said.has(key):
+		return false
+	_relay_said[key] = true
+	return true
+
+
+## Pirates who come running, aware of you, round a point.
+func _reinforce(g, at: Vector2, n: int) -> void:
+	if g == null or g.combat == null:
+		return
+	var kinds := ["pirate_raider", "pirate_gunner", "pirate_raider"]
+	for i in n:
+		var p: Vector2 = g.combat._free_near(at + Vector2(randf_range(-40, 40), randf_range(-20, 20)))
+		if p == Vector2.INF:
+			continue
+		var nf: Dictionary = g.combat.spawn(String(kinds[i % kinds.size()]), p, "", "green")
+		g.combat._wake(nf)
+
+
+func _show_overload(on: bool) -> void:
+	if not on and _ol_fx != null and is_instance_valid(_ol_fx):
+		_ol_fx.queue_free()                              # (the lightning ends with the countdown)
+		_ol_fx = null
+	if not on:
+		if _ol_layer != null and is_instance_valid(_ol_layer):
+			_ol_layer.queue_free()
+		_ol_layer = null
+		return
+	_ol_layer = CanvasLayer.new()
+	_ol_layer.layer = 11
+	main.add_child(_ol_layer)
+	var k := clampf(main.get_viewport().get_visible_rect().size.y / 900.0, 1.0, 2.4)
+	var p := UI.neon_panel(Color(1.0, 0.3, 0.25, 0.9), Color(0.08, 0.02, 0.02, 0.92), 2)
+	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	p.position = Vector2(-170 * k, 200 * k)
+	p.custom_minimum_size = Vector2(340 * k, 0)
+	_ol_layer.add_child(p)
+	_ol_label = UI.label("TRANSMITTER OVERLOAD", int(16 * k), Color(1.0, 0.45, 0.35))
+	_ol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p.add_child(_ol_label)
+
+
+## (Luz) the wall of computers overloading: lightning jumping across it, sparks, the screen flickering – wilder as
+## the countdown runs down.
+func _overload_fx(g) -> void:
+	if _ol_fx != null and is_instance_valid(_ol_fx) and _ol_fx.get_parent() == g._world:
+		_ol_fx.k = 1.0 - clampf(_overload_t / (45.0 * (0.1 if quick else 1.0)), 0.0, 1.0)
+		return
+	var cw := {}
+	for o in g.map.objects:
+		if String(o.get("kind", "")) == "computer_wall":
+			cw = o
+	if cw.is_empty():
+		return
+	var T := GroundMap.TILE
+	_ol_fx = _OverloadFx.new()
+	_ol_fx.rect = Rect2(Vector2(float(cw["x"]) * T, float(cw["y"]) * T - 40.0), Vector2(float(cw.get("w", 6)) * T, float(cw.get("h", 2)) * T + 40.0))
+	_ol_fx.combat = g.combat
+	_ol_fx.z_index = 30
+	g._world.add_child(_ol_fx)
+
+
+class _OverloadFx extends Node2D:
+	var rect := Rect2()                 # art px: the wall's face, from its top to its foot
+	var k := 0.0                        # 0 … 1: how far the overload has gone
+	var combat = null
+	var _bolts: Array = []              # {pts, t, life}
+	var _next := 0.0
+	var _t := 0.0
+	var _flash := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		_next -= dt
+		_flash = maxf(0.0, _flash - dt)
+		if _next <= 0.0:
+			_next = lerpf(0.18, 0.04, k) * randf_range(0.6, 1.4)
+			for n in (2 + int(k * 4.0)):
+				_bolt()
+		for b in _bolts:
+			b["t"] = float(b["t"]) + dt
+		_bolts = _bolts.filter(func(b): return float(b["t"]) < float(b["life"]))
+		queue_redraw()
+
+	func _bolt() -> void:
+		var a := rect.position + Vector2(randf() * rect.size.x, randf_range(0.05, 0.7) * rect.size.y)
+		var b: Vector2
+		if randf() < 0.3 + 0.3 * k:
+			b = Vector2(a.x + randf_range(-30.0, 30.0), rect.end.y + randf_range(4.0, 26.0 + 30.0 * k))     # down to the floor
+		else:
+			b = a + Vector2(randf_range(-1.0, 1.0) * lerpf(40.0, 120.0, k), randf_range(-16.0, 26.0))
+			b.x = clampf(b.x, rect.position.x, rect.end.x)
+		var pts := PackedVector2Array([a])
+		var n := 9
+		for i in range(1, n):
+			var q := a.lerp(b, float(i) / n) + (b - a).orthogonal().normalized() * randf_range(-10.0, 10.0)
+			pts.append(q)
+		pts.append(b)
+		_bolts.append({"pts": pts, "t": 0.0, "life": randf_range(0.12, 0.3)})
+		if randf() < 0.35:
+			_flash = 0.07
+		if combat != null and is_instance_valid(combat) and randf() < 0.6:
+			for i2 in 3:
+				combat.sparks.append({"pos": b, "vel": Vector2(randf_range(-70, 70), randf_range(-90, 10)), "t": 0.0, "col": Color(0.6, 0.9, 1.0)})
+		if randf() < 0.25 + 0.3 * k:
+			Audio.play("shield_down", "overload crackle", -16.0 + 6.0 * k)
+
+	func _draw() -> void:
+		var S := GroundMap.SCALE
+		if _flash > 0.0:
+			draw_rect(Rect2((rect.position - Vector2(30, 0)) * S, (rect.size + Vector2(60, 60)) * S), Color(0.75, 0.9, 1.0, 0.18))
+		# the whole face pulses red as it builds up
+		draw_rect(Rect2(rect.position * S, rect.size * S), Color(1.0, 0.25, 0.15, (0.05 + 0.12 * k) * (0.5 + 0.5 * sin(_t * (6.0 + 10.0 * k)))))
+		for b in _bolts:
+			var al := 1.0 - float(b["t"]) / float(b["life"])
+			var sp := PackedVector2Array()
+			for p in (b["pts"] as PackedVector2Array):
+				sp.append(p * S)
+			draw_polyline(sp, Color(0.35, 0.7, 1.0, 0.3 * al), 18.0)
+			draw_polyline(sp, Color(0.55, 0.85, 1.0, 0.6 * al), 8.0)
+			draw_polyline(sp, Color(0.95, 0.98, 1.0, al), 3.0)
+			draw_circle(sp[sp.size() - 1], 10.0 * al, Color(0.8, 0.95, 1.0, 0.6 * al))
+
+
+## (Luz) the landing: you stay in the drone, Rook says to wait. Two guards come round the drone to the ramp; Rook walks
+## down to them, talks them into coming close and shocks them both; then you come out and go on.
+func _relay_intro(g) -> void:
+	_relay_intro_on = true
+	GameState.story.set_flag("w58_relay_intro", true)
+	g.input_enabled = false
+	var T := GroundMap.TILE
+	var pc: Vector2 = g.map.get_meta("pad_c", g.map.spawn)
+	var foot: Vector2 = g.map.spawn                       # at the foot of the ramp
+	var inside: Vector2 = foot + Vector2(0, -T * 1.6)       # up the ramp, in the drone
+	await get_tree().process_frame
+	# (Luz: you and Rook were out at once) the drone comes down first and opens its ramp; then the scene takes over
+	# before you walk down it – and Rook, who only comes along with the fight's first step, is made now
+	var tw := 0.0
+	while is_instance_valid(g) and g._touch >= 0.0 and g._touch < g.TOUCH_TIME + g.HATCH_TIME and tw < 8.0:
+		tw += get_process_delta_time()
+		await get_tree().process_frame
+	if not is_instance_valid(g):
+		_relay_intro_on = false
+		return
+	g._touch = -1.0
+	g._hatch = 1.0
+	g.pilot.moving = false
+	if not g.combat._team_made:
+		g.combat._team_made = true
+		g.combat.spawn_team()
+	var rook_a: Dictionary = {}
+	for a in g.combat.allies:
+		rook_a = a
+	var rook_w = rook_a.get("w", null)
+	var order0 := String(rook_a.get("order", "follow"))
+	if not rook_a.is_empty():
+		rook_a["order"] = "hold"                          # (the scene moves Rook, not the orders)
+		rook_a["tgt"] = null
+	g.combat.frozen = true                                # (the two guards are the scene's: nobody shoots, nobody wakes)
+	g.combat.active = null
+	g.combat.locks.clear()
+	# you and Rook in the drone: not seen yet
+	g.pilot.pos = inside
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	g.pilot.dir = 1
+	g.pilot.visible = false
+	if rook_w != null and is_instance_valid(rook_w):
+		rook_w.pos = inside
+		rook_w.position = rook_w.pos * GroundMap.SCALE
+		rook_w.visible = false
+	g.story_cam = pc + Vector2(0, T * 1.2)               # (the drone and the ramp below it)
+	g.story_zoom = 1.25
+	g._camera()
+	var say := func(w, text: String, secs: float):
+		if w != null and is_instance_valid(w):
+			w.bubble = text
+			w.bubble_t = secs * (0.1 if quick else 1.0)
+	GameState.story.show.emit("radio", {"who": "rook", "text": "Wait. Two of them, coming this way. Stay inside, I'll handle this.", "mission": FIGHT, "now": true})
+	# two guards from the compound, round the drone, one each side, to the ramp
+	var pad: Rect2 = g.map.pad_rects[0] if not g.map.pad_rects.is_empty() else Rect2(pc - Vector2(T * 6, T * 5), Vector2(T * 12, T * 10))
+	var guards: Array = []
+	var routes: Array = []
+	for i in 2:
+		var side := -1.0 if i == 0 else 1.0
+		var x_side := pad.position.x + T * 0.8 if i == 0 else pad.end.x - T * 0.8
+		var nf: Dictionary = g.combat.spawn("pirate_raider", pc + Vector2(side * T * 1.5, -T * 16.0), "", "green")
+		nf["passive"] = true
+		nf["holo"] = true                                 # (nothing to loot from these two: they only sleep)
+		guards.append(nf)
+		routes.append([Vector2(x_side, pad.position.y - T * 0.5), Vector2(x_side, foot.y + T * 0.8),
+			foot + Vector2(side * T * 1.7, T * 0.9)])
+	await _w(1.2)
+	var g0 = guards[0]["w"]
+	var g1 = guards[1]["w"]
+	say.call(g0, "Nobody said anything about a drop today.", 3.0)
+	if not await _intro_walk(g, guards.map(func(nf): return nf["w"]), routes, 55.0):
+		return
+	if not is_instance_valid(g0) or not is_instance_valid(g1):
+		_relay_intro_on = false                           # (gone meanwhile: you go on at once)
+		g.combat.frozen = false
+		g.pilot.visible = true
+		if rook_w != null and is_instance_valid(rook_w):
+			rook_w.visible = true
+		g.story_cam = Vector2.INF
+		g.story_zoom = 0.0
+		g.input_enabled = true
+		return
+	g0.dir = 1                                        # (up the ramp)
+	g1.dir = 1
+	say.call(g1, "Check the hold. I'll call it in.", 2.4)
+	await _w(2.2)
+	# Rook comes down the ramp, hands up
+	if rook_w != null and is_instance_valid(rook_w):
+		rook_w.visible = true
+		say.call(rook_w, "Easy, easy! Don't shoot the delivery.", 2.6)
+		if not await _intro_walk(g, [rook_w], [[foot + Vector2(0, T * 0.2)]], 70.0):
+			return
+		rook_w.dir = 0                                # (down to them)
+	await _w(2.0)
+	say.call(g0, "Delivery? What delivery?", 2.2)
+	await _w(2.2)
+	say.call(rook_w, "Power cells for your transmitter. The boss ordered them. Big, loud, bad temper?", 3.4)
+	await _w(3.4)
+	say.call(g1, "The boss never orders anything. The boss takes things.", 3.0)
+	await _w(3.0)
+	say.call(rook_w, "Well, today the boss pays. Somebody has to sign. You, right here.", 3.2)
+	await _w(2.4)
+	# the one by the radio steps up to sign
+	if not await _intro_walk(g, [g1], [[foot + Vector2(T * 0.75, T * 0.7)]], 40.0):
+		return
+	say.call(g1, "Sign with wh...", 1.2)
+	await _w(0.6)
+	_intro_zap(g, guards[1])
+	await _w(0.5)
+	say.call(g0, "Hey!", 1.0)
+	if not await _intro_walk(g, [rook_w], [[foot + Vector2(-T * 0.9, T * 0.8)]], 140.0):
+		return
+	_intro_zap(g, guards[0])
+	await _w(1.0)
+	say.call(rook_w, "Sleep tight.", 2.0)
+	await _w(2.0)
+	if rook_w != null and is_instance_valid(rook_w):
+		rook_w.dir = 1                                # (up to the drone)
+	say.call(rook_w, "Clear. You can come out now.", 2.4)
+	await _w(1.6)
+	if not is_instance_valid(g):
+		_relay_intro_on = false
+		return
+	# you come down the ramp
+	g.pilot.visible = true
+	if not await _intro_walk(g, [g.pilot], [[foot + Vector2(T * 0.3, T * 0.6)]], 70.0):
+		return
+	g.pilot.dir = 0
+	await _w(0.6)
+	_relay_intro_on = false
+	if not is_instance_valid(g):
+		return
+	if not rook_a.is_empty():
+		rook_a["order"] = order0
+	g.combat.frozen = false
+	g.story_cam = Vector2.INF
+	g.story_zoom = 0.0
+	g.input_enabled = true
+	_rook_says("Shock baton. They'll wake up with a headache and no idea who we were. The compound's north. Quiet is better, but it's your call.")
+	GameState.story.show.emit("radio", {"who": "silas", "text": "I'm listening from orbit. The gate has a turret over it, and a terminal beside it if you've got a spike to spare. Round the east side there's a maintenance hatch, welded shut: your torch will cut it. Quieter.", "mission": FIGHT})
+
+
+## The scene's walkers along their points, all at once (false: the ground closed meanwhile).
+func _intro_walk(g, ws: Array, routes: Array, speed: float) -> bool:
+	if is_instance_valid(g) and g.combat != null:
+		g.combat.frozen = true
+	var idx: Array = []
+	for i in ws.size():
+		idx.append(0)
+	var t := 0.0
+	while t < 14.0:
+		if not is_instance_valid(g):
+			_relay_intro_on = false
+			return false
+		g.combat.active = null                            # (no lock on them while the scene plays)
+		var dt := get_process_delta_time()
+		t += dt
+		var all_there := true
+		for i in ws.size():
+			var w = ws[i]
+			if w == null or not is_instance_valid(w):
+				continue
+			var pts: Array = routes[i]
+			if int(idx[i]) >= pts.size():
+				w.moving = false
+				continue
+			all_there = false
+			var to: Vector2 = pts[int(idx[i])]
+			var d: Vector2 = to - w.pos
+			w.pos = w.pos.move_toward(to, speed * dt * (8.0 if quick else 1.0))
+			w.position = w.pos * GroundMap.SCALE
+			w.moving = true
+			if absf(d.x) > absf(d.y):
+				w.dir = 3 if d.x > 0.0 else 2             # (right, left)
+			else:
+				w.dir = 0 if d.y > 0.0 else 1             # (down, up)
+			if w.pos.distance_to(to) < 2.0:
+				idx[i] = int(idx[i]) + 1
+		if all_there:
+			return true
+		await get_tree().process_frame
+	return true
+
+
+## Rook's shock baton on one of them: sparks, ZAP, down.
+func _intro_zap(g, nf: Dictionary) -> void:
+	var w2 = nf.get("w", null)
+	if not is_instance_valid(g) or w2 == null or not is_instance_valid(w2):
+		return
+	for k in 10:
+		g.combat.sparks.append({"pos": w2.pos + Vector2(randf_range(-8, 8), -20 + randf_range(-8, 8)), "vel": Vector2(randf_range(-60, 60), randf_range(-80, -20)), "t": 0.0, "col": Color(0.45, 0.85, 1.0)})
+	g.combat.floaters.append({"pos": w2.pos + Vector2(0, -46), "text": "ZAP", "col": Color(0.45, 0.85, 1.0), "t": 0.0})
+	Audio.play("shield_down", "Rook's shock baton", -4.0)
+	nf["dead"] = true
+	nf["state"] = "down"
+	w2.down = true
+	w2.moving = false
+	w2.bubble_t = 0.0
+
+
+## Out with the coordinates and the transmitter gone: Dan on the radio, the pay, on to the strike.
+func _relay_done() -> void:
+	if phase != "relay":
+		return
+	_set_phase("strike")
+	_show_overload(false)
+	var st = GameState.story
+	st.set_flag("w58_relay", true)
+	st.flags.erase("w58_relay_site")
 	if st.running(FIGHT):
 		st.missions[FIGHT]["target"] = ""
-	GameState.log_msg("[Story] Package 58 continues with part 7 (the relay station).", GameState.COL_WARN)
+	st.show.emit("radio", {"who": "dan", "text": "Silas sent me the coordinates. You did it, you crazy... You did it. Ossa's ship is fuelled, mine is warming up. Come home first, and then we finish this together.", "mission": FIGHT, "now": true})
+	GameState.log_msg("[Story] Package 58 continues with part 8 (the strike on the base).", GameState.COL_WARN)
+
+
+## (Luz: no game over in the story) fallen on foot at the relay: Rook gets you back to the drone, Ossa's people fly
+## you home; you wake at Dan's, the relay to try again (a fresh one). Your lent gear stays with you.
+func _foot_rescue(_reason: String) -> bool:
+	if phase != "relay":
+		return false
+	var g = main.ground
+	if g == null or not is_instance_valid(g) or String(g._site.get("story", "")) != "relay":
+		return false
+	var st = GameState.story
+	for fl in ["w58_relay_intro", "w58_coords", "w58_overload"]:
+		st.flags.erase(fl)
+	st.set_flag("w58_relay_try", int(flags().get("w58_relay_try", 0)) + 1)
+	st.set_flag("w58_relay_site", _relay_site())
+	_relay_said = {}
+	_overload_t = -1.0
+	_show_overload(false)
+	GameState.gear.refill()
+	var f := GameState.active()
+	var dan_st := String(flags().get("w58_dan_st", ""))
+	var beyond := Universe.special_system("beyond")
+	var sd := Universe.find_station(beyond, dan_st)
+	if sd.is_empty() or f == null:
+		return false
+	main.close_deck(false)
+	main._close_planet_map()
+	f.system_id = beyond
+	f.docked_at = dan_st
+	f.position = sd.get("pos", Vector2.ZERO)
+	GameState.current_system = beyond
+	GameState.log_msg("You went down at the relay. Rook dragged you back to the drone, and Ossa's people flew you home.", GameState.COL_BAD)
+	_foot_wake.call_deferred(sd)
+	return true
+
+
+func _foot_wake(sd: Dictionary) -> void:
+	if main == null:
+		return
+	main.load_system(Universe.special_system("beyond"))
+	main.station_panel.close()
+	main._wake_at(sd)
+	await get_tree().create_timer(2.2 * (0.1 if quick else 1.0)).timeout
+	GameState.story.show.emit("dialogue", {"id": "dan_relay_wake", "mission": FIGHT})

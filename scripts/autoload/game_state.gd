@@ -70,6 +70,8 @@ var lodging := {}
 ## Package 58 (Luz): the story may catch the loss of your ship (a tutorial's mission) – (fit) -> true: handled, no
 ## game over (you wake at Dan's instead).
 var story_guard: Callable = Callable()
+## Package 58, part 7: the story's say when the pilot falls on foot (true: it took care of it – no clinic, no loss).
+var story_foot_guard: Callable = Callable()
 var _crew_seq := 1
 ## Package 31a: where the pilot comes back ({"system", "id"} of the last station docked at), escape pods drifting
 ## in space ([{"id", "system", "pos", "crew": [{"m", "until"}]}]), the open buy-back offer, crew rescued from pods
@@ -2152,6 +2154,9 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	const PoiData = preload("res://data/poi.gd")
 	var visit := int(poi_visits.get(str(system_id), 0))
 	var out: Array = []
+	var ss: Dictionary = story.flags.get("w58_relay_site", {}) if story != null else {}
+	if not ss.is_empty() and int(ss.get("system", -1)) == system_id and String(ss.get("body", "")) == String(body.get("id", "")):
+		out.append(ss)                                   # package 58, part 7: the pirates' relay station
 	for mm in missions:                                  # package 53c: the sites of your jobs on foot
 		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and not (mm["site"] as Dictionary).has("city"):     # (a city's: below it)
 			var ms: Dictionary = mm["site"]

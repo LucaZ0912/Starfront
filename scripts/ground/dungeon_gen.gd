@@ -874,6 +874,19 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 			ExploreNode.add(m, "reactor", Vector2(rt.position.x + 3.0, rt.position.y + 1.5) * TILE + Vector2(0, 6), {"no_zone": true, "tiles": [rt.position.x, rt.position.y, rt.size.x, rt.size.y]})
 			ExploreNode.add(m, "terminal", Vector2(vr.position.x + 2.5, vr.end.y - 0.8) * TILE, {"actions": ["restart"], "target": true, "style": "pump", "seed": rng.randi(), "level": 1})
 			targets.append(["reactor", "The reactor: on the lowest level; restart it at its panel"])
+		elif String(th.get("target", "")) == "relay":
+			# package 58, part 7 (Luz): the relay room – the transmitter in the middle (it stands in the way), the data
+			# core's terminal on the west (hack: the coordinates of their base), the transmitter's panel on the east
+			# (overload it – only once the data is yours)
+			# (Luz) not a generator: a great wall of computers along the north wall, its big screen in the middle
+			var tcx := vr.position.x + vr.size.x * 0.5
+			var tcy := vr.position.y + vr.size.y * 0.5 - 0.5
+			var cw9 := maxi(6, vr.size.x - 4)
+			m.add_object({"kind": "computer_wall", "x": vr.position.x + 2, "y": vr.position.y, "w": cw9, "h": 2, "seed": rng.randi()})
+			ExploreNode.add(m, "terminal", Vector2(tcx - 2.5, vr.position.y + 3.2) * TILE, {"actions": ["coords"], "target": true, "seed": rng.randi(), "level": 2})
+			ExploreNode.add(m, "terminal", Vector2(tcx + 2.5, vr.position.y + 3.2) * TILE, {"actions": ["overload"], "style": "pump", "seed": rng.randi(), "level": 1})
+			m.lights.append({"pos": Vector2(tcx, tcy) * TILE, "r": 90.0, "col": Color(1.0, 0.3, 0.22), "a": 0.4, "flicker": true})
+			targets.append(["relay", "The relay room at the bottom: their data core and the transmitter"])
 		elif String(th.get("target", "")) == "find":
 			# 0.7.53.7 (Luz): a rare find in the rock of the deepest chamber – cut it out
 			ExploreNode.add(m, "vein", rc * TILE, {"target": true, "seed": rng.randi()})
@@ -1085,36 +1098,32 @@ static func build_inside(body: Dictionary, site: Dictionary, depth: int = 0) -> 
 				var wp: Vector2 = wire["pos"]
 				ExploreNode.add(m, "tripwire", wp, {"len": wire["len"], "vertical": wire["vertical"], "seed": rng.randi(), "no_zone": true})
 				var wl := float(wire["len"]) * TILE
-				var wr := Rect2(wp - Vector2(14, 4), Vector2(28, wl + 4)) if bool(wire["vertical"]) else Rect2(wp - Vector2(4, 14), Vector2(wl + 4, 28))
-				m.zones.append({"rect": wr, "kind": "explore", "id": "explore", "i": m.explore.size() - 1, "title": "A tripwire: disarm it (E)"})
+				var wr := Rect2(wp - Vector2(26, 4), Vector2(52, wl + 4)) if bool(wire["vertical"]) else Rect2(wp - Vector2(4, 26), Vector2(wl + 4, 52))
+				m.zones.append({"rect": wr, "kind": "explore", "id": "explore", "i": m.explore.size() - 1, "title": "A tripwire: disarm it (E)"})     # (0.8.58.6: reached from further off)
 				placed += 1
-	# the air shaft from the room beside the vault (the Precursors)
-	if last and bool(th.get("vent", true)) and String(th.get("target", "relic")) == "relic":
+	# the air shaft from the room beside the vault (the Precursors; package 58: the relay room too)
+	if last and bool(th.get("vent", true)) and String(th.get("target", "relic")) in ["relic", "relay"]:
 		var side_c := Vector2i(vault_c.x + (-1 if vault_c.x > 0 else 1), 0)
 		if rooms.has(side_c) and is_room.get(side_c, false):
-			var sr2: Rect2i = rooms[side_c]
-			var vx := sr2.end.x - 3 if side_c.x < vault_c.x else sr2.position.x + 2
-			var yd := mini(sr2.position.y, vr.position.y) - 3
-			var tx := vr.position.x + 1 if side_c.x < vault_c.x else vr.end.x - 2
-			var duct: Array = []
-			for yy in range(sr2.position.y - 1, yd - 1, -1):
-				duct.append([vx, yy])
-			var stp := 1 if tx > vx else -1
-			for xx in range(vx + stp, tx + stp, stp):
-				duct.append([xx, yd])
-			for yy2 in range(yd + 1, vr.position.y):
-				duct.append([tx, yy2])
-			var clear := yd >= 1
-			for dc in duct:
-				var tt := m.t_at(int(dc[0]), int(dc[1]))
-				if GroundMap.walkable_t(tt) or tt == T.BLOCK:
-					clear = false
-			if clear:
-				for dc2 in duct:
-					m.set_t(int(dc2[0]), int(dc2[1]), m.t_at(int(dc2[0]), int(dc2[1])), 16)
-				var vent := ExploreNode.add(m, "vent", Vector2(vx + 0.5, sr2.position.y) * TILE, {"duct": duct, "label": "VENT-%02d" % rng.randi_range(10, 99), "seed": rng.randi()})
-				ExploreNode.add(m, "vent_end", Vector2(tx + (1 if stp > 0 else 0), vr.position.y) * TILE, {"no_zone": true, "vent": m.explore.find(vent)})
+			vent_ok = _air_shaft(m, rooms[side_c], vr, rng)
+		if not vent_ok and String(th.get("target", "")) == "relay":
+			for oc in cells:
+				if vent_ok:
+					break
+				if oc != vault_c and is_room.get(oc, false) and absi(oc.x - vault_c.x) == 1:
+					vent_ok = _air_shaft(m, rooms[oc], vr, rng)
+	# package 58, part 7 (Luz): the relay's upper level – a shaft from the entrance room past the rooms beside it
+	if not last and String(th.get("target", "")) == "relay":
+		var pairs: Array = []
+		for ca in cells:
+			for cb in cells:
+				if ca != cb and is_room.get(ca, false) and is_room.get(cb, false) and absi(ca.x - cb.x) == 1 and ca.y == cb.y:
+					pairs.append([ca, cb])
+		pairs.sort_custom(func(p1, p2): return int(p1[0] == entr_c or p1[1] == entr_c) > int(p2[0] == entr_c or p2[1] == entr_c))
+		for pr in pairs:
+			if _air_shaft(m, rooms[pr[0]], rooms[pr[1]], rng):
 				vent_ok = true
+				break
 	# 0.7.53.20 (Luz): a module or two torn open – the world outside comes in until its emergency bulkhead is sealed
 	if bool(th.get("pressurized", false)):
 		m.set_meta("pressurized", true)
@@ -1836,4 +1845,134 @@ static func build_wreck_outside(body: Dictionary, site: Dictionary, ship_len: fl
 	m.set_meta("plumes", plumes)
 	m.lights.append({"pos": bp + Vector2(0, 12), "r": 50.0, "col": Color(1.0, 0.3, 0.2), "a": 0.35, "flicker": true})
 	m.lights.append({"pos": ap + Vector2(0, 8), "r": 40.0, "col": Color(1.0, 0.2, 0.15), "a": 0.35})
+	return m
+
+
+
+## An air shaft (0.7.53.27; package 58 generalised): from a grille in the north wall of room `a`, up through the rock,
+## along, and down into room `b` through its north wall. False if the rock is not clear for it.
+static func _air_shaft(m: GroundMap, a: Rect2i, b: Rect2i, rng: RandomNumberGenerator) -> bool:
+	var east := b.position.x > a.position.x
+	var vx := a.end.x - 3 if east else a.position.x + 2
+	var tx := b.position.x + 1 if east else b.end.x - 2
+	var yd := mini(a.position.y, b.position.y) - 3
+	if yd < 1:
+		return false
+	var duct: Array = []
+	for yy in range(a.position.y - 1, yd - 1, -1):
+		duct.append([vx, yy])
+	var stp := 1 if tx > vx else -1
+	for xx in range(vx + stp, tx + stp, stp):
+		duct.append([xx, yd])
+	for yy2 in range(yd + 1, b.position.y):
+		duct.append([tx, yy2])
+	for dc in duct:
+		var tt := m.t_at(int(dc[0]), int(dc[1]))
+		if GroundMap.walkable_t(tt) or tt == T.BLOCK:
+			return false
+	for dc2 in duct:
+		m.set_t(int(dc2[0]), int(dc2[1]), m.t_at(int(dc2[0]), int(dc2[1])), 16)
+	var vent := ExploreNode.add(m, "vent", Vector2(vx + 0.5, a.position.y) * TILE, {"duct": duct, "label": "VENT-%02d" % rng.randi_range(10, 99), "seed": rng.randi()})
+	ExploreNode.add(m, "vent_end", Vector2(tx + (1 if stp > 0 else 0), b.position.y) * TILE, {"no_zone": true, "vent": m.explore.find(vent)})
+	return true
+
+# ---------------------------------------------------------------- outside: the pirates' relay station (package 58)
+
+## Package 58, part 7 (Luz): the relay station on a cold world in Hollow – a long low block on stilts, its tall mast
+## behind it with red lights and dishes; a fence round the compound with a gap at the gate; the main gate (a steel
+## door, its terminal beside it) under a turret: the loud way; round the east side a maintenance hatch welded shut:
+## cut it open, the quiet way. Guards walk their rounds; the pad with your landing drone south-west.
+static func build_relay_outside(body: Dictionary, site: Dictionary, ship_len: float, ship_beam: float) -> GroundMap:
+	var th := _theme(site)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(site.get("seed", 58)) + 31
+	var m := GroundMap.new()
+	_palette(m, body, th)
+	m.set_meta("roofs", true)
+	m.title = String(site.get("name", "Relay station"))
+	m.hull_top = -60
+	var sl := clampi(int(ceil(ship_len / TILE)) + 4, 10, 40)
+	var sb := clampi(int(ceil(ship_beam / TILE)) + 4, 7, 20)
+	var W := maxi(72, sl + 48)
+	var H := maxi(74, sb + 60)                         # (Luz) the pad well away from the compound
+	m.setup(W, H)
+	m.fill(0, 0, W, H, T.FLOOR, 13)
+	m.fill(0, H - 1, W, 1, T.BLOCK, 13)
+	m.fill(0, 0, 1, H, T.BLOCK, 13)
+	m.fill(W - 1, 0, 1, H, T.BLOCK, 13)
+	m.fill(0, 0, W, 1, T.BLOCK, 13)
+	# the block: roof rows 5–10, its wall four rows
+	var ax := 18
+	var aw := 34
+	m.fill(ax, 5, aw, 6, T.CAP)
+	m.fill(ax, 11, aw, 4, T.FACE)
+	# the mast behind it, dishes on the roof
+	m.add_object({"kind": "radio_mast", "x": ax + aw / 2 - 1, "y": 4, "w": 2, "h": 1, "rise": 220})
+	m.add_object({"kind": "radio_mast", "x": ax + 4, "y": 5, "w": 2, "h": 1, "rise": 120})
+	m.add_object({"kind": "radio_mast", "x": ax + aw - 6, "y": 5, "w": 2, "h": 1, "rise": 120})
+	for mk in [Vector2(ax + aw / 2, 4), Vector2(ax + 5, 5), Vector2(ax + aw - 5, 5)]:
+		m.lights.append({"pos": mk * TILE + Vector2(0, -200 if mk.x == ax + aw / 2 else -110), "r": 34.0, "col": Color(1.0, 0.18, 0.12), "a": 0.6, "flicker": true})
+	m.add_object({"kind": "dome", "x": ax + 8, "y": 7, "w": 5, "h": 3})
+	m.add_object({"kind": "dome", "x": ax + aw - 13, "y": 7, "w": 5, "h": 3})
+	# the main gate in the middle of the south wall, its terminal beside it, the turret over the yard before it
+	var gx := ax + aw / 2
+	var gate := ExploreNode.add(m, "airlock", Vector2(gx + 0.5, 15) * TILE, {"no_zone": true, "seed": rng.randi(), "tiles": []})
+	var gi := m.explore.find(gate)
+	ExploreNode.add(m, "terminal", Vector2(gx + 3.5, 16.4) * TILE, {"actions": ["door", "turrets"], "door": gi, "seed": rng.randi(), "level": 1})
+	ExploreNode.add(m, "turret", Vector2(gx - 4.5, 15.2) * TILE, {"no_zone": true, "state": "on", "seed": rng.randi()})
+	# the maintenance hatch on the east side, welded shut: the cutting torch
+	var hx := ax + aw - 3
+	var hatch := ExploreNode.add(m, "breach", Vector2(hx + 0.5, 15) * TILE, {"no_zone": true, "state": "shut", "seed": rng.randi(), "welded": true})
+	var hi := m.explore.find(hatch)
+	m.zones.append({"rect": Rect2(Vector2(hx + 0.5, 15) * TILE + Vector2(-26, -6), Vector2(52, 30)), "kind": "explore", "id": "explore", "i": hi, "title": "A maintenance hatch, welded shut"})
+	for e in [[Vector2(gx + 0.5, 15) * TILE, gi, "Through the gate: inside"], [Vector2(hx + 0.5, 15) * TILE, hi, "Through the maintenance hatch: inside"]]:
+		m.zones.append({"rect": Rect2((e[0] as Vector2) + Vector2(-20, -4), Vector2(40, 18)), "kind": "dungeon_in", "id": "dungeon_in", "gate": e[1],
+			"title": String(e[2]), "col": Color(1.0, 0.45, 0.35), "sign": Vector2(-100, -100)})
+	m.set_meta("door_front", Vector2(gx + 0.5, 16.6) * TILE)
+	for wl in range(ax + 2, ax + aw, 6):
+		m.lights.append({"pos": Vector2(wl, 14.5) * TILE, "r": 36.0, "col": Color(1.0, 0.75, 0.55), "a": 0.35})
+	# the fence round the compound: a gap before the gate (the yard the turret watches) and one on the east by the hatch
+	var fy := 24
+	for fx in range(ax - 4, ax + aw + 4, 3):
+		if absi(fx - gx) <= 4:
+			continue
+		m.add_object({"kind": "fence", "x": fx, "y": fy, "w": 3, "h": 1})
+	for fy2 in range(8, fy, 3):
+		m.add_object({"kind": "fence", "x": ax - 4, "y": fy2, "w": 1, "h": 3})
+		if fy2 < 14 or fy2 > 18:
+			m.add_object({"kind": "fence", "x": ax + aw + 3, "y": fy2, "w": 1, "h": 3})
+	# crates and barrels in the yard: cover
+	for cx in [ax + 3, ax + 10, ax + aw - 9, ax + aw - 3]:
+		m.add_object({"kind": "crates", "x": cx, "y": 19 + (cx % 2) * 2, "w": 2, "h": 1})
+	m.add_object({"kind": "barrel", "x": gx + 6, "y": 20, "w": 1, "h": 1})
+	m.add_object({"kind": "barrier", "x": gx - 2, "y": 21, "w": 4, "h": 1})
+	# the guards: two before the gate, one on its round along the fence, one at the east corner
+	for gp in [Vector2(gx - 2, 18.5), Vector2(gx + 3, 19), Vector2(ax - 1, 20), Vector2(ax + aw + 1, 12)]:
+		m.foe_spawns.append(gp * TILE)
+	m.set_meta("foes", ["pirate_raider", "pirate_gunner", "pirate_raider", "pirate_sniper"])
+	m.set_meta("routes", {2: [Vector2(ax - 1, 20) * TILE, Vector2(ax - 1, 9) * TILE, Vector2(ax + 6, 22.5) * TILE]})
+	# the pad, far to the south-west, with the drone (a rough clearing: no supply point out here)
+	var px0 := 4
+	var py0 := H - sb - 4
+	m.fill(px0, py0, sl, sb, T.FLOOR, 14)
+	m.decals.append({"kind": "landing_pad", "x": px0, "y": py0, "w": sl, "h": sb, "col": Color(0.95, 0.8, 0.2), "n": 1})
+	m.pad_rects.append(Rect2(Vector2(px0, py0) * TILE, Vector2(sl, sb) * TILE))
+	var sc := Vector2(px0 + sl * 0.5, py0 + sb * 0.5)
+	m.ship_at = sc * TILE
+	var sbx := int(sc.x - ship_len / TILE * 0.5) + 1
+	var sbw := maxi(2, int(ship_len / TILE) - 2)
+	var sbh := maxi(1, int(ship_beam / TILE) - 1)
+	m.fill(sbx, int(sc.y - sbh * 0.5), sbw, sbh, T.BLOCK, 14)
+	var rx := int(sc.x) - 1
+	var ry := int(sc.y + sbh * 0.5)
+	m.decals.append({"kind": "ramp", "x": rx, "y": ry, "w": 2, "h": 2, "col": Color(1.0, 0.8, 0.25)})
+	m.spawn = Vector2(rx + 1.0, minf(ry + 2.6, H - 1.6)) * TILE
+	m.zones.append({"rect": Rect2(Vector2(rx - 0.5, ry) * TILE, Vector2(3, 3.2) * TILE), "kind": "exit", "id": "ship",
+		"title": "Up the ramp: take off", "col": Color(0.4, 1.0, 0.6), "sign": Vector2(-100, -100)})
+	m.set_meta("pad_c", sc * TILE)
+	# rocks about: on the way up from the pad they give cover
+	for k in 22:
+		var rp := Vector2(rng.randi_range(2, W - 4), rng.randi_range(27, H - 4))
+		if m.free_at(rp * TILE, 20.0) and not Rect2(Vector2(px0 - 2, py0 - 2), Vector2(sl + 6, sb + 4)).has_point(rp):
+			m.add_object({"kind": "rock", "x": int(rp.x), "y": int(rp.y), "w": 2, "h": 1, "col": (m.pal["terrain_a"] as Color).darkened(0.25), "seed": rng.randi()})
 	return m

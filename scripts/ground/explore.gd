@@ -1344,7 +1344,9 @@ func _draw() -> void:
 				var ln3 := float(d.get("len", 3)) * 16.0
 				var v3 := bool(d.get("vertical", true))
 				var e3 := Vector2(0, ln3) if v3 else Vector2(ln3, 0)
-				draw_line(Vector2(0, -3), e3 + Vector2(0, -3), Color(0.9, 0.9, 0.8, 0.55 + 0.25 * sin(t * 5.0)), 0.5)
+				if bool(d.get("near", false)):
+					draw_line(Vector2(0, -3), e3 + Vector2(0, -3), Color(1.0, 0.25, 0.2, 0.3 + 0.2 * sin(t * 6.0)), 3.0)      # 0.8.58.6 (Luz): seen when close
+				draw_line(Vector2(0, -3), e3 + Vector2(0, -3), Color(0.9, 0.9, 0.8, 0.6 + 0.3 * sin(t * 5.0)), 1.0)
 				draw_rect(Rect2(-2, -9, 4, 6), Color(0.3, 0.38, 0.22))
 				draw_circle(Vector2(0, -8), 0.8, Color(1.0, 0.2, 0.15))
 		"crate":

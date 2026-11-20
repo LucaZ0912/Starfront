@@ -982,6 +982,36 @@ func _build_story() -> void:
 			st9.missions["fight"]["target"] = String(st9.flags.get("w58_dan_st", ""))
 			w9._set_phase("report")
 			mn9.open_station())))
+	_row().add_child(UI.button("Play package 58, part 7 (the relay station)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn7 = get_tree().current_scene
+		mn7.get_tree().create_timer(1.0).timeout.connect(func():
+			var st7 = GameState.story
+			for st0 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+				if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+					st7.flags["w58_dan_st"] = String(st0["id"])
+			for fl7 in ["w58_relay_intro", "w58_coords", "w58_overload", "w58_relay"]:
+				st7.flags.erase(fl7)
+			for fl7b in ["w58_maul", "w58_contact", "w58_atlisten", "w58_listened", "w58_briefing", "w58_gear", "w58_sim"]:
+				st7.flags[fl7b] = true
+			mn7._start_dan_work("load")
+			var w7 = mn7.get_meta("dan_work")
+			var has_maul := false
+			for f7 in GameState.fleet:
+				has_maul = has_maul or f7.ship_name == "Maul"
+			if not has_maul:
+				w7._give_maul()
+			w7._lend_ground_gear()
+			if not st7.running("fight"):
+				st7.start("fight")
+			for si7 in (st7.mission_data("fight")["steps"] as Array).size():
+				if String(st7.mission_data("fight")["steps"][si7]["id"]) == "relay":
+					st7.goto_step("fight", si7)
+			st7.tracked = "fight"
+			w7._set_phase("relay")
+			w7._relay_begin()
+			_cmd({"type": "debug_special", "special": "hollow"}))))
 	_row().add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()

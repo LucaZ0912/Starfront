@@ -710,6 +710,10 @@ func _process(delta: float) -> void:
 				await _test_w58e(main.view)              # package 58, part 5: Silas, the Listener, the waves
 				await _test_w58f(main.view)              # package 58, part 6: the briefing, Ossa's gear, the simulation
 				await _test_arm58(main.view)             # (Luz) weapons armed while the lock is still coming
+				await _test_relay58(main.view)           # package 58, part 7: the relay station itself
+				await _test_w58g(main.view)              # package 58, part 7: the relay mission
+				await _test_hackpad(main.view)           # (Luz) the hack with the controller: a step the moment you push
+				await _test_grmove(main.view)            # (Luz) grenades thrown while walking
 				_shooting = false
 				timer = 0.0
 				return
@@ -9911,6 +9915,7 @@ func _test_sewer(view: SystemView) -> void:
 			alarm = d4
 	var tur_ok: bool = not turret.is_empty() and not alarm.is_empty() and String(alarm["state"]) == "armed" and (ctrl.get("actions", []) as Array).has("turrets")
 	if tur_ok:
+		g._turrets_step(0.0)                                # (0.8.58.6: its target made first – a foe that is no walker)
 		var n_foes: int = g.combat.foes.size()
 		g.pilot.pos = (turret["pos"] as Vector2) + Vector2(0, 60)
 		Commands.suit_god = false
@@ -14817,6 +14822,348 @@ func _test_padshot(_view: SystemView) -> void:
 	Pad.using_pad = false
 
 
+## Package 58, part 7 (Luz): the relay – its site on a cold world in Hollow; landing: two guards check the drone, Rook
+## shocks them; the data core (the coordinates), the transmitter overloaded (alarm, more of them, the countdown); up
+## and away: done (2,500 cr, on to the strike). Fallen on foot there: awake at Dan's, the relay fresh, the gear kept.
+func _test_w58g(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
+	var keep_gear: Dictionary = GameState.gear.to_dict()
+	var shots := OS.get_environment("W58G_SHOTS") != ""
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	if GameState.active().docked_at == "":
+		GameState.active().docked_at = String(Universe.get_layout(GameState.current_system)["stations"][0]["id"])
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w58_"):
+			st.flags.erase(fl)
+	for mid in ["darling", "fight"]:
+		st.missions.erase(mid)
+		st.done.erase(mid)
+	st.flags["dan_deal_yes"] = true
+	main.station_panel.close()
+	main._start_dan_work("yes")
+	var w = main.get_meta("dan_work")
+	w.quick = true
+	if w.tour != null and is_instance_valid(w.tour):
+		w.tour.queue_free()
+	w.tour = null
+	w._give_maul()
+	w._lend_ground_gear()
+	for fl2 in ["w58_maul", "w58_contact", "w58_atlisten", "w58_listened", "w58_briefing", "w58_gear", "w58_sim"]:
+		st.flags[fl2] = true
+	st.start("fight")
+	for si in (st.mission_data("fight")["steps"] as Array).size():
+		if String(st.mission_data("fight")["steps"][si]["id"]) == "relay":
+			st.goto_step("fight", si)
+	st.tracked = "fight"
+	w._set_phase("relay")
+	w._relay_begin()
+	GameState.story_foot_guard = w._foot_rescue
+	var body: Dictionary = w._relay_body()
+	var site_ok: bool = not body.is_empty() and GameState.pois_for(Universe.special_system("hollow"), body).any(func(s): return String(s.get("story", "")) == "relay") \
+		and String(st.missions["fight"].get("target", "")) == String(body.get("id", "")) and GameState.gear.team.has(int(w._rook().get("id", -2)))
+	# down to the relay
+	Commands.execute({"type": "debug_special", "special": "hollow"})
+	for i in 30:
+		await get_tree().process_frame
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	# (Luz) the marker over the relay's world in Hollow
+	var mk: Array = main.story_ui.marker_targets()
+	var mark_ok: bool = mk.has(String(body["id"])) and not Universe.warp_target(int(main.view.system_id), String(body["id"])).is_empty()     # (a planet has no node: its place from the layout)
+	if not mark_ok:
+		print("W58G mark: tracked ", st.tracked, " targets ", mk, " body ", body.get("id", ""), " ", body.get("name", ""))
+	site_ok = site_ok and mark_ok
+	var f := GameState.active()
+	Commands._debug_leave_space(main)
+	f.docked_at = "land:" + String(body["id"])
+	main.land_at(body, w._relay_site(), true)          # (as in the game: the drone comes down, then the scene)
+	var intro_ok := false
+	var t0 := Time.get_ticks_msec()
+	var shot_done := {}
+	var hidden_seen := false                             # (Luz) at first only Rook's word: you are still in the drone
+	var no_window := true
+	if shots:
+		w.quick = false                                  # (the scene at its own pace for the pictures)
+	while Time.get_ticks_msec() - t0 < (70000 if shots else 15000):
+		await get_tree().process_frame
+		var g = main.ground
+		if g != null and g._lift_menu != null:
+			no_window = false                            # (Luz) no "Go in" window at a story's place
+			g._close_lift_menu()
+		if w._relay_intro_on and g != null and g.combat != null:
+			for fo0 in g.combat.foes:                      # (the guards at the ramp: you still in the drone, Rook too)
+				if is_instance_valid(fo0["w"]) and String(fo0["w"].bubble).begins_with("Check") and fo0["w"].bubble_t > 0.0:
+					hidden_seen = hidden_seen or not g.pilot.visible and g.combat.allies.size() >= 1 and g.combat.allies.all(func(a0): return not a0["w"].visible)
+			if shots:
+				var walkers: Array = g.combat.allies.map(func(a): return a["w"]) + g.combat.foes.map(func(fo): return fo["w"])
+				for pre in ["Nobody", "Easy", "Power cells", "Sign with", "Sleep", "Clear"]:
+					if shot_done.has(pre):
+						continue
+					for ww in walkers:
+						if is_instance_valid(ww) and String(ww.bubble).begins_with(pre) and ww.bubble_t > 0.0:
+							shot_done[pre] = true
+							await get_tree().create_timer(0.4).timeout
+							get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58g_intro_%d.png" % shot_done.size())
+							break
+		if g != null and bool(st.flags.get("w58_relay_intro", false)) and not w._relay_intro_on and g.input_enabled:
+			var downs := 0
+			for fo in g.combat.foes:
+				if fo["dead"] and bool(fo.get("passive", false)):
+					downs += 1
+			intro_ok = downs == 2 and g.combat.allies.size() >= 1 and hidden_seen and g.pilot.visible and no_window
+			break
+	w.quick = true
+	# inside, the relay room: the data core, then the transmitter
+	var g2 = main.ground
+	var core_ok := false
+	var over_ok := false
+	var out_ok := false
+	if g2 != null:
+		g2.depth = 1
+		g2.go_level("dungeon", "dungeon_in")
+		for i in 10:
+			await get_tree().process_frame
+		if g2._lift_menu != null:
+			g2._close_lift_menu()
+		var cd := {}
+		var od := {}
+		for d in g2.map.explore:
+			if String(d["kind"]) == "terminal" and (d.get("actions", []) as Array).has("coords"):
+				cd = d
+			if String(d["kind"]) == "terminal" and (d.get("actions", []) as Array).has("overload"):
+				od = d
+		if shots and not cd.is_empty():
+			if main._fade != null:
+				main._fade.color.a = 0.0
+			g2.pilot.pos = (cd["pos"] as Vector2) + Vector2(GroundMap.TILE * 2.5, GroundMap.TILE * 1.5)
+			g2.pilot.position = g2.pilot.pos * GroundMap.SCALE
+			for f8 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58g_room.png")
+		if not od.is_empty() and not cd.is_empty():
+			g2._hack_done(od, "overload")                  # (as in the game: hacked, then the choice)
+			var early: bool = not bool(st.flags.get("w58_overload", false))
+			# (Luz: the overload did not work) in once, it stays open: no new spike needed, straight to the choice
+			var keep_belt: Array = GameState.gear.belt.duplicate(true)
+			for bi in GameState.gear.belt.size():
+				var bb = GameState.gear.belt[bi]
+				if bb is Dictionary and not (bb as Dictionary).is_empty() and String(bb["id"]) == "cs_breach":
+					GameState.gear.belt[bi] = {}
+			g2._open_hack(od)
+			var reopen: bool = g2.minigame != null and String(g2.minigame.state) == "won" and (g2.minigame.actions as Array).has("overload")
+			g2._close_game()
+			GameState.gear.belt = keep_belt
+			g2._hack_done(cd, "coords")
+			g2._hack_done(od, "overload")
+			for i in 10:
+				await get_tree().process_frame
+			core_ok = early and reopen and bool(st.flags.get("w58_coords", false))
+			var aware: int = g2.combat.alive().filter(func(fo): return bool(fo.get("aware", false))).size()
+			over_ok = bool(st.flags.get("w58_overload", false)) and aware >= 3 and w._ol_layer != null and st.step_data("fight").get("id", "") == "escape" \
+				and w._ol_fx != null and is_instance_valid(w._ol_fx)
+			if shots:
+				if main._fade != null:
+					main._fade.color.a = 0.0
+				g2.pilot.pos = (od["pos"] as Vector2) + Vector2(-GroundMap.TILE * 2.0, GroundMap.TILE * 1.5)
+				g2.pilot.position = g2.pilot.pos * GroundMap.SCALE
+				g2.combat.frozen = true
+				w._overload_t = 12.0                         # (late in the countdown: wilder)
+				for f9 in 50:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58g_overload.png")
+				g2.combat.frozen = false
+			if not core_ok or not over_ok:
+				print("W58G core: early ", early, " reopen ", reopen, " fx ", w._ol_fx)
+		g2.go_level("landing", "dungeon_out")
+		for i in 10:
+			await get_tree().process_frame
+		out_ok = g2.combat.alive().filter(func(fo): return bool(fo.get("aware", false))).size() >= 3
+	# up and away
+	var cr0 := GameState.credits
+	main.take_off("orbit")
+	var done_ok := false
+	t0 = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 15000:
+		await get_tree().process_frame
+		if w.phase == "strike":
+			break
+	for i in 10:
+		await get_tree().process_frame
+	done_ok = w.phase == "strike" and bool(st.flags.get("w58_relay", false)) and st.step_data("fight").get("id", "") == "strike" and GameState.credits >= cr0 + 2500
+	# fallen on foot at the relay: awake at Dan's, the gear kept, a fresh relay
+	var fall_ok := false
+	for fl3 in ["w58_relay", "w58_coords", "w58_overload", "w58_relay_intro"]:
+		st.flags.erase(fl3)
+	w._relay_said = {}
+	w._set_phase("relay")
+	w._relay_begin()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	Commands.execute({"type": "debug_special", "special": "hollow"})
+	for i in 30:
+		await get_tree().process_frame
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	f = GameState.active()
+	Commands._debug_leave_space(main)
+	f.docked_at = "land:" + String(body["id"])
+	main.land_at(body, w._relay_site())
+	for i in 20:
+		await get_tree().process_frame
+	var try0 := int(st.flags.get("w58_relay_try", 0))
+	main._fallen("fight")
+	for i in 60:
+		await get_tree().process_frame
+	fall_ok = GameState.current_system == Universe.special_system("beyond") and GameState.gear.suit == "suit_mil_light:A" and w.phase == "relay" \
+		and int(st.flags.get("w58_relay_try", 0)) == try0 + 1 and not bool(st.flags.get("w58_relay_intro", false))
+	if not fall_ok:
+		print("W58G fall: sys ", GameState.current_system == Universe.special_system("beyond"), " suit ", GameState.gear.suit, " phase ", w.phase, " try ", st.flags.get("w58_relay_try", 0), "/", try0, " intro ", st.flags.get("w58_relay_intro", false), " ground ", main.ground != null)
+	check(site_ok and intro_ok and core_ok and over_ok and out_ok and done_ok and fall_ok,
+		"58: part 7 – the relay on a cold world in Hollow (on its map, the marker there, Rook along), two guards at the drone shocked by Rook, the data core first, the transmitter overloaded (alarm, more of them, the countdown), more outside, up and away (2,500 cr, on to the strike); fallen on foot: awake at Dan's, gear kept, a fresh relay  [%s %s %s %s %s %s %s]" % [site_ok, intro_ok, core_ok, over_ok, out_ok, done_ok, fall_ok])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	w._show_overload(false)
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	if main.has_meta("dan_work"):
+		main.remove_meta("dan_work")
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	st.from_dict(keep)
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	GameState.pilot["tree"] = keep_tree
+	GameState.lodging = keep_lod
+	GameState.gear.from_dict(keep_gear)
+	GameState.story_guard = Callable()
+	GameState.story_foot_guard = Callable()
+	main.story_ui._radio_q.clear()
+
+
+## Package 58, part 7 (Luz): the relay station – the compound outside (mast, gate with turret and terminal, the welded
+## hatch, the fence, guards), two levels inside, the relay room at the bottom (data core, transmitter).
+func _test_relay58(_view: SystemView) -> void:
+	var shots := OS.get_environment("R58_SHOTS") != ""
+	Commands.cheats_enabled = true
+	Commands.execute({"type": "debug_special", "special": "hollow"})
+	for i in 30:
+		await get_tree().process_frame
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var sid := GameState.current_system
+	var body := {}
+	var L: Dictionary = Universe.get_layout(sid)
+	for b in L["planets"] + L.get("moons", []):
+		if Universe.landable(b) and body.is_empty():
+			body = b
+	if body.is_empty():
+		check(false, "58: part 7 – a landable world in Hollow")
+		return
+	var site := {"id": "relay58_test", "name": "Relay Station", "kind": "pirate", "poi": true, "theme": "relay", "seed": 58007,
+		"danger": "yellow", "lon": 0.3, "lat": 0.2, "system": sid, "body": String(body["id"])}
+	var f := GameState.active()
+	Commands._debug_leave_space(main)
+	f.docked_at = "land:" + String(body["id"])
+	main.land_at(body, site)
+	for i in 30:
+		await get_tree().process_frame
+	var g = main.ground
+	if g != null and g._lift_menu != null:
+		g._close_lift_menu()                             # (the window of possible targets)
+	var out_ok: bool = g != null and g.map != null and g.map.explore.any(func(d): return String(d["kind"]) == "turret") 		and g.map.explore.any(func(d): return String(d["kind"]) == "breach") and g.map.zones.filter(func(z): return String(z.get("kind", "")) == "dungeon_in").size() == 2
+	if shots and g != null:
+		g.pilot.pos = g.map.spawn
+		g.story_zoom = 0.38
+		g.story_cam = Vector2(36, 20) * GroundMap.TILE
+		for f8 in 40:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/relay_outside.png")
+		g.story_zoom = 1.0
+		g.story_cam = Vector2(35, 17) * GroundMap.TILE
+		for f8 in 30:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/relay_gate.png")
+	# (Luz) the gate's turret: a target you can lock and shoot to pieces; down, it is wrecked
+	var tur_ok := false
+	if g != null and g.combat != null:
+		var tu: Dictionary = {}
+		for d in g.map.explore:
+			if String(d["kind"]) == "turret":
+				tu = d
+		if not tu.is_empty():
+			g._turrets_step(0.016)
+			var tf = tu.get("foe", null)
+			var lockable: bool = tf is Dictionary and g.combat.foes.has(tf) and bool(tf.get("fixed", false))
+			if lockable:
+				g.combat.lock(tf)
+				var p0: Vector2 = (tf["w"] as Walker).pos
+				g.combat._foe_step(tf, 0.5)
+				var still: bool = (tf["w"] as Walker).pos == p0 and not bool(tf["aware"])
+				g.combat._hurt_foe(tf, 99999.0, "kinetic")
+				g._turrets_step(0.016)
+				tur_ok = still and String(tu["state"]) == "wrecked" and not g.combat.foes.filter(func(f): return not f["dead"]).has(tf)
+			if not tur_ok:
+				print("R58 turret: lockable ", lockable, " state ", tu.get("state", ""))
+	out_ok = out_ok and tur_ok
+	var in_ok := false
+	var vents := [0, 0]
+	if g != null:
+		for dl in 2:
+			g.depth = dl
+			g.go_level("dungeon", "dungeon_in")
+			for i in 20:
+				await get_tree().process_frame
+			if g._lift_menu != null:
+				g._close_lift_menu()
+			vents[dl] = g.map.explore.filter(func(d): return String(d["kind"]) == "vent").size()
+			if dl == 1:
+				in_ok = g.map.explore.any(func(d): return String(d["kind"]) == "terminal" and (d.get("actions", []) as Array).has("coords")) 					and g.map.explore.any(func(d): return String(d["kind"]) == "terminal" and (d.get("actions", []) as Array).has("overload"))
+			if shots:
+				g.story_zoom = 0.3
+				g.story_cam = Vector2(g.map.w, g.map.h) * 0.5 * GroundMap.TILE
+				for f8 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/relay_level%d.png" % dl)
+				if dl == 1:
+					for d in g.map.explore:
+						if String(d["kind"]) == "reactor":
+							g.story_zoom = 1.2
+							g.story_cam = d["pos"]
+					for f8 in 30:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/relay_room.png")
+				g.story_zoom = 0.0
+				g.story_cam = Vector2.INF
+	check(out_ok and in_ok and vents[0] >= 1 and vents[1] >= 1, "58: part 7 – the relay station: the compound (gate under a turret, the welded hatch, two ways in), two levels with air shafts, the relay room (data core and transmitter)  [%s %s · vents %d %d]" % [out_ok, in_ok, vents[0], vents[1]])
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+
+
 ## Package 58, part 6 (Luz): back at Dan's: "About the pirate base..." – the briefing round the pool table (Silas
 ## walks, Dan misses, Ossa pots one), Ossa's gear lent with a tour over the Gear page (Rook into the ground team),
 ## Rook's combat simulation in the hangar (holograms, two rounds, shot down: the round again).
@@ -15068,11 +15415,12 @@ func _test_w58f(_view: SystemView) -> void:
 			for i in 10:
 				await get_tree().process_frame
 			var waits: bool = w._sim_stage == "to_start" and g2.combat.alive().is_empty()
-			if not g2.combat.sneaking:
-				g2.combat.toggle_sneak()
+			if g2.combat.sneaking:
+				g2.combat.toggle_sneak()                     # (Luz: standing at the marker, the team beside you)
 			to_start.call()
 			var r2: bool = await wait_for.call(func(): return w._sim_stage == "sneak" and g2.combat.alive().size() == 3, 3000)
-			r2 = r2 and back and waits and g2.combat.alive().all(func(f): return not bool(f.get("aware", false)))
+			await get_tree().create_timer(2.5).timeout       # standing still at the start: nobody sees you or Rook
+			r2 = r2 and back and waits and g2.combat.sneaking and w._sim_stage == "sneak" and g2.combat.alive().size() == 3 and g2.combat.alive().all(func(f): return not bool(f.get("aware", false)))
 			if shots and r2:
 				for f8 in 30:
 					await get_tree().process_frame
@@ -15123,6 +15471,7 @@ func _test_w58f(_view: SystemView) -> void:
 	GameState.lodging = keep_lod
 	GameState.gear.from_dict(keep_gear)
 	GameState.story_guard = Callable()
+	GameState.story_foot_guard = Callable()
 	main.story_ui._radio_q.clear()
 
 
@@ -16209,3 +16558,76 @@ func _test_w58b(_view: SystemView) -> void:
 	GameState.credits = keep_cr
 	GameState.pilot["tree"] = keep_tree
 	main.story_ui._radio_q.clear()
+
+
+## 0.8.58.6 (Luz: the hack hung with the controller): a push (stick, d-pad or key) steps the probe at once, held it
+## repeats; won, the stick picks the action and ✕ (an action event) does it.
+func _test_hackpad(_view: SystemView) -> void:
+	var HG = load("res://scripts/ground/hack_game.gd")
+	var hg = HG.new()
+	hg.level = 1
+	hg.actions = ["coords", "data"]
+	hg.seed_n = 5
+	add_child(hg)
+	await get_tree().process_frame
+	var p0: Vector2i = hg.probe
+	var want: Vector2i = Vector2i(0, -1) if hg._free(p0 + Vector2i(0, -1), true) else Vector2i(1, 0)
+	var act := "walk_up" if want == Vector2i(0, -1) else "walk_right"
+	Input.action_press(act, 0.8)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var at_once: bool = hg.probe == p0 + want
+	Input.action_release(act)
+	await get_tree().process_frame
+	hg.state = "won"
+	Input.action_press("walk_down", 0.8)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	Input.action_release("walk_down")
+	var picked: bool = hg.sel == 1
+	var res := [""]
+	hg.finished.connect(func(r): res[0] = r)
+	var ev := InputEventAction.new()
+	ev.action = "foot_dodge"
+	ev.pressed = true
+	hg._input(ev)
+	var done: bool = res[0] == "data"
+	hg.queue_free()
+	check(at_once and picked and done, "0.8.58.6: the hack with the controller – a push steps the probe at once, the stick picks the action, ✕ does it  [%s %s %s]" % [at_once, picked, done])
+
+
+## 0.8.58.6 (Luz: walking, the grenade landed elsewhere than the mark): with the controller the aim stays where the
+## right stick last pushed it when the stick springs back as you let go; with the mouse it lands at the mark.
+func _test_grmove(view: SystemView) -> void:
+	var gear = GameState.gear
+	Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+	for i in 20:
+		await get_tree().process_frame
+	var g = main.ground
+	var cb: GroundCombat = g.combat
+	gear.refill()
+	Commands.suit_god = true
+	gear.grenades[0] = {"id": "gr_frag", "n": 3}
+	gear.gr_sel = 0
+	var keep_pad: bool = Pad.using_pad
+	var keep_sim: bool = Pad.sim_on
+	Pad.using_pad = true
+	Pad.sim_on = true
+	Pad.sim_r = Vector2(0.0, -1.0)                       # aimed up (north) while walking right
+	g.pilot.dir = 3
+	cb.grenade_down()
+	cb.gr_held = 1.0
+	cb.step(0.05, Vector2.ZERO)
+	var aimed: Vector2 = cb.gr_aim - cb.pilot_pos()
+	Pad.sim_r = Vector2.ZERO                             # the stick springs back as you let go
+	g.pilot.pos += Vector2(6, 0)
+	cb.step(0.05, Vector2.ZERO)
+	var kept: Vector2 = cb.gr_aim - cb.pilot_pos()
+	cb.grenade_up()
+	var b: Vector2 = cb.grenades[-1]["b"] if not cb.grenades.is_empty() else Vector2.INF
+	var pad_ok: bool = aimed.y < -50.0 and kept.distance_to(aimed) < 1.0 and b.distance_to(cb.gr_aim) < 1.0
+	Pad.using_pad = keep_pad
+	Pad.sim_on = keep_sim
+	Pad.sim_r = Vector2.ZERO
+	Commands.suit_god = false
+	check(pad_ok, "0.8.58.6: a grenade with the controller lands where the stick aimed it, also when the stick springs back as you let go while walking  [%s %s %s]" % [aimed, kept, b])

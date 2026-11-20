@@ -221,6 +221,13 @@ const DIALOGUES := {
 		{"text": "Stay close and listen. I'll talk you through it.", "next": -1},
 		{"text": "Take your time. The holograms aren't going anywhere.", "next": -1},
 	]},
+	# package 58, part 7 (Luz): fallen at the relay – awake at Dan's
+	"dan_relay_wake": {"who": "dan", "lines": [
+		{"text": "Easy, easy. You're at my place. Rook dragged you back to the drone, and Ossa's people flew you both home."},
+		{"text": "Rook's fine, by the way. Swearing a lot, but fine.",
+			"answers": [["\"The relay...\"", 2, [], "The relay. We didn't get the coordinates."]]},
+		{"text": "It'll still be there. They'll have patched up what you broke, so it's a fresh start. Rest, check your gear, and go again when you're ready.", "next": -1},
+	]},
 	# package 58, part 6 (Luz): after a round of the simulation – more, or done
 	"rook_more": {"who": "rook", "lines": [
 		{"text": "Want to keep going? I can put three more in here, as often as you like.",
@@ -435,8 +442,15 @@ const MISSIONS := {
 				"goals": [{"id": "gear", "kind": "flag", "flag": "w58_gear", "label": "look over the gear Ossa lent you (Pilot window, Gear)"}]},
 			{"id": "sim", "title": "The simulation", "text": "Three hundred years out of practice: Rook runs a combat simulation in Dan's hangar to bring you up to date.",
 				"goals": [{"id": "sim", "kind": "flag", "flag": "w58_sim", "label": "talk to Rook in Dan's hangar and finish the simulation"}]},
-			{"id": "relay", "title": "The relay", "text": "Get into the pirates' relay station with Rook and pull the data from their computers. (Package 58, part 7: comes with the next part.)",
-				"goals": [{"id": "relay", "kind": "flag", "flag": "w58_relay", "label": "infiltrate the pirates' relay station"}]},
+			# package 58, part 7 (Luz): the relay station
+			{"id": "relay", "title": "The relay", "text": "The pirates' relay station stands on a cold world in Hollow. Land a good way off, get in with Rook, pull the coordinates of their base from the data core at the bottom, then overload the transmitter.",
+				"goals": [{"id": "coords", "kind": "flag", "flag": "w58_coords", "label": "pull the coordinates from their data core"},
+					{"id": "overload", "kind": "flag", "flag": "w58_overload", "label": "overload the transmitter"}]},
+			{"id": "escape", "title": "Get out!", "text": "The transmitter is going to blow and the whole nest is awake. Back to the landing drone and up.",
+				"goals": [{"id": "escape", "kind": "flag", "flag": "w58_relay", "label": "get back to the drone and take off"}],
+				"on_done": [{"do": "credits", "n": 2500}]},
+			{"id": "strike", "title": "The strike", "text": "Dan, Ossa and Silas are getting their ships ready. Together you strike at the pirates' base while they are deaf. (Package 58, part 8: comes with the next part.)",
+				"goals": [{"id": "strike", "kind": "flag", "flag": "w58_base_down", "label": "destroy the pirates' base"}]},
 		]},
 	# package 56, sequence 5 (Luz): the flight training – flown with one of Dan's drones from Old Betty in a wreck field;
 	# the flags are set by scripts/ground/intro_five.gd (it watches the drone), the targets too

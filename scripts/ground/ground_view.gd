@@ -857,6 +857,7 @@ func _turrets_step(delta: float) -> void:
 		if String(d["kind"]) != "turret":
 			continue
 		d["flash"] = maxf(0.0, float(d.get("flash", 0.0)) - delta)
+		_turret_target(d)
 		if String(d["state"]) != "on" or combat.emp_t > 0.0:
 			continue
 		var eye: Vector2 = (d["pos"] as Vector2) + Vector2(0, 10)
@@ -893,6 +894,39 @@ func _turrets_step(delta: float) -> void:
 		combat.shots.append({"a": muzzle, "b": end, "t": 0.0, "life": maxf(0.05, muzzle.distance_to(end) / 900.0), "kind": "slug",
 			"col": Color(1.0, 0.85, 0.4), "res": res, "done": false})
 		Audio.play("w_autocannon", "turret fires", -12.0)
+
+
+## 0.8.58.6 (Luz: there was no way to aim at a turret): a turret that is on can be locked (R) and shot to pieces –
+## a target of its own at its eye that neither walks nor shoots; down, the turret is wrecked. Switched off, it goes.
+func _turret_target(d: Dictionary) -> void:
+	var tf = d.get("foe", null)
+	var have: bool = tf is Dictionary and combat.foes.has(tf)
+	if String(d["state"]) == "on":
+		if not have:
+			var nf: Dictionary = combat.spawn("guard_heavy", (d["pos"] as Vector2) + Vector2(0, 10))
+			nf["name"] = "Turret"
+			nf["fixed"] = true
+			nf["passive"] = true
+			nf["holo"] = true                           # (nothing to loot from a gun on a wall)
+			nf["st"] = {"shield": 40.0, "armor": 30.0, "health": 90.0}
+			nf["mx"] = {"shield": 40.0, "armor": 30.0, "health": 90.0}
+			(nf["w"] as Walker).visible = false
+			d["foe"] = nf
+		elif bool(tf["dead"]):
+			d["state"] = "wrecked"
+			d["foe"] = null
+			for k in 14:
+				combat.sparks.append({"pos": (d["pos"] as Vector2) + Vector2(randf_range(-8, 8), -26 + randf_range(-8, 8)), "vel": Vector2(randf_range(-90, 90), randf_range(-120, -20)), "t": 0.0, "col": Color(1.0, 0.7, 0.3)})
+			Audio.play("explosion_small", "turret wrecked", -4.0)
+			_say_toast("The turret is wrecked.", 2.5)
+	elif have:
+		combat.foes.erase(tf)                            # (switched off: no longer a target)
+		combat.locks.erase(tf)
+		if combat.active == tf:
+			combat.active = null
+		if is_instance_valid(tf["w"]):
+			(tf["w"] as Walker).queue_free()
+		d["foe"] = null
 
 
 ## 0.7.53.5 (Luz): the alarm – if the level has a box that is not cut, it rings: everyone here comes for you and two
@@ -1566,7 +1600,11 @@ func _wires_step(delta: float) -> void:
 				continue                                      # review 7 W2
 			var d0: Dictionary = map.explore[int(k)]
 			combat._explode((d0["pos"] as Vector2) + Vector2(0, 6), 70.0, 55.0, "explosive", null)
-			raise_alarm()
+			# 0.8.58.6 (Luz: one wire woke the whole level): the blast is heard near by, it rings no alarm
+			for f in combat.alive():
+				var fd: float = (f["w"] as Walker).pos.distance_to(d0["pos"])
+				if fd < 150.0 or (fd < 320.0 and not bool(combat.sight((f["w"] as Walker).pos, d0["pos"])["blocked"])):
+					combat._wake(f)
 	for i in map.explore.size():
 		var d: Dictionary = map.explore[i]
 		if String(d["kind"]) != "tripwire" or String(d["state"]) != "shut":
@@ -1574,7 +1612,12 @@ func _wires_step(delta: float) -> void:
 		var a: Vector2 = d["pos"]
 		var ln := float(d.get("len", 3)) * GroundMap.TILE
 		var b: Vector2 = a + (Vector2(0, ln) if bool(d.get("vertical", true)) else Vector2(ln, 0))
-		if Geometry2D.get_closest_point_to_segment(pilot.pos, a, b).distance_to(pilot.pos) < 4.0 and not combat.sneaking:
+		var near_d := Geometry2D.get_closest_point_to_segment(pilot.pos, a, b).distance_to(pilot.pos)
+		d["near"] = near_d < GroundMap.TILE * 3.0           # (drawn brighter, a red glint, when you come close)
+		if near_d < GroundMap.TILE * 2.5 and not bool(d.get("warned", false)):
+			d["warned"] = true                          # 0.8.58.6 (Luz): a word before you walk into it
+			_say_toast("A tripwire ahead! Sneak over it (%s) or disarm it (%s)." % [Keybinds.key_text("foot_sneak"), Keybinds.key_text("interact")], 3.5)
+		if near_d < 4.0 and not combat.sneaking:
 			d["state"] = "fired"
 			_wires_t[i] = 0.6
 			_say_toast("Click! A tripwire!", 1.5)
@@ -2900,11 +2943,11 @@ func _q_room_box() -> void:
 func _place_room_box() -> void:
 	if _room_box == null or not is_instance_valid(_room_box):
 		return
-	var y := 214.0
+	var y := get_viewport().get_visible_rect().size.y - 104.0 - _room_box.size.y
 	var su = get_tree().current_scene.get("story_ui") if get_tree().current_scene != null else null
 	var tr = su._tracker if su != null and su.get("_tracker") != null else null
 	if tr != null and is_instance_valid(tr) and (tr as Control).visible:
-		y = (tr as Control).position.y + (tr as Control).size.y + 8.0
+		y = (tr as Control).position.y - _room_box.size.y - 8.0    # (0.8.58.6: the tracker is bottom left now – over it)
 	_room_box.position = Vector2(14, y)
 
 
@@ -3564,16 +3607,17 @@ func _open_hack(d: Dictionary) -> void:
 		var b = GameState.gear.belt[i]
 		if b is Dictionary and not (b as Dictionary).is_empty() and String(b["id"]) == "cs_breach" and bi < 0:
 			bi = i
-	if bi < 0:
+	var already: bool = bool(d.get("hacked", false)) and String(d["kind"]) == "terminal"
+	if bi < 0 and not already:
 		_say_toast("You need an E-Breach on your belt to jack in.", 3.0)
 		return
-	var bp: Dictionary = GameState.gear.belt[bi]
-	bp["n"] = int(bp["n"]) - 1
-	if int(bp["n"]) <= 0:
-		GameState.gear.belt[bi] = {}
-	if String(d.get("state", "")) == "hacked":
-		_say_toast("You are already in: it does what you told it.", 2.0)
+	if not already:
+		var bp: Dictionary = GameState.gear.belt[bi]
+		bp["n"] = int(bp["n"]) - 1
+		if int(bp["n"]) <= 0:
+			GameState.gear.belt[bi] = {}
 	var hg = HackGame.new()
+	hg.start_won = already                           # 0.8.58.6 (Luz): in once, it stays open to you – no new spike
 	hg.level = int(d.get("level", 1))
 	hg.skill = GameState.skill_level("electronics")
 	hg.actions = d.get("actions", ["door", "data"])
@@ -3646,6 +3690,22 @@ func _explore_effect(d: Dictionary, what: String) -> void:
 		"logs":
 			txt = ""
 			_poi_target_done(d)                            # 0.7.53.20: the research station's logs
+		"coords":
+			# package 58, part 7 (Luz): the relay's data core – the coordinates of the pirates' base
+			GameState.story.set_flag("w58_coords", true)
+			txt = "Download complete: the coordinates of their base, and their traffic of the last months."
+			Audio.play("lock_acquired", "relay: coordinates", -2.0)
+		"overload":
+			if not bool(GameState.story.flags.get("w58_coords", false)):
+				txt = "Not yet: the coordinates first, from their data core. Once the transmitter goes, so does the data. (You stay in: come back to it.)"
+			else:
+				GameState.story.set_flag("w58_overload", true)
+				_site["alarmed"] = true
+				for al in map.explore:
+					if String(al["kind"]) == "alarm":
+						al["state"] = "ringing"
+				txt = "The transmitter whines higher and higher: overload. Get out!"
+				Audio.play("alarm_hull", "relay: overload", -4.0)
 		"restart":
 			txt = ""
 			_restart_reactor(d)                            # 0.7.53.3: the dealer's client list – the site's target
@@ -3995,6 +4055,8 @@ func _poi_map(lv: String, lsz: Vector2) -> GroundMap:
 			mo = DungeonGen.build_plaza(_body, _site)                                   # 0.7.53.19
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "station":
 			mo = DungeonGen.build_station_outside(_body, _site, lsz.x, lsz.y)          # 0.7.53.20
+		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "relay":
+			mo = DungeonGen.build_relay_outside(_body, _site, lsz.x, lsz.y)               # package 58, part 7: the relay station
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "cliff":
 			mo = DungeonGen.build_cliff(_body, _site, lsz.x, lsz.y)                       # 0.7.53.11
 		elif String(PoiData.THEMES.get(theme, {}).get("outside", "ruin")) == "lift":
@@ -4053,7 +4115,9 @@ func _poi_setup() -> void:
 	_mm.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_mm.draw.connect(_draw_minimap)
 	_ui.add_child(_mm)
-	if not bool(_site.get("mission", false)) and level in ["landing", "alley", "minehead", "plaza"] and not map.has_meta("shown") and not bool(_site.get("used", false)):
+	if String(_site.get("story", "")) != "" and not map.has_meta("shown"):
+		map.set_meta("shown", true)                     # 0.8.58.6 (Luz): a story's place – the story says what to do there
+	elif not bool(_site.get("mission", false)) and level in ["landing", "alley", "minehead", "plaza"] and not map.has_meta("shown") and not bool(_site.get("used", false)):
 		map.set_meta("shown", true)
 		call_deferred("_poi_window")
 	elif bool(_site.get("mission", false)) and not map.has_meta("shown") and (level in ["landing", "alley", "minehead", "plaza"] or (level == "dungeon" and depth == 0 and String(_site.get("goal", "")) == "reactivate")):
