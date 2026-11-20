@@ -8,6 +8,45 @@ extends RefCounted
 const TILE := GroundMap.TILE
 
 
+## Package 58, part 6 (Luz): Dan's hangar cleared for Rook's combat simulation – a long bay of deck plating, the
+## emitters along its walls, and cover of hard light: barriers you can shoot over, bulwarks you cannot see through,
+## crates. You come in at the west end; the holograms appear at the east end. No way out but through.
+static func build_sim(station: Dictionary, foes: Array) -> GroundMap:
+	var m := GroundMap.new()
+	m.pal = DeckGen.palette_for(station)
+	m.title = String(station.get("name", "Station"))
+	m.hull_top = -60
+	var W := 44
+	var H := 24
+	m.setup(W, H)
+	# (Luz) walls like every other room's: the cap all round, the north wall's face two rows high across the whole
+	# width, the floor inside
+	m.fill(0, 0, W, H, GroundMap.T.CAP)
+	m.fill(1, 1, W - 2, 2, GroundMap.T.FACE)
+	m.fill(1, 3, W - 2, H - 4, GroundMap.T.FLOOR, 14)
+	# the emitters along the walls
+	for k in range(3, W - 2, 5):
+		m.lights.append({"pos": Vector2(k, 2.2) * TILE, "r": 26.0, "col": Color(0.45, 0.9, 1.0), "a": 0.45, "flicker": k % 10 == 3})
+		m.lights.append({"pos": Vector2(k, H - 1.2) * TILE, "r": 22.0, "col": Color(0.45, 0.9, 1.0), "a": 0.35})
+	m.zones.append({"rect": Rect2(), "kind": "label", "id": "sim_sign", "title": "COMBAT SIMULATION",
+		"col": Color(0.45, 0.9, 1.0), "sign": Vector2(W * 0.5, 2.6) * TILE})
+	m.spawn = Vector2(4.0, H * 0.5) * TILE
+	# the cover, in hard light, the same each time (Rook's programme)
+	var pieces := [
+		["barrier", 9, 5, 3, 1], ["crates", 9, 15, 2, 1], ["crates", 9, 16, 2, 1], ["barrier", 13, 10, 1, 3],
+		["bulwark", 16, 4, 3, 1], ["barrier", 17, 17, 4, 1], ["crates", 20, 9, 2, 1], ["barrier", 23, 13, 1, 3],
+		["bulwark", 25, 7, 1, 3], ["barrier", 27, 18, 3, 1], ["crates", 29, 4, 2, 1], ["barrier", 31, 11, 3, 1],
+		["bulwark", 34, 15, 3, 1], ["barrier", 36, 6, 1, 3], ["crates", 38, 12, 2, 1], ["barrier", 39, 18, 3, 1],
+	]
+	for pc in pieces:
+		m.add_object({"kind": String(pc[0]), "x": int(pc[1]), "y": int(pc[2]), "w": int(pc[3]), "h": int(pc[4]), "holo": true})
+	for p in [Vector2(37, 9), Vector2(40, 15), Vector2(35, 20), Vector2(41, 5), Vector2(32, 8), Vector2(30, 15), Vector2(41, 11), Vector2(37, 21)]:
+		m.foe_spawns.append(p * TILE)
+	m.set_meta("foes", foes.duplicate())
+	m.set_meta("holo", true)
+	return m
+
+
 static func build(body: Dictionary, site: Dictionary, ship_len: float, ship_beam: float) -> GroundMap:
 	var m := GroundMap.new()
 	m.pal = DeckGen.palette_for_body(body)

@@ -83,11 +83,12 @@ func _next_dialogue() -> void:
 	_dlg_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_dlg_layer)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.45)
+	dim.color = Color(0, 0, 0, 0.0 if bool(d.get("no_dim", false)) else 0.45)      # (Luz) a cutscene: the scene stays clear
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dlg_layer.add_child(dim)
 	dialogue = DialogueViewS.new()
 	dialogue.portrait_tex = GameState.story.portrait_of(who)
+	dialogue.no_dim = bool(d.get("no_dim", false))
 	dialogue.add_to_group("kbd_menu")
 	_dlg_layer.add_child(dialogue)
 	dialogue.open(GameState.story.look_of(who), String(c.get("name", who)), String(c.get("sub", "")), c.get("col", GOLD))
@@ -250,6 +251,11 @@ func _radio_step(dt: float) -> void:
 		return
 	_radio_shown += dt * 40.0
 	_radio_text.visible_characters = int(_radio_shown)
+	# (Luz) the keys follow the device in use: picked up the controller (or the mouse) while the call is on – it says so
+	var pad_now: bool = Pad.enabled and Pad.using_pad
+	if pad_now != bool(_radio_d.get("_pad", pad_now)) and _radio_d.has("text"):
+		_radio_text.text = "\"%s\"" % GameState.story.keys(String(_radio_d["text"]))
+	_radio_d["_pad"] = pad_now
 	_radio_t -= dt
 	_place_radio()
 	# a call that waited for something goes the moment it is done (package 58: the guided tour's steps)

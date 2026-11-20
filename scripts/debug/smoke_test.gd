@@ -708,6 +708,8 @@ func _process(delta: float) -> void:
 				await _test_cam58(main.view)             # package 58: the camera off the ship – targeting by the screen's middle
 				await _test_w58d(main.view)              # package 58, part 4: three months later, the party, the Maul
 				await _test_w58e(main.view)              # package 58, part 5: Silas, the Listener, the waves
+				await _test_w58f(main.view)              # package 58, part 6: the briefing, Ossa's gear, the simulation
+				await _test_arm58(main.view)             # (Luz) weapons armed while the lock is still coming
 				_shooting = false
 				timer = 0.0
 				return
@@ -1293,6 +1295,50 @@ func _test_resources() -> void:
 
 
 ## Package 11: population, shuttles, miners, patrols and convoys.
+## (Luz, 20 Nov 2026) a weapon switched on while the lock is still coming is armed, and fires once the lock completes.
+func _test_arm58(view: SystemView) -> void:
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if GameState.active().docked_at != "":
+		Commands.execute({"type": "undock"})
+		for i in 60:
+			await get_tree().process_frame
+	view = main.view
+	var pl = view.player
+	if pl.cloaked():
+		pl.set_module_active("builtin_cloak", false)
+	var slot := ""
+	for k in pl.fit.modules:
+		if String(k).begins_with("weapon_"):
+			slot = String(k)
+			break
+	if slot == "" or pl.fit.in_transit():
+		check(true, "armed during the lock (skipped: no weapon)")
+		return
+	var p = view.spawn_npc(view._pirate_preset(), pl.position + Vector2(600, 0))
+	pl.locks.clear()
+	pl.active_lock = ""
+	var err0: String = pl.add_lock(p)
+	var prog0 := float(pl.locks[pl.lock_index(pl.active_lock)]["progress"]) if pl.active_lock != "" else -1.0
+	var err: String = pl.set_module_active(slot, true)
+	var armed: bool = err == "" and bool(pl.module_on.get(slot, false)) and prog0 < 1.0
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 12000 and pl.locked_node() == null:
+		await get_tree().process_frame
+	for i in 10:
+		await get_tree().process_frame
+	var fired: bool = pl.locked_node() == p and bool(pl.module_on.get(slot, false))
+	if not fired:
+		print("ARM58: locked ", pl.locked_node(), " p ", p, " on ", pl.module_on.get(slot, false), " state ", pl.module_state.get(slot, ""), " docked ", GameState.active().docked_at)
+	check(err0 == "" and armed and fired, "a weapon switched on during the lock is armed and stays on once the lock completes  [%s %s %s · %s]" % [err0 == "", armed, fired, err])
+	pl.set_module_active(slot, false)
+	pl.locks.clear()
+	pl.active_lock = ""
+	if is_instance_valid(p):
+		p.queue_free()
+
+
 func _test_traffic(view: SystemView) -> void:
 	var tr = view.traffic
 	check(tr != null, "system traffic is running")
@@ -5074,8 +5120,14 @@ func _test_axiom(view: SystemView) -> void:
 	cf.capacitor = float(cf.stats()["cap_max"])
 	cs.set_module_active("builtin_cloak", true)
 	var re_cloaked: bool = cs.cloaked()
-	var ew0: String = cs.set_module_active("weapon_0", true)      # the lock is still running: refused, still cloaked
+	var keep_locks: Array = cs.locks.duplicate(true)
+	var keep_al: String = cs.active_lock
+	cs.locks.clear()
+	cs.active_lock = ""
+	var ew0: String = cs.set_module_active("weapon_0", true)      # no lock at all: refused, still cloaked
 	var refused_stays: bool = ew0 != "" and cs.cloaked()
+	cs.locks = keep_locks
+	cs.active_lock = keep_al
 	for l7 in cs.locks:
 		l7["progress"] = 1.0
 	var ew1: String = cs.set_module_active("weapon_0", true)
@@ -14765,6 +14817,315 @@ func _test_padshot(_view: SystemView) -> void:
 	Pad.using_pad = false
 
 
+## Package 58, part 6 (Luz): back at Dan's: "About the pirate base..." – the briefing round the pool table (Silas
+## walks, Dan misses, Ossa pots one), Ossa's gear lent with a tour over the Gear page (Rook into the ground team),
+## Rook's combat simulation in the hangar (holograms, two rounds, shot down: the round again).
+func _test_w58f(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
+	var keep_gear: Dictionary = GameState.gear.to_dict()
+	var shots := OS.get_environment("W58F_SHOTS") != ""
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	if GameState.active().docked_at == "":
+		GameState.active().docked_at = String(Universe.get_layout(GameState.current_system)["stations"][0]["id"])
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w58_"):
+			st.flags.erase(fl)
+	for mid in ["darling", "fight"]:
+		st.missions.erase(mid)
+		st.done.erase(mid)
+	st.flags["dan_deal_yes"] = true
+	main.station_panel.close()
+	main._start_dan_work("yes")
+	var w = main.get_meta("dan_work")
+	w.quick = true
+	if w.tour != null and is_instance_valid(w.tour):
+		w.tour.queue_free()
+	w.tour = null
+	w._give_maul()
+	for fl2 in ["w58_maul", "w58_contact", "w58_atlisten", "w58_listened"]:
+		st.flags[fl2] = true
+	st.start("fight")
+	for si in (st.mission_data("fight")["steps"] as Array).size():
+		if String(st.mission_data("fight")["steps"][si]["id"]) == "report":
+			st.goto_step("fight", si)
+	st.tracked = "fight"
+	w._set_phase("report")
+	# Dan in the bar, the way in
+	main.open_deck()
+	for i in 4:
+		await get_tree().process_frame
+	var dan_ok := false
+	if main.ground != null:
+		main.ground.go_level("commercial", "lift")
+		for i in 4:
+			await get_tree().process_frame
+		dan_ok = main.ground.story_people.has("dan") and String(main.ground.story_people["dan"].marker) == "!" and main.ground.story_people.has("ossa") and main.ground.story_people.has("silas")
+		if shots:
+			var dn9 = main.ground.story_people["dan"]
+			main.ground.pilot.pos = dn9.pos + Vector2(-60, 30)
+			main.ground.pilot.position = main.ground.pilot.pos * GroundMap.SCALE
+			for f8 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_return.png")
+		main.ground.story_talk.emit("dan")
+		for i in 3:
+			await get_tree().process_frame
+		dan_ok = dan_ok and main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "dan_report"
+	st.set_flag("w58_briefing", true)
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	# the briefing round the pool table
+	var brief_ok := false
+	var acts_ok := false
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 15000:
+		await get_tree().process_frame
+		if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "briefing":
+			var g = main.ground
+			brief_ok = g != null and g.story_people.has("dan") and g.story_people.has("ossa") and g.story_people.has("silas") and w._pool != null
+			var sil = g.story_people.get("silas", null) if g != null else null
+			var s0: Vector2 = sil.pos if sil != null else Vector2.ZERO
+			for f8 in 40:
+				await get_tree().process_frame
+			var walked: bool = sil != null and is_instance_valid(sil) and (sil.pos as Vector2).distance_to(s0) > 4.0
+			var red0: Vector2 = w._pool.balls[1]["pos"] if w._pool != null else Vector2.ZERO
+			main.story_ui._line(2)
+			for f7 in 3:
+				await get_tree().process_frame
+			var hid: bool = not main.story_ui._dlg_layer.visible
+			var tw0 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tw0 < 5000:
+				await get_tree().process_frame
+			var missed: bool = w._pool != null and (w._pool.balls[1]["pos"] as Vector2).distance_to(red0) > 2.0 and bool(w._pool.balls[1]["on"])
+			main.story_ui._line(3)
+			tw0 = Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tw0 < 5000:
+				await get_tree().process_frame
+			var sunk: bool = w._pool != null and not bool(w._pool.balls[4]["on"])
+			acts_ok = walked and missed and sunk and hid and main.story_ui._dlg_layer.visible
+			if not acts_ok:
+				print("W58F acts: walked ", walked, " missed ", missed, " sunk ", sunk, " hid ", hid)
+			if shots:
+				main.story_ui._line(5)
+				main.story_ui._dlg_layer.visible = false
+				for f8 in 20:
+					await get_tree().process_frame
+				main._fade.color.a = 0.0
+				await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_briefing.png")
+				main.story_ui._dlg_layer.visible = true
+				for f8 in 4:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_briefing_dlg.png")
+			main.story_ui._close_dialogue()
+			break
+	# Ossa's gear and the tour over the Gear page
+	t0 = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 8000:
+		await get_tree().process_frame
+		if w.phase == "gear" and w.tour != null and is_instance_valid(w.tour) and main.pilot_window.visible:
+			break
+	var gg = GameState.gear
+	var gear_ok: bool = gg.suit == "suit_mil_light:A" and gg.drones.has("dr_laser:A") and gg.weapons.has("wp_laser_rifle:A") \
+		and gg.belt.any(func(b): return b is Dictionary and String(b.get("id", "")) == "tl_cutter:A") and bool(st.flags.get("w58_gear_lent", false))
+	var tour_ok: bool = w.tour != null and is_instance_valid(w.tour) and w._target("pw_suit") != null and w._target("pw_drones") != null
+	if shots and tour_ok:
+		for k in 4:
+			w.tour._wait = 0.0
+			if main.story_ui.radio_typing():
+				main.story_ui.radio_finish_typing()
+			if k > 0:
+				w.tour.tour_confirm()
+			for f9 in 25:
+				if w.tour != null and is_instance_valid(w.tour):
+					w.tour._wait = 1.0
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_gear%d.png" % k)
+	var rook: Dictionary = w._rook()
+	var task_seen := false
+	for i in 400:
+		if w.tour == null or not is_instance_valid(w.tour):
+			break
+		if w.tour.is_task():
+			task_seen = true
+			gg.team_toggle(rook)
+			main.pilot_window.rebuild()
+		w.tour._wait = 0.0
+		if main.story_ui.radio_typing():
+			main.story_ui.radio_finish_typing()
+		if not w.tour.is_task():
+			w.tour.tour_confirm()
+		await get_tree().process_frame
+	for i in 4:
+		await get_tree().process_frame
+	tour_ok = tour_ok and task_seen and gg.team.has(int(rook.get("id", -2))) and w.phase == "sim" and bool(st.flags.get("w58_gear", false)) \
+		and st.step_data("fight").get("id", "") == "sim" and not main.pilot_window.visible
+	# Rook in the hangar, the simulation
+	var sim_ok := false
+	var holo_ok := false
+	var team_ok := false
+	var lost_ok := false
+	var done_ok := false
+	var g2 = main.ground
+	if g2 != null and is_instance_valid(g2):
+		g2.go_level("hangar", "stairs")
+		for i in 4:
+			await get_tree().process_frame
+		var rook_here: bool = g2.story_people.has("rook")
+		if shots and rook_here:
+			main._fade.color.a = 0.0
+			g2.pilot.pos = g2.story_people["rook"].pos + Vector2(-30, 14)
+			g2.pilot.position = g2.pilot.pos * GroundMap.SCALE
+			for f8 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_hangar.png")
+		g2.story_talk.emit("rook")
+		for i in 3:
+			await get_tree().process_frame
+		rook_here = rook_here and main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "rook_sim"
+		st.set_flag("w58_sim_go", true)
+		main.story_ui._close_dialogue()
+		t0 = Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < 6000:
+			await get_tree().process_frame
+			if String(g2.level) == "sim" and g2.combat != null and g2.combat.alive().size() == 3:
+				break
+		for i in 10:
+			await get_tree().process_frame
+		if not (String(g2.level) == "sim" and g2.combat != null and g2.combat.alive().size() == 3):
+			print("W58F sim: rook ", rook_here, " level ", g2.level, " combat ", g2.combat != null, " alive ", g2.combat.alive().size() if g2.combat != null else -1, " phase ", w.phase)
+		sim_ok = rook_here and String(g2.level) == "sim" and g2.combat != null and g2.combat.alive().size() == 3
+		holo_ok = sim_ok and g2.combat.foes.all(func(f): return bool(f.get("holo", false)))
+		team_ok = sim_ok and g2.combat.allies.size() >= 1
+		# (Luz) the command wheel on the controller: a stick points into it, the pilot stands still meanwhile
+		var keep_pad := [Pad.enabled, Pad.using_pad, Pad.sim_on, Pad.sim_l]
+		Pad.enabled = true
+		Pad.using_pad = true
+		Pad.sim_on = true
+		Pad.sim_l = Vector2(0, -1)
+		g2.combat.wheel_open = true
+		var p0: Vector2 = g2.pilot.pos
+		for i in 10:
+			await get_tree().process_frame
+		var wpick := GroundCombat.wheel_pick(g2.wheel_centre(), g2.wheel_point())
+		var still: bool = g2.pilot.pos.distance_to(p0) < 1.0
+		g2.combat.wheel_open = false
+		g2._wheel_stick = Vector2.ZERO
+		Pad.enabled = keep_pad[0]
+		Pad.using_pad = keep_pad[1]
+		Pad.sim_on = keep_pad[2]
+		Pad.sim_l = keep_pad[3]
+		team_ok = team_ok and wpick == String(GroundCombat.WHEEL[0]) and still
+		if not team_ok:
+			print("W58F wheel: pick ", wpick, " still ", still)
+		if shots and sim_ok:
+			main._fade.color.a = 0.0
+			g2.pilot.pos = g2.map.spawn + Vector2(GroundMap.TILE * 10, 0)
+			g2.pilot.position = g2.pilot.pos * GroundMap.SCALE
+			for f8 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_sim.png")
+			g2.story_zoom = 0.42
+			g2.story_cam = Vector2(22, 12) * GroundMap.TILE
+			for f8 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_sim_room.png")
+			g2.story_zoom = 0.0
+			g2.story_cam = Vector2.INF
+		if sim_ok:
+			var wait_for := func(cond: Callable, ms: int) -> bool:
+				var tw := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tw < ms:
+					if cond.call():
+						return true
+					await get_tree().process_frame
+				return bool(cond.call())
+			var to_start := func():
+				g2.pilot.pos = g2.map.spawn
+				g2.pilot.position = g2.pilot.pos * GroundMap.SCALE
+			for f in g2.combat.alive():
+				g2.combat._hurt_foe(f, 99999.0, "kinetic")
+			# round 2: back to the marker on the west side first, then the guards (unaware)
+			var back: bool = await wait_for.call(func(): return w._sim_stage == "to_start" and w._sim_mark != null, 5000)
+			g2.pilot.pos = g2.map.spawn + Vector2(GroundMap.TILE * 12, 0)
+			g2.pilot.position = g2.pilot.pos * GroundMap.SCALE
+			for i in 10:
+				await get_tree().process_frame
+			var waits: bool = w._sim_stage == "to_start" and g2.combat.alive().is_empty()
+			if not g2.combat.sneaking:
+				g2.combat.toggle_sneak()
+			to_start.call()
+			var r2: bool = await wait_for.call(func(): return w._sim_stage == "sneak" and g2.combat.alive().size() == 3, 3000)
+			r2 = r2 and back and waits and g2.combat.alive().all(func(f): return not bool(f.get("aware", false)))
+			if shots and r2:
+				for f8 in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58f_sneak.png")
+			# shot down while sneaking: back to the start
+			GameState.gear.health = 5.0
+			g2.combat._hurt_pilot(9999.0, "kinetic")
+			var lost_back: bool = await wait_for.call(func(): return w._sim_stage == "to_start" and g2.combat.alive().is_empty(), 3000)
+			to_start.call()
+			await wait_for.call(func(): return w._sim_stage == "sneak", 3000)
+			# unseen to the east side: Rook asks – three more, then done
+			g2.pilot.pos = Vector2(float(g2.map.w) - 3.0, float(g2.map.h) * 0.5) * GroundMap.TILE
+			g2.pilot.position = g2.pilot.pos * GroundMap.SCALE
+			var asked: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "rook_more", 6000)
+			st.set_flag("w58_sim_more", true)
+			main.story_ui._close_dialogue()
+			var free3: bool = await wait_for.call(func(): return w._sim_stage == "free" and g2.combat.alive().size() == 3 and g2.combat.alive().all(func(f): return bool(f.get("aware", false))), 3000)
+			for f3 in g2.combat.alive():
+				g2.combat._hurt_foe(f3, 99999.0, "kinetic")
+			var asked2: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "rook_more", 6000)
+			st.set_flag("w58_sim_end", true)
+			main.story_ui._close_dialogue()
+			lost_ok = r2 and lost_back and asked and free3 and asked2 and GameState.gear.health >= 99.0
+			if not lost_ok:
+				print("W58F sim2: back ", back, " waits ", waits, " r2 ", r2, " lost_back ", lost_back, " asked ", asked, " free3 ", free3, " asked2 ", asked2, " stage ", w._sim_stage)
+			await wait_for.call(func(): return w.phase == "relay" and String(g2.level) == "hangar", 6000)
+			done_ok = w.phase == "relay" and bool(st.flags.get("w58_sim", false)) and String(g2.level) == "hangar" and st.step_data("fight").get("id", "") == "relay"
+	check(dan_ok and brief_ok and acts_ok and gear_ok and tour_ok and sim_ok and holo_ok and team_ok and lost_ok and done_ok,
+		"58: part 6 – Dan in the bar (About the pirate base...), the briefing round the pool table (Silas walks, Dan misses, Ossa pots one), Ossa's gear lent, the tour over the Gear page (Rook into the ground team), Rook's simulation in the hangar (holograms, Rook along, two rounds, shot down: again)  [%s %s %s %s %s %s %s %s %s %s]" % [dan_ok, brief_ok, acts_ok, gear_ok, tour_ok, sim_ok, holo_ok, team_ok, lost_ok, done_ok])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	main.pilot_window.close()
+	if w != null and is_instance_valid(w):
+		if w.tour != null and is_instance_valid(w.tour):
+			w.tour.queue_free()
+		w.queue_free()
+	if main.has_meta("dan_work"):
+		main.remove_meta("dan_work")
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	st.from_dict(keep)
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	GameState.pilot["tree"] = keep_tree
+	GameState.lodging = keep_lod
+	GameState.gear.from_dict(keep_gear)
+	GameState.story_guard = Callable()
+	main.story_ui._radio_q.clear()
+
+
 ## Package 58, part 5 (Luz): Silas Marr in the Driftwood Waystation's diner; his Bastion to the asteroid field, the
 ## Listener unfolded, three waves of pirates (a heavy one at the end); the sweep done (3,000 cr), the base in Hollow;
 ## the Bastion badly hit: Silas pulls out, the step goes back to following him.
@@ -14893,13 +15254,13 @@ func _test_w58e(_view: SystemView) -> void:
 			for p2 in w._pirates:
 				if is_instance_valid(p2) and Time.get_ticks_msec() % 3 == 0:
 					p2.queue_free()                   # (the test shoots them down)
-			if w.phase == "found":
+			if w.phase == "report":
 				break
 		var light_ok := true
 		for li in 200:
 			light_ok = light_ok and not String(w._light_pirate()).contains("hdy")
 		waves_ok = w._waves == 3 and heavy and light_ok
-		done_ok = w.phase == "found" and bool(st.flags.get("w58_listened", false)) and st.step_data("fight").get("id", "") == "base" and GameState.credits >= cr0 + 3000
+		done_ok = w.phase == "report" and bool(st.flags.get("w58_listened", false)) and st.step_data("fight").get("id", "") == "report" and GameState.credits >= cr0 + 3000
 		var hl = w._hope
 		for i9 in 90:
 			await get_tree().process_frame

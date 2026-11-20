@@ -945,6 +945,11 @@ func _hurt_pilot(dmg: float, dtype: String) -> void:
 	view._shake = maxf(view._shake, 0.08)
 	Pad.rumble(0.5, 0.3, 0.15)                          # package 80: hit
 	if GameState.gear.health <= 0.0:
+		if view.level == "sim":
+			# package 58, part 6: shot down in the simulation – nobody dies; the round starts again
+			GameState.gear.refill()
+			view.sim_lost = true
+			return
 		view._collapse("fight")
 
 
@@ -983,6 +988,8 @@ func _hurt_foe(f: Dictionary, dmg: float, dtype: String) -> void:
 
 ## 53f: what a creature or a machine leaves when it falls for good – credits for its parts, research data for samples.
 func _loot(f: Dictionary) -> void:
+	if bool(f.get("holo", false)):
+		return                                           # package 58, part 6: a hologram leaves nothing behind
 	var d: Dictionary = FoeData.FOES.get(String(f["kind"]), {})
 	if not d.has("loot"):
 		return
@@ -1466,8 +1473,7 @@ func _tac_step(delta: float) -> void:
 func _draw_tactics() -> void:
 	if sneaking:
 		_draw_sneak()                                # 0.7.53.36 (Luz): the view cones only while you sneak                                # 0.7.52.21: where they would spot you (0.7.53.19 fix: standing – in the tactical view)
-	if not sneaking:
-		_draw_tactics_view()
+	_draw_tactics_view()                             # (Luz) the tactical view while sneaking too (it draws only when on)
 	# 0.7.52.4 (Luz): how strong each foe is – a coloured ring on the ground at its feet
 	for f in alive():
 		var col: Color = FoeData.TIERS[String(f.get("tier", "green"))]["col"]

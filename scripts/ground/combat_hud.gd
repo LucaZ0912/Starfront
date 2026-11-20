@@ -187,7 +187,7 @@ func _draw_wheel() -> void:
 	var c: Vector2 = combat.view.wheel_centre()
 	var r_in := 52.0
 	var r_out := 160.0
-	var pick := GroundCombat.wheel_pick(c, get_viewport().get_mouse_position(), r_in)
+	var pick := GroundCombat.wheel_pick(c, combat.view.wheel_point(), r_in)
 	var all: bool = combat.team_sel >= combat.allies.size()
 	var who: Dictionary = {} if all else combat.allies[combat.team_sel]
 	for si in 4:

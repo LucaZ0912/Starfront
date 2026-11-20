@@ -481,6 +481,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = DeckGen.build_clinic(station, _avail)                 # 0.7.51.11: Mercy Hall, a level of its own
 	elif level == "quarters":
 		map = QuartersGen.build(station, _q_rented(), _q_sleep)      # package 58 (Luz): rooms by the night
+	elif level == "sim":
+		map = ArenaGen.build_sim(station, sim_foes)                # package 58, part 6 (Luz): Rook's combat simulation in the hangar
 	elif level == "tower":
 		var bar_only := {}
 		for k in ["bar", "news", "bulletin"]:
@@ -539,6 +541,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				(nf["w"] as Walker).visible = false
 			if map.has_meta("passive"):
 				nf["passive"] = true
+			if map.has_meta("holo"):
+				holo_foe(nf)
 			if int(map.get_meta("alpha_i", -1)) == i:
 				nf["alpha"] = true                         # 53f-2: the beast a hunt is after – old, big, scarred
 				nf["name"] = "%s %s" % [["Old", "Scarred", "Great", "Grey"][int(_site.get("seed", 0)) % 4], String(nf["name"])]
@@ -618,7 +622,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "ygallery": "the gallery", "pnarthex": "Aureola", "throne": "Aureola",
 		"street": "Shopping street", "quarters": "Quarters", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic: Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
-		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard"}.get(level, "")]
+		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard", "sim": "Hangar · combat simulation"}.get(level, "")]
 	if is_cloud() and level == "tower":
 		_title.text = "%s: Sky bar · deck %d" % [map.title, tower_floor() / 10]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
@@ -1577,7 +1581,22 @@ func _wires_step(delta: float) -> void:
 			Audio.play("warn", "tripwire", -2.0)
 
 
+## Package 58, part 6: the foes of the hangar's simulation (kinds "kind@tier"), set before go_level("sim").
+var sim_foes: Array = []
+## The simulation lost: set when the pilot would have died in it (the story starts the round again).
+var sim_lost := false
+
+
+## A foe as a hologram: see-through cyan, flickering a little (the simulation's).
+func holo_foe(nf: Dictionary) -> void:
+	nf["holo"] = true
+	var w: Walker = nf["w"]
+	w.modulate = Color(0.5, 0.95, 1.0, 0.78)
+
+
 func combat_allowed() -> bool:
+	if level == "sim":
+		return true                                      # package 58, part 6: the hangar's combat simulation
 	return (level == "landing" and (bool(_site.get("arena", false)) or bool(_site.get("vault", false)) or bool(_site.get("poi", false)))) \
 		or (level == "dungeon" and bool(_site.get("poi", false)))
 
@@ -1662,6 +1681,10 @@ func _story_map() -> void:
 			o["awake"] = bool(lv.get("awake", false))
 		elif String(o.get("kind", "")) == "med_bed_occ" and bool(story_mode.get("quiet", false)):
 			o["kind"] = "med_bed"                         # the other beds empty – nobody else here
+	if bool(story_mode.get("pool_clear", false)):
+		for op in map.objects:
+			if String(op.get("kind", "")) == "pool_table":
+				op["no_balls"] = true                    # package 58, part 6: the briefing's balls are drawn over it, moving
 	if String(story_mode.get("ship_title", "")) != "":
 		for zs in map.zones:
 			if String(zs.get("id", "")) == "ship":
@@ -1677,6 +1700,12 @@ func _story_map() -> void:
 					sp = sp.duplicate()
 					sp["near"] = Vector2(float(o9["x"]), float(o9["y"])) + (sp.get("off", Vector2.ZERO) as Vector2)
 					break
+		if sp.has("near_lift") and not map.lifts.is_empty():
+			# package 58, part 6 (Luz): just out of the lift (Rook in Dan's hangar) – a free place in front of it
+			var lf: Dictionary = map.lifts[0]
+			sp = sp.duplicate()
+			sp["near"] = Vector2(float(lf["x"]) + float(lf["w"]) * 0.5, float(lf["y"]) + 1.0) + (sp["near_lift"] as Vector2)
+			sp["spread"] = float(sp.get("spread", 0.5))
 		if sp.has("near") or sp.has("near_spawn"):
 			# package 58: a free place near a point (tiles) – or near where you come in – for a crowd (the party)
 			var cen: Vector2 = (sp["near"] as Vector2) if sp.has("near") else map.spawn / GroundMap.TILE + (sp["near_spawn"] as Vector2)
@@ -2105,6 +2134,8 @@ func _build() -> void:
 		os.position = Vector2(float(o["x"]) * GroundMap.TILE, float(int(o["y"]) + int(o.get("h", 1))) * GroundMap.TILE + sdy) * GroundMap.SCALE
 		if map.has_meta("tint"):
 			os.modulate = map.get_meta("tint")
+		if bool(o.get("holo", false)):
+			os.modulate = Color(0.55, 0.95, 1.0, 0.72)      # package 58, part 6: a hologram (the simulation's cover)
 		_sorted.add_child(os)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(station.get("id", ""))) + 49
@@ -2453,6 +2484,8 @@ func _process(delta: float) -> void:
 		_sink_step(delta)
 	elif input_enabled and talk == null and _lift_menu == null and minigame == null and not background_locked():
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
+		if combat != null and combat.wheel_open:
+			dir = Vector2.ZERO                              # (Luz) the command wheel open: the sticks point into it, you stand
 		if not _seat.is_empty():
 			if dir.length() > 0.3:
 				_stand_up()
@@ -2474,7 +2507,7 @@ func _process(delta: float) -> void:
 		_hostage_step(delta)
 		_cams_step(delta)
 		_reinforce_step(delta)
-		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled and not background_locked() else Vector2.ZERO)
+		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled and not background_locked() and not combat.wheel_open else Vector2.ZERO)     # (Luz) the wheel open: the sticks point into it, nobody walks
 		_team_keys(delta)
 		if _tab_held >= 0.0:
 			var was := _tab_held
@@ -2607,8 +2640,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_released("foot_team", false) and _team_held >= 0.0:
 			get_viewport().set_input_as_handled()
 			if combat.wheel_open:
-				var pick := GroundCombat.wheel_pick(wheel_centre(), get_viewport().get_mouse_position())
+				var pick := GroundCombat.wheel_pick(wheel_centre(), wheel_point())
 				combat.wheel_open = false
+				_wheel_stick = Vector2.ZERO
 				if pick != "":
 					var who = null if combat.team_sel >= combat.allies.size() else combat.allies[combat.team_sel]
 					_say_toast(combat.order(who, pick), 2.5)
@@ -4482,6 +4516,21 @@ func scan_done(d: Dictionary) -> void:
 
 
 ## 0.7.52.20: V held opens the wheel; the use key held beside a member down brings them back.
+## (Luz) where the command wheel points: the mouse, or with the controller a stick (either one) pushed that way –
+## the stick at rest points at nothing (letting go gives no order).
+func wheel_point() -> Vector2:
+	var c := wheel_centre()
+	if Pad.enabled and Pad.using_pad:
+		var st: Vector2 = Pad.right_stick() if Pad.right_stick().length() > Pad.left_stick().length() else Pad.left_stick()
+		if st.length() > 0.45:
+			_wheel_stick = st                            # the last way it was pushed holds until the wheel closes
+		return c + _wheel_stick.normalized() * 110.0 if _wheel_stick != Vector2.ZERO else c
+	return get_viewport().get_mouse_position()
+
+
+var _wheel_stick := Vector2.ZERO
+
+
 func _team_keys(delta: float) -> void:
 	if _team_held >= 0.0:
 		_team_held += delta

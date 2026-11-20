@@ -283,10 +283,10 @@ func action_text(id: String) -> String:
 	var ctx := context()
 	if id in ["drone_launch", "drone_recall", "drone_launch_all"] and ctx in ["space", "menu"]:
 		return glyph(_btn_of("space", "pad_deselect", "circle")) + " held"        # package 58: the drone wheel
-	for c in [ctx, "space" if ctx == "menu" else ctx, "menu"]:
+	for c in [ctx, "space" if ctx == "menu" else ctx, "menu", "ground", "space", "minigame"]:
 		var b := binding(c, id)
 		if not b.is_empty():
-			return binding_text(b)
+			return binding_text(b)                         # (Luz: explained in a window, a foot action still shows its button)
 	return ""
 
 

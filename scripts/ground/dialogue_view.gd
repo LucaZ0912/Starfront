@@ -21,13 +21,14 @@ var _hint: Label
 var portrait_tex: Texture2D = null      # 0.7.53.30 (Luz): a thing's picture instead of a face (the Museum's cases)
 var _por: TextureRect                   # package 56: kept, so the speaker can change (the pilot answering)
 var _frame: PanelContainer
+var no_dim := false                    # package 58 (Luz): a cutscene – the scene behind stays clear
 
 
 func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.35)
+	dim.color = Color(0, 0, 0, 0.0 if no_dim else 0.35)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)

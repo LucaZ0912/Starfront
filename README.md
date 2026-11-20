@@ -398,6 +398,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   `_light_pirate`, `_hope_leave`, `WAVES`); `scripts/world/listener_fx.gd`; character `silas`, dialogue `silas_meet`;
   `Audio.stream_once` (loop sounds as one-shots); Drone `_role` (target reset on a role change); debug tab Story;
   smoke group `w58e`.
+- 0.8.58.5 (package 58, part 6): dan_work phases `report` → `brief` → `gear` → `sim` → `relay` (`_briefing`,
+  `_brief_stage`, `_brief_action`, `_shot_first`, `_lend_ground_gear`, `LENT_GEAR`, `_gear_tour`, `_sim_start`,
+  `_sim_step` with stages fight / to_start / sneak / ask / free, `SNEAK_GUARDS`); `scripts/ground/pool_fx.gd`;
+  `ArenaGen.build_sim`, GroundView level `sim` (`sim_foes`, `sim_lost`, `holo_foe`, `wheel_point`, story `near_lift`,
+  `pool_clear`); PilotWindow `tour_targets`; dialogue `no_dim`; characters `rook`, dialogues `dan_report`, `briefing`,
+  `rook_sim`, `rook_more`; `Pad.action_text` over every context; Ship arming during a lock; smoke groups `w58f`,
+  `arm58`.
 - 0.8.56.10: Kit `bar_tile`, `tile_row`, `amount_block`, `MineGlyph`, `picture(..., max_px)`; DronePanel `pick`,
   ServicePanel `pick_uid`, MunitionsPanel `pick`.
 - 0.8.56.9: BondPanel.wanted_poster(c, sid, course, width) scales by `_k`; the restyle (`_build_restyle`) sizes the

@@ -105,7 +105,9 @@ func open(p_system: int, p_body: Dictionary) -> void:
 	for i2 in sites.size():
 		var s: Dictionary = sites[i2]
 		var k: Dictionary = Universe.SITE_KINDS[s["kind"]]
-		var b2 := UI.button("%s  %s   ·  %s" % [k["icon"], s["name"], k["name"]], func(): select(i2))
+		var b2 := UI.button("%s  %s   ·  %s" % [k["icon"], s["name"], k["name"]], func():
+			select(i2)
+			_land_btn.call_deferred("grab_focus"))            # (Luz) picked: straight on to "Land at …"
 		b2.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		_list.add_child(b2)
 	v.add_child(UI.label("", 6))
@@ -149,6 +151,9 @@ func select(i: int) -> void:
 		(_list.get_child(j) as Button).modulate = Color(1, 1, 1) if j == i else Color(0.7, 0.72, 0.8)
 	_land_btn.disabled = false
 	_land_btn.text = "Land at %s" % String(s["name"])
+	if i < _list.get_child_count():
+		# (Luz) up from "Land at …" goes back to the place picked, not to whichever lies nearest above
+		_land_btn.focus_neighbor_top = _land_btn.get_path_to(_list.get_child(i))
 
 
 func _process(delta: float) -> void:

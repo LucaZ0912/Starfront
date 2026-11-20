@@ -40,6 +40,9 @@ Stand: Entwurf vom 11. Nov 2026 (Claude), zur Korrektur durch Luz.
 - **Antworten in der Hauptstory werden ausgesprochen** (Luz, 17. Nov 2026): Auf eine gewählte Antwort folgt fast
   immer die ausführliche Fassung, die die Spielfigur selbst sagt (4. Eintrag einer Antwort). Gibt Luz sie nicht vor,
   wird sie passend geschrieben. In Nebenmissionen ist das nicht so wichtig.
+- **Geschlechtsneutral** (Luz, 20. Nov 2026): Figuren bekommen kein festgelegtes Geschlecht (es gibt auch keine
+  Auswahl im Charakter-Editor). In Spieltexten keine Pronomen wie he/she für Personen; lieber den Namen, die Rolle
+  oder eine Umformulierung (Schiffe dürfen „she“ bleiben).
 - Alte Spielstände müssen nicht ladbar bleiben (Alpha); nie eine Mechanik deswegen einschränken.
 
 ## 3. Aussehen

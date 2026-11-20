@@ -13,7 +13,7 @@ const WildArtO = preload("res://scripts/ground/wild_art.gd")
 
 ## {image, rise} for an object.
 static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
-	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", "")) + str(o.get("seed", "")) + String(o.get("arch", "")) + String(o.get("species", "")) + str(o.get("patient", "")) + str(o.get("awake", ""))]
+	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", "")) + str(o.get("seed", "")) + String(o.get("arch", "")) + String(o.get("species", "")) + str(o.get("patient", "")) + str(o.get("awake", "")) + str(o.get("no_balls", ""))]
 	if _cache.has(key):
 		return _cache[key]
 	var pw := int(o.get("w", 1)) * TILE
@@ -1645,7 +1645,7 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 		"pool_table":
 			_r(img, 0, fy - 4, pw, ph - 2, Color(0.35, 0.2, 0.12))
 			_r(img, 3, fy - 2, pw - 6, ph - 8, Color(0.1, 0.45, 0.25))
-			for k in 6:
+			for k in (0 if bool(o.get("no_balls", false)) else 6):
 				_ellipse(img, 8 + GroundMap.hash2(k, 7) * (pw - 16), fy + 2 + GroundMap.hash2(k, 8) * (ph - 14), 1.5, 1.5,
 					[Color(0.95, 0.95, 0.9), Color(0.9, 0.2, 0.2), Color(0.95, 0.8, 0.2), Color(0.2, 0.3, 0.9), Color(0.1, 0.1, 0.1), Color(0.9, 0.5, 0.1)][k])
 			_r(img, 2, fy + ph - 6, 3, 6, Color(0.25, 0.14, 0.08))

@@ -148,6 +148,14 @@ func begin(where: String) -> void:
 		_set_phase("follow")                             # a save in the middle of the sweep: from the start again
 	if phase == "follow":
 		_follow_calls.call_deferred()
+	if phase == "found":
+		_set_phase("report")                             # (a save from before part 6)
+	if phase == "brief":
+		_after_briefing.call_deferred()                  # a save in the middle of the briefing: it is over
+	elif phase == "gear":
+		get_tree().create_timer(1.5).timeout.connect(_gear_tour)       # the gear tour from the start again
+	if phase in ["report", "gear", "sim", "relay"]:
+		_rook_look()
 	if not GameState.slept.is_connected(_on_slept):
 		GameState.slept.connect(_on_slept)
 	GameState.story_guard = _story_rescue                 # (Luz) shot down while working for Dan: no game over
@@ -182,7 +190,7 @@ func _process(_delta: float) -> void:
 	var f := darling()
 	if f == null:
 		f = GameState.active()                             # (later parts: whatever you fly)
-		if f == null or not phase in ["contact", "follow", "listen", "found", "maul", "crew"]:
+		if f == null or not phase in ["contact", "follow", "listen", "found", "maul", "crew", "report", "brief", "gear", "sim", "relay"]:
 			return
 	# the fitting goals follow what is fitted (whatever the order)
 	if GameState.story.running(MID):
@@ -236,6 +244,20 @@ func _process(_delta: float) -> void:
 			_part3_step(f, sp)
 		"follow", "listen":
 			_listen_step()
+		"report":
+			var g6 = main.ground
+			if g6 != null and is_instance_valid(g6) and not g6.story_talk.is_connected(_on_talk):
+				g6.story_talk.connect(_on_talk)
+			if bool(flags().get("w58_briefing", false)) and main.story_ui.dialogue == null and main.story_ui._dlg_q.is_empty():
+				_briefing()
+		"sim":
+			var g7 = main.ground
+			if g7 != null and is_instance_valid(g7) and not g7.story_talk.is_connected(_on_talk):
+				g7.story_talk.connect(_on_talk)
+			if bool(flags().get("w58_sim_go", false)) and main.story_ui.dialogue == null and g7 != null and is_instance_valid(g7) and String(g7.level) == "hangar":
+				GameState.story.flags.erase("w58_sim_go")
+				_sim_start()
+			_sim_step()
 
 
 static func _has_family(f: ShipFitting, slot_type: String, fam: String) -> bool:
@@ -264,6 +286,13 @@ var _field := {}
 
 
 func _target(key: String) -> Control:
+	if _src == "pilot":
+		var pw = main.pilot_window
+		var c1 = pw.tour_targets.get(key, null) if pw != null and pw.visible else null
+		if c1 != null and is_instance_valid(c1) and (c1 as Control).is_visible_in_tree():
+			pw._sc.ensure_control_visible(c1)
+			return c1
+		return null
 	if _src == "ship":
 		var sm = main.ship_menu
 		var c0 = sm.tour_targets.get(key, null) if sm != null and sm.visible else null
@@ -293,6 +322,8 @@ func _tour_done() -> void:
 			GameState.story.set_flag("w58_tour2", true)
 			_set_phase("part2")
 			_part2_start()
+		"gear":
+			_gear_done()
 		"drones":
 			GameState.story.set_flag("w58_drones", true)
 			GameState.story.set_flag("w58_base", _units(darling()))
@@ -401,11 +432,18 @@ func ground_mode(st: Dictionary) -> Dictionary:
 		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
 		return {"levels": {"street": {"people": [{"who": "ossa", "near_obj": "lamp_post", "off": Vector2(1.5, 0.8), "near_spawn": Vector2(12.0, 2.0), "spread": 2.0, "dir": 0, "marker": "!"}]}}}
-	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact"]:
+	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact", "follow", "listen", "found", "report", "gear", "sim", "relay"]:
 		var dan := {"who": "dan", "pos": IntroSix.WINDOW, "dir": 1, "talk": true}
-		if phase == "part3":
+		if phase in ["part3", "report"]:
 			dan["marker"] = "!"
-		return {"levels": {"commercial": {"people": [dan]}}}
+		var lv := {"commercial": {"people": [dan]}}
+		if phase == "report":
+			# (Luz) Ossa and Silas wait at the pool table already
+			lv["commercial"]["people"] = [dan, {"who": "ossa", "near_obj": "pool_table", "off": Vector2(3.8, 1.2), "dir": 2},
+				{"who": "silas", "near_obj": "pool_table", "off": Vector2(-0.8, 1.2), "dir": 3}]
+		if phase == "sim":
+			lv["hangar"] = {"people": [{"who": "rook", "near_lift": Vector2(2.0, 1.5), "dir": 0, "marker": "!"}]}       # (Luz) Rook and the simulation
+		return {"levels": lv}
 	if phase == "brine" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
 		return {"levels": {"hangar": {"people": [{"who": "ossa", "at_ship": Vector2(2.6, 1.2), "dir": -1, "marker": "!"}]}}}
 	return {}
@@ -763,6 +801,7 @@ func _give_maul() -> void:
 			var rook := GameState.new_crew("gunner", "A", "old_hand")
 			rook["name"] = "Rook Varga"
 			rook["story"] = true
+			rook["look"] = GameState.story.look_of("rook")
 			f.set_crew(i, rook)
 			break
 	GameState.crew_fill_required(f)
@@ -816,7 +855,7 @@ func _crew_done() -> void:
 	if phase != "crew":
 		return
 	_set_phase("contact")
-	GameState.story.show.emit("radio", {"who": "dan", "text": "Ossa says you've got the Maul, and Rook with her. Good. Now listen: these aren't scrap haulers you're going after. You come back to me in one piece, you hear? I've sent you the contact of a friend in Driftwood. He'll be expecting you.", "mission": FIGHT})
+	GameState.story.show.emit("radio", {"who": "dan", "text": "Ossa says you've got the Maul, and Rook with her. Good. Now listen: these aren't scrap haulers you're going after. You come back to me in one piece, you hear? I've sent you the contact of a friend in Driftwood. Silas will be expecting you.", "mission": FIGHT})
 	var stf = GameState.story
 	if stf.running(FIGHT):
 		stf.missions[FIGHT]["target"] = String(_waystation().get("id", ""))
@@ -1045,7 +1084,7 @@ func _wave(i: int) -> void:
 	GameState.story.show.emit("radio", {"who": "silas", "text": String(lines[mini(i, lines.size() - 1)]), "mission": FIGHT, "now": true})
 	if i == 1:
 		get_tree().create_timer(4.0 * (0.05 if quick else 1.0)).timeout.connect(func():
-			GameState.story.show.emit("radio", {"who": "dan", "text": "Silas, you old fool, you said quiet! Spacefarer, you keep him breathing, you hear me?", "mission": FIGHT}))
+			GameState.story.show.emit("radio", {"who": "dan", "text": "Silas, you old fool, you said quiet! Spacefarer, you keep that old fool breathing, you hear me?", "mission": FIGHT}))
 
 
 ## A light pirate for a wave: one of the small archetype ships, never a heavy Hadrian copy.
@@ -1058,14 +1097,23 @@ func _light_pirate() -> String:
 
 func _listen_done() -> void:
 	GameState.story.set_flag("w58_listened", true)
-	_set_phase("found")
+	_set_phase("report")
 	_show_bar(false)
 	if _fx != null and is_instance_valid(_fx):
 		_fx.active = false
-	GameState.story.show.emit("radio", {"who": "silas", "text": "Got them! All that chatter comes from one place: an old station in Hollow, right under the Hollow Crown's nose. I'm sending you the coordinates. Thank you, Spacefarer. Dan was right about you.", "mission": FIGHT, "now": true})
+	# (Luz) Silas: got them – no, something's wrong; back to Dan, Silas calls once the data makes sense
+	var lines := ["HAH! Got you!", "Wait... something's not right here.", "These readings are far too clean.",
+		"I need to take a proper look at this first. You did good work out there. Dan didn't exaggerate when he told me about you. Head back to Dan for now. I'll call once I've made sense of the data."]
+	for li in lines.size():
+		var rd := {"who": "silas", "text": String(lines[li]), "mission": FIGHT}
+		if li == 0:
+			rd["now"] = true
+		GameState.story.show.emit("radio", rd)
+	var stf = GameState.story
+	if stf.running(FIGHT):
+		stf.missions[FIGHT]["target"] = String(flags().get("w58_dan_st", ""))
 	var h = _hope
 	get_tree().create_timer(8.0 * (0.05 if quick else 1.0)).timeout.connect(func(): _hope_leave(h))
-	GameState.log_msg("[Story] Package 58 continues with the next part (the pirates' base in Hollow).", GameState.COL_WARN)
 
 
 ## The sweep broken off: the Bastion badly hit (or gone) – Silas pulls out; he'll wait at the waystation again.
@@ -1182,7 +1230,9 @@ func _on_slept(station_id: String) -> void:
 func _on_talk(who: String) -> void:
 	match who:
 		"dan":
-			if phase == "rest":
+			if phase == "report":
+				GameState.story.show.emit("dialogue", {"id": "dan_report", "mission": FIGHT})
+			elif phase == "rest":
 				GameState.story.show.emit("dialogue", {"id": "dan_rest", "mission": MID})
 			elif phase == "part3":
 				GameState.story.show.emit("dialogue", {"id": "dan_job", "mission": MID})
@@ -1196,6 +1246,9 @@ func _on_talk(who: String) -> void:
 		"silas":
 			if phase == "contact":
 				GameState.story.show.emit("dialogue", {"id": "silas_meet", "mission": FIGHT})
+		"rook":
+			if phase == "sim":
+				GameState.story.show.emit("dialogue", {"id": "rook_sim", "mission": FIGHT})
 
 
 ## Dan's loan for the escort: a better laser (the Mogura has one weapon slot) and armour plating.
@@ -1463,3 +1516,489 @@ func _outfitter_steps() -> Array:
 		{"key": "body", "title": "A drone", "text": "Buy one. She only takes one out at a time, but trust me, it earns its keep. It mines, it fights, it patches you up.",
 			"task": func(): return f.drones.size() > 0, "hint": "buy a drone"},
 	]
+
+
+# ---- part 6: the preparation (Luz, 20 Nov 2026)
+
+const PoolFx = preload("res://scripts/ground/pool_fx.gd")
+## Ossa's loan for the ground (lent: it goes back after the strike, see part 8): a light combat suit, two weapons,
+## the cutting torch, E-Breach spikes, medkits, grenades and a laser drone – all at quality A.
+const LENT_GEAR := {"suit": "suit_mil_light:A", "weapons": ["wp_laser_rifle:A", "wp_pistol:A"],
+	"belt": [{"id": "tl_cutter:A", "n": 1}, {"id": "cs_breach", "n": 3}, {"id": "cs_medkit", "n": 3}, {"id": "cs_cell", "n": 2}],
+	"grenades": [{"id": "gr_frag", "n": 3}, {"id": "gr_smoke", "n": 2}], "drones": ["dr_laser:A"], "features": ["ft_shield:A", "ft_thermo:A"]}
+## The simulation's rounds: the foes ("kind@tier") and whether they start unaware (round 2: sneak up on them).
+const SIM_ROUNDS := [[["bandit_rifleman@green", "bandit_scrapper@green", "bandit_scrapper@green"], false],
+	[["bandit_rifleman@green", "bandit_gunner@green", "bandit_scrapper@green"], true]]
+var _pool = null
+var _sim_round := -1
+var _sim_t := 0.0
+var _sim_said := {}
+var _briefing_on := false
+
+
+## Dan's Dusty Duty Store (the station dictionary).
+func _dan_station() -> Dictionary:
+	return Universe.find_station(Universe.special_system("beyond"), String(flags().get("w58_dan_st", "")))
+
+
+## The bar emptied for the briefing: Dan, Ossa and Silas round the pool table, the bartender behind the bar.
+func _brief_mode() -> Dictionary:
+	var people := [{"who": "dan", "near_obj": "pool_table", "off": Vector2(1.0, 3.0), "dir": 1},
+		{"who": "ossa", "near_obj": "pool_table", "off": Vector2(3.8, 1.2), "dir": 2},
+		{"who": "silas", "near_obj": "pool_table", "off": Vector2(-0.8, 1.2), "dir": 3}]
+	return {"quiet": true, "keep_bartender": true, "pool_clear": true, "levels": {"commercial": {"people": people}}}
+
+
+## Back at Dan's after the Listener: Dan asked about the base – black, then the four of you round the pool table.
+func _briefing() -> void:
+	if phase != "report" or _briefing_on:
+		return
+	_briefing_on = true
+	_set_phase("brief")
+	main.station_panel.close()
+	await main.fade(Color(0, 0, 0, 1), 0.8).finished
+	if main.ground == null or not is_instance_valid(main.ground):
+		main.open_deck()
+	var g = main.ground
+	if g == null:
+		_after_briefing()
+		return
+	g.story_mode = _brief_mode()
+	g.go_level("commercial", "story")
+	g.input_enabled = false
+	_brief_stage(g)
+	main.fade(Color(0, 0, 0, 0), 1.0)
+	await _w(1.2)
+	GameState.story.show.emit("dialogue", {"id": "briefing", "mission": FIGHT, "no_dim": true})
+	await get_tree().process_frame
+	var seen := -1
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		var ln := int(main.story_ui._dlg.get("line", -1)) if String(main.story_ui._dlg.get("id", "")) == "briefing" else -1
+		if ln != seen:
+			seen = ln
+			_brief_action(g, ln)
+		await get_tree().process_frame
+	await main.fade(Color(0, 0, 0, 1), 0.8).finished
+	if main.ground != null and is_instance_valid(main.ground):
+		g = main.ground
+		for key in g.story_people:
+			var w = g.story_people[key]
+			if w != null and is_instance_valid(w):
+				w.process_mode = Node.PROCESS_MODE_INHERIT
+		g.story_cam = Vector2.INF
+		g.story_zoom = 0.0
+		_set_phase("gear")
+		g.story_mode = ground_mode(g.station)            # (Dan back by the window)
+		g._keep_pos = g.pilot.pos
+		g.go_level("commercial", "keep")
+		g.input_enabled = true
+	_pool = null
+	_briefing_on = false
+	_after_briefing()
+	main.fade(Color(0, 0, 0, 0), 0.8)
+
+
+## Everyone in place round the table; the camera close on it. The walkers and the balls keep moving while the
+## dialogue pauses the game.
+func _brief_stage(g) -> void:
+	var tb := {}
+	for o in g.map.objects:
+		if String(o.get("kind", "")) == "pool_table":
+			tb = o
+			break
+	if tb.is_empty():
+		return
+	var T := GroundMap.TILE
+	var c := Vector2(float(tb["x"]) + 1.5, float(tb["y"]) + 1.0) * T
+	g.pilot.pos = c + Vector2(1.0 * T, 2.4 * T)
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	g.pilot.dir = 1
+	for key in g.story_people:
+		var w = g.story_people[key]
+		if w != null and is_instance_valid(w):
+			w.process_mode = Node.PROCESS_MODE_ALWAYS
+			w.stays = true
+	_pool = PoolFx.new()
+	_pool.setup(tb)
+	g._sorted.add_child(_pool)
+	g.story_cam = c + Vector2(0, T * 0.8)
+	g.story_zoom = 2.3
+	g._camera()
+
+
+## What happens at a line of the briefing: Silas walks round the table, Dan's shot goes wide, Ossa pots one.
+func _brief_action(g, ln: int) -> void:
+	var T := GroundMap.TILE
+	var sil = g.story_people.get("silas", null)
+	match ln:
+		0:
+			if sil != null and is_instance_valid(sil) and _pool != null:
+				var tb: Dictionary = _pool.table
+				var tl := Vector2(float(tb["x"]), float(tb["y"])) * T
+				_walk_round(sil, [tl + Vector2(-0.8 * T, -0.6 * T), tl + Vector2(2.6 * T, -0.9 * T), tl + Vector2(1.5 * T, -0.9 * T)], 0)
+		2:
+			_shot_first(g, "dan", "", false, 2.4)             # (Luz) Dan to the cue ball's end of the table – and misses
+		3:
+			_shot_first(g, "ossa", "dan", true, 1.6)          # Ossa takes the place and pots the black
+
+
+## (Luz) the line about the shot comes after the shot: the dialogue box steps aside while it plays, then the line.
+func _shot_first(g, who: String, before: String, sink: bool, roll: float) -> void:
+	var lay = main.story_ui._dlg_layer
+	if lay != null and is_instance_valid(lay):
+		lay.visible = false
+		lay.process_mode = Node.PROCESS_MODE_DISABLED
+	await _shooter_shot(g, who, before, sink)
+	await get_tree().create_timer(roll * (0.3 if quick else 1.0), true).timeout
+	if lay != null and is_instance_valid(lay):
+		lay.process_mode = Node.PROCESS_MODE_ALWAYS
+		lay.visible = true
+		var dv = main.story_ui.dialogue
+		if dv != null and is_instance_valid(dv):
+			dv._shown = 0.0                               # the line types out from the start
+
+
+## Someone walks to the cue ball's end of the table (the west end), the one before steps back, then the shot.
+func _shooter_shot(g, who: String, before: String, sink: bool) -> void:
+	if _pool == null or not is_instance_valid(_pool):
+		return
+	var T := GroundMap.TILE
+	var tb: Dictionary = _pool.table
+	var tl := Vector2(float(tb["x"]), float(tb["y"])) * T
+	var spot := tl + Vector2(-0.9 * T, 1.35 * T)
+	var b4 = g.story_people.get(before, null)
+	if b4 != null and is_instance_valid(b4):
+		_walk_round(b4, [tl + Vector2(0.9 * T, 3.0 * T)])
+		await _w(0.5)
+	var w = g.story_people.get(who, null)
+	if w != null and is_instance_valid(w):
+		await _walk_round(w, [spot])
+		if w != null and is_instance_valid(w):
+			w.dir = 3                                     # facing along the table
+	if _pool != null and is_instance_valid(_pool):
+		if sink:
+			_pool.shot_sink()
+		else:
+			_pool.shot_miss()
+
+
+func _walk_round(w, pts: Array, face: int = -1) -> void:
+	for p in pts:
+		if w == null or not is_instance_valid(w):
+			return
+		w.goto_to = p
+		w.goto_done = false
+		var t := 0.0
+		while is_instance_valid(w) and not w.goto_done and t < 6.0:
+			await get_tree().process_frame
+			t += 1.0 / 60.0
+	if w != null and is_instance_valid(w) and face >= 0:
+		w.dir = face                                    # (Silas: at the head of the table, facing the rest)
+
+
+## The briefing over: Ossa's gear lent, and a look at it in the Pilot window (Gear) with Ossa on the radio.
+func _after_briefing() -> void:
+	_set_phase("gear")
+	var st = GameState.story
+	st.set_flag("w58_briefing", true)
+	_lend_ground_gear()
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = ""
+	GameState.story.show.emit("radio", {"who": "ossa", "text": "One more thing before you go down to the hangar. I've put some gear in your locker. Let's look it over together.", "mission": FIGHT, "now": true})
+	get_tree().create_timer(2.5 * (0.05 if quick else 1.0)).timeout.connect(_gear_tour)
+
+
+## Your own ground gear is kept (it comes back after the strike); Ossa's goes on.
+func _lend_ground_gear() -> void:
+	var st = GameState.story
+	var g = GameState.gear
+	if not bool(flags().get("w58_gear_lent", false)):
+		var own: Dictionary = g.to_dict()
+		for k in ["inv", "lockers", "health", "energy", "oxygen", "ammo", "shield", "armor", "team", "helmet"]:
+			own.erase(k)
+		st.set_flag("w58_gear_own", own)
+		st.set_flag("w58_gear_lent", true)
+	g.suit = String(LENT_GEAR["suit"])
+	g._fit_slots()
+	for key in ["weapons", "belt", "grenades", "drones", "features"]:
+		var arr: Array = g.get(key)
+		var want: Array = LENT_GEAR[key]
+		for i in arr.size():
+			var it = want[i] if i < want.size() else null
+			if it == null:
+				arr[i] = {} if key in ["belt", "grenades"] else ""
+			else:
+				arr[i] = (it as Dictionary).duplicate() if it is Dictionary else String(it)
+	g.refill()
+	# Rook's look is the story's (the portrait on the radio)
+	_rook_look()
+
+
+## Rook Varga aboard the Maul: the crew member's look and name as the story has them.
+func _rook_look() -> void:
+	for f in GameState.fleet:
+		for m in f.crew_members():
+			if String(m.get("name", "")) == "Rook Varga":
+				m["look"] = GameState.story.look_of("rook")
+
+
+func _rook() -> Dictionary:
+	var f := GameState.active()
+	if f == null:
+		return {}
+	for m in f.crew_members():
+		if String(m.get("name", "")) == "Rook Varga":
+			return m
+	return {}
+
+
+## Ossa's tour over the Gear page: the suit, its protection, the weapons, grenades, belt, the drone, the team.
+func _gear_tour() -> void:
+	if phase != "gear" or main == null:
+		return
+	main.station_panel.close()
+	main.ship_menu.close()
+	main.pilot_window.open(main.pilot_window.TAB_GEAR)
+	await get_tree().process_frame
+	_start_tour(_gear_steps(), false, "pilot")
+
+
+func _gear_steps() -> Array:
+	var rid := int(_rook().get("id", -1))
+	return [
+		{"key": "pw_suit", "who": "ossa", "title": "The suit", "text": "Your Pilot window, the Gear page. That's what I'm lending you: a Light Combat Suit, quality A. Like a ship's hull, the suit decides the rest: how many weapons, grenades, belt places and features you can carry."},
+		{"key": "pw_protect", "who": "ossa", "title": "Protection", "text": "Down here, what it keeps out. The relay sits on a cold world with air you can't breathe. Where the suit can't keep up, your energy goes first, then your health. Watch these numbers before you land somewhere new."},
+		{"key": "pw_weapons", "who": "ossa", "title": "Weapons", "text": "Two weapons: a laser rifle for range, a pistol for close work. Lock on to someone and the weapon in your hands fires by itself; how well it hits is your Firearms skill. {key:foot_swap} takes the other one in hand."},
+		{"key": "pw_grenades", "who": "ossa", "title": "Grenades", "text": "Frag and smoke. {key:foot_grenade}: a tap picks the next one, held it throws. Smoke hides you from their sights; frag gets them out from behind cover."},
+		{"key": "pw_belt", "who": "ossa", "title": "The belt", "text": "The belt, on the number keys: the cutting torch for welded hatches, E-Breach spikes for their terminals, medkits and energy cells. Each spike is used up, so don't waste them."},
+		{"key": "pw_drones", "who": "ossa", "title": "The drone", "text": "And a laser drone. It rides on your back until you send it up with {key:foot_drone}. Then it flies with you and fights at your side, and on the same key it comes back."},
+		{"key": "pw_team", "who": "ossa", "title": "Ground team", "text": "Up here, your ground team: the crew of the ship you fly who go along on foot. Rook's going with you."},
+		{"key": "pw_member_%d" % rid, "who": "ossa", "title": "Rook", "text": "Take Rook along: click Rook's name.", "hint": "add Rook to your ground team",
+			"task": func(): return GameState.gear.team.has(rid)},
+		{"key": "pw_team", "who": "ossa", "title": "Orders", "text": "On the ground {key:foot_team} talks to your team: a tap picks who, held you get the orders. Follow, hold this spot, attack my target. If Rook goes down, get over there and hold E. Now off to the hangar: Rook's waiting with the simulation."},
+	]
+
+
+## The gear tour done: to Rook in Dan's hangar.
+func _gear_done() -> void:
+	GameState.story.set_flag("w58_gear", true)
+	_set_phase("sim")
+	var st = GameState.story
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = String(flags().get("w58_dan_st", ""))
+	main.pilot_window.close()
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = ground_mode(g.station)            # Rook waits in the hangar now
+
+
+## Talking to Rook in the hangar and saying go: the hangar becomes the simulation.
+func _sim_start() -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	await main.fade(Color(0, 0, 0, 1), 0.6).finished
+	_sim_round = 0
+	_sim_stage = "fight"
+	_sim_said = {}
+	_sim_t = 0.0
+	g.sim_lost = false
+	g.sim_foes = (SIM_ROUNDS[0][0] as Array).duplicate()
+	g.go_level("sim", "sim")
+	GameState.gear.refill()
+	main.fade(Color(0, 0, 0, 0), 0.8)
+	_rook_says("Welcome to the simulation. First things first: {key:foot_target} locks on to one of them, and your weapon fires by itself. Get behind that low cover: it takes most of what they throw at you.")
+
+
+func _rook_says(text: String) -> void:
+	GameState.story.show.emit("radio", {"who": "rook", "text": text, "mission": FIGHT, "now": true})
+
+
+## The simulation (Luz): round 1 a fight, Rook explaining as you go; round 2 sneaking – back to the marker on the
+## west side, then guards appear who do not know you are there, and you get to the east side unseen; then Rook asks
+## whether you want more (three foes at a time, as often as you like). Shot down: that part starts again.
+var _sim_stage := ""                    # "fight", "to_start", "sneak", "ask", "free"
+var _sim_mark = null                    # the marker on the ground (where to go)
+const SNEAK_GUARDS := [[Vector2(20, 8), PI * 0.5], [Vector2(27, 17), -PI * 0.5], [Vector2(34, 11), PI]]    # tile, where it looks
+
+
+func _sim_step() -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g) or String(g.level) != "sim" or g.combat == null:
+		return
+	var dt := get_process_delta_time()
+	_sim_t += dt
+	var q := 0.05 if quick else 1.0
+	if g.sim_lost:
+		g.sim_lost = false
+		_rook_says("And you're dead. Well, you would be. Again, and this time keep your head down.")
+		if _sim_stage == "sneak":
+			_sim_to_start(g, "")
+		else:
+			_sim_restart(g)
+		return
+	if _sim_stage == "" or _sim_stage == "fight":
+		_sim_stage = "fight"
+		if _sim_t > 8.0 * q and not _sim_said.has("dodge"):
+			_sim_said["dodge"] = true
+			_rook_says("Too hot? {key:foot_dodge} throws you out of the way: no shot hits you mid-jump. And send your drone up: {key:foot_drone}.")
+		if _sim_t > 18.0 * q and not _sim_said.has("team"):
+			_sim_said["team"] = true
+			_rook_says("I've got your back. Hold {key:foot_team} for the orders wheel: follow, hold, attack your target.")
+		if g.combat.alive().is_empty() and _sim_t > 1.0 * q:
+			_sim_round = 1
+			_sim_to_start(g, "Not bad for three hundred years. Round two is a quiet one. Go back to the start, the marker on the west side.")
+	elif _sim_stage == "to_start":
+		if g.pilot.pos.distance_to(g.map.spawn) < GroundMap.TILE * 1.6:
+			_sim_sneak(g)
+	elif _sim_stage == "sneak":
+		var seen := false
+		for f in g.combat.alive():
+			seen = seen or bool(f.get("aware", false))
+		var east := Vector2(float(g.map.w) - 3.5, float(g.map.h) * 0.5) * GroundMap.TILE
+		if seen:
+			_sim_to_start(g, "They saw you. Back to the start and again: stay out of the red, move when they look away.")
+		elif g.pilot.pos.x > east.x - GroundMap.TILE * 1.5 or g.combat.alive().is_empty():
+			_sim_ask(g, "Clean. Not one of them knew you were there. That's how we do the relay, if we can.")
+	elif _sim_stage == "free":
+		if g.combat.alive().is_empty() and _sim_t > 1.0 * q:
+			_sim_ask(g, "Three down. Not bad.")
+	elif _sim_stage == "ask":
+		var fl := flags()
+		if main.story_ui.dialogue == null and main.story_ui._dlg_q.is_empty():
+			if bool(fl.get("w58_sim_more", false)):
+				GameState.story.flags.erase("w58_sim_more")
+				_sim_stage = "free"
+				_sim_t = 0.0
+				GameState.gear.refill()
+				_sim_clear(g)
+				_sim_spawn(g, 0)
+				_rook_says("Three more, coming up. Try whatever you like.")
+			elif bool(fl.get("w58_sim_end", false)):
+				GameState.story.flags.erase("w58_sim_end")
+				_sim_mark_at(g, Vector2.INF)
+				_sim_done()
+
+
+## Back to the marker on the west side: the guards (if any) gone, Rook's word, the marker on.
+func _sim_to_start(g, said: String) -> void:
+	_sim_stage = "to_start"
+	_sim_clear(g)
+	GameState.gear.refill()
+	if said != "":
+		_rook_says(said)
+	_sim_mark_at(g, g.map.spawn)
+
+
+## At the start: the guards appear, unaware of you, each looking its way; the marker on the far side.
+func _sim_sneak(g) -> void:
+	_sim_stage = "sneak"
+	_sim_t = 0.0
+	# the team at your side (a member left standing out in the open would give you away at once)
+	var k := 0
+	for a in g.combat.allies:
+		var aw: Walker = a["w"]
+		if is_instance_valid(aw):
+			aw.pos = g.pilot.pos + Vector2(-GroundMap.TILE * 1.2, GroundMap.TILE * (1.0 if k % 2 == 0 else -1.0))
+			aw.position = aw.pos * GroundMap.SCALE
+		k += 1
+	var kinds: Array = SIM_ROUNDS[1][0]
+	for i in SNEAK_GUARDS.size():
+		var fe: Array = GroundCombat.FoeData.parse(String(kinds[i % kinds.size()]))
+		var nf: Dictionary = g.combat.spawn(String(fe[0]), (SNEAK_GUARDS[i][0] as Vector2) * GroundMap.TILE, "", String(fe[1]))
+		g.holo_foe(nf)
+		nf["look0"] = float(SNEAK_GUARDS[i][1])
+	_sim_mark_at(g, Vector2(float(g.map.w) - 3.5, float(g.map.h) * 0.5) * GroundMap.TILE)
+	_rook_says("Three guards, and they don't know we're here. Get to the marker on the east side without being seen. {key:foot_sneak} to sneak: then you see where each of them is looking, the red cones. Stay out of them, move when they look away. {key:foot_tactics} still shows your own lines of sight. Hit one from behind and it counts twice.")
+
+
+## The end of a round: Rook asks if you want more (three foes, as often as you like) or are done.
+func _sim_ask(g, said: String) -> void:
+	_sim_stage = "ask"
+	_sim_mark_at(g, Vector2.INF)
+	_sim_clear(g)
+	GameState.story.flags.erase("w58_sim_more")
+	GameState.story.flags.erase("w58_sim_end")
+	if said != "":
+		_rook_says(said)
+	get_tree().create_timer(3.0 * (0.05 if quick else 1.0)).timeout.connect(func():
+		if _sim_stage == "ask":
+			GameState.story.show.emit("dialogue", {"id": "rook_more", "mission": FIGHT}))
+
+
+func _sim_clear(g) -> void:
+	for f0 in g.combat.foes:
+		if is_instance_valid(f0["w"]):
+			(f0["w"] as Walker).queue_free()
+	g.combat.foes.clear()
+	g.combat.locks.clear()
+	g.combat.active = null
+
+
+## The marker on the ground (INF: none): a gold ring, pulsing, with an arrow over it.
+func _sim_mark_at(g, at: Vector2) -> void:
+	if _sim_mark != null and is_instance_valid(_sim_mark):
+		_sim_mark.queue_free()
+	_sim_mark = null
+	if at == Vector2.INF:
+		return
+	_sim_mark = _SimMark.new()
+	_sim_mark.at = at
+	g._world.add_child(_sim_mark)
+
+
+class _SimMark extends Node2D:
+	var at := Vector2.ZERO
+	var _t := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		queue_redraw()
+
+	func _draw() -> void:
+		var p := at * GroundMap.SCALE
+		var k := 0.5 + 0.5 * sin(_t * 4.0)
+		var gold := Color(1.0, 0.82, 0.29)
+		draw_set_transform(p, 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, 70.0, Color(gold, 0.12 + 0.1 * k))
+		draw_arc(Vector2.ZERO, 70.0, 0.0, TAU, 48, Color(gold, 0.9), 5.0)
+		draw_arc(Vector2.ZERO, 52.0 + 10.0 * k, 0.0, TAU, 48, Color(gold, 0.5), 3.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var y := p.y - 150.0 - 12.0 * k
+		draw_colored_polygon(PackedVector2Array([Vector2(p.x - 18, y), Vector2(p.x + 18, y), Vector2(p.x, y + 26)]), gold)
+
+
+func _sim_spawn(g, r: int) -> void:
+	var kinds: Array = SIM_ROUNDS[r][0]
+	for i in kinds.size():
+		var fe: Array = GroundCombat.FoeData.parse(String(kinds[i]))
+		var at: Vector2 = g.map.foe_spawns[(i + r * 3) % g.map.foe_spawns.size()]
+		var nf: Dictionary = g.combat.spawn(String(fe[0]), at, "", String(fe[1]))
+		g.holo_foe(nf)
+		nf["aware"] = true
+
+
+func _sim_restart(g) -> void:
+	_sim_clear(g)
+	GameState.gear.refill()
+	g.pilot.pos = g.map.spawn
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	_sim_t = 0.0
+	_sim_spawn(g, 0)
+
+
+func _sim_done() -> void:
+	_set_phase("relay")
+	GameState.story.set_flag("w58_sim", true)
+	_rook_says("That'll do. You're ready, or as ready as anyone gets.")
+	var g = main.ground
+	await _w(3.0)
+	await main.fade(Color(0, 0, 0, 1), 0.6).finished
+	if g != null and is_instance_valid(g):
+		GameState.gear.refill()
+		g.go_level("hangar", "stairs")
+	main.fade(Color(0, 0, 0, 0), 0.8)
+	var st = GameState.story
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = ""
+	GameState.log_msg("[Story] Package 58 continues with part 7 (the relay station).", GameState.COL_WARN)

@@ -953,6 +953,35 @@ func _build_story() -> void:
 			st8.tracked = "fight"
 			w8._set_phase("contact")
 			mn8.open_station())))
+	_row().add_child(UI.button("Play package 58, part 6 (the briefing, gear, simulation)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn9 = get_tree().current_scene
+		mn9.get_tree().create_timer(1.0).timeout.connect(func():
+			var st9 = GameState.story
+			for st0 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+				if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+					st9.flags["w58_dan_st"] = String(st0["id"])
+			for fl9 in ["w58_briefing", "w58_gear", "w58_sim", "w58_sim_go", "w58_relay"]:
+				st9.flags.erase(fl9)
+			for fl9b in ["w58_maul", "w58_contact", "w58_atlisten", "w58_listened"]:
+				st9.flags[fl9b] = true
+			mn9._start_dan_work("load")
+			var w9 = mn9.get_meta("dan_work")
+			var has_maul := false
+			for f9 in GameState.fleet:
+				has_maul = has_maul or f9.ship_name == "Maul"
+			if not has_maul:
+				w9._give_maul()
+			if not st9.running("fight"):
+				st9.start("fight")
+			for si9 in (st9.mission_data("fight")["steps"] as Array).size():
+				if String(st9.mission_data("fight")["steps"][si9]["id"]) == "report":
+					st9.goto_step("fight", si9)
+			st9.tracked = "fight"
+			st9.missions["fight"]["target"] = String(st9.flags.get("w58_dan_st", ""))
+			w9._set_phase("report")
+			mn9.open_station())))
 	_row().add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()

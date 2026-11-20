@@ -2655,7 +2655,16 @@ func _set_module_active(slot: String, on: bool) -> String:
 		var node = locked_node()
 		if node == null and active_lock != "":
 			var i := lock_index(active_lock)
-			return "%s: still locking %s (%d%%); wait for the lock to complete." % [d["name"], node_name(locks[i]["node"]), int(float(locks[i]["progress"]) * 100.0)]
+			var ln = locks[i]["node"] if i >= 0 else null
+			# (Luz) armed while the lock is still coming: it fires the moment the lock completes
+			if i >= 0 and ln != null and is_instance_valid(ln) and module_target_error(e, ln) == "" and not (e["kind"] == "tool" and d["tool"] in ["prospect", "warrant", "cargo_scan"]):
+				module_on[slot] = true
+				module_state[slot] = "range"
+				module_target[slot] = active_lock
+				_mlog("%s armed: fires once the lock on %s completes (%d%%)." % [d["name"], node_name(ln), int(float(locks[i]["progress"]) * 100.0)])
+				return ""
+			if i >= 0:
+				return "%s: still locking %s (%d%%); wait for the lock to complete." % [d["name"], node_name(locks[i]["node"]), int(float(locks[i]["progress"]) * 100.0)]
 		var err := module_target_error(e, node)
 		if err != "":
 			if node == null:

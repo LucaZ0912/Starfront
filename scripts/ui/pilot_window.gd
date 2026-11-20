@@ -41,6 +41,7 @@ var sub := 0                              # Pilot tab: 0 Info, 1 Standings, 2 Co
 var coll_cat := "perks"                   # Collection: the category shown (0.5.34.3)
 var tab_buttons: Array = []
 var body: VBoxContainer
+var tour_targets := {}            # package 58, part 6: parts a guided tour frames on the Gear page (pw_suit, pw_belt, pw_team …)
 var _sc: ScrollContainer
 var _tsc: ScrollContainer                 # 0.5.30.2: the drawn tree
 var _canvas: Control
@@ -129,6 +130,7 @@ func rebuild() -> void:
 	_sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if fixed else ScrollContainer.SCROLL_MODE_AUTO
 	_sc.scroll_vertical = 0
 	UI.clear(body)
+	tour_targets.clear()
 	match tab:
 		TAB_PILOT: _pilot()
 		TAB_SKILLS: _skills()
@@ -190,6 +192,7 @@ func _gear() -> void:
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(head)
 	var sq := GearData.quality(String(g.suit))
+	tour_targets["pw_suit"] = top
 	head.add_child(UI.wrap_label(GearData.display_name(String(g.suit)), 17, GameData.quality_color(sq) if sq != "" else COL, 240))
 	var sd: Dictionary = GearData.stats(String(g.suit))
 	head.add_child(UI.label("%s  •  quality %s" % [String(sd.get("maker", "")), sq], 12, UI.TEXT_DIM))
@@ -215,6 +218,7 @@ func _gear() -> void:
 	left.add_child(UI.label("PROTECTION   •   walking speed ×%.2f" % float(t["speed"]), 13, COL))
 	var pr := UI.hbox(10)
 	left.add_child(pr)
+	tour_targets["pw_protect"] = pr
 	for h in GearData.HAZARDS:
 		var pv := float(t["env"][h])
 		var pc := Color(0.5, 1.0, 0.6) if pv >= 0.8 else (Color(1.0, 0.8, 0.35) if pv >= 0.5 else Color(1.0, 0.45, 0.35))
@@ -256,6 +260,7 @@ func _gear() -> void:
 			if (it is Dictionary and not (it as Dictionary).is_empty()) or (it is String and String(it) != ""):
 				filled += 1
 		var flow := _gear_flow(right, String(sec[1]), "(%d/%d)" % [filled, arr.size()])
+		tour_targets["pw_" + key] = flow
 		for i in arr.size():
 			var it2 = arr[i]
 			var id := ""
@@ -303,6 +308,7 @@ func _team_row(g) -> void:
 	var crew: Array = f.crew_members() if f != null else []
 	var row := UI.hbox(8)
 	body.add_child(row)
+	tour_targets["pw_team"] = row
 	row.add_child(UI.label("GROUND TEAM", 15, COL))
 	row.add_child(UI.label("(%d/%d)" % [g.team.filter(func(t): return crew.any(func(m): return int(m.get("id", -1)) == int(t))).size(), CrewDataP.TEAM_MAX], 12, UI.TEXT_DIM))
 	if crew.is_empty():
@@ -319,6 +325,7 @@ func _team_row(g) -> void:
 			rebuild())
 		b.toggle_mode = true
 		b.button_pressed = on
+		tour_targets["pw_member_%d" % mid] = b
 		b.tooltip_text = "%s – %s %s. %s" % [String(m.get("name", "")), String(m.get("quality", "F")), CrewDataP.role_name(String(m.get("role", ""))),
 			"Click: stays aboard." if on else "Click: comes along on foot."]
 		row.add_child(b)

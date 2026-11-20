@@ -3,6 +3,31 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.58.5 – 2026-11-20
+
+**Package 58, part 6: the preparation (Luz).**
+- **The Listener's end:** "HAH! Got you!" – then Silas finds the readings far too clean and sends you back to Dan.
+- **Back at Dan's:** Ossa and Silas wait at the pool table; Dan by the window asks what you want ("About the pirate
+  base..."). Black, then the **briefing round the pool table** in the empty bar, without the dialogue's dimming:
+  Silas walks round the table, Dan walks up and misses (then says so), Ossa takes the cue and pots the black ("I win
+  again"). The pirates talk through a relay station on the ground; Dan, Ossa and Silas will fly against the base
+  together once you have its coordinates.
+- **Ossa's ground gear, lent:** a Light Combat Suit A, a laser rifle and a pistol, frag and smoke grenades, the
+  cutting torch, E-Breach spikes, medkits, energy cells, a laser drone, a shield and a temperature regulator (your own
+  gear kept for later). A **guided tour over the Gear page** (suit, protection, weapons, grenades, belt, drone, the
+  ground team: take Rook along, the orders).
+- **Rook's combat simulation in Dan's hangar** (talk to Rook by the lift): a room of hard-light cover and hologram
+  foes. Round 1 a fight (locking on, cover, dodging, the drone, the team wheel); round 2 sneaking (back to the marker
+  on the west side, three guards who don't know you're there, their cones of sight, to the east side unseen); then
+  three more at a time as often as you like. Shot down: that part again, nobody dies, no loot.
+- **Rook Varga** has a look of their own (neon pink sidecut, a scar across the eye, a cyber eye) and knows you.
+- **Controls:** the keys in explanations follow the device in use (a foot action explained in a window shows its
+  controller button too; a call on screen changes when you switch); the ground team's wheel works with either stick
+  and you stand while it's open; the planet map jumps to "Land at …" once a place is picked; a weapon switched on
+  while the lock is still coming is armed and fires when it completes.
+- **Texts without gender** (Luz): no he/she for people in the story's texts (also in the guidelines).
+- Debug: F12 → Story → "Play package 58, part 6".
+
 ## alpha 0.8.58.4 – 2026-11-20
 
 **Package 58, part 5: Silas Marr and the Listener (Luz).**
