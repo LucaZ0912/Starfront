@@ -184,7 +184,7 @@ var _drone_held: Array = [-1.0, -1.0]   # 0.7.52.19: how long C / Shift+C is hel
 var _warned := {}
 var weather: WeatherFx = null             # 54e (Luz): the weather over an outdoor map
 ## 54e: the levels out in the open – where the weather reaches
-const WEATHER_LEVELS := ["landing", "settlement", "street", "alley", "plaza", "minehead", "mplaza", "kplaza", "cplaza", "cstation", "pplaza"]
+const WEATHER_LEVELS := ["landing", "settlement", "street", "alley", "plaza", "minehead", "mplaza", "kplaza", "cplaza", "cstation", "pplaza", "zplaza"]
 
 
 func _ready() -> void:
@@ -314,6 +314,11 @@ func setup_settlement(p_body: Dictionary, p_site: Dictionary, town: Dictionary, 
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
+	if p_level == "zplaza" and arrive == "lift":
+		arrive = "from_hall"                              # package 61a: the lifts of the Commercial Hall lead out onto the plaza
+	if p_level == "mplaza" and is_centauria():
+		p_level = "zplaza"                                # the Museum stands on the district's west plaza
+		arrive = "from_museum"
 	if p_level != "quarters":
 		_q_room = -1                                    # package 58: your room closes behind you
 		_q_sleep = 0
@@ -402,7 +407,13 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if is_cloud() and level == "dungeon" and String(_site.get("theme", "")) == "skymaint":
 		env = cloud_env()                              # 0.7.54.3: under the deck – open to the giant's air
 	_warned = {}
-	if level == "cplaza":
+	if level == "zstation":
+		map = CentauriaGen.build_station(station, ctr_stop, ctr_line if arrive == "rail" else "")       # package 61a (Luz): Centauria's stations
+	elif level == "ztrain":
+		map = CentauriaGen.build_car(station, ctr_line)            # … and aboard a train
+	elif level == "zplaza":
+		map = CentauriaGen.build_plaza(station)                    # … and the plaza of the Commercial District
+	elif level == "cplaza":
 		map = CloudGen.build_plaza(station, _avail)
 	elif level == "cstation":
 		map = CloudGen.build_station(station, rail_stop)
@@ -514,7 +525,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
-		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza", "pplaza"]:
+		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza", "pplaza", "zplaza"]:
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down: aboard your ship and up through the hatch"
@@ -624,7 +635,56 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "ygallery": "the gallery", "pnarthex": "Aureola", "throne": "Aureola",
 		"street": "Shopping street", "quarters": "Quarters", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic: Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
-		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard", "sim": "Hangar · combat simulation", "office": "Registry"}.get(level, "")]
+		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard", "sim": "Hangar · combat simulation", "office": "Registry", "zstation": CentauriaGen.STOPS[ctr_stop], "ztrain": "aboard %s" % String(CentauriaGen.LINES[ctr_line]["name"]).capitalize()}.get(level, "")]
+	if is_centauria() and level == "street":
+		_title.text = "Centauria – Commercial Hall"           # package 61a (Luz): the city's shops, in a hall on the plaza
+	elif level == "zplaza":
+		_title.text = "Centauria – Commercial District"
+	if level == "zstation":
+		# package 61a: the tracks, the trains running by their timetable, the boards over them – under the people
+		var rfx = CentauriaGen.RailFx.new()
+		rfx.tracks = map.get_meta("ctr_tracks", [])
+		rfx.stop = ctr_stop
+		rfx.width = float(map.w * GroundMap.TILE)
+		rfx.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(rfx)
+		_world.move_child(rfx, _sorted.get_index())
+	if level == "zplaza" and map.has_meta("ctr_facades"):
+		var ffx = CentauriaGen.FacadeFx.new()              # (Luz) the fronts of the plaza's buildings, storey by storey
+		ffx.buildings = map.get_meta("ctr_facades")
+		ffx.night = 1.0 - city_day()
+		ffx.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(ffx)
+		_world.move_child(ffx, _sorted.get_index())
+	if level == "zplaza":
+		for rtier in [1, 2]:
+			var rf = CentauriaGen.RoofFx.new()             # (Luz) tall buildings round the south: their roofs come up from below
+			rf.setup(rtier, self, map, 1.0 - city_day())
+			rf.scale = Vector2.ONE * GroundMap.SCALE
+			rf.z_index = 6                                 # (over the people and the lamps' pools of light: far above them)
+			_world.add_child(rf)
+	if level == "zplaza" and map.has_meta("ctr_metro"):
+		var mo: Vector2 = map.get_meta("ctr_metro")        # (Luz) the way down to the station, drawn: its floor under the people,
+		for mp in [["floor", 0.0], ["wall", 16.0], ["posts", 55.0]]:      # its wall and its lamp posts among them
+			var mf = CentauriaGen.MetroFx.new()
+			mf.part = String(mp[0])
+			mf.base = float(mp[1])
+			mf.night = 1.0 - city_day()
+			mf.scale = Vector2.ONE * GroundMap.SCALE
+			mf.position = (mo + Vector2(0.0, mf.base)) * GroundMap.SCALE
+			if mf.part == "floor":
+				_world.add_child(mf)
+				_world.move_child(mf, _sorted.get_index())
+			else:
+				_sorted.add_child(mf)
+	if level == "ztrain" and map.has_meta("ctr_screen"):
+		var csn = CentauriaGen.CarScreen.new()             # (Luz) "ARRIVAL 12 s" over the middle door
+		csn.line = ctr_line
+		csn.at = map.get_meta("ctr_screen")
+		csn.doors = map.get_meta("ctr_doors", [])
+		csn.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(csn)
+		_world.move_child(csn, _sorted.get_index())       # (the doors under the people who stand before them)
 	if is_cloud() and level == "tower":
 		_title.text = "%s: Sky bar · deck %d" % [map.title, tower_floor() / 10]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
@@ -1628,6 +1688,50 @@ func _wires_step(delta: float) -> void:
 
 ## Package 58, part 6: the foes of the hangar's simulation (kinds "kind@tier"), set before go_level("sim").
 var sim_foes: Array = []
+## Package 61a (Luz): Centauria's trains – the stop you are at (0 Central, 1 Commercial District, 2 Colosseum), the
+## line you ride. Levels "zstation" (a station) and "ztrain" (aboard).
+const CentauriaGen = preload("res://scripts/ground/centauria_gen.gd")
+var ctr_stop := 0
+var ctr_line := "A"
+var _ctr_at := -2                       # where the train you ride stood last (for the announcements)
+
+
+## Centauria, the city of the home system: its own levels (the hangar's lift goes only to the station).
+func is_centauria() -> bool:
+	return is_city() and String(station.get("name", "")) == "Centauria"
+
+
+## At the platform's edge: aboard while the train stands there, otherwise when the next one comes.
+func _ctr_board(line: String) -> void:
+	var cs: Dictionary = CentauriaGen.state(line, GameState.play_time)
+	if int(cs["at"]) == ctr_stop:
+		ctr_line = line
+		_ctr_at = -2
+		Audio.play("ui_open", "train: aboard")
+		go_level("ztrain", "rail")
+	else:
+		_say_toast("No train at the platform. %s." % CentauriaGen.board_text(line, ctr_stop, GameState.play_time), 3.0)
+
+
+## Aboard: the doors open while the train stands at a stop, shut while it runs; it announces itself.
+func _ctr_car_step() -> void:
+	var cs: Dictionary = CentauriaGen.state(ctr_line, GameState.play_time)
+	var at := int(cs["at"])
+	for z in map.zones:
+		if String(z.get("kind", "")) == "ctr_alight":
+			z["closed"] = "" if at >= 0 else "The doors are shut: the train is running."
+			z["title"] = ("Get off: %s (departs in %d s)" % [CentauriaGen.STOPS[at], int(ceil(float(cs["left"])))]) if at >= 0 else "Get off"
+	if at != _ctr_at:
+		if _ctr_at != -2:
+			if at < 0:
+				_say_toast("Doors closing. Next stop: %s." % CentauriaGen.STOPS[int(cs["to"])], 3.0)
+				Audio.play("ui_close", "train: doors")
+			else:
+				_say_toast("%s. The doors open." % CentauriaGen.STOPS[at], 3.0)
+				Audio.play("ui_open", "train: arrived")
+		_ctr_at = at
+
+
 ## Package 59, part 3: whose office the level "office" is ("assembly" / "covenant"), set before go_level("office").
 var office_faction := "assembly"
 const OfficeGen = preload("res://scripts/ground/office_gen.gd")
@@ -1937,6 +2041,20 @@ func _space_view(sys_id: int) -> void:
 		dw.setup(_window.size, String(map.get_meta("dock_view")))
 		dw.sight = map.get_meta("sight", {})
 		_sky.add_child(dw)
+		return
+	if _window.size.x > 0.0 and level == "zplaza":
+		_neb.material = null                               # package 61a (Luz): the casino's towers and the city north of the plaza
+		_neb.color = Color(0.02, 0.02, 0.05)
+		var psk = CentauriaGen.PlazaSky.new()
+		psk.setup(_window.size, self, 1.0 - city_day())
+		_sky.add_child(psk)
+		return
+	if _window.size.x > 0.0 and level == "ztrain":
+		_neb.material = null                               # package 61a (Luz): Centauria passing in the train's windows
+		_neb.color = Color(0.02, 0.02, 0.05)
+		var pan = CentauriaGen.Panorama.new()
+		pan.setup(_window.size, ctr_line, 1.0 - city_day())
+		_sky.add_child(pan)
 		return
 	if _window.size.x > 0.0 and map.has_meta("sphere_view"):
 		_neb.material = null                               # 54c (Luz): the star and the shell through the filter glass
@@ -2510,6 +2628,8 @@ func _process(delta: float) -> void:
 		_xray_step()
 	if level == "ctrain":
 		_rail_step(delta)
+	if level == "ztrain":
+		_ctr_car_step()                                   # package 61a: Centauria's train, its doors by the timetable
 	_toast_t = maxf(_toast_t - delta, 0.0)
 	if is_town():
 		_update_city_day(delta)
@@ -4700,6 +4820,34 @@ func use(instant: bool = false) -> bool:
 		"sight_info":
 			_say_toast(_sight_info(), 7.0)
 			return true
+		"ctr_board":
+			_ctr_board(String(zone.get("line", "A")))        # package 61a: Centauria's trains
+			return true
+		"ctr_alight":
+			var cst: Dictionary = CentauriaGen.state(ctr_line, GameState.play_time)
+			if int(cst["at"]) >= 0:
+				ctr_stop = int(cst["at"])
+				Audio.play("ui_open", "train: off")
+				go_level("zstation", "rail")
+			return true
+		"ctr_up":
+			go_level("hangar", "lift")
+			return true
+		"ctr_exit":
+			go_level("zplaza", "from_station")               # up onto the plaza of the Commercial District
+			return true
+		"ctr_scope":
+			# (Luz) the viewing scope: the view pulls back to the whole of the towers; Esc puts it down
+			var tsc = CentauriaGen.TowerScope.new()
+			tsc.night = 1.0 - city_day()
+			_ui.add_child(tsc)
+			_lift_menu = tsc
+			_lift_menu.set_meta("keys", [])
+			return true
+		"ctr_down":
+			ctr_stop = 1
+			go_level("zstation", "lift")
+			return true
 		"alight":
 			rail_stop = int(rail.get("to", 1 - rail_stop))
 			Audio.play("ui_open", "skyrail: off")
@@ -4971,6 +5119,16 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls.append(["maint", "%d.  Maintenance level: under the deck%s" % [lvls.size() + 1, ", a rotor is jammed" if job else ""]])     # 0.7.54.3
 	if is_city() and not is_cloud() and not GameState.maint_site_for(String(station.get("id", ""))).is_empty():
 		lvls.append(["maint", "%d.  Maintenance level: the power is out down there" % (lvls.size() + 1)])     # 0.7.53.9
+	if is_centauria():
+		# package 61a (Luz): from the hangar the lift goes only to the station; from the district back to its station
+		if level in ["hangar", "zstation"]:
+			lvls = [["hangar", "1.  " + hname], ["zstation", "2.  Centauria Central: the trains to the districts"]]
+		else:
+			# the Commercial Hall: its lifts go to its own floors; the way out is onto the plaza
+			lvls = lvls.filter(func(l): return not String(l[0]) in ["hangar", "plaza"])
+			lvls.push_front(["zplaza", "0.  Out onto the plaza of the Commercial District"])
+			if lvls.size() > 1 and String(lvls[1][0]) == "street":
+				lvls[1] = ["street", "2.  The Commercial Hall: the shops"]
 	var only := String(story_mode.get("lift_only", ""))
 	var onlys := only.split(",", false)
 	if only != "":
@@ -5091,8 +5249,10 @@ func _choose_level(target: String) -> void:
 		return
 	if target == "plaza":
 		_town_kind = "corp"                              # 0.7.53.19: the corporate tower's plaza
-	elif target in ["alley", "mplaza", "kplaza", "pplaza"]:
+	elif target in ["alley", "mplaza", "kplaza", "pplaza", "zplaza"]:
 		_town_kind = ""
+	if target == "zstation":
+		ctr_stop = 0                                     # package 61a: Centauria Central, under the hangar
 	if target == "cstation":
 		rail_stop = 0                                    # package 54: the lifts are on the main platform
 	if target != level or (target == "hangar" and _hangar_stale()):

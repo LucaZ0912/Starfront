@@ -471,11 +471,12 @@ func ground_mode(st: Dictionary) -> Dictionary:
 	if sid == String(flags().get("w58_dan_st", "")) and phase == "farewell":
 		return _farewell_mode()
 	if phase == "free" and bool(st.get("city", false)) and String(st.get("name", "")) == "Centauria" and bool(flags().get("fern_called", false)):
-		# package 61 (Luz): Luz on the street of Centauria
-		var luz := {"who": "luz", "near_spawn": Vector2(4.0, 1.5), "spread": 2.0, "dir": 0, "talk": true}
+		# package 61 (Luz): Luz on the plaza of Centauria's Commercial District
+		var CG = load("res://scripts/ground/centauria_gen.gd")
+		var luz := {"who": "luz", "pos": Vector2(CG.P_CX + CG.P_CW * 0.5 + 4.0, CG.P_TOP + 18.0), "dir": 0, "talk": true}       # (61a: on the central plaza, by the way up from the station)
 		if not bool(flags().get("fern_luz", false)):
 			luz["marker"] = "!"
-		return {"levels": {"street": {"people": [luz]}}}
+		return {"levels": {"zplaza": {"people": [luz]}}}
 	if phase == "contact" and sid == String(_waystation().get("id", "-")):
 		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():

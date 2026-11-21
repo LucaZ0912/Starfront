@@ -1653,6 +1653,21 @@ func _decal(d: Dictionary) -> void:
 				_rect(chx, py + ph, 12, 1, Color(0.98, 0.98, 1.0))
 				_rect(chx + 2, py + ph + 3, 8, 2, Color(0.45, 0.85, 1.0))
 				_rect(chx, py + ph + 7, 12, 1, Color(0.45, 0.47, 0.52))
+		"terrace_lit":
+			# 61a (Luz): the podium of Centauria's casino beside its stair – a terrace of white composite, a balustrade of
+			# glass along its edge, its front face down to the plaza with a strip of light
+			_rect(px, py, pw, ph - 10, Color(0.86, 0.87, 0.9))
+			for tx2 in range(px, px + pw, 16):
+				_rect(tx2, py, 1, ph - 10, Color(0.76, 0.78, 0.82))
+			_rect(px, py + int((ph - 10) / 2.0), pw, 1, Color(0.76, 0.78, 0.82))
+			_mix(px, py + ph - 19, pw, 9, Color(0.55, 0.85, 1.0, 0.32))
+			_rect(px, py + ph - 20, pw, 1, Color(0.96, 0.97, 1.0))
+			for bp in range(px, px + pw, 16):
+				_rect(bp, py + ph - 20, 1, 10, Color(0.7, 0.72, 0.78))
+			_rect(px, py + ph - 10, pw, 10, Color(0.74, 0.76, 0.8))
+			_rect(px, py + ph - 10, pw, 1, Color(0.98, 0.98, 1.0))
+			_rect(px + 2, py + ph - 6, pw - 4, 2, Color(0.45, 0.85, 1.0))
+			_rect(px, py + ph - 1, pw, 1, Color(0.45, 0.47, 0.52))
 		"senate_seal":
 			# 54c: the Assembly's seal let into the floor – rings of blue and white, eight gold stars, a light at its heart
 			var sc3 := Vector2(px + pw * 0.5, py + ph * 0.5)

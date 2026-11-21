@@ -484,7 +484,7 @@ const SPECIAL_BODIES := {
 	"fern": [
 		{"name": "Kiln", "type": "lava", "orbit": 760000.0, "radius": 7600.0, "seed": 23.0},
 		{"name": "Lapis", "type": "ice_giant", "orbit": 1560000.0, "radius": 36000.0, "seed": 58.0, "ring": true, "lapis": true,
-			"moons": [["Pelagia", "ocean", 9800.0, {"city": 0.9, "fern_city": 1}]]},
+			"moons": [["Pelagia", "ocean", 9800.0, {"city": 0.9, "fern_city": 1}], ["Ember", "lava", 4300.0], ["Glacia", "moon_ice", 5200.0]]},      # (Luz: a lava moon and an ice moon too)
 	],
 	# package 57 (Luz): Beyond – a G star; an ocean world with one city; an ice giant whose ice moon Dan's store orbits
 	"beyond": [
@@ -2655,7 +2655,7 @@ const CITY_WORLDS := ["terran", "ocean", "jungle"]
 func _city_lights(L: Dictionary, id: int) -> void:
 	var inhabited := has_stations(id)
 	for pc in L["planets"]:
-		if is_giant(pc) and not bool(systems[id].get("outer", false)) and not is_pocket(id) and not bool(pc.get("lapis", false)):     # (package 61: Lapis has none – all of Fern is in Centauria)
+		if is_giant(pc) and not bool(systems[id].get("outer", false)) and not is_pocket(id):
 			pc["cloud_city"] = true                      # package 54 (Luz): an inhabited system's giants have cloud cities
 	var rich := Missions.wealthy(id)
 	for pi in L["planets"].size():

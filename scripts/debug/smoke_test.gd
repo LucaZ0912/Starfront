@@ -720,6 +720,7 @@ func _process(delta: float) -> void:
 				await _test_w59c(main.view)              # package 59, part 3: the naturalisation, the open game
 				await _test_acq60()                      # package 60: acquaintances
 				await _test_fern61(main.view)            # package 61: the Fern system
+				await _test_ctr61a(main.view)            # package 61a: Centauria's trains
 				_shooting = false
 				timer = 0.0
 				return
@@ -17090,8 +17091,10 @@ func _test_fern61(_view: SystemView) -> void:
 	for m in L.get("moons", []):
 		if String(m["name"]) == "Pelagia":
 			pel = m
+	var lmoons: Array = (L.get("moons", []) as Array).map(func(m): return [String(m["name"]), String(m["type"])])
 	var body_ok: bool = names == ["Kiln", "Lapis"] and String(L["star"].get("kind", "")) == "giant" and bool(lapis.get("ring", false)) and bool(lapis.get("lapis", false)) \
-		and String(lapis.get("type", "")) == "ice_giant" and String(pel.get("type", "")) == "ocean" and (L["stations"] as Array).all(func(x): return String(x.get("type", "")) == "waystation") and not bool(lapis.get("cloud_city", false)) \
+		and lmoons == [["Pelagia", "ocean"], ["Ember", "lava"], ["Glacia", "moon_ice"]] \
+		and String(lapis.get("type", "")) == "ice_giant" and String(pel.get("type", "")) == "ocean" and (L["stations"] as Array).all(func(x): return String(x.get("type", "")) == "waystation") and bool(lapis.get("cloud_city", false)) \
 		and not (L.get("belts", []) as Array).is_empty()
 	if not body_ok:
 		print("FERN61 parts: ring ", lapis.get("ring", "-"), " lapis ", lapis.get("lapis", "-"), " cloud ", lapis.get("cloud_city", "-"), " belts ", L.get("belts", "-") if not L.get("belts", []) is Array else (L["belts"] as Array).size(), " keys ", L.keys())
@@ -17123,7 +17126,7 @@ func _test_fern61(_view: SystemView) -> void:
 	var before_ok: bool = (w.ground_mode({"city": true, "name": "Centauria", "id": "x"}) as Dictionary).is_empty() and not Acq.met("luz")
 	w._fern_call()
 	var mode: Dictionary = w.ground_mode({"city": true, "name": "Centauria", "id": "x"})
-	var ppl: Array = ((mode.get("levels", {}) as Dictionary).get("street", {}) as Dictionary).get("people", [])
+	var ppl: Array = ((mode.get("levels", {}) as Dictionary).get("zplaza", {}) as Dictionary).get("people", [])
 	var call_ok: bool = before_ok and bool(st.flags.get("fern_called", false)) and st.running("fern") and String(st.step_data("fern").get("id", "")) == "go" \
 		and ppl.size() == 1 and String(ppl[0]["who"]) == "luz" and String(ppl[0].get("marker", "")) == "!" \
 		and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty()) and w.FERN_LEVEL == 5
@@ -17169,6 +17172,366 @@ func _test_fern61(_view: SystemView) -> void:
 		w.queue_free()
 	main.story_ui._radio_q.clear()
 	st.from_dict(keep)
+
+
+## Package 61a (Luz), part 1: Centauria's trains – the hangar's lift goes only to Centauria Central; an island platform,
+## Line A and Line B either side, trains running by their timetable (60 s round, 18 s halt, 12 s ride), a board over
+## each track; aboard you walk, the city passes in the windows; the Commercial District's and the Colosseum's stations.
+func _test_ctr61a(_view: SystemView) -> void:
+	var Gen = load("res://scripts/ground/centauria_gen.gd")
+	var shots := OS.get_environment("CTR_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	Commands.cheats_enabled = true
+	# the timetable
+	var s0: Dictionary = Gen.state("A", 5.0)
+	var s1: Dictionary = Gen.state("A", 26.0)
+	var s2: Dictionary = Gen.state("A", 40.0)
+	var s3: Dictionary = Gen.state("B", 40.0)
+	var time_ok: bool = int(s0["at"]) == 0 and is_equal_approx(float(s0["left"]), 10.0) and int(s1["at"]) == -1 and int(s1["to"]) == 1 and is_equal_approx(float(s1["k"]), 0.5) \
+		and int(s2["at"]) == 1 and int(s3["at"]) == 0 and is_equal_approx(Gen.next_at("A", 0, 26.0), 50.0) and Gen.next_at("B", 2, 40.0) > 0.0 and float(Gen.state("A", 60.0)["ride"]) != float(s1["ride"]) and is_equal_approx(Gen.period("A"), 76.0) \
+		and String(Gen.board_text("A", 0, 5.0)) == "LINE A · Commercial District · departs in 10 s" and String(Gen.board_text("A", 0, 26.0)) == "LINE A · Commercial District · next train 50 s" \
+		and Gen.lines_at(0).size() == 2 and Gen.lines_at(1) == ["A"] and Gen.lines_at(2) == ["B"] \
+		and is_equal_approx(Gen.doors("A", 0, 7.0), 1.0) and Gen.doors("A", 0, 0.5) > 0.2 and Gen.doors("A", 0, 0.5) < 0.8 and Gen.doors("A", 0, 14.6) < 0.6 \
+		and is_zero_approx(Gen.doors("A", 0, 20.0)) and is_zero_approx(Gen.doors("A", 1, 7.0))      # (Luz) the doors slide open and shut
+	if not time_ok:
+		print("CTR61A time: ", s0, s1, s2, s3, " ", Gen.board_text("A", 0, 5.0), " | ", Gen.board_text("A", 0, 24.0), " next ", Gen.next_at("A", 0, 24.0))
+	# down to Centauria
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	var err := String(Commands.execute({"type": "debug_land", "body": pel, "kind": "city"}))
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var land_ok: bool = g != null and is_instance_valid(g) and g.is_centauria() and String(g.level) == "hangar"
+	if not land_ok:
+		print("CTR61A land: err ", err, " ground ", g, " name ", g.station.get("name", "") if g != null and is_instance_valid(g) else "-")
+	var st_ok := false
+	var ride_ok := false
+	var dist_ok := false
+	var t_keep := GameState.play_time
+	if land_ok:
+		for f0 in 30:
+			await get_tree().process_frame
+		# the lift: only the hangar and the station
+		g._open_lift_menu({})
+		var keys: Array = g._lift_menu.get_meta("keys", []) if g._lift_menu != null else []
+		var lift_ok: bool = keys.size() == 2
+		g._close_lift_menu()
+		g.ctr_stop = 0
+		g.go_level("zstation", "lift")
+		for f1 in 10:
+			await get_tree().process_frame
+		GameState.play_time = 5.0                              # Line A stands at Central (13 s left), Line B is away
+		var tracks: Array = g.map.get_meta("ctr_tracks", [])
+		var boards: Array = (g.map.zones as Array).filter(func(z): return String(z.get("kind", "")) == "ctr_board")
+		st_ok = lift_ok and String(g.level) == "zstation" and tracks.size() == 2 and boards.size() == 2 \
+			and (g.map.zones as Array).any(func(z): return String(z.get("kind", "")) == "ctr_up")
+		if not st_ok:
+			print("CTR61A station: lift ", keys.size(), " level ", g.level, " tracks ", tracks.size(), " boards ", boards.size())
+		if shots:
+			g.story_cam = Vector2(Gen.SW * 0.5, Gen.PLAT + 3.0) * GroundMap.TILE
+			g.story_zoom = 0.75
+			for f2 in 40:
+				GameState.play_time = 5.0
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_central.png")
+			for f2b in 30:
+				GameState.play_time = 40.0 + f2b * 0.02                 # Line B just in, Line A away
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_central_b.png")
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+		# no train: you stay; a train standing: aboard
+		GameState.play_time = 25.0
+		g._ctr_board("A")
+		var stay: bool = String(g.level) == "zstation"
+		GameState.play_time = 5.0
+		g._ctr_board("A")
+		for f3 in 10:
+			GameState.play_time = 6.0
+			await get_tree().process_frame
+		var aboard: bool = String(g.level) == "ztrain" and String(g.ctr_line) == "A"
+		var shut := false
+		var open1 := false
+		if aboard:
+			if shots:
+				for f4a in 30:
+					GameState.play_time = 7.0                      # standing at Central: the station in the windows, the doors open
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_in_station.png")
+				for f4c in 30:
+					GameState.play_time = 14.45                    # the doors closing
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_doors_closing.png")
+				for f4d in 30:
+					GameState.play_time = 16.6                     # pulling out: the station drifts off, the tunnel comes
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_drift.png")
+				for f4b in 30:
+					GameState.play_time = 18.5                     # in the tunnel
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_tunnel.png")
+			for f4 in 5:
+				GameState.play_time = 26.0                         # half way
+				await get_tree().process_frame
+			for z in g.map.zones:
+				if String(z.get("kind", "")) == "ctr_alight":
+					shut = String(z.get("closed", "")) != ""
+			if shots:
+				for f5 in 40:
+					GameState.play_time = 26.0
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_ride_a.png")
+			for f6 in 5:
+				GameState.play_time = 40.0                         # standing at the Commercial District
+				await get_tree().process_frame
+			var ways := 0
+			for z2 in g.map.zones:
+				if String(z2.get("kind", "")) == "ctr_alight":
+					ways += 1
+					if ways == 1:
+						open1 = String(z2.get("closed", "x")) == ""
+						g.zone = z2                                # (off through the first door, not the middle one)
+					else:
+						open1 = open1 and String(z2.get("closed", "x")) == ""
+			open1 = open1 and ways == 3
+			g.use()
+			for f7 in 10:
+				GameState.play_time = 41.0
+				await get_tree().process_frame
+		ride_ok = stay and aboard and shut and open1 and String(g.level) == "zstation" and int(g.ctr_stop) == 1 and g.map.free_at(g.pilot.pos, 4.0)
+		if not ride_ok:
+			print("CTR61A ride: stay ", stay, " aboard ", aboard, " shut ", shut, " open ", open1, " level ", g.level, " stop ", g.ctr_stop)
+		if shots and ride_ok:
+			g.story_cam = Vector2(Gen.SW * 0.5, Gen.PLAT + 3.0) * GroundMap.TILE
+			g.story_zoom = 0.75
+			for f8 in 40:
+				GameState.play_time = 41.0
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_commercial.png")
+		# up the stairs: the plaza of the Commercial District; the Commercial Hall with the city's shops
+		var plaza_ok := false
+		for zp in g.map.zones:
+			if String(zp.get("kind", "")) == "ctr_exit":
+				g.zone = zp
+		g.use()
+		for fp in 10:
+			await get_tree().process_frame
+		var pz: Array = g.map.zones
+		var on_plaza: bool = String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0) \
+			and pz.any(func(z): return String(z.get("id", "")) == "ctr_casino" and String(z.get("closed", "")) != "") \
+			and pz.any(func(z): return String(z.get("kind", "")) == "museum_in") and g.map.has_meta("from_museum") and g.map.free_at(g.map.get_meta("from_museum"), 4.0) \
+			and pz.any(func(z): return String(z.get("id", "")) == "ctr_alleys" and String(z.get("closed", "")) != "") \
+			and g.map.free_at(g.map.get_meta("from_hall"), 4.0) and g.map.window_rect.size.y == float(Gen.P_TOP) \
+			and pz.any(func(z): return String(z.get("id", "")) == "ctr_hall") and pz.any(func(z): return String(z.get("kind", "")) == "ctr_down") \
+			and (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) == "stall").size() >= 12
+		if not on_plaza:
+			print("CTR61A on_plaza: free ", g.map.free_at(g.pilot.pos, 4.0), " pos ", g.pilot.pos / GroundMap.TILE, " ids ", pz.map(func(z): return z.get("id", "")),
+				" stalls ", (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) == "stall").size())
+		# (Luz) tall buildings round the south: two rows of roofs, nothing you can walk on under them, the street south open
+		if on_plaza:
+			var rfs: Array = g._world.get_children().filter(func(n): return n.has_method("roofs"))
+			var roofs_ok: bool = rfs.size() == 2
+			var covered := 0
+			var barred := 0
+			for rf in rfs:
+				roofs_ok = roofs_ok and (rf.roofs() as Array).size() >= 6
+				for rr in rf.roofs():
+					var r2: Rect2 = rr
+					if r2.intersects(rf.gap):
+						barred += 1
+					var row0 := int(ceil(r2.position.y / GroundMap.TILE))          # the first row wholly under it
+					if int(rf.tier) == 1 and float(row0 * GroundMap.TILE) - r2.position.y > float(rf.OVER) + 0.01:
+						covered += 1
+					for rtx in range(maxi(0, int(r2.position.x / GroundMap.TILE)), mini(g.map.w, int(ceil(r2.end.x / GroundMap.TILE)))):
+						for rty in range(maxi(0, row0), g.map.h):
+							if GroundMap.walkable_t(g.map.t_at(rtx, rty)):
+								covered += 1
+			roofs_ok = roofs_ok and covered == 0 and barred == 0 and g.map.h == Gen.PH
+			if not roofs_ok:
+				print("CTR61A roofs: rows ", rfs.size(), " covered ", covered, " barred ", barred)
+			on_plaza = roofs_ok
+		# (Luz) the way down drawn in three parts; no pillars before the casino, a terrace beside its stair (the stair
+		# itself free); no sign hanging in the air
+		if on_plaza:
+			var metro: Array = g._world.get_children().filter(func(n): return n.has_method("_posts")) + g._sorted.get_children().filter(func(n): return n.has_method("_posts"))
+			var fixes: bool = metro.size() == 3 and g.map.has_meta("ctr_metro") \
+				and not (g.map.objects as Array).any(func(o): return String(o.get("kind", "")) == "pylon") \
+				and not g.map.free_at(Vector2(Gen.P_CX + 5.0, Gen.P_TOP + 1.0) * GroundMap.TILE, 4.0) \
+				and g.map.free_at(Vector2(Gen.P_CX + Gen.P_CW * 0.5, Gen.P_TOP + 1.0) * GroundMap.TILE, 4.0) \
+				and not pz.any(func(z): return String(z.get("kind", "")) == "label" and String(z.get("title", "")) in ["BACK ALLEYS", "LINE A"]) \
+				and (g.map.decals as Array).any(func(dc): return String(dc.get("kind", "")) == "terrace_lit")
+			if not fixes:
+				print("CTR61A fixes: metro ", metro.size(), " terrace free ", g.map.free_at(Vector2(Gen.P_CX + 5.0, Gen.P_TOP + 1.0) * GroundMap.TILE, 4.0))
+			on_plaza = fixes
+		if shots and on_plaza:
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW * 0.5, Gen.P_TOP + 4.0) * GroundMap.TILE
+			g.story_zoom = 0.3
+			for fq in 60:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza.png")
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW * 0.5, Gen.P_TOP + 3.0) * GroundMap.TILE
+			g.story_zoom = 0.0
+			for fq2 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_near.png")
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW * 0.5, Gen.P_TOP + 13.5) * GroundMap.TILE
+			for fqm in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_metro.png")
+			g.story_cam = Vector2(Gen.P_CX + 12.0, Gen.P_TOP + 4.0) * GroundMap.TILE
+			for fqs in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_stair_end.png")
+			g.story_cam = Vector2(Gen.P_CX - 14.0, Gen.P_TOP + 5.0) * GroundMap.TILE
+			g.story_zoom = 0.62
+			for fq3 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_museum.png")
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW + 40.0, Gen.P_TOP + 9.0) * GroundMap.TILE
+			for fq4 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_hall.png")
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW + 14.0, Gen.P_TOP + 7.5) * GroundMap.TILE
+			g.story_zoom = 1.0
+			for fq5 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_prop.png")
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW * 0.5, Gen.P_TOP + 26.0) * GroundMap.TILE
+			g.story_zoom = 0.0
+			for fq6 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_south.png")
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW * 0.5, Gen.P_TOP + 30.0) * GroundMap.TILE
+			g.story_zoom = 0.5
+			for fq7 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_south_wide.png")
+			g.story_cam = Vector2(Gen.P_CX + Gen.P_CW + 28.0, Gen.P_TOP + 26.0) * GroundMap.TILE
+			g.story_zoom = 0.0
+			for fq8 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_south_east.png")
+			g.story_cam = Vector2(Gen.P_CX - 24.0, Gen.P_TOP + 26.0) * GroundMap.TILE
+			for fq9 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_plaza_south_west.png")
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+		# (Luz) the viewing scope: the view pulls back to the whole of the towers; closing it gives the plaza back
+		var scope_ok := false
+		if on_plaza:
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+			for zs in g.map.zones:
+				if String(zs.get("kind", "")) == "ctr_scope":
+					g.zone = zs
+			g.use()
+			for fs0 in 20:
+				await get_tree().process_frame
+			var sc = g._lift_menu
+			var up: bool = sc != null and is_instance_valid(sc) and sc.has_method("pulled") and float(sc.pulled()) < 0.5
+			if shots and up:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_scope_0.png")
+				for fs1 in 100:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_scope_1.png")
+				for fs2 in 260:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_scope_2.png")
+			if up:
+				sc._t = 10.0
+				up = is_equal_approx(float(sc.pulled()), 1.0)
+				g._close_lift_menu()
+			scope_ok = up and g._lift_menu == null and (g.map.get_meta("ctr_facades", []) as Array).size() == 3
+		on_plaza = on_plaza and scope_ok
+		var in_hall := false
+		if on_plaza:
+			for zh in g.map.zones:
+				if String(zh.get("id", "")) == "ctr_hall":
+					g.zone = zh
+			g.use()
+			for fr in 10:
+				await get_tree().process_frame
+			in_hall = String(g.level) == "street" and String(g._title.text).ends_with("Commercial Hall")
+			g.go_level("zplaza", "lift")
+			for fs in 10:
+				await get_tree().process_frame
+			in_hall = in_hall and String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0)
+			for zd in g.map.zones:
+				if String(zd.get("kind", "")) == "ctr_down":
+					g.zone = zd
+			g.use()
+			for ft in 10:
+				GameState.play_time = 41.0
+				await get_tree().process_frame
+		plaza_ok = on_plaza and in_hall and String(g.level) == "zstation" and int(g.ctr_stop) == 1
+		if not plaza_ok:
+			print("CTR61A plaza: on ", on_plaza, " hall ", in_hall, " level ", g.level, " stop ", g.ctr_stop)
+		ride_ok = ride_ok and plaza_ok
+		# the district stations: one track each; the Colosseum's way up still shut
+		var one_a: bool = (g.map.get_meta("ctr_tracks", []) as Array).size() == 1
+		g.ctr_stop = 2
+		g.go_level("zstation", "rail")
+		for f9 in 10:
+			GameState.play_time = 82.0
+			await get_tree().process_frame
+		var shut_b: bool = (g.map.zones as Array).any(func(z): return String(z.get("kind", "")) == "ctr_exit" and String(z.get("closed", "")) != "")
+		g.ctr_line = "B"
+		g.go_level("zstation", "rail")
+		for f9b in 5:
+			GameState.play_time = 82.0
+			await get_tree().process_frame
+		var free_b: bool = g.map.free_at(g.pilot.pos, 4.0) and g.map.free_at(g.pilot.pos + Vector2(0, -20), 4.0)      # (Luz: you were stuck at the Colosseum)
+		dist_ok = one_a and shut_b and free_b and (g.map.get_meta("ctr_tracks", []) as Array).size() == 1 and String((g.map.get_meta("ctr_tracks") as Array)[0]["line"]) == "B"
+		if shots:
+			g.story_cam = Vector2(Gen.SW * 0.5, Gen.PLAT + 3.0) * GroundMap.TILE
+			g.story_zoom = 0.75
+			for f10 in 40:
+				GameState.play_time = 82.0                          # Line B stands at the Colosseum
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_colosseum.png")
+			g.ctr_line = "B"
+			g.station["day"] = 0.0
+			g.go_level("ztrain", "rail")
+			for f11 in 90:
+				GameState.play_time = 60.0
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_ride_b_night.png")
+		g.story_cam = Vector2.INF
+		g.story_zoom = 0.0
+	check(time_ok and land_ok and st_ok and ride_ok and dist_ok,
+		"61a: Centauria's trains – a timetable (15 s halts, rides of 21 to 25 s, Line B half a round later), the boards' text; the hangar's lift goes only to Centauria Central (two tracks, two boards, the stairs up); no train: you stay, a train standing: aboard; the doors shut on the way and open at the Commercial District; the district stations with one track each, the Colosseum's way up shut  [%s %s %s %s %s]" % [time_ok, land_ok, st_ok, ride_ok, dist_ok])
+	# the game as it was
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
 
 
 func _test_w59a(_view: SystemView) -> void:

@@ -412,6 +412,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.61.2 (package 61a): `scripts/ground/centauria_gen.gd`: the timetable (`LINES`, `state`, `next_at`, `doors`,
+  `board_text`), the maps `build_station`, `build_plaza`, `build_car`, the sky `draw_sky` / `draw_lapis`, and the drawn
+  classes `TowerArt`, `PlazaSky`, `TowerScope`, `FacadeFx`, `RoofFx`, `MetroFx`, `RailFx`, `CarScreen`, `Panorama`.
+  GroundView levels `zstation`, `ztrain`, `zplaza` (`ctr_stop`, `ctr_line`, `is_centauria()`; zone kinds `ctr_board`,
+  `ctr_alight`, `ctr_up`, `ctr_exit`, `ctr_down`, `ctr_scope`); map decal `terrace_lit`; Fern's moons Ember and
+  Glacia; smoke group `ctr61a` (shots with `CTR_SHOTS=1`).
 - 0.8.61.1 (package 61): Universe special system `fern` (`_place_fern`, `SPECIAL_BODIES["fern"]`, body keys `lapis`
   and `fern_city`, the forced asteroid belt in `_make_belts`); planet shader `grand` (Lapis' rings, set in
   `Celestial.make_planet_sprite`); dan_work phase `free`: `_fern_step`, `_fern_call` (`FERN_LEVEL`), `_luz_talk`,

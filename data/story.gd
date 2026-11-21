@@ -604,8 +604,8 @@ const MISSIONS := {
 				"goals": [{"id": "arrive", "kind": "flag", "flag": "fern_arrived", "label": "fly to Fern"}]},
 			{"id": "land", "title": "Centauria", "text": "The city lies on Pelagia, the ocean world that circles Lapis, the blue giant with the rings. Descend and land in Centauria.",
 				"goals": [{"id": "land", "kind": "flag", "flag": "fern_landed", "label": "land in Centauria on Pelagia"}]},
-			{"id": "luz", "title": "Rook's contact", "text": "Luz knows the city and owes Rook a favour. Luz waits on the street of Centauria.",
-				"goals": [{"id": "luz", "kind": "flag", "flag": "fern_luz", "label": "find Luz in Centauria"}]},
+			{"id": "luz", "title": "Rook's contact", "text": "Luz knows the city and owes Rook a favour. Take Line A from Centauria Central to the Commercial District: Luz waits on the central plaza, by the way up from the station.",
+				"goals": [{"id": "luz", "kind": "flag", "flag": "fern_luz", "label": "find Luz on the plaza of the Commercial District"}]},
 		]},
 	# package 58, part 1 (Luz): Little Darling – Dan shows you the station window and the Outfitter (a guided tour),
 	# you fit the lasers he left in storage and buy a drone with his advance. The flags come from

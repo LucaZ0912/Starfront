@@ -3,6 +3,40 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.61.2 – 2026-11-21
+
+**Package 61a: Centauria by hand (Luz): its trains and the Commercial District. The place you will spend the most
+time in, so it is drawn in far more detail than any city before.**
+- **The trains:** the hangar's lift now leads only to the station Centauria Central. Two lines run to a timetable
+  (15 s at each stop, rides of 21 to 25 s): Line A to the Commercial District, Line B to the Colosseum (its station
+  stands, the way up opens later). Screens over the platforms count the seconds; sleek trains come out of the tunnel,
+  their doors slide. More districts can be added as further lines.
+- **The ride:** you stand in the car (seats along both walls, grab poles, three doors that all work, a screen
+  "ARRIVAL n s"). Outside: the station drifting off, the tunnel, about 15 s of the city (the casino's towers or the
+  stadium, the sea, Lapis large behind it all), the tunnel again, the next station.
+- **The Commercial District** after Luz's sketch, one wide map: the central plaza with the way down to the metro in
+  its middle (lit steps, a board with the next train in seconds), fountains, holo statues, pillars of light, stalls,
+  benches, palms; west the Museum's plaza as it stands on Curie; east the Commercial Hall with a plaza of its own,
+  a café and a market row. The Hall holds the city's shops (ship services stay at the hangar).
+- **The Grand Centauria:** three giant towers of dark glass north of the plaza, the highest buildings of the city
+  and far higher than the screen, on a podium with a terrace and a broad stair. Closed for now ("opening soon").
+  They and the skyline shift against you as you walk.
+- **The viewing scope** on the plaza pulls the view back until the whole towers stand in it: the city small at their
+  feet, a layer of cloud, traffic in the air, at night lasers and fireworks, Lapis behind.
+- **The houses round the plaza** are drawn at the scale of the people: shops with a door you could walk through,
+  goods and somebody inside, awnings, neon names; storeys with framed windows, blinds, curtains, balconies, washing
+  on a line; upright signs, changing billboards. The Commercial Hall: a great arch of glass with galleries and
+  people, its name in lights, a ticker, a glass dome.
+- **The south:** the roofs of tall buildings come up from the bottom of the picture in two rows (water towers,
+  penthouses, pools, gardens, a bar with guests, billboards, landing pads, drones over them), so the plaza lies
+  wrapped in the city. Between two of them a gate with the sign of the back alleys; barred for now.
+- **Lapis** stands large in Centauria's sky, drawn in detail: bands, drifting storms, a dark spot, a soft night side,
+  rings in many bands with the giant's shadow across them. It has two more moons, **Ember** (lava) and **Glacia**
+  (ice); the scope shows them. Lapis may have a cloud city again.
+- Luz now waits on the central plaza, by the way up from the station (the journal says so).
+- Seen so far only in test pictures at night and in rain. Still open: the island in the approach and on the planet
+  map, the inside of the Commercial Hall (still the old shopping street), a look at it all by day.
+
 ## alpha 0.8.61.1 – 2026-11-21
 
 **Package 61: the Fern system (Luz). Fern is to become the home system; its city Centauria follows piece by piece.**
