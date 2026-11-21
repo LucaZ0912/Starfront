@@ -444,6 +444,7 @@ func _build_world() -> void:
 	r57.add_child(UI.button("To Beyond (at Dan's)", func(): _cmd({"type": "debug_special", "special": "beyond"})))
 	r57.add_child(UI.button("To Driftwood", func(): _cmd({"type": "debug_special", "special": "driftwood"})))
 	r57.add_child(UI.button("To Hollow", func(): _cmd({"type": "debug_special", "special": "hollow"})))
+	r57.add_child(UI.button("To Fern (package 61)", func(): _cmd({"type": "debug_special", "special": "fern"})))
 	r57.add_child(UI.button("Next to a Gold Fleet wreck", func(): _cmd({"type": "debug_gold_wreck"})))
 	r57.add_child(UI.button("Next to a wreck colossus", func(): _cmd({"type": "debug_wreck_colossus"})))
 	# package 42: Wirtschaft 2.0
@@ -1042,6 +1043,101 @@ func _build_story() -> void:
 			w8b._set_phase("strike")
 			w8b._strike_begin()
 			_cmd({"type": "debug_special", "special": "hollow"}))))
+	_row().add_child(UI.button("Play package 59, part 1 (Dr. Imre Halden)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn9 = get_tree().current_scene
+		mn9.get_tree().create_timer(1.0).timeout.connect(func():
+			var st9 = GameState.story
+			for st0 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+				if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+					st9.flags["w58_dan_st"] = String(st0["id"])
+			for fl9 in st9.flags.keys():
+				if String(fl9).begins_with("w59_"):
+					st9.flags.erase(fl9)
+			st9.flags.erase("ticket_paid")
+			for fl9b in ["dan_deal_yes", "w58_drinks", "w58_gifted"]:
+				st9.flags[fl9b] = true
+			st9.flags["w58_sk"] = "done"
+			st9.flags["w58_phase"] = "after58"
+			mn9._start_dan_work("load")
+			var w9 = mn9.get_meta("dan_work")
+			w9._set_phase("after58")
+			w9._p59_begin()
+			mn9.station_panel.close()
+			mn9.open_deck())))
+	_row().add_child(UI.button("Play package 59, part 2 (the farewell, the choice, the jump)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn9b = get_tree().current_scene
+		mn9b.get_tree().create_timer(1.0).timeout.connect(func():
+			var st9b = GameState.story
+			for st0b in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+				if bool(st0b.get("dan", false)) or String(st0b.get("art", "")) == "dusty_duty":
+					st9b.flags["w58_dan_st"] = String(st0b["id"])
+			for fl9c in st9b.flags.keys():
+				if String(fl9c).begins_with("w59_"):
+					st9b.flags.erase(fl9c)
+			st9b.flags.erase("ticket_paid")
+			st9b.flags.erase("start_faction")
+			for fl9d in ["dan_deal_yes", "w58_drinks", "w58_gifted"]:
+				st9b.flags[fl9d] = true
+			st9b.flags["w58_sk"] = "done"
+			st9b.flags["w58_phase"] = "after58"
+			mn9b._start_dan_work("load")
+			var w9b = mn9b.get_meta("dan_work")
+			w9b._set_phase("after58")
+			w9b._p59_begin()
+			st9b.set_flag("w59_bar", true)
+			st9b.set_flag("w59_met", true)
+			w9b._set_phase("imre")
+			mn9b.station_panel.close()
+			w9b._p59_farewell())))
+	for fac9 in ["assembly", "covenant"]:
+		_row().add_child(UI.button("Play package 59, part 3 (the naturalisation: %s)" % fac9.capitalize(), func():
+			close()
+			var mn9c = get_tree().current_scene
+			var st9c = GameState.story
+			for fl9e in st9c.flags.keys():
+				if String(fl9e).begins_with("cit_") or String(fl9e) in ["start_job", "intro_done"]:
+					st9c.flags.erase(fl9e)
+			st9c.flags["start_faction"] = fac9
+			st9c.missions.erase("citizen")
+			st9c.done.erase("citizen")
+			mn9c._start_dan_work("load")
+			var w9c = mn9c.get_meta("dan_work")
+			w9c._set_phase("jumped59")
+			mn9c.station_panel.close()
+			w9c._cit_run("arrive")))
+	_row().add_child(UI.button("Acquaintances: meet everyone (the intro's flags)", func():
+		var st6 = GameState.story
+		for fl6 in ["dan_deal_yes", "ticket_ship", "w58_slept", "w58_ossa", "w58_escorted", "w58_maul", "w58_contact", "w58_listened", "w58_briefing",
+				"w58_gear", "w58_sim", "w58_relay", "w58_base_down", "w58_gifted", "w58_drinks", "w59_met", "w59_left", "cit_licence"]:
+			st6.flags[fl6] = true
+		if not st6.flags.has("intro_stage"):
+			st6.flags["intro_stage"] = "58"
+		if not "darling" in st6.done:
+			st6.done.append("darling")
+		st6.changed.emit()
+		GameState.log_msg("[Debug] Acquaintances: everyone met (Pilot window, Acquaintances).", GameState.COL_WARN)))
+	for d6 in [["ossa", 15], ["imre", -40]]:
+		_row().add_child(UI.button("Acquaintances: %s %+d" % [String(d6[0]).capitalize(), int(d6[1])], func():
+			load("res://data/acquaintances.gd").add(String(d6[0]), int(d6[1]), "debug")))
+	_row().add_child(UI.button("Package 61: Rook's call now (the way to Fern)", func():
+		close()
+		var mn61 = get_tree().current_scene
+		var st61 = GameState.story
+		for fl61 in st61.flags.keys():
+			if String(fl61).begins_with("fern_"):
+				st61.flags.erase(fl61)
+		st61.missions.erase("fern")
+		st61.done.erase("fern")
+		st61.flags["intro_stage"] = "58"
+		st61.flags["intro_done"] = true
+		mn61._start_dan_work("load")
+		var w61 = mn61.get_meta("dan_work")
+		w61._set_phase("free")
+		w61._fern_call()))
 	_row().add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()

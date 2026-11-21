@@ -175,9 +175,10 @@ static func build(station: Dictionary, rented: int, sleeping: int = 0) -> Ground
 
 
 static func _seat_row(m: GroundMap, x: int, y: int, rng: RandomNumberGenerator) -> void:
-	m.add_object({"kind": "sofa", "x": x + 1, "y": y, "w": 3, "h": 1, "col": COL.darkened(0.35), "face": 2})
+	# two sofas facing each other over the table (they both looked down, one of them at the wall)
+	m.add_object({"kind": "sofa", "x": x + 1, "y": y, "w": 3, "h": 1, "col": COL.darkened(0.35), "face": 0})
 	m.add_object({"kind": "table_small", "x": x + 2, "y": y + 2, "w": 1, "h": 1})
-	m.add_object({"kind": "sofa", "x": x + 1, "y": y + 4, "w": 3, "h": 1, "col": COL.darkened(0.35), "face": 0})
+	m.add_object({"kind": "sofa", "x": x + 1, "y": y + 4, "w": 3, "h": 1, "col": COL.darkened(0.35), "face": 1})
 
 
 ## One room: closed (only its door), or open – yours (its bed to sleep in) or being cleaned.
@@ -236,14 +237,17 @@ static func _room(m: GroundMap, r: Dictionary, mine: bool, cleaning: bool, sleep
 			m.add_object({"kind": "plant", "x": x0, "y": ry1, "w": 1, "h": 1})
 		"medium":
 			m.add_object({"kind": "locker", "x": x0, "y": ry0, "w": 1, "h": 1})
-			m.add_object({"kind": "sofa", "x": x0, "y": ry1 - 1, "w": 2, "h": 1, "col": COL.darkened(0.3), "face": 0})
-			m.add_object({"kind": "table_small", "x": x0 + 1, "y": ry0 + 2, "w": 1, "h": 1})
+			# the sofa against the near wall, facing the room, its table in front (north rooms: clear of the door)
+			var sx := x1 - 2 if north else x0
+			m.add_object({"kind": "sofa", "x": sx, "y": ry1, "w": 2, "h": 1, "col": COL.darkened(0.3), "face": 1})
+			m.add_object({"kind": "table_small", "x": sx, "y": ry1 - 2, "w": 1, "h": 1})
 			m.add_object({"kind": "plant", "x": x1, "y": ry1 if north else ry0, "w": 1, "h": 1})
 		"luxury":
 			m.decals.append({"kind": "rug", "x": x0 + 1, "y": ry0 + 3, "w": w - 2, "h": 2, "col": Color(0.55, 0.35, 0.2)})
 			m.add_object({"kind": "display", "x": x0 if north else x0 + 4, "y": ry0, "w": 2, "h": 1, "col": COL})      # (not in the door's way)
-			m.add_object({"kind": "sofa", "x": x0, "y": ry1 - 1, "w": 3, "h": 1, "col": COL.darkened(0.25), "face": 0})
-			m.add_object({"kind": "round_table", "x": x0 + 4, "y": ry1 - 2, "w": 1, "h": 1})
+			var sx2 := x1 - 3 if north else x0
+			m.add_object({"kind": "sofa", "x": sx2, "y": ry1, "w": 3, "h": 1, "col": COL.darkened(0.25), "face": 1})
+			m.add_object({"kind": "round_table", "x": sx2 + 1, "y": ry1 - 2, "w": 1, "h": 1})
 			m.add_object({"kind": "fridge", "x": x0 + 3, "y": ry0, "w": 1, "h": 1})
 			m.add_object({"kind": "locker", "x": x0 + 2 if north else x0 + 6, "y": ry0, "w": 1, "h": 1})
 			m.add_object({"kind": "plant", "x": x1, "y": ry1 if north else ry0, "w": 1, "h": 1})

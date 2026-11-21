@@ -119,10 +119,12 @@ static func _rise(kind: String) -> int:
 			return 24
 		"tank", "ice_sculpture", "cage", "vending", "locker":
 			return 20
-		"engine_part", "fountain", "heater", "planter":
+		"fountain":
+			return 16                           # (its jet inside the picture)
+		"engine_part", "heater", "planter":
 			return 14
 		"barrel", "barrel_table", "ore_cart":
-			return 8
+			return 12                           # (the lid and what stands on it inside the picture)
 		"pool_table", "trash", "flower_bed", "table_small", "lounger":
 			return 6
 		"crate_seat":
@@ -133,9 +135,9 @@ static func _rise(kind: String) -> int:
 			return 10
 		"round_table", "table":
 			return 8
-		"chair", "bench", "bench_back":
+		"chair", "chair_back", "bench", "bench_back":
 			return 12
-		"sofa":
+		"sofa", "sofa_back":
 			return 14
 		"stool", "railing":
 			return 6
@@ -879,14 +881,22 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				_r(img, 1 + k * 10, fy - 6, 9, 3, cc.lightened(0.25))
 				_r(img, 1 + k * 10, fy + 2, 9, 1, cc.darkened(0.3))
 		"plant":
-			_r(img, pw / 2 - 5, fy + ph - 9, 10, 8, Color(0.55, 0.35, 0.25))
-			_r(img, pw / 2 - 5, fy + ph - 9, 10, 2, Color(0.7, 0.48, 0.35))
-			for k in 14:
-				var lx := pw / 2 - 7 + int(GroundMap.hash2(k, int(o["x"])) * 14)
-				var ly := fy + ph - 12 - int(GroundMap.hash2(k, int(o["y"]), 3) * 22)
-				var lc := Color(0.2, 0.55 + 0.25 * GroundMap.hash2(k, 5), 0.25)
-				_r(img, lx, ly, 3, 4, lc)
-				_p(img, lx + 1, ly, lc.lightened(0.3))
+			# a pot, fronds fanning out of it – inside its tile (they were loose squares, cut off at the tile's edge)
+			var pb := fy + ph
+			var pv := int(o["x"]) % 4
+			for k in [0, 6, 1, 5, 2, 4, 3]:                              # the outer fronds first, the middle one on top
+				var ft: float = (int(k) - 3) / 3.0
+				var ln: float = 13.0 + float((int(k) * 5 + pv * 3) % 5)
+				var lc := Color(0.14, 0.44 + 0.07 * ((int(k) + pv) % 3), 0.2)
+				for sg in int(ln):
+					var u: float = sg / ln
+					var lx: float = pw * 0.5 + ft * 6.0 * (u * 0.35 + u * u * 0.65)
+					var ly: float = pb - 9.0 - ln * u * (1.0 - 0.4 * absf(ft) * u)
+					var lw := 2 if u < 0.8 else 1
+					_r(img, clampi(int(lx) - (1 if lw == 2 else 0), 1, pw - 1 - lw), int(ly), lw, 2, lc.lightened(0.28 * u))
+			_r(img, pw / 2 - 4, pb - 8, 8, 7, Color(0.55, 0.35, 0.25))
+			_r(img, pw / 2 - 5, pb - 9, 10, 2, Color(0.7, 0.48, 0.35))
+			_r(img, pw / 2 - 3, pb - 2, 6, 1, Color(0.4, 0.25, 0.18))
 		"terminal":
 			_r(img, pw / 2 - 6, fy - 14, 12, ph + 10, Color(0.16, 0.17, 0.21))
 			_r(img, pw / 2 - 5, fy - 13, 10, 9, c.darkened(0.2))
@@ -1190,8 +1200,9 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 0, b9 - 4, pw, 2, Color(0.5, 0.52, 0.56))
 		"sofa":
 			var b4 := fy + ph
-			_r(img, 1, b4 - 24, pw - 2, 13, c.darkened(0.3))                    # the back
-			_r(img, 1, b4 - 24, pw - 2, 2, c.darkened(0.15))
+			if int(o.get("face", 0)) != 1:                                        # (facing up: its back is drawn over the sitters, "sofa_back")
+				_r(img, 1, b4 - 24, pw - 2, 13, c.darkened(0.3))                    # the back
+				_r(img, 1, b4 - 24, pw - 2, 2, c.darkened(0.15))
 			_r(img, 3, b4 - 12, pw - 6, 6, c)                                     # the cushions
 			_r(img, 3, b4 - 12, pw - 6, 1, c.lightened(0.2))
 			for k in int(pw / 16):
@@ -1201,6 +1212,24 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 3, b4 - 17, 3, 14, c.darkened(0.35))
 			_r(img, 2, b4 - 3, 2, 3, Color(0.15, 0.12, 0.1))
 			_r(img, pw - 4, b4 - 3, 2, 3, Color(0.15, 0.12, 0.1))
+		"sofa_back":
+			# a sofa facing up, from behind: its back towards you, the sitters' heads over it
+			var b4b := fy + ph
+			_r(img, 1, b4b - 15, pw - 2, 12, c.darkened(0.3))
+			_r(img, 1, b4b - 15, pw - 2, 2, c.darkened(0.12))
+			_r(img, 1, b4b - 6, pw - 2, 3, c.darkened(0.42))
+			for k in int(pw / 16) - 1:
+				_r(img, k * 16 + 16, b4b - 13, 1, 7, c.darkened(0.4))
+			_r(img, 0, b4b - 14, 3, 11, c.darkened(0.35))                         # the arms
+			_r(img, pw - 3, b4b - 14, 3, 11, c.darkened(0.2))
+			_r(img, 2, b4b - 3, 2, 3, Color(0.15, 0.12, 0.1))
+			_r(img, pw - 4, b4b - 3, 2, 3, Color(0.15, 0.12, 0.1))
+		"chair_back":
+			# a chair facing up, from behind: its backrest towards you, the sitter's shoulders and head over it
+			var bcb := fy + ph
+			_r(img, 3, bcb - 14, pw - 6, 7, c.darkened(0.32))
+			_r(img, 3, bcb - 14, pw - 6, 1, c.lightened(0.12))
+			_r(img, 5, bcb - 12, pw - 10, 3, c.darkened(0.42))
 		"railing":
 			_r(img, 0, fy + 2, pw, 2, metal.lightened(0.3))
 			_r(img, 0, fy + 4, pw, 1, metal.darkened(0.3))
@@ -1394,8 +1423,8 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 				for bx in range(4, pw - 5, 4):
 					_r(img, bx, sy, 3, 4, [Color(0.95, 0.95, 0.95), Color(0.9, 0.4, 0.35), Color(0.4, 0.75, 0.95), Color(0.95, 0.8, 0.3)][(bx + sy) % 4])
 			_r(img, pw / 2, 7, 1, fy + ph - 12, Color(0.75, 0.8, 0.84))
-			_r(img, pw / 2 - 3, 0, 6, 2, Color(0.9, 0.2, 0.2))
-			_r(img, pw / 2 - 1, -2 + 0, 2, 6, Color(0.9, 0.2, 0.2))
+			_r(img, pw / 2 - 3, 3, 6, 2, Color(0.9, 0.2, 0.2))            # the cross, whole (it was cut off at the top)
+			_r(img, pw / 2 - 1, 1, 2, 6, Color(0.9, 0.2, 0.2))
 		"table_small":
 			_r(img, 2, fy, pw - 4, ph - 6, wood.lightened(0.12))
 			_r(img, 2, fy, pw - 4, 2, wood.lightened(0.3))
@@ -2155,12 +2184,13 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, pw - 4, fy - 14, 2, 4, Color(0.95, 0.95, 0.5))
 			_r(img, 2, fy + ph - 6, pw - 7, 3, Color(0.08, 0.08, 0.1))
 		"bench_back":
+			# a bench facing up, from behind: its backrest towards you, the sitters' shoulders and heads over it
 			var b7 := fy + ph
-			_r(img, 1, b7 - 12, pw - 2, 3, c.darkened(0.3))                # a rail at the small of the back: the sitters show above it
-			_r(img, 1, b7 - 12, pw - 2, 1, c.lightened(0.15))
-			_r(img, 1, b7 - 10, pw - 2, 1, c.darkened(0.5))
-			_r(img, 3, b7 - 10, 2, 4, metal.darkened(0.4))
-			_r(img, pw - 5, b7 - 10, 2, 4, metal.darkened(0.4))
+			_r(img, 1, b7 - 14, pw - 2, 7, c.darkened(0.35))
+			_r(img, 1, b7 - 14, pw - 2, 1, c.lightened(0.1))
+			_r(img, 1, b7 - 8, pw - 2, 1, c.darkened(0.5))
+			_r(img, 3, b7 - 13, 2, 6, metal.darkened(0.4))
+			_r(img, pw - 5, b7 - 13, 2, 6, metal.darkened(0.4))
 		"fridge":
 			_r(img, 2, fy - 14, pw - 4, ph + 12, Color(0.75, 0.8, 0.85))
 			_r(img, 3, fy - 13, pw - 6, 10, Color(0.3, 0.6, 0.8, 0.8))

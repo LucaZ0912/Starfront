@@ -405,6 +405,17 @@ Slanted, cosy top-down view since 0.7.49.2.
   `story_ui.radio_left()`, `_fight_start`, `_allies_step`, `_strike_party`, `_party8_step` / `_party8_end`);
   `MinigameData.SPECIAL` / `specials`, collection key `special`; `GroundView.ask_window`, `GroundMap.bar_rect`;
   smoke group `w58h` (W58H_SHOTS, W58H_PERF).
+- 0.8.60.1 (packages 59 and 60): dan_work phases `bar59` → `imre` → `farewell` → `jump59` → `jumped59` → `arrive59` →
+  `office59` → `bar59c` → `wake59` → `free` (`_p59_*`, `_cit_run`, `_cit_transfer`, `start_place`);
+  `scripts/world/threshold_jump_fx.gd` with `shaders/whirl.gdshader` (modes "in" / "out"; Ship meta `fx_hidden`);
+  `scripts/ground/office_gen.gd` (level "office", `office_faction`); `scripts/ui/licence_stamp.gd`;
+  `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
+  the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
+  groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.61.1 (package 61): Universe special system `fern` (`_place_fern`, `SPECIAL_BODIES["fern"]`, body keys `lapis`
+  and `fern_city`, the forced asteroid belt in `_make_belts`); planet shader `grand` (Lapis' rings, set in
+  `Celestial.make_planet_sprite`); dan_work phase `free`: `_fern_step`, `_fern_call` (`FERN_LEVEL`), `_luz_talk`,
+  Luz in `ground_mode` for the city named Centauria; story mission `fern`, character `luz`; smoke group `fern61`.
 - 0.8.58.6 (package 58, part 7): dan_work phase `relay` → `strike` (`_relay_body`, `_relay_site`, `_relay_begin`,
   `_relay_step`, `_relay_intro` with `_intro_walk` / `_intro_zap`, `_overload_fx` / `_OverloadFx`, `_foot_rescue`);
   POI theme `relay` (`DungeonGen.build_relay_outside`, target `relay` with `computer_wall`, `_air_shaft`);

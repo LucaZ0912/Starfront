@@ -180,7 +180,9 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	var spr := Sprite2D.new()
 	spr.texture = PixelArt.white()
 	var ring: bool = p.get("ring", false)
-	var quad := r * (2.0 / 0.5 if ring else 2.0 / 0.86)
+	var grand: bool = ring and bool(p.get("lapis", false))            # package 61: Lapis – wider, brighter rings
+	var rk := 0.36 if grand else 0.5                                   # the planet's share of the picture (rings need room)
+	var quad := r * (2.0 / rk if ring else 2.0 / 0.86)
 	spr.scale = Vector2.ONE * quad / 64.0
 	var mat := ShaderMaterial.new()
 	mat.shader = PlanetShader
@@ -196,13 +198,16 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 			c0 = Color.from_hsv(0.62, minf(1.0, c0.s * 1.6 + 0.25), c0.v * 0.62)       # package 39: Boulé, deep blue
 		if p.has("hue"):
 			c0 = Color.from_hsv(float(p["hue"]), minf(1.0, c0.s * 1.5 + 0.2), c0.v * 0.85)   # 39b: the red giant Compline
+		if p.get("lapis", false):
+			c0 = Color.from_hsv(0.635, minf(1.0, c0.s * 1.7 + 0.35), c0.v * 0.6)        # package 61: Lapis, a deep sapphire blue
 		mat.set_shader_parameter(k[0], Color.from_hsv(fposmod(c0.h + dh, 1.0), clampf(c0.s * dsat, 0.0, 1.0), clampf(c0.v * dval, 0.0, 1.0)))
 	mat.set_shader_parameter("atmo", t["atmo"])
 	mat.set_shader_parameter("gas", t["gas"])
 	mat.set_shader_parameter("seed", float(p.get("seed", 1.0)))
 	mat.set_shader_parameter("light_dir", ldir)
 	mat.set_shader_parameter("has_ring", 1.0 if ring else 0.0)
-	mat.set_shader_parameter("radius", 0.5 if ring else 0.86)
+	mat.set_shader_parameter("radius", rk if ring else 0.86)
+	mat.set_shader_parameter("grand", 1.0 if grand else 0.0)
 	mat.set_shader_parameter("pixels", clampf(quad / 7.0, 48.0, 220.0))
 	mat.set_shader_parameter("spin", 0.004 if r > 300.0 else 0.015)
 	mat.set_shader_parameter("craters", float(t.get("craters", 0.0)))   # package 36: moons
@@ -229,6 +234,11 @@ static func make_planet_sprite(p: Dictionary, r: float, ldir: Vector2) -> Sprite
 	mat.set_shader_parameter("ring_in", rng.randf_range(1.2, 1.5))
 	mat.set_shader_parameter("ring_out", rng.randf_range(1.7, 1.95))
 	mat.set_shader_parameter("ring_tilt", rng.randf_range(2.4, 4.5))
+	if grand:
+		mat.set_shader_parameter("ring_in", 1.32)
+		mat.set_shader_parameter("ring_out", 2.62)
+		mat.set_shader_parameter("ring_tilt", 2.9)
+		mat.set_shader_parameter("storms", 0.9)
 	if t.has("lumpy"):
 		mat.set_shader_parameter("spin", 0.0)                          # moons turn one face to their planet
 	spr.material = mat

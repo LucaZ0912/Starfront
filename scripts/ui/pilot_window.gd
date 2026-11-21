@@ -17,13 +17,15 @@ const PilotArt = preload("res://scripts/core/pilot_art.gd")
 const PilotData = preload("res://data/pilot.gd")
 const SkillData = preload("res://data/skills.gd")
 const COL := Color(1.0, 0.82, 0.35)
-const TABS := ["Pilot", "Skills", "Perks", "Skill tree", "Gear", "Journal"]
+const TABS := ["Pilot", "Skills", "Perks", "Skill tree", "Gear", "Journal", "Acquaintances"]
 const TAB_PILOT := 0
 const TAB_SKILLS := 1
 const TAB_PERKS := 2
 const TAB_TREE := 3
 const TAB_GEAR := 4
 const TAB_JOURNAL := 5                    # package 55 (Luz)
+const TAB_ACQ := 6                        # package 60 (Luz): the people you know
+const Acq = preload("res://data/acquaintances.gd")
 const StoryData = preload("res://data/story.gd")
 const GearData = preload("res://data/gear.gd")
 const GearIcons = preload("res://scripts/ui/gear_icons.gd")
@@ -37,6 +39,7 @@ const TreeData = preload("res://data/skilltree.gd")
 var tab := 0
 var jsub := "story"                        # the journal's tab: story · side · tips · secrets
 var jsel := ""                             # the mission (or tip, secret) picked
+var asel := ""                             # package 60: the acquaintance picked
 var sub := 0                              # Pilot tab: 0 Info, 1 Standings, 2 Codex, 3 Collection
 var coll_cat := "perks"                   # Collection: the category shown (0.5.34.3)
 var tab_buttons: Array = []
@@ -121,6 +124,9 @@ func _set_tab(i: int) -> void:
 func rebuild() -> void:
 	for k in tab_buttons.size():
 		tab_buttons[k].button_pressed = k == tab
+	if tab_buttons.size() > TAB_ACQ:
+		# package 60: a gold dot on the tab while someone new stands in it
+		tab_buttons[TAB_ACQ].text = TABS[TAB_ACQ] + ("  ●" if Acq.known().any(func(id): return Acq.is_new(id)) else "")
 	if is_instance_valid(_tsc) and _tsc.is_inside_tree():
 		_tscroll = Vector2(_tsc.scroll_horizontal, _tsc.scroll_vertical)
 	_tsc = null
@@ -138,6 +144,207 @@ func rebuild() -> void:
 		TAB_TREE: _tree()
 		TAB_GEAR: _gear()
 		TAB_JOURNAL: _journal()
+		TAB_ACQ: _acquaintances()
+
+
+# ---- package 60 (Luz): acquaintances – the people you know, each with a relationship bar
+
+func _acquaintances() -> void:
+	var ids: Array = Acq.known()
+	if ids.is_empty():
+		body.add_child(UI.label("ACQUAINTANCES", 16, COL))
+		body.add_child(UI.wrap_label("Nobody yet. The people you come to know on your way will stand here.", 13, UI.TEXT_DIM, 700))
+		return
+	if not asel in ids:
+		asel = ids[0]
+	Acq.seen(asel)
+	var row := UI.hbox(16)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(row)
+	var left := UI.vbox(8)
+	left.custom_minimum_size = Vector2(460, 0)
+	row.add_child(left)
+	left.add_child(UI.label("ACQUAINTANCES  %d" % ids.size(), 16, COL))
+	for id in ids:
+		_acq_tile(left, String(id))
+	left.add_child(UI.wrap_label("What you live through with someone, and what you do with or for them, moves their bar.", 12, UI.TEXT_DIM, 440))
+	var rp := UI.neon_panel(Color(COL, 0.5), Color(0.04, 0.06, 0.11, 0.95), 1)
+	rp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rp.custom_minimum_size = Vector2(0, 560)
+	row.add_child(rp)
+	var right := UI.vbox(8)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rp.add_child(right)
+	_acq_detail(right, asel)
+
+
+func _acq_portrait(id: String, px: float) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = GameState.story.portrait_of(id)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tr.custom_minimum_size = Vector2(px, px)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tr
+
+
+func _acq_col(v: int) -> Color:
+	return COL if v > 0 else (Color(1.0, 0.35, 0.3) if v < 0 else UI.TEXT_DIM)
+
+
+func _acq_tile(parent: Control, id: String) -> void:
+	var ch: Dictionary = GameState.story.Data.CHARACTERS.get(id, {})
+	var v: int = Acq.value(id)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(450, 86)
+	b.toggle_mode = true
+	b.button_pressed = asel == id
+	var sb := UI.panel_style(Color(0.06, 0.08, 0.13, 0.96) if asel == id else Color(0.04, 0.05, 0.09, 0.9), COL if asel == id else Color(COL, 0.35))
+	sb.set_border_width_all(2 if asel == id else 1)
+	for stn in ["normal", "hover", "pressed", "hover_pressed"]:
+		b.add_theme_stylebox_override(stn, sb)
+	b.pressed.connect(func():
+		asel = id
+		rebuild())
+	parent.add_child(b)
+	var h := UI.hbox(10)
+	h.set_anchors_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 8
+	h.offset_top = 6
+	h.offset_right = -10
+	h.offset_bottom = -6
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(h)
+	h.add_child(_acq_portrait(id, 72))
+	var vb := UI.vbox(2)
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(vb)
+	var top := UI.hbox(6)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(top)
+	top.add_child(UI.label(String(ch.get("name", id)), 16, Color(0.95, 0.96, 1.0)))
+	if Acq.is_new(id):
+		top.add_child(UI.label("●", 14, COL))
+	vb.add_child(UI.label(String(ch.get("sub", "")), 12, UI.TEXT_DIM))
+	vb.add_child(UI.label(Acq.level_name(Acq.level(v)), 13, _acq_col(v)))
+	var mini := _AcqBar.new()
+	mini.value = v
+	mini.small = true
+	mini.custom_minimum_size = Vector2(0, 8)
+	mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(mini)
+
+
+func _acq_detail(right: VBoxContainer, id: String) -> void:
+	var st = GameState.story
+	var ch: Dictionary = st.Data.CHARACTERS.get(id, {})
+	var v: int = Acq.value(id)
+	var head := UI.hbox(14)
+	right.add_child(head)
+	head.add_child(_acq_portrait(id, 150))
+	var hv := UI.vbox(4)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(hv)
+	hv.add_child(UI.label(String(ch.get("name", id)), 24, COL))
+	hv.add_child(UI.label(String(ch.get("sub", "")), 14, UI.TEXT_DIM))
+	hv.add_child(UI.wrap_label(String(Acq.PEOPLE[id].get("about", "")), 14, COL.lightened(0.3), 900))
+	hv.add_child(UI.wrap_label(String(Acq.PEOPLE[id].get("bio", "")), 14, Color(0.85, 0.88, 0.95), 900))      # (Luz) who they are, in short
+	# the relationship: a bar from the middle, red to the left, gold to the right, in steps
+	right.add_child(UI.label("RELATIONSHIP", 13, UI.TEXT_DIM))
+	var bar := _AcqBar.new()
+	bar.value = v
+	bar.custom_minimum_size = Vector2(0, 64)
+	right.add_child(bar)
+	right.add_child(UI.label("%s  ·  %s%d" % [Acq.level_name(Acq.level(v)), "+" if v > 0 else "", v], 16, _acq_col(v)))
+	# (Luz) a taste of what they like
+	var likes: Array = Acq.PEOPLE[id].get("likes", [])
+	if not likes.is_empty():
+		right.add_child(UI.label("LIKES", 13, UI.TEXT_DIM))
+		right.add_child(UI.wrap_label("  ·  ".join(likes), 15, Color(0.9, 0.93, 1.0), 1100))
+	# where
+	var wh: Dictionary = Acq.where(id)
+	right.add_child(UI.label("WHERE", 13, UI.TEXT_DIM))
+	right.add_child(UI.label(String(wh["place"]), 15, Color(0.9, 0.93, 1.0)))
+	if bool(wh["far"]):
+		right.add_child(UI.label("Beyond the Veil. Out of reach.", 13, Color(0.72, 0.5, 1.0)))
+	# together
+	var tg: Array = Acq.together(id)
+	if not tg.is_empty():
+		right.add_child(UI.label("TOGETHER", 13, UI.TEXT_DIM))
+		for ln in tg:
+			right.add_child(UI.wrap_label("·  " + String(ln), 14, Color(0.88, 0.9, 0.96), 760))
+	var gp := int((st.flags.get("acq_games", {}) as Dictionary).get(id, 0))
+	if gp > 0:
+		right.add_child(UI.wrap_label("·  Games together (+%d)." % gp, 14, Color(0.88, 0.9, 0.96), 760))
+	# plays: a special opponent at a bar game
+	if MinigameDataP.SPECIAL.has(id):
+		var sp: Dictionary = MinigameDataP.SPECIAL[id]
+		right.add_child(UI.label("PLAYS", 13, UI.TEXT_DIM))
+		var games: Array = (sp["games"] as Array).map(func(gk): return String(MinigameDataP.GAMES[gk]["name"]))
+		right.add_child(UI.label("%s  ·  %s  ·  %s" % [", ".join(games), "★".repeat(int(sp["stars"])), "beaten" if id in _special_beaten() else "not beaten yet"], 15, Color(0.9, 0.93, 1.0)))
+	# the last word
+	var last := _acq_last(id)
+	if last != "":
+		right.add_child(UI.label("LAST WORD", 13, UI.TEXT_DIM))
+		right.add_child(UI.wrap_label("\"%s\"" % last, 14, UI.TEXT_DIM, 760))
+
+
+## The last thing they said to you that the journal kept (a call or a line of a talk).
+func _acq_last(id: String) -> String:
+	var st = GameState.story
+	var best := ""
+	var logs: Array = []
+	for mid in st.done:
+		logs.append((st.done_log.get(mid, []) as Array))
+	for mid2 in st.missions:
+		logs.append(((st.missions[mid2] as Dictionary).get("log", []) as Array))
+	for lg in logs:
+		for e in lg:
+			var who := String((e as Dictionary).get("who", ""))
+			if who == id or who == id + "_radio":
+				best = String(e.get("text", ""))
+	return GameState.story.keys(best) if best != "" else ""
+
+
+## The relationship bar: from the middle to the right gold (Acquaintance, Friend, Best friend), to the left red
+## (Wary, Rival, Enemy); three steps either side, the names under them.
+class _AcqBar extends Control:
+	var value := 0
+	var small := false
+
+	func _draw() -> void:
+		var w := size.x
+		var bh := size.y if small else 22.0
+		var mid := w * 0.5
+		var half := w * 0.5 - 2.0
+		draw_rect(Rect2(0, 0, w, bh), Color(0.08, 0.09, 0.13, 0.95))
+		var k := clampf(absf(value) / 100.0, 0.0, 1.0)
+		if value > 0:
+			draw_rect(Rect2(mid, 1, half * k, bh - 2.0), Color(1.0, 0.82, 0.35))
+		elif value < 0:
+			draw_rect(Rect2(mid - half * k, 1, half * k, bh - 2.0), Color(0.95, 0.28, 0.25))
+		# the steps, the middle
+		for i in range(-3, 4):
+			var x := mid + half * i / 3.0
+			draw_line(Vector2(x, 0), Vector2(x, bh), Color(0.02, 0.03, 0.05, 0.9) if i != 0 else Color(0.9, 0.93, 1.0, 0.9), 2.0 if i != 0 else 2.0)
+		draw_rect(Rect2(0, 0, w, bh), Color(1.0, 0.82, 0.35, 0.45), false, 1.0)
+		if small:
+			return
+		var font := get_theme_default_font()
+		var lv := 0
+		if value != 0:
+			lv = signi(value) * clampi(int(ceil(absf(value) / (100.0 / 3.0))), 1, 3)
+		var names := ["Enemy", "Rival", "Wary", "Acquaintance", "Friend", "Best friend"]
+		for j in 6:
+			var seg := j - 3 if j < 3 else j - 2            # -3 … -1, +1 … +3
+			var x0 := mid + half * (seg - (1 if seg > 0 else 0)) / 3.0
+			var on := seg == lv
+			var col := Color(0.55, 0.58, 0.66)
+			if on:
+				col = Color(1.0, 0.82, 0.35) if seg > 0 else Color(1.0, 0.45, 0.4)
+			draw_string(font, Vector2(x0, bh + 20.0), names[j], HORIZONTAL_ALIGNMENT_CENTER, half / 3.0, 13 if not on else 14, col)
 
 
 # ---- package 51: gear

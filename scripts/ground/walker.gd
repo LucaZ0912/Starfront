@@ -49,6 +49,25 @@ var _path := PackedVector2Array()
 var _pi := 0
 var _stuck := 0.0
 const SIT_LIFT := 0.5              # art px: a sitter is drawn this much higher – on the seat, not in the floor
+const SIT_LIFT_BACK := 2.0         # … facing up, seen from behind: further back on the seat, behind its backrest
+const SIT_LIFT_STOOL := 3.0        # … on a bar stool: its seat is higher than a chair's
+var _stool_at := Vector2.INF
+var _stool := false
+
+
+## How far a sitter is raised onto the seat (art px): a bar stool is higher, a seat seen from behind deeper.
+func sit_lift() -> float:
+	if pos != _stool_at:
+		_stool_at = pos
+		_stool = false
+		if map != null:
+			for o in map.objects:
+				if String(o["kind"]) == "stool" and pos.distance_to(DeckGen._seat_pos(o)) < 4.0:
+					_stool = true
+					break
+	if _stool:
+		return SIT_LIFT + SIT_LIFT_STOOL
+	return SIT_LIFT + (SIT_LIFT_BACK if dir == 1 else 0.0)
 
 
 func setup(p_map: GroundMap, p_look: Dictionary, p_pos: Vector2, p_npc: bool) -> void:
@@ -253,7 +272,7 @@ func _draw() -> void:
 	if sitting:
 		# sitting on the seat: legs bent, the figure raised onto it
 		var st := ChibiArt.frame(look, dir, 3)
-		draw_texture_rect(st, Rect2(Vector2(-size.x * 0.5, -size.y - SIT_LIFT * s), size), false)
+		draw_texture_rect(st, Rect2(Vector2(-size.x * 0.5, -size.y - sit_lift() * s), size), false)
 	else:
 		if aim != Vector2.INF and not down and dir == 1:
 			_draw_aim(bob * s)                     # facing away: the weapon in front of the body, behind it for us
@@ -304,7 +323,7 @@ func _draw() -> void:
 		var p := 1.0 - drink_t / DRINK_TIME
 		var up := clampf(sin(p * PI) * 1.4, 0.0, 1.0)
 		var cs := ChibiArt.CHAR_SCALE
-		var lift := SIT_LIFT * s if sitting else -bob * s
+		var lift := sit_lift() * s if sitting else -bob * s
 		var hand_y := -(ChibiArt.H - 31) * cs - lift if sitting else -(ChibiArt.H - 24) * cs
 		var mouth_y := -(ChibiArt.H - 14) * cs - lift if sitting else -(ChibiArt.H - 6) * cs
 		var gx := (-6.0 if dir == 2 else 5.0) * cs
@@ -321,7 +340,7 @@ func _draw() -> void:
 		var font := ThemeDB.fallback_font
 		var fs := 15
 		var tw := font.get_string_size(bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var by := -size.y - 30.0 - (SIT_LIFT * s if sitting else 0.0)
+		var by := -size.y - 30.0 - (sit_lift() * s if sitting else 0.0)
 		var a := clampf(bubble_t * 3.0, 0.0, 1.0)
 		var r := Rect2(Vector2(-tw * 0.5 - 8, by - 22), Vector2(tw + 16, 26))
 		draw_rect(r, Color(0.97, 0.96, 0.92, 0.95 * a))
@@ -340,7 +359,7 @@ func _draw() -> void:
 func _draw_umbrella(size: Vector2, bob: float) -> void:
 	var cs := ChibiArt.CHAR_SCALE
 	var u := ease(umbrella, 0.5)
-	var lift := SIT_LIFT * GroundMap.SCALE if sitting else -bob
+	var lift := sit_lift() * GroundMap.SCALE if sitting else -bob
 	var hx := (-6.0 if dir == 2 else (4.0 if dir == 3 else 5.0)) * cs
 	var hand := Vector2(hx, -(ChibiArt.H - 24) * cs - lift)
 	var base := Vector2(hx * 0.35, -size.y - 1.0 * cs - lift)

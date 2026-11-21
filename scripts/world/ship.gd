@@ -4122,8 +4122,8 @@ func _draw_gas_top() -> void:
 
 
 func _draw() -> void:
-	if fit == null:
-		return
+	if fit == null or has_meta("fx_hidden"):
+		return                                       # (package 59: the Threshold's jump draws its picture itself)
 	if art_draw.is_valid():
 		art_draw.call(self)                          # package 58, part 8: a part of the Roost, drawn by the station
 		return

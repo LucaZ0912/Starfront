@@ -186,7 +186,7 @@ static func build_senate_lobby(station: Dictionary, body: Dictionary) -> GroundM
 	m.lights.append({"pos": Vector2(7, 16.5) * TILE, "r": 70.0, "col": Color(1.0, 0.92, 0.75), "a": 0.35})
 	# the lobbyist's corner in the east: a rug, leather, a low table, plants, soft light
 	m.decals.append({"kind": "rug", "x": W - 9, "y": 7, "w": 8, "h": 5, "col": Color(0.55, 0.2, 0.2)})
-	DeckGen._seat(m, "sofa", W - 7, 8, 1, Color(0.45, 0.25, 0.16), RandomNumberGenerator.new(), 0.0, 3)
+	DeckGen._seat(m, "sofa", W - 7, 8, 0, Color(0.45, 0.25, 0.16), RandomNumberGenerator.new(), 0.0, 3)
 	m.add_object({"kind": "table_small", "x": W - 6, "y": 10, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": W - 3, "y": 8, "w": 1, "h": 1})
 	m.add_object({"kind": "plant", "x": W - 9, "y": 8, "w": 1, "h": 1})

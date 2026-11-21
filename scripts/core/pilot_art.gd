@@ -274,7 +274,7 @@ static func _face(img: Image, l: Dictionary, skin: Color, hair: Color) -> void:
 		for p in [[18, 23], [20, 24], [19, 22], [28, 23], [30, 24], [29, 22]]:
 			img.set_pixel(p[0], p[1], skin.darkened(0.25))
 	# beard
-	var hc := hair if int(l["hair"]) != 0 else HAIR_COLORS[1]
+	var hc := hair      # (Luz, package 59) a bald head keeps its chosen beard colour
 	match int(l["beard"]):
 		1:
 			for y in range(23, 31):

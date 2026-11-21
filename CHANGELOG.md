@@ -3,6 +3,52 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.61.1 – 2026-11-21
+
+**Package 61: the Fern system (Luz). Fern is to become the home system; its city Centauria follows piece by piece.**
+- **Fern** lies out in the Rim and belongs to no one (independent, security 0.6): a red giant, the lava world Kiln, an
+  asteroid belt (always there), the ice giant Lapis and its ocean moon Pelagia. The Rim's waystation stands in orbit.
+- **Lapis** has a look of its own: a deep sapphire blue, wide bright rings in three bands with clean gaps, the planet's
+  shadow on them. No cloud cities there: all of Fern is in Centauria.
+- **Centauria** is Pelagia's one city, for now built like any city (a placeholder until the hand-made one).
+- **Rook's call** at pilot level 5: a place in the Rim with more work than a pilot can handle, and a contact, Luz.
+  Journal: "A Place Called Fern" (fly to Fern, land in Centauria, find Luz).
+- **Luz** waits on the street of Centauria, says hello and joins your acquaintances (a short description, likes).
+- Debug: "To Fern (package 61)", Story tab "Package 61: Rook's call now".
+
+## alpha 0.8.60.1 – 2026-11-21
+
+**Package 59: the way to the Cluster, and package 60: acquaintances (Luz). Both complete. The intro ends here: the
+open game begins.**
+- **The morning after the party:** Dan calls you up to the bar (a call of the usual length; the task stands in the
+  journal). The bar is closed: Dan and Dr. Imre Halden of the Meridian Directorate by the window, Imre's Threshold
+  parked beside the station. Come close and the talk starts. Imre waits for you: "Time to leave..." or questions
+  about the Cluster, the Assembly, the Covenant and the Directorate.
+- **The farewell:** "Ready to leave Beyond?", then Dan's hangar: Dan, Ossa and Silas in the walkway under the glass,
+  Little Darling behind it, Rook at your side. Rook comes along. Imre walks over: Assembly or Covenant, each asked
+  once more (`start_faction`).
+- **The Threshold's jump:** Imre explains the ship on the radio, its core ignites, "Hold on tight. Here we go.", and
+  the ship swirls into the black hole in its own middle like a whirlpool; the hole collapses with a flash and a purple
+  ring. The arrival is the same backwards.
+- **The naturalisation:** you arrive at your first station (the Assembly's border system, or the Covenant's like it).
+  The office in the power's colours: the Assembly's Registry Office 14-C with people walking through its middle, the
+  Covenant's Chancery of the Return with soldiers at their posts. No flight record, Imre's million, "I'm fired" /
+  "I'll be lynched!", nothing carries over. Your licence in the power's design, stamped "APPROVED".
+- **What you arrive with:** everything stayed in Beyond but Ossa's suit. A Dragonfly, 30,000 cr, the skill tree back
+  at its trunk (pilot level and skills stay), a small room of your own at your first station, free for good.
+- **A little later:** a drink with Rook, who stays and will call. What you plan (mining, pirates, science) decides
+  the module in your storage. **The next day:** you wake in your room, the ship computer's hologram hands you the
+  open game. Journal: "A New Start".
+- **Acquaintances:** a new tab in the Pilot window with the main figures you came to know (Dan, Ossa, Rook, Silas,
+  Imre): a short description, what they like, where they are, what you lived through together, their bar game, their
+  last word. The relationship is a bar from the middle: gold to the right (Acquaintance, Friend, Best friend), red to
+  the left (Wary, Rival, Enemy). The story moves it, also for what happened before; a bar game together counts too.
+  After the intro Dan is your best friend, Ossa, Rook and Silas are friends.
+- **Furniture on foot, looked over:** seats facing up show their backs with the sitter behind them, sofas face the
+  room or each other, sitters sit on their seats (bar stools higher), plants and a few pictures no longer cut off.
+- Dr. Imre Halden's look (bald, a grey goatee); a bald head keeps its chosen beard colour.
+- Debug: Story tab, "Play package 59" parts 1 to 3 (part 3 for either power), "Acquaintances: meet everyone".
+
 ## alpha 0.8.58.7 – 2026-11-21
 
 **Package 58, part 8: the strike on the Red Talon Roost (Luz). Package 58 is complete.**

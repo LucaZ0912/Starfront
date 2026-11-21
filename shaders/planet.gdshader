@@ -16,6 +16,7 @@ uniform float gas = 0.0;                    // 1 = banded giant
 uniform float spin = 0.01;
 uniform float radius = 0.86;                // planet radius relative to quad half-width
 uniform float has_ring = 0.0;
+uniform float grand = 0.0;                  // package 61: Lapis – grand rings (icy white-blue, fixed gaps, a deep shadow)
 // package 36: moons
 uniform float craters = 0.0;
 uniform float lumpy = 0.0;
@@ -236,6 +237,18 @@ void fragment() {
 			vec3 rcol = mix(col_c.rgb, col_b.rgb, step(0.5, band)) * (0.6 + 0.4 * step(0.0, c.y));
 			float shadow = (c.y < 0.0 && abs(c.x) < radius * 0.9 && dot(normalize(vec2(c.x, 0.0) + 0.0001), light_dir) < 0.0) ? 0.55 : 1.0;
 			float ra = (0.55 + 0.4 * band) * mix(0.25, 1.0, gap);
+			if (grand > 0.5) {
+				// three ringlets: a faint inner one, the bright main ring, a thin outer one, with clean gaps between
+				float fine = fbm(vec2(rd * 46.0, seed + 3.0));
+				float main_r = smoothstep(0.20, 0.24, k) * (1.0 - smoothstep(0.66, 0.69, k));
+				float inner_r = smoothstep(0.0, 0.03, k) * (1.0 - smoothstep(0.15, 0.17, k));
+				float outer_r = smoothstep(0.76, 0.78, k) * (1.0 - smoothstep(0.96, 1.0, k));
+				float thin_gap = 1.0 - 0.8 * (1.0 - step(0.012, abs(k - 0.44)));
+				float dens = max(max(inner_r * 0.35, main_r * thin_gap), outer_r * 0.55);
+				rcol = mix(vec3(0.46, 0.58, 0.95), vec3(0.86, 0.91, 1.0), clamp(0.35 + 0.65 * fine + 0.25 * main_r, 0.0, 1.0)) * (0.84 + 0.16 * step(0.0, c.y));
+				shadow = (c.y < 0.0 && abs(c.x) < radius * 0.96) ? 0.22 : 1.0;
+				ra = dens * (0.6 + 0.4 * fine);
+			}
 			outc = vec4(mix(outc.rgb, rcol * shadow, ra), max(outc.a, ra));
 		}
 	}

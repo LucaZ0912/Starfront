@@ -2300,6 +2300,8 @@ func _c_minigame_end(c: Dictionary) -> String:
 	if not MinigameData.solo(String(mg_session["mode"])):
 		var opp: Dictionary = mg_session.get("opponent", {})
 		var who := String(opp.get("name", "your opponent"))
+		if String(opp.get("special", "")) != "":
+			load("res://data/acquaintances.gd").played_with(String(opp["special"]))      # package 60: a game together
 		mg_last_tip = ""
 		if won:
 			GameState.credits += int(c.get("pot", stake * 2))           # (Drift: the pot, shared on a tie)

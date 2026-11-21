@@ -298,6 +298,9 @@ static func keys(text: String) -> String:
 			Keybinds.key_text("ship_down"), Keybinds.key_text("ship_right")])
 	if out.contains("{zoom}"):
 		out = out.replace("{zoom}", ("%s / %s on the d-pad" % [Keybinds.key_text("pad_zoom_in"), Keybinds.key_text("pad_zoom_out")]) if pad else "the mouse wheel")
+	if out.contains("{start_faction_name}"):
+		# package 59, part 3: the power you were registered with
+		out = out.replace("{start_faction_name}", "Covenant of Return" if String(GameState.story.flags.get("start_faction", "")) == "covenant" else "Cluster Assembly")
 	if out.contains("{journal}"):
 		out = out.replace("{journal}", ("hold %s for the window wheel and pick Journal" % Pad.glyph("options")) if pad else "press %s" % Keybinds.key_text("journal"))
 	if out.contains("{views}"):

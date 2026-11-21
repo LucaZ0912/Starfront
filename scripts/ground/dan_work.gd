@@ -161,10 +161,28 @@ func begin(where: String) -> void:
 			_strike_party.call_deferred()                # a save after the Roost: the bar
 		else:
 			_strike_begin.call_deferred()                # a save in the middle of the strike: from the rendezvous again
+	if phase == "after58" and bool(flags().get("w58_drinks", false)):
+		_p59_begin.call_deferred()                       # package 59: the morning after
+	if phase == "bar59":
+		_p59_radio.call_deferred()                       # (Dan's call again: come up to the bar)
+	if phase in ["jumped59", "arrive59"]:
+		_cit_run.call_deferred("arrive")                 # package 59, part 3: the arrival in the Cluster
+	elif phase == "office59":
+		_cit_run.call_deferred("office")
+	elif phase == "bar59c":
+		_cit_run.call_deferred("bar")
+	elif phase == "wake59":
+		_cit_run.call_deferred("morning")
+	if phase in ["farewell", "jump59"]:
+		_set_phase("imre")                               # a save in the middle of the farewell: Imre waits again
+		for fl9 in ["w59_go", "start_faction"]:
+			GameState.story.flags.erase(fl9)
 	if phase == "relay":
 		_relay_begin.call_deferred()                     # (the site on its world again; a try under way starts fresh)
 		for fl7 in ["w58_relay_intro", "w58_coords", "w58_overload"]:
 			GameState.story.flags.erase(fl7)
+	if phase == "free":
+		return                                           # package 59, part 3: the intro is over – the open game, its own rules
 	GameState.story_foot_guard = _foot_rescue
 	if not GameState.slept.is_connected(_on_slept):
 		GameState.slept.connect(_on_slept)
@@ -196,6 +214,10 @@ func _process(_delta: float) -> void:
 		return
 	if _party8_free:
 		_party8_step()                                     # package 58, part 8 (Luz): the party goes on until you leave the bar
+	if phase in ["bar59", "imre"]:
+		_p59_step()                                        # package 59: the closed bar, Imre, the Threshold outside
+	if phase == "free":
+		_fern_step()                                       # package 61: Rook's call, the way to Fern, Luz
 	var sp = station_ui()
 	if sp == null:
 		return
@@ -444,11 +466,21 @@ func ground_mode(st: Dictionary) -> Dictionary:
 	var sid := String(st.get("id", ""))
 	if sid == String(flags().get("w58_dan_st", "")) and phase == "party":
 		return _party_mode()
+	if sid == String(flags().get("w58_dan_st", "")) and phase in ["bar59", "imre"]:
+		return _p59_mode()
+	if sid == String(flags().get("w58_dan_st", "")) and phase == "farewell":
+		return _farewell_mode()
+	if phase == "free" and bool(st.get("city", false)) and String(st.get("name", "")) == "Centauria" and bool(flags().get("fern_called", false)):
+		# package 61 (Luz): Luz on the street of Centauria
+		var luz := {"who": "luz", "near_spawn": Vector2(4.0, 1.5), "spread": 2.0, "dir": 0, "talk": true}
+		if not bool(flags().get("fern_luz", false)):
+			luz["marker"] = "!"
+		return {"levels": {"street": {"people": [luz]}}}
 	if phase == "contact" and sid == String(_waystation().get("id", "-")):
 		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
 		return {"levels": {"street": {"people": [{"who": "ossa", "near_obj": "lamp_post", "off": Vector2(1.5, 0.8), "near_spawn": Vector2(12.0, 2.0), "spread": 2.0, "dir": 0, "marker": "!"}]}}}
-	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact", "follow", "listen", "found", "report", "gear", "sim", "relay", "strike", "after58"]:
+	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact", "follow", "listen", "found", "report", "gear", "sim", "relay", "strike", "after58", "jumped59"]:
 		var dan := {"who": "dan", "pos": IntroSix.WINDOW, "dir": 1, "talk": true}
 		if phase in ["part3", "report"]:
 			dan["marker"] = "!"
@@ -1270,6 +1302,16 @@ func _on_talk(who: String) -> void:
 		"rook":
 			if phase == "sim":
 				GameState.story.show.emit("dialogue", {"id": "rook_sim", "mission": FIGHT})
+		"imre":
+			if phase == "imre":
+				GameState.story.show.emit("dialogue", {"id": "imre_talk", "mission": P59})
+		"luz":
+			if phase == "free":
+				_luz_talk()
+	if who == "dan" and phase == "bar59" and not _meet_on:
+		_p59_meet()
+	elif who == "dan" and phase == "imre":
+		GameState.story.show.emit("dialogue", {"id": "dan_wait59", "mission": P59})
 
 
 ## Dan's loan for the escort: a better laser (the Mogura has one weapon slot) and armour plating.
@@ -3036,6 +3078,7 @@ func _party8_step() -> void:
 	var g = main.ground if main != null else null
 	if g == null or not is_instance_valid(g) or g.map == null:
 		_party8_free = false                              # (off the deck some other way: the party is over)
+		_p59_begin.call_deferred()
 		return
 	if g.level != "commercial" or g._lift_menu != null or g.minigame != null or g.talk != null or not g.input_enabled:
 		return
@@ -3096,6 +3139,798 @@ func _party8_end() -> void:
 	g.pilot.visible = true
 	g.input_enabled = true
 	main.fade(Color(0, 0, 0, 0), 0.6)
+	await _w(1.2)
+	_p59_begin()                                          # package 59: Dan calls you up to the bar
+
+
+# ---- package 59, part 1 (Luz, 21 Nov 2026): the way to the Cluster – the morning after, the closed bar, Dr. Imre
+# Halden and his Threshold outside the station; Imre waits in the bar until you are ready (part 2: the farewell)
+
+const P59 := "ticket"
+var _meet_on := false
+var _threshold = null
+
+
+## The morning after the party: your ticket is paid; Dan calls you up to the bar.
+func _p59_begin() -> void:
+	if phase != "after58":
+		return
+	var st = GameState.story
+	_ensure_missions()
+	st.set_flag("ticket_paid", true)
+	if st.running(P59):
+		st.tracked = P59
+	_set_phase("bar59")
+	_p59_radio()
+	var g = main.ground if main != null else null
+	if g != null and is_instance_valid(g):
+		g.story_mode = ground_mode(g.station)
+		if not g.story_talk.is_connected(_on_talk):
+			g.story_talk.connect(_on_talk)
+
+
+func _p59_radio() -> void:
+	GameState.story.show.emit("radio", {"who": "dan", "text": "Morning. Come up to the bar when you've found your boots. I've got something for you.",
+		"mission": P59, "tag": "w59_bar"})                # (Luz: the usual length; the journal carries the task)
+
+
+## The bar before it opens: no guests, the bartender polishing glasses; Dan and Imre by the window.
+func _p59_mode() -> Dictionary:
+	var w: Vector2 = IntroSix.WINDOW
+	var dan := {"who": "dan", "pos": w, "dir": 3, "talk": true}
+	var imre := {"who": "imre", "pos": w + Vector2(1.5, 0.3), "dir": 2, "talk": true}
+	if phase == "bar59":
+		dan["marker"] = "!"
+	else:
+		imre["marker"] = "!"
+	return {"quiet": true, "keep_bartender": true, "levels": {"commercial": {"people": [dan, imre]}}}
+
+
+func _p59_step() -> void:
+	_p59_threshold()
+	if phase == "imre" and bool(flags().get("w59_go", false)) and main.story_ui.dialogue == null and main.story_ui._dlg_q.is_empty():
+		_p59_farewell()                                   # part 2: "I'm ready." – the farewell in the hangar
+		return
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	if not g.story_talk.is_connected(_on_talk):
+		g.story_talk.connect(_on_talk)
+	# (Luz) you come in and ask what is going on: close to Dan and Imre, the talk begins
+	if phase == "bar59" and not _meet_on and g.level == "commercial" and g.input_enabled and g.talk == null and g.minigame == null \
+			and main.story_ui.dialogue == null:
+		var dan = g.story_people.get("dan", null)
+		if dan != null and is_instance_valid(dan) and (dan.pos as Vector2).distance_to(g.pilot.pos) < GroundMap.TILE * 5.0:
+			_p59_meet()
+
+
+## The talk in the closed bar: Dan explains, Imre introduces himself; then Imre waits for you.
+func _p59_meet() -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	_meet_on = true
+	GameState.story.set_flag("w59_bar", true)             # (Dan's call is answered: off the screen)
+	var sui = main.story_ui
+	if sui._radio != null and is_instance_valid(sui._radio) and String(sui._radio_d.get("tag", "")) == "w59_bar":
+		sui._radio.queue_free()
+		sui._radio = null
+		sui._radio_d = {}
+	sui._radio_q = sui._radio_q.filter(func(d): return String(d.get("tag", "")) != "w59_bar")
+	g.pilot.moving = false
+	var dan = g.story_people.get("dan", null)
+	var imre = g.story_people.get("imre", null)
+	if dan != null and is_instance_valid(dan):
+		dan.marker = ""
+		dan.queue_redraw()                                # (the game pauses for the talk: the "!" goes now)
+		dan.dir = 1 if g.pilot.pos.y > dan.pos.y else 0
+		if absf(g.pilot.pos.x - dan.pos.x) > absf(g.pilot.pos.y - dan.pos.y):
+			dan.dir = 3 if g.pilot.pos.x > dan.pos.x else 2
+		g.story_cam = (dan.pos as Vector2 + g.pilot.pos) * 0.5 + (Vector2(GroundMap.TILE * 0.75, 0.0) if imre != null else Vector2.ZERO)
+		g.story_zoom = 1.35
+	if imre != null and is_instance_valid(imre):
+		imre.dir = 2 if g.pilot.pos.x < imre.pos.x else 3
+	g._camera()                                           # (the dialogue pauses the game: the camera there now)
+	GameState.story.show.emit("dialogue", {"id": "halden_meet", "mission": P59, "no_dim": true})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	GameState.story.set_flag("w59_met", true)
+	_set_phase("imre")
+	_meet_on = false
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_cam = Vector2.INF
+		g.story_zoom = 0.0
+		g.story_mode = ground_mode(g.station)
+		for key in g.story_people:
+			var p = g.story_people[key]
+			if p != null and is_instance_valid(p):
+				p.marker = "!" if String(key) == "imre" else ""
+	GameState.log_msg("Dr. Imre Halden waits in Dan's bar. Talk to Imre when you're ready to leave Beyond.", GameState.COL_GOOD)
+
+
+## Imre's Threshold, parked beside Dan's station (in space, whenever Beyond is loaded).
+func _p59_threshold() -> void:
+	var v = main.view
+	if v == null or not is_instance_valid(v) or int(v.system_id) != Universe.special_system("beyond"):
+		return
+	if _threshold != null and is_instance_valid(_threshold) and not _threshold.dying:
+		return
+	var dst := String(flags().get("w58_dan_st", ""))
+	var stn = v.stations.get(dst, null)
+	if stn == null or not is_instance_valid(stn):
+		return
+	var r := float(stn.radius)
+	var s: Ship = v.spawn_npc("std_axa_threshold", stn.position + Vector2(r * 1.5 + 700.0, -r * 0.45), "civilian", "")
+	s.fit.ship_name = "Threshold"
+	s.anchored = true
+	s.story_spare = true
+	s.untargetable = false
+	s.fit.stance = "passive"
+	s.heading = PI
+	s.set_meta("story_ally", "imre")
+	_threshold = s
+
+
+# ── Package 59, part 2 (Luz): the farewell in Dan's hangar, Assembly or Covenant, the Threshold's jump ──────────
+
+const JumpFx = preload("res://scripts/world/threshold_jump_fx.gd")
+## (Luz) out by the ship, before the jump: Imre explains the Threshold while you look at her
+const JUMP_TALK := [
+	["imre", "There she is. The Threshold. Axiom built her as a prototype, and nobody has dared to build a second one."],
+	["imre", "She doesn't fly through the Veil. She carries a black hole in her core, and folds herself through it. And us with her."],
+	["rook", "She does what?"],
+	["imre", "Perfectly safe. Mostly. Starting the core now."],
+]
+var _farewell_on := false
+var _jump_fx = null
+var _jump_stage := ""                   # "talk", "ignite", "go" (the jump's scene)
+
+
+## Waits in the jump's scene, the camera kept close on the ship.
+func _jump_hold(v, secs: float) -> void:
+	var t := 0.0
+	var need := secs * (0.05 if quick else 1.0)
+	while t < need:
+		if v != null and is_instance_valid(v):
+			v._set_zoom(1.5)
+		await get_tree().process_frame
+		t += get_process_delta_time()
+
+
+## Dan's hangar for the goodbyes (placed by _farewell_stage): Dan, Ossa and Silas facing you in the walkway under the
+## glass, Little Darling behind it in the bay, Rook at your side; Imre by the lifts, waiting.
+func _farewell_mode() -> Dictionary:
+	var people := [{"who": "dan", "dir": 3}, {"who": "ossa", "dir": 3}, {"who": "silas", "dir": 3}, {"who": "rook", "dir": 2},
+		{"who": "imre", "near_lift": Vector2(1.5, 1.5), "dir": 0}]
+	return {"quiet": true, "levels": {"hangar": {"people": people}}}
+
+
+## The middle of the walkway right under the hangar's glass, below the ship (art px); INF: not a station hangar.
+func _walkway_spot(g) -> Vector2:
+	for z in g.map.zones:
+		if String(z.get("id", "")) == "hangar_sign":
+			var sg: Vector2 = z["sign"]
+			return Vector2(sg.x, sg.y + 2.85 * GroundMap.TILE)
+	return Vector2.INF
+
+
+## Waits until a story dialogue (and what it queued) is over.
+func _dlg_wait(id: String) -> void:
+	GameState.story.show.emit("dialogue", {"id": id, "mission": P59, "no_dim": true})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+
+
+## "I'm ready.": black, then the hangar – the goodbyes, Imre comes over, the choice; black again, then the jump.
+func _p59_farewell() -> void:
+	if _farewell_on:
+		return
+	_farewell_on = true
+	_set_phase("farewell")
+	main.station_panel.close()
+	await main.fade(Color(0, 0, 0, 1), 0.9).finished
+	if main.ground == null or not is_instance_valid(main.ground):
+		main.open_deck()
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = _farewell_mode()
+		g.go_level("hangar", "story")
+		g.input_enabled = false
+		_farewell_stage(g)
+		main.fade(Color(0, 0, 0, 0), 1.2)
+		await _w(1.4)
+		await _dlg_wait("farewell59")
+		# Imre comes over from the lift
+		g = main.ground
+		if g != null and is_instance_valid(g):
+			var im = g.story_people.get("imre", null)
+			if im != null and is_instance_valid(im):
+				await _walk_round(im, [g.pilot.pos + Vector2(GroundMap.TILE * 1.3, -GroundMap.TILE * 0.6)], 2)
+			g.pilot.dir = 3
+		await _w(0.4)
+	await _dlg_wait("imre_choice")
+	if String(flags().get("start_faction", "")) == "":
+		GameState.story.set_flag("start_faction", "assembly")       # (never: the choice has no way out)
+	await main.fade(Color(0, 0, 0, 1), 1.0).finished
+	_farewell_on = false
+	_p59_jump()
+
+
+## Everyone in place by the stairs; the camera close on the group, the walkers moving while the dialogue pauses.
+func _farewell_stage(g) -> void:
+	var T := GroundMap.TILE
+	var c := _walkway_spot(g)
+	if c == Vector2.INF:
+		c = g.pilot.pos
+	g.pilot.pos = c + Vector2(1.1 * T, 0.0)
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	g.pilot.dir = 2
+	g.pilot.moving = false
+	var spots := {"dan": Vector2(-1.0, -0.45), "ossa": Vector2(-1.9, 0.35), "silas": Vector2(-0.8, 0.95), "rook": Vector2(2.1, 0.75)}
+	for key in g.story_people:
+		var w = g.story_people[key]
+		if w != null and is_instance_valid(w):
+			w.process_mode = Node.PROCESS_MODE_ALWAYS
+			w.stays = true
+			if spots.has(String(key)):
+				w.pos = c + (spots[String(key)] as Vector2) * T
+				w.position = w.pos * GroundMap.SCALE
+	var ship_at: Vector2 = g.map.ship_at if g.map.ship_at != Vector2.INF else c
+	g.story_cam = Vector2(c.x + 0.4 * T, lerpf(ship_at.y, c.y, 0.62))
+	g.story_zoom = 1.25
+	g._camera()
+
+
+## The jump (Luz): out in space by Dan's station, the Threshold swirls into the black hole in its own middle (a
+## whirlpool); the hole collapses with a flash and a purple ring. Then the journal's step is done.
+func _p59_jump() -> void:
+	_set_phase("jump59")
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	_p59_threshold()
+	var v = main.view
+	var thr = _threshold
+	var hud_was: bool = main.hud.visible if main.hud != null else true
+	if v != null and is_instance_valid(v) and thr != null and is_instance_valid(thr):
+		if main.hud != null:
+			main.hud.visible = false
+		thr.anchored = true
+		thr.bh_t = -1.0                                   # (Luz) the core dark at first: you see it ignite
+		thr.bh_out = -1.0
+		thr.bh_wait = -10000.0
+		thr.queue_redraw()
+		v.story_cam = thr.position
+		v._set_zoom(1.5)
+		_jump_stage = "talk"
+		main.fade(Color(0, 0, 0, 0), 1.2)
+		await _jump_hold(v, 1.6)
+		# Imre explains the ship while you look at it
+		for ln in JUMP_TALK:
+			GameState.story.show.emit("radio", {"who": String(ln[0]), "text": String(ln[1]), "mission": P59})
+		if quick:
+			main.story_ui._radio_q.clear()
+		var tt := 0.0
+		while main.story_ui.radio_left() > 0.3 and tt < 45.0 and not quick:
+			v._set_zoom(1.5)
+			await get_tree().process_frame
+			tt += get_process_delta_time()
+		# the black hole ignites: a flash, the hole grows, its disc forms
+		_jump_stage = "ignite"
+		if thr != null and is_instance_valid(thr):
+			thr.bh_wait = thr.BH_DELAY
+		await _jump_hold(v, 3.6)
+		GameState.story.show.emit("radio", {"who": "imre", "text": "Hold on tight. Here we go.", "mission": P59, "now": true})
+		await _jump_hold(v, 2.2)
+		_jump_stage = "go"
+		if thr != null and is_instance_valid(thr):
+			_jump_fx = JumpFx.new()
+			_jump_fx.setup(thr, "in")
+			_jump_fx.speed = 4.0 if quick else 1.0
+			thr.get_parent().add_child(_jump_fx)
+			v.story_cam = _jump_fx.position
+			while _jump_fx != null and is_instance_valid(_jump_fx):
+				v._set_zoom(1.5)                              # (close on the ship, whatever the view wants)
+				await get_tree().process_frame
+		await _w(1.2)
+		await main.fade(Color(0, 0, 0, 1), 1.0).finished
+		if thr != null and is_instance_valid(thr):
+			thr.queue_free()
+		_threshold = null
+		if v != null and is_instance_valid(v):
+			v.story_cam = Vector2.INF
+	_jump_fx = null
+	_jump_stage = ""
+	var fac := "the Assembly" if String(flags().get("start_faction", "")) == "assembly" else "the Covenant"
+	await _cards(["Through the Veil", "Imre, Rook and you aboard the Threshold. Ahead: the Cluster, and %s." % fac])
+	GameState.story.set_flag("w59_left", true)
+	_set_phase("jumped59")
+	if main.hud != null:
+		main.hud.visible = hud_was
+	if cit_auto:
+		_cit_run("arrive")                                # part 3: the arrival, the office, the bar, the first morning
+		return
+	main.fade(Color(0, 0, 0, 0), 1.0)
+
+
+# ── Package 61 (Luz): the way to Fern ───────────────────────────────────────────────────────────────────────────
+# At pilot level 5 Rook calls: a place out in the Rim, Fern, its city Centauria, and a contact there, Luz. The journal
+# gets "A Place Called Fern": fly there, land in Centauria on Pelagia, find Luz on the street.
+
+const FERN := "fern"
+const FERN_LEVEL := 5
+var _fern_t := 0.0
+
+
+func _fern_step() -> void:
+	_fern_t -= get_process_delta_time()
+	if _fern_t > 0.0:
+		return
+	_fern_t = 1.0
+	var st = GameState.story
+	var fl: Dictionary = st.flags
+	if not bool(fl.get("intro_done", false)):
+		return
+	if not bool(fl.get("fern_called", false)):
+		if GameState.pilot_level() >= FERN_LEVEL and main.story_ui.dialogue == null and Universe.special_system("fern") >= 0:
+			_fern_call()
+		return
+	if not bool(fl.get("fern_arrived", false)) and GameState.current_system == Universe.special_system("fern"):
+		st.set_flag("fern_arrived", true)
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		if String((g.station as Dictionary).get("name", "")) == "Centauria":
+			if not bool(fl.get("fern_arrived", false)):
+				st.set_flag("fern_arrived", true)
+			if not bool(fl.get("fern_landed", false)):
+				st.set_flag("fern_landed", true)
+			if not g.story_talk.is_connected(_on_talk):
+				g.story_talk.connect(_on_talk)
+
+
+## Rook on the radio, as promised: Fern, Centauria, and Luz.
+func _fern_call() -> void:
+	var st = GameState.story
+	st.set_flag("fern_called", true)
+	if not st.running(FERN) and not st.done.has(FERN):
+		st.start(FERN)
+	st.tracked = FERN
+	for ln in ["Remember me? I said I'd call when I found something worth both our time.",
+			"There's a place out in the Rim. Fern. A city called Centauria. More work than a pilot like you can handle, and more ways to lose the money again than you can count.",
+			"I'm sending you a contact. Luz. Runs a bar down there, knows everyone, owes me a favour. Go and say hello."]:
+		st.show.emit("radio", {"who": "rook", "text": ln, "mission": FERN})
+	GameState.log_msg("Fern lies in the Rim: find it on the galaxy map. Journal: \"A Place Called Fern\".", GameState.COL_GOOD)
+
+
+func _luz_talk() -> void:
+	var st = GameState.story
+	if bool(flags().get("fern_luz", false)):
+		st.show.emit("dialogue", {"id": "luz_again", "mission": FERN})
+		return
+	st.show.emit("dialogue", {"id": "luz_meet", "mission": FERN})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	st.set_flag("fern_landed", true)
+	st.set_flag("fern_luz", true)
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		var w = g.story_people.get("luz", null)
+		if w != null and is_instance_valid(w):
+			w.marker = ""
+			w.queue_redraw()
+
+
+# ── Package 59, part 3 (Luz): the naturalisation – the last scene of the intro ──────────────────────────────────
+# The Threshold turns out of its hole at your first station; the office of the power you chose (a bureaucrat, Imre's
+# million, nothing carries over: the skill tree starts again), the licence stamped, a Dragonfly; a little later a
+# drink with Rook (what you plan decides a module); the next day you wake in your free room and the ship computer's
+# hologram hands you the open game.
+
+const OfficeGen = preload("res://scripts/ground/office_gen.gd")
+const OfficeStamp = preload("res://scripts/ui/licence_stamp.gd")
+const CIT := "citizen"
+const START_MODULES := {"mining": "t_mining:1:C", "pirates": "w_pulse:1:C", "science": "t_scanner:1:C"}
+var cit_auto := true                    # (tests: false – the jump ends without part 3)
+var _cit_on := false
+var _office_on := false
+var _stamp = null
+var _cit_stage := ""                    # "arrive", "office", "bar", "morning" (the scene under way)
+
+
+## Where you start: {"system", "station"} – the Assembly's border system the game always began in, or the Covenant's
+## like it (not its capital, with a station; the one nearest the border and safest).
+static func start_place(fac: String) -> Dictionary:
+	var sid: int = Universe.home_system
+	if fac == "covenant":
+		var best := -1
+		var best_h := -INF
+		for s in Universe.systems:
+			if String(s["faction"]) != "covenant" or bool(s.get("capital", false)) or String(s.get("special", "")) != "" \
+					or (s.get("stations_plan", []) as Array).is_empty():
+				continue
+			var border := false
+			for nb in s["links"]:
+				border = border or String(Universe.systems[nb]["faction"]) != "covenant"
+			var hs := float(s["security"]) + (1.0 if border else 0.0) - absf(int(s.get("core_dist", 2)) - 2) * 0.2
+			if hs > best_h:
+				best_h = hs
+				best = int(s["id"])
+		if best < 0:
+			best = Universe.special_system("heimkehr")
+		if best >= 0:
+			sid = best
+	var sts: Array = Universe.get_layout(sid)["stations"]
+	return {"system": sid, "station": sts[0] if not sts.is_empty() else {}}
+
+
+func _cit_station() -> Dictionary:
+	return Universe.find_station(int(flags().get("cit_sys", -1)), String(flags().get("cit_st", "")))
+
+
+## The whole of part 3, or from a later scene on (a save in the middle of it).
+func _cit_run(from: String = "arrive") -> void:
+	if _cit_on:
+		return
+	_cit_on = true
+	var st = GameState.story
+	var fac := String(flags().get("start_faction", "assembly"))
+	if not fac in ["assembly", "covenant"]:
+		fac = "assembly"
+		st.set_flag("start_faction", fac)
+	main.fade(Color(0, 0, 0, 1), 0.05)
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if not st.running(CIT) and not st.done.has(CIT):
+		st.start(CIT)
+	if st.running(CIT):
+		st.tracked = CIT
+	var i := maxi(["arrive", "office", "bar", "morning"].find(from), 0)
+	if i > 0 and not bool(flags().get("cit_moved", false)):
+		i = 0
+	if i <= 0:
+		_set_phase("arrive59")
+		_cit_transfer(fac)
+		await _cit_settle()
+		await _cit_arrival()
+	else:
+		await _cit_settle()
+	if i <= 1:
+		_set_phase("office59")
+		await _cit_office(fac)
+	if i <= 2:
+		_set_phase("bar59c")
+		await _cit_bar()
+	_set_phase("wake59")
+	await _cit_morning()
+	_cit_stage = ""
+	_cit_on = false
+
+
+## Everything stays in Beyond (Luz): the ships (Little Darling with Dan), the money, the cargo, the gear, all but the
+## suit Ossa gave you. You arrive docked at your first station with the Dragonfly the licence comes with, the skill
+## tree back at its trunk, and a small room of your own there, free for good.
+func _cit_transfer(fac: String) -> void:
+	if bool(flags().get("cit_moved", false)):
+		return
+	var st = GameState.story
+	var pl := start_place(fac)
+	var sid := int(pl["system"])
+	var stn: Dictionary = pl["station"]
+	if stn.is_empty():
+		return
+	var stid := String(stn["id"])
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.fleet.clear()
+	GameState.wingmen.clear()
+	var a := GameState.create_from_preset("std_dragonfly", "player")
+	a.ship_name = "Dragonfly"
+	a.system_id = sid
+	a.docked_at = stid
+	a.position = stn["pos"]
+	a.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
+	GameState.add_ship(a)
+	GameState.active_uid = a.uid
+	GameState.last_station = {"system": sid, "id": stid}
+	GameState.storage[stid] = {}                          # (nothing waits for you here: you arrive with empty hands)
+	GameState.credits = GameState.START_CREDITS
+	GameState.credits_changed.emit(GameState.credits)
+	# the gear: a new pilot's kit, and Ossa's suit on
+	var g = GameState.gear
+	g.start()
+	g.suit = "suit_mil_light:C"
+	g._fit_slots()
+	g.team = []
+	g.refill()
+	# the skill tree: back at its trunk (the licence)
+	GameState.pilot["tree"] = []
+	a.mark_dirty()
+	GameState.skills_changed.emit()
+	# a small room of your own at your first station, free for good
+	var QG = load("res://scripts/ground/quarters_gen.gd")
+	var room: int = QG.room_for(stn, "small")
+	if room >= 0:
+		GameState.lodging[stid] = {"room": room, "size": "small", "free": true, "keep": true}
+	st.set_flag("cit_sys", sid)
+	st.set_flag("cit_st", stid)
+	st.set_flag("cit_moved", true)
+	GameState.active_changed.emit()                       # (the new system loads)
+
+
+## Waits until the system you are in now is loaded and its picture stands.
+func _cit_settle() -> void:
+	for i in 20:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+
+
+## The arrival: by your first station a flash, the hole opens, the Threshold turns out of it; Imre and Rook on the radio.
+func _cit_arrival() -> void:
+	_cit_stage = "arrive"
+	var v = main.view
+	var stn = v.stations.get(String(flags().get("cit_st", "")), null) if v != null and is_instance_valid(v) else null
+	if stn == null or not is_instance_valid(stn):
+		return
+	var hud_was: bool = main.hud.visible if main.hud != null else true
+	if main.hud != null:
+		main.hud.visible = false
+	var r := float(stn.radius)
+	var thr: Ship = v.spawn_npc("std_axa_threshold", stn.position + Vector2(r * 1.5 + 900.0, -r * 0.45), "civilian", "")
+	thr.fit.ship_name = "Threshold"
+	thr.anchored = true
+	thr.story_spare = true
+	thr.fit.stance = "passive"
+	thr.heading = PI
+	_threshold = thr
+	_jump_fx = JumpFx.new()
+	_jump_fx.setup(thr, "out")
+	_jump_fx.speed = 4.0 if quick else 1.0
+	_jump_fx.process_mode = Node.PROCESS_MODE_DISABLED            # (it waits for the picture)
+	thr.get_parent().add_child(_jump_fx)
+	v.story_cam = _jump_fx.position
+	v._set_zoom(1.5)
+	main.fade(Color(0, 0, 0, 0), 1.2)
+	await _jump_hold(v, 1.8)
+	if _jump_fx != null and is_instance_valid(_jump_fx):
+		_jump_fx.process_mode = Node.PROCESS_MODE_INHERIT
+		while _jump_fx != null and is_instance_valid(_jump_fx):
+			v._set_zoom(1.5)
+			await get_tree().process_frame
+	_jump_fx = null
+	if not quick:
+		GameState.story.show.emit("radio", {"who": "imre", "text": "And there we are. The Cluster. You see? Perfectly safe.", "mission": CIT})
+		GameState.story.show.emit("radio", {"who": "rook", "text": "I am never doing that again.", "mission": CIT})
+		var tt := 0.0
+		while main.story_ui.radio_left() > 0.3 and tt < 25.0:
+			v._set_zoom(1.5)
+			await get_tree().process_frame
+			tt += get_process_delta_time()
+	await _jump_hold(v, 0.8)
+	await main.fade(Color(0, 0, 0, 1), 1.0).finished
+	if thr != null and is_instance_valid(thr):
+		thr.queue_free()
+	_threshold = null
+	if v != null and is_instance_valid(v):
+		v.story_cam = Vector2.INF
+	if main.hud != null:
+		main.hud.visible = hud_was
+
+
+## The office: the official behind the desk, you and Imre before it; the Assembly's passers-by, the Covenant's guards.
+func _office_mode(fac: String) -> Dictionary:
+	var sp: Dictionary = OfficeGen.spots(fac)
+	var people: Array = [{"who": "registrar_cov" if fac == "covenant" else "clerk_asm", "pos": sp["official"], "dir": 0},
+		{"who": "imre", "pos": sp["imre"], "dir": 1}]
+	if fac != "covenant":
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 59314
+		var ends: Array = OfficeGen.passage_ends()
+		for k in 9:
+			var lk := ChibiArt.PilotArt.random_look(rng)
+			var at: Vector2 = (ends[0] as Vector2).lerp(ends[1], (k + 0.5) / 9.0) + Vector2(0.0, (k % 3 - 1) * 0.75)
+			people.append({"who": "passer_%d" % k, "look": lk, "pos": at, "dir": 3 if k % 2 == 0 else 2})
+	return {"quiet": true, "levels": {"office": {"people": people}}}
+
+
+## (Luz) the Assembly's passage: people keep walking through the middle of the room, from one end to the other and back.
+func _office_stream(g) -> void:
+	var ends: Array = OfficeGen.passage_ends()
+	var aim := {}
+	while _office_on and g != null and is_instance_valid(g) and String(g.level) == "office":
+		for key in g.story_people:
+			if not String(key).begins_with("passer_"):
+				continue
+			var w = g.story_people[key]
+			if w == null or not is_instance_valid(w):
+				continue
+			if not aim.has(key) or w.goto_done:
+				var k := int(String(key).trim_prefix("passer_"))
+				var east: bool = (k % 2 == 0) if not aim.has(key) else not bool(aim[key])
+				aim[key] = east
+				w.goto_to = ((ends[1] if east else ends[0]) as Vector2 + Vector2(0.0, (k % 3 - 1) * 0.75)) * GroundMap.TILE
+				w.goto_done = false
+		await get_tree().process_frame
+
+
+func _cit_office(fac: String) -> void:
+	_cit_stage = "office"
+	var st = GameState.story
+	if main.ground == null or not is_instance_valid(main.ground):
+		main.open_deck()
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		st.set_flag("cit_licence", true)
+		return
+	g.office_faction = fac
+	g.story_mode = _office_mode(fac)
+	g.go_level("office", "story")
+	g.input_enabled = false
+	var sp: Dictionary = OfficeGen.spots(fac)
+	g.pilot.pos = (sp["you"] as Vector2) * GroundMap.TILE
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	g.pilot.dir = 1
+	g.pilot.moving = false
+	for key in g.story_people:
+		var w = g.story_people[key]
+		if w != null and is_instance_valid(w):
+			w.process_mode = Node.PROCESS_MODE_ALWAYS
+			w.stays = true
+	g.story_cam = (sp["cam"] as Vector2) * GroundMap.TILE
+	g.story_zoom = 1.25
+	g._camera()
+	_office_on = true
+	_office_stream(g)
+	main.fade(Color(0, 0, 0, 0), 1.2)
+	await _w(1.6)
+	await _cit_dlg("citizen_" + fac)
+	# the licence and the stamp
+	var cl := CanvasLayer.new()
+	cl.layer = 44
+	cl.process_mode = Node.PROCESS_MODE_ALWAYS
+	main.add_child(cl)
+	_stamp = OfficeStamp.new()
+	_stamp.faction = fac
+	_stamp.speed = 6.0 if quick else 1.0
+	cl.add_child(_stamp)
+	await _stamp.finished
+	_stamp = null
+	cl.queue_free()
+	st.set_flag("cit_licence", true)
+	GameState.log_msg("Pilot licence granted. Your skill tree starts again at its trunk; your Dragonfly waits in the hangar.", GameState.COL_GOOD)
+	await _cit_dlg("citizen_%s_end" % fac)
+	await main.fade(Color(0, 0, 0, 1), 1.0).finished
+	_office_on = false
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_cam = Vector2.INF
+		g.story_zoom = 0.0
+
+
+func _cit_dlg(id: String) -> void:
+	GameState.story.show.emit("dialogue", {"id": id, "mission": CIT, "no_dim": true})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+
+
+## "A little later": you and Rook sit in the bar of your first station; what you plan decides the module you get.
+func _cit_bar() -> void:
+	_cit_stage = "bar"
+	var st = GameState.story
+	await _cards(["A little later"])
+	if main.ground == null or not is_instance_valid(main.ground):
+		main.open_deck()
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = {"no_crew": true, "levels": {"commercial": {"people": [{"who": "rook", "near_spawn": Vector2(1.5, 0.0), "dir": 2}]}}}
+		g.go_level("commercial", "story")
+		g.input_enabled = false
+		_bar_seats(g)
+		main.fade(Color(0, 0, 0, 0), 1.2)
+		await _w(1.6)
+	await _cit_dlg("rook_plan")
+	var job := String(flags().get("start_job", ""))
+	if not START_MODULES.has(job):
+		job = "pirates"
+		st.set_flag("start_job", job)
+	if not bool(flags().get("cit_module", false)):
+		st.set_flag("cit_module", true)
+		var mid := String(START_MODULES[job])
+		GameState.storage_add(String(flags().get("cit_st", "")), mid, 1)
+		GameState.log_msg("Rook's parting gift from Ossa: a %s, in your storage here." % GameData.module_name(mid), GameState.COL_GOOD)
+	await main.fade(Color(0, 0, 0, 1), 1.0).finished
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_cam = Vector2.INF
+		g.story_zoom = 0.0
+
+
+## You and Rook on two seats side by side in the bar (the nearest pair); none there: standing where you came in.
+func _bar_seats(g) -> void:
+	var rook = g.story_people.get("rook", null)
+	var T := GroundMap.TILE
+	var br := Rect2(g.map.bar_rect.position * T, g.map.bar_rect.size * T)
+	var seats: Array = []
+	for z in g.map.zones:
+		if String(z.get("kind", "")) == "seat" and z.has("seat") and (br.size.x <= 0.0 or br.has_point(z["seat"])):
+			seats.append(z)
+	var best: Array = []
+	var best_d := INF
+	for i in seats.size():
+		for j in range(i + 1, seats.size()):
+			var d: float = (seats[i]["seat"] as Vector2).distance_to(seats[j]["seat"])
+			if d < best_d and d > 4.0:
+				best_d = d
+				best = [seats[i], seats[j]]
+	if best.size() == 2 and best_d < T * 3.0:
+		g._sit(best[0])
+		if rook != null and is_instance_valid(rook):
+			rook.pos = best[1]["seat"]
+			rook.position = rook.pos * GroundMap.SCALE
+			rook.dir = int(best[1].get("dir", 0))
+			rook.sitting = true
+			rook.stays = true
+	if rook != null and is_instance_valid(rook):
+		g.story_cam = ((rook.pos as Vector2) + g.pilot.pos) * 0.5
+	else:
+		g.story_cam = g.pilot.pos
+	g.story_zoom = 1.9
+	g._camera()
+
+
+## "The next day": you wake in your room; the ship computer's hologram – from here on the open game.
+func _cit_morning() -> void:
+	_cit_stage = "morning"
+	var st = GameState.story
+	await _cards(["The next day"])
+	if main.ground == null or not is_instance_valid(main.ground):
+		main.open_deck()
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		if g.is_sitting():
+			g._stand_up()
+		g.story_mode = {}
+		g.input_enabled = false
+		var room := int((GameState.lodging.get(String(flags().get("cit_st", "")), {}) as Dictionary).get("room", -1))
+		if room >= 0:
+			g._q_room = room
+			g._q_sleep = 2
+			g.go_level("quarters", "bed")
+			g.pilot.visible = false
+			main.fade(Color(0, 0, 0, 0), 1.4)
+			await _w(2.2)
+			await main.fade(Color(0, 0, 0, 1), 0.4).finished
+			g._q_sleep = 0
+			g.go_level("quarters", "bed")
+			g.pilot.visible = true
+		else:
+			g.go_level("commercial", "lift")
+		g.input_enabled = false
+		main.fade(Color(0, 0, 0, 0), 0.8)
+		await _w(1.4)
+	GameState.story.show.emit("dialogue", {"id": "free_play", "mission": CIT})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	st.set_flag("intro_done", true)
+	_set_phase("free")
+	GameState.story_guard = Callable()                    # the open game: its own rules from here
+	GameState.story_foot_guard = Callable()
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.input_enabled = true
+	if main.hud != null:
+		main.hud.visible = true
+	GameState.log_msg("The Cluster is yours. Your Dragonfly waits in the hangar; this room is yours to keep.", GameState.COL_GOOD)
 
 
 ## The bar, full: Dan by the window, Ossa, Silas and Rook beside him, the regulars and a crowd, some of them dancing.

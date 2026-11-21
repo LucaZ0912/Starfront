@@ -715,6 +715,11 @@ func _process(delta: float) -> void:
 				await _test_hackpad(main.view)           # (Luz) the hack with the controller: a step the moment you push
 				await _test_grmove(main.view)            # (Luz) grenades thrown while walking
 				await _test_w58h(main.view)              # package 58, part 8: the strike on the Roost
+				await _test_w59a(main.view)              # package 59, part 1: Dr. Imre Halden in the closed bar
+				await _test_w59b(main.view)              # package 59, part 2: the farewell, the choice, the jump
+				await _test_w59c(main.view)              # package 59, part 3: the naturalisation, the open game
+				await _test_acq60()                      # package 60: acquaintances
+				await _test_fern61(main.view)            # package 61: the Fern system
 				_shooting = false
 				timer = 0.0
 				return
@@ -16637,6 +16642,693 @@ func _test_grmove(view: SystemView) -> void:
 ## Package 58, part 8 (Luz): the strike – the rendezvous in Hollow (Dan, Ossa and Silas come and line up), the warp
 ## together to the Red Talon Roost, the fight (parts with their own bars, the station's bar, waves, the core open at a
 ## quarter), the great explosion, the bar (the whiskey, Ossa's gift, the lent gear back).
+## Package 59, part 1 (Luz): the morning after – Dan's call, the closed bar with Dan and Dr. Imre Halden, the
+## Threshold outside, the talk when you come close, then Imre's questions; "Time to leave..." waits for part 2.
+## Package 59, part 2 (Luz): "I'm ready." – the farewell in Dan's hangar (Dan, Ossa, Silas, Rook), Imre comes over,
+## Assembly or Covenant (asked once more), then the Threshold's jump through its black hole; the arrival comes later.
+func _test_w59b(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
+	var shots := OS.get_environment("W59_SHOTS") != ""
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var dst := ""
+	for st0 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+		if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+			dst = String(st0["id"])
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w59_"):
+			st.flags.erase(fl)
+	st.flags.erase("start_faction")
+	st.flags["w58_dan_st"] = dst
+	st.flags["dan_deal_yes"] = true
+	st.flags["w58_drinks"] = true
+	st.flags["w58_sk"] = "done"
+	st.flags["w58_phase"] = "after58"
+	st.missions.erase("ticket")
+	st.done.erase("ticket")
+	st.flags.erase("ticket_paid")
+	main.station_panel.close()
+	main._start_dan_work("load")
+	var w = main.get_meta("dan_work")
+	w.quick = not shots
+	w.cit_auto = false
+	w._set_phase("after58")
+	w._p59_begin()
+	st.set_flag("w59_bar", true)
+	st.set_flag("w59_met", true)
+	w._set_phase("imre")
+	main.story_ui._radio_q.clear()
+	for i in 10:
+		await get_tree().process_frame
+	# "I'm ready." – the farewell starts
+	st.set_flag("w59_go", true)
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 12000:
+		await get_tree().process_frame
+		if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "farewell59":
+			break
+	var g = main.ground
+	var fare_ok: bool = w.phase == "farewell" and g != null and is_instance_valid(g) and g.level == "hangar" \
+		and String(main.story_ui._dlg.get("id", "")) == "farewell59" and String(st.step_data("ticket").get("id", "")) == "choice"
+	if fare_ok:
+		for who in ["dan", "ossa", "silas", "rook", "imre"]:
+			if not g.story_people.has(who):
+				fare_ok = false
+	if not fare_ok:
+		print("W59B farewell: phase ", w.phase, " dlg ", main.story_ui._dlg.get("id", ""), " step ", st.step_data("ticket").get("id", ""),
+			" people ", g.story_people.keys() if g != null and is_instance_valid(g) else [])
+	if shots and fare_ok:
+		main.story_ui._line(3)
+		for f0 in 30:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59b_farewell.png")
+		main.story_ui._line(11)
+		for f0b in 30:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59b_farewell_answers.png")
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	# Imre comes over: the choice
+	tm = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 12000:
+		await get_tree().process_frame
+		if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "imre_choice":
+			break
+	var choice_ok: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "imre_choice"
+	if choice_ok:
+		main.story_ui._line(1)
+		if shots:
+			for f1 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59b_choice.png")
+		choice_ok = (main.story_ui._dlg.get("answers", []) as Array).size() == 3
+		main.story_ui._answer(["", 3, []])                       # the Covenant … then thought again
+		var asked: bool = int(main.story_ui._dlg.get("line", -1)) == 3
+		main.story_ui._answer(["", 1, []])
+		main.story_ui._answer(["", 2, []])                       # the Assembly – sure
+		main.story_ui._answer(["I'm sure.", 6, ["start_faction", "assembly"]])
+		main.story_ui._answer(["", -1, []])
+		choice_ok = choice_ok and asked and String(st.flags.get("start_faction", "")) == "assembly"
+	if not choice_ok:
+		print("W59B choice: dlg ", main.story_ui._dlg.get("id", ""), " faction ", st.flags.get("start_faction", ""))
+	# the jump
+	tm = Time.get_ticks_msec()
+	var marks := [0.7, 2.0, 3.0, 3.9, 4.6, 5.0, 5.7] if shots else []
+	var mi := 0
+	var fx_seen := false
+	var lit_seen := false
+	var lit_shot := 0
+	while Time.get_ticks_msec() - tm < 120000 and w.phase != "jumped59":
+		await get_tree().process_frame
+		if w._jump_stage == "talk" and shots and lit_shot == 0 and main.story_ui._radio != null:
+			lit_shot = 1
+			for f7 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59b_talk.png")
+		if w._jump_stage == "ignite":
+			var th = w._threshold
+			if th != null and is_instance_valid(th) and th.bh_wait > 0.0:
+				lit_seen = true                                       # the core, dark before, is igniting
+			if shots and lit_shot == 1 and th != null and is_instance_valid(th) and th.bh_t > 0.25:
+				lit_shot = 2
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59b_ignite.png")
+		var fx = w._jump_fx
+		if fx != null and is_instance_valid(fx):
+			fx_seen = true
+			if mi < marks.size() and fx._t >= float(marks[mi]):
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59b_jump_%d.png" % mi)
+				mi += 1
+	var jump_ok: bool = fx_seen and lit_seen and w.phase == "jumped59" and bool(st.flags.get("w59_left", false)) and st.done.has("ticket") \
+		and (w._threshold == null) and main.ground == null and main.hud.visible
+	if not jump_ok:
+		print("W59B jump: fx ", fx_seen, " lit ", lit_seen, " phase ", w.phase, " left ", st.flags.get("w59_left", false), " done ", st.done.has("ticket"))
+	# the arrival's way out of the hole (for the next part): the ship back where it was, whole
+	var out_ok := false
+	var v = main.view
+	var s2: Ship = v.spawn_npc("std_axa_threshold", v.stations[dst].position + Vector2(9000, 0), "civilian", "")
+	s2.anchored = true
+	s2.heading = 0.4
+	var p0: Vector2 = s2.position
+	var fo = load("res://scripts/world/threshold_jump_fx.gd").new()
+	fo.setup(s2, "out")
+	fo.speed = 1.0 if shots else 5.0
+	s2.get_parent().add_child(fo)
+	var hidden_first: bool = s2.has_meta("fx_hidden")
+	if shots:
+		v.story_cam = fo.position
+		var omarks := [0.2, 1.2, 2.2, 3.4, 4.6, 5.4]
+		var oi := 0
+		while is_instance_valid(fo):
+			await get_tree().process_frame
+			v._set_zoom(1.5)
+			if is_instance_valid(fo) and oi < omarks.size() and fo._t >= float(omarks[oi]):
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59b_arrive_%d.png" % oi)
+				oi += 1
+		v.story_cam = Vector2.INF
+	else:
+		await fo.finished
+	out_ok = hidden_first and not s2.has_meta("fx_hidden") and s2.position.distance_to(p0) < 1.0 and s2.scale.is_equal_approx(Vector2.ONE)
+	s2.queue_free()
+	check(fare_ok and choice_ok and jump_ok and out_ok,
+		"59: part 2 – \"I'm ready.\": the farewell in Dan's hangar (Dan, Ossa, Silas, Rook), Imre comes over, Assembly or Covenant (asked once more), Imre explains the Threshold, its core ignites, it swirls into the black hole in its middle (flash, purple ring), \"A Ticket to the Cluster\" done; the way out of the hole for the arrival  [%s %s %s %s]" % [fare_ok, choice_ok, jump_ok, out_ok])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	main.fade(Color(0, 0, 0, 0), 0.1)
+	main.hud.visible = true
+	st.from_dict(keep)
+	GameState.lodging = keep_lod
+	GameState.story_guard = Callable()
+	GameState.story_foot_guard = Callable()
+	main.story_ui._radio_q.clear()
+
+
+## Package 59, part 3 (Luz): the naturalisation, for the Assembly and for the Covenant – the Threshold turns out of its
+## hole at your first station, the office (the bureaucrat, Imre's million, nothing carries over), the licence stamped,
+## a Dragonfly; a drink with Rook (a module by what you plan), the next morning in your free room, the hologram: the
+## open game.
+func _test_w59c(_view: SystemView) -> void:
+	var snap: Dictionary = GameState.to_dict()
+	var shots := OS.get_environment("W59_SHOTS") != ""
+	Commands.cheats_enabled = true
+	var st = GameState.story
+	var res := {}
+	for fac in ["assembly", "covenant"]:
+		if main.ground != null and is_instance_valid(main.ground):
+			main.close_deck(false)
+		main.station_panel.close()
+		for fl in st.flags.keys():
+			if String(fl).begins_with("cit_") or String(fl) in ["start_job", "intro_done"]:
+				st.flags.erase(fl)
+		st.flags["start_faction"] = fac
+		st.missions.erase("citizen")
+		st.done.erase("citizen")
+		GameState.pilot["tree"] = ["shields"]
+		GameState.credits = 987654
+		main._start_dan_work("load")
+		var w = main.get_meta("dan_work")
+		w.quick = not shots
+		w._set_phase("jumped59")
+		w._cit_run("arrive")
+		var job: String = "mining" if fac == "assembly" else "science"
+		# the office
+		var tm := Time.get_ticks_msec()
+		var arrive_seen := false
+		var arr_shot := false
+		while Time.get_ticks_msec() - tm < 90000:
+			await get_tree().process_frame
+			if w._cit_stage == "arrive" and w._jump_fx != null and is_instance_valid(w._jump_fx):
+				arrive_seen = true
+				if shots and not arr_shot and w._jump_fx._t > 2.6:
+					arr_shot = true
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59c_%s_arrive.png" % fac)
+			if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "citizen_" + fac:
+				break
+		var g = main.ground
+		var f = GameState.active()
+		var sys: Dictionary = Universe.systems[GameState.current_system]
+		var moved_ok: bool = arrive_seen and f != null and f.hull_id == "dragonfly" and GameState.fleet.size() == 1 and f.docked_at == String(st.flags.get("cit_st", "-")) \
+			and String(sys["faction"]) == fac and GameState.credits == GameState.START_CREDITS and (GameState.pilot["tree"] as Array).is_empty() \
+			and String(GameState.gear.suit) == "suit_mil_light:C" and GameState.tile_open("licence")
+		if not moved_ok:
+			print("W59C ", fac, " moved: arrive ", arrive_seen, " hull ", f.hull_id if f != null else "-", " fleet ", GameState.fleet.size(), " sys ", sys["faction"],
+				" cr ", GameState.credits, " tree ", GameState.pilot["tree"], " suit ", GameState.gear.suit)
+		var official := "registrar_cov" if fac == "covenant" else "clerk_asm"
+		var office_ok: bool = g != null and is_instance_valid(g) and String(g.level) == "office" and g.story_people.has(official) and g.story_people.has("imre") \
+			and String(main.story_ui._dlg.get("id", "")) == "citizen_" + fac and String(st.step_data("citizen").get("id", "")) == "licence"
+		if office_ok and fac == "assembly":
+			office_ok = g.story_people.has("passer_0") and g.story_people.has("passer_8")
+		if office_ok and fac == "covenant":
+			office_ok = g.map.has_meta("guard_posts") and (g.map.get_meta("guard_posts") as Array).size() >= 12
+		if not office_ok:
+			print("W59C ", fac, " office: level ", g.level if g != null and is_instance_valid(g) else "-", " dlg ", main.story_ui._dlg.get("id", ""),
+				" people ", g.story_people.keys() if g != null and is_instance_valid(g) else [])
+		if shots and office_ok:
+			for f0 in 150:
+				await get_tree().process_frame
+			main.story_ui._line(9)
+			for f1 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59c_%s_office.png" % fac)
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		# the stamp
+		tm = Time.get_ticks_msec()
+		var stamp_ok := false
+		var st_shot := false
+		while Time.get_ticks_msec() - tm < 30000:
+			await get_tree().process_frame
+			if w._stamp != null and is_instance_valid(w._stamp):
+				if w._stamp.stamped():
+					stamp_ok = String(w._stamp.faction) == fac
+				if shots and not st_shot and w._stamp._t > 2.9:
+					st_shot = true
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59c_%s_licence.png" % fac)
+			if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "citizen_%s_end" % fac:
+				break
+		stamp_ok = stamp_ok and bool(st.flags.get("cit_licence", false)) and String(main.story_ui._dlg.get("id", "")) == "citizen_%s_end" % fac
+		if not stamp_ok:
+			print("W59C ", fac, " stamp: licence ", st.flags.get("cit_licence", false), " dlg ", main.story_ui._dlg.get("id", ""))
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		# the bar with Rook
+		tm = Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tm < 40000:
+			await get_tree().process_frame
+			if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "rook_plan":
+				break
+		g = main.ground
+		var bar_ok: bool = g != null and is_instance_valid(g) and String(g.level) == "commercial" and g.story_people.has("rook") \
+			and String(main.story_ui._dlg.get("id", "")) == "rook_plan"
+		if shots and bar_ok:
+			main.story_ui._line(3)
+			for f2 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59c_%s_bar.png" % fac)
+		if bar_ok:
+			main.story_ui._answer(["", {"mining": 4, "science": 6}[job], ["start_job", job]])
+			main.story_ui._answer(["", 7, []])
+			main.story_ui._answer(["", -1, []])
+		# the next morning: the hologram
+		tm = Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tm < 60000:
+			await get_tree().process_frame
+			if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "free_play":
+				break
+		var stid := String(st.flags.get("cit_st", ""))
+		var mod_id: String = w.START_MODULES[job]
+		bar_ok = bar_ok and int((GameState.storage.get(stid, {}) as Dictionary).get(mod_id, 0)) == 1
+		if not bar_ok:
+			print("W59C ", fac, " bar: storage ", GameState.storage.get(stid, {}), " job ", st.flags.get("start_job", ""))
+		g = main.ground
+		var lod: Dictionary = GameState.lodging.get(stid, {})
+		var morn_ok: bool = String(main.story_ui._dlg.get("id", "")) == "free_play" and g != null and is_instance_valid(g)
+		if morn_ok and not lod.is_empty():
+			morn_ok = String(g.level) == "quarters" and String(lod.get("size", "")) == "small" and bool(lod.get("free", false))
+		if shots and morn_ok:
+			for f3 in 60:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59c_%s_morning.png" % fac)
+		if morn_ok:
+			main.story_ui._answer(["", 3, []])
+			main.story_ui._answer(["Begin.", -1, ["intro_done", true]])
+		tm = Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tm < 10000 and w.phase != "free":
+			await get_tree().process_frame
+		morn_ok = morn_ok and w.phase == "free" and st.done.has("citizen") and bool(st.flags.get("intro_done", false)) \
+			and not GameState.story_guard.is_valid() and g.input_enabled
+		if not morn_ok:
+			print("W59C ", fac, " morning: dlg ", main.story_ui._dlg.get("id", ""), " phase ", w.phase, " lod ", lod, " level ", g.level if g != null and is_instance_valid(g) else "-")
+		res[fac] = [moved_ok, office_ok, stamp_ok, bar_ok, morn_ok]
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		if w != null and is_instance_valid(w):
+			w.queue_free()
+	var all_ok := true
+	for fac2 in res:
+		for b in res[fac2]:
+			all_ok = all_ok and bool(b)
+	check(all_ok and res.size() == 2,
+		"59: part 3 – the naturalisation for the Assembly and the Covenant: the Threshold turns out of its hole at your first station (a Dragonfly, 30,000 cr, Ossa's suit, the skill tree at its trunk), the office with its bureaucrat (passers-by / guards), the licence stamped, a drink with Rook (a module by your plan), the next morning in your free small room, the hologram: the open game  %s" % str(res))
+	# tidy up: the game as it was
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	main.fade(Color(0, 0, 0, 0), 0.1)
+	main.hud.visible = true
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	main.load_system(GameState.current_system)            # (the view back where the game was)
+	GameState.active_changed.emit()
+	GameState.story_guard = Callable()
+	GameState.story_foot_guard = Callable()
+	main.story_ui._radio_q.clear()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 60 (Luz): acquaintances – the main figures you came to know, each with a relationship bar from the middle
+## (gold to the right: Acquaintance, Friend, Best friend; red to the left); the story counts for it, also what
+## happened before, and so does what you do with someone (a bar game).
+func _test_acq60() -> void:
+	var Acq = load("res://data/acquaintances.gd")
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var shots := OS.get_environment("ACQ_SHOTS") != ""
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var intro := ["intro_stage", "dan_deal_yes", "ticket_ship", "w58_slept", "w58_ossa", "w58_escorted", "w58_maul", "w58_contact", "w58_listened",
+		"w58_briefing", "w58_gear", "w58_sim", "w58_relay", "w58_base_down", "w58_gifted", "w58_drinks", "w59_met", "w59_left", "cit_licence",
+		"start_job", "cit_moved"]
+	for fl in intro + ["acq_extra", "acq_games", "acq_lv", "acq_new"]:
+		st.flags.erase(fl)
+	st.done.erase("darling")
+	var none_ok: bool = Acq.known().is_empty() and Acq.value("dan") == 0 and Acq.level(0) == 0
+	# the story so far: Dan, then Ossa
+	st.flags["intro_stage"] = "four"
+	st.flags["dan_deal_yes"] = true
+	st.flags["w58_ossa"] = true
+	Acq.refresh()
+	var early_ok: bool = Acq.known() == ["dan", "ossa"] and Acq.value("dan") == 20 and Acq.level(Acq.value("dan")) == 1 \
+		and Acq.is_new("ossa") and (Acq.together("dan") as Array).size() == 2
+	# after the intro: Dan your best friend (the bar full), Ossa, Rook and Silas friends, Imre an acquaintance
+	for fl2 in intro:
+		st.flags[fl2] = true
+	st.flags["intro_stage"] = "58"
+	if not "darling" in st.done:
+		st.done.append("darling")
+	Acq.refresh()
+	var vals := {}
+	for id in Acq.ORDER:
+		vals[id] = [Acq.value(id), Acq.level(Acq.value(id))]
+	var after_ok: bool = Acq.known() == ["dan", "ossa", "rook", "silas", "imre"] and vals["dan"] == [100, 3] and int(vals["ossa"][1]) == 2 and int(vals["rook"][1]) == 2 \
+		and int(vals["silas"][1]) == 2 and int(vals["imre"][1]) == 1 and Acq.level_name(3) == "Best friend" \
+		and bool(Acq.where("dan")["far"]) and not bool(Acq.where("rook")["far"])
+	if not after_ok:
+		print("ACQ60 after: ", vals, " known ", Acq.known())
+	# what you do with someone: a game together counts, up to a cap; the bar goes red to the left too
+	var o0: int = Acq.value("ossa")
+	for i in 8:
+		Acq.played_with("ossa")
+	var game_ok: bool = Acq.value("ossa") == o0 + Acq.GAME_CAP and Acq.add("dan", 5, "test") == 0 and Acq.value("dan") == 100
+	Acq.add("imre", -80, "a test")
+	var neg_ok: bool = Acq.value("imre") < 0 and Acq.level(Acq.value("imre")) == -2 and Acq.level_name(-2) == "Rival" \
+		and Acq.add("imre", -500, "a test") < 0 and Acq.value("imre") == -100 and Acq.level(-100) == -3
+	# the tab in the Pilot window
+	var pw = main.pilot_window
+	pw.asel = "ossa"
+	pw.open(pw.TAB_ACQ)
+	for f in 5:
+		await get_tree().process_frame
+	var tab_ok: bool = pw.visible and pw.tab == pw.TAB_ACQ and pw.TABS[pw.TAB_ACQ] == "Acquaintances" and not Acq.is_new("ossa") and Acq.is_new("dan") \
+		and String(pw.tab_buttons[pw.TAB_ACQ].text).ends_with("●")
+	if shots:
+		for f2 in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/acq60_ossa.png")
+		pw.asel = "imre"
+		pw.rebuild()
+		for f3 in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/acq60_imre_red.png")
+		pw.asel = "dan"
+		pw.rebuild()
+		for f4 in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/acq60_dan.png")
+	pw.close()
+	check(none_ok and early_ok and after_ok and game_ok and neg_ok and tab_ok,
+		"60: acquaintances – nobody before the story, people join as you meet them (marked new), after the intro Dan is your best friend (the bar full), Ossa, Rook and Silas friends, Imre an acquaintance; a game together counts up to its cap, the bar goes red to the left (Rival, Enemy); the tab in the Pilot window  [%s %s %s %s %s %s]" % [none_ok, early_ok, after_ok, game_ok, neg_ok, tab_ok])
+	st.from_dict(keep)
+
+
+## Package 61 (Luz): Fern, the home system – out in the Rim, independent, a red giant; Kiln (lava), the asteroid
+## belt, Lapis (a deep blue ice giant with grand rings), round it Pelagia (an ocean world) with the one city Centauria;
+## Rook's call at pilot level 5, "A Place Called Fern", Luz on the street of Centauria.
+func _test_fern61(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var shots := OS.get_environment("FERN_SHOTS") != ""
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var sid := Universe.special_system("fern")
+	var sys: Dictionary = Universe.systems[sid] if sid >= 0 else {}
+	var place_ok: bool = sid >= 0 and bool(sys.get("belt", false)) and not bool(sys.get("outer", false)) and String(sys.get("faction", "x")) == "" \
+		and Universe.is_independent(sid) and String(sys["name"]) == "Fern" and sys["links"].size() > 0
+	var L: Dictionary = Universe.get_layout(sid) if sid >= 0 else {}
+	var names: Array = (L.get("planets", []) as Array).map(func(p): return String(p["name"]))
+	var lapis := {}
+	for p in L.get("planets", []):
+		if String(p["name"]) == "Lapis":
+			lapis = p
+	var pel := {}
+	for m in L.get("moons", []):
+		if String(m["name"]) == "Pelagia":
+			pel = m
+	var body_ok: bool = names == ["Kiln", "Lapis"] and String(L["star"].get("kind", "")) == "giant" and bool(lapis.get("ring", false)) and bool(lapis.get("lapis", false)) \
+		and String(lapis.get("type", "")) == "ice_giant" and String(pel.get("type", "")) == "ocean" and (L["stations"] as Array).all(func(x): return String(x.get("type", "")) == "waystation") and not bool(lapis.get("cloud_city", false)) \
+		and not (L.get("belts", []) as Array).is_empty()
+	if not body_ok:
+		print("FERN61 parts: ring ", lapis.get("ring", "-"), " lapis ", lapis.get("lapis", "-"), " cloud ", lapis.get("cloud_city", "-"), " belts ", L.get("belts", "-") if not L.get("belts", []) is Array else (L["belts"] as Array).size(), " keys ", L.keys())
+		print("FERN61 bodies: ", names, " star ", L.get("star", {}).get("kind", ""), " moon ", pel.get("type", ""), " stations ", (L.get("stations", []) as Array).map(func(x): return [x.get("name", ""), x.get("type", ""), x.get("kind", "")]))
+	var cities: Array = (Universe.landing_sites(sid, pel) as Array).filter(func(s): return String(s.get("kind", "")) == "city") if not pel.is_empty() else []
+	var city_ok: bool = cities.size() == 1 and String(cities[0]["name"]) == "Centauria"
+	if not city_ok:
+		print("FERN61 city: ", cities.map(func(s): return s["name"]))
+	# Lapis: its own look – the picture wider for its rings, the shader told so
+	var spr: Sprite2D = Celestial.make_planet_sprite(lapis, 100.0, Vector2.LEFT) if not lapis.is_empty() else null
+	var plain: Sprite2D = Celestial.make_planet_sprite({"type": "ice_giant", "seed": 58.0, "ring": true}, 100.0, Vector2.LEFT)
+	var look_ok: bool = spr != null and float((spr.material as ShaderMaterial).get_shader_parameter("grand")) > 0.5 and spr.scale.x > plain.scale.x * 1.2 \
+		and float((plain.material as ShaderMaterial).get_shader_parameter("grand")) < 0.5
+	if spr != null:
+		spr.free()
+	plain.free()
+	# Rook's call, the journal, Luz on the street of Centauria
+	for fl in st.flags.keys():
+		if String(fl).begins_with("fern_"):
+			st.flags.erase(fl)
+	st.missions.erase("fern")
+	st.done.erase("fern")
+	st.flags["intro_stage"] = "58"
+	st.flags["intro_done"] = true
+	main._start_dan_work("load")
+	var w = main.get_meta("dan_work")
+	w._set_phase("free")
+	var Acq = load("res://data/acquaintances.gd")
+	var before_ok: bool = (w.ground_mode({"city": true, "name": "Centauria", "id": "x"}) as Dictionary).is_empty() and not Acq.met("luz")
+	w._fern_call()
+	var mode: Dictionary = w.ground_mode({"city": true, "name": "Centauria", "id": "x"})
+	var ppl: Array = ((mode.get("levels", {}) as Dictionary).get("street", {}) as Dictionary).get("people", [])
+	var call_ok: bool = before_ok and bool(st.flags.get("fern_called", false)) and st.running("fern") and String(st.step_data("fern").get("id", "")) == "go" \
+		and ppl.size() == 1 and String(ppl[0]["who"]) == "luz" and String(ppl[0].get("marker", "")) == "!" \
+		and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty()) and w.FERN_LEVEL == 5
+	st.set_flag("fern_arrived", true)
+	st.set_flag("fern_landed", true)
+	st.set_flag("fern_luz", true)
+	var done_ok: bool = st.done.has("fern") and Acq.met("luz") and Acq.level(Acq.value("luz")) == 1
+	if shots and sid >= 0:
+		Commands.cheats_enabled = true
+		Commands.execute({"type": "debug_special", "special": "fern"})
+		for i in 40:
+			await get_tree().process_frame
+		for wl2 in 900:
+			if main.loading == null or not is_instance_valid(main.loading):
+				break
+			await get_tree().process_frame
+		main.station_panel.close()
+		var v = main.view
+		var lp: Vector2 = Vector2.ZERO
+		for p2 in Universe.get_layout(sid)["planets"]:
+			if String(p2["name"]) == "Lapis":
+				lp = p2["pos"]
+		main.hud.visible = false
+		main.story_ui._radio_q.clear()
+		for zz in [[0.0042, "lapis"], [0.0016, "lapis_far"]]:
+			v.story_cam = lp
+			for f0 in 90:
+				v._set_zoom(float(zz[0]))
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/fern61_%s.png" % String(zz[1]))
+		v.story_cam = Vector2.INF
+		main.hud.visible = true
+		var pw = main.pilot_window
+		pw.asel = "luz"
+		pw.open(pw.TAB_ACQ)
+		for f1 in 25:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/fern61_luz.png")
+		pw.close()
+	check(place_ok and body_ok and city_ok and look_ok and call_ok and done_ok,
+		"61: Fern – out in the Rim, independent, a red giant, no station but the Rim's waystation; Kiln, the belt, Lapis (a deep blue ice giant, its own grand rings), Pelagia with the one city Centauria; Rook's call (level 5) starts \"A Place Called Fern\", Luz waits on the street and joins your acquaintances  [%s %s %s %s %s %s]" % [place_ok, body_ok, city_ok, look_ok, call_ok, done_ok])
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	main.story_ui._radio_q.clear()
+	st.from_dict(keep)
+
+
+func _test_w59a(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
+	var shots := OS.get_environment("W59_SHOTS") != ""
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var dst := ""
+	for st0 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+		if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+			dst = String(st0["id"])
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w59_"):
+			st.flags.erase(fl)
+	st.flags["w58_dan_st"] = dst
+	st.flags["dan_deal_yes"] = true
+	st.flags["w58_drinks"] = true
+	st.flags["w58_sk"] = "done"
+	st.flags["w58_phase"] = "after58"
+	st.missions.erase("ticket")
+	st.done.erase("ticket")
+	st.flags.erase("ticket_paid")
+	main.station_panel.close()
+	main._start_dan_work("load")
+	var w = main.get_meta("dan_work")
+	w.quick = true
+	w._set_phase("after58")
+	w._p59_begin()
+	for i in 5:
+		await get_tree().process_frame
+	var radio_ok: bool = (main.story_ui._radio_q.any(func(d): return String(d.get("tag", "")) == "w59_bar" and not d.has("until_flag")) \
+		or (String(main.story_ui._radio_d.get("tag", "")) == "w59_bar" and not main.story_ui._radio_d.has("until_flag")))      # (Luz) the usual length
+	var begin_ok: bool = w.phase == "bar59" and bool(st.flags.get("ticket_paid", false)) and st.running("ticket") \
+		and String(st.step_data("ticket").get("id", "")) == "way" and radio_ok
+	if not begin_ok:
+		print("W59A begin: phase ", w.phase, " step ", st.step_data("ticket").get("id", ""), " radio ", radio_ok)
+	# the Threshold outside
+	var thr = null
+	for tw in 60:
+		await get_tree().process_frame
+		if w._threshold != null and is_instance_valid(w._threshold):
+			thr = w._threshold
+			break
+	var v = main.view
+	var thr_ok: bool = thr != null and thr.anchored and thr.fit.hull_id == "axa_threshold" and thr.fit.ship_name == "Threshold" \
+		and v.stations.has(dst) and thr.position.distance_to(v.stations[dst].position) < float(v.stations[dst].radius) * 4.0 + 3000.0
+	if not thr_ok:
+		print("W59A threshold: ", thr, " stations ", v.stations.has(dst))
+	if shots and thr != null:
+		v.story_cam = thr.position
+		for f0 in 30:
+			v._set_zoom(0.9)
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59a_threshold.png")
+		v.story_cam = Vector2.INF
+	# the closed bar
+	main.open_deck()
+	for wl2 in 300:
+		if main.ground != null and is_instance_valid(main.ground):
+			break
+		await get_tree().process_frame
+	var g = main.ground
+	var bar_ok := false
+	var meet_ok := false
+	var talk_ok := false
+	if g != null and is_instance_valid(g):
+		g.go_level("commercial", "lift")
+		for f1 in 10:
+			await get_tree().process_frame
+		bar_ok = g.story_people.has("dan") and g.story_people.has("imre") and String(g.story_people["dan"].marker) == "!" \
+			and bool(g.story_mode.get("quiet", false))
+		if not bar_ok:
+			print("W59A bar: people ", g.story_people.keys(), " quiet ", g.story_mode.get("quiet", false))
+		if shots:
+			var dn = g.story_people.get("dan", null)
+			if dn != null:
+				g.story_cam = dn.pos + Vector2(GroundMap.TILE * 1.0, GroundMap.TILE * 2.0)
+				g.story_zoom = 1.2
+			for f1b in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59a_bar.png")
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+		# come close: the talk begins
+		var dan = g.story_people.get("dan", null)
+		if dan != null:
+			g.pilot.pos = (dan.pos as Vector2) + Vector2(-GroundMap.TILE * 2.0, GroundMap.TILE * 1.4)
+			g.pilot.position = g.pilot.pos * GroundMap.SCALE
+		var tm := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tm < 4000:
+			await get_tree().process_frame
+			if main.story_ui.dialogue != null:
+				break
+		var opened: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "halden_meet"
+		if shots and opened:
+			main.story_ui._line(4)
+			for f2 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59a_meet.png")
+		if opened:
+			main.story_ui._close_dialogue()
+		for f3 in 10:
+			await get_tree().process_frame
+		meet_ok = opened and w.phase == "imre" and bool(st.flags.get("w59_met", false)) and String(st.step_data("ticket").get("id", "")) == "ready" \
+			and String(g.story_people["imre"].marker) == "!" and String(g.story_people["dan"].marker) == ""
+		if not meet_ok:
+			print("W59A meet: opened ", opened, " phase ", w.phase, " step ", st.step_data("ticket").get("id", ""))
+		# Imre's questions; "Time to leave..." (part 2 not yet)
+		g.story_talk.emit("imre")
+		for f4 in 5:
+			await get_tree().process_frame
+		var hub: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "imre_talk" and (main.story_ui._dlg.get("answers", []) as Array).size() == 6
+		if hub:
+			main.story_ui._answer(["How do things stand in the Cluster?", 1, []])
+			var on_cluster: bool = int(main.story_ui._dlg.get("line", -1)) == 1
+			main.story_ui._answer(["", 4, []])
+			if shots:
+				for f5 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w59a_directorate.png")
+			main.story_ui._answer(["", 0, []])
+			main.story_ui._answer(["Time to leave...", 6, []])
+			var asked: bool = int(main.story_ui._dlg.get("line", -1)) == 6 and (main.story_ui._dlg.get("answers", []) as Array).size() == 2
+			main.story_ui._answer(["Not yet.", 7, []])
+			main.story_ui._answer(["", -1, []])
+			for f6 in 5:
+				await get_tree().process_frame
+			talk_ok = on_cluster and asked and main.story_ui.dialogue == null and not bool(st.flags.get("w59_go", false)) and w.phase == "imre" and st.running("ticket")
+		if not talk_ok:
+			print("W59A talk: hub ", hub, " dlg ", main.story_ui._dlg.get("id", ""), " go ", st.flags.get("w59_go", false))
+	check(begin_ok and thr_ok and bar_ok and meet_ok and talk_ok,
+		"59: part 1 – the morning after: Dan calls you up (ticket paid, \"The way to the Cluster\"), the Threshold parked beside Dan's station, the closed bar with Dan and Dr. Imre Halden, the talk when you come close, then Imre waits (\"Ready when you are\") with questions about the Cluster  [%s %s %s %s %s]" % [begin_ok, thr_ok, bar_ok, meet_ok, talk_ok])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	if w != null and is_instance_valid(w):
+		if w._threshold != null and is_instance_valid(w._threshold):
+			w._threshold.queue_free()
+		w.queue_free()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	st.from_dict(keep)
+	GameState.lodging = keep_lod
+	GameState.story_guard = Callable()
+	GameState.story_foot_guard = Callable()
+	main.story_ui._radio_q.clear()
+
+
 func _test_w58h(_view: SystemView) -> void:
 	var st = GameState.story
 	var keep: Dictionary = st.to_dict()

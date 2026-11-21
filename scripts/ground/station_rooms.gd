@@ -223,8 +223,9 @@ static func build_control(station: Dictionary) -> GroundMap:
 		m.add_object({"kind": "console_row", "x": x0, "y": ty, "w": w, "h": 1})
 		for cs in range(x0 + 2, x0 + w - 1, 4):
 			if (cs + tier) % 3 != 0:
-				m.add_object({"kind": "stool", "x": cs, "y": ty + 1, "w": 1, "h": 1}, false)
-				m.people.append({"pos": Vector2(cs + 0.5, ty + 1.45) * TILE, "dir": 1, "role": "keeper", "sit": true})
+				var so := {"kind": "stool", "x": cs, "y": ty + 1, "w": 1, "h": 1, "face": 1}
+				m.add_object(so, false)
+				m.people.append({"pos": DeckGen._seat_pos(so), "dir": 1, "role": "keeper", "sit": true})      # on the stool (they sat beside it, the stool free to sit on)
 		m.lights.append({"pos": Vector2(W * 0.5, ty) * TILE, "r": 120.0, "col": GREEN, "a": 0.15})
 	# the sphere's holo in the middle below the tiers
 	m.add_object({"kind": "sphere_holo", "x": W / 2 - 1, "y": H - 5, "w": 2, "h": 1}, false)

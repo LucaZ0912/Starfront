@@ -483,6 +483,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = QuartersGen.build(station, _q_rented(), _q_sleep)      # package 58 (Luz): rooms by the night
 	elif level == "sim":
 		map = ArenaGen.build_sim(station, sim_foes)                # package 58, part 6 (Luz): Rook's combat simulation in the hangar
+	elif level == "office":
+		map = OfficeGen.build(station, office_faction)             # package 59, part 3 (Luz): the office of the naturalisation
 	elif level == "tower":
 		var bar_only := {}
 		for k in ["bar", "news", "bulletin"]:
@@ -622,7 +624,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	_space_view(_sys)
 	_title.text = "%s – %s" % [map.title, {"hangar": "Hangar", "landing": String(_body.get("name", "")), "settlement": String(_body.get("name", "")), "commercial": "Commercial level", "kplaza": String(_body.get("name", "Agora")), "senate": "Neo Kallipolis", "sgallery": "Neo Kallipolis", "pplaza": String(_body.get("name", "Compline")), "vgallery": "Gallery", "nave": "the nave", "control": "the control room", "ygallery": "the gallery", "pnarthex": "Aureola", "throne": "Aureola",
 		"street": "Shopping street", "quarters": "Quarters", "tower": "Tower bar · floor %d" % tower_floor(), "clinic": "Clinic: Mercy Hall", "dungeon": "inside" if depth == 0 else "level %d" % (depth + 1), "alley": "Back alley", "minehead": "The old mine", "plaza": "Roof plaza", "mplaza": "Roof plaza", "museum": "the hall", "museum_min": "Minerals", "museum_1": "first floor", "museum_2": "second floor", "museum_down": "the basement",
-		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard", "sim": "Hangar · combat simulation"}.get(level, "")]
+		"cplaza": "Plaza", "cstation": "Skyrail station", "ctrain": "aboard", "sim": "Hangar · combat simulation", "office": "Registry"}.get(level, "")]
 	if is_cloud() and level == "tower":
 		_title.text = "%s: Sky bar · deck %d" % [map.title, tower_floor() / 10]
 	_hatch = 1.0 if arrive != "touchdown" else 0.0
@@ -1626,6 +1628,9 @@ func _wires_step(delta: float) -> void:
 
 ## Package 58, part 6: the foes of the hangar's simulation (kinds "kind@tier"), set before go_level("sim").
 var sim_foes: Array = []
+## Package 59, part 3: whose office the level "office" is ("assembly" / "covenant"), set before go_level("office").
+var office_faction := "assembly"
+const OfficeGen = preload("res://scripts/ground/office_gen.gd")
 ## The simulation lost: set when the pilot would have died in it (the story starts the round again).
 var sim_lost := false
 

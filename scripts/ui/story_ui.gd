@@ -1,5 +1,6 @@
 class_name StoryUI
 extends CanvasLayer
+const AcqData = preload("res://data/acquaintances.gd")
 ## Package 55 (Luz, mockup_55*): what the story shows – a dialogue with a portrait (the game pauses; the answers can
 ## set story flags), a radio call in flight (top centre, typed, the game goes on; one after the other), a tip (over
 ## the module bar: "Got it", "No more tips"), the tracked mission's next goals (in space over the ship's panel, on
@@ -44,6 +45,7 @@ func _ready() -> void:
 	add_child(_radio_layer)
 	GameState.story.show.connect(_on_show)
 	GameState.story.changed.connect(_refresh_tracker)
+	GameState.story.changed.connect(func(): AcqData.refresh())       # package 60: new acquaintances, changed steps
 	_refresh_tracker()
 
 

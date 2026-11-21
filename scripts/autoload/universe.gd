@@ -443,18 +443,18 @@ func _name_systems() -> void:
 const SPECIAL_CAPITALS := {"assembly": "landfall", "covenant": "heimkehr", "directorate": "durchbruch"}
 const SPECIAL_NAMES := {"landfall": "Landfall", "heimkehr": "Heimkehr", "durchbruch": "Durchbruch",
 	"altwerft": "Altwerft", "erzhalde": "Erzhalde", "perlmutt": "Perlmutt", "schwarzwacht": "Schwarzwacht",
-	"beyond": "Beyond", "driftwood": "Driftwood", "hollow": "Hollow"}
+	"beyond": "Beyond", "driftwood": "Driftwood", "hollow": "Hollow", "fern": "Fern"}
 ## 39d: the systems of the private manufacturers – Earthworks always in the Assembly's space, the others independent
 ## (no power holds them; yellow on the galaxy map). Their bodies are random, their yard is the maker's own.
 const MAKER_SYSTEMS := {"earthworks": "altwerft", "khi": "erzhalde", "aurelle": "perlmutt", "hadrian": "schwarzwacht"}
 const INDEPENDENT_SECURITY := 0.75
-const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG", "durchbruch": "A", "beyond": "G", "driftwood": "K", "hollow": "M"}
+const SPECIAL_STARS := {"landfall": "G", "heimkehr": "RSG", "durchbruch": "A", "beyond": "G", "driftwood": "K", "hollow": "M", "fern": "RSG"}
 ## The fixed stations of a special system (type, tier) – their place and look come from SPECIAL_STATIONS.
 const SPECIAL_PLANS := {"landfall": [["trade", 3], ["shipyard", 3]], "heimkehr": [["trade", 3], ["shipyard", 3]],
 	"durchbruch": [["research", 3], ["shipyard", 3], ["research", 2]],
 	"altwerft": [["shipyard", 3], ["trade", 2]], "erzhalde": [["shipyard", 3], ["industry", 2]],
 	"perlmutt": [["shipyard", 3], ["trade", 3]], "schwarzwacht": [["shipyard", 3], ["military", 2]],
-	"beyond": [["trade", 1]]}
+	"beyond": [["trade", 1]], "fern": []}
 ## Fixed planets: type, orbit (km, before the scale), radius (km), ring, city lights; moons per planet: [name, type, radius].
 const SPECIAL_BODIES := {
 	"landfall": [
@@ -478,6 +478,13 @@ const SPECIAL_BODIES := {
 		{"name": "Planck", "type": "gas", "orbit": 1050000.0, "radius": 30000.0, "seed": 64.0,
 			"moons": [["Meitner", "moon_ice", 5000.0], ["Bohr", "moon_rock", 3600.0]]},
 		{"name": "Kepler", "type": "ice_giant", "orbit": 1500000.0, "radius": 24000.0, "seed": 81.0, "ring": true},
+	],
+	# package 61 (Luz): Fern, the home system out in the Rim – a red giant; Kiln, a lava world; the asteroid belt;
+	# Lapis, a deep blue ice giant with grand rings; round it Pelagia, the ocean world with the city Centauria
+	"fern": [
+		{"name": "Kiln", "type": "lava", "orbit": 760000.0, "radius": 7600.0, "seed": 23.0},
+		{"name": "Lapis", "type": "ice_giant", "orbit": 1560000.0, "radius": 36000.0, "seed": 58.0, "ring": true, "lapis": true,
+			"moons": [["Pelagia", "ocean", 9800.0, {"city": 0.9, "fern_city": 1}]]},
 	],
 	# package 57 (Luz): Beyond – a G star; an ocean world with one city; an ice giant whose ice moon Dan's store orbits
 	"beyond": [
@@ -530,6 +537,40 @@ func _apply_specials() -> void:
 		s["name"] = SPECIAL_NAMES[sp]
 		s["security"] = 1.0
 	_place_makers()
+	_place_fern()
+
+
+## Package 61 (Luz): Fern, the home system – out in the Rim, independent: a system of the ring that no pirate holds
+## or borders, as well connected as the ring gets, and not too far from where the game begins.
+func _place_fern() -> void:
+	var hops := _hop_table()
+	var pick := -1
+	var pick_sc := -INF
+	for s in systems:
+		var sid := int(s["id"])
+		if not s.get("belt", false) or s.get("outer", false) or String(s.get("special", "")) != "" or sid == home_system \
+				or bool(s.get("capital", false)) or bool(s.get("fortress", false)) or int(s.get("haven_tier", 0)) > 0:
+			continue
+		var f := String(s.get("faction", ""))
+		if f in FactionData.PIRATES:
+			continue
+		var near_pirates := false
+		for nb in s["links"]:
+			near_pirates = near_pirates or String(systems[nb].get("faction", "")) in FactionData.PIRATES
+		var sc := (60.0 if f == "" else 0.0) - (80.0 if near_pirates else 0.0)
+		sc += minf(float(s["links"].size()), 3.0) * 8.0
+		sc -= float(hops[sid][home_system]) * 3.0
+		if sc > pick_sc:
+			pick_sc = sc
+			pick = sid
+	if pick < 0:
+		return
+	_make_special(pick, "fern")
+	var sp: Dictionary = systems[pick]
+	sp["faction"] = ""
+	sp["claimants"] = []
+	sp["independent"] = true
+	sp["security"] = 0.6
 
 
 ## 39d: Earthworks gets a safe Assembly system (not the capital, not the start); KHI, Aurelle and Hadrian each an
@@ -755,6 +796,8 @@ func _special_planets(L: Dictionary, id: int, sp: String) -> void:
 			L["planets"].back()["city_fixed"] = float(d["city"])
 		if d.get("deep", false):
 			L["planets"].back()["deep"] = true
+		if d.get("lapis", false):
+			L["planets"].back()["lapis"] = true                # package 61: Lapis, its own look (deep blue, grand rings)
 		if d.has("hue"):
 			L["planets"].back()["hue"] = float(d["hue"])            # 39b: the red gas giant Compline
 		if d.has("city_style"):
@@ -2612,7 +2655,7 @@ const CITY_WORLDS := ["terran", "ocean", "jungle"]
 func _city_lights(L: Dictionary, id: int) -> void:
 	var inhabited := has_stations(id)
 	for pc in L["planets"]:
-		if is_giant(pc) and not bool(systems[id].get("outer", false)) and not is_pocket(id):
+		if is_giant(pc) and not bool(systems[id].get("outer", false)) and not is_pocket(id) and not bool(pc.get("lapis", false)):     # (package 61: Lapis has none – all of Fern is in Centauria)
 			pc["cloud_city"] = true                      # package 54 (Luz): an inhabited system's giants have cloud cities
 	var rich := Missions.wealthy(id)
 	for pi in L["planets"].size():
@@ -3048,6 +3091,10 @@ func _make_belts(L: Dictionary, id: int) -> Array:
 		if L["planets"].size() >= 3:
 			wr = (float(L["planets"][1]["orbit"]) + float(L["planets"][2]["orbit"])) * 0.5
 		out.append({"kind": "wreck", "r": wr, "w": 0.06 * SYSTEM_RADIUS, "cls": "metallic", "seed": rng.randi()})
+	if special_of(id) == "fern" and not out.any(func(b): return String(b["kind"]) == "asteroid") and L["planets"].size() >= 2:
+		# package 61 (Luz): Fern always has its asteroid belt, between Kiln and Lapis
+		out.append({"kind": "asteroid", "r": (float(L["planets"][0]["orbit"]) + float(L["planets"][1]["orbit"])) * 0.5, "w": 0.07 * SYSTEM_RADIUS,
+			"cls": "stony", "seed": seed_value * 61 + id})
 	if rng.randf() < KUIPER_SHARE:
 		out.append({"kind": "kuiper", "r": rng.randf_range(0.82, 0.86) * SYSTEM_RADIUS, "w": rng.randf_range(0.05, 0.07) * SYSTEM_RADIUS, "cls": "icy", "seed": rng.randi()})
 	return out
@@ -3329,6 +3376,9 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 	if is_pocket(system_id):
 		cities = int(body.get("pocket_city", 0))          # package 57 (Luz): in the pocket only Brine has a city
 		inhabited = cities > 0
+	if body.has("fern_city"):
+		cities = 1                                        # package 61 (Luz): Pelagia has one city – Centauria
+		inhabited = true
 	var kinds: Array = []
 	for i in cities:
 		kinds.append("city")
@@ -3347,6 +3397,8 @@ func landing_sites(system_id: int, body: Dictionary) -> Array:
 			nm = ("%s %s" % [st, String(body["name"]).split(" ")[0]]).strip_edges() if rng.randf() < 0.5 else "%s %s" % [String(body["name"]).split(" ")[0], CITY_ENDS[rng.randi() % CITY_ENDS.size()]]
 			if is_pocket(system_id) and String(body["name"]) == "Brine":
 				nm = "Upper Brine"                               # package 58 (Luz): the story's city – always this name
+			if body.has("fern_city"):
+				nm = "Centauria"                                 # package 61 (Luz): the city of the home system
 		else:
 			nm = "%s %s-%d" % [SITE_KINDS[kd]["name"], ["Kilo", "Delta", "Echo", "Sierra", "Tango", "Vega", "Orion", "Lima"][rng.randi() % 8], rng.randi_range(2, 19)]
 		if nm in used:
