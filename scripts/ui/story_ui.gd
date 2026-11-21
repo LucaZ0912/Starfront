@@ -207,6 +207,8 @@ func _close_dialogue() -> void:
 func _show_radio(d: Dictionary) -> void:
 	var who := String(d.get("who", ""))
 	var c: Dictionary = Data.CHARACTERS.get(who, {})
+	if who == "you":
+		c = {"name": GameState.pilot_name, "sub": "your ship", "col": Color(0.45, 0.85, 1.0)}      # package 58, part 8: you on the radio
 	var col: Color = c.get("col", GOLD)
 	_radio = UI.neon_panel(col, Color(0.03, 0.04, 0.08, 0.95), 2)
 	_radio.custom_minimum_size = Vector2(660, 0)
@@ -218,7 +220,7 @@ func _show_radio(d: Dictionary) -> void:
 	var fr := UI.neon_panel(col, Color(0.05, 0.06, 0.1), 2)
 	h.add_child(fr)
 	var tr := TextureRect.new()
-	tr.texture = GameState.story.portrait_of(who)
+	tr.texture = GameState.story.portrait_of(who) if who != "you" else PilotArt.portrait(GameState.pilot.get("look", {}))
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -277,6 +279,15 @@ func _radio_step(dt: float) -> void:
 	_radio_d = {}
 
 
+## How long the radio still talks: what is left of the call on screen, and every call waiting (each as long as
+## _show_radio gives it). Package 58, part 8: the warp to the Roost is timed to end with the talk.
+func radio_left() -> float:
+	var t := maxf(_radio_t, 0.0) if _radio != null else 0.0
+	for d in _radio_q:
+		t += 4.0 + String((d as Dictionary).get("text", "")).length() / 22.0 + 0.05
+	return t
+
+
 ## Whether a call still waits for what it asks: a flag set ("until_flag"), its step over ("until_step"), or a
 ## code condition ("until": a Callable giving true when done).
 func radio_held(d: Dictionary) -> bool:
@@ -294,6 +305,10 @@ func radio_held(d: Dictionary) -> bool:
 
 
 ## Top centre in flight; at the bottom while a station window is open (so it covers none of its buttons).
+## Package 58, part 8: how far down the radio sits at the top (lower while the Roost's bar is shown).
+var radio_top := 72.0
+
+
 func _place_radio() -> void:
 	if _radio == null:
 		return
@@ -303,7 +318,7 @@ func _place_radio() -> void:
 	var m := get_tree().current_scene
 	if m != null and m.get("station_panel") != null and is_instance_valid(m.station_panel) and m.station_panel.visible:
 		low = true
-	var y := vs.y - sz.y - 30.0 if low else 72.0
+	var y := vs.y - sz.y - 30.0 if low else radio_top
 	if radio_avoid.size != Vector2.ZERO and Rect2(Vector2((vs.x - sz.x) * 0.5, y), sz).intersects(radio_avoid):
 		y = 72.0 if low else vs.y - sz.y - 30.0                   # the other end of the screen
 		if Rect2(Vector2((vs.x - sz.x) * 0.5, y), sz).intersects(radio_avoid):

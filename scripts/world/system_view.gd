@@ -286,8 +286,8 @@ func _cme_hit(ship: Ship, d: float, star_r: float) -> void:
 		if ship == player:
 			GameState.log_msg("The plasma clings to the hull: the cloak fails for 20 s.", GameState.COL_BAD)
 	var close := d < star_r * 25.0
-	if close:
-		ship.shield_collapse(5.0)
+	if close or ship.anchored:
+		ship.shield_collapse(5.0 if close else 12.0)       # (package 58, part 8: a station's parts take the storm too)
 		ship.jammed_t = maxf(ship.jammed_t, 14.0)
 	else:
 		ship.fit.shield *= 0.6
@@ -558,6 +558,8 @@ func _spawn_celestials() -> void:
 			_add_celestial("wreck", w)
 	for ds in Universe.descents(system_id):             # package 50: descent beacons over the bodies to land on
 		descents[String(ds["body"])] = _add_celestial("descent", ds)
+	for sb in Universe.story_beacons.get(system_id, []):   # package 58, part 8: the story's waypoints
+		_add_celestial("beacon", sb)
 	for ph in layout.get("havens", []):
 		var hv := _add_celestial("haven", ph)
 		havens.append(hv)

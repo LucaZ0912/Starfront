@@ -50,6 +50,11 @@ const CHARACTERS := {
 	"silas": {"name": "Silas Marr", "sub": "Engineer · the Stubborn Hope", "col": Color(0.55, 0.75, 1.0), "seed": 4419,
 		"look": {"body": 0, "skin": 2, "hair": 3, "hair_color": 7, "eyes": 3, "brows": 1, "beard": 4, "scar": 0, "freckles": 1,
 			"outfit": 3, "color1": 1, "color2": 5, "implant": 3, "tattoo": 0, "headgear": 3, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	# package 58, part 8 (Luz): the pirates of the Red Talon Roost on the radio – a voice in the hangar, their captain
+	"talon": {"name": "Red Talon", "sub": "◉ Pirate radio · the Roost", "col": Color(1.0, 0.35, 0.3), "seed": 6661,
+		"look": {"hair": 2, "hair_color": 1, "scar": 1, "implant": 2, "tattoo": 2, "outfit": 2, "color1": 0, "color2": 8}},
+	"talon_boss": {"name": "Red Talon captain", "sub": "◉ Pirate radio · the Roost", "col": Color(1.0, 0.25, 0.2), "seed": 6662,
+		"look": {"hair": 6, "hair_color": 2, "beard": 2, "scar": 3, "implant": 1, "tattoo": 1, "outfit": 2, "color1": 0, "color2": 0, "headgear": 2}},
 	# package 58, part 3: Dan on the radio (his face, the call's header) – the call at the end of the escort
 	"dan_radio": {"name": "Dan T. Rogue", "sub": "◉ Radio call · Dan's Dusty Duty Store", "col": Color(1.0, 0.65, 0.3), "seed": 7731,
 		"look": {"body": 2, "skin": 6, "hair": 1, "hair_color": 6, "beard": 3, "brows": 2, "scar": 0, "headgear": 4, "implant": 0,
@@ -171,6 +176,17 @@ const DIALOGUES := {
 		{"text": "Then you should talk to a friend of mine in Driftwood, who might know how to track the pirates down. I'll send you the contacts once you've got the Maul."},
 		{"text": "But tonight you're the star of the party. Have a few more, and we'll see tomorrow.", "next": -1},
 	]},
+	# package 58, part 8 (Luz): the celebration in Dan's bar after the Roost – the whiskey from Earth, Ossa's gift
+	"strike_party": {"who": "dan", "lines": [
+		{"text": "Whiskey from Earth. The real thing. I promised."},
+		{"who": "ossa", "text": "To the craziest crew this side of the Veil."},
+		{"who": "rook", "text": "And to the paint job. Rest in peace."},
+		{"who": "silas", "text": "To the relay. Best thing we ever broke."},
+		{"text": "Three hundred years in a box, and the first thing you do is blow up a pirate nest. Not bad, kid. Not bad at all."},
+		{"who": "ossa", "text": "My gear goes back in my locker. But this is yours: a combat suit and a laser drone. You've earned them.",
+			"answers": [["\"Thank you, all of you.\"", 6, ["w58_gifts", true], "Thank you. All of you. I woke up in a world I didn't know, and you made room for me in it.", {"gold": true}]]},
+		{"text": "Drink up. Tomorrow there's still plenty of work, and you're still my best pilot.", "next": -1},
+	]},
 	# package 58, part 4: Ossa hands you her Maul (in Upper Brine's shopping street)
 	"ossa_maul": {"who": "ossa", "lines": [
 		{"text": "There's our pirate hunter. Dan told me everything. Mad, the lot of you."},
@@ -259,6 +275,13 @@ const DIALOGUES := {
 				["\"Back to work.\"", 3, [], "Alright, alright. I'm getting up. Back to work."]]},
 		{"text": "Ossa's waiting outside my store with what's left, and not happy about it. Get back in Little Darling. The moment you undock, we try that again.", "next": -1},
 		{"text": "That's the spirit. Ossa's waiting for you in the hangar.", "next": -1},
+	]},
+	# package 58, part 8 (Luz): shot down at the Roost – the Maul, the rendezvous
+	"dan_wake_strike": {"who": "dan", "lines": [
+		{"text": "Easy, easy. You're back in my clinic. Rook dragged you out, and Ossa towed what was left of the Maul home."},
+		{"text": "She's patched up again. Ossa wasn't happy about the state of her, mind.",
+			"answers": [["\"The Roost...\"", 2, [], "The Roost... it's still out there, isn't it?"]]},
+		{"text": "It is. We pulled back to the rendezvous. When you're ready, meet us there and we go again. Together.", "next": -1},
 	]},
 	"dan_busy": {"who": "dan", "lines": [
 		{"text": "Don't keep Ossa waiting. Brine's the blue one. I'll call you if I need you.", "next": -1},
@@ -449,8 +472,14 @@ const MISSIONS := {
 			{"id": "escape", "title": "Get out!", "text": "The transmitter is going to blow and the whole nest is awake. Back to the landing drone and up.",
 				"goals": [{"id": "escape", "kind": "flag", "flag": "w58_relay", "label": "get back to the drone and take off"}],
 				"on_done": [{"do": "credits", "n": 2500}]},
-			{"id": "strike", "title": "The strike", "text": "Dan, Ossa and Silas are getting their ships ready. Together you strike at the pirates' base while they are deaf. (Package 58, part 8: comes with the next part.)",
-				"goals": [{"id": "strike", "kind": "flag", "flag": "w58_base_down", "label": "destroy the pirates' base"}]},
+			# package 58, part 8 (Luz): the strike
+			{"id": "rendezvous", "title": "The rendezvous", "text": "Dan, Ossa and Silas wait for you at a spot in Hollow, far from the pirates' station. Meet them there: from there you strike together, while the pirates are still deaf.",
+				"goals": [{"id": "rv", "kind": "flag", "flag": "w58_rv", "label": "meet Dan, Ossa and Silas at the rendezvous in Hollow"}]},
+			{"id": "strike", "title": "The strike", "text": "The Red Talon Roost: four gun platforms, two hangars that keep sending fighters, and a reactor under heavy plating. Every hit counts. Once the plating gives, hit the core with everything you have.",
+				"goals": [{"id": "strike", "kind": "flag", "flag": "w58_base_down", "label": "destroy the Red Talon Roost"}],
+				"on_done": [{"do": "credits", "n": 5000}]},
+			{"id": "drinks", "title": "Drinks at Dan's", "text": "The Roost is gone. Dan promised a whiskey from Earth.",
+				"goals": [{"id": "drinks", "kind": "flag", "flag": "w58_drinks", "label": "celebrate in Dan's bar"}]},
 		]},
 	# package 56, sequence 5 (Luz): the flight training – flown with one of Dan's drones from Old Betty in a wreck field;
 	# the flags are set by scripts/ground/intro_five.gd (it watches the drone), the targets too

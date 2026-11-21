@@ -94,7 +94,7 @@ func _build() -> void:
 			var pp: Dictionary = p
 			var on := not opponent.is_empty() and String(opponent["id"]) == String(pp["id"])
 			var row := UI.button("%s%s, %s   %s   %s" % ["▶ " if on else "", pp["name"], pp["job"], MG.stars_text(int(pp["stars"])),
-				"guest" if String(pp["kind"]) == "guest" else "crew aboard"], func(): opponent = pp; _build())
+				{"guest": "guest", "special": "★ special opponent"}.get(String(pp["kind"]), "crew aboard")], func(): opponent = pp; _build())
 			row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			v.add_child(row)
 		var coop := UI.button("Co-op player: join with a friend in co-op (later)", func(): pass)

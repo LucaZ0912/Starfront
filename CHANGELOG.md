@@ -3,6 +3,36 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.58.7 – 2026-11-21
+
+**Package 58, part 8: the strike on the Red Talon Roost (Luz). Package 58 is complete.**
+- **The rendezvous** in Hollow, marked gold: Dan (Kanayama-maru), Ossa (Citadel) and Silas (Stubborn Hope) already
+  wait there in a line facing the Roost. Come close and a scene starts: their greetings on the radio, your ship flies
+  into the middle of the line, Dan: "Then we go."
+- **The warp together:** the final briefing on the radio (Silas, Dan, Ossa, Rook, you: "Let's do it."). The warp is
+  timed to the talk: it lasts exactly as long as the calls still to come, so you drop out with "Dropping out in
+  three... two...". Should the talk run long after all, the warp slows near its end instead of stopping.
+- **The Red Talon Roost:** a station of its own with a boss bar at the top (the radio moves below it) and parts with
+  bars of their own: four gun platforms (Maul fitting, they go for the ships, not the drones), two hangars that send
+  out fighters in waves while they stand (at most 13 alive at once, 17 once the core is open), the hull and the
+  reactor core. Every hit lowers the station's bar. At a quarter the plating blows and the core opens (the last wave
+  from all around). Solar storms collapse the parts' shields for 12 s.
+- **The allies:** Ossa, Silas and Dan go for the fighters while you take the platforms; Dan's drones heal anyone
+  badly hurt and are replaced from the ship's stores; Silas jams the guns from the back; pirate radio (Talon and the
+  boss) and the allies' chatter.
+- **The end:** a chain reaction, then the great explosion; 5,000 cr. The celebration in Dan's bar (the whiskey,
+  Ossa's gift: a Light Combat Suit and a Laser Drone, the lent gear back).
+- **The party goes on:** stay, dance, play pool. Leave the bar and a window asks "End the party?"; yes: black, "The
+  next day", awake in your room.
+- **Special opponents:** from the party on, Ossa (●●●●●) and Dan (●●●○○) play pool at Dan's table. Beat one and they
+  go into the new collection category "Special opponents" (portrait, game, a line about them).
+- Shot down at the Roost: you wake at Dan's, Dan talks about the Maul; the strike starts again at the rendezvous.
+- **Frame rate:** NPC ships far from you (over 250,000 km, out of any fight) are worked every 4th frame; the HUD's
+  drone, ally and selection panels update ten times a second. In the Roost fight the physics went from about 15 to
+  8.5 ms a frame.
+- **Fix:** the core can be targeted (L1 / R1 and "nearest hostile" skip parts that cannot be targeted).
+- Debug: F12 → Story → "Play package 58, part 8".
+
 ## alpha 0.8.58.6 – 2026-11-20
 
 **Package 58, part 7: the relay station (Luz).**

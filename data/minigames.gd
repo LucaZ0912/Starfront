@@ -40,6 +40,32 @@ const LINES := ["\"Rack 'em up, spacer.\"", "\"Loser buys the next round.\"", "\
 	"\"Go easy on me, long shift.\"", "\"Haven't lost here since the last refit.\"", "\"You break.\"", "\"Let's see that hand of yours.\""]
 
 
+## Package 58, part 8 (Luz): special opponents: the story's people at a bar game, once the story lets them. Beat one
+## and they go into the collection ("Special opponents"). Each: who (the story character, for the portrait), the
+## games, where (a story flag holding the station's id), from (the flag that opens them), their strength.
+const SPECIAL := {
+	"ossa": {"who": "ossa", "name": "Ossa Kell", "job": "hauler boss", "stars": 5, "games": ["billiards"],
+		"where": "w58_dan_st", "from": "w58_drinks", "line": "\"I never miss the black. Ask Silas.\"",
+		"text": "Runs the haulers out of Upper Brine. Plays pool the way Ossa flies: no wasted moves."},
+	"dan": {"who": "dan", "name": "Dan", "job": "station owner", "stars": 3, "games": ["billiards"],
+		"where": "w58_dan_st", "from": "w58_drinks", "line": "\"My table, my rules. Mostly.\"",
+		"text": "Owns the station, the bar and the table. Swears the table leans to the left."},
+}
+
+
+## The special opponents at this place for this game now (as lobby seats).
+static func specials(place_id: String, game: String) -> Array:
+	var out: Array = []
+	var fl: Dictionary = GameState.story.flags
+	for k in SPECIAL:
+		var sp: Dictionary = SPECIAL[k]
+		if not game in sp["games"] or not bool(fl.get(String(sp["from"]), false)) or String(fl.get(String(sp["where"]), "-")) != place_id:
+			continue
+		out.append({"id": "sp_" + String(k), "special": String(k), "who": String(sp["who"]), "name": String(sp["name"]), "job": String(sp["job"]),
+			"stars": int(sp["stars"]), "line": String(sp["line"]), "kind": "special"})
+	return out
+
+
 ## A mode played alone (no opponent, no stake, no streak).
 static func solo(mode: String) -> bool:
 	return mode in ["practice", "clock", "arcade"]

@@ -714,6 +714,7 @@ func _process(delta: float) -> void:
 				await _test_w58g(main.view)              # package 58, part 7: the relay mission
 				await _test_hackpad(main.view)           # (Luz) the hack with the controller: a step the moment you push
 				await _test_grmove(main.view)            # (Luz) grenades thrown while walking
+				await _test_w58h(main.view)              # package 58, part 8: the strike on the Roost
 				_shooting = false
 				timer = 0.0
 				return
@@ -15007,7 +15008,7 @@ func _test_w58g(_view: SystemView) -> void:
 			break
 	for i in 10:
 		await get_tree().process_frame
-	done_ok = w.phase == "strike" and bool(st.flags.get("w58_relay", false)) and st.step_data("fight").get("id", "") == "strike" and GameState.credits >= cr0 + 2500
+	done_ok = w.phase == "strike" and bool(st.flags.get("w58_relay", false)) and st.step_data("fight").get("id", "") == "rendezvous" and String(st.flags.get("w58_sk", "")) == "rv" and GameState.credits >= cr0 + 2500
 	# fallen on foot at the relay: awake at Dan's, the gear kept, a fresh relay
 	var fall_ok := false
 	for fl3 in ["w58_relay", "w58_coords", "w58_overload", "w58_relay_intro"]:
@@ -16631,3 +16632,313 @@ func _test_grmove(view: SystemView) -> void:
 	Pad.sim_r = Vector2.ZERO
 	Commands.suit_god = false
 	check(pad_ok, "0.8.58.6: a grenade with the controller lands where the stick aimed it, also when the stick springs back as you let go while walking  [%s %s %s]" % [aimed, kept, b])
+
+
+## Package 58, part 8 (Luz): the strike – the rendezvous in Hollow (Dan, Ossa and Silas come and line up), the warp
+## together to the Red Talon Roost, the fight (parts with their own bars, the station's bar, waves, the core open at a
+## quarter), the great explosion, the bar (the whiskey, Ossa's gift, the lent gear back).
+func _test_w58h(_view: SystemView) -> void:
+	var st = GameState.story
+	var keep: Dictionary = st.to_dict()
+	var keep_fleet: Array = GameState.fleet.duplicate()
+	var keep_active := GameState.active_uid
+	var keep_cr := GameState.credits
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
+	var keep_gear: Dictionary = GameState.gear.to_dict()
+	var shots := OS.get_environment("W58H_SHOTS") != ""
+	Commands.cheats_enabled = true
+	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+		Commands.execute({"type": "debug_special", "special": "beyond"})
+		for i in 30:
+			await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for st0 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+		if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+			st.flags["w58_dan_st"] = String(st0["id"])
+	for fl in st.flags.keys():
+		if String(fl).begins_with("w58_") and String(fl) != "w58_dan_st":
+			st.flags.erase(fl)
+	for mid in ["darling", "fight"]:
+		st.missions.erase(mid)
+		st.done.erase(mid)
+	st.flags["dan_deal_yes"] = true
+	main.station_panel.close()
+	main._start_dan_work("yes")
+	for st1 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+		if bool(st1.get("dan", false)) or String(st1.get("art", "")) == "dusty_duty":
+			st.flags["w58_dan_st"] = String(st1["id"])          # (the deal remembers where you were docked)
+	var w = main.get_meta("dan_work")
+	w.quick = true
+	if w.tour != null and is_instance_valid(w.tour):
+		w.tour.queue_free()
+	w.tour = null
+	w._give_maul()
+	for f0 in GameState.fleet:
+		if f0.ship_name == "Maul":
+			GameState.active_uid = f0.uid
+	w._lend_ground_gear()
+	for fl2 in ["w58_maul", "w58_contact", "w58_atlisten", "w58_listened", "w58_briefing", "w58_gear", "w58_sim", "w58_relay_intro", "w58_coords", "w58_overload", "w58_relay"]:
+		st.flags[fl2] = true
+	st.start("fight")
+	st.tracked = "fight"
+	w._set_phase("strike")
+	w._strike_begin()
+	var begin_ok: bool = st.step_data("fight").get("id", "") == "rendezvous" and String(st.missions["fight"].get("target", "")) == "w58_rv" \
+		and (Universe.story_beacons.get(Universe.special_system("hollow"), []) as Array).size() == 1
+	# to Hollow, out in space by the rendezvous
+	Commands.execute({"type": "debug_special", "special": "hollow"})
+	for i in 30:
+		await get_tree().process_frame
+	for wl in 600:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var v = main.view
+	var pl = v.player
+	var bea_ok: bool = v.find_object("w58_rv") != null and not Universe.warp_target(v.system_id, "w58_rv").is_empty()
+	if pl.is_docked():
+		Commands._debug_leave_space(main)
+		await get_tree().process_frame
+		pl = v.player
+	pl.position = w.RV_POS + Vector2(6000, 2000)
+	pl.fit.position = pl.position
+	pl.velocity = Vector2.ZERO
+	var rv_ok := false
+	var t0 := Time.get_ticks_msec()
+	var shot_rv := false
+	var shot_w := false
+	while Time.get_ticks_msec() - t0 < 45000:
+		await get_tree().process_frame
+		if w._allies.size() == 3 and not shot_rv and shots and not pl.in_warp():
+			var lined := true
+			for k in w._allies:
+				lined = lined and (w._allies[k].position as Vector2).distance_to(pl.position) < 4000.0
+			if lined:
+				shot_rv = true
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_rendezvous.png")
+		if shots and pl.in_warp() and not shot_w:
+			shot_w = true
+			for f8 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_warp.png")
+		if String(st.flags.get("w58_sk", "")) == "fight":
+			rv_ok = w._allies.size() == 3 and w._roost != null and is_instance_valid(w._roost) and st.step_data("fight").get("id", "") == "strike"
+			break
+	if not rv_ok:
+		print("W58H rv: allies ", w._allies.size(), " sk ", st.flags.get("w58_sk", ""), " roost ", w._roost, " step ", st.step_data("fight").get("id", ""), " warp ", pl.in_warp(), " rv_on ", w._rv_on)
+	# the fight
+	var parts_ok := false
+	var core_ok := false
+	var boom_ok := false
+	var r = w._roost
+	if rv_ok:
+		var near: bool = pl.position.distance_to(w.ROOST_POS) < 40000.0
+		parts_ok = near and r.parts.size() == 8 and r.part("core").untargetable and r._bar != null and r.platforms_left() == 4 and r.hangars_left() == 2
+		if not parts_ok:
+			print("W58H start: near ", near, " d ", pl.position.distance_to(w.ROOST_POS), " n ", r.parts.size())
+		var tf := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tf < (9000 if shots else 2500):
+			await get_tree().process_frame
+		if OS.get_environment("W58H_PERF") != "":
+			# (performance in the boss fight: what is on the field, what a frame costs)
+			r.quick = false
+			Engine.max_fps = 0
+			pl.fit.structure = 1e9
+			for sec in 25:
+				var tgt8 = null
+				for pid in ["platform_0", "platform_1", "platform_2", "platform_3", "hangar_0", "hangar_1", "core"]:
+					if r.part(pid) != null and r.part(pid).is_targetable():
+						tgt8 = r.part(pid)
+						break
+				if tgt8 != null:
+					pl.set_order({"type": "attack", "target": tgt8})
+					pl.target = tgt8
+				v.story_cam = pl.position
+				v._set_zoom(0.35)
+				var tp0 := Time.get_ticks_msec()
+				var fr0 := Engine.get_process_frames()
+				while Time.get_ticks_msec() - tp0 < 1000:
+					await get_tree().process_frame
+				var counts := {}
+				for lay in v.get_children():
+					if lay is Node and lay.get_child_count() > 0:
+						counts[String(lay.name)] = lay.get_child_count()
+				var drones := 0
+				var facs := {}
+				for n in v.ship_layer.get_children():
+					if n is Ship and n.is_drone:
+						drones += 1
+					if n is Ship:
+						var fk := "%s%s" % [n.faction, "_drone" if n.is_drone else ("_roost" if n in r.pirates else ("_part" if n.anchored else ""))]
+						facs[fk] = int(facs.get(fk, 0)) + 1
+				print("PERF s%d fps %d  proc %.1f ms  phys %.1f ms  draws %d  objs %d  ships %d (drones %d) %s  layers %s" % [sec, Engine.get_process_frames() - fr0,
+					Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+					Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
+					v.ship_layer.get_child_count(), drones, facs, counts])
+		if shots:
+			var z1: float = v._zoom
+			v.story_cam = (pl.position + w.ROOST_POS) * 0.5
+			for f12 in 30:
+				v._set_zoom(0.22)
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_fight.png")
+			v._set_zoom(z1)
+			v.story_cam = Vector2.INF
+		var waves0: int = r.waves
+		var pool0: float = r.pool
+		r.part("platform_0").take_damage(1.0e7, "kinetic", pl)
+		r.part("hangar_0").take_damage(1.0e7, "kinetic", pl)
+		for i in 5:
+			await get_tree().process_frame
+		parts_ok = parts_ok and r.gone.has("platform_0") and r.gone.has("hangar_0") and r.platforms_left() == 3 and r.hangars_left() == 1 and r.pool < pool0 and waves0 >= 1
+		if not parts_ok:
+			print("W58H parts: n ", r.parts.size(), " waves ", waves0, " gone ", r.gone, " pool ", r.pool, "/", pool0)
+		# a quarter left: the plating blows, the core is a target
+		r._on_hit(r.part("hull"), r.HP, "hull")
+		for i in 5:
+			await get_tree().process_frame
+		core_ok = r.core_open and not r.part("core").untargetable and r.part("hull").untargetable and r.pool <= r.HP * r.CORE_AT + 1.0 and r.pool > 0.0
+		if shots:
+			pl.position = w.ROOST_POS + Vector2(-300, 2300)
+			pl.fit.position = pl.position
+			var z0: float = v._zoom
+			v.story_cam = w.ROOST_POS + Vector2(0, 300)
+			for f9 in 40:
+				v._set_zoom(0.3)
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_core.png")
+			v._set_zoom(z0)
+			v.story_cam = Vector2.INF
+		var cr0 := GameState.credits
+		for hk in 20:
+			if r._boom >= 0.0 or r.dead or r.part("core") == null:
+				break
+			r.part("core").take_damage(1.0e7, "kinetic", pl)
+		if shots:
+			v.story_cam = w.ROOST_POS
+		var tb := Time.get_ticks_msec()
+		var shot_b := false
+		while Time.get_ticks_msec() - tb < 6000 and not r.dead:
+			await get_tree().process_frame
+			if shots:
+				v._set_zoom(0.3)
+			if shots and not shot_b and r._boom > 0.6:
+				shot_b = true
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_chain.png")
+		if shots:
+			for f10 in 8:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_blast.png")
+			v.story_cam = Vector2.INF
+		boom_ok = r.dead and bool(st.flags.get("w58_base_down", false)) and GameState.credits >= cr0 + 5000
+		if not boom_ok:
+			print("W58H boom: dead ", r.dead, " pool ", r.pool, " flag ", st.flags.get("w58_base_down", false), " cr ", GameState.credits - cr0)
+	# the bar
+	var party_ok := false
+	if boom_ok:
+		var tp := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tp < 20000:
+			await get_tree().process_frame
+			if main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "strike_party":
+				break
+		var in_bar: bool = main.ground != null and is_instance_valid(main.ground) and main.ground.level == "commercial" and main.ground.story_people.has("ossa") \
+			and main.ground.story_people.has("silas") and main.ground.story_people.has("rook")
+		if shots and in_bar:
+			for f11 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_bar.png")
+		st.set_flag("w58_gifts", true)
+		main.story_ui._close_dialogue()
+		for i in 20:
+			await get_tree().process_frame
+		var has_suit: bool = GameState.gear.count("suit_mil_light:C") >= 1
+		var has_drone: bool = GameState.gear.count("dr_laser:C") >= 1
+		party_ok = in_bar and has_suit and has_drone and GameState.gear.suit != "suit_mil_light:A" and bool(st.flags.get("w58_drinks", false)) \
+			and st.done.has("fight") and w.phase == "after58"
+		if not party_ok:
+			var gx = main.ground
+			print("W58H ground: ", gx != null and is_instance_valid(gx), " ", (gx.level if gx != null and is_instance_valid(gx) else "-"), " ", (gx.story_people.keys() if gx != null and is_instance_valid(gx) else []), " docked ", GameState.active().docked_at, " sys ", GameState.current_system, " dlg ", main.story_ui._dlg.get("id", ""), " view_st ", main.view.stations.keys().slice(0, 5) if main.view != null else [])
+			print("W58H party: bar ", in_bar, " suit ", has_suit, " drone ", has_drone, " worn ", GameState.gear.suit, " drinks ", st.flags.get("w58_drinks", false), " done ", st.done.has("fight"), " phase ", w.phase)
+	# (Luz) Ossa and Dan at the pool table, the collection; leaving the bar ends the party: the next day, in your room
+	var after_ok := false
+	if party_ok:
+		var MGd = load("res://data/minigames.gd")
+		var dst := String(st.flags.get("w58_dan_st", ""))
+		var sps: Array = MGd.specials(dst, "billiards")
+		var ids: Array = sps.map(func(x): return String(x["special"]))
+		var none_else: bool = MGd.specials("nowhere", "billiards").is_empty() and MGd.specials(dst, "darts").is_empty()
+		var opp: Dictionary = sps[0] if not sps.is_empty() else {}
+		Commands.execute({"type": "minigame_begin", "game": "billiards", "mode": "8ball", "stake": 0, "opponent": opp, "place": dst})
+		Commands.execute({"type": "minigame_end", "won": true})
+		var coll: bool = ("%s:billiards" % String(opp.get("special", "-"))) in GameState.collection.get("special", [])
+		var pw8 = main.pilot_window
+		pw8.sub = 3
+		pw8.coll_cat = "special"
+		pw8.open(0)
+		for f13 in 4:
+			await get_tree().process_frame
+		coll = coll and pw8.body.find_children("*", "PanelContainer", true, false).filter(func(n): return (n as Control).custom_minimum_size.y >= 117.0).size() == MGd.SPECIAL.size()
+		if shots:
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_collection.png")
+		pw8.close()
+		var g8 = main.ground
+		var free: bool = w._party8_free
+		var asked := false
+		var woke := false
+		if g8 != null and is_instance_valid(g8) and g8.map.bar_rect.size != Vector2.ZERO:
+			g8.pilot.pos = Vector2(g8.map.bar_rect.position.x + 2.0, g8.map.bar_rect.end.y + 1.5) * GroundMap.TILE
+			g8.pilot.position = g8.pilot.pos * GroundMap.SCALE
+			for f12 in 6:
+				await get_tree().process_frame
+			asked = g8._lift_menu != null
+			if asked:
+				if shots:
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/w58h_party_end.png")
+				(g8._lift_menu.get_meta("keys")[0] as Callable).call()
+				var tq := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tq < 15000:
+					await get_tree().process_frame
+					if main.ground != null and is_instance_valid(main.ground) and main.ground.level == "quarters" and main.ground.input_enabled:
+						break
+				woke = main.ground != null and is_instance_valid(main.ground) and main.ground.level == "quarters" and main.ground.story_mode.is_empty() and not w._party8_free
+		after_ok = ids.has("ossa") and ids.has("dan") and none_else and coll and free and asked and woke
+		if not after_ok:
+			print("W58H after: ids ", ids, " none_else ", none_else, " coll ", coll, " free ", free, " asked ", asked, " woke ", woke, " lvl ", main.ground.level if main.ground != null and is_instance_valid(main.ground) else "-")
+	check(after_ok, "58: part 8 (Luz) – after the party: Ossa and Dan play pool at Dan's (special opponents, beaten into the collection); leaving the bar asks \"End the party?\", yes: the next day in your room")
+	check(begin_ok and bea_ok and rv_ok and parts_ok and core_ok and boom_ok and party_ok,
+		"58: part 8 – the rendezvous in Hollow (marked), Dan, Ossa and Silas line up, the warp together to the Red Talon Roost; its parts (platforms and hangars with bars of their own) and the station's bar, waves; at a quarter the core opens; the chain reaction and the great explosion (5,000 cr); the bar: the whiskey, Ossa's gift, the lent gear back  [%s %s %s %s %s %s %s]" % [begin_ok, bea_ok, rv_ok, parts_ok, core_ok, boom_ok, party_ok])
+	# tidy up
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	if w != null and is_instance_valid(w):
+		if w._roost != null and is_instance_valid(w._roost):
+			w._roost.queue_free()
+		for k2 in w._allies:
+			if is_instance_valid(w._allies[k2]):
+				w._allies[k2].queue_free()
+		w.queue_free()
+	if main.has_meta("dan_work"):
+		main.remove_meta("dan_work")
+	Universe.story_beacons.clear()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	st.from_dict(keep)
+	GameState.fleet = keep_fleet
+	GameState.active_uid = keep_active
+	GameState.credits = keep_cr
+	GameState.pilot["tree"] = keep_tree
+	GameState.lodging = keep_lod
+	GameState.gear.from_dict(keep_gear)
+	GameState.story_guard = Callable()
+	GameState.story_foot_guard = Callable()
+	main.story_ui._radio_q.clear()
+	if main.view != null and is_instance_valid(main.view):
+		main.view.input_enabled = true
+		main.view.story_cam = Vector2.INF

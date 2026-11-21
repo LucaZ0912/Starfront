@@ -398,6 +398,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   `_light_pirate`, `_hope_leave`, `WAVES`); `scripts/world/listener_fx.gd`; character `silas`, dialogue `silas_meet`;
   `Audio.stream_once` (loop sounds as one-shots); Drone `_role` (target reset on a role change); debug tab Story;
   smoke group `w58e`.
+- 0.8.58.7 (package 58, part 8): `scripts/world/roost.gd` (the Red Talon Roost: parts as anchored pirate Ships with
+  `art_draw`, pool, `_open_core`, `_wave` with `MAX_ALIVE`, `_start_boom`, `_BossBar`); Ship `anchored`, `art_draw`,
+  `untargetable`, `damage_hook`, `warp_hold`, `ignore_drones`, `_lod_skip` (far NPCs every `LOD_EVERY`-th frame);
+  `Universe.story_beacons`; dan_work phase `strike` → `after58` (`_rv_waiting`, `_rv_scene`, `_warp_talk` timed by
+  `story_ui.radio_left()`, `_fight_start`, `_allies_step`, `_strike_party`, `_party8_step` / `_party8_end`);
+  `MinigameData.SPECIAL` / `specials`, collection key `special`; `GroundView.ask_window`, `GroundMap.bar_rect`;
+  smoke group `w58h` (W58H_SHOTS, W58H_PERF).
 - 0.8.58.6 (package 58, part 7): dan_work phase `relay` → `strike` (`_relay_body`, `_relay_site`, `_relay_begin`,
   `_relay_step`, `_relay_intro` with `_intro_walk` / `_intro_zap`, `_overload_fx` / `_OverloadFx`, `_foot_rescue`);
   POI theme `relay` (`DungeonGen.build_relay_outside`, target `relay` with `computer_wall`, `_air_shaft`);

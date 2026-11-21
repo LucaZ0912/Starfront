@@ -1623,8 +1623,6 @@ func grenade_up() -> String:
 	if p.is_empty():
 		return ""
 	var id := String(p["id"])
-	if not Pad.using_pad:
-		gr_aim = _grenade_aim()                          # (the mouse right now, not a frame ago)
 	throw_grenade(null, gr_aim, id)
 	p["n"] = int(p["n"]) - 1
 	if int(p["n"]) <= 0:

@@ -802,6 +802,9 @@ func _draw_mid_mark() -> void:
 		_mid_mark.draw_line(c + d * 15.0 * k, c + d * 22.0 * k, Color(col, 0.7), 1.5 * k)
 
 
+var _hud_slow := 0.0
+
+
 func _process(delta: float) -> void:
 	if _mid_mark != null:
 		_mid_mark.queue_redraw()
@@ -878,6 +881,16 @@ func _process(delta: float) -> void:
 				_w["boost"].modulate = Color(1, 1, 1, 0.85)
 	_update_modules()
 	_update_locks()
+	_set_bar(_w["shield"], f.shield, s["shield_max"])
+	_set_bar(_w["armor"], f.armor, s["armor_max"])
+	_set_bar(_w["structure"], f.structure, s["structure_max"])
+	_set_bar(_w["cap"], f.capacitor, s["cap_max"])
+	_set_bar(_w["fuel"], f.fuel, s["fuel_max"])
+	# 0.8.58.7 (Luz: the frame rate): the drone, ally and selection panels and the cargo line ten times a second
+	_hud_slow -= delta
+	if _hud_slow > 0.0:
+		return
+	_hud_slow = 0.1
 	_update_drones()
 	_update_allies()
 	_update_selected()
@@ -889,11 +902,6 @@ func _process(delta: float) -> void:
 	if float(s.get("rad_cargo_max", 0.0)) > 0.0:
 		ore_txt += "  + shielded %.0f / %.0f" % [float(f.rad_split()["shielded"]), float(s["rad_cargo_max"])]
 	_w["cargo"].text = "Cargo %.0f / %.0f%s   •   %s" % [f.cargo_used(), float(s["cargo_max"]), ore_txt, f.location_text()]
-	_set_bar(_w["shield"], f.shield, s["shield_max"])
-	_set_bar(_w["armor"], f.armor, s["armor_max"])
-	_set_bar(_w["structure"], f.structure, s["structure_max"])
-	_set_bar(_w["cap"], f.capacitor, s["cap_max"])
-	_set_bar(_w["fuel"], f.fuel, s["fuel_max"])
 	_update_power_line(f, s)
 
 
@@ -1136,7 +1144,7 @@ func select_next(kind: String) -> String:
 func _target_candidates(p, kind: String, rng: float) -> Array:
 	var out: Array = []
 	for n in view.ship_layer.get_children():
-		if not (n is Ship) or n == p or n.dying or n.is_drone or n.in_warp() or n.is_docked() or p.position.distance_to(n.position) > rng or not view.contact_visible(n):
+		if not (n is Ship) or n == p or n.dying or n.untargetable or n.is_drone or n.in_warp() or n.is_docked() or p.position.distance_to(n.position) > rng or not view.contact_visible(n):
 			continue
 		var hos: bool = n.hostile_to_player()
 		if kind == "all" or (kind == "hostile" and hos) or (kind == "friend" and not hos):
@@ -1184,7 +1192,7 @@ func _nearest_hostile(p):
 	var bd := INF
 	var ref: Vector2 = view.target_ref()          # package 58: nearest to the screen's middle while the camera is off the ship
 	for n in view.ship_layer.get_children():
-		if n is Ship and n != p and not n.dying and not n.in_warp() and n.hostile_to_player() and p.position.distance_to(n.position) <= sr:
+		if n is Ship and n != p and not n.dying and not n.untargetable and not n.in_warp() and n.hostile_to_player() and p.position.distance_to(n.position) <= sr:
 			var dd: float = ref.distance_to(n.position)
 			if dd <= bd:
 				bd = dd

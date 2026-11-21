@@ -228,6 +228,7 @@ static func _bar_room(m: GroundMap, th: Dictionary, bx0: int, W: int, available:
 		m.fill(bx0, cr, 1, BAR_Y0 - cr, GroundMap.T.CAP)
 		m.fill(W - 1, cr, 1, BAR_Y0 - cr, GroundMap.T.CAP)
 	m.window_rect = Rect2(bx0, 0, W - bx0, BAR_Y0)
+	m.bar_rect = Rect2(bx0, BAR_Y0, W - bx0, COR_Y0 - BAR_Y0)
 	m.round_corners.append({"x": bx0, "r": cr, "side": -1})
 	m.round_corners.append({"x": W - 1, "r": cr, "side": 1})
 	m.fill(W - 1, BAR_Y0, 1, COR_Y1 - BAR_Y0 + 2, GroundMap.T.CAP)

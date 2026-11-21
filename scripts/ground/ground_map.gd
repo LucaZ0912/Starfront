@@ -31,6 +31,7 @@ var hull_top := -9999                 # the station's structure goes on everywhe
 var under_glass := -1                 # floor kind seen through glass (the hangar below the walkway); -1: space
 var ship_at := Vector2.INF
 var bay_rect := Rect2()               # tiles: the hangar bay (the view lays a haze over it – it is far below)            # the hangar: where the player's ship stands (art px)
+var bar_rect := Rect2()               # tiles: the bar's room on a commercial deck (package 58, part 8: leaving the party)
 var window_rect := Rect2()            # tiles: where space shows through the glass (the view draws it there only)
 var round_corners: Array = []         # {x, r, side}: a window front's corner rounded off (tiles; side -1 west, +1 east)
 var title := ""

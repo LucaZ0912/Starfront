@@ -1012,6 +1012,36 @@ func _build_story() -> void:
 			w7._set_phase("relay")
 			w7._relay_begin()
 			_cmd({"type": "debug_special", "special": "hollow"}))))
+	_row().add_child(UI.button("Play package 58, part 8 (the strike on the Roost)", func():
+		close()
+		_cmd({"type": "debug_special", "special": "beyond"})
+		var mn8b = get_tree().current_scene
+		mn8b.get_tree().create_timer(1.0).timeout.connect(func():
+			var st8b = GameState.story
+			for st0 in Universe.get_layout(Universe.special_system("beyond"))["stations"]:
+				if bool(st0.get("dan", false)) or String(st0.get("art", "")) == "dusty_duty":
+					st8b.flags["w58_dan_st"] = String(st0["id"])
+			for fl8 in ["w58_rv", "w58_base_down", "w58_drinks", "w58_sk", "w58_gifted"]:
+				st8b.flags.erase(fl8)
+			for fl8b in ["w58_maul", "w58_contact", "w58_atlisten", "w58_listened", "w58_briefing", "w58_gear", "w58_sim", "w58_relay_intro", "w58_coords", "w58_overload", "w58_relay"]:
+				st8b.flags[fl8b] = true
+			mn8b._start_dan_work("load")
+			var w8b = mn8b.get_meta("dan_work")
+			var maul = null
+			for f8 in GameState.fleet:
+				if f8.ship_name == "Maul":
+					maul = f8
+			if maul == null:
+				w8b._give_maul()
+			for f8b in GameState.fleet:
+				if f8b.ship_name == "Maul":
+					GameState.active_uid = f8b.uid
+			w8b._lend_ground_gear()
+			if not st8b.running("fight"):
+				st8b.start("fight")
+			w8b._set_phase("strike")
+			w8b._strike_begin()
+			_cmd({"type": "debug_special", "special": "hollow"}))))
 	_row().add_child(UI.button("Open the med-scanner", func():
 		close()
 		var lay := CanvasLayer.new()

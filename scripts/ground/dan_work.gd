@@ -156,6 +156,11 @@ func begin(where: String) -> void:
 		get_tree().create_timer(1.5).timeout.connect(_gear_tour)       # the gear tour from the start again
 	if phase in ["report", "gear", "sim", "relay", "strike"]:
 		_rook_look()
+	if phase == "strike":
+		if _sk() == "party":
+			_strike_party.call_deferred()                # a save after the Roost: the bar
+		else:
+			_strike_begin.call_deferred()                # a save in the middle of the strike: from the rendezvous again
 	if phase == "relay":
 		_relay_begin.call_deferred()                     # (the site on its world again; a try under way starts fresh)
 		for fl7 in ["w58_relay_intro", "w58_coords", "w58_overload"]:
@@ -189,6 +194,8 @@ func _process(_delta: float) -> void:
 	if main != null and main.get_meta("dan_work", null) != self:
 		queue_free()                                       # an older controller: the newest one works
 		return
+	if _party8_free:
+		_party8_step()                                     # package 58, part 8 (Luz): the party goes on until you leave the bar
 	var sp = station_ui()
 	if sp == null:
 		return
@@ -265,6 +272,8 @@ func _process(_delta: float) -> void:
 			_sim_step()
 		"relay":
 			_relay_step()
+		"strike":
+			_strike_step()
 
 
 static func _has_family(f: ShipFitting, slot_type: String, fam: String) -> bool:
@@ -439,7 +448,7 @@ func ground_mode(st: Dictionary) -> Dictionary:
 		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
 		return {"levels": {"street": {"people": [{"who": "ossa", "near_obj": "lamp_post", "off": Vector2(1.5, 0.8), "near_spawn": Vector2(12.0, 2.0), "spread": 2.0, "dir": 0, "marker": "!"}]}}}
-	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact", "follow", "listen", "found", "report", "gear", "sim", "relay", "strike"]:
+	if sid == String(flags().get("w58_dan_st", "")) and phase in ["rest", "part3", "brine", "convoy", "call", "back", "part4", "maul", "contact", "follow", "listen", "found", "report", "gear", "sim", "relay", "strike", "after58"]:
 		var dan := {"who": "dan", "pos": IntroSix.WINDOW, "dir": 1, "talk": true}
 		if phase in ["part3", "report"]:
 			dan["marker"] = "!"
@@ -474,6 +483,8 @@ static func _waystation() -> Dictionary:
 ## Package 58 (Luz): shot down while working for Dan – no game over. Little Darling is towed home and patched up,
 ## you wake in Dan's clinic and he talks to you; an escort under way starts again once you undock.
 func _story_rescue(f: ShipFitting) -> bool:
+	if phase == "strike" and _sk() in ["rv", "fight"] and (f == darling() or f.ship_name == MAUL_NAME):
+		_strike_abort("down")                            # package 58, part 8: shot down at the Roost – again from the rendezvous
 	if not (GameState.story.running(MID) or GameState.story.running(FIGHT)) or phase in ["board", "tour1", "tour2", "fit", "party"] \
 			or not (f == darling() or f.ship_name == MAUL_NAME):
 		return false
@@ -515,6 +526,9 @@ func _rescue_wake(st: Dictionary) -> void:
 	main.station_panel.close()
 	main._wake_at(st)
 	await get_tree().create_timer(2.2).timeout
+	if phase == "strike":
+		GameState.story.show.emit("dialogue", {"id": "dan_wake_strike", "mission": FIGHT})     # (Luz: the Maul, not Little Darling)
+		return
 	GameState.story.show.emit("dialogue", {"id": "dan_wake", "mission": MID})
 
 
@@ -603,7 +617,7 @@ func _three_months() -> void:
 
 
 ## The lines in the black: one after the other, each until a click, E, Space, Enter or ✕ (or a while).
-func _cards() -> void:
+func _cards(lines: Array = CARDS) -> void:
 	var cl := CanvasLayer.new()
 	cl.layer = 45
 	cl.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -611,8 +625,8 @@ func _cards() -> void:
 	var k := clampf(main.get_viewport().get_visible_rect().size.y / 900.0, 1.0, 2.4)
 	var catcher := _CardKeys.new()
 	cl.add_child(catcher)
-	for i in CARDS.size():
-		var lb := UI.wrap_label(String(CARDS[i]), int(round((34.0 if i == 0 else 22.0) * k)), Color(0.95, 0.9, 0.8) if i == 0 else Color(0.85, 0.85, 0.95), int(900 * k))
+	for i in lines.size():
+		var lb := UI.wrap_label(String(lines[i]), int(round((34.0 if i == 0 else 22.0) * k)), Color(0.95, 0.9, 0.8) if i == 0 else Color(0.85, 0.85, 0.95), int(900 * k))
 		lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lb.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 		lb.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -2440,8 +2454,695 @@ func _relay_done() -> void:
 	st.flags.erase("w58_relay_site")
 	if st.running(FIGHT):
 		st.missions[FIGHT]["target"] = ""
-	st.show.emit("radio", {"who": "dan", "text": "Silas sent me the coordinates. You did it, you crazy... You did it. Ossa's ship is fuelled, mine is warming up. Come home first, and then we finish this together.", "mission": FIGHT, "now": true})
-	GameState.log_msg("[Story] Package 58 continues with part 8 (the strike on the base).", GameState.COL_WARN)
+	st.show.emit("radio", {"who": "dan", "text": "Silas sent me the coordinates. You did it, you crazy... You did it.", "mission": FIGHT, "now": true})
+	_strike_begin()                                      # package 58, part 8: to the rendezvous
+
+
+# ---- part 8: the strike (Luz, 20 Nov 2026)
+
+const RoostScript = preload("res://scripts/world/roost.gd")
+const RV_POS := Vector2(-2200000, 1900000)        # the rendezvous in Hollow: far out west
+const ROOST_POS := Vector2(5300000, 1700000)      # the Red Talon Roost: far out east
+var _roost = null
+var _allies := {}                       # "dan", "ossa", "silas" -> Ship
+var _rv_on := false                     # the rendezvous and the warp under way (a scene)
+var _strike_lock := false               # the scene has the controls
+var _chat_t := 20.0
+var _heal_said := -100.0
+var _retreat := {}                      # ally key -> seconds left pulled back
+var _said8 := {}
+
+
+func _sk() -> String:
+	return String(flags().get("w58_sk", "rv"))
+
+
+func _goto_fight_step(id: String) -> void:
+	var st = GameState.story
+	if not st.running(FIGHT):
+		return
+	for si in (st.mission_data(FIGHT)["steps"] as Array).size():
+		if String(st.mission_data(FIGHT)["steps"][si]["id"]) == id:
+			st.goto_step(FIGHT, si)
+			return
+
+
+## On to the strike: the rendezvous marked in Hollow, Dan on the radio.
+func _strike_begin() -> void:
+	var st = GameState.story
+	st.set_flag("w58_sk", "rv")
+	st.flags.erase("w58_rv")
+	_beacons(false)
+	_goto_fight_step("rendezvous")
+	if st.running(FIGHT):
+		st.tracked = FIGHT
+		st.missions[FIGHT]["target"] = "w58_rv"
+		st.changed.emit()
+	st.show.emit("radio", {"who": "dan", "text": "Ossa's ship is fuelled, mine's warming up, and Silas hasn't slept. I've marked a spot in Hollow, far from their station. Meet us there.",
+		"mission": FIGHT, "until_flag": "w58_rv", "hint": "fly to the rendezvous in Hollow"})
+
+
+## The story's waypoints in Hollow: the rendezvous; with the warp also the Roost.
+func _beacons(with_roost: bool) -> void:
+	var sid := Universe.special_system("hollow")
+	var list: Array = [{"id": "w58_rv", "name": "Rendezvous", "pos": RV_POS, "kind": "story", "land": 3000.0}]
+	if with_roost:
+		list.append({"id": "w58_roost", "name": "Red Talon Roost", "pos": ROOST_POS, "kind": "story", "land": 3600.0})
+	Universe.story_beacons[sid] = list
+	var v = main.view if main != null else null
+	if v != null and is_instance_valid(v) and int(v.system_id) == sid:
+		for b in list:
+			if v.find_object(String(b["id"])) == null:
+				v._add_celestial("beacon", b)
+
+
+func _strike_step() -> void:
+	var v = main.view
+	if v == null or not is_instance_valid(v):
+		return
+	if _strike_lock:
+		v.input_enabled = false
+	match _sk():
+		"rv":
+			if _rv_on or GameState.current_system != Universe.special_system("hollow"):
+				return
+			var pl = v.player
+			if pl == null or not is_instance_valid(pl) or pl.is_docked():
+				return
+			_rv_waiting()                                # (Luz) they wait at the rendezvous already
+			if pl.in_warp():
+				return
+			if pl.position.distance_to(RV_POS) < 30000.0:
+				_rv_scene()
+		"fight":
+			if _rv_on:
+				return
+			if _roost == null or not is_instance_valid(_roost) or GameState.current_system != Universe.special_system("hollow"):
+				_strike_abort("left")
+				return
+			if not _roost.dead:
+				_allies_step(get_process_delta_time())
+
+
+## An ally of the strike: a ship of the story's people (never destroyed, never a crime to graze), green in the overview.
+func _ally(preset: String, at: Vector2, nm: String, paint: String, who: String, flash := true) -> Ship:
+	var v = main.view
+	var s: Ship = v.spawn_npc(preset, at, "civilian", "")
+	s.fit.ship_name = nm
+	if paint != "":
+		s.fit.paint = paint
+		s.paint = PixelArt.paint_key(s.fit)
+	s.escort_mark = true
+	s.story_spare = true
+	s.set_meta("story_ally", who)
+	s.fit.stance = "aggressive"
+	if who == "silas":
+		# (Luz) the Hope keeps her guns this time – Silas goes for the fighters, and jams the station's guns
+		s.fit.drones.clear()
+	else:
+		# Dan's nine drones and Ossa's: a drone bay, their guns, their shields
+		var want := {"hangar": "hangar:9:A", "dweapon_0": "w_pulse:1:A", "dbonus_0": "dr_shield:3:A"}
+		for k2 in want:
+			s.fit.modules[k2] = want[k2]
+		s.fit.mark_dirty()
+		s.fit.drones.clear()
+		for i in int(s.fit.stats().get("drones_max", 9)):
+			s.fit.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+		s.fit.drone_role = "combat"
+		s.fit.drone_modes["combat"] = "fire_at_will"
+		s.fit.drone_modes["repair"] = "auto"
+	s.fit.mark_dirty()
+	s.fit.refill()
+	s.align_scale = 0.4
+	if flash:
+		v.spawn_fx(Fx.warp_flash(at, s.radius * 3.0))
+	return s
+
+
+## Where everyone stands at the rendezvous, facing the Roost: Dan and Silas on one side, Ossa on the other, you in the middle.
+static func _rv_slots() -> Dictionary:
+	var dir := (ROOST_POS - RV_POS).normalized()
+	var side := dir.orthogonal()
+	return {"you": RV_POS, "dan": RV_POS + side * 1100.0, "ossa": RV_POS - side * 1300.0, "silas": RV_POS + side * 2300.0 - dir * 300.0}
+
+
+## (Luz) Dan, Ossa and Silas wait at the rendezvous: their ships there, side by side, as soon as you are in Hollow.
+func _rv_waiting() -> void:
+	var ok := _allies.size() == 3
+	for k in _allies:
+		ok = ok and _allies[k] != null and is_instance_valid(_allies[k]) and not _allies[k].dying
+	if ok:
+		return
+	for k0 in _allies:
+		if _allies[k0] != null and is_instance_valid(_allies[k0]):
+			_allies[k0].queue_free()
+	_allies.clear()
+	var slots := _rv_slots()
+	var dir := (ROOST_POS - RV_POS).normalized()
+	for sp in [["dan", "std_kanayama", "Kanayama-maru", "dan_rust"], ["ossa", "std_hdy_citadel", "Citadel", "ossa_rust"], ["silas", "std_bastion", HOPE_NAME, ""]]:
+		var a := _ally(String(sp[1]), slots[String(sp[0])], String(sp[2]), String(sp[3]), String(sp[0]), false)
+		a.heading = dir.angle()
+		a.set_order({"type": "idle"})
+		_allies[String(sp[0])] = a
+
+
+## The rendezvous (a scene, no controls): Dan, Ossa and Silas wait there; you fly into the line between them;
+## then all of you into the warp together – the last talk on the way, the warp held till it is over – and out
+## side by side before the Roost.
+func _rv_scene() -> void:
+	_rv_on = true
+	_strike_lock = true
+	var v = main.view
+	var pl = v.player
+	var st = GameState.story
+	st.set_flag("w58_rv", true)
+	pl.set_order({"type": "idle"})
+	var q := 0.05 if quick else 1.0
+	_rv_waiting()
+	var slots := _rv_slots()
+	pl.set_order({"type": "move", "pos": slots["you"]})         # into the line, between them
+	var lines := {"dan": "There you are. Took your time.", "ossa": "Everyone's here. Let's not keep them waiting.",
+		"silas": "Their station's still deaf. Every minute we wait, they get a little less confused."}
+	for who in ["dan", "ossa", "silas"]:
+		st.show.emit("radio", {"who": who, "text": String(lines[who]), "mission": FIGHT})
+		var t := 0.0
+		while t < 3.5 * q or (not quick and t < 15.0 and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty())):
+			if not _rv_alive():
+				return
+			_rv_cam(pl, 0.06)
+			await get_tree().process_frame
+			t += get_process_delta_time()
+	# you in the line
+	var tw := 0.0
+	while tw < 40.0 * q:
+		if not _rv_alive():
+			return
+		_rv_cam(pl, 0.06)
+		if pl.position.distance_to(slots["you"]) < 700.0:
+			break
+		await get_tree().process_frame
+		tw += get_process_delta_time()
+	pl.set_order({"type": "idle"})
+	for k2 in _allies:
+		if is_instance_valid(_allies[k2]):
+			_allies[k2].set_order({"type": "idle"})
+	st.show.emit("radio", {"who": "dan", "text": "Then we go. Line up on me. We jump together.", "mission": FIGHT})
+	await _w(3.0)
+	if not _rv_alive():
+		return
+	# into the warp together: the Roost waits at the other end
+	_beacons(true)
+	if _roost != null and is_instance_valid(_roost):
+		_roost.queue_free()
+	_roost = RoostScript.new()
+	_roost.quick = quick
+	_roost.setup(v, ROOST_POS)
+	_roost.hope = _allies.get("silas", null)
+	_roost.event.connect(_on_roost)
+	for k3 in _allies:
+		if is_instance_valid(_allies[k3]):
+			_allies[k3].set_order({"type": "follow", "node": pl, "r": 900.0})
+	pl.warp_hold = false
+	var tgt: Dictionary = Universe.warp_target(Universe.special_system("hollow"), "w58_roost")
+	pl.set_order({"type": "warp", "target": tgt})
+	v.story_cam = Vector2.INF
+	var ta := 0.0
+	while not pl.in_warp() and ta < 30.0:
+		if not _rv_alive():
+			return
+		await get_tree().process_frame
+		ta += get_process_delta_time()
+	for line in _warp_talk():
+		st.show.emit("radio", {"who": String(line[0]), "text": String(line[1]), "mission": FIGHT})
+	# (Luz) the warp is timed to the talk: its length set so that you drop out as the last call ends
+	if not quick and pl.in_warp():
+		var talk: float = main.story_ui.radio_left()
+		pl.warp["T"] = float(pl.warp["t"]) + maxf(talk, 3.0)
+	# should the talk run long after all (a pause, a frame drop), the warp slows near its end until it is over
+	var tt := 0.0
+	while not quick and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty()) and tt < 240.0:
+		if not _rv_alive():
+			return
+		if pl.in_warp():
+			pl.warp_hold = main.story_ui.radio_left() > float(pl.warp["T"]) - float(pl.warp["t"]) + 0.3
+		await get_tree().process_frame
+		tt += get_process_delta_time()
+	pl.warp_hold = false
+	var tx := 0.0
+	while pl.in_warp() and tx < 30.0:
+		if not _rv_alive():
+			return
+		await get_tree().process_frame
+		tx += get_process_delta_time()
+	_fight_start()
+
+
+func _rv_alive() -> bool:
+	var v = main.view
+	if v == null or not is_instance_valid(v) or v.player == null or not is_instance_valid(v.player) or _sk() != "rv":
+		_rv_on = false
+		_strike_lock = false
+		return false
+	return true
+
+
+## The camera over the group: between you and whoever has come.
+func _rv_cam(pl, k: float) -> void:
+	var v = main.view
+	var c: Vector2 = pl.position
+	var n := 1
+	for key in _allies:
+		var a = _allies[key]
+		if a != null and is_instance_valid(a) and (a.position as Vector2).distance_to(pl.position) < 12000.0:
+			c += a.position
+			n += 1
+	c /= float(n)
+	v.story_cam = c if v.story_cam == Vector2.INF else (v.story_cam as Vector2).lerp(c, k)
+
+
+static func _warp_talk() -> Array:
+	return [
+		["silas", "Right. One last time, so nobody can say I didn't tell them."],
+		["silas", "The station sits on a reactor. Four gun platforms round it, and two hangars that keep spitting out fighters as long as they stand."],
+		["silas", "Take out the platforms first, or they'll chew us up. Kill the hangars and the fighters stop coming. Every hit on that thing counts."],
+		["silas", "The reactor's under heavy plating. Once the station is badly hurt, the plating should give. Then hit the core with everything you have."],
+		["silas", "I'll be jamming their guns from the back. The Hope can't fight, but she can make them miss."],
+		["dan", "Thirty years I've run my store out here, and for the last two these vultures have been picking at it. Picking at my people."],
+		["dan", "Today it stops. My drones go out with you. If anyone gets hurt, they patch you up first. Don't make me regret it."],
+		["ossa", "I let them be for too long. Told myself it was cheaper to pay than to fight."],
+		["ossa", "It wasn't. It never is."],
+		["ossa", "Rook, keep that pilot alive. Pilot, keep my Maul in one piece."],
+		["rook", "No promises about the paint."],
+		["dan", "And remember, if we live through this, the whiskey's open tonight."],
+		["ossa", "I'm holding you to that."],
+		["you", "Let's do it."],
+		["silas", "Dropping out in three... two..."],
+	]
+
+
+## Out of the warp before the Roost: the controls are yours again, the pirates wake, the drones go out.
+func _fight_start() -> void:
+	_rv_on = false
+	_strike_lock = false
+	var v = main.view
+	if v == null or not is_instance_valid(v):
+		return
+	v.input_enabled = true
+	v.story_cam = Vector2.INF
+	var st = GameState.story
+	st.set_flag("w58_sk", "fight")
+	_goto_fight_step("strike")
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = "w58_roost"
+		st.changed.emit()
+	_chat_t = 25.0
+	_said8 = {}
+	_retreat = {}
+	if _roost != null and is_instance_valid(_roost):
+		_roost.show_bar(true)                          # the boss bar from here on
+	for line in [["talon", "Who's out there? Relay's dead, I can't raise anyone!"], ["talon", "Four ships on the scope! Is that a carrier?!"],
+			["talon_boss", "All ships, launch! Launch everything! Nobody touches the Roost!"], ["dan", "Drones out. Go get them, my beauties."]]:
+		st.show.emit("radio", {"who": String(line[0]), "text": String(line[1]), "mission": FIGHT})
+	for k in _allies:
+		var a = _allies[k]
+		if a == null or not is_instance_valid(a):
+			continue
+		a.home = ROOST_POS
+		if k == "silas":
+			a.set_order({"type": "move", "pos": ROOST_POS + (a.position - ROOST_POS).normalized() * 12000.0})
+		else:
+			a.set_order({"type": "move", "pos": ROOST_POS + (a.position - ROOST_POS).normalized() * 4500.0})
+			v.launch_drones(a)
+
+
+## The allies in the fight: Dan's drones heal whoever is hurt (else they fight); a badly hit ship pulls back a
+## while; whoever idles goes back in; now and then someone says something.
+func _allies_step(dt: float) -> void:
+	var v = main.view
+	var pl = v.player
+	var group: Array = [pl]
+	for k in _allies:
+		group.append(_allies[k])
+	# Dan's drones: patch up first
+	var dan = _allies.get("dan", null)
+	if dan != null and is_instance_valid(dan):
+		var hurt = null
+		for s in group:
+			if s != null and is_instance_valid(s) and not s.dying and _hull_share(s) < 0.8:
+				hurt = s
+		var want := "repair" if hurt != null else "combat"
+		if String(dan.fit.drone_role) != want:
+			dan.fit.drone_role = want
+			if want == "repair" and _t8() - _heal_said > 30.0:
+				_heal_said = _t8()
+				var whom := "you" if hurt == pl else String(hurt.get_meta("story_ally", ""))
+				var line := "Hold still, patching you up." if whom == "you" else ("Ossa, your hull's smoking. Drones on their way." if whom == "ossa" else "Drones on their way, hang on!")
+				GameState.story.show.emit("radio", {"who": "dan", "text": line, "mission": FIGHT})
+	for k2 in _allies:
+		var a = _allies[k2]
+		if a == null or not is_instance_valid(a) or a.dying or a.in_warp():
+			continue
+		if k2 != "silas" and v.drones_of(a).is_empty() and fmod(_t8(), 5.0) < dt:
+			# (Luz) the drones come again: lost ones are replaced from the ship's stores
+			var dmax := int(a.fit.stats().get("drones_max", 9))
+			for r in a.fit.drones:
+				r["out"] = false
+				r["fuel"] = 1.0
+				r["hp"] = 1.0
+			while a.fit.drones.size() < dmax:
+				a.fit.drones.append({"fuel": 1.0, "hp": 1.0, "out": false})
+			v.launch_drones(a)
+		# (Luz) the allies take the fighters while you take the platforms
+		if _roost != null and is_instance_valid(_roost) and fmod(_t8() + float(k2.length()), 1.0) < dt:
+			var fighters: Array = _roost.pirates.filter(func(p): return p != null and is_instance_valid(p) and not p.dying)
+			if not fighters.is_empty() and not fighters.has(a.target):
+				var best = null
+				var bd := INF
+				for p2 in fighters:
+					var d2: float = (p2.position as Vector2).distance_to(a.position)
+					if d2 < bd:
+						bd = d2
+						best = p2
+				if best != null:
+					a.set_order({"type": "attack", "target": best})
+		# badly hit: pull back a while (Dan's drones come), then back in
+		if float(_retreat.get(k2, 0.0)) > 0.0:
+			_retreat[k2] = float(_retreat[k2]) - dt
+			continue
+		if k2 != "silas" and _hull_share(a) < 0.25:
+			_retreat[k2] = 15.0
+			a.set_order({"type": "move", "pos": ROOST_POS + (a.position - ROOST_POS).normalized() * 16000.0})
+			continue
+		if a.target == null and String(a.order.get("type", "idle")) == "idle":
+			var r := 12000.0 if k2 == "silas" else 4500.0
+			if (a.position as Vector2).distance_to(ROOST_POS) > r * 1.3:
+				a.set_order({"type": "move", "pos": ROOST_POS + (a.position - ROOST_POS).normalized() * r})
+	# now and then a word
+	_chat_t -= dt
+	if _chat_t <= 0.0:
+		_chat_t = randf_range(22.0, 34.0)
+		var pool := [["ossa", "Keep moving, don't give their guns a still target."], ["silas", "Their guns are wobbling. Keep at it!"],
+			["rook", "Lead them in, I'll do the rest."], ["rook", "That one's ours!"], ["talon", "Get the carrier off us!"],
+			["dan", "Look at them run! Keep it up!"], ["talon", "Where's our support?! Somebody answer!"]]
+		var pick: Array = pool[randi() % pool.size()]
+		GameState.story.show.emit("radio", {"who": String(pick[0]), "text": String(pick[1]), "mission": FIGHT})
+
+
+func _t8() -> float:
+	return Time.get_ticks_msec() * 0.001
+
+
+static func _hull_share(s) -> float:
+	var bs: Dictionary = s.fit.stats()
+	var mx := float(bs["armor_max"]) + float(bs["structure_max"])
+	return (s.fit.armor + maxf(s.fit.structure, 0.0)) / maxf(mx, 1.0)
+
+
+func _say8(key: String, lines: Array) -> void:
+	if _said8.has(key):
+		return
+	_said8[key] = true
+	for l in lines:
+		GameState.story.show.emit("radio", {"who": String(l[0]), "text": String(l[1]), "mission": FIGHT, "now": bool(l.size() > 2 and l[2])})
+
+
+func _on_roost(what: String, arg) -> void:
+	var st = GameState.story
+	match what:
+		"platform_down":
+			var lines: Array = [["ossa", "Platform down. Next!" if int(arg) > 0 else "That's the last of their guns!"]]
+			if int(arg) == 3:
+				lines.append(["talon", "They're hitting the platforms!"])
+			for l in lines:
+				st.show.emit("radio", {"who": String(l[0]), "text": String(l[1]), "mission": FIGHT})
+		"hangar_down":
+			st.show.emit("radio", {"who": "silas", "text": "Hangar's breached! No more fighters from that side." if int(arg) > 0 else "Both hangars gone! No more fighters!", "mission": FIGHT})
+			st.show.emit("radio", {"who": "talon", "text": "A hangar is gone! Somebody, anybody!" if int(arg) > 0 else "The hangars are gone! We're on our own out here!", "mission": FIGHT})
+		"wave":
+			if int(arg) == 2:
+				_say8("hangars", [["ossa", "Fighters launching. Get those hangars!"]])
+		"core_open":
+			_say8("core", [["silas", "The plating's gone! The core is open!", true], ["talon_boss", "Everyone out! Every ship, everything you've got! Protect the core!"],
+				["dan", "That's it, everybody on the core!"]])
+		"dying":
+			_say8("dying", [["silas", "Core's going critical. Get clear, get clear!", true]])
+		"dead":
+			_strike_won()
+
+
+## The Roost gone: the cheering on the radio, the pay, home to Dan's bar.
+func _strike_won() -> void:
+	var st = GameState.story
+	st.set_flag("w58_base_down", true)
+	st.set_flag("w58_sk", "party")
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = ""
+	for l in [["ossa", "...Well. That's the loudest thing I've seen in years."], ["dan", "HAH! Did you see that? Did you SEE that?!"],
+			["silas", "No more pirate plague out here. I think I need to sit down."], ["dan", "Everybody home. Drinks are on me tonight. All of them."]]:
+		st.show.emit("radio", {"who": String(l[0]), "text": String(l[1]), "mission": FIGHT})
+	for k in _allies:
+		var a = _allies[k]
+		if a != null and is_instance_valid(a):
+			main.view.recall_drones(a)
+	await _w(14.0)
+	_strike_party()
+
+
+## Broken off: you were shot down (and wake at Dan's), or left the fight. Everything goes back to the rendezvous.
+func _strike_abort(why: String) -> void:
+	if _roost != null and is_instance_valid(_roost):
+		_roost.queue_free()
+	_roost = null
+	for k in _allies:
+		var a = _allies[k]
+		if a != null and is_instance_valid(a):
+			a.queue_free()
+	_allies.clear()
+	_rv_on = false
+	_strike_lock = false
+	var v = main.view if main != null else null
+	if v != null and is_instance_valid(v):
+		v.input_enabled = true
+		v.story_cam = Vector2.INF
+		if v.player != null and is_instance_valid(v.player):
+			v.player.warp_hold = false
+	var st = GameState.story
+	st.set_flag("w58_sk", "rv")
+	st.flags.erase("w58_rv")
+	_beacons(false)
+	_goto_fight_step("rendezvous")
+	if st.running(FIGHT):
+		st.missions[FIGHT]["target"] = "w58_rv"
+		st.changed.emit()
+	if why == "left":
+		st.show.emit("radio", {"who": "dan", "text": "We pulled back to the rendezvous. Patch yourself up and meet us there when you're ready. We go again." if why == "down" else "Where did you go? We pulled back to the rendezvous. Come back when you're ready, and we go again.",
+			"mission": FIGHT, "until_flag": "w58_rv", "hint": "fly to the rendezvous in Hollow"})
+
+
+## The bar after the Roost (a scene): Dan, Ossa, Silas and Rook, the regulars; the whiskey from Earth, the toasts,
+## Ossa's gift; the lent gear back.
+func _strike_party() -> void:
+	if _sk() != "party":
+		return
+	var st = GameState.story
+	await main.fade(Color(0, 0, 0, 1), 1.0).finished
+	main.story_ui._radio_q.clear()                       # (the fight's calls end with it)
+	if main.story_ui._radio != null and is_instance_valid(main.story_ui._radio):
+		main.story_ui._radio.queue_free()
+		main.story_ui._radio = null
+		main.story_ui._radio_d = {}
+	for k in _allies:
+		var a = _allies[k]
+		if a != null and is_instance_valid(a):
+			a.queue_free()
+	_allies.clear()
+	if _roost != null and is_instance_valid(_roost):
+		_roost.queue_free()
+	_roost = null
+	Universe.story_beacons.erase(Universe.special_system("hollow"))
+	# home: docked at Dan's
+	var f := GameState.active()
+	var dan_st := String(flags().get("w58_dan_st", ""))
+	var beyond := Universe.special_system("beyond")
+	var stn := Universe.find_station(beyond, dan_st)
+	if f != null and not stn.is_empty():
+		for d in f.drones:
+			d["out"] = false
+		f.system_id = beyond
+		f.docked_at = dan_st
+		f.position = stn.get("pos", Vector2.ZERO)
+		GameState.current_system = beyond
+		main.load_system(beyond)
+		main.station_panel.close()
+	# (the system may still be loading: wait for it, then into the bar)
+	for wl in 600:
+		if main.ground != null and is_instance_valid(main.ground):
+			break
+		if (main.loading == null or not is_instance_valid(main.loading)) and main.view != null and is_instance_valid(main.view) 				and main.view.stations.has(dan_st):
+			main.station_panel.close()
+			main.open_deck()
+			if main.ground != null and is_instance_valid(main.ground):
+				break
+		await get_tree().process_frame
+	var g = main.ground
+	if g == null:
+		push_warning("package 58, part 8: no deck at Dan's for the party (docked %s)" % str(f.docked_at if f != null else "-"))
+		_strike_done()
+		main.fade(Color(0, 0, 0, 0), 0.8)
+		return
+	g.story_mode = _party8_mode()
+	g.go_level("commercial", "story")
+	g.input_enabled = false
+	_toast_stage(g)
+	main.fade(Color(0, 0, 0, 0), 1.2)
+	await _w(1.6)
+	var say := func(w, text: String, secs: float):
+		if w != null and is_instance_valid(w):
+			w.bubble = text
+			w.bubble_t = secs * (0.1 if quick else 1.0)
+	var dan = g.story_people.get("dan", null)
+	say.call(dan, "Everyone! The Roost is gone!", 2.6)
+	await _w(1.2)
+	var i := 0
+	for key in g.story_people:
+		var p = g.story_people[key]
+		if String(key) != "dan" and i % 2 == 0:
+			say.call(p, ["Woo-hoo!", "To the Spacefarer!", "Cheers!", "Ha! Finally!"][(i / 2) % 4], 2.2)
+		if p != null and is_instance_valid(p):
+			p.drink_t = 1.6
+		i += 1
+	Audio.play("ui_buy", "the party: cheers", -6.0)
+	await _w(2.6)
+	st.show.emit("dialogue", {"id": "strike_party", "mission": FIGHT, "no_dim": true})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	_strike_done()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.ground.story_cam = Vector2.INF
+		main.ground.story_zoom = 0.0
+		main.ground.input_enabled = true
+		_party8_free = true                               # (Luz) stay, enjoy it, play pool with Ossa or Dan
+		_party8_asked = false
+
+
+# ---- (Luz) the party goes on: leave the bar and it asks; yes, and you wake in your room the next day
+
+var _party8_free := false
+var _party8_asked := false
+
+
+func _party8_step() -> void:
+	var g = main.ground if main != null else null
+	if g == null or not is_instance_valid(g) or g.map == null:
+		_party8_free = false                              # (off the deck some other way: the party is over)
+		return
+	if g.level != "commercial" or g._lift_menu != null or g.minigame != null or g.talk != null or not g.input_enabled:
+		return
+	var r: Rect2 = g.map.bar_rect
+	if r.size == Vector2.ZERO:
+		return
+	var tile: Vector2 = (g.pilot.pos as Vector2) / GroundMap.TILE
+	var inside := r.grow(-0.2).has_point(tile)
+	if inside:
+		_party8_asked = false
+		return
+	if _party8_asked:
+		return
+	_party8_asked = true
+	g.pilot.moving = false
+	g.ask_window("End the party?", "The bar is still loud behind you. Call it a night?",
+		[["Yes, call it a night", _party8_end], ["No, back to the party", _party8_back]], _party8_back)
+
+
+## "No": a step back into the bar.
+func _party8_back() -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	var r: Rect2 = g.map.bar_rect.grow(-1.0)
+	var t: Vector2 = (g.pilot.pos as Vector2) / GroundMap.TILE
+	t = Vector2(clampf(t.x, r.position.x, r.end.x), clampf(t.y, r.position.y, r.end.y))
+	g.pilot.pos = t * GroundMap.TILE
+	g.pilot.position = g.pilot.pos * GroundMap.SCALE
+	_party8_asked = false
+
+
+## "Yes": black, "The next day", awake in your room at Dan's.
+func _party8_end() -> void:
+	_party8_free = false
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	g.input_enabled = false
+	await main.fade(Color(0, 0, 0, 1), 1.2).finished
+	await _cards(["The next day"])
+	g = main.ground
+	if g == null or not is_instance_valid(g):
+		main.fade(Color(0, 0, 0, 0), 0.6)
+		return
+	if g.is_sitting():
+		g._stand_up()
+	g.story_mode = {}
+	g._q_room = int((GameState.lodging.get(String(flags().get("w58_dan_st", "")), {}) as Dictionary).get("room", -1))
+	g._q_sleep = 2
+	g.go_level("quarters", "bed")
+	g.pilot.visible = false
+	main.fade(Color(0, 0, 0, 0), 1.4)
+	await _w(2.2)
+	await main.fade(Color(0, 0, 0, 1), 0.4).finished
+	g._q_sleep = 0
+	g.go_level("quarters", "bed")
+	g.pilot.visible = true
+	g.input_enabled = true
+	main.fade(Color(0, 0, 0, 0), 0.6)
+
+
+## The bar, full: Dan by the window, Ossa, Silas and Rook beside him, the regulars and a crowd, some of them dancing.
+func _party8_mode() -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 58008
+	var w: Vector2 = IntroSix.WINDOW
+	var people: Array = [{"who": "dan", "pos": w, "dir": 0},
+		{"who": "ossa", "pos": w + Vector2(-1.6, 1.4), "dir": 3}, {"who": "silas", "pos": w + Vector2(2.6, 1.0), "dir": 2},
+		{"who": "rook", "pos": w + Vector2(-0.4, 2.6), "dir": 1}]
+	var floor_c := w + Vector2(-0.5, 5.0)
+	var named := ["patron_a", "patron_b", "patron_c", "doc"]
+	for i in named.size():
+		people.append({"who": named[i], "near": floor_c, "spread": 4.5, "seed": i + 1, "dir": rng.randi() % 4, "dance": i % 2 == 0})
+	for k in 8:
+		var lk := ChibiArt.PilotArt.random_look(rng)
+		people.append({"who": "guest8_%d" % k, "look": lk, "near": floor_c, "spread": 5.5, "seed": 40 + k, "dir": rng.randi() % 4, "dance": k < 5})
+	return {"no_crew": true, "levels": {"commercial": {"people": people, "spawn": w + Vector2(0.0, 2.0)}}}
+
+
+## The strike over: Ossa's gear back in the locker (your own on again), the gift in your bag; the mission done.
+func _strike_done() -> void:
+	var st = GameState.story
+	_return_gear()
+	st.set_flag("w58_drinks", true)
+	st.set_flag("w58_sk", "done")
+	_set_phase("after58")
+	GameState.log_msg("[Story] Package 58 is done: the Red Talon Roost is gone. (Package 59, the way to the Cluster, comes next.)", GameState.COL_GOOD)
+
+
+func _return_gear() -> void:
+	var g = GameState.gear
+	var st = GameState.story
+	if bool(flags().get("w58_gear_lent", false)):
+		var own: Dictionary = flags().get("w58_gear_own", {})
+		var d: Dictionary = g.to_dict()
+		for k in ["suit", "weapons", "belt", "grenades", "gr_sel", "drones", "features"]:
+			if own.has(k):
+				d[k] = own[k]
+		g.from_dict(d)
+		g.refill()
+		st.flags.erase("w58_gear_lent")
+	if not bool(flags().get("w58_gifted", false)):
+		st.set_flag("w58_gifted", true)
+		g.add_item("suit_mil_light:C", 1)
+		g.add_item("dr_laser:C", 1)
+		GameState.log_msg("Ossa's gift: a Light Combat Suit and a Laser Drone (in your bag). Her gear is back in her locker.", GameState.COL_GOOD)
 
 
 ## (Luz: no game over in the story) fallen on foot at the relay: Rook gets you back to the drone, Ossa's people fly

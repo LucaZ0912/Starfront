@@ -2311,6 +2311,15 @@ func _c_minigame_end(c: Dictionary) -> String:
 					GameState.log_msg(mg_last_tip, GameState.COL_GOOD)
 			GameState.minigame_streak[game] = int(GameState.minigame_streak.get(game, 0)) + 1
 			GameState.minigame_wins[game] = int(GameState.minigame_wins.get(game, 0)) + 1
+			var spk := String(opp.get("special", ""))
+			if spk != "":
+				# package 58, part 8 (Luz): a special opponent beaten goes into the collection
+				var sl: Array = GameState.collection.get("special", [])
+				var key := "%s:%s" % [spk, game]
+				if not key in sl:
+					sl.append(key)
+					GameState.collection["special"] = sl
+					GameState.log_msg("Collection: %s beaten at %s. A special opponent!" % [who, String(MinigameData.GAMES[game]["name"]).to_lower()], GameState.COL_GOOD)
 			GameState.log_msg("%s: you beat %s%s, %d in a row." % [MinigameData.GAMES[game]["name"], who,
 				(" and take %d cr" % int(c.get("pot", stake * 2))) if stake > 0 else "", int(GameState.minigame_streak[game])], GameState.COL_GOOD)
 		else:

@@ -195,6 +195,9 @@ var layouts: Dictionary = {}
 var home_system := 0
 var seed_value := 4711
 var test_mode := false   # debug test system active (never saved, main galaxy untouched)
+## Package 58, part 8: the story's waypoints in space – system id -> Array of {id, name, pos, kind}: a beacon to warp
+## to (the rendezvous, the pirates' station). Set by the story while it needs them (not saved).
+var story_beacons := {}
 
 
 func _ready() -> void:
@@ -3191,6 +3194,8 @@ func warp_targets(system_id: int) -> Array:
 	for pod in GameState.pods:                     # package 31a: escape pods with crew waiting for rescue
 		if int(pod["system"]) == system_id:
 			out.append({"id": pod["id"], "kind": "pod", "name": "Escape pod: %d crew" % (pod["crew"] as Array).size(), "pos": pod["pos"], "land": 900.0, "data": pod})
+	for sb in story_beacons.get(system_id, []):    # package 58, part 8: the story's waypoints
+		out.append({"id": sb["id"], "kind": "beacon", "name": sb["name"], "pos": sb["pos"], "land": float(sb.get("land", 2000.0)), "data": sb})
 	return out
 
 

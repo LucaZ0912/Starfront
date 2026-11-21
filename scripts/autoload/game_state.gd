@@ -88,7 +88,7 @@ var _pod_tick_t := 0.0
 var wingmen: Array = []
 var _wing_tick_t := 0.0
 ## Package 34: the collection – crew perks the pilot has had in the crew, notorious pirates destroyed
-var collection := {"perks": [], "notorious": [], "stars": [], "planets": []}     # 0.6.37.2: star classes; 0.6.38.1: planet and moon types
+var collection := {"perks": [], "notorious": [], "stars": [], "planets": [], "special": []}     # 0.8.58.7: special opponents beaten ("ossa:billiards"); 0.6.37.2: star classes; 0.6.38.1: planet and moon types
 var _collect_t := 0.0
 signal wingmen_changed
 const WingData = preload("res://data/wingmen.gd")
@@ -216,7 +216,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	prosperity.clear()                      # package 42
 	market_stock.clear()
 	wingmen.clear()
-	collection = {"perks": [], "notorious": [], "stars": [], "planets": []}
+	collection = {"perks": [], "notorious": [], "stars": [], "planets": [], "special": []}
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
@@ -609,7 +609,7 @@ func from_dict(d: Dictionary) -> void:
 	_pod_seq = int(d.get("pod_seq", 1))
 	wingmen = d.get("wingmen", []).duplicate(true)
 	collection = d.get("collection", {"perks": [], "notorious": []}).duplicate(true)
-	for ck in ["stars", "planets"]:
+	for ck in ["stars", "planets", "special"]:
 		if not collection.has(ck):
 			collection[ck] = []
 	if not loss_offer.is_empty():

@@ -1268,4 +1268,6 @@ static func poi_color(k: String) -> Color:
 			return Color(0.6, 0.7, 1.0)
 		"anomaly":
 			return Color(0.85, 0.5, 1.0)
+		"story":
+			return Color(1.0, 0.82, 0.29)                     # package 58, part 8: the story's waypoints, gold
 	return Color.WHITE

@@ -1129,7 +1129,8 @@ func _collection() -> void:
 	var cats := [["perks", "Crew perks", "%d / %d" % [have.size(), CrewDataP.PERKS.size()]], ["notorious", "Notorious pirates", "%d destroyed" % killed.size()],
 		["stars", "Star classes", "%d / %d" % [stars_seen.size(), Universe.STAR_TYPES.size()]],
 		["planets", "Planet types", "%d / %d" % [_seen_of(Universe.PLANET_TYPES).size(), Universe.PLANET_TYPES.size()]],
-		["moons", "Moon types", "%d / %d" % [_seen_of(Universe.MOON_TYPES).size(), Universe.MOON_TYPES.size()]]]
+		["moons", "Moon types", "%d / %d" % [_seen_of(Universe.MOON_TYPES).size(), Universe.MOON_TYPES.size()]],
+		["special", "Special opponents", "%d / %d" % [_special_beaten().size(), MinigameDataP.SPECIAL.size()]]]
 	for c in cats:
 		var cid: String = c[0]
 		var b := UI.button("%s   %s" % [c[1], c[2]], func(): coll_cat = cid; rebuild())
@@ -1154,6 +1155,8 @@ func _collection() -> void:
 			_collection_bodies(right, Universe.PLANET_TYPES, "PLANET TYPES", "A planet type counts once you have been in a system with such a world.")
 		"moons":
 			_collection_bodies(right, Universe.MOON_TYPES, "MOON TYPES", "A moon type counts once you have been in a system with such a moon.")
+		"special":
+			_collection_special(right)
 		"notorious":
 			right.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
 			if killed.is_empty():
@@ -1188,6 +1191,61 @@ func _collection() -> void:
 					q.size_flags_vertical = Control.SIZE_EXPAND_FILL
 					q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 					v.add_child(q)
+
+
+## Package 58, part 8 (Luz): the special opponents: the story's people you have beaten at a bar game.
+const MinigameDataP = preload("res://data/minigames.gd")
+
+
+func _special_beaten() -> Array:
+	var out: Array = []
+	for e in GameState.collection.get("special", []):
+		var k := String(e).get_slice(":", 0)
+		if MinigameDataP.SPECIAL.has(k) and not k in out:
+			out.append(k)
+	return out
+
+
+func _collection_special(right: VBoxContainer) -> void:
+	var beaten := _special_beaten()
+	var wins: Array = GameState.collection.get("special", [])
+	right.add_child(UI.label("SPECIAL OPPONENTS  %d / %d" % [beaten.size(), MinigameDataP.SPECIAL.size()], 16, COL))
+	right.add_child(UI.label("People you meet on your way who play a bar game. Beat one and they count.", 12, UI.TEXT_DIM))
+	var k := _coll_scale()
+	var flow := _coll_flow(right, 300.0 * k)
+	for sk in MinigameDataP.SPECIAL:
+		var sp: Dictionary = MinigameDataP.SPECIAL[sk]
+		var got: bool = sk in beaten
+		var tile := UI.neon_panel(Color(COL, 0.8) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.12, 0.09, 0.03, 0.95) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
+		tile.custom_minimum_size = Vector2(300, 118) * k
+		flow.add_child(tile)
+		var h := UI.hbox(10)
+		tile.add_child(h)
+		var tr := TextureRect.new()
+		tr.texture = GameState.story.portrait_of(String(sp["who"]))
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tr.custom_minimum_size = Vector2(84, 84) * k
+		if not got:
+			tr.modulate = Color(0, 0, 0, 0.85)                   # a silhouette until beaten
+		h.add_child(tr)
+		var v := UI.vbox(2)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(v)
+		if got:
+			v.add_child(UI.label("★ " + String(sp["name"]), int(15 * k), COL))
+			var games: Array = []
+			for e in wins:
+				if String(e).get_slice(":", 0) == sk:
+					games.append(String(MinigameDataP.GAMES.get(String(e).get_slice(":", 1), {}).get("name", "?")))
+			v.add_child(UI.label("Beaten at %s  %s" % [", ".join(games), MinigameDataP.stars_text(int(sp["stars"]))], int(11 * k), Color(0.5, 1.0, 0.6)))
+			var tx := UI.wrap_label(String(sp["text"]), int(11 * k), Color(0.9, 0.88, 0.8), 100)
+			tx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			v.add_child(tx)
+		else:
+			v.add_child(UI.label("???", int(30 * k), Color(0.45, 0.45, 0.48)))
+			v.add_child(UI.label("Not met at the table yet.", int(11 * k), UI.TEXT_DIM))
 
 
 ## 0.6.38.2: the collection grows with the screen – tiles, pictures and text scale with the window (1× up to

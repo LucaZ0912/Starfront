@@ -3531,7 +3531,7 @@ const MinigameData = preload("res://data/minigames.gd")
 func open_minigame(game: String, place: Dictionary) -> void:
 	Audio.play("ui_open", "minigame lobby")
 	var streak := int(GameState.minigame_streak.get(game, 0))
-	var guests: Array = MinigameData.guests(String(place.get("id", "")), game, streak, int(GameState.play_time / 1800.0))
+	var guests: Array = MinigameData.specials(String(place.get("id", "")), game) + MinigameData.guests(String(place.get("id", "")), game, streak, int(GameState.play_time / 1800.0))
 	var crew: Array = []
 	var f := GameState.active()
 	if f != null:
@@ -4990,6 +4990,41 @@ func _open_lift_menu(z: Dictionary) -> void:
 	_lift_menu.set_meta("keys", keys)
 
 
+## Package 58, part 8: a small window with a question and its answers ([label, Callable], in order: keys 1, 2, …);
+## Esc (or the controller's back) closes it and calls on_back.
+func ask_window(title: String, text: String, opts: Array, on_back: Callable = Callable()) -> void:
+	if _lift_menu != null:
+		return
+	Audio.play("ui_open", "on foot: a question")
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(c)
+	var col := Color(1.0, 0.45, 0.7)
+	var p := UI.neon_panel(Color(col, 0.85), Color(0.03, 0.04, 0.07, 0.96), 2)
+	p.custom_minimum_size = Vector2(440, 0)
+	c.add_child(p)
+	var v := UI.vbox(8)
+	p.add_child(v)
+	v.add_child(UI.label(title.to_upper(), 20, col))
+	v.add_child(UI.wrap_label(text, 13, UI.TEXT_DIM, 410))
+	var keys: Array = []
+	for i in opts.size():
+		var f: Callable = opts[i][1]
+		var go := func():
+			if _lift_menu != null:
+				_lift_menu.set_meta("on_back", Callable())
+			_close_lift_menu()
+			f.call()
+		var b := UI.button("%d.  %s" % [i + 1, String(opts[i][0])], go)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		v.add_child(b)
+		keys.append(go)
+	_lift_menu = c
+	_lift_menu.set_meta("zone", {})
+	_lift_menu.set_meta("keys", keys)
+	_lift_menu.set_meta("on_back", on_back)
+
+
 ## 0.7.50.15 (Luz): taking off – back to orbit, or to the planet map to pick another place.
 func _open_takeoff_menu(z: Dictionary) -> void:
 	Audio.play("ui_open", "on foot: take off")
@@ -5031,9 +5066,12 @@ func _choose_takeoff(dest: String) -> void:
 
 
 func _close_lift_menu() -> void:
+	var back: Callable = _lift_menu.get_meta("on_back", Callable()) if _lift_menu != null else Callable()
 	if _lift_menu != null:
 		_lift_menu.queue_free()
 	_lift_menu = null
+	if back.is_valid():
+		back.call()                                      # (an ask_window closed without an answer)
 
 
 func _choose_level(target: String) -> void:

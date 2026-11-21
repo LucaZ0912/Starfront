@@ -41,6 +41,13 @@ var escort_of = null             # escort: the captain it protects
 var toughness := 1.0             # damage taken is multiplied by this (captains: by stars)
 var story_spare := false         # package 56: never destroyed – it stays at 1 structure and `spared` is emitted
 var align_scale := 1.0           # package 56: × the warp alignment time (Old Betty in the story aligns quickly)
+# package 58, part 8: a piece of a station (the Roost) – fixed in place, drawn by its station, hits reported to it
+var anchored := false            # never moves (it still aims and fires)
+var art_draw: Callable = Callable()   # draws the ship instead of its hull art (called with the ship)
+var untargetable := false        # cannot be locked or hit (the Roost's core under its plating)
+var damage_hook: Callable = Callable()   # called with (ship, hit points lost) after every hit
+var warp_hold := false           # the story holds the warp open (the talk on the way in): it slows near the end
+var ignore_drones := false       # never picks a drone as its target (the Roost's guns go for the ships)
 var raiding := false             # raiding a station: ignores no-fire zones (5-star captains)
 var _distress_t := -1000.0       # last distress call (package 16)
 var smuggler_mission := ""       # smuggler of an intercept contract (package 17)
@@ -285,6 +292,8 @@ func is_docked() -> bool:
 
 
 func is_targetable() -> bool:
+	if untargetable:
+		return false
 	return not dying and not is_docked() and is_inside_tree() and warp.is_empty() and not cloaked() and not in_station()
 
 
@@ -682,8 +691,39 @@ func _dock(st_node) -> void:
 
 # ---------------------------------------------------------------- Main loop
 
-func _physics_process(delta: float) -> void:
+## 0.8.58.7 (Luz: the frame rate in the fight with the Roost): an NPC ship far from you, out of any fight, not
+## warping, is worked only every LOD_EVERY-th frame (with the time it missed): a system's far traffic and pirate camps
+## cost a quarter of what they did.
+const LOD_DIST := 250000.0
+const LOD_EVERY := 4
+var _lod_acc := 0.0
+var _lod_k := randi() % LOD_EVERY
+
+
+func _lod_skip(delta: float) -> float:
+	if manual or is_drone or anchored or view == null or in_warp() or target != null or combat_t > 0.0 or fleeing or escort_mark 			or is_docked() or tumble_t > 0.0 or not tool_beams.is_empty():
+		var d0 := _lod_acc + delta
+		_lod_acc = 0.0
+		return d0
+	var pl = view.player
+	if pl == null or not is_instance_valid(pl) or position.distance_squared_to(pl.position) < LOD_DIST * LOD_DIST:
+		var d1 := _lod_acc + delta
+		_lod_acc = 0.0
+		return d1
+	_lod_acc += delta
+	_lod_k = (_lod_k + 1) % LOD_EVERY
+	if _lod_k != 0:
+		return -1.0
+	var d2 := _lod_acc
+	_lod_acc = 0.0
+	return d2
+
+
+func _physics_process(delta0: float) -> void:
 	if dying:
+		return
+	var delta := _lod_skip(delta0)
+	if delta < 0.0:
 		return
 	if boost_t > 0.0 or boost_cd > 0.0 or boost_glow > 0.0:
 		boost_t = maxf(0.0, boost_t - delta)
@@ -741,8 +781,12 @@ func _physics_process(delta: float) -> void:
 		_tumble(delta)
 		return
 	_update_targeting(delta, s)
-	_update_movement(delta, s)
-	if view != null and view.has_method("apply_gravity"):
+	if anchored:
+		velocity = Vector2.ZERO                       # package 58, part 8: a part of a station stays where it is
+		fit.position = position
+	else:
+		_update_movement(delta, s)
+	if not anchored and view != null and view.has_method("apply_gravity"):
 		view.apply_gravity(self, delta)                   # package 37: a black hole's pull
 		if dying:
 			return
@@ -892,6 +936,8 @@ func _nearest_hostile(max_range: float):
 	var bd := max_range
 	for n in get_tree().get_nodes_in_group("ships"):
 		if n == self or not n.is_targetable() or not hostile(self, n):
+			continue
+		if ignore_drones and n.is_drone:
 			continue
 		if not can_see(n):
 			continue
@@ -1773,6 +1819,8 @@ func _update_warp(delta: float) -> void:
 	# interdiction: held in warp ~2 s short of the target until the timing game is decided
 	var held: bool = warp.get("hold", false) and view != null and view.has_method("interdict_running") and view.interdict_running() \
 		and float(warp["T"]) - float(warp["t"]) - delta <= 2.0
+	if warp_hold and float(warp["T"]) - float(warp["t"]) <= 5.0:
+		warp["T"] = float(warp["T"]) + delta * 0.92    # package 58, part 8 (Luz): the talk not over – the warp slows, it does not stop
 	if not held:
 		warp["t"] = float(warp["t"]) + delta
 	_warp_frame = Engine.get_physics_frames()
@@ -2071,6 +2119,10 @@ func take_damage(amount: float, dtype: String, attacker) -> void:
 		Audio.play_at("hit_shield", position, "hit shield")
 	hit_flash = 0.12
 	_show_damage(sh0 - fit.shield, hull0 - (fit.armor + maxf(fit.structure, 0.0)))
+	if damage_hook.is_valid():
+		damage_hook.call(self, (sh0 - fit.shield) + hull0 - (fit.armor + maxf(fit.structure, 0.0)))      # package 58, part 8
+		if dying or not is_instance_valid(self):
+			return
 	if fit.structure <= 0.0 and story_spare:
 		fit.structure = 1.0
 		spared.emit(self)
@@ -2100,8 +2152,8 @@ func _reflect(armor_dmg: float, dtype: String, attacker) -> void:
 ## The pilot opened fire on this NPC: it (and its faction, for a while) fights back; shooting a
 ## ship that was not hostile costs standing with its faction (package 12).
 func _hit_by_player() -> void:
-	if provoked:
-		return
+	if provoked or has_meta("story_ally"):
+		return                                        # (package 58, part 8: a friend hit by a stray shot stays a friend)
 	var was_hostile := hostile_to_player()
 	provoked = true
 	if not was_hostile:
@@ -4071,6 +4123,9 @@ func _draw_gas_top() -> void:
 
 func _draw() -> void:
 	if fit == null:
+		return
+	if art_draw.is_valid():
+		art_draw.call(self)                          # package 58, part 8: a part of the Roost, drawn by the station
 		return
 	var selected := faction == "player" and fit.uid == GameState.active_uid
 	# Warp: the friction glow (0.6.35.15: the lines streaming behind are gone)
