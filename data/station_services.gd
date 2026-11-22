@@ -55,4 +55,7 @@ const SERVICES := [
 	# package 39c: only in the Meridian Sphere (Durchbruch) – research data and exotic matter
 	{"id": "exchange", "title": "Research Exchange", "corp": "rex", "icon": "t_analyzer",
 		"panel": "res://scripts/ui/station/exchange_panel.gd", "requires": "exchange"},
+	# package 61d (Luz): only in Centauria (Fern) – Second Skin, paint for your ships
+	{"id": "paint", "title": "Paint Shop", "corp": "ssk", "icon": "o_armor",
+		"panel": "res://scripts/ui/station/paint_panel.gd", "requires": "paint"},
 ]

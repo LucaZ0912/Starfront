@@ -3,6 +3,21 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.61.5 – 2026-11-22
+
+**Package 61d (Luz): the Museum moves to Centauria; Second Skin, paint for your ships.**
+- **The Museum** stands in Centauria now and only there: the Museum of Centauria, on the west plaza of the
+  Commercial District. Its rooms, its 48 cases and its curator are as they were. The city on Curie has an ordinary
+  roof plaza again. (Later, in the story: Dr. Imre Halden opens it.)
+- **Second Skin**, a paint shop only in Centauria, in the west pavilion of the Commercial Hall: an open showroom
+  with small ships turning on pedestals. Its window (Paint Shop, Second Skin): your ships that stand in Centauria's hangar, the picked ship
+  in the picked paint, thirteen fixed paints (Midnight and Gold, Bone and Blood, Lapis, Pelagia, Kiln, Glacia,
+  Ember, Neon Alley, Static, Grand Centauria, Hazard, Ghost, Rust Bucket).
+- A paint fits every hull, because it is a scheme for the colours all ships are drawn from; a ship's drones wear it
+  too. The price goes by the hull's size (2,500 / 8,000 / 20,000 cr, larger hulls 40,000 cr, after the standing),
+  Rust Bucket at half of it; back to the factory's colours is free.
+- Debug: the Museum's buttons fly to Fern and land in Centauria.
+
 ## alpha 0.8.61.4 – 2026-11-22
 
 **Package 61b (Luz): the Back Alleys and the Static Feedback. Places and people only: the story comes later.**

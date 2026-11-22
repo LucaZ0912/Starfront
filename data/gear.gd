@@ -107,7 +107,7 @@ const SUITS := {
 	# 53e (Luz): the Museum's thanks when every case is filled – an explorer's suit: a short cloak built in that lasts
 	# five times as long, a scanner built in, the best life support, a deep energy store, a drone place, a long belt –
 	# and little shield or plate. Never sold (`faction` "museum").
-	"suit_archivist": {"name": "Archivist Suit", "maker": "Museum of Curie", "faction": "museum", "builtin_belt": ["tl_cloak", "tl_scanner"],
+	"suit_archivist": {"name": "Archivist Suit", "maker": "Museum of Centauria", "faction": "museum", "builtin_belt": ["tl_cloak", "tl_scanner"],
 		"cloak_mul": 5.0, "weapons": 1, "belt": 7, "grenades": 1, "drones": 1, "features": 2,
 		"shield": 20.0, "armor": 12.0, "energy": 520.0, "oxygen": 90.0, "ammo": 80,
 		"env": {"heat": 1.0, "cold": 1.0, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.06, "price": 60000,

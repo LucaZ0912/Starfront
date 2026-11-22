@@ -2,6 +2,7 @@ extends Node
 const MuseumDataC = preload("res://data/museum.gd")
 const PilotArtX = preload("res://scripts/core/pilot_art.gd")
 const PilotDataX = preload("res://data/pilot.gd")
+const PaintDataC = preload("res://data/paints.gd")
 const SkillDataX = preload("res://data/skills.gd")
 ## Command bus: the ONLY way player input changes the game state.
 ##
@@ -658,6 +659,38 @@ func _c_pilot_look(c: Dictionary) -> String:
 
 func look_price() -> int:
 	return GameState.rep.buy_price(PilotDataX.LOOK_PRICE, docked_faction())
+
+
+## {"type":"paint_ship", "uid": int, "paint": id} – package 61d (Luz): Second Skin in Centauria paints one of your
+## ships that stands in the city's hangar ("" : back to the factory's colours, free). The price goes by the hull's
+## size, after the standing.
+func _c_paint_ship(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var st := docked_station()
+	if not st.get("city", false) or String(st.get("name", "")) != "Centauria":
+		return "There is no paint shop here."
+	var id := String(c.get("paint", ""))
+	if id != "" and not PaintDataC.PAINTS.has(id):
+		return "Unknown paint."
+	var f = null
+	for s in GameState.fleet:
+		if int(s.uid) == int(c.get("uid", -1)) and String(s.docked_at) == String(st.get("id", "")):
+			f = s
+	if f == null:
+		return "That ship does not stand in Centauria's hangar."
+	if String(f.paint) == id:
+		return "%s wears that already." % String(f.ship_name)
+	var price := GameState.rep.buy_price(PaintDataC.price(int(GameData.hulls.get(String(f.hull_id), {}).get("size", 1)), id), docked_faction()) if id != "" else 0
+	if not GameState.spend(price):
+		return "Not enough credits (%s)." % GameData.fmt_credits(price)
+	f.paint = id
+	if id == "":
+		GameState.log_msg("%s is back in the factory's colours." % String(f.ship_name), GameState.COL_GOOD)
+	else:
+		GameState.log_msg("%s wears %s now: %s paid to Second Skin." % [String(f.ship_name), PaintDataC.name_of(id), GameData.fmt_credits(price)], GameState.COL_GOOD)
+	return ""
 
 
 ## {"type":"tree_unlock", "tile": id} – package 30: opens a skill tree tile whose achievements are met.
@@ -3620,26 +3653,26 @@ func _c_debug_museum(c: Dictionary) -> String:
 	if not to in ["plaza", "hall", "minerals", "first", "second", "basement"]:
 		return "Unknown place in the Museum."
 	if g == null or not g.is_museum_city():
-		var sid := Universe.special_system("durchbruch")
+		var sid := Universe.special_system("fern")              # package 61d (Luz): the Museum stands in Centauria now
 		if sid < 0:
-			return "No Durchbruch in this cluster."
+			return "No Fern in this cluster."
 		var f := _fit()
 		if f == null or f.system_id != sid:
 			var e := _c_debug_teleport({"system": sid})
 			if e != "":
 				return e
 		var body := {}
-		for p in Universe.get_layout(sid)["planets"]:
-			if String(p.get("name", "")) == "Curie":
+		for p in Universe.get_layout(sid)["moons"]:
+			if String(p.get("name", "")) == "Pelagia":
 				body = p
 		if body.is_empty():
-			return "No Curie here."
+			return "No Pelagia here."
 		var e2 := _c_debug_land({"body": String(body["id"]), "kind": "city"})
 		if e2 != "":
 			return e2
 		g = _ground()
 		if g == null or not g.is_museum_city():
-			return "Not in a city on Curie."
+			return "Not in Centauria."
 	g._close_lift_menu()
 	g.go_level({"plaza": "mplaza", "hall": "museum", "minerals": "museum_min", "first": "museum_1", "second": "museum_2", "basement": "museum_down"}[to], "lift" if to == "plaza" else "museum_in")
 	return ""

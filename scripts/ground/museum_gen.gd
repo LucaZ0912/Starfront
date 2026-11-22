@@ -103,7 +103,7 @@ static func build_plaza(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.pal["floor2"] = Color(0.64, 0.6, 0.55)
 	m.pal["wall"] = Color(0.86, 0.87, 0.89)
 	m.style = "plaza"
-	m.title = "Museum of Curie"
+	m.title = "Museum of Centauria"
 	m.hull_top = -9999
 	var W := 62
 	var H := 28
@@ -143,7 +143,7 @@ static func build_plaza(station: Dictionary, body: Dictionary) -> GroundMap:
 		if cx >= dx - 1 and cx <= dx + 4:
 			continue
 		m.add_object({"kind": "column", "x": cx, "y": 17, "w": 1, "h": 1})
-	_label(m, "MUSEUM OF CURIE", Vector2(dx + 2, 13.6), Color(0.95, 0.8, 0.45))
+	_label(m, "MUSEUM OF CENTAURIA", Vector2(dx + 2, 13.6), Color(0.95, 0.8, 0.45))
 	m.zones.append({"rect": Rect2(Vector2(dx, 17) * TILE, Vector2(4, 1.6) * TILE), "kind": "museum_in", "id": "museum_in",
 		"title": "Into the Museum", "col": Color(1.0, 0.85, 0.5), "sign": Vector2(-100, -100)})
 	m.set_meta("door_front", Vector2(dx + 2, 19.2) * TILE)
@@ -182,7 +182,7 @@ static func _room(station: Dictionary, body: Dictionary, W: int, H: int, fk: int
 	var m := GroundMap.new()
 	_pal(m, body)
 	m.style = "museum"
-	m.title = "Museum of Curie"
+	m.title = "Museum of Centauria"
 	m.hull_top = -9999
 	m.setup(W, H)
 	m.fill(0, 0, W, H, T.CAP)
@@ -201,7 +201,7 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	var m := GroundMap.new()
 	_pal(m, body)
 	m.style = "museum"
-	m.title = "Museum of Curie"
+	m.title = "Museum of Centauria"
 	m.hull_top = -9999
 	m.setup(W, H)
 	m.fill(0, 0, W, H, T.CAP)
@@ -234,7 +234,7 @@ static func build_hall(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.fill(sx, 8, 6, 8, T.FLOOR, 36)
 	m.fill(sx + 1, 8, 4, 8, T.FLOOR, 37)
 	m.face_deco.append({"kind": "museum_gate", "x": sx, "y": 5, "w": 6})
-	_label(m, "MUSEUM OF CURIE", Vector2(W * 0.5, 4.6), Color(0.95, 0.8, 0.45))
+	_label(m, "MUSEUM OF CENTAURIA", Vector2(W * 0.5, 4.6), Color(0.95, 0.8, 0.45))
 	_go(m, Rect2(sx, 8, 6, 1.2), "museum_1", "from_hall", "Up through the gate to the first floor: The Old World and The Severance", WARM)
 	m.set_meta("from_1", Vector2(W * 0.5, 9.6) * TILE)
 	m.lights.append({"pos": Vector2(W * 0.5, 7.0) * TILE, "r": 70.0, "col": WARM, "a": 0.4})
@@ -428,7 +428,7 @@ static func build_basement(station: Dictionary, body: Dictionary) -> GroundMap:
 	m.pal["wall"] = Color(0.3, 0.27, 0.36)
 	m.pal["accent"] = VIO
 	m.style = "museum_dark"
-	m.title = "Museum of Curie"
+	m.title = "Museum of Centauria"
 	m.hull_top = -9999
 	var W := 40
 	var H := 24

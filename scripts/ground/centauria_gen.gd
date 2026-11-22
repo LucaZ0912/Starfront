@@ -375,9 +375,6 @@ static func build_plaza(station: Dictionary) -> GroundMap:
 	var wx0 := cx0 - sw                               # the stamp's west edge
 	_stamp(m, cur, KX, cur.w, 9, wx0, P_TOP + 9, true)             # the plaza's rows (from its railing down)
 	_stamp(m, cur, cur.w - 24, cur.w, 0, wx0, P_TOP, true)         # the Museum itself, with its roof
-	for z in m.zones:
-		if String(z.get("title", "")) == "MUSEUM OF CURIE":
-			z["title"] = "THE MUSEUM"
 	var dfront: Vector2 = (cur.get_meta("door_front") as Vector2) / TILE
 	m.set_meta("from_museum", Vector2(wx0 + (cur.w - dfront.x), P_TOP + dfront.y) * TILE)
 	m.objects = m.objects.filter(func(o): return String(o.get("kind", "")) != "glass_rail")
@@ -2127,6 +2124,13 @@ static func build_hall(station: Dictionary, available: Dictionary) -> GroundMap:
 	for pv in 2:
 		var pvx := mid + 8 + pv * 10
 		m.fill(pvx, H_F0 + 9, 8, 2, T.BLOCK, 30)
+		if pv == 0 and available.has("paint"):
+			# package 61d (Luz): Second Skin, paint for your ships – an open showroom, somebody before it
+			pavs.append({"at": Vector2(pvx, H_F0 + 11) * TILE, "col": CYAN, "seed": 880, "shop": "SECOND SKIN"})
+			DeckGen._zone(m, "paint", available, Rect2(Vector2(pvx + 2.5, H_F0 + 11.0) * TILE, Vector2(3.0, 1.4) * TILE), Vector2(-100, -100))
+			m.people.append({"pos": Vector2(pvx + 6.6, H_F0 + 11.5) * TILE, "dir": 0, "role": "keeper"})
+			m.lights.append({"pos": Vector2(pvx + 4.0, H_F0 + 11.4) * TILE, "r": 70.0, "col": Color(1.0, 0.95, 0.85), "a": 0.45})
+			continue
 		pavs.append({"at": Vector2(pvx, H_F0 + 11) * TILE, "col": cols[(pv * 3 + 1) % cols.size()], "seed": 880 + pv * 7})
 		_zone(m, Rect2(pvx + 2.5, H_F0 + 11.0, 3.0, 1.4), "ctr_closed", "A shop to let", cols[(pv * 3 + 1) % cols.size()],
 			{"closed": "Opening soon. Special shops will move in here.", "id": "hall_pav_%d" % pv})
@@ -2170,10 +2174,12 @@ class HallFx extends Node2D:
 	const Gen = preload("res://scripts/ground/centauria_gen.gd")
 	const NEON := [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.55, 1.0, 0.6), Color(0.72, 0.5, 1.0), Color(1.0, 0.55, 0.25)]
 	const NAMES := ["NOODLES", "ARCADE", "RAMEN", "TATTOO", "KARAOKE", "SUSHI", "BOOKS", "TEA", "VINYL", "FLOWERS", "24H", "DUMPLINGS", "SHOES", "HATS", "TOYS", "OPTICS"]
+	const Paints = preload("res://data/paints.gd")
 	var part := "wall"
 	var fronts: Array = []
 	var night := 0.0
 	var col := Color(1.0, 0.36, 0.66)
+	var shop := ""                   # a pavilion with a shop in it: its name (61d: Second Skin, the paint shop)
 	var seed := 0
 	var _t := 0.0
 	var _acc := 0.0
@@ -2393,6 +2399,29 @@ class HallFx extends Node2D:
 		draw_rect(Rect2(0.0, -46.0, w, 2.0), Color(col, 0.9))
 		draw_rect(Rect2(2.0, -44.0, w - 4.0, 10.0), Color(0.03, 0.03, 0.06))
 		draw_rect(Rect2(2.0, -44.0, w - 4.0, 10.0), Color(col, 0.6), false, 1.0)
+		if shop != "":
+			# an open showroom: glass and light, three small ships turning on pedestals, each in another paint
+			draw_string(font, Vector2(2.0, -36.0), shop, HORIZONTAL_ALIGNMENT_CENTER, w - 4.0, 8, Color(col.lightened(0.35), 0.9 + 0.1 * sin(_t * 2.0)))
+			draw_rect(Rect2(4.0, -32.0, w - 8.0, 32.0), Color(0.08, 0.08, 0.12))
+			draw_rect(Rect2(5.0, -31.0, w - 10.0, 30.0), Color(1.0, 0.95, 0.85, 0.85))
+			for md in 3:
+				var mx := 24.0 + md * 40.0
+				var pid := String(Paints.ORDER[(md * 4 + int(_t / 5.0)) % (Paints.ORDER.size() - 1)])
+				var hc: Color = Paints.PAINTS[pid]["hull"]
+				var ac: Color = Paints.PAINTS[pid]["acc"]
+				var sq := cos(_t * 1.1 + md * 2.1)
+				draw_rect(Rect2(mx - 7.0, -9.0, 14.0, 8.0), Color(0.3, 0.3, 0.36))
+				draw_rect(Rect2(mx - 7.0, -9.0, 14.0, 1.5), Color(0.5, 0.5, 0.56))
+				if absf(sq) > 0.15:
+					draw_colored_polygon(PackedVector2Array([Vector2(mx, -28.0), Vector2(mx + 10.0 * sq, -13.0), Vector2(mx, -16.0), Vector2(mx - 10.0 * sq, -13.0)]), hc)
+					draw_colored_polygon(PackedVector2Array([Vector2(mx, -24.0), Vector2(mx + 3.0 * sq, -18.0), Vector2(mx, -17.0), Vector2(mx - 3.0 * sq, -18.0)]), ac)
+				else:
+					draw_rect(Rect2(mx - 1.0, -28.0, 2.0, 14.0), hc)
+				draw_rect(Rect2(mx - 0.5, -13.0, 1.0, 4.0), Color(0.2, 0.2, 0.24))
+			for gm in range(0, int(w), 32):
+				draw_rect(Rect2(gm + 4.0, -32.0, 1.0, 32.0), Color(0.08, 0.08, 0.12))
+			draw_rect(Rect2(5.0, -31.0, w - 10.0, 3.0), Color(1, 1, 1, 0.25))
+			return
 		draw_rect(Rect2(4.0, -32.0, w - 8.0, 32.0), Color(0.3, 0.31, 0.37))
 		for sl in range(0, 32, 3):
 			draw_rect(Rect2(4.0, -32.0 + sl, w - 8.0, 1.0), Color(0.2, 0.21, 0.26))

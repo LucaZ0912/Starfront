@@ -692,6 +692,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			var hpv = CentauriaGen.HallFx.new()
 			hpv.part = "pav"
 			hpv.col = pv["col"]
+			hpv.shop = String(pv.get("shop", ""))
 			hpv.scale = Vector2.ONE * GroundMap.SCALE
 			hpv.position = (pv["at"] as Vector2) * GroundMap.SCALE
 			_sorted.add_child(hpv)
@@ -2031,8 +2032,7 @@ func capital_kind() -> String:
 func is_museum_city() -> bool:
 	if not is_city():
 		return false
-	var b := Universe.find_body(_sys, String(station.get("body", ""))) if _sys >= 0 else {}
-	return String(b.get("name", "")) == "Curie"
+	return is_centauria()                             # package 61d (Luz): the Museum has moved from Curie to Centauria
 
 
 ## 0.7.50.5: in a city (a station on the ground)?
@@ -3213,12 +3213,12 @@ func _open_curator() -> void:
 	talk = DialogueView.new()
 	_ui.add_child(talk)
 	var look: Dictionary = map.get_meta("curator_look", ChibiArt.PilotArt.default_look())
-	talk.open(look, _curator_name(), "Curator · Museum of Curie", Color(0.95, 0.8, 0.45))
+	talk.open(look, _curator_name(), "Curator · Museum of Centauria", Color(0.95, 0.8, 0.45))
 	talk.closed.connect(_on_curator_closed)
 	var n := GameState.museum_count()
-	var greet := "Welcome to the Museum of Curie. %d of our %d cases are filled: every piece set in by the one who found it." % [n, MuseumData.EXHIBITS.size()]
+	var greet := "Welcome to the Museum of Centauria. %d of our %d cases are filled: every piece set in by the one who found it." % [n, MuseumData.EXHIBITS.size()]
 	if n == 0:
-		greet = "Welcome, welcome! The Museum of Curie: forty-eight cases, and every one of them empty. Bring us what you find out there, and set it in yourself. That is our custom."
+		greet = "Welcome, welcome! The Museum of Centauria: forty-eight cases, and every one of them empty. Bring us what you find out there, and set it in yourself. That is our custom."
 	elif n >= MuseumData.EXHIBITS.size():
 		greet = "Every case is filled. I still come in early, you know, just to look at them."
 	talk.say(greet, _curator_options())
@@ -5216,8 +5216,8 @@ func _open_lift_menu(z: Dictionary) -> void:
 		lvls.append(["alley", "%d.  Back alley: a manhole down into the sewers" % (lvls.size() + 1)])
 	if is_cloud():
 		pass                                                      # 54c (Luz): the palace is reached by the skyrail, not the lifts
-	elif is_museum_city():                                        # 53e (Luz): on Curie the roof plaza is the Museum's
-		lvls.append(["mplaza", "%d.  Roof plaza: the Museum of Curie" % (lvls.size() + 1)])
+	elif is_museum_city():                                        # 61d: Centauria – its Museum stands on the district's west plaza
+		lvls.append(["mplaza", "%d.  The plaza: the Museum of Centauria" % (lvls.size() + 1)])
 	elif capital_kind() == "senate":                              # 54c (Luz): Neo Kallipolis – the Plaza of the Vote, the Senate
 		lvls.append(["kplaza", "%d.  The Plaza of the Vote: the Senate of the Assembly" % (lvls.size() + 1)])
 	elif is_city():                                               # 0.7.53.19 (Luz): up to the roof plaza
@@ -5236,7 +5236,7 @@ func _open_lift_menu(z: Dictionary) -> void:
 		else:
 			# the Commercial Hall: its lifts go to its own floors; the way out is onto the plaza
 			# (Luz: out onto the plaza on foot, through the Hall's doors; the back alleys get a map of their own)
-			lvls = lvls.filter(func(l): return not String(l[0]) in ["hangar", "plaza", "alley", "tower"])      # (no tower bar: a punk bar and the casino's bar are to come)
+			lvls = lvls.filter(func(l): return not String(l[0]) in ["hangar", "plaza", "mplaza", "alley", "tower"])      # (no tower bar: a punk bar and the casino's bar are to come)
 			for li in lvls.size():
 				var rest := String(lvls[li][1])
 				if String(lvls[li][0]) == "street":

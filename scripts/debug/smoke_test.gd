@@ -17477,6 +17477,38 @@ func _test_ctr61a(_view: SystemView) -> void:
 				and (g.map.get_meta("hall_fronts", []) as Array).size() >= 5 and not g.map.lifts.is_empty() \
 				and hz.any(func(z): return String(z.get("kind", "")) == "service") and hz.any(func(z): return String(z.get("id", "")) == "hall_up") \
 				and g._world.get_children().any(func(nd): return nd.has_method("_escalators")) and g._sorted.get_children().filter(func(nd): return nd.has_method("_pav")).size() == 3
+			# (Luz) package 61d: Second Skin – a door at the west pavilion; a paint fits the ship and costs by its size, an
+			# unknown one is refused, the factory's colours are free
+			var PaintD = load("res://data/paints.gd")
+			var paf = GameState.active()
+			var cr0: int = GameState.credits
+			var p0 := String(paf.paint)
+			paf.paint = ""
+			GameState.credits = 500000
+			var ep := String(Commands.execute({"type": "paint_ship", "uid": int(paf.uid), "paint": "pt_midnight"}))
+			var want: int = GameState.rep.buy_price(PaintD.price(int(GameData.hulls[String(paf.hull_id)]["size"]), "pt_midnight"), String(g.station.get("faction", "")))
+			var paint_ok: bool = hz.any(func(z): return String(z.get("kind", "")) == "service" and String(z.get("id", "")) == "paint") and ep == "" and String(paf.paint) == "pt_midnight" \
+				and GameState.credits == 500000 - want and want > 0 and PixelArt.fleet_texture(paf) != PixelArt.ship_texture(String(paf.hull_id), "player") \
+				and String(Commands.execute({"type": "paint_ship", "uid": int(paf.uid), "paint": "nope"})) != "" \
+				and String(Commands.execute({"type": "paint_ship", "uid": int(paf.uid), "paint": ""})) == "" and String(paf.paint) == "" and GameState.credits == 500000 - want \
+				and PaintD.ORDER.size() == 13 and PaintD.price(1, "pt_rust") * 2 == PaintD.price(1, "pt_lapis") and PaintD.price(9, "pt_lapis") == PaintD.PRICE_MAX
+			if not paint_ok:
+				print("CTR61D paint: err ", ep, " paint ", paf.paint, " credits ", GameState.credits, " want ", want)
+			if shots and paint_ok:
+				Commands.execute({"type": "paint_ship", "uid": int(paf.uid), "paint": "pt_grand"})
+				for qzp in hz:
+					if String(qzp.get("kind", "")) == "service" and String(qzp.get("id", "")) == "paint":
+						g.zone = qzp
+				g.use()
+				for qfp in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61d_lack.png")
+				main.station_panel.close()
+				for qfq in 5:
+					await get_tree().process_frame
+			paf.paint = p0
+			GameState.credits = cr0
+			in_hall = in_hall and paint_ok
 			g._open_lift_menu(_zone_of(g.map, "lift"))
 			var hkeys: Array = g._lift_menu.get_meta("levels", []) if g._lift_menu != null else []
 			if shots:
@@ -17578,6 +17610,25 @@ func _test_ctr61a(_view: SystemView) -> void:
 			g.story_mode = {}
 			GameState.story.from_dict(keep61)
 			in_hall = in_hall and alley_ok and bar_ok and up_ok and String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0)
+			# (Luz) package 61d: the Museum has moved here – Centauria is the Museum's city, its door on the west plaza
+			# leads in, its name is the Museum of Centauria; the debug way to its plaza comes out on the district
+			var mus_ok: bool = g.is_museum_city()
+			for qzm in g.map.zones:
+				if String(qzm.get("kind", "")) == "museum_in":
+					g.zone = qzm
+			g._arrive = 0.0
+			g.use()
+			for qfm in 10:
+				await get_tree().process_frame
+			mus_ok = mus_ok and String(g.level) == "museum" and String(g._title.text).begins_with("Museum of Centauria")
+			var em := String(Commands.execute({"type": "debug_museum", "to": "plaza"}))
+			for qfn in 10:
+				await get_tree().process_frame
+			mus_ok = mus_ok and em == "" and String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0) \
+				and (g.map.zones as Array).any(func(z): return String(z.get("kind", "")) == "label" and String(z.get("title", "")) == "MUSEUM OF CENTAURIA")
+			if not mus_ok:
+				print("CTR61D museum: city ", g.is_museum_city(), " level ", g.level, " title ", g._title.text, " err ", em)
+			in_hall = in_hall and mus_ok
 			for zd in g.map.zones:
 				if String(zd.get("kind", "")) == "ctr_down":
 					g.zone = zd

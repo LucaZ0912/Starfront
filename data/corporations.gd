@@ -28,6 +28,12 @@ const CORPS := {
 		"slogan": "Be who you look like.",
 		"desc": "Hair, skin, implants, tattoos, clothes: the Visage studios redo a pilot's whole look in an afternoon. What is under the skin stays yours.",
 	},
+	# package 61d (Luz): the paint shop in Centauria's Commercial Hall – a house of its own, small, only there
+	"ssk": {
+		"name": "Second Skin", "tag": "SSK", "color": Color(0.3, 0.9, 1.0),
+		"slogan": "Same ship. New skin.",
+		"desc": "A paint shop in Centauria's Commercial Hall and nowhere else. Thirteen coats, mixed in the back and sprayed on in the city's hangars while you wait. No custom jobs: the house colours are the house colours.",
+	},
 	"hwd": {
 		"name": "Hivewright Drone Works", "tag": "HWD", "color": Color(0.55, 1.0, 0.6),
 		"slogan": "Many hands, one mind.",

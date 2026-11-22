@@ -412,6 +412,10 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.61.5 (package 61d): `GroundView.is_museum_city()` is Centauria; service `paint` (`data/station_services.gd`,
+  only in Centauria), `data/paints.gd` (`ORDER`, `PAINTS`, `price`), `scripts/ui/station/paint_panel.gd`, command
+  `paint_ship`; PixelArt `shop_paint` (paint keys `pt_…` in `_colors`, `engine_glow`, `paint_key`); the Hall's west
+  pavilion (`"shop"` in `hall_pavs`, `HallFx.shop`).
 - 0.8.61.4 (package 61b): `CentauriaGen.build_alleys` (level `zalley`; metas `alley_fronts`, `stream`, `from_plaza`,
   `from_bar`; zones `alley_gate`, `bar_in`) and `build_punkbar` (level `zbar`; metas `bar_stage`, `dark`,
   `from_street`; zones `bar_out`, `bar_back`), drawn classes `AlleyFx` (parts `floor`, `wall`, `over`) and `BarFx`

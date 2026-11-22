@@ -1475,7 +1475,7 @@ func _build_ground() -> void:
 			_cmd({"type": "debug_cloud", "level": "cstation", "stop": 1, "sight_event": evs, "sight_day": dd})
 			_cmd({"type": "debug_daytime", "phase": "day" if dd > 0.6 else ("dusk" if dd > 0.2 else "night")})))
 	_box.add_child(UI.wrap_label("Straight to a sight on a body of this system (seen as the right kind of world), with the event and the hour chosen; photos at the railing, souvenirs at the stall. Excursions are seen on stepping up to the viewpoint.", 12, UI.TEXT_DIM, 560))
-	_section("The Museum in Curie (package 53e)")
+	_section("The Museum in Centauria (package 53e; moved from Curie in 61d)")
 	var rmu := _row()                                               # 53e (Luz): the Museum in Curie
 	rmu.add_child(UI.label("Museum:", 12, UI.TEXT_DIM))
 	rmu.add_child(UI.button("Plaza", func(): _cmd({"type": "debug_museum", "to": "plaza"})))

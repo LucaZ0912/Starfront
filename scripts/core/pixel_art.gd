@@ -6,6 +6,7 @@ extends RefCounted
 const FactionData = preload("res://data/factions.gd")
 const ShipArt = preload("res://data/pixel_art.gd")
 const NotoriousData = preload("res://scripts/core/notorious.gd")
+const PaintDataP = preload("res://data/paints.gd")
 ## World units per pixel
 const SCALE := 4.0
 
@@ -120,6 +121,9 @@ static func grid_to_image(rows: Array, colors: Dictionary, outline: bool = true)
 
 static func _colors(faction: String) -> Dictionary:
 	var c: Dictionary = PALETTE.duplicate()
+	if faction.begins_with("pt_"):
+		c.merge(shop_paint(faction), true)             # package 61d: a paint of Second Skin
+		return c
 	if faction.begins_with("notorious_"):
 		c.merge(notorious_paint(int(faction.trim_prefix("notorious_"))), true)
 		return c
@@ -128,6 +132,20 @@ static func _colors(faction: String) -> Dictionary:
 		return c
 	c.merge(FACTION.get(faction, FACTION["neutral"]), true)
 	return c
+
+
+## Package 61d (Luz): a paint of Second Skin (data/paints.gd) – hull shades from its hull colour, accent and engine
+## glow from its accent. Fits every hull.
+static func shop_paint(id: String) -> Dictionary:
+	var key := "paint_" + id
+	if _cache.has(key):
+		return _cache[key]
+	var pd: Dictionary = PaintDataP.PAINTS.get(id, {})
+	var hull: Color = pd.get("hull", Color(0.62, 0.68, 0.77))
+	var acc: Color = pd.get("acc", Color(0.35, 0.8, 1.0))
+	var out := {"h": hull, "H": hull.lightened(0.25), "d": hull.darkened(0.3), "D": hull.darkened(0.55), "a": acc, "f": acc.lightened(0.35)}
+	_cache[key] = out
+	return out
 
 
 ## Own paint of a notorious pirate (phase 0.5 package 15).
@@ -224,6 +242,8 @@ static func engine_groups(key: String) -> Array:
 
 
 static func engine_glow(key: String) -> Color:
+	if key.begins_with("pt_"):
+		return shop_paint(key)["f"]
 	if key.begins_with("notorious_"):
 		return notorious_paint(int(key.trim_prefix("notorious_")))["f"]
 	if FACTION.has(key):
@@ -265,6 +285,8 @@ static func paint_key(f) -> String:
 		return "player"
 	if p == "dan_rust" and not _cache.has("ship_%s_dan_rust_-1" % f.hull_id):
 		use_rust(String(f.hull_id), "dan_rust")
+	if p == "pt_rust" and not _cache.has("ship_%s_pt_rust_-1" % f.hull_id):
+		use_rust(String(f.hull_id), "pt_rust")              # package 61d: the shop's "Rust Bucket" is Dan's look
 	if p == "ossa_rust" and not _cache.has("ship_%s_ossa_rust_-1" % f.hull_id):
 		var rt := rundown_texture(String(f.hull_id))
 		for fr in range(-1, 16):

@@ -254,6 +254,8 @@ func service_available(svc: Dictionary) -> String:
 			return "" if station.get("curia", false) else "Only in the Cathedral of Return (Heimkehr)"
 		"exchange":
 			return "" if station.get("exchange", false) else "Only in the Meridian Sphere (Durchbruch)"
+		"paint":
+			return "" if station.get("city", false) and String(station.get("name", "")) == "Centauria" else "Only in Centauria (Fern)"
 		"munitions":
 			return "" if not Munitions.offer(station).is_empty() else "No munitions stocked here (the system's economy)"
 		"clinic":
