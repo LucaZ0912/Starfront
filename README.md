@@ -412,6 +412,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.4 (package 62b): `data/races.gd` (`clock`, `phase`, `next_open`, `race(n)` made from its number alone,
+  `progress`, `standing`, `speaker`, `form`, `odds`, `bet_won`, `due`), `scripts/ground/race_art.gd` (the broadcast,
+  drawn), `scripts/ground/race_bets.gd` (a counter), `scripts/ground/race_watch.gd` (a seat in the cinema); commands
+  `race_bet`, `race_collect`, `race_wait`; `GameState.race_bets`, `race_shift`; zones `ctr_bets`, `ctr_watch`;
+  `CAS_RTP=1` with `--only=casino62` prints what the bets give back over many races.
 - 0.8.62.3 (package 62, part 3): `data/casino.gd` (cards as `[rank, suit]`, `new_deck`, `bj_total`, `bj_back`,
   `bj_guest`, `bj_luck`, `hand_value`, `hand_name`, `poker_equity`, `poker_pots`, `poker_ai`, `poker_guests`,
   `POKER_SPECIAL`, `tell_luck`), `scripts/ground/casino_cards.gd` (drawn cards and chips),

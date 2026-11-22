@@ -59,6 +59,8 @@ var casino_vip := false
 var casino_jackpot := 5000              # package 62, part 2: the house's jackpot (Coins), growing with every spin
 var casino_spins := 0                   # … how often its reels and its wheel have turned for you (seeds the next turn)
 var casino_stats := {"staked": 0, "back": 0, "best": 0}     # … Coins staked, Coins got back, the largest single win
+var race_shift := 0.0                   # package 62b: what you have waited in The Track's cinema (moves the races' clock on)
+var race_bets: Array = []               # … your tickets: {n, kind, a, b, stake, odds, seat}
 var fleet: Array = []            # all owned ships (ShipFitting)
 var active_uid := -1             # the ship the pilot is flying
 var current_system := 0          # displayed system (= system of the active ship)
@@ -234,6 +236,8 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	casino_jackpot = 5000
 	casino_spins = 0
 	casino_stats = {"staked": 0, "back": 0, "best": 0}
+	race_shift = 0.0
+	race_bets = []
 	exotic_matter = 0
 	fleet.clear()
 	storage.clear()
@@ -586,7 +590,7 @@ func to_dict() -> Dictionary:
 	for f in fleet:
 		ships.append(f.to_dict())
 	return {
-		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "casino_jackpot": casino_jackpot, "casino_spins": casino_spins, "casino_stats": casino_stats.duplicate(), "fleet": ships, "active_uid": active_uid,
+		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "casino_jackpot": casino_jackpot, "casino_spins": casino_spins, "casino_stats": casino_stats.duplicate(), "race_shift": race_shift, "race_bets": race_bets.duplicate(true), "fleet": ships, "active_uid": active_uid,
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
@@ -618,6 +622,8 @@ func from_dict(d: Dictionary) -> void:
 	casino_spins = int(d.get("casino_spins", 0))
 	casino_stats = {"staked": 0, "back": 0, "best": 0}
 	casino_stats.merge(d.get("casino_stats", {}), true)
+	race_shift = float(d.get("race_shift", 0.0))
+	race_bets = (d.get("race_bets", []) as Array).duplicate(true)
 	fleet.clear()
 	for sd in d["fleet"]:
 		fleet.append(ShipFitting.from_dict(sd))

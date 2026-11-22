@@ -5109,6 +5109,18 @@ func use(instant: bool = false) -> bool:
 			crg.finished.connect(func(_w: bool): _close_game(); _ctr_title())
 			_open_game(crg)
 			return true
+		"ctr_bets":
+			var cbw = load("res://scripts/ground/race_bets.gd").new()       # package 62b: a betting counter of The Track …
+			cbw.setup({})
+			cbw.finished.connect(func(_w: bool): _close_game(); _ctr_title())
+			_open_game(cbw)
+			return true
+		"ctr_watch":
+			var cww = load("res://scripts/ground/race_watch.gd").new()      # … and a seat in its cinema
+			cww.setup({})
+			cww.finished.connect(func(_w: bool): _close_game(); _ctr_title())
+			_open_game(cww)
+			return true
 		"ctr_blackjack":
 			var cbg = load("res://scripts/ground/blackjack_game.gd").new()  # part 3: blackjack …
 			cbg.setup({"hi": bool(zone.get("hi", false)), "guests": ["A guest in gold", "A guest in violet"] if bool(zone.get("hi", false)) else ["A guest in red", "A guest in blue"]})

@@ -17762,7 +17762,8 @@ func _test_casino62(_view: SystemView) -> void:
 					and qp.filter(func(p): return String(p["kind"]) == "poker").size() == 1 and qz.any(func(z): return String(z.get("kind", "")) == "drift")
 			3:
 				one = one and qp.filter(func(p): return String(p["kind"]) == "seats").size() == 3 \
-					and qz.filter(func(z): return String(z.get("id", "")).begins_with("cas_bets") and String(z.get("closed", "")) != "").size() == 2 \
+					and qz.filter(func(z): return String(z.get("id", "")).begins_with("cas_bets") and String(z.get("kind", "")) == "ctr_bets").size() == 2 \
+					and qz.filter(func(z): return String(z.get("kind", "")) == "ctr_watch").size() == 3 \
 					and qp.filter(func(p): return String(p["kind"]) == "odds").size() == 4
 			4:
 				one = one and qp.any(func(p): return String(p["kind"]) == "piano") and (qm.people as Array).any(func(p): return String(p.get("role", "")) == "bartender")
@@ -18186,7 +18187,138 @@ func _test_casino62(_view: SystemView) -> void:
 		GameState.casino_vip = false
 		if not hi_ok:
 			print("CAS62 high tables: minigame ", g.minigame)
-		coin_ok = coin_ok and num_ok and slot_ok and rou_ok and card_ok and bj_ok and pk_ok and hi_ok
+		# (Luz) package 62b: the races of The Track. The clock, a race made from its number alone, the odds with the
+		# house's margin in them; a ticket by seat through the command bus, the limit, the counter pays what is decided
+		var RaD = load("res://data/races.gd")
+		var r5a: Dictionary = RaD.race(5).duplicate(true)
+		RaD._cache.clear()
+		var r5b: Dictionary = RaD.race(5)
+		var rsum := 0.0
+		var rtip := 0.0
+		var rshape := true
+		for rn in 120:
+			var rr: Dictionary = RaD.race(rn)
+			var ro: Array = rr["order"]
+			rsum += float(rr["win"][int(ro[0])])
+			rtip += float(rr["win"][int(rr["tip"])]) if int(ro[0]) == int(rr["tip"]) else 0.0
+			var rs2: Array = ro.duplicate()
+			rs2.sort()
+			var re: Array = (rr["entry"] as Array).duplicate()
+			re.sort()
+			rshape = rshape and rs2 == [0, 1, 2, 3, 4, 5] and re.size() == 6 and range(5).all(func(q): return int(re[q]) != int(re[q + 1])) \
+				and (rr["win"] as Array).all(func(o): return float(o) >= 1.1) and (rr["place"] as Array).all(func(o): return float(o) >= 1.05) \
+				and range(6).all(func(q): return (float(rr["crash"][q]) < 0.0) == (float(rr["crash_t"][q]) < 0.0) and RaD.progress(rr, q, 0.0) == 0.0) \
+				and (float(rr["crash"][int(ro[0])]) >= 0.0 or RaD.progress(rr, int(ro[0]), RaD.RUN) >= 1.0) and RaD.speaker(rr, 20.0) != "" and RaD.standing(rr, RaD.RUN) == ro
+		var race_ok: bool = String(RaD.phase(0.0)["state"]) == "bets" and String(RaD.phase(RaD.PERIOD - RaD.RUN - RaD.SHOW + 1.0)["state"]) == "run" and String(RaD.phase(RaD.PERIOD - 1.0)["state"]) == "result" \
+			and int(RaD.phase(RaD.PERIOD * 3.0 + 1.0)["n"]) == 3 and not RaD.over(3, RaD.PERIOD * 3.0 + 100.0) and RaD.over(3, RaD.PERIOD * 4.0 - 2.0) and RaD.over(3, RaD.PERIOD * 4.0 + 5.0) \
+			and int(RaD.next_open(RaD.PERIOD * 4.0 - 20.0)["n"]) == 4 and int(RaD.next_open(RaD.PERIOD * 4.0 + 20.0)["n"]) == 4 \
+			and r5a["order"] == r5b["order"] and r5a["entry"] == r5b["entry"] and r5a["win"] == r5b["win"] and rshape and rsum / (120.0 * 6.0) > 0.6 and rsum / (120.0 * 6.0) < 1.0 \
+			and RaD.odds(r5b, "exacta", 0, 0) == 0.0 and RaD.odds(r5b, "exacta", 0, 1) >= 2.0 and RaD.odds(r5b, "win", 7) == 0.0 and RaD.form(0, 0) == "new" \
+			and RaD.bet_won(r5b, "win", int(r5b["order"][0]), -1) and RaD.bet_won(r5b, "place", int(r5b["order"][2]), -1) and not RaD.bet_won(r5b, "place", int(r5b["order"][3]), -1) \
+			and RaD.bet_won(r5b, "exacta", int(r5b["order"][0]), int(r5b["order"][1])) and not RaD.bet_won(r5b, "exacta", int(r5b["order"][1]), int(r5b["order"][0]))
+		if OS.get_environment("CAS_RTP") != "":                 # (by hand: what the bets give back over many races)
+			var qa := 0.0
+			var qt := 0.0
+			var qf := 0.0
+			var qp := 0.0
+			for qn in 1200:
+				var qr: Dictionary = RaD.race(1000 + qn)
+				var qo: Array = qr["order"]
+				qa += float(qr["win"][int(qo[0])])
+				qt += float(qr["win"][int(qr["tip"])]) if int(qo[0]) == int(qr["tip"]) else 0.0
+				var qfav := 0
+				for q6 in 6:
+					if float(qr["win"][q6]) < float(qr["win"][qfav]):
+						qfav = q6
+				qf += float(qr["win"][qfav]) if int(qo[0]) == qfav else 0.0
+				for q3 in 3:
+					qp += float(qr["place"][int(qo[q3])])
+			print("CAS62 RTP: win on every racer ", qa / 7200.0, "  on the tip ", qt / 1200.0, "  on the favourite ", qf / 1200.0, "  place on every racer ", qp / 7200.0)
+		if not race_ok:
+			print("CAS62 races: shape ", rshape, " back on every racer ", rsum / 720.0, " on the tip ", rtip / 120.0, " same ", r5a["order"] == r5b["order"])
+		g._ctr_floor_go(3, true)
+		for fq0 in 8:
+			await get_tree().process_frame
+		GameState.coins = 1000
+		GameState.race_bets = []
+		GameState.race_shift = RaD.PERIOD * 7.0 + 10.0 - GameState.play_time
+		g.zone = _zone_of(g.map, "ctr_bets")
+		g.use()
+		for fq1 in 5:
+			await get_tree().process_frame
+		var bets_ok: bool = g.minigame != null and g.minigame.has_method("is_race_bets")
+		if bets_ok:
+			var e_r1 := String(Commands.execute({"type": "race_bet", "seat": 0, "kind": "win", "a": 0, "stake": 25}))
+			var e_r2 := String(Commands.execute({"type": "race_bet", "seat": 0, "kind": "place", "a": 1, "stake": 10}))
+			var e_r3 := String(Commands.execute({"type": "race_bet", "seat": 0, "kind": "exacta", "a": 0, "b": 0, "stake": 5}))
+			var e_r4 := String(Commands.execute({"type": "race_bet", "seat": 0, "kind": "exacta", "a": 0, "b": 1, "stake": 5}))
+			var e_r5 := String(Commands.execute({"type": "race_bet", "seat": 0, "kind": "win", "a": 2, "stake": 500}))
+			var e_r6 := String(Commands.execute({"type": "race_bet", "seat": 0, "kind": "show", "a": 2, "stake": 5}))
+			var e_r7 := String(Commands.execute({"type": "race_collect", "seat": 0}))
+			g.minigame.set_kind("exacta")
+			g.minigame.pick(3)
+			g.minigame.pick(4)
+			bets_ok = e_r1 == "" and e_r2 == "" and e_r3 != "" and e_r4 == "" and e_r5 != "" and e_r6 != "" and e_r7 != "" and GameState.coins == 955 and GameState.race_bets.size() == 4 \
+				and GameState.race_bets.all(func(b): return int(b["n"]) == 7) and (GameState.to_dict()["race_bets"] as Array).size() == 4 and int(g.minigame.first) == -1
+			if shots:
+				for fq2 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62b_schalter.png")
+			g.minigame.finished.emit(false)
+			for fq3 in 5:
+				await get_tree().process_frame
+			# a seat in the cinema: the card before the race, on to its start, the race, on to its end
+			g.zone = _zone_of(g.map, "ctr_watch")
+			g.use()
+			for fq4 in 5:
+				await get_tree().process_frame
+			bets_ok = bets_ok and g.minigame != null and g.minigame.has_method("is_race_watch") and String(RaD.phase(RaD.clock())["state"]) == "bets"
+			if shots:
+				for fq5 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62b_kino_vorher.png")
+			var e_w1 := String(Commands.execute({"type": "race_wait"}))
+			bets_ok = bets_ok and e_w1 == "" and String(RaD.phase(RaD.clock())["state"]) == "run" and int(RaD.phase(RaD.clock())["n"]) == 7
+			if shots:
+				for sk in [[6.0, "start"], [18.0, "rennen"], [16.0, "spaeter"]]:
+					GameState.race_shift += float(sk[0])
+					for fq6 in 20:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62b_kino_%s.png" % String(sk[1]))
+			var e_w2 := String(Commands.execute({"type": "race_wait"}))
+			bets_ok = bets_ok and e_w2 == "" and String(RaD.phase(RaD.clock())["state"]) == "result" and String(Commands.execute({"type": "race_wait"})) != ""
+			if shots:
+				for fq7 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62b_kino_ergebnis.png")
+			if g.minigame != null:
+				g.minigame.finished.emit(false)
+			for fq8 in 5:
+				await get_tree().process_frame
+			# back at the counter: what is decided is paid
+			var dd: Dictionary = RaD.due(GameState.race_bets, RaD.clock())
+			g.zone = _zone_of(g.map, "ctr_bets")
+			g.use()
+			for fq9 in 5:
+				await get_tree().process_frame
+			bets_ok = bets_ok and int(dd["count"]) == 4 and int(dd["staked"]) == 45 and GameState.coins == 955 + int(dd["back"]) and GameState.race_bets.is_empty() and g.minigame != null
+			if g.minigame != null:
+				g.minigame.finished.emit(false)
+			for fq10 in 5:
+				await get_tree().process_frame
+			if shots:                                            # the room with the race on its screen
+				GameState.race_shift += RaD.PERIOD - 40.0
+				g.story_cam = Vector2(Gen.CAS_W[3] * 0.5 - 4.0, Gen.C_F0 + 2.0) * GroundMap.TILE
+				for fq11 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62b_raum.png")
+				g.story_cam = Vector2.INF
+			bets_ok = bets_ok and g.minigame == null
+		if not bets_ok:
+			print("CAS62 bets: minigame ", g.minigame, " coins ", GameState.coins, " tickets ", GameState.race_bets)
+		GameState.race_shift = 0.0
+		GameState.race_bets = []
+		coin_ok = coin_ok and num_ok and slot_ok and rou_ok and card_ok and bj_ok and pk_ok and hi_ok and race_ok and bets_ok
 		GameState.coins = 60
 		g._ctr_floor_go(0, true)
 		for fr7 in 8:
@@ -18343,7 +18475,7 @@ func _test_casino62(_view: SystemView) -> void:
 			print("CAS62 debug: ", de, " level ", g.level, " floor ", g.ctr_floor, " vip ", GameState.casino_vip, " coins ", GameState.coins, " title ", g._title.text)
 		GameState.credits = cr0
 	check(maps_ok and land_ok and in_ok and coin_ok and lift_ok and ride_ok and vip_ok and out_ok,
-		"62, part 1: the Grand Centauria: six floors (the lobby with its cashier and chandelier, the machines, the tables with Drift and with blackjack and poker played by seat through the command bus, the track with seats and shut betting counters, the Aurum Bar with its piano, the VIP lounge); the stair on the plaza leads in, the doors back out; Coins are bought and changed back for less and saved; two capsules of glass on every floor, the ride outside the tower from the lobby to the lounge (in through the doors, nothing else to be done on the way, out up there), the lounge only for members; the lounge: three high tables, five platforms with dancers, a DJ and a full dance floor, a terrace under the sky with a pool nobody walks into, the hall dark, its guests in the looks of the rich")
+		"62, part 1: the Grand Centauria: six floors (the lobby with its cashier and chandelier, the machines, the tables with Drift and with blackjack and poker played by seat through the command bus, the track with seats to watch the races from and counters that take bets on them (win, place, exacta; paid at the counter), the Aurum Bar with its piano, the VIP lounge); the stair on the plaza leads in, the doors back out; Coins are bought and changed back for less and saved; two capsules of glass on every floor, the ride outside the tower from the lobby to the lounge (in through the doors, nothing else to be done on the way, out up there), the lounge only for members; the lounge: three high tables, five platforms with dancers, a DJ and a full dance floor, a terrace under the sky with a pool nobody walks into, the hall dark, its guests in the looks of the rich")
 	# the game as it was
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)

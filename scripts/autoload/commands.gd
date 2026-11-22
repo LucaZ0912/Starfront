@@ -814,6 +814,59 @@ func _c_poker_leave(_c: Dictionary) -> String:
 	return "No poker table." if tb == null else String(tb.stand_up())
 
 
+## Package 62b (Luz): the bets on The Track. {"type":"race_bet", "seat", "kind": "win" | "place" | "exacta", "a",
+## "b", "stake"}: a ticket on the race that takes bets now (racer `a` of its card, 0 … 5; an exacta: `a` first, `b`
+## second); the stake goes, the odds of the moment stand on it. {"type":"race_collect", "seat"}: the counter pays
+## the tickets that are decided. {"type":"race_wait"}: in the cinema on to the race's start, or to its end.
+func _c_race_bet(c: Dictionary) -> String:
+	var RD = load("res://data/races.gd")
+	var g = _ground()
+	if g == null or String(g.level) != "zcasino":
+		return "There is no betting counter here."
+	var seat := int(c.get("seat", 0))
+	var kind := String(c.get("kind", ""))
+	var stake := int(c.get("stake", 0))
+	var n := int(RD.next_open(RD.clock())["n"])
+	var r: Dictionary = RD.race(n)
+	var o: float = RD.odds(r, kind, int(c.get("a", -1)), int(c.get("b", -1))) if RD.KINDS.has(kind) else 0.0
+	if o <= 0.0:
+		return "No such bet."
+	if stake <= 0:
+		return "How many Coins?"
+	var on := 0
+	for b in GameState.race_bets:
+		if int(b["n"]) == n and int(b.get("seat", 0)) == seat:
+			on += int(b["stake"])
+	if on + stake > RD.LIMIT:
+		return "The limit is %d Coins a race." % RD.LIMIT
+	if GameState.coins < stake:
+		return "Not enough Coins. The cashier is in the lobby."
+	GameState.coins -= stake
+	GameState.race_bets.append({"n": n, "kind": kind, "a": int(c.get("a", -1)), "b": int(c.get("b", -1)), "stake": stake, "odds": o, "seat": seat})
+	return ""
+
+
+func _c_race_collect(c: Dictionary) -> String:
+	var RD = load("res://data/races.gd")
+	var d: Dictionary = RD.due(GameState.race_bets, RD.clock(), int(c.get("seat", 0)))
+	if int(d["count"]) == 0:
+		return "No ticket to pay."
+	GameState.race_bets = d["keep"]
+	GameState.coins += int(d["back"])
+	GameState.casino_book(int(d["staked"]), int(d["back"]))
+	GameState.log_msg("The Track: %d of %d tickets won, %d Coins paid." % [int(d["won"]), int(d["count"]), int(d["back"])], GameState.COL_GOOD if int(d["back"]) > 0 else GameState.COL_INFO)
+	return ""
+
+
+func _c_race_wait(_c: Dictionary) -> String:
+	var RD = load("res://data/races.gd")
+	var ph: Dictionary = RD.phase(RD.clock())
+	if String(ph["state"]) == "result":
+		return "The race is over."
+	GameState.race_shift += float(ph["left"]) + 0.05
+	return ""
+
+
 func _need_coins(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":

@@ -3421,12 +3421,14 @@ static func build_casino(_station: Dictionary, storey: int, night: bool = false)
 			DeckGen._seat(m, "chair", 18, C_F0 + 9, 3, Color(0.4, 0.2, 0.5), rng, 0.5)
 			DeckGen._seat(m, "chair", 20, C_F0 + 9, 2, Color(0.4, 0.2, 0.5), rng, 0.5)
 			DeckGen._drift_zone(m, Rect2(Vector2(18, C_F0 + 9.8) * TILE, Vector2(3, 1.6) * TILE))
-		3:      # the track: a small cinema where the races are shown, rows of seats, the betting counters (shut for now)
+		3:      # the track: a small cinema where the races are shown, rows of seats, the betting counters (package 62b: open)
 			for ry2 in [C_F0 + 3, C_F0 + 5, C_F0 + 7]:
 				_cprop(m, props, "seats", mid - 11, ry2, 14, 1, {})
+				_zone(m, Rect2(mid - 11, ry2 + 1.0, 14.0, 0.9), "ctr_watch", "Take a seat: watch the race", CYAN, {"id": "cas_watch_%d" % ry2})
 			for cx in [2, lx - 8]:
-				_cprop(m, props, "desk", cx, C_F0, 7, 1, {"text": "BETS", "col": CYAN, "shut": true})
-				_zone(m, Rect2(cx, C_F0 + 1.0, 7.0, 1.3), "ctr_closed", "Betting counter", CYAN, {"closed": "No bets yet. The first races are announced soon.", "id": "cas_bets_%d" % cx})
+				_cprop(m, props, "desk", cx, C_F0, 7, 1, {"text": "BETS", "col": CYAN})
+				m.people.append({"pos": Vector2(cx + 3.5, C_F0 - 0.1) * TILE, "dir": 0, "role": "keeper"})
+				_zone(m, Rect2(cx, C_F0 + 1.0, 7.0, 1.3), "ctr_bets", "Betting counter: place a bet", CYAN, {"id": "cas_bets_%d" % cx})
 			for ob in [[4, C_F0 + 5, 0], [4, C_F0 + 8, 1], [lx - 6, C_F0 + 5, 2], [lx - 6, C_F0 + 8, 3]]:
 				_cprop(m, props, "odds", int(ob[0]), int(ob[1]), 2, 1, {"seed": int(ob[2])})
 				m.lights.append({"pos": Vector2(ob[0] + 1.0, ob[1] + 1.2) * TILE, "r": 36.0, "col": CYAN, "a": 0.3})
@@ -3828,25 +3830,8 @@ class CasinoFx extends Node2D:
 			3:      # the track's screen: a race running on it, the odds beside it
 				var sr := Rect2(cxm - 130.0, 14.0, 260.0, 100.0)
 				draw_rect(sr.grow(3.0), Color(0.02, 0.02, 0.04))
-				draw_rect(sr, Color(0.02, 0.04, 0.1))
-				for gy in 6:                                            # the course: lines running towards you
-					var yy := sr.position.y + 50.0 + gy * gy * 1.4 + fposmod(_t * 14.0, 6.0)
-					if yy < sr.end.y:
-						draw_rect(Rect2(sr.position.x, yy, sr.size.x, 1.0), Color(0.3, 0.9, 1.0, 0.25))
-				for gx in range(-6, 7):
-					draw_line(Vector2(cxm + gx * 6.0, sr.position.y + 50.0), Vector2(cxm + gx * 42.0, sr.end.y), Color(0.3, 0.9, 1.0, 0.18), 1.0)
-				draw_rect(Rect2(sr.position.x, sr.position.y, sr.size.x, 50.0), Color(0.05, 0.02, 0.12))
-				for st in 30:
-					draw_rect(Rect2(sr.position.x + _h(st, 21) * sr.size.x, sr.position.y + _h(st, 22) * 46.0, 1.0, 1.0), Color(1, 1, 1, 0.6))
-				for rc in 5:                                            # the racers, their trails
-					var rx := cxm - 100.0 + fposmod(_h(rc, 23) * 200.0 + _t * (9.0 + rc * 3.0), 200.0)
-					var ry := sr.position.y + 58.0 + rc * 8.0 + sin(_t * 1.7 + rc) * 3.0
-					var rcol: Color = NEON[rc % NEON.size()]
-					draw_rect(Rect2(rx - 16.0, ry, 16.0, 1.5), Color(rcol, 0.4))
-					draw_colored_polygon(PackedVector2Array([Vector2(rx + 7.0, ry + 0.5), Vector2(rx - 2.0, ry - 3.0), Vector2(rx - 2.0, ry + 4.0)]), rcol)
-				draw_string(font, Vector2(sr.position.x + 6.0, sr.position.y + 12.0), "RIM RUN  ·  LAP %d / 7" % (1 + int(_t / 9.0) % 7), HORIZONTAL_ALIGNMENT_LEFT, 180.0, 8, Color(0.75, 0.95, 1.0))
-				draw_string(font, Vector2(sr.end.x - 86.0, sr.position.y + 12.0), "FIRST BETS SOON", HORIZONTAL_ALIGNMENT_RIGHT, 80.0, 6, Color(1.0, 0.85, 0.3, 0.6 + 0.4 * absf(sin(_t * 2.0))))
-				draw_rect(sr, Color(0.3, 0.9, 1.0, 0.8), false, 1.5)
+				var rart = load("res://scripts/ground/race_art.gd")      # (package 62b) the broadcast: the race as it runs
+				rart.draw(self, sr, load("res://data/races.gd").clock(), false)
 			4, 5:   # the back bar under the glass: bottles in a row, lit
 				var bx0 := 56.0 if storey == 4 else 40.0
 				var bbw := 208.0 if storey == 4 else 176.0
@@ -4239,11 +4224,13 @@ class CasinoFx extends Node2D:
 				draw_rect(Rect2(0.0, -56.0, w, 44.0), Color(0.02, 0.05, 0.1, 0.92))
 				draw_rect(Rect2(0.0, -56.0, w, 44.0), Color(0.3, 0.9, 1.0, 0.85), false, 1.0)
 				draw_string(font, Vector2(0.0, -48.5), "ODDS", HORIZONTAL_ALIGNMENT_CENTER, w, 6, Color(0.75, 0.95, 1.0))
-				for od in 5:
-					var oc: Color = NEON[(od + sd) % NEON.size()]
-					var oy := -44.0 + od * 6.2
+				var ord = load("res://data/races.gd")               # (package 62b) the race that takes bets: every racer's chance as a bar
+				var orace: Dictionary = ord.race(int(ord.next_open(ord.clock())["n"]))
+				for od in 6:
+					var oc: Color = ord.pilot(orace, od)["col"]
+					var oy := -44.5 + od * 5.3
 					draw_colored_polygon(PackedVector2Array([Vector2(3.0, oy), Vector2(8.0, oy + 2.0), Vector2(3.0, oy + 4.0)]), oc)
-					var ow := 4.0 + _h(od + sd * 7 + int(_t / 4.0), 61) * 12.0
+					var ow := 3.0 + minf(1.0, float(orace["p"][od]) * 2.4) * 13.0
 					draw_rect(Rect2(11.0, oy + 1.0, ow, 2.0), Color(oc, 0.8))
 					draw_rect(Rect2(w - 6.0, oy + 0.5, 3.0, 3.0), Color(1, 1, 1, 0.35 + 0.5 * _h(od + int(_t * 2.0), 62 + sd)))
 				draw_rect(Rect2(0.0, -56.0 + fposmod(_t * 12.0, 44.0), w, 1.0), Color(0.6, 0.95, 1.0, 0.25))

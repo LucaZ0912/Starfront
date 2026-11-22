@@ -3,6 +3,26 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.4 – 2026-11-22
+
+**Package 62b (Luz): the bets on The Track.**
+- **The races:** three dangerous courses in the Fern system take turns: The Kiln Run (the lava canyons of Kiln),
+  The Ring Dash (the rings of Lapis) and The Belt Slalom (the asteroid belt). Six of a stable of twelve racing
+  pilots fly each race, every one with a ship, a skill and a taste for risk: who risks more is faster and wrecks
+  more often. A wreck is a wreck, the pilot is picked up.
+- **By the clock:** a race every five minutes, whether you are there or not; bets are taken until it starts. The
+  screen on the wall of The Track shows the race as it runs, before it the card of the next one, after it the result.
+- **The counters are open:** the card of the next race with every pilot's last races and the odds. Three kinds of
+  bet: win, place (among the first three) and exacta (the first and the second in their order). Chips of 1, 5, 25
+  and 100, at most 500 Coins a race; a ticket is final. The odds hold the house's share.
+- **A seat in the cinema:** sit down in a row and the race is large before you, with the standing, the speaker's
+  word and your tickets. You can wait for the start and skip to the end.
+- **Paid at the counter:** tickets that are decided are paid when you next come to a counter, and go into the
+  house's books on you.
+- **A kind hand:** with the perk Lucky Hand the clerk tells you who is in good form today. The race is never touched.
+- The odds boards in the room show the chances of the race that takes bets. Built for co-op: every ticket belongs
+  to a seat, every bet goes through the command bus.
+
 ## alpha 0.8.62.3 – 2026-11-22
 
 **Package 62, part 3 (Luz): blackjack and poker.**
