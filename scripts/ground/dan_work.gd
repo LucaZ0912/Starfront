@@ -470,13 +470,15 @@ func ground_mode(st: Dictionary) -> Dictionary:
 		return _p59_mode()
 	if sid == String(flags().get("w58_dan_st", "")) and phase == "farewell":
 		return _farewell_mode()
-	if phase == "free" and bool(st.get("city", false)) and String(st.get("name", "")) == "Centauria" and bool(flags().get("fern_called", false)):
-		# package 61 (Luz): Luz on the plaza of Centauria's Commercial District
+	if phase == "free" and bool(st.get("city", false)) and String(st.get("name", "")) == "Centauria":
+		# package 61b (Luz): Luz is always in her bar, the Static Feedback, behind the counter; Ratte and Kraut by the
+		# booth in its darkest corner. (Rook's call puts the mark over Luz.)
 		var CG = load("res://scripts/ground/centauria_gen.gd")
-		var luz := {"who": "luz", "pos": Vector2(CG.P_CX + CG.P_CW * 0.5 + 4.0, CG.P_TOP + 18.0), "dir": 0, "talk": true}       # (61a: on the central plaza, by the way up from the station)
-		if not bool(flags().get("fern_luz", false)):
+		var luz := {"who": "luz", "pos": CG.BAR_SPOTS["luz"], "dir": 0, "talk": true}
+		if bool(flags().get("fern_called", false)) and not bool(flags().get("fern_luz", false)):
 			luz["marker"] = "!"
-		return {"levels": {"zplaza": {"people": [luz]}}}
+		return {"levels": {"zbar": {"people": [luz, {"who": "ratte", "pos": CG.BAR_SPOTS["ratte"], "dir": 0, "talk": true},
+			{"who": "kraut", "pos": CG.BAR_SPOTS["kraut"], "dir": 2, "talk": true}]}}}
 	if phase == "contact" and sid == String(_waystation().get("id", "-")):
 		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
@@ -1309,6 +1311,12 @@ func _on_talk(who: String) -> void:
 		"luz":
 			if phase == "free":
 				_luz_talk()
+		"ratte":
+			if phase == "free":
+				GameState.story.show.emit("dialogue", {"id": "ratte_talk", "mission": FERN})
+		"kraut":
+			if phase == "free":
+				GameState.story.show.emit("dialogue", {"id": "kraut_talk", "mission": FERN})
 	if who == "dan" and phase == "bar59" and not _meet_on:
 		_p59_meet()
 	elif who == "dan" and phase == "imre":
@@ -3508,8 +3516,8 @@ func _fern_call() -> void:
 
 func _luz_talk() -> void:
 	var st = GameState.story
-	if bool(flags().get("fern_luz", false)):
-		st.show.emit("dialogue", {"id": "luz_again", "mission": FERN})
+	if bool(flags().get("fern_luz", false)) or not bool(flags().get("fern_called", false)):
+		st.show.emit("dialogue", {"id": "luz_again", "mission": FERN})        # (met already, or you found the bar on your own)
 		return
 	st.show.emit("dialogue", {"id": "luz_meet", "mission": FERN})
 	await get_tree().process_frame

@@ -17123,12 +17123,15 @@ func _test_fern61(_view: SystemView) -> void:
 	var w = main.get_meta("dan_work")
 	w._set_phase("free")
 	var Acq = load("res://data/acquaintances.gd")
-	var before_ok: bool = (w.ground_mode({"city": true, "name": "Centauria", "id": "x"}) as Dictionary).is_empty() and not Acq.met("luz")
+	var mode0: Dictionary = w.ground_mode({"city": true, "name": "Centauria", "id": "x"})
+	var ppl0: Array = ((mode0.get("levels", {}) as Dictionary).get("zbar", {}) as Dictionary).get("people", [])
+	var before_ok: bool = ppl0.map(func(p0): return String(p0["who"])) == ["luz", "ratte", "kraut"] and String(ppl0[0].get("marker", "")) == "" and not Acq.met("luz") \
+		and not (mode0["levels"] as Dictionary).has("zplaza")              # (61b: always in the bar, no longer on the plaza)
 	w._fern_call()
 	var mode: Dictionary = w.ground_mode({"city": true, "name": "Centauria", "id": "x"})
-	var ppl: Array = ((mode.get("levels", {}) as Dictionary).get("zplaza", {}) as Dictionary).get("people", [])
+	var ppl: Array = ((mode.get("levels", {}) as Dictionary).get("zbar", {}) as Dictionary).get("people", [])
 	var call_ok: bool = before_ok and bool(st.flags.get("fern_called", false)) and st.running("fern") and String(st.step_data("fern").get("id", "")) == "go" \
-		and ppl.size() == 1 and String(ppl[0]["who"]) == "luz" and String(ppl[0].get("marker", "")) == "!" \
+		and ppl.size() == 3 and String(ppl[0]["who"]) == "luz" and String(ppl[0].get("marker", "")) == "!" \
 		and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty()) and w.FERN_LEVEL == 5
 	st.set_flag("fern_arrived", true)
 	st.set_flag("fern_landed", true)
@@ -17335,7 +17338,7 @@ func _test_ctr61a(_view: SystemView) -> void:
 		var on_plaza: bool = String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0) \
 			and pz.any(func(z): return String(z.get("id", "")) == "ctr_casino" and String(z.get("closed", "")) != "") \
 			and pz.any(func(z): return String(z.get("kind", "")) == "museum_in") and g.map.has_meta("from_museum") and g.map.free_at(g.map.get_meta("from_museum"), 4.0) \
-			and pz.any(func(z): return String(z.get("id", "")) == "ctr_alleys" and String(z.get("closed", "")) != "") \
+			and pz.any(func(z): return String(z.get("id", "")) == "ctr_alleys" and String(z.get("to", "")) == "zalley") \
 			and g.map.free_at(g.map.get_meta("from_hall"), 4.0) and g.map.window_rect.size.y == float(Gen.P_TOP) \
 			and pz.any(func(z): return String(z.get("id", "")) == "ctr_hall") and pz.any(func(z): return String(z.get("kind", "")) == "ctr_down") \
 			and (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) == "stall").size() >= 12
@@ -17467,11 +17470,114 @@ func _test_ctr61a(_view: SystemView) -> void:
 			g.use()
 			for fr in 10:
 				await get_tree().process_frame
-			in_hall = String(g.level) == "street" and String(g._title.text).ends_with("Commercial Hall")
-			g.go_level("zplaza", "lift")
+			# (Luz) the Hall from inside: five fronts or more, a door for every service, the lifts, the doors back out;
+			# its lift knows only its own floors
+			var hz: Array = g.map.zones
+			in_hall = String(g.level) == "street" and String(g._title.text).ends_with("Commercial Hall") and g.map.free_at(g.pilot.pos, 4.0) \
+				and (g.map.get_meta("hall_fronts", []) as Array).size() >= 5 and not g.map.lifts.is_empty() \
+				and hz.any(func(z): return String(z.get("kind", "")) == "service") and hz.any(func(z): return String(z.get("id", "")) == "hall_up") \
+				and g._world.get_children().any(func(nd): return nd.has_method("_escalators")) and g._sorted.get_children().filter(func(nd): return nd.has_method("_pav")).size() == 3
+			g._open_lift_menu(_zone_of(g.map, "lift"))
+			var hkeys: Array = g._lift_menu.get_meta("levels", []) if g._lift_menu != null else []
+			if shots:
+				print("CTR61A hall lift: ", hkeys)
+			in_hall = in_hall and hkeys.has("street") and not hkeys.has("hangar") and not hkeys.has("zplaza") and not hkeys.has("alley") and not hkeys.has("tower")
+			g._close_lift_menu()
+			if not in_hall:
+				print("CTR61A hall: fronts ", (g.map.get_meta("hall_fronts", []) as Array).size(), " keys ", hkeys, " free ", g.map.free_at(g.pilot.pos, 4.0))
+			if shots and in_hall:
+				for hs in [["hall", Vector2(Gen.HW * 0.5, Gen.H_F0 + 3.0), 0.0], ["hall_ganz", Vector2(Gen.HW * 0.5, Gen.H_F0 + 1.0), 0.6], ["hall_west", Vector2(13.0, Gen.H_F0 + 3.0), 0.0],
+						["hall_ost", Vector2(Gen.HW - 14.0, Gen.H_F0 + 3.0), 0.0], ["hall_sued", Vector2(Gen.HW * 0.5 + 6.0, Gen.H_F1 - 5.0), 0.0]]:
+					g.story_cam = (hs[1] as Vector2) * GroundMap.TILE
+					g.story_zoom = float(hs[2])
+					for fh in 40:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_%s.png" % String(hs[0]))
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			for zo in g.map.zones:
+				if String(zo.get("id", "")) == "hall_out":
+					g.zone = zo
+			g.use()
 			for fs in 10:
 				await get_tree().process_frame
 			in_hall = in_hall and String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0)
+			# (Luz) package 61b: through the gate into the Back Alleys, down into the Static Feedback, up again and back
+			var keep61: Dictionary = GameState.story.to_dict()             # (the story as it was: the controller may start things)
+			var dwk = main.get_meta("dan_work") if main.has_meta("dan_work") else null
+			if dwk == null or not is_instance_valid(dwk):
+				main._start_dan_work("load")
+				dwk = main.get_meta("dan_work")
+			var old_phase := String(dwk.phase)
+			dwk._set_phase("free")
+			g.story_mode = dwk.ground_mode(g.station)             # (as when you land there in the open game)
+			for qza in g.map.zones:
+				if String(qza.get("id", "")) == "ctr_alleys":
+					g.zone = qza
+			g.use()
+			for qfa in 10:
+				await get_tree().process_frame
+			var alley_ok: bool = String(g.level) == "zalley" and g.map.free_at(g.pilot.pos, 4.0) and (g.map.get_meta("alley_fronts", []) as Array).size() >= 10 \
+				and g._world.get_children().filter(func(nd): return nd.has_method("_glyphs")).size() == 3 and String(g._title.text).ends_with("Back Alleys") \
+				and (g.map.get_meta("alley_fronts") as Array).any(func(f): return String(f["kind"]) == "bar") \
+				and (g.map.get_meta("alley_fronts") as Array).any(func(f): return String(f["kind"]) == "gate") \
+				and (g.people as Array).filter(func(pw): return float(pw.stream) != 0.0).size() >= 60 \
+				and (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) == "stall").size() <= 3
+			if shots and alley_ok:
+				for hs2 in [["gasse", Vector2(Gen.A_GATE + 3.0, Gen.A_F0 + 3.0), 0.0], ["gasse_ganz", Vector2(Gen.AW * 0.5, Gen.A_F0 + 2.0), 0.62], ["gasse_bar", Vector2(Gen.A_BAR + 2.0, Gen.A_F0 + 3.0), 0.0],
+						["gasse_west", Vector2(17.0, Gen.A_F0 + 3.0), 0.0]]:
+					g.story_cam = (hs2[1] as Vector2) * GroundMap.TILE
+					g.story_zoom = float(hs2[2])
+					for fh2 in 40:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61b_%s.png" % String(hs2[0]))
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			for qzb in g.map.zones:
+				if String(qzb.get("id", "")) == "bar_in":
+					g.zone = qzb
+			g.use()
+			for qfb in 10:
+				await get_tree().process_frame
+			var qbz: Array = g.map.zones
+			var bar_ok: bool = String(g.level) == "zbar" and g.map.free_at(g.pilot.pos, 4.0) and g.map.has_meta("bar_stage") and String(g._title.text).ends_with("Static Feedback") \
+				and g._world.get_children().filter(func(nd): return nd.has_method("_neon")).size() == 3 and int(g.map.get_meta("tourists", -1)) == 0 and g.map.w <= 32 \
+				and (g.map.get_meta("bar_band", []) as Array).size() in [0, 4] and (g.map.get_meta("bar_crew", []) as Array).size() >= 4 \
+				and ["pool", "darts", "arcade", "drift", "jukebox"].all(func(k): return qbz.any(func(z): return String(z.get("kind", "")) == k)) \
+				and qbz.any(func(z): return String(z.get("id", "")) == "bar_back" and String(z.get("closed", "")) != "") \
+				and not qbz.any(func(z): return String(z.get("kind", "")) == "service" or String(z.get("kind", "")) == "crew")
+			if dwk != null:
+				bar_ok = bar_ok and ["luz", "ratte", "kraut"].all(func(n): return g.story_people.has(n) and qbz.any(func(z): return String(z.get("kind", "")) == "story" and String(z.get("id", "")) == n))
+			if not (alley_ok and bar_ok):
+				print("CTR61B: alley ", alley_ok, " bar ", bar_ok, " level ", g.level, " people ", g.story_people.keys())
+			if shots and bar_ok:
+				for hs3 in [["bar", Vector2(Gen.BW * 0.5, Gen.B_F0 + 5.0), 0.0], ["bar_ganz", Vector2(Gen.BW * 0.5, Gen.B_F0 + 5.0), 0.7], ["bar_buehne", Vector2(6.0, Gen.B_F0 + 3.0), 1.6],
+						["bar_ecke", Vector2(Gen.BW - 8.0, Gen.B_F0 + 5.0), 1.3]]:
+					g.story_cam = (hs3[1] as Vector2) * GroundMap.TILE
+					g.story_zoom = float(hs3[2])
+					for fh3 in 40:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61b_%s.png" % String(hs3[0]))
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			for qzc in g.map.zones:
+				if String(qzc.get("id", "")) == "bar_out":
+					g.zone = qzc
+			g.use()
+			for qfc in 10:
+				await get_tree().process_frame
+			var up_ok: bool = String(g.level) == "zalley" and g.map.free_at(g.pilot.pos, 4.0)
+			for qzd2 in g.map.zones:
+				if String(qzd2.get("id", "")) == "alley_gate":
+					g.zone = qzd2
+			g.use()
+			for qfd in 10:
+				await get_tree().process_frame
+			if old_phase != "":
+				dwk._set_phase(old_phase)
+			g.story_mode = {}
+			GameState.story.from_dict(keep61)
+			in_hall = in_hall and alley_ok and bar_ok and up_ok and String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0)
 			for zd in g.map.zones:
 				if String(zd.get("kind", "")) == "ctr_down":
 					g.zone = zd
@@ -17514,7 +17620,34 @@ func _test_ctr61a(_view: SystemView) -> void:
 			get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_ride_b_night.png")
 		g.story_cam = Vector2.INF
 		g.story_zoom = 0.0
-	check(time_ok and land_ok and st_ok and ride_ok and dist_ok,
+	# (Luz) the approach: the towers and the Colosseum stand out of the city, by day and by night
+	var fly_ok := false
+	var pbody := {}
+	for mo2 in Universe.get_layout(sid)["moons"]:
+		if String(mo2["name"]) == "Pelagia":
+			pbody = mo2
+	var csites: Array = (Universe.landing_sites(sid, pbody) as Array).filter(func(s9): return String(s9.get("kind", "")) == "city")
+	if not csites.is_empty():
+		var afl := FlightScene.new()
+		main.add_child(afl)
+		afl.set_process(false)
+		afl.open(pbody, csites[0])
+		var marks: Dictionary = afl._ctr_marks
+		fly_ok = marks.size() == 2 and (marks["towers"] as Vector2).distance_to(marks["arena"]) >= 11.0
+		for dn in [1.0, 0.0]:
+			afl.city_day = float(dn)
+			afl._ground.modulate = Color.WHITE if float(dn) > 0.5 else Color(0.3, 0.34, 0.48)
+			afl._t = FlightScene.DURATION * 0.86
+			afl._update(0.1)
+			if OS.get_environment("CTR_SHOTS") != "":
+				for ff in 5:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/ctr61a_anflug_%s.png" % ("tag" if float(dn) > 0.5 else "nacht"))
+		afl.queue_free()
+		await get_tree().process_frame
+	if not fly_ok:
+		print("CTR61A approach: sites ", csites.size())
+	check(time_ok and land_ok and st_ok and ride_ok and dist_ok and fly_ok,
 		"61a: Centauria's trains – a timetable (15 s halts, rides of 21 to 25 s, Line B half a round later), the boards' text; the hangar's lift goes only to Centauria Central (two tracks, two boards, the stairs up); no train: you stay, a train standing: aboard; the doors shut on the way and open at the Commercial District; the district stations with one track each, the Colosseum's way up shut  [%s %s %s %s %s]" % [time_ok, land_ok, st_ok, ride_ok, dist_ok])
 	# the game as it was
 	if main.ground != null and is_instance_valid(main.ground):

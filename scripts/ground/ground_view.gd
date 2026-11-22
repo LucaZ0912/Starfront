@@ -184,7 +184,7 @@ var _drone_held: Array = [-1.0, -1.0]   # 0.7.52.19: how long C / Shift+C is hel
 var _warned := {}
 var weather: WeatherFx = null             # 54e (Luz): the weather over an outdoor map
 ## 54e: the levels out in the open – where the weather reaches
-const WEATHER_LEVELS := ["landing", "settlement", "street", "alley", "plaza", "minehead", "mplaza", "kplaza", "cplaza", "cstation", "pplaza", "zplaza"]
+const WEATHER_LEVELS := ["landing", "settlement", "street", "alley", "plaza", "minehead", "mplaza", "kplaza", "cplaza", "cstation", "pplaza", "zplaza", "zalley"]
 
 
 func _ready() -> void:
@@ -411,6 +411,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = CentauriaGen.build_station(station, ctr_stop, ctr_line if arrive == "rail" else "")       # package 61a (Luz): Centauria's stations
 	elif level == "ztrain":
 		map = CentauriaGen.build_car(station, ctr_line)            # … and aboard a train
+	elif level == "zalley":
+		map = CentauriaGen.build_alleys(station)                   # package 61b (Luz): the Back Alleys behind the gate
+	elif level == "zbar":
+		map = CentauriaGen.build_punkbar(station, city_day() < 0.5)       # … and the Static Feedback (the band plays at night)
 	elif level == "zplaza":
 		map = CentauriaGen.build_plaza(station)                    # … and the plaza of the Commercial District
 	elif level == "cplaza":
@@ -486,6 +490,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		var af := GameState.active()
 		_hangar_uid = af.uid if af != null else 0
 		map = DeckGen.build_hangar(station, sz.x, sz.y, _avail, _hangar_uid)
+	elif level == "street" and is_centauria():
+		map = CentauriaGen.build_hall(station, _avail)              # package 61a (Luz): the Commercial Hall from inside
 	elif level == "street":
 		map = DeckGen.build(station, _avail, [], "street")
 	elif level == "clinic":
@@ -640,6 +646,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_title.text = "Centauria – Commercial Hall"           # package 61a (Luz): the city's shops, in a hall on the plaza
 	elif level == "zplaza":
 		_title.text = "Centauria – Commercial District"
+	elif level == "zalley":
+		_title.text = "Centauria – Back Alleys"
+	elif level == "zbar":
+		_title.text = "Centauria – Static Feedback"
 	if level == "zstation":
 		# package 61a: the tracks, the trains running by their timetable, the boards over them – under the people
 		var rfx = CentauriaGen.RailFx.new()
@@ -663,6 +673,106 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			rf.scale = Vector2.ONE * GroundMap.SCALE
 			rf.z_index = 6                                 # (over the people and the lamps' pools of light: far above them)
 			_world.add_child(rf)
+	if level == "street" and map.has_meta("hall_fronts"):
+		# package 61a (Luz): the Commercial Hall – the sky through its vault, its north wall drawn (fronts, galleries),
+		# under the people; the pavilions and the hologram over the fountain among them
+		var hsk = CentauriaGen.HallSky.new()
+		hsk.night = 1.0 - city_day()
+		hsk.size = Vector2(map.w * GroundMap.TILE, 56.0)
+		hsk.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(hsk)
+		_world.move_child(hsk, _sorted.get_index())
+		var hwf = CentauriaGen.HallFx.new()
+		hwf.fronts = map.get_meta("hall_fronts")
+		hwf.night = 1.0 - city_day()
+		hwf.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(hwf)
+		_world.move_child(hwf, _sorted.get_index())
+		for pv in map.get_meta("hall_pavs", []):
+			var hpv = CentauriaGen.HallFx.new()
+			hpv.part = "pav"
+			hpv.col = pv["col"]
+			hpv.scale = Vector2.ONE * GroundMap.SCALE
+			hpv.position = (pv["at"] as Vector2) * GroundMap.SCALE
+			_sorted.add_child(hpv)
+		if map.has_meta("hall_holo"):
+			var hho = CentauriaGen.HallFx.new()
+			hho.part = "holo"
+			hho.scale = Vector2.ONE * GroundMap.SCALE
+			hho.position = (map.get_meta("hall_holo") as Vector2) * GroundMap.SCALE
+			hho.modulate = Color(0.75, 1.0, 1.0, 0.8)
+			_sorted.add_child(hho)
+	if level == "zalley" and map.has_meta("alley_fronts"):
+		# package 61b (Luz): the Back Alleys – the wet street and the houses' fronts under the people, the lanterns,
+		# the booths' roofs and the craft overhead over them. Dark even by day: its neon is always on.
+		for ap in ["floor", "wall", "over"]:
+			var afx = CentauriaGen.AlleyFx.new()
+			afx.part = ap
+			afx.fronts = map.get_meta("alley_fronts")
+			afx.night = 1.0 - city_day()
+			afx.scale = Vector2.ONE * GroundMap.SCALE
+			_world.add_child(afx)
+			if ap == "over":
+				afx.z_index = 6
+			else:
+				_world.move_child(afx, _sorted.get_index())
+		# (Luz) a crowd streaming east and west through the street, gone at its ends and in again
+		var srng := RandomNumberGenerator.new()
+		srng.seed = 6123
+		var sy0 := (CentauriaGen.A_F0 + 2.2) * GroundMap.TILE
+		var sy1 := (CentauriaGen.A_F1 + 0.7) * GroundMap.TILE
+		for ci in int(map.get_meta("stream", 0)):
+			var east := ci % 2 == 0
+			var swk := Walker.new()
+			var sln := srng.randf_range(sy0, lerpf(sy0, sy1, 0.6)) if east else srng.randf_range(lerpf(sy0, sy1, 0.4), sy1)
+			swk.setup(map, _outside_look(ChibiArt.PilotArt.random_look(srng), srng), Vector2(srng.randf_range(24.0, map.w * GroundMap.TILE - 24.0), sln), true)
+			swk.stream = srng.randf_range(30.0, 58.0) * (1.0 if east else -1.0)
+			swk.stream_from = 20.0
+			swk.stream_to = map.w * GroundMap.TILE - 20.0
+			swk.stream_y0 = sy0
+			swk.stream_y1 = sy1
+			swk.lane = sln
+			_sorted.add_child(swk)
+			people.append(swk)
+	if level == "zbar" and map.has_meta("bar_stage"):
+		# package 61b (Luz): the Static Feedback – its wall and its stage under the people, the neon and the haze over
+		# the dark, the band's gear with the band; your own crew waits here
+		for bp in ["wall", "stage", "neon"]:
+			var bfx = CentauriaGen.BarFx.new()
+			bfx.part = bp
+			bfx.night = 1.0 - city_day()
+			bfx.scale = Vector2.ONE * GroundMap.SCALE
+			_world.add_child(bfx)
+			if bp == "neon":
+				bfx.z_index = 6
+			else:
+				_world.move_child(bfx, _sorted.get_index())
+		for bpr in map.get_meta("bar_band", []):
+			var bpf = CentauriaGen.BarFx.new()
+			bpf.part = "prop"
+			bpf.prop = String(bpr["kind"])
+			bpf.night = 1.0
+			bpf.scale = Vector2.ONE * GroundMap.SCALE
+			bpf.position = ((bpr["at"] as Vector2) + Vector2(0.0, 2.0)) * GroundMap.SCALE
+			_sorted.add_child(bpf)
+		var cspots: Array = map.get_meta("bar_crew", [])
+		var cship = GameState.active()
+		var cn := 0
+		if cship != null:
+			for cm in cship.crew_members():
+				if cn >= cspots.size():
+					break
+				if bool(cm.get("dead", false)) or (GameState.gear.team as Array).has(int(cm.get("id", -1))):
+					continue                                   # (who comes along on foot is with you)
+				var clook: Dictionary = cm.get("look", {})
+				var cwk := Walker.new()
+				cwk.setup(map, clook if not clook.is_empty() else ChibiArt.PilotArt.random_look(RandomNumberGenerator.new()), cspots[cn][0], true)
+				cwk.dir = int(cspots[cn][1])
+				cwk.stays = true
+				cwk.set_meta("crew_id", int(cm.get("id", -1)))
+				_sorted.add_child(cwk)
+				people.append(cwk)
+				cn += 1
 	if level == "zplaza" and map.has_meta("ctr_metro"):
 		var mo: Vector2 = map.get_meta("ctr_metro")        # (Luz) the way down to the station, drawn: its floor under the people,
 		for mp in [["floor", 0.0], ["wall", 16.0], ["posts", 55.0]]:      # its wall and its lamp posts among them
@@ -1957,7 +2067,7 @@ func _setup_weather() -> void:
 		weather.stop_sound()
 		weather.queue_free()
 	weather = null
-	if not level in WEATHER_LEVELS:
+	if not level in WEATHER_LEVELS or (map != null and map.has_meta("hall_fronts")):      # (the Commercial Hall lies under its own roof)
 		return
 	if level == "landing" and (bool(_site.get("vault", false)) or bool(_site.get("arena", false))):
 		return
@@ -2362,7 +2472,7 @@ func _build() -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	# 0.7.50.6: a city's street lies under the open sky – night darkens it (the lamps and neon then glow), day lights
 	# it (they hardly show); the tower bar's window lets in the sun by day
-	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation", "pplaza"]:
+	if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation", "pplaza"] and not map.has_meta("hall_fronts"):
 		var tint := ColorRect.new()
 		_tint = tint
 		var mm := CanvasItemMaterial.new()
@@ -2408,7 +2518,7 @@ func _build() -> void:
 		var lsp := _add_light(l, add_mat)
 		if l.has("id"):
 			_named_lights[String(l["id"])] = lsp           # 0.7.52.23: a light that can be switched (the laser cage's)
-		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation", "pplaza"]:
+		if is_town() and level in ["street", "settlement", "alley", "minehead", "plaza", "mplaza", "cplaza", "cstation", "pplaza"] and not map.has_meta("hall_fronts"):
 			_city_lights.append([lsp, l, "street"])
 		elif is_city() and level == "tower" and Color(l.get("col", Color.WHITE)).b > 0.9 and Color(l.get("col", Color.WHITE)).r < 0.5:
 			lsp.scale *= 1.4                           # the light through the glass: sun, sunset or night
@@ -5125,10 +5235,13 @@ func _open_lift_menu(z: Dictionary) -> void:
 			lvls = [["hangar", "1.  " + hname], ["zstation", "2.  Centauria Central: the trains to the districts"]]
 		else:
 			# the Commercial Hall: its lifts go to its own floors; the way out is onto the plaza
-			lvls = lvls.filter(func(l): return not String(l[0]) in ["hangar", "plaza"])
-			lvls.push_front(["zplaza", "0.  Out onto the plaza of the Commercial District"])
-			if lvls.size() > 1 and String(lvls[1][0]) == "street":
-				lvls[1] = ["street", "2.  The Commercial Hall: the shops"]
+			# (Luz: out onto the plaza on foot, through the Hall's doors; the back alleys get a map of their own)
+			lvls = lvls.filter(func(l): return not String(l[0]) in ["hangar", "plaza", "alley", "tower"])      # (no tower bar: a punk bar and the casino's bar are to come)
+			for li in lvls.size():
+				var rest := String(lvls[li][1])
+				if String(lvls[li][0]) == "street":
+					rest = "x.  The Commercial Hall: the shops"
+				lvls[li] = [lvls[li][0], "%d.  %s" % [li + 1, rest.substr(rest.find(".  ") + 3)]]
 	var only := String(story_mode.get("lift_only", ""))
 	var onlys := only.split(",", false)
 	if only != "":
@@ -5151,6 +5264,7 @@ func _open_lift_menu(z: Dictionary) -> void:
 	_lift_menu = c
 	_lift_menu.set_meta("zone", z)
 	_lift_menu.set_meta("keys", keys)
+	_lift_menu.set_meta("levels", lvls.map(func(l2): return String(l2[0])))      # (for the tests: which floors it lists)
 
 
 ## Package 58, part 8: a small window with a question and its answers ([label, Callable], in order: keys 1, 2, …);

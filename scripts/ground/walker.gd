@@ -32,6 +32,12 @@ var umbrella := 0.0                # 0 folded … 1 open
 var crouch := false                # 0.7.52.21: sneaking – drawn low
 var dancing := false               # package 58 (Luz): at a party – bobbing, swaying, stepping, turning now and then
 var bubble := ""                   # package 58: a line said over the head (the toast, the cheers)
+var stream := 0.0                  # 61b (Luz): one of a crowd streaming along a street – its pace (art px/s; the sign is its way)
+var stream_from := 0.0             # … between these two edges (art px): out at one, in again at the other
+var stream_to := 0.0
+var stream_y0 := 0.0               # … in lanes between these two lines
+var stream_y1 := 0.0
+var lane := 0.0
 var bubble_t := 0.0
 var _pp := 0
 const DRINK_TIME := 3.2
@@ -144,9 +150,31 @@ func _process(delta: float) -> void:
 			position = pos * GroundMap.SCALE
 			_seat_z = {}
 			_wait = randf_range(0.5, 2.0)
+	elif stream != 0.0:
+		_stream(delta)
 	elif npc and not sitting and not stays and marker == "":
 		_wander(delta)
 	queue_redraw()
+
+
+## 61b (Luz): walking with the crowd – straight along the street in a lane, round what stands in the way; at the
+## street's end gone (fading), and in again at the other end.
+func _stream(delta: float) -> void:
+	var before := pos.x
+	step(Vector2(signf(stream), clampf((lane - pos.y) / 10.0, -0.7, 0.7)), delta, absf(stream) / SPEED)
+	dir = 3 if stream > 0.0 else 2
+	if absf(pos.x - before) < 0.02:
+		_stuck += delta
+		if _stuck > 0.25:
+			lane = clampf(lane + (12.0 if randf() < 0.5 else -12.0), stream_y0, stream_y1)
+			_stuck = 0.0
+	else:
+		_stuck = 0.0
+	if (stream > 0.0 and pos.x >= stream_to) or (stream < 0.0 and pos.x <= stream_from):
+		lane = randf_range(stream_y0, lerpf(stream_y0, stream_y1, 0.6)) if stream > 0.0 else randf_range(lerpf(stream_y0, stream_y1, 0.4), stream_y1)
+		pos = Vector2(stream_from if stream > 0.0 else stream_to, lane)
+		position = pos * GroundMap.SCALE
+	modulate.a = clampf(minf(pos.x - stream_from, stream_to - pos.x) / 30.0, 0.0, 1.0)
 
 
 ## People on the deck stroll from one spot to the next along a path round walls and furniture, and stand about.

@@ -64,6 +64,26 @@ const CHARACTERS := {
 	"luz": {"name": "Luz", "sub": "Bar owner · Centauria", "col": Color(1.0, 0.55, 0.3), "seed": 6101,
 		"look": {"body": 1, "skin": 2, "hair": 4, "hair_color": 5, "eyes": 3, "brows": 0, "beard": 0, "scar": 0, "freckles": 1,
 			"outfit": 1, "color1": 9, "color2": 8, "implant": 0, "tattoo": 3, "headgear": 0, "lipstick": 5, "blush": 0, "eye_makeup": 0}},
+	# package 61b (Luz): two of the Static Feedback's regulars, a little shady
+	"ratte": {"name": "Ratte", "sub": "Knows a way in · the Back Alleys", "col": Color(0.6, 0.9, 0.5), "seed": 6131,
+		"look": {"body": 0, "skin": 1, "hair": 9, "hair_color": 0, "eyes": 2, "brows": 1, "beard": 1, "scar": 1, "freckles": 0,
+			"outfit": 3, "color1": 0, "color2": 7, "implant": 1, "tattoo": 3, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	"kraut": {"name": "Kraut", "sub": "Says little · the Back Alleys", "col": Color(0.9, 0.5, 0.4), "seed": 6137,
+		"look": {"body": 2, "skin": 3, "hair": 6, "hair_color": 3, "eyes": 1, "brows": 2, "beard": 3, "scar": 2, "freckles": 0,
+			"outfit": 1, "color1": 0, "color2": 2, "implant": 2, "tattoo": 2, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	# package 61b (Luz): The Hull Breach, the band of the Static Feedback (real people on its stage at night)
+	"band_voice": {"name": "Vex", "sub": "The Hull Breach · vocals", "col": Color(1.0, 0.36, 0.66), "seed": 6141,
+		"look": {"body": 0, "skin": 0, "hair": 6, "hair_color": 3, "eyes": 2, "brows": 1, "beard": 0, "scar": 0, "freckles": 0,
+			"outfit": 1, "color1": 8, "color2": 0, "implant": 0, "tattoo": 1, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	"band_guitar": {"name": "Solder", "sub": "The Hull Breach · guitar", "col": Color(1.0, 0.45, 0.25), "seed": 6143,
+		"look": {"body": 1, "skin": 2, "hair": 9, "hair_color": 0, "eyes": 1, "brows": 0, "beard": 1, "scar": 0, "freckles": 0,
+			"outfit": 1, "color1": 0, "color2": 9, "implant": 3, "tattoo": 3, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	"band_bass": {"name": "Flux", "sub": "The Hull Breach · bass", "col": Color(0.3, 0.9, 1.0), "seed": 6147,
+		"look": {"body": 2, "skin": 3, "hair": 5, "hair_color": 1, "eyes": 3, "brows": 2, "beard": 1, "scar": 0, "freckles": 0,
+			"outfit": 3, "color1": 4, "color2": 0, "implant": 0, "tattoo": 0, "headgear": 3, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
+	"band_drums": {"name": "Tin", "sub": "The Hull Breach · drums", "col": Color(0.95, 0.85, 0.3), "seed": 6149,
+		"look": {"body": 1, "skin": 1, "hair": 1, "hair_color": 0, "eyes": 0, "brows": 1, "beard": 3, "scar": 3, "freckles": 0,
+			"outfit": 1, "color1": 6, "color2": 0, "implant": 0, "tattoo": 2, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
 	"silas": {"name": "Silas Marr", "sub": "Engineer · the Stubborn Hope", "col": Color(0.55, 0.75, 1.0), "seed": 4419,
 		"look": {"body": 0, "skin": 2, "hair": 3, "hair_color": 7, "eyes": 3, "brows": 1, "beard": 4, "scar": 0, "freckles": 1,
 			"outfit": 3, "color1": 1, "color2": 5, "implant": 3, "tattoo": 0, "headgear": 3, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
@@ -444,16 +464,25 @@ const DIALOGUES := {
 	# package 61 (Luz): Centauria – Luz on the street, the first hello (the city and the bar come later)
 	"luz_meet": {"who": "luz", "lines": [
 		{"text": "You must be Rook's pilot. The one who fell out of the Veil. I'm Luz."},
-		{"text": "Welcome to Centauria. The biggest city in the Rim, and the only one worth the trip.",
+		{"text": "Welcome to the Static Feedback. And to Centauria: the biggest city in the Rim, and the only one worth the trip.",
 			"answers": [["\"Rook says there's work here.\"", 2, [], "Rook says there's work here. More than I can handle, apparently."],
-				["\"Nice view.\"", 3, [], "Nice view. I've never seen rings like that."]]},
+				["\"Loud place.\"", 3, [], "Loud place you've got here. I like it."]]},
 		{"text": "There will be. And plenty of ways to spend what it pays.", "next": 4},
-		{"text": "Lapis. You stop noticing after a year. Well. Almost.", "next": 4},
+		{"text": "It gets louder. The band comes on after dark.", "next": 4},
 		{"text": "Right now the city is mostly promises. The casino's still painting its tables, the arena's still sweeping up. Give it time."},
-		{"text": "My bar isn't open yet either. When it is, the first one's on the house. Come back soon.", "next": -1},
+		{"text": "Until then: the first one's on the house. Sit anywhere. Mind the two in the corner, they bite.", "next": -1},
 	]},
 	"luz_again": {"who": "luz", "lines": [
-		{"text": "Still here? Look around. The good parts aren't built yet, but the view is free.", "next": -1},
+		{"text": "Back again? Good. The band plays after dark, the beer is cold all day. The rest of the city is still being built.", "next": -1},
+	]},
+	# package 61b (Luz): Ratte and Kraut, for now only a few words (the story comes later)
+	"ratte_talk": {"who": "ratte", "lines": [
+		{"text": "Psst. New face. You need something, you ask Ratte. Parts, papers, a door that was locked yesterday."},
+		{"text": "Not today, though. Today Ratte is drinking. Come back when the city is awake.", "next": -1},
+	]},
+	"kraut_talk": {"who": "kraut", "lines": [
+		{"text": "Hm."},
+		{"text": "Sit somewhere else.", "next": -1},
 	]},
 	"dan_wait59": {"who": "dan", "lines": [
 		{"text": "Imre doesn't bite. Talk to Imre when you're ready to go. Or have a coffee first, the machine's still warm.", "next": -1},
@@ -604,8 +633,8 @@ const MISSIONS := {
 				"goals": [{"id": "arrive", "kind": "flag", "flag": "fern_arrived", "label": "fly to Fern"}]},
 			{"id": "land", "title": "Centauria", "text": "The city lies on Pelagia, the ocean world that circles Lapis, the blue giant with the rings. Descend and land in Centauria.",
 				"goals": [{"id": "land", "kind": "flag", "flag": "fern_landed", "label": "land in Centauria on Pelagia"}]},
-			{"id": "luz", "title": "Rook's contact", "text": "Luz knows the city and owes Rook a favour. Take Line A from Centauria Central to the Commercial District: Luz waits on the central plaza, by the way up from the station.",
-				"goals": [{"id": "luz", "kind": "flag", "flag": "fern_luz", "label": "find Luz on the plaza of the Commercial District"}]},
+			{"id": "luz", "title": "Rook's contact", "text": "Luz knows the city and owes Rook a favour. Take Line A from Centauria Central to the Commercial District and go through the gate in the south of the plaza into the Back Alleys. Luz runs the Static Feedback: down the stairs at the east end of the street.",
+				"goals": [{"id": "luz", "kind": "flag", "flag": "fern_luz", "label": "find Luz in the Static Feedback, in the Back Alleys"}]},
 		]},
 	# package 58, part 1 (Luz): Little Darling – Dan shows you the station window and the Outfitter (a guided tour),
 	# you fit the lasers he left in storage and buy a drone with his advance. The flags come from

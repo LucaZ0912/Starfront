@@ -1039,6 +1039,7 @@ func _build_city() -> void:
 		"crater":
 			for k5 in 96:
 				_cp(Vector2.from_angle(k5 * TAU / 96.0) * 10.5, 0.3, CP.RIM, rng)
+	_place_centauria()                                         # package 61a: Centauria's towers and its Colosseum
 
 
 ## A city from above: its ground plan (see _build_city) – by night its lights, by day its roofs, parks and streets –
@@ -1102,6 +1103,163 @@ func _draw_city_lights(c: Vector2, u: float, rng: RandomNumberGenerator) -> void
 				_place.draw_rect(Rect2(p, Vector2(sz, sz)), Color(acc, 0.8 * a))
 			_:
 				pass
+	_draw_centauria(c, u, a, day)
+
+
+## Package 61a (Luz): Centauria from the air. Its two landmarks stand out of the city by day and by night: the three
+## round towers of the Grand Centauria on their podium (by day long shadows, glass with a gleam; by night rings of
+## neon, lit windows, beacons, lasers) and the Colosseum (a white, shining oval round its arena, banners on its rim;
+## floodlit by night). Where they stand (blocks from the city's middle) is found once, on land if the island has room.
+var _ctr_marks: Dictionary = {}       # {"towers": offset, "arena": offset}
+
+
+func _is_centauria() -> bool:
+	return body.has("fern_city") or String(site.get("name", "")) == "Centauria"
+
+
+## A spot on land near `pref` with r blocks of land round it (and `apart` blocks from `keep`); `pref` if there is none.
+func _land_spot(pref: Vector2, r: float, keep: Vector2 = Vector2.INF, apart: float = 0.0) -> Vector2:
+	for ring in 18:
+		for k in (1 if ring == 0 else 12):
+			var p := pref + Vector2.from_angle(k * TAU / 12.0 + ring * 0.4) * ring * 1.5
+			if keep != Vector2.INF and p.distance_to(keep) < apart:
+				continue
+			var ok := not _tex_sea(p)
+			for q in 8:
+				ok = ok and not _tex_sea(p + Vector2.from_angle(q * TAU / 8.0) * r)
+			if ok:
+				return p
+	return pref
+
+
+func _place_centauria() -> void:
+	_ctr_marks.clear()
+	if not _is_centauria():
+		return
+	var tw := _land_spot(Vector2(-7.0, -6.5), 4.5)
+	# the Colosseum: the land nearest the city's middle with room for it, clear of the towers and of where you land
+	var ar := Vector2(9.0, 5.5)
+	var best := 1.0e9
+	for gy in range(-18, 19):
+		for gx in range(-18, 19):
+			var p := Vector2(gx, gy)
+			if p.length() < 7.0 or p.length() >= best or p.distance_to(tw) < 12.0 or _tex_sea(p):
+				continue
+			var ok := true
+			for q in 8:
+				ok = ok and not _tex_sea(p + Vector2.from_angle(q * TAU / 8.0) * 2.8)
+			if ok:
+				best = p.length()
+				ar = p
+	_ctr_marks = {"towers": tw, "arena": ar}
+	# no houses under them
+	_city_pts = _city_pts.filter(func(pt): return int(pt[2]) != CP.BLD or ((pt[0] as Vector2).distance_to(tw + Vector2(0.0, 0.7)) > 6.4 and (pt[0] as Vector2).distance_to(ar) > 5.0))
+
+
+func _oval(c: Vector2, rx: float, ry: float, n: int = 28) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for k in n:
+		pts.append(c + Vector2(cos(k * TAU / n) * rx, sin(k * TAU / n) * ry))
+	return pts
+
+
+func _draw_centauria(c: Vector2, u: float, a: float, day: bool) -> void:
+	if _ctr_marks.is_empty() or a <= 0.0:
+		return
+	var gold := Color(1.0, 0.82, 0.35)
+	var sun := Vector2(0.78, 0.62)                        # the shadows fall this way
+	var thin := maxf(1.0, u * 0.1)
+	# ---- the Grand Centauria (Luz: they stand out, but in the city's own look): by day roofs in the city's tone, round
+	# and stepped, each with a breath of its colour, long shadows; by night the city's own small lights, only far more
+	# of them, in rings, some in the tower's colour, a beacon on each tip
+	var st: Dictionary = city_style if not city_style.is_empty() else CityStyle.STYLES["independent"]
+	var roof := CityStyle.tone(st, "roof", 1.0)
+	var wins: Array = st["win"]
+	var tc: Vector2 = c + (_ctr_marks["towers"] as Vector2) * u
+	var specs := [[Vector2(-3.5, 0.6), 1.75, Color(1.0, 0.36, 0.66), 5.2], [Vector2(3.5, 0.6), 1.65, Color(0.3, 0.9, 1.0), 4.8], [Vector2(0.0, -0.4), 2.35, Color(0.72, 0.42, 1.0), 7.6]]
+	var pr := Rect2(tc + Vector2(-5.8, -1.5) * u, Vector2(11.6, 4.4) * u)
+	if day:
+		_place.draw_rect(Rect2(pr.position + sun * u * 0.5, pr.size), Color(0, 0, 0, 0.3 * a))
+		for sp in specs:                                  # long shadows: the highest houses of the city
+			var p0: Vector2 = tc + (sp[0] as Vector2) * u
+			var r0 := float(sp[1]) * u
+			var ln := float(sp[3]) * u
+			_place.draw_line(p0, p0 + sun * ln, Color(0, 0, 0, 0.26 * a), r0 * 1.7)
+			_place.draw_circle(p0 + sun * ln, r0 * 0.85, Color(0, 0, 0, 0.26 * a))
+		_place.draw_rect(pr, Color(roof.darkened(0.12), 0.95 * a))                    # the podium: a roof like the others, larger
+		_place.draw_rect(Rect2(pr.position, Vector2(pr.size.x, u * 0.3)), Color(roof.lightened(0.15), 0.95 * a))
+		_place.draw_rect(Rect2(tc + Vector2(-1.7, 2.9) * u, Vector2(3.4, 0.7) * u), Color(roof.lightened(0.3), 0.95 * a))      # the stair
+	else:
+		for b in 24:                                      # the podium's edge: the city's lamps, closer together
+			var e := b / 24.0 * 2.0 * (pr.size.x + pr.size.y)
+			var ep := pr.position + Vector2(e, 0.0)
+			if e > pr.size.x:
+				ep = pr.position + Vector2(pr.size.x, e - pr.size.x)
+			if e > pr.size.x + pr.size.y:
+				ep = pr.position + Vector2(pr.size.x - (e - pr.size.x - pr.size.y), pr.size.y)
+			if e > 2.0 * pr.size.x + pr.size.y:
+				ep = pr.position + Vector2(0.0, pr.size.y - (e - 2.0 * pr.size.x - pr.size.y))
+			_place.draw_rect(Rect2(ep, Vector2(u, u) * 0.18), Color(1.0, 0.85, 0.55, 0.85 * a))
+	var ti := 0
+	for sp2 in specs:
+		var p: Vector2 = tc + (sp2[0] as Vector2) * u
+		var r := float(sp2[1]) * u
+		var col: Color = sp2[2]
+		if day:
+			for tier in 4:
+				var rr := r * (1.0 - tier * 0.2)
+				var body := roof.lerp(col, 0.14).lightened(0.06 + tier * 0.09)
+				_place.draw_circle(p, rr, Color(body, 0.97 * a))
+				_place.draw_arc(p, rr, 0.0, TAU, 28, Color(body.darkened(0.3), 0.8 * a), maxf(1.0, u * 0.07))
+				_place.draw_arc(p, rr * 0.82, PI * 1.05, PI * 1.5, 10, Color(1, 1, 1, 0.18 * a), maxf(1.0, rr * 0.12))       # the light on its glass
+			_place.draw_circle(p, maxf(1.5, u * 0.16), Color(col.lerp(Color(1, 1, 1), 0.5), a))
+		else:
+			_place.draw_circle(p, r * 1.7, Color(col, 0.07 * a))
+			for tier2 in 4:
+				var rr2 := r * (1.0 - tier2 * 0.2)
+				var n := int(22.0 - tier2 * 4.0)
+				for wd in n:
+					var hk := fposmod(sin((ti * 31 + tier2 * 7 + wd) * 12.9898) * 43758.5453, 1.0)
+					if fposmod(_t * (0.3 + hk * 1.2) + wd * 0.37, 1.0) < 0.05 or hk < 0.15:
+						continue                                       # a light out, or one that blinks off
+					var wcol: Color = col if hk > 0.7 else (wins[0] if hk < 0.45 else wins[1])
+					_place.draw_rect(Rect2(p + Vector2.from_angle(wd * TAU / n + tier2 * 0.5) * rr2 * 0.9 - Vector2(u, u) * 0.09, Vector2(u, u) * 0.18), Color(wcol, 0.9 * a))
+			if int(_t * 1.5 + ti) % 2 == 0:
+				_place.draw_rect(Rect2(p - Vector2(u, u) * 0.13, Vector2(u, u) * 0.26), Color(1.0, 0.3, 0.25, a))
+		ti += 1
+	# ---- the Colosseum: a white oval round its arena, arches, banners; floodlit by night
+	var ac: Vector2 = c + (_ctr_marks["arena"] as Vector2) * u
+	var rx := 4.2 * u
+	var ry := 3.1 * u
+	var crimson := Color(0.82, 0.12, 0.2)
+	if day:
+		_place.draw_colored_polygon(_oval(ac + sun * u * 0.9, rx, ry), Color(0, 0, 0, 0.28 * a))
+	else:
+		_place.draw_colored_polygon(_oval(ac, rx * 1.55, ry * 1.55), Color(1.0, 0.97, 0.88, 0.07 * a))
+		_place.draw_colored_polygon(_oval(ac, rx * 1.25, ry * 1.25), Color(1.0, 0.97, 0.88, 0.1 * a))
+	_place.draw_colored_polygon(_oval(ac, rx, ry), Color(Color(0.97, 0.97, 0.94) if day else Color(0.9, 0.92, 1.0), a))
+	for tr in [0.86, 0.72]:
+		var ring := _oval(ac, rx * float(tr), ry * float(tr))
+		ring.append(ring[0])
+		_place.draw_polyline(ring, Color(0.6, 0.62, 0.72, 0.8 * a), thin)
+	_place.draw_colored_polygon(_oval(ac, rx * 0.58, ry * 0.55), Color(Color(0.84, 0.74, 0.52) if day else Color(1.0, 0.93, 0.7), a))     # the arena's sand
+	var mark := _oval(ac, rx * 0.2, ry * 0.2, 16)
+	mark.append(mark[0])
+	_place.draw_polyline(mark, Color(crimson, a), thin)
+	for ar in 36:                                         # arches round it
+		var ap := ac + Vector2(cos(ar * TAU / 36.0) * rx, sin(ar * TAU / 36.0) * ry) * 0.94
+		_place.draw_rect(Rect2(ap - Vector2(u, u) * 0.09, Vector2(u, u) * 0.18), Color(Color(0.4, 0.4, 0.48) if day else Color(1.0, 0.85, 0.5), a))
+	for bn in 10:                                         # banners on its rim
+		var bp := ac + Vector2(cos(bn * TAU / 10.0 + 0.3) * rx, sin(bn * TAU / 10.0 + 0.3) * ry) * 1.07
+		_place.draw_rect(Rect2(bp - Vector2(u * 0.16, u * 0.3), Vector2(u * 0.32, u * 0.6)), Color(crimson if bn % 2 == 0 else gold, a))
+	if not day:
+		for fk in 4:                                      # floodlights on four masts
+			var fa := PI * 0.25 + fk * PI * 0.5
+			var fp := ac + Vector2(cos(fa) * rx, sin(fa) * ry) * 1.12
+			var side := Vector2(-sin(fa), cos(fa)) * u * 0.9
+			_place.draw_colored_polygon(PackedVector2Array([fp, ac + side, ac - side]), Color(1.0, 1.0, 0.92, 0.06 * a))
+			_place.draw_circle(fp, u * 0.8, Color(1.0, 1.0, 0.92, 0.2 * a))
+			_place.draw_circle(fp, maxf(1.5, u * 0.22), Color(1, 1, 1, a))
 
 
 ## The flight's distance along the ground picture after t seconds (the ground comes closer and slows).

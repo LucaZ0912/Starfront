@@ -364,8 +364,9 @@ static func build_plaza(station: Dictionary) -> GroundMap:
 		m.add_object({"kind": "palm", "x": pp.x, "y": pp.y - 1, "w": 3, "h": 1, "rise": 56, "seed": pp.x % 8}, false)
 	# the way south to the back alleys: a short street, a gate across it (Luz: their own map later)
 	m.fill(mid - 3, P_TOP + 28, 6, 5, T.FLOOR, 30)
-	m.add_object({"kind": "barrier", "x": mid - 3, "y": P_TOP + 31, "w": 6, "h": 1})
-	_zone(m, Rect2(mid - 3, P_TOP + 29.6, 6.0, 1.4), "ctr_closed", "The back alleys", GREEN, {"closed": "Barred for now. Somewhere behind it, a bass is thumping.", "id": "ctr_alleys"})
+	m.zones.append({"rect": Rect2(Vector2(mid - 3, P_TOP + 30.2) * TILE, Vector2(6.0, 1.8) * TILE), "kind": "museum_go", "id": "ctr_alleys", "to": "zalley", "at": "from_plaza",
+		"title": "Through the gate: the Back Alleys", "col": GREEN, "sign": Vector2(-100, -100)})        # package 61b: the gate is open
+	m.set_meta("from_alleys", Vector2(mid, P_TOP + 29.4) * TILE)
 	m.lights.append({"pos": Vector2(mid, P_TOP + 30.5) * TILE, "r": 60.0, "col": GREEN, "a": 0.5, "flicker": true})
 	# ---- west: the Museum and its plaza, as they stood on Curie (mirrored: the Museum at the far west)
 	var cur: GroundMap = MuseumGen.build_plaza(station, {})
@@ -399,7 +400,7 @@ static func build_plaza(station: Dictionary) -> GroundMap:
 		m.face_deco.append({"kind": "holo_banner", "x": bx, "y": P_TOP + 14, "w": 1, "col": ORANGE if bx % 4 == 0 else GOLD})
 	MuseumGen._label(m, "COMMERCIAL HALL", Vector2(hdx + 2, P_TOP + 13.6), Color(1.0, 0.85, 0.6))
 	m.decals.append({"kind": "steps_lit", "x": hx, "y": P_TOP + 17, "w": 24, "h": 2})
-	m.zones.append({"rect": Rect2(Vector2(hdx, P_TOP + 17) * TILE, Vector2(4, 1.6) * TILE), "kind": "museum_go", "id": "ctr_hall", "to": "street", "at": "lift",
+	m.zones.append({"rect": Rect2(Vector2(hdx, P_TOP + 17) * TILE, Vector2(4, 1.6) * TILE), "kind": "museum_go", "id": "ctr_hall", "to": "street", "at": "from_plaza",
 		"title": "Into the Commercial Hall: the city's shops", "col": ORANGE, "sign": Vector2(-100, -100)})
 	m.set_meta("from_hall", Vector2(hdx + 2, P_TOP + 19.6) * TILE)
 	facades.append({"x": float(hx) * TILE, "w": 24.0 * TILE, "base": (P_TOP + 17.0) * TILE, "h": 336.0, "col": ORANGE, "seed": 5, "kind": "hall"})
@@ -1992,6 +1993,1241 @@ class MetroFx extends Node2D:
 			draw_rect(Rect2(px - 4.5, 31.5, 9.0, 10.0), Color(0.05, 0.06, 0.1))
 			draw_rect(Rect2(px - 3.5, 32.5, 7.0, 8.0), col)
 			draw_rect(Rect2(px - 3.5, 32.5, 7.0, 2.0), Color(1, 1, 1, 0.45))
+
+
+## The Commercial Hall from inside (Luz): a great gallery under a vault of glass, as its front on the plaza promises.
+## Along the north wall the city's shops as real fronts (the services a city's street has; shuttered fronts where
+## special shops move in later), two galleries over them and the vault (all drawn: HallFx, HallSky). The lifts to the
+## Hall's other floors at the west end, the escalators up to the galleries at the east end (closed for now), the
+## doors out onto the plaza in the middle of the south wall. In the middle a fountain with a hologram of Lapis over
+## it, kiosks, benches, palms; a food court south-west, two pavilions to let south-east.
+const HW := 74
+const HH := 30
+const H_F0 := 13                   # the floor's first row (north of it the wall: fronts, galleries, vault)
+const H_F1 := 26                   # its last row
+const H_X0 := 9                    # the shop fronts begin here (west of it the lifts) …
+const H_X1 := 59                   # … and end here (east of it the escalators)
+
+static func build_hall(station: Dictionary, available: Dictionary) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.66, 0.62, 0.58)
+	m.pal["floor2"] = Color(0.54, 0.49, 0.47)
+	m.pal["wall"] = Color(0.3, 0.24, 0.24)
+	m.pal["frame"] = Color(0.3, 0.24, 0.24)
+	m.pal["accent"] = Color(1.0, 0.6, 0.25)
+	m.style = "plaza"
+	m.title = "Centauria"
+	m.hull_top = -9999
+	m.set_meta("few_guards", true)
+	m.set_meta("no_guards", true)
+	m.setup(HW, HH)
+	var PINK := Color(1.0, 0.36, 0.66)
+	var CYAN := Color(0.3, 0.9, 1.0)
+	var GOLD := Color(1.0, 0.82, 0.35)
+	var GREEN := Color(0.35, 1.0, 0.55)
+	var PURPLE := Color(0.72, 0.36, 1.0)
+	var ORANGE := Color(1.0, 0.6, 0.25)
+	var cols := [PINK, CYAN, GOLD, GREEN, PURPLE, ORANGE]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6113
+	m.fill(0, 0, HW, HH, T.CAP)
+	m.fill(H_X0, 0, HW - H_X0, H_F0, T.BLOCK, 30)                  # the north wall: drawn over (HallFx)
+	m.fill(1, H_F0, HW - 2, H_F1 - H_F0 + 1, T.FLOOR, 30)
+	# ---- west: the lifts to the Hall's other floors
+	m.fill(1, H_F0 - 2, H_X0 - 2, 2, T.FACE)
+	for lx0 in [2, 5]:
+		m.face_deco.append({"kind": "lift", "x": lx0, "y": H_F0 - 1, "w": 2, "col": Color(0.4, 1.0, 0.6)})
+		m.lifts.append({"x": lx0, "y": H_F0 - 1, "w": 2})
+	m.decals.append({"kind": "mat", "x": 1, "y": H_F0, "w": 7, "h": 1, "col": m.pal["accent"]})
+	m.zones.append({"rect": Rect2(Vector2(1, H_F0) * TILE, Vector2(7, 1.4) * TILE), "kind": "lift", "id": "lift", "title": "Lifts", "col": Color(0.4, 1.0, 0.6),
+		"sign": Vector2(-100, -100)})
+	m.lights.append({"pos": Vector2(4.5, H_F0 + 0.5) * TILE, "r": 60.0, "col": Color(0.4, 1.0, 0.6), "a": 0.35})
+	# a row of terminals by the lifts: the dock office's and the kiosks'
+	var tx := 2
+	for k in DeckGen.KIOSKS + DeckGen.DOCK_TERMINALS:
+		if available.has(k) and not k in DeckGen.HANGAR_SERVICES and tx < 8:
+			m.add_object({"kind": "terminal", "x": tx, "y": H_F0 + 5, "w": 1, "h": 1, "col": DeckGen._svc_col(k), "icon": DeckGen._svc_icon(k)})
+			DeckGen._zone(m, k, available, Rect2(Vector2(tx - 0.1, H_F0 + 3.7) * TILE, Vector2(1.2, 1.5) * TILE), Vector2(-100, -100))
+			m.lights.append({"pos": Vector2(tx + 0.5, H_F0 + 4.8) * TILE, "r": 18.0, "col": DeckGen._svc_col(k), "a": 0.3})
+			tx += 1
+	# ---- north: the shops, a door each (the fronts themselves are drawn)
+	var shops: Array = []
+	for sid in DeckGen.SHOPS:
+		if available.has(sid) and not sid in DeckGen.HANGAR_SERVICES and not (sid == "look" and available.has("clinic")):
+			shops.append(sid)
+	var fronts: Array = []
+	var nf := maxi(5, shops.size())
+	var fw := float(H_X1 - H_X0) / nf
+	for i in nf:
+		var fx := H_X0 + i * fw
+		var dxc := fx + fw * 0.5
+		var id := String(shops[i]) if i < shops.size() else ""
+		var col: Color = DeckGen._svc_col(id) if id != "" else Color(0.6, 0.6, 0.7)
+		var shut := true
+		var title := ""
+		if id != "":
+			DeckGen._zone(m, id, available, Rect2(Vector2(dxc - 1.5, H_F0 - 0.3) * TILE, Vector2(3.0, 1.7) * TILE), Vector2(-100, -100))
+			m.lights.append({"pos": Vector2(dxc, H_F0 + 0.4) * TILE, "r": 46.0, "col": col, "a": 0.4})
+			shut = String(available.get(id, "")) != ""
+			title = String(DeckGen._svc(id).get("title", id))
+		else:
+			_zone(m, Rect2(dxc - 1.5, H_F0 - 0.3, 3.0, 1.7), "ctr_closed", "A shop to let", Color(0.6, 0.6, 0.7),
+				{"closed": "Opening soon. The shutters are down.", "id": "hall_soon_%d" % i})
+		fronts.append({"x": fx * TILE, "w": fw * TILE, "id": id, "title": title, "col": col, "shut": shut, "seed": 700 + i * 13})
+	m.set_meta("hall_fronts", fronts)
+	# ---- east: the escalators up to the galleries (later)
+	m.fill(H_X1 + 1, H_F0, 5, 1, T.BLOCK, 30)
+	_zone(m, Rect2(H_X1 + 1.0, H_F0 + 1.0, 5.0, 1.4), "ctr_closed", "The escalators: up to the galleries", CYAN, {"closed": "The galleries open later.", "id": "hall_up"})
+	# ---- south: the doors out onto the plaza
+	var dx0 := HW / 2 - 3
+	m.fill(dx0, H_F1 + 1, 6, 2, T.FLOOR, 30)
+	m.decals.append({"kind": "mat", "x": dx0, "y": H_F1 + 1, "w": 6, "h": 1, "col": ORANGE})
+	m.zones.append({"rect": Rect2(Vector2(dx0, H_F1 + 1.2) * TILE, Vector2(6, 1.7) * TILE), "kind": "museum_go", "id": "hall_out", "to": "zplaza", "at": "from_hall",
+		"title": "Out onto the plaza of the Commercial District", "col": ORANGE, "sign": Vector2(-100, -100)})
+	m.lights.append({"pos": Vector2(dx0 + 3.0, H_F1 + 1.5) * TILE, "r": 80.0, "col": ORANGE, "a": 0.45})
+	m.set_meta("from_plaza", Vector2(dx0 + 3.0, H_F1 + 0.2) * TILE)
+	m.spawn = m.get_meta("from_plaza")
+	# ---- the middle: a fountain, the hologram of Lapis over it; kiosks, benches, palms, pillars of light
+	var mid := HW / 2
+	m.add_object({"kind": "fountain", "x": mid - 2, "y": H_F0 + 5, "w": 4, "h": 2})
+	m.fill(mid - 2, H_F0 + 5, 4, 2, T.BLOCK)
+	m.lights.append({"pos": Vector2(mid, H_F0 + 5.5) * TILE, "r": 110.0, "col": CYAN, "a": 0.5})
+	m.set_meta("hall_holo", Vector2(mid, H_F0 + 7.0) * TILE)
+	var n := 0
+	for sx in [mid - 16, mid - 12, mid + 10, mid + 14]:
+		m.add_object({"kind": "stall", "x": sx, "y": H_F0 + 4, "w": 2, "h": 1, "col": cols[n % cols.size()]})
+		m.people.append({"pos": Vector2(sx + 1.0, H_F0 + 3.8) * TILE, "dir": 0, "role": "keeper"})
+		m.lights.append({"pos": Vector2(sx + 1.0, H_F0 + 4.6) * TILE, "r": 34.0, "col": cols[n % cols.size()], "a": 0.5})
+		n += 1
+	for bn in [Vector2i(mid - 8, H_F0 + 3), Vector2i(mid + 5, H_F0 + 3), Vector2i(mid - 8, H_F0 + 9), Vector2i(mid + 5, H_F0 + 9)]:
+		m.add_object({"kind": "bench", "x": bn.x, "y": bn.y, "w": 3, "h": 1, "face": 0}, false)
+	for pp in [Vector2i(H_X0 + 3, H_F0 + 4), Vector2i(H_X1 - 4, H_F0 + 4), Vector2i(mid - 7, H_F0 + 12), Vector2i(mid + 5, H_F0 + 12)]:
+		m.add_object({"kind": "planter", "x": pp.x, "y": pp.y, "w": 3, "h": 1, "col": Color(0.4, 0.36, 0.42)})
+		m.add_object({"kind": "palm", "x": pp.x, "y": pp.y - 1, "w": 3, "h": 1, "rise": 56, "seed": pp.x % 8}, false)
+	var pi := 0
+	for hp in [Vector2i(H_X0 + 9, H_F0 + 2), Vector2i(H_X1 - 10, H_F0 + 2), Vector2i(mid - 5, H_F0 + 2), Vector2i(mid + 4, H_F0 + 2), Vector2i(HW - 4, H_F0 + 7)]:
+		m.add_object({"kind": "holo_pillar", "x": hp.x, "y": hp.y, "w": 1, "h": 1, "col": cols[(pi + 2) % cols.size()]})
+		m.lights.append({"pos": Vector2(hp.x + 0.5, hp.y) * TILE, "r": 64.0, "col": cols[(pi + 2) % cols.size()], "a": 0.45})
+		pi += 1
+	# ---- south-west: the food court: three counters, tables before them
+	for fk in 3:
+		var fsx: int = H_X0 + 2 + fk * 5
+		m.add_object({"kind": "stall", "x": fsx, "y": H_F0 + 8, "w": 2, "h": 1, "col": cols[(fk * 2 + 5) % cols.size()]})
+		m.people.append({"pos": Vector2(fsx + 1.0, H_F0 + 7.8) * TILE, "dir": 0, "role": "keeper"})
+		m.lights.append({"pos": Vector2(fsx + 1.0, H_F0 + 8.6) * TILE, "r": 34.0, "col": cols[(fk * 2 + 5) % cols.size()], "a": 0.5})
+	for ti in 8:
+		var ttx := H_X0 + 1 + (ti % 4) * 5
+		var tty := H_F0 + 10 + (ti / 4) * 3
+		m.add_object({"kind": "round_table", "x": ttx + 1, "y": tty, "w": 1, "h": 1})
+		DeckGen._seat(m, "chair", ttx, tty, 3, cols[ti % cols.size()].darkened(0.3), rng, 0.65)
+		DeckGen._seat(m, "chair", ttx + 2, tty, 2, cols[ti % cols.size()].darkened(0.3), rng, 0.65)
+	# ---- south-east: two pavilions to let (drawn), a sign before each
+	var pavs: Array = []
+	for pv in 2:
+		var pvx := mid + 8 + pv * 10
+		m.fill(pvx, H_F0 + 9, 8, 2, T.BLOCK, 30)
+		pavs.append({"at": Vector2(pvx, H_F0 + 11) * TILE, "col": cols[(pv * 3 + 1) % cols.size()], "seed": 880 + pv * 7})
+		_zone(m, Rect2(pvx + 2.5, H_F0 + 11.0, 3.0, 1.4), "ctr_closed", "A shop to let", cols[(pv * 3 + 1) % cols.size()],
+			{"closed": "Opening soon. Special shops will move in here.", "id": "hall_pav_%d" % pv})
+	m.set_meta("hall_pavs", pavs)
+	m.set_meta("tourists", 30)
+	DeckGen._seats(m)
+	for gx in range(4, HW - 3, 6):
+		for gy in [H_F0 + 2, H_F0 + 7, H_F0 + 12]:
+			var wp := Vector2(gx, gy)
+			if m.free_at(wp * TILE, 6.0):
+				m.wander.append(wp * TILE)
+	return m
+
+
+## (Luz) the sky over the Hall, seen through its vault of glass: day or night, Lapis with its rings (a Control: it
+## cuts the picture off at its own edge).
+class HallSky extends Control:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	var night := 0.0
+	var _t := 0.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+
+	func _process(dt: float) -> void:
+		_t += dt
+		if int(_t * 4.0) != int((_t - dt) * 4.0):
+			queue_redraw()
+
+	func _draw() -> void:
+		Gen.draw_sky(self, Rect2(0, 0, size.x, size.y), night, size.x * 0.64, size.y * 0.52, size.y * 0.3, _t)
+
+
+## The Hall's inside, drawn (art px). "wall": the north wall from the floor up: the shop fronts (each service its
+## name, its windows full of goods, a door of glass; shutters where a shop is to let), over them two galleries (shop
+## windows at their back, people walking behind rails of glass, banners), pillars up to a cornice of lamps, the ribs of
+## the vault, lights on lines; at the east end the escalators. It lies under the people. "pav" (a pavilion to let)
+## and "holo" (Lapis turning over the fountain) stand among them, drawn from their own line upward.
+class HallFx extends Node2D:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	const NEON := [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.55, 1.0, 0.6), Color(0.72, 0.5, 1.0), Color(1.0, 0.55, 0.25)]
+	const NAMES := ["NOODLES", "ARCADE", "RAMEN", "TATTOO", "KARAOKE", "SUSHI", "BOOKS", "TEA", "VINYL", "FLOWERS", "24H", "DUMPLINGS", "SHOES", "HATS", "TOYS", "OPTICS"]
+	var part := "wall"
+	var fronts: Array = []
+	var night := 0.0
+	var col := Color(1.0, 0.36, 0.66)
+	var seed := 0
+	var _t := 0.0
+	var _acc := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		_acc += dt
+		if _acc > 0.1:
+			_acc = 0.0
+			queue_redraw()
+
+	func _h(i: int, salt: int) -> float:
+		return Gen.TowerArt.hsh(i, salt)
+
+	func _draw() -> void:
+		match part:
+			"wall":
+				_wall()
+			"pav":
+				_pav()
+			_:
+				_holo()
+
+	func _wall() -> void:
+		var font := ThemeDB.fallback_font
+		var w := float(Gen.HW * GroundMap.TILE)
+		var fl := float(Gen.H_F0 * GroundMap.TILE)
+		var x0 := float(Gen.H_X0 * GroundMap.TILE)
+		var nightly := night > 0.5
+		var wall := Color(0.2, 0.15, 0.15)
+		var gold := Color(1.0, 0.82, 0.35)
+		var warm := Color(1.0, 0.9, 0.66)
+		# the ribs of the vault before the sky
+		for rx in range(0, int(w), 37):
+			draw_rect(Rect2(rx, 0.0, 2.0, 54.0), Color(0.62, 0.56, 0.48))
+		draw_rect(Rect2(0.0, 17.0, w, 1.5), Color(0.62, 0.56, 0.48))
+		draw_rect(Rect2(0.0, 35.0, w, 1.5), Color(0.62, 0.56, 0.48))
+		draw_rect(Rect2(0.0, 0.0, w, 54.0), Color(0.7, 0.9, 1.0, 0.06))
+		# the wall behind the galleries (west of the fronts only down to the lifts' own wall)
+		draw_rect(Rect2(0.0, 54.0, x0, fl - 32.0 - 54.0), wall)
+		draw_rect(Rect2(x0, 54.0, w - x0, fl - 54.0), wall)
+		# two galleries: shops at their back, people behind the rail, the slab with its strip of light
+		for gi in 2:
+			var gy := 150.0 - gi * 48.0
+			var gx := 5.0
+			var k := 0
+			while gx < w - 30.0:
+				var gw := minf(44.0 + _h(gi * 50 + k, 1) * 28.0, w - 4.0 - gx)
+				var sc: Color = NEON[int(_h(gi * 50 + k, 2) * NEON.size()) % NEON.size()]
+				draw_rect(Rect2(gx, gy - 37.0, gw - 6.0, 27.0), Color(0.05, 0.05, 0.09))
+				draw_rect(Rect2(gx + 1.0, gy - 36.0, gw - 8.0, 25.0), Color(sc.lerp(warm, 0.6), 0.85 if nightly else 0.6))
+				for q in int((gw - 12.0) / 7.0):
+					var gh := 5.0 + _h(gi * 91 + k * 7 + q, 3) * 9.0
+					draw_rect(Rect2(gx + 4.0 + q * 7.0, gy - 11.0 - gh, 4.0, gh), Color(0.1, 0.07, 0.1, 0.7))
+				draw_rect(Rect2(gx, gy - 41.0, gw - 6.0, 3.0), Color(sc, 0.9))
+				if gw > 52.0:
+					draw_string(font, Vector2(gx, gy - 28.0), NAMES[(gi * 5 + k * 3) % NAMES.size()], HORIZONTAL_ALIGNMENT_CENTER, gw - 6.0, 6, Color(0.08, 0.05, 0.08, 0.8))
+				gx += gw
+				k += 1
+			for p in 10:
+				var px := fposmod(_h(gi * 9 + p, 33) * w + _t * (4.0 + _h(gi + p, 34) * 6.0) * (1.0 if p % 2 == 0 else -1.0), w)
+				var cloth: Color = [Color(0.3, 0.2, 0.36), Color(0.16, 0.3, 0.36), Color(0.4, 0.18, 0.24), Color(0.32, 0.3, 0.2), Color(0.2, 0.22, 0.34)][(gi * 3 + p) % 5]
+				draw_rect(Rect2(px - 3.5, gy - 22.0, 7.0, 13.0), cloth)
+				draw_circle(Vector2(px, gy - 25.0), 3.0, Color(0.5, 0.36, 0.3) if p % 3 != 0 else Color(0.3, 0.2, 0.16))
+			draw_rect(Rect2(0.0, gy - 12.0, w, 12.0), Color(0.6, 0.85, 1.0, 0.18))
+			draw_rect(Rect2(0.0, gy - 13.0, w, 1.5), Color(0.86, 0.9, 1.0, 0.9))
+			for rp in range(0, int(w), 16):
+				draw_rect(Rect2(rp, gy - 13.0, 1.0, 13.0), Color(0.7, 0.72, 0.8, 0.8))
+			draw_rect(Rect2(0.0, gy, w, 4.0), wall.lightened(0.28))
+			draw_rect(Rect2(0.0, gy + 2.0, w, 1.5), Color(NEON[gi], 0.9))
+			for bn in range(26, int(w) - 10, 74):
+				var bc: Color = NEON[(bn / 74 + gi * 2) % NEON.size()]
+				var bx := float(bn) + gi * 37.0
+				if bx < w - 14.0:
+					draw_colored_polygon(PackedVector2Array([Vector2(bx, gy + 4.0), Vector2(bx + 10.0, gy + 4.0), Vector2(bx + 10.0, gy + 20.0), Vector2(bx + 5.0, gy + 15.0), Vector2(bx, gy + 20.0)]), Color(bc, 0.9))
+		# the cornice under the vault: gold, a line of lamps running
+		draw_rect(Rect2(0.0, 54.0, w, 4.0), gold.darkened(0.25))
+		var bi := 0
+		for cx in range(4, int(w), 10):
+			draw_circle(Vector2(cx, 56.0), 1.3, Color(1.0, 0.95, 0.7) if (bi + int(_t * 5.0)) % 4 == 0 else Color(0.55, 0.4, 0.2))
+			bi += 1
+		# the shop fronts, a pillar between each two (up to the cornice)
+		for f in fronts:
+			_front(f, fl, font)
+		var edges: Array = fronts.map(func(f2): return float(f2["x"]))
+		if not fronts.is_empty():
+			edges.append(float(fronts[fronts.size() - 1]["x"]) + float(fronts[fronts.size() - 1]["w"]))
+		for ex in edges:
+			var pxx := float(ex)
+			draw_rect(Rect2(pxx - 3.5, 58.0, 7.0, fl - 58.0), wall.lightened(0.32))
+			draw_rect(Rect2(pxx - 3.5, 58.0, 1.5, fl - 58.0), wall.lightened(0.5))
+			draw_rect(Rect2(pxx - 0.5, 62.0, 1.0, fl - 70.0), Color(gold, 0.7))
+			draw_rect(Rect2(pxx - 5.0, fl - 5.0, 10.0, 5.0), wall.lightened(0.4))
+			draw_rect(Rect2(pxx - 5.0, 58.0, 10.0, 3.0), gold.darkened(0.1))
+		# over the lifts: their sign
+		draw_rect(Rect2(8.0, 158.0, x0 - 20.0, 14.0), Color(0.03, 0.04, 0.06))
+		draw_rect(Rect2(8.0, 158.0, x0 - 20.0, 14.0), Color(0.4, 1.0, 0.6, 0.9), false, 1.0)
+		draw_string(font, Vector2(8.0, 169.0), "LIFTS", HORIZONTAL_ALIGNMENT_CENTER, x0 - 20.0, 9, Color(0.7, 1.0, 0.8))
+		_escalators(fl, w)
+		# lights on lines from the cornice, swaying a little
+		for ln in range(0, int(w), 148):
+			var pts := PackedVector2Array()
+			for k2 in 13:
+				var u := k2 / 12.0
+				pts.append(Vector2(ln + u * 148.0, 60.0 + sin(u * PI) * (16.0 + sin(_t * 0.9 + ln) * 1.5)))
+			draw_polyline(pts, Color(0.1, 0.1, 0.14), 1.0)
+			for k3 in range(1, 12):
+				var lc: Color = NEON[(k3 + ln / 148) % NEON.size()]
+				if nightly:
+					draw_circle(pts[k3] + Vector2(0.0, 2.0), 3.5, Color(lc, 0.16))
+				draw_circle(pts[k3] + Vector2(0.0, 2.0), 1.5, lc)
+
+	## One shop's front on the ground floor.
+	func _front(f: Dictionary, fl: float, font: Font) -> void:
+		var x := float(f["x"]) + 5.0
+		var w := float(f["w"]) - 10.0
+		var fcol: Color = f["col"]
+		var sd := int(f["seed"])
+		var nightly := night > 0.5
+		var warm := Color(1.0, 0.9, 0.66)
+		var frame := Color(0.34, 0.27, 0.26)
+		var cx := x + w * 0.5
+		var to_let := String(f["id"]) == ""
+		var shut := bool(f["shut"])
+		draw_rect(Rect2(x, fl - 52.0, w, 52.0), Color(0.05, 0.05, 0.09))
+		var flick := 1.0 if _h(sd, 15) > 0.2 else (0.4 + 0.6 * absf(sin(_t * 7.0 + sd)))
+		draw_rect(Rect2(x + 2.0, fl - 51.0, w - 4.0, 13.0), Color(0.03, 0.03, 0.06))
+		if to_let:
+			draw_rect(Rect2(x + 2.0, fl - 51.0, w - 4.0, 13.0), Color(0.4, 0.4, 0.48), false, 1.0)
+			draw_rect(Rect2(x + 3.0, fl - 36.0, w - 6.0, 36.0), Color(0.3, 0.31, 0.37))
+			for sl in range(0, 36, 3):
+				draw_rect(Rect2(x + 3.0, fl - 36.0 + sl, w - 6.0, 1.0), Color(0.2, 0.21, 0.26))
+			draw_rect(Rect2(cx - 30.0, fl - 27.0, 60.0, 13.0), Color(0.92, 0.9, 0.84))
+			draw_string(font, Vector2(cx - 30.0, fl - 17.5), "OPENING SOON", HORIZONTAL_ALIGNMENT_CENTER, 60.0, 7, Color(0.2, 0.16, 0.2))
+			return
+		draw_rect(Rect2(x + 2.0, fl - 51.0, w - 4.0, 13.0), Color(fcol, 0.85 * flick), false, 1.0)
+		draw_string(font, Vector2(x + 2.0, fl - 41.0), String(f["title"]).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, w - 4.0, 9, Color(fcol.lightened(0.35), flick))
+		var lit := Color(fcol.lerp(warm, 0.6), (0.92 if nightly else 0.6) if not shut else 0.15)
+		# a window either side of the door: shelves of goods, somebody behind the counter on the left
+		for side in 2:
+			var wx0 := x + 4.0 if side == 0 else cx + 17.0
+			var ww := cx - 17.0 - (x + 4.0)
+			draw_rect(Rect2(wx0 - 1.0, fl - 36.0, ww + 2.0, 31.0), frame)
+			draw_rect(Rect2(wx0, fl - 35.0, ww, 29.0), lit)
+			if not shut:
+				for sh in 2:
+					var yy := fl - 23.0 + sh * 11.0
+					draw_rect(Rect2(wx0 + 2.0, yy, ww - 4.0, 1.0), Color(0.1, 0.07, 0.1, 0.6))
+					for q in int((ww - 6.0) / 6.0):
+						var gh := 3.0 + _h(sd + side * 31 + sh * 11 + q, 25) * 5.0
+						var gc: Color = NEON[int(_h(sd + side * 17 + sh * 7 + q, 26) * NEON.size()) % NEON.size()]
+						draw_rect(Rect2(wx0 + 3.0 + q * 6.0, yy - gh, 4.0, gh), Color(gc.darkened(0.35), 0.85))
+				if side == 0:
+					var kx := wx0 + ww * 0.55
+					draw_rect(Rect2(kx - 4.0, fl - 21.0, 8.0, 15.0), Color(0.1, 0.07, 0.11, 0.85))
+					draw_circle(Vector2(kx, fl - 24.0), 3.0, Color(0.1, 0.07, 0.11, 0.85))
+			var mu := wx0 + 24.0
+			while mu < wx0 + ww - 6.0:
+				draw_rect(Rect2(mu, fl - 35.0, 1.0, 29.0), frame)
+				mu += 24.0
+			draw_rect(Rect2(wx0, fl - 35.0, ww, 3.0), Color(1, 1, 1, 0.14))
+			draw_rect(Rect2(wx0 - 1.0, fl - 5.0, ww + 2.0, 5.0), frame.darkened(0.2))
+		# the door: two leaves of glass, as high as a doorway
+		draw_rect(Rect2(cx - 15.0, fl - 36.0, 30.0, 36.0), frame.lightened(0.15))
+		draw_rect(Rect2(cx - 13.5, fl - 34.0, 13.0, 34.0), Color(warm, 0.85 if nightly else 0.55) if not shut else Color(0.08, 0.09, 0.14))
+		draw_rect(Rect2(cx + 0.5, fl - 34.0, 13.0, 34.0), Color(warm, 0.85 if nightly else 0.55) if not shut else Color(0.08, 0.09, 0.14))
+		draw_rect(Rect2(cx - 3.0, fl - 18.0, 1.5, 6.0), Color(0.3, 0.3, 0.36))
+		draw_rect(Rect2(cx + 1.5, fl - 18.0, 1.5, 6.0), Color(0.3, 0.3, 0.36))
+		draw_rect(Rect2(cx - 15.0, fl - 38.0, 30.0, 2.0), Color(fcol, 0.9))
+		if shut:
+			draw_rect(Rect2(cx - 12.0, fl - 26.0, 24.0, 8.0), Color(0.7, 0.14, 0.16))
+			draw_string(font, Vector2(cx - 12.0, fl - 19.5), "CLOSED", HORIZONTAL_ALIGNMENT_CENTER, 24.0, 6, Color(1, 1, 1))
+		elif nightly:
+			draw_rect(Rect2(x + 4.0, fl, w - 8.0, 6.0), Color(fcol.lerp(warm, 0.6), 0.09))
+
+	## Two escalators from the floor up to the first gallery, their steps running, somebody riding.
+	func _escalators(fl: float, w: float) -> void:
+		var steel := Color(0.3, 0.32, 0.4)
+		for e in 2:
+			var a := Vector2(float(Gen.H_X1 + 1) * GroundMap.TILE + 6.0 + e * 40.0, fl)
+			var b := Vector2(minf(a.x + 132.0, w - 30.0 + e * 20.0), 150.0)
+			var up := e == 0
+			var dim := 0.0 if up else 0.25
+			draw_colored_polygon(PackedVector2Array([a, a + Vector2(26.0, 0.0), b + Vector2(26.0, 0.0), b]), steel.darkened(dim))
+			var dv := b - a
+			for s in 16:
+				var u := fposmod(s / 16.0 + _t * 0.06 * (1.0 if up else -1.0), 1.0)
+				var sp := a + dv * u
+				draw_rect(Rect2(sp.x + 3.0, sp.y - 1.0, 20.0, 1.5), Color(0.75, 0.78, 0.86, 0.8))
+			draw_colored_polygon(PackedVector2Array([a + Vector2(0.0, -13.0), a, b, b + Vector2(0.0, -13.0)]), Color(0.6, 0.85, 1.0, 0.2))
+			draw_line(a + Vector2(0.0, -13.0), b + Vector2(0.0, -13.0), Color(0.06, 0.06, 0.1), 2.5)
+			draw_line(a + Vector2(0.0, -11.0), b + Vector2(0.0, -11.0), Color(0.3, 0.9, 1.0, 0.8), 1.0)
+			var ru := fposmod(_t * 0.06 + 0.3 + e * 0.4, 1.0)
+			var rp2 := a + dv * (ru if up else 1.0 - ru) + Vector2(13.0, 0.0)
+			draw_rect(Rect2(rp2.x - 3.5, rp2.y - 16.0, 7.0, 13.0), Color(0.2, 0.22, 0.34))
+			draw_circle(Vector2(rp2.x, rp2.y - 19.0), 3.0, Color(0.5, 0.36, 0.3))
+			draw_rect(Rect2(a.x - 2.0, fl - 3.0, 30.0, 3.0), Color(0.6, 0.62, 0.7))
+
+	## A pavilion to let: its roof, its front with the shutters down, a sign.
+	func _pav() -> void:
+		var font := ThemeDB.fallback_font
+		var w := 8.0 * GroundMap.TILE
+		var body := Color(0.2, 0.2, 0.28)
+		draw_rect(Rect2(3.0, -4.0, w, 6.0), Color(0, 0, 0, 0.3))
+		draw_rect(Rect2(0.0, -78.0, w, 32.0), body.lightened(0.18))
+		draw_rect(Rect2(0.0, -78.0, w, 1.5), body.lightened(0.4))
+		draw_rect(Rect2(0.0, -78.0, w, 32.0), Color(col, 0.75), false, 1.0)                 # its roof: a line of neon round it,
+		draw_rect(Rect2(34.0, -72.0, w - 68.0, 18.0), Color(0.08, 0.08, 0.12))              # a skylight dark for now,
+		draw_rect(Rect2(36.0, -70.0, w - 72.0, 14.0), Color(0.3, 0.4, 0.55, 0.5))
+		draw_rect(Rect2(w * 0.5 - 0.5, -70.0, 1.0, 14.0), Color(0.08, 0.08, 0.12))
+		for pl in 2:                                                                        # a planter either end
+			var plx := 8.0 if pl == 0 else w - 26.0
+			draw_rect(Rect2(plx, -62.0, 18.0, 8.0), Color(0.36, 0.26, 0.2))
+			for lf in 3:
+				draw_circle(Vector2(plx + 3.0 + lf * 6.0, -64.0 - (lf % 2) * 2.0), 4.0, Color(0.2, 0.56, 0.3))
+		draw_rect(Rect2(0.0, -46.0, w, 46.0), body)
+		draw_rect(Rect2(0.0, -46.0, w, 2.0), Color(col, 0.9))
+		draw_rect(Rect2(2.0, -44.0, w - 4.0, 10.0), Color(0.03, 0.03, 0.06))
+		draw_rect(Rect2(2.0, -44.0, w - 4.0, 10.0), Color(col, 0.6), false, 1.0)
+		draw_rect(Rect2(4.0, -32.0, w - 8.0, 32.0), Color(0.3, 0.31, 0.37))
+		for sl in range(0, 32, 3):
+			draw_rect(Rect2(4.0, -32.0 + sl, w - 8.0, 1.0), Color(0.2, 0.21, 0.26))
+		draw_rect(Rect2(w * 0.5 - 30.0, -24.0, 60.0, 13.0), Color(0.92, 0.9, 0.84))
+		draw_string(font, Vector2(w * 0.5 - 30.0, -14.5), "OPENING SOON", HORIZONTAL_ALIGNMENT_CENTER, 60.0, 7, Color(0.2, 0.16, 0.2))
+		draw_string(font, Vector2(2.0, -36.0), "TO LET", HORIZONTAL_ALIGNMENT_CENTER, w - 4.0, 7, Color(col.lightened(0.3), 0.6 + 0.3 * sin(_t * 1.7)))
+
+	## Over the fountain: Lapis as a hologram, turning, its light rising from the water.
+	func _holo() -> void:
+		draw_colored_polygon(PackedVector2Array([Vector2(-9.0, -22.0), Vector2(9.0, -22.0), Vector2(26.0, -84.0), Vector2(-26.0, -84.0)]), Color(0.3, 0.9, 1.0, 0.07))
+		Gen.draw_lapis(self, Vector2(0.0, -62.0), 15.0, 1.0, _t * 30.0, false)
+		for sc2 in 5:
+			draw_rect(Rect2(-36.0, -88.0 + sc2 * 11.0 + fposmod(_t * 8.0, 11.0), 72.0, 1.0), Color(0.6, 1.0, 1.0, 0.12))
+
+
+## Package 61b (Luz): the Back Alleys behind the gate on the plaza. A crowded street running east to west between
+## high houses, dark even by day: along its north side front after front (noodle bars with a counter to the street,
+## small shops, shutters, an arcade), neon signs over them in many layers; market stalls on the street, people close
+## together (umbrellas when it rains), puddles with the neon in them; lines of lanterns across it, the roofs of low
+## booths along its south side, now and then a craft with a searchlight overhead. In the middle of the north side
+## the gate back to the plaza; at the east end the stairs down to the Static Feedback. The fronts, the signs and
+## the roofs are drawn (AlleyFx).
+const AW := 96
+const AH := 26
+const A_F0 := 14                   # the street's first row (north of it the houses' fronts, drawn)
+const A_F1 := 19                   # its last row (Luz: narrow; south of it the roofs of the shops on that side, drawn)
+const A_GATE := 45                 # the gate to the plaza: its west column (6 wide)
+const A_BAR := 80                  # the bar's front: its west column (10 wide)
+
+static func build_alleys(_station: Dictionary) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.21, 0.21, 0.28)
+	m.pal["floor2"] = Color(0.15, 0.15, 0.21)
+	m.pal["wall"] = Color(0.14, 0.13, 0.18)
+	m.pal["frame"] = Color(0.14, 0.13, 0.18)
+	m.pal["accent"] = Color(0.35, 1.0, 0.55)
+	m.style = "plaza"
+	m.title = "Centauria"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(AW, AH)
+	var cols := [Color(1.0, 0.36, 0.3), Color(1.0, 0.6, 0.2), Color(0.3, 0.9, 0.85), Color(1.0, 0.36, 0.66), Color(0.95, 0.85, 0.3), Color(0.6, 0.5, 1.0)]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6121
+	m.fill(0, 0, AW, AH, T.BLOCK, 0)
+	m.fill(1, A_F0, AW - 2, A_F1 - A_F0 + 1, T.FLOOR, 0)              # (dark plates: a wet street at night)
+	# the gate back to the plaza, a passage north through the houses
+	m.fill(A_GATE, A_F0 - 3, 6, 3, T.FLOOR, 0)
+	m.zones.append({"rect": Rect2(Vector2(A_GATE, A_F0 - 3) * TILE, Vector2(6, 1.7) * TILE), "kind": "museum_go", "id": "alley_gate", "to": "zplaza", "at": "from_alleys",
+		"title": "Through the gate: the plaza of the Commercial District", "col": Color(0.35, 1.0, 0.55), "sign": Vector2(-100, -100)})
+	m.set_meta("from_plaza", Vector2(A_GATE + 3.0, A_F0 + 0.8) * TILE)
+	m.spawn = m.get_meta("from_plaza")
+	m.lights.append({"pos": Vector2(A_GATE + 3.0, A_F0 - 1.0) * TILE, "r": 70.0, "col": Color(0.35, 1.0, 0.55), "a": 0.4})
+	# the Static Feedback: stairs down under its sign, somebody at the door
+	m.zones.append({"rect": Rect2(Vector2(A_BAR + 4.0, A_F0 - 0.2) * TILE, Vector2(3.4, 1.7) * TILE), "kind": "museum_go", "id": "bar_in", "to": "zbar", "at": "from_street",
+		"title": "Down the stairs: the Static Feedback", "col": Color(1.0, 0.36, 0.66), "sign": Vector2(-100, -100)})
+	m.set_meta("from_bar", Vector2(A_BAR + 5.7, A_F0 + 1.4) * TILE)
+	m.people.append({"pos": Vector2(A_BAR + 2.6, A_F0 + 0.9) * TILE, "dir": 0, "role": "keeper"})
+	m.lights.append({"pos": Vector2(A_BAR + 5.7, A_F0 + 0.4) * TILE, "r": 80.0, "col": Color(1.0, 0.3, 0.5), "a": 0.5, "flicker": true})
+	# the fronts along the north side: what each is (the picture is drawn); a noodle bar has stools at its counter
+	var fronts: Array = []
+	var kinds := ["noodle", "shop", "shutter", "arcade", "noodle", "shop", "noodle", "shutter", "shop"]
+	var x := 1
+	var i := 0
+	while x < AW - 1:
+		var kind := String(kinds[i % kinds.size()])
+		var w := rng.randi_range(6, 8)
+		var stop := A_GATE if x < A_GATE else (A_BAR if x < A_BAR else AW - 1)
+		if x == A_GATE:
+			kind = "gate"
+			w = 6
+		elif x == A_BAR:
+			kind = "bar"
+			w = 10
+		elif stop - (x + w) < 5:
+			w = stop - x
+		var fcol: Color = cols[(i * 5 + 1) % cols.size()]
+		fronts.append({"x": float(x * TILE), "w": float(w * TILE), "kind": kind, "seed": 300 + i * 17, "col": fcol})
+		if kind == "noodle":
+			m.fill(x, A_F0, w, 1, T.BLOCK, 0)                  # its counter stands out into the street
+			for sx in range(x + 1, x + w - 1, 2):
+				DeckGen._seat(m, "stool", sx, A_F0 + 1, 1, fcol.darkened(0.35), rng, 0.7)
+		if not kind in ["gate", "bar"]:
+			m.lights.append({"pos": Vector2(x + w * 0.5, A_F0 + 0.8) * TILE, "r": 56.0, "col": fcol, "a": 0.42, "flicker": kind == "arcade"})
+		x += w
+		i += 1
+	m.set_meta("alley_fronts", fronts)
+	# (Luz: shops along both sides, hardly a stall) two stalls by the south side, their keepers; the light of the
+	# shops on that side falling onto the street
+	var n := 0
+	for lx in range(4, AW - 3, 7):
+		m.lights.append({"pos": Vector2(lx, A_F1 + 0.6) * TILE, "r": 50.0, "col": cols[(lx / 7 + 3) % cols.size()], "a": 0.4})
+	for sp in [Vector2i(26, 5), Vector2i(66, 5)]:
+		m.add_object({"kind": "stall", "x": sp.x, "y": A_F0 + sp.y, "w": 2, "h": 1, "col": cols[n % cols.size()]})
+		m.people.append({"pos": Vector2(sp.x + 1.0, A_F0 + sp.y - 0.2) * TILE, "dir": 0, "role": "keeper"})
+		m.lights.append({"pos": Vector2(sp.x + 1.0, A_F0 + sp.y + 0.6) * TILE, "r": 34.0, "col": cols[n % cols.size()], "a": 0.5})
+		n += 1
+	m.set_meta("tourists", 5)
+	m.set_meta("stream", 86)                                          # (Luz) the crowd streaming east and west through it
+	DeckGen._seats(m)
+	for gx in range(3, AW - 2, 5):
+		for gy in [A_F0 + 2, A_F0 + 4]:
+			var wp := Vector2(gx, gy)
+			if m.free_at(wp * TILE, 6.0):
+				m.wander.append(wp * TILE)
+	return m
+
+
+## Package 61b (Luz): the Static Feedback, Luz' punk bar in a cellar under the Back Alleys. A small place (Luz: not
+## much room, not much going on): a little stage at its west end, a short counter along the north wall, two booths in
+## the east, pool, darts, an arcade cabinet, a Drift table and the jukebox; a door to a back room (shut); the stairs
+## up to the street in the north-east. Dark wood, dark all over: the neon carries it. Nobody strolls in here: it is
+## where the people of the story meet (BAR_SPOTS), your own crew waits here ("bar_crew": where they stand), and at
+## night the band plays (The Hull Breach: four real people, see the story's characters) with a few dancing before
+## them. Its north wall, its stage and the band's gear are drawn (BarFx).
+const BW := 30
+const BH := 18
+const B_F0 := 7                    # the floor's first row (north of it the cellar's wall, drawn)
+const B_F1 := 15
+const B_STAGE := Rect2i(1, 7, 6, 4)                                  # the stage (tiles)
+const BAR_SPOTS := {"luz": Vector2(15.5, 7.99), "ratte": Vector2(24.4, 12.7), "kraut": Vector2(28.3, 12.4)}       # (tiles)
+const BAND := [["band_drums", Vector2(3.9, 8.4), "kit"], ["band_guitar", Vector2(2.1, 9.9), "guitar"], ["band_bass", Vector2(5.9, 9.8), "bass"],
+	["band_voice", Vector2(4.0, 10.1), "mic"]]                      # who, where (tiles), what they play
+
+static func build_punkbar(_station: Dictionary, night: bool = false) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.24, 0.2, 0.22)
+	m.pal["floor2"] = Color(0.18, 0.15, 0.17)
+	m.pal["wood"] = Color(0.27, 0.16, 0.11)
+	m.set_meta("dark", Color(0.46, 0.4, 0.52))
+	m.pal["wall"] = Color(0.2, 0.12, 0.12)
+	m.pal["frame"] = Color(0.2, 0.12, 0.12)
+	m.pal["accent"] = Color(1.0, 0.36, 0.66)
+	m.style = "plaza"
+	m.title = "Centauria"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(BW, BH)
+	var PINK := Color(1.0, 0.36, 0.66)
+	var CYAN := Color(0.3, 0.9, 1.0)
+	var RED := Color(1.0, 0.25, 0.25)
+	var PURPLE := Color(0.72, 0.36, 1.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6122
+	m.fill(0, 0, BW, BH, T.CAP)
+	m.fill(1, 0, BW - 2, B_F0, T.BLOCK, 30)                          # the north wall: drawn over
+	m.fill(1, B_F0, BW - 2, B_F1 - B_F0 + 1, T.FLOOR, 3)
+	for nl in [[Vector2(8.0, B_F0 + 0.3), CYAN], [Vector2(21.5, B_F0 + 0.3), PURPLE], [Vector2(10.0, B_F0 + 5.0), CYAN], [Vector2(16.0, B_F0 + 7.5), PINK],
+			[Vector2(22.0, B_F0 + 5.5), RED], [Vector2(26.5, B_F0 + 5.5), Color(0.55, 1.0, 0.6)], [Vector2(3.0, B_F0 + 7.5), PURPLE]]:
+		m.lights.append({"pos": (nl[0] as Vector2) * TILE, "r": 50.0, "col": nl[1], "a": 0.42})
+	# the stage (drawn); at night the band on it and a few dancing before it
+	m.fill(B_STAGE.position.x, B_STAGE.position.y, B_STAGE.size.x, B_STAGE.size.y, T.BLOCK, 3)
+	m.set_meta("bar_stage", Rect2(Vector2(B_STAGE.position) * TILE, Vector2(B_STAGE.size) * TILE))
+	m.lights.append({"pos": Vector2(4.0, B_F0 + 2.5) * TILE, "r": 80.0, "col": RED, "a": 0.4})
+	if night:
+		var chars: Dictionary = load("res://data/story.gd").CHARACTERS
+		var props: Array = []
+		for bm in BAND:
+			var at: Vector2 = (bm[1] as Vector2) * TILE
+			m.people.append({"pos": at, "dir": 0, "role": "keeper", "look": (chars.get(String(bm[0]), {}) as Dictionary).get("look", {}), "dance": String(bm[2]) != "kit"})
+			props.append({"at": at, "kind": String(bm[2])})
+		m.set_meta("bar_band", props)
+		for dp in [Vector2(2.4, 12.6), Vector2(4.3, 13.3), Vector2(6.2, 12.4)]:
+			m.people.append({"pos": dp * TILE, "dir": 1, "role": "keeper", "dance": true})
+	# the counter along the north wall, stools before it
+	m.add_object({"kind": "bar_counter", "x": 11, "y": B_F0 + 1, "w": 10, "h": 1})
+	for sx in range(12, 20, 2):
+		DeckGen._seat(m, "stool", sx, B_F0 + 2, 1, Color(0.75, 0.25, 0.3), rng, 0.0)
+	m.lights.append({"pos": Vector2(16.0, B_F0 + 1.0) * TILE, "r": 90.0, "col": PINK, "a": 0.4})
+	m.lights.append({"pos": Vector2(16.0, B_F0 + 0.4) * TILE, "r": 50.0, "col": Color(1.0, 0.8, 0.5), "a": 0.3})
+	# the games
+	DeckGen._arcade(m, 7, B_F0, 0)
+	DeckGen._dart_board(m, 9, B_F0 - 1)
+	m.add_object({"kind": "jukebox", "x": 21, "y": B_F0, "w": 1, "h": 1, "col": PINK})
+	m.zones.append({"rect": Rect2(Vector2(20.6, B_F0 + 0.8) * TILE, Vector2(1.8, 1.4) * TILE), "kind": "jukebox", "id": "jukebox", "title": "Jukebox", "sign": Vector2(-100, -100)})
+	m.lights.append({"pos": Vector2(21.5, B_F0 + 0.6) * TILE, "r": 34.0, "col": PINK, "a": 0.4, "flicker": true})
+	DeckGen._pool_table(m, 9, B_F0 + 4)
+	m.add_object({"kind": "round_table", "x": 15, "y": B_F0 + 5, "w": 1, "h": 1})
+	DeckGen._seat(m, "chair", 14, B_F0 + 5, 3, Color(0.4, 0.2, 0.3), rng, 0.0)
+	DeckGen._seat(m, "chair", 16, B_F0 + 5, 2, Color(0.4, 0.2, 0.3), rng, 0.0)
+	DeckGen._drift_zone(m, Rect2(Vector2(14, B_F0 + 5.8) * TILE, Vector2(3, 1.6) * TILE))
+	m.add_object({"kind": "round_table", "x": 18, "y": B_F0 + 7, "w": 1, "h": 1})
+	# the door to the back room (shut), the stairs up to the street
+	_zone(m, Rect2(22.3, B_F0, 2.4, 1.4), "ctr_closed", "The back room", PURPLE, {"closed": "Private. Luz keeps the key.", "id": "bar_back"})
+	m.fill(25, B_F0 - 2, 4, 2, T.FLOOR, 30)
+	m.zones.append({"rect": Rect2(Vector2(25, B_F0 - 2) * TILE, Vector2(4, 1.7) * TILE), "kind": "museum_go", "id": "bar_out", "to": "zalley", "at": "from_bar",
+		"title": "Up the stairs: the Back Alleys", "col": CYAN, "sign": Vector2(-100, -100)})
+	m.set_meta("from_street", Vector2(27.0, B_F0 + 0.8) * TILE)
+	m.spawn = m.get_meta("from_street")
+	m.lights.append({"pos": Vector2(27.0, B_F0 - 0.5) * TILE, "r": 56.0, "col": CYAN, "a": 0.35})
+	# two booths in the east: two sofas face to face, a table between
+	for bk in 2:
+		var bx := 21 + bk * 4
+		DeckGen._seat(m, "sofa", bx, B_F0 + 3, 0, Color(0.45, 0.14, 0.2), rng, 0.0, 3)
+		m.add_object({"kind": "round_table", "x": bx + 1, "y": B_F0 + 5, "w": 1, "h": 1})
+		DeckGen._seat(m, "sofa", bx, B_F0 + 7, 1, Color(0.45, 0.14, 0.2), rng, 0.0, 3)
+	# where your own crew waits (art px, the way they look)
+	m.set_meta("bar_crew", [[Vector2(13.0, B_F0 + 3.3) * TILE, 1], [Vector2(17.1, B_F0 + 3.3) * TILE, 1], [Vector2(17.3, B_F0 + 7.7) * TILE, 3], [Vector2(19.6, B_F0 + 7.6) * TILE, 2],
+		[Vector2(12.9, B_F0 + 5.4) * TILE, 2], [Vector2(13.4, B_F0 + 8.2) * TILE, 0]])
+	m.set_meta("tourists", 0)                                         # (nobody strolls in here)
+	DeckGen._seats(m)
+	return m
+
+
+## The Back Alleys, drawn (art px). "wall": the houses' fronts along the north side from the street up: shops (noodle
+## bars open to the street, their steam; shop windows; shutters with scrawls; an arcade), dark storeys with a few lit
+## windows, pipes and coolers, and signs in layers: blades standing out from the walls, boards, round marks, screens.
+## The gate to the plaza and the front of the Static Feedback. "floor": the wet street, the neon lying in it. Both
+## under the people. "over": lines of lanterns across the street, the booths' roofs along the south side, a craft
+## with a searchlight now and then: over the people.
+class AlleyFx extends Node2D:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	const NEON := [Color(1.0, 0.36, 0.3), Color(1.0, 0.6, 0.2), Color(0.3, 0.9, 0.85), Color(1.0, 0.36, 0.66), Color(0.95, 0.85, 0.3), Color(0.6, 0.5, 1.0)]
+	const FOOD := ["NOODLES", "RAMEN", "DUMPLINGS", "SOBA", "BROTH"]
+	const SHOP := ["PAWN", "PARTS", "TATTOO", "VINYL", "24H", "LOANS", "OPTICS", "KEYS", "TEA"]
+	const ADS := ["NOVA COLA", "ORBIT GIN", "FLY AURELLE", "KHI WORKS", "PELAGIA TOURS"]
+	var part := "wall"
+	var fronts: Array = []
+	var night := 1.0
+	var _t := 0.0
+	var _acc := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		_acc += dt
+		if _acc > 0.09:
+			_acc = 0.0
+			queue_redraw()
+
+	func _h(i: int, salt: int) -> float:
+		return Gen.TowerArt.hsh(i, salt)
+
+	func _draw() -> void:
+		match part:
+			"wall":
+				for f in fronts:
+					_house(f)
+				_cables()
+			"floor":
+				_floor()
+			_:
+				_over()
+
+	## Marks like a script nobody reads: small blocks in a column.
+	func _glyphs(x: float, y: float, n: int, sd: int, c: Color) -> void:
+		for g in n:
+			var gy := y + g * 9.0
+			for q in 3:
+				if _h(sd + g * 5 + q, 61) < 0.75:
+					draw_rect(Rect2(x + 1.0 + (q % 2) * 4.0 * _h(sd + g + q, 62), gy + q * 2.6, 3.0 + _h(sd + g * 3 + q, 63) * 4.0, 1.6), c)
+
+	func _house(f: Dictionary) -> void:
+		var font := ThemeDB.fallback_font
+		var x := float(f["x"])
+		var w := float(f["w"])
+		var sd := int(f["seed"])
+		var fcol: Color = f["col"]
+		var kind := String(f["kind"])
+		var fl := float(Gen.A_F0 * GroundMap.TILE)
+		var wall := Color(0.09, 0.09, 0.14).lerp([Color(0.2, 0.12, 0.16), Color(0.1, 0.16, 0.2), Color(0.18, 0.14, 0.1), Color(0.12, 0.12, 0.2)][sd % 4], 0.6)
+		var warm := Color(1.0, 0.8, 0.5)
+		draw_rect(Rect2(x, 0.0, w, fl), wall)
+		draw_rect(Rect2(x, 0.0, 1.5, fl), wall.lightened(0.14))
+		draw_rect(Rect2(x + w - 2.0, 0.0, 2.0, fl), wall.darkened(0.4))
+		# the storeys over the shop: few windows lit, coolers, a balcony of iron on every second
+		var st := 0
+		var y := fl - 56.0 - 38.0
+		while y > -30.0:
+			draw_rect(Rect2(x + 2.0, y + 36.0, w - 4.0, 2.0), wall.darkened(0.35))
+			var cols := maxi(1, int((w - 10.0) / 18.0))
+			var ox := x + (w - cols * 18.0) * 0.5 + 3.0
+			for c in cols:
+				var wx := ox + c * 18.0
+				var on := _h(sd + st * 13 + c / 2, 6) < 0.3
+				draw_rect(Rect2(wx - 1.0, y + 6.0, 14.0, 22.0), wall.lightened(0.14))
+				var wc := Color(0.04, 0.05, 0.09)
+				if on:
+					wc = Color(warm, 0.9) if _h(sd + st * 7 + c, 9) < 0.6 else Color(NEON[(sd + c) % NEON.size()], 0.75)
+				draw_rect(Rect2(wx, y + 7.0, 12.0, 20.0), wc)
+				if on and _h(sd + st * 5 + c, 10) < 0.4:
+					draw_rect(Rect2(wx, y + 7.0, 12.0, 9.0), wall.darkened(0.2))
+				draw_rect(Rect2(wx + 5.5, y + 7.0, 1.0, 20.0), wall.lightened(0.14))
+				if _h(sd + st * 29 + c, 11) < 0.18:
+					draw_rect(Rect2(wx + 1.0, y + 29.0, 10.0, 6.0), Color(0.4, 0.42, 0.48))
+					draw_circle(Vector2(wx + 6.0, y + 32.0), 2.0, Color(0.1, 0.1, 0.14))
+			if st % 2 == 1:
+				draw_rect(Rect2(x + 3.0, y + 24.0, w - 6.0, 1.5), Color(0.3, 0.3, 0.36))
+				for px in range(int(x) + 4, int(x + w) - 4, 4):
+					draw_rect(Rect2(px, y + 24.0, 1.0, 12.0), Color(0.22, 0.22, 0.28))
+			y -= 38.0
+			st += 1
+		draw_rect(Rect2(x + w - 7.0, 0.0, 2.0, fl - 56.0), Color(0.24, 0.25, 0.3))
+		# the shop
+		match kind:
+			"noodle":
+				_noodle(x, w, fl, sd, fcol, font)
+			"shop":
+				_shop(x, w, fl, sd, fcol, font)
+			"shutter":
+				_shutter(x, w, fl, sd, fcol)
+			"arcade":
+				_arcade(x, w, fl, sd, fcol, font)
+			"gate":
+				_gate(x, w, fl, font)
+			_:
+				_bar(x, w, fl, font)
+		if kind in ["gate", "bar"]:
+			return
+		# signs in layers: a blade standing out from the wall, a round mark, a screen on the wider houses
+		var flick := 1.0 if _h(sd, 15) > 0.3 else (0.35 + 0.65 * absf(sin(_t * 8.0 + sd)))
+		var bc: Color = NEON[(sd + 2) % NEON.size()]
+		var bh := 60.0 + _h(sd, 16) * 60.0
+		var bx := x + (5.0 if sd % 2 == 0 else w - 19.0)
+		draw_rect(Rect2(bx - 1.0, fl - 62.0 - bh, 14.0, bh + 2.0), Color(0.02, 0.02, 0.05))
+		draw_rect(Rect2(bx - 1.0, fl - 62.0 - bh, 14.0, bh + 2.0), Color(bc, 0.9 * flick), false, 1.0)
+		_glyphs(bx + 1.5, fl - 58.0 - bh, int(bh / 9.0), sd, Color(bc.lightened(0.3), flick))
+		draw_rect(Rect2(bx - 4.0, fl - 64.0 - bh, 20.0, bh + 6.0), Color(bc, 0.05 * flick))
+		if w > 96.0:
+			var b2: Color = NEON[(sd + 5) % NEON.size()]
+			var b2h := 36.0 + _h(sd, 26) * 44.0
+			var b2x := x + (w - 19.0 if sd % 2 == 0 else 5.0)
+			draw_rect(Rect2(b2x - 1.0, fl - 62.0 - b2h, 14.0, b2h + 2.0), Color(0.02, 0.02, 0.05))
+			draw_rect(Rect2(b2x - 1.0, fl - 62.0 - b2h, 14.0, b2h + 2.0), Color(b2, 0.9), false, 1.0)
+			_glyphs(b2x + 1.5, fl - 58.0 - b2h, int(b2h / 9.0), sd + 40, b2.lightened(0.3))
+			draw_rect(Rect2(b2x - 4.0, fl - 64.0 - b2h, 20.0, b2h + 6.0), Color(b2, 0.05))
+		if w > 104.0:
+			var sc2: Color = NEON[(sd + 4) % NEON.size()]
+			var sx := x + w * 0.5 - 26.0
+			var sy := fl - 150.0 - _h(sd, 17) * 30.0
+			draw_rect(Rect2(sx - 2.0, sy - 2.0, 56.0, 38.0), Color(0.02, 0.02, 0.05))
+			for bnd in 6:
+				draw_rect(Rect2(sx, sy + bnd * 5.7, 52.0, 5.7), Color.from_hsv(fposmod(_h(sd, 18) + bnd * 0.07 + _t * 0.03, 1.0), 0.75, 0.55))
+			draw_rect(Rect2(sx, sy + fposmod(_t * 9.0, 34.0), 52.0, 2.0), Color(1, 1, 1, 0.14))
+			draw_string(font, Vector2(sx, sy + 20.0), ADS[sd % ADS.size()], HORIZONTAL_ALIGNMENT_CENTER, 52.0, 7, Color(1, 1, 1))
+			draw_rect(Rect2(sx - 2.0, sy - 2.0, 56.0, 38.0), Color(sc2, 0.8), false, 1.0)
+		else:
+			var rc: Color = NEON[(sd + 4) % NEON.size()]
+			var cc := Vector2(x + w * 0.5 + 6.0, fl - 120.0 - _h(sd, 19) * 40.0)
+			draw_circle(cc, 13.0, Color(0.02, 0.02, 0.05))
+			draw_arc(cc, 11.0, 0.0, TAU, 20, Color(rc, 0.95), 1.5)
+			draw_arc(cc, 6.0, _t * 1.5 + sd, _t * 1.5 + sd + 4.2, 12, Color(rc.lightened(0.3), 0.9), 1.5)
+			draw_circle(cc, 16.0, Color(rc, 0.06))
+
+	func _board(x: float, w: float, fl: float, text: String, c: Color, font: Font, flick: float) -> void:
+		draw_rect(Rect2(x + 3.0, fl - 56.0, w - 6.0, 12.0), Color(0.02, 0.02, 0.05))
+		draw_rect(Rect2(x + 3.0, fl - 56.0, w - 6.0, 12.0), Color(c, 0.85 * flick), false, 1.0)
+		draw_string(font, Vector2(x + 3.0, fl - 46.5), text, HORIZONTAL_ALIGNMENT_CENTER, w - 6.0, 9, Color(c.lightened(0.35), flick))
+
+	## A noodle bar: open to the street, its counter standing out, cooks behind it, lanterns, pots steaming.
+	func _noodle(x: float, w: float, fl: float, sd: int, c: Color, font: Font) -> void:
+		var flick := 1.0 if _h(sd, 20) > 0.25 else (0.4 + 0.6 * absf(sin(_t * 7.0 + sd)))
+		_board(x, w, fl, FOOD[sd % FOOD.size()], c, font, flick)
+		draw_rect(Rect2(x + 3.0, fl - 43.0, w - 6.0, 43.0), Color(0.1, 0.06, 0.05))
+		draw_rect(Rect2(x + 5.0, fl - 41.0, w - 10.0, 30.0), Color(1.0, 0.72, 0.4, 0.85))
+		for mb in int((w - 16.0) / 16.0):                              # the menu at the back
+			draw_rect(Rect2(x + 9.0 + mb * 16.0, fl - 39.0, 12.0, 7.0), Color(0.95, 0.9, 0.75))
+			draw_rect(Rect2(x + 10.0 + mb * 16.0, fl - 37.0, 8.0, 1.0), Color(0.5, 0.2, 0.15))
+			draw_rect(Rect2(x + 10.0 + mb * 16.0, fl - 35.0, 6.0, 1.0), Color(0.5, 0.2, 0.15))
+		for ck in maxi(1, int(w / 60.0)):                               # the cooks
+			var cx := x + w * (0.3 + ck * 0.4) + sin(_t * 0.7 + ck + sd) * 4.0
+			draw_rect(Rect2(cx - 4.5, fl - 27.0, 9.0, 16.0), Color(0.92, 0.9, 0.86))
+			draw_circle(Vector2(cx, fl - 30.0), 3.4, Color(0.6, 0.42, 0.34))
+			draw_rect(Rect2(cx - 3.5, fl - 35.0, 7.0, 2.5), Color(0.95, 0.95, 0.95))
+		draw_rect(Rect2(x + 3.0, fl - 12.0, w - 6.0, 12.0), Color(0.3, 0.2, 0.16))        # the counter
+		draw_rect(Rect2(x + 2.0, fl - 14.0, w - 4.0, 3.0), Color(0.5, 0.36, 0.26))
+		draw_rect(Rect2(x + 3.0, fl - 5.0, w - 6.0, 1.5), Color(c, 0.8))
+		for bw in int((w - 14.0) / 14.0):                               # bowls on it
+			draw_rect(Rect2(x + 9.0 + bw * 14.0, fl - 16.0, 6.0, 2.5), Color(0.9, 0.9, 0.92))
+		for ln in int((w - 10.0) / 12.0):                               # lanterns under the lintel
+			var lx := x + 8.0 + ln * 12.0
+			draw_rect(Rect2(lx, fl - 43.0, 1.0, 3.0), Color(0.1, 0.1, 0.1))
+			draw_rect(Rect2(lx - 2.0, fl - 40.0, 5.0, 6.0), Color(0.95, 0.25, 0.2))
+			draw_rect(Rect2(lx - 0.5, fl - 39.0, 2.0, 3.0), Color(1.0, 0.85, 0.5))
+		for pf in 4:                                                    # steam
+			var ph := fposmod(_t * 0.45 + pf / 4.0 + _h(sd, 42), 1.0)
+			var px := x + w * (0.25 + 0.5 * _h(sd + pf, 43))
+			draw_circle(Vector2(px + sin(ph * 6.0 + pf) * 4.0, fl - 18.0 - ph * 34.0), 4.0 + ph * 8.0, Color(0.95, 0.95, 1.0, (1.0 - ph) * 0.22))
+
+	func _shop(x: float, w: float, fl: float, sd: int, c: Color, font: Font) -> void:
+		var flick := 1.0 if _h(sd, 20) > 0.25 else (0.4 + 0.6 * absf(sin(_t * 7.0 + sd)))
+		_board(x, w, fl, SHOP[sd % SHOP.size()], c, font, flick)
+		var frame := Color(0.2, 0.19, 0.24)
+		draw_rect(Rect2(x + 3.0, fl - 43.0, w - 6.0, 43.0), Color(0.04, 0.04, 0.07))
+		var dx := x + w - 22.0
+		draw_rect(Rect2(dx - 1.0, fl - 33.0, 17.0, 33.0), frame)
+		draw_rect(Rect2(dx, fl - 32.0, 15.0, 32.0), Color(0.08, 0.09, 0.14))
+		draw_rect(Rect2(dx + 1.5, fl - 30.0, 12.0, 20.0), Color(c.lerp(Color(1.0, 0.9, 0.7), 0.5), 0.6))
+		var gw := dx - 5.0 - (x + 6.0)
+		draw_rect(Rect2(x + 5.0, fl - 34.0, gw + 2.0, 29.0), frame)
+		draw_rect(Rect2(x + 6.0, fl - 33.0, gw, 27.0), Color(c.lerp(Color(1.0, 0.9, 0.7), 0.45), 0.8))
+		for sh in 2:
+			var yy := fl - 22.0 + sh * 10.0
+			draw_rect(Rect2(x + 8.0, yy, gw - 4.0, 1.0), Color(0.08, 0.06, 0.08, 0.7))
+			for q in int((gw - 6.0) / 6.0):
+				var gh := 3.0 + _h(sd + sh * 11 + q, 25) * 5.0
+				draw_rect(Rect2(x + 9.0 + q * 6.0, yy - gh, 4.0, gh), Color(0.08, 0.06, 0.1, 0.75))
+		for br in range(0, int(gw), 5):                                 # bars before the glass
+			draw_rect(Rect2(x + 6.0 + br, fl - 33.0, 1.0, 27.0), Color(0.1, 0.1, 0.14, 0.7))
+		draw_rect(Rect2(x + 5.0, fl - 5.0, gw + 2.0, 5.0), frame.darkened(0.3))
+
+	func _shutter(x: float, w: float, fl: float, sd: int, c: Color) -> void:
+		draw_rect(Rect2(x + 3.0, fl - 56.0, w - 6.0, 12.0), Color(0.06, 0.06, 0.09))
+		draw_rect(Rect2(x + 4.0, fl - 43.0, w - 8.0, 43.0), Color(0.26, 0.27, 0.32))
+		for sl in range(0, 43, 3):
+			draw_rect(Rect2(x + 4.0, fl - 43.0 + sl, w - 8.0, 1.0), Color(0.17, 0.18, 0.22))
+		var tag := PackedVector2Array()                                 # a scrawl across it
+		for k in 9:
+			tag.append(Vector2(x + 10.0 + k * (w - 22.0) / 8.0, fl - 22.0 + sin(k * 1.7 + sd) * 9.0 - (k % 2) * 6.0))
+		draw_polyline(tag, Color(c, 0.85), 2.0)
+		draw_polyline(tag, Color(c, 0.2), 5.0)
+		for ps in 3:                                                    # bills pasted on it
+			var px := x + 8.0 + _h(sd + ps, 71) * (w - 30.0)
+			draw_rect(Rect2(px, fl - 40.0 + _h(sd + ps, 72) * 8.0, 11.0, 14.0), Color(0.86, 0.82, 0.7).darkened(_h(sd + ps, 73) * 0.3))
+			draw_rect(Rect2(px + 2.0, fl - 36.0 + _h(sd + ps, 72) * 8.0, 7.0, 4.0), Color(NEON[(sd + ps) % NEON.size()], 0.8))
+
+	func _arcade(x: float, w: float, fl: float, sd: int, c: Color, font: Font) -> void:
+		_board(x, w, fl, "ARCADE", c, font, 0.6 + 0.4 * absf(sin(_t * 3.0)))
+		draw_rect(Rect2(x + 3.0, fl - 43.0, w - 6.0, 43.0), Color(0.03, 0.03, 0.07))
+		for cb in int((w - 10.0) / 16.0):
+			var cx := x + 7.0 + cb * 16.0
+			var sc: Color = NEON[(sd + cb * 2) % NEON.size()]
+			draw_rect(Rect2(cx, fl - 36.0, 12.0, 34.0), Color(0.1, 0.1, 0.16))
+			draw_rect(Rect2(cx + 1.5, fl - 33.0, 9.0, 9.0), Color(sc, 0.5 + 0.5 * absf(sin(_t * (2.0 + cb) + cb))))
+			draw_rect(Rect2(cx + 2.5, fl - 31.0 + fposmod(_t * 5.0 + cb, 5.0), 3.0, 2.0), Color(1, 1, 1, 0.7))
+			draw_rect(Rect2(cx + 2.0, fl - 20.0, 8.0, 3.0), Color(0.2, 0.2, 0.26))
+			draw_rect(Rect2(cx - 2.0, fl - 38.0, 16.0, 16.0), Color(sc, 0.06))
+
+	## The way back to the plaza: steps up between the houses, the light of the plaza beyond.
+	func _gate(x: float, w: float, fl: float, font: Font) -> void:
+		var green := Color(0.35, 1.0, 0.55)
+		draw_rect(Rect2(x, 0.0, w, fl - 48.0), Color(0.05, 0.05, 0.09))
+		draw_rect(Rect2(x + 14.0, fl - 150.0, w - 28.0, 100.0), Color(0.3, 0.3, 0.44, 0.5))            # the plaza's glow, far up the steps
+		draw_rect(Rect2(x + 24.0, fl - 140.0, w - 48.0, 60.0), Color(0.6, 0.5, 0.8, 0.35))
+		for sp in 9:
+			var yy := fl - 48.0 - sp * 8.0
+			var inset := sp * 3.0
+			draw_rect(Rect2(x + inset, yy - 8.0, w - inset * 2.0, 8.0), Color(0.2, 0.2, 0.28).lightened(sp * 0.03))
+			draw_rect(Rect2(x + inset, yy - 8.0, w - inset * 2.0, 1.0), Color(green, 0.5 - sp * 0.04))
+		draw_rect(Rect2(x, fl - 70.0, 4.0, 70.0), Color(0.12, 0.12, 0.18))
+		draw_rect(Rect2(x + w - 4.0, fl - 70.0, 4.0, 70.0), Color(0.12, 0.12, 0.18))
+		draw_rect(Rect2(x + 1.5, fl - 66.0, 1.5, 60.0), Color(green, 0.85))
+		draw_rect(Rect2(x + w - 3.0, fl - 66.0, 1.5, 60.0), Color(1.0, 0.36, 0.66, 0.85))
+		draw_rect(Rect2(x - 6.0, fl - 84.0, w + 12.0, 14.0), Color(0.02, 0.03, 0.05))
+		draw_rect(Rect2(x - 6.0, fl - 84.0, w + 12.0, 14.0), Color(green, 0.9), false, 1.0)
+		draw_string(font, Vector2(x - 6.0, fl - 73.5), "COMMERCIAL DISTRICT", HORIZONTAL_ALIGNMENT_CENTER, w + 12.0, 8, Color(0.75, 1.0, 0.85))
+
+	## The Static Feedback's front: brick, bills, a doorway with stairs down into red light, its name in neon.
+	func _bar(x: float, w: float, fl: float, font: Font) -> void:
+		var pink := Color(1.0, 0.36, 0.66)
+		var cyan := Color(0.3, 0.9, 1.0)
+		draw_rect(Rect2(x, 0.0, w, fl), Color(0.17, 0.09, 0.09))
+		for by in range(0, int(fl), 6):
+			draw_rect(Rect2(x, by, w, 1.0), Color(0.09, 0.05, 0.06))
+			for bx in range(int(x) + (4 if (by / 6) % 2 == 0 else 10), int(x + w), 12):
+				draw_rect(Rect2(bx, by, 1.0, 6.0), Color(0.09, 0.05, 0.06))
+		for ps in 9:                                                    # bills
+			var px := x + 6.0 + _h(ps, 81) * (w - 24.0)
+			var py := fl - 60.0 + _h(ps, 82) * 44.0
+			if absf(px - (x + 86.0)) < 26.0 and py > fl - 46.0:
+				continue
+			draw_rect(Rect2(px, py, 12.0, 15.0), Color(0.86, 0.8, 0.66).darkened(_h(ps, 83) * 0.35))
+			draw_rect(Rect2(px + 2.0, py + 3.0, 8.0, 5.0), Color(NEON[ps % NEON.size()], 0.8))
+			draw_rect(Rect2(px + 2.0, py + 10.0, 6.0, 1.0), Color(0.2, 0.15, 0.15))
+		var dx := x + 64.0                                              # the doorway, stairs going down
+		draw_rect(Rect2(dx - 3.0, fl - 46.0, 60.0, 46.0), Color(0.07, 0.06, 0.08))
+		draw_rect(Rect2(dx, fl - 43.0, 54.0, 43.0), Color(0.03, 0.01, 0.02))
+		for sp in 7:
+			draw_rect(Rect2(dx + sp * 2.5, fl - 6.0 - sp * 5.5, 54.0 - sp * 5.0, 5.5), Color(0.5, 0.08, 0.12, 0.5 - sp * 0.06))
+			draw_rect(Rect2(dx + sp * 2.5, fl - 6.0 - sp * 5.5, 54.0 - sp * 5.0, 1.0), Color(1.0, 0.3, 0.35, 0.6 - sp * 0.07))
+		var beat := absf(sin(_t * 4.4))
+		if night > 0.5:                                                 # at night the cellar thumps
+			draw_rect(Rect2(dx, fl - 43.0, 54.0, 43.0), Color(1.0, 0.2, 0.4, 0.1 * beat))
+		var f1 := 1.0 if fposmod(_t, 5.0) > 0.25 else 0.3
+		draw_rect(Rect2(x + 8.0, fl - 108.0, w - 16.0, 50.0), Color(0.02, 0.02, 0.05))
+		draw_string(font, Vector2(x + 8.0, fl - 88.0), "STATIC", HORIZONTAL_ALIGNMENT_CENTER, w - 16.0, 20, Color(pink.lightened(0.25), f1))
+		draw_string(font, Vector2(x + 8.0, fl - 64.0), "FEEDBACK", HORIZONTAL_ALIGNMENT_CENTER, w - 16.0, 16, Color(cyan.lightened(0.25), 0.9))
+		var wave := PackedVector2Array()
+		for k in 25:
+			wave.append(Vector2(x + 16.0 + k * (w - 32.0) / 24.0, fl - 82.0 + sin(k * 1.9 + _t * 6.0) * (2.0 + 3.0 * absf(sin(k * 0.7 + _t)))))
+		draw_polyline(wave, Color(1.0, 0.95, 0.6, 0.9), 1.0)
+		draw_rect(Rect2(x + 8.0, fl - 108.0, w - 16.0, 50.0), Color(pink, 0.8 * f1), false, 1.5)
+		draw_rect(Rect2(x + 2.0, fl - 114.0, w - 4.0, 62.0), Color(pink, 0.05))
+		draw_rect(Rect2(x + 10.0, fl - 40.0, 44.0, 11.0), Color(0.02, 0.02, 0.05))
+		draw_rect(Rect2(x + 10.0, fl - 40.0, 44.0, 11.0), Color(1.0, 0.85, 0.3, 0.9), false, 1.0)
+		draw_string(font, Vector2(x + 10.0, fl - 31.5), "LIVE AFTER DARK", HORIZONTAL_ALIGNMENT_CENTER, 44.0, 5, Color(1.0, 0.9, 0.5))
+
+	## Cables from house to house, small lamps on them.
+	func _cables() -> void:
+		var w := float(Gen.AW * GroundMap.TILE)
+		for c in 7:
+			var y0 := 40.0 + c * 22.0
+			var pts := PackedVector2Array()
+			var x0 := _h(c, 91) * 120.0
+			var span := 240.0 + _h(c, 92) * 200.0
+			var xx := x0
+			while xx < w:
+				for k in 9:
+					var u := k / 8.0
+					pts.append(Vector2(xx + u * span, y0 + sin(u * PI) * 14.0))
+				xx += span
+			draw_polyline(pts, Color(0.03, 0.03, 0.05, 0.9), 1.0)
+
+	## The wet street: the signs lying in it in long streaks, puddles.
+	func _floor() -> void:
+		var fl := float(Gen.A_F0 * GroundMap.TILE)
+		var fb := float((Gen.A_F1 + 1) * GroundMap.TILE)
+		for f in fronts:
+			var x := float(f["x"])
+			var w := float(f["w"])
+			var c: Color = f["col"]
+			var sd := int(f["seed"])
+			if String(f["kind"]) == "bar":
+				c = Color(1.0, 0.36, 0.66)
+			elif String(f["kind"]) == "gate":
+				c = Color(0.35, 1.0, 0.55)
+			for s in 5:
+				var sx := x + 6.0 + _h(sd + s, 51) * (w - 20.0)
+				var sw := 4.0 + _h(sd + s, 52) * 12.0
+				var sl := 26.0 + _h(sd + s, 53) * 70.0
+				var a := 0.1 + 0.12 * _h(sd + s, 54) + 0.03 * sin(_t * 2.0 + sd + s)
+				draw_rect(Rect2(sx, fl + 2.0, sw, sl), Color(c, a))
+				draw_rect(Rect2(sx + sw * 0.3, fl + 2.0, sw * 0.4, sl * 0.6), Color(c.lightened(0.4), a))
+		for p in 46:
+			var pp := Vector2(20.0 + _h(p, 55) * (Gen.AW * GroundMap.TILE - 40.0), fl + 14.0 + _h(p, 56) * (fb - fl - 24.0))
+			var pc: Color = NEON[p % NEON.size()]
+			var pts := PackedVector2Array()
+			var rx := 8.0 + _h(p, 57) * 14.0
+			for k in 12:
+				pts.append(pp + Vector2(cos(k * TAU / 12.0) * rx, sin(k * TAU / 12.0) * rx * 0.3))
+			draw_colored_polygon(pts, Color(pc, 0.17))
+			draw_rect(Rect2(pp.x - rx * 0.5, pp.y - 0.5, rx, 1.0), Color(1, 1, 1, 0.08 + 0.05 * sin(_t * 3.0 + p)))
+
+	## Over the people: lanterns on lines across the street, the roofs of the booths along its south side (sheet
+	## iron, tarps, vents steaming, a line of neon), a craft passing with its searchlight.
+	func _over() -> void:
+		var w := float(Gen.AW * GroundMap.TILE)
+		var fl := float(Gen.A_F0 * GroundMap.TILE)
+		var fb := float((Gen.A_F1 + 1) * GroundMap.TILE)
+		var bottom := float(Gen.AH * GroundMap.TILE)
+		for ln in 9:
+			var x0 := 60.0 + ln * 168.0 + _h(ln, 31) * 60.0
+			var x1 := x0 + 50.0 - _h(ln, 32) * 100.0
+			var pts := PackedVector2Array()
+			for k in 13:
+				var u := k / 12.0
+				pts.append(Vector2(lerpf(x0, x1, u) + sin(_t * 0.8 + ln) * 1.5 * sin(u * PI), lerpf(fl - 50.0, fb + 6.0, u) + sin(u * PI) * 10.0))
+			draw_polyline(pts, Color(0.03, 0.03, 0.05), 1.0)
+			for k2 in range(1, 12):
+				var lc: Color = NEON[(k2 + ln) % NEON.size()]
+				draw_circle(pts[k2] + Vector2(0.0, 3.0), 5.0, Color(lc, 0.14))
+				draw_rect(Rect2(pts[k2].x - 2.0, pts[k2].y + 1.0, 4.0, 5.0), lc)
+		# the booths' roofs
+		var x := -6.0
+		var i := 0
+		while x < w:
+			var rw := 70.0 + _h(i, 33) * 70.0
+			var jit := _h(i, 34) * 6.0
+			var tone := Color(0.16, 0.16, 0.2).lerp([Color(0.3, 0.14, 0.12), Color(0.12, 0.22, 0.24), Color(0.24, 0.2, 0.12), Color(0.16, 0.14, 0.26)][i % 4], 0.5)
+			var r := Rect2(x, fb + jit, rw - 3.0, bottom - fb + 40.0)
+			draw_rect(Rect2(r.position + Vector2(3.0, 3.0), r.size), Color(0, 0, 0, 0.4))
+			draw_rect(r, tone)
+			for st in range(int(r.position.x) + 4, int(r.end.x), 5):
+				draw_rect(Rect2(st, r.position.y + 3.0, 1.0, r.size.y), tone.darkened(0.25))
+			draw_rect(Rect2(r.position, Vector2(r.size.x, 3.0)), tone.lightened(0.3))
+			var nc: Color = NEON[(i * 2 + 1) % NEON.size()]
+			draw_rect(Rect2(r.position.x + 1.0, r.position.y + 0.5, r.size.x - 2.0, 1.5), Color(nc, 0.9))
+			draw_rect(Rect2(r.position.x + 1.0, r.position.y - 3.0, r.size.x - 2.0, 3.0), Color(nc, 0.14))
+			draw_rect(Rect2(r.position.x + 4.0, r.position.y - 10.0, r.size.x - 8.0, 11.0), nc.darkened(0.5))      # its awning out over the street
+			for aw in range(int(r.position.x) + 4, int(r.end.x) - 6, 8):
+				draw_rect(Rect2(aw, r.position.y - 10.0, 4.0, 11.0), nc.darkened(0.25))
+			draw_rect(Rect2(r.position.x + 4.0, r.position.y - 11.0, r.size.x - 8.0, 1.5), Color(nc, 0.85))
+			for lm in range(int(r.position.x) + 10, int(r.end.x) - 8, 14):
+				draw_circle(Vector2(lm, r.position.y - 13.0), 4.0, Color(1.0, 0.85, 0.5, 0.14))
+				draw_circle(Vector2(lm, r.position.y - 13.0), 1.5, Color(1.0, 0.9, 0.6))
+			if i % 3 == 0:                                              # a tarp
+				draw_rect(Rect2(r.position.x + 8.0, r.position.y + 14.0, r.size.x - 20.0, 30.0), nc.darkened(0.55))
+				draw_rect(Rect2(r.position.x + 8.0, r.position.y + 14.0, r.size.x - 20.0, 2.0), nc.darkened(0.3))
+			if i % 3 == 1:                                              # a vent, steaming
+				var vp := Vector2(r.position.x + r.size.x * 0.5, r.position.y + 22.0)
+				draw_rect(Rect2(vp - Vector2(6, 6), Vector2(12, 12)), Color(0.4, 0.42, 0.48))
+				for pf in 3:
+					var ph := fposmod(_t * 0.5 + pf / 3.0 + _h(i, 35), 1.0)
+					draw_circle(vp + Vector2(sin(ph * 6.0 + i) * 4.0, -ph * 26.0), 4.0 + ph * 7.0, Color(0.92, 0.94, 1.0, (1.0 - ph) * 0.28))
+			x += rw
+			i += 1
+		# a craft overhead, its searchlight on the street
+		var cyc := fposmod(_t, 26.0)
+		if cyc < 9.0:
+			var cx := lerpf(-120.0, w + 120.0, cyc / 9.0)
+			var cy := fl + 30.0 + sin(_t * 0.7) * 10.0
+			var sp := Vector2(cx - 30.0, cy + 70.0)
+			var beam := PackedVector2Array([Vector2(cx - 6.0, cy + 6.0), Vector2(cx + 6.0, cy + 6.0), sp + Vector2(34.0, 0.0), sp + Vector2(-34.0, 0.0)])
+			draw_colored_polygon(beam, Color(0.85, 0.95, 1.0, 0.07))
+			var ell := PackedVector2Array()
+			for k3 in 14:
+				ell.append(sp + Vector2(cos(k3 * TAU / 14.0) * 36.0, sin(k3 * TAU / 14.0) * 12.0))
+			draw_colored_polygon(ell, Color(0.85, 0.95, 1.0, 0.12))
+			draw_rect(Rect2(cx - 34.0, cy - 8.0, 68.0, 14.0), Color(0.05, 0.05, 0.08))
+			draw_rect(Rect2(cx - 22.0, cy - 13.0, 36.0, 6.0), Color(0.07, 0.07, 0.11))
+			draw_rect(Rect2(cx - 34.0, cy + 4.0, 68.0, 2.0), Color(0.3, 0.9, 1.0, 0.7))
+			draw_circle(Vector2(cx + 34.0, cy - 1.0), 2.5, Color(1.0, 0.95, 0.8))
+			draw_circle(Vector2(cx - 34.0, cy - 1.0), 2.0, Color(1.0, 0.25, 0.2) if int(_t * 4.0) % 2 == 0 else Color(0.4, 0.1, 0.1))
+
+
+## The Static Feedback, drawn (art px). "wall": the cellar's north wall: brick, dark wood along its foot, pipes,
+## bills, stickers and scrawls, behind the counter the shelves of bottles and the bar's name in neon over a line that
+## never holds still, behind the stage a black cloth with the band's name, the door to the back room, the stairs'
+## doorway. "stage": the stage's boards, its front with a row of small lamps, the amplifiers. Both under the people.
+## "neon": over the room's darkness: the neon itself, the stage's beams at night, the haze. "prop": what one of the
+## band plays (a drum kit, a guitar, a bass, a microphone), standing with them among the people.
+class BarFx extends Node2D:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	const NEON := [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.55, 1.0, 0.6), Color(0.72, 0.5, 1.0), Color(1.0, 0.45, 0.25)]
+	const SHX := 172.0               # the shelves behind the counter: from here …
+	const SHW := 168.0               # … this wide
+	const DOORX := 357.0             # the door to the back room
+	const STX := 400.0               # the stairs' doorway (4 tiles wide)
+	var part := "wall"
+	var prop := ""
+	var night := 0.0
+	var _t := 0.0
+	var _acc := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		_acc += dt
+		if _acc > 0.07:
+			_acc = 0.0
+			queue_redraw()
+
+	func _h(i: int, salt: int) -> float:
+		return Gen.TowerArt.hsh(i, salt)
+
+	func _draw() -> void:
+		match part:
+			"wall":
+				_wall()
+			"neon":
+				_neon()
+			"stage":
+				_stage()
+			_:
+				_prop()
+
+	## The bar's name, the line under it, the small signs (the wall draws them; the neon draws them again, bright).
+	func _signs(font: Font, fl: float) -> void:
+		var pink := Color(1.0, 0.36, 0.66)
+		var cyan := Color(0.3, 0.9, 1.0)
+		var f1 := 1.0 if fposmod(_t, 6.0) > 0.3 else 0.35
+		draw_string(font, Vector2(SHX + 4.0, 31.0), "STATIC FEEDBACK", HORIZONTAL_ALIGNMENT_CENTER, SHW - 8.0, 12, Color(pink.lightened(0.3), f1))
+		var wave := PackedVector2Array()
+		for k2 in 34:
+			wave.append(Vector2(SHX + 10.0 + k2 * 4.5, 39.0 + sin(k2 * 1.7 + _t * 7.0) * (1.5 + 3.0 * absf(sin(k2 * 0.45 + _t * 1.3)))))
+		draw_polyline(wave, Color(cyan.lightened(0.3), 0.95), 1.0)
+		draw_rect(Rect2(SHX + 4.0, 16.0, SHW - 8.0, 32.0), Color(pink, 0.9 * f1), false, 1.5)
+		draw_rect(Rect2(118.0, 22.0, 44.0, 12.0), Color(cyan, 0.95), false, 1.0)
+		draw_string(font, Vector2(118.0, 31.0), "NO REQUESTS", HORIZONTAL_ALIGNMENT_CENTER, 44.0, 6, Color(0.7, 0.97, 1.0))
+		draw_rect(Rect2(346.0, 24.0, 40.0, 12.0), Color(1.0, 0.85, 0.3, 0.95), false, 1.0)
+		draw_string(font, Vector2(346.0, 33.0), "CASH ONLY", HORIZONTAL_ALIGNMENT_CENTER, 40.0, 6, Color(1.0, 0.9, 0.5))
+		draw_rect(Rect2(STX + 14.0, fl - 96.0, 36.0, 11.0), Color(0.45, 1.0, 0.6, 0.95), false, 1.0)
+		draw_string(font, Vector2(STX + 14.0, fl - 87.5), "STREET", HORIZONTAL_ALIGNMENT_CENTER, 36.0, 6, Color(0.75, 1.0, 0.85))
+
+	func _wall() -> void:
+		var font := ThemeDB.fallback_font
+		var w := float(Gen.BW * GroundMap.TILE)
+		var fl := float(Gen.B_F0 * GroundMap.TILE)
+		var pink := Color(1.0, 0.36, 0.66)
+		var cyan := Color(0.3, 0.9, 1.0)
+		draw_rect(Rect2(16.0, 0.0, w - 32.0, fl), Color(0.2, 0.11, 0.1))
+		for by in range(0, int(fl), 6):
+			draw_rect(Rect2(16.0, by, w - 32.0, 1.0), Color(0.11, 0.06, 0.06))
+			for bx in range(16 + (4 if (by / 6) % 2 == 0 else 10), int(w) - 16, 12):
+				draw_rect(Rect2(bx, by, 1.0, 6.0), Color(0.11, 0.06, 0.06))
+				if _h(bx * 7 + by, 21) < 0.1:
+					draw_rect(Rect2(bx + 1.0, by + 1.0, 11.0, 5.0), Color(0.28, 0.16, 0.14))
+		draw_rect(Rect2(16.0, 6.0, w - 32.0, 3.0), Color(0.3, 0.32, 0.36))                    # pipes under the vault
+		draw_rect(Rect2(16.0, 12.0, w - 32.0, 2.0), Color(0.24, 0.2, 0.18))
+		draw_rect(Rect2(112.0, fl - 30.0, w - 128.0, 30.0), Color(0.15, 0.09, 0.06))          # dark wood along its foot
+		for pn in range(116, int(w) - 16, 14):
+			draw_rect(Rect2(pn, fl - 28.0, 1.0, 28.0), Color(0.09, 0.05, 0.04))
+		draw_rect(Rect2(112.0, fl - 31.0, w - 128.0, 2.0), Color(0.26, 0.16, 0.1))
+		# behind the stage: a black cloth, the band's name on it; the lamps over the stage
+		draw_rect(Rect2(16.0, 14.0, 96.0, fl - 14.0), Color(0.04, 0.04, 0.06))
+		for fd in range(22, 112, 9):
+			draw_rect(Rect2(fd, 14.0, 1.0, fl - 14.0), Color(0.09, 0.08, 0.1))
+		draw_string(font, Vector2(16.0, 46.0), "THE HULL", HORIZONTAL_ALIGNMENT_CENTER, 96.0, 12, Color(0.92, 0.9, 0.84))
+		draw_string(font, Vector2(16.0, 62.0), "BREACH", HORIZONTAL_ALIGNMENT_CENTER, 96.0, 12, Color(1.0, 0.3, 0.3))
+		for lr in 4:
+			draw_rect(Rect2(25.0 + lr * 24.0, 16.0, 6.0, 6.0), Color(0.1, 0.1, 0.12))
+			draw_circle(Vector2(28.0 + lr * 24.0, 24.0), 2.5, NEON[lr % NEON.size()] if night > 0.5 else Color(0.2, 0.2, 0.24))
+		# bills, stickers and scrawls over the brick
+		for ps in 40:
+			var px := 116.0 + _h(ps, 81) * (w - 150.0)
+			var py := 18.0 + _h(ps, 82) * (fl - 54.0)
+			if (px > SHX - 14.0 and px < SHX + SHW + 4.0) or (px > STX - 16.0) or (px > DOORX - 14.0 and py > fl - 62.0) or (px > 134.0 and px < 166.0 and py > 52.0) \
+					or (px > 336.0 and px < 392.0 and py > 34.0):
+				continue
+			draw_rect(Rect2(px, py, 11.0, 14.0), Color(0.86, 0.8, 0.66).darkened(_h(ps, 83) * 0.45))
+			draw_rect(Rect2(px + 2.0, py + 2.0, 7.0, 5.0), Color(NEON[ps % NEON.size()], 0.8))
+			draw_rect(Rect2(px + 2.0, py + 9.0, 6.0, 1.0), Color(0.2, 0.15, 0.15))
+		for sk in 60:
+			var skx := 114.0 + _h(sk, 84) * (w - 134.0)
+			var sky := 16.0 + _h(sk, 85) * (fl - 50.0)
+			if skx > SHX - 6.0 and skx < SHX + SHW + 2.0:
+				continue
+			draw_rect(Rect2(skx, sky, 5.0, 3.5), Color(NEON[(sk * 3) % NEON.size()], 0.75))
+		for tg in 3:
+			var tag := PackedVector2Array()
+			var tx := 120.0 if tg == 0 else (346.0 if tg == 1 else STX + 6.0)
+			for k in 7:
+				tag.append(Vector2(tx + k * 5.0, 54.0 + tg * 5.0 + sin(k * 2.1 + tg) * 7.0 - (k % 2) * 4.0))
+			if tg == 0:
+				draw_polyline(tag, Color(NEON[(tg + 1) % NEON.size()], 0.8), 1.5)
+		# behind the counter: shelves of bottles; over them the name
+		draw_rect(Rect2(SHX, 52.0, SHW, fl - 52.0), Color(0.07, 0.05, 0.07))
+		for sh in 3:
+			var yy := 70.0 + sh * 14.0
+			draw_rect(Rect2(SHX + 2.0, yy, SHW - 4.0, 2.0), Color(0.3, 0.2, 0.16))
+			draw_rect(Rect2(SHX + 2.0, yy - 12.0, SHW - 4.0, 12.0), Color(pink if sh % 2 == 0 else cyan, 0.07))
+			for b in 23:
+				var bh := 6.0 + _h(sh * 40 + b, 86) * 5.0
+				draw_rect(Rect2(SHX + 4.0 + b * 7.1, yy - bh, 3.5, bh), Color(NEON[int(_h(sh * 40 + b, 87) * 6.0) % 6], 0.85))
+				draw_rect(Rect2(SHX + 5.0 + b * 7.1, yy - bh - 2.0, 1.5, 2.0), Color(0.8, 0.8, 0.85))
+		draw_rect(Rect2(SHX + 4.0, 16.0, SHW - 8.0, 32.0), Color(0.02, 0.02, 0.05))
+		draw_rect(Rect2(118.0, 22.0, 44.0, 12.0), Color(0.02, 0.02, 0.05))
+		draw_rect(Rect2(346.0, 24.0, 40.0, 12.0), Color(0.02, 0.02, 0.05))
+		# the door to the back room
+		draw_rect(Rect2(DOORX - 3.0, fl - 46.0, 40.0, 46.0), Color(0.08, 0.08, 0.1))
+		draw_rect(Rect2(DOORX, fl - 42.0, 34.0, 42.0), Color(0.22, 0.24, 0.28))
+		draw_rect(Rect2(DOORX, fl - 42.0, 34.0, 1.5), Color(0.34, 0.36, 0.42))
+		for rv in 4:
+			draw_circle(Vector2(DOORX + 4.0 + rv * 8.6, fl - 36.0), 1.0, Color(0.12, 0.12, 0.14))
+		draw_string(font, Vector2(DOORX, fl - 22.0), "PRIVATE", HORIZONTAL_ALIGNMENT_CENTER, 34.0, 6, Color(0.9, 0.86, 0.7))
+		draw_rect(Rect2(DOORX + 29.0, fl - 20.0, 3.0, 5.0), Color(1.0, 0.25, 0.2))
+		# the stairs' doorway: the street's light falling down them
+		draw_rect(Rect2(STX - 4.0, fl - 82.0, 72.0, 50.0), Color(0.07, 0.06, 0.08))
+		draw_rect(Rect2(STX, fl - 78.0, 64.0, 46.0), Color(0.05, 0.07, 0.12))
+		for sp in 8:
+			draw_rect(Rect2(STX + sp * 1.5, fl - 34.0 - sp * 5.5, 64.0 - sp * 3.0, 5.5), Color(0.2, 0.3, 0.44, 0.35 + sp * 0.06))
+			draw_rect(Rect2(STX + sp * 1.5, fl - 34.0 - sp * 5.5, 64.0 - sp * 3.0, 1.0), Color(cyan, 0.3 + sp * 0.06))
+		draw_rect(Rect2(STX + 14.0, fl - 96.0, 36.0, 11.0), Color(0.02, 0.03, 0.05))
+		_signs(font, fl)
+
+	## Over the room's darkness: tubes of neon along the wall, the name and the signs once more, an arrow to the
+	## stage, a bolt, "LOUD", the bottles catching the light; at night the stage's lamps and their beams; the haze.
+	func _neon() -> void:
+		var font := ThemeDB.fallback_font
+		var w := float(Gen.BW * GroundMap.TILE)
+		var fl := float(Gen.B_F0 * GroundMap.TILE)
+		var bot := float((Gen.B_F1 + 1) * GroundMap.TILE)
+		var pink := Color(1.0, 0.36, 0.66)
+		var cyan := Color(0.3, 0.9, 1.0)
+		draw_rect(Rect2(116.0, 9.0, w - 136.0, 1.5), Color(pink, 0.95))
+		draw_rect(Rect2(116.0, 6.0, w - 136.0, 7.0), Color(pink, 0.1))
+		draw_rect(Rect2(116.0, fl - 32.0, SHX - 120.0, 1.5), Color(cyan, 0.95))
+		draw_rect(Rect2(SHX + SHW + 4.0, fl - 32.0, 10.0, 1.5), Color(cyan, 0.95))
+		draw_rect(Rect2(SHX - 4.0, 8.0, SHW + 8.0, 48.0), Color(pink, 0.07))
+		_signs(font, fl)
+		draw_polyline(PackedVector2Array([Vector2(160.0, 46.0), Vector2(124.0, 46.0), Vector2(132.0, 40.0), Vector2(124.0, 46.0), Vector2(132.0, 52.0)]), Color(1.0, 0.45, 0.25, 0.95), 1.5)
+		draw_polyline(PackedVector2Array([Vector2(130.0, 60.0), Vector2(124.0, 72.0), Vector2(132.0, 71.0), Vector2(126.0, 84.0)]), Color(1.0, 0.9, 0.3, 0.6 + 0.4 * absf(sin(_t * 9.0))), 1.5)
+		draw_string(font, Vector2(348.0, 52.0), "LOUD", HORIZONTAL_ALIGNMENT_LEFT, 40.0, 9, Color(0.8, 0.55, 1.0, 0.7 + 0.3 * sin(_t * 2.0)))
+		for sh in 3:
+			var yy := 70.0 + sh * 14.0
+			draw_rect(Rect2(SHX + 2.0, yy - 12.0, SHW - 4.0, 12.0), Color(pink if sh % 2 == 0 else cyan, 0.1))
+			for b in 23:
+				var bh := 6.0 + _h(sh * 40 + b, 86) * 5.0
+				draw_rect(Rect2(SHX + 4.0 + b * 7.1, yy - bh, 1.0, bh), Color(NEON[int(_h(sh * 40 + b, 87) * 6.0) % 6].lightened(0.3), 0.9))
+		if night > 0.5:
+			for lr in 4:
+				var lx := 28.0 + lr * 24.0
+				var lc: Color = NEON[(lr + int(_t * 0.8)) % NEON.size()]
+				var sway := sin(_t * (0.8 + lr * 0.25) + lr) * 22.0
+				draw_circle(Vector2(lx, 24.0), 3.0, lc)
+				draw_colored_polygon(PackedVector2Array([Vector2(lx - 2.0, 24.0), Vector2(lx + 2.0, 24.0), Vector2(lx + sway + 16.0, fl + 56.0), Vector2(lx + sway - 16.0, fl + 56.0)]), Color(lc, 0.07))
+		for hz in 11:
+			var hx := fposmod(_h(hz, 91) * w + _t * (3.0 + _h(hz, 92) * 5.0), w + 160.0) - 80.0
+			var hy := 26.0 + _h(hz, 93) * (bot - 40.0)
+			var hc: Color = NEON[hz % NEON.size()].lerp(Color(0.8, 0.8, 0.9), 0.6)
+			var rx := 50.0 + _h(hz, 94) * 60.0
+			var ry := 10.0 + _h(hz, 95) * 12.0
+			var hp := PackedVector2Array()
+			for k in 14:
+				hp.append(Vector2(hx + cos(k * TAU / 14.0) * rx, hy + sin(k * TAU / 14.0) * ry))
+			draw_colored_polygon(hp, Color(hc, 0.055))
+
+	## The stage: its boards (a step higher than the floor), its front with a row of small lamps, an amplifier either side.
+	func _stage() -> void:
+		var r := Rect2(Vector2(Gen.B_STAGE.position) * GroundMap.TILE, Vector2(Gen.B_STAGE.size) * GroundMap.TILE)
+		var nightly := night > 0.5
+		draw_rect(Rect2(r.position.x + 3.0, r.end.y - 2.0, r.size.x, 5.0), Color(0, 0, 0, 0.35))
+		draw_rect(Rect2(r.position.x, r.position.y - 12.0, r.size.x, r.size.y), Color(0.17, 0.12, 0.1))
+		for pl in range(int(r.position.x), int(r.end.x), 12):
+			draw_rect(Rect2(pl, r.position.y - 12.0, 1.0, r.size.y), Color(0.1, 0.07, 0.06))
+		draw_rect(Rect2(r.position.x, r.end.y - 12.0, r.size.x, 12.0), Color(0.08, 0.07, 0.08))
+		draw_rect(Rect2(r.position.x, r.end.y - 12.0, r.size.x, 1.5), Color(0.3, 0.24, 0.2))
+		for fl in range(int(r.position.x) + 6, int(r.end.x), 12):
+			draw_circle(Vector2(fl, r.end.y - 6.0), 1.6, Color(1.0, 0.3, 0.3) if nightly and (fl / 12 + int(_t * 4.0)) % 3 != 0 else Color(0.3, 0.1, 0.1))
+		for am in 2:
+			var ax := r.position.x + 3.0 if am == 0 else r.end.x - 25.0
+			var ay := r.position.y - 30.0
+			draw_rect(Rect2(ax, ay, 22.0, 30.0), Color(0.07, 0.07, 0.09))
+			draw_rect(Rect2(ax + 2.0, ay + 2.0, 18.0, 20.0), Color(0.14, 0.14, 0.17))
+			for gr in range(0, 20, 3):
+				draw_rect(Rect2(ax + 2.0, ay + 2.0 + gr, 18.0, 1.0), Color(0.05, 0.05, 0.07))
+			draw_circle(Vector2(ax + 18.0, ay + 26.0), 1.2, Color(1.0, 0.3, 0.2) if nightly else Color(0.3, 0.1, 0.1))
+
+	## What one of the band plays, drawn before them (the node stands at their feet).
+	func _prop() -> void:
+		var hit := absf(sin(_t * 8.8))
+		match prop:
+			"kit":
+				draw_circle(Vector2(0.0, -8.0), 10.0 + hit * 0.6, Color(0.75, 0.15, 0.2))
+				draw_circle(Vector2(0.0, -8.0), 7.5, Color(0.9, 0.88, 0.82))
+				draw_rect(Rect2(-19.0, -20.0, 11.0, 8.0), Color(0.75, 0.15, 0.2))
+				draw_rect(Rect2(8.0, -20.0, 11.0, 8.0), Color(0.75, 0.15, 0.2))
+				draw_rect(Rect2(-19.0, -20.0, 11.0, 1.5), Color(0.9, 0.88, 0.82))
+				draw_rect(Rect2(8.0, -20.0, 11.0, 1.5), Color(0.9, 0.88, 0.82))
+				draw_rect(Rect2(-23.0, -30.0 + hit * 1.5, 13.0, 2.0), Color(0.85, 0.75, 0.35))
+				draw_rect(Rect2(11.0, -32.0 - hit * 1.5, 13.0, 2.0), Color(0.85, 0.75, 0.35))
+				draw_rect(Rect2(-17.0, -28.0, 1.0, 26.0), Color(0.5, 0.52, 0.6))
+				draw_rect(Rect2(17.0, -30.0, 1.0, 28.0), Color(0.5, 0.52, 0.6))
+			"guitar", "bass":
+				var bob := sin(_t * 4.4) * 1.0
+				var body := Color(0.85, 0.2, 0.2) if prop == "guitar" else Color(0.2, 0.5, 0.85)
+				draw_line(Vector2(-6.0, -10.0 + bob), Vector2(12.0, -19.0 + bob), Color(0.75, 0.56, 0.36), 2.0)
+				draw_rect(Rect2(-11.0, -14.0 + bob, 9.0, 8.0), body)
+				draw_rect(Rect2(-9.0, -12.0 + bob, 5.0, 4.0), body.lightened(0.35))
+				draw_rect(Rect2(11.0, -21.0 + bob, 3.0, 3.0), Color(0.1, 0.1, 0.12))
+			_:
+				draw_rect(Rect2(6.0, -24.0, 1.0, 24.0), Color(0.6, 0.62, 0.7))
+				draw_rect(Rect2(3.0, -1.0, 7.0, 1.5), Color(0.4, 0.42, 0.5))
+				draw_line(Vector2(6.5, -24.0), Vector2(2.5, -26.5), Color(0.6, 0.62, 0.7), 1.0)
+				draw_circle(Vector2(2.0, -27.0), 2.0, Color(0.3, 0.3, 0.36))
 
 
 ## The car from inside, a metro car: the window wall to the north with three doors in it, seats along both walls

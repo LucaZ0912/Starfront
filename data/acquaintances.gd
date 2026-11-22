@@ -73,7 +73,7 @@ const PEOPLE := {
 		]},
 	# package 61: Luz, your way into Centauria
 	"luz": {"met": "flag:fern_luz", "home": "Centauria, Pelagia, Fern",
-		"about": "Owns a bar that isn't open yet. Knows everyone anyway.",
+		"about": "Owns the Static Feedback. Knows everyone anyway.",
 		"bio": "Runs an underground punk bar in Centauria and has done a little of everything in the Rim. Rook's contact, and the one to ask when you want to know who does what in the city.",
 		"likes": ["Punk, played loud", "Cheap beer", "People who keep their word", "Trouble, in small doses"],
 		"events": [

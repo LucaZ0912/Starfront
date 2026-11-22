@@ -3,6 +3,47 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.61.4 – 2026-11-22
+
+**Package 61b (Luz): the Back Alleys and the Static Feedback. Places and people only: the story comes later.**
+- **The gate** in the south of the plaza is open. Behind it lies a street of its own.
+- **The Back Alleys:** a narrow street running east and west between high houses, dark even by day. Along its north
+  side front after front: noodle bars open to the street (cooks, lanterns, steam, stools at the counter), small
+  shops behind bars, shutters with scrawls, an arcade; over them signs in layers, screens, cables. Along its south
+  side the roofs and awnings of the shops there, their light on the street. The street is wet and the neon lies in
+  it. Lanterns on lines cross it, now and then a craft passes overhead with a searchlight.
+- **The crowd:** people stream east and west through the street, close together, with umbrellas when it rains. At
+  the street's ends they are gone and others come in.
+- **The Static Feedback**, Luz' punk bar, lies in a cellar at the street's east end: down the stairs under its sign.
+  A small place: dark wood, brick, bills and stickers, haze, neon everywhere. A little stage, a short counter with
+  its shelves of bottles, two booths, pool, darts, an arcade cabinet, a Drift table, the jukebox, a door to a back
+  room (shut). Nobody strolls in here and no crew is hired: it is where the people of the story meet, and your own
+  crew waits here (those of your ship who do not come along on foot).
+- **The band** plays only at night: The Hull Breach, four real people on the stage (Vex at the microphone, Solder
+  on guitar, Flux on bass, Tin on the drums), and a few dance before them.
+- **Luz** stands behind the counter, always (unless the story says otherwise later), and no longer on the plaza.
+  "A Place Called Fern" leads to the bar now. Two regulars, a little shady, stand by the booths: **Ratte** and
+  **Kraut**. All three have a few words; no tasks yet. Ratte and Kraut join the acquaintances with the story.
+- Seen so far only in test pictures at night and in rain.
+
+## alpha 0.8.61.3 – 2026-11-22
+
+**Package 61a, the rest (Luz): the Commercial Hall from inside, Centauria's landmarks in the approach.**
+- **The Commercial Hall** is a great gallery under a vault of glass now, as its front promises. Along the north wall
+  every service of the city has a shop front of its own (its name, windows full of goods, a door of glass); over them
+  two galleries with shops and people walking, the vault with the sky and Lapis behind it, lights on lines.
+- In its middle a fountain with a hologram of Lapis turning over it, kiosks, benches, palms, pillars of light; a food
+  court to the south-west; two pavilions "to let" to the south-east (special shops move in later); escalators up to
+  the galleries at the east end (closed for now). No rain in there.
+- **Ways:** you walk in and out through the Hall's doors on the plaza. Its lifts (west end, a row of terminals beside
+  them) know only the Hall's own floors (the clinic, the quarters, the maintenance level when there is work down there). The back alley is gone from
+  the list (the Back Alleys get a map of their own) and so is the tower bar (a punk bar and the casino's bar are to
+  come), so until then Centauria has no bar to hire crew in.
+- **The approach:** flying down to Centauria you see the three towers of the Grand Centauria (by day round stepped
+  roofs in the city's tone with long shadows, by night rings of the city's own lights, some in each tower's colour)
+  and the Colosseum (a white oval round its arena, banners; floodlit by night). Both stand on the city's island.
+- Seen so far only in test pictures at night. Still open: a look at it all by day.
+
 ## alpha 0.8.61.2 – 2026-11-21
 
 **Package 61a: Centauria by hand (Luz): its trains and the Commercial District. The place you will spend the most

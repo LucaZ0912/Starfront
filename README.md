@@ -412,6 +412,15 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.61.4 (package 61b): `CentauriaGen.build_alleys` (level `zalley`; metas `alley_fronts`, `stream`, `from_plaza`,
+  `from_bar`; zones `alley_gate`, `bar_in`) and `build_punkbar` (level `zbar`; metas `bar_stage`, `dark`,
+  `from_street`; zones `bar_out`, `bar_back`), drawn classes `AlleyFx` (parts `floor`, `wall`, `over`) and `BarFx`
+  (parts `wall`, `stage`, `neon`, `prop`; consts `BAR_SPOTS`, `BAND`, metas `bar_band`, `bar_crew`); Walker `stream` (a crowd walking in lanes, out at one end and in at the other);
+  story characters `ratte`, `kraut`, `band_voice`, `band_guitar`, `band_bass`, `band_drums`, dialogues `ratte_talk`, `kraut_talk`; dan_work puts Luz, Ratte and Kraut into
+  `zbar` in phase `free`.
+- 0.8.61.3 (package 61a, the rest): `CentauriaGen.build_hall` (level `street` in Centauria; metas `hall_fronts`,
+  `hall_pavs`, `hall_holo`, `from_plaza`; zone `hall_out`), drawn classes `HallFx` (parts `wall`, `pav`, `holo`) and
+  `HallSky`; the lift menu's meta `levels`; FlightScene `_place_centauria`, `_draw_centauria` (`_ctr_marks`).
 - 0.8.61.2 (package 61a): `scripts/ground/centauria_gen.gd`: the timetable (`LINES`, `state`, `next_at`, `doors`,
   `board_text`), the maps `build_station`, `build_plaza`, `build_car`, the sky `draw_sky` / `draw_lapis`, and the drawn
   classes `TowerArt`, `PlazaSky`, `TowerScope`, `FacadeFx`, `RoofFx`, `MetroFx`, `RailFx`, `CarScreen`, `Panorama`.
