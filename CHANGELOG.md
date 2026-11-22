@@ -3,6 +3,28 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.2 – 2026-11-22
+
+**Package 62, part 2 (Luz): the machines and the wheel.**
+- **Slot machines** on the floor The Machines: sit down at a row and its machine opens (Lucky Lapis, Comet Rush,
+  Kiln Gold), loud with neon. Three reels, one line; the stake is 1, 5 or 25 Coins; Space pulls. Three alike pay
+  8 to 250 times the stake (ore, fuel cell, comet, star, ring of Lapis, Coin, holo seven), the first two alike pay
+  twice. No automatic spinning.
+- **The house's jackpot** grows with every spin (and slowly by itself while the house plays on); three Coins at the
+  highest stake take it. The counter on the wall of The Machines shows it as it stands.
+- **Roulette** at the two tables of The Tables and at the high table of the VIP lounge: a wheel of light with 37
+  pockets, the ball a point of light. Pick a chip (1, 5, 25, 100; at the high table 100, 500, 2,500), click a
+  field of the cloth, a right click takes the bet back: single numbers (35 to 1), red and black, even and odd,
+  the halves, the dozens and the columns. The limit is 500 Coins a spin, 25,000 at the high table. "Same again"
+  puts your last bets back.
+- **Others play too:** two guests sit at every roulette table and bet in their own colours; guests stand at every
+  table of The Tables and of the lounge. One seat at the wheel stays free for a co-op player: every bet and the
+  spin go through the command bus with the seat's number.
+- **A kind hand:** a pilot's Dexterity makes the games a little kinder (a machine's middle reel slips into a pair
+  now and then, the wheel's ball hops one pocket on when that is better for you), and so does the new perk
+  **Lucky Hand** (Commerce). The house keeps its edge all the same.
+- The cashier tells you the house's books on you: Coins staked, Coins got back, your best single win.
+
 ## alpha 0.8.62.1 – 2026-11-22
 
 **Package 62, part 1 (Luz): the Grand Centauria from inside. The building first, the games follow.**

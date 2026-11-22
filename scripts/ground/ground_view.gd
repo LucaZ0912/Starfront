@@ -5097,6 +5097,18 @@ func use(instant: bool = false) -> bool:
 		"ctr_cashier":
 			_ctr_cashier()
 			return true
+		"ctr_slot":
+			var csg = load("res://scripts/ground/slot_game.gd").new()      # package 62, part 2 (Luz): a slot machine
+			csg.setup({"title": String(zone.get("name", "Lucky Lapis")), "col": zone.get("mcol", Color(1.0, 0.36, 0.66))})
+			csg.finished.connect(func(_w: bool): _close_game(); _ctr_title())
+			_open_game(csg)
+			return true
+		"ctr_roulette":
+			var crg = load("res://scripts/ground/roulette_game.gd").new()  # … and the wheel
+			crg.setup({"hi": bool(zone.get("hi", false)), "guests": ["A guest in gold", "A guest in violet"] if bool(zone.get("hi", false)) else ["A guest in red", "A guest in blue"]})
+			crg.finished.connect(func(_w: bool): _close_game(); _ctr_title())
+			_open_game(crg)
+			return true
 		"ctr_down":
 			ctr_stop = 1
 			go_level("zstation", "lift")
@@ -5580,6 +5592,7 @@ func _ctr_doors(delta: float) -> void:
 	_cas_hour -= delta
 	if _cas_hour <= 0.0:
 		_cas_hour = 1.0                                   # (the day goes on: the views and the pool follow it)
+		GameState.casino_jackpot += 1                    # (… and the house plays on: its jackpot grows)
 		var nn := 1.0 - city_day()
 		for nd in _world.get_children():
 			if nd.has_method("_lounge") or nd.has_method("_chandelier"):
@@ -5614,8 +5627,10 @@ func _ctr_cashier() -> void:
 		var all: int = GameState.coins
 		opts.append(["Cash out all %d Coins for %s" % [all, GameData.fmt_credits(all * GameState.COIN_SELL)], func(): _ctr_coins({"type": "coins_sell", "n": all})])
 	opts.append(["Leave the counter", func(): pass])
-	ask_window("The cashier", "Coins are the money of the Grand Centauria. One Coin costs %s and pays back %s. You hold %d Coins and %s." % [
-		GameData.fmt_credits(GameState.COIN_BUY), GameData.fmt_credits(GameState.COIN_SELL), GameState.coins, GameData.fmt_credits(GameState.credits)], opts)
+	var cst: Dictionary = GameState.casino_stats
+	ask_window("The cashier", "Coins are the money of the Grand Centauria. One Coin costs %s and pays back %s. You hold %d Coins and %s.\n\nThe house's books on you: %d Coins staked, %d got back, your best single win %d." % [
+		GameData.fmt_credits(GameState.COIN_BUY), GameData.fmt_credits(GameState.COIN_SELL), GameState.coins, GameData.fmt_credits(GameState.credits),
+		int(cst["staked"]), int(cst["back"]), int(cst["best"])], opts)
 
 
 func _ctr_coins(cmd: Dictionary) -> void:

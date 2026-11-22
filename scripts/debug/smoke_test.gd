@@ -5803,7 +5803,7 @@ func _test_tree() -> void:
 	var r0: float = float(f.stats()["weapons"][0]["range"]) if not f.stats()["weapons"].is_empty() else 0.0
 	Commands.execute({"type": "perk_take", "perk": "sharpshooter"})
 	var r1: float = float(f.stats()["weapons"][0]["range"]) if not f.stats()["weapons"].is_empty() else 0.0
-	check(TD.PERKS.size() == 24 and e_need != "" and e_take == "" and GameState.has_perk("bounty_hunter") and e_none != "" and e_later != ""
+	check(TD.PERKS.size() == 25 and e_need != "" and e_take == "" and GameState.has_perk("bounty_hunter") and e_none != "" and e_later != ""
 		and GameState.has_perk("sharpshooter") and (r0 <= 0.0 or absf(r1 / r0 - 1.1 * (1.03 / 1.01) / (1.03 / 1.01)) < 0.02),
 		"perks: 24 in six groups – a perk point each, some need a skill level, crew perks wait for their package (Sharpshooter: range +10 %)")
 	GameState.set_pilot(keep)
@@ -7448,8 +7448,12 @@ func _test_cluster40(view: SystemView) -> void:
 		var catalog: bool = not (String(sy["name"]) in U.SYSTEM_NAMES) and String(sy.get("special", "")) == ""
 		if lived and String(sy.get("special", "")) == "":
 			name_ok = name_ok and String(sy["name"]) in U.SYSTEM_NAMES
-		elif not lived:
+			if not (String(sy["name"]) in U.SYSTEM_NAMES):
+				print("C40 lived name: ", sy["name"])
+		elif not lived and String(sy.get("special", "")) == "":      # (a special system has a name of its own: Fern)
 			name_ok = name_ok and catalog
+			if not catalog:
+				print("C40 name: ", sy["name"], " special ", sy.get("special", ""))
 		if sy.get("outer", false):
 			outer += 1
 			outer_ok = outer_ok and not lived and float(sy["security"]) <= 0.15 and U.territory_text(sid) == "Unclaimed: the Far Reaches"
@@ -7467,6 +7471,8 @@ func _test_cluster40(view: SystemView) -> void:
 				cap_ok = cap_ok and String(U.systems[nb].get("faction", "")) == String(sy["faction"])
 	check(outer >= 100 and outer_ok,
 		"40a: the Far Reaches – %d empty, lawless systems in a ring beyond the Rim, reached only through it" % outer)
+	if not (belt >= 45 and cons.size() >= 8 and claimed_belt == 0 and settle >= 3 and cap_ok and name_ok):
+		print("C40: ", [belt, cons.size(), claimed_belt, settle, cap_ok, name_ok])
 	check(belt >= 45 and cons.size() >= 8 and claimed_belt == 0 and settle >= 3 and cap_ok and name_ok,
 		"40a: %d systems in the ring, %d constellations, no power claims them (%d free settlements); every capital ringed by its own systems; inhabited systems German names, the empty ones catalogue / explorers" % [belt, cons.size(), settle])
 	# the galaxy map zooms and pans
@@ -8871,7 +8877,7 @@ func _test_planets(view: SystemView) -> void:
 			if t == "dwarf":
 				dwarf_ok = dwarf_ok and not kb.is_empty() and absf(float(p["orbit"]) - float(kb["r"])) <= float(kb["w"]) * 0.51 and U.moons_of(L, i).is_empty()
 			if t == "ice_giant":
-				giant_ok = giant_ok and i >= 2
+				giant_ok = giant_ok and (i >= 2 or String(U.systems[sid].get("special", "")) != "")     # (Fern is built by hand: Lapis is its second world)
 			if float(p.get("city", 0.0)) >= 0.5:
 				cities += 1
 				city_ok = city_ok and U.has_stations(sid) and t in U.CITY_WORLDS
@@ -8908,6 +8914,8 @@ func _test_planets(view: SystemView) -> void:
 	pw.coll_cat = keep_cat
 	pw.rebuild()
 	coll_ok = coll_ok and counts[0] == U.PLANET_TYPES.size() and counts[1] == U.MOON_TYPES.size()
+	if not (types_ok and dwarf_ok and giant_ok and way_dwarf > 0 and city_ok and cities > 0 and look_ok and facts_ok and coll_ok):
+		print("P38: ", [types_ok, dwarf_ok, giant_ok, way_dwarf, city_ok, cities, look_ok, facts_ok, coll_ok, counts])
 	check(types_ok and dwarf_ok and giant_ok and way_dwarf > 0 and city_ok and cities > 0 and look_ok and facts_ok and coll_ok,
 		"package 38: %d planet types (ice giants out beyond, dwarf planets in the Kuiper belt, ocean and jungle worlds); %d waystations at a dwarf; %d worlds with city lights; every planet its own shade; planet and moon types in the collection" % [seen.size(), way_dwarf, cities])
 
@@ -17857,6 +17865,123 @@ func _test_casino62(_view: SystemView) -> void:
 		coin_ok = a1 and a2 and a3 and ckeys.size() == 5
 		if not coin_ok:
 			print("CAS62 coins: ", e1, " | ", e2, " coins ", GameState.coins, " credits ", GameState.credits, " keys ", ckeys.size())
+		# (Luz) part 2: the machines and the wheel. The numbers first: the house keeps its edge, a kind hand (Dexterity,
+		# the perk Lucky Hand) makes it smaller and never turns it round
+		var CasD = load("res://data/casino.gd")
+		var srng := RandomNumberGenerator.new()
+		srng.seed = 6202
+		var rtp := [0.0, 0.0]
+		for li in 2:
+			var got := 0
+			for sp in 60000:
+				got += int(CasD.spin(srng, [0.0, CasD.slot_luck(8, true)][li], 1, 0)["win"])
+			rtp[li] = got / 60000.0
+		var wrtp := [0.0, 0.0]
+		for li2 in 2:
+			var gotw := 0
+			for sp2 in 60000:
+				gotw += int(CasD.settle({"red": 1}, int(CasD.roll(srng, [0.0, CasD.wheel_luck(8, true)][li2], {"red": 1})["n"])))
+			wrtp[li2] = gotw / 60000.0
+		var num_ok: bool = float(rtp[0]) > 0.78 and float(rtp[0]) < 0.95 and float(rtp[1]) > float(rtp[0]) and float(rtp[1]) < 1.0 \
+			and float(wrtp[0]) > 0.95 and float(wrtp[0]) < 0.995 and float(wrtp[1]) > float(wrtp[0]) and float(wrtp[1]) < 1.0 \
+			and CasD.bet_pays("n17", 17) == 36 and CasD.bet_pays("d2", 17) == 3 and CasD.bet_pays("c2", 17) == 3 and CasD.bet_pays("red", 0) == 0 and CasD.bet_pays("black", 17) == 2 \
+			and CasD.WHEEL.size() == 37 and CasD.REDS.size() == 18 and not CasD.bet_ok("n37") and CasD.bet_ok("c3") and CasD.slot_luck(3, false) == 0.0
+		if not num_ok:
+			print("CAS62 numbers: slots ", rtp, " wheel ", wrtp)
+		# a machine: the zone opens its window, a pull takes the stake and pays what the reels show, the jackpot grows
+		g._ctr_floor_go(1, true)
+		for fs0 in 8:
+			await get_tree().process_frame
+		g.zone = _zone_of(g.map, "ctr_slot")
+		g.use()
+		for fs1 in 5:
+			await get_tree().process_frame
+		var slot_ok: bool = g.minigame != null and g.minigame.has_method("slot_result")
+		if slot_ok:
+			GameState.coins = 500
+			var jp0: int = GameState.casino_jackpot
+			var es := String(Commands.execute({"type": "slot_spin", "stake": 5}))
+			var sres: Dictionary = g.minigame.res
+			slot_ok = es == "" and GameState.coins == 495 + int(sres.get("win", -1)) and g.minigame.busy() and GameState.casino_jackpot > jp0 \
+				and String(Commands.execute({"type": "slot_spin", "stake": 5})) != "" and String(Commands.execute({"type": "slot_spin", "stake": 7})) != ""
+			var tsl := Time.get_ticks_msec()
+			while g.minigame.busy() and Time.get_ticks_msec() - tsl < 6000:
+				await get_tree().process_frame
+			slot_ok = slot_ok and not g.minigame.busy() and int(g.minigame.shown) == GameState.coins and (g.minigame.reels as Array) == (sres["reels"] as Array)
+			GameState.coins = 0
+			slot_ok = slot_ok and String(Commands.execute({"type": "slot_spin", "stake": 1})) != ""
+			if shots:
+				GameState.coins = 240
+				Commands.execute({"type": "slot_spin", "stake": 25})
+				for fs2 in 150:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_automat.png")
+			g.minigame.finished.emit(false)
+			for fs3 in 5:
+				await get_tree().process_frame
+			slot_ok = slot_ok and g.minigame == null
+		if not slot_ok:
+			print("CAS62 slot: minigame ", g.minigame, " coins ", GameState.coins)
+		# the wheel: bets by seat through the command bus, the limit, the spin pays what the bets give back
+		g._ctr_floor_go(2, true)
+		for fr0 in 8:
+			await get_tree().process_frame
+		g.zone = _zone_of(g.map, "ctr_roulette")
+		g.use()
+		for fr1 in 5:
+			await get_tree().process_frame
+		var rou_ok: bool = g.minigame != null and g.minigame.has_method("spin_result")
+		if rou_ok:
+			var tbl = g.minigame
+			GameState.coins = 1000
+			var e_none := String(Commands.execute({"type": "roulette_spin"}))
+			var eb1 := String(Commands.execute({"type": "roulette_bet", "seat": 0, "key": "red", "chip": 25}))
+			var eb2 := String(Commands.execute({"type": "roulette_bet", "seat": 0, "key": "n17", "chip": 5}))
+			var eb3 := String(Commands.execute({"type": "roulette_bet", "seat": 0, "key": "n40", "chip": 5}))
+			var eb4 := String(Commands.execute({"type": "roulette_bet", "seat": 0, "key": "black", "chip": 500}))
+			Commands.execute({"type": "roulette_bet", "seat": 0, "key": "odd", "chip": 5})
+			Commands.execute({"type": "roulette_bet", "seat": 0, "key": "odd", "chip": -1})
+			rou_ok = e_none != "" and eb1 == "" and eb2 == "" and eb3 != "" and eb4 != "" and int(tbl.total(0)) == 30 and tbl.seats.size() == 3 and int(tbl.total(1)) > 0 \
+				and (tbl.fields() as Dictionary).size() == 49 and int(tbl.limit) == CasD.LIMIT
+			var er := String(Commands.execute({"type": "roulette_spin"}))
+			var rn: int = tbl.number
+			var want_back: int = CasD.settle({"red": 25, "n17": 5}, rn)
+			rou_ok = rou_ok and er == "" and String(tbl.state) == "spin" and GameState.coins == 1000 - 30 + want_back and String(Commands.execute({"type": "roulette_bet", "seat": 0, "key": "red", "chip": 5})) != ""
+			var trl := Time.get_ticks_msec()
+			while String(tbl.state) == "spin" and Time.get_ticks_msec() - trl < 9000:
+				await get_tree().process_frame
+			rou_ok = rou_ok and String(tbl.state) == "done" and (tbl.history as Array)[0] == rn
+			if shots:
+				for fr2 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_roulette.png")
+			tbl.spin()
+			rou_ok = rou_ok and String(tbl.state) == "bet" and int(tbl.total(0)) == 0 and int(GameState.casino_stats["staked"]) >= 35
+			tbl.finished.emit(false)
+			for fr3 in 5:
+				await get_tree().process_frame
+			rou_ok = rou_ok and g.minigame == null
+			GameState.casino_vip = true
+			g._ctr_floor_go(5, true)
+			for fr4 in 8:
+				await get_tree().process_frame
+			g.zone = _zone_of(g.map, "ctr_roulette")
+			g.use()
+			for fr5 in 5:
+				await get_tree().process_frame
+			rou_ok = rou_ok and g.minigame != null and bool(g.minigame.high) and int(g.minigame.limit) == CasD.LIMIT_HIGH
+			if g.minigame != null:
+				g.minigame.finished.emit(false)
+			for fr6 in 5:
+				await get_tree().process_frame
+			GameState.casino_vip = false
+		if not rou_ok:
+			print("CAS62 roulette: minigame ", g.minigame, " coins ", GameState.coins)
+		coin_ok = coin_ok and num_ok and slot_ok and rou_ok
+		GameState.coins = 60
+		g._ctr_floor_go(0, true)
+		for fr7 in 8:
+			await get_tree().process_frame
 		# the lifts: six floors in the window; the lounge only for members
 		g.zone = _zone_of(g.map, "ctr_clift")
 		g.use()

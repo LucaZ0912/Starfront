@@ -3398,7 +3398,8 @@ static func build_casino(_station: Dictionary, storey: int, night: bool = false)
 					DeckGen._seat(m, "stool", sx, ry + 1, 1, Color(0.6, 0.2, 0.4), rng, 0.3)
 					k += 1
 				m.lights.append({"pos": Vector2(mid - 4, ry + 0.8) * TILE, "r": 150.0, "col": [PINK, CYAN, GOLD][(ry / 3) % 3], "a": 0.3})
-				_zone(m, Rect2(4.0, ry + 1.0, lx - 6.0, 1.2), "ctr_closed", "Slot machines", PINK, {"closed": "The machines are still being wired. Soon.", "id": "cas_slots_%d" % ry})
+				_zone(m, Rect2(4.0, ry + 1.0, lx - 6.0, 1.2), "ctr_slot", "Slot machine: play", PINK, {"id": "cas_slots_%d" % ry,
+					"name": {C_F0 + 2: "Lucky Lapis", C_F0 + 6: "Comet Rush"}.get(ry, "Kiln Gold"), "mcol": [PINK, CYAN, GOLD][(ry / 3) % 3]})      # package 62, part 2: open
 		2:      # the tables: two for roulette, three for cards, an oval for poker, and Drift
 			var tables := [["roulette", 5, C_F0 + 3, 4], ["roulette", 15, C_F0 + 3, 4], ["cards", 26, C_F0 + 3, 3], ["cards", 34, C_F0 + 3, 3], ["cards", 30, C_F0 + 8, 3],
 				["poker", 6, C_F0 + 8, 5]]
@@ -3409,8 +3410,13 @@ static func build_casino(_station: Dictionary, storey: int, night: bool = false)
 				_cprop(m, props, String(tb[0]), tx, ty, tw, 2, {"seed": tx * 7 + ty})
 				m.people.append({"pos": Vector2(tx + tw * 0.5, ty - 0.1) * TILE, "dir": 0, "role": "keeper"})
 				m.lights.append({"pos": Vector2(tx + tw * 0.5, ty + 1.0) * TILE, "r": 60.0, "col": GOLD if String(tb[0]) != "poker" else CYAN, "a": 0.4})
-				_zone(m, Rect2(tx, ty + 2.0, tw, 1.2), "ctr_closed", {"roulette": "Roulette", "cards": "Blackjack", "poker": "Poker table"}[String(tb[0])], GOLD,
-					{"closed": "The tables open soon. The dealer only shuffles for now.", "id": "cas_table_%d_%d" % [tx, ty]})
+				if String(tb[0]) == "roulette":             # package 62, part 2: the wheel turns
+					_zone(m, Rect2(tx, ty + 2.0, tw, 1.2), "ctr_roulette", "Roulette: take a seat", GOLD, {"id": "cas_table_%d_%d" % [tx, ty]})
+				else:
+					_zone(m, Rect2(tx, ty + 2.0, tw, 1.2), "ctr_closed", {"cards": "Blackjack", "poker": "Poker table"}[String(tb[0])], GOLD,
+						{"closed": "The tables open soon. The dealer only shuffles for now.", "id": "cas_table_%d_%d" % [tx, ty]})
+				for np in 2:                                # (Luz) guests play at every table
+					m.people.append({"pos": Vector2(tx + 0.6 + np * (tw - 1.2), ty + 2.5) * TILE, "dir": 1, "role": "keeper", "look": ChibiArt.PilotArt.random_look(rng)})
 			m.add_object({"kind": "round_table", "x": 19, "y": C_F0 + 9, "w": 1, "h": 1})          # (Drift can be played already)
 			DeckGen._seat(m, "chair", 18, C_F0 + 9, 3, Color(0.4, 0.2, 0.5), rng, 0.5)
 			DeckGen._seat(m, "chair", 20, C_F0 + 9, 2, Color(0.4, 0.2, 0.5), rng, 0.5)
@@ -3507,7 +3513,11 @@ static func build_casino(_station: Dictionary, storey: int, night: bool = false)
 				_cprop(m, props, String(tb2[0]), hx, hy, hw, 2, {"seed": hx * 3, "hi": true})
 				m.people.append({"pos": Vector2(hx + hw * 0.5, hy - 0.1) * TILE, "dir": 0, "role": "keeper"})
 				m.lights.append({"pos": Vector2(hx + hw * 0.5, hy + 1.0) * TILE, "r": 64.0, "col": GOLD, "a": 0.5})
-				_zone(m, Rect2(hx, hy + 2.0, hw, 1.2), "ctr_closed", String(tb2[3]), GOLD, {"closed": "The high tables open soon. No stake at them is small.", "id": "cas_high_%d" % hx})
+				if String(tb2[0]) == "roulette":            # package 62, part 2: the high wheel turns
+					_zone(m, Rect2(hx, hy + 2.0, hw, 1.2), "ctr_roulette", String(tb2[3]) + ": take a seat", GOLD, {"id": "cas_high_%d" % hx, "hi": true})
+				else:
+					_zone(m, Rect2(hx, hy + 2.0, hw, 1.2), "ctr_closed", String(tb2[3]), GOLD, {"closed": "The high tables open soon. No stake at them is small.", "id": "cas_high_%d" % hx})
+				m.people.append({"pos": Vector2(hx + hw - 0.6, hy + 2.5) * TILE, "dir": 1, "role": "keeper", "look": _rich_look(rng)})
 			m.set_meta("cas_rug", Rect2(Vector2(13, C_F0 + 10) * TILE, Vector2(23, 5) * TILE))
 			_cprop(m, props, "lapis", 30, C_F0 + 6, 2, 1, {})
 			m.lights.append({"pos": Vector2(31.0, C_F0 + 5.6) * TILE, "r": 62.0, "col": Color(0.4, 0.7, 1.0), "a": 0.45})
@@ -3809,8 +3819,7 @@ class CasinoFx extends Node2D:
 					draw_circle(Vector2(bx, 68.0), 1.4, Color(1.0, 0.95, 0.7) if (b3 + int(_t * 6.0)) % 3 == 1 else Color(0.5, 0.36, 0.16))
 					b3 += 1
 			1:      # the jackpot over the machines, counting
-				var jp := 1284090 + int(_t * 37.0)
-				var js := "%d,%03d,%03d" % [jp / 1000000, (jp / 1000) % 1000, jp % 1000]
+				var js: String = GameData.fmt_credits(GameState.casino_jackpot).replace(" cr", "")      # (the house's jackpot, as it stands)
 				draw_rect(Rect2(cxm - 80.0, 22.0, 160.0, 30.0), Color(0.03, 0.02, 0.05))
 				draw_rect(Rect2(cxm - 80.0, 22.0, 160.0, 30.0), Color(1.0, 0.36, 0.66, 0.9), false, 1.5)
 				draw_string(font, Vector2(cxm - 80.0, 33.0), "JACKPOT", HORIZONTAL_ALIGNMENT_CENTER, 160.0, 8, Color(1.0, 0.6, 0.8))

@@ -412,6 +412,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.2 (package 62, part 2): `data/casino.gd` (`spin`, `roll`, `settle`, `bet_pays`, `slot_luck`, `wheel_luck`,
+  pay tables, chips, limits), `scripts/ground/slot_game.gd`, `scripts/ground/roulette_game.gd` (seats, `place`,
+  `clear`, `spin_result`); commands `slot_spin`, `roulette_bet`, `roulette_clear`, `roulette_spin` (with `seat`,
+  for co-op); `GameState.casino_jackpot`, `casino_spins`, `casino_stats`, `casino_rng()`, `casino_book()`; perk
+  `lucky_hand`; zones `ctr_slot`, `ctr_roulette` (`hi`).
 - 0.8.62.1 (package 62, part 1): `CentauriaGen.build_casino(station, storey, night)` (level `zcasino`,
   `GroundView.ctr_floor`; `CAS_W`, `CAS_IW` (the hall), `CAS_HH`, `CAS_FLOORS`, `CAS_ALT` (heights on the tower);
   metas `cas_floor`, `cas_window`, `cas_views`, `cas_canvas`, `cas_props`, `cas_lifts`, `cas_inlay`, `cas_chandelier`,

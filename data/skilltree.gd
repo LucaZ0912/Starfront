@@ -149,6 +149,7 @@ const PERKS := {
 	"market_insider": {"group": "Commerce", "name": "Market Insider", "effect": "Markets show where an item sells best in the neighbouring systems", "skill": "trading", "lvl": 5},
 	"diplomat": {"group": "Commerce", "name": "Diplomat", "effect": "Standing from contracts +25 %", "skill": "negotiation", "lvl": 3},
 	"fine_print": {"group": "Commerce", "name": "Fine Print", "effect": "Penalties for failed contracts halved", "skill": "negotiation", "lvl": 5},
+	"lucky_hand": {"group": "Commerce", "name": "Lucky Hand", "effect": "The machines and the wheel of the Grand Centauria are kinder to you", "skill": "", "lvl": 0},
 	"drone_wrangler": {"group": "Command", "name": "Drone Wrangler", "effect": "One more drone in flight at once", "skill": "electronics", "lvl": 3},
 	"convoy_shepherd": {"group": "Command", "name": "Convoy Shepherd", "effect": "Escort rewards +20 %", "skill": "", "lvl": 0},
 	"crew_morale": {"group": "Command", "name": "Crew Morale", "effect": "Crew wages −15 %", "skill": "leadership", "lvl": 4, "later": "package 31"},

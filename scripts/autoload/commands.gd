@@ -694,6 +694,74 @@ func _c_coins_sell(c: Dictionary) -> String:
 	return ""
 
 
+## Package 62, part 2 (Luz): {"type":"slot_spin", "stake"}: one pull at the machine you sit at. The stake goes, the
+## reels are rolled (your Dexterity and the perk Lucky Hand nudge them now and then), the win is paid, the house's
+## jackpot grows; the machine's window shows it.
+func _c_slot_spin(c: Dictionary) -> String:
+	var CasinoD = load("res://data/casino.gd")
+	var g = _ground()
+	if g == null or g.minigame == null or not g.minigame.has_method("slot_result"):
+		return "No machine."
+	var stake := int(c.get("stake", 1))
+	if not stake in CasinoD.SLOT_STAKES:
+		return "The machine takes 1, 5 or 25 Coins."
+	if g.minigame.busy():
+		return "The reels are still turning."
+	if GameState.coins < stake:
+		return "Not enough Coins. The cashier is in the lobby."
+	var res: Dictionary = CasinoD.spin(GameState.casino_rng(), CasinoD.slot_luck(GameState.pilot_attr("dexterity"), GameState.has_perk(CasinoD.PERK)), stake, GameState.casino_jackpot)
+	GameState.coins += int(res["win"]) - stake
+	GameState.casino_book(stake, int(res["win"]))
+	if bool(res["jackpot"]):
+		GameState.log_msg("JACKPOT at the Grand Centauria: %d Coins." % int(res["win"]), GameState.COL_GOOD)
+		GameState.casino_jackpot = CasinoD.JACKPOT_START
+	else:
+		GameState.casino_jackpot += maxi(1, int(ceil(stake * CasinoD.JACKPOT_SHARE)))
+	g.minigame.slot_result(res)
+	return ""
+
+
+## {"type":"roulette_bet", "seat", "key", "chip"}: a seat puts Coins on a field of the cloth (chip below 1: takes
+## the bet off it). {"type":"roulette_clear", "seat"}: all of a seat's bets off. The seat is there for co-op.
+func _c_roulette_bet(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.minigame == null or not g.minigame.has_method("spin_result"):
+		return "No roulette table."
+	return g.minigame.place(int(c.get("seat", 0)), String(c.get("key", "")), int(c.get("chip", 0)))
+
+
+func _c_roulette_clear(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.minigame == null or not g.minigame.has_method("spin_result"):
+		return "No roulette table."
+	g.minigame.clear(int(c.get("seat", 0)))
+	return ""
+
+
+## {"type":"roulette_spin"}: no more bets. Your stake goes, the wheel turns (with a kind hand the ball hops one
+## pocket on), what your bets give back is paid; the table's window shows it.
+func _c_roulette_spin(_c: Dictionary) -> String:
+	var CasinoD = load("res://data/casino.gd")
+	var g = _ground()
+	if g == null or g.minigame == null or not g.minigame.has_method("spin_result"):
+		return "No roulette table."
+	var tb = g.minigame
+	if String(tb.state) != "bet":
+		return "The wheel is turning."
+	var staked: int = tb.total(0)
+	if staked <= 0:
+		return "Place a bet first."
+	if staked > GameState.coins:
+		return "Not enough Coins. The cashier is in the lobby."
+	var bets: Dictionary = tb.seats[0]["bets"]
+	var roll: Dictionary = CasinoD.roll(GameState.casino_rng(), CasinoD.wheel_luck(GameState.pilot_attr("dexterity"), GameState.has_perk(CasinoD.PERK)), bets)
+	var back: int = CasinoD.settle(bets, int(roll["n"]))
+	GameState.coins += back - staked
+	GameState.casino_book(staked, back)
+	tb.spin_result(int(roll["n"]), int(roll["from"]), back)
+	return ""
+
+
 func _need_coins(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":

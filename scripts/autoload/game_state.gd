@@ -56,6 +56,9 @@ const COIN_BUY := 100              # credits for one Coin …
 const COIN_SELL := 95              # … and what one Coin gives back
 var coins := 0
 var casino_vip := false
+var casino_jackpot := 5000              # package 62, part 2: the house's jackpot (Coins), growing with every spin
+var casino_spins := 0                   # … how often its reels and its wheel have turned for you (seeds the next turn)
+var casino_stats := {"staked": 0, "back": 0, "best": 0}     # … Coins staked, Coins got back, the largest single win
 var fleet: Array = []            # all owned ships (ShipFitting)
 var active_uid := -1             # the ship the pilot is flying
 var current_system := 0          # displayed system (= system of the active ship)
@@ -228,6 +231,9 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	credits = START_CREDITS
 	coins = 0
 	casino_vip = false
+	casino_jackpot = 5000
+	casino_spins = 0
+	casino_stats = {"staked": 0, "back": 0, "best": 0}
 	exotic_matter = 0
 	fleet.clear()
 	storage.clear()
@@ -480,6 +486,22 @@ func fab_tree_error(mid: String) -> String:
 	return ""
 
 
+## Package 62, part 2: the dice of the casino's next turn. Seeded from how often it has turned for you, so a game
+## saved and loaded does not see the same turn twice.
+func casino_rng() -> RandomNumberGenerator:
+	var r := RandomNumberGenerator.new()
+	casino_spins += 1
+	r.seed = hash("%d|%d|%s" % [casino_spins, int(play_time * 1000.0), pilot_name])
+	return r
+
+
+## … and its books: Coins staked and Coins got back on one turn.
+func casino_book(staked: int, back: int) -> void:
+	casino_stats["staked"] = int(casino_stats["staked"]) + staked
+	casino_stats["back"] = int(casino_stats["back"]) + back
+	casino_stats["best"] = maxi(int(casino_stats["best"]), back - staked)
+
+
 func has_perk(id: String) -> bool:
 	return id in pilot.get("perks", [])
 
@@ -564,7 +586,7 @@ func to_dict() -> Dictionary:
 	for f in fleet:
 		ships.append(f.to_dict())
 	return {
-		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "fleet": ships, "active_uid": active_uid,
+		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "casino_jackpot": casino_jackpot, "casino_spins": casino_spins, "casino_stats": casino_stats.duplicate(), "fleet": ships, "active_uid": active_uid,
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
@@ -592,6 +614,10 @@ func from_dict(d: Dictionary) -> void:
 	credits = int(d["credits"])
 	coins = int(d.get("coins", 0))
 	casino_vip = bool(d.get("casino_vip", false))
+	casino_jackpot = int(d.get("casino_jackpot", 5000))
+	casino_spins = int(d.get("casino_spins", 0))
+	casino_stats = {"staked": 0, "back": 0, "best": 0}
+	casino_stats.merge(d.get("casino_stats", {}), true)
 	fleet.clear()
 	for sd in d["fleet"]:
 		fleet.append(ShipFitting.from_dict(sd))
