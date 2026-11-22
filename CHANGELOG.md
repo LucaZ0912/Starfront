@@ -3,6 +3,45 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.1 – 2026-11-22
+
+**Package 62, part 1 (Luz): the Grand Centauria from inside. The building first, the games follow.**
+- **The casino is open.** The stair on the plaza of the Commercial District leads into the middle tower. Six floors
+  lie one over the other, their halls narrower the higher, joined by capsules of glass on the tower's outside (the
+  lifts' window lists the floors by number):
+  1. **Lobby:** marble, gold and violet, the house's name in lamps, a chandelier of light over a fountain with a
+     Coin of light turning above it, an inlay of gold in the floor, a red carpet between ropes of velvet, reception,
+     the cashier, sofas, palms, attendants at the doors.
+  2. **The Machines:** three rows of slot machines, their reels turning, a jackpot counting over them.
+  3. **The Tables:** two roulette tables, three for blackjack, one for poker, their dealers behind them, and a table
+     for Drift (that one can be played already).
+  4. **The Track:** a small cinema: a great screen with a race running on it, rows of seats, boards of odds, two
+     betting counters (their shutters still down).
+  5. **The Aurum Bar:** dark wood, a long counter under the glass, a grand piano (somebody plays at night), sofas.
+     A meeting place for now.
+  6. **VIP Lounge:** in the tip, a club for the Cluster's one per cent, members only (the lift refuses you for
+     now). Its hall is dark and loud: a bar, a DJ, a dance floor of light between platforms on which the house's
+     dancers dance, booths in velvet, Lapis turning as a hologram, and along the south the three high tables
+     (roulette, blackjack, poker) on a carpet of their own. Through a wall of glass lies the terrace: it juts out
+     beyond the tower's wall, a pool to its very edge with members swimming in it, sofas that look out over it at
+     Lapis, a pool bar, loungers at the south edge, fire in bowls, palms, two more platforms with dancers. Round it
+     the sea of cloud from above, Lapis huge over it. The terrace follows day and night, the hall stays a club.
+     Its guests wear the coats and jackets of the rich; the house's own wear its livery on every floor.
+- **The lifts** are capsules of glass in tubes on the outside of the tower, two on every floor, beside them a row of
+  lamps that shows the floor. Choose a floor: you walk to the nearest capsule, its doors of bent glass slide apart,
+  you step in and they shut. Then the picture goes outside: the capsule runs up or down the tower to that floor's
+  height. On a long ride the view pulls back until the whole towers stand in it and closes in again where the
+  capsule stops; the floors hang beside the rails as names, yours in gold, the other capsule comes the other way.
+  The interact key skips the ride. Out you step on the other floor.
+- **The view** through the wall of glass grows with the floor: the city's skyline sinks, Lapis grows, from the bar
+  up you look down on the clouds. It follows day and night.
+- **Coins**, the money of the Grand Centauria: the cashier in the lobby sells them (100 cr each) and changes them
+  back (95 cr each). They are saved with the game and shown in the casino's title line. Later they also pay for
+  special paints, services and gear in the Colosseum.
+- The machines, tables and betting counters stand there but are not played yet: parts 2 and 3 and package 62b.
+- Debug menu: the Grand Centauria: straight to any floor (the lounge makes you a member), the membership on and
+  off, 1,000 Coins.
+
 ## alpha 0.8.61.5 – 2026-11-22
 
 **Package 61d (Luz): the Museum moves to Centauria; Second Skin, paint for your ships.**

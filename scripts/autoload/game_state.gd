@@ -50,6 +50,12 @@ const SkillData = preload("res://data/skills.gd")
 const TreeData = preload("res://data/skilltree.gd")
 signal skills_changed
 var credits := START_CREDITS
+## Package 62 (Luz): Coins, the money of the Grand Centauria: bought at the casino's cashier, changed back there (for
+## a little less), and what Centauria's special things cost. A member of the house may ride up to the VIP lounge.
+const COIN_BUY := 100              # credits for one Coin …
+const COIN_SELL := 95              # … and what one Coin gives back
+var coins := 0
+var casino_vip := false
 var fleet: Array = []            # all owned ships (ShipFitting)
 var active_uid := -1             # the ship the pilot is flying
 var current_system := 0          # displayed system (= system of the active ship)
@@ -220,6 +226,8 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	play_time = 0.0
 	_next_uid = 1
 	credits = START_CREDITS
+	coins = 0
+	casino_vip = false
 	exotic_matter = 0
 	fleet.clear()
 	storage.clear()
@@ -556,7 +564,7 @@ func to_dict() -> Dictionary:
 	for f in fleet:
 		ships.append(f.to_dict())
 	return {
-		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "fleet": ships, "active_uid": active_uid,
+		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "fleet": ships, "active_uid": active_uid,
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
@@ -582,6 +590,8 @@ func from_dict(d: Dictionary) -> void:
 	gear.from_dict(d.get("gear", {}))         # package 51 (older saves: the starting gear)
 	surveys.clear()
 	credits = int(d["credits"])
+	coins = int(d.get("coins", 0))
+	casino_vip = bool(d.get("casino_vip", false))
 	fleet.clear()
 	for sd in d["fleet"]:
 		fleet.append(ShipFitting.from_dict(sd))

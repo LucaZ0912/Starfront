@@ -266,6 +266,8 @@ func _set_hint() -> void:
 		back = "the landing drone's ramp takes you back up"
 	elif level == "landing":
 		back = "her ramp takes you back aboard"
+	elif level == "zcasino":
+		back = "the lifts lead to the other floors, the doors of the lobby back out onto the plaza"      # package 62
 	elif is_city():
 		back = "the lifts lead to the hangar: your ship and the way up"
 	_hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
@@ -330,6 +332,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	people.clear()
 	_bartender = null
 	_lift_open.clear()
+	_cas_doors.clear()
 	_flicker.clear()
 	_seat = {}
 	_ride = {}
@@ -417,6 +420,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = CentauriaGen.build_punkbar(station, city_day() < 0.5)       # … and the Static Feedback (the band plays at night)
 	elif level == "zplaza":
 		map = CentauriaGen.build_plaza(station)                    # … and the plaza of the Commercial District
+	elif level == "zcasino":
+		map = CentauriaGen.build_casino(station, ctr_floor, city_day() < 0.5)      # package 62 (Luz): the Grand Centauria, floor by floor
 	elif level == "cplaza":
 		map = CloudGen.build_plaza(station, _avail)
 	elif level == "cstation":
@@ -650,6 +655,124 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_title.text = "Centauria – Back Alleys"
 	elif level == "zbar":
 		_title.text = "Centauria – Static Feedback"
+	elif level == "zcasino":
+		_ctr_title()
+	if level == "zcasino":
+		# package 62 (Luz): the Grand Centauria. Under the people: the views (through the wall of glass, behind the
+		# lifts' tubes, round the lounge's terrace), the pool, the terrace's edges, the dance floor, the wall itself,
+		# the lobby's inlay. Among them: what stands on the floor, the capsules' fronts, the terrace's balustrade.
+		# Over them: the lobby's chandelier, the club's light.
+		var cnight := 1.0 - city_day()
+		var ccanvas: Rect2 = map.get_meta("cas_canvas", Rect2())
+		var cviews: Array = (map.get_meta("cas_views", []) as Array).duplicate()
+		if map.has_meta("cas_window"):
+			cviews.append(map.get_meta("cas_window"))
+		for cvr0 in cviews:
+			var cvr: Rect2 = cvr0
+			var cvw = CentauriaGen.CasinoView.new()
+			cvw.storey = ctr_floor
+			cvw.night = cnight
+			cvw.canvas = ccanvas
+			cvw.origin = cvr.position
+			cvw.position = cvr.position * GroundMap.SCALE
+			cvw.size = cvr.size
+			cvw.scale = Vector2.ONE * GroundMap.SCALE
+			_world.add_child(cvw)
+			_world.move_child(cvw, _sorted.get_index())
+		var cunder: Array = []
+		if map.has_meta("cas_pool"):
+			cunder.append(["pool", {"rect": map.get_meta("cas_pool")}])
+		if map.has_meta("cas_terrace"):
+			cunder.append(["terrace", {"rect": map.get_meta("cas_terrace"), "pool": map.get_meta("cas_pool", Rect2()), "door": map.get_meta("cas_door", Rect2())}])
+		if map.has_meta("cas_dfloor"):
+			cunder.append(["dfloor", {"rect": map.get_meta("cas_dfloor"), "rug": map.get_meta("cas_rug", Rect2())}])
+		cunder.append(["wall", {}])
+		for cu in cunder:
+			var cuf = CentauriaGen.CasinoFx.new()
+			cuf.part = String(cu[0])
+			cuf.data = cu[1]
+			cuf.storey = ctr_floor
+			cuf.night = cnight
+			cuf.scale = Vector2.ONE * GroundMap.SCALE
+			_world.add_child(cuf)
+			_world.move_child(cuf, _sorted.get_index())
+		for cpd in map.get_meta("cas_props", []):
+			var cpf = CentauriaGen.CasinoFx.new()
+			cpf.part = "prop"
+			cpf.data = cpd
+			cpf.night = cnight
+			cpf.scale = Vector2.ONE * GroundMap.SCALE
+			cpf.position = ((cpd["at"] as Vector2) - Vector2(0.0, float(cpd.get("lift", 0.0)))) * GroundMap.SCALE
+			_sorted.add_child(cpf)
+		for ccp in map.get_meta("cas_lifts", []):
+			var clf = CentauriaGen.CasinoFx.new()               # (Luz) the capsules of glass: their fronts, the doors
+			clf.part = "lift"
+			clf.scale = Vector2.ONE * GroundMap.SCALE
+			clf.position = ((ccp as Vector2) + Vector2(0.0, 1.0)) * GroundMap.SCALE
+			_sorted.add_child(clf)
+			_cas_doors.append(clf)
+		if map.has_meta("cas_terrace"):
+			var ctr: Rect2 = map.get_meta("cas_terrace")
+			var ctf = CentauriaGen.CasinoFx.new()
+			ctf.part = "tfront"
+			ctf.data = {"w": ctr.size.x}
+			ctf.scale = Vector2.ONE * GroundMap.SCALE
+			ctf.position = Vector2(ctr.position.x, ctr.end.y) * GroundMap.SCALE
+			_sorted.add_child(ctf)
+		if map.has_meta("cas_inlay"):
+			var cin = CentauriaGen.CasinoFx.new()
+			cin.part = "inlay"
+			cin.at = map.get_meta("cas_inlay")
+			cin.scale = Vector2.ONE * GroundMap.SCALE
+			_world.add_child(cin)
+			_world.move_child(cin, _sorted.get_index())
+		if map.has_meta("cas_chandelier"):
+			var cch = CentauriaGen.CasinoFx.new()
+			cch.part = "over"
+			cch.at = map.get_meta("cas_chandelier")
+			cch.scale = Vector2.ONE * GroundMap.SCALE
+			cch.z_index = 6
+			_world.add_child(cch)
+		if map.has_meta("cas_dark"):
+			var cdk: Array = map.get_meta("cas_dark")          # (the lounge's hall is a club: dark, its lamps glow in it)
+			var cdr := ColorRect.new()
+			var cdm := CanvasItemMaterial.new()
+			cdm.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+			cdr.material = cdm
+			cdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cdr.color = cdk[1]
+			cdr.position = (cdk[0] as Rect2).position * GroundMap.SCALE
+			cdr.size = (cdk[0] as Rect2).size * GroundMap.SCALE
+			cdr.z_index = 4
+			_world.add_child(cdr)
+		if map.has_meta("cas_open"):
+			var cop: Rect2 = map.get_meta("cas_open")           # (its terrace lies under the sky: the hour darkens or lights it)
+			var ctn := ColorRect.new()
+			var ctm := CanvasItemMaterial.new()
+			ctm.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+			ctn.material = ctm
+			ctn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ctn.position = cop.position * GroundMap.SCALE
+			ctn.size = cop.size * GroundMap.SCALE
+			ctn.z_index = 3
+			_world.add_child(ctn)
+			_tint = ctn
+			for cl0 in map.lights:
+				var clid := String((cl0 as Dictionary).get("id", ""))
+				if clid.begins_with("ctr_t") and _named_lights.has(clid):
+					_city_lights.append([_named_lights[clid], cl0, "street"])
+			_apply_day(city_day(), true)
+		if map.has_meta("cas_dfloor"):
+			var ccl = CentauriaGen.CasinoFx.new()
+			ccl.part = "club"
+			ccl.data = {"dfloor": map.get_meta("cas_dfloor"), "pods": map.get_meta("cas_pods", []), "pool": map.get_meta("cas_pool", Rect2())}
+			ccl.night = cnight
+			ccl.scale = Vector2.ONE * GroundMap.SCALE
+			var cam2 := CanvasItemMaterial.new()
+			cam2.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+			ccl.material = cam2
+			ccl.z_index = 6
+			_world.add_child(ccl)
 	if level == "zstation":
 		# package 61a: the tracks, the trains running by their timetable, the boards over them – under the people
 		var rfx = CentauriaGen.RailFx.new()
@@ -1804,6 +1927,11 @@ var sim_foes: Array = []
 const CentauriaGen = preload("res://scripts/ground/centauria_gen.gd")
 var ctr_stop := 0
 var ctr_line := "A"
+var ctr_floor := 0                      # package 62 (Luz): which floor of the Grand Centauria you stand on
+var _clift: Dictionary = {}             # … riding one of its capsules of glass: {phase, t, k (which capsule), to (the floor)}
+var _cas_doors: Array = []              # … the capsules' fronts on this floor (CasinoFx "lift": their doors)
+var _cas_ride = null                    # … the ride outside the tower, drawn (CentauriaGen.LiftRide)
+var _cas_hour := 0.0                    # … until the hour is handed to its views again (seconds)
 var _ctr_at := -2                       # where the train you ride stood last (for the announcements)
 
 
@@ -2760,6 +2888,8 @@ func _process(delta: float) -> void:
 		_ride_step(delta)
 	elif not _sink.is_empty():
 		_sink_step(delta)
+	elif not _clift.is_empty():
+		_clift_step(delta)                               # package 62 (Luz): in one of the casino's capsules of glass
 	elif input_enabled and talk == null and _lift_menu == null and minigame == null and not background_locked():
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
 		if combat != null and combat.wheel_open:
@@ -2805,11 +2935,13 @@ func _process(delta: float) -> void:
 		if helm != bool(pilot.look.get("helmet", false)):
 			pilot.look = pilot_look()                    # 0.7.51.10: the helmet closes for the fight
 	_doors(delta)
+	if level == "zcasino":
+		_ctr_doors(delta)
 	if not _seat.is_empty():
 		zone = _seat
 	else:
 		zone = map.zone_at(pilot.pos)
-	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null:
+	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null or not _clift.is_empty():
 		zone = {} if _seat.is_empty() else _seat
 	if zone.is_empty() and is_town() and _ride.is_empty() and talk == null and _near_guard() != null:
 		zone = {"kind": "guard", "id": "guard", "title": String(CityStyle.guards(station)["name"]), "rect": Rect2()}
@@ -4860,7 +4992,7 @@ func wheel_centre() -> Vector2:
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
 func use(instant: bool = false) -> bool:
-	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty():
+	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty() or not _clift.is_empty():
 		return false                                     # review 7 K1: not while the platform sinks
 	if not _seat.is_empty():
 		_stand_up()
@@ -4953,6 +5085,17 @@ func use(instant: bool = false) -> bool:
 			_ui.add_child(tsc)
 			_lift_menu = tsc
 			_lift_menu.set_meta("keys", [])
+			return true
+		"ctr_casino_in":
+			ctr_floor = 0                                    # package 62 (Luz): up the stair into the Grand Centauria
+			Audio.play("ui_open", "casino: in")
+			go_level("zcasino", "from_plaza")
+			return true
+		"ctr_clift":
+			_ctr_clift()
+			return true
+		"ctr_cashier":
+			_ctr_cashier()
 			return true
 		"ctr_down":
 			ctr_stop = 1
@@ -5300,6 +5443,189 @@ func ask_window(title: String, text: String, opts: Array, on_back: Callable = Ca
 	_lift_menu.set_meta("zone", {})
 	_lift_menu.set_meta("keys", keys)
 	_lift_menu.set_meta("on_back", on_back)
+
+
+## Package 62 (Luz): the Grand Centauria. Its title: the floor, and the Coins you hold.
+func _ctr_title() -> void:
+	_title.text = "The Grand Centauria – %s  ·  %d Coins" % [String(CentauriaGen.CAS_FLOORS[ctr_floor]), GameState.coins]
+
+
+## The casino's lifts: every floor by its number (the VIP lounge only for members of the house).
+func _ctr_clift() -> void:
+	var opts: Array = []
+	var top: int = CentauriaGen.CAS_FLOORS.size() - 1
+	for i in CentauriaGen.CAS_FLOORS.size():
+		var note := ""
+		if i == ctr_floor:
+			note = "  (you are here)"
+		elif i == top and not GameState.casino_vip:
+			note = "  (members only)"
+		opts.append([String(CentauriaGen.CAS_FLOORS[i]) + note, func(): _ctr_floor_go(i)])
+	ask_window("The lifts", "The Grand Centauria, six floors under one spire. Which floor?", opts)
+
+
+## (Luz) to another floor in one of the capsules of glass on the tower's outside: you walk to its doors, step in, the
+## doors shut, and it runs up or down the tower to that floor's height (LiftRide). `quick`: there at once, no ride.
+func _ctr_floor_go(fl: int, quick: bool = false) -> void:
+	if not _clift.is_empty():
+		return
+	if fl == ctr_floor and not quick:
+		return
+	if fl == CentauriaGen.CAS_FLOORS.size() - 1 and not GameState.casino_vip:
+		_say_toast(CentauriaGen.VIP_NOTE, 6.0)
+		return
+	fl = clampi(fl, 0, CentauriaGen.CAS_FLOORS.size() - 1)
+	var caps: Array = map.get_meta("cas_lifts", []) if map != null else []
+	if quick or caps.is_empty() or level != "zcasino":
+		ctr_floor = fl
+		go_level("zcasino", "clift")
+		_ctr_set_down(0, 7.0)
+		return
+	var best := 0
+	for i in caps.size():
+		if absf((caps[i] as Vector2).x - pilot.pos.x) < absf((caps[best] as Vector2).x - pilot.pos.x):
+			best = i
+	_clift = {"phase": 0, "t": 0.0, "k": best, "to": fl}
+	Audio.play("ui_open", "casino: capsule called")
+
+
+## Sets you down at capsule `k` of this floor, `dy` px south of its threshold (inside it: a little north).
+func _ctr_set_down(k: int, dy: float) -> void:
+	var caps: Array = map.get_meta("cas_lifts", [])
+	if caps.is_empty():
+		return
+	var c: Vector2 = caps[clampi(k, 0, caps.size() - 1)]
+	pilot.pos = c + Vector2(0.0, dy)
+	pilot.position = pilot.pos * GroundMap.SCALE
+	pilot.dir = 0
+	pilot.moving = false
+	_cam_c = Vector2.INF
+	_camera()
+
+
+## The ride, step by step: 0 to the capsule's doors, 1 in (the doors open), 2 the doors shut, 3 the ride outside the
+## tower, 4 out on the other floor.
+func _clift_step(delta: float) -> void:
+	var t := float(_clift["t"]) + delta
+	_clift["t"] = t
+	var caps: Array = map.get_meta("cas_lifts", [])
+	if caps.is_empty():
+		_clift = {}                                      # (somewhere else by now)
+		return
+	var k := clampi(int(_clift["k"]), 0, caps.size() - 1)
+	var c: Vector2 = caps[k]
+	match int(_clift["phase"]):
+		0:
+			var to := c + Vector2(0.0, 7.0) - pilot.pos
+			if to.length() < 2.0 or t > 2.5:
+				_clift["phase"] = 1
+				_clift["t"] = 0.0
+			elif not pilot.step(to.normalized(), delta, 1.0):
+				pilot.pos += to.normalized() * minf(to.length(), Walker.SPEED * delta)
+				pilot.position = pilot.pos * GroundMap.SCALE
+		1:
+			pilot.dir = 1
+			pilot.moving = false
+			if t > 0.32:
+				var into := c + Vector2(0.0, -4.0)
+				pilot.pos = pilot.pos.move_toward(into, Walker.SPEED * 0.7 * delta)
+				pilot.position = pilot.pos * GroundMap.SCALE
+				pilot.moving = true
+				pilot._walk += delta * 0.7
+				if pilot.pos.distance_to(into) < 0.3:
+					pilot.moving = false
+					pilot.dir = 0
+					_clift["phase"] = 2
+					_clift["t"] = 0.0
+		2:
+			pilot.moving = false
+			if t > 0.5:
+				var rd = CentauriaGen.LiftRide.new()
+				rd.setup(ctr_floor, int(_clift["to"]), 1.0 - city_day(), pilot.look)
+				rd.hint = "%s: skip" % Keybinds.key_text("interact")
+				_ui.add_child(rd)
+				_cas_ride = rd
+				Audio.play("undock_release", "casino: the capsule runs", -4.0)
+				_clift["phase"] = 3
+				_clift["t"] = 0.0
+		3:
+			var rd2 = _cas_ride
+			if rd2 == null or not is_instance_valid(rd2) or rd2.arrived():
+				ctr_floor = int(_clift["to"])
+				go_level("zcasino", "clift")
+				_ctr_set_down(k, -4.0)
+				if rd2 != null and is_instance_valid(rd2):
+					rd2.leave()
+				_cas_ride = null
+				Audio.play("dock_clamp", "casino: the capsule arrives", -4.0)
+				_clift["phase"] = 4
+				_clift["t"] = 0.0
+			elif t > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel")):
+				rd2.skip()
+		_:
+			if t > 0.5:
+				var out := c + Vector2(0.0, 8.0)
+				pilot.pos = pilot.pos.move_toward(out, Walker.SPEED * 0.7 * delta)
+				pilot.position = pilot.pos * GroundMap.SCALE
+				pilot.dir = 0
+				pilot.moving = true
+				pilot._walk += delta * 0.7
+				if pilot.pos.distance_to(out) < 0.3:
+					pilot.moving = false
+					_clift = {}
+
+
+## The capsules' doors: open while you stand before one, step into it or out of it; shut while it rides.
+func _ctr_doors(delta: float) -> void:
+	_cas_hour -= delta
+	if _cas_hour <= 0.0:
+		_cas_hour = 1.0                                   # (the day goes on: the views and the pool follow it)
+		var nn := 1.0 - city_day()
+		for nd in _world.get_children():
+			if nd.has_method("_lounge") or nd.has_method("_chandelier"):
+				nd.night = nn
+	var caps: Array = map.get_meta("cas_lifts", [])
+	for i in mini(caps.size(), _cas_doors.size()):
+		var fx = _cas_doors[i]
+		if fx == null or not is_instance_valid(fx):
+			continue
+		var c: Vector2 = caps[i]
+		var near: bool = pilot != null and pilot.visible and absf(pilot.pos.x - c.x) < 16.0 and pilot.pos.y - c.y < 20.0
+		var want := 0.0
+		if _clift.is_empty():
+			want = 1.0 if near else 0.0
+		elif int(_clift["k"]) == i:
+			var ph := int(_clift["phase"])
+			if (ph == 0 and near) or ph == 1 or (ph == 4 and float(_clift["t"]) > 0.25):
+				want = 1.0
+		var was: float = fx.open
+		fx.open = move_toward(was, want, delta * 3.2)
+		if was == 0.0 and fx.open > 0.0:
+			Audio.play("ui_open", "casino: capsule doors")
+
+
+## The cashier: credits for Coins, Coins for credits. The window comes back after every exchange.
+func _ctr_cashier() -> void:
+	var opts: Array = []
+	_ctr_title()
+	for n in [10, 100, 1000]:
+		opts.append(["Buy %d Coins for %s" % [n, GameData.fmt_credits(n * GameState.COIN_BUY)], func(): _ctr_coins({"type": "coins_buy", "n": n})])
+	if GameState.coins > 0:
+		var all: int = GameState.coins
+		opts.append(["Cash out all %d Coins for %s" % [all, GameData.fmt_credits(all * GameState.COIN_SELL)], func(): _ctr_coins({"type": "coins_sell", "n": all})])
+	opts.append(["Leave the counter", func(): pass])
+	ask_window("The cashier", "Coins are the money of the Grand Centauria. One Coin costs %s and pays back %s. You hold %d Coins and %s." % [
+		GameData.fmt_credits(GameState.COIN_BUY), GameData.fmt_credits(GameState.COIN_SELL), GameState.coins, GameData.fmt_credits(GameState.credits)], opts)
+
+
+func _ctr_coins(cmd: Dictionary) -> void:
+	var e: String = Commands.execute(cmd)
+	if e != "":
+		_say_toast(e, 4.0)
+	else:
+		Audio.play("ui_open", "casino: coins")
+	_ctr_title()
+	_ctr_cashier()
 
 
 ## 0.7.50.15 (Luz): taking off – back to orbit, or to the planet map to pick another place.

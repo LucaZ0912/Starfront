@@ -721,6 +721,7 @@ func _process(delta: float) -> void:
 				await _test_acq60()                      # package 60: acquaintances
 				await _test_fern61(main.view)            # package 61: the Fern system
 				await _test_ctr61a(main.view)            # package 61a: Centauria's trains
+				await _test_casino62(main.view)          # package 62, part 1: the Grand Centauria
 				_shooting = false
 				timer = 0.0
 				return
@@ -17336,7 +17337,7 @@ func _test_ctr61a(_view: SystemView) -> void:
 			await get_tree().process_frame
 		var pz: Array = g.map.zones
 		var on_plaza: bool = String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0) \
-			and pz.any(func(z): return String(z.get("id", "")) == "ctr_casino" and String(z.get("closed", "")) != "") \
+			and pz.any(func(z): return String(z.get("id", "")) == "ctr_casino" and String(z.get("kind", "")) == "ctr_casino_in") \
 			and pz.any(func(z): return String(z.get("kind", "")) == "museum_in") and g.map.has_meta("from_museum") and g.map.free_at(g.map.get_meta("from_museum"), 4.0) \
 			and pz.any(func(z): return String(z.get("id", "")) == "ctr_alleys" and String(z.get("to", "")) == "zalley") \
 			and g.map.free_at(g.map.get_meta("from_hall"), 4.0) and g.map.window_rect.size.y == float(Gen.P_TOP) \
@@ -17700,6 +17701,315 @@ func _test_ctr61a(_view: SystemView) -> void:
 		print("CTR61A approach: sites ", csites.size())
 	check(time_ok and land_ok and st_ok and ride_ok and dist_ok and fly_ok,
 		"61a: Centauria's trains – a timetable (15 s halts, rides of 21 to 25 s, Line B half a round later), the boards' text; the hangar's lift goes only to Centauria Central (two tracks, two boards, the stairs up); no train: you stay, a train standing: aboard; the doors shut on the way and open at the Commercial District; the district stations with one track each, the Colosseum's way up shut  [%s %s %s %s %s]" % [time_ok, land_ok, st_ok, ride_ok, dist_ok])
+	# the game as it was
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62, part 1 (Luz): the Grand Centauria: the casino's six floors, the capsules of glass and the ride outside
+## the tower, the cashier's Coins, the lounge with its high tables, its dancers and its terrace with the pool.
+## Pictures: CTR_SHOTS=1 (every floor) or CTR_SHOTS=vip (the lounge and the ride only).
+func _test_casino62(_view: SystemView) -> void:
+	var Gen = load("res://scripts/ground/centauria_gen.gd")
+	var shot_mode := OS.get_environment("CTR_SHOTS")
+	var shots := shot_mode != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# every floor as a map: two capsules with free ground before them, places to stroll that are free, what belongs on it
+	var maps_ok: bool = Gen.CAS_FLOORS.size() == 6 and Gen.CAS_W.size() == 6 and Gen.CAS_ALT.size() == 6
+	for qf in Gen.CAS_FLOORS.size():
+		var qm: GroundMap = Gen.build_casino({}, qf, true)
+		var qz: Array = qm.zones
+		var qp: Array = qm.get_meta("cas_props", [])
+		var qcaps: Array = qm.get_meta("cas_lifts", [])
+		var one: bool = qm.w == int(Gen.CAS_W[qf]) and qm.h == int(Gen.CAS_HH[qf]) and qm.lifts.is_empty() and qcaps.size() == 2 \
+			and qcaps.all(func(c): return qm.free_at((c as Vector2) + Vector2(0.0, 7.0), 4.0)) \
+			and qz.any(func(z): return String(z.get("kind", "")) == "ctr_clift") \
+			and qm.wander.size() >= 6 and (qm.wander as Array).all(func(p): return qm.free_at(p, 4.0)) and (qf == 0 or qf == 5 or int(Gen.CAS_W[qf]) <= int(Gen.CAS_W[qf - 1])) \
+			and qm.has_meta("cas_window") == (qf != 0 and qf != 3) and qm.has_meta("cas_views") == (qf == 0 or qf == 3 or qf == 5) \
+			and (qf == 0 or float(Gen.CAS_ALT[qf]) > float(Gen.CAS_ALT[qf - 1])) \
+			and (qm.people as Array).all(func(p): return not (String(p.get("role", "")) in ["keeper", "bartender"]) or not (p.get("look", {}) as Dictionary).is_empty())
+		match qf:
+			0:
+				one = one and qz.any(func(z): return String(z.get("kind", "")) == "ctr_cashier") and qz.any(func(z): return String(z.get("id", "")) == "cas_out" and String(z.get("to", "")) == "zplaza") \
+					and qm.free_at(qm.get_meta("from_plaza"), 4.0) and qm.has_meta("cas_chandelier")
+			1:
+				one = one and qp.filter(func(p): return String(p["kind"]) == "slot").size() >= 40
+			2:
+				one = one and qp.filter(func(p): return String(p["kind"]) == "roulette").size() == 2 and qp.filter(func(p): return String(p["kind"]) == "cards").size() == 3 \
+					and qp.filter(func(p): return String(p["kind"]) == "poker").size() == 1 and qz.any(func(z): return String(z.get("kind", "")) == "drift")
+			3:
+				one = one and qp.filter(func(p): return String(p["kind"]) == "seats").size() == 3 \
+					and qz.filter(func(z): return String(z.get("id", "")).begins_with("cas_bets") and String(z.get("closed", "")) != "").size() == 2 \
+					and qp.filter(func(p): return String(p["kind"]) == "odds").size() == 4
+			4:
+				one = one and qp.any(func(p): return String(p["kind"]) == "piano") and (qm.people as Array).any(func(p): return String(p.get("role", "")) == "bartender")
+			_:
+				# (Luz) the lounge: the three high tables, five platforms each with a dancer, the DJ, the dance floor full,
+				# the pool (nobody walks into it), the terrace under the sky, the way through the wall of glass, guests
+				# in the looks of the rich, nobody without a look
+				var qdeck: Rect2 = qm.get_meta("cas_terrace", Rect2())
+				var qpool: Rect2 = qm.get_meta("cas_pool", Rect2())
+				var qdoor: Rect2 = qm.get_meta("cas_door", Rect2())
+				var qhall := Vector2(20.0, float(Gen.C_F0) + 9.5) * GroundMap.TILE
+				one = one and ["roulette", "cards", "poker"].all(func(k): return qp.filter(func(p): return String(p["kind"]) == k and bool(p.get("hi", false))).size() == 1) \
+					and qp.filter(func(p): return String(p["kind"]) == "podium").size() == 5 and qp.filter(func(p): return String(p["kind"]) == "flame").size() == 4 \
+					and qp.any(func(p): return String(p["kind"]) == "dj") and qz.filter(func(z): return String(z.get("id", "")).begins_with("cas_high")).size() == 3 \
+					and (qm.people as Array).filter(func(p): return bool(p.get("dance", false))).size() >= 15 \
+					and (qm.people as Array).any(func(p): return String(p.get("role", "")) == "bartender") \
+					and (qm.people as Array).all(func(p): return not (p.get("look", {}) as Dictionary).is_empty()) \
+					and (qm.people as Array).filter(func(p): return String(p.get("role", "")) == "" and not bool(p.get("sit", false))).size() >= 12 \
+					and qdeck.size.x > 300.0 and qpool.size.x > 200.0 and qdeck.encloses(qpool) and qm.has_meta("cas_dfloor") and qm.has_meta("cas_dark") and qm.has_meta("cas_canvas") \
+					and not qm.free_at(qpool.get_center(), 4.0) and qm.free_at(qdoor.get_center(), 4.0) and qm.free_at(qdeck.get_center(), 4.0) \
+					and not qm.path(qhall, qdeck.get_center() + Vector2(0.0, 40.0)).is_empty() \
+					and (qm.objects as Array).filter(func(o): return String(o.get("kind", "")) == "lounger").size() == 6
+				if not one:
+					print("CAS62 lounge: props ", qp.map(func(p): return String(p["kind"])), " dance ", (qm.people as Array).filter(func(p): return bool(p.get("dance", false))).size(),
+						" path ", qm.path(qhall, qdeck.get_center() + Vector2(0.0, 40.0)).size(), " deck ", qdeck, " pool ", qpool)
+		if not one:
+			print("CAS62 map ", qf, ": w ", qm.w, " h ", qm.h, " caps ", qcaps, " wander ", qm.wander.size(), " props ", qp.size())
+		maps_ok = maps_ok and one
+	# down to Centauria, out onto the plaza, up the stair
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	var err := String(Commands.execute({"type": "debug_land", "body": pel, "kind": "city"}))
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var land_ok: bool = g != null and is_instance_valid(g) and g.is_centauria()
+	if not land_ok:
+		print("CAS62 land: err ", err)
+	var in_ok := false
+	var coin_ok := false
+	var lift_ok := false
+	var ride_ok := false
+	var vip_ok := false
+	var out_ok := false
+	if land_ok:
+		if shots:
+			Commands.execute({"type": "debug_daytime", "phase": "night"})
+		g.go_level("zplaza", "from_station")
+		for f0 in 10:
+			await get_tree().process_frame
+		for zp in g.map.zones:
+			if String(zp.get("id", "")) == "ctr_casino":
+				g.zone = zp
+		g.use()
+		for f1 in 10:
+			await get_tree().process_frame
+		in_ok = String(g.level) == "zcasino" and int(g.ctr_floor) == 0 and g.map.free_at(g.pilot.pos, 4.0) and String(g._title.text).contains("Lobby") \
+			and g._world.get_children().any(func(nd): return nd.has_method("_chandelier") and String(nd.part) == "wall") \
+			and g._sorted.get_children().filter(func(nd): return nd.has_method("_chandelier") and String(nd.part) == "prop").size() == 11 \
+			and (g._cas_doors as Array).size() == 2
+		if not in_ok:
+			print("CAS62 in: level ", g.level, " floor ", g.ctr_floor, " title ", g._title.text, " doors ", (g._cas_doors as Array).size())
+		# the cashier: Coins for credits and back for a little less; too many either way is refused; they are saved
+		var cr0: int = GameState.credits
+		GameState.credits = 100000
+		GameState.coins = 0
+		var e1 := String(Commands.execute({"type": "coins_buy", "n": 100}))
+		var a1: bool = e1 == "" and GameState.coins == 100 and GameState.credits == 100000 - 100 * GameState.COIN_BUY
+		var e2 := String(Commands.execute({"type": "coins_sell", "n": 40}))
+		var a2: bool = e2 == "" and GameState.coins == 60 and GameState.credits == 100000 - 100 * GameState.COIN_BUY + 40 * GameState.COIN_SELL
+		var a3: bool = String(Commands.execute({"type": "coins_buy", "n": 100000})) != "" and String(Commands.execute({"type": "coins_sell", "n": 61})) != "" \
+			and String(Commands.execute({"type": "coins_buy", "n": 0})) != "" and GameState.coins == 60 and int(GameState.to_dict()["coins"]) == 60 \
+			and GameState.COIN_SELL < GameState.COIN_BUY
+		g.zone = _zone_of(g.map, "ctr_cashier")
+		g.use()
+		for f2 in 5:
+			await get_tree().process_frame
+		var ckeys: Array = g._lift_menu.get_meta("keys", []) if g._lift_menu != null else []
+		if shot_mode == "1":
+			g.story_cam = Vector2(Gen.CAS_W[0] - 14.0, Gen.C_F0 + 3.0) * GroundMap.TILE
+			for f3 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_kasse.png")
+			g.story_cam = Vector2.INF
+		g._close_lift_menu()
+		coin_ok = a1 and a2 and a3 and ckeys.size() == 5
+		if not coin_ok:
+			print("CAS62 coins: ", e1, " | ", e2, " coins ", GameState.coins, " credits ", GameState.credits, " keys ", ckeys.size())
+		# the lifts: six floors in the window; the lounge only for members
+		g.zone = _zone_of(g.map, "ctr_clift")
+		g.use()
+		for f4 in 5:
+			await get_tree().process_frame
+		var lkeys: Array = g._lift_menu.get_meta("keys", []) if g._lift_menu != null else []
+		g._close_lift_menu()
+		GameState.casino_vip = false
+		g._ctr_floor_go(5)
+		for f5 in 10:
+			await get_tree().process_frame
+		var barred: bool = int(g.ctr_floor) == 0 and (g._clift as Dictionary).is_empty()
+		lift_ok = lkeys.size() == 6 and barred
+		for qfl in [1, 2, 3, 4]:                                # (at once: the ride is tried below)
+			g._ctr_floor_go(qfl, true)
+			for f6 in 8:
+				await get_tree().process_frame
+			var there: bool = String(g.level) == "zcasino" and int(g.ctr_floor) == qfl and int(g.map.get_meta("cas_floor", -1)) == qfl and g.map.free_at(g.pilot.pos, 4.0) \
+				and String(g._title.text).contains(String(Gen.CAS_FLOORS[qfl])) and g.people.size() >= 3 and (g._cas_doors as Array).size() == 2
+			if not there:
+				print("CAS62 lift ", qfl, ": level ", g.level, " floor ", g.ctr_floor, " free ", g.map.free_at(g.pilot.pos, 4.0), " people ", g.people.size())
+			lift_ok = lift_ok and there
+		if not lift_ok:
+			print("CAS62 lifts: keys ", lkeys.size(), " barred ", barred)
+		# (Luz) a ride in a capsule of glass, the lobby to the lounge: to its doors, in (you stand inside it, behind its
+		# doors), the ride outside the tower drawn, out on the other floor, the doors shut behind you
+		g._ctr_floor_go(0, true)
+		for f7 in 8:
+			await get_tree().process_frame
+		GameState.casino_vip = true
+		g.pilot.pos = (g.map.get_meta("cas_lifts")[1] as Vector2) + Vector2(-30.0, 40.0)
+		g.pilot.position = g.pilot.pos * GroundMap.SCALE
+		for f8 in 20:
+			await get_tree().process_frame                       # (the doors: shut, nobody before them)
+		var shut0: bool = (g._cas_doors as Array).all(func(d): return float(d.open) < 0.05)
+		g._ctr_floor_go(5)
+		var started: bool = not (g._clift as Dictionary).is_empty()
+		var rode := false
+		var inside := false
+		var blocked := true
+		var opened := false
+		var marks := [0.9, 0.5, 0.94]                           # (pictures: near the start, half way, near the end)
+		var mi := 0
+		var kap := false
+		var tr := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tr < 30000 and not (g._clift as Dictionary).is_empty():
+			await get_tree().process_frame
+			var cl: Dictionary = g._clift
+			if cl.is_empty():
+				break
+			blocked = blocked and not g.use()
+			if g._cas_ride != null and is_instance_valid(g._cas_ride):
+				rode = true
+				if shots and mi < marks.size():
+					var rdo = g._cas_ride
+					var want: float = float(marks[mi]) if mi == 0 else float(rdo.FADE) + float(rdo.dur) * float(marks[mi])
+					if float(rdo._t) >= want:
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_fahrt_%d.png" % (mi + 1))
+						mi += 1
+			if int(cl["phase"]) in [1, 2] and (g._cas_doors as Array).any(func(d): return float(d.open) > 0.9):
+				opened = true
+			if int(cl["phase"]) == 2:
+				inside = inside or g.pilot.pos.y < (g.map.get_meta("cas_lifts")[int(cl["k"])] as Vector2).y
+				if shots and not kap and float(cl["t"]) > 0.3:
+					kap = true
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_kapsel.png")
+		for f9 in 30:
+			await get_tree().process_frame
+		ride_ok = shut0 and started and rode and inside and blocked and opened and (g._clift as Dictionary).is_empty() and String(g.level) == "zcasino" and int(g.ctr_floor) == 5 \
+			and int(g.map.get_meta("cas_floor", -1)) == 5 and g.map.free_at(g.pilot.pos, 4.0) and g.pilot.visible \
+			and (g._cas_ride == null or not is_instance_valid(g._cas_ride) or float(g._cas_ride._gone) >= 0.0)
+		if not ride_ok:
+			print("CAS62 ride: shut ", shut0, " started ", started, " rode ", rode, " inside ", inside, " blocked ", blocked, " opened ", opened, " clift ", g._clift, " floor ", g.ctr_floor, " pos ", g.pilot.pos)
+		# the lounge as it stands: the pool, the terrace's edges, the club's light, the hall dark, the terrace under the hour
+		vip_ok = ["pool", "terrace", "dfloor", "wall", "club"].all(func(k): return g._world.get_children().any(func(nd): return nd.has_method("_chandelier") and String(nd.part) == k)) \
+			and g._sorted.get_children().any(func(nd): return nd.has_method("_chandelier") and String(nd.part) == "tfront") \
+			and g._world.get_children().filter(func(nd): return nd.has_method("_lounge")).size() == 4 and g._tint != null and is_instance_valid(g._tint) \
+			and g.people.size() >= 40 and g.people.filter(func(w): return bool(w.dancing)).size() >= 15 and String(g._title.text).contains("VIP Lounge")
+		if not vip_ok:
+			print("CAS62 lounge view: people ", g.people.size(), " dancing ", g.people.filter(func(w): return bool(w.dancing)).size(), " views ", g._world.get_children().filter(func(nd): return nd.has_method("_lounge")).size(), " tint ", g._tint)
+		if shots:
+			var deck: Rect2 = g.map.get_meta("cas_terrace")
+			var vshots := [["lounge_ganz", Vector2(Gen.CAS_W[5] * 0.5, 14.0), 0.58], ["lounge_halle", Vector2(20.0, 15.5), 0.0], ["lounge_tische", Vector2(22.0, 19.0), 0.0],
+				["lounge_pool", Vector2(53.0, 12.0), 0.0], ["lounge_terrasse", Vector2(53.0, 18.5), 0.0], ["lounge_lifte", Vector2(33.0, 11.0), 0.0]]
+			for dn in ["night", "day"]:
+				Commands.execute({"type": "debug_daytime", "phase": dn})
+				g._ctr_floor_go(5, true)
+				for vs in vshots:
+					g.story_cam = (vs[1] as Vector2) * GroundMap.TILE
+					g.story_zoom = float(vs[2])
+					for f10 in 45:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_%s_%s.png" % [String(vs[0]), "nacht" if dn == "night" else "tag"])
+				if dn == "night" and shot_mode == "1":
+					for qsf in 5:
+						g._ctr_floor_go(qsf, true)
+						g.story_cam = Vector2(Gen.CAS_W[qsf] * 0.5, Gen.C_F0 + 3.5) * GroundMap.TILE
+						g.story_zoom = 0.72
+						for f11 in 45:
+							await get_tree().process_frame
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_%d_nacht.png" % (qsf + 1))
+						g.story_zoom = 0.0
+						g.story_cam = Vector2(Gen.CAS_W[qsf] - 16.0, Gen.C_F0 + 2.5) * GroundMap.TILE
+						for f12 in 30:
+							await get_tree().process_frame
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_%d_lifte.png" % (qsf + 1))
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+			# … and a ride back down by day: near its start, half way
+			g._ctr_floor_go(5, true)
+			for f15 in 8:
+				await get_tree().process_frame
+			g._ctr_floor_go(0)
+			var dmarks := [1.0, 0.5]
+			var dmi := 0
+			var trd := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - trd < 30000 and not (g._clift as Dictionary).is_empty():
+				await get_tree().process_frame
+				if dmi < dmarks.size() and g._cas_ride != null and is_instance_valid(g._cas_ride):
+					var rdd = g._cas_ride
+					if float(rdd._t) >= (float(dmarks[dmi]) if dmi == 0 else float(rdd.FADE) + float(rdd.dur) * float(dmarks[dmi])):
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_fahrt_tag_%d.png" % (dmi + 1))
+						dmi += 1
+		# back down and out onto the plaza
+		g._ctr_floor_go(0, true)
+		for f13 in 10:
+			await get_tree().process_frame
+		for zo in g.map.zones:
+			if String(zo.get("id", "")) == "cas_out":
+				g.zone = zo
+		g.use()
+		for f14 in 10:
+			await get_tree().process_frame
+		out_ok = String(g.level) == "zplaza" and g.map.free_at(g.pilot.pos, 4.0) and g.pilot.pos.distance_to(g.map.get_meta("from_casino")) < 4.0
+		if not out_ok:
+			print("CAS62 out: level ", g.level, " pos ", g.pilot.pos)
+		# the debug menu's way in: a floor at once (the lounge makes you a member), the membership, Coins
+		GameState.casino_vip = false
+		var cn0: int = GameState.coins
+		var de := String(Commands.execute({"type": "debug_casino", "to": 5}))
+		for f16 in 8:
+			await get_tree().process_frame
+		var dbg1: bool = de == "" and String(g.level) == "zcasino" and int(g.ctr_floor) == 5 and GameState.casino_vip and g.map.free_at(g.pilot.pos, 4.0)
+		Commands.execute({"type": "debug_casino", "vip": false, "coins": 50})
+		Commands.execute({"type": "debug_casino", "to": 2})
+		for f17 in 8:
+			await get_tree().process_frame
+		out_ok = out_ok and dbg1 and not GameState.casino_vip and GameState.coins == cn0 + 50 and int(g.ctr_floor) == 2 and String(g._title.text).contains("%d Coins" % (cn0 + 50))
+		if not out_ok:
+			print("CAS62 debug: ", de, " level ", g.level, " floor ", g.ctr_floor, " vip ", GameState.casino_vip, " coins ", GameState.coins, " title ", g._title.text)
+		GameState.credits = cr0
+	check(maps_ok and land_ok and in_ok and coin_ok and lift_ok and ride_ok and vip_ok and out_ok,
+		"62, part 1: the Grand Centauria: six floors (the lobby with its cashier and chandelier, the machines, the tables with Drift, the track with seats and shut betting counters, the Aurum Bar with its piano, the VIP lounge); the stair on the plaza leads in, the doors back out; Coins are bought and changed back for less and saved; two capsules of glass on every floor, the ride outside the tower from the lobby to the lounge (in through the doors, nothing else to be done on the way, out up there), the lounge only for members; the lounge: three high tables, five platforms with dancers, a DJ and a full dance floor, a terrace under the sky with a pool nobody walks into, the hall dark, its guests in the looks of the rich")
 	# the game as it was
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)

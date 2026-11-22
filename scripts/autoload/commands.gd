@@ -664,6 +664,48 @@ func look_price() -> int:
 ## {"type":"paint_ship", "uid": int, "paint": id} – package 61d (Luz): Second Skin in Centauria paints one of your
 ## ships that stands in the city's hangar ("" : back to the factory's colours, free). The price goes by the hull's
 ## size, after the standing.
+## Package 62 (Luz): the cashier of the Grand Centauria: credits for Coins ("coins_buy"), Coins for credits
+## ("coins_sell"), `n` Coins at a time.
+func _c_coins_buy(c: Dictionary) -> String:
+	var e := _need_coins(c)
+	if e != "":
+		return e
+	var n := int(c.get("n", 0))
+	var price := n * GameState.COIN_BUY
+	if GameState.credits < price:
+		return "Not enough credits (%s)." % GameData.fmt_credits(price)
+	GameState.spend(price)
+	GameState.coins += n
+	GameState.log_msg("The cashier counts out %d Coins for %s." % [n, GameData.fmt_credits(price)], GameState.COL_GOOD)
+	return ""
+
+
+func _c_coins_sell(c: Dictionary) -> String:
+	var e := _need_coins(c)
+	if e != "":
+		return e
+	var n := int(c.get("n", 0))
+	if GameState.coins < n:
+		return "You do not hold that many Coins."
+	GameState.coins -= n
+	GameState.credits += n * GameState.COIN_SELL          # (changed back, not earned)
+	GameState.credits_changed.emit(GameState.credits)
+	GameState.log_msg("The cashier takes %d Coins and pays out %s." % [n, GameData.fmt_credits(n * GameState.COIN_SELL)], GameState.COL_GOOD)
+	return ""
+
+
+func _need_coins(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var st := docked_station()
+	if not st.get("city", false) or String(st.get("name", "")) != "Centauria":
+		return "There is no cashier here."
+	if int(c.get("n", 0)) <= 0:
+		return "How many Coins?"
+	return ""
+
+
 func _c_paint_ship(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":
@@ -3675,6 +3717,51 @@ func _c_debug_museum(c: Dictionary) -> String:
 			return "Not in Centauria."
 	g._close_lift_menu()
 	g.go_level({"plaza": "mplaza", "hall": "museum", "minerals": "museum_min", "first": "museum_1", "second": "museum_2", "basement": "museum_down"}[to], "lift" if to == "plaza" else "museum_in")
+	return ""
+
+
+## {"type":"debug_casino", "to": 0…5} – package 62 (Luz): straight to a floor of the Grand Centauria (down to Centauria
+## first if need be; the lounge makes you a member); "vip": true / false, the house's membership; "coins": n, Coins
+## into your pocket.
+func _c_debug_casino(c: Dictionary) -> String:
+	if c.has("vip"):
+		GameState.casino_vip = bool(c["vip"])
+		GameState.log_msg("[Debug] The Grand Centauria: %s." % ("you are a member now" if GameState.casino_vip else "you are no member any more"), GameState.COL_INFO)
+	if c.has("coins"):
+		GameState.coins = maxi(0, GameState.coins + int(c["coins"]))
+		GameState.log_msg("[Debug] Coins: %d." % GameState.coins, GameState.COL_INFO)
+	var g = _ground()
+	if not c.has("to"):
+		if g != null and String(g.level) == "zcasino":
+			g._ctr_title()
+		return ""
+	var to := clampi(int(c["to"]), 0, 5)
+	if g == null or not g.is_centauria():
+		var sid := Universe.special_system("fern")
+		if sid < 0:
+			return "No Fern in this cluster."
+		var f := _fit()
+		if f == null or f.system_id != sid:
+			var e := _c_debug_teleport({"system": sid})
+			if e != "":
+				return e
+		var body := {}
+		for p in Universe.get_layout(sid)["moons"]:
+			if String(p.get("name", "")) == "Pelagia":
+				body = p
+		if body.is_empty():
+			return "No Pelagia here."
+		var e2 := _c_debug_land({"body": String(body["id"]), "kind": "city"})
+		if e2 != "":
+			return e2
+		g = _ground()
+		if g == null or not g.is_centauria():
+			return "Not in Centauria."
+	if to == 5:
+		GameState.casino_vip = true
+	g._close_lift_menu()
+	g._clift = {}
+	g._ctr_floor_go(to, true)
 	return ""
 
 

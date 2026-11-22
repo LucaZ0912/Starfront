@@ -1492,6 +1492,16 @@ func _build_ground() -> void:
 	rmu2.add_child(UI.button("Half", func(): _cmd({"type": "debug_museum", "fill": "half"})))
 	rmu2.add_child(UI.button("All but one", func(): _cmd({"type": "debug_museum", "fill": "almost"})))
 	rmu2.add_child(UI.button("Full", func(): _cmd({"type": "debug_museum", "fill": "all"})))
+	_section("The Grand Centauria (package 62)")
+	var rca := _row()                                               # package 62 (Luz): the casino's floors
+	rca.add_child(UI.label("Casino floor:", 12, UI.TEXT_DIM))
+	for cfi in 6:
+		rca.add_child(UI.button(["Lobby", "Machines", "Tables", "Track", "Aurum Bar", "VIP Lounge"][cfi], func(): _cmd({"type": "debug_casino", "to": cfi})))
+	var rca2 := _row()
+	rca2.add_child(UI.label("Casino:", 12, UI.TEXT_DIM))
+	rca2.add_child(UI.button("Membership on", func(): _cmd({"type": "debug_casino", "vip": true})))
+	rca2.add_child(UI.button("Membership off", func(): _cmd({"type": "debug_casino", "vip": false})))
+	rca2.add_child(UI.button("+1,000 Coins", func(): _cmd({"type": "debug_casino", "coins": 1000})))
 
 
 func _update_ground_status() -> void:

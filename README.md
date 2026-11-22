@@ -412,6 +412,18 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.1 (package 62, part 1): `CentauriaGen.build_casino(station, storey, night)` (level `zcasino`,
+  `GroundView.ctr_floor`; `CAS_W`, `CAS_IW` (the hall), `CAS_HH`, `CAS_FLOORS`, `CAS_ALT` (heights on the tower);
+  metas `cas_floor`, `cas_window`, `cas_views`, `cas_canvas`, `cas_props`, `cas_lifts`, `cas_inlay`, `cas_chandelier`,
+  `from_plaza`, the lounge's `cas_terrace`, `cas_pool`, `cas_door`, `cas_dfloor`, `cas_rug`, `cas_pods`, `cas_dark`,
+  `cas_open`; zones `ctr_clift`, `ctr_cashier`, `cas_out`), `CasinoView` (the view behind the glass; with `canvas`
+  one picture for several windows) and `CasinoFx` (parts wall / inlay / over / prop / lift / pool / terrace /
+  tfront / dfloor / club); the lifts: no `map.lifts` there, `GroundView._clift` (the ride's steps),
+  `_ctr_floor_go(floor, quick)`, `_cas_doors`, `CentauriaGen.LiftRide` (the ride outside the tower),
+  `TowerArt.draw(…, back)`; looks `_staff_look`, `_rich_look`, `_dancer_look`; the plaza's zone `ctr_casino_in` and
+  meta `from_casino`; `GameState.coins`, `casino_vip`, `COIN_BUY`, `COIN_SELL`; commands `coins_buy`, `coins_sell`,
+  `debug_casino` (`to`, `vip`, `coins`); smoke group `casino62` (shots `cas62_*` under `CTR_SHOTS=1`, the lounge
+  and the ride only under `CTR_SHOTS=vip`).
 - 0.8.61.5 (package 61d): `GroundView.is_museum_city()` is Centauria; service `paint` (`data/station_services.gd`,
   only in Centauria), `data/paints.gd` (`ORDER`, `PAINTS`, `price`), `scripts/ui/station/paint_panel.gd`, command
   `paint_ship`; PixelArt `shop_paint` (paint keys `pt_…` in `_colors`, `engine_glow`, `paint_key`); the Hall's west

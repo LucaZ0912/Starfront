@@ -308,7 +308,8 @@ static func build_plaza(station: Dictionary) -> GroundMap:
 	m.fill(cx0, P_TOP, P_CW, 28, T.FLOOR, 30)
 	m.decals.append({"kind": "steps_lit", "x": cx0 + 13, "y": P_TOP, "w": 24, "h": 2})         # the stair up into the casino's middle tower
 	var mid := cx0 + P_CW / 2
-	_zone(m, Rect2(mid - 2, P_TOP, 4, 1.6), "ctr_closed", "The Grand Centauria: the casino", PURPLE, {"closed": "Opening soon. The tables are still being painted.", "id": "ctr_casino"})
+	_zone(m, Rect2(mid - 2, P_TOP, 4, 1.6), "ctr_casino_in", "The Grand Centauria: into the casino", PURPLE, {"id": "ctr_casino"})      # package 62: open
+	m.set_meta("from_casino", Vector2(mid, P_TOP + 2.2) * TILE)
 	# (Luz: no pillars before it, the ends of the stair done properly) the casino stands on a podium: beside the stair
 	# a terrace with a balustrade of glass, its front lit; the stair's cheek walls end it either side
 	for tw in [[cx0, 13], [cx0 + 37, P_CW - 37]]:
@@ -792,7 +793,7 @@ class TowerArt:
 				ci.draw_arc(Vector2(cx, ty - spire * 0.4), thw * 1.3, PI, TAU, 40, Color(1.0, 0.82, 0.35, 0.9), 10.0)
 
 	## The three towers, the bridges between them, the podium and the doors.
-	static func draw(ci: CanvasItem, t: float, night: float, y_lo: float, y_hi: float, fine: bool) -> void:
+	static func draw(ci: CanvasItem, t: float, night: float, y_lo: float, y_hi: float, fine: bool, back: bool = false) -> void:
 		var font := ThemeDB.fallback_font
 		var gold := Color(1.0, 0.82, 0.35)
 		_tower(ci, 0, t, night, y_lo, y_hi, fine)
@@ -814,7 +815,7 @@ class TowerArt:
 		var ax := -1590.0
 		var ai := 0
 		while ax < 1590.0:
-			if absf(ax + 55.0) > 260.0:
+			if back or absf(ax + 55.0) > 260.0:
 				ci.draw_rect(Rect2(ax + 14.0, -128.0, 82.0, 128.0), Color(1.0, 0.86, 0.6, (0.75 if night > 0.5 else 0.4) * (0.7 + 0.3 * hsh(ai, 4))))
 				ci.draw_rect(Rect2(ax + 14.0, -128.0, 82.0, 6.0), Color([Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), gold][ai % 3], 0.95))
 				ci.draw_rect(Rect2(ax + 53.0, -122.0, 3.0, 122.0), Color(0.07, 0.07, 0.14))
@@ -822,6 +823,8 @@ class TowerArt:
 			ax += 110.0
 			ai += 1
 		ci.draw_rect(Rect2(-1620.0, -308.0, 3240.0, 9.0), gold)
+		if back:
+			return                                         # (Luz: seen from behind, for the lifts' ride: no billboards, no doors)
 		# billboards along it: colours running, what is on tonight
 		var bi := 0
 		for bxx in [-1500.0, -1130.0, -760.0, 460.0, 830.0, 1200.0]:
@@ -3257,6 +3260,1362 @@ class BarFx extends Node2D:
 				draw_rect(Rect2(3.0, -1.0, 7.0, 1.5), Color(0.4, 0.42, 0.5))
 				draw_line(Vector2(6.5, -24.0), Vector2(2.5, -26.5), Color(0.6, 0.62, 0.7), 1.0)
 				draw_circle(Vector2(2.0, -27.0), 2.0, Color(0.3, 0.3, 0.36))
+
+
+## Package 62, part 1 (Luz): the Grand Centauria from inside – the casino in the middle tower, six floors one over
+## the other, the halls narrower the higher, joined by capsules of glass on the tower's outside (you step into one
+## and ride up or down the tower: LiftRide): the lobby (reception, the cashier for Coins, a
+## fountain under a chandelier of light), the machines, the tables, the track (the betting stations: a small cinema
+## where the races are shown), the Aurum Bar, the VIP lounge in the tip. The higher, the wider the view through the
+## glass wall: the plaza, the roofs, the whole city, the clouds from above and Lapis. Part 1 is the building: the
+## tables and machines stand there, but nothing is played yet (but for the Drift table). The north wall, the view
+## and what stands on the floors are drawn (CasinoFx, CasinoView).
+const CAS_W := [56, 50, 50, 44, 38, 69]                              # each storey's width (tiles) …
+const CAS_IW := [56, 50, 50, 44, 38, 40]                             # … its hall's (the lounge has a terrace east of its hall) …
+const CAS_HH := [24, 24, 24, 24, 24, 28]                             # … and its depth
+const V_T0 := 7                    # the lounge's terrace: its first row (it juts out north of the hall's wall)
+const CAS_ALT := [40.0, 420.0, 760.0, 1500.0, 5080.0, 6330.0]        # how high each storey lies on the middle tower (TowerArt's units)
+const C_F0 := 9                    # the storey's first row (north of it the wall of glass, drawn)
+const C_F1 := 20
+const CAS_FLOORS := ["Lobby", "The Machines", "The Tables", "The Track", "The Aurum Bar", "VIP Lounge"]
+const VIP_NOTE := "Members only. A membership costs a great many Coins, and a word from the house."
+
+## The house's own (dealers, bartenders, attendants): its livery, dark with gold.
+static func _staff_look(rng: RandomNumberGenerator) -> Dictionary:
+	var lk: Dictionary = ChibiArt.PilotArt.random_look(rng)
+	lk.merge({"outfit": 1, "color1": 0, "color2": 10, "headgear": 0, "scar": 0, "tattoo": 0, "implant": 0}, true)
+	return lk
+
+
+## (Luz) the lounge's guests, the Cluster's one per cent: coats and jackets in white, gold, black, violet, crimson.
+static func _rich_look(rng: RandomNumberGenerator) -> Dictionary:
+	var lk: Dictionary = ChibiArt.PilotArt.random_look(rng)
+	lk.merge({"outfit": [1, 3, 3][rng.randi() % 3], "color1": [3, 3, 10, 0, 11, 8, 4][rng.randi() % 7], "color2": [10, 10, 3, 13][rng.randi() % 4],
+		"scar": 0, "tattoo": 0, "headgear": [0, 0, 0, 3, 2][rng.randi() % 5]}, true)
+	return lk
+
+
+## (Luz) who dances on the platforms: slim, in suits of gold, white and neon.
+static func _dancer_look(rng: RandomNumberGenerator, i: int) -> Dictionary:
+	var lk: Dictionary = ChibiArt.PilotArt.random_look(rng)
+	lk.merge({"body": 0, "outfit": 0, "color1": [10, 3, 12, 13, 11][i % 5], "color2": [3, 10, 10, 3, 10][i % 5], "hair": [4, 2, 5, 9, 7, 8][i % 6],
+		"hair_color": [5, 0, 8, 9, 4, 7][i % 6], "beard": 0 if i % 2 == 0 else [0, 1][rng.randi() % 2], "scar": 0, "headgear": 0, "implant": 0,
+		"lipstick": 1 if i % 2 == 0 else 0, "eye_makeup": 3 if i % 2 == 0 else 1}, true)
+	return lk
+
+
+## Something that stands on a casino floor: its tiles are blocked, its picture is drawn (CasinoFx "prop").
+static func _cprop(m: GroundMap, props: Array, kind: String, x: int, y: int, w: int, h: int, extra: Dictionary = {}) -> void:
+	m.fill(x, y, w, h, T.BLOCK, 0)
+	var p := {"kind": kind, "at": Vector2(x, y + h) * TILE, "w": float(w * TILE)}
+	p.merge(extra, true)
+	props.append(p)
+
+
+static func build_casino(_station: Dictionary, storey: int, night: bool = false) -> GroundMap:
+	storey = clampi(storey, 0, CAS_W.size() - 1)
+	var W: int = CAS_W[storey]
+	var H: int = CAS_HH[storey]
+	var IW: int = CAS_IW[storey]                                     # (the hall itself)
+	var f1: int = H - 4                                              # the floor's last row
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.33, 0.26, 0.42)
+	m.pal["floor2"] = Color(0.26, 0.2, 0.35)
+	m.pal["carpet"] = Color(0.36, 0.12, 0.2)
+	m.pal["wood"] = Color(0.3, 0.19, 0.13)
+	m.pal["wall"] = Color(0.18, 0.12, 0.24)
+	m.pal["frame"] = Color(0.18, 0.12, 0.24)
+	m.pal["accent"] = Color(1.0, 0.82, 0.35)
+	m.style = "plaza"
+	m.title = "The Grand Centauria"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(W, H)
+	var GOLD := Color(1.0, 0.82, 0.35)
+	var PURPLE := Color(0.72, 0.36, 1.0)
+	var PINK := Color(1.0, 0.36, 0.66)
+	var CYAN := Color(0.3, 0.9, 1.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6200 + storey
+	var mid := IW / 2
+	var props: Array = []
+	m.fill(0, 0, W, H, T.CAP)
+	m.fill(1, 0, IW - 2, C_F0, T.BLOCK, 0)                           # the north wall: drawn over
+	m.fill(1, C_F0, IW - 2, f1 - C_F0 + 1, T.FLOOR, [0, 4, 4, 0, 3, 0][storey])
+	# (Luz) the lifts: two capsules of glass in tubes on the tower's outside, at the east end of the north wall. The
+	# tubes, the capsules and their doors are drawn (CasinoFx "wall" and "lift"); you step into one, north of the
+	# floor's line. `cas_lifts`: the middle of each one's threshold (art px).
+	var lx := IW - 8
+	m.set_meta("cas_lifts", [Vector2(lx + 1, C_F0) * TILE, Vector2(lx + 4, C_F0) * TILE])
+	m.decals.append({"kind": "mat", "x": lx, "y": C_F0, "w": 6, "h": 1, "col": GOLD})
+	_zone(m, Rect2(lx, C_F0, 6.0, 1.4), "ctr_clift", "The lifts: the floors of the Grand Centauria", GOLD)
+	m.lights.append({"pos": Vector2(lx + 3.0, C_F0 + 0.5) * TILE, "r": 56.0, "col": GOLD, "a": 0.4})
+	m.spawn = Vector2(lx + 1, C_F0 + 0.45) * TILE
+	m.set_meta("cas_floor", storey)
+	if storey >= 1 and storey != 3:
+		m.set_meta("cas_window", Rect2(24.0, 18.0, IW * TILE - 48.0, 94.0))      # the wall of glass (art px), the tubes in it
+	else:
+		m.set_meta("cas_views", [Rect2(lx * TILE - 2.0, 18.0, 84.0, 94.0)])          # (a wall of stone: the view only behind the tubes)
+	match storey:
+		0:      # the lobby: the doors to the plaza, a fountain, reception and cashier, sofas, palms
+			m.fill(mid - 3, C_F1 + 1, 6, 2, T.FLOOR, 0)
+			m.decals.append({"kind": "mat", "x": mid - 3, "y": C_F1 + 1, "w": 6, "h": 1, "col": PURPLE})
+			m.zones.append({"rect": Rect2(Vector2(mid - 3, C_F1 + 1.2) * TILE, Vector2(6, 1.7) * TILE), "kind": "museum_go", "id": "cas_out", "to": "zplaza", "at": "from_casino",
+				"title": "Out onto the plaza of the Commercial District", "col": PURPLE, "sign": Vector2(-100, -100)})
+			m.set_meta("from_plaza", Vector2(mid, C_F1 + 0.2) * TILE)
+			m.spawn = m.get_meta("from_plaza")
+			m.decals.append({"kind": "rug", "x": mid - 2, "y": C_F0 + 6, "w": 4, "h": C_F1 - C_F0 - 5, "col": Color(0.5, 0.14, 0.3)})
+			_cprop(m, props, "cfountain", mid - 3, C_F0 + 3, 6, 2, {})
+			m.set_meta("cas_inlay", Vector2(mid, C_F0 + 4.2) * TILE)
+			for rp in [mid - 3, mid + 2]:
+				for rr in [C_F0 + 7, C_F0 + 8, C_F0 + 9, C_F0 + 10]:
+					_cprop(m, props, "post", rp, rr, 1, 1, {"rope": rr < C_F0 + 10})
+			m.lights.append({"pos": Vector2(mid, C_F0 + 3.5) * TILE, "r": 120.0, "col": GOLD, "a": 0.5})
+			m.set_meta("cas_chandelier", Vector2(mid, C_F0 + 2.0) * TILE)
+			_cprop(m, props, "desk", 5, C_F0, 7, 1, {"text": "RECEPTION", "col": PURPLE})
+			m.people.append({"pos": Vector2(8.5, C_F0 - 0.05) * TILE, "dir": 0, "role": "keeper"})
+			_zone(m, Rect2(5.0, C_F0 + 1.0, 7.0, 1.3), "ctr_closed", "Reception", PURPLE, {"closed": "Welcome to the Grand Centauria. The tables open soon: look around.", "id": "cas_reception"})
+			_cprop(m, props, "desk", lx - 12, C_F0, 7, 1, {"text": "CASHIER", "col": GOLD})
+			m.people.append({"pos": Vector2(lx - 8.5, C_F0 - 0.05) * TILE, "dir": 0, "role": "keeper"})
+			_zone(m, Rect2(lx - 12.0, C_F0 + 1.0, 7.0, 1.3), "ctr_cashier", "The cashier: credits for Coins, Coins for credits", GOLD)
+			m.lights.append({"pos": Vector2(lx - 8.5, C_F0 + 1.0) * TILE, "r": 60.0, "col": GOLD, "a": 0.45})
+			for dm in [mid - 5, mid + 4]:
+				m.people.append({"pos": Vector2(dm + 0.5, C_F1 + 0.4) * TILE, "dir": 0, "role": "keeper"})
+				m.add_object({"kind": "holo_statue", "x": dm + (-3 if dm < mid else 2), "y": C_F1 - 1, "w": 2, "h": 1, "seed": 620 + dm, "species": "suit_civil"})
+			for sg in [Vector2i(6, C_F0 + 5), Vector2i(W - 12, C_F0 + 5)]:
+				DeckGen._seat(m, "sofa", sg.x, sg.y, 0, Color(0.42, 0.16, 0.5), rng, 0.4, 3)
+				m.add_object({"kind": "round_table", "x": sg.x + 1, "y": sg.y + 2, "w": 1, "h": 1})
+				DeckGen._seat(m, "sofa", sg.x, sg.y + 4, 1, Color(0.42, 0.16, 0.5), rng, 0.4, 3)
+			for pp in [Vector2i(3, C_F0 + 2), Vector2i(lx - 17, C_F0 + 2), Vector2i(14, C_F1 - 2), Vector2i(W - 18, C_F1 - 2)]:
+				m.add_object({"kind": "planter", "x": pp.x, "y": pp.y, "w": 3, "h": 1, "col": Color(0.4, 0.3, 0.5)})
+				m.add_object({"kind": "palm", "x": pp.x, "y": pp.y - 1, "w": 3, "h": 1, "rise": 56, "seed": pp.x % 8}, false)
+		1:      # the machines: rows of them back to back, stools before them
+			for ry in [C_F0 + 2, C_F0 + 6, C_F0 + 10]:
+				var k := 0
+				for sx in range(4, lx - 2, 2):
+					_cprop(m, props, "slot", sx, ry, 1, 1, {"seed": ry * 31 + sx, "col": [PINK, CYAN, GOLD, PURPLE][k % 4]})
+					DeckGen._seat(m, "stool", sx, ry + 1, 1, Color(0.6, 0.2, 0.4), rng, 0.3)
+					k += 1
+				m.lights.append({"pos": Vector2(mid - 4, ry + 0.8) * TILE, "r": 150.0, "col": [PINK, CYAN, GOLD][(ry / 3) % 3], "a": 0.3})
+				_zone(m, Rect2(4.0, ry + 1.0, lx - 6.0, 1.2), "ctr_closed", "Slot machines", PINK, {"closed": "The machines are still being wired. Soon.", "id": "cas_slots_%d" % ry})
+		2:      # the tables: two for roulette, three for cards, an oval for poker, and Drift
+			var tables := [["roulette", 5, C_F0 + 3, 4], ["roulette", 15, C_F0 + 3, 4], ["cards", 26, C_F0 + 3, 3], ["cards", 34, C_F0 + 3, 3], ["cards", 30, C_F0 + 8, 3],
+				["poker", 6, C_F0 + 8, 5]]
+			for tb in tables:
+				var tx := int(tb[1])
+				var ty := int(tb[2])
+				var tw := int(tb[3])
+				_cprop(m, props, String(tb[0]), tx, ty, tw, 2, {"seed": tx * 7 + ty})
+				m.people.append({"pos": Vector2(tx + tw * 0.5, ty - 0.1) * TILE, "dir": 0, "role": "keeper"})
+				m.lights.append({"pos": Vector2(tx + tw * 0.5, ty + 1.0) * TILE, "r": 60.0, "col": GOLD if String(tb[0]) != "poker" else CYAN, "a": 0.4})
+				_zone(m, Rect2(tx, ty + 2.0, tw, 1.2), "ctr_closed", {"roulette": "Roulette", "cards": "Blackjack", "poker": "Poker table"}[String(tb[0])], GOLD,
+					{"closed": "The tables open soon. The dealer only shuffles for now.", "id": "cas_table_%d_%d" % [tx, ty]})
+			m.add_object({"kind": "round_table", "x": 19, "y": C_F0 + 9, "w": 1, "h": 1})          # (Drift can be played already)
+			DeckGen._seat(m, "chair", 18, C_F0 + 9, 3, Color(0.4, 0.2, 0.5), rng, 0.5)
+			DeckGen._seat(m, "chair", 20, C_F0 + 9, 2, Color(0.4, 0.2, 0.5), rng, 0.5)
+			DeckGen._drift_zone(m, Rect2(Vector2(18, C_F0 + 9.8) * TILE, Vector2(3, 1.6) * TILE))
+		3:      # the track: a small cinema where the races are shown, rows of seats, the betting counters (shut for now)
+			for ry2 in [C_F0 + 3, C_F0 + 5, C_F0 + 7]:
+				_cprop(m, props, "seats", mid - 11, ry2, 14, 1, {})
+			for cx in [2, lx - 8]:
+				_cprop(m, props, "desk", cx, C_F0, 7, 1, {"text": "BETS", "col": CYAN, "shut": true})
+				_zone(m, Rect2(cx, C_F0 + 1.0, 7.0, 1.3), "ctr_closed", "Betting counter", CYAN, {"closed": "No bets yet. The first races are announced soon.", "id": "cas_bets_%d" % cx})
+			for ob in [[4, C_F0 + 5, 0], [4, C_F0 + 8, 1], [lx - 6, C_F0 + 5, 2], [lx - 6, C_F0 + 8, 3]]:
+				_cprop(m, props, "odds", int(ob[0]), int(ob[1]), 2, 1, {"seed": int(ob[2])})
+				m.lights.append({"pos": Vector2(ob[0] + 1.0, ob[1] + 1.2) * TILE, "r": 36.0, "col": CYAN, "a": 0.3})
+			for st2 in [Vector2i(lx - 1, C_F0 + 5), Vector2i(lx - 1, C_F0 + 9)]:
+				m.add_object({"kind": "round_table", "x": st2.x + 1, "y": st2.y, "w": 1, "h": 1})
+				DeckGen._seat(m, "chair", st2.x, st2.y, 3, Color(0.2, 0.4, 0.5), rng, 0.6)
+				DeckGen._seat(m, "chair", st2.x + 2, st2.y, 2, Color(0.2, 0.4, 0.5), rng, 0.6)
+			m.lights.append({"pos": Vector2(mid - 4, C_F0 + 1.0) * TILE, "r": 170.0, "col": CYAN, "a": 0.3})
+		4:      # the Aurum Bar: the counter under the glass, a grand piano, sofas
+			m.add_object({"kind": "bar_counter", "x": 4, "y": C_F0 + 1, "w": 12, "h": 1})
+			m.people.append({"pos": Vector2(10.0, C_F0 + 0.99) * TILE, "dir": 0, "role": "bartender"})
+			for sx2 in range(5, 16, 2):
+				DeckGen._seat(m, "stool", sx2, C_F0 + 2, 1, Color(0.7, 0.55, 0.25), rng, 0.4)
+			m.lights.append({"pos": Vector2(10.0, C_F0 + 1.0) * TILE, "r": 100.0, "col": GOLD, "a": 0.45})
+			_cprop(m, props, "piano", lx - 10, C_F0 + 5, 4, 2, {})
+			if night:
+				m.people.append({"pos": Vector2(lx - 8.0, C_F0 + 7.6) * TILE, "dir": 1, "role": "keeper"})      # somebody plays, evenings
+			m.lights.append({"pos": Vector2(lx - 8.0, C_F0 + 6.0) * TILE, "r": 70.0, "col": Color(1.0, 0.9, 0.7), "a": 0.4})
+			for sg2 in [Vector2i(4, C_F0 + 6), Vector2i(12, C_F0 + 6), Vector2i(lx + 1, C_F0 + 6)]:
+				DeckGen._seat(m, "sofa", sg2.x, sg2.y, 0, Color(0.5, 0.4, 0.2), rng, 0.45, 3)
+				m.add_object({"kind": "round_table", "x": sg2.x + 1, "y": sg2.y + 2, "w": 1, "h": 1})
+				DeckGen._seat(m, "sofa", sg2.x, sg2.y + 4, 1, Color(0.5, 0.4, 0.2), rng, 0.45, 3)
+				m.lights.append({"pos": Vector2(sg2.x + 1.5, sg2.y + 2.5) * TILE, "r": 44.0, "col": GOLD, "a": 0.3})
+		_:      # (Luz) the VIP lounge in the tip, a club for the Cluster's one per cent. West the hall: the bar, the DJ,
+			# a dance floor between platforms where the house's dancers dance, booths, and along the south the high
+			# tables (roulette, blackjack, poker). East, through a wall of glass, the terrace: it juts out beyond the
+			# tower's wall, a pool to its very edge, loungers, a bar, fire in bowls, the clouds below, Lapis over it all.
+			var tx := IW
+			var tw := W - 3 - tx
+			var t0 := V_T0
+			var WHITE := Color(0.92, 0.9, 0.86)
+			var VELVET := Color(0.22, 0.14, 0.3)
+			var VIOLET := Color(0.62, 0.34, 1.0)
+			var pods: Array = []
+			m.set_meta("cas_dark", [Rect2(16.0, 112.0, (IW - 2) * TILE, (f1 + 1) * TILE - 112.0), Color(0.6, 0.54, 0.74)])
+			# ---- the wall of glass between hall and terrace, the way through it
+			m.fill(IW - 1, 0, 1, f1 + 1, T.BLOCK, 0)
+			m.fill(IW - 1, C_F0 + 5, 1, 4, T.FLOOR, 0)
+			m.set_meta("cas_door", Rect2(Vector2(IW - 1, C_F0 + 5) * TILE, Vector2(1, 4) * TILE))
+			m.lights.append({"pos": Vector2(IW - 0.5, C_F0 + 7.0) * TILE, "r": 46.0, "col": CYAN, "a": 0.35})
+			# ---- the hall: the bar under the glass, two behind it
+			m.add_object({"kind": "bar_counter", "x": 3, "y": C_F0 + 1, "w": 10, "h": 1})
+			m.people.append({"pos": Vector2(5.5, C_F0 + 0.99) * TILE, "dir": 0, "role": "bartender"})
+			m.people.append({"pos": Vector2(10.5, C_F0 + 0.99) * TILE, "dir": 0, "role": "keeper"})
+			for sx3 in range(3, 13, 2):
+				DeckGen._seat(m, "stool", sx3, C_F0 + 2, 1, GOLD.darkened(0.25), rng, 0.6)
+			m.lights.append({"pos": Vector2(8.0, C_F0 + 1.2) * TILE, "r": 120.0, "col": GOLD, "a": 0.5})
+			# the DJ, the dance floor, the platforms (three round the floor, two out by the pool)
+			_cprop(m, props, "dj", 16, C_F0 + 1, 6, 1, {})
+			var djl := _dancer_look(rng, 3)
+			djl["headgear"] = 1
+			m.people.append({"pos": Vector2(19.0, C_F0 + 0.95) * TILE, "dir": 0, "role": "keeper", "dance": true, "look": djl})
+			var dfl := Rect2i(15, C_F0 + 3, 8, 5)
+			m.set_meta("cas_dfloor", Rect2(Vector2(dfl.position) * TILE, Vector2(dfl.size) * TILE))
+			for dq in [Vector2(1.0, 1.2), Vector2(3.1, 0.9), Vector2(5.3, 1.3), Vector2(6.9, 2.5), Vector2(4.5, 2.9), Vector2(2.3, 3.3), Vector2(0.9, 2.5), Vector2(6.1, 4.2), Vector2(3.5, 4.4)]:
+				m.people.append({"pos": (Vector2(dfl.position) + (dq as Vector2)) * TILE, "dir": rng.randi() % 4, "role": "keeper", "dance": true, "look": _rich_look(rng)})
+			m.lights.append({"pos": Vector2(17.0, C_F0 + 5.5) * TILE, "r": 90.0, "col": PINK, "a": 0.42})
+			m.lights.append({"pos": Vector2(21.0, C_F0 + 5.5) * TILE, "r": 90.0, "col": CYAN, "a": 0.42})
+			var pi2 := 0
+			for pd in [Vector2i(12, C_F0 + 3), Vector2i(24, C_F0 + 3), Vector2i(18, C_F0 + 8), Vector2i(tx, t0 + 5), Vector2i(tx + tw - 2, t0 + 5)]:
+				var pdx: int = (pd as Vector2i).x
+				var pdy: int = (pd as Vector2i).y
+				_cprop(m, props, "podium", pdx, pdy, 2, 1, {"col": [PINK, CYAN, GOLD, GOLD, PINK][pi2], "lift": 16.0, "seed": pi2})
+				m.people.append({"pos": Vector2(pdx + 1.0, pdy + 0.44) * TILE, "dir": 0, "role": "keeper", "dance": true, "look": _dancer_look(rng, pi2)})
+				m.lights.append({"pos": Vector2(pdx + 1.0, pdy + 0.6) * TILE, "r": 40.0, "col": Color(1.0, 0.92, 0.75), "a": 0.5})
+				if pdx < tx:
+					pods.append(Vector2(pdx + 1.0, pdy + 0.44) * TILE)
+				pi2 += 1
+			m.set_meta("cas_pods", pods)
+			# booths in velvet along the west
+			for bg in [Vector2i(2, C_F0 + 4), Vector2i(7, C_F0 + 4), Vector2i(2, C_F0 + 10), Vector2i(7, C_F0 + 10)]:
+				var bgx: int = (bg as Vector2i).x
+				var bgy: int = (bg as Vector2i).y
+				DeckGen._seat(m, "sofa", bgx, bgy, 0, VELVET, rng, 0.55, 3)
+				m.add_object({"kind": "round_table", "x": bgx + 1, "y": bgy + 2, "w": 1, "h": 1})
+				DeckGen._seat(m, "sofa", bgx, bgy + 4, 1, VELVET, rng, 0.55, 3)
+				m.lights.append({"pos": Vector2(bgx + 1.5, bgy + 2.5) * TILE, "r": 44.0, "col": VIOLET, "a": 0.36})
+			# the high tables along the south, on a carpet of their own
+			m.decals.append({"kind": "rug", "x": 13, "y": C_F0 + 10, "w": 23, "h": 5, "col": Color(0.46, 0.1, 0.22)})
+			for tb2 in [["roulette", 14, 4, "High-stakes roulette"], ["cards", 22, 3, "High-stakes blackjack"], ["poker", 29, 5, "High-stakes poker"]]:
+				var hx := int(tb2[1])
+				var hw := int(tb2[2])
+				var hy := C_F0 + 11
+				_cprop(m, props, String(tb2[0]), hx, hy, hw, 2, {"seed": hx * 3, "hi": true})
+				m.people.append({"pos": Vector2(hx + hw * 0.5, hy - 0.1) * TILE, "dir": 0, "role": "keeper"})
+				m.lights.append({"pos": Vector2(hx + hw * 0.5, hy + 1.0) * TILE, "r": 64.0, "col": GOLD, "a": 0.5})
+				_zone(m, Rect2(hx, hy + 2.0, hw, 1.2), "ctr_closed", String(tb2[3]), GOLD, {"closed": "The high tables open soon. No stake at them is small.", "id": "cas_high_%d" % hx})
+			m.set_meta("cas_rug", Rect2(Vector2(13, C_F0 + 10) * TILE, Vector2(23, 5) * TILE))
+			_cprop(m, props, "lapis", 30, C_F0 + 6, 2, 1, {})
+			m.lights.append({"pos": Vector2(31.0, C_F0 + 5.6) * TILE, "r": 62.0, "col": Color(0.4, 0.7, 1.0), "a": 0.45})
+			# a pyramid of glasses, pillars of light at the way out to the terrace, two of the house at the lifts
+			_cprop(m, props, "glasses", 27, C_F0 + 4, 1, 1, {})
+			m.lights.append({"pos": Vector2(27.5, C_F0 + 4.3) * TILE, "r": 34.0, "col": GOLD, "a": 0.45})
+			for hp in [Vector2i(37, C_F0 + 3), Vector2i(37, C_F0 + 9)]:
+				var hpx: int = (hp as Vector2i).x
+				var hpy: int = (hp as Vector2i).y
+				m.add_object({"kind": "holo_pillar", "x": hpx, "y": hpy, "w": 1, "h": 1, "col": GOLD})
+				m.lights.append({"pos": Vector2(hpx + 0.5, hpy + 0.5) * TILE, "r": 40.0, "col": GOLD, "a": 0.36})
+			for gx2 in [lx - 0.6, lx + 6.6]:
+				var gl := _staff_look(rng)
+				gl["outfit"] = 3
+				gl["headgear"] = 2
+				m.people.append({"pos": Vector2(float(gx2), C_F0 + 0.9) * TILE, "dir": 0, "role": "keeper", "look": gl})
+			# ---- the terrace: stone, the pool along its far edge
+			m.fill(tx, t0, tw, f1 - t0 + 1, T.FLOOR, 30)
+			m.decals.append({"kind": "terrace", "x": tx, "y": t0, "w": tw, "h": f1 - t0 + 1, "col": Color(0.8, 0.76, 0.7)})
+			var deck := Rect2(Vector2(tx, t0) * TILE, Vector2(tw, f1 - t0 + 1) * TILE)
+			m.set_meta("cas_terrace", deck)
+			m.set_meta("cas_open", Rect2(deck.position, deck.size + Vector2(4.0, 10.0)))
+			m.set_meta("cas_canvas", Rect2(0.0, 0.0, W * TILE, H * TILE))
+			m.set_meta("cas_views", [Rect2(tx * TILE, 0.0, (W - tx) * TILE, t0 * TILE), Rect2(deck.end.x, deck.position.y, W * TILE - deck.end.x, H * TILE - deck.position.y),
+				Rect2(deck.position.x, deck.end.y, deck.size.x, H * TILE - deck.end.y)])
+			var pool := Rect2i(tx + 2, t0, tw - 4, 4)
+			m.fill(pool.position.x, pool.position.y, pool.size.x, pool.size.y, T.BLOCK, 10)
+			m.set_meta("cas_pool", Rect2(Vector2(pool.position) * TILE, Vector2(pool.size) * TILE))
+			_zone(m, Rect2(pool.position.x, t0 + 4.0, pool.size.x, 0.9), "ctr_closed", "The pool", CYAN, {"closed": "The members swim. You have brought nothing to swim in.", "id": "cas_pool"})
+			var tl := 0                                              # (the terrace's lamps have names: they follow the day)
+			for pl in 5:
+				m.lights.append({"pos": Vector2(pool.position.x + 2.2 + pl * 4.4, t0 + 2.8) * TILE, "r": 64.0, "col": CYAN, "a": 0.32, "id": "ctr_t%d" % tl})
+				tl += 1
+			for fb in [Vector2i(tx, t0 + 1), Vector2i(tx + tw - 1, t0 + 1), Vector2i(tx, f1), Vector2i(tx + tw - 1, f1)]:
+				var fbx: int = (fb as Vector2i).x
+				var fby: int = (fb as Vector2i).y
+				_cprop(m, props, "flame", fbx, fby, 1, 1, {"seed": fbx + fby})
+				m.lights.append({"pos": Vector2(fbx + 0.5, fby + 0.2) * TILE, "r": 54.0, "col": Color(1.0, 0.62, 0.25), "a": 0.5, "flicker": true, "id": "ctr_t%d" % tl})
+				tl += 1
+			for sf in [tx + 3, tx + 9, tx + 15]:
+				DeckGen._seat(m, "sofa", int(sf), t0 + 5, 1, WHITE, rng, 0.6, 3)          # (they look out over the pool at Lapis)
+			for rt in [tx + 7, tx + 13]:
+				m.add_object({"kind": "round_table", "x": int(rt), "y": t0 + 5, "w": 1, "h": 1})
+			m.add_object({"kind": "bar_counter", "x": tx + 19, "y": t0 + 8, "w": 5, "h": 1})        # the pool bar
+			m.people.append({"pos": Vector2(tx + 21.5, t0 + 7.99) * TILE, "dir": 0, "role": "keeper"})
+			for sx4 in [tx + 19, tx + 21, tx + 23]:
+				DeckGen._seat(m, "stool", int(sx4), t0 + 9, 1, WHITE, rng, 0.5)
+			m.lights.append({"pos": Vector2(tx + 21.5, t0 + 8.4) * TILE, "r": 70.0, "col": GOLD, "a": 0.45, "id": "ctr_t%d" % tl})
+			tl += 1
+			for lg2 in [Vector2i(tx + 5, t0 + 9), Vector2i(tx + 11, t0 + 9)]:
+				var lgx: int = (lg2 as Vector2i).x
+				var lgy: int = (lg2 as Vector2i).y
+				DeckGen._seat(m, "sofa", lgx, lgy, 0, WHITE, rng, 0.5, 3)
+				m.add_object({"kind": "round_table", "x": lgx + 1, "y": lgy + 2, "w": 1, "h": 1})
+				DeckGen._seat(m, "sofa", lgx, lgy + 4, 1, WHITE, rng, 0.5, 3)
+				m.lights.append({"pos": Vector2(lgx + 1.5, lgy + 2.5) * TILE, "r": 44.0, "col": Color(1.0, 0.85, 0.6), "a": 0.34, "id": "ctr_t%d" % tl})
+				tl += 1
+			_cprop(m, props, "glasses", tx + 9, t0 + 11, 1, 1, {})
+			for lg in [tx + 3, tx + 5, tx + 8, tx + 10, tx + 13, tx + 15]:
+				DeckGen._seat(m, "lounger", int(lg), f1 - 1, 0, WHITE if int(lg) % 2 == 1 else GOLD.darkened(0.1), rng, 0.5)      # (over the edge: the clouds)
+			for pa in [tx + 4, tx + 9, tx + 14]:
+				m.add_object({"kind": "parasol", "x": int(pa), "y": f1 - 1, "w": 1, "h": 1, "col": WHITE})
+			for pp3 in [Vector2i(tx + 18, t0 + 13), Vector2i(tx + 1, t0 + 14), Vector2i(tx + 21, f1)]:
+				var ppx: int = (pp3 as Vector2i).x
+				var ppy: int = (pp3 as Vector2i).y
+				m.add_object({"kind": "planter", "x": ppx, "y": ppy, "w": 3, "h": 1, "col": Color(0.5, 0.46, 0.44)})
+				m.add_object({"kind": "palm", "x": ppx, "y": ppy - 1, "w": 3, "h": 1, "rise": 56, "seed": ppx % 8}, false)
+	m.set_meta("cas_props", props)
+	m.set_meta("tourists", [12, 16, 16, 10, 8, 0][storey])
+	DeckGen._seats(m)
+	if storey == 5:
+		for gx in range(2, W - 3, 4):
+			for gy in [C_F0, C_F0 + 2, C_F0 + 5, C_F0 + 8, C_F0 + 9, C_F0 + 13, C_F0 + 15]:
+				var wp2 := Vector2(gx + 0.5, gy + 0.5)
+				if m.free_at(wp2 * TILE, 6.0):
+					m.wander.append(wp2 * TILE)
+	else:
+		for gx in range(3, W - 2, 5):
+			for gy in [C_F0 + 2, C_F0 + 5, C_F0 + 9, C_F1]:
+				var wp := Vector2(gx, gy)
+				if m.free_at(wp * TILE, 6.0):
+					m.wander.append(wp * TILE)
+	# the house's own wear its livery; the lounge's guests are the Cluster's one per cent, a dozen of them strolling
+	for p in m.people:
+		if (p as Dictionary).has("look"):
+			continue
+		if String(p.get("role", "")) in ["keeper", "bartender"]:
+			p["look"] = _staff_look(rng)
+		elif storey == 5:
+			p["look"] = _rich_look(rng)
+	if storey == 5:
+		for gi in 12:
+			m.people.append({"pos": m.wander[(gi * 7 + 3) % m.wander.size()], "dir": 0, "look": _rich_look(rng)})
+	return m
+
+
+## (Luz) what you see through the casino's wall of glass, the wider the higher the floor: the city's skyline lower and
+## lower, Lapis larger, from the bar up the clouds (a Control: it cuts the picture off at its own edge).
+class CasinoView extends Control:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	var storey := 1
+	var night := 0.0
+	var canvas := Rect2()            # (the lounge) the whole picture's frame in the map (art px): this window shows its part of it
+	var origin := Vector2.ZERO       # … this window's own corner there
+	var _t := 0.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+
+	func _process(dt: float) -> void:
+		_t += dt
+		if int(_t * 5.0) != int((_t - dt) * 5.0):
+			queue_redraw()
+
+	func _draw() -> void:
+		if canvas.size.x > 0.0:
+			_lounge(canvas.position - origin, canvas.size.x, canvas.size.y)
+			return
+		var w := size.x
+		var h := size.y
+		Gen.draw_sky(self, Rect2(0, 0, w, h), night, w * 0.7, h * (0.56 - storey * 0.03), h * (0.2 + storey * 0.1), _t, storey >= 4)
+		var tall: float = [1.0, 0.95, 0.7, 0.5, 0.26, 0.0][storey]
+		if tall > 0.0:
+			draw_set_transform(Vector2(0.0, h - h * 0.5), 0.0, Vector2(0.5, 0.5))
+			Gen.draw_skyline(self, w * 2.0, h, _t * 0.0, night, tall)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		if storey >= 4:                                                  # the clouds: a band at the bar, a sea of them at the tip
+			var base := h * (0.86 if storey == 4 else 0.62)
+			draw_rect(Rect2(0.0, base + 8.0, w, h - base), Color(0.72, 0.76, 0.9, 0.5 if night > 0.5 else 0.85))
+			for c in 26:
+				var cx := fposmod(Gen.TowerArt.hsh(c, 3) * w * 1.3 + _t * (1.0 + Gen.TowerArt.hsh(c, 4) * 2.0), w * 1.3) - w * 0.15
+				var cy := base + Gen.TowerArt.hsh(c, 5) * 14.0
+				draw_circle(Vector2(cx, cy), 9.0 + Gen.TowerArt.hsh(c, 6) * 12.0, Color(0.78, 0.82, 0.95, 0.42 if night > 0.5 else 0.8))
+
+	## (Luz) the lounge's sky: one picture for all its windows and for the air round its terrace (cw x chh, the map's
+	## own size). Lapis stands huge over the terrace, out of the clouds; two of its moons hang in the hall's windows;
+	## under the clouds' tops the sea of cloud from above, drifting.
+	func _lounge(off: Vector2, cw: float, chh: float) -> void:
+		var top := 92.0
+		var dark := night > 0.5
+		Gen.draw_sky(self, Rect2(off.x, off.y, cw, 150.0), night, off.x + cw * 0.775, off.y + 60.0, 56.0, _t, false)     # (it sets transforms of its own)
+		draw_set_transform(off, 0.0, Vector2.ONE)
+		# Glacia and Ember, far smaller, west of it
+		var gl := Vector2(cw * 0.27, 46.0)
+		draw_circle(gl, 15.0, Color(0.6, 0.74, 0.9, 0.16))
+		draw_circle(gl, 11.0, Color(0.86, 0.93, 1.0) if dark else Color(0.9, 0.95, 1.0, 0.75))
+		draw_circle(gl + Vector2(3.5, 2.5), 9.0, Color(0.5, 0.62, 0.82, 0.55 if dark else 0.3))
+		draw_circle(gl + Vector2(-3.0, -3.0), 2.0, Color(0.7, 0.82, 0.95, 0.8))
+		var em := Vector2(cw * 0.43, 70.0)
+		draw_circle(em, 9.0, Color(1.0, 0.4, 0.15, 0.14))
+		draw_circle(em, 6.0, Color(0.32, 0.1, 0.08) if dark else Color(0.5, 0.3, 0.3, 0.75))
+		draw_arc(em, 5.2, -0.4, 1.9, 10, Color(1.0, 0.5, 0.15, 0.9 if dark else 0.5), 1.2)                # its lit limb, two rivers of fire
+		draw_line(em + Vector2(-3.5, -1.5), em + Vector2(1.0, 1.0), Color(1.0, 0.6, 0.2, 0.85 if dark else 0.45), 0.8)
+		draw_line(em + Vector2(-1.0, 2.5), em + Vector2(2.5, -2.5), Color(1.0, 0.45, 0.12, 0.7 if dark else 0.4), 0.8)
+		var base := Color(0.3, 0.34, 0.52) if dark else Color(0.8, 0.84, 0.95)
+		var puff := Color(0.44, 0.48, 0.68) if dark else Color(0.96, 0.97, 1.0)
+		draw_rect(Rect2(0.0, top + 9.0, cw, chh - top), base)
+		for c in 80:
+			var cx := fposmod(Gen.TowerArt.hsh(c, 3) * cw * 1.2 + _t * (0.8 + Gen.TowerArt.hsh(c, 4) * 1.6), cw * 1.2) - cw * 0.1
+			draw_circle(Vector2(cx, top + 5.0 + Gen.TowerArt.hsh(c, 5) * 12.0), 8.0 + Gen.TowerArt.hsh(c, 6) * 11.0, puff if c % 3 == 0 else base)
+		for c2 in 120:
+			var k := Gen.TowerArt.hsh(c2, 13)
+			var cx2 := fposmod(Gen.TowerArt.hsh(c2, 11) * cw + _t * (0.5 + k), cw + 60.0) - 30.0
+			var cy2 := top + 28.0 + Gen.TowerArt.hsh(c2, 12) * (chh - top - 28.0)
+			draw_circle(Vector2(cx2 + 4.0, cy2 + 5.0), 8.0 + k * 15.0, Color(base.darkened(0.14), 0.3))
+			draw_circle(Vector2(cx2, cy2), 9.0 + k * 20.0, Color(puff, 0.28 + 0.4 * Gen.TowerArt.hsh(c2, 14)))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## The casino's floors, drawn (art px). "wall": the north wall: marble and gold, pilasters, a cornice of lamps, the
+## frames of the wall of glass (the view lies behind them), and what each floor has on it: the house's name in the
+## lobby, the jackpot over the machines, the screen of the track with a race running on it, the back bar. Under the
+## people. "over": the lobby's chandelier of light, over them. "prop": something on the floor (a slot machine, a
+## roulette table, a card table, a poker table, a desk, the piano, a row of cinema seats), standing among them.
+class CasinoFx extends Node2D:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	const NEON := [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.55, 1.0, 0.6), Color(0.72, 0.5, 1.0), Color(1.0, 0.45, 0.25)]
+	var part := "wall"
+	var storey := 0
+	var night := 0.0
+	var data: Dictionary = {}        # a prop's own entries (kind, w, text, col, seed, shut)
+	var at := Vector2.ZERO           # "over": where the chandelier hangs; "inlay": the middle of the floor's inlay
+	var open := 0.0                  # "lift": how far the capsule's doors stand open (0 … 1)
+	var _t := 0.0
+	var _acc := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		_acc += dt
+		if _acc > 0.08 or part == "lift" or part == "club":
+			_acc = 0.0
+			queue_redraw()
+
+	func _h(i: int, salt: int) -> float:
+		return Gen.TowerArt.hsh(i, salt)
+
+	func _draw() -> void:
+		match part:
+			"wall":
+				_wall()
+			"over":
+				_chandelier()
+			"inlay":
+				_inlay()
+			"lift":
+				_lift()
+			"pool":
+				_pool()
+			"terrace":
+				_terrace()
+			"tfront":
+				_tfront()
+			"dfloor":
+				_dfloor()
+			"club":
+				_club()
+			_:
+				_prop()
+
+	func _wall() -> void:
+		var font := ThemeDB.fallback_font
+		var w := float(Gen.CAS_IW[storey] * GroundMap.TILE)
+		var fl := float(Gen.C_F0 * GroundMap.TILE)
+		var lx := w - 8.0 * GroundMap.TILE
+		var gold := Color(1.0, 0.82, 0.35)
+		var marble := Color(0.17, 0.11, 0.24)
+		var glass := storey >= 1 and storey != 3
+		# the wall: all of it where there is no glass; round the glass its frame; the lifts' own wall stays as it is
+		if glass:
+			draw_rect(Rect2(16.0, 0.0, w - 32.0, 18.0), marble)
+			draw_rect(Rect2(16.0, 112.0, lx - 18.0, fl - 112.0), marble)
+			draw_rect(Rect2(16.0, 18.0, 8.0, 94.0), marble)
+			draw_rect(Rect2(24.0, 18.0, lx - 32.0, 94.0), Color(0.6, 0.8, 1.0, 0.07))
+			for gl in range(40, int(lx) - 20, 70):
+				draw_line(Vector2(gl, 108.0), Vector2(gl + 26.0, 22.0), Color(1, 1, 1, 0.05), 6.0)
+		else:
+			draw_rect(Rect2(16.0, 0.0, lx - 18.0, fl), marble)
+		# (Luz) the lifts' bay at the east end: two tubes of glass on the tower's outside, a capsule waiting in each
+		var bay := marble.lightened(0.05)
+		draw_rect(Rect2(lx - 8.0, 0.0, 120.0, 24.0), bay)
+		draw_rect(Rect2(lx - 8.0, 24.0, 6.0, fl - 24.0), bay)
+		draw_rect(Rect2(lx + 34.0, 24.0, 12.0, fl - 24.0), bay)
+		draw_rect(Rect2(lx + 82.0, 24.0, 30.0, fl - 24.0), bay)
+		for tc in [lx + 16.0, lx + 64.0]:
+			_tube(float(tc), fl)
+			draw_rect(Rect2(float(tc) - 19.0, 24.0, 1.5, fl - 24.0), gold.darkened(0.2))
+			draw_rect(Rect2(float(tc) + 17.5, 24.0, 1.5, fl - 24.0), gold.darkened(0.2))
+		for vn in 14:                                                   # veins in the marble
+			var vx := 20.0 + _h(vn + storey * 9, 11) * (w - 50.0)
+			var vy := (_h(vn, 12) * 12.0) if glass or vx > lx - 24.0 else _h(vn, 12) * (fl - 30.0)
+			draw_line(Vector2(vx, vy + 2.0), Vector2(vx + 14.0, vy + 9.0), Color(0.5, 0.4, 0.6, 0.25), 1.0)
+		var bays := maxi(1, int((lx - 32.0) / 96.0))
+		var bw := (lx - 32.0) / bays
+		for b in bays + 1:                                              # pilasters of gold
+			var px := 22.0 + b * bw
+			draw_rect(Rect2(px - 3.0, 8.0, 6.0, fl - 8.0), gold.darkened(0.45))
+			draw_rect(Rect2(px - 3.0, 8.0, 1.5, fl - 8.0), gold.darkened(0.1))
+			draw_rect(Rect2(px - 5.0, 8.0, 10.0, 3.0), gold.darkened(0.2))
+			draw_rect(Rect2(px - 5.0, fl - 5.0, 10.0, 5.0), gold.darkened(0.3))
+		if glass:
+			draw_rect(Rect2(16.0, 17.0, lx - 24.0, 1.5), gold.darkened(0.2))
+			draw_rect(Rect2(16.0, 111.0, lx - 24.0, 2.0), gold.darkened(0.2))
+			draw_rect(Rect2(24.0, 64.0, lx - 32.0, 1.0), Color(gold.darkened(0.3), 0.6))
+		draw_rect(Rect2(16.0, 3.0, w - 32.0, 3.0), gold.darkened(0.2))    # the cornice, lamps running along it
+		var bi := 0
+		for cx in range(20, int(w) - 18, 9):
+			draw_circle(Vector2(cx, 4.5), 1.2, Color(1.0, 0.95, 0.7) if (bi + int(_t * 5.0)) % 4 == 0 else Color(0.5, 0.36, 0.16))
+			bi += 1
+		# over the tubes: the floor's number and name; beside them the six floors as lamps, yours lit
+		draw_string(font, Vector2(lx - 8.0, 18.0), "%d  ·  %s" % [storey + 1, String(Gen.CAS_FLOORS[storey]).to_upper()], HORIZONTAL_ALIGNMENT_CENTER, 120.0, 7, gold.lightened(0.2))
+		draw_string(font, Vector2(lx + 82.0, 38.0), "LIFTS", HORIZONTAL_ALIGNMENT_CENTER, 30.0, 6, gold)
+		for fi in 6:
+			var fy := 112.0 - fi * 12.0
+			if fi == storey:
+				draw_rect(Rect2(lx + 94.0, fy - 2.0, 13.0, 10.0), Color(gold, 0.25))
+			draw_rect(Rect2(lx + 96.0, fy, 9.0, 6.0), gold.lightened(0.2) if fi == storey else Color(0.3, 0.22, 0.38))
+			draw_string(font, Vector2(lx + 86.0, fy + 6.0), "%d" % (fi + 1), HORIZONTAL_ALIGNMENT_LEFT, 9.0, 6, Color(0.8, 0.7, 0.9))
+		var cxm := 16.0 + (lx - 16.0) * 0.5
+		if storey == 0:
+			cxm = w * 0.5                                               # (the lobby: over the doors' axis)
+		match storey:
+			0:      # the house's name; niches of light between the pilasters
+				for b2 in bays:
+					var nx := 22.0 + (b2 + 0.5) * bw
+					if absf(nx - cxm) < 130.0:
+						continue
+					draw_rect(Rect2(nx - 14.0, 40.0, 28.0, 70.0), Color(0.08, 0.05, 0.12))
+					draw_circle(Vector2(nx, 40.0), 14.0, Color(0.08, 0.05, 0.12))
+					draw_rect(Rect2(nx - 10.0, 46.0, 20.0, 62.0), Color(0.72, 0.36, 1.0, 0.16 + 0.06 * sin(_t * 1.3 + b2)))
+					draw_rect(Rect2(nx - 1.0, 60.0, 2.0, 40.0), Color(1.0, 0.82, 0.35, 0.7))
+				draw_rect(Rect2(cxm - 124.0, 26.0, 248.0, 44.0), Color(0.03, 0.02, 0.05))
+				draw_rect(Rect2(cxm - 124.0, 26.0, 248.0, 44.0), gold, false, 2.0)
+				draw_string(font, Vector2(cxm - 124.0, 52.0), "THE GRAND CENTAURIA", HORIZONTAL_ALIGNMENT_CENTER, 248.0, 18, gold.lightened(0.2))
+				draw_string(font, Vector2(cxm - 124.0, 64.0), "CASINO  ·  BAR  ·  LOUNGE", HORIZONTAL_ALIGNMENT_CENTER, 248.0, 7, Color(0.85, 0.7, 1.0))
+				var b3 := 0
+				for bx in range(int(cxm) - 120, int(cxm) + 121, 10):
+					draw_circle(Vector2(bx, 28.0), 1.4, Color(1.0, 0.95, 0.7) if (b3 + int(_t * 6.0)) % 3 == 0 else Color(0.5, 0.36, 0.16))
+					draw_circle(Vector2(bx, 68.0), 1.4, Color(1.0, 0.95, 0.7) if (b3 + int(_t * 6.0)) % 3 == 1 else Color(0.5, 0.36, 0.16))
+					b3 += 1
+			1:      # the jackpot over the machines, counting
+				var jp := 1284090 + int(_t * 37.0)
+				var js := "%d,%03d,%03d" % [jp / 1000000, (jp / 1000) % 1000, jp % 1000]
+				draw_rect(Rect2(cxm - 80.0, 22.0, 160.0, 30.0), Color(0.03, 0.02, 0.05))
+				draw_rect(Rect2(cxm - 80.0, 22.0, 160.0, 30.0), Color(1.0, 0.36, 0.66, 0.9), false, 1.5)
+				draw_string(font, Vector2(cxm - 80.0, 33.0), "JACKPOT", HORIZONTAL_ALIGNMENT_CENTER, 160.0, 8, Color(1.0, 0.6, 0.8))
+				draw_string(font, Vector2(cxm - 80.0, 48.0), js + " C", HORIZONTAL_ALIGNMENT_CENTER, 160.0, 13, gold.lightened(0.2))
+			3:      # the track's screen: a race running on it, the odds beside it
+				var sr := Rect2(cxm - 130.0, 14.0, 260.0, 100.0)
+				draw_rect(sr.grow(3.0), Color(0.02, 0.02, 0.04))
+				draw_rect(sr, Color(0.02, 0.04, 0.1))
+				for gy in 6:                                            # the course: lines running towards you
+					var yy := sr.position.y + 50.0 + gy * gy * 1.4 + fposmod(_t * 14.0, 6.0)
+					if yy < sr.end.y:
+						draw_rect(Rect2(sr.position.x, yy, sr.size.x, 1.0), Color(0.3, 0.9, 1.0, 0.25))
+				for gx in range(-6, 7):
+					draw_line(Vector2(cxm + gx * 6.0, sr.position.y + 50.0), Vector2(cxm + gx * 42.0, sr.end.y), Color(0.3, 0.9, 1.0, 0.18), 1.0)
+				draw_rect(Rect2(sr.position.x, sr.position.y, sr.size.x, 50.0), Color(0.05, 0.02, 0.12))
+				for st in 30:
+					draw_rect(Rect2(sr.position.x + _h(st, 21) * sr.size.x, sr.position.y + _h(st, 22) * 46.0, 1.0, 1.0), Color(1, 1, 1, 0.6))
+				for rc in 5:                                            # the racers, their trails
+					var rx := cxm - 100.0 + fposmod(_h(rc, 23) * 200.0 + _t * (9.0 + rc * 3.0), 200.0)
+					var ry := sr.position.y + 58.0 + rc * 8.0 + sin(_t * 1.7 + rc) * 3.0
+					var rcol: Color = NEON[rc % NEON.size()]
+					draw_rect(Rect2(rx - 16.0, ry, 16.0, 1.5), Color(rcol, 0.4))
+					draw_colored_polygon(PackedVector2Array([Vector2(rx + 7.0, ry + 0.5), Vector2(rx - 2.0, ry - 3.0), Vector2(rx - 2.0, ry + 4.0)]), rcol)
+				draw_string(font, Vector2(sr.position.x + 6.0, sr.position.y + 12.0), "RIM RUN  ·  LAP %d / 7" % (1 + int(_t / 9.0) % 7), HORIZONTAL_ALIGNMENT_LEFT, 180.0, 8, Color(0.75, 0.95, 1.0))
+				draw_string(font, Vector2(sr.end.x - 86.0, sr.position.y + 12.0), "FIRST BETS SOON", HORIZONTAL_ALIGNMENT_RIGHT, 80.0, 6, Color(1.0, 0.85, 0.3, 0.6 + 0.4 * absf(sin(_t * 2.0))))
+				draw_rect(sr, Color(0.3, 0.9, 1.0, 0.8), false, 1.5)
+			4, 5:   # the back bar under the glass: bottles in a row, lit
+				var bx0 := 56.0 if storey == 4 else 40.0
+				var bbw := 208.0 if storey == 4 else 176.0
+				draw_rect(Rect2(bx0, 114.0, bbw, fl - 114.0), Color(0.06, 0.04, 0.08))
+				for bt in int(bbw / 7.2) - 1:
+					var bh := 8.0 + _h(bt, 31) * 10.0
+					draw_rect(Rect2(bx0 + 4.0 + bt * 7.2, fl - 4.0 - bh, 3.5, bh), Color(NEON[int(_h(bt, 32) * 6.0) % 6].lerp(gold, 0.4), 0.9))
+				draw_rect(Rect2(bx0, fl - 4.0, bbw, 2.0), gold.darkened(0.2))
+				if storey == 5:     # (Luz) the lounge: who may come in, in light over the DJ; the tower's corner where the terrace begins
+					var nk := 0.7 + 0.3 * absf(sin(_t * 1.7))
+					draw_rect(Rect2(246.0, 28.0, 116.0, 18.0), Color(1.0, 0.36, 0.66, 0.1 * nk))
+					draw_rect(Rect2(246.0, 28.0, 116.0, 18.0), Color(1.0, 0.36, 0.66, 0.9 * nk), false, 1.5)
+					draw_string(font, Vector2(246.0, 41.5), "MEMBERS ONLY", HORIZONTAL_ALIGNMENT_CENTER, 116.0, 10, Color(1.0, 0.7, 0.85, nk))
+					draw_rect(Rect2(w - 16.0, 0.0, 16.0, fl), marble.lightened(0.1))
+					draw_rect(Rect2(w - 16.0, 0.0, 1.5, fl), gold.darkened(0.2))
+					draw_rect(Rect2(w - 1.5, 0.0, 1.5, fl), gold.darkened(0.2))
+					draw_rect(Rect2(w - 9.0, 16.0, 2.0, fl - 32.0), Color(0.3, 0.9, 1.0, 0.85))
+					draw_rect(Rect2(w - 16.0, 3.0, 16.0, 3.0), gold.darkened(0.2))
+			_:
+				draw_string(font, Vector2(16.0, 13.0), "ROULETTE  ·  BLACKJACK  ·  POKER  ·  DRIFT", HORIZONTAL_ALIGNMENT_CENTER, lx - 16.0, 8, gold.lightened(0.2))
+
+	## (Luz) one of the lifts: a tube of glass on the outside of the tower (the view lies behind it), the rail up its
+	## back, and the back half of the capsule that waits in it: glass above, a panel below, its roof a ring of gold with
+	## a lamp, its floor a disc of light. `cx` its middle, `fl` the floor's line (art px). Under the people.
+	func _tube(cx: float, fl: float) -> void:
+		var gold := Color(1.0, 0.82, 0.35)
+		draw_rect(Rect2(cx - 18.0, fl - 32.0, 36.0, 32.0), Color(0.07, 0.06, 0.1))                 # (the dock's foot: solid)
+		draw_rect(Rect2(cx - 18.0, 24.0, 36.0, fl - 24.0), Color(0.62, 0.86, 1.0, 0.09))
+		for e in 4:                                                     # round: darker to both sides
+			draw_rect(Rect2(cx - 18.0 + e * 2.0, 24.0, 2.0, fl - 24.0), Color(0.02, 0.03, 0.1, 0.3 - e * 0.07))
+			draw_rect(Rect2(cx + 16.0 - e * 2.0, 24.0, 2.0, fl - 24.0), Color(0.02, 0.03, 0.1, 0.3 - e * 0.07))
+		draw_rect(Rect2(cx - 10.0, 24.0, 3.0, fl - 24.0), Color(1, 1, 1, 0.09))
+		draw_rect(Rect2(cx - 1.5, 24.0, 3.0, fl - 70.0), Color(0.14, 0.11, 0.2, 0.9))       # the rail, lamps running up it
+		for rl in 7:
+			draw_rect(Rect2(cx - 1.0, 30.0 + rl * 10.0, 2.0, 3.0), Color(0.3, 0.9, 1.0, 1.0 if int(_t * 3.0) % 7 == 6 - rl else 0.3))
+		draw_set_transform(Vector2(cx, 25.0), 0.0, Vector2(1.0, 0.25))
+		draw_arc(Vector2.ZERO, 18.0, 0.0, PI, 18, gold.darkened(0.1), 3.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# the capsule's back
+		draw_rect(Rect2(cx - 15.0, fl - 46.0, 30.0, 14.0), Color(0.85, 0.95, 1.0, 0.13))
+		draw_rect(Rect2(cx - 15.0, fl - 32.0, 30.0, 29.0), Color(0.13, 0.1, 0.19))
+		draw_rect(Rect2(cx - 15.0, fl - 32.0, 30.0, 1.5), gold.darkened(0.1))
+		draw_rect(Rect2(cx - 11.0, fl - 27.0, 1.5, 20.0), Color(1.0, 0.85, 0.5, 0.75))
+		draw_rect(Rect2(cx + 9.5, fl - 27.0, 1.5, 20.0), Color(1.0, 0.85, 0.5, 0.75))
+		draw_rect(Rect2(cx - 15.0, fl - 46.0, 30.0, 43.0), Color(1.0, 0.9, 0.7, 0.08))
+		draw_set_transform(Vector2(cx, fl - 45.0), 0.0, Vector2(1.0, 0.28))
+		draw_circle(Vector2.ZERO, 15.0, Color(0.2, 0.16, 0.27))
+		draw_circle(Vector2.ZERO, 10.0, Color(1.0, 0.95, 0.8, 0.9))
+		draw_arc(Vector2.ZERO, 16.0, PI, TAU, 16, gold, 2.5)
+		draw_set_transform(Vector2(cx, fl - 4.0), 0.0, Vector2(1.0, 0.28))
+		draw_circle(Vector2.ZERO, 15.5, Color(0.1, 0.08, 0.15))
+		draw_arc(Vector2.ZERO, 11.5, 0.0, TAU, 20, Color(0.3, 0.9, 1.0, 0.85), 2.0)
+		draw_arc(Vector2.ZERO, 16.0, PI, TAU, 16, gold, 2.5)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	## A capsule's front (art px; the node stands at the middle of its threshold, among the people): its doors of bent
+	## glass sliding apart round it, its frame of gold, the lamp over it. Drawn over whoever stands inside.
+	func _lift() -> void:
+		var gold := Color(1.0, 0.82, 0.35)
+		var y0 := -47.0
+		var dw := 15.0 * (1.0 - open)
+		if dw > 0.5:
+			draw_rect(Rect2(-15.0, y0 + 3.0, dw, 42.0), Color(0.72, 0.9, 1.0, 0.22))
+			draw_rect(Rect2(15.0 - dw, y0 + 3.0, dw, 42.0), Color(0.72, 0.9, 1.0, 0.22))
+			draw_rect(Rect2(-15.0 + dw - 1.0, y0 + 3.0, 1.0, 42.0), Color(1, 1, 1, 0.5))
+			draw_rect(Rect2(15.0 - dw, y0 + 3.0, 1.0, 42.0), Color(1, 1, 1, 0.5))
+			draw_line(Vector2(-13.0, y0 + 32.0), Vector2(-13.0 + minf(dw, 9.0), y0 + 8.0), Color(1, 1, 1, 0.24), 2.0)
+			draw_line(Vector2(15.0 - minf(dw, 9.0), y0 + 38.0), Vector2(14.0, y0 + 20.0), Color(1, 1, 1, 0.16), 1.5)
+		draw_rect(Rect2(-17.0, y0, 2.0, 46.0), gold.darkened(0.15))
+		draw_rect(Rect2(15.0, y0, 2.0, 46.0), gold.darkened(0.15))
+		draw_rect(Rect2(-17.0, y0, 1.0, 46.0), gold.lightened(0.25))
+		draw_set_transform(Vector2(0.0, y0 + 2.0), 0.0, Vector2(1.0, 0.28))
+		draw_arc(Vector2.ZERO, 16.0, 0.0, PI, 16, gold, 2.5)                     # the ring round its roof, the half towards you
+		draw_set_transform(Vector2(0.0, -4.0), 0.0, Vector2(1.0, 0.28))
+		draw_arc(Vector2.ZERO, 16.0, 0.0, PI, 16, gold, 2.5)                     # … and round its floor
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_rect(Rect2(-15.0, -1.0, 30.0, 1.5), Color(gold, 0.55 + 0.45 * open))
+		draw_rect(Rect2(-2.5, y0 - 6.0, 5.0, 2.0), Color(0.4, 1.0, 0.6) if open > 0.5 else Color(1.0, 0.6, 0.25))
+
+	## (Luz) the lounge's pool, to the terrace's very edge (art px, under the people): deep at the far edge, lamps
+	## under the water, light rippling on it, Lapis lying on it as a gleam, a few of the members swimming.
+	func _pool() -> void:
+		var r: Rect2 = data.get("rect", Rect2())
+		var x0 := r.position.x
+		var y0 := r.position.y
+		var pw := r.size.x
+		var ph := r.size.y
+		var stone := Color(0.9, 0.87, 0.82)
+		for i in 8:
+			draw_rect(Rect2(x0, y0 + ph * i / 8.0, pw, ph / 8.0 + 1.0), Color(0.03, 0.34, 0.56).lerp(Color(0.14, 0.7, 0.82), i / 7.0))
+		for l in 8:
+			var lp := Vector2(x0 + pw * (l + 0.5) / 8.0, y0 + ph - 9.0)
+			draw_circle(lp, 11.0, Color(0.6, 1.0, 1.0, 0.06 + 0.14 * night))
+			draw_circle(lp, 3.5, Color(0.9, 1.0, 1.0, 0.25 + 0.4 * night))
+		draw_set_transform(Vector2(x0 + pw * 0.4, y0 + 18.0), 0.0, Vector2(1.0, 0.2))
+		draw_circle(Vector2.ZERO, 70.0, Color(0.3, 0.5, 1.0, 0.12 + 0.14 * night))
+		draw_circle(Vector2.ZERO, 34.0, Color(0.5, 0.7, 1.0, 0.1 + 0.1 * night))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		for c in 34:
+			var cp := Vector2(x0 + 6.0 + _h(c, 71) * (pw - 36.0), y0 + 5.0 + _h(c, 72) * (ph - 10.0))
+			var wv := _t * (0.7 + _h(c, 73)) + c
+			var pts := PackedVector2Array()
+			for s in 6:
+				pts.append(cp + Vector2(s * 5.0, sin(wv + s * 1.3) * 1.5))
+			draw_polyline(pts, Color(0.88, 1.0, 1.0, 0.2 + 0.1 * sin(wv * 1.7)), 1.0)
+		var skins := [Color8(243, 199, 160), Color8(161, 106, 68), Color8(226, 174, 128), Color8(122, 80, 52), Color8(255, 226, 200)]
+		var hairs := [Color8(30, 26, 28), Color8(236, 230, 210), Color8(255, 70, 170), Color8(120, 78, 44), Color8(60, 220, 240)]
+		for sw in 5:
+			var sp := Vector2(x0 + 34.0 + _h(sw, 81) * (pw - 68.0) + sin(_t * (0.22 + 0.07 * sw) + sw * 2.0) * 24.0, y0 + 16.0 + _h(sw, 82) * (ph - 32.0) + sin(_t * 0.5 + sw) * 3.0)
+			var skin: Color = skins[sw]
+			var hair: Color = hairs[sw]
+			draw_set_transform(sp + Vector2(0.0, 2.0), 0.0, Vector2(1.0, 0.4))
+			draw_arc(Vector2.ZERO, 6.0 + fposmod(_t * 3.0 + sw * 1.7, 6.0), 0.0, TAU, 18, Color(1, 1, 1, 0.3), 1.0)
+			if sw == 1:
+				draw_arc(Vector2.ZERO, 8.0, 0.0, TAU, 18, Color(1.0, 0.82, 0.35), 3.5)          # (afloat in a ring of gold)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			draw_rect(Rect2(sp.x - 4.0, sp.y - 1.5, 8.0, 3.0), skin.darkened(0.12))
+			draw_circle(sp + Vector2(0.0, -4.0), 3.2, skin)
+			draw_rect(Rect2(sp.x - 3.3, sp.y - 7.6, 6.6, 3.0), hair)
+		draw_rect(Rect2(x0 - 3.0, y0, 3.0, ph + 3.0), stone)
+		draw_rect(Rect2(x0 + pw, y0, 3.0, ph + 3.0), stone)
+		draw_rect(Rect2(x0 - 3.0, y0 + ph, pw + 6.0, 3.0), stone)
+		for st in 3:
+			draw_rect(Rect2(x0 + 2.0, y0 + ph - 5.0 - st * 5.0, 22.0 - st * 4.0, 4.0), Color(0.75, 0.95, 0.98, 0.5 - st * 0.1))     # the steps in
+		draw_rect(Rect2(x0, y0 - 4.0, pw, 3.0), Color(0.8, 0.95, 1.0, 0.25))            # the far edge: the water runs over it
+		draw_rect(Rect2(x0, y0 - 1.0, pw, 2.0), Color(0.92, 1.0, 1.0, 0.9))
+
+	## The terrace's edges (under the people): the slab's face with a line of light under its lip, the balustrades of
+	## glass east and north, and west the wall of glass to the hall with the way through it.
+	func _terrace() -> void:
+		var r: Rect2 = data.get("rect", Rect2())
+		var pool: Rect2 = data.get("pool", Rect2())
+		var door: Rect2 = data.get("door", Rect2())
+		var gold := Color(1.0, 0.82, 0.35)
+		var glass := Color(0.8, 0.95, 1.0)
+		var x0 := r.position.x
+		var x1 := r.end.x
+		var y0 := r.position.y
+		var y1 := r.end.y
+		draw_rect(Rect2(x0, y1, r.size.x + 4.0, 10.0), Color(0.2, 0.17, 0.25))
+		draw_rect(Rect2(x0, y1, r.size.x + 4.0, 2.0), Color(0.56, 0.52, 0.56))
+		draw_rect(Rect2(x0, y1 + 8.0, r.size.x + 4.0, 1.5), Color(1.0, 0.82, 0.4, 0.95))
+		draw_rect(Rect2(x1, y0, 4.0, r.size.y + 10.0), Color(0.26, 0.22, 0.3))
+		draw_rect(Rect2(x1 - 4.0, y0, 3.0, r.size.y), Color(glass, 0.22))
+		draw_rect(Rect2(x1 - 1.0, y0, 1.5, r.size.y), gold)
+		for seg in [[x0, pool.position.x - 3.0], [pool.end.x + 3.0, x1]]:
+			var sa: float = seg[0]
+			var sb: float = seg[1]
+			draw_rect(Rect2(sa, y0 - 13.0, sb - sa, 13.0), Color(glass, 0.2))
+			draw_rect(Rect2(sa, y0 - 14.0, sb - sa, 1.5), gold)
+			draw_rect(Rect2(sa, y0 - 1.0, sb - sa, 1.0), Color(1, 1, 1, 0.4))
+		var wx := x0 - 10.0                                             # the wall of glass, seen from above: a pale strip between rails
+		for part in [[float(Gen.C_F0 * GroundMap.TILE), door.position.y], [door.end.y, y1]]:
+			var pa: float = part[0]
+			var pb: float = part[1]
+			draw_rect(Rect2(wx, pa, 5.0, pb - pa), Color(glass, 0.3))
+			draw_rect(Rect2(wx - 1.5, pa, 1.5, pb - pa), gold.darkened(0.1))
+			draw_rect(Rect2(wx + 5.0, pa, 1.5, pb - pa), gold.darkened(0.1))
+			var py := pa
+			while py < pb:
+				draw_rect(Rect2(wx - 2.5, py, 10.0, 3.0), gold)
+				py += 24.0
+		for dy in [door.position.y - 3.0, door.end.y]:
+			draw_rect(Rect2(wx - 3.0, float(dy), 11.0, 3.0), Color(0.3, 0.9, 1.0))
+			draw_circle(Vector2(wx + 2.5, float(dy) + 1.5), 7.0, Color(0.3, 0.9, 1.0, 0.18))
+
+	## The terrace's balustrade to the south, towards you (the node at its west end, among the people): glass under a
+	## rail of gold; who stands at the edge stands behind it.
+	func _tfront() -> void:
+		var w := float(data.get("w", 16.0))
+		var gold := Color(1.0, 0.82, 0.35)
+		draw_rect(Rect2(0.0, -15.0, w, 15.0), Color(0.8, 0.95, 1.0, 0.17))
+		var px := 0.0
+		while px <= w:
+			draw_rect(Rect2(px - 1.0, -15.0, 2.0, 15.0), Color(gold.darkened(0.2), 0.9))
+			if px + 16.0 < w:
+				draw_line(Vector2(px + 6.0, -3.0), Vector2(px + 14.0, -13.0), Color(1, 1, 1, 0.16), 2.0)
+			px += 32.0
+		draw_rect(Rect2(0.0, -16.0, w, 1.5), gold)
+
+	## The lounge's dance floor (under the people): squares of light, each in its own colour, pulsing with the music.
+	func _dfloor() -> void:
+		var r: Rect2 = data.get("rect", Rect2())
+		var beat := _t * 1.05
+		draw_rect(r, Color(0.03, 0.02, 0.05))
+		for ty in int(r.size.y / 16.0):
+			for tx in int(r.size.x / 16.0):
+				var i := ty * 31 + tx * 7
+				var col: Color = NEON[(int(_h(i, 91) * 6.0) + int(beat + _h(i, 92) * 2.0)) % 6]
+				var lit := 0.3 + 0.7 * pow(maxf(0.0, sin((beat + _h(i, 93)) * TAU)), 2.0)
+				draw_rect(Rect2(r.position + Vector2(tx, ty) * 16.0 + Vector2(1.0, 1.0), Vector2(14.0, 14.0)), Color(col.r, col.g, col.b, 0.3 + 0.6 * lit))
+				draw_rect(Rect2(r.position + Vector2(tx, ty) * 16.0 + Vector2(1.0, 1.0), Vector2(14.0, 2.0)), Color(1, 1, 1, 0.12 * lit))
+		draw_rect(r, Color(1.0, 0.82, 0.35), false, 1.5)
+		var rug: Rect2 = data.get("rug", Rect2())
+		if rug.size.x > 0.0:                                            # the high tables' carpet: a line of gold in it, what it is for
+			draw_rect(rug.grow(-5.0), Color(1.0, 0.82, 0.35, 0.5), false, 1.0)
+			draw_string(ThemeDB.fallback_font, Vector2(rug.position.x, rug.end.y - 8.0), "H I G H     S T A K E S", HORIZONTAL_ALIGNMENT_CENTER, rug.size.x, 8, Color(1.0, 0.82, 0.35, 0.8))
+
+	## (Luz) the club's light, over everything and added to it: beams sweeping over the dance floor from above, the
+	## floor's own glow in time with the music, a spot on every platform, glitter in the air; at night the pool's glow.
+	func _club() -> void:
+		var r: Rect2 = data.get("dfloor", Rect2())
+		var c := r.get_center()
+		var beat := absf(sin(_t * 3.3))
+		for b in 6:
+			var col: Color = NEON[b % NEON.size()]
+			var apex := Vector2(r.position.x + r.size.x * (b + 0.5) / 6.0, r.position.y - 150.0)
+			var foot := Vector2(c.x + sin(_t * (0.5 + 0.13 * b) + b * 1.7) * r.size.x * 0.55, c.y + cos(_t * 0.4 + b) * r.size.y * 0.32)
+			draw_colored_polygon(PackedVector2Array([apex + Vector2(-2.0, 0.0), apex + Vector2(2.0, 0.0), foot + Vector2(15.0, 0.0), foot + Vector2(-15.0, 0.0)]), Color(col, 0.07))
+			draw_set_transform(foot, 0.0, Vector2(1.0, 0.4))
+			draw_circle(Vector2.ZERO, 16.0, Color(col, 0.16))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_rect(r.grow(2.0), Color(1.0, 0.4, 0.8, 0.04 + 0.08 * beat))
+		for p in data.get("pods", []):
+			var pp: Vector2 = p
+			draw_colored_polygon(PackedVector2Array([pp + Vector2(-3.0, -130.0), pp + Vector2(3.0, -130.0), pp + Vector2(15.0, 1.0), pp + Vector2(-15.0, 1.0)]), Color(1.0, 0.92, 0.75, 0.09))
+		for g in 44:
+			var gp := Vector2(r.position.x - 30.0 + _h(g, 101) * (r.size.x + 60.0), r.position.y - 60.0 + fposmod(_h(g, 102) * 150.0 + _t * (9.0 + _h(g, 103) * 12.0), 150.0))
+			if sin(_t * (5.0 + _h(g, 104) * 6.0) + g) > 0.3:
+				draw_rect(Rect2(gp, Vector2(1.5, 1.5)), Color(1.0, 0.9, 0.55, 0.8))
+		var pool: Rect2 = data.get("pool", Rect2())
+		if pool.size.x > 0.0 and night > 0.3:
+			draw_rect(pool, Color(0.2, 0.8, 1.0, 0.14 * night))
+			draw_rect(pool.grow(10.0), Color(0.2, 0.8, 1.0, 0.05 * night))
+
+	## The lobby's floor round the fountain: rings and rays of gold let into the marble (under the people).
+	func _inlay() -> void:
+		var gold := Color(1.0, 0.82, 0.35, 0.55)
+		draw_set_transform(at, 0.0, Vector2(1.0, 0.42))
+		draw_arc(Vector2.ZERO, 70.0, 0.0, TAU, 56, gold, 2.5)
+		draw_arc(Vector2.ZERO, 78.0, 0.0, TAU, 56, Color(gold, 0.35), 1.2)
+		draw_arc(Vector2.ZERO, 112.0, 0.0, TAU, 64, gold, 3.0)
+		for ry in 16:
+			var a := ry * TAU / 16.0
+			var d := Vector2.from_angle(a)
+			var n := d.orthogonal()
+			draw_colored_polygon(PackedVector2Array([d * 80.0 + n * 5.0, d * 109.0, d * 80.0 - n * 5.0]), Color(gold, 0.3 if ry % 2 == 0 else 0.5))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	## The lobby's chandelier: rings of light, one inside the other, turning slowly; its glow on the fountain below.
+	func _chandelier() -> void:
+		var gold := Color(1.0, 0.85, 0.5)
+		draw_rect(Rect2(at.x - 0.5, at.y - 120.0, 1.0, 60.0), Color(0.6, 0.5, 0.3))
+		for r in 4:
+			var rr := 46.0 - r * 10.0
+			var yy := at.y - 60.0 + r * 10.0
+			draw_set_transform(Vector2(at.x, yy), 0.0, Vector2(1.0, 0.32))
+			draw_arc(Vector2.ZERO, rr, 0.0, TAU, 40, Color(gold, 0.9), 2.0)
+			for k in 12:
+				var a := k * TAU / 12.0 + _t * (0.3 if r % 2 == 0 else -0.3)
+				draw_circle(Vector2(cos(a), sin(a)) * rr, 2.6, Color(1.0, 0.97, 0.85))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_circle(Vector2(at.x, at.y - 44.0), 60.0, Color(gold, 0.06))
+		draw_circle(Vector2(at.x, at.y - 44.0), 36.0, Color(gold, 0.07))
+
+	## Something on the floor, drawn from its front line upward (the node stands at its front left corner).
+	func _prop() -> void:
+		var font := ThemeDB.fallback_font
+		var w := float(data.get("w", 16.0))
+		var sd := int(data.get("seed", 0))
+		var c: Color = data.get("col", Color(1.0, 0.82, 0.35))
+		var gold := Color(1.0, 0.82, 0.35)
+		var hi := bool(data.get("hi", false))                          # (the lounge) a high table: black cloth, gold
+		match String(data.get("kind", "")):
+			"slot":     # a slot machine: its reels turning, a sign of light on top
+				draw_rect(Rect2(3.0, -2.0, 14.0, 4.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(1.0, -34.0, 14.0, 34.0), Color(0.08, 0.07, 0.12))
+				draw_rect(Rect2(1.0, -34.0, 14.0, 34.0), Color(c, 0.85), false, 1.0)
+				draw_rect(Rect2(2.5, -29.0, 11.0, 9.0), Color(0.02, 0.02, 0.04))
+				for rl in 3:
+					var sym := int(_t * (5.0 + rl * 2.0) + sd + rl * 3) % 5
+					draw_rect(Rect2(3.5 + rl * 3.4, -28.0, 2.6, 7.0), [Color(1.0, 0.3, 0.4), Color(1.0, 0.85, 0.3), Color(0.4, 1.0, 0.6), Color(0.4, 0.8, 1.0), Color(0.9, 0.5, 1.0)][sym])
+				draw_rect(Rect2(3.0, -17.0, 10.0, 4.0), Color(c, 0.5 + 0.4 * absf(sin(_t * 3.0 + sd))))
+				draw_rect(Rect2(4.0, -10.0, 3.0, 2.0), Color(1.0, 0.3, 0.3))
+				draw_rect(Rect2(9.0, -10.0, 3.0, 2.0), Color(0.3, 1.0, 0.5))
+				draw_rect(Rect2(2.0, -39.0, 12.0, 5.0), Color(c.lightened(0.2), 0.9))
+				draw_rect(Rect2(0.0, -41.0, 16.0, 9.0), Color(c, 0.1))
+			"roulette": # a roulette table: the wheel turning, the cloth with its fields
+				draw_rect(Rect2(3.0, -3.0, w, 6.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(0.0, -8.0, w, 8.0), Color(0.22, 0.13, 0.08))
+				draw_rect(Rect2(0.0, -36.0, w, 28.0), Color(0.32, 0.2, 0.12))
+				draw_rect(Rect2(2.0, -34.0, w - 4.0, 24.0), Color(0.07, 0.06, 0.1) if hi else Color(0.05, 0.35, 0.36))
+				if hi:
+					draw_rect(Rect2(2.0, -34.0, w - 4.0, 24.0), Color(gold, 0.85), false, 1.0)
+				for fx in range(0, int(w) - 34, 5):
+					for fy in 3:
+						draw_rect(Rect2(30.0 + fx, -32.0 + fy * 7.0, 4.0, 6.0), Color(0.75, 0.12, 0.2) if (fx / 5 + fy) % 2 == 0 else Color(0.06, 0.06, 0.09))
+				var wc := Vector2(15.0, -22.0)
+				draw_set_transform(wc, 0.0, Vector2(1.0, 0.8))
+				draw_circle(Vector2.ZERO, 12.0, Color(0.25, 0.15, 0.08))
+				for sg in 12:
+					var a0 := sg * TAU / 12.0 + _t * 1.6
+					draw_arc(Vector2.ZERO, 8.0, a0, a0 + TAU / 12.0, 4, Color(0.8, 0.14, 0.2) if sg % 2 == 0 else Color(0.06, 0.06, 0.09), 5.0)
+				draw_circle(Vector2.ZERO, 3.0, gold)
+				draw_circle(Vector2.from_angle(-_t * 2.2) * 9.5, 1.3, Color(1, 1, 1))
+				draw_arc(Vector2.ZERO, 13.5, 0.0, TAU, 28, Color(0.3, 0.9, 1.0, 0.45 + 0.3 * absf(sin(_t * 2.0 + sd))), 1.2)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_rect(Rect2(0.0, -36.0, w, 1.5), gold.darkened(0.1))
+			"cards", "poker":   # a table for cards: the cloth, cards and chips on it, a line of light round its edge
+				var felt := Color(0.3, 0.12, 0.4) if String(data.get("kind", "")) == "cards" else Color(0.08, 0.2, 0.36)
+				if hi:
+					felt = Color(0.08, 0.07, 0.12)
+				draw_rect(Rect2(3.0, -3.0, w, 6.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(2.0, -8.0, w - 4.0, 8.0), Color(0.2, 0.12, 0.08))
+				draw_rect(Rect2(0.0, -34.0, w, 26.0), Color(0.3, 0.19, 0.12))
+				draw_rect(Rect2(2.0, -32.0, w - 4.0, 22.0), felt)
+				draw_rect(Rect2(2.0, -32.0, w - 4.0, 22.0), Color(gold, 0.9) if hi else Color(0.3, 0.9, 1.0, 0.6), false, 1.0)
+				for cd in int((w - 12.0) / 10.0):
+					draw_rect(Rect2(6.0 + cd * 10.0, -20.0, 5.0, 7.0), Color(0.95, 0.95, 0.92))
+					draw_rect(Rect2(7.0 + cd * 10.0, -18.5, 3.0, 2.0), Color(0.85, 0.2, 0.3) if (cd + sd) % 2 == 0 else Color(0.1, 0.1, 0.14))
+					draw_rect(Rect2(8.0 + cd * 10.0, -28.0, 3.0, 4.0 + (cd % 3)), NEON[(cd + sd) % NEON.size()])
+			"desk":     # a counter: its top, its front with a strip of light, its sign over it (a shutter where it is shut)
+				draw_rect(Rect2(3.0, -2.0, w, 5.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(0.0, -14.0, w, 14.0), Color(0.14, 0.09, 0.2))
+				draw_rect(Rect2(0.0, -22.0, w, 8.0), Color(0.3, 0.2, 0.4))
+				draw_rect(Rect2(0.0, -22.0, w, 1.5), gold.darkened(0.1))
+				draw_rect(Rect2(3.0, -8.0, w - 6.0, 1.5), Color(c, 0.9))
+				if bool(data.get("shut", false)):
+					draw_rect(Rect2(4.0, -52.0, w - 8.0, 30.0), Color(0.26, 0.27, 0.32))
+					for sl in range(0, 30, 3):
+						draw_rect(Rect2(4.0, -52.0 + sl, w - 8.0, 1.0), Color(0.17, 0.18, 0.22))
+				else:
+					draw_rect(Rect2(4.0, -50.0, w - 8.0, 28.0), Color(0.6, 0.85, 1.0, 0.14))
+					draw_rect(Rect2(4.0, -50.0, w - 8.0, 28.0), Color(0.8, 0.9, 1.0, 0.5), false, 1.0)
+				draw_rect(Rect2(w * 0.5 - 34.0, -66.0, 68.0, 12.0), Color(0.03, 0.02, 0.05))
+				draw_rect(Rect2(w * 0.5 - 34.0, -66.0, 68.0, 12.0), Color(c, 0.9), false, 1.0)
+				draw_string(font, Vector2(w * 0.5 - 34.0, -56.5), String(data.get("text", "")), HORIZONTAL_ALIGNMENT_CENTER, 68.0, 8, c.lightened(0.3))
+			"piano":    # a grand piano, its lid up
+				draw_rect(Rect2(4.0, -3.0, w, 6.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(6.0, -10.0, 2.0, 10.0), Color(0.05, 0.05, 0.07))
+				draw_rect(Rect2(w - 10.0, -10.0, 2.0, 10.0), Color(0.05, 0.05, 0.07))
+				draw_rect(Rect2(0.0, -18.0, w, 9.0), Color(0.04, 0.04, 0.06))
+				draw_rect(Rect2(2.0, -17.0, w - 22.0, 4.0), Color(0.95, 0.95, 0.92))
+				for ky in range(4, int(w) - 22, 4):
+					draw_rect(Rect2(ky, -17.0, 1.5, 2.5), Color(0.05, 0.05, 0.07))
+				draw_colored_polygon(PackedVector2Array([Vector2(0.0, -18.0), Vector2(w, -18.0), Vector2(w, -40.0), Vector2(w * 0.45, -46.0), Vector2(0.0, -36.0)]), Color(0.06, 0.06, 0.09))
+				draw_colored_polygon(PackedVector2Array([Vector2(4.0, -36.0), Vector2(w * 0.45, -45.0), Vector2(w - 2.0, -40.0), Vector2(w - 2.0, -58.0), Vector2(w * 0.4, -66.0)]), Color(0.1, 0.1, 0.14))
+				draw_line(Vector2(6.0, -34.0), Vector2(w * 0.42, -62.0), Color(1, 1, 1, 0.25), 1.5)
+			"cfountain":    # the lobby's fountain: two basins of marble and gold, jets of water, a Coin of light turning over it
+				var fc := Vector2(w * 0.5, -15.0)
+				draw_set_transform(fc + Vector2(0.0, 6.0), 0.0, Vector2(1.0, 0.3))
+				draw_circle(Vector2.ZERO, w * 0.52, Color(0, 0, 0, 0.3))
+				draw_set_transform(fc, 0.0, Vector2(1.0, 0.3))
+				draw_circle(Vector2(0.0, 12.0), w * 0.5, Color(0.2, 0.13, 0.28))
+				draw_circle(Vector2.ZERO, w * 0.5, Color(0.34, 0.24, 0.44))
+				draw_arc(Vector2.ZERO, w * 0.5, 0.0, TAU, 40, gold, 2.5)
+				draw_circle(Vector2.ZERO, w * 0.44, Color(0.2, 0.62, 0.8))
+				for rp2 in 3:
+					draw_arc(Vector2.ZERO, fposmod(_t * 9.0 + rp2 * 14.0, w * 0.42) + 2.0, 0.0, TAU, 28, Color(0.75, 0.95, 1.0, 0.35), 1.2)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_rect(Rect2(fc.x - 3.0, fc.y - 12.0, 6.0, 12.0), Color(0.3, 0.2, 0.4))
+				draw_set_transform(fc + Vector2(0.0, -14.0), 0.0, Vector2(1.0, 0.3))
+				draw_circle(Vector2(0.0, 8.0), w * 0.2, Color(0.2, 0.13, 0.28))
+				draw_circle(Vector2.ZERO, w * 0.2, Color(0.34, 0.24, 0.44))
+				draw_arc(Vector2.ZERO, w * 0.2, 0.0, TAU, 28, gold, 2.0)
+				draw_circle(Vector2.ZERO, w * 0.16, Color(0.3, 0.72, 0.9))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_rect(Rect2(fc.x - 1.5, fc.y - 30.0, 3.0, 16.0), gold.darkened(0.15))
+				for jt in 8:                                                # the jets: out of the upper basin into the lower
+					var ja := jt * TAU / 8.0 + 0.2
+					var top := fc + Vector2(cos(ja) * w * 0.17, -14.0 + sin(ja) * w * 0.05)
+					var low := fc + Vector2(cos(ja) * w * 0.36, sin(ja) * w * 0.1)
+					var k := fposmod(_t * 1.6 + jt * 0.13, 1.0)
+					draw_line(top, top.lerp(low, 0.5) + Vector2(0.0, -5.0), Color(0.8, 0.96, 1.0, 0.55), 1.0)
+					draw_line(top.lerp(low, 0.5) + Vector2(0.0, -5.0), low, Color(0.8, 0.96, 1.0, 0.45), 1.0)
+					draw_circle(top.lerp(low, k) + Vector2(0.0, -5.0 * sin(k * PI)), 1.0, Color(1, 1, 1, 0.9))
+				var cc := fc + Vector2(0.0, -46.0 + sin(_t * 1.2) * 1.5)           # the Coin
+				var cwd := cos(_t * 1.1)
+				draw_set_transform(cc, 0.0, Vector2(maxf(0.08, absf(cwd)), 1.0))
+				draw_circle(Vector2.ZERO, 13.0, Color(1.0, 0.82, 0.35, 0.22))
+				draw_arc(Vector2.ZERO, 12.0, 0.0, TAU, 28, Color(1.0, 0.88, 0.5, 0.95), 2.0)
+				draw_arc(Vector2.ZERO, 8.5, 0.0, TAU, 24, Color(1.0, 0.88, 0.5, 0.55), 1.0)
+				draw_arc(Vector2.ZERO, 5.0, 0.9, TAU - 0.9, 14, Color(1.0, 0.95, 0.7, 0.95), 2.0)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				for sl in range(-12, 13, 3):                                # (a hologram: its lines)
+					draw_rect(Rect2(cc.x - 13.0, cc.y + sl, 26.0, 1.0), Color(0.05, 0.03, 0.08, 0.25))
+				draw_colored_polygon(PackedVector2Array([Vector2(fc.x - 2.0, fc.y - 30.0), Vector2(fc.x + 2.0, fc.y - 30.0), Vector2(cc.x + 11.0, cc.y + 13.0), Vector2(cc.x - 11.0, cc.y + 13.0)]),
+					Color(1.0, 0.85, 0.4, 0.1))
+			"post":     # a post of gold; a rope of velvet from it down to the next
+				draw_rect(Rect2(6.0, -3.0, 6.0, 3.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(5.0, -3.0, 6.0, 2.0), gold.darkened(0.35))
+				draw_rect(Rect2(7.0, -17.0, 2.0, 15.0), gold.darkened(0.1))
+				draw_circle(Vector2(8.0, -18.0), 2.2, gold.lightened(0.15))
+				if bool(data.get("rope", false)):
+					draw_polyline(PackedVector2Array([Vector2(8.0, -15.0), Vector2(8.6, -8.0), Vector2(8.6, -3.0), Vector2(8.0, 1.0)]), Color(0.62, 0.1, 0.22), 2.0)
+			"odds":     # a board of light: the racers and their odds
+				draw_rect(Rect2(4.0, -2.0, w - 4.0, 4.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(w * 0.5 - 2.0, -12.0, 4.0, 12.0), Color(0.12, 0.12, 0.18))
+				draw_rect(Rect2(w * 0.5 - 7.0, -3.0, 14.0, 3.0), Color(0.2, 0.2, 0.28))
+				draw_rect(Rect2(0.0, -56.0, w, 44.0), Color(0.02, 0.05, 0.1, 0.92))
+				draw_rect(Rect2(0.0, -56.0, w, 44.0), Color(0.3, 0.9, 1.0, 0.85), false, 1.0)
+				draw_string(font, Vector2(0.0, -48.5), "ODDS", HORIZONTAL_ALIGNMENT_CENTER, w, 6, Color(0.75, 0.95, 1.0))
+				for od in 5:
+					var oc: Color = NEON[(od + sd) % NEON.size()]
+					var oy := -44.0 + od * 6.2
+					draw_colored_polygon(PackedVector2Array([Vector2(3.0, oy), Vector2(8.0, oy + 2.0), Vector2(3.0, oy + 4.0)]), oc)
+					var ow := 4.0 + _h(od + sd * 7 + int(_t / 4.0), 61) * 12.0
+					draw_rect(Rect2(11.0, oy + 1.0, ow, 2.0), Color(oc, 0.8))
+					draw_rect(Rect2(w - 6.0, oy + 0.5, 3.0, 3.0), Color(1, 1, 1, 0.35 + 0.5 * _h(od + int(_t * 2.0), 62 + sd)))
+				draw_rect(Rect2(0.0, -56.0 + fposmod(_t * 12.0, 44.0), w, 1.0), Color(0.6, 0.95, 1.0, 0.25))
+			"podium":   # (Luz) a round platform, a ring of light round it; who dances on it stands on its top (the node at its back)
+				var oy := float(data.get("lift", 0.0))
+				var pc := Vector2(w * 0.5, oy - 10.0)
+				var pulse := absf(sin(_t * 3.3 + sd))
+				draw_set_transform(pc + Vector2(0.0, 9.0), 0.0, Vector2(1.0, 0.36))
+				draw_circle(Vector2.ZERO, w * 0.5 + 2.0, Color(0, 0, 0, 0.3))
+				draw_set_transform(pc + Vector2(0.0, 7.0), 0.0, Vector2(1.0, 0.36))
+				draw_circle(Vector2.ZERO, w * 0.47, Color(0.08, 0.06, 0.12))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_rect(Rect2(pc.x - w * 0.47, pc.y, w * 0.94, 7.0), Color(0.1, 0.08, 0.15))
+				draw_rect(Rect2(pc.x - w * 0.47, pc.y + 3.0, w * 0.94, 1.5), Color(c, 0.6 + 0.4 * pulse))
+				draw_set_transform(pc + Vector2(0.0, 4.0), 0.0, Vector2(1.0, 0.36))
+				draw_arc(Vector2.ZERO, w * 0.47, 0.0, PI, 16, Color(c, 0.6 + 0.4 * pulse), 2.0)
+				draw_set_transform(pc, 0.0, Vector2(1.0, 0.36))
+				draw_circle(Vector2.ZERO, w * 0.47, Color(0.16, 0.13, 0.22))
+				draw_circle(Vector2.ZERO, w * 0.38, Color(c, 0.3 + 0.3 * pulse))
+				draw_arc(Vector2.ZERO, w * 0.47, 0.0, TAU, 28, gold, 1.5)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				for gk in 8:                                                # glitter winding up round who dances
+					var gu := fposmod(_t * 0.35 + gk * 0.125, 1.0)
+					var ga := _t * 1.8 + gk * TAU / 8.0 + sd
+					draw_rect(Rect2(pc + Vector2(cos(ga) * (w * 0.5 + 1.0), -6.0 - 22.0 * gu + sin(ga) * 3.0), Vector2(1.5, 1.5)), Color(1.0, 0.92, 0.6, 0.85 * (1.0 - gu)))
+			"dj":       # the DJ's desk: two decks turning, bars of light jumping with the music on its front
+				draw_rect(Rect2(3.0, -2.0, w, 5.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(0.0, -16.0, w, 16.0), Color(0.07, 0.06, 0.1))
+				draw_rect(Rect2(0.0, -24.0, w, 8.0), Color(0.16, 0.13, 0.22))
+				draw_rect(Rect2(0.0, -24.0, w, 1.5), gold)
+				for bq in int((w - 8.0) / 4.0):
+					var bh2 := 2.0 + 10.0 * absf(sin(_t * (5.0 + _h(bq, 95) * 4.0) + bq))
+					draw_rect(Rect2(4.0 + bq * 4.0, -3.0 - bh2, 3.0, bh2), NEON[bq % NEON.size()])
+				for dk in [w * 0.3, w * 0.7]:
+					draw_set_transform(Vector2(float(dk), -20.5), 0.0, Vector2(1.0, 0.4))
+					draw_circle(Vector2.ZERO, 7.0, Color(0.03, 0.03, 0.05))
+					draw_arc(Vector2.ZERO, 6.0, _t * 3.0, _t * 3.0 + 1.3, 6, Color(0.3, 0.9, 1.0), 1.5)
+					draw_circle(Vector2.ZERO, 2.0, gold)
+					draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_rect(Rect2(w * 0.5 - 5.0, -23.0, 10.0, 5.0), Color(1.0, 0.36, 0.66, 0.6 + 0.4 * absf(sin(_t * 3.3))))
+			"glasses":  # a pyramid of glasses on a small table, the wine sparkling in them
+				draw_rect(Rect2(3.0, -2.0, 12.0, 4.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(7.0, -10.0, 2.0, 10.0), gold.darkened(0.3))
+				draw_set_transform(Vector2(8.0, -10.0), 0.0, Vector2(1.0, 0.4))
+				draw_circle(Vector2.ZERO, 8.0, Color(0.95, 0.95, 0.98))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				for row in 4:
+					for g in row + 1:
+						var gx := 8.0 - row * 2.2 + g * 4.4
+						var gy := -27.0 + row * 4.0
+						draw_rect(Rect2(gx - 1.5, gy, 3.0, 3.0), Color(1.0, 0.9, 0.55, 0.92))
+						draw_rect(Rect2(gx - 1.5, gy, 3.0, 1.0), Color(1, 1, 1, 0.85))
+				for sk in 4:
+					if sin(_t * (4.0 + sk) + sk * 2.0) > 0.4:
+						draw_rect(Rect2(3.0 + _h(sk + int(_t * 2.0), 96) * 10.0, -28.0 + _h(sk, 97) * 16.0, 1.0, 1.0), Color(1, 1, 1, 0.95))
+			"flame":    # a bowl of fire on a foot of stone
+				draw_rect(Rect2(3.0, -2.0, 12.0, 4.0), Color(0, 0, 0, 0.35))
+				draw_rect(Rect2(6.0, -9.0, 4.0, 9.0), Color(0.34, 0.3, 0.34))
+				draw_colored_polygon(PackedVector2Array([Vector2(1.0, -14.0), Vector2(15.0, -14.0), Vector2(11.0, -8.0), Vector2(5.0, -8.0)]), Color(0.24, 0.21, 0.26))
+				draw_rect(Rect2(1.0, -15.0, 14.0, 1.5), gold.darkened(0.2))
+				for fl2 in 5:
+					var fx2 := 4.0 + fl2 * 2.0
+					var fh := 6.0 + 7.0 * absf(sin(_t * (6.0 + fl2) + fl2 * 1.9 + sd))
+					draw_colored_polygon(PackedVector2Array([Vector2(fx2 - 2.2, -15.0), Vector2(fx2 + 2.2, -15.0), Vector2(fx2 + sin(_t * 5.0 + fl2) * 1.5, -15.0 - fh)]),
+						Color(1.0, 0.5 + 0.35 * _h(fl2, 98), 0.15, 0.9))
+				draw_circle(Vector2(8.0, -19.0), 13.0, Color(1.0, 0.6, 0.2, 0.12))
+			"lapis":    # (Luz) Lapis as a hologram, turning over a foot of gold
+				draw_set_transform(Vector2(w * 0.5, -4.0), 0.0, Vector2(1.0, 0.36))
+				draw_circle(Vector2(0.0, 6.0), w * 0.5, Color(0, 0, 0, 0.3))
+				draw_circle(Vector2.ZERO, w * 0.44, Color(0.1, 0.08, 0.15))
+				draw_arc(Vector2.ZERO, w * 0.44, 0.0, TAU, 24, gold, 2.0)
+				draw_circle(Vector2.ZERO, w * 0.25, Color(0.3, 0.9, 1.0, 0.5 + 0.3 * absf(sin(_t * 2.0))))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_colored_polygon(PackedVector2Array([Vector2(w * 0.5 - 8.0, -5.0), Vector2(w * 0.5 + 8.0, -5.0), Vector2(w * 0.5 + 30.0, -74.0), Vector2(w * 0.5 - 30.0, -74.0)]), Color(0.3, 0.9, 1.0, 0.07))
+				Gen.draw_lapis(self, Vector2(w * 0.5, -48.0), 17.0, 1.0, _t * 30.0, false)
+				for sc2 in 6:
+					draw_rect(Rect2(w * 0.5 - 40.0, -80.0 + sc2 * 11.0 + fposmod(_t * 8.0, 11.0), 80.0, 1.0), Color(0.6, 1.0, 1.0, 0.12))
+			_:          # a row of cinema seats, seen from behind
+				for s in int(w / 16.0):
+					draw_rect(Rect2(s * 16.0 + 2.0, -3.0, 12.0, 3.0), Color(0.08, 0.05, 0.1))
+					draw_rect(Rect2(s * 16.0 + 1.0, -22.0, 14.0, 19.0), Color(0.42, 0.14, 0.26))
+					draw_rect(Rect2(s * 16.0 + 1.0, -22.0, 14.0, 3.0), Color(0.56, 0.2, 0.34))
+					draw_rect(Rect2(s * 16.0 + 7.5, -19.0, 1.0, 16.0), Color(0.3, 0.1, 0.18))
+
+
+## (Luz) a ride in one of the casino's capsules of glass, up or down the outside of the middle tower. The picture
+## stays with the capsule: close while it starts, pulled back while it runs (so that you see where on the tower you
+## are bound), close again where it stops. The floors hang beside the rails as names, the one you are bound for in
+## gold; the other capsule comes the other way. Drawn in tower units (TowerArt), the tower seen from behind: no
+## doors, no billboards. A Control over the whole screen; it fades in, and out once the new floor stands.
+class LiftRide extends Control:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	const FADE := 0.25
+	const RAIL_X := 34.0
+	var night := 0.0
+	var a := 0                         # from this floor …
+	var b := 0                         # … to this one
+	var look: Dictionary = {}          # who rides
+	var hint := ""
+	var dur := 3.0                     # the ride itself (seconds)
+	var _t := 0.0
+	var _gone := -1.0                  # from 0 on: the new floor stands, the picture fades
+
+	func setup(p_a: int, p_b: int, p_night: float, p_look: Dictionary) -> void:
+		a = clampi(p_a, 0, Gen.CAS_ALT.size() - 1)
+		b = clampi(p_b, 0, Gen.CAS_ALT.size() - 1)
+		night = p_night
+		look = p_look
+		var far: float = absf(float(Gen.CAS_ALT[b]) - float(Gen.CAS_ALT[a]))
+		dur = clampf(2.0 + far / 2400.0, 2.6, 4.6)
+
+	func _ready() -> void:
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		clip_contents = true
+		modulate.a = 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		modulate.a = clampf(_t / FADE, 0.0, 1.0)
+		if _gone >= 0.0:
+			_gone += dt
+			if _gone > FADE:
+				queue_free()
+		queue_redraw()
+
+	## The capsule stands at the other floor and the picture has gone dark: time to set the rider down there.
+	func arrived() -> bool:
+		return _t >= FADE + dur + FADE
+
+	func skip() -> void:
+		_t = maxf(_t, FADE + dur)
+
+	func leave() -> void:
+		if _gone < 0.0:
+			_gone = 0.0
+
+	## How far the capsule has run (0 … 1); it rests a moment at both ends.
+	func run() -> float:
+		return clampf((_t - FADE - 0.5) / maxf(dur - 1.0, 0.1), 0.0, 1.0)
+
+	## The foot of the rails, seen from near: the lifts' hall at the back of the podium. Arches of glass full of warm
+	## light, people walking behind them, palms before them, the house's name over it all.
+	func _hall() -> void:
+		var gold := Color(1.0, 0.82, 0.35)
+		var font := ThemeDB.fallback_font
+		var warm := Color(0.82, 0.67, 0.44) if night > 0.5 else Color(0.62, 0.6, 0.56)
+		draw_rect(Rect2(-530.0, -300.0, 1060.0, 300.0), Color(0.08, 0.07, 0.15))
+		for ar in 7:
+			var ax := -455.0 + ar * 130.0
+			draw_circle(Vector2(ax + 55.0, -180.0), 55.0, warm)
+			draw_rect(Rect2(ax, -180.0, 110.0, 180.0), warm)
+			draw_rect(Rect2(ax, -70.0, 110.0, 70.0), warm.lightened(0.12))
+			for q in 2:                                                  # who walks behind the glass
+				var px := ax + 20.0 + fposmod(Gen.TowerArt.hsh(ar * 2 + q, 51) * 70.0 + _t * (3.0 + q * 2.0) * (1.0 if (ar + q) % 2 == 0 else -1.0), 70.0)
+				draw_rect(Rect2(px - 5.0, -44.0, 10.0, 44.0), warm.darkened(0.5))
+				draw_circle(Vector2(px, -50.0), 6.5, warm.darkened(0.5))
+			for mx in [36.0, 73.0]:
+				draw_rect(Rect2(ax + float(mx), -228.0, 3.0, 228.0), Color(0.1, 0.08, 0.16))
+			for my in [-150.0, -75.0]:
+				draw_rect(Rect2(ax, float(my), 110.0, 3.0), Color(0.1, 0.08, 0.16))
+			draw_arc(Vector2(ax + 55.0, -180.0), 55.0, PI, TAU, 24, gold, 4.0)
+			draw_rect(Rect2(ax - 2.0, -180.0, 4.0, 180.0), gold.darkened(0.15))
+			draw_rect(Rect2(ax + 108.0, -180.0, 4.0, 180.0), gold.darkened(0.15))
+			if ar != 3:                                                 # a palm in a tub before every arch but the lifts'
+				var pb := Vector2(ax + 55.0, 0.0)
+				draw_rect(Rect2(pb.x - 16.0, -16.0, 32.0, 16.0), Color(0.3, 0.24, 0.36))
+				draw_rect(Rect2(pb.x - 16.0, -16.0, 32.0, 3.0), gold.darkened(0.2))
+				var pt := pb + Vector2(4.0, -96.0)
+				draw_line(pb + Vector2(0.0, -16.0), pt, Color(0.3, 0.22, 0.14), 6.0)
+				for fr in 7:
+					var fd := Vector2.from_angle(-PI * 0.96 + fr * PI * 0.92 / 6.0)
+					draw_line(pt, pt + fd * 30.0, Color(0.14, 0.4, 0.2), 5.0)
+					draw_line(pt + fd * 30.0, pt + fd * 46.0 + Vector2(0.0, 16.0), Color(0.1, 0.32, 0.16), 4.0)
+		draw_rect(Rect2(-530.0, -300.0, 1060.0, 52.0), Color(0.05, 0.03, 0.1))
+		draw_rect(Rect2(-530.0, -250.0, 1060.0, 4.0), gold)
+		draw_string(font, Vector2(-530.0, -262.0), "THE GRAND", HORIZONTAL_ALIGNMENT_CENTER, 450.0, 34, gold)
+		draw_string(font, Vector2(80.0, -262.0), "CENTAURIA", HORIZONTAL_ALIGNMENT_CENTER, 450.0, 34, gold)
+		var bn := 0
+		for bx in range(-520, 521, 26):
+			draw_circle(Vector2(float(bx), -244.0), 3.5, Color(1.0, 0.95, 0.7) if (bn + int(_t * 6.0)) % 3 == 0 else Color(0.5, 0.35, 0.15))
+			bn += 1
+		draw_rect(Rect2(66.0, -238.0, 100.0, 22.0), Color(0.03, 0.02, 0.06))
+		draw_rect(Rect2(66.0, -238.0, 100.0, 22.0), Color(0.3, 0.9, 1.0, 0.9), false, 2.0)
+		draw_string(font, Vector2(66.0, -221.0), "LIFTS", HORIZONTAL_ALIGNMENT_CENTER, 100.0, 18, Color(0.75, 0.95, 1.0))
+
+	func _capsule(x: float, alt: float, rider: bool, v: float, sc: float) -> void:
+		var gold := Color(1.0, 0.82, 0.35)
+		var r := 24.0
+		var hh := 86.0
+		var top := -(alt + hh)
+		var mid := Vector2(x, top + hh * 0.5)
+		var away := clampf((0.9 - sc) / 0.5, 0.0, 1.0)                   # how far the picture has pulled back
+		draw_circle(mid, maxf(64.0, 26.0 / sc), Color(1.0, 0.9, 0.6, (0.1 if rider else 0.05) + 0.08 * away))      # its light, seen from far
+		var tail := clampf(absf(v) * 0.05, 0.0, maxf(240.0, 80.0 / sc))      # the wake behind it
+		if tail > 6.0:
+			var tw0 := maxf(r * 0.8, 4.0 / sc)
+			var ty0 := -alt if v > 0.0 else top
+			var ty1 := ty0 + (tail if v > 0.0 else -tail)
+			draw_colored_polygon(PackedVector2Array([Vector2(x - tw0, ty0), Vector2(x + tw0, ty0), Vector2(x + tw0 * 0.15, ty1), Vector2(x - tw0 * 0.15, ty1)]), Color(1.0, 0.9, 0.6, 0.12 + 0.22 * away))
+		if away > 0.0 and rider:                                        # (from far: a point of gold, a ring round it)
+			draw_circle(mid, 7.0 / sc, Color(1.0, 0.95, 0.75, 0.95 * away))
+			draw_arc(mid, (14.0 + 4.0 * sin(_t * 6.0)) / sc, 0.0, TAU, 24, Color(gold, 0.85 * away), 2.0 / sc)
+		var shell := PackedVector2Array()
+		for i in 13:
+			shell.append(Vector2(x, top + r) + Vector2.from_angle(PI + i * PI / 12.0) * r)
+		for i in 13:
+			shell.append(Vector2(x, -alt - r) + Vector2.from_angle(i * PI / 12.0) * r)
+		draw_colored_polygon(shell, Color(0.1, 0.12, 0.2, 0.6))                    # the cabin's dusk behind the glass …
+		draw_colored_polygon(shell, Color(1.0, 0.9, 0.7, 0.22))                    # … and its own warm light
+		draw_rect(Rect2(x - r + 3.0, -alt - 14.0, r * 2.0 - 6.0, 5.0), Color(0.12, 0.09, 0.17))
+		draw_rect(Rect2(x - r + 3.0, -alt - 14.0, r * 2.0 - 6.0, 1.5), Color(0.3, 0.9, 1.0, 0.9))
+		if rider and not look.is_empty():
+			var tex := ChibiArt.frame(look, 0, 0)
+			var th := 58.0
+			var tw := th * tex.get_width() / float(tex.get_height())
+			draw_texture_rect(tex, Rect2(x - tw * 0.5, -alt - 14.0 - th, tw, th), false)
+		elif not rider:
+			for q in 2:                                                  # two riding the other one, shadows
+				draw_rect(Rect2(x - 12.0 + q * 14.0, -alt - 52.0, 9.0, 38.0), Color(0.05, 0.05, 0.1, 0.7))
+				draw_circle(Vector2(x - 7.5 + q * 14.0, -alt - 57.0), 5.5, Color(0.05, 0.05, 0.1, 0.7))
+		draw_colored_polygon(shell, Color(0.75, 0.92, 1.0, 0.16))                  # the glass
+		draw_line(Vector2(x - r * 0.6, top + r), Vector2(x - r * 0.6, -alt - r), Color(1, 1, 1, 0.32), 3.0)
+		var rim := shell.duplicate()
+		rim.append(shell[0])
+		draw_polyline(rim, gold, maxf(2.5, 1.6 / sc))
+		draw_rect(Rect2(x - r, top + r - 2.0, r * 2.0, 4.0), gold)
+		draw_rect(Rect2(x - r, -alt - r - 2.0, r * 2.0, 4.0), gold)
+		draw_circle(Vector2(x, top - 4.0), 4.0, Color(0.3, 0.9, 1.0))
+		draw_circle(Vector2(x, -alt + 4.0), 4.0, Color(0.3, 0.9, 1.0))
+
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		if _gone >= 0.0:
+			draw_rect(Rect2(0.0, 0.0, w, h), Color(0.0, 0.0, 0.0, clampf(1.0 - _gone / FADE, 0.0, 1.0)))
+			return
+		var font := ThemeDB.fallback_font
+		var gold := Color(1.0, 0.82, 0.35)
+		var ya: float = Gen.CAS_ALT[a]
+		var yb: float = Gen.CAS_ALT[b]
+		var u := run()
+		var e := u * u * u * (u * (u * 6.0 - 15.0) + 10.0)
+		var cy := lerpf(ya, yb, e)
+		var near := 2.6 * h / 1080.0
+		var far := clampf(h * 0.62 / maxf(absf(yb - ya), 1.0), h * 0.9 / 9000.0, near)
+		var sc := near * pow(far / near, smoothstep(0.04, 0.4, u) * (1.0 - smoothstep(0.6, 0.96, u)))
+		var org := Vector2(w * 0.5 + RAIL_X * sc, h * 0.62 + cy * sc)        # (your rail in the middle of the picture)
+		var y_lo := cy - (h * 0.38) / sc - 150.0
+		var y_hi := cy + (h * 0.62) / sc + 150.0
+		Gen.draw_sky(self, Rect2(0.0, 0.0, w, h), night, w * 0.8, h * 0.3, h * 0.27, _t, true)
+		draw_set_transform(org, 0.0, Vector2(sc, sc))
+		# the city round the towers, small against them
+		if y_lo < 1300.0:
+			for layer in 2:
+				var bw: float = [150.0, 210.0][layer]
+				var shade: float = [0.24, 0.16][layer]
+				for bb in range(-40, 40):
+					var bx: float = bb * bw
+					var bh: float = 260.0 + Gen.TowerArt.hsh(bb, layer * 7 + 2) * float([900.0, 620.0][layer])
+					var tint: Color = [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.55, 1.0, 0.6), Color(0.72, 0.5, 1.0)][int(Gen.TowerArt.hsh(bb, layer + 11) * 5.0) % 5]
+					var body := Color(shade, shade, shade + 0.08).lerp(tint, 0.18)
+					if night > 0.5:
+						body = body.darkened(0.45)
+					draw_rect(Rect2(bx, -bh, bw - 16.0, bh), body)
+					for r2 in int(bh / 60.0):
+						if Gen.TowerArt.hsh(bb * 31 + r2, layer + 40) < (0.6 if night > 0.5 else 0.3):
+							draw_rect(Rect2(bx + 10.0, -bh + 14.0 + r2 * 60.0, bw - 36.0, 22.0), Color(tint if r2 % 3 == 0 else Color(1.0, 0.92, 0.7), 0.8 if night > 0.5 else 0.4))
+		Gen.TowerArt.draw(self, _t, night, y_lo, y_hi, sc > 0.42, true)
+		if y_lo < 320.0 and sc > 0.3:
+			_hall()
+		# the casino's floors: lit bands; the lounge's glow beats, its pool lies on the roof below the tip
+		var beat := 0.6 + 0.4 * absf(sin(_t * 3.3))
+		for bd in [[1, 560.0, Color(1.0, 0.36, 0.66)], [2, 560.0, gold], [3, 560.0, Color(0.3, 0.9, 1.0)], [4, 350.0, gold], [5, 140.0, Color(1.0, 0.4, 0.9)]]:
+			var by: float = Gen.CAS_ALT[int(bd[0])]
+			if by < y_lo - 100.0 or by > y_hi:
+				continue
+			var bhw := float(bd[1])
+			var bcol: Color = bd[2]
+			draw_rect(Rect2(-bhw + 14.0, -by - 62.0, bhw * 2.0 - 28.0, 58.0), Color(bcol, 0.2 * (beat if int(bd[0]) == 5 else 1.0)))
+			draw_rect(Rect2(-bhw + 14.0, -by - 4.0, bhw * 2.0 - 28.0, 4.0), Color(bcol, 0.85))
+		if 6300.0 > y_lo - 100.0 and 6300.0 < y_hi:
+			draw_circle(Vector2(192.0, -6312.0), 62.0, Color(0.3, 0.9, 1.0, 0.05))
+			draw_rect(Rect2(148.0, -6313.0, 88.0, 9.0), Color(0.2, 0.85, 0.95))
+			draw_rect(Rect2(148.0, -6315.0, 88.0, 2.5), Color(0.9, 1.0, 1.0, 0.8))
+			draw_rect(Rect2(236.0, -6330.0, 2.5, 26.0), Color(0.8, 0.95, 1.0, 0.6))
+			for pm in [156.0, 226.0]:                                   # palms by the pool, a few of the members
+				var pb := Vector2(float(pm), -6304.0)
+				var pt := pb + Vector2(3.0, -36.0)
+				draw_line(pb, pt, Color(0.34, 0.25, 0.16), 4.0)
+				for fr in 7:
+					var fd := Vector2.from_angle(-PI * 0.96 + fr * PI * 0.92 / 6.0)
+					draw_line(pt, pt + fd * 13.0, Color(0.2, 0.52, 0.26), 3.0)
+					draw_line(pt + fd * 13.0, pt + fd * 21.0 + Vector2(0.0, 7.0), Color(0.16, 0.44, 0.22), 2.5)
+			for mb in 4:
+				draw_rect(Rect2(166.0 + mb * 14.0, -6304.0 - 11.0, 3.5, 7.0), [Color(1.0, 0.95, 0.9), Color(1.0, 0.82, 0.35), Color(0.72, 0.42, 1.0), Color(0.9, 0.3, 0.4)][mb])
+				draw_circle(Vector2(167.7 + mb * 14.0, -6304.0 - 13.0), 2.2, Color(0.85, 0.65, 0.5))
+		# the rails, lamps running up them the way you ride
+		var r_top: float = float(Gen.CAS_ALT[Gen.CAS_ALT.size() - 1]) + 130.0
+		var ra := maxf(0.0, y_lo)
+		var rb := minf(r_top, y_hi)
+		if rb > ra:
+			var lw := maxf(2.0, 1.6 / sc)
+			for rx in [-RAIL_X, RAIL_X]:
+				draw_rect(Rect2(float(rx) - 8.0, -rb, 16.0, rb - ra), Color(0.02, 0.03, 0.08, 0.82))
+				draw_rect(Rect2(float(rx) - 8.0, -rb, lw, rb - ra), gold.darkened(0.1))
+				draw_rect(Rect2(float(rx) + 8.0 - lw, -rb, lw, rb - ra), gold.darkened(0.1))
+			var step := 60.0 if sc > 0.5 else 240.0
+			var li := int(floorf(ra / step))
+			var way := 1 if yb > ya else -1
+			while li * step < rb:
+				var on := posmod(li - way * int(_t * 10.0), 6) == 0
+				for rx2 in [-RAIL_X, RAIL_X]:
+					draw_rect(Rect2(float(rx2) - maxf(1.5, 1.2 / sc), -li * step - 4.0, maxf(3.0, 2.4 / sc), maxf(8.0, 3.0 / sc)), Color(0.3, 0.9, 1.0, 1.0 if on else 0.3))
+				li += 1
+			if r_top < y_hi:
+				draw_rect(Rect2(-RAIL_X - 14.0, -r_top - 8.0, RAIL_X * 2.0 + 28.0, 8.0), gold)
+		for i in Gen.CAS_ALT.size():                                    # where the capsules stop: a bracket of gold, the floor's light
+			var sa: float = Gen.CAS_ALT[i]
+			if sa < y_lo - 100.0 or sa > y_hi:
+				continue
+			draw_rect(Rect2(-RAIL_X - 30.0, -sa - 92.0, RAIL_X * 2.0 + 60.0, 90.0), Color(1.0, 0.92, 0.7, 0.12))
+			draw_rect(Rect2(-RAIL_X - 34.0, -sa - 3.0, RAIL_X * 2.0 + 68.0, 5.0), gold)
+		var v := (yb - ya) * 30.0 * u * u * (1.0 - u) * (1.0 - u) / maxf(dur - 1.0, 0.1)       # units a second
+		_capsule(RAIL_X, lerpf(yb, ya, e), false, -v, sc)
+		_capsule(-RAIL_X, cy, true, v, sc)
+		# the layer of cloud round the towers' middle: the capsule runs through it
+		if y_hi > 2900.0 and y_lo < 4700.0:
+			for c in 12:
+				var cx := fposmod(c * 700.0 + _t * (20.0 + c * 3.0), 8000.0) - 4000.0
+				var ccy := -3300.0 - Gen.TowerArt.hsh(c, 3) * 900.0
+				for p in 4:
+					draw_circle(Vector2(cx + p * 190.0, ccy + sin(c + p) * 40.0), 170.0 - p * 22.0, Color(0.8, 0.84, 0.95, 0.16 if night > 0.5 else 0.3))
+		# traffic in the air
+		for tr in 10:
+			var tay := 700.0 + tr * 610.0
+			if tay < y_lo or tay > y_hi:
+				continue
+			var tdir := 1.0 if tr % 2 == 0 else -1.0
+			var tax := (fposmod(tr * 733.0 + _t * (160.0 + tr * 23.0), 9000.0) - 4500.0) * tdir
+			draw_rect(Rect2(tax - tdir * 70.0, -tay, 70.0, 6.0), Color(1.0, 0.9, 0.6, 0.35))
+			draw_circle(Vector2(tax, -tay + 3.0), 12.0, Color(1.0, 0.95, 0.8))
+		# the ground at their feet
+		if y_lo < 60.0:
+			draw_rect(Rect2(-40000.0, 0.0, 80000.0, 4000.0), Color(0.2, 0.2, 0.27).lerp(Color(0.07, 0.07, 0.12), night))
+			for gl in 10:
+				draw_rect(Rect2(-6000.0, 24.0 + gl * 46.0, 12000.0, 2.0), Color(1, 1, 1, 0.035))
+			var lr := clampf(3.0 / sc, 4.0, 14.0)
+			for pl in 40:
+				var lpos := Vector2(-1500.0 + Gen.TowerArt.hsh(pl, 8) * 3000.0, 40.0 + Gen.TowerArt.hsh(pl, 9) * 300.0)
+				var lcol: Color = [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.55, 1.0, 0.6)][pl % 4]
+				draw_circle(lpos, lr * 3.0, Color(lcol, 0.12))
+				draw_circle(lpos, lr, Color(lcol, 0.85))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# the floors' names beside the rails (window px), yours in gold
+		var tiers: Array = Gen.TowerArt.SPECS[2]["tiers"]
+		for i2 in Gen.CAS_FLOORS.size():
+			var fa: float = Gen.CAS_ALT[i2]
+			var sy := org.y - (fa + 43.0) * sc
+			if sy < 40.0 or sy > h - 96.0:
+				continue
+			var hw := 560.0
+			for tr2 in tiers:
+				if fa >= float(tr2[0]):
+					hw = float(tr2[2])
+			var lx := org.x + minf((hw + 70.0) * sc, 190.0 * h / 1080.0)
+			var on2 := i2 == b
+			var txt := "%d   %s" % [i2 + 1, String(Gen.CAS_FLOORS[i2])]
+			var tw2 := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16).x
+			draw_rect(Rect2(lx - 8.0, sy - 14.0, tw2 + 16.0, 24.0), Color(0.02, 0.02, 0.06, 0.62))
+			if on2:
+				draw_rect(Rect2(lx - 8.0, sy - 14.0, tw2 + 16.0, 24.0), Color(gold, 0.9), false, 1.5)
+			draw_line(Vector2(org.x + (RAIL_X + 12.0) * sc, sy), Vector2(lx - 8.0, sy), Color(gold if on2 else Color(0.7, 0.75, 0.9), 0.7), 1.5)
+			draw_string(font, Vector2(lx, sy + 5.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, gold if on2 else Color(0.8, 0.84, 0.95, 0.9 if i2 == a else 0.6))
+		# what rides where, how high
+		draw_rect(Rect2(0.0, h - 78.0, w, 78.0), Color(0.0, 0.0, 0.03, 0.55))
+		draw_string(font, Vector2(0.0, h - 46.0), "The Grand Centauria", HORIZONTAL_ALIGNMENT_CENTER, w, 20, gold)
+		draw_string(font, Vector2(0.0, h - 20.0), "%s  to  %s      %d m      %s" % [String(Gen.CAS_FLOORS[a]), String(Gen.CAS_FLOORS[b]), int(cy * 0.12), hint],
+			HORIZONTAL_ALIGNMENT_CENTER, w, 14, Color(0.8, 0.9, 1.0))
+		var out := clampf((_t - FADE - dur) / FADE, 0.0, 1.0)
+		if out > 0.0:
+			draw_rect(Rect2(0.0, 0.0, w, h), Color(0.0, 0.0, 0.0, out))
 
 
 ## The car from inside, a metro car: the window wall to the north with three doors in it, seats along both walls
