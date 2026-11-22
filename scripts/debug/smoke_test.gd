@@ -17977,7 +17977,216 @@ func _test_casino62(_view: SystemView) -> void:
 			GameState.casino_vip = false
 		if not rou_ok:
 			print("CAS62 roulette: minigame ", g.minigame, " coins ", GameState.coins)
-		coin_ok = coin_ok and num_ok and slot_ok and rou_ok
+		# (Luz) part 3: blackjack and poker. The numbers first: what a hand is worth, what blackjack pays, the pots
+		var hv := func(cs: Array) -> int: return CasD.hand_value(cs)
+		var order: Array = [hv.call([[14, 0], [9, 1], [7, 2], [5, 3], [3, 0], [2, 1], [11, 2]]), hv.call([[14, 0], [14, 1], [7, 2], [5, 3], [3, 0], [2, 1], [11, 2]]),
+			hv.call([[14, 0], [14, 1], [7, 2], [7, 3], [3, 0], [2, 1], [11, 2]]), hv.call([[14, 0], [14, 1], [14, 2], [7, 3], [3, 0], [2, 1], [11, 2]]),
+			hv.call([[14, 0], [2, 1], [3, 2], [4, 3], [5, 0], [9, 1], [11, 2]]), hv.call([[6, 0], [2, 1], [3, 2], [4, 3], [5, 0], [9, 1], [11, 2]]),
+			hv.call([[14, 0], [9, 0], [7, 0], [5, 0], [3, 0], [2, 1], [11, 2]]), hv.call([[14, 0], [14, 1], [14, 2], [7, 3], [7, 0], [2, 1], [11, 2]]),
+			hv.call([[14, 0], [14, 1], [14, 2], [14, 3], [7, 0], [2, 1], [11, 2]]), hv.call([[10, 0], [9, 0], [8, 0], [7, 0], [6, 0], [2, 1], [11, 2]])]
+		var sorted_ok := true
+		for oi in range(1, order.size()):
+			sorted_ok = sorted_ok and int(order[oi]) > int(order[oi - 1])
+		var pots3: Array = CasD.poker_pots([100, 40, 10], [false, false, true], [5, 9, 0])
+		var brng := RandomNumberGenerator.new()
+		brng.seed = 6203
+		var brtp := [0.0, 0.0]
+		for bl in 2:
+			var bgot := 0
+			var bput := 0
+			var bluck: float = [0.0, CasD.bj_luck(8, true)][bl]
+			var draw := func() -> Array: return [brng.randi_range(2, 14), 0]
+			for bh in 20000:
+				var bhand: Array = [draw.call(), draw.call()]
+				var bhouse: Array = [draw.call(), draw.call()]
+				var bstake := 1
+				if not CasD.bj_natural(bhand) and not CasD.bj_natural(bhouse):
+					while CasD.bj_total(bhand) < 21:
+						var bm: String = CasD.bj_guest(bhand, int(bhouse[0][0]))
+						if bm == "stand":
+							break
+						var bc: Array = draw.call()
+						if CasD.bj_total(bhand + [bc]) > 21 and brng.randf() < bluck:
+							bc = draw.call()
+						bhand.append(bc)
+						if bm == "double":
+							bstake = 2
+							break
+					while CasD.bj_total(bhand) <= 21 and CasD.bj_total(bhouse) < 17:
+						bhouse.append(draw.call())
+				bput += bstake * 2
+				bgot += CasD.bj_back(bstake * 2, bhand, bhouse)
+			brtp[bl] = float(bgot) / float(bput)
+		var sp_with := 0
+		var sp_dan := 0
+		var sp_none := true
+		for ph in 40:
+			var pg1: Array = CasD.poker_guests(ph % 2 == 1, ph, {"w59_left": true})
+			sp_with += 1 if pg1.any(func(q): return String(q["who"]) == "rook") else 0
+			sp_dan += 1 if pg1.any(func(q): return String(q["who"]) == "dan") else 0
+			var pg0: Array = CasD.poker_guests(ph % 2 == 1, ph, {})
+			sp_none = sp_none and pg1.size() == 3 and pg0.size() == 3 and pg0.all(func(q): return String(q["who"]) == "" and CasD.STYLES.has(String(q["style"])))
+		var card_ok: bool = sorted_ok and CasD.hand_name(int(order[9])) == "A straight flush" and CasD.hand_name(int(order[0])) == "A high card" \
+			and CasD.hand_value([[14, 0], [13, 1], [7, 2], [5, 3], [3, 0]]) > CasD.hand_value([[14, 1], [12, 1], [7, 2], [5, 3], [3, 0]]) \
+			and CasD.bj_total([[14, 0], [13, 1]]) == 21 and CasD.bj_natural([[14, 0], [13, 1]]) and CasD.bj_total([[14, 0], [14, 1], [9, 2]]) == 21 and CasD.bj_total([[10, 0], [6, 1], [8, 2]]) == 24 \
+			and CasD.bj_soft([[14, 0], [6, 1]]) and not CasD.bj_soft([[14, 0], [6, 1], [10, 2]]) \
+			and CasD.bj_back(10, [[14, 0], [13, 1]], [[10, 0], [9, 1]]) == 25 and CasD.bj_back(10, [[10, 0], [9, 1]], [[10, 0], [8, 1]]) == 20 and CasD.bj_back(10, [[10, 0], [9, 1]], [[10, 0], [9, 1]]) == 10 \
+			and CasD.bj_back(10, [[10, 0], [9, 1]], [[14, 0], [13, 1]]) == 0 and CasD.bj_back(10, [[10, 0], [6, 1], [8, 2]], [[10, 0], [6, 1], [9, 2]]) == 0 \
+			and pots3.size() == 2 and int(pots3[0]["amount"]) == 90 and pots3[0]["winners"] == [1] and int(pots3[1]["amount"]) == 60 and pots3[1]["winners"] == [0] \
+			and float(brtp[0]) > 0.95 and float(brtp[0]) < 1.01 and float(brtp[1]) > 0.95 and float(brtp[1]) < 1.02 and CasD.bj_luck(3, false) == 0.0 and CasD.bj_luck(8, true) <= 0.04 \
+			and CasD.tell_luck(3, false) == 0.0 and CasD.tell_luck(8, true) <= 0.4 and CasD.new_deck(brng).size() == 52 and CasD.new_deck(brng, CasD.BJ_DECKS).size() == 312 \
+			and sp_with >= 5 and sp_dan >= 5 and sp_none
+		if not card_ok:
+			print("CAS62 cards: order ", sorted_ok, " pots ", pots3, " bj ", brtp, " rook ", sp_with, " dan ", sp_dan, " none ", sp_none)
+		# blackjack: the stake by seat through the command bus, the limit, the deal takes it, every seat plays, the
+		# house draws, what the hand gives back is paid
+		g._ctr_floor_go(2, true)
+		for fb0 in 8:
+			await get_tree().process_frame
+		g.zone = _zone_of(g.map, "ctr_blackjack")
+		g.use()
+		for fb1 in 5:
+			await get_tree().process_frame
+		var bj_ok: bool = g.minigame != null and g.minigame.has_method("is_blackjack")
+		if bj_ok:
+			var bt = g.minigame
+			GameState.coins = 1000
+			var e_nob := String(Commands.execute({"type": "bj_deal"}))
+			var e_b1 := String(Commands.execute({"type": "bj_bet", "seat": 0, "chip": 25}))
+			var e_b2 := String(Commands.execute({"type": "bj_bet", "seat": 0, "chip": 500}))
+			var e_m0 := String(Commands.execute({"type": "bj_move", "seat": 0, "move": "hit"}))
+			var e_d := String(Commands.execute({"type": "bj_deal"}))
+			bj_ok = e_nob != "" and e_b1 == "" and e_b2 != "" and e_m0 != "" and e_d == "" and GameState.coins == 975 and (bt.seats as Array).size() == 3 and (bt.house as Array).size() == 2 \
+				and (bt.seats as Array).all(func(s): return int(s["bet"]) > 0 and (s["hand"] as Array).size() == 2) and int(bt.limit) == CasD.LIMIT \
+				and String(Commands.execute({"type": "bj_bet", "seat": 0, "chip": 5})) != ""
+			if shots:
+				for fb2 in 25:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_blackjack.png")
+			bt.fast = true
+			var wrong_turn := true
+			var tb0 := Time.get_ticks_msec()
+			while String(bt.state) != "done" and Time.get_ticks_msec() - tb0 < 9000:
+				if String(bt.state) == "play" and int(bt.turn) == 0:
+					wrong_turn = wrong_turn and String(Commands.execute({"type": "bj_move", "seat": 1, "move": "stand"})) != ""
+					Commands.execute({"type": "bj_move", "seat": 0, "move": "stand"})
+				await get_tree().process_frame
+			var bback: int = CasD.bj_back(25, bt.seats[0]["hand"], bt.house)
+			bj_ok = bj_ok and wrong_turn and String(bt.state) == "done" and GameState.coins == 975 + bback and int(bt.seats[0]["back"]) == bback \
+				and (CasD.bj_total(bt.house) >= 17 or (bt.seats as Array).all(func(s): return String(s["state"]) != "stand"))
+			if shots:
+				for fb3 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_blackjack_ende.png")
+			bt.deal_or_next()
+			bj_ok = bj_ok and String(bt.state) == "bet" and int(bt.seats[0]["bet"]) == 0
+			bt.leave()
+			for fb4 in 5:
+				await get_tree().process_frame
+			bj_ok = bj_ok and g.minigame == null
+		if not bj_ok:
+			print("CAS62 blackjack: minigame ", g.minigame, " coins ", GameState.coins)
+		# poker: you buy in, the blinds are set, every seat moves in its turn through the command bus, no chip is lost
+		# (but what the house takes), you stand up with your chips as Coins
+		g.zone = _zone_of(g.map, "ctr_poker")
+		g.use()
+		for fp0 in 5:
+			await get_tree().process_frame
+		var pk_ok: bool = g.minigame != null and g.minigame.has_method("is_poker")
+		if pk_ok:
+			var pt = g.minigame
+			GameState.coins = 1000
+			var e_s0 := String(Commands.execute({"type": "poker_sit", "seat": 0, "buyin": 150}))
+			var e_m1 := String(Commands.execute({"type": "poker_move", "seat": 0, "move": "call"}))
+			var e_s1 := String(Commands.execute({"type": "poker_sit", "seat": 0, "buyin": 200}))
+			var chips_all := func() -> int:
+				var n := int(pt.pot()) if String(pt.state) == "hand" else 0
+				for s in pt.seats:
+					n += int(s["stack"])
+				return n
+			pk_ok = e_s0 != "" and e_m1 != "" and e_s1 == "" and GameState.coins == 800 and int(pt.level) == 200 and int(pt.bb) == 4 and int(pt.sb) == 2 and (pt.seats as Array).size() == 4 \
+				and (pt.seats as Array).all(func(s): return (s["hole"] as Array).size() == 2) and String(pt.state) == "hand" and int(pt.pot()) == 6 \
+				and String(Commands.execute({"type": "poker_sit", "seat": 0, "buyin": 200})) != "" and String(Commands.execute({"type": "poker_leave", "seat": 0})) != ""
+			pt.fast = true
+			var base: int = chips_all.call()
+			var kept := true
+			var refused := true
+			var played := 0
+			var shot_p := 0
+			var tp0 := Time.get_ticks_msec()
+			while played < 10 and Time.get_ticks_msec() - tp0 < 30000:
+				await get_tree().process_frame
+				if String(pt.state) == "hand" and int(pt.turn) == 0:
+					refused = refused and String(Commands.execute({"type": "poker_move", "seat": 1, "move": "call"})) != ""
+					if shots and shot_p == 0 and int(pt.street) >= 1:
+						shot_p = 1
+						pt.tell_seat = 1
+						pt._tell_update()
+						for fp1 in 20:
+							await get_tree().process_frame
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_poker.png")
+					if int(pt.top(0)) > int(pt.cur_bet) + int(pt.min_raise) + 1:
+						refused = refused and String(Commands.execute({"type": "poker_move", "seat": 0, "move": "raise", "to": int(pt.cur_bet) + 1})) != ""
+					var pm := "fold" if played % 4 == 3 and int(pt.to_call(0)) > 0 else ("raise" if played % 4 == 1 and int(pt.street) == 1 else "call")
+					var pe := String(Commands.execute({"type": "poker_move", "seat": 0, "move": pm, "to": int(pt.min_to(0))}))
+					kept = kept and pe == ""
+				elif String(pt.state) == "show":
+					kept = kept and int(chips_all.call()) + int(pt.rake) == base and int(pt.rake) <= CasD.RAKE_CAP and (int(pt.rake) == 0 or (pt.board as Array).size() >= 3)
+					if not kept:
+						print("CAS62 poker hand ", played, ": chips ", chips_all.call(), " rake ", pt.rake, " base ", base, " seats ", pt.seats)
+						break
+					if shots and shot_p == 1 and bool(pt.shown):
+						shot_p = 2
+						for fp2 in 20:
+							await get_tree().process_frame
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_poker_ende.png")
+					played += 1
+					if int(pt.seats[0]["stack"]) < 1:
+						Commands.execute({"type": "poker_next"})
+						kept = kept and String(pt.state) == "buy" and String(Commands.execute({"type": "poker_sit", "seat": 0, "buyin": 200})) == ""
+					else:
+						Commands.execute({"type": "poker_next"})
+					base = chips_all.call()
+			if String(pt.state) == "hand" and not bool(pt.seats[0]["folded"]):      # (out of the hand that was dealt last)
+				var tp1 := Time.get_ticks_msec()
+				while String(pt.state) == "hand" and Time.get_ticks_msec() - tp1 < 6000:
+					if int(pt.turn) == 0:
+						Commands.execute({"type": "poker_move", "seat": 0, "move": "call" if int(pt.to_call(0)) == 0 else "fold"})
+					await get_tree().process_frame
+			var pstack: int = pt.seats[0]["stack"]
+			var pcoins: int = GameState.coins
+			var e_l := String(Commands.execute({"type": "poker_leave", "seat": 0}))
+			for fp3 in 5:
+				await get_tree().process_frame
+			pk_ok = pk_ok and kept and refused and played == 10 and e_l == "" and GameState.coins == pcoins + pstack and g.minigame == null
+			if not pk_ok:
+				print("CAS62 poker: kept ", kept, " refused ", refused, " played ", played, " leave ", e_l, " coins ", GameState.coins, " was ", pcoins, " stack ", pstack)
+		else:
+			print("CAS62 poker: no table ", g.minigame)
+		# the high tables of the lounge: larger chips, a larger buy-in
+		GameState.casino_vip = true
+		g._ctr_floor_go(5, true)
+		for fh0 in 8:
+			await get_tree().process_frame
+		var hi_ok := true
+		for hk in ["ctr_blackjack", "ctr_poker"]:
+			g.zone = _zone_of(g.map, hk)
+			g.use()
+			for fh1 in 5:
+				await get_tree().process_frame
+			hi_ok = hi_ok and g.minigame != null and bool(g.minigame.high) and (int(g.minigame.limit) == CasD.LIMIT_HIGH if hk == "ctr_blackjack" else (g.minigame.buyins as Array) == CasD.POKER_BUYINS_HIGH)
+			if g.minigame != null:
+				if hk == "ctr_poker":
+					Commands.execute({"type": "poker_leave", "seat": 0})
+				else:
+					g.minigame.leave()
+			for fh2 in 5:
+				await get_tree().process_frame
+			hi_ok = hi_ok and g.minigame == null
+		GameState.casino_vip = false
+		if not hi_ok:
+			print("CAS62 high tables: minigame ", g.minigame)
+		coin_ok = coin_ok and num_ok and slot_ok and rou_ok and card_ok and bj_ok and pk_ok and hi_ok
 		GameState.coins = 60
 		g._ctr_floor_go(0, true)
 		for fr7 in 8:
@@ -18134,7 +18343,7 @@ func _test_casino62(_view: SystemView) -> void:
 			print("CAS62 debug: ", de, " level ", g.level, " floor ", g.ctr_floor, " vip ", GameState.casino_vip, " coins ", GameState.coins, " title ", g._title.text)
 		GameState.credits = cr0
 	check(maps_ok and land_ok and in_ok and coin_ok and lift_ok and ride_ok and vip_ok and out_ok,
-		"62, part 1: the Grand Centauria: six floors (the lobby with its cashier and chandelier, the machines, the tables with Drift, the track with seats and shut betting counters, the Aurum Bar with its piano, the VIP lounge); the stair on the plaza leads in, the doors back out; Coins are bought and changed back for less and saved; two capsules of glass on every floor, the ride outside the tower from the lobby to the lounge (in through the doors, nothing else to be done on the way, out up there), the lounge only for members; the lounge: three high tables, five platforms with dancers, a DJ and a full dance floor, a terrace under the sky with a pool nobody walks into, the hall dark, its guests in the looks of the rich")
+		"62, part 1: the Grand Centauria: six floors (the lobby with its cashier and chandelier, the machines, the tables with Drift and with blackjack and poker played by seat through the command bus, the track with seats and shut betting counters, the Aurum Bar with its piano, the VIP lounge); the stair on the plaza leads in, the doors back out; Coins are bought and changed back for less and saved; two capsules of glass on every floor, the ride outside the tower from the lobby to the lounge (in through the doors, nothing else to be done on the way, out up there), the lounge only for members; the lounge: three high tables, five platforms with dancers, a DJ and a full dance floor, a terrace under the sky with a pool nobody walks into, the hall dark, its guests in the looks of the rich")
 	# the game as it was
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)

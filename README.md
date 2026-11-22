@@ -412,6 +412,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.3 (package 62, part 3): `data/casino.gd` (cards as `[rank, suit]`, `new_deck`, `bj_total`, `bj_back`,
+  `bj_guest`, `bj_luck`, `hand_value`, `hand_name`, `poker_equity`, `poker_pots`, `poker_ai`, `poker_guests`,
+  `POKER_SPECIAL`, `tell_luck`), `scripts/ground/casino_cards.gd` (drawn cards and chips),
+  `scripts/ground/blackjack_game.gd` (`bet`, `deal`, `move`), `scripts/ground/poker_game.gd` (`sit`, `move`, `next`,
+  `stand_up`, side pots, the rake); commands `bj_bet`, `bj_deal`, `bj_move`, `poker_sit`, `poker_move`,
+  `poker_next`, `poker_leave` (with `seat`, for co-op); zones `ctr_blackjack`, `ctr_poker` (`hi`).
 - 0.8.62.2 (package 62, part 2): `data/casino.gd` (`spin`, `roll`, `settle`, `bet_pays`, `slot_luck`, `wheel_luck`,
   pay tables, chips, limits), `scripts/ground/slot_game.gd`, `scripts/ground/roulette_game.gd` (seats, `place`,
   `clear`, `spin_result`); commands `slot_spin`, `roulette_bet`, `roulette_clear`, `roulette_spin` (with `seat`,

@@ -3413,8 +3413,8 @@ static func build_casino(_station: Dictionary, storey: int, night: bool = false)
 				if String(tb[0]) == "roulette":             # package 62, part 2: the wheel turns
 					_zone(m, Rect2(tx, ty + 2.0, tw, 1.2), "ctr_roulette", "Roulette: take a seat", GOLD, {"id": "cas_table_%d_%d" % [tx, ty]})
 				else:
-					_zone(m, Rect2(tx, ty + 2.0, tw, 1.2), "ctr_closed", {"cards": "Blackjack", "poker": "Poker table"}[String(tb[0])], GOLD,
-						{"closed": "The tables open soon. The dealer only shuffles for now.", "id": "cas_table_%d_%d" % [tx, ty]})
+					_zone(m, Rect2(tx, ty + 2.0, tw, 1.2), {"cards": "ctr_blackjack", "poker": "ctr_poker"}[String(tb[0])],       # part 3: the cards are dealt
+						{"cards": "Blackjack: take a seat", "poker": "Poker: take a seat"}[String(tb[0])], GOLD, {"id": "cas_table_%d_%d" % [tx, ty]})
 				for np in 2:                                # (Luz) guests play at every table
 					m.people.append({"pos": Vector2(tx + 0.6 + np * (tw - 1.2), ty + 2.5) * TILE, "dir": 1, "role": "keeper", "look": ChibiArt.PilotArt.random_look(rng)})
 			m.add_object({"kind": "round_table", "x": 19, "y": C_F0 + 9, "w": 1, "h": 1})          # (Drift can be played already)
@@ -3516,7 +3516,8 @@ static func build_casino(_station: Dictionary, storey: int, night: bool = false)
 				if String(tb2[0]) == "roulette":            # package 62, part 2: the high wheel turns
 					_zone(m, Rect2(hx, hy + 2.0, hw, 1.2), "ctr_roulette", String(tb2[3]) + ": take a seat", GOLD, {"id": "cas_high_%d" % hx, "hi": true})
 				else:
-					_zone(m, Rect2(hx, hy + 2.0, hw, 1.2), "ctr_closed", String(tb2[3]), GOLD, {"closed": "The high tables open soon. No stake at them is small.", "id": "cas_high_%d" % hx})
+					_zone(m, Rect2(hx, hy + 2.0, hw, 1.2), {"cards": "ctr_blackjack", "poker": "ctr_poker"}[String(tb2[0])], String(tb2[3]) + ": take a seat", GOLD,
+						{"id": "cas_high_%d" % hx, "hi": true})                      # part 3: the high tables play
 				m.people.append({"pos": Vector2(hx + hw - 0.6, hy + 2.5) * TILE, "dir": 1, "role": "keeper", "look": _rich_look(rng)})
 			m.set_meta("cas_rug", Rect2(Vector2(13, C_F0 + 10) * TILE, Vector2(23, 5) * TILE))
 			_cprop(m, props, "lapis", 30, C_F0 + 6, 2, 1, {})

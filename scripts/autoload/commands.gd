@@ -762,6 +762,58 @@ func _c_roulette_spin(_c: Dictionary) -> String:
 	return ""
 
 
+## Package 62, part 3 (Luz): blackjack. {"type":"bj_bet", "seat", "chip"}: a seat puts Coins on its box (chip below
+## 1: takes its stake back). {"type":"bj_deal"}: your stake goes, the cards are dealt. {"type":"bj_move", "seat",
+## "move": "hit" | "stand" | "double"}: a seat's move in its turn. The seat is there for co-op.
+func _bj_table():
+	var g = _ground()
+	return g.minigame if g != null and g.minigame != null and g.minigame.has_method("is_blackjack") else null
+
+
+func _c_bj_bet(c: Dictionary) -> String:
+	var tb = _bj_table()
+	return "No blackjack table." if tb == null else String(tb.bet(int(c.get("seat", 0)), int(c.get("chip", 0))))
+
+
+func _c_bj_deal(_c: Dictionary) -> String:
+	var tb = _bj_table()
+	return "No blackjack table." if tb == null else String(tb.deal())
+
+
+func _c_bj_move(c: Dictionary) -> String:
+	var tb = _bj_table()
+	return "No blackjack table." if tb == null else String(tb.move(int(c.get("seat", 0)), String(c.get("move", ""))))
+
+
+## … and poker. {"type":"poker_sit", "seat", "buyin"}: you buy in for Coins (again once your chips are gone).
+## {"type":"poker_move", "seat", "move": "fold" | "call" | "raise" | "allin", "to"}: a seat's move in its turn
+## ("to": what a raise goes to in this round). {"type":"poker_next"}: on to the next hand. {"type":"poker_leave",
+## "seat"}: you stand up, your chips become Coins again.
+func _poker_table():
+	var g = _ground()
+	return g.minigame if g != null and g.minigame != null and g.minigame.has_method("is_poker") else null
+
+
+func _c_poker_sit(c: Dictionary) -> String:
+	var tb = _poker_table()
+	return "No poker table." if tb == null else String(tb.sit(int(c.get("seat", 0)), int(c.get("buyin", 0))))
+
+
+func _c_poker_move(c: Dictionary) -> String:
+	var tb = _poker_table()
+	return "No poker table." if tb == null else String(tb.move(int(c.get("seat", 0)), String(c.get("move", "")), int(c.get("to", 0))))
+
+
+func _c_poker_next(_c: Dictionary) -> String:
+	var tb = _poker_table()
+	return "No poker table." if tb == null else String(tb.next())
+
+
+func _c_poker_leave(_c: Dictionary) -> String:
+	var tb = _poker_table()
+	return "No poker table." if tb == null else String(tb.stand_up())
+
+
 func _need_coins(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":

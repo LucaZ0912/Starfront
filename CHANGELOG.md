@@ -3,6 +3,30 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.3 – 2026-11-22
+
+**Package 62, part 3 (Luz): blackjack and poker.**
+- **The house's cards:** a deck of 52 in the four suits of Drift (comets, moons, suns, nebulae), 2 to 10, then the
+  Pilot, the Captain, the Admiral and the Ace; dark cards with an edge of neon.
+- **Blackjack** at the three card tables of The Tables and at the high table of the VIP lounge: set your stake
+  (chips of 1, 5, 25, 100, the limit 500 Coins a hand; at the high table 100, 500, 2,500 and 25,000), have the cards
+  dealt, then take a card, stand or double. The house draws to 16 and stands on 17; a blackjack pays 3 to 2, a
+  stand-off gives the stake back. No splitting, no insurance. Two guests play their hands beside you.
+- **Poker** at the oval table of The Tables and at the high table of the lounge: Hold'em without a limit against
+  three guests. You buy in for 100, 200 or 500 Coins (5,000 at the high table), the blinds go by the buy-in; fold,
+  check or call, raise with the slider, go all in; side pots when a seat is all in. You stand up between the hands
+  (or once you have folded) and take your chips along as Coins; out of chips you buy in again or leave. The house
+  takes 5 per cent of a pot that has seen the flop (at most 25 Coins, 1,000 at the high table).
+- **Who sits there:** the guests at the poker table have a name, a trade, a way of playing (careful, loose, a
+  bluffer) and a strength; one without chips makes room for the next. Once you have crossed the Veil, **Rook** and
+  **Dan** sit at a table now and then; a sitting with them brings you a little closer, like a bar game.
+- **A kind hand:** at blackjack a card that would take you over 21 slips back for the next now and then; at poker
+  you read a tell of one of the guests in some hands (strong, weak, nothing). Both grow with Dexterity and with the
+  perk Lucky Hand. The cards at poker are never touched, and the house keeps its edge at blackjack.
+- **Built for co-op:** a free seat at both tables; every stake and every move goes through the command bus with the
+  seat's number.
+- What you win and lose at both goes into the house's books on you at the cashier.
+
 ## alpha 0.8.62.2 – 2026-11-22
 
 **Package 62, part 2 (Luz): the machines and the wheel.**

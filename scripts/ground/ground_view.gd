@@ -5109,6 +5109,19 @@ func use(instant: bool = false) -> bool:
 			crg.finished.connect(func(_w: bool): _close_game(); _ctr_title())
 			_open_game(crg)
 			return true
+		"ctr_blackjack":
+			var cbg = load("res://scripts/ground/blackjack_game.gd").new()  # part 3: blackjack …
+			cbg.setup({"hi": bool(zone.get("hi", false)), "guests": ["A guest in gold", "A guest in violet"] if bool(zone.get("hi", false)) else ["A guest in red", "A guest in blue"]})
+			cbg.finished.connect(func(_w: bool): _close_game(); _ctr_title())
+			_open_game(cbg)
+			return true
+		"ctr_poker":
+			var cpg = load("res://scripts/ground/poker_game.gd").new()      # … and poker
+			var cpd = load("res://data/casino.gd")
+			cpg.setup({"hi": bool(zone.get("hi", false)), "guests": cpd.poker_guests(bool(zone.get("hi", false)), int(GameState.play_time / 1800.0), GameState.story.flags if GameState.story != null else {})})
+			cpg.finished.connect(func(_w: bool): _close_game(); _ctr_title())
+			_open_game(cpg)
+			return true
 		"ctr_down":
 			ctr_stop = 1
 			go_level("zstation", "lift")
