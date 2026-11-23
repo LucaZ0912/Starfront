@@ -3,6 +3,28 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.5 – 2026-11-23
+
+**Package 62a, part 1 (Luz): the plaza before the Colosseum.**
+- **Line B leads somewhere now:** the stairs of the station Colosseum are open and lead up onto a plaza of its own.
+  It is built like the plaza of the Commercial District (the same way down to the metro, drawn house fronts, the
+  roofs of tall buildings in the south), with far more marble: great slabs with joints of gold, a round mosaic,
+  two long basins with jets, bowls of holo fire, cypresses, stalls, banners of the champions.
+- **Colossi:** four figures of marble on plinths, about three times a person's height, and two greater ones at the
+  grand stair: the arena's champions in their combat suits, each with a blade of light in its own colour.
+- **The Colosseum:** a giant round of marble north of the plaza, four rings of arches, strips of neon running
+  round between them and climbing its piers, pulsing; a dome of holograms over the arena, floodlights on its crown.
+  It is far larger than the picture: from the plaza you see its foot (near it the camera looks up at it).
+- **The screen over the gate** announces the next fight: a fighter in a combat suit is pushed in at the top right,
+  then "VS", then the other at the bottom left, their names and the mode. The pairings are made up for now.
+- **The viewing scope** on the plaza pulls the view back until the whole Colosseum stands in it, Lapis behind, the
+  city small beside it; at night beams of light and fireworks.
+- **The Laurel:** a very fine house of residences west of the plaza, with a doorman. Apartments will be for sale
+  there later; its door is shut for now. The Colosseum's gate is shut too: the inside follows.
+- Debug menu: "Colosseum plaza".
+- Smoke test: the groups set in Beyond dock at a station first when a group before left you landed on a planet
+  (that was why the two checks of package 59 failed in a full run only). A full run is green again.
+
 ## alpha 0.8.62.4 – 2026-11-22
 
 **Package 62b (Luz): the bets on The Track.**

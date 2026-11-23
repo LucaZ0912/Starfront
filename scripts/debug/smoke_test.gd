@@ -722,6 +722,7 @@ func _process(delta: float) -> void:
 				await _test_fern61(main.view)            # package 61: the Fern system
 				await _test_ctr61a(main.view)            # package 61a: Centauria's trains
 				await _test_casino62(main.view)          # package 62, part 1: the Grand Centauria
+				await _test_col62a(main.view)            # package 62a, part 1: the plaza before the Colosseum
 				_shooting = false
 				timer = 0.0
 				return
@@ -13743,7 +13744,7 @@ func _test_intro56f(_view: SystemView) -> void:
 	var keep_fleet6: Array = GameState.fleet.duplicate()
 	var keep_active6 := GameState.active_uid
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -13850,7 +13851,7 @@ func _test_intro56e(_view: SystemView) -> void:
 	var keep_done: Array = st.done.duplicate()
 	var keep_tracked: String = st.tracked
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -14625,7 +14626,7 @@ func _test_w58a(_view: SystemView) -> void:
 	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
 	var keep_all = GameState.pilot.get("tree_all", false)
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -14852,7 +14853,7 @@ func _test_w58g(_view: SystemView) -> void:
 	var keep_gear: Dictionary = GameState.gear.to_dict()
 	var shots := OS.get_environment("W58G_SHOTS") != ""
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -15194,7 +15195,7 @@ func _test_w58f(_view: SystemView) -> void:
 	var keep_gear: Dictionary = GameState.gear.to_dict()
 	var shots := OS.get_environment("W58F_SHOTS") != ""
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -15686,7 +15687,7 @@ func _test_w58d(_view: SystemView) -> void:
 	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
 	var shots := OS.get_environment("W58D_SHOTS") != ""
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -16168,7 +16169,7 @@ func _test_w58c(_view: SystemView) -> void:
 	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
 	var keep_missions: Array = GameState.missions.duplicate()
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -16413,7 +16414,7 @@ func _test_w58b(_view: SystemView) -> void:
 	var keep_cr := GameState.credits
 	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -16662,7 +16663,7 @@ func _test_w59b(_view: SystemView) -> void:
 	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
 	var shots := OS.get_environment("W59_SHOTS") != ""
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -17656,7 +17657,7 @@ func _test_ctr61a(_view: SystemView) -> void:
 		for f9 in 10:
 			GameState.play_time = 82.0
 			await get_tree().process_frame
-		var shut_b: bool = (g.map.zones as Array).any(func(z): return String(z.get("kind", "")) == "ctr_exit" and String(z.get("closed", "")) != "")
+		var shut_b: bool = (g.map.zones as Array).any(func(z): return String(z.get("kind", "")) == "ctr_exit" and String(z.get("closed", "")) == "")      # (package 62a: the way up is open)
 		g.ctr_line = "B"
 		g.go_level("zstation", "rail")
 		for f9b in 5:
@@ -17730,6 +17731,177 @@ func _test_ctr61a(_view: SystemView) -> void:
 ## Package 62, part 1 (Luz): the Grand Centauria: the casino's six floors, the capsules of glass and the ride outside
 ## the tower, the cashier's Coins, the lounge with its high tables, its dancers and its terrace with the pool.
 ## Pictures: CTR_SHOTS=1 (every floor) or CTR_SHOTS=vip (the lounge and the ride only).
+## Package 62a, part 1 (Luz): the plaza before the Colosseum: the map (marble, the way down to Line B, six colossi,
+## two basins, bowls of fire, cypresses, banners, The Laurel with its shut door, the shut gate, the scope), the
+## Colosseum larger than the screen with its screen's cards, the way there from the station and back, the scope.
+func _test_col62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var Gen = load("res://scripts/ground/centauria_gen.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var m: GroundMap = CG.build_plaza({})
+	var props: Array = m.get_meta("col_props", [])
+	var count := func(k: String) -> int: return props.filter(func(p): return String(p["kind"]) == k).size()
+	var zs: Array = m.zones
+	var door: Vector2 = Vector2(float(m.get_meta("col_res")["door"]), (Gen.P_TOP + 11.0) * GroundMap.TILE)
+	var map_ok: bool = m.w == CG.QW and m.h == Gen.PH and count.call("colossus") == 6 and count.call("brazier") == 6 and count.call("cypress") >= 8 and count.call("banner") == 4 \
+		and (m.get_meta("col_pools", []) as Array).size() == 2 and (m.get_meta("col_marble", []) as Array).size() == 3 and String(m.get_meta("ctr_metro_line", "")) == "B" \
+		and int(m.get_meta("ctr_metro_stop", 0)) == 2 and bool(m.get_meta("roof_closed", false)) and (m.get_meta("ctr_facades", []) as Array).size() == 1 \
+		and zs.any(func(z): return String(z.get("id", "")) == "col_gate" and String(z.get("closed", "")) != "") \
+		and zs.any(func(z): return String(z.get("id", "")) == "col_laurel" and String(z.get("closed", "")) != "") \
+		and zs.any(func(z): return String(z.get("kind", "")) == "ctr_scope" and String(z.get("what", "")) == "col") \
+		and zs.any(func(z): return String(z.get("kind", "")) == "ctr_down" and int(z.get("stop", 0)) == 2) \
+		and m.free_at(m.get_meta("from_station"), 4.0) and m.free_at(m.get_meta("from_gate"), 4.0) and m.wander.size() >= 20 and (m.wander as Array).all(func(p): return m.free_at(p, 4.0)) \
+		and m.path(m.get_meta("from_station"), m.get_meta("from_gate")).size() > 0 and m.path(m.get_meta("from_station"), door).size() > 0 \
+		and m.path(m.get_meta("from_station"), Vector2(CG.QW - 6.0, Gen.P_TOP + 20.0) * GroundMap.TILE).size() > 0 \
+		and props.all(func(p): return not m.free_at((p["pos"] as Vector2) + Vector2(8.0, -8.0), 2.0))
+	if not map_ok:
+		print("COL62A map: w ", m.w, " props ", props.size(), " wander ", m.wander.size(), " gate way ", m.path(m.get_meta("from_station"), m.get_meta("from_gate")).size(), " door way ", m.path(m.get_meta("from_station"), door).size())
+	var card_ok: bool = CG.full_height() > 2160.0 and CG.R0 * 2.0 > 1920.0 and -CG.SCREEN.position.y < 760.0
+	for cn in 40:
+		var cd: Array = CG.card(cn * CG.CARD + 1.0)
+		card_ok = card_ok and int(cd[0]) != int(cd[1]) and int(cd[0]) >= 0 and int(cd[0]) < CG.FIGHTERS.size() and int(cd[1]) >= 0 and int(cd[1]) < CG.FIGHTERS.size() and int(cd[2]) < CG.MODES.size()
+	card_ok = card_ok and CG.fighter_tex(0, true) != null and CG.fighter_tex(0, false) != CG.fighter_tex(0, true)
+	# down to Centauria, by Line B's station up onto the plaza
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var live_ok := false
+	var way_ok := false
+	var scope_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		if shots:
+			Commands.execute({"type": "debug_daytime", "phase": "night"})
+		g.ctr_stop = 2
+		g.ctr_line = "B"
+		g.go_level("zstation", "rail")
+		for f0 in 8:
+			await get_tree().process_frame
+		g.zone = _zone_of(g.map, "ctr_exit")
+		var open_exit: bool = String(g.zone.get("closed", "")) == ""
+		g.use()
+		for f1 in 12:
+			await get_tree().process_frame
+		var fxs: Array = g._world.get_children().filter(func(nd): return is_instance_of(nd, CG.ColFx))
+		var pfx: Array = g._sorted.get_children().filter(func(nd): return is_instance_of(nd, CG.ColFx))
+		var mfx: Array = (g._world.get_children() + g._sorted.get_children()).filter(func(nd): return is_instance_of(nd, Gen.MetroFx))
+		live_ok = open_exit and String(g.level) == "zcol" and String(g._title.text).contains("Colosseum") and g.map.free_at(g.pilot.pos, 4.0) \
+			and g._sky.get_children().any(func(nd): return is_instance_of(nd, CG.ColSky)) and fxs.size() == 2 and pfx.size() == (g.map.get_meta("col_props") as Array).size() \
+			and mfx.size() == 3 and mfx.all(func(nd): return String(nd.line) == "B" and int(nd.stop) == 2) \
+			and g._world.get_children().filter(func(nd): return is_instance_of(nd, Gen.RoofFx)).size() == 2 and g.people.size() >= 20
+		if not live_ok:
+			print("COL62A live: level ", g.level, " title ", g._title.text, " fx ", fxs.size(), " props ", pfx.size(), " metro ", mfx.size(), " people ", g.people.size())
+		# the gate and The Laurel are shut; the stairs lead down to the Colosseum's station and up again
+		g.zone = _zone_of(g.map, "ctr_closed")
+		g.use()
+		for f2 in 5:
+			await get_tree().process_frame
+		var stays: bool = String(g.level) == "zcol"
+		g.zone = _zone_of(g.map, "ctr_down")
+		g.use()
+		for f3 in 10:
+			await get_tree().process_frame
+		var down: bool = String(g.level) == "zstation" and int(g.ctr_stop) == 2
+		g.zone = _zone_of(g.map, "ctr_exit")
+		g.use()
+		for f4 in 10:
+			await get_tree().process_frame
+		way_ok = stays and down and String(g.level) == "zcol" and g.pilot.pos.distance_to(g.map.get_meta("from_station")) < 40.0
+		if not way_ok:
+			print("COL62A way: stays ", stays, " down ", down, " level ", g.level)
+		if shots:
+			var top: int = Gen.P_TOP
+			var views := [["ganz", Vector2(CG.MID, top + 12.0), 0.45], ["tor", Vector2(CG.MID, top - 4.0), 0.0], ["treppe", Vector2(CG.MID - 14.0, top + 5.0), 0.0],
+				["mitte", Vector2(CG.MID, top + 12.0), 0.0], ["kolosse", Vector2(CG.QX + 12.0, top + 19.0), 0.0], ["laurel", Vector2(13.0, top + 10.0), 0.0],
+				["laurel_ganz", Vector2(13.0, top + 4.0), 0.5], ["ost", Vector2(CG.QW - 14.0, top + 14.0), 0.0], ["sued", Vector2(CG.MID + 6.0, top + 24.0), 0.0]]
+			for dn in ["night", "day"]:
+				Commands.execute({"type": "debug_daytime", "phase": dn})
+				g.go_level("zcol", "from_station")
+				for vw in views:
+					g.story_cam = (vw[1] as Vector2) * GroundMap.TILE
+					g.story_zoom = float(vw[2])
+					for f5 in 45:
+						GameState.play_time = 3.5 + CG.CARD * 2.0          # (the card with both fighters on it)
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a_%s_%s.png" % [String(vw[0]), "nacht" if dn == "night" else "tag"])
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+			Commands.execute({"type": "debug_daytime", "phase": "night"})
+			g.go_level("zcol", "from_station")
+			for f6 in 10:
+				await get_tree().process_frame
+		# the scope: the whole of the Colosseum
+		g.zone = _zone_of(g.map, "ctr_scope")
+		g.use()
+		for f7 in 5:
+			await get_tree().process_frame
+		scope_ok = g._lift_menu != null and is_instance_of(g._lift_menu, CG.ColScope)
+		if scope_ok and shots:
+			for sk in [[0.2, "nah"], [1.4, "halb"], [4.6, "ganz"]]:
+				g._lift_menu._t = float(sk[0])
+				for f8 in 12:
+					GameState.play_time = 3.5 + CG.CARD * 2.0
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a_fernrohr_%s.png" % String(sk[1]))
+			Commands.execute({"type": "debug_daytime", "phase": "day"})
+			g._lift_menu.night = 0.0
+			g._lift_menu._t = 4.6
+			for f9 in 12:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a_fernrohr_tag.png")
+		if scope_ok:
+			g._lift_menu._t = 99.0
+			scope_ok = float(g._lift_menu.pulled()) > 0.99
+		g._close_lift_menu()
+		# the debug menu's way there
+		g.go_level("hangar", "lift")
+		for f10 in 8:
+			await get_tree().process_frame
+		var de := String(Commands.execute({"type": "debug_casino", "place": "colosseum"}))
+		for f11 in 10:
+			await get_tree().process_frame
+		g = main.ground
+		scope_ok = scope_ok and de == "" and g != null and String(g.level) == "zcol" and int(g.ctr_stop) == 2
+		if not scope_ok:
+			print("COL62A scope: menu ", g._lift_menu if g != null else null, " debug ", de, " level ", g.level if g != null else "")
+	check(map_ok and card_ok and live_ok and way_ok and scope_ok,
+		"62a, part 1: the plaza before the Colosseum: marble, the way down to Line B as on the other plaza, six colossi of the champions, two basins, bowls of fire, cypresses, banners; The Laurel (its door shut) west, a row of houses east, roofs in the south; the Colosseum larger than the screen, its screen's cards two different fighters; up from the station and down again, the gate shut; the scope shows the whole of it; the debug menu's way there  [%s %s %s %s %s]" % [map_ok, card_ok, live_ok, way_ok, scope_ok])
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
 func _test_casino62(_view: SystemView) -> void:
 	var Gen = load("res://scripts/ground/centauria_gen.gd")
 	var shot_mode := OS.get_environment("CTR_SHOTS")
@@ -18500,7 +18672,7 @@ func _test_w59a(_view: SystemView) -> void:
 	var keep_lod: Dictionary = GameState.lodging.duplicate(true)
 	var shots := OS.get_environment("W59_SHOTS") != ""
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame
@@ -18568,6 +18740,10 @@ func _test_w59a(_view: SystemView) -> void:
 	var bar_ok := false
 	var meet_ok := false
 	var talk_ok := false
+	if g == null or not is_instance_valid(g):
+		var af := GameState.active()
+		print("W59A deck: no deck. docked ", af.docked_at, " in the view ", v.stations.has(af.docked_at), " want ", dst, " system ", GameState.current_system, " ship's ", af.system_id, " view's ", v.system_id,
+			" beyond ", Universe.special_system("beyond"), " ship ", af.hull_id, " uid ", af.uid)
 	if g != null and is_instance_valid(g):
 		g.go_level("commercial", "lift")
 		for f1 in 10:
@@ -18663,7 +18839,7 @@ func _test_w58h(_view: SystemView) -> void:
 	var keep_gear: Dictionary = GameState.gear.to_dict()
 	var shots := OS.get_environment("W58H_SHOTS") != ""
 	Commands.cheats_enabled = true
-	if Universe.special_system("beyond") != GameState.current_system or GameState.active().docked_at == "":
+	if Universe.special_system("beyond") != GameState.current_system or not GameState.active().docked_at.begins_with("st_"):      # (a group before may have left you landed on a planet)
 		Commands.execute({"type": "debug_special", "special": "beyond"})
 		for i in 30:
 			await get_tree().process_frame

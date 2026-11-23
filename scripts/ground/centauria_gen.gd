@@ -180,8 +180,7 @@ static func build_station(_station: Dictionary, stop: int, came_by: String = "")
 		_zone(m, Rect2(sx, PLAT + 2.0, 4.0, 2.2), "ctr_exit", "Stairs up: the Commercial District", Color(1.0, 0.6, 0.8))
 		MuseumGen._label(m, "COMMERCIAL DISTRICT", Vector2(SW * 0.5, PLAT + 0.6), Color(1.0, 0.75, 0.88))
 	else:
-		_zone(m, Rect2(sx, PLAT + 2.0, 4.0, 2.2), "ctr_exit", "Stairs up: the Colosseum", Color(1.0, 0.85, 0.4),
-			{"closed": "The Colosseum opens soon."})
+		_zone(m, Rect2(sx, PLAT + 2.0, 4.0, 2.2), "ctr_exit", "Stairs up: the Colosseum", Color(1.0, 0.85, 0.4))      # package 62a: its plaza
 		MuseumGen._label(m, "COLOSSEUM", Vector2(SW * 0.5, PLAT + 0.6), Color(1.0, 0.86, 0.45))
 	m.spawn = Vector2(SW * 0.5, PLAT + 5.2) * TILE
 	var side := String(LINES[came_by]["side"]) if LINES.has(came_by) and here.has(came_by) else String(LINES[here[0]]["side"])
@@ -1370,6 +1369,7 @@ class RoofFx extends Node2D:
 	var bottom := 0.0                # the map ends here
 	var line := 0.0                  # the row of buildings begins here (tier 1: each roof at the ground it stands behind)
 	var _roofs: Array = []           # {r: Rect2, seed, lvl, tint}
+	var _midx := 0.0                 # the plaza's middle (window px)
 	var _t := 0.0
 	var _acc := 0.0
 
@@ -1378,11 +1378,14 @@ class RoofFx extends Node2D:
 		view = p_view
 		night = p_night
 		var tl := float(GroundMap.TILE)
-		var mid := Gen.P_CX + Gen.P_CW / 2
+		var mid := int(m.get_meta("roof_mid", Gen.P_CX + Gen.P_CW / 2))
 		var street := Gen.P_TOP + 28                     # the plaza ends here, the street south begins
 		bottom = float(m.h) * tl
 		line = float(street) * tl if tier == 1 else bottom - 6.0 * tl
 		gap = Rect2((mid - 3) * tl, float(street) * tl, 6.0 * tl, bottom - float(street) * tl + 400.0)
+		_midx = (mid * tl) * GroundMap.SCALE
+		if bool(m.get_meta("roof_closed", false)):       # (package 62a: a plaza without a street south, the row stands whole)
+			gap = Rect2(-99999.0, float(street) * tl, 0.0, 0.0)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 6130 + tier * 77
 		var x := -420.0
@@ -1415,8 +1418,7 @@ class RoofFx extends Node2D:
 	func _process(dt: float) -> void:
 		_t += dt
 		if tier == 2 and view != null and is_instance_valid(view) and (view._cam_c as Vector2) != Vector2.INF:
-			var midp := gap.get_center().x * GroundMap.SCALE
-			position.x = -((view._cam_c as Vector2).x - midp) * 0.1      # the near row shifts against you
+			position.x = -((view._cam_c as Vector2).x - _midx) * 0.1      # the near row shifts against you
 		_acc += dt
 		if _acc > 0.08:
 			_acc = 0.0
@@ -1861,6 +1863,7 @@ class MetroFx extends Node2D:
 	var base := 0.0                  # the line it stands on (art px below the corner)
 	var line := "A"
 	var stop := 1
+	var tick := TICK                 # what runs along its board
 	var night := 0.0
 	var _t := 0.0
 	var _acc := 0.0
@@ -1955,8 +1958,8 @@ class MetroFx extends Node2D:
 		else:
 			draw_string(font, Vector2(52.0, -2.0), "%d s" % int(ceil(left)), HORIZONTAL_ALIGNMENT_RIGHT, 27.0, 6, Color(1.0, 0.8, 0.3))
 		draw_rect(Rect2(16.0, 0.0, 64.0, 1.0), Color(cyan, 0.35))
-		var off := int(_t * 4.0) % TICK.length()
-		draw_string(font, Vector2(17.0, 5.5), (TICK + TICK).substr(off, 22), HORIZONTAL_ALIGNMENT_LEFT, 62.0, 5, Color(0.45, 1.0, 0.7))
+		var off := int(_t * 4.0) % tick.length()
+		draw_string(font, Vector2(17.0, 5.5), (tick + tick).substr(off, 22), HORIZONTAL_ALIGNMENT_LEFT, 62.0, 5, Color(0.45, 1.0, 0.7))
 		draw_rect(Rect2(12.0, 9.0, 72.0, 7.0), body.darkened(0.3))
 		draw_rect(Rect2(16.0, 14.0, 64.0, 2.0), Color(1.0, 0.9, 0.65, 0.85))
 		for dl in 8:

@@ -184,7 +184,7 @@ var _drone_held: Array = [-1.0, -1.0]   # 0.7.52.19: how long C / Shift+C is hel
 var _warned := {}
 var weather: WeatherFx = null             # 54e (Luz): the weather over an outdoor map
 ## 54e: the levels out in the open – where the weather reaches
-const WEATHER_LEVELS := ["landing", "settlement", "street", "alley", "plaza", "minehead", "mplaza", "kplaza", "cplaza", "cstation", "pplaza", "zplaza", "zalley"]
+const WEATHER_LEVELS := ["landing", "settlement", "street", "alley", "plaza", "minehead", "mplaza", "kplaza", "cplaza", "cstation", "pplaza", "zplaza", "zalley", "zcol"]
 
 
 func _ready() -> void:
@@ -420,6 +420,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = CentauriaGen.build_punkbar(station, city_day() < 0.5)       # … and the Static Feedback (the band plays at night)
 	elif level == "zplaza":
 		map = CentauriaGen.build_plaza(station)                    # … and the plaza of the Commercial District
+	elif level == "zcol":
+		map = ColosseumGen.build_plaza(station)                    # package 62a (Luz): the plaza before the Colosseum
 	elif level == "zcasino":
 		map = CentauriaGen.build_casino(station, ctr_floor, city_day() < 0.5)      # package 62 (Luz): the Grand Centauria, floor by floor
 	elif level == "cplaza":
@@ -536,7 +538,7 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if _avail.has("clinic"):
 		lift_title += " · Clinic"                                     # 0.7.51.11
 	for zc in map.zones:
-		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza", "pplaza", "zplaza"]:
+		if String(zc.get("id", "")) == "lift" and not level in ["settlement", "landing", "alley", "plaza", "mplaza", "kplaza", "pplaza", "zplaza", "zcol"]:
 			zc["title"] = lift_title
 		elif is_city() and String(zc.get("id", "")) == "ship" and level == "hangar":
 			zc["title"] = "Stairs down: aboard your ship and up through the hatch"
@@ -651,6 +653,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_title.text = "Centauria – Commercial Hall"           # package 61a (Luz): the city's shops, in a hall on the plaza
 	elif level == "zplaza":
 		_title.text = "Centauria – Commercial District"
+	elif level == "zcol":
+		_title.text = "Centauria – Colosseum"
 	elif level == "zalley":
 		_title.text = "Centauria – Back Alleys"
 	elif level == "zbar":
@@ -782,14 +786,35 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		rfx.scale = Vector2.ONE * GroundMap.SCALE
 		_world.add_child(rfx)
 		_world.move_child(rfx, _sorted.get_index())
-	if level == "zplaza" and map.has_meta("ctr_facades"):
+	if level == "zcol":
+		# package 62a (Luz): the Colosseum's plaza: its marble, basins, stair and The Laurel's front under the people,
+		# the colossi, bowls of fire, cypresses and banners among them
+		for cpart in ["floor", "res"]:
+			var cfl = ColosseumGen.ColFx.new()
+			cfl.part = cpart
+			cfl.map = map
+			cfl.data = map.get_meta("col_res", {})
+			cfl.night = 1.0 - city_day()
+			cfl.scale = Vector2.ONE * GroundMap.SCALE
+			_world.add_child(cfl)
+			_world.move_child(cfl, _sorted.get_index())
+		for cpd in map.get_meta("col_props", []):
+			var cpf = ColosseumGen.ColFx.new()
+			cpf.part = "prop"
+			cpf.map = map
+			cpf.data = cpd
+			cpf.night = 1.0 - city_day()
+			cpf.scale = Vector2.ONE * GroundMap.SCALE
+			cpf.position = (cpd["pos"] as Vector2) * GroundMap.SCALE
+			_sorted.add_child(cpf)
+	if level in ["zplaza", "zcol"] and map.has_meta("ctr_facades"):
 		var ffx = CentauriaGen.FacadeFx.new()              # (Luz) the fronts of the plaza's buildings, storey by storey
 		ffx.buildings = map.get_meta("ctr_facades")
 		ffx.night = 1.0 - city_day()
 		ffx.scale = Vector2.ONE * GroundMap.SCALE
 		_world.add_child(ffx)
 		_world.move_child(ffx, _sorted.get_index())
-	if level == "zplaza":
+	if level in ["zplaza", "zcol"]:
 		for rtier in [1, 2]:
 			var rf = CentauriaGen.RoofFx.new()             # (Luz) tall buildings round the south: their roofs come up from below
 			rf.setup(rtier, self, map, 1.0 - city_day())
@@ -897,12 +922,15 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 				_sorted.add_child(cwk)
 				people.append(cwk)
 				cn += 1
-	if level == "zplaza" and map.has_meta("ctr_metro"):
+	if level in ["zplaza", "zcol"] and map.has_meta("ctr_metro"):
 		var mo: Vector2 = map.get_meta("ctr_metro")        # (Luz) the way down to the station, drawn: its floor under the people,
 		for mp in [["floor", 0.0], ["wall", 16.0], ["posts", 55.0]]:      # its wall and its lamp posts among them
 			var mf = CentauriaGen.MetroFx.new()
 			mf.part = String(mp[0])
 			mf.base = float(mp[1])
+			mf.line = String(map.get_meta("ctr_metro_line", "A"))      # (package 62a: Line B at the Colosseum)
+			mf.stop = int(map.get_meta("ctr_metro_stop", 1))
+			mf.tick = String(map.get_meta("ctr_metro_tick", mf.tick))
 			mf.night = 1.0 - city_day()
 			mf.scale = Vector2.ONE * GroundMap.SCALE
 			mf.position = (mo + Vector2(0.0, mf.base)) * GroundMap.SCALE
@@ -1925,6 +1953,7 @@ var sim_foes: Array = []
 ## Package 61a (Luz): Centauria's trains – the stop you are at (0 Central, 1 Commercial District, 2 Colosseum), the
 ## line you ride. Levels "zstation" (a station) and "ztrain" (aboard).
 const CentauriaGen = preload("res://scripts/ground/centauria_gen.gd")
+const ColosseumGen = preload("res://scripts/ground/colosseum_gen.gd")       # package 62a: the plaza before the Colosseum
 var ctr_stop := 0
 var ctr_line := "A"
 var ctr_floor := 0                      # package 62 (Luz): which floor of the Grand Centauria you stand on
@@ -2286,6 +2315,13 @@ func _space_view(sys_id: int) -> void:
 		var psk = CentauriaGen.PlazaSky.new()
 		psk.setup(_window.size, self, 1.0 - city_day())
 		_sky.add_child(psk)
+		return
+	if _window.size.x > 0.0 and level == "zcol":
+		_neb.material = null                               # package 62a (Luz): the Colosseum north of its plaza
+		_neb.color = Color(0.02, 0.02, 0.05)
+		var csk = ColosseumGen.ColSky.new()
+		csk.setup(_window.size, self, 1.0 - city_day())
+		_sky.add_child(csk)
 		return
 	if _window.size.x > 0.0 and level == "ztrain":
 		_neb.material = null                               # package 61a (Luz): Centauria passing in the train's windows
@@ -5076,11 +5112,11 @@ func use(instant: bool = false) -> bool:
 			go_level("hangar", "lift")
 			return true
 		"ctr_exit":
-			go_level("zplaza", "from_station")               # up onto the plaza of the Commercial District
+			go_level("zcol" if ctr_stop == 2 else "zplaza", "from_station")      # up onto the plaza of the Commercial District, or the Colosseum's
 			return true
 		"ctr_scope":
 			# (Luz) the viewing scope: the view pulls back to the whole of the towers; Esc puts it down
-			var tsc = CentauriaGen.TowerScope.new()
+			var tsc = ColosseumGen.ColScope.new() if String(zone.get("what", "")) == "col" else CentauriaGen.TowerScope.new()
 			tsc.night = 1.0 - city_day()
 			_ui.add_child(tsc)
 			_lift_menu = tsc
@@ -5135,7 +5171,7 @@ func use(instant: bool = false) -> bool:
 			_open_game(cpg)
 			return true
 		"ctr_down":
-			ctr_stop = 1
+			ctr_stop = int(zone.get("stop", 1))
 			go_level("zstation", "lift")
 			return true
 		"alight":
@@ -5729,7 +5765,7 @@ func _choose_level(target: String) -> void:
 		return
 	if target == "plaza":
 		_town_kind = "corp"                              # 0.7.53.19: the corporate tower's plaza
-	elif target in ["alley", "mplaza", "kplaza", "pplaza", "zplaza"]:
+	elif target in ["alley", "mplaza", "kplaza", "pplaza", "zplaza", "zcol"]:
 		_town_kind = ""
 	if target == "zstation":
 		ctr_stop = 0                                     # package 61a: Centauria Central, under the hangar
@@ -6541,6 +6577,8 @@ func _camera(delta: float = -1.0) -> void:
 	_world.scale = Vector2(zoom, zoom)
 	var mp := map.size_px() * GroundMap.SCALE * zoom
 	var c := pilot.position + Vector2(0, -24)
+	if level == "zcol":                                   # package 62a (Luz): near the Colosseum the camera looks up at it
+		c.y -= 330.0 * clampf((float(CentauriaGen.P_TOP + 17) * GroundMap.TILE - pilot.pos.y) / (12.0 * GroundMap.TILE), 0.0, 1.0)
 	# 0.7.49.14: sitting on the hangar's bench, the camera glides over to the ship – a look at her
 	var at_ship := level == "hangar" and not _seat.is_empty() and map.ship_at != Vector2.INF
 	if story_cam != Vector2.INF:

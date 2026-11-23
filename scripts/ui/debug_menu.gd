@@ -1502,6 +1502,7 @@ func _build_ground() -> void:
 	rca2.add_child(UI.button("Membership on", func(): _cmd({"type": "debug_casino", "vip": true})))
 	rca2.add_child(UI.button("Membership off", func(): _cmd({"type": "debug_casino", "vip": false})))
 	rca2.add_child(UI.button("+1,000 Coins", func(): _cmd({"type": "debug_casino", "coins": 1000})))
+	rca2.add_child(UI.button("Colosseum plaza", func(): _cmd({"type": "debug_casino", "place": "colosseum"})))      # package 62a
 
 
 func _update_ground_status() -> void:

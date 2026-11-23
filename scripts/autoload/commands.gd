@@ -3897,6 +3897,14 @@ func _c_debug_museum(c: Dictionary) -> String:
 ## first if need be; the lounge makes you a member); "vip": true / false, the house's membership; "coins": n, Coins
 ## into your pocket.
 func _c_debug_casino(c: Dictionary) -> String:
+	if String(c.get("place", "")) == "colosseum":         # package 62a: straight onto the plaza before the Colosseum
+		var e0 := _c_debug_casino({"to": 0})
+		var g0 = _ground()
+		if e0 != "" or g0 == null:
+			return e0
+		g0.ctr_stop = 2
+		g0.go_level("zcol", "from_station")
+		return ""
 	if c.has("vip"):
 		GameState.casino_vip = bool(c["vip"])
 		GameState.log_msg("[Debug] The Grand Centauria: %s." % ("you are a member now" if GameState.casino_vip else "you are no member any more"), GameState.COL_INFO)
