@@ -8,7 +8,34 @@ extends RefCounted
 
 const GearData = preload("res://data/gear.gd")
 
-const START_POINTS := 10           # the budget of gear points you begin with
+const START_POINTS := 10           # the budget of gear points you begin with (at the first rank)
+## Part 4 (Luz): the rank. It stays, whatever the mode and however a run ends. Each rank: its name, the rank points
+## it takes, the budget you begin a run with, the best quality the house hands you (an index into the qualities).
+const RANKS := [
+	{"name": "Newcomer", "xp": 0, "start": 10, "q": 1},
+	{"name": "Contender", "xp": 60, "start": 12, "q": 2},
+	{"name": "Gladiator", "xp": 180, "start": 14, "q": 3},
+	{"name": "Champion", "xp": 400, "start": 16, "q": 4},
+	{"name": "Legend", "xp": 800, "start": 18, "q": 5},
+]
+const BOSS_EVERY := 10             # every so many rounds a named opponent waits instead of the strong one
+const STATIONS := 5                # charging points on a fight's ground (Luz): energy and ammunition, for you and for the others
+const STATION_COOL := 25.0         # seconds a charging point is drawn dry after somebody used it
+const FOE_RESERVE := 0.5           # how much of their suit's energy and ammunition the others carry into a fight
+## The named ones (Luz: every ten wins an important opponent), in their order; after the last the list begins anew.
+const BOSSES := [
+	{"name": "THE WARDEN", "suit": "suit_mil_heavy", "seed": 101, "col": Color(1.0, 0.82, 0.3), "line": "Ten rounds and still standing. I end that."},
+	{"name": "OLD MERCY", "suit": "suit_mil_heavy", "seed": 113, "col": Color(0.9, 0.95, 1.0), "line": "I have buried better fits than yours."},
+	{"name": "GLASS SAINT", "suit": "suit_mil_pathfinder", "seed": 127, "col": Color(0.4, 0.95, 1.0), "line": "The crowd came for you. They will stay for me."},
+	{"name": "THE LAST OF KILN", "suit": "suit_mil_heavy", "seed": 131, "col": Color(1.0, 0.4, 0.2), "line": "Nobody leaves the thirtieth round the way they came."},
+]
+## The settings of the fight (Luz: whole maps in different settings, far larger than the arena; the arena builds them
+## as holograms): id, name, the body whose ground it has, what stands there.
+const SETTINGS := [
+	{"id": "dust", "name": "Dust Canyon", "body": "desert", "text": "Red rock and dry wind.", "cover": ["rock", "rock", "rock", "crates", "barrier"]},
+	{"id": "ice", "name": "Glacier Shelf", "body": "ice", "text": "Blue ice under a white sky.", "cover": ["rock", "rock", "barrier", "barrier", "bulwark"]},
+	{"id": "yard", "name": "Container Yard", "body": "metal", "text": "Stacks of steel, floodlights.", "cover": ["crates", "crates", "crates", "bulwark", "barrier", "barrel"]},
+]
 const Q_COST := {"F": 0, "E": 1, "D": 2, "C": 3, "B": 5, "A": 7}      # what a quality adds to a piece's cost
 ## What a piece costs at quality F (grenades and what goes on the belt have no quality: their place's cost).
 const BASE := {
@@ -41,7 +68,42 @@ const MODES := [
 
 
 static func fresh() -> Dictionary:
-	return {"points": 0, "wins": 0, "streak": 0, "best": 0, "fights": 0, "round": 1, "play": "single", "mode": "", "fit": default_fit()}
+	return {"points": 0, "wins": 0, "streak": 0, "best": 0, "fights": 0, "round": 1, "play": "single", "mode": "", "fit": default_fit(), "xp": 0, "seen": false}
+
+
+## Your rank (0 … 4) from your rank points.
+static func rank(col: Dictionary) -> int:
+	var r := 0
+	for i in RANKS.size():
+		if int(col.get("xp", 0)) >= int(RANKS[i]["xp"]):
+			r = i
+	return r
+
+
+## Where you stand on the way to the next rank: {"rank", "name", "xp", "from", "to" (-1: the last rank), "k": 0 … 1}.
+static func rank_state(col: Dictionary) -> Dictionary:
+	var r := rank(col)
+	var xp := int(col.get("xp", 0))
+	var from := int(RANKS[r]["xp"])
+	var to := int(RANKS[r + 1]["xp"]) if r + 1 < RANKS.size() else -1
+	return {"rank": r, "name": String(RANKS[r]["name"]), "xp": xp, "from": from, "to": to, "k": 1.0 if to < 0 else clampf(float(xp - from) / float(to - from), 0.0, 1.0)}
+
+
+## May a piece of this quality be handed to you at your rank? (Things without quality always.)
+static func allowed(id: String, col: Dictionary) -> bool:
+	if not id.contains(":"):
+		return true
+	return GearData.QUALITIES.find(id.get_slice(":", 1)) <= int(RANKS[rank(col)]["q"])
+
+
+## How loud the crowd claps (dB): by how full the stands are.
+static func applause_db(col: Dictionary) -> float:
+	return lerpf(-20.0, 2.0, crowd(col))
+
+
+## How full the stands are (0.2 … 1): fuller the longer your run and the higher your rank.
+static func crowd(col: Dictionary) -> float:
+	return clampf(0.22 + 0.07 * int(col.get("streak", 0)) + 0.12 * rank(col), 0.2, 1.0)
 
 
 ## The fit you begin with: the plainest suit and a pistol, both free.
@@ -50,7 +112,7 @@ static func default_fit() -> Dictionary:
 
 
 static func budget(col: Dictionary) -> int:
-	return START_POINTS + int(col.get("points", 0))
+	return int(RANKS[rank(col)]["start"]) + int(col.get("points", 0))
 
 
 ## How many places of each kind a suit has.
@@ -125,8 +187,10 @@ static func piece_name(id: String) -> String:
 
 ## Puts a piece into a place of a fit ("" empties it). Returns {"fit": the new fit, "err": "" or why not}; the fit
 ## must stay within `points`.
-static func equip(fit: Dictionary, place: String, idx: int, id: String, points: int) -> Dictionary:
+static func equip(fit: Dictionary, place: String, idx: int, id: String, points: int, max_q: int = 5) -> Dictionary:
 	var f := fitted(fit)
+	if id.contains(":") and GearData.QUALITIES.find(id.get_slice(":", 1)) > max_q:
+		return {"fit": f, "err": "Your rank does not reach quality %s yet." % id.get_slice(":", 1)}
 	if place == "suit":
 		if id == "" or not id.begins_with("suit_") or cost(id) < 0:
 			return {"fit": f, "err": "No such suit."}
@@ -155,13 +219,92 @@ static func totals(fit: Dictionary) -> Dictionary:
 	return g.totals()
 
 
-## Who waits in the arena in a round of King of the Colosseum: one strong, two weak: [{"who": a fighter of
-## ColosseumGen.FIGHTERS, "strong": bool}].
-static func opponents(round_no: int, fighters: int) -> Array:
-	var a := posmod(round_no * 3 + 1, fighters)
-	return [{"who": a, "strong": true}, {"who": posmod(a + 2, fighters), "strong": false}, {"who": posmod(a + 5, fighters), "strong": false}]
+## Who waits in the arena in a round of King of the Colosseum: one strong, two weak, drawn by lot (`salt`: so that
+## the lot falls the same for the preview and the fight): [{"who": a fighter of ColosseumGen.FIGHTERS, "strong":
+## bool, "boss": -1 or a named one of BOSSES}]. Every BOSS_EVERY rounds a named opponent stands in the strong one's place.
+static func opponents(round_no: int, fighters: int, salt: int = 0) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("col_round_%d_%d" % [round_no, salt])
+	var pool: Array = range(fighters)
+	var out: Array = []
+	for i in 3:
+		out.append({"who": int(pool.pop_at(rng.randi() % pool.size())), "strong": i == 0, "boss": -1})
+	if round_no % BOSS_EVERY == 0:
+		out[0]["boss"] = posmod(round_no / BOSS_EVERY - 1, BOSSES.size())
+	return out
 
 
-## What a win in a round pays: Coins and gear points.
+## How an opponent of a round is made: the kind of foe (data/foes.gd), its tier and the quality of its gear.
+static func foe_of(o: Dictionary, round_no: int, slot_i: int) -> Dictionary:
+	var qs: Array = GearData.QUALITIES
+	if int(o.get("boss", -1)) >= 0:
+		return {"kind": "col_boss", "tier": "red", "quality": String(qs[mini(5, 3 + round_no / 20)])}
+	if bool(o["strong"]):
+		return {"kind": "col_champion", "tier": "yellow" if round_no < 5 else "red", "quality": String(qs[mini(5, 1 + (round_no - 1) / 2)])}
+	return {"kind": ["col_rusher", "col_rifle", "col_gunner"][posmod(int(o["who"]) + slot_i, 3)], "tier": "green" if round_no < 4 else ("yellow" if round_no < 9 else "red"),
+		"quality": String(qs[mini(5, (round_no - 1) / 3)])}
+
+
+## The setting a round is fought in.
+static func setting(round_no: int, salt: int = 0) -> Dictionary:
+	return SETTINGS[posmod(hash("col_map_%d_%d" % [round_no, salt]), SETTINGS.size())]
+
+
+## What a win in a round pays: Coins, gear points, rank points.
 static func reward(round_no: int) -> Dictionary:
-	return {"coins": 30 + 10 * round_no, "points": 2 + (round_no - 1) / 3}
+	var boss := round_no % BOSS_EVERY == 0
+	return {"coins": (30 + 10 * round_no) * (3 if boss else 1), "points": 2 + (round_no - 1) / 3 + (3 if boss else 0), "xp": (10 + 5 * round_no) * (2 if boss else 1)}
+
+
+## A fight is over. Won: the reward (the Coins are paid by the caller), the run goes on to the next round. Lost: the
+## run ends: its gear points are gone, the round is 1 again; the rank stays. Returns what happened:
+## {"won", "coins", "points", "xp", "round": the round fought, "rank_up": bool, "lost_points"}.
+static func settle(col: Dictionary, won: bool) -> Dictionary:
+	var rnd := int(col.get("round", 1))
+	var before := rank(col)
+	col["fights"] = int(col.get("fights", 0)) + 1
+	var out := {"won": won, "coins": 0, "points": 0, "xp": 0, "round": rnd, "rank_up": false, "lost_points": 0}
+	if won:
+		var rw := reward(rnd)
+		out["coins"] = int(rw["coins"])
+		out["points"] = int(rw["points"])
+		out["xp"] = int(rw["xp"])
+		col["points"] = int(col.get("points", 0)) + int(rw["points"])
+		col["xp"] = int(col.get("xp", 0)) + int(rw["xp"])
+		col["wins"] = int(col.get("wins", 0)) + 1
+		col["streak"] = int(col.get("streak", 0)) + 1
+		col["best"] = maxi(int(col.get("best", 0)), int(col["streak"]))
+		col["round"] = rnd + 1
+	else:
+		out["lost_points"] = int(col.get("points", 0))
+		col["points"] = 0
+		col["streak"] = 0
+		col["round"] = 1
+		col["fit"] = default_fit()                          # (the run's gear goes back to the house)
+	out["rank_up"] = rank(col) > before
+	return out
+
+
+## The pilot's gear for the fight: a fit of the house's pieces as the gear the fights on foot know.
+static func gear_of(fit: Dictionary) -> PilotGear:
+	var f := fitted(fit)
+	var g := PilotGear.new()
+	g.suit = String(f["suit"])
+	g.inv = []
+	g.inv.resize(GearData.INV_SLOTS)
+	g.inv.fill({})
+	g._fit_slots()
+	for i in mini(g.weapons.size(), (f["weapons"] as Array).size()):
+		g.weapons[i] = String(f["weapons"][i])
+	for i2 in mini(g.features.size(), (f["features"] as Array).size()):
+		g.features[i2] = String(f["features"][i2])
+	for i3 in mini(g.drones.size(), (f["drones"] as Array).size()):
+		g.drones[i3] = String(f["drones"][i3])
+	for i4 in mini(g.grenades.size(), (f["grenades"] as Array).size()):
+		var gid := String(f["grenades"][i4])
+		g.grenades[i4] = {"id": gid, "n": int(STACK.get(gid, 1))} if gid != "" else {}
+	for i5 in mini(g.belt.size(), (f["belt"] as Array).size()):
+		var bid := String(f["belt"][i5])
+		g.belt[i5] = {"id": bid, "n": int(STACK.get(bid, 1))} if bid != "" else {}
+	g.refill()
+	return g

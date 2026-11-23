@@ -29,6 +29,23 @@ const FOES := {
 	"bandit_boss": {"name": "Dust Rat Boss", "faction": "bandits", "suit": "suit_mil_light", "weapon": "wp_laser_rifle", "quality": "D",
 		"health": 100.0, "firearms": 4, "athletics": 2, "role": "leader", "flee": 0.0, "bounty": 400, "c1": 0, "c2": 8, "helmet": true,
 		"grenades": 1, "desc": "Leads the gang from cover with a laser rifle and a real shield. Never runs, but when it falls, the gang runs."},
+	# package 62a, part 4 (Luz): the Colosseum's fighters. Two weak ones and a strong one stand against you in King of
+	# the Colosseum; every tenth round a named one. Their names and looks come from the arena's list.
+	"col_rusher": {"name": "Fighter", "faction": "arena", "suit": "suit_mil_light", "weapon": "wp_shotgun", "quality": "E",
+		"health": 60.0, "firearms": 1, "athletics": 3, "role": "rusher", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 12, "helmet": true,
+		"desc": "Comes straight at you with a scatter gun."},
+	"col_rifle": {"name": "Fighter", "faction": "arena", "suit": "suit_mil_light", "weapon": "wp_rifle", "quality": "E",
+		"health": 60.0, "firearms": 2, "athletics": 1, "role": "rifleman", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 13, "helmet": true,
+		"desc": "Keeps to cover and shoots from afar."},
+	"col_gunner": {"name": "Fighter", "faction": "arena", "suit": "suit_mil_light", "weapon": "wp_smg", "quality": "E",
+		"health": 65.0, "firearms": 1, "athletics": 2, "role": "flanker", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 10, "helmet": true,
+		"desc": "Comes round your side with a burst gun."},
+	"col_champion": {"name": "Fighter", "faction": "arena", "suit": "suit_mil_heavy", "weapon": "wp_laser_rifle", "quality": "D",
+		"health": 100.0, "firearms": 3, "athletics": 2, "role": "holder", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 8, "helmet": true,
+		"grenades": 1, "desc": "The strong one of the three: a heavy suit, a laser rifle, a grenade."},
+	"col_boss": {"name": "Champion", "faction": "arena", "suit": "suit_mil_heavy", "weapon": "wp_laser_rifle", "quality": "C",
+		"health": 100.0, "firearms": 4, "athletics": 3, "role": "holder", "flee": 0.0, "bounty": 0, "c1": 0, "c2": 10, "helmet": true,
+		"grenades": 2, "aim": 1.15, "desc": "A named one of the Colosseum. Never runs."},
 	# 0.7.52.5: pirates – combat suits in black and red, grenades, a sniper and a captain
 	"pirate_raider": {"name": "Red Talon Raider", "faction": "pirates", "suit": "suit_mil_light", "weapon": "wp_smg", "quality": "D",
 		"health": 70.0, "firearms": 2, "athletics": 4, "role": "flanker", "flee": 0.15, "bounty": 220, "c1": 0, "c2": 8, "helmet": true,
@@ -169,7 +186,8 @@ const KINDS := ["bandit_scrapper", "bandit_rifleman", "bandit_gunner", "bandit_b
 	"pirate_grenadier", "pirate_sniper", "pirate_captain", "guard_trooper", "guard_heavy", "guard_sergeant", "maint_drone",
 	"corp_guard", "corp_marksman", "corp_chief", "cultist", "cult_zealot", "cult_priest",
 	"sec_robot", "pre_robot", "necrotic", "mut_rat", "rat_brood", "cave_crawler", "specimen",
-	"grazer", "glider", "pack_hunter", "lurker", "shore_crab", "armor_crab", "sand_lurker", "furball", "frost_bear", "frost_worm"]
+	"grazer", "glider", "pack_hunter", "lurker", "shore_crab", "armor_crab", "sand_lurker", "furball", "frost_bear", "frost_worm",
+	"col_rusher", "col_rifle", "col_gunner", "col_champion", "col_boss"]
 const ROLES := ["rusher", "rifleman", "holder", "flanker", "thrower", "leader", "sniper"]
 ## How a role fights: `pref` – the share of its reach it keeps from you; `cover` – it seeks cover.
 const ROLE := {

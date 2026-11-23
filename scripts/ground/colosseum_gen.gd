@@ -49,6 +49,8 @@ const MODES := ["KING OF THE COLOSSEUM", "TEAM DEATHMATCH", "SURVIVOR"]
 const CARD := 12.0                 # seconds one announcement runs
 
 static var _tex := {}
+static var gate_open := 0.0        # part 4: how far the gate of the others stands open (the arena's ground, 0 … 1)
+static var boot := 0.0             # … how far the hologram has come up over the arena's floor (0 … 1)
 
 
 static func hsh(i: int, salt: int) -> float:
@@ -78,6 +80,33 @@ static func fighter_tex(i: int, marble: bool) -> Texture2D:
 		tex = ImageTexture.create_from_image(img)
 	_tex[key] = tex
 	return tex
+
+
+## Part 4: an opponent of a round as it is shown: {"name", "col", "tex", "look", "strong", "boss", "line"}. A named
+## one (data/colosseum.gd BOSSES) has its own name, colour and face.
+static func foe_card(o: Dictionary) -> Dictionary:
+	var CD2 = load("res://data/colosseum.gd")
+	var b := int(o.get("boss", -1))
+	if b >= 0:
+		var bd: Dictionary = CD2.BOSSES[b]
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 6200 + int(bd["seed"])
+		var look: Dictionary = ChibiArt.PilotArt.random_look(rng)
+		look["suit"] = String(bd["suit"])
+		look["helmet"] = true
+		return {"name": String(bd["name"]), "col": bd["col"], "tex": ChibiArt.frame(look, 0, 0), "look": look, "strong": true, "boss": b, "line": String(bd["line"])}
+	var f: Dictionary = FIGHTERS[posmod(int(o["who"]), FIGHTERS.size())]
+	return {"name": String(f["name"]), "col": f["col"], "tex": fighter_tex(int(o["who"]), false), "look": fighter_look(int(o["who"])), "strong": bool(o.get("strong", false)), "boss": -1, "line": ""}
+
+
+static func fighter_look(i: int) -> Dictionary:
+	var f: Dictionary = FIGHTERS[posmod(i, FIGHTERS.size())]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6200 + int(f["seed"])
+	var look: Dictionary = ChibiArt.PilotArt.random_look(rng)
+	look["suit"] = String(f["suit"])
+	look["helmet"] = int(f["seed"]) % 2 == 1
+	return look
 
 
 ## Which two the screen announces at the clock `t`, and in what mode: [a, b, mode].
@@ -816,7 +845,8 @@ class ColFx extends Node2D:
 			draw_string(font, Vector2(rk.position.x + 6.0, ry), "%d" % (r + 1) if not mine else "NEW", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 6, Color(0.6, 0.65, 0.78))
 			draw_string(font, Vector2(rk.position.x + 26.0, ry), String(rows[r][0]), HORIZONTAL_ALIGNMENT_LEFT, 96.0, 6,
 				Color(0.5, 1.0, 0.6) if mine else Color(CG.FIGHTERS[r % CG.FIGHTERS.size()]["col"]).lightened(0.3))
-			draw_string(font, Vector2(rk.end.x - 40.0, ry), "%d" % int(rows[r][1]), HORIZONTAL_ALIGNMENT_RIGHT, 34.0, 6, Color(0.85, 0.9, 1.0))
+			draw_string(font, Vector2(rk.end.x - 64.0, ry), "%d" % int(rows[r][1]) if not mine else String(load("res://data/colosseum.gd").rank_state(GameState.col_state())["name"]).to_upper(), HORIZONTAL_ALIGNMENT_RIGHT, 58.0, 6,
+				Color(0.85, 0.9, 1.0) if not mine else Color(0.5, 0.9, 1.0))
 		draw_rect(rk, Color(CG.NEON[1], 0.8), false, 1.5)
 		# the fighters' gate, behind the registration
 		var fg := Rect2(CG.FG_X * 16.0, fl - 100.0, 80.0, 100.0)
@@ -1164,10 +1194,13 @@ static func draw_arena(ci: CanvasItem, w: float, h: float, cx: float, t: float, 
 		var dv := Vector2(cos(a), sin(a))
 		ci.draw_line(ac + Vector2(dv.x * (wx + 4.0), dv.y * (wy + 4.0)), ac + Vector2(dv.x * (wx + A_TIERS * A_TX), dv.y * (wy + A_TIERS * A_TY)), Color(0.11, 0.11, 0.17), 12.0)
 		ci.draw_line(ac + Vector2(dv.x * (wx + 4.0), dv.y * (wy + 4.0)), ac + Vector2(dv.x * (wx + A_TIERS * A_TX), dv.y * (wy + A_TIERS * A_TY)), Color(0.3, 0.9, 1.0, 0.22), 2.0)
+	var full: float = load("res://data/colosseum.gd").crowd(GameState.col_state())      # (part 4: fuller the longer your run and the higher your rank)
 	for p in 1100:                                               # the crowd: heads in the rows
 		var pa := hsh(p, 4) * TAU
 		if fposmod(pa * 28.0 / TAU, 1.0) > 0.42 and fposmod(pa * 28.0 / TAU, 1.0) < 0.58:
 			continue                                              # (an aisle)
+		if hsh(p, 9) > full:
+			continue                                              # (an empty seat)
 		var pk := 1 + int(hsh(p, 5) * A_TIERS) % A_TIERS
 		var row := 0.34 if p % 2 == 0 else 0.7
 		var pp := ac + Vector2(cos(pa) * (wx + pk * A_TX - A_TX * row), sin(pa) * (wy + pk * A_TY - A_TY * row))
@@ -1319,10 +1352,13 @@ static func draw_arena_ground(ci: CanvasItem, t: float) -> void:
 		var a := (q + 0.5) * TAU / 28.0
 		var dv := Vector2(cos(a), sin(a))
 		ci.draw_line(c + Vector2(dv.x * (rx + 16.0), dv.y * (ry + 14.0)), c + Vector2(dv.x * (rx + 164.0), dv.y * (ry + 132.0)), Color(0.11, 0.11, 0.17), 5.0)
+	var full: float = load("res://data/colosseum.gd").crowd(GameState.col_state())      # (part 4: fuller the longer your run and the higher your rank)
 	for p in 900:
 		var pa := hsh(p, 4) * TAU
 		if fposmod(pa * 28.0 / TAU, 1.0) > 0.42 and fposmod(pa * 28.0 / TAU, 1.0) < 0.58:
 			continue
+		if hsh(p, 9) > full:
+			continue                                          # (an empty seat)
 		var pk := 1 + int(hsh(p, 5) * 5.0) % 5
 		var row := 10.0 if p % 2 == 0 else 21.0
 		var pp := c + Vector2(cos(pa) * (rx + 14.0 + pk * 30.0 - row), sin(pa) * (ry + 12.0 + pk * 24.0 - row * 0.8))
@@ -1365,7 +1401,26 @@ static func draw_arena_ground(ci: CanvasItem, t: float) -> void:
 	ci.draw_rect(Rect2(c.x - 20.0, c.y + ry - 6.0, 4.0, 34.0), Color(0.4, 1.0, 0.7, 0.6 + 0.4 * absf(sin(t * 2.0))))
 	ci.draw_rect(Rect2(c.x + 16.0, c.y + ry - 6.0, 4.0, 34.0), Color(0.4, 1.0, 0.7, 0.6 + 0.4 * absf(sin(t * 2.0))))
 	ci.draw_rect(Rect2(c.x - 22.0, fc.y - ry - 12.0, 44.0, 12.0), Color(0.16, 0.12, 0.1))
-	ci.draw_rect(Rect2(c.x - 22.0, fc.y - ry - 12.0, 44.0, 12.0), Color(1.0, 0.35, 0.35, 0.6 + 0.4 * absf(sin(t * 1.6))), false, 1.5)
+	ci.draw_rect(Rect2(c.x - 22.0, fc.y - ry - 12.0, 44.0, 12.0), Color(1.0, 0.35, 0.35, 0.6 + 0.4 * absf(sin(t * 1.6))).lerp(Color(0.4, 0.9, 1.0), gate_open), false, 1.5)
+	if gate_open > 0.0:                                           # (part 4) the gate of the others slides open: light behind it
+		ci.draw_rect(Rect2(c.x - 20.0 * gate_open, fc.y - ry - 11.0, 40.0 * gate_open, 10.0), Color(0.75, 0.93, 1.0))
+	if boot > 0.0:                                                # … the hologram comes up: cover of light grows out of the tiles
+		for b in 26:
+			var bu := (hsh(b, 71) - 0.5) * 1.7
+			var bv := (hsh(b, 72) - 0.5) * 1.5
+			if bu * bu + bv * bv > 0.62:
+				continue
+			var bp := Vector2(snappedf(fc.x + bu * rx, 16.0), snappedf(fc.y + bv * (ry - 12.0), 16.0))
+			var bw := 16.0 * (2.0 + float(int(hsh(b, 73) * 3.0)))
+			var bd := 16.0 * (1.0 + float(int(hsh(b, 74) * 2.0)))
+			var bh := (14.0 + hsh(b, 75) * 18.0) * clampf(boot * 1.4 - hsh(b, 76) * 0.4, 0.0, 1.0)
+			var al := 0.6 + 0.4 * hsh(b + int(t * 14.0), 77)
+			ci.draw_rect(Rect2(bp.x, bp.y - bd - bh, bw, bd), Color(0.45, 0.8, 1.0, 0.45 * al))
+			ci.draw_rect(Rect2(bp.x, bp.y - bh, bw, bh), Color(0.25, 0.6, 1.0, 0.32 * al))
+			ci.draw_rect(Rect2(bp.x, bp.y - bd - bh, bw, bd + bh), Color(0.35, 0.75, 1.0, 0.9 * al), false, 1.0)
+		for gy2 in range(int(fc.y - ry), int(c.y + ry), 16):
+			ci.draw_rect(Rect2(c.x - rx, gy2, rx * 2.0, 1.0), Color(0.3, 0.7, 1.0, 0.25 * boot))
+		ci.draw_colored_polygon(fl, Color(0.75, 0.9, 1.0, 0.5 * maxf(0.0, boot - 0.7) / 0.3))
 	# the wave of blue light
 	var n := int(floor(t / WAVE))
 	var wk := fposmod(t, WAVE) / 2.6

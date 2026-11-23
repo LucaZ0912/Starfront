@@ -898,7 +898,7 @@ func _c_col_play(c: Dictionary) -> String:
 func _c_col_equip(c: Dictionary) -> String:
 	var CD = load("res://data/colosseum.gd")
 	var st: Dictionary = GameState.col_state()
-	var res: Dictionary = CD.equip(st["fit"], String(c.get("place", "")), int(c.get("idx", 0)), String(c.get("id", "")), CD.budget(st))
+	var res: Dictionary = CD.equip(st["fit"], String(c.get("place", "")), int(c.get("idx", 0)), String(c.get("id", "")), CD.budget(st), int(CD.RANKS[CD.rank(st)]["q"]))
 	if String(res["err"]) == "":
 		st["fit"] = res["fit"]
 	return String(res["err"])
@@ -913,6 +913,27 @@ func _c_col_mode(c: Dictionary) -> String:
 			GameState.col_state()["mode"] = String(m["id"])
 			return ""
 	return "No such mode."
+
+
+## Part 4: {"type":"col_fight_end", "won"}: a fight in the hologram is over. Won: Coins, gear points and rank points,
+## the run goes on. Lost: the run's gear points are gone, the round is 1 again, the rank stays. What happened is
+## kept in the Colosseum's state ("last") for the picture after the fight.
+func _c_col_fight_end(c: Dictionary) -> String:
+	var CD = load("res://data/colosseum.gd")
+	var g = _ground()
+	if g == null or String(g.level) != "zcolvr":
+		return "There is no fight."
+	var st: Dictionary = GameState.col_state()
+	var res: Dictionary = CD.settle(st, bool(c.get("won", false)))
+	GameState.coins += int(res["coins"])
+	st["last"] = res
+	if bool(res["won"]):
+		GameState.log_msg("The Colosseum: round %d won. %d Coins, %d gear points, %d rank points." % [int(res["round"]), int(res["coins"]), int(res["points"]), int(res["xp"])], GameState.COL_GOOD)
+	else:
+		GameState.log_msg("The Colosseum: beaten in round %d. The run's gear points are gone, your rank stays." % int(res["round"]), GameState.COL_INFO)
+	if bool(res["rank_up"]):
+		GameState.log_msg("The Colosseum: a new rank: %s." % String(CD.RANKS[CD.rank(st)]["name"]), GameState.COL_GOOD)
+	return ""
 
 
 func _c_col_ready(_c: Dictionary) -> String:
@@ -3963,6 +3984,16 @@ func _c_debug_casino(c: Dictionary) -> String:
 		var g1 = _ground()
 		if g1 != null and String(g1.level) == "zcolin":
 			g1.go_level("zcolin", "from_reg")
+		return ""
+	if c.has("col_xp"):                                   # … part 4: rank points
+		GameState.col_state()["xp"] = maxi(0, int(GameState.col_state()["xp"]) + int(c["col_xp"]))
+		GameState.log_msg("[Debug] The Colosseum: rank %s." % String(load("res://data/colosseum.gd").rank_state(GameState.col_state())["name"]), GameState.COL_INFO)
+		return ""
+	if c.has("col_fight"):                                # … the fight you stand in is won or lost at once
+		var gf = _ground()
+		if gf == null or String(gf.level) != "zcolvr":
+			return "There is no fight."
+		gf._col_fight_over(String(c["col_fight"]) == "win")
 		return ""
 	if c.has("col_points"):                               # … part 3: gear points into your budget
 		GameState.col_state()["points"] = maxi(0, int(GameState.col_state()["points"]) + int(c["col_points"]))

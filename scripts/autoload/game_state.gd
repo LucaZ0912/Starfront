@@ -61,6 +61,7 @@ var casino_spins := 0                   # … how often its reels and its wheel 
 var casino_stats := {"staked": 0, "back": 0, "best": 0}     # … Coins staked, Coins got back, the largest single win
 var col_registered := false             # package 62a, part 2: signed up at the Colosseum (the fighters' gate stands open)
 var col: Dictionary = {}                # … part 3: your gear points, your record, your fit, the way to play and the mode (data/colosseum.gd)
+var col_own_gear = null                 # … part 4: your own gear, put by while you fight with the house's (null: you wear your own)
 var race_shift := 0.0                   # package 62b: what you have waited in The Track's cinema (moves the races' clock on)
 var race_bets: Array = []               # … your tickets: {n, kind, a, b, stake, odds, seat}
 var fleet: Array = []            # all owned ships (ShipFitting)
@@ -494,6 +495,19 @@ func fab_tree_error(mid: String) -> String:
 	return ""
 
 
+## Package 62a, part 4: into the house's gear for a fight (your own is put by), and back into your own.
+func col_gear_on() -> void:
+	if col_own_gear == null:
+		col_own_gear = gear
+	set("gear", load("res://data/colosseum.gd").gear_of(col_state()["fit"]))      # (by name: the gear keeps its type for everybody else)
+
+
+func col_gear_off() -> void:
+	if col_own_gear != null:
+		set("gear", col_own_gear)
+	col_own_gear = null
+
+
 ## Package 62a, part 3: what you are in the Colosseum (made the first time it is asked for; its fit kept in shape).
 func col_state() -> Dictionary:
 	var CD = load("res://data/colosseum.gd")
@@ -616,7 +630,7 @@ func to_dict() -> Dictionary:
 		"crew_quarters": _saved_quarters(), "bar": _saved_bars(), "crew_seq": _crew_seq, "lodging": lodging.duplicate(true),
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
-		"collection": collection.duplicate(true), "gear": gear.to_dict(),
+		"collection": collection.duplicate(true), "gear": (col_own_gear if col_own_gear != null else gear).to_dict(),
 	}
 
 
@@ -641,6 +655,7 @@ func from_dict(d: Dictionary) -> void:
 	race_shift = float(d.get("race_shift", 0.0))
 	col_registered = bool(d.get("col_registered", false))
 	col = (d.get("col", {}) as Dictionary).duplicate(true)
+	col_own_gear = null
 	race_bets = (d.get("race_bets", []) as Array).duplicate(true)
 	fleet.clear()
 	for sd in d["fleet"]:

@@ -412,6 +412,15 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.8 (package 62a, part 4): `data/colosseum.gd` (`RANKS`, `rank`, `rank_state`, `allowed`, `crowd`, `BOSSES`,
+  `SETTINGS`, `opponents(round, n, salt)`, `foe_of`, `setting`, `reward`, `settle`, `gear_of`),
+  `scripts/ground/colosseum_vr.gd` (`build(setting, seed)`, `VrFx`), `colosseum_ui.gd` `Versus`, `Result`; level
+  `zcolvr`; foes `col_rusher`, `col_rifle`, `col_gunner`, `col_champion`, `col_boss`; `GameState.col_gear_on()`,
+  `col_gear_off()`, `col_own_gear`; command `col_fight_end`; `GroundView._col_intro_step`, `_col_fight_start`,
+  `_col_fight_step`, `_col_fight_over`, `col_lost`; debug `debug_casino {col_xp: n, col_fight: "win" | "lose"}`;
+  smoke group `colfight62a`. Energy: map meta `col_stations` (`{at, cool, i}`), zones `col_charge`, `STATIONS`,
+  `STATION_COOL`, `FOE_RESERVE`; a foe with `energy` / `ammo` (`GroundCombat.foe_power`, `_foe_recharge`); the sound
+  `crowd_applause` is made in `scripts/core/crowd_sound.gd` (`applause_db`).
 - 0.8.62.7 (package 62a, part 3): `data/colosseum.gd` (`BASE`, `Q_COST`, `START_POINTS`, `PLAY`, `MODES`, `cost`,
   `fit_cost`, `equip`, `options`, `totals`, `opponents`, `reward`), `scripts/ground/colosseum_ui.gd` (`Play`,
   `Prep`), `colosseum_gen.gd` `build_arena`, `draw_arena_ground`; level `zcolar`; `GameState.col`, `col_state()`;

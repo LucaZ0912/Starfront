@@ -3,6 +3,37 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.8 – 2026-11-23
+
+**Package 62a, part 4 (Luz): the fight. King of the Colosseum, and the rank.**
+- **The entrance:** out of the white you stand at the fighters' gate in the house's gear. The camera rises over the
+  whole round and comes down again; across from you the gate slides open and the three walk in; then the picture of
+  them against you (the strong one large in the middle, you in the suit you chose, "VS", the mode and the round);
+  then the hologram comes up: cover of light grows out of the tiles. The first time you see all of it; after that
+  holding Esc or Options goes straight to the fight.
+- **The fight's ground:** the arena builds whole maps as holograms, far larger than the arena itself. Three
+  settings for now, drawn by lot: Dust Canyon, Glacier Shelf, Container Yard. You begin in the south, the three in
+  the north, cover all over the field; a wall of light runs round it. "3, 2, 1, FIGHT".
+- **The fight:** against one strong and two weak fighters, drawn by lot from the arena's list, in the house's gear
+  (your own is put by and stays yours in the save). Every round all three are a little better. Every tenth round a
+  named opponent stands in the strong one's place: The Warden, Old Mercy, Glass Saint, The Last of Kiln. Nobody
+  dies: who is shot down is out. The pad where you begin lets you give up, which counts as lost.
+- **A win** pays Coins, gear points and rank points (three times the Coins for a named one). Then: the next round
+  (straight back into the fighters' room), or stop for now: your run stays as it is.
+- **A defeat** ends the run: its gear points go back to the house, the round is 1 again. Your rank stays.
+- **The rank** stays, whatever the mode: Newcomer, Contender, Gladiator, Champion, Legend. Every rank gives you 2
+  more gear points to begin a run with and one quality more that the house hands you (F and E at first, up to A).
+  It stands in the fighters' room, in the picture after a fight and on the ranking in the lobby.
+- **The crowd:** the stands are fuller the longer your run and the higher your rank. It claps when you come in,
+  when the three come in and when you have won: the fuller the stands, the louder.
+- **Energy:** five charging points stand spread over every fight's ground. One fills your energy and your
+  ammunition and is then drawn dry for 25 seconds (a ring of light shows when it is ready again). The three live
+  on their suit's energy and their rounds as you do: a shot costs them what it costs you, their shield draws
+  energy to recover, and who runs dry cannot shoot and runs to the nearest point that is ready. So a point you
+  draw dry is one they cannot use.
+- The three know where you are from the first moment and do not lose you.
+- Debug menu: +100 rank points, win or lose the fight at once.
+
 ## alpha 0.8.62.7 – 2026-11-23
 
 **Package 62a, part 3 (Luz): the way into the arena.**

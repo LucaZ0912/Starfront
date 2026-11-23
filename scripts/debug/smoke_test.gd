@@ -725,6 +725,7 @@ func _process(delta: float) -> void:
 				await _test_col62a(main.view)            # package 62a, part 1: the plaza before the Colosseum
 				await _test_colin62a(main.view)          # package 62a, part 2: its lobby and its stands
 				await _test_colprep62a(main.view)        # package 62a, part 3: the way into the arena
+				await _test_colfight62a(main.view)       # package 62a, part 4: the fight and the rank
 				_shooting = false
 				timer = 0.0
 				return
@@ -18266,8 +18267,9 @@ func _test_colprep62a(_view: SystemView) -> void:
 		# the fighters' room: a fit within the budget, the mode, READY
 		if prep != null and prep.has_method("is_col_prep"):
 			var q1 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_heavy:A"}))
-			var q2 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_light:D"}))
-			var q3 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:D"}))
+			var q2 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_light:E"}))
+			var q3 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:E"}))
+			var q8 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 1, "id": "wp_rifle:D"}))      # (part 4: not above what your rank reaches)
 			var q4 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "features", "idx": 0, "id": "ft_shield:F"}))
 			var q5 := String(Commands.execute({"type": "col_ready", "seat": 0}))
 			var q6 := String(Commands.execute({"type": "col_mode", "seat": 0, "mode": "team"}))
@@ -18275,12 +18277,12 @@ func _test_colprep62a(_view: SystemView) -> void:
 			Commands.execute({"type": "debug_casino", "col_points": 5})
 			var q7 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "features", "idx": 0, "id": "ft_shield:F"}))
 			var st: Dictionary = GameState.col_state()
-			prep_ok = q1 != "" and q2 == "" and q3 == "" and q4 != "" and q5 != "" and q6 != "" and q7 == "" and String(st["mode"]) == "king" and CD.fit_cost(st["fit"]) == 13 and CD.budget(st) == 15 \
-				and (prep.slots() as Array).size() >= 6 and (prep.options() as Array).size() > 10 and String((GameState.to_dict()["col"] as Dictionary)["fit"]["suit"]) == "suit_mil_light:D"
+			prep_ok = q1 != "" and q2 == "" and q3 == "" and q4 != "" and q5 != "" and q6 != "" and q7 == "" and q8 != "" and String(st["mode"]) == "king" and CD.fit_cost(st["fit"]) == 11 and CD.budget(st) == 15 \
+				and (prep.slots() as Array).size() >= 6 and (prep.options() as Array).size() > 10 and String((GameState.to_dict()["col"] as Dictionary)["fit"]["suit"]) == "suit_mil_light:E"
 			prep.mark(1)
 			prep.take(0)
 			prep_ok = prep_ok and String(GameState.col_state()["fit"]["weapons"][0]) == ""
-			Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:D"})
+			Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:E"})
 			if shots:
 				for f6 in 25:
 					await get_tree().process_frame
@@ -18318,7 +18320,11 @@ func _test_colprep62a(_view: SystemView) -> void:
 			for f10 in 5:
 				await get_tree().process_frame
 			in_ok = white0 and String(g.level) == "zcolar" and g.minigame == null and String(g._title.text).contains("arena") and g.map.free_at(g.pilot.pos, 4.0) \
-				and (g._col_cover == null or not is_instance_valid(g._col_cover)) and g._world.get_children().any(func(nd): return is_instance_of(nd, CG.ColFx) and String(nd.part) == "ar_floor")
+				and (g._col_cover == null or not is_instance_valid(g._col_cover)) and g._world.get_children().any(func(nd): return is_instance_of(nd, CG.ColFx) and String(nd.part) == "ar_floor") \
+				and not (g._col_intro as Dictionary).is_empty()
+			g._col_intro = {}                                    # (part 4's entrance has begun: its own test tries it)
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
 			if shots:
 				for vw in [["arena", Vector2(CG.A_C.x, CG.A_C.y + 9.0), 0.0, 3.0], ["arena_ganz", CG.A_C, 0.36, CG.WAVE * 4.0 + 1.3], ["arena_ring", CG.A_C, 0.36, CG.WAVE * 5.0 + 1.3]]:
 					g.story_cam = (vw[1] as Vector2) * TL
@@ -18359,7 +18365,7 @@ func _test_colprep62a(_view: SystemView) -> void:
 			var tz := Time.get_ticks_msec()
 			while Time.get_ticks_msec() - tz < 6000 and not (g.minigame != null and g.minigame.has_method("is_col_prep")):
 				await get_tree().process_frame
-			var room2: bool = g.minigame != null and g.minigame.has_method("is_col_prep") and String(GameState.col_state()["fit"]["suit"]) == "suit_mil_light:D"
+			var room2: bool = g.minigame != null and g.minigame.has_method("is_col_prep") and String(GameState.col_state()["fit"]["suit"]) == "suit_mil_light:E"
 			if room2:
 				g.minigame.back()
 			for f17 in 5:
@@ -18371,6 +18377,310 @@ func _test_colprep62a(_view: SystemView) -> void:
 		"62a, part 3: the way into the arena: gear from gear points (costs by piece and quality, a budget, a fit within it), the talk with Cass Ardent the Marshal of the Lists (\"Register\"), the way to play (singleplayer; three more under COMING SOON), the fighters' area opens, you walk through the gate by yourself, the fighters' room (a fit through the command bus, over the budget refused, the mode, READY), the countdown that can be called off, the white, the arena of white tiles and the way back out; the second time \"Compete\" and no scene  [%s %s %s %s %s %s %s]" % [data_ok, arena_ok, talk_ok, walk_ok, prep_ok, in_ok, again_ok])
 	if main.story_ui.dialogue != null:
 		main.story_ui._close_dialogue()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 4 (Luz): the fight. The rank (it stays; it raises the budget you begin with and the quality the
+## house hands you), the opponents by lot with a named one every tenth round, the settings of the fight's ground
+## (larger than the arena), the entrance (the round from above, the far gate, the three, the picture of them against
+## you, the hologram), the fight in the house's gear, a win and what it pays, a defeat and what it costs.
+func _test_colfight62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var CV = load("res://scripts/ground/colosseum_vr.gd")
+	var CU = load("res://scripts/ground/colosseum_ui.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# the rules: the rank, the lot, a win and a defeat
+	var c0: Dictionary = CD.fresh()
+	var c2: Dictionary = CD.fresh()
+	c2["xp"] = 200
+	var w1: Dictionary = CD.settle(c0, true)
+	var after_win: bool = bool(w1["won"]) and int(w1["coins"]) == 40 and int(c0["points"]) == int(w1["points"]) and int(c0["round"]) == 2 and int(c0["streak"]) == 1 and int(c0["xp"]) == int(w1["xp"]) \
+		and int(c0["wins"]) == 1 and int(c0["fights"]) == 1 and CD.budget(c0) == 10 + int(w1["points"])
+	c0["fit"] = CD.equip(c0["fit"], "weapons", 0, "wp_laser_pistol:E", CD.budget(c0), 1)["fit"]
+	c0["xp"] = 70
+	var l1: Dictionary = CD.settle(c0, false)
+	var o10: Array = CD.opponents(10, 8, 3)
+	var o7a: Array = CD.opponents(7, 8, 1)
+	var o7b: Array = CD.opponents(7, 8, 1)
+	var lots := {}
+	for sl in 30:
+		lots[str((CD.opponents(3, 8, sl) as Array).map(func(o): return int(o["who"])))] = true
+	var sets := {}
+	for ss in 40:
+		sets[String(CD.setting(1 + ss % 5, ss)["id"])] = true
+	var gfit: Dictionary = CD.equip(CD.equip(CD.default_fit(), "suit", 0, "suit_mil_light:E", 99)["fit"], "grenades", 0, "gr_frag", 99)["fit"]
+	var gg = CD.gear_of(gfit)
+	var rule_ok: bool = after_win and not bool(l1["won"]) and int(l1["lost_points"]) == int(w1["points"]) and int(c0["points"]) == 0 and int(c0["round"]) == 1 and int(c0["streak"]) == 0 \
+		and int(c0["xp"]) == 70 and int(c0["best"]) == 1 and int(c0["fights"]) == 2 and String(c0["fit"]["weapons"][0]) == "wp_pistol:F" and CD.rank(c0) == 1 and CD.budget(c0) == 12 \
+		and CD.rank(CD.fresh()) == 0 and CD.rank(c2) == 2 and String(CD.rank_state(c2)["name"]) == "Gladiator" and int(CD.rank_state(c2)["to"]) == 400 and CD.RANKS.size() == 5 \
+		and not CD.allowed("wp_rifle:D", CD.fresh()) and CD.allowed("wp_rifle:E", CD.fresh()) and CD.allowed("wp_rifle:C", c2) and not CD.allowed("wp_rifle:B", c2) and CD.allowed("gr_frag", CD.fresh()) \
+		and String(CD.equip(CD.default_fit(), "weapons", 0, "wp_rifle:D", 99, 1)["err"]) != "" and String(CD.equip(CD.default_fit(), "weapons", 0, "wp_rifle:E", 99, 1)["err"]) == "" \
+		and int(o10[0]["boss"]) == 0 and bool(o10[0]["strong"]) and int(CD.opponents(20, 8, 0)[0]["boss"]) == 1 and int(o7a[0]["boss"]) == -1 and str(o7a) == str(o7b) and lots.size() > 8 \
+		and o7a.size() == 3 and int(o7a[0]["who"]) != int(o7a[1]["who"]) and int(o7a[1]["who"]) != int(o7a[2]["who"]) and int(o7a[0]["who"]) != int(o7a[2]["who"]) \
+		and String(CD.foe_of(o10[0], 10, 0)["kind"]) == "col_boss" and String(CD.foe_of(o7a[0], 7, 0)["kind"]) == "col_champion" and String(CD.foe_of(o7a[1], 1, 1)["tier"]) == "green" \
+		and String(CD.foe_of(o7a[1], 9, 1)["tier"]) == "red" and int(CD.reward(10)["coins"]) > int(CD.reward(11)["coins"]) and int(CD.reward(2)["xp"]) > int(CD.reward(1)["xp"]) \
+		and sets.size() == CD.SETTINGS.size() and CD.crowd(c2) > CD.crowd(CD.fresh()) and CD.crowd(c2) <= 1.0 \
+		and String(gg.suit) == "suit_mil_light:E" and (gg.weapons as Array).size() == 2 and String(gg.weapons[0]) == "wp_pistol:F" and String(gg.grenades[0]["id"]) == "gr_frag" and int(gg.grenades[0]["n"]) == 2 \
+		and float(gg.health) > 0.0 and float(gg.shield) > 0.0 and String(CG.foe_card(o10[0])["name"]) == String(CD.BOSSES[0]["name"]) and CG.foe_card(o7a[1])["tex"] != null
+	# (Luz) the crowd's applause: a sound made here; the fuller the stands, the louder
+	var clap = Audio.stream("crowd_applause")
+	rule_ok = rule_ok and clap != null and clap is AudioStreamWAV and (clap as AudioStreamWAV).get_length() > 4.0 and Audio.stream("crowd_applause") == clap \
+		and CD.applause_db(c2) > CD.applause_db(CD.fresh()) + 2.0 and CD.applause_db(CD.fresh()) < -10.0
+	if not rule_ok:
+		print("COLFIGHT62A rules: win ", w1, " after ", after_win, " lose ", l1, " state ", c0, " boss ", o10[0], " lots ", lots.size(), " settings ", sets.size())
+	# the fight's ground: every setting larger than the arena, a way from you to each of the three, cover between
+	var map_ok := true
+	for sd in CD.SETTINGS:
+		var vm: GroundMap = CV.build(String(sd["id"]), 3)
+		var cover: int = (vm.objects as Array).filter(func(o): return String(o.get("kind", "")) in ["rock", "crates", "barrier", "bulwark", "barrel"]).size()
+		var one: bool = vm.w == CV.VW and vm.h == CV.VH and vm.w * vm.h > CG.AW * CG.AH and vm.foe_spawns.size() == 3 and vm.free_at(vm.spawn, 4.0) and cover >= 25 \
+			and (vm.foe_spawns as Array).all(func(p): return vm.free_at(p, 4.0) and vm.path(vm.spawn, p).size() > 0 and (p as Vector2).distance_to(vm.spawn) > 500.0) \
+			and (vm.zones as Array).any(func(z): return String(z.get("kind", "")) == "col_giveup") and String(vm.get_meta("col_vr", "")) == String(sd["id"]) \
+			and (vm.get_meta("col_stations", []) as Array).size() == CD.STATIONS and (vm.zones as Array).filter(func(z): return String(z.get("kind", "")) == "col_charge").size() == CD.STATIONS \
+			and (vm.get_meta("col_stations", []) as Array).all(func(q): return vm.free_at(q["at"], 4.0) and vm.path(vm.spawn, q["at"]).size() > 0 and float(q["cool"]) == 0.0) \
+			and not GroundMap.walkable_t(vm.t_at(0, 0)) and not GroundMap.walkable_t(vm.t_at(vm.w - 1, vm.h - 1))
+		if not one:
+			print("COLFIGHT62A map ", sd["id"], ": cover ", cover, " spawns ", vm.foe_spawns.size(), " free ", vm.free_at(vm.spawn, 4.0))
+		map_ok = map_ok and one
+	# down to Centauria, into the lobby, signed up; straight into the fighters' room
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var intro_ok := false
+	var fight_ok := false
+	var win_ok := false
+	var lose_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		GameState.coins = 100
+		var own_suit: String = GameState.gear.suit
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		g._col_prep_open()
+		Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_light:E"})
+		Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:E"})
+		Commands.execute({"type": "col_mode", "seat": 0, "mode": "king"})
+		if shots:
+			for f1 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a4_vorbereitung.png")
+		g._col_prep_done(true)
+		# the entrance, all of it the first time
+		var saw_round := false
+		var saw_gate := false
+		var three := false
+		var saw_vs := false
+		var saw_boot := false
+		var claps := false
+		var hands_off := true
+		var shot_i := {}
+		var te := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - te < 40000 and String(g.level) != "zcolvr":
+			await get_tree().process_frame
+			var it: Dictionary = g._col_intro
+			if it.is_empty():
+				continue
+			var ph := int(it["phase"])
+			saw_round = saw_round or (ph == 1 and float(g.story_zoom) > 0.3 and float(g.story_zoom) < 0.4)
+			saw_gate = saw_gate or (ph == 2 and float(CG.gate_open) > 0.9)
+			three = three or (it["walkers"] as Array).size() == 3
+			saw_vs = saw_vs or (it.has("vs") and is_instance_valid(it["vs"]) and is_instance_of(it["vs"], CU.Versus))
+			saw_boot = saw_boot or (ph == 4 and float(CG.boot) > 0.5)
+			claps = claps or (bool(it.get("clap", false)) and bool(it.get("clap2", false)))
+			hands_off = hands_off and g.pilot.pos.distance_to(g.map.get_meta("from_gate")) < 4.0
+			if shots:
+				var want := {1: ["rund", 2.2], 2: ["tor", 3.6], 3: ["vs", 2.0], 4: ["holo", 1.9]}
+				if want.has(ph) and not shot_i.has(ph) and float(it["t"]) >= float(want[ph][1]):
+					shot_i[ph] = true
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a4_einzug_%s.png" % String(want[ph][0]))
+		intro_ok = saw_round and saw_gate and three and saw_vs and saw_boot and claps and hands_off and String(g.level) == "zcolvr" and bool(GameState.col_state()["seen"])
+		if not intro_ok:
+			print("COLFIGHT62A entrance: round ", saw_round, " gate ", saw_gate, " three ", three, " vs ", saw_vs, " boot ", saw_boot, " hands off ", hands_off, " level ", g.level, " intro ", g._col_intro)
+		# the fight: the house's gear on you, your own put by; the three by name; the count; then the fight
+		var foes: Array = g.combat.foes if g.combat != null else []
+		var want_names: Array = (CD.opponents(1, CG.FIGHTERS.size(), 0) as Array).map(func(o): return String(CG.foe_card(o)["name"]))
+		var geared: bool = GameState.col_own_gear != null and String(GameState.gear.suit) == "suit_mil_light:E" and String(GameState.gear.weapons[0]) == "wp_laser_rifle:E" \
+			and String(GameState.col_own_gear.suit) == own_suit and String(GameState.to_dict()["gear"]["suit"]) == own_suit
+		var counted: bool = String(g._col_fight.get("state", "")) == "count" and not g.input_enabled
+		var tc := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tc < 8000 and String(g._col_fight.get("state", "")) == "count":
+			await get_tree().process_frame
+		for f2 in 5:
+			await get_tree().process_frame
+		fight_ok = geared and counted and foes.size() == 3 and foes.all(func(f): return String(f["name"]) in want_names and bool(f.get("holo", false)) and not bool(f["dead"])) \
+			and foes.filter(func(f): return String(f["kind"]) == "col_champion").size() == 1 and String(g._col_fight.get("state", "")) == "fight" and g.input_enabled \
+			and g.combat_allowed() and String(g._title.text).contains(String(CD.setting(1, 0)["name"])) and g.map.free_at(g.pilot.pos, 4.0) \
+			and g._world.get_children().any(func(nd): return is_instance_of(nd, CV.VrFx)) and String(g.pilot.look.get("suit", "")) == "suit_mil_light"
+		if not fight_ok:
+			print("COLFIGHT62A fight: geared ", geared, " counted ", counted, " foes ", foes.map(func(f): return [f["name"], f["kind"]]), " want ", want_names, " state ", g._col_fight, " suit ", g.pilot.look.get("suit", ""))
+		if shots:
+			for f3 in 60:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a4_kampf.png")
+			g.story_cam = Vector2(CV.VW * 0.5, CV.VH * 0.5) * TL
+			g.story_zoom = 0.34
+			for f4 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a4_karte_%s.png" % String(g.map.get_meta("col_vr", "")))
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+		# (Luz) energy: the charging points fill you up and are drawn dry for a while; the three carry energy and rounds,
+		# cannot shoot without, run to a point that is ready and fill up there
+		var sts: Array = g.map.get_meta("col_stations", [])
+		var e_ok := false
+		if foes.size() == 3 and sts.size() == CD.STATIONS:
+			var all_have: bool = foes.all(func(f): return float(f["energy"]) > 0.0 and int(f["ammo"]) > 0 and bool(f["aware"]) and (f["stations"] as Array).size() == CD.STATIONS)
+			GameState.gear.energy = 1.0
+			g.zone = (g.map.zones as Array).filter(func(z): return String(z.get("kind", "")) == "col_charge" and int(z.get("i", -1)) == 3)[0]
+			g.use()
+			var full_e: bool = float(GameState.gear.energy) == float(GameState.gear.totals()["energy"]) and is_equal_approx(float(sts[3]["cool"]), CD.STATION_COOL)
+			GameState.gear.energy = 1.0
+			g.use()
+			var dry: bool = float(GameState.gear.energy) == 1.0
+			GameState.gear.energy = float(GameState.gear.totals()["energy"])
+			var fe: Dictionary = foes[2]
+			var could: bool = g.combat.foe_power(fe)
+			fe["energy"] = 0.0
+			fe["ammo"] = 0
+			var cannot: bool = not g.combat.foe_power(fe)
+			var tr0 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr0 < 4000 and String(fe["state"]) != "recharge":
+				await get_tree().process_frame
+			var runs: bool = String(fe["state"]) == "recharge" and (fe["path"] as PackedVector2Array).size() > 0 and float((fe["station"] as Dictionary)["cool"]) == 0.0 \
+				and int((fe["station"] as Dictionary)["i"]) != 3
+			if runs:
+				var fw: Walker = fe["w"]
+				fw.pos = (fe["station"] as Dictionary)["at"]
+				fw.position = fw.pos * GroundMap.SCALE
+			for f3b in 6:
+				await get_tree().process_frame
+			e_ok = all_have and full_e and dry and could and cannot and runs and float(fe["energy"]) > 0.0 and int(fe["ammo"]) > 0 and String(fe["state"]) != "recharge" \
+				and float((fe["station"] as Dictionary)["cool"]) > 0.0 and g._world.get_children().any(func(nd): return is_instance_of(nd, CV.VrFx) and (nd.stations as Array).size() == CD.STATIONS)
+			if not e_ok:
+				print("COLFIGHT62A energy: all ", all_have, " full ", full_e, " dry ", dry, " could ", could, " cannot ", cannot, " runs ", runs, " foe ", fe["energy"], " ", fe["ammo"], " ", fe["state"], " stations ", sts)
+			if shots:
+				g.story_cam = (sts[2]["at"] as Vector2) + Vector2(0.0, -20.0)
+				for f3c in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a4_ladestation.png")
+				g.story_cam = Vector2.INF
+		fight_ok = fight_ok and e_ok
+		# a foe really goes down when shot; all three out is a win: Coins, gear points, rank points, the next round
+		if foes.size() == 3:
+			g.combat._hurt_foe(foes[1], 9999.0, "kinetic")
+			g.combat._hurt_foe(foes[2], 9999.0, "kinetic")
+		var two_left: bool = g.combat.alive().size() == 1 and String(g._col_fight.get("state", "")) == "fight"
+		if foes.size() == 3:
+			g.combat._hurt_foe(foes[0], 9999.0, "kinetic")
+		var tw := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tw < 8000 and not (g.minigame != null and g.minigame.has_method("is_col_result")):
+			await get_tree().process_frame
+		var rw: Dictionary = CD.reward(1)
+		var st: Dictionary = GameState.col_state()
+		win_ok = two_left and g.minigame != null and g.minigame.has_method("is_col_result") and bool(g.minigame.res.get("won", false)) and GameState.coins == 100 + int(rw["coins"]) \
+			and int(st["points"]) == int(rw["points"]) and int(st["xp"]) == int(rw["xp"]) and int(st["round"]) == 2 and int(st["streak"]) == 1 and int(st["fights"]) == 1 \
+			and String(Commands.execute({"type": "col_fight_end", "won": true})) == "" and int(GameState.col_state()["round"]) == 3
+		GameState.col_state()["round"] = 2                       # (that second call was only to see it goes through the bus)
+		GameState.col_state()["points"] = int(rw["points"])
+		if shots and g.minigame != null:
+			for f5 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a4_sieg.png")
+		if g.minigame != null and g.minigame.has_method("is_col_result"):
+			g.minigame._t = 2.0
+			g.minigame.go(true)                              # on to the next round: the fighters' room again
+		for f6 in 10:
+			await get_tree().process_frame
+		win_ok = win_ok and String(g.level) == "zcolin" and GameState.col_own_gear == null and String(GameState.gear.suit) == own_suit and g.minigame != null and g.minigame.has_method("is_col_prep") \
+			and (g._col_fight as Dictionary).is_empty()
+		if not win_ok:
+			print("COLFIGHT62A win: two left ", two_left, " window ", g.minigame, " coins ", GameState.coins, " state ", GameState.col_state(), " level ", g.level, " own gear ", GameState.col_own_gear)
+		# the second fight: no full entrance needed (it can be cut short); you go down: the run ends, the rank stays
+		if g.minigame != null and g.minigame.has_method("is_col_prep"):
+			g._col_prep_done(true)
+		for f7 in 20:
+			await get_tree().process_frame
+		var again: bool = String(g.level) == "zcolar" and not (g._col_intro as Dictionary).is_empty()
+		g._col_fight_start()                                 # (as holding Esc or Options does)
+		for f8 in 5:
+			await get_tree().process_frame
+		var tq := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tq < 8000 and String(g._col_fight.get("state", "")) == "count":
+			await get_tree().process_frame
+		var xp_before: int = int(GameState.col_state()["xp"])
+		var second: bool = String(g.level) == "zcolvr" and String(g._col_fight.get("state", "")) == "fight" and g.combat != null and g.combat.alive().size() == 3
+		g.zone = _zone_of(g.map, "col_giveup")
+		g.use()
+		for f9 in 5:
+			await get_tree().process_frame
+		var asked: bool = g._lift_menu != null
+		g._close_lift_menu()
+		GameState.gear.health = 5.0
+		g.combat._hurt_pilot(9999.0, "kinetic")
+		var down: bool = g.col_lost and float(GameState.gear.health) > 0.0 and not g._collapsed
+		var tl2 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tl2 < 8000 and not (g.minigame != null and g.minigame.has_method("is_col_result")):
+			await get_tree().process_frame
+		var st2: Dictionary = GameState.col_state()
+		lose_ok = again and second and asked and down and g.minigame != null and g.minigame.has_method("is_col_result") and not bool(g.minigame.res.get("won", true)) \
+			and int(st2["points"]) == 0 and int(st2["round"]) == 1 and int(st2["streak"]) == 0 and int(st2["xp"]) == xp_before and int(st2["fights"]) >= 2 and int(st2["best"]) >= 1 \
+			and String(st2["fit"]["suit"]) == "suit_civil:F"
+		if shots and g.minigame != null:
+			for f10 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a4_niederlage.png")
+		if g.minigame != null and g.minigame.has_method("is_col_result"):
+			g.minigame._t = 2.0
+			g.minigame.go(true)
+		for f11 in 10:
+			await get_tree().process_frame
+		lose_ok = lose_ok and String(g.level) == "zcolin" and g.minigame == null and GameState.col_own_gear == null and String(GameState.gear.suit) == own_suit and g.input_enabled
+		if not lose_ok:
+			print("COLFIGHT62A defeat: again ", again, " second ", second, " asked ", asked, " down ", down, " window ", g.minigame, " state ", st2, " level ", g.level)
+	check(rule_ok and map_ok and intro_ok and fight_ok and win_ok and lose_ok,
+		"62a, part 4: the fight: the rank (it stays; a larger budget and a better quality with every rank), opponents by lot with a named one every tenth round, three settings of the fight's ground larger than the arena; the entrance (the round from above, the far gate, the three walk in, the picture of them against you, the hologram comes up); the crowd's applause, louder the fuller the stands; the fight in the house's gear with your own put by and saved as yours; charging points that fill you up and are drawn dry for a while, the three living on energy and rounds and running to a point when dry; the count; all three out is a win (Coins, gear points, rank points, the next round, on into the fighters' room); you go down or give up: the run ends, its gear points are gone, the rank stays; back in your own gear  [%s %s %s %s %s %s]" % [rule_ok, map_ok, intro_ok, fight_ok, win_ok, lose_ok])
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 	main.station_panel.close()

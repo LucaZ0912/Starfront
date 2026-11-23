@@ -940,12 +940,19 @@ func blast_share(at: Vector2, p: Vector2, r: float) -> float:
 func _hurt_pilot(dmg: float, dtype: String) -> void:
 	if Commands.suit_god:
 		return                                          # debug: invulnerable
+	if view.level == "zcolvr" and view.col_lost:
+		return                                          # package 62a, part 4: out of the fight already
 	var out: Dictionary = GameState.gear.take_damage(dmg, dtype)
 	_number(pilot_pos(), out)
 	Audio.play("hit_hull" if float(out["health"]) > 0.0 else ("hit_armor" if float(out["armor"]) > 0.0 else "hit_shield"), "hit on foot", -8.0)
 	view._shake = maxf(view._shake, 0.08)
 	Pad.rumble(0.5, 0.3, 0.15)                          # package 80: hit
 	if GameState.gear.health <= 0.0:
+		if view.level == "zcolvr":
+			# package 62a, part 4 (Luz): the Colosseum's hologram: nobody dies, you are out of the fight
+			GameState.gear.health = 1.0
+			view.col_lost = true
+			return
 		if view.level == "sim":
 			# package 58, part 6: shot down in the simulation – nobody dies; the round starts again
 			GameState.gear.refill()
@@ -1073,7 +1080,11 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	# the shield recovers after a while
 	f["regen_wait"] = maxf(0.0, float(f["regen_wait"]) - delta)
 	if float(f["regen_wait"]) <= 0.0:
-		st["shield"] = minf(float(f["mx"]["shield"]), float(st["shield"]) + 2.0 * delta)
+		var add := minf(float(f["mx"]["shield"]) - float(st["shield"]), 2.0 * delta)
+		if f.has("energy"):                              # package 62a (Luz): the Colosseum's fighters live on their suit's energy as you do
+			add = minf(add, float(f["energy"]) / GearData.SHIELD_ENERGY)
+			f["energy"] = float(f["energy"]) - add * GearData.SHIELD_ENERGY
+		st["shield"] = float(st["shield"]) + maxf(0.0, add)
 	if frozen or view._collapsed:
 		w.moving = false
 		return
@@ -1110,8 +1121,10 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 			return
 	var wst := GearData.stats(String(f["weapon"]))
 	var reach := float(wst["range"])
-	# losing you: out of sight for long enough and far away
-	if sg["blocked"] and dist > FoeData.SIGHT * 1.3:
+	if f.has("energy") and _foe_recharge(f, delta):
+		return                                          # (out of energy or rounds: on its way to a charging point)
+	# losing you: out of sight for long enough and far away (the Colosseum's fighters never do: they know you are there)
+	if sg["blocked"] and dist > FoeData.SIGHT * 1.3 and not f.has("energy"):
 		f["out_t"] = float(f["out_t"]) + delta
 		if float(f["out_t"]) > 8.0:
 			f["aware"] = false
@@ -1159,7 +1172,10 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 	w.aim = pp
 	if not w.moving:
 		w.dir = _face(pp - w.pos)
-	if float(f["cool"]) <= 0.0 and not sg["blocked"] and dist <= reach and float(f.get("jam_t", 0.0)) <= 0.0:
+	if float(f["cool"]) <= 0.0 and not sg["blocked"] and dist <= reach and float(f.get("jam_t", 0.0)) <= 0.0 and foe_power(f):
+		if f.has("energy"):                              # (a shot costs what it costs you: energy for light, rounds for slugs)
+			f["energy"] = float(f["energy"]) - float(wst.get("energy", 0.0))
+			f["ammo"] = int(f["ammo"]) - int(wst.get("ammo", 0))
 		# 0.7.52.11 (Luz): when your drone is nearer than you, half the shots go at it
 		var near_d := _nearest_drone(w.pos)                        # 0.7.52.18: the nearer of your drones
 		if tgt != null:
@@ -1182,6 +1198,67 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		throw_grenade(f, land, "gr_frag")
 		f["grenades"] = int(f["grenades"]) - 1
 		f["gr_cool"] = 5.0
+
+
+## Package 62a, part 4 (Luz): has this foe the energy or the rounds for a shot? (Foes without a store always have.)
+func foe_power(f: Dictionary) -> bool:
+	if not f.has("energy"):
+		return true
+	var wst := GearData.stats(String(f["weapon"]))
+	return float(f["energy"]) >= float(wst.get("energy", 0.0)) and int(f["ammo"]) >= int(wst.get("ammo", 0))
+
+
+## … and when it has not: it runs to the nearest charging point that is ready (`stations`: [{at, cool}]), fills up
+## there and draws the point dry for a while. True while it is on that way.
+func _foe_recharge(f: Dictionary, delta: float) -> bool:
+	var w: Walker = f["w"]
+	if String(f["state"]) != "recharge":
+		if foe_power(f):
+			return false
+		var best := {}
+		for sd in f.get("stations", []):
+			if float(sd["cool"]) <= 0.0 and (best.is_empty() or w.pos.distance_to(sd["at"]) < w.pos.distance_to(best["at"])):
+				best = sd
+		if best.is_empty():
+			return false                                  # (every point is drawn dry: it holds out where it is)
+		f["state"] = "recharge"
+		f["station"] = best
+		f["goal"] = best["at"]
+		f["path"] = map.path(w.pos, best["at"])
+		f["pi"] = 0
+		floaters.append({"pos": w.pos + Vector2(0, -46), "text": "runs dry!", "col": Color(0.4, 0.9, 1.0), "t": 0.0})
+	var st: Dictionary = f["station"]
+	if w.pos.distance_to(st["at"]) < 14.0:
+		if float(st["cool"]) <= 0.0:
+			f["energy"] = float(f["energy_max"])
+			f["ammo"] = int(f["ammo_max"])
+			st["cool"] = float(f.get("station_cool", 25.0))
+			floaters.append({"pos": w.pos + Vector2(0, -46), "text": "recharged", "col": Color(0.4, 0.9, 1.0), "t": 0.0})
+			Audio.play_at("dock_clamp", w.pos, "foe at a charging point", -8.0)
+		f["state"] = "idle"
+		f["goal"] = Vector2.INF
+		f["think"] = 0.0
+		return false
+	if float(st["cool"]) > 0.0:                           # somebody was faster: another point, or none
+		f["state"] = "idle"
+		f["goal"] = Vector2.INF
+		return false
+	var path: PackedVector2Array = f["path"]
+	var pi := int(f["pi"])
+	var moved := false
+	if pi < path.size():
+		var to: Vector2 = path[pi] - w.pos
+		if to.length() < 3.0:
+			f["pi"] = pi + 1
+		else:
+			moved = w.step(to.normalized(), delta, 1.45)
+	else:
+		var to2: Vector2 = (st["at"] as Vector2) - w.pos
+		moved = w.step(to2.normalized(), delta, 1.45)
+	if not moved:
+		w.moving = false
+	w.aim = Vector2.INF
+	return true
 
 
 ## What to do next – by the foe's role (0.7.52.5, FoeData.ROLE): rushers close in, flankers run round to your open

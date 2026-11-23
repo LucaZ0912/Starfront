@@ -316,6 +316,10 @@ func setup_settlement(p_body: Dictionary, p_site: Dictionary, town: Dictionary, 
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
+	if level in ["zcolvr", "zcolar"] and not p_level in ["zcolvr", "zcolar"]:
+		GameState.col_gear_off()                         # package 62a, part 4: out of the arena, back into your own gear
+		_col_fight = {}
+		_col_big("")
 	if p_level == "zplaza" and arrive == "lift":
 		arrive = "from_hall"                              # package 61a: the lifts of the Commercial Hall lead out onto the plaza
 	if p_level == "mplaza" and is_centauria():
@@ -428,6 +432,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = ColosseumGen.build_stands(station)                   # … and the stands over the arena
 	elif level == "zcolar":
 		map = ColosseumGen.build_arena(station)                    # … part 3: the arena itself
+	elif level == "zcolvr":
+		var cvs: Dictionary = GameState.col_state()                # … part 4: the fight's ground, a setting drawn by lot
+		map = ColosseumVR.build(String(ColosseumData.setting(int(cvs["round"]), int(cvs["fights"]))["id"]), int(cvs["fights"]))
 	elif level == "zcasino":
 		map = CentauriaGen.build_casino(station, ctr_floor, city_day() < 0.5)      # package 62 (Luz): the Grand Centauria, floor by floor
 	elif level == "cplaza":
@@ -667,6 +674,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_title.text = "The Colosseum – The stands"
 	elif level == "zcolar":
 		_title.text = "The Colosseum – The arena"
+	elif level == "zcolvr":
+		_title.text = "The Colosseum – %s" % String(map.get_meta("col_vr_name", "the hologram"))
 	elif level == "zalley":
 		_title.text = "Centauria – Back Alleys"
 	elif level == "zbar":
@@ -829,6 +838,12 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			cpf.position = (cpd["pos"] as Vector2) * GroundMap.SCALE
 			_sorted.add_child(cpf)
 			_col_fx.append(cpf)
+	if level == "zcolvr":
+		var vfx = ColosseumVR.VrFx.new()                 # (part 4) the wall of light round the hologram, the grid as it comes up
+		vfx.stations = map.get_meta("col_stations", [])
+		vfx.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(vfx)
+		_world.move_child(vfx, _sorted.get_index())
 	if level in ["zplaza", "zcol"] and map.has_meta("ctr_facades"):
 		var ffx = CentauriaGen.FacadeFx.new()              # (Luz) the fronts of the plaza's buildings, storey by storey
 		ffx.buildings = map.get_meta("ctr_facades")
@@ -1977,6 +1992,8 @@ var sim_foes: Array = []
 const CentauriaGen = preload("res://scripts/ground/centauria_gen.gd")
 const ColosseumGen = preload("res://scripts/ground/colosseum_gen.gd")       # package 62a: the plaza before the Colosseum
 const ColosseumUI = preload("res://scripts/ground/colosseum_ui.gd")         # … part 3: the way to play, the fighters' room
+const ColosseumVR = preload("res://scripts/ground/colosseum_vr.gd")         # … part 4: the fight's ground
+const ColosseumData = preload("res://data/colosseum.gd")
 var ctr_stop := 0
 var ctr_line := "A"
 var ctr_floor := 0                      # package 62 (Luz): which floor of the Grand Centauria you stand on
@@ -1990,6 +2007,10 @@ var _col_wait := false                  # part 3: the Marshal's talk is open; wh
 var _col_walk: Dictionary = {}          # … you walk through the fighters' gate by yourself: {i, t, pts, fade}
 var _col_white := 0.0                   # … the picture coming back out of white (1 … 0), in the arena
 var _col_cover: ColorRect = null        # … the sheet of black or white over the picture
+var _col_intro: Dictionary = {}         # part 4: the entrance before a fight: {phase, t, hold, walkers, vs}
+var _col_fight: Dictionary = {}         # … the fight: {state: count / fight / over, t, won}
+var col_lost := false                   # … you are out of the fight (shot down in the hologram, or you gave up)
+var _col_label: Label = null            # … a word across the picture
 var _ctr_at := -2                       # where the train you ride stood last (for the announcements)
 
 
@@ -2044,6 +2065,8 @@ func holo_foe(nf: Dictionary) -> void:
 
 
 func combat_allowed() -> bool:
+	if level == "zcolvr":
+		return true                                      # package 62a, part 4: a fight in the Colosseum's hologram
 	if level == "sim":
 		return true                                      # package 58, part 6: the hangar's combat simulation
 	return (level == "landing" and (bool(_site.get("arena", false)) or bool(_site.get("vault", false)) or bool(_site.get("poi", false)))) \
@@ -2915,8 +2938,10 @@ func _apply_day(d: float, force: bool = false) -> void:
 
 
 func _process(delta: float) -> void:
-	if _col_white > 0.0 or (_col_cover != null and _col_walk.is_empty()):
+	if _col_white > 0.0 or (_col_cover != null and _col_walk.is_empty() and int(_col_intro.get("phase", -1)) != 5):
 		_col_white_step(delta)                           # package 62a, part 3: out of the white into the arena
+	if not _col_fight.is_empty():
+		_col_fight_step(delta)                           # … part 4: the count, the fight, how it ends
 	for mn in [_lift_menu, talk, talk_menu]:      # package 80 (Luz): every menu on foot by the menus' rules (keys, controller)
 		if mn != null and is_instance_valid(mn) and not (mn as Node).is_in_group("kbd_menu"):
 			(mn as Node).add_to_group("kbd_menu")
@@ -2970,6 +2995,8 @@ func _process(delta: float) -> void:
 		_col_scene_step(delta)                           # package 62a, part 2 (Luz): the fighters' area opens
 	elif not _col_walk.is_empty():
 		_col_walk_step(delta)                            # … part 3: through the fighters' gate, by yourself
+	elif not _col_intro.is_empty():
+		_col_intro_step(delta)                           # … part 4: the entrance before a fight
 	elif input_enabled and talk == null and _lift_menu == null and minigame == null and not background_locked():
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
 		if combat != null and combat.wheel_open:
@@ -3039,7 +3066,7 @@ func _prompt_text(z: Dictionary) -> String:
 		return ""
 	var key := Keybinds.key_text("interact")
 	match String(z["kind"]):
-		"exit", "lift", "charge":
+		"exit", "lift", "charge", "col_charge", "col_giveup":
 			return "[%s] %s" % [key, z["title"]]
 		"soon":
 			return String(z["title"])
@@ -5072,7 +5099,7 @@ func wheel_centre() -> Vector2:
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
 func use(instant: bool = false) -> bool:
-	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty() or not _clift.is_empty() or not _col_walk.is_empty() or not _col_scene.is_empty() or _col_wait:
+	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty() or not _clift.is_empty() or not _col_walk.is_empty() or not _col_scene.is_empty() or _col_wait or not _col_intro.is_empty():
 		return false                                     # review 7 K1: not while the platform sinks
 	if not _seat.is_empty():
 		_stand_up()
@@ -5216,6 +5243,24 @@ func use(instant: bool = false) -> bool:
 			return true
 		"col_register":
 			_col_register()                                  # package 62a, part 2 (Luz): the Colosseum's registration
+			return true
+		"col_charge":
+			var cst2: Array = map.get_meta("col_stations", [])   # package 62a, part 4 (Luz): a charging point on the fight's ground
+			var csi := int(zone.get("i", 0))
+			if csi < cst2.size():
+				if float(cst2[csi]["cool"]) > 0.0:
+					_say_toast("This charging point is drawn dry: ready again in %d s." % int(ceil(float(cst2[csi]["cool"]))), 2.5)
+					Audio.play("ui_error", "charging point: dry")
+				else:
+					GameState.gear.charge()
+					cst2[csi]["cool"] = ColosseumData.STATION_COOL
+					_say_toast("Charged: energy and ammunition are full. The point is drawn dry for %d s." % int(ColosseumData.STATION_COOL), 3.0)
+					Audio.play("dock_clamp", "charging point")
+			return true
+		"col_giveup":
+			if not _col_fight.is_empty() and String(_col_fight["state"]) == "fight":      # package 62a, part 4: out of the fight by your own choice
+				ask_window("Give up?", "The fight ends and counts as lost: the run's gear points go back to the house, the round is 1 again. Your rank stays.",
+					[["Give up", func(): col_lost = true], ["Fight on", func(): pass]])
 			return true
 		"col_fgate":
 			_say_toast("The fighters' gate. Talk to the Marshal at the counter when you want to compete.", 5.0)
@@ -5803,22 +5848,255 @@ func _col_walk_step(delta: float) -> void:
 		pilot.pos = pts[pts.size() - 2]
 		pilot.position = pilot.pos * GroundMap.SCALE
 		_col_sheet(Color(0, 0, 0, 0))
-		var pr = ColosseumUI.Prep.new()                  # the fighters' room
-		pr.setup({})
-		pr.finished.connect(func(entered: bool): _col_prep_done(entered))
-		_open_game(pr)
+		_col_prep_open()
 
 
-## The fighters' room is left: back into the lobby, or (READY, the countdown, the white) out into the arena.
+## The fighters' room is left: back into the lobby, or (READY, the countdown, the white) out into the arena, where
+## the entrance begins.
 func _col_prep_done(entered: bool) -> void:
 	_close_game()
 	if entered:
+		GameState.col_gear_on()                          # (from the arena's gate on you wear the house's gear)
 		go_level("zcolar", "from_gate")
 		_col_white = 1.0
 		_col_sheet(Color(1, 1, 1, 1))
 		Audio.play("dock_clamp", "colosseum: into the arena")
+		ColosseumGen.gate_open = 0.0
+		ColosseumGen.boot = 0.0
+		_col_intro = {"phase": 0, "t": 0.0, "hold": 0.0, "walkers": []}
 	else:
 		_ctr_title()
+
+
+func _col_prep_open() -> void:
+	var pr = ColosseumUI.Prep.new()                      # the fighters' room
+	pr.setup({})
+	pr.finished.connect(func(entered: bool): _col_prep_done(entered))
+	_open_game(pr)
+
+
+func _col_phase(n: int) -> void:
+	_col_intro["phase"] = n
+	_col_intro["t"] = 0.0
+
+
+## Package 62a, part 4 (Luz): the entrance. The camera rises over the whole round and comes down again; across from
+## you the gate slides open and the three walk in; the picture of them against you; then the hologram comes up over
+## the tiles and the fight's ground loads. The first time you see all of it; after that holding Esc or Options
+## goes straight to the fight.
+func _col_intro_step(delta: float) -> void:
+	var cst: Dictionary = GameState.col_state()
+	var t := float(_col_intro["t"]) + delta
+	_col_intro["t"] = t
+	var tl := float(GroundMap.TILE)
+	var ac: Vector2 = ColosseumGen.A_C * tl
+	var north := Vector2(ColosseumGen.A_C.x, ColosseumGen.A_C.y - ColosseumGen.A_R.y + 1.6) * tl
+	if bool(cst.get("seen", false)):
+		if Input.is_action_pressed("ui_cancel") or Input.is_joy_button_pressed(0, JOY_BUTTON_START):
+			_col_intro["hold"] = float(_col_intro["hold"]) + delta
+			if float(_col_intro["hold"]) >= 0.6:
+				_col_fight_start()
+				return
+		else:
+			_col_intro["hold"] = 0.0
+	match int(_col_intro["phase"]):
+		0:                                               # out of the white
+			if t > 0.5 and not bool(_col_intro.get("clap", false)):
+				_col_intro["clap"] = true                    # (Luz) the crowd claps you in: the fuller the stands, the louder
+				Audio.play("crowd_applause", "colosseum: the crowd for you", ColosseumData.applause_db(cst), 0.0)
+			if t > 1.5:
+				_col_phase(1)
+				if bool(cst.get("seen", false)):
+					_say_toast("Hold Esc or Options to go straight to the fight.", 4.0)
+		1:                                               # the whole round
+			story_cam = ColosseumGen.A_C * tl
+			story_zoom = 0.36
+			if t > 3.2:
+				_col_phase(2)
+				var foes: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]))
+				for i in foes.size():
+					var card: Dictionary = ColosseumGen.foe_card(foes[i])
+					var off: float = [0.0, -2.6, 2.6][i]
+					var w := Walker.new()
+					w.setup(map, card["look"], north + Vector2(off * tl * 0.4, 0.0), true)
+					w.stays = true
+					w.dir = 0
+					_sorted.add_child(w)
+					(_col_intro["walkers"] as Array).append({"w": w, "to": Vector2(ac.x + off * tl, ac.y - 5.0 * tl)})
+				Audio.play("undock_release", "colosseum: the far gate")
+		2:                                               # the gate of the others, the three walk in
+			if t > 0.9 and not bool(_col_intro.get("clap2", false)):
+				_col_intro["clap2"] = true                   # … and the three
+				Audio.play("crowd_applause", "colosseum: the crowd for the three", ColosseumData.applause_db(cst) - 2.0, 0.0)
+			story_zoom = 0.0
+			story_cam = north + Vector2(0.0, 5.0 * tl)
+			ColosseumGen.gate_open = clampf(t / 1.0, 0.0, 1.0)
+			for wd in _col_intro["walkers"]:
+				var ww: Walker = wd["w"]
+				var to: Vector2 = (wd["to"] as Vector2) - ww.pos
+				if to.length() > 2.0:
+					if not ww.step(to.normalized(), delta, 1.0):
+						ww.pos += to.normalized() * minf(to.length(), Walker.SPEED * delta)
+						ww.position = ww.pos * GroundMap.SCALE
+				else:
+					ww.moving = false
+					ww.dir = 0
+			if t > 4.4:
+				_col_phase(3)
+				var foes2: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]))
+				var yl: Dictionary = pilot_look().duplicate()
+				yl["suit"] = String(cst["fit"]["suit"]).get_slice(":", 0)
+				yl["helmet"] = false
+				var vs = ColosseumUI.Versus.new()
+				vs.setup({"foes": foes2.map(func(o): return ColosseumGen.foe_card(o)), "you_tex": ChibiArt.frame(yl, 0, 0), "you": GameState.pilot_name.to_upper(),
+					"sub": "KING OF THE COLOSSEUM   ·   ROUND %d" % int(cst["round"])})
+				vs.finished.connect(func(_w: bool):
+					if is_instance_valid(vs):
+						vs.queue_free()
+					if int(_col_intro.get("phase", -1)) == 3:
+						_col_phase(4)
+						Audio.play("ui_open", "colosseum: the hologram"))
+				_ui.add_child(vs)
+				_col_intro["vs"] = vs
+				Audio.play("dock_clamp", "colosseum: versus")
+		3:
+			pass                                             # (the picture runs; it sends you on)
+		4:                                               # the hologram comes up
+			story_cam = Vector2.INF
+			ColosseumGen.boot = clampf(t / 2.2, 0.0, 1.0)
+			if t > 2.4:
+				_col_phase(5)
+		5:
+			_col_sheet(Color(1, 1, 1, clampf(t / 0.5, 0.0, 1.0)))
+			if t > 0.5:
+				_col_fight_start()
+
+
+## The fight's ground loads (a setting drawn by lot, far larger than the arena); you wear the house's gear; the three
+## stand at the far side. Three, two, one.
+func _col_fight_start() -> void:
+	var cst: Dictionary = GameState.col_state()
+	if _col_intro.has("vs") and is_instance_valid(_col_intro["vs"]):
+		(_col_intro["vs"] as Node).queue_free()
+	_col_intro = {}
+	cst["seen"] = true
+	story_cam = Vector2.INF
+	story_zoom = 0.0
+	ColosseumGen.gate_open = 0.0
+	ColosseumGen.boot = 0.0
+	GameState.col_gear_on()
+	col_lost = false
+	go_level("zcolvr", "from_gate")
+	var foes: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]))
+	for i in mini(foes.size(), map.foe_spawns.size()):
+		var fd: Dictionary = ColosseumData.foe_of(foes[i], int(cst["round"]), i)
+		var card: Dictionary = ColosseumGen.foe_card(foes[i])
+		var nf: Dictionary = combat.spawn(String(fd["kind"]), map.foe_spawns[i], String(fd["quality"]), String(fd["tier"]))
+		nf["name"] = String(card["name"])
+		nf["holo"] = true                                # (nothing to loot: it is a hologram's fight)
+		# (Luz) they live on their suit's energy and their rounds as you do, and use the charging points as you do
+		var fsu: Dictionary = ChibiArt.GearData.stats(GroundCombat.FoeData.suit_id(String(fd["kind"]), String(nf["quality"])))
+		nf["energy_max"] = float(fsu.get("energy", 120.0)) * ColosseumData.FOE_RESERVE
+		nf["energy"] = float(nf["energy_max"])
+		nf["ammo_max"] = int(float(fsu.get("ammo", 100)) * ColosseumData.FOE_RESERVE)
+		nf["ammo"] = int(nf["ammo_max"])
+		nf["stations"] = map.get_meta("col_stations", [])
+		nf["station_cool"] = ColosseumData.STATION_COOL
+		combat._wake(nf)                                 # (they know where you are from the first moment)
+		var lw: Walker = nf["w"]
+		lw.look = (card["look"] as Dictionary).duplicate()
+		lw.queue_redraw()
+	_col_fight = {"state": "count", "t": 0.0}
+	input_enabled = false
+	_col_white = 1.0
+	_col_sheet(Color(1, 1, 1, 1))
+
+
+func _col_fight_step(delta: float) -> void:
+	var t := float(_col_fight["t"]) + delta
+	_col_fight["t"] = t
+	for sd in map.get_meta("col_stations", []):          # the charging points fill up again
+		sd["cool"] = maxf(0.0, float(sd["cool"]) - delta)
+	match String(_col_fight["state"]):
+		"count":
+			input_enabled = false
+			if t < 3.0:
+				var n := 3 - int(t)
+				if _col_label == null or _col_label.text != str(n):
+					Audio.play("ui_click", "colosseum: count")
+				_col_big(str(n))
+			else:
+				_col_fight = {"state": "fight", "t": 0.0}
+				input_enabled = true
+				_col_big("FIGHT")
+				Audio.play("undock_release", "colosseum: fight")
+		"fight":
+			if t > 0.9:
+				_col_big("")
+			if col_lost:
+				_col_fight_over(false)
+			elif combat != null and combat.alive().is_empty():
+				_col_fight_over(true)
+		"over":
+			if t > 1.8 and not bool(_col_fight.get("shown", false)):
+				_col_fight["shown"] = true
+				_col_big("")
+				Commands.execute({"type": "col_fight_end", "won": bool(_col_fight["won"])})
+				var rs = ColosseumUI.Result.new()
+				rs.setup({"res": GameState.col_state().get("last", {})})
+				rs.finished.connect(func(next: bool): _col_result_done(next))
+				_open_game(rs)
+
+
+## The fight is over: all three are out, or you are (or you gave up).
+func _col_fight_over(won: bool) -> void:
+	if _col_fight.is_empty() or String(_col_fight["state"]) == "over":
+		return
+	_col_fight = {"state": "over", "t": 0.0, "won": won}
+	col_lost = not won
+	input_enabled = false
+	pilot.moving = false
+	pilot.aim = Vector2.INF
+	_col_big("ALL THREE ARE OUT" if won else "YOU ARE OUT")
+	Audio.play("arcade_coin" if won else "ui_error", "colosseum: the fight is over")
+	if won:
+		Audio.play("crowd_applause", "colosseum: the crowd for the winner", ColosseumData.applause_db(GameState.col_state()) + 1.0, 0.0)
+
+
+## The picture after the fight is closed: back into the lobby (into your own gear), and on a win, if you want, straight
+## into the fighters' room for the next round.
+func _col_result_done(next: bool) -> void:
+	_close_game()
+	_col_fight = {}
+	input_enabled = true
+	go_level("zcolin", "from_reg")
+	if next:
+		_col_prep_open()
+
+
+## A word across the picture (the count before a fight, how it ended).
+func _col_big(text: String) -> void:
+	if text == "":
+		if _col_label != null and is_instance_valid(_col_label):
+			_col_label.queue_free()
+		_col_label = null
+		return
+	if _col_label == null or not is_instance_valid(_col_label):
+		_col_label = Label.new()
+		_col_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_col_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_col_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_col_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_col_label.add_theme_font_size_override("font_size", 150)
+		_col_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.7))
+		_col_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.1))
+		_col_label.add_theme_constant_override("outline_size", 18)
+		_ui.add_child(_col_label)
+	_col_label.text = text
+
+
+func _exit_tree() -> void:
+	GameState.col_gear_off()                             # (never leave on foot in the house's gear)
 
 
 ## The sheet over the picture (black on the way through the gate, white on the way into the arena).

@@ -65,6 +65,10 @@ func stream(id: String) -> AudioStream:
 	if _streams.has(id):
 		return _streams[id]
 	var s: AudioStream = null
+	if id == "crowd_applause":                 # package 62a, part 4 (Luz): the Colosseum's crowd, made here
+		s = load("res://scripts/core/crowd_sound.gd").applause()
+		_streams[id] = s
+		return s
 	for ext in ["ogg", "wav", "mp3"]:          # 0.6.37.4: mp3 too (the CME alarm)
 		var path := "res://assets/sfx/%s.%s" % [id, ext]
 		if ResourceLoader.exists(path):
