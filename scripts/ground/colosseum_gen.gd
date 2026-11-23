@@ -124,7 +124,8 @@ static func build_plaza(_station: Dictionary) -> GroundMap:
 	marble.append(Rect2(Vector2(QX, top + 3) * TILE, Vector2(QCW, 25) * TILE))
 	m.set_meta("col_stair", Rect2(Vector2(mid - 12, top) * TILE, Vector2(24, 3) * TILE))
 	m.set_meta("col_podium", [Rect2(Vector2(QX, top) * TILE, Vector2(mid - 12 - QX, 3) * TILE), Rect2(Vector2(mid + 12, top) * TILE, Vector2(QX + QCW - mid - 12, 3) * TILE)])
-	_z(m, Rect2(mid - 4, top, 8, 1.4), "ctr_closed", "The Colosseum: the great gate", GOLD, {"closed": "The gate is shut. The Colosseum opens soon.", "id": "col_gate"})
+	m.zones.append({"rect": Rect2(Vector2(mid - 4, top) * TILE, Vector2(8, 1.4) * TILE), "kind": "museum_go", "id": "col_gate", "to": "zcolin", "at": "from_plaza",
+		"title": "Through the great gate: the Colosseum", "col": GOLD, "sign": Vector2(-100, -100)})        # part 2: the gate stands open
 	m.set_meta("from_gate", Vector2(mid, top + 4.0) * TILE)
 	for lx in range(QX + 3, QX + QCW - 2, 6):
 		m.lights.append({"pos": Vector2(lx, top + 3.2) * TILE, "r": 40.0, "col": NEON[(lx / 6) % NEON.size()], "a": 0.4})
@@ -138,7 +139,7 @@ static func build_plaza(_station: Dictionary) -> GroundMap:
 	m.set_meta("ctr_metro", Vector2(kx - 1, ky) * TILE)
 	m.set_meta("ctr_metro_line", "B")
 	m.set_meta("ctr_metro_stop", 2)
-	m.set_meta("ctr_metro_tick", "COLOSSEUM  ·  MIND THE STEPS  ·  LINE B TO CENTAURIA CENTRAL  ·  THE GATE OPENS SOON  ·  ")
+	m.set_meta("ctr_metro_tick", "COLOSSEUM  ·  MIND THE STEPS  ·  LINE B TO CENTAURIA CENTRAL  ·  SIGN UP IN THE LOBBY  ·  ")
 	_z(m, Rect2(kx, ky + 1.0, 4.0, 2.2), "ctr_down", "Stairs down: the station, Line B to Centauria Central", Color(0.35, 1.0, 0.55), {"stop": 2})
 	m.lights.append({"pos": Vector2(kx + 2.0, ky + 2.4) * TILE, "r": 50.0, "col": GOLD, "a": 0.22})
 	m.lights.append({"pos": Vector2(kx + 2.0, ky - 0.6) * TILE, "r": 50.0, "col": WHITE, "a": 0.3})
@@ -423,12 +424,18 @@ static func draw_colosseum(ci: CanvasItem, t: float, night: float, y_lo: float, 
 	if y_lo < -SCREEN.position.y:
 		var gr := Rect2(-GATE_W * 0.5, -GATE_H, GATE_W, GATE_H)
 		ci.draw_rect(gr.grow_individual(46.0, 46.0, 46.0, 0.0), marble.lightened(0.04))
-		ci.draw_rect(gr, Color(0.16, 0.11, 0.08))
-		for dl in 8:                                       # the doors of bronze: bands, a seam, studs of light
-			ci.draw_rect(Rect2(gr.position.x, gr.position.y + 14.0 + dl * 40.0, GATE_W, 5.0), Color(0.55, 0.4, 0.2))
-			for sd in 6:
-				ci.draw_rect(Rect2(gr.position.x + 26.0 + sd * 62.0, gr.position.y + 30.0 + dl * 40.0, 6.0, 6.0), Color(1.0, 0.82, 0.35, 0.4 + 0.6 * absf(sin(t * 1.5 + dl + sd))))
-		ci.draw_rect(Rect2(-3.0, -GATE_H, 6.0, GATE_H), Color(0.05, 0.03, 0.03))
+		# (part 2) the gate stands open: the hall's light, the red carpet running in, the doors of bronze swung aside
+		ci.draw_rect(gr, Color(0.22, 0.16, 0.12))
+		for dp in 5:
+			ci.draw_rect(Rect2(-GATE_W * 0.32 + dp * 16.0, -GATE_H + 30.0 + dp * 26.0, GATE_W * 0.64 - dp * 32.0, GATE_H - 30.0 - dp * 26.0), Color(1.0, 0.86, 0.6, 0.16))
+		ci.draw_rect(Rect2(-34.0, -GATE_H * 0.5, 68.0, GATE_H * 0.3), Color(0.7, 0.9, 1.0, 0.6))      # (far off: the gate to the stands)
+		ci.draw_colored_polygon(PackedVector2Array([Vector2(-70.0, 0.0), Vector2(70.0, 0.0), Vector2(30.0, -GATE_H * 0.22), Vector2(-30.0, -GATE_H * 0.22)]), Color(0.66, 0.1, 0.18))
+		for side in 2:
+			var dx0 := gr.position.x if side == 0 else gr.end.x - GATE_W * 0.2
+			ci.draw_rect(Rect2(dx0, gr.position.y, GATE_W * 0.2, GATE_H), Color(0.16, 0.11, 0.08))
+			for dl in 8:                                   # the doors: bands, studs of light
+				ci.draw_rect(Rect2(dx0, gr.position.y + 14.0 + dl * 40.0, GATE_W * 0.2, 5.0), Color(0.55, 0.4, 0.2))
+				ci.draw_rect(Rect2(dx0 + GATE_W * 0.1 - 3.0, gr.position.y + 30.0 + dl * 40.0, 6.0, 6.0), Color(1.0, 0.82, 0.35, 0.4 + 0.6 * absf(sin(t * 1.5 + dl + side))))
 		var gp := 0.6 + 0.4 * absf(sin(t * 1.8))
 		ci.draw_rect(gr, Color(1.0, 0.82, 0.35, gp), false, 8.0)
 		ci.draw_rect(gr.grow_individual(46.0, 46.0, 46.0, 0.0), Color(NEON[0], 0.5 * gp), false, 5.0)
@@ -563,6 +570,8 @@ class ColFx extends Node2D:
 	var data := {}
 	var map: GroundMap = null
 	var night := 0.0
+	var open := 0.0                  # (the lobby) how far the wall of light before the fighters' area has gone out …
+	var gate := 0.0                  # … and how far the fighters' gate stands open
 	var _t := 0.0
 	var _acc := 0.0
 
@@ -579,6 +588,12 @@ class ColFx extends Node2D:
 				_floor()
 			"res":
 				_res()
+			"hall_floor":
+				_hall_floor()
+			"hall_wall":
+				_hall_wall()
+			"st_floor":
+				_st_floor()
 			_:
 				_prop()
 
@@ -710,6 +725,134 @@ class ColFx extends Node2D:
 		draw_string(font, Vector2(dx - 44.0, base - 55.0), "RESIDENCES", HORIZONTAL_ALIGNMENT_CENTER, 88.0, 5, Color(0.9, 0.92, 1.0, 0.8))
 		draw_rect(Rect2(dx - 12.0, base - 2.0, 24.0, 2.0), Color(0.62, 0.1, 0.22))           # a runner of red before the doors
 
+	# ---- package 62a, part 2: the lobby and the stands
+	func _marble_rect(rr: Rect2, mc: Color, gold: Color) -> void:
+		draw_rect(rr, mc)
+		for gx in range(int(rr.position.x), int(rr.end.x), 48):
+			for gy in range(int(rr.position.y), int(rr.end.y), 48):
+				var k := CG.hsh(gx / 48 + gy / 48 * 57, 3)
+				if k > 0.45:
+					draw_rect(Rect2(gx, gy, minf(48.0, rr.end.x - gx), minf(48.0, rr.end.y - gy)), mc.darkened(0.05 + 0.07 * k))
+		for gx2 in range(int(rr.position.x), int(rr.end.x) + 1, 48):
+			draw_rect(Rect2(gx2, rr.position.y, 1.0, rr.size.y), gold)
+		for gy2 in range(int(rr.position.y), int(rr.end.y) + 1, 48):
+			draw_rect(Rect2(rr.position.x, gy2, rr.size.x, 1.0), gold)
+
+	## The lobby's floor: marble, the red carpet with its cords, the fighters' area a shade bluer.
+	func _hall_floor() -> void:
+		var mc := Color(0.82, 0.8, 0.76)
+		var gold := Color(1.0, 0.82, 0.35, 0.5)
+		var fl := float(CG.L_F0) * 16.0
+		_marble_rect(Rect2(16.0, fl, (CG.LW - 2) * 16.0, (CG.L_F1 - CG.L_F0 + 1) * 16.0), mc, gold)
+		var ar := Rect2(CG.REG_X * 16.0, fl, CG.REG_W * 16.0, 7.0 * 16.0)
+		draw_rect(ar, Color(0.3, 0.6, 0.9, 0.16))
+		draw_rect(ar, Color(0.3, 0.9, 1.0, 0.5 + 0.3 * sin(_t * 1.5)), false, 1.0)
+		var cr: Rect2 = map.get_meta("col_carpet", Rect2())
+		draw_rect(cr, Color(0.62, 0.1, 0.18))
+		draw_rect(Rect2(cr.position.x + 3.0, cr.position.y, cr.size.x - 6.0, cr.size.y), Color(0.7, 0.13, 0.22))
+		for side in 2:
+			var ex := cr.position.x + 1.0 if side == 0 else cr.end.x - 2.0
+			draw_rect(Rect2(ex, cr.position.y, 1.0, cr.size.y), Color(1.0, 0.82, 0.35))
+			var px := cr.position.x - 5.0 if side == 0 else cr.end.x + 4.0
+			var y := cr.position.y + 24.0
+			while y < fl + (CG.L_F1 - CG.L_F0) * 16.0:              # posts of gold, a cord of velvet from one to the next
+				draw_rect(Rect2(px - 0.5, y, 2.0, 30.0), Color(0.5, 0.08, 0.16))
+				draw_circle(Vector2(px + 0.5, y), 2.2, Color(1.0, 0.82, 0.35))
+				draw_circle(Vector2(px + 0.5, y), 1.0, Color(1.0, 0.95, 0.7))
+				y += 32.0
+
+	## The lobby's north wall: marble pilasters and niches, strips of neon running, the open gate to the stands with
+	## the screen over it, the ranking, the fighters' gate (`gate`: how far it stands open).
+	func _hall_wall() -> void:
+		var font := ThemeDB.fallback_font
+		var W := float(CG.LW) * 16.0
+		var fl := float(CG.L_F0) * 16.0
+		var mc := Color(0.84, 0.82, 0.78)
+		var mid := float(CG.LMID) * 16.0
+		draw_rect(Rect2(16.0, 0.0, W - 32.0, fl), mc.darkened(0.14))
+		for i in range(1, CG.LW - 1, 3):
+			var x := i * 16.0
+			draw_rect(Rect2(x + 14.0, 44.0, 26.0, fl - 60.0), mc.darkened(0.32))
+			draw_circle(Vector2(x + 27.0, 44.0), 13.0, mc.darkened(0.32))
+			if (i / 3) % 2 == 0:
+				var bc: Color = CG.FIGHTERS[(i / 3) % CG.FIGHTERS.size()]["col"]
+				draw_rect(Rect2(x + 19.0, 46.0, 16.0, 62.0), bc.darkened(0.3))
+				draw_rect(Rect2(x + 19.0, 46.0, 16.0, 2.0), Color(1.0, 0.82, 0.35))
+			draw_rect(Rect2(x + 2.0, 26.0, 8.0, fl - 26.0), mc.lightened(0.06))
+			draw_rect(Rect2(x + 5.0, 30.0, 2.0, fl - 40.0), Color(CG.NEON[(i / 3) % 4], 0.35 + 0.5 * absf(sin(_t * 1.6 - i * 0.2))))
+		draw_rect(Rect2(16.0, 0.0, W - 32.0, 10.0), Color(0.1, 0.09, 0.14))
+		draw_rect(Rect2(16.0, 10.0, W - 32.0, 12.0), mc.lightened(0.05))
+		for sg in range(16, int(W) - 16, 12):
+			var run := pow(maxf(0.0, sin(sg * 0.05 - _t * 2.2)), 2.0)
+			draw_rect(Rect2(sg, 22.0, 12.0, 4.0), Color(CG.NEON[0], 0.4 + 0.6 * run))
+			draw_rect(Rect2(sg, fl - 12.0, 12.0, 3.0), Color(CG.NEON[1], 0.35 + 0.65 * pow(maxf(0.0, sin(sg * 0.05 + _t * 1.7)), 2.0)))
+		draw_rect(Rect2(16.0, fl - 9.0, W - 32.0, 9.0), mc.darkened(0.25))
+		# the open gate to the stands: the arena's light in it, the far rows of the round, the rail
+		var gr := Rect2(mid - 48.0, fl - 108.0, 96.0, 108.0)
+		draw_rect(gr.grow_individual(10.0, 10.0, 10.0, 0.0), mc.lightened(0.08))
+		draw_rect(gr, Color(0.55, 0.78, 0.95))
+		for b in 5:
+			draw_rect(Rect2(gr.position.x, gr.position.y + 14.0 + b * 9.0, gr.size.x, 5.0), Color(0.2, 0.18, 0.3, 0.75 - b * 0.1))
+			for p in 12:
+				draw_rect(Rect2(gr.position.x + 3.0 + p * 7.8 + (b % 2) * 3.0, gr.position.y + 14.0 + b * 9.0, 2.0, 3.0), Color(CG.NEON[(p + b) % 4], 0.8))
+		draw_rect(Rect2(gr.position.x, gr.position.y + 62.0, gr.size.x, 46.0), Color(0.85, 0.93, 1.0))
+		draw_rect(Rect2(gr.position.x, gr.position.y + 60.0, gr.size.x, 2.0), Color(0.3, 0.9, 1.0))
+		draw_rect(Rect2(gr.position.x, gr.position.y + 62.0, gr.size.x, 46.0), Color(0.4, 0.75, 1.0, 0.25 + 0.2 * absf(sin(_t * 0.9))))
+		draw_rect(gr, Color(1.0, 0.82, 0.35, 0.7 + 0.3 * absf(sin(_t * 1.8))), false, 2.5)
+		CG.draw_screen(self, Rect2(mid - 62.0, 4.0, 124.0, 43.0), GameState.play_time)
+		# the ranking, west
+		var rk := Rect2(mid - 20.0 * 16.0, 34.0, 168.0, 104.0)
+		draw_rect(rk.grow(3.0), mc.lightened(0.05))
+		draw_rect(rk, Color(0.04, 0.04, 0.09))
+		draw_string(font, rk.position + Vector2(6.0, 11.0), "THE RANKING", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 8, Color(1.0, 0.85, 0.4))
+		var rows: Array = CG.RANK.duplicate()
+		if GameState.col_registered:
+			rows.append([GameState.pilot_name.to_upper(), 0])
+		for r in mini(rows.size(), 9):
+			var mine := r >= CG.RANK.size()
+			var ry := rk.position.y + 21.0 + r * 9.2
+			draw_string(font, Vector2(rk.position.x + 6.0, ry), "%d" % (r + 1) if not mine else "NEW", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 6, Color(0.6, 0.65, 0.78))
+			draw_string(font, Vector2(rk.position.x + 26.0, ry), String(rows[r][0]), HORIZONTAL_ALIGNMENT_LEFT, 96.0, 6,
+				Color(0.5, 1.0, 0.6) if mine else Color(CG.FIGHTERS[r % CG.FIGHTERS.size()]["col"]).lightened(0.3))
+			draw_string(font, Vector2(rk.end.x - 40.0, ry), "%d" % int(rows[r][1]), HORIZONTAL_ALIGNMENT_RIGHT, 34.0, 6, Color(0.85, 0.9, 1.0))
+		draw_rect(rk, Color(CG.NEON[1], 0.8), false, 1.5)
+		# the fighters' gate, behind the registration
+		var fg := Rect2(CG.FG_X * 16.0, fl - 100.0, 80.0, 100.0)
+		draw_rect(fg.grow_individual(8.0, 8.0, 8.0, 0.0), mc.lightened(0.08))
+		draw_rect(fg, Color(0.75, 0.92, 1.0))
+		for st in 6:
+			draw_rect(Rect2(fg.position.x + st * 5.0, fg.position.y + st * 6.0, fg.size.x - st * 10.0, fg.size.y - st * 6.0), Color(0.3, 0.6, 0.85, 0.16))
+		var leaf := fg.size.x * 0.5 * (1.0 - gate)
+		for side in 2:
+			var lx := fg.position.x if side == 0 else fg.end.x - leaf
+			if leaf > 0.5:
+				draw_rect(Rect2(lx, fg.position.y, leaf, fg.size.y), Color(0.2, 0.15, 0.12))
+				for dl in 6:
+					draw_rect(Rect2(lx, fg.position.y + 8.0 + dl * 16.0, leaf, 2.0), Color(0.55, 0.4, 0.2))
+				draw_rect(Rect2(lx if side == 1 else lx + leaf - 2.0, fg.position.y, 2.0, fg.size.y), Color(1.0, 0.3, 0.3).lerp(Color(0.3, 1.0, 0.7), gate))
+		draw_rect(fg, Color(1.0, 0.3, 0.3).lerp(Color(0.3, 1.0, 0.7), gate), false, 2.0)
+		var sign := Rect2(fg.position.x + 4.0, fg.position.y - 22.0, 72.0, 11.0)
+		draw_rect(sign, Color(0.04, 0.04, 0.08))
+		draw_string(font, sign.position + Vector2(0.0, 8.0), "FIGHTERS ONLY" if gate < 0.5 else "FIGHTERS", HORIZONTAL_ALIGNMENT_CENTER, 72.0, 6,
+			Color(1.0, 0.4, 0.4).lerp(Color(0.4, 1.0, 0.75), gate))
+
+	## The stands' floor: dark stone going down in steps to the rail of glass, lights along the aisles.
+	func _st_floor() -> void:
+		var sr: Rect2 = map.get_meta("col_stands", Rect2())
+		draw_rect(sr, Color(0.2, 0.2, 0.27))
+		var row := 0
+		for gy in range(int(sr.position.y), int(sr.end.y), 32):
+			draw_rect(Rect2(sr.position.x, gy, sr.size.x, 32.0), Color(0.2, 0.2, 0.27).lightened(0.035 * row))
+			draw_rect(Rect2(sr.position.x, gy + 30.0, sr.size.x, 2.0), Color(0.1, 0.1, 0.15))
+			for lx in range(int(sr.position.x) + 8, int(sr.end.x), 48):
+				draw_rect(Rect2(lx, gy + 28.0, 6.0, 1.5), Color(0.3, 0.9, 1.0, 0.5 + 0.4 * absf(sin(_t * 1.4 + lx * 0.02))))
+			row += 1
+		var ry := float(CG.S_TOP) * 16.0                                # the rail: glass, a line of light on its top
+		draw_rect(Rect2(0.0, ry + 2.0, float(CG.SW2) * 16.0, 14.0), Color(0.6, 0.85, 1.0, 0.22))
+		draw_rect(Rect2(0.0, ry + 2.0, float(CG.SW2) * 16.0, 1.5), Color(0.5, 0.95, 1.0, 0.9))
+		for px in range(0, CG.SW2 * 16, 48):
+			draw_rect(Rect2(px, ry, 2.0, 16.0), Color(0.75, 0.78, 0.85))
+
 	func _prop() -> void:
 		var font := ThemeDB.fallback_font
 		var nk := night > 0.5
@@ -729,6 +872,8 @@ class ColFx extends Node2D:
 				draw_rect(Rect2(2.0, -ph + 7.0, w - 4.0, 9.0), Color(0.06, 0.05, 0.08))
 				draw_string(font, Vector2(2.0, -ph + 14.0), String(f["name"]), HORIZONTAL_ALIGNMENT_CENTER, w - 4.0, 5 if w < 40.0 else 7, col.lightened(0.3))
 				draw_rect(Rect2(0.0, -ph + 18.0, w, 1.5), Color(col, 0.6 + 0.4 * absf(sin(_t * 1.7 + who))))
+				if data.has("year"):                             # (the lobby: an earlier champion, the year of the title)
+					draw_string(font, Vector2(0.0, -1.5), "CHAMPION %d" % int(data["year"]), HORIZONTAL_ALIGNMENT_CENTER, w, 4, Color(0.2, 0.2, 0.25))
 				var tex: Texture2D = CG.fighter_tex(who, true)
 				var th := tex.get_height() * k
 				var tw := tex.get_width() * k
@@ -743,6 +888,41 @@ class ColFx extends Node2D:
 				draw_line(Vector2(hx, hy + th * 0.3), Vector2(hx + tw * 0.1, tr.position.y - th * 0.18), col.lightened(0.5), 1.5)
 				draw_circle(Vector2(hx + tw * 0.1, tr.position.y - th * 0.18), 2.5 + absf(sin(_t * 2.4 + who)), Color(col.lightened(0.5), 0.9))
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			"regdesk":     # the registration's counter: marble, a strip of gold, its sign of light over it, a terminal
+				draw_rect(Rect2(3.0, -2.0, w, 5.0), Color(0, 0, 0, 0.3))
+				draw_rect(Rect2(0.0, -16.0, w, 16.0), mc.darkened(0.16))
+				draw_rect(Rect2(-1.0, -25.0, w + 2.0, 10.0), mc.lightened(0.1))
+				draw_rect(Rect2(3.0, -8.0, w - 6.0, 1.5), Color(1.0, 0.82, 0.35, 0.7 + 0.3 * absf(sin(_t * 1.5))))
+				draw_rect(Rect2(w - 34.0, -34.0, 16.0, 10.0), Color(0.05, 0.06, 0.1))
+				draw_rect(Rect2(w - 33.0, -33.0, 14.0, 8.0), Color(0.3, 0.9, 1.0, 0.6 + 0.3 * sin(_t * 4.0)))
+				var sg2 := Rect2(w * 0.5 - 52.0, -70.0, 104.0, 14.0)
+				draw_rect(sg2, Color(0.05, 0.04, 0.08, 0.85))
+				draw_rect(sg2, Color(1.0, 0.82, 0.35, 0.7 + 0.3 * absf(sin(_t * 1.2))), false, 1.0)
+				draw_string(font, sg2.position + Vector2(0.0, 10.0), "REGISTRATION", HORIZONTAL_ALIGNMENT_CENTER, 104.0, 8, Color(1.0, 0.9, 0.6))
+			"screenwall":  # a screen of marble seen from above: its top, its end towards you, a line of light along it
+				var ln := float(data.get("len", 16.0))
+				draw_rect(Rect2(4.0, -1.0, 12.0, 3.0), Color(0, 0, 0, 0.3))
+				draw_rect(Rect2(2.0, -ln - 12.0, 12.0, ln), mc.lightened(0.06))
+				draw_rect(Rect2(2.0, -12.0, 12.0, 12.0), mc.darkened(0.2))
+				draw_rect(Rect2(7.0, -ln - 12.0, 2.0, ln), Color(0.3, 0.9, 1.0, 0.45 + 0.4 * absf(sin(_t * 1.3))))
+				draw_rect(Rect2(2.0, -4.0, 12.0, 1.5), Color(0.3, 0.9, 1.0, 0.7))
+			"barrier":     # the wall of light across the way in: it flickers and falls apart as `open` goes to 1
+				var ln2 := float(data.get("len", 48.0))
+				var al := 1.0 - open
+				if al > 0.01:
+					draw_rect(Rect2(1.0, -ln2, 14.0, ln2), Color(0.3, 0.75, 1.0, 0.3 * al))
+					draw_rect(Rect2(6.0, -ln2, 4.0, ln2), Color(0.5, 0.9, 1.0, 0.9 * al))
+					for cx2 in 2:
+						for cy2 in int((ln2 + 36.0) / 6.0):
+							var keep := CG.hsh(cx2 * 31 + cy2, 9)
+							if keep < open * 1.15:
+								continue                               # (this piece has gone out)
+							var fl2 := 0.55 + 0.45 * CG.hsh(cx2 + cy2 * 3 + int(_t * (8.0 + 30.0 * open)), 10)
+							draw_rect(Rect2(3.0 + cx2 * 5.0, -ln2 - 36.0 + cy2 * 6.0, 5.0, 5.0), Color(0.3, 0.75, 1.0, 0.42 * al * fl2))
+					for sl in 5:
+						var sy := -ln2 - 36.0 + fposmod(_t * 26.0 + sl * 17.0, ln2 + 36.0)
+						draw_rect(Rect2(3.0, sy, 10.0, 1.0), Color(0.8, 0.97, 1.0, 0.6 * al))
+					draw_rect(Rect2(3.0, -ln2 - 36.0, 10.0, 1.5), Color(0.7, 0.95, 1.0, 0.9 * al))
 			"brazier":
 				draw_rect(Rect2(4.0, -2.0, 10.0, 4.0), Color(0, 0, 0, 0.3))
 				draw_rect(Rect2(6.5, -18.0, 3.0, 18.0), mc.darkened(0.2))
@@ -779,3 +959,322 @@ class ColFx extends Node2D:
 				draw_texture_rect(btex, Rect2(8.0 - btex.get_width() * 0.5 + sway * 0.5, -72.0, btex.get_width(), btex.get_height()), false)
 				draw_rect(Rect2(-5.0, -76.0, 26.0, 1.0), Color(col2.lightened(0.4), 0.9))
 				draw_string(font, Vector2(-5.0 + sway, -33.0), String(f2["name"]).get_slice(" ", 0), HORIZONTAL_ALIGNMENT_CENTER, 26.0, 4, Color(1, 1, 1, 0.9))
+
+
+# ---------------------------------------------------------------- package 62a, part 2: the inside
+
+## Package 62a, part 2 (Luz): the Colosseum's lobby, behind the great gate. A high hall of marble. A red carpet runs
+## from the gate (south) straight to an open gate (north) that leads onto the stands; four figures of earlier
+## champions stand either side of it. East the registration: a counter with one of the house; behind it, in an
+## area shut off by screens of marble and a wall of light, the fighters' gate. Once you have signed up the wall of
+## light goes out and the gate opens (`open`: built open). West the board with the ranking, benches.
+const LW := 46                     # the lobby's width (tiles) …
+const LH := 38                     # … and height
+const L_F0 := 10                   # its floor's first row (the north wall above is drawn)
+const L_F1 := 33                   # … and last
+const LMID := LW / 2
+const REG_X := LMID + 9            # the registration: the counter's west end …
+const REG_W := 11                  # … and width; the shut area lies north of it
+const FG_X := LMID + 12            # the fighters' gate in the north wall: its west edge (5 tiles wide)
+const RANK := [["VEX", 2140], ["THE WIDOW", 2085], ["OKONKWO", 1990], ["SABER NINE", 1870], ["MOTHER BRINE", 1790], ["KILN", 1655], ["DORN", 1540], ["PALE TESSA", 1420]]
+
+static func build_lobby(_station: Dictionary, open: bool) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.8, 0.78, 0.74)
+	m.pal["floor2"] = Color(0.7, 0.68, 0.66)
+	m.pal["wall"] = Color(0.5, 0.48, 0.52)
+	m.pal["frame"] = Color(0.5, 0.48, 0.52)
+	m.pal["accent"] = Color(1.0, 0.82, 0.35)
+	m.style = "plaza"
+	m.title = "The Colosseum"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(LW, LH)
+	var GOLD := Color(1.0, 0.82, 0.35)
+	var CYAN := Color(0.3, 0.9, 1.0)
+	var mid := LMID
+	var props: Array = []
+	m.fill(0, 0, LW, LH, T.CAP)
+	m.fill(1, 0, LW - 2, L_F0, T.BLOCK, 0)                       # the north wall: drawn over
+	m.fill(1, L_F0, LW - 2, L_F1 - L_F0 + 1, T.FLOOR, 0)
+	# the great gate (south) and the open gate to the stands (north), the red carpet between them
+	m.fill(mid - 3, L_F1 + 1, 6, 2, T.FLOOR, 0)
+	m.zones.append({"rect": Rect2(Vector2(mid - 3, L_F1 + 1.2) * TILE, Vector2(6, 1.7) * TILE), "kind": "museum_go", "id": "col_out", "to": "zcol", "at": "from_gate",
+		"title": "Out onto the plaza", "col": GOLD, "sign": Vector2(-100, -100)})
+	m.set_meta("from_plaza", Vector2(mid, L_F1 + 0.2) * TILE)
+	m.spawn = m.get_meta("from_plaza")
+	m.zones.append({"rect": Rect2(Vector2(mid - 3, L_F0) * TILE, Vector2(6, 1.4) * TILE), "kind": "museum_go", "id": "col_stands", "to": "zcolst", "at": "from_lobby",
+		"title": "Through the gate: the stands", "col": CYAN, "sign": Vector2(-100, -100)})
+	m.set_meta("from_stands", Vector2(mid, L_F0 + 2.0) * TILE)
+	m.set_meta("col_carpet", Rect2(Vector2(mid - 2, L_F0) * TILE, Vector2(4, L_F1 + 3 - L_F0) * TILE))
+	m.lights.append({"pos": Vector2(mid, L_F0 + 0.5) * TILE, "r": 110.0, "col": Color(0.8, 0.95, 1.0), "a": 0.3})
+	m.lights.append({"pos": Vector2(mid, L_F1 + 1.0) * TILE, "r": 90.0, "col": GOLD, "a": 0.4})
+	# earlier champions either side of the carpet
+	var si := 0
+	for sy in [L_F0 + 3, L_F0 + 9, L_F0 + 15, L_F0 + 21]:
+		for sx in [mid - 6, mid + 4]:
+			m.fill(sx, sy, 2, 2, T.BLOCK, 0)
+			props.append({"kind": "colossus", "pos": Vector2(sx, sy + 2) * TILE, "w": 2 * TILE, "who": si, "k": 1.8, "flip": sx > mid, "year": 2731 - si * 3})
+			m.lights.append({"pos": Vector2(sx + 1.0, sy + 2.3) * TILE, "r": 36.0, "col": FIGHTERS[si % FIGHTERS.size()]["col"], "a": 0.22})
+			si += 1
+	for bz in [mid - 5, mid + 4]:
+		m.fill(bz, L_F0, 1, 1, T.BLOCK, 0)
+		props.append({"kind": "brazier", "pos": Vector2(bz, L_F0 + 1) * TILE, "w": TILE, "seed": bz})
+		m.lights.append({"pos": Vector2(bz + 0.5, L_F0 + 0.5) * TILE, "r": 70.0, "col": Color(1.0, 0.6, 0.25), "a": 0.5, "flicker": true})
+	# ---- east: the registration; behind its counter the shut area with the fighters' gate
+	var rx := REG_X
+	var ry := L_F0 + 7                                           # the counter's row
+	m.fill(rx, ry, REG_W, 1, T.BLOCK, 0)
+	props.append({"kind": "regdesk", "pos": Vector2(rx, ry + 1) * TILE, "w": REG_W * TILE})
+	m.people.append({"pos": Vector2(rx + REG_W * 0.5, ry - 0.1) * TILE, "dir": 0, "role": "keeper"})
+	Gen._zone(m, Rect2(rx + 2, ry + 1.0, REG_W - 4, 1.3), "col_register", "Registration: sign up for the Colosseum", GOLD, {"id": "col_register"})
+	m.lights.append({"pos": Vector2(rx + REG_W * 0.5, ry + 1.2) * TILE, "r": 80.0, "col": GOLD, "a": 0.3})
+	for scx in [rx - 1, rx + REG_W]:                             # the screens of marble either side, down to the counter
+		m.fill(scx, L_F0, 1, 8, T.BLOCK, 0)
+	var gap := Rect2i(rx - 1, L_F0 + 2, 1, 3)                    # the way in, through the west screen: a wall of light until you have signed up
+	if open:
+		m.fill(gap.position.x, gap.position.y, 1, 3, T.FLOOR, 0)
+	props.append({"kind": "screenwall", "pos": Vector2(rx - 1, L_F0 + 2) * TILE, "w": TILE, "len": 2 * TILE})
+	props.append({"kind": "screenwall", "pos": Vector2(rx - 1, L_F0 + 8) * TILE, "w": TILE, "len": 3 * TILE})
+	props.append({"kind": "screenwall", "pos": Vector2(rx + REG_W, L_F0 + 8) * TILE, "w": TILE, "len": 8 * TILE})
+	props.append({"kind": "barrier", "pos": Vector2(rx - 1, L_F0 + 5) * TILE, "w": TILE, "len": 3 * TILE})
+	m.set_meta("col_area", Vector2(rx + REG_W * 0.5 - 1.0, L_F0 + 3.0) * TILE)      # where the scene looks
+	m.set_meta("col_open", open)
+	m.set_meta("from_reg", Vector2(rx + REG_W * 0.5, ry + 1.8) * TILE)
+	Gen._zone(m, Rect2(FG_X, L_F0, 5, 1.4), "col_fgate", "The fighters' gate", CYAN, {"id": "col_fgate"})
+	m.lights.append({"pos": Vector2(FG_X + 2.5, L_F0 + 0.6) * TILE, "r": 80.0, "col": CYAN if open else Color(1.0, 0.3, 0.3), "a": 0.5})
+	# ---- west: the ranking on the wall, benches before it, cypresses in the corners
+	for bq in [mid - 19, mid - 14]:
+		m.add_object({"kind": "bench", "x": bq, "y": L_F0 + 2, "w": 3, "h": 1, "face": 0}, false)
+	for cy in [Vector2i(2, L_F0), Vector2i(LW - 3, L_F0), Vector2i(2, L_F1), Vector2i(LW - 3, L_F1), Vector2i(mid - 9, L_F0)]:
+		m.fill(cy.x, cy.y, 1, 1, T.BLOCK, 0)
+		props.append({"kind": "cypress", "pos": Vector2(cy.x, cy.y + 1) * TILE, "w": TILE, "seed": cy.x + cy.y})
+	for lp in [Vector2i(5, L_F0 + 9), Vector2i(5, L_F0 + 18), Vector2i(LW - 6, L_F0 + 13), Vector2i(LW - 6, L_F0 + 20), Vector2i(mid - 12, L_F0 + 14), Vector2i(mid + 11, L_F0 + 14)]:
+		m.add_object({"kind": "holo_pillar", "x": lp.x, "y": lp.y, "w": 1, "h": 1, "col": [GOLD, CYAN][(lp.x + lp.y) % 2]})
+		m.lights.append({"pos": Vector2(lp.x + 0.5, lp.y) * TILE, "r": 60.0, "col": [GOLD, CYAN][(lp.x + lp.y) % 2], "a": 0.28})
+	for bq2 in [Vector2i(8, L_F0 + 12), Vector2i(8, L_F0 + 20), Vector2i(LW - 12, L_F0 + 16)]:
+		m.add_object({"kind": "bench", "x": bq2.x, "y": bq2.y, "w": 3, "h": 1, "face": 0}, false)
+	m.set_meta("col_props", props)
+	m.set_meta("tourists", 12)
+	DeckGen._seats(m)
+	for gx in range(4, LW - 3, 5):
+		for gy in [L_F0 + 11, L_F0 + 16, L_F0 + 21]:
+			if m.free_at(Vector2(gx, gy) * TILE, 6.0):
+				m.wander.append(Vector2(gx, gy) * TILE)
+	return m
+
+
+## … and the stands: through the lobby's open gate. You come out at the top of a part of the round: rows of seats
+## going down north to a walk along a rail of glass; beyond it, below, the arena (ArenaSky draws it and the rest of
+## the round). Every row is a seat; from a seat the camera looks down into the arena.
+const SW2 := 64                    # the stands' width (tiles)
+const SH2 := 30
+const S_TOP := 14                  # the rail's row: north of it the view
+
+static func build_stands(_station: Dictionary) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.3, 0.3, 0.38)
+	m.pal["floor2"] = Color(0.24, 0.24, 0.32)
+	m.pal["wall"] = Color(0.5, 0.48, 0.52)
+	m.pal["frame"] = Color(0.5, 0.48, 0.52)
+	m.pal["accent"] = Color(0.3, 0.9, 1.0)
+	m.style = "plaza"
+	m.title = "The Colosseum"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(SW2, SH2)
+	var CYAN := Color(0.3, 0.9, 1.0)
+	var mid := SW2 / 2
+	m.window_rect = Rect2(0, 0, SW2, S_TOP)
+	m.fill(0, S_TOP, SW2, SH2 - S_TOP, T.CAP)
+	m.fill(0, S_TOP, SW2, 1, T.BLOCK, 0)                         # the rail
+	m.fill(1, S_TOP + 1, SW2 - 2, 11, T.FLOOR, 0)
+	m.fill(mid - 3, S_TOP + 12, 6, 2, T.FLOOR, 0)                # the way back into the lobby
+	m.zones.append({"rect": Rect2(Vector2(mid - 3, S_TOP + 12.2) * TILE, Vector2(6, 1.7) * TILE), "kind": "museum_go", "id": "col_back", "to": "zcolin", "at": "from_stands",
+		"title": "Back into the lobby", "col": Color(1.0, 0.82, 0.35), "sign": Vector2(-100, -100)})
+	m.set_meta("from_lobby", Vector2(mid, S_TOP + 11.4) * TILE)
+	m.spawn = m.get_meta("from_lobby")
+	m.set_meta("col_focus", Vector2(mid, S_TOP - 5.0) * TILE)       # where a seat looks: down into the arena
+	m.set_meta("col_stands", Rect2(Vector2(1, S_TOP + 1) * TILE, Vector2(SW2 - 2, 11) * TILE))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6231
+	for row in 3:                                                # three rows of seats, an aisle in the middle and at the ends
+		var sy := S_TOP + 5 + row * 2
+		for sx in range(3, SW2 - 5, 3):
+			if absi(sx + 1 - mid) < 4 or (sx / 3) % 6 == 5:
+				continue
+			DeckGen._seat(m, "bench", sx, sy, 1, [Color(0.55, 0.16, 0.26), Color(0.5, 0.14, 0.24)][row % 2], rng, 0.45, 3)
+	for lx in range(4, SW2 - 2, 8):
+		m.lights.append({"pos": Vector2(lx, S_TOP + 1.2) * TILE, "r": 60.0, "col": CYAN, "a": 0.35})
+	m.lights.append({"pos": Vector2(mid, S_TOP + 12.0) * TILE, "r": 90.0, "col": Color(1.0, 0.82, 0.35), "a": 0.4})
+	m.set_meta("tourists", 8)
+	DeckGen._seats(m)
+	for gx in range(4, SW2 - 3, 6):
+		for gy in [S_TOP + 2, S_TOP + 3]:
+			if m.free_at(Vector2(gx, gy) * TILE, 6.0):
+				m.wander.append(Vector2(gx, gy) * TILE)
+	return m
+
+
+# ---- the arena's floor at rest (window px): how the wave of blue light and the system's test run by the clock
+const WAVE := 7.0                  # seconds between two waves of light
+const TEST := 38.0                 # … between two tests of the system
+const TEST_LEN := 7.0
+
+static func _ell(c: Vector2, rx: float, ry: float, a0: float = 0.0, a1: float = TAU, n: int = 72) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for q in n + 1:
+		var a := a0 + (a1 - a0) * q / n
+		out.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return out
+
+
+const A_TIERS := 5                 # the tiers of seats round the arena …
+const A_TX := 74.0                 # … each this much wider …
+const A_TY := 50.0                 # … and deeper than the one below it
+const A_WALL := 22.0               # the arena's wall: how high it stands over the floor (window px)
+const A_CELL := 32.0               # a tile of the floor
+
+## The arena from the stands, seen as everything on foot is seen: from above. The whole round lies before you:
+## the tiers of seats go down in rings from the rail you stand at to the arena's wall and rise again on the far
+## side, the crowd in them; in their middle, below the wall, the floor of white tiles. Now and then a wave of blue
+## light runs over the tiles, now and then the system tries itself (holograms of cover flicker up out of the tiles
+## and fall back into them). The cube of screens hangs over the middle, its shadow under it.
+static func draw_arena(ci: CanvasItem, w: float, h: float, cx: float, t: float, _night: float) -> void:
+	ci.draw_rect(Rect2(0, 0, w, h), Color(0.05, 0.05, 0.1))
+	var ac := Vector2(cx, h * 0.54)
+	var rx := w * 0.36
+	var ry := h * 0.3
+	var wx := rx + 26.0                                         # the wall's outer edge
+	var wy := ry + 16.0
+	# ---- the tiers, the outermost first; a line of light on every step, the rows of seats as rings
+	for k in range(A_TIERS, 0, -1):
+		var ex := wx + k * A_TX
+		var ey := wy + k * A_TY
+		ci.draw_colored_polygon(_ell(ac, ex, ey), Color(0.15, 0.15, 0.22).lightened(0.03 * (A_TIERS - k)))
+		ci.draw_polyline(_ell(ac, ex - A_TX * 0.34, ey - A_TY * 0.34), Color(0.36, 0.12, 0.2), 9.0)
+		ci.draw_polyline(_ell(ac, ex - A_TX * 0.7, ey - A_TY * 0.7), Color(0.36, 0.12, 0.2), 9.0)
+		ci.draw_polyline(_ell(ac, ex - A_TX + 2.0, ey - A_TY + 2.0), Color(NEON[k % 3], 0.35 + 0.25 * absf(sin(t * 1.3 + k))), 2.5)
+	for q in 28:                                                 # the aisles between the blocks of seats
+		var a := (q + 0.5) * TAU / 28.0
+		var dv := Vector2(cos(a), sin(a))
+		ci.draw_line(ac + Vector2(dv.x * (wx + 4.0), dv.y * (wy + 4.0)), ac + Vector2(dv.x * (wx + A_TIERS * A_TX), dv.y * (wy + A_TIERS * A_TY)), Color(0.11, 0.11, 0.17), 12.0)
+		ci.draw_line(ac + Vector2(dv.x * (wx + 4.0), dv.y * (wy + 4.0)), ac + Vector2(dv.x * (wx + A_TIERS * A_TX), dv.y * (wy + A_TIERS * A_TY)), Color(0.3, 0.9, 1.0, 0.22), 2.0)
+	for p in 1100:                                               # the crowd: heads in the rows
+		var pa := hsh(p, 4) * TAU
+		if fposmod(pa * 28.0 / TAU, 1.0) > 0.42 and fposmod(pa * 28.0 / TAU, 1.0) < 0.58:
+			continue                                              # (an aisle)
+		var pk := 1 + int(hsh(p, 5) * A_TIERS) % A_TIERS
+		var row := 0.34 if p % 2 == 0 else 0.7
+		var pp := ac + Vector2(cos(pa) * (wx + pk * A_TX - A_TX * row), sin(pa) * (wy + pk * A_TY - A_TY * row))
+		if pp.y < -8.0 or pp.y > h + 8.0 or pp.x < -8.0 or pp.x > w + 8.0:
+			continue
+		var pc: Color = [Color(0.9, 0.8, 0.7), NEON[0], NEON[1], NEON[2], Color(0.8, 0.85, 1.0), Color(0.55, 0.4, 0.3)][int(hsh(p, 6) * 6.0) % 6]
+		var up := 2.0 if int(t * 2.0 + p) % 11 == 0 else 0.0
+		ci.draw_rect(Rect2(pp.x - 3.0, pp.y - 9.0 - up, 6.0, 6.0), pc)
+		ci.draw_rect(Rect2(pp.x - 4.0, pp.y - 3.0 - up, 8.0, 5.0), pc.darkened(0.45))
+	# ---- the arena's wall: its top all round, the inner face of the far side, a line of light on both edges
+	ci.draw_colored_polygon(_ell(ac, wx, wy), Color(0.3, 0.29, 0.38))
+	ci.draw_polyline(_ell(ac, wx, wy), Color(NEON[1], 0.85), 3.0)
+	ci.draw_polyline(_ell(ac, rx, ry), Color(NEON[1], 0.5), 2.0)
+	# ---- the floor, below the wall: white tiles in the same square grid as every floor on foot
+	var fc := ac + Vector2(0.0, A_WALL)                           # (the floor lies lower: its far edge shows the wall's face)
+	ci.draw_colored_polygon(_ell(ac, rx, ry), Color(0.92, 0.93, 0.96))
+	var face := _ell(ac, rx, ry, PI, TAU)
+	var lower := _ell(fc, rx, ry, TAU, PI)
+	var band := PackedVector2Array(face)
+	band.append_array(lower)
+	ci.draw_colored_polygon(band, Color(0.2, 0.2, 0.28))
+	ci.draw_polyline(_ell(ac + Vector2(0.0, A_WALL * 0.5), rx, ry, PI + 0.06, TAU - 0.06), Color(NEON[0], 0.5 + 0.3 * absf(sin(t * 1.1))), 2.5)
+	ci.draw_polyline(_ell(fc + Vector2(0.0, 5.0), rx - 4.0, ry, PI + 0.1, TAU - 0.1), Color(0.3, 0.35, 0.5, 0.25), 10.0)      # (its shadow on the tiles)
+	var joint := Color(0.68, 0.72, 0.82)
+	var gy := fc.y - floorf(ry / A_CELL) * A_CELL
+	while gy < ac.y + ry:
+		var v1 := (gy - ac.y) / ry
+		var v2 := (gy - fc.y) / ry
+		if absf(v1) < 1.0 and absf(v2) < 1.0:
+			var half := rx * minf(sqrt(1.0 - v1 * v1), sqrt(1.0 - v2 * v2))
+			ci.draw_line(Vector2(ac.x - half, gy), Vector2(ac.x + half, gy), joint, 1.5)
+		gy += A_CELL
+	var gx := -floorf(rx / A_CELL) * A_CELL
+	while gx < rx:
+		var s := ry * sqrt(maxf(0.0, 1.0 - (gx / rx) * (gx / rx)))
+		if s > A_WALL * 0.5:
+			ci.draw_line(Vector2(ac.x + gx, fc.y - s), Vector2(ac.x + gx, ac.y + s), joint, 1.5)
+		gx += A_CELL
+	for sh in 3:                                                 # the tiles lie a little in shade towards the wall
+		ci.draw_polyline(_ell(ac, rx - 10.0 - sh * 16.0, ry - 8.0 - sh * 10.0, 0.0, PI), Color(0.35, 0.42, 0.6, 0.1 - sh * 0.025), 18.0)
+	ci.draw_arc(fc, 70.0, 0.0, TAU, 48, Color(0.35, 0.7, 1.0, 0.45), 3.0)       # the middle's mark
+	ci.draw_line(Vector2(ac.x - rx + 30.0, fc.y), Vector2(ac.x + rx - 30.0, fc.y), Color(0.35, 0.7, 1.0, 0.25), 3.0)
+	# ---- the wave of blue light
+	var n := int(floor(t / WAVE))
+	var wk := fposmod(t, WAVE) / 2.6
+	if wk < 1.0:
+		if n % 2 == 0:                                            # a line running from the far side to you
+			for tr in 6:
+				var ly := fc.y - ry + (2.0 * ry) * wk - tr * 9.0
+				var w1 := (ly - ac.y) / ry
+				var w2 := (ly - fc.y) / ry
+				if absf(w1) < 1.0 and absf(w2) < 1.0:
+					var half2 := rx * minf(sqrt(1.0 - w1 * w1), sqrt(1.0 - w2 * w2))
+					ci.draw_line(Vector2(ac.x - half2, ly), Vector2(ac.x + half2, ly), Color(0.3, 0.7, 1.0, (0.85 - tr * 0.14) * (1.0 - 0.3 * wk)), 8.0 - tr)
+		else:                                                     # a ring from the middle
+			for tr2 in 4:
+				var rs := wk - tr2 * 0.05
+				if rs > 0.02:
+					ci.draw_polyline(_ell(fc, rx * rs * 0.97, minf(ry - A_WALL, rx * rs * 0.97)), Color(0.3, 0.7, 1.0, (0.85 - tr2 * 0.2) * (1.0 - wk)), 8.0 - tr2 * 1.5)
+	# ---- the system's test: cover and platforms of light flicker up out of the tiles
+	var tk := fposmod(t, TEST)
+	if tk < TEST_LEN:
+		var grow := clampf(tk / 1.4, 0.0, 1.0) * clampf((TEST_LEN - tk) / 1.4, 0.0, 1.0)
+		for b in 9:
+			var bu := (hsh(b + int(t / TEST) * 7, 11) - 0.5) * 1.5
+			var bv := (hsh(b + int(t / TEST) * 7, 12) - 0.5) * 1.2
+			if bu * bu + bv * bv > 0.55:
+				continue
+			var bp := fc + Vector2(snappedf(bu * rx, A_CELL), snappedf(bv * (ry - A_WALL), A_CELL))
+			var bw := A_CELL * (2.0 + float(int(hsh(b, 13) * 3.0)))
+			var bd := A_CELL * (1.0 + float(int(hsh(b, 14) * 2.0)))        # how deep it stands on the tiles
+			var bh := (26.0 + hsh(b, 15) * 34.0) * grow
+			var al := (0.55 + 0.45 * hsh(b + int(t * 12.0), 16)) * grow
+			var hc := Color(0.35, 0.75, 1.0, 0.9 * al)
+			ci.draw_rect(Rect2(bp.x, bp.y - bd - bh, bw, bd), Color(0.45, 0.8, 1.0, 0.4 * al))                  # its top
+			ci.draw_rect(Rect2(bp.x, bp.y - bh, bw, bh), Color(0.25, 0.6, 1.0, 0.28 * al))                      # its face towards you
+			ci.draw_rect(Rect2(bp.x, bp.y - bd - bh, bw, bd + bh), hc, false, 2.0)
+			ci.draw_line(Vector2(bp.x, bp.y - bh), Vector2(bp.x + bw, bp.y - bh), hc, 2.0)
+			for sl in range(0, int(bh), 6):
+				ci.draw_rect(Rect2(bp.x, bp.y - sl - 1.0, bw, 1.0), Color(0.6, 0.9, 1.0, 0.3 * al))
+		ci.draw_string(ThemeDB.fallback_font, Vector2(cx - 220.0, ac.y + ry - 30.0), "HOLO GRID  ·  SYSTEM TEST", HORIZONTAL_ALIGNMENT_CENTER, 440.0, 18, Color(0.2, 0.55, 0.95, 0.5 + 0.5 * absf(sin(t * 5.0))))
+	# ---- the cube of screens over the middle: its shadow on the tiles, the lines it hangs on
+	ci.draw_colored_polygon(_ell(fc + Vector2(0.0, 16.0), 150.0, 34.0), Color(0.2, 0.25, 0.4, 0.22))
+	var sr := Rect2(cx - 160.0, fc.y - 215.0, 320.0, 112.0)
+	for side in 2:
+		var sx := sr.position.x + 14.0 if side == 0 else sr.end.x - 14.0
+		ci.draw_line(Vector2(sx, sr.position.y), Vector2(sx + (-260.0 if side == 0 else 260.0), -20.0), Color(0.4, 0.42, 0.5, 0.7), 2.0)
+	ci.draw_rect(Rect2(sr.position.x - 10.0, sr.end.y + 10.0, sr.size.x + 20.0, 14.0), Color(0.12, 0.11, 0.18))      # (the cube's underside)
+	draw_screen(ci, sr, t)
+
+
+## What you see from the stands, beyond the rail (window px; in the sky's layer).
+class ArenaSky extends Node2D:
+	const CG = preload("res://scripts/ground/colosseum_gen.gd")
+	var size := Vector2.ZERO
+	var view = null
+	var night := 0.0
+
+	func setup(p_size: Vector2, p_view, p_night: float) -> void:
+		size = p_size
+		view = p_view
+		night = p_night
+
+	func _process(_dt: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var mid := float(CG.SW2) * 0.5 * GroundMap.TILE * GroundMap.SCALE
+		var cam := mid
+		if view != null and is_instance_valid(view) and (view._cam_c as Vector2) != Vector2.INF:
+			cam = (view._cam_c as Vector2).x
+		CG.draw_arena(self, size.x, size.y, mid, GameState.play_time, night)      # (it lies where it lies: no shift against the camera)

@@ -1503,6 +1503,12 @@ func _build_ground() -> void:
 	rca2.add_child(UI.button("Membership off", func(): _cmd({"type": "debug_casino", "vip": false})))
 	rca2.add_child(UI.button("+1,000 Coins", func(): _cmd({"type": "debug_casino", "coins": 1000})))
 	rca2.add_child(UI.button("Colosseum plaza", func(): _cmd({"type": "debug_casino", "place": "colosseum"})))      # package 62a
+	var rco := _row()                                               # package 62a, part 2: the Colosseum's inside
+	rco.add_child(UI.label("Colosseum:", 12, UI.TEXT_DIM))
+	rco.add_child(UI.button("Lobby", func(): _cmd({"type": "debug_casino", "place": "lobby"})))
+	rco.add_child(UI.button("Stands", func(): _cmd({"type": "debug_casino", "place": "stands"})))
+	rco.add_child(UI.button("Signed up", func(): _cmd({"type": "debug_casino", "col_reg": true})))
+	rco.add_child(UI.button("Not signed up", func(): _cmd({"type": "debug_casino", "col_reg": false})))
 
 
 func _update_ground_status() -> void:

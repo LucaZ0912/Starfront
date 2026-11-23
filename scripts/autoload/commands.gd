@@ -867,6 +867,19 @@ func _c_race_wait(_c: Dictionary) -> String:
 	return ""
 
 
+## Package 62a, part 2 (Luz): {"type":"col_register"}: you sign up at the Colosseum's registration (once, free, under
+## your pilot's name). The fighters' gate stands open to you from then on.
+func _c_col_register(_c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or String(g.level) != "zcolin":
+		return "There is no registration here."
+	if GameState.col_registered:
+		return "You are signed up already."
+	GameState.col_registered = true
+	GameState.log_msg("You are signed up at the Colosseum as %s." % GameState.pilot_name, GameState.COL_GOOD)
+	return ""
+
+
 func _need_coins(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":
@@ -3897,13 +3910,26 @@ func _c_debug_museum(c: Dictionary) -> String:
 ## first if need be; the lounge makes you a member); "vip": true / false, the house's membership; "coins": n, Coins
 ## into your pocket.
 func _c_debug_casino(c: Dictionary) -> String:
-	if String(c.get("place", "")) == "colosseum":         # package 62a: straight onto the plaza before the Colosseum
+	if c.has("col_reg"):                                  # package 62a, part 2: signed up at the Colosseum, or not
+		GameState.col_registered = bool(c["col_reg"])
+		GameState.log_msg("[Debug] The Colosseum: %s." % ("you are signed up" if GameState.col_registered else "you are not signed up any more"), GameState.COL_INFO)
+		var g1 = _ground()
+		if g1 != null and String(g1.level) == "zcolin":
+			g1.go_level("zcolin", "from_reg")
+		return ""
+	if String(c.get("place", "")) in ["colosseum", "lobby", "stands"]:      # package 62a: straight onto the plaza before the Colosseum, into its lobby, onto its stands
 		var e0 := _c_debug_casino({"to": 0})
 		var g0 = _ground()
 		if e0 != "" or g0 == null:
 			return e0
 		g0.ctr_stop = 2
-		g0.go_level("zcol", "from_station")
+		match String(c["place"]):
+			"lobby":
+				g0.go_level("zcolin", "from_plaza")
+			"stands":
+				g0.go_level("zcolst", "from_lobby")
+			_:
+				g0.go_level("zcol", "from_station")
 		return ""
 	if c.has("vip"):
 		GameState.casino_vip = bool(c["vip"])

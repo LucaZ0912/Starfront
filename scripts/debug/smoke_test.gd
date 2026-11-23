@@ -723,6 +723,7 @@ func _process(delta: float) -> void:
 				await _test_ctr61a(main.view)            # package 61a: Centauria's trains
 				await _test_casino62(main.view)          # package 62, part 1: the Grand Centauria
 				await _test_col62a(main.view)            # package 62a, part 1: the plaza before the Colosseum
+				await _test_colin62a(main.view)          # package 62a, part 2: its lobby and its stands
 				_shooting = false
 				timer = 0.0
 				return
@@ -17749,7 +17750,7 @@ func _test_col62a(_view: SystemView) -> void:
 	var map_ok: bool = m.w == CG.QW and m.h == Gen.PH and count.call("colossus") == 6 and count.call("brazier") == 6 and count.call("cypress") >= 8 and count.call("banner") == 4 \
 		and (m.get_meta("col_pools", []) as Array).size() == 2 and (m.get_meta("col_marble", []) as Array).size() == 3 and String(m.get_meta("ctr_metro_line", "")) == "B" \
 		and int(m.get_meta("ctr_metro_stop", 0)) == 2 and bool(m.get_meta("roof_closed", false)) and (m.get_meta("ctr_facades", []) as Array).size() == 1 \
-		and zs.any(func(z): return String(z.get("id", "")) == "col_gate" and String(z.get("closed", "")) != "") \
+		and zs.any(func(z): return String(z.get("id", "")) == "col_gate" and String(z.get("to", "")) == "zcolin") \
 		and zs.any(func(z): return String(z.get("id", "")) == "col_laurel" and String(z.get("closed", "")) != "") \
 		and zs.any(func(z): return String(z.get("kind", "")) == "ctr_scope" and String(z.get("what", "")) == "col") \
 		and zs.any(func(z): return String(z.get("kind", "")) == "ctr_down" and int(z.get("stop", 0)) == 2) \
@@ -17885,6 +17886,226 @@ func _test_col62a(_view: SystemView) -> void:
 			print("COL62A scope: menu ", g._lift_menu if g != null else null, " debug ", de, " level ", g.level if g != null else "")
 	check(map_ok and card_ok and live_ok and way_ok and scope_ok,
 		"62a, part 1: the plaza before the Colosseum: marble, the way down to Line B as on the other plaza, six colossi of the champions, two basins, bowls of fire, cypresses, banners; The Laurel (its door shut) west, a row of houses east, roofs in the south; the Colosseum larger than the screen, its screen's cards two different fighters; up from the station and down again, the gate shut; the scope shows the whole of it; the debug menu's way there  [%s %s %s %s %s]" % [map_ok, card_ok, live_ok, way_ok, scope_ok])
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 2 (Luz): the Colosseum's inside: the lobby (the red carpet from the great gate to the open gate
+## of the stands, eight figures along it, the registration with the shut area and the fighters' gate behind it), the
+## signing up and the scene that opens the area, the stands with their seats and the view into the arena.
+func _test_colin62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	var shut: GroundMap = CG.build_lobby({}, false)
+	var free: GroundMap = CG.build_lobby({}, true)
+	var lp: Array = shut.get_meta("col_props", [])
+	var cnt := func(k: String) -> int: return lp.filter(func(p): return String(p["kind"]) == k).size()
+	var fg_at := Vector2(CG.FG_X + 2.5, CG.L_F0 + 0.8) * TL
+	var lobby_ok: bool = shut.w == CG.LW and shut.h == CG.LH and cnt.call("colossus") == 8 and cnt.call("regdesk") == 1 and cnt.call("barrier") == 1 and cnt.call("screenwall") == 3 \
+		and lp.filter(func(p): return String(p["kind"]) == "colossus").all(func(p): return p.has("year")) \
+		and not bool(shut.get_meta("col_open")) and bool(free.get_meta("col_open")) \
+		and (shut.zones as Array).any(func(z): return String(z.get("id", "")) == "col_out" and String(z.get("to", "")) == "zcol") \
+		and (shut.zones as Array).any(func(z): return String(z.get("id", "")) == "col_stands" and String(z.get("to", "")) == "zcolst") \
+		and (shut.zones as Array).any(func(z): return String(z.get("kind", "")) == "col_register") and (shut.zones as Array).any(func(z): return String(z.get("kind", "")) == "col_fgate") \
+		and shut.free_at(shut.get_meta("from_plaza"), 4.0) and shut.free_at(shut.get_meta("from_stands"), 4.0) and shut.free_at(shut.get_meta("from_reg"), 4.0) \
+		and shut.path(shut.get_meta("from_plaza"), shut.get_meta("from_stands")).size() > 0 and shut.path(shut.get_meta("from_plaza"), shut.get_meta("from_reg")).size() > 0 \
+		and (shut.get_meta("col_carpet") as Rect2).has_point(shut.get_meta("from_stands")) and (shut.get_meta("col_carpet") as Rect2).has_point(shut.get_meta("from_plaza")) \
+		and shut.path(shut.get_meta("from_plaza"), fg_at).size() == 0 and free.path(free.get_meta("from_plaza"), fg_at).size() > 0 \
+		and shut.wander.size() >= 8 and (shut.wander as Array).all(func(p): return shut.free_at(p, 4.0)) \
+		and (shut.people as Array).any(func(p): return String(p.get("role", "")) == "keeper")
+	if not lobby_ok:
+		print("COLIN62A lobby: props ", lp.size(), " shut way ", shut.path(shut.get_meta("from_plaza"), fg_at).size(), " open way ", free.path(free.get_meta("from_plaza"), fg_at).size(),
+			" carpet way ", shut.path(shut.get_meta("from_plaza"), shut.get_meta("from_stands")).size(), " wander ", shut.wander.size())
+	var sm: GroundMap = CG.build_stands({})
+	var benches: int = (sm.objects as Array).filter(func(o): return String(o.get("kind", "")) == "bench").size()
+	var stands_ok: bool = sm.w == CG.SW2 and sm.h == CG.SH2 and benches >= 30 and sm.window_rect.size.y == CG.S_TOP and sm.has_meta("col_focus") \
+		and (sm.zones as Array).any(func(z): return String(z.get("id", "")) == "col_back" and String(z.get("to", "")) == "zcolin") \
+		and (sm.zones as Array).filter(func(z): return String(z.get("kind", "")) == "seat").size() >= 30 \
+		and sm.free_at(sm.get_meta("from_lobby"), 4.0) and sm.path(sm.get_meta("from_lobby"), Vector2(6.0, CG.S_TOP + 2.0) * TL).size() > 0 \
+		and (sm.people as Array).filter(func(p): return bool(p.get("sit", false))).size() >= 20 and sm.wander.size() >= 8
+	if not stands_ok:
+		print("COLIN62A stands: benches ", benches, " seats ", (sm.zones as Array).filter(func(z): return String(z.get("kind", "")) == "seat").size(), " sitting ",
+			(sm.people as Array).filter(func(p): return bool(p.get("sit", false))).size(), " wander ", sm.wander.size())
+	# down to Centauria, through the great gate
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var in_ok := false
+	var reg_ok := false
+	var seat_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = false
+		g.ctr_stop = 2
+		g.go_level("zcol", "from_station")
+		for f0 in 8:
+			await get_tree().process_frame
+		for zp in g.map.zones:
+			if String(zp.get("id", "")) == "col_gate":
+				g.zone = zp
+		g.use()
+		for f1 in 10:
+			await get_tree().process_frame
+		var hall: Array = g._world.get_children().filter(func(nd): return is_instance_of(nd, CG.ColFx))
+		in_ok = String(g.level) == "zcolin" and String(g._title.text).contains("Lobby") and g.map.free_at(g.pilot.pos, 4.0) and hall.size() == 2 \
+			and hall.all(func(nd): return float(nd.gate) == 0.0) and (g._col_fx as Array).size() == 2 + (g.map.get_meta("col_props") as Array).size() and not bool(g.map.get_meta("col_open"))
+		if not in_ok:
+			print("COLIN62A in: level ", g.level, " title ", g._title.text, " hall ", hall.size(), " fx ", (g._col_fx as Array).size())
+		if shots:
+			for vw in [["lobby_ganz", Vector2(CG.LMID, CG.L_F0 + 9.0), 0.62], ["lobby_teppich", Vector2(CG.LMID, CG.L_F0 + 5.0), 0.0], ["lobby_anmeldung_zu", Vector2(CG.REG_X + 4.0, CG.L_F0 + 4.0), 0.0],
+					["lobby_rangliste", Vector2(CG.LMID - 14.0, CG.L_F0 + 3.0), 0.0]]:
+				g.story_cam = (vw[1] as Vector2) * TL
+				g.story_zoom = float(vw[2])
+				for f2 in 40:
+					GameState.play_time = 3.5 + CG.CARD * 2.0
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a2_%s.png" % String(vw[0]))
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+		# the counter asks; signing up goes through the command bus; the scene opens the area
+		g.zone = _zone_of(g.map, "col_fgate")
+		var no_way: bool = g.map.path(g.pilot.pos, fg_at).size() == 0
+		g.zone = _zone_of(g.map, "col_register")
+		g.use()
+		for f3 in 5:
+			await get_tree().process_frame
+		var asked: bool = g._lift_menu != null
+		g._close_lift_menu()
+		g._col_sign()
+		var began: bool = GameState.col_registered and not (g._col_scene as Dictionary).is_empty() and String(Commands.execute({"type": "col_register"})) != ""
+		var saw_open := false
+		var moved := false
+		var marks := [2.3, 4.6, 6.2]
+		var mi := 0
+		var ts := Time.get_ticks_msec()
+		while not (g._col_scene as Dictionary).is_empty() and Time.get_ticks_msec() - ts < 15000:
+			await get_tree().process_frame
+			var sc: Dictionary = g._col_scene
+			if sc.is_empty():
+				break
+			moved = moved or g.story_cam != Vector2.INF
+			saw_open = saw_open or (g._col_fx as Array).any(func(fx): return is_instance_valid(fx) and float(fx.open) > 0.3 and float(fx.open) < 1.0)
+			if shots and mi < marks.size() and float(sc["t"]) >= float(marks[mi]):
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a2_szene_%d.png" % (mi + 1))
+				mi += 1
+		for f4 in 10:
+			await get_tree().process_frame
+		reg_ok = no_way and asked and began and moved and saw_open and (g._col_scene as Dictionary).is_empty() and g.story_cam == Vector2.INF and String(g.level) == "zcolin" \
+			and bool(g.map.get_meta("col_open")) and g.map.free_at(g.pilot.pos, 4.0) and g.map.path(g.pilot.pos, fg_at).size() > 0 and bool(GameState.to_dict()["col_registered"]) \
+			and (g._col_fx as Array).all(func(fx): return float(fx.open) == 1.0)
+		g.zone = _zone_of(g.map, "col_fgate")
+		g.use()
+		g.zone = _zone_of(g.map, "col_register")
+		g.use()
+		for f5 in 5:
+			await get_tree().process_frame
+		reg_ok = reg_ok and String(g.level) == "zcolin" and g._lift_menu != null
+		g._close_lift_menu()
+		if not reg_ok:
+			print("COLIN62A register: no way ", no_way, " asked ", asked, " began ", began, " moved ", moved, " saw ", saw_open, " scene ", g._col_scene, " open ", g.map.get_meta("col_open"), " level ", g.level)
+		if shots:
+			g.story_cam = Vector2(CG.REG_X + 4.0, CG.L_F0 + 4.0) * TL
+			for f6 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a2_lobby_anmeldung_offen.png")
+			g.story_cam = Vector2.INF
+		# through the open gate onto the stands; a seat looks down into the arena; back into the lobby
+		for zs in g.map.zones:
+			if String(zs.get("id", "")) == "col_stands":
+				g.zone = zs
+		g.use()
+		for f7 in 10:
+			await get_tree().process_frame
+		var on_stands: bool = String(g.level) == "zcolst" and String(g._title.text).contains("stands") and g._sky.get_children().any(func(nd): return is_instance_of(nd, CG.ArenaSky)) \
+			and g.map.free_at(g.pilot.pos, 4.0) and g.people.filter(func(w): return bool(w.sitting)).size() >= 20
+		if shots:
+			for vw2 in [["raenge_ganz", Vector2(CG.SW2 * 0.5, CG.S_TOP + 1.0), 0.62, 3.5 + CG.CARD * 2.0], ["raenge_welle", Vector2(CG.SW2 * 0.5, CG.S_TOP - 3.0), 0.0, CG.WAVE * 4.0 + 1.4],
+					["raenge_ring", Vector2(CG.SW2 * 0.5, CG.S_TOP - 3.0), 0.0, CG.WAVE * 5.0 + 1.2], ["raenge_test", Vector2(CG.SW2 * 0.5, CG.S_TOP - 3.0), 0.0, CG.TEST * 3.0 + 3.0],
+					["raenge_sitze", Vector2(CG.SW2 * 0.5 - 12.0, CG.S_TOP + 6.0), 0.0, 3.5 + CG.CARD * 2.0]]:
+				g.story_cam = (vw2[1] as Vector2) * TL
+				g.story_zoom = float(vw2[2])
+				for f8 in 40:
+					GameState.play_time = float(vw2[3])
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a2_%s.png" % String(vw2[0]))
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+		var free_seat := {}
+		for z2 in g.map.zones:
+			if String(z2.get("kind", "")) == "seat" and free_seat.is_empty() and not g.people.any(func(w): return bool(w.sitting) and (w.pos as Vector2).distance_to((z2["rect"] as Rect2).get_center()) < 14.0):
+				free_seat = z2
+		var sat := false
+		var sat_seat := false
+		var sat_cam := 0.0
+		if not free_seat.is_empty():
+			g.pilot.pos = (free_seat["rect"] as Rect2).get_center()
+			g.pilot.position = g.pilot.pos * GroundMap.SCALE
+			g.zone = free_seat
+			g.use()
+			for f9 in 60:
+				await get_tree().process_frame
+			sat_seat = not (g._seat as Dictionary).is_empty()
+			sat_cam = (g._cam_c as Vector2).y - g.pilot.position.y
+			sat = sat_seat and sat_cam < -100.0                 # (the camera is on its way down into the arena)
+			if shots:
+				for f10 in 40:
+					GameState.play_time = CG.TEST * 3.0 + 3.0
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a2_raenge_sitzen.png")
+			g._stand_up()
+		for zb in g.map.zones:
+			if String(zb.get("id", "")) == "col_back":
+				g.zone = zb
+		g.use()
+		for f11 in 10:
+			await get_tree().process_frame
+		seat_ok = on_stands and sat and String(g.level) == "zcolin" and g.pilot.pos.distance_to(g.map.get_meta("from_stands")) < 40.0
+		# the debug menu's ways
+		var d1 := String(Commands.execute({"type": "debug_casino", "col_reg": false}))
+		for f12 in 8:
+			await get_tree().process_frame
+		var shut_again: bool = not GameState.col_registered and not bool(main.ground.map.get_meta("col_open"))
+		var d2 := String(Commands.execute({"type": "debug_casino", "place": "stands"}))
+		for f13 in 8:
+			await get_tree().process_frame
+		seat_ok = seat_ok and d1 == "" and d2 == "" and shut_again and String(main.ground.level) == "zcolst"
+		if not seat_ok:
+			print("COLIN62A stands: on ", on_stands, " sat ", sat, " seat ", free_seat.is_empty(), " level ", main.ground.level, " shut again ", shut_again, " debug ", d1, d2, " seat ", sat_seat, " cam ", sat_cam)
+	check(lobby_ok and stands_ok and in_ok and reg_ok and seat_ok,
+		"62a, part 2: the Colosseum's inside: the lobby behind the great gate (a red carpet to the open gate of the stands, eight earlier champions along it, the ranking, the registration); the fighters' gate behind the counter in an area shut by a wall of light, no way in; you sign up through the command bus, the scene opens the area and the gate, the way in is free, it is saved; the stands (rows of seats, guests sitting, the arena beyond the rail), a seat looks down into the arena; the debug menu's ways  [%s %s %s %s %s]" % [lobby_ok, stands_ok, in_ok, reg_ok, seat_ok])
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 	main.station_panel.close()

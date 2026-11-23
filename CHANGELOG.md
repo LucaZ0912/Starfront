@@ -3,6 +3,27 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.6 – 2026-11-23
+
+**Package 62a, part 2 (Luz): the Colosseum's lobby, its stands, the arena at rest.**
+- **The great gate is open.** Behind it a high hall of marble with strips of neon. A red carpet with cords of
+  velvet runs from the gate straight to an open gate ahead that leads onto the stands; four figures of earlier
+  champions stand either side of it, each with its name and the year of its title. On the west wall the ranking.
+- **The registration:** a counter of marble with one of the house. You sign up once, free, under your pilot's name;
+  your name goes on the ranking.
+- **The fighters' gate** stands behind the registration, in an area shut off by screens of marble and a wall of
+  light. When you have signed up, a short scene plays: the camera goes over, the wall of light flickers and falls
+  apart, the gate slides open (use or Esc ends it at once). From then on the way in is free. Beyond the gate lie
+  the fighters' rooms: the gear for the rounds will be fitted there once the fights are built.
+- **The stands:** rows of seats going down to a walk along a rail of glass; guests sit there. Every row is a seat:
+  from a seat the camera looks down into the arena. The rest of the round with its crowd, the dome from inside
+  and the screens over the arena are drawn.
+- **The arena at rest:** a floor of white tiles. Every few seconds a wave of blue light runs over it (a line
+  across, or a ring from the middle); now and then the system tries itself and holograms of cover flicker up out
+  of the tiles and fall back into them. You cannot walk onto it yet.
+- The screen on the plaza, in the lobby and over the arena shows the same card. Debug menu: lobby, stands, signed
+  up or not.
+
 ## alpha 0.8.62.5 – 2026-11-23
 
 **Package 62a, part 1 (Luz): the plaza before the Colosseum.**

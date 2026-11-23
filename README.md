@@ -412,6 +412,11 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.6 (package 62a, part 2): `colosseum_gen.gd`: `build_lobby(station, open)`, `build_stands`, `draw_arena`
+  (`WAVE`, `TEST`), `ArenaSky`, `ColFx` parts `hall_floor`, `hall_wall`, `st_floor` and props `regdesk`,
+  `screenwall`, `barrier` (`open`, `gate`); levels `zcolin`, `zcolst`; `GameState.col_registered`; command
+  `col_register`; zones `col_register`, `col_fgate`; the scene `GroundView._col_scene_step`; debug
+  `debug_casino {place: "lobby" | "stands", col_reg: bool}`; smoke group `colin62a`.
 - 0.8.62.5 (package 62a, part 1): `scripts/ground/colosseum_gen.gd` (`build_plaza`, `draw_colosseum`, `draw_screen`,
   `card`, `FIGHTERS`, the nodes `ColSky`, `ColScope`, `ColFx`); level `zcol`; `RoofFx` and `MetroFx` take any plaza
   (map metas `roof_mid`, `roof_closed`, `ctr_metro_line`, `ctr_metro_stop`, `ctr_metro_tick`); debug command
