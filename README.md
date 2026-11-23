@@ -412,6 +412,12 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.7 (package 62a, part 3): `data/colosseum.gd` (`BASE`, `Q_COST`, `START_POINTS`, `PLAY`, `MODES`, `cost`,
+  `fit_cost`, `equip`, `options`, `totals`, `opponents`, `reward`), `scripts/ground/colosseum_ui.gd` (`Play`,
+  `Prep`), `colosseum_gen.gd` `build_arena`, `draw_arena_ground`; level `zcolar`; `GameState.col`, `col_state()`;
+  commands `col_play`, `col_equip`, `col_mode`, `col_ready`; the story's character `marshal` and the dialogues
+  `col_marshal`, `col_marshal_back` (flag `col_go`); `GroundView._col_walk_step`, `_col_prep_done`; debug
+  `debug_casino {place: "arena", col_points: n}`; smoke group `colprep62a`.
 - 0.8.62.6 (package 62a, part 2): `colosseum_gen.gd`: `build_lobby(station, open)`, `build_stands`, `draw_arena`
   (`WAVE`, `TEST`), `ArenaSky`, `ColFx` parts `hall_floor`, `hall_wall`, `st_floor` and props `regdesk`,
   `screenwall`, `barrier` (`open`, `gate`); levels `zcolin`, `zcolst`; `GameState.col_registered`; command

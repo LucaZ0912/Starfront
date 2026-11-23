@@ -49,6 +49,11 @@ const CHARACTERS := {
 			"outfit": 2, "color1": 0, "color2": 8, "implant": 1, "tattoo": 3, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
 	# package 59 (Luz): Dan's friend from the Directorate, with the Threshold – a man around sixty, grey hair, glasses,
 	# Directorate green and silver (Luz: not like Silas, so bald with a grey goatee, a broader build, a jacket)
+	# package 62a, part 3 (Luz: give the one at the registration an identity): the Marshal of the Lists, who fought in
+	# the arena once (champion 2716): a scar, a long dark coat with gold
+	"marshal": {"name": "Cass Ardent", "sub": "Marshal of the Lists · the Colosseum", "col": Color(1.0, 0.82, 0.35), "seed": 6233,
+		"look": {"body": 1, "skin": 3, "hair": 4, "hair_color": 5, "eyes": 2, "brows": 2, "beard": 0, "scar": 1, "freckles": 0,
+			"outfit": 3, "color1": 0, "color2": 10, "implant": 1, "tattoo": 0, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
 	"imre": {"name": "Dr. Imre Halden", "sub": "Meridian Directorate · the Threshold", "col": Color(0.45, 0.95, 0.65), "seed": 5911,
 		"look": {"body": 1, "skin": 4, "hair": 0, "hair_color": 6, "eyes": 4, "brows": 2, "beard": 2, "scar": 0, "freckles": 0,
 			"outfit": 1, "color1": 6, "color2": 2, "implant": 0, "tattoo": 0, "headgear": 3, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
@@ -189,6 +194,28 @@ const DIALOGUES := {
 		{"text": "My boys put a better laser in her and some armour plating. On loan, like the rest. Don't scratch it.",
 			"answers": [["\"Where do I find Ossa?\"", 5, ["w58_job", true], "Fine, I'll do it. Where do I find this Ossa Kell?", {"gold": true}]]},
 		{"text": "Upper Brine, the city down on Brine. Land there and Ossa will meet you at your ship in the hangar. And be nice: Ossa pays on time, the only one out here who does.", "next": -1},
+	]},
+	# package 62a, part 3 (Luz): the Colosseum's registration. "Register" (later "Compete") sets the flag col_go: the
+	# game goes on from there (the way to play, through the gate, the fighters' room)
+	"col_marshal": {"who": "marshal", "lines": [
+		{"text": "Welcome to the Colosseum. Cass Ardent, Marshal of the Lists. I keep the names, the rounds and the peace between them. You look like someone who wants on the list.",
+			"answers": [["Register", 3, ["col_go", true], "Put me on the list. I want to fight.", {"gold": true}],
+				["What is the Colosseum?", 1, [], "What is this place, exactly?"],
+				["What are the rules?", 2, [], "And the rules down there?"],
+				["Later.", -1]]},
+		{"text": "The oldest house in Centauria that still tells the truth. Down there nobody has the name the city gave them, only the one they earn. The floor is a holo grid: the arena builds the ground you fight on, and takes it away again. Nobody dies in it. Plenty have wished they had, for a day or two.", "next": 0},
+		{"text": "Simple ones. Your own gear stays in the locker. The house hands out everything, and you fit yourself from gear points. Win, and you get Coins and more points. The points are yours to fit as you like before every fight. And no fighting on the carpet.", "next": 0},
+		{"text": "Good. Your name goes on the list, the gate behind me opens to you. Pick how you want to play, then go on through. The room behind the gate is where you fit yourself.", "next": -1},
+	]},
+	"col_marshal_back": {"who": "marshal", "lines": [
+		{"text": "Back for more? The list still has your name on it.",
+			"answers": [["Compete", 1, ["col_go", true], "I am here to fight.", {"gold": true}],
+				["What is the Colosseum?", 2, [], "Tell me again what this place is."],
+				["What are the rules?", 3, [], "Remind me of the rules."],
+				["Later.", -1]]},
+		{"text": "Then pick how you want to play. The gate is open.", "next": -1},
+		{"text": "The oldest house in Centauria that still tells the truth. Down there nobody has the name the city gave them, only the one they earn. The floor is a holo grid: the arena builds the ground you fight on, and takes it away again.", "next": 0},
+		{"text": "Your own gear stays in the locker. The house hands out everything, and you fit yourself from gear points. Win, and you get Coins and more points. And no fighting on the carpet.", "next": 0},
 	]},
 	"dan_rest": {"who": "dan", "lines": [
 		{"text": "You look like a wreck I wouldn't buy. Bed first, work later. Your room's upstairs, the Quarters.", "next": -1},

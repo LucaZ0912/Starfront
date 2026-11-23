@@ -60,6 +60,7 @@ var casino_jackpot := 5000              # package 62, part 2: the house's jackpo
 var casino_spins := 0                   # … how often its reels and its wheel have turned for you (seeds the next turn)
 var casino_stats := {"staked": 0, "back": 0, "best": 0}     # … Coins staked, Coins got back, the largest single win
 var col_registered := false             # package 62a, part 2: signed up at the Colosseum (the fighters' gate stands open)
+var col: Dictionary = {}                # … part 3: your gear points, your record, your fit, the way to play and the mode (data/colosseum.gd)
 var race_shift := 0.0                   # package 62b: what you have waited in The Track's cinema (moves the races' clock on)
 var race_bets: Array = []               # … your tickets: {n, kind, a, b, stake, odds, seat}
 var fleet: Array = []            # all owned ships (ShipFitting)
@@ -240,6 +241,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	race_shift = 0.0
 	race_bets = []
 	col_registered = false
+	col = {}
 	exotic_matter = 0
 	fleet.clear()
 	storage.clear()
@@ -492,6 +494,18 @@ func fab_tree_error(mid: String) -> String:
 	return ""
 
 
+## Package 62a, part 3: what you are in the Colosseum (made the first time it is asked for; its fit kept in shape).
+func col_state() -> Dictionary:
+	var CD = load("res://data/colosseum.gd")
+	if col.is_empty():
+		col = CD.fresh()
+	for k in CD.fresh():
+		if not col.has(k):
+			col[k] = CD.fresh()[k]
+	col["fit"] = CD.fitted(col["fit"])
+	return col
+
+
 ## Package 62, part 2: the dice of the casino's next turn. Seeded from how often it has turned for you, so a game
 ## saved and loaded does not see the same turn twice.
 func casino_rng() -> RandomNumberGenerator:
@@ -592,7 +606,7 @@ func to_dict() -> Dictionary:
 	for f in fleet:
 		ships.append(f.to_dict())
 	return {
-		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "casino_jackpot": casino_jackpot, "casino_spins": casino_spins, "casino_stats": casino_stats.duplicate(), "race_shift": race_shift, "col_registered": col_registered, "race_bets": race_bets.duplicate(true), "fleet": ships, "active_uid": active_uid,
+		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "casino_jackpot": casino_jackpot, "casino_spins": casino_spins, "casino_stats": casino_stats.duplicate(), "race_shift": race_shift, "col_registered": col_registered, "col": col.duplicate(true), "race_bets": race_bets.duplicate(true), "fleet": ships, "active_uid": active_uid,
 		"current_system": current_system, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
@@ -626,6 +640,7 @@ func from_dict(d: Dictionary) -> void:
 	casino_stats.merge(d.get("casino_stats", {}), true)
 	race_shift = float(d.get("race_shift", 0.0))
 	col_registered = bool(d.get("col_registered", false))
+	col = (d.get("col", {}) as Dictionary).duplicate(true)
 	race_bets = (d.get("race_bets", []) as Array).duplicate(true)
 	fleet.clear()
 	for sd in d["fleet"]:

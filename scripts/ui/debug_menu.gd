@@ -1509,6 +1509,8 @@ func _build_ground() -> void:
 	rco.add_child(UI.button("Stands", func(): _cmd({"type": "debug_casino", "place": "stands"})))
 	rco.add_child(UI.button("Signed up", func(): _cmd({"type": "debug_casino", "col_reg": true})))
 	rco.add_child(UI.button("Not signed up", func(): _cmd({"type": "debug_casino", "col_reg": false})))
+	rco.add_child(UI.button("Arena", func(): _cmd({"type": "debug_casino", "place": "arena"})))                     # part 3
+	rco.add_child(UI.button("+5 gear points", func(): _cmd({"type": "debug_casino", "col_points": 5})))
 
 
 func _update_ground_status() -> void:

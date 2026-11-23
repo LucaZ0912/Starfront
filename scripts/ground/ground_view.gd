@@ -426,6 +426,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = ColosseumGen.build_lobby(station, GameState.col_registered)       # … its lobby (part 2) …
 	elif level == "zcolst":
 		map = ColosseumGen.build_stands(station)                   # … and the stands over the arena
+	elif level == "zcolar":
+		map = ColosseumGen.build_arena(station)                    # … part 3: the arena itself
 	elif level == "zcasino":
 		map = CentauriaGen.build_casino(station, ctr_floor, city_day() < 0.5)      # package 62 (Luz): the Grand Centauria, floor by floor
 	elif level == "cplaza":
@@ -663,6 +665,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_title.text = "The Colosseum – Lobby"
 	elif level == "zcolst":
 		_title.text = "The Colosseum – The stands"
+	elif level == "zcolar":
+		_title.text = "The Colosseum – The arena"
 	elif level == "zalley":
 		_title.text = "Centauria – Back Alleys"
 	elif level == "zbar":
@@ -795,14 +799,14 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_world.add_child(rfx)
 		_world.move_child(rfx, _sorted.get_index())
 	_col_fx = []
-	if level in ["zcol", "zcolin", "zcolst"]:
+	if level in ["zcol", "zcolin", "zcolst", "zcolar"]:
 		# package 62a (Luz): the Colosseum's plaza: its marble, basins, stair and The Laurel's front under the people,
 		# the colossi, bowls of fire, cypresses and banners among them. Part 2: the lobby (its floor with the red
 		# carpet, its north wall; the figures, the counter, the screens and the wall of light among the people) and
 		# the stands (their floor and rail). Inside there is no night.
 		var cnight2 := 1.0 - city_day() if level == "zcol" else 0.0
 		var copen := 1.0 if bool(map.get_meta("col_open", false)) else 0.0
-		for cpart in {"zcol": ["floor", "res"], "zcolin": ["hall_floor", "hall_wall"], "zcolst": ["st_floor"]}[level]:
+		for cpart in {"zcol": ["floor", "res"], "zcolin": ["hall_floor", "hall_wall"], "zcolst": ["st_floor"], "zcolar": ["ar_floor"]}[level]:
 			var cfl = ColosseumGen.ColFx.new()
 			cfl.part = cpart
 			cfl.map = map
@@ -1972,6 +1976,7 @@ var sim_foes: Array = []
 ## line you ride. Levels "zstation" (a station) and "ztrain" (aboard).
 const CentauriaGen = preload("res://scripts/ground/centauria_gen.gd")
 const ColosseumGen = preload("res://scripts/ground/colosseum_gen.gd")       # package 62a: the plaza before the Colosseum
+const ColosseumUI = preload("res://scripts/ground/colosseum_ui.gd")         # … part 3: the way to play, the fighters' room
 var ctr_stop := 0
 var ctr_line := "A"
 var ctr_floor := 0                      # package 62 (Luz): which floor of the Grand Centauria you stand on
@@ -1981,6 +1986,10 @@ var _cas_ride = null                    # … the ride outside the tower, drawn 
 var _cas_hour := 0.0                    # … until the hour is handed to its views again (seconds)
 var _col_fx: Array = []                 # package 62a, part 2: the lobby's drawn things that open (the wall of light, the fighters' gate)
 var _col_scene: Dictionary = {}         # … the scene after you have signed up: {t, done}
+var _col_wait := false                  # part 3: the Marshal's talk is open; what you answered is looked at when it closes
+var _col_walk: Dictionary = {}          # … you walk through the fighters' gate by yourself: {i, t, pts, fade}
+var _col_white := 0.0                   # … the picture coming back out of white (1 … 0), in the arena
+var _col_cover: ColorRect = null        # … the sheet of black or white over the picture
 var _ctr_at := -2                       # where the train you ride stood last (for the announcements)
 
 
@@ -2906,6 +2915,8 @@ func _apply_day(d: float, force: bool = false) -> void:
 
 
 func _process(delta: float) -> void:
+	if _col_white > 0.0 or (_col_cover != null and _col_walk.is_empty()):
+		_col_white_step(delta)                           # package 62a, part 3: out of the white into the arena
 	for mn in [_lift_menu, talk, talk_menu]:      # package 80 (Luz): every menu on foot by the menus' rules (keys, controller)
 		if mn != null and is_instance_valid(mn) and not (mn as Node).is_in_group("kbd_menu"):
 			(mn as Node).add_to_group("kbd_menu")
@@ -2953,8 +2964,12 @@ func _process(delta: float) -> void:
 		_sink_step(delta)
 	elif not _clift.is_empty():
 		_clift_step(delta)                               # package 62 (Luz): in one of the casino's capsules of glass
+	elif _col_wait:
+		_col_after_talk()                                # package 62a, part 3 (Luz): what you told the Marshal
 	elif not _col_scene.is_empty():
 		_col_scene_step(delta)                           # package 62a, part 2 (Luz): the fighters' area opens
+	elif not _col_walk.is_empty():
+		_col_walk_step(delta)                            # … part 3: through the fighters' gate, by yourself
 	elif input_enabled and talk == null and _lift_menu == null and minigame == null and not background_locked():
 		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
 		if combat != null and combat.wheel_open:
@@ -3006,7 +3021,7 @@ func _process(delta: float) -> void:
 		zone = _seat
 	else:
 		zone = map.zone_at(pilot.pos)
-	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null or not _clift.is_empty():
+	if zone.get("kind", "") == "label" or not _ride.is_empty() or talk != null or not _clift.is_empty() or not _col_walk.is_empty() or not _col_scene.is_empty():
 		zone = {} if _seat.is_empty() else _seat
 	if zone.is_empty() and is_town() and _ride.is_empty() and talk == null and _near_guard() != null:
 		zone = {"kind": "guard", "id": "guard", "title": String(CityStyle.guards(station)["name"]), "rect": Rect2()}
@@ -5057,7 +5072,7 @@ func wheel_centre() -> Vector2:
 
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
 func use(instant: bool = false) -> bool:
-	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty() or not _clift.is_empty():
+	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty() or not _clift.is_empty() or not _col_walk.is_empty() or not _col_scene.is_empty() or _col_wait:
 		return false                                     # review 7 K1: not while the platform sinks
 	if not _seat.is_empty():
 		_stand_up()
@@ -5203,7 +5218,7 @@ func use(instant: bool = false) -> bool:
 			_col_register()                                  # package 62a, part 2 (Luz): the Colosseum's registration
 			return true
 		"col_fgate":
-			_say_toast("Beyond lie the fighters' rooms. Your gear for the rounds is fitted there once the fights begin.", 5.0)
+			_say_toast("The fighters' gate. Talk to the Marshal at the counter when you want to compete.", 5.0)
 			return true
 		"ctr_down":
 			ctr_stop = int(zone.get("stop", 1))
@@ -5716,12 +5731,114 @@ func _ctr_doors(delta: float) -> void:
 ## Package 62a, part 2 (Luz): the registration's counter. You sign up once, under your pilot's name; then the
 ## fighters' area behind the counter opens in a little scene.
 func _col_register() -> void:
-	if GameState.col_registered:
-		ask_window("Registration", "\"You are on the list, %s. The fighters' gate behind me is open to you. The first rounds are announced on the screens.\"" % GameState.pilot_name,
-			[["Leave the counter", func(): pass]])
+	# part 3 (Luz): a talk with the Marshal of the Lists. "Register" (later "Compete") sets the flag col_go; when the
+	# talk has closed, the game goes on: the way to play, through the gate, the fighters' room
+	GameState.story.flags.erase("col_go")
+	_col_wait = true
+	GameState.story.show.emit("dialogue", {"id": "col_marshal_back" if GameState.col_registered else "col_marshal", "mission": ""})
+
+
+func _col_after_talk() -> void:
+	if get_tree().paused:
+		return                                           # (the talk is still open)
+	_col_wait = false
+	if not bool(GameState.story.flags.get("col_go", false)):
 		return
-	ask_window("Registration", "\"Welcome to the Colosseum. Fighters sign up here: once, and it costs nothing. Your name goes on the ranking, and the fighters' gate behind me opens to you.\"",
-		[["Sign up as %s" % GameState.pilot_name, func(): _col_sign()], ["Not now", func(): pass]])
+	GameState.story.flags.erase("col_go")
+	if not GameState.col_registered:
+		var e: String = Commands.execute({"type": "col_register"})
+		if e != "":
+			_say_toast(e, 4.0)
+			return
+	var pl = ColosseumUI.Play.new()
+	pl.setup({})
+	pl.finished.connect(func(ok: bool): _close_game(); _col_go(ok))
+	_open_game(pl)
+
+
+## The way to play is picked: the first time the fighters' area opens in its scene; then you walk through the gate.
+func _col_go(ok: bool) -> void:
+	if not ok:
+		return
+	if not bool(map.get_meta("col_open", false)):
+		_col_scene = {"t": 0.0, "done": false, "then": true}
+		Audio.play("ui_open", "colosseum: signed up")
+	else:
+		_col_walk_start()
+
+
+func _col_walk_start() -> void:
+	var tl := float(GroundMap.TILE)
+	var rx := float(ColosseumGen.REG_X)
+	var f0 := float(ColosseumGen.L_F0)
+	var gx := float(ColosseumGen.FG_X) + 2.5
+	_col_walk = {"i": 0, "t": 0.0, "fade": 0.0, "pts": [Vector2((rx - 2.5) * tl, pilot.pos.y), Vector2(rx - 2.5, f0 + 3.5) * tl, Vector2(rx + 2.0, f0 + 3.5) * tl,
+		Vector2(gx, f0 + 1.6) * tl, Vector2(gx, f0 + 0.3) * tl]}
+
+
+## The game walks you round the counter, through the gap and into the fighters' gate; the picture goes dark and the
+## fighters' room opens. Use or Esc goes there at once.
+func _col_walk_step(delta: float) -> void:
+	var pts: Array = _col_walk["pts"]
+	var i := int(_col_walk["i"])
+	_col_walk["t"] = float(_col_walk["t"]) + delta
+	if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel"):
+		i = pts.size()
+	if i < pts.size():
+		var to: Vector2 = (pts[i] as Vector2) - pilot.pos
+		if to.length() < 2.5 or float(_col_walk["t"]) > 5.0:
+			_col_walk["i"] = i + 1
+			_col_walk["t"] = 0.0
+		elif not pilot.step(to.normalized(), delta, 1.0):
+			pilot.pos += to.normalized() * minf(to.length(), Walker.SPEED * delta)
+			pilot.position = pilot.pos * GroundMap.SCALE
+		if i >= pts.size() - 1:
+			_col_walk["fade"] = minf(1.0, float(_col_walk["fade"]) + delta / 0.6)
+	else:
+		_col_walk["fade"] = minf(1.0, float(_col_walk["fade"]) + delta / 0.25)
+	_col_sheet(Color(0, 0, 0, float(_col_walk["fade"])))
+	if i >= pts.size() and float(_col_walk["fade"]) >= 1.0:
+		_col_walk = {}
+		pilot.moving = false
+		pilot.pos = pts[pts.size() - 2]
+		pilot.position = pilot.pos * GroundMap.SCALE
+		_col_sheet(Color(0, 0, 0, 0))
+		var pr = ColosseumUI.Prep.new()                  # the fighters' room
+		pr.setup({})
+		pr.finished.connect(func(entered: bool): _col_prep_done(entered))
+		_open_game(pr)
+
+
+## The fighters' room is left: back into the lobby, or (READY, the countdown, the white) out into the arena.
+func _col_prep_done(entered: bool) -> void:
+	_close_game()
+	if entered:
+		go_level("zcolar", "from_gate")
+		_col_white = 1.0
+		_col_sheet(Color(1, 1, 1, 1))
+		Audio.play("dock_clamp", "colosseum: into the arena")
+	else:
+		_ctr_title()
+
+
+## The sheet over the picture (black on the way through the gate, white on the way into the arena).
+func _col_sheet(c: Color) -> void:
+	if c.a <= 0.001:
+		if _col_cover != null and is_instance_valid(_col_cover):
+			_col_cover.queue_free()
+		_col_cover = null
+		return
+	if _col_cover == null or not is_instance_valid(_col_cover):
+		_col_cover = ColorRect.new()
+		_col_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_col_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ui.add_child(_col_cover)
+	_col_cover.color = c
+
+
+func _col_white_step(delta: float) -> void:
+	_col_white = maxf(0.0, _col_white - delta / 1.4)
+	_col_sheet(Color(1, 1, 1, _col_white))
 
 
 func _col_sign() -> void:
@@ -5738,6 +5855,7 @@ func _col_sign() -> void:
 func _col_scene_step(delta: float) -> void:
 	var t := float(_col_scene["t"]) + delta
 	_col_scene["t"] = t
+	var then := bool(_col_scene.get("then", false))
 	if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel"):
 		t = maxf(t, 6.6)
 	if not bool(_col_scene["done"]):
@@ -5758,11 +5876,14 @@ func _col_scene_step(delta: float) -> void:
 			go_level("zcolin", "from_reg")
 			story_cam = keep
 			_camera()
-			_col_scene = {"t": 6.6, "done": true}
+			_col_scene = {"t": 6.6, "done": true, "then": then}
 	elif t >= 7.3:
 		story_cam = Vector2.INF
 		_col_scene = {}
-		_say_toast("You are signed up. The fighters' gate stands open.", 5.0)
+		if then:
+			_col_walk_start()                                # (part 3) and on through the gate
+		else:
+			_say_toast("You are signed up. The fighters' gate stands open.", 5.0)
 
 
 ## The cashier: credits for Coins, Coins for credits. The window comes back after every exchange.

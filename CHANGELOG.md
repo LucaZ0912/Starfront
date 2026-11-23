@@ -3,6 +3,29 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.7 – 2026-11-23
+
+**Package 62a, part 3 (Luz): the way into the arena.**
+- **The Marshal of the Lists:** the one at the registration has a name and a face now: Cass Ardent, who fought in
+  the arena once. You talk at the counter (what the Colosseum is, its rules) and answer "Register"; from the second
+  time on the answer is "Compete".
+- **The way to play:** a choice of four opens every time: singleplayer, online co-op, online versus, split screen.
+  Only singleplayer is open; a band "COMING SOON" lies across the other three.
+- **Through the gate by itself:** the game walks you round the counter, through the gap and into the fighters' gate
+  (the first time the fighters' area opens in its scene before that); the picture goes dark.
+- **The fighters' room:** one window. Left your gear: the places of a suit as in your own gear window, filled with
+  the house's pieces (suits, weapons, grenades, things for the belt, modules, drones), never with your own. Every
+  piece costs **gear points** by what it is and by its quality; the points are a budget: what you take off gives
+  its points back, so you may fit yourself anew before every fight. You begin with 10. In the middle the pieces
+  for the place you marked, the cheapest first. Right the modes: King of the Colosseum is open, Team Deathmatch and
+  Survivor wait under "COMING SOON". Once a mode is picked: who waits in the arena (one strong, two weak), your
+  record, what a win pays.
+- **READY** counts down from five (Esc calls it off until two), the picture goes white, and you stand in the arena:
+  a great oval of white tiles inside its wall, the tiers and the crowd all round, the wave of blue light running
+  over the floor. There is no fight yet: the fighters' gate in the south leads back into the lobby.
+- Every choice (the way to play, a piece of the fit, the mode, ready) goes through the command bus by seat.
+- Debug menu: the arena, +5 gear points.
+
 ## alpha 0.8.62.6 – 2026-11-23
 
 **Package 62a, part 2 (Luz): the Colosseum's lobby, its stands, the arena at rest.**

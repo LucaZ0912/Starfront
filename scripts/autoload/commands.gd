@@ -880,6 +880,53 @@ func _c_col_register(_c: Dictionary) -> String:
 	return ""
 
 
+## Package 62a, part 3 (Luz): the Colosseum's choices, by seat (for co-op). {"type":"col_play", "play"}: the way to
+## play (only "single" is open yet). {"type":"col_equip", "place", "idx", "id"}: a piece of the house's gear into a
+## place of your fit ("" takes it off); the fit must stay within your gear points. {"type":"col_mode", "mode"}: the
+## mode (only "king" is open yet). {"type":"col_ready"}: you are ready for the arena.
+func _c_col_play(c: Dictionary) -> String:
+	var CD = load("res://data/colosseum.gd")
+	for p in CD.PLAY:
+		if String(p[0]) == String(c.get("play", "")):
+			if not bool(p[3]):
+				return "%s: coming soon." % String(p[1])
+			GameState.col_state()["play"] = String(p[0])
+			return ""
+	return "No such way to play."
+
+
+func _c_col_equip(c: Dictionary) -> String:
+	var CD = load("res://data/colosseum.gd")
+	var st: Dictionary = GameState.col_state()
+	var res: Dictionary = CD.equip(st["fit"], String(c.get("place", "")), int(c.get("idx", 0)), String(c.get("id", "")), CD.budget(st))
+	if String(res["err"]) == "":
+		st["fit"] = res["fit"]
+	return String(res["err"])
+
+
+func _c_col_mode(c: Dictionary) -> String:
+	var CD = load("res://data/colosseum.gd")
+	for m in CD.MODES:
+		if String(m["id"]) == String(c.get("mode", "")):
+			if not bool(m["open"]):
+				return "%s: coming soon." % String(m["name"])
+			GameState.col_state()["mode"] = String(m["id"])
+			return ""
+	return "No such mode."
+
+
+func _c_col_ready(_c: Dictionary) -> String:
+	var CD = load("res://data/colosseum.gd")
+	var st: Dictionary = GameState.col_state()
+	if not GameState.col_registered:
+		return "Sign up at the registration first."
+	if String(st.get("mode", "")) == "":
+		return "Pick a mode first."
+	if CD.fit_cost(st["fit"]) > CD.budget(st):
+		return "Your fit costs more gear points than you have."
+	return ""
+
+
 func _need_coins(c: Dictionary) -> String:
 	var e := _need_service()
 	if e != "":
@@ -3917,7 +3964,11 @@ func _c_debug_casino(c: Dictionary) -> String:
 		if g1 != null and String(g1.level) == "zcolin":
 			g1.go_level("zcolin", "from_reg")
 		return ""
-	if String(c.get("place", "")) in ["colosseum", "lobby", "stands"]:      # package 62a: straight onto the plaza before the Colosseum, into its lobby, onto its stands
+	if c.has("col_points"):                               # … part 3: gear points into your budget
+		GameState.col_state()["points"] = maxi(0, int(GameState.col_state()["points"]) + int(c["col_points"]))
+		GameState.log_msg("[Debug] The Colosseum: %d gear points." % (load("res://data/colosseum.gd").budget(GameState.col_state())), GameState.COL_INFO)
+		return ""
+	if String(c.get("place", "")) in ["colosseum", "lobby", "stands", "arena"]:      # package 62a: straight onto the plaza before the Colosseum, into its lobby, onto its stands
 		var e0 := _c_debug_casino({"to": 0})
 		var g0 = _ground()
 		if e0 != "" or g0 == null:
@@ -3928,6 +3979,8 @@ func _c_debug_casino(c: Dictionary) -> String:
 				g0.go_level("zcolin", "from_plaza")
 			"stands":
 				g0.go_level("zcolst", "from_lobby")
+			"arena":
+				g0.go_level("zcolar", "from_gate")
 			_:
 				g0.go_level("zcol", "from_station")
 		return ""

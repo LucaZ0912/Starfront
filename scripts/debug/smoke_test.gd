@@ -724,6 +724,7 @@ func _process(delta: float) -> void:
 				await _test_casino62(main.view)          # package 62, part 1: the Grand Centauria
 				await _test_col62a(main.view)            # package 62a, part 1: the plaza before the Colosseum
 				await _test_colin62a(main.view)          # package 62a, part 2: its lobby and its stands
+				await _test_colprep62a(main.view)        # package 62a, part 3: the way into the arena
 				_shooting = false
 				timer = 0.0
 				return
@@ -18002,8 +18003,10 @@ func _test_colin62a(_view: SystemView) -> void:
 		g.use()
 		for f3 in 5:
 			await get_tree().process_frame
-		var asked: bool = g._lift_menu != null
-		g._close_lift_menu()
+		var asked: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "col_marshal"      # (part 3: a talk with the Marshal)
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		g._col_wait = false
 		g._col_sign()
 		var began: bool = GameState.col_registered and not (g._col_scene as Dictionary).is_empty() and String(Commands.execute({"type": "col_register"})) != ""
 		var saw_open := false
@@ -18032,8 +18035,10 @@ func _test_colin62a(_view: SystemView) -> void:
 		g.use()
 		for f5 in 5:
 			await get_tree().process_frame
-		reg_ok = reg_ok and String(g.level) == "zcolin" and g._lift_menu != null
-		g._close_lift_menu()
+		reg_ok = reg_ok and String(g.level) == "zcolin" and main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "col_marshal_back"
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		g._col_wait = false
 		if not reg_ok:
 			print("COLIN62A register: no way ", no_way, " asked ", asked, " began ", began, " moved ", moved, " saw ", saw_open, " scene ", g._col_scene, " open ", g.map.get_meta("col_open"), " level ", g.level)
 		if shots:
@@ -18106,6 +18111,266 @@ func _test_colin62a(_view: SystemView) -> void:
 			print("COLIN62A stands: on ", on_stands, " sat ", sat, " seat ", free_seat.is_empty(), " level ", main.ground.level, " shut again ", shut_again, " debug ", d1, d2, " seat ", sat_seat, " cam ", sat_cam)
 	check(lobby_ok and stands_ok and in_ok and reg_ok and seat_ok,
 		"62a, part 2: the Colosseum's inside: the lobby behind the great gate (a red carpet to the open gate of the stands, eight earlier champions along it, the ranking, the registration); the fighters' gate behind the counter in an area shut by a wall of light, no way in; you sign up through the command bus, the scene opens the area and the gate, the way in is free, it is saved; the stands (rows of seats, guests sitting, the arena beyond the rail), a seat looks down into the arena; the debug menu's ways  [%s %s %s %s %s]" % [lobby_ok, stands_ok, in_ok, reg_ok, seat_ok])
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 3 (Luz): the Colosseum's way into the arena: the talk with the Marshal ("Register"), the way to
+## play (three of four covered by COMING SOON), the walk through the fighters' gate by itself, the fighters' room (the
+## fit from gear points within the budget, the mode, the preview, READY), the countdown, the white, the arena.
+func _test_colprep62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SD = load("res://data/story.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# the numbers: what a piece costs, the budget, a fit within it
+	var f0: Dictionary = CD.default_fit()
+	var e_big: Dictionary = CD.equip(f0, "suit", 0, "suit_mil_heavy:A", 10)
+	var e_ok: Dictionary = CD.equip(f0, "suit", 0, "suit_mil_light:D", 10)
+	var e_w: Dictionary = CD.equip(e_ok["fit"], "weapons", 1, "wp_laser_rifle:D", 10)
+	var e_over: Dictionary = CD.equip(e_w["fit"], "features", 0, "ft_shield:F", 10)
+	var e_wrong: Dictionary = CD.equip(f0, "weapons", 0, "ft_shield:F", 10)
+	var e_none: Dictionary = CD.equip(f0, "weapons", 3, "wp_pistol:F", 10)
+	var wopt: Array = CD.options("weapons")
+	var foes: Array = CD.opponents(4, CG.FIGHTERS.size())
+	var data_ok: bool = CD.cost("suit_civil:F") == 0 and CD.cost("wp_pistol:F") == 0 and CD.cost("suit_mil_heavy:A") == 12 and CD.cost("gr_frag") == 1 and CD.cost("wp_nothing:F") == -1 \
+		and CD.cost("") == 0 and CD.fit_cost(f0) == 0 and CD.budget(CD.fresh()) == CD.START_POINTS and int(CD.places("suit_mil_light:F")["weapons"]) == 2 \
+		and String(e_big["err"]) != "" and String(e_ok["err"]) == "" and (e_ok["fit"]["weapons"] as Array).size() == 2 and String(e_w["err"]) == "" and CD.fit_cost(e_w["fit"]) == 10 \
+		and String(e_over["err"]) != "" and String(e_wrong["err"]) != "" and String(e_none["err"]) != "" and CD.fit_cost(e_over["fit"]) == 10 \
+		and wopt.size() == 9 * 6 and CD.cost(String(wopt[0])) == 0 and range(wopt.size() - 1).all(func(q): return CD.cost(String(wopt[q])) <= CD.cost(String(wopt[q + 1]))) \
+		and (CD.options("grenades") as Array).size() == 4 and (CD.options("suit") as Array).size() == 30 \
+		and foes.size() == 3 and foes.filter(func(f): return bool(f["strong"])).size() == 1 and int(foes[0]["who"]) != int(foes[1]["who"]) and int(foes[1]["who"]) != int(foes[2]["who"]) and int(foes[0]["who"]) != int(foes[2]["who"]) \
+		and int(CD.reward(9)["coins"]) > int(CD.reward(1)["coins"]) and int(CD.reward(9)["points"]) > int(CD.reward(1)["points"]) \
+		and (CD.PLAY as Array).filter(func(p): return bool(p[3])).size() == 1 and (CD.PLAY as Array).size() == 4 and (CD.MODES as Array).filter(func(m): return bool(m["open"])).size() == 1 \
+		and float(CD.totals(e_ok["fit"])["shield"]) > float(CD.totals(f0)["shield"]) and CD.piece_name("gr_frag").begins_with("2") \
+		and SD.DIALOGUES.has("col_marshal") and SD.DIALOGUES.has("col_marshal_back") and String(SD.CHARACTERS["marshal"]["name"]) == "Cass Ardent" \
+		and String(SD.DIALOGUES["col_marshal"]["lines"][0]["answers"][0][0]) == "Register" and String(SD.DIALOGUES["col_marshal"]["lines"][0]["answers"][0][2][0]) == "col_go"
+	if not data_ok:
+		print("COLPREP62A data: big ", e_big["err"], " ok ", e_ok["err"], " w ", e_w["err"], " cost ", CD.fit_cost(e_w["fit"]), " over ", e_over["err"], " options ", wopt.size(), " foes ", foes)
+	var am: GroundMap = CG.build_arena({})
+	var walk := 0
+	for ay in am.h:
+		for ax in am.w:
+			walk += 1 if GroundMap.walkable_t(am.t_at(ax, ay)) else 0
+	var arena_ok: bool = am.w == CG.AW and am.h == CG.AH and walk > 1000 and am.free_at(am.get_meta("from_gate"), 4.0) \
+		and (am.zones as Array).any(func(z): return String(z.get("id", "")) == "col_leave" and String(z.get("to", "")) == "zcolin") \
+		and am.path(am.get_meta("from_gate"), CG.A_C * TL).size() > 0 and am.path(am.get_meta("from_gate"), (CG.A_C + Vector2(0.0, -CG.A_R.y + 2.0)) * TL).size() > 0
+	if not arena_ok:
+		print("COLPREP62A arena: walkable ", walk, " free ", am.free_at(am.get_meta("from_gate"), 4.0))
+	# down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var talk_ok := false
+	var walk_ok := false
+	var prep_ok := false
+	var in_ok := false
+	var again_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = false
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_plaza")
+		for f0b in 8:
+			await get_tree().process_frame
+		# the talk: "Register" is its first answer; then the way to play
+		g.zone = _zone_of(g.map, "col_register")
+		g.use()
+		for f1 in 5:
+			await get_tree().process_frame
+		var talking: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "col_marshal" and String(main.story_ui._dlg.get("who", "")) == "marshal"
+		if shots and talking:
+			for f1b in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_gespraech.png")
+		for f2 in 12:
+			if main.story_ui.dialogue != null:
+				main.story_ui.choose(0)
+			await get_tree().process_frame
+		for f3 in 8:
+			await get_tree().process_frame
+		var play = g.minigame
+		var asked: bool = play != null and play.has_method("is_col_play") and GameState.col_registered and (play.tiles() as Array).size() == 4
+		if asked:
+			play.pick(1)
+			asked = asked and g.minigame == play and String(play.msg).contains("coming soon") and String(Commands.execute({"type": "col_play", "play": "versus"})) != "" \
+				and String(Commands.execute({"type": "col_play", "play": "none"})) != ""
+			if shots:
+				for f4 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_spielart.png")
+			play.pick(0)
+		for f5 in 5:
+			await get_tree().process_frame
+		talk_ok = talking and asked and g.minigame == null and not (g._col_scene as Dictionary).is_empty() and bool(g._col_scene.get("then", false)) and String(GameState.col_state()["play"]) == "single"
+		if not talk_ok:
+			print("COLPREP62A talk: talking ", talking, " asked ", asked, " minigame ", g.minigame, " scene ", g._col_scene)
+		# the scene (cut short), then the walk by itself: round the counter, through the gap, into the gate; the room opens
+		if not (g._col_scene as Dictionary).is_empty():
+			g._col_scene["t"] = 6.5
+		var walked := false
+		var through := false
+		var dark := false
+		var no_hand := true
+		var shot_w := false
+		var tw := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tw < 40000 and not (g.minigame != null and g.minigame.has_method("is_col_prep")):
+			await get_tree().process_frame
+			if not (g._col_walk as Dictionary).is_empty():
+				walked = true
+				through = through or (g.pilot.pos.x > CG.REG_X * TL + 8.0 and g.pilot.pos.y < (CG.L_F0 + 6.0) * TL)      # (inside the fighters' area)
+				dark = dark or (g._col_cover != null and is_instance_valid(g._col_cover))
+				no_hand = no_hand and not g.use()
+				if shots and not shot_w and through:
+					shot_w = true
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_gang.png")
+		var prep = g.minigame
+		walk_ok = walked and through and dark and no_hand and prep != null and prep.has_method("is_col_prep") and bool(g.map.get_meta("col_open")) and (g._col_walk as Dictionary).is_empty() \
+			and (g._col_cover == null or not is_instance_valid(g._col_cover))
+		if not walk_ok:
+			print("COLPREP62A walk: walked ", walked, " through ", through, " dark ", dark, " hands off ", no_hand, " room ", prep, " walk ", g._col_walk)
+		# the fighters' room: a fit within the budget, the mode, READY
+		if prep != null and prep.has_method("is_col_prep"):
+			var q1 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_heavy:A"}))
+			var q2 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_light:D"}))
+			var q3 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:D"}))
+			var q4 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "features", "idx": 0, "id": "ft_shield:F"}))
+			var q5 := String(Commands.execute({"type": "col_ready", "seat": 0}))
+			var q6 := String(Commands.execute({"type": "col_mode", "seat": 0, "mode": "team"}))
+			prep.pick_mode(0)
+			Commands.execute({"type": "debug_casino", "col_points": 5})
+			var q7 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "features", "idx": 0, "id": "ft_shield:F"}))
+			var st: Dictionary = GameState.col_state()
+			prep_ok = q1 != "" and q2 == "" and q3 == "" and q4 != "" and q5 != "" and q6 != "" and q7 == "" and String(st["mode"]) == "king" and CD.fit_cost(st["fit"]) == 13 and CD.budget(st) == 15 \
+				and (prep.slots() as Array).size() >= 6 and (prep.options() as Array).size() > 10 and String((GameState.to_dict()["col"] as Dictionary)["fit"]["suit"]) == "suit_mil_light:D"
+			prep.mark(1)
+			prep.take(0)
+			prep_ok = prep_ok and String(GameState.col_state()["fit"]["weapons"][0]) == ""
+			Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:D"})
+			if shots:
+				for f6 in 25:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_vorbereitung.png")
+			prep.go_ready()
+			var counting: bool = float(prep.counting) > 4.0
+			for f7 in 5:
+				await get_tree().process_frame
+			prep.back()
+			var off: bool = float(prep.counting) < 0.0 and g.minigame == prep
+			prep.go_ready()
+			if shots:
+				prep.counting = 2.6
+				for f8 in 8:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_countdown.png")
+			prep.counting = 0.4
+			var tr := Time.get_ticks_msec()
+			var saw_white := false
+			while Time.get_ticks_msec() - tr < 8000 and String(g.level) != "zcolar":
+				saw_white = saw_white or float(prep.white) > 0.3
+				await get_tree().process_frame
+			prep_ok = prep_ok and counting and off and saw_white
+			if not prep_ok:
+				print("COLPREP62A room: ", [q1, q2, q3, q4, q5, q6, q7], " cost ", CD.fit_cost(st["fit"]), " budget ", CD.budget(st), " counting ", counting, " off ", off, " white ", saw_white)
+			# out of the white, in the arena; and back out
+			var white0: bool = float(g._col_white) > 0.5 and g._col_cover != null
+			if shots:
+				for f9 in 12:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_weiss.png")
+			var tq := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tq < 6000 and float(g._col_white) > 0.0:
+				await get_tree().process_frame
+			for f10 in 5:
+				await get_tree().process_frame
+			in_ok = white0 and String(g.level) == "zcolar" and g.minigame == null and String(g._title.text).contains("arena") and g.map.free_at(g.pilot.pos, 4.0) \
+				and (g._col_cover == null or not is_instance_valid(g._col_cover)) and g._world.get_children().any(func(nd): return is_instance_of(nd, CG.ColFx) and String(nd.part) == "ar_floor")
+			if shots:
+				for vw in [["arena", Vector2(CG.A_C.x, CG.A_C.y + 9.0), 0.0, 3.0], ["arena_ganz", CG.A_C, 0.36, CG.WAVE * 4.0 + 1.3], ["arena_ring", CG.A_C, 0.36, CG.WAVE * 5.0 + 1.3]]:
+					g.story_cam = (vw[1] as Vector2) * TL
+					g.story_zoom = float(vw[2])
+					for f11 in 40:
+						GameState.play_time = float(vw[3])
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_%s.png" % String(vw[0]))
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			g.zone = _zone_of(g.map, "museum_go")
+			g.use()
+			for f12 in 10:
+				await get_tree().process_frame
+			in_ok = in_ok and String(g.level) == "zcolin" and g.pilot.pos.distance_to(g.map.get_meta("from_reg")) < 40.0
+			if not in_ok:
+				print("COLPREP62A arena: white ", white0, " level ", g.level, " title ", g._title.text, " cover ", g._col_cover)
+			# again: "Compete", no scene this time, the walk at once; Esc in the room leads back into the lobby
+			g.zone = _zone_of(g.map, "col_register")
+			g.use()
+			for f13 in 5:
+				await get_tree().process_frame
+			var back_talk: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "col_marshal_back"
+			for f14 in 12:
+				if main.story_ui.dialogue != null:
+					main.story_ui.choose(0)
+				await get_tree().process_frame
+			for f15 in 8:
+				await get_tree().process_frame
+			var play2: bool = g.minigame != null and g.minigame.has_method("is_col_play")
+			if play2:
+				g.minigame.pick(0)
+			for f16 in 5:
+				await get_tree().process_frame
+			var at_once: bool = (g._col_scene as Dictionary).is_empty() and not (g._col_walk as Dictionary).is_empty()
+			if not (g._col_walk as Dictionary).is_empty():
+				g._col_walk["i"] = 99
+			var tz := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tz < 6000 and not (g.minigame != null and g.minigame.has_method("is_col_prep")):
+				await get_tree().process_frame
+			var room2: bool = g.minigame != null and g.minigame.has_method("is_col_prep") and String(GameState.col_state()["fit"]["suit"]) == "suit_mil_light:D"
+			if room2:
+				g.minigame.back()
+			for f17 in 5:
+				await get_tree().process_frame
+			again_ok = back_talk and play2 and at_once and room2 and g.minigame == null and String(g.level) == "zcolin" and g.map.free_at(g.pilot.pos, 4.0)
+			if not again_ok:
+				print("COLPREP62A again: talk ", back_talk, " play ", play2, " at once ", at_once, " room ", room2, " level ", g.level)
+	check(data_ok and arena_ok and talk_ok and walk_ok and prep_ok and in_ok and again_ok,
+		"62a, part 3: the way into the arena: gear from gear points (costs by piece and quality, a budget, a fit within it), the talk with Cass Ardent the Marshal of the Lists (\"Register\"), the way to play (singleplayer; three more under COMING SOON), the fighters' area opens, you walk through the gate by yourself, the fighters' room (a fit through the command bus, over the budget refused, the mode, READY), the countdown that can be called off, the white, the arena of white tiles and the way back out; the second time \"Compete\" and no scene  [%s %s %s %s %s %s %s]" % [data_ok, arena_ok, talk_ok, walk_ok, prep_ok, in_ok, again_ok])
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 	main.station_panel.close()

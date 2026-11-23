@@ -594,6 +594,8 @@ class ColFx extends Node2D:
 				_hall_wall()
 			"st_floor":
 				_st_floor()
+			"ar_floor":
+				CG.draw_arena_ground(self, GameState.play_time)
 			_:
 				_prop()
 
@@ -1027,8 +1029,8 @@ static func build_lobby(_station: Dictionary, open: bool) -> GroundMap:
 	var ry := L_F0 + 7                                           # the counter's row
 	m.fill(rx, ry, REG_W, 1, T.BLOCK, 0)
 	props.append({"kind": "regdesk", "pos": Vector2(rx, ry + 1) * TILE, "w": REG_W * TILE})
-	m.people.append({"pos": Vector2(rx + REG_W * 0.5, ry - 0.1) * TILE, "dir": 0, "role": "keeper"})
-	Gen._zone(m, Rect2(rx + 2, ry + 1.0, REG_W - 4, 1.3), "col_register", "Registration: sign up for the Colosseum", GOLD, {"id": "col_register"})
+	m.people.append({"pos": Vector2(rx + REG_W * 0.5, ry - 0.1) * TILE, "dir": 0, "role": "keeper", "look": load("res://scripts/core/story.gd").look_of("marshal")})      # (part 3) Cass Ardent, the Marshal of the Lists
+	Gen._zone(m, Rect2(rx + 2, ry + 1.0, REG_W - 4, 1.3), "col_register", "The registration: talk to the Marshal of the Lists", GOLD, {"id": "col_register"})
 	m.lights.append({"pos": Vector2(rx + REG_W * 0.5, ry + 1.2) * TILE, "r": 80.0, "col": GOLD, "a": 0.3})
 	for scx in [rx - 1, rx + REG_W]:                             # the screens of marble either side, down to the counter
 		m.fill(scx, L_F0, 1, 8, T.BLOCK, 0)
@@ -1255,6 +1257,131 @@ static func draw_arena(ci: CanvasItem, w: float, h: float, cx: float, t: float, 
 		ci.draw_line(Vector2(sx, sr.position.y), Vector2(sx + (-260.0 if side == 0 else 260.0), -20.0), Color(0.4, 0.42, 0.5, 0.7), 2.0)
 	ci.draw_rect(Rect2(sr.position.x - 10.0, sr.end.y + 10.0, sr.size.x + 20.0, 14.0), Color(0.12, 0.11, 0.18))      # (the cube's underside)
 	draw_screen(ci, sr, t)
+
+
+# ---------------------------------------------------------------- package 62a, part 3: the arena itself
+
+## The arena you step into after the countdown: a great oval of white tiles inside its wall, the tiers of seats and
+## the crowd all round (drawn), the fighters' gate in the south (the way back into the lobby), the gate of the
+## others in the north (shut). No fight yet: that follows.
+const AW := 60                     # the arena's map (tiles) …
+const AH := 44
+const A_C := Vector2(30.0, 22.0)   # … the middle of its floor …
+const A_R := Vector2(25.0, 15.0)   # … and the floor's radii
+
+static func build_arena(_station: Dictionary) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.9, 0.91, 0.94)
+	m.pal["floor2"] = Color(0.86, 0.87, 0.9)
+	m.pal["wall"] = Color(0.3, 0.29, 0.38)
+	m.pal["frame"] = Color(0.3, 0.29, 0.38)
+	m.pal["accent"] = Color(0.3, 0.9, 1.0)
+	m.style = "plaza"
+	m.title = "The Colosseum"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.setup(AW, AH)
+	m.fill(0, 0, AW, AH, T.BLOCK, 0)
+	for y in AH:
+		for x in AW:
+			var d := Vector2((x + 0.5 - A_C.x) / A_R.x, (y + 0.5 - A_C.y) / A_R.y)
+			if d.length() < 0.985:
+				m.set_t(x, y, T.FLOOR)
+	var gy := int(A_C.y + A_R.y)                                 # the fighters' gate: a passage through the wall, south
+	m.fill(int(A_C.x) - 1, gy - 1, 2, 3, T.FLOOR, 0)
+	m.zones.append({"rect": Rect2(Vector2(A_C.x - 1.0, gy + 0.6) * TILE, Vector2(2.0, 1.4) * TILE), "kind": "museum_go", "id": "col_leave", "to": "zcolin", "at": "from_reg",
+		"title": "Leave the arena: back into the lobby", "col": Color(0.4, 1.0, 0.7), "sign": Vector2(-100, -100)})
+	m.set_meta("from_gate", Vector2(A_C.x, gy - 2.2) * TILE)
+	m.spawn = m.get_meta("from_gate")
+	for lq in 10:
+		var la := lq * TAU / 10.0
+		m.lights.append({"pos": (A_C + Vector2(cos(la) * A_R.x * 0.6, sin(la) * A_R.y * 0.6)) * TILE, "r": 150.0, "col": Color(0.85, 0.92, 1.0), "a": 0.14})
+	m.set_meta("tourists", 0)
+	return m
+
+
+## The arena's ground, drawn (art px, under the people): the tiers and the crowd round it, its wall with the two
+## gates, the floor of white tiles in the map's own grid, the wave of blue light, the middle's mark.
+static func draw_arena_ground(ci: CanvasItem, t: float) -> void:
+	var c := A_C * float(TILE)
+	var rx := A_R.x * TILE
+	var ry := A_R.y * TILE
+	ci.draw_rect(Rect2(-200.0, -200.0, AW * TILE + 400.0, AH * TILE + 400.0), Color(0.05, 0.05, 0.1))
+	for k in range(5, 0, -1):
+		var ex := rx + 14.0 + k * 30.0
+		var ey := ry + 12.0 + k * 24.0
+		ci.draw_colored_polygon(_ell(c, ex, ey), Color(0.15, 0.15, 0.22).lightened(0.03 * (5 - k)))
+		ci.draw_polyline(_ell(c, ex - 10.0, ey - 8.0), Color(0.36, 0.12, 0.2), 4.0)
+		ci.draw_polyline(_ell(c, ex - 21.0, ey - 17.0), Color(0.36, 0.12, 0.2), 4.0)
+		ci.draw_polyline(_ell(c, ex - 29.0, ey - 23.0), Color(NEON[k % 3], 0.35 + 0.25 * absf(sin(t * 1.3 + k))), 1.5)
+	for q in 28:
+		var a := (q + 0.5) * TAU / 28.0
+		var dv := Vector2(cos(a), sin(a))
+		ci.draw_line(c + Vector2(dv.x * (rx + 16.0), dv.y * (ry + 14.0)), c + Vector2(dv.x * (rx + 164.0), dv.y * (ry + 132.0)), Color(0.11, 0.11, 0.17), 5.0)
+	for p in 900:
+		var pa := hsh(p, 4) * TAU
+		if fposmod(pa * 28.0 / TAU, 1.0) > 0.42 and fposmod(pa * 28.0 / TAU, 1.0) < 0.58:
+			continue
+		var pk := 1 + int(hsh(p, 5) * 5.0) % 5
+		var row := 10.0 if p % 2 == 0 else 21.0
+		var pp := c + Vector2(cos(pa) * (rx + 14.0 + pk * 30.0 - row), sin(pa) * (ry + 12.0 + pk * 24.0 - row * 0.8))
+		var pc: Color = [Color(0.9, 0.8, 0.7), NEON[0], NEON[1], NEON[2], Color(0.8, 0.85, 1.0), Color(0.55, 0.4, 0.3)][int(hsh(p, 6) * 6.0) % 6]
+		var up := 1.0 if int(t * 2.0 + p) % 11 == 0 else 0.0
+		ci.draw_rect(Rect2(pp.x - 1.5, pp.y - 4.0 - up, 3.0, 3.0), pc)
+		ci.draw_rect(Rect2(pp.x - 2.0, pp.y - 1.0 - up, 4.0, 2.5), pc.darkened(0.45))
+	# the wall, its inner face on the far side, the two gates
+	ci.draw_colored_polygon(_ell(c, rx + 14.0, ry + 12.0), Color(0.3, 0.29, 0.38))
+	ci.draw_polyline(_ell(c, rx + 14.0, ry + 12.0), Color(NEON[1], 0.85), 1.5)
+	ci.draw_colored_polygon(_ell(c, rx, ry), Color(0.2, 0.2, 0.28))
+	var fc := c + Vector2(0.0, 12.0)                              # the floor lies below the wall's top
+	var fl := PackedVector2Array()
+	for q2 in 72:
+		var a2 := q2 * TAU / 72.0
+		var pt := c + Vector2(cos(a2) * rx, sin(a2) * ry)
+		if sin(a2) < 0.0:
+			pt = fc + Vector2(cos(a2) * rx, sin(a2) * ry)
+			pt.y = minf(pt.y, c.y - 0.5)                          # (at its two ends the far edge meets the near one)
+		fl.append(pt)
+	ci.draw_colored_polygon(fl, Color(0.92, 0.93, 0.96))
+	ci.draw_polyline(_ell(c + Vector2(0.0, 6.0), rx, ry, PI + 0.05, TAU - 0.05), Color(NEON[0], 0.5 + 0.3 * absf(sin(t * 1.1))), 1.5)
+	ci.draw_polyline(_ell(fc + Vector2(0.0, 3.0), rx - 3.0, ry, PI + 0.1, TAU - 0.1), Color(0.3, 0.35, 0.5, 0.22), 5.0)
+	var joint := Color(0.68, 0.72, 0.82)
+	for gy in range(0, AH * TILE + 1, TILE):                     # the joints, on the map's own grid
+		var v1 := (gy - c.y) / ry
+		var v2 := (gy - fc.y) / ry
+		if absf(v1) < 1.0 and (gy > c.y or absf(v2) < 1.0):
+			var half := rx * sqrt(1.0 - v1 * v1) if gy > c.y else rx * sqrt(1.0 - v2 * v2)
+			ci.draw_line(Vector2(c.x - half, gy), Vector2(c.x + half, gy), joint, 1.0)
+	for gx in range(0, AW * TILE + 1, TILE):
+		var u := (gx - c.x) / rx
+		if absf(u) < 1.0:
+			var s := ry * sqrt(1.0 - u * u)
+			ci.draw_line(Vector2(gx, fc.y - s), Vector2(gx, c.y + s), joint, 1.0)
+	ci.draw_arc(fc, 40.0, 0.0, TAU, 40, Color(0.35, 0.7, 1.0, 0.45), 1.5)
+	ci.draw_line(Vector2(c.x - rx + 16.0, fc.y), Vector2(c.x + rx - 16.0, fc.y), Color(0.35, 0.7, 1.0, 0.25), 1.5)
+	# the fighters' gate (south, open: a light of green) and the gate of the others (north, shut: red)
+	ci.draw_rect(Rect2(c.x - 16.0, c.y + ry - 18.0, 32.0, 46.0), Color(0.86, 0.88, 0.92))
+	ci.draw_rect(Rect2(c.x - 20.0, c.y + ry - 6.0, 4.0, 34.0), Color(0.4, 1.0, 0.7, 0.6 + 0.4 * absf(sin(t * 2.0))))
+	ci.draw_rect(Rect2(c.x + 16.0, c.y + ry - 6.0, 4.0, 34.0), Color(0.4, 1.0, 0.7, 0.6 + 0.4 * absf(sin(t * 2.0))))
+	ci.draw_rect(Rect2(c.x - 22.0, fc.y - ry - 12.0, 44.0, 12.0), Color(0.16, 0.12, 0.1))
+	ci.draw_rect(Rect2(c.x - 22.0, fc.y - ry - 12.0, 44.0, 12.0), Color(1.0, 0.35, 0.35, 0.6 + 0.4 * absf(sin(t * 1.6))), false, 1.5)
+	# the wave of blue light
+	var n := int(floor(t / WAVE))
+	var wk := fposmod(t, WAVE) / 2.6
+	if wk < 1.0:
+		if n % 2 == 0:
+			for tr in 6:
+				var ly := fc.y - ry + (2.0 * ry) * wk - tr * 4.0
+				var w1 := (ly - c.y) / ry
+				if absf(w1) < 1.0 and ly > fc.y - ry:
+					var half2 := rx * sqrt(1.0 - w1 * w1)
+					ci.draw_line(Vector2(c.x - half2, ly), Vector2(c.x + half2, ly), Color(0.3, 0.7, 1.0, (0.85 - tr * 0.14) * (1.0 - 0.3 * wk)), 4.0 - tr * 0.5)
+		else:
+			for tr2 in 4:
+				var rs := wk - tr2 * 0.05
+				if rs > 0.02:
+					ci.draw_polyline(_ell(fc, rx * rs * 0.97, minf(ry - 12.0, rx * rs * 0.97)), Color(0.3, 0.7, 1.0, (0.85 - tr2 * 0.2) * (1.0 - wk)), 4.0 - tr2 * 0.7)
 
 
 ## What you see from the stands, beyond the rail (window px; in the sky's layer).
