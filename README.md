@@ -412,6 +412,147 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.28 (package 62a, parts 10b and 10c): `data/survivor.gd` `rig_tier(col)`, `RIG_STEPS`, `RIG_NAMES`, `RIG_SUIT`
+  (the record's `suit`, `rig_force`); `chibi_art.gd`: a look's `sv` (0 … 10) or the suit `suit_survivor` is drawn by
+  `_sv_frame` on a canvas padded by `SV_PAD`; `sv_tier(look)`, `glow(look, dir, f)` (four masks of lights), `sv_hue`;
+  `walker.gd` `_sv_glow`, `_sv_blade_idle`, `sv_blade`; `ground_view.gd` `pilot_look()` in Survivor; `data/gear.gd`
+  `suit_survivor`, `wp_silverblade` (`blade`, `charge`, `time`); `ground_combat.gd` `blade`, `blade_cool`,
+  `blade_id()`, `blade_k()`, `blade_flying()`, `_fire_blade`, `_blade_next`, `_blade_step`, `_draw_blade`;
+  `game_state.gd` `sv_give_suit()`; `colosseum_ui.gd` `SvPrep.rig_rect()`; debug `sv` values `rig:+`, `rig:-`,
+  `rig:auto`, `rig:<n>`, `all`; smoke test group `colrig62a`; the sheet of all steps:
+  `Claude outputs/_furn/rig.tscn`.
+- 0.8.62.27 (package 62a, part 10a): `data/survivor.gd` `FOE_HOME`, `FOE_INFO`, `foe_home()`, the record's `slain`,
+  `settle()` returns `new_foes`; `survivor_game.gd` `_slain`, `slain()`; `pilot_window.gd` `_collection_survivor`,
+  `_sv_slain`, `_sv_met`, `_count_text`; debug `sv` value `slain`; smoke test group `colcoll62a`.
+- 0.8.62.26 (package 62a, part 9c): `data/survivor.gd` foes `worm` (`beh` 25; `warn`, `erupt`, `erupt_r`, `needle`) and
+  `heart` (`beh` 26; `needle`, `strike`, `strike_r`), `EYE_MAX` / `EYE_MIN` / `STORM_DMG`, Whiteout's `soft` / `end`;
+  `survivor_game.gd` `_worm`, `_heart`, `_worm_spot`, `_needle_fan`, `_needle_ring`, `_digs` (who can be under the
+  ice), `in_storm`, `bst` keys `trail` / `spots` / `si` / `spit` (worm) and `eye` / `tick` / `strike` (heart),
+  `boss_info()["under"]`, shells with `zap`, tele kind `zap`; `survivor_art.gd` `_iceworm`, `_stormheart`; smoke
+  test group `colwhitec62a`.
+- 0.8.62.25 (package 62a, part 9b): `data/survivor.gd` foes `shardthrower` (`beh` 14; `needle`, `fan`, `spread`) and
+  `glider` (`chunk`, `chunk_r`), `WO_EVENTS`, `BLIZZARD_*`, `BREAK_*`, `AVA_*`, item `thermal`; `survivor_game.gd`
+  events `blizzard` / `icebreak` / `avalanche`, `_wo_events`, `breaks`, `avas`, `blizzard_t`, `in_cover`, mark `fan`,
+  globs with `needle`, shells with `ice`, tele kind `thermal`; `survivor_art.gd` `_shardthrower`, `_glider`; icon
+  `thermal`; smoke test group `colwhiteb62a`.
+- 0.8.62.24 (fixes of 24 Nov 2026): `GameState.on_foot` (in the save), `GroundView.save_spot` / `restore_spot`,
+  `main._resume_landed` (a load puts you back where you stood); `survivor_game.gd` `_drop` (a full field: the
+  furthest shard comes here), `_wkb` / `_kbk` (a weapon's `kb`), `_blade_dir`, `_danger` (their red round on the
+  ground); `data/survivor.gd` `draw_rewards` gives a ready fusion first, weapon key `kb`; `survivor_fx.gd` `hue`
+  leaves red out; `SvPrep.press` goes on to the next place; smoke test group `colfix62a`.
+- 0.8.62.23 (package 62a, part 10): `colosseum_ui.gd` classes `Choose` (`picked`: "match" | "survivor") and `SvPrep`
+  (Survivor's own room: `sv_stage_rect`, `sv_weapon_rect`, `pick_sv_stage`, `pick_sv_weapon`, `move`, `press`, `focus`
+  0 stages / 1 weapons / 2 READY); `Prep` lists `modes()` (no Survivor) and has `col_focus` 3 (READY);
+  `ground_view.gd` `_col_choose_open`, `_col_prep_open` opens the room of the mode you are in.
+- 0.8.62.22 (package 62a, part 7f, the crates): `data/survivor.gd` `crate_roll(run, rng)` (always an item; `CRATE_UP`
+  is gone), `DRAW_ODDS`, `DRAW_LUCK`, `draw_count`, `draw_rewards`, each item's `col`, Lucky Find's words and lines;
+  `survivor_game.gd` crates with `weapon` (an alpha's, a boss's), `open_crate` / `open_draw(great, count)`,
+  `last_draw`, `item_pop` (`ITEM_POP`), `_items`, `nukes`, `scorches`, `heals`, `shield_len` / `stasis_len` /
+  `over_len`, `shield_hit`, `_od_tr`, tele kind `stasis`, mark `ovr`; `survivor_ui.gd` class `Draw` (the reels;
+  `press`, `stop_at`, `done_at`, `sign_at`), the sign of an item in the HUD; `survivor_fx.gd` `nuke_ground` /
+  `nuke_glow` / `nuke_over` (`NUKE_LIFE`), `scorch_ground` (`SCORCH_LIFE`), `shield_dome`, `magnet_over`,
+  `heal_over` / `heal_ground`, `stasis_ground` / `stasis_clock`, `overdrive_over` / `overdrive_glow`, `ovr_mark`;
+  debug `sv: draw:<n>`; smoke test group `colcrate62a`.
+- 0.8.62.21 (package 62a, part 9a, Whiteout): `data/survivor.gd` stage `whiteout` (in `stage3`'s place; each open stage
+  has a `col` now), `STAGE_DATA["whiteout"]`, `WO_WAVES`, foes `mite` / `burrower` (`beh` 13; `pace`, `warn`, `erupt`,
+  `erupt_r`, `up`) / `rimeback` (`shield`), `ICE_TURN`, `VENT_STEP` / `VENT_R` / `VENT_DMG` / `VENT_TIME` /
+  `VENT_REST`, banner `frozen`; `survivor_stage.gd` `_whiteout` (map metas `sv_vents`, `sv_frozen`, `sv_bright`;
+  hazard kind `ice` with `look` `floe` and `floes`; decor kinds `track`, `drift`, `hair`, `melt`);
+  `colosseum_vr.gd` `VrFx` draws those; `obj_art.gd` `_snow` (an object with `"snow": true`); `survivor_game.gd`
+  `_haz` code 3 and `_slide` in `move()`, `_lead`, `vents` / `_vents` / `vent_burst`, crates with `ice`,
+  `_under` / `_erupt` (a burrower under the ice is in no cell of the grid and takes no hit), tele kind `erupt`,
+  mark `burrow`, `bright`; `survivor_art.gd` `_mite`, `_burrower`, `_rimeback`, `_ice`, `ice_block()`;
+  `survivor_ui.gd` `Intro._vista_whiteout`; `survivor_sound.gd` `sv_steam`, `sv_ice`; debug `sv: vent`,
+  `sv: stage:whiteout`; smoke test group `colwhite62a`.
+- 0.8.62.20 (package 62a, part 7e): `data/survivor.gd` weapon `orbs` (`turn`, `burst`), bonus `gyro` (`mods` `spin`), the
+  taser's `reach` and `arc` in place of `r`, the Silver Storm's words; `survivor_game.gd` `_orbs` (in `_storm`'s
+  place), `orb_pts` / `orb_out` / `orb_r` / `orbs_t` / `halos`, blades with `u` (the Silver Storm's: for good, their
+  trail cuts), `zaps` as cones (`a`, `arc`), `_hue_at`; `survivor_fx.gd` rewritten: `hue`, `rainbow_ribbon`,
+  `rainbow_dashes`, `orb`, `orbs_ground`, `halo_ground`, `taser_over`, every ultimate in changing colours;
+  icons `orbs`, `gyro`; `Console.items()` and `Prep.sv_weapon_rect` seven to a row.
+- 0.8.62.19 (package 62a, part 7d, what you see of your weapons; the flood): `scripts/ground/survivor_fx.gd` (new,
+  only drawing: `WCOL`, `number`, `ribbon`, `bolt`, `star`, `flare`, `fill`, the functions of each ultimate);
+  `survivor_game.gd` `nums` / `fnum` / `fnc` / `_num` / `_src` / `show_nums` (the numbers of damage), `fxs` /
+  `_fx_add`, `drones` / `_drones` / `_drone_fleet` / `shot_n` / `DRONE_GAP`, `foe_cap` / `flooding`, marks on what
+  an ultimate throws (`u`, beams' `c` 3 to 6, mines' `g` / `q` / `m`, trails `tr`); `data/survivor.gd`
+  `FLOOD_FROM` / `FLOOD_RATE` / `FLOOD_FOES` / `FLOOD_HP`, the Drone's words; `survivor_art.gd` `drone`;
+  `debug_casino {sv: "flood"}`; smoke group `colfx62a`.
+- 0.8.62.18 (package 62a, part 8c, the bosses of AI Takeover): `data/survivor.gd` (`FOES` `warden` (`beh` 22, `arm`,
+  `arm_dmg`, `rocket`, `rocket_r`, `stomp`, `stomp_r`), `core` (`beh` 23, `beam`, `field`), `pylon` (`beh` 24);
+  `STAGE_DATA` takeover `soft` / `end`; `CROSS_LEN`, `CORE_LAST`, `FIELD_CELL`, `FIELD_WARN`; `CORE_BOSS`);
+  `survivor_game.gd` `_warden`, `_core`, `fields`, `_guard_t`, `_near_line`, `_ray_len`, `_make_room`, `boss_info`
+  with `shield`, rockets among `shells` (`rocket`), the clock stands while a stage's `end` lives; `survivor_art.gd`
+  `_warden`, `_core`, `_pylon`; `debug_casino {sv: "warden" | "core"}`; smoke group `coltakec62a`.
+- 0.8.62.17 (package 62a, part 8b, the rest of AI Takeover): `data/survivor.gd` (`FOES` `bulwark` (`beh` 10, `shell`,
+  `shell_r`), `seeker` (`beh` 11, `boom`, `boom_r`, `boom_foes`), `jammer` (`beh` 12, `jam`, `jam_r`), `hunter`
+  (flies); `TK_EVENTS`, `STAGE_DATA` `banners`; `SEARCH_TIME` / `SEARCH_LIT` / `SEARCH_R`, `EMP_TIME`, `LINE_PACE` /
+  `LINE_GAP`; item `override` with `stage`, `crate_roll` by the run's stage); `survivor_game.gd` `_events`
+  (searchlights, shells, pods, kill lines, seekers' bursts, what an Override turned), `fovr`, `shells`, `booms`,
+  `lights`, `pods`, `klines`, `emp_t`, `ovr_t`, `_line_parts`, marks `jam` / `arm` / `beam`, warnings `strafe` /
+  `override` / `emp`; fixed: `_grid` and the fire in `_ground` no longer look up ground under those that fly beyond
+  its edge; `survivor_art.gd` `_bulwark`, `_seeker`, `_jammer`, `_hunter`; sounds `sv_shell`, `sv_emp`;
+  `debug_casino {sv: "searchlight" | "reinforce" | "killline" | "emp"}`; smoke group `coltakeb62a`.
+- 0.8.62.16 (package 62a, part 8a, AI Takeover): `data/survivor.gd` (`STAGES` with `need`, `STAGE_DATA` /
+  `stage_data`, `TK_WAVES`, `kinds_at(t, stage)`, `stage_open`, `cur_stage`, `record` with `beaten`, `settle` with
+  `opened`; `FOES` `enforcer`, `scout` (`beh` 8), `gunner` (`beh` 9, `bolt`); `BOSS_BEH` 20); `survivor_stage.gd`
+  `_takeover` (meta `sv_decor`, `sv_landmark`); `obj_art.gd` kinds `tank_trap`, `rubble`, `wreck_car`,
+  `dropship_wreck`; `ColosseumVR.VrFx.decor`, the `oil` look; `survivor_art.gd` `_enforcer`, `_scout`, `UNIT`;
+  `survivor_game.gd` `stg`, `_swarm_k`, marks `aim` / `leap`, bolts among `globs`; `SurvivorUI.Intro._vista_takeover`;
+  `debug_casino {sv: "stage:<id>"}`; smoke group `coltake62a`.
+- 0.8.62.15 (package 62a, part 7c-4): `data/survivor.gd` weapons `taser` (`stun`), `blackhole` (`speed`, `tough`,
+  `from`: the level of a run from which its card comes), boni `capacitor`, `massdriver`; `mods` with `crit`, `kb`;
+  `TUNE` `xp` renamed "XP", new `coins` (used in `reward`); `can_begin`; `survivor_game.gd` `fstun`, `stun`,
+  `zaps`, `holes`; `debug_casino {sv: "carry:taser" | "carry:blackhole" | …}`.
+- 0.8.62.14 (package 62a, part 7c-3, what is round Survivor): `data/survivor.gd` (ten `WEAPONS`, eleven `BONI`;
+  `FREE_WEAPONS`, `FREE_BONI`, `UNLOCK_COST`, `TUNE`, `TUNE_ORDER`, `REROLL_COST`, `REVIVE_COST`, `CORE_*`; `record`
+  with `cores`, `own`, `tune`, `reroll`, `revive`, `stage`; `owned`, `price`, `buy`, `cores`, `tune_rank`,
+  `tune_text`, `progress`; `fresh(stage, weapon, col)` with `pool_w` / `pool_b` / `tune` / `rerolls` / `revive`;
+  `mods` with `dur`, `more`, `cell`, `xp`, `luck`); `survivor_game.gd` (`mines`, `sentries`, `cones`, `wells`,
+  `ffr`, `spull`, `cell_t`, `face_dir`, `_devices`, `freeze`, `_revive`, `reroll`, `_more`); `survivor_art.gd`
+  `mine`, `sentry`; `SurvivorUI.Console` (laid out 1760 by 900, scaled down in a smaller window), `LevelUp.reroll`;
+  `ColosseumUI.Prep.sv_stage_rect` / `pick_sv_stage`; lobby prop `svconsole`, zone `sv_console`,
+  `GroundView._sv_console`; commands `sv_buy {what, id}`, `sv_reroll`, `sv_stage {id}`; `debug_casino {sv: "cores" |
+  "unlock" | "lock" | "carry:<id>" | "carry:ult"}`; smoke group `colmeta62a`.
+- 0.8.62.13 (package 62a, part 7c-2, Survivor's stage): `data/survivor.gd` (`FOES` with `beh`, `mass`, `shield`,
+  `fly`, `boss`; `FOE_ORDER`, `WAVES`, `EVENTS`, `ALPHA_*`, `FLOCK_*`, `SUPPLY_*`, `SOFT_BOSS`, `BARRIER`, `BANNERS`,
+  `ITEMS`, `ITEM_ORDER`, `crate_roll`, `kinds_at`, `foe_hp`); `survivor_stage.gd` metas `sv_crates`, `sv_sleepers`;
+  `survivor_art.gd` (`_figure`, `_limb`, a picture per kind, `crate`, `lying`, `SIZES`); `survivor_game.gd`
+  rewritten (rows per foe for what it is doing, ways by `beh`, `_director`, `event`, `boss_start` / `_boss` /
+  `boss_info`, the walls of light, `crates` / `open_crate` / `give`, `globs`, `pools`, `tele`, `waves`, `quiet`);
+  `scripts/core/survivor_sound.gd` (sounds made in code, ids `sv_*`, through `Audio.stream`);
+  `SurvivorUI.Hud._stage`; `debug_casino {sv: <kind> | <event> | "foreman" | "brood" | "item:<id>"}`; smoke group
+  `colstage62a`.
+- 0.8.62.12 (package 62a, part 7c-1, Survivor's look): `SLOTS` 5; `data/survivor.gd` `weapon_lines`, `bonus_lines`,
+  `card_lines`, `fusion`, `shard_tier`; `survivor_art.gd` `shard(tier, frame)`; `survivor_game.gd` `Glow` (a node
+  that adds light on top of the dark), `draw_glow`, `stier`; `survivor_ui.gd` rewritten (`card_color`, `hexpts`,
+  `hex_frame`, `brackets`; `Hud`, `LevelUp`, `Intro` with `_vista`, `Result`).
+- 0.8.62.11 (package 62a, part 7b, Survivor's arsenal): `data/survivor.gd` (six `WEAPONS` with `bonus`, `ult`,
+  `ult_text`; `BONI`, `BONUS_ORDER`, `ULT`, `bonus_level`, `mods`, `max_hp`, `ult_ready`, `first_weapon`, `progress`;
+  cards of kind `bonus`, `bonus_up`, `ult`), `survivor_game.gd` (`_grid`, `touching`, `_fly`, `_zap`, `_storm`;
+  `nades`, `blasts`, `shots`, `sweep`, `blades`, `storm_pts`, `nova_r`, `mods`), `survivor_ui.gd` (`Intro`, more
+  `icon`s), `colosseum_ui.gd` (`Prep.sv_weapon_rect`, `pick_sv_weapon`); command `sv_weapon {id}`;
+  `GroundView._col_enter` (the entrance ends in a fight or in Survivor's stage); `ColosseumData.crowd` goes by
+  `SurvivorData.progress` in Survivor.
+- 0.8.62.10 (package 62a, part 7a, Survivor): `data/survivor.gd` (`STAGES`, `WEAPONS`, `FOES`, `need`, `spawn_rate`,
+  `foe_hp`, `fresh`, `stats`, `level_up`, `offers`, `apply`, `reward`, `settle`, `record`), `scripts/ground/`
+  `survivor_stage.gd` (`build(stage, seed)`: 200 x 140 tiles), `survivor_game.gd` (the run: the swarm as packed
+  rows `fp`, `fhp`, `fk` …, a grid of cells for the pushing apart, `Band` strips sorted among the figures, `step`,
+  `add_foe`, `swarm`, `dash`, `pick`, `end`), `survivor_art.gd` (`texture(kind, look, dir, frame)`), `survivor_ui.gd`
+  (`Hud`, `LevelUp`, `Result`); level `zcolsv`, `GroundView.survivor`, `_sv_start`, `_sv_over`, `_sv_done`;
+  commands `sv_pick {i}`, `sv_end`; state `GameState.col["sv"]` (`best`, `runs`, `kills`); `VrFx.tw` / `th`; debug
+  `debug_casino {sv: "start" | "level" | "swarm" | "minute" | "end"}`; smoke group `colsurv62a`.
+- 0.8.62.9 (package 62a, part 5): `data/colosseum.gd` (`SETTINGS` with `hazard` / `danger`, `LAYOUTS`, `layout`,
+  `force`; `MATES`, `mates`, `team`, `mate_quality`, `mate_member`, `TEAM_SIZE`; `switch_mode` and `runs` (a run per
+  mode), `mode_name`, `sim_win`; `opponents(..., mode)`, `reward(round, mode)`), `colosseum_vr.gd`
+  (`build(setting, seed, layout)`, map metas `col_hazards`, `col_haz_state`, `col_lava`, `col_layout`, `live`,
+  `ground_at`), `colosseum_ui.gd` (`Prep.pick_mate`, `Versus.mates`); command `col_team {id}`;
+  `GroundView._col_hazard_step`, `_col_move`, `_col_fight_sim`, fight state "watch"; an arena ally carries
+  `"arena": true` (`GroundCombat`: out at once, the others turn on your team when you are out); debug
+  `debug_casino {col_map: id, col_plan: id}`; smoke group `colteam62a`. Part 6 (same version): the arena's wheel
+  `GroundCombat.ARENA_WHEEL`, `wheel_fields()`, `wheel_pick(centre, mouse, inner, fields)`, orders `own`, `wing`
+  (`wing`, `wing_st`), `cover` (`dug`), `retreat` (`back`, `refill`), `_nearest_foe`, `_hide_spot`; an ally with
+  `energy` / `ammo` uses `foe_power` and `_foe_recharge` like a foe; the ground on all: `ground_at`, `_walk`,
+  `_reach`, `_safe`, `_off_burn`, `ColosseumVR.weigh` (weights on the path grid); smoke group `colorder62a`.
 - 0.8.62.8 (package 62a, part 4): `data/colosseum.gd` (`RANKS`, `rank`, `rank_state`, `allowed`, `crowd`, `BOSSES`,
   `SETTINGS`, `opponents(round, n, salt)`, `foe_of`, `setting`, `reward`, `settle`, `gear_of`),
   `scripts/ground/colosseum_vr.gd` (`build(setting, seed)`, `VrFx`), `colosseum_ui.gd` `Versus`, `Result`; level

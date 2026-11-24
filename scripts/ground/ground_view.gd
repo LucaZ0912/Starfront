@@ -273,6 +273,9 @@ func _set_hint() -> void:
 	_hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
 		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
 		Keybinds.key_text("foot_run"), Keybinds.key_text("interact"), back]
+	if level == "zcolsv":                                 # package 62a, part 7: Survivor
+		_hint.text = "%s %s %s %s walk  •  %s dodge  •  your weapons fire by themselves" % [
+			Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"), Keybinds.key_text("foot_dodge")]
 	if combat_allowed():
 		_hint.text = "%s %s %s %s walk  •  %s next target / click  •  %s dodge  •  %s other weapon  •  %s tactics  •  1–4 belt" % [
 			Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
@@ -313,13 +316,49 @@ func setup_settlement(p_body: Dictionary, p_site: Dictionary, town: Dictionary, 
 	go_level("settlement", "touchdown" if touchdown else "ramp")
 
 
+## (Luz, 24 Nov 2026) Where you stand, for the save: the place, its level, the spot on it.
+func save_spot() -> Dictionary:
+	if pilot == null or not is_instance_valid(pilot):
+		return {}
+	return {"level": level, "pos": pilot.pos, "ctr_stop": ctr_stop, "station": String(station.get("id", "")), "town_kind": String(_town_kind)}
+
+
+## … and back onto it after a load (main._resume_landed has brought you to the place). A fight, a run, a ride, a site
+## to explore or a room of your own are not kept: there you stand where the way into them begins.
+func restore_spot(spot: Dictionary) -> void:
+	var lv := String(spot.get("level", ""))
+	var exact := true
+	if lv in ["zcolvr", "zcolar", "zcolsv"]:
+		lv = "zcolin"
+		exact = false
+	elif lv in ["ztrain", "ctrain"]:
+		lv = "zstation" if lv == "ztrain" else "cstation"
+		exact = false
+	elif lv in ["", "quarters", "dungeon", "museum_down", "clinic"]:
+		return
+	ctr_stop = int(spot.get("ctr_stop", ctr_stop))
+	_town_kind = String(spot.get("town_kind", _town_kind))
+	if lv != level:
+		go_level(lv, String({"zcolin": "from_plaza", "zcol": "from_station", "zcolst": "from_lobby", "zcasino": "from_plaza", "museum": "museum_in", "plaza": "dungeon_out", "mplaza": "dungeon_out",
+			"minehead": "path"}.get(lv, "lift")))
+	var p = spot.get("pos", null)
+	if exact and p is Vector2 and map != null and map.free_at(p, 4.0):
+		pilot.pos = p
+		pilot.position = (p as Vector2) * GroundMap.SCALE
+		_cam_c = Vector2.INF
+
+
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
+	if level == "zcolsv" and p_level != "zcolsv":
+		_sv_drop()                                       # package 62a, part 7: out of Survivor's stage
+		GameState.col_gear_off()
 	if level in ["zcolvr", "zcolar"] and not p_level in ["zcolvr", "zcolar"]:
 		GameState.col_gear_off()                         # package 62a, part 4: out of the arena, back into your own gear
 		_col_fight = {}
 		_col_big("")
+		_col_line("")
 	if p_level == "zplaza" and arrive == "lift":
 		arrive = "from_hall"                              # package 61a: the lifts of the Commercial Hall lead out onto the plaza
 	if p_level == "mplaza" and is_centauria():
@@ -434,7 +473,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = ColosseumGen.build_arena(station)                    # … part 3: the arena itself
 	elif level == "zcolvr":
 		var cvs: Dictionary = GameState.col_state()                # … part 4: the fight's ground, a setting drawn by lot
-		map = ColosseumVR.build(String(ColosseumData.setting(int(cvs["round"]), int(cvs["fights"]))["id"]), int(cvs["fights"]))
+		map = ColosseumVR.build(String(ColosseumData.setting(int(cvs["round"]), int(cvs["fights"]))["id"]), int(cvs["fights"]), ColosseumData.layout(int(cvs["round"]), int(cvs["fights"])))
+	elif level == "zcolsv":
+		map = SurvivorStage.build(SurvivorData.cur_stage(GameState.col_state()), int(SurvivorData.record(GameState.col_state())["runs"]))      # … part 7: Survivor's stage (part 8: the one you picked)
 	elif level == "zcasino":
 		map = CentauriaGen.build_casino(station, ctr_floor, city_day() < 0.5)      # package 62 (Luz): the Grand Centauria, floor by floor
 	elif level == "cplaza":
@@ -676,6 +717,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_title.text = "The Colosseum – The arena"
 	elif level == "zcolvr":
 		_title.text = "The Colosseum – %s" % String(map.get_meta("col_vr_name", "the hologram"))
+	elif level == "zcolsv":
+		_title.text = "The Colosseum – Survivor: %s" % String(map.get_meta("col_vr_name", "the hologram"))
 	elif level == "zalley":
 		_title.text = "Centauria – Back Alleys"
 	elif level == "zbar":
@@ -838,9 +881,15 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			cpf.position = (cpd["pos"] as Vector2) * GroundMap.SCALE
 			_sorted.add_child(cpf)
 			_col_fx.append(cpf)
-	if level == "zcolvr":
+	if level in ["zcolvr", "zcolsv"]:
 		var vfx = ColosseumVR.VrFx.new()                 # (part 4) the wall of light round the hologram, the grid as it comes up
+		vfx.tw = map.w
+		vfx.th = map.h
 		vfx.stations = map.get_meta("col_stations", [])
+		vfx.hazards = map.get_meta("col_hazards", [])      # (part 5) the setting's danger on the ground
+		vfx.state = map.get_meta("col_haz_state", {})
+		vfx.lava = map.get_meta("col_lava", [])
+		vfx.decor = map.get_meta("sv_decor", [])           # (part 8) craters, scorch marks, cracks
 		vfx.scale = Vector2.ONE * GroundMap.SCALE
 		_world.add_child(vfx)
 		_world.move_child(vfx, _sorted.get_index())
@@ -1091,6 +1140,11 @@ func pilot_look() -> Dictionary:
 	lk["suit"] = ChibiArt.GearData.family(String(GameState.gear.suit))
 	lk["helmet"] = needs_helmet() or GameState.gear.helmet == "always" or GameState.gear.combat_t > 0.0   # 0.7.51.10
 	lk["arm_up"] = combat != null and combat.arm_raised()                          # 0.7.52.14: the laser arm raised
+	if survivor != null and is_instance_valid(survivor) and String(level) == "zcolsv":
+		lk["suit"] = ""                                  # 62a, part 10b (Luz): in Survivor you wear the rig, by how far you have come at the console
+		lk["helmet"] = false
+		lk["arm_up"] = false
+		lk["sv"] = SurvivorData.rig_tier(GameState.col_state())
 	return lk
 
 
@@ -1994,6 +2048,10 @@ const ColosseumGen = preload("res://scripts/ground/colosseum_gen.gd")       # pa
 const ColosseumUI = preload("res://scripts/ground/colosseum_ui.gd")         # … part 3: the way to play, the fighters' room
 const ColosseumVR = preload("res://scripts/ground/colosseum_vr.gd")         # … part 4: the fight's ground
 const ColosseumData = preload("res://data/colosseum.gd")
+const SurvivorData = preload("res://data/survivor.gd")                         # … part 7: Survivor
+const SurvivorStage = preload("res://scripts/ground/survivor_stage.gd")
+const SurvivorGame = preload("res://scripts/ground/survivor_game.gd")
+const SurvivorUI = preload("res://scripts/ground/survivor_ui.gd")
 var ctr_stop := 0
 var ctr_line := "A"
 var ctr_floor := 0                      # package 62 (Luz): which floor of the Grand Centauria you stand on
@@ -2011,6 +2069,9 @@ var _col_intro: Dictionary = {}         # part 4: the entrance before a fight: {
 var _col_fight: Dictionary = {}         # … the fight: {state: count / fight / over, t, won}
 var col_lost := false                   # … you are out of the fight (shot down in the hologram, or you gave up)
 var _col_label: Label = null            # … a word across the picture
+var _col_note: Label = null             # part 5: … and a line at its foot (you are out, your team fights on)
+var _col_vel := Vector2.ZERO            # … how you slide on ice
+var survivor = null                     # part 7: a run of Survivor (SurvivorGame) while you stand in its stage
 var _ctr_at := -2                       # where the train you ride stood last (for the announcements)
 
 
@@ -2074,8 +2135,10 @@ func combat_allowed() -> bool:
 
 
 func _slung() -> String:
+	if survivor != null and is_instance_valid(survivor) and String(level) == "zcolsv":
+		return ""                                        # (62a, part 10b: nothing across your back in Survivor)
 	for w in GameState.gear.weapons:
-		if String(w) != "":
+		if String(w) != "" and not bool(ChibiArt.GearData.base(String(w)).get("blade", false)):
 			return String(ChibiArt.GearData.base(String(w)).get("dtype", "kinetic"))
 	return ""
 
@@ -3008,7 +3071,11 @@ func _process(delta: float) -> void:
 			var run := (Input.is_action_pressed("foot_run") or Pad.run_held())
 			if combat != null and combat.sneaking:
 				run = false                                 # 0.7.52.21: sneaking – half speed, no running
-			if combat == null or not combat.dodging():
+			if level == "zcolvr":
+				dir = _col_move(dir, delta)                 # package 62a, part 5: ice you slide on, undergrowth that holds you back
+			if level == "zcolsv" and survivor != null and is_instance_valid(survivor):
+				pilot.step(survivor.move(dir), delta, survivor.speed())      # … part 7: Survivor: one pace for all, the dodge, what lies on the ground
+			elif combat == null or not combat.dodging():
 				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run) * (0.5 if combat != null and combat.sneaking else 1.0) * _wade())      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
 	else:
 		pilot.moving = false
@@ -3066,7 +3133,7 @@ func _prompt_text(z: Dictionary) -> String:
 		return ""
 	var key := Keybinds.key_text("interact")
 	match String(z["kind"]):
-		"exit", "lift", "charge", "col_charge", "col_giveup":
+		"exit", "lift", "charge", "col_charge", "col_giveup", "sv_giveup":
 			return "[%s] %s" % [key, z["title"]]
 		"soon":
 			return String(z["title"])
@@ -3157,7 +3224,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_released("foot_team", false) and _team_held >= 0.0:
 			get_viewport().set_input_as_handled()
 			if combat.wheel_open:
-				var pick := GroundCombat.wheel_pick(wheel_centre(), wheel_point())
+				var pick := GroundCombat.wheel_pick(wheel_centre(), wheel_point(), 46.0, combat.wheel_fields())
 				combat.wheel_open = false
 				_wheel_stick = Vector2.ZERO
 				if pick != "":
@@ -5260,10 +5327,17 @@ func use(instant: bool = false) -> bool:
 		"col_giveup":
 			if not _col_fight.is_empty() and String(_col_fight["state"]) == "fight":      # package 62a, part 4: out of the fight by your own choice
 				ask_window("Give up?", "The fight ends and counts as lost: the run's gear points go back to the house, the round is 1 again. Your rank stays.",
-					[["Give up", func(): col_lost = true], ["Fight on", func(): pass]])
+					[["Give up", func(): _col_fight_over(false)], ["Fight on", func(): pass]])
+			return true
+		"sv_giveup":
+			if survivor != null and is_instance_valid(survivor) and not survivor.over:      # package 62a, part 7: out of the run by your own choice
+				ask_window("End the run?", "The run ends here. It pays for the time you held out.", [["End it", func(): survivor.end(false)], ["Go on", func(): pass]])
 			return true
 		"col_fgate":
 			_say_toast("The fighters' gate. Talk to the Marshal at the counter when you want to compete.", 5.0)
+			return true
+		"sv_console":
+			_sv_console()                                    # package 62a, part 7c-3 (Luz): the Survivor console: what cores buy for good
 			return true
 		"ctr_down":
 			ctr_stop = int(zone.get("stop", 1))
@@ -5848,7 +5922,7 @@ func _col_walk_step(delta: float) -> void:
 		pilot.pos = pts[pts.size() - 2]
 		pilot.position = pilot.pos * GroundMap.SCALE
 		_col_sheet(Color(0, 0, 0, 0))
-		_col_prep_open()
+		_col_choose_open()                               # (part 10, Luz: first the choice between the fights and Survivor)
 
 
 ## The fighters' room is left: back into the lobby, or (READY, the countdown, the white) out into the arena, where
@@ -5865,11 +5939,31 @@ func _col_prep_done(entered: bool) -> void:
 		ColosseumGen.boot = 0.0
 		_col_intro = {"phase": 0, "t": 0.0, "hold": 0.0, "walkers": []}
 	else:
-		_ctr_title()
+		_col_choose_open()                               # (part 10: back out of a room: the choice again)
 
 
+## Part 10 (Luz, 24 Nov 2026): behind the fighters' gate: the fights or Survivor. Two tiles; back leads to the lobby.
+func _col_choose_open() -> void:
+	var ch = ColosseumUI.Choose.new()
+	ch.setup({})
+	ch.finished.connect(func(_ok: bool):
+		var what := String(ch.picked)
+		_close_game()
+		if what == "":
+			_ctr_title()
+			return
+		var cur := String(GameState.col_state().get("mode", ""))
+		if what == "survivor" and cur != "survivor":
+			Commands.execute({"type": "col_mode", "seat": 0, "mode": "survivor"})
+		elif what == "match" and cur == "survivor":
+			Commands.execute({"type": "col_mode", "seat": 0, "mode": "king"})
+		_col_prep_open())
+	_open_game(ch)
+
+
+## The room of the mode you are in: Survivor's own (part 10), or the fighters' room.
 func _col_prep_open() -> void:
-	var pr = ColosseumUI.Prep.new()                      # the fighters' room
+	var pr = ColosseumUI.SvPrep.new() if String(GameState.col_state().get("mode", "")) == "survivor" else ColosseumUI.Prep.new()
 	pr.setup({})
 	pr.finished.connect(func(entered: bool): _col_prep_done(entered))
 	_open_game(pr)
@@ -5895,25 +5989,57 @@ func _col_intro_step(delta: float) -> void:
 		if Input.is_action_pressed("ui_cancel") or Input.is_joy_button_pressed(0, JOY_BUTTON_START):
 			_col_intro["hold"] = float(_col_intro["hold"]) + delta
 			if float(_col_intro["hold"]) >= 0.6:
-				_col_fight_start()
+				_col_enter()
 				return
 		else:
 			_col_intro["hold"] = 0.0
 	match int(_col_intro["phase"]):
 		0:                                               # out of the white
+			if String(cst["mode"]) == "team" and not _col_intro.has("mates"):      # (part 5) Team Deathmatch: your two stand beside you
+				_col_intro["mates"] = true
+				var tmi := 0
+				for tm0 in ColosseumData.team(cst):
+					var mb0: Dictionary = ColosseumData.mate_member(tm0, cst)
+					var ml0: Dictionary = (mb0["look"] as Dictionary).duplicate()
+					ml0["suit"] = "suit_mil_light"
+					var mw := Walker.new()
+					mw.setup(map, ml0, pilot.pos + Vector2((-1.8 if tmi == 0 else 1.8) * tl, 0.3 * tl), true)
+					mw.stays = true
+					mw.dir = 1
+					_sorted.add_child(mw)
+					tmi += 1
 			if t > 0.5 and not bool(_col_intro.get("clap", false)):
 				_col_intro["clap"] = true                    # (Luz) the crowd claps you in: the fuller the stands, the louder
 				Audio.play("crowd_applause", "colosseum: the crowd for you", ColosseumData.applause_db(cst), 0.0)
 			if t > 1.5:
 				_col_phase(1)
 				if bool(cst.get("seen", false)):
-					_say_toast("Hold Esc or Options to go straight to the fight.", 4.0)
+					_say_toast("Hold Esc or Options to go straight in.", 4.0)
 		1:                                               # the whole round
 			story_cam = ColosseumGen.A_C * tl
 			story_zoom = 0.36
-			if t > 3.2:
+			if t > 3.2 and String(cst["mode"]) == "survivor":      # part 7 (Luz): Survivor: nobody walks in; the picture shows you and the weapon you begin with
+				_col_phase(3)
+				story_zoom = 0.0
+				story_cam = Vector2.INF
+				var syl: Dictionary = pilot_look().duplicate()
+				syl["suit"] = ""                                 # (part 10b: in the rig)
+				syl["sv"] = SurvivorData.rig_tier(cst)
+				syl["helmet"] = false
+				var si = SurvivorUI.Intro.new()
+				si.setup({"you_tex": ChibiArt.frame(syl, 0, 0), "you": GameState.pilot_name.to_upper(), "weapon": SurvivorData.first_weapon(cst), "stage": SurvivorData.cur_stage(cst)})
+				si.finished.connect(func(_w: bool):
+					if is_instance_valid(si):
+						si.queue_free()
+					if int(_col_intro.get("phase", -1)) == 3:
+						_col_phase(4)
+						Audio.play("ui_open", "colosseum: the hologram"))
+				_ui.add_child(si)
+				_col_intro["vs"] = si
+				Audio.play("dock_clamp", "survivor: you and your weapon")
+			elif t > 3.2:
 				_col_phase(2)
-				var foes: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]))
+				var foes: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]), String(cst["mode"]))
 				for i in foes.size():
 					var card: Dictionary = ColosseumGen.foe_card(foes[i])
 					var off: float = [0.0, -2.6, 2.6][i]
@@ -5943,13 +6069,21 @@ func _col_intro_step(delta: float) -> void:
 					ww.dir = 0
 			if t > 4.4:
 				_col_phase(3)
-				var foes2: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]))
+				var foes2: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]), String(cst["mode"]))
+				var vmates: Array = []                           # (part 5) Team Deathmatch: those beside you in the picture
+				if String(cst["mode"]) == "team":
+					for tm in ColosseumData.team(cst):
+						var mb2: Dictionary = ColosseumData.mate_member(tm, cst)
+						var ml: Dictionary = (mb2["look"] as Dictionary).duplicate()
+						ml["suit"] = "suit_mil_light"
+						ml["helmet"] = false
+						vmates.append({"name": String(tm["name"]).to_upper(), "tex": ChibiArt.frame(ml, 0, 0)})
 				var yl: Dictionary = pilot_look().duplicate()
 				yl["suit"] = String(cst["fit"]["suit"]).get_slice(":", 0)
 				yl["helmet"] = false
 				var vs = ColosseumUI.Versus.new()
-				vs.setup({"foes": foes2.map(func(o): return ColosseumGen.foe_card(o)), "you_tex": ChibiArt.frame(yl, 0, 0), "you": GameState.pilot_name.to_upper(),
-					"sub": "KING OF THE COLOSSEUM   ·   ROUND %d" % int(cst["round"])})
+				vs.setup({"foes": foes2.map(func(o): return ColosseumGen.foe_card(o)), "you_tex": ChibiArt.frame(yl, 0, 0), "you": GameState.pilot_name.to_upper(), "mates": vmates,
+					"sub": "%s   ·   ROUND %d" % [ColosseumData.mode_name(String(cst["mode"])).to_upper(), int(cst["round"])]})
 				vs.finished.connect(func(_w: bool):
 					if is_instance_valid(vs):
 						vs.queue_free()
@@ -5969,7 +6103,15 @@ func _col_intro_step(delta: float) -> void:
 		5:
 			_col_sheet(Color(1, 1, 1, clampf(t / 0.5, 0.0, 1.0)))
 			if t > 0.5:
-				_col_fight_start()
+				_col_enter()
+
+
+## The entrance is over (or cut short): into the fight, or into Survivor's stage.
+func _col_enter() -> void:
+	if String(GameState.col_state()["mode"]) == "survivor":
+		_sv_start()
+	else:
+		_col_fight_start()
 
 
 ## The fight's ground loads (a setting drawn by lot, far larger than the arena); you wear the house's gear; the three
@@ -5987,7 +6129,28 @@ func _col_fight_start() -> void:
 	GameState.col_gear_on()
 	col_lost = false
 	go_level("zcolvr", "from_gate")
-	var foes: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]))
+	combat._team_made = true                             # (no crew of yours comes into the hologram: the house's rules)
+	if String(cst["mode"]) == "team":                    # part 5 (Luz): Team Deathmatch: the two you picked stand beside you
+		var ti := 0
+		for tm in ColosseumData.team(cst):
+			var al: Dictionary = combat.spawn_ally(ColosseumData.mate_member(tm, cst), ti)
+			al["arena"] = true
+			al["name"] = String(tm["name"]).get_slice(" ", 0)
+			# part 6 (Luz): they live on their suit's energy and their rounds as you and the others do
+			var asu: Dictionary = ChibiArt.GearData.stats("suit_mil_light:%s" % String(al["quality"]))
+			al["energy_max"] = float(asu.get("energy", 120.0)) * ColosseumData.FOE_RESERVE
+			al["energy"] = float(al["energy_max"])
+			al["ammo_max"] = int(float(asu.get("ammo", 100)) * ColosseumData.FOE_RESERVE)
+			al["ammo"] = int(al["ammo_max"])
+			al["stations"] = map.get_meta("col_stations", [])
+			al["station_cool"] = ColosseumData.STATION_COOL
+			ti += 1
+	var hz0: Array = map.get_meta("col_hazards", [])
+	if not hz0.is_empty():
+		_say_toast("%s, %s. %s" % [String(map.get_meta("col_vr_name", "")), String({"open": "an open field", "canyon": "a canyon", "fortress": "a fortress", "lanes": "three lanes"}.get(
+			String(map.get_meta("col_layout", "open")), "")), String(hz0[0].get("name", ""))], 6.0)
+	_col_vel = Vector2.ZERO
+	var foes: Array = ColosseumData.opponents(int(cst["round"]), ColosseumGen.FIGHTERS.size(), int(cst["fights"]), String(cst["mode"]))
 	for i in mini(foes.size(), map.foe_spawns.size()):
 		var fd: Dictionary = ColosseumData.foe_of(foes[i], int(cst["round"]), i)
 		var card: Dictionary = ColosseumGen.foe_card(foes[i])
@@ -6033,31 +6196,162 @@ func _col_fight_step(delta: float) -> void:
 		"fight":
 			if t > 0.9:
 				_col_big("")
-			if col_lost:
-				_col_fight_over(false)
-			elif combat != null and combat.alive().is_empty():
+			_col_hazard_step(delta)
+			if combat != null and combat.alive().is_empty():
 				_col_fight_over(true)
+			elif col_lost:
+				if combat != null and not combat.allies_up().is_empty():      # part 5 (Luz): your team fights on; lost only when all of you are out
+					_col_fight = {"state": "watch", "t": 0.0}
+					for a0 in combat.allies_up():                    # (nobody to follow or to take orders from: each on their own call now)
+						a0["order"] = "own"
+						a0["tgt"] = null
+						a0["think"] = 0.0
+					combat.wheel_open = false
+					_team_held = -1.0
+					input_enabled = false
+					pilot.down = true
+					pilot.moving = false
+					pilot.aim = Vector2.INF
+					_col_line("You are out. Your team fights on.      [%s] end it here: the rest is worked out" % Keybinds.key_text("interact"))
+				else:
+					_col_fight_over(false)
+		"watch":
+			_col_hazard_step(delta)
+			input_enabled = false
+			var up: Array = combat.allies_up() if combat != null else []
+			if combat != null and combat.alive().is_empty():
+				_col_fight_over(true)
+			elif up.is_empty():
+				_col_fight_over(false)
+			else:
+				story_cam = (up[0]["w"] as Walker).pos            # the picture stays with your team
+				if t > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_accept")):
+					_col_fight_sim()
 		"over":
 			if t > 1.8 and not bool(_col_fight.get("shown", false)):
 				_col_fight["shown"] = true
 				_col_big("")
 				Commands.execute({"type": "col_fight_end", "won": bool(_col_fight["won"])})
+				var lres: Dictionary = GameState.col_state().get("last", {})
+				lres["sim"] = bool(_col_fight.get("sim", false))
 				var rs = ColosseumUI.Result.new()
-				rs.setup({"res": GameState.col_state().get("last", {})})
+				rs.setup({"res": lres})
 				rs.finished.connect(func(next: bool): _col_result_done(next))
 				_open_game(rs)
+
+
+## Part 5 (Luz): you are out and end the fight: the rest is worked out from what both sides still have.
+func _col_fight_sim() -> void:
+	var ours := 0.0
+	var theirs := 0.0
+	for a in combat.allies_up():
+		ours += (float(a["st"]["health"]) + float(a["st"]["shield"]) + float(a["st"]["armor"])) * float(a["dmg"])
+	for f in combat.alive():
+		theirs += (float(f["st"]["health"]) + float(f["st"]["shield"]) + float(f["st"]["armor"])) * float(f["dmg"])
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var won: bool = ColosseumData.sim_win(rng, ours, theirs)
+	_col_fight_over(won)
+	_col_fight["sim"] = true
+
+
+## The setting's danger, while the fight runs: ground that burns (twice a second, whoever stands on it), clouds that
+## block the sight (drifting dust, bursts of steam from the vents).
+func _col_hazard_step(delta: float) -> void:
+	var hz: Array = map.get_meta("col_hazards", [])
+	var hs: Dictionary = map.get_meta("col_haz_state", {})
+	if hz.is_empty() or hs.is_empty() or combat == null:
+		return
+	hs["t"] = float(hs["t"]) + delta
+	hs["tick"] = float(hs["tick"]) + delta
+	var tick := float(hs["tick"]) >= 0.5
+	if tick:
+		hs["tick"] = 0.0
+	for h in hz:
+		match String(h["kind"]):
+			"burn":
+				if tick and ColosseumVR.live(h, float(hs["t"])):
+					var dmg := float(h.get("dps", 12.0)) * 0.5
+					for r in h["rects"]:
+						var rr: Rect2 = r
+						if not col_lost and rr.has_point(pilot.pos):
+							combat._hurt_pilot(dmg, String(h.get("dtype", "explosive")))
+						for f in combat.alive():
+							if rr.has_point((f["w"] as Walker).pos):
+								combat._hurt_foe(f, dmg, String(h.get("dtype", "explosive")))
+						for a in combat.allies_up():
+							if rr.has_point((a["w"] as Walker).pos):
+								combat._hurt_ally(a, dmg, String(h.get("dtype", "explosive")))
+			"cloud":
+				hs["cloud"] = float(hs["cloud"]) - delta
+				if float(hs["cloud"]) <= 0.0:
+					hs["cloud"] = float(h.get("every", 8.0))
+					hs["n"] = int(hs["n"]) + 1
+					var spots: Array = h.get("spots", [])
+					var at: Array = []
+					if spots.is_empty():                             # dust devils: somewhere on the field
+						for k in 3:
+							var p := Vector2(randf_range(4.0, ColosseumVR.VW - 4.0), randf_range(8.0, ColosseumVR.VH - 8.0)) * GroundMap.TILE
+							if map.free_at(p, 6.0):
+								at.append(p)
+					else:                                            # steam: every other vent in turn
+						for si in spots.size():
+							if si % 2 == int(hs["n"]) % 2:
+								at.append(spots[si])
+					for cp in at:
+						combat.clouds.append({"pos": cp, "r": float(h.get("r", 44.0)), "t": 0.0, "time": float(h.get("time", 8.0)), "seed": randi() % 1000})
+					if not at.is_empty():
+						Audio.play("undock_release", "colosseum: a cloud", -14.0)
+
+
+## … and what the ground does to your step: on ice you slide (your step follows your will only slowly), undergrowth
+## holds you back.
+func _col_move(dir: Vector2, delta: float) -> Vector2:
+	match ColosseumVR.ground_at(map, pilot.pos):
+		"ice":
+			_col_vel = _col_vel.lerp(dir, 1.0 - exp(-delta * 2.2))
+			return _col_vel
+		"slow":
+			_col_vel = dir * 0.55
+			return _col_vel
+	_col_vel = dir
+	return dir
+
+
+## A line at the foot of the picture.
+func _col_line(text: String) -> void:
+	if text == "":
+		if _col_note != null and is_instance_valid(_col_note):
+			_col_note.queue_free()
+		_col_note = null
+		return
+	if _col_note == null or not is_instance_valid(_col_note):
+		_col_note = Label.new()
+		_col_note.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		_col_note.offset_top = -190.0
+		_col_note.offset_bottom = -140.0
+		_col_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_col_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_col_note.add_theme_font_size_override("font_size", 24)
+		_col_note.add_theme_color_override("font_color", Color(1.0, 0.95, 0.7))
+		_col_note.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.1))
+		_col_note.add_theme_constant_override("outline_size", 8)
+		_ui.add_child(_col_note)
+	_col_note.text = text
 
 
 ## The fight is over: all three are out, or you are (or you gave up).
 func _col_fight_over(won: bool) -> void:
 	if _col_fight.is_empty() or String(_col_fight["state"]) == "over":
 		return
+	_col_line("")
+	story_cam = Vector2.INF
 	_col_fight = {"state": "over", "t": 0.0, "won": won}
 	col_lost = not won
 	input_enabled = false
 	pilot.moving = false
 	pilot.aim = Vector2.INF
-	_col_big("ALL THREE ARE OUT" if won else "YOU ARE OUT")
+	_col_big("ALL THREE ARE OUT" if won else ("YOU ARE OUT" if String(GameState.col_state()["mode"]) != "team" else "YOUR TEAM IS OUT"))
 	Audio.play("arcade_coin" if won else "ui_error", "colosseum: the fight is over")
 	if won:
 		Audio.play("crowd_applause", "colosseum: the crowd for the winner", ColosseumData.applause_db(GameState.col_state()) + 1.0, 0.0)
@@ -6069,6 +6363,7 @@ func _col_result_done(next: bool) -> void:
 	_close_game()
 	_col_fight = {}
 	input_enabled = true
+	pilot.down = false                                   # (part 5: you may have lain out of the fight while your team fought on)
 	go_level("zcolin", "from_reg")
 	if next:
 		_col_prep_open()
@@ -6097,6 +6392,77 @@ func _col_big(text: String) -> void:
 
 func _exit_tree() -> void:
 	GameState.col_gear_off()                             # (never leave on foot in the house's gear)
+
+
+## Package 62a, part 7 (Luz): Survivor. Out of the white you stand in the middle of the stage; the run begins.
+func _sv_start() -> void:
+	if _col_intro.has("vs") and is_instance_valid(_col_intro["vs"]):
+		(_col_intro["vs"] as Node).queue_free()
+	_col_intro = {}
+	GameState.col_state()["seen"] = true
+	story_cam = Vector2.INF
+	story_zoom = 0.0
+	ColosseumGen.gate_open = 0.0
+	ColosseumGen.boot = 0.0
+	GameState.col_gear_on()
+	go_level("zcolsv", "from_gate")
+	_col_white = 1.0
+	_col_sheet(Color(1, 1, 1, 1))
+	Audio.play("dock_clamp", "colosseum: into the hologram")
+	survivor = SurvivorGame.new()
+	_world.add_child(survivor)
+	_world.move_child(survivor, _sorted.get_index())      # (what it draws lies on the ground, under the figures)
+	survivor.setup(self, map, SurvivorData.fresh(String(map.get_meta("sv_stage", "outbreak")), SurvivorData.first_weapon(GameState.col_state()), GameState.col_state()))      # (part 7c-3: with what is yours at the console)
+	pilot.look = pilot_look()                            # (part 10b: into the rig)
+	pilot.slung = _slung()
+	if hud != null and is_instance_valid(hud):
+		hud.visible = false                              # (the suit's bars and the belt play no part: the run has its own)
+	input_enabled = true
+	_say_toast("%s. Your weapons fire by themselves: walk, dodge with %s, take the shards." % [String(map.get_meta("col_vr_name", "")), Keybinds.key_text("foot_dodge")], 6.0)
+
+
+## Part 7c-3 (Luz): the Survivor console in the lobby: what your cores buy for good (for the house's fighters).
+func _sv_console() -> void:
+	if not GameState.col_registered:
+		_say_toast("The Survivor console is for the house's fighters. Sign up at the registration first.", 5.0)
+		Audio.play("ui_error", "survivor console: not signed up")
+		return
+	GameState.sv_give_suit()                             # (part 10c: the Regalia was kept for you until you had room)
+	var con = SurvivorUI.Console.new()
+	con.setup({})
+	con.finished.connect(func(_w: bool): _close_game())
+	_open_game(con)
+	Audio.play("ui_open", "survivor console")
+
+
+## … the run is over: it is paid (through the command bus), the picture of how it went.
+func _sv_over() -> void:
+	input_enabled = false
+	pilot.moving = false
+	if float(survivor.run["hp"]) <= 0.0:
+		pilot.down = true
+	Audio.play("arcade_coin" if survivor.survived else "ui_error", "survivor: the run is over")
+	Commands.execute({"type": "sv_end"})
+	var rs = SurvivorUI.Result.new()
+	rs.setup({"res": GameState.col_state().get("sv_last", {})})
+	rs.finished.connect(func(_held: bool): _sv_done())
+	_open_game(rs)
+
+
+## … and the picture is closed: back into the lobby, into your own gear.
+func _sv_done() -> void:
+	_close_game()
+	input_enabled = true
+	pilot.down = false
+	go_level("zcolin", "from_reg")
+
+
+func _sv_drop() -> void:
+	if survivor != null and is_instance_valid(survivor):
+		survivor.drop()
+	survivor = null
+	if hud != null and is_instance_valid(hud):
+		hud.visible = true
 
 
 ## The sheet over the picture (black on the way through the gate, white on the way into the arena).

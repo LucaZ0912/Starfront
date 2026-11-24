@@ -1337,7 +1337,8 @@ func _collection() -> void:
 		["stars", "Star classes", "%d / %d" % [stars_seen.size(), Universe.STAR_TYPES.size()]],
 		["planets", "Planet types", "%d / %d" % [_seen_of(Universe.PLANET_TYPES).size(), Universe.PLANET_TYPES.size()]],
 		["moons", "Moon types", "%d / %d" % [_seen_of(Universe.MOON_TYPES).size(), Universe.MOON_TYPES.size()]],
-		["special", "Special opponents", "%d / %d" % [_special_beaten().size(), MinigameDataP.SPECIAL.size()]]]
+		["special", "Special opponents", "%d / %d" % [_special_beaten().size(), MinigameDataP.SPECIAL.size()]],
+		["survivor", "Survivor", "%d / %d" % [_sv_met().size(), SurvivorDataP.FOE_ORDER.size()]]]      # 62a, part 10a
 	for c in cats:
 		var cid: String = c[0]
 		var b := UI.button("%s   %s" % [c[1], c[2]], func(): coll_cat = cid; rebuild())
@@ -1364,6 +1365,8 @@ func _collection() -> void:
 			_collection_bodies(right, Universe.MOON_TYPES, "MOON TYPES", "A moon type counts once you have been in a system with such a moon.")
 		"special":
 			_collection_special(right)
+		"survivor":
+			_collection_survivor(right)
 		"notorious":
 			right.add_child(UI.label("NOTORIOUS PIRATES DESTROYED  %d" % killed.size(), 16, COL))
 			if killed.is_empty():
@@ -1453,6 +1456,86 @@ func _collection_special(right: VBoxContainer) -> void:
 		else:
 			v.add_child(UI.label("???", int(30 * k), Color(0.45, 0.45, 0.48)))
 			v.add_child(UI.label("Not met at the table yet.", int(11 * k), UI.TEXT_DIM))
+
+
+## Package 62a, part 10a (Luz): those of the Colosseum's Survivor. A kind counts once you have put one of it out; the
+## tile then shows its picture, where it is at home, how many of it you have put out so far and a few words.
+const SurvivorDataP = preload("res://data/survivor.gd")
+const SurvivorArtP = preload("res://scripts/ground/survivor_art.gd")
+
+
+## How many of each kind you have put out, ever: {kind: count}. (Read only: it does not make a Colosseum state.)
+func _sv_slain() -> Dictionary:
+	var rec: Dictionary = GameState.col.get("sv", {})
+	return rec.get("slain", {})
+
+
+func _sv_met() -> Array:
+	var sl := _sv_slain()
+	return (SurvivorDataP.FOE_ORDER as Array).filter(func(k): return int(sl.get(String(k), 0)) > 0)
+
+
+## A count with its thousands apart ("12 480").
+static func _count_text(v: int) -> String:
+	var s := str(v)
+	var out := ""
+	while s.length() > 3:
+		out = " " + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return s + out
+
+
+func _collection_survivor(right: VBoxContainer) -> void:
+	var slain := _sv_slain()
+	var all_n := 0
+	for kd in SurvivorDataP.FOE_ORDER:
+		all_n += int(slain.get(String(kd), 0))
+	var k := _coll_scale()
+	right.add_child(UI.label("SURVIVOR  %d / %d" % [_sv_met().size(), SurvivorDataP.FOE_ORDER.size()], int(16 * k), COL))
+	right.add_child(UI.label("Those you meet in the Colosseum's Survivor. A kind counts once you have put one of it out. Put out in all: %s." % _count_text(all_n), int(12 * k), UI.TEXT_DIM))
+	for st in SurvivorDataP.STAGES:
+		var kinds: Array = SurvivorDataP.FOE_HOME.get(String(st["id"]), [])
+		if kinds.is_empty():
+			continue
+		var scol: Color = st.get("col", COL)
+		var got_here: int = kinds.filter(func(q): return int(slain.get(String(q), 0)) > 0).size()
+		right.add_child(UI.label("%s  %d / %d" % [String(st["name"]).to_upper(), got_here, kinds.size()], int(14 * k), scol.lightened(0.25)))
+		var flow := _coll_flow(right, 310.0 * k)
+		for kd2 in kinds:
+			var kind := String(kd2)
+			var fd: Dictionary = SurvivorDataP.FOES[kind]
+			var cnt := int(slain.get(kind, 0))
+			var got := cnt > 0
+			var boss: bool = bool(fd.get("boss", false)) and kind != "pylon"
+			var tile := UI.neon_panel(Color(scol.lightened(0.15), 0.85) if got else Color(0.4, 0.4, 0.42, 0.5), Color(0.05, 0.06, 0.1, 0.96) if got else Color(0.06, 0.06, 0.07, 0.95), 2 if got else 1)
+			tile.custom_minimum_size = Vector2(310, 122) * k
+			tile.set_meta("sv_kind", kind)
+			tile.set_meta("sv_got", got)
+			flow.add_child(tile)
+			var h := UI.hbox(int(10 * k))
+			tile.add_child(h)
+			var tr := TextureRect.new()
+			tr.texture = SurvivorArtP.texture(kind, 0, 0, 0)
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			tr.custom_minimum_size = Vector2(88, 96) * k
+			tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			if not got:
+				tr.modulate = Color(0, 0, 0, 0.85)                   # a silhouette until you have put one out
+			h.add_child(tr)
+			var v := UI.vbox(int(2 * k))
+			v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			h.add_child(v)
+			if got:
+				v.add_child(UI.label(("★ " if boss else "") + String(fd["name"]), int(15 * k), COL if boss else Color(0.95, 0.96, 1.0)))
+				v.add_child(UI.label("%sPut out: %s" % ["Boss  •  " if boss else "", _count_text(cnt)], int(12 * k), Color(0.5, 1.0, 0.6)))
+				var tx := UI.wrap_label(String(SurvivorDataP.FOE_INFO.get(kind, "")), int(11 * k), Color(0.9, 0.88, 0.8), 100)
+				tx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				v.add_child(tx)
+			else:
+				v.add_child(UI.label("???", int(30 * k), Color(0.45, 0.45, 0.48)))
+				v.add_child(UI.label("Not put out yet.", int(11 * k), UI.TEXT_DIM))
 
 
 ## 0.6.38.2: the collection grows with the screen – tiles, pictures and text scale with the window (1× up to

@@ -3,6 +3,650 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.28 – 2026-11-24
+
+**Package 62a, parts 10b and 10c (Luz): a suit for Survivor, and its version for outside the arena.**
+- **The Survivor rig.** In Survivor you now wear a rig of your own. It shows how far you have come at the Survivor
+  console, in ten steps, and changes nothing else:
+  - at first an undershirt, trousers and bare arms;
+  - then, with every tenth bought at the console, one more piece: armoured boots and a belt with the first light;
+    bracers; greaves and knee caps; a cuirass with its core; pauldrons edged in gold; a black undersuit, thigh
+    plates and gloves; seams of light; a cape with a gold hem; a gorget and a laurel of light;
+  - at the last the whole regalia: high pauldrons, bands of light running down the cape, a ring of light behind
+    the head, the edges gold.
+- Its lights are alive: the core, the belt and the bracers beat slowly; the seams, the cape's bands and the ring are
+  lit one after another, so the light runs. At the last step the light wanders through the colours (gold, green,
+  blue, violet, pink; no red, red belongs to the others) and sparks rise round you.
+- You see it in the run, in the picture before the run, and in Survivor's room, which shows your step and when the
+  next piece comes. The console names the step too.
+- **The Champion's Regalia.** With the last thing bought at the console the Colosseum gives you the rig's last step
+  as a suit for outside the arena (into your pockets, else your ship's locker, else it is kept until you have room).
+  It is never sold.
+  - Two drone places, both drones carried on the shoulders, as on the Senate's armours. The drones themselves are
+    not part of it.
+  - Built in, in its first weapon place: the **Silverblade Drone**. With it in hand and your target in reach it
+    is thrown: it cuts the target, darts on to the next of those who fight you, bounces off walls and at the end
+    of its reach, and comes back after about three seconds. Then it takes nine seconds until it is ready again,
+    whatever is in hand meanwhile. At rest it hovers by your shoulder.
+  - A closed helmet where one is needed. Shield and plate between the light and the heavy combat suit, and
+    not slowed as the heavy one is.
+- Debug menu: the rig's step up and down, back to what is bought; buy everything (which gives the Regalia).
+- Not played by hand yet. The Regalia's figures and the blade's are first guesses.
+
+## alpha 0.8.62.27 – 2026-11-24
+
+**Package 62a, part 10a (Luz): the collection's Survivor.**
+- A new category in the pilot's window under Collection: **Survivor**, with all twenty-seven kinds, by stage
+  (Outbreak, AI Takeover, Whiteout).
+- A kind is open once you have put one of it out. Until then: its silhouette and "???".
+- Open, a tile shows its picture, whether it is a boss, how many of it you have put out so far, and a few words
+  about it.
+- A run counts what it puts out kind by kind. At its end the count goes into your record, and the kinds met for
+  the first time are named in the log. (A run you quit the game in is not counted, like its cores.)
+- Debug menu: ten more of every kind.
+
+## alpha 0.8.62.26 – 2026-11-24
+
+**Package 62a, part 9c (Luz): the bosses of Whiteout. The stage is whole now.**
+- **The Ice Worm** (at 7:30, in the walls of light):
+  - Under the ice nothing reaches it, and none of your weapons takes aim at it. It circles you there, its long shape
+    showing through the ice. The display says so.
+  - Then red marks show where it will break out, the first where you are going: one mark at first; three from two
+    thirds of its health down; five from one third down. It breaks out at each in turn: who stands there is hurt
+    and thrown, and from two thirds down needles of ice fly out all round.
+  - After the last mark it stays above for about three seconds and can be hurt (from two thirds down it throws a
+    fan of needles at you meanwhile); then it dives again.
+  - Put out, it leaves a weapon crate (three rewards at least), pays 12 cores, and the run goes on.
+- **The Storm Heart** (when the time is up; the clock stands while it lives):
+  - A crystal in the eye of a storm. It does not move. Inside the eye you are safe from the storm; out there you
+    lose health twice a second, whatever shields you. A red line shows the eye's edge, the display says when you
+    are out.
+  - The eye is wide at first and closes as the Heart is worn down, to well under half.
+  - Rings of needles with a gap to slip through; from two thirds down bolts of lightning onto marks where you are
+    going; from one third down two arms of needles turning round it, and Gliders. Mites come in at the eye's edge
+    all the while.
+  - Put out, the stage is held: 30 cores on top.
+- What a Glider lets fall bursts as ice now, and lightning strikes as lightning (both used to burst like one of
+  your own grenades).
+- Debug menu: Worm, Heart.
+- Not played by hand yet: how hard the two are is a first guess.
+
+## alpha 0.8.62.25 – 2026-11-24
+
+**Package 62a, part 9b (Luz): the rest of Whiteout: two more kinds, three things by the clock, an item of its own.**
+- **Shardthrower** (from 4:30): it keeps its distance, raises its arm (red lines show where), then throws three
+  needles of ice in a fan; an alpha throws five. Step aside and they pass.
+- **Gliders** (from 2:30, every 45 seconds): a word and red lines first, then two of them (three from 8:00 on) sail
+  along those lines and let chunks of ice fall, each onto a red mark. The ice hurts; the gliders themselves do not
+  touch you.
+- **Blizzard** (3:30, 8:30, 12:00): for eighteen seconds you see only a round about you; all else is white, snow
+  driving across. Your weapons work as ever.
+- **The ice breaks** (5:00, 9:30, 13:20): up to seven plates crack, the one you stand on among them (red, the cracks
+  growing), then break. It costs you who stands on one, and them too. The open water stays a moment (to see only).
+- **Avalanche** (6:40, 10:50, 14:10): a red line at one edge and arrows across the field, then a wall of snow
+  crosses it. In the open it hurts you and throws you along; it carries them off and hurts them. Behind something
+  solid (a boulder, a container, a block of ice) you are safe: the display says "IN COVER".
+- **Thermal Charge,** an item in Whiteout's crates only: the ice round you melts. A Rimeback's shell is gone at
+  once, a Burrower under the ice comes out stunned, a frozen crate thaws; and the heat hurts them.
+- The stage's room shows it: who comes, the Gliders, nine things by the clock.
+- Debug menu: Shardthrower, Blizzard, Icebreak, Avalanche, Thermal.
+- Still to come (part 9c): The Ice Worm and The Storm Heart. Until then the stage has no bosses.
+- Not played by hand yet.
+
+## alpha 0.8.62.24 – 2026-11-24
+
+**Fixes, comfort and balance after Luz's play (24 Nov 2026).**
+
+Fixed:
+- **A load down on a planet** put you onto the planet's map every time. A save now keeps where you stand on foot (the
+  place, its level, the spot), and a load puts you back onto it: in a city, a settlement or at a landing field.
+  Not kept: a fight, a run of Survivor (you stand in the Colosseum's lobby), a ride on a train (its station), a site
+  to explore, your room, the clinic (you stand where the city or the field begins). Older saves, which do not say
+  where you stood, still open the planet's map.
+- **Survivor: late in a run nobody seemed to drop a shard.** With five hundred shards on the field a new one was
+  added to one of them by lot, anywhere on the stage. Now the shard furthest from you comes to where the one went
+  out, with what it was worth: a shard always falls where it should, and nothing is lost.
+- **Survivor: no fusion came.** A fusion comes as a card of a new level, so with no shards there were no levels and
+  no fusions: the fix above brings them back. On top of that a weapon crate now gives a fusion that is ready (the
+  weapon at level 5, its bonus carried) before anything else.
+
+Comfort:
+- **Survivor's room with the controller:** the cross on a stage takes it and goes on to the weapons; on a weapon it
+  takes it and goes on to READY. Where something cannot be taken (a stage still shut, a weapon still locked) you
+  stay.
+- **What is theirs is red on the ground, and only that.** Every attack of theirs that hurts on the ground has a
+  clear red round, whatever colour the thing itself has: acid, a bloater's cloud, a stamp, a shell's mark, a boss's
+  ring of force, a searchlight's edge. Nothing of yours draws red or orange on the ground any more: the black
+  hole's ring, the Minefield's light, the Sunlance's burn and the Atomic Bomb's ring are gold now, and the colours
+  the ultimates run through leave red out (gold, green, blue, violet, pink and back).
+
+Balance:
+- **Pulse:** weaker (damage 4 / 6 / 8 / 10 / 13 in place of 6 / 8 / 10 / 13 / 16), and it throws them back well
+  over twice as far as other hits. The Nova Field, which burns without a pause, throws only a little each time.
+- **The bonus for throwing back** is there already: the Mass Driver (a quarter further with each level). It no
+  longer works on what pulls them in, the Gravity Well and the Blackhole Gun: their hits do not throw at all.
+- **Superlaser:** it comes more rarely (every 18 … 12 s in place of 14 … 8) and reaches further (210 … 370 in place
+  of 150 … 300).
+- **Drone:** a shot strikes a little further round itself.
+- **Silverblade Drone:** a new blade darts at the nearest of them, a second at the next nearest, and so on; by lot
+  only when nobody is near.
+- Not played by hand yet.
+
+## alpha 0.8.62.23 – 2026-11-24
+
+**Package 62a, part 10 (Luz): Survivor and the fights have rooms of their own.**
+- **Behind the fighters' gate you choose first:** two large tiles, MATCH MODE on the left, SURVIVOR MODE on the
+  right. Each shows where you stand (the rounds of the two fights; your stage, best time, runs and cores).
+- **Match mode** leads to the fighters' room as it was, now with the two fights only (King of the Colosseum, Team
+  Deathmatch).
+- **Survivor mode** leads to a room of its own. All that the fighters' room showed of it is there, with room to spare:
+  - the stages as large tiles, and under them what the one marked is made of: its dangers, who comes from when
+    (with their pictures), its bosses and when they come, the flood, what opens it;
+  - the weapons you can begin with as large tiles, their full names, and under them what the one marked does: its
+    words, its figures at level 1, what its levels bring, what it fuses into and what that does.
+- Back out of a room leads to the choice again; back out of the choice leads to the lobby. After a fight or a run
+  "next" leads straight into the room of the mode you played.
+- **READY with the controller:** it is a place to stand on now in both rooms (down from the last mode, or down out
+  of the weapons; a frame shows it), and the cross presses it. The triangle still does, and so do the square and
+  Options.
+- Not played by hand yet.
+
+## alpha 0.8.62.22 – 2026-11-24
+
+**Package 62a, part 7f (Luz): Survivor: the crates in two kinds, a draw for the weapon crates, what the items look like.**
+- **Item crates:** the crates lying on a stage and the supply drops always hold an item now, never a level.
+- **An item's sign springs up over you** when you take it, stands a moment, then goes down to where what lasts is
+  shown. Its name runs across the picture as before.
+- **Weapon crates:** what an alpha leaves and what a boss leaves. Golden, a beam of gold over them, rays turning;
+  the arrow to one at the edge of the picture is golden too.
+- **The draw:** taking a weapon crate opens a window, and the run stands still behind it. Reels turn and stop one
+  after the other, each on a level of something you carry (the same thing can come twice). When nothing you carry
+  can rise further, a reel gives a med cell or a purse.
+- **One, three or five:** an alpha's crate holds one reward (80 %), three (16 %) or five (4 %). A boss's holds
+  three at least, and five one time in four. Three is a TRIPLE DRAW; five is a JACKPOT, with rays of every colour
+  and lights raining down.
+- E, Enter, Space, a click or the pad's cross stops the reels still turning; pressed again it closes the window.
+  What the reels show is yours from the moment you take the crate.
+- **Lucky Find** raises those chances now: 3 % more for three and 1 % more for five with each level. It no longer
+  makes a crate hold a level; supply drops still come sooner.
+- **What the items look like:**
+  - Atomic Bomb: a white flash, a ball of fire, a ring of force over the ground, then its cloud: a stem, a cap
+    rolling out, a collar round the stem. It cools from fire to smoke and drifts away. The earth stays scorched for
+    a while.
+  - Shield: a dome of six-sided cells, a wave of light running over them. It flashes when one of them is at it and
+    flickers before it goes.
+  - Magnet: lines of its field winding in to you, and every shard draws a long trail of light.
+  - Medkit: crosses of green light rising round you, a ring running out over the ground.
+  - Stasis: a wave over the field as it begins, and a clock round you that shows what is left of it.
+  - Overdrive: gold light round you, rings turning, sparks rising, echoes of you where you just were.
+  - Override: a small green sign over every machine it turned.
+- Debug menu: "Draw 1", "Draw 3", "Draw 5".
+- Decided by me, since Luz's answers to the Steckbrief's questions are still to come: weapon crates come from alphas
+  and bosses only; they give levels of what you carry and nothing new; the chances above; a key stops the draw.
+- Not played by hand yet.
+
+## alpha 0.8.62.21 – 2026-11-24
+
+**Package 62a, part 9a (Luz): Survivor's third stage, Whiteout: a moon of ice by day.**
+- **Whiteout** opens once you have put out The Warden on AI Takeover (the boss at 7:30 of the stage before, as AI
+  Takeover opens with The Foreman). The first stage by day: snow and ice in place of the dark, and those who come
+  are dark shapes on it.
+- **Its ground:** snow all over, two tracks trodden into it that cross in the middle; boulders, blocks of ice,
+  clusters of crystals, and what a research station left behind, snowed in (containers, snow crawlers, a lookout,
+  a dish; its two domes and its mast north-east of the middle). Drifts of snow, hairline cracks.
+- **Bare ice:** ten floes of it. On one you keep your way and turn it only slowly; let go and you slide on. A
+  dodge goes where it goes. Those who come do not slide.
+- **Steam vents:** twenty-six holes in the ice, each steaming while it is ready. Step on one and it bursts: its
+  steam scalds all of them within its round (not you), reaches Burrowers under the ice there, and melts a
+  Rimeback's shell at once. Then the vent rests for sixteen seconds; a ring round it shows how far that has run.
+- **Frozen crates:** the sixteen crates of this stage are frozen in, each beside a vent. Only that vent's steam
+  thaws one. Supply drops and what an alpha leaves are free as ever.
+- **Frost Mite:** the swarm. Small and weak, and faster than the swarms of the other stages.
+- **Burrower** (from 1:30): it runs under the ice three times as fast as it walks, to where you will be in a
+  moment. Nothing reaches it there: no hit, no cold, no shock, and nothing of yours takes aim at it. You see a dark
+  shape and the ice cracking over it. Where it stops, a red round shows for a moment; then it breaks out and
+  hurts who stands in it. It stays above for five seconds and can be put out then; then it dives again.
+- **Rimeback** (from 3:00): slow and tough, a shell of ice on its back that takes the hits first. Its picture
+  shows whether the shell still stands.
+- **The picture before a run** and **the fighters' room** know the stage: a picture of its own, a colour of its
+  own (each stage's colour comes from the rules now); a stage that is still shut names the boss it asks for.
+- **By day** light alone does not show on the ground: shards have a shade behind them; a crate's beacon and the
+  Pulse's ring have a body to them. The other effects of your weapons are paler here than by night.
+- **Snow on objects:** any object of the ground can carry a cap of snow now (`"snow": true`).
+- Not built yet (parts 9b and 9c): the Shardthrower, the Glider, what happens by the clock (blizzard, breaking
+  ice, avalanche), the Thermal Charge, The Ice Worm and The Storm Heart. Until then the stage has no bosses: hold
+  out fifteen minutes and it is held.
+- Debug menu: the three kinds, "Vent" (the nearest one bursts), the stage Whiteout.
+- Not played by hand yet: every figure (paces, how the ice holds you, what the steam does) is a first guess.
+
+## alpha 0.8.62.20 – 2026-11-23
+
+**Package 62a, part 7e (Luz): Survivor: the Silverblade and the Taser reworked, a thirteenth weapon, every ultimate in wild colours.**
+- **Silverblade Drone:** its trail is thinner and far longer. As before it cuts nobody: only the blade does.
+- **Silver Storm** (its ultimate) no longer circles you: one more blade (four), and they stay for good, darting
+  and bouncing as ever. Their trails are longer still, beat in every colour of the rainbow, and cut what they
+  touch.
+- **Taser:** a cone of lightning the way you look, in place of the small round field. Longer with every level.
+- **Plasma Orbs,** a new weapon (30 cores at the console): orbs of plasma circle you for a while and burn what
+  they touch, then they are gone until their interval is over. One orb at first; with its levels more of them
+  (up to four), a wider round, a longer stay. The Stabiliser makes them stay longer, as it does for blades.
+- **Gyroscope,** its bonus (18 cores): what circles or darts for you is faster. Orbs turn faster, blades fly
+  faster, the drone's gun turns faster and so fires its round sooner.
+- **Fusion Halo,** its ultimate: the orbs stay for good, a second ring of them turns the other way further
+  out, lightning runs from orb to orb, and every five seconds a ring of plasma bursts out from them and hurts
+  whoever it passes.
+- **Every ultimate beats in wild colours now** (Luz: an overload of the senses). The Nova Field runs through
+  the whole rainbow, with two lattices turning against each other. Prism beams, Chain Lightning, the Carrier
+  Swarm's shots, the Minefield's links, the Battery's field, the Singularity's arms and the Event Horizon's
+  discs change their colours as they go; every comet of the Plasma Rain has a colour of its own, and so has
+  its burst; the Sunlance throws filaments and sparks of every colour and cools through them behind its beam;
+  Absolute Zero keeps to the colours of ice, with bands of northern light.
+- The console and the fighters' room show seven weapons to a row, since there are thirteen.
+- Fixed on the way: an icon that turned its own drawing aside and with it all the console drew after it.
+- Not played by hand yet.
+
+## alpha 0.8.62.19 – 2026-11-23
+
+**Package 62a, part 7d (Luz): Survivor: what you see of your weapons, and the flood.**
+- **Numbers of damage:** what a hit took floats up over whoever it hit, in the colour of the weapon that dealt
+  it (the pulse cyan, the laser red, plasma green, the drone amber, the superlaser pink, the silverblade
+  silver, mines orange, the sentry pale cyan, the cryo ice blue, the gravity well violet, the taser yellow,
+  the black hole orange; anything else white). What one of them takes within a moment is added up into one
+  number; its last blow shows at once. Larger hits are written larger; a hit that struck twice as hard (the
+  Capacitor) carries a "!"; what a shield took is blue. Never more than ninety at once.
+- **The Silverblade Drone** draws a trail of silver behind it.
+- **The Drone** is there to see now: a small drone that flies at your shoulder. Every interval it turns its
+  gun once round and fires its shots one after another, all ways in turn, no longer all at once. Under an EMP
+  it holds its fire. **Carrier Swarm:** three drones circle you, each firing its own round (eleven shots each),
+  all going through whoever they hit.
+- **The ultimates look the part now:**
+  - **Nova Field:** a field of light with ripples running out in it, a lattice turning, a rim of dashes with
+    lights along it; it beats each time it burns.
+  - **Prism Array:** split light: the beam from you, then cyan, then violet where it jumps on, fringes of
+    colour beside it, a star where it strikes; the beams stand a moment longer.
+  - **Plasma Rain:** comets out of the sky onto marks that close in; where one lands: a flash, two rings,
+    sparks, embers.
+  - **Sunlance:** a beam like a sun's, gold and white, filaments flickering along it, a sun at its root, what
+    it leaves behind fading after it, a burnt arc on the ground where it ends.
+  - **Silver Storm:** larger blades, each drawing its trail along the round; the round itself marked on the
+    ground.
+  - **Minefield:** light runs from mine to mine of a ring, each mine stands in a light of its own; a burst is
+    a ball of fire.
+  - **Battery:** the three guns stand in a triangle round you now, a field of light between them, light
+    running from gun to gun and to you; heavier shots with a star where they strike.
+  - **Absolute Zero:** a front of ice with spikes on it, crystals in what it has crossed; cracks in the frost
+    stay on the ground for a while.
+  - **Singularity:** arms of light winding into a dark heart, motes falling in; at its end all falls to a
+    point, then a ring of force runs out.
+  - **Chain Lightning:** bolts that fork, two over one another, a star where each strikes.
+  - **Event Horizon:** a wider disc of light in three layers, streaks falling in, a wake on the ground behind
+    each hole.
+- **The flood** (Luz): from 13:00 to the end the swarm comes in absurd numbers: ninety more a second on top of
+  the usual, up to a thousand at once (six hundred until then), each with only 40 % of the health its kind
+  would have by then. On Outbreak it is announced as "THE FLOOD", on AI Takeover as "ALL UNITS". Not while a
+  boss's walls stand.
+- Debug menu: let the flood begin.
+- Measured: a step with a thousand of them costs about 1.6 ms; sixty pictures a second with a thousand on the
+  screen and five weapons firing.
+- Not played by hand yet.
+
+## alpha 0.8.62.18 – 2026-11-23
+
+**Package 62a, part 8c (Luz): the bosses of AI Takeover: The Warden and The Core.**
+- **The Warden** comes at 7:30, inside walls of light as on Outbreak (nobody new comes meanwhile, those already
+  there stay). A walker on four legs: a broad armoured hull, a turret with one red eye, a rocket pod on each
+  shoulder, the lens of its laser on a mast.
+  - **Its laser arm** turns round it all the while (it warms up first; a thin ring shows how far it reaches).
+    To touch it hurts and throws you outwards. Dodge through it, or walk with it close by. In its last third
+    a second arm turns opposite the first, and both turn faster.
+  - **Rockets:** again and again a salvo onto marks, one where you stand, the others round you (five of them,
+    later seven and nine).
+  - **Its stamp:** come near and it rears up, standing (a ring shows how far it will reach), then a ring of
+    force runs out from it.
+  - Put out, it leaves a great crate, and the walls fall.
+- **The Core** comes when the fifteen minutes are up; the clock stands while it lives. The mind of the
+  machines: a sphere of dark steel held in two claws over a pedestal, an eye of red light in it. It stands in
+  the middle of its field, four pylons round it.
+  - **Behind its shield:** while one pylon stands, nothing reaches The Core (a dome over it, fed by the
+    pylons; its bar is blue and says how many pylons stand). The pylons fire in turn: a line that follows you
+    and then holds still for a moment, then the beam along it. The fewer stand, the faster they fire. A pylon
+    that is hurt shows a bar.
+  - **The cross:** with the last pylon the shield falls. Four arms of light turn round The Core, out to the
+    walls: walk with them near it, or dodge through one. It calls machines: Enforcers, later Scouts.
+  - **The floor:** from 45 % of its health down, squares of the floor light up (yours always among them,
+    never two side by side), brighter and brighter, then they burst. The cross turns on meanwhile, a little
+    slower.
+  - Put out, the run is won.
+- Cores: 12 for The Warden, 30 for The Core, as on Outbreak.
+- Debug menu: let The Warden and The Core come.
+- Not played by hand yet: all figures are first guesses.
+
+## alpha 0.8.62.17 – 2026-11-23
+
+**Package 62a, part 8b (Luz): the rest of AI Takeover: four more kinds, what happens by the clock, Override. And a crash fixed.**
+- **Fixed: a crash in Survivor** (Luz, 23 Nov 2026: "Out of bounds get index '28094' (on base:
+  'PackedByteArray')"). Those that fly (the Hunters here, the screechers of the flock on Outbreak) come from
+  beyond the edge of the ground and leave across it. In two places the game looked up the ground under them
+  all the same: where fire burns, and in the rows that find neighbours. When you stood near the edge of the
+  ground as they came, that broke the run. Both look only where there is ground now.
+- **Bulwark** (from 4:30): the Precursors' robot as the machines run it now, a tall shield before it, heavy
+  plates on its shoulders, a mortar's tube over its back. Slow and tough (a bar over it once it is hurt). Now
+  and then it stops, marks where you stand, and lobs a shell onto the mark: step off it.
+- **Seeker** (from 6:00): a mine that rolls, fast, in twos and threes. Near you it arms itself (it blinks, a
+  ring shows how far its burst will reach), then it goes off. Its burst hurts the machines round it more than
+  you. One you put out goes off as well, and sets off the next beside it.
+- **Jammer** (from 8:30): a mast on three legs that keeps well back. The machines in its field (a ring shows
+  it) carry a shield that comes back again and again while it stands: put it out first.
+- **Hunters** in place of a flock (from 2:30, every 45 seconds): a red line shows where one will fly, then it
+  comes along it, a beam burning down from it. From 8:00 two abreast. Step off the line.
+- **By the clock:**
+  - **Searchlights** (2:00, 5:00, 8:00, 12:00, 14:00): two of them hunt you for 25 seconds, slower than you
+    walk. Stand in one for a second and a half (a ring round you fills, a plate says "IN THE LIGHT: MOVE") and
+    you are marked: a second later a shell comes down out of the sky where you stood. It hurts machines too.
+  - **Reinforcements** (4:00, 12:30): landing pods come down on marks in a ring round you; three of the swarm
+    step out of each.
+  - **The kill line** (6:30, 10:00): a line of light warms up at one edge, then crosses the whole field. Walk
+    through one of its two gaps, or dodge through it.
+  - **The EMP** (11:00): for five seconds none of your weapons charges; a plate lies over them meanwhile.
+- **Override,** a new thing, in this stage's crates only: the machines near you are yours for eight seconds
+  (lit green): they leave you be and strike the others, then they turn back. Not bosses, not those that fly.
+- An alpha of this stage is announced as "A PRIME".
+- Debug menu: let Bulwarks, Seekers and Jammers come; let the four events happen; Override as from a crate;
+  "An alpha" is one of the stage's own swarm now.
+- Still to come (8c): The Warden at 7:30 and The Core at 15:00. Until then the stage is held when the time is
+  up.
+- Not played by hand yet: all figures are first guesses.
+
+## alpha 0.8.62.16 – 2026-11-23
+
+**Package 62a, part 8a (Luz): Survivor's second stage, AI Takeover: its ground and its first three kinds.**
+- **AI Takeover** opens once you have put out The Foreman on Outbreak (the boss at 7:30), and stays open. The
+  picture after that run says so. In the fighters' room its tile carries a lock until then.
+- **The ground:** a city by night, long after the machines took it. As large as Outbreak's, two broken roads
+  across its middle. No lamp is left standing: wrecks burn, the machines' radio masts blink red, tracers of a
+  far fight streak over the field. In the way: heaps of rubble with rebar, burnt-out ground cars, rows of tank
+  traps, what is left of bunkers, fallen pillars and slabs, barricades; north-east of the middle the wreck of
+  a landing ship that came down long ago. Craters, scorch marks and cracks all over the ground. Burning wrecks
+  burn whoever stands near; spilled oil holds back whoever walks through it.
+- **Enforcer,** the swarm of this stage: the corporations' security robots as the machines run them now,
+  matt and dark, plates in the colour of their unit, a red eye. They come all the time, from all sides.
+- **Scout** (from 1:30): a machine on four legs, fast, in packs, in a zigzag. Near you it crouches for a
+  moment (a mark shows where it will go), then it leaps straight on. Step out of its way, or dodge through it.
+- **Gunner** (from 3:00): keeps its distance, takes aim along a red line, then fires three bolts along it,
+  standing still meanwhile. Step aside and they pass. Red plates, a long gun: worth putting out first.
+- An alpha of this stage is one of these three. Crates, supply drops, your weapons, the console: as on
+  Outbreak.
+- **The picture before a run** shows the stage in its own colour: what is left of a skyline, searchlights in
+  the clouds, tracers, red eyes in the dark.
+- Until the next parts: nothing happens by the clock here yet, nobody flies, and no boss stands on this stage:
+  when the fifteen minutes are up, the stage is held.
+- Fixed on the way: one of the swarm in the middle of what its kind does (a hauler winding up, a spitter
+  about to spit) went no further while it stood exactly on you.
+- Debug menu: the stage of the next run (Outbreak, AI Takeover); let Enforcers, Scouts and Gunners come.
+- Not played by hand yet.
+
+## alpha 0.8.62.15 – 2026-11-23
+
+**Package 62a, part 7c-4 (Luz): Survivor: the Taser, the Blackhole Gun, a share of Coins.**
+- **Taser:** a shock into a small field right before you, the way you look, again and again at a short
+  interval. Who stands in it is hurt and stunned for a moment (lit yellow, standing still, touching nobody).
+  Levels: a wider field, more damage, a shorter interval.
+- **Blackhole Gun,** the weapon for the end of a run: it fires a black hole the way you look. The hole drifts
+  on towards the edge of the picture and pulls all near it into itself: who reaches its middle is out; the
+  tough ones, the alphas and a boss are torn at instead. It fires very rarely (every 28 seconds, down to 16).
+  Its card comes from level 10 of a run on, and it cannot be the weapon you begin with. At the console it is
+  the dearest weapon (90 cores).
+- **Two more boni,** one for each (the pairs and the ultimates are a proposal): **Capacitor** (now and then a
+  hit strikes twice as hard: 6 % of the hits a level), **Mass Driver** (what you hit is thrown back further:
+  +25 % a level).
+- **Two more ultimates:**
+  - Taser and Capacitor: **Chain Lightning.** The shock jumps on from everyone it hits to three more near them.
+  - Blackhole Gun and Mass Driver: **Event Horizon.** Three black holes at once, spread like a fan.
+- **Fine tuning:** "Shards" is called **XP** now (it is the share of what shards bring towards the next
+  level); new: **Coins** (+3 % a rank: a run pays more Coins).
+- The console shows twelve weapons (six to a row), thirteen boni (seven to a row) and seven rows of fine
+  tuning; what the marked tile does may take two lines. The fighters' room shows twelve weapons, six to a row.
+- A new stage, **AI Takeover,** is planned: see `Claude outputs/steckbrief_62a_teil8_ai_takeover.md` (not
+  built yet).
+- Not played by hand yet: all figures are a first guess.
+
+## alpha 0.8.62.14 – 2026-11-23
+
+**Package 62a, part 7c-3 (Luz): Survivor, what is round it. Cores, the console, four more weapons.**
+- **Cores:** every run of Survivor brings cores: one for every twenty seconds you held out, two for every
+  alpha, twelve for The Foreman, thirty for The Brood. The picture after a run names them.
+- **The Survivor console** stands in the Colosseum's lobby, west of the carpet (for the house's fighters: sign
+  up first). What cores buy there stays for every run to come:
+  - **The arsenal:** weapons and boni to unlock. Only what is yours lies among the cards of a run and can be
+    the weapon you begin with. Yours from the first run: Pulse, Laser, Plasma Grenades; Field Amplifier,
+    Coolant Loop, Reactor Tuning.
+  - **Fine tuning:** small shares for good, ten ranks each: damage +2 %, interval -1.5 %, health +5, pace
+    +1 %, magnet +5 %, shards +2 % a rank.
+  - **Reroll:** up to three a run. With a new level you draw its three cards anew (R, or the triangle).
+  - **Last chance:** very dear. Once a run you stand up again with half your health, and a shock clears the
+    ground round you.
+- **Four more weapons** (five levels each):
+  - **Mine Layer:** lays mines where you walk. One goes off when one of them steps on it. Levels: more mines,
+    a wider burst, more damage.
+  - **Sentry:** sets down a small gun that fires at whoever is nearest to it for a while. Levels: it stays
+    longer and hits harder, later two of them.
+  - **Cryo Spray:** a cone of cold the way you walk. Who stands in it is hurt and freezes: stands still and
+    touches nobody (the tough ones for half as long). Levels: a longer cone, a longer freeze, more damage.
+  - **Gravity Well:** a sphere thrown at whoever is nearest. It pulls all near it to one point and wears them
+    down. Levels: a wider pull, it lasts longer, more damage.
+- **Five more boni** (five levels each): **Stabiliser** (what you set going lasts longer: blades, mines, guns,
+  the cold, the pull, and what a crate gives you), **Overclock** (now and then one more beam, grenade, shot,
+  blade or mine: 20 % of the time a level), **Shield Cell** (takes one hit for you, then charges again: 19
+  seconds, down to 7), **Scavenger** (shards are worth more), **Lucky Find** (supply drops come sooner, a crate
+  holds a level more often).
+- **Four more ultimates:**
+  - Mine Layer and Stabiliser: **Minefield.** Mines fall in a ring round you, and each arms itself once more.
+  - Sentry and Overclock: **Battery.** Three guns that stay for as long as you stay near them.
+  - Cryo Spray and Shield Cell: **Absolute Zero.** A wave of frost all round you. What is frozen shatters at
+    the next hit.
+  - Gravity Well and Scavenger: **Singularity.** At its end it crushes what it has pulled in and sends you the
+    shards.
+- **The crowd** in the stands goes by the share of what you have unlocked and tuned at the console.
+- **The fighters' room:** the stages as tiles (Outbreak; three more still to come), the ten weapons as tiles
+  (the ones not unlocked yet carry a lock), your cores.
+- **The display in a run** shows the Shield Cell as it charges and the last chance while it is still to come;
+  the picture of a new level has the reroll under its cards.
+- Debug menu: carry any of the new weapons and boni, all ultimates at once; 100 cores, unlock all, lock all
+  again.
+- Not as planned: further stages cannot be unlocked at the console yet (there are none to unlock); Overclock
+  gives its "one more" a share of the time, not always.
+- Not played by hand yet: prices, figures and how the new weapons feel are a first guess.
+
+## alpha 0.8.62.13 – 2026-11-23
+
+**Package 62a, part 7c-2 (Luz): Survivor, the stage. Outbreak comes alive.**
+- **Seven more of the swarm,** each with its own way and its own picture:
+  - **Runner** (from 1:30): fast and weak, in packs from one side, in a zigzag. A courier in full flight, a
+    satchel on the back.
+  - **Hauler** (from 3:00): takes a great deal. Near you it winds up (a ring on the ground fills), then it
+    stamps: you are hurt and thrown back. A dodge at the right moment takes you through. A dock worker grown
+    into the frame of a loader.
+  - **Spitter** (from 4:30): keeps its distance; its neck lights up green, then it spits a slow ball of acid
+    that leaves a pool for a moment.
+  - **Bloater** (from 6:00): slow. Put out, it bursts into a cloud of poison that stays for some seconds.
+  - **Shieldbearer** (from 8:30): a hit does not throw it back, and its shield takes the damage until it
+    breaks. The superlaser breaks the shield at once.
+  - **Howler** (from 9:30): stands and howls, and all near it walk faster. Worth putting out first.
+  - **Alpha** (once a minute): a great one of a kind that has come by then, in a light of its own, a mark and a
+    bar over its head. It takes ten times as much and leaves a great shard and a crate.
+- **What happens by the clock,** each announced with a word across the picture:
+  - **The Flock** (from 2:30, about every 45 seconds): screechers, old survey drones the sickness has grown
+    over, fly in a wedge straight through you, over all that stands in the way. Arrows at the edge say where
+    they come from.
+  - **The Ring** (4:00, and again at 12:30): a circle of the swarm closes round you.
+  - **They Rise** (5:30): those who lay in the colony all along get up when you come near.
+  - **The Wall** (10:00, and again right after the second ring): a dense row comes over the field from one side.
+  - **Blackout** (11:00): the lamps go out for twenty seconds. You see little more than their eyes.
+  - **Supply drop** (from 2:00, about every two minutes): a crate comes down, an arrow at the edge points to it.
+- **Crates:** eighteen stand about the colony, every alpha leaves one, supply drops bring more. Touch one and
+  it opens: mostly an item, now and then a level of something you carry.
+  - **Shield** (nothing touches you for six seconds), **Magnet** (every shard on the field flies to you),
+    **Medkit** (35 health back), **Atomic Bomb** (all in a wide radius are out; an alpha and a boss take a heavy
+    blow), **Stasis** (they stand still for four seconds), **Overdrive** (your weapons fire twice as fast for
+    eight seconds).
+- **The Foreman** (7:30): the foreman of the shift in a battered loader's frame. Walls of light grow round a
+  field about you and it: to touch them hurts and throws you back. The swarm that is there stays; nobody new
+  comes while the walls stand. It charges along a line it shows first, strikes the ground (a ring of force to
+  dodge) and throws containers onto marks. Out, it leaves a great crate (a level of something you carry), and
+  the walls fall.
+- **The Brood** (15:00): when the time is up the clock stands and the last one comes, a mound of flesh with
+  sacks. Three parts, by what is left of it: rings of acid with a gap to slip through and shamblers it lets out;
+  then two arms of acid turning round it, and runners; at last both at once, and the flock. Put it out and the
+  run is won.
+- **Sounds for Survivor** (made by the game itself, quiet): the weapons, hits, shards, crates, items, a new
+  level, the stamp, the spit, the howl, the alarms of what happens.
+- **The display** shows a boss's name and what is left of it, what a crate gave you for as long as it lasts, and
+  arrows to crates that came down.
+- Debug menu: let any kind come, let anything happen, both bosses, whatever a crate can hold.
+- Not as planned: an alpha has a light of its own, a mark and a bar in place of a glowing spine.
+- Not played by hand yet: how hard it is and how it feels are open, and nobody has heard the sounds.
+- Still to come (part 7c-3): four more weapons and five more boni, what stays of a run for the next ones (cores,
+  the console in the lobby), the choice of stage.
+
+## alpha 0.8.62.12 – 2026-11-23
+
+**Package 62a, part 7c-1 (Luz): Survivor, the look.**
+- **Five places** for weapons and five for boni (not six). There is more to carry than places, so you choose.
+- **The shards** are small cells of energy now: crystals with six sides and a core of light, hovering a little
+  over the ground, each in its own glow in the dark. Their colour says what they are worth: cyan, green, gold,
+  magenta. One on its way to you draws a short trail of light.
+- **The cards of a level** are larger and say more: a frame of light in the colour of the kind (a new weapon
+  green, a weapon's level cyan, a bonus gold, an ultimate in all colours), brackets at the corners, a grid of
+  light behind, the sign in a six-sided frame with rings turning round it, the levels as lit points. A card says
+  in figures what it changes ("Radius 44 → 52", "Interval 1.4 s → 1.25 s") and what it fuses into ("Fuses with
+  Field Amplifier into Nova Field"; brighter once you carry the other half).
+- **The display in a run:** the shards towards the next level as a bar of segments with your level in a
+  six-sided plate, the clock on a plate of its own, your health in segments, the places for weapons and boni
+  framed in light (a weapon that is its ultimate in all colours).
+- **The picture before a run (Luz):** you at the left; the right half is split: above, the stage (its name, a
+  picture of the colony by night under the ringed giant, its dangers, how long it lasts); below, the weapon you
+  begin with and what it fuses into.
+- The picture after a run got the same frame.
+
+## alpha 0.8.62.11 – 2026-11-23
+
+**Package 62a, part 7b (Luz): Survivor, the arsenal. And the entrance before a run.**
+- **The entrance (Luz):** a run of Survivor begins like a fight after all: out of the white at the fighters' gate,
+  the crowd claps you in, the camera rises over the round. Nobody walks in across from you; in place of the
+  "versus" the picture shows you and the weapon you begin with. Then the hologram comes up and you stand in the
+  stage. From the second time on, holding Esc or Options goes straight in.
+- **The crowd in Survivor** goes by how far you have come in that mode, not by your rank or a run of wins. Until
+  the mode has its own way of getting on from run to run (part 7c), that is your best time and how often you have
+  played.
+- **Your first weapon is yours to pick:** six tiles in the fighters' room.
+- **Four more weapons** (five levels each, like the two before):
+  - **Plasma Grenades:** thrown near you, at one of them if one is near; each bursts where it lands and hurts all
+    round it. Levels: more grenades, a wider burst, more damage.
+  - **Drone:** a ring of shots round you, all ways at once; each stops at the first it meets. Levels: more shots,
+    a shorter interval.
+  - **Superlaser:** a mighty beam sweeps a quarter of the round, somewhere. What it touches is out. It fires
+    rarely. Levels: a longer beam, a shorter interval.
+  - **Silverblade Drone:** darts away from you, cuts what it touches, bounces at the edge of the picture and
+    darts back at you. Levels: it lasts longer, cuts deeper, more of them at once.
+- **Six boni** (five levels each), cards like the weapons: Field Amplifier (wider fields and bursts, longer
+  reach), Coolant Loop (shorter intervals), Reactor Tuning (more damage), Magnet Coil (shards fly to you from
+  farther off), Nanite Weave (more health, and it comes back slowly), Servo Frame (you walk faster).
+- **Six ultimates:** a weapon at level 5 whose own bonus you carry becomes its ultimate. The card lies on the
+  table for sure once it is ready.
+  - Pulse and Field Amplifier: **Nova Field.** The field stands for good, burns without a pause and slows all in it.
+  - Laser and Coolant Loop: **Prism Array.** Every beam jumps on to two more of them.
+  - Plasma Grenades and Reactor Tuning: **Plasma Rain.** Grenades fall all over the field you see.
+  - Drone and Magnet Coil: **Carrier Swarm.** Two rings at once, and the shots go through whoever they hit.
+  - Superlaser and Nanite Weave: **Sunlance.** The beam sweeps the whole round.
+  - Silverblade Drone and Servo Frame: **Silver Storm.** The blades stay for good and circle you.
+- The display shows the boni in their places; a weapon that is its ultimate is framed in pink.
+- Still to come (part 7c): more of the swarm (giants, flyers and the rest), events, the stage's last opponent, the
+  choice of stage, more weapons and boni than places, and what stays of a run for the next ones.
+
+## alpha 0.8.62.10 – 2026-11-23
+
+**Package 62a, part 7a (Luz): Survivor, the core. A game inside the game.**
+- **The mode is open.** In the fighters' room, Survivor shows its stage, how it goes and your first weapon; the
+  house's gear plays no part there (the fit is veiled). READY takes you straight into the stage: no entrance, no
+  opponents to show.
+- **The stage, Outbreak:** a colony under quarantine, by night, as a hologram about six times the size of a
+  fight's ground. Two roads cross in its middle, lamps along them. No cover here: what stood in the colony stands
+  in your way and in theirs, in loose groups with wide lanes between: cargo containers, parked rovers and
+  loaders, greenhouse domes, silos, gas tanks, stretches of the quarantine's fence. Wrecks still burn (the embers
+  round them burn whoever stands there) and split tanks have spilled coolant (it holds back whoever walks
+  through it). The pad in the middle ends the run by your own choice.
+- **The swarm:** the shamblers, those of the colony who still walk. They come from just outside the picture, from
+  all sides, slowly at first and then faster and faster; the longer the run, the more each of them can take. They
+  walk straight at you, slide along what stands in their way and push each other apart. Up to 450 at once.
+- **Your weapons fire by themselves.** You walk, and you dodge (the dodge key): a quick step during which nothing
+  touches you; two of them, each back after three seconds. Two weapons for now:
+  - **Pulse:** a field round you that hurts all in it, again and again. Levels: a wider field, more damage, a
+    shorter interval.
+  - **Laser:** a beam at whoever is nearest. Levels: more beams at once, more damage.
+- **Shards and levels:** who is put out drops a shard of light; shards near you fly to you. Enough of them make a
+  level: the run stands still and you take one of three cards (mouse, 1 / 2 / 3, or left / right and Enter): a
+  new weapon, or a level of one you carry (five levels each; six places for weapons, six for boni). When there is
+  less than that to offer, a med cell and a purse of Coins fill up.
+- **You:** one bar of health. A touch costs some, then nothing can hurt you for a moment. No energy, no rounds,
+  no charging points here.
+- **The end:** you are out, or you hold the stage for its fifteen minutes. A run pays Coins and rank points by
+  the time you held out and by who you put out (half as much again for holding the stage). Your best time is kept
+  and stands on the mode in the fighters' room.
+- Still to come (parts 7b and 7c): the other four weapons, the boni and the ultimates, more of the swarm (giants,
+  flyers and the rest), events, the stage's last opponent, the choice of stage and first weapon, and what stays
+  of a run for the next ones.
+- Debug menu: start a run, +1 level, +100 of the swarm, +1 minute, end the run.
+
+## alpha 0.8.62.9 – 2026-11-23
+
+**Package 62a, parts 5 and 6 (Luz): more grounds for the fights, Team Deathmatch, and the orders for your team.**
+- **Six settings** instead of three. New: **Jungle Ruin** (trees, old stone), **Lava Field** (black rock, barrels,
+  red light), **Neon Yard** (a back lot of the city by night under coloured light).
+- **Four ground plans,** mixed with every setting by lot: an open field (as before), a canyon (two long walls
+  across the field with three gaps each), a fortress (a ring round the middle with a gate on every side, pieces of
+  an outer ring), three lanes (two strips from north to south with two crossings each). The walls are rock in the
+  wild settings and bulwarks in the yards. That makes 24 grounds, each of them different every time.
+- **Every setting has a danger of its own,** named when the fight begins and in the fighters' room:
+  - Dust Canyon: dust devils rise here and there on the field and hide whoever stands behind them.
+  - Glacier Shelf: sheets of bare ice. You slide on them.
+  - Container Yard: plates under current that pulse on and off (their rim blinks before they come on).
+  - Jungle Ruin: undergrowth that holds you back.
+  - Lava Field: fields of embers that burn whoever stands on them. In three lanes, the strips are streams of lava:
+    no way across, but you see and shoot across.
+  - Neon Yard: steam vents that burst in turn and hide the lot round them.
+  The ground works on everybody alike: the others and your team slide on the ice and are held back by the
+  undergrowth as you are, and what burns, burns all of you. They know the ground: their ways lead round what
+  burns, nobody picks a spot on it, and who finds themselves standing on it gets off.
+- **Team Deathmatch is open:** three against three strong ones. In the fighters' room you pick the two who stand
+  beside you from a list (a click sends one away or calls one in; with a place free you are not ready). For now
+  the list holds **Rook Varga** (quality C from the start) and **a chance acquaintance of the arena** (quality F,
+  a name and a face by lot, kept in your save). Their quality is where they begin and how fast they grow: with
+  your rank and your wins in a row they get better, Rook faster than the other.
+- Your two walk in with you, stand beside you in the picture before the fight and fight in the house's light
+  combat suit. Who is shot down is out for this fight.
+- **They live on energy and rounds as you and the others do:** a shot costs them what it costs you, their shield
+  draws energy to recover, and who runs dry runs to the nearest charging point that is ready and draws it dry.
+  Their cards show both beside shield and body.
+- **The orders for your team (part 6):** in the Colosseum the command wheel has six fields in place of the crew's
+  four (the key is the same: tap for whom, hold for the wheel):
+  - **Follow me:** beside you, fighting near you (as before).
+  - **Your call:** they go at whoever is nearest by their own way of fighting, look for cover by themselves when
+    badly hurt and fill up when nearly dry and nobody is near.
+  - **Right wing / Left wing:** along their own line to the side of the field, up that side to where the others
+    are, then at them from the side. If one of the others stands in their way before that, they fight.
+  - **Hold in cover:** into the nearest cover against the others, and they stay there and shoot from it. They
+    move only when that cover no longer covers them.
+  - **Fall back:** back to where you came in and into cover there; low on energy or rounds, they fill up at a
+    charging point on the way.
+  The card of each shows the order it is on. Once you are out, each of them is on their own call.
+- **Lost only when your whole team is out.** If you go down while one of yours still stands, the picture stays
+  with your team and the others turn on them. You can watch it to the end, or end it with E: the rest is then
+  worked out from what both sides still have.
+- **Every mode has a run of its own** (its round, its wins in a row, its gear points and its fit). The rank is
+  shared. A win in Team Deathmatch pays half as much again in Coins and rank points.
+- No crew of your own comes into the hologram any more (the house's rules).
+- Debug menu: pick the next fight's ground and plan, or leave them to the lot.
+
 ## alpha 0.8.62.8 – 2026-11-23
 
 **Package 62a, part 4 (Luz): the fight. King of the Colosseum, and the rank.**

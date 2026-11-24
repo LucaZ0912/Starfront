@@ -726,6 +726,22 @@ func _process(delta: float) -> void:
 				await _test_colin62a(main.view)          # package 62a, part 2: its lobby and its stands
 				await _test_colprep62a(main.view)        # package 62a, part 3: the way into the arena
 				await _test_colfight62a(main.view)       # package 62a, part 4: the fight and the rank
+				await _test_colteam62a(main.view)        # package 62a, part 5: more grounds, Team Deathmatch
+				await _test_colorder62a(main.view)       # package 62a, part 6: the wheel of the arena, energy, the ground on all
+				await _test_colsurv62a(main.view)        # package 62a, part 7a: Survivor, the core
+				await _test_colstage62a(main.view)       # package 62a, part 7c-2: Survivor's stage
+				await _test_colmeta62a(main.view)        # package 62a, part 7c-3: what is round Survivor
+				await _test_coltake62a(main.view)        # package 62a, part 8a: Survivor's second stage, AI Takeover
+				await _test_coltakeb62a(main.view)       # package 62a, part 8b: the rest of AI Takeover
+				await _test_coltakec62a(main.view)       # package 62a, part 8c: the bosses of AI Takeover
+				await _test_colfx62a(main.view)          # package 62a, part 7d: the numbers of damage, the drone, what the ultimates look like
+				await _test_colwhite62a(main.view)       # package 62a, part 9a: Survivor's third stage, Whiteout
+				await _test_colcrate62a(main.view)       # package 62a, part 7f: the crates in two kinds, the draw, what the items look like
+				await _test_colfix62a(main.view)         # package 62a, the fixes of 24 Nov 2026: a load onto the spot, shards, fusions, red on the ground, four weapons
+				await _test_colwhiteb62a(main.view)      # package 62a, part 9b: the rest of Whiteout
+				await _test_colwhitec62a(main.view)      # package 62a, part 9c: the bosses of Whiteout
+				await _test_colcoll62a(main.view)        # package 62a, part 10a: the collection's Survivor
+				await _test_colrig62a(main.view)         # package 62a, parts 10b and 10c: the Survivor rig, the Champion's Regalia
 				_shooting = false
 				timer = 0.0
 				return
@@ -18159,7 +18175,7 @@ func _test_colprep62a(_view: SystemView) -> void:
 		and (CD.options("grenades") as Array).size() == 4 and (CD.options("suit") as Array).size() == 30 \
 		and foes.size() == 3 and foes.filter(func(f): return bool(f["strong"])).size() == 1 and int(foes[0]["who"]) != int(foes[1]["who"]) and int(foes[1]["who"]) != int(foes[2]["who"]) and int(foes[0]["who"]) != int(foes[2]["who"]) \
 		and int(CD.reward(9)["coins"]) > int(CD.reward(1)["coins"]) and int(CD.reward(9)["points"]) > int(CD.reward(1)["points"]) \
-		and (CD.PLAY as Array).filter(func(p): return bool(p[3])).size() == 1 and (CD.PLAY as Array).size() == 4 and (CD.MODES as Array).filter(func(m): return bool(m["open"])).size() == 1 \
+		and (CD.PLAY as Array).filter(func(p): return bool(p[3])).size() == 1 and (CD.PLAY as Array).size() == 4 and (CD.MODES as Array).filter(func(m): return bool(m["open"])).size() == 3 \
 		and float(CD.totals(e_ok["fit"])["shield"]) > float(CD.totals(f0)["shield"]) and CD.piece_name("gr_frag").begins_with("2") \
 		and SD.DIALOGUES.has("col_marshal") and SD.DIALOGUES.has("col_marshal_back") and String(SD.CHARACTERS["marshal"]["name"]) == "Cass Ardent" \
 		and String(SD.DIALOGUES["col_marshal"]["lines"][0]["answers"][0][0]) == "Register" and String(SD.DIALOGUES["col_marshal"]["lines"][0]["answers"][0][2][0]) == "col_go"
@@ -18249,7 +18265,7 @@ func _test_colprep62a(_view: SystemView) -> void:
 		var no_hand := true
 		var shot_w := false
 		var tw := Time.get_ticks_msec()
-		while Time.get_ticks_msec() - tw < 40000 and not (g.minigame != null and g.minigame.has_method("is_col_prep")):
+		while Time.get_ticks_msec() - tw < 40000 and not (g.minigame != null and (g.minigame.has_method("is_col_prep") or g.minigame.has_method("is_col_choose"))):
 			await get_tree().process_frame
 			if not (g._col_walk as Dictionary).is_empty():
 				walked = true
@@ -18259,20 +18275,75 @@ func _test_colprep62a(_view: SystemView) -> void:
 				if shots and not shot_w and through:
 					shot_w = true
 					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a3_gang.png")
+		# (part 10, Luz) behind the gate: the choice between the fights and Survivor; Survivor has a room of its own; back
+		# out of a room leads to the choice again; READY can be reached with the cross of the controller in both rooms
+		var chose: bool = g.minigame != null and g.minigame.has_method("is_col_choose") and (g.minigame.tiles() as Array).size() == 2
+		var sv_room := false
+		var again := false
+		var pad_ready := false
+		if chose:
+			g.minigame.pad_button("right", true)
+			g.minigame.pad_button("cross", true)
+			for fc1 in 3:
+				await get_tree().process_frame
+			var sp10 = g.minigame
+			sv_room = sp10 != null and sp10.has_method("is_sv_prep") and String(GameState.col_state().get("mode", "")) == "survivor"
+			if sv_room:
+				sp10.focus = 0
+				sp10.st_sel = 0
+				sp10.pad_button("down", true)
+				var on_ready: bool = int(sp10.focus) == 2
+				sp10.pad_button("cross", true)
+				var counts: bool = float(sp10.counting) > 0.0
+				sp10.back()
+				sv_room = on_ready and counts and float(sp10.counting) < 0.0
+				if shots:
+					for fc5 in 10:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a12_survivor.png")
+				sp10.back()
+			for fc2 in 3:
+				await get_tree().process_frame
+			again = g.minigame != null and g.minigame.has_method("is_col_choose") and int(g.minigame.sel) == 1
+			if again:
+				if shots:
+					for fc6 in 10:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a12_auswahl.png")
+				g.minigame.pick(0)
+			for fc3 in 3:
+				await get_tree().process_frame
+			var mp10 = g.minigame
+			if mp10 != null and mp10.has_method("is_col_prep") and not mp10.has_method("is_sv_prep"):
+				mp10.col_focus = 2
+				mp10.mode_sel = (mp10.modes() as Array).size() - 1
+				mp10.pad_button("down", true)
+				var at_ready: bool = int(mp10.col_focus) == 3
+				mp10.pad_button("cross", true)
+				pad_ready = at_ready and float(mp10.counting) > 0.0 and (mp10.modes() as Array).size() == 2 and String(GameState.col_state().get("mode", "")) == "king"
+				mp10.back()
+				mp10.col_focus = 0
+				if shots:
+					for fc7 in 10:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a12_match.png")
+		if not (chose and sv_room and again and pad_ready):
+			print("COLPREP62A the choice: ", [chose, sv_room, again, pad_ready], " window ", g.minigame)
 		var prep = g.minigame
-		walk_ok = walked and through and dark and no_hand and prep != null and prep.has_method("is_col_prep") and bool(g.map.get_meta("col_open")) and (g._col_walk as Dictionary).is_empty() \
+		walk_ok = chose and sv_room and again and pad_ready and walked and through and dark and no_hand and prep != null and prep.has_method("is_col_prep") and bool(g.map.get_meta("col_open")) and (g._col_walk as Dictionary).is_empty() \
 			and (g._col_cover == null or not is_instance_valid(g._col_cover))
 		if not walk_ok:
 			print("COLPREP62A walk: walked ", walked, " through ", through, " dark ", dark, " hands off ", no_hand, " room ", prep, " walk ", g._col_walk)
 		# the fighters' room: a fit within the budget, the mode, READY
 		if prep != null and prep.has_method("is_col_prep"):
+			GameState.col_state()["mode"] = ""                     # (as on a first visit: no mode picked yet; the look into Survivor's room above left one)
 			var q1 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_heavy:A"}))
 			var q2 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_light:E"}))
 			var q3 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 0, "id": "wp_laser_rifle:E"}))
 			var q8 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "weapons", "idx": 1, "id": "wp_rifle:D"}))      # (part 4: not above what your rank reaches)
 			var q4 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "features", "idx": 0, "id": "ft_shield:F"}))
 			var q5 := String(Commands.execute({"type": "col_ready", "seat": 0}))
-			var q6 := String(Commands.execute({"type": "col_mode", "seat": 0, "mode": "team"}))
+			var q6 := String(Commands.execute({"type": "col_mode", "seat": 0, "mode": "duel"}))             # (no such mode)
 			prep.pick_mode(0)
 			Commands.execute({"type": "debug_casino", "col_points": 5})
 			var q7 := String(Commands.execute({"type": "col_equip", "seat": 0, "place": "features", "idx": 0, "id": "ft_shield:F"}))
@@ -18363,9 +18434,9 @@ func _test_colprep62a(_view: SystemView) -> void:
 			if not (g._col_walk as Dictionary).is_empty():
 				g._col_walk["i"] = 99
 			var tz := Time.get_ticks_msec()
-			while Time.get_ticks_msec() - tz < 6000 and not (g.minigame != null and g.minigame.has_method("is_col_prep")):
+			while Time.get_ticks_msec() - tz < 6000 and not (g.minigame != null and g.minigame.has_method("is_col_choose")):
 				await get_tree().process_frame
-			var room2: bool = g.minigame != null and g.minigame.has_method("is_col_prep") and String(GameState.col_state()["fit"]["suit"]) == "suit_mil_light:E"
+			var room2: bool = g.minigame != null and g.minigame.has_method("is_col_choose") and String(GameState.col_state()["fit"]["suit"]) == "suit_mil_light:E"      # (part 10: the choice; back from it leads to the lobby)
 			if room2:
 				g.minigame.back()
 			for f17 in 5:
@@ -18398,6 +18469,7122 @@ func _test_colprep62a(_view: SystemView) -> void:
 ## house hands you), the opponents by lot with a named one every tenth round, the settings of the fight's ground
 ## (larger than the arena), the entrance (the round from above, the far gate, the three, the picture of them against
 ## you, the hologram), the fight in the house's gear, a win and what it pays, a defeat and what it costs.
+## Package 62a, part 5 (Luz): more grounds for the fights (six settings, four ground plans, a danger in every setting)
+## and Team Deathmatch (two you pick stand beside you; a run of its own; lost only when all of you are out; out
+## yourself, you may end it and the rest is worked out).
+func _test_colteam62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var CV = load("res://scripts/ground/colosseum_vr.gd")
+	var CU = load("res://scripts/ground/colosseum_ui.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	CD.force.clear()
+	# ---- the grounds: every setting with every plan: ways from you to the three and to every charging point, its danger
+	var plans := {}
+	for pp in 60:
+		plans[CD.layout(1 + pp % 7, pp)] = true
+	var map_ok: bool = CD.SETTINGS.size() == 6 and CD.LAYOUTS.size() == 4 and plans.size() == 4
+	for sd in CD.SETTINGS:
+		for ld in CD.LAYOUTS:
+			for seed_n in [1, 2]:
+				var vm: GroundMap = CV.build(String(sd["id"]), seed_n, String(ld[0]))
+				var hz: Array = vm.get_meta("col_hazards", [])
+				var sts: Array = vm.get_meta("col_stations", [])
+				var ways: bool = vm.foe_spawns.size() == 3 and vm.free_at(vm.spawn, 4.0) and (vm.foe_spawns as Array).all(func(p): return vm.free_at(p, 4.0) and vm.path(vm.spawn, p).size() > 0) \
+					and sts.size() == CD.STATIONS and sts.all(func(q): return vm.free_at(q["at"], 4.0) and vm.path(vm.spawn, q["at"]).size() > 0)
+				var danger: bool = hz.size() == 1 and String(hz[0]["kind"]) == String(sd["hazard"]) and String(hz[0]["name"]) == String(sd["danger"]) and String(sd["danger"]) != "" \
+					and not String(sd["danger"]).contains("–") and (hz[0]["rects"] as Array).all(func(r): return not (r as Rect2).has_point(vm.spawn))
+				match String(sd["hazard"]):
+					"cloud":
+						danger = danger and (hz[0]["rects"] as Array).is_empty() and float(hz[0]["every"]) > 0.0 \
+							and ((hz[0]["spots"] as Array).size() >= 4 if String(sd["id"]) == "neon" else (hz[0]["spots"] as Array).is_empty())
+					"burn":
+						danger = danger and (hz[0]["rects"] as Array).size() >= 3 and float(hz[0]["dps"]) > 0.0 and CV.ground_at(vm, (hz[0]["rects"][0] as Rect2).get_center()) == ""
+					_:
+						danger = danger and (hz[0]["rects"] as Array).size() >= 3 and CV.ground_at(vm, (hz[0]["rects"][0] as Rect2).get_center()) == String(sd["hazard"]) \
+							and CV.ground_at(vm, vm.spawn) == ""
+				var lava: Array = vm.get_meta("col_lava", [])
+				var streams: bool = (lava.size() > 20 and lava.all(func(r): return not GroundMap.walkable_t(vm.t_at(int((r as Rect2).position.x / TL), int((r as Rect2).position.y / TL))))) \
+					if (String(sd["id"]) == "lava" and String(ld[0]) == "lanes") else lava.is_empty()
+				var one: bool = ways and danger and streams and vm.w == CV.VW and vm.h == CV.VH and String(vm.get_meta("col_layout", "")) == String(ld[0]) \
+					and String(vm.get_meta("col_vr_name", "")) == String(sd["name"]) and vm.objects.size() > (20 if String(ld[0]) == "open" else 40)
+				if not one:
+					print("COLTEAM62A map ", sd["id"], " ", ld[0], " ", seed_n, ": ways ", ways, " danger ", danger, " streams ", streams, " objects ", vm.objects.size(), " hz ", hz)
+				map_ok = map_ok and one
+	var yard: GroundMap = CV.build("yard", 1, "open")
+	var yh: Dictionary = yard.get_meta("col_hazards")[0]
+	var lh: Dictionary = (CV.build("lava", 1, "open") as GroundMap).get_meta("col_hazards")[0]
+	map_ok = map_ok and CV.live(yh, 1.0) and not CV.live(yh, 3.0) and CV.live(yh, 6.5) and CV.live(lh, 1.0) and CV.live(lh, 3.0)
+	# ---- the rules of a team
+	var c0: Dictionary = CD.fresh()
+	var ms: Array = CD.mates(c0)
+	var ms_again: Array = CD.mates(c0)
+	var c2: Dictionary = c0.duplicate(true)
+	c2["xp"] = 200
+	c2["streak"] = 6
+	var c1: Dictionary = c0.duplicate(true)
+	c1["xp"] = 60
+	c1["streak"] = 3
+	var mm: Dictionary = CD.mate_member(ms[0], c0)
+	var mm2: Dictionary = CD.mate_member(ms[1], c2) if ms.size() > 1 else {}
+	var ot: Array = CD.opponents(4, 8, 2, "team")
+	var ok4: Array = CD.opponents(4, 8, 2)
+	var cr: Dictionary = CD.fresh()
+	CD.switch_mode(cr, "king")
+	CD.settle(cr, true)
+	var king_pts := int(cr["points"])
+	CD.switch_mode(cr, "team")
+	var fresh_run: bool = int(cr["round"]) == 1 and int(cr["points"]) == 0 and int(cr["streak"]) == 0 and int(cr["xp"]) == int(CD.reward(1)["xp"]) and (cr["runs"] as Dictionary).has("king")
+	CD.settle(cr, true)
+	CD.settle(cr, true)
+	var team_xp := int(cr["xp"])
+	CD.switch_mode(cr, "king")
+	var king_back: bool = int(cr["round"]) == 2 and int(cr["points"]) == king_pts and int(cr["streak"]) == 1 and int(cr["xp"]) == team_xp and (cr["runs"] as Dictionary).has("team") \
+		and not (cr["runs"] as Dictionary).has("king")
+	CD.switch_mode(cr, "team")
+	var srng := RandomNumberGenerator.new()
+	srng.seed = 62
+	var swon := 0
+	for sq in 400:
+		if CD.sim_win(srng, 30.0, 10.0):
+			swon += 1
+	var rule_ok: bool = ms.size() == 2 and String(ms[0]["id"]) == "rook" and String(ms[0]["quality"]) == "C" and String(ms[0]["who"]) == "rook" and String(ms[1]["quality"]) == "F" \
+		and String(ms[1]["who"]) == "" and String(ms[1]["name"]).contains(" ") and String(ms_again[1]["name"]) == String(ms[1]["name"]) and (CD.team(c0) as Array).size() == CD.TEAM_SIZE \
+		and CD.mate_quality(ms[0], c0) == "C" and CD.mate_quality(ms[1], c0) == "F" and CD.mate_quality(ms[0], c1) == "B" and CD.mate_quality(ms[1], c1) == "D" \
+		and CD.mate_quality(ms[0], c2) == "A" and CD.mate_quality(ms[1], c2) == "C" \
+		and String(mm["name"]) == "Rook Varga" and String(mm["quality"]) == "C" and String(mm["gear"]["suit"]) == "suit_mil_light:C" and String(mm["gear"]["weapons"][0]) == "wp_smg:C" \
+		and not (mm["look"] as Dictionary).is_empty() and String(mm2.get("quality", "")) == "C" and not (mm2.get("look", {}) as Dictionary).is_empty() \
+		and ot.all(func(o): return bool(o["strong"])) and ot.map(func(o): return int(o["who"])) == ok4.map(func(o): return int(o["who"])) and ok4.filter(func(o): return bool(o["strong"])).size() == 1 \
+		and int(CD.reward(1, "team")["coins"]) == 60 and int(CD.reward(1)["coins"]) == 40 and int(CD.reward(1, "team")["points"]) == int(CD.reward(1)["points"]) \
+		and fresh_run and king_back and int(cr["round"]) == 3 and int(cr["streak"]) == 2 and String(cr["mode"]) == "team" \
+		and not CD.sim_win(srng, 0.0, 10.0) and CD.sim_win(srng, 10.0, 0.0) and swon > 250 and swon < 350 \
+		and CD.mode_name("team") == "Team Deathmatch" and (CD.MODES as Array).filter(func(m): return bool(m["open"])).map(func(m): return String(m["id"])) == ["king", "team", "survivor"]
+	if not rule_ok:
+		print("COLTEAM62A rules: mates ", ms, " q ", [CD.mate_quality(ms[0], c1), CD.mate_quality(ms[1], c1), CD.mate_quality(ms[0], c2), CD.mate_quality(ms[1], c2)], " member ", mm, " fresh ", fresh_run,
+			" back ", king_back, " run ", cr, " sim ", swon)
+	# ---- down to Centauria, into the lobby, signed up, into the fighters' room
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var room_ok := false
+	var enter_ok := false
+	var fight_ok := false
+	var haz_ok := false
+	var watch_ok := false
+	var win_ok := false
+	var lose_ok := false
+	var sim_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		GameState.coins = 100
+		var own_suit: String = GameState.gear.suit
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		g._col_prep_open()
+		# the king's run has a win; Team Deathmatch begins a run of its own
+		Commands.execute({"type": "col_mode", "seat": 0, "mode": "king"})
+		CD.settle(GameState.col_state(), true)
+		var q_team := String(Commands.execute({"type": "col_mode", "seat": 0, "mode": "team"}))
+		var st: Dictionary = GameState.col_state()
+		var own_run: bool = q_team == "" and String(st["mode"]) == "team" and int(st["round"]) == 1 and int(st["points"]) == 0 and int(st["streak"]) == 0 \
+			and int((st["runs"] as Dictionary)["king"]["round"]) == 2 and int(st["xp"]) == int(CD.reward(1)["xp"])
+		# the team: two stand beside you; one sent away, you are not ready; called back; a third finds no place
+		var ids0: Array = (CD.team(st) as Array).map(func(m): return String(m["id"]))
+		var mate_id := String((CD.mates(st) as Array)[1]["id"])
+		var mate_name := String((CD.mates(st) as Array)[1]["name"])
+		var t1 := String(Commands.execute({"type": "col_team", "seat": 0, "id": mate_id}))
+		var n1: int = (CD.team(st) as Array).size()
+		var r1 := String(Commands.execute({"type": "col_ready", "seat": 0}))
+		var t2 := String(Commands.execute({"type": "col_team", "seat": 0, "id": "nobody"}))
+		var t3 := String(Commands.execute({"type": "col_team", "seat": 0, "id": mate_id}))
+		(st["mates"] as Array).append({"id": "mate_2", "name": "Test Third", "who": "", "quality": "F", "weapon": "wp_rifle", "stance": "careful", "seed": 5, "text": ""})
+		var t4 := String(Commands.execute({"type": "col_team", "seat": 0, "id": "mate_2"}))
+		(st["mates"] as Array).pop_back()
+		var r2 := String(Commands.execute({"type": "col_ready", "seat": 0}))
+		var prep = g.minigame
+		var by_hand := false
+		if prep != null and prep.has_method("is_col_prep"):
+			prep.pick_mate(1)
+			var n2: int = (CD.team(st) as Array).size()
+			prep.pick_mate(1)
+			by_hand = n2 == 1 and (CD.team(st) as Array).size() == 2 and (prep.mate_rect(0) as Rect2).size.x > 100.0
+		room_ok = own_run and ids0 == ["rook", mate_id] and t1 == "" and n1 == 1 and r1 != "" and t2 != "" and t3 == "" and t4 != "" and r2 == "" and by_hand \
+			and (CD.team(st) as Array).map(func(m): return String(m["id"])) == ["rook", mate_id]
+		if not room_ok:
+			print("COLTEAM62A room: own run ", own_run, " ids ", ids0, " ", [t1, n1, r1, t2, t3, t4, r2], " by hand ", by_hand, " state ", st)
+		Commands.execute({"type": "col_equip", "seat": 0, "place": "suit", "idx": 0, "id": "suit_mil_light:E"})
+		if shots:
+			for f1 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_team_wahl.png")
+		# ---- the first fight: the Lava Field in three lanes (the debug command picks the ground)
+		var d1 := String(Commands.execute({"type": "debug_casino", "col_map": "lava", "col_plan": "lanes"}))
+		g._col_prep_done(true)
+		var with_mates := false
+		var vs_mates := false
+		var te := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - te < 40000 and String(g.level) != "zcolvr":
+			await get_tree().process_frame
+			var it: Dictionary = g._col_intro
+			if it.is_empty():
+				continue
+			with_mates = with_mates or bool(it.get("mates", false))
+			if it.has("vs") and is_instance_valid(it["vs"]) and is_instance_of(it["vs"], CU.Versus):
+				vs_mates = (it["vs"].mates as Array).size() == 2 and String(it["vs"].mates[0]["name"]) == "ROOK VARGA" and it["vs"].mates[1]["tex"] != null \
+					and String(it["vs"].sub).begins_with("TEAM DEATHMATCH")
+				if float(it["t"]) > 2.0:
+					if shots:
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_vs.png")
+					g._col_fight_start()                             # (as holding Esc or Options does)
+			elif shots and int(it["phase"]) == 0 and float(it["t"]) > 1.2 and not it.has("shot"):
+				it["shot"] = true
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_einzug.png")
+		enter_ok = d1 == "" and with_mates and vs_mates and String(g.level) == "zcolvr"
+		if not enter_ok:
+			print("COLTEAM62A entrance: ", d1, " mates ", with_mates, " vs ", vs_mates, " level ", g.level)
+		var tc := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tc < 8000 and String(g._col_fight.get("state", "")) == "count":
+			await get_tree().process_frame
+		for f2 in 5:
+			await get_tree().process_frame
+		var foes: Array = g.combat.foes if g.combat != null else []
+		var al: Array = g.combat.allies if g.combat != null else []
+		fight_ok = al.size() == 2 and al.all(func(a): return bool(a.get("arena", false)) and not bool(a["dead"]) and String(a["quality"]) in ["C", "F"]) \
+			and String(al[0]["name"]) == "Rook" and String(al[1]["name"]) == mate_name.get_slice(" ", 0) and String(al[0]["weapon"]) == "wp_smg:C" \
+			and foes.size() == 3 and foes.all(func(f): return String(f["kind"]) == "col_champion" and float(f["energy"]) > 0.0) \
+			and String(g.map.get_meta("col_vr", "")) == "lava" and String(g.map.get_meta("col_layout", "")) == "lanes" and String(g._title.text).contains("Lava Field") \
+			and String(g._col_fight.get("state", "")) == "fight" and g.input_enabled and String(GameState.gear.suit) == "suit_mil_light:E" \
+			and g._world.get_children().any(func(nd): return is_instance_of(nd, CV.VrFx) and (nd.hazards as Array).size() == 1 and not (nd.lava as Array).is_empty())
+		if not fight_ok:
+			print("COLTEAM62A fight: allies ", al.map(func(a): return [a["name"], a["quality"], a["weapon"], a.get("arena", false)]), " foes ", foes.map(func(f): return [f["name"], f["kind"]]),
+				" map ", g.map.get_meta("col_vr", ""), " ", g.map.get_meta("col_layout", ""), " title ", g._title.text, " state ", g._col_fight)
+		if shots:
+			for f3 in 50:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_teamkampf.png")
+		# the danger: embers burn whoever stands on them, you, the others and your team alike
+		if fight_ok:
+			var hz1: Dictionary = g.map.get_meta("col_hazards")[0]
+			var hs1: Dictionary = g.map.get_meta("col_haz_state")
+			var spot: Vector2 = (hz1["rects"][0] as Rect2).get_center()
+			var home: Vector2 = g.pilot.pos
+			var tot := func(d: Dictionary) -> float: return float(d["health"]) + float(d["shield"]) + float(d["armor"])
+			var me := func() -> float: return float(GameState.gear.health) + float(GameState.gear.shield) + float(GameState.gear.armor)
+			hs1["tick"] = 0.0
+			var m0: float = me.call()
+			g._col_hazard_step(0.5)
+			var safe: bool = is_equal_approx(me.call(), m0)              # (not on the embers: nothing)
+			var fw: Walker = foes[2]["w"]
+			var fhome := fw.pos
+			var aw: Walker = al[1]["w"]
+			var ahome := aw.pos
+			g.pilot.pos = spot
+			fw.pos = spot + Vector2(6.0, 0.0)
+			aw.pos = spot + Vector2(-6.0, 0.0)
+			var f0h: float = tot.call(foes[2]["st"])
+			var a0h: float = tot.call(al[1]["st"])
+			g._col_hazard_step(0.5)
+			haz_ok = safe and me.call() < m0 - 1.0 and tot.call(foes[2]["st"]) < f0h - 1.0 and tot.call(al[1]["st"]) < a0h - 1.0 and not g.col_lost
+			if not haz_ok:
+				print("COLTEAM62A embers: safe ", safe, " me ", m0, " ", me.call(), " foe ", f0h, " ", tot.call(foes[2]["st"]), " ally ", a0h, " ", tot.call(al[1]["st"]))
+			if shots:
+				g.story_cam = spot
+				for f3b in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_gefahr_lava.png")
+				g.story_cam = Vector2(CV.VW * 0.5, CV.VH * 0.5) * TL
+				g.story_zoom = 0.34
+				for f4 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_karte_lava_lanes.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			g.pilot.pos = home
+			g.pilot.position = home * GroundMap.SCALE
+			fw.pos = fhome
+			aw.pos = ahome
+			# you are out: your team fights on, the picture stays with them; the three out is a win all the same
+			GameState.gear.health = 5.0
+			g.combat._hurt_pilot(9999.0, "kinetic")
+			for f5 in 12:
+				await get_tree().process_frame
+			watch_ok = String(g._col_fight.get("state", "")) == "watch" and g.pilot.down and not g.input_enabled and g._col_note != null and is_instance_valid(g._col_note) \
+				and String(g._col_note.text).contains("Your team fights on") and g.combat.pilot_hidden() and g.story_cam != Vector2.INF \
+				and (g.combat.allies_up() as Array).all(func(a): return String(a["order"]) == "own" and a["cur"] != null) \
+				and g.combat._foe_target(foes[0]) != null and bool((g.combat._foe_target(foes[0]) as Dictionary).get("ally", false))
+			if not watch_ok:
+				print("COLTEAM62A watch: state ", g._col_fight, " down ", g.pilot.down, " note ", g._col_note, " hidden ", g.combat.pilot_hidden(), " cam ", g.story_cam,
+					" orders ", (g.combat.allies_up() as Array).map(func(a): return [a["order"], a["tgt"] != null]), " target ", g.combat._foe_target(foes[0]))
+			if shots:
+				for f6 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_zuschauen.png")
+			for f in foes:
+				g.combat._hurt_foe(f, 9999.0, "kinetic")
+			var tw := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tw < 8000 and not (g.minigame != null and g.minigame.has_method("is_col_result")):
+				await get_tree().process_frame
+			var rw: Dictionary = CD.reward(1, "team")
+			st = GameState.col_state()
+			win_ok = g.minigame != null and g.minigame.has_method("is_col_result") and bool(g.minigame.res.get("won", false)) and not bool(g.minigame.res.get("sim", true)) \
+				and GameState.coins == 100 + int(rw["coins"]) and int(st["round"]) == 2 and int(st["streak"]) == 1 and int(st["points"]) == int(rw["points"]) \
+				and int((st["runs"] as Dictionary)["king"]["round"]) == 2 and g._col_note == null
+			if g.minigame != null and g.minigame.has_method("is_col_result"):
+				g.minigame._t = 2.0
+				g.minigame.go(true)
+			for f7 in 10:
+				await get_tree().process_frame
+			win_ok = win_ok and String(g.level) == "zcolin" and not g.pilot.down and g.minigame != null and g.minigame.has_method("is_col_prep") and String(GameState.gear.suit) == own_suit
+			if not win_ok:
+				print("COLTEAM62A win: window ", g.minigame, " coins ", GameState.coins, " state ", st, " level ", g.level, " down ", g.pilot.down)
+		# ---- the second fight: the Neon Yard as a fortress: steam from the vents, ice under your feet (laid here to
+		# try it); you go out, then your two: only now it is lost
+		if win_ok:
+			Commands.execute({"type": "debug_casino", "col_map": "neon", "col_plan": "fortress"})
+			g._col_prep_done(true)
+			for f8 in 20:
+				await get_tree().process_frame
+			g._col_fight_start()
+			var tq := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tq < 8000 and String(g._col_fight.get("state", "")) == "count":
+				await get_tree().process_frame
+			for f9 in 5:
+				await get_tree().process_frame
+			var hz2: Dictionary = g.map.get_meta("col_hazards")[0]
+			var hs2: Dictionary = g.map.get_meta("col_haz_state")
+			var c_before: int = (g.combat.clouds as Array).size()
+			hs2["cloud"] = 0.0
+			g._col_hazard_step(0.05)
+			var steam: bool = (g.combat.clouds as Array).size() >= c_before + 3 and float(hs2["cloud"]) > 5.0 and String(hz2["look"]) == "steam" \
+				and (hz2["spots"] as Array).any(func(v): return (g.combat.clouds as Array).any(func(c): return (c["pos"] as Vector2).distance_to(v) < 1.0))
+			if shots:
+				g.story_cam = (g.combat.clouds as Array)[-1]["pos"]
+				for f9b in 70:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_gefahr_dampf.png")
+				g.story_cam = Vector2(CV.VW * 0.5, CV.VH * 0.5) * TL
+				g.story_zoom = 0.34
+				for f9c in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_karte_neon_fortress.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			var plain: Vector2 = g._col_move(Vector2.RIGHT, 0.1)
+			g.map.set_meta("col_hazards", [{"kind": "ice", "rects": [Rect2(g.pilot.pos - Vector2(40.0, 40.0), Vector2(80.0, 80.0))], "name": "ice"}])
+			g._col_vel = Vector2.ZERO
+			var slide0: Vector2 = g._col_move(Vector2.RIGHT, 0.1)
+			var slide1 := slide0
+			for sq2 in 40:
+				slide1 = g._col_move(Vector2.RIGHT, 0.1)
+			var slide2: Vector2 = g._col_move(Vector2.ZERO, 0.1)              # (you let go: you slide on)
+			g.map.set_meta("col_hazards", [{"kind": "slow", "rects": [Rect2(g.pilot.pos - Vector2(40.0, 40.0), Vector2(80.0, 80.0))], "name": "green"}])
+			var held: Vector2 = g._col_move(Vector2.RIGHT, 0.1)
+			g.map.set_meta("col_hazards", [hz2])
+			var ground: bool = plain == Vector2.RIGHT and slide0.x > 0.05 and slide0.x < 0.4 and slide1.x > 0.95 and slide2.x > 0.6 and is_equal_approx(held.x, 0.55)
+			var al2: Array = g.combat.allies
+			GameState.gear.health = 5.0
+			g.combat._hurt_pilot(9999.0, "kinetic")
+			for f10 in 6:
+				await get_tree().process_frame
+			var watching: bool = String(g._col_fight.get("state", "")) == "watch"
+			if al2.size() == 2:
+				g.combat._hurt_ally(al2[0], 9999.0, "kinetic")
+			for f11 in 6:
+				await get_tree().process_frame
+			var one_left: bool = String(g._col_fight.get("state", "")) == "watch" and (g.combat.allies_up() as Array).size() == 1 and bool(al2[0]["dead"])
+			var xp_before: int = int(GameState.col_state()["xp"])
+			if al2.size() == 2:
+				g.combat._hurt_ally(al2[1], 9999.0, "kinetic")
+			var tl2 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tl2 < 8000 and not (g.minigame != null and g.minigame.has_method("is_col_result")):
+				await get_tree().process_frame
+			st = GameState.col_state()
+			lose_ok = steam and ground and watching and one_left and g.minigame != null and g.minigame.has_method("is_col_result") and not bool(g.minigame.res.get("won", true)) \
+				and int(st["round"]) == 1 and int(st["points"]) == 0 and int(st["streak"]) == 0 and int(st["xp"]) == xp_before and int((st["runs"] as Dictionary)["king"]["round"]) == 2 \
+				and int((st["runs"] as Dictionary)["king"]["streak"]) == 1
+			if not lose_ok:
+				print("COLTEAM62A defeat: steam ", steam, " clouds ", (g.combat.clouds as Array).size(), " ground ", [plain, slide0, slide1, slide2, held], " watching ", watching, " one left ", one_left,
+					" window ", g.minigame, " state ", st)
+			if g.minigame != null and g.minigame.has_method("is_col_result"):
+				g.minigame._t = 2.0
+				g.minigame.go(true)
+			for f12 in 10:
+				await get_tree().process_frame
+		# ---- the third fight: the Jungle Ruin as a canyon; you go out and end it: the rest is worked out
+		if lose_ok:
+			if g.minigame == null:
+				g._col_prep_open()                                   # (after a defeat you stand in the lobby)
+			Commands.execute({"type": "debug_casino", "col_map": "jungle", "col_plan": "canyon"})
+			g._col_prep_done(true)
+			for f13 in 20:
+				await get_tree().process_frame
+			g._col_fight_start()
+			var tq3 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tq3 < 8000 and String(g._col_fight.get("state", "")) == "count":
+				await get_tree().process_frame
+			for f14 in 5:
+				await get_tree().process_frame
+			if shots:
+				g.story_cam = Vector2(CV.VW * 0.5, CV.VH * 0.5) * TL
+				g.story_zoom = 0.34
+				for f14b in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_karte_jungle_canyon.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			GameState.gear.health = 5.0
+			g.combat._hurt_pilot(9999.0, "kinetic")
+			for f15 in 6:
+				await get_tree().process_frame
+			var watching3: bool = String(g._col_fight.get("state", "")) == "watch"
+			for f in g.combat.alive():                               # (the three as good as out: the lot can hardly fall against you)
+				f["st"]["health"] = 0.001
+				f["st"]["shield"] = 0.0
+				f["st"]["armor"] = 0.0
+			g._col_fight_sim()
+			var over3: bool = String(g._col_fight.get("state", "")) == "over" and bool(g._col_fight.get("sim", false)) and bool(g._col_fight.get("won", false))
+			var tl3 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tl3 < 8000 and not (g.minigame != null and g.minigame.has_method("is_col_result")):
+				await get_tree().process_frame
+			sim_ok = watching3 and over3 and g.minigame != null and g.minigame.has_method("is_col_result") and bool(g.minigame.res.get("sim", false)) and bool(g.minigame.res.get("won", false)) \
+				and int(GameState.col_state()["round"]) == 2 and String(g.map.get_meta("col_vr", "")) == "jungle" and String(g.map.get_meta("col_layout", "")) == "canyon"
+			if not sim_ok:
+				print("COLTEAM62A worked out: watching ", watching3, " over ", over3, " fight ", g._col_fight, " window ", g.minigame, " state ", GameState.col_state())
+			if shots and g.minigame != null:
+				for f16 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_ergebnis.png")
+			if g.minigame != null and g.minigame.has_method("is_col_result"):
+				g.minigame._t = 2.0
+				g.minigame.go(false)
+			for f17 in 10:
+				await get_tree().process_frame
+			sim_ok = sim_ok and String(g.level) == "zcolin" and g.minigame == null and not g.pilot.down and g.input_enabled and GameState.col_own_gear == null
+		# (pictures only) the other grounds, each from above and at its danger
+		if shots and sim_ok:
+			for pair in [["dust", "canyon"], ["ice", "lanes"], ["yard", "fortress"], ["jungle", "open"], ["lava", "fortress"], ["neon", "lanes"], ["ice", "open"], ["yard", "lanes"]]:
+				Commands.execute({"type": "debug_casino", "col_map": pair[0], "col_plan": pair[1]})
+				g.go_level("zcolvr", "from_gate")
+				for f18 in 12:
+					await get_tree().process_frame
+				var hz9: Dictionary = g.map.get_meta("col_hazards")[0]
+				var hs9: Dictionary = g.map.get_meta("col_haz_state")
+				if String(hz9["kind"]) == "cloud":
+					hs9["cloud"] = 0.0
+					g._col_hazard_step(0.05)
+				hs9["t"] = 1.0
+				g.story_cam = Vector2(CV.VW * 0.5, CV.VH * 0.5) * TL
+				g.story_zoom = 0.34
+				for f19 in 60:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_karte_%s_%s.png" % [pair[0], pair[1]])
+				g.story_zoom = 0.0
+				if not (hz9["rects"] as Array).is_empty():
+					g.story_cam = (hz9["rects"][0] as Rect2).get_center()
+				elif not (g.combat.clouds as Array).is_empty():
+					g.story_cam = (g.combat.clouds as Array)[-1]["pos"]
+				for f20 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a5_gefahr_%s.png" % String(pair[0]))
+				g.story_cam = Vector2.INF
+			g.go_level("zcolin", "from_reg")
+			for f21 in 10:
+				await get_tree().process_frame
+	check(map_ok and rule_ok and room_ok and enter_ok and fight_ok and haz_ok and watch_ok and win_ok and lose_ok and sim_ok,
+		"62a, part 5: more grounds and Team Deathmatch: six settings with four ground plans (open field, canyon, fortress, three lanes), ways from you to the three and to every charging point on each, a danger in every setting (dust devils and steam that hide, ice you slide on, plates under current that pulse, embers that burn you, the others and your team alike, undergrowth that holds you back, streams of lava); who stands beside you (Rook of quality C, a chance acquaintance of quality F, both better with your rank and your run), three strong ones against you, half as much again for a win; a run of its own for every mode, the rank shared; the team picked in the fighters' room (through the command bus; not ready with a place free); your two walk in with you and stand in the picture; you are out: your team fights on and can still win, lost only when all of you are out, or you end it and the rest is worked out  [%s %s %s %s %s %s %s %s %s %s]" % [map_ok, rule_ok, room_ok, enter_ok, fight_ok, haz_ok, watch_ok, win_ok, lose_ok, sim_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 6 (Luz): the wheel of those who stand beside you in the Colosseum (follow me, your call, over the
+## right wing, over the left wing, hold in cover, fall back), their energy and rounds, and the fight's ground working
+## on the others and on your team as it does on you.
+func _test_colorder62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var CV = load("res://scripts/ground/colosseum_vr.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	CD.force.clear()
+	# ---- the wheel: the crew's four fields as before, the arena's six
+	var c0 := Vector2(500.0, 500.0)
+	var AW: Array = GroundCombat.ARENA_WHEEL
+	var wheel_ok: bool = AW.size() == 6 and GroundCombat.wheel_pick(c0, c0 + Vector2(0, -100), 46.0, AW) == "follow" and GroundCombat.wheel_pick(c0, c0 + Vector2(87, -50), 46.0, AW) == "wing_r" \
+		and GroundCombat.wheel_pick(c0, c0 + Vector2(87, 50), 46.0, AW) == "cover" and GroundCombat.wheel_pick(c0, c0 + Vector2(0, 100), 46.0, AW) == "retreat" \
+		and GroundCombat.wheel_pick(c0, c0 + Vector2(-87, 50), 46.0, AW) == "own" and GroundCombat.wheel_pick(c0, c0 + Vector2(-87, -50), 46.0, AW) == "wing_l" \
+		and GroundCombat.wheel_pick(c0, c0 + Vector2(10, 10), 46.0, AW) == "" and GroundCombat.wheel_pick(c0, c0 + Vector2(0, -100)) == "follow" \
+		and GroundCombat.wheel_pick(c0, c0 + Vector2(100, 0)) == "attack" and GroundCombat.wheel_pick(c0, c0 + Vector2(0, 100)) == "hold" and GroundCombat.wheel_pick(c0, c0 + Vector2(-100, 0)) == "ability" \
+		and AW.all(func(k): return GroundCombat.WHEEL_NAMES.has(k) and not String(GroundCombat.WHEEL_NAMES[k]).contains("–"))
+	# ---- the ways go round what burns
+	var ways_ok := false
+	var lm: GroundMap = CV.build("lava", 1, "open")
+	for r in lm.get_meta("col_hazards")[0]["rects"]:
+		var rr: Rect2 = r
+		var pa := Vector2(rr.position.x - 24.0, rr.get_center().y)
+		var pb := Vector2(rr.end.x + 24.0, rr.get_center().y)
+		if lm.free_at(pa, 4.0) and lm.free_at(pb, 4.0):
+			var pth: PackedVector2Array = lm.path(pa, pb)
+			var through := false
+			for q in pth:
+				through = through or rr.grow(-2.0).has_point(q)
+			ways_ok = pth.size() > 3 and not through
+			if not ways_ok:
+				print("COLORDER62A ways: ", pth, " rect ", rr)
+			break
+	# ---- down to Centauria, into a Team Deathmatch on the Lava Field
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var energy_ok := false
+	var wing_ok := false
+	var cover_ok := false
+	var back_ok := false
+	var own_ok := false
+	var ground_ok := false
+	var out_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		g._col_prep_open()
+		Commands.execute({"type": "col_mode", "seat": 0, "mode": "team"})
+		Commands.execute({"type": "debug_casino", "col_map": "lava", "col_plan": "open"})
+		g._col_prep_done(true)
+		for f1 in 20:
+			await get_tree().process_frame
+		g._col_fight_start()
+		var tc := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tc < 8000 and String(g._col_fight.get("state", "")) == "count":
+			await get_tree().process_frame
+		for f2 in 5:
+			await get_tree().process_frame
+		var cb = g.combat
+		var al: Array = cb.allies
+		var foes: Array = cb.foes
+		if al.size() == 2 and foes.size() == 3 and String(g._col_fight.get("state", "")) == "fight":
+			cb.frozen = true                                         # (the three stand still: what your team does is its own doing)
+			for f in foes:
+				f["st"]["health"] = 100000.0
+			var home: Vector2 = g.map.get_meta("from_gate")
+			var sts: Array = g.map.get_meta("col_stations", [])
+			# energy and rounds: they have both, a shot costs them, dry they run to a charging point and draw it dry
+			var a1: Dictionary = al[1]
+			var w1: Walker = a1["w"]
+			var had: bool = al.all(func(a): return float(a["energy"]) > float(a["energy_max"]) * 0.7 and int(a["ammo"]) > 0 and float(a["energy_max"]) > 50.0 and (a["stations"] as Array).size() == CD.STATIONS)
+			var could: bool = cb.foe_power(a1)
+			a1["energy"] = 0.0
+			a1["ammo"] = 0
+			var cannot: bool = not cb.foe_power(a1)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 4000 and String(a1["state"]) != "recharge":
+				await get_tree().process_frame
+			var runs: bool = String(a1["state"]) == "recharge" and a1.has("station") and (a1["path"] as PackedVector2Array).size() > 0
+			if runs:
+				w1.pos = (a1["station"] as Dictionary)["at"]
+				w1.position = w1.pos * GroundMap.SCALE
+			for f3 in 6:
+				await get_tree().process_frame
+			energy_ok = had and could and cannot and runs and float(a1["energy"]) == float(a1["energy_max"]) and int(a1["ammo"]) == int(a1["ammo_max"]) \
+				and String(a1["state"]) != "recharge" and float((a1["station"] as Dictionary)["cool"]) > 0.0 and cb.wheel_fields() == AW
+			if not energy_ok:
+				print("COLORDER62A energy: had ", had, " could ", could, " cannot ", cannot, " runs ", runs, " now ", a1["energy"], " ", a1["ammo"], " ", a1["state"], " fields ", cb.wheel_fields())
+			if shots:
+				for f3a in 70:
+					await get_tree().process_frame
+				cb.order(al[0], "wing_r")
+				cb.wheel_open = true
+				cb.team_sel = 0
+				Input.warp_mouse(g.wheel_centre() + Vector2(110.0, 64.0))
+				for f3b in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a6_rad.png")
+				cb.wheel_open = false
+			# over a wing: first along its own line to the side of the field, then up the side, then at them
+			var a0: Dictionary = al[0]
+			var w0: Walker = a0["w"]
+			w0.pos = cb._free_near(home + Vector2(-30.0, -40.0))
+			w0.position = w0.pos * GroundMap.SCALE
+			var said_r: String = cb.order(a0, "wing_r")
+			for f4 in 8:
+				await get_tree().process_frame
+			var east: bool = String(a0["order"]) == "wing" and float(a0["wing"]) > 0.0 and int(a0["wing_st"]) == 0 and a0["goal"] != Vector2.INF \
+				and (a0["goal"] as Vector2).x > (CV.VW - 8.0) * TL and absf((a0["goal"] as Vector2).y - w0.pos.y) < 60.0 and String(a0["state"]) == "move"
+			w0.pos = a0["goal"] if a0["goal"] != Vector2.INF else w0.pos
+			w0.position = w0.pos * GroundMap.SCALE
+			a0["think"] = 0.0
+			var tw := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tw < 3000 and int(a0.get("wing_st", 0)) < 1:
+				a0["think"] = 0.0
+				await get_tree().process_frame
+			for f5 in 4:
+				await get_tree().process_frame
+			var north: bool = int(a0["wing_st"]) == 1 and a0["goal"] != Vector2.INF and (a0["goal"] as Vector2).y < w0.pos.y - 200.0 and (a0["goal"] as Vector2).x > (CV.VW - 9.0) * TL
+			var up_goal: Vector2 = a0["goal"]
+			if up_goal != Vector2.INF:
+				w0.pos = up_goal
+				w0.position = w0.pos * GroundMap.SCALE
+			var tw2 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tw2 < 3000 and int(a0.get("wing_st", 0)) < 2:
+				a0["think"] = 0.0
+				await get_tree().process_frame
+			for f6 in 4:
+				await get_tree().process_frame
+			var at_them: bool = int(a0["wing_st"]) == 2 and a0["cur"] != null and String(a0["order"]) == "wing"
+			var said_l: String = cb.order(a0, "wing_l")
+			for f7 in 8:
+				await get_tree().process_frame
+			var west: bool = float(a0["wing"]) < 0.0 and (int(a0["wing_st"]) == 2 or (a0["goal"] != Vector2.INF and (a0["goal"] as Vector2).x < w0.pos.x))
+			wing_ok = east and north and at_them and west and said_r.contains("right wing") and said_l.contains("left wing")
+			if not wing_ok:
+				print("COLORDER62A wing: east ", east, " north ", north, " at them ", at_them, " west ", west, " stage ", a0["wing_st"], " goal ", a0["goal"], " pos ", w0.pos, " ", said_r)
+			# hold in cover: into the nearest cover against the others, and it stays
+			var mid := Vector2(CV.VW * 0.5, CV.VH * 0.62) * TL
+			var block := {}
+			for o in g.map.objects:
+				if String(o.get("kind", "")) in ["lava_rock", "barrier", "barrel"] and (block.is_empty() \
+						or (Vector2(float(o["x"]), float(o["y"])) * TL).distance_to(mid) < (Vector2(float(block["x"]), float(block["y"])) * TL).distance_to(mid)):
+					block = o
+			w0.pos = cb._free_near(Vector2(float(block["x"]) + 3.5, float(block["y"]) + 4.0) * TL)
+			w0.position = w0.pos * GroundMap.SCALE
+			a0["goal"] = Vector2.INF
+			var said_c: String = cb.order(a0, "cover")
+			var tcv := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tcv < 9000 and not (String(a0["state"]) == "cover" and a0["goal"] == Vector2.INF):
+				await get_tree().process_frame
+			var nfo = cb._nearest_foe(w0.pos)
+			var sgc: Dictionary = cb.sight((nfo["w"] as Walker).pos, w0.pos)
+			var stays_at := w0.pos
+			for f8 in 90:
+				await get_tree().process_frame
+			cover_ok = String(a0["order"]) == "cover" and String(a0["state"]) == "cover" and (bool(sgc["cover"]) or bool(sgc["blocked"])) and w0.pos.distance_to(stays_at) < 2.0 \
+				and said_c.contains("holds in cover")
+			if not cover_ok:
+				print("COLORDER62A cover: state ", a0["state"], " goal ", a0["goal"], " sight ", sgc, " moved ", w0.pos.distance_to(stays_at), " ", said_c)
+			# fall back: low on energy it fills up on the way, then back to where you came in, and it digs in there
+			a0["energy"] = float(a0["energy_max"]) * 0.3
+			var said_b: String = cb.order(a0, "retreat")
+			var fills: bool = bool(a0["refill"])
+			var tb := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tb < 3000 and String(a0["state"]) != "recharge":
+				await get_tree().process_frame
+			var to_point: bool = String(a0["state"]) == "recharge"
+			if to_point:
+				w0.pos = (a0["station"] as Dictionary)["at"]
+				w0.position = w0.pos * GroundMap.SCALE
+			for f9 in 6:
+				await get_tree().process_frame
+			var filled: bool = float(a0["energy"]) == float(a0["energy_max"])
+			var tb2 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tb2 < 3000 and a0["goal"] == Vector2.INF:
+				a0["think"] = 0.0
+				await get_tree().process_frame
+			var homeward: bool = a0["goal"] != Vector2.INF and (a0["goal"] as Vector2).distance_to(home) < 80.0
+			if homeward:
+				w0.pos = a0["goal"]
+				w0.position = w0.pos * GroundMap.SCALE
+				a0["goal"] = Vector2.INF                                 # (set there by hand: the way it was on is done with)
+				a0["think"] = 0.0
+			var tb3 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tb3 < 9000 and not (String(a0["state"]) == "cover" and a0["goal"] == Vector2.INF):
+				await get_tree().process_frame
+			back_ok = fills and to_point and filled and homeward and String(a0["order"]) == "retreat" and String(a0["state"]) == "cover" and w0.pos.distance_to(home) < 260.0 and bool(a0.get("back", false)) \
+				and said_b.contains("falls back")
+			if not back_ok:
+				print("COLORDER62A fall back: fills ", fills, " to point ", to_point, " filled ", filled, " homeward ", homeward, " state ", a0["state"], " far ", w0.pos.distance_to(home), " ", said_b, " goal ", a0["goal"], " back ", a0.get("back"), " dug ", a0.get("dug"))
+			# your call: at whoever is nearest, seen or not; badly hurt, it looks for cover; then "follow me" again
+			w1.pos = cb._free_near(home + Vector2(40.0, -40.0))             # (far from the three: it has to go to them)
+			w1.position = w1.pos * GroundMap.SCALE
+			a1["goal"] = Vector2.INF
+			var said_o: String = cb.order(a1, "own")
+			var far0: float = w1.pos.distance_to((cb._nearest_foe(w1.pos)["w"] as Walker).pos)
+			var to2 := Time.get_ticks_msec()
+			var far1 := far0                                         # (how near to the others its way leads)
+			while Time.get_ticks_msec() - to2 < 2500:
+				await get_tree().process_frame
+				if a1["goal"] != Vector2.INF:
+					far1 = minf(far1, (a1["goal"] as Vector2).distance_to((cb._nearest_foe(w1.pos)["w"] as Walker).pos))
+			var goes: bool = String(a1["order"]) == "own" and a1["cur"] != null and far1 < far0 - 15.0
+			a1["st"]["health"] = float(a1["mx"]["health"]) * 0.1
+			a1["st"]["shield"] = 0.0
+			a1["st"]["armor"] = 0.0
+			a1["regen_wait"] = 99.0
+			a1["goal"] = Vector2.INF
+			a1["think"] = 0.0
+			for f10 in 6:
+				await get_tree().process_frame
+			var nf1 = cb._nearest_foe(w1.pos)
+			var hides: bool = String(a1["state"]) == "cover" or (a1["goal"] != Vector2.INF and (bool(cb.sight((nf1["w"] as Walker).pos, a1["goal"])["cover"]) or bool(cb.sight((nf1["w"] as Walker).pos, a1["goal"])["blocked"])))
+			var said_f: String = cb.order(null, "follow")
+			own_ok = goes and hides and said_o.contains("their own call") and al.all(func(a): return String(a["order"]) == "follow") and said_f.contains("follows you")
+			if not own_ok:
+				print("COLORDER62A own call: goes ", goes, " ", far0, " ", far1, " hides ", hides, " state ", a1["state"], " goal ", a1["goal"], " ", said_o, " ", said_f)
+			# the ground: on ice they slide, undergrowth holds them back, nobody stays or stops on what burns
+			var hz: Dictionary = g.map.get_meta("col_hazards")[0]
+			var here: Vector2 = cb._free_near(home + Vector2(-60.0, -70.0))
+			var walk := func(o: Dictionary, kind: String) -> float:
+				var ww: Walker = o["w"]
+				ww.pos = here
+				o["vel"] = Vector2.ZERO
+				if kind != "":
+					g.map.set_meta("col_hazards", [{"kind": kind, "rects": [Rect2(here - Vector2(60.0, 60.0), Vector2(120.0, 120.0))], "name": "x"}])
+				cb._walk(o, Vector2.RIGHT, 0.1, 1.0)
+				g.map.set_meta("col_hazards", [hz])
+				return ww.pos.x - here.x
+			var plain: float = walk.call(a0, "")
+			var iced: float = walk.call(a0, "ice")
+			var held: float = walk.call(a0, "slow")
+			var foe_iced: float = walk.call(foes[0], "ice")
+			var foe_held: float = walk.call(foes[0], "slow")
+			g.map.set_meta("col_hazards", [{"kind": "ice", "rects": [Rect2(here - Vector2(60.0, 60.0), Vector2(120.0, 120.0))], "name": "x"}])
+			var loose: float = cb._reach(a0)
+			g.map.set_meta("col_hazards", [hz])
+			var ember: Rect2 = hz["rects"][0]
+			var safe: Vector2 = cb._safe(ember.get_center())
+			a0["goal"] = Vector2.INF
+			(a0["w"] as Walker).pos = cb._free_near(ember.position + Vector2(-40.0, 10.0))
+			cb._go(a0, ember.get_center(), "move")
+			var not_onto: bool = a0["goal"] != Vector2.INF and not ember.has_point(a0["goal"])
+			var fw: Walker = foes[1]["w"]
+			var fhome := fw.pos
+			fw.pos = ember.get_center()
+			foes[1]["goal"] = Vector2.INF
+			var gets_off: bool = cb._off_burn(foes[1]) and foes[1]["goal"] != Vector2.INF and not ember.has_point(foes[1]["goal"]) and cb.ground_at(ember.get_center()) == "burn"
+			fw.pos = fhome
+			foes[1]["goal"] = Vector2.INF
+			ground_ok = plain > 1.0 and iced > 0.0 and iced < plain * 0.5 and is_equal_approx(held, plain * 0.55) and foe_iced < plain * 0.5 and is_equal_approx(foe_held, plain * 0.55) \
+				and loose > 3.0 and cb._reach(a0) == 3.0 and not ember.has_point(safe) and cb.ground_at(safe) != "burn" and not_onto and gets_off
+			if not ground_ok:
+				print("COLORDER62A ground: plain ", plain, " iced ", iced, " held ", held, " foe ", foe_iced, " ", foe_held, " loose ", loose, " safe ", safe, " ember ", ember, " not onto ", not_onto,
+					" gets off ", gets_off)
+			# you are out: each of your team on their own call
+			cb.order(null, "cover")
+			GameState.gear.health = 5.0
+			cb._hurt_pilot(9999.0, "kinetic")
+			for f11 in 10:
+				await get_tree().process_frame
+			out_ok = String(g._col_fight.get("state", "")) == "watch" and (cb.allies_up() as Array).all(func(a): return String(a["order"]) == "own") and not cb.wheel_open
+			Commands.execute({"type": "debug_casino", "col_fight": "lose"})
+			var tl := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tl < 8000 and not (g.minigame != null and g.minigame.has_method("is_col_result")):
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_col_result"):
+				g.minigame._t = 2.0
+				g.minigame.go(false)
+			for f12 in 10:
+				await get_tree().process_frame
+	check(wheel_ok and ways_ok and energy_ok and wing_ok and cover_ok and back_ok and own_ok and ground_ok and out_ok,
+		"62a, part 6: the wheel of those who stand beside you (six fields in place of the crew's four: follow me, right wing, hold in cover, fall back, your call, left wing); they live on energy and rounds (a shot costs them, dry they run to a charging point and draw it dry); over a wing: to the side of the field, up the side, then at them; hold in cover: into the nearest cover and it stays; fall back: filling up on the way when low, back to where you came in, dug in there; your call: at whoever is nearest, into cover when badly hurt; the ground works on the others and on your team (ice, undergrowth; their ways go round what burns, nobody stops on it or stays on it); you are out: each on their own call  [%s %s %s %s %s %s %s %s %s]" % [wheel_ok, ways_ok, energy_ok, wing_ok, cover_ok, back_ok, own_ok, ground_ok, out_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 7a (Luz): Survivor, the core: the first stage as a very large hologram with obstacles in place of
+## cover, the swarm (hundreds at once, kept light), your weapons firing by themselves (Pulse, Laser), shards of light
+## and levels, the three cards of a level through the command bus, the dodge, what a run pays.
+func _test_colsurv62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var CV = load("res://scripts/ground/colosseum_vr.gd")
+	var SV = load("res://data/survivor.gd")
+	var SS = load("res://scripts/ground/survivor_stage.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# ---- the rules
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var r0: Dictionary = SV.fresh("outbreak", "laser")
+	var o0: Array = SV.offers(r0, rng)
+	var o0_ids := {}
+	for c0 in o0:
+		o0_ids[String(c0["kind"]) + String(c0["id"])] = true
+	var e_new := String(SV.apply(r0, {"kind": "weapon", "id": "pulse"}))
+	var e_twice := String(SV.apply(r0, {"kind": "weapon", "id": "pulse"}))
+	var e_bad := String(SV.apply(r0, {"kind": "weapon", "id": "nope"}))
+	var ups: Array = []
+	for q in 6:
+		ups.append(String(SV.apply(r0, {"kind": "up", "id": "pulse"})))
+	var e_early := String(SV.apply(r0, {"kind": "ult", "id": "pulse"}))          # (level 5, but its bonus is not carried)
+	var e_bonus := String(SV.apply(r0, {"kind": "bonus", "id": "amp"}))
+	var ready: bool = SV.ult_ready(r0, "pulse") and not SV.ult_ready(r0, "laser")
+	var o_ult: Array = SV.offers(r0, rng)
+	var e_ult := String(SV.apply(r0, o_ult[0]))
+	var ult_made: bool = String(o_ult[0]["kind"]) == "ult" and String(o_ult[0]["id"]) == "pulse" and String(o_ult[0]["name"]) == "Nova Field" and e_ult == "" \
+		and SV.weapon_level(r0, "pulse") == SV.ULT and not SV.ult_ready(r0, "pulse") and str(SV.stats("pulse", SV.ULT)) == str(SV.stats("pulse", 5))
+	for wid in SV.WEAPON_ORDER:                                               # everything there is, to the top
+		if SV.weapon_level(r0, wid) == 0:
+			SV.apply(r0, {"kind": "weapon", "id": wid})
+		while SV.weapon_level(r0, wid) > 0 and SV.weapon_level(r0, wid) < SV.MAX_LEVEL:      # (five places: the sixth finds none)
+			SV.apply(r0, {"kind": "up", "id": wid})
+	for bid in SV.BONUS_ORDER:
+		if SV.bonus_level(r0, bid) == 0:
+			SV.apply(r0, {"kind": "bonus", "id": bid})
+		while SV.bonus_level(r0, bid) > 0 and SV.bonus_level(r0, bid) < SV.MAX_LEVEL:
+			SV.apply(r0, {"kind": "bonus_up", "id": bid})
+	var e_seventh := String(SV.apply(r0, {"kind": "bonus", "id": "amp"}))
+	var e_sixth_w := String(SV.apply(r0, {"kind": "weapon", "id": "blade"}))          # (five places: no room for a sixth)
+	var e_sixth_b := String(SV.apply(r0, {"kind": "bonus", "id": "servo"}))
+	var ru: Dictionary = SV.fresh()                                           # what a card says in figures, and what it fuses into
+	var up_lines: Array = SV.card_lines(ru, {"kind": "up", "id": "pulse"})
+	var new_lines: Array = SV.card_lines(ru, {"kind": "weapon", "id": "plasma"})
+	var fz0: Dictionary = SV.fusion(ru, {"kind": "up", "id": "pulse"})
+	var fzb: Dictionary = SV.fusion(ru, {"kind": "bonus", "id": "coolant"})
+	SV.apply(ru, {"kind": "bonus", "id": "amp"})
+	var bon_lines: Array = SV.card_lines(ru, {"kind": "bonus_up", "id": "amp"})
+	var fz1: Dictionary = SV.fusion(ru, {"kind": "up", "id": "pulse"})
+	var fzb1: Dictionary = SV.fusion(ru, {"kind": "bonus_up", "id": "amp"})
+	var figures_ok: bool = str(up_lines) == str([["Damage", "4", "6"], ["Radius", "44", "52"], ["Interval", "1.4 s", "1.25 s"]]) \
+		and new_lines.size() == 4 and str(new_lines[0]) == str(["Grenades", "", "1"]) and str(new_lines[1]) == str(["Damage", "", "14"]) \
+		and str(bon_lines) == str([["Fields, bursts, reach", "+8 %", "+16 %"]]) and SV.card_lines(ru, {"kind": "heal", "id": "heal"}).is_empty() \
+		and String(fz0["text"]) == "Fuses with Field Amplifier into Nova Field" and not bool(fz0["ready"]) and bool(fz1["ready"]) \
+		and String(fzb["text"]) == "Fuses Laser into Prism Array" and not bool(fzb["ready"]) and String(fzb1["text"]) == "Fuses Pulse into Nova Field" and bool(fzb1["ready"]) \
+		and SV.fusion(ru, {"kind": "heal", "id": "heal"}).is_empty() \
+		and SV.shard_tier(1) == 0 and SV.shard_tier(3) == 1 and SV.shard_tier(10) == 2 and SV.shard_tier(50) == 3 \
+		and SA.shard(0, 0) != null and SA.shard(3, 2) != null and SA.shard(3, 0).get_width() > SA.shard(0, 0).get_width() and SA.shard(1, 1) == SA.shard(1, 1)
+	var ults := 0
+	for q3 in 8:
+		var oq: Array = SV.offers(r0, rng)
+		if String(oq[0]["kind"]) == "ult" and String(SV.apply(r0, oq[0])) == "":
+			ults += 1
+	var o_full: Array = SV.offers(r0, rng)
+	var md0: Dictionary = SV.mods(SV.fresh())
+	var md: Dictionary = SV.mods(r0)
+	r0["hp"] = 150.0
+	SV.apply(r0, {"kind": "heal"})
+	var r1: Dictionary = SV.fresh()
+	r1["xp"] = SV.need(1) + 2
+	var lv1: bool = SV.level_up(r1)
+	var lv2: bool = SV.level_up(r1)
+	r1["hp"] = 50.0
+	SV.apply(r1, {"kind": "heal"})
+	var paid: Dictionary = SV.reward({"t": 300.0, "kills": 120, "purse": 15}, false)
+	var paid2: Dictionary = SV.reward({"t": 300.0, "kills": 120}, true)
+	var cst: Dictionary = CD.fresh()
+	var prog0: float = SV.progress(cst)
+	var s1: Dictionary = SV.settle(cst, {"t": 200.0, "kills": 40, "level": 6, "stage": "outbreak"}, false)
+	var s2: Dictionary = SV.settle(cst, {"t": 120.0, "kills": 10, "level": 3, "stage": "outbreak"}, false)
+	SV.record(cst)["own"] = ["drone", "magnet", "servo", "blade"]             # (part 7c-3: how far you have come is what you have unlocked and tuned)
+	SV.record(cst)["tune"] = {"dmg": 6}
+	var prog1: float = SV.progress(cst)
+	var ccr: Dictionary = CD.fresh()
+	ccr["mode"] = "survivor"
+	var crowd0: float = CD.crowd(ccr)
+	SV.record(ccr)["own"] = SV.UNLOCK_COST.keys()
+	for tq0 in SV.TUNE_ORDER:
+		SV.record(ccr)["tune"][tq0] = SV.TUNE_MAX
+	SV.record(ccr)["reroll"] = 3
+	SV.record(ccr)["revive"] = true
+	var crowd1: float = CD.crowd(ccr)
+	ccr["mode"] = "king"
+	var rule_ok: bool = SV.need(1) == 7 and SV.need(5) > SV.need(4) and SV.spawn_rate(600.0) > SV.spawn_rate(60.0) and SV.spawn_rate(99999.0) <= 20.0 and SV.foe_hp("shambler", 600.0) > SV.foe_hp("shambler", 0.0) \
+		and float(SV.fresh()["hp"]) == SV.HEALTH and str(SV.fresh()["weapons"]) == str([["pulse", 1]]) and str(SV.fresh("outbreak", "blade")["weapons"]) == str([["blade", 1]]) \
+		and SV.WEAPON_ORDER.size() == 13 and SV.BONUS_ORDER.size() == 14 and (SV.WEAPON_ORDER as Array).all(func(w): return (SV.WEAPONS[w]["levels"] as Array).size() == 5 and SV.BONI.has(String(SV.WEAPONS[w]["bonus"])) \
+			and String(SV.WEAPONS[w]["ult"]) != "" and not String(SV.WEAPONS[w]["text"]).contains("–")) \
+		and (SV.WEAPON_ORDER as Array).map(func(w): return String(SV.WEAPONS[w]["bonus"])) == ["amp", "coolant", "reactor", "magnet", "nanite", "servo", "stabiliser", "overclock", "shieldcell", "scavenger", "capacitor", "massdriver", "gyro"] \
+		and o0.size() == 3 and o0_ids.size() == 3 and o0.all(func(c): return String(c["kind"]) in ["weapon", "up", "bonus"] and String(SV.apply(SV.fresh("outbreak", "laser"), c)) == "") \
+		and e_new == "" and e_twice != "" and e_bad != "" and ups == ["", "", "", "", "That is at its last level.", "That is at its last level."] \
+		and e_early != "" and e_bonus == "" and ready and ult_made \
+		and (r0["weapons"] as Array).size() == 5 and (r0["boni"] as Array).size() == 5 and e_seventh != "" and ults == 4 and figures_ok \
+		and e_sixth_w == "No place for another weapon." and e_sixth_b == "No place for another bonus." \
+		and (r0["weapons"] as Array).all(func(w): return int(w[1]) == SV.ULT) and (r0["boni"] as Array).all(func(b): return int(b[1]) == SV.MAX_LEVEL) \
+		and o_full.size() == 3 and o_full.all(func(c): return String(c["kind"]) in ["heal", "coins"]) \
+		and float(md0["area"]) == 1.0 and float(md0["cd"]) == 1.0 and float(md0["dmg"]) == 1.0 and float(md0["speed"]) == 1.0 and float(md0["hp"]) == 0.0 and float(md0["regen"]) == 0.0 \
+		and is_equal_approx(float(md["area"]), 1.4) and is_equal_approx(float(md["cd"]), 0.7) and is_equal_approx(float(md["dmg"]), 1.5) and is_equal_approx(float(md["mag"]), 2.5) \
+		and is_equal_approx(float(md["speed"]), 1.0) and float(md["hp"]) == 60.0 and is_equal_approx(float(md["regen"]), 0.75) and SV.max_hp(r0) == 160.0 and float(r0["hp"]) == 160.0 \
+		and float(SV.stats("pulse", 5)["r"]) > float(SV.stats("pulse", 1)["r"]) and float(SV.stats("pulse", 5)["every"]) < float(SV.stats("pulse", 1)["every"]) \
+		and int(SV.stats("laser", 5)["n"]) == 4 and int(SV.stats("plasma", 5)["n"]) > int(SV.stats("plasma", 1)["n"]) and float(SV.stats("plasma", 5)["r"]) > float(SV.stats("plasma", 1)["r"]) \
+		and int(SV.stats("drone", 5)["n"]) > int(SV.stats("drone", 1)["n"]) and float(SV.stats("drone", 5)["every"]) < float(SV.stats("drone", 1)["every"]) \
+		and float(SV.stats("superlaser", 5)["reach"]) > float(SV.stats("superlaser", 1)["reach"]) and float(SV.stats("superlaser", 5)["every"]) < float(SV.stats("superlaser", 1)["every"]) \
+		and float(SV.stats("blade", 5)["time"]) > float(SV.stats("blade", 1)["time"]) and int(SV.stats("blade", 5)["n"]) > int(SV.stats("blade", 1)["n"]) \
+		and float(SV.stats("blade", 5)["dmg"]) > float(SV.stats("blade", 1)["dmg"]) and SV.MAX_LEVEL == 5 and SV.SLOTS == 5 \
+		and lv1 and not lv2 and int(r1["level"]) == 2 and int(r1["xp"]) == 2 and float(r1["hp"]) == 80.0 \
+		and int(paid["coins"]) == 75 and int(paid["xp"]) == 33 and int(paid2["coins"]) == 90 and int(paid2["xp"]) == 50 \
+		and bool(s1["best"]) and not bool(s2["best"]) and float(SV.record(cst)["best"]["outbreak"]) == 200.0 and int(SV.record(cst)["runs"]) == 2 and int(SV.record(cst)["kills"]) == 50 \
+		and int(cst["xp"]) == int(s1["xp"]) + int(s2["xp"]) and SV.time_text(402.0) == "06:42" and SV.RUN_TIME == 900.0 \
+		and prog0 == 0.0 and prog1 > 0.1 and prog1 < 0.5 and is_equal_approx(crowd0, 0.2) and is_equal_approx(crowd1, 1.0) and CD.crowd(ccr) < 0.5 \
+		and SV.first_weapon(CD.fresh()) == "pulse" \
+		and (CD.MODES as Array).filter(func(m): return bool(m["open"])).map(func(m): return String(m["id"])) == ["king", "team", "survivor"]
+	if not rule_ok:
+		print("COLSURV62A rules: offers ", o0, " ", [e_new, e_twice, e_bad, e_early, e_bonus, e_ult, e_seventh], " ups ", ups, " ready ", ready, " ult ", o_ult[0], " made ", ult_made, " ults ", ults,
+			" full ", o_full, " run ", r0, " sixth ", [e_sixth_w, e_sixth_b], " cards ", figures_ok, " ", up_lines, new_lines, bon_lines, fz0, fz1, fzb, fzb1, " mods ", md0, md, " r1 ", r1, " paid ", paid, paid2, " progress ", prog0, " ", prog1, " crowd ", crowd0, " ", crowd1)
+	# ---- the stage: far larger than a fight's ground, room to run, obstacles of the setting, its dangers
+	var sm: GroundMap = SS.build("outbreak", 1)
+	var kinds := {}
+	for o in sm.objects:
+		kinds[String(o.get("kind", ""))] = int(kinds.get(String(o.get("kind", "")), 0)) + 1
+	var hz: Array = sm.get_meta("col_hazards", [])
+	var road := true
+	for rx in range(SS.EDGE + 1, SS.SW - SS.EDGE - 1):
+		road = road and GroundMap.walkable_t(sm.t_at(rx, SS.SH / 2))
+	for ry in range(SS.EDGE + 1, SS.SH - SS.EDGE - 1):
+		road = road and GroundMap.walkable_t(sm.t_at(SS.SW / 2, ry))
+	var corners: Array = [Vector2(3.5, 3.5), Vector2(SS.SW - 3.5, 3.5), Vector2(3.5, SS.SH - 3.5), Vector2(SS.SW - 3.5, SS.SH - 3.5)]
+	var stage_ok: bool = sm.w == SS.SW and sm.h == SS.SH and sm.w * sm.h >= CV.VW * CV.VH * 5 and sm.free_at(sm.spawn, 4.0) and road \
+		and corners.all(func(c): return sm.path(sm.spawn, (c as Vector2) * TL).size() > 0) \
+		and sm.objects.size() >= 70 and int(kinds.get("container", 0)) >= 4 and int(kinds.get("rover", 0)) >= 4 and int(kinds.get("lamp_post", 0)) >= 10 \
+		and not kinds.has("barrier") and not kinds.has("bulwark") and kinds.size() >= 8 \
+		and hz.size() == 2 and String(hz[0]["kind"]) == "burn" and (hz[0]["rects"] as Array).size() >= 2 and String(hz[1]["kind"]) == "slow" and (hz[1]["rects"] as Array).size() >= 2 \
+		and sm.has_meta("dark") and sm.lights.size() > 15 and (sm.zones as Array).any(func(z): return String(z.get("kind", "")) == "sv_giveup") \
+		and not GroundMap.walkable_t(sm.t_at(0, 0)) and not (sm.objects as Array).any(func(o): return (Vector2(float(o["x"]), float(o["y"])) * TL).distance_to(sm.spawn) < 5.0 * TL)
+	var tex_ok := true
+	for v in 4:
+		for d in 4:
+			for f in 3:
+				var tx: Texture2D = SA.texture("shambler", v, d, f)
+				tex_ok = tex_ok and tx != null and tx.get_width() == SA.W and tx.get_height() == SA.H
+	stage_ok = stage_ok and tex_ok and SA.texture("shambler", 0, 2, 1) == SA.texture("shambler", 0, 2, 1) and SA.texture("shambler", 0, 2, 1) != SA.texture("shambler", 1, 2, 1)
+	if not stage_ok:
+		print("COLSURV62A stage: size ", sm.w, "x", sm.h, " objects ", sm.objects.size(), " kinds ", kinds, " road ", road, " hazards ", hz.map(func(h): return [h["kind"], (h["rects"] as Array).size()]),
+			" lights ", sm.lights.size(), " tex ", tex_ok)
+	# ---- down to Centauria, into the lobby, the fighters' room, Survivor
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var start_ok := false
+	var swarm_ok := false
+	var weapon_ok := false
+	var level_ok := false
+	var you_ok := false
+	var fast_ok := false
+	var end_ok := false
+	var ms := 0.0
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		GameState.coins = 100
+		var own_suit: String = GameState.gear.suit
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		CD.switch_mode(GameState.col_state(), "survivor")              # (part 10: Survivor has a room of its own)
+		g._col_prep_open()
+		var q_mode := String(Commands.execute({"type": "col_mode", "seat": 0, "mode": "survivor"}))
+		var q_ready := String(Commands.execute({"type": "col_ready", "seat": 0}))
+		var prep0 = g.minigame
+		var q_wp := String(Commands.execute({"type": "sv_weapon", "seat": 0, "id": "blade"}))
+		var q_wp_bad := String(Commands.execute({"type": "sv_weapon", "seat": 0, "id": "nope"}))
+		var picked_blade: bool = SV.first_weapon(GameState.col_state()) == "blade"
+		if prep0 != null and prep0.has_method("is_col_prep"):
+			prep0.pick_sv_weapon(0)                                  # (… and back to the pulse, by the tile)
+		var by_tile: bool = SV.first_weapon(GameState.col_state()) == "pulse" and prep0 != null and (prep0.sv_weapon_rect(5) as Rect2).size.x > 100.0
+		if shots:
+			for f1b in 6:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_vorbereitung.png")
+		g._col_prep_done(true)
+		# the entrance: the round from above, nobody walks in, the picture of you and your first weapon, the hologram
+		var saw_round := false
+		var saw_pic := false
+		var nobody := true
+		var pic_shot := false
+		var te0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - te0 < 40000 and String(g.level) != "zcolsv":
+			await get_tree().process_frame
+			var it: Dictionary = g._col_intro
+			if it.is_empty():
+				continue
+			saw_round = saw_round or (int(it["phase"]) == 1 and float(g.story_zoom) > 0.3 and float(g.story_zoom) < 0.4)
+			nobody = nobody and int(it["phase"]) != 2 and (it["walkers"] as Array).is_empty()
+			if it.has("vs") and is_instance_valid(it["vs"]) and it["vs"].has_method("is_sv_intro"):
+				saw_pic = String(it["vs"].weapon) == "pulse" and it["vs"].you_tex != null and String(it["vs"].you_name) == GameState.pilot_name.to_upper()
+				if shots and not pic_shot and float(it["vs"]._t) > 1.6:
+					pic_shot = true
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_einlauf.png")
+				if float(it["vs"]._t) > (2.0 if shots else 0.4):
+					g._col_enter()                                   # (as holding Esc or Options does)
+		for f2 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		start_ok = q_mode == "" and q_ready == "" and q_wp == "" and q_wp_bad != "" and picked_blade and by_tile and saw_round and saw_pic and nobody \
+			and bool(GameState.col_state()["seen"]) and (g._col_intro as Dictionary).is_empty() and String(g.level) == "zcolsv" and sv != null and is_instance_valid(sv) and g.combat == null and g.minigame == null \
+			and String(g._title.text).contains("Survivor") and String(g._title.text).contains("Outbreak") and GameState.col_own_gear != null and g.input_enabled \
+			and sv.hud != null and is_instance_valid(sv.hud) and g.map.w == SS.SW and g.pilot.pos.distance_to(g.map.spawn) < 6.0 \
+			and g._world.get_children().any(func(nd): return is_instance_of(nd, CV.VrFx) and int(nd.tw) == SS.SW and int(nd.th) == SS.SH and (nd.hazards as Array).size() == 2) \
+			and int(sv.n) == 0 or (sv != null and int(sv.n) < 4)
+		if not start_ok:
+			print("COLSURV62A start: ", [q_mode, q_ready, q_wp, q_wp_bad], " blade ", picked_blade, " tile ", by_tile, " round ", saw_round, " picture ", saw_pic, " nobody ", nobody, " level ", g.level, " run ", sv, " combat ", g.combat, " title ", g._title.text)
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			# the swarm: they come from just outside the picture and walk at you
+			sv._wt["pulse"] = 99.0                                   # (nothing fires: they are only to be watched)
+			var came := 0
+			var outside := true
+			var first_far := 0.0
+			var tsw := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tsw < 6000 and came < 3:
+				await get_tree().process_frame
+				while came < int(sv.n):                               # (each one, the moment it has come)
+					var fd0: float = (sv.fp[came] as Vector2).distance_to(g.pilot.pos)
+					outside = outside and fd0 > 150.0
+					if came == 0:
+						first_far = fd0
+					came += 1
+			var far0 := first_far
+			var far1: float = (sv.fp[0] as Vector2).distance_to(g.pilot.pos) if int(sv.n) > 0 else 9999.0
+			var clock: bool = float(sv.run["t"]) > 1.0 and float(sv.run["t"]) < 30.0
+			sv.frozen = true
+			sv.n = 0
+			# nobody stands in anything: a hundred and more at once, a second and a half of pushing and walking
+			sv.frozen = false
+			var made: int = sv.swarm(220)
+			if shots:
+				for f3 in 60:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_schwarm.png")
+			var keep_hp := 100.0
+			sv.run["hp"] = 1000000.0
+			sv._wt["pulse"] = 99.0
+			for f4 in 90:
+				await get_tree().process_frame
+			var in_free := true
+			var apart := 0
+			for i4 in int(sv.n):
+				in_free = in_free and int(sv._solid[sv._ti(sv.fp[i4])]) == 0
+			for i5 in mini(60, int(sv.n)):
+				for j5 in range(i5 + 1, mini(60, int(sv.n))):
+					if (sv.fp[i5] as Vector2).distance_to(sv.fp[j5]) < 3.0:
+						apart += 1
+			swarm_ok = came >= 3 and outside and far1 < far0 - 12.0 and clock and made >= 200 and in_free and apart <= 3 and int(sv.n) >= 200
+			if not swarm_ok:
+				print("COLSURV62A swarm: came ", came, " outside ", outside, " far ", far0, " ", far1, " clock ", sv.run["t"], " made ", made, " free ", in_free, " on top of each other ", apart, " n ", sv.n)
+			# what a step costs with the field full
+			sv.swarm(SV.MAX_FOES)
+			var full_n: int = sv.n
+			var tp0 := Time.get_ticks_usec()
+			for f5 in 60:
+				sv.step(0.016)
+			ms = float(Time.get_ticks_usec() - tp0) / 60000.0
+			fast_ok = full_n == SV.MAX_FOES and ms < 14.0 and sv.add_foe(0, pp + Vector2(200, 0)) == -1 if int(sv.n) >= SV.MAX_FOES else (full_n == SV.MAX_FOES and ms < 14.0)
+			print("COLSURV62A a step with %d of the swarm: %.2f ms" % [full_n, ms])
+			g._close_game()
+			sv.cards = []
+			sv.pending = 0
+			sv.frozen = true
+			sv.n = 0
+			sv.sn = 0
+			sv.run["hp"] = keep_hp
+			sv.run["xp"] = 0
+			sv.run["level"] = 1
+			sv.run["kills"] = 0
+			g.pilot.pos = g.map.spawn
+			g.pilot.position = g.pilot.pos * GroundMap.SCALE
+			pp = g.pilot.pos
+			# the pulse: all in its field, again and again; who is out drops a shard; shards near you fly to you
+			for k in 5:
+				sv.add_foe(0, pp + Vector2.from_angle(k * 1.2) * 26.0)
+			sv.add_foe(0, pp + Vector2(120.0, 0.0))                  # (outside the field)
+			var hp_far: float = sv.fhp[5]
+			sv._kbk = 0.0                                            # (24 Nov 2026: the Pulse is weaker and throws them out of its field; here they are to stay in it, and it takes three pulses)
+			sv._wt["pulse"] = 0.0
+			sv.step(0.016)
+			var hurt_once: bool = int(sv.n) == 6 and float(sv.fhp[0]) < hp_far and float(sv.fhp[5]) == hp_far and (sv.rings as Array).size() == 1
+			sv._wt["pulse"] = 0.0
+			sv.step(0.016)
+			sv._wt["pulse"] = 0.0
+			sv.step(0.016)
+			sv._kbk = 1.0
+			var out5: bool = int(sv.n) == 1 and int(sv.run["kills"]) == 5 and int(sv.sn) + int(sv.run["xp"]) == 5
+			sv._wt["pulse"] = 99.0
+			for f6 in 40:
+				sv.step(0.016)
+			var taken: bool = int(sv.sn) == 0 and int(sv.run["xp"]) == 5 and int(sv.run["level"]) == 1 and g.minigame == null
+			# the laser: a beam at the nearest in reach
+			sv.run["weapons"] = [["pulse", 1], ["laser", 1]]
+			sv.n = 0
+			sv.add_foe(0, pp + Vector2(150.0, 0.0))
+			sv.add_foe(0, pp + Vector2(0.0, -90.0))
+			sv.add_foe(0, pp + Vector2(-300.0, 0.0))                 # (out of reach)
+			var h0: float = sv.fhp[0]
+			sv._wt["laser"] = 0.0
+			sv.step(0.016)
+			var beam: bool = (sv.beams as Array).size() == 1 and int(sv.n) == 2 and int(sv.run["kills"]) == 6 and float(sv.fhp[0]) == h0 and float(sv.fhp[1]) == h0 \
+				and ((sv.beams[0]["b"] as Vector2) - (pp + Vector2(0.0, -90.0))).length() < 30.0
+			sv.run["weapons"] = [["pulse", 1], ["laser", 3]]
+			sv._wt["laser"] = 0.0
+			sv.step(0.016)
+			var two: bool = (sv.beams as Array).size() == 2 and int(sv.n) == 1 and int(sv.run["kills"]) == 7              # (level 3: two beams; the one out of reach stays)
+			sv.run["weapons"] = [["pulse", 1]]
+			weapon_ok = hurt_once and out5 and taken and beam and two
+			if not weapon_ok:
+				print("COLSURV62A weapons: once ", hurt_once, " out ", out5, " taken ", taken, " beam ", beam, " two ", two, " n ", sv.n, " kills ", sv.run["kills"], " shards ", sv.sn, " xp ", sv.run["xp"],
+					" beams ", sv.beams)
+			# part 7b: the other four weapons, the boni, the ultimates
+			var ring := func(count: int, rad: float, hp: float) -> void:
+				sv.n = 0
+				for k2 in count:
+					var fi: int = sv.add_foe(0, pp + Vector2.from_angle(k2 * TAU / count) * rad)
+					if hp > 0.0:
+						sv.fhp[fi] = hp
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var clean := func() -> void:
+				sv.n = 0
+				sv.sn = 0
+				sv.nades.clear()
+				sv.shots.clear()
+				sv.blades.clear()
+				sv.blasts.clear()
+				sv.beams.clear()
+				sv.sweep = {}
+				sv.run["xp"] = -1000000
+				sv.run["hp"] = SV.HEALTH
+			clean.call()
+			sv.run["weapons"] = [["plasma", 1]]                      # plasma grenades: thrown at one near you, a burst where it lands
+			sv.add_foe(0, pp + Vector2(60.0, 0.0))
+			sv._wt["plasma"] = 0.0
+			sv.step(0.016)
+			var thrown: bool = (sv.nades as Array).size() == 1 and ((sv.nades[0]["b"] as Vector2) - (pp + Vector2(60.0, 0.0))).length() < 1.0 and int(sv.n) == 1
+			var k_before: int = sv.run["kills"]
+			run_steps.call(40)
+			var burst: bool = (sv.nades as Array).is_empty() and int(sv.n) == 0 and int(sv.run["kills"]) == k_before + 1
+			clean.call()
+			sv.run["weapons"] = [["drone", 1]]                       # the drone: a ring of shots, each stops at the first it meets
+			ring.call(36, 50.0, 1000.0)                              # (shoulder to shoulder: no shot finds a gap)
+			var shot0: int = sv.shot_n                               # (part 7d: a drone flies with you; it turns its gun once round and fires shot by shot)
+			sv._wt["drone"] = 0.0
+			sv.step(0.016)
+			var first_d: int = int(sv.shot_n) - shot0
+			var ways_d := {}
+			var plain_d := true
+			var near_d := true
+			for k9 in 45:
+				sv.step(0.016)
+				for q4 in sv.shots:
+					ways_d[int(round((q4["v"] as Vector2).angle() * 10.0))] = true
+					plain_d = plain_d and not bool(q4["pierce"])
+				near_d = near_d and (sv.drones as Array).size() == 1 and (sv.drones[0]["p"] as Vector2).distance_to(pp) < 30.0
+			var volley: bool = first_d <= 1 and int(sv.shot_n) - shot0 == 6 and ways_d.size() >= 5 and plain_d and near_d and int(sv.drones[0]["q"]) == 0
+			run_steps.call(80)
+			var struck := 0
+			for i6 in int(sv.n):
+				if float(sv.fhp[i6]) < 1000.0:
+					struck += 1
+			var ring_hit: bool = struck >= 2 and struck <= 6 and (sv.shots as Array).is_empty()
+			clean.call()
+			sv.run["weapons"] = [["superlaser", 1]]                  # the superlaser: a quarter of the round, and what it touches is out
+			ring.call(24, 100.0, 1000.0)
+			sv.add_foe(0, pp + Vector2(0.0, 220.0))                  # (out of its reach)
+			sv._wt["superlaser"] = 0.0
+			sv.step(0.016)
+			var sweeping: bool = not (sv.sweep as Dictionary).is_empty()
+			run_steps.call(50)
+			var swept: int = 25 - int(sv.n)
+			var quarter: bool = (sv.sweep as Dictionary).is_empty() and swept >= 5 and swept <= 9
+			clean.call()
+			sv.run["weapons"] = [["blade", 1]]                       # the silverblade: out, back from the edge of the picture, gone when its time is up
+			ring.call(30, 70.0, 1000.0)
+			sv._wt["blade"] = 0.0
+			sv.step(0.016)
+			var launched: bool = (sv.blades as Array).size() == 1
+			var inside := true
+			var hb: Vector2 = sv._half()
+			for k4 in 150:
+				sv.step(0.016)
+				for bq in sv.blades:
+					inside = inside and absf((bq["p"] as Vector2).x - pp.x) <= hb.x and absf((bq["p"] as Vector2).y - pp.y) <= hb.y
+			var cut := 0
+			for i7 in int(sv.n):
+				if float(sv.fhp[i7]) < 1000.0:
+					cut += 1
+			var still_up: bool = (sv.blades as Array).size() == 1
+			run_steps.call(60)
+			var blade_ok: bool = launched and inside and cut >= 1 and still_up and (sv.blades as Array).is_empty()
+			clean.call()
+			sv.run["weapons"] = [["pulse", 1]]                       # the boni: wider, faster, more health that comes back
+			sv.run["boni"] = [["amp", 5], ["servo", 5], ["nanite", 5], ["magnet", 5]]
+			sv.mods = SV.mods(sv.run)
+			sv._wt["pulse"] = 0.0
+			sv.step(0.016)
+			var wide: bool = (sv.rings as Array).size() == 1 and is_equal_approx(float(sv.rings[0]["r"]), 44.0 * 1.4)
+			sv.run["hp"] = 50.0
+			sv.step(0.5)
+			var boni_ok: bool = wide and is_equal_approx(sv.speed(), 1.25) and float(sv.run["hp"]) > 50.3 and float(sv.run["hp"]) < 50.5
+			sv.run["boni"] = []
+			sv.mods = SV.mods(sv.run)
+			clean.call()
+			sv.run["weapons"] = [["pulse", SV.ULT]]                  # the ultimates: the Nova Field stands
+			sv.add_foe(0, pp + Vector2(70.0, 0.0))
+			sv.fhp[0] = 1000.0
+			sv._wt["pulse"] = 0.0
+			sv.step(0.016)
+			var nova: bool = is_equal_approx(float(sv.nova_r), 82.0 * 1.15) and float(sv.fhp[0]) < 1000.0 and (sv.rings as Array).is_empty()
+			clean.call()
+			sv.run["weapons"] = [["laser", SV.ULT]]                  # … the Prism Array jumps on
+			for k5 in 3:
+				var fj: int = sv.add_foe(0, pp + Vector2(100.0 + k5 * 40.0, 0.0))
+				sv.fhp[fj] = 1000.0
+			sv._wt["laser"] = 0.0
+			sv.step(0.016)
+			var prism: bool = (sv.beams as Array).size() >= 6
+			clean.call()
+			sv.run["weapons"] = [["plasma", SV.ULT]]                 # … the Plasma Rain
+			sv._wt["plasma"] = 0.0
+			sv.step(0.016)
+			var rain: bool = (sv.nades as Array).size() == 8
+			clean.call()
+			sv.run["weapons"] = [["drone", SV.ULT]]                  # … the Carrier Swarm
+			var shot1: int = sv.shot_n                               # (part 7d: three drones, eleven shots each, going through)
+			sv._wt["drone"] = 0.0
+			sv.step(0.016)
+			var fleet_d: bool = (sv.drones as Array).size() == 3
+			var through_d := true
+			for k10 in 80:
+				sv.step(0.016)
+				for q5 in sv.shots:
+					through_d = through_d and bool(q5["pierce"])
+			var carrier: bool = fleet_d and int(sv.shot_n) - shot1 == 33 and through_d
+			sv.run["weapons"] = []
+			sv.step(0.016)
+			carrier = carrier and (sv.drones as Array).is_empty()        # (no drone weapon, no drone)
+			clean.call()
+			sv.run["weapons"] = [["superlaser", SV.ULT]]             # … the Sunlance: the whole round
+			ring.call(24, 100.0, 1000.0)
+			sv._wt["superlaser"] = 0.0
+			run_steps.call(110)
+			var sun: bool = int(sv.n) == 0 and (sv.sweep as Dictionary).is_empty()
+			clean.call()
+			sv.run["weapons"] = [["blade", SV.ULT]]                  # … the Silver Storm (part 7e): one more blade, they stay for good, their trails cut too
+			ring.call(16, 64.0, 1000.0)
+			run_steps.call(60)
+			var cut2 := 0
+			for i8 in int(sv.n):
+				if float(sv.fhp[i8]) < 1000.0:
+					cut2 += 1
+			var four_b: bool = (sv.blades as Array).size() == 4 and (sv.blades as Array).all(func(bq9): return bool(bq9.get("u", false)))
+			run_steps.call(500)                                      # (longer than any blade's time)
+			var stays_b: bool = (sv.blades as Array).size() == 4 and (sv.blades[0]["tr"] as PackedVector2Array).size() == 64
+			var on_trail: int = sv.add_foe(0, (sv.blades[0]["tr"] as PackedVector2Array)[31]) if stays_b else -1
+			if on_trail >= 0:
+				sv.fhp[on_trail] = 1000.0
+				sv.fmx[on_trail] = 1000.0
+			sv.step(0.016)
+			var trail_cuts: bool = on_trail >= 0 and on_trail < int(sv.n) and float(sv.fhp[on_trail]) < 1000.0
+			var storm_ok: bool = four_b and stays_b and trail_cuts and cut2 >= 2 and (sv.orb_pts as Array).is_empty()
+			clean.call()
+			sv.run["xp"] = 0
+			sv.run["weapons"] = [["pulse", 1]]
+			sv.mods = SV.mods(sv.run)
+			sv._wt["pulse"] = 99.0
+			var arsenal_ok: bool = thrown and burst and volley and ring_hit and sweeping and quarter and blade_ok and boni_ok and nova and prism and rain and carrier and sun and storm_ok
+			weapon_ok = weapon_ok and arsenal_ok
+			if not arsenal_ok:
+				print("COLSURV62A arsenal: plasma ", thrown, " ", burst, " drone ", volley, " ", ring_hit, " struck ", struck, " superlaser ", sweeping, " ", quarter, " swept ", swept, " blade ", launched, " ",
+					inside, " cut ", cut, " up ", still_up, " boni ", boni_ok, " ring ", sv.rings, " speed ", sv.speed(), " hp ", sv.run["hp"], " nova ", nova, " ", sv.nova_r, " prism ", prism, " ",
+					(sv.beams as Array).size(), " rain ", rain, " carrier ", carrier, " ", (sv.shots as Array).size(), " sun ", sun, " n ", sv.n, " storm ", storm_ok, " cut ", cut2)
+			# a new level: the run stands still, three cards, one is taken through the command bus
+			sv.n = 0
+			sv.run["xp"] = SV.need(1) - 1
+			sv.run["level"] = 1
+			sv._drop(pp + Vector2(3.0, 0.0), 1)
+			sv.step(0.016)
+			var win = g.minigame
+			var up: bool = int(sv.run["level"]) == 2 and win != null and win.has_method("is_sv_levelup") and (sv.cards as Array).size() == 3 and (win.cards as Array).size() == 3
+			var t_still: float = sv.run["t"]
+			for f7 in 12:
+				await get_tree().process_frame
+			var still: bool = float(sv.run["t"]) == t_still
+			if shots:
+				for f7b in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_stufe.png")
+			var e_none := String(Commands.execute({"type": "sv_pick", "seat": 0, "i": 7}))
+			var li := 1
+			var had := str(sv.run["weapons"]) + str(sv.run["boni"])
+			var card_ok: bool = (sv.cards as Array).all(func(c): return String(c["kind"]) in ["weapon", "up", "bonus"])
+			if win != null and win.has_method("is_sv_levelup"):
+				win._t = 1.0
+				win.pick(li)
+			for f8 in 4:
+				await get_tree().process_frame
+			var e_late := String(Commands.execute({"type": "sv_pick", "seat": 0, "i": 0}))
+			level_ok = up and still and e_none != "" and li >= 0 and g.minigame == null and int(sv.pending) == 0 and card_ok and str(sv.run["weapons"]) + str(sv.run["boni"]) != had and e_late != "" \
+				and String(Commands.execute({"type": "debug_casino", "sv": "level"})) == ""
+			for f9 in 4:
+				await get_tree().process_frame
+			level_ok = level_ok and g.minigame != null and g.minigame.has_method("is_sv_levelup") and int(sv.run["level"]) == 3
+			if not level_ok:
+				print("COLSURV62A level: up ", up, " still ", still, " ", [e_none, e_late], " laser at ", li, " window ", g.minigame, " pending ", sv.pending, " run ", sv.run)
+			g._close_game()
+			sv.cards = []
+			sv.pending = 0
+			# you: a touch costs health, then nothing can hurt you for a moment; the dodge; what lies on the ground
+			sv.run["weapons"] = []
+			sv.run["boni"] = []                                     # (whatever the card of the level was: plain again)
+			sv.mods = SV.mods(sv.run)
+			sv.run["hp"] = minf(float(sv.run["hp"]), SV.HEALTH)
+			sv.n = 0
+			sv.frozen = false
+			sv._acc = 0.0
+			sv.hurt_cd = 0.0
+			var hp0: float = sv.run["hp"]
+			sv.add_foe(0, pp + Vector2(3.0, 0.0))
+			sv.step(0.016)
+			var touched: bool = is_equal_approx(float(sv.run["hp"]), hp0 - float(SV.FOES["shambler"]["dmg"])) and float(sv.hurt_cd) > 0.0
+			sv.step(0.016)
+			var gap: bool = is_equal_approx(float(sv.run["hp"]), hp0 - float(SV.FOES["shambler"]["dmg"]))
+			sv.frozen = true
+			sv.n = 0
+			sv.dash_charges = 2.0
+			var d1: bool = sv.dash(Vector2.RIGHT)
+			var carried: bool = sv.move(Vector2.ZERO) == Vector2.RIGHT and is_equal_approx(sv.speed(), sv.DASH_SPEED) and float(sv.dash_charges) < 1.5
+			sv.frozen = false
+			sv._acc = 0.0
+			sv.hurt_cd = 0.0
+			var hp1: float = sv.run["hp"]
+			sv.add_foe(0, g.pilot.pos + Vector2(3.0, 0.0))
+			sv.step(0.016)
+			var untouched: bool = float(sv.run["hp"]) == hp1
+			sv.frozen = true
+			sv.n = 0
+			sv.dash_t = 0.0
+			var plain: bool = sv.move(Vector2.UP) == Vector2.UP and sv.speed() == 1.0
+			var hzs: Array = g.map.get_meta("col_hazards", [])
+			var cool: Rect2 = hzs[1]["rects"][0]
+			var ember: Rect2 = hzs[0]["rects"][0]
+			g.pilot.pos = cool.position + Vector2(24.0, 24.0)
+			var held: bool = is_equal_approx(sv.speed(), 0.55)
+			g.pilot.pos = ember.position + Vector2(8.0, 8.0)
+			var hp2: float = sv.run["hp"]
+			sv.add_foe(0, ember.position + Vector2(20.0, 8.0))
+			var fh0: float = sv.fhp[0]
+			sv._tick = 0.6
+			sv.step(0.016)
+			var burns: bool = float(sv.run["hp"]) < hp2 - 1.0 and float(sv.fhp[0]) < fh0
+			g.pilot.pos = g.map.spawn
+			g.pilot.position = g.pilot.pos * GroundMap.SCALE
+			sv.n = 0
+			g.zone = _zone_of(g.map, "sv_giveup")
+			g.use()
+			for f10 in 4:
+				await get_tree().process_frame
+			var asked: bool = g._lift_menu != null
+			g._close_lift_menu()
+			you_ok = touched and gap and d1 and carried and untouched and plain and held and burns and asked
+			if not you_ok:
+				print("COLSURV62A you: touched ", touched, " gap ", gap, " dash ", d1, " carried ", carried, " untouched ", untouched, " plain ", plain, " held ", held, " burns ", burns, " asked ", asked,
+					" hp ", sv.run["hp"])
+			if shots:                                                # (pictures: the run as it looks after a while, and the whole stage from above)
+				sv.frozen = true                                     # (the shards, from near)
+				sv.n = 0
+				sv.sn = 0
+				sv.run["xp"] = -1000000
+				for sq in 70:
+					sv._drop(g.pilot.pos + Vector2.from_angle(sq * 0.9) * (50.0 + (sq * 37) % 110), [1, 1, 1, 1, 3, 8, 30][sq % 7])
+				g.story_cam = g.pilot.pos
+				g.story_zoom = 1.7
+				for f10b in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_punkte.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				sv.sn = 0
+				sv.run["weapons"] = [["pulse", 5], ["laser", 2]]         # (the cards of a level, an ultimate among them)
+				sv.run["boni"] = [["amp", 1]]
+				sv.run["level"] = 12
+				sv._offer()
+				for f10c in 50:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_stufe_ult.png")
+				g._close_game()
+				sv.cards = []
+				sv.pending = 0
+				sv.run["weapons"] = [["pulse", 3], ["laser", 3], ["plasma", 3], ["superlaser", 3], ["blade", 3]]
+				sv.run["boni"] = [["amp", 2], ["reactor", 1], ["servo", 3]]
+				sv.mods = SV.mods(sv.run)
+				sv._wt = {"superlaser": 2.1, "blade": 0.5, "plasma": 1.6, "drone": 1.9}
+				sv.run["xp"] = -1000000
+				sv.run["hp"] = 1000000.0
+				sv.run["t"] = 402.0
+				sv.frozen = false
+				sv.swarm(260)
+				for f11 in 150:
+					await get_tree().process_frame
+					if g.minigame != null:
+						g._close_game()
+						sv.cards = []
+						sv.pending = 0
+				sv.run["hp"] = 74.0
+				for f11b in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_lauf.png")
+				sv.run["weapons"] = [["pulse", SV.ULT], ["laser", SV.ULT], ["drone", SV.ULT], ["superlaser", SV.ULT], ["blade", SV.ULT]]      # … and five ultimates
+				sv.run["boni"] = [["amp", 5], ["coolant", 5], ["magnet", 5], ["nanite", 5], ["servo", 5]]
+				sv.mods = SV.mods(sv.run)
+				sv._wt = {"superlaser": 1.6}
+				sv.run["hp"] = 1000000.0
+				sv.swarm(300)
+				for f11c in 130:
+					await get_tree().process_frame
+					if int(sv.n) < 250:
+						sv.swarm(120)
+				sv.run["hp"] = 150.0
+				for f11d in 2:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_ultimates.png")
+				sv.run["weapons"] = [["pulse", 1]]
+				sv.run["boni"] = []
+				sv.mods = SV.mods(sv.run)
+				sv.run["xp"] = 0
+				sv.frozen = true
+				g.story_cam = Vector2(SS.SW * 0.5, SS.SH * 0.5) * TL
+				g.story_zoom = 0.19
+				for f12 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_karte.png")
+				g.story_zoom = 0.5
+				g.story_cam = Vector2(SS.SW * 0.5 - 30.0, SS.SH * 0.5 - 20.0) * TL
+				for f13 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_karte_nah.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				g._close_game()
+				sv.cards = []
+				sv.pending = 0
+				sv.n = 0
+			# the run ends: you are out; it pays by the time you held out; back into the lobby in your own gear
+			sv.frozen = true
+			sv.run["weapons"] = [["pulse", 1]]
+			sv.run["t"] = 240.0
+			sv.run["kills"] = 60
+			sv.run["hp"] = 0.0
+			var want: Dictionary = SV.reward(sv.run, false)
+			var xp_before: int = int(GameState.col_state()["xp"])
+			sv.step(0.016)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 4000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			var res: Dictionary = GameState.col_state().get("sv_last", {})
+			var paid_out: bool = bool(sv.over) and not bool(sv.survived) and g.minigame != null and g.minigame.has_method("is_sv_result") and GameState.coins == 100 + int(want["coins"]) \
+				and int(want["coins"]) > 0 and int(GameState.col_state()["xp"]) == xp_before + int(want["xp"]) and bool(res.get("best", false)) and int(res.get("kills", 0)) == 60 \
+				and String(Commands.execute({"type": "sv_end"})) != "" and GameState.coins == 100 + int(want["coins"]) and not g.input_enabled
+			if shots and g.minigame != null:
+				for f14 in 40:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_ergebnis.png")
+			var hud_node = sv.hud
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f15 in 10:
+				await get_tree().process_frame
+			var back: bool = String(g.level) == "zcolin" and g.survivor == null and g.minigame == null and GameState.col_own_gear == null and String(GameState.gear.suit) == own_suit \
+				and g.input_enabled and not g.pilot.down and not is_instance_valid(hud_node)
+			# a second run (the debug menu starts it), held to the end of the stage: it pays half as much again
+			var d_start := String(Commands.execute({"type": "debug_casino", "sv": "start"}))
+			for f16 in 6:
+				await get_tree().process_frame
+			var sv2 = g.survivor
+			var held_out := false
+			if sv2 != null and is_instance_valid(sv2):
+				sv2.run["hp"] = 1000000000.0
+				sv2.run["xp"] = -1000000
+				sv2.run["t"] = SV.RUN_TIME - 0.01
+				sv2.run["kills"] = 500
+				var coins1: int = GameState.coins
+				sv2.step(0.02)                                       # the time is up: The Brood comes, the clock stands
+				var brood_here: bool = String(sv2.boss_kind) == "brood" and bool(sv2.barrier_on) and int(sv2.boss_i()) >= 0 and not bool(sv2.over)
+				sv2.step(0.5)
+				var clock_stands: bool = float(sv2.run["t"]) == SV.RUN_TIME
+				sv2._hit(sv2.boss_i(), 1000000000.0, g.pilot.pos)
+				var want2: Dictionary = SV.reward({"t": SV.RUN_TIME, "kills": int(sv2.run["kills"])}, true)
+				var tr2 := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tr2 < 9000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+					await get_tree().process_frame
+				held_out = brood_here and clock_stands and bool(sv2.over) and bool(sv2.survived) and g.minigame != null and bool(g.minigame.res.get("survived", false)) and absi(GameState.coins - coins1 - int(want2["coins"])) <= 1 \
+					and int(SV.record(GameState.col_state())["runs"]) == 2 and float(SV.record(GameState.col_state())["best"]["outbreak"]) >= SV.RUN_TIME - 0.1
+				if g.minigame != null and g.minigame.has_method("is_sv_result"):
+					g.minigame._t = 2.0
+					g.minigame.go()
+				for f17 in 10:
+					await get_tree().process_frame
+			end_ok = paid_out and back and d_start == "" and held_out and String(g.level) == "zcolin"
+			if not end_ok:
+				print("COLSURV62A end: paid ", paid_out, " want ", want, " coins ", GameState.coins, " res ", res, " back ", back, " level ", g.level, " start ", d_start, " held out ", held_out)
+	check(rule_ok and stage_ok and start_ok and swarm_ok and fast_ok and weapon_ok and level_ok and you_ok and end_ok,
+		"62a, parts 7a and 7b: Survivor: the entrance before a run (the round from above, nobody walks in, the picture of you and the weapon you begin with), your first weapon picked in the fighters' room, the crowd by how far you have come in the mode; six weapons with five levels each (plasma grenades burst where they land, the drone's ring of shots, the superlaser sweeps a quarter of the round and what it touches is out, the silverblade bounces at the edge of the picture and comes back), six boni (wider, faster, stronger, more health), six ultimates (a weapon at level 5 and its own bonus); the core: the rules (shards for a level, three cards of a level and what they bring, five levels to a weapon, what a run pays, the best time kept); the stage Outbreak (far larger than a fight's ground, roads free, ways to every corner, obstacles of a colony in place of cover, embers and coolant); the mode in the fighters' room, straight into the stage; the swarm comes from outside the picture, walks at you, stands in nothing and not on top of each other; a step with the field full stays cheap; the pulse hurts all in its field, the laser the nearest in reach; who is out drops a shard, shards near you fly to you; a new level stops the run, its card goes through the command bus; a touch costs health, then a moment of grace; the dodge carries you and nothing touches you; coolant holds you back, embers burn you and them; the run ends when you are out or the time is up, pays Coins and rank points, back into the lobby in your own gear  [%s %s %s %s %s %s %s %s %s]  (%.2f ms a step)" % [rule_ok, stage_ok, start_ok, swarm_ok, fast_ok, weapon_ok, level_ok, you_ok, end_ok, ms])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 7c-2 (Luz): Survivor's stage: the kinds and how each goes about it (runner, hauler, spitter,
+## bloater, shieldbearer, howler, an alpha), what happens by the clock (the flock, the ring, the wall, the sleepers,
+## the blackout, a supply drop), crates and what they hold, The Foreman and The Brood inside their walls of light.
+func _test_colstage62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SS = load("res://scripts/ground/survivor_stage.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# ---- the rules
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var rr: Dictionary = SV.fresh()
+	var great: Array = SV.draw_rewards(rr, rng, 1)               # (part 7f: a weapon crate holds levels of what you carry; an item crate always an item)
+	var ups := 0
+	var seen := {}
+	for q in 400:
+		var cr0: Dictionary = SV.crate_roll(rr, rng)
+		if String(cr0["kind"]) == "item":
+			seen[String(cr0["id"])] = true
+		else:
+			ups += 1
+	var rfull: Dictionary = SV.fresh()
+	rfull["weapons"] = [["pulse", 5]]
+	var ev_sorted := true
+	for q2 in range(1, SV.EVENTS.size()):
+		ev_sorted = ev_sorted and float(SV.EVENTS[q2]["t"]) >= float(SV.EVENTS[q2 - 1]["t"])
+	var tex_ok := true
+	for kind in SV.FOE_ORDER:
+		var tx: Texture2D = SA.texture(String(kind), 0, 2, 1)
+		tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and SA.texture(String(kind), 1, 0, 2) != null
+	var sm: GroundMap = SS.build("outbreak", 1)
+	var scr: Array = sm.get_meta("sv_crates", [])
+	var ssl: Array = sm.get_meta("sv_sleepers", [])
+	var snd = Audio.stream("sv_pulse")
+	var rule_ok: bool = SV.FOE_ORDER.size() == 27 and (SV.FOE_ORDER as Array).all(func(k): return SV.FOES.has(k) and SV.FOES[k].has("beh") and SV.FOES[k].has("mass") and not String(SV.FOES[k]["name"]).contains("–")) \
+		and SV.kinds_at(0.0) == ["shambler"] and SV.kinds_at(200.0) == ["shambler", "runner", "hauler"] and SV.kinds_at(899.0).size() == 7 \
+		and SV.foe_hp("foreman", 0.0) == SV.foe_hp("foreman", 800.0) and SV.foe_hp("hauler", 600.0) > SV.foe_hp("hauler", 0.0) and SV.foe_hp("screecher", 600.0) == SV.foe_hp("screecher", 0.0) \
+		and ev_sorted and SV.SOFT_BOSS == 450.0 and SV.ITEM_ORDER.size() == 8 and (SV.ITEM_ORDER as Array).all(func(it): return SV.ITEMS.has(it) and String(SV.ITEMS[it]["name"]) != "") \
+		and great.size() == 1 and String(great[0]["kind"]) == "up" and String(great[0]["id"]) == "pulse" and int(great[0]["level"]) == 2 and ups == 0 and seen.size() == 6 \
+		and String(SV.draw_rewards(rfull, rng, 1)[0]["kind"]) == "coins" and SV.MAX_FOES == 600 \
+		and tex_ok and SA.texture("shieldbearer", 0, 0, 0) != SA.texture("shieldbearer", 2, 0, 0) and SA.crate(false, false) != null and SA.crate(true, false) != SA.crate(false, false) \
+		and SA.lying(1) != null and SA.size_of("brood").x > SA.size_of("hauler").x \
+		and scr.size() >= 12 and scr.all(func(c): return sm.free_at(c, 4.0) and (c as Vector2).distance_to(sm.spawn) > 13.0 * TL) \
+		and ssl.size() >= 40 and ssl.all(func(c): return sm.free_at(c, 4.0)) \
+		and snd != null and snd is AudioStreamWAV and (snd as AudioStreamWAV).get_length() > 0.15 and (snd as AudioStreamWAV).get_length() < 0.4 and Audio.stream("sv_pulse") == snd \
+		and Audio.stream("sv_level") != null and (Audio.stream("sv_level") as AudioStreamWAV).get_length() > 0.3 and Audio.stream("sv_nope") == null
+	if not rule_ok:
+		print("COLSTAGE62A rules: great ", great, " ups ", ups, " seen ", seen.keys(), " events sorted ", ev_sorted, " pictures ", tex_ok, " crates ", scr.size(), " sleepers ", ssl.size(), " sound ", snd)
+	# ---- down to Centauria, into a run
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var kind_ok := false
+	var event_ok := false
+	var crate_ok := false
+	var foreman_ok := false
+	var brood_ok := false
+	var fast_ok := false
+	var ms := 0.0
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f1 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var calm := func() -> void:                              # nobody, nothing, you unhurt and where you began
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.stasis_t = 0.0
+				g.pilot.pos = g.map.spawn
+				g.pilot.position = g.pilot.pos * GroundMap.SCALE
+			var shot := func(name: String, frames: int) -> void:
+				if shots:
+					for k4 in frames:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_%s.png" % name)
+			sv.quiet = true                                          # (nobody comes by the clock: what is here is put here)
+			sv.frozen = false
+			sv.run["weapons"] = []
+			sv.sleepers = (sv.sleepers as Array).filter(func(s): return (s["pos"] as Vector2).distance_to(pp) > 400.0)
+			var KI: Dictionary = sv._ki
+			if shots:                                                # (a picture of them all, side by side)
+				calm.call()
+				sv.frozen = true
+				var row: Array = ["shambler", "runner", "spitter", "bloater", "shieldbearer", "howler", "hauler", "screecher"]
+				for ri in row.size():
+					var fi0: int = sv.add_foe(KI[row[ri]], pp + Vector2(-150.0 + ri * 42.0, -50.0))
+					sv.fface[fi0] = 0 if ri % 2 == 0 else 2
+				var fa: int = sv.add_foe(KI["shambler"], pp + Vector2(-150.0, 30.0))
+				sv.make_alpha(fa)
+				sv.add_foe(KI["foreman"], pp + Vector2(-60.0, 50.0))
+				sv.add_foe(KI["brood"], pp + Vector2(70.0, 60.0))
+				g.story_cam = pp + Vector2(0.0, -10.0)
+				g.story_zoom = 1.9
+				await shot.call("gegner", 170)                       # (the hologram has come up by then)
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				sv.frozen = false
+			# the runner: faster than a shambler, and not in a straight line
+			calm.call()
+			var ru: int = sv.add_foe(KI["runner"], pp + Vector2(200.0, 0.0))
+			var sh: int = sv.add_foe(KI["shambler"], pp + Vector2(-200.0, 0.0))
+			var off_line := 0.0
+			for rs in 60:
+				sv.step(0.016)
+				off_line = maxf(off_line, absf((sv.fp[ru] as Vector2).y - pp.y))
+			var runner_ok: bool = pp.x + 200.0 - (sv.fp[ru] as Vector2).x > 30.0 and pp.x + 200.0 - (sv.fp[ru] as Vector2).x > ((sv.fp[sh] as Vector2).x - (pp.x - 200.0)) * 1.6 \
+				and off_line > 1.0
+			# the hauler: near you it winds up (a ring on the ground), then it stamps: you are hurt and thrown back; in a dodge nothing
+			calm.call()
+			var ha: int = sv.add_foe(KI["hauler"], pp + Vector2(40.0, 0.0))
+			run_steps.call(3)
+			var winding: bool = int(sv.fst[ha]) == 1 and (sv._marks as Array).any(func(m): return String(m[0]) == "wind")
+			var hp_h: float = sv.run["hp"]
+			sv._hit(ha, 1.0, pp)
+			var heavy: bool = (sv.fkb[ha] as Vector2).length() < 10.0 and (sv.fkb[ha] as Vector2).length() > 0.0
+			run_steps.call(60)
+			var stamped: bool = is_equal_approx(float(sv.run["hp"]), hp_h - 22.0) and int(sv.fst[ha]) == 0 and (sv.kb_dir as Vector2).x < -0.9 and sv.move(Vector2.RIGHT) == sv.kb_dir or float(sv.kb_t) == 0.0
+			stamped = stamped and is_equal_approx(float(sv.run["hp"]), hp_h - 22.0) and (sv.kb_dir as Vector2).x < -0.9
+			calm.call()
+			var ha2: int = sv.add_foe(KI["hauler"], pp + Vector2(40.0, 0.0))
+			run_steps.call(3)
+			sv.dash_t = 5.0
+			run_steps.call(60)
+			var dodged: bool = float(sv.run["hp"]) == 1000.0 and int(sv.fst[ha2]) == 0
+			# the spitter: it stands off, lights up, spits; the acid hurts where it meets you and lies in a pool where it lands
+			calm.call()
+			var spi: int = sv.add_foe(KI["spitter"], pp + Vector2(120.0, 0.0))
+			sv.ftm[spi] = 0.0
+			run_steps.call(2)
+			var lit: bool = int(sv.fst[spi]) == 1 and (sv._marks as Array).any(func(m): return String(m[0]) == "spit")
+			run_steps.call(34)
+			var spat: bool = (sv.globs as Array).size() == 1 and (sv.globs[0]["v"] as Vector2).x < -60.0 and absf((sv.fp[spi] as Vector2).x - (pp.x + 120.0)) < 1.0
+			run_steps.call(120)
+			var acid_hit: bool = is_equal_approx(float(sv.run["hp"]), 991.0) and (sv.globs as Array).is_empty()
+			calm.call()
+			(sv.globs as Array).append({"p": pp + Vector2(60.0, 60.0), "v": Vector2(0.0, 50.0), "life": 0.03, "clean": false})
+			run_steps.call(4)
+			var pooled: bool = (sv.pools as Array).size() == 1 and String(sv.pools[0]["kind"]) == "acid"
+			(sv.pools as Array).append({"pos": pp, "r": 13.0, "t": 0.0, "life": 2.6, "kind": "acid", "dps": 12.0})
+			sv._tick = 0.6
+			sv.step(0.016)
+			var eaten: bool = is_equal_approx(float(sv.run["hp"]), 994.0)
+			calm.call()
+			var spn: int = sv.add_foe(KI["spitter"], pp + Vector2(60.0, 0.0))
+			sv.ftm[spn] = 99.0
+			run_steps.call(60)
+			var backs_off: bool = (sv.fp[spn] as Vector2).x > pp.x + 68.0
+			# the bloater: it bursts into a cloud that stays
+			calm.call()
+			var blo: int = sv.add_foe(KI["bloater"], pp + Vector2(100.0, 0.0))
+			sv._hit(blo, 1000000.0, pp)
+			var cloud: bool = int(sv.n) == 0 and (sv.pools as Array).size() == 1 and String(sv.pools[0]["kind"]) == "cloud" and float(sv.pools[0]["r"]) > 40.0
+			# the shieldbearer: the shield takes it first (and it is not thrown back), then it breaks; the superlaser breaks it at once
+			calm.call()
+			var sb: int = sv.add_foe(KI["shieldbearer"], pp + Vector2(100.0, 0.0))
+			var sb_hp: float = sv.fhp[sb]
+			var whole: bool = float(sv.fsh[sb]) == 60.0 and int(sv.fv[sb]) < 2
+			sv._hit(sb, 30.0, pp)
+			var held: bool = float(sv.fhp[sb]) == sb_hp and float(sv.fsh[sb]) == 30.0 and (sv.fkb[sb] as Vector2) == Vector2.ZERO
+			sv._hit(sb, 40.0, pp)
+			var broke: bool = float(sv.fsh[sb]) == 0.0 and int(sv.fv[sb]) >= 2 and float(sv.fhp[sb]) == sb_hp
+			sv._hit(sb, 10.0, pp)
+			var bare: bool = is_equal_approx(float(sv.fhp[sb]), sb_hp - 10.0) and (sv.fkb[sb] as Vector2).length() > 10.0
+			var sb2: int = sv.add_foe(KI["shieldbearer"], pp + Vector2(100.0, 40.0))
+			sv._zap(sb2, pp)
+			var zapped: bool = int(sv.n) == 2 and float(sv.fsh[sb2]) == 0.0
+			sv._zap(sb2, pp)
+			zapped = zapped and int(sv.n) == 1
+			# the howler: it stands and howls; those near it walk faster
+			calm.call()
+			var ho: int = sv.add_foe(KI["howler"], pp + Vector2(150.0, 0.0))
+			var near_s: int = sv.add_foe(KI["shambler"], pp + Vector2(190.0, 30.0))
+			var far_s: int = sv.add_foe(KI["shambler"], pp + Vector2(-240.0, 0.0))
+			run_steps.call(40)
+			var howls: bool = int(sv.fst[ho]) == 1 and float(sv.fbo[near_s]) > 0.0 and float(sv.fbo[far_s]) == 0.0 and absf((sv.fp[ho] as Vector2).x - (pp.x + 150.0)) < 2.0 \
+				and (sv._marks as Array).any(func(m): return String(m[0]) == "howl")
+			var n0: Vector2 = sv.fp[near_s]
+			var f0s: Vector2 = sv.fp[far_s]
+			run_steps.call(60)
+			var driven: bool = n0.distance_to(sv.fp[near_s]) > f0s.distance_to(sv.fp[far_s]) * 1.3
+			# an alpha: it can take far more; out, it leaves a great shard and a crate
+			calm.call()
+			sv.crates = []
+			sv.sn = 0
+			var al: int = sv.add_foe(KI["shambler"], pp + Vector2(100.0, 0.0))
+			var al_hp: float = sv.fhp[al]
+			sv.make_alpha(al)
+			var grown: bool = is_equal_approx(float(sv.fhp[al]), al_hp * SV.ALPHA_HP) and int(sv.fal[al]) == 1
+			sv.step(0.016)
+			var marked: bool = (sv._marks as Array).any(func(m): return String(m[0]) == "alpha")
+			sv._hit(al, 1000000000.0, pp)
+			var alpha_out: bool = int(sv.n) == 0 and (sv.crates as Array).size() == 1 and bool(sv.crates[0].get("mark", false)) and int(sv.sn) == 1 and int(sv.sv[0]) == 20 and int(sv.stier[0]) == 3
+			kind_ok = runner_ok and winding and heavy and stamped and dodged and lit and spat and acid_hit and pooled and eaten and backs_off and cloud and whole and held and broke and bare and zapped \
+				and howls and driven and grown and marked and alpha_out
+			if not kind_ok:
+				print("COLSTAGE62A kinds: runner ", runner_ok, " hauler ", [winding, heavy, stamped, dodged], " hp ", sv.run["hp"], " kb ", sv.kb_dir, " spitter ", [lit, spat, acid_hit, pooled, eaten, backs_off],
+					" bloater ", cloud, " shield ", [whole, held, broke, bare, zapped], " howler ", [howls, driven], " alpha ", [grown, marked, alpha_out], " crates ", sv.crates, " shards ", sv.sn)
+			if shots:                                                # (a picture: a hauler winding up, a spitter's acid, a bloater's cloud, a howler)
+				calm.call()
+				sv.add_foe(KI["hauler"], pp + Vector2(40.0, -6.0))
+				var sp2: int = sv.add_foe(KI["spitter"], pp + Vector2(-120.0, -40.0))
+				sv.ftm[sp2] = 0.0
+				var bl2: int = sv.add_foe(KI["bloater"], pp + Vector2(90.0, 70.0))
+				sv._hit(bl2, 1000000.0, pp)
+				sv.add_foe(KI["howler"], pp + Vector2(-90.0, 80.0))
+				sv.add_foe(KI["shambler"], pp + Vector2(-130.0, 100.0))
+				sv.add_foe(KI["shieldbearer"], pp + Vector2(130.0, -60.0))
+				sv.run["hp"] = 1000000.0
+				g.story_cam = pp
+				g.story_zoom = 1.5
+				await shot.call("gegner_aktion", 44)
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			# ---- what happens by the clock
+			calm.call()
+			var kills0: int = sv.run["kills"]
+			sv.event("flock")                                        # the flock: announced, then a wedge of screechers straight through
+			var warned: bool = not (sv.flock_warn as Dictionary).is_empty() and String(sv.banner) == "THE FLOCK" and int(sv._cnt[KI["screecher"]]) == 0
+			run_steps.call(90)
+			var flock_n: int = sv._cnt[KI["screecher"]]
+			var flying := true
+			for fq in int(sv.n):
+				flying = flying and is_equal_approx((sv.fvel[fq] as Vector2).length(), 120.0) and (sv.fp[fq] as Vector2).distance_to(pp) > 150.0
+			await shot.call("schwarm_flug", 110)
+			run_steps.call(470)
+			var flock_ok: bool = warned and flock_n >= 9 and flying and int(sv._cnt[KI["screecher"]]) == 0 and int(sv.n) == 0 and int(sv.run["kills"]) == kills0 \
+				and (sv.flock_warn as Dictionary).is_empty()
+			calm.call()
+			sv.event("ring")                                         # the ring: all round you, just outside the picture
+			var ring_n: int = sv.n
+			var hl: float = (sv._half() as Vector2).length() + 16.0
+			var round := true
+			for rq in ring_n:
+				round = round and absf((sv.fp[rq] as Vector2).distance_to(pp) - hl) < 1.0
+			var ring_ok: bool = ring_n >= 30 and round and String(sv.banner) == "THE RING CLOSES"
+			calm.call()
+			sv.event("wall")                                         # the wall: a dense row from one side
+			var wall_ok: bool = int(sv.n) >= 30 and String(sv.banner) == "THE WALL"
+			calm.call()                                              # the sleepers: they lie there; from the event on they rise when you come near
+			var sl_n: int = (sv.sleepers as Array).size()
+			var sl_at: Vector2 = sv.sleepers[0]["pos"]
+			g.pilot.pos = sl_at + Vector2(20.0, 0.0)
+			run_steps.call(26)
+			var asleep: bool = (sv.sleepers as Array).size() == sl_n and int(sv.n) == 0 and not bool(sv.sleep_on)
+			sv.event("sleepers")
+			run_steps.call(26)
+			var risen: bool = bool(sv.sleep_on) and (sv.sleepers as Array).size() < sl_n and int(sv.n) >= 1 and float(sv.fhp[0]) > SV.foe_hp("shambler", float(sv.run["t"])) * 1.4
+			calm.call()                                              # the blackout: the lamps go out, and come on again
+			var dark0: Color = g._dark_rect.color
+			sv.event("blackout")
+			var out: bool = g._dark_rect.color != dark0 and float(g._lights.modulate.a) < 0.5 and float(sv.blackout_t) == SV.BLACKOUT_TIME
+			if shots:
+				sv.swarm(160)
+				sv.run["hp"] = 1000000.0
+				await shot.call("blackout", 70)
+				calm.call()
+			sv.blackout_t = 0.01
+			run_steps.call(2)
+			var back_on: bool = g._dark_rect.color == dark0 and float(g._lights.modulate.a) == 1.0
+			calm.call()                                              # a supply drop: a crate comes down, marked; touched, it opens
+			sv.crates = []
+			sv.event("supply")
+			var dropping: bool = (sv.crates as Array).size() == 1 and float(sv.crates[0]["fall"]) > 0.0 and bool(sv.crates[0].get("mark", false)) \
+				and (sv.crates[0]["pos"] as Vector2).distance_to(pp) > 80.0
+			g.pilot.pos = sv.crates[0]["pos"]
+			sv.step(0.016)
+			var not_yet: bool = (sv.crates as Array).size() == 1
+			if shots:                                                # (a picture: a crate standing, a boss's, one coming down)
+				var c0: Dictionary = sv.crates[0]
+				g.pilot.pos = pp
+				g.pilot.position = pp * GroundMap.SCALE
+				sv.sn = 0
+				c0["pos"] = pp + Vector2(80.0, 26.0)
+				c0["fall"] = 0.55
+				(sv.crates as Array).append({"pos": pp + Vector2(-110.0, 36.0), "great": false, "fall": 0.0})
+				(sv.crates as Array).append({"pos": pp + Vector2(150.0, -30.0), "great": true, "fall": 0.0})
+				await shot.call("kiste", 12)
+				sv.crates = [c0]
+				c0["pos"] = pp
+			run_steps.call(80)
+			var opened: bool = (sv.crates as Array).is_empty() and String(sv.banner) != "SUPPLY DROP" and String(sv.banner) != ""
+			event_ok = flock_ok and ring_ok and wall_ok and asleep and risen and out and back_on and dropping and not_yet and opened
+			if not event_ok:
+				print("COLSTAGE62A events: flock ", [warned, flock_n, flying, sv._cnt[KI["screecher"]], sv.n], " ring ", [ring_n, round], " wall ", wall_ok, " sleepers ", [asleep, risen, sl_n, (sv.sleepers as Array).size()],
+					" blackout ", [out, back_on], " supply ", [dropping, not_yet, opened, sv.banner])
+			# ---- what a crate holds
+			calm.call()
+			sv.give("shield")                                        # a shield: nothing touches you while it lasts
+			var sh_on: bool = float(sv.shield_t) == 6.0 and not sv.can_hurt()
+			sv.add_foe(KI["shambler"], pp + Vector2(3.0, 0.0))
+			run_steps.call(4)
+			var sh_ok: bool = sh_on and float(sv.run["hp"]) == 1000.0
+			calm.call()                                              # a magnet: every shard, from however far
+			sv.sn = 0
+			sv.run["xp"] = 0
+			sv._drop(pp + Vector2(400.0, 0.0), 1)
+			sv.give("magnet")
+			run_steps.call(80)
+			var mag_ok: bool = int(sv.sn) == 0 and int(sv.run["xp"]) == 1
+			sv.run["hp"] = 40.0                                      # a medkit
+			sv.give("medkit")
+			var med_ok: bool = is_equal_approx(float(sv.run["hp"]), 75.0)
+			calm.call()                                              # the bomb: all round you are out; a tough one takes a heavy blow; one far off stays
+			for bq in 20:
+				sv.add_foe(KI["shambler"], pp + Vector2.from_angle(bq * TAU / 20.0) * 100.0)
+			var th: int = sv.add_foe(KI["hauler"], pp + Vector2(150.0, 0.0))
+			sv.make_alpha(th)
+			var th_hp: float = sv.fhp[th]
+			sv.add_foe(KI["shambler"], pp + Vector2(400.0, 0.0))
+			sv.give("bomb")
+			var bomb_ok: bool = int(sv.n) == 2 and int(sv._cnt[KI["hauler"]]) == 1 and int(sv._cnt[KI["shambler"]]) == 1 and (sv.bombs as Array).size() == 1
+			var th_i := -1
+			for tq in int(sv.n):
+				if int(sv.fk[tq]) == int(KI["hauler"]):
+					th_i = tq
+			bomb_ok = bomb_ok and th_i >= 0 and is_equal_approx(float(sv.fhp[th_i]), th_hp - 400.0)
+			await shot.call("bombe", 8)
+			calm.call()                                              # stasis: they stand still
+			var st_i: int = sv.add_foe(KI["shambler"], pp + Vector2(100.0, 0.0))
+			sv.give("stasis")
+			run_steps.call(30)
+			var stood: bool = sv.fp[st_i] == pp + Vector2(100.0, 0.0)
+			sv.stasis_t = 0.0
+			run_steps.call(30)
+			var stasis_ok: bool = stood and (sv.fp[st_i] as Vector2).x < pp.x + 99.0
+			calm.call()                                              # overdrive: your weapons fire twice as fast
+			sv.run["weapons"] = [["pulse", 1]]
+			sv._wt["pulse"] = 1.0
+			sv.give("overdrive")
+			sv.step(0.1)
+			var over_ok: bool = is_equal_approx(float(sv._wt["pulse"]), 0.8) and float(sv.over_t) > 7.0
+			sv.over_t = 0.0
+			sv.run["weapons"] = [["laser", 2]]                       # a boss's crate (part 7f: a weapon crate): three levels at least of what you carry
+			var got: Dictionary = sv.open_crate({"pos": pp, "great": true, "weapon": true})
+			var up_ok: bool = String(got["kind"]) == "draw" and int(got["n"]) >= 3 and SV.weapon_level(sv.run, "laser") == 5 and g.minigame != null and g.minigame.has_method("is_sv_draw")
+			g._close_game()
+			sv.run["weapons"] = []
+			crate_ok = sh_ok and mag_ok and med_ok and bomb_ok and stasis_ok and over_ok and up_ok
+			if not crate_ok:
+				print("COLSTAGE62A crates: shield ", sh_ok, " magnet ", mag_ok, " ", sv.sn, " medkit ", med_ok, " bomb ", bomb_ok, " n ", sv.n, " stasis ", stasis_ok, " overdrive ", over_ok, " ", sv._wt, " up ", got,
+					" ", sv.banner)
+			# ---- what a step costs with the field full of all kinds
+			calm.call()
+			for kq in ["shambler", "runner", "spitter", "bloater", "shieldbearer", "howler", "hauler"]:
+				sv.swarm(86, String(kq))
+			sv.run["hp"] = 1000000000.0
+			var full_n: int = sv.n
+			var tp0 := Time.get_ticks_usec()
+			for f5 in 60:
+				sv.step(0.016)
+			ms = float(Time.get_ticks_usec() - tp0) / 60000.0
+			fast_ok = full_n >= 590 and ms < 14.0
+			print("COLSTAGE62A a step with %d of all kinds: %.2f ms" % [full_n, ms])
+			# ---- The Foreman: walls of light close round you and it; nobody new comes; a charge, a blow, containers; out, it leaves a great crate
+			calm.call()
+			sv.crates = []
+			sv.sn = 0
+			sv.run["t"] = 500.0
+			sv.quiet = false
+			sv.boss_start("foreman")
+			var came: bool = bool(sv.barrier_on) and String(sv.boss_kind) == "foreman" and int(sv.boss_i()) >= 0 and String(sv.banner) == "THE FOREMAN" \
+				and String(sv.boss_info()["name"]) == "The Foreman" and float(sv.boss_info()["k"]) == 1.0 and (sv.barrier as Rect2).has_point(pp)
+			run_steps.call(100)
+			var closed: bool = float(sv.barrier_k) == 1.0 and int(sv.n) == 1
+			g.pilot.pos = (sv.barrier as Rect2).end + Vector2(50.0, 50.0)
+			var hp_w: float = sv.run["hp"]
+			sv.hurt_cd = 0.0
+			sv.step(0.016)
+			var held_in: bool = (sv.barrier as Rect2).has_point(g.pilot.pos) and float(sv.run["hp"]) < hp_w
+			g.pilot.pos = g.map.spawn
+			sv.run["hp"] = 1000000000.0
+			var did := {}
+			var saw_wave := false
+			var saw_spot := false
+			var saw_shot := false
+			var saw_throw := false
+			for f6 in 950:
+				sv.step(0.016)
+				if not (sv.bst as Dictionary).is_empty():
+					did[String(sv.bst["st"])] = true
+				saw_wave = saw_wave or not (sv.waves as Array).is_empty()
+				saw_spot = saw_spot or (sv.tele as Array).any(func(t): return String(t["kind"]) == "spot")
+				if shots and not saw_shot and String(sv.bst.get("st", "")) == "aim":
+					saw_shot = true
+					g.pilot.position = g.pilot.pos * GroundMap.SCALE
+					g._cam_c = g.pilot.position + Vector2(0.0, -24.0)
+					sv.fp[sv.boss_i()] = g.pilot.pos + Vector2(170.0, -46.0)      # (for the picture: near you, taking aim)
+					sv.bst["t"] = 0.7
+					for f6b in 14:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_foreman.png")
+				if shots and not saw_throw and String(sv.bst.get("st", "")) == "throw":
+					saw_throw = true
+					g.pilot.position = g.pilot.pos * GroundMap.SCALE
+					g._cam_c = g.pilot.position + Vector2(0.0, -24.0)
+					sv.fp[sv.boss_i()] = g.pilot.pos + Vector2(-150.0, -30.0)     # (for the picture: near you, its containers coming down)
+					sv.bst["t"] = 0.32
+					for f6c in 4:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_foreman_wurf.png")
+			var acts: bool = did.has("walk") and did.has("aim") and did.has("charge") and did.has("wind") and did.has("throw") and saw_wave and saw_spot and int(sv.n) == 1
+			sv._hit(sv.boss_i(), 100000000.0, g.pilot.pos)
+			var fell: bool = String(sv.boss_kind) == "" and not bool(sv.barrier_on) and (sv.crates as Array).size() == 1 and bool(sv.crates[0]["great"]) and int(sv.sn) == 14 \
+				and String(sv.banner) == "THE WALLS FALL" and int(sv.boss_i()) == -1 and bool(sv.boss_done.get("foreman", false))
+			run_steps.call(120)
+			var again: bool = float(sv.barrier_k) == 0.0 and int(sv.n) > 0                      # (the walls are gone, and they come again)
+			foreman_ok = came and closed and held_in and acts and fell and again
+			if not foreman_ok:
+				print("COLSTAGE62A the foreman: came ", came, " closed ", closed, " ", sv.barrier_k, " n ", sv.n, " held in ", held_in, " acts ", did.keys(), " wave ", saw_wave, " spot ", saw_spot, " fell ", fell,
+					" crates ", sv.crates, " shards ", sv.sn, " again ", again)
+			# ---- The Brood: when the time is up; rings of acid with a gap, what it lets out, two arms of acid, the flock; out: the run is won
+			calm.call()
+			sv.quiet = true
+			sv.run["hp"] = 1000000000.0
+			sv.run["t"] = SV.RUN_TIME
+			sv.boss_start("brood")
+			var b_came: bool = String(sv.boss_kind) == "brood" and bool(sv.barrier_on) and String(sv.banner) == "THE BROOD"
+			var first_ring := 0
+			for f7 in 220:
+				sv.step(0.016)
+				if first_ring == 0 and not (sv.globs as Array).is_empty():
+					first_ring = (sv.globs as Array).size()
+			var b_one: bool = first_ring == 15 and (sv.globs as Array).all(func(q5): return bool(q5["clean"])) and int(sv._cnt[KI["shambler"]]) >= 3 and int(sv.boss_info()["phase"]) == 1 \
+				and float(sv.run["t"]) == SV.RUN_TIME
+			if shots:
+				g.story_cam = g.pilot.pos + Vector2(0.0, -62.0)        # (the picture a little higher: it stands clear of the display)
+			await shot.call("brood", 60)
+			var bi2: int = sv.boss_i()
+			sv.fhp[bi2] = float(sv.fmx[bi2]) * 0.5
+			var g0: int = (sv.globs as Array).size()
+			run_steps.call(60)
+			var b_two: bool = int(sv.boss_info()["phase"]) == 2 and (sv.globs as Array).size() >= g0 + 8 and int(sv._cnt[KI["runner"]]) >= 0
+			await shot.call("brood_spirale", 120)
+			g.story_cam = Vector2.INF
+			bi2 = sv.boss_i()
+			sv.fhp[bi2] = float(sv.fmx[bi2]) * 0.2
+			sv.bst["flock"] = 0.0
+			run_steps.call(4)
+			var b_three: bool = int(sv.boss_info()["phase"]) == 3 and not (sv.flock_warn as Dictionary).is_empty()
+			var kills1: int = sv.run["kills"]
+			sv._hit(sv.boss_i(), 1000000000.0, g.pilot.pos)
+			var b_out: bool = String(sv.boss_kind) == "" and not bool(sv.barrier_on) and int(sv.n) == 0 and (sv.globs as Array).is_empty() and float(sv._win_t) > 0.0 and not bool(sv.over) \
+				and int(sv.run["kills"]) == kills1 + 1
+			var tw := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tw < 9000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			brood_ok = b_came and b_one and b_two and b_three and b_out and bool(sv.over) and bool(sv.survived) and g.minigame != null and bool(g.minigame.res.get("survived", false))
+			if not brood_ok:
+				print("COLSTAGE62A the brood: came ", b_came, " one ", b_one, " ring ", first_ring, " two ", b_two, " three ", b_three, " out ", b_out, " over ", sv.over, " held ", sv.survived, " window ", g.minigame)
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f9 in 10:
+				await get_tree().process_frame
+	check(rule_ok and kind_ok and event_ok and crate_ok and fast_ok and foreman_ok and brood_ok,
+		"62a, part 7c-2: Survivor's stage: ten kinds and their pictures, who comes when, what a crate holds by lot, crates and sleepers on the stage, sounds made here; the runner (fast, in a zigzag), the hauler (winds up, stamps: you are hurt and thrown back, not in a dodge), the spitter (stands off, spits; acid in the air and in a pool), the bloater (a cloud that stays), the shieldbearer (the shield first, then it breaks), the howler (those near it walk faster), an alpha (a great shard, a crate); the flock (announced, straight through, gone), the ring, the wall, the sleepers (they rise from the event on), the blackout, a supply drop; a shield, a magnet, a medkit, the bomb, stasis, overdrive, a level from a great crate; a step with the field full of all kinds stays cheap; The Foreman inside walls of light (nobody new comes, you cannot leave; a charge, a blow, containers; a great crate), The Brood when the time is up (rings of acid with a gap, what it lets out, two arms of acid, the flock; out: the run is won)  [%s %s %s %s %s %s %s]  (%.2f ms a step)" % [rule_ok, kind_ok, event_ok, crate_ok, fast_ok, foreman_ok, brood_ok, ms])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 7c-3 (Luz): what is round Survivor: four more weapons (Mine Layer, Sentry, Cryo Spray, Gravity
+## Well), five more boni, four more ultimates; cores, and what they buy at the console in the lobby (to unlock, fine
+## tuning, rerolls, a last chance); only what is yours lies among the cards; the choice of stage.
+func _test_colmeta62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var c0: Dictionary = CD.fresh()
+	var rec0: Dictionary = SV.record(c0)
+	var free_ok: bool = SV.owned(c0, "pulse") and SV.owned(c0, "laser") and SV.owned(c0, "plasma") and SV.owned(c0, "amp") and SV.owned(c0, "coolant") and SV.owned(c0, "reactor") \
+		and not SV.owned(c0, "drone") and not SV.owned(c0, "magnet") and not SV.owned(c0, "gravity") and int(rec0["cores"]) == 0 and SV.progress(c0) == 0.0
+	var e_poor := String(SV.buy(c0, "unlock", "drone"))
+	rec0["cores"] = 1000
+	var p_drone: int = SV.price(c0, "unlock", "drone")
+	var e_drone := String(SV.buy(c0, "unlock", "drone"))
+	var e_twice := String(SV.buy(c0, "unlock", "drone"))
+	var e_free := String(SV.buy(c0, "unlock", "pulse"))
+	var e_none := String(SV.buy(c0, "unlock", "nope"))
+	var t_prices: Array = []
+	for q in 11:
+		t_prices.append(SV.price(c0, "tune", "dmg"))
+		SV.buy(c0, "tune", "dmg")
+	var r_prices: Array = []
+	for q2 in 4:
+		r_prices.append(SV.price(c0, "reroll"))
+		SV.buy(c0, "reroll")
+	var before_rv := int(rec0["cores"])
+	var e_rv := String(SV.buy(c0, "revive"))
+	var e_rv2 := String(SV.buy(c0, "revive"))
+	var buy_ok: bool = e_poor.contains("20 cores") and p_drone == 20 and e_drone == "" and SV.owned(c0, "drone") and e_twice == "That is yours already." and e_free == "That is yours already." \
+		and e_none == "No such thing." and str(t_prices) == str([4, 7, 10, 13, 16, 19, 22, 25, 28, 31, -1]) and SV.tune_rank(c0, "dmg") == 10 and SV.tune_text("dmg", 10) == "+20 %" \
+		and SV.tune_text("cd", 2) == "-3 %" and SV.tune_text("hp", 3) == "+15" and str(r_prices) == str([30, 60, 120, -1]) and int(rec0["reroll"]) == 3 \
+		and e_rv == "" and bool(rec0["revive"]) and int(rec0["cores"]) == before_rv - 300 and e_rv2 == "That is yours already." and SV.price(c0, "revive") == -1 \
+		and int(rec0["cores"]) == 1000 - 20 - 175 - 210 - 300
+	var run0: Dictionary = SV.fresh("outbreak", "pulse", c0)
+	var md0: Dictionary = SV.mods(run0)
+	var only_mine := true
+	for q3 in 60:
+		for cd0 in SV.offers(run0, rng):
+			only_mine = only_mine and (String(cd0["id"]) in ["pulse", "laser", "plasma", "drone", "amp", "coolant", "reactor"])
+	var run_ok: bool = str(run0["pool_w"]) == str(["pulse", "laser", "plasma", "drone"]) and str(run0["pool_b"]) == str(["amp", "coolant", "reactor"]) and int(run0["rerolls"]) == 3 \
+		and bool(run0["revive"]) and int(run0["tune"]["dmg"]) == 10 and is_equal_approx(float(md0["dmg"]), 1.2) and float(md0["cd"]) == 1.0 and only_mine \
+		and not SV.fresh().has("pool_w") and SV.fresh().has("alphas")
+	SV.buy(c0, "tune", "hp")
+	SV.buy(c0, "tune", "cd")
+	var run1: Dictionary = SV.fresh("outbreak", "pulse", c0)
+	run_ok = run_ok and float(run1["hp"]) == 105.0 and SV.max_hp(run1) == 105.0 and is_equal_approx(float(SV.mods(run1)["cd"]), 0.985)
+	var rb: Dictionary = SV.fresh()
+	for bid in ["stabiliser", "overclock", "shieldcell", "scavenger", "lucky"]:
+		SV.apply(rb, {"kind": "bonus", "id": bid})
+	var mb1: Dictionary = SV.mods(rb)
+	for bid2 in ["stabiliser", "overclock", "shieldcell", "scavenger", "lucky"]:
+		for q4 in 4:
+			SV.apply(rb, {"kind": "bonus_up", "id": bid2})
+	var mb5: Dictionary = SV.mods(rb)
+	var ups := 0                                               # (part 7f) Lucky Find: a weapon crate holds three or five rewards more often
+	for q5 in 400:
+		if int(SV.draw_count({"weapons": [["pulse", 1]], "boni": [["lucky", 5]]}, rng, false)) > 1:
+			ups += 1
+	var c_run := {"t": 615.0, "alphas": 3, "bosses": ["foreman"], "kills": 10, "level": 4, "stage": "outbreak"}
+	var c1: Dictionary = CD.fresh()
+	var s1: Dictionary = SV.settle(c1, c_run, false)
+	var c_all: Dictionary = CD.fresh()
+	var rall: Dictionary = SV.record(c_all)
+	rall["own"] = SV.UNLOCK_COST.keys()
+	for tq in SV.TUNE_ORDER:
+		rall["tune"][tq] = SV.TUNE_MAX
+	rall["reroll"] = 3
+	rall["revive"] = true
+	c_all["mode"] = "survivor"
+	var c_bad: Dictionary = CD.fresh()
+	SV.record(c_bad)["weapon"] = "gravity"
+	var rg: Dictionary = SV.fresh("outbreak", "pulse", c_all)               # (Luz) the Blackhole Gun: a weapon for the end of a run: its card comes late
+	var early := false
+	for q13 in 80:
+		early = early or (SV.offers(rg, rng) as Array).any(func(cd): return String(cd["id"]) == "blackhole")
+	rg["level"] = 10
+	var late_n := 0
+	for q14 in 300:
+		if (SV.offers(rg, rng) as Array).any(func(cd): return String(cd["id"]) == "blackhole" and String(cd["kind"]) == "weapon"):
+			late_n += 1
+	var rcap: Dictionary = SV.fresh()
+	SV.apply(rcap, {"kind": "bonus", "id": "capacitor"})
+	SV.apply(rcap, {"kind": "bonus", "id": "massdriver"})
+	var mcap: Dictionary = SV.mods(rcap)
+	var luz_ok: bool = not early and late_n > 5 and not SV.can_begin(c_all, "blackhole") and SV.can_begin(c_all, "taser") and not SV.can_begin(c0, "taser") \
+		and String(SV.WEAPONS["taser"]["bonus"]) == "capacitor" and String(SV.WEAPONS["taser"]["ult"]) == "Chain Lightning" and String(SV.WEAPONS["blackhole"]["bonus"]) == "massdriver" \
+		and String(SV.WEAPONS["blackhole"]["ult"]) == "Event Horizon" and float(SV.stats("blackhole", 1)["every"]) > 20.0 and float(SV.stats("blackhole", 5)["every"]) < float(SV.stats("blackhole", 1)["every"]) \
+		and float(SV.stats("taser", 5)["reach"]) > float(SV.stats("taser", 1)["reach"]) and int(SV.UNLOCK_COST["blackhole"]) > int(SV.UNLOCK_COST["superlaser"]) \
+		and is_equal_approx(float(mcap["crit"]), 0.06) and is_equal_approx(float(mcap["kb"]), 1.25) and float(SV.mods(SV.fresh())["crit"]) == 0.0 and float(SV.mods(SV.fresh())["kb"]) == 1.0 \
+		and str(SV.weapon_lines("blackhole", 0, 1)) == str([["Radius", "", "50"], ["Interval", "", "28 s"]]) \
+		and SV.TUNE_ORDER.size() == 7 and String(SV.TUNE["xp"]["name"]) == "XP" and String(SV.TUNE["coins"]["name"]) == "Coins" and SV.price(CD.fresh(), "tune", "coins") == 4 \
+		and int(SV.reward({"t": 300.0, "kills": 120}, false)["coins"]) == 60 and int(SV.reward({"t": 300.0, "kills": 120, "tune": {"coins": 10}}, false)["coins"]) == 78 \
+		and int(SV.reward({"t": 300.0, "kills": 120, "tune": {"coins": 10}}, false)["xp"]) == int(SV.reward({"t": 300.0, "kills": 120}, false)["xp"]) \
+		and Audio.stream("sv_taser") != null and Audio.stream("sv_hole") != null
+	if not luz_ok:
+		print("COLMETA62A the Blackhole Gun, the Taser, the Coins: early ", early, " late ", late_n, " mods ", mcap, " lines ", SV.weapon_lines("blackhole", 0, 1), " pays ",
+			SV.reward({"t": 300.0, "kills": 120, "tune": {"coins": 10}}, false))
+	var rule_ok: bool = luz_ok and SV.WEAPON_ORDER.size() == 13 and SV.BONUS_ORDER.size() == 14 and SV.UNLOCK_COST.size() == 21 \
+		and (SV.WEAPON_ORDER as Array).all(func(w): return (SV.WEAPONS[w]["levels"] as Array).size() == 5 and SV.BONI.has(String(SV.WEAPONS[w]["bonus"])) and String(SV.WEAPONS[w]["ult"]) != "" \
+			and not String(SV.WEAPONS[w]["text"]).contains("–") and not String(SV.WEAPONS[w]["ult_text"]).contains("–") and (SV.owned(c_all, w))) \
+		and (SV.BONUS_ORDER as Array).all(func(b): return String(SV.BONI[b]["name"]) != "" and not String(SV.BONI[b]["text"]).contains("–") and SV.owned(c_all, b)) \
+		and String(SV.WEAPONS["mines"]["bonus"]) == "stabiliser" and String(SV.WEAPONS["sentry"]["bonus"]) == "overclock" and String(SV.WEAPONS["cryo"]["bonus"]) == "shieldcell" \
+		and String(SV.WEAPONS["gravity"]["bonus"]) == "scavenger" and String(SV.WEAPONS["mines"]["ult"]) == "Minefield" and String(SV.WEAPONS["sentry"]["ult"]) == "Battery" \
+		and String(SV.WEAPONS["cryo"]["ult"]) == "Absolute Zero" and String(SV.WEAPONS["gravity"]["ult"]) == "Singularity" \
+		and str(SV.weapon_lines("cryo", 0, 1)) == str([["Damage", "", "5"], ["Reach", "", "60"], ["Freezes", "", "1.2 s"], ["Interval", "", "3.4 s"]]) \
+		and str(SV.weapon_lines("sentry", 3, 4)) == str([["Guns", "1", "2"], ["Damage", "11", "12"]]) and str(SV.bonus_lines("shieldcell", 1, 2)) == str([["Charges in", "19 s", "16 s"]]) \
+		and String(SV.fusion(rb, {"kind": "bonus", "id": "stabiliser"})["text"]) == "Fuses Mine Layer into Minefield" and SV.fusion(rb, {"kind": "bonus", "id": "lucky"}).is_empty() \
+		and is_equal_approx(float(mb1["dur"]), 1.1) and is_equal_approx(float(mb1["more"]), 0.2) and float(mb1["cell"]) == 19.0 and is_equal_approx(float(mb1["xp"]), 1.1) and int(mb1["luck"]) == 1 \
+		and is_equal_approx(float(mb5["dur"]), 1.5) and is_equal_approx(float(mb5["more"]), 1.0) and float(mb5["cell"]) == 7.0 and is_equal_approx(float(mb5["xp"]), 1.5) and int(mb5["luck"]) == 5 \
+		and float(SV.mods(SV.fresh())["cell"]) == 0.0 and ups > 115 and ups < 205 \
+		and SV.cores(c_run) == 30 + 6 + 12 and SV.cores({"t": 900.0, "bosses": ["foreman", "brood"]}) == 45 + 42 and int(s1["cores"]) == 48 and int(SV.record(c1)["cores"]) == 48 \
+		and int(SV.record(c1)["cores_all"]) == 48 and SV.progress(c1) == 0.0 and is_equal_approx(SV.progress(c_all), 1.0) and is_equal_approx(CD.crowd(c_all), 1.0) \
+		and SV.progress(c0) > 0.05 and SV.progress(c0) < 0.4 and SV.first_weapon(c_bad) == "pulse" and SV.first_weapon(c_all) == "pulse" \
+		and SA.mine(true) != null and SA.mine(true) != SA.mine(false) and SA.sentry(2, false) != null and SA.sentry(3, true) != SA.sentry(2, true) \
+		and Audio.stream("sv_mine") != null and Audio.stream("sv_freeze") != null and Audio.stream("sv_well") != null
+	if not (free_ok and buy_ok and run_ok and rule_ok):
+		print("COLMETA62A rules: free ", free_ok, " buy ", buy_ok, " ", [e_poor, p_drone, e_drone, e_twice, e_free, e_none, e_rv, e_rv2], t_prices, r_prices, rec0, " run ", run_ok, " ", run0, md0, run1,
+			" rules ", rule_ok, " ", mb1, mb5, " ups ", ups, " cores ", SV.cores(c_run), s1, " progress ", SV.progress(c0), " ", SV.progress(c_all), " lines ", SV.weapon_lines("cryo", 0, 1), SV.weapon_lines("sentry", 3, 4))
+	# ---- down to Centauria, into the Colosseum's lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var console_ok := false
+	var prep_ok := false
+	var weapon_ok := false
+	var bonus_ok := false
+	var meta_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = false
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_plaza")
+		for f0 in 8:
+			await get_tree().process_frame
+		# ---- the console: for the house's fighters; a tile is bought through the command bus
+		var zc: Dictionary = _zone_of(g.map, "sv_console")
+		var at: Vector2 = g.map.get_meta("sv_console_at", Vector2.ZERO)
+		var stands: bool = not zc.is_empty() and (zc["rect"] as Rect2).has_point(at) and g.map.free_at(at, 4.0) and g.map.path(g.map.spawn, at).size() > 0 \
+			and (g.map.get_meta("col_props", []) as Array).any(func(p): return String(p["kind"]) == "svconsole")
+		g.pilot.pos = at
+		g.pilot.position = at * GroundMap.SCALE
+		g.zone = zc
+		g.use()
+		for f1 in 3:
+			await get_tree().process_frame
+		var shut_out: bool = g.minigame == null and String(Commands.execute({"type": "sv_buy", "what": "unlock", "id": "drone"})) == "Sign up at the registration first."
+		GameState.col_registered = true
+		g.zone = zc
+		g.use()
+		for f2 in 3:
+			await get_tree().process_frame
+		var con = g.minigame
+		var opened: bool = con != null and con.has_method("is_sv_console")
+		if opened:
+			var its: Array = con.items()
+			var di := -1
+			var ti := -1
+			var ri := -1
+			var vi := -1
+			for q6 in its.size():
+				if String(its[q6]["id"]) == "drone":
+					di = q6
+				elif String(its[q6]["kind"]) == "tune" and String(its[q6]["id"]) == "dmg":
+					ti = q6
+				elif String(its[q6]["kind"]) == "reroll":
+					ri = q6
+				elif String(its[q6]["kind"]) == "revive":
+					vi = q6
+			var vs: Vector2 = get_viewport().get_visible_rect().size
+			var apart := true
+			for q7 in its.size():
+				apart = apart and Rect2(Vector2.ZERO, vs).encloses(con.on_screen(its[q7]["rect"]))
+				for q8 in range(q7 + 1, its.size()):
+					apart = apart and not (its[q7]["rect"] as Rect2).intersects(its[q8]["rect"])
+			con._t = 1.0
+			con.buy(di)
+			var no_cores: bool = not SV.owned(GameState.col_state(), "drone") and String(con.msg).contains("20 cores") and not bool(con.msg_good)
+			Commands.execute({"type": "debug_casino", "sv": "cores"})
+			Commands.execute({"type": "debug_casino", "sv": "cores"})
+			con.buy(di)
+			var bought: bool = SV.owned(GameState.col_state(), "drone") and int(SV.record(GameState.col_state())["cores"]) == 180 and bool(con.msg_good) and String(con.msg) == "Yours: Drone."
+			con.buy(ti)
+			con.buy(ri)
+			var tuned: bool = SV.tune_rank(GameState.col_state(), "dmg") == 1 and int(SV.record(GameState.col_state())["reroll"]) == 1 and int(SV.record(GameState.col_state())["cores"]) == 180 - 4 - 30
+			con.buy(vi)
+			var too_dear: bool = not bool(SV.record(GameState.col_state())["revive"]) and not bool(con.msg_good)
+			con.sel = 0
+			con.move(Vector2.RIGHT)
+			var s_right: int = con.sel
+			con.move(Vector2.DOWN)
+			var s_down: int = con.sel
+			con.sel = 6
+			con.move(Vector2.RIGHT)
+			var s_over: int = con.sel
+			con.pad_button("down", true)
+			var s_pad: int = con.sel
+			var moved: bool = s_right == 1 and s_down == 8 and String(its[s_over]["kind"]) == "tune" and s_pad != s_over and String(con.text_of(its[di])).contains("Carrier Swarm") \
+				and String(con.title_of(its[vi])) == "Last chance"
+			if shots:
+				Commands.execute({"type": "debug_casino", "sv": "cores"})
+				for bq in ["blade", "mines", "taser", "magnet", "servo", "stabiliser"]:
+					Commands.execute({"type": "sv_buy", "what": "unlock", "id": bq})
+				for bq2 in 3:
+					Commands.execute({"type": "sv_buy", "what": "tune", "id": "hp"})
+				Commands.execute({"type": "sv_buy", "what": "tune", "id": "coins"})
+				con.sel = 11
+				con.msg = "Yours: Mine Layer."
+				con.msg_good = true
+				for f3 in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_konsole.png")
+			con.back()
+			for f4 in 3:
+				await get_tree().process_frame
+			console_ok = stands and shut_out and its.size() == 36 and di >= 0 and ti >= 0 and ri >= 0 and vi >= 0 and apart and no_cores and bought and tuned and too_dear and moved and g.minigame == null
+			if not console_ok:
+				print("COLMETA62A the console: stands ", stands, " shut out ", shut_out, " tiles ", its.size(), " apart ", apart, " no cores ", no_cores, " ", con.msg, " bought ", bought, " tuned ", tuned,
+					" too dear ", too_dear, " moved ", [s_right, s_down, s_over, s_pad], " record ", SV.record(GameState.col_state()))
+		else:
+			print("COLMETA62A the console did not open: ", stands, " ", shut_out, " ", g.minigame, " zone ", zc)
+		if shots:                                               # (a picture of it in the lobby)
+			g.pilot.dir = 1
+			for f5 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_konsole_lobby.png")
+		# ---- the fighters' room: the stages as tiles, the weapons you can begin with (the locked ones say so)
+		GameState.col = {}
+		Commands.execute({"type": "debug_casino", "sv": "cores"})
+		Commands.execute({"type": "sv_buy", "what": "unlock", "id": "drone"})
+		CD.switch_mode(GameState.col_state(), "survivor")
+		g._col_prep_open()
+		for f6 in 4:
+			await get_tree().process_frame
+		var prep = g.minigame
+		if prep != null and prep.has_method("is_col_prep"):
+			var vs2: Vector2 = get_viewport().get_visible_rect().size
+			var tiles_in := true
+			var roomy: bool = vs2.x >= 1900.0 and vs2.y >= 1060.0       # (the room is laid out for a full picture)
+			for q9 in SV.WEAPON_ORDER.size():
+				tiles_in = tiles_in and (not roomy or (Rect2(Vector2.ZERO, vs2).encloses(prep.sv_weapon_rect(q9)) and prep.sv_weapon_rect(q9).end.y < prep.ready_rect().position.y))
+				for q9b in range(q9 + 1, SV.WEAPON_ORDER.size()):
+					tiles_in = tiles_in and not prep.sv_weapon_rect(q9).intersects(prep.sv_weapon_rect(q9b))
+			for q10 in SV.STAGES.size():
+				tiles_in = tiles_in and (not roomy or Rect2(Vector2.ZERO, vs2).encloses(prep.sv_stage_rect(q10))) and not prep.sv_stage_rect(q10).intersects(prep.sv_weapon_rect(0)) and prep.has_method("is_sv_prep")      # (part 10: Survivor's own room: the stages stand beside the weapons)
+			prep.pick_sv_weapon(9)
+			var locked: bool = String(prep.msg).contains("still locked") and SV.first_weapon(GameState.col_state()) == "pulse"
+			prep.pick_sv_weapon(3)
+			var picked: bool = SV.first_weapon(GameState.col_state()) == "drone" and String(prep.msg) == "You begin with: Drone."
+			SV.record(GameState.col_state())["own"] = SV.UNLOCK_COST.keys()
+			prep.pick_sv_weapon(11)
+			picked = picked and String(prep.msg).contains("end of a run") and SV.first_weapon(GameState.col_state()) == "drone"
+			SV.record(GameState.col_state())["own"] = ["drone", "taser", "blackhole"]      # (for the picture: some yours, some locked, one that comes late)
+			prep.pick_sv_stage(3)                                  # (part 9: the third stage is built now; the fourth is the one still to come)
+			var soon: bool = String(prep.msg) == "That stage is still to come." and String(SV.record(GameState.col_state())["stage"]) == "outbreak"
+			prep.pick_sv_stage(0)
+			var st_ok: bool = String(prep.msg) == "The stage: Outbreak."
+			if shots:
+				for f7 in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_vorbereitung.png")
+			prep_ok = tiles_in and locked and picked and soon and st_ok
+			if not prep_ok:
+				print("COLMETA62A the fighters' room: tiles ", tiles_in, " locked ", locked, " picked ", picked, " soon ", soon, " ", st_ok, " ", prep.msg)
+		g._close_game()
+		for f8 in 3:
+			await get_tree().process_frame
+		# ---- a run: what is yours goes into it
+		GameState.col = {}
+		var recm: Dictionary = SV.record(GameState.col_state())
+		recm["cores"] = 500
+		Commands.execute({"type": "sv_buy", "what": "reroll"})
+		Commands.execute({"type": "sv_buy", "what": "reroll"})
+		Commands.execute({"type": "sv_buy", "what": "revive"})
+		Commands.execute({"type": "sv_buy", "what": "tune", "id": "dmg"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f9 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.run["boni"] = []
+				sv.mods = SV.mods(sv.run)
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.cell_t = 0.0
+				sv.sn = 0
+				sv.face_dir = Vector2.RIGHT
+				g.pilot.pos = pp
+				g.pilot.position = pp * GroundMap.SCALE
+				sv._last_pp = pp
+			var began: bool = str(sv.run["pool_w"]) == str(["pulse", "laser", "plasma"]) and int(sv.run["rerolls"]) == 2 and bool(sv.run["revive"]) and is_equal_approx(float(sv.mods["dmg"]), 1.02)
+			sv.quiet = true
+			sv.sleepers = []
+			sv.crates = []
+			sv.run["tune"] = {}
+			# the Mine Layer: a mine where you walk; armed, it goes off when one of them steps on it
+			calm.call()
+			sv.run["weapons"] = [["mines", 1]]
+			sv._wt = {"mines": 0.0}
+			sv.step(0.016)
+			var laid: bool = (sv.mines as Array).size() == 1 and (sv.mines[0]["p"] as Vector2).distance_to(pp - Vector2(8.0, 0.0)) < 0.5 and float(sv.mines[0]["arm"]) > 0.0
+			var m_at: Vector2 = sv.mines[0]["p"]
+			var on_it: int = sv.add_foe(KI["shambler"], m_at + Vector2(3.0, 0.0))
+			sv.frozen = true
+			sv.step(0.016)
+			sv.step(0.016)
+			var not_armed: bool = int(sv.n) == 1 and (sv.mines as Array).size() == 1
+			sv._wt["mines"] = 99.0
+			run_steps.call(36)
+			var went_off: bool = int(sv.n) == 0 and (sv.mines as Array).is_empty() and (sv.blasts as Array).size() >= 1
+			calm.call()
+			sv.run["weapons"] = [["mines", SV.ULT]]                 # the Minefield: a ring of them round you; each arms itself once more
+			sv._wt = {"mines": 0.0}
+			sv.step(0.016)
+			var ring_n: int = (sv.mines as Array).size()
+			var ringed: bool = ring_n >= 7 and (sv.mines as Array).all(func(mq): return bool(mq["again"]) and absf((mq["p"] as Vector2).distance_to(pp) - 62.0) < 1.0)
+			sv._wt["mines"] = 99.0
+			var m2: Vector2 = sv.mines[0]["p"]
+			sv.add_foe(KI["shambler"], m2)
+			run_steps.call(36)
+			var once: bool = int(sv.n) == 0 and (sv.mines as Array).size() == ring_n and (sv.mines as Array).any(func(mq): return not bool(mq["again"]))
+			sv.add_foe(KI["shambler"], m2)
+			run_steps.call(90)
+			var twice: bool = int(sv.n) == 0 and (sv.mines as Array).size() == ring_n - 1
+			var mines_ok: bool = laid and not_armed and went_off and ringed and once and twice
+			# the Sentry: a gun set down; it fires at whoever is nearest to it, for a while
+			calm.call()
+			sv.run["weapons"] = [["sentry", 1]]
+			sv._wt = {"sentry": 0.0}
+			sv.step(0.016)
+			var set_down: bool = (sv.sentries as Array).size() == 1 and (sv.sentries[0]["p"] as Vector2).distance_to(pp) < 14.0 and not bool(sv.sentries[0]["keep"])
+			sv._wt["sentry"] = 99.0
+			var s_near: int = sv.add_foe(KI["hauler"], pp + Vector2(60.0, 0.0))
+			var s_far: int = sv.add_foe(KI["hauler"], pp + Vector2(100.0, 0.0))
+			var s_out: int = sv.add_foe(KI["hauler"], pp + Vector2(200.0, 0.0))
+			var hp_n: float = sv.fhp[s_near]
+			run_steps.call(40)
+			var fired: bool = float(sv.fhp[s_near]) < hp_n - 6.0 and float(sv.fhp[s_far]) == float(sv.fmx[s_far]) and float(sv.fhp[s_out]) == float(sv.fmx[s_out]) and int(sv.sentries[0]["face"]) == 3
+			run_steps.call(360)
+			var gone_s: bool = (sv.sentries as Array).is_empty()
+			calm.call()
+			sv.frozen = false
+			sv.run["weapons"] = [["sentry", SV.ULT]]                # the Battery: three guns that stay while you stay near
+			sv._wt = {"sentry": 0.0}
+			run_steps.call(200)
+			var three: bool = (sv.sentries as Array).size() == 3 and (sv.sentries as Array).all(func(sq): return bool(sq["keep"]))
+			run_steps.call(400)
+			var stay: bool = (sv.sentries as Array).size() == 3
+			sv._wt["sentry"] = 99.0
+			g.pilot.pos = pp + Vector2(0.0, 320.0)
+			run_steps.call(120)
+			var left_them: bool = (sv.sentries as Array).is_empty()
+			var sentry_ok: bool = set_down and fired and gone_s and three and stay and left_them
+			# the Cryo Spray: a cone the way you walk; who stands in it is hurt and frozen, stands still, touches nobody
+			calm.call()
+			sv.run["weapons"] = [["cryo", 1]]
+			sv._wt = {"cryo": 0.0}
+			var ahead: int = sv.add_foe(KI["shambler"], pp + Vector2(40.0, 6.0))
+			var behind: int = sv.add_foe(KI["shambler"], pp + Vector2(-40.0, 0.0))
+			var big: int = sv.add_foe(KI["hauler"], pp + Vector2(50.0, -10.0))
+			var hp_a: float = sv.fhp[ahead]
+			sv.frozen = true
+			sv.step(0.016)
+			var sprayed: bool = float(sv.ffr[ahead]) > 1.1 and is_equal_approx(float(sv.fhp[ahead]), hp_a - 5.0) and float(sv.ffr[behind]) == 0.0 and float(sv.fhp[behind]) == float(sv.fmx[behind]) \
+				and is_equal_approx(float(sv.ffr[big]), 0.6) and (sv.cones as Array).size() == 1 and not bool(sv._shatter)
+			sv._wt["cryo"] = 99.0
+			sv.frozen = false
+			var a_at: Vector2 = sv.fp[ahead]
+			var b_at: Vector2 = sv.fp[behind]
+			run_steps.call(30)
+			var stood: bool = (sv.fp[ahead] as Vector2) == a_at and (sv.fp[behind] as Vector2).x > b_at.x + 5.0
+			sv.fp[ahead] = pp + Vector2(2.0, 0.0)
+			sv.ffr[ahead] = 1.0
+			sv.hurt_cd = 0.0
+			sv.fp[behind] = pp + Vector2(-200.0, 0.0)
+			sv.fp[big] = pp + Vector2(200.0, 0.0)
+			run_steps.call(6)
+			var harmless: bool = float(sv.run["hp"]) == 1000.0
+			run_steps.call(70)
+			var thawed: bool = float(sv.ffr[ahead]) <= 0.0 and float(sv.run["hp"]) < 1000.0
+			calm.call()
+			sv.run["weapons"] = [["cryo", SV.ULT]]                  # Absolute Zero: a wave all round; what is frozen shatters at the next hit
+			sv._wt = {"cryo": 0.0}
+			sv.frozen = true
+			var z1: int = sv.add_foe(KI["shambler"], pp + Vector2(-60.0, 0.0))
+			sv.fhp[z1] = 100.0
+			var z2: int = sv.add_foe(KI["hauler"], pp + Vector2(0.0, 70.0))
+			sv.step(0.016)
+			var all_round: bool = float(sv.ffr[z1]) > 0.0 and float(sv.ffr[z2]) > 0.0 and bool(sv._shatter) and float((sv.cones[0] as Dictionary)["arc"]) > 3.0
+			sv._wt["cryo"] = 99.0
+			var hp_z2: float = sv.fhp[z2]
+			sv._hit(z2, 10.0, pp)
+			sv._hit(z1, 1.0, pp)
+			var shattered: bool = int(sv.n) == 1 and is_equal_approx(float(sv.fhp[0]), hp_z2 - 40.0) and float(sv.ffr[0]) == 0.0
+			var cryo_ok: bool = sprayed and stood and harmless and thawed and all_round and shattered
+			# the Gravity Well: thrown at the nearest; it pulls all near it to its middle and wears them down
+			calm.call()
+			sv.frozen = true
+			sv.run["weapons"] = [["gravity", 1]]
+			sv._wt = {"gravity": 0.0}
+			var g1: int = sv.add_foe(KI["shambler"], pp + Vector2(90.0, 0.0))
+			var g2: int = sv.add_foe(KI["shambler"], pp + Vector2(90.0, 36.0))
+			var g3: int = sv.add_foe(KI["shambler"], pp + Vector2(90.0, 120.0))
+			sv.fhp[g1] = 100.0
+			sv.fhp[g2] = 100.0
+			sv.step(0.016)
+			var thrown: bool = (sv.wells as Array).size() == 1 and (sv.wells[0]["p"] as Vector2) == pp + Vector2(90.0, 0.0) and float(sv.wells[0]["r"]) == 46.0
+			sv._wt["gravity"] = 99.0
+			run_steps.call(60)
+			var pulled: bool = (sv.fp[g2] as Vector2).distance_to(pp + Vector2(90.0, 0.0)) < 16.0 and (sv.fp[g3] as Vector2) == pp + Vector2(90.0, 120.0) and float(sv.fhp[g2]) <= 96.0 \
+				and float(sv.fhp[g3]) == float(sv.fmx[g3])
+			run_steps.call(110)
+			var well_gone: bool = (sv.wells as Array).is_empty() and int(sv.n) == 3
+			calm.call()
+			sv.run["weapons"] = [["gravity", SV.ULT]]               # the Singularity: at its end it crushes what it pulled in and sends you the shards
+			sv._wt = {"gravity": 0.0}
+			sv.run["xp"] = -1000
+			var u1: int = sv.add_foe(KI["shambler"], pp + Vector2(140.0, 0.0))
+			sv.add_foe(KI["shambler"], pp + Vector2(140.0, 30.0))
+			var u_big: int = sv.add_foe(KI["hauler"], pp + Vector2(140.0, -30.0))
+			sv.fhp[u1] = 100000.0
+			sv.fhp[u_big] = 100000.0
+			sv.fmx[u_big] = 100000.0
+			sv.step(0.016)
+			sv._wt["gravity"] = 99.0
+			run_steps.call(260)
+			var crushed: bool = (sv.wells as Array).is_empty() and int(sv._cnt[KI["shambler"]]) == 0 and int(sv._cnt[KI["hauler"]]) == 1 and float(sv.fhp[0]) < float(sv.fmx[0]) - 100.0
+			run_steps.call(120)
+			var sent: bool = int(sv.sn) == 0 and int(sv.run["xp"]) == -1000 + 2
+			var grav_ok: bool = thrown and pulled and well_gone and crushed and sent
+			# (Luz) the Taser: a shock into a small field right before you: hurt and stunned; who stands behind you or further off is not
+			calm.call()
+			sv.frozen = true
+			sv.run["weapons"] = [["taser", 1]]
+			sv._wt = {"taser": 0.0}
+			var t_in: int = sv.add_foe(KI["hauler"], pp + Vector2(24.0, 4.0))
+			var t_far: int = sv.add_foe(KI["hauler"], pp + Vector2(60.0, 0.0))
+			var t_back: int = sv.add_foe(KI["hauler"], pp + Vector2(-24.0, 0.0))
+			sv.step(0.016)
+			var shocked: bool = float(sv.fhp[t_in]) < float(sv.fmx[t_in]) and float(sv.fstun[t_in]) > 0.1 and float(sv.ffr[t_in]) == 0.0 and float(sv.fhp[t_far]) == float(sv.fmx[t_far]) \
+				and float(sv.fhp[t_back]) == float(sv.fmx[t_back]) and float(sv.fstun[t_back]) == 0.0 and (sv.zaps as Array).size() == 1
+			sv._wt["taser"] = 99.0
+			sv.fp[t_far] = pp + Vector2(400.0, 0.0)
+			sv.fp[t_back] = pp + Vector2(-400.0, 0.0)
+			sv.frozen = false
+			var st_at: Vector2 = sv.fp[t_in]
+			sv.fstun[t_in] = 0.5
+			sv.fkb[t_in] = Vector2.ZERO
+			run_steps.call(20)
+			var stunned: bool = (sv.fp[t_in] as Vector2) == st_at and float(sv.fstun[t_in]) > 0.0 and float(sv.fstun[t_in]) < 0.25
+			calm.call()
+			sv.frozen = true
+			sv.run["weapons"] = [["taser", SV.ULT]]                 # Chain Lightning: it jumps on from the one it hit, three times
+			sv._wt = {"taser": 0.0}
+			var ch1: int = sv.add_foe(KI["hauler"], pp + Vector2(30.0, 0.0))
+			var ch2: int = sv.add_foe(KI["hauler"], pp + Vector2(80.0, 0.0))
+			var ch3: int = sv.add_foe(KI["hauler"], pp + Vector2(130.0, 0.0))
+			var ch4: int = sv.add_foe(KI["hauler"], pp + Vector2(300.0, 0.0))
+			sv.step(0.016)
+			var chained: bool = float(sv.fhp[ch1]) < float(sv.fmx[ch1]) and float(sv.fhp[ch2]) < float(sv.fmx[ch2]) and float(sv.fhp[ch3]) < float(sv.fmx[ch3]) \
+				and float(sv.fhp[ch4]) == float(sv.fmx[ch4]) and (sv.beams as Array).any(func(bq0): return int(bq0.get("c", 0)) == 2)
+			var taser_ok: bool = shocked and stunned and chained
+			# (Luz) the Blackhole Gun: a black hole the way you look; it drifts on and swallows what comes near; a tough one is torn at; then it is gone
+			calm.call()
+			sv.frozen = true
+			sv.run["weapons"] = [["blackhole", 1]]
+			sv._wt = {"blackhole": 0.0}
+			sv.add_foe(KI["shambler"], pp + Vector2(70.0, 30.0))
+			var b_big: int = sv.add_foe(KI["hauler"], pp + Vector2(120.0, 0.0))
+			sv.fhp[b_big] = 100000.0
+			sv.fmx[b_big] = 100000.0
+			sv.add_foe(KI["shambler"], pp + Vector2(70.0, 150.0))
+			sv.run["xp"] = -1000
+			sv.step(0.016)
+			var fired_h: bool = (sv.holes as Array).size() == 1 and (sv.holes[0]["v"] as Vector2).is_equal_approx(Vector2(34.0, 0.0)) and float(sv.holes[0]["r"]) == 50.0
+			sv._wt["blackhole"] = 99.0
+			run_steps.call(260)
+			var hole_at: Vector2 = sv.holes[0]["p"] if not (sv.holes as Array).is_empty() else Vector2.ZERO
+			var big_i := -1
+			var small_i := -1
+			for q15 in int(sv.n):
+				if int(sv.fk[q15]) == int(KI["hauler"]):
+					big_i = q15
+				else:
+					small_i = q15
+			var swallowed: bool = int(sv._cnt[KI["shambler"]]) == 1 and small_i >= 0 and (sv.fp[small_i] as Vector2) == pp + Vector2(70.0, 150.0) and hole_at.x > pp.x + 90.0 \
+				and absf(hole_at.y - pp.y) < 0.01 and big_i >= 0 and float(sv.fhp[big_i]) < 100000.0 - 40.0 and (sv.fp[big_i] as Vector2).distance_to(hole_at) < 12.0
+			run_steps.call(900)
+			var hole_gone: bool = (sv.holes as Array).is_empty()
+			calm.call()
+			sv.run["weapons"] = [["blackhole", SV.ULT]]             # Event Horizon: three at once, spread like a fan
+			sv._wt = {"blackhole": 0.0}
+			sv.step(0.016)
+			var fan: bool = (sv.holes as Array).size() == 3 and absf((sv.holes[0]["v"] as Vector2).angle() + 0.5) < 0.01 and absf((sv.holes[1]["v"] as Vector2).angle()) < 0.01 \
+				and absf((sv.holes[2]["v"] as Vector2).angle() - 0.5) < 0.01
+			var hole_ok: bool = fired_h and swallowed and hole_gone and fan
+			# the Capacitor (now and then twice as hard), the Mass Driver (thrown back further)
+			calm.call()
+			sv.run["weapons"] = []
+			sv.run["boni"] = [["capacitor", 5]]
+			sv.mods = SV.mods(sv.run)
+			var cp_i: int = sv.add_foe(KI["hauler"], pp + Vector2(100.0, 0.0))
+			sv.fhp[cp_i] = 100000.0
+			for q16 in 300:
+				sv._hit(cp_i, 1.0, pp)
+			var twice_n: float = 100000.0 - float(sv.fhp[cp_i]) - 300.0
+			sv.run["boni"] = [["massdriver", 5]]
+			sv.mods = SV.mods(sv.run)
+			var md_i: int = sv.add_foe(KI["shambler"], pp + Vector2(100.0, 40.0))
+			sv.fhp[md_i] = 1000.0
+			sv._hit(md_i, 1.0, pp)
+			var pair_ok: bool = twice_n > 55.0 and twice_n < 130.0 and is_equal_approx((sv.fkb[md_i] as Vector2).length(), 46.0 * 2.25)
+			if not (taser_ok and hole_ok and pair_ok):
+				print("COLMETA62A the taser ", [shocked, stunned, chained], " the black hole ", [fired_h, swallowed, hole_gone, fan], " at ", hole_at, " n ", sv.n, " big ", big_i, " small ", small_i,
+					" holes ", sv.holes, " capacitor ", twice_n, " mass driver ", (sv.fkb[md_i] as Vector2).length())
+			if shots:                                              # (a picture: the taser's shock, a black hole on its way)
+				calm.call()
+				sv.frozen = false
+				sv.run["weapons"] = [["taser", 4], ["blackhole", 3]]
+				sv._wt = {"taser": 0.0, "blackhole": 0.0}
+				sv.run["hp"] = 1000000.0
+				sv.swarm(110)
+				sv.swarm(2, "hauler")
+				for q17 in 12:
+					sv.add_foe(KI["shambler"], pp + Vector2(22.0 + (q17 % 4) * 9.0, -14.0 + (q17 / 4) * 12.0))
+				for f18 in 124:
+					await get_tree().process_frame
+				sv._wt["taser"] = 0.0
+				for f18b in 4:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_taser_blackhole.png")
+				calm.call()
+				sv.run["weapons"] = [["taser", SV.ULT], ["blackhole", SV.ULT]]
+				sv._wt = {"taser": 0.0, "blackhole": 0.0}
+				sv.run["hp"] = 1000000.0
+				sv.swarm(160)
+				for q18 in 14:
+					sv.add_foe(KI["shambler"], pp + Vector2(24.0 + (q18 % 5) * 16.0, -20.0 + (q18 / 5) * 16.0))
+				for f19 in 122:
+					await get_tree().process_frame
+				sv._wt["taser"] = 0.0
+				for f19b in 4:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_taser_blackhole_ult.png")
+			weapon_ok = mines_ok and sentry_ok and cryo_ok and grav_ok and taser_ok and hole_ok and pair_ok
+			if not weapon_ok:
+				print("COLMETA62A weapons: mines ", [laid, not_armed, went_off, ringed, once, twice], " ", ring_n, " sentry ", [set_down, fired, gone_s, three, stay, left_them], " cryo ",
+					[sprayed, stood, harmless, thawed, all_round, shattered], " gravity ", [thrown, pulled, well_gone, crushed, sent], " n ", sv.n, " shards ", sv.sn, " xp ", sv.run["xp"])
+			if shots:                                              # (a picture: all four at work)
+				calm.call()
+				sv.frozen = false
+				sv.run["weapons"] = [["mines", 3], ["sentry", 4], ["cryo", 3], ["gravity", 3]]
+				sv._wt = {"mines": 0.0, "sentry": 0.0, "cryo": 1.5, "gravity": 0.3}
+				sv.run["hp"] = 1000000.0
+				sv.swarm(70)
+				sv.swarm(8, "runner")
+				sv.swarm(2, "hauler")
+				for f10 in 96:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_neue_waffen.png")
+				calm.call()
+				sv.run["weapons"] = [["mines", SV.ULT], ["sentry", SV.ULT], ["cryo", SV.ULT], ["gravity", SV.ULT]]
+				sv._wt = {"mines": 0.0, "sentry": 0.0, "cryo": 1.9, "gravity": 0.2}
+				sv.run["hp"] = 1000000.0
+				sv.swarm(110)
+				sv.swarm(3, "hauler")
+				for f11 in 124:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_neue_ultimates.png")
+			# ---- the boni
+			calm.call()
+			sv.frozen = true
+			sv.run["weapons"] = []
+			sv.run["boni"] = [["stabiliser", 5]]                    # the Stabiliser: what a crate gives lasts longer, a blade too
+			sv.mods = SV.mods(sv.run)
+			sv.give("shield")
+			var longer: bool = is_equal_approx(float(sv.shield_t), 9.0)
+			sv.shield_t = 0.0
+			sv.run["weapons"] = [["blade", 1]]
+			sv._wt = {"blade": 0.0}
+			sv.step(0.016)
+			longer = longer and (sv.blades as Array).size() == 1 and float(sv.blades[0]["life"]) > 4.4
+			calm.call()
+			sv.run["boni"] = [["overclock", 5]]                     # Overclock: one more beam
+			sv.mods = SV.mods(sv.run)
+			sv.run["weapons"] = [["laser", 1]]
+			sv._wt = {"laser": 0.0}
+			var o1: int = sv.add_foe(KI["hauler"], pp + Vector2(60.0, 0.0))
+			var o2: int = sv.add_foe(KI["hauler"], pp + Vector2(-70.0, 0.0))
+			sv.step(0.016)
+			var one_more: bool = float(sv.fhp[o1]) < float(sv.fmx[o1]) and float(sv.fhp[o2]) < float(sv.fmx[o2])
+			calm.call()
+			sv.run["weapons"] = []
+			sv.run["boni"] = [["shieldcell", 1]]                    # the Shield Cell: it takes one hit, then charges
+			sv.mods = SV.mods(sv.run)
+			sv._hurt(10.0)
+			var took: bool = float(sv.run["hp"]) == 1000.0 and float(sv.cell_t) == 19.0
+			sv.hurt_cd = 0.0
+			sv._hurt(10.0)
+			var then: bool = float(sv.run["hp"]) == 990.0
+			sv.cell_t = 0.01
+			sv.step(0.016)
+			sv.hurt_cd = 0.0
+			sv._hurt(10.0)
+			var again: bool = float(sv.run["hp"]) == 990.0
+			calm.call()
+			sv.run["boni"] = [["scavenger", 5]]                     # Scavenger: a shard is worth more
+			sv.mods = SV.mods(sv.run)
+			sv.run["xp"] = -1000
+			sv._xp_frac = 0.0
+			sv._drop(pp + Vector2(2.0, 0.0), 10)
+			sv._drop(pp + Vector2(-2.0, 0.0), 1)
+			sv._drop(pp + Vector2(0.0, 2.0), 1)
+			sv.step(0.016)
+			var worth: bool = int(sv.run["xp"]) == -1000 + 18 and int(sv.sn) == 0
+			calm.call()
+			sv.run["boni"] = [["lucky", 5]]                         # Lucky Find: supply drops come sooner
+			sv.mods = SV.mods(sv.run)
+			sv.quiet = false
+			sv.frozen = false
+			sv.crates = []
+			sv.run["t"] = 200.0
+			sv._supply_at = 200.0
+			sv._alpha_at = 9999.0
+			sv._flock_at = 9999.0
+			sv.step(0.016)
+			var sooner: bool = is_equal_approx(float(sv._supply_at), 200.016 + SV.SUPPLY_EVERY * 0.6) and (sv.crates as Array).size() == 1
+			sv.quiet = true
+			bonus_ok = longer and one_more and took and then and again and worth and sooner
+			if not bonus_ok:
+				print("COLMETA62A boni: stabiliser ", longer, " ", sv.blades, " overclock ", one_more, " cell ", [took, then, again], " ", sv.run["hp"], " scavenger ", worth, " ", sv.run["xp"],
+					" lucky ", sooner, " ", sv._supply_at)
+			# ---- a reroll of a level's cards (through the command bus), the last chance, the cores
+			calm.call()
+			sv.frozen = true
+			sv.crates = []
+			sv.run["boni"] = []
+			sv.run["weapons"] = [["pulse", 1]]
+			sv.run["xp"] = SV.need(int(sv.run["level"]))
+			sv._wt = {"pulse": 99.0}
+			sv.step(0.016)
+			for f12 in 4:
+				await get_tree().process_frame
+			var lu = g.minigame
+			var rr_ok := false
+			if lu != null and lu.has_method("is_sv_levelup"):
+				var first_cards: Array = lu.cards
+				lu._t = 1.0
+				var vr: Rect2 = get_viewport().get_visible_rect()
+				var shown: bool = lu.rerolls() == 2 and (vr.size.y < 1060.0 or vr.encloses(lu.reroll_rect())) and not (lu.rects() as Array).any(func(r): return (r as Rect2).intersects(lu.reroll_rect()))
+				if shots:
+					for f13 in 6:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_reroll.png")
+				lu.reroll()
+				var redrawn: bool = not is_same(lu.cards, first_cards) and is_same(lu.cards, sv.cards) and (lu.cards as Array).size() == 3 and int(sv.run["rerolls"]) == 1
+				lu._t = 1.0
+				lu.pad_button("triangle", true)
+				lu._t = 1.0
+				lu.reroll()
+				var lu_msg := String(lu.msg)
+				var none_left: bool = int(sv.run["rerolls"]) == 0 and lu_msg == "No reroll left in this run." and lu.rerolls() == 0
+				lu._t = 1.0
+				lu.pick(0)
+				for f14 in 3:
+					await get_tree().process_frame
+				rr_ok = shown and redrawn and none_left and g.minigame == null and String(Commands.execute({"type": "sv_reroll"})) == "There is no card to take."
+				if not rr_ok:
+					print("COLMETA62A the reroll: shown ", shown, " redrawn ", redrawn, " none left ", none_left, " ", lu_msg, " rerolls ", sv.run["rerolls"], " window ", g.minigame)
+			calm.call()
+			sv.frozen = true
+			sv.run["xp"] = -1000000
+			for q11 in 12:
+				sv.add_foe(KI["shambler"], pp + Vector2.from_angle(q11 * TAU / 12.0) * 60.0)
+			sv.add_foe(KI["shambler"], pp + Vector2(300.0, 0.0))
+			sv.run["hp"] = 0.0
+			sv.step(0.016)
+			var up_again: bool = not bool(sv.over) and is_equal_approx(float(sv.run["hp"]), SV.max_hp(sv.run) * 0.5) and not bool(sv.run["revive"]) and bool(sv.run["revived"]) \
+				and String(sv.banner) == "LAST CHANCE" and int(sv.n) == 1 and float(sv.shield_t) > 2.0
+			if shots:
+				for f15 in 5:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_letzte_chance.png")
+			sv.clear_swarm()
+			var al: int = sv.add_foe(KI["shambler"], pp + Vector2(200.0, 0.0))        # an alpha put out: it counts for the cores
+			sv.make_alpha(al)
+			sv._hit(al, 1000000000.0, pp)
+			sv.crates = []
+			sv.run["t"] = 130.0
+			sv.shield_t = 0.0
+			sv.run["hp"] = 0.0
+			var cores0: int = SV.record(GameState.col_state())["cores"]
+			sv.step(0.016)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			var res_w = g.minigame
+			var out_now: bool = bool(sv.over) and not bool(sv.survived) and res_w != null and res_w.has_method("is_sv_result")
+			var paid: bool = out_now and int(res_w.res.get("cores", -1)) == 6 + 2 and int(SV.record(GameState.col_state())["cores"]) == cores0 + 8 and int(sv.run["alphas"]) == 1
+			if shots and out_now:
+				for f16 in 50:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a7_ergebnis.png")
+			meta_ok = began and rr_ok and up_again and paid
+			if not meta_ok:
+				print("COLMETA62A what stays: began ", began, " ", sv.run.get("pool_w"), " reroll ", rr_ok, " up again ", up_again, " hp ", sv.run["hp"], " n ", sv.n, " banner ", sv.banner, " out ", out_now,
+					" paid ", paid, " ", res_w.res if out_now else {}, " cores ", cores0, " ", SV.record(GameState.col_state())["cores"])
+			if res_w != null and res_w.has_method("is_sv_result"):
+				res_w._t = 2.0
+				res_w.go()
+			for f17 in 10:
+				await get_tree().process_frame
+	check(free_ok and buy_ok and run_ok and rule_ok and console_ok and prep_ok and weapon_ok and bonus_ok and meta_ok,
+		"62a, part 7c-3: what is round Survivor: three weapons and three boni free from the start, the rest to unlock; what the console's tiles cost and what they give (to unlock, ten ranks of fine tuning, three rerolls, the last chance); a run takes what is yours with it (only that lies among its cards, the fine tuning counts); ten weapons, eleven boni, ten ultimates, what their cards say; cores by the time held out, for alphas and bosses; the crowd by what is unlocked and tuned; the console in the lobby (for the house's fighters; tiles apart and in the picture; bought through the command bus; the mark moves by the keys and the controller); the fighters' room (stages as tiles, the others still to come; ten weapons to begin with, the locked ones say so); the Mine Layer (armed, it goes off under one of them; the Minefield: a ring, each arming itself once more), the Sentry (it fires at the nearest in reach, for a while; the Battery: three that stay while you stay near), the Cryo Spray (a cone the way you walk: hurt, frozen, harmless, then thawed; Absolute Zero: all round, what is frozen shatters), the Gravity Well (pulls to its middle, wears down; the Singularity: crushes, sends you the shards); the Stabiliser, Overclock, the Shield Cell, Scavenger, Lucky Find; a reroll of a level's cards; the last chance (up again once, the ground cleared); the cores a run brings  [%s %s %s %s %s %s %s %s %s]" % [free_ok, buy_ok, run_ok, rule_ok, console_ok, prep_ok, weapon_ok, bonus_ok, meta_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 8a (Luz): Survivor's second stage, AI Takeover: it opens once The Foreman is put out on
+## Outbreak; its ground (a city quarter in ruins: what stands in the way, craters and scorch marks, burning wrecks,
+## spilled oil, a landing ship's wreck); the Enforcers as its swarm, the Scout (a zigzag, a crouch, a leap), the
+## Gunner (it takes aim along a line, three bolts along it); with no last one yet the stage is held when the time is up.
+func _test_coltake62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SS = load("res://scripts/ground/survivor_stage.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var SU = load("res://scripts/ground/survivor_ui.gd")
+	var OA = load("res://scripts/ground/obj_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# ---- the rules: when the stage opens, what it is made of
+	var c0: Dictionary = CD.fresh()
+	var shut: bool = not SV.stage_open(c0, "takeover") and SV.stage_open(c0, "outbreak") and not SV.stage_open(c0, "stage4") and not SV.stage_open(c0, "whiteout") and not SV.stage_open(c0, "nope") and SV.cur_stage(c0) == "outbreak"
+	SV.record(c0)["stage"] = "takeover"
+	shut = shut and SV.cur_stage(c0) == "outbreak"
+	var s0: Dictionary = SV.settle(c0, {"t": 300.0, "kills": 5, "level": 3, "stage": "outbreak", "bosses": []}, false)
+	var s1: Dictionary = SV.settle(c0, {"t": 500.0, "kills": 5, "level": 3, "stage": "outbreak", "bosses": ["foreman"]}, false)
+	var s2: Dictionary = SV.settle(c0, {"t": 500.0, "kills": 5, "level": 3, "stage": "outbreak", "bosses": ["foreman"]}, false)
+	var opens: bool = (s0["opened"] as Array).is_empty() and str(s1["opened"]) == str(["AI Takeover"]) and (s2["opened"] as Array).is_empty() and SV.stage_open(c0, "takeover") \
+		and SV.cur_stage(c0) == "takeover" and str(SV.record(c0)["beaten"]) == str(["foreman"])
+	var sd: Dictionary = SV.stage_data("takeover")
+	var tex_ok := true
+	for kind in ["enforcer", "gunner", "scout"]:
+		for d in 4:
+			for f in 3:
+				var tx: Texture2D = SA.texture(String(kind), 1, d, f)
+				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y
+	var data_ok: bool = String(sd["swarm"]) == "enforcer" and SV.kinds_at(0.0, "takeover") == ["enforcer"] and SV.kinds_at(200.0, "takeover") == ["enforcer", "scout", "gunner"] \
+		and SV.kinds_at(200.0) == ["shambler", "runner", "hauler"] and String(SV.stage_data("outbreak")["end"]) == "brood" and String(SV.stage_data("outbreak")["soft"]) == "foreman" \
+		and String(sd["end"]) == "core" and String(sd["soft"]) == "warden" and (sd["alpha"] as Array).size() == 3 and SV.stage_data("nope") == SV.stage_data("outbreak") \
+		and SV.FOE_ORDER.size() == 27 and ["enforcer", "scout", "gunner"].all(func(k): return SV.FOES.has(k) and int(SV.FOES[k]["beh"]) < SV.BOSS_BEH and not bool(SV.FOES[k].get("boss", false))) \
+		and int(SV.FOES["foreman"]["beh"]) >= SV.BOSS_BEH and int(SV.FOES["brood"]["beh"]) >= SV.BOSS_BEH and (SV.FOE_ORDER as Array).all(func(k): return bool(SV.FOES[k].get("boss", false)) == (int(SV.FOES[k]["beh"]) >= SV.BOSS_BEH)) \
+		and String(SV.stage("takeover")["name"]) == "AI Takeover" and not String(SV.stage("takeover")["text"]).contains("–") and String(SV.stage("takeover")["need"]) == "foreman" \
+		and tex_ok and SA.texture("enforcer", 0, 0, 0) != SA.texture("enforcer", 1, 0, 0) and SA.texture("gunner", 0, 2, 0) != SA.texture("enforcer", 0, 2, 0) \
+		and SA.size_of("scout").y < SA.size_of("enforcer").y and SA.size_of("gunner").x > SA.size_of("enforcer").x
+	# ---- the ground
+	var sm: GroundMap = SS.build("takeover", 1)
+	var kinds := {}
+	for o in sm.objects:
+		kinds[String(o.get("kind", ""))] = int(kinds.get(String(o.get("kind", "")), 0)) + 1
+	var hz: Array = sm.get_meta("col_hazards", [])
+	var road := true
+	for rx in range(SS.EDGE + 1, SS.SW - SS.EDGE - 1):
+		road = road and GroundMap.walkable_t(sm.t_at(rx, SS.SH / 2))
+	for ry in range(SS.EDGE + 1, SS.SH - SS.EDGE - 1):
+		road = road and GroundMap.walkable_t(sm.t_at(SS.SW / 2, ry))
+	var corners: Array = [Vector2(3.5, 3.5), Vector2(SS.SW - 3.5, 3.5), Vector2(3.5, SS.SH - 3.5), Vector2(SS.SW - 3.5, SS.SH - 3.5)]
+	var decor: Array = sm.get_meta("sv_decor", [])
+	var dk := {}
+	for dc in decor:
+		dk[String(dc["kind"])] = int(dk.get(String(dc["kind"]), 0)) + 1
+	var out_map: GroundMap = SS.build("outbreak", 1)
+	var pics := true
+	for ok in [["tank_trap", 1, 1], ["rubble", 4, 2], ["wreck_car", 3, 2], ["dropship_wreck", 10, 5]]:
+		var made: Dictionary = OA.make({"kind": String(ok[0]), "x": 3, "y": 3, "w": int(ok[1]), "h": int(ok[2])}, sm.pal)
+		var im: Image = made["image"]
+		pics = pics and im != null and im.get_width() == int(ok[1]) * 16 and im.get_height() == int(ok[2]) * 16 + int(made["rise"]) and int(made["rise"]) >= 10 and not im.is_invisible()
+	var ground_ok: bool = sm.w == SS.SW and sm.h == SS.SH and sm.free_at(sm.spawn, 4.0) and road and corners.all(func(c): return sm.path(sm.spawn, (c as Vector2) * TL).size() > 0) \
+		and String(sm.get_meta("sv_stage", "")) == "takeover" and String(sm.get_meta("col_vr_name", "")) == "AI Takeover" and not sm.has_meta("sv_sleepers") \
+		and sm.objects.size() >= 70 and int(kinds.get("rubble", 0)) >= 8 and int(kinds.get("wreck_car", 0)) >= 3 and int(kinds.get("tank_trap", 0)) >= 5 and int(kinds.get("dropship_wreck", 0)) == 1 \
+		and sm.has_meta("sv_landmark") and not kinds.has("lamp_post") and not kinds.has("container") and kinds.size() >= 7 \
+		and hz.size() == 2 and String(hz[0]["kind"]) == "burn" and (hz[0]["rects"] as Array).size() >= 2 and String(hz[1]["kind"]) == "slow" and String(hz[1]["look"]) == "oil" \
+		and (hz[1]["rects"] as Array).size() >= 1 and decor.size() >= 120 and int(dk.get("crater", 0)) >= 10 and int(dk.get("scorch", 0)) >= 40 and int(dk.get("crack", 0)) >= 40 \
+		and (sm.get_meta("sv_crates", []) as Array).size() >= 12 and (sm.get_meta("dark") as Color).r < (out_map.get_meta("dark") as Color).r \
+		and (sm.zones as Array).any(func(z): return String(z.get("kind", "")) == "sv_giveup") and pics \
+		and not (sm.objects as Array).any(func(o): return (Vector2(float(o["x"]), float(o["y"])) * TL).distance_to(sm.spawn) < 5.0 * TL) and String(out_map.get_meta("sv_stage", "")) == "outbreak"
+	if not (shut and opens and data_ok and ground_ok):
+		print("COLTAKE62A rules: shut ", shut, " opens ", opens, " ", s1.get("opened"), " data ", data_ok, " tex ", tex_ok, " ground ", ground_ok, " objects ", sm.objects.size(), " kinds ", kinds, " road ", road,
+			" decor ", dk, " hazards ", hz.map(func(h): return [h["kind"], (h["rects"] as Array).size()]), " pictures ", pics, " crates ", (sm.get_meta("sv_crates", []) as Array).size())
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var pick_ok := false
+	var run_ok := false
+	var scout_ok := false
+	var gunner_ok := false
+	var end_ok := false
+	var fast_ok := false
+	var ms := 0.0
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		# ---- the fighters' room: the stage is shut until The Foreman is put out, then it can be picked
+		CD.switch_mode(GameState.col_state(), "survivor")
+		g._col_prep_open()
+		for f1 in 4:
+			await get_tree().process_frame
+		var prep = g.minigame
+		if prep != null and prep.has_method("is_col_prep"):
+			prep.pick_sv_stage(1)
+			var no: bool = String(prep.msg) == "AI Takeover opens once you have put out The Foreman on Outbreak." and SV.cur_stage(GameState.col_state()) == "outbreak"
+			(SV.record(GameState.col_state())["beaten"] as Array).append("foreman")
+			prep.pick_sv_stage(1)
+			var yes: bool = String(prep.msg) == "The stage: AI Takeover." and SV.cur_stage(GameState.col_state()) == "takeover"
+			if shots:
+				for f2 in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_vorbereitung.png")
+			prep.pick_sv_stage(0)
+			var back: bool = SV.cur_stage(GameState.col_state()) == "outbreak"
+			Commands.execute({"type": "debug_casino", "sv": "lock"})
+			var locked: bool = not SV.stage_open(GameState.col_state(), "takeover")
+			Commands.execute({"type": "debug_casino", "sv": "stage:takeover"})
+			pick_ok = no and yes and back and locked and SV.cur_stage(GameState.col_state()) == "takeover" and String(Commands.execute({"type": "debug_casino", "sv": "stage:stage4"})) != ""
+			if not pick_ok:
+				print("COLTAKE62A the fighters' room: no ", no, " yes ", yes, " back ", back, " locked ", locked, " ", prep.msg, " stage ", SV.cur_stage(GameState.col_state()))
+		g._close_game()
+		for f3 in 3:
+			await get_tree().process_frame
+		if shots:                                               # (a picture of what stands before a run)
+			var intro = SU.Intro.new()
+			intro.setup({"you_tex": ChibiArt.frame(g.pilot_look(), 0, 0), "you": GameState.pilot_name.to_upper(), "weapon": "laser", "stage": "takeover"})
+			g._ui.add_child(intro)
+			for f4 in 110:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_einlauf.png")
+			intro.queue_free()
+			for f5 in 3:
+				await get_tree().process_frame
+		# ---- a run on it
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.sn = 0
+				g.pilot.pos = pp
+				g.pilot.position = pp * GroundMap.SCALE
+				sv._last_pp = pp
+			var here: bool = String(g.map.get_meta("sv_stage", "")) == "takeover" and String(sv.run["stage"]) == "takeover" and String(sv.stg["swarm"]) == "enforcer" \
+				and String(g._title.text).contains("AI Takeover") and int(sv._swarm_k) == int(KI["enforcer"]) and g.map.free_at(pp, 4.0)
+			sv.run["weapons"] = []
+			sv.crates = []
+			sv.run["t"] = 0.0
+			sv._acc = 0.0
+			run_steps.call(260)                                    # the swarm of this stage: Enforcers, from outside the picture
+			var came: bool = int(sv.n) >= 3 and int(sv._cnt[KI["enforcer"]]) == int(sv.n) and int(sv._cnt[KI["shambler"]]) == 0
+			sv.run["t"] = 200.0
+			sv._alpha_at = 9999.0
+			sv.step(0.016)                                         # … and by then its other kinds: a pack of Scouts, Gunners
+			var others: bool = int(sv._cnt[KI["scout"]]) >= 4 and int(sv._cnt[KI["gunner"]]) >= 1 and int(sv._cnt[KI["runner"]]) == 0 and int(sv._cnt[KI["hauler"]]) == 0
+			sv._alpha_at = 200.0
+			sv.step(0.016)
+			var alpha: bool = range(int(sv.n)).any(func(q): return int(sv.fal[q]) == 1 and String(SV.FOE_ORDER[int(sv.fk[q])]) in ["enforcer", "scout", "gunner"])
+			run_ok = here and came and others and alpha
+			if not run_ok:
+				print("COLTAKE62A the run: here ", here, " ", g._title.text, " came ", came, " n ", sv.n, " counts ", sv._cnt, " others ", others, " alpha ", alpha)
+			sv.quiet = true
+			if shots:                                              # (pictures: the ground from above; the wreck of the landing ship; the machines side by side)
+				calm.call()
+				sv.frozen = true
+				sv.crates = []
+				sv.banner_t = 0.0
+				g.story_cam = pp + Vector2(120.0, -150.0)
+				g.story_zoom = 0.34
+				for f7 in 190:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_karte.png")
+				g.story_cam = g.map.get_meta("sv_landmark", pp) + Vector2(0.0, -50.0)
+				g.story_zoom = 1.0
+				for f8 in 80:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_wrack.png")
+				for ri in 4:
+					var fi0: int = sv.add_foe(KI["enforcer"], pp + Vector2(-150.0 + ri * 34.0, -44.0))
+					sv.fv[fi0] = ri
+					sv.fface[fi0] = 0 if ri % 2 == 0 else 2
+				for ri2 in 3:
+					var fi1: int = sv.add_foe(KI["gunner"], pp + Vector2(10.0 + ri2 * 40.0, -44.0))
+					sv.fface[fi1] = [0, 2, 3][ri2]
+				for ri3 in 4:
+					var fi2: int = sv.add_foe(KI["scout"], pp + Vector2(-130.0 + ri3 * 44.0, 40.0))
+					sv.fv[fi2] = ri3
+					sv.fface[fi2] = [2, 0, 3, 1][ri3]
+				var fa: int = sv.add_foe(KI["enforcer"], pp + Vector2(100.0, 46.0))
+				sv.make_alpha(fa)
+				g.story_cam = pp + Vector2(0.0, -14.0)
+				g.story_zoom = 1.9
+				for f9 in 70:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_gegner.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				sv.frozen = false
+			# ---- the Scout: it runs at you in a zigzag, crouches near you, leaps straight on; in a dodge it goes through you
+			calm.call()
+			sv.frozen = false
+			sv._haz.fill(0)                                        # (what lies on the ground plays no part in what follows: oil would hold them back)
+			var sc: int = sv.add_foe(KI["scout"], pp + Vector2(150.0, 0.0))
+			var en: int = sv.add_foe(KI["enforcer"], pp + Vector2(-150.0, 0.0))
+			var off_line := 0.0
+			for rs in 60:
+				sv.step(0.016)
+				off_line = maxf(off_line, absf((sv.fp[sc] as Vector2).y - pp.y))
+			var fast: bool = pp.x + 150.0 - (sv.fp[sc] as Vector2).x > ((sv.fp[en] as Vector2).x - (pp.x - 150.0)) * 1.6 and off_line > 1.0
+			var seen := {}
+			var leap_step := 0.0
+			var was: Vector2 = sv.fp[sc]
+			var crouch_mark := false
+			var hurt_by_leap := false
+			for rs2 in 220:
+				sv.step(0.016)
+				hurt_by_leap = hurt_by_leap or float(sv.run["hp"]) < 1000.0
+				seen[int(sv.fst[sc])] = true
+				if int(sv.fst[sc]) == 2:
+					leap_step = maxf(leap_step, (sv.fp[sc] as Vector2).distance_to(was))
+				if int(sv.fst[sc]) == 1:
+					crouch_mark = crouch_mark or (sv._marks as Array).any(func(mq): return String(mq[0]) == "leap")
+				was = sv.fp[sc]
+			var leapt: bool = seen.has(1) and seen.has(2) and seen.has(3) and leap_step > 2.4 and crouch_mark and hurt_by_leap
+			calm.call()
+			var sc2: int = sv.add_foe(KI["scout"], pp + Vector2(60.0, 0.0))
+			sv.dash_t = 9.0
+			run_steps.call(120)
+			var through: bool = float(sv.run["hp"]) == 1000.0 and (sv.fp[sc2] as Vector2).distance_to(pp) < 200.0
+			scout_ok = fast and leapt and through
+			# ---- the Gunner: it takes aim along a line, then three bolts along it; step aside and they pass; stand still and one hits
+			calm.call()
+			var gu: int = sv.add_foe(KI["gunner"], pp + Vector2(120.0, 0.0))
+			sv.ftm[gu] = 0.0
+			sv.step(0.016)
+			var aims: bool = int(sv.fst[gu]) == 1 and (sv._marks as Array).any(func(mq): return String(mq[0]) == "aim") and (sv.fvel[gu] as Vector2).x < -0.99
+			var g_at: Vector2 = sv.fp[gu]
+			g.pilot.pos = pp + Vector2(0.0, 40.0)                  # (you step aside while it aims)
+			var bolts := 0
+			var max_b := 0
+			for rs3 in 110:
+				sv.step(0.016)
+				max_b = maxi(max_b, (sv.globs as Array).size())
+			bolts = max_b
+			var stood: bool = (sv.fp[gu] as Vector2) == g_at
+			var straight: bool = (sv.globs as Array).all(func(q): return bool(q.get("bolt", false)) and absf((q["v"] as Vector2).y) < 0.01 and (q["v"] as Vector2).x < -140.0 and bool(q["clean"]))
+			run_steps.call(120)
+			var passed: bool = bolts == 3 and stood and straight and float(sv.run["hp"]) == 1000.0 and (sv.globs as Array).is_empty() and (sv.pools as Array).is_empty()
+			calm.call()
+			var gu2: int = sv.add_foe(KI["gunner"], pp + Vector2(0.0, -110.0))
+			sv.ftm[gu2] = 0.0
+			run_steps.call(160)
+			var hit: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["gunner"]["bolt"]))
+			calm.call()
+			var gu3: int = sv.add_foe(KI["gunner"], pp + Vector2(50.0, 0.0))
+			sv.ftm[gu3] = 99.0
+			run_steps.call(60)
+			var backs: bool = (sv.fp[gu3] as Vector2).x > pp.x + 58.0
+			gunner_ok = aims and passed and hit and backs
+			if not (scout_ok and gunner_ok):
+				print("COLTAKE62A the scout ", [fast, leapt, through], " states ", seen.keys(), " leap ", leap_step, " mark ", crouch_mark, " off ", off_line, " hurt ", hurt_by_leap, " the gunner ",
+					[aims, passed, hit, backs], " bolts ", bolts, " stood ", stood, " straight ", straight, " globs ", sv.globs)
+			if shots:                                              # (a picture: the swarm of machines at work)
+				calm.call()
+				sv.run["weapons"] = [["pulse", 3], ["laser", 3], ["taser", 2]]
+				sv._wt = {}
+				sv.run["hp"] = 1000000.0
+				sv.swarm(150)
+				sv.swarm(12, "scout")
+				sv.swarm(7, "gunner")
+				for gq in int(sv.n):
+					if int(sv.fk[gq]) == int(KI["gunner"]):
+						sv.ftm[gq] = 0.7 + float(gq % 4) * 0.25
+				for f10 in 150:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_lauf.png")
+			# ---- a step with the field full of machines stays cheap
+			calm.call()
+			sv.run["weapons"] = []
+			for kq in ["enforcer", "scout", "gunner"]:
+				sv.swarm(200, String(kq))
+			sv.run["hp"] = 1000000000.0
+			var full_n: int = sv.n
+			var tp0 := Time.get_ticks_usec()
+			for f11 in 60:
+				sv.step(0.016)
+			ms = float(Time.get_ticks_usec() - tp0) / 60000.0
+			fast_ok = full_n >= 590 and ms < 14.0
+			print("COLTAKE62A a step with %d machines: %.2f ms" % [full_n, ms])
+			# ---- the time is up: The Core comes (part 8c); its pylons and it put out, the stage is held; its best time is its own
+			calm.call()
+			sv.quiet = false
+			sv.run["hp"] = 1000000000.0
+			sv.boss_done["warden"] = true
+			sv._ev_i = 9999
+			sv._flock_at = 99999.0
+			sv._alpha_at = 99999.0
+			sv._supply_at = 99999.0
+			sv.run["t"] = SV.RUN_TIME - 0.01
+			sv.run["kills"] = 100
+			sv.step(0.02)
+			sv.step(0.02)
+			var core_here: bool = String(sv.boss_kind) == "core" and bool(sv.barrier_on) and int(sv._cnt[KI["pylon"]]) == 4
+			for pq in range(int(sv.n) - 1, -1, -1):
+				if pq < int(sv.n) and int(sv.fk[pq]) == int(KI["pylon"]):
+					sv._hit(pq, 1000000000.0, pp)
+			if int(sv.boss_i()) >= 0:
+				sv._hit(sv.boss_i(), 1000000000.0, pp)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			var rec: Dictionary = SV.record(GameState.col_state())
+			end_ok = core_here and bool(sv.over) and bool(sv.survived) and String(sv.boss_kind) == "" and g.minigame != null and g.minigame.has_method("is_sv_result") and bool(g.minigame.res.get("survived", false)) \
+				and String(g.minigame.res.get("stage", "")) == "takeover" and float((rec["best"] as Dictionary).get("takeover", 0.0)) >= SV.RUN_TIME - 0.1 and not (rec["best"] as Dictionary).has("outbreak") \
+				and int(g.minigame.res.get("cores", 0)) == 45 + 30
+			if not end_ok:
+				print("COLTAKE62A the end: the core ", core_here, " over ", sv.over, " held ", sv.survived, " boss ", sv.boss_kind, " window ", g.minigame, " record ", rec)
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f12 in 10:
+				await get_tree().process_frame
+	check(shut and opens and data_ok and ground_ok and pick_ok and run_ok and scout_ok and gunner_ok and fast_ok and end_ok,
+		"62a, part 8a: Survivor's second stage, AI Takeover: shut until The Foreman is put out on Outbreak, then open for good; what the stage is made of (its swarm, who comes besides, its two bosses); twenty kinds, the machines' pictures; its ground (as large as Outbreak's, roads free, ways to every corner, rubble, burnt-out cars, tank traps, a landing ship's wreck, no lamp, craters and scorch marks and cracks, burning wrecks, spilled oil); the stage picked in the fighters' room; a run on it: Enforcers as its swarm, then Scouts and Gunners, an alpha of its own kinds; the Scout (fast, a zigzag, a crouch, a leap; in a dodge it goes through you); the Gunner (a line, three bolts along it, it stands meanwhile; step aside and they pass; it backs off when you come near); a step with the field full stays cheap; the time is up: The Core comes, and with it put out the stage is held, its best time is its own  [%s %s %s %s %s %s %s %s %s %s]  (%.2f ms a step)" % [shut, opens, data_ok, ground_ok, pick_ok, run_ok, scout_ok, gunner_ok, fast_ok, end_ok, ms])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _test_coltakeb62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules: who comes when, what happens when, what belongs to this stage alone
+	var sd: Dictionary = SV.stage_data("takeover")
+	var evs: Array = sd["events"]
+	var ev_sorted := true
+	var ev_n := {}
+	for q in evs.size():
+		ev_sorted = ev_sorted and (q == 0 or float(evs[q]["t"]) > float(evs[q - 1]["t"])) and SV.BANNERS.has(String(evs[q]["kind"])) and float(evs[q]["t"]) < SV.RUN_TIME
+		ev_n[String(evs[q]["kind"])] = int(ev_n.get(String(evs[q]["kind"]), 0)) + 1
+	var tex_ok := true
+	for kind in ["bulwark", "seeker", "jammer", "hunter"]:
+		for d in 4:
+			for f in 3:
+				var tx: Texture2D = SA.texture(String(kind), 1, d, f)
+				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 62
+	var r_out: Dictionary = SV.fresh("outbreak", "pulse")
+	var r_tk: Dictionary = SV.fresh("takeover", "pulse")
+	var got_out := 0
+	var got_tk := 0
+	for q2 in 600:
+		if String(SV.crate_roll(r_out, rng).get("id", "")) == "override":
+			got_out += 1
+		if String(SV.crate_roll(r_tk, rng).get("id", "")) == "override":
+			got_tk += 1
+	var rules_ok: bool = SV.kinds_at(899.0, "takeover") == ["enforcer", "scout", "gunner", "bulwark", "seeker", "jammer"] and SV.kinds_at(300.0, "takeover") == ["enforcer", "scout", "gunner", "bulwark"] \
+		and ev_sorted and evs.size() == 10 and int(ev_n.get("searchlight", 0)) == 5 and int(ev_n.get("reinforce", 0)) == 2 and int(ev_n.get("killline", 0)) == 2 and int(ev_n.get("emp", 0)) == 1 \
+		and String(sd["flock"]) == "hunter" and String(sd["banners"]["flock"]) == "HUNTERS" and bool(SV.FOES["hunter"].get("fly", false)) and int(SV.FOES["hunter"]["beh"]) == 5 \
+		and ["bulwark", "seeker", "jammer", "hunter"].all(func(k): return SV.FOES.has(k) and int(SV.FOES[k]["beh"]) < SV.BOSS_BEH and not String(SV.FOES[k]["name"]).contains("–")) \
+		and bool(SV.FOES["bulwark"]["tough"]) and float(SV.FOES["seeker"]["dmg"]) == 0.0 and float(SV.FOES["seeker"]["boom_foes"]) > float(SV.FOES["seeker"]["boom"]) \
+		and String(SV.ITEMS["override"]["stage"]) == "takeover" and got_out == 0 and got_tk > 5 and SV.EMP_TIME == 5.0 \
+		and (SV.stage_data("outbreak")["events"] as Array).all(func(e): return not (String(e["kind"]) in ["searchlight", "reinforce", "killline", "emp"])) \
+		and String(SV.stage_data("outbreak")["flock"]) == "screecher" and (sd["dangers"] as Array).has("Searchlights") \
+		and tex_ok and SA.size_of("bulwark").y > SA.size_of("enforcer").y and SA.size_of("seeker").y < SA.size_of("scout").y \
+		and Audio.stream("sv_shell") != null and Audio.stream("sv_emp") != null
+	if not rules_ok:
+		print("COLTAKEB62A rules: kinds ", SV.kinds_at(899.0, "takeover"), " events ", ev_sorted, " ", ev_n, " tex ", tex_ok, " override in crates: outbreak ", got_out, " takeover ", got_tk)
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var bul_ok := false
+	var seek_ok := false
+	var jam_ok := false
+	var hunt_ok := false
+	var light_ok := false
+	var pods_ok := false
+	var line_ok := false
+	var emp_ok := false
+	var ovr_ok := false
+	var clock_ok := false
+	var edge_ok := false
+	var fast_ok := false
+	var ms := 0.0
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "stage:takeover"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f1 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv) and String(sv.run["stage"]) == "takeover":
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.frozen = false
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.run["t"] = 200.0
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.sn = 0
+				g.pilot.pos = pp
+				g.pilot.position = pp * GroundMap.SCALE
+				sv._last_pp = pp
+			var hold := func(i: int, hp: float) -> void:        # (one that stands where it is put, frozen, with this much health)
+				sv.ffr[i] = 99.0
+				sv.fhp[i] = hp
+				sv.fmx[i] = hp
+			sv.quiet = true
+			sv.run["weapons"] = []
+			sv.crates = []
+			sv._haz.fill(0)                                        # (what lies on the ground plays no part in what follows)
+			# ---- the Bulwark: it stops, a mark where you stand, a shell onto it; stand and it hits, step aside and it does not
+			calm.call()
+			var bw: int = sv.add_foe(KI["bulwark"], pp + Vector2(120.0, 0.0))
+			sv.step(0.016)
+			var stops: bool = int(sv.fst[bw]) == 1
+			var b_at: Vector2 = sv.fp[bw]
+			run_steps.call(34)
+			var lobbed: bool = (sv.shells as Array).size() == 1 and ((sv.shells[0]["pos"] as Vector2) - pp).length() < 1.0 and (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "spot") \
+				and (sv.fp[bw] as Vector2).distance_to(b_at) < 1.0 and int(sv.fst[bw]) == 0
+			run_steps.call(80)
+			var shelled: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["bulwark"]["shell"])) and (sv.shells as Array).is_empty() and not (sv.blasts as Array).is_empty()
+			calm.call()
+			sv.add_foe(KI["bulwark"], pp + Vector2(0.0, -120.0))
+			run_steps.call(36)
+			var mark_at: Vector2 = (sv.shells[0]["pos"] as Vector2) if not (sv.shells as Array).is_empty() else Vector2.INF
+			g.pilot.pos = pp + Vector2(60.0, 0.0)                  # (you step off the mark)
+			run_steps.call(80)
+			var aside: bool = mark_at.distance_to(pp) < 1.0 and float(sv.run["hp"]) == 1000.0 and (sv.shells as Array).is_empty()
+			bul_ok = stops and lobbed and shelled and aside
+			if not bul_ok:
+				print("COLTAKEB62A the bulwark ", [stops, lobbed, shelled, aside], " hp ", sv.run["hp"], " shells ", sv.shells)
+			# ---- the Seeker: it rolls at you, arms near you, goes off: you are hurt, and the machines round it more; one put out sets off the next
+			calm.call()
+			var e0: int = sv.add_foe(KI["enforcer"], pp + Vector2(20.0, 12.0))
+			var e1: int = sv.add_foe(KI["enforcer"], pp + Vector2(20.0, -12.0))
+			hold.call(e0, 100.0)
+			hold.call(e1, 100.0)
+			var sk: int = sv.add_foe(KI["seeker"], pp + Vector2(100.0, 0.0))
+			var armed := false
+			var arm_mark := false
+			var arm_dist := 0.0
+			var went_at := -1
+			for rs in 220:
+				sv.step(0.016)
+				if int(sv._cnt[KI["seeker"]]) == 0:
+					went_at = rs
+					break
+				if int(sv.fst[sk]) == 1:
+					armed = true
+					arm_dist = maxf(arm_dist, (sv.fp[sk] as Vector2).distance_to(pp))
+					arm_mark = arm_mark or (sv._marks as Array).any(func(mq): return String(mq[0]) == "arm")
+			var burst: bool = armed and arm_mark and arm_dist < 18.5 and went_at > 80 and is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["seeker"]["boom"])) \
+				and is_equal_approx(float(sv.fhp[e0]), 100.0 - float(SV.FOES["seeker"]["boom_foes"])) and is_equal_approx(float(sv.fhp[e1]), 100.0 - float(SV.FOES["seeker"]["boom_foes"])) \
+				and not (sv.blasts as Array).is_empty()
+			calm.call()
+			var e2: int = sv.add_foe(KI["enforcer"], pp + Vector2(185.0, 0.0))
+			hold.call(e2, 100.0)
+			var s1: int = sv.add_foe(KI["seeker"], pp + Vector2(150.0, 0.0))
+			var s2: int = sv.add_foe(KI["seeker"], pp + Vector2(165.0, 0.0))
+			sv.ffr[s1] = 99.0
+			sv.ffr[s2] = 99.0
+			sv.step(0.016)
+			sv._hit(s1, 1000.0, pp)                                # (you put out the first: it goes off, the second with it, and that one hurts the machine beside it)
+			sv.step(0.016)
+			var chain: bool = int(sv._cnt[KI["seeker"]]) == 0 and int(sv.n) == 1 and is_equal_approx(float(sv.fhp[e2]), 100.0 - float(SV.FOES["seeker"]["boom_foes"])) and float(sv.run["hp"]) == 1000.0
+			seek_ok = burst and chain
+			if not seek_ok:
+				print("COLTAKEB62A the seeker ", [burst, chain], " armed ", armed, " mark ", arm_mark, " dist ", arm_dist, " went at ", went_at, " hp ", sv.run["hp"], " n ", sv.n)
+			# ---- the Jammer: the machines near it carry a shield, again and again; it keeps well back
+			calm.call()
+			var je0: int = sv.add_foe(KI["enforcer"], pp + Vector2(200.0, 0.0))
+			var je1: int = sv.add_foe(KI["enforcer"], pp + Vector2(-200.0, 0.0))
+			hold.call(je0, 100.0)
+			hold.call(je1, 100.0)
+			var jm: int = sv.add_foe(KI["jammer"], pp + Vector2(170.0, 0.0))
+			sv.step(0.016)
+			var jam := float(SV.FOES["jammer"]["jam"])
+			var shields: bool = is_equal_approx(float(sv.fsh[je0]), jam) and float(sv.fsh[je1]) == 0.0 and float(sv.fsh[jm]) == 0.0 and (sv._marks as Array).any(func(mq): return String(mq[0]) == "jam")
+			var jm_at: Vector2 = sv.fp[jm]
+			sv._hit(je0, 15.0, pp)
+			var takes: bool = is_equal_approx(float(sv.fsh[je0]), jam - 15.0) and is_equal_approx(float(sv.fhp[je0]), 100.0)
+			run_steps.call(40)
+			var again: bool = is_equal_approx(float(sv.fsh[je0]), jam) and (sv.fp[jm] as Vector2).distance_to(jm_at) < 0.5
+			calm.call()
+			var jm2: int = sv.add_foe(KI["jammer"], pp + Vector2(100.0, 0.0))
+			var jm3: int = sv.add_foe(KI["jammer"], pp + Vector2(0.0, 260.0))
+			run_steps.call(60)
+			var keeps: bool = (sv.fp[jm2] as Vector2).x > pp.x + 110.0 and (sv.fp[jm3] as Vector2).y < pp.y + 252.0
+			jam_ok = shields and takes and again and keeps
+			if not jam_ok:
+				print("COLTAKEB62A the jammer ", [shields, takes, again, keeps], " shield ", sv.fsh[0], " at ", sv.fp[0], sv.fp[1])
+			# ---- the Hunters: a line shown first, then one flies along it; stand on it and it hurts; from 8:00 two abreast, step aside and they miss
+			calm.call()
+			sv.event("flock")
+			var warned: bool = not (sv.flock_warn as Dictionary).is_empty() and String(sv.banner) == "HUNTERS" and int(sv._cnt[KI["hunter"]]) == 0
+			var h_dir: Vector2 = sv.flock_warn["dir"] if warned else Vector2.RIGHT
+			var came_h := 0
+			var off_line := 0.0
+			var beam_mark := false
+			var strafe_t := false
+			for rs2 in 560:
+				sv.step(0.016)
+				came_h = maxi(came_h, int(sv._cnt[KI["hunter"]]))
+				for hq in int(sv.n):
+					if int(sv.fk[hq]) == int(KI["hunter"]):
+						off_line = maxf(off_line, absf(((sv.fp[hq] as Vector2) - pp).dot(h_dir.orthogonal())))
+				beam_mark = beam_mark or (sv._marks as Array).any(func(mq): return String(mq[0]) == "beam")
+				strafe_t = strafe_t or (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "strafe")
+			var strafed: bool = warned and came_h == 1 and off_line < 0.5 and beam_mark and strafe_t and int(sv._cnt[KI["hunter"]]) == 0 \
+				and is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["hunter"]["dmg"]))
+			calm.call()
+			sv.run["t"] = 500.0
+			sv.event("flock")
+			var h_dir2: Vector2 = sv.flock_warn["dir"]
+			g.pilot.pos = pp + h_dir2.orthogonal() * 70.0
+			var two := 0
+			for rs3 in 560:
+				sv.step(0.016)
+				two = maxi(two, int(sv._cnt[KI["hunter"]]))
+			var missed: bool = two == 2 and float(sv.run["hp"]) == 1000.0 and int(sv._cnt[KI["hunter"]]) == 0
+			hunt_ok = strafed and missed
+			if not hunt_ok:
+				print("COLTAKEB62A the hunters ", [strafed, missed], " warned ", warned, " came ", came_h, " off ", off_line, " beam ", beam_mark, " strafe ", strafe_t, " hp ", sv.run["hp"], " two ", two)
+			# ---- the searchlights: two hunt you; stand in one too long: a mark, a shell out of the sky (it hurts the machines there too); out of it the count runs down
+			calm.call()
+			sv.event("searchlight")
+			var lights_on: bool = (sv.lights as Array).size() == 2 and is_equal_approx(float(sv.search_t), SV.SEARCH_TIME) and String(sv.banner) == "SEARCHLIGHTS" \
+				and (sv.lights as Array).all(func(l): return (l["p"] as Vector2).distance_to(pp) > SV.SEARCH_R * 2.0)
+			var d0: float = (sv.lights[0]["p"] as Vector2).distance_to(pp) if lights_on else 0.0
+			run_steps.call(150)
+			var hunts: bool = lights_on and (sv.lights[0]["p"] as Vector2).distance_to(pp) < d0 - 25.0 and float(sv.lit_t) == 0.0 and float(sv.run["hp"]) == 1000.0
+			var shot := false
+			var cools := false
+			var goes := false
+			if lights_on:
+				var se: int = sv.add_foe(KI["enforcer"], pp + Vector2(20.0, 0.0))
+				hold.call(se, 100.0)
+				sv.lights[0]["p"] = pp
+				sv.lights[0]["v"] = Vector2.ZERO
+				sv.lights[1]["p"] = pp + Vector2(400.0, 0.0)
+				var marked_at := -1
+				var landed_at := -1
+				var lit_seen := 0.0
+				for rs4 in 260:
+					sv.step(0.016)
+					lit_seen = maxf(lit_seen, float(sv.lit_t))
+					if marked_at < 0 and (sv.shells as Array).any(func(s): return (s["from"] as Vector2) == Vector2.INF):
+						marked_at = rs4
+					if marked_at >= 0 and (sv.shells as Array).is_empty():
+						landed_at = rs4
+						break
+				shot = marked_at >= 90 and marked_at <= 100 and landed_at - marked_at >= 60 and landed_at - marked_at <= 66 and lit_seen > 1.4 \
+					and is_equal_approx(float(sv.run["hp"]), 1000.0 - 22.0) and is_equal_approx(float(sv.fhp[se]), 40.0)
+				if not shot:
+					print("COLTAKEB62A the shell out of the sky: marked at ", marked_at, " landed at ", landed_at, " lit ", lit_seen, " hp ", sv.run["hp"], " the machine ", sv.fhp[se])
+				calm.call()
+				sv.event("searchlight")
+				sv.lights[0]["p"] = pp + Vector2(300.0, 0.0)
+				sv.lights[1]["p"] = pp + Vector2(-300.0, 0.0)
+				sv.lit_t = 1.0
+				run_steps.call(60)
+				cools = float(sv.lit_t) < 0.5 and float(sv.lit_t) > 0.3 and (sv.shells as Array).is_empty()
+				sv.search_t = 0.03
+				run_steps.call(3)
+				goes = (sv.lights as Array).is_empty() and float(sv.lit_t) == 0.0
+			light_ok = lights_on and hunts and shot and cools and goes
+			if not light_ok:
+				print("COLTAKEB62A the searchlights ", [lights_on, hunts, shot, cools, goes], " lit ", sv.lit_t, " lights ", sv.lights)
+			# ---- reinforcements: marks round you, a pod onto each, three of the swarm out of each; the husks stand a while
+			calm.call()
+			sv.event("reinforce")
+			var pod_n: int = (sv.pods as Array).size()
+			var marks_n: int = (sv.tele as Array).filter(func(tq): return String(tq["kind"]) == "spot").size()
+			var ringed: bool = String(sv.banner) == "REINFORCEMENTS" and (sv.pods as Array).all(func(pd): return (pd["pos"] as Vector2).distance_to(pp) > 80.0 and (pd["pos"] as Vector2).distance_to(pp) < 140.0)
+			run_steps.call(40)
+			var none_yet: bool = int(sv.n) == 0
+			run_steps.call(100)
+			var landed: bool = int(sv.n) == pod_n * 3 and int(sv._cnt[KI["enforcer"]]) == int(sv.n) and (sv.pods as Array).size() == pod_n and (sv.pods as Array).all(func(pd): return float(pd["husk"]) > 0.0)
+			run_steps.call(200)
+			pods_ok = pod_n >= 5 and pod_n <= 8 and marks_n == pod_n and ringed and none_yet and landed and (sv.pods as Array).is_empty()
+			if not pods_ok:
+				print("COLTAKEB62A reinforcements: pods ", pod_n, " marks ", marks_n, " ringed ", ringed, " none yet ", none_yet, " landed ", landed, " n ", sv.n, " left ", (sv.pods as Array).size())
+			# ---- the kill line: it warms up, then crosses the field; on it you are hurt, in a gap not
+			var set_line := func(kq: Dictionary) -> void:
+				kq["dir"] = Vector2.RIGHT
+				kq["c"] = pp - Vector2(100.0, 0.0)
+				kq["s"] = 0.0
+				kq["far"] = 200.0
+				kq["half"] = 200.0
+				kq["gaps"] = [-80.0, 80.0]
+				kq["warm"] = 0.2
+			calm.call()
+			sv.event("killline")
+			var kl: Dictionary = sv.klines[0] if (sv.klines as Array).size() == 1 else {}
+			var line_made: bool = not kl.is_empty() and (kl["gaps"] as Array).size() == 2 and float(kl["warm"]) > 1.0 and String(sv.banner) == "KILL LINE" and absf((kl["dir"] as Vector2).length() - 1.0) < 0.01 \
+				and (sv._line_parts(kl) as Array).size() == 3 and float(kl["half"]) > 150.0
+			var waits := false
+			var crossed := false
+			var gap_ok := false
+			if line_made:
+				set_line.call(kl)
+				run_steps.call(10)
+				waits = float(kl["s"]) == 0.0 and float(sv.run["hp"]) == 1000.0
+				for rs5 in 300:
+					sv.step(0.016)
+					if (sv.klines as Array).is_empty():
+						break
+				crossed = is_equal_approx(float(sv.run["hp"]), 980.0) and (sv.klines as Array).is_empty()
+				calm.call()
+				sv.event("killline")
+				set_line.call(sv.klines[0])
+				g.pilot.pos = pp + Vector2(0.0, 80.0)                # (you stand where its gap will pass)
+				for rs6 in 320:
+					sv.step(0.016)
+					if (sv.klines as Array).is_empty():
+						break
+				gap_ok = float(sv.run["hp"]) == 1000.0 and (sv.klines as Array).is_empty()
+			line_ok = line_made and waits and crossed and gap_ok
+			if not line_ok:
+				print("COLTAKEB62A the kill line ", [line_made, waits, crossed, gap_ok], " hp ", sv.run["hp"], " lines ", sv.klines)
+			# ---- the EMP: for five seconds none of your weapons charges
+			calm.call()
+			var ee: int = sv.add_foe(KI["enforcer"], pp + Vector2(20.0, 0.0))
+			hold.call(ee, 100000.0)
+			sv.run["weapons"] = [["pulse", 1]]
+			sv._wt = {}
+			sv.event("emp")
+			var emp_on: bool = is_equal_approx(float(sv.emp_t), SV.EMP_TIME) and String(sv.banner) == "EMP"
+			run_steps.call(150)
+			var silent: bool = is_equal_approx(float(sv.fhp[ee]), 100000.0) and float(sv.emp_t) > 2.0
+			sv.emp_t = 0.02
+			run_steps.call(150)
+			var fires: bool = float(sv.fhp[ee]) < 100000.0 and float(sv.emp_t) == 0.0
+			sv.run["weapons"] = []
+			emp_ok = emp_on and silent and fires
+			if not emp_ok:
+				print("COLTAKEB62A the EMP ", [emp_on, silent, fires], " hp of the machine ", sv.fhp[0], " emp ", sv.emp_t)
+			# ---- Override: the machines near you are yours for a while: they leave you be and strike the others; then they turn back
+			calm.call()
+			var oa: int = sv.add_foe(KI["enforcer"], pp + Vector2(30.0, 0.0))
+			var ob: int = sv.add_foe(KI["enforcer"], pp + Vector2(40.0, 8.0))
+			var oc: int = sv.add_foe(KI["enforcer"], pp + Vector2(150.0, 0.0))
+			sv.fhp[oc] = 30.0
+			sv.fmx[oc] = 30.0
+			var oh: int = sv.add_foe(KI["hunter"], pp + Vector2(0.0, -90.0))
+			sv.fvel[oh] = Vector2.ZERO
+			sv.ftm[oh] = 99.0
+			var kills0 := int(sv.run["kills"])
+			sv.give("override")
+			var turned: bool = float(sv.fovr[oa]) > 7.9 and float(sv.fovr[ob]) > 7.9 and float(sv.fovr[oc]) == 0.0 and float(sv.fovr[oh]) == 0.0 and is_equal_approx(float(sv.ovr_t), 8.0) \
+				and String(sv.banner) == "OVERRIDE" and (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "override")
+			for rs7 in 420:
+				sv.step(0.016)
+				if int(sv._cnt[KI["enforcer"]]) == 2:
+					break
+			var fought: bool = int(sv._cnt[KI["enforcer"]]) == 2 and float(sv.run["hp"]) == 1000.0 and int(sv.run["kills"]) == kills0 + 1 and float(sv.fovr[0]) > 0.0 and float(sv.fovr[1]) > 0.0
+			sv.fovr[0] = 0.02
+			sv.fovr[1] = 0.02
+			sv.ovr_t = 0.02
+			var hurt_again := false
+			for rs8 in 420:
+				sv.step(0.016)
+				if float(sv.run["hp"]) < 1000.0:
+					hurt_again = true
+					break
+			var back: bool = hurt_again and float(sv.fovr[0]) <= 0.0 and float(sv.fovr[1]) <= 0.0 and float(sv.ovr_t) == 0.0
+			ovr_ok = turned and fought and back
+			if not ovr_ok:
+				print("COLTAKEB62A Override ", [turned, fought, back], " turned ", [sv.fovr[0], sv.fovr[1], sv.fovr[2]], " enforcers ", sv._cnt[KI["enforcer"]], " hp ", sv.run["hp"], " kills ", sv.run["kills"], " of ", kills0)
+			# ---- beyond the edge of the ground (the crash of 23 Nov 2026): those that fly come from outside it and leave across it: nothing breaks,
+			# the fire goes on burning those that walk, the rows of neighbours stay whole
+			calm.call()
+			var mh := float(int(sv._h)) * 16.0
+			var mw := float(int(sv._w)) * 16.0
+			var fl_out: Array = [Vector2(pp.x, mh + 8.0), Vector2(pp.x, mh + 300.0), Vector2(-300.0, -300.0), Vector2(mw + 300.0, mh + 300.0), Vector2(pp.x, -200.0)]
+			for fo in fl_out:
+				var fq: int = sv.add_foe(KI["hunter"], fo)
+				sv.fvel[fq] = Vector2.ZERO
+				sv.ftm[fq] = 99.0
+			var bw3: int = sv.add_foe(KI["enforcer"], pp + Vector2(60.0, 0.0))
+			hold.call(bw3, 100.0)
+			var burn_ti: int = sv._ti(pp + Vector2(60.0, 0.0))
+			sv._haz[burn_ti] = 2
+			run_steps.call(70)
+			var burns: bool = float(sv.fhp[bw3]) < 100.0 and int(sv._cnt[KI["hunter"]]) == fl_out.size() and (sv.touching(pp + Vector2(60.0, 0.0), 6.0) as Array).has(bw3)
+			sv._haz[burn_ti] = 0
+			var across: Array = []
+			for eq in [[Vector2(pp.x, mh - 44.0), Vector2.UP], [Vector2(pp.x, 44.0), Vector2.DOWN], [Vector2(44.0, 44.0), Vector2(1.0, 1.0).normalized()], [Vector2(mw - 44.0, mh - 44.0), Vector2(-1.0, -1.0).normalized()]]:
+				calm.call()
+				sv.run["hp"] = 1000000.0
+				sv.run["t"] = 500.0
+				sv.run["weapons"] = [["pulse", 3], ["laser", 3], ["blackhole", 3], ["gravity", 3], ["taser", 3]]
+				sv._wt = {}
+				g.pilot.pos = eq[0]
+				sv._last_pp = eq[0]
+				sv.event("flock")
+				sv.flock_warn["dir"] = eq[1]
+				var seen_out := false
+				var hw: int = sv.add_foe(KI["enforcer"], (eq[0] as Vector2) + (eq[1] as Vector2) * 30.0)
+				hold.call(hw, 1000000000.0)                    # (so much that a black hole does not swallow it)
+				var found := true
+				for rs9 in 600:
+					sv.step(0.016)
+					for hq2 in int(sv.n):
+						var hp2: Vector2 = sv.fp[hq2]
+						if int(sv.fk[hq2]) == int(KI["hunter"]) and (hp2.x < -30.0 or hp2.y < -30.0 or hp2.x > mw + 30.0 or hp2.y > mh + 30.0):
+							seen_out = true
+					if rs9 % 20 == 0:
+						found = found and not (sv.touching(sv.fp[0], 6.0) as Array).is_empty()
+				across.append(seen_out and found and int(sv._cnt[KI["hunter"]]) == 0)
+			sv.run["weapons"] = []
+			edge_ok = burns and across == [true, true, true, true]
+			if not edge_ok:
+				print("COLTAKEB62A beyond the edge: burns ", burns, " across ", across)
+			# ---- by the clock: the stage's own events come when their time is there, its hunters, its later kinds
+			calm.call()
+			sv.quiet = false
+			sv._ev_i = 0
+			sv._flock_at = SV.FLOCK_FROM
+			sv._alpha_at = 99999.0
+			sv._supply_at = 99999.0
+			sv.run["t"] = 119.99
+			sv.step(0.016)
+			sv.step(0.016)
+			var first: bool = (sv.lights as Array).size() == 2 and int(sv._ev_i) == 1 and (sv.flock_warn as Dictionary).is_empty() and (sv.pods as Array).is_empty()
+			sv.run["t"] = 271.0
+			sv.step(0.016)
+			var later: bool = int(sv._ev_i) == 2 and not (sv.pods as Array).is_empty() and not (sv.flock_warn as Dictionary).is_empty() and int(sv._cnt[KI["bulwark"]]) >= 1 and int(sv._cnt[KI["seeker"]]) == 0
+			sv.quiet = true
+			clock_ok = first and later
+			if not clock_ok:
+				print("COLTAKEB62A by the clock ", [first, later], " events ", sv._ev_i, " lights ", (sv.lights as Array).size(), " pods ", (sv.pods as Array).size(), " flock ", sv.flock_warn, " counts ", sv._cnt)
+			if shots:
+				# (a picture: the four new machines beside those of part 8a)
+				calm.call()
+				sv.frozen = true
+				sv.banner_t = 0.0
+				for ri in 3:
+					var fb: int = sv.add_foe(KI["bulwark"], pp + Vector2(-150.0 + ri * 46.0, -40.0))
+					sv.fv[fb] = ri
+					sv.fface[fb] = [0, 2, 3][ri]
+				for ri2 in 2:
+					var fj: int = sv.add_foe(KI["jammer"], pp + Vector2(30.0 + ri2 * 44.0, -40.0))
+					sv.fv[fj] = ri2
+				var fh: int = sv.add_foe(KI["hunter"], pp + Vector2(140.0, -24.0))
+				sv.fvel[fh] = Vector2.ZERO
+				sv.ftm[fh] = 99.0
+				for ri3 in 4:
+					var fs: int = sv.add_foe(KI["seeker"], pp + Vector2(-140.0 + ri3 * 30.0, 44.0))
+					sv.fv[fs] = ri3
+					if ri3 == 3:
+						sv.fst[fs] = 1
+				var fe: int = sv.add_foe(KI["enforcer"], pp + Vector2(40.0, 46.0))
+				sv.add_foe(KI["gunner"], pp + Vector2(72.0, 46.0))
+				var fsc: int = sv.add_foe(KI["scout"], pp + Vector2(112.0, 46.0))
+				sv.fface[fsc] = 2
+				sv.fface[fe] = 0
+				g.story_cam = pp + Vector2(0.0, -14.0)
+				g.story_zoom = 1.9
+				for f2 in 70:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_maschinen_b.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				# (a picture: the searchlights; you stood in one too long: the mark, the shell on its way down)
+				var crowd := func(count: int) -> void:
+					calm.call()
+					sv.run["weapons"] = [["pulse", 3], ["laser", 3]]
+					sv._wt = {}
+					sv.run["hp"] = 1000000.0
+					sv.swarm(count)
+					sv.swarm(8, "scout")
+					sv.swarm(4, "gunner")
+				crowd.call(110)
+				sv.event("searchlight")
+				sv.lights[0]["p"] = pp + Vector2(12.0, 8.0)
+				sv.lights[1]["p"] = pp + Vector2(190.0, -70.0)
+				sv.lit_t = 1.3
+				for f3 in 500:
+					await get_tree().process_frame
+					if (sv.shells as Array).any(func(s): return (s["from"] as Vector2) == Vector2.INF and float(s["t"]) > 0.9):
+						break
+				sv.frozen = true
+				for f4 in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_scheinwerfer.png")
+				# (a picture: the kill line on its way across, the gaps in it)
+				crowd.call(110)
+				sv.event("killline")
+				var kp: Dictionary = sv.klines[0]
+				kp["dir"] = Vector2.RIGHT
+				kp["c"] = pp - Vector2(210.0, 0.0)
+				kp["s"] = 0.0
+				kp["far"] = 600.0
+				kp["half"] = 260.0
+				kp["gaps"] = [-95.0, 70.0]
+				kp["warm"] = 0.0
+				for f5 in 500:
+					await get_tree().process_frame
+					if float(kp["s"]) > 120.0:
+						break
+				sv.frozen = true
+				for f6 in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_killline.png")
+				# (a picture: reinforcements: some pods down and open, some on their way)
+				crowd.call(50)
+				sv.event("reinforce")
+				for f7 in 500:
+					await get_tree().process_frame
+					if (sv.pods as Array).filter(func(pd): return float(pd["husk"]) > 0.0).size() >= 4:
+						break
+				sv.frozen = true
+				for f8 in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_verstaerkung.png")
+				# (a picture: two hunters on their lines; bulwarks' shells in the air, seekers, a jammer's field)
+				crowd.call(70)
+				sv.run["t"] = 500.0
+				for ri4 in 3:
+					var fb2: int = sv.add_foe(KI["bulwark"], pp + Vector2.from_angle(0.6 + ri4 * 2.1) * 150.0)
+					sv.ftm[fb2] = 2.5 + ri4 * 0.2
+				sv.swarm(2, "jammer")
+				sv.swarm(8, "seeker")
+				sv.event("flock")
+				for f9 in 700:
+					await get_tree().process_frame
+					if range(int(sv.n)).any(func(q9): return int(sv.fk[q9]) == int(KI["hunter"]) and (sv.fp[q9] as Vector2).distance_to(g.pilot.pos) < 105.0):
+						break
+				sv.frozen = true
+				for f10 in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_hunter.png")
+				# (a picture: Override: the machines near you are yours, they go for the others)
+				crowd.call(150)
+				sv.give("override")
+				for f11 in 80:
+					await get_tree().process_frame
+				sv.frozen = true
+				for f12 in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_override.png")
+				# (a picture: the EMP: the plate over your weapons)
+				crowd.call(120)
+				sv.event("emp")
+				for f13 in 16:
+					await get_tree().process_frame
+				sv.frozen = true
+				for f14 in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a8_emp.png")
+				sv.frozen = false
+			# ---- a step with the field full of all six kinds, and things happening, stays cheap
+			calm.call()
+			sv.run["weapons"] = []
+			for kq2 in ["enforcer", "scout", "gunner", "bulwark", "seeker", "jammer"]:
+				sv.swarm(100, String(kq2))
+			sv.run["hp"] = 1000000000.0
+			sv.event("searchlight")
+			sv.event("killline")
+			sv.event("reinforce")
+			var full_n: int = sv.n
+			var tp0 := Time.get_ticks_usec()
+			for f15 in 60:
+				sv.step(0.016)
+			ms = float(Time.get_ticks_usec() - tp0) / 60000.0
+			fast_ok = full_n >= 590 and ms < 14.0
+			print("COLTAKEB62A a step with %d machines of six kinds: %.2f ms" % [full_n, ms])
+			# ---- the run is over
+			calm.call()
+			Commands.execute({"type": "debug_casino", "sv": "end"})
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f16 in 10:
+				await get_tree().process_frame
+	check(rules_ok and bul_ok and seek_ok and jam_ok and hunt_ok and light_ok and pods_ok and line_ok and emp_ok and ovr_ok and clock_ok and edge_ok and fast_ok,
+		"62a, part 8b: the rest of AI Takeover: its rules (six kinds by the clock, ten events in order, hunters as its flock, Override in its crates alone), the pictures of the four new machines; the Bulwark (it stops, a mark, a shell: stand and it hits, step aside and it does not); the Seeker (it rolls at you, arms, goes off: you are hurt, the machines round it more; one put out sets off the next); the Jammer (a shield for the machines near it, again and again; it keeps well back); the Hunters (a line shown first, one along it, from 8:00 two abreast; aside they miss); the searchlights (they hunt you; too long in one: a mark, a shell out of the sky that hurts machines too; out of the light the count runs down); reinforcements (marks, pods, three out of each, husks); the kill line (it warms up, crosses, hurts on it, not in a gap); the EMP (no weapon charges); Override (the machines near you leave you be and strike the others, then turn back; no flyer); the events by the clock; those that fly beyond the edge of the ground break nothing; a step with the field full stays cheap  [%s %s %s %s %s %s %s %s %s %s %s %s %s]  (%.2f ms a step)" % [rules_ok, bul_ok, seek_ok, jam_ok, hunt_ok, light_ok, pods_ok, line_ok, emp_ok, ovr_ok, clock_ok, edge_ok, fast_ok, ms])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _test_coltakec62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules: the stage's two bosses, what they bring, their pictures
+	var sd: Dictionary = SV.stage_data("takeover")
+	var tex_ok := true
+	for kind in ["warden", "core", "pylon"]:
+		for d in 4:
+			for f in 3:
+				var tx: Texture2D = SA.texture(String(kind), 0, d, f)
+				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
+	var rules_ok: bool = String(sd["soft"]) == "warden" and String(sd["end"]) == "core" \
+		and ["warden", "core", "pylon"].all(func(k): return SV.FOES.has(k) and bool(SV.FOES[k].get("boss", false)) and int(SV.FOES[k]["beh"]) >= SV.BOSS_BEH and bool(SV.FOES[k]["tough"]) \
+			and not String(SV.FOES[k]["name"]).contains("–")) \
+		and SV.foe_hp("warden", 0.0) == SV.foe_hp("warden", 800.0) and SV.foe_hp("pylon", 900.0) == float(SV.FOES["pylon"]["hp"]) \
+		and SV.cores({"t": 900.0, "bosses": ["warden", "core"]}) == 45 + 42 and SV.cores({"t": 500.0, "bosses": ["warden"]}) == 25 + 12 \
+		and String(SV.BANNERS["warden"]) == "THE WARDEN" and String(SV.BANNERS["core"]) == "THE CORE" and String(SV.BANNERS["shield"]) == "THE SHIELD FALLS" \
+		and SV.CROSS_LEN > (SV.BARRIER as Vector2).length() * 0.5 and int(SV.BARRIER.x / SV.FIELD_CELL) == 7 and int(SV.BARRIER.y / SV.FIELD_CELL) == 5 \
+		and tex_ok and SA.size_of("warden").x > SA.size_of("bulwark").x and SA.size_of("core").y > SA.size_of("enforcer").y \
+		and SA.image("warden", 0, 0, 0).get_data() != SA.image("warden", 0, 2, 0).get_data() and SA.image("warden", 0, 0, 1).get_data() != SA.image("warden", 0, 0, 2).get_data() \
+		and SA.image("warden", 0, 0, 0).get_data() != SA.image("warden", 0, 1, 0).get_data() and SA.image("core", 0, 0, 0).get_data() != SA.image("core", 0, 0, 1).get_data() \
+		and SA.image("pylon", 0, 0, 0).get_data() != SA.image("pylon", 0, 0, 1).get_data()
+	if not rules_ok:
+		print("COLTAKEC62A rules: soft ", sd["soft"], " end ", sd["end"], " tex ", tex_ok, " cores ", SV.cores({"t": 900.0, "bosses": ["warden", "core"]}))
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var warden_ok := false
+	var arm_ok := false
+	var salvo_ok := false
+	var stomp_ok := false
+	var core_ok := false
+	var beam_ok := false
+	var pylon_ok := false
+	var cross_ok := false
+	var floor_ok := false
+	var fast_ok := false
+	var won_ok := false
+	var ms := 0.0
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "stage:takeover"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f1 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv) and String(sv.run["stage"]) == "takeover":
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var put := func(at: Vector2) -> void:                 # (you stand here now)
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+			var fresh := func() -> void:                          # (unhurt, and nothing holds off what could hurt you)
+				sv.run["hp"] = 1000.0
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.boss_kind = ""
+				sv.bst = {}
+				sv.barrier_on = false
+				sv.barrier_k = 0.0
+				sv.boss_done = {}
+				sv.frozen = false
+				sv.run["xp"] = -1000000
+				sv.run["t"] = 200.0
+				sv.sn = 0
+				fresh.call()
+				put.call(pp)
+			var picture := func(file: String, cam: Vector2) -> void:      # (a picture of what stands still for it; at once, before its warnings run out)
+				sv.frozen = true
+				sv.banner_t = 0.0
+				g.story_cam = cam
+				g._cam_c = cam * GroundMap.SCALE
+				for fq in 6:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/%s.png" % file)
+				g.story_cam = Vector2.INF
+				sv.frozen = false
+			sv.quiet = true
+			sv.run["weapons"] = []
+			sv.crates = []
+			sv._haz.fill(0)
+			if shots:                                              # (the hologram has come up before the first picture)
+				sv.frozen = true
+				for fb in 190:
+					await get_tree().process_frame
+				sv.frozen = false
+			# ---- The Warden comes when its time is there: walls of light round you and it, nobody else
+			calm.call()
+			sv.quiet = false
+			sv._ev_i = 9999
+			sv._flock_at = 99999.0
+			sv._alpha_at = 99999.0
+			sv._supply_at = 99999.0
+			sv.run["t"] = SV.SOFT_BOSS - 0.01
+			sv.step(0.016)
+			sv.step(0.016)
+			sv.quiet = true
+			var wi: int = sv.boss_i()
+			var came: bool = wi >= 0 and String(sv.boss_kind) == "warden" and bool(sv.barrier_on) and String(sv.banner) == "THE WARDEN" and bool(sv.boss_done.get("warden", false)) \
+				and String(sv.boss_info()["name"]) == "The Warden" and float(sv.boss_info()["k"]) == 1.0 and int(sv.boss_info()["phase"]) == 1 and not (sv.boss_info() as Dictionary).has("shield") \
+				and (sv.barrier as Rect2).has_point(pp) and int(sv.n) == 1
+			if came:
+				sv.bst["salvo"] = 99.0
+				sv.bst["stomp"] = 99.0
+				run_steps.call(70)
+				var closed: bool = float(sv.barrier_k) == 1.0 and float(sv.run["hp"]) == 1000.0 and float(sv.bst["warm"]) > 0.0
+				warden_ok = closed
+				var on_arm := func(dist: float, turn: float) -> Vector2:
+					return (sv.fp[sv.boss_i()] as Vector2) + Vector2.from_angle(float(sv.bst["a"]) + turn) * dist
+				if shots:                                            # (a picture: its arm, a salvo on its way)
+					sv.bst["warm"] = 0.0
+					sv.bst["a"] = 2.5
+					sv.bst["salvo"] = 0.0
+					run_steps.call(40)
+					sv.bst["salvo"] = 99.0
+					await picture.call("col62a8_warden", (sv.barrier as Rect2).get_center() + Vector2(0.0, -30.0))
+					sv.shells.clear()
+					sv.tele.clear()
+					put.call(pp)
+					fresh.call()
+				# ---- its laser arm: it warms up first; then to touch it hurts and throws you; in a dodge you pass through it; beyond its reach it does
+				# nothing; one arm at first, two in its last third
+				sv.bst["warm"] = 1.0
+				sv.bst["a"] = PI * 0.5
+				put.call(on_arm.call(80.0, 0.0))
+				sv.step(0.016)
+				var warms: bool = float(sv.run["hp"]) == 1000.0
+				sv.bst["warm"] = 0.0
+				sv.bst["a"] = PI * 0.5
+				put.call(on_arm.call(80.0, 0.0))
+				sv.step(0.016)
+				var burns: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["warden"]["arm_dmg"])) and float(sv.kb_t) > 0.0
+				fresh.call()
+				sv.dash_t = 0.5
+				sv.bst["a"] = PI * 0.5
+				put.call(on_arm.call(80.0, 0.0))
+				sv.step(0.016)
+				var through: bool = float(sv.run["hp"]) == 1000.0
+				fresh.call()
+				sv.bst["a"] = PI * 0.5
+				put.call(on_arm.call(float(SV.FOES["warden"]["arm"]) + 12.0, 0.0))
+				sv.step(0.016)
+				var beyond: bool = float(sv.run["hp"]) == 1000.0
+				fresh.call()
+				sv.bst["a"] = PI * 0.5
+				put.call(on_arm.call(60.0, PI))
+				sv.step(0.016)
+				var one_arm: bool = float(sv.run["hp"]) == 1000.0
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()]) * 0.3
+				fresh.call()
+				sv.bst["a"] = PI * 0.5
+				put.call(on_arm.call(60.0, PI))
+				sv.step(0.016)
+				var two_arms: bool = int(sv.boss_info()["phase"]) == 3 and float(sv.run["hp"]) < 1000.0
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()])
+				arm_ok = warms and burns and through and beyond and one_arm and two_arms
+				if not arm_ok:
+					print("COLTAKEC62A The Warden's arm ", [warms, burns, through, beyond, one_arm, two_arms], " hp ", sv.run["hp"])
+				# ---- its rockets: marks, one where you stand; stand and it hits, away from the marks nothing does
+				sv.bst["warm"] = 999.0
+				fresh.call()
+				var bc: Vector2 = (sv.barrier as Rect2).get_center()
+				put.call(bc + Vector2(-150.0, 60.0))
+				sv.bst["salvo"] = 0.0
+				sv.step(0.016)
+				var rockets: Array = (sv.shells as Array).filter(func(s): return bool(s.get("rocket", false)))
+				var marks: int = (sv.tele as Array).filter(func(tq): return String(tq["kind"]) == "spot").size()
+				var fired: bool = rockets.size() == 5 and marks == 5 and (rockets[0]["pos"] as Vector2).distance_to(g.pilot.pos) < 1.0 and float(sv.bst["salvo"]) > 5.0 \
+					and rockets.all(func(s): return (s["pos"] as Vector2).distance_to(g.pilot.pos) < 137.0 and float(s["foes"]) == 0.0)
+				run_steps.call(70)
+				var struck: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["warden"]["rocket"]))
+				run_steps.call(60)
+				fresh.call()
+				sv.bst["salvo"] = 0.0
+				sv.step(0.016)
+				put.call(bc + Vector2(150.0, 60.0))                    # (you run from the marks)
+				run_steps.call(140)
+				var ran: bool = float(sv.run["hp"]) == 1000.0 and (sv.shells as Array).is_empty()
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()]) * 0.5
+				sv.bst["salvo"] = 0.0
+				sv.step(0.016)
+				var more: bool = (sv.shells as Array).size() == 7
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()])
+				sv.shells.clear()
+				sv.tele.clear()
+				sv.bst["salvo"] = 99.0
+				salvo_ok = fired and struck and ran and more
+				if not salvo_ok:
+					print("COLTAKEC62A The Warden's rockets ", [fired, struck, ran, more], " rockets ", rockets.size(), " marks ", marks, " hp ", sv.run["hp"], " shells ", (sv.shells as Array).size())
+				# ---- its stamp: come near and it rears up, standing; then a ring of force runs out from it
+				fresh.call()
+				sv.bst["stomp"] = 0.0
+				put.call((sv.fp[sv.boss_i()] as Vector2) + Vector2(0.0, 50.0))
+				sv.step(0.016)
+				var winds: bool = String(sv.bst["st"]) == "wind"
+				var w_at: Vector2 = sv.fp[sv.boss_i()]
+				if shots:
+					sv.bst["t"] = 0.3
+					await picture.call("col62a8_warden_stampf", (sv.fp[sv.boss_i()] as Vector2) + Vector2(0.0, 10.0))
+					fresh.call()
+				var stood := true
+				var saw_wave := false
+				for rs in 80:
+					sv.step(0.016)
+					if String(sv.bst["st"]) == "wind":
+						stood = stood and (sv.fp[sv.boss_i()] as Vector2).distance_to(w_at) < 0.01
+					saw_wave = saw_wave or not (sv.waves as Array).is_empty()
+				stomp_ok = winds and stood and saw_wave and is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["warden"]["stomp"])) and String(sv.bst["st"]) == "walk" \
+					and float(sv.bst["stomp"]) > 2.0
+				if not stomp_ok:
+					print("COLTAKEC62A The Warden's stamp: winds ", winds, " stood ", stood, " wave ", saw_wave, " hp ", sv.run["hp"], " state ", sv.bst["st"])
+				# ---- out: the walls fall, it leaves a great crate
+				sv._hit(sv.boss_i(), 1000000000.0, g.pilot.pos)
+				var w_out: bool = String(sv.boss_kind) == "" and not bool(sv.barrier_on) and (sv.crates as Array).size() == 1 and bool(sv.crates[0]["great"]) and String(sv.banner) == "THE WALLS FALL" \
+					and (sv.run["bosses"] as Array).has("warden") and (sv.waves as Array).is_empty() and int(sv.boss_i()) == -1
+				warden_ok = warden_ok and w_out
+				if not warden_ok:
+					print("COLTAKEC62A The Warden: closed ", closed, " out ", w_out, " crates ", sv.crates, " bosses ", sv.run["bosses"])
+			else:
+				print("COLTAKEC62A The Warden did not come: ", sv.boss_kind, " barrier ", sv.barrier_on, " banner ", sv.banner, " n ", sv.n, " info ", sv.boss_info())
+			# ---- The Core comes when the time is up: in the middle of its field, four pylons round it, a shield over it
+			calm.call()
+			sv.crates = []
+			sv.run["t"] = SV.RUN_TIME
+			sv.boss_start("core")
+			var ci: int = sv.boss_i()
+			var cpos: Vector2 = sv.fp[ci] if ci >= 0 else pp
+			var py_idx := func() -> Array:
+				return range(int(sv.n)).filter(func(q): return int(sv.fk[q]) == int(KI["pylon"]))
+			var c_came: bool = ci >= 0 and String(sv.boss_kind) == "core" and bool(sv.barrier_on) and String(sv.banner) == "THE CORE" and int(sv._cnt[KI["pylon"]]) == 4 and int(sv.n) == 5 \
+				and int(sv.boss_info()["shield"]) == 4 and int(sv.boss_info()["phase"]) == 1 and cpos.distance_to((sv.barrier as Rect2).get_center()) < 45.0 and (sv.barrier as Rect2).has_point(pp) \
+				and cpos.distance_to(pp) > 60.0 and (py_idx.call() as Array).all(func(q): return (sv.fp[q] as Vector2).distance_to(cpos) > 90.0 and (sv.barrier as Rect2).has_point(sv.fp[q]))
+			if c_came:
+				sv._hit(ci, 500.0, pp)
+				var shielded: bool = float(sv.fhp[ci]) == float(sv.fmx[ci]) and float(sv._guard_t) > 0.0
+				if shots:                                            # (a picture: the shield, a pylon taking aim, another firing)
+					var pys: Array = py_idx.call()
+					sv.bst["aims"] = [{"from": sv.fp[pys[0]], "dir": (pp - (sv.fp[pys[0]] as Vector2)).normalized(), "t": 0.2, "st": "fire"},
+						{"from": sv.fp[pys[3]], "dir": (pp + Vector2(40.0, 0.0) - (sv.fp[pys[3]] as Vector2)).normalized(), "t": 0.4, "st": "aim"}]
+					await picture.call("col62a8_core_schild", (sv.barrier as Rect2).get_center() + Vector2(0.0, 10.0))
+					sv.bst["aims"] = []
+					fresh.call()
+				# ---- the pylons' beams: a line that follows you, then the beam along it: stand and it hits; step off the line once it holds still and it misses
+				var saw_aim := false
+				var saw_fire := false
+				for rs2 in 280:
+					sv.step(0.016)
+					for am in sv.bst["aims"]:
+						if String(am["st"]) == "aim":
+							saw_aim = true
+						else:
+							saw_fire = true
+					if float(sv.run["hp"]) < 1000.0:
+						break
+				var beam_hit: bool = saw_aim and saw_fire and is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["core"]["beam"])) and float(sv.run["t"]) == SV.RUN_TIME
+				run_steps.call(30)
+				fresh.call()
+				var moved := false
+				for rs3 in 420:
+					sv.step(0.016)
+					var aims2: Array = sv.bst["aims"]
+					if not moved and aims2.size() == 1 and String(aims2[0]["st"]) == "aim" and float(aims2[0]["t"]) <= 0.28:
+						moved = true
+						put.call(g.pilot.pos + (aims2[0]["dir"] as Vector2).orthogonal() * 40.0)
+					if moved and aims2.is_empty():
+						break
+				var beam_miss: bool = moved and float(sv.run["hp"]) == 1000.0
+				beam_ok = shielded and beam_hit and beam_miss
+				if not beam_ok:
+					print("COLTAKEC62A The Core's pylons fire ", [shielded, beam_hit, beam_miss], " aim ", saw_aim, " fire ", saw_fire, " hp ", sv.run["hp"], " moved ", moved)
+				# ---- the pylons fall one by one (a bar over one that is hurt); with the last the shield falls, and The Core can be hurt
+				put.call(pp)
+				fresh.call()
+				sv.bst["fire"] = 999.0
+				sv.bst["aims"] = []
+				var p0: int = (py_idx.call() as Array)[0]
+				sv._hit(p0, 50.0, pp)
+				sv.step(0.016)
+				var bar: bool = (sv._marks as Array).any(func(mq): return String(mq[0]) == "bar" and int(mq[3]) == p0)
+				for kq in 3:
+					var ids: Array = py_idx.call()
+					sv._hit(int(ids[ids.size() - 1]), 1000000.0, pp)
+				var three_down: bool = int(sv._cnt[KI["pylon"]]) == 1 and int(sv.boss_info()["shield"]) == 1 and int(sv.boss_info()["phase"]) == 1 and String(sv.banner) != "THE SHIELD FALLS"
+				sv._hit(sv.boss_i(), 500.0, pp)
+				var still: bool = float(sv.fhp[sv.boss_i()]) == float(sv.fmx[sv.boss_i()])
+				sv._hit(int((py_idx.call() as Array)[0]), 1000000.0, pp)
+				var down: bool = int(sv._cnt[KI["pylon"]]) == 0 and String(sv.banner) == "THE SHIELD FALLS" and int(sv.boss_info()["phase"]) == 2 and int(sv.boss_info()["shield"]) == 0 \
+					and (sv.bst["aims"] as Array).is_empty() and float(sv.bst["warm"]) > 1.0
+				sv._hit(sv.boss_i(), 500.0, pp)
+				var open: bool = is_equal_approx(float(sv.fhp[sv.boss_i()]), float(SV.FOES["core"]["hp"]) - 500.0)
+				pylon_ok = bar and three_down and still and down and open
+				if not pylon_ok:
+					print("COLTAKEC62A The Core's pylons fall ", [bar, three_down, still, down, open], " pylons ", sv._cnt[KI["pylon"]], " banner ", sv.banner, " info ", sv.boss_info())
+				# ---- the cross: it warms up; then its four arms hurt, the ground between them does not; it calls machines
+				sv.sn = 0
+				fresh.call()
+				var cnow: Vector2 = sv.fp[sv.boss_i()]
+				sv.bst["spawn"] = 99.0
+				sv.bst["warm"] = 0.5
+				sv.bst["a"] = PI * 0.5
+				put.call(cnow + Vector2(0.0, 100.0))
+				sv.step(0.016)
+				var c_warms: bool = float(sv.run["hp"]) == 1000.0
+				sv.bst["warm"] = 0.0
+				sv.bst["a"] = PI * 0.5
+				sv.step(0.016)
+				var south: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["core"]["beam"]))
+				fresh.call()
+				sv.bst["a"] = PI * 0.5
+				put.call(cnow + Vector2.from_angle(PI * 0.75) * 100.0)
+				sv.step(0.016)
+				var between: bool = float(sv.run["hp"]) == 1000.0
+				sv.bst["a"] = PI * 0.5
+				put.call(cnow + Vector2(-100.0, 0.0))
+				sv.step(0.016)
+				var west: bool = float(sv.run["hp"]) < 1000.0
+				sv.bst["warm"] = 999.0
+				fresh.call()
+				put.call(pp)
+				sv.bst["spawn"] = 0.0
+				sv.step(0.016)
+				var calls: bool = int(sv._cnt[KI["enforcer"]]) == 3 and float(sv.bst["spawn"]) > 4.0
+				if shots:                                            # (a picture: the cross turning, what it called)
+					sv.bst["warm"] = 0.0
+					sv.bst["a"] = 0.45
+					await picture.call("col62a8_core_kreuz", (sv.barrier as Rect2).get_center() + Vector2(0.0, 10.0))
+					sv.bst["warm"] = 999.0
+					fresh.call()
+				for eq in int(sv.n):
+					if int(sv.fk[eq]) == int(KI["enforcer"]):
+						sv.ffr[eq] = 999.0                               # (those it called stand still for what follows)
+				cross_ok = c_warms and south and between and west and calls
+				if not cross_ok:
+					print("COLTAKEC62A The Core's cross ", [c_warms, south, between, west, calls], " enforcers ", sv._cnt[KI["enforcer"]])
+				# ---- the floor: from under half of it on squares light up, yours among them, none beside another; then they burst; the square beside yours is safe
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()]) * 0.4
+				sv.bst["spawn"] = 99.0
+				sv.bst["field"] = 0.0
+				sv.step(0.016)
+				var fl: Array = sv.fields
+				var mine: int = fl.filter(func(fq): return (fq["r"] as Rect2).has_point(g.pilot.pos)).size()
+				var apart := true
+				for a1 in fl.size():
+					for a2 in range(a1 + 1, fl.size()):
+						apart = apart and (fl[a1]["r"] as Rect2).get_center().distance_to((fl[a2]["r"] as Rect2).get_center()) > 100.0
+				var lit: bool = int(sv.boss_info()["phase"]) == 3 and fl.size() >= 4 and mine == 1 and apart and fl.all(func(fq): return (sv.barrier as Rect2).encloses(fq["r"])) \
+					and float(sv.run["hp"]) == 1000.0
+				if shots:                                            # (a picture: the floor lit, the cross over it)
+					for fq2 in fl:
+						fq2["t"] = 0.95
+					sv.bst["warm"] = 0.0
+					sv.bst["a"] = 1.1
+					await picture.call("col62a8_core_felder", (sv.barrier as Rect2).get_center() + Vector2(0.0, 10.0))
+					for fq3 in fl:
+						fq3["t"] = 0.016
+					sv.bst["warm"] = 999.0
+					fresh.call()
+				run_steps.call(90)
+				var burst: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["core"]["field"]))
+				fresh.call()
+				sv.fields.clear()
+				sv.bst["field"] = 0.0
+				sv.step(0.016)
+				put.call(g.pilot.pos + Vector2(80.0, 0.0))             # (the square beside yours stays dark)
+				run_steps.call(90)
+				var spared: bool = float(sv.run["hp"]) == 1000.0
+				floor_ok = lit and burst and spared
+				if not floor_ok:
+					print("COLTAKEC62A The Core's floor ", [lit, burst, spared], " fields ", fl.size(), " mine ", mine, " apart ", apart, " hp ", sv.run["hp"], " phase ", sv.boss_info()["phase"])
+				# ---- a step with the cross turning, the floor lit and the field full of machines stays cheap
+				sv.run["hp"] = 1000000000.0
+				sv.bst["warm"] = 0.0
+				sv.bst["field"] = 0.0
+				sv.swarm(500)
+				var full_n: int = sv.n
+				var tp0 := Time.get_ticks_usec()
+				for f15 in 60:
+					sv.step(0.016)
+				ms = float(Time.get_ticks_usec() - tp0) / 60000.0
+				fast_ok = full_n >= 480 and ms < 14.0
+				print("COLTAKEC62A a step with The Core and %d machines: %.2f ms" % [full_n, ms])
+				# ---- out: the walls fall, what it called goes with it, the run is won
+				sv._hit(sv.boss_i(), 1000000000.0, g.pilot.pos)
+				var c_out: bool = String(sv.boss_kind) == "" and not bool(sv.barrier_on) and int(sv.n) == 0 and (sv.fields as Array).is_empty() and float(sv._win_t) > 0.0 and not bool(sv.over) \
+					and (sv.run["bosses"] as Array).has("core")
+				var tw := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tw < 9000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+					await get_tree().process_frame
+				var rec: Dictionary = SV.record(GameState.col_state())
+				won_ok = c_out and bool(sv.over) and bool(sv.survived) and g.minigame != null and g.minigame.has_method("is_sv_result") and bool(g.minigame.res.get("survived", false)) \
+					and int(g.minigame.res.get("cores", 0)) == 45 + (12 if (sv.run["bosses"] as Array).has("warden") else 0) + 30 and (rec["beaten"] as Array).has("core") \
+					and float((rec["best"] as Dictionary).get("takeover", 0.0)) >= SV.RUN_TIME - 0.1
+				if not won_ok:
+					print("COLTAKEC62A the end: out ", c_out, " over ", sv.over, " held ", sv.survived, " window ", g.minigame, " record ", rec)
+				core_ok = true
+			else:
+				print("COLTAKEC62A The Core did not come: ", sv.boss_kind, " pylons ", sv._cnt[KI["pylon"]], " n ", sv.n, " banner ", sv.banner, " at ", cpos, " field ", sv.barrier, " you ", pp)
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			elif not bool(sv.over):
+				Commands.execute({"type": "debug_casino", "sv": "end"})
+				var tr := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+					await get_tree().process_frame
+				if g.minigame != null and g.minigame.has_method("is_sv_result"):
+					g.minigame._t = 2.0
+					g.minigame.go()
+			for f16 in 10:
+				await get_tree().process_frame
+	check(rules_ok and warden_ok and arm_ok and salvo_ok and stomp_ok and core_ok and beam_ok and pylon_ok and cross_ok and floor_ok and fast_ok and won_ok,
+		"62a, part 8c: the bosses of AI Takeover: their rules and pictures; The Warden comes at 7:30 inside walls of light; its laser arm (it warms up, then it hurts and throws you, a dodge goes through it, beyond its reach nothing, a second arm in its last third); its rockets (marks, one where you stand; stand and it hits, away from the marks nothing; more of them later); its stamp (it rears up standing, a ring of force); out, it leaves a great crate; The Core comes when the time is up, in the middle of its field with four pylons, behind a shield; the pylons' beams (a line that follows you, the beam: stand and it hits, step off and it misses); the pylons fall, with the last the shield; the cross (it warms up, its arms hurt, between them nothing), what it calls; the floor (squares light up, yours among them, none beside another; they burst; beside yours it is safe); a step with it all stays cheap; out: the run is won  [%s %s %s %s %s %s %s %s %s %s %s %s]  (%.2f ms a step)" % [rules_ok, warden_ok, arm_ok, salvo_ok, stomp_ok, core_ok, beam_ok, pylon_ok, cross_ok, floor_ok, fast_ok, won_ok, ms])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _test_colfx62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var FX = load("res://scripts/ground/survivor_fx.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules: every weapon has its colour; the drone's words; its picture
+	var rules_ok: bool = (SV.WEAPON_ORDER as Array).all(func(w): return (FX.WCOL as Dictionary).has(w)) and (FX.WCOL as Dictionary).size() == SV.WEAPON_ORDER.size() \
+		and String(SV.WEAPONS["drone"]["text"]).contains("shot by shot") and String(SV.WEAPONS["drone"]["ult_text"]).contains("Three drones") \
+		and not String(SV.WEAPONS["drone"]["text"]).contains("–") and not String(SV.WEAPONS["drone"]["ult_text"]).contains("–") \
+		and SA.drone(0, false) != null and SA.drone(0, false).get_image().get_data() != SA.drone(1, false).get_image().get_data() \
+		and SA.drone(0, false).get_image().get_data() != SA.drone(0, true).get_image().get_data() and FX.h(1.0) == FX.h(1.0) and FX.h(1.0) != FX.h(2.0) \
+		and (FX.poly(Vector2.ZERO, 10.0, 6, 0.0) as PackedVector2Array).size() == 7
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var num_ok := false
+	var col_ok := false
+	var trail_ok := false
+	var drone_ok := false
+	var mark_ok := false
+	var flood_ok := false
+	var fast_ok := false
+	var ms := 0.0
+	var flood_ms := 0.0
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "stage:outbreak"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f1 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var WS: Dictionary = sv._wsrc
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.frozen = false
+				sv.run["hp"] = 1000000.0
+				sv.run["xp"] = -1000000
+				sv.run["weapons"] = []
+				sv.run["boni"] = []
+				sv.mods = SV.mods(sv.run)
+				sv._wt = {}
+				sv.sweep = {}
+				sv.sn = 0
+				sv.emp_t = 0.0
+				sv.hurt_cd = 0.0
+				g.pilot.pos = pp
+				g.pilot.position = pp * GroundMap.SCALE
+				sv._last_pp = pp
+			var hold := func(kind: String, at: Vector2, hp: float) -> int:      # (one that stands where it is put, with this much health)
+				var hi: int = sv.add_foe(KI[kind], at)
+				sv.ffr[hi] = 999.0
+				sv.fhp[hi] = hp
+				sv.fmx[hi] = hp
+				return hi
+			sv.quiet = true
+			sv.crates = []
+			sv._haz.fill(0)
+			# ---- the numbers of damage: what one took is added up, and shown over it a moment later, in the colour of what dealt it; the last blow at
+			# once; a shield's and a hard hit's are marked; never more than fit; they pass; they can be turned off
+			calm.call()
+			var h0: int = hold.call("hauler", pp + Vector2(40.0, 0.0), 500.0)
+			sv._src = int(WS["laser"])
+			sv._hit(h0, 12.0, pp)
+			sv._hit(h0, 8.0, pp)
+			var summed: bool = is_equal_approx(float(sv.fnum[h0]), 20.0) and (int(sv.fnc[h0]) & 15) == int(WS["laser"]) and (sv.nums as Array).is_empty()
+			sv._num_t = 0.0
+			sv.step(0.016)
+			var shown: bool = (sv.nums as Array).size() == 1 and int(sv.nums[0]["v"]) == 20 and (int(sv.nums[0]["c"]) & 15) == int(WS["laser"]) and float(sv.fnum[h0]) == 0.0 \
+				and int(sv._src) == 0 and ((sv.nums[0]["p"] as Vector2) - (pp + Vector2(40.0, 0.0))).length() < 13.0
+			sv.nums.clear()
+			sv.fhp[h0] = 7.0
+			sv._hit(h0, 1000000.0, pp)
+			var last: bool = (sv.nums as Array).size() == 1 and int(sv.nums[0]["v"]) == 7 and (int(sv.nums[0]["c"]) & 15) == 0 and int(sv.n) == 0
+			var sb: int = hold.call("shieldbearer", pp + Vector2(40.0, 0.0), 500.0)
+			var sh0: float = sv.fsh[sb]
+			sv.nums.clear()
+			sv._hit(sb, 5.0, pp)
+			sv._num_t = 0.0
+			sv.step(0.016)
+			var by_shield: bool = sh0 > 5.0 and (sv.nums as Array).size() == 1 and (int(sv.nums[0]["c"]) & 32) != 0 and int(sv.nums[0]["v"]) == 5 and float(sv.fhp[sb]) == 500.0
+			calm.call()
+			var h1: int = hold.call("hauler", pp + Vector2(40.0, 0.0), 500.0)
+			sv.mods["crit"] = 1.0
+			sv._hit(h1, 6.0, pp)
+			sv._num_t = 0.0
+			sv.step(0.016)
+			var hard: bool = (sv.nums as Array).size() == 1 and (int(sv.nums[0]["c"]) & 64) != 0 and int(sv.nums[0]["v"]) == 12
+			sv.mods = SV.mods(sv.run)
+			sv.nums.clear()
+			for q in 120:
+				sv._num(pp, 0, 10.0 + q, 0)
+			var capped: bool = (sv.nums as Array).size() == int(sv.NUM_MAX) and int(sv.nums[0]["v"]) == 10 + 120 - int(sv.NUM_MAX)
+			run_steps.call(50)
+			var passed: bool = (sv.nums as Array).is_empty()
+			sv.show_nums = false
+			sv._num(pp, 0, 10.0, 0)
+			var off: bool = (sv.nums as Array).is_empty()
+			sv.show_nums = true
+			num_ok = summed and shown and last and by_shield and hard and capped and passed and off
+			if not num_ok:
+				print("COLFX62A the numbers ", [summed, shown, last, by_shield, hard, capped, passed, off], " ", sv.nums)
+			# ---- a weapon's numbers are in its colour: the pulse (a hit at once), the Silver Storm (many small cuts, added up)
+			calm.call()
+			var h2: int = hold.call("hauler", pp + Vector2(30.0, 0.0), 5000.0)
+			sv.run["weapons"] = [["pulse", 1]]
+			sv._wt["pulse"] = 0.0
+			sv._num_t = 0.0
+			sv.step(0.016)
+			var pulse_col: bool = (sv.nums as Array).size() == 1 and (int(sv.nums[0]["c"]) & 15) == int(WS["pulse"]) and int(sv.nums[0]["v"]) == 4
+			calm.call()
+			var h3: int = hold.call("hauler", pp + Vector2(62.0, 0.0), 5000.0)
+			sv.run["weapons"] = [["orbs", SV.ULT]]
+			run_steps.call(140)
+			var storm_n: Array = (sv.nums as Array).duplicate()
+			var storm_col: bool = storm_n.size() >= 1 and storm_n.all(func(nq): return (int(nq["c"]) & 15) == int(WS["orbs"]) and int(nq["v"]) >= 2) and float(sv.fhp[h3]) < 5000.0
+			col_ok = pulse_col and storm_col
+			if not col_ok:
+				print("COLFX62A the colours ", [pulse_col, storm_col], " ", sv.nums, " hp ", sv.fhp[h2])
+			# ---- the silverblade draws a trail behind it
+			calm.call()
+			sv.run["weapons"] = [["blade", 1]]
+			sv._wt["blade"] = 0.0
+			sv.step(0.016)
+			var none_yet: bool = (sv.blades as Array).size() == 1 and (sv.blades[0]["tr"] as PackedVector2Array).size() <= 1
+			if not (sv.blades as Array).is_empty():
+				sv.blades[0]["v"] = Vector2(260.0, 0.0)             # (straight to the side, and not so far that it turns at the edge of the picture: by lot it sometimes went straight down, turned, and its trail folded back on itself)
+			run_steps.call(45)
+			var tr0: PackedVector2Array = sv.blades[0]["tr"] if not (sv.blades as Array).is_empty() else PackedVector2Array()
+			trail_ok = none_yet and tr0.size() == 40 and tr0[0] == (sv.blades[0]["p"] as Vector2) and tr0[0].distance_to(tr0[39]) > 60.0 and not bool(sv.blades[0].get("u", false))
+			# (part 7e) its trail cuts nobody; the taser is a cone; the plasma orbs come for a while, more and wider with their level, faster with the Gyroscope;
+			# the Fusion Halo: two rings for good, a burst now and then
+			calm.call()
+			sv.run["weapons"] = [["blade", 1]]
+			sv._wt["blade"] = 0.0
+			run_steps.call(46)
+			var tb: PackedVector2Array = sv.blades[0]["tr"] if not (sv.blades as Array).is_empty() else PackedVector2Array()
+			var harmless := false
+			if tb.size() == 40:
+				var th: int = hold.call("hauler", tb[23], 5000.0)
+				sv.step(0.016)
+				harmless = float(sv.fhp[th]) == 5000.0
+			calm.call()
+			sv.run["weapons"] = [["taser", 1]]
+			sv._wt["taser"] = 0.0
+			var c_in: int = hold.call("hauler", pp + (sv.face_dir as Vector2) * 30.0, 5000.0)
+			var c_side: int = hold.call("hauler", pp + (sv.face_dir as Vector2).orthogonal() * 24.0, 5000.0)
+			var c_far: int = hold.call("hauler", pp + (sv.face_dir as Vector2) * 52.0, 5000.0)
+			sv.step(0.016)
+			var cone: bool = float(sv.fhp[c_in]) < 5000.0 and float(sv.fhp[c_side]) == 5000.0 and float(sv.fhp[c_far]) == 5000.0 and (sv.zaps as Array).size() == 1 \
+				and is_equal_approx(float(sv.zaps[0]["arc"]), float(SV.WEAPONS["taser"]["arc"])) and is_equal_approx(float(sv.zaps[0]["r"]), 40.0)
+			calm.call()
+			sv.run["weapons"] = [["orbs", 1]]
+			sv._wt["orbs"] = 0.0
+			var oh: int = hold.call("hauler", pp + Vector2(38.0, 0.0), 5000.0)
+			sv.step(0.016)
+			sv.step(0.016)
+			var one_orb: bool = (sv.orb_pts as Array).size() == 1 and is_equal_approx(((sv.orb_pts[0] as Vector2) - pp).length(), 38.0) and (sv.orb_out as Array).is_empty()
+			run_steps.call(200)
+			var orb_burns: bool = float(sv.fhp[oh]) < 5000.0 and (sv.orb_pts as Array).size() == 1
+			run_steps.call(70)
+			var orb_gone: bool = (sv.orb_pts as Array).is_empty() and float(sv._wt["orbs"]) > 7.0
+			sv.run["weapons"] = [["orbs", 5]]
+			sv._wt["orbs"] = 0.0
+			sv.step(0.016)
+			sv.step(0.016)
+			var four_orbs: bool = (sv.orb_pts as Array).size() == 4 and is_equal_approx(((sv.orb_pts[0] as Vector2) - pp).length(), 62.0)
+			var oa0: float = sv.orb_a
+			run_steps.call(10)
+			var turn1: float = float(sv.orb_a) - oa0
+			sv.run["boni"] = [["gyro", 5]]
+			sv.mods = SV.mods(sv.run)
+			oa0 = sv.orb_a
+			run_steps.call(10)
+			var turn2: float = float(sv.orb_a) - oa0
+			var gyro: bool = is_equal_approx(turn2 / turn1, 1.5) and is_equal_approx(float(sv.mods["spin"]), 1.5)
+			sv.run["weapons"] = [["orbs", SV.ULT]]
+			var two_rings := true
+			var saw_halo := false
+			for k8 in 330:
+				sv.step(0.016)
+				two_rings = two_rings and (sv.orb_pts as Array).size() == 4 and (sv.orb_out as Array).size() == 4
+				saw_halo = saw_halo or not (sv.halos as Array).is_empty()
+			var halo: bool = two_rings and saw_halo and is_equal_approx(((sv.orb_out[0] as Vector2) - pp).length(), 62.0 * 1.65)
+			sv.run["boni"] = []
+			sv.mods = SV.mods(sv.run)
+			trail_ok = trail_ok and harmless and cone and one_orb and orb_burns and orb_gone and four_orbs and gyro and halo
+			if not trail_ok:
+				print("COLFX62A part 7e: harmless ", harmless, " cone ", cone, " orbs ", [one_orb, orb_burns, orb_gone, four_orbs], " gyro ", gyro, " ", turn1, " ", turn2, " halo ", halo, " ", two_rings, " ", saw_halo)
+			if not trail_ok:
+				print("COLFX62A the trail: ", none_yet, " ", tr0)
+			# ---- the drone: it is there from the moment you carry it; under an EMP it does not fire; without the weapon it is gone
+			calm.call()
+			sv.run["weapons"] = [["drone", 1]]
+			sv._wt["drone"] = 99.0
+			sv.step(0.016)
+			var there: bool = (sv.drones as Array).size() == 1 and int(sv.drones[0]["q"]) == 0 and (sv.shots as Array).is_empty()
+			sv._wt["drone"] = 0.01
+			sv.emp_t = 5.0
+			sv.step(0.016)
+			var held: bool = int(sv.drones[0]["q"]) == 0                 # (an EMP: it gets no round to fire)
+			sv.drones[0]["q"] = 6
+			sv.drones[0]["turn"] = 10.0
+			sv.drones[0]["dmg"] = 5.0
+			var sn0: int = sv.shot_n
+			var a_emp: float = sv.drones[0]["a"]
+			run_steps.call(20)
+			var silent: bool = int(sv.shot_n) == sn0 and float(sv.drones[0]["a"]) == a_emp
+			sv.emp_t = 0.0
+			sv._wt["drone"] = 99.0
+			run_steps.call(12)
+			var fires: bool = int(sv.shot_n) > sn0 and int(sv.shot_n) - sn0 <= 3 and float(sv.drones[0]["a"]) != a_emp
+			g.pilot.pos = pp + Vector2(60.0, 0.0)
+			run_steps.call(60)
+			var follows: bool = (sv.drones[0]["p"] as Vector2).distance_to(pp + Vector2(60.0, 0.0)) < 20.0 and (sv.drones[0]["tr"] as PackedVector2Array).size() == 9
+			sv.run["weapons"] = []
+			sv.step(0.016)
+			drone_ok = there and held and silent and fires and follows and (sv.drones as Array).is_empty()
+			if not drone_ok:
+				print("COLFX62A the drone ", [there, held, silent, fires, follows], " drones ", sv.drones, " shots ", sv.shot_n, " of ", sn0)
+			# ---- what marks an ultimate, so that it is drawn as one
+			calm.call()
+			sv.run["weapons"] = [["plasma", SV.ULT]]
+			sv._wt["plasma"] = 0.0
+			sv.step(0.016)
+			var rain: bool = (sv.nades as Array).size() == 8 and (sv.nades as Array).all(func(nq): return bool(nq["u"]))
+			run_steps.call(36)
+			rain = rain and (sv.fxs as Array).any(func(fq): return String(fq["kind"]) == "plasma")
+			calm.call()
+			sv.run["weapons"] = [["plasma", 1]]
+			sv._wt["plasma"] = 0.0
+			sv.step(0.016)
+			run_steps.call(36)
+			rain = rain and (sv.fxs as Array).is_empty()
+			calm.call()
+			sv.run["weapons"] = [["superlaser", SV.ULT]]
+			sv._wt["superlaser"] = 0.0
+			sv.step(0.016)
+			var sun: bool = bool((sv.sweep as Dictionary).get("u", false))
+			calm.call()
+			sv.run["weapons"] = [["superlaser", 1]]
+			sv._wt["superlaser"] = 0.0
+			sv.step(0.016)
+			sun = sun and not (sv.sweep as Dictionary).is_empty() and not bool(sv.sweep["u"])
+			calm.call()
+			sv.run["weapons"] = [["mines", SV.ULT]]
+			sv._wt["mines"] = 0.0
+			sv.step(0.016)
+			var mcount: int = (sv.mines as Array).size()
+			var ring_marks := {}
+			for mq in sv.mines:
+				ring_marks[int(mq["q"])] = int(mq["g"])
+			var field: bool = mcount >= 7 and ring_marks.size() == mcount and (sv.mines as Array).all(func(mq2): return int(mq2["g"]) == int(sv.mines[0]["g"]) and int(mq2["m"]) >= mcount)
+			sv._wt["mines"] = 99.0
+			run_steps.call(40)
+			sv.add_foe(0, sv.mines[0]["p"])
+			run_steps.call(6)
+			field = field and (sv.fxs as Array).any(func(fq): return String(fq["kind"]) == "fire")
+			calm.call()
+			sv.run["weapons"] = [["cryo", SV.ULT]]
+			sv._wt["cryo"] = 0.0
+			sv.step(0.016)
+			var zero: bool = (sv.fxs as Array).size() == 1 and String(sv.fxs[0]["kind"]) == "frost" and float(sv.fxs[0]["len"]) > 1.0
+			calm.call()
+			sv.run["weapons"] = [["gravity", SV.ULT]]
+			sv._wt["gravity"] = 0.0
+			sv.step(0.016)
+			sv._wt["gravity"] = 99.0
+			var crush := false
+			if (sv.wells as Array).size() == 1:
+				sv.wells[0]["t"] = float(sv.wells[0]["life"]) - 0.02
+				run_steps.call(3)
+				crush = (sv.wells as Array).is_empty() and (sv.fxs as Array).any(func(fq): return String(fq["kind"]) == "crush")
+			calm.call()
+			sv.run["weapons"] = [["blackhole", SV.ULT]]
+			sv._wt["blackhole"] = 0.0
+			sv.step(0.016)
+			sv._wt["blackhole"] = 99.0
+			run_steps.call(14)
+			var horizon: bool = (sv.holes as Array).size() == 3 and (sv.holes as Array).all(func(hq): return bool(hq["u"]) and (hq["tr"] as PackedVector2Array).size() >= 3)
+			calm.call()
+			sv.run["weapons"] = [["laser", SV.ULT]]
+			for k5 in 3:
+				hold.call("hauler", pp + Vector2(100.0 + k5 * 40.0, 0.0), 5000.0)
+			sv._wt["laser"] = 0.0
+			sv.step(0.016)
+			var codes := {}
+			for bq in sv.beams:
+				codes[int(bq.get("c", 0))] = float(bq["t"])
+			var prism: bool = codes.has(3) and codes.has(4) and codes.has(5) and float(codes[3]) < 0.0 and float(codes[5]) < 0.0
+			calm.call()
+			sv.run["weapons"] = [["sentry", SV.ULT]]
+			hold.call("hauler", pp + Vector2(50.0, 0.0), 5000.0)
+			sv._wt["sentry"] = 0.0
+			var battery := false
+			for k6 in 40:
+				sv.step(0.016)
+				battery = battery or (sv.beams as Array).any(func(bq2): return int(bq2.get("c", 0)) == 6)
+			calm.call()
+			sv.run["weapons"] = [["sentry", 1]]
+			hold.call("hauler", pp + Vector2(50.0, 0.0), 5000.0)
+			sv._wt["sentry"] = 0.0
+			var single := false
+			for k7 in 40:
+				sv.step(0.016)
+				single = single or (sv.beams as Array).any(func(bq3): return int(bq3.get("c", 0)) == 1)
+				battery = battery and not (sv.beams as Array).any(func(bq4): return int(bq4.get("c", 0)) == 6)
+			mark_ok = rain and sun and field and zero and crush and horizon and prism and battery and single
+			if not mark_ok:
+				print("COLFX62A the marks ", [rain, sun, field, zero, crush, horizon, prism, battery, single], " beams ", codes, " fxs ", sv.fxs)
+			if shots:
+				# (pictures: every ultimate at work in a crowd, the numbers over them; then the drone and the silverblade as they are before)
+				var crowd := func(count: int, hp: float, weapons: Array) -> void:
+					calm.call()
+					sv.banner_t = 0.0
+					sv.swarm(count)
+					for cq in int(sv.n):
+						sv.fhp[cq] = hp
+						sv.fmx[cq] = hp
+					sv.run["weapons"] = weapons
+					for wq in weapons:
+						sv._wt[String(wq[0])] = 0.0
+				var until := func(cond: Callable, frames: int) -> void:
+					for fq in frames:
+						await get_tree().process_frame
+						if bool(cond.call()):
+							break
+				var photo := func(file: String) -> void:
+					await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a9_%s.png" % file)
+				sv.frozen = true
+				for fb in 190:                                       # (the hologram has come up)
+					await get_tree().process_frame
+				crowd.call(140, 400.0, [["pulse", SV.ULT]])
+				await until.call(func(): return false, 50)
+				await photo.call("nova_field")
+				crowd.call(130, 300.0, [["laser", SV.ULT]])
+				await until.call(func(): return (sv.beams as Array).any(func(b1): return int(b1.get("c", 0)) >= 4), 150)
+				await photo.call("prism_array")
+				crowd.call(150, 200.0, [["plasma", SV.ULT]])
+				await until.call(func(): return (sv.nades as Array).any(func(n1): return float(n1["t"]) > 0.6), 150)
+				await photo.call("plasma_rain")
+				await until.call(func(): return (sv.fxs as Array).any(func(f1): return String(f1["kind"]) == "plasma" and float(f1["t"]) > 0.08), 150)
+				await photo.call("plasma_rain_einschlag")
+				crowd.call(130, 300.0, [["drone", SV.ULT]])
+				await until.call(func(): return false, 30)
+				await photo.call("carrier_swarm")
+				crowd.call(150, 300.0, [["superlaser", SV.ULT]])
+				await until.call(func(): return not (sv.sweep as Dictionary).is_empty() and float(sv.sweep["t"]) > 0.6, 200)
+				await photo.call("sunlance")
+				crowd.call(150, 600.0, [["blade", SV.ULT]])
+				await until.call(func(): return false, 130)
+				await photo.call("silver_storm")
+				crowd.call(130, 600.0, [["orbs", 3]])
+				await until.call(func(): return false, 70)
+				await photo.call("plasma_orbs")
+				crowd.call(150, 600.0, [["orbs", SV.ULT]])
+				await until.call(func(): return (sv.halos as Array).any(func(h1): return float(h1["r"]) > float(h1["from"]) + 40.0), 400)
+				await photo.call("fusion_halo")
+				crowd.call(120, 300.0, [["taser", 3]])
+				for tq2 in 12:                                         # (a knot of them right before you, where its cone reaches)
+					var ti2: int = sv.add_foe(0, pp + (sv.face_dir as Vector2) * (20.0 + (tq2 % 4) * 9.0) + (sv.face_dir as Vector2).orthogonal() * ((tq2 % 3) - 1) * 12.0)
+					sv.fhp[ti2] = 300.0
+					sv.fmx[ti2] = 300.0
+				await until.call(func(): return not (sv.zaps as Array).is_empty(), 150)
+				await photo.call("taser")
+				crowd.call(120, 200.0, [["mines", SV.ULT]])
+				await until.call(func(): return (sv.fxs as Array).any(func(f2): return String(f2["kind"]) == "fire" and float(f2["t"]) > 0.06), 400)
+				await photo.call("minefield")
+				crowd.call(120, 300.0, [["sentry", SV.ULT]])
+				await until.call(func(): return (sv.sentries as Array).size() == 3 and (sv.beams as Array).any(func(b2): return int(b2.get("c", 0)) == 6), 500)
+				await photo.call("battery")
+				crowd.call(150, 300.0, [["cryo", SV.ULT]])
+				await until.call(func(): return (sv.cones as Array).any(func(c1): return float(c1["t"]) > 0.1), 150)
+				await photo.call("absolute_zero")
+				crowd.call(150, 300.0, [["gravity", SV.ULT]])
+				await until.call(func(): return (sv.wells as Array).any(func(w1): return float(w1["t"]) > 1.2), 300)
+				await photo.call("singularity")
+				await until.call(func(): return (sv.fxs as Array).any(func(f3): return String(f3["kind"]) == "crush" and float(f3["t"]) > 0.3), 500)
+				await photo.call("singularity_ende")
+				crowd.call(120, 300.0, [["taser", SV.ULT]])
+				for tq in 14:                                          # (a knot of them right before you, where its shock reaches)
+					var ti: int = sv.add_foe(0, pp + (sv.face_dir as Vector2) * (18.0 + (tq % 5) * 9.0) + (sv.face_dir as Vector2).orthogonal() * ((tq % 3) - 1) * 12.0)
+					sv.fhp[ti] = 300.0
+					sv.fmx[ti] = 300.0
+				await until.call(func(): return (sv.beams as Array).any(func(b3): return int(b3.get("c", 0)) == 2), 150)
+				await photo.call("chain_lightning")
+				crowd.call(150, 300.0, [["blackhole", SV.ULT]])
+				await until.call(func(): return false, 75)
+				await photo.call("event_horizon")
+				crowd.call(110, 300.0, [["drone", 3]])
+				await until.call(func(): return false, 20)
+				await photo.call("drohne")
+				crowd.call(110, 600.0, [["blade", 5]])
+				await until.call(func(): return false, 45)
+				await photo.call("silverblade")
+				sv.frozen = false
+			# ---- the flood (Luz, 23 Nov 2026): from 13:00 on they come in absurd numbers, weak ones, more at once than ever before
+			calm.call()
+			sv.quiet = false
+			sv.boss_done = {"foreman": true}
+			sv._ev_i = 9999
+			sv._flock_at = 99999.0
+			sv._alpha_at = 99999.0
+			sv._supply_at = 99999.0
+			for wv in sv.stg["waves"]:
+				sv._wave_at[String(wv["kind"])] = 99999.0
+			sv.run["t"] = SV.FLOOD_FROM - 1.0
+			run_steps.call(30)
+			var before_n: int = sv.n
+			var not_yet: bool = int(sv.foe_cap) == SV.MAX_FOES and not bool(sv.flooding) and before_n < 20
+			sv.run["t"] = SV.FLOOD_FROM
+			run_steps.call(125)
+			var came_n: int = int(sv.n) - before_n
+			var full_hp: float = SV.foe_hp("shambler", SV.FLOOD_FROM)
+			var weak := 0
+			for wq2 in int(sv.n):
+				if float(sv.fmx[wq2]) < full_hp * 0.6 and float(sv.fmx[wq2]) > full_hp * 0.3:
+					weak += 1
+			var flood_on: bool = bool(sv.flooding) and String(sv.banner) == "THE FLOOD" and int(sv.foe_cap) == SV.FLOOD_FOES and came_n >= 120 and weak >= 120 \
+				and String(SV.stage_data("takeover")["banners"]["flood"]) == "ALL UNITS" and SV.FLOOD_FOES > SV.MAX_FOES and SV.FLOOD_RATE > SV.spawn_rate(SV.RUN_TIME) * 3.0
+			if shots:                                              # (a picture: the flood, and what you have against it by then)
+				sv.run["weapons"] = [["pulse", SV.ULT], ["blade", SV.ULT], ["laser", 5], ["drone", 5], ["plasma", 5]]
+				sv.banner_t = 0.0
+				for fq9 in 480:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a9_flut.png")
+				print("COLFX62A the flood on the screen: %d pictures a second with %d of them" % [int(Engine.get_frames_per_second()), int(sv.n)])
+				sv.run["weapons"] = []
+			for fl9 in 1400:
+				if int(sv.n) >= SV.FLOOD_FOES - 3:
+					break
+				sv.step(0.016)
+			var at_cap: bool = int(sv.n) >= SV.FLOOD_FOES - 3 and int(sv.n) <= SV.FLOOD_FOES
+			var tf0 := Time.get_ticks_usec()
+			for f14 in 60:
+				sv.step(0.016)
+			flood_ms = float(Time.get_ticks_usec() - tf0) / 60000.0
+			flood_ok = not_yet and flood_on and at_cap and int(sv.n) <= SV.FLOOD_FOES and flood_ms < 14.0
+			print("COLFX62A the flood: %d in two seconds (%d weak), %d at once, %.2f ms a step" % [came_n, weak, int(sv.n), flood_ms])
+			if not flood_ok:
+				print("COLFX62A the flood ", [not_yet, flood_on, at_cap], " before ", before_n, " cap ", sv.foe_cap, " banner ", sv.banner)
+			sv.quiet = true
+			sv.flooding = false
+			sv.foe_cap = SV.MAX_FOES
+			# ---- a step with every ultimate at once in a full field, numbers over all of them, stays cheap
+			calm.call()
+			sv.run["weapons"] = (SV.WEAPON_ORDER as Array).map(func(w): return [w, SV.ULT])
+			sv.swarm(590, "hauler")                                  # (tough ones: the Sunlance and the black holes do not clear the field at once)
+			for cq2 in int(sv.n):
+				sv.fhp[cq2] = 100000.0
+				sv.fmx[cq2] = 100000.0
+			run_steps.call(30)
+			var full_n: int = sv.n
+			var tp0 := Time.get_ticks_usec()
+			for f15 in 60:
+				sv.step(0.016)
+			ms = float(Time.get_ticks_usec() - tp0) / 60000.0
+			fast_ok = full_n >= 560 and ms < 14.0 and not (sv.nums as Array).is_empty() and (sv.nums as Array).size() <= int(sv.NUM_MAX)
+			print("COLFX62A a step with every ultimate and %d of the swarm: %.2f ms, %d numbers" % [full_n, ms, (sv.nums as Array).size()])
+			calm.call()
+			Commands.execute({"type": "debug_casino", "sv": "end"})
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f16 in 10:
+				await get_tree().process_frame
+	check(rules_ok and num_ok and col_ok and trail_ok and drone_ok and mark_ok and flood_ok and fast_ok,
+		"62a, part 7d: Survivor, what you see of your weapons: every weapon has its colour, the drone its words and its picture; the numbers of damage (what one took is added up and shown over it, in the colour of what dealt it; the last blow at once; a shield's and a hard hit's marked; never too many; they pass; they can be turned off); the silverblade's trail; the drone (there from the moment you carry it, silent under an EMP, it follows you, gone without its weapon); what marks an ultimate so that it is drawn as one (Plasma Rain, Sunlance, Minefield, Absolute Zero, Singularity, Event Horizon, Prism Array, Battery); the flood (from 13:00 they come in absurd numbers, weak ones, up to a thousand at once, and a step stays cheap); a step with every ultimate at once stays cheap  [%s %s %s %s %s %s %s %s]  (%.2f ms a step, %.2f ms in the flood)" % [rules_ok, num_ok, col_ok, trail_ok, drone_ok, mark_ok, flood_ok, fast_ok, ms, flood_ms])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _test_colwhite62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SS = load("res://scripts/ground/survivor_stage.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var SU = load("res://scripts/ground/survivor_ui.gd")
+	var OA = load("res://scripts/ground/obj_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# ---- the rules: when the stage opens, what it is made of, the three that live there
+	var c0: Dictionary = CD.fresh()
+	var shut: bool = not SV.stage_open(c0, "whiteout") and not SV.stage_open(c0, "stage4") and not SV.stage_open(c0, "stage3")
+	var s1: Dictionary = SV.settle(c0, {"t": 500.0, "kills": 5, "level": 3, "stage": "outbreak", "bosses": ["foreman"]}, false)
+	shut = shut and not SV.stage_open(c0, "whiteout") and str(s1["opened"]) == str(["AI Takeover"])
+	var s2: Dictionary = SV.settle(c0, {"t": 500.0, "kills": 5, "level": 3, "stage": "takeover", "bosses": ["warden"]}, false)
+	var opens: bool = str(s2["opened"]) == str(["Whiteout"]) and SV.stage_open(c0, "whiteout") and String(SV.stage("whiteout")["need"]) == "warden"
+	SV.record(c0)["stage"] = "whiteout"
+	opens = opens and SV.cur_stage(c0) == "whiteout"
+	var sd: Dictionary = SV.stage_data("whiteout")
+	var tex_ok := true
+	for kind in ["mite", "burrower", "rimeback"]:
+		for d in 4:
+			for f in 3:
+				for vq in 4:
+					var tx: Texture2D = SA.texture(String(kind), vq, d, f)
+					tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
+	var shell_pic: bool = SA.texture("rimeback", 0, 0, 0).get_image().get_data() != SA.texture("rimeback", 2, 0, 0).get_image().get_data() \
+		and SA.texture("mite", 0, 2, 0).get_image().get_data() != SA.texture("mite", 0, 2, 1).get_image().get_data() and SA.ice_block() != null
+	var data_ok: bool = String(sd["swarm"]) == "mite" and SV.kinds_at(0.0, "whiteout") == ["mite"] and SV.kinds_at(100.0, "whiteout") == ["mite", "burrower"] \
+		and SV.kinds_at(200.0, "whiteout") == ["mite", "burrower", "rimeback"] and String(sd["soft"]) == "worm" and String(sd["end"]) == "heart" and String(sd["flock"]) == "glider" \
+		and (sd["events"] as Array).size() == 9 and (sd["alpha"] as Array).size() == 4 and (sd["dangers"] as Array).size() >= 3 \
+		and SV.FOE_ORDER.size() == 27 and ["mite", "burrower", "rimeback"].all(func(k): return SV.FOES.has(k) and int(SV.FOES[k]["beh"]) < SV.BOSS_BEH and not String(SV.FOES[k]["name"]).contains("–")) \
+		and int(SV.FOES["burrower"]["beh"]) == 13 and float(SV.FOES["rimeback"]["shield"]) > 0.0 and float(SV.FOES["mite"]["speed"]) > float(SV.FOES["shambler"]["speed"]) \
+		and float(SV.FOES["mite"]["hp"]) < float(SV.FOES["shambler"]["hp"]) and float(SV.FOES["rimeback"]["speed"]) < float(SV.FOES["mite"]["speed"]) \
+		and String(SV.stage("whiteout")["name"]) == "Whiteout" and not String(SV.stage("whiteout")["text"]).contains("–") and SV.stage("whiteout").has("col") and SV.stage("outbreak").has("col") \
+		and tex_ok and shell_pic and SV.BANNERS.has("frozen") and not String(SV.BANNERS["frozen"]).contains("–")
+	# ---- the ground
+	var sm: GroundMap = SS.build("whiteout", 1)
+	var kinds := {}
+	for o in sm.objects:
+		kinds[String(o.get("kind", ""))] = int(kinds.get(String(o.get("kind", "")), 0)) + 1
+	var hz: Array = sm.get_meta("col_hazards", [])
+	var road := true
+	for rx in range(SS.EDGE + 1, SS.SW - SS.EDGE - 1):
+		road = road and GroundMap.walkable_t(sm.t_at(rx, SS.SH / 2))
+	for ry in range(SS.EDGE + 1, SS.SH - SS.EDGE - 1):
+		road = road and GroundMap.walkable_t(sm.t_at(SS.SW / 2, ry))
+	var corners: Array = [Vector2(3.5, 3.5), Vector2(SS.SW - 3.5, 3.5), Vector2(3.5, SS.SH - 3.5), Vector2(SS.SW - 3.5, SS.SH - 3.5)]
+	var decor: Array = sm.get_meta("sv_decor", [])
+	var dk := {}
+	for dc in decor:
+		dk[String(dc["kind"])] = int(dk.get(String(dc["kind"]), 0)) + 1
+	var vts: Array = sm.get_meta("sv_vents", [])
+	var crs: Array = sm.get_meta("sv_crates", [])
+	var ice_rows: Array = hz[0]["rects"] if hz.size() == 1 else []
+	var on_ice := func(p: Vector2) -> bool:
+		return ice_rows.any(func(r): return (r as Rect2).has_point(p))
+	var vents_ok: bool = vts.size() == int(SS.VENTS) and vts.all(func(v): return sm.free_at(v, 4.0) and not on_ice.call(v) and (v as Vector2).distance_to(sm.spawn) > 9.0 * TL) \
+		and crs.size() == int(SS.VENT_CRATES) and crs.all(func(c): return sm.free_at(c, 4.0) and vts.any(func(v): return (v as Vector2).distance_to(c) < float(SV.VENT_R) - 6.0 and (v as Vector2).distance_to(c) > 20.0))
+	var plain: Dictionary = OA.make({"kind": "container", "x": 3, "y": 3, "w": 6, "h": 2, "col": Color(0.86, 0.42, 0.16)}, sm.pal)
+	var snowed: Dictionary = OA.make({"kind": "container", "x": 3, "y": 3, "w": 6, "h": 2, "col": Color(0.86, 0.42, 0.16), "snow": true}, sm.pal)
+	var white_px := 0
+	var sim: Image = snowed["image"]
+	for sy in sim.get_height():
+		for sx in sim.get_width():
+			var spx := sim.get_pixel(sx, sy)
+			if spx.a > 0.9 and spx.r > 0.9 and spx.g > 0.93 and spx.b > 0.97:
+				white_px += 1
+	var snow_ok: bool = (plain["image"] as Image).get_data() != sim.get_data() and white_px > 60 and sim.get_size() == (plain["image"] as Image).get_size()
+	var tb: Color = sm.pal["terrain_b"]
+	var again: GroundMap = SS.build("whiteout", 1)
+	var other: GroundMap = SS.build("whiteout", 2)
+	var ground_ok: bool = sm.w == SS.SW and sm.h == SS.SH and sm.free_at(sm.spawn, 4.0) and road and corners.all(func(c): return sm.path(sm.spawn, (c as Vector2) * TL).size() > 0) \
+		and String(sm.get_meta("sv_stage", "")) == "whiteout" and String(sm.get_meta("col_vr_name", "")) == "Whiteout" and not sm.has_meta("sv_sleepers") \
+		and bool(sm.get_meta("sv_bright", false)) and bool(sm.get_meta("sv_frozen", false)) and (sm.get_meta("dark") as Color).r > 0.8 and tb.v > 0.8 and tb.v < 0.96 and tb.b > tb.r + 0.12 \
+		and sm.objects.size() >= 60 and int(kinds.get("rock", 0)) >= 8 and int(kinds.get("ice_block", 0)) >= 4 and int(kinds.get("crystal", 0)) >= 3 and int(kinds.get("container", 0)) >= 3 \
+		and int(kinds.get("dome", 0)) == 2 and sm.has_meta("sv_landmark") and not kinds.has("lamp_post") and not kinds.has("rubble") and kinds.size() >= 7 and int(dk.get("track", 0)) == 2 \
+		and hz.size() == 1 and String(hz[0]["kind"]) == "ice" and String(hz[0]["look"]) == "floe" and (hz[0]["floes"] as Array).size() >= 6 and ice_rows.size() >= 50 \
+		and int(dk.get("drift", 0)) >= 60 and int(dk.get("hair", 0)) >= 30 and int(dk.get("melt", 0)) == vts.size() and vents_ok and snow_ok \
+		and (sm.zones as Array).any(func(z): return String(z.get("kind", "")) == "sv_giveup") \
+		and not (sm.objects as Array).any(func(o): return (Vector2(float(o["x"]), float(o["y"])) * TL).distance_to(sm.spawn) < 5.0 * TL) \
+		and not (sm.objects as Array).any(func(o): return on_ice.call((Vector2(float(o["x"]), float(o["y"])) + Vector2(0.5, 0.5)) * TL)) \
+		and str(again.get_meta("sv_vents")) == str(vts) and str(other.get_meta("sv_vents")) != str(vts)
+	if not (shut and opens and data_ok and ground_ok):
+		print("COLWHITE62A rules: shut ", shut, " opens ", opens, " ", s2.get("opened"), " data ", data_ok, " tex ", tex_ok, " shell ", shell_pic, " ground ", ground_ok, " objects ", sm.objects.size(), " kinds ", kinds,
+			" road ", road, " decor ", dk, " hazards ", hz.map(func(h): return [h["kind"], (h["rects"] as Array).size(), (h.get("floes", []) as Array).size()]), " vents ", vts.size(), " ", vents_ok,
+			" crates ", crs.size(), " snow ", snow_ok, " ", white_px, " terrain ", tb)
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var pick_ok := false
+	var run_ok := false
+	var ice_ok := false
+	var burrow_ok := false
+	var rime_ok := false
+	var vent_ok := false
+	var fast_ok := false
+	var end_ok := false
+	var ms := 0.0
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		# ---- the fighters' room: the stage is shut until The Warden is put out, then it can be picked
+		CD.switch_mode(GameState.col_state(), "survivor")
+		g._col_prep_open()
+		for f1 in 4:
+			await get_tree().process_frame
+		var prep = g.minigame
+		if prep != null and prep.has_method("is_col_prep"):
+			(SV.record(GameState.col_state())["beaten"] as Array).append("foreman")
+			prep.pick_sv_stage(2)
+			var no: bool = String(prep.msg) == "Whiteout opens once you have put out The Warden on AI Takeover." and SV.cur_stage(GameState.col_state()) == "outbreak"
+			if shots:
+				for f2 in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a10_gesperrt.png")
+			(SV.record(GameState.col_state())["beaten"] as Array).append("warden")
+			prep.pick_sv_stage(2)
+			var yes: bool = String(prep.msg) == "The stage: Whiteout." and SV.cur_stage(GameState.col_state()) == "whiteout"
+			if shots:
+				for f2b in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a10_vorbereitung.png")
+			Commands.execute({"type": "debug_casino", "sv": "lock"})
+			var locked: bool = not SV.stage_open(GameState.col_state(), "whiteout")
+			Commands.execute({"type": "debug_casino", "sv": "stage:whiteout"})
+			pick_ok = no and yes and locked and SV.cur_stage(GameState.col_state()) == "whiteout" and String(Commands.execute({"type": "debug_casino", "sv": "stage:stage4"})) != ""
+			if not pick_ok:
+				print("COLWHITE62A the fighters' room: no ", no, " yes ", yes, " locked ", locked, " ", prep.msg, " stage ", SV.cur_stage(GameState.col_state()))
+		g._close_game()
+		for f3 in 3:
+			await get_tree().process_frame
+		if shots:                                               # (a picture of what stands before a run)
+			var intro = SU.Intro.new()
+			intro.setup({"you_tex": ChibiArt.frame(g.pilot_look(), 0, 0), "you": GameState.pilot_name.to_upper(), "weapon": "pulse", "stage": "whiteout"})
+			g._ui.add_child(intro)
+			for f4 in 110:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a10_einlauf.png")
+			intro.queue_free()
+			for f5 in 3:
+				await get_tree().process_frame
+		# ---- a run on it
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var stand := func(at: Vector2) -> void:
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+				sv._lead = Vector2.ZERO
+				sv._slide = Vector2.ZERO
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.sn = 0
+				sv.banner_t = 0.0
+				stand.call(pp)
+			var picture := func(cam: Vector2, zoom: float, frames: int, file: String) -> void:
+				g.story_cam = cam
+				g.story_zoom = zoom
+				g._cam_c = cam * GroundMap.SCALE
+				for fq in frames:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/%s.png" % file)
+			var frozen0: bool = (sv.crates as Array).size() == int(SS.VENT_CRATES) and (sv.crates as Array).all(func(c): return bool(c.get("ice", false)))
+			var here: bool = String(g.map.get_meta("sv_stage", "")) == "whiteout" and String(sv.run["stage"]) == "whiteout" and String(sv.stg["swarm"]) == "mite" \
+				and String(g._title.text).contains("Whiteout") and int(sv._swarm_k) == int(KI["mite"]) and g.map.free_at(pp, 4.0) and bool(sv.bright) \
+				and (sv.vents as Array).size() == int(SS.VENTS) and frozen0
+			var vent0: Dictionary = sv.vents[0]
+			var crate0: Dictionary = {}
+			for cq in sv.crates:
+				if (cq["pos"] as Vector2).distance_to(vent0["pos"]) < float(SV.VENT_R):
+					crate0 = cq
+			var keep_crates: Array = sv.crates
+			sv.run["weapons"] = []
+			sv.run["t"] = 0.0
+			sv._acc = 0.0
+			run_steps.call(260)                                    # the swarm of this stage: Frost Mites, from outside the picture
+			var came: bool = int(sv.n) >= 3 and int(sv._cnt[KI["mite"]]) == int(sv.n) and int(sv._cnt[KI["shambler"]]) == 0
+			sv.run["t"] = 200.0
+			sv._alpha_at = 9999.0
+			sv.step(0.016)                                         # … and by then its other kinds: Burrowers, a Rimeback
+			var others: bool = int(sv._cnt[KI["burrower"]]) >= 2 and int(sv._cnt[KI["rimeback"]]) >= 1 and int(sv._cnt[KI["runner"]]) == 0 and int(sv._cnt[KI["scout"]]) == 0
+			sv._alpha_at = 200.0
+			sv.step(0.016)
+			var alpha: bool = range(int(sv.n)).any(func(q): return int(sv.fal[q]) == 1 and String(SV.FOE_ORDER[int(sv.fk[q])]) in ["mite", "burrower", "rimeback"])
+			sv.event("supply")                                     # (a supply drop is not frozen in)
+			var supply: bool = not bool((sv.crates as Array)[-1].get("ice", false)) and (sv.crates as Array).filter(func(c): return bool(c.get("ice", false))).size() == int(SS.VENT_CRATES)
+			run_ok = here and came and others and alpha and supply and not crate0.is_empty()
+			if not run_ok:
+				print("COLWHITE62A the run: here ", here, " ", g._title.text, " frozen ", frozen0, " came ", came, " n ", sv.n, " counts ", sv._cnt, " others ", others, " alpha ", alpha, " supply ", supply)
+			sv.quiet = true
+			sv.crates = keep_crates.filter(func(c): return bool(c.get("ice", false)))
+			if shots:                                              # (pictures: the ground from above; the station; the three kinds side by side)
+				calm.call()
+				sv.frozen = true
+				await picture.call(pp + Vector2(120.0, -150.0), 0.34, 190, "col62a10_karte")
+				await picture.call(g.map.get_meta("sv_landmark", pp) + Vector2(-20.0, -40.0), 1.0, 80, "col62a10_station")
+				for ri in 4:
+					var fi0: int = sv.add_foe(KI["mite"], pp + Vector2(-150.0 + ri * 30.0, -40.0))
+					sv.fv[fi0] = ri
+					sv.fface[fi0] = [0, 2, 3, 1][ri]
+				for ri2 in 4:
+					var fi1: int = sv.add_foe(KI["burrower"], pp + Vector2(0.0 + ri2 * 44.0, -40.0))
+					sv.fv[fi1] = ri2
+					sv.fst[fi1] = 2
+					sv.ftm[fi1] = 99.0
+					sv.fface[fi1] = [0, 2, 3, 1][ri2]
+				for ri3 in 4:
+					var fi2: int = sv.add_foe(KI["rimeback"], pp + Vector2(-140.0 + ri3 * 56.0, 44.0))
+					sv.fv[fi2] = ri3
+					sv.fsh[fi2] = 90.0 if ri3 < 2 else 0.0
+					sv.fface[fi2] = [0, 2, 3, 2][ri3]
+				var fa: int = sv.add_foe(KI["mite"], pp + Vector2(110.0, 44.0))
+				sv.make_alpha(fa)
+				await picture.call(pp + Vector2(0.0, -8.0), 1.9, 70, "col62a10_gegner")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				sv.frozen = false
+			# ---- bare ice: you keep your way and turn it only slowly; off it you turn at once
+			calm.call()
+			var floe_at: Vector2 = (ice_rows_of(g.map)[ice_rows_of(g.map).size() / 2] as Rect2).get_center()
+			stand.call(floe_at)
+			var is_ice: bool = int(sv._haz[sv._ti(floe_at)]) == 3 and int(sv._haz[sv._ti(pp)]) == 0 and is_equal_approx(float(sv.speed()), float(sv.mods["speed"]))
+			sv._slide = Vector2.RIGHT
+			var first: Vector2 = sv.move(Vector2.LEFT)
+			var turns := 1
+			while turns < 200000 and (sv.move(Vector2.LEFT) as Vector2).x > -0.99:
+				turns += 1
+			sv._slide = Vector2.RIGHT
+			var drift: Vector2 = sv.move(Vector2.ZERO)                # (let go on the ice: you slide on)
+			stand.call(pp)
+			sv._slide = Vector2.RIGHT
+			var grip: Vector2 = sv.move(Vector2.LEFT)
+			sv.dash_dir = Vector2.UP
+			sv.dash_t = 0.1
+			var dodge: Vector2 = sv.move(Vector2.LEFT)
+			sv.dash_t = 0.0
+			ice_ok = is_ice and first.x > 0.5 and turns > 3 and drift.x > 0.5 and grip == Vector2.LEFT and dodge == Vector2.UP
+			if not ice_ok:
+				print("COLWHITE62A the ice: ", is_ice, " haz ", sv._haz[sv._ti(floe_at)], " first ", first, " turns ", turns, " drift ", drift, " grip ", grip, " dodge ", dodge)
+			# ---- the Burrower: under the ice nothing reaches it; it stops under you, a mark, it breaks out; above it can be hurt; then it dives again
+			calm.call()
+			var bu: int = sv.add_foe(KI["burrower"], pp + Vector2(120.0, 0.0))
+			var mi: int = sv.add_foe(KI["mite"], pp + Vector2(-120.0, 0.0))
+			sv.fhp[mi] = 1000000.0
+			run_steps.call(30)
+			var quick: bool = pp.x + 120.0 - (sv.fp[bu] as Vector2).x > ((sv.fp[mi] as Vector2).x - (pp.x - 120.0)) * 1.8
+			var hp_b: float = sv.fhp[bu]
+			sv._hit(bu, 1000000.0, pp)
+			sv.freeze(bu, 3.0)
+			sv.stun(bu, 3.0)
+			sv.run["weapons"] = [["laser", 1]]
+			sv._wt = {"laser": 0.0}
+			sv.fp[mi] = pp + Vector2(900.0, 0.0)                   # (the mite well out of the laser's reach: only the burrower is near)
+			sv.step(0.016)
+			var hidden: bool = bool(sv._under(bu)) and float(sv.fhp[bu]) == hp_b and float(sv.ffr[bu]) == 0.0 and float(sv.fstun[bu]) == 0.0 and (sv.beams as Array).is_empty() \
+				and not (sv.touching(sv.fp[bu], 30.0) as Array).has(bu) and (sv._marks as Array).any(func(mq): return String(mq[0]) == "burrow" and float(mq[2]) < 0.0) \
+				and not (sv._bands as Array).any(func(bd): return (bd.ids as PackedInt32Array).has(bu))
+			sv.run["weapons"] = []
+			sv._remove(mi if mi < int(sv.n) else 0)
+			bu = 0
+			var seen := {}
+			var warned := false
+			var hp_at_break := -1.0
+			var erupt_fx := false
+			for rs in 400:
+				sv.step(0.016)
+				seen[int(sv.fst[bu])] = true
+				if int(sv.fst[bu]) == 1:
+					warned = warned or ((sv._marks as Array).any(func(mq): return String(mq[0]) == "burrow" and float(mq[2]) >= 0.0) and float(sv.run["hp"]) == 1000.0)
+				if int(sv.fst[bu]) == 2 and hp_at_break < 0.0:
+					hp_at_break = float(sv.run["hp"])
+					erupt_fx = (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "erupt")
+					break
+			var broke: bool = seen.has(0) and seen.has(1) and warned and is_equal_approx(hp_at_break, 1000.0 - float(SV.FOES["burrower"]["erupt"])) and erupt_fx \
+				and (sv.fp[bu] as Vector2).distance_to(pp) < 12.0
+			sv.shield_t = 99.0                                     # (nothing touches you while it is above)
+			sv._hit(bu, 5.0, pp)
+			sv.step(0.016)
+			var above: bool = not bool(sv._under(bu)) and float(sv.fhp[bu]) < hp_b and (sv._bands as Array).any(func(bd): return (bd.ids as PackedInt32Array).has(bu)) \
+				and not (sv._marks as Array).any(func(mq): return String(mq[0]) == "burrow")
+			var dived := false
+			for rs2 in 420:
+				sv.step(0.016)
+				seen[int(sv.fst[bu])] = true
+				if int(sv.fst[bu]) == 0:
+					dived = true
+					break
+			dived = dived and seen.has(3) and bool(sv._under(bu))
+			calm.call()                                            # … step aside while its mark shows: it breaks out where you were, and misses
+			var bu2: int = sv.add_foe(KI["burrower"], pp + Vector2(30.0, 0.0))
+			var aside := false
+			for rs3 in 300:
+				sv.step(0.016)
+				if int(sv.fst[bu2]) == 1 and not aside:
+					aside = true
+					stand.call(pp + Vector2(0.0, 60.0))
+				if int(sv.fst[bu2]) == 2:
+					break
+			var missed: bool = aside and int(sv.fst[bu2]) == 2 and float(sv.run["hp"]) == 1000.0
+			calm.call()                                            # … it heads for where you will be in a moment
+			var walk_at := pp
+			for rs4 in 60:
+				walk_at += Vector2(58.0 * 0.016, 0.0)
+				g.pilot.pos = walk_at
+				sv.step(0.016)
+			var leads: bool = (sv._lead as Vector2).x > 24.0 and (sv._lead as Vector2).x < 40.0 and absf((sv._lead as Vector2).y) < 0.5
+			burrow_ok = quick and hidden and broke and above and dived and missed and leads
+			if not burrow_ok:
+				print("COLWHITE62A the burrower: ", [quick, hidden, broke, above, dived, missed, leads], " states ", seen.keys(), " warned ", warned, " hp at the break ", hp_at_break, " fx ", erupt_fx, " lead ", sv._lead,
+					" hp ", sv.run["hp"])
+			# ---- the Rimeback: its shell of ice takes the hits first; broken, its picture changes and it can be hurt
+			calm.call()
+			var rb: int = sv.add_foe(KI["rimeback"], pp + Vector2(140.0, 0.0))
+			var rb_hp: float = sv.fhp[rb]
+			var shelled: bool = is_equal_approx(float(sv.fsh[rb]), float(SV.FOES["rimeback"]["shield"])) and int(sv.fv[rb]) < 2
+			sv._hit(rb, 50.0, pp)
+			var held: bool = float(sv.fhp[rb]) == rb_hp and is_equal_approx(float(sv.fsh[rb]), float(SV.FOES["rimeback"]["shield"]) - 50.0)
+			sv._hit(rb, 50.0, pp)
+			var cracked: bool = float(sv.fsh[rb]) == 0.0 and int(sv.fv[rb]) >= 2 and float(sv.fhp[rb]) == rb_hp
+			sv._hit(rb, 10.0, pp)
+			rime_ok = shelled and held and cracked and is_equal_approx(float(sv.fhp[rb]), rb_hp - 10.0)
+			if not rime_ok:
+				print("COLWHITE62A the rimeback: ", [shelled, held, cracked], " shield ", sv.fsh[rb], " hp ", sv.fhp[rb], " of ", rb_hp, " look ", sv.fv[rb])
+			# ---- a crate frozen in; the steam vent beside it: it scalds those near it, reaches a burrower under the ice, melts a shell, thaws the crate; then it rests
+			calm.call()
+			sv.run["t"] = 0.0
+			var vp: Vector2 = vent0["pos"]
+			var cp0: Vector2 = crate0["pos"]
+			var n_crates: int = (sv.crates as Array).size()
+			stand.call(cp0)
+			sv.step(0.016)
+			var stuck: bool = (sv.crates as Array).size() == n_crates and bool(crate0.get("ice", false)) and String(sv.banner) == String(SV.BANNERS["frozen"]) and float(vent0["t"]) == 0.0
+			stand.call(vp + Vector2(0.0, 70.0))
+			for mq2 in 6:
+				sv.add_foe(KI["mite"], vp + Vector2.from_angle(mq2 * TAU / 6.0) * 30.0)
+			var far_m: int = sv.add_foe(KI["mite"], vp + Vector2(float(SV.VENT_R) + 30.0, 0.0))
+			var under_b: int = sv.add_foe(KI["burrower"], vp + Vector2(-20.0, 10.0))
+			var alpha_b: int = sv.add_foe(KI["burrower"], vp + Vector2(20.0, -12.0))
+			sv.make_alpha(alpha_b)
+			var rime2: int = sv.add_foe(KI["rimeback"], vp + Vector2(0.0, -34.0))
+			var rime2_hp: float = sv.fhp[rime2]
+			var alpha_hp: float = sv.fhp[alpha_b]
+			var kills0: int = int(sv.run["kills"])
+			sv.frozen = true                                       # (they stand where they were put)
+			sv.step(0.016)
+			var quiet_vent: bool = float(vent0["t"]) == 0.0 and int(sv.n) == 10
+			stand.call(vp + Vector2(4.0, 0.0))
+			sv.step(0.016)
+			var left_k: Array = range(int(sv.n)).map(func(q): return String(SV.FOE_ORDER[int(sv.fk[q])]))
+			var a_i := -1
+			var r_i := -1
+			for q2 in int(sv.n):
+				if int(sv.fal[q2]) == 1:
+					a_i = q2
+				elif int(sv.fk[q2]) == int(KI["rimeback"]):
+					r_i = q2
+			var burst: bool = float(vent0["t"]) > 0.0 and is_equal_approx(float(vent0["cool"]), float(SV.VENT_REST)) and int(sv.run["kills"]) == kills0 + 7 and int(sv.n) == 3 \
+				and left_k.count("mite") == 1 and left_k.count("burrower") == 1 and left_k.count("rimeback") == 1 and float(sv.run["hp"]) == 1000.0
+			var thrown: bool = a_i >= 0 and int(sv.fst[a_i]) == 2 and float(sv.fstun[a_i]) > 1.0 and float(sv.fhp[a_i]) < alpha_hp and not bool(sv._under(a_i))
+			var melted: bool = r_i >= 0 and float(sv.fsh[r_i]) == 0.0 and int(sv.fv[r_i]) >= 2 and float(sv.fhp[r_i]) < rime2_hp
+			var thawed: bool = not bool(crate0.get("ice", true)) and (sv.crates as Array).size() == n_crates
+			if shots:                                              # (a picture: the vent bursting)
+				sv.swarm(40)
+				for sq in int(sv.n):
+					if (sv.fp[sq] as Vector2).distance_to(vp) < 60.0:
+						sv.fp[sq] = vp + ((sv.fp[sq] as Vector2) - vp).normalized() * 70.0
+				vent0["t"] = float(SV.VENT_TIME) * 0.62
+				sv.banner_t = 0.0
+				await picture.call(vp + Vector2(0.0, -40.0), 1.5, 4, "col62a10_dampf")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				vent0["t"] = float(SV.VENT_TIME) * 0.5
+			sv.clear_swarm()
+			run_steps.call(int(float(SV.VENT_TIME) / 0.016) + 4)
+			var rests: bool = float(vent0["t"]) == 0.0 and float(vent0["cool"]) > float(SV.VENT_REST) - 3.0
+			stand.call(cp0)
+			sv.step(0.016)
+			var opened: bool = (sv.crates as Array).size() == n_crates - 1
+			stand.call(vp)
+			sv.add_foe(KI["mite"], vp + Vector2(20.0, 0.0))
+			run_steps.call(10)
+			var no_burst: bool = float(vent0["t"]) == 0.0 and int(sv.n) == 1
+			vent0["cool"] = 0.02
+			run_steps.call(3)
+			var again_b: bool = float(vent0["t"]) > 0.0 and int(sv.n) == 0
+			stand.call(pp)
+			sv.frozen = false
+			run_steps.call(int(float(SV.VENT_TIME) / 0.016) + 4)
+			for vq2 in sv.vents:
+				vq2["cool"] = 0.0
+			var by_cmd: bool = String(Commands.execute({"type": "debug_casino", "sv": "vent"})) == "" and (sv.vents as Array).any(func(v): return float(v["t"]) > 0.0)
+			vent_ok = stuck and quiet_vent and burst and thrown and melted and thawed and rests and opened and no_burst and again_b and by_cmd
+			if not vent_ok:
+				print("COLWHITE62A the vent: ", [stuck, quiet_vent, burst, thrown, melted, thawed, rests, opened, no_burst, again_b, by_cmd], " banner ", sv.banner, " left ", left_k, " kills ", int(sv.run["kills"]) - kills0,
+					" vent ", vent0, " crate ", crate0, " n ", sv.n)
+			if shots:                                              # (pictures: a vent and its frozen crate; burrowers under the ice; a run at work on the snow; ultimates on the snow)
+				calm.call()
+				sv.frozen = true
+				var v1: Dictionary = sv.vents[1]
+				v1["cool"] = 0.0
+				v1["t"] = 0.0
+				stand.call((v1["pos"] as Vector2) + Vector2(46.0, 10.0))      # (beside it, not on it: it is ready, and waits)
+				await picture.call((v1["pos"] as Vector2) + Vector2(0.0, -20.0), 2.2, 40, "col62a10_quelle")
+				var fl_c: Vector2 = floe_at
+				stand.call(fl_c + Vector2(0.0, 6.0))
+				var b_run: int = sv.add_foe(KI["burrower"], fl_c + Vector2(-70.0, -16.0))
+				var b_warn: int = sv.add_foe(KI["burrower"], fl_c + Vector2(64.0, 14.0))
+				sv.fst[b_warn] = 1
+				sv.ftm[b_warn] = 0.35
+				var b_up: int = sv.add_foe(KI["burrower"], fl_c + Vector2(0.0, -46.0))
+				sv.fst[b_up] = 2
+				sv.ftm[b_up] = 99.0
+				sv.fst[b_run] = 0
+				g.story_cam = fl_c + Vector2(0.0, -14.0)
+				g.story_zoom = 2.0
+				g._cam_c = g.story_cam * GroundMap.SCALE
+				for fq2 in 34:
+					await get_tree().process_frame
+				sv.tele.append({"kind": "erupt", "pos": sv.fp[b_up], "r": float(SV.FOES["burrower"]["erupt_r"]), "t": 0.12, "len": 0.45})
+				for fq3 in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a10_burrower.png")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				calm.call()
+				sv.frozen = false
+				sv.run["weapons"] = [["pulse", 3], ["laser", 3], ["plasma", 2], ["orbs", 3]]
+				sv._wt = {}
+				sv.run["hp"] = 1000000.0
+				sv.swarm(150)
+				sv.swarm(5, "rimeback")
+				sv.sn = 0
+				for f10 in 170:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a10_lauf.png")
+				sv.run["weapons"] = [["pulse", 6], ["laser", 6], ["orbs", 6], ["taser", 6]]
+				sv.mods = SV.mods(sv.run)
+				sv._wt = {}
+				sv.swarm(150)
+				for f11 in 150:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a10_ultis.png")
+			# ---- a step with the field full stays cheap
+			calm.call()
+			sv.frozen = false
+			sv.run["weapons"] = []
+			for kq in ["mite", "burrower", "rimeback"]:
+				sv.swarm(200, String(kq))
+			sv.run["hp"] = 1000000000.0
+			var full_n: int = sv.n
+			var tp0 := Time.get_ticks_usec()
+			for f12 in 60:
+				sv.step(0.016)
+			ms = float(Time.get_ticks_usec() - tp0) / 60000.0
+			fast_ok = full_n >= 590 and ms < 14.0
+			print("COLWHITE62A a step with %d of them: %.2f ms" % [full_n, ms])
+			# ---- the time is up: The Storm Heart comes (part 9c); with it put out the stage is held; its best time is its own
+			calm.call()
+			sv.quiet = false
+			sv.run["hp"] = 1000000000.0
+			sv.boss_done["worm"] = true
+			sv._ev_i = 9999
+			sv._flock_at = 99999.0
+			sv._alpha_at = 99999.0
+			sv._supply_at = 99999.0
+			sv.run["t"] = SV.RUN_TIME - 0.01
+			sv.run["kills"] = 100
+			sv.step(0.02)
+			sv.step(0.02)
+			var heart_here: bool = String(sv.boss_kind) == "heart" and bool(sv.barrier_on)
+			if int(sv.boss_i()) >= 0:
+				sv._hit(sv.boss_i(), 1000000000.0, pp)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			var rec: Dictionary = SV.record(GameState.col_state())
+			end_ok = heart_here and bool(sv.over) and bool(sv.survived) and String(sv.boss_kind) == "" and g.minigame != null and g.minigame.has_method("is_sv_result") and bool(g.minigame.res.get("survived", false)) \
+				and String(g.minigame.res.get("stage", "")) == "whiteout" and float((rec["best"] as Dictionary).get("whiteout", 0.0)) >= SV.RUN_TIME - 0.1 and not (rec["best"] as Dictionary).has("outbreak") \
+				and int(g.minigame.res.get("cores", 0)) == 45 + 30
+			if not end_ok:
+				print("COLWHITE62A the end: over ", sv.over, " held ", sv.survived, " boss ", sv.boss_kind, " window ", g.minigame, " record ", rec)
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+	check(shut and opens and data_ok and ground_ok and pick_ok and run_ok and ice_ok and burrow_ok and rime_ok and vent_ok and fast_ok and end_ok,
+		"62a, part 9a: Survivor's third stage, Whiteout: shut until The Warden is put out on AI Takeover, then open; what the stage is made of (Frost Mites as its swarm, Burrowers, Rimebacks; no bosses yet); twenty-three kinds, the three's pictures (a Rimeback's with and without its shell); its ground (as large as the others, by day, bright but not white, tracks free, ways to every corner, boulders and blocks of ice and crystals and a station snowed in, floes of bare ice with nothing standing on them, steam vents, a crate frozen in beside sixteen of them, drifts and hairline cracks; the same ground from the same seed); snow on what stands there; the stage picked in the fighters' room; a run on it: Mites, then Burrowers and Rimebacks, an alpha of its own kinds, a supply drop not frozen; bare ice (you keep your way and turn it slowly, let go and you slide on; off the ice you turn at once; a dodge goes where it goes); the Burrower (fast under the ice, where no hit, cold, shock or laser reaches it and no figure shows, only a shape; it stops under you, a mark, it breaks out and hurts you; above it can be hurt; it dives again; step aside and it misses; it heads for where you will be); the Rimeback (its shell takes the hits first, broken its picture changes); a frozen crate cannot be opened; the vent (it scalds those near it and not the one further off, reaches a burrower under the ice and throws an alpha out stunned, melts a shell, thaws the crate, does nothing to you, rests, bursts again; the debug command); a step with the field full stays cheap; the time is up: the stage is held, its best time is its own  [%s %s %s %s %s %s %s %s %s %s %s %s]  (%.2f ms a step)" % [shut, opens, data_ok, ground_ok, pick_ok, run_ok, ice_ok, burrow_ok, rime_ok, vent_ok, fast_ok, end_ok, ms])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## The rows of bare ice on a stage's ground (map meta "col_hazards", kind "ice"), for the test above.
+func ice_rows_of(m: GroundMap) -> Array:
+	for h in m.get_meta("col_hazards", []):
+		if String(h["kind"]) == "ice":
+			return h["rects"]
+	return []
+
+
+func _test_colcrate62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SU = load("res://scripts/ground/survivor_ui.gd")
+	var FX = load("res://scripts/ground/survivor_fx.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules: an item crate always holds an item; how many rewards a weapon crate holds, and what they are
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 62
+	var r_out: Dictionary = SV.fresh()
+	var r_tk: Dictionary = SV.fresh("takeover")
+	var kinds_seen := {}
+	var ovr_out := 0
+	var ovr_tk := 0
+	for q in 300:
+		var c_o: Dictionary = SV.crate_roll(r_out, rng)
+		kinds_seen[String(c_o["kind"])] = true
+		ovr_out += 1 if String(c_o["id"]) == "override" else 0
+		ovr_tk += 1 if String(SV.crate_roll(r_tk, rng)["id"]) == "override" else 0
+	var items_ok: bool = kinds_seen.keys() == ["item"] and ovr_out == 0 and ovr_tk > 20 and (SV.ITEM_ORDER as Array).all(func(it): return SV.ITEMS[it].has("col") and not String(SV.ITEMS[it]["name"]).contains("–"))
+	var cnt_a := {1: 0, 3: 0, 5: 0}
+	var cnt_b := {1: 0, 3: 0, 5: 0}
+	var cnt_l := {1: 0, 3: 0, 5: 0}
+	var r_luck: Dictionary = SV.fresh()
+	r_luck["boni"] = [["lucky", 5]]
+	for q2 in 4000:
+		cnt_a[int(SV.draw_count(r_out, rng, false))] += 1
+		cnt_b[int(SV.draw_count(r_out, rng, true))] += 1
+		cnt_l[int(SV.draw_count(r_luck, rng, false))] += 1
+	var odds_ok: bool = cnt_a[1] > 3040 and cnt_a[1] < 3360 and cnt_a[3] > 520 and cnt_a[3] < 760 and cnt_a[5] > 100 and cnt_a[5] < 220 \
+		and cnt_b[1] == 0 and cnt_b[5] > 840 and cnt_b[5] < 1160 and cnt_b[3] + cnt_b[5] == 4000 \
+		and cnt_l[1] > 2240 and cnt_l[1] < 2560 and cnt_l[5] > cnt_a[5] + 80 and cnt_l[3] > cnt_a[3] + 300
+	var r_near: Dictionary = SV.fresh()
+	r_near["weapons"] = [["pulse", 4], ["laser", 5]]
+	r_near["boni"] = [["amp", 5]]
+	var near_full: Array = SV.draw_rewards(r_near, rng, 3)
+	var untouched: bool = SV.weapon_level(r_near, "pulse") == 4
+	r_near["hp"] = 10.0
+	var near_hurt: Array = SV.draw_rewards(r_near, rng, 3)
+	var r_low: Dictionary = SV.fresh()
+	r_low["boni"] = [["amp", 1]]
+	var five: Array = SV.draw_rewards(r_low, rng, 5)
+	var apply_ok := true
+	var top := {}
+	for rw in five:
+		apply_ok = apply_ok and String(rw["kind"]) in ["up", "bonus_up"] and String(SV.apply(r_low, rw)) == "" and String(rw["name"]) != ""
+		top[String(rw["id"])] = int(rw["level"])
+	apply_ok = apply_ok and SV.weapon_level(r_low, "pulse") + SV.bonus_level(r_low, "amp") == 7 and top.keys().all(func(k): return int(top[k]) == (SV.weapon_level(r_low, k) if k == "pulse" else SV.bonus_level(r_low, k)))
+	var r_ult: Dictionary = SV.fresh()
+	r_ult["weapons"] = [["pulse", SV.ULT]]
+	var rewards_ok: bool = near_full.size() == 3 and String(near_full[0]["kind"]) == "up" and String(near_full[0]["id"]) == "pulse" and int(near_full[0]["level"]) == 5 \
+		and String(near_full[1]["kind"]) == "ult" and String(near_full[1]["id"]) == "pulse" and String(near_full[2]["kind"]) == "coins" and untouched \
+		and String(near_hurt[1]["kind"]) == "ult" and String(near_hurt[2]["kind"]) == "heal" and five.size() == 5 and apply_ok \
+		and String(SV.draw_rewards(r_ult, rng, 1)[0]["kind"]) == "coins"
+	var lines: Array = SV.bonus_lines("lucky", 0, 1)
+	var words_ok: bool = String(SV.BONI["lucky"]["text"]).contains("three or five") and lines.size() == 3 and not String(SV.BONI["lucky"]["text"]).contains("–") \
+		and float(FX.NUKE_LIFE) > 2.5 and float(FX.SCORCH_LIFE) > float(FX.NUKE_LIFE)
+	var rule_ok := items_ok and odds_ok and rewards_ok and words_ok
+	if not rule_ok:
+		print("COLCRATE62A rules: items ", items_ok, " ", kinds_seen.keys(), " ", ovr_out, " ", ovr_tk, " odds ", odds_ok, " ", cnt_a, cnt_b, cnt_l, " rewards ", rewards_ok, " ", near_full, near_hurt, five, " apply ", apply_ok,
+			" words ", words_ok, " ", lines)
+	# ---- down to Centauria, into the lobby, a run on Outbreak
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var item_ok := false
+	var draw_ok := false
+	var wait_ok := false
+	var window_ok := false
+	var look_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "stage:outbreak"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var stand := func(at: Vector2) -> void:
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.run["hp"] = 100.0
+				sv.run["xp"] = -1000000
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.stasis_t = 0.0
+				sv.over_t = 0.0
+				sv.magnet_t = 0.0
+				sv.sn = 0
+				sv.banner_t = 0.0
+				sv.crates = []
+				sv.nukes = []
+				sv.scorches = []
+				sv.heals = []
+				sv.item_pop = {}
+				stand.call(pp)
+			var snapshot := func(frames: int, file: String) -> void:
+				for fq in frames:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a11_%s.png" % file)
+			sv.quiet = true
+			sv.frozen = true
+			if shots:                                              # (the hologram has come up before the first picture is taken)
+				for fb in 190:
+					await get_tree().process_frame
+			# ---- an item crate: an item at once, its sign springs up, no window, nothing you carry changes
+			calm.call()
+			sv.run["weapons"] = [["pulse", 2]]
+			sv.crates = [{"pos": pp + Vector2(8.0, 0.0), "great": false, "fall": 0.0}]
+			sv.step(0.016)
+			var pop0: Dictionary = (sv.item_pop as Dictionary).duplicate()
+			var took: bool = (sv.crates as Array).is_empty() and not pop0.is_empty() and SV.ITEMS.has(String(pop0.get("id", ""))) and String(sv.banner) == String(SV.ITEMS[String(pop0["id"])]["name"]).to_upper() \
+				and g.minigame == null and SV.weapon_level(sv.run, "pulse") == 2 and (sv.last_draw as Array).is_empty()
+			run_steps.call(int(float(sv.ITEM_POP) / 0.016) + 3)
+			item_ok = took and (sv.item_pop as Dictionary).is_empty()
+			if not item_ok:
+				print("COLCRATE62A an item crate: took ", took, " ", pop0, " banner ", sv.banner, " window ", g.minigame, " pop after ", sv.item_pop)
+			# ---- an alpha leaves a weapon crate: golden, marked; taking it draws levels of what you carry, the window is up, the run stands still
+			calm.call()
+			sv.run["weapons"] = [["pulse", 1], ["laser", 1]]
+			sv.run["boni"] = [["amp", 1]]
+			var al: int = sv.add_foe(KI["shambler"], pp + Vector2(90.0, 0.0))
+			sv.make_alpha(al)
+			sv._hit(al, 1000000000.0, pp)
+			var left: Array = sv.crates
+			var golden: bool = left.size() == 1 and bool(left[0].get("weapon", false)) and not bool(left[0]["great"]) and bool(left[0].get("mark", false))
+			if shots:                                              # (a picture: an item crate and a weapon crate side by side)
+				sv.crates.append({"pos": (left[0]["pos"] as Vector2) + Vector2(-44.0, 0.0), "great": false, "fall": 0.0})
+				g.story_cam = (left[0]["pos"] as Vector2) + Vector2(-22.0, -20.0)
+				g.story_zoom = 2.2
+				g._cam_c = g.story_cam * GroundMap.SCALE
+				await snapshot.call(30, "kisten")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				sv.crates.pop_back()
+			var before: int = SV.weapon_level(sv.run, "pulse") + SV.weapon_level(sv.run, "laser") + SV.bonus_level(sv.run, "amp")
+			stand.call(left[0]["pos"] if left.size() == 1 else pp)
+			sv.step(0.016)
+			var dw = g.minigame
+			var n_draw: int = (sv.last_draw as Array).size()
+			var after: int = SV.weapon_level(sv.run, "pulse") + SV.weapon_level(sv.run, "laser") + SV.bonus_level(sv.run, "amp")
+			var opened: bool = (sv.crates as Array).is_empty() and dw != null and dw.has_method("is_sv_draw") and n_draw in [1, 3, 5] and after == before + n_draw and (dw.rewards as Array).size() == n_draw \
+				and not bool(dw.great)
+			var t_run: float = sv.run["t"]
+			sv.frozen = false
+			for f7 in 12:
+				await get_tree().process_frame
+			sv.frozen = true
+			var paused: bool = float(sv.run["t"]) == t_run and g.minigame == dw
+			draw_ok = golden and opened and paused
+			if not draw_ok:
+				print("COLCRATE62A a weapon crate: golden ", golden, " ", left, " opened ", opened, " n ", n_draw, " ", before, " to ", after, " window ", dw, " paused ", paused)
+			# ---- the window: a key held from the run does nothing; a key stops the reels still turning; then it closes, and the run goes on
+			if dw != null and dw.has_method("is_sv_draw"):
+				dw._t = 0.1
+				dw.press()
+				var early: bool = g.minigame == dw and not bool(dw.all_stopped())
+				dw._t = 0.5
+				dw.press()
+				var skipped: bool = bool(dw.all_stopped()) and g.minigame == dw
+				dw.press()
+				var not_yet: bool = g.minigame == dw
+				var times: bool = is_equal_approx(float(dw.stop_at(0)), float(dw.FIRST)) and float(dw.stop_at(4)) > float(dw.stop_at(0)) + 2.0 and float(dw.stop_at(4)) < 4.0
+				var sign0: bool = String(dw.sign_at(0, 0)) == String(dw.rewards[0]["id"])
+				dw._t = float(dw.done_at()) + 0.3
+				dw.press()
+				for f8 in 3:
+					await get_tree().process_frame
+				var closed: bool = g.minigame == null
+				sv.frozen = false
+				var t_run2: float = sv.run["t"]
+				for f9 in 6:
+					await get_tree().process_frame
+				sv.frozen = true
+				window_ok = early and skipped and not_yet and closed and float(sv.run["t"]) > t_run2 and times and sign0
+				if not window_ok:
+					print("COLCRATE62A the window: ", [early, skipped, not_yet, closed, times], " t ", sv.run["t"], " from ", t_run2)
+			# ---- a second weapon crate waits while a window is up; a boss's crate holds three at least; the debug draws
+			calm.call()
+			g._close_game()
+			sv.run["weapons"] = [["pulse", 1], ["laser", 1]]
+			sv.run["boni"] = [["amp", 1]]
+			sv.crates = [{"pos": pp, "great": false, "fall": 0.0, "weapon": true}, {"pos": pp, "great": true, "fall": 0.0, "weapon": true}]
+			sv.step(0.016)
+			var one_open: bool = (sv.crates as Array).size() == 1 and g.minigame != null and g.minigame.has_method("is_sv_draw")
+			sv.step(0.016)
+			var waits: bool = (sv.crates as Array).size() == 1
+			g._close_game()
+			sv.step(0.016)
+			var second: bool = (sv.crates as Array).is_empty() and g.minigame != null and g.minigame.has_method("is_sv_draw")
+			var boss_n: int = (sv.last_draw as Array).size()
+			var which: Array = [one_open, waits, second]
+			g._close_game()
+			var e_d3 := String(Commands.execute({"type": "debug_casino", "sv": "draw:3"}))
+			var d3: bool = e_d3 == "" and (sv.last_draw as Array).size() == 3 and g.minigame != null and (g.minigame.rewards as Array).size() == 3
+			var e_busy := String(Commands.execute({"type": "debug_casino", "sv": "draw:5"}))
+			g._close_game()
+			wait_ok = one_open and waits and second and boss_n in [1, 3, 5] and d3 and e_busy != ""
+			if not wait_ok:
+				print("COLCRATE62A crates in a row: ", which, " the last one held ", boss_n, " draw:3 ", d3, " ", e_d3, " busy ", e_busy)
+			if shots:                                              # (pictures: the draw with one reel, with three, with five: turning, and stopped)
+				calm.call()
+				sv.run["weapons"] = [["pulse", 2], ["laser", 1], ["orbs", 3], ["cryo", 1]]
+				sv.run["boni"] = [["amp", 2], ["gyro", 1], ["lucky", 1]]
+				sv.mods = SV.mods(sv.run)
+				sv.open_draw(false, 1)
+				g.minigame._t = 0.95
+				await snapshot.call(2, "ziehung1_dreht")
+				g.minigame._t = 2.2
+				await snapshot.call(2, "ziehung1")
+				g._close_game()
+				sv.open_draw(false, 3)
+				g.minigame._t = 1.95
+				await snapshot.call(2, "ziehung3_dreht")
+				g.minigame._t = 3.4
+				await snapshot.call(2, "ziehung3")
+				g._close_game()
+				sv.open_draw(true, 5)
+				g.minigame._t = 2.5
+				await snapshot.call(2, "jackpot_dreht")
+				g.minigame._t = 4.6
+				await snapshot.call(2, "jackpot")
+				g._close_game()
+			# ---- what the items look like: each has what is drawn for it, for as long as it lasts
+			calm.call()
+			sv.run["weapons"] = []
+			sv.give("bomb")
+			var boom: bool = (sv.nukes as Array).size() == 1 and (sv.scorches as Array).size() == 1 and String(sv.item_pop.get("id", "")) == "bomb"
+			if shots:
+				sv.nukes[0]["t"] = 0.12
+				await snapshot.call(2, "bombe1")
+				sv.nukes[0]["t"] = 0.5
+				await snapshot.call(2, "bombe2")
+				sv.nukes[0]["t"] = 1.5
+				sv.item_pop = {}
+				sv.banner_t = 0.0
+				await snapshot.call(2, "bombe3")
+				sv.nukes[0]["t"] = 2.9
+				await snapshot.call(2, "bombe4")
+				sv.nukes[0]["t"] = 0.2
+				sv.scorches[0]["t"] = 0.2
+			run_steps.call(int(float(FX.NUKE_LIFE) / 0.016) + 4)
+			var cloud_gone: bool = (sv.nukes as Array).is_empty() and (sv.scorches as Array).size() == 1
+			run_steps.call(int((float(FX.SCORCH_LIFE) - float(FX.NUKE_LIFE)) / 0.016) + 4)
+			var scorch_gone: bool = (sv.scorches as Array).is_empty()
+			calm.call()
+			sv.run["hp"] = 40.0
+			sv.give("medkit")
+			var healed: bool = (sv.heals as Array).size() == 1 and float(sv.run["hp"]) > 40.0
+			if shots:
+				sv.heals[0]["t"] = 0.3
+				sv.item_pop = {}
+				sv.banner_t = 0.0
+				await snapshot.call(2, "medkit")
+			run_steps.call(70)
+			healed = healed and (sv.heals as Array).is_empty()
+			calm.call()
+			sv.give("stasis")
+			var still: bool = (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "stasis") and is_equal_approx(float(sv.stasis_len), float(sv.stasis_t)) and float(sv.stasis_len) > 3.0
+			if shots:
+				sv.swarm(40)
+				sv.item_pop = {}
+				sv.banner_t = 0.0
+				sv.tele[-1]["t"] = 0.25
+				await snapshot.call(2, "stasis")
+			calm.call()
+			sv.give("shield")
+			var tb: int = sv.add_foe(KI["shambler"], pp + Vector2(6.0, 0.0))
+			sv.frozen = false
+			sv.step(0.016)
+			sv.frozen = true
+			var domed: bool = float(sv.shield_hit) > 0.0 and float(sv.run["hp"]) == 100.0 and is_equal_approx(float(sv.shield_len), float(SV.ITEMS["shield"]["time"])) and tb >= 0
+			if shots:
+				sv.swarm(24)
+				sv.item_pop = {}
+				sv.banner_t = 0.0
+				sv.shield_hit = 0.0
+				await snapshot.call(3, "schild")
+				calm.call()
+				sv.give("shield")
+				sv.item_pop["t"] = 0.42
+				sv.banner_t = 0.0
+				await snapshot.call(1, "aufploppen")
+			calm.call()
+			sv.give("overdrive")
+			var walk_at := pp
+			for rs in 30:
+				walk_at += Vector2(58.0 * 0.016, 0.0)
+				g.pilot.pos = walk_at
+				g.pilot.position = walk_at * GroundMap.SCALE
+				sv.step(0.016)
+			var echoes: bool = (sv._od_tr as PackedVector2Array).size() == 5 and (sv._od_tr[0] as Vector2).x > (sv._od_tr[4] as Vector2).x
+			if shots:
+				sv.item_pop = {}
+				sv.banner_t = 0.0
+				await snapshot.call(2, "overdrive")
+			sv.over_t = 0.0
+			sv.step(0.016)
+			echoes = echoes and (sv._od_tr as PackedVector2Array).is_empty()
+			calm.call()
+			sv.give("magnet")
+			if shots:
+				for sq in 40:
+					sv._drop(pp + Vector2.from_angle(sq * 0.7) * (60.0 + sq * 4.0), 1)
+				sv.item_pop = {}
+				sv.banner_t = 0.0
+				await snapshot.call(6, "magnet")
+			calm.call()
+			for oq in 5:
+				sv.add_foe(KI["enforcer"], pp + Vector2(-60.0 + oq * 30.0, -50.0))
+			sv.give("override")
+			sv.step(0.016)
+			var turned: bool = (sv._marks as Array).filter(func(mq): return String(mq[0]) == "ovr").size() == 5
+			if shots:
+				sv.item_pop = {}
+				sv.banner_t = 0.0
+				await snapshot.call(3, "override")
+			look_ok = boom and cloud_gone and scorch_gone and healed and still and domed and echoes and turned
+			if not look_ok:
+				print("COLCRATE62A what the items look like: ", [boom, cloud_gone, scorch_gone, healed, still, domed, echoes, turned], " shield hit ", sv.shield_hit, " hp ", sv.run["hp"], " echoes ", sv._od_tr)
+			calm.call()
+			sv.end(false)
+			for f12 in 20:
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+	check(rule_ok and item_ok and draw_ok and window_ok and wait_ok and look_ok,
+		"62a, part 7f: Survivor's crates in two kinds: an item crate always holds an item (Override on AI Takeover only), each item has its colour; a weapon crate holds one reward mostly, three now and then, five rarely (a boss's three at least; Lucky Find raises the chances), each a level of what you carry, the same thing more than once if it can still rise, a med cell or a purse when nothing can; an ultimate stays what it is; in a run: an item crate gives its item at once, its sign springs up and goes again, no window; an alpha leaves a golden, marked weapon crate; taking it gives the levels at once and opens the draw, and the run stands still behind it; the window (a key held from the run does nothing, a key stops the reels, then one closes it and the run goes on); a second weapon crate waits while a window is up; the debug draws; what the items look like (the Atomic Bomb's cloud and the scorched earth, each for its time; the Medkit's moment; the Stasis' wave and clock; the Shield flashes when struck and nothing hurts you; the echoes of an Overdrive; a sign over each machine an Override turned)  [%s %s %s %s %s %s]" % [rule_ok, item_ok, draw_ok, window_ok, wait_ok, look_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _test_colfix62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var FX = load("res://scripts/ground/survivor_fx.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules: the Pulse weaker and throwing far; the Superlaser rarer and longer; what pulls does not throw; a weapon
+	# crate gives a fusion that is ready; no colour of yours is red
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 24
+	var r_f: Dictionary = SV.fresh()
+	r_f["weapons"] = [["superlaser", 5], ["laser", 2]]
+	r_f["boni"] = [["nanite", 1]]
+	var fuse: Array = SV.draw_rewards(r_f, rng, 2)
+	var fused: bool = String(fuse[0]["kind"]) == "ult" and String(fuse[0]["id"]) == "superlaser" and String(fuse[0]["name"]) == "Sunlance" and String(fuse[1]["kind"]) in ["up", "bonus_up"] \
+		and String(SV.apply(r_f, fuse[0])) == "" and SV.weapon_level(r_f, "superlaser") == SV.ULT
+	var no_red := true
+	for q in 200:
+		var hq: float = (FX.hue(q / 200.0 * 3.0, 0.0) as Color).h
+		no_red = no_red and hq > 0.1 and hq < 0.9
+	var rule_ok: bool = float(SV.stats("pulse", 1)["dmg"]) < 6.0 and float(SV.WEAPONS["pulse"]["kb"]) > 2.0 and float(SV.WEAPONS["gravity"]["kb"]) == 0.0 and float(SV.WEAPONS["blackhole"]["kb"]) == 0.0 \
+		and float(SV.stats("superlaser", 1)["reach"]) >= 200.0 and float(SV.stats("superlaser", 1)["every"]) >= 17.0 and float(SV.stats("superlaser", 5)["every"]) >= 11.0 \
+		and fused and no_red and not String(SV.BONI["massdriver"]["text"]).contains("–")
+	if not rule_ok:
+		print("COLFIX62A rules: fused ", fused, " ", fuse, " no red ", no_red)
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var load_ok := false
+	var room_ok := false
+	var run_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		# ---- a save down here and a load: back onto the very spot (the level, the place), not onto the planet's map
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		var at: Vector2 = g.pilot.pos + Vector2(0.0, 26.0)
+		for tryq in 12:
+			if g.map.free_at(at, 4.0):
+				break
+			at += Vector2(8.0, 0.0)
+		g.pilot.pos = at
+		g.pilot.position = at * GroundMap.SCALE
+		main.prepare_save()
+		var kept: Dictionary = (str_to_var(var_to_str(GameState.to_dict())) as Dictionary).get("on_foot", {})
+		var docked := String(GameState.active().docked_at)
+		var saved: bool = String(kept.get("level", "")) == "zcolin" and (kept.get("pos", Vector2.ZERO) as Vector2).distance_to(at) < 0.5 and String(kept.get("station", "")) == docked and docked.contains("|")
+		main.close_deck(false)
+		GameState.on_foot = kept
+		main._resume_landed()
+		for f1 in 10:
+			await get_tree().process_frame
+		var g2 = main.ground
+		var back: bool = g2 != null and is_instance_valid(g2) and String(g2.level) == "zcolin" and (g2.pilot.pos as Vector2).distance_to(at) < 0.5 and (main.planet_map == null or not is_instance_valid(main.planet_map)) \
+			and String(GameState.active().docked_at) == docked
+		main.close_deck(false)
+		GameState.on_foot = {}                                   # (a save that does not say where: the planet's map, as before)
+		main._resume_landed()
+		for f2 in 6:
+			await get_tree().process_frame
+		var to_map: bool = main.planet_map != null and is_instance_valid(main.planet_map) and (main.ground == null or not is_instance_valid(main.ground))
+		main._close_planet_map()
+		GameState.active().docked_at = docked
+		GameState.on_foot = {"level": "zcolsv", "pos": at, "ctr_stop": 2, "station": docked, "town_kind": ""}      # (saved in a run: the lobby)
+		main._resume_landed()
+		for f3 in 10:
+			await get_tree().process_frame
+		g = main.ground
+		var lobby: bool = g != null and is_instance_valid(g) and String(g.level) == "zcolin"
+		load_ok = saved and back and to_map and lobby
+		if not load_ok:
+			print("COLFIX62A a load: saved ", saved, " ", kept, " back ", back, " to the map ", to_map, " the lobby ", lobby)
+		if g != null and is_instance_valid(g) and String(g.level) == "zcolin":
+			# ---- Survivor's room: the cross takes the stage and goes on to the weapons, takes the weapon and goes on to READY
+			CD.switch_mode(GameState.col_state(), "survivor")
+			g._col_prep_open()
+			for f4 in 4:
+				await get_tree().process_frame
+			var sp = g.minigame
+			if sp != null and sp.has_method("is_sv_prep"):
+				sp.focus = 0
+				sp.st_sel = 1                                          # (a stage still shut: you stay on the stages)
+				sp.pad_button("cross", true)
+				var stays: bool = int(sp.focus) == 0
+				sp.st_sel = 0
+				sp.pad_button("cross", true)
+				var to_w: bool = int(sp.focus) == 1
+				sp.w_sel = 3                                           # (a weapon still locked: you stay on the weapons)
+				sp.pad_button("cross", true)
+				var stays_w: bool = int(sp.focus) == 1
+				sp.w_sel = 1
+				sp.pad_button("cross", true)
+				var to_r: bool = int(sp.focus) == 2 and SV.first_weapon(GameState.col_state()) == "laser"
+				sp.pad_button("cross", true)
+				var counts: bool = float(sp.counting) > 0.0
+				sp.back()
+				room_ok = stays and to_w and stays_w and to_r and counts
+				if not room_ok:
+					print("COLFIX62A Survivor's room: ", [stays, to_w, stays_w, to_r, counts], " ", sp.msg)
+			g._close_game()
+			# ---- a run
+			Commands.execute({"type": "debug_casino", "sv": "stage:outbreak"})
+			Commands.execute({"type": "debug_casino", "sv": "start"})
+			for f6 in 6:
+				await get_tree().process_frame
+			var sv = g.survivor
+			if sv != null and is_instance_valid(sv):
+				var pp: Vector2 = g.pilot.pos
+				var KI: Dictionary = sv._ki
+				var WS: Dictionary = sv._wsrc
+				sv.quiet = true
+				sv.frozen = true
+				var calm := func() -> void:
+					sv.clear_swarm()
+					sv.run["hp"] = 100.0
+					sv.run["xp"] = -1000000
+					sv.sn = 0
+					sv.crates = []
+					sv.run["weapons"] = []
+					sv.banner_t = 0.0
+				# the ground full of shards far away: one who goes out still drops its shard where it stood, nothing is lost
+				calm.call()
+				for sq in 500:
+					sv._drop(pp + Vector2(600.0 + sq, 300.0), 1)
+				var e0: int = sv.add_foe(KI["shambler"], pp + Vector2(40.0, 0.0))
+				sv._hit(e0, 1000000.0, pp)
+				var here := 0
+				var worth := 0
+				for sq2 in int(sv.sn):
+					worth += int(sv.sv[sq2])
+					if (sv.sp[sq2] as Vector2).distance_to(pp + Vector2(40.0, 0.0)) < 2.0:
+						here += 1
+				var drops: bool = int(sv.sn) == 500 and here == 1 and worth == 500 + int(SV.FOES["shambler"]["xp"])
+				# the Pulse throws far, a laser as ever, what pulls not at all
+				calm.call()
+				var thrown: Array = []
+				for wq in ["pulse", "laser", "gravity", "blackhole"]:
+					var ti: int = sv.add_foe(KI["hauler"], pp + Vector2(50.0, 0.0))
+					sv.fhp[ti] = 100000.0
+					sv._src = int(WS[wq])
+					sv._hit(ti, 1.0, pp)
+					thrown.append((sv.fkb[ti] as Vector2).length())
+					sv.clear_swarm()
+				sv._src = 0
+				var kb_ok: bool = float(thrown[0]) > float(thrown[1]) * 2.0 and float(thrown[1]) > 0.0 and float(thrown[2]) == 0.0 and float(thrown[3]) == 0.0
+				# a blade darts at the nearest of them; a second one at the next
+				calm.call()
+				var n1: int = sv.add_foe(KI["shambler"], pp + Vector2(70.0, 40.0))
+				var n2: int = sv.add_foe(KI["shambler"], pp + Vector2(-120.0, 10.0))
+				sv._grid()
+				var d0: Vector2 = sv._blade_dir(pp, 0)
+				var d1: Vector2 = sv._blade_dir(pp, 1)
+				sv.run["weapons"] = [["blade", 1]]
+				sv._wt["blade"] = 0.0
+				sv.step(0.016)
+				var aimed: bool = d0.dot(Vector2(70.0, 40.0).normalized()) > 0.999 and d1.dot(Vector2(-120.0, 10.0).normalized()) > 0.999 and (sv.blades as Array).size() == 1 \
+					and ((sv.blades[0]["v"] as Vector2).normalized()).dot(Vector2(70.0, 40.0).normalized()) > 0.99 and n1 >= 0 and n2 >= 0
+				sv.clear_swarm()
+				sv._grid()
+				var lot: Vector2 = sv._blade_dir(pp, 0)
+				aimed = aimed and is_equal_approx(lot.length(), 1.0)
+				# a drone's shot strikes one it passes 11 px beside
+				calm.call()
+				var dn: int = sv.add_foe(KI["hauler"], pp + Vector2(80.0, 0.0))
+				sv.fhp[dn] = 1000.0
+				sv.shots.append({"p": pp + Vector2(80.0, 11.0), "v": Vector2.ZERO, "life": 1.0, "dmg": 5.0, "pierce": false})
+				sv.step(0.016)
+				var wide: bool = float(sv.fhp[dn]) == 995.0 and (sv.shots as Array).is_empty()
+				run_ok = drops and kb_ok and aimed and wide
+				if not run_ok:
+					print("COLFIX62A a run: drops ", drops, " ", sv.sn, " here ", here, " worth ", worth, " thrown ", kb_ok, " ", thrown, " aimed ", aimed, " ", d0, d1, " wide ", wide, " ", sv.fhp[dn])
+				if shots:                                              # (a picture: what is theirs in red on the ground, what is yours never)
+					calm.call()
+					for fb in 190:
+						await get_tree().process_frame
+					sv.run["weapons"] = [["pulse", 3], ["blackhole", 2], ["mines", 3], ["plasma", 3]]
+					sv._wt = {}
+					sv.run["hp"] = 1000000.0
+					sv.pools.append({"pos": pp + Vector2(-110.0, -50.0), "r": 34.0, "t": 1.0, "life": 30.0, "kind": "acid", "dps": 0.0})
+					sv.pools.append({"pos": pp + Vector2(120.0, -70.0), "r": 44.0, "t": 1.0, "life": 30.0, "kind": "cloud", "dps": 0.0})
+					sv.tele.append({"kind": "spot", "pos": pp + Vector2(-130.0, 60.0), "r": 26.0, "t": 0.0, "len": 30.0})
+					sv.tele.append({"kind": "stomp", "pos": pp + Vector2(150.0, 60.0), "r": 54.0, "t": 0.0, "len": 30.0})
+					sv.frozen = false
+					sv.swarm(40)
+					for f10 in 120:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a13_rot.png")
+				sv.end(false)
+				for f12 in 20:
+					await get_tree().process_frame
+				if g.minigame != null and g.minigame.has_method("is_sv_result"):
+					g.minigame._t = 2.0
+					g.minigame.go()
+				for f13 in 10:
+					await get_tree().process_frame
+	check(rule_ok and load_ok and room_ok and run_ok,
+		"62a, fixes of 24 Nov 2026 (Luz): the Pulse weaker and throwing far, the Superlaser rarer and longer, what pulls does not throw; a weapon crate gives a fusion that is ready; no colour of yours is red; a save down on a planet and a load: back onto the very spot (the level, the place), the planet's map only when the save does not say where, the lobby when it was saved in a run; Survivor's room: the cross takes the stage and goes on to the weapons, takes the weapon and goes on to READY, and stays where something cannot be taken; a run: with the ground full of shards one who goes out still drops its shard where it stood and nothing is lost; the Pulse throws further than a laser, the Gravity Well and the Blackhole Gun not at all; a blade darts at the nearest of them, a second at the next, by lot when nobody is near; a drone's shot strikes one it passes close by  [%s %s %s %s]" % [rule_ok, load_ok, room_ok, run_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main._close_planet_map()
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _test_colwhiteb62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 92
+	var r_wo: Dictionary = SV.fresh("whiteout")
+	var r_out: Dictionary = SV.fresh()
+	var th_wo := 0
+	var th_out := 0
+	for q in 300:
+		th_wo += 1 if String(SV.crate_roll(r_wo, rng)["id"]) == "thermal" else 0
+		th_out += 1 if String(SV.crate_roll(r_out, rng)["id"]) == "thermal" else 0
+	var sd: Dictionary = SV.stage_data("whiteout")
+	var evs: Array = sd["events"]
+	var sorted := true
+	for q2 in range(1, evs.size()):
+		sorted = sorted and float(evs[q2]["t"]) > float(evs[q2 - 1]["t"])
+	var tex_ok := true
+	for kind in ["shardthrower", "glider"]:
+		for d in 4:
+			for f in 3:
+				var tx: Texture2D = SA.texture(String(kind), 1, d, f)
+				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and not tx.get_image().is_invisible()
+	var rule_ok: bool = int(SV.FOES["shardthrower"]["beh"]) == 14 and bool(SV.FOES["glider"].get("fly", false)) and float(SV.FOES["glider"]["dmg"]) == 0.0 and SV.FOE_ORDER.size() == 27 \
+		and evs.size() == 9 and sorted and (["blizzard", "icebreak", "avalanche"] as Array).all(func(k): return evs.any(func(e): return String(e["kind"]) == k) and SV.BANNERS.has(k)) \
+		and String(sd["flock"]) == "glider" and SV.kinds_at(300.0, "whiteout") == ["mite", "burrower", "rimeback", "shardthrower"] and String(sd["end"]) == "heart" \
+		and String(SV.ITEMS["thermal"]["stage"]) == "whiteout" and th_wo > 20 and th_out == 0 and SV.ITEM_ORDER.size() == 8 and not String(SV.ITEMS["thermal"]["text"]).contains("–") and tex_ok
+	if not rule_ok:
+		print("COLWHITEB62A rules: events ", evs.size(), " ", sorted, " thermal ", th_wo, " ", th_out, " tex ", tex_ok, " kinds ", SV.kinds_at(300.0, "whiteout"))
+	# ---- down to Centauria, into the lobby, a run on Whiteout
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var shard_ok := false
+	var glide_ok := false
+	var event_ok := false
+	var thermal_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "stage:whiteout"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv) and String(sv.run["stage"]) == "whiteout":
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			sv.quiet = true
+			var run_steps := func(count: int) -> void:
+				for k3 in count:
+					sv.step(0.016)
+			var stand := func(at: Vector2) -> void:
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+				sv._lead = Vector2.ZERO
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.run["weapons"] = []
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.sn = 0
+				sv.banner_t = 0.0
+				sv.item_pop = {}
+				sv.crates = []
+				stand.call(pp)
+			var snapshot := func(cam: Vector2, zoom: float, frames: int, file: String) -> void:
+				g.story_cam = cam
+				g.story_zoom = zoom
+				g._cam_c = cam * GroundMap.SCALE
+				for fq in frames:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a14_%s.png" % file)
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			if shots:
+				sv.frozen = true
+				for fb in 190:
+					await get_tree().process_frame
+				calm.call()
+				for ri in 4:
+					var fi0: int = sv.add_foe(KI["shardthrower"], pp + Vector2(-110.0 + ri * 40.0, -30.0))
+					sv.fv[fi0] = ri
+					sv.fface[fi0] = [0, 2, 3, 1][ri]
+				for ri2 in 3:
+					var fi1: int = sv.add_foe(KI["glider"], pp + Vector2(-80.0 + ri2 * 70.0, 60.0))
+					sv.fv[fi1] = ri2
+					sv.ftm[fi1] = 99.0
+				await snapshot.call(pp + Vector2(0.0, -6.0), 1.9, 40, "gegner")
+				sv.frozen = false
+			# ---- the Shardthrower: it raises its arm (lines show where), throws three needles in a fan; step aside and they pass; it backs off
+			calm.call()
+			var sh: int = sv.add_foe(KI["shardthrower"], pp + Vector2(120.0, 0.0))
+			sv.ftm[sh] = 0.0
+			sv.step(0.016)
+			var aims: bool = int(sv.fst[sh]) == 1 and (sv._marks as Array).any(func(mq): return String(mq[0]) == "fan") and (sv.fvel[sh] as Vector2).x < -0.99
+			if shots:
+				sv.frozen = true
+				sv.ftm[sh] = 0.3
+				sv.globs.append({"p": pp + Vector2(40.0, -60.0), "v": Vector2(-130.0, 10.0), "life": 2.0, "clean": true, "bolt": true, "needle": true, "dmg": 0.0})
+				sv.globs.append({"p": pp + Vector2(60.0, -52.0), "v": Vector2(-130.0, -20.0), "life": 2.0, "clean": true, "bolt": true, "needle": true, "dmg": 0.0})
+				await snapshot.call(pp + Vector2(50.0, -10.0), 1.9, 6, "faecher")
+				sv.globs.clear()
+				sv.frozen = false
+				sv.ftm[sh] = 0.6
+			stand.call(pp + Vector2(0.0, 90.0))
+			var most := 0
+			for rs in 110:
+				sv.step(0.016)
+				most = maxi(most, (sv.globs as Array).size())
+			var fan: bool = most == 3 and float(sv.run["hp"]) == 1000.0
+			calm.call()
+			var sh2: int = sv.add_foe(KI["shardthrower"], pp + Vector2(0.0, -100.0))
+			sv.ftm[sh2] = 0.0
+			run_steps.call(140)
+			var struck: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["shardthrower"]["needle"]))
+			calm.call()
+			var sh3: int = sv.add_foe(KI["shardthrower"], pp + Vector2(50.0, 0.0))
+			sv.ftm[sh3] = 99.0
+			run_steps.call(60)
+			var backs: bool = (sv.fp[sh3] as Vector2).x > pp.x + 58.0
+			calm.call()
+			var sh4: int = sv.add_foe(KI["shardthrower"], pp + Vector2(120.0, 0.0))
+			sv.make_alpha(sh4)
+			sv.ftm[sh4] = 0.0
+			stand.call(pp + Vector2(0.0, 120.0))
+			var most_a := 0
+			for rs2 in 70:
+				sv.step(0.016)
+				most_a = maxi(most_a, (sv.globs as Array).size())
+			shard_ok = aims and fan and struck and backs and most_a == 5
+			if not shard_ok:
+				print("COLWHITEB62A the shardthrower: ", [aims, fan, struck, backs], " needles ", most, " an alpha's ", most_a, " hp ", sv.run["hp"])
+			# ---- Gliders: a line shown first, then they fly along it and let ice fall onto marks; the ice hurts, they do not
+			calm.call()
+			sv.rng.seed = 5
+			sv.event("flock")
+			var warned: bool = not (sv.flock_warn as Dictionary).is_empty() and String(sv.banner) == "GLIDERS"
+			if warned:                                             # (you stand on the line of one of the two: their lines lie 23 px to either side of the middle)
+				stand.call(pp + (sv.flock_warn["dir"] as Vector2).orthogonal() * 23.0)
+			var seen_g := 0
+			var seen_ice := false
+			var seen_spot := false
+			for rs3 in 560:
+				sv.step(0.016)
+				seen_g = maxi(seen_g, int(sv._cnt[KI["glider"]]))
+				seen_ice = seen_ice or (sv.shells as Array).any(func(s): return bool(s.get("ice", false)))
+				seen_spot = seen_spot or (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "spot")
+				if shots and rs3 == 150:
+					sv.frozen = true
+					await snapshot.call(pp + Vector2(0.0, -10.0), 1.0, 3, "glider")
+					sv.frozen = false
+			var lost: float = 1000.0 - float(sv.run["hp"])
+			glide_ok = warned and seen_g == 2 and seen_ice and seen_spot and lost >= 10.0 and is_equal_approx(fmod(lost, 10.0), 0.0) and int(sv._cnt[KI["glider"]]) == 0
+			if not glide_ok:
+				print("COLWHITEB62A gliders: warned ", warned, " ", sv.banner, " gliders ", seen_g, " ice ", seen_ice, " marks ", seen_spot, " lost ", lost, " left ", sv._cnt[KI["glider"]])
+			# ---- a blizzard runs its time; the ice breaks under you and under them; an avalanche hurts you in the open and not in cover
+			calm.call()
+			sv.event("blizzard")
+			var snow: bool = is_equal_approx(float(sv.blizzard_t), float(SV.BLIZZARD_TIME)) and String(sv.banner) == "BLIZZARD"
+			if shots:
+				sv.swarm(60)
+				sv.blizzard_t = float(SV.BLIZZARD_TIME) * 0.5
+				sv.banner_t = 0.0
+				sv.frozen = true
+				for fz in 3:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a14_blizzard.png")
+				sv.frozen = false
+				sv.clear_swarm()
+				sv.blizzard_t = float(SV.BLIZZARD_TIME)
+			run_steps.call(int(float(SV.BLIZZARD_TIME) / 0.016) + 4)
+			snow = snow and float(sv.blizzard_t) == 0.0
+			calm.call()
+			sv.event("icebreak")
+			var plates: Array = sv.breaks
+			var under: bool = plates.size() >= 2 and plates.size() <= 7 and plates.any(func(b): return (b["r"] as Rect2).has_point(pp)) and float(sv.run["hp"]) == 1000.0
+			var hb: int = sv.add_foe(KI["rimeback"], pp + Vector2(6.0, 4.0))
+			sv.fsh[hb] = 0.0
+			sv.fhp[hb] = 5000.0
+			sv._grid()
+			sv.frozen = true                                       # (it stands where it was put; what happens by the clock goes on)
+			if shots:
+				for bq8 in sv.breaks:
+					bq8["t"] = 1.0                                   # (for the picture: its cracks half grown)
+				for fz2 in 50:
+					await get_tree().process_frame
+				sv.banner_t = 0.0
+				for fz3 in 2:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a14_eisbruch.png")
+			for rs4 in 260:
+				sv._wo_events(0.016, pp)
+			var broke: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.BREAK_DMG)) and float(sv.fhp[hb]) < 5000.0 and (sv.breaks as Array).all(func(b): return bool(b["done"]))
+			for rs5 in 300:
+				sv._wo_events(0.016, pp)
+			broke = broke and (sv.breaks as Array).is_empty()
+			sv.frozen = false
+			calm.call()
+			sv.avas.append({"c": pp + Vector2(-300.0, 0.0), "dir": Vector2.RIGHT, "s": 0.0, "far": 700.0, "warm": 0.5})
+			var mi: int = sv.add_foe(KI["mite"], pp + Vector2(60.0, 40.0))
+			sv.frozen = true
+			var kills0: int = int(sv.run["kills"])
+			var thrown := false
+			var open_air := true
+			for rs6 in 260:
+				sv._wo_events(0.016, pp)
+				sv.kb_t = maxf(0.0, float(sv.kb_t))
+				thrown = thrown or float(sv.kb_t) > 0.0
+				open_air = open_air and not bool(sv.in_cover)
+				if shots and rs6 == 150:
+					for fz4 in 3:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a14_lawine.png")
+			var swept: bool = is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.AVA_DMG)) and thrown and open_air and int(sv.run["kills"]) == kills0 + 1 and mi >= 0
+			calm.call()
+			var wall_i: int = sv._ti(pp - Vector2(24.0, 0.0))
+			var was: int = sv._solid[wall_i]
+			sv._solid[wall_i] = 1                                  # (something solid just before you, on the side it comes from)
+			sv.avas.append({"c": pp + Vector2(-300.0, 0.0), "dir": Vector2.RIGHT, "s": 0.0, "far": 700.0, "warm": 0.5})
+			var covered := false
+			for rs7 in 400:
+				sv._wo_events(0.016, pp)
+				covered = covered or bool(sv.in_cover)
+			sv._solid[wall_i] = was
+			var safe: bool = covered and float(sv.run["hp"]) == 1000.0 and (sv.avas as Array).is_empty() and not bool(sv.in_cover)
+			sv.event("avalanche")
+			var by_event: bool = (sv.avas as Array).size() == 1 and float(sv.avas[0]["warm"]) > 2.0 and String(sv.banner) == "AVALANCHE"
+			sv.frozen = false
+			event_ok = snow and under and broke and swept and safe and by_event
+			if not event_ok:
+				print("COLWHITEB62A what happens: blizzard ", snow, " plates ", under, " ", plates.size(), " broke ", broke, " hp ", sv.run["hp"], " swept ", swept, " thrown ", thrown, " open ", open_air,
+					" kills ", int(sv.run["kills"]) - kills0, " safe ", safe, " covered ", covered, " by the clock ", by_event)
+			# ---- the Thermal Charge: a shell melts, a burrower comes out of the ice, a crate thaws; further off nothing
+			calm.call()
+			sv.frozen = true
+			var rb: int = sv.add_foe(KI["rimeback"], pp + Vector2(60.0, 0.0))
+			sv.fhp[rb] = 5000.0
+			var rb_far: int = sv.add_foe(KI["rimeback"], pp + Vector2(200.0, 0.0))
+			var bu: int = sv.add_foe(KI["burrower"], pp + Vector2(-50.0, 20.0))
+			sv.make_alpha(bu)
+			sv.crates = [{"pos": pp + Vector2(0.0, 70.0), "great": false, "fall": 0.0, "ice": true}, {"pos": pp + Vector2(0.0, 300.0), "great": false, "fall": 0.0, "ice": true}]
+			sv.give("thermal")
+			thermal_ok = float(sv.fsh[rb]) == 0.0 and int(sv.fv[rb]) >= 2 and float(sv.fhp[rb]) < 5000.0 and float(sv.fsh[rb_far]) > 0.0 and int(sv.fst[bu]) == 2 and float(sv.fstun[bu]) > 1.0 \
+				and not bool(sv.crates[0]["ice"]) and bool(sv.crates[1]["ice"]) and (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "thermal") and String(sv.item_pop.get("id", "")) == "thermal" \
+				and float(sv.run["hp"]) == 1000.0
+			if not thermal_ok:
+				print("COLWHITEB62A the thermal charge: shell ", sv.fsh[rb], " look ", sv.fv[rb], " far ", sv.fsh[rb_far], " burrower ", sv.fst[bu], " crates ", sv.crates)
+			if shots:
+				sv.tele[-1]["t"] = 0.3
+				sv.banner_t = 0.0
+				for fz5 in 2:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a14_thermal.png")
+			sv.frozen = false
+			calm.call()
+			sv.end(false)
+			for f12 in 20:
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+	check(rule_ok and shard_ok and glide_ok and event_ok and thermal_ok,
+		"62a, part 9b: the rest of Whiteout: the Shardthrower and the Glider (twenty-five kinds, their pictures), nine things by the clock, the Thermal Charge in Whiteout's crates only; the Shardthrower (it raises its arm, lines show where, three needles in a fan, five from an alpha; step aside and they pass, stand and one strikes; it backs off when you come near); Gliders (a word and a line first, two of them, ice falls onto marks along their way and hurts, they themselves do not, then they are gone); a blizzard runs its time; the ice breaks (plates crack, the one under you among them, then break: it costs you, and them; then they are gone); an avalanche (in the open it hurts you, throws you and carries them off; behind something solid you are safe; by the clock it warns first); the Thermal Charge (a shell melts, a burrower comes out of the ice stunned, a frozen crate thaws, further off nothing, it does nothing to you)  [%s %s %s %s %s]" % [rule_ok, shard_ok, glide_ok, event_ok, thermal_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _test_colwhitec62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules
+	var sd: Dictionary = SV.stage_data("whiteout")
+	var tex_ok := true
+	for kind in ["worm", "heart"]:
+		for d in 4:
+			for f in 3:
+				var tx: Texture2D = SA.texture(String(kind), 0, d, f)
+				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
+	var rule_ok: bool = String(sd["soft"]) == "worm" and String(sd["end"]) == "heart" and SV.FOE_ORDER.size() == 27 and bool(SV.FOES["worm"]["boss"]) and bool(SV.FOES["heart"]["boss"]) \
+		and int(SV.FOES["worm"]["beh"]) == 25 and int(SV.FOES["heart"]["beh"]) == 26 and int(SV.CORE_BOSS["worm"]) == 12 and int(SV.CORE_BOSS["heart"]) == 30 \
+		and String(SV.BANNERS["worm"]) == "THE ICE WORM" and String(SV.BANNERS["heart"]) == "THE STORM HEART" and float(SV.EYE_MAX) > float(SV.EYE_MIN) * 2.0 and tex_ok \
+		and SA.texture("worm", 0, 0, 0).get_image().get_data() != SA.texture("worm", 0, 1, 0).get_image().get_data() \
+		and SA.texture("heart", 0, 0, 0).get_image().get_data() != SA.texture("heart", 0, 0, 2).get_image().get_data()
+	if not rule_ok:
+		print("COLWHITEC62A rules: ", sd["soft"], " ", sd["end"], " kinds ", SV.FOE_ORDER.size(), " tex ", tex_ok)
+	# ---- down to Centauria, into the lobby, a run on Whiteout
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var worm_ok := false
+	var worm2_ok := false
+	var heart_ok := false
+	var end_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "stage:whiteout"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv) and String(sv.run["stage"]) == "whiteout":
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			sv.quiet = true
+			var stand := func(at: Vector2) -> void:
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+				sv._lead = Vector2.ZERO
+			var calm := func() -> void:
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.run["weapons"] = []
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.banner_t = 0.0
+				sv.globs.clear()
+			var until := func(state: String, most: int) -> bool:
+				for k3 in most:
+					if String(sv.bst.get("st", "")) == state:
+						return true
+					sv.step(0.016)
+				return String(sv.bst.get("st", "")) == state
+			var snapshot := func(cam: Vector2, zoom: float, frames: int, file: String) -> void:
+				g.story_cam = cam
+				g.story_zoom = zoom
+				g._cam_c = cam * GroundMap.SCALE
+				sv.frozen = true
+				sv.banner_t = 0.0
+				for fq in frames:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a15_%s.png" % file)
+				sv.frozen = false
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+			if shots:
+				sv.frozen = true
+				for fb in 190:
+					await get_tree().process_frame
+				sv.frozen = false
+			# ---- The Ice Worm: under the ice nothing reaches it; a mark, it breaks out, it hurts who stands there; above it can be hurt; it dives again
+			sv.clear_swarm()
+			calm.call()
+			sv.boss_start("worm")
+			var wi: int = sv.boss_i()
+			var hp0: float = sv.fhp[wi]
+			sv._hit(wi, 1000000.0, pp)
+			sv.run["weapons"] = [["laser", 1]]
+			sv._wt = {"laser": 0.0}
+			sv.step(0.016)
+			var info: Dictionary = sv.boss_info()
+			var under: bool = String(sv.boss_kind) == "worm" and bool(sv.barrier_on) and bool(info.get("under", false)) and float(sv.fhp[wi]) == hp0 and (sv.beams as Array).is_empty() \
+				and not (sv._bands as Array).any(func(bd): return (bd.ids as PackedInt32Array).has(wi)) and String(sv.bst["st"]) == "under" and String(sv.banner) == "THE ICE WORM"
+			sv.run["weapons"] = []
+			var p_a: Vector2 = sv.fp[wi]
+			for rs in 40:
+				sv.step(0.016)
+			var circles: bool = (sv.fp[wi] as Vector2).distance_to(p_a) > 20.0 and (sv.bst["trail"] as PackedVector2Array).size() >= 8 and float(sv.run["hp"]) == 1000.0
+			var marked: bool = await until.call("mark", 300)
+			var one: bool = marked and (sv.bst["spots"] as Array).size() == 1 and ((sv.bst["spots"][0]) as Vector2).distance_to(pp) < 6.0 and float(sv.run["hp"]) == 1000.0
+			if shots:
+				await snapshot.call(pp + Vector2(0.0, -20.0), 1.6, 3, "wurm_unter_eis")
+			var up: bool = await until.call("up", 200)
+			var struck: bool = up and is_equal_approx(float(sv.run["hp"]), 1000.0 - float(SV.FOES["worm"]["erupt"])) and float(sv.kb_t) > 0.0 and int(sv.fst[wi]) == 2 \
+				and (sv.tele as Array).any(func(tq): return String(tq["kind"]) == "erupt") and not bool(sv.boss_info().get("under", true))
+			stand.call(pp + Vector2(90.0, 0.0))
+			sv.kb_t = 0.0
+			sv._hit(wi, 100.0, pp)
+			sv.step(0.016)
+			var hittable: bool = float(sv.fhp[wi]) == hp0 - 100.0 and (sv._bands as Array).any(func(bd): return (bd.ids as PackedInt32Array).has(wi))
+			if shots:
+				sv.fflash[wi] = 0.0                                    # (for the picture: not in the white of a hit)
+				sv.nums.clear()
+				await snapshot.call((sv.fp[wi] as Vector2) + Vector2(20.0, -30.0), 1.9, 3, "wurm_oben")
+			var dived: bool = await until.call("under", 400)
+			dived = dived and int(sv.fst[wi]) == 0
+			worm_ok = under and circles and one and struck and hittable and dived
+			if not worm_ok:
+				print("COLWHITEC62A the worm: ", [under, circles, one, struck, hittable, dived], " state ", sv.bst.get("st"), " hp ", sv.run["hp"], " its ", sv.fhp[wi], " of ", hp0, " info ", info)
+			# ---- step off its mark and it misses; from two thirds down three marks and needles; from one third down five; put out, it leaves a weapon crate and the run goes on
+			calm.call()
+			stand.call(pp)
+			var m2: bool = await until.call("mark", 400)
+			if m2:
+				stand.call(((sv.bst["spots"][0]) as Vector2) + Vector2(0.0, 70.0))
+			var u2: bool = await until.call("up", 200)
+			var missed: bool = m2 and u2 and float(sv.run["hp"]) == 1000.0
+			sv.fhp[wi] = float(sv.fmx[wi]) * 0.5
+			await until.call("under", 400)
+			calm.call()
+			var m3: bool = await until.call("mark", 400)
+			var three: bool = m3 and (sv.bst["spots"] as Array).size() == 3
+			stand.call(pp + Vector2(0.0, 150.0))
+			var needles := 0
+			for rs2 in 200:
+				sv.step(0.016)
+				needles = maxi(needles, (sv.globs as Array).filter(func(gq): return bool(gq.get("needle", false))).size())
+				if String(sv.bst["st"]) == "under":
+					break
+			sv.fhp[wi] = float(sv.fmx[wi]) * 0.2
+			calm.call()
+			stand.call(pp)
+			var m4: bool = await until.call("mark", 500)
+			var five: bool = m4 and (sv.bst["spots"] as Array).size() == 5
+			if shots and m4:
+				await snapshot.call(pp + Vector2(0.0, -20.0), 1.6, 3, "wurm_fuenf_marken")
+			sv.shield_t = 99.0
+			await until.call("up", 400)
+			sv.shield_t = 0.0
+			sv._hit(wi, 1000000000.0, pp)
+			var out: bool = String(sv.boss_kind) == "" and not bool(sv.barrier_on) and (sv.run["bosses"] as Array).has("worm") and not bool(sv.over) \
+				and (sv.crates as Array).any(func(c): return bool(c.get("weapon", false)) and bool(c["great"]))
+			worm2_ok = missed and three and needles >= 8 and five and out
+			if not worm2_ok:
+				print("COLWHITEC62A the worm, further: ", [missed, three, five, out], " needles ", needles, " spots ", sv.bst.get("spots"), " bosses ", sv.run["bosses"], " crates ", sv.crates)
+			# ---- The Storm Heart: it stands in the eye of its storm; out there you lose health; needles in rings; the eye closes as it is worn down; lightning, mites
+			sv.clear_swarm()
+			sv.crates = []
+			calm.call()
+			stand.call(pp)
+			var t_before: float = sv.run["t"]
+			sv.boss_start("heart")
+			var hi: int = sv.boss_i()
+			var hpos: Vector2 = sv.fp[hi]
+			var here: bool = String(sv.boss_kind) == "heart" and is_equal_approx(float(sv.bst["eye"]), float(SV.EYE_MAX)) and hpos.distance_to(pp) > 60.0 and String(sv.banner) == "THE STORM HEART"
+			sv.hurt_cd = 999.0                                      # (nothing but the storm itself is to count here)
+			var rings := 0
+			for rs3 in 220:
+				sv.step(0.016)
+				sv.hurt_cd = 999.0
+				rings = maxi(rings, (sv.globs as Array).filter(func(gq): return bool(gq.get("needle", false))).size())
+			var calm_eye: bool = float(sv.run["hp"]) == 1000.0 and not bool(sv.in_storm) and (sv.fp[hi] as Vector2) == hpos and rings >= 12 and float(sv.run["t"]) == t_before
+			if shots:
+				sv.swarm(30)
+				await snapshot.call(hpos + Vector2(0.0, 30.0), 0.8, 3, "sturmherz")
+			stand.call(hpos + Vector2(float(sv.bst["eye"]) + 16.0, 0.0))
+			for rs4 in 80:
+				sv.step(0.016)
+				sv.hurt_cd = 999.0
+			var lost: float = 1000.0 - float(sv.run["hp"])
+			var storm: bool = bool(sv.in_storm) and lost >= float(SV.STORM_DMG) * 2.0 and lost <= float(SV.STORM_DMG) * 4.0
+			stand.call(pp)
+			sv.fhp[hi] = float(sv.fmx[hi]) * 0.5
+			var zaps := false
+			var mites := 0
+			for rs5 in 520:
+				sv.step(0.016)
+				sv.hurt_cd = 999.0
+				zaps = zaps or (sv.shells as Array).any(func(s): return bool(s.get("zap", false)))
+				mites = maxi(mites, int(sv._cnt[KI["mite"]]))
+			var want_eye: float = lerpf(float(SV.EYE_MIN), float(SV.EYE_MAX), 0.5)
+			var closes: bool = absf(float(sv.bst["eye"]) - want_eye) < 3.0 and zaps and mites >= 3 and not bool(sv.in_storm)
+			sv.fhp[hi] = float(sv.fmx[hi]) * 0.2
+			var gliders := false
+			for rs6 in 700:
+				sv.step(0.016)
+				sv.hurt_cd = 999.0
+				gliders = gliders or not (sv.flock_warn as Dictionary).is_empty() or int(sv._cnt[KI["glider"]]) > 0
+			if shots:
+				await snapshot.call(hpos + Vector2(0.0, 30.0), 1.0, 3, "sturmherz_eng")
+			heart_ok = here and calm_eye and storm and closes and gliders and float(sv.bst["eye"]) < want_eye - 20.0
+			if not heart_ok:
+				print("COLWHITEC62A the heart: ", [here, calm_eye, storm, closes, gliders], " rings ", rings, " lost ", lost, " eye ", sv.bst.get("eye"), " want ", want_eye, " zaps ", zaps, " mites ", mites,
+					" hp ", sv.run["hp"], " t ", sv.run["t"], " from ", t_before)
+			# ---- put out, the stage is held
+			sv.run["hp"] = 1000.0
+			sv.run["t"] = SV.RUN_TIME
+			sv._hit(sv.boss_i(), 1000000000.0, pp)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			end_ok = bool(sv.over) and bool(sv.survived) and (sv.run["bosses"] as Array).has("heart") and g.minigame != null and g.minigame.has_method("is_sv_result") \
+				and bool(g.minigame.res.get("survived", false)) and int(g.minigame.res.get("cores", 0)) == 45 + 12 + 30
+			if not end_ok:
+				print("COLWHITEC62A the end: over ", sv.over, " held ", sv.survived, " bosses ", sv.run["bosses"], " window ", g.minigame, " ", g.minigame.res if g.minigame != null and g.minigame.has_method("is_sv_result") else {})
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+	check(rule_ok and worm_ok and worm2_ok and heart_ok and end_ok,
+		"62a, part 9c: the bosses of Whiteout: The Ice Worm at 7:30 and The Storm Heart when the time is up (twenty-seven kinds, their pictures, their cores); The Ice Worm (under the ice nothing reaches it, no weapon takes aim at it, no figure shows; it circles you, its shape showing; a mark where you stand, it breaks out and hurts and throws who stands there; above it can be hurt; it dives again; step off the mark and it misses; from two thirds down three marks and needles all round, from one third down five; put out, it leaves a weapon crate and the run goes on); The Storm Heart (it stands still in the eye of its storm, the clock stands; rings of needles; in the eye the storm does nothing to you, out there you lose health twice a second; the eye closes as it is worn down; lightning, mites, gliders at the last); put out, the stage is held and pays the cores of both  [%s %s %s %s %s]" % [rule_ok, worm_ok, worm2_ok, heart_ok, end_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 10a (Luz): the collection's category "Survivor": every kind of Survivor, open once you have put one
+## of it out, with how many of it you have put out so far.
+func _test_colcoll62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules: every kind has a home and a few words; what a run put out goes into the record; a kind met for the first time is named once
+	var homes := 0
+	var texts := true
+	for st in SV.FOE_HOME:
+		homes += (SV.FOE_HOME[st] as Array).size()
+	for kd in SV.FOE_ORDER:
+		var tx := String(SV.FOE_INFO.get(String(kd), ""))
+		texts = texts and tx.length() > 20 and not tx.contains("–") and String(SV.foe_home(String(kd))) != ""
+	var c0 := {}
+	var r0: Dictionary = SV.fresh()
+	r0["slain"] = {"shambler": 7, "runner": 2, "nobody": 5}
+	var s1: Dictionary = SV.settle(c0, r0, false)
+	var r1: Dictionary = SV.fresh()
+	r1["slain"] = {"shambler": 3, "foreman": 1}
+	var s2: Dictionary = SV.settle(c0, r1, false)
+	var rec0: Dictionary = SV.record(c0)
+	var rule_ok: bool = homes == SV.FOE_ORDER.size() and texts and (s1["new_foes"] as Array) == ["shambler", "runner"] and (s2["new_foes"] as Array) == ["foreman"] \
+		and int(rec0["slain"]["shambler"]) == 10 and int(rec0["slain"]["runner"]) == 2 and int(rec0["slain"]["foreman"]) == 1 and not (rec0["slain"] as Dictionary).has("nobody")
+	if not rule_ok:
+		print("COLCOLL62A rules: homes ", homes, " texts ", texts, " first ", s1["new_foes"], " then ", s2["new_foes"], " kept ", rec0["slain"])
+	# ---- down to Centauria, into the lobby, a run
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var run_ok := false
+	var win_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			sv.quiet = true
+			sv.clear_swarm()
+			sv._slain = PackedInt32Array()
+			sv.run["kills"] = 0
+			sv.run["hp"] = 1000.0
+			sv.run["weapons"] = []
+			# ---- the run counts kind by kind
+			var want := {"shambler": 4, "runner": 3, "spitter": 1}
+			for wk in want:
+				for q in int(want[wk]):
+					var fi: int = sv.add_foe(KI[wk], pp + Vector2(60.0 + q * 8.0, 40.0))
+					sv._hit(fi, 1000000.0, pp)
+			var sl: Dictionary = sv.slain()
+			var counted: bool = sl.size() == 3 and int(sl.get("shambler", 0)) == 4 and int(sl.get("runner", 0)) == 3 and int(sl.get("spitter", 0)) == 1 and int(sv.run["kills"]) == 8
+			# ---- the run ends: its count is kept, the new kinds are named
+			var said: Array = []
+			var hear := func(text: String, _c: Color) -> void:
+				said.append(text)
+			GameState.message.connect(hear)
+			sv.end(false)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			GameState.message.disconnect(hear)
+			var rec: Dictionary = SV.record(GameState.col_state())
+			var kept: bool = int((rec["slain"] as Dictionary).get("shambler", 0)) == 4 and int((rec["slain"] as Dictionary).get("runner", 0)) == 3 and int((rec["slain"] as Dictionary).get("spitter", 0)) == 1 \
+				and (rec["slain"] as Dictionary).size() == 3 and ((GameState.col_state().get("sv_last", {}) as Dictionary).get("new_foes", []) as Array).size() == 3
+			var named: bool = said.has("Collection: Survivor: Shambler, Runner, Spitter recorded.")
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+			run_ok = counted and kept and named
+			if not run_ok:
+				print("COLCOLL62A the run: ", [counted, kept, named], " slain ", sl, " kills ", sv.run.get("kills"), " kept ", rec["slain"], " said ", said)
+			# ---- the pilot's window: twenty-seven tiles by stage, three of them open, with their counts
+			var pw = main.pilot_window
+			pw.sub = 3
+			pw.coll_cat = "survivor"
+			pw.open(0)
+			for f14 in 4:
+				await get_tree().process_frame
+			var tiles: Array = pw.body.find_children("*", "PanelContainer", true, false).filter(func(nd): return (nd as Node).has_meta("sv_kind"))
+			var open_n: int = tiles.filter(func(nd): return bool((nd as Node).get_meta("sv_got"))).size()
+			var labels: Array = pw.body.find_children("*", "Label", true, false).map(func(nd): return String((nd as Label).text))
+			var buttons: Array = pw.body.find_children("*", "Button", true, false).map(func(nd): return String((nd as Button).text))
+			win_ok = tiles.size() == SV.FOE_ORDER.size() and open_n == 3 and labels.has("SURVIVOR  3 / 27") and labels.has("Put out: 4") and labels.has("Put out: 3") and labels.has("OUTBREAK  3 / 10") \
+				and labels.has("AI TAKEOVER  0 / 10") and labels.has("WHITEOUT  0 / 7") and labels.filter(func(t): return String(t) == "???").size() == 24 and labels.has("Shambler") \
+				and not labels.has("Hauler") and buttons.has("Survivor   3 / 27") and String(pw._count_text(12480)) == "12 480" and String(pw._count_text(999)) == "999"
+			if shots:
+				for f15 in 6:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a16_sammlung_drei.png")
+			Commands.execute({"type": "debug_casino", "sv": "slain"})
+			rec["slain"]["shambler"] = 12480
+			pw.rebuild()
+			for f16 in 6:
+				await get_tree().process_frame
+			var labels2: Array = pw.body.find_children("*", "Label", true, false).map(func(nd): return String((nd as Label).text))
+			win_ok = win_ok and labels2.has("SURVIVOR  27 / 27") and labels2.has("Put out: 12 480") and labels2.has("★ The Storm Heart") and labels2.has("Boss  •  Put out: 10") and not labels2.has("???")
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a16_sammlung_alle.png")
+			if not win_ok:
+				print("COLCOLL62A the window: tiles ", tiles.size(), " open ", open_n, " labels ", labels.slice(0, 14), " buttons ", buttons, " then ", labels2.slice(0, 8))
+			pw.close()
+	check(rule_ok and run_ok and win_ok,
+		"62a, part 10a: the collection's Survivor: every kind has a home and a few words; a run counts what it puts out kind by kind; at its end the count goes into the record and the kinds met for the first time are named; the pilot's window shows twenty-seven tiles by stage, a silhouette until one is put out, then its picture, its count and its words  [%s %s %s]" % [rule_ok, run_ok, win_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, parts 10b and 10c (Luz): the Survivor rig (what you wear in the arena, in ten steps by how far you have
+## come at the console; looks only) and the Champion's Regalia (its last step as a suit for outside: two drones on the
+## shoulders, the Silverblade Drone built in).
+func _test_colrig62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var GD = load("res://data/gear.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	# ---- the rules: the step goes by what you have bought; the debug menu can hold it
+	var c0 := {}
+	var rec0: Dictionary = SV.record(c0)
+	var steps: Array = [SV.rig_tier(c0)]
+	rec0["own"] = SV.UNLOCK_COST.keys()
+	steps.append(SV.rig_tier(c0))
+	for tq in SV.TUNE_ORDER:
+		rec0["tune"][String(tq)] = int(SV.TUNE_MAX)
+	steps.append(SV.rig_tier(c0))
+	rec0["reroll"] = (SV.REROLL_COST as Array).size()
+	steps.append(SV.rig_tier(c0))
+	rec0["revive"] = true
+	steps.append(SV.rig_tier(c0))
+	rec0["rig_force"] = 3
+	steps.append(SV.rig_tier(c0))
+	var rule_ok: bool = steps == [0, 5, 8, 9, 10, 3] and (SV.RIG_NAMES as Array).size() == int(SV.RIG_STEPS) + 1 and String(SV.RIG_SUIT) == "suit_survivor:A"
+	if not rule_ok:
+		print("COLRIG62A rules: steps ", steps)
+	# ---- the pictures: eleven steps, each its own, on a bigger canvas; lights from the first step on, more of them step by step,
+	# in all four masks at the last; the masks mirror with the figure; the Regalia is the last step, its helmet its own; nobody else has lights
+	var look: Dictionary = ChibiArt.PilotArt.default_look()
+	var datas: Array = []
+	var distinct := true
+	var sized := true
+	var lit_n: Array = []
+	for t in 11:
+		var lk: Dictionary = look.duplicate()
+		lk["sv"] = t
+		for d in 4:
+			for f in 4:
+				var im0: Image = ChibiArt.frame(lk, d, f).get_image()
+				sized = sized and im0.get_width() == ChibiArt.W + 2 * ChibiArt.SV_PAD.x and im0.get_height() == ChibiArt.H + ChibiArt.SV_PAD.y and not im0.is_invisible()
+		var dt: PackedByteArray = ChibiArt.frame(lk, 0, 0).get_image().get_data()
+		distinct = distinct and not datas.has(dt)
+		datas.append(dt)
+		var cnt := 0
+		for m in ChibiArt.glow(lk, 0, 0):
+			if m != null:
+				var mi: Image = (m as Texture2D).get_image()
+				for y in mi.get_height():
+					for x in mi.get_width():
+						cnt += int(mi.get_pixel(x, y).a > 0.5)
+		lit_n.append(cnt)
+	var rising := int(lit_n[0]) == 0 and int(lit_n[1]) > 0
+	for t2 in range(1, 11):
+		rising = rising and int(lit_n[t2]) >= int(lit_n[t2 - 1])
+	var lk10: Dictionary = look.duplicate()
+	lk10["sv"] = 10
+	var g2: Array = ChibiArt.glow(lk10, 2, 0)
+	var g3: Array = ChibiArt.glow(lk10, 3, 0)
+	var mirrored := g2.size() == 4 and g3.size() == 4 and not g2.has(null) and not g3.has(null)
+	if mirrored:
+		var flip: Image = (g2[1] as Texture2D).get_image().duplicate()
+		flip.flip_x()
+		mirrored = flip.get_data() == (g3[1] as Texture2D).get_image().get_data()
+	var lks: Dictionary = look.duplicate()
+	lks["suit"] = "suit_survivor"
+	var lkh: Dictionary = lks.duplicate()
+	lkh["helmet"] = true
+	var regalia: bool = ChibiArt.sv_tier(lks) == 10 and ChibiArt.frame(lks, 0, 0).get_image().get_data() == datas[10] and ChibiArt.frame(lkh, 0, 0).get_image().get_data() != datas[10] \
+		and not ChibiArt.glow(lkh, 0, 0).is_empty()
+	var plain: bool = ChibiArt.sv_tier(look) == -1 and ChibiArt.glow(look, 0, 0).is_empty() and ChibiArt.frame(look, 0, 0).get_width() == ChibiArt.W
+	var art_ok: bool = distinct and sized and rising and int(lit_n[10]) > int(lit_n[7]) + 10 and mirrored and regalia and plain
+	if not art_ok:
+		print("COLRIG62A the pictures: ", [distinct, sized, rising, mirrored, regalia, plain], " lights ", lit_n)
+	# ---- the Regalia as gear: two drone places on the shoulders, the blade built in, never sold
+	var gs: Dictionary = GD.stats("suit_survivor:A")
+	var bw: Dictionary = GD.stats("wp_silverblade:A")
+	var shops := true
+	for fq in ["independent", "assembly", "covenant", "directorate"]:
+		var off: Dictionary = GearShop.offer({"id": "test_rig_%s" % fq, "faction": fq, "tier": 3, "type": "military", "city": true})
+		shops = shops and not off.has("suit_survivor") and not off.has("wp_silverblade")
+	var gear_ok: bool = String(gs["builtin"]) == "wp_silverblade" and bool(gs["shoulder_drones"]) and int(gs["drones"]) == 2 and int(gs["weapons"]) == 3 and String(gs["name"]) == "Champion's Regalia" \
+		and bool(bw["blade"]) and bool(bw["builtin"]) and float(bw["charge"]) == 9.0 and float(bw["damage"]) > float(GD.stats("wp_silverblade:C")["damage"]) and not GD.all_ids().has("wp_silverblade:A") and shops
+	if not gear_ok:
+		print("COLRIG62A the gear: ", gs, " blade ", bw, " shops ", shops)
+	# ---- the blade in a fight (the debug arena): thrown at your target, it cuts it, jumps on to the next, comes back; then it has to
+	# get ready, whatever is in hand; at rest it hovers by your shoulder
+	var blade_ok := false
+	var ship0 = GameState.active()
+	var pl0 = main.view.player if main.view != null and is_instance_valid(main.view) else null
+	var gear0 = GameState.gear
+	var keep_gear0: Dictionary = gear0.to_dict()
+	if pl0 != null and is_instance_valid(pl0):
+		var pos0: Vector2 = pl0.position
+		gear0.suit = "suit_survivor:A"
+		gear0._fit_slots()
+		gear0.weapons[1] = "wp_laser_rifle:C"
+		gear0.refill()
+		Commands.execute({"type": "debug_arena", "world": "desert", "foes": []})
+		var ga = main.ground
+		var cb: GroundCombat = ga.combat if ga != null and is_instance_valid(ga) else null
+		if cb != null:
+			for fa0 in 4:
+				await get_tree().process_frame
+			var pp: Vector2 = ga.pilot.pos
+			var worn: bool = ChibiArt.sv_tier(ga.pilot.look) == 10 and cb.both_arms() and String(cb.blade_id()) == "wp_silverblade:A" and is_equal_approx(cb.blade_k(), 1.0) and cb.drone_places().size() == 2
+			var spots: Array = []
+			for a8 in 16:
+				for dist in [70.0, 90.0, 110.0]:
+					var cand: Vector2 = pp + Vector2.from_angle(a8 * TAU / 16.0) * float(dist)
+					if spots.size() < 2 and ga.map.free_at(cand, 5.0) and not cb.sight(pp, cand)["blocked"] and spots.all(func(sq): return (sq as Vector2).distance_to(cand) > 60.0):
+						spots.append(cand)
+			if spots.size() == 2:
+				cb.frozen = true
+				var fa: Dictionary = cb.spawn("bandit_rifleman", spots[0])
+				var fb: Dictionary = cb.spawn("bandit_rifleman", spots[1])
+				cb._wake(fa)
+				cb._wake(fb)
+				cb.step(0.05, Vector2.ZERO)
+				cb.lock(fa)
+				cb.lock_t = 0.0
+				cb.weapon_i = 0
+				cb.pilot_cool = 0.0
+				var sum := func(fo: Dictionary) -> float:
+					return float(fo["st"]["shield"]) + float(fo["st"]["armor"]) + float(fo["st"]["health"])
+				var a0: float = sum.call(fa)
+				var b0: float = sum.call(fb)
+				cb.step(0.02, Vector2.ZERO)
+				var thrown: bool = cb.blade_flying() and cb.blade_k() == 0.0 and String(ga.pilot.aim_weapon) == "wp_silverblade_out" and float(cb.blade_cool) == 9.0
+				var far := 0.0
+				var shot := false
+				for q in 400:
+					cb.pilot_cool = 0.0
+					cb.step(0.02, Vector2.ZERO)
+					if cb.blade_flying():
+						far = maxf(far, (cb.blade["pos"] as Vector2).distance_to(ga.pilot.pos))
+					if shots and not shot and cb.blade_flying() and q == 14:
+						shot = true
+						ga.story_cam = (ga.pilot.pos + (cb.blade["pos"] as Vector2)) * 0.5 + Vector2(0.0, -20.0)
+						ga.story_zoom = 2.0
+						ga._cam_c = ga.story_cam * GroundMap.SCALE
+						ga.input_enabled = false
+						for f11 in 4:
+							await get_tree().process_frame
+						get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a17_klinge.png")
+						ga.story_cam = Vector2.INF
+						ga.story_zoom = 0.0
+					if not cb.blade_flying():
+						break
+				var out_gone: bool = float(ga.pilot.sv_blade) >= 0.0             # (back: the walker shows it again)
+				var cut: bool = sum.call(fa) < a0 and sum.call(fb) < b0 and far > 50.0 and far <= 321.0
+				var back: bool = not cb.blade_flying() and cb.blade_k() < 0.2 and float(cb.blade_cool) > 8.0        # (back in your hand: only now it begins to get ready)
+				cb.pilot_cool = 0.0
+				cb.step(0.02, Vector2.ZERO)
+				var waits: bool = not cb.blade_flying()                   # (not ready: it is not thrown again)
+				cb.weapon_i = 1                                           # (it gets ready whatever is in hand)
+				for q2 in 30:
+					cb.step(0.4, Vector2.ZERO)
+				var ready: bool = is_equal_approx(cb.blade_k(), 1.0) and float(cb.blade_cool) == 0.0 and is_equal_approx(float(ga.pilot.sv_blade), 1.0)
+				blade_ok = worn and thrown and cut and back and out_gone and waits and ready
+				if not blade_ok:
+					print("COLRIG62A the blade: ", [worn, thrown, cut, back, out_gone, waits, ready], " far ", far, " a ", sum.call(fa), " of ", a0, " b ", sum.call(fb), " of ", b0, " cool ", cb.blade_cool, " k ", cb.blade_k())
+				cb.frozen = false
+			else:
+				print("COLRIG62A the blade: no two free spots near ", pp)
+		else:
+			print("COLRIG62A the arena did not open")
+		main.close_deck(false)
+		main._close_planet_map()
+		if main._fade_tw != null and main._fade_tw.is_valid():
+			main._fade_tw.kill()
+		if main._fade != null:
+			main._fade.color = Color(0, 0, 0, 0)
+		ship0.docked_at = ""
+		pl0.visible = true
+		pl0.scale = Vector2.ONE
+		pl0.position = pos0
+		pl0.order = {"type": "idle"}
+		Universe.debug_bodies.clear()
+		Universe.debug_sites.clear()
+		gear0.from_dict(keep_gear0)
+		gear0.aboard()
+		gear0.combat_t = 0.0
+		main._update_input()
+		for fa1 in 6:
+			await get_tree().process_frame
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var room_ok := false
+	var worn_ok := false
+	var given_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		var own_suit: String = GameState.gear.suit
+		var rec: Dictionary = SV.record(GameState.col_state())
+		# ---- Survivor's room shows the rig and its step
+		CD.switch_mode(GameState.col_state(), "survivor")
+		Commands.execute({"type": "debug_casino", "sv": "rig:4"})
+		g._col_prep_open()
+		for f1 in 5:
+			await get_tree().process_frame
+		var sp = g.minigame
+		if sp != null and sp.has_method("is_sv_prep"):
+			var vs2: Vector2 = get_viewport().get_visible_rect().size
+			var rb: Rect2 = sp.rig_rect()
+			var roomy: bool = vs2.x >= 1900.0 and vs2.y >= 1060.0     # (the room is laid out for a full screen)
+			room_ok = SV.rig_tier(GameState.col_state()) == 4 and rb.size.x > 400.0 and (not roomy or (Rect2(Vector2.ZERO, vs2).encloses(rb) and not rb.intersects(sp.sv_weapon_rect(0)) and not rb.intersects(sp.ready_rect())))
+			if shots:
+				for f2 in 8:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a17_raum.png")
+		g._close_game()
+		for f3 in 3:
+			await get_tree().process_frame
+		# ---- a run: you wear the rig at its step, nothing across your back; the debug menu changes it as you stand there
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			sv.quiet = true
+			sv.clear_swarm()
+			var in4: bool = int(g.pilot.look.get("sv", -1)) == 4 and String(g.pilot.look.get("suit", "x")) == "" and not bool(g.pilot.look.get("helmet", true)) and String(g.pilot.slung) == "" \
+				and not ChibiArt.glow(g.pilot.look, 0, 0).is_empty() and GameState.col_own_gear != null
+			Commands.execute({"type": "debug_casino", "sv": "rig:+"})
+			var in5: bool = int(g.pilot.look.get("sv", -1)) == 5
+			if shots:
+				for st_n in [0, 5, 8, 10]:
+					Commands.execute({"type": "debug_casino", "sv": "rig:%d" % st_n})
+					g.pilot.dir = 0
+					g.story_cam = g.pilot.pos + Vector2(0.0, -14.0)
+					g.story_zoom = 2.6
+					g._cam_c = g.story_cam * GroundMap.SCALE
+					sv.frozen = true
+					sv.banner_t = 0.0
+					for f7 in 14:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a17_arena_stufe%d.png" % st_n)
+				g.pilot.dir = 1
+				for f8 in 6:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a17_arena_stufe10_hinten.png")
+				g.pilot.dir = 0
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				sv.frozen = false
+			Commands.execute({"type": "debug_casino", "sv": "rig:auto"})
+			var in0: bool = int(g.pilot.look.get("sv", -1)) == 0 and int(rec.get("rig_force", 0)) == -1
+			sv.end(false)
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and not (g.minigame != null and g.minigame.has_method("is_sv_result")):
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f9 in 12:
+				await get_tree().process_frame
+			var off_again: bool = String(g.level) == "zcolin" and not g.pilot.look.has("sv") and String(g.pilot.look.get("suit", "")) == String(GD.family(own_suit)) and GameState.col_own_gear == null
+			worn_ok = in4 and in5 and in0 and off_again
+			if not worn_ok:
+				print("COLRIG62A worn: ", [in4, in5, in0, off_again], " look ", g.pilot.look, " level ", g.level)
+		# ---- everything bought at the console: the Regalia is yours, once; put on, it brings its blade and two drone places
+		var gear = GameState.gear
+		for i2 in gear.inv.size():
+			gear.inv[i2] = {}
+		var said: Array = []
+		var hear := func(text: String, _c: Color) -> void:
+			said.append(text)
+		GameState.message.connect(hear)
+		rec["cores"] = 100000
+		var not_yet: bool = not GameState.sv_give_suit() and gear.count("suit_survivor:A") == 0
+		for uq in SV.UNLOCK_COST:
+			Commands.execute({"type": "sv_buy", "what": "unlock", "id": String(uq)})
+		for tq2 in SV.TUNE_ORDER:
+			for rk in int(SV.TUNE_MAX):
+				Commands.execute({"type": "sv_buy", "what": "tune", "id": String(tq2)})
+		for rr in 3:
+			Commands.execute({"type": "sv_buy", "what": "reroll"})
+		var before_last: bool = gear.count("suit_survivor:A") == 0 and SV.rig_tier(GameState.col_state()) == 9
+		Commands.execute({"type": "sv_buy", "what": "revive"})
+		GameState.message.disconnect(hear)
+		var got: bool = gear.count("suit_survivor:A") == 1 and bool(rec.get("suit", false)) and SV.rig_tier(GameState.col_state()) == 10 \
+			and said.any(func(tx): return String(tx).contains("gives you the Champion's Regalia"))
+		Commands.execute({"type": "debug_casino", "sv": "all"})
+		var once: bool = gear.count("suit_survivor:A") == 1
+		var slot := -1
+		for i3 in gear.inv.size():
+			if not (gear.inv[i3] as Dictionary).is_empty() and String(gear.inv[i3]["id"]) == "suit_survivor:A":
+				slot = i3
+		var e1: String = gear.equip_from_inv(slot) if slot >= 0 else "not there"
+		gear.refill()
+		g.pilot.look = g.pilot_look()
+		for f10 in 3:
+			await get_tree().process_frame
+		var on: bool = e1 == "" and String(gear.suit) == "suit_survivor:A" and String(gear.weapons[0]) == "wp_silverblade:A" and gear.unequip("weapons", 0) != "" and (gear.drones as Array).size() == 2 \
+			and ChibiArt.sv_tier(g.pilot.look) == 10 and String(g.pilot.look.get("suit", "")) == "suit_survivor" and is_equal_approx(float(g.pilot.sv_blade), 1.0)
+		given_ok = not_yet and before_last and got and once and on
+		if not given_ok:
+			print("COLRIG62A given: ", [not_yet, before_last, got, once, on], " put on ", e1, " suit ", gear.suit, " weapons ", gear.weapons, " drones ", gear.drones, " said ", said.slice(-3), " look ", g.pilot.look)
+		if shots:
+			g.pilot.dir = 0
+			g.story_cam = g.pilot.pos + Vector2(0.0, -14.0)
+			g.story_zoom = 2.6
+			g._cam_c = g.story_cam * GroundMap.SCALE
+			for f12 in 12:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a17_draussen.png")
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+	check(rule_ok and art_ok and gear_ok and room_ok and worn_ok and given_ok and blade_ok,
+		"62a, parts 10b and 10c: the Survivor rig: its step by what you have bought at the console (0 to 10), eleven pictures on a bigger canvas, lights from the first step on in four masks that mirror with the figure; Survivor's room shows it; in a run you wear it and nothing across your back, after the run your own again; the Champion's Regalia: never sold, given once with the last thing bought, its blade in the first weapon place, two drone places on the shoulders; the Silverblade Drone in a fight: thrown at your target, it cuts it and the next, comes back, then has to get ready, whatever is in hand  [%s %s %s %s %s %s %s]" % [rule_ok, art_ok, gear_ok, room_ok, worn_ok, given_ok, blade_ok])
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
 func _test_colfight62a(_view: SystemView) -> void:
 	var CG = load("res://scripts/ground/colosseum_gen.gd")
 	var CD = load("res://data/colosseum.gd")
@@ -18451,7 +25638,7 @@ func _test_colfight62a(_view: SystemView) -> void:
 	var map_ok := true
 	for sd in CD.SETTINGS:
 		var vm: GroundMap = CV.build(String(sd["id"]), 3)
-		var cover: int = (vm.objects as Array).filter(func(o): return String(o.get("kind", "")) in ["rock", "crates", "barrier", "bulwark", "barrel"]).size()
+		var cover: int = (vm.objects as Array).filter(func(o): return String(o.get("kind", "")) in ["rock", "crates", "barrier", "bulwark", "barrel", "tree", "lava_rock"]).size()
 		var one: bool = vm.w == CV.VW and vm.h == CV.VH and vm.w * vm.h > CG.AW * CG.AH and vm.foe_spawns.size() == 3 and vm.free_at(vm.spawn, 4.0) and cover >= 25 \
 			and (vm.foe_spawns as Array).all(func(p): return vm.free_at(p, 4.0) and vm.path(vm.spawn, p).size() > 0 and (p as Vector2).distance_to(vm.spawn) > 500.0) \
 			and (vm.zones as Array).any(func(z): return String(z.get("kind", "")) == "col_giveup") and String(vm.get_meta("col_vr", "")) == String(sd["id"]) \

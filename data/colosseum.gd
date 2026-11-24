@@ -31,11 +31,37 @@ const BOSSES := [
 ]
 ## The settings of the fight (Luz: whole maps in different settings, far larger than the arena; the arena builds them
 ## as holograms): id, name, the body whose ground it has, what stands there.
+## Part 5 (Luz): six settings, and every one has a danger of its own ("hazard", "danger": what it is called):
+##   cloud: clouds that block the sight drift over the field (dust) or burst from vents (steam)
+##   ice:   sheets of ice: you slide on them
+##   burn:  ground that burns whoever stands on it: plates under current that pulse on and off, fields of embers
+##   slow:  undergrowth that holds you back
 const SETTINGS := [
-	{"id": "dust", "name": "Dust Canyon", "body": "desert", "text": "Red rock and dry wind.", "cover": ["rock", "rock", "rock", "crates", "barrier"]},
-	{"id": "ice", "name": "Glacier Shelf", "body": "ice", "text": "Blue ice under a white sky.", "cover": ["rock", "rock", "barrier", "barrier", "bulwark"]},
-	{"id": "yard", "name": "Container Yard", "body": "metal", "text": "Stacks of steel, floodlights.", "cover": ["crates", "crates", "crates", "bulwark", "barrier", "barrel"]},
+	{"id": "dust", "name": "Dust Canyon", "body": "desert", "text": "Red rock and dry wind.", "cover": ["rock", "rock", "rock", "crates", "barrier"], "made": false,
+		"hazard": "cloud", "danger": "Dust devils: they hide whoever stands behind them."},
+	{"id": "ice", "name": "Glacier Shelf", "body": "ice", "text": "Blue ice under a white sky.", "cover": ["rock", "rock", "barrier", "barrier", "bulwark"], "made": false,
+		"hazard": "ice", "danger": "Sheets of bare ice: you slide on them."},
+	{"id": "yard", "name": "Container Yard", "body": "metal", "text": "Stacks of steel, floodlights.", "cover": ["crates", "crates", "crates", "bulwark", "barrier", "barrel"], "made": true,
+		"hazard": "burn", "danger": "Plates under current: they pulse on and off."},
+	{"id": "jungle", "name": "Jungle Ruin", "body": "jungle", "text": "Old stone under green.", "cover": ["tree", "tree", "rock", "rock", "barrier"], "made": false,
+		"hazard": "slow", "danger": "Undergrowth: it holds you back."},
+	{"id": "lava", "name": "Lava Field", "body": "lava", "text": "Black rock, red light.", "cover": ["lava_rock", "lava_rock", "lava_rock", "barrel", "barrier"], "made": false,
+		"hazard": "burn", "danger": "Fields of embers: they burn whoever stands on them."},
+	{"id": "neon", "name": "Neon Yard", "body": "barren", "text": "A back lot of the city at night.", "cover": ["crates", "crates", "bulwark", "bulwark", "barrier", "barrel"], "made": true,
+		"hazard": "cloud", "danger": "Steam vents: they burst and hide the lot."},
 ]
+## The ground plans, mixed with every setting: id, name.
+const LAYOUTS := [["open", "an open field"], ["canyon", "a canyon"], ["fortress", "a fortress"], ["lanes", "three lanes"]]
+## Part 5: who may stand beside you in Team Deathmatch. The story's people come first (Luz: Rook to begin with; how
+## that comes about follows); a chance acquaintance of the arena joins them; later crew with the standing of a
+## gladiator. `quality`: where they begin (F, D, C, B, A, as crew), and how fast they grow with your rank and your run.
+const MATES := [
+	{"id": "rook", "name": "Rook Varga", "who": "rook", "quality": "C", "weapon": "wp_smg", "stance": "flank", "text": "Gunner of the Maul. Comes round the side."},
+]
+const MATE_Q := ["F", "D", "C", "B", "A"]
+const MATE_WEAPONS := ["wp_rifle", "wp_shotgun", "wp_smg", "wp_laser_rifle"]
+const TEAM_SIZE := 2               # how many stand beside you
+const RUN_KEYS := ["points", "wins", "streak", "best", "fights", "round", "fit"]       # what a mode's run is made of
 const Q_COST := {"F": 0, "E": 1, "D": 2, "C": 3, "B": 5, "A": 7}      # what a quality adds to a piece's cost
 ## What a piece costs at quality F (grenades and what goes on the belt have no quality: their place's cost).
 const BASE := {
@@ -62,13 +88,98 @@ const PLAY := [
 const MODES := [
 	{"id": "king", "name": "King of the Colosseum", "open": true,
 		"text": "You against three: one strong, two weak. Every win makes the next round harder and pays more."},
-	{"id": "team", "name": "Team Deathmatch", "open": false, "text": "Three against three strong ones."},
-	{"id": "survivor", "name": "Survivor", "open": false, "text": "Alone against waves without end."},
+	{"id": "team", "name": "Team Deathmatch", "open": true, "text": "Three against three strong ones. You pick two to stand beside you. Lost only when your whole team is out."},
+	{"id": "survivor", "name": "Survivor", "open": true, "text": "Alone against swarms without end. Your weapons fire by themselves."},
 ]
 
 
 static func fresh() -> Dictionary:
-	return {"points": 0, "wins": 0, "streak": 0, "best": 0, "fights": 0, "round": 1, "play": "single", "mode": "", "fit": default_fit(), "xp": 0, "seen": false}
+	return {"points": 0, "wins": 0, "streak": 0, "best": 0, "fights": 0, "round": 1, "play": "single", "mode": "", "fit": default_fit(), "xp": 0, "seen": false,
+		"runs": {}, "mates": [], "team": []}
+
+
+## Part 5 (Luz): every mode has a run of its own (its round, its wins in a row, its gear points, its fit). The run
+## of the mode you are in lies open in the state itself; the others wait in "runs". Switching puts one by and takes
+## the other out (a mode never played yet begins fresh). The rank belongs to all of them.
+static func switch_mode(col: Dictionary, mode: String) -> void:
+	var old := String(col.get("mode", ""))
+	if old == mode:
+		return
+	if not col.has("runs"):
+		col["runs"] = {}
+	if old != "":
+		var keep := {}
+		for k in RUN_KEYS:
+			keep[k] = col[k]
+		col["runs"][old] = keep
+		var nxt: Dictionary = col["runs"].get(mode, {})
+		var base := fresh()
+		for k2 in RUN_KEYS:
+			col[k2] = nxt[k2] if nxt.has(k2) else base[k2]
+		col["runs"].erase(mode)
+	col["mode"] = mode
+
+
+static func mode_name(id: String) -> String:
+	for m in MODES:
+		if String(m["id"]) == id:
+			return String(m["name"])
+	return "The Colosseum"
+
+
+## Who may stand beside you: the story's people, then the arena's chance acquaintances kept in your state (the
+## first is made when first asked for). Each: {"id", "name", "who" ("" or a character of the story), "quality",
+## "weapon", "stance", "seed", "text"}.
+static func mates(col: Dictionary) -> Array:
+	if not col.has("mates") or (col["mates"] as Array).is_empty():
+		var MG = load("res://data/minigames.gd")
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		col["mates"] = [{"id": "mate_1", "name": "%s %s" % [String(MG.FIRST[rng.randi() % MG.FIRST.size()]), String(MG.LAST[rng.randi() % MG.LAST.size()])], "who": "", "quality": "F",
+			"weapon": String(MATE_WEAPONS[rng.randi() % MATE_WEAPONS.size()]), "stance": String(["aggressive", "careful", "flank"][rng.randi() % 3]), "seed": rng.randi() % 100000,
+			"text": "New to the lists, like you."}]
+	return MATES + (col["mates"] as Array)
+
+
+## The two who stand beside you now (their ids in "team"; whoever is missing is filled from the list).
+static func team(col: Dictionary) -> Array:
+	var all := mates(col)
+	var ids: Array = (col.get("team", []) as Array).filter(func(id): return all.any(func(m): return String(m["id"]) == String(id)))
+	for m in all:
+		if ids.size() < TEAM_SIZE and not String(m["id"]) in ids and not bool(col.get("team_open", false)):
+			ids.append(String(m["id"]))
+	col["team"] = ids.slice(0, TEAM_SIZE)
+	return all.filter(func(m): return String(m["id"]) in (col["team"] as Array))
+
+
+## How good one who stands beside you is now: their own quality sets where they begin and how fast they grow; your
+## rank and your run in this mode make them better.
+static func mate_quality(m: Dictionary, col: Dictionary) -> String:
+	var base := maxi(0, MATE_Q.find(String(m.get("quality", "F"))))
+	var grow := float(rank(col)) + float(int(col.get("streak", 0))) / 3.0
+	return String(MATE_Q[clampi(base + int(grow * (0.5 + 0.125 * base)), 0, MATE_Q.size() - 1)])
+
+
+## One who stands beside you as a member of a ground team (what the fights on foot know).
+static func mate_member(m: Dictionary, col: Dictionary) -> Dictionary:
+	var q := mate_quality(m, col)
+	var look: Dictionary = {}
+	if String(m.get("who", "")) != "":
+		look = load("res://scripts/core/story.gd").look_of(String(m["who"]))
+	else:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(m.get("seed", 1))
+		look = ChibiArt.PilotArt.random_look(rng)
+	return {"name": String(m["name"]), "look": look, "quality": q, "stance": String(m.get("stance", "careful")), "role": "",
+		"gear": {"suit": "suit_mil_light:%s" % q, "weapons": ["%s:%s" % [String(m.get("weapon", "wp_rifle")), q], ""], "belt": []}}
+
+
+## The rest of a fight worked out without being fought (you are out and end it): the chance that your side wins is
+## its share of what both sides still have.
+static func sim_win(rng: RandomNumberGenerator, ours: float, theirs: float) -> bool:
+	if ours <= 0.0:
+		return false
+	return rng.randf() < ours / maxf(0.001, ours + theirs)
 
 
 ## Your rank (0 … 4) from your rank points.
@@ -103,6 +214,8 @@ static func applause_db(col: Dictionary) -> float:
 
 ## How full the stands are (0.2 … 1): fuller the longer your run and the higher your rank.
 static func crowd(col: Dictionary) -> float:
+	if String(col.get("mode", "")) == "survivor":       # part 7 (Luz): in Survivor the stands fill with how far you have come in that mode
+		return lerpf(0.2, 1.0, load("res://data/survivor.gd").progress(col))
 	return clampf(0.22 + 0.07 * int(col.get("streak", 0)) + 0.12 * rank(col), 0.2, 1.0)
 
 
@@ -222,13 +335,13 @@ static func totals(fit: Dictionary) -> Dictionary:
 ## Who waits in the arena in a round of King of the Colosseum: one strong, two weak, drawn by lot (`salt`: so that
 ## the lot falls the same for the preview and the fight): [{"who": a fighter of ColosseumGen.FIGHTERS, "strong":
 ## bool, "boss": -1 or a named one of BOSSES}]. Every BOSS_EVERY rounds a named opponent stands in the strong one's place.
-static func opponents(round_no: int, fighters: int, salt: int = 0) -> Array:
+static func opponents(round_no: int, fighters: int, salt: int = 0, mode: String = "king") -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("col_round_%d_%d" % [round_no, salt])
 	var pool: Array = range(fighters)
 	var out: Array = []
 	for i in 3:
-		out.append({"who": int(pool.pop_at(rng.randi() % pool.size())), "strong": i == 0, "boss": -1})
+		out.append({"who": int(pool.pop_at(rng.randi() % pool.size())), "strong": i == 0 or mode == "team", "boss": -1})      # (Team Deathmatch: three strong ones)
 	if round_no % BOSS_EVERY == 0:
 		out[0]["boss"] = posmod(round_no / BOSS_EVERY - 1, BOSSES.size())
 	return out
@@ -245,15 +358,30 @@ static func foe_of(o: Dictionary, round_no: int, slot_i: int) -> Dictionary:
 		"quality": String(qs[mini(5, (round_no - 1) / 3)])}
 
 
-## The setting a round is fought in.
+## For trying things out (debug menu, tests): {"setting": id, "layout": id} instead of the lot.
+static var force := {}
+
+
+## The setting a round is fought in, and its ground plan (both by lot).
 static func setting(round_no: int, salt: int = 0) -> Dictionary:
+	for s in SETTINGS:
+		if String(s["id"]) == String(force.get("setting", "")):
+			return s
 	return SETTINGS[posmod(hash("col_map_%d_%d" % [round_no, salt]), SETTINGS.size())]
 
 
-## What a win in a round pays: Coins, gear points, rank points.
-static func reward(round_no: int) -> Dictionary:
+static func layout(round_no: int, salt: int = 0) -> String:
+	for l in LAYOUTS:
+		if String(l[0]) == String(force.get("layout", "")):
+			return String(l[0])
+	return String(LAYOUTS[posmod(hash("col_plan_%d_%d" % [round_no, salt]), LAYOUTS.size())][0])
+
+
+## What a win in a round pays: Coins, gear points, rank points (Team Deathmatch pays half as much again).
+static func reward(round_no: int, mode: String = "king") -> Dictionary:
 	var boss := round_no % BOSS_EVERY == 0
-	return {"coins": (30 + 10 * round_no) * (3 if boss else 1), "points": 2 + (round_no - 1) / 3 + (3 if boss else 0), "xp": (10 + 5 * round_no) * (2 if boss else 1)}
+	var k := 1.5 if mode == "team" else 1.0
+	return {"coins": int((30 + 10 * round_no) * (3 if boss else 1) * k), "points": 2 + (round_no - 1) / 3 + (3 if boss else 0), "xp": int((10 + 5 * round_no) * (2 if boss else 1) * k)}
 
 
 ## A fight is over. Won: the reward (the Coins are paid by the caller), the run goes on to the next round. Lost: the
@@ -265,7 +393,7 @@ static func settle(col: Dictionary, won: bool) -> Dictionary:
 	col["fights"] = int(col.get("fights", 0)) + 1
 	var out := {"won": won, "coins": 0, "points": 0, "xp": 0, "round": rnd, "rank_up": false, "lost_points": 0}
 	if won:
-		var rw := reward(rnd)
+		var rw := reward(rnd, String(col.get("mode", "king")))
 		out["coins"] = int(rw["coins"])
 		out["points"] = int(rw["points"])
 		out["xp"] = int(rw["xp"])

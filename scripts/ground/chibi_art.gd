@@ -28,6 +28,8 @@ const SH := 5                         # half the shoulders' width (± body type)
 const ARM := 3
 
 static var _cache := {}
+static var _glow_cache := {}          # 62a, part 10b: the Survivor rig's lights: key -> four masks
+static var _lit: Array = []           # … of the figure being drawn: [x, y, mask]
 ## 0.7.51.10 (Luz): the powers' guards wear the combat suits in their own colours – [plate, light]
 const LIVERY := {
 	"independent": [Color(0.22, 0.23, 0.28), Color(0.3, 0.95, 1.0)],
@@ -41,21 +43,83 @@ const LIVERY := {
 
 
 static func frame(look: Dictionary, dir: int, f: int) -> Texture2D:
+	var l := _look(look, dir)
+	var key := _fkey(l, dir, f)
+	if not _cache.has(key):
+		_lit = []
+		var img := _draw(l, 2 if dir == 3 else dir, f)
+		if dir == 3:
+			img.flip_x()
+		if int(l["sv"]) >= 0:
+			# 62a, part 10b: the Survivor rig on its bigger canvas; its lights are kept apart, for the walker to bring alive
+			var w := img.get_width()
+			if dir == 3:
+				for e in _lit:
+					e[0] = w - 1 - int(e[0])
+			_rim_all(img)
+			_outline_all(img)
+			var imgs: Array = [null, null, null, null]
+			for e2 in _lit:
+				var g := clampi(int(e2[2]), 0, 3)
+				if imgs[g] == null:
+					imgs[g] = Image.create(w, img.get_height(), false, Image.FORMAT_RGBA8)
+				(imgs[g] as Image).set_pixel(int(e2[0]), int(e2[1]), Color.WHITE)
+				img.set_pixel(int(e2[0]), int(e2[1]), SV_LIGHT.darkened(0.3))
+			var masks: Array = [null, null, null, null]
+			for g2 in 4:
+				if imgs[g2] != null:
+					masks[g2] = ImageTexture.create_from_image(imgs[g2])
+			_glow_cache[key] = masks
+		else:
+			_rim(img)
+			_outline(img)
+		_cache[key] = ImageTexture.create_from_image(img)
+	return _cache[key]
+
+
+## The look as the drawing wants it: the portrait's fields, the suit, the helmet, the livery, the Survivor rig's step.
+static func _look(look: Dictionary, dir: int) -> Dictionary:
 	var l := PilotArt.clean(look)
 	l["suit"] = String(look.get("suit", ""))             # 0.7.51.2: the suit (family) and, outside, its helmet
 	l["helmet"] = bool(look.get("helmet", false))
 	l["livery"] = String(look.get("livery", ""))            # 0.7.51.10: a power's colours on a combat suit
 	l["arm_up"] = bool(look.get("arm_up", false))            # 0.7.52.14: the Pathfinder's laser arm raised (drawn by the walker)
 	l["mirror"] = dir == 3                                   # package 56: the sidecut shows its long side facing right
-	var key := "%s_%s%d%s_%d_%d%d" % [PilotArt._key(l), l["suit"], int(l["helmet"]), l["livery"], dir, f, int(l["arm_up"])]
-	if not _cache.has(key):
-		var img := _draw(l, 2 if dir == 3 else dir, f)
-		if dir == 3:
-			img.flip_x()
-		_rim(img)
-		_outline(img)
-		_cache[key] = ImageTexture.create_from_image(img)
-	return _cache[key]
+	l["sv"] = sv_tier(look)                                  # 62a, part 10b: the Survivor rig (-1: none)
+	return l
+
+
+static func _fkey(l: Dictionary, dir: int, f: int) -> String:
+	return "%s_%s%d%s_%d_%d%d" % [PilotArt._key(l), l["suit"], int(l["helmet"]), l["livery"], dir, f, int(l["arm_up"])] + ("" if int(l["sv"]) < 0 else "_sv%d" % int(l["sv"]))
+
+
+## 62a, part 10b: the step of the Survivor rig this look wears: -1 none, 0 (undershirt and trousers) to 10 (the whole
+## regalia). The Champion's Regalia, the suit for outside the arena, is the last step.
+static func sv_tier(look: Dictionary) -> int:
+	if String(look.get("suit", "")) == "suit_survivor":
+		return 10
+	return clampi(int(look.get("sv", -1)), -1, 10)
+
+
+## … its lights as four masks the size of the figure's picture (white where a light sits; null where a mask is empty):
+## 0 beats slowly (the core, the belt, the bracers), 1 to 3 are lit one after another (the seams, the cape's bands, the
+## ring behind the head). [] when the look has no lights.
+static func glow(look: Dictionary, dir: int, f: int) -> Array:
+	if sv_tier(look) < 1:
+		return []
+	var key := _fkey(_look(look, dir), dir, f)
+	if not _glow_cache.has(key):
+		frame(look, dir, f)
+	return _glow_cache.get(key, [])
+
+
+## … and the colour its light wanders through at the last step: gold, green, blue, violet, pink (no red: red on the
+## ground is the others').
+static func sv_hue(t: float) -> Color:
+	var cols := [Color(1.0, 0.85, 0.35), Color(0.4, 1.0, 0.55), Color(0.35, 0.8, 1.0), Color(0.7, 0.5, 1.0), Color(1.0, 0.5, 0.85)]
+	var x := fposmod(t, 1.0) * cols.size()
+	var i := int(x) % cols.size()
+	return (cols[i] as Color).lerp(cols[(i + 1) % cols.size()], x - floorf(x))
 
 
 static func _px(img: Image, x: int, y: int, c: Color) -> void:
@@ -80,6 +144,13 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	var outfit := int(l["outfit"])
 	var suit := String(l.get("suit", ""))
 	var sd: Dictionary = GearData.SUITS.get(suit, {})
+	var svt := int(l.get("sv", -1))                          # 62a, part 10b: the Survivor rig (0 … 10; -1: none), drawn by its own rules (_sv_frame)
+	if svt >= 0:
+		sd = {}
+		suit = ""
+		outfit = 0
+		c1 = SV_SHIRT if svt < 6 else SV_UNDER
+		c2 = Color(0.3, 0.3, 0.35)
 	if not sd.is_empty():
 		# 0.7.51.2: in the suit – its colours, plates on a combat suit, a zip and chest light on the others
 		c1 = sd["col"]
@@ -112,6 +183,11 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	if not sd.is_empty():
 		pants = c1.darkened(0.12) if not combat else c1
 		boot = plate.darkened(0.45) if combat else Color(0.25, 0.26, 0.3)
+	if svt >= 0:
+		pants = SV_PANTS if svt < 6 else SV_UNDER.lightened(0.05)
+		boot = Color(0.2, 0.17, 0.15)
+		if svt >= 6:
+			hand = Color(0.15, 0.15, 0.19)                       # gloves
 	var step := 0 if f == 0 or f >= 3 else (1 if f == 1 else -1)
 	var side := dir == 2
 	var back := dir == 1
@@ -169,6 +245,10 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 			_r(img, cx - 1, torso_top + 1, 2, TORSO - 2, c2.lightened(0.1))        # the shirt under the jacket
 			_r(img, cx - 2, torso_top + 1, 1, 3, c1.darkened(0.25))                # lapels
 			_r(img, cx + 1, torso_top + 1, 1, 3, c1.darkened(0.25))
+		elif svt >= 0:
+			if svt < 6:
+				_r(img, cx - 1, torso_top, 2, 2, skin)                            # the undershirt's neck
+				_r(img, cx - 2, torso_top + 2, 4, 1, c1.darkened(0.12))
 		else:
 			_r(img, cx, torso_top + 1, 1, TORSO - 3, c1.darkened(0.25))           # zip
 			_r(img, cx - sh + 2, torso_top + 2, 2, 2, c2)                          # chest patch
@@ -193,6 +273,9 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 		_r(img, tx - 1, torso_top, 3, 2, c2.lightened(0.1))                        # shoulder plates
 		if not side:
 			_r(img, tx + tw - 2, torso_top, 3, 2, c2)
+	var c1_keep := c1
+	if svt >= 0 and svt < 6:
+		c1 = skin                                            # (62a, part 10b: bare arms until the undersuit comes)
 	# ---- arms and hands (swinging when walking)
 	var al := TORSO + 1
 	if side:
@@ -217,6 +300,8 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 			_r(img, tx + tw, torso_top + 1 + al_r, ARM, 2, hand.darkened(0.15))
 		if up:
 			_r(img, (tx + tw) if not back else (tx - ARM), torso_top, ARM, 3, c1.darkened(0.2))   # the shoulder only
+	var armc := c1
+	c1 = c1_keep
 	# 0.7.51.2: the suit's life-support pack – on the back, its edge seen from the side
 	if not sd.is_empty() and not sitting:
 		var pk := c1.darkened(0.35)
@@ -329,6 +414,8 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	# with a dark visor (combat)
 	if bool(l.get("helmet", false)) and not sd.is_empty():
 		_helmet(img, suit, c1, c2, plate, glow, hx, head_top, head_bot, ey, side, back)
+	if svt >= 0:
+		return _sv_frame(img, svt, bool(l.get("helmet", false)), sitting, step, cx, tx, tw, sh, torso_top, leg_top, hx, head_top, head_bot, ey, side, back, armc, hand)
 	if senate:
 		return _senate_frame(img, suit, plate, glow, bool(l.get("helmet", false)), sitting, cx, tx, tw, torso_top, leg_top, hx,
 			head_top, side, back)
@@ -337,6 +424,400 @@ static func _draw(l: Dictionary, dir: int, f: int) -> Image:
 	if suit == "suit_mil_hierarch":
 		return _cape_frame(img, bool(l.get("helmet", false)), sitting, cx, tx, tw, torso_top, leg_top, hx, head_top, side, back)
 	return img
+
+# ---------------------------------------------------------------- package 62a, part 10b (Luz): the Survivor rig
+
+## Package 62a, part 10b (Luz): what you wear in the Colosseum's Survivor. It shows how far you have come at the console
+## (SurvivorData.progress) in ten steps, and changes nothing else. An undershirt and trousers at first; then, every
+## tenth, one more: 1 armoured boots and a belt with the first light; 2 bracers; 3 greaves and knee caps; 4 a cuirass
+## with its core; 5 pauldrons edged in gold; 6 a black undersuit, thigh plates, gloves; 7 seams of light; 8 a cape with
+## a gold hem; 9 a gorget and a laurel of light; 10 the whole regalia: high pauldrons, bands of light running down the
+## cape, a ring of light behind the head. The Champion's Regalia ("suit_survivor", for outside the arena) is that last
+## step, with a closed helmet where one is needed.
+## Its lights are alive: each is also kept in one of four masks (see `glow`), which the walker draws over the figure.
+const SV_PAD := Vector2i(4, 8)              # room round the figure for pauldrons, cape, laurel and ring
+const SV_SHIRT := Color(0.8, 0.8, 0.76)
+const SV_PANTS := Color(0.4, 0.35, 0.3)
+const SV_UNDER := Color(0.09, 0.09, 0.12)   # the black undersuit
+const SV_PLATE := Color(0.3, 0.34, 0.5)
+const SV_GOLD := Color(0.98, 0.8, 0.34)
+const SV_LIGHT := Color(0.35, 1.0, 0.85)
+const SV_CAPE := Color(0.38, 0.15, 0.62)
+
+
+## A light: into the picture (dimmed: the walker lights it), and into the list of lights with its mask.
+static func _lt(img: Image, x: int, y: int, g: int) -> void:
+	if x < 0 or y < 0 or x >= img.get_width() or y >= img.get_height():
+		return
+	img.set_pixel(x, y, SV_LIGHT.darkened(0.3))
+	_lit.append([x, y, g])
+
+
+static func _sv_frame(src: Image, tier: int, helmet: bool, sitting: bool, step: int, cx: int, tx: int, tw: int, sh: int, torso_top: int,
+		leg_top: int, hx: int, head_top: int, head_bot: int, ey: int, side: bool, back: bool, armc: Color, hand: Color) -> Image:
+	var px := SV_PAD.x
+	var py := SV_PAD.y
+	var img := Image.create(W + 2 * px, H + py, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	cx += px
+	tx += px
+	hx += px
+	torso_top += py
+	leg_top += py
+	head_top += py
+	head_bot += py
+	ey += py
+	var feet := H + py - 1
+	var plate := SV_PLATE
+	var lt := plate.lightened(0.24)
+	var dk := plate.darkened(0.45)
+	var gold := SV_GOLD
+	var gd := gold.darkened(0.28)
+	var cape := SV_CAPE
+	var cdk := cape.darkened(0.38)
+	var c_top := torso_top - 1
+	var c_bot := feet - (1 if not sitting else 8)
+	var full := tier >= 10
+	var gilt := tier >= 9                                    # (from the ninth step on the edges of the plates are gold)
+	var edge := gold if gilt else lt
+	# ---- behind the figure: the cape (from the front, from the side), the ring of light behind the head
+	if tier >= 8 and not back:
+		for y in range(c_top, c_bot + 1):
+			var k := float(y - c_top) / float(maxi(1, c_bot - c_top))
+			var band := (y - c_top) % 6
+			if side:
+				var x0 := cx + 1
+				var x1 := cx + 4 + int(k * 4.0)
+				_r(img, x0, y, x1 - x0, 1, cape if band != 2 else cape.darkened(0.18))
+				_px(img, x1 - 1, y, cdk)
+				if full and band == 4:
+					for xb in range(x0 + 1, x1 - 1):
+						_lt(img, xb, y, 1 + ((y - c_top) / 6) % 3)
+			else:
+				var x0b := tx - 2 - int(k * 2.6)
+				var x1b := tx + tw + 2 + int(k * 2.6)
+				_r(img, x0b, y, x1b - x0b, 1, cdk)
+				_px(img, x0b, y, gold if full else cape)
+				_px(img, x0b + 1, y, cape.lightened(0.1))
+				_px(img, x1b - 1, y, gd if full else cape)
+				_px(img, x1b - 2, y, cape)
+				if full and band == 4:
+					for xb2 in range(x0b + 1, x1b - 1):
+						_lt(img, xb2, y, 1 + ((y - c_top) / 6) % 3)
+		if side:
+			_r(img, cx + 1, c_bot, 7, 1, gold)
+		else:
+			_r(img, tx - 4, c_bot, tw + 8, 1, gold)
+			if full:
+				for xh in range(tx - 4, tx + tw + 4):
+					if (xh - tx) % 3 == 0:
+						_lt(img, xh, c_bot, 1 + posmod(xh, 3))
+	if full:
+		if side:
+			_lt(img, hx + HW + 1, head_top - 3, 1)                # the ring, seen edge on
+			for q0 in 8:
+				_lt(img, hx + HW + 2, head_top - 2 + q0, 1 + q0 % 3)
+			_lt(img, hx + HW + 1, head_top + 6, 3)
+		else:
+			var seen := {}
+			for q1 in 26:                                          # … an arc above the head, from ear to ear
+				var a := deg_to_rad(-12.0 + 204.0 * q1 / 25.0)
+				var hp := Vector2i(int(round(float(cx) - 0.5 + cos(a) * 7.0)), int(round(float(head_top) + 3.0 - sin(a) * 7.0)))
+				if not seen.has(hp):
+					seen[hp] = true
+					_lt(img, hp.x, hp.y, 1 + seen.size() % 3)
+	img.blend_rect(src, Rect2i(0, 0, W, H), Vector2i(px, py))
+	_lit = _lit.filter(func(e): return src.get_pixel(clampi(int(e[0]) - px, 0, W - 1), clampi(int(e[1]) - py, 0, H - 1)).a <= 0.0 or int(e[0]) < px or int(e[0]) >= px + W or int(e[1]) < py)      # (what the figure hides does not shine through)
+	# ---- the pieces on the figure
+	var lw := maxi(3, sh - 1)
+	var up_l := maxi(0, step)
+	var up_r := maxi(0, -step)
+	var belt_y := leg_top - 2
+	if side:
+		var lx := cx - 1 + step * 2                               # the near leg
+		var fx := cx - 2 - step * 2                               # the far one
+		var sw := step * 2                                        # the arm's swing
+		if not sitting:
+			if tier >= 6:                                         # thigh plates
+				_r(img, lx, leg_top + 1, 3, 5, plate)
+				_r(img, lx, leg_top + 1, 3, 1, edge)
+			if tier >= 3:                                         # knee caps and greaves
+				_r(img, fx, leg_top + 9, 3, 4, plate.darkened(0.3))
+				_r(img, lx, leg_top + 7, 4, 2, lt)
+				_r(img, lx, leg_top + 7, 4, 1, gold)
+				_r(img, lx, leg_top + 9, 3, 4, plate)
+			if tier >= 1:                                         # armoured boots
+				_r(img, fx - 1, feet - 3, 4, 4, plate.darkened(0.32))
+				_r(img, lx - 1, feet - 3, 5, 4, plate.darkened(0.08))
+				_r(img, lx - 1, feet - 3, 5, 1, edge)
+				_r(img, lx - 1, feet, 5, 1, dk)
+			if tier >= 7:                                         # seams of light down the leg
+				for q in 3:
+					_lt(img, lx + 1, leg_top + 2 + q, 1 + q)
+					_lt(img, lx + 1, leg_top + 9 + q, 1 + (q + 1) % 3)
+				_lt(img, lx - 1, feet - 1, 3)
+		if tier >= 4:                                             # the cuirass side on, its core at the front
+			_r(img, tx, torso_top + 1, tw, 6, plate)
+			_r(img, tx, torso_top + 1, tw, 1, edge)
+			_r(img, tx + 1, torso_top + 7, tw - 2, 1, dk)
+			_r(img, tx + 1, torso_top + 8, tw - 3, 1, plate.darkened(0.1))
+			_px(img, tx, torso_top + 2, gold)
+			_lt(img, tx, torso_top + 3, 0)
+			_lt(img, tx, torso_top + 4, 0)
+			_px(img, tx, torso_top + 5, gold)
+		if tier >= 1:                                             # the belt, its light at the front
+			_r(img, tx, belt_y, tw, 1, dk)
+			_lt(img, tx, belt_y, 0)
+		if tier >= 1:                                             # (the arm again, over the belt and the cuirass)
+			_r(img, cx - 1 + sw, torso_top + 1, ARM - 1, 11, armc.darkened(0.2))
+			_r(img, cx - 1 + sw, torso_top + 7, ARM - 1, 1, armc.darkened(0.4))
+			_r(img, cx - 1 + sw, torso_top + 12, 2, 2, hand.darkened(0.08))
+		if tier >= 2:                                             # the bracer
+			_r(img, cx - 1 + sw, torso_top + 7, 2, 4, plate)
+			_r(img, cx - 1 + sw, torso_top + 7, 2, 1, edge)
+			_lt(img, cx - 1 + sw, torso_top + 9, 0)
+		if tier >= 7:
+			for q2 in 3:
+				_lt(img, cx + sw, torso_top + 3 + q2, 1 + q2)
+		if tier >= 5:                                             # the pauldron
+			_r(img, cx - 2, torso_top - 1, 5 if full else 4, 4, plate)
+			_r(img, cx - 2, torso_top - 1, 5 if full else 4, 1, gold)
+			_r(img, cx - 2, torso_top + 3, 5 if full else 4, 1, dk)
+			if full:
+				_r(img, cx - 2, torso_top - 3, 4, 2, plate.lightened(0.08))
+				_r(img, cx - 2, torso_top - 3, 4, 1, gold)
+				_px(img, cx - 3, torso_top - 4, gold)
+				_lt(img, cx - 1, torso_top - 2, 0)
+		if tier >= 9:                                             # the gorget
+			_r(img, cx - 2, head_bot + 1, 4, NECK, plate)
+			_r(img, cx - 2, head_bot + 2, 4, 1, gold)
+	else:
+		if not sitting:
+			for k2 in 2:
+				var x0c := cx - lw if k2 == 0 else cx + 1
+				var up := up_l if k2 == 0 else up_r
+				var pc := plate if k2 == 0 else plate.darkened(0.15)
+				if tier >= 6:                                     # thigh plates
+					_r(img, x0c, leg_top + 1, lw, 5, pc)
+					_r(img, x0c, leg_top + 1, lw, 1, (gold if k2 == 0 else gd) if gilt else pc.lightened(0.22))
+				if tier >= 3:                                     # knee caps and greaves
+					_r(img, x0c - (1 if k2 == 0 else 0), leg_top + 7, lw + 1, 2, pc.lightened(0.24))
+					_r(img, x0c - (1 if k2 == 0 else 0), leg_top + 7, lw + 1, 1, gold if k2 == 0 else gd)
+					if 4 - up > 0:
+						_r(img, x0c, leg_top + 9, lw, 4 - up, pc.darkened(0.04))
+				if tier >= 1:                                     # armoured boots
+					var bx := x0c - (1 if k2 == 0 else 0)
+					_r(img, bx, feet - 3 - up, lw + 1, 4, pc.darkened(0.1))
+					_r(img, bx, feet - 3 - up, lw + 1, 1, (gold if k2 == 0 else gd) if gilt else pc.lightened(0.26))
+					_r(img, bx, feet - up, lw + 1, 1, dk)
+				if tier >= 7:                                     # seams of light down the legs
+					for q3 in 3:
+						_lt(img, x0c + lw / 2, leg_top + 2 + q3, 1 + (q3 + k2) % 3)
+					for q4 in 3 - up:
+						_lt(img, x0c + lw / 2, leg_top + 9 + q4, 1 + (q4 + k2 + 1) % 3)
+					if not back:
+						_lt(img, x0c + lw / 2, feet - 1 - up, 3 - k2)
+		if tier >= 4:
+			if back:                                              # the back plate
+				_r(img, tx + 1, torso_top + 1, tw - 2, 6, plate)
+				_r(img, tx + 1, torso_top + 1, tw - 2, 1, edge)
+				_r(img, tx + 2, torso_top + 8, tw - 4, 2, plate.darkened(0.1))
+				_r(img, cx - 1, torso_top + 2, 2, 5, dk)
+				if tier >= 7:
+					for q5 in 4:
+						_lt(img, cx - 1 + q5 % 2, torso_top + 2 + q5, 1 + q5 % 3)
+			else:                                                 # the cuirass: two halves, the core in a gold setting, the belly in segments
+				_r(img, tx + 1, torso_top + 1, tw - 2, 6, plate)
+				_r(img, tx + 1, torso_top + 1, tw - 2, 1, edge)
+				_r(img, tx + 2, torso_top + 6, tw - 4, 1, dk)
+				_r(img, cx - 2, torso_top + 2, 4, 4, dk)
+				_r(img, cx - 1, torso_top + 1, 2, 1, gold)
+				_r(img, cx - 1, torso_top + 5, 2, 1, gd)
+				_px(img, cx - 2, torso_top + 3, gold)
+				_px(img, cx + 1, torso_top + 3, gd)
+				for q6 in 3:
+					_lt(img, cx - 1, torso_top + 2 + q6, 0)
+					_lt(img, cx, torso_top + 2 + q6, 0)
+				for seg in 2:
+					_r(img, cx - 2 + seg, torso_top + 8 + seg * 2, 4 - seg * 2, 1, plate.darkened(0.06))
+				if full:
+					_px(img, tx + 1, torso_top + 1, gold)                 # gold at the corners of the chest
+					_px(img, tx + tw - 2, torso_top + 1, gd)
+		if tier >= 1:                                             # the belt and its light
+			_r(img, tx + 1, belt_y, tw - 2, 1, dk)
+			if not back:
+				_lt(img, cx - 1, belt_y, 0)
+				_lt(img, cx, belt_y, 0)
+				if tier >= 4:
+					_px(img, cx - 2, belt_y, gold)
+					_px(img, cx + 1, belt_y, gd)
+		if tier >= 2:                                             # bracers
+			_r(img, tx - ARM, torso_top + 7, ARM, 4, plate.darkened(0.04))
+			_r(img, tx - ARM, torso_top + 7, ARM, 1, edge)
+			_r(img, tx + tw, torso_top + 7, ARM, 4, plate.darkened(0.2))
+			_r(img, tx + tw, torso_top + 7, ARM, 1, gd if gilt else lt.darkened(0.15))
+			_lt(img, tx - ARM + 1, torso_top + 9, 0)
+			_lt(img, tx + tw + 1, torso_top + 9, 0)
+		if tier >= 7:                                             # seams of light: down the arms, over the chest to the core
+			for q7 in 3:
+				_lt(img, tx - ARM + 1, torso_top + 4 + q7 - (1 if tier < 5 else 0), 1 + q7)
+				_lt(img, tx + tw + 1, torso_top + 4 + q7 - (1 if tier < 5 else 0), 1 + (q7 + 1) % 3)
+			if not back:
+				_lt(img, tx + 2, torso_top + 2, 1)
+				_lt(img, tx + 3, torso_top + 3, 2)
+				_lt(img, tx + tw - 3, torso_top + 2, 2)
+				_lt(img, tx + tw - 4, torso_top + 3, 3)
+				_lt(img, cx - 1, torso_top + 8, 3)
+				_lt(img, cx, torso_top + 8, 3)
+	# ---- the cape over the figure, from behind
+	if tier >= 8 and back:
+		var rows := {}
+		for y2 in range(c_top, c_bot + 1):
+			var k3 := float(y2 - c_top) / float(maxi(1, c_bot - c_top))
+			var x0d := tx - 1 - int(k3 * 2.6)
+			var x1d := tx + tw + 1 + int(k3 * 2.6)
+			_r(img, x0d, y2, x1d - x0d, 1, cape)
+			_px(img, x0d, y2, cdk)
+			_px(img, x1d - 1, y2, cdk)
+			_px(img, x0d + 1, y2, cape.lightened(0.16))                # its folds: light at the edges, two soft ridges
+			_px(img, cx - 3, y2, cape.lightened(0.08) if (y2 - c_top) % 6 != 2 else cdk)
+			_px(img, cx + 2, y2, cape.darkened(0.14) if (y2 - c_top) % 6 != 2 else cdk)
+			if full:
+				_px(img, x0d, y2, gd)                                     # (the whole regalia: a border of gold)
+				_px(img, x1d - 1, y2, gd)
+			rows[y2] = Vector2i(x0d, x1d)
+		_lit = _lit.filter(func(e): return not (rows.has(int(e[1])) and int(e[0]) >= (rows[int(e[1])] as Vector2i).x and int(e[0]) < (rows[int(e[1])] as Vector2i).y))
+		_r(img, tx - 3, c_bot, tw + 6, 1, gold)                        # the hem
+		_r(img, tx, c_top, tw, 1, gold)                                # the clasp line
+		_px(img, cx - 2, torso_top + 3, gold)                          # the laurel sewn on its back
+		_px(img, cx - 2, torso_top + 4, gold)
+		_px(img, cx - 1, torso_top + 5, gold)
+		_px(img, cx, torso_top + 5, gold)
+		_px(img, cx + 1, torso_top + 4, gold)
+		_px(img, cx + 1, torso_top + 3, gold)
+		if full:
+			for y3 in range(c_top + 8, c_bot):
+				if (y3 - c_top) % 6 == 4:
+					var rr: Vector2i = rows[y3]
+					for xb3 in range(rr.x + 1, rr.y - 1):
+						_lt(img, xb3, y3, 1 + ((y3 - c_top) / 6) % 3)
+			for xh2 in range(tx - 3, tx + tw + 3):
+				if (xh2 - tx) % 3 == 0:
+					_lt(img, xh2, c_bot, 1 + posmod(xh2, 3))
+	elif tier >= 8 and not side:
+		_px(img, tx, torso_top, gold)                                 # the clasps on the shoulders
+		_px(img, tx + tw - 1, torso_top, gold)
+	# ---- pauldrons, the gorget (over the cape)
+	if not side:
+		if tier >= 5:
+			var pw := 5 if full else 4
+			_r(img, tx - pw + 1, torso_top - 1, pw, 4, plate)
+			_r(img, tx - pw + 1, torso_top - 1, pw, 1, gold)
+			_r(img, tx + tw - 1, torso_top - 1, pw, 4, plate.darkened(0.12))
+			_r(img, tx + tw - 1, torso_top - 1, pw, 1, gd)
+			_r(img, tx - pw + 1, torso_top + 3, pw, 1, dk)
+			_r(img, tx + tw - 1, torso_top + 3, pw, 1, dk)
+			if full:                                              # a second tier standing up and out, its tip gold, a light in it
+				_r(img, tx - pw, torso_top - 3, 4, 2, plate.lightened(0.08))
+				_r(img, tx - pw, torso_top - 3, 4, 1, gold)
+				_px(img, tx - pw - 1, torso_top - 4, gold)
+				_px(img, tx - pw, torso_top - 4, gold)
+				_lt(img, tx - pw + 1, torso_top - 2, 0)
+				_r(img, tx + tw + pw - 4, torso_top - 3, 4, 2, plate.darkened(0.05))
+				_r(img, tx + tw + pw - 4, torso_top - 3, 4, 1, gd)
+				_px(img, tx + tw + pw, torso_top - 4, gd)
+				_px(img, tx + tw + pw - 1, torso_top - 4, gd)
+				_lt(img, tx + tw + pw - 2, torso_top - 2, 0)
+		if tier >= 9:
+			_r(img, cx - 2, head_bot + 1, 4, NECK, plate)
+			_r(img, cx - 2, head_bot + 2, 4, 1, gold if not back else gd)
+	# ---- the closed helmet of the suit for outside
+	if helmet and full:
+		var gtop := head_top - 2
+		var gbot := head_bot + 1
+		for y4 in range(gtop, gbot + 1):
+			var cut := 2 if y4 == gtop else (1 if y4 == gtop + 1 else 0)
+			_r(img, hx - 1 + cut, y4, HW + 2 - 2 * cut, 1, plate if y4 < ey + 1 else plate.darkened(0.18))
+		_r(img, hx, gtop, HW, 1, lt)
+		if back:
+			_r(img, hx - 1, ey + 2, HW + 2, 1, gd)
+			_r(img, hx + HW / 2, gtop + 1, 1, 4, dk)
+		elif side:
+			_r(img, hx - 1, ey - 3, HW + 1, 1, gold)                  # the brow band
+			_r(img, hx - 1, ey - 1, 3, 2, Color(0.03, 0.04, 0.07))    # the visor, side on
+			_lt(img, hx - 1, ey - 1, 0)
+			_lt(img, hx, ey - 1, 0)
+			_r(img, hx - 1, ey + 2, 2, 2, plate.darkened(0.3))
+		else:
+			_r(img, hx - 1, ey - 3, HW + 2, 1, gold)                  # the brow band
+			_r(img, hx, ey - 2, HW, 3, Color(0.03, 0.04, 0.07))       # the visor: a slit of light in dark glass
+			for xv in range(hx + 1, hx + HW - 1):
+				_lt(img, xv, ey - 1, 0)
+			_r(img, hx - 1, ey + 1, 1, 3, plate.darkened(0.3))        # the cheek guards
+			_r(img, hx + HW, ey + 1, 1, 3, plate.darkened(0.4))
+			_r(img, hx + HW / 2 - 1, ey + 3, 3, 1, dk)                # the mouth vent
+		_r(img, hx - 1, gbot, HW + 2, 1, gd)                          # the neck seal in gold
+	# ---- the laurel of light round the head
+	if tier >= 9:
+		if side:
+			_px(img, hx + 1, head_top, gold)
+			_px(img, hx + 2, head_top - 1, gold)
+			_lt(img, hx + 3, head_top - 1, 2)
+			_px(img, hx + 4, head_top - 1, gold)
+			_lt(img, hx + 5, head_top, 3)
+			_px(img, hx + 6, head_top + 1, gold)
+			_px(img, hx + 7, head_top + 2, gd)
+		else:
+			for sgn in 2:
+				var lxp := hx - 1 if sgn == 0 else hx + HW
+				var inx := hx if sgn == 0 else hx + HW - 1
+				var gc := gold if sgn == 0 else gd
+				var outx := lxp - 1 if sgn == 0 else lxp + 1
+				_px(img, lxp, head_top + 3, gc)
+				_lt(img, outx, head_top + 2, 2 + sgn)
+				_px(img, lxp, head_top + 2, gc)
+				_px(img, lxp, head_top + 1, gc)
+				_lt(img, outx, head_top, 3 - sgn)
+				_px(img, lxp, head_top, gc)
+				_px(img, lxp, head_top - 1, gc)
+				_lt(img, outx, head_top - 2, 2 + sgn)
+				_px(img, inx, head_top - 2, gc)
+			if back:
+				_r(img, hx, head_top + 3, HW, 1, gd)
+				_lt(img, hx + HW / 2, head_top + 3, 1)
+	return img
+
+
+## The neon rim light and the outline for a picture of any size (the Survivor rig's).
+static func _rim_all(img: Image) -> void:
+	var src := img.duplicate()
+	var w := img.get_width()
+	var h := img.get_height()
+	for y in h:
+		for x in w:
+			var c: Color = src.get_pixel(x, y)
+			if c.a < 0.5:
+				continue
+			if x < w / 2 and (x == 0 or src.get_pixel(x - 1, y).a < 0.5):
+				img.set_pixel(x, y, c.lerp(RIM_L, 0.45))
+			elif x >= w / 2 and (x == w - 1 or src.get_pixel(x + 1, y).a < 0.5):
+				img.set_pixel(x, y, c.lerp(RIM_R, 0.6))
+
+
+static func _outline_all(img: Image) -> void:
+	var src := img.duplicate()
+	var w := img.get_width()
+	var h := img.get_height()
+	for y in h:
+		for x in w:
+			if src.get_pixel(x, y).a > 0.0:
+				continue
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var q: Vector2i = Vector2i(x, y) + d
+				if q.x >= 0 and q.y >= 0 and q.x < w and q.y < h and src.get_pixel(q.x, q.y).a > 0.5:
+					img.set_pixel(x, y, OUTLINE)
+					break
+
 
 ## 54c (Luz): the Hierarch's guard – gilded plate (the suit's own colour, not a livery), a red crest on the helmet and a
 ## long crimson cape with a gold hem down to the heels: behind the figure from the front (its edges either side), over

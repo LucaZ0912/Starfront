@@ -29,6 +29,7 @@ var aim_weapon := ""               # 0.7.52.3: the weapon's family (its picture,
 var down := false                  # package 52: fallen in a fight – lies on the ground
 var umbrella_on := false           # 54e (Luz): it rains – the holo umbrella up
 var umbrella := 0.0                # 0 folded … 1 open
+var sv_blade := 1.0                # 62a, part 10c: the Regalia's Silverblade Drone by your shoulder: how ready it is (0 … 1); below 0: it is out
 var crouch := false                # 0.7.52.21: sneaking – drawn low
 var dancing := false               # package 58 (Luz): at a party – bobbing, swaying, stepping, turning now and then
 var bubble := ""                   # package 58: a line said over the head (the toast, the cheers)
@@ -313,6 +314,10 @@ func _draw() -> void:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
 			draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y + bob * s), size), false)
+	if not xray and ChibiArt.sv_tier(look) >= 1:
+		_sv_glow(size, bob * s, f)                       # 62a, part 10b: the Survivor rig's lights, alive
+	if sv_blade >= 0.0 and not xray and String(look.get("suit", "")) == "suit_survivor":
+		_sv_blade_idle(bob * s)                          # 62a, part 10c: the Regalia's blade, at rest by your shoulder
 	if aim != Vector2.INF and not sitting and not down:
 		if dir != 1:
 			_draw_aim(bob * s)
@@ -441,6 +446,56 @@ func _draw_creature(f: int) -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		return
 	draw_texture_rect(tex, Rect2(Vector2(-size.x * 0.5, -size.y), size), false)
+
+
+## Package 62a, part 10b (Luz): the lights of the Survivor rig, alive. The core, the belt and the bracers beat slowly;
+## the seams, the cape's bands and the ring behind the head are lit one after another, so the light runs. At the last
+## step the light wanders through the colours and sparks rise round the figure.
+func _sv_glow(size: Vector2, lift: float, f: int) -> void:
+	var tier := ChibiArt.sv_tier(look)
+	var gl: Array = ChibiArt.glow(look, dir, 3 if sitting else f)
+	if gl.is_empty():
+		return
+	var rect := Rect2(Vector2(-size.x * 0.5, -size.y + lift), size)
+	if sitting:
+		rect = Rect2(Vector2(-size.x * 0.5, -size.y - sit_lift() * GroundMap.SCALE), size)
+	elif crouch:
+		var cs2 := Vector2(size.x * 1.04, size.y * 0.86)
+		rect = Rect2(Vector2(-cs2.x * 0.5, -cs2.y + lift), cs2)
+	var full := tier >= 10
+	for gi in gl.size():
+		if gl[gi] == null:
+			continue
+		var a := 0.5 + 0.5 * sin(_t * 2.4)
+		if gi > 0:
+			a = pow(maxf(0.0, sin(_t * 3.4 - float(gi - 1) * TAU / 3.0)), 2.0)
+		var base: Color = ChibiArt.sv_hue(_t * 0.22 + gi * 0.07) if full else ChibiArt.SV_LIGHT
+		var c := base.lerp(Color.WHITE, 0.45 * a)
+		draw_texture_rect(gl[gi], rect, false, Color(c.r, c.g, c.b, (0.55 if full else 0.2) + (0.45 if full else 0.8) * a))
+	if full and not sitting:
+		for q in 7:                                          # sparks rise
+			var ph := fposmod(_t * 0.42 + q * 0.143, 1.0)
+			var sx := sin(q * 2.4 + _t * 0.9) * size.x * 0.4
+			var sy := -size.y * (0.06 + 0.92 * ph) + lift
+			var sc := ChibiArt.sv_hue(_t * 0.22 + q * 0.13)
+			draw_rect(Rect2(Vector2(sx - 1.0, sy - 1.0), Vector2(2.0, 2.0)), Color(sc.r, sc.g, sc.b, sin(ph * PI) * 0.9))
+
+
+## Package 62a, part 10c (Luz): the Regalia's Silverblade Drone at rest: it hovers by your shoulder, turning; dim, and a
+## ring filling round it, while it gets ready again.
+func _sv_blade_idle(lift: float) -> void:
+	var k := clampf(sv_blade, 0.0, 1.0)
+	var at := Vector2(24.0 if dir == 2 else -24.0, -68.0 + lift + sin(_t * 2.6) * 2.5)
+	var spin := _t * (1.2 + 4.0 * k)
+	var pts := PackedVector2Array()
+	for q in 8:
+		pts.append(at + Vector2.from_angle(spin + q * PI * 0.25) * (7.5 if q % 2 == 0 else 2.4))
+	draw_colored_polygon(pts, Color(0.86, 0.9, 0.96, 0.45 + 0.55 * k))
+	pts.append(pts[0])
+	draw_polyline(pts, Color(0.4, 0.95, 1.0, 0.3 + 0.7 * k), 1.5)
+	draw_circle(at, 1.6, Color(1, 1, 1, 0.5 + 0.5 * k))
+	if k < 1.0:
+		draw_arc(at, 11.0, -PI * 0.5, -PI * 0.5 + TAU * k, 24, Color(0.4, 0.95, 1.0, 0.75), 2.0)
 
 
 static func PilotArt_CLOTH(i: int) -> Color:

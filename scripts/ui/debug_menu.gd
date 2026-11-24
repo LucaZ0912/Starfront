@@ -1516,6 +1516,66 @@ func _build_ground() -> void:
 	rco2.add_child(UI.button("+100 rank points", func(): _cmd({"type": "debug_casino", "col_xp": 100})))
 	rco2.add_child(UI.button("Win the fight", func(): _cmd({"type": "debug_casino", "col_fight": "win"})))
 	rco2.add_child(UI.button("Lose the fight", func(): _cmd({"type": "debug_casino", "col_fight": "lose"})))
+	var rsv := _row()                                               # part 7: Survivor
+	rsv.add_child(UI.label("Survivor:", 12, UI.TEXT_DIM))
+	rsv.add_child(UI.button("Start a run", func(): _cmd({"type": "debug_casino", "sv": "start"})))
+	rsv.add_child(UI.button("+1 level", func(): _cmd({"type": "debug_casino", "sv": "level"})))
+	rsv.add_child(UI.button("+100 of the swarm", func(): _cmd({"type": "debug_casino", "sv": "swarm"})))
+	rsv.add_child(UI.button("+1 minute", func(): _cmd({"type": "debug_casino", "sv": "minute"})))
+	rsv.add_child(UI.button("End the run", func(): _cmd({"type": "debug_casino", "sv": "end"})))
+	var rsv2 := _row()                                              # part 7c-2: the stage: kinds, what happens, bosses, what a crate holds
+	rsv2.add_child(UI.label("Come:", 12, UI.TEXT_DIM))
+	for skd in ["runner", "hauler", "spitter", "bloater", "shieldbearer", "howler", "alpha", "enforcer", "scout", "gunner", "bulwark", "seeker", "jammer", "mite", "burrower", "rimeback", "shardthrower"]:
+		var skn := String(skd)
+		rsv2.add_child(UI.button(skn.capitalize(), func(): _cmd({"type": "debug_casino", "sv": skn})))
+	var rsv3 := _row()
+	rsv3.add_child(UI.label("Happen:", 12, UI.TEXT_DIM))
+	for sev in ["flock", "ring", "wall", "sleepers", "blackout", "supply", "foreman", "brood", "searchlight", "reinforce", "killline", "emp", "warden", "core", "flood", "vent", "blizzard", "icebreak", "avalanche", "worm", "heart"]:
+		var sen := String(sev)
+		rsv3.add_child(UI.button(sen.capitalize(), func(): _cmd({"type": "debug_casino", "sv": sen})))
+	var rsv4 := _row()
+	rsv4.add_child(UI.label("A crate held:", 12, UI.TEXT_DIM))
+	for sit in ["shield", "magnet", "medkit", "bomb", "stasis", "overdrive", "override", "thermal"]:
+		var sin2 := String(sit)
+		rsv4.add_child(UI.button(sin2.capitalize(), func(): _cmd({"type": "debug_casino", "sv": "item:" + sin2})))
+	for sdn in [1, 3, 5]:                                           # part 7f: a weapon crate's draw
+		var sdc := int(sdn)
+		rsv4.add_child(UI.button("Draw %d" % sdc, func(): _cmd({"type": "debug_casino", "sv": "draw:%d" % sdc})))
+	var rsv5 := _row()                                              # part 7c-3: what you carry in a run; the console
+	rsv5.add_child(UI.label("Carry:", 12, UI.TEXT_DIM))
+	for scw in ["mines", "sentry", "cryo", "gravity", "taser", "blackhole", "stabiliser", "overclock", "shieldcell", "scavenger", "lucky", "capacitor", "massdriver"]:
+		var scn := String(scw)
+		rsv5.add_child(UI.button(scn.capitalize(), func(): _cmd({"type": "debug_casino", "sv": "carry:" + scn})))
+	rsv5.add_child(UI.button("All ultimates", func(): _cmd({"type": "debug_casino", "sv": "carry:ult"})))
+	var rsv6 := _row()
+	rsv6.add_child(UI.label("Console:", 12, UI.TEXT_DIM))
+	rsv6.add_child(UI.button("+100 cores", func(): _cmd({"type": "debug_casino", "sv": "cores"})))
+	rsv6.add_child(UI.button("Unlock all", func(): _cmd({"type": "debug_casino", "sv": "unlock"})))
+	rsv6.add_child(UI.button("Lock all again", func(): _cmd({"type": "debug_casino", "sv": "lock"})))
+	rsv6.add_child(UI.button("Collection +10", func(): _cmd({"type": "debug_casino", "sv": "slain"})))      # part 10a
+	var rsv7 := _row()                                               # part 10b, 10c: the rig's step, the Regalia
+	rsv7.add_child(UI.label("Rig:", 12, UI.TEXT_DIM))
+	rsv7.add_child(UI.button("Step -", func(): _cmd({"type": "debug_casino", "sv": "rig:-"})))
+	rsv7.add_child(UI.button("Step +", func(): _cmd({"type": "debug_casino", "sv": "rig:+"})))
+	rsv7.add_child(UI.button("By what is bought", func(): _cmd({"type": "debug_casino", "sv": "rig:auto"})))
+	rsv7.add_child(UI.button("Buy everything (gives the Regalia)", func(): _cmd({"type": "debug_casino", "sv": "all"})))
+	rsv6.add_child(UI.label("Stage:", 12, UI.TEXT_DIM))                # part 8: the stage of the next run
+	rsv6.add_child(UI.button("Outbreak", func(): _cmd({"type": "debug_casino", "sv": "stage:outbreak"})))
+	rsv6.add_child(UI.button("AI Takeover", func(): _cmd({"type": "debug_casino", "sv": "stage:takeover"})))
+	rsv6.add_child(UI.button("Whiteout", func(): _cmd({"type": "debug_casino", "sv": "stage:whiteout"})))      # part 9
+	var CDd = load("res://data/colosseum.gd")                       # part 5: the next fight's ground and its plan
+	var rco3 := _row()
+	rco3.add_child(UI.label("Ground:", 12, UI.TEXT_DIM))
+	rco3.add_child(UI.button("By lot", func(): _cmd({"type": "debug_casino", "col_map": ""})))
+	for sdd in CDd.SETTINGS:
+		var sid2 := String(sdd["id"])
+		rco3.add_child(UI.button(String(sdd["name"]), func(): _cmd({"type": "debug_casino", "col_map": sid2})))
+	var rco4 := _row()
+	rco4.add_child(UI.label("Plan:", 12, UI.TEXT_DIM))
+	rco4.add_child(UI.button("By lot", func(): _cmd({"type": "debug_casino", "col_plan": ""})))
+	for ldd in CDd.LAYOUTS:
+		var lid2 := String(ldd[0])
+		rco4.add_child(UI.button(String(ldd[1]).capitalize(), func(): _cmd({"type": "debug_casino", "col_plan": lid2})))
 
 
 func _update_ground_status() -> void:

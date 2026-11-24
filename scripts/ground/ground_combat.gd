@@ -86,6 +86,8 @@ const EMP_TIME := 6.0                                # … and until it works ag
 var reviving = null                                # the member you are bringing back (the use key held beside it)
 var revive_k := 0.0
 var arm_charge := 0.0                              # 0.7.52.14: the Red Arm Laser's charge (seconds of its `charge`)
+var blade: Dictionary = {}                         # 62a, part 10c: the Silverblade Drone while it is out: {pos, dir, t, to, past, dmg, reach, hits, home, spin, trail}
+var blade_cool := 0.0                              # … seconds until it is ready again
 var _arm_up := false
 var camp_t := 0.0                                  # how long you have sat behind the same cover
 var _camp_at := Vector2.INF
@@ -494,6 +496,7 @@ func step(delta: float, move: Vector2) -> void:
 	_grenade_step(delta)
 	_drone_step(delta)
 	_arm_step(delta)
+	_blade_step(delta)
 	_cloak_step(delta)
 	# the weapon in the hands while fighting, facing the target when standing
 	var wid := weapon_id()
@@ -501,6 +504,8 @@ func step(delta: float, move: Vector2) -> void:
 		view.pilot.aim = (active["w"] as Walker).pos
 		view.pilot.aim_dtype = String(GearData.base(wid).get("dtype", "kinetic"))
 		view.pilot.aim_weapon = GearData.family(wid)
+		if not blade.is_empty() and bool(GearData.base(wid).get("blade", false)):
+			view.pilot.aim_weapon = "wp_silverblade_out"       # (62a, part 10c: the blade is out: the hand alone)
 		if not view.pilot.moving and dodge_t <= 0.0:
 			view.pilot.dir = _face((active["w"] as Walker).pos - pilot_pos())
 	else:
@@ -535,6 +540,11 @@ func _pilot_fire(delta: float) -> void:
 	var tp: Vector2 = (active["w"] as Walker).pos
 	if emp_t > 0.0 and w.has("energy"):
 		return                                         # 0.7.53.2: the EMP – energy weapons are dead for now
+	if bool(w.get("blade", false)):
+		# 62a, part 10c: the Silverblade Drone: ready, your target in reach: it is thrown
+		if blade.is_empty() and blade_cool <= 0.0 and pilot_pos().distance_to(tp) <= float(w["range"]):
+			_fire_blade(active, w)
+		return
 	if bool(w.get("pierce", false)):
 		# 0.7.52.14: the Red Arm Laser – charged, in reach: it cuts through whatever lies between
 		if arm_charge >= float(w["charge"]) and pilot_pos().distance_to(tp) <= float(w["range"]):
@@ -1147,7 +1157,8 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		f["goal"] = Vector2.INF
 	if f["state"] != "flee" and float(f["think"]) <= 0.0:
 		f["think"] = randf_range(0.8, 1.4)
-		_decide(f, dist, sg, reach)
+		if not _off_burn(f):
+			_decide(f, dist, sg, reach)
 	# walking to the goal
 	var moved := false
 	if f["goal"] != Vector2.INF:
@@ -1155,11 +1166,11 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		var pi := int(f["pi"])
 		if pi < path.size():
 			var to: Vector2 = path[pi] - w.pos
-			if to.length() < 3.0:
+			if to.length() < _reach(f):
 				f["pi"] = pi + 1
 			else:
 				var run := 1.45 if f["state"] in ["flee", "move"] else 1.0
-				moved = w.step(to.normalized(), delta, run)
+				moved = _walk(f, to.normalized(), delta, run)
 		else:
 			f["goal"] = Vector2.INF
 	if not moved:
@@ -1213,8 +1224,9 @@ func foe_power(f: Dictionary) -> bool:
 func _foe_recharge(f: Dictionary, delta: float) -> bool:
 	var w: Walker = f["w"]
 	if String(f["state"]) != "recharge":
-		if foe_power(f):
+		if foe_power(f) and not bool(f.get("refill", false)):
 			return false
+		f["refill"] = false
 		var best := {}
 		for sd in f.get("stations", []):
 			if float(sd["cool"]) <= 0.0 and (best.is_empty() or w.pos.distance_to(sd["at"]) < w.pos.distance_to(best["at"])):
@@ -1226,7 +1238,7 @@ func _foe_recharge(f: Dictionary, delta: float) -> bool:
 		f["goal"] = best["at"]
 		f["path"] = map.path(w.pos, best["at"])
 		f["pi"] = 0
-		floaters.append({"pos": w.pos + Vector2(0, -46), "text": "runs dry!", "col": Color(0.4, 0.9, 1.0), "t": 0.0})
+		floaters.append({"pos": w.pos + Vector2(0, -46), "text": "runs dry!" if not foe_power(f) else "fills up", "col": Color(0.4, 0.9, 1.0), "t": 0.0})
 	var st: Dictionary = f["station"]
 	if w.pos.distance_to(st["at"]) < 14.0:
 		if float(st["cool"]) <= 0.0:
@@ -1235,12 +1247,12 @@ func _foe_recharge(f: Dictionary, delta: float) -> bool:
 			st["cool"] = float(f.get("station_cool", 25.0))
 			floaters.append({"pos": w.pos + Vector2(0, -46), "text": "recharged", "col": Color(0.4, 0.9, 1.0), "t": 0.0})
 			Audio.play_at("dock_clamp", w.pos, "foe at a charging point", -8.0)
-		f["state"] = "idle"
+		f["state"] = "idle" if not f.has("ally") else "follow"
 		f["goal"] = Vector2.INF
 		f["think"] = 0.0
 		return false
 	if float(st["cool"]) > 0.0:                           # somebody was faster: another point, or none
-		f["state"] = "idle"
+		f["state"] = "idle" if not f.has("ally") else "follow"
 		f["goal"] = Vector2.INF
 		return false
 	var path: PackedVector2Array = f["path"]
@@ -1248,13 +1260,13 @@ func _foe_recharge(f: Dictionary, delta: float) -> bool:
 	var moved := false
 	if pi < path.size():
 		var to: Vector2 = path[pi] - w.pos
-		if to.length() < 3.0:
+		if to.length() < _reach(f):
 			f["pi"] = pi + 1
 		else:
-			moved = w.step(to.normalized(), delta, 1.45)
+			moved = _walk(f, to.normalized(), delta, 1.45)
 	else:
 		var to2: Vector2 = (st["at"] as Vector2) - w.pos
-		moved = w.step(to2.normalized(), delta, 1.45)
+		moved = _walk(f, to2.normalized(), delta, 1.45)
 	if not moved:
 		w.moving = false
 	w.aim = Vector2.INF
@@ -1353,6 +1365,8 @@ func _leader_of(f: Dictionary) -> Variant:
 func _go(f: Dictionary, to: Vector2, state: String) -> void:
 	if to == Vector2.INF:
 		return
+	if map.has_meta("col_hazards"):
+		to = _safe(to)                                   # package 62a, part 6: nobody picks a spot on burning ground
 	var w: Walker = f["w"]
 	var path := map.path(w.pos, to)
 	if path.is_empty():
@@ -2426,6 +2440,161 @@ func _arm_geometry(beam: Dictionary) -> void:
 	beam["runs"] = _beam_runs(a, b, muzzle, end)
 
 
+# ---------------------------------------------------------------- package 62a, part 10c (Luz): the Silverblade Drone
+
+## Package 62a, part 10c (Luz): the Champion's Regalia carries Survivor's Silverblade Drone as its own weapon. One blade:
+## with the blade in hand and your target in reach it is thrown. It flies at the target and through it, cuts whoever it
+## touches (again after BLADE_GAP), turns to the next of them, bounces off walls and at the end of its reach, and after
+## its `time` flies back to you. Then it takes `charge` seconds until it is ready again, whatever is in hand meanwhile.
+const BLADE_SPEED := 300.0                        # art px a second
+const BLADE_R := 12.0                             # it cuts who is this near
+const BLADE_GAP := 0.4                            # seconds before it cuts the same one again
+const BLADE_PAST := 34.0                          # it darts this far past the one it flew at
+const BladeFx = preload("res://scripts/ground/survivor_fx.gd")
+
+
+## The Silverblade on this suit ("" if none).
+func blade_id() -> String:
+	for w in weapons():
+		if bool(GearData.base(String(w)).get("blade", false)):
+			return String(w)
+	return ""
+
+
+## How near it is to being ready, 0 … 1 (1: ready; 0 while it is out).
+func blade_k() -> float:
+	var id := blade_id()
+	if id == "" or not blade.is_empty():
+		return 0.0
+	return clampf(1.0 - blade_cool / maxf(0.1, float(GearData.stats(id)["charge"])), 0.0, 1.0)
+
+
+func blade_flying() -> bool:
+	return not blade.is_empty()
+
+
+## It is thrown at a foe.
+func _fire_blade(f: Dictionary, w: Dictionary) -> void:
+	var a := pilot_pos()
+	var d: Vector2 = (f["w"] as Walker).pos - a
+	blade = {"pos": a, "dir": d.normalized() if d.length() > 0.5 else Vector2.RIGHT, "t": float(w.get("time", 3.0)), "to": f, "past": -1.0, "dmg": float(w["damage"]),
+		"reach": float(w["range"]), "hits": {}, "home": false, "spin": 0.0, "trail": []}
+	blade_cool = float(w["charge"])
+	pilot_cool = maxf(pilot_cool, 0.5)
+	Audio.play("sv_blade", "the Silverblade Drone is thrown", -5.0)
+	GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
+
+
+## The one it turns to next: the nearest of those who fight you, within its reach of you (one it can fly straight at
+## first); not `not_this`. null: nobody.
+func _blade_next(p: Vector2, not_this) -> Variant:
+	var best = null
+	var bd := INF
+	for f in alive():
+		if is_same(f, not_this) or peaceful(f) or not bool(f["aware"]):
+			continue
+		var fp: Vector2 = (f["w"] as Walker).pos
+		if fp.distance_to(pilot_pos()) > float(blade["reach"]):
+			continue
+		var d := fp.distance_to(p) + (240.0 if sight(p, fp)["blocked"] else 0.0)
+		if d < bd:
+			bd = d
+			best = f
+	return best
+
+
+func _blade_step(delta: float) -> void:
+	if blade_id() == "":
+		blade = {}
+		blade_cool = 0.0
+		return
+	if blade.is_empty():
+		blade_cool = maxf(0.0, blade_cool - delta)
+		view.pilot.sv_blade = blade_k()                           # (at rest the walker draws it, by the shoulder)
+		return
+	view.pilot.sv_blade = -1.0
+	var pp := pilot_pos()
+	var p: Vector2 = blade["pos"]
+	blade["t"] = float(blade["t"]) - delta
+	blade["spin"] = float(blade["spin"]) + delta * 24.0
+	var hits: Dictionary = blade["hits"]
+	for hk in hits.keys():
+		hits[hk] = float(hits[hk]) - delta
+	if float(blade["t"]) <= 0.0:
+		blade["home"] = true
+	var dir: Vector2 = blade["dir"]
+	if bool(blade["home"]):
+		var back := pp - p
+		if back.length() < 9.0 or float(blade["t"]) < -4.0:        # caught again: now it gets ready
+			blade = {}
+			view.pilot.sv_blade = blade_k()
+			Audio.play("ui_click", "the Silverblade Drone is back", -10.0)
+			return
+		dir = back.normalized()
+	else:
+		var tgt = blade["to"]
+		if tgt == null or bool(tgt["dead"]):
+			tgt = _blade_next(p, null)
+			blade["to"] = tgt
+			blade["past"] = -1.0
+		if tgt == null:
+			blade["home"] = true                                 # nobody is left: back to you
+		elif float(blade["past"]) < 0.0:
+			var to: Vector2 = (tgt["w"] as Walker).pos - p
+			if to.length() < 6.0:
+				blade["past"] = BLADE_PAST                       # through it: on a little, then the next
+			else:
+				dir = dir.lerp(to.normalized(), clampf(delta * 16.0, 0.0, 1.0)).normalized()
+		else:
+			blade["past"] = float(blade["past"]) - BLADE_SPEED * delta
+			if float(blade["past"]) <= 0.0:
+				var nx = _blade_next(p, tgt)
+				blade["to"] = nx if nx != null else tgt
+				blade["past"] = -1.0
+	var np := p + dir * BLADE_SPEED * delta
+	if not bool(blade["home"]) and (cover_at(np) == 2 or np.distance_to(pp) > float(blade["reach"])):
+		dir = -dir                                               # a wall, or the end of its reach: it bounces, at the next of them
+		np = p + dir * BLADE_SPEED * delta
+		var nb = _blade_next(p, blade["to"])
+		if nb != null:
+			blade["to"] = nb
+		blade["past"] = -1.0
+		for i in 4:
+			sparks.append({"pos": p + CHEST, "vel": Vector2(randf_range(-60, 60), randf_range(-70, 10)), "t": 0.0, "col": Color(0.8, 0.95, 1.0)})
+	blade["dir"] = dir
+	blade["pos"] = np
+	var tr: Array = blade["trail"]
+	tr.append(np)
+	if tr.size() > 9:
+		tr.pop_front()
+	for f in alive():                                            # it cuts what it touches
+		var wk: Walker = f["w"]
+		var key := wk.get_instance_id()
+		if float(hits.get(key, 0.0)) > 0.0 or peaceful(f) or wk.pos.distance_to(np) > BLADE_R:
+			continue
+		hits[key] = BLADE_GAP
+		_hurt_foe(f, float(blade["dmg"]), "kinetic")
+		GameState.skill_xp("firearms", 0.5)
+		for i2 in 3:
+			sparks.append({"pos": np + CHEST, "vel": Vector2(randf_range(-50, 50), randf_range(-60, 10)), "t": 0.0, "col": Color(0.8, 0.95, 1.0)})
+
+
+## The blade while it is out, with a trail of silver behind it. (At rest the walker draws it, by your shoulder.)
+func _draw_blade() -> void:
+	if blade.is_empty() or not view.pilot.visible:
+		return
+	var cyan := Color(0.4, 0.95, 1.0)
+	var bp: Vector2 = ((blade["pos"] as Vector2) + CHEST) * S
+	var tr: Array = blade["trail"]
+	for i in range(1, tr.size()):
+		var ka := float(i) / tr.size()
+		draw_line(((tr[i - 1] as Vector2) + CHEST) * S, ((tr[i] as Vector2) + CHEST) * S, Color(0.85, 0.95, 1.0, 0.7 * ka), 2.0 + 5.0 * ka)
+	draw_set_transform((blade["pos"] as Vector2) * S, 0.0, Vector2(1.0, 0.45))
+	draw_circle(Vector2.ZERO, 9.0, Color(0, 0, 0, 0.25))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	BladeFx.blade(self, bp, float(blade["spin"]), 14.0, cyan)
+
+
 # ---------------------------------------------------------------- 0.7.52.25 (Luz): the short cloak
 
 const CLOAK_TIME := {"F": 2.0, "D": 3.0, "C": 4.0, "B": 5.0, "A": 6.0}
@@ -2433,6 +2602,8 @@ const CLOAK_CD := {"F": 30.0, "D": 27.0, "C": 24.0, "B": 21.0, "A": 18.0}
 
 
 func pilot_hidden() -> bool:
+	if view != null and view.level == "zcolvr" and view.col_lost:
+		return true                                     # package 62a, part 5: out of the fight; the others turn to your team
 	return cloak_t > 0.0
 
 
@@ -2664,7 +2835,18 @@ func _draw_notice(font: Font) -> void:
 const TEAM_OFF := [Vector2(-24, 14), Vector2(24, 16)]
 const TEAM_COL := Color(0.35, 0.85, 1.0)          # your team's colour (rings, cards, orders)
 const WHEEL := ["follow", "attack", "hold", "ability"]          # the command wheel's fields: up, right, down, left
-const WHEEL_NAMES := {"follow": "Follow me", "attack": "Attack my target", "hold": "Hold here", "ability": "Ability"}
+const WHEEL_NAMES := {"follow": "Follow me", "attack": "Attack my target", "hold": "Hold here", "ability": "Ability",
+	"own": "Your call", "wing_r": "Right wing", "wing_l": "Left wing", "cover": "Hold in cover", "retreat": "Fall back"}
+## Package 62a, part 6 (Luz): the wheel for those who stand beside you in the Colosseum, in place of the crew's wheel.
+## Clockwise from the top: follow me; over the right wing; hold in cover; fall back; your call; over the left wing.
+const ARENA_WHEEL := ["follow", "wing_r", "cover", "retreat", "own", "wing_l"]
+const HURT := 0.35                                # "your call": below this share of what it can take, it looks for cover
+const REFILL := 0.6                               # falling back: below this share of energy or rounds it fills up on the way
+
+
+## The fields of the command wheel now: the crew's four, or the six of the arena.
+func wheel_fields() -> Array:
+	return ARENA_WHEEL if allies.any(func(a): return a.has("arena")) else WHEEL
 
 
 ## The crew that came along, as fighters next to you (made when the place is entered).
@@ -2753,6 +2935,13 @@ func _foe_target(f: Dictionary) -> Variant:
 		if dd < bd and not sight(w.pos, ap)["blocked"]:
 			bd = dd
 			best = a
+	if best == null and f.has("energy") and pilot_hidden():      # package 62a, part 5: you are out: the Colosseum's fighters go for your team, seen or not
+		var nd := INF
+		for a2 in allies_up():
+			var d2 := w.pos.distance_to((a2["w"] as Walker).pos)
+			if d2 < nd:
+				nd = d2
+				best = a2
 	return best
 
 
@@ -2798,6 +2987,9 @@ func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
 		a["down"] = true
 		a["down_t"] = 0.0
 		a["state"] = "down"
+		if a.has("arena"):                               # package 62a, part 5: in the hologram nobody lies waiting: out is out
+			_ally_dies(a)
+			return
 		a["goal"] = Vector2.INF
 		var w: Walker = a["w"]
 		w.down = true
@@ -2838,6 +3030,17 @@ func revive(a: Dictionary) -> void:
 
 
 func _ally_dies(a: Dictionary) -> void:
+	if a.has("arena"):                                  # (the Colosseum's hologram: nobody dies, they are out of the fight)
+		a["dead"] = true
+		a["down"] = true
+		var aw: Walker = a["w"]
+		aw.down = true
+		aw.moving = false
+		aw.aim = Vector2.INF
+		aw.modulate = Color(0.5, 0.8, 1.0, 0.6)
+		a["goal"] = Vector2.INF
+		floaters.append({"pos": aw.pos + Vector2(0, -40), "text": "out", "col": Color(0.5, 0.85, 1.0), "t": 0.0})
+		return
 	a["dead"] = true
 	a["down"] = true
 	a["m"]["dead"] = true
@@ -2885,6 +3088,38 @@ func order(a, kind: String) -> String:
 				said.append("%s holds there." % String(m["name"]))
 			"ability":
 				said.append(use_ability(m))
+			"own":                                           # package 62a, part 6 (Luz): it fights as it sees fit
+				m["order"] = "own"
+				m["hold"] = Vector2.INF
+				m["tgt"] = null
+				m["think"] = 0.0
+				said.append("%s: their own call." % String(m["name"]))
+			"wing_r", "wing_l":                              # … round the right or the left wing of the field at the others
+				m["order"] = "wing"
+				m["wing"] = 1.0 if kind == "wing_r" else -1.0
+				m["wing_st"] = 0
+				m["hold"] = Vector2.INF
+				m["tgt"] = null
+				m["goal"] = Vector2.INF
+				m["think"] = 0.0
+				said.append("%s goes round the %s wing." % [String(m["name"]), "right" if kind == "wing_r" else "left"])
+			"cover":                                         # … into the nearest cover, and it stays there
+				m["order"] = "cover"
+				m["dug"] = Vector2.INF
+				m["hold"] = Vector2.INF
+				m["goal"] = Vector2.INF
+				m["think"] = 0.0
+				said.append("%s holds in cover." % String(m["name"]))
+			"retreat":                                       # … back to where you came in, filling up on the way if it runs low
+				m["order"] = "retreat"
+				m["hold"] = Vector2.INF
+				m["tgt"] = null
+				m["goal"] = Vector2.INF
+				m["think"] = 0.0
+				m["back"] = false
+				m["dug"] = Vector2.INF
+				m["refill"] = m.has("energy") and (float(m["energy"]) < float(m["energy_max"]) * REFILL or int(m["ammo"]) < int(float(m["ammo_max"]) * REFILL))
+				said.append("%s falls back." % String(m["name"]))
 	Audio.play("ui_click", "team order", -6.0)
 	return "  ".join(PackedStringArray(said))
 
@@ -2960,9 +3195,116 @@ func _ally_target(a: Dictionary) -> Variant:
 		if dd < bd and not sight(w.pos, (f["w"] as Walker).pos)["blocked"]:
 			bd = dd
 			best = f
-	if best == null and active != null and not active["dead"] and not peaceful(active):
+	if best == null and String(a["order"]) in ["own", "wing"]:
+		best = _nearest_foe(w.pos)                     # package 62a, part 6: its own call: whoever is nearest, seen or not
+	if best == null and active != null and not active["dead"] and not peaceful(active) and not String(a["order"]) in ["cover", "retreat"]:
 		best = active                                  # none in sight: it goes for yours
 	return best
+
+
+## The nearest foe standing (null: none).
+func _nearest_foe(p: Vector2) -> Variant:
+	var best = null
+	var bd := INF
+	for f in alive():
+		if peaceful(f):
+			continue
+		var dd := p.distance_to((f["w"] as Walker).pos)
+		if dd < bd:
+			bd = dd
+			best = f
+	return best
+
+
+## A free spot near `p` where `from` cannot hit you well: behind low cover (best: you still shoot over it) or out of
+## sight; not on burning ground. INF if there is none.
+func _hide_spot(p: Vector2, from: Vector2, rad: int = 7) -> Vector2:
+	var best := Vector2.INF
+	var bs := INF
+	var tx := int(p.x / GroundMap.TILE)
+	var ty := int(p.y / GroundMap.TILE)
+	for yy in range(ty - rad, ty + rad + 1):
+		for xx in range(tx - rad, tx + rad + 1):
+			if not GroundMap.walkable_t(map.t_at(xx, yy)):
+				continue
+			var c := (Vector2(xx, yy) + Vector2(0.5, 0.6)) * GroundMap.TILE
+			if _taken(c) or ground_at(c) == "burn":
+				continue
+			var sg := sight(from, c)
+			if not (sg["blocked"] or sg["cover"]):
+				continue
+			var score := c.distance_to(p) + (0.0 if not sg["blocked"] else 20.0) + randf() * 6.0
+			if score < bs:
+				bs = score
+				best = c
+	return best
+
+
+## Package 62a, part 6 (Luz): what the fight's ground does to who stands at `p`: "" (nothing), "ice" (you slide),
+## "slow" (it holds you back), "burn" (it burns).
+func ground_at(p: Vector2) -> String:
+	for h in map.get_meta("col_hazards", []):
+		if String(h["kind"]) in ["ice", "slow", "burn"]:
+			for r in h["rects"]:
+				if (r as Rect2).has_point(p):
+					return String(h["kind"])
+	return ""
+
+
+## … a foe or a member of your team takes a step on it: undergrowth holds them back, on ice they slide, as you do.
+func _walk(o: Dictionary, d: Vector2, delta: float, run: float) -> bool:
+	var w: Walker = o["w"]
+	if not map.has_meta("col_hazards"):
+		return w.step(d, delta, run)
+	match ground_at(w.pos):
+		"ice":
+			var v: Vector2 = (o.get("vel", Vector2.ZERO) as Vector2).lerp(d, 1.0 - exp(-delta * 2.2))
+			o["vel"] = v
+			return w.step(v, delta, run)
+		"slow":
+			o["vel"] = d * 0.55
+			return w.step(d, delta, run * 0.55)
+	o["vel"] = d
+	return w.step(d, delta, run)
+
+
+## … how near a point of its way counts as reached (sliding, it would circle a point it cannot stop on).
+func _reach(o: Dictionary) -> float:
+	return 11.0 if map.has_meta("col_hazards") and ground_at((o["w"] as Walker).pos) == "ice" else 3.0
+
+
+## … a spot off the burning ground, as near to `p` as can be (`p` itself where nothing burns).
+func _safe(p: Vector2) -> Vector2:
+	for h in map.get_meta("col_hazards", []):
+		if String(h["kind"]) != "burn":
+			continue
+		for r in h["rects"]:
+			var g: Rect2 = (r as Rect2).grow(7.0)
+			if not g.has_point(p):
+				continue
+			var outs: Array = [Vector2(g.position.x - 5.0, p.y), Vector2(g.end.x + 5.0, p.y), Vector2(p.x, g.position.y - 5.0), Vector2(p.x, g.end.y + 5.0)]
+			outs.sort_custom(func(x, y): return (x as Vector2).distance_to(p) < (y as Vector2).distance_to(p))
+			for q in outs:
+				var fq := _free_near(q)
+				if fq != Vector2.INF and ground_at(fq) != "burn":
+					return fq
+	return p
+
+
+## … and who finds itself standing on it gets off (a foe or a member; true: it is on its way off).
+func _off_burn(o: Dictionary) -> bool:
+	if not map.has_meta("col_hazards"):
+		return false
+	var w: Walker = o["w"]
+	if ground_at(w.pos) != "burn":
+		return false
+	if o["goal"] != Vector2.INF and ground_at(o["goal"]) != "burn":
+		return true
+	var out := _safe(w.pos)
+	if out == w.pos:
+		return false
+	_go(o, out, "move")
+	return o["goal"] != Vector2.INF
 
 
 func _ally_step(a: Dictionary, delta: float) -> void:
@@ -2977,7 +3319,11 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 	var st: Dictionary = a["st"]
 	a["regen_wait"] = maxf(0.0, float(a["regen_wait"]) - delta)
 	if float(a["regen_wait"]) <= 0.0:
-		st["shield"] = minf(float(a["mx"]["shield"]), float(st["shield"]) + 2.0 * delta)
+		var add := minf(float(a["mx"]["shield"]) - float(st["shield"]), 2.0 * delta)
+		if a.has("energy"):                              # package 62a, part 6 (Luz): in the Colosseum they live on their suit's energy as you do
+			add = minf(add, float(a["energy"]) / GearData.SHIELD_ENERGY)
+			a["energy"] = float(a["energy"]) - maxf(0.0, add) * GearData.SHIELD_ENERGY
+		st["shield"] = float(st["shield"]) + maxf(0.0, add)
 	a["ab"] = maxf(0.0, float(a["ab"]) - delta)
 	a["quick_t"] = maxf(0.0, float(a["quick_t"]) - delta)
 	var cl_was := float(a["cloak_t"]) > 0.0
@@ -2997,10 +3343,13 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 	a["cur"] = _ally_target(a) if fight else null
 	var wst := GearData.stats(String(a["weapon"]))
 	var reach := float(wst["range"])
+	if a.has("energy") and _foe_recharge(a, delta):
+		return                                          # (out of energy or rounds, or told to fill up: on its way to a charging point)
 	a["think"] = float(a["think"]) - delta
 	if float(a["think"]) <= 0.0:
 		a["think"] = randf_range(0.7, 1.2)
-		_ally_decide(a, reach)
+		if not _off_burn(a):
+			_ally_decide(a, reach)
 	# walking
 	var moved := false
 	if a["goal"] != Vector2.INF:
@@ -3008,11 +3357,11 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 		var pi := int(a["pi"])
 		if pi < path.size():
 			var to: Vector2 = path[pi] - w.pos
-			if to.length() < 3.0:
+			if to.length() < _reach(a):
 				a["pi"] = pi + 1
 			else:
 				var run := (1.45 if a["state"] == "move" else 1.0) * (1.5 if float(a["quick_t"]) > 0.0 else 1.0)
-				moved = w.step(to.normalized(), delta, run)
+				moved = _walk(a, to.normalized(), delta, run)
 		else:
 			a["goal"] = Vector2.INF
 	if not moved:
@@ -3030,7 +3379,10 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 	if not w.moving:
 		w.dir = _face(tp - w.pos)
 	var blocked: bool = sight(w.pos, tp)["blocked"] and not bool(wst.get("pierce", false))
-	if float(a["cool"]) <= 0.0 and not blocked and w.pos.distance_to(tp) <= reach and float(a["cloak_t"]) <= 0.0:
+	if float(a["cool"]) <= 0.0 and not blocked and w.pos.distance_to(tp) <= reach and float(a["cloak_t"]) <= 0.0 and foe_power(a):
+		if a.has("energy"):                              # (a shot costs them what it costs you)
+			a["energy"] = float(a["energy"]) - float(wst.get("energy", 0.0))
+			a["ammo"] = int(a["ammo"]) - int(wst.get("ammo", 0))
 		fire(a, t, wst)
 		var base := float(wst["charge"]) if wst.has("charge") else 1.0 / float(wst["rof"])
 		a["cool"] = base * randf_range(1.0, 1.4) + (0.3 if w.moving else 0.0)
@@ -3045,6 +3397,83 @@ func _ally_decide(a: Dictionary, reach: float) -> void:
 			_go(a, a["hold"], "move")
 		else:
 			a["state"] = "hold"
+		return
+	# package 62a, part 6 (Luz): the orders of the arena
+	var ord := String(a["order"])
+	if ord == "wing":
+		# round the wing: along your own line to the field's side, up the side to where the others are, then at them
+		var stg := int(a.get("wing_st", 0))
+		var wx := (map.w - 5.5) * GroundMap.TILE if float(a.get("wing", 1.0)) > 0.0 else 5.5 * GroundMap.TILE
+		var nf = _nearest_foe(w.pos)
+		if nf == null:
+			return
+		if stg < 2 and w.pos.distance_to((nf["w"] as Walker).pos) < reach * 0.7 and not sight(w.pos, (nf["w"] as Walker).pos)["blocked"]:
+			stg = 2                                          # (one of them is right there: it fights)
+		if stg == 0:
+			var p1 := _free_near(Vector2(wx, w.pos.y))
+			if p1 == Vector2.INF or w.pos.distance_to(p1) < 30.0:
+				stg = 1
+			elif a["goal"] == Vector2.INF or (a["goal"] as Vector2).distance_to(p1) > 40.0:
+				_go(a, p1, "move")
+				if a["goal"] == Vector2.INF:
+					stg = 1
+		if stg == 1:
+			var cy := 0.0
+			var up: Array = alive()
+			for f in up:
+				cy += (f["w"] as Walker).pos.y
+			var p2 := _free_near(Vector2(wx, clampf(cy / maxf(1.0, up.size()), 4.0 * GroundMap.TILE, (map.h - 4.0) * GroundMap.TILE)))
+			if p2 == Vector2.INF or w.pos.distance_to(p2) < 34.0:
+				stg = 2
+			elif a["goal"] == Vector2.INF or (a["goal"] as Vector2).distance_to(p2) > 40.0:
+				_go(a, p2, "move")
+				if a["goal"] == Vector2.INF:
+					stg = 2
+		a["wing_st"] = stg
+		if stg < 2:
+			return
+		ord = "own"                                        # there: at whoever is nearest, from the side
+	if ord == "own":
+		var have := float(a["st"]["health"]) + float(a["st"]["armor"]) + float(a["st"]["shield"])
+		var full := float(a["mx"]["health"]) + float(a["mx"]["armor"]) + float(a["mx"]["shield"])
+		if have < full * HURT:
+			ord = "cover"                                  # badly hurt: it looks for cover by itself
+		elif a.has("energy") and (float(a["energy"]) < float(a["energy_max"]) * 0.25 or int(a["ammo"]) < int(float(a["ammo_max"]) * 0.25)):
+			var nf2 = _nearest_foe(w.pos)
+			if nf2 == null or w.pos.distance_to((nf2["w"] as Walker).pos) > reach:
+				a["refill"] = true                           # nearly dry and nobody near: it fills up
+	if ord == "retreat":
+		var home: Vector2 = (map.get_meta("from_gate", map.spawn) as Vector2) + (TEAM_OFF[int(a["i"]) % 2] as Vector2) * 2.0
+		if w.pos.distance_to(home) < 40.0:
+			a["back"] = true                                 # (it has been there: now it may look for cover round about)
+		elif w.pos.distance_to(home) > 260.0:
+			a["back"] = false
+		if not bool(a.get("back", false)):
+			if a["goal"] == Vector2.INF or (a["goal"] as Vector2).distance_to(home) > 90.0:
+				_go(a, _free_near(home), "move")
+			return
+		ord = "cover"                                      # back there: it digs in
+	if ord == "cover":
+		var ct = _nearest_foe(w.pos)
+		if ct == null:
+			a["state"] = "cover"
+			return
+		if a["goal"] != Vector2.INF and a["state"] == "move":
+			return                                        # on its way
+		var cp: Vector2 = (ct["w"] as Walker).pos
+		var sc := sight(cp, w.pos)
+		var dug: Vector2 = a.get("dug", Vector2.INF)
+		# it stays where the nearest of the others cannot hit it well; in the spot it picked also while they are far off
+		if sc["cover"] or sc["blocked"] or (dug != Vector2.INF and w.pos.distance_to(dug) < 8.0 and w.pos.distance_to(cp) > reach * 1.3):
+			a["state"] = "cover"
+			a["goal"] = Vector2.INF
+			return
+		var hs := _hide_spot(w.pos, cp)
+		if hs != Vector2.INF:
+			a["dug"] = hs
+			_go(a, hs, "move")
+		else:
+			a["state"] = "cover"
 		return
 	var anchor: Vector2 = pp + TEAM_OFF[int(a["i"]) % 2]
 	var t = a["cur"]
@@ -3093,12 +3522,13 @@ func _ally_decide(a: Dictionary, reach: float) -> void:
 
 
 ## Which wheel field the mouse is over (by its angle round the centre; "" in the middle).
-static func wheel_pick(centre: Vector2, mouse: Vector2, inner: float = 46.0) -> String:
+static func wheel_pick(centre: Vector2, mouse: Vector2, inner: float = 46.0, fields: Array = WHEEL) -> String:
 	var d := mouse - centre
 	if d.length() < inner:
 		return ""
-	var ang := fposmod(d.angle() + PI * 0.5 + PI * 0.25, TAU)       # 0 = up, clockwise
-	return String(WHEEL[int(ang / (PI * 0.5)) % 4])
+	var n := fields.size()
+	var ang := fposmod(d.angle() + PI * 0.5 + PI / n, TAU)          # 0 = up, clockwise
+	return String(fields[int(ang / (TAU / n)) % n])
 
 
 func _draw_team() -> void:
@@ -3309,6 +3739,7 @@ func _draw() -> void:
 		var k4: float = float(fl["t"]) / 1.1
 		_txt((fl["pos"] as Vector2) * S + Vector2(0, -k4 * 40.0), String(fl["text"]), Color(fl["col"], 1.0 - k4 * k4), 16 if String(fl["text"]).is_valid_int() else 12)
 	_draw_drone()
+	_draw_blade()
 	_draw_clouds()
 	if show_ai:
 		_draw_ai(font)

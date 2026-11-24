@@ -508,6 +508,30 @@ func col_gear_off() -> void:
 	col_own_gear = null
 
 
+## Package 62a, part 10c (Luz): everything the Survivor console sells is yours: the Colosseum gives you the Champion's
+## Regalia, the last step of the Survivor rig as a suit for outside the arena. Into your pockets, else your ship's
+## locker, else it is kept until you have room (asked again whenever you buy at the console or open it). True if it
+## was handed over now.
+func sv_give_suit() -> bool:
+	var SV = load("res://data/survivor.gd")
+	var st := col_state()
+	var rec: Dictionary = SV.record(st)
+	if bool(rec.get("suit", false)) or float(SV.progress(st)) < 0.999:
+		return false
+	var mine = col_own_gear if col_own_gear != null else gear        # (your own gear, also while you wear the house's)
+	var where := "it is in your pockets"
+	var left: int = mine.add_item(String(SV.RIG_SUIT), 1)
+	if left > 0 and active() != null:
+		left = mine._add_to(mine.locker(active()), String(SV.RIG_SUIT), 1)
+		where = "your pockets are full, so it is in your ship's locker"
+	if left > 0:
+		log_msg("Survivor: everything at the console is yours. The Colosseum keeps the Champion's Regalia for you until you have room: come back to the console.", COL_WARN)
+		return false
+	rec["suit"] = true
+	log_msg("Survivor: everything at the console is yours. The Colosseum gives you the Champion's Regalia: %s." % where, COL_GOOD)
+	return true
+
+
 ## Package 62a, part 3: what you are in the Colosseum (made the first time it is asked for; its fit kept in shape).
 func col_state() -> Dictionary:
 	var CD = load("res://data/colosseum.gd")
@@ -615,6 +639,11 @@ func pilot_title() -> String:
 	return pilot_name + (" »%s«" % cs if cs != "" else "")
 
 
+## (Luz, 24 Nov 2026) Where you stood on foot when the game was saved (GroundView.save_spot; main.prepare_save
+## fills it): a load puts you back onto the very spot. {} when you were not on foot.
+var on_foot: Dictionary = {}
+
+
 func to_dict() -> Dictionary:
 	var ships: Array = []
 	for f in fleet:
@@ -631,10 +660,12 @@ func to_dict() -> Dictionary:
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 		"collection": collection.duplicate(true), "gear": (col_own_gear if col_own_gear != null else gear).to_dict(),
+		"on_foot": on_foot.duplicate(),
 	}
 
 
 func from_dict(d: Dictionary) -> void:
+	on_foot = (d.get("on_foot", {}) as Dictionary).duplicate()
 	misjumps.clear()                             # review 6 K1
 	pending_arrival = {}
 	debug_misjump = false

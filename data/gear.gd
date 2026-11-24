@@ -113,6 +113,16 @@ const SUITS := {
 		"env": {"heat": 1.0, "cold": 1.0, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.06, "price": 60000,
 		"col": Color(0.17, 0.17, 0.19), "trim": Color(0.86, 0.87, 0.86),
 		"desc": "The Museum's thanks: a cloak and a scanner built in, the cloak lasting five times as long; air and energy for days, a long belt, but barely a shield."},
+	# 62a, part 10c (Luz): the Colosseum's thanks to whoever has everything the Survivor console sells: the last step of
+	# the Survivor rig as a suit for outside the arena. Two drone places, both drones on the shoulders (as the Senate's
+	# armours); its own weapon, the Silverblade Drone, in its first weapon place (`builtin`). Never sold (`faction`
+	# "colosseum").
+	"suit_survivor": {"name": "Champion's Regalia", "maker": "The Colosseum", "faction": "colosseum", "shoulder_drones": true, "builtin": "wp_silverblade",
+		"weapons": 3, "belt": 4, "grenades": 2, "drones": 2, "features": 3,
+		"shield": 85.0, "armor": 85.0, "energy": 300.0, "oxygen": 30.0, "ammo": 300,
+		"env": {"heat": 0.6, "cold": 0.6, "toxic": 1.0, "vacuum": 1.0}, "speed": 1.0, "price": 60000,
+		"col": Color(0.3, 0.34, 0.5), "trim": Color(0.98, 0.8, 0.34),
+		"desc": "The Colosseum's own, for whoever has it all: dark plate edged in gold, a cape, a laurel and seams of living light; two drones on the shoulders, and the Silverblade Drone built in."},
 }
 
 ## Weapons (no sizes for now): dtype, damage per shot, rof (shots/s), range (art px), spread (rad), pellets,
@@ -144,6 +154,13 @@ const WEAPONS := {
 	"wp_arm_laser": {"name": "Red Arm Laser", "maker": "Forge of Return", "dtype": "optical", "damage": 120.0, "rof": 1.0,
 		"range": 450.0, "spread": 0.01, "charge": 30.0, "pierce": true, "builtin": true, "price": 0,
 		"desc": "The Pathfinder's own: a heavy beam from the left forearm that cuts through any cover, then 30 seconds to charge."},
+	# 62a, part 10c (Luz): built into the Champion's Regalia, never sold on its own. Survivor's Silverblade Drone for
+	# outside the arena: one blade, thrown at your target. It cuts what it touches (`damage` a cut), darts on from one to
+	# the next for `time` seconds, comes back to you, and then takes `charge` seconds to be ready again (it gets ready
+	# while another weapon is in hand too).
+	"wp_silverblade": {"name": "Silverblade Drone", "maker": "The Colosseum", "dtype": "kinetic", "damage": 26.0, "rof": 1.0,
+		"range": 320.0, "spread": 0.0, "charge": 9.0, "time": 3.2, "blade": true, "builtin": true, "ammo": 0, "price": 0,
+		"desc": "The Regalia's own: a blade that darts at your target, cuts what it touches, jumps on to the next and comes back. Then nine seconds until it is ready again."},
 	"wp_launcher": {"name": "Grenade Launcher", "maker": "Hadrian Dynamics", "dtype": "explosive", "damage": 45.0, "rof": 0.6,
 		"range": 380.0, "spread": 0.06, "ammo": 4, "splash": 60.0, "price": 6400, "desc": "Lobbed shells that burst: best against what has no shield or plate left."},
 }

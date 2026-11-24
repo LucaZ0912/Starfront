@@ -65,6 +65,10 @@ func stream(id: String) -> AudioStream:
 	if _streams.has(id):
 		return _streams[id]
 	var s: AudioStream = null
+	if id.begins_with("sv_"):                  # package 62a, part 7c-2: Survivor's sounds, made here
+		s = load("res://scripts/core/survivor_sound.gd").make(id)
+		_streams[id] = s
+		return s
 	if id == "crowd_applause":                 # package 62a, part 4 (Luz): the Colosseum's crowd, made here
 		s = load("res://scripts/core/crowd_sound.gd").applause()
 		_streams[id] = s

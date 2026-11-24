@@ -107,7 +107,7 @@ func _ready() -> void:
 		GameState.log_msg("Game loaded. Welcome back, %s." % GameState.pilot_name, GameState.COL_GOOD)
 		var f := GameState.active()
 		if f != null and f.docked_at.begins_with("land:"):
-			_on_descended.call_deferred(f.docked_at.substr(5).split("|")[0])      # package 50: still down on a planet
+			_resume_landed.call_deferred()                # still down on a planet: back onto the spot where you saved (Luz, 24 Nov 2026)
 			if String(GameState.story.flags.get("intro_stage", "")) == "58":
 				_start_dan_work.call_deferred("load")      # package 58 (Luz: Ossa was missing): the story runs down here too
 		elif f != null and f.docked_at != "" and String(GameState.story.flags.get("intro_stage", "")) in ["four", "four_walk"]:
@@ -813,8 +813,37 @@ func _on_station_docked(_station_id: String) -> void:
 
 # ---------------------------------------------------------------- Save / load
 
+## (Luz, 24 Nov 2026) A game loaded while you were down on a planet: back onto the very spot where you saved: the
+## city, the settlement or the landing field, its level, the place you stood at. The planet's map only when the save
+## does not say where that was (an older save, a site that is gone).
+func _resume_landed() -> void:
+	var f := GameState.active()
+	if f == null or not f.docked_at.begins_with("land:"):
+		return
+	var body_id := String(f.docked_at.substr(5).split("|")[0])
+	var spot: Dictionary = GameState.on_foot
+	var body := Universe.find_body(f.system_id, body_id)
+	var st_id := String(spot.get("station", ""))
+	var want := String(st_id.split("|")[1]) if st_id.contains("|") else st_id
+	var site := {}
+	if not spot.is_empty() and not body.is_empty() and want != "":
+		for s in Universe.landing_sites(f.system_id, body):
+			if String(s.get("id", "")) == want:
+				site = s
+	if site.is_empty():
+		_on_descended(body_id)
+		return
+	if String(site.get("kind", "")) == "city":
+		enter_city(body, site)
+	else:
+		land_at(body, site, false)
+	if ground != null and is_instance_valid(ground):
+		ground.restore_spot(spot)
+
+
 ## Writes the live ship position back into its data before saving.
 func prepare_save() -> void:
+	GameState.on_foot = ground.save_spot() if (ground != null and is_instance_valid(ground)) else {}
 	if ground != null and is_instance_valid(ground):
 		ground.poi_save()                              # review 7 W1: what happened at the site goes into the save
 	if view != null and is_instance_valid(view):

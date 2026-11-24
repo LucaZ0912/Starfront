@@ -181,6 +181,21 @@ static func _paint(f: String) -> Dictionary:
 			_p(img, 13, 3, Color(1.0, 0.55, 0.45))
 			grip = Vector2(1, 3)
 			muzzle = Vector2(14, 4)
+		"wp_silverblade":            # 62a, part 10c: the Regalia's blade, ready over the open hand
+			img = _blank(11, 5)
+			var sv := Color(0.84, 0.88, 0.94)
+			_r(img, 2, 2, 9, 1, sv)
+			_r(img, 4, 1, 5, 3, sv.darkened(0.1))
+			_r(img, 6, 0, 1, 5, sv.darkened(0.2))
+			_r(img, 5, 2, 3, 1, Color(0.35, 0.95, 1.0))
+			_part(img, 0, 1, 2, 3, Color(0.15, 0.15, 0.19))            # the glove
+			grip = Vector2(1, 2)
+			muzzle = Vector2(11, 2)
+		"wp_silverblade_out":        # … the hand alone, while the blade is out
+			img = _blank(3, 3)
+			_part(img, 0, 0, 3, 3, Color(0.15, 0.15, 0.19))
+			grip = Vector2(1, 1)
+			muzzle = Vector2(3, 1)
 		"wp_launcher":               # Hadrian grenade launcher: olive drum, a fat tube, a sight frame
 			img = _blank(20, 9)
 			var ol := Color(0.4, 0.44, 0.32)

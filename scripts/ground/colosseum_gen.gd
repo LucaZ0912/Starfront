@@ -931,6 +931,30 @@ class ColFx extends Node2D:
 				draw_rect(sg2, Color(0.05, 0.04, 0.08, 0.85))
 				draw_rect(sg2, Color(1.0, 0.82, 0.35, 0.7 + 0.3 * absf(sin(_t * 1.2))), false, 1.0)
 				draw_string(font, sg2.position + Vector2(0.0, 10.0), "REGISTRATION", HORIZONTAL_ALIGNMENT_CENTER, 104.0, 8, Color(1.0, 0.9, 0.6))
+			"svconsole":   # (part 7c-3) the Survivor console: a desk of dark steel, a screen, a core of light turning over it, its sign
+				var gcol := Color(0.4, 1.0, 0.6)
+				draw_rect(Rect2(3.0, -2.0, w, 5.0), Color(0, 0, 0, 0.3))
+				draw_rect(Rect2(0.0, -14.0, w, 14.0), Color(0.12, 0.13, 0.18))
+				draw_rect(Rect2(-1.0, -22.0, w + 2.0, 9.0), Color(0.2, 0.22, 0.29))
+				draw_rect(Rect2(-1.0, -22.0, w + 2.0, 1.5), Color(0.32, 0.35, 0.44))
+				draw_rect(Rect2(2.0, -7.0, w - 4.0, 1.5), Color(gcol, 0.6 + 0.3 * absf(sin(_t * 1.6))))
+				draw_rect(Rect2(w * 0.5 - 21.0, -38.0, 42.0, 17.0), Color(0.04, 0.05, 0.09))
+				draw_rect(Rect2(w * 0.5 - 20.0, -37.0, 40.0, 15.0), Color(gcol, 0.18 + 0.06 * sin(_t * 3.0)))
+				for bq in 5:
+					var bh := 3.0 + 7.0 * absf(sin(_t * 1.3 + bq * 1.1))
+					draw_rect(Rect2(w * 0.5 - 16.0 + bq * 7.0, -24.0 - bh, 4.0, bh), Color(gcol, 0.85))
+				var cc := Vector2(w * 0.5, -58.0)
+				draw_circle(cc, 13.0, Color(0.4, 0.92, 1.0, 0.08))
+				var hx6 := PackedVector2Array()
+				for hq in 7:
+					hx6.append(cc + Vector2.from_angle(_t * 0.8 + hq * TAU / 6.0) * 9.0)
+				draw_polyline(hx6, Color(0.4, 0.92, 1.0, 0.9), 1.5)
+				draw_circle(cc, 2.5 + 0.8 * sin(_t * 4.0), Color(0.8, 1.0, 1.0))
+				draw_line(Vector2(w * 0.5, -39.0), cc + Vector2(0.0, 10.0), Color(0.4, 0.92, 1.0, 0.25), 1.0)
+				var svs := Rect2(w * 0.5 - 34.0, -86.0, 68.0, 12.0)
+				draw_rect(svs, Color(0.04, 0.05, 0.08, 0.85))
+				draw_rect(svs, Color(gcol, 0.7 + 0.3 * absf(sin(_t * 1.2))), false, 1.0)
+				draw_string(font, svs.position + Vector2(0.0, 9.0), "SURVIVOR", HORIZONTAL_ALIGNMENT_CENTER, 68.0, 8, Color(0.7, 1.0, 0.8))
 			"screenwall":  # a screen of marble seen from above: its top, its end towards you, a line of light along it
 				var ln := float(data.get("len", 16.0))
 				draw_rect(Rect2(4.0, -1.0, 12.0, 3.0), Color(0, 0, 0, 0.3))
@@ -1076,6 +1100,14 @@ static func build_lobby(_station: Dictionary, open: bool) -> GroundMap:
 	m.set_meta("from_reg", Vector2(rx + REG_W * 0.5, ry + 1.8) * TILE)
 	Gen._zone(m, Rect2(FG_X, L_F0, 5, 1.4), "col_fgate", "The fighters' gate", CYAN, {"id": "col_fgate"})
 	m.lights.append({"pos": Vector2(FG_X + 2.5, L_F0 + 0.6) * TILE, "r": 80.0, "col": CYAN if open else Color(1.0, 0.3, 0.3), "a": 0.5})
+	# ---- west: the Survivor console (part 7c-3): a desk with a screen, a core of light turning over it
+	var svx := mid - 17
+	var svy := L_F0 + 8                                          # (clear of the benches before the ranking: its sign stands over open floor)
+	m.fill(svx, svy, 4, 1, T.BLOCK, 0)
+	props.append({"kind": "svconsole", "pos": Vector2(svx, svy + 1) * TILE, "w": 4 * TILE})
+	Gen._zone(m, Rect2(svx + 0.5, svy + 1.0, 3.0, 1.3), "sv_console", "The Survivor console: what your cores buy", Color(0.4, 1.0, 0.6), {"id": "sv_console"})
+	m.lights.append({"pos": Vector2(svx + 2.0, svy + 0.6) * TILE, "r": 70.0, "col": Color(0.4, 1.0, 0.6), "a": 0.35})
+	m.set_meta("sv_console_at", Vector2(svx + 2.0, svy + 1.6) * TILE)
 	# ---- west: the ranking on the wall, benches before it, cypresses in the corners
 	for bq in [mid - 19, mid - 14]:
 		m.add_object({"kind": "bench", "x": bq, "y": L_F0 + 2, "w": 3, "h": 1, "face": 0}, false)

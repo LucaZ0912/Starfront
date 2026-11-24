@@ -188,6 +188,18 @@ static func _paint(img: Image, fam: String) -> void:
 				_r(img, 2, 9, 2, 12, DARK)
 				_r(img, 20, 9, 2, 12, DARK)
 		# ---- features
+		"wp_silverblade":                                  # 62a, part 10c: the blade: a long and a short edge crossed, a core of light
+			var sv := Color(0.84, 0.88, 0.94)
+			for d in 10:
+				var hh := maxi(1, 4 - d / 2)
+				_r(img, 12 + d, 12 - hh / 2, 1, hh, sv)
+				_r(img, 11 - d, 12 - hh / 2, 1, hh, sv.darkened(0.2))
+			for d2 in 7:
+				var ww := maxi(1, 4 - d2 / 2)
+				_r(img, 12 - ww / 2, 12 + d2, ww, 1, sv.darkened(0.12))
+				_r(img, 12 - ww / 2, 11 - d2, ww, 1, sv)
+			_r(img, 10, 10, 4, 4, DARK)
+			_r(img, 11, 11, 2, 2, CYAN)
 		"wp_arm_laser":                                    # 0.7.52.14: the red bracer with its emitter
 			_r(img, 4, 9, 14, 6, Color(0.66, 0.08, 0.1))
 			_r(img, 4, 9, 14, 1, Color(0.95, 0.75, 0.3))

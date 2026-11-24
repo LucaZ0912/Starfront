@@ -13,7 +13,7 @@ const WildArtO = preload("res://scripts/ground/wild_art.gd")
 
 ## {image, rise} for an object.
 static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
-	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", "")) + str(o.get("seed", "")) + String(o.get("arch", "")) + String(o.get("species", "")) + str(o.get("patient", "")) + str(o.get("awake", "")) + str(o.get("no_balls", ""))]
+	var key := "%s_%d_%d_%s_%s_%d_%d_%s_%s" % [o["kind"], int(o.get("w", 1)), int(o.get("h", 1)), str(o.get("col", "")), str(pal.get("wood", "")), int(o.get("face", 0)), int(o.get("x", 0)) % 4, str(o.get("col2", "")), str(o.get("win", "")) + str(o.get("seed", "")) + String(o.get("arch", "")) + String(o.get("species", "")) + str(o.get("patient", "")) + str(o.get("awake", "")) + str(o.get("no_balls", "")) + str(o.get("snow", ""))]
 	if _cache.has(key):
 		return _cache[key]
 	var pw := int(o.get("w", 1)) * TILE
@@ -32,6 +32,8 @@ static func make(o: Dictionary, pal: Dictionary) -> Dictionary:
 		WildArtO.paint_obj(o, img)                   # 53f-2 (Luz): trees, palms, trunks, ice, the crashed drone
 	else:
 		_paint(img, String(o["kind"]), pw, ph, rise, c, wood, metal, o)
+	if bool(o.get("snow", false)):
+		_snow(img)                                   # 62a part 9 (Whiteout): snowed in
 	if not String(o["kind"]) in ["holo_ship", "holo_statue", "scanner_gate", "sphere_holo"]:
 		_outline(img)                                # 0.7.53.27: a hologram has no outline
 	var out := {"image": img, "rise": rise}
@@ -263,6 +265,14 @@ static func _rise(kind: String) -> int:
 			return 10
 		"news_wall":                        # 54c: a news screen in the lobby
 			return 26
+		"tank_trap":                # 62a, part 8: a tank trap (~1.4 m), a heap of rubble, a burnt-out car, a landing ship's wreck
+			return 12
+		"rubble":
+			return 10
+		"wreck_car":
+			return 12
+		"dropship_wreck":
+			return 52
 		"barrier":                  # package 52: cover – a low plated barricade (~1.3 m) and a high bulwark (~2.6 m)
 			return 8
 		"bulwark":
@@ -1797,6 +1807,96 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			for k6 in 4:
 				if srng.randf() < 0.5:
 					_p(img, int(pw * 0.5 + srng.randf_range(-pw * 0.3, pw * 0.3)), int(fy + ph * 0.4 + srng.randf_range(-3.0, 3.0)), Color.from_hsv(srng.randf(), 0.6, 0.95))
+		"tank_trap":                # 62a, part 8 (Luz): a tank trap: steel beams welded into a cross, rusted
+			var st8 := Color(0.3, 0.31, 0.36)
+			var gb8 := fy + ph - 1
+			for q8 in 21:                                         # two beams leaning across each other
+				var bx8 := int(q8 * 13.0 / 20.0)
+				_r(img, pw - 3 - bx8, gb8 - q8, 2, 2, st8.darkened(0.18))
+				_r(img, 1 + bx8, gb8 - q8, 2, 2, st8)
+				if q8 % 5 == 2:
+					_p(img, 1 + bx8, gb8 - q8, Color(0.5, 0.27, 0.14))            # rust
+			for q9 in 9:                                          # the third, towards you: short, its foot on the ground
+				_r(img, pw / 2 - 1, gb8 - 10 + q9, 3, 1, st8.lightened(0.1))
+			_r(img, pw / 2 - 2, gb8 - 1, 5, 2, st8.darkened(0.3))
+			_r(img, pw / 2 - 2, gb8 - 12, 4, 4, st8.lightened(0.22))                # the plate they are welded to
+			_p(img, pw / 2 - 1, gb8 - 11, st8.lightened(0.45))
+			_p(img, 2, gb8 - 20, st8.lightened(0.3))
+			_p(img, pw - 3, gb8 - 20, st8.lightened(0.3))
+		"rubble":                   # 62a, part 8: what is left of a wall: broken concrete in a heap, rebar sticking out of it
+			var rc8: Color = o.get("col", Color(0.4, 0.41, 0.46))
+			var sd8 := int(o.get("x", 0)) * 7 + pw
+			_ellipse(img, pw * 0.5, fy + ph - 6.0, pw * 0.5 - 1.0, minf(ph * 0.5, 10.0), rc8.darkened(0.32))
+			for k8 in maxi(5, pw / 6):                            # blocks of concrete, each its own size
+				var bw8 := 6 + int(_hn(sd8 + k8, 1) * 8.0)
+				var bh8 := 4 + int(_hn(sd8 + k8, 2) * 6.0)
+				var bx9 := 1 + int(_hn(sd8 + k8, 3) * maxf(1.0, float(pw - bw8 - 2)))
+				var by8 := fy + ph - 3 - bh8 - int(_hn(sd8 + k8, 4) * minf(12.0, ph * 0.5 + rise * 0.7))
+				var bc8 := rc8.darkened(0.14 * _hn(sd8 + k8, 5)).lightened(0.08 * _hn(sd8 + k8, 6))
+				_r(img, bx9, by8, bw8, bh8, bc8)
+				_r(img, bx9, by8, bw8, 1, bc8.lightened(0.24))
+				_r(img, bx9, by8 + bh8 - 1, bw8, 1, bc8.darkened(0.32))
+				if k8 % 2 == 0:
+					_r(img, bx9 + bw8 - 3, by8 + 1, 1, bh8 - 2, bc8.darkened(0.22))
+			for rb8 in maxi(2, pw / 16):                          # rebar
+				var rx8 := 3 + int(_hn(sd8 + rb8, 7) * (pw - 6))
+				var ry8 := fy - 3 + int(_hn(sd8 + rb8, 8) * 5.0)
+				_r(img, rx8, ry8, 1, 9, Color(0.5, 0.28, 0.16))
+				_p(img, rx8 + 1, ry8, Color(0.5, 0.28, 0.16))
+			for d8 in pw / 2:                                     # dust and small stones at its foot
+				_p(img, int(_hn(sd8 + d8, 9) * pw), fy + ph - 1 - int(_hn(sd8 + d8, 10) * 3.0), rc8.darkened(0.2) if d8 % 2 == 0 else rc8.lightened(0.12))
+		"wreck_car":                # 62a, part 8: a ground car, burnt out: the shell, empty frames where its glass was, a door hanging
+			var cc8: Color = o.get("col", Color(0.2, 0.19, 0.21))
+			var gc8 := fy + ph
+			_r(img, 3, gc8 - 6, pw - 6, 5, Color(0.07, 0.07, 0.09))
+			_r(img, 1, gc8 - 16, pw - 2, 11, cc8)                               # the body
+			_r(img, 1, gc8 - 16, pw - 2, 1, cc8.lightened(0.2))
+			_r(img, 1, gc8 - 6, pw - 2, 1, cc8.darkened(0.45))
+			_r(img, pw / 5, gc8 - 25, pw * 3 / 5, 10, cc8.darkened(0.1))        # the cabin
+			_r(img, pw / 5, gc8 - 25, pw * 3 / 5, 1, cc8.lightened(0.16))
+			_r(img, pw / 5 + 2, gc8 - 23, pw * 3 / 10 - 3, 6, Color(0.03, 0.03, 0.05))
+			_r(img, pw / 2 + 1, gc8 - 23, pw * 3 / 10 - 3, 6, Color(0.03, 0.03, 0.05))
+			for rs8 in 14:                                        # rust and soot
+				_p(img, 2 + int(_hn(rs8, 31) * (pw - 4)), gc8 - 15 + int(_hn(rs8, 32) * 9.0), Color(0.46, 0.22, 0.1) if rs8 % 3 != 0 else Color(0.04, 0.04, 0.04))
+			_r(img, pw - 10, gc8 - 14, 2, 9, Color(0.03, 0.03, 0.05))           # where a door was
+			for dq8 in 8:
+				_r(img, pw - 7 + dq8 / 3, gc8 - 13 + dq8, 3, 1, cc8.lightened(0.08))
+			_r(img, 3, gc8 - 12, 3, 2, Color(0.5, 0.2, 0.12))                   # what is left of a lamp
+		"dropship_wreck":           # 62a, part 8: a landing ship come down long ago: the hull broken in two, a wing standing up out of the ground
+			var hc8 := Color(0.3, 0.34, 0.37)
+			var gd8 := fy + ph
+			_ellipse(img, pw * 0.5, gd8 - 8.0, pw * 0.48, 9.0, Color(0.06, 0.06, 0.08))     # the scar it ploughed
+			for wy8 in 42:                                        # the tail fin, standing up out of the break: swept, blunt at its top
+				_r(img, 70 + wy8 / 2, gd8 - 44 - wy8, 30 - wy8 / 2, 1, hc8.darkened(0.24) if wy8 % 8 == 0 else hc8.lightened(0.05))
+				_p(img, 70 + wy8 / 2, gd8 - 44 - wy8, hc8.lightened(0.3))
+			_r(img, 86, gd8 - 80, 12, 4, Color(0.62, 0.16, 0.12))
+			_r(img, 6, gd8 - 46, 62, 36, hc8.darkened(0.12))                    # the stern, lying
+			_r(img, 6, gd8 - 46, 62, 3, hc8.lightened(0.16))
+			_r(img, 6, gd8 - 13, 62, 3, hc8.darkened(0.42))
+			for pl8 in range(14, 66, 12):
+				_r(img, pl8, gd8 - 43, 1, 30, hc8.darkened(0.32))
+			_r(img, 0, gd8 - 40, 8, 24, Color(0.11, 0.11, 0.14))                # its engines
+			_ellipse(img, 3.5, gd8 - 28.0, 3.5, 8.0, Color(0.04, 0.04, 0.05))
+			_r(img, 18, gd8 - 34, 16, 5, Color(0.62, 0.16, 0.12))               # what is left of its markings
+			_r(img, 38, gd8 - 34, 5, 5, Color(0.62, 0.16, 0.12))
+			for jg8 in 9:                                         # the torn edge of the break
+				_r(img, 66 + (jg8 % 3) * 2, gd8 - 46 + jg8 * 4, 3 + (jg8 * 5) % 4, 4, hc8.darkened(0.28))
+			for yy8 in 30:                                        # the bow, a little apart, aslant
+				var off8 := yy8 / 5
+				_r(img, 88 + off8, gd8 - 40 + yy8, 58 - off8 * 2, 1, hc8.darkened(0.04 * float(yy8 / 10)))
+			_r(img, 88, gd8 - 40, 58, 2, hc8.lightened(0.2))
+			for pl9 in range(98, 140, 14):
+				_r(img, pl9, gd8 - 37, 1, 24, hc8.darkened(0.3))
+			_r(img, 124, gd8 - 35, 18, 10, Color(0.04, 0.06, 0.09))             # the cockpit, its glass gone
+			_p(img, 128, gd8 - 32, Color(0.5, 0.7, 0.8))
+			_p(img, 136, gd8 - 28, Color(0.5, 0.7, 0.8))
+			for wq8 in 12:                                        # a wing torn off, lying before it
+				_r(img, 24 + wq8 * 2, gd8 - 10 + wq8 / 2, 46 - wq8 * 3, 1, hc8.darkened(0.2 + 0.02 * wq8))
+			_r(img, 24, gd8 - 10, 46, 1, hc8.lightened(0.12))
+			for dp8 in 7:                                         # plates of its hull, strewn
+				_r(img, 78 + int(_hn(dp8, 51) * 70.0), gd8 - 7 + int(_hn(dp8, 52) * 5.0), 4 + int(_hn(dp8, 53) * 5.0), 2, hc8.darkened(0.1 + 0.2 * _hn(dp8, 54)))
+			for so8 in 40:                                        # soot
+				_p(img, 8 + int(_hn(so8, 41) * (pw - 16)), gd8 - 44 + int(_hn(so8, 42) * 32.0), Color(0.05, 0.05, 0.06))
 		"barrier", "bulwark":       # package 52: cover in a fight – plated sections with seams, a light strip, emitters
 			var hi := kind == "bulwark"
 			var bc: Color = o.get("col", Color(0.4, 0.43, 0.48))
@@ -2196,6 +2296,29 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 3, fy - 13, pw - 6, 10, Color(0.3, 0.6, 0.8, 0.8))
 			for k in int((pw - 8) / 4):
 				_r(img, 4 + k * 4, fy - 11, 2, 6, [Color(0.9, 0.3, 0.2), Color(0.3, 0.8, 0.4), Color(0.95, 0.8, 0.3)][k % 3])
+
+
+## Snow on an object (package 62a, part 9: Whiteout): a cap of it on whatever is the top of each column of its
+## picture, thicker here and thinner there, a shade of blue under it; and now and then some lying on a ledge.
+static func _snow(img: Image) -> void:
+	var iw := img.get_width()
+	var ih := img.get_height()
+	var white := Color(0.95, 0.97, 1.0)
+	var shade := Color(0.72, 0.82, 0.96)
+	for x in iw:
+		var top := -1
+		for y in ih:
+			if img.get_pixel(x, y).a > 0.6:
+				top = y
+				break
+		if top < 0 or top > ih - 5:
+			continue
+		var deep := 2 + int(_hn(x / 3, 91) * 2.4)
+		for q in deep:
+			if top + q < ih and img.get_pixel(x, top + q).a > 0.6:
+				img.set_pixel(x, top + q, white if q < deep - 1 else shade)
+		if top > 0 and _hn(x / 2, 93) > 0.45:
+			img.set_pixel(x, top - 1, white)                # (it lies a little above the edge here and there)
 
 
 static func _outline(img: Image) -> void:

@@ -147,12 +147,17 @@ func _draw_team(y0: float) -> void:
 		draw_texture_rect(ChibiArt.PilotArt.portrait(m.get("look", {})), pr, false, Color(1, 1, 1) if not a["dead"] else Color(0.5, 0.5, 0.5))
 		draw_rect(pr, Color(0.3, 0.35, 0.4), false, 1.0)
 		_s(r.position + Vector2(78, 18), String(m.get("name", "")).left(22), Color(0.92, 0.95, 1.0), 13)
-		_s(r.position + Vector2(78, 32), "%s  ·  %s %s" % [CD.role_name(String(m.get("role", ""))), String(a["quality"]), String(CD.QUALITY_NAMES.get(String(a["quality"]), ""))], Color(0.7, 0.75, 0.8), 10)
+		_s(r.position + Vector2(78, 32), "%s  ·  %s %s" % ["Gladiator" if a.has("arena") else CD.role_name(String(m.get("role", ""))), String(a["quality"]),
+			String(CD.QUALITY_NAMES.get(String(a["quality"]), ""))], Color(0.7, 0.75, 0.8), 10)
 		var st: Dictionary = a["st"]
 		var mx: Dictionary = a["mx"]
 		_bar(r.position + Vector2(78, 39), 124, float(st["shield"]) / maxf(float(mx["shield"]), 0.001), Color(0.35, 0.8, 1.0))
 		_bar(r.position + Vector2(78, 47), 124, (float(st["armor"]) + float(st["health"])) / maxf(float(mx["armor"]) + float(mx["health"]), 0.001), Color(1.0, 0.35, 0.3))
-		var ord := "dead: a clinic can bring them back"
+		if a.has("energy") and not a["dead"]:              # package 62a, part 6 (Luz): in the Colosseum they live on energy and rounds as you do
+			_bar(r.position + Vector2(210, 39), 100, float(a["energy"]) / maxf(float(a["energy_max"]), 0.001), Color(1.0, 0.85, 0.3))      # (beside shield and body: energy, rounds)
+			_bar(r.position + Vector2(210, 47), 100, float(a["ammo"]) / maxf(float(a["ammo_max"]), 1.0), Color(0.78, 0.78, 0.72))
+			_s(r.position + Vector2(210, 33), "energy  ·  rounds", Color(0.6, 0.65, 0.7), 9)
+		var ord := "dead: a clinic can bring them back" if not a.has("arena") else "out of this fight"
 		if not a["dead"] and a["down"]:
 			ord = "DOWN: hold %s beside them  (%d s)" % [Keybinds.key_text("interact"), int(ceil(CD.DOWN_TIME - float(a["down_t"])))]
 		elif not a["dead"]:
@@ -161,8 +166,18 @@ func _draw_team(y0: float) -> void:
 					ord = "Hold position"
 				"attack":
 					ord = "Attack: %s" % (String(a["tgt"]["name"]) if a["tgt"] != null else "your target")
+				"own":
+					ord = "Their own call  ·  %s" % String(CD.STANCES.get(String(a["stance"]), ""))
+				"wing":
+					ord = "%s wing%s" % ["Right" if float(a.get("wing", 1.0)) > 0.0 else "Left", "  ·  at them" if int(a.get("wing_st", 0)) >= 2 else "  ·  on the way"]
+				"cover":
+					ord = "Holds in cover"
+				"retreat":
+					ord = "Falls back"
 				_:
 					ord = "Follow you  ·  %s" % String(CD.STANCES.get(String(a["stance"]), ""))
+		if not a["dead"] and not a["down"] and String(a["state"]) == "recharge":
+			ord = "To a charging point"
 		_s(r.position + Vector2(78, 67), "▸ " + ord, col, 10)
 		# the ability: a ring that fills, its name under it
 		var ab: Dictionary = combat.ability_of(a)
@@ -185,24 +200,30 @@ func _draw_wheel() -> void:
 	var vs := get_viewport_rect().size
 	draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
 	var c: Vector2 = combat.view.wheel_centre()
+	var fields: Array = combat.wheel_fields()          # (package 62a, part 6: the arena's six in place of the crew's four)
+	var nf := fields.size()
+	var step := TAU / nf
 	var r_in := 52.0
-	var r_out := 160.0
-	var pick := GroundCombat.wheel_pick(c, combat.view.wheel_point(), r_in)
+	var r_out := 160.0 if nf <= 4 else 182.0
+	var pick := GroundCombat.wheel_pick(c, combat.view.wheel_point(), r_in, fields)
 	var all: bool = combat.team_sel >= combat.allies.size()
 	var who: Dictionary = {} if all else combat.allies[combat.team_sel]
-	for si in 4:
-		var kind := String(GroundCombat.WHEEL[si])
-		var mid := -PI / 2 + si * PI / 2
+	for si in nf:
+		var kind := String(fields[si])
+		var mid := -PI / 2 + si * step
 		var on := kind == pick
 		var pts := PackedVector2Array()
 		for t in 13:
-			pts.append(c + Vector2.from_angle(mid - PI / 4 + 0.03 + (PI / 2 - 0.06) * t / 12.0) * r_out)
+			pts.append(c + Vector2.from_angle(mid - step / 2 + 0.03 + (step - 0.06) * t / 12.0) * r_out)
 		for t2 in 13:
-			pts.append(c + Vector2.from_angle(mid + PI / 4 - 0.03 - (PI / 2 - 0.06) * t2 / 12.0) * r_in)
+			pts.append(c + Vector2.from_angle(mid + step / 2 - 0.03 - (step - 0.06) * t2 / 12.0) * r_in)
 		draw_colored_polygon(pts, Color(0.1, 0.32, 0.45, 0.88) if on else Color(0.04, 0.06, 0.1, 0.72))
 		pts.append(pts[0])
 		draw_polyline(pts, Color(green, 0.95) if on else Color(0.45, 0.55, 0.6, 0.7), 2.0 if on else 1.0)
 		var text := String(GroundCombat.WHEEL_NAMES[kind])
+		if not all and nf > 4 and ((kind in ["follow", "own", "cover", "retreat"] and String(who["order"]) == kind) \
+				or (kind in ["wing_r", "wing_l"] and String(who["order"]) == "wing" and (float(who.get("wing", 1.0)) > 0.0) == (kind == "wing_r"))):
+			text += "\n(now)"
 		if kind == "ability":
 			if all:
 				text = "Abilities:\nall ready ones"
@@ -306,11 +327,16 @@ func _draw_tiles(vs: Vector2) -> void:
 			var arm := bool(st.get("pierce", false))
 			if arm:
 				sub = "READY" if combat.arm_charge_k() >= 1.0 else "charging %d %%" % int(combat.arm_charge_k() * 100.0)
+			var bld := bool(st.get("blade", false))                 # 62a, part 10c: the Silverblade Drone: out, getting ready, ready
+			if bld:
+				sub = "OUT" if combat.blade_flying() else ("READY" if combat.blade_k() >= 1.0 else "ready in %d %%" % int(combat.blade_k() * 100.0))
 			var barv: float = (g.energy / maxf(float(g.totals()["energy"]), 1.0)) if st.has("energy") else (float(g.ammo) / maxf(float(g.totals()["ammo"]), 1.0))
 			SuitHud.tile(self, Rect2(Vector2(x, y), TILE), GearIcons.icon(wid), "", String(st["name"]), sub,
-				Color(0.4, 1.0, 0.5) if act else Color(0.5, 0.55, 0.6, 0.5), -1.0 if arm else barv, DT_COL[String(st.get("dtype", "kinetic"))])
+				Color(0.4, 1.0, 0.5) if act else Color(0.5, 0.55, 0.6, 0.5), -1.0 if (arm or bld) else barv, DT_COL[String(st.get("dtype", "kinetic"))])
 			if arm:
 				_charge_frame(Rect2(Vector2(x, y), TILE).grow(-3.0), combat.arm_charge_k())
+			if bld:
+				_charge_frame(Rect2(Vector2(x, y), TILE).grow(-3.0), combat.blade_k())
 			x += TILE.x + TILE_GAP
 		x += GROUP_GAP - TILE_GAP
 	# the grenades

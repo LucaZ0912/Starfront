@@ -910,9 +910,33 @@ func _c_col_mode(c: Dictionary) -> String:
 		if String(m["id"]) == String(c.get("mode", "")):
 			if not bool(m["open"]):
 				return "%s: coming soon." % String(m["name"])
-			GameState.col_state()["mode"] = String(m["id"])
+			CD.switch_mode(GameState.col_state(), String(m["id"]))      # (part 5: every mode has a run of its own)
+			GameState.col_state()                                        # (… and its fit in shape)
 			return ""
 	return "No such mode."
+
+
+## Part 5: {"type":"col_team", "id"}: one who may stand beside you in Team Deathmatch steps into your team, or out
+## of it (two stand beside you).
+func _c_col_team(c: Dictionary) -> String:
+	var CD = load("res://data/colosseum.gd")
+	var st: Dictionary = GameState.col_state()
+	var id := String(c.get("id", ""))
+	if not (CD.mates(st) as Array).any(func(m): return String(m["id"]) == id):
+		return "Nobody of that name stands ready."
+	var cur: Array = (CD.team(st) as Array).map(func(m): return String(m["id"]))
+	if id in cur:
+		cur.erase(id)
+		st["team"] = cur
+		st["team_open"] = true                            # (a place stands free until you fill it)
+		return ""
+	if cur.size() >= CD.TEAM_SIZE and not bool(st.get("team_open", false)):
+		return "Two stand beside you already. Send one away first."
+	cur = (st.get("team", []) as Array).duplicate()
+	cur.append(id)
+	st["team"] = cur.slice(0, CD.TEAM_SIZE)
+	st["team_open"] = (st["team"] as Array).size() < CD.TEAM_SIZE
+	return ""
 
 
 ## Part 4: {"type":"col_fight_end", "won"}: a fight in the hologram is over. Won: Coins, gear points and rank points,
@@ -936,6 +960,114 @@ func _c_col_fight_end(c: Dictionary) -> String:
 	return ""
 
 
+## Package 62a, part 7 (Luz): Survivor. {"type":"sv_pick", "seat", "i"}: with a new level, the card `i` of the three
+## on the table is taken.
+func _c_sv_pick(c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.survivor == null or not is_instance_valid(g.survivor):
+		return "There is no run."
+	return String(g.survivor.pick(int(c.get("i", -1))))
+
+
+## {"type":"sv_weapon", "seat", "id"}: the weapon you begin a run of Survivor with (picked in the fighters' room).
+func _c_sv_weapon(c: Dictionary) -> String:
+	var SV = load("res://data/survivor.gd")
+	var id := String(c.get("id", ""))
+	if not SV.WEAPONS.has(id):
+		return "No such weapon."
+	if not SV.owned(GameState.col_state(), id):
+		return "%s is still locked: the Survivor console in the lobby." % String(SV.WEAPONS[id]["name"])
+	if not SV.can_begin(GameState.col_state(), id):
+		return "%s is a weapon for the end of a run: its card comes from level %d on." % [String(SV.WEAPONS[id]["name"]), int(SV.WEAPONS[id]["from"])]
+	SV.record(GameState.col_state())["weapon"] = id
+	return ""
+
+
+## Part 7c-3. {"type":"sv_stage", "seat", "id"}: the stage of the next run of Survivor (picked in the fighters' room).
+func _c_sv_stage(c: Dictionary) -> String:
+	var SV = load("res://data/survivor.gd")
+	var id := String(c.get("id", ""))
+	for s in SV.STAGES:
+		if String(s["id"]) == id:
+			if not bool(s["open"]):
+				return "That stage is still to come."
+			if not SV.stage_open(GameState.col_state(), id):
+				return "%s opens once you have %s." % [String(s["name"]), String(s.get("need_text", "come further"))]
+			SV.record(GameState.col_state())["stage"] = id
+			return ""
+	return "No such stage."
+
+
+## {"type":"sv_buy", "seat", "what", "id"}: something is bought for cores at the Survivor console in the lobby, for
+## good: "unlock" (id: a weapon or a bonus), "tune" (id: a figure of the fine tuning, a rank), "reroll", "revive".
+func _c_sv_buy(c: Dictionary) -> String:
+	var SV = load("res://data/survivor.gd")
+	if not GameState.col_registered:
+		return "Sign up at the registration first."
+	var what := String(c.get("what", ""))
+	var id := String(c.get("id", ""))
+	var st: Dictionary = GameState.col_state()
+	var cost: int = SV.price(st, what, id)
+	var e := String(SV.buy(st, what, id))
+	if e != "":
+		return e
+	var named := id
+	match what:
+		"unlock":
+			named = String((SV.WEAPONS if SV.WEAPONS.has(id) else SV.BONI)[id]["name"])
+		"tune":
+			named = "%s, rank %d" % [String(SV.TUNE[id]["name"]), SV.tune_rank(st, id)]
+		"reroll":
+			named = "a reroll a run (%d now)" % int(SV.record(st)["reroll"])
+		"revive":
+			named = "the last chance"
+	GameState.log_msg("Survivor console: %s, for %d cores." % [named, cost], GameState.COL_GOOD)
+	GameState.sv_give_suit()                                  # (part 10c: with the last thing bought, the Regalia)
+	return ""
+
+
+## {"type":"sv_reroll", "seat"}: the three cards of a new level are drawn anew (rerolls are bought at the console).
+func _c_sv_reroll(_c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.survivor == null or not is_instance_valid(g.survivor):
+		return "There is no run."
+	return String(g.survivor.reroll())
+
+
+## {"type":"sv_end"}: a run of Survivor is over (you are out, or you held the stage to its end): Coins and rank
+## points by the time you held out, the best time kept.
+func _c_sv_end(_c: Dictionary) -> String:
+	var g = _ground()
+	if g == null or g.survivor == null or not is_instance_valid(g.survivor):
+		return "There is no run."
+	var sv = g.survivor
+	if not bool(sv.over):
+		return "The run is not over."
+	if bool(sv.run.get("paid", false)):
+		return "That run is settled."
+	var SV = load("res://data/survivor.gd")
+	var CD = load("res://data/colosseum.gd")
+	var st: Dictionary = GameState.col_state()
+	var before: int = CD.rank(st)
+	sv.run["slain"] = sv.slain()                              # (part 10a) what it put out, kind by kind: into the collection
+	var res: Dictionary = SV.settle(st, sv.run, bool(sv.survived))
+	sv.run["paid"] = true
+	GameState.coins += int(res["coins"])
+	st["sv_last"] = res
+	GameState.log_msg("Survivor: %s on %s. %d Coins, %d rank points, %d cores." % [SV.time_text(float(res["time"])), String(SV.stage(String(res["stage"]))["name"]), int(res["coins"]),
+		int(res["xp"]), int(res["cores"])], GameState.COL_GOOD)
+	if CD.rank(st) > before:
+		GameState.log_msg("The Colosseum: a new rank: %s." % String(CD.RANKS[CD.rank(st)]["name"]), GameState.COL_GOOD)
+	for opened in res.get("opened", []):
+		GameState.log_msg("Survivor: a new stage is open to you: %s." % String(opened), GameState.COL_GOOD)
+	var met: Array = res.get("new_foes", [])                  # (part 10a) kinds put out for the first time
+	if not met.is_empty():
+		var names: Array = met.map(func(k): return String(SV.FOES[String(k)]["name"]))
+		GameState.log_msg("Collection: Survivor: %s recorded." % ", ".join(names), GameState.COL_GOOD)
+		GameState.codex.event("collection")
+	return ""
+
+
 func _c_col_ready(_c: Dictionary) -> String:
 	var CD = load("res://data/colosseum.gd")
 	var st: Dictionary = GameState.col_state()
@@ -945,6 +1077,8 @@ func _c_col_ready(_c: Dictionary) -> String:
 		return "Pick a mode first."
 	if CD.fit_cost(st["fit"]) > CD.budget(st):
 		return "Your fit costs more gear points than you have."
+	if String(st["mode"]) == "team" and bool(st.get("team_open", false)):
+		return "Your team is not full: pick who stands beside you."
 	return ""
 
 
@@ -3984,6 +4118,138 @@ func _c_debug_casino(c: Dictionary) -> String:
 		var g1 = _ground()
 		if g1 != null and String(g1.level) == "zcolin":
 			g1.go_level("zcolin", "from_reg")
+		return ""
+	if c.has("col_map") or c.has("col_plan"):             # … part 5: the next fight's ground and its plan ("" = by lot again)
+		var CDf = load("res://data/colosseum.gd")
+		for k in [["col_map", "setting"], ["col_plan", "layout"]]:
+			if c.has(k[0]):
+				if String(c[k[0]]) == "":
+					CDf.force.erase(k[1])
+				else:
+					CDf.force[k[1]] = String(c[k[0]])
+		GameState.log_msg("[Debug] The Colosseum: the next ground: %s, %s." % [String(CDf.force.get("setting", "by lot")), String(CDf.force.get("layout", "by lot"))], GameState.COL_INFO)
+		return ""
+	if c.has("sv") and (String(c["sv"]) in ["cores", "unlock", "lock", "slain", "all"] or String(c["sv"]).begins_with("stage:") or String(c["sv"]).begins_with("rig:")):      # … part 7c-3: the console: 100 cores; all unlocked; all locked again; part 8: the stage
+		var SVm = load("res://data/survivor.gd")
+		var recm: Dictionary = SVm.record(GameState.col_state())
+		if String(c["sv"]).begins_with("stage:"):
+			var stg_id := String(c["sv"]).trim_prefix("stage:")
+			for stg_d in SVm.STAGES:
+				if String(stg_d["id"]) == stg_id and bool(stg_d["open"]):
+					if String(stg_d.get("need", "")) != "" and not (String(stg_d["need"]) in (recm["beaten"] as Array)):
+						(recm["beaten"] as Array).append(String(stg_d["need"]))
+					recm["stage"] = stg_id
+					GameState.log_msg("[Debug] Survivor: the stage: %s." % String(stg_d["name"]), GameState.COL_INFO)
+					return ""
+			return "No such stage."
+		if String(c["sv"]).begins_with("rig:"):               # (part 10b) the rig's step, to look at it: "rig:+", "rig:-", "rig:auto" (by what you have bought), "rig:<n>"
+			var rig_w := String(c["sv"]).trim_prefix("rig:")
+			var rig_now: int = SVm.rig_tier(GameState.col_state())
+			recm["rig_force"] = -1 if rig_w == "auto" else clampi(rig_now + 1 if rig_w == "+" else (rig_now - 1 if rig_w == "-" else int(rig_w)), 0, int(SVm.RIG_STEPS))
+			var grig = _ground()
+			if grig != null and grig.pilot != null and is_instance_valid(grig.pilot):
+				grig.pilot.look = grig.pilot_look()
+			GameState.log_msg("[Debug] Survivor: the rig: step %d of %d%s (%s)." % [int(SVm.rig_tier(GameState.col_state())), int(SVm.RIG_STEPS), "" if rig_w != "auto" else ", by what you have bought",
+				String(SVm.RIG_NAMES[int(SVm.rig_tier(GameState.col_state()))])], GameState.COL_INFO)
+			return ""
+		match String(c["sv"]):
+			"cores":
+				recm["cores"] = int(recm["cores"]) + 100
+				recm["cores_all"] = int(recm["cores_all"]) + 100
+			"unlock":
+				recm["own"] = SVm.UNLOCK_COST.keys()
+			"all":                                            # (part 10c) everything the console sells: all unlocked, every figure at its last rank, three rerolls, the last chance
+				recm["own"] = SVm.UNLOCK_COST.keys()
+				for tq in SVm.TUNE_ORDER:
+					recm["tune"][String(tq)] = int(SVm.TUNE_MAX)
+				recm["reroll"] = (SVm.REROLL_COST as Array).size()
+				recm["revive"] = true
+				GameState.sv_give_suit()
+			"slain":                                          # (part 10a) the collection: ten of every kind
+				for skd in SVm.FOE_ORDER:
+					recm["slain"][String(skd)] = int((recm["slain"] as Dictionary).get(String(skd), 0)) + 10
+				GameState.log_msg("[Debug] Survivor: ten more of every kind in the collection.", GameState.COL_INFO)
+				return ""
+			"lock":
+				recm["own"] = []
+				recm["suit"] = false
+				recm["rig_force"] = -1
+				recm["slain"] = {}
+				recm["beaten"] = []
+				recm["stage"] = "outbreak"
+				recm["tune"] = {}
+				recm["reroll"] = 0
+				recm["revive"] = false
+				recm["weapon"] = SVm.START_WEAPON
+		GameState.log_msg("[Debug] Survivor: %d cores, %d of %d unlocked." % [int(recm["cores"]), (recm["own"] as Array).size(), SVm.UNLOCK_COST.size()], GameState.COL_INFO)
+		return ""
+	if c.has("sv"):                                       # … part 7: Survivor: "start" a run, a "level", a "swarm", a "minute" on, "end" it
+		var gs = _ground()
+		if gs == null or not String(gs.level).begins_with("zcol"):
+			return "Go into the Colosseum first (Lobby)."
+		if String(c["sv"]) == "start":
+			GameState.col_registered = true
+			load("res://data/colosseum.gd").switch_mode(GameState.col_state(), "survivor")
+			gs._close_game()
+			gs._sv_start()
+			return ""
+		if gs.survivor == null or not is_instance_valid(gs.survivor) or bool(gs.survivor.over):
+			return "There is no run."
+		match String(c["sv"]):
+			"level":
+				gs.survivor.run["xp"] = int(gs.survivor.run["xp"]) + load("res://data/survivor.gd").need(int(gs.survivor.run["level"]))
+			"swarm":
+				gs.survivor.swarm(100)
+			"minute":
+				gs.survivor.run["t"] = float(gs.survivor.run["t"]) + 60.0
+			"end":
+				gs.survivor.end(false)
+			"vent":                                             # (part 9a: Whiteout) the steam vent nearest to you bursts
+				var vbest: Dictionary = {}
+				for vd in gs.survivor.vents:
+					if vbest.is_empty() or (vd["pos"] as Vector2).distance_squared_to(gs.pilot.pos) < (vbest["pos"] as Vector2).distance_squared_to(gs.pilot.pos):
+						vbest = vd
+				if vbest.is_empty():
+					return "There is no steam vent on this stage."
+				gs.survivor.vent_burst(vbest)
+			"flood":                                            # (the flood of the last two minutes begins now)
+				gs.survivor.run["t"] = maxf(float(gs.survivor.run["t"]), float(load("res://data/survivor.gd").FLOOD_FROM))
+			"foreman", "brood", "warden", "core", "worm", "heart":
+				gs.survivor.boss_start(String(c["sv"]))
+			"flock", "ring", "wall", "blackout", "sleepers", "supply", "searchlight", "reinforce", "killline", "emp", "blizzard", "icebreak", "avalanche":
+				gs.survivor.event(String(c["sv"]))
+			"alpha":
+				gs.survivor.make_alpha(gs.survivor.spawn_kind(String(gs.survivor.stg["swarm"]), 1))      # (of the stage's own swarm)
+			_:
+				var what := String(c["sv"])
+				var SVd = load("res://data/survivor.gd")
+				if what.begins_with("item:") and SVd.ITEMS.has(what.trim_prefix("item:")):
+					gs.survivor.give(what.trim_prefix("item:"))
+				elif what.begins_with("carry:"):                   # (part 7c-3) a weapon or a bonus more, or a level of it; "carry:ult": all you carry at their ultimates
+					var cid := what.trim_prefix("carry:")
+					var crun: Dictionary = gs.survivor.run
+					if cid == "ult":
+						for cw in crun["weapons"]:
+							cw[1] = SVd.ULT
+					elif SVd.WEAPONS.has(cid):
+						var ce := String(SVd.apply(crun, {"kind": "weapon" if SVd.weapon_level(crun, cid) == 0 else "up", "id": cid}))
+						if ce != "":
+							return ce
+					elif SVd.BONI.has(cid):
+						var cb := String(SVd.apply(crun, {"kind": "bonus" if SVd.bonus_level(crun, cid) == 0 else "bonus_up", "id": cid}))
+						if cb != "":
+							return cb
+					else:
+						return "No such thing."
+					gs.survivor.mods = SVd.mods(crun)
+				elif what.begins_with("draw:"):                    # (part 7f) a weapon crate's draw, with one, three or five rewards
+					if gs.minigame != null:
+						return "A window is open."
+					gs.survivor.open_draw(false, clampi(int(what.trim_prefix("draw:")), 1, 5))
+				elif SVd.FOES.has(what):
+					gs.survivor.swarm(2 if what == "hauler" else 6, what)
+				else:
+					return "No such thing."
 		return ""
 	if c.has("col_xp"):                                   # … part 4: rank points
 		GameState.col_state()["xp"] = maxi(0, int(GameState.col_state()["xp"]) + int(c["col_xp"]))
