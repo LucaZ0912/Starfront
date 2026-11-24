@@ -17,6 +17,12 @@ var high := false
 var chips: Array = CD.CHIPS
 var limit := CD.LIMIT
 var chip := 5
+# split screen (Luz): the second player sits at the table too, in the seat beside you. Both stake from the same
+# Coins. A player on a controller has a mark of their own on the cloth: the stick moves it, ✕ puts the chip down,
+# ◯ takes the bet back, □ is the next chip, △ spins, L1 clears their bets. The mouse is the player's at the keyboard.
+var two := false
+var chip2 := 5                                   # the second player's chip
+var cur := [Vector2.INF, Vector2.INF]            # each player's mark on the cloth (INF: none yet)
 var seats: Array = []                            # {name, bets: {key: Coins}, guest: bool, back: Coins of the last spin}
 var state := "bet"                               # bet, spin, done
 var number := -1
@@ -38,10 +44,74 @@ func setup(cfg: Dictionary) -> void:
 	_rng.seed = Time.get_ticks_usec()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	seats = [{"name": "You", "bets": {}, "guest": false, "back": 0}]
-	for gname in cfg.get("guests", ["A guest in white", "A guest in violet"]):
+	two = Players.split and GameState.has_pilot2()
+	chip2 = chip
+	seats = [{"name": "You" if not two else String(GameState.pilot_name).get_slice(" ", 0), "bets": {}, "guest": false, "back": 0}]
+	var gnames: Array = cfg.get("guests", ["A guest in white", "A guest in violet"])
+	if two:
+		seats.append({"name": String(GameState.pilot2.get("name", "Player 2")).get_slice(" ", 0), "bets": {}, "guest": false, "back": 0, "p2": true})
+		gnames = gnames.slice(0, 1)                           # (one guest less: the seat is the second player's)
+	for gname in gnames:
 		seats.append({"name": String(gname), "bets": {}, "guest": true, "back": 0})
 	_guests_bet()
+
+
+## Is this seat one of you two (their Coins are the game's)?
+func player_seat(seat: int) -> bool:
+	return seat >= 0 and seat < seats.size() and not bool(seats[seat]["guest"])
+
+
+## What the two of you have on the cloth together.
+func stake_sum() -> int:
+	var n := 0
+	for i in seats.size():
+		if player_seat(i):
+			n += total(i)
+	return n
+
+
+## The seat of the player at the keyboard and mouse (you; in split screen whoever of the two sits there).
+func mouse_seat() -> int:
+	return 1 if two and Players.on_keys(1) else 0
+
+
+## Split screen: a player on a controller: their mark on the cloth and their buttons.
+func _two_step(dt: float) -> void:
+	var vs := get_viewport_rect().size
+	var room := Rect2(Vector2(20, 20), vs - Vector2(40, 40))      # where a mark may go: the picture, and all of the cloth
+	for fr0 in fields().values():
+		room = room.merge(fr0 as Rect2)
+	for h in 2:
+		if Players.on_keys(h):
+			cur[h] = Vector2.INF
+			continue
+		if cur[h] == Vector2.INF:
+			cur[h] = (fields()["n17"] as Rect2).get_center() + Vector2(0.0, 30.0 * h)
+		cur[h] = ((cur[h] as Vector2) + Players.move(h) * 420.0 * dt).clamp(room.position, room.end)
+		if Players.just_pressed(h, "foot_team"):               # △
+			spin()
+		if state != "bet":
+			continue
+		if Players.just_pressed(h, "foot_swap"):               # □: the next chip
+			var ci := chips.find(chip2 if h == 1 else chip)
+			var nc := int(chips[(ci + 1) % chips.size()])
+			if h == 1:
+				chip2 = nc
+			else:
+				chip = nc
+			Audio.play("ui_click", "roulette: chip")
+		if Players.just_pressed(h, "foot_tactics"):            # L1: their bets off the cloth
+			Commands.execute({"type": "roulette_clear", "seat": h})
+		var put: bool = Players.just_pressed(h, "interact")    # ✕
+		var take: bool = Players.just_pressed(h, "foot_dodge") # ◯
+		if put or take:
+			var fr := fields()
+			for k in fr:
+				if (fr[k] as Rect2).has_point(cur[h]):
+					var e: String = Commands.execute({"type": "roulette_bet", "seat": h, "key": String(k), "chip": (chip2 if h == 1 else chip) if put else -1})
+					msg = e if e != "" else "%s: %d Coins on the cloth." % [String(seats[h]["name"]), total(h)]
+					Audio.play("ui_error" if e != "" else "ui_click", "roulette: bet")
+					break
 
 
 func _ready() -> void:
@@ -89,8 +159,8 @@ func place(seat: int, key: String, amount: int) -> String:
 		return ""
 	if total(seat) + amount > limit:
 		return "The table's limit is %d Coins a spin." % limit
-	if seat == 0 and total(0) + amount > GameState.coins:
-		return "Not enough Coins."
+	if player_seat(seat) and total(seat) + amount > GameState.coins_of(seat):
+		return "Not enough Coins."                         # (each of you stakes from their own Coins)
 	bets[key] = int(bets.get(key, 0)) + amount
 	return ""
 
@@ -130,7 +200,7 @@ func spin_result(n: int, from: int, back: int) -> void:
 	state = "spin"
 	_st = 0.0
 	last_bets = (seats[0]["bets"] as Dictionary).duplicate()
-	seats[0]["back"] = back
+	seats[0]["back"] = back if not two else CD.settle(seats[0]["bets"], n)      # (split screen: `back` is what the two of you get together)
 	for i in range(1, seats.size()):
 		seats[i]["back"] = CD.settle(seats[i]["bets"], n)
 	msg = "No more bets."
@@ -139,6 +209,8 @@ func spin_result(n: int, from: int, back: int) -> void:
 
 func _guests_bet() -> void:
 	for i in range(1, seats.size()):
+		if not bool(seats[i]["guest"]):
+			continue                                      # (split screen: the second player places their own bets)
 		var bets: Dictionary = seats[i]["bets"]
 		bets.clear()
 		for k in 1 + _rng.randi() % 3:
@@ -157,6 +229,8 @@ func _new_round() -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if two:
+		_two_step(dt)
 	if state == "spin":
 		_st += dt
 		if _st >= SPIN_TIME:
@@ -165,8 +239,8 @@ func _process(dt: float) -> void:
 			history.push_front(number)
 			if history.size() > 12:
 				history.pop_back()
-			var staked := total(0)
-			var back := int(seats[0]["back"])
+			var staked := stake_sum() if two else total(0)
+			var back := int(seats[0]["back"]) + (int(seats[1]["back"]) if two else 0)
 			var call := "%d, %s." % [number, "green" if number == 0 else ("red" if CD.is_red(number) else "black")]
 			if hop_from >= 0:
 				call = "The ball hops on from %d: %s" % [hop_from, call]
@@ -177,7 +251,7 @@ func _process(dt: float) -> void:
 	for c in chips:
 		(_btns[c] as Button).modulate = Color(1.0, 0.85, 0.4) if int(c) == chip else Color.WHITE
 	(_btns["spin"] as Button).text = "NEXT ROUND  (Space)" if state == "done" else "SPIN  (Space)"
-	(_btns["spin"] as Button).disabled = state == "spin" or (state == "bet" and total(0) == 0)
+	(_btns["spin"] as Button).disabled = state == "spin" or (state == "bet" and stake_sum() == 0)
 	(_btns["clear"] as Button).disabled = state != "bet"
 	(_btns["again"] as Button).disabled = state != "bet" or last_bets.is_empty()
 	(_btns["out"] as Button).disabled = state == "spin"
@@ -203,8 +277,11 @@ func _gui_input(event: InputEvent) -> void:
 		var fr := fields()
 		for k in fr:
 			if (fr[k] as Rect2).has_point(mb.position):
-				var e: String = Commands.execute({"type": "roulette_bet", "seat": 0, "key": String(k), "chip": chip if mb.button_index == MOUSE_BUTTON_LEFT else -1})
-				msg = e if e != "" else "%d Coins on the cloth." % total(0)
+				var ms := mouse_seat()
+				if two and not Players.on_keys(ms):
+					return                                    # (split screen: nobody of you is at the mouse)
+				var e: String = Commands.execute({"type": "roulette_bet", "seat": ms, "key": String(k), "chip": (chip2 if ms == 1 else chip) if mb.button_index == MOUSE_BUTTON_LEFT else -1})
+				msg = e if e != "" else "%d Coins on the cloth." % total(ms)
 				Audio.play("ui_error" if e != "" else "ui_click", "roulette: bet")
 				accept_event()
 				return
@@ -214,6 +291,8 @@ func _gui_input(event: InputEvent) -> void:
 func pad_button(b: String, pressed: bool) -> bool:
 	if not pressed:
 		return true
+	if two:
+		return true                                       # (split screen: the controllers are read in _two_step)
 	match b:
 		"cross":
 			spin()
@@ -254,7 +333,7 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	draw_rect(Rect2(Vector2.ZERO, vs), Color(0.03, 0.02, 0.07, 0.95))
 	draw_string(font, Vector2(40.0, 70.0), "HIGH-STAKES ROULETTE" if high else "ROULETTE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 40, Color(1.0, 0.5, 0.8).lerp(Color(0.3, 0.9, 1.0), 0.5 + 0.5 * sin(_t * 1.5)))
-	draw_string(font, Vector2(40.0, 104.0), "The limit: %d Coins a spin   ·   you hold %d Coins   ·   on the cloth %d" % [limit, GameState.coins, total(0)], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 17, Color(1.0, 0.85, 0.4))
+	draw_string(font, Vector2(40.0, 104.0), ("The limit: %d Coins a spin   ·   you hold %d Coins   ·   on the cloth %d" % [limit, GameState.coins, total(0)]) if not two else ("The limit: %d Coins a spin   ·   %s holds %d Coins   ·   %s holds %d Coins" % [limit, String(seats[0]["name"]), GameState.coins, String(seats[1]["name"]), GameState.coins_of(1)]), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 17, Color(1.0, 0.85, 0.4))
 	# ---- the wheel: a ring of light, the pockets in it, the ball a point running round
 	var wc := Vector2(vs.x * 0.24, vs.y * 0.47)
 	var R := minf(250.0, vs.y * 0.27)
@@ -355,3 +434,10 @@ func _draw() -> void:
 		draw_arc(hc, 18.0, 0.0, TAU, 24, Color(1.0, 0.85, 0.4, 0.9 if h == 0 else 0.3), 2.0)
 		draw_string(font, hc + Vector2(-18.0, 6.0), "%d" % int(history[h]), HORIZONTAL_ALIGNMENT_CENTER, 36.0, 15, Color(1, 1, 1))
 	draw_string(font, Vector2(sx, sy + 150.0), msg, HORIZONTAL_ALIGNMENT_LEFT, vs.x - sx - 30.0, 19, Color(1.0, 0.95, 0.6))
+	if two:                                                  # split screen: each controller's mark on the cloth, in its seat's colour
+		for h in 2:
+			if cur[h] != Vector2.INF:
+				var mc: Color = SEAT_COL[h % SEAT_COL.size()]
+				draw_arc(cur[h], 13.0, 0.0, TAU, 28, Color(0, 0, 0, 0.7), 5.0)
+				draw_arc(cur[h], 13.0, 0.0, TAU, 28, mc, 2.5)
+				draw_string(ThemeDB.fallback_font, (cur[h] as Vector2) + Vector2(16.0, -10.0), "P%d  %d" % [h + 1, chip2 if h == 1 else chip], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, mc)

@@ -760,6 +760,8 @@ func _process(delta: float) -> void:
 				await _test_split3(main.view)           # split screen, stage 1: the second player's own gear in a match
 				await _test_split4(main.view)           # split screen, stage 1: an arsenal each in Survivor
 				await _test_split5(main.view)           # split screen, stage 1: the rest (swarm, items, blows, the room)
+				await _test_split6(main.view)           # split screen, stage 2: billiards and darts for two
+				await _test_split7(main.view)           # split screen, stage 2: roulette and blackjack for two
 				_shooting = false
 				timer = 0.0
 				return
@@ -31131,6 +31133,408 @@ func _test_split5(_view: SystemView) -> void:
 	Commands.cheats_enabled = cheats_keep
 	CG.gate_open = 0.0
 	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen, stage 2 (Luz): the games at a table for two, in one picture: the second player takes the free seat
+## at billiards and at darts and plays their turns with their own device; no stake and no streak between the two.
+func _test_split6(_view: SystemView) -> void:
+	var CD = load("res://data/colosseum.gd")
+	var PilotData = load("res://data/pilot.gd")
+	var Lobby = load("res://scripts/ui/minigame_lobby.gd")
+	var D = load("res://scripts/ground/darts_game.gd")
+	var P = load("res://scripts/ground/pool_game.gd")
+	var shots := OS.get_environment("SPLIT6_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	CD.force.clear()
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var lobby_ok := false
+	var darts_ok := false
+	var pool_ok := false
+	var end_ok := false
+	if g != null and is_instance_valid(g):
+		var keep_streak: Dictionary = GameState.minigame_streak.duplicate()
+		var cr0: int = GameState.credits
+		# ---- the lobby: without split screen the seat is shut; with it the second player sits down, for no stake
+		var lb0 = Lobby.new()
+		lb0.setup("billiards", {"id": "test_bar"}, [], [])
+		g._open_game(lb0)
+		for f0 in 4:
+			await get_tree().process_frame
+		var shut: bool = _find_button(lb0, "Player 2") != null and _find_button(lb0, "Player 2").disabled
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var lb = Lobby.new()
+		lb.setup("billiards", {"id": "test_bar"}, [], [])
+		g._open_game(lb)
+		for f1 in 4:
+			await get_tree().process_frame
+		var btn = _find_button(lb, "Player 2")
+		var open_now: bool = btn != null and not btn.disabled and String(btn.text).contains("Mira Voss")
+		if btn != null:
+			btn.pressed.emit()
+		for f2 in 3:
+			await get_tree().process_frame
+		lb.stake = 500
+		var got := {}
+		lb.start.connect(func(cfg): got["cfg"] = cfg)
+		if shots:
+			for f2b in 12:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split6_lobby.png")
+		lb._start()
+		var seat: Dictionary = lb._two_seat()
+		lobby_ok = shut and open_now and String(lb.opponent.get("kind", "")) == "p2" and got.has("cfg") and int(got["cfg"]["stake"]) == 0 and String(got["cfg"]["opponent"]["kind"]) == "p2" \
+			and GameState.credits == cr0 and String(Commands.mg_session.get("opponent", {}).get("kind", "")) == "p2"
+		if not lobby_ok:
+			print("SPLIT6 lobby: shut ", shut, " open ", open_now, " opponent ", lb.opponent, " cfg ", got, " credits ", GameState.credits, " was ", cr0)
+		# ---- darts: the second player's turn is a hand's, their device's
+		var dg = D.new()
+		dg.setup({"mode": "301", "opponent": seat, "stake": 0})
+		g._open_game(dg)
+		for f3 in 4:
+			await get_tree().process_frame
+		dg.turn = 1
+		dg._begin_turn()
+		var hand: bool = dg.two and dg.state == "aim" and dg._hand()
+		Players.sim["1:move"] = Vector2(1.0, 0.0)
+		for f4 in 20:
+			await get_tree().process_frame
+		Players.sim.erase("1:move")
+		var aimed: bool = dg._pad_aim != Vector2.INF and dg._pad_aim.x > D.BC.x + 3.0
+		if shots:
+			for f4b in 6:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split6_darts.png")
+		Players.sim["1:foot_drone"] = true
+		for f5 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:foot_drone")
+		var td := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - td < 3000 and dg.darts_left == 3:
+			await get_tree().process_frame
+		var thrown: bool = dg.darts_left == 2 and (dg.stuck as Array).size() == 1 and int((dg.stuck as Array)[0][1]) == 1 and dg.turn == 1
+		# your turn: their device does nothing
+		dg.turn = 0
+		dg._begin_turn()
+		Players.sim["1:foot_drone"] = true
+		for f6 in 6:
+			await get_tree().process_frame
+		Players.sim.erase("1:foot_drone")
+		for f6b in 20:
+			await get_tree().process_frame
+		var not_theirs: bool = dg.darts_left == 3 and dg.state == "aim"
+		darts_ok = hand and aimed and thrown and not_theirs
+		if not darts_ok:
+			print("SPLIT6 darts: hand ", hand, " state ", dg.state, " aimed ", aimed, " at ", dg._pad_aim, " thrown ", thrown, " left ", dg.darts_left, " stuck ", dg.stuck, " not theirs ", not_theirs)
+		# the game ends between the two of you: no streak, no stake
+		dg.state = "aim"
+		dg.turn = 0
+		dg.score = [32, 200]
+		dg.darts_left = 3
+		dg._land(D.target(16, "D"))
+		end_ok = dg.state == "over" and dg.won and Commands.mg_session.is_empty() and var_to_str(GameState.minigame_streak) == var_to_str(keep_streak) and GameState.credits == cr0
+		if not end_ok:
+			print("SPLIT6 end: state ", dg.state, " won ", dg.won, " session ", Commands.mg_session, " streak ", GameState.minigame_streak, " was ", keep_streak)
+		# ---- billiards: their turn is a hand's too: the stick aims, L2 held charges and letting go shoots, the ball in hand is put down
+		Commands.mg_session = {"game": "billiards", "mode": "8ball", "stake": 0, "opponent": seat, "place": "test_bar"}
+		var pg = P.new()
+		pg.setup({"mode": "8ball", "opponent": seat, "stake": 0})
+		g._open_game(pg)
+		for f7 in 4:
+			await get_tree().process_frame
+		pg.turn = 1
+		pg.state = "place_ai"
+		pg._next_turn_setup()
+		var in_hand: bool = pg.two and pg.state == "place"
+		Players.sim["1:interact"] = true
+		for f8 in 6:
+			await get_tree().process_frame
+		Players.sim.erase("1:interact")
+		var put_down: bool = pg.state == "aim" and pg.turn == 1
+		var a0: float = pg.aim_a
+		Players.sim["1:move"] = Vector2(0.0, -1.0)
+		for f9 in 40:
+			await get_tree().process_frame
+		Players.sim.erase("1:move")
+		var turned: bool = absf(angle_difference(pg.aim_a, -PI * 0.5)) < absf(angle_difference(a0, -PI * 0.5)) or absf(angle_difference(a0, -PI * 0.5)) < 0.01
+		Players.sim["1:foot_drone"] = true
+		for f10 in 25:
+			await get_tree().process_frame
+		var charged: bool = pg.charging and pg.power > 0.05
+		Players.sim.erase("1:foot_drone")
+		for f11 in 6:
+			await get_tree().process_frame
+		var shot: bool = pg.state == "roll"
+		var tp := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tp < 20000 and pg.state == "roll":
+			await get_tree().process_frame
+		var no_ai: bool = pg.state in ["aim", "place", "over"]
+		pool_ok = in_hand and put_down and turned and charged and shot and no_ai
+		if not pool_ok:
+			print("SPLIT6 pool: in hand ", in_hand, " put down ", put_down, " turned ", turned, " a ", a0, " -> ", pg.aim_a, " charged ", charged, " shot ", shot, " after ", pg.state, " turn ", pg.turn)
+		Commands.mg_session = {}
+		GameState.minigame_streak = keep_streak
+		g._close_game()
+	check(lobby_ok, "split6: the seat for a second player at the table is shut without split screen; with it the second player sits down by name, and the two play for no stake")
+	check(darts_ok, "split6: at darts the second player's turn is thrown by their own device (the stick aims, a press throws), and in your turn their device does nothing")
+	check(pool_ok, "split6: at billiards the second player puts the ball in hand down, aims with their stick, charges and shoots with their own device, and nobody plays for them")
+	check(end_ok, "split6: a game between the two of you ends with no streak touched and no credits moved")
+	# tidy up: the game as it was
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## The first button under a node whose text holds `part` (null: none).
+func _find_button(root: Node, part: String) -> Button:
+	if root is Button and String((root as Button).text).contains(part):
+		return root as Button
+	for c in root.get_children():
+		var b := _find_button(c, part)
+		if b != null:
+			return b
+	return null
+
+
+## Split screen, stage 2 (Luz): roulette and blackjack for two, in one picture: the second player has the seat beside
+## you, stakes from the same Coins with their own device, and is paid with you.
+func _test_split7(_view: SystemView) -> void:
+	var CD = load("res://data/colosseum.gd")
+	var CA = load("res://data/casino.gd")
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT7_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	CD.force.clear()
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var one_ok := false
+	var wheel_ok := false
+	var pay_ok := false
+	var cards_ok := false
+	var purse_all := false
+	if g != null and is_instance_valid(g):
+		# ---- without split screen the tables are as they were: you and two guests
+		var r0 = load("res://scripts/ground/roulette_game.gd").new()
+		r0.setup({})
+		var b0 = load("res://scripts/ground/blackjack_game.gd").new()
+		b0.setup({})
+		one_ok = not r0.two and (r0.seats as Array).size() == 3 and String(r0.seats[0]["name"]) == "You" and not b0.two and (b0.seats as Array).size() == 3 and bool(b0.seats[1]["guest"])
+		r0.free()
+		b0.free()
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var purse_ok: bool = GameState.coins_of(1) == 0 and GameState.credits_of(1) == GameState.START_CREDITS and GameState.coins_of(0) == GameState.coins
+		GameState.coins = 300
+		Commands.execute({"type": "debug_casino", "coins2": 200})          # (their own purse: the debug menu's button)
+		purse_ok = purse_ok and GameState.coins_of(1) == 200 and GameState.coins == 300
+		var kept: Dictionary = str_to_var(var_to_str(GameState.to_dict()))
+		purse_ok = purse_ok and int(kept["pilot2"]["coins"]) == 200 and int(kept["pilot2"]["credits"]) == GameState.START_CREDITS
+		# ---- roulette: their seat, their mark on the cloth, their chip
+		var rg = load("res://scripts/ground/roulette_game.gd").new()
+		rg.setup({})
+		g._open_game(rg)
+		for f1 in 4:
+			await get_tree().process_frame
+		var seated: bool = rg.two and (rg.seats as Array).size() == 3 and String(rg.seats[1]["name"]) == "Mira" and rg.player_seat(1) and not rg.player_seat(2) and rg.cur[1] != Vector2.INF \
+			and rg.cur[0] == Vector2.INF and rg.mouse_seat() == 0
+		var c_before: int = rg.chip2
+		Players.sim["1:foot_swap"] = true
+		for f2 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:foot_swap")
+		for f2b in 3:
+			await get_tree().process_frame
+		var next_chip: bool = rg.chip2 != c_before and rg.chip2 in rg.chips
+		rg.cur[1] = (rg.fields()["n17"] as Rect2).get_center()
+		Players.sim["1:interact"] = true
+		for f3 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:interact")
+		for f3b in 3:
+			await get_tree().process_frame
+		var put: bool = int((rg.seats[1]["bets"] as Dictionary).get("n17", 0)) == rg.chip2 and (rg.seats[0]["bets"] as Dictionary).is_empty()
+		var e_me := String(Commands.execute({"type": "roulette_bet", "seat": 0, "key": "n5", "chip": 5}))
+		var keep2: int = GameState.coins_of(1)                   # (their own Coins: what they have on the cloth counts against their purse, not yours)
+		GameState.pilot2["coins"] = rg.total(1) + 2
+		var e_poor := String(Commands.execute({"type": "roulette_bet", "seat": 1, "key": "n9", "chip": 5}))
+		var e_mine := String(Commands.execute({"type": "roulette_bet", "seat": 0, "key": "n6", "chip": 5}))
+		Commands.execute({"type": "roulette_bet", "seat": 0, "key": "n6", "chip": -1})
+		GameState.pilot2["coins"] = keep2
+		Players.sim["1:foot_dodge"] = true
+		for f4 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:foot_dodge")
+		for f4b in 3:
+			await get_tree().process_frame
+		var taken: bool = not (rg.seats[1]["bets"] as Dictionary).has("n17")
+		Players.sim["1:interact"] = true
+		for f5 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:interact")
+		for f5b in 3:
+			await get_tree().process_frame
+		wheel_ok = seated and next_chip and put and e_me == "" and e_poor != "" and e_mine == "" and taken and int((rg.seats[1]["bets"] as Dictionary).get("n17", 0)) == rg.chip2
+		if not wheel_ok:
+			print("SPLIT7 wheel: seated ", seated, " seats ", (rg.seats as Array).map(func(sq): return sq["name"]), " chip ", [c_before, rg.chip2, next_chip], " put ", put, " bets ", rg.seats[1]["bets"],
+				" me '", e_me, "' poor '", e_poor, "' taken ", taken)
+		if shots:
+			for f5c in 12:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split7_roulette.png")
+		# the wheel: both stakes go, both are paid from what the number gives
+		var staked: int = rg.stake_sum()
+		var coins0: int = GameState.coins
+		var coins0b: int = GameState.coins_of(1)
+		Players.sim["1:foot_team"] = true                        # (their △ spins)
+		for f6 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:foot_team")
+		var spun: bool = String(rg.state) == "spin" and rg.number >= 0
+		var back_both: int = int(rg.seats[0]["back"]) + int(rg.seats[1]["back"])
+		pay_ok = spun and staked == 5 + rg.chip2 and back_both >= 0 and GameState.coins == coins0 - 5 + int(rg.seats[0]["back"]) and GameState.coins_of(1) == coins0b - rg.chip2 + int(rg.seats[1]["back"]) \
+			and int(rg.seats[0]["back"]) == CA.settle(rg.seats[0]["bets"], rg.number) and int(rg.seats[1]["back"]) == CA.settle(rg.seats[1]["bets"], rg.number)
+		if not pay_ok:
+			print("SPLIT7 pay: spun ", spun, " state ", rg.state, " staked ", staked, " coins ", coins0, " -> ", GameState.coins, " theirs ", coins0b, " -> ", GameState.coins_of(1), " back ", [rg.seats[0]["back"], rg.seats[1]["back"]])
+		# ---- blackjack: their box, their turn, their own Coins
+		GameState.coins = 300
+		GameState.pilot2["coins"] = 200
+		var bg = load("res://scripts/ground/blackjack_game.gd").new()
+		bg.setup({})
+		bg.fast = true
+		g._open_game(bg)
+		for f7 in 4:
+			await get_tree().process_frame
+		var sat: bool = bg.two and (bg.seats as Array).size() == 3 and bg.player_seat(1) and String(bg.seats[1]["name"]) == "Mira" and bg.key_seat() == 0
+		Players.sim["1:foot_belt_1"] = true                      # (their D-pad up: the chip onto their box)
+		for f8 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:foot_belt_1")
+		for f8b in 3:
+			await get_tree().process_frame
+		var their_stake: bool = int(bg.seats[1]["bet"]) == bg.chip2 and int(bg.seats[0]["bet"]) == 0
+		Commands.execute({"type": "bj_bet", "seat": 0, "chip": 5})
+		var both: int = bg.stake_sum()
+		var coins1: int = GameState.coins
+		var coins1b: int = GameState.coins_of(1)
+		if shots:
+			for f8c in 10:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split7_blackjack.png")
+		Players.sim["1:interact"] = true                         # (their ✕ deals)
+		for f9 in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:interact")
+		for f9b in 3:
+			await get_tree().process_frame
+		var dealt: bool = String(bg.state) != "bet" and (bg.seats[1]["hand"] as Array).size() >= 2
+		var their_turn := false
+		var by_device := false
+		var tb := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tb < 8000 and String(bg.state) != "done":
+			if String(bg.state) == "play" and bg.turn == 0:
+				Commands.execute({"type": "bj_move", "seat": 0, "move": "stand"})
+			elif String(bg.state) == "play" and bg.turn == 1:
+				their_turn = true
+				for f10 in 12:                                       # (nobody plays their hand for them)
+					await get_tree().process_frame
+				var waits: bool = String(bg.state) == "play" and bg.turn == 1
+				Players.sim["1:foot_swap"] = true                    # (their □ stands)
+				for f11 in 4:
+					await get_tree().process_frame
+				Players.sim.erase("1:foot_swap")
+				for f11b in 3:
+					await get_tree().process_frame
+				by_device = waits and not (String(bg.state) == "play" and bg.turn == 1)
+			await get_tree().process_frame
+		var paid: bool = String(bg.state) == "done" and GameState.coins == coins1 - 5 + int(bg.seats[0]["back"]) and GameState.coins_of(1) == coins1b - bg.chip2 + int(bg.seats[1]["back"])
+		cards_ok = sat and their_stake and both == 5 + bg.chip2 and dealt and paid and (by_device or not their_turn)
+		if not cards_ok:
+			print("SPLIT7 cards: sat ", sat, " stake ", their_stake, " both ", both, " dealt ", dealt, " their turn ", their_turn, " by device ", by_device, " paid ", paid, " state ", bg.state,
+				" coins ", coins1, " -> ", GameState.coins, " theirs ", coins1b, " -> ", GameState.coins_of(1), " back ", [bg.seats[0]["back"], bg.seats[1]["back"]])
+		purse_all = purse_ok
+		g._close_game()
+	check(purse_all, "split7: the second player has credits and Coins of their own: a new one starts with the starting credits and no Coins, they are kept in the save, and yours are not touched")
+	check(one_ok, "split7: without split screen roulette and blackjack are as they were: you and two guests")
+	check(wheel_ok, "split7: at roulette the second player has the seat beside you and a mark of their own on the cloth: their buttons pick the chip, put it down and take it back; each stakes from their own Coins")
+	check(pay_ok, "split7: the wheel takes both stakes and pays each of you what the number gives, into their own Coins")
+	check(cards_ok, "split7: at blackjack the second player stakes on their own box, deals and plays their own hand with their device (nobody plays it for them), and each is paid into their own Coins")
+	# tidy up: the game as it was
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 	main.station_panel.close()

@@ -999,15 +999,23 @@ func _c_roulette_spin(_c: Dictionary) -> String:
 	var tb = g.minigame
 	if String(tb.state) != "bet":
 		return "The wheel is turning."
+	var both: bool = bool(tb.get("two"))
 	var staked: int = tb.total(0)
-	if staked <= 0:
+	var staked2: int = tb.total(1) if both else 0
+	if staked + staked2 <= 0:
 		return "Place a bet first."
-	if staked > GameState.coins:
+	if staked > GameState.coins or staked2 > GameState.coins_of(1):
 		return "Not enough Coins. The cashier is in the lobby."
 	var bets: Dictionary = tb.seats[0]["bets"]
+	if both:                                                 # split screen: the wheel's luck looks at what both of you have on the cloth
+		bets = bets.duplicate()
+		for k2 in tb.seats[1]["bets"]:
+			bets[k2] = int(bets.get(k2, 0)) + int(tb.seats[1]["bets"][k2])
 	var roll: Dictionary = CasinoD.roll(GameState.casino_rng(), CasinoD.wheel_luck(GameState.pilot_attr("dexterity"), GameState.has_perk(CasinoD.PERK)), bets)
-	var back: int = CasinoD.settle(bets, int(roll["n"]))
+	var back: int = CasinoD.settle(tb.seats[0]["bets"], int(roll["n"]))
 	GameState.coins += back - staked
+	if both:                                                 # … and each is paid into their own Coins
+		GameState.add_coins(1, int(CasinoD.settle(tb.seats[1]["bets"], int(roll["n"]))) - staked2)
 	GameState.casino_book(staked, back)
 	tb.spin_result(int(roll["n"]), int(roll["from"]), back)
 	return ""
@@ -1202,6 +1210,8 @@ func _c_col_fight_end(c: Dictionary) -> String:
 	var st: Dictionary = GameState.col_state()
 	var res: Dictionary = CD.settle(st, bool(c.get("won", false)))
 	GameState.coins += int(res["coins"])
+	if Players.split and GameState.has_pilot2():
+		GameState.add_coins(1, int(res["coins"]))             # (split screen: the second player fought too: the same Coins into their own purse)
 	st["last"] = res
 	if bool(res["won"]):
 		GameState.log_msg("The Colosseum: round %d won. %d Coins, %d gear points, %d rank points." % [int(res["round"]), int(res["coins"]), int(res["points"]), int(res["xp"])], GameState.COL_GOOD)
@@ -1310,6 +1320,8 @@ func _c_sv_end(_c: Dictionary) -> String:
 	var res: Dictionary = SV.settle(st, sv.run, bool(sv.survived))
 	sv.run["paid"] = true
 	GameState.coins += int(res["coins"])
+	if Players.split and GameState.has_pilot2():
+		GameState.add_coins(1, int(res["coins"]))             # (split screen: the same Coins into the second player's own purse)
 	st["sv_last"] = res
 	GameState.log_msg("Survivor: %s on %s. %d Coins, %d rank points, %d cores." % [SV.time_text(float(res["time"])), String(SV.stage(String(res["stage"]))["name"]), int(res["coins"]),
 		int(res["xp"]), int(res["cores"])], GameState.COL_GOOD)
@@ -3008,6 +3020,10 @@ func _c_minigame_end(c: Dictionary) -> String:
 	var game := String(mg_session["game"])
 	var stake := int(mg_session["stake"])
 	var won := bool(c.get("won", false))
+	if String((mg_session.get("opponent", {}) as Dictionary).get("kind", "")) == "p2":      # split screen: the two of you: no stake, no streak
+		GameState.log_msg("%s: %s wins." % [MinigameData.GAMES[game]["name"], GameState.pilot_name if won else String(GameState.pilot2.get("name", "Player 2"))], GameState.COL_GOOD)
+		mg_session = {}
+		return ""
 	if c.has("score"):                                       # 54b: an arcade score – your best, and the cabinet's list
 		var sc := int(c["score"])
 		if sc > int(GameState.minigame_best.get(game, 0)):
@@ -4566,6 +4582,11 @@ func _c_debug_casino(c: Dictionary) -> String:
 	if c.has("coins"):
 		GameState.coins = maxi(0, GameState.coins + int(c["coins"]))
 		GameState.log_msg("[Debug] Coins: %d." % GameState.coins, GameState.COL_INFO)
+	if c.has("coins2"):                                     # split screen: Coins into the second player's own purse
+		if not GameState.has_pilot2():
+			return "There is no second player in this game."
+		GameState.add_coins(1, int(c["coins2"]))
+		GameState.log_msg("[Debug] %s's Coins: %d." % [String(GameState.pilot2["name"]), GameState.coins_of(1)], GameState.COL_INFO)
 	var g = _ground()
 	if not c.has("to"):
 		if g != null and String(g.level) == "zcasino":

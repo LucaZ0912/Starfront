@@ -3,6 +3,57 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.12 – 2026-11-25
+
+**Package 75, split screen: the second player's own money (Luz: they shall act for themselves in full).** This
+replaces "the same Coins" of 0.8.75.11.
+- **Credits and Coins of their own, kept in the save.** A new second pilot starts with the starting credits
+  (30,000) and no Coins.
+- **Roulette and blackjack:** each of you stakes from their own Coins and is paid into them; the line at the top
+  names both purses. The house's book (membership, what you have turned over) counts the first player's play.
+- **What the Colosseum and Survivor pay in Coins** goes to each of the two: the same sum into each purse.
+- **Not yet:** nothing in the game spends or earns the second player's credits yet, and they cannot reach the
+  cashier: until the two walk about together (stage 3) their Coins come from matches, runs and the tables only.
+  The debug menu has "Player 2: +1,000 Coins" for trying the tables.
+- Smoke test group `split7` (5 checks now) with `split0` and `casino62`: none failed. No full run.
+
+## alpha 0.8.75.11 – 2026-11-25
+
+**Package 75, split screen, stage 2, second part: roulette and blackjack for two.** With this stage 2 is done as
+Luz set it: billiards, darts, roulette and blackjack; Drift, poker and the arcade cabinet stay for one.
+- **The seat beside you is the second player's** at both tables (one guest less sits there). The two of you
+  stake from the same Coins and are paid into them; what both have on the table counts together against what
+  you hold.
+- **Roulette on a controller:** a mark of your own on the cloth: the stick moves it, ✕ puts the chip down, ◯
+  takes the bet back, □ is the next chip, △ spins, L1 clears your bets. This holds for the first player on a
+  controller too (before, the cloth needed the mouse). The mouse is the player's at the keyboard.
+- **Blackjack on a controller:** left and right pick the chip, up puts it on your box, down takes the stake
+  back; in your turn ✕ takes a card, □ stands, △ doubles; ✕ deals and goes on. Nobody plays the second player's
+  hand for them. The keys and the buttons on the screen are the player's at the keyboard.
+- **Noted for the full split screen (Luz):** the two players shall also be able to play apart from each other,
+  each at a game or a table of their own or on their way, not only together.
+- **Rough edges:** the line at the top still counts only the first player's stake; the free seat still says
+  "for a co-op player (later)". Not tried with two real controllers.
+- Smoke test group `split7` (4 checks, run alone: none failed; it found and fixed two faults on the way: the
+  guests' bets were placed for the second player too, and their mark stuck in a small window). No full run.
+
+## alpha 0.8.75.10 – 2026-11-25
+
+**Package 75, split screen, stage 2, first part: billiards and darts for two, in one picture.**
+- **The free seat at the table is the second player's.** In the lobby of billiards and darts the line "Player 2"
+  (it stood there greyed out, "later") seats them across from you. Without split screen it stays shut.
+- **Their turns are their own device's.** Billiards on a controller: the left stick aims, the D-pad nudges, the
+  right stick sets the spin, L2 held charges and letting go shoots, with the ball in hand the stick moves it and
+  ✕ puts it down. Darts on a controller: the left stick moves the aim (the right one finely), L1 holds the
+  breath, L2 throws. At the keyboard they aim and shoot with the mouse as you would. In their turn your device
+  rests, in yours theirs.
+- **No stake and no streak between the two of you:** the game is for nothing but the game.
+- **Not yet:** Drift, the casino's tables (roulette, blackjack, poker) and the arcade cabinet for two. Cards a
+  player holds are a question of their own on one screen (both would see them). The words on the screen still
+  call the first player "you", and the line of keys at the bottom is the mouse's. Not tried with two real
+  controllers.
+- Smoke test group `split6` (4 checks, run alone: none failed). No full run.
+
 ## alpha 0.8.75.9 – 2026-11-25
 
 **Package 75, split screen: back after twenty seconds, bosses, modules and a drone for the second player.**

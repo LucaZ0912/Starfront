@@ -467,6 +467,20 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.12 (the second player's own money): `pilot2["credits"]`, `pilot2["coins"]` (set in `new_pilot2()`, read
+  back in `from_dict()`), `GameState.coins_of(seat)`, `add_coins(seat, n)`, `credits_of(seat)`. The tables check
+  and pay per seat; `roulette_spin` pays seat 1 through `add_coins`; `col_fight_end` and `sv_end` pay both;
+  `debug_casino` with `coins2`.
+- 0.8.75.11 (stage 2, roulette and blackjack): both games set `two` in `setup()` and seat the second player as
+  seat 1 (`"p2": true`, not a guest); `player_seat()`, `stake_sum()`; `_guests_bet()` skips them. Roulette:
+  `chip2`, `cur` (the marks), `mouse_seat()`, `_two_step()`; `roulette_spin` merges both players' bets and pays
+  the sum. Blackjack: `chip2`, `key_seat()`, `act(seat, what)`, `_two_step()`. Smoke group `split7` (pictures with
+  `SPLIT7_SHOTS=1`).
+- 0.8.75.10 (stage 2, billiards and darts): `MinigameLobby._two_seat()` (an opponent of kind "p2"; the stake is
+  0); `minigame_end` ends such a game without streak or credits. `pool_game.gd` and `darts_game.gd`: `two`
+  (the opponent is the second player and split screen is on); billiards `_two_hand()` in the states "aim" and
+  "place" of turn 1 (never "ai" / "place_ai"); darts `_hand()` and `_two_pad()`. Smoke group `split6` (pictures
+  with `SPLIT6_SHOTS=1`).
 - 0.8.75.9: `survivor_game.gd`: `TWO_BACK`, `back_t` (the hold-key revive and `TWO_REVIVE` are gone); the second
   player's touch test goes by `_rad` for bosses; `two_open()` tests at the Mastermind's ring, the Warden's arm,
   the Core's cross, the lines; the barrier clamps `two`. `ground_combat.gd`: `spawn_p2()` takes shield and armour

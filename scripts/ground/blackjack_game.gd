@@ -22,6 +22,11 @@ var high := false
 var chips: Array = CD.CHIPS
 var limit := CD.LIMIT
 var chip := 5
+# split screen (Luz): the second player has the seat beside you and stakes from the same Coins. On a controller:
+# left and right pick their chip, up puts it on, down takes the stake back; in their turn ✕ takes a card, □ stands,
+# △ doubles; ✕ deals and goes on. The keys and the mouse are the player's at the keyboard.
+var two := false
+var chip2 := 5
 var seats: Array = []                           # {name, guest, bet, hand, state: wait/play/stand/bust/bj, doubled, back}
 var house: Array = []
 var deck: Array = []
@@ -48,10 +53,78 @@ func setup(cfg: Dictionary) -> void:
 	_rng.seed = Time.get_ticks_usec()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	seats = [_seat("You", false)]
-	for gname in cfg.get("guests", ["A guest in white", "A guest in violet"]):
+	two = Players.split and GameState.has_pilot2()
+	chip2 = chip
+	seats = [_seat("You" if not two else String(GameState.pilot_name).get_slice(" ", 0), false)]
+	var gnames: Array = cfg.get("guests", ["A guest in white", "A guest in violet"])
+	if two:
+		var s2: Dictionary = _seat(String(GameState.pilot2.get("name", "Player 2")).get_slice(" ", 0), false)
+		s2["p2"] = true
+		seats.append(s2)
+		gnames = gnames.slice(0, 1)                         # (one guest less: the seat is the second player's)
+	for gname in gnames:
 		seats.append(_seat(String(gname), true))
 	_guests_bet()
+
+
+## Is this seat one of you two?
+func player_seat(seat: int) -> bool:
+	return seat >= 0 and seat < seats.size() and not bool(seats[seat]["guest"])
+
+
+## What the two of you have staked together.
+func stake_sum() -> int:
+	var n := 0
+	for i in seats.size():
+		if player_seat(i):
+			n += int(seats[i]["bet"])
+	return n
+
+
+## The seat of the player at the keyboard and mouse.
+func key_seat() -> int:
+	return 1 if two and Players.on_keys(1) else 0
+
+
+## A move of one of you in their turn.
+func act(seat: int, what: String) -> void:
+	if state != "play" or turn != seat or not player_seat(seat):
+		return
+	var e: String = Commands.execute({"type": "bj_move", "seat": seat, "move": what})
+	if e != "":
+		msg = e
+		Audio.play("ui_error", "blackjack: refused")
+
+
+## Split screen: a player on a controller.
+func _two_step() -> void:
+	for h in 2:
+		if Players.on_keys(h):
+			continue
+		if state == "bet":
+			var ch: int = chip2 if h == 1 else chip
+			for dirn in [["foot_belt_4", -1], ["foot_belt_2", 1]]:      # their D-pad left / right: the chip
+				if Players.just_pressed(h, String(dirn[0])):
+					ch = int(chips[(chips.find(ch) + int(dirn[1]) + chips.size()) % chips.size()])
+			if h == 1:
+				chip2 = ch
+			else:
+				chip = ch
+			if Players.just_pressed(h, "foot_belt_1"):           # up: the chip onto their box
+				var e: String = Commands.execute({"type": "bj_bet", "seat": h, "chip": ch})
+				msg = e if e != "" else "%s stakes %d Coins." % [String(seats[h]["name"]), int(seats[h]["bet"])]
+				Audio.play("ui_error" if e != "" else "ui_click", "blackjack: stake")
+			if Players.just_pressed(h, "foot_belt_3"):           # down: their stake back
+				Commands.execute({"type": "bj_bet", "seat": h, "chip": -1})
+		if Players.just_pressed(h, "interact"):                # ✕
+			if state == "play":
+				act(h, "hit")
+			else:
+				deal_or_next()
+		if Players.just_pressed(h, "foot_swap"):               # □
+			act(h, "stand")
+		if Players.just_pressed(h, "foot_team"):               # △
+			act(h, "double")
 
 
 func _seat(nm: String, guest: bool) -> Dictionary:
@@ -81,8 +154,9 @@ func _ready() -> void:
 
 func add_chip(c: int) -> void:
 	chip = c
-	var e: String = Commands.execute({"type": "bj_bet", "seat": 0, "chip": c})
-	msg = e if e != "" else "Your stake: %d Coins." % int(seats[0]["bet"])
+	var ks := key_seat()
+	var e: String = Commands.execute({"type": "bj_bet", "seat": ks, "chip": c})
+	msg = e if e != "" else ("Your stake: %d Coins." % int(seats[0]["bet"]) if not two else "%s stakes %d Coins." % [String(seats[ks]["name"]), int(seats[ks]["bet"])])
 	Audio.play("ui_error" if e != "" else "ui_click", "blackjack: chip")
 
 
@@ -98,8 +172,8 @@ func bet(seat: int, amount: int) -> String:
 	var now := int(seats[seat]["bet"])
 	if now + amount > limit:
 		return "The table's limit is %d Coins a hand." % limit
-	if seat == 0 and now + amount > GameState.coins:
-		return "Not enough Coins."
+	if player_seat(seat) and now + amount > GameState.coins_of(seat):
+		return "Not enough Coins."                         # (each of you stakes from their own Coins)
 	seats[seat]["bet"] = now + amount
 	return ""
 
@@ -108,13 +182,15 @@ func bet(seat: int, amount: int) -> String:
 func deal() -> String:
 	if state != "bet":
 		return "The cards are on the table."
-	var stake := int(seats[0]["bet"])
+	var stake := stake_sum() if two else int(seats[0]["bet"])      # (split screen: whoever of you has staked plays; both stakes go)
 	if stake <= 0:
 		return "Set your stake first."
-	if stake > GameState.coins:
+	if int(seats[0]["bet"]) > GameState.coins or (two and int(seats[1]["bet"]) > GameState.coins_of(1)):
 		return "Not enough Coins. The cashier is in the lobby."
-	GameState.coins -= stake
-	last_bet = stake
+	GameState.coins -= int(seats[0]["bet"])
+	if two:
+		GameState.add_coins(1, -int(seats[1]["bet"]))          # (split screen: their stake out of their own Coins)
+	last_bet = int(seats[0]["bet"])
 	deck = CD.new_deck(GameState.casino_rng(), CD.BJ_DECKS)
 	house = [deck.pop_back(), deck.pop_back()]
 	for s in seats:
@@ -151,26 +227,26 @@ func move(seat: int, what: String) -> String:
 			if what == "double":
 				if hand.size() != 2:
 					return "You can only double on your first two cards."
-				if seat == 0:
-					if GameState.coins < int(s["bet"]):
+				if player_seat(seat):
+					if GameState.coins_of(seat) < int(s["bet"]):
 						return "Not enough Coins to double."
-					GameState.coins -= int(s["bet"])
+					GameState.add_coins(seat, -int(s["bet"]))
 				s["bet"] = int(s["bet"]) * 2
 				s["doubled"] = true
 			var card: Array = deck.pop_back()
 			var kind := false
-			if seat == 0 and CD.bj_total(hand + [card]) > 21 \
+			if player_seat(seat) and CD.bj_total(hand + [card]) > 21 \
 					and _rng.randf() < CD.bj_luck(GameState.pilot_attr("dexterity"), GameState.has_perk(CD.PERK)):
 				card = deck.pop_back()               # (a kind hand: that card slips back, the next comes)
 				kind = true
 			hand.append(card)
 			var t: int = CD.bj_total(hand)
-			if seat == 0:
-				msg = ("A kind hand: the card slips back. " if kind else "") + "%s: %d." % [CD.card_name(card), t]
+			if player_seat(seat):
+				msg = ("%s: " % String(s["name"]) if two else "") + ("A kind hand: the card slips back. " if kind else "") + "%s: %d." % [CD.card_name(card), t]
 			Audio.play("card_play", "blackjack: card")
 			if t > 21:
 				s["state"] = "bust"
-				if seat == 0:
+				if player_seat(seat):
 					msg += " Over 21."
 			elif t == 21 or what == "double":
 				s["state"] = "stand"
@@ -186,7 +262,9 @@ func _advance() -> void:
 	for i in seats.size():
 		if String(seats[i]["state"]) == "play":
 			turn = i
-			if i == 0 and not msg.contains(":"):
+			if two and player_seat(i):
+				msg = "%s's turn: a card, stand or double." % String(seats[i]["name"])
+			elif i == 0 and not msg.contains(":"):
 				msg = "Your turn: a card, stand or double."
 			return
 	turn = -1
@@ -211,7 +289,11 @@ func _settle() -> void:
 	var staked := int(seats[0]["bet"])
 	var back := int(seats[0]["back"])
 	GameState.coins += back
-	GameState.casino_book(staked, back)
+	GameState.casino_book(staked, back)                    # (the house's book is the first player's own play)
+	if two:                                                # split screen: each is paid into their own Coins; the word below speaks of both
+		GameState.add_coins(1, int(seats[1]["back"]))
+		staked = stake_sum()
+		back += int(seats[1]["back"])
 	var ht: int = CD.bj_total(house)
 	var call := "The house has blackjack." if CD.bj_natural(house) else ("The house goes over with %d." % ht if ht > 21 else "The house stands on %d." % ht)
 	if back > staked:
@@ -225,6 +307,8 @@ func _settle() -> void:
 
 func _guests_bet() -> void:
 	for i in range(1, seats.size()):
+		if not bool(seats[i]["guest"]):
+			continue                                      # (split screen: the second player sets their own stake)
 		seats[i]["bet"] = int(chips[_rng.randi() % 2]) * (1 + _rng.randi() % 4)
 
 
@@ -246,7 +330,7 @@ func deal_or_next() -> void:
 	if state == "done":
 		_new_round()
 		return
-	if state == "bet" and int(seats[0]["bet"]) == 0 and last_bet > 0:      # (the same stake again)
+	if state == "bet" and int(seats[0]["bet"]) == 0 and last_bet > 0 and not two:      # (the same stake again)
 		Commands.execute({"type": "bj_bet", "seat": 0, "chip": mini(last_bet, limit)})
 	var e: String = Commands.execute({"type": "bj_deal"})
 	if e != "":
@@ -255,6 +339,9 @@ func deal_or_next() -> void:
 
 
 func you(what: String) -> void:
+	if two:
+		act(key_seat(), what)                             # (split screen: the keys and the mouse are the player's at the keyboard)
+		return
 	if state != "play" or turn != 0:
 		return
 	var e: String = Commands.execute({"type": "bj_move", "seat": 0, "move": what})
@@ -273,7 +360,9 @@ func leave() -> void:
 func _process(dt: float) -> void:
 	_t += dt
 	var step := 0.0 if fast else STEP
-	if state == "play" and turn > 0:
+	if two:
+		_two_step()
+	if state == "play" and turn > 0 and bool(seats[turn]["guest"]):
 		_st += dt
 		if _st >= step:
 			_st = 0.0
@@ -283,13 +372,13 @@ func _process(dt: float) -> void:
 		if _st >= step:
 			_st = 0.0
 			_house_step()
-	var mine := state == "play" and turn == 0
+	var mine := state == "play" and (turn == 0 if not two else (player_seat(turn) and turn == key_seat()))
 	for c in chips:
 		(_btns[c] as Button).disabled = state != "bet"
 		(_btns[c] as Button).modulate = Color(1.0, 0.85, 0.4) if int(c) == chip else Color.WHITE
 	(_btns["clear"] as Button).disabled = state != "bet"
 	(_btns["deal"] as Button).text = "NEXT HAND  (Space)" if state == "done" else "DEAL  (Space)"
-	(_btns["deal"] as Button).disabled = state == "play" or state == "house" or (state == "bet" and int(seats[0]["bet"]) == 0 and last_bet == 0)
+	(_btns["deal"] as Button).disabled = state == "play" or state == "house" or (state == "bet" and (stake_sum() == 0 if two else (int(seats[0]["bet"]) == 0 and last_bet == 0)))
 	(_btns["hit"] as Button).disabled = not mine
 	(_btns["stand"] as Button).disabled = not mine
 	(_btns["double"] as Button).disabled = not mine or (seats[0]["hand"] as Array).size() != 2 or GameState.coins < int(seats[0]["bet"])
@@ -328,6 +417,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func pad_button(b: String, pressed: bool) -> bool:
 	if not pressed:
 		return true
+	if two:
+		return true                                       # (split screen: the controllers are read in _two_step)
 	match b:
 		"cross":
 			if state == "play":
@@ -385,7 +476,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rect(Rect2(0.0, 0.0, vs.x, tc.y), Color(0.03, 0.02, 0.07))
 	draw_string(font, Vector2(40.0, 70.0), "HIGH-STAKES BLACKJACK" if high else "BLACKJACK", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 40, Color(1.0, 0.5, 0.8).lerp(Color(0.3, 0.9, 1.0), 0.5 + 0.5 * sin(_t * 1.5)))
-	draw_string(font, Vector2(40.0, 104.0), "The limit: %d Coins a hand   ·   you hold %d Coins   ·   blackjack pays 3 to 2   ·   the house stands on 17" % [limit, GameState.coins],
+	draw_string(font, Vector2(40.0, 104.0), ("The limit: %d Coins a hand   ·   you hold %d Coins   ·   blackjack pays 3 to 2   ·   the house stands on 17" % [limit, GameState.coins]) if not two else ("The limit: %d Coins a hand   ·   %s holds %d Coins   ·   %s holds %d Coins   ·   blackjack pays 3 to 2" % [limit, String(seats[0]["name"]), GameState.coins, String(seats[1]["name"]), GameState.coins_of(1)]),
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, 17, Color(1.0, 0.85, 0.4))
 	draw_line(Vector2(tc.x - tr - 40.0, tc.y), Vector2(tc.x + tr + 40.0, tc.y), Color(1.0, 0.36, 0.66, 0.9), 4.0)
 	draw_string(font, Vector2(tc.x - 300.0, vs.y * 0.44), "BLACKJACK PAYS 3 TO 2", HORIZONTAL_ALIGNMENT_CENTER, 600.0, 20, Color(1.0, 0.82, 0.3, 0.5))

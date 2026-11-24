@@ -22,6 +22,7 @@ const ORDER := [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 
 
 var mode := "301"
 var opponent := {}
+var two := false                                 # split screen: the one beside you at the line is the second player, on their own device
 var stake := 0
 var score := [301, 301]
 var turn := 0
@@ -52,6 +53,7 @@ var _pad_aim := Vector2.INF                        # package 80: the controller'
 func setup(cfg: Dictionary) -> void:
 	mode = String(cfg.get("mode", "301"))
 	opponent = cfg.get("opponent", {})
+	two = String(opponent.get("kind", "")) == "p2" and Players.split
 	stake = int(cfg.get("stake", 0))
 	_rng.seed = Time.get_ticks_usec()
 	var start := 501 if mode == "501" else 301
@@ -66,6 +68,24 @@ func setup(cfg: Dictionary) -> void:
 
 func _ready() -> void:
 	_build_ui()
+
+
+## Does a hand throw this turn's darts (yours, or in split screen the second player's)?
+func _hand() -> bool:
+	return turn == 0 or mode == "clock" or two
+
+
+## Split screen: the second player's turn on a controller: their left stick moves the aim (the right one finely),
+## L1 held holds the breath, L2 throws. (At the keyboard they aim and throw with the mouse as you would.)
+func _two_pad(dt: float) -> void:
+	var l: Vector2 = Players.move(1)
+	var r: Vector2 = Players.aim(1)
+	if _pad_aim == Vector2.INF:
+		_pad_aim = BC
+	_pad_aim = (_pad_aim + (l * lerpf(20.0, 110.0, Pad.mg_aim) + r * lerpf(5.0, 30.0, Pad.mg_aim)) * dt).clamp(Vector2(4, 4), Vector2(AW - 4, AH - 4))
+	holding = Players.pressed(1, "foot_tactics")            # (L1)
+	if state == "aim" and Players.just_pressed(1, "foot_drone"):      # (L2)
+		_throw(_art_mouse() + _sway() + Vector2(_rng.randfn(0.0, 2.2), _rng.randfn(0.0, 2.2)))
 
 
 func _opp_name() -> String:
@@ -177,7 +197,7 @@ func _land(p: Vector2) -> void:
 
 func _after_dart() -> void:
 	if darts_left > 0:
-		state = "aim" if turn == 0 or mode == "clock" else "ai"
+		state = "aim" if _hand() else "ai"
 		_ai_t = 0.9
 		return
 	state = "wait"
@@ -189,8 +209,11 @@ func _begin_turn() -> void:
 	this_turn = []
 	stuck = []
 	turn_start = int(score[turn])
-	state = "aim" if turn == 0 or mode == "clock" else "ai"
+	state = "aim" if _hand() else "ai"
 	_ai_t = 1.2
+	if two:
+		_pad_aim = Vector2.INF                         # (split screen: each turn begins with its own hand)
+		holding = false
 	if mode != "clock":
 		_say("Your darts." if turn == 0 else "%s steps up to the line." % _opp_name())
 
@@ -215,7 +238,7 @@ func _end(you_won: bool, why: String) -> void:
 func finish(you_won: bool) -> void:
 	if state == "over":
 		return
-	_end(you_won, "You win." if you_won else ("You concede." if mode != "clock" else "Practice over."))
+	_end(you_won, "You win." if you_won else (("The game is broken off." if two else "You concede.") if mode != "clock" else "Practice over."))
 
 
 func _say(t: String) -> void:
@@ -258,8 +281,11 @@ func _throw(p: Vector2) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
-	_pad_aim_step(dt)
-	_pad_poll()
+	if two and turn == 1 and state != "over" and not Players.on_keys(1):
+		_two_pad(dt)                                  # (split screen: the second player's controller; yours rests)
+	elif not (two and turn == 1 and state != "over"):
+		_pad_aim_step(dt)
+		_pad_poll()
 	msg_t = maxf(0.0, msg_t - dt)
 	if holding and breath > 0.0:
 		breath = maxf(0.0, breath - dt / 1.8)
@@ -289,7 +315,7 @@ func _gui_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_RIGHT:
 			holding = mb.pressed
 			accept_event()
-		elif mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed and state == "aim" and (turn == 0 or mode == "clock"):
+		elif mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed and state == "aim" and ((turn == 0 or mode == "clock") if not two else Players.on_keys(turn)):
 			var p := _art_mouse() + _sway() + Vector2(_rng.randfn(0.0, 2.2), _rng.randfn(0.0, 2.2))     # the release is never quite clean
 			_throw(p)
 			accept_event()
@@ -388,7 +414,7 @@ func _draw() -> void:
 		var q := o + (BC + Vector2(sin(a), -cos(a)) * 109.0) * s
 		draw_string(ThemeDB.fallback_font, q + Vector2(-24, 7), str(ORDER[i]), HORIZONTAL_ALIGNMENT_CENTER, 48, 20, Color(0.95, 0.92, 0.85))
 	# the crosshair, swaying
-	if state == "aim" and (turn == 0 or mode == "clock"):
+	if state == "aim" and _hand():
 		var ch := o + (_art_mouse() + _sway()) * s
 		var col := Color(1.0, 0.3, 0.3) if not (holding and breath > 0.0) else Color(0.35, 0.95, 1.0)
 		draw_arc(ch, 16.0, 0, TAU, 32, col, 3.0)

@@ -22,6 +22,7 @@ const SUB := 8
 
 var mode := "8ball"
 var opponent := {}
+var two := false                                 # split screen: the one across the table is the second player, on their own device
 var stake := 0
 var balls: Array = []                            # {n, p: Vector2, v: Vector2, in: bool}
 var turn := 0                                    # 0 you, 1 the opponent
@@ -54,6 +55,7 @@ var _ui := {}
 func setup(cfg: Dictionary) -> void:
 	mode = String(cfg.get("mode", "8ball"))
 	opponent = cfg.get("opponent", {})
+	two = String(opponent.get("kind", "")) == "p2" and Players.split
 	stake = int(cfg.get("stake", 0))
 	_rng.seed = Time.get_ticks_usec()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -160,7 +162,10 @@ func _next_turn_setup() -> void:
 	charging = false
 	if state == "over":
 		return
-	if turn == 1:
+	if turn == 1 and two:                               # split screen: the second player's own hand
+		state = "place" if state == "place_ai" else "aim"
+		_say("%s: %s" % [_opp_name(), "ball in hand." if state == "place" else "your shot."])
+	elif turn == 1:
 		state = "ai" if state != "place_ai" else "place_ai"
 		_ai_t = 1.1
 		_ai_plan = {}
@@ -442,7 +447,7 @@ func _end(you_won: bool, why: String) -> void:
 func finish(you_won: bool) -> void:
 	if state == "over":
 		return
-	_end(you_won, "You win." if you_won else ("You concede." if mode != "practice" else "Practice over."))
+	_end(you_won, "You win." if you_won else (("The game is broken off." if two else "You concede.") if mode != "practice" else "Practice over."))
 
 
 func _alcohol() -> float:
@@ -581,7 +586,9 @@ func _process(dt: float) -> void:
 		"ai", "place_ai":
 			_ai_step(dt)
 		"aim":
-			if turn == 0 or mode == "practice":
+			if two and turn == 1:
+				_two_hand(dt)
+			elif turn == 0 or mode == "practice":
 				_which_hand()
 				var m := _art_mouse()
 				var cp: Vector2 = _cue()["p"]
@@ -597,6 +604,11 @@ func _process(dt: float) -> void:
 					if kv.length() > 0.1:
 						spin = (spin + Vector2(kv.x, -kv.y) * dt * 1.5).limit_length(1.0)
 		"place":
+			if two and turn == 1:
+				_two_hand(dt)
+				_update_ui()
+				queue_redraw()
+				return
 			_which_hand()
 			var cb := _cue()
 			if _stick_hand:
@@ -614,12 +626,14 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+		if two and not Players.on_keys(turn):
+			return                                        # (split screen: the mouse is the other one's; this turn is played on a controller)
 		if state == "place" and mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 			state = "aim"
 			_say("Ball placed: your shot.")
 			accept_event()
 			return
-		if state != "aim" or (turn != 0 and mode != "practice"):
+		if state != "aim" or (turn != 0 and mode != "practice" and not two):
 			return
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
@@ -657,6 +671,60 @@ func _pad_poll() -> void:
 			pad_button(b, h)
 
 
+## Split screen: the second player's turn. At the keyboard they aim with the mouse as you would; on a controller
+## their left stick aims (their D-pad nudges), their right stick sets the spin, L2 held charges and letting go
+## shoots; with the ball in hand the stick moves it and ✕ puts it down.
+var _two_charge := false
+
+
+func _two_hand(dt: float) -> void:
+	var cb := _cue()
+	var cp: Vector2 = cb["p"]
+	if Players.on_keys(1):
+		var m := _art_mouse()
+		if state == "place":
+			var q := m.clamp(Vector2(FX0 + R, FY0 + R), Vector2(FX1 - R, FY1 - R))
+			if _spot_free(q):
+				cb["p"] = q
+			return
+		if m.distance_to(cp) > 2.0 and not spin_drag:
+			aim_a = (m - cp).angle()
+		if charging:
+			power = minf(1.0, power + dt * 0.9)
+		return
+	var l: Vector2 = Players.move(1)
+	var r: Vector2 = Players.aim(1)
+	if state == "place":
+		if l.length() > 0.1:
+			var q2: Vector2 = (cp + l * 90.0 * dt).clamp(Vector2(FX0 + R, FY0 + R), Vector2(FX1 - R, FY1 - R))
+			if _spot_free(q2):
+				cb["p"] = q2
+		if Players.just_pressed(1, "interact"):
+			state = "aim"
+			_say("Ball placed: %s's shot." % _opp_name())
+		return
+	if l.length() > 0.3:
+		aim_a = lerp_angle(aim_a, l.angle(), 1.0 - exp(-dt * lerpf(0.6, 5.0, Pad.mg_aim) * l.length()))
+	if Players.just_pressed(1, "foot_belt_4"):            # (their D-pad left / right: a hair)
+		aim_a -= 0.003
+	if Players.just_pressed(1, "foot_belt_2"):
+		aim_a += 0.003
+	if r.length() > 0.15:
+		spin = Vector2(r.x, -r.y).limit_length(1.0)
+	var held: bool = Players.pressed(1, "foot_drone")       # (L2)
+	if held and not _two_charge:
+		_two_charge = true
+		charging = true
+		power = 0.0
+	elif held:
+		power = minf(1.0, power + dt * 0.9)
+	elif _two_charge:
+		_two_charge = false
+		charging = false
+		if power > 0.03:
+			_take_shot(aim_a, power, spin)
+
+
 func _which_hand() -> void:
 	var mp := get_local_mouse_position()
 	if _mouse_seen != Vector2.INF and mp.distance_to(_mouse_seen) > 1.5:
@@ -683,6 +751,8 @@ func _pad_aim_step(dt: float) -> void:
 
 func pad_button(b: String, pressed: bool) -> bool:
 	var mine := turn == 0 or mode == "practice"
+	if two and turn == 1 and state != "over":
+		return true                                       # (split screen: the second player's turn: your controller rests)
 	match b:
 		"l2":
 			if state == "aim" and mine:

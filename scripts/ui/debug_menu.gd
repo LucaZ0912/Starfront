@@ -1538,6 +1538,7 @@ func _build_ground() -> void:
 	rca2.add_child(UI.button("Membership on", func(): _cmd({"type": "debug_casino", "vip": true})))
 	rca2.add_child(UI.button("Membership off", func(): _cmd({"type": "debug_casino", "vip": false})))
 	rca2.add_child(UI.button("+1,000 Coins", func(): _cmd({"type": "debug_casino", "coins": 1000})))
+	rca2.add_child(UI.button("Player 2: +1,000 Coins", func(): _cmd({"type": "debug_casino", "coins2": 1000})))
 	rca2.add_child(UI.button("+1,000,000 Coins", func(): _cmd({"type": "debug_casino", "coins": 1000000})))     # package 63: the house's prize
 	rca2.add_child(UI.button("Colosseum plaza", func(): _cmd({"type": "debug_casino", "place": "colosseum"})))      # package 62a
 	var rco := _row()                                               # package 62a, part 2: the Colosseum's inside

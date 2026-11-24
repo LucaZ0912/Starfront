@@ -660,11 +660,30 @@ func has_pilot2() -> bool:
 	return not pilot2.is_empty()
 
 
+## The Coins of one of the two players (0 you, 1 the second player: their own purse).
+func coins_of(seat: int) -> int:
+	return int(pilot2.get("coins", 0)) if seat == 1 and has_pilot2() else coins
+
+
+func add_coins(seat: int, n: int) -> void:
+	if seat == 1 and has_pilot2():
+		pilot2["coins"] = maxi(0, int(pilot2.get("coins", 0)) + n)
+	else:
+		coins = maxi(0, coins + n)
+
+
+## … and their credits.
+func credits_of(seat: int) -> int:
+	return int(pilot2.get("credits", 0)) if seat == 1 and has_pilot2() else credits
+
+
 ## Split screen: a new second pilot from the creator's data. Starts like the first one did: level 1, the starting
 ## gear, and the first pilot's start system as the place to come into the game.
 func new_pilot2(data: Dictionary) -> void:
 	pilot2 = make_pilot("Wingmate", data)
 	pilot2["start_system"] = Universe.home_system
+	pilot2["credits"] = START_CREDITS                  # (Luz, 25 Nov 2026) their own money: they act for themselves
+	pilot2["coins"] = 0
 	gear2 = PilotGearScript.new()
 	gear2.start()
 
@@ -722,6 +741,8 @@ func from_dict(d: Dictionary) -> void:
 	if not p2d.is_empty():                    # split screen: the second pilot
 		pilot2 = make_pilot("Wingmate", p2d)
 		pilot2["start_system"] = p2d.get("start_system", Universe.home_system)
+		pilot2["credits"] = int(p2d.get("credits", START_CREDITS))
+		pilot2["coins"] = int(p2d.get("coins", 0))
 		gear2.from_dict(d.get("gear2", {}))
 	surveys.clear()
 	credits = int(d["credits"])

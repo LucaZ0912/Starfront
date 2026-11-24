@@ -97,8 +97,15 @@ func _build() -> void:
 				{"guest": "guest", "special": "★ special opponent"}.get(String(pp["kind"]), "crew aboard")], func(): opponent = pp; _build())
 			row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			v.add_child(row)
-		var coop := UI.button("Co-op player: join with a friend in co-op (later)", func(): pass)
-		coop.disabled = true
+		# split screen: the second player sits down at the table (billiards and darts; no stake between the two of you)
+		var two_ok: bool = Players.split and GameState.has_pilot2() and game in ["billiards", "darts"]
+		var p2on := not opponent.is_empty() and String(opponent.get("kind", "")) == "p2"
+		var coop := UI.button(("%sPlayer 2: %s   (their own device, no stake)" % ["▶ " if p2on else "", String(GameState.pilot2.get("name", ""))]) if two_ok
+			else ("Player 2: not at this game yet" if Players.split else "Player 2: start with Split Screen in the main menu"), func():
+			opponent = _two_seat()
+			stake = 0
+			_build())
+		coop.disabled = not two_ok
 		coop.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(coop)
 		# the stake
@@ -133,6 +140,11 @@ func _mode_name(m: String) -> String:
 	return m
 
 
+## Split screen: the second player as the one across the table.
+func _two_seat() -> Dictionary:
+	return {"id": "p2", "kind": "p2", "name": String(GameState.pilot2.get("name", "Player 2")), "job": "Player 2", "stars": 0, "line": "Their own device."}
+
+
 func _seat(title: String, sub: String, col: Color) -> Control:
 	var p := UI.neon_panel(col, Color(0.03, 0.05, 0.06, 0.9), 2)
 	p.custom_minimum_size = Vector2(430, 64)
@@ -145,6 +157,8 @@ func _seat(title: String, sub: String, col: Color) -> Control:
 
 func _start() -> void:
 	var cfg := {"game": game, "mode": mode, "stake": 0 if MG.solo(mode) else stake, "opponent": {} if MG.solo(mode) else opponent}
+	if String((cfg["opponent"] as Dictionary).get("kind", "")) == "p2":
+		cfg["stake"] = 0                                      # (split screen: the two of you play for nothing)
 	cfg["place"] = place
 	if game == "drift" and not MG.solo(mode):                 # two more guests sit down at the card table
 		cfg["others"] = guests.filter(func(gu): return opponent.is_empty() or String(gu["id"]) != String(opponent["id"])).slice(0, 2)
