@@ -956,6 +956,16 @@ const CROWN_H := 250.0         # shields -> the branches: room for the crown to 
 
 
 func _tree() -> void:
+	if GameState.tree_locked():
+		# package 64a (Luz): shut through the intro
+		var cc := CenterContainer.new()
+		cc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		body.add_child(cc)
+		var vb := UI.vbox(8)
+		cc.add_child(vb)
+		vb.add_child(UI.label("NO PILOT LICENCE", 22, UI.TEXT_DIM))
+		vb.add_child(UI.wrap_label("The skill tree opens with your pilot licence. Until then nothing you do is counted towards it.", 13, UI.TEXT_DIM, 420))
+		return
 	var nt := GameState.tiles_ready().size()
 	var top := UI.hbox(14)
 	body.add_child(top)

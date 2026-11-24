@@ -2618,6 +2618,7 @@ static func build_punkbar(_station: Dictionary, night: bool = false) -> GroundMa
 	m.zones.append({"rect": Rect2(Vector2(25, B_F0 - 2) * TILE, Vector2(4, 1.7) * TILE), "kind": "museum_go", "id": "bar_out", "to": "zalley", "at": "from_bar",
 		"title": "Up the stairs: the Back Alleys", "col": CYAN, "sign": Vector2(-100, -100)})
 	m.set_meta("from_street", Vector2(27.0, B_F0 + 0.8) * TILE)
+	m.set_meta("from_room", Vector2(23.5, B_F0 + 1.3) * TILE)          # (64e) back down the stairs: before the back room's door
 	m.spawn = m.get_meta("from_street")
 	m.lights.append({"pos": Vector2(27.0, B_F0 - 0.5) * TILE, "r": 56.0, "col": CYAN, "a": 0.35})
 	# two booths in the east: two sofas face to face, a table between
@@ -5132,3 +5133,365 @@ class Panorama extends Node2D:
 		while px < w:
 			draw_rect(Rect2(px, h - 14.0, 5.0, 14.0), Color(0.16, 0.16, 0.2))
 			px += 90.0
+
+
+# ---------------------------------------------------------------- the room above the Static Feedback
+## Package 64e (Luz): a small, bare room above the bar, through the door in the bar: it looks like a run-down
+## student's flat. A mattress on the floor, a worn sofa before the window, a fridge, crates, what lies about. A wide
+## window in its north wall looks out on the street before the bar: the house fronts opposite, their neon, the
+## people under their umbrellas, the rain (RoomFx). Stairs in the east lead back down into the bar.
+const RW := 18
+const RH := 13
+const R_F0 := 6                    # the floor's first row (north of it the wall with the window, drawn)
+const R_F1 := 11
+const R_WIN := Rect2(86.0, 12.0, 116.0, 62.0)         # the window in the north wall (art px)
+
+static func build_luzroom(_station: Dictionary, night: bool = true) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.3, 0.25, 0.2)
+	m.pal["floor2"] = Color(0.25, 0.2, 0.17)
+	m.pal["wood"] = Color(0.3, 0.2, 0.13)
+	m.pal["wall"] = Color(0.24, 0.2, 0.2)
+	m.pal["frame"] = Color(0.2, 0.16, 0.16)
+	m.pal["accent"] = Color(1.0, 0.36, 0.66)
+	m.set_meta("dark", Color(0.52, 0.46, 0.56) if night else Color(0.8, 0.78, 0.8))
+	m.style = "plaza"
+	m.title = "Centauria"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.set_meta("tourists", 0)
+	m.set_meta("zoom", 3.2)                                           # (Luz) a small room: the camera stands near
+	m.setup(RW, RH)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6405
+	m.fill(0, 0, RW, RH, T.CAP)
+	m.fill(1, 0, RW - 2, R_F0, T.BLOCK, 30)                           # the north wall: drawn over
+	m.fill(1, R_F0, RW - 2, R_F1 - R_F0 + 1, T.FLOOR, 3)
+	m.set_meta("room_window", R_WIN)
+	# the light: the street's neon through the window, one bare bulb, a string of small lamps
+	m.lights.append({"pos": Vector2(7.0, R_F0 + 1.2) * TILE, "r": 64.0, "col": Color(1.0, 0.36, 0.66), "a": 0.4, "flicker": true})
+	m.lights.append({"pos": Vector2(11.0, R_F0 + 1.2) * TILE, "r": 64.0, "col": Color(0.3, 0.9, 1.0), "a": 0.34})
+	m.lights.append({"pos": Vector2(9.0, R_F0 + 3.4) * TILE, "r": 76.0, "col": Color(1.0, 0.8, 0.5), "a": 0.3})
+	m.lights.append({"pos": Vector2(2.8, R_F0 + 0.6) * TILE, "r": 30.0, "col": Color(1.0, 0.7, 0.4), "a": 0.3})
+	# the mattress in the corner, a crate for a bedside table, the mess beside it
+	var bed := {"kind": "q_bed", "x": 1, "y": R_F0, "w": 2, "h": 2, "col": Color(0.5, 0.3, 0.42), "seed": 64, "shabby": true}
+	m.add_object(bed)
+	m.add_object({"kind": "crate_seat", "x": 3, "y": R_F0, "w": 1, "h": 1})
+	m.add_object({"kind": "floor_mess", "x": 3, "y": R_F0 + 2, "w": 2, "h": 1, "seed": 3})
+	m.zones.append({"rect": Rect2(Vector2(0.8, R_F0 + 2.0) * TILE, Vector2(2.4, 1.3) * TILE), "kind": "room_bed", "id": "room_bed",
+		"title": "Mattress: sleep", "col": Color(0.4, 1.0, 0.55), "sign": Vector2(-100, -100)})
+	m.set_meta("bed_front", Vector2(2.0, R_F0 + 3.0) * TILE)
+	# under the window: a heater that ticks; a worn sofa faces the window, a low table before it
+	m.add_object({"kind": "heater", "x": 4, "y": R_F0, "w": 1, "h": 1})
+	DeckGen._seat(m, "sofa", 7, R_F0 + 3, 1, Color(0.36, 0.4, 0.26), rng, 0.0, 3)
+	m.add_object({"kind": "table_small", "x": 8, "y": R_F0 + 1, "w": 1, "h": 1})
+	m.add_object({"kind": "floor_mess", "x": 10, "y": R_F0 + 2, "w": 2, "h": 1, "seed": 7})
+	m.zones.append({"rect": Rect2(Vector2(6.0, R_F0 + 0.1) * TILE, Vector2(6.0, 1.0) * TILE), "kind": "room_window", "id": "room_window",
+		"title": "The window: watch the street", "col": Color(0.3, 0.9, 1.0), "sign": Vector2(-100, -100)})
+	# the kitchen, such as it is: a fridge, crates, a locker for what you own
+	m.add_object({"kind": "fridge", "x": 14, "y": R_F0 + 2, "w": 1, "h": 1})
+	m.add_object({"kind": "crates", "x": 15, "y": R_F0 + 3, "w": 1, "h": 1})
+	m.add_object({"kind": "locker", "x": 13, "y": R_F0 + 0, "w": 1, "h": 1})
+	m.zones.append({"rect": Rect2(Vector2(12.7, R_F0 + 1.0) * TILE, Vector2(1.6, 1.2) * TILE), "kind": "q_locker", "id": "q_locker",
+		"title": "Locker: your gear", "col": Color(0.4, 1.0, 0.55), "sign": Vector2(-100, -100)})
+	m.add_object({"kind": "plant", "x": 1, "y": R_F1, "w": 1, "h": 1})
+	m.add_object({"kind": "trash", "x": 14, "y": R_F1, "w": 1, "h": 1})
+	m.add_object({"kind": "crate_seat", "x": 12, "y": R_F0 + 4, "w": 1, "h": 1})
+	# the stairs down into the bar
+	m.fill(15, R_F0 - 2, 2, 2, T.FLOOR, 30)
+	m.zones.append({"rect": Rect2(Vector2(15, R_F0 - 2) * TILE, Vector2(2, 1.7) * TILE), "kind": "museum_go", "id": "room_out", "to": "zstair", "at": "from_above",
+		"title": "Down the stairs: the Static Feedback", "col": Color(1.0, 0.36, 0.66), "sign": Vector2(-100, -100)})
+	m.set_meta("from_bar", Vector2(16.0, R_F0 + 0.8) * TILE)
+	m.spawn = m.get_meta("from_bar")
+	DeckGen._seats(m)
+	return m
+
+
+## The room above the bar, drawn (art px). "wall": its north wall: old plaster, the brick showing through, a water
+## stain, pipes, bills of the band, a string of small lamps, the doorway of the stairs, and the window with the
+## street in it. The street moves: the fronts opposite with their lit windows and neon, a screen that changes, the
+## people under umbrellas, a craft with a searchlight now and then, the rain on the glass.
+class RoomFx extends Node2D:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	const NEON := [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.55, 1.0, 0.6), Color(0.72, 0.5, 1.0), Color(1.0, 0.45, 0.25)]
+	var night := 1.0
+	var _t := 0.0
+	var _acc := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		_acc += dt
+		if _acc > 0.06:
+			_acc = 0.0
+			queue_redraw()
+
+	func _h(i: int, salt: int) -> float:
+		return Gen.TowerArt.hsh(i, salt)
+
+	func _draw() -> void:
+		var font := ThemeDB.fallback_font
+		var w := float(Gen.RW * GroundMap.TILE)
+		var fl := float(Gen.R_F0 * GroundMap.TILE)
+		var win: Rect2 = Gen.R_WIN
+		# the plaster, patches of brick, a stain
+		draw_rect(Rect2(16.0, 0.0, w - 32.0, fl), Color(0.4, 0.37, 0.33))
+		for pt in 70:
+			var px := 16.0 + _h(pt, 11) * (w - 44.0)
+			var py := _h(pt, 12) * (fl - 8.0)
+			draw_rect(Rect2(px, py, 4.0 + _h(pt, 13) * 14.0, 2.0 + _h(pt, 14) * 5.0), Color(0.36, 0.33, 0.3) if pt % 3 > 0 else Color(0.44, 0.41, 0.36))
+		for bp in [Rect2(20.0, 50.0, 26.0, 20.0), Rect2(212.0, 6.0, 22.0, 16.0), Rect2(120.0, 80.0, 44.0, 10.0)]:
+			draw_rect(bp, Color(0.3, 0.16, 0.13))
+			for by in range(int(bp.position.y), int(bp.end.y), 5):
+				draw_rect(Rect2(bp.position.x, by, bp.size.x, 1.0), Color(0.17, 0.09, 0.08))
+				for bx in range(int(bp.position.x) + (3 if (by / 5) % 2 == 0 else 8), int(bp.end.x), 10):
+					draw_rect(Rect2(bx, by, 1.0, 5.0), Color(0.17, 0.09, 0.08))
+		draw_colored_polygon(PackedVector2Array([Vector2(228, 26), Vector2(246, 26), Vector2(250, 58), Vector2(240, 76), Vector2(232, 60)]), Color(0.3, 0.3, 0.24, 0.5))
+		draw_rect(Rect2(16.0, 4.0, w - 32.0, 3.0), Color(0.3, 0.32, 0.36))                    # a pipe under the ceiling
+		draw_rect(Rect2(80.0, 4.0, 3.0, fl - 4.0), Color(0.27, 0.29, 0.33))                   # … and down to the heater
+		draw_rect(Rect2(16.0, fl - 7.0, w - 32.0, 7.0), Color(0.2, 0.15, 0.12))               # the skirting
+		# bills of the band, a scrawl
+		var bills := [[19.0, 10.0, "THE HULL", "BREACH", 0], [207.0, 30.0, "LIVE", "AFTER DARK", 2], [50.0, 24.0, "NO", "FUTURE", 5]]
+		for bl in bills:
+			var bx2: float = bl[0]
+			var by2: float = bl[1]
+			draw_rect(Rect2(bx2, by2, 28.0, 34.0), Color(0.08, 0.07, 0.09))
+			draw_rect(Rect2(bx2 + 1.0, by2 + 1.0, 26.0, 32.0), Color(0.86, 0.8, 0.66).darkened(0.1 + 0.1 * float(int(bl[4]) % 3)))
+			draw_rect(Rect2(bx2 + 3.0, by2 + 3.0, 22.0, 12.0), Color(NEON[int(bl[4])], 0.85))
+			draw_string(font, Vector2(bx2 + 1.0, by2 + 23.0), String(bl[2]), HORIZONTAL_ALIGNMENT_CENTER, 26.0, 5, Color(0.12, 0.1, 0.1))
+			draw_string(font, Vector2(bx2 + 1.0, by2 + 30.0), String(bl[3]), HORIZONTAL_ALIGNMENT_CENTER, 26.0, 5, Color(0.7, 0.12, 0.12))
+			draw_rect(Rect2(bx2 + 20.0, by2 - 1.0, 5.0, 3.0), Color(0.8, 0.78, 0.6, 0.7))       # tape
+		# the doorway of the stairs
+		draw_rect(Rect2(238.0, fl - 44.0, 36.0, 44.0), Color(0.07, 0.06, 0.08))
+		draw_rect(Rect2(241.0, fl - 41.0, 30.0, 41.0), Color(0.16, 0.08, 0.12))
+		for st in 5:
+			draw_rect(Rect2(241.0, fl - 8.0 - st * 7.0, 30.0, 1.0), Color(0.3, 0.14, 0.2))
+		draw_rect(Rect2(241.0, fl - 41.0, 30.0, 12.0), Color(1.0, 0.36, 0.66, 0.16 + 0.05 * sin(_t * 3.0)))
+		# the window
+		_view(win)
+		draw_rect(Rect2(win.position - Vector2(4, 4), win.size + Vector2(8, 8)), Color(0.13, 0.11, 0.1), false, 4.0)
+		for mu in [1, 2]:
+			draw_rect(Rect2(win.position.x + win.size.x * mu / 3.0 - 1.0, win.position.y, 2.0, win.size.y), Color(0.13, 0.11, 0.1))
+		draw_rect(Rect2(win.position.x, win.position.y + win.size.y * 0.42, win.size.x, 1.5), Color(0.13, 0.11, 0.1))
+		draw_rect(Rect2(win.position.x - 6.0, win.end.y + 3.0, win.size.x + 12.0, 4.0), Color(0.28, 0.22, 0.17))     # the sill
+		draw_rect(Rect2(win.position.x + 10.0, win.end.y - 3.0, 5.0, 6.0), Color(0.3, 0.5, 0.36))                     # a bottle on it
+		draw_rect(Rect2(win.position.x + 11.5, win.end.y - 6.0, 2.0, 3.0), Color(0.3, 0.5, 0.36))
+		draw_rect(Rect2(win.end.x - 22.0, win.end.y - 1.0, 9.0, 4.0), Color(0.75, 0.3, 0.28))                         # a mug
+		# a string of small lamps from nail to nail
+		for li in 15:
+			var k := float(li) / 14.0
+			var lp := Vector2(lerpf(20.0, 78.0, k), 74.0 + sin(k * PI) * 6.0)
+			if li > 0:
+				var k0 := float(li - 1) / 14.0
+				draw_line(Vector2(lerpf(20.0, 78.0, k0), 74.0 + sin(k0 * PI) * 6.0), lp, Color(0.1, 0.1, 0.1), 0.6)
+			var on := fposmod(_t * 0.8 + _h(li, 31) * 3.0, 3.0) > 0.4
+			draw_rect(Rect2(lp.x - 1.0, lp.y, 2.0, 2.0), Color(NEON[li % NEON.size()], 1.0 if on else 0.3))
+
+	## What the window shows: the street before the bar, seen from above it.
+	func _view(win: Rect2) -> void:
+		var x0 := win.position.x
+		var y0 := win.position.y
+		var ww := win.size.x
+		var hh := win.size.y
+		var street := y0 + hh - 16.0
+		draw_rect(win, Color(0.03, 0.03, 0.07))
+		# the fronts opposite: storeys, lit windows, pipes
+		var fx := x0
+		var fi := 0
+		while fx < x0 + ww:
+			var fw := 22.0 + _h(fi, 41) * 18.0
+			var top := y0 + _h(fi, 42) * 6.0
+			var body := Color(0.1, 0.09, 0.14).lightened(_h(fi, 43) * 0.06)
+			draw_rect(Rect2(fx, top, minf(fw, x0 + ww - fx), street - top), body)
+			for wy in range(int(top) + 4, int(street) - 6, 7):
+				for wx in range(int(fx) + 3, int(minf(fx + fw, x0 + ww)) - 4, 6):
+					var seedw := wx * 13 + wy * 7
+					var lit := _h(seedw, 44) < 0.34 and fposmod(_t * 0.05 + _h(seedw, 45), 1.0) > 0.12
+					draw_rect(Rect2(wx, wy, 3.0, 4.0), Color(1.0, 0.82, 0.5, 0.9) if lit else Color(0.05, 0.05, 0.09))
+			# a blade of neon standing out from the wall
+			var nc: Color = NEON[fi % NEON.size()]
+			var flick := 1.0 if fposmod(_t * (0.7 + _h(fi, 46)) + _h(fi, 47) * 5.0, 7.0) > 0.25 else 0.3
+			var bxn := fx + fw - 5.0
+			if bxn < x0 + ww - 4.0:
+				draw_rect(Rect2(bxn, top + 8.0, 4.0, 22.0), Color(0.05, 0.05, 0.08))
+				draw_rect(Rect2(bxn, top + 8.0, 4.0, 22.0), Color(nc, 0.9 * flick), false, 1.0)
+				for gl in 5:
+					draw_rect(Rect2(bxn + 1.0, top + 10.0 + gl * 4.0, 2.0, 2.0), Color(nc.lightened(0.3), flick))
+			fx += fw + 1.0
+			fi += 1
+		# a screen that changes
+		var scr := Rect2(x0 + ww * 0.36, y0 + 9.0, 30.0, 16.0)
+		var ph := int(_t / 3.0)
+		draw_rect(scr.grow(1.0), Color(0.02, 0.02, 0.03))
+		draw_rect(scr, NEON[ph % NEON.size()].darkened(0.35))
+		draw_rect(Rect2(scr.position + Vector2(3, 3), Vector2(scr.size.x - 6.0, 3.0)), Color(NEON[(ph + 2) % NEON.size()], 0.9))
+		draw_rect(Rect2(scr.position + Vector2(3, 9), Vector2((scr.size.x - 6.0) * fposmod(_t / 3.0, 1.0), 3.0)), Color(1, 1, 1, 0.8))
+		# the street: wet, the neon lying in it
+		draw_rect(Rect2(x0, street, ww, y0 + hh - street), Color(0.07, 0.07, 0.12))
+		for rf in 9:
+			var rx := x0 + _h(rf, 51) * ww
+			draw_rect(Rect2(rx, street + 2.0, 3.0 + _h(rf, 52) * 5.0, y0 + hh - street - 3.0), Color(NEON[rf % NEON.size()], 0.16 + 0.06 * sin(_t * 2.0 + rf)))
+		# the people under their umbrellas
+		for pi in 16:
+			var sp := 5.0 + _h(pi, 61) * 7.0
+			var dirp := 1.0 if pi % 2 == 0 else -1.0
+			var px := x0 + fposmod(_h(pi, 62) * ww + _t * sp * dirp, ww)
+			var py := street + 3.0 + _h(pi, 63) * 8.0
+			var bob := sin(_t * 6.0 + pi) * 0.4
+			draw_rect(Rect2(px - 1.0, py + bob, 2.0, 4.0), Color(0.16, 0.16, 0.22).lightened(_h(pi, 64) * 0.4))
+			draw_rect(Rect2(px - 3.0, py - 2.0 + bob, 6.0, 1.5), Color(NEON[pi % NEON.size()].darkened(0.45)) if pi % 3 == 0 else Color(0.2, 0.22, 0.3))
+			draw_rect(Rect2(px - 2.0, py - 3.0 + bob, 4.0, 1.0), Color(0.3, 0.34, 0.44))
+		# a craft with a searchlight, now and then
+		var cyc := fposmod(_t, 17.0)
+		if cyc < 6.0:
+			var cx := x0 - 10.0 + (ww + 20.0) * cyc / 6.0
+			var cy := y0 + 12.0 + sin(cyc * 1.3) * 3.0
+			if cx > x0 + 4.0 and cx < x0 + ww - 4.0:
+				draw_colored_polygon(PackedVector2Array([Vector2(cx, cy + 2.0), Vector2(cx - 9.0, street + 6.0), Vector2(cx + 9.0, street + 6.0)]), Color(0.9, 0.95, 1.0, 0.1))
+				draw_rect(Rect2(cx - 5.0, cy - 1.5, 10.0, 3.0), Color(0.04, 0.04, 0.06))
+				draw_rect(Rect2(cx + 4.0, cy - 0.5, 1.0, 1.0), Color(1.0, 0.3, 0.3))
+		# the rain, and the glass
+		for rn in 46:
+			var rxx := x0 + fposmod(_h(rn, 71) * ww - _t * 9.0, ww)
+			var ryy := y0 + fposmod(_h(rn, 72) * hh + _t * (70.0 + _h(rn, 73) * 40.0), hh - 4.0)
+			draw_line(Vector2(rxx, ryy), Vector2(rxx - 1.0, ryy + 4.0), Color(0.7, 0.8, 1.0, 0.3), 0.5)
+		for dr in 12:
+			var dxp := x0 + 4.0 + _h(dr, 74) * (ww - 8.0)
+			var dyp := y0 + fposmod(_h(dr, 75) * hh + _t * (2.0 + _h(dr, 76) * 4.0), hh - 3.0)
+			draw_rect(Rect2(dxp, dyp, 1.0, 2.0), Color(0.8, 0.9, 1.0, 0.45))
+		draw_rect(win, Color(0.3, 0.5, 0.8, 0.07))
+		draw_line(win.position + Vector2(6.0, hh - 4.0), win.position + Vector2(26.0, 4.0), Color(1, 1, 1, 0.06), 3.0)
+
+
+# ---------------------------------------------------------------- the stairs between the bar and the room
+## Package 64e (Luz): a narrow stairwell between the Static Feedback and the room above it. Nothing to do in it: the
+## game walks you up (or down) its steps, then the room (or the bar) opens. The steps, the walls and the light are
+## drawn (StairFx).
+const ST_W := 9
+const ST_H := 15
+const S_TOP := 2                   # the landing above (tiles)
+const S_BOT := 12                  # the landing below
+
+static func build_stairs(_station: Dictionary) -> GroundMap:
+	var m := GroundMap.new()
+	MuseumGen._pal(m, {})
+	m.pal["floor"] = Color(0.2, 0.17, 0.17)
+	m.pal["floor2"] = Color(0.17, 0.14, 0.15)
+	m.pal["wall"] = Color(0.16, 0.1, 0.1)
+	m.pal["frame"] = Color(0.16, 0.1, 0.1)
+	m.set_meta("dark", Color(0.4, 0.36, 0.46))
+	m.style = "plaza"
+	m.title = "Centauria"
+	m.hull_top = -9999
+	m.set_meta("no_guards", true)
+	m.set_meta("tourists", 0)
+	m.set_meta("zoom", 3.2)
+	m.setup(ST_W, ST_H)
+	m.fill(0, 0, ST_W, ST_H, T.CAP)
+	m.fill(3, S_TOP, 3, S_BOT - S_TOP + 1, T.FLOOR, 3)
+	m.set_meta("stairs", true)
+	m.set_meta("from_below", Vector2(4.5, S_BOT + 0.4) * TILE)
+	m.set_meta("from_above", Vector2(4.5, S_TOP + 0.4) * TILE)
+	m.spawn = m.get_meta("from_below")
+	m.lights.append({"pos": Vector2(4.5, S_BOT + 0.5) * TILE, "r": 46.0, "col": Color(1.0, 0.36, 0.66), "a": 0.5})
+	m.lights.append({"pos": Vector2(4.5, S_TOP + 0.2) * TILE, "r": 50.0, "col": Color(1.0, 0.8, 0.5), "a": 0.45})
+	m.lights.append({"pos": Vector2(4.5, 7.0) * TILE, "r": 30.0, "col": Color(0.9, 0.8, 0.6), "a": 0.25, "flicker": true})
+	return m
+
+
+## The stairwell, drawn (art px): the steps (each a lit edge and a dark riser), brick either side, a handrail, a
+## bare lamp half way that flickers, the bar's pink below and the room's warm light above.
+class StairFx extends Node2D:
+	const Gen = preload("res://scripts/ground/centauria_gen.gd")
+	var _t := 0.0
+	var _acc := 0.0
+
+	func _process(dt: float) -> void:
+		_t += dt
+		_acc += dt
+		if _acc > 0.08:
+			_acc = 0.0
+			queue_redraw()
+
+	## A flight of stairs seen from its foot, rising away from you: every step a lit tread and under it the dark face
+	## of its riser, a bright edge between; the steps grow shorter and narrower towards the top; a stringer and a
+	## handrail with posts on either side run up with them; the walls close in; at the head a doorway with the room's
+	## warm light, at the foot the bar's pink.
+	func _draw() -> void:
+		var T := float(GroundMap.TILE)
+		var cx := 4.5 * T
+		var y_top := float(Gen.S_TOP) * T + T * 0.9          # where the flight ends (the landing above it)
+		var y_bot := float(Gen.S_BOT + 1) * T - T * 0.35     # where it begins
+		var hw_bot := 1.5 * T
+		var hw_top := 1.5 * T * 0.74
+		var warm := Color(1.0, 0.82, 0.55)
+		var pink := Color(1.0, 0.36, 0.66)
+		# the walls either side, closing in towards the top: brick, its courses rising with the stairs
+		for sd in [-1.0, 1.0]:
+			var wall := PackedVector2Array([Vector2(cx + sd * hw_bot, y_bot + 6.0), Vector2(cx + sd * (hw_bot + 30.0), y_bot + 6.0),
+				Vector2(cx + sd * (hw_top + 30.0), y_top - 40.0), Vector2(cx + sd * hw_top, y_top - 40.0)])
+			draw_colored_polygon(wall, Color(0.19, 0.1, 0.1))
+			for c in 12:
+				var k0 := float(c) / 12.0
+				var ya := lerpf(y_bot + 6.0, y_top - 40.0, k0)
+				var xa := lerpf(hw_bot, hw_top, k0)
+				draw_line(Vector2(cx + sd * xa, ya), Vector2(cx + sd * (xa + 30.0), ya - 10.0), Color(0.1, 0.05, 0.05), 1.0)
+		# the wall at the head of the stairs, its doorway, the light behind it
+		draw_rect(Rect2(cx - hw_top - 30.0, y_top - 40.0, (hw_top + 30.0) * 2.0, 40.0 - T * 0.9 + 2.0), Color(0.24, 0.2, 0.19))
+		draw_rect(Rect2(cx - 15.0, y_top - 38.0, 30.0, 40.0 - T * 0.9), Color(0.1, 0.08, 0.08))
+		draw_rect(Rect2(cx - 12.0, y_top - 35.0, 24.0, 37.0 - T * 0.9), Color(warm.darkened(0.25), 0.9))
+		draw_rect(Rect2(cx - 12.0, y_top - 35.0, 24.0, 5.0), Color(warm, 0.95))
+		draw_rect(Rect2(cx - hw_top, y_top - T * 0.9, hw_top * 2.0, T * 0.9), Color(0.42, 0.36, 0.3))            # the landing above
+		draw_rect(Rect2(cx - hw_top, y_top - T * 0.9, hw_top * 2.0, 1.0), Color(0.56, 0.48, 0.4))
+		# the steps, from the top down (each covers the foot of the one above)
+		var ys: Array = []
+		var y := y_bot
+		var n := 0
+		while y > y_top + 3.0 and n < 40:
+			var k := (y_bot - y) / (y_bot - y_top)
+			var h := lerpf(12.0, 5.5, k)
+			ys.append([y, h, k])
+			y -= h
+			n += 1
+		for si in range(ys.size() - 1, -1, -1):
+			var yb: float = ys[si][0]
+			var hh: float = minf(float(ys[si][1]), yb - y_top)
+			var kk: float = ys[si][2]
+			var hw := lerpf(hw_bot, hw_top, kk)
+			var hw2 := lerpf(hw_bot, hw_top, clampf(kk + hh / (y_bot - y_top), 0.0, 1.0))
+			var tread_h := hh * 0.42
+			var lit := lerpf(0.0, 1.0, kk)
+			var tread := Color(0.3, 0.2, 0.26).lerp(Color(0.62, 0.52, 0.4), lit)
+			var riser := Color(0.13, 0.08, 0.11).lerp(Color(0.26, 0.21, 0.17), lit)
+			# the riser (the step's face towards you), then the tread on top of it, a bright edge where they meet
+			draw_rect(Rect2(cx - hw, yb - hh + tread_h, hw * 2.0, hh - tread_h), riser)
+			draw_colored_polygon(PackedVector2Array([Vector2(cx - hw, yb - hh + tread_h), Vector2(cx + hw, yb - hh + tread_h),
+				Vector2(cx + hw2, yb - hh), Vector2(cx - hw2, yb - hh)]), tread)
+			draw_rect(Rect2(cx - hw, yb - hh + tread_h - 0.5, hw * 2.0, 1.2), tread.lightened(0.35))
+			draw_rect(Rect2(cx - hw, yb - 1.0, hw * 2.0, 1.0), riser.darkened(0.5))                # the shadow under its foot
+			if si % 4 == 2:
+				draw_rect(Rect2(cx - hw * 0.5 + (si * 7) % 9, yb - hh * 0.4, 4.0, 1.0), riser.lightened(0.15))    # a scuff
+		# the landing below, the bar's light on it
+		draw_rect(Rect2(cx - hw_bot, y_bot, hw_bot * 2.0, T * 0.35 + 6.0), Color(0.2, 0.12, 0.16))
+		draw_rect(Rect2(cx - hw_bot, y_bot, hw_bot * 2.0, 1.0), Color(pink, 0.5))
+		# either side: the stringer along the steps' ends, a handrail above it, posts between
+		for sd2 in [-1.0, 1.0]:
+			var a := Vector2(cx + sd2 * hw_bot, y_bot)
+			var b := Vector2(cx + sd2 * hw_top, y_top)
+			draw_line(a, b, Color(0.12, 0.08, 0.07), 3.0)
+			var ra := a + Vector2(0.0, -16.0)
+			var rb := b + Vector2(0.0, -11.0)
+			for pk in 7:
+				var kp := float(pk) / 6.0
+				var foot := a.lerp(b, kp)
+				draw_line(foot, ra.lerp(rb, kp), Color(0.3, 0.25, 0.2), 1.0)
+			draw_line(ra, rb, Color(0.62, 0.5, 0.34), 2.0)
+			draw_line(ra + Vector2(0, 1.5), rb + Vector2(0, 1.5), Color(0.25, 0.18, 0.12), 1.0)
+		# a bare lamp on the wall half way, flickering
+		var on := fposmod(_t * 1.3, 5.0) > 0.25 or fposmod(_t * 23.0, 1.0) > 0.5
+		var lamp := Vector2(cx - lerpf(hw_bot, hw_top, 0.5) - 13.0, lerpf(y_bot, y_top, 0.5) - 22.0)
+		draw_rect(Rect2(lamp.x - 1.5, lamp.y - 7.0, 3.0, 6.0), Color(0.16, 0.16, 0.18))
+		draw_circle(lamp, 2.5, Color(1.0, 0.9, 0.6, 1.0 if on else 0.25))
+		if on:
+			draw_circle(lamp, 7.0, Color(1.0, 0.9, 0.6, 0.12))
+		draw_string(ThemeDB.fallback_font, Vector2(cx + lerpf(hw_bot, hw_top, 0.4) + 5.0, lerpf(y_bot, y_top, 0.4) - 12.0), "UP", HORIZONTAL_ALIGNMENT_LEFT, 20.0, 6, Color(pink, 0.75))

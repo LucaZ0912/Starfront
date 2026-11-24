@@ -746,6 +746,14 @@ func _process(delta: float) -> void:
 				await _test_collabb62a(main.view)        # package 62a, part 11b: the rest of the Alien Laboratory
 				await _test_collabc62a(main.view)        # package 62a, part 11c: the bosses of the Alien Laboratory
 				await _test_ships63(main.view)           # package 63: the new ships
+				_test_tree64a()                         # package 64a: the skill tree in the intro
+				await _test_fern64b(main.view)           # package 64b: Rook takes you to Luz
+				await _test_luz64c(main.view)            # package 64c: Luz's test
+				await _test_round64d(main.view)          # package 64d: the party, the round, its work
+				await _test_room64e(main.view)           # package 64e: the room above the bar
+				await _test_rook64f(main.view)           # package 64f: Rook and the Colosseum
+				_test_games64g()                        # package 64g: the round at the bar's games
+				await _test_music64()                   # (Luz) the bar's music, Survivor's
 				_shooting = false
 				timer = 0.0
 				return
@@ -17164,10 +17172,11 @@ func _test_fern61(_view: SystemView) -> void:
 	var mode: Dictionary = w.ground_mode({"city": true, "name": "Centauria", "id": "x"})
 	var ppl: Array = ((mode.get("levels", {}) as Dictionary).get("zbar", {}) as Dictionary).get("people", [])
 	var call_ok: bool = before_ok and bool(st.flags.get("fern_called", false)) and st.running("fern") and String(st.step_data("fern").get("id", "")) == "go" \
-		and ppl.size() == 3 and String(ppl[0]["who"]) == "luz" and String(ppl[0].get("marker", "")) == "!" \
+		and ppl.size() == 4 and String(ppl[0]["who"]) == "luz" and String(ppl[0].get("marker", "")) == "!" and String(ppl[3]["who"]) == "rook" \
 		and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty()) and w.FERN_LEVEL == 5
 	st.set_flag("fern_arrived", true)
 	st.set_flag("fern_landed", true)
+	st.set_flag("fern_rook", true)                         # (package 64b: Rook takes you there)
 	st.set_flag("fern_luz", true)
 	var done_ok: bool = st.done.has("fern") and Acq.met("luz") and Acq.level(Acq.value("luz")) == 1
 	if shots and sid >= 0:
@@ -28586,3 +28595,1179 @@ func _test_ships63(view: SystemView) -> void:
 		if main.loading == null or not is_instance_valid(main.loading):
 			break
 		await get_tree().process_frame
+
+
+## Package 64a (Luz): the skill tree is shut through the intro; with the licence its counters start at nothing.
+func _test_tree64a() -> void:
+	var TD = load("res://data/skilltree.gd")
+	var st = GameState.story
+	var keep_flags: Dictionary = st.flags.duplicate(true)
+	var keep_stats: Dictionary = GameState.stats.duplicate(true)
+	var keep_tree: Array = (GameState.pilot.get("tree", []) as Array).duplicate()
+	var keep_all: bool = bool(GameState.pilot.get("tree_all", false))
+	GameState.pilot["tree_all"] = false
+	GameState.pilot["tree"] = []
+	for m in TD.METRICS:
+		if m != "pilot_level":
+			GameState.stats[m] = 100000000.0
+	# no story at all: the tree is open as ever
+	st.flags.erase("intro_stage")
+	st.flags.erase("cit_licence")
+	var free_ok: bool = not GameState.tree_locked() and not GameState.tiles_ready().is_empty()
+	var one: String = String(GameState.tiles_ready()[0]) if free_ok else ""
+	# a game put past the intro another way (the debug menu), without a licence flag: not shut for good
+	st.flags["intro_stage"] = 3
+	st.flags["intro_done"] = true
+	free_ok = free_ok and not GameState.tree_locked() and not GameState.tiles_ready().is_empty()
+	# in the intro: shut, whatever you did
+	st.flags.erase("intro_done")
+	var shut_ok: bool = GameState.tree_locked() and GameState.tiles_ready().is_empty() and one != "" and not GameState.tile_ready(one) \
+		and GameState.tree_unlock(one).contains("licence") and (GameState.pilot["tree"] as Array).is_empty()
+	# the licence: open, and nothing of before counts
+	st.flags["cit_licence"] = true
+	var n_before: int = GameState.tiles_ready().size()
+	GameState.pilot["tree"] = [one]
+	GameState.tree_start_over()
+	var zero := true
+	for m2 in TD.METRICS:
+		if m2 != "pilot_level":
+			zero = zero and GameState.metric(m2) == 0.0
+	var over_ok: bool = not GameState.tree_locked() and n_before > 0 and zero and (GameState.pilot["tree"] as Array).is_empty() and GameState.tiles_ready().size() < n_before
+	GameState.count_stat("warps", 3.0)
+	over_ok = over_ok and GameState.metric("warps") == 3.0
+	var said := true
+	for d in ["citizen_assembly_end", "citizen_covenant_end"]:
+		var lines: Array = load("res://data/story.gd").DIALOGUES[d]["lines"]
+		said = said and lines.size() == 2 and String(lines[0]["text"]).contains("skill tree") and not String(lines[0]["text"]).contains("–")
+	if not (free_ok and shut_ok and over_ok and said):
+		print("TREE64A: free ", free_ok, " shut ", shut_ok, " over ", over_ok, " (ready before ", n_before, " after ", GameState.tiles_ready().size(), " zero ", zero, ") said ", said)
+	check(free_ok and shut_ok and over_ok and said,
+		"64a: the skill tree is shut through the intro (no tile gets ready, none can be opened, the Pilot window says why); with the licence every counter the tree reads starts at nothing and counts from there; the official says so after the stamp; a game without the story is not held back")
+	st.flags = keep_flags
+	GameState.stats = keep_stats
+	GameState.pilot["tree"] = keep_tree
+	GameState.pilot["tree_all"] = keep_all
+	GameState.skills_changed.emit()
+
+
+## Package 64b (Luz): Fern is closed until Rook's call; after the landing Rook is on the radio, waits at the top of
+## the stairs in the Commercial District, goes ahead across the plaza and down the alley, and introduces you to Luz.
+func _test_fern64b(_view: SystemView) -> void:
+	var shots := OS.get_environment("FERN64_SHOTS") != ""
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	await _story_quiet()
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var st = GameState.story
+	var sid := Universe.special_system("fern")
+	for fl in st.flags.keys():
+		if String(fl).begins_with("fern_"):
+			st.flags.erase(fl)
+	st.missions.erase("fern")
+	st.done.erase("fern")
+	st.flags["intro_stage"] = "58"
+	st.flags["intro_done"] = true
+	main._start_dan_work("load")
+	var w = main.get_meta("dan_work")
+	w._set_phase("free")
+	# closed until Rook vouches for you; a game without the story is not held back
+	var shut: bool = GameState.fern_closed() and GameState.entry_error(sid).contains("permit")
+	st.flags.erase("intro_stage")
+	var no_story: bool = not GameState.fern_closed() and GameState.entry_error(sid) == ""
+	st.flags["intro_stage"] = "58"
+	var dbg_ok: bool = String(Commands.execute({"type": "debug_fern", "do": "call"})) == "" and bool(st.flags.get("fern_called", false)) \
+		and String(Commands.execute({"type": "debug_fern", "do": "call"})) != "" and String(Commands.execute({"type": "debug_fern", "do": "reset"})) == "" \
+		and not st.flags.has("fern_called") and GameState.fern_closed()
+	main.story_ui._radio_q.clear()
+	w._fern_call()
+	var lock_ok: bool = dbg_ok and shut and no_story and not GameState.fern_closed() and GameState.entry_error(sid) == "" \
+		and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty())
+	main.story_ui._radio_q.clear()
+	# (Luz) while Rook takes you to Luz it is night in Centauria, and it rains
+	w._fern_weather()
+	var green := {"type": "ocean", "name": "Pelagia", "id": "x"}
+	var wx_ok: bool = CityStyle.story_night == "Centauria" and CityStyle.daylight({"name": "Centauria", "lon": 0.4}) == 0.0 \
+		and String(Weather.at(green, {"name": "Centauria", "id": "c"})["kind"]) == "rain" and Weather.story_place == "Centauria"
+	# down to Centauria (the debug menu's "Land in Centauria"): Rook on the radio
+	var land_cmd := String(Commands.execute({"type": "debug_fern", "do": "land"}))
+	main.story_ui._radio_q.clear()
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var land_ok: bool = land_cmd == "" and g != null and is_instance_valid(g) and g.is_centauria()
+	if land_ok and not g.input_enabled:
+		print("FERN64B landing: input off. collapsed ", g._collapsed, " health ", GameState.gear.health, " level ", g.level, " arrive ", g._arrive, " ride ", not g._ride.is_empty(), " sleeping ", g._sleeping,
+			" col ", not g._col_scene.is_empty(), not g._col_walk.is_empty(), not g._col_intro.is_empty(), g._col_wait, " clift ", not g._clift.is_empty(), " stair ", not g._stair.is_empty(),
+			" minigame ", g.minigame != null, " combat ", g.combat != null, " paused ", get_tree().paused, " timescale ", Engine.time_scale, " col_gear ", GameState.get("col_gear_is_on") if "col_gear_is_on" in GameState else "?",
+			" loading ", main.loading != null and is_instance_valid(main.loading), " fade ", main.get("_fade") != null)
+	var radio_ok := false
+	var meet_ok := false
+	var plaza_ok := false
+	var alley_ok := false
+	var bar_ok := false
+	var wait_for := func(cond: Callable, ms: int) -> bool:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < ms:
+			if cond.call():
+				return true
+			await get_tree().process_frame
+		return cond.call()
+	if land_ok:
+		var T := float(GroundMap.TILE)
+		radio_ok = await wait_for.call(func(): return bool(st.flags.get("fern_radio", false)), 5000)
+		radio_ok = radio_ok and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty())
+		main.story_ui._radio_q.clear()
+		# the top of the stairs: Rook, a mark over the head, and a greeting as you come up
+		await _story_quiet()                               # (Rook's calls after the landing are over: a talk waits behind a call)
+		g.story_mode = w.ground_mode(g.station)
+		g.go_level("zplaza", "from_station")
+		for f0 in 6:
+			await get_tree().process_frame
+		var rook = g.story_people.get("rook", null)
+		wx_ok = wx_ok and g.city_day() == 0.0 and String(g.weather_now().get("kind", "")) == "rain"
+		if not wx_ok:
+			print("FERN64B weather: night ", CityStyle.story_night, " day ", g.city_day(), " weather ", g.weather_now().get("kind", "-"))
+		var start_ok: bool = rook != null and String(rook.marker) == "!" and (rook.pos as Vector2).distance_to(g.map.get_meta("from_station")) < 4.0 * T
+		var greeted: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "rook_fern", 20000)
+		if shots:
+			for f1 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/fern64b_treffen.png")
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		var met: bool = await wait_for.call(func(): return bool(st.flags.get("fern_rook", false)), 3000)
+		if shots:
+			await wait_for.call(func(): return float(w._lead.get("talk", 0.0)) > 0.0 and float(w._lead.get("talk", 0.0)) < 3.0, 8000)
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/fern64b_platz.png")
+		meet_ok = start_ok and greeted and met and rook != null and String(rook.marker) == ""
+		if not meet_ok:
+			print("FERN64B meet: rook ", rook != null, " start ", start_ok, " greeted ", greeted, " met ", met)
+			print("FERN64B state: dlg ", main.story_ui._dlg.get("id", "-") if main.story_ui.dialogue != null else "none", " q ", main.story_ui._dlg_q.size(), " radio ", main.story_ui._radio != null, " input ", g.input_enabled, " busy ", w._fern_busy, " phase ", w.phase, " w is meta ", w == main.get_meta("dan_work"), " valid ", is_instance_valid(w), " talk ", g.talk != null, " menu ", g._lift_menu != null, " sleeping ", g._sleeping, " far ", (g.pilot.pos as Vector2).distance_to(rook.pos) / T if rook != null else -1.0, " flags ", st.flags.keys().filter(func(k): return String(k).begins_with("fern_")))
+		# (Luz) from here you follow by yourself: Rook stops three times, turns to you and speaks, standing; at the gate
+		# the way leads on by itself
+		var p_start: Vector2 = g.pilot.pos
+		var acc := {"said": 0, "stood": false, "led": false, "said2": 0}       # (a lambda cannot write a local: it writes here)
+		var in_alley: bool = await wait_for.call(func():
+			var r0 = g.story_people.get("rook", null)
+			if String(g.level) == "zplaza" and r0 != null and is_instance_valid(r0):
+				acc["said"] = maxi(int(acc["said"]), int(w._lead.get("said", 0)))
+				acc["led"] = bool(acc["led"]) or not g.input_enabled
+				if float(w._lead.get("talk", 0.0)) > 0.5 and float(r0.bubble_t) > 0.0:
+					acc["stood"] = bool(acc["stood"]) or (not r0.moving and (g.pilot.pos as Vector2).distance_to(r0.pos) < 4.0 * T)
+			return String(g.level) == "zalley", 150000)
+		var said_max: int = acc["said"]
+		var stood: bool = acc["stood"]
+		var led: bool = acc["led"]
+		if shots:
+			for f2 in 110:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/fern64b_gasse.png")
+		plaza_ok = in_alley and said_max == 3 and stood and led
+		if not plaza_ok:
+			print("FERN64B plaza: alley ", in_alley, " said ", said_max, " stood ", stood, " led ", led, " level ", g.level)
+		var in_bar: bool = await wait_for.call(func():
+			if String(g.level) == "zalley":
+				acc["said2"] = maxi(int(acc["said2"]), int(w._lead.get("said", 0)))
+			return String(g.level) == "zbar", 150000)
+		var said2: int = acc["said2"]
+		alley_ok = in_bar and said2 == 3
+		if not alley_ok:
+			print("FERN64B alley: bar ", in_bar, " said ", said2, " level ", g.level)
+		# the bar: you walk up to the counter by yourself; Rook introduces you
+		for f5 in 6:
+			await get_tree().process_frame
+		var rook3 = g.story_people.get("rook", null)
+		var luz = g.story_people.get("luz", null)
+		if rook3 != null and luz != null:
+			var at_bar: bool = (rook3.pos as Vector2).distance_to(luz.pos) < 5.0 * T and String(luz.marker) == "!" and g.map.free_at(rook3.pos, 3.0)
+			var intro: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "luz_meet", 40000)
+			at_bar = at_bar and (g.pilot.pos as Vector2).distance_to(rook3.pos) < 4.5 * T
+			if shots:
+				for f6 in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/fern64b_bar.png")
+			if main.story_ui.dialogue != null:
+				main.story_ui._close_dialogue()
+			var done: bool = await wait_for.call(func(): return bool(st.flags.get("fern_luz", false)), 3000)
+			for f7 in 4:
+				await get_tree().process_frame
+			var mark_after: String = String(luz.marker) if is_instance_valid(luz) else "?"       # (64c: Luz has a job for you)
+			g.story_talk.emit("luz")
+			for f8 in 4:
+				await get_tree().process_frame
+			var again: bool = main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "luz_job"       # (64c: spoken to again, Luz hands out the job)
+			if main.story_ui.dialogue != null:
+				main.story_ui._close_dialogue()
+			var lv_after: Dictionary = w.ground_mode(g.station).get("levels", {})
+			w._fern_weather()
+			bar_ok = at_bar and intro and done and again and st.done.has("fern") and mark_after == "!" and not lv_after.has("zplaza") and not lv_after.has("zalley") \
+				and (lv_after["zbar"]["people"] as Array).size() == 4 and CityStyle.story_night == "Centauria" and g.input_enabled       # (the night stays until you leave)
+			# the debug menu's points on the way
+			var pts_ok := true
+			for pt in [["stairs", "zplaza", true, false], ["alley", "zalley", true, true], ["bar", "zbar", true, true], ["done", "zbar", true, true]]:       # (64d: Rook stays in the bar)
+				var pe := String(Commands.execute({"type": "debug_fern", "do": String(pt[0])}))
+				for f9 in 5:
+					await get_tree().process_frame
+				if main.story_ui.dialogue != null:
+					main.story_ui._close_dialogue()
+				var one: bool = pe == "" and String(g.level) == String(pt[1]) and (g.story_people.get("rook", null) != null) == bool(pt[2]) \
+					and (bool(st.flags.get("fern_rook", false)) == bool(pt[3]) or main.story_ui.dialogue != null or w._fern_busy)
+				if not one:
+					print("FERN64B debug point ", pt[0], ": ", pe, " level ", g.level, " rook ", g.story_people.get("rook", null) != null, " met ", st.flags.get("fern_rook", false))
+				pts_ok = pts_ok and one
+				for f10 in 12:
+					await get_tree().process_frame
+				if main.story_ui.dialogue != null:
+					main.story_ui._close_dialogue()
+				for f11 in 6:
+					await get_tree().process_frame
+				if main.story_ui.dialogue != null:
+					main.story_ui._close_dialogue()
+			bar_ok = bar_ok and pts_ok and bool(st.flags.get("fern_luz", false))
+			if not bar_ok:
+				print("FERN64B bar: at ", at_bar, " intro ", intro, " done ", done, " again ", again, " mission ", st.done.has("fern"), " points ", pts_ok)
+		else:
+			print("FERN64B bar: rook ", rook3 != null, " luz ", luz != null)
+	else:
+		print("FERN64B: not landed")
+	var D: Dictionary = load("res://data/story.gd").DIALOGUES
+	var text_ok := true
+	for did in ["rook_fern", "luz_meet", "luz_again"]:
+		for ln in D[did]["lines"]:
+			text_ok = text_ok and not String(ln["text"]).contains("–")
+			for an in ln.get("answers", []):
+				text_ok = text_ok and (an as Array).size() == 4 and String(an[3]).length() > String(an[0]).length() - 2      # (a spoken long version)
+	if w != null and is_instance_valid(w):
+		w._exit_tree()
+	wx_ok = wx_ok and CityStyle.story_night == "" and Weather.story_kind == ""
+	check(lock_ok and wx_ok and land_ok and radio_ok and meet_ok and plaza_ok and alley_ok and bar_ok and text_ok,
+		"64b: Fern is closed until Rook vouches for you (the call at pilot level 5 brings the entry permit; a game without the story is not held back); after the landing in Centauria Rook is on the radio (Line A, the Commercial District); Rook waits at the top of the stairs, greets you as you come up, goes ahead across the plaza and down the alley to the Static Feedback while you follow by yourself, and stops three times on each part of the way to say, standing, what this place is; at the counter Rook introduces you to Luz, who owns the bar, brings people together and wants to see you fly; the journal's task is done; all the while it is night in Centauria and it rains, until you leave; the debug menu lands you there and puts you at every point of the way")
+	await _story_quiet()
+	# the game as it was
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	main.story_ui._radio_q.clear()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 64c (Luz): Luz's test, the first of the new missions: a rendezvous, a count of five, a convoy without
+## markings of the power you were not registered with, a download while you stay near the big ship, the way out.
+func _test_luz64c(_view: SystemView) -> void:
+	var shots := OS.get_environment("LUZ64_SHOTS") != ""
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	await _story_quiet()
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var st = GameState.story
+	var wait_for := func(cond: Callable, ms: int) -> bool:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < ms:
+			if cond.call():
+				return true
+			await get_tree().process_frame
+		return cond.call()
+	# Luz met, the job not yet given: a mark over Luz
+	st.flags["start_faction"] = "assembly"
+	var c0 := String(Commands.execute({"type": "debug_fern", "do": "job"}))
+	var w = main.get_meta("dan_work")
+	var zb: Array = ((w.ground_mode({"city": true, "name": "Centauria", "id": "x"}).get("levels", {}) as Dictionary).get("zbar", {}) as Dictionary).get("people", [])
+	var offer_ok: bool = c0 == "" and w.luz_marked() and zb.size() == 4 and String(zb[3]["who"]) == "rook" and String(zb[0].get("marker", "")) == "!" and w.luz_foe() == "covenant" and not st.running("luz_test")
+	st.flags["start_faction"] = "covenant"
+	offer_ok = offer_ok and w.luz_foe() == "assembly"
+	st.flags["start_faction"] = "assembly"
+	# Luz hands it out
+	w._luz_brief()
+	var asked: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "luz_job", 4000)
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	var given: bool = await wait_for.call(func(): return bool(st.flags.get("luz_job", false)), 3000)
+	var sid := int(st.flags.get("luz_sys", -1))
+	var fern := Universe.special_system("fern")
+	var next_door: bool = sid >= 0 and sid != fern and (Universe.get_layout(fern)["gates"] as Array).any(func(gt): return int(gt["to"]) == sid)
+	var rv: Vector2 = w.luz_rv_pos(sid) if sid >= 0 else Vector2.ZERO
+	var give_ok: bool = asked and given and next_door and st.running("luz_test") and String(st.step_data("luz_test").get("id", "")) == "go" and not w.luz_marked() \
+		and (Universe.story_beacons.get(sid, []) as Array).any(func(b): return String(b["id"]) == "luz_rv" and (b["pos"] as Vector2) == rv) \
+		and st.keys("{foe_name} / {luz_sys}") == "Covenant of Return / " + String(Universe.systems[sid]["name"])
+	if not give_ok:
+		print("LUZ64C give: asked ", asked, " given ", given, " sys ", sid, " next door ", next_door, " step ", st.step_data("luz_test").get("id", "-"), " text ", st.keys("{foe_name} / {luz_sys}"))
+	main.story_ui._radio_q.clear()
+	# to the rendezvous (the debug menu's button): the count, the convoy
+	Commands.execute({"type": "debug_god", "on": true})
+	var c1 := String(Commands.execute({"type": "debug_fern", "do": "job_rv"}))
+	var there: bool = await wait_for.call(func():
+		var v0 = main.view
+		return v0 != null and is_instance_valid(v0) and int(v0.system_id) == sid and (main.loading == null or not is_instance_valid(main.loading)) \
+			and v0.player != null and is_instance_valid(v0.player) and (v0.player.position as Vector2).distance_to(rv) < 3000.0, 40000)
+	var v = main.view
+	var count_ok := false
+	var convoy_ok := false
+	var data_ok := false
+	var fail_ok := false
+	var away_ok := false
+	if c1 == "" and there:
+		var pl: Ship = v.player
+		var hold := func(at: Vector2) -> void:
+			pl.position = at
+			pl.velocity = Vector2.ZERO
+		var counting: bool = await wait_for.call(func():
+			hold.call(rv + Vector2(400.0, 0.0))
+			return not w._luz.is_empty() and float(w._luz["count"]) > 0.0 and w._luz_hud != null, 4000)
+		var title0: String = String((w._luz_hud.get_meta("box").get_node("T") as Label).text) if w._luz_hud != null and is_instance_valid(w._luz_hud) else ""
+		count_ok = counting and bool(st.flags.get("luz_rv", false)) and title0.begins_with("CONTACT IN ") and v.find_object("luz_rv") != null and (w._luz["ships"] as Array).is_empty() \
+			and String(st.step_data("luz_test").get("id", "")) == "hold"
+		if shots:
+			for f0 in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/luz64c_countdown.png")
+		var came: bool = await wait_for.call(func():
+			hold.call(rv + Vector2(400.0, 0.0))
+			return not w._luz.is_empty() and (w._luz["ships"] as Array).size() == 3, 9000)
+		if came:
+			var ships: Array = w._luz["ships"]
+			var big: Ship = w._luz["big"]
+			var full: int = (GameData.presets["patrol_for_heavy"]["modules"] as Dictionary).keys().filter(func(k): return String(k).begins_with("weapon_")).size()
+			var left: int = big.fit.modules.keys().filter(func(k): return String(k).begins_with("weapon_")).size()
+			convoy_ok = int(GameData.hulls[big.fit.hull_id]["size"]) == 3 and String(GameData.hulls[big.fit.hull_id]["maker"]) == "forge" \
+				and ships.slice(1).all(func(s): return int(GameData.hulls[s.fit.hull_id]["size"]) == 1 and String(GameData.hulls[s.fit.hull_id]["maker"]) == "forge") \
+				and ships.all(func(s): return String(s.fit.gov) == "" and String(s.fit.ship_name).begins_with("Unmarked ") and Ship.hostile(pl, s) and (s.position as Vector2).distance_to(pl.position) < 7000.0 and (s.position as Vector2).distance_to(pl.position) > 2500.0 and (s.fit.drones as Array).is_empty()) \
+				and left == 2 and left < full and ships.slice(1).all(func(s): return s.fit.modules.keys().filter(func(k): return String(k).begins_with("weapon_")).size() == 1) \
+				and big.fit.modules.keys().filter(func(k): return String(k).begins_with("weapon_")).all(func(k): return int(GameData.modules[String(big.fit.modules[k])]["size"]) <= 2) and w.LUZ_TIME <= 45.0
+			if not convoy_ok:
+				print("LUZ64C convoy: ", ships.map(func(s): return [s.fit.hull_id, s.fit.gov, s.fit.ship_name, Ship.hostile(pl, s)]), " guns ", left, " of ", full)
+			# out of reach nothing is read; near the big one it is
+			hold.call((big.position as Vector2) + Vector2(w.LUZ_RING + 1500.0, 0.0))
+			for f1 in 5:
+				await get_tree().process_frame
+			var d0: float = float(w._luz["data"])
+			for f2 in 40:
+				hold.call((big.position as Vector2) + Vector2(w.LUZ_RING + 1500.0, 0.0))
+				await get_tree().process_frame
+			var stalls: bool = float(w._luz["data"]) == d0 and String((w._luz_hud.get_meta("box").get_node("S") as Label).text).begins_with("OUT OF RANGE")
+			for f3 in 60:
+				hold.call((big.position as Vector2) + Vector2(2500.0, 0.0))
+				await get_tree().process_frame
+			var runs: bool = float(w._luz["data"]) > d0 and String((w._luz_hud.get_meta("box").get_node("T") as Label).text).begins_with("DOWNLOADING")
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/luz64c_download.png")
+			# shot down before it is done: the meeting is blown, and they come again
+			pl.dying = true
+			for f4 in 3:
+				await get_tree().process_frame
+			pl.dying = false
+			var blown: bool = w._luz.is_empty() and not bool(st.flags.get("luz_data", false)) and bool(st.flags.get("luz_job", false)) and (w._luz_hud == null or not is_instance_valid(w._luz_hud))
+			var again: bool = await wait_for.call(func():
+				hold.call(rv + Vector2(400.0, 0.0))
+				return not w._luz.is_empty() and (w._luz["ships"] as Array).size() == 3, 12000)
+			fail_ok = blown and again
+			if again:
+				big = w._luz["big"]
+				w._luz["data"] = 0.97
+				var got: bool = await wait_for.call(func():
+					if is_instance_valid(big):
+						hold.call((big.position as Vector2) + Vector2(2500.0, 0.0))
+					return bool(st.flags.get("luz_data", false)), 8000)
+				data_ok = stalls and runs and got and String(st.step_data("luz_test").get("id", "")) == "run" and not bool(st.flags.get("luz_away", false))
+				if not data_ok:
+					print("LUZ64C data: stalls ", stalls, " runs ", runs, " got ", got, " step ", st.step_data("luz_test").get("id", "-"))
+				main.story_ui._radio_q.clear()
+				var gone: bool = await wait_for.call(func():
+					if is_instance_valid(big):
+						hold.call((big.position as Vector2) + Vector2(w.LUZ_AWAY + 6000.0, 0.0))
+					return bool(st.flags.get("luz_away", false)), 6000)
+				for f5 in 4:
+					await get_tree().process_frame
+				away_ok = gone and w._luz.is_empty() and not (Universe.story_beacons.get(sid, []) as Array).any(func(b): return String(b["id"]) == "luz_rv") \
+					and String(st.step_data("luz_test").get("id", "")) == "back" and w.luz_marked() \
+					and not v.ship_layer.get_children().any(func(n): return n is Ship and not (n as Ship).is_queued_for_deletion() and (n as Ship).has_meta("luz_convoy"))
+				if not away_ok:
+					print("LUZ64C away: gone ", gone, " luz ", w._luz.is_empty(), " step ", st.step_data("luz_test").get("id", "-"), " marked ", w.luz_marked())
+		else:
+			print("LUZ64C: no convoy; luz ", w._luz)
+	else:
+		print("LUZ64C rendezvous: ", c1, " there ", there, " system ", GameState.current_system, " want ", sid, " view ", main.view.system_id if main.view != null else -9, " docked ", main.view.player.is_docked() if main.view != null and main.view.player != null else "?", " dist ", (main.view.player.position as Vector2).distance_to(rv) if main.view != null and main.view.player != null else -1.0, " transit ", Commands._fit().in_transit())
+	Commands.execute({"type": "debug_god", "on": false})
+	main.story_ui._radio_q.clear()
+	# the report: Luz pays your share
+	var cr0: int = GameState.credits
+	st.set_flag("luz_away", true)
+	w._luz_report()
+	var told: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "luz_job_done", 4000)
+	if main.story_ui.dialogue != null:
+		main.story_ui._close_dialogue()
+	var paid: bool = await wait_for.call(func(): return bool(st.flags.get("luz_done", false)), 3000)
+	var report_ok: bool = told and paid and GameState.credits == cr0 + w.LUZ_PAY and not w.luz_marked()
+	# the debug menu's points of the test, and everything back
+	var dbg_ok := true
+	for pt in [["job_given", true, false, false], ["job_away", true, true, false], ["job_done", true, true, true], ["job", false, false, false]]:
+		var e := String(Commands.execute({"type": "debug_fern", "do": String(pt[0])}))
+		dbg_ok = dbg_ok and e == "" and bool(st.flags.get("luz_job", false)) == bool(pt[1]) and bool(st.flags.get("luz_away", false)) == bool(pt[2]) and bool(st.flags.get("luz_done", false)) == bool(pt[3])
+	dbg_ok = dbg_ok and String(Commands.execute({"type": "debug_fern", "do": "reset"})) == "" and not st.flags.has("luz_job") and not st.flags.has("fern_luz") and not st.missions.has("luz_test")
+	var D: Dictionary = load("res://data/story.gd").DIALOGUES
+	var text_ok := true
+	for did in ["luz_job", "luz_wait", "luz_job_done", "luz_again"]:
+		for ln in D[did]["lines"]:
+			text_ok = text_ok and not String(ln["text"]).contains("–")
+			for an in ln.get("answers", []):
+				text_ok = text_ok and (an as Array).size() == 4 and String(an[3]).length() > String(an[0]).length() - 2
+	check(offer_ok and give_ok and count_ok and convoy_ok and data_ok and fail_ok and away_ok and report_ok and dbg_ok and text_ok,
+		"64c: Luz's test: Luz hands out the job (a mark over the head), names a system one jump from Fern and marks a rendezvous there; on the spot a count of five runs down, then three ships without markings of the power you were not registered with drop out of warp (one big with half its guns, two small), hostile, and nobody's standing suffers; the download runs only within 8,000 km of the big one and stalls beyond; shot down before it is done the meeting is blown and they come again; with the data you get away at 30,000 km (or in warp), the convoy and the waypoint are gone; Luz hears the report and pays; the debug menu sets every point")
+	# the game as it was
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	main.story_ui._radio_q.clear()
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 64d (Luz): the party and the round (Luz, Ratte, Kraut, Rook); the round's work: information, a raid, a
+## delivery, one job at a time, handed out at Ratte's and Kraut's table.
+func _test_round64d(_view: SystemView) -> void:
+	var shots := OS.get_environment("ROUND64_SHOTS") != ""
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	await _story_quiet()
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var st = GameState.story
+	var wait_for := func(cond: Callable, ms: int) -> bool:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < ms:
+			if cond.call():
+				return true
+			await get_tree().process_frame
+		return cond.call()
+	st.flags["start_faction"] = "assembly"
+	# down to Centauria, the report owed: Luz pays, the picture goes dark, the party
+	Commands.execute({"type": "debug_fern", "do": "land"})
+	main.story_ui._radio_q.clear()
+	var landed: bool = await wait_for.call(func(): return main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar", 40000)
+	var w = main.get_meta("dan_work")
+	var g = main.ground
+	var party_ok := false
+	var talk_ok := false
+	if landed:
+		var T := float(GroundMap.TILE)
+		Commands.execute({"type": "debug_fern", "do": "job_away"})
+		for f0 in 8:
+			await get_tree().process_frame
+		main.story_ui._radio_q.clear()
+		await wait_for.call(func():
+			main.story_ui._radio_q.clear()
+			return main.story_ui._radio == null, 15000)       # (Rook's call after the landing has to be over)
+		var rook0 = g.story_people.get("rook", null)
+		var in_bar: bool = String(g.level) == "zbar" and rook0 != null and w.luz_marked()
+		var cr0: int = GameState.credits
+		g.story_talk.emit("luz")
+		var told: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "luz_job_done", 4000)
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		var spoke: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "luz_party", 20000)
+		g = main.ground
+		var ppl: Dictionary = g.story_people
+		var luzw = ppl.get("luz", null)
+		var round_here: bool = luzw != null and ["rook", "ratte", "kraut"].all(func(k): return ppl.get(k, null) != null and (ppl[k].pos as Vector2).distance_to(luzw.pos) < 6.5 * T) \
+			and (g.pilot.pos as Vector2).distance_to(luzw.pos) < 5.0 * T and g.people.filter(func(p): return is_instance_valid(p) and p.dancing).size() >= 7 \
+			and g.city_day() == 0.0 and bool(w._party64)
+		if shots:
+			for f1 in 40:
+				await get_tree().process_frame
+			main.story_ui.visible = false
+			await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/round64d_party.png")
+			main.story_ui.visible = true
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		var taken_in: bool = await wait_for.call(func(): return bool(st.flags.get("luz_round", false)), 4000)
+		# (64e) Luz takes you up to the room above the bar
+		var shown: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "luz_room", 15000)
+		g = main.ground
+		var luz_up: bool = String(g.level) == "zroom" and g.story_people.get("luz", null) != null and bool(st.flags.get("luz_room", false))
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		await wait_for.call(func(): return not w._fern_busy and g.input_enabled, 4000)
+		taken_in = taken_in and shown and luz_up
+		g.go_level("zbar", "from_room")
+		for f2 in 6:
+			await get_tree().process_frame
+		party_ok = in_bar and told and spoke and round_here and taken_in and GameState.credits == cr0 + w.LUZ_PAY and not w._party64 and g.input_enabled \
+			and (g.map.zones as Array).filter(func(z): return String(z.get("kind", "")) == "story" and String(z.get("id", "")) in ["ratte", "kraut", "rook"]).size() >= 3
+		if not party_ok:
+			print("ROUND64D party: bar ", in_bar, " told ", told, " spoke ", spoke, " here ", round_here, " in ", taken_in, " paid ", GameState.credits - cr0, " dancing ", g.people.filter(func(p): return is_instance_valid(p) and p.dancing).size())
+		# the tables: what they offer, one thing at a time, letting go
+		var ro: Array = w.rj_offers("ratte")
+		var ko: Array = w.rj_offers("kraut")
+		var near: Array = w._rj_systems()
+		var offers_ok: bool = ro.map(func(o): return String(o["kind"])) == ["intel", "smuggle", "intel"] and ko.map(func(o): return String(o["kind"])) == ["raid", "raid"] \
+			and (ro + ko).all(func(o): return int(o["pay"]) > 0 and int(o["sys"]) in near and String(o["label"]) != "" and not String(o["brief"]).contains("–")) \
+			and String(ro[1].get("stn", "")) != "" and int(ko[0]["pay"]) > int(ro[0]["pay"]) and int(ro[0]["pay"]) > int(ro[1]["pay"])
+		if not offers_ok:
+			print("ROUND64D offers: kinds ", ro.map(func(o): return String(o["kind"])) == ["intel", "smuggle", "intel"], " ", ko.map(func(o): return String(o["kind"])) == ["raid", "raid"],
+				" near ", near, " sys ", (ro + ko).map(func(o): return o["sys"]), " stn ", ro[1].get("stn", "-"), " dash ", (ro + ko).filter(func(o): return String(o["brief"]).contains("–")).size(),
+				" label ", (ro + ko).filter(func(o): return String(o.get("label", "")) == "").size())
+		# (Luz) a short talk first; "Got work for me?" opens the window with the work
+		var Acq = load("res://data/acquaintances.gd")
+		var SD = load("res://data/story.gd")
+		var talk_to := func(who: String, pick: int) -> bool:
+			g.story_talk.emit(who)
+			var up: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == who + "_hub", 3000)
+			if up and pick >= 0:
+				main.story_ui.choose(pick)
+				for n0 in 14:                                      # (what your pilot says, what they answer: on, to the end)
+					await get_tree().process_frame
+					if main.story_ui.dialogue == null:
+						break
+					main.story_ui.choose(0)
+			for n1 in 6:
+				await get_tree().process_frame
+			return up
+		var win_keys := func() -> int:
+			return (g._lift_menu.get_meta("keys") as Array).size() if g._lift_menu != null and g._lift_menu.has_meta("round_jobs") else -1
+		var r_up: bool = await talk_to.call("ratte", 1)
+		var keys_r: int = win_keys.call()
+		if shots:
+			for f3 in 10:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/round64d_fenster.png")
+		if keys_r == 3:
+			((g._lift_menu.get_meta("keys") as Array)[0] as Callable).call()
+		for f4 in 3:
+			await get_tree().process_frame
+		var took: bool = r_up and keys_r == 3 and g._lift_menu == null and String(w.rj().get("kind", "")) == "intel" and st.running("round_job") and String(st.step_data("round_job").get("id", "")) == "work" \
+			and (Universe.story_beacons.get(int(w.rj()["sys"]), []) as Array).any(func(b): return String(b["id"]) == "rj_rv") \
+			and st.keys("{rj_brief}").begins_with("Ratte wants to read")
+		await talk_to.call("kraut", 1)
+		var busy_n: int = win_keys.call()                          # (somebody else's job in hand: nothing to take)
+		if g._lift_menu != null:
+			g._close_lift_menu()
+		await talk_to.call("ratte", 1)
+		var keys_s: int = win_keys.call()                          # (your own job in hand: let it go)
+		if shots:
+			for f5 in 10:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/round64d_fenster_auftrag.png")
+		if keys_s == 1:
+			((g._lift_menu.get_meta("keys") as Array)[0] as Callable).call()
+		for f7 in 3:
+			await get_tree().process_frame
+		var let_go: bool = keys_s == 1 and w.rj().is_empty() and not st.running("round_job") and win_keys.call() == 3
+		if g._lift_menu != null:
+			g._close_lift_menu()
+		await talk_to.call("kraut", 1)
+		var keys_k: int = win_keys.call()
+		if g._lift_menu != null:
+			g._close_lift_menu()
+		# what is going on: Ratte by lot, Kraut about the book (the first time), then a fact each time
+		await talk_to.call("ratte", 0)
+		var gossip: bool = SD.RATTE_GOSSIP.has(st.keys("{ratte_gossip}")) and g._lift_menu == null
+		var no_book: bool = not bool(st.flags.get("kraut_book", false))
+		await talk_to.call("kraut", 0)
+		var book: bool = no_book and bool(st.flags.get("kraut_book", false))
+		await talk_to.call("kraut", 0)
+		var f_a: String = st.keys("{kraut_fact}")
+		await talk_to.call("kraut", 0)
+		var f_b: String = st.keys("{kraut_fact}")
+		var facts: bool = SD.KRAUT_FACTS.has(f_a) and SD.KRAUT_FACTS.has(f_b) and f_a != f_b and SD.KRAUT_FACTS.size() >= 12
+		# Luz: a beer for twelve credits, and what Luz does besides; Rook has a word as well
+		var cr_b: int = GameState.credits
+		var l_up: bool = await talk_to.call("luz", 0)
+		var beer: bool = l_up and GameState.credits == cr_b - w.BEER_PRICE and int(st.flags.get("luz_beers", 0)) == 1
+		await talk_to.call("luz", 1)
+		var hobby: bool = bool(st.flags.get("luz_hobby", false))
+		await talk_to.call("luz", 1)
+		hobby = hobby and SD.LUZ_MUSIC.has(st.keys("{luz_music}"))
+		var rook_says: bool = await talk_to.call("rook", 0)
+		rook_says = rook_says and SD.ROOK_TALK.has(st.keys("{rook_talk}"))
+		# they are people you know now
+		var known: bool = Acq.met("ratte") and Acq.met("kraut") and Acq.ORDER.has("ratte") and Acq.ORDER.has("kraut") and Acq.value("kraut") > 0
+		var words_ok := true
+		for lst in [SD.RATTE_GOSSIP, SD.KRAUT_FACTS, SD.LUZ_MUSIC, SD.ROOK_TALK]:
+			for ln0 in lst:
+				words_ok = words_ok and not String(ln0).contains("–") and String(ln0).length() > 20
+		talk_ok = offers_ok and took and busy_n == 0 and let_go and keys_k == 2 and gossip and book and facts and beer and hobby and rook_says and known and words_ok
+		if not talk_ok:
+			print("ROUND64D tables: offers ", offers_ok, " took ", took, " keys ", keys_r, " busy ", busy_n, " go ", let_go, " (", keys_s, ") kraut ", keys_k, " gossip ", gossip, " book ", book, " facts ", facts,
+				" beer ", beer, " hobby ", hobby, " rook ", rook_says, " known ", known, " words ", words_ok)
+		main.close_deck(false)
+		for f10 in 20:
+			await get_tree().process_frame
+	else:
+		print("ROUND64D: not landed")
+	# in space. A raid: the convoy under its flag, sized by your ship; the big one gone, the canister, the pay
+	Commands.execute({"type": "debug_god", "on": true})
+	var to_point := func() -> Ship:
+		Commands.execute({"type": "debug_fern", "do": "rj_rv"})
+		var sid0 := int(w.rj()["sys"])
+		var at0: Vector2 = w.rj_pos(sid0, int(w.rj()["seed"]))
+		await wait_for.call(func():
+			var v0 = main.view
+			return v0 != null and is_instance_valid(v0) and int(v0.system_id) == sid0 and (main.loading == null or not is_instance_valid(main.loading)) \
+				and v0.player != null and is_instance_valid(v0.player) and not v0.player.is_docked() and (v0.player.position as Vector2).distance_to(at0) < 3000.0, 40000)
+		return main.view.player if main.view != null else null
+	var raid_ok := false
+	var c_raid := String(Commands.execute({"type": "debug_fern", "do": "rj_raid"}))
+	if c_raid == "" and not w.rj().is_empty():
+		var jr: Dictionary = w.rj()
+		var pl: Ship = await to_point.call()
+		var came: bool = pl != null and await wait_for.call(func():
+			pl.velocity = Vector2.ZERO
+			return (w._rj.get("ships", []) as Array).size() >= 2, 12000)
+		if came:
+			var ships: Array = w._rj["ships"]
+			var big: Ship = w._rj["big"]
+			var small_me: bool = int(GameData.hulls[pl.fit.hull_id]["size"]) <= 1
+			var flag_ok: bool = ships.all(func(s): return String(s.fit.gov) == String(jr["foe"]) and Ship.hostile(pl, s)) \
+				and int(GameData.hulls[big.fit.hull_id]["size"]) == (2 if small_me else 3) and ships.size() == (2 if small_me else 3)
+			var where: Vector2 = big.position
+			big.queue_free()
+			var dropped: bool = await wait_for.call(func():
+				pl.position = where + Vector2(3000.0, 0.0)
+				pl.velocity = Vector2.ZERO
+				return bool(w._rj.get("loot", false)) and main.view.find_object("rj_loot") != null, 5000)
+			var title: String = String((w._luz_hud.get_meta("box").get_node("T") as Label).text) if w._luz_hud != null and is_instance_valid(w._luz_hud) else ""
+			if shots:
+				for f11 in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/round64d_raid.png")
+			var grabbed: bool = await wait_for.call(func():
+				pl.position = where + Vector2(300.0, 0.0)
+				pl.velocity = Vector2.ZERO
+				return String(w.rj().get("stage", "")) == "back", 5000)
+			var cr1: int = GameState.credits
+			var done0: float = GameState.metric("missions_done")
+			var fr0: int = load("res://data/acquaintances.gd").value("kraut")
+			var marked: bool = w.rj_marked("kraut") and not w.rj_marked("ratte") and String(st.step_data("round_job").get("id", "")) == "back"
+			w._rj_pay()
+			raid_ok = flag_ok and dropped and title == "PICK UP THE LOOT" and grabbed and marked and GameState.credits == cr1 + int(jr["pay"]) and w.rj().is_empty() \
+				and GameState.metric("missions_done") == done0 + 1.0 and st.done.has("round_job") and w._rj.is_empty() \
+				and load("res://data/acquaintances.gd").value("kraut") > fr0
+			if not raid_ok:
+				print("ROUND64D raid: flag ", flag_ok, " dropped ", dropped, " title ", title, " grabbed ", grabbed, " marked ", marked, " paid ", GameState.credits - cr1)
+		else:
+			print("ROUND64D raid: no convoy; ", w._rj)
+	else:
+		print("ROUND64D raid: ", c_raid)
+	main.story_ui._radio_q.clear()
+	# a delivery: the crate at the drop point, paid on docking at the station named
+	var smug_ok := false
+	var c_sm := String(Commands.execute({"type": "debug_fern", "do": "rj_smuggle"}))
+	if c_sm == "" and not w.rj().is_empty():
+		var js: Dictionary = w.rj()
+		var pl2: Ship = await to_point.call()
+		var aboard: bool = pl2 != null and await wait_for.call(func():
+			pl2.velocity = Vector2.ZERO
+			return String(w.rj().get("stage", "")) == "deliver", 9000)
+		var no_point: bool = not (Universe.story_beacons.get(int(js["sys"]), []) as Array).any(func(b): return String(b["id"]) == "rj_rv")
+		var cr2: int = GameState.credits
+		var f2s = Commands._fit()
+		var keep_dock: String = f2s.docked_at
+		f2s.docked_at = String(js["stn"])
+		for f12 in 3:
+			await get_tree().process_frame
+		f2s.docked_at = keep_dock
+		smug_ok = aboard and no_point and GameState.credits == cr2 + int(js["pay"]) and w.rj().is_empty() and st.done.has("round_job")
+		if not smug_ok:
+			print("ROUND64D delivery: aboard ", aboard, " point gone ", no_point, " paid ", GameState.credits - cr2, " job ", w.rj())
+	else:
+		print("ROUND64D delivery: ", c_sm)
+	main.story_ui._radio_q.clear()
+	# information: no markings, the download, away; then the pay is owed at Ratte's table
+	var intel_ok := false
+	var c_in := String(Commands.execute({"type": "debug_fern", "do": "rj_intel"}))
+	if c_in == "" and not w.rj().is_empty():
+		var pl3: Ship = await to_point.call()
+		var came3: bool = pl3 != null and await wait_for.call(func():
+			pl3.velocity = Vector2.ZERO
+			return (w._rj.get("ships", []) as Array).size() == 3, 12000)
+		if came3:
+			var big3: Ship = w._rj["big"]
+			var plain: bool = (w._rj["ships"] as Array).all(func(s): return String(s.fit.gov) == "" and String(s.fit.ship_name).begins_with("Unmarked "))
+			w._rj["data"] = 0.97
+			var read: bool = await wait_for.call(func():
+				if is_instance_valid(big3):
+					pl3.position = (big3.position as Vector2) + Vector2(2500.0, 0.0)
+					pl3.velocity = Vector2.ZERO
+				return float(w._rj.get("data", 0.0)) >= 1.0, 8000)
+			var off: bool = await wait_for.call(func():
+				if is_instance_valid(big3):
+					pl3.position = (big3.position as Vector2) + Vector2(w.LUZ_AWAY + 6000.0, 0.0)
+					pl3.velocity = Vector2.ZERO
+				return String(w.rj().get("stage", "")) == "back", 6000)
+			var fail_dbg: bool = String(Commands.execute({"type": "debug_fern", "do": "rj_drop"})) == "" and w.rj().is_empty() \
+				and String(Commands.execute({"type": "debug_fern", "do": "rj_rv"})) != ""
+			intel_ok = plain and read and off and fail_dbg
+			if not intel_ok:
+				print("ROUND64D information: plain ", plain, " read ", read, " off ", off, " debug ", fail_dbg)
+		else:
+			print("ROUND64D information: no convoy")
+	else:
+		print("ROUND64D information: ", c_in)
+	Commands.execute({"type": "debug_god", "on": false})
+	var D: Dictionary = load("res://data/story.gd").DIALOGUES
+	var text_ok := true
+	for did in ["luz_party", "luz_round", "rook_bar", "luz_job_done"]:
+		for ln in D[did]["lines"]:
+			text_ok = text_ok and not String(ln["text"]).contains("–")
+			for an in ln.get("answers", []):
+				text_ok = text_ok and (an as Array).size() == 4 and String(an[3]).length() > String(an[0]).length() - 2
+	check(landed and party_ok and talk_ok and raid_ok and smug_ok and intel_ok and text_ok,
+		"64d: after your report Luz pays and throws a party (the picture goes dark, the round at the counter with you, guests dancing, at night) and takes you into the round; Ratte offers information and deliveries, Kraut raids, each with its system, its words and its pay; one job at a time, to be let go at the table; after the party everyone of the round has a short talk (Ratte's gossip by lot, Kraut's book about the Peasants' War and a fact each time after, a beer from Luz for twelve credits and what Luz does besides, a word from Rook), and asking for work opens a window with the work as cards; Ratte and Kraut are people you know, and every job done for them makes you better friends; a raid's convoy flies its flag and is sized by your ship, the big one gone a canister is to be picked up, the pay waits at Kraut's table; a delivery takes the crate aboard at the drop point and is paid on docking at the station named; information runs as Luz's test; every job done counts as a contract; the debug menu sets all of it")
+	# the game as it was
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	main.story_ui._radio_q.clear()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 64e (Luz): the room above the Static Feedback: a run-down student's flat with a window on the street.
+func _test_room64e(_view: SystemView) -> void:
+	var shots := OS.get_environment("ROOM64_SHOTS") != ""
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var Gen = load("res://scripts/ground/centauria_gen.gd")
+	await _story_quiet()
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var wait_for := func(cond: Callable, ms: int) -> bool:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < ms:
+			if cond.call():
+				return true
+			await get_tree().process_frame
+		return cond.call()
+	# the map: a mattress to sleep on, a locker, a sofa before the window, the stairs back down, all to be reached
+	var rm: GroundMap = Gen.build_luzroom({}, true)
+	var kinds: Array = (rm.objects as Array).map(func(o): return String(o.get("kind", "")))
+	var zk: Array = (rm.zones as Array).map(func(z): return String(z.get("kind", "")))
+	var out_z: Array = (rm.zones as Array).filter(func(z): return String(z.get("id", "")) == "room_out")
+	var map_ok: bool = rm.w == Gen.RW and rm.h == Gen.RH and rm.free_at(rm.spawn, 4.0) and rm.has_meta("room_window") \
+		and (rm.objects as Array).any(func(o): return String(o.get("kind", "")) == "q_bed" and bool(o.get("shabby", false))) \
+		and kinds.has("fridge") and kinds.has("heater") and kinds.has("floor_mess") and kinds.has("locker") and kinds.any(func(k): return k.begins_with("sofa")) \
+		and zk.has("room_bed") and zk.has("q_locker") and zk.has("room_window") and out_z.size() == 1 and String(out_z[0]["to"]) == "zstair" and float(rm.get_meta("zoom", 0.0)) > 3.0 \
+		and rm.free_at(rm.get_meta("bed_front"), 4.0) and not rm.path(rm.spawn, rm.get_meta("bed_front")).is_empty()
+	if not map_ok:
+		print("ROOM64E map: kinds ", kinds, " zones ", zk)
+	# in the game: down to Centauria and up into the room
+	Commands.execute({"type": "debug_fern", "do": "land"})
+	main.story_ui._radio_q.clear()
+	var landed: bool = await wait_for.call(func(): return main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar", 40000)
+	var in_ok := false
+	if landed:
+		var g = main.ground
+		# before Luz has shown it: the door in the bar is shut
+		Commands.execute({"type": "debug_fern", "do": "job_done"})
+		for f0 in 6:
+			await get_tree().process_frame
+		var shut: bool = String(g.level) == "zbar" and (g.map.zones as Array).any(func(z): return String(z.get("id", "")) == "bar_back" and String(z.get("kind", "")) == "ctr_closed")
+		# yours: the debug menu puts you into it
+		Commands.execute({"type": "debug_fern", "do": "room"})
+		for f1 in 30:
+			await get_tree().process_frame
+			main.story_ui._radio_q.clear()
+		var st = GameState.story
+		in_ok = shut and bool(st.flags.get("luz_room", false)) and String(g.level) == "zroom" and String(g._title.text).contains("Above the Static Feedback") and g.map.free_at(g.pilot.pos, 4.0) \
+			and g._world.get_children().any(func(n): return n is Node2D and n.get_script() == Gen.RoomFx) and is_equal_approx(g.zoom, 3.2)
+		# the window: the camera goes to the street, and back
+		for zw in g.map.zones:
+			if String(zw.get("kind", "")) == "room_window":
+				g.zone = zw
+		g.use()
+		var watch_on: bool = g._room_watch and g.story_zoom > 5.0 and g.story_cam != Vector2.INF
+		g.use()
+		in_ok = in_ok and watch_on and not g._room_watch and g.story_cam == Vector2.INF
+		# down the stairs by yourself, into the bar; the door there leads up again
+		for zo in g.map.zones:
+			if String(zo.get("id", "")) == "room_out":
+				g.zone = zo
+		g.use()
+		for f4 in 5:
+			await get_tree().process_frame
+		var on_stairs: bool = String(g.level) == "zstair" and not g._stair.is_empty() and not bool(g._stair["up"]) \
+			and g._world.get_children().any(func(n): return n is Node2D and n.get_script() == Gen.StairFx)
+		var y_top: float = g.pilot.pos.y
+		for f5 in 40:
+			await get_tree().process_frame
+		var walks: bool = g.pilot.pos.y > y_top + 10.0
+		if shots:
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/room64e_treppe.png")
+		var down: bool = await wait_for.call(func(): return String(g.level) == "zbar", 12000)
+		for f6 in 70:
+			await get_tree().process_frame
+		var at_door: bool = down and (g.pilot.pos as Vector2).distance_to(g.map.get_meta("from_room")) < 6.0 and g.map.free_at(g.pilot.pos, 4.0)
+		var door_z: Array = (g.map.zones as Array).filter(func(z): return String(z.get("id", "")) == "bar_back")
+		var door_ok: bool = door_z.size() == 1 and String(door_z[0].get("kind", "")) == "museum_go" and String(door_z[0].get("to", "")) == "zstair"
+		if door_ok:
+			g.zone = door_z[0]
+			g.use()
+		for f7 in 5:
+			await get_tree().process_frame
+		var up_stairs: bool = String(g.level) == "zstair" and bool(g._stair.get("up", false))
+		Input.action_press("interact")                      # (Use: there at once)
+		await get_tree().process_frame
+		Input.action_release("interact")
+		var up: bool = await wait_for.call(func(): return String(g.level) == "zroom", 6000)
+		for f8 in 20:
+			await get_tree().process_frame
+		in_ok = in_ok and on_stairs and walks and at_door and door_ok and up_stairs and up
+		if not in_ok:
+			print("ROOM64E ways: shut ", shut, " watch ", watch_on, " stairs ", on_stairs, " walks ", walks, " door ", at_door, " ", door_ok, " up ", up_stairs, " ", up, " zoom ", g.zoom, " level ", g.level)
+		# a night on the mattress
+		g._room_sleep_begin()
+		await wait_for.call(func(): return g._room_sleep == 1, 6000)
+		for f9 in 50:
+			await get_tree().process_frame
+		var bed_now: Array = (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) == "q_bed")
+		var lies: bool = g._room_sleep == 1 and String(g.level) == "zroom" and bed_now.size() == 1 and (g._sleepers as Array).size() == 1 and not g.pilot.visible       # (the sleeper is drawn lying on it)
+		if not lies:
+			print("ROOM64E lies: sleep ", g._room_sleep, " level ", g.level, " beds ", bed_now.size(), " sleepers ", (g._sleepers as Array).size(), " pilot shown ", g.pilot.visible)
+		var woke: bool = await wait_for.call(func(): return not g._sleeping, 20000)
+		var night_ok: bool = lies and woke and bool(st.flags.get("luz_slept", false)) and g._room_sleep == 0 and g.pilot.visible and g.input_enabled
+		if not night_ok:
+			print("ROOM64E night: lies ", lies, " woke ", woke, " slept ", st.flags.get("luz_slept", false))
+		in_ok = in_ok and night_ok
+		if shots:
+			await wait_for.call(func():
+				main.story_ui._radio_q.clear()
+				return main.story_ui._radio == null, 20000)
+			g.pilot.pos = Vector2(9.0, Gen.R_F0 + 2.2) * GroundMap.TILE
+			g.pilot.position = g.pilot.pos * GroundMap.SCALE
+			g.pilot.dir = 0
+			for f2 in 40:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/room64e_zimmer.png")
+			for zw2 in g.map.zones:
+				if String(zw2.get("kind", "")) == "room_window":
+					g.zone = zw2
+			g.use()
+			for f3 in 60:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/room64e_fensterblick.png")
+			g._room_watch_end()
+			g.story_cam = Vector2.INF
+			g.story_zoom = 0.0
+	check(map_ok and landed and in_ok,
+		"64e: the room above the Static Feedback: a mattress on the floor to sleep on, a locker, a worn sofa before a wide window, a fridge, a heater, what lies about; its wall and the window with the street in it are drawn, the camera stands near; the door in the bar is shut until Luz has shown you the room, then it leads up a stairwell the game walks you through (Use: there at once), and down again; at the window the camera goes to the street; a night on the mattress passes as in the quarters")
+	var w = main.get_meta("dan_work") if main.has_meta("dan_work") else null
+	if w != null and is_instance_valid(w):
+		w.queue_free()
+	main.story_ui._radio_q.clear()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 64f (Luz): the morning after the first night above the bar Rook asks you to the Colosseum, waits on its
+## plaza, says what the place is, and stands beside you in Team Deathmatch from then on.
+func _test_rook64f(_view: SystemView) -> void:
+	var shots := OS.get_environment("ROOK64_SHOTS") != ""
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var CD = load("res://data/colosseum.gd")
+	await _story_quiet()
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var st = GameState.story
+	var wait_for := func(cond: Callable, ms: int) -> bool:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < ms:
+			if cond.call():
+				return true
+			await get_tree().process_frame
+		return cond.call()
+	var has_rook := func() -> bool:
+		return (CD.mates({"mates": [{"id": "mate_1"}]}) as Array).any(func(m): return String(m["id"]) == "rook")
+	# who may stand beside you: Rook only once the story has brought you together; a game without the story: at once
+	var keep_flags: Dictionary = st.flags.duplicate(true)
+	st.flags.erase("intro_stage")
+	st.flags.erase("rook_mate")
+	var free_game: bool = has_rook.call()
+	st.flags["intro_stage"] = "58"
+	var held: bool = not has_rook.call() and (CD.mates({"mates": [{"id": "mate_1"}]}) as Array).size() == 1
+	st.flags["rook_mate"] = true
+	var opened: bool = has_rook.call()
+	st.flags = keep_flags
+	var mate_ok: bool = free_game and held and opened
+	# in the game: the room is yours, a night on the mattress, Rook on the radio
+	Commands.execute({"type": "debug_fern", "do": "land"})
+	main.story_ui._radio_q.clear()
+	var landed: bool = await wait_for.call(func(): return main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar", 40000)
+	var invite_ok := false
+	var meet_ok := false
+	var dbg_ok := false
+	if landed:
+		var g = main.ground
+		var w = main.get_meta("dan_work")
+		var T := float(GroundMap.TILE)
+		Commands.execute({"type": "debug_fern", "do": "room"})
+		for f0 in 20:
+			await get_tree().process_frame
+		await wait_for.call(func():
+			main.story_ui._radio_q.clear()
+			return main.story_ui._radio == null, 15000)
+		var quiet: bool = not bool(st.flags.get("rook_invited", false)) and not w.rook_waits() and not has_rook.call()
+		var slept := String(Commands.execute({"type": "luz_sleep"}))
+		var asked: bool = await wait_for.call(func(): return bool(st.flags.get("rook_invited", false)), 4000)
+		var lv: Dictionary = w.ground_mode(g.station).get("levels", {})
+		invite_ok = quiet and slept == "" and asked and w.rook_waits() and st.running("rook_col") and (main.story_ui._radio != null or not main.story_ui._radio_q.is_empty()) \
+			and lv.has("zcol") and String(lv["zcol"]["people"][0]["who"]) == "rook" and String(lv["zcol"]["people"][0].get("marker", "")) == "!" \
+			and not (lv["zbar"]["people"] as Array).any(func(p): return String(p["who"]) == "rook")
+		if not invite_ok:
+			print("ROOK64F invite: quiet ", quiet, " slept ", slept, " asked ", asked, " waits ", w.rook_waits(), " mission ", st.running("rook_col"), " levels ", lv.keys())
+		main.story_ui._radio_q.clear()
+		await wait_for.call(func():
+			main.story_ui._radio_q.clear()
+			return main.story_ui._radio == null, 15000)
+		# the plaza before the Colosseum: Rook, a mark over the head; what Rook says; a team mate from then on
+		g.go_level("zcol", "from_station")
+		for f1 in 30:
+			await get_tree().process_frame
+		var rook = g.story_people.get("rook", null)
+		var there: bool = rook != null and String(rook.marker) == "!" and (rook.pos as Vector2).distance_to(g.map.get_meta("from_station")) < 5.0 * T and g.map.free_at(rook.pos, 3.0)
+		if shots:
+			for f2 in 30:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/rook64f_kolosseum.png")
+		g.story_talk.emit("rook")
+		var told: bool = await wait_for.call(func(): return main.story_ui.dialogue != null and String(main.story_ui._dlg.get("id", "")) == "rook_col", 4000)
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		var met: bool = await wait_for.call(func(): return bool(st.flags.get("rook_mate", false)), 3000)
+		for f3 in 4:
+			await get_tree().process_frame
+		var lv2: Dictionary = w.ground_mode(g.station).get("levels", {})
+		meet_ok = there and told and met and has_rook.call() and st.done.has("rook_col") and not w.rook_waits() and not lv2.has("zcol") \
+			and (lv2["zbar"]["people"] as Array).any(func(p): return String(p["who"]) == "rook") and rook != null and is_instance_valid(rook) and String(rook.marker) == ""
+		if not meet_ok:
+			print("ROOK64F meet: there ", there, " told ", told, " met ", met, " mate ", has_rook.call(), " mission ", st.done.has("rook_col"))
+		# the debug menu's two points
+		var e1 := String(Commands.execute({"type": "debug_fern", "do": "col_invite"}))
+		for f4 in 8:
+			await get_tree().process_frame
+		var p1: bool = e1 == "" and w.rook_waits() and String(g.level) == "zcol" and g.story_people.get("rook", null) != null and not has_rook.call()
+		var e2 := String(Commands.execute({"type": "debug_fern", "do": "col_done"}))
+		for f5 in 8:
+			await get_tree().process_frame
+		dbg_ok = p1 and e2 == "" and has_rook.call() and not w.rook_waits()
+		if not dbg_ok:
+			print("ROOK64F debug: ", e1, " ", p1, " ", e2)
+	else:
+		print("ROOK64F: not landed")
+	var D: Dictionary = load("res://data/story.gd").DIALOGUES
+	var text_ok := true
+	for ln in D["rook_col"]["lines"]:
+		text_ok = text_ok and not String(ln["text"]).contains("–")
+		for an in ln.get("answers", []):
+			text_ok = text_ok and (an as Array).size() == 4 and String(an[3]).length() > String(an[0]).length() - 2
+	check(mate_ok and landed and invite_ok and meet_ok and dbg_ok and text_ok,
+		"64f: Rook stands beside you in the Colosseum only once the story has brought you together (a game without the story: at once); the morning after your first night above the bar Rook is on the radio and waits on the plaza before the Colosseum (not in the bar), a mark over the head; Rook says what the place is and is a team mate from then on, and is back in the bar; the debug menu sets both points")
+	var w9 = main.get_meta("dan_work") if main.has_meta("dan_work") else null
+	if w9 != null and is_instance_valid(w9):
+		w9.queue_free()
+	main.story_ui._radio_q.clear()
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 64g (Luz): the round at the bar's games: Luz and Ratte at the pool table, Rook and Kraut at the dart
+## board, Luz's high score at the cabinet.
+func _test_games64g() -> void:
+	var MG = load("res://data/minigames.gd")
+	var st = GameState.story
+	var keep_flags: Dictionary = st.flags.duplicate(true)
+	var keep_best: Dictionary = GameState.minigame_best.duplicate(true)
+	st.flags["luz_bar_st"] = "st_test_bar"
+	st.flags.erase("luz_round")
+	var none_yet: bool = (MG.specials("st_test_bar", "billiards") as Array).is_empty() and (MG.specials("st_test_bar", "darts") as Array).is_empty()
+	st.flags["luz_round"] = true
+	var pool: Array = MG.specials("st_test_bar", "billiards")
+	var darts: Array = MG.specials("st_test_bar", "darts")
+	var stars := func(lst: Array, who: String) -> int:
+		for o in lst:
+			if String(o["special"]) == who:
+				return int(o["stars"])
+		return -1
+	var seats_ok: bool = none_yet and pool.map(func(o): return String(o["special"])) == ["luz", "ratte"] and darts.map(func(o): return String(o["special"])) == ["rook", "kraut"] \
+		and int(stars.call(pool, "luz")) == 5 and int(stars.call(pool, "ratte")) == 3 and int(stars.call(darts, "kraut")) == 5 and int(stars.call(darts, "rook")) == 3 \
+		and (MG.specials("st_elsewhere", "billiards") as Array).is_empty() and (MG.specials("st_test_bar", "drift") as Array).is_empty() \
+		and pool.all(func(o): return String(o["line"]) != "" and String(o["who"]) != "" and String(o["kind"]) == "special")
+	var text_ok := true
+	for k in ["luz", "ratte", "rook", "kraut"]:
+		text_ok = text_ok and not String(MG.SPECIAL[k]["text"]).contains("–") and not String(MG.SPECIAL[k]["line"]).contains("–")
+	# the cabinet: Luz on top; you above Luz once you beat it; no Luz at another place
+	GameState.minigame_best = {}
+	var b0: Array = MG.arcade_board("st_test_bar", GameState.minigame_best)
+	var b1: Array = MG.arcade_board("st_test_bar", {"rh:st_test_bar": [MG.LUZ_SCORE + 250, 400]})
+	var b2: Array = MG.arcade_board("st_elsewhere", {})
+	var board_ok: bool = b0.size() == 5 and String(b0[0][0]) == "LUZ" and int(b0[0][1]) == MG.LUZ_SCORE and not bool(b0[0][2]) and int(b0[1][1]) < MG.LUZ_SCORE \
+		and bool(b1[0][2]) and int(b1[0][1]) == MG.LUZ_SCORE + 250 and String(b1[1][0]) == "LUZ" \
+		and not b2.any(func(r): return String(r[0]) == "LUZ") and MG.luz_place("st_test_bar") and not MG.luz_place("st_elsewhere") and not MG.luz_place("")
+	if not (seats_ok and text_ok and board_ok):
+		print("GAMES64G: seats ", seats_ok, " pool ", pool.map(func(o): return [o["special"], o["stars"]]), " darts ", darts.map(func(o): return [o["special"], o["stars"]]), " text ", text_ok, " board ", board_ok, " ", b0)
+	check(seats_ok and text_ok and board_ok,
+		"64g: once you are of the round, Luz (very strong) and Ratte sit at the Static Feedback's pool table and Rook and Kraut (very strong) at its dart board, as special opponents with a word of their own, nowhere else and not before; Luz holds the high score at the bar's cabinet, above every regular, until you beat it")
+	st.flags = keep_flags
+	GameState.minigame_best = keep_best
+
+
+## (Luz) The music made on the spot: three punk songs for the bar by night, a quiet tune by day, Survivor's track.
+func _test_music64() -> void:
+	var BarMusic = load("res://scripts/ground/bar_music.gd")
+	var ids: Array = BarMusic.TRACKS.keys()
+	var map_ok: bool = BarMusic.list_for("zbar", true) == ["punk1", "punk2", "punk3"] and BarMusic.list_for("zbar", false) == ["calm"] \
+		and BarMusic.list_for("zcolsv", true) == ["survivor"] and BarMusic.list_for("zcolsv", false) == ["survivor"] and BarMusic.list_for("zplaza", true).is_empty() \
+		and ids.size() == 5 and ids.all(func(id): return BarMusic.track_name(id) != "" and not BarMusic.track_name(id).contains("–") and BarMusic.level_db(id) < 0.0)
+	# every track is made in the background and comes out as a loop of whole bars that is neither silent nor flat out
+	for id in ids:
+		BarMusic.stream(id)
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 120000 and not ids.all(func(id): return BarMusic.stream(id) != null):
+		await get_tree().process_frame
+	var took := (Time.get_ticks_msec() - t0) / 1000.0
+	var made_ok := true
+	var info: Array = []
+	for id in ids:
+		var st: AudioStreamWAV = BarMusic.stream(id)
+		if st == null:
+			made_ok = false
+			info.append([id, "not made"])
+			continue
+		var t: Dictionary = BarMusic.TRACKS[id]
+		var n: int = st.data.size() / 2
+		var want: int = int(60.0 / float(t["bpm"]) * 4.0 * int(t["bars"]) * BarMusic.RATE)
+		var peak := 0
+		var loud := 0
+		var sum := 0.0
+		for k in range(0, n, 37):
+			var v: int = absi(st.data.decode_s16(k * 2))
+			peak = maxi(peak, v)
+			sum += float(v)
+			if v > 28500:
+				loud += 1
+		var mean: float = sum / float(n / 37)
+		var one: bool = n == want and n > BarMusic.RATE * 15 and peak > 9000 and mean > 700.0 and float(loud) / float(n / 37) < 0.05 and st.loop_end == n and st.mix_rate == BarMusic.RATE
+		info.append([id, snappedf(float(n) / BarMusic.RATE, 0.1), peak, int(mean)])
+		made_ok = made_ok and one
+	if not (map_ok and made_ok):
+		print("MUSIC64: map ", map_ok, " made ", made_ok, " ", info, " in ", took, " s")
+	check(map_ok and made_ok,
+		"(Luz) music made on the spot: three punk songs for the Static Feedback by night, a quiet tune by day, a track for Survivor; each is made in the background (all five in %.0f s here), a loop of whole bars, neither silent nor flat out; nothing plays elsewhere" % took)
+
+
+## The story's windows out of the way before a test of the story begins (a talk left open or calls still queued by
+## an earlier test would hold back the next talk, and with it the pilot's feet).
+func _story_quiet() -> void:
+	# (found in the full run: an earlier test leaves the pilot with no health; landing then ends in a collapse and the
+	# pilot cannot walk. The story's tests begin with a pilot who is whole)
+	GameState.gear.refill()
+	# (found in the full run, for good this time: a window left open by an earlier test (the galaxy map, the ship menu,
+	# the pilot window, the station's, the one after a loss) keeps the pilot's feet still on the ground: main switches
+	# the ground's input off while one is up)
+	var open_now: Array = []
+	for wn in ["galaxy", "station_panel", "ship_menu", "pilot_window", "loss_window"]:
+		var wnd = main.get(wn)
+		if wnd != null and is_instance_valid(wnd) and wnd.visible:
+			open_now.append(wn)
+			if wnd.has_method("close"):
+				wnd.close()
+			if wnd.visible:
+				wnd.visible = false
+	for wn2 in ["planet_map", "flight", "hatch"]:
+		var w2 = main.get(wn2)
+		if w2 != null and is_instance_valid(w2):
+			open_now.append(wn2)
+	if not open_now.is_empty():
+		print("[SMOKE] note: left open by an earlier test, shut now: ", open_now)
+	main._update_input()
+	for n in 40:
+		main.story_ui._radio_q.clear()
+		main.story_ui._dlg_q.clear()
+		if main.story_ui.dialogue != null:
+			main.story_ui._close_dialogue()
+		if main.story_ui._radio == null and main.story_ui.dialogue == null:
+			break
+		for f in 30:
+			await get_tree().process_frame
+

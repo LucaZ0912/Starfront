@@ -50,7 +50,33 @@ const SPECIAL := {
 	"dan": {"who": "dan", "name": "Dan", "job": "station owner", "stars": 3, "games": ["billiards"],
 		"where": "w58_dan_st", "from": "w58_drinks", "line": "\"My table, my rules. Mostly.\"",
 		"text": "Owns the station, the bar and the table. Swears the table leans to the left."},
+	# package 64g (Luz): the round of the Static Feedback, once you are one of it. Luz is very strong at the table,
+	# Kraut at the board.
+	"luz": {"who": "luz", "name": "Luz", "job": "bar owner", "stars": 5, "games": ["billiards"],
+		"where": "luz_bar_st", "from": "luz_round", "line": "\"My bar, my table, my break.\"",
+		"text": "Owns the Static Feedback and has had its table to practise on for years. Nobody in the Back Alleys remembers Luz losing."},
+	"ratte": {"who": "ratte", "name": "Ratte", "job": "knows a way in", "stars": 3, "games": ["billiards"],
+		"where": "luz_bar_st", "from": "luz_round", "line": "\"Ratte plays fair. Mostly fair.\"",
+		"text": "Plays the way Ratte deals: quick, a little crooked, and gone before you have counted the balls."},
+	"rook": {"who": "rook", "name": "Rook Varga", "job": "gunner", "stars": 3, "games": ["darts"],
+		"where": "luz_bar_st", "from": "luz_round", "line": "\"A gunner who can't hit a board? Watch.\"",
+		"text": "Aims a dart like a turret and talks the whole time."},
+	"kraut": {"who": "kraut", "name": "Kraut", "job": "says little", "stars": 5, "games": ["darts"],
+		"where": "luz_bar_st", "from": "luz_round", "line": "\"Hm.\"",
+		"text": "Says nothing, looks at nothing, and puts three in the same hole. The board in the Static Feedback has a worn patch the size of a coin."},
 }
+
+## Package 64g (Luz): Luz holds the high score at the cabinet of the Static Feedback.
+const LUZ_SCORE := 12750
+
+## Is this place the one with Luz's bar (the story flag "luz_bar_st", or docked in Centauria right now)?
+static func luz_place(place_id: String) -> bool:
+	if place_id == "":
+		return false
+	if String(GameState.story.flags.get("luz_bar_st", "-")) == place_id:
+		return true
+	var st: Dictionary = Commands.docked_station()
+	return String(st.get("name", "")) == "Centauria" and bool(st.get("city", false)) and String(st.get("id", "")) == place_id
 
 
 ## The special opponents at this place for this game now (as lobby seats).
@@ -84,6 +110,8 @@ static func arcade_board(place_id: String, best: Dictionary) -> Array:
 	for i in 5:
 		var nm: String = names.pop_at(rng.randi() % names.size())
 		rows.append([nm, int(round(rng.randf_range(900.0, 9000.0) / 50.0)) * 50, false])
+	if luz_place(place_id):
+		rows.append(["LUZ", LUZ_SCORE, false])            # package 64g: higher than any regular's
 	var me := String(GameState.pilot.get("name", "YOU")).to_upper().left(4) if GameState.pilot is Dictionary else "YOU"
 	for sc in best.get("rh:" + place_id, []):
 		rows.append([me, int(sc), true])

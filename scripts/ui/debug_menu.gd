@@ -795,6 +795,42 @@ func _build_missions() -> void:
 		var sv: int = si
 		rst.add_child(UI.button("Step %d" % (si + 1), func(): _cmd({"type": "debug_story", "do": "step", "id": "debug_test", "step": sv})))
 	rst.add_child(UI.button("Step done", func(): _cmd({"type": "debug_story", "do": "next", "id": "debug_test"})))
+	var rfe := _row()                                               # package 64b: Rook takes you to Luz
+	rfe.add_child(UI.label("Fern:", 12, UI.TEXT_DIM))
+	rfe.add_child(UI.button("Rook's call now", func(): _cmd({"type": "debug_fern", "do": "call"})))
+	rfe.add_child(UI.button("Back to before the call", func(): _cmd({"type": "debug_fern", "do": "reset"})))
+	var rfe2 := _row()                                              # … and the points on the way
+	rfe2.add_child(UI.label("Rook's introduction:", 12, UI.TEXT_DIM))
+	rfe2.add_child(UI.button("Land in Centauria", func(): _cmd({"type": "debug_fern", "do": "land"})))
+	rfe2.add_child(UI.button("Top of the stairs", func(): _cmd({"type": "debug_fern", "do": "stairs"})))
+	rfe2.add_child(UI.button("The alley", func(): _cmd({"type": "debug_fern", "do": "alley"})))
+	rfe2.add_child(UI.button("The bar, before Luz", func(): _cmd({"type": "debug_fern", "do": "bar"})))
+	rfe2.add_child(UI.button("Luz met", func(): _cmd({"type": "debug_fern", "do": "done"})))
+	var rfe3 := _row()                                              # package 64c: Luz's test
+	rfe3.add_child(UI.label("Luz's test:", 12, UI.TEXT_DIM))
+	rfe3.add_child(UI.button("Luz has the job", func(): _cmd({"type": "debug_fern", "do": "job"})))
+	rfe3.add_child(UI.button("Job given", func(): _cmd({"type": "debug_fern", "do": "job_given"})))
+	rfe3.add_child(UI.button("To the rendezvous", func(): _cmd({"type": "debug_fern", "do": "job_rv"})))
+	rfe3.add_child(UI.button("Data taken", func(): _cmd({"type": "debug_fern", "do": "job_away"})))
+	rfe3.add_child(UI.button("Reported", func(): _cmd({"type": "debug_fern", "do": "job_done"})))
+	_box.add_child(UI.wrap_label("\"To the rendezvous\" sets your ship on the spot in space, from wherever it is (not while you are on foot): the count of five begins. The others set where the story stands, and on the ground in Centauria they put you into the bar, to Luz.", 12, UI.TEXT_DIM, 440))
+	var rfe4 := _row()                                              # package 64d: the party, the round, its work
+	rfe4.add_child(UI.label("The round:", 12, UI.TEXT_DIM))
+	rfe4.add_child(UI.button("The party", func(): _cmd({"type": "debug_fern", "do": "party"})))
+	rfe4.add_child(UI.button("Of the round", func(): _cmd({"type": "debug_fern", "do": "round"})))
+	rfe4.add_child(UI.button("The room above the bar", func(): _cmd({"type": "debug_fern", "do": "room"})))       # package 64e
+	rfe4.add_child(UI.button("Rook's invitation", func(): _cmd({"type": "debug_fern", "do": "col_invite"})))     # package 64f
+	rfe4.add_child(UI.button("Rook met at the Colosseum", func(): _cmd({"type": "debug_fern", "do": "col_done"})))
+	var rfe5 := _row()
+	rfe5.add_child(UI.label("A job in hand:", 12, UI.TEXT_DIM))
+	rfe5.add_child(UI.button("Information", func(): _cmd({"type": "debug_fern", "do": "rj_intel"})))
+	rfe5.add_child(UI.button("A raid", func(): _cmd({"type": "debug_fern", "do": "rj_raid"})))
+	rfe5.add_child(UI.button("A delivery", func(): _cmd({"type": "debug_fern", "do": "rj_smuggle"})))
+	rfe5.add_child(UI.button("To its point", func(): _cmd({"type": "debug_fern", "do": "rj_rv"})))
+	rfe5.add_child(UI.button("Done in the field", func(): _cmd({"type": "debug_fern", "do": "rj_back"})))
+	rfe5.add_child(UI.button("Let it go", func(): _cmd({"type": "debug_fern", "do": "rj_drop"})))
+	_box.add_child(UI.wrap_label("\"The party\" begins at once if you stand on the ground in Centauria (it puts you into the bar). \"To its point\" sets your ship on the job's spot in space. A delivery is paid when you dock at its station; the others at Ratte's or Kraut's table.", 12, UI.TEXT_DIM, 440))
+	_box.add_child(UI.wrap_label("\"Land in Centauria\" works from anywhere (it makes Rook's call, flies to Fern and lands). The others need you on the ground in Centauria. While Rook takes you to Luz it is night there, and it rains.", 12, UI.TEXT_DIM, 440))
 	var rst2 := _row()
 	rst2.add_child(UI.button("Radio call", func(): _cmd({"type": "debug_story", "do": "radio"})))
 	rst2.add_child(UI.button("A tip", func(): _cmd({"type": "debug_story", "do": "tip", "tip": "tip_fire_groups"})))

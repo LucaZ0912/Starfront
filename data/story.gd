@@ -67,8 +67,9 @@ const CHARACTERS := {
 			"outfit": 3, "color1": 8, "color2": 10, "implant": 0, "tattoo": 2, "headgear": 0, "lipstick": 0, "blush": 0, "eye_makeup": 0}},
 	# package 61 (Luz): Luz of Centauria – long platinum hair, freckles, neck lines, an orange jacket over crimson
 	"luz": {"name": "Luz", "sub": "Bar owner · Centauria", "col": Color(1.0, 0.55, 0.3), "seed": 6101,
-		"look": {"body": 1, "skin": 2, "hair": 4, "hair_color": 5, "eyes": 3, "brows": 0, "beard": 0, "scar": 0, "freckles": 1,
-			"outfit": 1, "color1": 9, "color2": 8, "implant": 0, "tattoo": 3, "headgear": 0, "lipstick": 5, "blush": 0, "eye_makeup": 0}},
+		# (Luz, 24 Nov 2026) slim, a sidecut, a scar across the right eye, eyeliner, neon pink lips
+		"look": {"body": 0, "skin": 2, "hair": 9, "hair_color": 5, "eyes": 3, "brows": 0, "beard": 0, "scar": 2, "freckles": 1,
+			"outfit": 1, "color1": 9, "color2": 8, "implant": 0, "tattoo": 3, "headgear": 0, "lipstick": 5, "blush": 0, "eye_makeup": 1}},
 	# package 61b (Luz): two of the Static Feedback's regulars, a little shady
 	"ratte": {"name": "Ratte", "sub": "Knows a way in · the Back Alleys", "col": Color(0.6, 0.9, 0.5), "seed": 6131,
 		"look": {"body": 0, "skin": 1, "hair": 9, "hair_color": 0, "eyes": 2, "brows": 1, "beard": 1, "scar": 1, "freckles": 0,
@@ -444,6 +445,7 @@ const DIALOGUES := {
 		{"text": "One basic pilot licence. And the starter grant every new pilot gets: one Dragonfly. Used. Don't scratch it, for the first year it still belongs to the Assembly.", "next": -1},
 	]},
 	"citizen_assembly_end": {"who": "clerk_asm", "lines": [
+		{"text": "One thing more. From now on you earn your licences yourself: through what you do and what you achieve. You will find them in your skill tree."},
 		{"text": "Welcome to the Cluster Assembly, citizen. Next!", "next": -1},
 	]},
 	"citizen_covenant": {"who": "registrar_cov", "lines": [
@@ -464,6 +466,7 @@ const DIALOGUES := {
 		{"text": "One pilot licence, first seal. And what the Covenant grants every new pilot: one Dragonfly. She is old. Treat her as a gift.", "next": -1},
 	]},
 	"citizen_covenant_end": {"who": "registrar_cov", "lines": [
+		{"text": "One thing more. From now on you earn your licences yourself: through what you do and what you achieve. You will find them in your skill tree."},
 		{"text": "The road leads home. Walk it well. Next!", "next": -1},
 	]},
 	# a little later, in the bar of your first station: Rook stays for now; what you plan decides the module you get
@@ -489,18 +492,140 @@ const DIALOGUES := {
 			"answers": [["Begin.", -1, ["intro_done", true], "", {"gold": true}]]},
 	]},
 	# package 61 (Luz): Centauria – Luz on the street, the first hello (the city and the bar come later)
+	# package 64b (Luz): Rook at the top of the stairs in the Commercial District, then Rook introduces you to Luz
+	"rook_fern": {"who": "rook", "lines": [
+		{"text": "There you are! Look at you. A licence, a ship of your own, and still in one piece."},
+		{"text": "Welcome to Centauria. It's good to see a face I know.",
+			"answers": [["\"Good to see you too.\"", 2, [], "Good to see you too, Rook. It has been a while."],
+				["\"What is this place?\"", 3, [], "Before anything else: what is this place? I have never seen a city like it."]]},
+		{"text": "Ha. Come on, I'll show you around on the way.", "next": 4},
+		{"text": "That's what everybody asks first. Walk with me, I'll tell you on the way.", "next": 4},
+		{"text": "There's someone you have to meet. Stay close. The alleys eat tourists.", "next": -1},
+	]},
 	"luz_meet": {"who": "luz", "lines": [
-		{"text": "You must be Rook's pilot. The one who fell out of the Veil. I'm Luz."},
-		{"text": "Welcome to the Static Feedback. And to Centauria: the biggest city in the Rim, and the only one worth the trip.",
-			"answers": [["\"Rook says there's work here.\"", 2, [], "Rook says there's work here. More than I can handle, apparently."],
-				["\"Loud place.\"", 3, [], "Loud place you've got here. I like it."]]},
-		{"text": "There will be. And plenty of ways to spend what it pays.", "next": 4},
-		{"text": "It gets louder. The band comes on after dark.", "next": 4},
-		{"text": "Right now the city is mostly promises. The casino's still painting its tables, the arena's still sweeping up. Give it time."},
-		{"text": "Until then: the first one's on the house. Sit anywhere. Mind the two in the corner, they bite.", "next": -1},
+		{"who": "rook", "text": "Luz! This is the pilot I told you about. The one who fell out of the Veil."},
+		{"text": "So you're real. Rook talks about you like a ghost story. I'm Luz. This is my bar."},
+		{"who": "rook", "text": "Luz knows everyone. If somebody needs a thing done and somebody else can do it, Luz is the one in between."},
+		{"text": "I introduce people. That's the whole job. The bar just pays for the lights.",
+			"answers": [["\"Rook says there's work here.\"", 4, [], "Rook says there's work here. I could use some."],
+				["\"And what do you get out of it?\"", 5, [], "You introduce people. And what do you get out of it?"]]},
+		{"text": "There is. But I don't hand my people a pilot I haven't seen fly.", "next": 6},
+		{"text": "A share. And the pleasure of being right about people. Which is why I don't hand my people a pilot I haven't seen fly.", "next": 6},
+		{"text": "So here's how it goes. I have a job that needs doing. Small, ugly, and it tells me everything I need to know about you."},
+		{"text": "Have a drink first. The first one's on the house. Then come and talk to me, and I'll tell you where to fly.", "next": -1},
 	]},
 	"luz_again": {"who": "luz", "lines": [
-		{"text": "Back again? Good. The band plays after dark, the beer is cold all day. The rest of the city is still being built.", "next": -1},
+		{"text": "You did well out there. Give me a day. There's something I want to do properly. Mind the two in the corner, they bite.", "next": -1},
+	]},
+	# package 64c (Luz): Luz's test: an intelligence convoy of the power you were not registered with
+	"luz_job": {"who": "luz", "lines": [
+		{"text": "Ready? Good. Here's the job."},
+		{"text": "The {foe_name} runs intelligence couriers through {luz_sys}, one jump from here. No transponders, no flags, no questions. One big ship, two small ones."},
+		{"text": "They carry something a friend of mine wants to read. I don't need the ships. I need what's in their computer."},
+		{"text": "I'll mark you a rendezvous. Be there, and they drop out of warp on top of you. Stay close to the big one, within eight thousand kilometres, and my box in your hold does the rest. Under a minute.",
+			"answers": [["\"And then?\"", 4, [], "And then? Once your box has what you want."],
+				["\"Why not you?\"", 5, [], "Why don't you fly it yourself? You seem to know everything about it."]]},
+		{"text": "Then you run. Warp, anywhere. You don't have to win. You have to still be there when my box is done.", "next": 6},
+		{"text": "Because I pour drinks and know people. You fly. That's how this works, if it works.", "next": 6},
+		{"text": "And pilot: they will shoot. They are not good at it, but there are three of them. Don't be proud. Come back.", "next": -1},
+	]},
+	"luz_wait": {"who": "luz", "lines": [
+		{"text": "Still here? The convoy won't wait for you. {luz_sys}. The rendezvous is on your map.", "next": -1},
+	]},
+	"luz_job_done": {"who": "luz", "lines": [
+		{"text": "There you are. In one piece, and my friend is already reading."},
+		{"who": "rook", "text": "Told you."},
+		{"text": "You did, Rook. Don't make a habit of being right."},
+		{"text": "Here. Your share. And don't go anywhere, pilot. Tonight we do this properly.", "next": -1},
+	]},
+	# package 64d (Luz): the party: Luz takes you into the round (Luz, Ratte, Kraut, Rook)
+	"luz_party": {"who": "luz", "lines": [
+		{"text": "Quiet! All of you. One minute, then you can go back to shouting."},
+		{"text": "This one flew into three guns for a stranger's errand and came back with the goods. I have seen worse first days."},
+		{"who": "rook", "text": "I have HAD worse first days."},
+		{"text": "So. Pilot. From tonight you drink here as one of us. That is Ratte. Papers, cargo that was never there, things somebody would like to read."},
+		{"who": "ratte", "text": "Ratte knows where it lies. You fetch it. Fair split. Mostly fair."},
+		{"text": "And that is Kraut. Kraut does not talk. Kraut knows which ships carry too much and guard it too little."},
+		{"who": "kraut", "text": "Hm.",
+			"answers": [["\"To the round.\"", 7, [], "To the round, then. Thank you. All of you."],
+				["\"What's the catch?\"", 8, [], "And what's the catch? There is always one."]]},
+		{"text": "To the round!", "next": 9},
+		{"text": "The catch is that we expect you to come back. Every time. To the round!", "next": 9},
+		{"text": "When you want work: ask Ratte, ask Kraut. I only pour."},
+		{"text": "And one more thing, before you are too drunk to climb stairs. Come with me.", "next": -1},
+	]},
+	# package 64f (Luz): the morning after: Rook before the Colosseum
+	"rook_col": {"who": "rook", "lines": [
+		{"text": "You made it. And look at that. Tell me that is not the best thing you have seen since the Veil."},
+		{"text": "The Colosseum. Hard light, a real crowd, and nobody dies. Everyone fights in the house's gear, so it is the fighter that counts, not the purse."},
+		{"text": "King of the Colosseum: you alone against three, round after round, until you drop. Team Deathmatch: you and two beside you. And Survivor, which is its own kind of madness."},
+		{"text": "It pays in Coins and in rank. The Coins go. The rank stays.",
+			"answers": [["\"Will you fight with me?\"", 4, [], "Will you fight with me, Rook? I could use a gunner down there."],
+				["\"You've done this before.\"", 5, [], "You talk like someone who has stood down there already."]]},
+		{"text": "I was hoping you'd ask. Put my name down when you pick your team. I come round the side.", "next": 6},
+		{"text": "Twice. Lost both. That is why I want someone beside me who flies the way you do. Put my name down when you pick your team.", "next": 6},
+		{"text": "Sign up with the Marshal inside. I'll be in the bar when you need me.", "next": -1},
+	]},
+	# package 64e (Luz): Luz shows you the room above the bar
+	"luz_room": {"who": "luz", "lines": [
+		{"text": "It's not much. The heater ticks, the window doesn't shut all the way, and the mattress has opinions."},
+		{"text": "But it's yours, as long as you fly for the round. Through the door marked PRIVATE, up the stairs.",
+			"answers": [["\"It's perfect.\"", 2, [], "It's perfect. I have slept in worse, and paid for it."],
+				["\"Whose was it?\"", 3, [], "Whose was it before me?"]]},
+		{"text": "Liar. But a polite one.", "next": 4},
+		{"text": "Somebody who didn't come back. Don't make a habit of that.", "next": 4},
+		{"text": "Look out of the window when you can't sleep. The street never does. Good night, pilot.", "next": -1},
+	]},
+	"luz_round": {"who": "luz", "lines": [
+		{"text": "Work? Ask Ratte, ask Kraut. They have it now. I only pour, and listen.", "next": -1},
+	]},
+	# (Luz, 24 Nov 2026) after the party everyone of the round can be spoken to in the bar. Each has a short talk:
+	# what is going on (a line by lot: {ratte_gossip}, {kraut_fact}, {luz_music}, {rook_talk}), and what they are there
+	# for (Ratte and Kraut: work, a window of its own; Luz: a beer). An answer's flag "hub_do" says what follows.
+	"ratte_hub": {"who": "ratte", "lines": [
+		{"text": "Ratte listens. What does the pilot want?",
+			"answers": [["\"What's going on?\"", 1, [], "So, Ratte. What's going on in the alleys?"],
+				["\"Got work for me?\"", -1, ["hub_do", "jobs"], ""],
+				["\"Nothing. Later.\"", -1, [], ""]]},
+		{"text": "{ratte_gossip}", "next": -1},
+	]},
+	"kraut_hub": {"who": "kraut", "lines": [
+		{"text": "Hm.",
+			"answers": [["\"What's going on?\"", 1, ["kraut_book", true], "What's going on with you, Kraut? You always sit there with that thing in your hands.", {"not": ["kraut_book"]}],
+				["\"How's the book?\"", 6, [], "How's the book coming along?", {"if": [["kraut_book", true]]}],
+				["\"Got work for me?\"", -1, ["hub_do", "jobs"], ""],
+				["\"Nothing. Later.\"", -1, [], ""]]},
+		{"text": "A book."},
+		{"text": "From Earth. Paper. Older than the gates, older than anything in this city. Luz found it for me."},
+		{"text": "It is about a war of farmers. The year 11525, by our count. They called it the Peasants' War."},
+		{"text": "They wanted to be free. They wrote it down, twelve points, so nobody could say they had not asked. Then the lords killed them for it."},
+		{"text": "I read slowly. Ask me again.", "next": -1},
+		{"text": "{kraut_fact}", "next": -1},
+	]},
+	"luz_hub": {"who": "luz", "lines": [
+		{"text": "What'll it be, pilot?",
+			"answers": [["\"A beer.\"", -1, ["hub_do", "beer"], ""],
+				["\"What do you do when you're not behind the bar?\"", 1, ["luz_hobby", true], "What do you do when you're not behind this bar, Luz?", {"not": ["luz_hobby"]}],
+				["\"Tell me about the music.\"", 5, [], "Tell me more about that music of yours.", {"if": [["luz_hobby", true]]}],
+				["\"Any work?\"", 6, [], "Any work going, Luz?"],
+				["\"Nothing. Later.\"", -1, [], ""]]},
+		{"text": "Music. What else. Old Earth bands, the kind nobody has pressed in ten thousand years."},
+		{"text": "Punk, mostly. The obscure stuff. Bands that made one record in a cellar, fell out over the bass player and were never heard of again."},
+		{"text": "I held a record from Earth once. A real one. Black, heavy, with a groove you can see with your own eyes. It smelled like dust and somebody's attic."},
+		{"text": "I gave it back. I couldn't afford it and I didn't dare play it. I still think about that record.", "next": -1},
+		{"text": "{luz_music}", "next": -1},
+		{"text": "Ask Ratte, ask Kraut. They have it now. I only pour, and listen.", "next": -1},
+	]},
+	"rook_hub": {"who": "rook", "lines": [
+		{"text": "Hey. Sit down, you're making the place look busy.",
+			"answers": [["\"How are you holding up?\"", 1, [], "How are you holding up here, Rook?"],
+				["\"The Colosseum?\"", 2, [], "What about the Colosseum? Are you still in?", {"if": [["rook_mate", true]]}],
+				["\"Nothing. Later.\"", -1, [], ""]]},
+		{"text": "{rook_talk}", "next": -1},
+		{"text": "Always. Put my name down when you pick your team, and I come round the side. That's a promise and a threat.", "next": -1},
+	]},
+	"rook_bar": {"who": "rook", "lines": [
+		{"text": "Not bad, is it? Worst beer in the Rim, best company. I told you I'd find something worth both our time.", "next": -1},
 	]},
 	# package 61b (Luz): Ratte and Kraut, for now only a few words (the story comes later)
 	"ratte_talk": {"who": "ratte", "lines": [
@@ -595,6 +720,55 @@ const DIALOGUES := {
 }
 
 ## Tips: shown once (unless switched off), kept in the journal under Tips.
+## (Luz) What the round has to say when you ask what is going on: one of each list by lot, never the same twice running.
+const RATTE_GOSSIP := [
+	"The casino changed its dice again. Third time this season. Ratte doesn't say why. Ratte only says: don't sit at table two.",
+	"Somebody is buying up fuel cells in the Rim. Quietly, a crate here, a crate there. Somebody is planning a long trip, or a short war.",
+	"The noodle woman by the gate has a brother in customs. That is why her broth tastes of things that were never declared.",
+	"A Covenant ship sat in orbit for two days and nobody came down. They only looked. Ratte does not like people who only look.",
+	"They say the Colosseum's champion never takes the helmet off. Ratte knows why. Ratte will tell you for a price nobody has paid yet.",
+	"Line B stopped between stations last night. Four minutes, lights out. When they came on again, one seat was empty that had not been.",
+	"The Assembly wants a consulate here. Luz says over the bar's dead body. The bar has been dead before. It got better.",
+	"Kraut has read the same page for three days. Either it is a very good page or Kraut has fallen asleep with the eyes open again.",
+	"There is a door in the Back Alleys that was a wall last month. Ratte has the key already. Ratte does not have the nerve yet.",
+]
+## Kraut's book: the German Peasants' War of 1524 to 1525 (the years as the Cluster counts them: plus ten thousand).
+const KRAUT_FACTS := [
+	"It began in the summer of 11524, in the south-west of the old Empire. A countess ordered her farmers to gather snail shells at harvest time. That is how the story goes. That was one order too many.",
+	"The Twelve Articles. Written in a town called Memmingen, in March 11525. Printed twenty-five thousand times in two months. Some call it the first written demand for human rights on that continent.",
+	"The first article: every parish chooses its own pastor. Not gold, not land. They began with who may speak to them on Sundays.",
+	"The third article: no more serfdom. They wrote that they wanted to be free, and that they would still obey a lawful ruler. They were not even asking for much.",
+	"About three hundred thousand farmers rose. No uprising in Europe was larger until the French made their revolution, two hundred and sixty years later.",
+	"Their sign was the Bundschuh. A farmer's laced shoe, on a flag. The knights wore boots. So the shoe was the whole argument.",
+	"The lords had the Swabian League, and a commander named Georg Truchsess of Waldburg. The farmers called him Bauernjörg. It was not meant kindly.",
+	"Weinsberg, Easter 11525. The farmers took a castle and made the count and his knights run between two rows of pikes. After that no lord offered them terms any more.",
+	"A knight with an iron hand led one of their bands for a few weeks. Götz of Berlichingen. He said later they had forced him. Knights say that.",
+	"Another knight meant it. Florian Geyer. He led the Black Company and stayed until it was destroyed. He was killed that summer.",
+	"Frankenhausen, May 11525. Some six thousand farmers dead in one afternoon. The princes lost a handful of men. The preacher Thomas Müntzer was caught, tortured and beheaded.",
+	"A famous churchman of that time, Luther, had preached that a Christian is free. When the farmers took him at his word, he wrote that the lords should strike them down. He did write that.",
+	"When it was over, perhaps seventy thousand were dead, perhaps a hundred thousand. Nobody counted farmers.",
+	"They lost. Serfdom stayed in those lands for nearly three hundred years more. But the twelve points were printed, and paper is hard to kill. I am holding some.",
+]
+const LUZ_MUSIC := [
+	"There was a band called The Null Sectors. Three chords, and they only ever used two of them. Best record I never owned.",
+	"On Earth they pressed music into black discs and a needle read it out again. A needle. And it sounded better than anything we have.",
+	"Punk was never about playing well. It was about playing now. I run this bar the same way.",
+	"Broken Antenna made one record, in a cellar, in a single night, and then the drummer joined a monastery. I respect every part of that.",
+	"The Hull Breach want to play slower songs. I told them the door is over there. They are still here, so they got faster.",
+	"Somebody offered me a real Earth record last year. I checked. The groove was laser cut. People have no shame.",
+	"The trick with old music is the hiss. Take the hiss away and you hear how alone they were in that room. Leave it in.",
+]
+const ROOK_TALK := [
+	"Better than I thought. Nobody here asks which side I'm on. I'm on the side with the cold beer.",
+	"I miss the Maul's guns. I don't miss cleaning them. Ossa writes, by the way. Two words at a time.",
+	"Kraut beat me at darts again. Didn't look at the board once. I think Kraut hears where it is.",
+	"Ratte tried to sell me my own boots yesterday. Nearly worked.",
+	"You know what I like about this city? Nobody here remembers the Veil. To them we're just two more people who talk funny.",
+	"Luz let me behind the bar for one night. One. There was a fire. A small one.",
+	"I keep thinking we should get the old crew out here. Then I think of Dan in the casino and I stop thinking.",
+]
+
+
 const TIPS := {
 	"tip_objective": {"title": "Goals and the marker", "text": "The mission you track shows its next goals over your ship's panel. In space a gold diamond marks the target, with an arrow at the edge when it is off the screen. The journal ({key:journal}) has all your missions."},
 	"tip_fire_groups": {"title": "Fire groups", "text": "Your modules sit in fire groups: the tiles at the bottom. Lock a target, then press {key:module_1} to switch group 1 on. Set the groups in Ship → Modules → Fire groups."},
@@ -660,8 +834,38 @@ const MISSIONS := {
 				"goals": [{"id": "arrive", "kind": "flag", "flag": "fern_arrived", "label": "fly to Fern"}]},
 			{"id": "land", "title": "Centauria", "text": "The city lies on Pelagia, the ocean world that circles Lapis, the blue giant with the rings. Descend and land in Centauria.",
 				"goals": [{"id": "land", "kind": "flag", "flag": "fern_landed", "label": "land in Centauria on Pelagia"}]},
-			{"id": "luz", "title": "Rook's contact", "text": "Luz knows the city and owes Rook a favour. Take Line A from Centauria Central to the Commercial District and go through the gate in the south of the plaza into the Back Alleys. Luz runs the Static Feedback: down the stairs at the east end of the street.",
-				"goals": [{"id": "luz", "kind": "flag", "flag": "fern_luz", "label": "find Luz in the Static Feedback, in the Back Alleys"}]},
+			{"id": "luz", "title": "Rook's contact", "text": "Rook is in Centauria and waits for you. Take the lift from the hangar down to Centauria Central, get on Line A and get off at the Commercial District. Rook stands at the top of the stairs and takes you to Luz, who runs the Static Feedback in the Back Alleys.",
+				"goals": [{"id": "rook", "kind": "flag", "flag": "fern_rook", "label": "meet Rook at the top of the stairs in the Commercial District"},
+					{"id": "luz", "kind": "flag", "flag": "fern_luz", "label": "follow Rook to the Static Feedback and meet Luz"}]},
+		]},
+	# package 64c (Luz): Luz's test
+	"luz_test": {"title": "A Small, Ugly Job", "kind": "story", "chapter": "Chapter 2 · The Cluster",
+		"desc": "Luz wants to see you fly before handing you on: an intelligence convoy, a minute of your time, and a way out.",
+		"steps": [
+			{"id": "go", "title": "The rendezvous", "text": "Fly to {luz_sys}, one jump from Fern, and warp to the rendezvous Luz marked. A convoy of the {foe_name} drops out of warp there: one big ship, two small ones.",
+				"goals": [{"id": "rv", "kind": "flag", "flag": "luz_rv", "label": "reach the rendezvous"}]},
+			{"id": "hold", "title": "A minute", "text": "Stay within 8,000 km of the big ship until the box in your hold has read its computer. You do not have to destroy anything.",
+				"goals": [{"id": "data", "kind": "flag", "flag": "luz_data", "label": "keep them busy until the download is done"}]},
+			{"id": "run", "title": "Out", "text": "Get away: warp out, or put 30,000 km between you and them.",
+				"goals": [{"id": "away", "kind": "flag", "flag": "luz_away", "label": "get away"}]},
+			{"id": "back", "title": "Back to Luz", "text": "Luz waits in the Static Feedback, in the Back Alleys of Centauria.",
+				"goals": [{"id": "done", "kind": "flag", "flag": "luz_done", "label": "report to Luz"}]},
+		]},
+	# package 64f (Luz): Rook asks you to the Colosseum
+	"rook_col": {"title": "Something You Have to See", "kind": "story", "chapter": "Chapter 2 · The Cluster",
+		"desc": "Rook wants to show you the Colosseum of Centauria, and has a place for you in it.",
+		"steps": [
+			{"id": "go", "title": "The Colosseum", "text": "Rook waits on the plaza before the Colosseum. From Centauria Central take Line B to the Colosseum and go up the stairs.",
+				"goals": [{"id": "met", "kind": "flag", "flag": "rook_mate", "label": "meet Rook before the Colosseum"}]},
+		]},
+	# package 64d (Luz): the round's jobs (Ratte: information, deliveries; Kraut: raids): one at a time, started anew
+	"round_job": {"title": "Work for the Round", "kind": "story", "chapter": "Chapter 2 · The Cluster",
+		"desc": "Ratte and Kraut have work for a pilot of the round: information to gather, cargo to carry quietly, ships to raid.",
+		"steps": [
+			{"id": "work", "title": "The job", "text": "{rj_brief}",
+				"goals": [{"id": "field", "kind": "flag", "flag": "rj_field", "label": "do the job"}]},
+			{"id": "back", "title": "The pay", "text": "{rj_back}",
+				"goals": [{"id": "paid", "kind": "flag", "flag": "rj_paid", "label": "collect your pay"}]},
 		]},
 	# package 58, part 1 (Luz): Little Darling – Dan shows you the station window and the Outfitter (a guided tour),
 	# you fit the lasers he left in storage and buy a drone with his advance. The flags come from

@@ -571,8 +571,29 @@ func _build_fire_groups() -> void:
 	rs.add_child(right)
 	right.add_child(UI.label("Modules you switch on  (%s)" % fit.ship_name, 18, UI.NEON_CYAN))
 	right.add_child(UI.label("click a number to put the module into that group: click it again to take it out", 12, UI.TEXT_DIM))
-	if mods.is_empty():
+	# (Luz) modules the skill tree keeps offline were simply missing here: they are shown now, with the reason
+	var locked: Array = fit.stats().get("locked", [])
+	if mods.is_empty() and locked.is_empty():
 		right.add_child(UI.label("This ship has no modules to switch on.", 14, UI.TEXT_DIM))
+		return
+	if not locked.is_empty():
+		var lcard := UI.panel(Color(0.12, 0.05, 0.05))
+		var lst := UI.panel_style(Color(0.12, 0.05, 0.05), Color(1.0, 0.45, 0.35, 0.7))
+		lst.set_corner_radius_all(3)
+		lcard.add_theme_stylebox_override("panel", lst)
+		right.add_child(lcard)
+		var lv := UI.vbox(4)
+		lcard.add_child(lv)
+		lv.add_child(UI.label("OFFLINE: %d module%s fitted that you may not use yet" % [locked.size(), "" if locked.size() == 1 else "s"], 14, Color(1.0, 0.6, 0.5)))
+		for lk in locked:
+			var lmid := String(fit.modules.get(lk, ""))
+			var lr := UI.hbox(8)
+			lv.add_child(lr)
+			lr.add_child(UI.icon(PixelArt.module_icon(lmid), 28))
+			var why := GameState.module_tree_error(lmid)
+			lr.add_child(UI.wrap_label("%s (%s). %s" % [GameData.module_name(lmid), _slot_name(String(lk)), why if why != "" else "Not usable yet."], 12, Color(0.95, 0.85, 0.8), 560))
+		lv.add_child(UI.wrap_label("They cannot go into a fire group until their tile is open: Pilot window, Skill tree.", 12, UI.TEXT_DIM, 600))
+	if mods.is_empty():
 		return
 	for e2 in mods:
 		var slot2: String = e2["slot"]

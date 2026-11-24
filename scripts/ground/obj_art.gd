@@ -1348,12 +1348,21 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 		"q_bed":                    # package 58 (Luz): a bed in the quarters – a padded headboard, pillows, a blanket in
 			# the room's colour; unmade while the robot cleans; with the pilot in it while they sleep (eyes shut, or open)
 			var frame := Color(0.2, 0.18, 0.24)
-			_r(img, 0, fy - 6, pw, 8, frame)                                                  # the headboard
-			_r(img, 1, fy - 5, pw - 2, 5, c.darkened(0.45))
-			for hx in range(3, pw - 2, 5):
-				_r(img, hx, fy - 4, 1, 3, c.darkened(0.25))
-			_r(img, 1, fy, pw - 2, ph - 2, frame.lightened(0.15))
-			_r(img, 2, fy + 1, pw - 4, ph - 5, Color(0.92, 0.92, 0.95))                      # the sheet
+			if bool(o.get("shabby", false)):
+				# package 64e (Luz): a mattress on the floor: no frame, no headboard, a sheet that has seen better years
+				_r(img, 1, fy, pw - 2, ph - 2, Color(0.5, 0.47, 0.4))
+				_r(img, 2, fy + 1, pw - 4, ph - 5, Color(0.8, 0.77, 0.68))
+				_r(img, 4, fy + ph - 9, 5, 3, Color(0.7, 0.66, 0.56))
+				_r(img, pw - 11, fy + 9, 4, 2, Color(0.7, 0.66, 0.56))
+				for st2 in range(3, pw - 3, 6):
+					_r(img, st2, fy + ph - 4, 1, 2, Color(0.4, 0.37, 0.32))
+			else:
+				_r(img, 0, fy - 6, pw, 8, frame)                                                  # the headboard
+				_r(img, 1, fy - 5, pw - 2, 5, c.darkened(0.45))
+				for hx in range(3, pw - 2, 5):
+					_r(img, hx, fy - 4, 1, 3, c.darkened(0.25))
+				_r(img, 1, fy, pw - 2, ph - 2, frame.lightened(0.15))
+				_r(img, 2, fy + 1, pw - 4, ph - 5, Color(0.92, 0.92, 0.95))                      # the sheet
 			var pillows := 1 if pw < 40 else 2
 			for pi in pillows:
 				var pxw := (pw - 6) / pillows
@@ -2269,6 +2278,19 @@ static func _paint(img: Image, kind: String, pw: int, ph: int, rise: int, c: Col
 			_r(img, 1, fy + 1, pw - 2, ph - 5, Color(0.3, 0.45, 0.2))
 			for k in int(pw / 3):
 				_r(img, 1 + k * 3, fy - 1 + (k % 2) * 3, 2, 2, [Color(1.0, 0.4, 0.5), Color(1.0, 0.85, 0.3), Color(0.7, 0.5, 1.0), Color(1, 1, 1)][k % 4])
+		"floor_mess":               # package 64e (Luz): what lies about in a student's flat: bottles, a box, a magazine, a sock
+			var ms := int(o.get("seed", 1))
+			_r(img, 2, fy + 5, 11, 8, Color(0.62, 0.5, 0.34))                                # a flat box …
+			_r(img, 3, fy + 6, 9, 6, Color(0.72, 0.6, 0.42))
+			_r(img, 6, fy + 8, 3, 2, Color(0.75, 0.25, 0.2))                                 # … with what was in it
+			for bt in 3:
+				var bxm := 16 + bt * 5 + (ms + bt * 3) % 3
+				var bym := fy + 3 + (ms * (bt + 2)) % 6
+				_r(img, bxm, bym, 2, 6, Color(0.25, 0.45, 0.3) if bt != 1 else Color(0.5, 0.36, 0.2))
+				_r(img, bxm, bym - 2, 2, 2, Color(0.2, 0.36, 0.25) if bt != 1 else Color(0.42, 0.3, 0.16))
+			_r(img, pw - 9, fy + 10, 7, 4, Color(0.86, 0.84, 0.78))                          # a magazine
+			_r(img, pw - 8, fy + 11, 3, 2, Color(0.3, 0.6, 0.9))
+			_r(img, 13, fy + 12, 4, 2, Color(0.85, 0.85, 0.9))                               # a sock
 		"trash":
 			_ellipse(img, pw * 0.4, fy + 6, 5, 4, Color(0.18, 0.2, 0.18))
 			_ellipse(img, pw * 0.65, fy + 8, 4, 3, Color(0.25, 0.22, 0.3))

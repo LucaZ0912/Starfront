@@ -138,7 +138,14 @@ static func mates(col: Dictionary) -> Array:
 		col["mates"] = [{"id": "mate_1", "name": "%s %s" % [String(MG.FIRST[rng.randi() % MG.FIRST.size()]), String(MG.LAST[rng.randi() % MG.LAST.size()])], "who": "", "quality": "F",
 			"weapon": String(MATE_WEAPONS[rng.randi() % MATE_WEAPONS.size()]), "stance": String(["aggressive", "careful", "flank"][rng.randi() % 3]), "seed": rng.randi() % 100000,
 			"text": "New to the lists, like you."}]
-	return MATES + (col["mates"] as Array)
+	return MATES.filter(func(m): return story_mate_open(String(m["id"]))) + (col["mates"] as Array)
+
+
+## Package 64f (Luz): one of the story's people stands beside you only once the story has brought you together (the
+## flag "<id>_mate": Rook after the morning at the Colosseum). A game without the story is not held back.
+static func story_mate_open(id: String) -> bool:
+	var st = GameState.story
+	return st == null or not st.flags.has("intro_stage") or bool(st.flags.get(id + "_mate", false))
 
 
 ## The two who stand beside you now (their ids in "team"; whoever is missing is filled from the list).

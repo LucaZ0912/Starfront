@@ -424,6 +424,57 @@ Slanted, cosy top-down view since 0.7.49.2.
   gold line, animated in `PixelArt._animate`), `+ - _` (chrome); `Ship.boost_used`, `boost_max()`, `boost_left()`;
   command `prize_buy` and `GroundView._ctr_prize()`; `GameData.fmt_int()`; smoke group `ships63` (pictures of the
   four in flight with `SHIPS63_SHOTS=1`).
+- 0.8.64.1 (package 64a): `GameState.tree_locked()` (story flag `intro_stage` without `cit_licence`) shuts
+  `tile_ready()` and `tree_unlock()`; `GameState.tree_start_over()` (called at the stamp in `dan_work.gd`) empties the
+  tree and erases every key of `TreeData.METRICS` from `GameState.stats`; the Pilot window's `_tree()` shows a note
+  while it is shut; smoke group `tree64a`. The plan of package 64: `Claude outputs/steckbrief_64_centauria_einfuehrung.md`.
+- 0.8.64.2 (package 64b): `GameState.fern_closed()` and `entry_error()` (Fern until the story flag `fern_called`);
+  `dan_work.gd`: `_fern_lead()` (every frame in the phase "free"), `_fern_meet()`, `_lead_walk()` (Rook's walker
+  along `GroundMap.path` to a named point of the level, `FERN_SAY`, `FERN_BEHIND`), the flags `fern_radio`,
+  `fern_rook`; `ground_mode()` puts Rook on `zplaza`, `zalley` and `zbar`; a story person's place may be
+  `{"meta": name, "off": tiles}` (a named point of the level); dialogues `rook_fern`, `luz_meet`, `luz_again`;
+  command `debug_fern`; smoke group `fern64b` (pictures with `FERN64_SHOTS=1`).
+- 0.8.64.3 (package 64b): `CityStyle.story_night` (a city by its name held in the night) and `Weather.story_place`
+  / `story_kind` (the story's weather at a place; `Weather.debug_kind` goes before it), set by
+  `dan_work._fern_weather()` and cleared in its `_exit_tree()`; `debug_fern` with "land", "stairs", "alley", "bar",
+  "done" (`Commands._debug_fern_land()`).
+- 0.8.64.4 (package 64c): `dan_work.gd`: `_luz_job_step()` (every frame in the phase "free"), `_luz_brief()`,
+  `_luz_report()`, `_luz_spawn()`, `_luz_fail()`, `_luz_got_away()`, `_luz_show()` (the display), `luz_foe()`,
+  `luz_marked()`, `luz_rv_pos()`, the constants `LUZ_*`; flags `luz_job`, `luz_sys`, `luz_rv`, `luz_data`,
+  `luz_away`, `luz_done`; the mission `luz_test`; the waypoint `luz_rv` in `Universe.story_beacons` (put back when
+  missing, they are not saved); the convoy's ships carry the meta `luz_convoy`, no `gov`, `provoked`; story texts
+  know `{foe_name}` and `{luz_sys}`; `debug_fern` with "job", "job_given", "job_rv", "job_away", "job_done"; smoke
+  group `luz64c` (pictures with `LUZ64_SHOTS=1`).
+- 0.8.64.5 (package 64d): `dan_work.gd`: `_luz_party()` (`_party64`, the bar's `ground_mode()` for it), flag
+  `luz_round`; the round's jobs: the story flag `rj` (a dictionary of numbers and words: kind, who, sys, seed, pay,
+  foe, stage "go" / "deliver" / "back", brief, back, stn), `rj()`, `rj_offers(who)`, `rj_take()`, `rj_drop()`,
+  `_rj_step()` (every frame), `_rj_spawn()`, `_rj_pay()`, `rj_marked()`, `_round_talk()` (through
+  `GroundView.ask_window`), `_bcn_on()` / `_bcn_off()` (a story waypoint, ids `rj_rv`, `rj_loot`), constants `RJ_*`;
+  the mission `round_job` with the text keys `{rj_brief}` and `{rj_back}`; `debug_fern` with "party", "round",
+  "rj_intel", "rj_raid", "rj_smuggle", "rj_rv", "rj_back", "rj_drop" (`Commands._debug_ship_to()`); smoke group
+  `round64d` (pictures with `ROUND64_SHOTS=1`).
+- 0.8.64.6 (package 64e): `CentauriaGen.build_luzroom()` (level `zroom`, `RoomFx`: the wall and the window with
+  the street, `R_WIN`), `build_stairs()` (level `zstair`, `StairFx`; arrivals `from_below` / `from_above`); the map
+  meta `zoom` (a level's own camera zoom); `GroundView._stair_step()` / `_stair_done()` (the walk), zone kinds
+  `room_bed` (`_room_sleep_begin()`, command `luz_sleep`, story flag `luz_slept`) and `room_window`
+  (`_room_watch`); the bar's zone `bar_back` leads up once the story flag `luz_room` is set; `dan_work`:
+  `_luz_show_room()` (`_room64`), dialogue `luz_room`; `ObjArt`: `q_bed` with `shabby`, the kind `floor_mess`;
+  `debug_fern` with "room"; smoke group `room64e` (pictures with `ROOM64_SHOTS=1`).
+- 0.8.64.7 (package 64f): `ColData.story_mate_open(id)` (the story flag `<id>_mate`; `mates()` leaves the others
+  out); `dan_work`: `_rook_col_step()` (after the flag `luz_slept`), `rook_waits()`, `_rook_col_talk()`, the flags
+  `rook_invited` and `rook_mate`, the mission and the dialogue `rook_col`; `debug_fern` with "col_invite" and
+  "col_done"; smoke group `rook64f` (a picture with `ROOK64_SHOTS=1`).
+- 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
+  by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
+  `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.64.9 to 0.8.64.11 (after Luz's play): the fire group settings list `stats()["locked"]`; `tree_locked()` only
+  while the intro runs; `dan_work._convoy_weaken()`, `LUZ_SPAWN`; `_lead_walk()` now leads by itself
+  (`_lead_follow()`, `_lead_go()`); `_hub_talk(who)` with the dialogues `<who>_hub`, the answer flag `hub_do`, the
+  text keys `{ratte_gossip}`, `{kraut_fact}`, `{luz_music}`, `{rook_talk}` (lists in `data/story.gd`, the drawn
+  line in the flags `hub_i_<key>`); `scripts/ui/round_jobs.gd` (`open(ground, dan_work, who)`: the work as one of
+  the ground's menus); acquaintances `ratte`, `kraut`, `JOB_POINTS`; `scripts/ground/bar_music.gd` (preloaded as
+  `BarMusic`: `TRACKS`, `list_for(level, night)`, `stream(id)` rendered in a thread) and `GroundView._bg_step()`;
+  `Claude outputs/_furn/musik.tscn` writes the tracks as WAV; smoke group `music64`.
 - 0.8.62.30 (package 62a, part 11b): `data/survivor.gd`: the kinds `trooper` ("beh" 16), `brain` ("beh" 17), `saucer`,
   `LAB_EVENTS`, `LOCK_TIME`, `PURGE_*`, `BREACH_TANKS`, `GRID_*`, `SEAL_FOES`, the item `seal`; `survivor_lab.gd`: the
   map meta `sv_grids`; `survivor_game.gd`: `lock_t`, `lock_r`, `lock_doors`, `seal_t`, `seal_r`, `seal_doors`,

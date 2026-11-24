@@ -31,6 +31,8 @@ const NAMES := {"clear": ["Clear", "☀"], "cloudy": ["Overcast", "☁"], "rain"
 const WET := ["rain", "storm", "acid", "gasstorm"]
 
 static var debug_kind := ""          # the debug menu's override ("" – the world's own)
+static var story_place := ""         # package 64b (Luz): a place (by its name) where the story makes the weather …
+static var story_kind := ""          # … and which (the debug menu's choice still goes before it)
 
 
 ## The world's weather class ("" – no weather: no air).
@@ -86,6 +88,9 @@ static func at(body: Dictionary, place: Dictionary, cloud: bool = false, t: floa
 		k = into / RAMP
 	elif into > SPELL - RAMP and _pick(cls, key, spell + 1) != kind:
 		k = (SPELL - into) / RAMP
+	if story_kind != "" and story_place != "" and String(place.get("name", "")) == story_place:
+		kind = story_kind
+		k = 1.0
 	if debug_kind != "":
 		kind = debug_kind
 		k = 1.0

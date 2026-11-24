@@ -54,6 +54,9 @@ var _seat: Dictionary = {}            # the seat the pilot sits on
 var _stand_pos := Vector2.ZERO
 var _music: AudioStreamPlayer
 var track := -1                       # the jukebox: -1 off, else the track playing
+var _bg_id := ""                      # (Luz) the level's own music playing now (BarMusic): "" none
+var _bg_i := 0                        # … which of the level's list comes next
+var _bg_rep := 0                      # … how often the one playing has been played
 var _toast := ""
 var _log: RichTextLabel = null           # 0.7.52.13: the event log on the right
 var _toast_t := 0.0
@@ -166,6 +169,9 @@ var buddy: Node2D = null                 # 0.7.52.25: your drones where there is
 const CutGame = preload("res://scripts/ground/cut_game.gd")
 const QuartersGen = preload("res://scripts/ground/quarters_gen.gd")       # package 58 (Luz): the quarters
 var _q_sleep := 0                        # 0 up · 1 asleep in your bed · 2 just woken
+var _room_sleep := 0                     # package 64e: the same on the mattress of the room above the Static Feedback
+var _room_watch := false                 # … at its window: the camera on the street
+var _stair := {}                         # … on the stairs between the bar and that room: the game walks you ({"up": bool})
 var _q_room := -1                        # the room you slept in stays open until you leave the level
 var _keep_pos := Vector2.INF             # arrive "keep": where you stood (the level rebuilt round you)
 var _q_rebuild := false
@@ -461,6 +467,25 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map = CentauriaGen.build_alleys(station)                   # package 61b (Luz): the Back Alleys behind the gate
 	elif level == "zbar":
 		map = CentauriaGen.build_punkbar(station, city_day() < 0.5)       # … and the Static Feedback (the band plays at night)
+		if bool(GameState.story.flags.get("luz_room", false)):
+			# package 64e (Luz): the back room's door is yours now: up the stairs to your room
+			for zb in map.zones:
+				if String(zb.get("id", "")) == "bar_back":
+					zb["kind"] = "museum_go"
+					zb.erase("closed")
+					zb["to"] = "zstair"
+					zb["at"] = "from_below"
+					zb["title"] = "Up the stairs: your room"
+					zb["col"] = Color(0.4, 1.0, 0.55)
+	elif level == "zroom":
+		map = CentauriaGen.build_luzroom(station, city_day() < 0.5)       # package 64e (Luz): the room above the bar
+		if _room_sleep > 0:
+			for orb in map.objects:
+				if String(orb.get("kind", "")) == "q_bed":
+					orb["patient"] = ChibiArt.PilotArt.clean(GameState.pilot.get("look", {}))
+					orb["awake"] = _room_sleep == 2
+	elif level == "zstair":
+		map = CentauriaGen.build_stairs(station)                          # … and the stairs up to it
 	elif level == "zplaza":
 		map = CentauriaGen.build_plaza(station)                    # … and the plaza of the Commercial District
 	elif level == "zcol":
@@ -723,6 +748,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_title.text = "Centauria – Back Alleys"
 	elif level == "zbar":
 		_title.text = "Centauria – Static Feedback"
+	elif level == "zroom":
+		_title.text = "Centauria – Above the Static Feedback"
+	elif level == "zstair":
+		_title.text = "Centauria – Static Feedback"
 	elif level == "zcasino":
 		_ctr_title()
 	if level == "zcasino":
@@ -969,6 +998,21 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 			swk.lane = sln
 			_sorted.add_child(swk)
 			people.append(swk)
+	_room_watch = false
+	_stair = {}
+	if level == "zstair" and map.has_meta("stairs"):
+		var sfx = CentauriaGen.StairFx.new()
+		sfx.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(sfx)
+		_world.move_child(sfx, _sorted.get_index())
+		_stair = {"up": arrive != "from_above", "t": 0.0, "done": false}
+	if level == "zroom" and map.has_meta("room_window"):
+		# package 64e (Luz): the room above the bar: its wall and the window with the street in it, under the people
+		var rfx = CentauriaGen.RoomFx.new()
+		rfx.night = 1.0 - city_day()
+		rfx.scale = Vector2.ONE * GroundMap.SCALE
+		_world.add_child(rfx)
+		_world.move_child(rfx, _sorted.get_index())
 	if level == "zbar" and map.has_meta("bar_stage"):
 		# package 61b (Luz): the Static Feedback – its wall and its stage under the people, the neon and the haze over
 		# the dark, the band's gear with the band; your own crew waits here
@@ -2235,6 +2279,9 @@ func _story_map() -> void:
 					sp = sp.duplicate()
 					sp["near"] = Vector2(float(o9["x"]), float(o9["y"])) + (sp.get("off", Vector2.ZERO) as Vector2)
 					break
+		if sp.has("meta") and map.has_meta(String(sp["meta"])):
+			# package 64b: at a named point of the level (where you come in from somewhere), a few tiles off it
+			at = (map.get_meta(String(sp["meta"])) as Vector2) + (sp.get("off", Vector2.ZERO) as Vector2) * GroundMap.TILE
 		if sp.has("near_lift") and not map.lifts.is_empty():
 			# package 58, part 6 (Luz): just out of the lift (Rook in Dan's hangar) – a free place in front of it
 			var lf: Dictionary = map.lifts[0]
@@ -3033,6 +3080,7 @@ func _process(delta: float) -> void:
 	_toast_t = maxf(_toast_t - delta, 0.0)
 	if is_town():
 		_update_city_day(delta)
+	_bg_step()                                            # (Luz) the bar's music, Survivor's
 	_update_dust(delta)
 	_env_step(delta)
 	_socket_step(delta)
@@ -3058,6 +3106,8 @@ func _process(delta: float) -> void:
 		_col_scene_step(delta)                           # package 62a, part 2 (Luz): the fighters' area opens
 	elif not _col_walk.is_empty():
 		_col_walk_step(delta)                            # … part 3: through the fighters' gate, by yourself
+	elif not _stair.is_empty():
+		_stair_step(delta)                               # package 64e: up or down the stairs, by yourself
 	elif not _col_intro.is_empty():
 		_col_intro_step(delta)                           # … part 4: the entrance before a fight
 	elif input_enabled and talk == null and _lift_menu == null and minigame == null and not background_locked():
@@ -3451,6 +3501,88 @@ func _q_sleep_begin() -> void:
 	if mn != null and mn.has_method("fade"):
 		mn.fade(Color(0, 0, 0, 0), 0.5)
 	_say_toast("Rested. Outside the planets have moved on, the stations have new work and the bars new faces.", 4.0)
+	input_enabled = true
+	_sleeping = false
+
+
+## Package 64e (Luz): the stairs between the bar and the room above it. The game walks you; Use or Esc is there at once.
+func _stair_step(delta: float) -> void:
+	if bool(_stair.get("done", false)):
+		return
+	var up: bool = bool(_stair["up"])
+	var to: Vector2 = map.get_meta("from_above" if up else "from_below")
+	var d: Vector2 = to - pilot.pos
+	_stair["t"] = float(_stair["t"]) + delta
+	# (Luz: the scene was skipped. The press that opened the door still counted as a press here: only after a moment)
+	var skip: bool = float(_stair["t"]) > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel"))
+	if d.length() < 3.0 or float(_stair["t"]) > 8.0 or skip:
+		_stair["done"] = true
+		pilot.moving = false
+		_stair_done(up)
+		return
+	if not pilot.step(d.normalized(), delta, 0.8):
+		pilot.pos += d.normalized() * minf(d.length(), Walker.SPEED * 0.8 * delta)
+		pilot.position = pilot.pos * GroundMap.SCALE
+	if int(float(_stair["t"]) / 0.34) != int((float(_stair["t"]) - delta) / 0.34):
+		Audio.play("ui_click", "stairs: a step", -14.0)
+
+
+func _stair_done(up: bool) -> void:
+	var mn = get_tree().current_scene
+	if mn != null and mn.has_method("fade"):
+		await mn.fade(Color(0, 0, 0, 1), 0.3).finished
+	if up:
+		go_level("zroom", "from_bar")
+	else:
+		go_level("zbar", "from_room")
+	if mn != null and mn.has_method("fade"):
+		mn.fade(Color(0, 0, 0, 0), 0.4)
+
+
+func _room_watch_end() -> void:
+	_room_watch = false
+	story_cam = Vector2.INF
+	story_zoom = 0.0
+
+
+## A night on the mattress: as in the quarters (the picture goes dark, you lie there, hours pass, you wake).
+func _room_sleep_begin() -> void:
+	if _sleeping or talk != null:
+		return
+	_sleeping = true
+	input_enabled = false
+	_room_watch_end()
+	var mn = get_tree().current_scene
+	Audio.play("ui_click", "the room: lie down", -6.0)
+	if mn != null and mn.has_method("fade"):
+		await mn.fade(Color(0, 0, 0, 1), 0.7).finished
+	_room_sleep = 1
+	go_level("zroom", "bed")
+	pilot.visible = false
+	if mn != null and mn.has_method("fade"):
+		mn.fade(Color(0, 0, 0, 0), 0.9)
+	_say_toast("You lie down. The bass comes up through the floor, the rain runs down the glass, and your eyes close…", 3.0)
+	await get_tree().create_timer(2.8).timeout
+	if mn != null and mn.has_method("fade"):
+		await mn.fade(Color(0, 0, 0, 1), 1.0).finished
+	Commands.execute({"type": "luz_sleep"})
+	var card := _night_card("Some hours later…")
+	await get_tree().create_timer(2.2).timeout
+	card.queue_free()
+	_room_sleep = 2
+	go_level("zroom", "bed")
+	pilot.visible = false
+	if mn != null and mn.has_method("fade"):
+		mn.fade(Color(0, 0, 0, 0), 1.0)
+	await get_tree().create_timer(1.8).timeout
+	if mn != null and mn.has_method("fade"):
+		await mn.fade(Color(0, 0, 0, 1), 0.4).finished
+	_room_sleep = 0
+	go_level("zroom", "bed")
+	pilot.visible = true
+	if mn != null and mn.has_method("fade"):
+		mn.fade(Color(0, 0, 0, 0), 0.5)
+	_say_toast("Rested. The heater ticks. Somewhere below, somebody is already tuning a guitar.", 4.0)
 	input_enabled = true
 	_sleeping = false
 
@@ -4067,6 +4199,7 @@ const DartsGame = preload("res://scripts/ground/darts_game.gd")
 const RockHopper = preload("res://scripts/ground/rock_hopper.gd")
 const DriftGame = preload("res://scripts/ground/drift_game.gd")
 const MinigameData = preload("res://data/minigames.gd")
+const BarMusic = preload("res://scripts/ground/bar_music.gd")       # (Luz) the bar's music, Survivor's
 
 
 func open_minigame(game: String, place: Dictionary) -> void:
@@ -5456,6 +5589,19 @@ func use(instant: bool = false) -> bool:
 			return true
 		"q_bed":
 			_q_sleep_begin()                               # package 58: a night in your bed
+			return true
+		"room_bed":
+			_room_sleep_begin()                            # package 64e: a night on the mattress above the bar
+			return true
+		"room_window":
+			# … the window: the camera goes to the street; walk away (or use it again) and it comes back
+			_room_watch = not _room_watch
+			if _room_watch and map.has_meta("room_window"):
+				story_cam = (map.get_meta("room_window") as Rect2).get_center()
+				story_zoom = 6.0
+				_say_toast("The street below, the rain, the lights. Nobody down there looks up.", 4.0)
+			else:
+				_room_watch_end()
 			return true
 		"q_door":
 			_say_toast("Room %d: someone's in. A small sign glows: do not disturb." % int(zone.get("no", 0)), 2.5)
@@ -7162,9 +7308,47 @@ func _jukebox() -> void:
 		_toast = "The jukebox falls silent."
 	else:
 		_music.stream = Jukebox.stream(track)
+		_music.volume_db = -6.0
 		_music.play()
 		_toast = "♪  Now playing: %s" % Jukebox.track_name(track)
 	_toast_t = 2.5
+
+
+## (Luz, 24 Nov 2026) The level's own music: in the Static Feedback three punk songs by night (each twice, then the
+## next) and a quiet tune by day; on Survivor's stage its track. The jukebox, once switched on, goes before it. A
+## track is made in the background the first time it is wanted: until then it is quiet.
+func _bg_step() -> void:
+	var lst: Array = BarMusic.list_for(level, city_day() < 0.5)
+	if lst.is_empty():
+		if _bg_id != "":
+			_music.stop()
+			_bg_id = ""
+		return
+	if track >= 0:
+		_bg_id = ""                                       # (the jukebox plays)
+		return
+	if _bg_id != "" and _bg_id in lst and _music.playing:
+		return
+	var id := _bg_id
+	if id == "" or not id in lst or (lst.size() > 1 and _bg_rep >= 2):
+		id = String(lst[_bg_i % lst.size()])
+		if id == _bg_id and lst.size() > 1:
+			_bg_i += 1
+			id = String(lst[_bg_i % lst.size()])
+	var st: AudioStreamWAV = BarMusic.stream(id)
+	if st == null:
+		return                                            # (still being made)
+	if id != _bg_id:
+		_bg_i += 1
+		_bg_rep = 0
+		if lst.size() > 1:
+			log_event("♪  %s" % BarMusic.track_name(id), Color(1.0, 0.6, 0.8))
+	st.loop_mode = AudioStreamWAV.LOOP_FORWARD if lst.size() == 1 else AudioStreamWAV.LOOP_DISABLED
+	_music.stream = st
+	_music.volume_db = BarMusic.level_db(id)
+	_music.play()
+	_bg_id = id
+	_bg_rep += 1
 
 
 ## Talking to someone looking for a post – a conversation with just them.
@@ -7449,6 +7633,8 @@ func _camera(delta: float = -1.0) -> void:
 	var vs := get_viewport().get_visible_rect().size
 	# 0.7.52.8: zoomed out only while the tactical view is open, as far as chosen there; eased in and out
 	var zw := (tac_zoom if combat.tactics != 0 else near_zoom) if combat != null else 1.0
+	if map != null and map.has_meta("zoom") and (combat == null or combat.tactics == 0):
+		zw = float(map.get_meta("zoom"))                 # package 64e (Luz): a small room, the camera near
 	if story_zoom > 0.0:
 		zw = story_zoom
 	zoom = zw if delta < 0.0 else lerpf(zoom, zw, 1.0 - exp(-delta * 10.0))

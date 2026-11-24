@@ -402,8 +402,26 @@ func tile_progress(id: String) -> Array:
 	return out
 
 
+## Package 64a (Luz): through the whole intro, up to the pilot licence, the skill tree is shut: no tile gets ready,
+## none can be opened. A game without the story (no "intro_stage") is not held back.
+func tree_locked() -> bool:
+	# (fixed after Luz's report: only while the intro really runs. A game put past it another way, the debug menu
+	# for one, has no licence flag and would have kept the tree shut for good)
+	return story != null and story.flags.has("intro_stage") and not bool(story.flags.get("cit_licence", false)) and not bool(story.flags.get("intro_done", false))
+
+
+## … and what you did in the intro does not count: with the licence every counter the tree reads starts at nothing.
+func tree_start_over() -> void:
+	pilot["tree"] = []
+	for m in TreeData.METRICS:
+		stats.erase(m)
+	for f in fleet:
+		f.mark_dirty()
+	skills_changed.emit()
+
+
 func tile_ready(id: String) -> bool:
-	if tile_open(id):
+	if tile_open(id) or tree_locked():
 		return false
 	var t: Dictionary = TreeData.TILES[id]
 	for p in t["pre"]:
@@ -430,6 +448,8 @@ func tree_unlock(id: String) -> String:
 		return "Unknown tile."
 	if tile_open(id):
 		return "%s is already open." % TreeData.TILES[id]["name"]
+	if tree_locked():
+		return "The skill tree opens with your pilot licence."
 	if not tile_ready(id):
 		return "%s: the achievements are not met yet." % TreeData.TILES[id]["name"]
 	pilot["tree"].append(id)
@@ -2178,12 +2198,20 @@ func check_permits() -> void:
 			log_msg("The %s has revoked your entry permit to %s." % [FactionData.name_of(f), Universe.systems[sid]["name"]], COL_BAD)
 
 
+## Package 64b (Luz): Fern lets nobody in who is not vouched for. Rook's call (pilot level 5) brings the permit. A
+## game without the story (no "intro_stage") is not held back.
+func fern_closed() -> bool:
+	return story != null and story.flags.has("intro_stage") and not bool(story.flags.get("fern_called", false))
+
+
 func has_permit(f: String) -> bool:
 	return permits.has(f)
 
 
 ## Why the pilot may not enter system `sid` ("" = may). Only the capitals with a special system are closed.
 func entry_error(sid: int) -> String:
+	if fern_closed() and sid == Universe.special_system("fern"):
+		return "Fern is closed to you: you hold no entry permit. Somebody there has to vouch for you."
 	var f := Universe.special_faction(sid)
 	if f == "" or has_permit(f):
 		return ""

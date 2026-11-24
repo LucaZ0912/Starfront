@@ -3,6 +3,225 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.64.11 – 2026-11-24
+
+**After Luz's second look at package 64: the way with Rook, talks in the bar, a window for the work, music.**
+- **The stairs were skipped:** the press that opened the door still counted as the press that skips them. They can
+  be skipped only after a moment now.
+- **You follow Rook by yourself** on the first way to the bar: across the plaza, through the gate, down the alley,
+  up to the counter. No walking of your own until Luz is met. **Rook stops three times on each part of the way,
+  turns to you and speaks, standing.** Each line also stands as a line of text on the picture, so that it can be
+  read whatever hangs across the street.
+- **Night and rain only the first time in Centauria:** from Rook's call until Luz is met, and on until you leave the
+  city that first time. After that the city has its own time of day and weather (the party is still at night).
+- **After the party everyone of the round can be spoken to,** each with a short talk first:
+  - **Ratte:** what is going on (gossip of the Back Alleys, one of nine by lot), or work.
+  - **Kraut:** what is going on: the book Kraut reads, on paper, from Earth, about the Peasants' War of 11524 to
+    11525 as the Cluster counts the years; asked again, **a fact about that war each time** (fourteen, one after
+    the other); or work.
+  - **Luz:** **a beer for twelve credits**; what Luz does besides: old Earth bands, obscure punk, and the record
+    from Earth Luz once held; asked again, more about the music.
+  - **Rook:** how things are, and the Colosseum.
+- **A window of its own for the work of Ratte and Kraut:** who offers it (portrait, how well you know each other),
+  each job a card with its kind in colour, its system, what it asks and its pay; the job in hand with how it
+  stands, to be let go or paid out. Number keys, Esc and a controller work as in every menu on foot.
+- **Ratte and Kraut are in the acquaintance window,** from the party on. **Every job done for them makes you
+  better friends** (four points); Kraut also for hearing about the book.
+- **Music, made on the spot (no files):** in the Static Feedback **three punk songs by night**, when the band plays
+  (each twice, then the next), **a quiet tune by day**; **a track for Survivor**. They are made in the background
+  the first time they are wanted. The jukebox, once switched on, goes before them.
+- **Open:** not played by hand. **I cannot hear the music:** it is checked only for length, level and that it is
+  not silent; whether it sounds good is for Luz's ears. The five tracks lie as WAV files in
+  `Claude outputs/musik/`. Kraut speaks a good deal more about the book than "says little" allowed until now.
+- Smoke tests: `fern64b` (the walk), `round64d` (the talks, the window, the friendship), `music64`, `room64e`.
+
+## alpha 0.8.64.10 – 2026-11-24
+
+**Balance after Luz's first go at the mission ("no chance, even well equipped"): the convoys are far weaker.**
+- **Luz's test and the round's information jobs:** the big ship keeps **two guns, none larger than size 2** (it had
+  four, up to size 4), each of the two small ones **one gun of size 1** (they had three). **No convoy ship flies
+  drones** any more (the Assembly's ships launched theirs).
+- **They drop out of warp 4,500 km from you** (it was 2,600): beyond their guns' reach, so the first move is yours.
+- **The download takes 45 seconds** (it was 60).
+- **Raids** by the size of your ship: a small ship meets a medium one with two guns and one escort with one; a
+  medium ship the big one with three guns of size 2 at most; a large ship the big one with five guns up to size 3
+  and escorts with two.
+- **Open:** these are new guesses, not played. Hulls, shields and speed of the convoy ships are unchanged.
+- Smoke test: `luz64c` checks the guns, the distance and the time; `round64d` runs with it.
+
+## alpha 0.8.64.9 – 2026-11-24
+
+**A fix after Luz's report: weapons missing from the fire group settings.**
+- **Why they were missing:** a module whose tile of the skill tree is not open is fitted but offline, and the fire
+  group settings simply left it out, without a word. That it does not work is as it should be; **the reason is
+  shown now,** in a red box at the top of the list: which modules are offline, in which slot, and which tile each
+  needs.
+- **The skill tree could stay shut for good** (since 0.8.64.1) in a game that was put past the intro another way
+  than by the licence scene, the debug menu's story buttons for one: such a game has no licence flag. The tree is
+  shut only while the intro really runs now, and the debug buttons of Rook's introduction hand you the licence.
+- Smoke test: `tree64a` checks it; `tree`, `firegroups79` and `w59c` run with it.
+
+## alpha 0.8.64.8 – 2026-11-24
+
+**Package 64g (Luz): the round at the bar's games. Package 64 is whole with it.**
+- **Once you are of the round,** its people sit at the Static Feedback's games as special opponents, each with a
+  word of their own: **Luz** (five stars: very strong) and **Ratte** (three) at the pool table, **Rook** (three) and
+  **Kraut** (five: very strong) at the dart board. Beat one and they go into the collection, as Ossa and Dan do.
+- **Luz holds the high score** at the bar's cabinet: 12,750, above every regular, until you beat it.
+- **Open:** not played by hand. How strong five stars are at the table and the board is what the games made of it
+  before; nothing new was tuned.
+- Smoke test: the group `games64g`; the groups of the bar games (`minigames54b`, `darts54b`, `w58h`) and `acq60`
+  run with it.
+
+## alpha 0.8.64.7 – 2026-11-24
+
+**Package 64f (Luz): Rook and the Colosseum.**
+- **The morning after your first night in the room above the bar** Rook is on the radio: come to the Colosseum,
+  Line B from Centauria Central. The journal: "Something You Have to See".
+- **Rook waits on the plaza before the Colosseum,** at the top of the stairs from the station, a mark over the head
+  (and is not in the bar meanwhile). Rook says what the place is: the house's gear, King of the Colosseum, Team
+  Deathmatch, Survivor, Coins and the rank that stays (two answers, each with what your pilot says).
+- **From then on Rook can be picked as a team mate** in Team Deathmatch. Before that Rook is not in the list (until
+  now Rook stood in it from the start). A game without the story is not held back.
+- Afterwards Rook is back in the Static Feedback.
+- **Debug menu** (Story, "The round"): "Rook's invitation" (Rook waits; on the ground in Centauria it puts you on
+  the Colosseum's plaza), "Rook met at the Colosseum".
+- **Open:** not played by hand.
+- Smoke test: the group `rook64f`; `colteam62a` and `colorder62a` run with it.
+
+## alpha 0.8.64.6 – 2026-11-24
+
+**Package 64e (Luz): the room above the Static Feedback.**
+- **A room of your own above the bar,** bare and worn like a student's flat: a mattress on the floor with a crate
+  beside it, a worn sofa facing the window, a low table, a heater, a fridge, crates, a locker, a plant, what lies
+  about on the floor (bottles, a flat box, a magazine). Old plaster with the brick showing through, a pipe, three
+  bills of the band, a string of small lamps.
+- **A wide window on the street before the bar,** and the street moves: the fronts opposite with their lit windows
+  and blades of neon, a screen that changes, people under umbrellas, the rain on the glass, a craft with a
+  searchlight now and then. **Use the window** and the camera goes to the street; use it again or lie down and it
+  comes back.
+- **Luz shows it to you** right after the party: the picture goes dark, you stand in the room with Luz, a few
+  words (two answers, each with what your pilot says), and the room is yours.
+- **The door marked PRIVATE in the bar** leads up from then on (it stays shut before). Between the bar and the room
+  lies **a stairwell the game walks you through**, up and down, about three seconds; Use or Esc is there at once.
+- **The stairs drawn anew** (Luz: they did not look like stairs): a flight seen from its foot, rising away from
+  you: every step a lit tread over the dark face of its riser, the steps shorter and narrower towards the top, a
+  stringer and a handrail either side, the walls closing in, a doorway with the room's light at its head.
+- **The mattress: sleep.** A night passes as in a room of the quarters (new contracts, new faces, the planets
+  elsewhere). **The locker:** your gear.
+- **The camera stands near** in the room and on the stairs (a small place fills the picture).
+- **Debug menu** (Story, "The round"): "The room above the bar" (it is yours and you stand in it).
+- **Open:** not played by hand. The mattress still wears the tidy blanket of the quarters' beds.
+- Smoke test: the group `room64e`; `round64d` knows that Luz takes you up after the party.
+
+## alpha 0.8.64.5 – 2026-11-24
+
+**Package 64d (Luz): the party, the round, and the round's work.**
+- **The party.** After your report Luz pays, the picture goes dark, and the Static Feedback is full: the band plays
+  (it is night), guests dance, Rook, Ratte and Kraut stand at the counter with you and say their piece over their
+  heads. Luz calls for quiet and **takes you into the round: Luz, Ratte, Kraut, Rook** (one answer of yours, with
+  what your pilot says). If the party is cut short, speaking to Luz brings it.
+- **Rook stays in the bar** from the day you met Luz, and has a word for you.
+- **Ratte and Kraut hand out work**, one job at a time, at their table (a window with what they offer, new every
+  twenty minutes; the journal: "Work for the Round"):
+  - **Information (Ratte):** as Luz's test: a rendezvous, a count of five, a convoy without markings, a download
+    within 8,000 km of the big ship, away. The pay waits at Ratte's table.
+  - **A delivery (Ratte):** a sealed crate lies at a drop point in space. Hold still there for three seconds, it
+    is aboard; dock with it at the station named. **Paid on docking.**
+  - **A raid (Kraut):** the convoy flies its flag. Its biggest ship has to go; a canister tumbles out of the wreck
+    and has to be picked up (fly within 800 km). The pay waits at Kraut's table. **Your standing with that power
+    suffers**, as for any attack on its ships. The convoy is sized by your ship: a small ship meets a medium one
+    with one escort, a medium ship the big one with half its guns, a large ship all of it.
+- The systems are the plain neighbours of Fern. Information pays 14,000 to 18,000 cr, a delivery 9,000 to
+  12,200 cr, a raid 24,000 to 32,000 cr. Every job done counts as a contract for the skill tree.
+- A job can be **let go** at the table of who gave it. A mark stands over whoever owes you pay.
+- **Fixed on the way:** the story hooked itself to talks on the ground only once a second, so a word spoken right
+  after you came in could go unheard. It listens at once now.
+- **Debug menu** (Story): "The party", "Of the round"; a job in hand: "Information", "A raid", "A delivery", "To
+  its point", "Done in the field", "Let it go". The debug buttons of Rook's introduction now also work in a game
+  whose intro is not over.
+- **Not in it** (said outright): a delivery is not scanned by patrols on the way, and the crate takes no room in
+  the hold; what a raid drops is no cargo either. The room above the bar, Rook's invitation to the Colosseum and
+  the bar games follow with 64e to 64g.
+- **Open:** not played by hand; pay and how hard the convoys are are guesses.
+- Smoke test: the group `round64d`; `fern64b` and `luz64c` know that Rook stays in the bar.
+
+## alpha 0.8.64.4 – 2026-11-24
+
+**Package 64c (Luz): Luz's test, the first of the new missions: gathering information.**
+- **Speak to Luz again** (a mark over the head): Luz hands out the job. An intelligence convoy of the power you
+  were NOT registered with (the Covenant if you began with the Assembly, and the other way round) flies through a
+  system one jump from Fern. Luz names the system and marks a **rendezvous** there (a waypoint to warp to). The
+  journal: "A Small, Ugly Job".
+- **On the spot a count of five runs down.** At nothing the convoy drops out of warp beside you: **one big ship and
+  two small ones**, without markings, hostile. The big one has left half its guns at home; the small ones are
+  patrol ships as they come.
+- **You need not beat them.** A box in your hold reads the big ship's computer while you stay **within 8,000 km** of
+  it: a minute. Beyond that the download stalls. A display over the module bar shows the count, the download and
+  what to do.
+- **Then get away:** warp out, or put 30,000 km between you and them. The convoy and the waypoint are gone, Luz
+  calls you home.
+- **Shot down, docked or out of the system before the download is done:** the meeting is blown. The convoy flies
+  that route again whenever you come back to the rendezvous; you need not ask Luz anew.
+- **Nobody's standing suffers:** the ships fly without a flag.
+- **Back in the bar** Luz hears your report and pays your share (15,000 cr). The party and what follows come with
+  64d; until then Luz asks for a day.
+- **Debug menu** (Story, "Luz's test"): "Luz has the job", "Job given", "To the rendezvous" (sets your ship on the
+  spot in space from wherever it is), "Data taken", "Reported". "Back to before the call" wipes the test as well.
+- **Open:** not played by hand; how hard the three are is a guess. If the big ship is destroyed before the download
+  is done, the download counts as done at once. The small ships are not weakened.
+- Smoke test: the group `luz64c`; `fern64b` knows that Luz hands out the job when spoken to again.
+
+## alpha 0.8.64.3 – 2026-11-24
+
+**Package 64b, after Luz's first look: night and rain, and buttons to test it.**
+- **While Rook takes you to Luz it is always night in Centauria, and it rains.** From Rook's call until Luz is met,
+  and on until you leave the city, so that the light does not jump while you stand in the bar. The band plays, as
+  on every night. The debug menu's own weather still goes before it.
+- **Debug menu** (Story, "Rook's introduction"): "Land in Centauria" (works from anywhere: it makes Rook's call,
+  flies to Fern and lands), "Top of the stairs" (Rook waits), "The alley" (Rook ahead of you), "The bar, before
+  Luz", "Luz met". The last four need you on the ground in Centauria. In a game without the story they start the
+  open game as it is after the intro.
+- **Luz looks different** (Luz): slim, a sidecut, a scar across the right eye, eyeliner; the neon pink lips stay.
+- Smoke test: the group `fern64b` lands through the new button and checks the night, the rain and every point.
+
+## alpha 0.8.64.2 – 2026-11-24
+
+**Package 64b (Luz): Rook takes you to Luz.**
+- **Fern is closed** until somebody there vouches for you: the gate refuses the jump ("you hold no entry permit").
+  **Rook's call at pilot level 5** brings the permit, and Rook asks you to come to Centauria. A game without the
+  story is not held back.
+- **After the landing in Centauria Rook is on the radio:** take Line A from Centauria Central, get off at the
+  Commercial District.
+- **Rook waits at the top of the stairs** from the station, a mark over the head, and greets you as you come up
+  (two answers, each with what your pilot says).
+- **Rook goes ahead:** across the plaza to the gate of the Back Alleys, down the alley to the door of the Static
+  Feedback, and says on the way what this place is (lines over Rook's head, and in the log). **Rook waits when you
+  fall behind** and looks round for you. On every new part of the way Rook is ahead of you again.
+- **At the counter Rook introduces you to Luz.** Luz owns the bar and brings people together; that is the trade.
+  Luz wants to see you fly before handing you on, and has a job for that (the job itself comes with 64c; until
+  then Luz says it is still being set up).
+- The journal's task "A Place Called Fern" has two goals at its last step now: meet Rook, follow to Luz.
+- **Debug menu** (Story): "Fern: Rook's call now", "Back to before the call".
+- **Open:** not played by hand. Rook's lines on the way are short; on the plaza the gate is near, so only one or two
+  of the three are said before Rook stands at it.
+- Smoke test: the group `fern64b`; `fern61` knows that Rook is part of it now.
+
+## alpha 0.8.64.1 – 2026-11-24
+
+**Package 64a (Luz): the skill tree in the intro.**
+- **The fault:** with the pilot licence the skill tree went back to its trunk, but everything could be opened again
+  at once, because what you had done in the intro still counted.
+- **Through the whole intro, up to the pilot licence, the skill tree is shut.** No tile gets ready, none can be
+  opened. Its page in the Pilot window says "No pilot licence" and why. What the story itself opens for you (Dan's
+  mining, the Maul) stays as it was.
+- **Nothing of the intro counts.** With the licence every counter the tree reads (warps, jumps, ore, kills,
+  contracts and the rest) starts at nothing and counts from there. Your pilot level stays.
+- **A new line in the scene of the licence,** said by the official after the stamp: "One thing more. From now on you
+  earn your licences yourself: through what you do and what you achieve. You will find them in your skill tree."
+- A game without the story is not held back.
+- Smoke test: the group `tree64a`; `tree` and `w59c` run with it.
+
 ## alpha 0.8.63.1 – 2026-11-24
 
 **Package 63 (Luz): new ships. Four of them.**

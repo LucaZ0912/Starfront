@@ -143,7 +143,10 @@ static func light_vec(body: Dictionary = {}, dt: float = 0.0) -> Vector3:
 
 
 ## How much daylight a site has (0 night … 1 day): where it lies on the planet's face and where the sun stands now.
+static var story_night := ""         # package 64b (Luz): a city (by its name) the story holds in the night
 static func daylight(site: Dictionary, body: Dictionary = {}, dt: float = 0.0) -> float:
+	if story_night != "" and String(site.get("name", "")) == story_night:
+		return 0.0
 	var lon := float(site.get("lon", 0.0))
 	var lat := float(site.get("lat", 0.0))
 	var n := Vector3(sin(lon) * cos(lat), -sin(lat), cos(lon) * cos(lat))

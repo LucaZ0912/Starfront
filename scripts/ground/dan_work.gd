@@ -217,7 +217,13 @@ func _process(_delta: float) -> void:
 	if phase in ["bar59", "imre"]:
 		_p59_step()                                        # package 59: the closed bar, Imre, the Threshold outside
 	if phase == "free":
+		var g0 = main.ground if main != null else null
+		if g0 != null and is_instance_valid(g0) and not g0.story_talk.is_connected(_on_talk):
+			g0.story_talk.connect(_on_talk)                # (64d: at once, on every new ground: a word spoken in the first second is heard)
 		_fern_step()                                       # package 61: Rook's call, the way to Fern, Luz
+		_fern_lead(get_process_delta_time())               # package 64b: Rook takes you there
+		_luz_job_step(get_process_delta_time())            # package 64c: Luz's test
+		_rj_step(get_process_delta_time())                 # package 64d: the round's jobs
 	var sp = station_ui()
 	if sp == null:
 		return
@@ -475,10 +481,44 @@ func ground_mode(st: Dictionary) -> Dictionary:
 		# booth in its darkest corner. (Rook's call puts the mark over Luz.)
 		var CG = load("res://scripts/ground/centauria_gen.gd")
 		var luz := {"who": "luz", "pos": CG.BAR_SPOTS["luz"], "dir": 0, "talk": true}
-		if bool(flags().get("fern_called", false)) and not bool(flags().get("fern_luz", false)):
+		var lead: bool = bool(flags().get("fern_called", false)) and not bool(flags().get("fern_luz", false))
+		if lead or luz_marked():
 			luz["marker"] = "!"
-		return {"levels": {"zbar": {"people": [luz, {"who": "ratte", "pos": CG.BAR_SPOTS["ratte"], "dir": 0, "talk": true},
-			{"who": "kraut", "pos": CG.BAR_SPOTS["kraut"], "dir": 2, "talk": true}]}}}
+		var lvc := {"zbar": {"people": [luz, {"who": "ratte", "pos": CG.BAR_SPOTS["ratte"], "dir": 0, "talk": true},
+			{"who": "kraut", "pos": CG.BAR_SPOTS["kraut"], "dir": 2, "talk": true}]}}
+		if _room64:
+			# package 64e (Luz): Luz shows you the room above the bar
+			return {"levels": {"zroom": {"people": [{"who": "luz", "meta": "from_bar", "off": Vector2(-3.0, 1.2), "dir": 3}]}}}
+		if _party64:
+			# package 64d (Luz): the party: the round at the counter with you, guests dancing before the band
+			var bar_c: Vector2 = (CG.BAR_SPOTS["luz"] as Vector2) + Vector2(0.0, 2.4)
+			var pp: Array = [luz, {"who": "rook", "near": bar_c + Vector2(2.2, 0.0), "spread": 0.5, "dir": 3},
+				{"who": "ratte", "near": bar_c + Vector2(-2.4, 0.2), "spread": 0.5, "dir": 1}, {"who": "kraut", "near": bar_c + Vector2(-1.0, 1.6), "spread": 0.5, "dir": 0}]
+			var rngp := RandomNumberGenerator.new()
+			rngp.seed = 64004
+			for k in 7:
+				pp.append({"who": "guest_%d" % k, "look": ChibiArt.PilotArt.random_look(rngp), "near": Vector2(8.0, 12.5), "spread": 3.5, "seed": 30 + k, "dir": rngp.randi() % 4, "dance": true})
+			luz.erase("marker")
+			return {"levels": {"zbar": {"people": pp, "spawn": bar_c}}}
+		if rook_waits():
+			# package 64f (Luz): the morning after: Rook waits on the plaza before the Colosseum, not in the bar
+			lvc["zcol"] = {"people": [{"who": "rook", "meta": "from_station", "off": Vector2(2.6, -1.0), "dir": 0, "marker": "!"}]}
+		elif bool(flags().get("fern_luz", false)):
+			# (64d) Rook is one of the bar's own from the day you met Luz
+			(lvc["zbar"]["people"] as Array).append({"who": "rook", "near": (CG.BAR_SPOTS["luz"] as Vector2) + Vector2(2.2, 2.4), "spread": 0.6, "dir": 3, "talk": true})
+		for rp in lvc["zbar"]["people"]:
+			if String(rp["who"]) in ["ratte", "kraut"] and rj_marked(String(rp["who"])):
+				rp["marker"] = "!"
+		if lead:
+			# package 64b (Luz): Rook waits at the way up from the station, then goes ahead: across the plaza to the
+			# gate, down the alley to the bar's door, and stands at the counter beside Luz
+			if not bool(flags().get("fern_rook", false)):
+				lvc["zplaza"] = {"people": [{"who": "rook", "meta": "from_station", "off": FERN_WAIT, "dir": 0, "marker": "!"}]}
+			else:
+				lvc["zplaza"] = {"people": [{"who": "rook", "meta": "from_alleys", "off": Vector2(1.6, -0.6), "dir": 0}]}
+				lvc["zalley"] = {"people": [{"who": "rook", "meta": "from_plaza", "off": Vector2(1.6, 0.6), "dir": 0}]}
+			(lvc["zbar"]["people"] as Array).append({"who": "rook", "near": (CG.BAR_SPOTS["luz"] as Vector2) + Vector2(2.2, 2.4), "spread": 0.6, "dir": 3})
+		return {"levels": lvc}
 	if phase == "contact" and sid == String(_waystation().get("id", "-")):
 		return {"levels": {"commercial": {"people": [{"who": "silas", "near_obj": "jukebox", "off": Vector2(2.5, 6.6), "spread": 1.0, "dir": 0, "marker": "!"}]}}}
 	if phase == "maul" and bool(st.get("city", false)) and String(st.get("body", "")) == _brine_id():
@@ -1305,6 +1345,12 @@ func _on_talk(who: String) -> void:
 		"rook":
 			if phase == "sim":
 				GameState.story.show.emit("dialogue", {"id": "rook_sim", "mission": FIGHT})
+			elif phase == "free" and rook_waits() and not _fern_busy:
+				_rook_col_talk()                              # package 64f: before the Colosseum
+			elif phase == "free" and bool(flags().get("luz_round", false)) and not _fern_busy:
+				_hub_talk("rook")                             # (Luz) after the party: a talk
+			elif phase == "free" and bool(flags().get("fern_luz", false)) and not _fern_busy:
+				GameState.story.show.emit("dialogue", {"id": "rook_bar", "mission": LUZ})       # (64d: one of the bar's own)
 		"imre":
 			if phase == "imre":
 				GameState.story.show.emit("dialogue", {"id": "imre_talk", "mission": P59})
@@ -1313,10 +1359,16 @@ func _on_talk(who: String) -> void:
 				_luz_talk()
 		"ratte":
 			if phase == "free":
-				GameState.story.show.emit("dialogue", {"id": "ratte_talk", "mission": FERN})
+				if bool(flags().get("luz_round", false)):
+					_hub_talk("ratte")                    # (Luz) a short talk first, then the work
+				else:
+					GameState.story.show.emit("dialogue", {"id": "ratte_talk", "mission": FERN})
 		"kraut":
 			if phase == "free":
-				GameState.story.show.emit("dialogue", {"id": "kraut_talk", "mission": FERN})
+				if bool(flags().get("luz_round", false)):
+					_hub_talk("kraut")
+				else:
+					GameState.story.show.emit("dialogue", {"id": "kraut_talk", "mission": FERN})
 	if who == "dan" and phase == "bar59" and not _meet_on:
 		_p59_meet()
 	elif who == "dan" and phase == "imre":
@@ -3483,6 +3535,9 @@ func _fern_step() -> void:
 	var fl: Dictionary = st.flags
 	if not bool(fl.get("intro_done", false)):
 		return
+	_fern_weather()
+	_bar_flag()                                            # package 64g: where the bar's games are
+	_rook_col_step()                                       # package 64f: the morning after
 	if not bool(fl.get("fern_called", false)):
 		if GameState.pilot_level() >= FERN_LEVEL and main.story_ui.dialogue == null and Universe.special_system("fern") >= 0:
 			_fern_call()
@@ -3509,28 +3564,1161 @@ func _fern_call() -> void:
 	st.tracked = FERN
 	for ln in ["Remember me? I said I'd call when I found something worth both our time.",
 			"There's a place out in the Rim. Fern. A city called Centauria. More work than a pilot like you can handle, and more ways to lose the money again than you can count.",
-			"I'm sending you a contact. Luz. Runs a bar down there, knows everyone, owes me a favour. Go and say hello."]:
+			"They let nobody in who isn't vouched for. I vouched for you. Your entry permit is on its way.",
+			"Come out here and meet me in Centauria. There's someone you have to meet."]:
 		st.show.emit("radio", {"who": "rook", "text": ln, "mission": FERN})
-	GameState.log_msg("Fern lies in the Rim: find it on the galaxy map. Journal: \"A Place Called Fern\".", GameState.COL_GOOD)
+	GameState.log_msg("Entry permit for Fern granted. Fern lies in the Rim: find it on the galaxy map. Journal: \"A Place Called Fern\".", GameState.COL_GOOD)
 
 
 func _luz_talk() -> void:
 	var st = GameState.story
-	if bool(flags().get("fern_luz", false)) or not bool(flags().get("fern_called", false)):
-		st.show.emit("dialogue", {"id": "luz_again", "mission": FERN})        # (met already, or you found the bar on your own)
+	if _fern_busy:
 		return
-	st.show.emit("dialogue", {"id": "luz_meet", "mission": FERN})
+	if bool(flags().get("fern_luz", false)):
+		# package 64c: the test: handed out, under way, reported
+		if not bool(flags().get("luz_job", false)):
+			_luz_brief()
+		elif bool(flags().get("luz_away", false)) and not bool(flags().get("luz_done", false)):
+			_luz_report()
+		elif not bool(flags().get("luz_done", false)):
+			st.show.emit("dialogue", {"id": "luz_wait", "mission": LUZ})
+		elif not bool(flags().get("luz_round", false)):
+			_luz_party()                                  # (64d: the party was cut short: here it is)
+		else:
+			_hub_talk("luz")                              # (Luz) after the party: a beer, a talk
+		return
+	if not bool(flags().get("fern_called", false)):
+		st.show.emit("dialogue", {"id": "luz_again", "mission": FERN})        # (you found the bar on your own)
+		return
+	_fern_busy = true
+	st.show.emit("dialogue", {"id": "luz_meet", "mission": FERN})           # (package 64b: Rook introduces you)
 	await get_tree().process_frame
 	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
 		await get_tree().process_frame
 	st.set_flag("fern_landed", true)
+	st.set_flag("fern_rook", true)
 	st.set_flag("fern_luz", true)
+	_fern_busy = false
 	var g = main.ground
 	if g != null and is_instance_valid(g):
-		var w = g.story_people.get("luz", null)
+		g.input_enabled = true                            # (the way with Rook is over: you walk yourself again)
+		g.story_mode = ground_mode(g.station)
+		for key in ["luz", "rook"]:
+			var w = g.story_people.get(key, null)
+			if w != null and is_instance_valid(w):
+				w.marker = "!" if key == "luz" and luz_marked() else ""       # (64c: Luz has a job for you)
+				w.queue_redraw()
+
+
+# ── Package 64b (Luz): Rook takes you to Luz ─────────────────────────────────────────────────────────────────────
+# After the landing in Centauria Rook is on the radio: Line A, get off at the Commercial District. Rook waits where
+# the stairs come up from the station, greets you and goes ahead: across the plaza to the gate, down the alley to
+# the Static Feedback, saying on the way what this place is. Rook waits when you fall behind. In the bar Rook
+# introduces you to Luz.
+
+const FERN_WAIT := Vector2(2.6, -1.0)       # where Rook stands, from where you come up (tiles)
+const FERN_NEAR := 5.5                      # tiles: this near, Rook speaks to you (and Luz, in the bar)
+const FERN_BEHIND := 9.0                    # tiles: this far behind, Rook waits for you
+const FERN_SAY := {
+	"zplaza": ["Centauria belongs to no one. No Assembly, no Covenant. That's the whole point.",
+		"Up here: the casino, the shops, the arena. Everything that takes your money with a smile.",
+		"Through that gate: the Back Alleys. That's where the work is."],
+	"zalley": ["Down here nobody asks where you come from. Only what you can do.",
+		"See the pink sign? The Static Feedback. Best bad beer in the Rim.",
+		"Down the stairs. After you."],
+}
+var _fern_busy := false
+var _lead := {}
+
+
+func _fern_lead(delta: float) -> void:
+	var fl: Dictionary = flags()
+	if not bool(fl.get("fern_called", false)) or bool(fl.get("fern_luz", false)) or _fern_busy:
+		return
+	var g = main.ground
+	if g == null or not is_instance_valid(g) or String((g.station as Dictionary).get("name", "")) != "Centauria" or main.story_ui.dialogue != null:
+		return
+	var lvl := String(g.level)
+	if not bool(fl.get("fern_radio", false)):
+		if lvl == "hangar" and g.input_enabled:
+			GameState.story.set_flag("fern_radio", true)
+			for ln in ["You made it. Welcome to Centauria.",
+					"Take the lift down to Centauria Central and get on Line A. Get off at the Commercial District.",
+					"I'm at the top of the stairs. You can't miss me."]:
+				GameState.story.show.emit("radio", {"who": "rook", "text": ln, "mission": FERN})
+		return
+	var rook = g.story_people.get("rook", null)
+	if rook == null or not is_instance_valid(rook):
+		return
+	var T := float(GroundMap.TILE)
+	var far: float = (g.pilot.pos as Vector2).distance_to(rook.pos) / T
+	match lvl:
+		"zplaza":
+			if not bool(fl.get("fern_rook", false)):
+				if far < FERN_NEAR and g.input_enabled:
+					_fern_meet()
+			else:
+				_lead_walk(g, rook, "from_alleys", Vector2(1.6, -0.6), far, delta, "zalley", "from_plaza")
+		"zalley":
+			_lead_walk(g, rook, "from_bar", Vector2(1.4, 0.3), far, delta, "zbar", "from_street")
+		"zbar":
+			# (Luz) you walk up to the counter by yourself, where Rook stands
+			if far < 3.2:
+				g.pilot.moving = false
+				_luz_talk()
+			else:
+				g.input_enabled = false
+				_lead_follow(g, rook, delta, 2.4)
+
+
+# ── Package 64c (Luz): Luz's test, the first of the new missions: gathering information ──────────────────────────
+# Luz names a system (one jump from Fern) and marks a rendezvous in it. Once you are there a count of five runs
+# down; at nothing a convoy drops out of warp: one big ship and two small ones of the power you were NOT registered
+# with, without markings (so nobody's standing suffers), fitted so-so. You need not beat them: stay within 8,000 km
+# of the big one until the box in your hold has read its computer (a minute), then get away (warp out, or 30,000 km
+# between you and them) and report to Luz. Shot down, docked or out of the system before the download is done: the
+# meeting is blown, and the convoy flies that route again whenever you come back to the rendezvous.
+
+const LUZ := "luz_test"
+const LUZ_RV := "luz_rv"
+const LUZ_COUNT := 5.0             # seconds from your arrival to theirs
+const LUZ_NEAR := 6000.0           # km from the rendezvous: you are there
+const LUZ_RING := 8000.0           # km from the big ship: the download runs
+const LUZ_TIME := 45.0             # seconds of download (Luz, after a first go: 60 was too long under fire)
+const LUZ_SPAWN := 4500.0          # km from you the convoy drops out of warp (beyond its guns' reach: you get to move first)
+const LUZ_AWAY := 30000.0          # km from every one of them: you got away
+const LUZ_PAY := 15000
+const LUZ_SHIPS := {"covenant": ["patrol_for_heavy", "patrol_for_light", "patrol_for_light"],
+	"assembly": ["patrol_cfw_heavy", "patrol_cfw_light", "patrol_cfw_light"]}
+var _luz := {}                     # the meeting while it runs: {"count", "ships", "big", "data"}
+var _luz_hud: CanvasLayer = null
+
+
+## The power Luz's test goes against: the one you were not registered with.
+func luz_foe() -> String:
+	return "assembly" if String(flags().get("start_faction", "")) == "covenant" else "covenant"
+
+
+## Luz has something to say to you (a mark over the head): the job to hand out, or your report to hear.
+func luz_marked() -> bool:
+	var fl: Dictionary = flags()
+	if not bool(fl.get("fern_luz", false)) or bool(fl.get("luz_done", false)):
+		return false
+	return not bool(fl.get("luz_job", false)) or bool(fl.get("luz_away", false))
+
+
+## The system of the rendezvous: the first plain neighbour of Fern.
+func _luz_pick_sys() -> int:
+	var fern := Universe.special_system("fern")
+	for gt in Universe.get_layout(fern)["gates"]:
+		var to := int(gt["to"])
+		if Universe.special_faction(to) == "":
+			return to
+	return fern
+
+
+func luz_rv_pos(sid: int) -> Vector2:
+	return Vector2.from_angle(float(sid) * 1.7 + 0.6) * 1900000.0
+
+
+func _luz_brief() -> void:
+	_fern_busy = true
+	var st = GameState.story
+	if int(flags().get("luz_sys", -1)) < 0:
+		st.flags["luz_sys"] = _luz_pick_sys()
+	st.show.emit("dialogue", {"id": "luz_job", "mission": LUZ})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	_fern_busy = false
+	st.set_flag("luz_job", true)
+	if not st.running(LUZ) and not st.done.has(LUZ):
+		st.start(LUZ)
+	st.tracked = LUZ
+	var sid := int(flags().get("luz_sys", -1))
+	_luz_beacon(sid)
+	GameState.log_msg("Luz marked a rendezvous in %s. Journal: \"A Small, Ugly Job\"." % String(Universe.systems[sid]["name"]), GameState.COL_GOOD)
+	_luz_mark()
+
+
+func _luz_report() -> void:
+	_fern_busy = true
+	var st = GameState.story
+	st.show.emit("dialogue", {"id": "luz_job_done", "mission": LUZ})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	_fern_busy = false
+	st.set_flag("luz_done", true)
+	GameState.credits += LUZ_PAY
+	GameState.credits_changed.emit(GameState.credits)
+	GameState.log_msg("Luz pays your share: %s." % GameData.fmt_credits(LUZ_PAY), GameState.COL_GOOD)
+	_luz_mark()
+	_luz_party()
+
+
+## The mark over Luz, as it stands now (and for the levels built from here on).
+func _luz_mark() -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	g.story_mode = ground_mode(g.station)
+	var w = g.story_people.get("luz", null)
+	if w != null and is_instance_valid(w):
+		w.marker = "!" if luz_marked() else ""
+		w.queue_redraw()
+
+
+## The rendezvous as a waypoint of that system (the story's beacons are not saved: it is put back when missing).
+func _luz_beacon(sid: int) -> void:
+	if sid < 0:
+		return
+	var list: Array = Universe.story_beacons.get(sid, [])
+	if not list.any(func(b): return String(b["id"]) == LUZ_RV):
+		list.append({"id": LUZ_RV, "name": "Rendezvous", "pos": luz_rv_pos(sid), "kind": "story", "land": 3000.0})
+		Universe.story_beacons[sid] = list
+	var v = main.view if main != null else null
+	if v != null and is_instance_valid(v) and int(v.system_id) == sid and v.find_object(LUZ_RV) == null:
+		v._add_celestial("beacon", list.filter(func(b): return String(b["id"]) == LUZ_RV)[0])
+
+
+func _luz_beacon_off(sid: int) -> void:
+	var list: Array = (Universe.story_beacons.get(sid, []) as Array).filter(func(b): return String(b["id"]) != LUZ_RV)
+	if list.is_empty():
+		Universe.story_beacons.erase(sid)
+	else:
+		Universe.story_beacons[sid] = list
+	var v = main.view if main != null else null
+	if v != null and is_instance_valid(v) and int(v.system_id) == sid:
+		var ob = v.find_object(LUZ_RV)
+		if ob != null and is_instance_valid(ob) and ob is Node:
+			(ob as Node).queue_free()
+
+
+func _luz_job_step(delta: float) -> void:
+	var fl: Dictionary = flags()
+	if not bool(fl.get("luz_job", false)) or bool(fl.get("luz_away", false)):
+		if not _luz.is_empty():
+			_luz_clear()
+		return
+	var sid := int(fl.get("luz_sys", -1))
+	if sid < 0:
+		return
+	_luz_beacon(sid)
+	var v = main.view
+	var pl = v.player if v != null and is_instance_valid(v) and int(v.system_id) == sid and GameState.current_system == sid else null
+	if pl == null or not is_instance_valid(pl) or pl.dying or pl.is_docked():
+		if bool(fl.get("luz_data", false)):
+			_luz_got_away()                              # (the data is yours, and you are gone)
+		elif not _luz.is_empty():
+			_luz_fail()
+		return
+	if _luz.is_empty():
+		if bool(fl.get("luz_data", false)):
+			_luz_got_away()                              # (a game loaded after the download)
+		elif not pl.in_warp() and (pl.position as Vector2).distance_to(luz_rv_pos(sid)) < LUZ_NEAR:
+			if not bool(fl.get("luz_rv", false)):
+				GameState.story.set_flag("luz_rv", true)
+			_luz = {"count": LUZ_COUNT, "ships": [], "big": null, "data": 0.0}
+			GameState.story.show.emit("radio", {"who": "luz", "text": "You're on the spot. They come out of warp any second now. Hold on.", "mission": LUZ})
+		return
+	if float(_luz["count"]) > 0.0:
+		_luz["count"] = float(_luz["count"]) - delta
+		_luz_show("CONTACT IN %d" % int(ceilf(maxf(float(_luz["count"]), 0.0))), -1.0, "A convoy is about to drop out of warp.")
+		if float(_luz["count"]) <= 0.0:
+			_luz_spawn(v, pl)
+		return
+	var big = _luz["big"]
+	var big_ok: bool = big != null and is_instance_valid(big) and not big.dying
+	var alive: Array = (_luz["ships"] as Array).filter(func(s): return s != null and is_instance_valid(s) and not s.dying)
+	if not bool(fl.get("luz_data", false)):
+		var near: bool = not big_ok or (pl.position as Vector2).distance_to(big.position) < LUZ_RING
+		if not big_ok:
+			_luz["data"] = 1.0                           # (the big one is gone: her computer lies open)
+		elif near:
+			_luz["data"] = minf(1.0, float(_luz["data"]) + delta / LUZ_TIME)
+		_luz_show("DOWNLOADING %d %%" % int(float(_luz["data"]) * 100.0), float(_luz["data"]),
+			("Stay within %s of the %s." % [SystemView.fmt_dist(LUZ_RING), big.fit.ship_name]) if near and big_ok else "OUT OF RANGE: get back within %s." % SystemView.fmt_dist(LUZ_RING))
+		if float(_luz["data"]) >= 1.0:
+			GameState.story.set_flag("luz_data", true)
+			Audio.play("ui_open", "luz: the download is done")
+			GameState.story.show.emit("radio", {"who": "luz", "text": "I have it. All of it. Now get out of there: warp, anywhere.", "mission": LUZ})
+		return
+	_luz_show("DATA SECURED", 1.0, "Get away: warp out, or put %s between you and them." % SystemView.fmt_dist(LUZ_AWAY))
+	if pl.in_warp() or alive.all(func(s): return (s.position as Vector2).distance_to(pl.position) > LUZ_AWAY):
+		_luz_got_away()
+
+
+## (Luz, after a first go: "no chance, even well equipped".) A convoy ship keeps only `keep` of its guns, none larger
+## than `max_size`, and flies without drones: so-so fitted, as it was meant.
+func _convoy_weaken(s: Ship, keep: int, max_size: int) -> void:
+	var slots: Array = s.fit.modules.keys().filter(func(k): return String(k).begins_with("weapon_"))
+	slots.sort()
+	var n := 0
+	for k in slots:
+		var m: Dictionary = GameData.modules.get(String(s.fit.modules[k]), {})
+		if n >= keep or m.is_empty():
+			s.fit.modules.erase(k)
+			continue
+		var small := "%s:%d:C" % [String(m.get("family", "")), mini(int(m.get("size", 1)), max_size)]
+		if GameData.modules.has(small):
+			s.fit.modules[k] = small
+		n += 1
+	s.fit.drones.clear()
+	s.fit.mark_dirty()
+	s.fit.refill()
+
+
+## The convoy drops out of warp some way off: one big ship (two small guns left), two small ones (one each); no markings.
+func _luz_spawn(v, pl) -> void:
+	var presets: Array = LUZ_SHIPS[luz_foe()]
+	var dir := Vector2.from_angle(randf() * TAU)
+	var ships: Array = []
+	for i in presets.size():
+		var at: Vector2 = (pl.position as Vector2) + dir * LUZ_SPAWN + dir.orthogonal() * (float(i) - 1.0) * 650.0 + dir * (300.0 if i > 0 else 0.0)
+		var s: Ship = v.spawn_npc(String(presets[i]), at, "patrol", "")
+		s.fit.ship_name = "Unmarked " + String(GameData.hulls[s.fit.hull_id]["name"])
+		_convoy_weaken(s, 2 if i == 0 else 1, 2 if i == 0 else 1)
+		s.provoked = true
+		s.heading = (-dir).angle()
+		s.set_meta("luz_convoy", true)
+		v.spawn_fx(Fx.warp_flash(at, s.radius * 3.0))
+		ships.append(s)
+	_luz["ships"] = ships
+	_luz["big"] = ships[0]
+	Audio.play("warn", "luz: the convoy")
+	GameState.log_msg("Three ships without markings drop out of warp. They open fire.", GameState.COL_BAD)
+
+
+func _luz_clear() -> void:
+	for s in _luz.get("ships", []):
+		if s != null and is_instance_valid(s) and not s.dying:
+			s.queue_free()
+	_luz = {}
+	if _luz_hud != null and is_instance_valid(_luz_hud):
+		_luz_hud.queue_free()
+	_luz_hud = null
+
+
+## The meeting is blown (shot down, docked, out of the system): the convoy flies that route again.
+func _luz_fail() -> void:
+	_luz_clear()
+	GameState.log_msg("The meeting is blown. The convoy flies that route again: go back to the rendezvous when you are ready.", GameState.COL_WARN)
+
+
+func _luz_got_away() -> void:
+	_luz_clear()
+	GameState.story.set_flag("luz_away", true)
+	_luz_beacon_off(int(flags().get("luz_sys", -1)))
+	GameState.story.show.emit("radio", {"who": "luz", "text": "Clean enough. Come home. The first round is mine.", "mission": LUZ})
+	GameState.log_msg("You got away with the data. Luz waits in the Static Feedback.", GameState.COL_GOOD)
+
+
+## The count and the download over the picture: a title, a bar (frac < 0: none), a line under it.
+func _luz_show(title: String, frac: float, sub: String) -> void:
+	if _luz_hud == null or not is_instance_valid(_luz_hud):
+		_luz_hud = CanvasLayer.new()
+		_luz_hud.layer = 20
+		main.add_child(_luz_hud)
+		var cc := CenterContainer.new()
+		cc.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)      # (over the module bar: the radio's window has the top)
+		cc.offset_top = -250.0
+		cc.offset_bottom = -130.0
+		cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_luz_hud.add_child(cc)
+		var p := UI.neon_panel(Color(1.0, 0.36, 0.66, 0.9), Color(0.03, 0.04, 0.07, 0.9), 2)
+		p.custom_minimum_size = Vector2(460, 0)
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cc.add_child(p)
+		var vb := UI.vbox(6)
+		p.add_child(vb)
+		var t := UI.label("", 24, Color(1.0, 0.86, 0.5))
+		t.name = "T"
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(t)
+		var bar := ProgressBar.new()
+		bar.name = "B"
+		bar.show_percentage = false
+		bar.max_value = 1.0
+		bar.custom_minimum_size = Vector2(430, 12)
+		vb.add_child(bar)
+		var s2 := UI.label("", 13, Color(0.85, 0.88, 0.95))
+		s2.name = "S"
+		s2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(s2)
+		_luz_hud.set_meta("box", vb)
+	var box: VBoxContainer = _luz_hud.get_meta("box")
+	(box.get_node("T") as Label).text = title
+	(box.get_node("B") as ProgressBar).visible = frac >= 0.0
+	(box.get_node("B") as ProgressBar).value = maxf(frac, 0.0)
+	(box.get_node("S") as Label).text = sub
+
+
+# ── Package 64d (Luz): the party, the round, and the round's work ─────────────────────────────────────────────────
+# After your report Luz throws a small party and takes you into the round: Luz, Ratte, Kraut, Rook. From then on
+# Ratte and Kraut hand out work, one job at a time:
+#   information (Ratte): as Luz's test: a rendezvous, a count, a convoy without markings, a download, away;
+#   a delivery (Ratte):  fetch a sealed crate at a drop point in space and dock with it at a named station (paid there);
+#   a raid (Kraut):      as the first, but the convoy flies its flag, the big ship has to go and what it drops has
+#                        to be picked up (your standing with that power suffers, as for any attack on its ships).
+# The job in hand lives in the story flag "rj" (numbers and words only); what runs in space, in _rj.
+
+const RJ := "round_job"
+const RJ_RV := "rj_rv"
+const RJ_LOOT := "rj_loot"
+const RJ_HOLD := 3.0               # seconds at the drop point until the crate is aboard
+const RJ_GRAB := 800.0             # km from what a raided ship dropped: it is yours
+const RJ_KINDS := {"intel": "Information", "smuggle": "A quiet delivery", "raid": "A raid"}
+const RJ_GIVES := {"ratte": ["intel", "smuggle", "intel"], "kraut": ["raid", "raid"]}
+const RJ_PAY := {"intel": [14000, 1000], "smuggle": [9000, 800], "raid": [24000, 2000]}       # base, step (× 0 … 4)
+const RJ_FOES := {"covenant": ["patrol_for_heavy", "patrol_for_medium", "patrol_for_light"], "assembly": ["patrol_cfw_heavy", "patrol_cfw_medium", "patrol_cfw_light"]}
+var _party64 := false
+var _room64 := false               # package 64e: Luz stands in the room above the bar, showing it to you
+var _rj := {}                      # the job as it runs in space: {"count", "ships", "big", "data", "last", "hold", "loot"}
+
+
+## The party: the picture goes dark, the bar is full, the round stands at the counter with you; Luz speaks.
+func _luz_party() -> void:
+	if _fern_busy or bool(flags().get("luz_round", false)):
+		return
+	var g = main.ground
+	if g == null or not is_instance_valid(g) or String(g.level) != "zbar":
+		return
+	_fern_busy = true
+	var st = GameState.story
+	g.input_enabled = false
+	await main.fade(Color(0, 0, 0, 1), 0.7).finished
+	_party64 = true
+	_fern_weather()
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = ground_mode(g.station)
+		g.go_level("zbar", "lift")
+		g.input_enabled = false
+		g.pilot.dir = 0
+	main.fade(Color(0, 0, 0, 0), 0.9)
+	Audio.play("ui_open", "luz: the party")
+	await _w(1.2)
+	for sayer in [["rook", "To the pilot!"], ["ratte", "Free drinks! Ratte approves."], ["kraut", "Hm."]]:
+		g = main.ground
+		if g != null and is_instance_valid(g):
+			var wk = g.story_people.get(String(sayer[0]), null)
+			if wk != null and is_instance_valid(wk):
+				wk.bubble = String(sayer[1])
+				wk.bubble_t = 3.0
+		await _w(1.1)
+	st.show.emit("dialogue", {"id": "luz_party", "mission": LUZ, "no_dim": true})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	st.set_flag("luz_round", true)
+	_party64 = false
+	_fern_busy = false
+	GameState.log_msg("You are one of the round now. Ratte and Kraut have work for you: speak to them in the Static Feedback.", GameState.COL_GOOD)
+	await _luz_show_room()
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.input_enabled = true
+		g.story_mode = ground_mode(g.station)            # (as it stands from the next time you come in)
+		for key in ["rook", "ratte", "kraut"]:
+			var w2 = g.story_people.get(key, null)
+			if w2 != null and is_instance_valid(w2):
+				(g.map.zones as Array).append({"rect": Rect2((w2.pos as Vector2) - Vector2(26, 22), Vector2(52, 44)), "kind": "story", "id": key,
+					"title": String((GameState.story.Data.CHARACTERS.get(key, {}) as Dictionary).get("name", key)), "col": Color(1.0, 0.82, 0.35), "sign": Vector2(-100, -100)})
+
+
+## Package 64e (Luz): Luz takes you up to the room above the bar and leaves you there.
+func _luz_show_room() -> void:
+	if bool(flags().get("luz_room", false)):
+		return
+	var st = GameState.story
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		st.set_flag("luz_room", true)
+		return
+	_fern_busy = true
+	g.input_enabled = false
+	await main.fade(Color(0, 0, 0, 1), 0.7).finished
+	_room64 = true
+	st.set_flag("luz_room", true)
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = ground_mode(g.station)
+		g.go_level("zroom", "from_bar")
+		g.input_enabled = false
+		g.pilot.dir = 3
+	main.fade(Color(0, 0, 0, 0), 0.9)
+	await _w(1.0)
+	st.show.emit("dialogue", {"id": "luz_room", "mission": LUZ, "no_dim": true})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	_room64 = false
+	_fern_busy = false
+	GameState.log_msg("A room of your own above the Static Feedback: through the door marked PRIVATE in the bar. You can sleep there.", GameState.COL_GOOD)
+	g = main.ground
+	if g != null and is_instance_valid(g):
+		g.input_enabled = true
+		g.story_mode = ground_mode(g.station)            # (Luz is gone when you next come in)
+		var lw = g.story_people.get("luz", null)
+		if lw != null and is_instance_valid(lw):
+			lw.bubble = "Good night."
+			lw.bubble_t = 3.0
+
+
+# ── Package 64f (Luz): Rook asks you to the Colosseum ────────────────────────────────────────────────────────────
+# The morning after your first night in the room above the bar Rook is on the radio: come to the Colosseum. Rook
+# waits on its plaza, says what the place is, and from then on stands beside you in Team Deathmatch if you pick
+# them (the story flag "rook_mate": ColData.story_mate_open).
+
+const ROOKC := "rook_col"
+
+## Package 64g (Luz): the round plays at the bar's table and board (MinigameData.SPECIAL: Luz and Ratte billiards,
+## Rook and Kraut darts). They are found by the place: the story remembers which station Centauria is.
+func _bar_flag() -> void:
+	if flags().has("luz_bar_st"):
+		return
+	var g = main.ground
+	if g != null and is_instance_valid(g) and String((g.station as Dictionary).get("name", "")) == "Centauria" and String((g.station as Dictionary).get("id", "")) != "":
+		GameState.story.flags["luz_bar_st"] = String(g.station["id"])
+
+
+## Rook waits for you before the Colosseum (asked, not yet met there).
+func rook_waits() -> bool:
+	return bool(flags().get("rook_invited", false)) and not bool(flags().get("rook_mate", false))
+
+
+func _rook_col_step() -> void:
+	var fl: Dictionary = flags()
+	if bool(fl.get("rook_invited", false)) or not bool(fl.get("luz_slept", false)) or not bool(fl.get("luz_room", false)) or _fern_busy:
+		return
+	var g = main.ground
+	if g == null or not is_instance_valid(g) or not g.input_enabled or main.story_ui.dialogue != null:
+		return
+	var st = GameState.story
+	st.set_flag("rook_invited", true)
+	if not st.running(ROOKC) and not st.done.has(ROOKC):
+		st.start(ROOKC)
+	st.tracked = ROOKC
+	for ln in ["Morning, sleeper. Luz says you survived the mattress.",
+			"Get yourself to the Colosseum. Line B from Centauria Central. I'll wait on the plaza.",
+			"There's something there you have to see."]:
+		st.show.emit("radio", {"who": "rook", "text": ln, "mission": ROOKC})
+	g.story_mode = ground_mode(g.station)                  # (Rook is out of the bar, and before the Colosseum)
+
+
+func _rook_col_talk() -> void:
+	_fern_busy = true
+	var st = GameState.story
+	st.show.emit("dialogue", {"id": "rook_col", "mission": ROOKC})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	_fern_busy = false
+	st.set_flag("rook_mate", true)
+	GameState.log_msg("Rook Varga stands beside you in the Colosseum from now on: pick Rook for your team in Team Deathmatch.", GameState.COL_GOOD)
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = ground_mode(g.station)
+		var w = g.story_people.get("rook", null)
 		if w != null and is_instance_valid(w):
 			w.marker = ""
 			w.queue_redraw()
+
+
+## The job in hand ({} : none).
+func rj() -> Dictionary:
+	return flags().get("rj", {})
+
+
+## A mark over Ratte or Kraut: your pay waits there.
+func rj_marked(who: String) -> bool:
+	var j := rj()
+	return not j.is_empty() and String(j.get("who", "")) == who and String(j.get("stage", "")) == "back"
+
+
+## The plain systems next to Fern (where the round's work lies).
+func _rj_systems() -> Array:
+	var out: Array = []
+	var fern := Universe.special_system("fern")
+	for gt in Universe.get_layout(fern)["gates"]:
+		var to := int(gt["to"])
+		if Universe.special_faction(to) == "" and not to in out:
+			out.append(to)
+	if out.is_empty():
+		out.append(fern)
+	return out
+
+
+func rj_pos(sid: int, seed_v: int) -> Vector2:
+	return Vector2.from_angle(float(sid) * 1.7 + float(seed_v) * 0.9 + 2.1) * (1500000.0 + float(seed_v % 5) * 140000.0)
+
+
+## What a member of the round offers now (new every twenty minutes): [{kind, who, sys, seed, pay, foe, stn, …}, …].
+func rj_offers(who: String) -> Array:
+	var out: Array = []
+	var syss := _rj_systems()
+	var bucket := int(GameState.play_time / 1200.0)
+	var kinds: Array = RJ_GIVES.get(who, [])
+	for i in kinds.size():
+		var kind := String(kinds[i])
+		var sd := absi(hash("%s|%d|%d" % [who, bucket, i])) % 1000
+		var sid := int(syss[sd % syss.size()])
+		var o := {"kind": kind, "who": who, "sys": sid, "seed": sd, "pay": int(RJ_PAY[kind][0]) + (sd % 5) * int(RJ_PAY[kind][1]),
+			"foe": "covenant" if sd % 2 == 0 else "assembly", "stage": "go"}
+		var sname := String(Universe.systems[sid]["name"])
+		var foe_n := "Covenant of Return" if String(o["foe"]) == "covenant" else "Cluster Assembly"
+		match kind:
+			"intel":
+				o["label"] = "Information: a convoy of the %s in %s" % [foe_n, sname]
+				o["brief"] = "Ratte wants to read what a convoy of the %s carries in its computer. Warp to the rendezvous in %s, stay within 8,000 km of the big ship until the download is done, then get away." % [foe_n, sname]
+				o["back"] = "Ratte waits in the Static Feedback for what the box read."
+			"raid":
+				o["label"] = "A raid: a convoy of the %s in %s" % [foe_n, sname]
+				o["brief"] = "Kraut knows of a convoy of the %s that carries too much. Warp to the rendezvous in %s, destroy its biggest ship and pick up what it drops. It flies its flag: the %s will not forget." % [foe_n, sname, foe_n]
+				o["back"] = "Kraut waits in the Static Feedback for the goods."
+			"smuggle":
+				var stn := _rj_station(sid, sd)
+				if stn.is_empty():
+					continue
+				o["stn"] = String(stn["id"])
+				o["stn_sys"] = int(stn["sys"])
+				o["label"] = "A delivery: a crate from %s to %s (%s)" % [sname, String(stn["name"]), String(Universe.systems[int(stn["sys"])]["name"])]
+				o["brief"] = "Ratte has a sealed crate lying at a drop point in %s. Warp there, take it aboard, and dock with it at %s in %s. You are paid at the station." % [sname, String(stn["name"]), String(Universe.systems[int(stn["sys"])]["name"])]
+				o["back"] = "Dock at %s in %s." % [String(stn["name"]), String(Universe.systems[int(stn["sys"])]["name"])]
+		out.append(o)
+	return out
+
+
+## A station to carry a crate to: in another plain system by Fern if one has a station, else in the same.
+func _rj_station(from_sid: int, seed_v: int) -> Dictionary:
+	var cands: Array = []
+	for sid in _rj_systems():
+		for stn in Universe.get_layout(int(sid))["stations"]:
+			cands.append({"id": String(stn["id"]), "name": String(stn.get("name", "the station")).split(" – ")[0], "sys": int(sid)})      # (no dash in a text: the name without its kind)
+	var far: Array = cands.filter(func(c): return int(c["sys"]) != from_sid)
+	if not far.is_empty():
+		cands = far
+	return cands[seed_v % cands.size()] if not cands.is_empty() else {}
+
+
+func rj_take(o: Dictionary) -> String:
+	if not rj().is_empty():
+		return "One thing at a time."
+	var st = GameState.story
+	st.flags["rj"] = o.duplicate(true)
+	st.flags.erase("rj_field")
+	st.flags.erase("rj_paid")
+	st.missions.erase(RJ)
+	st.done.erase(RJ)
+	st.start(RJ)
+	st.tracked = RJ
+	_bcn_on(int(o["sys"]), RJ_RV, "Drop point" if String(o["kind"]) == "smuggle" else "Rendezvous", rj_pos(int(o["sys"]), int(o["seed"])))
+	GameState.log_msg("%s: marked in %s. Journal: \"Work for the Round\"." % [String(RJ_KINDS[String(o["kind"])]), String(Universe.systems[int(o["sys"])]["name"])], GameState.COL_GOOD)
+	return ""
+
+
+func rj_drop() -> void:
+	var j := rj()
+	if j.is_empty():
+		return
+	_rj_clear()
+	_bcn_off(int(j["sys"]), RJ_RV)
+	_bcn_off(int(j["sys"]), RJ_LOOT)
+	var st = GameState.story
+	st.flags.erase("rj")
+	st.missions.erase(RJ)
+	st.done.erase(RJ)
+	st.changed.emit()
+	GameState.log_msg("You let the job go.", GameState.COL_WARN)
+
+
+func _rj_pay() -> void:
+	var j := rj()
+	if j.is_empty():
+		return
+	var st = GameState.story
+	var pay := int(j["pay"])
+	GameState.credits += pay
+	GameState.credits_changed.emit(GameState.credits)
+	GameState.count_stat("missions_done")
+	var Acq = load("res://data/acquaintances.gd")
+	Acq.add(String(j["who"]), int(Acq.JOB_POINTS), "a job done")         # (Luz) every job for them makes you better friends
+	st.set_flag("rj_field", true)
+	st.set_flag("rj_paid", true)
+	st.flags.erase("rj")
+	GameState.log_msg("%s: paid, %s." % [String(RJ_KINDS[String(j["kind"])]), GameData.fmt_credits(pay)], GameState.COL_GOOD)
+	_rj_marks()
+
+
+func _rj_stage(to: String) -> void:
+	var j := rj()
+	j["stage"] = to
+	GameState.story.flags["rj"] = j
+	if to == "back":
+		GameState.story.set_flag("rj_field", true)
+	_rj_marks()
+
+
+func _rj_marks() -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	g.story_mode = ground_mode(g.station)
+	for key in ["ratte", "kraut"]:
+		var w = g.story_people.get(key, null)
+		if w != null and is_instance_valid(w):
+			w.marker = "!" if rj_marked(key) else ""
+			w.queue_redraw()
+
+
+## (Luz, 24 Nov 2026) After the party everyone of the round has a short talk: what is going on (a line by lot), and
+## what they are there for. Ratte and Kraut: work, in a window of its own (RoundJobs). Luz: a beer.
+const HUB_LISTS := {"ratte": "ratte_gossip", "kraut": "kraut_fact", "luz": "luz_music", "rook": "rook_talk"}
+const BEER_PRICE := 12
+
+func _hub_talk(who: String) -> void:
+	if _fern_busy:
+		return
+	var st = GameState.story
+	# the line that will be said, drawn now (never the same twice running)
+	var key := String(HUB_LISTS[who])
+	var n: int = {"ratte_gossip": st.Data.RATTE_GOSSIP.size(), "kraut_fact": st.Data.KRAUT_FACTS.size(), "luz_music": st.Data.LUZ_MUSIC.size(), "rook_talk": st.Data.ROOK_TALK.size()}[key]
+	var last := int(st.flags.get("hub_i_" + key, -1))
+	if who == "kraut":
+		st.flags["hub_i_" + key] = (last + 1) % n          # (Kraut reads on: one fact after the other)
+	else:
+		st.flags["hub_i_" + key] = (last + 1 + randi() % (n - 1)) % n if last >= 0 else randi() % n
+	st.flags.erase("hub_do")
+	if rj_marked(who):
+		_jobs_open(who)                                   # (your pay waits: straight to it)
+		return
+	_fern_busy = true
+	st.show.emit("dialogue", {"id": who + "_hub", "mission": LUZ, "no_dim": true})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	_fern_busy = false
+	var what := String(st.flags.get("hub_do", ""))
+	st.flags.erase("hub_do")
+	match what:
+		"jobs":
+			_jobs_open(who)
+		"beer":
+			_beer()
+
+
+## Luz pours you a beer.
+func _beer() -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	if not GameState.spend(BEER_PRICE):
+		g._say_toast("Luz looks at your empty hand. \"It's twelve credits, pilot. Even for the round.\"", 4.0)
+		return
+	Audio.play("ui_click", "bar: a beer")
+	GameState.story.flags["luz_beers"] = int(GameState.story.flags.get("luz_beers", 0)) + 1
+	g._say_toast(["Luz slides a beer across the counter. Cold, cheap, and exactly right.", "A beer. The glass is almost clean.", "Luz pours without looking and stops a hair under the rim.",
+		"\"On the tab? No. Twelve credits.\" The beer is good anyway."][randi() % 4], 4.0)
+
+
+## The window with the work of Ratte or Kraut.
+func _jobs_open(who: String) -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	load("res://scripts/ui/round_jobs.gd").open(g, self, who)
+
+
+## (The plain window of 64d: kept for a ground without the new one.)
+func _round_talk(who: String) -> void:
+	var g = main.ground
+	if g == null or not is_instance_valid(g):
+		return
+	var nm := String((GameState.story.Data.CHARACTERS.get(who, {}) as Dictionary).get("name", who))
+	var j := rj()
+	if not j.is_empty():
+		if String(j["who"]) == who and String(j["stage"]) == "back":
+			var pay := int(j["pay"])
+			_rj_pay()
+			g.ask_window(nm, ("\"Ratte reads, Ratte pays. %s. Come again.\"" if who == "ratte" else "\"Hm. Good. %s.\"") % GameData.fmt_credits(pay), [["Take the money", func(): pass]])
+		elif String(j["who"]) == who:
+			g.ask_window(nm, ("\"It still lies where Ratte said it lies.\"" if who == "ratte" else "\"Still there. Go.\"") + "\n\n" + String(j["brief"]),
+				[["I'm on it", func(): pass], ["Drop the job", func(): rj_drop()]])
+		else:
+			g.ask_window(nm, "\"You carry somebody else's job. One thing at a time.\"" if who == "ratte" else "\"Busy. Later.\"", [["Right", func(): pass]])
+		return
+	var opts: Array = []
+	for o in rj_offers(who):
+		var oo: Dictionary = o
+		opts.append(["%s  ·  %s" % [String(oo["label"]), GameData.fmt_credits(int(oo["pay"]))], func(): rj_take(oo)])
+	opts.append(["Not now", func(): pass])
+	g.ask_window(nm, "\"Ratte hears things. Somebody wants something read, somebody wants something moved. You fly, Ratte splits. Pick one.\"" if who == "ratte"
+		else "\"Ships. Too much cargo. Too few guns.\" Kraut pushes a slate across the table.", opts)
+
+
+## A waypoint of the story in a system (they are not saved: put back whenever missing) …
+func _bcn_on(sid: int, id: String, nm: String, pos: Vector2) -> void:
+	if sid < 0:
+		return
+	var list: Array = Universe.story_beacons.get(sid, [])
+	if not list.any(func(b): return String(b["id"]) == id):
+		list.append({"id": id, "name": nm, "pos": pos, "kind": "story", "land": 3000.0})
+		Universe.story_beacons[sid] = list
+	var v = main.view if main != null else null
+	if v != null and is_instance_valid(v) and int(v.system_id) == sid and v.find_object(id) == null:
+		v._add_celestial("beacon", list.filter(func(b): return String(b["id"]) == id)[0])
+
+
+## … and gone again.
+func _bcn_off(sid: int, id: String) -> void:
+	var list: Array = (Universe.story_beacons.get(sid, []) as Array).filter(func(b): return String(b["id"]) != id)
+	if list.is_empty():
+		Universe.story_beacons.erase(sid)
+	else:
+		Universe.story_beacons[sid] = list
+	var v = main.view if main != null else null
+	if v != null and is_instance_valid(v) and int(v.system_id) == sid:
+		var ob = v.find_object(id)
+		if ob != null and is_instance_valid(ob) and ob is Node:
+			(ob as Node).queue_free()
+
+
+func _rj_clear(free_ships: bool = true) -> void:
+	if free_ships:
+		for s in _rj.get("ships", []):
+			if s != null and is_instance_valid(s) and not s.dying:
+				s.queue_free()
+	_rj = {}
+	if _luz_hud != null and is_instance_valid(_luz_hud) and _luz.is_empty():
+		_luz_hud.queue_free()
+		_luz_hud = null
+
+
+func _rj_step(delta: float) -> void:
+	var j := rj()
+	if j.is_empty():
+		if not _rj.is_empty():
+			_rj_clear()
+		return
+	var stage := String(j["stage"])
+	var kind := String(j["kind"])
+	if stage == "deliver":
+		var f = Commands._fit()
+		if f != null and String(f.docked_at) == String(j.get("stn", "-")):
+			GameState.log_msg("The crate is off your hands. Nobody asks.", GameState.COL_GOOD)
+			_rj_pay()
+		return
+	if stage != "go":
+		if not _rj.is_empty():
+			_rj_clear()
+		return
+	var sid := int(j["sys"])
+	var at := rj_pos(sid, int(j["seed"]))
+	_bcn_on(sid, RJ_RV, "Drop point" if kind == "smuggle" else "Rendezvous", at)
+	var v = main.view
+	var pl = v.player if v != null and is_instance_valid(v) and int(v.system_id) == sid and GameState.current_system == sid else null
+	if pl == null or not is_instance_valid(pl) or pl.dying or pl.is_docked():
+		if not _rj.is_empty():
+			_rj_clear()
+			_bcn_off(sid, RJ_LOOT)
+			GameState.log_msg("The meeting is blown. It can be had again: go back to the %s when you are ready." % ("drop point" if kind == "smuggle" else "rendezvous"), GameState.COL_WARN)
+		return
+	if _rj.is_empty():
+		if not pl.in_warp() and (pl.position as Vector2).distance_to(at) < LUZ_NEAR:
+			if kind == "smuggle":
+				_rj = {"hold": RJ_HOLD, "ships": []}
+			else:
+				_rj = {"count": LUZ_COUNT, "ships": [], "big": null, "data": 0.0, "last": at}
+		return
+	if kind == "smuggle":
+		if (pl.position as Vector2).distance_to(at) > LUZ_NEAR:
+			_rj_clear()
+			return
+		_rj["hold"] = float(_rj["hold"]) - delta
+		_luz_show("TAKING ON CARGO", 1.0 - maxf(float(_rj["hold"]), 0.0) / RJ_HOLD, "Hold still at the drop point.")
+		if float(_rj["hold"]) <= 0.0:
+			_rj_clear()
+			_bcn_off(sid, RJ_RV)
+			_rj_stage("deliver")
+			Audio.play("ui_open", "round: the crate")
+			GameState.story.show.emit("radio", {"who": "ratte", "text": "It's aboard? Good. Now fly, and don't stop to chat on the way.", "mission": RJ})
+		return
+	if float(_rj["count"]) > 0.0:
+		_rj["count"] = float(_rj["count"]) - delta
+		_luz_show("CONTACT IN %d" % int(ceilf(maxf(float(_rj["count"]), 0.0))), -1.0, "A convoy is about to drop out of warp.")
+		if float(_rj["count"]) <= 0.0:
+			_rj_spawn(v, pl, j)
+		return
+	var big = _rj["big"]
+	var big_ok: bool = big != null and is_instance_valid(big) and not big.dying
+	if big_ok:
+		_rj["last"] = big.position
+	if kind == "raid":
+		if big_ok:
+			_luz_show("A RAID", -1.0, "Destroy the %s and pick up what it drops." % String(big.fit.ship_name))
+			return
+		var loot: Vector2 = _rj["last"]
+		if not bool(_rj.get("loot", false)):
+			_rj["loot"] = true
+			_bcn_on(sid, RJ_LOOT, "Loot canister", loot)
+			GameState.log_msg("She breaks up. A canister tumbles out of the wreck.", GameState.COL_GOOD)
+		_luz_show("PICK UP THE LOOT", -1.0, "Fly within %s of the canister." % SystemView.fmt_dist(RJ_GRAB))
+		if (pl.position as Vector2).distance_to(loot) < RJ_GRAB:
+			_rj_clear(false)                              # (what is left of the convoy stays where it is)
+			_bcn_off(sid, RJ_LOOT)
+			_bcn_off(sid, RJ_RV)
+			_rj_stage("back")
+			Audio.play("ui_open", "round: the loot")
+			GameState.story.show.emit("radio", {"who": "kraut", "text": "Hm. Good. Bring it.", "mission": RJ})
+		return
+	# information
+	if float(_rj["data"]) < 1.0:
+		var near: bool = not big_ok or (pl.position as Vector2).distance_to(big.position) < LUZ_RING
+		if not big_ok:
+			_rj["data"] = 1.0
+		elif near:
+			_rj["data"] = minf(1.0, float(_rj["data"]) + delta / LUZ_TIME)
+		_luz_show("DOWNLOADING %d %%" % int(float(_rj["data"]) * 100.0), float(_rj["data"]),
+			("Stay within %s of the %s." % [SystemView.fmt_dist(LUZ_RING), big.fit.ship_name]) if near and big_ok else "OUT OF RANGE: get back within %s." % SystemView.fmt_dist(LUZ_RING))
+		if float(_rj["data"]) >= 1.0:
+			Audio.play("ui_open", "round: the download is done")
+			GameState.story.show.emit("radio", {"who": "ratte", "text": "Ratte has it. Run, pilot, run!", "mission": RJ})
+		return
+	_luz_show("DATA SECURED", 1.0, "Get away: warp out, or put %s between you and them." % SystemView.fmt_dist(LUZ_AWAY))
+	var alive: Array = (_rj["ships"] as Array).filter(func(s): return s != null and is_instance_valid(s) and not s.dying)
+	if pl.in_warp() or alive.all(func(s): return (s.position as Vector2).distance_to(pl.position) > LUZ_AWAY):
+		_rj_clear()
+		_bcn_off(sid, RJ_RV)
+		_rj_stage("back")
+
+
+## The round's convoy. Information: as Luz's test (no markings). A raid: under its flag, and sized by your ship: a
+## small ship meets a medium one with one escort, a medium ship the big one with half its guns, a large ship all of it.
+func _rj_spawn(v, pl, j: Dictionary) -> void:
+	var foe := String(j["foe"])
+	var set3: Array = RJ_FOES[foe]
+	var raid := String(j["kind"]) == "raid"
+	var size := int(GameData.hulls[pl.fit.hull_id]["size"])
+	var presets: Array = [set3[0], set3[2], set3[2]]
+	if raid and size <= 1:
+		presets = [set3[1], set3[2]]
+	var dir := Vector2.from_angle(randf() * TAU)
+	var ships: Array = []
+	for i in presets.size():
+		var at: Vector2 = (pl.position as Vector2) + dir * LUZ_SPAWN + dir.orthogonal() * (float(i) - 1.0) * 650.0 + dir * (300.0 if i > 0 else 0.0)
+		var s: Ship = v.spawn_npc(String(presets[i]), at, "patrol", foe if raid else "")
+		if not raid:
+			s.fit.ship_name = "Unmarked " + String(GameData.hulls[s.fit.hull_id]["name"])
+		# how many guns they keep, and how big: information as Luz's test; a raid by the size of your ship
+		var keep_n := 2 if i == 0 else 1
+		var keep_sz := 2 if i == 0 else 1
+		if raid and size == 2:
+			keep_n = 3 if i == 0 else 1
+		elif raid and size >= 3:
+			keep_n = 5 if i == 0 else 2
+			keep_sz = 3 if i == 0 else 2
+		_convoy_weaken(s, keep_n, keep_sz)
+		s.provoked = true
+		s.heading = (-dir).angle()
+		s.set_meta("rj_convoy", true)
+		v.spawn_fx(Fx.warp_flash(at, s.radius * 3.0))
+		ships.append(s)
+	_rj["ships"] = ships
+	_rj["big"] = ships[0]
+	_rj["last"] = ships[0].position
+	Audio.play("warn", "round: the convoy")
+	GameState.log_msg("%s drop out of warp. They open fire." % ("Ships of the %s" % ("Covenant" if foe == "covenant" else "Assembly") if raid else "Ships without markings"), GameState.COL_BAD)
+
+
+## (Luz) While Rook takes you to Luz it is night in Centauria, and it rains. It stays so until you leave the city.
+var _fern_wx := false
+
+func _fern_weather() -> void:
+	var fl: Dictionary = flags()
+	var g = main.ground
+	var here: bool = g != null and is_instance_valid(g) and String((g.station as Dictionary).get("name", "")) == "Centauria"
+	# (Luz: dark and raining only the first time in Centauria.) Night and rain: from Rook's call until you have met
+	# Luz, and on until you leave the city that first time. The party is at night as well, but the weather is its own.
+	var want: bool = phase == "free" and bool(fl.get("fern_called", false)) and (not bool(fl.get("fern_luz", false)) or (_fern_wx and here))
+	var night: bool = want or (phase == "free" and (_party64 or _room64))
+	if want == _fern_wx and (CityStyle.story_night == "Centauria") == night:
+		return
+	_fern_wx = want
+	CityStyle.story_night = "Centauria" if night else ""
+	Weather.story_place = "Centauria" if want else ""
+	Weather.story_kind = "rain" if want else ""
+	if here:
+		if not (g._city_body as Dictionary).is_empty():
+			g._apply_day(CityStyle.daylight(g.station, g._city_body), true)
+		if g.weather != null and is_instance_valid(g.weather):
+			g.weather.w = Weather.at(g.weather.body, g.weather.place, g.weather.cloud)
+			g.weather._apply()
+			g.weather._people()
+			g.weather._sound()
+
+
+func _exit_tree() -> void:
+	_luz_clear()
+	_rj_clear()
+	if _fern_wx:
+		CityStyle.story_night = ""
+		Weather.story_place = ""
+		Weather.story_kind = ""
+
+
+## Rook greets you at the top of the stairs.
+func _fern_meet() -> void:
+	_fern_busy = true
+	var st = GameState.story
+	st.show.emit("dialogue", {"id": "rook_fern", "mission": FERN})
+	await get_tree().process_frame
+	while main.story_ui.dialogue != null or not main.story_ui._dlg_q.is_empty():
+		await get_tree().process_frame
+	st.set_flag("fern_rook", true)
+	_fern_busy = false
+	_lead = {}
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = ground_mode(g.station)            # (on the next levels Rook goes ahead)
+		var w = g.story_people.get("rook", null)
+		if w != null and is_instance_valid(w):
+			w.marker = ""
+			w.queue_redraw()
+		for i in range((g.map.zones as Array).size() - 1, -1, -1):
+			if String(g.map.zones[i].get("kind", "")) == "story" and String(g.map.zones[i].get("id", "")) == "rook":
+				(g.map.zones as Array).remove_at(i)       # (nothing to speak to where Rook stood)
+
+
+## (Luz) Rook walks ahead to a named point of this level and you follow by yourself. Three times Rook stops, turns
+## to you and says a line, standing, so that it can be read; then on. At the end the way leads on by itself.
+func _lead_walk(g, rook, meta: String, off: Vector2, far: float, delta: float, next_level: String, next_at: String) -> void:
+	var lvl := String(g.level)
+	if String(_lead.get("level", "")) != lvl or _lead.get("map") != g.map:
+		var T0 := float(GroundMap.TILE)
+		var to: Vector2 = (g.map.get_meta(meta, rook.pos) as Vector2) + off * T0
+		var pts: Array = Array(g.map.path(rook.pos, to))
+		if pts.is_empty():
+			pts = [to]
+		# where Rook stops to speak: at once, half way, at the end
+		_lead = {"level": lvl, "map": g.map, "pts": pts, "i": 0, "said": 0, "talk": 0.0, "wait": 0.9, "stuck": 0.0, "there": false,
+			"stops": [0, int(pts.size() * 0.5), pts.size()], "t": 0.0, "going": false}
+	g.input_enabled = false
+	rook.stays = true
+	if bool(_lead["going"]):
+		return
+	var lines: Array = FERN_SAY.get(lvl, [])
+	var pts2: Array = _lead["pts"]
+	var i := int(_lead["i"])
+	var near: bool = far < 3.4
+	# Rook is speaking: both stand, Rook turned to you
+	if float(_lead["talk"]) > 0.0:
+		_lead["talk"] = float(_lead["talk"]) - delta
+		_face(rook, g.pilot.pos)
+		_lead_follow(g, rook, delta, 2.2)
+		return
+	var said := int(_lead["said"])
+	var due: bool = said < lines.size() and said < (_lead["stops"] as Array).size() and i >= int(_lead["stops"][said])
+	if due:
+		# first let you catch up, then say it
+		if rook.moving:
+			rook.moving = false
+			rook.queue_redraw()
+		_face(rook, g.pilot.pos)
+		_lead_follow(g, rook, delta, 2.2)
+		_lead["wait"] = float(_lead["wait"]) - delta
+		if near and float(_lead["wait"]) <= 0.0:
+			rook.bubble = String(lines[said])
+			rook.bubble_t = 4.6
+			g._say_toast("Rook: \"%s\"" % rook.bubble, 4.4)   # (Luz: to be read whatever hangs across the street)
+			_lead["said"] = said + 1
+			_lead["talk"] = 4.2
+			_lead["wait"] = 0.3
+		return
+	if i >= pts2.size():
+		# there, and everything said: on to the next part of the way
+		_lead["there"] = true
+		_lead["going"] = true
+		_lead_go(next_level, next_at)
+		return
+	_lead_follow(g, rook, delta, 2.2)
+	var step_to: Vector2 = (pts2[i] as Vector2) - (rook.pos as Vector2)
+	if step_to.length() < 3.0:
+		_lead["i"] = i + 1
+		_lead["stuck"] = 0.0
+		return
+	if far > 5.0:
+		if rook.moving:
+			rook.moving = false                           # (you are held up: Rook waits a step)
+			rook.queue_redraw()
+		return
+	var before: Vector2 = rook.pos
+	if not rook.step(step_to.normalized(), delta, 0.85) or (rook.pos as Vector2).distance_to(before) < 0.01:
+		_lead["stuck"] = float(_lead["stuck"]) + delta
+		if float(_lead["stuck"]) > 0.6:
+			rook.pos += step_to.normalized() * minf(step_to.length(), Walker.SPEED * delta)      # (round a corner the walker catches on)
+			rook.position = rook.pos * GroundMap.SCALE
+	else:
+		_lead["stuck"] = 0.0
+
+
+## You walk behind Rook by yourself: along the way to where Rook stands, up to `keep` tiles from them.
+func _lead_follow(g, rook, delta: float, keep: float) -> void:
+	var T := float(GroundMap.TILE)
+	var pl = g.pilot
+	var d: float = (pl.pos as Vector2).distance_to(rook.pos)
+	if d <= keep * T:
+		if pl.moving:
+			pl.moving = false
+			pl.queue_redraw()
+		_face(pl, rook.pos)
+		_lead["fstuck"] = 0.0
+		return
+	_lead["ft"] = float(_lead.get("ft", 0.0)) - delta
+	if float(_lead["ft"]) <= 0.0 or not _lead.has("fpath"):
+		_lead["ft"] = 0.35
+		_lead["fpath"] = Array(g.map.path(pl.pos, rook.pos))
+		_lead["fi"] = 0
+	var fp: Array = _lead["fpath"]
+	var fi := int(_lead.get("fi", 0))
+	while fi < fp.size() and (fp[fi] as Vector2).distance_to(pl.pos) < 4.0:
+		fi += 1
+	_lead["fi"] = fi
+	var aim: Vector2 = (fp[fi] as Vector2) if fi < fp.size() else (rook.pos as Vector2)
+	var dir: Vector2 = (aim - (pl.pos as Vector2)).normalized()
+	var before: Vector2 = pl.pos
+	var ok: bool = pl.step(dir, delta, 1.25 if d > 4.5 * T else 0.95)
+	if not ok or (pl.pos as Vector2).distance_to(before) < 0.01:
+		_lead["fstuck"] = float(_lead.get("fstuck", 0.0)) + delta
+		if float(_lead["fstuck"]) > 1.2:
+			pl.pos = (rook.pos as Vector2) + Vector2(0.0, 1.6 * T)        # (caught on something for good: beside Rook)
+			_lead["fstuck"] = 0.0
+		pl.position = pl.pos * GroundMap.SCALE
+	else:
+		_lead["fstuck"] = 0.0
+
+
+## Turns a walker towards a point.
+func _face(w, at: Vector2) -> void:
+	var dv: Vector2 = at - (w.pos as Vector2)
+	var nd: int = (1 if dv.x > 0.0 else 3) if absf(dv.x) > absf(dv.y) else (2 if dv.y > 0.0 else 0)
+	if int(w.dir) != nd:
+		w.dir = nd
+		w.queue_redraw()
+
+
+## The way leads on by itself: the picture dips, the next part of the way (Rook is ahead of you again).
+func _lead_go(next_level: String, next_at: String) -> void:
+	_fern_busy = true
+	await main.fade(Color(0, 0, 0, 1), 0.35).finished
+	var g = main.ground
+	if g != null and is_instance_valid(g):
+		g.story_mode = ground_mode(g.station)
+		g.go_level(next_level, next_at)
+		g.input_enabled = false
+	main.fade(Color(0, 0, 0, 0), 0.5)
+	_lead = {}
+	_fern_busy = false
 
 
 # ── Package 59, part 3 (Luz): the naturalisation – the last scene of the intro ──────────────────────────────────
@@ -3814,7 +5002,8 @@ func _cit_office(fac: String) -> void:
 	_stamp = null
 	cl.queue_free()
 	st.set_flag("cit_licence", true)
-	GameState.log_msg("Pilot licence granted. Your skill tree starts again at its trunk; your Dragonfly waits in the hangar.", GameState.COL_GOOD)
+	GameState.tree_start_over()                           # package 64a: nothing of the intro counts towards the tree
+	GameState.log_msg("Pilot licence granted. Your skill tree starts at its trunk, and what you do counts from now on; your Dragonfly waits in the hangar.", GameState.COL_GOOD)
 	await _cit_dlg("citizen_%s_end" % fac)
 	await main.fade(Color(0, 0, 0, 1), 1.0).finished
 	_office_on = false

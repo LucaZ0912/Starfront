@@ -548,6 +548,225 @@ func _c_story_tips(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"debug_fern", "do": "call" | "reset" | "land" | "stairs" | "alley" | "bar" | "done" | "job" | "job_given" |
+## "job_rv" | "job_away" | "job_done" | "party" | "round" | "rj_intel" | "rj_raid" | "rj_smuggle" | "rj_rv" |
+## "rj_back" | "rj_drop"}: package 64b: Rook's
+## call now (the entry permit for Fern, the way to Luz), everything of it back to before the call, or a point on
+## the way.
+func _c_debug_fern(c: Dictionary) -> String:
+	var st = GameState.story
+	var m = _main()
+	var w = m.get_meta("dan_work") if m != null and m.has_meta("dan_work") else null
+	if String(c.get("do", "call")) == "reset":
+		_debug_fern_wipe(w)
+		GameState.log_msg("[Debug] Fern: back to before Rook's call.", GameState.COL_INFO)
+		return ""
+	var what := String(c.get("do", "call"))
+	if what != "call":
+		# a point on the way to Luz: "land" (down to Centauria, the call made), "stairs" (the top of the stairs, Rook
+		# waiting), "alley" (Rook ahead of you in the alley), "bar" (in the bar, before Luz), "done" (Luz met)
+		if m == null:
+			return "No game running."
+		if w == null or not is_instance_valid(w):
+			st.flags["intro_stage"] = "58"                 # (a game without the story: the open game, as after the intro)
+			st.flags["intro_done"] = true
+			m._start_dan_work("load")
+			w = m.get_meta("dan_work")
+		if String(w.phase) != "free":
+			w._set_phase("free")
+		if not st.flags.has("intro_stage"):
+			st.flags["intro_stage"] = "58"
+		st.flags["intro_done"] = true                      # (the story listens to you only once the intro is over)
+		st.flags["cit_licence"] = true                     # (… and you hold your licence: the skill tree is open)
+		if what in ["rj_rv", "rj_back", "rj_drop"]:
+			# package 64d: the round's job in hand: to its point in space, done in the field, let go
+			var j: Dictionary = w.rj()
+			if j.is_empty():
+				return "No job of the round in hand."
+			if what == "rj_drop":
+				w.rj_drop()
+			elif what == "rj_back":
+				w._rj_clear()
+				w._bcn_off(int(j["sys"]), "rj_rv")
+				w._bcn_off(int(j["sys"]), "rj_loot")
+				w._rj_stage("back")
+			else:
+				if _ground() != null:
+					return "Take off first: the point lies in space."
+				_debug_ship_to(m, int(j["sys"]), w.rj_pos(int(j["sys"]), int(j["seed"])) + Vector2(400.0, 0.0))
+			return ""
+		_debug_fern_wipe(w)
+		st.flags["fern_called"] = true
+		st.start("fern")
+		st.tracked = "fern"
+		if what in ["party", "round", "room", "col_invite", "col_done"] or what.begins_with("rj_"):
+			# package 64d: "party" (the test reported, the party still to come: in the bar it begins at once), "round"
+			# (you are of the round), "rj_intel" / "rj_raid" / "rj_smuggle" (of the round, with such a job in hand)
+			for fj2 in ["fern_arrived", "fern_landed", "fern_rook", "fern_luz", "luz_job", "luz_rv", "luz_data", "luz_away", "luz_done"]:
+				st.set_flag(fj2, true)
+			st.flags["fern_radio"] = true
+			st.flags["luz_sys"] = w._luz_pick_sys()
+			if what != "party":
+				st.set_flag("luz_round", true)
+			if what != "party" and what != "round_only":
+				st.set_flag("luz_room", true)                 # (64e: the room above the bar is yours with the round)
+			if what in ["col_invite", "col_done"]:
+				# package 64f: Rook has asked you to the Colosseum ("col_invite": Rook waits on its plaza), or you met there
+				st.set_flag("luz_slept", true)
+				st.set_flag("rook_invited", true)
+				st.start("rook_col")
+				st.tracked = "rook_col"
+				if what == "col_done":
+					st.set_flag("rook_mate", true)
+			w._fern_weather()
+			var gp = _ground()
+			var in_ctr: bool = gp != null and is_instance_valid(gp) and String((gp.station as Dictionary).get("name", "")) == "Centauria"
+			if what.begins_with("rj_"):
+				var kind := what.trim_prefix("rj_")
+				var who := "kraut" if kind == "raid" else "ratte"
+				var got := false
+				for o in w.rj_offers(who):
+					if String(o["kind"]) == kind and not got:
+						w.rj_take(o)
+						got = true
+				if not got:
+					return "Nobody offers that just now."
+			if in_ctr:
+				gp.story_mode = w.ground_mode(gp.station)
+				if what in ["col_invite", "col_done"]:
+					gp.go_level("zcol", "from_station")
+				else:
+					gp.go_level("zroom" if what == "room" else "zbar", "from_bar" if what == "room" else "from_street")
+				if what == "party":
+					w._luz_party.call_deferred()
+			GameState.log_msg("[Debug] The round: %s." % {"party": "the party (it begins in the bar)", "round": "you are of the round", "room": "the room above the bar is yours", "col_invite": "Rook waits before the Colosseum", "col_done": "Rook met at the Colosseum, a team mate now"}.get(what, "a job in hand (%s)" % what.trim_prefix("rj_")), GameState.COL_INFO)
+			return ""
+		if what.begins_with("job"):
+			# package 64c: Luz's test: "job" (Luz met, the job not yet given), "job_given", "job_rv" (in space: at the
+			# rendezvous), "job_away" (the data is yours, the report is owed), "job_done"
+			for fj in ["fern_arrived", "fern_landed", "fern_rook", "fern_luz"]:
+				st.set_flag(fj, true)
+			st.flags["fern_radio"] = true
+			w._fern_weather()
+			if what != "job":
+				st.flags["luz_sys"] = w._luz_pick_sys()
+				st.set_flag("luz_job", true)
+				st.start("luz_test")
+				st.tracked = "luz_test"
+				w._luz_beacon(int(st.flags["luz_sys"]))
+			if what in ["job_away", "job_done"]:
+				for fk in ["luz_rv", "luz_data", "luz_away"]:
+					st.set_flag(fk, true)
+				w._luz_beacon_off(int(st.flags["luz_sys"]))
+			if what == "job_done":
+				st.set_flag("luz_done", true)
+			w._luz_mark()
+			var gj = _ground()
+			if gj != null and is_instance_valid(gj) and String((gj.station as Dictionary).get("name", "")) == "Centauria" and what != "job_rv":
+				gj.go_level("zbar", "from_street")           # (on the ground in Centauria: into the bar, to Luz)
+			if what == "job_rv":
+				if _ground() != null:
+					return "Take off first: the rendezvous lies in space."
+				_debug_ship_to(m, int(st.flags["luz_sys"]), w.luz_rv_pos(int(st.flags["luz_sys"])) + Vector2(400.0, 0.0))
+			GameState.log_msg("[Debug] Luz's test: %s." % {"job": "Luz has a job for you", "job_given": "the job is yours, the rendezvous marked", "job_rv": "at the rendezvous", "job_away": "the data is yours, Luz waits", "job_done": "reported"}.get(what, what), GameState.COL_INFO)
+			return ""
+		if what != "land":
+			st.set_flag("fern_arrived", true)
+			st.set_flag("fern_landed", true)
+			st.flags["fern_radio"] = true
+		if what in ["alley", "bar", "done"]:
+			st.set_flag("fern_rook", true)
+		if what == "done":
+			st.set_flag("fern_luz", true)
+		w._lead = {}
+		w._fern_busy = false
+		w._fern_weather()
+		var g = _ground()
+		var here: bool = g != null and is_instance_valid(g) and String((g.station as Dictionary).get("name", "")) == "Centauria"
+		if what == "land":
+			if here:
+				g.story_mode = w.ground_mode(g.station)
+				g.go_level("hangar", "lift")
+			else:
+				_debug_fern_land(m)
+			GameState.log_msg("[Debug] Fern: down to Centauria, Rook has called.", GameState.COL_INFO)
+			return ""
+		if not here:
+			return "Land in Centauria first (\"Land in Centauria\")."
+		g.story_mode = w.ground_mode(g.station)
+		match what:
+			"stairs":
+				g.go_level("zplaza", "from_station")
+			"alley":
+				g.go_level("zalley", "from_plaza")
+			_:
+				g.go_level("zbar", "from_street")
+		GameState.log_msg("[Debug] Fern: %s." % {"stairs": "the top of the stairs, Rook waits", "alley": "the alley, Rook ahead of you", "bar": "the bar, before Luz", "done": "Luz met"}.get(what, what), GameState.COL_INFO)
+		return ""
+	if w == null or not is_instance_valid(w) or String(w.phase) != "free":
+		return "The story is not in the open game yet (Rook calls after the intro)."
+	if bool(st.flags.get("fern_called", false)):
+		return "Rook has called already."
+	w._fern_call()
+	return ""
+
+
+## Everything of Rook's introduction and of Luz's test back to nothing.
+func _debug_fern_wipe(w) -> void:
+	var st = GameState.story
+	if w != null and is_instance_valid(w):
+		w._luz_clear()
+		if int(st.flags.get("luz_sys", -1)) >= 0:
+			w._luz_beacon_off(int(st.flags["luz_sys"]))
+	if w != null and is_instance_valid(w):
+		var j: Dictionary = w.rj()
+		w._rj_clear()
+		if not j.is_empty():
+			w._bcn_off(int(j["sys"]), "rj_rv")
+			w._bcn_off(int(j["sys"]), "rj_loot")
+		w._party64 = false
+	for fl in st.flags.keys():
+		if String(fl).begins_with("fern_") or String(fl).begins_with("luz_") or String(fl) == "rj" or String(fl).begins_with("rj_") or String(fl).begins_with("rook_"):
+			st.flags.erase(fl)
+	for mid in ["fern", "luz_test", "round_job", "rook_col"]:
+		st.missions.erase(mid)
+		st.done.erase(mid)
+
+
+## Sets the active ship onto a spot in space in a system (wherever it is: docked, or systems away).
+func _debug_ship_to(m, sid: int, pos: Vector2) -> void:
+	var f := _fit()
+	if f == null or sid < 0 or f.in_transit():
+		return
+	if m.station_panel != null:
+		m.station_panel.close()
+	if world != null and is_instance_valid(world):
+		world.remove_player()
+	f.route.clear()
+	f.system_id = sid
+	f.docked_at = ""
+	f.position = pos
+	GameState.active_changed.emit()
+
+
+## To the Fern system, then down to Centauria (one after the other: the system has to be there first).
+func _debug_fern_land(m) -> void:
+	var sid := Universe.special_system("fern")
+	if GameState.current_system != sid:
+		_c_debug_special({"special": "fern"})
+		for i in 40:
+			await get_tree().process_frame
+		for wl in 900:
+			if m.loading == null or not is_instance_valid(m.loading):
+				break
+			await get_tree().process_frame
+	if m.station_panel != null:
+		m.station_panel.close()
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			_c_debug_land({"body": String(mo["id"]), "kind": "city"})
+
+
 ## {"type":"debug_story", "do": "start" | "step" | "flag" | "reset" | "tip" | "radio" | "next", "id", "step", "name"}
 ## – package 55: the story by hand: start a mission (at a step), jump to a step, set a flag, a tip, a radio call, the
 ## step done at once, everything back.
@@ -3263,6 +3482,26 @@ func _c_room_sleep(_c: Dictionary) -> String:
 	if not bool((GameState.lodging[sid] as Dictionary).get("keep", false)):
 		GameState.lodging.erase(sid)
 	GameState.slept.emit(sid)
+	GameState.log_msg("You slept through the night. Rested.", GameState.COL_GOOD)
+	return ""
+
+
+## {"type":"luz_sleep"}: package 64e (Luz): a night in the room above the Static Feedback (yours once Luz has shown
+## it to you): the time passes as in a room of the quarters.
+func _c_luz_sleep(_c: Dictionary) -> String:
+	var st := docked_station()
+	if not st.get("city", false) or String(st.get("name", "")) != "Centauria" or not bool(GameState.story.flags.get("luz_room", false)):
+		return "You have no room here."
+	var f := _fit()
+	if f != null and GameState._may_roll_orbits(f):
+		Universe.roll_orbits(GameState.current_system)
+		var mn = world.get_tree().current_scene if world != null and is_instance_valid(world) else null
+		if mn != null and mn.has_method("load_system"):
+			mn.load_system(GameState.current_system)
+	GameState.offers.clear()
+	GameState.bar.clear()
+	GameState.story.set_flag("luz_slept", true)
+	GameState.slept.emit(String(st.get("id", "")))
 	GameState.log_msg("You slept through the night. Rested.", GameState.COL_GOOD)
 	return ""
 

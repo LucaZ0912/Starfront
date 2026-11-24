@@ -12,7 +12,8 @@ const MAX := 100
 const STEP := 100.0 / 3.0
 const LEVELS_POS := ["Acquaintance", "Friend", "Best friend"]
 const LEVELS_NEG := ["Wary", "Rival", "Enemy"]
-const ORDER := ["dan", "ossa", "rook", "silas", "imre", "luz"]
+const ORDER := ["dan", "ossa", "rook", "silas", "imre", "luz", "ratte", "kraut"]
+const JOB_POINTS := 4                  # (Luz) a job done for Ratte or Kraut
 const GAME_POINTS := 3                 # a bar game with someone …
 const GAME_CAP := 12                   # … up to this much from games
 
@@ -78,6 +79,22 @@ const PEOPLE := {
 		"likes": ["Punk, played loud", "Cheap beer", "People who keep their word", "Trouble, in small doses"],
 		"events": [
 			["flag:fern_luz", 8, "Met in Centauria, on Rook's word."],
+		]},
+	# (Luz, 24 Nov 2026) the round's two who hand out work: friendship grows with every job done for them
+	"ratte": {"met": "flag:luz_round", "home": "The Static Feedback, Centauria, Fern",
+		"about": "Knows a way in. Usually also a way out.",
+		"bio": "One of Luz's round in the Static Feedback. Deals in papers, cargo that was never there and things somebody would like to read, and speaks of Ratte as if Ratte were somebody else. Hands out information jobs and quiet deliveries.",
+		"likes": ["A fair split, mostly fair", "Doors that were locked yesterday", "Gossip, the fresher the better", "Being owed a favour"],
+		"events": [
+			["flag:luz_round", 6, "Drank to the round with you in the Static Feedback."],
+		]},
+	"kraut": {"met": "flag:luz_round", "home": "The Static Feedback, Centauria, Fern",
+		"about": "Says little. Reads.",
+		"bio": "One of Luz's round in the Static Feedback. Knows which ships carry too much and guard it too little, and hands out the raids. Says next to nothing, unless you ask about the book: an old one from Earth, on paper, about a war of farmers.",
+		"likes": ["Old books, on paper", "Quiet", "Darts", "People who finish what they start"],
+		"events": [
+			["flag:luz_round", 6, "Drank to the round with you in the Static Feedback."],
+			["flag:kraut_book", 4, "Told you about the book."],
 		]},
 	"imre": {"met": "flag:w59_met", "home": "Dan's bar, Beyond", "beyond": true,
 		"about": "Paid a million for your licence and never mentioned it again.",

@@ -301,6 +301,21 @@ static func keys(text: String) -> String:
 	if out.contains("{start_faction_name}"):
 		# package 59, part 3: the power you were registered with
 		out = out.replace("{start_faction_name}", "Covenant of Return" if String(GameState.story.flags.get("start_faction", "")) == "covenant" else "Cluster Assembly")
+	if out.contains("{foe_name}"):
+		# package 64c: the power you were not registered with (Luz's test goes against it)
+		out = out.replace("{foe_name}", "Cluster Assembly" if String(GameState.story.flags.get("start_faction", "")) == "covenant" else "Covenant of Return")
+	if out.contains("{ratte_gossip}") or out.contains("{kraut_fact}") or out.contains("{luz_music}") or out.contains("{rook_talk}"):
+		# (Luz) the round's small talk: the line that was drawn when the talk began (the flags "hub_i_<key>")
+		for pair in [["ratte_gossip", Data.RATTE_GOSSIP], ["kraut_fact", Data.KRAUT_FACTS], ["luz_music", Data.LUZ_MUSIC], ["rook_talk", Data.ROOK_TALK]]:
+			var lst: Array = pair[1]
+			out = out.replace("{%s}" % String(pair[0]), String(lst[posmod(int(GameState.story.flags.get("hub_i_" + String(pair[0]), 0)), lst.size())]))
+	if out.contains("{rj_brief}") or out.contains("{rj_back}"):
+		# package 64d: what the round's job in hand asks for, in its own words
+		var rjd: Dictionary = GameState.story.flags.get("rj", {})
+		out = out.replace("{rj_brief}", String(rjd.get("brief", "No job in hand."))).replace("{rj_back}", String(rjd.get("back", "No job in hand.")))
+	if out.contains("{luz_sys}"):
+		var ls := int(GameState.story.flags.get("luz_sys", -1))
+		out = out.replace("{luz_sys}", String(Universe.systems[ls]["name"]) if ls >= 0 and ls < Universe.systems.size() else "the next system")
 	if out.contains("{journal}"):
 		out = out.replace("{journal}", ("hold %s for the window wheel and pick Journal" % Pad.glyph("options")) if pad else "press %s" % Keybinds.key_text("journal"))
 	if out.contains("{views}"):
